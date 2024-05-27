@@ -56,12 +56,14 @@ struct IMUReportSchema {
         LOW = 1,
         MEDIUM = 2,
         HIGH = 3,
+        COVAR = 4,
     };
 
     TimestampSchema timestamp;
     uint64_t sequenceNumber;
 
     Accuracy accuracy;
+    std::array<float, 9> covariance;
 };
 
 struct VectorSchema {
@@ -85,7 +87,7 @@ struct IMUQuaternionSchema : public IMUReportSchema, public QuaternionSchema {
     float rotationAccuracy;
 };
 
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(IMUQuaternionSchema, i, j, k, real, rotationAccuracy, timestamp, sequenceNumber, accuracy)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(IMUQuaternionSchema, i, j, k, real, rotationAccuracy, timestamp, sequenceNumber, covariance, accuracy)
 
 struct IMUPacketSchema {
     IMUVectorSchema orientation;
@@ -153,10 +155,9 @@ struct VideoCameraSettingsSchema {
     int32_t sensitivity;
     int32_t lensPosition;
     int32_t wbColorTemp;
-    float lensPositionRaw;
 };
 
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(VideoCameraSettingsSchema, exposure, sensitivity, lensPosition, wbColorTemp, lensPositionRaw)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(VideoCameraSettingsSchema, exposure, sensitivity, lensPosition, wbColorTemp)
 
 struct VideoRecordSchema {
     VersionSchema version{0, 0, 1};
@@ -177,7 +178,6 @@ struct VideoRecordSchema {
         imgFrame.setInstanceNum(instanceNumber);
         imgFrame.cam.wbColorTemp = cameraSettings.wbColorTemp;
         imgFrame.cam.lensPosition = cameraSettings.lensPosition;
-        imgFrame.cam.lensPositionRaw = cameraSettings.lensPositionRaw;
         imgFrame.cam.exposureTimeUs = cameraSettings.exposure;
         imgFrame.cam.sensitivityIso = cameraSettings.sensitivity;
         return imgFrame;
@@ -342,8 +342,20 @@ constexpr const char* IMU_SHEMA = R"(
                                     {
                                         "title": "High",
                                         "const": 3
+                                    },
+                                    {
+                                        "title": "Covariance",
+                                        "const": 4
                                     }
+
                                 ]
+                            },
+                            "covariance": {
+                                "type": "array",
+                                "description": "Covariance matrix",
+                                "items": {
+                                    "type": "number"
+                                }
                             },
                             "x": {
                                 "type": "number",
@@ -402,6 +414,13 @@ constexpr const char* IMU_SHEMA = R"(
                                     }
                                 ]
                             },
+                            "covariance": {
+                                "type": "array",
+                                "description": "Covariance matrix",
+                                "items": {
+                                    "type": "number"
+                                }
+                            },
                             "x": {
                                 "type": "number",
                                 "description": "X axis value"
@@ -459,6 +478,13 @@ constexpr const char* IMU_SHEMA = R"(
                                     }
                                 ]
                             },
+                            "covariance": {
+                                "type": "array",
+                                "description": "Covariance matrix",
+                                "items": {
+                                    "type": "number"
+                                }
+                            },
                             "x": {
                                 "type": "number",
                                 "description": "X axis value"
@@ -515,6 +541,13 @@ constexpr const char* IMU_SHEMA = R"(
                                         "const": 3
                                     }
                                 ]
+                            },
+                            "covariance": {
+                                "type": "array",
+                                "description": "Covariance matrix",
+                                "items": {
+                                    "type": "number"
+                                }
                             },
                             "i": {
                                 "type": "number",
@@ -635,10 +668,6 @@ constexpr const char* VIDEO_SHEMA = R"(
                 "wbColorTemp": {
                     "type": "number",
                     "description": "Lens position"
-                },
-                "lensPositionRaw": {
-                    "type": "number",
-                    "description": "Raw lens position"
                 }
             }
         }

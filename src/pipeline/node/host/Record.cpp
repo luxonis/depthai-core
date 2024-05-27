@@ -115,7 +115,6 @@ void RecordVideo::run() {
                         record.cameraSettings.sensitivity = imgFrame->cam.sensitivityIso;
                         record.cameraSettings.wbColorTemp = imgFrame->cam.wbColorTemp;
                         record.cameraSettings.lensPosition = imgFrame->cam.lensPosition;
-                        record.cameraSettings.lensPositionRaw = imgFrame->cam.lensPositionRaw;
                         byteRecorder.write(record);
                     }
 #else
@@ -135,7 +134,6 @@ void RecordVideo::run() {
                         record.cameraSettings.sensitivity = encFrame->cam.sensitivityIso;
                         record.cameraSettings.wbColorTemp = encFrame->cam.wbColorTemp;
                         record.cameraSettings.lensPosition = encFrame->cam.lensPosition;
-                        record.cameraSettings.lensPositionRaw = encFrame->cam.lensPositionRaw;
                         byteRecorder.write(record);
                     }
                 }
