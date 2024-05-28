@@ -2,6 +2,47 @@
 Changelog for package depthai
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+2.26.0 (2024-05-27)
+-----------
+* PointCloud node along with the PointCloudData message
+* On device pointcloud generation
+* Native conversion to PCL message type - similar to getCvFrame()
+* Support for the OAK Thermal
+* New setManualFocusRaw() API with more granularity for setting manual focus position
+* New getStereoPairs() and getAvailableStereoPairs() API to allow more device agnostic programming
+* Add the intensity output to the ToF node
+* Add the crop sensor configs in getConnectedCameraFeatures() now contain how each of the resolutions is cropped from the native sensor resolution
+* Added DeviceBootloader::getFlashedVersion to retrieve the bootloader version that is flashed on device.
+* ImageAlign node
+* it can align depth to any other sensor on the device - works for ToF too.
+* it can align two sensors with each other using intrinsics only, useful for thermal-rgb alignment
+* Cast node
+* Cast NNData message to ImgFrame
+* Useful in case apps need to use outputs from NeuralNetwork node to be fed into nodes that only accept ImgFrame
+* Full ToF support
+* Running live at 30 FPS
+* Measuring range of 20cm - 6m
+* < 1% error across the range
+* Support for ToF in spatial nodes
+* Add an option to limit bandwidth over XLink setXLinkRateLimit(int maxRateBytesPerSecond, int burstSize, int delayUs)
+* Bug fix for v2.24.0 regression with flashing the bootloader link
+* Bug fix in message groups for large resolution frames when going through XLinkOut node
+* Bug fix to apply AE limit during AF lens movement (before the fix, the AE limit wasn't applied during active AF movements)
+* Bug fix for grayscale VideoEncoder node with 2 inputs of different sizes
+* Fix timings for IMX214 4K resolution, which were slightly off
+* Fixed fsync on OAK-D-SR.
+* Fixed boot issue on OAK-D-SR-POE and OAK-T.
+* Fixed compilation in same cases, because of problems with jsoncpp. (#980)
+* Improved PoE stability on reboots - eliminate the case where powercycle of the device was sometimes needed
+* Improved runtime stability of heavy pipelines by increasing priority of the cameras in the NoC
+* Improved ImageManip stability
+* Improved XLink communication to be able to detect memory corruption and avoid it
+* Fix a bug where stereo rectification was inaccurate when the calibration data didn't contain direct link between the two inputs
+* Relevant for custom setups on FFC devices
+* Improve numerical stability of the rectification algorithm
+* Improves stereo quality on wide FOV sensors
+* Contributors: Alex Bougdan, Szabolcs Gergely, Martin Peterlin
+
 2.24.0 (2024-02-02)
 -----------
 * New nodes and messages:
