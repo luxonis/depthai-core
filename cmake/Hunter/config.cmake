@@ -263,7 +263,7 @@ hunter_config(
     basalt
     VERSION 0.1.0
     URL "https://github.com/luxonis/basalt/archive/refs/heads/depthai_tests.zip"
-    SHA1 "179fc9ab9dc86b531f6bf69cc68e96d38eba2117"
+    SHA1 "449c3ac7ea20e9578018c2fefa02aa24f6c47b70"
     CMAKE_ARGS
         BASALT_SDK_ONLY=ON
         BUILD_SHARED_LIBS=ON
