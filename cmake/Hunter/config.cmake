@@ -177,3 +177,10 @@ hunter_config(
         BUILD_SHARED=OFF
         BUILD_UTILS=OFF
 )
+
+hunter_config(
+    cpr
+    VERSION "1.4.0"
+    URL "https://github.com/moratom/cpr/archive/a1d28dbbaccda3df8fddd993b2cd916f64f9da56.tar.gz"
+    SHA1 "14e18d04d05e36e920aa90ee744952bf55783ea4"
+)

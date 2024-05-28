@@ -286,6 +286,7 @@ add_library(${TARGET_CORE_NAME}
     src/utility/Checksum.cpp
     src/utility/matrixOps.cpp
     src/utility/EepromDataParser.cpp
+    src/utility/LogCollection.cpp
     src/xlink/XLinkConnection.cpp
     src/xlink/XLinkStream.cpp
     src/openvino/OpenVINO.cpp
@@ -521,7 +522,10 @@ target_link_libraries(${TARGET_CORE_NAME}
         LZ4::lz4
         httplib::httplib
         mp4v2::mp4v2
-)
+        cryptopp-static
+        CURL::libcurl
+        cpr::cpr
+        )
 
 # Add compile & CMake definitions
 set(DEPTHAI_DEVICE_VERSION "${DEPTHAI_DEVICE_SIDE_COMMIT}")

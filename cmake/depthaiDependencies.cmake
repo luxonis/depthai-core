@@ -21,6 +21,9 @@ else()
     hunter_add_package(lz4-luxonis)
     hunter_add_package(httplib)
     hunter_add_package(mp4v2)
+    hunter_add_package(cryptopp)
+    hunter_add_package(CURL)
+    hunter_add_package(cpr)
     if(DEPTHAI_ENABLE_BACKWARD)
         hunter_add_package(Backward)
     endif()
@@ -48,6 +51,9 @@ if(NOT CONFIG_MODE OR (CONFIG_MODE AND NOT DEPTHAI_SHARED_LIBS))
 
     # httplib for Gate communication
     find_package(httplib ${_QUIET} CONFIG REQUIRED)
+    find_package(cryptopp CONFIG REQUIRED)
+    find_package(CURL CONFIG REQUIRED)
+    find_package(cpr CONFIG REQUIRED)
 
     # Backward
     if(DEPTHAI_ENABLE_BACKWARD)
