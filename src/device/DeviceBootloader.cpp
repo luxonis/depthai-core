@@ -277,7 +277,7 @@ void DeviceBootloader::createWatchdog() {
     if(monitorThread.joinable() || watchdogThread.joinable()) {
         throw std::runtime_error("Watchdog already created. Destroy it first.");
     }
-
+    watchdogRunning = true;
     // Specify "last" ping time (5s in the future, for some grace time)
     {
         std::unique_lock<std::mutex> lock(lastWatchdogPingTimeMtx);
@@ -416,6 +416,20 @@ void DeviceBootloader::init(bool embeddedMvcmd, const dai::Path& pathToMvcmd, tl
 
             // Retrieve bootloader version
             version = requestVersion();
+            flashedVersion = version;
+
+            auto recommendedMinVersion = DeviceBootloader::Version(0, 0, 28);
+            if(version < recommendedMinVersion) {
+                logger::warn(
+                    "[{}] [{}] Flashed bootloader version {}, less than {} is susceptible to bootup/restart failure. Upgrading is advised, flashing "
+                    "main/factory (not user) bootloader. Available: {}",
+                    deviceInfo.mxid,
+                    deviceInfo.name,
+                    version.toString(),
+                    recommendedMinVersion.toString(),
+                    getEmbeddedBootloaderVersion().toString());
+            }
+
             if(version >= Version(0, 0, 12)) {
                 // If version is adequate, do an in memory boot.
 
@@ -586,6 +600,10 @@ DeviceBootloader::Version DeviceBootloader::getVersion() const {
     return version;
 }
 
+tl::optional<DeviceBootloader::Version> DeviceBootloader::getFlashedVersion() const {
+    return flashedVersion;
+}
+
 DeviceBootloader::Version DeviceBootloader::requestVersion() {
     // Send request to retrieve bootloader version
     if(!sendRequest(Request::GetBootloaderVersion{})) {
@@ -696,8 +714,12 @@ bool DeviceBootloader::isUserBootloaderSupported() {
         return false;
     }
 
+    if(!getFlashedVersion()) {
+        return false;
+    }
+
     // Check if bootloader version is adequate
-    if(getVersion().getSemver() < Version(Request::IsUserBootloader::VERSION)) {
+    if(getFlashedVersion().value().getSemver() < Version(Request::IsUserBootloader::VERSION)) {
         return false;
     }
 
@@ -725,7 +747,10 @@ std::tuple<bool, std::string> DeviceBootloader::flashDepthaiApplicationPackage(s
                                                                                std::vector<uint8_t> package,
                                                                                Memory memory) {
     // Bug in NETWORK bootloader in version 0.0.12 < 0.0.14 - flashing can cause a soft brick
-    auto bootloaderVersion = getVersion();
+    if(!getFlashedVersion()) {
+        return {false, "Can't flash DepthAI application package without knowing flashed bootloader version."};
+    }
+    auto bootloaderVersion = *getFlashedVersion();
     if(bootloaderType == Type::NETWORK && bootloaderVersion < Version(0, 0, 14)) {
         throw std::invalid_argument("Network bootloader requires version 0.0.14 or higher to flash applications. Current version: "
                                     + bootloaderVersion.toString());
@@ -925,8 +950,14 @@ std::tuple<bool, std::string> DeviceBootloader::flashUserBootloader(std::functio
     // }
 
     // Check if bootloader version is adequate
-    if(getVersion().getSemver() < Version(Request::IsUserBootloader::VERSION)) {
-        throw std::runtime_error("Current bootloader version doesn't support User Bootloader");
+    if(!getFlashedVersion()) {
+        throw std::runtime_error(
+            "Couldn't retrieve version of the flashed bootloader. Make sure you have a factory bootloader flashed and the device is booted to bootloader.");
+    }
+    if(getFlashedVersion().value().getSemver() < Version(Request::IsUserBootloader::VERSION)) {
+        throw std::runtime_error(fmt::format("Current bootloader version doesn't support User Bootloader. Current version: {}, minimum required version: {}",
+                                             getFlashedVersion().value().toStringSemver(),
+                                             Version(Request::IsUserBootloader::VERSION).toStringSemver()));
     }
 
     // Retrieve bootloader

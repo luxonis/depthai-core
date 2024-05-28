@@ -72,6 +72,10 @@ int ImgFrame::getLensPosition() const {
     return img.cam.lensPosition;
 }
 
+float ImgFrame::getLensPositionRaw() const {
+    return img.cam.lensPositionRaw;
+}
+
 // setters
 ImgFrame& ImgFrame::setTimestamp(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> tp) {
     // Set timestamp from timepoint
@@ -95,6 +99,7 @@ ImgFrame& ImgFrame::setSequenceNum(int64_t sequenceNum) {
 ImgFrame& ImgFrame::setWidth(unsigned int width) {
     img.fb.width = width;
     img.fb.stride = width;
+    if(img.fb.bytesPP) img.fb.stride *= img.fb.bytesPP;
     return *this;
 }
 ImgFrame& ImgFrame::setHeight(unsigned int height) {
@@ -113,6 +118,7 @@ ImgFrame& ImgFrame::setSize(std::tuple<unsigned int, unsigned int> size) {
 ImgFrame& ImgFrame::setType(RawImgFrame::Type type) {
     img.fb.type = type;
     img.fb.bytesPP = RawImgFrame::typeToBpp(img.fb.type);
+    if(img.fb.width) img.fb.stride = img.fb.width * img.fb.bytesPP;
     return *this;
 }
 

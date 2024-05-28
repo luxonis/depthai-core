@@ -8,6 +8,8 @@
 #include <XLink/XLinkPublicDefines.h>
 #include <spdlog/spdlog.h>
 
+#include "utility/Logging.hpp"
+
 // project
 #include "depthai/pipeline/datatype/ADatatype.hpp"
 #include "depthai/pipeline/datatype/AprilTagConfig.hpp"
@@ -18,11 +20,14 @@
 #include "depthai/pipeline/datatype/EncodedFrame.hpp"
 #include "depthai/pipeline/datatype/FeatureTrackerConfig.hpp"
 #include "depthai/pipeline/datatype/IMUData.hpp"
+#include "depthai/pipeline/datatype/ImageAlignConfig.hpp"
 #include "depthai/pipeline/datatype/ImageManipConfig.hpp"
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
+#include "depthai/pipeline/datatype/PointCloudConfig.hpp"
+#include "depthai/pipeline/datatype/PointCloudData.hpp"
 #include "depthai/pipeline/datatype/SpatialImgDetections.hpp"
 #include "depthai/pipeline/datatype/SpatialLocationCalculatorConfig.hpp"
 #include "depthai/pipeline/datatype/SpatialLocationCalculatorData.hpp"
@@ -42,11 +47,14 @@
 #include "depthai-shared/datatype/RawEncodedFrame.hpp"
 #include "depthai-shared/datatype/RawFeatureTrackerConfig.hpp"
 #include "depthai-shared/datatype/RawIMUData.hpp"
+#include "depthai-shared/datatype/RawImageAlignConfig.hpp"
 #include "depthai-shared/datatype/RawImageManipConfig.hpp"
 #include "depthai-shared/datatype/RawImgDetections.hpp"
 #include "depthai-shared/datatype/RawImgFrame.hpp"
 #include "depthai-shared/datatype/RawMessageGroup.hpp"
 #include "depthai-shared/datatype/RawNNData.hpp"
+#include "depthai-shared/datatype/RawPointCloudConfig.hpp"
+#include "depthai-shared/datatype/RawPointCloudData.hpp"
 #include "depthai-shared/datatype/RawSpatialImgDetections.hpp"
 #include "depthai-shared/datatype/RawSpatialLocationCalculatorConfig.hpp"
 #include "depthai-shared/datatype/RawSpatialLocations.hpp"
@@ -60,6 +68,8 @@
 // object_type -> DataType(int), serialized_object_size -> int
 
 namespace dai {
+
+static constexpr std::array<uint8_t, 16> endOfPacketMarker = {0xAB, 0xCD, 0xEF, 0x01, 0x23, 0x45, 0x67, 0x89, 0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0};
 
 // Reads int from little endian format
 inline int readIntLE(uint8_t* data) {
@@ -79,28 +89,40 @@ inline std::shared_ptr<T> parseDatatype(std::uint8_t* metadata, size_t size, std
 }
 
 static std::tuple<DatatypeEnum, size_t, size_t> parseHeader(streamPacketDesc_t* const packet) {
-    if(packet->length < 8) {
-        throw std::runtime_error("Bad packet, couldn't parse (not enough data)");
+    if(packet->length < 24) {
+        throw std::runtime_error(fmt::format("Bad packet, couldn't parse (not enough data), total size {}", packet->length));
     }
-    const int serializedObjectSize = readIntLE(packet->data + packet->length - 4);
-    const auto objectType = static_cast<DatatypeEnum>(readIntLE(packet->data + packet->length - 8));
+    const std::uint32_t packetLength = packet->length - endOfPacketMarker.size();
+    const int serializedObjectSize = readIntLE(packet->data + packetLength - 4);
+    const auto objectType = static_cast<DatatypeEnum>(readIntLE(packet->data + packetLength - 8));
+
+    uint8_t* marker = packet->data + packetLength;
+    if(memcmp(marker, endOfPacketMarker.data(), endOfPacketMarker.size()) != 0) {
+        std::string hex;
+        for(std::uint32_t i = 0; i < endOfPacketMarker.size(); i++) {
+            hex += fmt::format("{:02X}", marker[i]);
+        }
+        logger::warn("StreamMessageParser end-of-packet marker mismatch, got: " + hex);
+    }
+
+    const auto info = fmt::format(", total size {}, type {}, metadata size {}", packet->length, objectType, serializedObjectSize);
 
     if(serializedObjectSize < 0) {
-        throw std::runtime_error("Bad packet, couldn't parse (metadata size negative)");
-    } else if(serializedObjectSize > static_cast<int>(packet->length)) {
-        throw std::runtime_error("Bad packet, couldn't parse (metadata size larger than packet length)");
+        throw std::runtime_error("Bad packet, couldn't parse (metadata size negative)" + info);
+    } else if(serializedObjectSize > static_cast<int>(packetLength)) {
+        throw std::runtime_error("Bad packet, couldn't parse (metadata size larger than packet length)" + info);
     }
-    if(static_cast<int>(packet->length) - 8 - serializedObjectSize < 0) {
-        throw std::runtime_error("Bad packet, couldn't parse (data too small)");
+    if(static_cast<int>(packetLength) - 8 - serializedObjectSize < 0) {
+        throw std::runtime_error("Bad packet, couldn't parse (data too small)" + info);
     }
-    const std::uint32_t bufferLength = packet->length - 8 - serializedObjectSize;
-    if(bufferLength > packet->length) {
-        throw std::runtime_error("Bad packet, couldn't parse (data too large)");
+    const std::uint32_t bufferLength = packetLength - 8 - serializedObjectSize;
+    if(bufferLength > packetLength) {
+        throw std::runtime_error("Bad packet, couldn't parse (data too large)" + info);
     }
     auto* const metadataStart = packet->data + bufferLength;
 
-    if(metadataStart < packet->data || metadataStart >= packet->data + packet->length) {
-        throw std::runtime_error("Bad packet, couldn't parse (metadata out of bounds)");
+    if(metadataStart < packet->data || metadataStart >= packet->data + packetLength) {
+        throw std::runtime_error("Bad packet, couldn't parse (metadata out of bounds)" + info);
     }
 
     return {objectType, serializedObjectSize, bufferLength};
@@ -197,12 +219,22 @@ std::shared_ptr<RawBuffer> StreamMessageParser::parseMessage(streamPacketDesc_t*
         case DatatypeEnum::ToFConfig:
             return parseDatatype<RawToFConfig>(metadataStart, serializedObjectSize, data);
             break;
+        case DatatypeEnum::PointCloudConfig:
+            return parseDatatype<RawPointCloudConfig>(metadataStart, serializedObjectSize, data);
+            break;
+        case DatatypeEnum::PointCloudData:
+            return parseDatatype<RawPointCloudData>(metadataStart, serializedObjectSize, data);
+            break;
         case DatatypeEnum::MessageGroup:
             return parseDatatype<RawMessageGroup>(metadataStart, serializedObjectSize, data);
             break;
+        case DatatypeEnum::ImageAlignConfig:
+            return parseDatatype<RawImageAlignConfig>(metadataStart, serializedObjectSize, data);
+            break;
     }
 
-    throw std::runtime_error("Bad packet, couldn't parse");
+    throw std::runtime_error(
+        fmt::format("Bad packet, couldn't parse, total size {}, type {}, metadata size {}", packet->length, objectType, serializedObjectSize));
 }
 
 std::shared_ptr<ADatatype> StreamMessageParser::parseMessageToADatatype(streamPacketDesc_t* const packet, DatatypeEnum& objectType) {
@@ -295,13 +327,24 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessageToADatatype(streamPa
         case DatatypeEnum::ToFConfig:
             return std::make_shared<ToFConfig>(parseDatatype<RawToFConfig>(metadataStart, serializedObjectSize, data));
             break;
+        case DatatypeEnum::PointCloudConfig:
+            return std::make_shared<PointCloudConfig>(parseDatatype<RawPointCloudConfig>(metadataStart, serializedObjectSize, data));
+            break;
+        case DatatypeEnum::PointCloudData:
+            return std::make_shared<PointCloudData>(parseDatatype<RawPointCloudData>(metadataStart, serializedObjectSize, data));
+            break;
         case DatatypeEnum::MessageGroup:
             return std::make_shared<MessageGroup>(parseDatatype<RawMessageGroup>(metadataStart, serializedObjectSize, data));
             break;
+        case DatatypeEnum::ImageAlignConfig:
+            return std::make_shared<ImageAlignConfig>(parseDatatype<RawImageAlignConfig>(metadataStart, serializedObjectSize, data));
+            break;
     }
 
-    throw std::runtime_error("Bad packet, couldn't parse (invalid message type)");
+    throw std::runtime_error(fmt::format(
+        "Bad packet, couldn't parse (invalid message type), total size {}, type {}, metadata size {}", packet->length, objectType, serializedObjectSize));
 }
+
 std::shared_ptr<ADatatype> StreamMessageParser::parseMessageToADatatype(streamPacketDesc_t* const packet) {
     DatatypeEnum objectType;
     return parseMessageToADatatype(packet, objectType);
@@ -313,6 +356,7 @@ std::vector<std::uint8_t> StreamMessageParser::serializeMessage(const RawBuffer&
     // 2. serialize and append metadata
     // 3. append datatype enum (4B LE)
     // 4. append size (4B LE) of serialized metadata
+    // 5. append 16-byte marker/canary
 
     DatatypeEnum datatype;
     std::vector<std::uint8_t> metadata;
@@ -326,11 +370,12 @@ std::vector<std::uint8_t> StreamMessageParser::serializeMessage(const RawBuffer&
     for(int i = 0; i < 4; i++) leMetadataSize[i] = (metadataSize >> i * 8) & 0xFF;
 
     std::vector<std::uint8_t> ser;
-    ser.reserve(data.data.size() + metadata.size() + leDatatype.size() + leMetadataSize.size());
+    ser.reserve(data.data.size() + metadata.size() + leDatatype.size() + leMetadataSize.size() + endOfPacketMarker.size());
     ser.insert(ser.end(), data.data.begin(), data.data.end());
     ser.insert(ser.end(), metadata.begin(), metadata.end());
     ser.insert(ser.end(), leDatatype.begin(), leDatatype.end());
     ser.insert(ser.end(), leMetadataSize.begin(), leMetadataSize.end());
+    ser.insert(ser.end(), endOfPacketMarker.begin(), endOfPacketMarker.end());
 
     return ser;
 }

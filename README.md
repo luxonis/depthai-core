@@ -17,10 +17,15 @@ DepthAI library doesn't yet provide API stability guarantees. While we take care
 - CMake >= 3.10
 - C/C++14 compiler
 - [optional] OpenCV 4 (required if building examples)
+- [optional] PCL (required for point cloud example)
 
-MacOS: Optional `brew install opencv`
+To install OpenCV:
+MacOS: `brew install opencv`
+Linux: `sudo apt install libopencv-dev`
 
-Linux: Optional `sudo apt install libopencv-dev`
+To install PCL:
+MacOS: `brew install pcl`
+Linux: `sudo apt install libpcl-dev`
 
 ## Building
 
@@ -189,6 +194,7 @@ The following environment variables can be set to alter default behavior of the 
 | DEPTHAI_LIBUSB_ANDROID_JAVAVM | JavaVM pointer that is passed to libusb for rootless Android interaction with devices. Interpreted as decimal value of uintptr_t |
 | DEPTHAI_CRASHDUMP | Directory in which to save the crash dump. |
 | DEPTHAI_CRASHDUMP_TIMEOUT | Specifies the duration in seconds to wait for device reboot when obtaining a crash dump. Crash dump retrieval disabled if 0. |
+| DEPTHAI_PCL_SUPPORT | Enables PCL support. |
 
 ## Running tests
 
