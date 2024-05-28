@@ -6,7 +6,7 @@
 #include "depthai/pipeline/datatype/TransformData.hpp"
 
 
-rerun::Collection<rerun::TensorDimension> tensor_shape(const cv::Mat& img) {
+rerun::Collection<rerun::TensorDimension> tensorShape(const cv::Mat& img) {
     return {img.rows, img.cols, img.channels()};
 };
 class RerunStreamer : public dai::NodeCRTP<dai::node::ThreadedHostNode, RerunStreamer> {
@@ -42,7 +42,7 @@ class RerunStreamer : public dai::NodeCRTP<dai::node::ThreadedHostNode, RerunStr
                 rec.log("world/trajectory", rerun::LineStrips3D(lineStrip));
                 rec.log("world/camera/image", rerun::Pinhole::from_focal_length_and_resolution({398.554f, 398.554f}, {640.0f, 400.0f}).with_camera_xyz(rerun::components::ViewCoordinates::FLU));
                 rec.log("world/camera/image/rgb",
-                        rerun::Image(tensor_shape(imgFrame->getCvFrame()), reinterpret_cast<const uint8_t*>(imgFrame->getCvFrame().data)));
+                        rerun::Image(tensorShape(imgFrame->getCvFrame()), reinterpret_cast<const uint8_t*>(imgFrame->getCvFrame().data)));
             }
         }
     }
@@ -62,7 +62,6 @@ int main() {
     auto right = pipeline.create<dai::node::MonoCamera>()->build();
     auto imu = pipeline.create<dai::node::IMU>()->build();
     auto odom = pipeline.create<dai::node::BasaltVIO>()->build();
-    auto sync = pipeline.create<dai::node::Sync>()->build();
 
     auto rerun = pipeline.create<RerunStreamer>();
     imu->enableIMUSensor({dai::IMUSensor::ACCELEROMETER_RAW, dai::IMUSensor::GYROSCOPE_RAW}, 200);
@@ -78,9 +77,8 @@ int main() {
 
     // Linking
 
-    left->out.link(sync->inputs["left"]);
-    right->out.link(sync->inputs["right"]);
-    sync->out.link(odom->inputStereo);
+    left->out.link(odom->inLeft);
+    right->out.link(odom->inRight);
     imu->out.link(odom->inputImu);
     odom->transform.link(rerun->inputTrans);
     odom->passthrough.link(rerun->inputImg);

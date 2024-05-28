@@ -1,14 +1,16 @@
 #include "depthai/basalt/BasaltVIO.hpp"
-
+#include "depthai/pipeline/Pipeline.hpp"
+#include "depthai/pipeline/datatype/MessageGroup.hpp"
 namespace dai {
 namespace node {
 std::shared_ptr<BasaltVIO> BasaltVIO::build() {
+    sync->out.link(input);
+    sync->setRunOnHost(false);
+    input.setBlocking(false);
+    input.addCallback(std::bind(&BasaltVIO::stereoCB, this, std::placeholders::_1));
     inputImu.setMaxSize(0);
-    inputStereo.setMaxSize(0);
     inputImu.setBlocking(false);
-    inputStereo.setBlocking(false);
     inputImu.addCallback(std::bind(&BasaltVIO::imuCB, this, std::placeholders::_1));
-    inputStereo.addCallback(std::bind(&BasaltVIO::stereoCB, this, std::placeholders::_1));
     return std::static_pointer_cast<BasaltVIO>(shared_from_this());
 }
 
@@ -39,18 +41,19 @@ void BasaltVIO::run() {
         auto finalPose =  pose * opticalTransform.inverse();
         auto trans = finalPose.translation();
         auto rot = finalPose.unit_quaternion();
-        auto out = std::make_shared<dai::TransformData>(trans.x(), trans.y(), trans.z(), rot.x(), rot.y(), rot.z(), rot.w());
+        auto out = std::make_shared<TransformData>(trans.x(), trans.y(), trans.z(), rot.x(), rot.y(), rot.z(), rot.w());
         transform.send(out);
         passthrough.send(leftImg);
     }
 }
 
-void BasaltVIO::stereoCB(std::shared_ptr<dai::ADatatype> images) {
-    auto group = std::dynamic_pointer_cast<dai::MessageGroup>(images);
+void BasaltVIO::stereoCB(std::shared_ptr<ADatatype> in) {
+    auto group = std::dynamic_pointer_cast<MessageGroup>(in);
+    if (group == nullptr) return;
     if(!calibrated) {
-        std::vector<std::shared_ptr<dai::ImgFrame>> imgFrames;
+        std::vector<std::shared_ptr<ImgFrame>> imgFrames;
         for(auto& msg : *group) {
-            imgFrames.emplace_back(std::dynamic_pointer_cast<dai::ImgFrame>(msg.second));
+            imgFrames.emplace_back(std::dynamic_pointer_cast<ImgFrame>(msg.second));
         }
 
         initialize(imgFrames);
@@ -58,7 +61,7 @@ void BasaltVIO::stereoCB(std::shared_ptr<dai::ADatatype> images) {
     int i = 0;
     basalt::OpticalFlowInput::Ptr data(new basalt::OpticalFlowInput(2));
     for(auto& msg : *group) {
-        std::shared_ptr<dai::ImgFrame> imgFrame = std::dynamic_pointer_cast<dai::ImgFrame>(msg.second);
+        std::shared_ptr<ImgFrame> imgFrame = std::dynamic_pointer_cast<ImgFrame>(msg.second);
         if(i == 0) {
             leftImg = imgFrame;
         };
@@ -86,8 +89,8 @@ void BasaltVIO::stereoCB(std::shared_ptr<dai::ADatatype> images) {
     }
 };
 
-void BasaltVIO::imuCB(std::shared_ptr<dai::ADatatype> imuData) {
-    auto imuPackets = std::dynamic_pointer_cast<dai::IMUData>(imuData);
+void BasaltVIO::imuCB(std::shared_ptr<ADatatype> imuData) {
+    auto imuPackets = std::dynamic_pointer_cast<IMUData>(imuData);
 
     for(auto& imuPacket : imuPackets->packets) {
         basalt::ImuData<double>::Ptr data;
@@ -101,9 +104,9 @@ void BasaltVIO::imuCB(std::shared_ptr<dai::ADatatype> imuData) {
         if(imuDataQueue) imuDataQueue->push(data);
     }
 };
-void BasaltVIO::initialize(std::vector<std::shared_ptr<dai::ImgFrame>> frames) {
+void BasaltVIO::initialize(std::vector<std::shared_ptr<ImgFrame>> frames) {
     if(threadNum > 0) {
-        tbb_global_control = std::make_unique<tbb::global_control>(tbb::global_control::max_allowed_parallelism, threadNum);
+        tbbGlobalControl = std::make_unique<tbb::global_control>(tbb::global_control::max_allowed_parallelism, threadNum);
     }
 
     auto pipeline = getParentPipeline();
@@ -117,7 +120,7 @@ void BasaltVIO::initialize(std::vector<std::shared_ptr<dai::ImgFrame>> frames) {
         Eigen::Vector2i resolution;
         resolution << frame->getWidth(), frame->getHeight();
         calib->resolution.push_back(resolution);
-        auto camID = static_cast<dai::CameraBoardSocket>(frame->getInstanceNum());
+        auto camID = static_cast<CameraBoardSocket>(frame->getInstanceNum());
         // imu extrinsics
         std::vector<std::vector<float>> imuExtr = calibHandler.getImuToCameraExtrinsics(camID, useSpecTranslation);
 

@@ -6,6 +6,12 @@
 #include "depthai/rtabmap/RTABMapSLAM.hpp"
 #include "depthai/basalt/BasaltVIO.hpp"
 #include "depthai/pipeline/ThreadedHostNode.hpp"
+#include "depthai/pipeline/Pipeline.hpp"
+#include "depthai/pipeline/node/StereoDepth.hpp"
+#include "depthai/pipeline/node/IMU.hpp"
+#include "depthai/pipeline/node/Sync.hpp"
+#include "depthai/pipeline/node/MonoCamera.hpp"
+
 
 
 rerun::Collection<rerun::TensorDimension> tensor_shape(const cv::Mat& img) {
@@ -94,7 +100,6 @@ int main() {
     auto right = pipeline.create<dai::node::MonoCamera>()->build();
     auto stereo = pipeline.create<dai::node::StereoDepth>();
     auto imu = pipeline.create<dai::node::IMU>()->build();
-    auto stereoSync = pipeline.create<dai::node::Sync>()->build();
     auto slamSync = pipeline.create<dai::node::Sync>()->build();
     auto odom = pipeline.create<dai::node::BasaltVIO>()->build();
     auto slam = pipeline.create<dai::node::RTABMapSLAM>()->build();
@@ -109,7 +114,7 @@ int main() {
     imu->setBatchReportThreshold(1);
     imu->setMaxBatchReports(10);
     stereo->setExtendedDisparity(false);
-    // stereo->setSubpixel(true);
+    stereo->setSubpixel(true);
     stereo->setDefaultProfilePreset(dai::node::StereoDepth::PresetMode::HIGH_DENSITY);
     stereo->setLeftRightCheck(true);
     stereo->setRectifyEdgeFillColor(0); // black, to better see the cutout
@@ -127,11 +132,10 @@ int main() {
     // Linking
     left->out.link(stereo->left);
     right->out.link(stereo->right);
-    stereo->syncedLeft.link(stereoSync->inputs["left"]);
-    stereo->syncedRight.link(stereoSync->inputs["right"]);
+    stereo->syncedLeft.link(odom->inLeft);
+    stereo->syncedRight.link(odom->inRight);
     stereo->depth.link(slamSync->inputs["depth"]);
     stereo->rectifiedLeft.link(slamSync->inputs["img_rect"]);
-    stereoSync->out.link(odom->inputStereo);
     slamSync->out.link(slam->inputSync);
     imu->out.link(odom->inputImu);
     odom->transform.link(slam->inputOdomPose);
