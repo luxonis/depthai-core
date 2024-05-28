@@ -796,6 +796,7 @@ set(TARGET_BASALT_ALIAS basalt)
 if(DEPTHAI_BASALT_SUPPORT)
     # Check if required libraries are available
     find_package(basalt_sdk CONFIG REQUIRED)
+    find_package(TBB CONFIG REQUIRED)
     set(BASALT_SUPPORT_AVAILABLE ${basalt_sdk_FOUND})
 
     if(BASALT_SUPPORT_AVAILABLE)
