@@ -715,6 +715,10 @@ class DeviceBase {
      */
     void flashCalibration2(CalibrationHandler calibrationDataHandler);
 
+    void setCalibration(CalibrationHandler calibrationDataHandler);
+
+    CalibrationHandler getCalibration();
+
     /**
      * Fetches the EEPROM data from the device and loads it into CalibrationHandler object
      * If no calibration is flashed, it returns default

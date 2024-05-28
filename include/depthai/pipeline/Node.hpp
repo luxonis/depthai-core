@@ -673,13 +673,13 @@ class Node : public std::enable_shared_from_this<Node> {
 
     // TBD - might be an default impl instead
     /// Start node execution
-    virtual void start(){};
+    virtual void start() {};
 
     /// Wait for node to finish execution
-    virtual void wait(){};
+    virtual void wait() {};
 
     /// Stop node execution
-    virtual void stop(){};
+    virtual void stop() {};
 
     /// Build stages;
     virtual void buildStage1();

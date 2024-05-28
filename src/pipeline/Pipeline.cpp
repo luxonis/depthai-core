@@ -641,10 +641,15 @@ CalibrationHandler PipelineImpl::getCalibrationData() const {
 
 void PipelineImpl::setEepromData(tl::optional<EepromData> eepromData) {
     globalProperties.calibData = eepromData;
+    eepromId++;
 }
 
 tl::optional<EepromData> PipelineImpl::getEepromData() const {
     return globalProperties.calibData;
+}
+
+uint32_t PipelineImpl::getEepromId() const {
+    return eepromId;
 }
 
 bool PipelineImpl::isHostOnly() const {
