@@ -256,14 +256,14 @@ hunter_config(
     basalt-headers
     VERSION 0.1.0
     URL "https://github.com/luxonis/basalt-headers/archive/refs/heads/hunter.zip"
-    SHA1 "52c6a5d1beb6783e48460f62605f8d1d912bdf2b"
+    SHA1 "142fd91603711f9f05c7a6a0b953ae5c39fd8b80"
 )
 
 hunter_config(
     basalt
     VERSION 0.1.0
     URL "https://github.com/luxonis/basalt/archive/refs/heads/depthai_tests.zip"
-    SHA1 "449c3ac7ea20e9578018c2fefa02aa24f6c47b70"
+    SHA1 "44495d6414afba5f01dc185a00da2202cd277cfd"
     CMAKE_ARGS
         BASALT_SDK_ONLY=ON
         BUILD_SHARED_LIBS=ON
@@ -275,6 +275,7 @@ hunter_config(
     SHA1 "7f54e06fb1680910c465e12ea85fc414ce7a9f9e" 
     CMAKE_ARGS
         CMAKE_BUILD_TYPE=RelWithDebInfo
+        CMAKE_CXX_FLAGS=-Wno-array-bounds
 )
 hunter_config(
     magic_enum
