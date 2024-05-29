@@ -32,7 +32,7 @@ std::string calculateSHA1(const std::string& input) {
 }
 
 bool sendLogsToServer(const tl::optional<FileWithSHA1>& pipelineData, const tl::optional<FileWithSHA1>& crashDumpData, const dai::DeviceInfo& deviceInfo) {
-    (void) deviceInfo; // Unused for now
+    (void)deviceInfo;  // Unused for now
     // At least one of the files must be present
     if(!pipelineData && !crashDumpData) {
         logger::error("Incorrect usage of sendLogsToServer, at least one of the files must be present");
