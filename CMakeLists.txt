@@ -525,7 +525,8 @@ target_link_libraries(${TARGET_CORE_NAME}
         cryptopp-static
         CURL::libcurl
         cpr::cpr
-        )
+        ghcFilesystem::ghc_filesystem
+)
 
 # Add compile & CMake definitions
 set(DEPTHAI_DEVICE_VERSION "${DEPTHAI_DEVICE_SIDE_COMMIT}")
