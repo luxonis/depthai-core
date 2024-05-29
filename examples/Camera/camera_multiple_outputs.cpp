@@ -6,7 +6,11 @@
 #include "depthai/depthai.hpp"
 
 int main(int argc, char** argv) {
-    dai::DeviceInfo info("10.12.110.52");
+    const char* valueCStr = std::getenv("DEPTHAI_TESTS_IP");
+    if(valueCStr == nullptr) {
+        throw std::runtime_error("Please set device ip using environment variable DEPTHAI_TESTS_IP");
+    }
+    dai::DeviceInfo info(valueCStr);
     info.protocol = X_LINK_TCP_IP;
     info.state = X_LINK_GATE;
     info.platform = X_LINK_RVC4;

@@ -19,6 +19,51 @@
 // Test helpers
 #include "image_comparator.hpp"
 
+bool getBoolOption(const std::string& key) {
+    const char* valueCStr = std::getenv(key.c_str());
+    if(valueCStr == nullptr) {
+        return false;
+    }
+    const std::string value(valueCStr);
+    return value == "1" || value == "ON";
+}
+
+bool isDebug() {
+    return getBoolOption("DEPTHAI_TESTS_DEBUG");
+}
+
+dai::DeviceInfo getDeviceInfo() {
+    const char* valueCStr = std::getenv("DEPTHAI_TESTS_IP");
+    if(valueCStr == nullptr) {
+        throw std::runtime_error("Please set device ip using environment variable DEPTHAI_TESTS_IP");
+    }
+    dai::DeviceInfo info(valueCStr);
+    info.protocol = X_LINK_TCP_IP;
+    info.state = X_LINK_GATE;
+    info.platform = X_LINK_RVC4;
+    return info;
+}
+
+dai::CameraBoardSocket getBoardSocket() {
+    const char* valueCStr = std::getenv("DEPTHAI_TESTS_IP");
+    if(valueCStr == nullptr) {
+        throw std::runtime_error("Please set camera board socket using environment variable DEPTHAI_TESTS_CAM");
+    }
+    std::string value(valueCStr);
+    using E = dai::CameraBoardSocket;
+    auto ret = E::CAM_A;
+    if(value == "CAM_A") {
+        ret = E::CAM_A;
+    } else if(value == "CAM_B") {
+        ret = E::CAM_B;
+    } else if(value == "CAM_C") {
+        ret = E::CAM_C;
+    } else {
+        throw std::runtime_error("Wrong camera board socket in environment variable DEPTHAI_TESTS_CAM. Supported sockets are CAM_A, CAM_B, CAM_C");
+    }
+    return ret;
+}
+
 std::vector<dai::CameraSensorConfig> getColorCameraConfigs(dai::Device& device) {
     dai::ColorCameraProperties sss;
     const auto& cameraFeatures = device.getConnectedCameraFeatures();
@@ -93,11 +138,7 @@ std::tuple<uint32_t, uint32_t> getRandomResolution(dai::Pipeline& pipeline) {
 
 void testResolution(std::optional<std::tuple<uint32_t, uint32_t>> wantedSize = std::nullopt) {
     std::cout << "TESTING SOME RESOLUTION\n" << std::flush;
-    dai::DeviceInfo info("10.12.110.52");
-    info.protocol = X_LINK_TCP_IP;
-    info.state = X_LINK_GATE;
-    info.platform = X_LINK_RVC4;
-    const auto device = std::make_shared<dai::Device>(info);
+    const auto device = std::make_shared<dai::Device>(getDeviceInfo());
     std::cout << "TESTING SOME RESOLUTION 2\n" << std::flush;
 
     dai::Pipeline pipeline(device);
@@ -150,11 +191,7 @@ void getImages(std::list<std::pair<std::shared_ptr<dai::ImgFrame>, std::shared_p
                std::tuple<uint32_t, uint32_t>& sizeOut,
                dai::ImgResizeMode resizeMode,
                std::optional<std::tuple<uint32_t, uint32_t>> wantedSize = std::nullopt) {
-    dai::DeviceInfo info("10.12.110.52");
-    info.protocol = X_LINK_TCP_IP;
-    info.state = X_LINK_GATE;
-    info.platform = X_LINK_RVC4;
-    const auto device = std::make_shared<dai::Device>(info);
+    const auto device = std::make_shared<dai::Device>(getDeviceInfo());
 
     dai::Pipeline pipeline(device);
 
@@ -310,11 +347,7 @@ struct MultipleResHelper {
 
 // NOLINTNEXTLINE(readability-function-cognitive-complexity)
 void testMultipleResolutions(const std::vector<std::tuple<uint32_t, uint32_t>>& wantedSizes) {
-    dai::DeviceInfo info("10.12.110.52");
-    info.protocol = X_LINK_TCP_IP;
-    info.state = X_LINK_GATE;
-    info.platform = X_LINK_RVC4;
-    const auto device = std::make_shared<dai::Device>(info);
+    const auto device = std::make_shared<dai::Device>(getDeviceInfo());
     dai::Pipeline pipeline(device);
     auto camRgb = pipeline.create<dai::node::Camera>();
     camRgb->setBoardSocket(dai::CameraBoardSocket::CAM_C);
@@ -368,17 +401,17 @@ TEST_CASE("prev_broken_resolutions") {
     // const auto resolution = GENERATE(table<uint32_t, uint32_t>({{3860, 2587}, {3951, 1576}, {909, 909}, {444, 888}}));
     const auto resolution = GENERATE(table<uint32_t, uint32_t>({{444, 888}}));
     // const auto resolution = GENERATE(table<uint32_t, uint32_t>({{700, 700}}));
-    testResolutionWithContent(false, dai::ImgResizeMode::STRETCH, resolution);
+    testResolutionWithContent(isDebug(), dai::ImgResizeMode::STRETCH, resolution);
 }
 
 TEST_CASE("common_resolutions") {
     const auto resolution = GENERATE(table<uint32_t, uint32_t>({{1920, 1080}, {300, 300}, {640, 640}, {800, 600}, {640, 480}}));
-    testResolutionWithContent(false, dai::ImgResizeMode::STRETCH, resolution);
+    testResolutionWithContent(isDebug(), dai::ImgResizeMode::STRETCH, resolution);
 }
 
 TEST_CASE("random_resolutions") {
     (void)GENERATE(repeat(20, value(0)));
-    testResolutionWithContent(false, dai::ImgResizeMode::STRETCH);
+    testResolutionWithContent(isDebug(), dai::ImgResizeMode::STRETCH);
 }
 
 TEST_CASE("multiple_resolutions") {
