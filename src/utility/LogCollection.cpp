@@ -9,8 +9,13 @@
 #include <nlohmann/json.hpp>
 #include <system_error>
 
+#include <XLink/XLinkPublicDefines.h>
+#include <pthread.h>
+
 #include "utility/Environment.hpp"
 #include "utility/Logging.hpp"
+#include "build/version.hpp"
+
 
 namespace dai {
 namespace logCollection {
@@ -21,6 +26,52 @@ struct FileWithSHA1 {
     std::string content;
     std::string sha1Hash;
 };
+
+std::string platformToString(XLinkPlatform_t platform) {
+    switch(platform) {
+        case X_LINK_ANY_PLATFORM:
+            return "X_LINK_ANY_PLATFORM";
+        case X_LINK_MYRIAD_X:
+            return "X_LINK_MYRIAD_X";
+        case X_LINK_MYRIAD_2:
+            return "X_LINK_MYRIAD_2";
+        default:
+            return "INVALID_ENUM_VALUE";
+    }
+}
+
+std::string protocolToString(XLinkProtocol_t protocol) {
+    switch(protocol) {
+        case X_LINK_USB_VSC:
+            return "X_LINK_USB_VSC";
+        case X_LINK_USB_CDC:
+            return "X_LINK_USB_CDC";
+        case X_LINK_PCIE:
+            return "X_LINK_PCIE";
+        case X_LINK_IPC:
+            return "X_LINK_IPC";
+        case X_LINK_TCP_IP:
+            return "X_LINK_TCP_IP";
+        case X_LINK_NMB_OF_PROTOCOLS:
+            return "X_LINK_NMB_OF_PROTOCOLS";
+        case X_LINK_ANY_PROTOCOL:
+            return "X_LINK_ANY_PROTOCOL";
+        default:
+            return "INVALID_ENUM_VALUE";
+    }
+}
+
+std::string getOSPlatform() {
+#ifdef _WIN32
+    return "Windows";
+#elif __APPLE__
+    return "MacOS";
+#elif __linux__
+    return "Linux";
+#else
+    return "Other";
+#endif
+}
 
 std::string calculateSHA1(const std::string& input) {
     CryptoPP::SHA1 sha1;
@@ -51,6 +102,11 @@ bool sendLogsToServer(const tl::optional<FileWithSHA1>& pipelineData, const tl::
         multipart.parts.emplace_back("crashDumpId", crashDumpData->sha1Hash);
     }
 
+    multipart.parts.emplace_back("platform", platformToString(deviceInfo.platform));
+    multipart.parts.emplace_back("connectionType", protocolToString(deviceInfo.protocol));
+    multipart.parts.emplace_back("osPlatform", getOSPlatform());
+    multipart.parts.emplace_back("depthAiVersion", build::VERSION);
+    multipart.parts.emplace_back("productId", deviceInfo.getMxId());
     auto response = cpr::Post(cpr::Url{LOG_ENDPOINT}, multipart);
     if(response.status_code != 200) {
         logger::error("Failed to send logs, status code: {}", response.status_code);
