@@ -49,17 +49,6 @@ class RerunStreamer : public dai::NodeCRTP<dai::node::ThreadedHostNode, RerunStr
                 double x, y, z, qx, qy, qz, qw;
                 transData->getTranslation(x, y, z);
                 transData->getQuaternion(qx, qy, qz, qw);
-                // //write matrix data to file, one matrix per line, values separated by commas
-                // std::vector<std::vector<double>> data = transData->transform.data;
-                // std::ofstream file;
-                // file.open("/workspaces/depthai_core_ws/positions.csv", std::ios::app);
-                // for (int i = 0; i < data.size(); i++) {
-                //     for (int j = 0; j < data[i].size(); j++) {
-                //         file << data[i][j] << ",";
-                //     }
-                // }
-                // file << "\n";
-                
 
                 auto position = rerun::Vec3D(x, y, z);
 
@@ -88,8 +77,6 @@ class RerunStreamer : public dai::NodeCRTP<dai::node::ThreadedHostNode, RerunStr
 
 int main() {
     using namespace std;
-    // ULogger::setType(ULogger::kTypeConsole);
-	// ULogger::setLevel(ULogger::kDebug);
     // Create pipeline
     dai::Pipeline pipeline;
     int fps = 60;
@@ -100,7 +87,6 @@ int main() {
     auto right = pipeline.create<dai::node::MonoCamera>()->build();
     auto stereo = pipeline.create<dai::node::StereoDepth>();
     auto imu = pipeline.create<dai::node::IMU>()->build();
-    auto slamSync = pipeline.create<dai::node::Sync>()->build();
     auto odom = pipeline.create<dai::node::BasaltVIO>()->build();
     auto slam = pipeline.create<dai::node::RTABMapSLAM>()->build();
     auto params = rtabmap::ParametersMap();
@@ -114,7 +100,7 @@ int main() {
     imu->setBatchReportThreshold(1);
     imu->setMaxBatchReports(10);
     stereo->setExtendedDisparity(false);
-    stereo->setSubpixel(true);
+    stereo->setSubpixel(false);
     stereo->setDefaultProfilePreset(dai::node::StereoDepth::PresetMode::HIGH_DENSITY);
     stereo->setLeftRightCheck(true);
     stereo->setRectifyEdgeFillColor(0); // black, to better see the cutout
@@ -132,12 +118,12 @@ int main() {
     // Linking
     left->out.link(stereo->left);
     right->out.link(stereo->right);
-    stereo->syncedLeft.link(odom->inLeft);
-    stereo->syncedRight.link(odom->inRight);
-    stereo->depth.link(slamSync->inputs["depth"]);
-    stereo->rectifiedLeft.link(slamSync->inputs["img_rect"]);
-    slamSync->out.link(slam->inputSync);
+    stereo->syncedLeft.link(odom->inputLeft);
+    stereo->syncedRight.link(odom->inputRight);
+    stereo->depth.link(slam->inputDepth);
+    stereo->rectifiedLeft.link(slam->inputRect);
     imu->out.link(odom->inputImu);
+
     odom->transform.link(slam->inputOdomPose);
     slam->transform.link(rerun->inputTrans);
     slam->passthroughRect.link(rerun->inputImg);

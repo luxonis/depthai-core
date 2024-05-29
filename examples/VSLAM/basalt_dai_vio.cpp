@@ -77,8 +77,8 @@ int main() {
 
     // Linking
 
-    left->out.link(odom->inLeft);
-    right->out.link(odom->inRight);
+    left->out.link(odom->inputLeft);
+    right->out.link(odom->inputRight);
     imu->out.link(odom->inputImu);
     odom->transform.link(rerun->inputTrans);
     odom->passthrough.link(rerun->inputImg);

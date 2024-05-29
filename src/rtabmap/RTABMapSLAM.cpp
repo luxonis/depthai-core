@@ -8,18 +8,24 @@
 namespace dai {
 namespace node {
 std::shared_ptr<RTABMapSLAM> RTABMapSLAM::build() {
+    rtabmap.init();
+    sync->out.link(inputSync);
+    sync->setRunOnHost(false);
     alphaScaling = -1.0;
-    useFeatures = false;
     localTransform = rtabmap::Transform::getIdentity();
     rtabmap::Transform opticalTransform(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0); 
     localTransform = localTransform * opticalTransform;
-    inputSync.setMaxSize(0);
+    inputRect.setBlocking(false);
+    inputRect.setMaxSize(1);
+    inputDepth.setBlocking(false);
+    inputDepth.setMaxSize(1);
+    inputSync.setMaxSize(1);
     inputSync.setBlocking(false);
     inputSync.addCallback(std::bind(&RTABMapSLAM::syncCB, this, std::placeholders::_1));
-    inputOdomPose.setMaxSize(0);
+    inputOdomPose.setMaxSize(1);
     inputOdomPose.setBlocking(false);
     inputOdomPose.addCallback(std::bind(&RTABMapSLAM::odomPoseCB, this, std::placeholders::_1));
-    rtabmap.init();
+
     return std::static_pointer_cast<RTABMapSLAM>(shared_from_this());
 }
 
@@ -41,28 +47,29 @@ void RTABMapSLAM::saveDatabase() {
     rtabmap.init(rtabParams, databasePath);
 }
 
+void RTABMapSLAM::setReuseFeatures(bool reuse){
+    useFeatures = reuse;
+    if(useFeatures){
+        inputFeatures.setBlocking(false);
+        inputFeatures.setMaxSize(1);
+        inputs[featuresInputName] = inputFeatures;
+    }
+}
+
 void RTABMapSLAM::syncCB(std::shared_ptr<dai::ADatatype> data) {
     auto group = std::dynamic_pointer_cast<dai::MessageGroup>(data);
+    if (group == nullptr) return;
     std::shared_ptr<dai::ImgFrame> imgFrame = nullptr;
     std::shared_ptr<dai::ImgFrame> depthFrame = nullptr;
     std::shared_ptr<dai::TrackedFeatures> features = nullptr;
-    std::shared_ptr<dai::TransformData> odomPose = nullptr;
-    for(auto& msg : *group) {
-        if(msg.first == "img_rect") {
-            imgFrame = std::dynamic_pointer_cast<dai::ImgFrame>(msg.second);
-        } else if(msg.first == "depth") {
-            depthFrame = std::dynamic_pointer_cast<dai::ImgFrame>(msg.second);
-        } else if(msg.first == "features") {
-            features = std::dynamic_pointer_cast<dai::TrackedFeatures>(msg.second);
-        } else if(msg.first == "odom_pose") {
-            odomPose = std::dynamic_pointer_cast<dai::TransformData>(msg.second);
-        }
+    imgFrame = group->get<dai::ImgFrame>(rectInputName);
+    depthFrame = group->get<dai::ImgFrame>(depthInputName);
+    if (useFeatures){
+        features = group->get<dai::TrackedFeatures>(featuresInputName);
     }
     if(imgFrame != nullptr && depthFrame != nullptr) {
         if(!modelSet) {
             auto pipeline = getParentPipeline();
-            // rtabmap::Transform opticalTransform(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
-            // localTransform = localTransform * opticalTransform.inverse();
             getCalib(pipeline, imgFrame->getInstanceNum(), imgFrame->getWidth(), imgFrame->getHeight());
             lastProcessTime = std::chrono::steady_clock::now();
             startTime = std::chrono::steady_clock::now();
@@ -74,7 +81,7 @@ void RTABMapSLAM::syncCB(std::shared_ptr<dai::ADatatype> data) {
 
             sensorData = rtabmap::SensorData(imgFrame->getCvFrame(), depthFrame->getCvFrame(), model.left(), imgFrame->getSequenceNum(), stamp);
             std::vector<cv::KeyPoint> keypoints;
-            if(useFeatures && features != nullptr) {
+            if(features != nullptr) {
                 for(auto& feature : features->trackedFeatures) {
                     keypoints.emplace_back(cv::KeyPoint(feature.position.x, feature.position.y, 3));
                 }
@@ -182,7 +189,7 @@ void RTABMapSLAM::run() {
             }
         }
         // save database periodically if set
-        if(std::chrono::duration<double>(std::chrono::steady_clock::now() - startTime).count() > 30.0) {
+        if(saveDatabasePeriodically && std::chrono::duration<double>(std::chrono::steady_clock::now() - startTime).count() > 30.0) {
             rtabmap.close();
             rtabmap.init(rtabParams, databasePath);
             std::cout << "Database saved" << std::endl;
