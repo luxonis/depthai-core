@@ -37,6 +37,7 @@
 #include "depthai-shared/device/CrashDump.hpp"
 #include "depthai-shared/log/LogLevel.hpp"
 #include "depthai-shared/log/LogMessage.hpp"
+#include "depthai-shared/pipeline/PipelineSchema.hpp"
 
 namespace dai {
 
@@ -995,5 +996,8 @@ class DeviceBase {
 
     dai::Path firmwarePath;
     bool dumpOnly = false;
+
+    // Schema of the started pipeline
+    tl::optional<PipelineSchema> pipelineSchema;
 };
 }  // namespace dai

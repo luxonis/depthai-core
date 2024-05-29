@@ -126,3 +126,20 @@ hunter_config(
         # Build shared libs by default to not cause licensing issues
         BUILD_SHARED_LIBS=ON
 )
+
+hunter_config(
+    cpr
+    VERSION "1.4.0"
+    URL "https://github.com/luxonis/cpr/archive/a1d28dbbaccda3df8fddd993b2cd916f64f9da56.tar.gz"
+    SHA1 "14e18d04d05e36e920aa90ee744952bf55783ea4"
+)
+
+hunter_config(
+    ghc_filesystem
+    VERSION "1.5.14"
+    URL "https://github.com/gulrak/filesystem/archive/b1982f06c84f08a99fb90bac43c2d03712efe921.tar.gz"
+    SHA1 "cd79101f0a2d216b337d125b162fa7d229f039d4"
+    CMAKE_ARGS
+        GHC_FILESYSTEM_BUILD_EXAMPLES=OFF
+        GHC_FILESYSTEM_BUILD_TESTING=OFF
+)

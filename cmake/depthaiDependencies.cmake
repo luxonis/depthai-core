@@ -25,6 +25,11 @@ else()
     if(DEPTHAI_PCL_SUPPORT)
         hunter_add_package(jsoncpp)
     endif()
+
+    hunter_add_package(cryptopp)
+    hunter_add_package(CURL)
+    hunter_add_package(cpr)
+    hunter_add_package(ghc_filesystem)
 endif()
 
 # If library was build as static, find all dependencies
@@ -54,6 +59,11 @@ if(NOT CONFIG_MODE OR (CONFIG_MODE AND NOT DEPTHAI_SHARED_LIBS))
         unset(STACK_DETAILS_AUTO_DETECT)
     endif()
 
+    # Model zoo and log collection dependencies
+    find_package(cryptopp ${_QUIET} CONFIG REQUIRED)
+    find_package(CURL ${_QUIET} CONFIG REQUIRED)
+    find_package(cpr ${_QUIET} CONFIG REQUIRED)
+    find_package(ghc_filesystem ${_QUIET} CONFIG REQUIRED)
 endif()
 
 # Add threads (c++)

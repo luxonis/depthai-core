@@ -266,6 +266,7 @@ add_library(${TARGET_CORE_NAME}
     src/utility/XLinkGlobalProfilingLogger.cpp
     src/utility/Logging.cpp
     src/utility/EepromDataParser.cpp
+    src/utility/LogCollection.cpp
     src/xlink/XLinkConnection.cpp
     src/xlink/XLinkStream.cpp
     src/openvino/OpenVINO.cpp
@@ -456,6 +457,10 @@ target_link_libraries(${TARGET_CORE_NAME}
         archive_static
         spdlog::spdlog
         ZLIB::zlib
+        cryptopp-static
+        CURL::libcurl
+        cpr::cpr
+        ghcFilesystem::ghc_filesystem
 )
 
 # Add compile & CMake definitions
