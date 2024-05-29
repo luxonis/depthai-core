@@ -136,9 +136,9 @@ hunter_config(
 
 hunter_config(
     ghc_filesystem
-    VERSION "1.5.14"
-    URL "https://github.com/gulrak/filesystem/archive/b1982f06c84f08a99fb90bac43c2d03712efe921.tar.gz"
-    SHA1 "cd79101f0a2d216b337d125b162fa7d229f039d4"
+    VERSION "1.5.14-luxonis"
+    URL "https://github.com/luxonis/filesystem/archive/d29630953f3526b61842d937764f012503a79ec3.tar.gz"
+    SHA1 "1cee5c95b53e014710970c920230ad1d3f3b5055"
     CMAKE_ARGS
         GHC_FILESYSTEM_BUILD_EXAMPLES=OFF
         GHC_FILESYSTEM_BUILD_TESTING=OFF
