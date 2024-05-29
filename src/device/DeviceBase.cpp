@@ -544,7 +544,7 @@ void DeviceBase::closeImpl() {
             if(hasCrashDump()) {
                 connection->setRebootOnDestruction(true);
                 auto dump = getCrashDump();
-                logCollection::logCrashDump(pipelineSchema, dump);
+                logCollection::logCrashDump(pipelineSchema, dump, deviceInfo);
             } else {
                 bool isRunning = pimpl->rpcClient->call("isRunning").as<bool>();
                 shouldGetCrashDump = !isRunning;
@@ -607,7 +607,7 @@ void DeviceBase::closeImpl() {
                     DeviceBase rebootingDevice(config, rebootingDeviceInfo, firmwarePath, true);
                     if(rebootingDevice.hasCrashDump()) {
                         auto dump = rebootingDevice.getCrashDump();
-                        logCollection::logCrashDump(pipelineSchema, dump);
+                        logCollection::logCrashDump(pipelineSchema, dump, deviceInfo);
                     } else {
                         pimpl->logger.warn("Device crashed, but no crash dump could be extracted.");
                     }
@@ -1585,7 +1585,7 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
     // pimpl->rpcClient->call("printAssets");
 
     // Log the pipeline
-    logCollection::logPipeline(pipeline);
+    logCollection::logPipeline(pipeline, deviceInfo);
     this->pipelineSchema = schema; // Save the schema so it can be saved alongside the crashdump
 
     // Build and start the pipeline
