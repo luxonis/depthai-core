@@ -457,7 +457,6 @@ target_link_libraries(${TARGET_CORE_NAME}
         archive_static
         spdlog::spdlog
         ZLIB::zlib
-        cryptopp-static
         CURL::libcurl
         cpr::cpr
         ghcFilesystem::ghc_filesystem

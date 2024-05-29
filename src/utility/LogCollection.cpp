@@ -1,21 +1,23 @@
 #include "LogCollection.hpp"
 
+#include <XLink/XLinkPublicDefines.h>
 #include <cpr/cpr.h>
 #include <cryptopp/filters.h>
 #include <cryptopp/hex.h>
 #include <cryptopp/sha.h>
-
-#include <ghc/filesystem.hpp>
-#include <nlohmann/json.hpp>
-#include <system_error>
-
-#include <XLink/XLinkPublicDefines.h>
+#include <openssl/sha.h>
 #include <pthread.h>
 
+#include <ghc/filesystem.hpp>
+#include <iomanip>
+#include <iostream>
+#include <nlohmann/json.hpp>
+#include <sstream>
+#include <system_error>
+
+#include "build/version.hpp"
 #include "utility/Environment.hpp"
 #include "utility/Logging.hpp"
-#include "build/version.hpp"
-
 
 namespace dai {
 namespace logCollection {
@@ -74,12 +76,17 @@ std::string getOSPlatform() {
 }
 
 std::string calculateSHA1(const std::string& input) {
-    CryptoPP::SHA1 sha1;
-    std::string digest;
+    unsigned char hash[SHA_DIGEST_LENGTH];
+    SHA_CTX context;
+    SHA1_Init(&context);
+    SHA1_Update(&context, input.c_str(), input.length());
+    SHA1_Final(hash, &context);
 
-    CryptoPP::StringSource ss(input, true, new CryptoPP::HashFilter(sha1, new CryptoPP::HexEncoder(new CryptoPP::StringSink(digest), false)));
-
-    return digest;
+    std::stringstream ss;
+    for(int i = 0; i < SHA_DIGEST_LENGTH; i++) {
+        ss << std::hex << std::setw(2) << std::setfill('0') << (int)hash[i];
+    }
+    return ss.str();
 }
 
 bool sendLogsToServer(const tl::optional<FileWithSHA1>& pipelineData, const tl::optional<FileWithSHA1>& crashDumpData, const dai::DeviceInfo& deviceInfo) {

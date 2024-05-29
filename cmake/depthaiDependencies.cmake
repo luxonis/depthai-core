@@ -26,7 +26,6 @@ else()
         hunter_add_package(jsoncpp)
     endif()
 
-    hunter_add_package(cryptopp)
     hunter_add_package(CURL)
     hunter_add_package(cpr)
     hunter_add_package(ghc_filesystem)
@@ -60,7 +59,6 @@ if(NOT CONFIG_MODE OR (CONFIG_MODE AND NOT DEPTHAI_SHARED_LIBS))
     endif()
 
     # Model zoo and log collection dependencies
-    find_package(cryptopp ${_QUIET} CONFIG REQUIRED)
     find_package(CURL ${_QUIET} CONFIG REQUIRED)
     find_package(cpr ${_QUIET} CONFIG REQUIRED)
     find_package(ghc_filesystem ${_QUIET} CONFIG REQUIRED)
