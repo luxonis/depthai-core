@@ -62,7 +62,6 @@ bool sendLogsToServer(const tl::optional<FileWithSHA1>& pipelineData, const tl::
 }
 
 void logPipeline(const PipelineSchema& pipelineSchema, const dai::DeviceInfo& deviceInfo) {
-    // namespace fs = std::filesystem;
     namespace fs = ghc::filesystem;
     // Check if logging is explicitly disabled
     auto loggingEnabled = utility::getEnv("DEPTHAI_DISABLE_FEEDBACK");
@@ -107,7 +106,6 @@ void logPipeline(const PipelineSchema& pipelineSchema, const dai::DeviceInfo& de
 }
 
 void logCrashDump(const tl::optional<PipelineSchema>& pipelineSchema, const CrashDump& crashDump, const dai::DeviceInfo& deviceInfo) {
-    // namespace fs = std::filesystem;
     namespace fs = ghc::filesystem;
 
     std::string crashDumpJson = crashDump.serializeToJson().dump();
