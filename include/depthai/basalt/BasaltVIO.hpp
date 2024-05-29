@@ -34,10 +34,10 @@ class BasaltVIO : public NodeCRTP<ThreadedHostNode, BasaltVIO> {
     std::string leftInputName = "left";
     std::string rightInputName = "right";
 
-    Input& inLeft = inputs[leftInputName];
-    Input& inRight = inputs[rightInputName];
+    Input& inputLeft = inputs[leftInputName];
+    Input& inputRight = inputs[rightInputName];
 
-    Input input{*this, {.name = "in", .types = {{DatatypeEnum::MessageGroup, true}}}};
+    Input inputSync{*this, {.name = "inSync", .types = {{DatatypeEnum::MessageGroup, true}}}};
     Input inputImu{*this, {.name = "inIMU", .types = {{DatatypeEnum::IMUData, true}}}};
     Output transform{*this, {.name = "transform", .types = {{DatatypeEnum::TransformData, true}}}};
     Output passthrough{*this, {.name = "imgPassthrough", .types = {{DatatypeEnum::ImgFrame, true}}}};

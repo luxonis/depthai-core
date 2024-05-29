@@ -4,10 +4,10 @@
 namespace dai {
 namespace node {
 std::shared_ptr<BasaltVIO> BasaltVIO::build() {
-    sync->out.link(input);
+    sync->out.link(inputSync);
     sync->setRunOnHost(false);
-    input.setBlocking(false);
-    input.addCallback(std::bind(&BasaltVIO::stereoCB, this, std::placeholders::_1));
+    inputSync.setBlocking(false);
+    inputSync.addCallback(std::bind(&BasaltVIO::stereoCB, this, std::placeholders::_1));
     inputImu.setMaxSize(0);
     inputImu.setBlocking(false);
     inputImu.addCallback(std::bind(&BasaltVIO::imuCB, this, std::placeholders::_1));
