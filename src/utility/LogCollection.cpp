@@ -2,9 +2,6 @@
 
 #include <XLink/XLinkPublicDefines.h>
 #include <cpr/cpr.h>
-#include <cryptopp/filters.h>
-#include <cryptopp/hex.h>
-#include <cryptopp/sha.h>
 #include <openssl/sha.h>
 #include <pthread.h>
 
