@@ -2,7 +2,7 @@
 
 #include <XLink/XLinkPublicDefines.h>
 #include <cpr/cpr.h>
-#include <openssl/sha.h>
+#include <openssl/evp.h>
 #include <pthread.h>
 
 #include <ghc/filesystem.hpp>
@@ -73,14 +73,37 @@ std::string getOSPlatform() {
 }
 
 std::string calculateSHA1(const std::string& input) {
-    unsigned char hash[SHA_DIGEST_LENGTH];
-    SHA_CTX context;
-    SHA1_Init(&context);
-    SHA1_Update(&context, input.c_str(), input.length());
-    SHA1_Final(hash, &context);
+    EVP_MD_CTX* context = EVP_MD_CTX_new();
+    unsigned char hash[EVP_MAX_MD_SIZE]; // Buffer to store the hash
+    unsigned int lengthOfHash = 0;
+
+    if(context == nullptr) {
+        // Handle errors appropriately
+        return "";
+    }
+
+    if(EVP_DigestInit_ex(context, EVP_sha1(), nullptr) != 1) {
+        // Initialization failed
+        EVP_MD_CTX_free(context);
+        return "";
+    }
+
+    if(EVP_DigestUpdate(context, input.c_str(), input.length()) != 1) {
+        // Update failed
+        EVP_MD_CTX_free(context);
+        return "";
+    }
+
+    if(EVP_DigestFinal_ex(context, hash, &lengthOfHash) != 1) {
+        // Finalization failed
+        EVP_MD_CTX_free(context);
+        return "";
+    }
+
+    EVP_MD_CTX_free(context);
 
     std::stringstream ss;
-    for(int i = 0; i < SHA_DIGEST_LENGTH; i++) {
+    for(unsigned int i = 0; i < lengthOfHash; i++) {
         ss << std::hex << std::setw(2) << std::setfill('0') << (int)hash[i];
     }
     return ss.str();

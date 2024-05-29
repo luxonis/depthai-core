@@ -1,8 +1,8 @@
 hunter_config(
     nlohmann_json
     VERSION "3.9.1"
-    URL "https://github.com/nlohmann/json/archive/v3.9.1.tar.gz"
-    SHA1 "f8a20a7e19227906d77de0ede97468fbcfea03e7"
+    # URL "https://github.com/nlohmann/json/archive/v3.9.1.tar.gz"
+    # SHA1 "f8a20a7e19227906d77de0ede97468fbcfea03e7"
 )
 
 hunter_config(
@@ -125,6 +125,11 @@ hunter_config(
         WITH_UDEV=OFF
         # Build shared libs by default to not cause licensing issues
         BUILD_SHARED_LIBS=ON
+)
+
+hunter_config(
+    CURL
+    VERSION "8.5.0-p0"
 )
 
 hunter_config(
