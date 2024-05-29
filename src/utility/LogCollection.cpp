@@ -62,10 +62,6 @@ bool sendLogsToServer(const std::optional<FileWithSHA1>& pipelineData, const std
     return true;
 }
 
-void logPipeline(const Pipeline& pipeline, const dai::DeviceInfo& deviceInfo) {
-    logPipeline(pipeline.getPipelineSchema(), deviceInfo);
-}
-
 void logPipeline(const PipelineSchema& pipelineSchema, const dai::DeviceInfo& deviceInfo) {
     // namespace fs = std::filesystem;
     namespace fs = ghc::filesystem;

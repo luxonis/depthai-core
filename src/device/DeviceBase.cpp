@@ -30,7 +30,6 @@
 #include "utility/Initialization.hpp"
 #include "utility/PimplImpl.hpp"
 #include "utility/Resources.hpp"
-#include "utility/LogCollection.hpp"
 
 // libraries
 #include "XLink/XLink.h"
@@ -1585,7 +1584,7 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
     // pimpl->rpcClient->call("printAssets");
 
     // Log the pipeline
-    logCollection::logPipeline(pipeline, deviceInfo);
+    logCollection::logPipeline(schema, deviceInfo);
     this->pipelineSchema = schema; // Save the schema so it can be saved alongside the crashdump
 
     // Build and start the pipeline
