@@ -46,6 +46,12 @@ For older versions use: Linux/macOS: `cmake --build build -- -j[num CPU cores]`,
 
 > ⚠️ If any CMake commands error with `CMake Error: The source directory "" does not exist.` replace argument `-S` with `-H`
 
+### Windows
+On windows `perl` needs to be installed.
+We tested with `Strawberry Perl` which can be downloaded and installed from [here](http://strawberryperl.com/).
+
+Alternatively, `DEPTHAI_CURL_SUPPORT` can be set to `OFF` to disable the need for `perl` and `curl` for building.
+
 ### Dynamic library
 
 To build dynamic version of library configure with following option added
