@@ -1,8 +1,10 @@
 #include "LogCollection.hpp"
 
 #include <XLink/XLinkPublicDefines.h>
-#include <cpr/cpr.h>
-#include <openssl/evp.h>
+#ifdef DEPTHAI_CURL_SUPPORT
+    #include <cpr/cpr.h>
+    #include <openssl/evp.h>
+#endif
 
 #include <ghc/filesystem.hpp>
 #include <iomanip>
@@ -70,7 +72,7 @@ std::string getOSPlatform() {
     return "Other";
 #endif
 }
-
+#ifdef DEPTHAI_CURL_SUPPORT
 std::string calculateSHA1(const std::string& input) {
     EVP_MD_CTX* context = EVP_MD_CTX_new();
     unsigned char hash[EVP_MAX_MD_SIZE];  // Buffer to store the hash
@@ -107,7 +109,6 @@ std::string calculateSHA1(const std::string& input) {
     }
     return ss.str();
 }
-
 bool sendLogsToServer(const tl::optional<FileWithSHA1>& pipelineData, const tl::optional<FileWithSHA1>& crashDumpData, const dai::DeviceInfo& deviceInfo) {
     (void)deviceInfo;  // Unused for now
     // At least one of the files must be present
@@ -142,8 +143,28 @@ bool sendLogsToServer(const tl::optional<FileWithSHA1>& pipelineData, const tl::
     logger::info("Logs sent successfully");
     return true;
 }
+#else
+bool sendLogsToServer(const tl::optional<FileWithSHA1>&, const tl::optional<FileWithSHA1>&, const dai::DeviceInfo&) {
+    logger::info("Not sending the logs to the server, as CURL support is disabled");
+    return false;
+}
+#endif
+
+std::string calculateSimpleHash(const std::string& input) {
+    std::hash<std::string> hasher;
+    size_t hash = hasher(input);
+    std::stringstream ss;
+    ss << std::hex << hash;
+    return ss.str();
+}
 
 void logPipeline(const PipelineSchema& pipelineSchema, const dai::DeviceInfo& deviceInfo) {
+    // Check if compiled without CURL support and exit early if so
+#ifndef DEPTHAI_CURL_SUPPORT
+    (void)pipelineSchema;
+    (void)deviceInfo;
+    logger::info("Compiled without CURL support, not logging pipeline.");
+#else
     namespace fs = ghc::filesystem;
     // Check if logging is explicitly disabled
     auto loggingEnabled = utility::getEnv("DEPTHAI_DISABLE_FEEDBACK");
@@ -151,6 +172,7 @@ void logPipeline(const PipelineSchema& pipelineSchema, const dai::DeviceInfo& de
         logger::info("Logging disabled");
         return;
     }
+
     auto pipelineJson = nlohmann::json(pipelineSchema);
     std::string pipelineJsonStr = pipelineJson.dump();
     std::string pipelineSHA1 = calculateSHA1(pipelineJsonStr);
@@ -185,21 +207,23 @@ void logPipeline(const PipelineSchema& pipelineSchema, const dai::DeviceInfo& de
     } else {
         logger::info("Pipeline logs sent to server");
     }
+#endif
 }
 
 void logCrashDump(const tl::optional<PipelineSchema>& pipelineSchema, const CrashDump& crashDump, const dai::DeviceInfo& deviceInfo) {
     namespace fs = ghc::filesystem;
-
     std::string crashDumpJson = crashDump.serializeToJson().dump();
-    std::string crashDumpSHA1 = calculateSHA1(crashDumpJson);
+    std::string crashDumpHash = calculateSimpleHash(crashDumpJson);
     fs::path logDir = fs::current_path() / ".cache" / "depthai" / "crashdumps";
     auto crashDumpPath = utility::getEnv("DEPTHAI_CRASHDUMP");
     fs::path crashDumpPathLocal;
     if(crashDumpPath.empty()) {
-        crashDumpPathLocal = logDir / crashDumpSHA1 / "crash_dump.json";
+        crashDumpPathLocal = logDir / crashDumpHash / "crash_dump.json";
     } else {
         crashDumpPathLocal = crashDumpPath;
     }
+    auto errorString = fmt::format(
+        "Device with id {} has crashed. Crash dump logs are stored in: {} - please report to developers.", deviceInfo.getMxId(), crashDumpPathLocal.string());
 
     std::error_code ec;
     fs::create_directories(crashDumpPathLocal.parent_path(), ec);
@@ -211,10 +235,13 @@ void logCrashDump(const tl::optional<PipelineSchema>& pipelineSchema, const Cras
     std::ofstream crashDumpFile(crashDumpPathLocal);
     crashDumpFile << crashDumpJson;
     crashDumpFile.close();
+    logger::error(errorString);
+    // Send logs to the server if possible
+#ifdef DEPTHAI_CURL_SUPPORT
 
     FileWithSHA1 crashDumpData;
     crashDumpData.content = std::move(crashDumpJson);
-    crashDumpData.sha1Hash = std::move(crashDumpSHA1);
+    crashDumpData.sha1Hash = calculateSHA1(crashDumpJson);
 
     tl::optional<FileWithSHA1> pipelineData;
     if(pipelineSchema) {
@@ -227,8 +254,6 @@ void logCrashDump(const tl::optional<PipelineSchema>& pipelineSchema, const Cras
 
     // Check if logging is explicitly disabled
     auto loggingEnabled = utility::getEnv("DEPTHAI_DISABLE_FEEDBACK");
-    auto errorString = fmt::format(
-        "Device with id {} has crashed. Crash dump logs are stored in: {} - please report to developers.", deviceInfo.getMxId(), crashDumpPathLocal.string());
     if(loggingEnabled.empty()) {
         logger::info("Logging enabled");
         auto success = sendLogsToServer(pipelineData, crashDumpData, deviceInfo);
@@ -239,7 +264,9 @@ void logCrashDump(const tl::optional<PipelineSchema>& pipelineSchema, const Cras
     } else {
         logger::info("Logging disabled");
     }
-    logger::warn(errorString);
+#else
+    (void)pipelineSchema;
+#endif
 }
 
 }  // namespace logCollection

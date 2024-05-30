@@ -26,8 +26,10 @@ else()
         hunter_add_package(jsoncpp)
     endif()
 
-    hunter_add_package(CURL)
-    hunter_add_package(cpr)
+    if(DEPTHAI_CURL_SUPPORT)
+        hunter_add_package(CURL)
+        hunter_add_package(cpr)
+    endif()
     hunter_add_package(ghc_filesystem)
 endif()
 
@@ -59,8 +61,10 @@ if(NOT CONFIG_MODE OR (CONFIG_MODE AND NOT DEPTHAI_SHARED_LIBS))
     endif()
 
     # Model zoo and log collection dependencies
-    find_package(CURL ${_QUIET} CONFIG REQUIRED)
-    find_package(cpr ${_QUIET} CONFIG REQUIRED)
+    if(DEPTHAI_CURL_SUPPORT)
+        find_package(CURL ${_QUIET} CONFIG REQUIRED)
+        find_package(cpr ${_QUIET} CONFIG REQUIRED)
+    endif()
     find_package(ghc_filesystem ${_QUIET} CONFIG REQUIRED)
 endif()
 
