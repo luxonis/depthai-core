@@ -129,7 +129,7 @@ hunter_config(
 
 hunter_config(
     CURL
-    VERSION "8.5.0-p0"
+    VERSION "7.88.1-p0"
 )
 
 hunter_config(
