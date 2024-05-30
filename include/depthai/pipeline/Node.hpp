@@ -682,13 +682,13 @@ class InputQueue : public Node {
      */
     void run();
 
-    JoiningThread inputQueueThread_;
-    std::unique_ptr<MessageQueue> queuePtr_;
-    std::atomic_bool stopThreadFlag_;
+    JoiningThread inputQueueThread;
+    std::unique_ptr<MessageQueue> queuePtr;
+    std::atomic_bool stopThreadFlag;
 
-    mutable std::mutex guard_;
-    std::condition_variable sendThreadCv_;
-    std::condition_variable inputQueueEmptiedCv_;
+    mutable std::mutex guard;
+    std::condition_variable sendThreadCv;
+    std::condition_variable inputQueueEmptiedCv;
 };
 
 // Node CRTP class

@@ -264,66 +264,66 @@ bool Node::Input::getReusePreviousMessage() const {
 }
 
 InputQueue::InputQueue(unsigned int maxSize, bool blocking) : Node() {
-    queuePtr_ = std::make_unique<MessageQueue>(maxSize, blocking);
+    queuePtr = std::make_unique<MessageQueue>(maxSize, blocking);
 }
 
 void InputQueue::start() {
-    stopThreadFlag_ = false;
-    inputQueueThread_ = std::thread(&InputQueue::run, this);
+    stopThreadFlag = false;
+    inputQueueThread = std::thread(&InputQueue::run, this);
 }
 
 void InputQueue::stop() {
-    std::unique_lock<std::mutex> lock(guard_);
-    stopThreadFlag_ = true;
-    sendThreadCv_.notify_all();
+    std::unique_lock<std::mutex> lock(guard);
+    stopThreadFlag = true;
+    sendThreadCv.notify_all();
 }
 
 void InputQueue::wait() {
-    if(inputQueueThread_.joinable()) inputQueueThread_.join();
+    if(inputQueueThread.joinable()) inputQueueThread.join();
 }
 
 void InputQueue::run() {
     try {
         while(true) {
             {
-                std::unique_lock<std::mutex> lock(guard_);
+                std::unique_lock<std::mutex> lock(guard);
                 // Wait if there are no messages in the queue
-                if(queuePtr_->getSize() == 0 && !stopThreadFlag_) {
-                    sendThreadCv_.wait(lock);
+                if(queuePtr->getSize() == 0 && !stopThreadFlag) {
+                    sendThreadCv.wait(lock);
                 }
             }
 
-            if(stopThreadFlag_) break;
+            if(stopThreadFlag) break;
 
             // Send all messages in the queue
-            while(queuePtr_->getSize() > 0 && !stopThreadFlag_) {
-                output.send(queuePtr_->get());
+            while(queuePtr->getSize() > 0 && !stopThreadFlag) {
+                output.send(queuePtr->get());
             }
 
-            inputQueueEmptiedCv_.notify_all();
+            inputQueueEmptiedCv.notify_all();
         }
     } catch(const MessageQueue::QueueException& ex) {
-        stopThreadFlag_ = true;
+        stopThreadFlag = true;
     } catch(const std::runtime_error& ex) {
         std::cout << "Node threw exception, stopping the node. Exception message: " << ex.what() << std::endl;
     }
 }
 
 void InputQueue::send(const std::shared_ptr<ADatatype>& msg) {
-    std::unique_lock<std::mutex> lock(guard_);
+    std::unique_lock<std::mutex> lock(guard);
 
     // If blocking, make sure the queue is not full
     // If it is full, wait until the other thread empties it
-    if(queuePtr_->getBlocking() && queuePtr_->isFull()) {
-        sendThreadCv_.notify_all();
-        inputQueueEmptiedCv_.wait(lock);
+    if(queuePtr->getBlocking() && queuePtr->isFull()) {
+        sendThreadCv.notify_all();
+        inputQueueEmptiedCv.wait(lock);
     }
 
     // If queue is non-blocking and full, send will overwrite the oldest message
-    queuePtr_->send(msg);
+    queuePtr->send(msg);
 
     // Let other threads know that there is a new message
-    sendThreadCv_.notify_all();
+    sendThreadCv.notify_all();
 }
 
 bool InputQueue::runOnHost() const {
