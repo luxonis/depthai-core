@@ -410,11 +410,11 @@ dai_add_example(thermal_align ImageAlign/thermal_align.cpp OFF OFF)
 dai_add_example(depth_align ImageAlign/depth_align.cpp ON OFF)
 
 # Cast
-dai_add_example(cast_blur Cast/blur.cpp ON OFF)
+dai_add_example(cast_blur Cast/cast_blur.cpp ON OFF)
 target_compile_definitions(cast_blur PRIVATE BLOB_PATH="${blur_model}")
-dai_add_example(cast_concat Cast/concat.cpp ON OFF)
+dai_add_example(cast_concat Cast/cast_concat.cpp ON OFF)
 target_compile_definitions(cast_concat PRIVATE BLOB_PATH="${concat_model}")
-dai_add_example(cast_diff Cast/diff.cpp ON OFF)
+dai_add_example(cast_diff Cast/cast_diff.cpp ON OFF)
 target_compile_definitions(cast_diff PRIVATE BLOB_PATH="${diff_model}")
 
 
