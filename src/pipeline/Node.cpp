@@ -170,7 +170,7 @@ std::shared_ptr<InputQueue> Node::Input::createInputQueue(unsigned int maxSize, 
     if(pipelinePtr.isBuilt()) {
         throw std::runtime_error("Cannot create input queue after pipeline is built");
     }
-    auto inputQueuePtr = std::make_shared<InputQueue>(maxSize, blocking);
+    auto inputQueuePtr = std::shared_ptr<InputQueue>(new InputQueue(maxSize, blocking));
     pipelinePtr.add(inputQueuePtr);
     inputQueuePtr->output.link(*this);
     connectedQueues.push_back(std::move(inputQueuePtr));
