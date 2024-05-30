@@ -51,11 +51,6 @@ jobs:
       if: matrix.flavor != 'vanilla'
       run: echo "CMAKE_TOOLCHAIN_PATH=$PWD/cmake/toolchain/${{ matrix.flavor }}.cmake" >> $GITHUB_ENV
 
-    - name: Install dependencies
-      if: matrix.os == 'windows'
-      run: |
-        choco install strawberryperl
-
     - name: Configure, Build and Test
       if: matrix.os != 'linux'
       run: |
