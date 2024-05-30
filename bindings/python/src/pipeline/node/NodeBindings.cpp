@@ -292,7 +292,11 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("getWaitForMessage", &Node::Input::getWaitForMessage, DOC(dai, Node, Input, getWaitForMessage))
         .def("setReusePreviousMessage", &Node::Input::setReusePreviousMessage, py::arg("reusePreviousMessage"), DOC(dai, Node, Input, setReusePreviousMessage))
         .def("getReusePreviousMessage", &Node::Input::getReusePreviousMessage, DOC(dai, Node, Input, getReusePreviousMessage))
-        .def("createInputQueue", &Node::Input::createInputQueue, py::arg("maxSize") = 16, py::arg("blocking") = true, DOC(dai, Node, Input, createInputQueue));
+        .def("createInputQueue",
+             &Node::Input::createInputQueue,
+             py::arg("maxSize") = Node::Input::INPUT_QUEUE_DEFAULT_MAX_SIZE,
+             py::arg("blocking") = Node::Input::INPUT_QUEUE_DEFAULT_BLOCKING,
+             DOC(dai, Node, Input, createInputQueue));
 
     // Node::Output bindings
     nodeOutputType.value("MSender", Node::Output::Type::MSender).value("SSender", Node::Output::Type::SSender);
@@ -316,8 +320,11 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
              DOC(dai, Node, Output, getParent))
         .def("isSamePipeline", &Node::Output::isSamePipeline, py::arg("input"), DOC(dai, Node, Output, isSamePipeline))
         .def("canConnect", &Node::Output::canConnect, py::arg("input"), DOC(dai, Node, Output, canConnect))
-        .def("createQueue", &Node::Output::createQueue, py::arg("maxSize") = 16, py::arg("blocking") = true, DOC(dai, Node, Output, createQueue))
-        .def("createOutputQueue", &Node::Output::createOutputQueue, py::arg("maxSize") = 16, py::arg("blocking") = true, DOC(dai, Node, Output, createOutputQueue))
+        .def("createOutputQueue",
+             &Node::Output::createOutputQueue,
+             py::arg("maxSize") = Node::Output::OUTPUT_QUEUE_DEFAULT_MAX_SIZE,
+             py::arg("blocking") = Node::Output::OUTPUT_QUEUE_DEFAULT_BLOCKING,
+             DOC(dai, Node, Output, createOutputQueue))
         .def("link", static_cast<void (Node::Output::*)(Node::Input&)>(&Node::Output::link), py::arg("input"), DOC(dai, Node, Output, link))
         .def("unlink", static_cast<void (Node::Output::*)(Node::Input&)>(&Node::Output::unlink), py::arg("input"), DOC(dai, Node, Output, unlink))
         .def("send", &Node::Output::send, py::arg("msg"), DOC(dai, Node, Output, send), py::call_guard<py::gil_scoped_release>())

@@ -234,7 +234,11 @@ class Node : public std::enable_shared_from_this<Node> {
             return queueConnections;
         }
 
-        [[deprecated("Use 'createOutputQueue()' instead")]] std::shared_ptr<MessageQueue> createQueue(unsigned int maxSize = 16, bool blocking = true);
+        /** Default value for the blocking argument in the createOutputQueue method */
+        static constexpr bool OUTPUT_QUEUE_DEFAULT_BLOCKING = false;
+
+        /** Default value for the maxSize argument in the createOutputQueue method */
+        static constexpr unsigned int OUTPUT_QUEUE_DEFAULT_MAX_SIZE = 16;
 
         /**
          * @brief Construct and return a shared pointer to an output message queue
@@ -244,7 +248,8 @@ class Node : public std::enable_shared_from_this<Node> {
          *
          * @return std::shared_ptr<dai::MessageQueue>: shared pointer to an output queue
          */
-        std::shared_ptr<dai::MessageQueue> createOutputQueue(unsigned int maxSize = 16, bool blocking = true);
+        std::shared_ptr<dai::MessageQueue> createOutputQueue(unsigned int maxSize = OUTPUT_QUEUE_DEFAULT_MAX_SIZE,
+                                                             bool blocking = OUTPUT_QUEUE_DEFAULT_BLOCKING);
 
        private:
         void link(const std::shared_ptr<dai::MessageQueue>& queue) {
@@ -411,6 +416,12 @@ class Node : public std::enable_shared_from_this<Node> {
          */
         std::string getGroup() const;
 
+        /** Default value for the blocking argument in the createInputQueue method */
+        static constexpr bool INPUT_QUEUE_DEFAULT_BLOCKING = false;
+
+        /** Default value for the maxSize argument in the createInputQueue method */
+        static constexpr unsigned int INPUT_QUEUE_DEFAULT_MAX_SIZE = 16;
+
         /**
          * @brief Create an shared pointer to an input queue that can be used to send messages to this input from onhost
          *
@@ -419,7 +430,7 @@ class Node : public std::enable_shared_from_this<Node> {
          *
          * @return std::shared_ptr<InputQueue>: shared pointer to an input queue
          */
-        std::shared_ptr<InputQueue> createInputQueue(unsigned int maxSize = 16, bool blocking = false);
+        std::shared_ptr<InputQueue> createInputQueue(unsigned int maxSize = INPUT_QUEUE_DEFAULT_MAX_SIZE, bool blocking = INPUT_QUEUE_DEFAULT_BLOCKING);
     };
 
     /**

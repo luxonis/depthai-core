@@ -154,10 +154,6 @@ void Node::Output::link(Input& in) {
     connectedInputs.push_back(&in);
 }
 
-std::shared_ptr<dai::MessageQueue> Node::Output::createQueue(unsigned int maxSize, bool blocking) {
-    return createOutputQueue(maxSize, blocking);
-}
-
 std::shared_ptr<dai::MessageQueue> Node::Output::createOutputQueue(unsigned int maxSize, bool blocking) {
     // Check if pipeline is already started - if so, throw an error
     auto pipelinePtr = parent.get().getParentPipeline();
