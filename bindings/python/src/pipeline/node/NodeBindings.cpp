@@ -5,6 +5,7 @@
 #include "Common.hpp"
 #include "depthai/pipeline/DeviceNode.hpp"
 #include "depthai/pipeline/Node.hpp"
+#include "depthai/pipeline/InputQueue.hpp"
 #include "depthai/pipeline/NodeGroup.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/ThreadedNode.hpp"

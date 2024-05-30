@@ -651,48 +651,6 @@ class Node : public std::enable_shared_from_this<Node> {
     }
 };
 
-class InputQueue : public Node {
-    friend class Input;
-
-   public:
-    /**
-     * @brief Send a message to the connected input
-     *
-     * @param msg Message to send
-     */
-    void send(const std::shared_ptr<ADatatype>& msg);
-
-   private:
-    /**
-     * @brief Construct a new Input Queue object
-     *
-     * @param maxSize: Maximum size of the input queue
-     * @param blocking: Whether the input queue should block when full
-     */
-    InputQueue(unsigned int maxSize = 16, bool blocking = false);
-
-    /**
-     * @brief InputQueue's main thread function that takes care of sending messages from onhost to the connected ondevice input
-     */
-    void run();
-
-    void start() override;
-    void stop() override;
-    void wait() override;
-    bool runOnHost() const override;
-    const char* getName() const override;
-
-    Output output{*this, {.name = "output", .types = {{DatatypeEnum::Buffer, true}}}};
-
-    JoiningThread inputQueueThread;
-    std::unique_ptr<MessageQueue> queuePtr;
-    std::atomic_bool stopThreadFlag;
-
-    mutable std::mutex guard;
-    std::condition_variable sendThreadCv;
-    std::condition_variable inputQueueEmptiedCv;
-};
-
 // Node CRTP class
 template <typename Base, typename Derived>
 class NodeCRTP : public Base {

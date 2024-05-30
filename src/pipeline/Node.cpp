@@ -2,6 +2,7 @@
 #include <memory>
 
 #include "depthai/pipeline/Pipeline.hpp"
+#include "depthai/pipeline/InputQueue.hpp"
 #include "spdlog/fmt/fmt.h"
 #include "utility/ErrorMacros.hpp"
 
@@ -261,77 +262,6 @@ void Node::Input::setReusePreviousMessage(bool reusePreviousMessage) {
 
 bool Node::Input::getReusePreviousMessage() const {
     return !waitForMessage;
-}
-
-InputQueue::InputQueue(unsigned int maxSize, bool blocking) : Node() {
-    queuePtr = std::make_unique<MessageQueue>(maxSize, blocking);
-}
-
-void InputQueue::start() {
-    stopThreadFlag = false;
-    inputQueueThread = std::thread(&InputQueue::run, this);
-}
-
-void InputQueue::stop() {
-    std::unique_lock<std::mutex> lock(guard);
-    stopThreadFlag = true;
-    sendThreadCv.notify_all();
-}
-
-void InputQueue::wait() {
-    if(inputQueueThread.joinable()) inputQueueThread.join();
-}
-
-void InputQueue::run() {
-    try {
-        while(true) {
-            {
-                std::unique_lock<std::mutex> lock(guard);
-                // Wait if there are no messages in the queue
-                if(queuePtr->getSize() == 0 && !stopThreadFlag) {
-                    sendThreadCv.wait(lock);
-                }
-            }
-
-            if(stopThreadFlag) break;
-
-            // Send all messages in the queue
-            while(queuePtr->getSize() > 0 && !stopThreadFlag) {
-                output.send(queuePtr->get());
-            }
-
-            inputQueueEmptiedCv.notify_all();
-        }
-    } catch(const MessageQueue::QueueException& ex) {
-        stopThreadFlag = true;
-    } catch(const std::runtime_error& ex) {
-        std::cout << "Node threw exception, stopping the node. Exception message: " << ex.what() << std::endl;
-    }
-}
-
-void InputQueue::send(const std::shared_ptr<ADatatype>& msg) {
-    std::unique_lock<std::mutex> lock(guard);
-
-    // If blocking, make sure the queue is not full
-    // If it is full, wait until the other thread empties it
-    if(queuePtr->getBlocking() && queuePtr->isFull()) {
-        sendThreadCv.notify_all();
-        inputQueueEmptiedCv.wait(lock);
-    }
-
-    // If queue is non-blocking and full, send will overwrite the oldest message
-    queuePtr->send(msg);
-
-    // Let other threads know that there is a new message
-    sendThreadCv.notify_all();
-}
-
-bool InputQueue::runOnHost() const {
-    return true;
-}
-
-const char* InputQueue::getName() const {
-    return "InputQueue";
 }
 
 const AssetManager& Node::getAssetManager() const {
