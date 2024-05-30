@@ -174,8 +174,21 @@ class EncodedFrame : public Buffer {
      */
     EncodedFrame& setProfile(Profile profile);
 
-    DEPTHAI_SERIALIZE(
-        EncodedFrame, cam, instanceNum, width, height, quality, bitrate, profile, lossless, type, frameOffset, frameSize, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice);
+    DEPTHAI_SERIALIZE(EncodedFrame,
+                      cam,
+                      instanceNum,
+                      width,
+                      height,
+                      quality,
+                      bitrate,
+                      profile,
+                      lossless,
+                      type,
+                      frameOffset,
+                      frameSize,
+                      Buffer::sequenceNum,
+                      Buffer::ts,
+                      Buffer::tsDevice);
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
         metadata = utility::serialize(*this);

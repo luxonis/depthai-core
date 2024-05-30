@@ -9,6 +9,7 @@
 // project
 #include <depthai/pipeline/datatype/Buffer.hpp>
 #include <depthai/utility/RecordReplay.hpp>
+
 #include "depthai/pipeline/ThreadedHostNode.hpp"
 
 #ifndef DEPTHAI_HAVE_OPENCV_SUPPORT

@@ -4,11 +4,10 @@
 #include <spdlog/logger.h>
 
 #include <cstdint>
+#include <fstream>
 
 #include "nlohmann/json.hpp"
 #include "span.hpp"
-
-#include <fstream>
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     #include <opencv2/opencv.hpp>
@@ -17,9 +16,8 @@
 #ifndef MCAP_COMPRESSION_NO_ZSTD
     #define MCAP_COMPRESSION_NO_ZSTD
 #endif
-#include "mcap/mcap.hpp"
-
 #include "RecordReplaySchema.hpp"
+#include "mcap/mcap.hpp"
 
 namespace dai {
 namespace utility {
@@ -53,12 +51,13 @@ class VideoRecorder {
 };
 
 class ByteRecorder {
-public:
+   public:
     enum class CompressionLevel { NONE, FASTEST, FAST, DEFAULT, SLOW, SLOWEST };
 
     ~ByteRecorder();
     void init(const std::string& filePath, CompressionLevel compressionLevel, RecordType recordingType);
-    template<typename T> void write(const T& data) {
+    template <typename T>
+    void write(const T& data) {
         mcap::Timestamp writeTime = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
         nlohmann::json j = data;
         std::string serialized = j.dump();
@@ -80,7 +79,7 @@ public:
         return initialized;
     }
 
-private:
+   private:
     bool initialized = false;
     std::ofstream file;
 
@@ -113,7 +112,7 @@ class VideoPlayer {
 };
 
 class BytePlayer {
-public:
+   public:
     ~BytePlayer();
     void init(const std::string& filePath);
     std::optional<nlohmann::json> next();
@@ -122,7 +121,7 @@ public:
         return initialized;
     }
 
-private:
+   private:
     mcap::McapReader reader;
     std::unique_ptr<mcap::LinearMessageView> messageView;
     std::unique_ptr<mcap::LinearMessageView::Iterator> it;

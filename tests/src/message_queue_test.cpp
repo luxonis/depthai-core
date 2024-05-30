@@ -1,9 +1,9 @@
+#include <atomic>
 #include <catch2/catch_test_macros.hpp>
 #include <chrono>
 #include <depthai/pipeline/MessageQueue.hpp>
 #include <depthai/pipeline/datatype/ADatatype.hpp>
 #include <thread>
-#include <atomic>
 
 using namespace dai;
 
@@ -172,7 +172,6 @@ TEST_CASE("MessageQueue - getAll", "[MessageQueue]") {
     REQUIRE(messages[0] == msg1);
     REQUIRE(messages[1] == msg2);
     REQUIRE(messages[2] == msg3);
-
 }
 
 TEST_CASE("MessageQueue - Close", "[MessageQueue]") {
@@ -208,14 +207,14 @@ TEST_CASE("MessageQueue - Changing maxSize at runtime", "[MessageQueue]") {
     MessageQueue queue(10);
 
     // Fill up the queue
-    for (int i = 0; i < 10; ++i) {
+    for(int i = 0; i < 10; ++i) {
         auto msg = std::make_shared<ADatatype>();
         queue.send(msg);
     }
 
     // Increase maxSize and check if we can send more messages
     queue.setMaxSize(15);
-    for (int i = 0; i < 5; ++i) {
+    for(int i = 0; i < 5; ++i) {
         auto msg = std::make_shared<ADatatype>();
         queue.send(msg);
     }
@@ -240,13 +239,13 @@ TEST_CASE("MessageQueue - Changing maxSize at runtime", "[MessageQueue]") {
     REQUIRE_FALSE(queue.isFull());
 
     // Check that 5 messages can be sent and received
-    for (int i = 0; i < 3; ++i) {
+    for(int i = 0; i < 3; ++i) {
         auto msg = std::make_shared<ADatatype>();
         queue.send(msg);
     }
     REQUIRE(queue.getSize() == 3);
     REQUIRE_FALSE(queue.isFull());
-    for (int i = 0; i < 3; ++i) {
+    for(int i = 0; i < 3; ++i) {
         auto msg = queue.get<ADatatype>();
     }
     REQUIRE(queue.getSize() == 0);
@@ -295,11 +294,9 @@ TEST_CASE("MessageQueue - Multi-threaded callbacks", "[MessageQueue]") {
     // Add multiple callbacks from different threads
     std::vector<std::thread> callbackThreads;
     for(int i = 0; i < NUM_CALLBACKS; ++i) {
-        callbackThreads.emplace_back([&]() {
-            queue.addCallback([&]() { callbackCount++; });
-        });
+        callbackThreads.emplace_back([&]() { queue.addCallback([&]() { callbackCount++; }); });
     }
-    for (auto& thread : callbackThreads) {
+    for(auto& thread : callbackThreads) {
         thread.join();
     }
     // Send messages and check if all callbacks are invoked
@@ -315,7 +312,7 @@ TEST_CASE("MessageQueue - Callbacks with blocking queue", "[MessageQueue]") {
     std::atomic<int> callbackCount{0};
 
     // Fill up the queue to its maximum capacity
-    for (int i = 0; i < QUEUE_SIZE; ++i) {
+    for(int i = 0; i < QUEUE_SIZE; ++i) {
         auto msg = std::make_shared<ADatatype>();
         queue.send(msg);
     }
@@ -324,7 +321,7 @@ TEST_CASE("MessageQueue - Callbacks with blocking queue", "[MessageQueue]") {
 
     // Add callbacks
     constexpr int NUM_CALLBACKS = 3;
-    for (int i = 0; i < NUM_CALLBACKS; ++i) {
+    for(int i = 0; i < NUM_CALLBACKS; ++i) {
         queue.addCallback([&]() { callbackCount++; });
     }
 
@@ -336,7 +333,7 @@ TEST_CASE("MessageQueue - Callbacks with blocking queue", "[MessageQueue]") {
 
     // Consume messages from the queue
     std::thread consumeThread([&]() {
-        for (int i = 0; i < QUEUE_SIZE; ++i) {
+        for(int i = 0; i < QUEUE_SIZE; ++i) {
             auto msg = queue.get();
         }
     });
@@ -374,4 +371,3 @@ TEST_CASE("Sending to a closed queue", "[MessageQueue]") {
     auto msg = std::make_shared<ADatatype>();
     REQUIRE_THROWS_AS(queue.send(msg), MessageQueue::QueueException);
 }
-

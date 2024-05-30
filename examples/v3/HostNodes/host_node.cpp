@@ -1,11 +1,12 @@
 #include <memory>
+
 #include "depthai/depthai.hpp"
 
 class Display : public dai::NodeCRTP<dai::node::HostNode, Display> {
    public:
     Input& input = inputs["in"];
 
-    std::shared_ptr<Display> build(Output &out) {
+    std::shared_ptr<Display> build(Output& out) {
         out.link(input);
         return std::static_pointer_cast<Display>(this->shared_from_this());
     }
@@ -21,21 +22,20 @@ class Display : public dai::NodeCRTP<dai::node::HostNode, Display> {
     }
 };
 
-
 class StreamMerger : public dai::NodeCRTP<dai::node::HostNode, StreamMerger> {
    public:
     Input& inputRgb = inputs["rgb"];
     Input& inputMono = inputs["mono"];
 
-    std::shared_ptr<StreamMerger> build(Output &outRgb, Output &outMono) {
+    std::shared_ptr<StreamMerger> build(Output& outRgb, Output& outMono) {
         outRgb.link(inputRgb);
         outMono.link(inputMono);
         return std::static_pointer_cast<StreamMerger>(this->shared_from_this());
     }
 
     std::shared_ptr<dai::Buffer> processGroup(std::shared_ptr<dai::MessageGroup> in) override {
-        auto mono = in->get<dai::ImgFrame>("mono"); // Matches the name passed in creating the input
-        auto rgb = in->get<dai::ImgFrame>("rgb"); // Matches the name passed in creating the input
+        auto mono = in->get<dai::ImgFrame>("mono");  // Matches the name passed in creating the input
+        auto rgb = in->get<dai::ImgFrame>("rgb");    // Matches the name passed in creating the input
         // Show the frames side by side
         auto monoFrame = mono->getCvFrame();
         auto rgbFrame = rgb->getCvFrame();

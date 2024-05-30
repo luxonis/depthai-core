@@ -113,7 +113,6 @@ TEST_CASE("Test XLinkIn->XLinkOut passthrough with random 4000x3000 frame") {
     test_xlink_roundtrip(4000, 3000);
 }
 
-
 TEST_CASE("Buffer message type") {
     test_xlink_message_type(dai::Buffer());
 }

@@ -3,9 +3,9 @@
 #include <algorithm>
 #include <chrono>
 #include <limits>
+#include <optional>
 #include <unordered_map>
 #include <vector>
-#include <optional>
 
 #include "Buffer.hpp"
 #include "depthai/common/TensorInfo.hpp"
@@ -112,7 +112,6 @@ class NNData : public Buffer {
      * @returns All layers and their information
      */
     std::vector<TensorInfo> getAllLayers() const;
-
 
     /**
      * Retrieve tensor information

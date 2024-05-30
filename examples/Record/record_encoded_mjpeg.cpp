@@ -45,18 +45,16 @@ int main() {
             return 1;
         }
     }
-	auto messageView = reader.readMessages();
-	auto message = *messageView.begin();
-	assert(message.channel->messageEncoding == "json");
-	std::string_view asString(reinterpret_cast<const char*>(message.message.data),
-                              message.message.dataSize);
-	std::cout << "Message: " << asString << std::endl;
-	nlohmann::json j = nlohmann::json::parse(asString);
-	std::ofstream out(std::string(RECORDING_PATH) + ".json");
-	out << j.dump(4) << std::endl;
+    auto messageView = reader.readMessages();
+    auto message = *messageView.begin();
+    assert(message.channel->messageEncoding == "json");
+    std::string_view asString(reinterpret_cast<const char*>(message.message.data), message.message.dataSize);
+    std::cout << "Message: " << asString << std::endl;
+    nlohmann::json j = nlohmann::json::parse(asString);
+    std::ofstream out(std::string(RECORDING_PATH) + ".json");
+    out << j.dump(4) << std::endl;
 
-	std::string_view asString2(reinterpret_cast<const char*>(message.schema->data.data()),
-                              message.schema->data.size());
-	std::cout << "Schema: " << asString2 << std::endl;
-	return 0;
+    std::string_view asString2(reinterpret_cast<const char*>(message.schema->data.data()), message.schema->data.size());
+    std::cout << "Schema: " << asString2 << std::endl;
+    return 0;
 }

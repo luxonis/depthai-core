@@ -10,6 +10,7 @@
 // project
 #include <depthai/pipeline/datatype/Buffer.hpp>
 #include <depthai/utility/RecordReplay.hpp>
+
 #include "depthai/pipeline/ThreadedHostNode.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 
