@@ -73,7 +73,7 @@ std::string getOSPlatform() {
 
 std::string calculateSHA1(const std::string& input) {
     EVP_MD_CTX* context = EVP_MD_CTX_new();
-    unsigned char hash[EVP_MAX_MD_SIZE]; // Buffer to store the hash
+    unsigned char hash[EVP_MAX_MD_SIZE];  // Buffer to store the hash
     unsigned int lengthOfHash = 0;
 
     if(context == nullptr) {
