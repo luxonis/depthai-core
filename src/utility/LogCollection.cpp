@@ -3,7 +3,6 @@
 #include <XLink/XLinkPublicDefines.h>
 #include <cpr/cpr.h>
 #include <openssl/evp.h>
-#include <pthread.h>
 
 #include <ghc/filesystem.hpp>
 #include <iomanip>
