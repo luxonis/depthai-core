@@ -3,7 +3,6 @@
 #include <XLink/XLinkPublicDefines.h>
 #ifdef DEPTHAI_CURL_SUPPORT
     #include <cpr/cpr.h>
-    #include <openssl/evp.h>
 #endif
 
 #include <ghc/filesystem.hpp>
@@ -14,6 +13,7 @@
 #include <system_error>
 
 #include "build/version.hpp"
+#include "sha1.hpp"
 #include "utility/Environment.hpp"
 #include "utility/Logging.hpp"
 
@@ -72,43 +72,13 @@ std::string getOSPlatform() {
     return "Other";
 #endif
 }
-#ifdef DEPTHAI_CURL_SUPPORT
 std::string calculateSHA1(const std::string& input) {
-    EVP_MD_CTX* context = EVP_MD_CTX_new();
-    unsigned char hash[EVP_MAX_MD_SIZE];  // Buffer to store the hash
-    unsigned int lengthOfHash = 0;
-
-    if(context == nullptr) {
-        // Handle errors appropriately
-        return "";
-    }
-
-    if(EVP_DigestInit_ex(context, EVP_sha1(), nullptr) != 1) {
-        // Initialization failed
-        EVP_MD_CTX_free(context);
-        return "";
-    }
-
-    if(EVP_DigestUpdate(context, input.c_str(), input.length()) != 1) {
-        // Update failed
-        EVP_MD_CTX_free(context);
-        return "";
-    }
-
-    if(EVP_DigestFinal_ex(context, hash, &lengthOfHash) != 1) {
-        // Finalization failed
-        EVP_MD_CTX_free(context);
-        return "";
-    }
-
-    EVP_MD_CTX_free(context);
-
-    std::stringstream ss;
-    for(unsigned int i = 0; i < lengthOfHash; i++) {
-        ss << std::hex << std::setw(2) << std::setfill('0') << (int)hash[i];
-    }
-    return ss.str();
+    SHA1 checksum;
+    checksum.update(input);
+    return checksum.final();
 }
+
+#ifdef DEPTHAI_CURL_SUPPORT
 bool sendLogsToServer(const tl::optional<FileWithSHA1>& pipelineData, const tl::optional<FileWithSHA1>& crashDumpData, const dai::DeviceInfo& deviceInfo) {
     (void)deviceInfo;  // Unused for now
     // At least one of the files must be present
@@ -149,14 +119,6 @@ bool sendLogsToServer(const tl::optional<FileWithSHA1>&, const tl::optional<File
     return false;
 }
 #endif
-
-std::string calculateSimpleHash(const std::string& input) {
-    std::hash<std::string> hasher;
-    size_t hash = hasher(input);
-    std::stringstream ss;
-    ss << std::hex << hash;
-    return ss.str();
-}
 
 void logPipeline(const PipelineSchema& pipelineSchema, const dai::DeviceInfo& deviceInfo) {
     // Check if compiled without CURL support and exit early if so
@@ -213,7 +175,7 @@ void logPipeline(const PipelineSchema& pipelineSchema, const dai::DeviceInfo& de
 void logCrashDump(const tl::optional<PipelineSchema>& pipelineSchema, const CrashDump& crashDump, const dai::DeviceInfo& deviceInfo) {
     namespace fs = ghc::filesystem;
     std::string crashDumpJson = crashDump.serializeToJson().dump();
-    std::string crashDumpHash = calculateSimpleHash(crashDumpJson);
+    std::string crashDumpHash = calculateSHA1(crashDumpJson);
     fs::path logDir = fs::current_path() / ".cache" / "depthai" / "crashdumps";
     auto crashDumpPath = utility::getEnv("DEPTHAI_CRASHDUMP");
     fs::path crashDumpPathLocal;
