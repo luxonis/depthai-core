@@ -103,11 +103,12 @@ bool sendLogsToServer(const tl::optional<FileWithSHA1>& pipelineData, const tl::
     multipart.parts.emplace_back("platform", platformToString(deviceInfo.platform));
     multipart.parts.emplace_back("connectionType", protocolToString(deviceInfo.protocol));
     multipart.parts.emplace_back("osPlatform", getOSPlatform());
-    multipart.parts.emplace_back("depthAiVersion", build::VERSION);
+    std::string daiVersion = fmt::format("{}-{}", build::VERSION, build::COMMIT);
+    multipart.parts.emplace_back("depthAiVersion", std::move(daiVersion));
     multipart.parts.emplace_back("productId", deviceInfo.getMxId());
     auto response = cpr::Post(cpr::Url{LOG_ENDPOINT}, multipart);
     if(response.status_code != 200) {
-        logger::error("Failed to send logs, status code: {}", response.status_code);
+        logger::info("Failed to send logs, status code: {}", response.status_code);
         return false;
     }
 
