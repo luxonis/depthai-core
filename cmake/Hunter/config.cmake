@@ -127,8 +127,12 @@ hunter_config(
 
 hunter_config(
     CURL
-    VERSION "7.88.1-p0"
+    VERSION "7.88.1-p0-custom"
+    URL "https://github.com/cpp-pm/curl/archive/25d45e89d140d6ab27103cd7f8f6d7d6cf548d47.tar.gz"
+    SHA1 "db96d87e078e529a90dfb74de8d360a785c053aa"
     CMAKE_ARGS
+        BUILD_CURL_TESTS=OFF
+        BUILD_CURL_EXE=OFF
         CURL_USE_SCHANNEL=${DEPTHAI_CURL_USE_SCHANNEL}
         BUILD_STATIC_CURL=ON
         BUILD_SHARED_LIBS=OFF
