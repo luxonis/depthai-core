@@ -26,7 +26,7 @@ else()
         hunter_add_package(jsoncpp)
     endif()
 
-    if(DEPTHAI_CURL_SUPPORT)
+    if(DEPTHAI_ENABLE_CURL)
         hunter_add_package(CURL)
         hunter_add_package(cpr)
     endif()
@@ -61,7 +61,7 @@ if(NOT CONFIG_MODE OR (CONFIG_MODE AND NOT DEPTHAI_SHARED_LIBS))
     endif()
 
     # Log collection dependencies
-    if(DEPTHAI_CURL_SUPPORT)
+    if(DEPTHAI_ENABLE_CURL)
         find_package(CURL ${_QUIET} CONFIG REQUIRED)
         find_package(cpr ${_QUIET} CONFIG REQUIRED)
     endif()

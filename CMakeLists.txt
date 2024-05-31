@@ -118,6 +118,8 @@ else()
     endif()
 endif()
 
+option(DEPTHAI_ENABLE_CURL "Enable CURL support" ON)
+
 # Force Colored output when using Ninja
 # Global option - affects all targets
 option(FORCE_COLORED_OUTPUT "Always produce ANSI-colored output (GNU/Clang only)" OFF)
@@ -467,12 +469,12 @@ target_link_libraries(${TARGET_CORE_NAME}
         ghcFilesystem::ghc_filesystem
 )
 
-if(DEPTHAI_CURL_SUPPORT)
+if(DEPTHAI_ENABLE_CURL)
     target_link_libraries(${TARGET_CORE_NAME} PRIVATE
         CURL::libcurl
         cpr::cpr
     )
-    target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_CURL_SUPPORT)
+    target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_ENABLE_CURL)
 endif()
 
 # Add compile & CMake definitions

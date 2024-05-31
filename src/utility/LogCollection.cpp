@@ -1,7 +1,7 @@
 #include "LogCollection.hpp"
 
 #include <XLink/XLinkPublicDefines.h>
-#ifdef DEPTHAI_CURL_SUPPORT
+#ifdef DEPTHAI_ENABLE_CURL
     #include <cpr/cpr.h>
 #endif
 
@@ -72,13 +72,14 @@ std::string getOSPlatform() {
     return "Other";
 #endif
 }
+
 std::string calculateSHA1(const std::string& input) {
     SHA1 checksum;
     checksum.update(input);
     return checksum.final();
 }
 
-#ifdef DEPTHAI_CURL_SUPPORT
+#ifdef DEPTHAI_ENABLE_CURL
 bool sendLogsToServer(const tl::optional<FileWithSHA1>& pipelineData, const tl::optional<FileWithSHA1>& crashDumpData, const dai::DeviceInfo& deviceInfo) {
     (void)deviceInfo;  // Unused for now
     // At least one of the files must be present
@@ -122,7 +123,7 @@ bool sendLogsToServer(const tl::optional<FileWithSHA1>&, const tl::optional<File
 
 void logPipeline(const PipelineSchema& pipelineSchema, const dai::DeviceInfo& deviceInfo) {
     // Check if compiled without CURL support and exit early if so
-#ifndef DEPTHAI_CURL_SUPPORT
+#ifndef DEPTHAI_ENABLE_CURL
     (void)pipelineSchema;
     (void)deviceInfo;
     logger::info("Compiled without CURL support, not logging pipeline.");
@@ -199,7 +200,7 @@ void logCrashDump(const tl::optional<PipelineSchema>& pipelineSchema, const Cras
     crashDumpFile.close();
     logger::error(errorString);
     // Send logs to the server if possible
-#ifdef DEPTHAI_CURL_SUPPORT
+#ifdef DEPTHAI_ENABLE_CURL
 
     FileWithSHA1 crashDumpData;
     crashDumpData.content = std::move(crashDumpJson);
