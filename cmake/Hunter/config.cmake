@@ -130,6 +130,11 @@ hunter_config(
 hunter_config(
     CURL
     VERSION "7.88.1-p0"
+    CMAKE_ARGS
+        CURL_USE_SCHANNEL=ON
+        BUILD_STATIC_CURL=ON
+        BUILD_SHARED_LIBS=OFF
+        BUILD_STATIC_LIBS=ON
 )
 
 hunter_config(
