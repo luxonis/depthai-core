@@ -106,13 +106,6 @@ set(DEPTHAI_XLINK_LOCAL "" CACHE STRING "Path to local XLink source to use inste
 set(DEPTHAI_SHARED_LOCAL "" CACHE STRING "Path to local depthai-shared source to use instead of submodule")
 set(DEPTHAI_BOOTLOADER_SHARED_LOCAL "" CACHE STRING "Path to local depthai-bootloader-shared source to use instead of submodule")
 
-if(CMAKE_SYSTEM_PROCESSOR MATCHES "arm|armv7l")
-    message(STATUS "ARM 32-bit detected, disabling CURL support")
-    set(DEPTHAI_CURL_SUPPORT OFF CACHE BOOL "Disable CURL support on ARM 32-bit" FORCE)
-else()
-    option(DEPTHAI_CURL_SUPPORT "Enable optional CURL support" ON)
-endif()
-
 # Enable backward stack printing on crash
 if(ANDROID)
     # Backward not supported currently on Android

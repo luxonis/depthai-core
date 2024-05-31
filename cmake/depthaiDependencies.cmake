@@ -60,7 +60,7 @@ if(NOT CONFIG_MODE OR (CONFIG_MODE AND NOT DEPTHAI_SHARED_LIBS))
         unset(STACK_DETAILS_AUTO_DETECT)
     endif()
 
-    # Model zoo and log collection dependencies
+    # Log collection dependencies
     if(DEPTHAI_CURL_SUPPORT)
         find_package(CURL ${_QUIET} CONFIG REQUIRED)
         find_package(cpr ${_QUIET} CONFIG REQUIRED)

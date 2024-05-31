@@ -3,7 +3,7 @@
 // Includes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
-int main() try {
+int main() {
     // Create pipeline
     dai::Pipeline pipeline;
 
@@ -42,7 +42,4 @@ int main() try {
         }
     }
     return 0;
-} catch(const std::exception& e) {
-    std::cerr << "Error: " << e.what() << std::endl;
-    return 1;
 }
