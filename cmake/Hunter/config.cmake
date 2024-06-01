@@ -134,6 +134,7 @@ hunter_config(
         BUILD_CURL_TESTS=OFF
         BUILD_CURL_EXE=OFF
         CURL_USE_SCHANNEL=${DEPTHAI_CURL_USE_SCHANNEL}
+        CURL_USE_OPENSSL=${DEPTHAI_CURL_USE_OPENSSL} # Override hunter flags - no OpenSSL needed on Windows
         BUILD_STATIC_CURL=ON
         BUILD_SHARED_LIBS=OFF
         BUILD_STATIC_LIBS=ON

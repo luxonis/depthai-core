@@ -12,8 +12,10 @@ option(DEPTHAI_ENABLE_LIBUSB "Enable usage of libusb and interaction with USB de
 # Set to use native tls for windows before including Hunter (used for Curl)
 if(WIN32)
     set(DEPTHAI_CURL_USE_SCHANNEL ON)
+    set(DEPTHAI_CURL_USE_OPENSSL OFF)
 else()
     set(DEPTHAI_CURL_USE_SCHANNEL OFF)
+    set(DEPTHAI_CURL_USE_OPENSSL ON)
 endif()
 
 # Set type to canonicalize relative paths for user-provided toolchain
