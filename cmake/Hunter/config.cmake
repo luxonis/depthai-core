@@ -1,8 +1,6 @@
 hunter_config(
     nlohmann_json
     VERSION "3.9.1"
-    URL "https://github.com/nlohmann/json/archive/v3.9.1.tar.gz"
-    SHA1 "f8a20a7e19227906d77de0ede97468fbcfea03e7"
 )
 
 hunter_config(
@@ -125,4 +123,36 @@ hunter_config(
         WITH_UDEV=OFF
         # Build shared libs by default to not cause licensing issues
         BUILD_SHARED_LIBS=ON
+)
+
+hunter_config(
+    CURL
+    VERSION "7.88.1-p0-custom"
+    URL "https://github.com/cpp-pm/curl/archive/25d45e89d140d6ab27103cd7f8f6d7d6cf548d47.tar.gz"
+    SHA1 "db96d87e078e529a90dfb74de8d360a785c053aa"
+    CMAKE_ARGS
+        BUILD_CURL_TESTS=OFF
+        BUILD_CURL_EXE=OFF
+        CURL_USE_SCHANNEL=${DEPTHAI_CURL_USE_SCHANNEL}
+        CURL_USE_OPENSSL=${DEPTHAI_CURL_USE_OPENSSL} # Override hunter flags - no OpenSSL needed on Windows
+        BUILD_STATIC_CURL=ON
+        BUILD_SHARED_LIBS=OFF
+        BUILD_STATIC_LIBS=ON
+)
+
+hunter_config(
+    cpr
+    VERSION "1.4.0"
+    URL "https://github.com/luxonis/cpr/archive/a1d28dbbaccda3df8fddd993b2cd916f64f9da56.tar.gz"
+    SHA1 "14e18d04d05e36e920aa90ee744952bf55783ea4"
+)
+
+hunter_config(
+    ghc_filesystem
+    VERSION "1.5.14-luxonis"
+    URL "https://github.com/luxonis/filesystem/archive/d29630953f3526b61842d937764f012503a79ec3.tar.gz"
+    SHA1 "1cee5c95b53e014710970c920230ad1d3f3b5055"
+    CMAKE_ARGS
+        GHC_FILESYSTEM_BUILD_EXAMPLES=OFF
+        GHC_FILESYSTEM_BUILD_TESTING=OFF
 )
