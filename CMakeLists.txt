@@ -606,7 +606,7 @@ add_runtime_dependencies(${TARGET_CORE_NAME} usb-1.0)
 ########################
 # OpenCV Support
 ########################
-set(THIRDPARTY_OPENCV_LIBRARIES "mp4v2::mp4v2" CACHE STRING "Optional libraries to link OpenCV support, e.g. TBB::tbb")
+set(THIRDPARTY_OPENCV_LIBRARIES "" CACHE STRING "Optional libraries to link OpenCV support, e.g. TBB::tbb")
 set(TARGET_OPENCV_NAME ${PROJECT_NAME}-opencv)
 set(TARGET_OPENCV_ALIAS opencv)
 if(DEPTHAI_OPENCV_SUPPORT)

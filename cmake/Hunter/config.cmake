@@ -272,7 +272,7 @@ hunter_config(
 hunter_config(
     Sophus
     URL "https://github.com/strasdat/Sophus/archive/936265f5815dee546a3583ceba58c234c2ecb271.zip"
-    SHA1 "7f54e06fb1680910c465e12ea85fc414ce7a9f9e" 
+    SHA1 "7f54e06fb1680910c465e12ea85fc414ce7a9f9e"
     CMAKE_ARGS
         BUILD_TESTS=OFF
         BUILD_EXAMPLES=OFF

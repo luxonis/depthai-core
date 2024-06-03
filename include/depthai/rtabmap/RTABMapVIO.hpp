@@ -19,7 +19,6 @@ class RTABMapVIO : public dai::NodeCRTP<dai::node::ThreadedHostNode, RTABMapVIO>
    public:
     constexpr static const char* NAME = "RTABMapVIO";
 
-   public:
     std::shared_ptr<RTABMapVIO> build();
 
     /**
