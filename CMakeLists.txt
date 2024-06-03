@@ -9,6 +9,15 @@ endif()
 # Early options
 option(DEPTHAI_ENABLE_LIBUSB "Enable usage of libusb and interaction with USB devices" ON)
 
+# Set to use native tls for windows before including Hunter (used for Curl)
+if(WIN32)
+    set(DEPTHAI_CURL_USE_SCHANNEL ON)
+    set(DEPTHAI_CURL_USE_OPENSSL OFF)
+else()
+    set(DEPTHAI_CURL_USE_SCHANNEL OFF)
+    set(DEPTHAI_CURL_USE_OPENSSL ON)
+endif()
+
 # Set type to canonicalize relative paths for user-provided toolchain
 set(CMAKE_TOOLCHAIN_FILE "" CACHE FILEPATH "CMake toolchain path")
 
@@ -35,8 +44,8 @@ endif()
 
 include("cmake/HunterGate.cmake")
 HunterGate(
-    URL "https://github.com/cpp-pm/hunter/archive/v0.24.18.tar.gz"
-    SHA1 "1292e4d661e1770d6d6ca08c12c07cf34a0bf718"
+    URL "https://github.com/cpp-pm/hunter/archive/v0.25.5.tar.gz"
+    SHA1 "a20151e4c0740ee7d0f9994476856d813cdead29"
     LOCAL # Local config for dependencies
 )
 
@@ -109,6 +118,8 @@ else()
         set(CMAKE_ENABLE_EXPORTS ON)
     endif()
 endif()
+
+option(DEPTHAI_ENABLE_CURL "Enable CURL support" ON)
 
 # Force Colored output when using Ninja
 # Global option - affects all targets
@@ -522,11 +533,15 @@ target_link_libraries(${TARGET_CORE_NAME}
         LZ4::lz4
         httplib::httplib
         mp4v2::mp4v2
-        cryptopp-static
+)
+
+if(DEPTHAI_ENABLE_CURL)
+    target_link_libraries(${TARGET_CORE_NAME} PRIVATE
         CURL::libcurl
         cpr::cpr
-        ghcFilesystem::ghc_filesystem
-)
+    )
+    target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_ENABLE_CURL)
+endif()
 
 # Add compile & CMake definitions
 set(DEPTHAI_DEVICE_VERSION "${DEPTHAI_DEVICE_SIDE_COMMIT}")

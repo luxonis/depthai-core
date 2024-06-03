@@ -1,15 +1,17 @@
+
 #include "LogCollection.hpp"
 
-#include <cpr/cpr.h>
-#include <cryptopp/filters.h>
-#include <cryptopp/hex.h>
-#include <cryptopp/sha.h>
+#include <XLink/XLinkPublicDefines.h>
+#ifdef DEPTHAI_ENABLE_CURL
+    #include <cpr/cpr.h>
+#endif
 
-#include <ghc/filesystem.hpp>
 #include <nlohmann/json.hpp>
 #include <optional>
 #include <system_error>
 
+#include "build/version.hpp"
+#include "sha1.hpp"
 #include "utility/Environment.hpp"
 #include "utility/Logging.hpp"
 
@@ -23,17 +25,65 @@ struct FileWithSHA1 {
     std::string sha1Hash;
 };
 
-std::string calculateSHA1(const std::string& input) {
-    CryptoPP::SHA1 sha1;
-    std::string digest;
-
-    CryptoPP::StringSource ss(input, true, new CryptoPP::HashFilter(sha1, new CryptoPP::HexEncoder(new CryptoPP::StringSink(digest), false)));
-
-    return digest;
+std::string platformToString(XLinkPlatform_t platform) {
+    switch(platform) {
+        case X_LINK_ANY_PLATFORM:
+            return "X_LINK_ANY_PLATFORM";
+        case X_LINK_MYRIAD_X:
+            return "X_LINK_MYRIAD_X";
+        case X_LINK_MYRIAD_2:
+            return "X_LINK_MYRIAD_2";
+        case X_LINK_RVC3:
+            return "X_LINK_RVC3";
+        case X_LINK_RVC4:
+            return "X_LINK_RVC4";
+        default:
+            return "INVALID_ENUM_VALUE";
+    }
 }
 
+std::string protocolToString(XLinkProtocol_t protocol) {
+    switch(protocol) {
+        case X_LINK_USB_VSC:
+            return "X_LINK_USB_VSC";
+        case X_LINK_USB_CDC:
+            return "X_LINK_USB_CDC";
+        case X_LINK_PCIE:
+            return "X_LINK_PCIE";
+        case X_LINK_IPC:
+            return "X_LINK_IPC";
+        case X_LINK_TCP_IP:
+            return "X_LINK_TCP_IP";
+        case X_LINK_NMB_OF_PROTOCOLS:
+            return "X_LINK_NMB_OF_PROTOCOLS";
+        case X_LINK_ANY_PROTOCOL:
+            return "X_LINK_ANY_PROTOCOL";
+        default:
+            return "INVALID_ENUM_VALUE";
+    }
+}
+
+std::string getOSPlatform() {
+#ifdef _WIN32
+    return "Windows";
+#elif __APPLE__
+    return "MacOS";
+#elif __linux__
+    return "Linux";
+#else
+    return "Other";
+#endif
+}
+
+std::string calculateSHA1(const std::string& input) {
+    SHA1 checksum;
+    checksum.update(input);
+    return checksum.final();
+}
+
+#ifdef DEPTHAI_ENABLE_CURL
 bool sendLogsToServer(const std::optional<FileWithSHA1>& pipelineData, const std::optional<FileWithSHA1>& crashDumpData, const dai::DeviceInfo& deviceInfo) {
-    (void) deviceInfo; // Unused for now
+    (void)deviceInfo;  // Unused for now
     // At least one of the files must be present
     if(!pipelineData && !crashDumpData) {
         logger::error("Incorrect usage of sendLogsToServer, at least one of the files must be present");
@@ -52,25 +102,43 @@ bool sendLogsToServer(const std::optional<FileWithSHA1>& pipelineData, const std
         multipart.parts.emplace_back("crashDumpId", crashDumpData->sha1Hash);
     }
 
+    multipart.parts.emplace_back("platform", platformToString(deviceInfo.platform));
+    multipart.parts.emplace_back("connectionType", protocolToString(deviceInfo.protocol));
+    multipart.parts.emplace_back("osPlatform", getOSPlatform());
+    std::string daiVersion = fmt::format("{}-{}", build::VERSION, build::COMMIT);
+    multipart.parts.emplace_back("depthAiVersion", std::move(daiVersion));
+    multipart.parts.emplace_back("productId", deviceInfo.getMxId());
     auto response = cpr::Post(cpr::Url{LOG_ENDPOINT}, multipart);
     if(response.status_code != 200) {
-        logger::error("Failed to send logs, status code: {}", response.status_code);
+        logger::info("Failed to send logs, status code: {}", response.status_code);
         return false;
     }
 
     logger::info("Logs sent successfully");
     return true;
 }
+#else
+bool sendLogsToServer(const std::optional<FileWithSHA1>&, const std::optional<FileWithSHA1>&, const dai::DeviceInfo&) {
+    logger::info("Not sending the logs to the server, as CURL support is disabled");
+    return false;
+}
+#endif
 
 void logPipeline(const PipelineSchema& pipelineSchema, const dai::DeviceInfo& deviceInfo) {
-    // namespace fs = std::filesystem;
-    namespace fs = ghc::filesystem;
-    // Check if logging is explicitly disabled
+    // Check if compiled without CURL support and exit early if so
+#ifndef DEPTHAI_ENABLE_CURL
+    (void)pipelineSchema;
+    (void)deviceInfo;
+    logger::info("Compiled without CURL support, not logging pipeline.");
+#else
+    namespace fs = std::filesystem;
+    // Check if logging is explicistdy disabled
     auto loggingEnabled = utility::getEnv("DEPTHAI_DISABLE_FEEDBACK");
     if(!loggingEnabled.empty()) {
         logger::info("Logging disabled");
         return;
     }
+
     auto pipelineJson = nlohmann::json(pipelineSchema);
     std::string pipelineJsonStr = pipelineJson.dump();
     std::string pipelineSHA1 = calculateSHA1(pipelineJsonStr);
@@ -105,22 +173,23 @@ void logPipeline(const PipelineSchema& pipelineSchema, const dai::DeviceInfo& de
     } else {
         logger::info("Pipeline logs sent to server");
     }
+#endif
 }
 
 void logCrashDump(const std::optional<PipelineSchema>& pipelineSchema, const CrashDump& crashDump, const dai::DeviceInfo& deviceInfo) {
-    // namespace fs = std::filesystem;
-    namespace fs = ghc::filesystem;
-
+    namespace fs = std::filesystem;
     std::string crashDumpJson = crashDump.serializeToJson().dump();
-    std::string crashDumpSHA1 = calculateSHA1(crashDumpJson);
+    std::string crashDumpHash = calculateSHA1(crashDumpJson);
     fs::path logDir = fs::current_path() / ".cache" / "depthai" / "crashdumps";
     auto crashDumpPath = utility::getEnv("DEPTHAI_CRASHDUMP");
     fs::path crashDumpPathLocal;
     if(crashDumpPath.empty()) {
-        crashDumpPathLocal = logDir / crashDumpSHA1 / "crash_dump.json";
+        crashDumpPathLocal = logDir / crashDumpHash / "crash_dump.json";
     } else {
         crashDumpPathLocal = crashDumpPath;
     }
+    auto errorString = fmt::format(
+        "Device with id {} has crashed. Crash dump logs are stored in: {} - please report to developers.", deviceInfo.getMxId(), crashDumpPathLocal.string());
 
     std::error_code ec;
     fs::create_directories(crashDumpPathLocal.parent_path(), ec);
@@ -132,10 +201,13 @@ void logCrashDump(const std::optional<PipelineSchema>& pipelineSchema, const Cra
     std::ofstream crashDumpFile(crashDumpPathLocal);
     crashDumpFile << crashDumpJson;
     crashDumpFile.close();
+    logger::error(errorString);
+    // Send logs to the server if possible
+#ifdef DEPTHAI_ENABLE_CURL
 
     FileWithSHA1 crashDumpData;
     crashDumpData.content = std::move(crashDumpJson);
-    crashDumpData.sha1Hash = std::move(crashDumpSHA1);
+    crashDumpData.sha1Hash = calculateSHA1(crashDumpJson);
 
     std::optional<FileWithSHA1> pipelineData;
     if(pipelineSchema) {
@@ -148,8 +220,6 @@ void logCrashDump(const std::optional<PipelineSchema>& pipelineSchema, const Cra
 
     // Check if logging is explicitly disabled
     auto loggingEnabled = utility::getEnv("DEPTHAI_DISABLE_FEEDBACK");
-    auto errorString = fmt::format(
-        "Device with id {} has crashed. Crash dump logs are stored in: {} - please report to developers.", deviceInfo.getMxId(), crashDumpPathLocal.string());
     if(loggingEnabled.empty()) {
         logger::info("Logging enabled");
         auto success = sendLogsToServer(pipelineData, crashDumpData, deviceInfo);
@@ -160,7 +230,9 @@ void logCrashDump(const std::optional<PipelineSchema>& pipelineSchema, const Cra
     } else {
         logger::info("Logging disabled");
     }
-    logger::warn(errorString);
+#else
+    (void)pipelineSchema;
+#endif
 }
 
 }  // namespace logCollection
