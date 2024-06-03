@@ -1585,7 +1585,7 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
 
     // Log the pipeline
     logCollection::logPipeline(schema, deviceInfo);
-    this->pipelineSchema = schema; // Save the schema so it can be saved alongside the crashdump
+    this->pipelineSchema = schema;  // Save the schema so it can be saved alongside the crashdump
 
     // Build and start the pipeline
     bool success = false;
