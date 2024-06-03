@@ -235,7 +235,9 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
     using DeviceNodeCRTP::DeviceNodeCRTP;
 
     bool isBuild = false;
-    bool needsBuild() override { return !isBuild; }
+    bool needsBuild() override {
+        return !isBuild;
+    }
 };
 
 /**

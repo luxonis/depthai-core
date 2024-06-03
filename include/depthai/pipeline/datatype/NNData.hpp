@@ -3,9 +3,9 @@
 #include <algorithm>
 #include <chrono>
 #include <limits>
+#include <optional>
 #include <unordered_map>
 #include <vector>
-#include <optional>
 
 #include "Buffer.hpp"
 #include "depthai/common/TensorInfo.hpp"
@@ -112,7 +112,6 @@ class NNData : public Buffer {
      * @returns All layers and their information
      */
     std::vector<TensorInfo> getAllLayers() const;
-
 
     /**
      * Retrieve tensor information
@@ -269,7 +268,7 @@ class NNData : public Buffer {
      * @returns xt::xarray<_Ty> tensor
      */
     template <typename _Ty>
-    xt::xarray<_Ty> getTensor(const std::string& name) {
+    xt::xarray<_Ty> getTensor(const std::string& name, bool dequantize = false) {
         const auto it = std::find_if(tensors.begin(), tensors.end(), [&name](const TensorInfo& ti) { return ti.name == name; });
 
         if(it == tensors.end()) throw std::runtime_error("Tensor does not exist");
@@ -313,7 +312,11 @@ class NNData : public Buffer {
                 }
                 break;
         }
-
+        if(dequantize) {
+            if(it->quantization) {
+                tensor = (tensor - it->qpZp) * it->qpScale;
+            }
+        }
         return tensor;
     }
 

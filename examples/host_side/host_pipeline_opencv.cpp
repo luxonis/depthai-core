@@ -7,7 +7,6 @@
 #include "depthai/pipeline/node/ColorCamera.hpp"
 #include "depthai/pipeline/node/host/Display.hpp"
 
-
 int main() {
     // Create pipeline
     dai::Pipeline pipeline(true);

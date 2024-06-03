@@ -1,4 +1,5 @@
 #include "utility/Initialization.hpp"
+
 #include <spdlog/async.h>
 
 // std

@@ -1,6 +1,8 @@
 #include "depthai/pipeline/node/host/HostNode.hpp"
-#include "depthai/pipeline/Pipeline.hpp"
+
 #include <memory>
+
+#include "depthai/pipeline/Pipeline.hpp"
 
 namespace dai {
 namespace node {

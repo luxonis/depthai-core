@@ -83,7 +83,7 @@ void Device::closeImpl() {
     // outputQueueMap.clear();
     // inputQueueMap.clear();
 
-    // // TODO(asahtik): Move to pipeline 
+    // // TODO(asahtik): Move to pipeline
     // if(recordConfig.state == utility::RecordConfig::RecordReplayState::RECORD) {
     //     std::vector<std::string> filenames = {recordReplayFilenames["record_config"]};
     //     std::vector<std::string> outFiles = {"record_config.json"};

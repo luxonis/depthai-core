@@ -100,4 +100,4 @@ inline std::string toString(CameraBoardSocket socket) {
     }
 }
 
-} // namespace dai
+}  // namespace dai

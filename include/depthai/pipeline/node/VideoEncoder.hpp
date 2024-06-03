@@ -162,7 +162,9 @@ class VideoEncoder : public DeviceNodeCRTP<DeviceNode, VideoEncoder, VideoEncode
 
    protected:
     bool isBuild = false;
-    bool needsBuild() override { return !isBuild; }
+    bool needsBuild() override {
+        return !isBuild;
+    }
 };
 
 }  // namespace node
