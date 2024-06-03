@@ -22,17 +22,17 @@ namespace dai {
 struct Translate {
     float offsetX;
     float offsetY;
-    bool normalizedCoords;
+    bool normalized;
 
     Translate() = default;
-    Translate(float offsetX, float offsetY, bool normalizedCoords = false) : offsetX(offsetX), offsetY(offsetY), normalizedCoords(normalizedCoords) {}
+    Translate(float offsetX, float offsetY, bool normalized = false) : offsetX(offsetX), offsetY(offsetY), normalized(normalized) {}
 
-    DEPTHAI_SERIALIZE(Translate, offsetX, offsetY, normalizedCoords);
+    DEPTHAI_SERIALIZE(Translate, offsetX, offsetY, normalized);
 };
 
 struct Rotate {
-    float angle; // in radians
-    bool center; // if true, rotation is around center of image, otherwise around top-left corner
+    float angle;  // in radians
+    bool center;  // if true, rotation is around center of image, otherwise around top-left corner
 
     Rotate() = default;
     explicit Rotate(float angle, bool center = true) : angle(angle), center(center) {}
@@ -44,10 +44,11 @@ struct Resize {
     enum Mode { VALUE, FIT, FILL };
     float width;
     float height;
+    bool normalized;
     Mode mode = FIT;
 
     Resize() = default;
-    Resize(float width, float height) : width(width), height(height), mode(VALUE) {}
+    Resize(float width, float height, bool normalized = false) : width(width), height(height), normalized(normalized), mode(VALUE) {}
 
     static Resize fit() {
         Resize r(-1, -1);
@@ -61,13 +62,13 @@ struct Resize {
         return r;
     }
 
-    DEPTHAI_SERIALIZE(Resize, width, height, mode);
+    DEPTHAI_SERIALIZE(Resize, width, height, normalized, mode);
 };
 
 struct Flip {
     enum Direction { HORIZONTAL, VERTICAL };
     Direction direction = HORIZONTAL;
-    bool center; // if true, flip is around center of image, otherwise around top-left corner
+    bool center = false;  // if true, flip is around center of image, otherwise around top-left corner
 
     Flip() = default;
     explicit Flip(Direction direction, bool center = true) : direction(direction), center(center) {}
@@ -76,7 +77,7 @@ struct Flip {
 };
 
 struct Affine {
-    std::array<float, 4> matrix { 1, 0, 0, 1 };
+    std::array<float, 4> matrix{1, 0, 0, 1};
 
     Affine() = default;
     explicit Affine(std::array<float, 4> matrix) : matrix(matrix) {}
@@ -85,7 +86,7 @@ struct Affine {
 };
 
 struct Perspective {
-    std::array<float, 9> matrix { 1, 0, 0, 0, 1, 0, 0, 0, 1 };
+    std::array<float, 9> matrix{1, 0, 0, 0, 1, 0, 0, 0, 1};
 
     Perspective() = default;
     explicit Perspective(std::array<float, 9> matrix) : matrix(matrix) {}
@@ -94,34 +95,56 @@ struct Perspective {
 };
 
 struct FourPoints {
-    std::array<dai::Point2f, 4> src {dai::Point2f(0.0, 0.0), dai::Point2f(1.0, 0.0), dai::Point2f(1.0, 1.0), dai::Point2f(0.0, 1.0)};
-    std::array<dai::Point2f, 4> dst {dai::Point2f(0.0, 0.0), dai::Point2f(1.0, 0.0), dai::Point2f(1.0, 1.0), dai::Point2f(0.0, 1.0)};
-    bool normalizedCoords;
+    std::array<dai::Point2f, 4> src{dai::Point2f(0.0, 0.0), dai::Point2f(1.0, 0.0), dai::Point2f(1.0, 1.0), dai::Point2f(0.0, 1.0)};
+    std::array<dai::Point2f, 4> dst{dai::Point2f(0.0, 0.0), dai::Point2f(1.0, 0.0), dai::Point2f(1.0, 1.0), dai::Point2f(0.0, 1.0)};
+    bool normalized;
 
     FourPoints() = default;
-    FourPoints(std::array<dai::Point2f, 4> src, std::array<dai::Point2f, 4> dst, bool normalizedCoords = false)
-        : src(src), dst(dst), normalizedCoords(normalizedCoords) {}
+    FourPoints(std::array<dai::Point2f, 4> src, std::array<dai::Point2f, 4> dst, bool normalized = false)
+        : src(src), dst(dst), normalizedCoords(normalized) {}
 
-    DEPTHAI_SERIALIZE(FourPoints, src, dst, normalizedCoords);
+    DEPTHAI_SERIALIZE(FourPoints, src, dst, normalized);
 };
 
 struct Canvas {
     enum class Background { COLOR, REPLICATE, MIRROR };
+    enum class ResizeMode { STRETCH, LETTERBOX, CENTER_CROP };
+
     float width;
     float height;
     Background background;
+    bool center;
+    bool resizeOutput = false;
+    ResizeMode resizeMode = ResizeMode::STRETCH;
     uint8_t red;
     uint8_t green;
     uint8_t blue;
-    bool center;
 
-    Canvas() : width(-1), height(-1), background(Background::COLOR), red(0), green(0), blue(0), center(true) {}
-    Canvas(float width, float height, Background background, uint8_t red = 0, uint8_t green = 0, uint8_t blue = 0, bool center = true)
-        : width(width), height(height), background(background), red(red), green(green), blue(blue), center(center) {}
+    Canvas() : width(-1), height(-1), background(Background::COLOR), center(true), resizeOutput(false), resizeMode(ResizeMode::STRETCH), red(0), green(0), blue(0) {}
+    Canvas(float width,
+           float height,
+           Background background,
+           bool center = false,
+           bool resizeOutput = false,
+           ResizeMode resizeMode = ResizeMode::STRETCH,
+           uint8_t red = 0,
+           uint8_t green = 0,
+           uint8_t blue = 0)
+        : width(width),
+          height(height),
+          background(background),
+          center(center),
+          resizeOutput(resizeOutput),
+          resizeMode(resizeMode),
+          red(red),
+          green(green),
+          blue(blue) {}
 
-    Canvas clone() const { return *this; }
+    Canvas clone() const {
+        return *this;
+    }
 
-    DEPTHAI_SERIALIZE(Canvas, width, height, background, red, green, blue, center);
+    DEPTHAI_SERIALIZE(Canvas, width, height, background, center, resizeOutput, resizeMode, red, green, blue);
 };
 
 struct ApplyColormap {
@@ -137,24 +160,26 @@ struct ManipOp {
     std::variant<Translate, Rotate, Resize, Flip, Affine, Perspective, FourPoints, Canvas, ApplyColormap> op;
 
     ManipOp() = default;
-    ManipOp(Translate op) : op(op) {} // NOLINT
-    ManipOp(Rotate op) : op(op) {} // NOLINT
-    ManipOp(Resize op) : op(op) {} // NOLINT
-    ManipOp(Flip op) : op(op) {} // NOLINT
-    ManipOp(Affine op) : op(op) {} // NOLINT
-    ManipOp(Perspective op) : op(op) {} // NOLINT
-    ManipOp(FourPoints op) : op(op) {} // NOLINT
-    ManipOp(Canvas op) : op(op) {} // NOLINT
-    ManipOp(ApplyColormap op) : op(op) {} // NOLINT
-    
+    ManipOp(Translate op) : op(op) {}      // NOLINT
+    ManipOp(Rotate op) : op(op) {}         // NOLINT
+    ManipOp(Resize op) : op(op) {}         // NOLINT
+    ManipOp(Flip op) : op(op) {}           // NOLINT
+    ManipOp(Affine op) : op(op) {}         // NOLINT
+    ManipOp(Perspective op) : op(op) {}    // NOLINT
+    ManipOp(FourPoints op) : op(op) {}     // NOLINT
+    ManipOp(Canvas op) : op(op) {}         // NOLINT
+    ManipOp(ApplyColormap op) : op(op) {}  // NOLINT
+
     DEPTHAI_SERIALIZE(ManipOp, op);
 };
 
 class ImageManipBase {
-    std::vector<ManipOp> operations {};
+   protected:
+    std::vector<ManipOp> operations{};
 
-public:
+   public:
     ImageManipBase() = default;
+    virtual ~ImageManipBase() = default;
 
     ImageManipBase& addOp(ManipOp op) {
         operations.push_back(op);
@@ -232,13 +257,13 @@ public:
 
     ImageManipBase& setOutputSize(float width, float height) {
         std::optional<Canvas> canvasOpt = std::nullopt;
-        for (auto& op : operations) {
+        for(auto& op : operations) {
             if(std::holds_alternative<Canvas>(op.op)) {
                 canvasOpt = std::get<Canvas>(op.op).clone();
                 break;
             }
         }
-        if (canvasOpt) {
+        if(canvasOpt) {
             canvasOpt->width = width;
             canvasOpt->height = height;
         } else {
@@ -248,18 +273,38 @@ public:
         return *this;
     }
 
-    ImageManipBase& setOutputCenter(bool center) {
+    ImageManipBase& setOutputResize(float width, float height, Canvas::ResizeMode resizeMode) {
         std::optional<Canvas> canvasOpt = std::nullopt;
-        for (auto& op : operations) {
+        for(auto& op : operations) {
             if(std::holds_alternative<Canvas>(op.op)) {
                 canvasOpt = std::get<Canvas>(op.op).clone();
                 break;
             }
         }
-        if (canvasOpt) {
+        if(canvasOpt) {
+            canvasOpt->width = width;
+            canvasOpt->height = height;
+            canvasOpt->resizeOutput = true;
+            canvasOpt->resizeMode = resizeMode;
+        } else {
+            canvasOpt = Canvas(width, height, Canvas::Background::COLOR, true, true, resizeMode);
+        }
+        operations.emplace_back(*canvasOpt);
+        return *this;
+    }
+
+    ImageManipBase& setOutputCenter(bool center) {
+        std::optional<Canvas> canvasOpt = std::nullopt;
+        for(auto& op : operations) {
+            if(std::holds_alternative<Canvas>(op.op)) {
+                canvasOpt = std::get<Canvas>(op.op).clone();
+                break;
+            }
+        }
+        if(canvasOpt) {
             canvasOpt->center = center;
         } else {
-            canvasOpt = Canvas(-1, -1, Canvas::Background::COLOR, 0, 0, 0, center);
+            canvasOpt = Canvas(-1, -1, Canvas::Background::COLOR, center, false, Canvas::ResizeMode::STRETCH, 0, 0, 0);
         }
         operations.emplace_back(*canvasOpt);
         return *this;
@@ -267,19 +312,19 @@ public:
 
     ImageManipBase& setBackgroundColor(uint8_t red, uint8_t green, uint8_t blue) {
         std::optional<Canvas> canvasOpt = std::nullopt;
-        for (auto& op : operations) {
+        for(auto& op : operations) {
             if(std::holds_alternative<Canvas>(op.op)) {
                 canvasOpt = std::get<Canvas>(op.op).clone();
                 break;
             }
         }
-        if (canvasOpt) {
+        if(canvasOpt) {
             canvasOpt->background = Canvas::Background::COLOR;
             canvasOpt->red = red;
             canvasOpt->green = green;
             canvasOpt->blue = blue;
         } else {
-            canvasOpt = Canvas(-1, -1, Canvas::Background::COLOR, red, green, blue, true);
+            canvasOpt = Canvas(-1, -1, Canvas::Background::COLOR, false, false, Canvas::ResizeMode::STRETCH, red, green, blue);
         }
         operations.emplace_back(*canvasOpt);
         return *this;
@@ -287,22 +332,22 @@ public:
 
     ImageManipBase& setBackgroundReplicate() {
         std::optional<Canvas> canvasOpt = std::nullopt;
-        for (auto& op : operations) {
+        for(auto& op : operations) {
             if(std::holds_alternative<Canvas>(op.op)) {
                 canvasOpt = std::get<Canvas>(op.op).clone();
                 break;
             }
         }
-        if (canvasOpt) {
+        if(canvasOpt) {
             canvasOpt->background = Canvas::Background::REPLICATE;
         } else {
-            canvasOpt = Canvas(-1, -1, Canvas::Background::REPLICATE, 0, 0, 0, true);
+            canvasOpt = Canvas(-1, -1, Canvas::Background::REPLICATE, false, false, Canvas::ResizeMode::STRETCH, 0, 0, 0);
         }
         operations.emplace_back(*canvasOpt);
         return *this;
     }
 
-    ImageManipBase& clear() {
+    virtual ImageManipBase& clear() {
         operations.clear();
         return *this;
     }
