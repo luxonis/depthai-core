@@ -18,6 +18,13 @@ else()
     set(DEPTHAI_CURL_USE_OPENSSL ON)
 endif()
 
+# Check if on 32 bit linux - default without CURL support
+if(CMAKE_SIZEOF_VOID_P EQUAL 4 AND UNIX)
+    set(DEPTHAI_DEFAULT_CURL_SUPPORT OFF)
+else()
+    set(DEPTHAI_DEFAULT_CURL_SUPPORT ON)
+endif()
+
 # Set type to canonicalize relative paths for user-provided toolchain
 set(CMAKE_TOOLCHAIN_FILE "" CACHE FILEPATH "CMake toolchain path")
 
@@ -120,7 +127,7 @@ else()
     endif()
 endif()
 
-option(DEPTHAI_ENABLE_CURL "Enable CURL support" ON)
+option(DEPTHAI_ENABLE_CURL "Enable CURL support" ${DEPTHAI_DEFAULT_CURL_SUPPORT})
 
 # Force Colored output when using Ninja
 # Global option - affects all targets
