@@ -128,6 +128,7 @@ else()
 endif()
 
 option(DEPTHAI_ENABLE_CURL "Enable CURL support" ${DEPTHAI_DEFAULT_CURL_SUPPORT})
+message(STATUS "CURL support: ${DEPTHAI_ENABLE_CURL}")
 
 # Force Colored output when using Ninja
 # Global option - affects all targets
