@@ -369,6 +369,37 @@ class CalibrationHandler {
                       std::string boardCustom = "");
 
     /**
+     * Set the Board Info object. Creates version 7 EEPROM data
+     *
+     * @param deviceName Sets device name.
+     * @param productName Sets product name (alias).
+     * @param boardName Sets board name.
+     * @param boardRev Sets board revision id.
+     * @param boardConf Sets board configuration id.
+     * @param hardwareConf Sets hardware configuration id.
+     * @param batchName Sets batch name. Not supported anymore
+     * @param batchTime Sets batch time (unix timestamp).
+     * @param boardCustom Sets a custom board (Default empty string).
+     */
+    void setBoardInfo(std::string deviceName,
+                      std::string productName,
+                      std::string boardName,
+                      std::string boardRev,
+                      std::string boardConf,
+                      std::string hardwareConf,
+                      std::string batchName,
+                      uint64_t batchTime,
+                      uint32_t boardOptions,
+                      std::string boardCustom = "");
+
+    /**
+     * Set the deviceName which responses to getDeviceName of Device
+     *
+     * @param deviceName Sets device name.
+     */
+    void setDeviceName(std::string deviceName);
+
+    /**
      * Set the productName which acts as alisas for users to identify the device
      *
      * @param productName Sets product name (alias).
