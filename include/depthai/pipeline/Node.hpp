@@ -1,7 +1,6 @@
 #pragma once
 
 #include <algorithm>
-#include <condition_variable>
 #include <functional>
 #include <memory>
 #include <set>
@@ -14,7 +13,6 @@
 #include "depthai/openvino/OpenVINO.hpp"
 #include "depthai/pipeline/AssetManager.hpp"
 #include "depthai/pipeline/MessageQueue.hpp"
-#include "depthai/utility/JoiningThread.hpp"
 #include "depthai/utility/RecordReplay.hpp"
 #include "depthai/utility/copyable_unique_ptr.hpp"
 
@@ -343,7 +341,6 @@ class Node : public std::enable_shared_from_this<Node> {
         bool waitForMessage{false};
         std::string group;
         Type type = Type::SReceiver;
-        std::vector<std::shared_ptr<InputQueue>> connectedQueues;
 
        public:
         std::vector<DatatypeHierarchy> possibleDatatypes;

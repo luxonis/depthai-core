@@ -1,8 +1,8 @@
 #include <depthai/pipeline/DeviceNode.hpp>
 #include <memory>
 
-#include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/InputQueue.hpp"
+#include "depthai/pipeline/Pipeline.hpp"
 #include "spdlog/fmt/fmt.h"
 #include "utility/ErrorMacros.hpp"
 
@@ -171,11 +171,17 @@ std::shared_ptr<InputQueue> Node::Input::createInputQueue(unsigned int maxSize, 
     if(pipelinePtr.isBuilt()) {
         throw std::runtime_error("Cannot create input queue after pipeline is built");
     }
+
+    // Construct a new InputQueue interface
+    // Cannot use make_shared as the InputQueue's constructor is private - only send method is exposed
     auto inputQueuePtr = std::shared_ptr<InputQueue>(new InputQueue(maxSize, blocking));
-    pipelinePtr.add(inputQueuePtr);
-    inputQueuePtr->output.link(*this);
-    connectedQueues.push_back(std::move(inputQueuePtr));
-    return connectedQueues.back();
+
+    // Add the underlying input queue node to the pipeline
+    pipelinePtr.add(inputQueuePtr->getNode());
+
+    // Connect input queue node's output to this input
+    inputQueuePtr->getNodeOutput().link(*this);
+    return inputQueuePtr;
 }
 
 Node::ConnectionInternal::ConnectionInternal(Output& out, Input& in)
