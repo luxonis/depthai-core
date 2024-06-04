@@ -1352,7 +1352,6 @@ void DeviceBase::setCalibration(CalibrationHandler calibrationDataHandler) {
     bool success;
     std::string errorMsg;
     std::tie(success, errorMsg) = pimpl->rpcClient->call("setCalibration", calibrationDataHandler.getEepromData()).as<std::tuple<bool, std::string>>();
-    ;
     if(!success) {
         throw std::runtime_error(errorMsg);
     }
