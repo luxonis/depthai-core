@@ -417,6 +417,19 @@ void DeviceBootloader::init(bool embeddedMvcmd, const dai::Path& pathToMvcmd, tl
             // Retrieve bootloader version
             version = requestVersion();
             flashedVersion = version;
+
+            auto recommendedMinVersion = DeviceBootloader::Version(0, 0, 28);
+            if(version < recommendedMinVersion) {
+                logger::warn(
+                    "[{}] [{}] Flashed bootloader version {}, less than {} is susceptible to bootup/restart failure. Upgrading is advised, flashing "
+                    "main/factory (not user) bootloader. Available: {}",
+                    deviceInfo.mxid,
+                    deviceInfo.name,
+                    version.toString(),
+                    recommendedMinVersion.toString(),
+                    getEmbeddedBootloaderVersion().toString());
+            }
+
             if(version >= Version(0, 0, 12)) {
                 // If version is adequate, do an in memory boot.
 
