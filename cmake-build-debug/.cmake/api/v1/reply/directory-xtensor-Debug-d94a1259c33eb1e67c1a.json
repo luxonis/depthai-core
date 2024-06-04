@@ -1,0 +1,187 @@
+{
+	"backtraceGraph" : 
+	{
+		"commands" : 
+		[
+			"install"
+		],
+		"files" : 
+		[
+			"3rdparty/xtensor/CMakeLists.txt"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 261,
+				"parent" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 280,
+				"parent" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 283,
+				"parent" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 290,
+				"parent" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 327,
+				"parent" : 0
+			}
+		]
+	},
+	"installers" : 
+	[
+		{
+			"backtrace" : 1,
+			"component" : "Unspecified",
+			"destination" : "include/xtensor",
+			"paths" : 
+			[
+				"3rdparty/xtensor/include/xtensor/xaccessible.hpp",
+				"3rdparty/xtensor/include/xtensor/xaccumulator.hpp",
+				"3rdparty/xtensor/include/xtensor/xadapt.hpp",
+				"3rdparty/xtensor/include/xtensor/xarray.hpp",
+				"3rdparty/xtensor/include/xtensor/xassign.hpp",
+				"3rdparty/xtensor/include/xtensor/xaxis_iterator.hpp",
+				"3rdparty/xtensor/include/xtensor/xaxis_slice_iterator.hpp",
+				"3rdparty/xtensor/include/xtensor/xblockwise_reducer.hpp",
+				"3rdparty/xtensor/include/xtensor/xblockwise_reducer_functors.hpp",
+				"3rdparty/xtensor/include/xtensor/xbroadcast.hpp",
+				"3rdparty/xtensor/include/xtensor/xbuffer_adaptor.hpp",
+				"3rdparty/xtensor/include/xtensor/xbuilder.hpp",
+				"3rdparty/xtensor/include/xtensor/xchunked_array.hpp",
+				"3rdparty/xtensor/include/xtensor/xchunked_assign.hpp",
+				"3rdparty/xtensor/include/xtensor/xchunked_view.hpp",
+				"3rdparty/xtensor/include/xtensor/xcomplex.hpp",
+				"3rdparty/xtensor/include/xtensor/xcontainer.hpp",
+				"3rdparty/xtensor/include/xtensor/xcsv.hpp",
+				"3rdparty/xtensor/include/xtensor/xdynamic_view.hpp",
+				"3rdparty/xtensor/include/xtensor/xeval.hpp",
+				"3rdparty/xtensor/include/xtensor/xexception.hpp",
+				"3rdparty/xtensor/include/xtensor/xexpression.hpp",
+				"3rdparty/xtensor/include/xtensor/xexpression_holder.hpp",
+				"3rdparty/xtensor/include/xtensor/xexpression_traits.hpp",
+				"3rdparty/xtensor/include/xtensor/xfixed.hpp",
+				"3rdparty/xtensor/include/xtensor/xfunction.hpp",
+				"3rdparty/xtensor/include/xtensor/xfunctor_view.hpp",
+				"3rdparty/xtensor/include/xtensor/xgenerator.hpp",
+				"3rdparty/xtensor/include/xtensor/xhistogram.hpp",
+				"3rdparty/xtensor/include/xtensor/xindex_view.hpp",
+				"3rdparty/xtensor/include/xtensor/xinfo.hpp",
+				"3rdparty/xtensor/include/xtensor/xio.hpp",
+				"3rdparty/xtensor/include/xtensor/xiterable.hpp",
+				"3rdparty/xtensor/include/xtensor/xiterator.hpp",
+				"3rdparty/xtensor/include/xtensor/xjson.hpp",
+				"3rdparty/xtensor/include/xtensor/xlayout.hpp",
+				"3rdparty/xtensor/include/xtensor/xmanipulation.hpp",
+				"3rdparty/xtensor/include/xtensor/xmasked_view.hpp",
+				"3rdparty/xtensor/include/xtensor/xmath.hpp",
+				"3rdparty/xtensor/include/xtensor/xmime.hpp",
+				"3rdparty/xtensor/include/xtensor/xmultiindex_iterator.hpp",
+				"3rdparty/xtensor/include/xtensor/xnoalias.hpp",
+				"3rdparty/xtensor/include/xtensor/xnorm.hpp",
+				"3rdparty/xtensor/include/xtensor/xnpy.hpp",
+				"3rdparty/xtensor/include/xtensor/xoffset_view.hpp",
+				"3rdparty/xtensor/include/xtensor/xoperation.hpp",
+				"3rdparty/xtensor/include/xtensor/xoptional.hpp",
+				"3rdparty/xtensor/include/xtensor/xoptional_assembly.hpp",
+				"3rdparty/xtensor/include/xtensor/xoptional_assembly_base.hpp",
+				"3rdparty/xtensor/include/xtensor/xoptional_assembly_storage.hpp",
+				"3rdparty/xtensor/include/xtensor/xpad.hpp",
+				"3rdparty/xtensor/include/xtensor/xrandom.hpp",
+				"3rdparty/xtensor/include/xtensor/xreducer.hpp",
+				"3rdparty/xtensor/include/xtensor/xrepeat.hpp",
+				"3rdparty/xtensor/include/xtensor/xscalar.hpp",
+				"3rdparty/xtensor/include/xtensor/xsemantic.hpp",
+				"3rdparty/xtensor/include/xtensor/xset_operation.hpp",
+				"3rdparty/xtensor/include/xtensor/xshape.hpp",
+				"3rdparty/xtensor/include/xtensor/xslice.hpp",
+				"3rdparty/xtensor/include/xtensor/xsort.hpp",
+				"3rdparty/xtensor/include/xtensor/xstorage.hpp",
+				"3rdparty/xtensor/include/xtensor/xstrided_view.hpp",
+				"3rdparty/xtensor/include/xtensor/xstrided_view_base.hpp",
+				"3rdparty/xtensor/include/xtensor/xstrides.hpp",
+				"3rdparty/xtensor/include/xtensor/xtensor.hpp",
+				"3rdparty/xtensor/include/xtensor/xtensor_config.hpp",
+				"3rdparty/xtensor/include/xtensor/xtensor_forward.hpp",
+				"3rdparty/xtensor/include/xtensor/xtensor_simd.hpp",
+				"3rdparty/xtensor/include/xtensor/xutils.hpp",
+				"3rdparty/xtensor/include/xtensor/xvectorize.hpp",
+				"3rdparty/xtensor/include/xtensor/xview.hpp",
+				"3rdparty/xtensor/include/xtensor/xview_utils.hpp"
+			],
+			"type" : "file"
+		},
+		{
+			"backtrace" : 2,
+			"component" : "Unspecified",
+			"destination" : "lib/cmake/xtensor",
+			"paths" : 
+			[
+				"cmake-build-debug/xtensor/xtensorConfig.cmake",
+				"cmake-build-debug/xtensor/xtensorConfigVersion.cmake"
+			],
+			"type" : "file"
+		},
+		{
+			"backtrace" : 3,
+			"component" : "Unspecified",
+			"destination" : "lib/cmake/xtensor",
+			"exportName" : "xtensor-targets",
+			"exportTargets" : 
+			[
+				{
+					"id" : "xtensor::@63ab6a4805e90f16152c",
+					"index" : 0
+				}
+			],
+			"paths" : 
+			[
+				"xtensor/CMakeFiles/Export/1b29c11efe53a30bee9d6a40fc6513c6/xtensorTargets.cmake"
+			],
+			"type" : "export"
+		},
+		{
+			"backtrace" : 4,
+			"component" : "Unspecified",
+			"destination" : "lib/pkgconfig",
+			"paths" : 
+			[
+				"cmake-build-debug/xtensor/xtensor.pc"
+			],
+			"type" : "file"
+		},
+		{
+			"backtrace" : 5,
+			"component" : "Unspecified",
+			"destination" : "include",
+			"paths" : 
+			[
+				"cmake-build-debug/xtensor.hpp"
+			],
+			"type" : "file"
+		}
+	],
+	"paths" : 
+	{
+		"build" : "xtensor",
+		"source" : "3rdparty/xtensor"
+	}
+}

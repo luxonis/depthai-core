@@ -1,0 +1,518 @@
+{
+	"archive" : {},
+	"artifacts" : 
+	[
+		{
+			"path" : "libdepthai-opencv.a"
+		}
+	],
+	"backtrace" : 1,
+	"backtraceGraph" : 
+	{
+		"commands" : 
+		[
+			"add_library",
+			"install",
+			"target_link_libraries",
+			"target_compile_options",
+			"add_flag",
+			"add_default_flags",
+			"target_compile_definitions"
+		],
+		"files" : 
+		[
+			"CMakeLists.txt",
+			"cmake/Flags.cmake"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 621,
+				"parent" : 0
+			},
+			{
+				"command" : 1,
+				"file" : 0,
+				"line" : 845,
+				"parent" : 0
+			},
+			{
+				"command" : 2,
+				"file" : 0,
+				"line" : 647,
+				"parent" : 0
+			},
+			{
+				"command" : 5,
+				"file" : 0,
+				"line" : 634,
+				"parent" : 0
+			},
+			{
+				"command" : 4,
+				"file" : 1,
+				"line" : 18,
+				"parent" : 4
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 9,
+				"parent" : 5
+			},
+			{
+				"command" : 4,
+				"file" : 1,
+				"line" : 19,
+				"parent" : 4
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 9,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 1,
+				"line" : 20,
+				"parent" : 4
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 9,
+				"parent" : 9
+			},
+			{
+				"command" : 4,
+				"file" : 1,
+				"line" : 21,
+				"parent" : 4
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 9,
+				"parent" : 11
+			},
+			{
+				"command" : 4,
+				"file" : 1,
+				"line" : 22,
+				"parent" : 4
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 9,
+				"parent" : 13
+			},
+			{
+				"command" : 4,
+				"file" : 1,
+				"line" : 23,
+				"parent" : 4
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 9,
+				"parent" : 15
+			},
+			{
+				"command" : 4,
+				"file" : 1,
+				"line" : 24,
+				"parent" : 4
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 9,
+				"parent" : 17
+			},
+			{
+				"command" : 4,
+				"file" : 1,
+				"line" : 25,
+				"parent" : 4
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 9,
+				"parent" : 19
+			},
+			{
+				"command" : 4,
+				"file" : 1,
+				"line" : 26,
+				"parent" : 4
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 9,
+				"parent" : 21
+			},
+			{
+				"command" : 4,
+				"file" : 1,
+				"line" : 27,
+				"parent" : 4
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 9,
+				"parent" : 23
+			},
+			{
+				"command" : 4,
+				"file" : 1,
+				"line" : 28,
+				"parent" : 4
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 9,
+				"parent" : 25
+			},
+			{
+				"command" : 4,
+				"file" : 1,
+				"line" : 39,
+				"parent" : 4
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 9,
+				"parent" : 27
+			},
+			{
+				"command" : 4,
+				"file" : 1,
+				"line" : 40,
+				"parent" : 4
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 9,
+				"parent" : 29
+			},
+			{
+				"command" : 4,
+				"file" : 1,
+				"line" : 41,
+				"parent" : 4
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 9,
+				"parent" : 31
+			},
+			{
+				"command" : 4,
+				"file" : 1,
+				"line" : 42,
+				"parent" : 4
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 9,
+				"parent" : 33
+			},
+			{
+				"command" : 4,
+				"file" : 1,
+				"line" : 43,
+				"parent" : 4
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 9,
+				"parent" : 35
+			},
+			{
+				"command" : 4,
+				"file" : 0,
+				"line" : 635,
+				"parent" : 0
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 9,
+				"parent" : 37
+			},
+			{
+				"command" : 6,
+				"file" : 0,
+				"line" : 645,
+				"parent" : 0
+			},
+			{
+				"command" : 6,
+				"file" : 0,
+				"line" : 644,
+				"parent" : 0
+			},
+			{
+				"command" : 2,
+				"file" : 0,
+				"line" : 638,
+				"parent" : 0
+			}
+		]
+	},
+	"compileGroups" : 
+	[
+		{
+			"compileCommandFragments" : 
+			[
+				{
+					"fragment" : "-g -fPIC -fdiagnostics-color=always"
+				},
+				{
+					"backtrace" : 6,
+					"fragment" : "-Wall"
+				},
+				{
+					"backtrace" : 8,
+					"fragment" : "-Wextra"
+				},
+				{
+					"backtrace" : 10,
+					"fragment" : "-Woverloaded-virtual"
+				},
+				{
+					"backtrace" : 12,
+					"fragment" : "-Wformat=2"
+				},
+				{
+					"backtrace" : 14,
+					"fragment" : "-Wmisleading-indentation"
+				},
+				{
+					"backtrace" : 16,
+					"fragment" : "-Wduplicated-cond"
+				},
+				{
+					"backtrace" : 18,
+					"fragment" : "-Wduplicated-branches"
+				},
+				{
+					"backtrace" : 20,
+					"fragment" : "-Wnull-dereference"
+				},
+				{
+					"backtrace" : 22,
+					"fragment" : "-Wdouble-promotion"
+				},
+				{
+					"backtrace" : 24,
+					"fragment" : "-Wsign-compare"
+				},
+				{
+					"backtrace" : 26,
+					"fragment" : "-Wtype-limits"
+				},
+				{
+					"backtrace" : 28,
+					"fragment" : "-Werror=return-type"
+				},
+				{
+					"backtrace" : 30,
+					"fragment" : "-Werror=non-virtual-dtor"
+				},
+				{
+					"backtrace" : 32,
+					"fragment" : "-Werror=sign-compare"
+				},
+				{
+					"backtrace" : 34,
+					"fragment" : "-Werror=reorder"
+				},
+				{
+					"backtrace" : 36,
+					"fragment" : "-Werror=switch-enum"
+				},
+				{
+					"backtrace" : 38,
+					"fragment" : "-Wno-switch-enum"
+				}
+			],
+			"defines" : 
+			[
+				{
+					"backtrace" : 39,
+					"define" : "DEPTHAI_HAVE_OPENCV_SUPPORT"
+				},
+				{
+					"backtrace" : 3,
+					"define" : "DEPTHAI_TARGET_CORE"
+				},
+				{
+					"backtrace" : 40,
+					"define" : "DEPTHAI_TARGET_OPENCV"
+				},
+				{
+					"backtrace" : 3,
+					"define" : "DEPTHAI_XTENSOR_SUPPORT"
+				},
+				{
+					"backtrace" : 3,
+					"define" : "JSON_USE_IMPLICIT_CONVERSIONS=1"
+				},
+				{
+					"backtrace" : 3,
+					"define" : "SPDLOG_COMPILED_LIB"
+				}
+			],
+			"includes" : 
+			[
+				{
+					"backtrace" : 3,
+					"path" : "/home/lan-sevcnikar/Documents/depthai/depthai-core/include"
+				},
+				{
+					"backtrace" : 3,
+					"path" : "/home/lan-sevcnikar/Documents/depthai/depthai-core/shared/depthai-bootloader-shared/include"
+				},
+				{
+					"backtrace" : 3,
+					"path" : "/home/lan-sevcnikar/Documents/depthai/depthai-core/3rdparty/xtensor/include"
+				},
+				{
+					"backtrace" : 3,
+					"path" : "/home/lan-sevcnikar/Documents/depthai/depthai-core/3rdparty/xtl/include"
+				},
+				{
+					"backtrace" : 41,
+					"isSystem" : true,
+					"path" : "/usr/include/opencv4"
+				},
+				{
+					"backtrace" : 3,
+					"isSystem" : true,
+					"path" : "/home/lan-sevcnikar/Documents/depthai/depthai-core/include/3rdparty"
+				},
+				{
+					"backtrace" : 3,
+					"isSystem" : true,
+					"path" : "/home/lan-sevcnikar/.hunter/_Base/1292e4d/2d438b4/d8eb9c7/Install/include"
+				}
+			],
+			"language" : "CXX",
+			"sourceIndexes" : 
+			[
+				0,
+				1,
+				2,
+				3,
+				4,
+				5
+			]
+		}
+	],
+	"dependencies" : 
+	[
+		{
+			"backtrace" : 3,
+			"id" : "depthai-core::@6890427a1f51a3e7e1df"
+		},
+		{
+			"backtrace" : 3,
+			"id" : "depthai-resources::@6890427a1f51a3e7e1df"
+		}
+	],
+	"id" : "depthai-opencv::@6890427a1f51a3e7e1df",
+	"install" : 
+	{
+		"destinations" : 
+		[
+			{
+				"backtrace" : 2,
+				"path" : "lib"
+			}
+		],
+		"prefix" : 
+		{
+			"path" : "/home/lan-sevcnikar/Documents/depthai/depthai-core/cmake-build-debug/install"
+		}
+	},
+	"name" : "depthai-opencv",
+	"nameOnDisk" : "libdepthai-opencv.a",
+	"paths" : 
+	{
+		"build" : ".",
+		"source" : "."
+	},
+	"sourceGroups" : 
+	[
+		{
+			"name" : "Source Files",
+			"sourceIndexes" : 
+			[
+				0,
+				1,
+				2,
+				3,
+				4,
+				5
+			]
+		}
+	],
+	"sources" : 
+	[
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "src/opencv/ImgFrame.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "src/pipeline/node/host/Display.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "src/pipeline/node/host/HostCamera.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "src/pipeline/node/host/Record.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "src/pipeline/node/host/Replay.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "src/opencv/RecordReplay.cpp",
+			"sourceGroupIndex" : 0
+		}
+	],
+	"type" : "STATIC_LIBRARY"
+}

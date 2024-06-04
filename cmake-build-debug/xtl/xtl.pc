@@ -1,0 +1,7 @@
+prefix=/home/lan-sevcnikar/Documents/depthai/depthai-core/cmake-build-debug/install
+includedir=${prefix}/include
+
+Name: xtl
+Description: Basic tools (containers, algorithms) used by other quantstack packages.
+Version: 0.7.4
+Cflags: -I${includedir}

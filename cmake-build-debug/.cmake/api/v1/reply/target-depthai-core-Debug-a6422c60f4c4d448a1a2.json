@@ -1,0 +1,1624 @@
+{
+	"archive" : {},
+	"artifacts" : 
+	[
+		{
+			"path" : "libdepthai-core.a"
+		}
+	],
+	"backtrace" : 1,
+	"backtraceGraph" : 
+	{
+		"commands" : 
+		[
+			"add_library",
+			"install",
+			"target_link_libraries",
+			"target_compile_definitions",
+			"target_include_directories",
+			"target_compile_options",
+			"add_flag",
+			"add_default_flags"
+		],
+		"files" : 
+		[
+			"CMakeLists.txt",
+			"cmake/Flags.cmake"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 195,
+				"parent" : 0
+			},
+			{
+				"command" : 1,
+				"file" : 0,
+				"line" : 845,
+				"parent" : 0
+			},
+			{
+				"command" : 2,
+				"file" : 0,
+				"line" : 462,
+				"parent" : 0
+			},
+			{
+				"command" : 2,
+				"file" : 0,
+				"line" : 568,
+				"parent" : 0
+			},
+			{
+				"command" : 2,
+				"file" : 0,
+				"line" : 507,
+				"parent" : 0
+			},
+			{
+				"command" : 3,
+				"file" : 0,
+				"line" : 528,
+				"parent" : 0
+			},
+			{
+				"command" : 3,
+				"file" : 0,
+				"line" : 567,
+				"parent" : 0
+			},
+			{
+				"command" : 3,
+				"file" : 0,
+				"line" : 556,
+				"parent" : 0
+			},
+			{
+				"command" : 3,
+				"file" : 0,
+				"line" : 553,
+				"parent" : 0
+			},
+			{
+				"command" : 3,
+				"file" : 0,
+				"line" : 559,
+				"parent" : 0
+			},
+			{
+				"command" : 3,
+				"file" : 0,
+				"line" : 562,
+				"parent" : 0
+			},
+			{
+				"command" : 3,
+				"file" : 0,
+				"line" : 541,
+				"parent" : 0
+			},
+			{
+				"command" : 3,
+				"file" : 0,
+				"line" : 542,
+				"parent" : 0
+			},
+			{
+				"command" : 3,
+				"file" : 0,
+				"line" : 465,
+				"parent" : 0
+			},
+			{
+				"command" : 3,
+				"file" : 0,
+				"line" : 303,
+				"parent" : 0
+			},
+			{
+				"command" : 3,
+				"file" : 0,
+				"line" : 547,
+				"parent" : 0
+			},
+			{
+				"command" : 4,
+				"file" : 0,
+				"line" : 474,
+				"parent" : 0
+			},
+			{
+				"command" : 2,
+				"file" : 0,
+				"line" : 548,
+				"parent" : 0
+			},
+			{
+				"command" : 4,
+				"file" : 0,
+				"line" : 493,
+				"parent" : 0
+			},
+			{
+				"command" : 7,
+				"file" : 0,
+				"line" : 310,
+				"parent" : 0
+			},
+			{
+				"command" : 6,
+				"file" : 1,
+				"line" : 18,
+				"parent" : 20
+			},
+			{
+				"command" : 5,
+				"file" : 1,
+				"line" : 9,
+				"parent" : 21
+			},
+			{
+				"command" : 6,
+				"file" : 1,
+				"line" : 19,
+				"parent" : 20
+			},
+			{
+				"command" : 5,
+				"file" : 1,
+				"line" : 9,
+				"parent" : 23
+			},
+			{
+				"command" : 6,
+				"file" : 1,
+				"line" : 20,
+				"parent" : 20
+			},
+			{
+				"command" : 5,
+				"file" : 1,
+				"line" : 9,
+				"parent" : 25
+			},
+			{
+				"command" : 6,
+				"file" : 1,
+				"line" : 21,
+				"parent" : 20
+			},
+			{
+				"command" : 5,
+				"file" : 1,
+				"line" : 9,
+				"parent" : 27
+			},
+			{
+				"command" : 6,
+				"file" : 1,
+				"line" : 22,
+				"parent" : 20
+			},
+			{
+				"command" : 5,
+				"file" : 1,
+				"line" : 9,
+				"parent" : 29
+			},
+			{
+				"command" : 6,
+				"file" : 1,
+				"line" : 23,
+				"parent" : 20
+			},
+			{
+				"command" : 5,
+				"file" : 1,
+				"line" : 9,
+				"parent" : 31
+			},
+			{
+				"command" : 6,
+				"file" : 1,
+				"line" : 24,
+				"parent" : 20
+			},
+			{
+				"command" : 5,
+				"file" : 1,
+				"line" : 9,
+				"parent" : 33
+			},
+			{
+				"command" : 6,
+				"file" : 1,
+				"line" : 25,
+				"parent" : 20
+			},
+			{
+				"command" : 5,
+				"file" : 1,
+				"line" : 9,
+				"parent" : 35
+			},
+			{
+				"command" : 6,
+				"file" : 1,
+				"line" : 26,
+				"parent" : 20
+			},
+			{
+				"command" : 5,
+				"file" : 1,
+				"line" : 9,
+				"parent" : 37
+			},
+			{
+				"command" : 6,
+				"file" : 1,
+				"line" : 27,
+				"parent" : 20
+			},
+			{
+				"command" : 5,
+				"file" : 1,
+				"line" : 9,
+				"parent" : 39
+			},
+			{
+				"command" : 6,
+				"file" : 1,
+				"line" : 28,
+				"parent" : 20
+			},
+			{
+				"command" : 5,
+				"file" : 1,
+				"line" : 9,
+				"parent" : 41
+			},
+			{
+				"command" : 6,
+				"file" : 1,
+				"line" : 39,
+				"parent" : 20
+			},
+			{
+				"command" : 5,
+				"file" : 1,
+				"line" : 9,
+				"parent" : 43
+			},
+			{
+				"command" : 6,
+				"file" : 1,
+				"line" : 40,
+				"parent" : 20
+			},
+			{
+				"command" : 5,
+				"file" : 1,
+				"line" : 9,
+				"parent" : 45
+			},
+			{
+				"command" : 6,
+				"file" : 1,
+				"line" : 41,
+				"parent" : 20
+			},
+			{
+				"command" : 5,
+				"file" : 1,
+				"line" : 9,
+				"parent" : 47
+			},
+			{
+				"command" : 6,
+				"file" : 1,
+				"line" : 42,
+				"parent" : 20
+			},
+			{
+				"command" : 5,
+				"file" : 1,
+				"line" : 9,
+				"parent" : 49
+			},
+			{
+				"command" : 6,
+				"file" : 1,
+				"line" : 43,
+				"parent" : 20
+			},
+			{
+				"command" : 5,
+				"file" : 1,
+				"line" : 9,
+				"parent" : 51
+			}
+		]
+	},
+	"compileGroups" : 
+	[
+		{
+			"compileCommandFragments" : 
+			[
+				{
+					"fragment" : "-g -fPIC -fdiagnostics-color=always"
+				}
+			],
+			"defines" : 
+			[
+				{
+					"backtrace" : 4,
+					"define" : "BACKWARD_HAS_BACKTRACE=0"
+				},
+				{
+					"backtrace" : 4,
+					"define" : "BACKWARD_HAS_BACKTRACE_SYMBOL=0"
+				},
+				{
+					"backtrace" : 4,
+					"define" : "BACKWARD_HAS_BFD=0"
+				},
+				{
+					"backtrace" : 4,
+					"define" : "BACKWARD_HAS_DW=0"
+				},
+				{
+					"backtrace" : 4,
+					"define" : "BACKWARD_HAS_DWARF=0"
+				},
+				{
+					"backtrace" : 4,
+					"define" : "BACKWARD_HAS_LIBUNWIND=0"
+				},
+				{
+					"backtrace" : 4,
+					"define" : "BACKWARD_HAS_UNWIND=1"
+				},
+				{
+					"backtrace" : 5,
+					"define" : "CPPHTTPLIB_ZLIB_SUPPORT"
+				},
+				{
+					"backtrace" : 6,
+					"define" : "DEPTHAI_BOOTLOADER_VERSION=\"0.0.26\""
+				},
+				{
+					"backtrace" : 6,
+					"define" : "DEPTHAI_DEVICE_RVC3_VERSION=\"0.0.1+fde4977d3dc1c66aa33fc0e81e6251022d4147b7\""
+				},
+				{
+					"backtrace" : 6,
+					"define" : "DEPTHAI_DEVICE_RVC4_VERSION=\"0.0.1+09dfd074a6ea89e858b6d18d432add20783bb2d8\""
+				},
+				{
+					"backtrace" : 6,
+					"define" : "DEPTHAI_DEVICE_VERSION=\"5210eb74d850b630cb47f23e36f2a37c00a7feb2\""
+				},
+				{
+					"backtrace" : 7,
+					"define" : "DEPTHAI_ENABLE_BACKWARD"
+				},
+				{
+					"backtrace" : 8,
+					"define" : "DEPTHAI_ENABLE_DEVICE_BOOTLOADER_FW"
+				},
+				{
+					"backtrace" : 9,
+					"define" : "DEPTHAI_ENABLE_DEVICE_FW"
+				},
+				{
+					"backtrace" : 10,
+					"define" : "DEPTHAI_ENABLE_DEVICE_RVC3_FW"
+				},
+				{
+					"backtrace" : 11,
+					"define" : "DEPTHAI_ENABLE_DEVICE_RVC4_FW"
+				},
+				{
+					"backtrace" : 12,
+					"define" : "DEPTHAI_ENABLE_LIBUSB"
+				},
+				{
+					"backtrace" : 13,
+					"define" : "DEPTHAI_HAVE_LIBUSB_SUPPORT"
+				},
+				{
+					"backtrace" : 14,
+					"define" : "DEPTHAI_RESOURCE_COMPILED_BINARIES"
+				},
+				{
+					"backtrace" : 15,
+					"define" : "DEPTHAI_TARGET_CORE"
+				},
+				{
+					"backtrace" : 16,
+					"define" : "DEPTHAI_XTENSOR_SUPPORT"
+				},
+				{
+					"backtrace" : 5,
+					"define" : "JSON_USE_IMPLICIT_CONVERSIONS=1"
+				},
+				{
+					"backtrace" : 5,
+					"define" : "LIBARCHIVE_STATIC"
+				},
+				{
+					"backtrace" : 5,
+					"define" : "MP4V2_USE_STATIC_LIB"
+				},
+				{
+					"backtrace" : 5,
+					"define" : "SPDLOG_COMPILED_LIB"
+				}
+			],
+			"includes" : 
+			[
+				{
+					"backtrace" : 17,
+					"path" : "/home/lan-sevcnikar/Documents/depthai/depthai-core/include"
+				},
+				{
+					"backtrace" : 17,
+					"path" : "/home/lan-sevcnikar/Documents/depthai/depthai-core/shared/depthai-bootloader-shared/include"
+				},
+				{
+					"backtrace" : 17,
+					"path" : "/home/lan-sevcnikar/Documents/depthai/depthai-core/include/depthai"
+				},
+				{
+					"backtrace" : 17,
+					"path" : "/home/lan-sevcnikar/Documents/depthai/depthai-core/src"
+				},
+				{
+					"backtrace" : 17,
+					"path" : "/home/lan-sevcnikar/Documents/depthai/depthai-core/shared/depthai-bootloader-shared/src"
+				},
+				{
+					"backtrace" : 18,
+					"path" : "/home/lan-sevcnikar/Documents/depthai/depthai-core/3rdparty/xtensor/include"
+				},
+				{
+					"backtrace" : 18,
+					"path" : "/home/lan-sevcnikar/Documents/depthai/depthai-core/3rdparty/xtl/include"
+				},
+				{
+					"backtrace" : 19,
+					"isSystem" : true,
+					"path" : "/home/lan-sevcnikar/Documents/depthai/depthai-core/include/3rdparty"
+				},
+				{
+					"backtrace" : 3,
+					"isSystem" : true,
+					"path" : "/home/lan-sevcnikar/Documents/depthai/depthai-core/cmake-build-debug/_cmrc/include"
+				},
+				{
+					"backtrace" : 5,
+					"isSystem" : true,
+					"path" : "/home/lan-sevcnikar/.hunter/_Base/1292e4d/2d438b4/d8eb9c7/Install/include"
+				},
+				{
+					"backtrace" : 5,
+					"isSystem" : true,
+					"path" : "/home/lan-sevcnikar/.hunter/_Base/1292e4d/2d438b4/d8eb9c7/Install/include/mp4v2"
+				},
+				{
+					"backtrace" : 4,
+					"isSystem" : true,
+					"path" : "/home/lan-sevcnikar/.hunter/_Base/1292e4d/2d438b4/d8eb9c7/Install/lib/backward"
+				}
+			],
+			"language" : "C",
+			"sourceIndexes" : 
+			[
+				0,
+				94
+			]
+		},
+		{
+			"compileCommandFragments" : 
+			[
+				{
+					"fragment" : "-g -std=c++17 -fPIC -fdiagnostics-color=always"
+				},
+				{
+					"backtrace" : 22,
+					"fragment" : "-Wall"
+				},
+				{
+					"backtrace" : 24,
+					"fragment" : "-Wextra"
+				},
+				{
+					"backtrace" : 26,
+					"fragment" : "-Woverloaded-virtual"
+				},
+				{
+					"backtrace" : 28,
+					"fragment" : "-Wformat=2"
+				},
+				{
+					"backtrace" : 30,
+					"fragment" : "-Wmisleading-indentation"
+				},
+				{
+					"backtrace" : 32,
+					"fragment" : "-Wduplicated-cond"
+				},
+				{
+					"backtrace" : 34,
+					"fragment" : "-Wduplicated-branches"
+				},
+				{
+					"backtrace" : 36,
+					"fragment" : "-Wnull-dereference"
+				},
+				{
+					"backtrace" : 38,
+					"fragment" : "-Wdouble-promotion"
+				},
+				{
+					"backtrace" : 40,
+					"fragment" : "-Wsign-compare"
+				},
+				{
+					"backtrace" : 42,
+					"fragment" : "-Wtype-limits"
+				},
+				{
+					"backtrace" : 44,
+					"fragment" : "-Werror=return-type"
+				},
+				{
+					"backtrace" : 46,
+					"fragment" : "-Werror=non-virtual-dtor"
+				},
+				{
+					"backtrace" : 48,
+					"fragment" : "-Werror=sign-compare"
+				},
+				{
+					"backtrace" : 50,
+					"fragment" : "-Werror=reorder"
+				},
+				{
+					"backtrace" : 52,
+					"fragment" : "-Werror=switch-enum"
+				}
+			],
+			"defines" : 
+			[
+				{
+					"backtrace" : 4,
+					"define" : "BACKWARD_HAS_BACKTRACE=0"
+				},
+				{
+					"backtrace" : 4,
+					"define" : "BACKWARD_HAS_BACKTRACE_SYMBOL=0"
+				},
+				{
+					"backtrace" : 4,
+					"define" : "BACKWARD_HAS_BFD=0"
+				},
+				{
+					"backtrace" : 4,
+					"define" : "BACKWARD_HAS_DW=0"
+				},
+				{
+					"backtrace" : 4,
+					"define" : "BACKWARD_HAS_DWARF=0"
+				},
+				{
+					"backtrace" : 4,
+					"define" : "BACKWARD_HAS_LIBUNWIND=0"
+				},
+				{
+					"backtrace" : 4,
+					"define" : "BACKWARD_HAS_UNWIND=1"
+				},
+				{
+					"backtrace" : 5,
+					"define" : "CPPHTTPLIB_ZLIB_SUPPORT"
+				},
+				{
+					"backtrace" : 6,
+					"define" : "DEPTHAI_BOOTLOADER_VERSION=\"0.0.26\""
+				},
+				{
+					"backtrace" : 6,
+					"define" : "DEPTHAI_DEVICE_RVC3_VERSION=\"0.0.1+fde4977d3dc1c66aa33fc0e81e6251022d4147b7\""
+				},
+				{
+					"backtrace" : 6,
+					"define" : "DEPTHAI_DEVICE_RVC4_VERSION=\"0.0.1+09dfd074a6ea89e858b6d18d432add20783bb2d8\""
+				},
+				{
+					"backtrace" : 6,
+					"define" : "DEPTHAI_DEVICE_VERSION=\"5210eb74d850b630cb47f23e36f2a37c00a7feb2\""
+				},
+				{
+					"backtrace" : 7,
+					"define" : "DEPTHAI_ENABLE_BACKWARD"
+				},
+				{
+					"backtrace" : 8,
+					"define" : "DEPTHAI_ENABLE_DEVICE_BOOTLOADER_FW"
+				},
+				{
+					"backtrace" : 9,
+					"define" : "DEPTHAI_ENABLE_DEVICE_FW"
+				},
+				{
+					"backtrace" : 10,
+					"define" : "DEPTHAI_ENABLE_DEVICE_RVC3_FW"
+				},
+				{
+					"backtrace" : 11,
+					"define" : "DEPTHAI_ENABLE_DEVICE_RVC4_FW"
+				},
+				{
+					"backtrace" : 12,
+					"define" : "DEPTHAI_ENABLE_LIBUSB"
+				},
+				{
+					"backtrace" : 13,
+					"define" : "DEPTHAI_HAVE_LIBUSB_SUPPORT"
+				},
+				{
+					"backtrace" : 14,
+					"define" : "DEPTHAI_RESOURCE_COMPILED_BINARIES"
+				},
+				{
+					"backtrace" : 15,
+					"define" : "DEPTHAI_TARGET_CORE"
+				},
+				{
+					"backtrace" : 16,
+					"define" : "DEPTHAI_XTENSOR_SUPPORT"
+				},
+				{
+					"backtrace" : 5,
+					"define" : "JSON_USE_IMPLICIT_CONVERSIONS=1"
+				},
+				{
+					"backtrace" : 5,
+					"define" : "LIBARCHIVE_STATIC"
+				},
+				{
+					"backtrace" : 5,
+					"define" : "MP4V2_USE_STATIC_LIB"
+				},
+				{
+					"backtrace" : 5,
+					"define" : "SPDLOG_COMPILED_LIB"
+				}
+			],
+			"includes" : 
+			[
+				{
+					"backtrace" : 17,
+					"path" : "/home/lan-sevcnikar/Documents/depthai/depthai-core/include"
+				},
+				{
+					"backtrace" : 17,
+					"path" : "/home/lan-sevcnikar/Documents/depthai/depthai-core/shared/depthai-bootloader-shared/include"
+				},
+				{
+					"backtrace" : 17,
+					"path" : "/home/lan-sevcnikar/Documents/depthai/depthai-core/include/depthai"
+				},
+				{
+					"backtrace" : 17,
+					"path" : "/home/lan-sevcnikar/Documents/depthai/depthai-core/src"
+				},
+				{
+					"backtrace" : 17,
+					"path" : "/home/lan-sevcnikar/Documents/depthai/depthai-core/shared/depthai-bootloader-shared/src"
+				},
+				{
+					"backtrace" : 18,
+					"path" : "/home/lan-sevcnikar/Documents/depthai/depthai-core/3rdparty/xtensor/include"
+				},
+				{
+					"backtrace" : 18,
+					"path" : "/home/lan-sevcnikar/Documents/depthai/depthai-core/3rdparty/xtl/include"
+				},
+				{
+					"backtrace" : 19,
+					"isSystem" : true,
+					"path" : "/home/lan-sevcnikar/Documents/depthai/depthai-core/include/3rdparty"
+				},
+				{
+					"backtrace" : 3,
+					"isSystem" : true,
+					"path" : "/home/lan-sevcnikar/Documents/depthai/depthai-core/cmake-build-debug/_cmrc/include"
+				},
+				{
+					"backtrace" : 5,
+					"isSystem" : true,
+					"path" : "/home/lan-sevcnikar/.hunter/_Base/1292e4d/2d438b4/d8eb9c7/Install/include"
+				},
+				{
+					"backtrace" : 5,
+					"isSystem" : true,
+					"path" : "/home/lan-sevcnikar/.hunter/_Base/1292e4d/2d438b4/d8eb9c7/Install/include/mp4v2"
+				},
+				{
+					"backtrace" : 4,
+					"isSystem" : true,
+					"path" : "/home/lan-sevcnikar/.hunter/_Base/1292e4d/2d438b4/d8eb9c7/Install/lib/backward"
+				}
+			],
+			"language" : "CXX",
+			"languageStandard" : 
+			{
+				"backtraces" : 
+				[
+					3,
+					5,
+					5
+				],
+				"standard" : "17"
+			},
+			"sourceIndexes" : 
+			[
+				1,
+				2,
+				3,
+				4,
+				5,
+				6,
+				7,
+				8,
+				9,
+				10,
+				11,
+				12,
+				13,
+				14,
+				15,
+				16,
+				17,
+				18,
+				19,
+				20,
+				21,
+				22,
+				23,
+				24,
+				25,
+				26,
+				27,
+				28,
+				29,
+				30,
+				31,
+				32,
+				33,
+				34,
+				35,
+				36,
+				37,
+				38,
+				39,
+				40,
+				41,
+				42,
+				43,
+				44,
+				45,
+				46,
+				47,
+				48,
+				49,
+				50,
+				51,
+				52,
+				53,
+				54,
+				55,
+				56,
+				57,
+				58,
+				59,
+				60,
+				61,
+				62,
+				63,
+				64,
+				65,
+				66,
+				67,
+				68,
+				69,
+				70,
+				71,
+				72,
+				73,
+				74,
+				75,
+				76,
+				77,
+				78,
+				79,
+				80,
+				81,
+				82,
+				83,
+				84,
+				85,
+				86,
+				87,
+				88,
+				89,
+				90,
+				91,
+				92,
+				93,
+				95,
+				96,
+				97,
+				98,
+				99,
+				100
+			]
+		}
+	],
+	"dependencies" : 
+	[
+		{
+			"backtrace" : 3,
+			"id" : "depthai-resources::@6890427a1f51a3e7e1df"
+		}
+	],
+	"id" : "depthai-core::@6890427a1f51a3e7e1df",
+	"install" : 
+	{
+		"destinations" : 
+		[
+			{
+				"backtrace" : 2,
+				"path" : "lib"
+			}
+		],
+		"prefix" : 
+		{
+			"path" : "/home/lan-sevcnikar/Documents/depthai/depthai-core/cmake-build-debug/install"
+		}
+	},
+	"name" : "depthai-core",
+	"nameOnDisk" : "libdepthai-core.a",
+	"paths" : 
+	{
+		"build" : ".",
+		"source" : "."
+	},
+	"sourceGroups" : 
+	[
+		{
+			"name" : "Source Files",
+			"sourceIndexes" : 
+			[
+				0,
+				1,
+				2,
+				3,
+				4,
+				5,
+				6,
+				7,
+				8,
+				9,
+				10,
+				11,
+				12,
+				13,
+				14,
+				15,
+				16,
+				17,
+				18,
+				19,
+				20,
+				21,
+				22,
+				23,
+				24,
+				25,
+				26,
+				27,
+				28,
+				29,
+				30,
+				31,
+				32,
+				33,
+				34,
+				35,
+				36,
+				37,
+				38,
+				39,
+				40,
+				41,
+				42,
+				43,
+				44,
+				45,
+				46,
+				47,
+				48,
+				49,
+				50,
+				51,
+				52,
+				53,
+				54,
+				55,
+				56,
+				57,
+				58,
+				59,
+				60,
+				61,
+				62,
+				63,
+				64,
+				65,
+				66,
+				67,
+				68,
+				69,
+				70,
+				71,
+				72,
+				73,
+				74,
+				75,
+				76,
+				77,
+				78,
+				79,
+				80,
+				81,
+				82,
+				83,
+				84,
+				85,
+				86,
+				87,
+				88,
+				89,
+				90,
+				91,
+				92,
+				93,
+				94,
+				95,
+				96,
+				97,
+				98,
+				99,
+				100
+			]
+		}
+	],
+	"sources" : 
+	[
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "shared/depthai-bootloader-shared/src/SBR.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "shared/depthai-bootloader-shared/src/Bootloader.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/device/Device.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/device/DeviceBase.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/device/DeviceBootloader.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/device/DataQueue.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/device/CalibrationHandler.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/device/Version.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/Pipeline.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/AssetManager.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/MessageQueue.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/Node.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/ThreadedNode.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/DeviceNode.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/node/XLinkIn.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/node/XLinkOut.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/node/ColorCamera.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/node/Camera.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/node/ToF.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/node/MessageDemux.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/node/MonoCamera.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/node/StereoDepth.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/node/Sync.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/node/NeuralNetwork.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/node/ImageManip.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/node/Warp.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/node/VideoEncoder.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/node/DetectionNetwork.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/node/Script.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/node/Pool.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/node/Benchmark.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/node/SpatialDetectionNetwork.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/node/SystemLogger.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/node/SpatialLocationCalculator.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/node/AprilTag.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/node/ObjectTracker.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/node/IMU.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/node/EdgeDetector.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/node/SPIIn.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/node/FeatureTracker.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/node/DetectionParser.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/node/test/MyProducer.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/node/test/MyConsumer.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/node/UVC.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/node/host/XLinkInHost.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/node/host/XLinkOutHost.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/node/host/HostNode.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/datatype/DatatypeEnum.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/node/PointCloud.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/datatype/Buffer.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/datatype/ImgFrame.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/datatype/ImgTransformations.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/datatype/EncodedFrame.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/datatype/ImageManipConfig.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/datatype/CameraControl.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/datatype/NNData.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/datatype/ImgDetections.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/datatype/SpatialImgDetections.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/datatype/SystemInformation.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/datatype/SystemInformationS3.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/datatype/StreamMessageParser.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/datatype/SpatialLocationCalculatorData.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/datatype/SpatialLocationCalculatorConfig.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/datatype/AprilTags.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/datatype/AprilTagConfig.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/datatype/Tracklets.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/datatype/IMUData.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/datatype/StereoDepthConfig.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/datatype/EdgeDetectorConfig.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/datatype/TrackedFeatures.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/datatype/FeatureTrackerConfig.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/datatype/ToFConfig.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/datatype/BenchmarkReport.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/datatype/PointCloudConfig.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/datatype/PointCloudData.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/pipeline/datatype/MessageGroup.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/utility/H26xParsers.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/utility/Initialization.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/utility/Resources.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/utility/Path.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/utility/Platform.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/utility/RecordReplay.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/utility/McapImpl.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/utility/Environment.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/utility/Compression.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/utility/XLinkGlobalProfilingLogger.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/utility/Logging.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/utility/Checksum.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/utility/matrixOps.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/utility/EepromDataParser.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/xlink/XLinkConnection.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/xlink/XLinkStream.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/openvino/OpenVINO.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/openvino/BlobReader.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "src/bspatch/bspatch.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/device/DeviceGate.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/utility/ArchiveUtil.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/nn_archive/NNArchive.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/nn_archive/NNArchiveConfig.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/nn_archive/NNArchiveBlob.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/nn_archive/NNArchiveConfigHelper.cpp",
+			"sourceGroupIndex" : 0
+		}
+	],
+	"type" : "STATIC_LIBRARY"
+}

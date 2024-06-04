@@ -1,0 +1,8 @@
+prefix=/home/lan-sevcnikar/Documents/depthai/depthai-core/cmake-build-debug/install
+libdir=${prefix}/lib
+includedir=${prefix}/include
+
+Name: xtensor
+Description: xtensor is a C++ library meant for numerical analysis with multi-dimensional array expressions.
+Version: 0.24.3
+Cflags: -I${includedir}

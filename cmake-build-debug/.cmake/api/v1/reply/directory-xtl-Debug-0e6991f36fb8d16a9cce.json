@@ -1,0 +1,131 @@
+{
+	"backtraceGraph" : 
+	{
+		"commands" : 
+		[
+			"install"
+		],
+		"files" : 
+		[
+			"3rdparty/xtl/CMakeLists.txt"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 107,
+				"parent" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 145,
+				"parent" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 148,
+				"parent" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 155,
+				"parent" : 0
+			}
+		]
+	},
+	"installers" : 
+	[
+		{
+			"backtrace" : 1,
+			"component" : "Unspecified",
+			"destination" : "include/xtl",
+			"paths" : 
+			[
+				"3rdparty/xtl/include/xtl/xany.hpp",
+				"3rdparty/xtl/include/xtl/xbasic_fixed_string.hpp",
+				"3rdparty/xtl/include/xtl/xbase64.hpp",
+				"3rdparty/xtl/include/xtl/xclosure.hpp",
+				"3rdparty/xtl/include/xtl/xcomplex.hpp",
+				"3rdparty/xtl/include/xtl/xcomplex_sequence.hpp",
+				"3rdparty/xtl/include/xtl/xspan.hpp",
+				"3rdparty/xtl/include/xtl/xspan_impl.hpp",
+				"3rdparty/xtl/include/xtl/xdynamic_bitset.hpp",
+				"3rdparty/xtl/include/xtl/xfunctional.hpp",
+				"3rdparty/xtl/include/xtl/xhalf_float.hpp",
+				"3rdparty/xtl/include/xtl/xhalf_float_impl.hpp",
+				"3rdparty/xtl/include/xtl/xhash.hpp",
+				"3rdparty/xtl/include/xtl/xhierarchy_generator.hpp",
+				"3rdparty/xtl/include/xtl/xiterator_base.hpp",
+				"3rdparty/xtl/include/xtl/xjson.hpp",
+				"3rdparty/xtl/include/xtl/xmasked_value_meta.hpp",
+				"3rdparty/xtl/include/xtl/xmasked_value.hpp",
+				"3rdparty/xtl/include/xtl/xmeta_utils.hpp",
+				"3rdparty/xtl/include/xtl/xmultimethods.hpp",
+				"3rdparty/xtl/include/xtl/xoptional_meta.hpp",
+				"3rdparty/xtl/include/xtl/xoptional.hpp",
+				"3rdparty/xtl/include/xtl/xoptional_sequence.hpp",
+				"3rdparty/xtl/include/xtl/xplatform.hpp",
+				"3rdparty/xtl/include/xtl/xproxy_wrapper.hpp",
+				"3rdparty/xtl/include/xtl/xsequence.hpp",
+				"3rdparty/xtl/include/xtl/xsystem.hpp",
+				"3rdparty/xtl/include/xtl/xtl_config.hpp",
+				"3rdparty/xtl/include/xtl/xtype_traits.hpp",
+				"3rdparty/xtl/include/xtl/xvariant.hpp",
+				"3rdparty/xtl/include/xtl/xvariant_impl.hpp",
+				"3rdparty/xtl/include/xtl/xvisitor.hpp"
+			],
+			"type" : "file"
+		},
+		{
+			"backtrace" : 2,
+			"component" : "Unspecified",
+			"destination" : "share/cmake/xtl",
+			"paths" : 
+			[
+				"cmake-build-debug/xtl/xtlConfig.cmake",
+				"cmake-build-debug/xtl/xtlConfigVersion.cmake"
+			],
+			"type" : "file"
+		},
+		{
+			"backtrace" : 3,
+			"component" : "Unspecified",
+			"destination" : "share/cmake/xtl",
+			"exportName" : "xtl-targets",
+			"exportTargets" : 
+			[
+				{
+					"id" : "xtl::@fe890fa09c4350a4f52d",
+					"index" : 0
+				}
+			],
+			"paths" : 
+			[
+				"xtl/CMakeFiles/Export/2fc63ec57839ed115fc15a5438bb5aec/xtlTargets.cmake"
+			],
+			"type" : "export"
+		},
+		{
+			"backtrace" : 4,
+			"component" : "Unspecified",
+			"destination" : "share/pkgconfig",
+			"paths" : 
+			[
+				"cmake-build-debug/xtl/xtl.pc"
+			],
+			"type" : "file"
+		}
+	],
+	"paths" : 
+	{
+		"build" : "xtl",
+		"source" : "3rdparty/xtl"
+	}
+}
