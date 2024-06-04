@@ -19,7 +19,12 @@
 
 namespace dai {
 
-struct Translate {
+struct OpBase {
+    virtual ~OpBase() = default;
+    virtual std::string toStr() const = 0;
+};
+
+struct Translate : OpBase {
     float offsetX;
     float offsetY;
     bool normalized;
@@ -27,20 +32,28 @@ struct Translate {
     Translate() = default;
     Translate(float offsetX, float offsetY, bool normalized = false) : offsetX(offsetX), offsetY(offsetY), normalized(normalized) {}
 
+    std::string toStr() const override {
+        return "T:x=" + std::to_string(offsetX) + ",y=" + std::to_string(offsetY) + ",n=" + std::to_string(normalized);
+    }
+
     DEPTHAI_SERIALIZE(Translate, offsetX, offsetY, normalized);
 };
 
-struct Rotate {
+struct Rotate : OpBase {
     float angle;  // in radians
     bool center;  // if true, rotation is around center of image, otherwise around top-left corner
 
     Rotate() = default;
     explicit Rotate(float angle, bool center = true) : angle(angle), center(center) {}
 
+    std::string toStr() const override {
+        return "Rot:a=" + std::to_string(angle) + ",c=" + std::to_string(center);
+    }
+
     DEPTHAI_SERIALIZE(Rotate, angle, center);
 };
 
-struct Resize {
+struct Resize : OpBase {
     enum Mode { VALUE, FIT, FILL };
     float width;
     float height;
@@ -62,10 +75,14 @@ struct Resize {
         return r;
     }
 
+    std::string toStr() const override {
+        return "Res:w=" + std::to_string(width) + ",h=" + std::to_string(height) + ",n=" + std::to_string(normalized) + ",m=" + std::to_string(mode);
+    }
+
     DEPTHAI_SERIALIZE(Resize, width, height, normalized, mode);
 };
 
-struct Flip {
+struct Flip : OpBase {
     enum Direction { HORIZONTAL, VERTICAL };
     Direction direction = HORIZONTAL;
     bool center = false;  // if true, flip is around center of image, otherwise around top-left corner
@@ -73,60 +90,72 @@ struct Flip {
     Flip() = default;
     explicit Flip(Direction direction, bool center = true) : direction(direction), center(center) {}
 
+    std::string toStr() const override {
+        return "F:d=" + std::to_string(direction) + ",c=" + std::to_string(center);
+    }
+
     DEPTHAI_SERIALIZE(Flip, direction, center);
 };
 
-struct Affine {
+struct Affine : OpBase {
     std::array<float, 4> matrix{1, 0, 0, 1};
 
     Affine() = default;
     explicit Affine(std::array<float, 4> matrix) : matrix(matrix) {}
 
+    std::string toStr() const override {
+        return "A:m=" + std::to_string(matrix[0]) + "," + std::to_string(matrix[1]) + "," + std::to_string(matrix[2]) + "," + std::to_string(matrix[3]);
+    }
+
     DEPTHAI_SERIALIZE(Affine, matrix);
 };
 
-struct Perspective {
+struct Perspective : OpBase {
     std::array<float, 9> matrix{1, 0, 0, 0, 1, 0, 0, 0, 1};
 
     Perspective() = default;
     explicit Perspective(std::array<float, 9> matrix) : matrix(matrix) {}
 
+    std::string toStr() const override {
+        return "P:m=" + std::to_string(matrix[0]) + "," + std::to_string(matrix[1]) + "," + std::to_string(matrix[2]) + "," + std::to_string(matrix[3]) + "," + std::to_string(matrix[4]) + "," + std::to_string(matrix[5]) + "," + std::to_string(matrix[6]) + "," + std::to_string(matrix[7]) + "," + std::to_string(matrix[8]);
+    }
+
     DEPTHAI_SERIALIZE(Perspective, matrix);
 };
 
-struct FourPoints {
+struct FourPoints : OpBase {
     std::array<dai::Point2f, 4> src{dai::Point2f(0.0, 0.0), dai::Point2f(1.0, 0.0), dai::Point2f(1.0, 1.0), dai::Point2f(0.0, 1.0)};
     std::array<dai::Point2f, 4> dst{dai::Point2f(0.0, 0.0), dai::Point2f(1.0, 0.0), dai::Point2f(1.0, 1.0), dai::Point2f(0.0, 1.0)};
-    bool normalized;
+    bool normalized = false;
 
     FourPoints() = default;
     FourPoints(std::array<dai::Point2f, 4> src, std::array<dai::Point2f, 4> dst, bool normalized = false)
-        : src(src), dst(dst), normalizedCoords(normalized) {}
+        : src(src), dst(dst), normalized(normalized) {}
+
+    std::string toStr() const override {
+        return "4P:s1=" + std::to_string(src[0].x) + "," + std::to_string(src[0].y) + ",s2=" + std::to_string(src[1].x) + "," + std::to_string(src[1].y) + ",s3=" + std::to_string(src[2].x) + "," + std::to_string(src[2].y) + ",s4=" + std::to_string(src[3].x) + "," + std::to_string(src[3].y) + "d1=" + std::to_string(dst[0].x) + "," + std::to_string(dst[0].y) + ",d2=" + std::to_string(dst[1].x) + "," + std::to_string(dst[1].y) + ",d3=" + std::to_string(dst[2].x) + "," + std::to_string(dst[2].y) + ",d4=" + std::to_string(dst[3].x) + "," + std::to_string(dst[3].y);
+    }
 
     DEPTHAI_SERIALIZE(FourPoints, src, dst, normalized);
 };
 
-struct Canvas {
-    enum class Background { COLOR, REPLICATE, MIRROR };
-    enum class ResizeMode { STRETCH, LETTERBOX, CENTER_CROP };
+struct Canvas : OpBase {
+    enum class Background : uint8_t { COLOR, REPLICATE, MIRROR };
+    enum class ResizeMode : uint8_t { STRETCH, LETTERBOX, CENTER_CROP };
 
-    float width;
-    float height;
+    uint32_t width;
+    uint32_t height;
     Background background;
     bool center;
-    bool resizeOutput = false;
-    ResizeMode resizeMode = ResizeMode::STRETCH;
     uint8_t red;
     uint8_t green;
     uint8_t blue;
 
-    Canvas() : width(-1), height(-1), background(Background::COLOR), center(true), resizeOutput(false), resizeMode(ResizeMode::STRETCH), red(0), green(0), blue(0) {}
-    Canvas(float width,
-           float height,
+    Canvas() : width(-1), height(-1), background(Background::COLOR), center(true), red(0), green(0), blue(0) {}
+    Canvas(uint32_t width,
+           uint32_t height,
            Background background,
            bool center = false,
-           bool resizeOutput = false,
-           ResizeMode resizeMode = ResizeMode::STRETCH,
            uint8_t red = 0,
            uint8_t green = 0,
            uint8_t blue = 0)
@@ -134,8 +163,6 @@ struct Canvas {
           height(height),
           background(background),
           center(center),
-          resizeOutput(resizeOutput),
-          resizeMode(resizeMode),
           red(red),
           green(green),
           blue(blue) {}
@@ -144,14 +171,22 @@ struct Canvas {
         return *this;
     }
 
-    DEPTHAI_SERIALIZE(Canvas, width, height, background, center, resizeOutput, resizeMode, red, green, blue);
+    std::string toStr() const override {
+        return "C:w=" + std::to_string(width) + ",h=" + std::to_string(height) + ",b=" + std::to_string((int)background) + ",c=" + std::to_string(center) + ",red=" + std::to_string(red) + ",green=" + std::to_string(green) + ",blue=" + std::to_string(blue);
+    }
+
+    DEPTHAI_SERIALIZE(Canvas, width, height, background, center, red, green, blue);
 };
 
-struct ApplyColormap {
+struct ApplyColormap : OpBase {
     Colormap colormap;
 
     ApplyColormap() = default;
     explicit ApplyColormap(Colormap colormap) : colormap(colormap) {}
+
+    std::string toStr() const override {
+        return "C:c=" + std::to_string((int)colormap);
+    }
 
     DEPTHAI_SERIALIZE(ApplyColormap, colormap);
 };
@@ -273,7 +308,7 @@ class ImageManipBase {
         return *this;
     }
 
-    ImageManipBase& setOutputResize(float width, float height, Canvas::ResizeMode resizeMode) {
+    ImageManipBase& setOutputResize(uint32_t width, uint32_t height, Canvas::ResizeMode resizeMode) {
         std::optional<Canvas> canvasOpt = std::nullopt;
         for(auto& op : operations) {
             if(std::holds_alternative<Canvas>(op.op)) {
@@ -284,12 +319,21 @@ class ImageManipBase {
         if(canvasOpt) {
             canvasOpt->width = width;
             canvasOpt->height = height;
-            canvasOpt->resizeOutput = true;
-            canvasOpt->resizeMode = resizeMode;
         } else {
-            canvasOpt = Canvas(width, height, Canvas::Background::COLOR, true, true, resizeMode);
+            canvasOpt = Canvas(width, height, Canvas::Background::COLOR, true);
         }
         operations.emplace_back(*canvasOpt);
+        switch(resizeMode) {
+            case Canvas::ResizeMode::STRETCH:
+                operations.emplace_back(Resize(width, height));
+                break;
+            case Canvas::ResizeMode::LETTERBOX:
+                operations.emplace_back(Resize::fit());
+                break;
+            case Canvas::ResizeMode::CENTER_CROP:
+                operations.emplace_back(Resize::fill());
+                break;
+        }
         return *this;
     }
 
@@ -347,7 +391,11 @@ class ImageManipBase {
         return *this;
     }
 
-    virtual ImageManipBase& clear() {
+    const std::vector<ManipOp>& getOperations() const {
+        return this->operations;
+    }
+
+    ImageManipBase& clear() {
         operations.clear();
         return *this;
     }
