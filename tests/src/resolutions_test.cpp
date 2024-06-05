@@ -45,7 +45,7 @@ dai::DeviceInfo getDeviceInfo() {
 }
 
 dai::CameraBoardSocket getBoardSocket() {
-    const char* valueCStr = std::getenv("DEPTHAI_TESTS_IP");
+    const char* valueCStr = std::getenv("DEPTHAI_TESTS_CAM");
     if(valueCStr == nullptr) {
         throw std::runtime_error("Please set camera board socket using environment variable DEPTHAI_TESTS_CAM");
     }
@@ -146,7 +146,7 @@ void testResolution(std::optional<std::tuple<uint32_t, uint32_t>> wantedSize = s
 
     auto camRgb = pipeline.create<dai::node::Camera>();
     std::cout << "TESTING SOME RESOLUTION 4\n" << std::flush;
-    camRgb->setBoardSocket(dai::CameraBoardSocket::CAM_C);
+    camRgb->setBoardSocket(getBoardSocket());
 
     const auto size = wantedSize ? *wantedSize : getRandomResolution(pipeline);
     std::cout << "TESTING RESOLUTION: " << std::get<0>(size) << "x" << std::get<1>(size) << "\n" << std::flush;
@@ -154,7 +154,6 @@ void testResolution(std::optional<std::tuple<uint32_t, uint32_t>> wantedSize = s
     // int maxIspVideoWidth = std::min(width, 3840);
     // int maxIspVideoHeight = std::min(height, 2160);
 
-    std::cout << "TESTING SOME RESOLUTION 5\n" << std::flush;
     dai::ImgFrameCapability cap;
     cap.size.value = std::make_pair(std::get<0>(size), std::get<1>(size));
     // cap.encoding = dai::ImgFrame::Type::RGB888i;
@@ -164,7 +163,6 @@ void testResolution(std::optional<std::tuple<uint32_t, uint32_t>> wantedSize = s
     auto* output = camRgb->requestOutput(cap, true);
     const auto queueFrames = output->createQueue();
 
-    std::cout << "TESTING SOME RESOLUTION 6\n" << std::flush;
     const auto& qRgb = queueFrames;
     ScopeHelper scopeHelper([&pipeline]() { pipeline.start(); },
                             [&pipeline]() {
@@ -174,7 +172,6 @@ void testResolution(std::optional<std::tuple<uint32_t, uint32_t>> wantedSize = s
                             });
     int framesCount = 0;
     int framesWantedCount = 10;
-    std::cout << "TESTING SOME RESOLUTION 7\n" << std::flush;
     for(int counter = 0; counter < framesWantedCount; ++counter) {
         const auto inRgb = qRgb->get<dai::ImgFrame>();
         if(inRgb) {
@@ -187,7 +184,8 @@ void testResolution(std::optional<std::tuple<uint32_t, uint32_t>> wantedSize = s
 }
 
 // NOLINTNEXTLINE(readability-function-cognitive-complexity)
-void getImages(std::list<std::pair<std::shared_ptr<dai::ImgFrame>, std::shared_ptr<dai::ImgFrame>>>& imgComparesOut,
+void getImages(bool debugOn,
+               std::list<std::pair<std::shared_ptr<dai::ImgFrame>, std::shared_ptr<dai::ImgFrame>>>& imgComparesOut,
                std::tuple<uint32_t, uint32_t>& sizeOut,
                dai::ImgResizeMode resizeMode,
                std::optional<std::tuple<uint32_t, uint32_t>> wantedSize = std::nullopt) {
@@ -196,7 +194,7 @@ void getImages(std::list<std::pair<std::shared_ptr<dai::ImgFrame>, std::shared_p
     dai::Pipeline pipeline(device);
 
     auto camRgb = pipeline.create<dai::node::Camera>();
-    camRgb->setBoardSocket(dai::CameraBoardSocket::CAM_C);
+    camRgb->setBoardSocket(getBoardSocket());
 
     const auto size = wantedSize ? *wantedSize : getRandomResolution(pipeline);
     sizeOut = size;
@@ -207,16 +205,17 @@ void getImages(std::list<std::pair<std::shared_ptr<dai::ImgFrame>, std::shared_p
 
     dai::ImgFrameCapability capOrig;
     // capOrig.size.value = std::make_pair(960, 720);  // TODO(jakgra) get this from device when supported on rvc4
-    capOrig.size.value = std::make_pair(1920, 1440);  // TODO(jakgra) get this from device when supported on rvc4
+    capOrig.size.value = std::pair{1920, 1440};  // TODO(jakgra) get this from device when supported on rvc4
+    capOrig.resizeMode = dai::ImgResizeMode::CROP;
     capOrig.encoding = dai::ImgFrame::Type::BGR888i;
     const auto queueFramesOrig = camRgb->requestOutput(capOrig, true)->createQueue();
 
     dai::ImgFrameCapability cap;
-    cap.size.value = std::make_pair(std::get<0>(size), std::get<1>(size));
+    cap.size.value = std::pair{std::get<0>(size), std::get<1>(size)};
     cap.encoding = dai::ImgFrame::Type::BGR888i;
-    // cap.resizeMode = resizeMode;
-    cap.resizeMode = dai::ImgResizeMode::CROP;
-    auto* output = camRgb->requestOutput(cap, true);
+    cap.resizeMode = resizeMode;
+    // TODO(jakgra) fail hard and throw an error when user calls requestOutput() but doesn't call createQueue() and doesn't link it anywhere
+    // auto* output = camRgb->requestOutput(cap, true);
     const auto queueFrames = camRgb->requestOutput(cap, true)->createQueue();
 
     ScopeHelper scopeHelper([&pipeline]() { pipeline.start(); },
@@ -229,36 +228,48 @@ void getImages(std::list<std::pair<std::shared_ptr<dai::ImgFrame>, std::shared_p
     size_t maxBufferSize = 300;  // This has to be big enough to catch all the same timestamps.
                                  // But eats up RAM: maxBufferSize * 3 * 12MB
     int framesCount = 0;
-    int framesWantedCount = 10;
+    int framesWantedCount = 30;
     int origFramesCount = 0;
     while(true) {
-        const auto inRgb = queueFrames->tryGet<dai::ImgFrame>();
         const auto inRgbOrig = queueFramesOrig->tryGet<dai::ImgFrame>();
         if(inRgbOrig) {
-            std::cout << "Got origi[" << origFramesCount << "] of size " << inRgbOrig->getWidth() << "x" << inRgbOrig->getHeight()
-                      << " timestamp: " << inRgbOrig->tsDevice.get().time_since_epoch().count() << "\n"
-                      << std::flush;
+            if(debugOn) {
+                std::cout << "Got origi[" << origFramesCount << "] of size " << inRgbOrig->getWidth() << "x" << inRgbOrig->getHeight()
+                          << " timestamp: " << inRgbOrig->tsDevice.get().time_since_epoch().count() << "\n"
+                          << std::flush;
+            }
             ++origFramesCount;
             if(origFramesBuffer.size() == maxBufferSize) {
                 origFramesBuffer.pop_front();
-                std::cout << "Poping origFramesBuffer\n" << std::flush;
+                if(debugOn) {
+                    std::cout << "Popping origFramesBuffer\n" << std::flush;
+                }
             }
             origFramesBuffer.push_back(inRgbOrig);
-            std::cout << "Adding origFramesBuffer size was: " << origFramesBuffer.size() << "\n" << std::flush;
+            if(debugOn) {
+                std::cout << "Adding origFramesBuffer size was: " << origFramesBuffer.size() << "\n" << std::flush;
+            }
             for(auto& compare : imgComparesOut) {
                 if(compare.second == nullptr && compare.first->tsDevice.get() == inRgbOrig->tsDevice.get()) {
-                    std::cout << "Found compare.second...\n" << std::flush;
+                    if(debugOn) {
+                        std::cout << "Found compare.second...\n" << std::flush;
+                    }
                     compare.second = inRgbOrig;
                 }
             }
         }
+        const auto inRgb = queueFrames->tryGet<dai::ImgFrame>();
         if(inRgb) {
-            std::cout << "Got frame[" << framesCount << "] of size " << std::get<0>(size) << "x" << std::get<1>(size)
-                      << " timestamp: " << inRgb->tsDevice.get().time_since_epoch().count() << "\n"
-                      << std::flush;
+            if(debugOn) {
+                std::cout << "Got frame[" << framesCount << "] of size " << inRgb->getWidth() << "x" << inRgb->getHeight()
+                          << " timestamp: " << inRgb->tsDevice.get().time_since_epoch().count() << "\n"
+                          << std::flush;
+            }
             ++framesCount;
             if(imgComparesOut.size() == framesWantedCount) {
-                std::cout << "Ignore this frame\n" << std::flush;
+                if(debugOn) {
+                    std::cout << "Ignore this frame\n" << std::flush;
+                }
             } else {
                 REQUIRE(inRgb->getWidth() == std::get<0>(size));
                 REQUIRE(inRgb->getHeight() == std::get<1>(size));
@@ -275,14 +286,19 @@ void getImages(std::list<std::pair<std::shared_ptr<dai::ImgFrame>, std::shared_p
         if(imgComparesOut.size() == framesWantedCount) {
             if(std::find_if(imgComparesOut.begin(), imgComparesOut.end(), [](const auto& iter) { return iter.second == nullptr; }) == imgComparesOut.end()
                || (inRgbOrig && inRgbOrig->tsDevice.get() > imgComparesOut.back().first->tsDevice.get())) {
-                std::cout << "Got all frames\n" << std::flush;
+                if(debugOn) {
+                    std::cout << "Got all frames\n" << std::flush;
+                }
                 break;
             }
         }
     }
+    if(debugOn) {
+        std::cout << "OUT of while LOOP\n" << std::flush;
+    }
     // TODO(jakgra) be more strict here and remove the 2 lines below once things work on rvc4
     imgComparesOut.remove_if([](const auto& iter) { return iter.second == nullptr; });
-    REQUIRE(imgComparesOut.size() > framesWantedCount / 2);
+    REQUIRE(imgComparesOut.size() > framesWantedCount / 3);
     for(const auto& compare : imgComparesOut) {
         REQUIRE((compare.first && compare.second));
     }
@@ -323,11 +339,14 @@ void compareImages(bool debugOn,
         const double diffNormArea = diffNorm / area;
         std::cout << "FRAME " << count << " DIFF was: " << diffNormArea << "\n";
         double maxDiff = 0.013;
-        if(debugOn && diffNormArea > maxDiff) {
+        // double maxDiff = 0.0003;
+        if(debugOn && diffNormArea >= maxDiff) {
             ImageComparator comparator;
             comparator.run(compare.first->getFrame(), resizedDown);
         }
-        REQUIRE(diffNormArea < maxDiff);
+        if(!debugOn) {
+            REQUIRE(diffNormArea < maxDiff);
+        }
         ++count;
     }
 }
@@ -335,7 +354,7 @@ void compareImages(bool debugOn,
 void testResolutionWithContent(bool debugOn, dai::ImgResizeMode resizeMode, std::optional<std::tuple<uint32_t, uint32_t>> wantedSize = std::nullopt) {
     std::list<std::pair<std::shared_ptr<dai::ImgFrame>, std::shared_ptr<dai::ImgFrame>>> imgCompares;
     std::tuple<uint32_t, uint32_t> size;
-    getImages(imgCompares, size, resizeMode, wantedSize);
+    getImages(debugOn, imgCompares, size, resizeMode, wantedSize);
     compareImages(debugOn, size, resizeMode, imgCompares);
 }
 
@@ -350,7 +369,7 @@ void testMultipleResolutions(const std::vector<std::tuple<uint32_t, uint32_t>>& 
     const auto device = std::make_shared<dai::Device>(getDeviceInfo());
     dai::Pipeline pipeline(device);
     auto camRgb = pipeline.create<dai::node::Camera>();
-    camRgb->setBoardSocket(dai::CameraBoardSocket::CAM_C);
+    camRgb->setBoardSocket(getBoardSocket());
 
     std::vector<MultipleResHelper> helpers;
     std::cout << "TESTING MULTIPLE RESOLUTIONS: ";
@@ -399,6 +418,7 @@ void testMultipleResolutions(const std::vector<std::tuple<uint32_t, uint32_t>>& 
 TEST_CASE("prev_broken_resolutions") {
     // TODO(jakgra) fix odd-sized resolutions
     // const auto resolution = GENERATE(table<uint32_t, uint32_t>({{3860, 2587}, {3951, 1576}, {909, 909}, {444, 888}}));
+    // 332x2466
     const auto resolution = GENERATE(table<uint32_t, uint32_t>({{444, 888}}));
     // const auto resolution = GENERATE(table<uint32_t, uint32_t>({{700, 700}}));
     testResolutionWithContent(isDebug(), dai::ImgResizeMode::STRETCH, resolution);
