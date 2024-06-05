@@ -108,7 +108,6 @@ int main() {
     auto stereo = pipeline.create<dai::node::StereoDepth>();
     auto imu = pipeline.create<dai::node::IMU>()->build();
     auto featureTracker = pipeline.create<dai::node::FeatureTracker>()->build();
-    auto slamSync = pipeline.create<dai::node::Sync>()->build();
     auto odom = pipeline.create<dai::node::RTABMapVIO>()->build();
     auto slam = pipeline.create<dai::node::RTABMapSLAM>()->build();
     auto rerun = pipeline.create<RerunStreamer>();
@@ -137,7 +136,7 @@ int main() {
     right->setCamera("right");
     right->setFps(fps);
 	stereo->setExtendedDisparity(false);
-
+    stereo->setSubpixel(true);
     stereo->setDefaultProfilePreset(dai::node::StereoDepth::PresetMode::HIGH_DENSITY);
     stereo->setLeftRightCheck(true);
     stereo->setRectifyEdgeFillColor(0); // black, to better see the cutout
@@ -154,10 +153,9 @@ int main() {
     featureTracker->outputFeatures.link(odom->inputFeatures);
 
     odom->transform.link(slam->inputOdomPose);
-    odom->passthroughRect.link(slamSync->inputs["img_rect"]);
-    odom->passthroughDepth.link(slamSync->inputs["depth"]);
+    odom->passthroughRect.link(slam->inputRect);
+    odom->passthroughDepth.link(slam->inputDepth);
     //odom->passthroughFeatures.link(slam->inputFeatures);
-    slamSync->out.link(slam->inputSync);
 
     slam->transform.link(rerun->inputTrans);
     slam->passthroughRect.link(rerun->inputImg);

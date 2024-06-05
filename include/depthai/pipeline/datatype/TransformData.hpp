@@ -5,10 +5,10 @@
 #endif
 namespace dai {
 struct Transform {
-    std::vector<std::vector<double>> data;
+    std::array<std::array<double, 4>, 4> matrix;
 };
 
-DEPTHAI_SERIALIZE_EXT(Transform, data);
+DEPTHAI_SERIALIZE_EXT(Transform, matrix);
 
 /**
  * TransformData message. Carries transform in x,y,z,qx,qy,qz,qw format.
@@ -20,7 +20,7 @@ class TransformData : public Buffer {
      */
     TransformData();
     TransformData(const Transform& transform);
-    TransformData(const std::vector<std::vector<double>>& data);
+    TransformData(const std::array<std::array<double, 4>, 4>& data);
     TransformData(double x, double y, double z, double qx, double qy, double qz, double qw);
     TransformData(double x, double y, double z, double roll, double pitch, double yaw);
 

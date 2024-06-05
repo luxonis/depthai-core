@@ -1,9 +1,12 @@
 #include "depthai/rtabmap/RTABMapSLAM.hpp"
 
+#include <pcl/filters/filter.h>
 #include <pcl/point_cloud.h>
 
 #include "depthai/pipeline/Pipeline.hpp"
 #include "rtabmap/core/util3d.h"
+#include "rtabmap/core/util3d_mapping.h"
+#include <spdlog/spdlog.h>
 
 namespace dai {
 namespace node {
@@ -13,7 +16,7 @@ std::shared_ptr<RTABMapSLAM> RTABMapSLAM::build() {
     sync->setRunOnHost(false);
     alphaScaling = -1.0;
     localTransform = rtabmap::Transform::getIdentity();
-    rtabmap::Transform opticalTransform(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0); 
+    rtabmap::Transform opticalTransform(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
     localTransform = localTransform * opticalTransform;
     inputRect.setBlocking(false);
     inputRect.setMaxSize(1);
@@ -25,13 +28,10 @@ std::shared_ptr<RTABMapSLAM> RTABMapSLAM::build() {
     inputOdomPose.setMaxSize(1);
     inputOdomPose.setBlocking(false);
     inputOdomPose.addCallback(std::bind(&RTABMapSLAM::odomPoseCB, this, std::placeholders::_1));
-
+    localMaps = std::make_shared<rtabmap::LocalGridCache>();
     return std::static_pointer_cast<RTABMapSLAM>(shared_from_this());
 }
 
-void RTABMapSLAM::stop() {
-    dai::Node::stop();
-}
 
 void RTABMapSLAM::setParams(const rtabmap::ParametersMap& params) {
     rtabmap.init(params, databasePath);
@@ -47,9 +47,9 @@ void RTABMapSLAM::saveDatabase() {
     rtabmap.init(rtabParams, databasePath);
 }
 
-void RTABMapSLAM::setReuseFeatures(bool reuse){
+void RTABMapSLAM::setReuseFeatures(bool reuse) {
     useFeatures = reuse;
-    if(useFeatures){
+    if(useFeatures) {
         inputFeatures.setBlocking(false);
         inputFeatures.setMaxSize(1);
         inputs[featuresInputName] = inputFeatures;
@@ -58,13 +58,13 @@ void RTABMapSLAM::setReuseFeatures(bool reuse){
 
 void RTABMapSLAM::syncCB(std::shared_ptr<dai::ADatatype> data) {
     auto group = std::dynamic_pointer_cast<dai::MessageGroup>(data);
-    if (group == nullptr) return;
+    if(group == nullptr) return;
     std::shared_ptr<dai::ImgFrame> imgFrame = nullptr;
     std::shared_ptr<dai::ImgFrame> depthFrame = nullptr;
     std::shared_ptr<dai::TrackedFeatures> features = nullptr;
     imgFrame = group->get<dai::ImgFrame>(rectInputName);
     depthFrame = group->get<dai::ImgFrame>(depthInputName);
-    if (useFeatures){
+    if(useFeatures) {
         features = group->get<dai::TrackedFeatures>(featuresInputName);
     }
     if(imgFrame != nullptr && depthFrame != nullptr) {
@@ -73,8 +73,8 @@ void RTABMapSLAM::syncCB(std::shared_ptr<dai::ADatatype> data) {
             getCalib(pipeline, imgFrame->getInstanceNum(), imgFrame->getWidth(), imgFrame->getHeight());
             lastProcessTime = std::chrono::steady_clock::now();
             startTime = std::chrono::steady_clock::now();
-            grid = new rtabmap::OccupancyGrid(&localMaps, rtabParams);
-
+            occupancyGrid = std::make_unique<rtabmap::OccupancyGrid>(localMaps.get(), rtabParams);
+            cloudMap = std::make_unique<rtabmap::CloudMap>(localMaps.get(), rtabParams);
             modelSet = true;
         } else {
             double stamp = std::chrono::duration<double>(imgFrame->getTimestampDevice(dai::CameraExposureOffset::MIDDLE).time_since_epoch()).count();
@@ -99,8 +99,10 @@ void RTABMapSLAM::odomPoseCB(std::shared_ptr<dai::ADatatype> data) {
     odomPose->getRTABMapTransform(p);
     currPose = p;
 
-    auto out = std::make_shared<dai::TransformData>(odomCorrection * currPose);
-    transform.send(out);
+    auto outTransform = std::make_shared<dai::TransformData>(odomCorr * currPose);
+    auto outCorrection = std::make_shared<dai::TransformData>(odomCorr);
+    transform.send(outTransform);
+    odomCorrection.send(outCorrection);
 }
 
 void RTABMapSLAM::run() {
@@ -118,11 +120,12 @@ void RTABMapSLAM::run() {
                     if(rtabmap.getLoopClosureId() > 0) {
                         fmt::print("Loop closure detected! last loop closure id = {}\n", rtabmap.getLoopClosureId());
                     }
-                    odomCorrection = stats.mapCorrection();
+                    odomCorr = stats.mapCorrection();
 
                     std::map<int, rtabmap::Signature> nodes;
                     std::map<int, rtabmap::Transform> optimizedPoses;
                     std::multimap<int, rtabmap::Link> links;
+
                     rtabmap.getGraph(optimizedPoses, links, true, true, &nodes, true, true, true, true);
                     for(std::map<int, rtabmap::Transform>::iterator iter = optimizedPoses.begin(); iter != optimizedPoses.end(); ++iter) {
                         rtabmap::Signature node = nodes.find(iter->first)->second;
@@ -133,66 +136,66 @@ void RTABMapSLAM::run() {
                         // uncompress grid data
                         cv::Mat ground, obstacles, empty;
                         node.sensorData().uncompressData(0, 0, 0, 0, &ground, &obstacles, &empty);
-                        localMaps.add(iter->first, ground, obstacles, empty, node.sensorData().gridCellSize(), node.sensorData().gridViewPoint());
+                        localMaps->add(iter->first, ground, obstacles, empty, node.sensorData().gridCellSize(), node.sensorData().gridViewPoint());
+
+
                     }
-                    if(grid->addedNodes().size() || localMaps.size() > 0) {
-                        grid->update(optimizedPoses);
+
+                    if(occupancyGrid->addedNodes().size() || localMaps->size() > 0) {
+                        occupancyGrid->update(optimizedPoses);
                     }
                     float xMin, yMin;
-                    cv::Mat map = grid->getMap(xMin, yMin);
+                    cv::Mat map = occupancyGrid->getMap(xMin, yMin);
                     if(!map.empty()) {
-                        cv::Mat map8U(map.rows, map.cols, CV_8U);
-                        // convert to gray scaled map
-                        for(int i = 0; i < map.rows; ++i) {
-                            for(int j = 0; j < map.cols; ++j) {
-                                char v = map.at<char>(i, j);
-                                unsigned char gray;
-                                if(v == 0) {
-                                    gray = 178;
-                                } else if(v == 100) {
-                                    gray = 0;
-                                } else  // -1
-                                {
-                                    gray = 89;
-                                }
-                                map8U.at<unsigned char>(i, j) = gray;
-                            }
-                        }
+                        cv::Mat map8U = rtabmap::util3d::convertMap2Image8U(map);
                         cv::flip(map8U, map8U, 0);
 
-                        auto gridMap = std::make_shared<dai::ImgFrame>();
-                        gridMap->setTimestamp(std::chrono::steady_clock::now());
-                        cv::Mat flat = map8U.reshape(1, map8U.total() * map8U.channels());
-                        std::vector<uchar> vec = map8U.isContinuous() ? flat : flat.clone();
-                        gridMap->setData(vec);
-                        gridMap->setType(dai::ImgFrame::Type::GRAY8);
-                        gridMap->setHeight(map8U.rows);
-                        gridMap->setWidth(map8U.cols);
-                        occupancyMap.send(gridMap);
+                        auto mapMsg = std::make_shared<dai::ImgFrame>();
+                        mapMsg->setTimestamp(std::chrono::steady_clock::now());
+                        mapMsg->setCvFrame(map8U, ImgFrame::Type::GRAY8);
+                        occupancyGridMap.send(mapMsg);
+                    }
+                    if(publishObstacleCloud) {
+                        if(cloudMap->addedNodes().size() || localMaps->size() > 0) {
+                            cloudMap->update(optimizedPoses);
+                        }
+                        auto obstaclesMap = cloudMap->getMapObstacles();
+                        auto pclData = std::make_shared<dai::PointCloudData>();
+                        pclData->points.resize(obstaclesMap->size());
+                        for(size_t i = 0; i < obstaclesMap->size(); i++) {
+                            pclData->points[i].x = obstaclesMap->at(i).x;
+                            pclData->points[i].y = obstaclesMap->at(i).y;
+                            pclData->points[i].z = obstaclesMap->at(i).z;
+                        }
+                        obstaclePCL.send(pclData);
+                    }
+                    if(publishGroundCloud) {
+                        if(cloudMap->addedNodes().size() || localMaps->size() > 0) {
+                            cloudMap->update(optimizedPoses);
+                        }
+                        auto groundMap = cloudMap->getMapGround();
+                        auto pclData = std::make_shared<dai::PointCloudData>();
+                        pclData->points.resize(groundMap->size());
+                        for(size_t i = 0; i < groundMap->size(); i++) {
+                            pclData->points[i].x = groundMap->at(i).x;
+                            pclData->points[i].y = groundMap->at(i).y;
+                            pclData->points[i].z = groundMap->at(i).z;
+                        }
+                        groundPCL.send(pclData);
                     }
                 }
-            }
-            if(publishPCL) {
-                // convert sensor data to pcl
-                pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = rtabmap::util3d::cloudFromSensorData(sensorData, 4, 0.0f);
-                // pcl to dai PointCloudData
-                auto pclData = std::make_shared<dai::PointCloudData>();
-
-                int size = cloud->points.size();
-                pclData->points.resize(size * 3);
-                for(int i = 0; i < size; i++) {
-                    pclData->points[i].x = cloud->points[i].x;
-                    pclData->points[i].y = cloud->points[i].y;
-                    pclData->points[i].z = cloud->points[i].z;
-                }
-                pointCloud.send(pclData);
             }
         }
         // save database periodically if set
         if(saveDatabasePeriodically && std::chrono::duration<double>(std::chrono::steady_clock::now() - startTime).count() > 30.0) {
             rtabmap.close();
             rtabmap.init(rtabParams, databasePath);
-            std::cout << "Database saved" << std::endl;
+            if(logger) {
+                logger->info("Database saved");
+            } else {
+                spdlog::info("Database saved");
+            }
+            
             startTime = std::chrono::steady_clock::now();
         }
     }

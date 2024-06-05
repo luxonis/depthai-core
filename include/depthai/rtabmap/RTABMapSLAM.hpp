@@ -16,6 +16,7 @@
 #include "rtabmap/core/SensorData.h"
 #include "rtabmap/core/Transform.h"
 #include "rtabmap/core/global_map/OccupancyGrid.h"
+#include "rtabmap/core/global_map/CloudMap.h"
 
 namespace dai {
 namespace node {
@@ -39,12 +40,13 @@ class RTABMapSLAM : public dai::NodeCRTP<dai::node::ThreadedHostNode, RTABMapSLA
     Input inputOdomPose{*this, {.name = "inputOdomPose", .types = {{dai::DatatypeEnum::TransformData, true}}}};
 
     Output transform{*this, {.name = "transform", .types = {{dai::DatatypeEnum::TransformData, true}}}};
+    Output odomCorrection{*this, {.name = "odomCorrection", .types = {{dai::DatatypeEnum::TransformData, true}}}};
     Output passthroughRect{*this, {.name = "passthroughRect", .types = {{dai::DatatypeEnum::ImgFrame, true}}}};
-    Output pointCloud{*this, {.name = "pointCloud", .types = {{dai::DatatypeEnum::PointCloudData, true}}}};
-    Output occupancyMap{*this, {.name = "map", .types = {{dai::DatatypeEnum::ImgFrame, true}}}};
+    Output obstaclePCL{*this, {.name = "obstaclePCL", .types = {{dai::DatatypeEnum::PointCloudData, true}}}};
+    Output groundPCL{*this, {.name = "groundPCL", .types = {{dai::DatatypeEnum::PointCloudData, true}}}};
+    Output occupancyGridMap{*this, {.name = "occupancyGridMap", .types = {{dai::DatatypeEnum::ImgFrame, true}}}};
 
     void run() override;
-    void stop() override;
     void setParams(const rtabmap::ParametersMap& params);
     void syncCB(std::shared_ptr<dai::ADatatype> data);
     void odomPoseCB(std::shared_ptr<dai::ADatatype> data);
@@ -55,8 +57,8 @@ class RTABMapSLAM : public dai::NodeCRTP<dai::node::ThreadedHostNode, RTABMapSLA
     void setSaveDatabasePeriodically(bool save) {
         saveDatabasePeriodically = save;
     }
-    void setPublishPCL(bool publish) {
-        publishPCL = publish;
+    void setPublishObstacleCloud(bool publish) {
+        publishObstacleCloud = publish;
     }
     void setPublishGrid(bool publish) {
         publishGrid = publish;
@@ -81,13 +83,14 @@ class RTABMapSLAM : public dai::NodeCRTP<dai::node::ThreadedHostNode, RTABMapSLA
     void getCalib(dai::Pipeline& pipeline, int instanceNum, int width, int height);
     rtabmap::StereoCameraModel model;
     rtabmap::Rtabmap rtabmap;
-    rtabmap::Transform currPose, odomCorrection;
+    rtabmap::Transform currPose, odomCorr;
     std::chrono::steady_clock::time_point lastProcessTime;
     std::chrono::steady_clock::time_point startTime;
     rtabmap::Transform imuLocalTransform;
     rtabmap::Transform localTransform;
-    rtabmap::LocalGridCache localMaps;
-    rtabmap::OccupancyGrid* grid;
+    std::shared_ptr<rtabmap::LocalGridCache> localMaps;
+    std::unique_ptr<rtabmap::OccupancyGrid> occupancyGrid;
+    std::unique_ptr<rtabmap::CloudMap> cloudMap;
     float alphaScaling = -1.0;
     bool useFeatures = false;
     bool modelSet = false;
@@ -96,7 +99,8 @@ class RTABMapSLAM : public dai::NodeCRTP<dai::node::ThreadedHostNode, RTABMapSLA
     std::string databasePath = "/tmp/rtabmap.tmp.db";
     float databaseSaveInterval = 5.0f;
     bool saveDatabasePeriodically = false;
-    bool publishPCL = false;
+    bool publishObstacleCloud = true;
+    bool publishGroundCloud = true;
     bool publishGrid = true;
     float freq = 1.0f;
 };

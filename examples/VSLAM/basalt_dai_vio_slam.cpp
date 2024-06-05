@@ -13,7 +13,9 @@
 #include "depthai/pipeline/node/MonoCamera.hpp"
 
 
+#include <rerun/demo_utils.hpp>
 
+using rerun::demo::grid3d;
 rerun::Collection<rerun::TensorDimension> tensor_shape(const cv::Mat& img) {
     return {img.rows, img.cols, img.channels()};
 };
@@ -31,7 +33,8 @@ class RerunStreamer : public dai::NodeCRTP<dai::node::ThreadedHostNode, RerunStr
      */
     Input inputTrans{*this, {.name="inTrans", .types={{dai::DatatypeEnum::TransformData, true}}}};
     Input inputImg{*this, {.name="inImg", .types={{dai::DatatypeEnum::ImgFrame, true}}}};
-    Input inputPCL{*this, {.name="inPCL", .types={{dai::DatatypeEnum::PointCloudData, true}}}};
+    Input inputObstaclePCL{*this, {.name="inObstaclePCL", .types={{dai::DatatypeEnum::PointCloudData, true}}}};
+    Input inputGroundPCL{*this, {.name="inGroundPCL", .types={{dai::DatatypeEnum::PointCloudData, true}}}};
     Input inputMap{*this, {.name="inMap", .types={{dai::DatatypeEnum::ImgFrame, true}}}};
 
     void run() override {
@@ -39,11 +42,11 @@ class RerunStreamer : public dai::NodeCRTP<dai::node::ThreadedHostNode, RerunStr
         rec.spawn().exit_on_failure();
         rec.log_timeless("world", rerun::ViewCoordinates::FLU);
         rec.log("world/ground", rerun::Boxes3D::from_half_sizes({{3.f, 3.f, 0.00001f}}));
-
         while(isRunning()) {
             std::shared_ptr<dai::TransformData> transData = inputTrans.get<dai::TransformData>();
             auto imgFrame = inputImg.get<dai::ImgFrame>();
-            auto pclData = inputPCL.tryGet<dai::PointCloudData>();
+            auto pclObstData = inputObstaclePCL.tryGet<dai::PointCloudData>();
+            auto pclGrndData = inputGroundPCL.tryGet<dai::PointCloudData>();
             auto mapData = inputMap.tryGet<dai::ImgFrame>();
             if(transData != nullptr) {
                 double x, y, z, qx, qy, qz, qw;
@@ -59,12 +62,19 @@ class RerunStreamer : public dai::NodeCRTP<dai::node::ThreadedHostNode, RerunStr
                 rec.log("world/camera/image", rerun::Pinhole::from_focal_length_and_resolution({398.554f, 398.554f}, {640.0f, 400.0f}).with_camera_xyz(rerun::components::ViewCoordinates::FLU));
                 rec.log("world/camera/image/rgb",
                         rerun::Image(tensor_shape(imgFrame->getCvFrame()), reinterpret_cast<const uint8_t*>(imgFrame->getCvFrame().data)));
-                if(pclData != nullptr) {
+                if(pclObstData != nullptr) {
                     std::vector<rerun::Position3D> points;
-                    for(auto& point : pclData->points) {
+                    for(auto& point : pclObstData->points) {
                         points.push_back(rerun::Position3D(point.x, point.y, point.z));
                     }
-                    rec.log("world/camera/pointcloud", rerun::Points3D(points));
+                    rec.log("world/obstacle_pcl", rerun::Points3D(points).with_radii({0.01f}));
+                }
+                if(pclGrndData != nullptr) {
+                    std::vector<rerun::Position3D> points;
+                    for(auto& point : pclGrndData->points) {
+                        points.push_back(rerun::Position3D(point.x, point.y, point.z));
+                    }
+                    rec.log("world/ground_pcl", rerun::Points3D(points).with_colors(rerun::Color{0,255,0}).with_radii({0.01f}));
                 }
                 if(mapData != nullptr) {
                     rec.log("map", rerun::Image(tensor_shape(mapData->getCvFrame()), reinterpret_cast<const uint8_t*>(mapData->getCvFrame().data)));
@@ -77,6 +87,8 @@ class RerunStreamer : public dai::NodeCRTP<dai::node::ThreadedHostNode, RerunStr
 
 int main() {
     using namespace std;
+    // ULogger::setType(ULogger::kTypeConsole);
+	// ULogger::setLevel(ULogger::kDebug);
     // Create pipeline
     dai::Pipeline pipeline;
     int fps = 60;
@@ -91,6 +103,7 @@ int main() {
     auto slam = pipeline.create<dai::node::RTABMapSLAM>()->build();
     auto params = rtabmap::ParametersMap();
     params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRGBDCreateOccupancyGrid(), "true"));
+    params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kGrid3D(), "true"));
     params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRtabmapSaveWMState(), "true"));
     slam->setParams(params);
     auto rerun = pipeline.create<RerunStreamer>();
@@ -100,7 +113,7 @@ int main() {
     imu->setBatchReportThreshold(1);
     imu->setMaxBatchReports(10);
     stereo->setExtendedDisparity(false);
-    stereo->setSubpixel(false);
+    stereo->setSubpixel(true);
     stereo->setDefaultProfilePreset(dai::node::StereoDepth::PresetMode::HIGH_DENSITY);
     stereo->setLeftRightCheck(true);
     stereo->setRectifyEdgeFillColor(0); // black, to better see the cutout
@@ -127,7 +140,9 @@ int main() {
     odom->transform.link(slam->inputOdomPose);
     slam->transform.link(rerun->inputTrans);
     slam->passthroughRect.link(rerun->inputImg);
-    slam->occupancyMap.link(rerun->inputMap);
+    slam->occupancyGridMap.link(rerun->inputMap);
+    slam->obstaclePCL.link(rerun->inputObstaclePCL);
+    slam->groundPCL.link(rerun->inputGroundPCL);
     pipeline.start();
     pipeline.wait();
 }

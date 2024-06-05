@@ -66,13 +66,13 @@ void BasaltVIO::stereoCB(std::shared_ptr<ADatatype> in) {
             leftImg = imgFrame;
         };
         auto t = imgFrame->getTimestamp();
-        int64_t t_ns = std::chrono::time_point_cast<std::chrono::nanoseconds>(t).time_since_epoch().count();
+        int64_t tNS = std::chrono::time_point_cast<std::chrono::nanoseconds>(t).time_since_epoch().count();
         auto exposure = imgFrame->getExposureTime();
 
-        int exposure_ms = std::chrono::duration_cast<std::chrono::milliseconds>(exposure).count();
+        int exposureMS = std::chrono::duration_cast<std::chrono::milliseconds>(exposure).count();
         data->img_data[i].img.reset(new basalt::ManagedImage<uint16_t>(imgFrame->getWidth(), imgFrame->getHeight()));
-        data->t_ns = t_ns;
-        data->img_data[i].exposure = exposure_ms;
+        data->t_ns = tNS;
+        data->img_data[i].exposure = exposureMS;
         size_t fullSize = imgFrame->getWidth() * imgFrame->getHeight();
         const uint8_t* dataIN = imgFrame->getData().data();
         uint16_t* data_out = data->img_data[i].img->ptr;
@@ -128,7 +128,7 @@ void BasaltVIO::initialize(std::vector<std::shared_ptr<ImgFrame>> frames) {
         R << imuExtr[0][0], imuExtr[0][1], imuExtr[0][2], imuExtr[1][0], imuExtr[1][1], imuExtr[1][2], imuExtr[2][0], imuExtr[2][1], imuExtr[2][2];
         Eigen::Quaterniond q(R);
 
-        Eigen::Vector3d trans(imuExtr[0][3] * 0.01, imuExtr[1][3] * 0.01, imuExtr[2][3] * 0.01);  // y -x z
+        Eigen::Vector3d trans(imuExtr[0][3] * 0.01, imuExtr[1][3] * 0.01, imuExtr[2][3] * 0.01);
         basalt::Calibration<Scalar>::SE3 T_i_c(q, trans);
         calib->T_i_c.push_back(T_i_c);
 
