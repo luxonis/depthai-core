@@ -9,6 +9,16 @@
 
 #include <tuple>
 
+#include <sys/time.h>
+#include <sys/resource.h>
+#include <iostream>
+
+void printMemoryUsage() {
+    struct rusage usage;
+    getrusage(RUSAGE_SELF, &usage);
+    std::cout << "Memory usage: " << usage.ru_maxrss << " KB" << std::endl;
+}
+
 class writeFPS : public dai::NodeCRTP<dai::node::HostNode, writeFPS> {
    private:
     std::chrono::steady_clock::time_point startTime;
@@ -36,6 +46,8 @@ class writeFPS : public dai::NodeCRTP<dai::node::HostNode, writeFPS> {
             frames = 0;
             startTime = currentTime;
         }
+
+        printMemoryUsage();
 
         auto inValue = in->get<dai::ImgFrame>("in");
         auto inFrame = inValue->getCvFrame();
@@ -194,9 +206,11 @@ class  HumanPoseEstimationVisualizer : public dai::NodeCRTP<dai::node::HostNode,
         }
 
 
-		int keypoints_list[50][50];
-		int detected_keypoints[50][50];
-		int personwiseKeypoints[50][50];
+		std::vector<std::vector<std::tuple<cv::Point, float, int> > > DETECTED_KEYPOINTS;
+        std::vector<std::tuple<cv::Point, float> > KEYPOINTS_LIST;
+        std::vector<std::vector<int> > PERSONWISE_KEYPOINTS;
+
+
 
         int numberOfInterpolationSamples = 10;
         float paf_score_th = 0.2;
@@ -237,6 +251,7 @@ class  HumanPoseEstimationVisualizer : public dai::NodeCRTP<dai::node::HostNode,
 
                 keypoints.push_back(std::make_pair(maxLoc, maxVal));
             }
+
 
             return keypoints;
         }
@@ -301,28 +316,38 @@ class  HumanPoseEstimationVisualizer : public dai::NodeCRTP<dai::node::HostNode,
                                 auto pointB = std::get<0>(candidateB);
 
                                 // We are looking at the direction of the vector (PAFs alg)
-                                auto vectorAB = pointB - pointA;
-                                auto normAB = cv::norm(vectorAB);
+                                float vectorABx = pointB.x - pointA.x;
+                                float vectorABy = pointB.y - pointA.y;
+                                float normAB = std::sqrt(vectorABx * vectorABx + vectorABy * vectorABy);
 
                                 if(normAB == 0){
                                     continue;
-                                }else{
-                                    vectorAB = vectorAB / normAB;
                                 }
+                                
+                                vectorABx = vectorABx / normAB;
+                                vectorABy = vectorABy / normAB;                            
 
                                 int numberOfSamplesMoreThanThreshold = 0;
                                 float sumOfPafScores = 0;
                                 for (int i = 0; i < numberOfInterpolationSamples; i++){
                                     float alpha = (float)i / (numberOfInterpolationSamples - 1);
-                                    auto point = pointA + i * vectorAB;
+                                    auto point = pointA + alpha * (pointB - pointA);
 
                                     int x = (int)point.x;
                                     int y = (int)point.y;
-                                    int pafx = pafXMat.at<float>(y, x);
-                                    int pafy = pafYMat.at<float>(y, x);
+                                    float pafx = pafXMat.at<float>(y, x);
+                                    float pafy = pafYMat.at<float>(y, x);
+                                    
+                                    // ! Added normalization, not sure if this is ok
+                                    float normPaf = std::sqrt(pafx * pafx + pafy * pafy);
+                                    if(normPaf < 1e-8){
+                                        continue;
+                                    }
+                                    pafx = pafx / normPaf;
+                                    pafy = pafy / normPaf;
 
-                                    auto pafPoint = cv::Point(pafx, pafy);
-                                    float pafScore = pafPoint.dot(vectorAB);
+                                    // Calc DOT
+                                    float pafScore = pafx * vectorABx + pafy * vectorABy;
 
                                     if(pafScore > paf_score_th){
                                         numberOfSamplesMoreThanThreshold++;
@@ -356,12 +381,14 @@ class  HumanPoseEstimationVisualizer : public dai::NodeCRTP<dai::node::HostNode,
                         invalidPairs.push_back(keypointPairIndedx);
                     }
                 }  
+
+
                 return std::make_pair(validPairs, invalidPairs);
 
         }
 
 
-        std::vector<std::vector<int> >getPersonwiseKeypoints(
+        std::vector<std::vector<int> > getPersonwiseKeypoints(
             std::vector<std::vector<std::tuple<int, int, float> > > validPairs,
             std::vector<int> invalidPairs,
             std::vector<std::tuple<cv::Point, float> > keypoints_list ){
@@ -403,18 +430,18 @@ class  HumanPoseEstimationVisualizer : public dai::NodeCRTP<dai::node::HostNode,
                             found = 1;
                             break;
                         }
+                    }
 
-                        if(found){
-                            personwiseKeypoints[person_idx][indexB] = keyPointsB[pairIndex];
-                            personwiseKeypoints[person_idx][18] += std::get<1>(keypoints_list[indexB]) + scores[pairIndex];
-                        }else if(!found && keypointPairIndedx < 17){
-                            auto row = std::vector<int>();
-                            for(int i = 0; i < 19; i++) row.push_back(-1);
-                            row[indexA] = keyPointsA[pairIndex];
-                            row[indexB] = keyPointsB[pairIndex];
-                            row[18] = std::get<1>(keypoints_list[indexA]) + std::get<1>(keypoints_list[indexB]) + scores[pairIndex];
-                            personwiseKeypoints.push_back(row);
-                        }
+                    if(found){
+                        personwiseKeypoints[person_idx][indexB] = keyPointsB[pairIndex];
+                        personwiseKeypoints[person_idx][18] += std::get<1>(keypoints_list[indexB]) + scores[pairIndex];
+                    }else if(!found && keypointPairIndedx < 17){
+                        auto row = std::vector<int>();
+                        for(int i = 0; i < 19; i++) row.push_back(-1);
+                        row[indexA] = keyPointsA[pairIndex];
+                        row[indexB] = keyPointsB[pairIndex];
+                        row[18] = std::get<1>(keypoints_list[indexA]) + std::get<1>(keypoints_list[indexB]) + scores[pairIndex];
+                        personwiseKeypoints.push_back(row);
                     }
                 }
             }
@@ -454,13 +481,50 @@ class  HumanPoseEstimationVisualizer : public dai::NodeCRTP<dai::node::HostNode,
             // Get the valid pairs
             auto getValidPairsReturnValue = getValidPairs(outputs_tensor, 456, 256, new_keypoints);
             auto validPairs = getValidPairsReturnValue.first;
+            // for(int i = 0; i < validPairs.size(); i++){
+            //     for(int j = 0; j < validPairs[i].size(); j++){
+            //         auto validPair = validPairs[i][j];
+            //         auto indexA = std::get<0>(validPair);
+            //         auto indexB = std::get<1>(validPair);
+            //         auto score = std::get<2>(validPair);
+            //         std::cout << "IndexA: " << indexA << " IndexB: " << indexB << " Score: " << score << std::endl;
+            //     }
+            // }
+            // std::cout << "Invalid Pairs: " << std::endl;
             auto invalidPairs = getValidPairsReturnValue.second;
 
             // Get the personwise keypoints
-            auto personwiseKeypoints = getPersonwiseKeypoints(validPairs, invalidPairs, new_keypoints_list);
+            auto newPersonwiseKeypoints = getPersonwiseKeypoints(validPairs, invalidPairs, new_keypoints_list);
+
+
+            DETECTED_KEYPOINTS = new_keypoints;
+            KEYPOINTS_LIST = new_keypoints_list;
+            PERSONWISE_KEYPOINTS = newPersonwiseKeypoints;
         }
 
+    void drawOnFrame(cv::Mat& frame) {
+        for(int i = 0; i < 18; i++){
+            for(int j = 0; j < DETECTED_KEYPOINTS[i].size(); j++){
+                auto point = std::get<0>(DETECTED_KEYPOINTS[i][j]);
+                auto color = cv::Scalar(COLORS[i][0], COLORS[i][1], COLORS[i][2]);
+                cv::circle(frame, point, 5, color, -1);
+            }
+        }
+        for(int i = 0; i < 17; i++){
+            for(int j = 0; j < PERSONWISE_KEYPOINTS.size(); j++){
+                int indexA = PERSONWISE_KEYPOINTS[j][POSE_PAIRS[i].first];
+                int indexB = PERSONWISE_KEYPOINTS[j][POSE_PAIRS[i].second];
 
+                if(indexA != -1 && indexB != -1){
+                    auto pointA = std::get<0>(KEYPOINTS_LIST[indexA]);
+                    auto pointB = std::get<0>(KEYPOINTS_LIST[indexB]);
+                    auto color = cv::Scalar(COLORS[i][0], COLORS[i][1], COLORS[i][2]);
+
+                    cv::line(frame, pointA, pointB, color, 2);
+                }
+            }
+        }
+    }
 
    public:
 	Input& inPassthrough = inputs["passthrough"];
@@ -491,7 +555,9 @@ class  HumanPoseEstimationVisualizer : public dai::NodeCRTP<dai::node::HostNode,
 		auto pafLayer = nnData->getTensor<float>(pafLayerName); // 1 x 38 x 32 x 57
 		auto heatmapsLayer = nnData->getTensor<float>(heatmapsLayerName); // 1 x 19 x 32 x 57
 
-        processTensors(heatmapsLayer, pafLayer);
+        // processTensors(heatmapsLayer, pafLayer);
+        // drawOnFrame(frame);
+        printMemoryUsage();
 		
 		auto returnFrame = std::make_shared<dai::ImgFrame>();
         returnFrame->setCvFrame(frame, dai::ImgFrame::Type::BGR888p);
@@ -529,17 +595,12 @@ int main() {
 	hpeNN->setNumInferenceThreads(2);
 	hpeNN->setBlobPath(BLOB_PATH);
 
-	resize->out.link(hpeNN->input);
-
-	auto hpeOut = pipeline.create<HumanPoseEstimationVisualizer>()->build(hpeNN->passthrough, hpeNN->out);
-
-	auto addRedTint = pipeline.create<AddRedTint>()->build(hpeOut->out);
-    auto writeFps = pipeline.create<writeFPS>()->build(addRedTint->out);
-    auto addBlueSquare = pipeline.create<AddBlueSquare>()->build(writeFps->out);
-	
+	// resize->out.link(hpeNN->input);
+	// auto hpeOut = pipeline.create<HumanPoseEstimationVisualizer>()->build(hpeNN->passthrough, hpeNN->out);
 
 
-	auto display = pipeline.create<Display>()->build(addBlueSquare->out);
+    auto writeFps = pipeline.create<writeFPS>()->build(resize->out);
+	auto display = pipeline.create<Display>()->build(writeFps->out);
 
 
     pipeline.start();
