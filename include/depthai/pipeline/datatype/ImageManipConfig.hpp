@@ -348,7 +348,7 @@ class ImageManipBase {
         if(canvasOpt) {
             canvasOpt->center = center;
         } else {
-            canvasOpt = Canvas(-1, -1, Canvas::Background::COLOR, center, false, Canvas::ResizeMode::STRETCH, 0, 0, 0);
+            canvasOpt = Canvas(-1, -1, Canvas::Background::COLOR, center, 0, 0, 0);
         }
         operations.emplace_back(*canvasOpt);
         return *this;
@@ -368,7 +368,7 @@ class ImageManipBase {
             canvasOpt->green = green;
             canvasOpt->blue = blue;
         } else {
-            canvasOpt = Canvas(-1, -1, Canvas::Background::COLOR, false, false, Canvas::ResizeMode::STRETCH, red, green, blue);
+            canvasOpt = Canvas(-1, -1, Canvas::Background::COLOR, false, red, green, blue);
         }
         operations.emplace_back(*canvasOpt);
         return *this;
@@ -385,7 +385,7 @@ class ImageManipBase {
         if(canvasOpt) {
             canvasOpt->background = Canvas::Background::REPLICATE;
         } else {
-            canvasOpt = Canvas(-1, -1, Canvas::Background::REPLICATE, false, false, Canvas::ResizeMode::STRETCH, 0, 0, 0);
+            canvasOpt = Canvas(-1, -1, Canvas::Background::REPLICATE, false, 0, 0, 0);
         }
         operations.emplace_back(*canvasOpt);
         return *this;
