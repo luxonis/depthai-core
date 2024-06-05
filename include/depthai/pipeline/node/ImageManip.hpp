@@ -39,7 +39,7 @@ class ImageManip : public DeviceNodeCRTP<DeviceNode, ImageManip, ImageManipPrope
      * Default queue is blocking with size 8
      */
     // Input inputConfig{*this, "inputConfig", Input::Type::SReceiver, true, 8, {{DatatypeEnum::ImageManipConfig, true}}};
-    Input inputConfig{*this, {.name = "inputConfig", .types = {{DatatypeEnum::ImageManipConfig, true}} , .waitForMessage = false}};
+    Input inputConfig{*this, {.name = "inputConfig", .types = {{DatatypeEnum::ImageManipConfig, true}}, .waitForMessage = false}};
 
     /**
      * Input image to be modified

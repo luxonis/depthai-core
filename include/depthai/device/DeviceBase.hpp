@@ -22,6 +22,7 @@
 #include "depthai/device/DeviceGate.hpp"
 #include "depthai/device/Version.hpp"
 #include "depthai/openvino/OpenVINO.hpp"
+#include "depthai/pipeline/PipelineSchema.hpp"
 #include "depthai/utility/Pimpl.hpp"
 #include "depthai/utility/ProfilingData.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
@@ -991,5 +992,8 @@ class DeviceBase {
 
     dai::Path firmwarePath;
     bool dumpOnly = false;
+
+    // Started pipeline
+    std::optional<PipelineSchema> pipelineSchema;
 };
 }  // namespace dai

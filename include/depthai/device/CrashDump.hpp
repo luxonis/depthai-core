@@ -73,7 +73,7 @@ struct CrashDump {
     std::string depthaiCommitHash;
     std::string deviceId;
 
-    nlohmann::json serializeToJson() {
+    nlohmann::json serializeToJson() const {
         std::vector<std::uint8_t> data;
         utility::serialize<SerializationType::JSON>(*this, data);
         return nlohmann::json::parse(data);

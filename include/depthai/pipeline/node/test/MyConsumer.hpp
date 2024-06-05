@@ -1,7 +1,7 @@
 #pragma once
 // project
-#include <depthai/pipeline/datatype/Buffer.hpp>
 #include <depthai/pipeline/ThreadedHostNode.hpp>
+#include <depthai/pipeline/datatype/Buffer.hpp>
 
 namespace dai {
 namespace node {

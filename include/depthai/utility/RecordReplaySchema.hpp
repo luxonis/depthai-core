@@ -8,11 +8,7 @@
 namespace dai {
 namespace utility {
 
-enum class RecordType {
-    Other = 0,
-    Video = 1,
-    Imu = 2
-};
+enum class RecordType { Other = 0, Video = 1, Imu = 2 };
 
 struct VersionSchema {
     uint16_t major;
@@ -40,7 +36,7 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(TimestampSchema, seconds, nanoseconds)
 
 // Make sure these structs are in sync with the JSON schema
 struct DefaultRecordSchema {
-    VersionSchema version {0, 0, 1};
+    VersionSchema version{0, 0, 1};
     RecordType type = RecordType::Other;
     TimestampSchema timestamp;
     uint64_t sequenceNumber;
@@ -80,7 +76,7 @@ struct ImuPacketSchema {
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ImuPacketSchema, orientation, acceleration)
 
 struct ImuRecordSchema {
-    VersionSchema version {0, 0, 1};
+    VersionSchema version{0, 0, 1};
     RecordType type = RecordType::Imu;
     std::vector<ImuPacketSchema> packets;
 };
@@ -98,7 +94,7 @@ struct VideoCameraSettingsSchema {
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(VideoCameraSettingsSchema, exposure, sensitivity, lensPosition, wbColorTemp, lensPositionRaw)
 
 struct VideoRecordSchema {
-    VersionSchema version {0, 0, 1};
+    VersionSchema version{0, 0, 1};
     RecordType type = RecordType::Video;
     TimestampSchema timestamp;
     uint64_t sequenceNumber;
@@ -410,5 +406,5 @@ constexpr const char* VIDEO_SHEMA = R"(
 }
 )";
 
-}
-}
+}  // namespace utility
+}  // namespace dai

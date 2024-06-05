@@ -1,6 +1,7 @@
 #pragma once
 
 #include <sys/types.h>
+
 #include "depthai/properties/Properties.hpp"
 
 namespace dai {
