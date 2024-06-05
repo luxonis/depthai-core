@@ -317,6 +317,8 @@ add_library(${TARGET_CORE_NAME}
     src/nn_archive/NNArchiveConfig.cpp
     src/nn_archive/NNArchiveBlob.cpp
     src/nn_archive/NNArchiveConfigHelper.cpp
+    src/modelzoo/NNModelDescription.cpp
+    src/modelzoo/Zoo.cpp
 )
 add_library("${PROJECT_NAME}::${TARGET_CORE_ALIAS}" ALIAS ${TARGET_CORE_NAME})
 # Specify that we are building core
@@ -529,6 +531,7 @@ target_link_libraries(${TARGET_CORE_NAME}
         nlohmann_json::nlohmann_json
         libnop
         spdlog::spdlog
+        yaml-cpp
     INTERFACE
         XLinkPublic
     PRIVATE
