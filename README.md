@@ -27,6 +27,15 @@ To install PCL:
 MacOS: `brew install pcl`
 Linux: `sudo apt install libpcl-dev`
 
+> ℹ️ On Linux distributions based on RPMs, you need to install `perl-core` for us to OpenSSL dependency.
+>```
+>sudo yum install perl-core
+>```
+>
+> Another option is to disable CURL support by setting `DEPTHAI_ENABLE_CURL=OFF` when configuring CMake.
+> ```
+> cmake -S. -Bbuild -D'DEPTHAI_ENABLE_CURL=OFF'
+> ```
 ## Building
 
 Make sure submodules are updated
