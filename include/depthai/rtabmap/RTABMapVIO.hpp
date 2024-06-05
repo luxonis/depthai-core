@@ -22,7 +22,6 @@ class RTABMapVIO : public NodeCRTP<HostNode, RTABMapVIO> {
    public:
     constexpr static const char* NAME = "RTABMapVIO";
 
-   public:
     std::shared_ptr<RTABMapVIO> build();
 
     std::string rectInputName = "rect";

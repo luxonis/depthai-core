@@ -29,14 +29,14 @@ void BasaltVIO::run() {
     basalt::PoseState<double>::SE3 opticalTransform180(q180, Eigen::Vector3d(0, 0, 0));
     // to output pose in FLU world coordinates
     localTransform = localTransform * opticalTransform180.inverse();
-    
+
     while(isRunning()) {
         if(!calibrated) continue;
         outStateQueue.pop(data);
 
         if(!data.get()) continue;
         basalt::PoseState<double>::SE3 pose = (localTransform *  data->T_w_i * calib->T_i_c[0]);
-        
+
         // pose is in RDF orientation, convert to FLU
         auto finalPose =  pose * opticalTransform.inverse();
         auto trans = finalPose.translation();

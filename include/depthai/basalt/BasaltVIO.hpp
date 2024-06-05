@@ -30,7 +30,7 @@ class BasaltVIO : public NodeCRTP<ThreadedHostNode, BasaltVIO> {
 
     Subnode<node::Sync> sync{*this, "sync"};
     InputMap& inputs = sync->inputs;
-    
+
     std::string leftInputName = "left";
     std::string rightInputName = "right";
 
