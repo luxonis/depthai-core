@@ -468,7 +468,8 @@ dai_add_example(threaded_host_node_v3 v3/HostNodes/threaded_host_node.cpp ON OFF
 
 # Human Pose
 dai_add_example(human_pose_estimation_v3 v3/HumanPose/human_pose_estimation.cpp ON OFF)
-target_compile_definitions(human_pose_estimation_v3 PRIVATE BLOB_PATH="${person_detection}")
+target_compile_definitions(human_pose_estimation_v3 PRIVATE BLOB_PATH="/home/lan-sevcnikar/Documents/depthai/depthai-core/examples/v3/HumanPose/model/human-pose-estimation-0001_openvino_2022.1_6shave.blob")
+dai_add_example(opencv_test_v3 v3/HumanPose/opencv_test.cpp ON OFF)
 
 # Replay
 dai_add_example(replay_video_meta Replay/replay_video_meta.cpp ON OFF)
