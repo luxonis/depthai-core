@@ -13,7 +13,7 @@ int main() {
     camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
     camRgb->setVideoSize(1920, 1080);
 
-    auto outputQueue = camRgb->video.createQueue();
+    auto outputQueue = camRgb->video.createOutputQueue();
 
     pipeline.start();
     while(pipeline.isRunning()) {

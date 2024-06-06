@@ -73,7 +73,7 @@ with dai.Pipeline() as p:
     spatialDetectionNetwork.outNetwork.link(sync.inputs["nn"])
     spatialDetectionNetwork.out.link(sync.inputs["detections"])
 
-    syncedQueue = sync.out.createQueue()
+    syncedQueue = sync.out.createOutputQueue()
 
     p.start()
     labelMap = spatialDetectionNetwork.getClasses()

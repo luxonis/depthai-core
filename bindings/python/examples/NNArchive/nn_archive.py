@@ -43,8 +43,8 @@ with dai.Pipeline() as pipeline:
 
     # Linking
     camRgb.preview.link(detectionNetwork.input)
-    qRgb = detectionNetwork.passthrough.createQueue()
-    qDet = detectionNetwork.out.createQueue()
+    qRgb = detectionNetwork.passthrough.createOutputQueue()
+    qDet = detectionNetwork.out.createOutputQueue()
 
     pipeline.start()
 
