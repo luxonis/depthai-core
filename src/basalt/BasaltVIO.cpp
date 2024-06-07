@@ -1,4 +1,5 @@
 #include "depthai/basalt/BasaltVIO.hpp"
+
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "tbb/concurrent_queue.h"
@@ -13,34 +14,40 @@ std::shared_ptr<BasaltVIO> BasaltVIO::build() {
     imu.setMaxSize(0);
     imu.setBlocking(false);
     imu.addCallback(std::bind(&BasaltVIO::imuCB, this, std::placeholders::_1));
-    return std::static_pointer_cast<BasaltVIO>(shared_from_this());
-}
 
-void BasaltVIO::run() {
-    basalt::PoseVelBiasState<double>::Ptr data;
-
-    basalt::PoseState<double>::SE3 localTransform(Eigen::Quaterniond::Identity(), Eigen::Vector3d(0, 0, 0));
-    Eigen::Matrix<double, 3, 3> R;
-    R << 0.0, 0.0, 1.0, -1.0, 0.0, 0.0, 0.0, -1.0, 0.0;
-    Eigen::Quaterniond q(R);
-    basalt::PoseState<double>::SE3 opticalTransform(q, Eigen::Vector3d(0, 0, 0));
-
+    basalt::PoseState<double>::SE3 initTrans(Eigen::Quaterniond::Identity(), Eigen::Vector3d(0, 0, 0));
     Eigen::Matrix<double, 3, 3> R180;
     R180 << -1.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, 1.0;
     Eigen::Quaterniond q180(R180);
     basalt::PoseState<double>::SE3 opticalTransform180(q180, Eigen::Vector3d(0, 0, 0));
     // to output pose in FLU world coordinates
-    localTransform = localTransform * opticalTransform180.inverse();
+    localTransform = std::make_shared<basalt::PoseState<double>::SE3>(initTrans * opticalTransform180.inverse());
+
+    return std::static_pointer_cast<BasaltVIO>(shared_from_this());
+}
+
+void BasaltVIO::setLocalTransform(const std::shared_ptr<TransformData>& transform) {
+    auto trans = transform->getTranslation();
+    auto quat = transform->getQuaternion();
+    localTransform =
+        std::make_shared<basalt::PoseState<double>::SE3>(Eigen::Quaterniond(quat.qw, quat.qx, quat.qy, quat.qz), Eigen::Vector3d(trans.x, trans.y, trans.z));
+}
+void BasaltVIO::run() {
+    basalt::PoseVelBiasState<double>::Ptr data;
+    Eigen::Matrix<double, 3, 3> R;
+    R << 0.0, 0.0, 1.0, -1.0, 0.0, 0.0, 0.0, -1.0, 0.0;
+    Eigen::Quaterniond q(R);
+    basalt::PoseState<double>::SE3 opticalTransform(q, Eigen::Vector3d(0, 0, 0));
 
     while(isRunning()) {
         if(!calibrated) continue;
         outStateQueue.pop(data);
 
         if(!data.get()) continue;
-        basalt::PoseState<double>::SE3 pose = (localTransform *  data->T_w_i * calib->T_i_c[0]);
+        basalt::PoseState<double>::SE3 pose = (*localTransform * data->T_w_i * calib->T_i_c[0]);
 
         // pose is in RDF orientation, convert to FLU
-        auto finalPose =  pose * opticalTransform.inverse();
+        auto finalPose = pose * opticalTransform.inverse();
         auto trans = finalPose.translation();
         auto rot = finalPose.unit_quaternion();
         auto out = std::make_shared<TransformData>(trans.x(), trans.y(), trans.z(), rot.x(), rot.y(), rot.z(), rot.w());
@@ -51,7 +58,7 @@ void BasaltVIO::run() {
 
 void BasaltVIO::stereoCB(std::shared_ptr<ADatatype> in) {
     auto group = std::dynamic_pointer_cast<MessageGroup>(in);
-    if (group == nullptr) return;
+    if(group == nullptr) return;
     if(!calibrated) {
         std::vector<std::shared_ptr<ImgFrame>> imgFrames;
         for(auto& msg : *group) {

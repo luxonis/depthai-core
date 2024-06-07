@@ -56,6 +56,7 @@ class BasaltVIO : public NodeCRTP<ThreadedHostNode, BasaltVIO> {
     void setImuUpdateRate(int rate) { imuUpdateRate = rate; }
     void setConfigPath(const std::string& path) { configPath = path; }
     void setUseSpecTranslation(bool use) { useSpecTranslation = use; }
+    void setLocalTransform(const std::shared_ptr<TransformData>& transform);
 
    private:
     Input inSync{*this, {.name = "inSync", .types = {{DatatypeEnum::MessageGroup, true}}}};
@@ -71,6 +72,7 @@ class BasaltVIO : public NodeCRTP<ThreadedHostNode, BasaltVIO> {
 
     std::vector<int64_t> vioTNSec;
     Eigen::aligned_vector<Eigen::Vector3d> vioTwI;
+    std::shared_ptr<basalt::PoseState<double>::SE3> localTransform;
     std::shared_ptr<ImgFrame> leftImg;
     bool calibrated = false;
     std::string configPath = VIO_CONFIG_PATH;
