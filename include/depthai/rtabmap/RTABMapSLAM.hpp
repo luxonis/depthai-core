@@ -31,24 +31,27 @@ class RTABMapSLAM : public dai::NodeCRTP<dai::node::ThreadedHostNode, RTABMapSLA
     std::string depthInputName = "depth";
     std::string featuresInputName = "features";
 
-    Input& inputRect = inputs[rectInputName];
-    Input& inputDepth = inputs[depthInputName];
-    Input inputFeatures{*this, {.name = featuresInputName, .types = {{DatatypeEnum::TrackedFeatures, true}}}};
+    Input& rect = inputs[rectInputName];
+    Input& depth = inputs[depthInputName];
+    Input features{*this, {.name = featuresInputName, .types = {{DatatypeEnum::TrackedFeatures, true}}}};
+    Input odom{*this, {.name = "inputOdomPose", .types = {{dai::DatatypeEnum::TransformData, true}}}};
 
-    Input inputSync{*this, {.name = "inSync", .types = {{dai::DatatypeEnum::MessageGroup, true}}}};
-    Input inputOdomPose{*this, {.name = "inputOdomPose", .types = {{dai::DatatypeEnum::TransformData, true}}}};
+    Input inSync{*this, {.name = "inSync", .types = {{dai::DatatypeEnum::MessageGroup, true}}}};
 
     Output transform{*this, {.name = "transform", .types = {{dai::DatatypeEnum::TransformData, true}}}};
     Output odomCorrection{*this, {.name = "odomCorrection", .types = {{dai::DatatypeEnum::TransformData, true}}}};
-    Output passthroughRect{*this, {.name = "passthroughRect", .types = {{dai::DatatypeEnum::ImgFrame, true}}}};
     Output obstaclePCL{*this, {.name = "obstaclePCL", .types = {{dai::DatatypeEnum::PointCloudData, true}}}};
     Output groundPCL{*this, {.name = "groundPCL", .types = {{dai::DatatypeEnum::PointCloudData, true}}}};
     Output occupancyGridMap{*this, {.name = "occupancyGridMap", .types = {{dai::DatatypeEnum::ImgFrame, true}}}};
 
+    Output passthroughRect{*this, {.name = "passthroughRect", .types = {{dai::DatatypeEnum::ImgFrame, true}}}};
+    Output passthroughDepth{*this, {.name = "passthroughDepth", .types = {{dai::DatatypeEnum::ImgFrame, true}}}};
+    Output passthroughFeatures{*this, {.name = "passthroughFeatures", .types = {{dai::DatatypeEnum::TrackedFeatures, true}}}};
+    Output passthroughOdom{*this, {.name = "passthroughOdom", .types = {{dai::DatatypeEnum::TransformData, true}}}};
+
     void run() override;
     void setParams(const rtabmap::ParametersMap& params);
-    void syncCB(std::shared_ptr<dai::ADatatype> data);
-    void odomPoseCB(std::shared_ptr<dai::ADatatype> data);
+
     void setDatabasePath(const std::string& path) {
         databasePath = path;
     }
@@ -68,9 +71,9 @@ class RTABMapSLAM : public dai::NodeCRTP<dai::node::ThreadedHostNode, RTABMapSLA
     void setAlphaScaling(float alpha) {
         alphaScaling = alpha;
     }
-    void setReuseFeatures(bool reuse);
+    void setUseFeatures(bool reuse);
     void setLocalTransform(std::shared_ptr<TransformData> transform) {
-        transform->getRTABMapTransform(localTransform);
+        localTransform = transform->getRTABMapTransform();
     }
     std::shared_ptr<TransformData> getLocalTransform() {
         return std::make_shared<TransformData>(localTransform);
@@ -78,6 +81,8 @@ class RTABMapSLAM : public dai::NodeCRTP<dai::node::ThreadedHostNode, RTABMapSLA
     void triggerNewMap();
 
    private:
+    void syncCB(std::shared_ptr<dai::ADatatype> data);
+    void odomPoseCB(std::shared_ptr<dai::ADatatype> data);
     void imuCB(std::shared_ptr<dai::ADatatype> msg);
     void getCalib(dai::Pipeline& pipeline, int instanceNum, int width, int height);
     rtabmap::StereoCameraModel model;
@@ -96,7 +101,7 @@ class RTABMapSLAM : public dai::NodeCRTP<dai::node::ThreadedHostNode, RTABMapSLA
     rtabmap::ParametersMap rtabParams;
     rtabmap::SensorData sensorData;
     std::string databasePath = "/tmp/rtabmap.tmp.db";
-    float databaseSaveInterval = 5.0f;
+    double databaseSaveInterval = 30.0f;
     bool saveDatabasePeriodically = false;
     bool publishObstacleCloud = true;
     bool publishGroundCloud = true;

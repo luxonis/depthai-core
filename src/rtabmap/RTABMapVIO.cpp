@@ -5,7 +5,8 @@
 namespace dai {
 namespace node {
 std::shared_ptr<RTABMapVIO> RTABMapVIO::build() {
-    alphaScaling = -1.0;
+    sync->out.link(inSync);
+    sync->setRunOnHost(false);
     odom.reset(rtabmap::Odometry::create());
 
     localTransform = rtabmap::Transform::getIdentity();
@@ -13,22 +14,35 @@ std::shared_ptr<RTABMapVIO> RTABMapVIO::build() {
     rtabmap::Transform opticalTransform(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
     localTransform = localTransform * opticalTransform.inverse();
 
-    input.setBlocking(false);
-    input.setMaxSize(0);
-    inputIMU.setMaxSize(1);
-    inputIMU.setBlocking(false);
-    inputRect.setBlocking(false);
-    inputRect.setMaxSize(1);
-    inputDepth.setBlocking(false);
-    inputDepth.setMaxSize(1);
+    inSync.setBlocking(false);
+    inSync.setMaxSize(0);
+    imu.setMaxSize(1);
+    imu.setBlocking(false);
+    rect.setBlocking(false);
+    rect.setMaxSize(1);
+    depth.setBlocking(false);
+    depth.setMaxSize(1);
     if(useFeatures) {
-        inputFeatures.setBlocking(false);
-        inputFeatures.setMaxSize(1);
-        inputs[featuresInputName] = inputFeatures;
+        features.setBlocking(false);
+        features.setMaxSize(1);
+        inputs[featuresInputName] = features;
     }
-    inputIMU.addCallback(std::bind(&RTABMapVIO::imuCB, this, std::placeholders::_1));
+    inSync.setMaxSize(1);
+    inSync.setBlocking(false);
+    // inSync.addCallback(std::bind(&RTABMapVIO::syncCB, this, std::placeholders::_1));
+    imu.addCallback(std::bind(&RTABMapVIO::imuCB, this, std::placeholders::_1));
     return std::static_pointer_cast<RTABMapVIO>(shared_from_this());
 }
+
+void RTABMapVIO::setUseFeatures(bool reuse) {
+    useFeatures = reuse;
+    if(useFeatures) {
+        features.setBlocking(false);
+        features.setMaxSize(1);
+        inputs[featuresInputName] = features;
+    }
+}
+
 void RTABMapVIO::imuCB(std::shared_ptr<dai::ADatatype> msg) {
     auto imuData = std::static_pointer_cast<dai::IMUData>(msg);
     auto imuPackets = imuData->packets;
@@ -38,21 +52,22 @@ void RTABMapVIO::imuCB(std::shared_ptr<dai::ADatatype> msg) {
         auto& rotValues = imuPacket.rotationVector;
         double accStamp = std::chrono::duration<double>(acceleroValues.getTimestampDevice().time_since_epoch()).count();
         double gyroStamp = std::chrono::duration<double>(gyroValues.getTimestampDevice().time_since_epoch()).count();
-        accBuffer_.emplace_hint(accBuffer_.end(), accStamp, cv::Vec3f(acceleroValues.x, acceleroValues.y, acceleroValues.z));
-        gyroBuffer_.emplace_hint(gyroBuffer_.end(), gyroStamp, cv::Vec3f(gyroValues.x, gyroValues.y, gyroValues.z));
-        rotBuffer_.emplace_hint(rotBuffer_.end(), gyroStamp, cv::Vec4f(rotValues.i, rotValues.j, rotValues.k, rotValues.real));
+        accBuffer.emplace_hint(accBuffer.end(), accStamp, cv::Vec3f(acceleroValues.x, acceleroValues.y, acceleroValues.z));
+        gyroBuffer.emplace_hint(gyroBuffer.end(), gyroStamp, cv::Vec3f(gyroValues.x, gyroValues.y, gyroValues.z));
+        rotBuffer.emplace_hint(rotBuffer.end(), gyroStamp, cv::Vec4f(rotValues.i, rotValues.j, rotValues.k, rotValues.real));
     }
 }
 
-std::shared_ptr<dai::Buffer> RTABMapVIO::processGroup(std::shared_ptr<dai::MessageGroup> in) {
-    if (in == nullptr) return nullptr;
-    auto imgFrame = in->get<dai::ImgFrame>(rectInputName);
-    auto depthFrame = in->get<dai::ImgFrame>(depthInputName);
-    std::shared_ptr<dai::TrackedFeatures> features = nullptr;
+void RTABMapVIO::syncCB(std::shared_ptr<dai::ADatatype> data) {
+    auto group = std::dynamic_pointer_cast<dai::MessageGroup>(data);
+    if(group == nullptr) return;
+    auto imgFrame = group->get<dai::ImgFrame>(rectInputName);
+    auto depthFrame = group->get<dai::ImgFrame>(depthInputName);
+    std::shared_ptr<dai::TrackedFeatures> featuresFrame = nullptr;
     if(useFeatures) {
-        features = in->get<dai::TrackedFeatures>(featuresInputName);
+        featuresFrame = group->get<dai::TrackedFeatures>(featuresInputName);
     }
-    rtabmap::SensorData data;
+    rtabmap::SensorData sensorData;
     if(imgFrame != nullptr && depthFrame != nullptr) {
         if(!modelSet) {
             auto pipeline = getParentPipeline();
@@ -61,80 +76,89 @@ std::shared_ptr<dai::Buffer> RTABMapVIO::processGroup(std::shared_ptr<dai::Messa
         } else {
             double stamp = std::chrono::duration<double>(imgFrame->getTimestampDevice(dai::CameraExposureOffset::MIDDLE).time_since_epoch()).count();
 
-            data = rtabmap::SensorData(imgFrame->getCvFrame(), depthFrame->getCvFrame(), model.left(), imgFrame->getSequenceNum(), stamp);
+            sensorData = rtabmap::SensorData(imgFrame->getCvFrame(), depthFrame->getCvFrame(), model.left(), imgFrame->getSequenceNum(), stamp);
 
             std::vector<cv::KeyPoint> keypoints;
-            if(features != nullptr){
-                for(auto& feature : features->trackedFeatures) {
+            if(featuresFrame != nullptr) {
+                std::cout << "Features frame\n" << std::endl;
+                for(auto& feature : featuresFrame->trackedFeatures) {
                     keypoints.emplace_back(cv::KeyPoint(feature.position.x, feature.position.y, 3));
                 }
-                data.setFeatures(keypoints, std::vector<cv::Point3f>(), cv::Mat());
+                sensorData.setFeatures(keypoints, std::vector<cv::Point3f>(), cv::Mat());
             }
 
             cv::Vec3d acc, gyro;
             cv::Vec4d rot;
             std::map<double, cv::Vec3f>::const_iterator iterA, iterB;
             std::map<double, cv::Vec4f>::const_iterator iterC, iterD;
-            if(accBuffer_.empty() || gyroBuffer_.empty() || rotBuffer_.empty() || accBuffer_.rbegin()->first < stamp || gyroBuffer_.rbegin()->first < stamp
-               || rotBuffer_.rbegin()->first < stamp) {
+            if(accBuffer.empty() || gyroBuffer.empty() || rotBuffer.empty() || accBuffer.rbegin()->first < stamp || gyroBuffer.rbegin()->first < stamp
+               || rotBuffer.rbegin()->first < stamp) {
             } else {
                 // acc
-                iterB = accBuffer_.lower_bound(stamp);
+                iterB = accBuffer.lower_bound(stamp);
                 iterA = iterB;
-                if(iterA != accBuffer_.begin()) iterA = --iterA;
+                if(iterA != accBuffer.begin()) iterA = --iterA;
                 if(iterA == iterB || stamp == iterB->first) {
                     acc = iterB->second;
                 } else if(stamp > iterA->first && stamp < iterB->first) {
                     float t = (stamp - iterA->first) / (iterB->first - iterA->first);
                     acc = iterA->second + t * (iterB->second - iterA->second);
                 }
-                accBuffer_.erase(accBuffer_.begin(), iterB);
+                accBuffer.erase(accBuffer.begin(), iterB);
 
                 // gyro
-                iterB = gyroBuffer_.lower_bound(stamp);
+                iterB = gyroBuffer.lower_bound(stamp);
                 iterA = iterB;
-                if(iterA != gyroBuffer_.begin()) iterA = --iterA;
+                if(iterA != gyroBuffer.begin()) iterA = --iterA;
                 if(iterA == iterB || stamp == iterB->first) {
                     gyro = iterB->second;
                 } else if(stamp > iterA->first && stamp < iterB->first) {
                     float t = (stamp - iterA->first) / (iterB->first - iterA->first);
                     gyro = iterA->second + t * (iterB->second - iterA->second);
                 }
-                gyroBuffer_.erase(gyroBuffer_.begin(), iterB);
+                gyroBuffer.erase(gyroBuffer.begin(), iterB);
 
                 // rot
-                iterD = rotBuffer_.lower_bound(stamp);
+                iterD = rotBuffer.lower_bound(stamp);
                 iterC = iterD;
-                if(iterC != rotBuffer_.begin()) iterC = --iterC;
+                if(iterC != rotBuffer.begin()) iterC = --iterC;
                 if(iterC == iterD || stamp == iterD->first) {
                     rot = iterD->second;
                 } else if(stamp > iterC->first && stamp < iterD->first) {
                     float t = (stamp - iterC->first) / (iterD->first - iterC->first);
                     rot = iterC->second + t * (iterD->second - iterC->second);
                 }
-                rotBuffer_.erase(rotBuffer_.begin(), iterD);
+                rotBuffer.erase(rotBuffer.begin(), iterD);
 
-                data.setIMU(
+                sensorData.setIMU(
                     rtabmap::IMU(rot, cv::Mat::eye(3, 3, CV_64FC1), gyro, cv::Mat::eye(3, 3, CV_64FC1), acc, cv::Mat::eye(3, 3, CV_64FC1), imuLocalTransform));
             }
             rtabmap::OdometryInfo info;
-            auto pose = odom->process(data, &info);
+            auto pose = odom->process(sensorData, &info);
             pose = localTransform * pose * localTransform.inverse();
             auto out = std::make_shared<dai::TransformData>(pose);
             transform.send(out);
             passthroughRect.send(imgFrame);
             passthroughDepth.send(depthFrame);
-            passthroughFeatures.send(features);
+            if(useFeatures&&featuresFrame!=nullptr) {
+                passthroughFeatures.send(featuresFrame);
+            }
         }
     }
-    return nullptr;
 }
 
+void RTABMapVIO::run(){
+    while(isRunning()) {
+        auto msg = inSync.get<dai::ADatatype>();
+        if(msg != nullptr) {
+            syncCB(msg);
+        }
+    }
+}
 
 void RTABMapVIO::setParams(const rtabmap::ParametersMap& params) {
     odom.reset(rtabmap::Odometry::create(params));
 }
-
 
 void RTABMapVIO::getCalib(dai::Pipeline& pipeline, int instanceNum, int width, int height) {
     auto calibHandler = pipeline.getDefaultDevice()->readCalibration();
@@ -144,18 +168,18 @@ void RTABMapVIO::getCalib(dai::Pipeline& pipeline, int instanceNum, int width, i
 
     std::vector<std::vector<float>> imuExtr = calibHandler.getImuToCameraExtrinsics(cameraId, true);
 
-    imuLocalTransform = rtabmap::Transform(imuExtr[0][0],
-                                           imuExtr[0][1],
-                                           imuExtr[0][2],
-                                           imuExtr[0][3] * 0.01,
-                                           imuExtr[1][0],
-                                           imuExtr[1][1],
-                                           imuExtr[1][2],
-                                           imuExtr[1][3] * 0.01,
-                                           imuExtr[2][0],
-                                           imuExtr[2][1],
-                                           imuExtr[2][2],
-                                           imuExtr[2][3] * 0.01);
+    imuLocalTransform = rtabmap::Transform(double(imuExtr[0][0]),
+                                           double(imuExtr[0][1]),
+                                           double(imuExtr[0][2]),
+                                           double(imuExtr[0][3]) * 0.01,
+                                           double(imuExtr[1][0]),
+                                           double(imuExtr[1][1]),
+                                           double(imuExtr[1][2]),
+                                           double(imuExtr[1][3]) * 0.01,
+                                           double(imuExtr[2][0]),
+                                           double(imuExtr[2][1]),
+                                           double(imuExtr[2][2]),
+                                           double(imuExtr[2][3]) * 0.01);
 
     imuLocalTransform = localTransform * imuLocalTransform;
 }
