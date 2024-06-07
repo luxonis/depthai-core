@@ -247,22 +247,22 @@ hunter_config(
 hunter_config(
     opengv
     VERSION 1.0.0
-    URL "https://github.com/laurentkneip/opengv/archive/refs/heads/master.zip"
-    SHA1 "d046e9b94153a9d97638aaef719e0250ad660113"
+    URL "https://github.com/luxonis/opengv/archive/refs/heads/master.zip"
+    SHA1 "5898069592f3e7484d9e83d918dad9287876d103"
 )
 
 hunter_config(
     basalt-headers
     VERSION 0.1.0
     URL "https://github.com/luxonis/basalt-headers/archive/refs/heads/hunter.zip"
-    SHA1 "2e8e6064544ed7eaa7c9ec459730a7f272aa8d9d"
+    SHA1 "740cdd6ea5bcb303e1b2334530f85a7dbf4a644d"
 )
 
 hunter_config(
     basalt
     VERSION 0.1.0
     URL "https://github.com/luxonis/basalt/archive/refs/heads/depthai_tests.zip"
-    SHA1 "9cfca2a01d3413ecaccf4d3a28c570918d8d202d"
+    SHA1 "273a5b0fa966c15c2c1536529506c82aaf85ce59"
     CMAKE_ARGS
         BASALT_SDK_ONLY=ON
         BUILD_SHARED_LIBS=ON
@@ -270,12 +270,14 @@ hunter_config(
 
 hunter_config(
     Sophus
-    URL "https://github.com/strasdat/Sophus/archive/936265f5815dee546a3583ceba58c234c2ecb271.zip"
-    SHA1 "7f54e06fb1680910c465e12ea85fc414ce7a9f9e"
+    VERSION 1.22.10
+    URL "https://github.com/luxonis/Sophus/archive/refs/heads/hunterized.zip"
+    SHA1 "ff17d3dce1bcadabbc9fb83845a29974377d7f95" 
     CMAKE_ARGS
-        BUILD_TESTS=OFF
-        BUILD_EXAMPLES=OFF
+        BUILD_SOPHUS_TESTS=OFF
+        BUILD_SOPHUS_EXAMPLES=OFF
 )
+
 hunter_config(
     magic_enum
     URL "https://github.com/Neargye/magic_enum/archive/3d1f6a5a2a3fbcba077e00ad0ccc2dd9fefc2ca7.zip"
