@@ -26,7 +26,6 @@ class PointCloudData : public Buffer {
     bool sparse = false;
 
    public:
-    std::vector<Point3f> points;
     using Buffer::getSequenceNum;
     using Buffer::getTimestamp;
     using Buffer::getTimestampDevice;
@@ -179,7 +178,8 @@ class PointCloudData : public Buffer {
      * Converts PointCloudData to pcl::PointCloud<pcl::PointXYZ>
      */
     pcl::PointCloud<pcl::PointXYZ>::Ptr getPclData() const;
-
+    void setPclData(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud);
+    void setPclData(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud);
 #else
     template <typename... T>
     struct dependent_false {
@@ -187,6 +187,10 @@ class PointCloudData : public Buffer {
     };
     template <typename... T>
     void getPclData() const {
+        static_assert(dependent_false<T...>::value, "Library not configured with PCL support");
+    }
+    template <typename... T>
+    void setPclData(T...) {
         static_assert(dependent_false<T...>::value, "Library not configured with PCL support");
     }
 #endif
