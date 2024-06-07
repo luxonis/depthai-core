@@ -60,6 +60,9 @@ void ZooManager::downloadModel() {
     // Send HTTP request
     cpr::Response response = cpr::Get(url, header, parameters);
     if(response.status_code != 200) {
+        // Cleanup cache folder
+        removeCacheFolder();
+
         throw std::runtime_error("Failed to download model");
     }
 
@@ -84,9 +87,9 @@ void ZooManager::downloadModel() {
     system(command.c_str());
 }
 
-void getModelFromZoo(const NNModelDescription& model, bool useCached) {
+void getModelFromZoo(const NNModelDescription& modelDescription, bool useCached) {
     // Initialize ZooManager
-    ZooManager zooManager(model);
+    ZooManager zooManager(modelDescription);
 
     // Check if model is cached
     bool modelIsCached = zooManager.isCached();

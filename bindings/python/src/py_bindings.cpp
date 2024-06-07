@@ -33,6 +33,7 @@
 #include "capabilities/CapabilityRangeBindings.hpp"
 #include "capabilities/ImgFrameCapabilityBindings.hpp"
 #include "modelzoo/NNModelDescriptionBindings.hpp"
+#include "modelzoo/ZooBindings.hpp"
 
 #ifdef DEPTHAI_PYTHON_EMBEDDED_MODULE
 #include <pybind11/embed.h>
@@ -75,6 +76,7 @@ PYBIND11_MODULE(depthai, m)
     callstack.push_front(&DeviceBootloaderBindings::bind);
     callstack.push_front(&CalibrationHandlerBindings::bind);
     callstack.push_front(&NNModelDescriptionBindings::bind);
+    callstack.push_front(&ZooBindings::bind);
     // end of the callstack
     callstack.push_front([](py::module &, void *) {});
 

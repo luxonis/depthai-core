@@ -66,6 +66,6 @@ class ZooManager {
     const NNModelDescription& model;
 };
 
-void getModelFromZoo(const NNModelDescription& model, bool useCached = true);
+void getModelFromZoo(const NNModelDescription& modelDescription, bool useCached = true);
 
 }  // namespace dai
