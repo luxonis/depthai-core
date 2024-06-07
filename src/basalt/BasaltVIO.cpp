@@ -1,16 +1,18 @@
 #include "depthai/basalt/BasaltVIO.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
+#include "tbb/concurrent_queue.h"
+#include "tbb/global_control.h"
 namespace dai {
 namespace node {
 std::shared_ptr<BasaltVIO> BasaltVIO::build() {
-    sync->out.link(inputSync);
+    sync->out.link(inSync);
     sync->setRunOnHost(false);
-    inputSync.setBlocking(false);
-    inputSync.addCallback(std::bind(&BasaltVIO::stereoCB, this, std::placeholders::_1));
-    inputImu.setMaxSize(0);
-    inputImu.setBlocking(false);
-    inputImu.addCallback(std::bind(&BasaltVIO::imuCB, this, std::placeholders::_1));
+    inSync.setBlocking(false);
+    inSync.addCallback(std::bind(&BasaltVIO::stereoCB, this, std::placeholders::_1));
+    imu.setMaxSize(0);
+    imu.setBlocking(false);
+    imu.addCallback(std::bind(&BasaltVIO::imuCB, this, std::placeholders::_1));
     return std::static_pointer_cast<BasaltVIO>(shared_from_this());
 }
 
@@ -106,7 +108,7 @@ void BasaltVIO::imuCB(std::shared_ptr<ADatatype> imuData) {
 };
 void BasaltVIO::initialize(std::vector<std::shared_ptr<ImgFrame>> frames) {
     if(threadNum > 0) {
-        tbbGlobalControl = std::make_unique<tbb::global_control>(tbb::global_control::max_allowed_parallelism, threadNum);
+        tbbGlobalControl = std::make_shared<tbb::global_control>(tbb::global_control::max_allowed_parallelism, threadNum);
     }
 
     auto pipeline = getParentPipeline();
@@ -128,7 +130,7 @@ void BasaltVIO::initialize(std::vector<std::shared_ptr<ImgFrame>> frames) {
         R << imuExtr[0][0], imuExtr[0][1], imuExtr[0][2], imuExtr[1][0], imuExtr[1][1], imuExtr[1][2], imuExtr[2][0], imuExtr[2][1], imuExtr[2][2];
         Eigen::Quaterniond q(R);
 
-        Eigen::Vector3d trans(imuExtr[0][3] * 0.01, imuExtr[1][3] * 0.01, imuExtr[2][3] * 0.01);
+        Eigen::Vector3d trans(double(imuExtr[0][3]) * 0.01, double(imuExtr[1][3]) * 0.01, double(imuExtr[2][3]) * 0.01);
         basalt::Calibration<Scalar>::SE3 T_i_c(q, trans);
         calib->T_i_c.push_back(T_i_c);
 

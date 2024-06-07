@@ -1,7 +1,5 @@
 #pragma once
 #define SOPHUS_USE_BASIC_LOGGING
-#include <tbb/concurrent_queue.h>
-#include <tbb/global_control.h>
 
 #include <Eigen/Core>
 
@@ -14,6 +12,19 @@
 #include "depthai/pipeline/datatype/TransformData.hpp"
 #include "depthai/pipeline/datatype/IMUData.hpp"
 #include "depthai/pipeline/node/Sync.hpp"
+
+namespace tbb{
+    namespace detail{
+        namespace d1{
+            class global_control;
+        }
+        namespace d2{
+            template <typename T, typename Allocator>
+            class concurrent_bounded_queue;
+        }
+
+    }
+}
 
 namespace dai {
 namespace node {
@@ -34,11 +45,10 @@ class BasaltVIO : public NodeCRTP<ThreadedHostNode, BasaltVIO> {
     std::string leftInputName = "left";
     std::string rightInputName = "right";
 
-    Input& inputLeft = inputs[leftInputName];
-    Input& inputRight = inputs[rightInputName];
+    Input& left = inputs[leftInputName];
+    Input& right = inputs[rightInputName];
+    Input imu{*this, {.name = "inIMU", .types = {{DatatypeEnum::IMUData, true}}}};
 
-    Input inputSync{*this, {.name = "inSync", .types = {{DatatypeEnum::MessageGroup, true}}}};
-    Input inputImu{*this, {.name = "inIMU", .types = {{DatatypeEnum::IMUData, true}}}};
     Output transform{*this, {.name = "transform", .types = {{DatatypeEnum::TransformData, true}}}};
     Output passthrough{*this, {.name = "imgPassthrough", .types = {{DatatypeEnum::ImgFrame, true}}}};
 
@@ -48,6 +58,7 @@ class BasaltVIO : public NodeCRTP<ThreadedHostNode, BasaltVIO> {
     void setUseSpecTranslation(bool use) { useSpecTranslation = use; }
 
    private:
+    Input inSync{*this, {.name = "inSync", .types = {{DatatypeEnum::MessageGroup, true}}}};
     std::shared_ptr<basalt::Calibration<double>> calib;
 
     basalt::OpticalFlowBase::Ptr optFlowPtr;
@@ -65,7 +76,7 @@ class BasaltVIO : public NodeCRTP<ThreadedHostNode, BasaltVIO> {
     std::string configPath = VIO_CONFIG_PATH;
     int imuUpdateRate = 200;
     int threadNum = 1;
-    std::unique_ptr<tbb::global_control> tbbGlobalControl;
+    std::shared_ptr<tbb::detail::d1::global_control> tbbGlobalControl;
     bool useSpecTranslation = true;
 
 
