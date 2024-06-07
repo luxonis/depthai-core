@@ -9,35 +9,35 @@
 #include "basalt/utils/vio_config.h"
 #include "basalt/vi_estimator/vio_estimator.h"
 #include "depthai/pipeline/ThreadedHostNode.hpp"
-#include "depthai/pipeline/datatype/TransformData.hpp"
 #include "depthai/pipeline/datatype/IMUData.hpp"
+#include "depthai/pipeline/datatype/TransformData.hpp"
 #include "depthai/pipeline/node/Sync.hpp"
 
-namespace tbb{
-    namespace detail{
-        namespace d1{
-            class global_control;
-        }
-        namespace d2{
-            template <typename T, typename Allocator>
-            class concurrent_bounded_queue;
-        }
-
-    }
+namespace tbb {
+namespace detail {
+namespace d1 {
+class global_control;
 }
+namespace d2 {
+template <typename T, typename Allocator>
+class concurrent_bounded_queue;
+}
+
+}  // namespace detail
+}  // namespace tbb
 
 namespace dai {
 namespace node {
+
+/**
+ * @brief Basalt Visual Inertial Odometry node. Performs VIO on stereo images and IMU data.
+
+*/
 class BasaltVIO : public NodeCRTP<ThreadedHostNode, BasaltVIO> {
    public:
     constexpr static const char* NAME = "BasaltVIO";
 
-    void stereoCB(std::shared_ptr<ADatatype> in);
-
-    void imuCB(std::shared_ptr<ADatatype> imuData);
-
     std::shared_ptr<BasaltVIO> build();
-    void run() override;
 
     Subnode<node::Sync> sync{*this, "sync"};
     InputMap& inputs = sync->inputs;
@@ -45,20 +45,48 @@ class BasaltVIO : public NodeCRTP<ThreadedHostNode, BasaltVIO> {
     std::string leftInputName = "left";
     std::string rightInputName = "right";
 
+    /**
+     * Input left image on which VIO is performed.
+     */
     Input& left = inputs[leftInputName];
+    /**
+     * Input right image on which VIO is performed.
+     */
     Input& right = inputs[rightInputName];
+    /**
+     * Input IMU data.
+     */
     Input imu{*this, {.name = "inIMU", .types = {{DatatypeEnum::IMUData, true}}}};
 
+    /**
+     * Output transform data.
+     */
     Output transform{*this, {.name = "transform", .types = {{DatatypeEnum::TransformData, true}}}};
+    /**
+     * Output passthrough of left image.
+     */
     Output passthrough{*this, {.name = "imgPassthrough", .types = {{DatatypeEnum::ImgFrame, true}}}};
 
+    /**
+     * VIO configuration file.
+     */
     basalt::VioConfig vioConfig;
-    void setImuUpdateRate(int rate) { imuUpdateRate = rate; }
-    void setConfigPath(const std::string& path) { configPath = path; }
-    void setUseSpecTranslation(bool use) { useSpecTranslation = use; }
+    void setImuUpdateRate(int rate) {
+        imuUpdateRate = rate;
+    }
+    void setConfigPath(const std::string& path) {
+        configPath = path;
+    }
+    void setUseSpecTranslation(bool use) {
+        useSpecTranslation = use;
+    }
     void setLocalTransform(const std::shared_ptr<TransformData>& transform);
 
    private:
+    void run() override;
+    void initialize(std::vector<std::shared_ptr<ImgFrame>> frames);
+    void stereoCB(std::shared_ptr<ADatatype> in);
+    void imuCB(std::shared_ptr<ADatatype> imuData);
     Input inSync{*this, {.name = "inSync", .types = {{DatatypeEnum::MessageGroup, true}}}};
     std::shared_ptr<basalt::Calibration<double>> calib;
 
@@ -80,9 +108,6 @@ class BasaltVIO : public NodeCRTP<ThreadedHostNode, BasaltVIO> {
     int threadNum = 1;
     std::shared_ptr<tbb::detail::d1::global_control> tbbGlobalControl;
     bool useSpecTranslation = true;
-
-
-    void initialize(std::vector<std::shared_ptr<ImgFrame>> frames);
 };
 }  // namespace node
 }  // namespace dai

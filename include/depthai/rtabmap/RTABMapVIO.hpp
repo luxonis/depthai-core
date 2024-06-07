@@ -18,6 +18,11 @@
 
 namespace dai {
 namespace node {
+
+/**
+ * @brief RTABMap Visual Inertial Odometry node. Performs VIO on rectified frame, depth frame and IMU data.
+
+*/
 class RTABMapVIO : public NodeCRTP<ThreadedHostNode, RTABMapVIO> {
    public:
     constexpr static const char* NAME = "RTABMapVIO";
@@ -31,23 +36,54 @@ class RTABMapVIO : public NodeCRTP<ThreadedHostNode, RTABMapVIO> {
     Subnode<node::Sync> sync{*this, "sync"};
     InputMap& inputs = sync->inputs;
 
+    /**
+     * Input rectified image on which VIO is performed.
+     */
     Input& rect = inputs[rectInputName];
+    /**
+     * Input depth image on which VIO is performed.
+     */
     Input& depth = inputs[depthInputName];
+    /**
+     * Input tracked features on which VIO is performed (optional).
+     */
     Input features{*this, {.name = featuresInputName, .types = {{DatatypeEnum::TrackedFeatures, true}}}};
+    /**
+     * Input IMU data.
+     */
     Input imu{*this, {.name = "imu", .types = {{DatatypeEnum::IMUData, true}}}};
+    /**
+     * Output transform.
+     */
     Output transform{*this, {.name = "transform", .types = {{DatatypeEnum::TransformData, true}}}};
+    /**
+     * Passthrough rectified frame.
+     */
     Output passthroughRect{*this, {.name = "passthrough_rect", .types = {{DatatypeEnum::ImgFrame, true}}}};
+    /**
+     * Passthrough depth frame.
+     */
     Output passthroughDepth{*this, {.name = "passthrough_depth", .types = {{DatatypeEnum::ImgFrame, true}}}};
+    /**
+     * Passthrough features.
+     */
     Output passthroughFeatures{*this, {.name = "passthrough_features", .types = {{DatatypeEnum::TrackedFeatures, true}}}};
 
-    void run() override;
+    /**
+     * Set RTABMap parameters.
+     */
     void setParams(const rtabmap::ParametersMap& params);
+    /**
+     * Whether to use input features or calculate them internally.
+     */
     void setUseFeatures(bool use);
+
     void setLocalTransform(std::shared_ptr<TransformData> transform) {
         localTransform = transform->getRTABMapTransform();
     }
 
    private:
+    void run() override;
     void syncCB(std::shared_ptr<dai::ADatatype> data);
     Input inSync{*this, {.name = "inSync", .types = {{DatatypeEnum::MessageGroup, true}}}};
     void imuCB(std::shared_ptr<ADatatype> msg);
@@ -59,7 +95,7 @@ class RTABMapVIO : public NodeCRTP<ThreadedHostNode, RTABMapVIO> {
     std::map<double, cv::Vec3f> accBuffer;
     std::map<double, cv::Vec3f> gyroBuffer;
     std::map<double, cv::Vec4f> rotBuffer;
-    float alphaScaling=-1.0;
+    float alphaScaling = -1.0;
     bool modelSet = false;
     bool useFeatures = true;
 };
