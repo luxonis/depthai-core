@@ -718,24 +718,6 @@ if(DEPTHAI_PCL_SUPPORT)
 endif()
 
 ########################
-# Combined target
-########################
-set(TARGET_ALL_ALIAS all)
-set(TARGET_ALL_NAME ${PROJECT_NAME}-all)
-if(DEPTHAI_HAVE_OPENCV_SUPPORT AND DEPTHAI_HAVE_PCL_SUPPORT)
-    add_library(${TARGET_ALL_NAME} INTERFACE)
-    add_library("${PROJECT_NAME}::${TARGET_ALL_ALIAS}" ALIAS ${TARGET_ALL_NAME})
-    # Specifies name of generated IMPORTED target (set to alias)
-    set_target_properties(${TARGET_ALL_NAME} PROPERTIES EXPORT_NAME ${TARGET_ALL_ALIAS})
-    target_link_libraries(${TARGET_ALL_NAME} INTERFACE ${TARGET_CORE_NAME} ${TARGET_OPENCV_NAME} ${TARGET_PCL_NAME})
-
-    # Add to list of targets to export and install
-    list(APPEND targets_to_export ${TARGET_ALL_NAME})
-
-    message(STATUS "OpenCV and PCL found. Combined target enabled")
-endif()
-
-########################
 # RTABMap Support
 ########################
 set(THIRDPARTY_RTABMAP_LIBRARIES "" CACHE STRING "Optional libraries to link RTABMap support, e.g. TBB::tbb")
@@ -758,7 +740,7 @@ if(DEPTHAI_RTABMAP_SUPPORT)
         add_flag(${TARGET_RTABMAP_NAME} -Wno-switch-enum)
 
         # Link to RTABMap (publically)
-        target_link_libraries(${TARGET_RTABMAP_NAME} PUBLIC rtabmap::core depthai::opencv ${THIRDPARTY_RTABMAP_LIBRARIES})
+        target_link_libraries(${TARGET_RTABMAP_NAME} PUBLIC rtabmap::core ${TARGET_OPENCV_NAME} ${TARGET_PCL_NAME} ${THIRDPARTY_RTABMAP_LIBRARIES})
 
         # Add public compile definition indicating that RTABMap support is available
         set(DEPTHAI_HAVE_RTABMAP_SUPPORT ON)
@@ -856,6 +838,26 @@ if(DEPTHAI_BASALT_SUPPORT)
         message(STATUS "Basalt or required libraries (${REQUIRED_BASALT_LIBRARIES}) not found. Basalt Support disabled")
     endif()
 endif()
+
+########################
+# Combined target
+########################
+set(TARGET_ALL_ALIAS all)
+set(TARGET_ALL_NAME ${PROJECT_NAME}-all)
+if(DEPTHAI_HAVE_OPENCV_SUPPORT AND DEPTHAI_HAVE_PCL_SUPPORT AND DEPTHAI_HAVE_BASALT_SUPPORT AND DEPTHAI_HAVE_RTABMAP_SUPPORT)
+    add_library(${TARGET_ALL_NAME} INTERFACE)
+    add_library("${PROJECT_NAME}::${TARGET_ALL_ALIAS}" ALIAS ${TARGET_ALL_NAME})
+    # Specifies name of generated IMPORTED target (set to alias)
+    set_target_properties(${TARGET_ALL_NAME} PROPERTIES EXPORT_NAME ${TARGET_ALL_ALIAS})
+    target_link_libraries(${TARGET_ALL_NAME} INTERFACE ${TARGET_CORE_NAME} ${TARGET_OPENCV_NAME} ${TARGET_PCL_NAME} ${TARGET_BASALT_NAME} ${TARGET_RTABMAP_NAME})
+
+    # Add to list of targets to export and install
+    list(APPEND targets_to_export ${TARGET_ALL_NAME})
+
+    message(STATUS "OpenCV, PCL Basalt and RTABMap found. Combined target enabled")
+endif()
+
+
 
 ########################
 # Sanitizers
