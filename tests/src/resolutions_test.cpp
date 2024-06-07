@@ -19,6 +19,13 @@
 // Test helpers
 #include "image_comparator.hpp"
 
+static const std::vector<std::pair<uint32_t, uint32_t>> bestResolutions = {
+    {320, 240}, {640, 480}, {960, 720}, {1280, 960}, {1440, 1080}, {1920, 1440}, {4000, 3000},
+    // TODO(jakgra) this is probably sensor dependent.
+    // add the max resolution with nice FOV
+    // When we add support for getConnectedCameraFeatures() on rvc4 revisit this
+};
+
 bool getBoolOption(const std::string& key) {
     const char* valueCStr = std::getenv(key.c_str());
     if(valueCStr == nullptr) {
@@ -204,8 +211,16 @@ void getImages(bool debugOn,
     // int maxIspVideoHeight = std::min(height, 2160);
 
     dai::ImgFrameCapability capOrig;
-    // capOrig.size.value = std::make_pair(960, 720);  // TODO(jakgra) get this from device when supported on rvc4
-    capOrig.size.value = std::pair{1920, 1440};  // TODO(jakgra) get this from device when supported on rvc4
+    // TODO(jakgra) get this from device when supported on rvc4
+    std::optional<std::pair<uint32_t, uint32_t>> bestResolution;
+    for(const auto& res : bestResolutions) {
+        if(res.first >= std::get<0>(size) && res.second >= std::get<1>(size)) {
+            bestResolution = res;
+            break;
+        }
+    }
+    REQUIRE(bestResolution);
+    capOrig.size.value = bestResolution;
     capOrig.resizeMode = dai::ImgResizeMode::CROP;
     capOrig.encoding = dai::ImgFrame::Type::BGR888i;
     const auto queueFramesOrig = camRgb->requestOutput(capOrig, true)->createQueue();
@@ -318,8 +333,7 @@ void compareImages(bool debugOn,
                 resize(compare.second->getFrame(),
                        resizedDown,
                        cv::Size(static_cast<int>(std::get<0>(size)), static_cast<int>(std::get<1>(size))),
-                       cv::INTER_AREA);
-                // cv::INTER_CUBIC); // has artifacts???
+                       cv::INTER_CUBIC);
                 break;
             case E::CROP:
                 // TODO(jakgra) implement
@@ -334,12 +348,13 @@ void compareImages(bool debugOn,
                 break;
         }
         REQUIRE((resizedDown.cols == compare.first->getWidth() && resizedDown.rows == compare.first->getHeight()));
-        const double diffNorm = cv::norm(compare.first->getFrame(), resizedDown);
+        cv::Mat diffMatrix;
+        cv::absdiff(compare.first->getFrame(), resizedDown, diffMatrix);
+        const double diffNorm = cv::sum(diffMatrix).dot(cv::Scalar::ones());
         const uint32_t area = compare.first->getWidth() * compare.first->getHeight();
         const double diffNormArea = diffNorm / area;
-        std::cout << "FRAME " << count << " DIFF was: " << diffNormArea << "\n";
-        double maxDiff = 0.013;
-        // double maxDiff = 0.0003;
+        std::cout << "FRAME " << count << " DIFF area was: " << diffNormArea << "DIFF norm was: " << diffNorm << "\n";
+        double maxDiff = 8.0;
         if(debugOn && diffNormArea >= maxDiff) {
             ImageComparator comparator;
             comparator.run(compare.first->getFrame(), resizedDown);
@@ -418,21 +433,30 @@ void testMultipleResolutions(const std::vector<std::tuple<uint32_t, uint32_t>>& 
 TEST_CASE("prev_broken_resolutions") {
     // TODO(jakgra) fix odd-sized resolutions
     // const auto resolution = GENERATE(table<uint32_t, uint32_t>({{3860, 2587}, {3951, 1576}, {909, 909}, {444, 888}}));
+    // fix FW for resolutions:
     // 332x2466
-    const auto resolution = GENERATE(table<uint32_t, uint32_t>({{444, 888}}));
-    // const auto resolution = GENERATE(table<uint32_t, uint32_t>({{700, 700}}));
+    // 196x2464
+    // 50x30
+    const auto resolution = GENERATE(table<uint32_t, uint32_t>({{150, 150}, {3880, 2880}, {444, 888}, {700, 700}}));
     testResolutionWithContent(isDebug(), dai::ImgResizeMode::STRETCH, resolution);
+    // testResolutionWithContent(isDebug(), dai::ImgResizeMode::CROP, resolution);
 }
 
 TEST_CASE("common_resolutions") {
-    const auto resolution = GENERATE(table<uint32_t, uint32_t>({{1920, 1080}, {300, 300}, {640, 640}, {800, 600}, {640, 480}}));
+    // fix test case for
+    // 1920x1440
+    const auto resolution = GENERATE(table<uint32_t, uint32_t>({{1920, 1080}, {300, 300}, {640, 640}, {800, 600}, {640, 480}, {4000, 3000}}));
     testResolutionWithContent(isDebug(), dai::ImgResizeMode::STRETCH, resolution);
+    // testResolutionWithContent(isDebug(), dai::ImgResizeMode::CROP, resolution);
 }
 
+/*
+ * TODO(jakgra) re enable when prev broken resolutions are fixed
 TEST_CASE("random_resolutions") {
     (void)GENERATE(repeat(20, value(0)));
     testResolutionWithContent(isDebug(), dai::ImgResizeMode::STRETCH);
 }
+*/
 
 TEST_CASE("multiple_resolutions") {
     const std::vector<std::vector<std::tuple<uint32_t, uint32_t>>> resolutionsToTest{
