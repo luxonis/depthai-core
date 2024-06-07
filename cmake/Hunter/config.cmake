@@ -160,7 +160,6 @@ hunter_config(
     URL "https://github.com/introlab/rtabmap/archive/refs/tags/0.21.4.tar.gz"
     SHA1 "3ac7372c3bd6761095421a3282d66521822f89f7"
     CMAKE_ARGS
-        CMAKE_BUILD_TYPE=RelWithDebInfo
         BUILD_APP=OFF
         WITH_UDEV=OFF
         BUILD_EXAMPLES=OFF
