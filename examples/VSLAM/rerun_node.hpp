@@ -8,7 +8,7 @@
 #endif
 #include "rerun.hpp"
 
-rerun::Collection<rerun::TensorDimension> tensor_shape(const cv::Mat& img) {
+rerun::Collection<rerun::TensorDimension> tensorShape(const cv::Mat& img) {
     return {img.rows, img.cols, img.channels()};
 };
 class RerunStreamer : public dai::NodeCRTP<dai::node::ThreadedHostNode, RerunStreamer> {
@@ -48,7 +48,7 @@ class RerunStreamer : public dai::NodeCRTP<dai::node::ThreadedHostNode, RerunStr
                 rec.log("world/trajectory", rerun::LineStrips3D(lineStrip));
                 rec.log("world/camera/image", rerun::Pinhole::from_focal_length_and_resolution({398.554f, 398.554f}, {640.0f, 400.0f}).with_camera_xyz(rerun::components::ViewCoordinates::FLU));
                 rec.log("world/camera/image/rgb",
-                        rerun::Image(tensor_shape(imgFrame->getCvFrame()), reinterpret_cast<const uint8_t*>(imgFrame->getCvFrame().data)));
+                        rerun::Image(tensorShape(imgFrame->getCvFrame()), reinterpret_cast<const uint8_t*>(imgFrame->getCvFrame().data)));
                 #ifdef DEPTHAI_HAVE_PCL_SUPPORT
                 if(pclObstData != nullptr) {
                     std::vector<rerun::Position3D> points;
@@ -66,7 +66,7 @@ class RerunStreamer : public dai::NodeCRTP<dai::node::ThreadedHostNode, RerunStr
                 }
                 #endif
                 if(mapData != nullptr) {
-                    rec.log("map", rerun::Image(tensor_shape(mapData->getCvFrame()), reinterpret_cast<const uint8_t*>(mapData->getCvFrame().data)));
+                    rec.log("map", rerun::Image(tensorShape(mapData->getCvFrame()), reinterpret_cast<const uint8_t*>(mapData->getCvFrame().data)));
                 }
             }
         }
