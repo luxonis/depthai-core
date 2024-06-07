@@ -17,7 +17,7 @@ class SPIOut : public DeviceNodeCRTP<DeviceNode, SPIOut, SPIOutProperties> {
     using DeviceNodeCRTP::DeviceNodeCRTP;
     std::shared_ptr<SPIOut> build() {
         properties.busId = 0;
-        isBuild = true; 
+        isBuild = true;
         return std::static_pointer_cast<SPIOut>(shared_from_this());
     }
 
@@ -46,7 +46,9 @@ class SPIOut : public DeviceNodeCRTP<DeviceNode, SPIOut, SPIOutProperties> {
 
    protected:
     bool isBuild = false;
-    bool needsBuild() override { return !isBuild; }
+    bool needsBuild() override {
+        return !isBuild;
+    }
 };
 
 }  // namespace node

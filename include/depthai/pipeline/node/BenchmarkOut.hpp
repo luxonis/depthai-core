@@ -35,9 +35,12 @@ class BenchmarkOut : public DeviceNodeCRTP<DeviceNode, BenchmarkOut, BenchmarkPr
      * Set FPS at which the node is sending out messages. 0 means as fast as possible
      */
     void setFps(float fps);
+
    protected:
     bool isBuild = false;
-    bool needsBuild() override { return !isBuild; }
+    bool needsBuild() override {
+        return !isBuild;
+    }
 };
 
 }  // namespace node

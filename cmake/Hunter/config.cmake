@@ -281,3 +281,24 @@ hunter_config(
     URL "https://github.com/Neargye/magic_enum/archive/3d1f6a5a2a3fbcba077e00ad0ccc2dd9fefc2ca7.zip"
     SHA1 "c9a27f6ff8311f0c6b2adb959d0598f079fcc9f3"
 )
+hunter_config(
+    CURL
+    VERSION "7.88.1-p0-custom"
+    URL "https://github.com/cpp-pm/curl/archive/25d45e89d140d6ab27103cd7f8f6d7d6cf548d47.tar.gz"
+    SHA1 "db96d87e078e529a90dfb74de8d360a785c053aa"
+    CMAKE_ARGS
+        BUILD_CURL_TESTS=OFF
+        BUILD_CURL_EXE=OFF
+        CURL_USE_SCHANNEL=${DEPTHAI_CURL_USE_SCHANNEL}
+        CURL_USE_OPENSSL=${DEPTHAI_CURL_USE_OPENSSL} # Override hunter flags - no OpenSSL needed on Windows
+        BUILD_STATIC_CURL=ON
+        BUILD_SHARED_LIBS=OFF
+        BUILD_STATIC_LIBS=ON
+)
+
+hunter_config(
+    cpr
+    VERSION "1.4.0"
+    URL "https://github.com/luxonis/cpr/archive/a1d28dbbaccda3df8fddd993b2cd916f64f9da56.tar.gz"
+    SHA1 "14e18d04d05e36e920aa90ee744952bf55783ea4"
+)

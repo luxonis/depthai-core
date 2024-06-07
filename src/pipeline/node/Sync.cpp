@@ -1,4 +1,5 @@
 #include "depthai/pipeline/node/Sync.hpp"
+
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
 
 namespace dai {

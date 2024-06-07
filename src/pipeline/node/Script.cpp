@@ -12,7 +12,7 @@ std::shared_ptr<Script> Script::build() {
     properties.scriptName = "<script>";
     properties.processor = ProcessorType::LEON_MSS;
 
-    isBuild = true; 
+    isBuild = true;
     return std::static_pointer_cast<Script>(shared_from_this());
 }
 

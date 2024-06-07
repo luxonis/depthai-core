@@ -20,6 +20,7 @@ class HostNode : public ThreadedHostNode {
    protected:
     void buildStage1() override;
     void run() override;
+
    public:
     InputMap& inputs = sync->inputs;
     // Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::Buffer, true}}};

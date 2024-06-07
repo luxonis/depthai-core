@@ -11,10 +11,10 @@ namespace dai {
 namespace node {
 
 std::shared_ptr<VideoEncoder> VideoEncoder::build(Node::Output& input) {
-        input.link(this->input);
-        isBuild = true; 
-        return std::static_pointer_cast<VideoEncoder>(shared_from_this());
-    }
+    input.link(this->input);
+    isBuild = true;
+    return std::static_pointer_cast<VideoEncoder>(shared_from_this());
+}
 // node properties
 void VideoEncoder::setNumFramesPool(int frames) {
     properties.numFramesPool = frames;

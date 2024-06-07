@@ -23,6 +23,10 @@ else()
     hunter_add_package(PNG)
     hunter_add_package(TIFF)
     hunter_add_package(mp4v2)
+    if(DEPTHAI_ENABLE_CURL)
+        hunter_add_package(CURL)
+        hunter_add_package(cpr)
+    endif()
     if(DEPTHAI_ENABLE_BACKWARD)
         hunter_add_package(Backward)
     endif()
@@ -58,6 +62,11 @@ if(NOT CONFIG_MODE OR (CONFIG_MODE AND NOT DEPTHAI_SHARED_LIBS))
 
     # httplib for Gate communication
     find_package(httplib ${_QUIET} CONFIG REQUIRED)
+    # Log collection dependencies
+    if(DEPTHAI_ENABLE_CURL)
+        find_package(CURL ${_QUIET} CONFIG REQUIRED)
+        find_package(cpr ${_QUIET} CONFIG REQUIRED)
+    endif()
 
     # Backward
     if(DEPTHAI_ENABLE_BACKWARD)

@@ -1,5 +1,5 @@
-#include<iostream>
 #include <chrono>
+#include <iostream>
 #include <thread>
 
 #include "depthai/depthai.hpp"

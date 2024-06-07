@@ -25,37 +25,36 @@ namespace mcap::internal {
  */
 template <size_t Polynomial, size_t NumTables>
 struct CRC32Table {
-private:
-  std::array<uint32_t, 256 * NumTables> table = {};
+   private:
+    std::array<uint32_t, 256 * NumTables> table = {};
 
-public:
-  constexpr CRC32Table() {
-    for (uint32_t i = 0; i < 256; i++) {
-      uint32_t r = i;
-      r = ((r & 1) * Polynomial) ^ (r >> 1);
-      r = ((r & 1) * Polynomial) ^ (r >> 1);
-      r = ((r & 1) * Polynomial) ^ (r >> 1);
-      r = ((r & 1) * Polynomial) ^ (r >> 1);
-      r = ((r & 1) * Polynomial) ^ (r >> 1);
-      r = ((r & 1) * Polynomial) ^ (r >> 1);
-      r = ((r & 1) * Polynomial) ^ (r >> 1);
-      r = ((r & 1) * Polynomial) ^ (r >> 1);
-      table[i] = r;
+   public:
+    constexpr CRC32Table() {
+        for(uint32_t i = 0; i < 256; i++) {
+            uint32_t r = i;
+            r = ((r & 1) * Polynomial) ^ (r >> 1);
+            r = ((r & 1) * Polynomial) ^ (r >> 1);
+            r = ((r & 1) * Polynomial) ^ (r >> 1);
+            r = ((r & 1) * Polynomial) ^ (r >> 1);
+            r = ((r & 1) * Polynomial) ^ (r >> 1);
+            r = ((r & 1) * Polynomial) ^ (r >> 1);
+            r = ((r & 1) * Polynomial) ^ (r >> 1);
+            r = ((r & 1) * Polynomial) ^ (r >> 1);
+            table[i] = r;
+        }
+        for(size_t i = 256; i < table.size(); i++) {
+            uint32_t value = table[i - 256];
+            table[i] = table[value & 0xff] ^ (value >> 8);
+        }
     }
-    for (size_t i = 256; i < table.size(); i++) {
-      uint32_t value = table[i - 256];
-      table[i] = table[value & 0xff] ^ (value >> 8);
-    }
-  }
 
-  constexpr uint32_t operator[](size_t index) const {
-    return table[index];
-  }
+    constexpr uint32_t operator[](size_t index) const {
+        return table[index];
+    }
 };
 
 inline uint32_t getUint32LE(const std::byte* data) {
-  return (uint32_t(data[0]) << 0) | (uint32_t(data[1]) << 8) | (uint32_t(data[2]) << 16) |
-         (uint32_t(data[3]) << 24);
+    return (uint32_t(data[0]) << 0) | (uint32_t(data[1]) << 8) | (uint32_t(data[2]) << 16) | (uint32_t(data[3]) << 24);
 }
 
 static constexpr CRC32Table<0xedb88320, 8> CRC32_TABLE;
@@ -72,37 +71,36 @@ static constexpr uint32_t CRC32_INIT = 0xffffffff;
  * presented at: https://github.com/komrad36/CRC#option-9-8-byte-tabular
  */
 inline uint32_t crc32Update(const uint32_t prev, const std::byte* const data, const size_t length) {
-  // Process bytes one by one until we reach the proper alignment.
-  uint32_t r = prev;
-  size_t offset = 0;
-  for (; (uintptr_t(data + offset) & alignof(uint32_t)) != 0 && offset < length; offset++) {
-    r = CRC32_TABLE[(r ^ uint8_t(data[offset])) & 0xff] ^ (r >> 8);
-  }
-  if (offset == length) {
+    // Process bytes one by one until we reach the proper alignment.
+    uint32_t r = prev;
+    size_t offset = 0;
+    for(; (uintptr_t(data + offset) & alignof(uint32_t)) != 0 && offset < length; offset++) {
+        r = CRC32_TABLE[(r ^ uint8_t(data[offset])) & 0xff] ^ (r >> 8);
+    }
+    if(offset == length) {
+        return r;
+    }
+
+    // Process 8 bytes (2 uint32s) at a time.
+    size_t remainingBytes = length - offset;
+    for(; remainingBytes >= 8; offset += 8, remainingBytes -= 8) {
+        r ^= getUint32LE(data + offset);
+        uint32_t r2 = getUint32LE(data + offset + 4);
+        r = CRC32_TABLE[0 * 256 + ((r2 >> 24) & 0xff)] ^ CRC32_TABLE[1 * 256 + ((r2 >> 16) & 0xff)] ^ CRC32_TABLE[2 * 256 + ((r2 >> 8) & 0xff)]
+            ^ CRC32_TABLE[3 * 256 + ((r2 >> 0) & 0xff)] ^ CRC32_TABLE[4 * 256 + ((r >> 24) & 0xff)] ^ CRC32_TABLE[5 * 256 + ((r >> 16) & 0xff)]
+            ^ CRC32_TABLE[6 * 256 + ((r >> 8) & 0xff)] ^ CRC32_TABLE[7 * 256 + ((r >> 0) & 0xff)];
+    }
+
+    // Process any remaining bytes one by one.
+    for(; offset < length; offset++) {
+        r = CRC32_TABLE[(r ^ uint8_t(data[offset])) & 0xff] ^ (r >> 8);
+    }
     return r;
-  }
-
-  // Process 8 bytes (2 uint32s) at a time.
-  size_t remainingBytes = length - offset;
-  for (; remainingBytes >= 8; offset += 8, remainingBytes -= 8) {
-    r ^= getUint32LE(data + offset);
-    uint32_t r2 = getUint32LE(data + offset + 4);
-    r = CRC32_TABLE[0 * 256 + ((r2 >> 24) & 0xff)] ^ CRC32_TABLE[1 * 256 + ((r2 >> 16) & 0xff)] ^
-        CRC32_TABLE[2 * 256 + ((r2 >> 8) & 0xff)] ^ CRC32_TABLE[3 * 256 + ((r2 >> 0) & 0xff)] ^
-        CRC32_TABLE[4 * 256 + ((r >> 24) & 0xff)] ^ CRC32_TABLE[5 * 256 + ((r >> 16) & 0xff)] ^
-        CRC32_TABLE[6 * 256 + ((r >> 8) & 0xff)] ^ CRC32_TABLE[7 * 256 + ((r >> 0) & 0xff)];
-  }
-
-  // Process any remaining bytes one by one.
-  for (; offset < length; offset++) {
-    r = CRC32_TABLE[(r ^ uint8_t(data[offset])) & 0xff] ^ (r >> 8);
-  }
-  return r;
 }
 
 /** Finalize a CRC32 by inverting the output value. */
 inline uint32_t crc32Final(uint32_t crc) {
-  return crc ^ 0xffffffff;
+    return crc ^ 0xffffffff;
 }
 
 }  // namespace mcap::internal

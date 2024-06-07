@@ -19,7 +19,7 @@ with dai.Device(info) as device:
 
         cap = dai.ImgFrameCapability()
         cap.size.fixed([640, 480])
-        videoQueue = cam.requestOutput(cap, True).createQueue()
+        videoQueue = cam.requestOutput(cap, True).createOutputQueue()
 
         # Connect to device and start pipeline
         pipeline.start()
