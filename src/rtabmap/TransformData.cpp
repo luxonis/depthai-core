@@ -6,8 +6,8 @@ TransformData::TransformData(const rtabmap::Transform& transformRTABMap) {
                  {transformRTABMap.r21(), transformRTABMap.r22(), transformRTABMap.r23(), transformRTABMap.o24()},
                  {transformRTABMap.r31(), transformRTABMap.r32(), transformRTABMap.r33(), transformRTABMap.o34()}}};
 }
-void TransformData::getRTABMapTransform(rtabmap::Transform& transformRTABMap) const {
-    transformRTABMap = rtabmap::Transform(transform.matrix[0][0],
+rtabmap::Transform TransformData::getRTABMapTransform() const {
+    return rtabmap::Transform(transform.matrix[0][0],
                                           transform.matrix[0][1],
                                           transform.matrix[0][2],
                                           transform.matrix[0][3],

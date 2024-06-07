@@ -1,5 +1,8 @@
 #pragma once
 #include "depthai/pipeline/datatype/Buffer.hpp"
+#include "depthai/common/Point3d.hpp"
+#include "depthai/common/Quaterniond.hpp"
+
 #ifdef DEPTHAI_HAVE_RTABMAP_SUPPORT
     #include "rtabmap/core/Transform.h"
 #endif
@@ -26,7 +29,7 @@ class TransformData : public Buffer {
 
 #ifdef DEPTHAI_HAVE_RTABMAP_SUPPORT
     TransformData(const rtabmap::Transform& transformRTABMap);
-    void getRTABMapTransform(rtabmap::Transform& transformRTABMap) const;
+    rtabmap::Transform getRTABMapTransform() const;
 #endif
     virtual ~TransformData() = default;
 
@@ -38,9 +41,9 @@ class TransformData : public Buffer {
         datatype = DatatypeEnum::TransformData;
     };
 
-    void getTranslation(double& x, double& y, double& z) const;
-    void getRotationEuler(double& r, double& p, double& y) const;
-    void getQuaternion(double& qx, double& qy, double& qz, double& qw) const;
+    Point3d getTranslation() const;
+    Point3d getRotationEuler() const;
+    Quaterniond getQuaternion() const;
 
     DEPTHAI_SERIALIZE(TransformData, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, transform);
 };

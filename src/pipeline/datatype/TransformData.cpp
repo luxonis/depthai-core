@@ -35,12 +35,14 @@ TransformData::TransformData(double x, double y, double z, double roll, double p
     }};
 }
 
-void TransformData::getTranslation(double& x, double& y, double& z) const {
-    x = transform.matrix[0][3];
-    y = transform.matrix[1][3];
-    z = transform.matrix[2][3];
+Point3d TransformData::getTranslation() const {
+    double x = transform.matrix[0][3];
+    double y = transform.matrix[1][3];
+    double z = transform.matrix[2][3];
+    return Point3d(x, y, z);
 }
-void TransformData::getRotationEuler(double& r, double& p, double& yw) const {
+Point3d TransformData::getRotationEuler() const {
+    double r, p, yw;
     p = -asin(transform.matrix[2][0]);
     if(fabs(p) < M_PI/2){
         r = atan2(transform.matrix[2][1], transform.matrix[2][2]);
@@ -49,8 +51,10 @@ void TransformData::getRotationEuler(double& r, double& p, double& yw) const {
         r = atan2(-transform.matrix[0][1], transform.matrix[1][1]);
         yw = 0;
     }
+    return Point3d(r, p, yw);
 }
-void TransformData::getQuaternion(double& qx, double& qy, double& qz, double& qw) const {
+Quaterniond TransformData::getQuaternion() const {
+    double qx, qy, qz, qw;
     double tr = transform.matrix[0][0] + transform.matrix[1][1] + transform.matrix[2][2];
     if(tr > 0){
         double S = sqrt(tr+1.0f) * 2;
@@ -77,5 +81,6 @@ void TransformData::getQuaternion(double& qx, double& qy, double& qz, double& qw
         qy = (transform.matrix[1][2] + transform.matrix[2][1]) / S;
         qz = 0.25f * S;
     }
+    return Quaterniond(qx, qy, qz, qw);
 }
 }  // namespace dai
