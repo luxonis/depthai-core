@@ -1,8 +1,6 @@
 #pragma once
 #define SOPHUS_USE_BASIC_LOGGING
 
-#include <Eigen/Core>
-
 #include "basalt/calibration/calibration.hpp"
 #include "basalt/serialization/headers_serialization.h"
 #include "basalt/spline/se3_spline.h"
@@ -99,7 +97,6 @@ class BasaltVIO : public NodeCRTP<ThreadedHostNode, BasaltVIO> {
     tbb::concurrent_bounded_queue<basalt::PoseVelBiasState<double>::Ptr> outStateQueue;
 
     std::vector<int64_t> vioTNSec;
-    Eigen::aligned_vector<Eigen::Vector3d> vioTwI;
     std::shared_ptr<basalt::PoseState<double>::SE3> localTransform;
     std::shared_ptr<ImgFrame> leftImg;
     bool calibrated = false;
