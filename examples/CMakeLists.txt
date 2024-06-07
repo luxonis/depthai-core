@@ -456,12 +456,12 @@ dai_add_example(host_only_camera host_side/host_only_camera.cpp OFF OFF)
 # dai_add_example(depth_video_synced Sync/depth_video_synced.cpp ON OFF)
 # dai_add_example(imu_video_synced Sync/imu_video_synced.cpp ON OFF)
 
-# # Record
-# dai_add_example(record_encoded_h264 Record/record_encoded_h264.cpp ON OFF)
-# dai_add_example(record_encoded_mjpeg Record/record_encoded_mjpeg.cpp ON OFF)
-# dai_add_example(record_raw_color Record/record_raw_color.cpp ON OFF)
-# dai_add_example(record_raw_gray Record/record_raw_gray.cpp ON OFF)
-# # dai_add_example(record_imu Record/record_imu.cpp ON OFF)
+# Record
+dai_add_example(record_encoded_h264 Record/record_encoded_h264.cpp ON OFF)
+dai_add_example(record_encoded_mjpeg Record/record_encoded_mjpeg.cpp ON OFF)
+dai_add_example(record_raw_color Record/record_raw_color.cpp ON OFF)
+dai_add_example(record_raw_gray Record/record_raw_gray.cpp ON OFF)
+dai_add_example(record_imu Record/record_imu.cpp ON OFF)
 
 if(DEPTHAI_RTABMAP_SUPPORT)
     include(FetchContent)
