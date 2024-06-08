@@ -35,8 +35,8 @@ ImageManipConfig& ImageManipConfig::setCropRect(float xmin, float ymin, float xm
     cropConfig.cropRect.xmax = std::min(xmax, 1.0f);
     cropConfig.cropRect.ymax = std::min(ymax, 1.0f);
 
-    base.setOutputSize(xmax - xmin, ymax - ymin);
     base.translate(-xmin, -ymin, (xmax - xmin) <= 1.0f);
+    base.setOutputSize(xmax - xmin, ymax - ymin);
     return *this;
 }
 
@@ -53,8 +53,8 @@ ImageManipConfig& ImageManipConfig::setCropRotatedRect(RotatedRect rr, bool norm
     cropConfig.cropRotatedRect = rr;
     cropConfig.normalizedCoords = normalizedCoords;
 
-    base.setOutputSize(rr.size.width, rr.size.height);
     base.translate(-(rr.center.x - rr.size.width / 2), -(rr.center.y - rr.size.height / 2), normalizedCoords);
+    base.setOutputSize(rr.size.width, rr.size.height);
     return *this;
 }
 
