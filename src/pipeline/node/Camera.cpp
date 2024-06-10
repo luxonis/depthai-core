@@ -35,6 +35,13 @@ class Camera::Impl {
         }
         return nullptr;
     }
+
+    void buildStage1(Camera& parent) {
+        for(const auto& outputRequest : outputRequests) {
+            DAI_CHECK(!parent.dynamicOutputs[std::to_string(outputRequest.id)].getQueueConnections().empty(),
+                      "Always call output->createQueue() or output->link(*) after calling dai::node::Camera::requestOutput()");
+        }
+    }
 };
 
 Camera::Camera() : pimpl(spimpl::make_impl<Impl>()) {}
@@ -312,6 +319,10 @@ void Camera::setRawOutputPacked(bool packed) {
 
 Node::Output* Camera::requestOutput(const Capability& capability, bool onHost) {
     return pimpl->requestOutput(*this, capability, onHost);
+}
+
+void Camera::buildStage1() {
+    return pimpl->buildStage1(*this);
 }
 
 bool Camera::isSourceNode() const {

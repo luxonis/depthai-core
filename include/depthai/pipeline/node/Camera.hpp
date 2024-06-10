@@ -59,6 +59,8 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties> {
 
     Node::Output* requestOutput(const Capability& capability, bool onHost) override;
 
+    void buildStage1() override;
+
     /**
      * Initial control options to apply to sensor
      */
