@@ -41,6 +41,7 @@
 #include "spdlog/fmt/chrono.h"
 #include "spdlog/sinks/stdout_color_sinks.h"
 #include "spdlog/spdlog.h"
+#include "utility/LogCollection.hpp"
 #include "utility/Logging.hpp"
 
 namespace dai {
@@ -530,13 +531,6 @@ unsigned int getCrashdumpTimeout(XLinkProtocol_t protocol) {
     return DEFAULT_CRASHDUMP_TIMEOUT + (protocol == X_LINK_TCP_IP ? device::XLINK_TCP_WATCHDOG_TIMEOUT.count() : device::XLINK_USB_WATCHDOG_TIMEOUT.count());
 }
 
-std::optional<std::string> saveCrashDump(dai::CrashDump& dump, std::string mxId) {
-    std::vector<uint8_t> data;
-    utility::serialize<SerializationType::JSON>(dump, data);
-    auto crashDumpPathStr = utility::getEnv("DEPTHAI_CRASHDUMP");
-    return saveFileToTemporaryDirectory(data, mxId + "-depthai_crash_dump.json", crashDumpPathStr);
-}
-
 void DeviceBase::closeImpl() {
     using namespace std::chrono;
     auto t1 = steady_clock::now();
@@ -549,12 +543,7 @@ void DeviceBase::closeImpl() {
             if(hasCrashDump()) {
                 connection->setRebootOnDestruction(true);
                 auto dump = getCrashDump();
-                auto path = saveCrashDump(dump, deviceInfo.getMxId());
-                if(path.has_value()) {
-                    pimpl->logger.warn("There was a fatal error. Crash dump saved to {}", path.value());
-                } else {
-                    pimpl->logger.warn("There was a fatal error. Crash dump could not be saved");
-                }
+                logCollection::logCrashDump(pipelineSchema, dump, deviceInfo);
             } else {
                 bool isRunning = pimpl->rpcClient->call("isRunning").as<bool>();
                 shouldGetCrashDump = !isRunning;
@@ -617,12 +606,7 @@ void DeviceBase::closeImpl() {
                     DeviceBase rebootingDevice(config, rebootingDeviceInfo, firmwarePath, true);
                     if(rebootingDevice.hasCrashDump()) {
                         auto dump = rebootingDevice.getCrashDump();
-                        auto path = saveCrashDump(dump, deviceInfo.getMxId());
-                        if(path.has_value()) {
-                            pimpl->logger.warn("Device crashed. Crash dump saved to {}", path.value());
-                        } else {
-                            pimpl->logger.warn("Device crashed. Crash dump could not be saved");
-                        }
+                        logCollection::logCrashDump(pipelineSchema, dump, deviceInfo);
                     } else {
                         pimpl->logger.warn("Device crashed, but no crash dump could be extracted.");
                     }
@@ -1598,6 +1582,10 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
 
     // // print assets on device side for test
     // pimpl->rpcClient->call("printAssets");
+
+    // Log the pipeline
+    logCollection::logPipeline(schema, deviceInfo);
+    this->pipelineSchema = schema;  // Save the schema so it can be saved alongside the crashdump
 
     // Build and start the pipeline
     bool success = false;

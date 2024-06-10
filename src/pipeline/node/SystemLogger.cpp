@@ -10,7 +10,7 @@ std::shared_ptr<SystemLogger> SystemLogger::build() {
     // TODO(before mainline) - Add pools if ready
     // pool->out.link(inputPool);
     //
-    isBuild = true; 
+    isBuild = true;
     return std::static_pointer_cast<SystemLogger>(shared_from_this());
 }
 

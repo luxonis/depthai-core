@@ -7,7 +7,6 @@
 #include "depthai/pipeline/node/ColorCamera.hpp"
 #include "depthai/pipeline/node/host/Display.hpp"
 
-
 int main() {
     // Create pipeline
     dai::Pipeline pipeline(true);
@@ -18,7 +17,7 @@ int main() {
     // camRgb->video.link(displayDevice->input);
 
     // Option 2:
-    auto queue = camRgb->video.createQueue();
+    auto queue = camRgb->video.createOutputQueue();
 
     pipeline.start();
 

@@ -53,7 +53,9 @@ class SystemLogger : public DeviceNodeCRTP<DeviceNode, SystemLogger, SystemLogge
 
    protected:
     bool isBuild = false;
-    bool needsBuild() override { return !isBuild; }
+    bool needsBuild() override {
+        return !isBuild;
+    }
 };
 
 }  // namespace node

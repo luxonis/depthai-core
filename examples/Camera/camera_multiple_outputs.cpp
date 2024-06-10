@@ -68,7 +68,7 @@ int main(int argc, char** argv) {
             cameras[camSocket] = camera;
         }
         auto* output = camera->requestOutput(cap, true);
-        videos.push_back(output->createQueue());
+        videos.push_back(output->createOutputQueue());
     }
 
     pipeline.start();

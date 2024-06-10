@@ -38,8 +38,8 @@ with dai.Pipeline() as pipeline:
     detectionNetwork.setNumInferenceThreads(2)
 
 
-    qRgb = detectionNetwork.passthrough.createQueue()
-    qDet = detectionNetwork.out.createQueue()
+    qRgb = detectionNetwork.passthrough.createOutputQueue()
+    qDet = detectionNetwork.out.createOutputQueue()
 
     labelMap = detectionNetwork.getClasses()
 

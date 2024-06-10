@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <chrono>
 #include <limits>
+#include <optional>
 #include <unordered_map>
 #include <vector>
 
@@ -112,6 +113,14 @@ class NNData : public Buffer {
      */
     std::vector<TensorInfo> getAllLayers() const;
 
+    /**
+     * Retrieve tensor information
+     * @param name Name of the tensor
+     * @returns Tensor information
+     */
+    std::optional<TensorInfo> getTensorInfo(const std::string& name) const;
+
+    // TODO(Morato) - deprecate this
     /**
      * Retrieve layers tensor information
      * @param name Name of the layer
@@ -259,7 +268,7 @@ class NNData : public Buffer {
      * @returns xt::xarray<_Ty> tensor
      */
     template <typename _Ty>
-    xt::xarray<_Ty> getTensor(const std::string& name) {
+    xt::xarray<_Ty> getTensor(const std::string& name, bool dequantize = false) {
         const auto it = std::find_if(tensors.begin(), tensors.end(), [&name](const TensorInfo& ti) { return ti.name == name; });
 
         if(it == tensors.end()) throw std::runtime_error("Tensor does not exist");
@@ -303,7 +312,11 @@ class NNData : public Buffer {
                 }
                 break;
         }
-
+        if(dequantize) {
+            if(it->quantization) {
+                tensor = (tensor - it->qpZp) * it->qpScale;
+            }
+        }
         return tensor;
     }
 

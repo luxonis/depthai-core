@@ -56,7 +56,9 @@ class XLinkOut : public DeviceNodeCRTP<DeviceNode, XLinkOut, XLinkOutProperties>
 
    protected:
     bool isBuild = false;
-    bool needsBuild() override { return !isBuild; }
+    bool needsBuild() override {
+        return !isBuild;
+    }
 };
 
 }  // namespace node

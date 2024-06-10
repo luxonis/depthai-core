@@ -195,8 +195,7 @@ The following environment variables can be set to alter default behavior of the 
 | DEPTHAI_LIBUSB_ANDROID_JAVAVM | JavaVM pointer that is passed to libusb for rootless Android interaction with devices. Interpreted as decimal value of uintptr_t |
 | DEPTHAI_CRASHDUMP | Directory in which to save the crash dump. |
 | DEPTHAI_CRASHDUMP_TIMEOUT | Specifies the duration in seconds to wait for device reboot when obtaining a crash dump. Crash dump retrieval disabled if 0. |
-| DEPTHAI_PCL_SUPPORT | Enables PCL support. |
-
+| DEPTHAI_DISABLE_FEEDBACK | Disables crash dump and pipeline schema collection used to improve the library |
 ## Running tests
 
 To run the tests build the library with the following options

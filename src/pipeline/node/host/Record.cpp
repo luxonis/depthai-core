@@ -91,10 +91,9 @@ void Record::run() {
                 byteRecorder.init(recordFileBytes, compressionLevel, utility::RecordType::Other);
                 throw std::runtime_error("Record node does not support this type of message");
             }
-            if(logger) logger->trace("Record node detected stream type {}",
-                          streamType == StreamType::RawVideo       ? "RawVideo"
-                          : streamType == StreamType::EncodedVideo ? "EncodedVideo"
-                                                                   : "Byte");
+            if(logger)
+                logger->trace("Record node detected stream type {}",
+                              streamType == StreamType::RawVideo ? "RawVideo" : streamType == StreamType::EncodedVideo ? "EncodedVideo" : "Byte");
         }
         if(streamType == StreamType::RawVideo || streamType == StreamType::EncodedVideo) {
             if(i == 0)
@@ -164,12 +163,14 @@ void Record::run() {
             record.packets.reserve(imuData->packets.size());
             for(const auto& packet : imuData->packets) {
                 utility::ImuPacketSchema packetSchema;
-                packetSchema.acceleration.timestamp.set(std::chrono::duration_cast<std::chrono::nanoseconds>(packet.acceleroMeter.getTimestampDevice().time_since_epoch()));
+                packetSchema.acceleration.timestamp.set(
+                    std::chrono::duration_cast<std::chrono::nanoseconds>(packet.acceleroMeter.getTimestampDevice().time_since_epoch()));
                 packetSchema.acceleration.sequenceNumber = packet.acceleroMeter.sequence;
                 packetSchema.acceleration.x = packet.acceleroMeter.x;
                 packetSchema.acceleration.y = packet.acceleroMeter.y;
                 packetSchema.acceleration.z = packet.acceleroMeter.z;
-                packetSchema.orientation.timestamp.set(std::chrono::duration_cast<std::chrono::nanoseconds>(packet.gyroscope.getTimestampDevice().time_since_epoch()));
+                packetSchema.orientation.timestamp.set(
+                    std::chrono::duration_cast<std::chrono::nanoseconds>(packet.gyroscope.getTimestampDevice().time_since_epoch()));
                 packetSchema.orientation.sequenceNumber = packet.gyroscope.sequence;
                 const auto [qw, qx, qy, qz] = eulerToQuaternion(packet.gyroscope.x, packet.gyroscope.y, packet.gyroscope.z);
                 packetSchema.orientation.x = qx;

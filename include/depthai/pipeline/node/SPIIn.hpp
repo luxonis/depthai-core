@@ -57,7 +57,9 @@ class SPIIn : public DeviceNodeCRTP<DeviceNode, SPIIn, SPIInProperties> {
 
    protected:
     bool isBuild = false;
-    bool needsBuild() override { return !isBuild; }
+    bool needsBuild() override {
+        return !isBuild;
+    }
 };
 
 }  // namespace node

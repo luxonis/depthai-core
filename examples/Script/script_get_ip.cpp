@@ -31,12 +31,10 @@ int main() {
     )");
 
     // XLinkOut
-    auto xout = pipeline.create<dai::node::XLinkOut>();
-    xout->setStreamName("end");
-    script->outputs["end"].link(xout->input);
+    auto queue = script->outputs["end"].createOutputQueue();
 
     // Connect to device with pipeline
     dai::Device device(pipeline);
-    device.getOutputQueue("end")->get<dai::Buffer>();
+    queue->get<dai::Buffer>();
     return 0;
 }
