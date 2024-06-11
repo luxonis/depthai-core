@@ -21,6 +21,28 @@ std::tuple<float, float, float, float> getOuterRect(std::array<dai::Point2f, 4>&
     return {xmin, ymin, xmax, ymax};
 }
 
+// New API
+ImageManipConfig& ImageManipConfig::crop(uint32_t x, uint32_t y, uint32_t w, uint32_t h) {
+    base.crop(x, y, w, h);
+    return *this;
+}
+ImageManipConfig& ImageManipConfig::resize(uint32_t w, uint32_t h) {
+    base.resize(w, h);
+    return *this;
+}
+ImageManipConfig& ImageManipConfig::scale(float scale) {
+    base.resizeWidthKeepAspectRatio(scale, true);
+    return *this;
+}
+ImageManipConfig& ImageManipConfig::rotateDeg(float angle) {
+    base.rotateDegrees(angle);
+    return *this;
+}
+ImageManipConfig& ImageManipConfig::setOutputSize(uint32_t w, uint32_t h, ImageManipBase::ResizeMode mode) {
+    base.setOutputResize(w, h, mode);
+    return *this;
+}
+
 // Functions to set properties
 ImageManipConfig& ImageManipConfig::setCropRect(float xmin, float ymin, float xmax, float ymax) {
     // Enable crop stage
@@ -179,6 +201,7 @@ ImageManipConfig& ImageManipConfig::setResizeThumbnail(int w, int h, int bgRed, 
 
     base.setBackgroundColor(bgRed, bgGreen, bgBlue);
     base.setOutputSize(w, h);
+    base.setOutputCenter(true);
     base.resizeFit();
 
     return *this;
@@ -225,6 +248,9 @@ ImageManipConfig& ImageManipConfig::setColormap(Colormap colormap, int max) {
     formatConfig.colormap = colormap;
     formatConfig.colormapMin = 0;
     formatConfig.colormapMax = max;
+
+    base.colormap = colormap;
+
     return *this;
 }
 
@@ -239,6 +265,9 @@ ImageManipConfig& ImageManipConfig::setColormap(Colormap colormap, int min, int 
     formatConfig.colormap = colormap;
     formatConfig.colormapMin = min;
     formatConfig.colormapMax = max;
+
+    base.colormap = colormap;
+
     return *this;
 }
 

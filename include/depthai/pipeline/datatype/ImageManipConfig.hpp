@@ -1,6 +1,7 @@
 #pragma once
 
 #include <nop/structure.h>
+#include <spdlog/async_logger.h>
 
 #include <array>
 #include <nlohmann/json.hpp>
@@ -64,13 +65,13 @@ struct Resize : OpBase {
     Resize(float width, float height, bool normalized = false) : width(width), height(height), normalized(normalized), mode(VALUE) {}
 
     static Resize fit() {
-        Resize r(-1, -1);
+        Resize r(0, 0);
         r.mode = FIT;
         return r;
     }
 
     static Resize fill() {
-        Resize r(-1, -1);
+        Resize r(0, 0);
         r.mode = FILL;
         return r;
     }
@@ -148,7 +149,7 @@ struct Crop : OpBase {
     uint32_t height;
     bool center;
 
-    Crop() : width(-1), height(-1), center(true) {}
+    Crop() : width(0), height(0), center(true) {}
     Crop(uint32_t width, uint32_t height, bool center = false) : width(width), height(height), center(center) {}
 
     Crop clone() const {
@@ -191,11 +192,11 @@ class ImageManipBase {
     uint32_t outputHeight = 0;
     bool center = false;
     ResizeMode resizeMode = ResizeMode::NONE;
-    Background background;
-    uint8_t red;
-    uint8_t green;
-    uint8_t blue;
-    Colormap colormap;
+    Background background = Background::COLOR;
+    uint8_t red = 0;
+    uint8_t green = 0;
+    uint8_t blue = 0;
+    Colormap colormap = Colormap::NONE;
 
     ImageManipBase() = default;
     virtual ~ImageManipBase() = default;
@@ -251,13 +252,13 @@ class ImageManipBase {
         return *this;
     }
 
-    ImageManipBase& resizeWidthKeepAspectRatio(float width) {
-        operations.emplace_back(Resize(width, -1));
+    ImageManipBase& resizeWidthKeepAspectRatio(float width, bool normalized = false) {
+        operations.emplace_back(Resize(width, 0, normalized));
         return *this;
     }
 
-    ImageManipBase& resizeHeightKeepAspectRatio(float height) {
-        operations.emplace_back(Resize(-1, height));
+    ImageManipBase& resizeHeightKeepAspectRatio(float height, bool normalized = false) {
+        operations.emplace_back(Resize(0, height, normalized));
         return *this;
     }
 
@@ -278,6 +279,7 @@ class ImageManipBase {
     ImageManipBase& setOutputSize(float width, float height) {
         outputWidth = width;
         outputHeight = height;
+        resizeMode = ResizeMode::NONE;
         return *this;
     }
 
@@ -423,6 +425,13 @@ class ImageManipConfig : public Buffer {
 
         DEPTHAI_SERIALIZE(FormatConfig, type, flipHorizontal, flipVertical, colormap, colormapMin, colormapMax);
     };
+
+    // New API
+    ImageManipConfig& crop(uint32_t x, uint32_t y, uint32_t w, uint32_t h);
+    ImageManipConfig& resize(uint32_t w, uint32_t h);
+    ImageManipConfig& scale(float scale);
+    ImageManipConfig& rotateDeg(float angle);
+    ImageManipConfig& setOutputSize(uint32_t w, uint32_t h, ImageManipBase::ResizeMode mode = ImageManipBase::ResizeMode::NONE);
 
     // Functions to set properties
     /**
@@ -682,5 +691,4 @@ class ImageManipConfig : public Buffer {
     /// Retrieve which interpolation method to use
     dai::Interpolation getInterpolation() const;
 };
-
 }  // namespace dai
