@@ -1,6 +1,7 @@
 #include <depthai/pipeline/DeviceNode.hpp>
 #include <memory>
 
+#include "depthai/pipeline/InputQueue.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "spdlog/fmt/fmt.h"
 #include "utility/ErrorMacros.hpp"
@@ -154,7 +155,7 @@ void Node::Output::link(Input& in) {
     connectedInputs.push_back(&in);
 }
 
-std::shared_ptr<dai::MessageQueue> Node::Output::createQueue(unsigned int maxSize, bool blocking) {
+std::shared_ptr<dai::MessageQueue> Node::Output::createOutputQueue(unsigned int maxSize, bool blocking) {
     // Check if pipeline is already started - if so, throw an error
     auto pipelinePtr = parent.get().getParentPipeline();
     if(pipelinePtr.isBuilt()) {
@@ -163,6 +164,24 @@ std::shared_ptr<dai::MessageQueue> Node::Output::createQueue(unsigned int maxSiz
     auto queue = std::make_shared<MessageQueue>(maxSize, blocking);
     link(queue);
     return queue;
+}
+
+std::shared_ptr<InputQueue> Node::Input::createInputQueue(unsigned int maxSize, bool blocking) {
+    auto pipelinePtr = parent.get().getParentPipeline();
+    if(pipelinePtr.isBuilt()) {
+        throw std::runtime_error("Cannot create input queue after pipeline is built");
+    }
+
+    // Construct a new InputQueue interface
+    // Cannot use make_shared as the InputQueue's constructor is private - only send method is exposed
+    auto inputQueuePtr = std::shared_ptr<InputQueue>(new InputQueue(maxSize, blocking));
+
+    // Add the underlying input queue node to the pipeline
+    pipelinePtr.add(inputQueuePtr->getNode());
+
+    // Connect input queue node's output to this input
+    inputQueuePtr->getNodeOutput().link(*this);
+    return inputQueuePtr;
 }
 
 Node::ConnectionInternal::ConnectionInternal(Output& out, Input& in)

@@ -23,7 +23,7 @@ with dai.Pipeline() as pipeline:
     imageManip.initialConfig.setResize(300, 300)
     imageManip.initialConfig.setFrameType(dai.ImgFrame.Type.BGR888p)
     replay.out.link(imageManip.inputImage)
-    manipOutQueue = imageManip.out.createQueue()
+    manipOutQueue = imageManip.out.createOutputQueue()
 
     pipeline.start()
     while pipeline.isRunning() and replay.isRunning():
