@@ -9,6 +9,7 @@ void bind_camera(pybind11::module& m, void* pCallstack){
 
     using namespace dai;
     using namespace dai::node;
+    using namespace pybind11::literals;
 
     // Node and Properties declare upfront
     py::class_<CameraProperties> cameraProperties(m, "CameraProperties", DOC(dai, CameraProperties));
@@ -101,40 +102,15 @@ void bind_camera(pybind11::module& m, void* pCallstack){
 
     // Camera node
     camera
-        .def_readonly("inputConfig", &Camera::inputConfig, DOC(dai, node, Camera, inputConfig))
         .def_readonly("inputControl", &Camera::inputControl, DOC(dai, node, Camera, inputControl))
         .def_readonly("initialControl", &Camera::initialControl, DOC(dai, node, Camera, initialControl))
-        .def_readonly("video", &Camera::video, DOC(dai, node, Camera, video))
-        .def_readonly("preview", &Camera::preview, DOC(dai, node, Camera, preview))
-        .def_readonly("still", &Camera::still, DOC(dai, node, Camera, still))
-        .def_readonly("isp", &Camera::isp, DOC(dai, node, Camera, isp))
-        .def_readonly("raw", &Camera::raw, DOC(dai, node, Camera, raw))
-        .def_readonly("frameEvent",  &Camera::frameEvent, DOC(dai, node, Camera, frameEvent))
-        // .def_readonly("mockIsp",  &Camera::mockIsp, DOC(dai, node, Camera, mockIsp))
-
 #define CAMERA_ARGS \
-        CameraBoardSocket boardSocket, \
-        CameraImageOrientation imageOrientation, \
-        CameraProperties::ColorOrder colorOrder, \
-        bool interleaved, \
-        std::tuple<int, int> previewSize, \
-        std::tuple<int, int> videoSize, \
-        float fps
+        CameraBoardSocket boardSocket
 #define CAMERA_PYARGS \
-        py::arg("boardSocket") = CameraBoardSocket::AUTO, \
-        py::arg("imageOrientation") = CameraImageOrientation::AUTO, \
-        py::arg("colorOrder") = CameraProperties::ColorOrder::BGR, \
-        py::arg("interleaved") = true, \
-        py::arg("previewSize") = py::make_tuple(300, 300), \
-        py::arg("videoSize") = py::make_tuple(-1, -1), \
-        py::arg("fps") = 30.0
+        py::arg("boardSocket") = CameraBoardSocket::AUTO
         // TODO (Zimamazim) Automatically fetch default arguments to avoid duplicity
 #define CAMERA_CODE(OP) \
-        self OP setBoardSocket(boardSocket); \
-        self OP setImageOrientation(imageOrientation); \
-        self OP setPreviewSize(previewSize); \
-        self OP setVideoSize(videoSize); \
-        self OP setFps(fps);
+        self OP setBoardSocket(boardSocket);
         .def("build", [](Camera &self, CAMERA_ARGS) {
                 self.build();
                 CAMERA_CODE(.)
@@ -152,60 +128,10 @@ void bind_camera(pybind11::module& m, void* pCallstack){
             )
         .def("setBoardSocket", &Camera::setBoardSocket, py::arg("boardSocket"), DOC(dai, node, Camera, setBoardSocket))
         .def("getBoardSocket", &Camera::getBoardSocket, DOC(dai, node, Camera, getBoardSocket))
-        .def("setImageOrientation", &Camera::setImageOrientation, py::arg("imageOrientation"), DOC(dai, node, Camera, setImageOrientation))
-        .def("getImageOrientation", &Camera::getImageOrientation, DOC(dai, node, Camera, getImageOrientation))
-        .def("setPreviewSize", static_cast<void(Camera::*)(int,int)>(&Camera::setPreviewSize), py::arg("width"), py::arg("height"), DOC(dai, node, Camera, setPreviewSize))
-        .def("setPreviewSize", static_cast<void(Camera::*)(std::tuple<int,int>)>(&Camera::setPreviewSize), py::arg("size"), DOC(dai, node, Camera, setPreviewSize, 2))
-        .def("setVideoSize", static_cast<void(Camera::*)(int,int)>(&Camera::setVideoSize), py::arg("width"), py::arg("height"), DOC(dai, node, Camera, setVideoSize))
-        .def("setVideoSize", static_cast<void(Camera::*)(std::tuple<int,int>)>(&Camera::setVideoSize), py::arg("size"), DOC(dai, node, Camera, setVideoSize, 2))
-        .def("setStillSize", static_cast<void(Camera::*)(int,int)>(&Camera::setStillSize), py::arg("width"), py::arg("height"), DOC(dai, node, Camera, setStillSize))
-        .def("setStillSize", static_cast<void(Camera::*)(std::tuple<int,int>)>(&Camera::setStillSize), py::arg("size"), DOC(dai, node, Camera, setStillSize, 2))
-        // .def("setResolution", &Camera::setResolution, py::arg("resolution"), DOC(dai, node, Camera, setResolution))
-        // .def("getResolution", &Camera::getResolution, DOC(dai, node, Camera, getResolution))
-        .def("setFps", &Camera::setFps, py::arg("fps"), DOC(dai, node, Camera, setFps))
-        .def("setIsp3aFps", &Camera::setIsp3aFps, DOC(dai, node, Camera, setIsp3aFps))
-        .def("getFps", &Camera::getFps, DOC(dai, node, Camera, getFps))
-        .def("getPreviewSize", &Camera::getPreviewSize, DOC(dai, node, Camera, getPreviewSize))
-        .def("getPreviewWidth", &Camera::getPreviewWidth, DOC(dai, node, Camera, getPreviewWidth))
-        .def("getPreviewHeight", &Camera::getPreviewHeight, DOC(dai, node, Camera, getPreviewHeight))
-        .def("getVideoSize", &Camera::getVideoSize, DOC(dai, node, Camera, getVideoSize))
-        .def("getVideoWidth", &Camera::getVideoWidth, DOC(dai, node, Camera, getVideoWidth))
-        .def("getVideoHeight", &Camera::getVideoHeight, DOC(dai, node, Camera, getVideoHeight))
-        .def("getStillSize", &Camera::getStillSize, DOC(dai, node, Camera, getStillSize))
-        .def("getStillWidth", &Camera::getStillWidth, DOC(dai, node, Camera, getStillWidth))
-        .def("getStillHeight", &Camera::getStillHeight, DOC(dai, node, Camera, getStillHeight))
-        .def("getSize", &Camera::getSize, DOC(dai, node, Camera, getSize))
-        .def("getWidth", &Camera::getWidth, DOC(dai, node, Camera, getWidth))
-        .def("getHeight", &Camera::getHeight, DOC(dai, node, Camera, getHeight))
-        // .def("sensorCenterCrop", &Camera::sensorCenterCrop, DOC(dai, node, Camera, sensorCenterCrop))
-        // .def("setSensorCrop", &Camera::setSensorCrop, py::arg("x"), py::arg("y"), DOC(dai, node, Camera, setSensorCrop))
-        // .def("getSensorCrop", &Camera::getSensorCrop, DOC(dai, node, Camera, getSensorCrop))
-        // .def("getSensorCropX", &Camera::getSensorCropX, DOC(dai, node, Camera, getSensorCropX))
-        // .def("getSensorCropY", &Camera::getSensorCropY, DOC(dai, node, Camera, getSensorCropY))
-
-        // .def("setIspScale", static_cast<void(Camera::*)(int,int)>(&Camera::setIspScale), py::arg("numerator"), py::arg("denominator"), DOC(dai, node, Camera, setIspScale))
-        // .def("setIspScale", static_cast<void(Camera::*)(std::tuple<int,int>)>(&Camera::setIspScale), py::arg("scale"), DOC(dai, node, Camera, setIspScale, 2))
-        // .def("setIspScale", static_cast<void(Camera::*)(int,int,int,int)>(&Camera::setIspScale), py::arg("horizNum"), py::arg("horizDenom"), py::arg("vertNum"), py::arg("vertDenom"), DOC(dai, node, Camera, setIspScale, 3))
-        // .def("setIspScale", static_cast<void(Camera::*)(std::tuple<int,int>,std::tuple<int,int>)>(&Camera::setIspScale), py::arg("horizScale"), py::arg("vertScale"), DOC(dai, node, Camera, setIspScale, 4))
-
         .def("setCamera", &Camera::setCamera, py::arg("name"), DOC(dai, node, Camera, setCamera))
         .def("getCamera", &Camera::getCamera, DOC(dai, node, Camera, getCamera))
-
-        .def("setSize", static_cast<void(Camera::*)(int,int)>(&Camera::setSize), py::arg("width"), py::arg("height"), DOC(dai, node, Camera, setSize))
-        .def("setSize", static_cast<void(Camera::*)(std::tuple<int,int>)>(&Camera::setSize), py::arg("size"), DOC(dai, node, Camera, setSize, 2))
-
-
-        .def("setMeshSource", &Camera::setMeshSource, py::arg("source"), DOC(dai, node, Camera, setMeshSource))
-        .def("getMeshSource", &Camera::getMeshSource, DOC(dai, node, Camera, getMeshSource))
-        .def("loadMeshFile", &Camera::loadMeshFile, py::arg("warpMesh"), DOC(dai, node, Camera, loadMeshFile))
-        .def("loadMeshData", &Camera::loadMeshData, py::arg("warpMesh"), DOC(dai, node, Camera, loadMeshData))
-        .def("setMeshStep", &Camera::setMeshStep, py::arg("width"), py::arg("height"), DOC(dai, node, Camera, setMeshStep))
-        .def("getMeshStep", &Camera::getMeshStep, DOC(dai, node, Camera, getMeshStep))
-        .def("setCalibrationAlpha", &Camera::setCalibrationAlpha, py::arg("alpha"), DOC(dai, node, Camera, setCalibrationAlpha))
-        .def("getCalibrationAlpha", &Camera::getCalibrationAlpha, DOC(dai, node, Camera, getCalibrationAlpha))
-
-        .def("setRawOutputPacked", &Camera::setRawOutputPacked, py::arg("packed"), DOC(dai, node, Camera, setRawOutputPacked))
-        .def("requestOutput", &Camera::requestOutput, py::return_value_policy::reference_internal, DOC(dai, node, Camera, requestOutput))
+        .def("requestOutput", py::overload_cast<std::pair<uint32_t, uint32_t>, ImgFrame::Type, ImgResizeMode, uint32_t>(&Camera::requestOutput), "size"_a, "encoding"_a=dai::ImgFrame::Type::NV12, "resizeMode"_a=dai::ImgResizeMode::CROP, "fps"_a=30, py::return_value_policy::reference_internal, DOC(dai, node, Camera, requestOutput))
+        .def("requestOutput",  py::overload_cast<const Capability&, bool>(&Camera::requestOutput), "capability"_a, "onHost"_a, py::return_value_policy::reference_internal, DOC(dai, node, Camera, requestOutput, 2))
         ;
     // ALIAS
     daiNodeModule.attr("Camera").attr("Properties") = cameraProperties;

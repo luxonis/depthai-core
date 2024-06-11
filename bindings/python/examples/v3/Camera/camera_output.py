@@ -15,11 +15,9 @@ with dai.Device(info) as device:
         cam = pipeline.create(dai.node.Camera)
 
         # Properties
-        cam.setBoardSocket(dai.CameraBoardSocket.CAM_B)
+        cam.setBoardSocket(dai.CameraBoardSocket.CAM_A)
 
-        cap = dai.ImgFrameCapability()
-        cap.size.fixed([640, 480])
-        videoQueue = cam.requestOutput(cap, True).createOutputQueue()
+        videoQueue = cam.requestOutput([640, 480]).createOutputQueue()
 
         # Connect to device and start pipeline
         pipeline.start()
