@@ -249,6 +249,12 @@ void ColorCamera::setStillSize(std::tuple<int, int> size) {
     setStillSize(std::get<0>(size), std::get<1>(size));
 }
 
+void ColorCamera::setMockIspSize(int width, int height) {
+    properties.mockIspWidth = width;
+    properties.mockIspHeight = height;
+}
+
+
 void ColorCamera::setIspScale(int horizNum, int horizDenom, int vertNum, int vertDenom) {
     properties.ispScale.horizNumerator = horizNum;
     properties.ispScale.horizDenominator = horizDenom;

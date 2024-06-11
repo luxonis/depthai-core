@@ -5,7 +5,9 @@
 
 #include <cstdint>
 #include <fstream>
+#include <functional>
 
+#include "depthai/properties/VideoEncoderProperties.hpp"
 #include "nlohmann/json.hpp"
 #include "span.hpp"
 
@@ -20,7 +22,34 @@
 #include "mcap/mcap.hpp"
 
 namespace dai {
+
+/**
+ * Configuration for recording and replaying messages
+ */
+struct RecordConfig {
+    using Profile = dai::VideoEncoderProperties::Profile;
+    enum class RecordReplayState { RECORD, REPLAY, NONE };
+
+    struct VideoEncoding {
+        bool enabled = true;
+        int bitrate = 0;
+        Profile profile = Profile::H264_MAIN;
+        bool lossless = false;
+        int quality = 80;
+    };
+
+    RecordReplayState state = RecordReplayState::NONE;
+
+    std::string outputDir;
+    VideoEncoding videoEncoding;
+    uint8_t compressionLevel = 5;
+};
+
 namespace utility {
+
+struct NodeRecordParams {
+    std::string name;
+};
 
 class VideoRecorder {
    public:
@@ -52,13 +81,13 @@ class VideoRecorder {
 
 class ByteRecorder {
    public:
-    enum class CompressionLevel { NONE, FASTEST, FAST, DEFAULT, SLOW, SLOWEST };
+    enum class CompressionLevel : uint8_t { NONE, FASTEST, FAST, DEFAULT, SLOW, SLOWEST };
 
     ~ByteRecorder();
     void init(const std::string& filePath, CompressionLevel compressionLevel, RecordType recordingType);
     template <typename T>
     void write(const T& data) {
-        mcap::Timestamp writeTime = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+        mcap::Timestamp writeTime = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
         nlohmann::json j = data;
         std::string serialized = j.dump();
         mcap::Message msg;
@@ -95,6 +124,7 @@ class VideoPlayer {
     void setSize(uint32_t width, uint32_t height);
     std::optional<std::vector<uint8_t>> next();
     std::tuple<uint32_t, uint32_t> size();
+    void restart();
     void close();
     bool isInitialized() const {
         return initialized;
@@ -116,7 +146,9 @@ class BytePlayer {
     ~BytePlayer();
     void init(const std::string& filePath);
     std::optional<nlohmann::json> next();
+    void restart();
     void close();
+    static std::optional<std::tuple<uint32_t, uint32_t>> getVideoSize(const std::string& filePath);
     bool isInitialized() const {
         return initialized;
     }
@@ -126,32 +158,6 @@ class BytePlayer {
     std::unique_ptr<mcap::LinearMessageView> messageView;
     std::unique_ptr<mcap::LinearMessageView::Iterator> it;
     bool initialized = false;
-};
-
-struct NodeRecordParams {
-    std::string name;
-};
-
-struct RecordConfig {
-    enum class RecordReplayState { RECORD, REPLAY, NONE };
-
-    // struct VideoEncoding {
-    //     bool enabled = false;
-    //     int bitrate = 0;
-    //     Profile profile = Profile::H264_MAIN;
-    //     bool lossless = true;
-    //     int quality = 80;
-    // };
-    struct ByteEncoding {
-        bool enabled = true;
-        int compressionLevel = 6;
-    };
-
-    RecordReplayState state = RecordReplayState::NONE;
-
-    std::string outputDir;
-    // VideoEncoding videoEncoding;
-    ByteEncoding byteEncoding;
 };
 
 bool checkRecordConfig(std::string& recordPath, RecordConfig& config);
@@ -167,60 +173,58 @@ using json = nlohmann::json;
 
 namespace nlohmann {
 template <>
-struct adl_serializer<dai::utility::RecordConfig> {
-    static void to_json(json& j, const dai::utility::RecordConfig& p) {  // NOLINT this is a specialization, naming conventions don't apply
-        // std::string profile;
-        // switch(p.videoEncoding.profile) {
-        //     case Profile::H264_BASELINE:
-        //         profile = "H264_BASELINE";
-        //         break;
-        //     case Profile::H264_HIGH:
-        //         profile = "H264_HIGH";
-        //         break;
-        //     case Profile::H264_MAIN:
-        //         profile = "H264_MAIN";
-        //         break;
-        //     case Profile::H265_MAIN:
-        //         profile = "H265_MAIN";
-        //         break;
-        //     case Profile::MJPEG:
-        //         profile = "MJPEG";
-        //         break;
-        // }
-        // auto vidEnc = json{{"enabled", p.videoEncoding.enabled},
-        //                    {"bitrate", p.videoEncoding.bitrate},
-        //                    {"profile", profile},
-        //                    {"lossless", p.videoEncoding.lossless},
-        //                    {"quality", p.videoEncoding.quality}};
-        auto byteEnc = json{{{"enabled", p.byteEncoding.enabled}, {"compressionLevel", p.byteEncoding.compressionLevel}}};
-        j = json{{"outputDir", p.outputDir} /* , {"videoEncoding", vidEnc} */, {"byteEncoding", byteEnc}};
+struct adl_serializer<dai::RecordConfig> {
+    static void to_json(json& j, const dai::RecordConfig& p) {  // NOLINT this is a specialization, naming conventions don't apply
+        std::string profile;
+        switch(p.videoEncoding.profile) {
+            case dai::RecordConfig::Profile::H264_BASELINE:
+                profile = "H264_BASELINE";
+                break;
+            case dai::RecordConfig::Profile::H264_HIGH:
+                profile = "H264_HIGH";
+                break;
+            case dai::RecordConfig::Profile::H264_MAIN:
+                profile = "H264_MAIN";
+                break;
+            case dai::RecordConfig::Profile::H265_MAIN:
+                profile = "H265_MAIN";
+                break;
+            case dai::RecordConfig::Profile::MJPEG:
+                profile = "MJPEG";
+                break;
+        }
+        auto vidEnc = json{{"enabled", p.videoEncoding.enabled},
+                           {"bitrate", p.videoEncoding.bitrate},
+                           {"profile", profile},
+                           {"lossless", p.videoEncoding.lossless},
+                           {"quality", p.videoEncoding.quality}};
+        j = json{{"outputDir", p.outputDir}, {"videoEncoding", vidEnc}, {"compressionLevel", p.compressionLevel}};
     }
 
-    static void from_json(const json& j, dai::utility::RecordConfig& p) {  // NOLINT this is a specialization, naming conventions don't apply
-        // std::string profile;
-        // j.at("videoEncoding").at("enabled").get_to(p.videoEncoding.enabled);
-        // j.at("videoEncoding").at("bitrate").get_to(p.videoEncoding.bitrate);
-        // j.at("videoEncoding").at("profile").get_to(profile);
-        // j.at("videoEncoding").at("lossless").get_to(p.videoEncoding.lossless);
-        // j.at("videoEncoding").at("quality").get_to(p.videoEncoding.quality);
-        // std::transform(profile.begin(), profile.end(), profile.begin(), ::tolower);
-        //
-        // p.videoEncoding.profile = Profile::MJPEG;
-        // if(profile == "h264_baseline" || profile == "avc_baseline") {
-        //     p.videoEncoding.profile = Profile::H264_BASELINE;
-        // } else if(profile == "h264_high" || profile == "avc_high") {
-        //     p.videoEncoding.profile = Profile::H264_HIGH;
-        // } else if(profile == "h264_main" || profile == "avc_main" || profile == "h264" || profile == "avc") {
-        //     p.videoEncoding.profile = Profile::H264_MAIN;
-        // } else if(profile == "h265_main" || profile == "hevc_main" || profile == "h265" || profile == "hevc") {
-        //     p.videoEncoding.profile = Profile::H265_MAIN;
-        // } else if(profile == "mjpeg") {
-        //     p.videoEncoding.profile = Profile::MJPEG;
-        // }
+    static void from_json(const json& j, dai::RecordConfig& p) {  // NOLINT this is a specialization, naming conventions don't apply
+        std::string profile;
+        j.at("videoEncoding").at("enabled").get_to(p.videoEncoding.enabled);
+        j.at("videoEncoding").at("bitrate").get_to(p.videoEncoding.bitrate);
+        j.at("videoEncoding").at("profile").get_to(profile);
+        j.at("videoEncoding").at("lossless").get_to(p.videoEncoding.lossless);
+        j.at("videoEncoding").at("quality").get_to(p.videoEncoding.quality);
+        std::transform(profile.begin(), profile.end(), profile.begin(), ::tolower);
 
-        j.at("byteEncoding").at("enabled").get_to(p.byteEncoding.enabled);
-        j.at("byteEncoding").at("compressionLevel").get_to(p.byteEncoding.compressionLevel);
-        p.byteEncoding.compressionLevel = std::max(0, std::min(9, p.byteEncoding.compressionLevel));
+        p.videoEncoding.profile = dai::RecordConfig::Profile::MJPEG;
+        if(profile == "h264_baseline" || profile == "avc_baseline") {
+            p.videoEncoding.profile = dai::RecordConfig::Profile::H264_BASELINE;
+        } else if(profile == "h264_high" || profile == "avc_high") {
+            p.videoEncoding.profile = dai::RecordConfig::Profile::H264_HIGH;
+        } else if(profile == "h264_main" || profile == "avc_main" || profile == "h264" || profile == "avc") {
+            p.videoEncoding.profile = dai::RecordConfig::Profile::H264_MAIN;
+        } else if(profile == "h265_main" || profile == "hevc_main" || profile == "h265" || profile == "hevc") {
+            p.videoEncoding.profile = dai::RecordConfig::Profile::H265_MAIN;
+        } else if(profile == "mjpeg") {
+            p.videoEncoding.profile = dai::RecordConfig::Profile::MJPEG;
+        }
+
+        j.at("compressionLevel").get_to(p.compressionLevel);
+        p.compressionLevel = std::max((uint8_t)0, std::min((uint8_t)5, p.compressionLevel));
 
         j.at("outputDir").get_to(p.outputDir);
     }

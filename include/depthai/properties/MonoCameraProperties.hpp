@@ -46,6 +46,17 @@ struct MonoCameraProperties : PropertiesSerializable<Properties, MonoCameraPrope
      * Select the camera sensor resolution
      */
     SensorResolution resolution = SensorResolution::THE_720_P;
+
+    /**
+     * Select the mock isp width. Overrides resolutionWidth/height if mockIsp is connected.
+     */
+    int32_t mockIspWidth = AUTO;
+
+    /**
+     * Select the mock isp height. Overrides resolutionWidth/height if mockIsp is connected.
+     */
+    int32_t mockIspHeight = AUTO;
+
     /**
      * Camera sensor FPS
      */
@@ -85,6 +96,6 @@ struct MonoCameraProperties : PropertiesSerializable<Properties, MonoCameraPrope
 };
 
 DEPTHAI_SERIALIZE_EXT(
-    MonoCameraProperties, initialControl, boardSocket, cameraName, imageOrientation, resolution, fps, isp3aFps, numFramesPool, numFramesPoolRaw, rawPacked);
+    MonoCameraProperties, initialControl, boardSocket, cameraName, imageOrientation, mockIspWidth, mockIspHeight, resolution, fps, isp3aFps, numFramesPool, numFramesPoolRaw, rawPacked);
 
 }  // namespace dai

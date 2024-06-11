@@ -1,54 +1,37 @@
-#include <depthai/depthai.hpp>
 
-#include "depthai/pipeline/node/MonoCamera.hpp"
+#include <cstdio>
+#include <iostream>
+
 #include "depthai/pipeline/node/host/Record.hpp"
-#include "depthai/properties/MonoCameraProperties.hpp"
+#include "utility.hpp"
 
-#ifndef DEPTHAI_HAVE_OPENCV_SUPPORT
-    #error This example needs OpenCV support, which is not available on your system
-#endif
+// Includes common necessary includes for development using depthai library
+#include "depthai/depthai.hpp"
 
-constexpr auto RECORDING_PATH = "/home/work/workspaces/lib/depthai-python/depthai-core/recording_imu";
+int main(int argc, char** argv) {
+    using namespace std;
+    using namespace std::chrono;
 
-int main() {
-    {
-        dai::Pipeline pipeline(true);
-        auto imu = pipeline.create<dai::node::IMU>();
-        auto record = pipeline.create<dai::node::Record>();
+    // Create pipeline
+    dai::Pipeline pipeline;
 
-        record->setRecordFile(RECORDING_PATH);
+    // Define sources and outputs
+    auto imu = pipeline.create<dai::node::IMU>();
+    auto record = pipeline.create<dai::node::RecordMessage>();
 
-        imu->enableIMUSensor(dai::IMUSensor::ACCELEROMETER_RAW, 500);
-        // enable GYROSCOPE_RAW at 400 hz rate
-        imu->enableIMUSensor(dai::IMUSensor::GYROSCOPE_RAW, 400);
+    // enable ACCELEROMETER_RAW at 500 hz rate
+    imu->enableIMUSensor(dai::IMUSensor::ACCELEROMETER_RAW, 500);
+    // enable GYROSCOPE_RAW at 400 hz rate
+    imu->enableIMUSensor(dai::IMUSensor::GYROSCOPE_RAW, 400);
 
-        imu->out.link(record->input);
+    std::string recordFile = argc > 1 ? argv[1] : "imu_recording";
+    record->setRecordFile(recordFile + ".mcap");
 
-        pipeline.start();
+    imu->out.link(record->input);
 
-        std::this_thread::sleep_for(std::chrono::seconds(10));
+    pipeline.start();
 
-        pipeline.stop();
-    }
+    std::this_thread::sleep_for(std::chrono::seconds(10));
 
-    mcap::McapReader reader;
-    {
-        const auto res = reader.open(std::string(RECORDING_PATH) + ".mcap");
-        if(!res.ok()) {
-            std::cerr << "Failed to open " << RECORDING_PATH << " for reading: " << res.message << std::endl;
-            return 1;
-        }
-    }
-    auto messageView = reader.readMessages();
-    auto message = *messageView.begin();
-    assert(message.channel->messageEncoding == "json");
-    std::string_view asString(reinterpret_cast<const char*>(message.message.data), message.message.dataSize);
-    std::cout << "Message: " << asString << std::endl;
-    nlohmann::json j = nlohmann::json::parse(asString);
-    std::ofstream out(std::string(RECORDING_PATH) + ".json");
-    out << j.dump(4) << std::endl;
-
-    std::string_view asString2(reinterpret_cast<const char*>(message.schema->data.data()), message.schema->data.size());
-    std::cout << "Schema: " << asString2 << std::endl;
-    return 0;
+    pipeline.stop();
 }

@@ -112,6 +112,8 @@ class MonoCamera : public DeviceNodeCRTP<DeviceNode, MonoCamera, MonoCameraPrope
     /// Get camera image orientation
     CameraImageOrientation getImageOrientation() const;
 
+    void setMockIspSize(int width, int height);
+
     /// Set sensor resolution
     void setResolution(Properties::SensorResolution resolution);
 

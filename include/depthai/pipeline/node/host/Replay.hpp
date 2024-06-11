@@ -20,7 +20,7 @@ namespace node {
 /**
  * @brief Replay node, used to replay a file to a source node
  */
-class Replay : public NodeCRTP<ThreadedHostNode, Replay> {
+class ReplayVideo : public NodeCRTP<ThreadedHostNode, ReplayVideo> {
    private:
     std::optional<std::tuple<int, int>> size;
     std::optional<float> fps;
@@ -28,10 +28,10 @@ class Replay : public NodeCRTP<ThreadedHostNode, Replay> {
     std::string replayFile;
     ImgFrame::Type outFrameType = ImgFrame::Type::YUV420p;
 
-    std::shared_ptr<Buffer> getMessage(utility::RecordType type, const nlohmann::json& metadata, std::vector<uint8_t>& frame);
+    bool loop = true;
 
    public:
-    constexpr static const char* NAME = "Replay";
+    constexpr static const char* NAME = "ReplayVideo";
 
     /**
      * Output for any type of messages to be transferred over XLink stream
@@ -42,12 +42,48 @@ class Replay : public NodeCRTP<ThreadedHostNode, Replay> {
 
     void run() override;
 
-    Replay& setReplayFile(const std::string& replayFile);
-    Replay& setReplayVideo(const std::string& replayVideo);
-    Replay& setOutFrameType(ImgFrame::Type outFrameType);
-    Replay& setSize(std::tuple<int, int> size);
-    Replay& setSize(int width, int height);
-    Replay& setFps(float fps);
+    std::string getReplayMetadataFile() const;
+    std::string getReplayVideoFile() const;
+    ImgFrame::Type getOutFrameType() const;
+    std::tuple<int, int> getSize() const;
+    float getFps() const;
+    bool getLoop() const;
+
+    ReplayVideo& setReplayMetadataFile(const std::string& replayFile);
+    ReplayVideo& setReplayVideoFile(const std::string& replayVideo);
+    ReplayVideo& setOutFrameType(ImgFrame::Type outFrameType);
+    ReplayVideo& setSize(std::tuple<int, int> size);
+    ReplayVideo& setSize(int width, int height);
+    ReplayVideo& setFps(float fps);
+    ReplayVideo& setLoop(bool loop);
+};
+
+/**
+ * @brief Replay node, used to replay a file to a source node
+ */
+class ReplayMessage : public NodeCRTP<ThreadedHostNode, ReplayMessage> {
+   private:
+    std::string replayFile;
+
+    bool loop = true;
+
+   public:
+    constexpr static const char* NAME = "ReplayMessage";
+
+    /**
+     * Output for any type of messages to be transferred over XLink stream
+     *
+     * Default queue is blocking with size 8
+     */
+    Output out{*this, {.name = "out", .types = {{DatatypeEnum::Buffer, true}}}};
+
+    void run() override;
+
+    std::string getReplayFile() const;
+    bool getLoop() const;
+
+    ReplayMessage& setReplayFile(const std::string& replayFile);
+    ReplayMessage& setLoop(bool loop);
 };
 
 }  // namespace node

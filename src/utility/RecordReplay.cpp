@@ -2,9 +2,13 @@
 
 #include <spdlog/spdlog.h>
 
+#include <optional>
 #include <stdexcept>
 
+#include "Environment.hpp"
 #include "build/version.hpp"
+#include "depthai/utility/RecordReplaySchema.hpp"
+#include "utility/Compression.hpp"
 #include "utility/Platform.hpp"
 
 namespace dai {
@@ -23,7 +27,7 @@ void ByteRecorder::init(const std::string& filePath, CompressionLevel compressio
     }
     {
         auto options = mcap::McapWriterOptions("");
-        options.library = "depthai" + std::string(build::VERSION);  // TODO(asahtik): is there some global variable for this?
+        options.library = "depthai" + std::string(build::VERSION);
         switch(compressionLevel) {
             case CompressionLevel::NONE:
                 options.compression = mcap::Compression::None;
@@ -116,9 +120,18 @@ std::optional<nlohmann::json> BytePlayer::next() {
     }
     std::string_view asString(reinterpret_cast<const char*>((*it)->message.data), (*it)->message.dataSize);
 
+    nlohmann::json j = nlohmann::json::parse(asString);
+
     ++(*it);
 
-    return nlohmann::json::parse(asString);
+    return j;
+}
+
+void BytePlayer::restart() {
+    if(!initialized) {
+        throw std::runtime_error("BytePlayer not initialized");
+    }
+    it = std::make_unique<mcap::LinearMessageView::Iterator>(messageView->begin());
 }
 
 void BytePlayer::close() {
@@ -128,7 +141,39 @@ void BytePlayer::close() {
     }
 }
 
-bool checkRecordConfig(std::string& recordPath, utility::RecordConfig& config) {
+std::optional<std::tuple<uint32_t, uint32_t>> BytePlayer::getVideoSize(const std::string& filePath) {
+    if(filePath.empty()) {
+        throw std::runtime_error("File path is empty in BytePlayer::getVideoSize");
+    }
+    mcap::McapReader reader;
+    {
+        const auto res = reader.open(filePath);
+        if(!res.ok()) {
+            throw std::runtime_error("Failed to open file for reading: " + res.message);
+        }
+    }
+    auto messageView = reader.readMessages();
+    if(messageView.begin() == messageView.end()) {
+        return std::nullopt;
+    } else {
+        auto msg = messageView.begin();
+        if(msg->channel->messageEncoding != "json") {
+            throw std::runtime_error("Unsupported message encoding: " + msg->channel->messageEncoding);
+        }
+        std::string_view asString(reinterpret_cast<const char*>(msg->message.data), msg->message.dataSize);
+        nlohmann::json j = nlohmann::json::parse(asString);
+
+        auto type = j["type"].get<utility::RecordType>();
+        if(type == utility::RecordType::Video) {
+            auto width = j["width"].get<uint32_t>();
+            auto height = j["height"].get<uint32_t>();
+            return std::make_tuple(width, height);
+        }
+    }
+    return std::nullopt;
+}
+
+bool checkRecordConfig(std::string& recordPath, RecordConfig& config) {
     if(!platform::checkPathExists(recordPath)) {
         spdlog::warn("DEPTHAI_RECORD path does not exist or is invalid. Record disabled.");
         return false;
@@ -146,7 +191,7 @@ bool checkRecordConfig(std::string& recordPath, utility::RecordConfig& config) {
         try {
             std::ifstream file(recordPath);
             json j = json::parse(file);
-            config = j.get<utility::RecordConfig>();
+            config = j.get<RecordConfig>();
 
             if(platform::checkPathExists(config.outputDir, true)) {
                 // Is a directory

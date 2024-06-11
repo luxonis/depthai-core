@@ -72,6 +72,11 @@ CameraImageOrientation MonoCamera::getImageOrientation() const {
     return properties.imageOrientation;
 }
 
+void MonoCamera::setMockIspSize(int width, int height) {
+    properties.mockIspWidth = width;
+    properties.mockIspHeight = height;
+}
+
 void MonoCamera::setResolution(MonoCameraProperties::SensorResolution resolution) {
     properties.resolution = resolution;
 }

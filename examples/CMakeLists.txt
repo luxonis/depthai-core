@@ -31,10 +31,12 @@ function(dai_add_example example_name example_src enable_test use_pcl)
     # Add example
     add_executable(${example_name} ${example_src})
     add_default_flags(${example_name} LEAN)
-    if(use_pcl)
+    if(use_pcl AND NOT DEPTHAI_MERGED_TARGET)
         target_link_libraries(${example_name} PRIVATE utility depthai::all ${OpenCV_LIBS} Threads::Threads)
-    else()
+    elseif(NOT DEPTHAI_MERGED_TARGET)
         target_link_libraries(${example_name} PRIVATE utility depthai::opencv ${OpenCV_LIBS} Threads::Threads)
+    else()
+        target_link_libraries(${example_name} PRIVATE utility depthai::core ${OpenCV_LIBS} Threads::Threads)
     endif()
     # Set compiler features (c++17), and disables extensions (g++17)
     set_property(TARGET ${example_name} PROPERTY CXX_STANDARD 17)
@@ -468,9 +470,16 @@ dai_add_example(threaded_host_node_v3 v3/HostNodes/threaded_host_node.cpp ON OFF
 
 # Replay
 dai_add_example(replay_video_meta Replay/replay_video_meta.cpp ON OFF)
+dai_add_example(replay_video Replay/replay_video.cpp ON OFF)
+dai_add_example(replay_imu Replay/replay_imu.cpp ON OFF)
 
 dai_add_example(camera_multiple_outputs Camera/camera_multiple_outputs.cpp ON OFF)
 
 if(DEPTHAI_HAVE_PCL_SUPPORT)
     dai_add_example(visualize_pointcloud PointCloud/visualize_pointcloud.cpp ON ON)
+endif()
+
+if(DEPTHAI_MERGED_TARGET)
+    dai_add_example(holistic_record Record/holistic_record.cpp ON OFF)
+    dai_add_example(holistic_replay Replay/holistic_replay.cpp ON OFF)
 endif()

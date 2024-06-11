@@ -3,15 +3,10 @@
 #include <spdlog/spdlog.h>
 
 #include <fstream>
+#include <opencv2/imgproc.hpp>
+#include <opencv2/videoio.hpp>
 #include <optional>
 #include <stdexcept>
-
-#include "../utility/Platform.hpp"
-
-#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-    #include <opencv2/imgproc.hpp>
-    #include <opencv2/videoio.hpp>
-#endif
 
 namespace dai {
 namespace utility {
@@ -71,13 +66,9 @@ void VideoRecorder::init(const std::string& filePath, unsigned int width, unsign
             MP4SetTimeScale(mp4Writer, MP4V2_TIMESCALE);
             break;
         case VideoCodec::RAW:
-#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
             cvWriter = std::make_unique<cv::VideoWriter>();
             cvWriter->open(filePath, cv::VideoWriter::fourcc('H', '2', '6', '4'), fps, cv::Size(width, height));
             assert(cvWriter->isOpened());
-#else
-            throw std::runtime_error("OpenCV support is required to write RAW video");
-#endif
             break;
     }
     initialized = true;
@@ -140,15 +131,11 @@ void VideoRecorder::write(span<uint8_t>& data) {
             }
             break;
         case VideoCodec::RAW: {
-#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
             if(!cvWriter->isOpened()) {
                 throw std::runtime_error("VideoRecorder OpenCV writer is not initialized");
             }
             cv::Mat img(height, width, CV_8UC3, (void*)data.data());
             cvWriter->write(img);
-#else
-            throw std::runtime_error("OpenCV support is required to write RAW video");
-#endif
             break;
         }
     }
@@ -158,11 +145,9 @@ void VideoRecorder::close() {
     if(mp4Writer != MP4_INVALID_FILE_HANDLE) {
         MP4Close(mp4Writer);
     }
-#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     if(cvWriter && cvWriter->isOpened()) {
         cvWriter->release();
     }
-#endif
 }
 
 VideoPlayer::~VideoPlayer() {
@@ -176,13 +161,9 @@ void VideoPlayer::init(const std::string& filePath) {
     if(filePath.empty()) {
         throw std::runtime_error("VideoPlayer file path is empty");
     }
-#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     cvReader = std::make_unique<cv::VideoCapture>();
     cvReader->open(filePath);
     assert(cvReader->isOpened());
-#else
-    throw std::runtime_error("OpenCV support is required to read video");
-#endif
     initialized = true;
 }
 
@@ -195,7 +176,6 @@ std::optional<std::vector<uint8_t>> VideoPlayer::next() {
     if(!initialized) {
         throw std::runtime_error("VideoPlayer not initialized");
     }
-#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     cv::Mat frame;
     if(!cvReader->read(frame)) {
         return std::nullopt;
@@ -210,9 +190,6 @@ std::optional<std::vector<uint8_t>> VideoPlayer::next() {
     std::vector<uint8_t> data;
     data.assign(frame.data, frame.data + frame.total() * frame.elemSize());
     return data;
-#else
-    throw std::runtime_error("OpenCV support is required to read video");
-#endif
 }
 
 std::tuple<uint32_t, uint32_t> VideoPlayer::size() {
@@ -222,12 +199,17 @@ std::tuple<uint32_t, uint32_t> VideoPlayer::size() {
     return {width, height};
 }
 
+void VideoPlayer::restart() {
+    if(!initialized) {
+        throw std::runtime_error("VideoPlayer not initialized");
+    }
+    cvReader->set(cv::CAP_PROP_POS_FRAMES, 0);
+}
+
 void VideoPlayer::close() {
-#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     if(cvReader && cvReader->isOpened()) {
         cvReader->release();
     }
-#endif
 }
 
 }  // namespace utility
