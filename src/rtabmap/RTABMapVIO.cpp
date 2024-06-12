@@ -91,44 +91,50 @@ void RTABMapVIO::syncCB(std::shared_ptr<dai::ADatatype> data) {
             cv::Vec4d rot;
             std::map<double, cv::Vec3f>::const_iterator iterA, iterB;
             std::map<double, cv::Vec4f>::const_iterator iterC, iterD;
-            if(accBuffer.empty() || gyroBuffer.empty() || rotBuffer.empty() || accBuffer.rbegin()->first < stamp || gyroBuffer.rbegin()->first < stamp
-               || rotBuffer.rbegin()->first < stamp) {
-            } else {
+
+            if(!accBuffer.empty() && !gyroBuffer.empty() && !rotBuffer.empty() && accBuffer.rbegin()->first >= stamp && gyroBuffer.rbegin()->first >= stamp
+               && rotBuffer.rbegin()->first >= stamp) {
                 // acc
                 iterB = accBuffer.lower_bound(stamp);
-                iterA = iterB;
-                if(iterA != accBuffer.begin()) iterA = --iterA;
-                if(iterA == iterB || stamp == iterB->first) {
-                    acc = iterB->second;
-                } else if(stamp > iterA->first && stamp < iterB->first) {
-                    float t = (stamp - iterA->first) / (iterB->first - iterA->first);
-                    acc = iterA->second + t * (iterB->second - iterA->second);
+                if(iterB != accBuffer.end()) {
+                    iterA = iterB;
+                    if(iterA != accBuffer.begin()) --iterA;
+                    if(iterA == iterB || stamp == iterB->first) {
+                        acc = iterB->second;
+                    } else if(stamp > iterA->first && stamp < iterB->first) {
+                        float t = (stamp - iterA->first) / (iterB->first - iterA->first);
+                        acc = iterA->second + t * (iterB->second - iterA->second);
+                    }
+                    accBuffer.erase(accBuffer.begin(), iterB);
                 }
-                accBuffer.erase(accBuffer.begin(), iterB);
 
                 // gyro
                 iterB = gyroBuffer.lower_bound(stamp);
-                iterA = iterB;
-                if(iterA != gyroBuffer.begin()) iterA = --iterA;
-                if(iterA == iterB || stamp == iterB->first) {
-                    gyro = iterB->second;
-                } else if(stamp > iterA->first && stamp < iterB->first) {
-                    float t = (stamp - iterA->first) / (iterB->first - iterA->first);
-                    gyro = iterA->second + t * (iterB->second - iterA->second);
+                if(iterB != gyroBuffer.end()) {
+                    iterA = iterB;
+                    if(iterA != gyroBuffer.begin()) --iterA;
+                    if(iterA == iterB || stamp == iterB->first) {
+                        gyro = iterB->second;
+                    } else if(stamp > iterA->first && stamp < iterB->first) {
+                        float t = (stamp - iterA->first) / (iterB->first - iterA->first);
+                        gyro = iterA->second + t * (iterB->second - iterA->second);
+                    }
+                    gyroBuffer.erase(gyroBuffer.begin(), iterB);
                 }
-                gyroBuffer.erase(gyroBuffer.begin(), iterB);
 
                 // rot
                 iterD = rotBuffer.lower_bound(stamp);
-                iterC = iterD;
-                if(iterC != rotBuffer.begin()) iterC = --iterC;
-                if(iterC == iterD || stamp == iterD->first) {
-                    rot = iterD->second;
-                } else if(stamp > iterC->first && stamp < iterD->first) {
-                    float t = (stamp - iterC->first) / (iterD->first - iterC->first);
-                    rot = iterC->second + t * (iterD->second - iterC->second);
+                if(iterD != rotBuffer.end()) {
+                    iterC = iterD;
+                    if(iterC != rotBuffer.begin()) --iterC;
+                    if(iterC == iterD || stamp == iterD->first) {
+                        rot = iterD->second;
+                    } else if(stamp > iterC->first && stamp < iterD->first) {
+                        float t = (stamp - iterC->first) / (iterD->first - iterC->first);
+                        rot = iterC->second + t * (iterD->second - iterC->second);
+                    }
+                    rotBuffer.erase(rotBuffer.begin(), iterD);
                 }
-                rotBuffer.erase(rotBuffer.begin(), iterD);
 
                 sensorData.setIMU(
                     rtabmap::IMU(rot, cv::Mat::eye(3, 3, CV_64FC1), gyro, cv::Mat::eye(3, 3, CV_64FC1), acc, cv::Mat::eye(3, 3, CV_64FC1), imuLocalTransform));
