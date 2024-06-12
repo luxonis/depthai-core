@@ -2,6 +2,10 @@
 Changelog for package depthai
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+2.26.1 (2024-06-12)
+-----------
+* Fix building shared libs (ROS only)
+
 2.26.0 (2024-05-27)
 -----------
 * PointCloud node along with the PointCloudData message

@@ -6,6 +6,10 @@ if(NOT WIN32)
     set(HUNTER_CONFIGURATION_TYPES "Release" CACHE STRING "Hunter dependencies list of build configurations")
 endif()
 
+set(HUNTER_SKIP_PACKAGE_nlohmann_json OFF)
+set(BUILD_SHARED_LIBS ON)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
 # Early options
 option(DEPTHAI_ENABLE_LIBUSB "Enable usage of libusb and interaction with USB devices" ON)
 
@@ -46,7 +50,7 @@ if(WIN32)
 endif()
 
 # Create depthai project
-project(depthai VERSION "2.26.0" LANGUAGES CXX C)
+project(depthai VERSION "2.26.1" LANGUAGES CXX C)
 get_directory_property(has_parent PARENT_DIRECTORY)
 if(has_parent)
     set(DEPTHAI_VERSION ${PROJECT_VERSION} PARENT_SCOPE)
