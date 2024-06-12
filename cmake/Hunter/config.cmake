@@ -255,14 +255,26 @@ hunter_config(
     basalt-headers
     VERSION 0.1.0
     URL "https://github.com/luxonis/basalt-headers/archive/refs/heads/hunter.zip"
-    SHA1 "740cdd6ea5bcb303e1b2334530f85a7dbf4a644d"
+    SHA1 "da1e955bf68099312e8f920f8fd35a433af4558a"
 )
+
+hunter_config(
+    oneTBB
+    VERSION 2021.12.0
+    URL "https://github.com/oneapi-src/oneTBB/archive/refs/tags/v2021.12.0.zip"
+    SHA1 "f6b0eb4e45af600684282341115a3c2fb9834978"
+    CMAKE_ARGS
+        TBB_PREVIEW_GLOBAL_CONTROL=ON
+        TBB_TEST=OFF
+        BUILD_SHARED_LIBS=ON
+)
+
 
 hunter_config(
     basalt
     VERSION 0.1.0
     URL "https://github.com/luxonis/basalt/archive/refs/heads/depthai_tests.zip"
-    SHA1 "273a5b0fa966c15c2c1536529506c82aaf85ce59"
+    SHA1 "b035243c3b00ad79e1b4a58088188a55cfa6f02c"
     CMAKE_ARGS
         BASALT_SDK_ONLY=ON
         BUILD_SHARED_LIBS=ON
@@ -277,6 +289,7 @@ hunter_config(
         BUILD_SOPHUS_TESTS=OFF
         BUILD_SOPHUS_EXAMPLES=OFF
 )
+
 
 hunter_config(
     magic_enum

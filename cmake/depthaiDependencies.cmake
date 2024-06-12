@@ -134,7 +134,7 @@ set(CMAKE_PREFIX_PATH ${PREFIX_TEMP})
 if(DEPTHAI_BASALT_SUPPORT)
     find_package(Eigen3 ${_QUIET} CONFIG REQUIRED)
     find_package(basalt_sdk ${_QUIET} CONFIG REQUIRED)
-    find_package(oneTBB)
+    find_package(TBB 2021.12.0 EXACT CONFIG REQUIRED)
 endif()
 
 if(DEPTHAI_RTABMAP_SUPPORT)

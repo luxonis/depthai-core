@@ -4,6 +4,7 @@
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "tbb/concurrent_queue.h"
 #include "tbb/global_control.h"
+
 namespace dai {
 namespace node {
 std::shared_ptr<BasaltVIO> BasaltVIO::build() {
@@ -79,7 +80,7 @@ void BasaltVIO::stereoCB(std::shared_ptr<ADatatype> in) {
         auto exposure = imgFrame->getExposureTime();
 
         int exposureMS = std::chrono::duration_cast<std::chrono::milliseconds>(exposure).count();
-        data->img_data[i].img.reset(new basalt::ManagedImage<uint16_t>(imgFrame->getWidth(), imgFrame->getHeight()));
+        data->img_data[i].img = std::make_shared<basalt::ManagedImage<uint16_t>>(imgFrame->getWidth(), imgFrame->getHeight());
         data->t_ns = tNS;
         data->img_data[i].exposure = exposureMS;
         size_t fullSize = imgFrame->getWidth() * imgFrame->getHeight();
@@ -103,7 +104,7 @@ void BasaltVIO::imuCB(std::shared_ptr<ADatatype> imuData) {
 
     for(auto& imuPacket : imuPackets->packets) {
         basalt::ImuData<double>::Ptr data;
-        data.reset(new basalt::ImuData<double>);
+        data = std::make_shared<basalt::ImuData<double>>();
         auto t = imuPacket.acceleroMeter.getTimestamp();
         int64_t t_ns = std::chrono::time_point_cast<std::chrono::nanoseconds>(t).time_since_epoch().count();
 
@@ -120,7 +121,7 @@ void BasaltVIO::initialize(std::vector<std::shared_ptr<ImgFrame>> frames) {
 
     auto pipeline = getParentPipeline();
     using Scalar = double;
-    calib.reset(new basalt::Calibration<Scalar>);
+    calib = std::make_shared<basalt::Calibration<Scalar>>();
     calib->imu_update_rate = imuUpdateRate;
 
     auto calibHandler = pipeline.getDefaultDevice()->readCalibration();
