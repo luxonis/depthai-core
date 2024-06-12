@@ -247,15 +247,15 @@ hunter_config(
 hunter_config(
     opengv
     VERSION 1.0.0
-    URL "https://github.com/luxonis/opengv/archive/refs/heads/master.zip"
-    SHA1 "5898069592f3e7484d9e83d918dad9287876d103"
+    URL "https://github.com/luxonis/opengv/archive/6d96ed4046dd36b250a20b08db46f508394b864d.tar.gz"
+    SHA1 "1ff8746b66d7211b35a36c7e1a511d7884d8da17"
 )
 
 hunter_config(
     basalt-headers
     VERSION 0.1.0
-    URL "https://github.com/luxonis/basalt-headers/archive/refs/heads/hunter.zip"
-    SHA1 "da1e955bf68099312e8f920f8fd35a433af4558a"
+    URL "https://github.com/luxonis/basalt-headers/archive/57b934e6b7bcf4643c9e37aec8205c65b7a2a9a5.tar.gz"
+    SHA1 "8f60a224139b70b89a7f4dfa191a24c4968c52b8"
 )
 
 hunter_config(
@@ -273,8 +273,8 @@ hunter_config(
 hunter_config(
     basalt
     VERSION 0.1.0
-    URL "https://github.com/luxonis/basalt/archive/refs/heads/depthai_tests.zip"
-    SHA1 "b035243c3b00ad79e1b4a58088188a55cfa6f02c"
+    URL "https://github.com/luxonis/basalt/archive/f6284f17ee216862e0c80546f6a06e782d179c28.tar.gz"
+    SHA1 "c1f8e9bcf68caf1a5f8e620cd2a41da9d63da32a"
     CMAKE_ARGS
         BASALT_SDK_ONLY=ON
         BUILD_SHARED_LIBS=ON
@@ -283,8 +283,8 @@ hunter_config(
 hunter_config(
     Sophus
     VERSION 1.22.10
-    URL "https://github.com/luxonis/Sophus/archive/refs/heads/hunterized.zip"
-    SHA1 "ff17d3dce1bcadabbc9fb83845a29974377d7f95" 
+    URL "https://github.com/luxonis/Sophus/archive/87554f73e6f303d8acd6a220bc9aefb444793a71.tar.gz"
+    SHA1 "48574ad9cddb3ad1b5c71cc030ecac0083e71cea"
     CMAKE_ARGS
         BUILD_SOPHUS_TESTS=OFF
         BUILD_SOPHUS_EXAMPLES=OFF
