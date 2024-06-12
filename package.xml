@@ -1,6 +1,6 @@
 <package format="3">
   <name>depthai</name>
-  <version>2.26.0</version>
+  <version>2.26.1</version>
   <description>DepthAI core is a C++ library which comes with firmware and an API to interact with OAK Platform</description>
 
   <maintainer email="adam.serafin@luxonis.com">Adam Serafin</maintainer>
