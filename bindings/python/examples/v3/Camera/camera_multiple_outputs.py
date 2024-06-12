@@ -21,43 +21,38 @@ def exit_usage():
 args = sys.argv[1:]
 if len(args) < 4 or len(args) % 4 != 0:
     exit_usage()
-info = dai.DeviceInfo("10.12.110.219")
-info.protocol = dai.X_LINK_TCP_IP
-info.state = dai.X_LINK_GATE
-info.platform = dai.X_LINK_RVC3
-with dai.Device(info) as device:
-    with dai.Pipeline(device) as pipeline:
-        # Define source and output
-        cam = pipeline.create(dai.node.Camera)
 
-        # Properties
-        cam.setBoardSocket(dai.CameraBoardSocket.CAM_A)
+with dai.Pipeline() as pipeline:
+    # Define source and output
+    cam = pipeline.create(dai.node.Camera)
 
-        queues = []
-        for i in range(0, len(args), 4):
-            cap = dai.ImgFrameCapability()
-            cap.size.fixed([int(args[i]), int(args[i + 1])])
-            cap.fps.fixed(int(args[i + 3]))
-            cropArg = int(args[i + 2])
-            if cropArg == 0:
-                cap.resizeMode = dai.ImgResizeMode.CROP
-            elif cropArg == 1:
-                cap.resizeMode = dai.ImgResizeMode.STRETCH
-            elif cropArg == 2:
-                cap.resizeMode = dai.ImgResizeMode.LETTERBOX
-            else:
-                exit_usage()
-            queues.append(cam.requestOutput(cap, True).createOutputQueue())
+    # Properties
+    cam.setBoardSocket(dai.CameraBoardSocket.CAM_C)
 
-        # Connect to device and start pipeline
-        pipeline.start()
-        while pipeline.isRunning():
-            for index, queue in enumerate(queues):
-                videoIn: dai.ImgFrame = queue.tryGet()
-                if videoIn is not None:
-                    # Get BGR frame from NV12 encoded video frame to show with opencv
-                    # Visualizing the frame on slower hosts might have overhead
-                    cv2.imshow("video " + str(index), videoIn.getCvFrame())
+    queues = []
+    for i in range(0, len(args), 3):
+        cap = dai.ImgFrameCapability()
+        cap.size.fixed([int(args[i]), int(args[i + 1])])
+        cropArg = int(args[i + 2])
+        if cropArg == 0:
+            cap.resizeMode = dai.ImgResizeMode.CROP
+        elif cropArg == 1:
+            cap.resizeMode = dai.ImgResizeMode.STRETCH
+        elif cropArg == 2:
+            cap.resizeMode = dai.ImgResizeMode.LETTERBOX
+        else:
+            exit_usage()
+        queues.append(cam.requestOutput(cap, True).createOutputQueue())
 
-            if cv2.waitKey(1) == ord("q"):
-                break
+    # Connect to device and start pipeline
+    pipeline.start()
+    while pipeline.isRunning():
+        for index, queue in enumerate(queues):
+            videoIn: dai.ImgFrame = queue.tryGet()
+            if videoIn is not None:
+                # Get BGR frame from NV12 encoded video frame to show with opencv
+                # Visualizing the frame on slower hosts might have overhead
+                cv2.imshow("video " + str(index), videoIn.getCvFrame())
+
+        if cv2.waitKey(1) == ord("q"):
+            break
