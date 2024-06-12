@@ -38,7 +38,8 @@ class Camera::Impl {
 
     void buildStage1(Camera& parent) {
         for(const auto& outputRequest : outputRequests) {
-            DAI_CHECK(!parent.dynamicOutputs[std::to_string(outputRequest.id)].getQueueConnections().empty(),
+            DAI_CHECK(!parent.dynamicOutputs[std::to_string(outputRequest.id)].getQueueConnections().empty()
+                          || !parent.dynamicOutputs[std::to_string(outputRequest.id)].getConnections().empty(),
                       "Always call output->createOutputQueue() or output->link(*) after calling dai::node::Camera::requestOutput()");
         }
     }
