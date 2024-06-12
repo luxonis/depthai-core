@@ -1,5 +1,7 @@
 #include "depthai/pipeline/node/host/ImageManipHost.hpp"
 
+#include <cmath>
+
 #include "pipeline/datatype/ImgFrame.hpp"
 
 namespace dai {
@@ -20,13 +22,9 @@ std::string getConfigString(const dai::ImageManipBase& ops) {
     return configSS.str();
 }
 
-ImageManipHost& ImageManipHost::setConfig(const ImageManipBase& config) {
-    base = config;
-    return *this;
-}
-
 void ImageManipHost::run() {
-    impl::ImageManipOperations manip;
+    impl::ImageManipOperations manip(logger);
+    auto base = initialConfig.base;
 
     bool initialized = false;
 
@@ -40,7 +38,7 @@ void ImageManipHost::run() {
         const auto [w, h, c] = manip.getOutputSize();
         ImgFrame dst(*frame);
         dst.setData(std::vector<std::uint8_t>(w * h * c));
-        dst.fb.height =  h;
+        dst.fb.height = h;
         dst.fb.width = w;
 
         switch(dst.getType()) {
@@ -127,9 +125,9 @@ std::tuple<float, float, float, float> getOuterRect(const std::vector<std::array
 }
 
 std::vector<std::array<float, 2>> getHull(const std::vector<std::array<float, 2>> points) {
-    std::vector<std::array<float, 2>> hull;
+    std::vector<std::array<float, 2>> remaining(points.rbegin(), points.rend() - 1);
+    std::vector<std::array<float, 2>> hull{points.front()};
     hull.reserve(points.size());
-    std::vector<std::array<float, 2>> remaining(points.rbegin(), points.rend());
     while(remaining.size() > 0) {
         auto pt = remaining.back();
         remaining.pop_back();
@@ -138,11 +136,13 @@ std::vector<std::array<float, 2>> getHull(const std::vector<std::array<float, 2>
             auto last2 = hull.size() - 2;
             std::array<float, 2> v1 = {hull[last1][0] - hull[last2][0], hull[last1][1] - hull[last2][1]};
             std::array<float, 2> v2 = {pt[0] - hull[last1][0], pt[1] - hull[last1][1]};
-            auto cross = v1[0] * v2[1] - v1[1] * v2[0];
-            if(cross < 0) {
+            std::array<float, 2> v3 = {hull[0][0] - pt[0], hull[0][1] - pt[1]};
+            auto cross1 = v1[0] * v2[1] - v1[1] * v2[0];
+            auto cross2 = v2[0] * v3[1] - v2[1] * v3[0];
+            if(cross1 < 0 || cross2 < 0) {
                 remaining.push_back(hull.back());
                 hull.pop_back();
-            } else if(cross == 0) {
+            } else if(cross1 == 0 || cross2 == 0) {
                 throw std::runtime_error("Colinear points");
             } else {
                 break;
@@ -242,14 +242,8 @@ std::tuple<std::array<std::array<float, 3>, 3>, std::array<std::array<float, 2>,
     for(const auto& op : ops) {
         std::array<std::array<float, 3>, 3> mat = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
 
-        std::vector<std::array<float, 2>> dataCorners(4);
-        dataCorners[0] = matvecmul(transform, {0, 0});
-        dataCorners[1] = matvecmul(transform, {(float)inputWidth, 0});
-        dataCorners[2] = matvecmul(transform, {(float)inputWidth, (float)inputHeight});
-        dataCorners[3] = matvecmul(transform, {0, (float)inputHeight});
-        auto bbox = getOuterRotatedRect(dataCorners);
-        std::array<float, 2> widthVec = {bbox[1][0] - bbox[0][0], bbox[1][1] - bbox[0][1]};
-        std::array<float, 2> heightVec = {bbox[3][0] - bbox[0][0], bbox[3][1] - bbox[0][1]};
+        float centerX = (imageCorners[0][0] + imageCorners[1][0] + imageCorners[2][0] + imageCorners[3][0]) / 4;
+        float centerY = (imageCorners[0][1] + imageCorners[1][1] + imageCorners[2][1] + imageCorners[3][1]) / 4;
 
         const auto [_minx, _maxx, _miny, _maxy] = getOuterRect(std::vector(imageCorners.begin(), imageCorners.end()));
         float minx = _minx;
@@ -260,7 +254,7 @@ std::tuple<std::array<std::array<float, 3>, 3>, std::array<std::array<float, 2>,
         float height = maxy - miny;
 
         std::visit(
-            overloaded{[](auto o) {},
+            overloaded{[](auto _) {},
                        [&](Translate o) {
                            if(o.normalized) {
                                o.offsetX *= width;
@@ -271,8 +265,8 @@ std::tuple<std::array<std::array<float, 3>, 3>, std::array<std::array<float, 2>,
                        [&](Rotate o) {
                            float cos = std::cos(o.angle);
                            float sin = std::sin(o.angle);
-                           float moveX = (widthVec[0] + heightVec[0]) / 2;
-                           float moveY = (widthVec[1] + heightVec[1]) / 2;
+                           float moveX = centerX;
+                           float moveY = centerY;
                            if(o.center) {
                                mat = {{{1, 0, -moveX}, {0, 1, -moveY}, {0, 0, 1}}};
                            }
@@ -283,26 +277,26 @@ std::tuple<std::array<std::array<float, 3>, 3>, std::array<std::array<float, 2>,
                        },
                        [&](Resize o) { mat = getResizeMat(o, width, height, outputWidth, outputHeight); },
                        [&](Flip o) {
-                           float moveX = (widthVec[0] + heightVec[0]) / 2;
-                           float moveY = (widthVec[1] + heightVec[1]) / 2;
+                           float moveX = centerX;
+                           float moveY = centerY;
                            switch(o.direction) {
                                case Flip::HORIZONTAL: {
                                    if(o.center) {
-                                       mat = {{{1, 0, -moveX}, {0, 1, 0}, {0, 0, 1}}};
+                                       mat = {{{1, 0, -moveX}, {0, 1, -moveY}, {0, 0, 1}}};
                                    }
                                    mat = matmul({{{-1, 0, 0}, {0, 1, 0}, {0, 0, 1}}}, mat);
                                    if(o.center) {
-                                       mat = matmul({{{1, 0, moveX}, {0, 1, 0}, {0, 0, 1}}}, mat);
+                                       mat = matmul({{{1, 0, moveX}, {0, 1, moveY}, {0, 0, 1}}}, mat);
                                    }
                                    break;
                                }
                                case Flip::VERTICAL: {
                                    if(o.center) {
-                                       mat = {{{1, 0, 0}, {0, 1, -moveY}, {0, 0, 1}}};
+                                       mat = {{{1, 0, -moveX}, {0, 1, -moveY}, {0, 0, 1}}};
                                    }
                                    mat = matmul({{{1, 0, 0}, {0, -1, 0}, {0, 0, 1}}}, mat);
                                    if(o.center) {
-                                       mat = matmul({{{1, 0, 0}, {0, 1, moveY}, {0, 0, 1}}}, mat);
+                                       mat = matmul({{{1, 0, moveX}, {0, 1, moveY}, {0, 0, 1}}}, mat);
                                    }
                                    break;
                                }
@@ -352,10 +346,7 @@ std::tuple<std::array<std::array<float, 3>, 3>, std::array<std::array<float, 2>,
                                transform = matmul(_mat, transform);
                            }
 
-                           imageCorners[0] = {transform[0][2], transform[1][2]};
-                           imageCorners[1] = {imageCorners[0][0] + outputWidth, imageCorners[0][1]};
-                           imageCorners[2] = {imageCorners[0][0] + outputWidth, imageCorners[0][1] + outputHeight};
-                           imageCorners[3] = {imageCorners[0][0], imageCorners[0][1] + outputHeight};
+                           imageCorners = {{{0, 0}, {(float)outputWidth, 0}, {(float)outputWidth, (float)outputHeight}, {0, (float)outputHeight}}};
                        }},
             op.op);
         /*printf("Mat: %f %f %f %f %f %f %f %f %f\n", mat[0][0], mat[0][1], mat[0][2], mat[1][0], mat[1][1], mat[1][2], mat[2][0], mat[2][1], mat[2][2]);*/
@@ -377,6 +368,7 @@ ImageManipOperations& ImageManipOperations::build(const ImageManipBase& newBase,
 
     auto [transformMat, imageCorners] = getTransform(operations, inputWidth, inputHeight, base.outputWidth, base.outputHeight);
     matrix = transformMat;
+
     if(logger) {
         logger->trace("|{} {}|{} {}|", imageCorners[0][0], imageCorners[0][1], imageCorners[1][0], imageCorners[1][1]);
         logger->trace("-------------");
@@ -389,18 +381,10 @@ ImageManipOperations& ImageManipOperations::build(const ImageManipBase& newBase,
         logger->trace("-------------");
         logger->trace("|{} {} {}|", matrix[2][0], matrix[2][1], matrix[2][2]);
     }
-    auto [minx, maxx, miny, maxy] = getOuterRect(std::vector(imageCorners.begin(), imageCorners.end()));
-
-    if(base.outputWidth == 0) base.outputWidth = floorf(maxx + (minx < 0 ? minx : 0));
-    if(base.outputHeight == 0) base.outputHeight = floorf(maxy + (miny < 0 ? miny : 0));
-
-    if(base.center) {
-        float width = base.outputWidth;
-        float height = base.outputHeight;
-        std::array<std::array<float, 3>, 3> mat = {{{1, 0, -minx + (width - (maxx - minx)) / 2}, {0, 1, -miny + (height - (maxy - miny)) / 2}, {0, 0, 1}}};
-        imageCorners = {
-            {{matvecmul(mat, imageCorners[0])}, {matvecmul(mat, imageCorners[1])}, {matvecmul(mat, imageCorners[2])}, {matvecmul(mat, imageCorners[2])}}};
-        matrix = matmul(mat, matrix);
+    {
+        auto [minx, maxx, miny, maxy] = getOuterRect(std::vector(imageCorners.begin(), imageCorners.end()));
+        if(base.outputWidth == 0) base.outputWidth = maxx;
+        if(base.outputHeight == 0) base.outputHeight = maxy;
     }
 
     if(base.resizeMode != ImageManipBase::ResizeMode::NONE) {
@@ -418,7 +402,21 @@ ImageManipOperations& ImageManipOperations::build(const ImageManipBase& newBase,
                 res = Resize::fill();
                 break;
         }
-        matrix = matmul(getResizeMat(res, maxx - minx, maxy - miny, base.outputWidth, base.outputHeight), matrix);
+        auto [minx, maxx, miny, maxy] = getOuterRect(std::vector(imageCorners.begin(), imageCorners.end()));
+        auto mat = getResizeMat(res, maxx - minx, maxy - miny, base.outputWidth, base.outputHeight);
+        imageCorners = {
+            {{matvecmul(mat, imageCorners[0])}, {matvecmul(mat, imageCorners[1])}, {matvecmul(mat, imageCorners[2])}, {matvecmul(mat, imageCorners[2])}}};
+        matrix = matmul(mat, matrix);
+    }
+
+    if(base.center) {
+        float width = base.outputWidth;
+        float height = base.outputHeight;
+        auto [minx, maxx, miny, maxy] = getOuterRect(std::vector(imageCorners.begin(), imageCorners.end()));
+        std::array<std::array<float, 3>, 3> mat = {{{1, 0, -minx + (width - (maxx - minx)) / 2}, {0, 1, -miny + (height - (maxy - miny)) / 2}, {0, 0, 1}}};
+        imageCorners = {
+            {{matvecmul(mat, imageCorners[0])}, {matvecmul(mat, imageCorners[1])}, {matvecmul(mat, imageCorners[2])}, {matvecmul(mat, imageCorners[2])}}};
+        matrix = matmul(mat, matrix);
     }
 
     size_t newAuxSize = base.outputWidth * base.outputHeight * bpp;
@@ -431,7 +429,6 @@ ImageManipOperations& ImageManipOperations::build(const ImageManipBase& newBase,
 
 bool ImageManipOperations::apply(const std::shared_ptr<ImgFrame> src, span<uint8_t> dst) {
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-    printf("Base colormap: %d\n", (int)base.colormap);
     uint8_t* transformDst = base.colormap == Colormap::NONE ? dst.data() : trAuxFrame->getData().data();
     if(float_eq(matrix[2][0], 0) && float_eq(matrix[2][1], 0) && float_eq(matrix[2][2], 1)) {
         // Do affine
@@ -452,9 +449,7 @@ bool ImageManipOperations::apply(const std::shared_ptr<ImgFrame> src, span<uint8
                           dst.size(),
                           cvAffine.rows,
                           cvAffine.cols);
-        printf("Warping\n");
         cv::warpAffine(cvSrc, cvDst, cvAffine, cv::Size(base.outputWidth, base.outputHeight));
-        printf("Warped\n");
 
     #else
         #ifdef DEPTHAI_HAVE_FASTCV_SUPPORT

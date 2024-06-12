@@ -6,7 +6,7 @@
 #include <depthai/pipeline/datatype/Buffer.hpp>
 
 #include "depthai/pipeline/ThreadedHostNode.hpp"
-#include "pipeline/datatype/ImageManipConfig.hpp"
+#include "depthai/pipeline/datatype/ImageManipConfig.hpp"
 
 namespace dai {
 namespace node {
@@ -16,6 +16,8 @@ class ImageManipHost : public NodeCRTP<ThreadedHostNode, ImageManipHost> {
     using CompressionLevel = dai::utility::ByteRecorder::CompressionLevel;
 
     constexpr static const char* NAME = "ImageManipHost";
+
+    explicit ImageManipHost() = default;
 
     /**
      * Input for any type of messages to be transferred over XLink stream
@@ -27,10 +29,7 @@ class ImageManipHost : public NodeCRTP<ThreadedHostNode, ImageManipHost> {
 
     void run() override;
 
-    ImageManipHost& setConfig(const ImageManipBase& config);
-
-   private:
-    ImageManipBase base;
+    ImageManipConfig initialConfig;
 };
 }  // namespace node
 

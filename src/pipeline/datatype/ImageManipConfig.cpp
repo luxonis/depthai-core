@@ -38,6 +38,14 @@ ImageManipConfig& ImageManipConfig::rotateDeg(float angle) {
     base.rotateDegrees(angle);
     return *this;
 }
+ImageManipConfig& ImageManipConfig::flipHorizontal() {
+    base.flipHorizontal(true);
+    return *this;
+}
+ImageManipConfig& ImageManipConfig::flipVertical() {
+    base.flipVertical(true);
+    return *this;
+}
 ImageManipConfig& ImageManipConfig::setOutputSize(uint32_t w, uint32_t h, ImageManipBase::ResizeMode mode) {
     base.setOutputResize(w, h, mode);
     return *this;
@@ -57,8 +65,7 @@ ImageManipConfig& ImageManipConfig::setCropRect(float xmin, float ymin, float xm
     cropConfig.cropRect.xmax = std::min(xmax, 1.0f);
     cropConfig.cropRect.ymax = std::min(ymax, 1.0f);
 
-    base.translate(-xmin, -ymin, (xmax - xmin) <= 1.0f);
-    base.setOutputSize(xmax - xmin, ymax - ymin);
+    crop(xmin, ymin, xmax - xmin, ymax - ymin);
     return *this;
 }
 
@@ -75,8 +82,8 @@ ImageManipConfig& ImageManipConfig::setCropRotatedRect(RotatedRect rr, bool norm
     cropConfig.cropRotatedRect = rr;
     cropConfig.normalizedCoords = normalizedCoords;
 
-    base.translate(-(rr.center.x - rr.size.width / 2), -(rr.center.y - rr.size.height / 2), normalizedCoords);
-    base.setOutputSize(rr.size.width, rr.size.height);
+    base.rotateRadians(-rr.angle);
+    base.crop(rr.center.x - rr.size.width / 2, rr.center.y - rr.size.height / 2, rr.size.width, rr.size.height, normalizedCoords);
     return *this;
 }
 
@@ -87,6 +94,11 @@ ImageManipConfig& ImageManipConfig::setWarpTransformFourPoints(std::vector<Point
     resizeConfig.enableWarp4pt = true;
     resizeConfig.warpFourPoints = pt;
     resizeConfig.normalizedCoords = normalizedCoords;
+
+    // NOTE: this requires points to be in order top-left, top-right, bottom-right, bottom-left (clockwise)
+    std::array<Point2f, 4> points = {{pt[0], pt[1], pt[2], pt[3]}};
+    const auto [xmin, ymin, xmax, ymax] = getOuterRect(points);
+    base.transformFourPoints(points, {{{xmin, ymin}, {xmax, ymin}, {xmax, ymax}, {xmin, ymax}}}, normalizedCoords);
 
     return *this;
 }
@@ -135,6 +147,7 @@ ImageManipConfig& ImageManipConfig::setCenterCrop(float ratio, float whRatio) {
 
     cropConfig.widthHeightAspectRatio = whRatio;
 
+    // NOTE: this only works as a last stage (for now)
     base.setOutputSize(ratio * whRatio, ratio);
     base.setOutputCenter(true);
 
@@ -157,7 +170,7 @@ ImageManipConfig& ImageManipConfig::setRotationRadians(float rad) {
     setRotationDegrees(rad * rad2degFactor);
 
     base.setOutputCenter(true);
-    base.rotateDegrees(rad);
+    base.rotateRadians(rad);
 
     return *this;
 }
@@ -200,9 +213,7 @@ ImageManipConfig& ImageManipConfig::setResizeThumbnail(int w, int h, int bgRed, 
     resizeConfig.bgBlue = bgBlue;
 
     base.setBackgroundColor(bgRed, bgGreen, bgBlue);
-    base.setOutputSize(w, h);
-    base.setOutputCenter(true);
-    base.resizeFit();
+    base.setOutputResize(w, h, ImageManipBase::ResizeMode::LETTERBOX);
 
     return *this;
 }
@@ -249,7 +260,7 @@ ImageManipConfig& ImageManipConfig::setColormap(Colormap colormap, int max) {
     formatConfig.colormapMin = 0;
     formatConfig.colormapMax = max;
 
-    base.colormap = colormap;
+    base.setColormap(colormap);
 
     return *this;
 }
@@ -266,7 +277,7 @@ ImageManipConfig& ImageManipConfig::setColormap(Colormap colormap, int min, int 
     formatConfig.colormapMin = min;
     formatConfig.colormapMax = max;
 
-    base.colormap = colormap;
+    base.setColormap(colormap);
 
     return *this;
 }
