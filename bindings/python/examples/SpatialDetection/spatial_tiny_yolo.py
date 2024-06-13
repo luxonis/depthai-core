@@ -101,7 +101,7 @@ spatialDetectionNetwork.passthroughDepth.link(sync.inputs["depth"])
 spatialDetectionNetwork.outNetwork.link(sync.inputs["nn"])
 spatialDetectionNetwork.out.link(sync.inputs["detections"])
 
-syncedQueue = sync.out.createQueue()
+syncedQueue = sync.out.createOutputQueue()
 
 # Connect to device and start pipeline
 with pipeline:

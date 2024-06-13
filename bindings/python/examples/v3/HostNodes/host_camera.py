@@ -31,7 +31,7 @@ class HostCamera(dai.node.ThreadedHostNode):
 
 with dai.Pipeline(createImplicitDevice=False) as p:
     hostCamera = p.create(HostCamera)
-    camQueue = hostCamera.output.createQueue()
+    camQueue = hostCamera.output.createOutputQueue()
 
     p.start()
     while p.isRunning():

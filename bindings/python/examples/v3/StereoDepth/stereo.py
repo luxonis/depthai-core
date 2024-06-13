@@ -33,7 +33,7 @@ with dai.Pipeline() as pipeline:
     # Linking
     monoLeft.out.link(depth.left)
     monoRight.out.link(depth.right)
-    depthQueue = depth.disparity.createQueue()
+    depthQueue = depth.disparity.createOutputQueue()
 
     pipeline.start()
     while pipeline.isRunning():

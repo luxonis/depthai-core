@@ -5,6 +5,7 @@
 #include "Common.hpp"
 #include "depthai/pipeline/DeviceNode.hpp"
 #include "depthai/pipeline/Node.hpp"
+#include "depthai/pipeline/InputQueue.hpp"
 #include "depthai/pipeline/NodeGroup.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/ThreadedNode.hpp"
@@ -209,6 +210,10 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
     py::enum_<Node::Output::Type> nodeOutputType(pyOutput, "Type");
     py::class_<Properties, std::shared_ptr<Properties>> pyProperties(m, "Properties", DOC(dai, Properties));
     py::class_<Node::DatatypeHierarchy> nodeDatatypeHierarchy(pyNode, "DatatypeHierarchy", DOC(dai, Node, DatatypeHierarchy));
+    
+    
+    py::class_<InputQueue, std::shared_ptr<InputQueue>> pyInputQueue(m, "InputQueue", DOC(dai, InputQueue));
+    pyInputQueue.def("send", &InputQueue::send, py::arg("msg"), DOC(dai, InputQueue, send));
 
     // Node::Id bindings
     py::class_<Node::Id>(pyNode, "Id", "Node identificator. Unique for every node on a single Pipeline");
@@ -287,7 +292,12 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("setWaitForMessage", &Node::Input::setWaitForMessage, py::arg("waitForMessage"), DOC(dai, Node, Input, setWaitForMessage))
         .def("getWaitForMessage", &Node::Input::getWaitForMessage, DOC(dai, Node, Input, getWaitForMessage))
         .def("setReusePreviousMessage", &Node::Input::setReusePreviousMessage, py::arg("reusePreviousMessage"), DOC(dai, Node, Input, setReusePreviousMessage))
-        .def("getReusePreviousMessage", &Node::Input::getReusePreviousMessage, DOC(dai, Node, Input, getReusePreviousMessage));
+        .def("getReusePreviousMessage", &Node::Input::getReusePreviousMessage, DOC(dai, Node, Input, getReusePreviousMessage))
+        .def("createInputQueue",
+             &Node::Input::createInputQueue,
+             py::arg("maxSize") = Node::Input::INPUT_QUEUE_DEFAULT_MAX_SIZE,
+             py::arg("blocking") = Node::Input::INPUT_QUEUE_DEFAULT_BLOCKING,
+             DOC(dai, Node, Input, createInputQueue));
 
     // Node::Output bindings
     nodeOutputType.value("MSender", Node::Output::Type::MSender).value("SSender", Node::Output::Type::SSender);
@@ -311,7 +321,11 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
              DOC(dai, Node, Output, getParent))
         .def("isSamePipeline", &Node::Output::isSamePipeline, py::arg("input"), DOC(dai, Node, Output, isSamePipeline))
         .def("canConnect", &Node::Output::canConnect, py::arg("input"), DOC(dai, Node, Output, canConnect))
-        .def("createQueue", &Node::Output::createQueue, py::arg("maxSize") = 16, py::arg("blocking") = true, DOC(dai, Node, Output, createQueue))
+        .def("createOutputQueue",
+             &Node::Output::createOutputQueue,
+             py::arg("maxSize") = Node::Output::OUTPUT_QUEUE_DEFAULT_MAX_SIZE,
+             py::arg("blocking") = Node::Output::OUTPUT_QUEUE_DEFAULT_BLOCKING,
+             DOC(dai, Node, Output, createOutputQueue))
         .def("link", static_cast<void (Node::Output::*)(Node::Input&)>(&Node::Output::link), py::arg("input"), DOC(dai, Node, Output, link))
         .def("unlink", static_cast<void (Node::Output::*)(Node::Input&)>(&Node::Output::unlink), py::arg("input"), DOC(dai, Node, Output, unlink))
         .def("send", &Node::Output::send, py::arg("msg"), DOC(dai, Node, Output, send), py::call_guard<py::gil_scoped_release>())

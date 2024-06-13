@@ -31,7 +31,7 @@ int main() {
     )");
 
     // XLinkOut
-    auto queue = script->outputs["end"].createQueue();
+    auto queue = script->outputs["end"].createOutputQueue();
 
     // Connect to device with pipeline
     dai::Device device(pipeline);

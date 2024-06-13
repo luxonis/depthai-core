@@ -86,7 +86,9 @@ class Script : public DeviceNodeCRTP<DeviceNode, Script, ScriptProperties> {
 
    protected:
     bool isBuild = false;
-    bool needsBuild() override { return !isBuild; }
+    bool needsBuild() override {
+        return !isBuild;
+    }
 };
 
 }  // namespace node
