@@ -51,7 +51,7 @@ class RTABMapSLAM : public dai::NodeCRTP<dai::node::ThreadedHostNode, RTABMapSLA
     /**
      * Input odometry pose.
      */
-    Input odom{*this, {.name = "inputOdomPose", .types = {{dai::DatatypeEnum::TransformData, true}}}};
+    Input odom{*this, {.name = "odom", .types = {{dai::DatatypeEnum::TransformData, true}}}};
 
     /**
      * Output transform.
@@ -157,7 +157,7 @@ class RTABMapSLAM : public dai::NodeCRTP<dai::node::ThreadedHostNode, RTABMapSLA
     /**
      * Whether to use input features for SLAM. False by default.
      */
-    void setUseFeatures(bool reuse);
+    void setUseFeatures(bool use);
     void setLocalTransform(std::shared_ptr<TransformData> transform) {
         localTransform = transform->getRTABMapTransform();
     }

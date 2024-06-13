@@ -32,8 +32,8 @@ std::shared_ptr<RTABMapVIO> RTABMapVIO::build() {
     return std::static_pointer_cast<RTABMapVIO>(shared_from_this());
 }
 
-void RTABMapVIO::setUseFeatures(bool reuse) {
-    useFeatures = reuse;
+void RTABMapVIO::setUseFeatures(bool use) {
+    useFeatures = use;
     if(useFeatures) {
         features.setBlocking(false);
         features.setMaxSize(1);

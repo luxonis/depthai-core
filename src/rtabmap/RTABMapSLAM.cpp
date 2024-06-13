@@ -47,8 +47,8 @@ void RTABMapSLAM::saveDatabase() {
     rtabmap.init(rtabParams, databasePath);
 }
 
-void RTABMapSLAM::setUseFeatures(bool reuse) {
-    useFeatures = reuse;
+void RTABMapSLAM::setUseFeatures(bool use) {
+    useFeatures = use;
     if(useFeatures) {
         features.setBlocking(false);
         features.setMaxSize(1);
