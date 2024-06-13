@@ -156,19 +156,18 @@ void RTABMapSLAM::run() {
                         mapMsg->setCvFrame(map8U, ImgFrame::Type::GRAY8);
                         occupancyGridMap.send(mapMsg);
                     }
-                    if(publishObstacleCloud) {
+                    if(publishObstacleCloud || publishGroundCloud) {
                         if(cloudMap->addedNodes().size() || localMaps->size() > 0) {
                             cloudMap->update(optimizedPoses);
                         }
+                    }
+                    if(publishObstacleCloud) {
                         auto obstaclesMap = cloudMap->getMapObstacles();
                         auto pclData = std::make_shared<dai::PointCloudData>();
                         pclData->setPclData(obstaclesMap);
                         obstaclePCL.send(pclData);
                     }
                     if(publishGroundCloud) {
-                        if(cloudMap->addedNodes().size() || localMaps->size() > 0) {
-                            cloudMap->update(optimizedPoses);
-                        }
                         auto groundMap = cloudMap->getMapGround();
                         auto pclData = std::make_shared<dai::PointCloudData>();
                         pclData->setPclData(groundMap);

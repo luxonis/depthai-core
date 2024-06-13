@@ -16,14 +16,13 @@ class RerunStreamer : public dai::NodeCRTP<dai::node::ThreadedHostNode, RerunStr
     constexpr static const char* NAME = "RerunStreamer";
 
    public:
-    void build() {
-    }
+    void build() {}
 
-    Input inputTrans{*this, {.name="inTrans", .types={{dai::DatatypeEnum::TransformData, true}}}};
-    Input inputImg{*this, {.name="inImg", .types={{dai::DatatypeEnum::ImgFrame, true}}}};
-    Input inputObstaclePCL{*this, {.name="inObstaclePCL", .types={{dai::DatatypeEnum::PointCloudData, true}}}};
-    Input inputGroundPCL{*this, {.name="inGroundPCL", .types={{dai::DatatypeEnum::PointCloudData, true}}}};
-    Input inputMap{*this, {.name="inMap", .types={{dai::DatatypeEnum::ImgFrame, true}}}};
+    Input inputTrans{*this, {.name = "inTrans", .types = {{dai::DatatypeEnum::TransformData, true}}}};
+    Input inputImg{*this, {.name = "inImg", .types = {{dai::DatatypeEnum::ImgFrame, true}}}};
+    Input inputObstaclePCL{*this, {.name = "inObstaclePCL", .types = {{dai::DatatypeEnum::PointCloudData, true}}}};
+    Input inputGroundPCL{*this, {.name = "inGroundPCL", .types = {{dai::DatatypeEnum::PointCloudData, true}}}};
+    Input inputMap{*this, {.name = "inMap", .types = {{dai::DatatypeEnum::ImgFrame, true}}}};
 
     void run() override {
         const auto rec = rerun::RecordingStream("rerun");
@@ -46,25 +45,29 @@ class RerunStreamer : public dai::NodeCRTP<dai::node::ThreadedHostNode, RerunStr
                 positions.push_back(position);
                 rerun::LineStrip3D lineStrip(positions);
                 rec.log("world/trajectory", rerun::LineStrips3D(lineStrip));
-                rec.log("world/camera/image", rerun::Pinhole::from_focal_length_and_resolution({398.554f, 398.554f}, {640.0f, 400.0f}).with_camera_xyz(rerun::components::ViewCoordinates::FLU));
+                rec.log("world/camera/image",
+                        rerun::Pinhole::from_focal_length_and_resolution({398.554f, 398.554f}, {640.0f, 400.0f})
+                            .with_camera_xyz(rerun::components::ViewCoordinates::FLU));
                 rec.log("world/camera/image/rgb",
                         rerun::Image(tensorShape(imgFrame->getCvFrame()), reinterpret_cast<const uint8_t*>(imgFrame->getCvFrame().data)));
-                #ifdef DEPTHAI_HAVE_PCL_SUPPORT
+#ifdef DEPTHAI_HAVE_PCL_SUPPORT
                 if(pclObstData != nullptr) {
                     std::vector<rerun::Position3D> points;
-                    for(auto& point : pclObstData->getPclData()->points) {
+                    auto pclData = pclObstData->getPclData()->points;
+                    for(auto& point : pclData) {
                         points.push_back(rerun::Position3D(point.x, point.y, point.z));
                     }
                     rec.log("world/obstacle_pcl", rerun::Points3D(points).with_radii({0.01f}));
                 }
                 if(pclGrndData != nullptr) {
                     std::vector<rerun::Position3D> points;
-                    for(auto& point : pclGrndData->getPclData()->points) {
+                    auto pclData = pclGrndData->getPclData()->points;
+                    for(auto& point : pclData) {
                         points.push_back(rerun::Position3D(point.x, point.y, point.z));
                     }
-                    rec.log("world/ground_pcl", rerun::Points3D(points).with_colors(rerun::Color{0,255,0}).with_radii({0.01f}));
+                    rec.log("world/ground_pcl", rerun::Points3D(points).with_colors(rerun::Color{0, 255, 0}).with_radii({0.01f}));
                 }
-                #endif
+#endif
                 if(mapData != nullptr) {
                     rec.log("map", rerun::Image(tensorShape(mapData->getCvFrame()), reinterpret_cast<const uint8_t*>(mapData->getCvFrame().data)));
                 }

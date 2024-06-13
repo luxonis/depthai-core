@@ -178,8 +178,8 @@ class PointCloudData : public Buffer {
      * Converts PointCloudData to pcl::PointCloud<pcl::PointXYZ>
      */
     pcl::PointCloud<pcl::PointXYZ>::Ptr getPclData() const;
-    void setPclData(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud);
-    void setPclData(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud);
+    void setPclData(const pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud);
+    void setPclData(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr& cloud);
 #else
     template <typename... T>
     struct dependent_false {
