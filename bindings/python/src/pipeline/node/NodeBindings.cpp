@@ -153,6 +153,7 @@ void bind_messagedemux(pybind11::module& m, void* pCallstack);
 void bind_hostnode(pybind11::module& m, void* pCallstack);
 void bind_record(pybind11::module& m, void* pCallstack);
 void bind_replay(pybind11::module& m, void* pCallstack);
+void bind_basaltnode(pybind11::module& m, void* pCallstack);
 
 void NodeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     // Bind Node et al
@@ -191,6 +192,7 @@ void NodeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_hostnode);
     callstack.push_front(bind_record);
     callstack.push_front(bind_replay);
+    callstack.push_front(bind_basaltnode);
 }
 
 void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
