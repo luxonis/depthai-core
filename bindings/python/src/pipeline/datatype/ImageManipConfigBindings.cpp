@@ -2,6 +2,7 @@
 #include <unordered_map>
 
 #include "DatatypeBindings.hpp"
+#include "depthai/common/Point2f.hpp"
 #include "pipeline/CommonBindings.hpp"
 
 // depthai
@@ -95,6 +96,15 @@ void bind_imagemanipconfig(pybind11::module& m, void* pCallstack) {
         .def("scale", &ImageManipConfig::scale, py::arg("scale"), DOC(dai, ImageManipConfig, scale))
         .def("flipHorizontal", &ImageManipConfig::flipHorizontal, DOC(dai, ImageManipConfig, flipHorizontal))
         .def("flipVertical", &ImageManipConfig::flipVertical, DOC(dai, ImageManipConfig, flipVertical))
+        .def("rotateDeg",
+             static_cast<ImageManipConfig& (ImageManipConfig::*)(float)>(&ImageManipConfig::rotateDeg),
+             py::arg("angle"),
+             DOC(dai, ImageManipConfig, rotateDeg))
+        .def("rotateDeg",
+             static_cast<ImageManipConfig& (ImageManipConfig::*)(float, Point2f)>(&ImageManipConfig::rotateDeg),
+             py::arg("angle"),
+             py::arg("center"),
+             DOC(dai, ImageManipConfig, rotateDeg))
         .def(
             "setOutputSize",
             [](ImageManipConfig& self, float w, float h, std::string mode) -> ImageManipConfig& {

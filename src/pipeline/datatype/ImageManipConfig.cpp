@@ -38,6 +38,12 @@ ImageManipConfig& ImageManipConfig::rotateDeg(float angle) {
     base.rotateDegrees(angle);
     return *this;
 }
+ImageManipConfig& ImageManipConfig::rotateDeg(float angle, Point2f center) {
+    base.translate(-center.x, -center.y);
+    base.rotateDegrees(angle);
+    base.translate(center.x, center.y);
+    return *this;
+}
 ImageManipConfig& ImageManipConfig::flipHorizontal() {
     base.flipHorizontal(true);
     return *this;

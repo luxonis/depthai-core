@@ -431,6 +431,7 @@ class ImageManipConfig : public Buffer {
     ImageManipConfig& resize(uint32_t w, uint32_t h);
     ImageManipConfig& scale(float scale);
     ImageManipConfig& rotateDeg(float angle);
+    ImageManipConfig& rotateDeg(float angle, Point2f center);
     ImageManipConfig& flipHorizontal();
     ImageManipConfig& flipVertical();
     ImageManipConfig& setOutputSize(uint32_t w, uint32_t h, ImageManipBase::ResizeMode mode = ImageManipBase::ResizeMode::NONE);

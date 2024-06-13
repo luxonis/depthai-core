@@ -1,46 +1,52 @@
+#include <memory>
 #include "depthai/depthai.hpp"
+#include "depthai/pipeline/datatype/ImageManipConfig.hpp"
+#include "depthai/pipeline/InputQueue.hpp"
 #include "opencv2/opencv.hpp"
 
-constexpr int NUM_FRAMES_PER_CONFIG = 100;
+constexpr int NUM_FRAMES_PER_CONFIG = 2;
 
 using Type = dai::ImgFrame::Type;
 
 int main(int argc, char** argv) {
-    assert(argc >= 2);
+    assert(argc > 1);
 
     dai::Pipeline pipeline;
 
-    auto xlinkIn = pipeline.create<dai::node::XLinkIn>();
-    auto xlinkInConfig = pipeline.create<dai::node::XLinkIn>();
     auto imageManip = pipeline.create<dai::node::ImageManip>();
-    auto xlinkOut = pipeline.create<dai::node::XLinkOut>();
 
-    xlinkIn->setStreamName("in");
-    xlinkIn->setStreamName("inConfig");
-    xlinkOut->setStreamName("out");
     imageManip->initialConfig.setFrameType(dai::ImgFrame::Type::RGB888i);
+    imageManip->setMaxOutputFrameSize(4803988);
 
-    xlinkIn->out.link(imageManip->inputImage);
-    xlinkInConfig->out.link(imageManip->inputConfig);
-    imageManip->out.link(xlinkOut->input);
-
-    auto device = pipeline.getDevice();
-    auto in = device->getInputQueue("in");
-    auto inConfig = device->getInputQueue("inConfig");
-    auto out = device->getOutputQueue("out");
+    auto inImg = imageManip->inputImage.createInputQueue();
+    auto outImg = imageManip->out.createOutputQueue();
+    auto inConfig = imageManip->inputConfig.createInputQueue();
 
     pipeline.start();
 
-    std::vector<Type> supportedTypes = {Type::RGB888i, Type::RGB888p, Type::BGR888i, Type::BGR888p, Type::NV12};
+    std::vector<Type> supportedTypes = {Type::RGB888i, Type::RGB888p, Type::BGR888i, Type::BGR888p, Type::NV12, Type::YUV420p};
     for(const auto from : supportedTypes) {
         for (const auto to : supportedTypes) {
             for(unsigned int i = 0; i < NUM_FRAMES_PER_CONFIG * (argc - 1); i++) {
                 cv::Mat frame = cv::imread(argv[i / NUM_FRAMES_PER_CONFIG + 1], cv::IMREAD_COLOR);
+                cv::resize(frame, frame, cv::Size(640, 480));
                 if(frame.empty()) {
                     std::cerr << "File not found: " << argv[i / NUM_FRAMES_PER_CONFIG + 1] << std::endl;
                 }
                 dai::ImgFrame imgFrame;
-                // TODO: cv set frame
+                imgFrame.setCvFrame(frame, from);
+                dai::ImageManipConfig config;
+                config.setFrameType(to);
+                inConfig->send(std::make_shared<dai::ImageManipConfig>(config));
+                inImg->send(std::make_shared<dai::ImgFrame>(imgFrame));
+
+                auto out = outImg->get<dai::ImgFrame>();
+                // Horizontally merge frame and out->getCvFrame()
+                cv::Mat cvOut = out->getCvFrame();
+                cv::Mat merged;
+                cv::hconcat(frame, cvOut, merged);
+                cv::imshow("Frame", merged);
+                cv::waitKey(50);
             }
         }
     }
