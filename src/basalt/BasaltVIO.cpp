@@ -4,10 +4,26 @@
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "tbb/concurrent_queue.h"
 #include "tbb/global_control.h"
-
+#include "../utility/PimplImpl.hpp"
 namespace dai {
+
+
 namespace node {
+
+class BasaltVIO::Impl {
+   public:
+    Impl() = default;
+    std::shared_ptr<tbb::concurrent_bounded_queue<basalt::OpticalFlowInput::Ptr>> imageDataQueue;
+    std::shared_ptr<tbb::concurrent_bounded_queue<basalt::ImuData<double>::Ptr>> imuDataQueue;
+    std::shared_ptr<tbb::concurrent_bounded_queue<basalt::PoseVelBiasState<double>::Ptr>> outStateQueue;
+    std::shared_ptr<tbb::detail::d1::global_control> tbbGlobalControl;
+};
+
+BasaltVIO::BasaltVIO(){}
+BasaltVIO::~BasaltVIO() = default;
+
 std::shared_ptr<BasaltVIO> BasaltVIO::build() {
+
     sync->out.link(inSync);
     sync->setRunOnHost(false);
     inSync.setBlocking(false);
@@ -42,7 +58,7 @@ void BasaltVIO::run() {
 
     while(isRunning()) {
         if(!calibrated) continue;
-        outStateQueue.pop(data);
+        pimpl->outStateQueue->pop(data);
 
         if(!data.get()) continue;
         basalt::PoseState<double>::SE3 pose = (*localTransform * data->T_w_i * calib->T_i_c[0]);
@@ -94,8 +110,8 @@ void BasaltVIO::stereoCB(std::shared_ptr<ADatatype> in) {
         i++;
     }
     lastImgData = data;
-    if(imageDataQueue) {
-        imageDataQueue->push(data);
+    if(pimpl->imageDataQueue) {
+        pimpl->imageDataQueue->push(data);
     }
 };
 
@@ -111,12 +127,12 @@ void BasaltVIO::imuCB(std::shared_ptr<ADatatype> imuData) {
         data->t_ns = t_ns;
         data->accel = Eigen::Vector3d(imuPacket.acceleroMeter.x, imuPacket.acceleroMeter.y, imuPacket.acceleroMeter.z);
         data->gyro = Eigen::Vector3d(imuPacket.gyroscope.x, imuPacket.gyroscope.y, imuPacket.gyroscope.z);
-        if(imuDataQueue) imuDataQueue->push(data);
+        if(pimpl->imuDataQueue) pimpl->imuDataQueue->push(data);
     }
 };
 void BasaltVIO::initialize(std::vector<std::shared_ptr<ImgFrame>> frames) {
     if(threadNum > 0) {
-        tbbGlobalControl = std::make_shared<tbb::global_control>(tbb::global_control::max_allowed_parallelism, threadNum);
+        pimpl->tbbGlobalControl = std::make_shared<tbb::global_control>(tbb::global_control::max_allowed_parallelism, threadNum);
     }
 
     auto pipeline = getParentPipeline();
@@ -187,14 +203,15 @@ void BasaltVIO::initialize(std::vector<std::shared_ptr<ImgFrame>> frames) {
     vioConfig.load(configPath);
     optFlowPtr = basalt::OpticalFlowFactory::getOpticalFlow(vioConfig, *calib);
     optFlowPtr->start();
-    imageDataQueue = &optFlowPtr->input_img_queue;
+    pimpl->imageDataQueue = optFlowPtr->input_img_queue;
     vio = basalt::VioEstimatorFactory::getVioEstimator(vioConfig, *calib, basalt::constants::g, true, true);
     vio->initialize(Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero());
-    imuDataQueue = &vio->imu_data_queue;
-    optFlowPtr->output_queue = &vio->vision_data_queue;
-    vio->out_state_queue = &outStateQueue;
-    vio->opt_flow_depth_guess_queue = &optFlowPtr->input_depth_queue;
-    vio->opt_flow_state_queue = &optFlowPtr->input_state_queue;
+    pimpl->imuDataQueue = vio->imu_data_queue;
+    optFlowPtr->output_queue = vio->vision_data_queue;
+    pimpl->outStateQueue = std::make_shared<tbb::concurrent_bounded_queue<basalt::PoseVelBiasState<double>::Ptr>>();
+    vio->out_state_queue = pimpl->outStateQueue;
+    vio->opt_flow_depth_guess_queue = optFlowPtr->input_depth_queue;
+    vio->opt_flow_state_queue = optFlowPtr->input_state_queue;
     calibrated = true;
 }
 }  // namespace node

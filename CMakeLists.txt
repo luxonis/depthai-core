@@ -757,7 +757,7 @@ if(DEPTHAI_RTABMAP_SUPPORT)
 
     if(RTABMAP_SUPPORT_AVAILABLE)
 
-        # Add depthai-core-opencv library and depthai::core::opencv alias
+        # Add depthai-rtabmap library and depthai::rtabmap alias
         add_library(${TARGET_RTABMAP_NAME} src/rtabmap/CalibrationHandler.cpp src/rtabmap/TransformData.cpp  src/rtabmap/RTABMapVIO.cpp src/rtabmap/RTABMapSLAM.cpp )
         add_library("${PROJECT_NAME}::${TARGET_RTABMAP_ALIAS}" ALIAS ${TARGET_RTABMAP_NAME})
         # Specifies name of generated IMPORTED target (set to alias)
@@ -817,7 +817,7 @@ if(DEPTHAI_BASALT_SUPPORT)
             LOCATION msdmi_config
         )
     
-        # Add depthai-core-opencv library and depthai::core::opencv alias
+        # Add depthai-basalt library and depthai::basalt alias
         add_library(${TARGET_BASALT_NAME} src/basalt/BasaltVIO.cpp )
         add_library("${PROJECT_NAME}::${TARGET_BASALT_ALIAS}" ALIAS ${TARGET_BASALT_NAME})
 
@@ -829,20 +829,11 @@ if(DEPTHAI_BASALT_SUPPORT)
         add_flag(${TARGET_BASALT_NAME} -Wno-switch-enum)
 
         # Link to Basalt (publically)
-        target_link_libraries(${TARGET_BASALT_NAME} PUBLIC basalt_sdk::basalt_sdk ${THIRDPARTY_BASALT_LIBRARIES})
+        target_link_libraries(${TARGET_BASALT_NAME} PUBLIC basalt_sdk::basalt_sdk ${THIRDPARTY_BASALT_LIBRARIES} ${TARGET_OPENCV_NAME} )
 
         # Add public compile definition indicating that Basalt support is available
         set(DEPTHAI_HAVE_BASALT_SUPPORT ON)
-        if(NOT CXX_MARCH)
-            set(CXX_MARCH native)
-        endif()
-        
-        IF(NOT APPLE OR NOT CMAKE_SYSTEM_PROCESSOR STREQUAL "arm64")
-            set(BASALT_MARCH_FLAGS "-march=${CXX_MARCH}")
-        ELSE()
-            message(STATUS "Running on Apple ${CMAKE_SYSTEM_PROCESSOR}. Disabled -march flag.")
-        ENDIF()
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${BASALT_MARCH_FLAGS}")
+
         # Specify that we are building target basalt
         target_compile_definitions(${TARGET_BASALT_NAME} PUBLIC DEPTHAI_TARGET_BASALT)
         target_compile_definitions(${TARGET_BASALT_NAME} PUBLIC DEPTHAI_HAVE_BASALT_SUPPORT)
@@ -882,7 +873,7 @@ if(DEPTHAI_HAVE_OPENCV_SUPPORT AND DEPTHAI_HAVE_PCL_SUPPORT AND DEPTHAI_HAVE_BAS
     # Add to list of targets to export and install
     list(APPEND targets_to_export ${TARGET_ALL_NAME})
 
-    message(STATUS "OpenCV, PCL Basalt and RTABMap found. Combined target enabled")
+    message(STATUS "OpenCV, PCL, Basalt and RTABMap found. Combined target enabled")
 endif()
 
 

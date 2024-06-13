@@ -255,7 +255,7 @@ hunter_config(
     basalt-headers
     VERSION 0.1.0
     URL "https://github.com/luxonis/basalt-headers/archive/refs/heads/hunter.zip"
-    SHA1 "da1e955bf68099312e8f920f8fd35a433af4558a"
+    SHA1 "958c2c322fd9ff902cdd45139255e88219ac7079"
 )
 
 hunter_config(
@@ -266,7 +266,8 @@ hunter_config(
     CMAKE_ARGS
         TBB_PREVIEW_GLOBAL_CONTROL=ON
         TBB_TEST=OFF
-        BUILD_SHARED_LIBS=ON
+        CMAKE_CXX_VISIBILITY_PRESET=hidden
+        CMAKE_C_VISIBILITY_PRESET=hidden
 )
 
 
@@ -274,10 +275,9 @@ hunter_config(
     basalt
     VERSION 0.1.0
     URL "https://github.com/luxonis/basalt/archive/refs/heads/depthai_tests.zip"
-    SHA1 "b035243c3b00ad79e1b4a58088188a55cfa6f02c"
+    SHA1 "4bd7a00b178e2046a66dd456fdc337597940f505"
     CMAKE_ARGS
         BASALT_SDK_ONLY=ON
-        BUILD_SHARED_LIBS=ON
 )
 
 hunter_config(

@@ -10,6 +10,7 @@
 #include "depthai/pipeline/datatype/IMUData.hpp"
 #include "depthai/pipeline/datatype/TransformData.hpp"
 #include "depthai/pipeline/node/Sync.hpp"
+#include "depthai/utility/Pimpl.hpp"
 
 namespace tbb {
 namespace detail {
@@ -34,7 +35,8 @@ namespace node {
 class BasaltVIO : public NodeCRTP<ThreadedHostNode, BasaltVIO> {
    public:
     constexpr static const char* NAME = "BasaltVIO";
-
+    BasaltVIO();
+    ~BasaltVIO();
     std::shared_ptr<BasaltVIO> build();
 
     Subnode<node::Sync> sync{*this, "sync"};
@@ -81,6 +83,10 @@ class BasaltVIO : public NodeCRTP<ThreadedHostNode, BasaltVIO> {
     void setLocalTransform(const std::shared_ptr<TransformData>& transform);
 
    private:
+    // pimpl
+    class Impl;
+    Pimpl<Impl> pimpl;
+
     void run() override;
     void initialize(std::vector<std::shared_ptr<ImgFrame>> frames);
     void stereoCB(std::shared_ptr<ADatatype> in);
@@ -92,10 +98,6 @@ class BasaltVIO : public NodeCRTP<ThreadedHostNode, BasaltVIO> {
     basalt::VioEstimatorBase::Ptr vio;
     basalt::OpticalFlowInput::Ptr lastImgData;
 
-    tbb::concurrent_bounded_queue<basalt::OpticalFlowInput::Ptr>* imageDataQueue;
-    tbb::concurrent_bounded_queue<basalt::ImuData<double>::Ptr>* imuDataQueue;
-    tbb::concurrent_bounded_queue<basalt::PoseVelBiasState<double>::Ptr> outStateQueue;
-
     std::vector<int64_t> vioTNSec;
     std::shared_ptr<basalt::PoseState<double>::SE3> localTransform;
     std::shared_ptr<ImgFrame> leftImg;
@@ -103,7 +105,6 @@ class BasaltVIO : public NodeCRTP<ThreadedHostNode, BasaltVIO> {
     std::string configPath = VIO_CONFIG_PATH;
     int imuUpdateRate = 200;
     int threadNum = 1;
-    std::shared_ptr<tbb::detail::d1::global_control> tbbGlobalControl;
     bool useSpecTranslation = true;
 };
 }  // namespace node
