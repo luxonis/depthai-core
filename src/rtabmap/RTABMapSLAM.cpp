@@ -32,7 +32,7 @@ std::shared_ptr<RTABMapSLAM> RTABMapSLAM::build() {
 }
 
 RTABMapSLAM::~RTABMapSLAM() {
-    std::cout << "RTABMapSLAM destructor" << std::endl;   
+    std::cout << "RTABMapSLAM destructor" << std::endl;
 }
 void RTABMapSLAM::setParams(const rtabmap::ParametersMap& params) {
     rtabParams = params;
@@ -119,8 +119,7 @@ void RTABMapSLAM::run() {
                     if(rtabmap.getLoopClosureId() > 0) {
                         if(logger) {
                             logger->debug("Loop closure detected! last loop closure id = {}", rtabmap.getLoopClosureId());
-                        }
-                        else {
+                        } else {
                             spdlog::debug("Loop closure detected! last loop closure id = {}", rtabmap.getLoopClosureId());
                         }
                     }
@@ -147,36 +146,12 @@ void RTABMapSLAM::run() {
                         localMaps->add(iter->first, ground, obstacles, empty, node.sensorData().gridCellSize(), node.sensorData().gridViewPoint());
                     }
 
-                    if(occupancyGrid->addedNodes().size() || localMaps->size() > 0) {
-                        occupancyGrid->update(optimizedPoses);
+                    if(publishGrid) {
+                        publishGridMap(optimizedPoses);
                     }
-                    float xMin, yMin;
-                    cv::Mat map = occupancyGrid->getMap(xMin, yMin);
-                    if(!map.empty()) {
-                        cv::Mat map8U = rtabmap::util3d::convertMap2Image8U(map);
-                        cv::flip(map8U, map8U, 0);
 
-                        auto mapMsg = std::make_shared<dai::ImgFrame>();
-                        mapMsg->setTimestamp(std::chrono::steady_clock::now());
-                        mapMsg->setCvFrame(map8U, ImgFrame::Type::GRAY8);
-                        occupancyGridMap.send(mapMsg);
-                    }
                     if(publishObstacleCloud || publishGroundCloud) {
-                        if(cloudMap->addedNodes().size() || localMaps->size() > 0) {
-                            cloudMap->update(optimizedPoses);
-                        }
-                    }
-                    if(publishObstacleCloud) {
-                        auto obstaclesMap = cloudMap->getMapObstacles();
-                        auto pclData = std::make_shared<dai::PointCloudData>();
-                        pclData->setPclData(obstaclesMap);
-                        obstaclePCL.send(pclData);
-                    }
-                    if(publishGroundCloud) {
-                        auto groundMap = cloudMap->getMapGround();
-                        auto pclData = std::make_shared<dai::PointCloudData>();
-                        pclData->setPclData(groundMap);
-                        groundPCL.send(pclData);
+                        publishPointClouds(optimizedPoses);
                     }
                 }
             }
@@ -193,6 +168,42 @@ void RTABMapSLAM::run() {
 
             startTime = std::chrono::steady_clock::now();
         }
+    }
+}
+
+void RTABMapSLAM::publishGridMap(const std::map<int, rtabmap::Transform>& optimizedPoses) {
+    if(occupancyGrid->addedNodes().size() || localMaps->size() > 0) {
+        occupancyGrid->update(optimizedPoses);
+    }
+    float xMin, yMin;
+    cv::Mat map = occupancyGrid->getMap(xMin, yMin);
+    if(!map.empty()) {
+        cv::Mat map8U = rtabmap::util3d::convertMap2Image8U(map);
+        cv::flip(map8U, map8U, 0);
+
+        auto mapMsg = std::make_shared<dai::ImgFrame>();
+        mapMsg->setTimestamp(std::chrono::steady_clock::now());
+        mapMsg->setCvFrame(map8U, ImgFrame::Type::GRAY8);
+        occupancyGridMap.send(mapMsg);
+    }
+}
+
+void RTABMapSLAM::publishPointClouds(const std::map<int, rtabmap::Transform>& optimizedPoses) {
+    if(cloudMap->addedNodes().size() || localMaps->size() > 0) {
+        cloudMap->update(optimizedPoses);
+    }
+
+    if(publishObstacleCloud) {
+        auto obstaclesMap = cloudMap->getMapObstacles();
+        auto pclData = std::make_shared<dai::PointCloudData>();
+        pclData->setPclData(obstaclesMap);
+        obstaclePCL.send(pclData);
+    }
+    if(publishGroundCloud) {
+        auto groundMap = cloudMap->getMapGround();
+        auto pclData = std::make_shared<dai::PointCloudData>();
+        pclData->setPclData(groundMap);
+        groundPCL.send(pclData);
     }
 }
 

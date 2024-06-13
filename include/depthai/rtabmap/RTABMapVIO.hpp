@@ -84,7 +84,7 @@ class RTABMapVIO : public NodeCRTP<ThreadedHostNode, RTABMapVIO> {
 
     /**
      * Reset Odometry.
-    */
+     */
     void reset(std::shared_ptr<TransformData> transform = nullptr);
 
    private:

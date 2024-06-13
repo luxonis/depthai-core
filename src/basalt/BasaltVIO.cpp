@@ -1,12 +1,11 @@
 #include "depthai/basalt/BasaltVIO.hpp"
 
+#include "../utility/PimplImpl.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "tbb/concurrent_queue.h"
 #include "tbb/global_control.h"
-#include "../utility/PimplImpl.hpp"
 namespace dai {
-
 
 namespace node {
 
@@ -19,11 +18,10 @@ class BasaltVIO::Impl {
     std::shared_ptr<tbb::detail::d1::global_control> tbbGlobalControl;
 };
 
-BasaltVIO::BasaltVIO(){}
+BasaltVIO::BasaltVIO() {}
 BasaltVIO::~BasaltVIO() = default;
 
 std::shared_ptr<BasaltVIO> BasaltVIO::build() {
-
     sync->out.link(inSync);
     sync->setRunOnHost(false);
     inSync.setBlocking(false);

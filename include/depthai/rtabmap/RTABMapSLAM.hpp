@@ -176,6 +176,9 @@ class RTABMapSLAM : public dai::NodeCRTP<dai::node::ThreadedHostNode, RTABMapSLA
     void odomPoseCB(std::shared_ptr<dai::ADatatype> data);
     void imuCB(std::shared_ptr<dai::ADatatype> msg);
     void initialize(dai::Pipeline& pipeline, int instanceNum, int width, int height);
+    void publishGridMap(const std::map<int, rtabmap::Transform>& optimizedPoses);
+    void publishPointClouds(const std::map<int, rtabmap::Transform>& optimizedPoses);
+
     rtabmap::StereoCameraModel model;
     rtabmap::Rtabmap rtabmap;
     rtabmap::Transform currPose, odomCorr;
