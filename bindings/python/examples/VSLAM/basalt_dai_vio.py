@@ -78,44 +78,41 @@ class RerunNode(dai.node.ThreadedHostNode):
         self.inputGrid = dai.Node.Input(self)
         self.positions = []
     def run(self):
-        try: 
-            rr.init("", spawn=True)
-            rr.log("world", rr.ViewCoordinates.FLU)
-            rr.log("world/ground", rr.Boxes3D.half_sizes([[3.0, 3.0, 0.00001]]))
-            while self.isRunning():
-                transData = self.inputTrans.get()
-                imgFrame = self.inputImg.get()
-                pclObstData = self.inputObstaclePCL.tryGet()
-                pclGrndData = self.inputGroundPCL.tryGet()
-                mapData = self.inputGrid.tryGet()
-                if transData is not None:
-                    trans = transData.getTranslation()
-                    quat = transData.getQuaternion()
-                    position = rr.Vec3D(trans.x, trans.y, trans.z)
-                    rr.log("world/camera", rr.Transform3D(position, rr.Quaternion.from_xyzw(quat.qx, quat.qy, quat.qz, quat.qw)))
-                    self.positions.append(position)
-                    lineStrip = rr.LineStrip3D(self.positions)
-                    rr.log("world/trajectory", rr.LineStrips3D(lineStrip))
-                    rr.log("world/camera/image", rr.Pinhole.from_focal_length_and_resolution([398.554, 398.554], [640.0, 400.0]).with_camera_xyz(rr.ViewCoordinates.FLU))
-                    rr.log("world/camera/image/rgb", rr.Image(imgFrame.getCvFrame()))
-                    if pclObstData is not None:
-                        points = []
-                        pclData = pclObstData.getPclData().points
-                        for point in pclData:
-                            points.append(rr.Position3D(point.x, point.y, point.z))
-                        rr.log("world/obstacle_pcl", rr.Points3D(points).with_radii([0.01]))
-                    if pclGrndData is not None:
-                        points = []
-                        pclData = pclGrndData.getPclData().points
-                        for point in pclData:
-                            points.append(rr.Position3D(point.x, point.y, point.z))
-                        rr.log("world/ground_pcl", rr.Points3D(points).with_colors(rr.Color(0, 255, 0)).with_radii([0.01]))
-                    if mapData is not None:
-                        rr.log("map", rr.Image(mapData.getCvFrame()))
-        except Exception as e:
-            print(e)
+        rr.init("", spawn=True)
+        rr.log("world", rr.ViewCoordinates.FLU)
+        # rr.log("world/ground", rr.Boxes3D.half_sizes([[3.0, 3.0, 0.00001]])) -doesn't work for some reason 
+        while self.isRunning():
+            transData = self.inputTrans.get()
+            imgFrame = self.inputImg.get()
+            pclObstData = self.inputObstaclePCL.tryGet()
+            pclGrndData = self.inputGroundPCL.tryGet()
+            mapData = self.inputGrid.tryGet()
+            if transData is not None:
+                trans = transData.getTranslation()
+                quat = transData.getQuaternion()
+                position = rr.Vec3D(trans.x, trans.y, trans.z)
+                rr.log("world/camera", rr.Transform3D(position, rr.Quaternion.from_xyzw(quat.qx, quat.qy, quat.qz, quat.qw)))
+                self.positions.append(position)
+                lineStrip = rr.LineStrip3D(self.positions)
+                rr.log("world/trajectory", rr.LineStrips3D(lineStrip))
+                rr.log("world/camera/image", rr.Pinhole.from_focal_length_and_resolution([398.554, 398.554], [640.0, 400.0]).with_camera_xyz(rr.ViewCoordinates.FLU))
+                rr.log("world/camera/image/rgb", rr.Image(imgFrame.getCvFrame()))
+                if pclObstData is not None:
+                    points = []
+                    pclData = pclObstData.getPclData().points
+                    for point in pclData:
+                        points.append(rr.Position3D(point.x, point.y, point.z))
+                    rr.log("world/obstacle_pcl", rr.Points3D(points).with_radii([0.01]))
+                if pclGrndData is not None:
+                    points = []
+                    pclData = pclGrndData.getPclData().points
+                    for point in pclData:
+                        points.append(rr.Position3D(point.x, point.y, point.z))
+                    rr.log("world/ground_pcl", rr.Points3D(points).with_colors(rr.Color(0, 255, 0)).with_radii([0.01]))
+                if mapData is not None:
+                    rr.log("map", rr.Image(mapData.getCvFrame()))
 
-    
+
 
 # Create pipeline
 
@@ -147,7 +144,8 @@ with dai.Pipeline() as p:
     left.out.link(odom.left)
     right.out.link(odom.right)
     imu.out.link(odom.imu)
-    # odom.passthrough.link(rerunViewer.inputImg)
+    odom.passthrough.link(rerunViewer.inputImg)
+    odom.transform.link(rerunViewer.inputTrans)
     # odom.passthrough
     p.start()
     while True:

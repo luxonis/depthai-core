@@ -34,6 +34,7 @@ const std::unordered_map<DatatypeEnum, std::vector<DatatypeEnum>> hierarchy = {
          DatatypeEnum::MessageGroup,
          DatatypeEnum::PointCloudConfig,
          DatatypeEnum::PointCloudData,
+         DatatypeEnum::TransformData,
      }},
     {DatatypeEnum::ImgFrame, {}},
     {DatatypeEnum::EncodedFrame, {}},
@@ -59,9 +60,14 @@ const std::unordered_map<DatatypeEnum, std::vector<DatatypeEnum>> hierarchy = {
     {DatatypeEnum::MessageGroup, {}},
     {DatatypeEnum::PointCloudConfig, {}},
     {DatatypeEnum::PointCloudData, {}},
+    {DatatypeEnum::TransformData, {}},
 };
 
 bool isDatatypeSubclassOf(DatatypeEnum parent, DatatypeEnum children) {
+    // Check if parent is in hierarchy
+    if(hierarchy.find(parent) == hierarchy.end()) {
+        throw std::invalid_argument("Parent datatype not found in hierarchy");
+    }
     for(const auto& d : hierarchy.at(parent)) {
         if(d == children) return true;
         if(isDatatypeSubclassOf(d, children)) return true;
