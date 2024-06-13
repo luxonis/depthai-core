@@ -57,7 +57,7 @@ void BasaltVIO::run() {
     basalt::PoseState<double>::SE3 opticalTransform(q, Eigen::Vector3d(0, 0, 0));
 
     while(isRunning()) {
-        if(!calibrated) continue;
+        if(!initialized) continue;
         pimpl->outStateQueue->pop(data);
 
         if(!data.get()) continue;
@@ -76,7 +76,7 @@ void BasaltVIO::run() {
 void BasaltVIO::stereoCB(std::shared_ptr<ADatatype> in) {
     auto group = std::dynamic_pointer_cast<MessageGroup>(in);
     if(group == nullptr) return;
-    if(!calibrated) {
+    if(!initialized) {
         std::vector<std::shared_ptr<ImgFrame>> imgFrames;
         for(auto& msg : *group) {
             imgFrames.emplace_back(std::dynamic_pointer_cast<ImgFrame>(msg.second));
@@ -212,7 +212,7 @@ void BasaltVIO::initialize(std::vector<std::shared_ptr<ImgFrame>> frames) {
     vio->out_state_queue = pimpl->outStateQueue;
     vio->opt_flow_depth_guess_queue = optFlowPtr->input_depth_queue;
     vio->opt_flow_state_queue = optFlowPtr->input_state_queue;
-    calibrated = true;
+    initialized = true;
 }
 }  // namespace node
 }  // namespace dai

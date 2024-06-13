@@ -7,7 +7,6 @@ namespace node {
 std::shared_ptr<RTABMapVIO> RTABMapVIO::build() {
     sync->out.link(inSync);
     sync->setRunOnHost(false);
-    odom.reset(rtabmap::Odometry::create());
 
     localTransform = rtabmap::Transform::getIdentity();
 
@@ -69,10 +68,9 @@ void RTABMapVIO::syncCB(std::shared_ptr<dai::ADatatype> data) {
     }
     rtabmap::SensorData sensorData;
     if(imgFrame != nullptr && depthFrame != nullptr) {
-        if(!modelSet) {
+        if(!initialized) {
             auto pipeline = getParentPipeline();
-            getCalib(pipeline, imgFrame->getInstanceNum(), imgFrame->getWidth(), imgFrame->getHeight());
-            modelSet = true;
+            initialize(pipeline, imgFrame->getInstanceNum(), imgFrame->getWidth(), imgFrame->getHeight());
         } else {
             double stamp = std::chrono::duration<double>(imgFrame->getTimestampDevice(dai::CameraExposureOffset::MIDDLE).time_since_epoch()).count();
 
@@ -146,14 +144,14 @@ void RTABMapVIO::syncCB(std::shared_ptr<dai::ADatatype> data) {
             transform.send(out);
             passthroughRect.send(imgFrame);
             passthroughDepth.send(depthFrame);
-            if(useFeatures&&featuresFrame!=nullptr) {
+            if(useFeatures && featuresFrame != nullptr) {
                 passthroughFeatures.send(featuresFrame);
             }
         }
     }
 }
 
-void RTABMapVIO::run(){
+void RTABMapVIO::run() {
     while(isRunning()) {
         auto msg = inSync.get<dai::ADatatype>();
         if(msg != nullptr) {
@@ -162,11 +160,19 @@ void RTABMapVIO::run(){
     }
 }
 
-void RTABMapVIO::setParams(const rtabmap::ParametersMap& params) {
-    odom.reset(rtabmap::Odometry::create(params));
+void RTABMapVIO::reset(std::shared_ptr<TransformData> transform) {
+    if(transform != nullptr) {
+        odom->reset(transform->getRTABMapTransform());
+    } else {
+        odom->reset();
+    }
 }
 
-void RTABMapVIO::getCalib(dai::Pipeline& pipeline, int instanceNum, int width, int height) {
+void RTABMapVIO::setParams(const rtabmap::ParametersMap& params) {
+    rtabParams = params;
+}
+
+void RTABMapVIO::initialize(dai::Pipeline& pipeline, int instanceNum, int width, int height) {
     auto calibHandler = pipeline.getDefaultDevice()->readCalibration();
 
     auto cameraId = static_cast<dai::CameraBoardSocket>(instanceNum);
@@ -188,6 +194,8 @@ void RTABMapVIO::getCalib(dai::Pipeline& pipeline, int instanceNum, int width, i
                                            double(imuExtr[2][3]) * 0.01);
 
     imuLocalTransform = localTransform * imuLocalTransform;
+    odom.reset(rtabmap::Odometry::create(rtabParams));
+    initialized = true;
 }
 }  // namespace node
 }  // namespace dai

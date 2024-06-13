@@ -72,7 +72,7 @@ class RTABMapVIO : public NodeCRTP<ThreadedHostNode, RTABMapVIO> {
     /**
      * Set RTABMap parameters.
      */
-    void setParams(const rtabmap::ParametersMap& params);
+    void setParams(const std::map<std::string, std::string>& params);
     /**
      * Whether to use input features or calculate them internally.
      */
@@ -82,21 +82,27 @@ class RTABMapVIO : public NodeCRTP<ThreadedHostNode, RTABMapVIO> {
         localTransform = transform->getRTABMapTransform();
     }
 
+    /**
+     * Reset Odometry.
+    */
+    void reset(std::shared_ptr<TransformData> transform = nullptr);
+
    private:
     void run() override;
     void syncCB(std::shared_ptr<dai::ADatatype> data);
     Input inSync{*this, {.name = "inSync", .types = {{DatatypeEnum::MessageGroup, true}}}};
     void imuCB(std::shared_ptr<ADatatype> msg);
-    void getCalib(Pipeline& pipeline, int instanceNum, int width, int height);
+    void initialize(Pipeline& pipeline, int instanceNum, int width, int height);
     rtabmap::StereoCameraModel model;
     std::unique_ptr<rtabmap::Odometry> odom;
     rtabmap::Transform localTransform;
     rtabmap::Transform imuLocalTransform;
+    std::map<std::string, std::string> rtabParams;
     std::map<double, cv::Vec3f> accBuffer;
     std::map<double, cv::Vec3f> gyroBuffer;
     std::map<double, cv::Vec4f> rotBuffer;
     float alphaScaling = -1.0;
-    bool modelSet = false;
+    bool initialized = false;
     bool useFeatures = true;
 };
 }  // namespace node

@@ -11,7 +11,6 @@
 namespace dai {
 namespace node {
 std::shared_ptr<RTABMapSLAM> RTABMapSLAM::build() {
-    rtabmap.init();
     sync->out.link(inSync);
     sync->setRunOnHost(false);
     alphaScaling = -1.0;
@@ -32,8 +31,10 @@ std::shared_ptr<RTABMapSLAM> RTABMapSLAM::build() {
     return std::static_pointer_cast<RTABMapSLAM>(shared_from_this());
 }
 
+RTABMapSLAM::~RTABMapSLAM() {
+    std::cout << "RTABMapSLAM destructor" << std::endl;   
+}
 void RTABMapSLAM::setParams(const rtabmap::ParametersMap& params) {
-    rtabmap.init(params, databasePath);
     rtabParams = params;
 }
 
@@ -67,14 +68,9 @@ void RTABMapSLAM::syncCB(std::shared_ptr<dai::ADatatype> data) {
         featuresFrame = group->get<dai::TrackedFeatures>(featuresInputName);
     }
     if(imgFrame != nullptr && depthFrame != nullptr) {
-        if(!modelSet) {
+        if(!initialized) {
             auto pipeline = getParentPipeline();
-            getCalib(pipeline, imgFrame->getInstanceNum(), imgFrame->getWidth(), imgFrame->getHeight());
-            lastProcessTime = std::chrono::steady_clock::now();
-            startTime = std::chrono::steady_clock::now();
-            occupancyGrid = std::make_unique<rtabmap::OccupancyGrid>(localMaps.get(), rtabParams);
-            cloudMap = std::make_unique<rtabmap::CloudMap>(localMaps.get(), rtabParams);
-            modelSet = true;
+            initialize(pipeline, imgFrame->getInstanceNum(), imgFrame->getWidth(), imgFrame->getHeight());
         } else {
             double stamp = std::chrono::duration<double>(imgFrame->getTimestampDevice(dai::CameraExposureOffset::MIDDLE).time_since_epoch()).count();
 
@@ -110,7 +106,7 @@ void RTABMapSLAM::odomPoseCB(std::shared_ptr<dai::ADatatype> data) {
 
 void RTABMapSLAM::run() {
     while(isRunning()) {
-        if(!modelSet) {
+        if(!initialized) {
             continue;
         } else {
             rtabmap::Statistics stats;
@@ -121,7 +117,12 @@ void RTABMapSLAM::run() {
                 if(success) {
                     stats = rtabmap.getStatistics();
                     if(rtabmap.getLoopClosureId() > 0) {
-                        fmt::print("Loop closure detected! last loop closure id = {}\n", rtabmap.getLoopClosureId());
+                        if(logger) {
+                            logger->debug("Loop closure detected! last loop closure id = {}", rtabmap.getLoopClosureId());
+                        }
+                        else {
+                            spdlog::debug("Loop closure detected! last loop closure id = {}", rtabmap.getLoopClosureId());
+                        }
                     }
                     odomCorr = stats.mapCorrection();
 
@@ -133,7 +134,11 @@ void RTABMapSLAM::run() {
                     for(std::map<int, rtabmap::Transform>::iterator iter = optimizedPoses.begin(); iter != optimizedPoses.end(); ++iter) {
                         rtabmap::Signature node = nodes.find(iter->first)->second;
                         if(node.sensorData().gridCellSize() == 0.0f) {
-                            std::cout << "Grid cell size is 0, skipping node " << iter->first << std::endl;
+                            if(logger) {
+                                logger->warn("Grid cell size is 0, skipping node {}", iter->first);
+                            } else {
+                                spdlog::warn("Grid cell size is 0, skipping node {}", iter->first);
+                            }
                             continue;
                         }
                         // uncompress grid data
@@ -181,9 +186,9 @@ void RTABMapSLAM::run() {
             rtabmap.close();
             rtabmap.init(rtabParams, databasePath);
             if(logger) {
-                logger->info("Database saved");
+                logger->info("Database saved at {}", databasePath);
             } else {
-                spdlog::info("Database saved");
+                spdlog::info("Database saved at {}", databasePath);
             }
 
             startTime = std::chrono::steady_clock::now();
@@ -191,10 +196,16 @@ void RTABMapSLAM::run() {
     }
 }
 
-void RTABMapSLAM::getCalib(dai::Pipeline& pipeline, int instanceNum, int width, int height) {
+void RTABMapSLAM::initialize(dai::Pipeline& pipeline, int instanceNum, int width, int height) {
     auto calibHandler = pipeline.getDefaultDevice()->readCalibration();
     auto cameraId = static_cast<dai::CameraBoardSocket>(instanceNum);
     model = calibHandler.getRTABMapCameraModel(cameraId, width, height, localTransform, alphaScaling);
+    rtabmap.init(rtabParams, databasePath);
+    lastProcessTime = std::chrono::steady_clock::now();
+    startTime = std::chrono::steady_clock::now();
+    occupancyGrid = std::make_unique<rtabmap::OccupancyGrid>(localMaps.get(), rtabParams);
+    cloudMap = std::make_unique<rtabmap::CloudMap>(localMaps.get(), rtabParams);
+    initialized = true;
 }
 }  // namespace node
 }  // namespace dai

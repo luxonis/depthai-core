@@ -28,7 +28,7 @@ namespace node {
 class RTABMapSLAM : public dai::NodeCRTP<dai::node::ThreadedHostNode, RTABMapSLAM> {
    public:
     constexpr static const char* NAME = "RTABMapSLAM";
-
+    ~RTABMapSLAM() override;
     std::shared_ptr<RTABMapSLAM> build();
     Subnode<node::Sync> sync{*this, "sync"};
     InputMap& inputs = sync->inputs;
@@ -94,13 +94,27 @@ class RTABMapSLAM : public dai::NodeCRTP<dai::node::ThreadedHostNode, RTABMapSLA
     /**
      * Set RTABMap parameters.
      */
-    void setParams(const rtabmap::ParametersMap& params);
+    void setParams(const std::map<std::string, std::string>& params);
 
     /**
      * Set RTABMap database path. "/tmp/rtabmap.tmp.db" by default.
      */
     void setDatabasePath(const std::string& path) {
         databasePath = path;
+    }
+
+    /**
+     * Whether to load the database on start. False by default.
+     */
+    void setLoadDatabaseOnStart(bool load) {
+        loadDatabaseOnStart = load;
+    }
+
+    /**
+     * Whether to save the database on close. False by default.
+     */
+    void setSaveDatabaseOnClose(bool save) {
+        saveDatabaseOnClose = save;
     }
 
     void saveDatabase();
@@ -161,7 +175,7 @@ class RTABMapSLAM : public dai::NodeCRTP<dai::node::ThreadedHostNode, RTABMapSLA
     void syncCB(std::shared_ptr<dai::ADatatype> data);
     void odomPoseCB(std::shared_ptr<dai::ADatatype> data);
     void imuCB(std::shared_ptr<dai::ADatatype> msg);
-    void getCalib(dai::Pipeline& pipeline, int instanceNum, int width, int height);
+    void initialize(dai::Pipeline& pipeline, int instanceNum, int width, int height);
     rtabmap::StereoCameraModel model;
     rtabmap::Rtabmap rtabmap;
     rtabmap::Transform currPose, odomCorr;
@@ -172,13 +186,15 @@ class RTABMapSLAM : public dai::NodeCRTP<dai::node::ThreadedHostNode, RTABMapSLA
     std::shared_ptr<rtabmap::LocalGridCache> localMaps;
     std::unique_ptr<rtabmap::OccupancyGrid> occupancyGrid;
     std::unique_ptr<rtabmap::CloudMap> cloudMap;
+    rtabmap::SensorData sensorData;
     float alphaScaling = -1.0;
     bool useFeatures = false;
-    bool modelSet = false;
-    rtabmap::ParametersMap rtabParams;
-    rtabmap::SensorData sensorData;
+    bool initialized = false;
+    std::map<std::string, std::string> rtabParams;
     std::string databasePath = "/tmp/rtabmap.tmp.db";
     double databaseSaveInterval = 30.0;
+    bool loadDatabaseOnStart = false;
+    bool saveDatabaseOnClose = false;
     bool saveDatabasePeriodically = false;
     bool publishObstacleCloud = true;
     bool publishGroundCloud = true;

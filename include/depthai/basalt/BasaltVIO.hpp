@@ -101,7 +101,7 @@ class BasaltVIO : public NodeCRTP<ThreadedHostNode, BasaltVIO> {
     std::vector<int64_t> vioTNSec;
     std::shared_ptr<basalt::PoseState<double>::SE3> localTransform;
     std::shared_ptr<ImgFrame> leftImg;
-    bool calibrated = false;
+    bool initialized = false;
     std::string configPath = VIO_CONFIG_PATH;
     int imuUpdateRate = 200;
     int threadNum = 1;
