@@ -162,7 +162,6 @@ void RTABMapSLAM::run() {
                         }
                         auto obstaclesMap = cloudMap->getMapObstacles();
                         auto pclData = std::make_shared<dai::PointCloudData>();
-                        pclData->getPclData();
                         pclData->setPclData(obstaclesMap);
                         obstaclePCL.send(pclData);
                     }
