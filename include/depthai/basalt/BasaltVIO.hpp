@@ -12,18 +12,6 @@
 #include "depthai/pipeline/node/Sync.hpp"
 #include "depthai/utility/Pimpl.hpp"
 
-namespace tbb {
-namespace detail {
-namespace d1 {
-class global_control;
-}
-namespace d2 {
-template <typename T, typename Allocator>
-class concurrent_bounded_queue;
-}
-
-}  // namespace detail
-}  // namespace tbb
 
 namespace dai {
 namespace node {
