@@ -67,7 +67,6 @@
 import time
 import depthai as dai
 import rerun as rr
-
 class RerunNode(dai.node.ThreadedHostNode):
     def __init__(self):
         dai.node.ThreadedHostNode.__init__(self)
@@ -80,7 +79,7 @@ class RerunNode(dai.node.ThreadedHostNode):
     def run(self):
         rr.init("", spawn=True)
         rr.log("world", rr.ViewCoordinates.FLU)
-        # rr.log("world/ground", rr.Boxes3D.half_sizes([[3.0, 3.0, 0.00001]])) -doesn't work for some reason 
+        # rr.log("world/ground", rr.Boxes3D.half_sizes([[3.0, 3.0, 0.00001]])) -doesn't work for some reason
         while self.isRunning():
             transData = self.inputTrans.get()
             imgFrame = self.inputImg.get()
@@ -90,12 +89,12 @@ class RerunNode(dai.node.ThreadedHostNode):
             if transData is not None:
                 trans = transData.getTranslation()
                 quat = transData.getQuaternion()
-                position = rr.Vec3D(trans.x, trans.y, trans.z)
-                rr.log("world/camera", rr.Transform3D(position, rr.Quaternion.from_xyzw(quat.qx, quat.qy, quat.qz, quat.qw)))
+                position = [trans.x, trans.y, trans.z]
+                # rr.log("world/camera", rr.Transform3D(position, rr.Quaternion.from_xyzw(quat.qx, quat.qy, quat.qz, quat.qw)))
                 self.positions.append(position)
-                lineStrip = rr.LineStrip3D(self.positions)
-                rr.log("world/trajectory", rr.LineStrips3D(lineStrip))
-                rr.log("world/camera/image", rr.Pinhole.from_focal_length_and_resolution([398.554, 398.554], [640.0, 400.0]).with_camera_xyz(rr.ViewCoordinates.FLU))
+                # lineStrip = rr.LineStrip3D(self.positions)
+                # rr.log("world/trajectory", rr.LineStrips3D(lineStrip))
+                # rr.log("world/camera/image", rr.Pinhole.from_focal_length_and_resolution([398.554, 398.554], [640.0, 400.0]).with_camera_xyz(rr.ViewCoordinates.FLU))
                 rr.log("world/camera/image/rgb", rr.Image(imgFrame.getCvFrame()))
                 if pclObstData is not None:
                     points = []
