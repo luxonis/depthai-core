@@ -117,11 +117,7 @@ void RTABMapSLAM::run() {
                 if(success) {
                     stats = rtabmap.getStatistics();
                     if(rtabmap.getLoopClosureId() > 0) {
-                        if(logger) {
-                            logger->debug("Loop closure detected! last loop closure id = {}", rtabmap.getLoopClosureId());
-                        } else {
-                            spdlog::debug("Loop closure detected! last loop closure id = {}", rtabmap.getLoopClosureId());
-                        }
+                        logger->debug("Loop closure detected! last loop closure id = {}", rtabmap.getLoopClosureId());
                     }
                     odomCorr = stats.mapCorrection();
 
@@ -133,11 +129,7 @@ void RTABMapSLAM::run() {
                     for(std::map<int, rtabmap::Transform>::iterator iter = optimizedPoses.begin(); iter != optimizedPoses.end(); ++iter) {
                         rtabmap::Signature node = nodes.find(iter->first)->second;
                         if(node.sensorData().gridCellSize() == 0.0f) {
-                            if(logger) {
-                                logger->warn("Grid cell size is 0, skipping node {}", iter->first);
-                            } else {
-                                spdlog::warn("Grid cell size is 0, skipping node {}", iter->first);
-                            }
+                            logger->warn("Grid cell size is 0, skipping node {}", iter->first);
                             continue;
                         }
                         // uncompress grid data
@@ -160,12 +152,7 @@ void RTABMapSLAM::run() {
         if(saveDatabasePeriodically && std::chrono::duration<double>(std::chrono::steady_clock::now() - startTime).count() > databaseSaveInterval) {
             rtabmap.close();
             rtabmap.init(rtabParams, databasePath);
-            if(logger) {
-                logger->info("Database saved at {}", databasePath);
-            } else {
-                spdlog::info("Database saved at {}", databasePath);
-            }
-
+            logger->info("Database saved at {}", databasePath);
             startTime = std::chrono::steady_clock::now();
         }
     }

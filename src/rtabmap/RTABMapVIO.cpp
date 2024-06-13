@@ -28,7 +28,6 @@ std::shared_ptr<RTABMapVIO> RTABMapVIO::build() {
     }
     inSync.setMaxSize(1);
     inSync.setBlocking(false);
-    // inSync.addCallback(std::bind(&RTABMapVIO::syncCB, this, std::placeholders::_1));
     imu.addCallback(std::bind(&RTABMapVIO::imuCB, this, std::placeholders::_1));
     return std::static_pointer_cast<RTABMapVIO>(shared_from_this());
 }
@@ -78,7 +77,6 @@ void RTABMapVIO::syncCB(std::shared_ptr<dai::ADatatype> data) {
 
             std::vector<cv::KeyPoint> keypoints;
             if(featuresFrame != nullptr) {
-                std::cout << "Features frame\n" << std::endl;
                 for(auto& feature : featuresFrame->trackedFeatures) {
                     keypoints.emplace_back(cv::KeyPoint(feature.position.x, feature.position.y, 3));
                 }
