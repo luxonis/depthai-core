@@ -766,7 +766,7 @@ if(DEPTHAI_RTABMAP_SUPPORT)
         # Add default flags
         add_default_flags(${TARGET_RTABMAP_NAME})
         add_flag(${TARGET_RTABMAP_NAME} -Wno-switch-enum)
-
+        target_link_options(${TARGET_RTABMAP_NAME} INTERFACE LINKER:--disable-new-dtags)
         # Link to RTABMap (publically)
         target_link_libraries(${TARGET_RTABMAP_NAME} PUBLIC rtabmap::core ${TARGET_OPENCV_NAME} ${TARGET_PCL_NAME} ${THIRDPARTY_RTABMAP_LIBRARIES})
 
