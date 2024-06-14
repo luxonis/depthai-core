@@ -470,12 +470,13 @@ if(DEPTHAI_RTABMAP_SUPPORT)
     dai_add_example(rtabmap_vio VSLAM/rtabmap_vio.cpp OFF OFF)
     target_link_libraries(rtabmap_vio PRIVATE depthai::rtabmap rerun_sdk)
 
-    dai_add_example(rtabmap_slam VSLAM/rtabmap_slam.cpp OFF ON)
-    target_link_libraries(rtabmap_slam PRIVATE depthai::rtabmap rerun_sdk)
+    dai_add_example(rtabmap_vio_slam VSLAM/rtabmap_vio_slam.cpp OFF ON)
+    target_link_libraries(rtabmap_vio_slam PRIVATE depthai::rtabmap rerun_sdk)
 
     if(DEPTHAI_BASALT_SUPPORT)
-        dai_add_example(basalt_dai_vio_slam VSLAM/basalt_dai_vio_slam.cpp OFF ON)
-        target_link_libraries(basalt_dai_vio_slam PRIVATE depthai::basalt depthai::rtabmap rerun_sdk)
+        dai_add_example(basalt_vio_rtabmap_slam VSLAM/basalt_vio_rtabmap_slam.cpp OFF ON)
+        target_link_options(basalt_vio_rtabmap_slam PRIVATE LINKER:--disable-new-dtags)
+        target_link_libraries(basalt_vio_rtabmap_slam PRIVATE depthai::basalt depthai::rtabmap rerun_sdk)
     endif()
 
 endif()
@@ -485,8 +486,8 @@ if(DEPTHAI_BASALT_SUPPORT)
     FetchContent_Declare(rerun_sdk URL  https://github.com/rerun-io/rerun/releases/download/0.15.0/rerun_cpp_sdk.zip)
     FetchContent_MakeAvailable(rerun_sdk)
 
-    dai_add_example(basalt_dai_vio VSLAM/basalt_dai_vio.cpp OFF OFF)
-    target_link_libraries(basalt_dai_vio PRIVATE depthai::basalt rerun_sdk)
+    dai_add_example(basalt_vio VSLAM/basalt_vio.cpp OFF OFF)
+    target_link_libraries(basalt_vio PRIVATE depthai::basalt rerun_sdk)
 endif()
 
 dai_add_example(rgb_video_v3 v3/ColorCamera/rgb_video.cpp ON OFF)
