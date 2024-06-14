@@ -178,8 +178,8 @@ hunter_config(
         WITH_K4A=OFF
         WITH_OPENNI2=OFF
         WITH_DC1394=OFF
-        WITH_G2O=ON
-        WITH_GTSAM=ON
+        WITH_G2O=OFF
+        WITH_GTSAM=OFF
         WITH_TORO=ON
         WITH_CERES=OFF
         WITH_MRPT=OFF
