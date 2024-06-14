@@ -475,7 +475,6 @@ if(DEPTHAI_RTABMAP_SUPPORT)
 
     if(DEPTHAI_BASALT_SUPPORT)
         dai_add_example(basalt_vio_rtabmap_slam VSLAM/basalt_vio_rtabmap_slam.cpp OFF ON)
-        target_link_options(basalt_vio_rtabmap_slam PRIVATE LINKER:--disable-new-dtags)
         target_link_libraries(basalt_vio_rtabmap_slam PRIVATE depthai::basalt depthai::rtabmap rerun_sdk)
     endif()
 
