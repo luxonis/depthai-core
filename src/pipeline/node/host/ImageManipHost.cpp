@@ -329,10 +329,15 @@ std::tuple<std::array<std::array<float, 3>, 3>, std::array<std::array<float, 2>,
                            mat = {{{o.matrix[0], o.matrix[1], o.matrix[2]}, {o.matrix[3], o.matrix[4], o.matrix[5]}, {o.matrix[6], o.matrix[7], o.matrix[8]}}};
                        },
                        [&](Crop o) {
-                           if(o.width > 0 && o.height == 0) o.height = roundf(height * ((float)o.width / width));
-                           if(o.height > 0 && o.width == 0)
+                           if(o.normalized) {
+                               o.width *= width;
+                               o.height *= height;
+                           }
+                           if(o.width > 0 && o.height <= 0)
+                               o.height = roundf(height * ((float)o.width / width));
+                           else if(o.height > 0 && o.width <= 0)
                                o.width = roundf(width * (o.height / height));
-                           else if(o.height == 0 && o.width == 0) {
+                           else if(o.height <= 0 && o.width <= 0) {
                                o.width = roundf(maxx);
                                o.height = roundf(maxy);
                            }
@@ -349,7 +354,7 @@ std::tuple<std::array<std::array<float, 3>, 3>, std::array<std::array<float, 2>,
                            imageCorners = {{{0, 0}, {(float)outputWidth, 0}, {(float)outputWidth, (float)outputHeight}, {0, (float)outputHeight}}};
                        }},
             op.op);
-        /*printf("Mat (%s): %f %f %f %f %f %f %f %f %f\n", std::visit([](auto&& op) { return getOpStr(op); }, op.op).c_str(), mat[0][0], mat[0][1], mat[0][2], mat[1][0], mat[1][1], mat[1][2], mat[2][0], mat[2][1], mat[2][2]);*/
+        /*printf("Mat: %f %f %f %f %f %f %f %f %f\n", mat[0][0], mat[0][1], mat[0][2], mat[1][0], mat[1][1], mat[1][2], mat[2][0], mat[2][1], mat[2][2]);*/
         imageCorners = getOuterRotatedRect(
             {matvecmul(mat, imageCorners[0]), matvecmul(mat, imageCorners[1]), matvecmul(mat, imageCorners[2]), matvecmul(mat, imageCorners[3])});
         transform = matmul(mat, transform);

@@ -145,22 +145,23 @@ struct FourPoints : OpBase {
 };
 
 struct Crop : OpBase {
-    uint32_t width;
-    uint32_t height;
+    float width;
+    float height;
+    bool normalized;
     bool center;
 
-    Crop() : width(0), height(0), center(true) {}
-    Crop(uint32_t width, uint32_t height, bool center = false) : width(width), height(height), center(center) {}
+    Crop() : width(0), height(0), normalized(true), center(true) {}
+    Crop(float width, float height, bool normalized = false, bool center = false) : width(width), height(height), normalized(normalized), center(center) {}
 
     Crop clone() const {
         return *this;
     }
 
     std::string toStr() const override {
-        return "C:w=" + std::to_string(width) + ",h=" + std::to_string(height) + ",c=" + std::to_string(center);
+        return "C:w=" + std::to_string(width) + ",h=" + std::to_string(height) + ",n=" + std::to_string(normalized) + ",c=" + std::to_string(center);
     }
 
-    DEPTHAI_SERIALIZE(Crop, width, height, center);
+    DEPTHAI_SERIALIZE(Crop, width, height, normalized, center);
 };
 
 struct ManipOp {
@@ -236,9 +237,9 @@ class ImageManipBase {
         return *this;
     }
 
-    ImageManipBase& crop(float x, float y, float w, float h, bool center = false) {
-        operations.emplace_back(Translate(-x, -y, x < 1 && y < 1 && w <= 2 && h <= 2));
-        operations.emplace_back(Crop(w, h, center));
+    ImageManipBase& crop(float x, float y, float w, float h, bool normalized = false, bool center = false) {
+        operations.emplace_back(Translate(-x, -y, normalized));
+        operations.emplace_back(Crop(w, h, normalized, center));
         return *this;
     }
 
