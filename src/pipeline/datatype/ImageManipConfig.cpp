@@ -30,8 +30,8 @@ ImageManipConfig& ImageManipConfig::resize(uint32_t w, uint32_t h) {
     base.resize(w, h);
     return *this;
 }
-ImageManipConfig& ImageManipConfig::scale(float scale) {
-    base.resizeWidthKeepAspectRatio(scale, true);
+ImageManipConfig& ImageManipConfig::scale(float scaleX, float scaleY) {
+    base.resize(scaleX, scaleY, true);
     return *this;
 }
 ImageManipConfig& ImageManipConfig::rotateDeg(float angle) {

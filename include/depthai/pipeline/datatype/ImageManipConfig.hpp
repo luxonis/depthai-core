@@ -231,8 +231,8 @@ class ImageManipBase {
         return *this;
     }
 
-    ImageManipBase& resize(float width, float height) {
-        operations.emplace_back(Resize(width, height));
+    ImageManipBase& resize(float width, float height, bool normalized = false) {
+        operations.emplace_back(Resize(width, height, normalized));
         return *this;
     }
 
@@ -429,7 +429,7 @@ class ImageManipConfig : public Buffer {
     // New API
     ImageManipConfig& crop(uint32_t x, uint32_t y, uint32_t w, uint32_t h);
     ImageManipConfig& resize(uint32_t w, uint32_t h);
-    ImageManipConfig& scale(float scale);
+    ImageManipConfig& scale(float scaleX, float scaleY = 0);
     ImageManipConfig& rotateDeg(float angle);
     ImageManipConfig& rotateDeg(float angle, Point2f center);
     ImageManipConfig& flipHorizontal();

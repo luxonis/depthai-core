@@ -93,7 +93,7 @@ void bind_imagemanipconfig(pybind11::module& m, void* pCallstack) {
         // New API Setters
         .def("crop", &ImageManipConfig::crop, py::arg("x"), py::arg("y"), py::arg("w"), py::arg("h"), DOC(dai, ImageManipConfig, crop))
         .def("resize", &ImageManipConfig::resize, py::arg("w"), py::arg("h"), DOC(dai, ImageManipConfig, resize))
-        .def("scale", &ImageManipConfig::scale, py::arg("scale"), DOC(dai, ImageManipConfig, scale))
+        .def("scale", &ImageManipConfig::scale, py::arg("scaleX"), py::arg("scaleY"), DOC(dai, ImageManipConfig, scale))
         .def("flipHorizontal", &ImageManipConfig::flipHorizontal, DOC(dai, ImageManipConfig, flipHorizontal))
         .def("flipVertical", &ImageManipConfig::flipVertical, DOC(dai, ImageManipConfig, flipVertical))
         .def("rotateDeg",
