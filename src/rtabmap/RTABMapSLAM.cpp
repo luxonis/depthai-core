@@ -198,7 +198,12 @@ void RTABMapSLAM::initialize(dai::Pipeline& pipeline, int instanceNum, int width
     auto calibHandler = pipeline.getDefaultDevice()->readCalibration();
     auto cameraId = static_cast<dai::CameraBoardSocket>(instanceNum);
     model = calibHandler.getRTABMapCameraModel(cameraId, width, height, localTransform, alphaScaling);
-    rtabmap.init(rtabParams, databasePath);
+    if(!databasePath.empty()) {
+        rtabmap.init(rtabParams, databasePath);
+    }
+    else {
+        rtabmap.init(rtabParams);
+    }
     lastProcessTime = std::chrono::steady_clock::now();
     startTime = std::chrono::steady_clock::now();
     occupancyGrid = std::make_unique<rtabmap::OccupancyGrid>(localMaps.get(), rtabParams);
