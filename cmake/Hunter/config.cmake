@@ -157,8 +157,8 @@ hunter_config(
 hunter_config(
     rtbmap
     VERSION "0.21.4"
-    URL "https://github.com/introlab/rtabmap/archive/refs/tags/0.21.4.tar.gz"
-    SHA1 "3ac7372c3bd6761095421a3282d66521822f89f7"
+    URL "https://github.com/Serafadam/rtabmap/archive/ec6938ac69acd63378902450b18f985aa39923dd.zip" # until fixes are merged to main
+    SHA1 "e117a530d93d21a66bfc29b2b186f5d47c974513"
     CMAKE_ARGS
         BUILD_APP=OFF
         WITH_UDEV=OFF
@@ -166,7 +166,7 @@ hunter_config(
         BUILD_TOOLS=OFF
         # Build shared libs by default to not cause licensing issues
         BUILD_SHARED_LIBS=ON
-        WITH_QT=ON
+        WITH_QT=OFF
         WITH_ORB_OCTREE=OFF
         WITH_TORCH=OFF
         WITH_PYTHON=OFF
@@ -176,10 +176,11 @@ hunter_config(
         WITH_FREENECT2=OFF
         WITH_K4W2=OFF
         WITH_K4A=OFF
+        WITH_OPENNI=OFF
         WITH_OPENNI2=OFF
         WITH_DC1394=OFF
-        WITH_G2O=OFF
-        WITH_GTSAM=OFF
+        WITH_G2O=ON
+        WITH_GTSAM=ON
         WITH_TORO=ON
         WITH_CERES=OFF
         WITH_MRPT=OFF
