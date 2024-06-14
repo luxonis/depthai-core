@@ -194,7 +194,7 @@ class RTABMapSLAM : public dai::NodeCRTP<dai::node::ThreadedHostNode, RTABMapSLA
     bool useFeatures = false;
     bool initialized = false;
     std::map<std::string, std::string> rtabParams;
-    std::string databasePath = "/tmp/rtabmap.tmp.db";
+    std::string databasePath = "";
     double databaseSaveInterval = 30.0;
     bool loadDatabaseOnStart = false;
     bool saveDatabaseOnClose = false;
