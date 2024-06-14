@@ -24,7 +24,7 @@ class ImageManipHost : public NodeCRTP<ThreadedHostNode, ImageManipHost> {
      *
      * Default queue is blocking with size 8
      */
-    Input input{*this, {.name = "input", .queueSize = 15, .types = {{DatatypeEnum::ImgFrame, false}}}};
+    Input inputImage{*this, {.name = "inputImage", .queueSize = 15, .types = {{DatatypeEnum::ImgFrame, false}}}};
     Output out{*this, {.name = "out", .types = {{DatatypeEnum::ImgFrame, false}}}};
 
     void run() override;

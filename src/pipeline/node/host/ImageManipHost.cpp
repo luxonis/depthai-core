@@ -7,21 +7,6 @@
 namespace dai {
 namespace node {
 
-template <typename T>
-std::string getOpStr(const T& op) {
-    return op.toStr();
-}
-
-std::string getConfigString(const dai::ImageManipBase& ops) {
-    std::stringstream configSS;
-    const auto operations = ops.getOperations();
-    for(auto i = 0U; i < operations.size(); ++i) {
-        configSS << std::visit([](auto&& op) { return getOpStr(op); }, operations[i].op);
-        if(i != operations.size() - 1) configSS << " ";
-    }
-    return configSS.str();
-}
-
 void ImageManipHost::run() {
     impl::ImageManipOperations manip(logger);
     auto base = initialConfig.base;
@@ -29,7 +14,7 @@ void ImageManipHost::run() {
     bool initialized = false;
 
     while(isRunning()) {
-        auto frame = input.get<ImgFrame>();
+        auto frame = inputImage.get<ImgFrame>();
         if(!initialized) {
             uint32_t numPlanes = frame->getType() == ImgFrame::Type::GRAY8 || frame->getType() == ImgFrame::Type::RAW8 ? 1 : 3;
             manip.build(base, frame->getWidth(), frame->getHeight(), numPlanes);
@@ -88,6 +73,21 @@ bool float_eq(float a, float b) {
 
 bool isSingleChannelu8(const std::shared_ptr<dai::ImgFrame> img) {
     return img->getType() == dai::ImgFrame::Type::GRAY8 || img->getType() == dai::ImgFrame::Type::RAW8;
+}
+
+template <typename T>
+std::string getOpStr(const T& op) {
+    return op.toStr();
+}
+
+std::string getConfigString(const dai::ImageManipBase& ops) {
+    std::stringstream configSS;
+    const auto operations = ops.getOperations();
+    for(auto i = 0U; i < operations.size(); ++i) {
+        configSS << std::visit([](auto&& op) { return getOpStr(op); }, operations[i].op);
+        if(i != operations.size() - 1) configSS << " ";
+    }
+    return configSS.str();
 }
 
 std::array<std::array<float, 3>, 3> matmul(std::array<std::array<float, 3>, 3> A, std::array<std::array<float, 3>, 3> B) {
@@ -199,9 +199,9 @@ std::array<std::array<float, 2>, 4> getOuterRotatedRect(const std::vector<std::a
 
 std::array<std::array<float, 3>, 3> getResizeMat(Resize o, float width, float height, uint32_t outputWidth, uint32_t outputHeight) {
     if(o.mode == Resize::VALUE) {
-        if(o.width > 0 && o.height == -1) {
+        if(o.width > 0 && o.height <= 0) {
             o.height = o.normalized ? o.width : height * (o.width / width);
-        } else if(o.width == -1 && o.height > 0) {
+        } else if(o.width <= 0 && o.height > 0) {
             o.width = o.normalized ? o.height : width * (o.height / height);
         }
     } else if(o.mode == Resize::FIT || o.mode == Resize::FILL) {
@@ -349,7 +349,7 @@ std::tuple<std::array<std::array<float, 3>, 3>, std::array<std::array<float, 2>,
                            imageCorners = {{{0, 0}, {(float)outputWidth, 0}, {(float)outputWidth, (float)outputHeight}, {0, (float)outputHeight}}};
                        }},
             op.op);
-        /*printf("Mat: %f %f %f %f %f %f %f %f %f\n", mat[0][0], mat[0][1], mat[0][2], mat[1][0], mat[1][1], mat[1][2], mat[2][0], mat[2][1], mat[2][2]);*/
+        /*printf("Mat (%s): %f %f %f %f %f %f %f %f %f\n", std::visit([](auto&& op) { return getOpStr(op); }, op.op).c_str(), mat[0][0], mat[0][1], mat[0][2], mat[1][0], mat[1][1], mat[1][2], mat[2][0], mat[2][1], mat[2][2]);*/
         imageCorners = getOuterRotatedRect(
             {matvecmul(mat, imageCorners[0]), matvecmul(mat, imageCorners[1]), matvecmul(mat, imageCorners[2]), matvecmul(mat, imageCorners[3])});
         transform = matmul(mat, transform);
