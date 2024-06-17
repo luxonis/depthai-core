@@ -69,7 +69,7 @@ The process of porting an example from V2 to V3 should be straightforward.
 The minimal needed changes:
 * Remove the explicit creation of the device **or** pass the device in the pipeline constructor
 * Remove the explicit XLink nodes
-* Replace any `.getOutputQueue()` calls with `output.getQueue()` calls
+* Replace any `.getOutputQueue()` calls with `output.createOutputQueue()` calls
 
 
 ### Quick porting example
@@ -101,7 +101,7 @@ with dai.Pipeline() as pipeline:
     # Linking
     camRgb.video.link(xoutVideo.input)
     # NEW
-    videoQueue = camRgb.video.getQueue()
+    videoQueue = camRgb.video.createOutputQueue()
 
 # ORIG
 # with dai.Device(pipeline) as device:
