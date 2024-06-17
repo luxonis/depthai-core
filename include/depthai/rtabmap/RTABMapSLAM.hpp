@@ -139,6 +139,12 @@ class RTABMapSLAM : public dai::NodeCRTP<dai::node::ThreadedHostNode, RTABMapSLA
     /**
      * Whether to publish the ground point cloud. True by default.
      */
+    void setPublishGroundCloud(bool publish){
+        publishGroundCloud = publish;
+    }
+    /**
+     * Whether to publish the ground point cloud. True by default.
+     */
     void setPublishGrid(bool publish) {
         publishGrid = publish;
     }
