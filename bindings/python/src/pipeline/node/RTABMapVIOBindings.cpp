@@ -29,8 +29,8 @@ void bind_rtabmapvionode(pybind11::module& m, void* pCallstack){
 
     // RTABMapVIO Node
     rtabmapVIONode
-        .def_property_readonly("rect", [](RTABMapVIO& node){ return node.rect; }, py::return_value_policy::reference_internal)
-        .def_property_readonly("depth", [](RTABMapVIO& node){ return node.depth; }, py::return_value_policy::reference_internal)
+        .def_property_readonly("rect", [](RTABMapVIO& node){ return &node.rect; }, py::return_value_policy::reference_internal)
+        .def_property_readonly("depth", [](RTABMapVIO& node){ return &node.depth; }, py::return_value_policy::reference_internal)
         .def_readonly("imu", &RTABMapVIO::imu, DOC(dai, node, RTABMapVIO, imu))
         .def_readonly("features", &RTABMapVIO::features, DOC(dai, node, RTABMapVIO, features))
         .def_readonly("transform", &RTABMapVIO::transform, DOC(dai, node, RTABMapVIO, transform))
