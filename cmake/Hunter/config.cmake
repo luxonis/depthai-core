@@ -157,8 +157,8 @@ hunter_config(
 hunter_config(
     rtbmap
     VERSION "0.21.4"
-    URL "https://github.com/Serafadam/rtabmap/archive/ec6938ac69acd63378902450b18f985aa39923dd.zip" # until fixes are merged to main
-    SHA1 "e117a530d93d21a66bfc29b2b186f5d47c974513"
+    URL "https://github.com/Serafadam/rtabmap/archive/b4f7cf06e34fbf9b16c119fddfe8a86fb59a81af.zip" # until fixes are merged to main
+    SHA1 "dbef038ad33a9c3e1cffb45c66ff3bcc44c14c94"
     CMAKE_ARGS
         BUILD_APP=OFF
         WITH_UDEV=OFF
