@@ -6,57 +6,6 @@
 
 namespace dai {
 
-// helpers
-std::tuple<float, float, float, float> getOuterRect(std::array<dai::Point2f, 4>& points) {
-    float xmin = points[0].x;
-    float ymin = points[0].y;
-    float xmax = points[0].x;
-    float ymax = points[0].y;
-    for(int i = 2; i < 8; i += 2) {
-        xmin = std::min(xmin, points[i].x);
-        xmax = std::max(xmax, points[i].x);
-        ymin = std::min(ymin, points[i].y);
-        ymax = std::max(ymax, points[i].y);
-    }
-    return {xmin, ymin, xmax, ymax};
-}
-
-// New API
-ImageManipConfig& ImageManipConfig::crop(uint32_t x, uint32_t y, uint32_t w, uint32_t h) {
-    base.crop(x, y, w, h);
-    return *this;
-}
-ImageManipConfig& ImageManipConfig::resize(uint32_t w, uint32_t h) {
-    base.resize(w, h);
-    return *this;
-}
-ImageManipConfig& ImageManipConfig::scale(float scaleX, float scaleY) {
-    base.resize(scaleX, scaleY, true);
-    return *this;
-}
-ImageManipConfig& ImageManipConfig::rotateDeg(float angle) {
-    base.rotateDegrees(angle);
-    return *this;
-}
-ImageManipConfig& ImageManipConfig::rotateDeg(float angle, Point2f center) {
-    base.translate(-center.x, -center.y);
-    base.rotateDegrees(angle);
-    base.translate(center.x, center.y);
-    return *this;
-}
-ImageManipConfig& ImageManipConfig::flipHorizontal() {
-    base.flipHorizontal(true);
-    return *this;
-}
-ImageManipConfig& ImageManipConfig::flipVertical() {
-    base.flipVertical(true);
-    return *this;
-}
-ImageManipConfig& ImageManipConfig::setOutputSize(uint32_t w, uint32_t h, ImageManipBase::ResizeMode mode) {
-    base.setOutputResize(w, h, mode);
-    return *this;
-}
-
 // Functions to set properties
 ImageManipConfig& ImageManipConfig::setCropRect(float xmin, float ymin, float xmax, float ymax) {
     // Enable crop stage
@@ -71,7 +20,6 @@ ImageManipConfig& ImageManipConfig::setCropRect(float xmin, float ymin, float xm
     cropConfig.cropRect.xmax = std::min(xmax, 1.0f);
     cropConfig.cropRect.ymax = std::min(ymax, 1.0f);
 
-    crop(xmin, ymin, xmax - xmin, ymax - ymin);
     return *this;
 }
 
@@ -88,8 +36,6 @@ ImageManipConfig& ImageManipConfig::setCropRotatedRect(RotatedRect rr, bool norm
     cropConfig.cropRotatedRect = rr;
     cropConfig.normalizedCoords = normalizedCoords;
 
-    base.rotateRadians(-rr.angle);
-    base.crop(rr.center.x - rr.size.width / 2, rr.center.y - rr.size.height / 2, rr.size.width, rr.size.height, normalizedCoords);
     return *this;
 }
 
@@ -101,11 +47,6 @@ ImageManipConfig& ImageManipConfig::setWarpTransformFourPoints(std::vector<Point
     resizeConfig.warpFourPoints = pt;
     resizeConfig.normalizedCoords = normalizedCoords;
 
-    // NOTE: this requires points to be in order top-left, top-right, bottom-right, bottom-left (clockwise)
-    std::array<Point2f, 4> points = {{pt[0], pt[1], pt[2], pt[3]}};
-    const auto [xmin, ymin, xmax, ymax] = getOuterRect(points);
-    base.transformFourPoints(points, {{{xmin, ymin}, {xmax, ymin}, {xmax, ymax}, {xmin, ymax}}}, normalizedCoords);
-
     return *this;
 }
 
@@ -114,8 +55,6 @@ ImageManipConfig& ImageManipConfig::setWarpTransformMatrix3x3(std::vector<float>
     enableResize = true;
     resizeConfig.enableWarpMatrix = true;
     resizeConfig.warpMatrix3x3 = mat;
-
-    base.transformPerspective({mat[0], mat[1], mat[2], mat[3], mat[4], mat[5], mat[6], mat[7], mat[8]});
 
     return *this;
 }
@@ -153,10 +92,6 @@ ImageManipConfig& ImageManipConfig::setCenterCrop(float ratio, float whRatio) {
 
     cropConfig.widthHeightAspectRatio = whRatio;
 
-    // NOTE: this only works as a last stage (for now)
-    base.setOutputSize(ratio * whRatio, ratio);
-    base.setOutputCenter(true);
-
     return *this;
 }
 
@@ -165,18 +100,12 @@ ImageManipConfig& ImageManipConfig::setRotationDegrees(float deg) {
     resizeConfig.rotationAngleDeg = deg;
     resizeConfig.enableRotation = true;
 
-    base.setOutputCenter(true);
-    base.rotateDegrees(deg);
-
     return *this;
 }
 
 ImageManipConfig& ImageManipConfig::setRotationRadians(float rad) {
     static constexpr float rad2degFactor = static_cast<float>(180 / M_PI);
     setRotationDegrees(rad * rad2degFactor);
-
-    base.setOutputCenter(true);
-    base.rotateRadians(rad);
 
     return *this;
 }
@@ -191,8 +120,6 @@ ImageManipConfig& ImageManipConfig::setResize(int w, int h) {
     // Set resize config
     resizeConfig.width = w;
     resizeConfig.height = h;
-
-    base.resize(w, h);
 
     return *this;
 }
@@ -217,9 +144,6 @@ ImageManipConfig& ImageManipConfig::setResizeThumbnail(int w, int h, int bgRed, 
     resizeConfig.bgRed = bgRed;
     resizeConfig.bgGreen = bgGreen;
     resizeConfig.bgBlue = bgBlue;
-
-    base.setBackgroundColor(bgRed, bgGreen, bgBlue);
-    base.setOutputResize(w, h, ImageManipBase::ResizeMode::LETTERBOX);
 
     return *this;
 }
@@ -250,8 +174,6 @@ ImageManipConfig& ImageManipConfig::setColormap(Colormap colormap, float maxf) {
     formatConfig.colormapMin = 0;
     formatConfig.colormapMax = max;
 
-    base.setColormap(colormap);
-
     return *this;
 }
 
@@ -265,8 +187,6 @@ ImageManipConfig& ImageManipConfig::setColormap(Colormap colormap, int max) {
     formatConfig.colormap = colormap;
     formatConfig.colormapMin = 0;
     formatConfig.colormapMax = max;
-
-    base.setColormap(colormap);
 
     return *this;
 }
@@ -283,8 +203,6 @@ ImageManipConfig& ImageManipConfig::setColormap(Colormap colormap, int min, int 
     formatConfig.colormapMin = min;
     formatConfig.colormapMax = max;
 
-    base.setColormap(colormap);
-
     return *this;
 }
 
@@ -295,8 +213,6 @@ ImageManipConfig& ImageManipConfig::setHorizontalFlip(bool flip) {
     // Set pixel format
     formatConfig.flipHorizontal = flip;
 
-    base.flipHorizontal(true);
-
     return *this;
 }
 
@@ -306,8 +222,6 @@ void ImageManipConfig::setVerticalFlip(bool flip) {
 
     // Set pixel format
     formatConfig.flipVertical = flip;
-
-    base.flipVertical(true);
 }
 
 ImageManipConfig& ImageManipConfig::setReusePreviousImage(bool reuse) {

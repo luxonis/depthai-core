@@ -20,6 +20,7 @@
 #include "depthai/pipeline/datatype/FeatureTrackerConfig.hpp"
 #include "depthai/pipeline/datatype/IMUData.hpp"
 #include "depthai/pipeline/datatype/ImageManipConfig.hpp"
+#include "depthai/pipeline/datatype/ImageManipConfigV2.hpp"
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
@@ -128,6 +129,10 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
 
         case DatatypeEnum::ImageManipConfig:
             return parseDatatype<ImageManipConfig>(metadataStart, serializedObjectSize, data);
+            break;
+
+        case DatatypeEnum::ImageManipConfigV2:
+            return parseDatatype<ImageManipConfigV2>(metadataStart, serializedObjectSize, data);
             break;
 
         case DatatypeEnum::CameraControl:

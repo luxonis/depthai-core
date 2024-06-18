@@ -80,7 +80,7 @@ std::string getOpStr(const T& op) {
     return op.toStr();
 }
 
-std::string getConfigString(const dai::ImageManipBase& ops) {
+std::string getConfigString(const dai::ImageManipOpsBase& ops) {
     std::stringstream configSS;
     const auto operations = ops.getOperations();
     for(auto i = 0U; i < operations.size(); ++i) {
@@ -364,7 +364,7 @@ std::tuple<std::array<std::array<float, 3>, 3>, std::array<std::array<float, 2>,
     return {transform, imageCorners};
 }
 
-ImageManipOperations& ImageManipOperations::build(const ImageManipBase& newBase, uint32_t inputWidth, uint32_t inputHeight, uint8_t bpp) {
+ImageManipOperations& ImageManipOperations::build(const ImageManipOpsBase& newBase, uint32_t inputWidth, uint32_t inputHeight, uint8_t bpp) {
     assert(inputWidth > 0 && inputHeight > 0);
     matrix = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
     base = newBase;
@@ -392,18 +392,18 @@ ImageManipOperations& ImageManipOperations::build(const ImageManipBase& newBase,
         if(base.outputHeight == 0) base.outputHeight = maxy;
     }
 
-    if(base.resizeMode != ImageManipBase::ResizeMode::NONE) {
+    if(base.resizeMode != ImageManipOpsBase::ResizeMode::NONE) {
         Resize res;
         switch(base.resizeMode) {
-            case ImageManipBase::ResizeMode::NONE:
+            case ImageManipOpsBase::ResizeMode::NONE:
                 break;
-            case ImageManipBase::ResizeMode::STRETCH:
+            case ImageManipOpsBase::ResizeMode::STRETCH:
                 res = Resize(base.outputWidth, base.outputHeight);
                 break;
-            case ImageManipBase::ResizeMode::LETTERBOX:
+            case ImageManipOpsBase::ResizeMode::LETTERBOX:
                 res = Resize::fit();
                 break;
-            case ImageManipBase::ResizeMode::CENTER_CROP:
+            case ImageManipOpsBase::ResizeMode::CENTER_CROP:
                 res = Resize::fill();
                 break;
         }

@@ -90,38 +90,6 @@ void bind_imagemanipconfig(pybind11::module& m, void* pCallstack) {
 
     imageManipConfig
         .def(py::init<>())
-        // New API Setters
-        .def("crop", &ImageManipConfig::crop, py::arg("x"), py::arg("y"), py::arg("w"), py::arg("h"), DOC(dai, ImageManipConfig, crop))
-        .def("resize", &ImageManipConfig::resize, py::arg("w"), py::arg("h"), DOC(dai, ImageManipConfig, resize))
-        .def("scale", &ImageManipConfig::scale, py::arg("scaleX"), py::arg("scaleY"), DOC(dai, ImageManipConfig, scale))
-        .def("flipHorizontal", &ImageManipConfig::flipHorizontal, DOC(dai, ImageManipConfig, flipHorizontal))
-        .def("flipVertical", &ImageManipConfig::flipVertical, DOC(dai, ImageManipConfig, flipVertical))
-        .def("rotateDeg",
-             static_cast<ImageManipConfig& (ImageManipConfig::*)(float)>(&ImageManipConfig::rotateDeg),
-             py::arg("angle"),
-             DOC(dai, ImageManipConfig, rotateDeg))
-        .def("rotateDeg",
-             static_cast<ImageManipConfig& (ImageManipConfig::*)(float, Point2f)>(&ImageManipConfig::rotateDeg),
-             py::arg("angle"),
-             py::arg("center"),
-             DOC(dai, ImageManipConfig, rotateDeg))
-        .def(
-            "setOutputSize",
-            [](ImageManipConfig& self, float w, float h, std::string mode) -> ImageManipConfig& {
-                auto m = ImageManipBase::ResizeMode::NONE;
-                if(mode == "LETTERBOX")
-                    m = ImageManipBase::ResizeMode::LETTERBOX;
-                else if(mode == "CENTER_CROP")
-                    m = ImageManipBase::ResizeMode::CENTER_CROP;
-                else if(mode == "STRETCH")
-                    m = ImageManipBase::ResizeMode::STRETCH;
-                self.setOutputSize(w, h, m);
-                return self;
-            },
-            py::arg("w"),
-            py::arg("h"),
-            py::arg("mode"),
-            DOC(dai, ImageManipConfig, setOutputSize))
         // setters
         .def("setCropRect",
              static_cast<ImageManipConfig& (ImageManipConfig::*)(float, float, float, float)>(&ImageManipConfig::setCropRect),

@@ -11,6 +11,7 @@ enum class DatatypeEnum : std::int32_t {
     EncodedFrame,
     NNData,
     ImageManipConfig,
+    ImageManipConfigV2,
     CameraControl,
     ImgDetections,
     SpatialImgDetections,
