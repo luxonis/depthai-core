@@ -4,11 +4,14 @@
 #include <cstdint>
 #include <cstring>
 #include <functional>
-#include <fcntl.h>
 #include <iostream>
+#ifdef __unix__
+#include <fcntl.h>
 #include <sys/mman.h>
+#include <sys/stat.h>
 #include <sys/un.h>
 #include <unistd.h>
+#endif
 
 // project
 #include "depthai/utility/Memory.hpp"
@@ -20,25 +23,41 @@ class SharedMemory : public Memory {
    private:
     long fd;
     void *mapping;
+    void mapFd() {
+	mapping = mmap(NULL, getSize(), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+	if (mapping == NULL) {
+	    /* Error handling here */
+	}
+    }
+    void unmapFd() {
+	if (mapping == NULL) {
+	    return;
+	}
+
+	munmap(mapping, getSize());
+    }
    public:
     SharedMemory() = default;
     SharedMemory(long argFd) : fd(argFd) {
-	mapping = mmap(NULL, getSize(), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+	mapFd();
     }
 
     ~SharedMemory() {
-        munmap(fd, getSize());
+	unmapFd();
     }
 
     SharedMemory& operator=(long argFd) {
-        munmap(fd, getSize());
+	unmapFd();
 	fd = argFd;
-	mapping = mmap(NULL, getSize(), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+	mapFd();
 
         return *this;
     }
 
     span<std::uint8_t> getData() override {
+	if (mapping == NULL) {
+	    mapFd();
+	}
         return {(uint8_t*)mapping, getSize()};
     }
     span<const std::uint8_t> getData() const override {
@@ -57,7 +76,7 @@ class SharedMemory : public Memory {
 	ftruncate(fd, size);
     }
 
-    std::size_t getSize() const override {
+    std::size_t getSize() const {
 	return getMaxSize();
     }
 };
