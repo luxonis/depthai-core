@@ -100,7 +100,7 @@ class RTABMapVIO : public NodeCRTP<ThreadedHostNode, RTABMapVIO> {
     std::map<std::string, std::string> rtabParams;
     std::map<double, cv::Vec3f> accBuffer;
     std::map<double, cv::Vec3f> gyroBuffer;
-    std::map<double, cv::Vec4f> rotBuffer;
+    std::mutex imuMtx;
     float alphaScaling = -1.0;
     bool initialized = false;
     bool useFeatures = true;
