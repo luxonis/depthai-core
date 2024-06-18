@@ -59,15 +59,15 @@ class RTABMapVIO : public NodeCRTP<ThreadedHostNode, RTABMapVIO> {
     /**
      * Passthrough rectified frame.
      */
-    Output passthroughRect{*this, {.name = "passthrough_rect", .types = {{DatatypeEnum::ImgFrame, true}}}};
+    Output passthroughRect{*this, {.name = "passthroughRect", .types = {{DatatypeEnum::ImgFrame, true}}}};
     /**
      * Passthrough depth frame.
      */
-    Output passthroughDepth{*this, {.name = "passthrough_depth", .types = {{DatatypeEnum::ImgFrame, true}}}};
+    Output passthroughDepth{*this, {.name = "passthroughDepth", .types = {{DatatypeEnum::ImgFrame, true}}}};
     /**
      * Passthrough features.
      */
-    Output passthroughFeatures{*this, {.name = "passthrough_features", .types = {{DatatypeEnum::TrackedFeatures, true}}}};
+    Output passthroughFeatures{*this, {.name = "passthroughFeatures", .types = {{DatatypeEnum::TrackedFeatures, true}}}};
 
     /**
      * Set RTABMap parameters.
@@ -100,7 +100,7 @@ class RTABMapVIO : public NodeCRTP<ThreadedHostNode, RTABMapVIO> {
     std::map<std::string, std::string> rtabParams;
     std::map<double, cv::Vec3f> accBuffer;
     std::map<double, cv::Vec3f> gyroBuffer;
-    std::map<double, cv::Vec4f> rotBuffer;
+    std::mutex imuMtx;
     float alphaScaling = -1.0;
     bool initialized = false;
     bool useFeatures = true;

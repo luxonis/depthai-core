@@ -44,6 +44,7 @@ void RTABMapVIO::setUseFeatures(bool use) {
 void RTABMapVIO::imuCB(std::shared_ptr<dai::ADatatype> msg) {
     auto imuData = std::static_pointer_cast<dai::IMUData>(msg);
     auto imuPackets = imuData->packets;
+    std::lock_guard<std::mutex> lock(imuMtx);
     for(auto& imuPacket : imuPackets) {
         auto& acceleroValues = imuPacket.acceleroMeter;
         auto& gyroValues = imuPacket.gyroscope;
@@ -52,7 +53,6 @@ void RTABMapVIO::imuCB(std::shared_ptr<dai::ADatatype> msg) {
         double gyroStamp = std::chrono::duration<double>(gyroValues.getTimestampDevice().time_since_epoch()).count();
         accBuffer.emplace_hint(accBuffer.end(), accStamp, cv::Vec3f(acceleroValues.x, acceleroValues.y, acceleroValues.z));
         gyroBuffer.emplace_hint(gyroBuffer.end(), gyroStamp, cv::Vec3f(gyroValues.x, gyroValues.y, gyroValues.z));
-        rotBuffer.emplace_hint(rotBuffer.end(), gyroStamp, cv::Vec4f(rotValues.i, rotValues.j, rotValues.k, rotValues.real));
     }
 }
 
@@ -82,14 +82,11 @@ void RTABMapVIO::syncCB(std::shared_ptr<dai::ADatatype> data) {
                 }
                 sensorData.setFeatures(keypoints, std::vector<cv::Point3f>(), cv::Mat());
             }
-
+            std::lock_guard<std::mutex> lock(imuMtx);
             cv::Vec3d acc, gyro;
-            cv::Vec4d rot;
             std::map<double, cv::Vec3f>::const_iterator iterA, iterB;
-            std::map<double, cv::Vec4f>::const_iterator iterC, iterD;
 
-            if(!accBuffer.empty() && !gyroBuffer.empty() && !rotBuffer.empty() && accBuffer.rbegin()->first >= stamp && gyroBuffer.rbegin()->first >= stamp
-               && rotBuffer.rbegin()->first >= stamp) {
+            if(!accBuffer.empty() && !gyroBuffer.empty() && accBuffer.rbegin()->first >= stamp && gyroBuffer.rbegin()->first >= stamp) {
                 // acc
                 iterB = accBuffer.lower_bound(stamp);
                 if(iterB != accBuffer.end()) {
@@ -117,23 +114,8 @@ void RTABMapVIO::syncCB(std::shared_ptr<dai::ADatatype> data) {
                     }
                     gyroBuffer.erase(gyroBuffer.begin(), iterB);
                 }
-
-                // rot
-                iterD = rotBuffer.lower_bound(stamp);
-                if(iterD != rotBuffer.end()) {
-                    iterC = iterD;
-                    if(iterC != rotBuffer.begin()) --iterC;
-                    if(iterC == iterD || stamp == iterD->first) {
-                        rot = iterD->second;
-                    } else if(stamp > iterC->first && stamp < iterD->first) {
-                        float t = (stamp - iterC->first) / (iterD->first - iterC->first);
-                        rot = iterC->second + t * (iterD->second - iterC->second);
-                    }
-                    rotBuffer.erase(rotBuffer.begin(), iterD);
-                }
-
                 sensorData.setIMU(
-                    rtabmap::IMU(rot, cv::Mat::eye(3, 3, CV_64FC1), gyro, cv::Mat::eye(3, 3, CV_64FC1), acc, cv::Mat::eye(3, 3, CV_64FC1), imuLocalTransform));
+                    rtabmap::IMU(gyro, cv::Mat::eye(3, 3, CV_64FC1), acc, cv::Mat::eye(3, 3, CV_64FC1), imuLocalTransform));
             }
             rtabmap::OdometryInfo info;
             auto pose = odom->process(sensorData, &info);

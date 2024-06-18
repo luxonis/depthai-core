@@ -32,7 +32,13 @@ std::shared_ptr<RTABMapSLAM> RTABMapSLAM::build() {
 }
 
 RTABMapSLAM::~RTABMapSLAM() {
-    std::cout << "RTABMapSLAM destructor" << std::endl;
+    if(saveDatabaseOnClose) {
+        if(databasePath.empty()) {
+            databasePath = "/tmp/rtabmap.db";
+        }
+        logger->info("Saving database at {}", databasePath);
+        rtabmap.close(true, databasePath);
+    }
 }
 void RTABMapSLAM::setParams(const rtabmap::ParametersMap& params) {
     rtabParams = params;
@@ -121,21 +127,16 @@ void RTABMapSLAM::run() {
                     }
                     odomCorr = stats.mapCorrection();
 
-                    std::map<int, rtabmap::Signature> nodes;
-                    std::map<int, rtabmap::Transform> optimizedPoses;
-                    std::multimap<int, rtabmap::Link> links;
+                    const std::map<int, rtabmap::Transform>& optimizedPoses = rtabmap.getLocalOptimizedPoses();
 
-                    rtabmap.getGraph(optimizedPoses, links, true, true, &nodes, true, true, true, true);
-                    for(std::map<int, rtabmap::Transform>::iterator iter = optimizedPoses.begin(); iter != optimizedPoses.end(); ++iter) {
-                        rtabmap::Signature node = nodes.find(iter->first)->second;
-                        if(node.sensorData().gridCellSize() == 0.0f) {
-                            logger->warn("Grid cell size is 0, skipping node {}", iter->first);
-                            continue;
-                        }
-                        // uncompress grid data
-                        cv::Mat ground, obstacles, empty;
-                        node.sensorData().uncompressData(0, 0, 0, 0, &ground, &obstacles, &empty);
-                        localMaps->add(iter->first, ground, obstacles, empty, node.sensorData().gridCellSize(), node.sensorData().gridViewPoint());
+                    if(optimizedPoses.find(stats.getLastSignatureData().id()) != optimizedPoses.end()) {
+                        const rtabmap::Signature& node = stats.getLastSignatureData();
+                        localMaps->add(node.id(),
+                                       node.sensorData().gridGroundCellsRaw(),
+                                       node.sensorData().gridObstacleCellsRaw(),
+                                       node.sensorData().gridEmptyCellsRaw(),
+                                       node.sensorData().gridCellSize(),
+                                       node.sensorData().gridViewPoint());
                     }
 
                     if(publishGrid) {
@@ -150,7 +151,7 @@ void RTABMapSLAM::run() {
         }
         // save database periodically if set
         if(saveDatabasePeriodically && std::chrono::duration<double>(std::chrono::steady_clock::now() - startTime).count() > databaseSaveInterval) {
-            rtabmap.close();
+            rtabmap.close(true, databasePath);
             rtabmap.init(rtabParams, databasePath);
             logger->info("Database saved at {}", databasePath);
             startTime = std::chrono::steady_clock::now();
@@ -200,8 +201,7 @@ void RTABMapSLAM::initialize(dai::Pipeline& pipeline, int instanceNum, int width
     model = calibHandler.getRTABMapCameraModel(cameraId, width, height, localTransform, alphaScaling);
     if(!databasePath.empty()) {
         rtabmap.init(rtabParams, databasePath);
-    }
-    else {
+    } else {
         rtabmap.init(rtabParams);
     }
     lastProcessTime = std::chrono::steady_clock::now();
