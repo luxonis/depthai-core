@@ -48,7 +48,6 @@ void RTABMapVIO::imuCB(std::shared_ptr<dai::ADatatype> msg) {
     for(auto& imuPacket : imuPackets) {
         auto& acceleroValues = imuPacket.acceleroMeter;
         auto& gyroValues = imuPacket.gyroscope;
-        auto& rotValues = imuPacket.rotationVector;
         double accStamp = std::chrono::duration<double>(acceleroValues.getTimestampDevice().time_since_epoch()).count();
         double gyroStamp = std::chrono::duration<double>(gyroValues.getTimestampDevice().time_since_epoch()).count();
         accBuffer.emplace_hint(accBuffer.end(), accStamp, cv::Vec3f(acceleroValues.x, acceleroValues.y, acceleroValues.z));
