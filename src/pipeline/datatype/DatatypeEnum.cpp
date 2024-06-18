@@ -1,6 +1,7 @@
 #include "pipeline/datatype/DatatypeEnum.hpp"
 
 #include <functional>
+#include <stdexcept>
 #include <type_traits>
 #include <unordered_map>
 #include <vector>

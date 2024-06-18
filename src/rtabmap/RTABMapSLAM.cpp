@@ -32,7 +32,13 @@ std::shared_ptr<RTABMapSLAM> RTABMapSLAM::build() {
 }
 
 RTABMapSLAM::~RTABMapSLAM() {
-    std::cout << "RTABMapSLAM destructor" << std::endl;
+    if(saveDatabaseOnClose) {
+        if(databasePath.empty()) {
+            databasePath = "/tmp/rtabmap.db";
+        }
+        logger->info("Saving database at {}", databasePath);
+        rtabmap.close(true, databasePath);
+    }
 }
 void RTABMapSLAM::setParams(const rtabmap::ParametersMap& params) {
     rtabParams = params;
@@ -150,7 +156,7 @@ void RTABMapSLAM::run() {
         }
         // save database periodically if set
         if(saveDatabasePeriodically && std::chrono::duration<double>(std::chrono::steady_clock::now() - startTime).count() > databaseSaveInterval) {
-            rtabmap.close();
+            rtabmap.close(true, databasePath);
             rtabmap.init(rtabParams, databasePath);
             logger->info("Database saved at {}", databasePath);
             startTime = std::chrono::steady_clock::now();
