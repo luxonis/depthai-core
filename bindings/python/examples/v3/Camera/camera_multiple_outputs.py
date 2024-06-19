@@ -42,6 +42,7 @@ with dai.Pipeline() as pipeline:
             cap.resizeMode = dai.ImgResizeMode.LETTERBOX
         else:
             exit_usage()
+        cap.fps.fixed(int(args[i + 3]))
         queues.append(cam.requestOutput(cap, True).createOutputQueue())
 
     # Connect to device and start pipeline
