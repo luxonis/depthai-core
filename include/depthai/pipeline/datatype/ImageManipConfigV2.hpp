@@ -7,6 +7,7 @@
 #include <nlohmann/json.hpp>
 #include <vector>
 
+#include "depthai/common/RotatedRect.hpp"
 #include "depthai/common/Colormap.hpp"
 #include "depthai/common/Point2f.hpp"
 #include "depthai/common/variant.hpp"
@@ -351,15 +352,84 @@ class ImageManipConfigV2 : public Buffer {
     bool skipCurrentImage = false;
 
     // New API
+    /**
+     * Crops the image to the specified rectangle
+     * @param x X coordinate of the top-left corner
+     * @param y Y coordinate of the top-left corner
+     * @param w Width of the rectangle
+     * @param h Height of the rectangle
+     */
     ImageManipConfigV2& crop(uint32_t x, uint32_t y, uint32_t w, uint32_t h);
+    /**
+     * Crops the image to the specified (rotated) rectangle
+     * @param rect RotatedRect to crop
+     * @param normalizedCoords If true, the coordinates are normalized to range [0, 1] where 1 maps to the width/height of the image
+     */
+    ImageManipConfigV2& cropRotatedRect(dai::RotatedRect rotatedRect, bool normalizedCoords = false);
+    /**
+     * Resizes the image to the specified width and height
+     * @param w Width of the output image
+     * @param h Height of the output image
+     */
     ImageManipConfigV2& resize(uint32_t w, uint32_t h);
+    /**
+     * Rescales the image using the specified factors
+     * @param scaleX Scale factor for the X axis
+     * @param scaleY Scale factor for the Y axis. If not specified, scaleY is set to the same value as scaleX
+     */
     ImageManipConfigV2& scale(float scaleX, float scaleY = 0);
+    /**
+     * Rotates the image around its center by the specified angle in degrees
+     * @param angle Angle in radians
+     */
     ImageManipConfigV2& rotateDeg(float angle);
+    /**
+     * Rotates the image around the specified point by the specified angle in degrees
+     * @param angle Angle in radians
+     * @param center Center of the rotation using normalized coordinates
+     */
     ImageManipConfigV2& rotateDeg(float angle, Point2f center);
+    /**
+     * Flips the image horizontally
+     */
     ImageManipConfigV2& flipHorizontal();
+    /**
+     * Flips the image vertically
+     */
     ImageManipConfigV2& flipVertical();
+    /**
+     * Applies an affine transformation to the image
+     * @param matrix an array containing a 2x2 matrix representing the affine transformation
+     */
+    ImageManipConfigV2& transformAffine(std::array<float, 4> matrix);
+    /**
+     * Applies a perspective transformation to the image
+     * @param matrix an array containing a 3x3 matrix representing the perspective transformation
+     */
+    ImageManipConfigV2& transformPerspective(std::array<float, 9> matrix);
+    /**
+     * Applies a perspective transformation to the image
+     * @param src Source points
+     * @param dst Destination points
+     * @param normalizedCoords If true, the coordinates are normalized to range [0, 1] where 1 maps to the width/height of the image
+     */
+    ImageManipConfigV2& transformFourPoints(std::array<dai::Point2f, 4> src, std::array<dai::Point2f, 4> dst, bool normalizedCoords = false);
+    /**
+     * Sets the output size of the image
+     * @param w Width of the output image
+     * @param h Height of the output image
+     * @param mode Resize mode. NONE - no resize, STRETCH - stretch to fit, LETTERBOX - keep aspect ratio and pad with background color, CENTER_CROP - keep aspect ratio and crop
+     */
     ImageManipConfigV2& setOutputSize(uint32_t w, uint32_t h, ResizeMode mode = ResizeMode::NONE);
+    /**
+     * Sets the colormap to be applied to a grayscale image
+     * @param colormap Colormap type to be applied
+     */
     ImageManipConfigV2& setColormap(Colormap colormap);
+    /**
+     * Sets the frame type of the output image
+     * @param frameType Frame type of the output image
+     */
     ImageManipConfigV2& setFrameType(ImgFrame::Type frameType);
 
     /**

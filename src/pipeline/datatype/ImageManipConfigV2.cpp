@@ -11,6 +11,15 @@ ImageManipConfigV2& ImageManipConfigV2::crop(uint32_t x, uint32_t y, uint32_t w,
     base.crop(x, y, w, h);
     return *this;
 }
+ImageManipConfigV2& ImageManipConfigV2::cropRotatedRect(dai::RotatedRect rotatedRect, bool normalizedCoords) {
+    base.rotateDegrees(-rotatedRect.angle);
+    base.crop(rotatedRect.center.x - rotatedRect.size.width / 2,
+              rotatedRect.center.y - rotatedRect.size.height / 2,
+              rotatedRect.size.width,
+              rotatedRect.size.height,
+              normalizedCoords);
+    return *this;
+}
 ImageManipConfigV2& ImageManipConfigV2::resize(uint32_t w, uint32_t h) {
     base.resize(w, h);
     return *this;
@@ -24,9 +33,9 @@ ImageManipConfigV2& ImageManipConfigV2::rotateDeg(float angle) {
     return *this;
 }
 ImageManipConfigV2& ImageManipConfigV2::rotateDeg(float angle, Point2f center) {
-    base.translate(-center.x, -center.y);
+    base.translate(-center.x, -center.y, true);
     base.rotateDegrees(angle);
-    base.translate(center.x, center.y);
+    base.translate(center.x, center.y, true);
     return *this;
 }
 ImageManipConfigV2& ImageManipConfigV2::flipHorizontal() {
@@ -35,6 +44,18 @@ ImageManipConfigV2& ImageManipConfigV2::flipHorizontal() {
 }
 ImageManipConfigV2& ImageManipConfigV2::flipVertical() {
     base.flipVertical(true);
+    return *this;
+}
+ImageManipConfigV2& ImageManipConfigV2::transformAffine(std::array<float, 4> matrix) {
+    base.transformAffine(matrix);
+    return *this;
+}
+ImageManipConfigV2& ImageManipConfigV2::transformPerspective(std::array<float, 9> matrix) {
+    base.transformPerspective(matrix);
+    return *this;
+}
+ImageManipConfigV2& ImageManipConfigV2::transformFourPoints(std::array<dai::Point2f, 4> src, std::array<dai::Point2f, 4> dst, bool normalizedCoords) {
+    base.transformFourPoints(src, dst, normalizedCoords);
     return *this;
 }
 ImageManipConfigV2& ImageManipConfigV2::setOutputSize(uint32_t w, uint32_t h, ResizeMode mode) {
