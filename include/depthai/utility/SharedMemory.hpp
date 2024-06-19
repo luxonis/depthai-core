@@ -37,8 +37,12 @@ class SharedMemory : public Memory {
 	munmap(mapping, getSize());
     }
    public:
-    SharedMemory() = default;
+    SharedMemory() {
+	kind = MemoryKinds::MEMORY_KIND_SHARED_MEMORY;
+	fd = -1;
+    }
     SharedMemory(long argFd) : fd(argFd) {
+	kind = MemoryKinds::MEMORY_KIND_SHARED_MEMORY;
 	mapFd();
     }
 
@@ -78,6 +82,10 @@ class SharedMemory : public Memory {
 
     std::size_t getSize() const {
 	return getMaxSize();
+    }
+
+    long getFd() const {
+	return fd;
     }
 };
 

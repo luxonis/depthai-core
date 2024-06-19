@@ -107,6 +107,12 @@ holder(std::move(holder)) {}
 };
 */
 
+enum MemoryKinds {
+    MEMORY_KIND_VECTOR_MEMORY,
+    MEMORY_KIND_SHARED_MEMORY,
+    MEMORY_KIND_COUNT,
+};
+
 // memory as interface
 class Memory {
    public:
@@ -120,6 +126,13 @@ class Memory {
     std::size_t getSize() const {
         return getData().size();
     };
+
+    MemoryKinds getKind() const {
+	return kind;
+    };
+
+protected:
+    MemoryKinds kind;
 };
 
 }  // namespace dai

@@ -54,7 +54,7 @@ XLinkStream::~XLinkStream() {
     }
 }
 
-StreamPacketDesc::StreamPacketDesc(StreamPacketDesc&& other) noexcept : streamPacketDesc_t{other.data, other.length, other.tRemoteSent, other.tReceived} {
+StreamPacketDesc::StreamPacketDesc(StreamPacketDesc&& other) noexcept : streamPacketDesc_t{other.data, other.length, other.fd, other.tRemoteSent, other.tReceived} {
     other.data = nullptr;
     other.length = 0;
 }
@@ -63,6 +63,7 @@ StreamPacketDesc& StreamPacketDesc::operator=(StreamPacketDesc&& other) noexcept
     if(this != &other) {
         data = std::exchange(other.data, nullptr);
         length = std::exchange(other.length, 0);
+	fd = std::exchange(other.fd, -1);
         tRemoteSent = std::exchange(other.tRemoteSent, {});
         tReceived = std::exchange(other.tReceived, {});
     }
@@ -94,6 +95,14 @@ void XLinkStream::write(const void* data, std::size_t size) {
     write(span<const uint8_t>(reinterpret_cast<const uint8_t*>(data), size));
 }
 
+void XLinkStream::write(long fd) {
+    auto status = XLinkWriteFd(streamId, &fd); 
+    if(status != X_LINK_SUCCESS) {
+        throw XLinkWriteError(status, streamName);
+    }
+}
+
+
 void XLinkStream::read(std::vector<std::uint8_t>& data) {
     StreamPacketDesc packet;
     const auto status = XLinkReadMoveData(streamId, &packet);
@@ -102,6 +111,17 @@ void XLinkStream::read(std::vector<std::uint8_t>& data) {
     }
     data = std::vector<std::uint8_t>(packet.data, packet.data + packet.length);
 }
+
+void XLinkStream::read(std::vector<std::uint8_t>& data, long& fd) {
+    StreamPacketDesc packet;
+    const auto status = XLinkReadMoveData(streamId, &packet);
+    if(status != X_LINK_SUCCESS) {
+        throw XLinkReadError(status, streamName);
+    }
+    data = std::vector<std::uint8_t>(packet.data, packet.data + packet.length);
+    fd = packet.fd;
+}
+
 
 void XLinkStream::read(std::vector<std::uint8_t>& data, XLinkTimespec& timestampReceived) {
     StreamPacketDesc packet;
