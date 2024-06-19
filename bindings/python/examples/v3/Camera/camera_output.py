@@ -13,9 +13,9 @@ with dai.Pipeline() as pipeline:
 
     cap = dai.ImgFrameCapability()
     cap.size.fixed((640, 480))
-    # cap.encoding = dai.ImgFrame.Type.BGR888p
+    # cap.type = dai.ImgFrame.Type.BGR888p
     videoQueue = cam.requestOutput(cap, True).createOutputQueue()
-    # videoQueue2 = cam.requestOutput((300,300), encoding=dai.ImgFrame.Type.BGR888i, resizeMode=dai.ImgResizeMode.CROP).createOutputQueue()
+    # videoQueue2 = cam.requestOutput((300,300), type=dai.ImgFrame.Type.BGR888i, resizeMode=dai.ImgResizeMode.CROP).createOutputQueue()
 
     # Connect to device and start pipeline
     pipeline.start()

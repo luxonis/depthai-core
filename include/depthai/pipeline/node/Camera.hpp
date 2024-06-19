@@ -19,7 +19,7 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties> {
      * Get video output with specified size.
      */
     Node::Output* requestOutput(std::pair<uint32_t, uint32_t> size,
-                                ImgFrame::Type encoding = ImgFrame::Type::NV12,
+                                ImgFrame::Type type = ImgFrame::Type::NV12,
                                 ImgResizeMode resizeMode = ImgResizeMode::CROP,
                                 uint32_t fps = 30);
     /**

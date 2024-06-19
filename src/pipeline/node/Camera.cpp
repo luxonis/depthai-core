@@ -88,11 +88,11 @@ std::string Camera::getCamera() const {
     return properties.cameraName;
 }
 
-Node::Output* Camera::requestOutput(std::pair<uint32_t, uint32_t> size, ImgFrame::Type encoding, ImgResizeMode resizeMode, uint32_t fps) {
+Node::Output* Camera::requestOutput(std::pair<uint32_t, uint32_t> size, ImgFrame::Type type, ImgResizeMode resizeMode, uint32_t fps) {
     ImgFrameCapability cap;
     cap.size.fixed(size);
     cap.fps.fixed(fps);
-    cap.encoding = encoding;
+    cap.type = type;
     cap.resizeMode = resizeMode;
     return pimpl->requestOutput(*this, cap, false);
 }

@@ -6,15 +6,6 @@
 #include "depthai/depthai.hpp"
 
 int main(int argc, char** argv) {
-    const char* valueCStr = std::getenv("DEPTHAI_TESTS_IP");
-    if(valueCStr == nullptr) {
-        throw std::runtime_error("Please set device ip using environment variable DEPTHAI_TESTS_IP");
-    }
-    dai::DeviceInfo info(valueCStr);
-    info.protocol = X_LINK_TCP_IP;
-    info.state = X_LINK_GATE;
-    info.platform = X_LINK_RVC4;
-    const auto device = std::make_shared<dai::Device>(info);
     if(argc < 4 || (argc - 1) % 4 != 0) {
         throw std::runtime_error(
             "USAGE: ./camera_multiple_outputs 1920 1080 0 0  640 480 1 1\n"
@@ -26,7 +17,7 @@ int main(int argc, char** argv) {
         sizes.emplace_back(std::stoul(argv[index]), std::stoul(argv[index + 1]), std::stoul(argv[index + 2]), std::stol(argv[index + 3]));
     }
 
-    dai::Pipeline pipeline(device);
+    dai::Pipeline pipeline();
 
     if(sizes.empty()) {
         throw std::runtime_error("internal error to few sizes");
@@ -35,10 +26,10 @@ int main(int argc, char** argv) {
     std::vector<std::shared_ptr<dai::MessageQueue>> videos;
     for(const auto& size : sizes) {
         dai::ImgFrameCapability cap;
-        // cap.encoding = dai::ImgFrame::Type::RGB888i;
-        // cap.encoding = dai::ImgFrame::Type::NV12;
-        // cap.encoding = dai::ImgFrame::Type::BGR888i;
-        cap.encoding = dai::ImgFrame::Type::RGB888i;
+        // cap.type = dai::ImgFrame::Type::RGB888i;
+        // cap.type = dai::ImgFrame::Type::NV12;
+        // cap.type = dai::ImgFrame::Type::BGR888i;
+        cap.type = dai::ImgFrame::Type::RGB888i;
         cap.size.value = std::pair{std::get<0>(size), std::get<1>(size)};
         auto mode = std::get<2>(size);
         switch(mode) {

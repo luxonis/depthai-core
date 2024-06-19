@@ -30,7 +30,7 @@ with dai.Pipeline() as pipeline:
     cam.setBoardSocket(dai.CameraBoardSocket.CAM_C)
 
     queues = []
-    for i in range(0, len(args), 3):
+    for i in range(0, len(args), 4):
         cap = dai.ImgFrameCapability()
         cap.size.fixed([int(args[i]), int(args[i + 1])])
         cropArg = int(args[i + 2])
@@ -50,6 +50,7 @@ with dai.Pipeline() as pipeline:
         for index, queue in enumerate(queues):
             videoIn: dai.ImgFrame = queue.tryGet()
             if videoIn is not None:
+                print(f'frame {videoIn.getWidth()}x{videoIn.getHeight()} | {videoIn.getSequenceNum()}: exposure={videoIn.getExposureTime()}us, timestamp: {videoIn.getTimestampDevice()}')
                 # Get BGR frame from NV12 encoded video frame to show with opencv
                 # Visualizing the frame on slower hosts might have overhead
                 cv2.imshow("video " + str(index), videoIn.getCvFrame())

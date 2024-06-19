@@ -39,18 +39,6 @@ bool isDebug() {
     return getBoolOption("DEPTHAI_TESTS_DEBUG");
 }
 
-dai::DeviceInfo getDeviceInfo() {
-    const char* valueCStr = std::getenv("DEPTHAI_TESTS_IP");
-    if(valueCStr == nullptr) {
-        throw std::runtime_error("Please set device ip using environment variable DEPTHAI_TESTS_IP");
-    }
-    dai::DeviceInfo info(valueCStr);
-    info.protocol = X_LINK_TCP_IP;
-    info.state = X_LINK_GATE;
-    info.platform = X_LINK_RVC4;
-    return info;
-}
-
 dai::CameraBoardSocket getBoardSocket() {
     const char* valueCStr = std::getenv("DEPTHAI_TESTS_CAM");
     if(valueCStr == nullptr) {
@@ -144,15 +132,9 @@ std::tuple<uint32_t, uint32_t> getRandomResolution(dai::Pipeline& pipeline) {
 }
 
 void testResolution(std::optional<std::tuple<uint32_t, uint32_t>> wantedSize = std::nullopt) {
-    std::cout << "TESTING SOME RESOLUTION\n" << std::flush;
-    const auto device = std::make_shared<dai::Device>(getDeviceInfo());
-    std::cout << "TESTING SOME RESOLUTION 2\n" << std::flush;
-
-    dai::Pipeline pipeline(device);
-    std::cout << "TESTING SOME RESOLUTION 3\n" << std::flush;
+    dai::Pipeline pipeline();
 
     auto camRgb = pipeline.create<dai::node::Camera>();
-    std::cout << "TESTING SOME RESOLUTION 4\n" << std::flush;
     camRgb->setBoardSocket(getBoardSocket());
 
     const auto size = wantedSize ? *wantedSize : getRandomResolution(pipeline);
@@ -163,10 +145,10 @@ void testResolution(std::optional<std::tuple<uint32_t, uint32_t>> wantedSize = s
 
     dai::ImgFrameCapability cap;
     cap.size.value = std::make_pair(std::get<0>(size), std::get<1>(size));
-    // cap.encoding = dai::ImgFrame::Type::RGB888i;
-    // cap.encoding = dai::ImgFrame::Type::BGR888i;
-    // cap.encoding = dai::ImgFrame::Type::NV12;
-    cap.encoding = dai::ImgFrame::Type::BGR888i;
+    // cap.type = dai::ImgFrame::Type::RGB888i;
+    // cap.type = dai::ImgFrame::Type::BGR888i;
+    // cap.type = dai::ImgFrame::Type::NV12;
+    cap.type = dai::ImgFrame::Type::BGR888i;
     auto* output = camRgb->requestOutput(cap, true);
     const auto queueFrames = output->createQueue();
 
@@ -196,9 +178,7 @@ void getImages(bool debugOn,
                std::tuple<uint32_t, uint32_t>& sizeOut,
                dai::ImgResizeMode resizeMode,
                std::optional<std::tuple<uint32_t, uint32_t>> wantedSize = std::nullopt) {
-    const auto device = std::make_shared<dai::Device>(getDeviceInfo());
-
-    dai::Pipeline pipeline(device);
+    dai::Pipeline pipeline();
 
     auto camRgb = pipeline.create<dai::node::Camera>();
     camRgb->setBoardSocket(getBoardSocket());
@@ -222,12 +202,12 @@ void getImages(bool debugOn,
     REQUIRE(bestResolution);
     capOrig.size.value = bestResolution;
     capOrig.resizeMode = dai::ImgResizeMode::CROP;
-    capOrig.encoding = dai::ImgFrame::Type::BGR888i;
+    capOrig.type = dai::ImgFrame::Type::BGR888i;
     const auto queueFramesOrig = camRgb->requestOutput(capOrig, true)->createQueue();
 
     dai::ImgFrameCapability cap;
     cap.size.value = std::pair{std::get<0>(size), std::get<1>(size)};
-    cap.encoding = dai::ImgFrame::Type::BGR888i;
+    cap.type = dai::ImgFrame::Type::BGR888i;
     cap.resizeMode = resizeMode;
     // TODO(jakgra) fail hard and throw an error when user calls requestOutput() but doesn't call createQueue() and doesn't link it anywhere
     // auto* output = camRgb->requestOutput(cap, true);
@@ -381,8 +361,7 @@ struct MultipleResHelper {
 
 // NOLINTNEXTLINE(readability-function-cognitive-complexity)
 void testMultipleResolutions(const std::vector<std::tuple<uint32_t, uint32_t>>& wantedSizes) {
-    const auto device = std::make_shared<dai::Device>(getDeviceInfo());
-    dai::Pipeline pipeline(device);
+    dai::Pipeline pipeline();
     auto camRgb = pipeline.create<dai::node::Camera>();
     camRgb->setBoardSocket(getBoardSocket());
 
@@ -395,10 +374,10 @@ void testMultipleResolutions(const std::vector<std::tuple<uint32_t, uint32_t>>& 
         helper.size = wantedSize;
         dai::ImgFrameCapability cap;
         cap.size.value = std::make_pair(std::get<0>(wantedSize), std::get<1>(wantedSize));
-        // cap.encoding = dai::ImgFrame::Type::RGB888i;
-        // cap.encoding = dai::ImgFrame::Type::BGR888i;
-        // cap.encoding = dai::ImgFrame::Type::NV12;
-        cap.encoding = dai::ImgFrame::Type::BGR888i;
+        // cap.type = dai::ImgFrame::Type::RGB888i;
+        // cap.type = dai::ImgFrame::Type::BGR888i;
+        // cap.type = dai::ImgFrame::Type::NV12;
+        cap.type = dai::ImgFrame::Type::BGR888i;
         auto* output = camRgb->requestOutput(cap, true);
         helper.queue = output->createQueue();
     }
