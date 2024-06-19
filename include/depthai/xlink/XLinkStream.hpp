@@ -28,7 +28,7 @@ namespace dai {
 
 class StreamPacketDesc : public streamPacketDesc_t {
    public:
-    StreamPacketDesc() noexcept : streamPacketDesc_t{nullptr, 0, -1, {}, {}} {};
+    StreamPacketDesc() noexcept : streamPacketDesc_t{nullptr, 0, 0, {}, {}} {};
     StreamPacketDesc(const StreamPacketDesc&) = delete;
     StreamPacketDesc(StreamPacketDesc&& other) noexcept;
     StreamPacketDesc& operator=(const StreamPacketDesc&) = delete;
