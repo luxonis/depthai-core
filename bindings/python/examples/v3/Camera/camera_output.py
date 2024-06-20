@@ -4,31 +4,28 @@ import cv2
 import depthai as dai
 
 # Create pipeline
+with dai.Pipeline() as pipeline:
+    # Define source and output
+    cam = pipeline.create(dai.node.Camera)
 
-info = dai.DeviceInfo("127.0.0.1")
-info.protocol = dai.X_LINK_TCP_IP
-info.state = dai.X_LINK_GATE
-info.platform = dai.X_LINK_RVC3
-with dai.Device(info) as device:
-    with dai.Pipeline(device) as pipeline:
-        # Define source and output
-        cam = pipeline.create(dai.node.Camera)
+    # Properties
+    cam.setBoardSocket(dai.CameraBoardSocket.CAM_C)
 
-        # Properties
-        cam.setBoardSocket(dai.CameraBoardSocket.CAM_B)
+    cap = dai.ImgFrameCapability()
+    cap.size.fixed((640, 480))
+    # cap.type = dai.ImgFrame.Type.BGR888p
+    videoQueue = cam.requestOutput(cap, True).createOutputQueue()
+    # videoQueue2 = cam.requestOutput((300,300), type=dai.ImgFrame.Type.BGR888i, resizeMode=dai.ImgResizeMode.CROP).createOutputQueue()
 
-        cap = dai.ImgFrameCapability()
-        cap.size.fixed([640, 480])
-        videoQueue = cam.requestOutput(cap, True).createOutputQueue()
+    # Connect to device and start pipeline
+    pipeline.start()
+    while pipeline.isRunning():
+        videoIn: dai.ImgFrame = videoQueue.get()
+        # videoIn2: dai.ImgFrame = videoQueue2.get()
+        # Get BGR frame from NV12 encoded video frame to show with opencv
+        # Visualizing the frame on slower hosts might have overhead
+        cv2.imshow("video", videoIn.getCvFrame())
+        # cv2.imshow("video2", videoIn2.getCvFrame())
 
-        # Connect to device and start pipeline
-        pipeline.start()
-        while pipeline.isRunning():
-            videoIn: dai.ImgFrame = videoQueue.get()
-
-            # Get BGR frame from NV12 encoded video frame to show with opencv
-            # Visualizing the frame on slower hosts might have overhead
-            cv2.imshow("video", videoIn.getCvFrame())
-
-            if cv2.waitKey(1) == ord("q"):
-                break
+        if cv2.waitKey(1) == ord("q"):
+            break
