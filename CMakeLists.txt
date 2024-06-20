@@ -713,6 +713,7 @@ if(DEPTHAI_PCL_SUPPORT)
 
         # Link to PCL (publically)
         target_link_libraries(${TARGET_PCL_NAME} PUBLIC ${PCL_LIBRARIES})
+        target_link_libraries(${TARGET_PCL_NAME} PUBLIC pcl_io_ply)
 
         # Add public compile definition indicating that PCL support is available
         set(DEPTHAI_HAVE_PCL_SUPPORT ON)
