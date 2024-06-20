@@ -7,7 +7,7 @@ namespace dai {
 
 class ZooManager {
    public:
-    ZooManager(const NNModelDescription& model) : model(model) {}
+    ZooManager(const NNModelDescription& modelDescription) : modelDescription(modelDescription) {}
 
     /**
      * @brief Compute hash based on name, version and platform
@@ -58,14 +58,29 @@ class ZooManager {
     bool isCached() const;
 
     /**
+     * @brief Check if path exists
+     *
+     * @param path: Path to check
+     * @return bool: True if path exists
+     */
+    bool checkExists(const std::string& path) const;
+
+    /**
      * @brief Download model from model zoo
      */
     void downloadModel();
 
+    /**
+     * @brief Load model from cache
+     *
+     * @return NNArchive: Model archive
+     */
+    NNArchive loadModelFromCache() const;
+
    private:
-    const NNModelDescription& model;
+    const NNModelDescription& modelDescription;
 };
 
-void getModelFromZoo(const NNModelDescription& modelDescription, bool useCached = true);
+NNArchive getModelFromZoo(const NNModelDescription& modelDescription, bool useCached = true);
 
 }  // namespace dai

@@ -6,6 +6,7 @@
 #include <yaml-cpp/yaml.h>
 
 #include "depthai/utility/YamlHelpers.hpp"
+#include "depthai/device/Device.hpp"
 
 namespace dai {
 
@@ -22,42 +23,61 @@ class NNModelDescription {
     /**
      * @brief Initialize NNModelDescription in code using parameters
      *
-     * @param name: Model name
-     * @param version: Model version
+     * @param modelSlug: Model slug
      * @param platform: Model platform
+     * @param modelInstanceSlug: Model instance slug
      * @return NNModelDescription
      */
-    static NNModelDescription fromParameters(const std::string& name, const std::string& version = "", const std::string& platform = "RVC2");
+    static NNModelDescription fromParameters(const std::string& modelSlug, const std::string& platform, const std::string& modelInstanceSlug = "");
+
+    /**
+     * @brief Initialize NNModelDescription in code using parameters
+     *
+     * @param modelSlug: Model slug
+     * @param platform: Model platform
+     * @param modelInstanceSlug: Model instance slug
+     * @return NNModelDescription
+     */
+    static NNModelDescription fromParameters(const std::string& modelSlug, const Platform platform, const std::string& modelInstanceSlug = "");
+
+    /**
+     * @brief Convert NNModelDescription to string for printing purposes. This can be used for debugging.
+     *
+     * @return std::string: String representation
+     */
+    std::string toString() const;
 
     /** Getters */
-    std::string getName() const {
-        return name;
-    }
-    std::string getVersion() const {
-        return version;
+    std::string getModelSlug() const {
+        return modelSlug;
     }
     std::string getPlatform() const {
         return platform;
     }
+    std::string getModelInstanceSlug() const {
+        return modelInstanceSlug;
+    }
 
     /** Setters */
-    void setName(const std::string& name) {
-        this->name = name;
-    }
-    void setVersion(const std::string& version) {
-        this->version = version;
+    void setModelSlug(const std::string& modelSlug) {
+        this->modelSlug = modelSlug;
     }
     void setPlatform(const std::string& platform) {
         this->platform = platform;
     }
+    void setModelInstanceSlug(const std::string& modelInstanceSlug) {
+        this->modelInstanceSlug = modelInstanceSlug;
+    }
 
    private:
-    NNModelDescription(const std::string& name, const std::string& version = "", const std::string& platform = "RVC2")
-        : name(name), version(version), platform(platform) {}
+    NNModelDescription(const std::string& modelSlug, const std::string& platform = "RVC2", const std::string& modelInstanceSlug = "")
+        : modelSlug(modelSlug), platform(platform), modelInstanceSlug(modelInstanceSlug) {}
 
-    std::string name;
-    std::string version;
+    std::string modelSlug;
     std::string platform;
+    std::string modelInstanceSlug;
 };
+
+std::ostream& operator<<(std::ostream& os, const NNModelDescription& modelDescription);
 
 }  // namespace dai
