@@ -343,6 +343,7 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack){
     py::enum_<BoardConfig::GPIO::Drive> boardConfigGpioDrive(boardConfigGpio, "Drive", DOC(dai, BoardConfig, GPIO, Drive));
     py::class_<BoardConfig::UART> boardConfigUart(boardConfig, "UART", DOC(dai, BoardConfig, UART));
     py::class_<BoardConfig::UVC> boardConfigUvc(boardConfig, "UVC", DOC(dai, BoardConfig, UVC));
+    py::enum_<Platform> platform(m, "Platform", DOC(dai, Platform));
     struct PyClock{};
     py::class_<PyClock> clock(m, "Clock");
 
@@ -469,6 +470,17 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack){
         .def_readwrite("frameType", &BoardConfig::UVC::frameType)
         .def_readwrite("enable", &BoardConfig::UVC::enable)
     ;
+
+    // Bind Platform
+    platform
+        .value("RVC2", Platform::RVC2, DOC(dai, Platform, RVC2))
+        .value("RVC3", Platform::RVC3, DOC(dai, Platform, RVC3))
+        .value("RVC4", Platform::RVC4, DOC(dai, Platform, RVC4))
+    ;
+
+    // Platform - string conversion
+    m.def("platform2string", &platform2string, DOC(dai, platform2string));
+    m.def("string2platform", &string2platform, DOC(dai, string2platform));
 
     // Bind BoardConfig
     boardConfig
@@ -680,6 +692,9 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack){
 
     // Bind constructors
     bindConstructors<Device>(device);
+
+    device.def("getPlatform", &Device::getPlatform, DOC(dai, Device, getPlatform));
+
     // // Bind the rest
     // device
     //     .def("getOutputQueue", static_cast<std::shared_ptr<DataOutputQueue>(Device::*)(const std::string&)>(&Device::getOutputQueue), py::arg("name"), DOC(dai, Device, getOutputQueue))

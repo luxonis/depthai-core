@@ -24,15 +24,25 @@ void NNModelDescriptionBindings::bind(pybind11::module& m, void* pCallstack) {
     // Bind DeviceBootloader
     modelDescription.def_static("fromYaml", &NNModelDescription::fromYaml, py::arg("yamlPath"), DOC(dai, NNModelDescription, fromYaml))
         .def_static("fromParameters",
-                    &NNModelDescription::fromParameters,
-                    py::arg("name"),
-                    py::arg("version"),
+                    py::overload_cast<const std::string&, const std::string&, const std::string&>(&NNModelDescription::fromParameters),
+                    py::arg("modelSlug"),
                     py::arg("platform"),
+                    py::arg("modelInstanceSlug"),
                     DOC(dai, NNModelDescription, fromParameters))
-        .def("getName", &NNModelDescription::getName, DOC(dai, NNModelDescription, getName))
-        .def("getVersion", &NNModelDescription::getVersion, DOC(dai, NNModelDescription, getVersion))
+        .def_static("fromParameters",
+                    py::overload_cast<const std::string&, const Platform, const std::string&>(&NNModelDescription::fromParameters),
+                    py::arg("modelSlug"),
+                    py::arg("platform"),
+                    py::arg("modelInstanceSlug"),
+                    DOC(dai, NNModelDescription, fromParameters))
+        .def("toString", &NNModelDescription::toString, DOC(dai, NNModelDescription, toString))
+        .def("getModelSlug", &NNModelDescription::getModelSlug, DOC(dai, NNModelDescription, getModelSlug))
         .def("getPlatform", &NNModelDescription::getPlatform, DOC(dai, NNModelDescription, getPlatform))
-        .def("setName", &NNModelDescription::setName, py::arg("name"), DOC(dai, NNModelDescription, setName))
-        .def("setVersion", &NNModelDescription::setVersion, py::arg("version"), DOC(dai, NNModelDescription, setVersion))
-        .def("setPlatform", &NNModelDescription::setPlatform, py::arg("platform"), DOC(dai, NNModelDescription, setPlatform));
+        .def("getModelInstanceSlug", &NNModelDescription::getModelInstanceSlug, DOC(dai, NNModelDescription, getModelInstanceSlug))
+        .def("setModelSlug", &NNModelDescription::setModelSlug, py::arg("modelSlug"), DOC(dai, NNModelDescription, setModelSlug))
+        .def("setPlatform", &NNModelDescription::setPlatform, py::arg("platform"), DOC(dai, NNModelDescription, setPlatform))
+        .def(
+            "setModelInstanceSlug", &NNModelDescription::setModelInstanceSlug, py::arg("modelInstanceSlug"), DOC(dai, NNModelDescription, setModelInstanceSlug))
+        .def("__str__", &NNModelDescription::toString, DOC(dai, NNModelDescription, toString))
+        .def("__repr__", &NNModelDescription::toString, DOC(dai, NNModelDescription, toString));
 }

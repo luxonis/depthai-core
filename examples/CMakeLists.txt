@@ -465,6 +465,7 @@ dai_add_example(record_imu Record/record_imu.cpp ON OFF)
 dai_add_example(rgb_video_v3 v3/ColorCamera/rgb_video.cpp ON OFF)
 dai_add_example(host_node_v3 v3/HostNodes/host_node.cpp ON OFF)
 dai_add_example(threaded_host_node_v3 v3/HostNodes/threaded_host_node.cpp ON OFF)
+dai_add_example(model_zoo v3/ModelZoo/model_zoo.cpp ON OFF)
 
 # Replay
 dai_add_example(replay_video_meta Replay/replay_video_meta.cpp ON OFF)
