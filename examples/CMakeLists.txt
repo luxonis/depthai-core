@@ -497,6 +497,6 @@ dai_add_example(replay_video_meta Replay/replay_video_meta.cpp ON OFF)
 
 dai_add_example(camera_multiple_outputs Camera/camera_multiple_outputs.cpp ON OFF)
 
-if(DEPTHAI_HAVE_PCL_SUPPORT)
-    dai_add_example(visualize_pointcloud PointCloud/visualize_pointcloud.cpp ON ON)
-endif()
+# if(DEPTHAI_HAVE_PCL_SUPPORT)
+#     dai_add_example(visualize_pointcloud PointCloud/visualize_pointcloud.cpp ON ON)
+# endif()
