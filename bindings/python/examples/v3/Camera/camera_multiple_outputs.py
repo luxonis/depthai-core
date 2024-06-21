@@ -23,7 +23,7 @@ if len(args) < 5 or len(args) % 5 != 0:
     exit_usage()
 
 with dai.Pipeline() as pipeline:
-    cams: dict[dai.CameraBoardSocket, dai.node.Camera] = {}
+    cams: dict = {}
     queues = []
     for i in range(0, len(args), 5):
         cap = dai.ImgFrameCapability()
