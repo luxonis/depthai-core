@@ -16,17 +16,6 @@ inline YAML::Node loadYaml(const std::string& path) {
 }
 
 /**
- * @brief Check if file is yaml file
- *
- * @param path: Path to file
- * @return bool: True if file is yaml file
- */
-inline bool isYamlFile(const std::string& path) {
-    std::string extension = path.substr(path.find_last_of(".") + 1);
-    return extension == "yaml" || extension == "yml";
-}
-
-/**
  * @brief Get value from yaml node. If key not found, return default value
  *
  * @tparam T: Type of value to get
