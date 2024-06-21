@@ -198,7 +198,12 @@ void BasaltVIO::initialize(std::vector<std::shared_ptr<ImgFrame>> frames) {
         }
         calib->intrinsics.push_back(camera);
     }
-    vioConfig.load(configPath);
+    if(!configPath.empty()) {
+        vioConfig.load(configPath);
+    } else {
+        setDefaultVIOConfig();
+    }
+
     optFlowPtr = basalt::OpticalFlowFactory::getOpticalFlow(vioConfig, *calib);
     optFlowPtr->start();
     pimpl->imageDataQueue = optFlowPtr->input_img_queue;
@@ -211,6 +216,73 @@ void BasaltVIO::initialize(std::vector<std::shared_ptr<ImgFrame>> frames) {
     vio->opt_flow_depth_guess_queue = optFlowPtr->input_depth_queue;
     vio->opt_flow_state_queue = optFlowPtr->input_state_queue;
     initialized = true;
+}
+
+void BasaltVIO::setDefaultVIOConfig() {
+    vioConfig.optical_flow_type = "frame_to_frame";
+    vioConfig.optical_flow_detection_grid_size = 50;
+    vioConfig.optical_flow_detection_num_points_cell = 1;
+    vioConfig.optical_flow_detection_min_threshold = 5;
+    vioConfig.optical_flow_detection_max_threshold = 40;
+    vioConfig.optical_flow_detection_nonoverlap = true;
+    vioConfig.optical_flow_max_recovered_dist2 = 0.04;
+    vioConfig.optical_flow_pattern = 51;
+    vioConfig.optical_flow_max_iterations = 5;
+    vioConfig.optical_flow_epipolar_error = 0.005;
+    vioConfig.optical_flow_levels = 3;
+    vioConfig.optical_flow_skip_frames = 1;
+    vioConfig.optical_flow_matching_guess_type = basalt::MatchingGuessType::REPROJ_AVG_DEPTH;
+    vioConfig.optical_flow_matching_default_depth = 2.0;
+    vioConfig.optical_flow_image_safe_radius = 472.0;
+    vioConfig.optical_flow_recall_enable = false;
+    vioConfig.optical_flow_recall_all_cams = false;
+    vioConfig.optical_flow_recall_num_points_cell = true;
+    vioConfig.optical_flow_recall_over_tracking = false;
+    vioConfig.optical_flow_recall_update_patch_viewpoint = false;
+    vioConfig.optical_flow_recall_max_patch_dist = 3;
+    vioConfig.optical_flow_recall_max_patch_norms = {1.74, 0.96, 0.99, 0.44};
+    vioConfig.vio_linearization_type = basalt::LinearizationType::ABS_QR;
+    vioConfig.vio_sqrt_marg = true;
+    vioConfig.vio_max_states = 3;
+    vioConfig.vio_max_kfs = 7;
+    vioConfig.vio_min_frames_after_kf = 5;
+    vioConfig.vio_new_kf_keypoints_thresh = 0.7;
+    vioConfig.vio_debug = false;
+    vioConfig.vio_extended_logging = false;
+    vioConfig.vio_obs_std_dev = 0.5;
+    vioConfig.vio_obs_huber_thresh = 1.0;
+    vioConfig.vio_min_triangulation_dist = 0.05;
+    vioConfig.vio_max_iterations = 7;
+    vioConfig.vio_enforce_realtime = false;
+    vioConfig.vio_use_lm = true;
+    vioConfig.vio_lm_lambda_initial = 1e-4;
+    vioConfig.vio_lm_lambda_min = 1e-6;
+    vioConfig.vio_lm_lambda_max = 1e2;
+    vioConfig.vio_scale_jacobian = false;
+    vioConfig.vio_init_pose_weight = 1e8;
+    vioConfig.vio_init_ba_weight = 1e1;
+    vioConfig.vio_init_bg_weight = 1e2;
+    vioConfig.vio_marg_lost_landmarks = true;
+    vioConfig.vio_fix_long_term_keyframes = false;
+    vioConfig.vio_kf_marg_feature_ratio = 0.1;
+    vioConfig.vio_kf_marg_criteria = basalt::KeyframeMargCriteria::KF_MARG_DEFAULT;
+    vioConfig.mapper_obs_std_dev = 0.25;
+    vioConfig.mapper_obs_huber_thresh = 1.5;
+    vioConfig.mapper_detection_num_points = 800;
+    vioConfig.mapper_num_frames_to_match = 30;
+    vioConfig.mapper_frames_to_match_threshold = 0.04;
+    vioConfig.mapper_min_matches = 20;
+    vioConfig.mapper_ransac_threshold = 5e-5;
+    vioConfig.mapper_min_track_length = 5;
+    vioConfig.mapper_max_hamming_distance = 70;
+    vioConfig.mapper_second_best_test_ratio = 1.2;
+    vioConfig.mapper_bow_num_bits = 16;
+    vioConfig.mapper_min_triangulation_dist = 0.07;
+    vioConfig.mapper_no_factor_weights = false;
+    vioConfig.mapper_use_factors = true;
+    vioConfig.mapper_use_lm = true;
+    vioConfig.mapper_lm_lambda_min = 1e-32;
+    vioConfig.mapper_lm_lambda_max = 1e3;
 }
 }  // namespace node
 }  // namespace dai

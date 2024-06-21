@@ -69,6 +69,7 @@ class BasaltVIO : public NodeCRTP<ThreadedHostNode, BasaltVIO> {
         useSpecTranslation = use;
     }
     void setLocalTransform(const std::shared_ptr<TransformData>& transform);
+    void setDefaultVIOConfig();
 
    private:
     // pimpl
@@ -90,7 +91,7 @@ class BasaltVIO : public NodeCRTP<ThreadedHostNode, BasaltVIO> {
     std::shared_ptr<basalt::PoseState<double>::SE3> localTransform;
     std::shared_ptr<ImgFrame> leftImg;
     bool initialized = false;
-    std::string configPath = VIO_CONFIG_PATH;
+    std::string configPath = "";
     int imuUpdateRate = 200;
     int threadNum = 1;
     bool useSpecTranslation = true;

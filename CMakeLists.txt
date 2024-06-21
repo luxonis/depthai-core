@@ -811,13 +811,7 @@ if(DEPTHAI_BASALT_SUPPORT)
     set(BASALT_SUPPORT_AVAILABLE ${basalt_sdk_FOUND})
 
     if(BASALT_SUPPORT_AVAILABLE)
-        hunter_private_data(
-            URL "https://raw.githubusercontent.com/luxonis/basalt/depthai_tests/data/msdmi_config.json"
-            SHA1 "161f557b1e39841b60be953a2bcd517373ae2c9b"
-            FILE "msdmi_config.json"
-            LOCATION msdmi_config
-        )
-    
+
         # Add depthai-basalt library and depthai::basalt alias
         add_library(${TARGET_BASALT_NAME} src/basalt/BasaltVIO.cpp )
         add_library("${PROJECT_NAME}::${TARGET_BASALT_ALIAS}" ALIAS ${TARGET_BASALT_NAME})
@@ -838,9 +832,7 @@ if(DEPTHAI_BASALT_SUPPORT)
         # Specify that we are building target basalt
         target_compile_definitions(${TARGET_BASALT_NAME} PUBLIC DEPTHAI_TARGET_BASALT)
         target_compile_definitions(${TARGET_BASALT_NAME} PUBLIC DEPTHAI_HAVE_BASALT_SUPPORT)
-        
-        # target_link_options(${TARGET_BASALT_NAME} PRIVATE "-Wl,--disable-new-dtags")
-        target_compile_definitions(${TARGET_BASALT_NAME} PUBLIC VIO_CONFIG_PATH="${msdmi_config}")
+
         # Add public dependency to depthai::core library
         target_link_libraries(${TARGET_BASALT_NAME} PUBLIC ${TARGET_CORE_NAME})
 
