@@ -1,7 +1,6 @@
 #pragma once
 
 #include "depthai/modelzoo/NNModelDescription.hpp"
-#include "depthai/nn_archive/NNArchive.hpp"
 
 namespace dai {
 
@@ -19,9 +18,9 @@ class ZooManager {
     /**
      * @brief Compute hash based on name, version and platform
      *
-     * @return size_t: Hash value
+     * @return std::string: Hash value
      */
-    size_t computeModelHash() const;
+    std::string computeModelHash() const;
 
     /**
      * @brief Get name of the folder where model is cached
@@ -53,9 +52,9 @@ class ZooManager {
     void createCacheFolder() const;
 
     /**
-     * @brief Remove cache folder
+     * @brief Remove cache folder where the model is cached
      */
-    void removeCacheFolder() const;
+    void removeModelCacheFolder() const;
 
     /**
      * @brief Check if model is cached
@@ -78,11 +77,27 @@ class ZooManager {
     void downloadModel();
 
     /**
-     * @brief Load model from cache
+     * @brief Return path to model in cache
      *
-     * @return NNArchive: Model archive
+     * @return std::string: Path to model
      */
-    NNArchive loadModelFromCache() const;
+    std::string loadModelFromCache() const;
+
+    /**
+     * @brief Return the name of the file that would be downloaded were this url entered into a web browser.
+     *
+     * @param url: URL
+     * @return std::string: Filename
+     */
+    std::string getFilenameFromUrl(const std::string& url) const;
+
+    /**
+     * @brief Get all files in folder
+     *
+     * @param folder: Folder path
+     * @return std::vector<std::string>: List of files in the folder
+     */
+    std::vector<std::string> getFilesInFolder(const std::string& folder) const;
 
    private:
     const NNModelDescription& modelDescription;
@@ -96,9 +111,9 @@ class ZooManager {
  * @param cacheDirectory: Cache directory where the cached models are stored, default is "."
  * @param useCached: Use cached model if present, default is true
  * @param cacheModel: Whether to store the downloaded model in the cache directory, default is true
- * @return NNArchive: Model archive
+ * @return std::string: Path to the model in cache
  */
-NNArchive getModelFromZoo(const NNModelDescription& modelDescription, const std::string& cacheDirectory = ".", bool useCached = true, bool cacheModel = true);
+std::string getModelFromZoo(const NNModelDescription& modelDescription, const std::string& cacheDirectory = ".", bool useCached = true, bool verbose = false);
 
 /**
  * @brief Helper function allowing one to download all models specified in yaml files in the given path and store them in the cache directory

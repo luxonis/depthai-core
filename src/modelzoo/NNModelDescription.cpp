@@ -16,24 +16,24 @@ NNModelDescription NNModelDescription::fromYaml(const std::string& yamlPath) {
     auto platform = utility::yamlGet<std::string>(yamlNode, "platform");
 
     // Load OPTIONAL parameters - use default value if key not found
-    auto modelInstanceSlug = utility::yamlGet<std::string>(yamlNode, "model_instance_slug", "");
+    auto modelVersionSlug = utility::yamlGet<std::string>(yamlNode, "model_version_slug", "");
 
-    return NNModelDescription(modelSlug, platform, modelInstanceSlug);
+    return NNModelDescription(modelSlug, platform, modelVersionSlug);
 }
 
-NNModelDescription NNModelDescription::fromParameters(const std::string& modelSlug, const std::string& platform, const std::string& modelInstanceSlug) {
-    return NNModelDescription(modelSlug, platform, modelInstanceSlug);
+NNModelDescription NNModelDescription::fromParameters(const std::string& modelSlug, const std::string& platform, const std::string& modelVersionSlug) {
+    return NNModelDescription(modelSlug, platform, modelVersionSlug);
 }
 
-NNModelDescription NNModelDescription::fromParameters(const std::string& modelSlug, const Platform platform, const std::string& modelInstanceSlug) {
-    return fromParameters(modelSlug, platform2string(platform), modelInstanceSlug);
+NNModelDescription NNModelDescription::fromParameters(const std::string& modelSlug, const Platform platform, const std::string& modelVersionSlug) {
+    return fromParameters(modelSlug, platform2string(platform), modelVersionSlug);
 }
 
 std::string NNModelDescription::toString() const {
     std::string out = "NNModelDescription[\n";
     out += "\tmodel_slug: " + modelSlug + "\n";
     out += "\tplatform: " + platform + "\n";
-    out += "\tmodel_instance_slug: " + modelInstanceSlug + "\n";
+    out += "\tmodel_version_slug: " + modelVersionSlug + "\n";
     out += "]";
     return out;
 }

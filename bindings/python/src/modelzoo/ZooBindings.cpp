@@ -23,7 +23,7 @@ void ZooBindings::bind(pybind11::module& m, void* pCallstack) {
           py::arg("modelDescription"),
           py::arg("cacheDirectory") = ".",
           py::arg("useCached") = true,
-          py::arg("cacheModel") = true,
+          py::arg("verbose") = false,
           DOC(dai, getModelFromZoo));
 
     m.def("downloadModelsFromZoo",

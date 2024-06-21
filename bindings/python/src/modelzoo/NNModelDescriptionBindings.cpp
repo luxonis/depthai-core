@@ -27,22 +27,21 @@ void NNModelDescriptionBindings::bind(pybind11::module& m, void* pCallstack) {
                     py::overload_cast<const std::string&, const std::string&, const std::string&>(&NNModelDescription::fromParameters),
                     py::arg("modelSlug"),
                     py::arg("platform"),
-                    py::arg("modelInstanceSlug"),
+                    py::arg("modelVersionSlug") = "",
                     DOC(dai, NNModelDescription, fromParameters))
         .def_static("fromParameters",
                     py::overload_cast<const std::string&, const Platform, const std::string&>(&NNModelDescription::fromParameters),
                     py::arg("modelSlug"),
                     py::arg("platform"),
-                    py::arg("modelInstanceSlug"),
+                    py::arg("modelVersionSlug") = "",
                     DOC(dai, NNModelDescription, fromParameters))
         .def("toString", &NNModelDescription::toString, DOC(dai, NNModelDescription, toString))
         .def("getModelSlug", &NNModelDescription::getModelSlug, DOC(dai, NNModelDescription, getModelSlug))
         .def("getPlatform", &NNModelDescription::getPlatform, DOC(dai, NNModelDescription, getPlatform))
-        .def("getModelInstanceSlug", &NNModelDescription::getModelInstanceSlug, DOC(dai, NNModelDescription, getModelInstanceSlug))
+        .def("getmodelVersionSlug", &NNModelDescription::getmodelVersionSlug, DOC(dai, NNModelDescription, getmodelVersionSlug))
         .def("setModelSlug", &NNModelDescription::setModelSlug, py::arg("modelSlug"), DOC(dai, NNModelDescription, setModelSlug))
         .def("setPlatform", &NNModelDescription::setPlatform, py::arg("platform"), DOC(dai, NNModelDescription, setPlatform))
-        .def(
-            "setModelInstanceSlug", &NNModelDescription::setModelInstanceSlug, py::arg("modelInstanceSlug"), DOC(dai, NNModelDescription, setModelInstanceSlug))
+        .def("setmodelVersionSlug", &NNModelDescription::setmodelVersionSlug, py::arg("modelVersionSlug"), DOC(dai, NNModelDescription, setmodelVersionSlug))
         .def("__str__", &NNModelDescription::toString, DOC(dai, NNModelDescription, toString))
         .def("__repr__", &NNModelDescription::toString, DOC(dai, NNModelDescription, toString));
 }
