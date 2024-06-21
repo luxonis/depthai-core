@@ -21,7 +21,19 @@ with dai.Pipeline() as pipeline:
         time.sleep(0.1)
 ```
 
-## Different syntax
+## Supported platforms
+The examples are now split into three categories:
+* In the root directory of examples, there are the examples that are supported on all platforms
+* In RVC2/RVC4 directories there are the examples that are supported only on the RVC2/RVC4 platform
+
+In the future we plan to make the examples more platform agnostic and we'll be slowly moving as many examples as possible to the root directory.
+
+## Supported languages
+The examples are currently in Python and C++. The C++ examples are in the `cpp` directory and the Python examples are in the `python` directory.
+
+Currently there are more python examples than C++ examples, but we plan to match the examples in both languages in the future and keep them 1:1.
+
+## Syntax differences compared to the V2 API
 
 In Python, currently, there exist two syntaxes for creating nodes. Before we decide, we first want to gather feedback from you.
 
