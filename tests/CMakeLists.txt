@@ -46,7 +46,7 @@ function(dai_add_test test_name test_src)
     endif()
 
     # Link to core and Catch2 testing framework
-    target_link_libraries(${test_name} PRIVATE depthai-core Catch2::Catch2WithMain Threads::Threads)
+    target_link_libraries(${test_name} PRIVATE depthai::opencv ${OpenCV_LIBS} Catch2::Catch2WithMain Threads::Threads)
 
     # Add sanitizers for tests as well
     if(COMMAND add_sanitizers)
