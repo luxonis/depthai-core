@@ -129,3 +129,20 @@ with dai.Pipeline() as pipeline:
         if cv2.waitKey(1) == ord('q'):
             break
 ```
+
+
+## Running examples
+
+To build the examples configure with following option added from the root of the repository:
+```
+cmake -S. -Bbuild -D'DEPTHAI_BUILD_EXAMPLES=ON'
+cmake --build build
+```
+
+Then navigate to `build/examples` folder and run a preferred example
+```
+cd build/examples
+./MobileNet/rgb_mobilenet
+```
+
+> ℹ️ Multi-Config generators (like Visual Studio on Windows) will have the examples built in `build/examples/MobileNet/[Debug/Release/...]/rgb_mobilenet`
