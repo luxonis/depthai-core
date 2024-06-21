@@ -47,12 +47,12 @@ We'd love to hear your opinion which one you prefer. Currently, this syntax is n
 
 Examples of this can be found in the `VideoEncoder` example.
 
-## Installation
+## Python installation
 
 To get the examples running, install the requirements with:
 
 ```
-python3 depthai-core/bindings/python/examples/install_requirements.py
+python3 depthai-core/examples/python/install_requirements.py
 ```
 
 NOTE: Right now wheels for windows are missing, but wheels for MacOS and Linux, both x86_64 and arm64 are available.

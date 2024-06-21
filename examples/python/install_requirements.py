@@ -33,7 +33,7 @@ args = parser.parse_args()
 
 examples_dir = os.path.dirname(os.path.abspath(__file__))
 
-parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+parent_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) + "/bindings/python/"
 os.chdir(parent_dir)
 sys.path.insert(1, parent_dir)
 import find_version
