@@ -12,14 +12,14 @@ size_t ZooManager::computeModelHash() const {
     return hasher(modelDescription.getModelSlug() + modelDescription.getModelInstanceSlug() + modelDescription.getPlatform());
 }
 
-std::string ZooManager::getCacheFolderName() const {
+std::string ZooManager::getModelCacheFolderName() const {
     size_t hash = computeModelHash();
     std::string hashstr = std::to_string(hash);
     return modelDescription.getModelSlug() + "_" + modelDescription.getModelInstanceSlug() + "_" + modelDescription.getPlatform() + "_" + hashstr;
 }
 
-std::string ZooManager::getCacheFolderPath(const std::string& cacheDir) const {
-    return combinePaths(cacheDir, getCacheFolderName());
+std::string ZooManager::getModelCacheFolderPath(const std::string& cacheDirectory) const {
+    return combinePaths(cacheDirectory, getModelCacheFolderName());
 }
 
 std::string ZooManager::combinePaths(const std::string& path1, const std::string& path2) const {
@@ -32,17 +32,17 @@ std::string ZooManager::combinePaths(const std::string& path1, const std::string
 }
 
 void ZooManager::createCacheFolder() const {
-    std::string cacheFolderName = getCacheFolderName();
+    std::string cacheFolderName = getModelCacheFolderPath(cacheDirectory);
     std::filesystem::create_directories(cacheFolderName);
 }
 
 void ZooManager::removeCacheFolder() const {
-    std::string cacheFolderName = getCacheFolderName();
+    std::string cacheFolderName = getModelCacheFolderPath(cacheDirectory);
     std::filesystem::remove_all(cacheFolderName);
 }
 
 bool ZooManager::isCached() const {
-    return checkExists(getCacheFolderName());
+    return checkExists(getModelCacheFolderPath(cacheDirectory));
 }
 
 bool ZooManager::checkExists(const std::string& path) const {
@@ -91,20 +91,15 @@ void ZooManager::downloadModel() {
     cpr::Response downloadResponse = cpr::Get(downloadUrl);
 
     // Save to tar file
-    std::string folder = getCacheFolderName();
+    std::string folder = getModelCacheFolderPath(cacheDirectory);
     std::string tarPath = combinePaths(folder, "model.tar.xz");
     std::ofstream outStream(tarPath, std::ios::binary);
     outStream.write(downloadResponse.text.c_str(), downloadResponse.text.size());
     outStream.close();
-
-    // Extract tar
-    // TODO: This is not OS agnostic
-    // std::string command = "tar -xvf " + tarPath + " -C " + folder + " > /dev/null 2>&1";
-    // system(command.c_str());
 }
 
 NNArchive ZooManager::loadModelFromCache() const {
-    const std::string cacheFolder = getCacheFolderName();
+    const std::string cacheFolder = getModelCacheFolderPath(cacheDirectory);
     const std::string zippedModelPath = combinePaths(cacheFolder, "model.tar.xz");
 
     // Make sure the zipped model exists
@@ -118,9 +113,9 @@ NNArchive ZooManager::loadModelFromCache() const {
     return NNArchive(depthaiPath);
 }
 
-NNArchive getModelFromZoo(const NNModelDescription& modelDescription, bool useCached) {
+NNArchive getModelFromZoo(const NNModelDescription& modelDescription, const std::string& cacheDirectory, bool useCached, bool cacheModel) {
     // Initialize ZooManager
-    ZooManager zooManager(modelDescription);
+    ZooManager zooManager(modelDescription, cacheDirectory);
 
     // Check if model is cached
     bool modelIsCached = zooManager.isCached();
@@ -145,7 +140,48 @@ NNArchive getModelFromZoo(const NNModelDescription& modelDescription, bool useCa
 
     // Load model from cache
     NNArchive archive = zooManager.loadModelFromCache();
+
+    // Remove cache folder if cacheModel is false and the model was not cached prior to downloading it
+    if(!cacheModel && !modelIsCached) {
+        zooManager.removeCacheFolder();
+    }
+
     return archive;
+}
+
+void downloadModelsFromZoo(const std::string& path, const std::string& cacheDirectory, bool verbose) {
+    // Make sure 'path' exists
+    if(!std::filesystem::exists(path)) throw std::runtime_error("Path does not exist: " + path);
+
+    // Find all yaml files in 'path'
+    std::vector<std::string> yamlFiles;
+    for(const auto& entry : std::filesystem::directory_iterator(path)) {
+        std::string filePath = entry.path().string();
+        if(utility::isYamlFile(filePath)) {
+            yamlFiles.push_back(filePath);
+        }
+    }
+
+    // Download models from yaml files
+    for(size_t i = 0; i < yamlFiles.size(); ++i) {
+        // Parse yaml file
+        const std::string& yamlFile = yamlFiles[i];
+        auto modelDescription = NNModelDescription::fromYaml(yamlFile);
+
+        // Download model - ignore the returned NNArchive here, as we are only interested in downloading the model
+        bool errorOccurred = false;
+        try {
+            getModelFromZoo(modelDescription, cacheDirectory, false);
+        } catch(const std::exception& e) {
+            std::cerr << "Failed to download model [" << i + 1 << "/" << yamlFiles.size() << "]:\n" << e.what() << std::endl;
+            errorOccurred = true;
+        }
+
+        // Print verbose output
+        if(verbose && !errorOccurred) {
+            std::cout << "Downloaded model [" << i + 1 << "/" << yamlFile.size() << "]:\n" << modelDescription << std::endl;
+        }
+    }
 }
 
 }  // namespace dai
