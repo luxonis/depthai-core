@@ -6,7 +6,7 @@ int main() {
     dai::Pipeline pipeline(true);
 
     auto replay = pipeline.create<dai::node::ReplayVideo>();
-    auto cam = pipeline.create<dai::node::Camera>();
+    auto cam = pipeline.create<dai::node::ColorCamera>();
     auto display = pipeline.create<dai::node::Display>();
 
     cam->setBoardSocket(dai::CameraBoardSocket::CAM_A);

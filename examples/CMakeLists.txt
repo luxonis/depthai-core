@@ -303,6 +303,8 @@ dai_add_example(rgb_video ColorCamera/rgb_video.cpp ON OFF)
 # dai_add_example(image_manip_warp_mesh ImageManip/image_manip_warp_mesh.cpp ON OFF)
 dai_add_example(image_manip_many_instances ImageManip/image_manip_many_instances.cpp ON OFF)
 dai_add_example(image_manip_host ImageManip/image_manip_host.cpp ON OFF)
+dai_add_example(image_manip_v2_resize ImageManip/image_manip_v2_resize.cpp ON OFF)
+dai_add_example(image_manip_v2_mod ImageManip/image_manip_v2_mod.cpp ON OFF)
 dai_add_example(image_manip_color_conversion ImageManip/image_manip_color_conversion.cpp ON OFF)
 #
 # # Warp

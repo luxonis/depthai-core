@@ -1,6 +1,6 @@
 #include <memory>
 #include "depthai/depthai.hpp"
-#include "depthai/pipeline/datatype/ImageManipConfig.hpp"
+#include "depthai/pipeline/datatype/ImageManipConfigV2.hpp"
 #include "depthai/pipeline/InputQueue.hpp"
 #include "opencv2/opencv.hpp"
 
@@ -9,11 +9,15 @@ constexpr int NUM_FRAMES_PER_CONFIG = 2;
 using Type = dai::ImgFrame::Type;
 
 int main(int argc, char** argv) {
-    assert(argc > 1);
+    std::shared_ptr<dai::Device> device = nullptr;
+    if(argc <= 1) {
+        device = std::make_shared<dai::Device>();
+    } else {
+        device = std::make_shared<dai::Device>(argv[1]);
+    }
+    dai::Pipeline pipeline(device);
 
-    dai::Pipeline pipeline;
-
-    auto imageManip = pipeline.create<dai::node::ImageManip>();
+    auto imageManip = pipeline.create<dai::node::ImageManipV2>();
 
     imageManip->initialConfig.setFrameType(dai::ImgFrame::Type::RGB888i);
     imageManip->setMaxOutputFrameSize(4803988);
@@ -35,9 +39,9 @@ int main(int argc, char** argv) {
                 }
                 dai::ImgFrame imgFrame;
                 imgFrame.setCvFrame(frame, from);
-                dai::ImageManipConfig config;
+                dai::ImageManipConfigV2 config;
                 config.setFrameType(to);
-                inConfig->send(std::make_shared<dai::ImageManipConfig>(config));
+                inConfig->send(std::make_shared<dai::ImageManipConfigV2>(config));
                 inImg->send(std::make_shared<dai::ImgFrame>(imgFrame));
 
                 auto out = outImg->get<dai::ImgFrame>();
