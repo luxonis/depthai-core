@@ -10,7 +10,8 @@ import time
 # Get argument first
 nnPath = str(
     (
-        Path(__file__).parent / Path("../../models/yolo-v6-openvino_2022.1_6shave-rvc2.tar.xz")
+        Path(__file__).parent
+        / Path("../../models/yolo-v6-openvino_2022.1_6shave-rvc2.tar.xz")
     )
     .resolve()
     .absolute()
@@ -18,6 +19,7 @@ nnPath = str(
 
 if not Path(nnPath).exists():
     import sys
+
     raise FileNotFoundError(
         f'Required file/s not found, please run "{sys.executable} install_requirements.py" - required files are: {nnPath}'
     )
@@ -34,9 +36,10 @@ with dai.Pipeline() as pipeline:
     camRgb.setColorOrder(dai.ColorCameraProperties.ColorOrder.BGR)
     camRgb.setFps(15)
     nnArchive = dai.NNArchive(nnPath)
-    detectionNetwork = pipeline.create(dai.node.DetectionNetwork).build(camRgb.preview, nnArchive)
+    detectionNetwork = pipeline.create(dai.node.DetectionNetwork).build(
+        camRgb.preview, nnArchive
+    )
     detectionNetwork.setNumInferenceThreads(2)
-
 
     qRgb = detectionNetwork.passthrough.createOutputQueue()
     qDet = detectionNetwork.out.createOutputQueue()
@@ -85,8 +88,8 @@ with dai.Pipeline() as pipeline:
         cv2.imshow(name, frame)
 
     while pipeline.isRunning():
-        inRgb : dai.ImgFrame = qRgb.get()
-        inDet : dai.ImgDetections = qDet.get()
+        inRgb: dai.ImgFrame = qRgb.get()
+        inDet: dai.ImgDetections = qDet.get()
         if inRgb is not None:
             frame = inRgb.getCvFrame()
             cv2.putText(
