@@ -5,6 +5,9 @@
 namespace dai {
 
 NNModelDescription NNModelDescription::fromYaml(const std::string& yamlPath) {
+    // Make sure the file exists
+    if(!std::filesystem::exists(yamlPath)) throw std::runtime_error("File does not exist: " + yamlPath);
+
     // Parse yaml file
     auto yamlNode = utility::loadYaml(yamlPath);
 

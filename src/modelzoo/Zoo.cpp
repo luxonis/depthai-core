@@ -33,12 +33,12 @@ std::string ZooManager::combinePaths(const std::string& path1, const std::string
 
 void ZooManager::createCacheFolder() const {
     std::string cacheFolderName = getCacheFolderName();
-    system(("mkdir -p " + cacheFolderName).c_str());
+    std::filesystem::create_directories(cacheFolderName);
 }
 
 void ZooManager::removeCacheFolder() const {
     std::string cacheFolderName = getCacheFolderName();
-    system(("rm -rf " + cacheFolderName).c_str());
+    std::filesystem::remove_all(cacheFolderName);
 }
 
 bool ZooManager::isCached() const {
