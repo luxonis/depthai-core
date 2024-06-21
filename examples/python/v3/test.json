@@ -1,0 +1,955 @@
+[
+    {
+        "connections": [
+            {
+                "node1Id": 5,
+                "node1Output": "out",
+                "node1OutputGroup": "",
+                "node2Id": 2,
+                "node2Input": "inputConfig",
+                "node2InputGroup": ""
+            },
+            {
+                "node1Id": 2,
+                "node1Output": "disparity",
+                "node1OutputGroup": "",
+                "node2Id": 6,
+                "node2Input": "in",
+                "node2InputGroup": ""
+            },
+            {
+                "node1Id": 1,
+                "node1Output": "out",
+                "node1OutputGroup": "",
+                "node2Id": 2,
+                "node2Input": "right",
+                "node2InputGroup": ""
+            },
+            {
+                "node1Id": 0,
+                "node1Output": "out",
+                "node1OutputGroup": "",
+                "node2Id": 2,
+                "node2Input": "left",
+                "node2InputGroup": ""
+            }
+        ],
+        "globalProperties": {
+            "calibData": null,
+            "cameraTuningBlobSize": null,
+            "cameraTuningBlobUri": "",
+            "leonCssFrequencyHz": 700000000.0,
+            "leonMssFrequencyHz": 700000000.0,
+            "pipelineName": null,
+            "pipelineVersion": null,
+            "sippBufferSize": 18432,
+            "sippDmaBufferSize": 16384,
+            "xlinkChunkSize": -1
+        },
+        "nodes": [
+            [
+                6,
+                {
+                    "alias": "",
+                    "id": 6,
+                    "ioInfo": [
+                        [
+                            [
+                                "",
+                                "in"
+                            ],
+                            {
+                                "blocking": true,
+                                "group": "",
+                                "id": 31,
+                                "name": "in",
+                                "queueSize": 3,
+                                "type": 3,
+                                "waitForMessage": false
+                            }
+                        ]
+                    ],
+                    "name": "XLinkOut",
+                    "parentId": -1,
+                    "properties": [
+                        185,
+                        3,
+                        136,
+                        0,
+                        0,
+                        128,
+                        191,
+                        189,
+                        15,
+                        95,
+                        95,
+                        120,
+                        95,
+                        50,
+                        95,
+                        100,
+                        105,
+                        115,
+                        112,
+                        97,
+                        114,
+                        105,
+                        116,
+                        121,
+                        0
+                    ]
+                }
+            ],
+            [
+                5,
+                {
+                    "alias": "",
+                    "id": 5,
+                    "ioInfo": [
+                        [
+                            [
+                                "",
+                                "out"
+                            ],
+                            {
+                                "blocking": false,
+                                "group": "",
+                                "id": 30,
+                                "name": "out",
+                                "queueSize": 8,
+                                "type": 0,
+                                "waitForMessage": false
+                            }
+                        ]
+                    ],
+                    "name": "XLinkIn",
+                    "parentId": -1,
+                    "properties": [
+                        185,
+                        3,
+                        189,
+                        17,
+                        95,
+                        95,
+                        120,
+                        95,
+                        50,
+                        95,
+                        105,
+                        110,
+                        112,
+                        117,
+                        116,
+                        67,
+                        111,
+                        110,
+                        102,
+                        105,
+                        103,
+                        130,
+                        0,
+                        0,
+                        80,
+                        0,
+                        8
+                    ]
+                }
+            ],
+            [
+                2,
+                {
+                    "alias": "",
+                    "id": 2,
+                    "ioInfo": [
+                        [
+                            [
+                                "",
+                                "pixelDescriptorsRight"
+                            ],
+                            {
+                                "blocking": false,
+                                "group": "",
+                                "id": 29,
+                                "name": "pixelDescriptorsRight",
+                                "queueSize": 8,
+                                "type": 0,
+                                "waitForMessage": false
+                            }
+                        ],
+                        [
+                            [
+                                "",
+                                "pixelDescriptorsLeft"
+                            ],
+                            {
+                                "blocking": false,
+                                "group": "",
+                                "id": 28,
+                                "name": "pixelDescriptorsLeft",
+                                "queueSize": 8,
+                                "type": 0,
+                                "waitForMessage": false
+                            }
+                        ],
+                        [
+                            [
+                                "",
+                                "debugDispCostDump"
+                            ],
+                            {
+                                "blocking": false,
+                                "group": "",
+                                "id": 26,
+                                "name": "debugDispCostDump",
+                                "queueSize": 8,
+                                "type": 0,
+                                "waitForMessage": false
+                            }
+                        ],
+                        [
+                            [
+                                "",
+                                "debugExtDispLrCheckIt2"
+                            ],
+                            {
+                                "blocking": false,
+                                "group": "",
+                                "id": 25,
+                                "name": "debugExtDispLrCheckIt2",
+                                "queueSize": 8,
+                                "type": 0,
+                                "waitForMessage": false
+                            }
+                        ],
+                        [
+                            [
+                                "",
+                                "debugDispLrCheckIt2"
+                            ],
+                            {
+                                "blocking": false,
+                                "group": "",
+                                "id": 23,
+                                "name": "debugDispLrCheckIt2",
+                                "queueSize": 8,
+                                "type": 0,
+                                "waitForMessage": false
+                            }
+                        ],
+                        [
+                            [
+                                "",
+                                "confidenceMap"
+                            ],
+                            {
+                                "blocking": false,
+                                "group": "",
+                                "id": 27,
+                                "name": "confidenceMap",
+                                "queueSize": 8,
+                                "type": 0,
+                                "waitForMessage": false
+                            }
+                        ],
+                        [
+                            [
+                                "",
+                                "debugDispLrCheckIt1"
+                            ],
+                            {
+                                "blocking": false,
+                                "group": "",
+                                "id": 22,
+                                "name": "debugDispLrCheckIt1",
+                                "queueSize": 8,
+                                "type": 0,
+                                "waitForMessage": false
+                            }
+                        ],
+                        [
+                            [
+                                "",
+                                "rectifiedRight"
+                            ],
+                            {
+                                "blocking": false,
+                                "group": "",
+                                "id": 20,
+                                "name": "rectifiedRight",
+                                "queueSize": 8,
+                                "type": 0,
+                                "waitForMessage": false
+                            }
+                        ],
+                        [
+                            [
+                                "",
+                                "rectifiedLeft"
+                            ],
+                            {
+                                "blocking": false,
+                                "group": "",
+                                "id": 19,
+                                "name": "rectifiedLeft",
+                                "queueSize": 8,
+                                "type": 0,
+                                "waitForMessage": false
+                            }
+                        ],
+                        [
+                            [
+                                "",
+                                "outConfig"
+                            ],
+                            {
+                                "blocking": false,
+                                "group": "",
+                                "id": 21,
+                                "name": "outConfig",
+                                "queueSize": 8,
+                                "type": 0,
+                                "waitForMessage": false
+                            }
+                        ],
+                        [
+                            [
+                                "",
+                                "syncedLeft"
+                            ],
+                            {
+                                "blocking": false,
+                                "group": "",
+                                "id": 17,
+                                "name": "syncedLeft",
+                                "queueSize": 8,
+                                "type": 0,
+                                "waitForMessage": false
+                            }
+                        ],
+                        [
+                            [
+                                "",
+                                "debugExtDispLrCheckIt1"
+                            ],
+                            {
+                                "blocking": false,
+                                "group": "",
+                                "id": 24,
+                                "name": "debugExtDispLrCheckIt1",
+                                "queueSize": 8,
+                                "type": 0,
+                                "waitForMessage": false
+                            }
+                        ],
+                        [
+                            [
+                                "",
+                                "disparity"
+                            ],
+                            {
+                                "blocking": false,
+                                "group": "",
+                                "id": 16,
+                                "name": "disparity",
+                                "queueSize": 8,
+                                "type": 0,
+                                "waitForMessage": false
+                            }
+                        ],
+                        [
+                            [
+                                "",
+                                "depth"
+                            ],
+                            {
+                                "blocking": false,
+                                "group": "",
+                                "id": 15,
+                                "name": "depth",
+                                "queueSize": 8,
+                                "type": 0,
+                                "waitForMessage": false
+                            }
+                        ],
+                        [
+                            [
+                                "",
+                                "inputRightPixelDescriptor"
+                            ],
+                            {
+                                "blocking": true,
+                                "group": "",
+                                "id": 14,
+                                "name": "inputRightPixelDescriptor",
+                                "queueSize": 3,
+                                "type": 3,
+                                "waitForMessage": false
+                            }
+                        ],
+                        [
+                            [
+                                "",
+                                "inputLeftPixelDescriptor"
+                            ],
+                            {
+                                "blocking": true,
+                                "group": "",
+                                "id": 13,
+                                "name": "inputLeftPixelDescriptor",
+                                "queueSize": 3,
+                                "type": 3,
+                                "waitForMessage": false
+                            }
+                        ],
+                        [
+                            [
+                                "",
+                                "right"
+                            ],
+                            {
+                                "blocking": true,
+                                "group": "",
+                                "id": 12,
+                                "name": "right",
+                                "queueSize": 3,
+                                "type": 3,
+                                "waitForMessage": false
+                            }
+                        ],
+                        [
+                            [
+                                "",
+                                "syncedRight"
+                            ],
+                            {
+                                "blocking": false,
+                                "group": "",
+                                "id": 18,
+                                "name": "syncedRight",
+                                "queueSize": 8,
+                                "type": 0,
+                                "waitForMessage": false
+                            }
+                        ],
+                        [
+                            [
+                                "",
+                                "left"
+                            ],
+                            {
+                                "blocking": true,
+                                "group": "",
+                                "id": 11,
+                                "name": "left",
+                                "queueSize": 3,
+                                "type": 3,
+                                "waitForMessage": false
+                            }
+                        ],
+                        [
+                            [
+                                "",
+                                "inputConfig"
+                            ],
+                            {
+                                "blocking": true,
+                                "group": "",
+                                "id": 10,
+                                "name": "inputConfig",
+                                "queueSize": 3,
+                                "type": 3,
+                                "waitForMessage": false
+                            }
+                        ]
+                    ],
+                    "name": "StereoDepth",
+                    "parentId": -1,
+                    "properties": [
+                        185,
+                        25,
+                        185,
+                        5,
+                        185,
+                        15,
+                        1,
+                        2,
+                        136,
+                        0,
+                        0,
+                        122,
+                        68,
+                        1,
+                        0,
+                        0,
+                        10,
+                        5,
+                        0,
+                        0,
+                        15,
+                        32,
+                        4,
+                        190,
+                        0,
+                        185,
+                        8,
+                        0,
+                        0,
+                        185,
+                        5,
+                        0,
+                        2,
+                        136,
+                        0,
+                        0,
+                        0,
+                        63,
+                        0,
+                        1,
+                        185,
+                        4,
+                        0,
+                        3,
+                        136,
+                        205,
+                        204,
+                        204,
+                        62,
+                        0,
+                        185,
+                        2,
+                        0,
+                        134,
+                        255,
+                        255,
+                        0,
+                        0,
+                        185,
+                        2,
+                        0,
+                        133,
+                        0,
+                        1,
+                        185,
+                        2,
+                        0,
+                        50,
+                        185,
+                        2,
+                        1,
+                        0,
+                        185,
+                        4,
+                        255,
+                        0,
+                        1,
+                        0,
+                        185,
+                        5,
+                        1,
+                        0,
+                        0,
+                        128,
+                        245,
+                        185,
+                        3,
+                        0,
+                        2,
+                        127,
+                        185,
+                        6,
+                        1,
+                        128,
+                        250,
+                        129,
+                        244,
+                        1,
+                        128,
+                        250,
+                        129,
+                        244,
+                        1,
+                        0,
+                        255,
+                        1,
+                        0,
+                        190,
+                        190,
+                        190,
+                        190,
+                        1,
+                        185,
+                        5,
+                        189,
+                        0,
+                        189,
+                        0,
+                        190,
+                        16,
+                        16,
+                        0,
+                        3,
+                        255,
+                        255,
+                        1,
+                        190,
+                        0,
+                        0,
+                        1,
+                        190,
+                        190,
+                        190,
+                        190,
+                        190,
+                        190
+                    ]
+                }
+            ],
+            [
+                1,
+                {
+                    "alias": "",
+                    "id": 1,
+                    "ioInfo": [
+                        [
+                            [
+                                "",
+                                "frameEvent"
+                            ],
+                            {
+                                "blocking": false,
+                                "group": "",
+                                "id": 9,
+                                "name": "frameEvent",
+                                "queueSize": 8,
+                                "type": 0,
+                                "waitForMessage": false
+                            }
+                        ],
+                        [
+                            [
+                                "",
+                                "raw"
+                            ],
+                            {
+                                "blocking": false,
+                                "group": "",
+                                "id": 8,
+                                "name": "raw",
+                                "queueSize": 8,
+                                "type": 0,
+                                "waitForMessage": false
+                            }
+                        ],
+                        [
+                            [
+                                "",
+                                "out"
+                            ],
+                            {
+                                "blocking": false,
+                                "group": "",
+                                "id": 7,
+                                "name": "out",
+                                "queueSize": 8,
+                                "type": 0,
+                                "waitForMessage": false
+                            }
+                        ],
+                        [
+                            [
+                                "",
+                                "mockIsp"
+                            ],
+                            {
+                                "blocking": true,
+                                "group": "",
+                                "id": 6,
+                                "name": "mockIsp",
+                                "queueSize": 8,
+                                "type": 3,
+                                "waitForMessage": false
+                            }
+                        ],
+                        [
+                            [
+                                "",
+                                "inputControl"
+                            ],
+                            {
+                                "blocking": true,
+                                "group": "",
+                                "id": 5,
+                                "name": "inputControl",
+                                "queueSize": 3,
+                                "type": 3,
+                                "waitForMessage": false
+                            }
+                        ]
+                    ],
+                    "name": "MonoCamera",
+                    "parentId": -1,
+                    "properties": [
+                        185,
+                        10,
+                        185,
+                        32,
+                        0,
+                        3,
+                        0,
+                        136,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        185,
+                        3,
+                        0,
+                        0,
+                        0,
+                        185,
+                        5,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        185,
+                        5,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        185,
+                        3,
+                        0,
+                        0,
+                        0,
+                        185,
+                        3,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        186,
+                        0,
+                        255,
+                        189,
+                        5,
+                        114,
+                        105,
+                        103,
+                        104,
+                        116,
+                        255,
+                        2,
+                        136,
+                        0,
+                        0,
+                        240,
+                        65,
+                        0,
+                        3,
+                        3,
+                        190
+                    ]
+                }
+            ],
+            [
+                0,
+                {
+                    "alias": "",
+                    "id": 0,
+                    "ioInfo": [
+                        [
+                            [
+                                "",
+                                "frameEvent"
+                            ],
+                            {
+                                "blocking": false,
+                                "group": "",
+                                "id": 4,
+                                "name": "frameEvent",
+                                "queueSize": 8,
+                                "type": 0,
+                                "waitForMessage": false
+                            }
+                        ],
+                        [
+                            [
+                                "",
+                                "raw"
+                            ],
+                            {
+                                "blocking": false,
+                                "group": "",
+                                "id": 3,
+                                "name": "raw",
+                                "queueSize": 8,
+                                "type": 0,
+                                "waitForMessage": false
+                            }
+                        ],
+                        [
+                            [
+                                "",
+                                "out"
+                            ],
+                            {
+                                "blocking": false,
+                                "group": "",
+                                "id": 2,
+                                "name": "out",
+                                "queueSize": 8,
+                                "type": 0,
+                                "waitForMessage": false
+                            }
+                        ],
+                        [
+                            [
+                                "",
+                                "mockIsp"
+                            ],
+                            {
+                                "blocking": true,
+                                "group": "",
+                                "id": 1,
+                                "name": "mockIsp",
+                                "queueSize": 8,
+                                "type": 3,
+                                "waitForMessage": false
+                            }
+                        ],
+                        [
+                            [
+                                "",
+                                "inputControl"
+                            ],
+                            {
+                                "blocking": true,
+                                "group": "",
+                                "id": 0,
+                                "name": "inputControl",
+                                "queueSize": 3,
+                                "type": 3,
+                                "waitForMessage": false
+                            }
+                        ]
+                    ],
+                    "name": "MonoCamera",
+                    "parentId": -1,
+                    "properties": [
+                        185,
+                        10,
+                        185,
+                        32,
+                        0,
+                        3,
+                        0,
+                        136,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        185,
+                        3,
+                        0,
+                        0,
+                        0,
+                        185,
+                        5,
+                        1,
+                        0,
+                        0,
+                        0,
+                        0,
+                        185,
+                        5,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        16,
+                        39,
+                        0,
+                        185,
+                        3,
+                        0,
+                        128,
+                        232,
+                        3,
+                        185,
+                        3,
+                        0,
+                        0,
+                        0,
+                        0,
+                        10,
+                        0,
+                        8,
+                        0,
+                        1,
+                        0,
+                        0,
+                        129,
+                        0,
+                        128,
+                        20,
+                        0,
+                        186,
+                        0,
+                        255,
+                        189,
+                        4,
+                        108,
+                        101,
+                        102,
+                        116,
+                        255,
+                        2,
+                        136,
+                        0,
+                        0,
+                        240,
+                        65,
+                        0,
+                        3,
+                        3,
+                        190
+                    ]
+                }
+            ]
+        ]
+    }
+]
