@@ -17,8 +17,6 @@
 void bind_imagemanipconfigv2(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
-    // py::class_<RawImageManipConfig, RawBuffer, std::shared_ptr<RawImageManipConfig>> rawImageManipConfig(m, "RawImageManipConfig", DOC(dai,
-    // RawImageManipConfig));
     py::class_<ImageManipConfigV2, Py<ImageManipConfigV2>, Buffer, std::shared_ptr<ImageManipConfigV2>> imageManipConfig(
         m, "ImageManipConfigV2", DOC(dai, ImageManipConfigV2));
 
@@ -41,6 +39,7 @@ void bind_imagemanipconfigv2(pybind11::module& m, void* pCallstack) {
         .def(py::init<>())
         // New API Setters
         .def("crop", &ImageManipConfigV2::crop, py::arg("x"), py::arg("y"), py::arg("w"), py::arg("h"), DOC(dai, ImageManipConfigV2, crop))
+        .def("cropRotatedRect", &ImageManipConfigV2::cropRotatedRect, py::arg("rect"), py::arg("normalizedCoords"), DOC(dai, ImageManipConfigV2, cropRotatedRect))
         .def("resize", &ImageManipConfigV2::resize, py::arg("w"), py::arg("h"), DOC(dai, ImageManipConfigV2, resize))
         .def("scale", &ImageManipConfigV2::scale, py::arg("scaleX"), py::arg("scaleY"), DOC(dai, ImageManipConfigV2, scale))
         .def("flipHorizontal", &ImageManipConfigV2::flipHorizontal, DOC(dai, ImageManipConfigV2, flipHorizontal))
@@ -54,6 +53,9 @@ void bind_imagemanipconfigv2(pybind11::module& m, void* pCallstack) {
              py::arg("angle"),
              py::arg("center"),
              DOC(dai, ImageManipConfigV2, rotateDeg))
+        .def("transformAffine", &ImageManipConfigV2::transformAffine, py::arg("mat"), DOC(dai, ImageManipConfigV2, transformAffine))
+        .def("transformPerspective", &ImageManipConfigV2::transformPerspective, py::arg("mat"), DOC(dai, ImageManipConfigV2, transformPerspective))
+        .def("transformFourPoints", &ImageManipConfigV2::transformFourPoints, py::arg("src"), py::arg("dst"), py::arg("normalizedCoords"), DOC(dai, ImageManipConfigV2, transformFourPoints))
         .def(
             "setOutputSize",
             [](ImageManipConfigV2& self, float w, float h, std::string mode) -> ImageManipConfigV2& {
@@ -71,6 +73,8 @@ void bind_imagemanipconfigv2(pybind11::module& m, void* pCallstack) {
             py::arg("h"),
             py::arg("mode"),
             DOC(dai, ImageManipConfigV2, setOutputSize))
+        .def("setReusePreviousImage", &ImageManipConfigV2::setReusePreviousImage, py::arg("reuse"), DOC(dai, ImageManipConfigV2, setReusePreviousImage))
+        .def("setSkipCurrentImage", &ImageManipConfigV2::setSkipCurrentImage, py::arg("skip"), DOC(dai, ImageManipConfigV2, setSkipCurrentImage))
         .def("setFrameType", &ImageManipConfigV2::setFrameType, py::arg("type"), DOC(dai, ImageManipConfigV2, setFrameType))
         .def("setColormap",
              static_cast<ImageManipConfigV2& (ImageManipConfigV2::*)(Colormap)>(&ImageManipConfigV2::setColormap),

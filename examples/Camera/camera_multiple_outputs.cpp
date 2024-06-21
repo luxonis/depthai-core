@@ -17,7 +17,7 @@ int main(int argc, char** argv) {
         sizes.emplace_back(std::stoul(argv[index]), std::stoul(argv[index + 1]), std::stoul(argv[index + 2]), std::stol(argv[index + 3]));
     }
 
-    dai::Pipeline pipeline();
+    dai::Pipeline pipeline;
 
     if(sizes.empty()) {
         throw std::runtime_error("internal error to few sizes");
