@@ -19,6 +19,7 @@ void bind_imagemanipconfigv2(pybind11::module& m, void* pCallstack) {
 
     py::class_<ImageManipConfigV2, Py<ImageManipConfigV2>, Buffer, std::shared_ptr<ImageManipConfigV2>> imageManipConfig(
         m, "ImageManipConfigV2", DOC(dai, ImageManipConfigV2));
+    py::enum_<ImageManipConfigV2::ResizeMode> resizeMode(imageManipConfig, "ResizeMode");
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -33,6 +34,12 @@ void bind_imagemanipconfigv2(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
 
+    resizeMode
+        .value("NONE", ImageManipConfigV2::ResizeMode::NONE)
+        .value("LETTERBOX", ImageManipConfigV2::ResizeMode::LETTERBOX)
+        .value("CENTER_CROP", ImageManipConfigV2::ResizeMode::CENTER_CROP)
+        .value("STRETCH", ImageManipConfigV2::ResizeMode::STRETCH);
+
     // Message
 
     imageManipConfig
@@ -41,7 +48,15 @@ void bind_imagemanipconfigv2(pybind11::module& m, void* pCallstack) {
         .def("crop", &ImageManipConfigV2::crop, py::arg("x"), py::arg("y"), py::arg("w"), py::arg("h"), DOC(dai, ImageManipConfigV2, crop))
         .def("cropRotatedRect", &ImageManipConfigV2::cropRotatedRect, py::arg("rect"), py::arg("normalizedCoords"), DOC(dai, ImageManipConfigV2, cropRotatedRect))
         .def("resize", &ImageManipConfigV2::resize, py::arg("w"), py::arg("h"), DOC(dai, ImageManipConfigV2, resize))
-        .def("scale", &ImageManipConfigV2::scale, py::arg("scaleX"), py::arg("scaleY"), DOC(dai, ImageManipConfigV2, scale))
+        .def("scale",
+             [](ImageManipConfigV2& self, float scale) { return self.scale(scale); },
+             py::arg("scale"),
+             DOC(dai, ImageManipConfigV2, scale))
+        .def("scale",
+             [](ImageManipConfigV2& self, float scaleX, float scaleY) { return self.scale(scaleX, scaleY); },
+             py::arg("scaleX"),
+             py::arg("scaleY"),
+             DOC(dai, ImageManipConfigV2, scale))
         .def("flipHorizontal", &ImageManipConfigV2::flipHorizontal, DOC(dai, ImageManipConfigV2, flipHorizontal))
         .def("flipVertical", &ImageManipConfigV2::flipVertical, DOC(dai, ImageManipConfigV2, flipVertical))
         .def("rotateDeg",
@@ -58,17 +73,7 @@ void bind_imagemanipconfigv2(pybind11::module& m, void* pCallstack) {
         .def("transformFourPoints", &ImageManipConfigV2::transformFourPoints, py::arg("src"), py::arg("dst"), py::arg("normalizedCoords"), DOC(dai, ImageManipConfigV2, transformFourPoints))
         .def(
             "setOutputSize",
-            [](ImageManipConfigV2& self, float w, float h, std::string mode) -> ImageManipConfigV2& {
-                auto m = ImageManipConfigV2::ResizeMode::NONE;
-                if(mode == "LETTERBOX")
-                    m = ImageManipConfigV2::ResizeMode::LETTERBOX;
-                else if(mode == "CENTER_CROP")
-                    m = ImageManipConfigV2::ResizeMode::CENTER_CROP;
-                else if(mode == "STRETCH")
-                    m = ImageManipConfigV2::ResizeMode::STRETCH;
-                self.setOutputSize(w, h, m);
-                return self;
-            },
+            &ImageManipConfigV2::setOutputSize,
             py::arg("w"),
             py::arg("h"),
             py::arg("mode"),
