@@ -271,7 +271,7 @@ hunter_private_data(
 # # ColorCamera
 # dai_add_example(rgb_camera_control ColorCamera/rgb_camera_control.cpp ON OFF)
 # dai_add_example(rgb_preview ColorCamera/rgb_preview.cpp ON OFF)
-dai_add_example(rgb_video ColorCamera/rgb_video.cpp ON OFF)
+
 # dai_add_example(rgb_isp_scale ColorCamera/rgb_isp_scale.cpp ON OFF)
 # dai_add_example(mp4v2_writer_h264 ColorCamera/mp4v2_writer_h264.cpp ON OFF)
 # dai_add_example(mp4v2_writer_mjpeg ColorCamera/mp4v2_writer_mjpeg.cpp ON OFF)
@@ -299,7 +299,7 @@ dai_add_example(rgb_video ColorCamera/rgb_video.cpp ON OFF)
 # dai_add_example(image_manip_tiling ImageManip/image_manip_tiling.cpp ON OFF)
 # dai_add_example(rgb_rotate_warp ImageManip/rgb_rotate_warp.cpp ON OFF)
 # dai_add_example(image_manip_warp_mesh ImageManip/image_manip_warp_mesh.cpp ON OFF)
-dai_add_example(image_manip_many_instances ImageManip/image_manip_many_instances.cpp ON OFF)
+# dai_add_example(image_manip_many_instances ImageManip/image_manip_many_instances.cpp ON OFF)
 #
 # # Warp
 # dai_add_example(warp_mesh Warp/warp_mesh.cpp ON OFF)
@@ -362,7 +362,7 @@ dai_add_example(image_manip_many_instances ImageManip/image_manip_many_instances
 # # Script
 # dai_add_example(script_camera_control Script/script_camera_control.cpp ON OFF)
 # dai_add_example(script_forward_frames Script/script_forward_frames.cpp ON OFF)
-dai_add_example(script_get_ip Script/script_get_ip.cpp OFF OFF)
+# dai_add_example(script_get_ip Script/script_get_ip.cpp OFF OFF)
 # dai_add_example(script_http_client Script/script_http_client.cpp OFF OFF)
 # dai_add_example(script_http_server Script/script_http_server.cpp OFF OFF)
 # dai_add_example(script_mjpeg_server Script/script_mjpeg_server.cpp OFF OFF)
@@ -418,10 +418,10 @@ dai_add_example(script_get_ip Script/script_get_ip.cpp OFF OFF)
 # target_compile_definitions(detection_parser PRIVATE BLOB_PATH="${mobilenet_blob}")
 #
 # # Host pipeline
-dai_add_example(host_pipeline host_side/host_pipeline.cpp ON OFF)
-dai_add_example(host_pipeline_opencv host_side/host_pipeline_opencv.cpp ON OFF)
-dai_add_example(host_pipeline_synced_node host_side/host_pipeline_synced_node.cpp ON OFF)
-dai_add_example(host_only_camera host_side/host_only_camera.cpp OFF OFF)
+# dai_add_example(host_pipeline host_side/host_pipeline.cpp ON OFF)
+# dai_add_example(host_pipeline_opencv host_side/host_pipeline_opencv.cpp ON OFF)
+# dai_add_example(host_pipeline_synced_node host_side/host_pipeline_synced_node.cpp ON OFF)
+# dai_add_example(host_only_camera host_side/host_only_camera.cpp OFF OFF)
 #
 # # TMP
 # dai_add_example(tmp_preview tmp/tmp_preview.cpp OFF OFF)
@@ -456,21 +456,22 @@ dai_add_example(host_only_camera host_side/host_only_camera.cpp OFF OFF)
 # dai_add_example(imu_video_synced Sync/imu_video_synced.cpp ON OFF)
 
 # Record
-dai_add_example(record_encoded_h264 Record/record_encoded_h264.cpp ON OFF)
-dai_add_example(record_encoded_mjpeg Record/record_encoded_mjpeg.cpp ON OFF)
-dai_add_example(record_raw_color Record/record_raw_color.cpp ON OFF)
-dai_add_example(record_raw_gray Record/record_raw_gray.cpp ON OFF)
-dai_add_example(record_imu Record/record_imu.cpp ON OFF)
-
-dai_add_example(rgb_video_v3 v3/ColorCamera/rgb_video.cpp ON OFF)
-dai_add_example(host_node_v3 v3/HostNodes/host_node.cpp ON OFF)
-dai_add_example(threaded_host_node_v3 v3/HostNodes/threaded_host_node.cpp ON OFF)
+dai_add_example(record_encoded_h264 RVC2/Record/record_encoded_h264.cpp ON OFF)
+dai_add_example(record_encoded_mjpeg RVC2/Record/record_encoded_mjpeg.cpp ON OFF)
+dai_add_example(record_raw_color RVC2/Record/record_raw_color.cpp ON OFF)
+dai_add_example(record_raw_gray RVC2/Record/record_raw_gray.cpp ON OFF)
+dai_add_example(record_imu RVC2/Record/record_imu.cpp ON OFF)
 
 # Replay
-dai_add_example(replay_video_meta Replay/replay_video_meta.cpp ON OFF)
+dai_add_example(replay_video_meta RVC2/Replay/replay_video_meta.cpp ON OFF)
+dai_add_example(camera_multiple_outputs RVC4/Camera/camera_multiple_outputs.cpp ON OFF)
 
-dai_add_example(camera_multiple_outputs Camera/camera_multiple_outputs.cpp ON OFF)
+# Host nodes
+dai_add_example(rgb_video RVC2/ColorCamera/rgb_video.cpp ON OFF)
+dai_add_example(host_node HostNodes/host_node.cpp ON OFF)
+dai_add_example(threaded_host_node HostNodes/threaded_host_node.cpp ON OFF)
 
-if(DEPTHAI_HAVE_PCL_SUPPORT)
-    dai_add_example(visualize_pointcloud PointCloud/visualize_pointcloud.cpp ON ON)
-endif()
+
+# if(DEPTHAI_HAVE_PCL_SUPPORT)
+#     dai_add_example(visualize_pointcloud PointCloud/visualize_pointcloud.cpp ON ON)
+# endif()
