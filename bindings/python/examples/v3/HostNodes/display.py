@@ -18,10 +18,11 @@ class HostDisplay(dai.node.HostNode):
             print("Detected 'q' - stopping the pipeline...")
             self.stopPipeline()
 
-with dai.Pipeline() as p:
+# with dai.Pipeline() as p:
+p = dai.Pipeline()
+with p:
     camera = p.create(dai.node.ColorCamera)
     camera.setBoardSocket(dai.CameraBoardSocket.CAM_A)
-
     hostDisplay = p.create(HostDisplay).build(camera.video)
 
     p.run() # Will block until the pipeline is stopped by someone else (in this case it's the display node)

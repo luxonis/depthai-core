@@ -18,7 +18,7 @@ camRgb.setInterleaved(False)
 camRgb.setColorOrder(dai.ColorCameraProperties.ColorOrder.RGB)
 
 # Linking
-camRgb.preview.link(xoutRgb.input)
+qRgb = camRgb.preview.createOutputQueue(name="rgb", maxSize=4, blocking=False)
 
 # Connect to device and start pipeline
 with dai.Device(pipeline) as device:
@@ -32,8 +32,8 @@ with dai.Device(pipeline) as device:
     # Device name
     print('Device name:', device.getDeviceName(), ' Product name:', device.getProductName())
 
-    # Output queue will be used to get the rgb frames from the output defined above
-    qRgb = device.getOutputQueue(name="rgb", maxSize=4, blocking=False)
+    # # Output queue will be used to get the rgb frames from the output defined above
+    # qRgb = device.getOutputQueue(name="rgb", maxSize=4, blocking=False)
 
     while True:
         inRgb = qRgb.get()  # blocking call, will wait until a new data has arrived

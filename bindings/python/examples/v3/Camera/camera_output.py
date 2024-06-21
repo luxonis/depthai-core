@@ -12,7 +12,7 @@ with dai.Pipeline() as pipeline:
     cam.setBoardSocket(dai.CameraBoardSocket.CAM_C)
 
     cap = dai.ImgFrameCapability()
-    cap.size.fixed((640, 480))
+    cap.size.fixed((1920, 1080))
     # cap.type = dai.ImgFrame.Type.BGR888p
     videoQueue = cam.requestOutput(cap, True).createOutputQueue()
     # videoQueue2 = cam.requestOutput((300,300), type=dai.ImgFrame.Type.BGR888i, resizeMode=dai.ImgResizeMode.CROP).createOutputQueue()

@@ -8,7 +8,7 @@
     #error This example needs OpenCV support, which is not available on your system
 #endif
 
-constexpr auto RECORDING_PATH = "/home/work/workspaces/lib/depthai-python/depthai-core/recording_imu";
+constexpr auto RECORDING_PATH = "recording_imu";
 
 int main() {
     {
