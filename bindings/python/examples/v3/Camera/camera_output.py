@@ -20,7 +20,8 @@ with dai.Pipeline() as pipeline:
     # Connect to device and start pipeline
     pipeline.start()
     while pipeline.isRunning():
-        videoIn: dai.ImgFrame = videoQueue.get()
+        videoIn = videoQueue.get()
+        assert isinstance(videoIn, dai.ImgFrame)
         # videoIn2: dai.ImgFrame = videoQueue2.get()
         # Get BGR frame from NV12 encoded video frame to show with opencv
         # Visualizing the frame on slower hosts might have overhead
