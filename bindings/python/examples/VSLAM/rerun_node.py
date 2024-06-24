@@ -13,7 +13,7 @@ class RerunNode(dai.node.ThreadedHostNode):
     def run(self):
         rr.init("", spawn=True)
         rr.log("world", rr.ViewCoordinates.FLU)
-        # rr.log("world/ground", rr.Boxes3D.half_sizes([[3.0, 3.0, 0.00001]])) -doesn't work for some reason 
+        rr.log("world/ground", rr.Boxes3D(half_sizes=[3.0, 3.0, 0.00001])) 
         while self.isRunning():
             transData = self.inputTrans.get()
             imgFrame = self.inputImg.get()
