@@ -53,6 +53,8 @@ with dai.Pipeline() as p:
     slam.transform.link(rerunViewer.inputTrans)
     slam.passthroughRect.link(rerunViewer.inputImg)
     slam.occupancyGridMap.link(rerunViewer.inputGrid)
+    slam.obstaclePCL.link(rerunViewer.inputObstaclePCL)
+    slam.groundPCL.link(rerunViewer.inputGroundPCL)
     p.start()
     while p.isRunning():
         time.sleep(1)

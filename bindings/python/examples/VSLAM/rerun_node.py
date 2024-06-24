@@ -32,15 +32,15 @@ class RerunNode(dai.node.ThreadedHostNode):
                 rr.log("world/camera/image/rgb", rr.Image(imgFrame.getCvFrame()))
                 if pclObstData is not None:
                     points = []
-                    pclData = pclObstData.getPclData().points
+                    pclData = pclObstData.getPoints()
                     for point in pclData:
-                        points.append(rr.Position3D(point.x, point.y, point.z))
-                    rr.log("world/obstacle_pcl", rr.Points3D(points).with_radii([0.01]))
+                        points.append(rr.datatypes.Vec3D([point[0], point[1], point[2]]))
+                    rr.log("world/obstacle_pcl", rr.Points3D(points, radii=[0.01]))
                 if pclGrndData is not None:
                     points = []
-                    pclData = pclGrndData.getPclData().points
+                    pclData = pclGrndData.getPoints()
                     for point in pclData:
-                        points.append(rr.Position3D(point.x, point.y, point.z))
-                    rr.log("world/ground_pcl", rr.Points3D(points).with_colors(rr.Color(0, 255, 0)).with_radii([0.01]))
+                        points.append(rr.datatypes.Vec3D([point[0], point[1], point[2]]))
+                    rr.log("world/ground_pcl", rr.Points3D(points, colors=rr.components.Color([0,255,0]), radii=[0.01]))
                 if mapData is not None:
                     rr.log("map", rr.Image(mapData.getCvFrame()))
