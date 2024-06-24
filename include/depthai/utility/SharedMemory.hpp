@@ -20,9 +20,9 @@ namespace dai {
 
 // memory as interface
 class SharedMemory : public Memory {
-   private:
-    long fd;
-    void *mapping;
+   protected:
+    long fd = -1;
+    void* mapping;
     void mapFd() {
 	mapping = mmap(NULL, getSize(), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 	if (mapping == NULL) {
