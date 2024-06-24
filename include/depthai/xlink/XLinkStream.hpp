@@ -96,6 +96,7 @@ class XLinkStream {
     void read(std::vector<std::uint8_t>& data);
     void read(std::vector<std::uint8_t>& data, long& fd);
     void read(std::vector<std::uint8_t>& data, XLinkTimespec& timestampReceived);
+    void read(std::vector<std::uint8_t>& data, long& fd, XLinkTimespec& timestampReceived);
     // split write helper
     void writeSplit(const void* data, std::size_t size, std::size_t split);
     void writeSplit(const std::vector<uint8_t>& data, std::size_t split);

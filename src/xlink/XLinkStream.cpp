@@ -6,6 +6,7 @@
 
 // project
 #include "depthai/xlink/XLinkConnection.hpp"
+#include "depthai/utility/SharedMemory.hpp"
 
 namespace dai {
 
@@ -104,15 +105,28 @@ void XLinkStream::write(long fd) {
 
 
 void XLinkStream::read(std::vector<std::uint8_t>& data) {
-    StreamPacketDesc packet;
-    const auto status = XLinkReadMoveData(streamId, &packet);
-    if(status != X_LINK_SUCCESS) {
-        throw XLinkReadError(status, streamName);
+    XLinkTimespec timestampReceived;
+    read(data, timestampReceived);
+}
+
+void XLinkStream::read(std::vector<std::uint8_t>& data, XLinkTimespec& timestampReceived) {
+    long fd;
+    read(data, fd, timestampReceived);
+
+    if(fd >= 0) {
+	SharedMemory mem = SharedMemory(fd);
+	uint8_t *memoryData = (uint8_t*)mem.getData().data();
+	std::size_t memoryLength = mem.getData().size();
+	data.insert(data.end(), &memoryData[0], &memoryData[memoryLength - 1]);
     }
-    data = std::vector<std::uint8_t>(packet.data, packet.data + packet.length);
 }
 
 void XLinkStream::read(std::vector<std::uint8_t>& data, long& fd) {
+    XLinkTimespec timestampReceived;
+    read(data, fd, timestampReceived);
+}
+
+void XLinkStream::read(std::vector<std::uint8_t>& data, long& fd, XLinkTimespec& timestampReceived) {
     StreamPacketDesc packet;
     const auto status = XLinkReadMoveData(streamId, &packet);
     if(status != X_LINK_SUCCESS) {
@@ -120,16 +134,6 @@ void XLinkStream::read(std::vector<std::uint8_t>& data, long& fd) {
     }
     data = std::vector<std::uint8_t>(packet.data, packet.data + packet.length);
     fd = packet.fd;
-}
-
-
-void XLinkStream::read(std::vector<std::uint8_t>& data, XLinkTimespec& timestampReceived) {
-    StreamPacketDesc packet;
-    const auto status = XLinkReadMoveData(streamId, &packet);
-    if(status != X_LINK_SUCCESS) {
-        throw XLinkReadError(status, streamName);
-    }
-    data = std::vector<std::uint8_t>(packet.data, packet.data + packet.length);
     timestampReceived = packet.tReceived;
 }
 
