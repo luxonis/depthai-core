@@ -24,7 +24,7 @@ RUN yum install -y lz4-devel \
     openmpi \
     openmpi-devel \
     libatomic \
-    devtoolset-10-libatomic-devel.x86_64
+    devtoolset-10-libatomic-devel.aarch64
 
 RUN git clone --branch 1.9.2 https://github.com/flann-lib/flann.git \
     && cd flann \
