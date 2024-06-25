@@ -275,6 +275,7 @@ jobs:
           python -m pip install --upgrade pip
           brew install libusb
           brew install opencv
+          brew install pcl
           python -m pip install delocate
       - name: Building wheels
         run: cd bindings/python && python -m pip wheel . -w ./wheelhouse/ --verbose
