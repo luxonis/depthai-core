@@ -9,7 +9,7 @@
 #include "rerun.hpp"
 
 rerun::Collection<rerun::TensorDimension> tensorShape(const cv::Mat& img) {
-    return {img.rows, img.cols, img.channels()};
+    return {size_t(img.rows), size_t(img.cols), size_t(img.channels())};
 };
 class RerunNode : public dai::NodeCRTP<dai::node::ThreadedHostNode, RerunNode> {
    public:

@@ -37,7 +37,7 @@ std::shared_ptr<BasaltVIO> BasaltVIO::build() {
     basalt::PoseState<double>::SE3 opticalTransform180(q180, Eigen::Vector3d(0, 0, 0));
     // to output pose in FLU world coordinates
     localTransform = std::make_shared<basalt::PoseState<double>::SE3>(initTrans * opticalTransform180.inverse());
-
+    setDefaultVIOConfig();
     return std::static_pointer_cast<BasaltVIO>(shared_from_this());
 }
 
@@ -200,8 +200,6 @@ void BasaltVIO::initialize(std::vector<std::shared_ptr<ImgFrame>> frames) {
     }
     if(!configPath.empty()) {
         vioConfig.load(configPath);
-    } else {
-        setDefaultVIOConfig();
     }
 
     optFlowPtr = basalt::OpticalFlowFactory::getOpticalFlow(vioConfig, *calib);
