@@ -9,6 +9,12 @@ Buffer::Buffer(size_t size) : Buffer() {
     data = mem;
 }
 
+Buffer::Buffer(long fd) : Buffer() {
+    auto mem = std::make_shared<SharedMemory>(fd);
+    data = mem;
+}
+
+
 span<uint8_t> Buffer::getData() {
     return data->getData();
 }
@@ -25,6 +31,10 @@ void Buffer::setData(const std::vector<std::uint8_t>& d) {
         // allocate new holder
         data = std::make_shared<VectorMemory>(std::move(d));
     }
+}
+
+void Buffer::setData(const long fd) {
+    data = std::make_shared<SharedMemory>(fd);
 }
 
 void Buffer::setData(std::vector<std::uint8_t>&& d) {
