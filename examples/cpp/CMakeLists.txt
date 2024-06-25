@@ -472,6 +472,33 @@ dai_add_example(host_node HostNodes/host_node.cpp ON OFF)
 dai_add_example(threaded_host_node HostNodes/threaded_host_node.cpp ON OFF)
 
 
+if(DEPTHAI_RTABMAP_SUPPORT)
+    include(FetchContent)
+    FetchContent_Declare(rerun_sdk URL  https://github.com/rerun-io/rerun/releases/download/0.15.0/rerun_cpp_sdk.zip)
+    FetchContent_MakeAvailable(rerun_sdk)
+    dai_add_example(rtabmap_vio HostNodes/VSLAM/rtabmap_vio.cpp OFF OFF)
+    target_link_libraries(rtabmap_vio PRIVATE depthai::rtabmap rerun_sdk)
+
+    dai_add_example(rtabmap_vio_slam HostNodes/VSLAM/rtabmap_vio_slam.cpp OFF ON)
+    target_link_libraries(rtabmap_vio_slam PRIVATE depthai::rtabmap rerun_sdk)
+
+    if(DEPTHAI_BASALT_SUPPORT)
+        dai_add_example(basalt_vio_rtabmap_slam HostNodes/VSLAM/basalt_vio_rtabmap_slam.cpp OFF ON)
+        target_link_libraries(basalt_vio_rtabmap_slam PRIVATE depthai::basalt depthai::rtabmap rerun_sdk)
+    endif()
+
+endif()
+
+if(DEPTHAI_BASALT_SUPPORT)
+    include(FetchContent)
+    FetchContent_Declare(rerun_sdk URL  https://github.com/rerun-io/rerun/releases/download/0.15.0/rerun_cpp_sdk.zip)
+    FetchContent_MakeAvailable(rerun_sdk)
+
+    dai_add_example(basalt_vio HostNodes/VSLAM/basalt_vio.cpp OFF OFF)
+    target_link_libraries(basalt_vio PRIVATE depthai::basalt rerun_sdk)
+endif()
+
+
 # if(DEPTHAI_HAVE_PCL_SUPPORT)
 #     dai_add_example(visualize_pointcloud PointCloud/visualize_pointcloud.cpp ON ON)
 # endif()
