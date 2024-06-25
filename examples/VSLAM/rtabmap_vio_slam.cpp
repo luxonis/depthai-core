@@ -20,7 +20,7 @@ int main() {
     auto featureTracker = pipeline.create<dai::node::FeatureTracker>()->build();
     auto odom = pipeline.create<dai::node::RTABMapVIO>()->build();
     auto slam = pipeline.create<dai::node::RTABMapSLAM>()->build();
-    auto rerun = pipeline.create<RerunStreamer>();
+    auto rerun = pipeline.create<RerunNode>();
     auto params = rtabmap::ParametersMap();
     params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomResetCountdown(), "30"));
 

@@ -33,7 +33,7 @@ int main() {
     params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kGrid3D(), "true"));
     params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRtabmapSaveWMState(), "true"));
     slam->setParams(params);
-    auto rerun = pipeline.create<RerunStreamer>();
+    auto rerun = pipeline.create<RerunNode>();
 
     imu->enableIMUSensor({dai::IMUSensor::ACCELEROMETER_RAW, dai::IMUSensor::GYROSCOPE_RAW}, 200);
     odom->setImuUpdateRate(200);

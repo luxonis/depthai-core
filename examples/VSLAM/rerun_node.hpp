@@ -11,9 +11,9 @@
 rerun::Collection<rerun::TensorDimension> tensorShape(const cv::Mat& img) {
     return {img.rows, img.cols, img.channels()};
 };
-class RerunStreamer : public dai::NodeCRTP<dai::node::ThreadedHostNode, RerunStreamer> {
+class RerunNode : public dai::NodeCRTP<dai::node::ThreadedHostNode, RerunNode> {
    public:
-    constexpr static const char* NAME = "RerunStreamer";
+    constexpr static const char* NAME = "RerunNode";
 
    public:
     void build() {}
@@ -53,7 +53,7 @@ class RerunStreamer : public dai::NodeCRTP<dai::node::ThreadedHostNode, RerunStr
 #ifdef DEPTHAI_HAVE_PCL_SUPPORT
                 if(pclObstData != nullptr) {
                     std::vector<rerun::Position3D> points;
-                    auto pclData = pclObstData->getPclData()->points;
+                    auto pclData = pclObstData->getPoints();
                     for(auto& point : pclData) {
                         points.push_back(rerun::Position3D(point.x, point.y, point.z));
                     }
@@ -61,7 +61,7 @@ class RerunStreamer : public dai::NodeCRTP<dai::node::ThreadedHostNode, RerunStr
                 }
                 if(pclGrndData != nullptr) {
                     std::vector<rerun::Position3D> points;
-                    auto pclData = pclGrndData->getPclData()->points;
+                    auto pclData = pclGrndData->getPoints();
                     for(auto& point : pclData) {
                         points.push_back(rerun::Position3D(point.x, point.y, point.z));
                     }

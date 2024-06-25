@@ -16,7 +16,7 @@ int main() {
     auto imu = pipeline.create<dai::node::IMU>()->build();
     auto odom = pipeline.create<dai::node::BasaltVIO>()->build();
 
-    auto rerun = pipeline.create<RerunStreamer>();
+    auto rerun = pipeline.create<RerunNode>();
     imu->enableIMUSensor({dai::IMUSensor::ACCELEROMETER_RAW, dai::IMUSensor::GYROSCOPE_RAW}, 200);
     imu->setBatchReportThreshold(1);
     imu->setMaxBatchReports(10);
