@@ -16,6 +16,12 @@ ImgFrame::ImgFrame(size_t size) : ImgFrame() {
     data = mem;
 }
 
+ImgFrame::ImgFrame(long fd) : ImgFrame() {
+    auto mem = std::make_shared<SharedMemory>(fd);
+    data = mem;
+    
+}
+
 std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> ImgFrame::getTimestamp(CameraExposureOffset offset) const {
     auto ts = getTimestamp();
     auto expTime = getExposureTime();
