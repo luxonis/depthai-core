@@ -159,8 +159,11 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack){
                  // Check if the class is directly from bindings (__module__ == "depthai.node"). If so, the node comes from bindings,
                  // so we create in the same manner as device nodes.
                  auto isFromBindings = class_.attr("__module__").cast<std::string>() == "depthai.node";
+                 // Create a copy from kwargs and add autoAddToPipeline to false
+                 py::dict kwargsCopy = kwargs;
+                 kwargsCopy["autoAddToPipeline"] = false;
                  if(isSubclass && !isFromBindings) {
-                     std::shared_ptr<Node> hostNode = py::cast<std::shared_ptr<node::ThreadedHostNode>>(class_(*args, **kwargs));
+                     std::shared_ptr<Node> hostNode = py::cast<std::shared_ptr<node::ThreadedHostNode>>(class_(*args, **kwargsCopy));
                      // Node already adds itself to the pipeline in the constructor
                      // To be sure - check if it is already added
                      auto allNodes = p.getAllNodes();
@@ -171,10 +174,10 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack){
                              break;
                          }
                      }
-                     if(!found) {
-                         throw std::runtime_error("Node was not added to the pipeline in the constructor");
+                     if(found) {
+                         throw std::invalid_argument("Node is already added to the pipeline");
                      }
-                     //  p.add(hostNode);
+                     p.add(hostNode);
                      return hostNode;
                  }
                  // Otherwise create the node with `pipeline.create()` method

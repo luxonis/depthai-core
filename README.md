@@ -4,19 +4,24 @@
 [![Docs](https://img.shields.io/badge/Docs-DepthAI_API-yellow)](https://docs.luxonis.com/projects/api)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
-Core C++ library
+Core depthai library for interfacing with Luxonis DepthAI hardware.
+
+> ⚠️ This is a `v3_develop` branch of library which is still in active development without a stable API yet.
+
 
 ## Documentation
-
 Documentation is available over at [Luxonis DepthAI API](https://docs.luxonis.com/projects/api/en/latest/)
 
 ## Disclaimer
-DepthAI library doesn't yet provide API stability guarantees. While we take care to properly deprecate old functions, some changes might still be breaking. We expect to provide API stability from version 3.0.0 onwards.
+DepthAI library doesn't yet provide API stability guarantees. While we take care to properly deprecate old functions, some changes might still be breaking.
+
+## Examples
+Examples for both C++ and Python are available in the `examples` folder. To get started with them see [README.md](./examples/README.md) for more information.
 
 ## Dependencies
 - CMake >= 3.14
-- C/C++14 compiler
-- [optional] OpenCV 4 (required if building examples)
+- C/C++17 compiler
+- [optional] OpenCV 4 (required if building examples and for record and replay)
 - [optional] PCL (required for point cloud example)
 
 To install OpenCV:
@@ -26,6 +31,9 @@ Linux: `sudo apt install libopencv-dev`
 To install PCL:
 MacOS: `brew install pcl`
 Linux: `sudo apt install libpcl-dev`
+
+## Python specific information
+For more specific information about Python bindings, see [Python README](./bindings/python/README.md).
 
 ## Building
 
@@ -75,23 +83,6 @@ export NDK=$ANDROID_HOME/ndk/23.1.7779620/ # Check version
 cmake -S. -Bbuild -DCMAKE_TOOLCHAIN_FILE=$NDK/build/cmake/android.toolchain.cmake -DANDROID_ABI=armeabi-v7a -DANDROID_PLATFORM=android-25
 cmake --build build
 ```
-
-
-## Running examples
-
-To build the examples configure with following option added
-```
-cmake -S. -Bbuild -D'DEPTHAI_BUILD_EXAMPLES=ON'
-cmake --build build
-```
-
-Then navigate to `build/examples` folder and run a preferred example
-```
-cd build/examples
-./MobileNet/rgb_mobilenet
-```
-
-> ℹ️ Multi-Config generators (like Visual Studio on Windows) will have the examples built in `build/examples/MobileNet/[Debug/Release/...]/rgb_mobilenet`
 
 ## Integration
 
@@ -196,6 +187,8 @@ The following environment variables can be set to alter default behavior of the 
 | DEPTHAI_CRASHDUMP | Directory in which to save the crash dump. |
 | DEPTHAI_CRASHDUMP_TIMEOUT | Specifies the duration in seconds to wait for device reboot when obtaining a crash dump. Crash dump retrieval disabled if 0. |
 | DEPTHAI_DISABLE_FEEDBACK | Disables crash dump and pipeline schema collection used to improve the library |
+
+
 ## Running tests
 
 To run the tests build the library with the following options

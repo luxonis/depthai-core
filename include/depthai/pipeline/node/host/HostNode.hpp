@@ -5,6 +5,7 @@
 #include <depthai/pipeline/datatype/MessageGroup.hpp>
 #include <depthai/pipeline/node/Sync.hpp>
 
+#include "depthai/pipeline/Node.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 
 namespace dai {
@@ -38,5 +39,8 @@ class HostNode : public ThreadedHostNode {
         syncOnHost = false;
     }
 };
+
+template <typename T>
+using CustomNode = NodeCRTP<HostNode, T>;
 }  // namespace node
 }  // namespace dai

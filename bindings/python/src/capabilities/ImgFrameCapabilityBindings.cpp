@@ -25,7 +25,7 @@ void ImgFrameCapabilityBindings::bind(pybind11::module& m, void* pCallstack) {
     imgFrameCapability.def(py::init<>())
         .def_readwrite("size", &ImgFrameCapability::size)
         .def_readwrite("fps", &ImgFrameCapability::fps)
-        .def_readwrite("encoding", &ImgFrameCapability::encoding)
+        .def_readwrite("type", &ImgFrameCapability::type)
         .def_readwrite("resizeMode", &ImgFrameCapability::resizeMode)
 
         ;

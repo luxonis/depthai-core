@@ -180,7 +180,8 @@ void Replay::run() {
 
         first = false;
     }
-    stop();  // isRunning() should return false after replay has stopped
+    logger->info("Replay finished - stopping the pipeline!");
+    stopPipeline();
 }
 
 Replay& Replay::setReplayFile(const std::string& replayFile) {
