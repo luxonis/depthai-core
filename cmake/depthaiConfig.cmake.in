@@ -4,6 +4,8 @@ set(DEPTHAI_SHARED_LIBS @BUILD_SHARED_LIBS@)
 # Get whether library was build with Backward or not
 set(DEPTHAI_ENABLE_BACKWARD @DEPTHAI_ENABLE_BACKWARD@)
 
+set(DEPTHAI_ENABLE_CURL @DEPTHAI_ENABLE_CURL@)
+
 # Specify that this is config mode (Called by find_package)
 set(CONFIG_MODE TRUE)
 

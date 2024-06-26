@@ -25,6 +25,12 @@ else()
     if(DEPTHAI_PCL_SUPPORT)
         hunter_add_package(jsoncpp)
     endif()
+
+    if(DEPTHAI_ENABLE_CURL)
+        hunter_add_package(CURL)
+        hunter_add_package(cpr)
+    endif()
+    hunter_add_package(ghc_filesystem)
 endif()
 
 # If library was build as static, find all dependencies
@@ -54,6 +60,12 @@ if(NOT CONFIG_MODE OR (CONFIG_MODE AND NOT DEPTHAI_SHARED_LIBS))
         unset(STACK_DETAILS_AUTO_DETECT)
     endif()
 
+    # Log collection dependencies
+    if(DEPTHAI_ENABLE_CURL)
+        find_package(CURL ${_QUIET} CONFIG REQUIRED)
+        find_package(cpr ${_QUIET} CONFIG REQUIRED)
+    endif()
+    find_package(ghc_filesystem ${_QUIET} CONFIG REQUIRED)
 endif()
 
 # Add threads (c++)
