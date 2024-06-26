@@ -1,10 +1,11 @@
 import sys
 import os
 import re
+from pathlib import Path
 
-project_root = os.path.dirname(__file__)
-version_depthai_core_path = project_root + "/" + "../../CMakeLists.txt"
-version_depthai_python_path = project_root + "/" + "CMakeLists.txt"
+project_root = Path(__file__).parent.parent.parent
+version_depthai_core_path = project_root  / "CMakeLists.txt"
+version_depthai_python_path = project_root / "bindings" / "python" / "CMakeLists.txt"
 
 cmake_lists_txt_version_pattern = r'project[\s]*\([^Vv]*version[\s]+((\"(?P<ver1>\S*)\"|(?P<ver2>\S*)\s))'
 

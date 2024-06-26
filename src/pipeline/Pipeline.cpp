@@ -862,6 +862,9 @@ void PipelineImpl::wait() {
 
 void PipelineImpl::stop() {
     std::lock_guard<std::mutex> lock(stateMtx);
+    if(!running) {
+        return;
+    }
     // Stops the pipeline execution
     for(const auto& node : getAllNodes()) {
         if(node->runOnHost()) {

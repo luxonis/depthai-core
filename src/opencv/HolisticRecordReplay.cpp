@@ -179,8 +179,9 @@ bool setupHolisticReplay(Pipeline& pipeline,
                 if (videoSize.has_value()) {
                     auto [width, height] = videoSize.value();
                     if(strcmp(node->getName(), "Camera") == 0) {
-                        auto cam = std::dynamic_pointer_cast<dai::node::Camera>(node);
-                        cam->setMockIspSize(width, height);
+                        // TODO(asahtik)
+                        /*auto cam = std::dynamic_pointer_cast<dai::node::Camera>(node);*/
+                        /*cam->setMockIspSize(width, height);*/
                     } else if (strcmp(node->getName(), "ColorCamera") == 0) {
                         auto cam = std::dynamic_pointer_cast<dai::node::ColorCamera>(node);
                         cam->setMockIspSize(width, height);

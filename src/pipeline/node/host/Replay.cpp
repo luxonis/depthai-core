@@ -154,8 +154,8 @@ void ReplayVideo::run() {
 
         first = false;
     }
-
-    stop();
+    logger->info("Replay finished - stopping the pipeline!");
+    stopPipeline();
 }
 
 void ReplayMessage::run() {
