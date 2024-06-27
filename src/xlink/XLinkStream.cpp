@@ -96,8 +96,8 @@ void XLinkStream::write(const void* data, std::size_t size) {
     write(span<const uint8_t>(reinterpret_cast<const uint8_t*>(data), size));
 }
 
-void XLinkStream::write(long fd) {
-    auto status = XLinkWriteFd(streamId, &fd); 
+void XLinkStream::write(long fd, std::size_t size) {
+    auto status = XLinkWriteFd(streamId, &fd, size); 
     if(status != X_LINK_SUCCESS) {
         throw XLinkWriteError(status, streamName);
     }
