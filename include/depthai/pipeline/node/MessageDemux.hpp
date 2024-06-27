@@ -22,7 +22,7 @@ class MessageDemux : public DeviceNodeCRTP<DeviceNode, MessageDemux, MessageDemu
     /**
      * A map of outputs, where keys are same as in the input MessageGroup
      */
-    OutputMap outputs{*this, "outputs", {.types = {{DatatypeEnum::Buffer, true}}}};
+    OutputMap outputs{*this, "outputs", {DEFAULT_NAME, DEFAULT_GROUP, {{{DatatypeEnum::Buffer, true}}}}};
 };
 
 }  // namespace node

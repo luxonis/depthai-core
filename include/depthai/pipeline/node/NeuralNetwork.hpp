@@ -55,7 +55,7 @@ class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNet
     /**
      * Passthroughs which correspond to specified input
      */
-    OutputMap passthroughs{*this, "passthroughs", {.name = "", .types = {{DatatypeEnum::Buffer, true}}}};
+    OutputMap passthroughs{*this, "passthroughs", {"", DEFAULT_GROUP, {{{DatatypeEnum::Buffer, true}}}}};
 
     // Specify local filesystem path to load the blob (which gets loaded at loadAssets)
     /**

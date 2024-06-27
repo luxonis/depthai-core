@@ -32,7 +32,7 @@ class Script : public DeviceNodeCRTP<DeviceNode, Script, ScriptProperties> {
     /**
      * Outputs from Script node. Can be accessed subscript operator (Eg: outputs['out1'])
      */
-    OutputMap outputs{*this, "outputs", {.name = "", .types = {{DatatypeEnum::Buffer, true}}}};
+    OutputMap outputs{*this, "outputs", {"", DEFAULT_GROUP, {{{DatatypeEnum::Buffer, true}}}}};
     /**
      * Specify local filesystem path to load the script
      * @param path Filesystem path to load the script
