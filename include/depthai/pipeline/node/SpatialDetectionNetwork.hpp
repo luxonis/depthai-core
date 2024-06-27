@@ -86,25 +86,25 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
     /**
      * Outputs ImgDetections message that carries parsed detection results.
      */
-    Output out{*this, {.name = "out", .types = {{DatatypeEnum::SpatialImgDetections, false}}}};
+    Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::SpatialImgDetections, false}}}}};
 
     /**
      * Outputs mapping of detected bounding boxes relative to depth map
      * Suitable for when displaying remapped bounding boxes on depth frame
      */
-    Output boundingBoxMapping{*this, {.name = "boundingBoxMapping", .types = {{DatatypeEnum::SpatialLocationCalculatorConfig, false}}}};
+    Output boundingBoxMapping{*this, {"boundingBoxMapping", DEFAULT_GROUP, {{{DatatypeEnum::SpatialLocationCalculatorConfig, false}}}}};
 
     /**
      * Passthrough message for depth frame on which the spatial location calculation was performed.
      * Suitable for when input queue is set to non-blocking behavior.
      */
-    Output passthroughDepth{*this, {.name = "passthroughDepth", .types = {{DatatypeEnum::ImgFrame, false}}}};
+    Output passthroughDepth{*this, {"passthroughDepth", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     /**
      * Output of SpatialLocationCalculator node, which is used internally by SpatialDetectionNetwork.
      * Suitable when extra information is required from SpatialLocationCalculator node, e.g. minimum, maximum distance.
      */
-    Output spatialLocationCalculatorOutput{*this, {.name = "spatialLocationCalculatorOutput", .types = {{DatatypeEnum::SpatialLocationCalculatorData, false}}}};
+    Output spatialLocationCalculatorOutput{*this, {"spatialLocationCalculatorOutput", DEFAULT_GROUP, {{{DatatypeEnum::SpatialLocationCalculatorData, false}}}}};
 
     void setNNArchive(const NNArchive& nnArchive);
 

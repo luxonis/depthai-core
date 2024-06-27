@@ -37,14 +37,14 @@ class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNet
     /**
      * Outputs NNData message that carries inference results
      */
-    Output out{*this, {.name = "out", .types = {{DatatypeEnum::NNData, false}}}};
+    Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::NNData, false}}}}};
 
     /**
      * Passthrough message on which the inference was performed.
      *
      * Suitable for when input queue is set to non-blocking behavior.
      */
-    Output passthrough{*this, {.name = "passthrough", .types = {{DatatypeEnum::Buffer, true}}}};
+    Output passthrough{*this, {"passthrough", DEFAULT_GROUP, {{{DatatypeEnum::Buffer, true}}}}};
 
     /**
      * Inputs mapped to network inputs. Useful for inferring from separate data sources

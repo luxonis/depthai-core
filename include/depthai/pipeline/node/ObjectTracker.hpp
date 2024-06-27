@@ -48,25 +48,25 @@ class ObjectTracker : public DeviceNodeCRTP<DeviceNode, ObjectTracker, ObjectTra
     /**
      * Outputs Tracklets message that carries object tracking results.
      */
-    Output out{*this, {.name = "out", .types = {{DatatypeEnum::Tracklets, false}}}};
+    Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::Tracklets, false}}}}};
 
     /**
      * Passthrough ImgFrame message on which tracking was performed.
      * Suitable for when input queue is set to non-blocking behavior.
      */
-    Output passthroughTrackerFrame{*this, {.name = "passthroughTrackerFrame", .types = {{DatatypeEnum::ImgFrame, false}}}};
+    Output passthroughTrackerFrame{*this, {"passthroughTrackerFrame", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     /**
      * Passthrough ImgFrame message on which object detection was performed.
      * Suitable for when input queue is set to non-blocking behavior.
      */
-    Output passthroughDetectionFrame{*this, {.name = "passthroughDetectionFrame", .types = {{DatatypeEnum::ImgFrame, false}}}};
+    Output passthroughDetectionFrame{*this, {"passthroughDetectionFrame", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     /**
      * Passthrough image detections message from neural network output.
      * Suitable for when input queue is set to non-blocking behavior.
      */
-    Output passthroughDetections{*this, {.name = "passthroughDetections", .types = {{DatatypeEnum::ImgDetections, true}}}};
+    Output passthroughDetections{*this, {"passthroughDetections", DEFAULT_GROUP, {{{DatatypeEnum::ImgDetections, true}}}}};
     /**
      * Specify tracker threshold.
      * @param threshold Above this threshold the detected objects will be tracked. Default 0, all image detections are tracked.

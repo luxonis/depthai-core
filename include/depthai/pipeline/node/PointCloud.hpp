@@ -50,13 +50,13 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
     /**
      * Outputs PointCloudData message
      */
-    Output outputPointCloud{*this, {.name = "outputPointCloud", .types = {{DatatypeEnum::PointCloudData, false}}}};
+    Output outputPointCloud{*this, {"outputPointCloud", DEFAULT_GROUP, {{{DatatypeEnum::PointCloudData, false}}}}};
 
     /**
      * Passthrough depth from which the point cloud was calculated.
      * Suitable for when input queue is set to non-blocking behavior.
      */
-    Output passthroughDepth{*this, {.name = "passthroughDepth", .types = {{DatatypeEnum::ImgFrame, false}}}};
+    Output passthroughDepth{*this, {"passthroughDepth", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
     /**
      * Specify number of frames in pool.
      * @param numFramesPool How many frames should the pool have

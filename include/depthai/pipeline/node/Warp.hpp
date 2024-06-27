@@ -45,7 +45,7 @@ class Warp : public DeviceNodeCRTP<DeviceNode, Warp, WarpProperties> {
     /**
      * Outputs ImgFrame message that carries warped image.
      */
-    Output out{*this, {.name = "out", .types = {{DatatypeEnum::ImgFrame, true}}}};
+    Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};
 
     /**
      * Sets output frame size in pixels

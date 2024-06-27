@@ -26,13 +26,13 @@ class VideoEncoder : public DeviceNodeCRTP<DeviceNode, VideoEncoder, VideoEncode
      * Outputs ImgFrame message that carries BITSTREAM encoded (MJPEG, H264 or H265) frame data.
      * Mutually exclusive with out.
      */
-    Output bitstream{*this, {.name = "bitstream", .types = {{DatatypeEnum::ImgFrame, false}}}};
+    Output bitstream{*this, {"bitstream", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     /**
      * Outputs EncodedFrame message that carries encoded (MJPEG, H264 or H265) frame data.
      * Mutually exclusive with bitstream.
      */
-    Output out{*this, {.name = "out", .types = {{DatatypeEnum::EncodedFrame, false}}}};
+    Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::EncodedFrame, false}}}}};
     // Sets default options for a specified size and profile
     /**
      * Sets a default preset based on specified frame rate and profile

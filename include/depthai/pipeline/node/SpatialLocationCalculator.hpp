@@ -48,13 +48,13 @@ class SpatialLocationCalculator : public DeviceNodeCRTP<DeviceNode, SpatialLocat
     /**
      * Outputs SpatialLocationCalculatorData message that carries spatial location results.
      */
-    Output out{*this, {.name = "out", .types = {{DatatypeEnum::SpatialLocationCalculatorData, false}}}};
+    Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::SpatialLocationCalculatorData, false}}}}};
 
     /**
      * Passthrough message on which the calculation was performed.
      * Suitable for when input queue is set to non-blocking behavior.
      */
-    Output passthroughDepth{*this, {.name = "passthroughDepth", .types = {{DatatypeEnum::ImgFrame, false}}}};
+    Output passthroughDepth{*this, {"passthroughDepth", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
     // Functions to set properties
     /**
      * Specify whether or not wait until configuration message arrives to inputConfig Input.

@@ -18,7 +18,7 @@ class BenchmarkOut : public DeviceNodeCRTP<DeviceNode, BenchmarkOut, BenchmarkPr
     /**
      * Send messages out as fast as possible
      */
-    Output out{*this, {.name = "out", .types = {{DatatypeEnum::Buffer, true}}}};
+    Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::Buffer, true}}}}};
 
     /**
      * Message that will be sent repeatedly

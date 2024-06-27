@@ -25,12 +25,12 @@ class BenchmarkIn : public DeviceNodeCRTP<DeviceNode, BenchmarkIn, BenchmarkProp
     /**
      * Passthrough for input messages (so the node can be placed between other nodes)
      */
-    Output passthrough{*this, {.name = "passthrough", .types = {{DatatypeEnum::Buffer, true}}}};
+    Output passthrough{*this, {"passthrough", DEFAULT_GROUP, {{{DatatypeEnum::Buffer, true}}}}};
 
     /**
      * Send a benchmark report when the set number of messages are received
      */
-    Output report{*this, {.name = "report", .types = {{DatatypeEnum::BenchmarkReport, false}}}};
+    Output report{*this, {"report", DEFAULT_GROUP, {{{DatatypeEnum::BenchmarkReport, false}}}}};
 
     /**
      * Set number of messages that the nodes retrieves before sending the report

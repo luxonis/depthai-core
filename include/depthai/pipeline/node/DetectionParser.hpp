@@ -32,7 +32,7 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
     /**
      * Outputs image frame with detected edges
      */
-    Output out{*this, {.name = "out", .types = {{DatatypeEnum::ImgDetections, false}}}};
+    Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::ImgDetections, false}}}}};
 
     /**
      * Input for image that produced the detection - image size can be taken from here

@@ -51,12 +51,12 @@ class EdgeDetector : public DeviceNodeCRTP<DeviceNode, EdgeDetector, EdgeDetecto
     /**
      * Outputs image frame with detected edges
      */
-    Output outputImage{*this, {.name = "outputImage", .types = {{DatatypeEnum::ImgFrame, false}}}};
+    Output outputImage{*this, {"outputImage", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     /**
      * Passthrough message on which the calculation was performed.
      */
-    Output passthroughInputImage{*this, {.name = "passthroughInputImage", .types = {{DatatypeEnum::ImgFrame, false}}}};
+    Output passthroughInputImage{*this, {"passthroughInputImage", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     // Functions to set properties
     /**

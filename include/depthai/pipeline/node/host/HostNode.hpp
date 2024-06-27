@@ -25,7 +25,7 @@ class HostNode : public ThreadedHostNode {
    public:
     InputMap& inputs = sync->inputs;
     // Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::Buffer, true}}};
-    Output out{*this, {.name = "out", .types = {{DatatypeEnum::Buffer, true}}}};
+    Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::Buffer, true}}}}};
     virtual std::shared_ptr<Buffer> processGroup(std::shared_ptr<dai::MessageGroup> in) = 0;
 
     void sendProcessingToPipeline(bool send) {

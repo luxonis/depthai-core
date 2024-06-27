@@ -52,13 +52,13 @@ class FeatureTracker : public DeviceNodeCRTP<DeviceNode, FeatureTracker, Feature
     /**
      * Outputs TrackedFeatures message that carries tracked features results.
      */
-    Output outputFeatures{*this, {.name = "outputFeatures", .types = {{DatatypeEnum::TrackedFeatures, false}}}};
+    Output outputFeatures{*this, {"outputFeatures", DEFAULT_GROUP, {{{DatatypeEnum::TrackedFeatures, false}}}}};
 
     /**
      * Passthrough message on which the calculation was performed.
      * Suitable for when input queue is set to non-blocking behavior.
      */
-    Output passthroughInputImage{*this, {.name = "passthroughInputImage", .types = {{DatatypeEnum::ImgFrame, false}}}};
+    Output passthroughInputImage{*this, {"passthroughInputImage", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
     // Functions to set properties
     /**
      * Specify whether or not wait until configuration message arrives to inputConfig Input.

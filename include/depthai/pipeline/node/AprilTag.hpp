@@ -48,18 +48,18 @@ class AprilTag : public DeviceNodeCRTP<DeviceNode, AprilTag, AprilTagProperties>
     /**
      * Outputs AprilTags message that carries spatial location results.
      */
-    Output out{*this, {.name = "out", .types = {{DatatypeEnum::AprilTags, false}}}};
+    Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::AprilTags, false}}}}};
 
     /**
      * Outputs AprilTagConfig message that contains current configuration.
      */
-    Output outConfig{*this, {.name = "outConfig", .types = {{DatatypeEnum::AprilTagConfig, false}}}};
+    Output outConfig{*this, {"outConfig", DEFAULT_GROUP, {{{DatatypeEnum::AprilTagConfig, false}}}}};
 
     /**
      * Passthrough message on which the calculation was performed.
      * Suitable for when input queue is set to non-blocking behavior.
      */
-    Output passthroughInputImage{*this, {.name = "passthroughInputImage", .types = {{DatatypeEnum::ImgFrame, false}}}};
+    Output passthroughInputImage{*this, {"passthroughInputImage", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
     // Functions to set properties
     /**
      * Specify whether or not wait until configuration message arrives to inputConfig Input.

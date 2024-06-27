@@ -49,7 +49,7 @@ class ToF : public DeviceNodeCRTP<DeviceNode, ToF, ToFProperties> {
      */
     Input inputRaw{*this, {.name = "inputRaw", .types = {{DatatypeEnum::ImgFrame, false}}}};
 
-    Output depth{*this, {.name = "depth", .types = {{DatatypeEnum::ImgFrame, false}}}};
+    Output depth{*this, {"depth", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     // Note on API limitation:
     // TODO(before mainline) - API not supported on RVC3
@@ -59,13 +59,13 @@ class ToF : public DeviceNodeCRTP<DeviceNode, ToF, ToFProperties> {
      * Passthrough message on which the calculation was performed.
      * Suitable for when input queue is set to non-blocking behavior.
      */
-    Output passthroughInputRaw{*this, {.name = "passthroughInputRaw", .types = {{DatatypeEnum::ImgFrame, false}}}};
+    Output passthroughInputRaw{*this, {"passthroughInputRaw", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     // Note on API limitation:
     // TODO(before mainline) - API not supported on RVC3
-    Output amplitude{*this, {.name = "amplitude", .types = {{DatatypeEnum::ImgFrame, true}}}};
-    Output error{*this, {.name = "error", .types = {{DatatypeEnum::ImgFrame, true}}}};
-    Output intensity{*this, {.name = "intensity", .types = {{DatatypeEnum::ImgFrame, true}}}};
+    Output amplitude{*this, {"amplitude", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};
+    Output error{*this, {"error", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};
+    Output intensity{*this, {"intensity", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};
 };
 
 }  // namespace node

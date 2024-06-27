@@ -28,7 +28,7 @@ class IMU : public DeviceNodeCRTP<DeviceNode, IMU, IMUProperties> {
     /**
      * Outputs IMUData message that carries IMU packets.
      */
-    Output out{*this, {.name = "out", .types = {{DatatypeEnum::IMUData, false}}}};
+    Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::IMUData, false}}}}};
 
     /**
      * Mock IMU data for replaying recorded data
