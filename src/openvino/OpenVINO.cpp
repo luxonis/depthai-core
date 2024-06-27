@@ -90,14 +90,6 @@ OpenVINO::Superblob::Superblob(const std::string& pathToSuperblobFile) {
     header = SuperblobHeader::fromData(data);
 }
 
-std::vector<uint8_t> OpenVINO::Superblob::readSuperblobFile(const std::string& path) {
-    std::ifstream file(path, std::ios::binary);
-    if(!file.is_open()) {
-        throw std::runtime_error("Cannot open file: " + path);
-    }
-    return std::vector<uint8_t>(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
-}
-
 dai::OpenVINO::Blob OpenVINO::Superblob::getBlobWithNShaves(int nShaves) {
     if(nShaves < 1 || nShaves > static_cast<int>(OpenVINO::Superblob::NUMBER_OF_PATCHES)) {
         throw std::runtime_error("Invalid number of shaves: " + std::to_string(nShaves) + " (expected 1 to "
@@ -133,6 +125,18 @@ dai::OpenVINO::Blob OpenVINO::Superblob::getBlobWithNShaves(int nShaves) {
     // Convert to OpenVINO Blob
     dai::OpenVINO::Blob patchedBlob(patchedBlobData);
     return patchedBlob;
+}
+
+std::vector<uint8_t> OpenVINO::Superblob::readSuperblobFile(const std::string& path) {
+    // Make sure file exists before opening it
+    if(!std::filesystem::exists(path)) throw std::runtime_error("File does not exist: " + path);
+
+    // Open file and read bytes
+    std::ifstream file(path, std::ios::binary);
+    if(!file.is_open()) {
+        throw std::runtime_error("Cannot open file: " + path);
+    }
+    return std::vector<uint8_t>(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
 }
 
 OpenVINO::Superblob::SuperblobHeader OpenVINO::Superblob::SuperblobHeader::fromData(const std::vector<uint8_t>& data) {

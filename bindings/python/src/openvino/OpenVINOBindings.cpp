@@ -10,6 +10,7 @@ void OpenVINOBindings::bind(pybind11::module& m, void* pCallstack){
     py::class_<OpenVINO> openvino(m, "OpenVINO", DOC(dai, OpenVINO));
     py::enum_<OpenVINO::Version> openvinoVersion(openvino, "Version", DOC(dai, OpenVINO, Version));
     py::class_<OpenVINO::Blob> openvinoBlob(openvino, "Blob", DOC(dai, OpenVINO, Blob));
+    py::class_<OpenVINO::Superblob> openvinoSuperblob(openvino, "Superblob", DOC(dai, OpenVINO, Superblob));
     py::enum_<OpenVINO::Device> openvinoDevice(openvino, "Device", DOC(dai, OpenVINO, Device));
 
 
@@ -78,6 +79,12 @@ void OpenVINOBindings::bind(pybind11::module& m, void* pCallstack){
         .def_readwrite("data", &OpenVINO::Blob::data, DOC(dai, OpenVINO, Blob, data))
     ;
 
+    // Bind OpenVINO::Superblob
+    openvinoSuperblob
+        .def(py::init<std::string>(), py::arg("pathToSuperblobFile"), DOC(dai, OpenVINO, Superblob, Superblob))
+        .def("getBlobWithNShaves", &OpenVINO::Superblob::getBlobWithNShaves, py::arg("nShaves"), DOC(dai, OpenVINO, Superblob, getBlobWithNShaves))
+        .def_readonly_static("NUMBER_OF_PATCHES", &OpenVINO::Superblob::NUMBER_OF_PATCHES, DOC(dai, OpenVINO, Superblob, NUMBER_OF_PATCHES));
+    ;
 }
 
 
