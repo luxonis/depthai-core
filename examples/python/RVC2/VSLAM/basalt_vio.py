@@ -1,3 +1,4 @@
+import signal
 import time
 import depthai as dai
 from rerun_node import RerunNode
@@ -34,4 +35,4 @@ with dai.Pipeline() as p:
     odom.transform.link(rerunViewer.inputTrans)
     p.start()
     while p.isRunning():
-        time.sleep(1)
+        time.sleep(0.01)

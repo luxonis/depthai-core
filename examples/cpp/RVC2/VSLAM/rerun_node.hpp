@@ -1,8 +1,11 @@
 #pragma once
+#include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/ThreadedHostNode.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/datatype/PointCloudData.hpp"
 #include "depthai/pipeline/datatype/TransformData.hpp"
+#include "depthai/common/CameraBoardSocket.hpp"
+#include "depthai/device/CalibrationHandler.hpp"
 #ifdef DEPTHAI_HAVE_PCL_SUPPORT
     #include <pcl/point_types.h>
 #endif
@@ -24,6 +27,16 @@ class RerunNode : public dai::NodeCRTP<dai::node::ThreadedHostNode, RerunNode> {
     Input inputGroundPCL{*this, {.name = "inGroundPCL", .types = {{dai::DatatypeEnum::PointCloudData, true}}}};
     Input inputMap{*this, {.name = "inMap", .types = {{dai::DatatypeEnum::ImgFrame, true}}}};
 
+    void getFocalLengthFromImage(std::shared_ptr<dai::ImgFrame> imgFrame) {
+        auto p = getParentPipeline();
+        auto calibHandler = p.getDefaultDevice()->readCalibration();
+        auto intrinsics =
+            calibHandler.getCameraIntrinsics(static_cast<dai::CameraBoardSocket>(imgFrame->getInstanceNum()), imgFrame->getWidth(), imgFrame->getHeight());
+        fx = intrinsics[0][0];
+        fy = intrinsics[1][1];
+        intrinsicsSet = true;
+    }
+
     void run() override {
         const auto rec = rerun::RecordingStream("rerun");
         rec.spawn().exit_on_failure();
@@ -32,6 +45,9 @@ class RerunNode : public dai::NodeCRTP<dai::node::ThreadedHostNode, RerunNode> {
         while(isRunning()) {
             std::shared_ptr<dai::TransformData> transData = inputTrans.get<dai::TransformData>();
             auto imgFrame = inputImg.get<dai::ImgFrame>();
+            if(!intrinsicsSet) {
+                getFocalLengthFromImage(imgFrame);
+            }
             auto pclObstData = inputObstaclePCL.tryGet<dai::PointCloudData>();
             auto pclGrndData = inputGroundPCL.tryGet<dai::PointCloudData>();
             auto mapData = inputMap.tryGet<dai::ImgFrame>();
@@ -46,7 +62,7 @@ class RerunNode : public dai::NodeCRTP<dai::node::ThreadedHostNode, RerunNode> {
                 rerun::LineStrip3D lineStrip(positions);
                 rec.log("world/trajectory", rerun::LineStrips3D(lineStrip));
                 rec.log("world/camera/image",
-                        rerun::Pinhole::from_focal_length_and_resolution({398.554f, 398.554f}, {640.0f, 400.0f})
+                        rerun::Pinhole::from_focal_length_and_resolution({fx, fy}, {float(imgFrame->getWidth()), float(imgFrame->getHeight())})
                             .with_camera_xyz(rerun::components::ViewCoordinates::FLU));
                 rec.log("world/camera/image/rgb",
                         rerun::Image(tensorShape(imgFrame->getCvFrame()), reinterpret_cast<const uint8_t*>(imgFrame->getCvFrame().data)));
@@ -75,4 +91,7 @@ class RerunNode : public dai::NodeCRTP<dai::node::ThreadedHostNode, RerunNode> {
         }
     }
     std::vector<rerun::Vec3D> positions;
+    float fx = 400.0;
+    float fy = 400.0;
+    bool intrinsicsSet = false;
 };

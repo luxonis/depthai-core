@@ -157,8 +157,8 @@ hunter_config(
 hunter_config(
     rtbmap
     VERSION "0.21.4"
-    URL "https://github.com/Serafadam/rtabmap/archive/b4f7cf06e34fbf9b16c119fddfe8a86fb59a81af.zip" # until fixes are merged to main
-    SHA1 "dbef038ad33a9c3e1cffb45c66ff3bcc44c14c94"
+    URL "https://github.com/introlab/rtabmap/archive/623d056436946c35beb12199831f178a84eaad73.zip" # until fixes are merged to main
+    SHA1 "98768b5adea093cc5e1bbe74b2ad3749e61de0ef"
     CMAKE_ARGS
         BUILD_APP=OFF
         WITH_UDEV=OFF
@@ -275,8 +275,8 @@ hunter_config(
 hunter_config(
     basalt
     VERSION 0.1.0
-    URL "https://github.com/luxonis/basalt/archive/f6284f17ee216862e0c80546f6a06e782d179c28.tar.gz"
-    SHA1 "c1f8e9bcf68caf1a5f8e620cd2a41da9d63da32a"
+    URL "https://github.com/luxonis/basalt/archive/77abef6eaa01f68a3f13a00d45fa664c85727ee2.tar.gz"
+    SHA1 "7f722b21841ccd983b0f6d7dbeb641ed7fa08892"
     CMAKE_ARGS
         BASALT_SDK_ONLY=ON
 )

@@ -16,8 +16,8 @@ with dai.Pipeline() as p:
     slam = p.create(dai.node.RTABMapSLAM).build()
     stereo = p.create(dai.node.StereoDepth)
     params = {"RGBD/CreateOccupancyGrid": "true",
-              "Grid/3D": "true",
-              "Rtabmap/SaveWMState": "true"}
+            "Grid/3D": "true",
+            "Rtabmap/SaveWMState": "true"}
     slam.setParams(params)
 
     rerunViewer = RerunNode()

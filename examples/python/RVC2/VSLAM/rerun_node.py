@@ -10,6 +10,19 @@ class RerunNode(dai.node.ThreadedHostNode):
         self.inputGroundPCL = dai.Node.Input(self)
         self.inputGrid = dai.Node.Input(self)
         self.positions = []
+        self.fx = 400.0
+        self.fy = 400.0
+        self.intrinsicsSet = False
+    
+    def getFocalLengthFromImage(self, imgFrame):
+        p = self.getParentPipeline()
+        calibHandler = p.getDefaultDevice().readCalibration()
+        intrinsics = calibHandler.getCameraIntrinsics(dai.CameraBoardSocket(imgFrame.getInstanceNum()), imgFrame.getWidth(), imgFrame.getHeight())
+        self.fx = intrinsics[0][0]
+        self.fy = intrinsics[1][1]
+        self.intrinsicsSet = True
+
+
     def run(self):
         rr.init("", spawn=True)
         rr.log("world", rr.ViewCoordinates.FLU)
@@ -17,6 +30,8 @@ class RerunNode(dai.node.ThreadedHostNode):
         while self.isRunning():
             transData = self.inputTrans.get()
             imgFrame = self.inputImg.get()
+            if not self.intrinsicsSet:
+                self.getFocalLengthFromImage(imgFrame)
             pclObstData = self.inputObstaclePCL.tryGet()
             pclGrndData = self.inputGroundPCL.tryGet()
             mapData = self.inputGrid.tryGet()
@@ -28,7 +43,7 @@ class RerunNode(dai.node.ThreadedHostNode):
                 self.positions.append(position)
                 lineStrip = rr.components.LineStrip3D(self.positions)
                 rr.log("world/trajectory", rr.LineStrips3D(lineStrip))
-                rr.log("world/camera/image", rr.Pinhole(resolution=[640.0, 400.0], focal_length=[398.554, 398.554], camera_xyz=rr.ViewCoordinates.FLU))
+                rr.log("world/camera/image", rr.Pinhole(resolution=[imgFrame.getWidth(), imgFrame.getHeight()], focal_length=[self.fx, self.fy], camera_xyz=rr.ViewCoordinates.FLU))
                 rr.log("world/camera/image/rgb", rr.Image(imgFrame.getCvFrame()))
                 if pclObstData is not None:
                     points = []
