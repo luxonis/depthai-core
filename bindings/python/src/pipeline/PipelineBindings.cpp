@@ -94,7 +94,7 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack){
         // Python only methods
         .def("__enter__",
              [](Pipeline& p) -> Pipeline& {
-                 setImplicitPipeline(p);
+                 setImplicitPipeline(&p);
                  return p;
              })
         .def("__exit__",
@@ -160,10 +160,10 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack){
                  // so we create in the same manner as device nodes.
                  auto isFromBindings = class_.attr("__module__").cast<std::string>() == "depthai.node";
                  // Create a copy from kwargs and add autoAddToPipeline to false
-                 py::dict kwargsCopy = kwargs;
-                 kwargsCopy["autoAddToPipeline"] = false;
                  if(isSubclass && !isFromBindings) {
-                     std::shared_ptr<Node> hostNode = py::cast<std::shared_ptr<node::ThreadedHostNode>>(class_(*args, **kwargsCopy));
+                     setImplicitPipeline(&p);
+                     std::shared_ptr<Node> hostNode = py::cast<std::shared_ptr<node::ThreadedHostNode>>(class_(*args, **kwargs));
+                     delImplicitPipeline();
                      // Node already adds itself to the pipeline in the constructor
                      // To be sure - check if it is already added
                      auto allNodes = p.getAllNodes();
@@ -174,10 +174,9 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack){
                              break;
                          }
                      }
-                     if(found) {
-                         throw std::invalid_argument("Node is already added to the pipeline");
+                     if(!found) {
+                         throw std::invalid_argument("Internal error: Node wasn't added to the pipeline");
                      }
-                     p.add(hostNode);
                      return hostNode;
                  }
                  // Otherwise create the node with `pipeline.create()` method

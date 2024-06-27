@@ -55,7 +55,7 @@ void bind_detectionnetwork(pybind11::module& m, void* pCallstack) {
             DETECTION_NETWORK_BUILD_PYARGS,
             DETECTION_NETWORK_PYARGS)
         .def(py::init([](DETECTION_NETWORK_BUILD_ARGS, DETECTION_NETWORK_ARGS) {
-                 auto self = getImplicitPipeline().create<DetectionNetwork>();
+                 auto self = getImplicitPipeline()->create<DetectionNetwork>();
                  self->build(input, nnArchive);
                  DETECTION_NETWORK_CODE(->)
                  return self;
