@@ -9,7 +9,7 @@
 // optional
 #ifdef DEPTHAI_HAVE_PCL_SUPPORT
     #include <pcl/point_types.h>
-    #include <pcl/visualization/cloud_viewer.h>
+    #include <pcl/point_cloud.h>
 #endif
 
 namespace dai {
@@ -178,7 +178,8 @@ class PointCloudData : public Buffer {
      * Converts PointCloudData to pcl::PointCloud<pcl::PointXYZ>
      */
     pcl::PointCloud<pcl::PointXYZ>::Ptr getPclData() const;
-
+    void setPclData(const pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud);
+    void setPclData(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr& cloud);
 #else
     template <typename... T>
     struct dependent_false {
@@ -186,6 +187,10 @@ class PointCloudData : public Buffer {
     };
     template <typename... T>
     void getPclData() const {
+        static_assert(dependent_false<T...>::value, "Library not configured with PCL support");
+    }
+    template <typename... T>
+    void setPclData(T...) {
         static_assert(dependent_false<T...>::value, "Library not configured with PCL support");
     }
 #endif

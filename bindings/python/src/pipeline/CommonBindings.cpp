@@ -21,6 +21,8 @@
 #include "depthai/common/MemoryInfo.hpp"
 #include "depthai/common/Point2f.hpp"
 #include "depthai/common/Point3f.hpp"
+#include "depthai/common/Point3d.hpp"
+#include "depthai/common/Quaterniond.hpp"
 #include "depthai/common/ProcessorType.hpp"
 #include "depthai/common/Rect.hpp"
 #include "depthai/common/RotatedRect.hpp"
@@ -42,6 +44,8 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack){
     py::class_<Timestamp> timestamp(m, "Timestamp", DOC(dai, Timestamp));
     py::class_<Point2f> point2f(m, "Point2f", DOC(dai, Point2f));
     py::class_<Point3f> point3f(m, "Point3f", DOC(dai, Point3f));
+    py::class_<Point3d> point3d(m, "Point3d", DOC(dai, Point3d));
+    py::class_<Quaterniond> quaterniond(m, "Quaterniond", DOC(dai, Quaterniond));
     py::class_<Size2f> size2f(m, "Size2f", DOC(dai, Size2f));
     py::enum_<CameraBoardSocket> cameraBoardSocket(m, "CameraBoardSocket", DOC(dai, CameraBoardSocket));
     py::enum_<ConnectionInterface> connectionInterface(m, "connectionInterface", DOC(dai, ConnectionInterface));
@@ -147,7 +151,21 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack){
         .def_readwrite("y", &Point3f::y)
         .def_readwrite("z", &Point3f::z)
         ;
-
+    point3d
+        .def(py::init<>())
+        .def(py::init<double, double, double>())
+        .def_readwrite("x", &Point3d::x)
+        .def_readwrite("y", &Point3d::y)
+        .def_readwrite("z", &Point3d::z)
+        ;
+    quaterniond
+        .def(py::init<>())
+        .def(py::init<double, double, double, double>())
+        .def_readwrite("qx", &Quaterniond::qx)
+        .def_readwrite("qy", &Quaterniond::qy)
+        .def_readwrite("qz", &Quaterniond::qz)
+        .def_readwrite("qw", &Quaterniond::qw)
+        ;
     size2f
         .def(py::init<>())
         .def(py::init<float, float>())

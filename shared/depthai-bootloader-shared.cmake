@@ -29,9 +29,14 @@ if(GIT_FOUND AND NOT DEPTHAI_DOWNLOADED_SOURCES)
             OUTPUT_VARIABLE statusCommit
             ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE
         )
-        string(SUBSTRING ${statusCommit} 0 1 status)
-        if("${status}" STREQUAL "-")
-            message(FATAL_ERROR "Submodule 'depthai-bootloader-shared' not initialized/updated. Run 'git submodule update --init --recursive' first")
+        # Check if statusCommit has a valid value
+        if(NOT statusCommit STREQUAL "")
+            string(SUBSTRING ${statusCommit} 0 1 status)
+            if("${status}" STREQUAL "-")
+                message(FATAL_ERROR "Submodule 'depthai-bootloader-shared' not initialized/updated. Run 'git submodule update --init --recursive' first")
+            endif()
+        else()
+            message(WARNING "No status available for submodule 'depthai-bootloader-shared'. This might indicate a problem with the submodule path or git command.")
         endif()
     endif()
 

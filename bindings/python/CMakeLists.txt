@@ -109,6 +109,9 @@ set(SOURCE_LIST
     src/pipeline/node/HostNodeBindings.cpp
     src/pipeline/node/RecordBindings.cpp
     src/pipeline/node/ReplayBindings.cpp
+    src/pipeline/node/BasaltVIOBindings.cpp
+    src/pipeline/node/RTABMapVIOBindings.cpp
+    src/pipeline/node/RTABMapSLAMBindings.cpp
 
     src/pipeline/datatype/ADatatypeBindings.cpp
     src/pipeline/datatype/AprilTagConfigBindings.cpp
@@ -135,6 +138,7 @@ set(SOURCE_LIST
     src/pipeline/datatype/BenchmarkReportBindings.cpp
     src/pipeline/datatype/PointCloudConfigBindings.cpp
     src/pipeline/datatype/PointCloudDataBindings.cpp
+    src/pipeline/datatype/TransformDataBindings.cpp
 
     src/capabilities/CapabilityBindings.cpp
     src/capabilities/CapabilityRangeBindings.cpp
@@ -243,7 +247,7 @@ target_link_libraries(${TARGET_NAME}
     PUBLIC
         # pybind11
         pybind11::pybind11
-        depthai::opencv # Use non-opencv target as we use opencv-python in bindings
+        depthai::all # Use non-opencv target as we use opencv-python in bindings
         hedley
         pybind11_json
         xtensor-python

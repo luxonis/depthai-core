@@ -152,6 +152,73 @@ hunter_config(
         HTTPLIB_USE_BROTLI_IF_AVAILABLE=OFF
 )
 
+
+# RTABMap
+hunter_config(
+    rtbmap
+    VERSION "0.21.4"
+    URL "https://github.com/introlab/rtabmap/archive/623d056436946c35beb12199831f178a84eaad73.zip" # until fixes are merged to main
+    SHA1 "98768b5adea093cc5e1bbe74b2ad3749e61de0ef"
+    CMAKE_ARGS
+        BUILD_APP=OFF
+        WITH_UDEV=OFF
+        BUILD_EXAMPLES=OFF
+        BUILD_TOOLS=OFF
+        # Build shared libs by default to not cause licensing issues
+        BUILD_SHARED_LIBS=ON
+        WITH_QT=OFF
+        WITH_ORB_OCTREE=OFF
+        WITH_TORCH=OFF
+        WITH_PYTHON=OFF
+        WITH_PYTHON_THREADING=OFF
+        WITH_PDAL=OFF
+        WITH_FREENECT=OFF
+        WITH_FREENECT2=OFF
+        WITH_K4W2=OFF
+        WITH_K4A=OFF
+        WITH_OPENNI=OFF
+        WITH_OPENNI2=OFF
+        WITH_DC1394=OFF
+        WITH_G2O=ON
+        WITH_GTSAM=ON
+        WITH_TORO=ON
+        WITH_CERES=OFF
+        WITH_MRPT=OFF
+        WITH_VERTIGO=ON
+        WITH_CVSBA=OFF
+        WITH_POINTMATCHER=ON
+        WITH_CCCORELIB=OFF
+        WITH_OPEN3D=OFF
+        WITH_LOAM=OFF
+        WITH_FLOAM=OFF
+        WITH_FLYCAPTURE2=OFF
+        WITH_ZED=OFF
+        WITH_ZEDOC=OFF
+        WITH_REALSENSE=OFF
+        WITH_REALSENSE_SLAM=OFF
+        WITH_REALSENSE2=OFF
+        WITH_MYNTEYE=OFF
+        WITH_DEPTHAI=OFF
+        WITH_OCTOMAP=OFF
+        WITH_GRIDMAP=OFF
+        WITH_CPUTSDF=OFF
+        WITH_OPENCHISEL=OFF
+        WITH_ALICE_VISION=OFF
+        WITH_FOVIS=OFF
+        WITH_VISO2=OFF
+        WITH_DVO=OFF
+        WITH_ORB_SLAM=OFF
+        WITH_OKVIS=OFF
+        WITH_MSCKF_VIO=OFF
+        WITH_VINS=OFF
+        WITH_OPENVINS=OFF
+        WITH_MADGWICK=OFF
+        WITH_FASTCV=OFF
+        WITH_OPENMP=OFF
+        WITH_OPENGV=OFF
+        PCL_OMP=OFF
+)
+# Pybind11 2.9.2
 # # Pybind11 2.11.0-smart_holder
 # hunter_config(
 #     pybind11
@@ -178,6 +245,58 @@ hunter_config(
         BUILD_UTILS=OFF
 )
 
+hunter_config(
+    opengv
+    VERSION 1.0.0
+    URL "https://github.com/luxonis/opengv/archive/6d96ed4046dd36b250a20b08db46f508394b864d.tar.gz"
+    SHA1 "1ff8746b66d7211b35a36c7e1a511d7884d8da17"
+)
+
+hunter_config(
+    basalt-headers
+    VERSION 0.1.0
+    URL "https://github.com/luxonis/basalt-headers/archive/57b934e6b7bcf4643c9e37aec8205c65b7a2a9a5.tar.gz"
+    SHA1 "8f60a224139b70b89a7f4dfa191a24c4968c52b8"
+)
+
+hunter_config(
+    oneTBB
+    VERSION 2021.12.0
+    URL "https://github.com/oneapi-src/oneTBB/archive/refs/tags/v2021.12.0.zip"
+    SHA1 "f6b0eb4e45af600684282341115a3c2fb9834978"
+    CMAKE_ARGS
+        TBB_PREVIEW_GLOBAL_CONTROL=ON
+        TBB_TEST=OFF
+        CMAKE_CXX_VISIBILITY_PRESET=hidden
+        CMAKE_C_VISIBILITY_PRESET=hidden
+)
+
+
+hunter_config(
+    basalt
+    VERSION 0.1.0
+    URL "https://github.com/luxonis/basalt/archive/77abef6eaa01f68a3f13a00d45fa664c85727ee2.tar.gz"
+    SHA1 "7f722b21841ccd983b0f6d7dbeb641ed7fa08892"
+    CMAKE_ARGS
+        BASALT_SDK_ONLY=ON
+)
+
+hunter_config(
+    Sophus
+    VERSION 1.22.10
+    URL "https://github.com/luxonis/Sophus/archive/87554f73e6f303d8acd6a220bc9aefb444793a71.tar.gz"
+    SHA1 "48574ad9cddb3ad1b5c71cc030ecac0083e71cea"
+    CMAKE_ARGS
+        BUILD_SOPHUS_TESTS=OFF
+        BUILD_SOPHUS_EXAMPLES=OFF
+)
+
+
+hunter_config(
+    magic_enum
+    URL "https://github.com/Neargye/magic_enum/archive/3d1f6a5a2a3fbcba077e00ad0ccc2dd9fefc2ca7.zip"
+    SHA1 "c9a27f6ff8311f0c6b2adb959d0598f079fcc9f3"
+)
 hunter_config(
     CURL
     VERSION "7.88.1-p0-custom"
