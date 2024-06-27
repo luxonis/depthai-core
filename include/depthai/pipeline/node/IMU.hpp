@@ -11,7 +11,7 @@ namespace node {
 /**
  * @brief IMU node for BNO08X.
  */
-class IMU : public DeviceNodeCRTP<DeviceNode, IMU, IMUProperties> {
+class IMU : public DeviceNodeCRTP<DeviceNode, IMU, IMUProperties>, public SourceNode {
    protected:
     bool isSourceNode() const override;
     NodeRecordParams getNodeRecordParams() const override;

@@ -606,18 +606,16 @@ bool Node::isSourceNode() const {
     return false;
 }
 
-NodeRecordParams Node::getNodeRecordParams() const {
-    NodeRecordParams params;
-    params.name = getName();
-    return params;
+NodeRecordParams SourceNode::getNodeRecordParams() const {
+    throw std::runtime_error("Not implemented");
 }
 
-Node::Output& Node::getRecordOutput() {
-    throw std::runtime_error("getRecordOutput is not implemented for non-source nodes.");
+Node::Output& SourceNode::getRecordOutput() {
+    throw std::runtime_error("Not implemented");
 }
 
-Node::Input& Node::getReplayInput() {
-    throw std::runtime_error("getReplayInput is not implemented for non-source nodes.");
+Node::Input& SourceNode::getReplayInput() {
+    throw std::runtime_error("Not implemented");
 }
 
 // Recursive helpers for pipelines

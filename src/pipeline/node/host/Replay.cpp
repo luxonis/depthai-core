@@ -1,6 +1,7 @@
 #include "depthai/pipeline/node/host/Replay.hpp"
 
 #include <chrono>
+#include <cstdio>
 #include <filesystem>
 #include <memory>
 
@@ -148,7 +149,7 @@ void ReplayVideo::run() {
 
         if(first) prevMsgTs = buffer->getTimestampDevice();
 
-        if(!(fps.has_value() && fps.value() > 0.1f)) {
+        if(hasMetadata && !(fps.has_value() && fps.value() > 0.1f)) {
             std::this_thread::sleep_until(loopStart + (buffer->getTimestampDevice() - prevMsgTs));
         }
 
@@ -156,6 +157,8 @@ void ReplayVideo::run() {
 
         if(fps.has_value() && fps.value() > 0.1f) {
             std::this_thread::sleep_until(loopStart + std::chrono::milliseconds((uint32_t)roundf(1000.f / fps.value())));
+        } else if(!hasMetadata) {
+            std::this_thread::sleep_until(loopStart + std::chrono::milliseconds(1000 / 30));
         }
 
         loopStart = std::chrono::steady_clock::now();

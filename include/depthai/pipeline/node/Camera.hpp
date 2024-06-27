@@ -13,7 +13,7 @@
 namespace dai {
 namespace node {
 
-class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties> {
+class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, public SourceNode {
    public:
     /**
      * Get video output with specified size.

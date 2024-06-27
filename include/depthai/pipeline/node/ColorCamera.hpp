@@ -15,7 +15,7 @@ namespace node {
 /**
  * @brief ColorCamera node. For use with color sensors.
  */
-class ColorCamera : public DeviceNodeCRTP<DeviceNode, ColorCamera, ColorCameraProperties> {
+class ColorCamera : public DeviceNodeCRTP<DeviceNode, ColorCamera, ColorCameraProperties>, public SourceNode {
     friend class PipelineImpl;    // Allow only PipelineImpl to construct this node
     friend class DeviceNodeCRTP;  // Allow DeviceNodeCRTP to construct this node
    public:

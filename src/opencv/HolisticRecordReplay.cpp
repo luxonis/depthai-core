@@ -14,6 +14,7 @@
 #include "depthai/pipeline/node/host/Replay.hpp"
 #include "depthai/utility/Compression.hpp"
 #include "depthai/utility/RecordReplay.hpp"
+#include "pipeline/Node.hpp"
 
 namespace dai {
 namespace utility {
@@ -23,7 +24,11 @@ bool setupHolisticRecord(Pipeline& pipeline, const std::string& mxId, RecordConf
     const auto recordPath = recordConfig.outputDir;
     try {
         for(auto& node : sources) {
-            NodeRecordParams nodeParams = node->getNodeRecordParams();
+            auto nodeS = std::dynamic_pointer_cast<SourceNode>(node);
+            if(nodeS == nullptr) {
+                throw std::runtime_error("Node " + std::string(node->getName()) + " is listed as a source node but does not implement the SourceNode interface.");
+            }
+            NodeRecordParams nodeParams = nodeS->getNodeRecordParams();
             std::string nodeName = nodeParams.name;
             std::string filePath = platform::joinPaths(recordPath, (mxId + "_").append(nodeName));
             outFilenames[nodeName] = filePath;
@@ -49,20 +54,20 @@ bool setupHolisticRecord(Pipeline& pipeline, const std::string& mxId, RecordConf
                         imageManip->initialConfig.setFrameType(ImgFrame::Type::NV12);
                         imageManip->setMaxOutputFrameSize(maxOutputFrameSize);
 
-                        node->getRecordOutput().link(imageManip->inputImage);
+                        nodeS->getRecordOutput().link(imageManip->inputImage);
                         imageManip->out.link(videnc->input);
                     } else {
-                        node->getRecordOutput().link(videnc->input);
+                        nodeS->getRecordOutput().link(videnc->input);
                     }
                     videnc->out.link(recordNode->input);
                 } else {
-                    node->getRecordOutput().link(recordNode->input);
+                    nodeS->getRecordOutput().link(recordNode->input);
                 }
             } else {
                 auto recordNode = pipeline.create<dai::node::RecordMetadataOnly>();
                 recordNode->setRecordFile(filePath + ".mcap");
                 recordNode->setCompressionLevel((dai::RecordConfig::CompressionLevel)recordConfig.compressionLevel);
-                node->getRecordOutput().link(recordNode->input);
+                nodeS->getRecordOutput().link(recordNode->input);
             }
         }
         outFilenames["record_config"] = platform::joinPaths(recordPath, mxId + "_record_config.json");
@@ -113,7 +118,11 @@ bool setupHolisticReplay(Pipeline& pipeline,
         std::vector<std::string> pipelineFilenames;
         pipelineFilenames.reserve(sources.size());
         for(auto& node : sources) {
-            NodeRecordParams nodeParams = node->getNodeRecordParams();
+            auto nodeS = std::dynamic_pointer_cast<SourceNode>(node);
+            if(nodeS == nullptr) {
+                throw std::runtime_error("Node is listed as a source node but does not implement the SourceNode interface.");
+            }
+            NodeRecordParams nodeParams = nodeS->getNodeRecordParams();
             // Needed for muti-device recordings, not yet supported
             // std::string nodeName = (mxId + "_").append(nodeParams.name);
             std::string nodeName = nodeParams.name;
@@ -180,7 +189,11 @@ bool setupHolisticReplay(Pipeline& pipeline,
         recordConfig.state = RecordConfig::RecordReplayState::REPLAY;
 
         for(auto& node : sources) {
-            NodeRecordParams nodeParams = node->getNodeRecordParams();
+            auto nodeS = std::dynamic_pointer_cast<SourceNode>(node);
+            if(nodeS == nullptr) {
+                throw std::runtime_error("Node is listed as a source node but does not implement the SourceNode interface.");
+            }
+            NodeRecordParams nodeParams = nodeS->getNodeRecordParams();
             std::string nodeName = nodeParams.name;
             if(std::dynamic_pointer_cast<node::Camera>(node) != nullptr || std::dynamic_pointer_cast<node::ColorCamera>(node) != nullptr
                || std::dynamic_pointer_cast<node::MonoCamera>(node) != nullptr) {
@@ -206,11 +219,11 @@ bool setupHolisticReplay(Pipeline& pipeline,
                         cam->setMockIspSize(width, height);
                     }
                 }
-                replay->out.link(node->getReplayInput());
+                replay->out.link(nodeS->getReplayInput());
             } else {
                 auto replay = pipeline.create<dai::node::ReplayMetadataOnly>();
                 replay->setReplayFile(platform::joinPaths(rootPath, nodeName + ".mcap"));
-                replay->out.link(node->getReplayInput());
+                replay->out.link(nodeS->getReplayInput());
             }
         }
         return true;
