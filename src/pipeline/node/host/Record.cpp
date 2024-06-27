@@ -9,9 +9,9 @@
 #include "depthai/pipeline/datatype/IMUData.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/properties/VideoEncoderProperties.hpp"
-#include "utility/RecordReplayImpl.hpp"
-#include "depthai/utility/span.hpp"
 #include "depthai/utility/RecordReplaySchema.hpp"
+#include "depthai/utility/span.hpp"
+#include "utility/RecordReplayImpl.hpp"
 
 namespace dai {
 namespace node {
@@ -55,7 +55,7 @@ void RecordVideo::run() {
                 streamType = StreamType::RawVideo;
                 width = imgFrame->getWidth();
                 height = imgFrame->getHeight();
-                if (recordMetadata) byteRecorder.init(recordMetadataFile, compressionLevel, utility::RecordType::Video);
+                if(recordMetadata) byteRecorder.init(recordMetadataFile, compressionLevel, utility::RecordType::Video);
             } else if(std::dynamic_pointer_cast<EncodedFrame>(msg) != nullptr) {
                 auto encFrame = std::dynamic_pointer_cast<EncodedFrame>(msg);
                 if(encFrame->getProfile() == EncodedFrame::Profile::HEVC) {

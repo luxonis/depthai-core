@@ -145,7 +145,11 @@ struct IMURecordSchema {
             imuPacket.rotationVector.rotationVectorAccuracy = packet.rotationVector.rotationAccuracy;
 
             imuData.packets.push_back(imuPacket);
-            std::min({minTimestamp, packet.rotationVector.timestamp.get(), packet.orientation.timestamp.get(), packet.acceleration.timestamp.get(), packet.magneticField.timestamp.get()});
+            std::min({minTimestamp,
+                      packet.rotationVector.timestamp.get(),
+                      packet.orientation.timestamp.get(),
+                      packet.acceleration.timestamp.get(),
+                      packet.magneticField.timestamp.get()});
         }
         imuData.setTimestampDevice(std::chrono::steady_clock::time_point(minTimestamp));
         return imuData;

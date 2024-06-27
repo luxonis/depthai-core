@@ -173,7 +173,8 @@ bool setupHolisticReplay(Pipeline& pipeline,
         for(auto& node : sources) {
             NodeRecordParams nodeParams = node->getNodeRecordParams();
             std::string nodeName = nodeParams.name;
-            if(std::dynamic_pointer_cast<node::Camera>(node) != nullptr || std::dynamic_pointer_cast<node::ColorCamera>(node) != nullptr || std::dynamic_pointer_cast<node::MonoCamera>(node) != nullptr) {
+            if(std::dynamic_pointer_cast<node::Camera>(node) != nullptr || std::dynamic_pointer_cast<node::ColorCamera>(node) != nullptr
+               || std::dynamic_pointer_cast<node::MonoCamera>(node) != nullptr) {
                 auto replay = pipeline.create<dai::node::ReplayVideo>();
                 // replay->setReplayFile(platform::joinPaths(rootPath, (mxId + "_").append(nodeName).append(".mcap")));
                 replay->setReplayMetadataFile(platform::joinPaths(rootPath, nodeName + ".mcap"));

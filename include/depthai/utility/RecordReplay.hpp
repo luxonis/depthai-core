@@ -30,7 +30,6 @@ struct RecordConfig {
     enum class RecordReplayState { RECORD, REPLAY, NONE };
     enum class CompressionLevel : uint8_t { NONE, FASTEST, FAST, DEFAULT, SLOW, SLOWEST };
 
-
     struct VideoEncoding {
         bool enabled = true;
         int bitrate = 0;

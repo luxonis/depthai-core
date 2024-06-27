@@ -13,8 +13,8 @@
 #include "utility/Compression.hpp"
 #include "utility/Environment.hpp"
 #include "utility/HolisticRecordReplay.hpp"
-#include "utility/RecordReplayImpl.hpp"
 #include "utility/Platform.hpp"
+#include "utility/RecordReplayImpl.hpp"
 #include "utility/spdlog-fmt.hpp"
 
 // shared

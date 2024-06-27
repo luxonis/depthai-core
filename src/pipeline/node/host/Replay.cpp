@@ -6,8 +6,8 @@
 
 #include "depthai/pipeline/datatype/IMUData.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
-#include "utility/RecordReplayImpl.hpp"
 #include "depthai/utility/RecordReplaySchema.hpp"
+#include "utility/RecordReplayImpl.hpp"
 
 namespace dai {
 namespace node {

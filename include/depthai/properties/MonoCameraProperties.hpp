@@ -95,7 +95,18 @@ struct MonoCameraProperties : PropertiesSerializable<Properties, MonoCameraPrope
     std::optional<bool> rawPacked;
 };
 
-DEPTHAI_SERIALIZE_EXT(
-    MonoCameraProperties, initialControl, boardSocket, cameraName, imageOrientation, mockIspWidth, mockIspHeight, resolution, fps, isp3aFps, numFramesPool, numFramesPoolRaw, rawPacked);
+DEPTHAI_SERIALIZE_EXT(MonoCameraProperties,
+                      initialControl,
+                      boardSocket,
+                      cameraName,
+                      imageOrientation,
+                      mockIspWidth,
+                      mockIspHeight,
+                      resolution,
+                      fps,
+                      isp3aFps,
+                      numFramesPool,
+                      numFramesPoolRaw,
+                      rawPacked);
 
 }  // namespace dai

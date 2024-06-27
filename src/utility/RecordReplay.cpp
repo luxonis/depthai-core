@@ -1,5 +1,4 @@
 #include "depthai/utility/RecordReplay.hpp"
-#include "RecordReplayImpl.hpp"
 
 #include <spdlog/spdlog.h>
 
@@ -8,6 +7,7 @@
 #include <stdexcept>
 
 #include "Environment.hpp"
+#include "RecordReplayImpl.hpp"
 #include "build/version.hpp"
 #include "depthai/utility/RecordReplaySchema.hpp"
 #include "utility/Compression.hpp"
