@@ -6,8 +6,6 @@ import depthai as dai
 # Create pipeline
 device = dai.Device()
 with dai.Pipeline(device) as pipeline:
-    # Define source and output
-    # Properties
     outputQueues = {}
     connectedCameras = device.getConnectedCameraFeatures()
     for cameraFeature in connectedCameras:
@@ -29,11 +27,8 @@ with dai.Pipeline(device) as pipeline:
             queue = outputQueues[name]
             videoIn = queue.get()
             assert isinstance(videoIn, dai.ImgFrame)
-            # videoIn2: dai.ImgFrame = videoQueue2.get()
-            # Get BGR frame from NV12 encoded video frame to show with opencv
             # Visualizing the frame on slower hosts might have overhead
             cv2.imshow(name, videoIn.getCvFrame())
-            # cv2.imshow("video2", videoIn2.getCvFrame())
 
         if cv2.waitKey(1) == ord("q"):
             break
