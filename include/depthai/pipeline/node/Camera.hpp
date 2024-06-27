@@ -89,7 +89,7 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties> {
    protected:
     Properties& getProperties() override;
     bool isSourceNode() const override;
-    utility::NodeRecordParams getNodeRecordParams() const override;
+    NodeRecordParams getNodeRecordParams() const override;
     /*
     Output& getRecordOutput() override;
     Input& getReplayInput() override;

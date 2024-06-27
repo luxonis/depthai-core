@@ -19,49 +19,49 @@ namespace dai {
 namespace node {
 
 /**
- * @brief RecordVideo node, used to record a source stream to a file
+ * @brief RecordVideo node, used to record a video source stream to a file
  */
 class RecordVideo : public NodeCRTP<ThreadedHostNode, RecordVideo> {
    public:
-    using CompressionLevel = dai::utility::ByteRecorder::CompressionLevel;
+    using CompressionLevel = dai::RecordConfig::CompressionLevel;
 
     constexpr static const char* NAME = "RecordVideo";
 
     /**
-     * Input for any type of messages to be transferred over XLink stream
+     * Input for ImgFrame or EncodedFrame messages to be recorded
      *
-     * Default queue is blocking with size 8
+     * Default queue is blocking with size 15
      */
     Input input{*this, {.name = "input", .queueSize = 15, .types = {{DatatypeEnum::Buffer, true}}}};
 
     void run() override;
 
-    std::string getRecordMetadataFile() const;
-    std::string getRecordVideoFile() const;
+    std::filesystem::path getRecordMetadataFile() const;
+    std::filesystem::path getRecordVideoFile() const;
     CompressionLevel getCompressionLevel() const;
 
-    RecordVideo& setRecordMetadataFile(const std::string& recordFile);
-    RecordVideo& setRecordVideoFile(const std::string& recordFile);
+    RecordVideo& setRecordMetadataFile(const std::filesystem::path& recordFile);
+    RecordVideo& setRecordVideoFile(const std::filesystem::path& recordFile);
     RecordVideo& setCompressionLevel(CompressionLevel compressionLevel);
 
    private:
-    std::string recordMetadataFile;
-    std::string recordVideoFile;
+    std::filesystem::path recordMetadataFile;
+    std::filesystem::path recordVideoFile;
     unsigned int fpsInitLength = 10;
     CompressionLevel compressionLevel = CompressionLevel::DEFAULT;
 };
 
 /**
- * @brief RecordMessage node, used to record a source stream to a file
+ * @brief RecordMetadataOnly node, used to record a source stream to a file
  */
-class RecordMessage : public NodeCRTP<ThreadedHostNode, RecordMessage> {
+class RecordMetadataOnly : public NodeCRTP<ThreadedHostNode, RecordMetadataOnly> {
    public:
-    using CompressionLevel = dai::utility::ByteRecorder::CompressionLevel;
+    using CompressionLevel = dai::RecordConfig::CompressionLevel;
 
-    constexpr static const char* NAME = "RecordMessage";
+    constexpr static const char* NAME = "RecordMetadataOnly";
 
     /**
-     * Input for any type of messages to be transferred over XLink stream
+     * Input IMU messages to be recorded (will support other types in the future)
      *
      * Default queue is blocking with size 8
      */
@@ -69,14 +69,14 @@ class RecordMessage : public NodeCRTP<ThreadedHostNode, RecordMessage> {
 
     void run() override;
 
-    std::string getRecordFile() const;
+    std::filesystem::path getRecordFile() const;
     CompressionLevel getCompressionLevel() const;
 
-    RecordMessage& setRecordFile(const std::string& recordFile);
-    RecordMessage& setCompressionLevel(CompressionLevel compressionLevel);
+    RecordMetadataOnly& setRecordFile(const std::filesystem::path& recordFile);
+    RecordMetadataOnly& setCompressionLevel(CompressionLevel compressionLevel);
 
    private:
-    std::string recordFile;
+    std::filesystem::path recordFile;
     CompressionLevel compressionLevel = CompressionLevel::DEFAULT;
 };
 

@@ -744,11 +744,11 @@ bool ColorCamera::isSourceNode() const {
     return true;
 }
 
-utility::NodeRecordParams ColorCamera::getNodeRecordParams() const {
+NodeRecordParams ColorCamera::getNodeRecordParams() const {
     if(properties.boardSocket == CameraBoardSocket::AUTO) {
         throw std::runtime_error("For record and replay functionality, board socket must be specified (Camera).");
     }
-    utility::NodeRecordParams params;
+    NodeRecordParams params;
     params.name = "Camera" + toString(properties.boardSocket);
     return params;
 }

@@ -606,8 +606,8 @@ bool Node::isSourceNode() const {
     return false;
 }
 
-utility::NodeRecordParams Node::getNodeRecordParams() const {
-    utility::NodeRecordParams params;
+NodeRecordParams Node::getNodeRecordParams() const {
+    NodeRecordParams params;
     params.name = getName();
     return params;
 }

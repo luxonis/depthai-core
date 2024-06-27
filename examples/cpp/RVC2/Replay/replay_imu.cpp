@@ -8,16 +8,13 @@
 #include "depthai/depthai.hpp"
 
 int main() {
-    using namespace std;
-    using namespace std::chrono;
-
     {  // Create pipeline
         dai::Pipeline pipeline;
 
         // Define sources and outputs
-        auto replay = pipeline.create<dai::node::ReplayMessage>();
+        auto replay = pipeline.create<dai::node::ReplayMetadataOnly>();
         auto imu = pipeline.create<dai::node::IMU>();
-        auto record = pipeline.create<dai::node::RecordMessage>();
+        auto record = pipeline.create<dai::node::RecordMetadataOnly>();
 
         replay->setReplayFile("imu_recording.mcap");
 

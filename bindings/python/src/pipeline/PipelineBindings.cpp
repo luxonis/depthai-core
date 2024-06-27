@@ -60,8 +60,8 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack){
 
     // Type definitions
     py::class_<GlobalProperties> globalProperties(m, "GlobalProperties", DOC(dai, GlobalProperties));
-    py::class_<RecordConfig::VideoEncoding> recordVideoConfig(m, "VideoEncoding", DOC(dai, RecordConfig, VideoEncoding));
     py::class_<RecordConfig> recordConfig(m, "RecordConfig", DOC(dai, RecordConfig));
+    py::class_<RecordConfig::VideoEncoding> recordVideoConfig(recordConfig, "VideoEncoding", DOC(dai, RecordConfig, VideoEncoding));
     py::class_<Pipeline> pipeline(m, "Pipeline", DOC(dai, Pipeline, 2));
 
     ///////////////////////////////////////////////////////////////////////

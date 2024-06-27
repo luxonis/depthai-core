@@ -7,7 +7,7 @@ void bind_replay(pybind11::module& m, void* pCallstack){
     using namespace node;
 
     auto replayVideo = ADD_NODE_DERIVED(ReplayVideo, ThreadedHostNode);
-    auto replayMessage = ADD_NODE_DERIVED(ReplayMessage, ThreadedHostNode);
+    auto replayMessage = ADD_NODE_DERIVED(ReplayMetadataOnly, ThreadedHostNode);
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -37,9 +37,9 @@ void bind_replay(pybind11::module& m, void* pCallstack){
         .def("getFps", &ReplayVideo::getFps, DOC(dai, node, ReplayVideo, getFps))
         .def("getLoop", &ReplayVideo::getLoop, DOC(dai, node, ReplayVideo, getLoop));
 
-    replayMessage.def_readonly("out", &ReplayMessage::out, DOC(dai, node, ReplayMessage, out))
-        .def("setReplayFile", &ReplayMessage::setReplayFile, py::arg("replayFile"), DOC(dai, node, ReplayMessage, setReplayFile))
-        .def("setLoop", &ReplayMessage::setLoop, py::arg("loop"), DOC(dai, node, ReplayMessage, setLoop))
-        .def("getReplayFile", &ReplayMessage::getReplayFile, DOC(dai, node, ReplayMessage, getReplayFile))
-        .def("getLoop", &ReplayMessage::getLoop, DOC(dai, node, ReplayMessage, getLoop));
+    replayMessage.def_readonly("out", &ReplayMetadataOnly::out, DOC(dai, node, ReplayMetadataOnly, out))
+        .def("setReplayFile", &ReplayMetadataOnly::setReplayFile, py::arg("replayFile"), DOC(dai, node, ReplayMetadataOnly, setReplayFile))
+        .def("setLoop", &ReplayMetadataOnly::setLoop, py::arg("loop"), DOC(dai, node, ReplayMetadataOnly, setLoop))
+        .def("getReplayFile", &ReplayMetadataOnly::getReplayFile, DOC(dai, node, ReplayMetadataOnly, getReplayFile))
+        .def("getLoop", &ReplayMetadataOnly::getLoop, DOC(dai, node, ReplayMetadataOnly, getLoop));
 }

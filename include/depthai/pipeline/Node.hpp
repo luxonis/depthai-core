@@ -587,7 +587,7 @@ class Node : public std::enable_shared_from_this<Node> {
 
     // For record and replay
     virtual bool isSourceNode() const;
-    virtual utility::NodeRecordParams getNodeRecordParams() const;
+    virtual NodeRecordParams getNodeRecordParams() const;
     virtual Output& getRecordOutput();
     virtual Input& getReplayInput();
 

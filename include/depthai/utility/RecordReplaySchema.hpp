@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <chrono>
 #include <nlohmann/json.hpp>
 #include <string>
@@ -106,6 +107,7 @@ struct IMURecordSchema {
     dai::IMUData getMessage() {
         IMUData imuData;
         imuData.packets.reserve(packets.size());
+        auto minTimestamp = packets.size() > 0 ? packets.front().acceleration.timestamp.get() : std::chrono::nanoseconds{0};
         for(const auto& packet : packets) {
             IMUPacket imuPacket;
             imuPacket.acceleroMeter.tsDevice.sec = packet.acceleration.timestamp.seconds;
@@ -143,7 +145,9 @@ struct IMURecordSchema {
             imuPacket.rotationVector.rotationVectorAccuracy = packet.rotationVector.rotationAccuracy;
 
             imuData.packets.push_back(imuPacket);
+            std::min({minTimestamp, packet.rotationVector.timestamp.get(), packet.orientation.timestamp.get(), packet.acceleration.timestamp.get(), packet.magneticField.timestamp.get()});
         }
+        imuData.setTimestampDevice(std::chrono::steady_clock::time_point(minTimestamp));
         return imuData;
     }
 };

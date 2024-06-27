@@ -29,7 +29,7 @@ class ColorCamera : public DeviceNodeCRTP<DeviceNode, ColorCamera, ColorCameraPr
     using DeviceNodeCRTP::DeviceNodeCRTP;
 
     bool isSourceNode() const override;
-    utility::NodeRecordParams getNodeRecordParams() const override;
+    NodeRecordParams getNodeRecordParams() const override;
     Output& getRecordOutput() override;
     Input& getReplayInput() override;
 
