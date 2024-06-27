@@ -39,7 +39,9 @@ void bind_replay(pybind11::module& m, void* pCallstack){
 
     replayMessage.def_readonly("out", &ReplayMetadataOnly::out, DOC(dai, node, ReplayMetadataOnly, out))
         .def("setReplayFile", &ReplayMetadataOnly::setReplayFile, py::arg("replayFile"), DOC(dai, node, ReplayMetadataOnly, setReplayFile))
+        .def("setFps", &ReplayMetadataOnly::setFps, py::arg("fps"), DOC(dai, node, ReplayMetadataOnly, setFps))
         .def("setLoop", &ReplayMetadataOnly::setLoop, py::arg("loop"), DOC(dai, node, ReplayMetadataOnly, setLoop))
         .def("getReplayFile", &ReplayMetadataOnly::getReplayFile, DOC(dai, node, ReplayMetadataOnly, getReplayFile))
+        .def("getFps", &ReplayMetadataOnly::getFps, DOC(dai, node, ReplayMetadataOnly, getFps))
         .def("getLoop", &ReplayMetadataOnly::getLoop, DOC(dai, node, ReplayMetadataOnly, getLoop));
 }

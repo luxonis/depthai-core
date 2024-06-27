@@ -34,17 +34,26 @@ bool setupHolisticRecord(Pipeline& pipeline, const std::string& mxId, RecordConf
                 recordNode->setRecordVideoFile(filePath + ".mp4");
                 recordNode->setCompressionLevel((dai::RecordConfig::CompressionLevel)recordConfig.compressionLevel);
                 if(recordConfig.videoEncoding.enabled) {
-                    auto imageManip = pipeline.create<dai::node::ImageManip>();
-                    imageManip->initialConfig.setFrameType(ImgFrame::Type::NV12);
-                    imageManip->setMaxOutputFrameSize(3110400);  // TODO(asahtik): set size depending on isp size
                     auto videnc = pipeline.create<dai::node::VideoEncoder>();
                     videnc->setProfile(recordConfig.videoEncoding.profile);
                     videnc->setLossless(recordConfig.videoEncoding.lossless);
                     videnc->setBitrate(recordConfig.videoEncoding.bitrate);
                     videnc->setQuality(recordConfig.videoEncoding.quality);
+                    int maxOutputFrameSize = 3110400;
+                    if(std::dynamic_pointer_cast<node::Camera>(node) != nullptr || std::dynamic_pointer_cast<node::ColorCamera>(node) != nullptr) {
+                        if(std::dynamic_pointer_cast<node::ColorCamera>(node) != nullptr) {
+                            auto cam = std::dynamic_pointer_cast<dai::node::ColorCamera>(node);
+                            maxOutputFrameSize = std::get<0>(cam->getIspSize()) * std::get<1>(cam->getIspSize()) * 3;
+                        }
+                        auto imageManip = pipeline.create<dai::node::ImageManip>();
+                        imageManip->initialConfig.setFrameType(ImgFrame::Type::NV12);
+                        imageManip->setMaxOutputFrameSize(maxOutputFrameSize);
 
-                    node->getRecordOutput().link(imageManip->inputImage);
-                    imageManip->out.link(videnc->input);
+                        node->getRecordOutput().link(imageManip->inputImage);
+                        imageManip->out.link(videnc->input);
+                    } else {
+                        node->getRecordOutput().link(videnc->input);
+                    }
                     videnc->out.link(recordNode->input);
                 } else {
                     node->getRecordOutput().link(recordNode->input);
