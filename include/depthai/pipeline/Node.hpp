@@ -56,14 +56,17 @@ class Node : public std::enable_shared_from_this<Node> {
     class Output;
     class InputMap;
     class OutputMap;
-        struct DatatypeHierarchy {
+    struct DatatypeHierarchy {
         DatatypeHierarchy(DatatypeEnum d, bool c) : datatype(d), descendants(c) {}
         DatatypeEnum datatype;
         bool descendants;
     };
     static constexpr auto DEFAULT_GROUP = "";
     static constexpr auto DEFAULT_NAME = "";
-    #define DEFAULT_TYPES {{DatatypeEnum::Buffer, true}}
+#define DEFAULT_TYPES                  \
+    {                                  \
+        { DatatypeEnum::Buffer, true } \
+    }
 
    protected:
     std::vector<Output*> outputRefs;

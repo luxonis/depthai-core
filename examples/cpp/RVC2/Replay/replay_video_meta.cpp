@@ -23,5 +23,5 @@ int main() {
     replay->out.link(cam->mockIsp);
     cam->video.link(display->input);
 
-    pipeline.run(); // Let the display node stop the pipeline
+    pipeline.run();  // Let the display node stop the pipeline
 }

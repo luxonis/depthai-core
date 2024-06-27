@@ -93,7 +93,9 @@ void Record::run() {
             }
             if(logger)
                 logger->trace("Record node detected stream type {}",
-                              streamType == StreamType::RawVideo ? "RawVideo" : streamType == StreamType::EncodedVideo ? "EncodedVideo" : "Byte");
+                              streamType == StreamType::RawVideo       ? "RawVideo"
+                              : streamType == StreamType::EncodedVideo ? "EncodedVideo"
+                                                                       : "Byte");
         }
         if(streamType == StreamType::RawVideo || streamType == StreamType::EncodedVideo) {
             if(i == 0)
