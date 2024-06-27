@@ -22,7 +22,7 @@ int main(int argc, char** argv) {
     imu->enableIMUSensor(dai::IMUSensor::GYROSCOPE_RAW, 400);
 
     cam->video.link(display->input);
-    auto q = imu->out.createQueue();
+    auto q = imu->out.createOutputQueue();
 
     dai::RecordConfig config;
     config.outputDir = argc > 1 ? std::string(argv[1]) : ".";
