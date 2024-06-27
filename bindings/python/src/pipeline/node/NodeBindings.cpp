@@ -275,7 +275,7 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
                         bool waitForMessage) {
                 return std::unique_ptr<Node::Input>(new Node::Input(
                     parent,
-                    {.name = name, .group = group, .blocking = blocking, .queueSize = queueSize, .types = std::move(types), .waitForMessage = waitForMessage}));
+                    {name,group,blocking,queueSize,std::move(types), waitForMessage}));
             }),
             py::arg("parent"),
             py::arg("name") = Node::InputDescription{}.name,
@@ -308,7 +308,7 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
     nodeOutputType.value("MSender", Node::Output::Type::MSender).value("SSender", Node::Output::Type::SSender);
     pyOutput
         .def(py::init([](Node& parent, const std::string& name, const std::string& group, std::vector<Node::DatatypeHierarchy> types) {
-                 return std::unique_ptr<Node::Output>(new Node::Output(parent, {.name = name, .group = group, .types = std::move(types)}));
+                 return std::unique_ptr<Node::Output>(new Node::Output(parent, {name, group, std::move(types)}));
              }),
              py::arg("parent"),
              py::arg("name") = Node::OutputDescription{}.name,

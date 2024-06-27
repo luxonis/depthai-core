@@ -124,9 +124,9 @@ class Node : public std::enable_shared_from_this<Node> {
 
    public:
     struct OutputDescription {
-        std::string name{};                                                  // Name of the output
-        std::string group{};                                                 // Group of the output
-        std::vector<DatatypeHierarchy> types{{DatatypeEnum::Buffer, true}};  // Possible datatypes that can be sent
+        std::string name{DEFAULT_NAME};
+        std::string group{DEFAULT_GROUP};
+        std::vector<DatatypeHierarchy> types DEFAULT_TYPES;
     };
 
     class Output {
@@ -330,12 +330,12 @@ class Node : public std::enable_shared_from_this<Node> {
 
     // Input extends the message queue with additional option that specifies whether to wait for message or not
     struct InputDescription {
-        std::string name{};                                                  // Name of the input
-        std::string group{};                                                 // Group of the input
-        bool blocking{true};                                                 // Whether to block when input queue is full
-        int queueSize{3};                                                    // Size of the queue
-        std::vector<DatatypeHierarchy> types{{DatatypeEnum::Buffer, true}};  // Possible datatypes that can be received
-        bool waitForMessage{false};
+        std::string name = DEFAULT_NAME;                     // Name of the input
+        std::string group = DEFAULT_GROUP;                   // Group of the input
+        bool blocking{DEFAULT_BLOCKING};                     // Whether to block when input queue is full
+        int queueSize{DEFAULT_QUEUE_SIZE};                   // Size of the queue
+        std::vector<DatatypeHierarchy> types DEFAULT_TYPES;  // Possible datatypes that can be received
+        bool waitForMessage{DEFAULT_WAIT_FOR_MESSAGE};
     };
 
     class Input : public MessageQueue {
