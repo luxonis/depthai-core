@@ -48,6 +48,7 @@ class SharedMemory : public Memory {
 
     ~SharedMemory() {
 	unmapFd();
+	close(fd);
     }
 
     SharedMemory& operator=(long argFd) {
