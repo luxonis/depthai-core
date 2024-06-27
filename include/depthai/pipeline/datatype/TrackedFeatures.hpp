@@ -1,5 +1,6 @@
 #pragma once
-
+#include <array>
+#include <cstdint>
 #include <vector>
 
 #include "depthai/common/Point2f.hpp"
@@ -39,8 +40,13 @@ struct TrackedFeature {
      *  Feature tracking error
      */
     float trackingError = 0.f;
+
+    /**
+     *  Feature descriptor
+     */
+    std::array<uint8_t, 32> descriptor = {0};
 };
-DEPTHAI_SERIALIZE_EXT(TrackedFeature, position, id, age, harrisScore, trackingError);
+DEPTHAI_SERIALIZE_EXT(TrackedFeature, position, id, age, harrisScore, trackingError, descriptor);
 
 /**
  * TrackedFeatures message. Carries position (X, Y) of tracked features and their ID.
@@ -63,3 +69,4 @@ class TrackedFeatures : public Buffer {
 };
 
 }  // namespace dai
+
