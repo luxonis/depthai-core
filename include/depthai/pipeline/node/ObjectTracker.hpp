@@ -28,22 +28,19 @@ class ObjectTracker : public DeviceNodeCRTP<DeviceNode, ObjectTracker, ObjectTra
      * Input ImgFrame message on which tracking will be performed. RGBp, BGRp, NV12, YUV420p types are supported.
      * Default queue is non-blocking with size 4.
      */
-    Input inputTrackerFrame{
-        *this, {.name = "inputTrackerFrame", .blocking = false, .queueSize = 4, .types = {{DatatypeEnum::ImgFrame, false}}, .waitForMessage = true}};
+    Input inputTrackerFrame{*this, {"inputTrackerFrame", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::ImgFrame, false}}}, true}};
 
     /**
      * Input ImgFrame message on which object detection was performed.
      * Default queue is non-blocking with size 4.
      */
-    Input inputDetectionFrame{
-        *this, {.name = "inputDetectionFrame", .blocking = false, .queueSize = 4, .types = {{DatatypeEnum::ImgFrame, false}}, .waitForMessage = true}};
+    Input inputDetectionFrame{*this, {"inputDetectionFrame", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::ImgFrame, false}}}, true}};
 
     /**
      * Input message with image detection from neural network.
      * Default queue is non-blocking with size 4.
      */
-    Input inputDetections{
-        *this, {.name = "inputDetections", .blocking = false, .queueSize = 4, .types = {{DatatypeEnum::ImgDetections, true}}, .waitForMessage = true}};
+    Input inputDetections{*this, {"inputDetections", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::ImgDetections, true}}}, true}};
 
     /**
      * Outputs Tracklets message that carries object tracking results.

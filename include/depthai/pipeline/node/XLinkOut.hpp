@@ -24,7 +24,7 @@ class XLinkOut : public DeviceNodeCRTP<DeviceNode, XLinkOut, XLinkOutProperties>
      * Default queue is blocking with size 8
      */
     // Input input{*this, "in", Input::Type::SReceiver, true, 8, {{DatatypeEnum::Buffer, true}}};
-    Input input{*this, {.name = "in", .types = {{DatatypeEnum::Buffer, true}}}};
+    Input input{*this, {"in", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Specifies XLink stream name to use.

@@ -27,7 +27,7 @@ class Script : public DeviceNodeCRTP<DeviceNode, Script, ScriptProperties> {
      * Inputs to Script node. Can be accessed using subscript operator (Eg: inputs['in1'])
      * By default inputs are set to blocking with queue size 8
      */
-    InputMap inputs{*this, "inputs", {.blocking = true, .queueSize = 8, .types = {{DatatypeEnum::Buffer, true}}, .waitForMessage = false}};
+    InputMap inputs{*this, {DEFAULT_NAME, DEFAULT_GROUP, true, 8, {{{DatatypeEnum::Buffer, true}}}, false}};
 
     /**
      * Outputs from Script node. Can be accessed subscript operator (Eg: outputs['out1'])

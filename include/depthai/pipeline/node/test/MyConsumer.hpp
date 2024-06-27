@@ -18,7 +18,7 @@ class MyConsumer : public NodeCRTP<ThreadedHostNode, MyConsumer> {
      * Input for any type of messages to be transferred over XLink stream
      * Default queue is blocking with size 8
      */
-    Input input{*this, {.name = "in", .blocking = true, .queueSize = 8, .types = {{DatatypeEnum::Buffer, true}}, .waitForMessage = true}};
+    Input input{*this, {"in", DEFAULT_GROUP, true, 8, {{{DatatypeEnum::Buffer, true}}}, true}};
 
     void run() override {
         while(isRunning()) {

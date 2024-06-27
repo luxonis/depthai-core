@@ -41,13 +41,13 @@ class FeatureTracker : public DeviceNodeCRTP<DeviceNode, FeatureTracker, Feature
      * Input FeatureTrackerConfig message with ability to modify parameters in runtime.
      * Default queue is non-blocking with size 4.
      */
-    Input inputConfig{*this, {.name = "inputConfig", .blocking = false, .queueSize = 4, .types = {{DatatypeEnum::FeatureTrackerConfig, false}}}};
+    Input inputConfig{*this, {"inputConfig", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::FeatureTrackerConfig, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Input message with frame data on which feature tracking is performed.
      * Default queue is non-blocking with size 4.
      */
-    Input inputImage{*this, {.name = "inputImage", .blocking = false, .queueSize = 4, .types = {{DatatypeEnum::ImgFrame, false}}, .waitForMessage = true}};
+    Input inputImage{*this, {"inputImage", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::ImgFrame, false}}}, true}};
 
     /**
      * Outputs TrackedFeatures message that carries tracked features results.

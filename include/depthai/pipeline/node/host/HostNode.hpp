@@ -16,7 +16,7 @@ class HostNode : public ThreadedHostNode {
     bool sendProcessToPipeline = false;
     Subnode<dai::node::Sync> sync{*this, "sync"};
     // Input input{*this, "in", Input::Type::SReceiver, true, 3, {{DatatypeEnum::MessageGroup, true}}};
-    Input input{*this, {.name = "in", .types = {{DatatypeEnum::MessageGroup, true}}}};
+    Input input{*this, {"in", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::MessageGroup, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
    protected:
     void buildStage1() override;

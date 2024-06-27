@@ -37,13 +37,13 @@ class AprilTag : public DeviceNodeCRTP<DeviceNode, AprilTag, AprilTagProperties>
      * Input AprilTagConfig message with ability to modify parameters in runtime.
      * Default queue is non-blocking with size 4.
      */
-    Input inputConfig{*this, {.name = "inputConfig", .blocking = false, .queueSize = 4, .types = {{DatatypeEnum::AprilTagConfig, false}}}};
+    Input inputConfig{*this, {"inputConfig", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::AprilTagConfig, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Input message with depth data used to retrieve spatial information about detected object.
      * Default queue is non-blocking with size 4.
      */
-    Input inputImage{*this, {.name = "inputImage", .blocking = false, .queueSize = 4, .types = {{DatatypeEnum::ImgFrame, false}}}};
+    Input inputImage{*this, {"inputImage", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::ImgFrame, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Outputs AprilTags message that carries spatial location results.

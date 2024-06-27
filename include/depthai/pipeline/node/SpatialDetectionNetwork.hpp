@@ -62,26 +62,19 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
      * Input message with depth data used to retrieve spatial information about detected object
      * Default queue is non-blocking with size 4
      */
-    Input inputDepth{*this, {.name = "inputDepth", .blocking = false, .queueSize = 4, .types = {{DatatypeEnum::ImgFrame, false}}, .waitForMessage = true}};
+    Input inputDepth{*this, {"inputDepth", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::ImgFrame, false}}}, true}};
 
     /**
      * Input message with image data used to retrieve image transformation from detected object
      * Default queue is blocking with size 1
      */
-    Input inputImg{*this, {.name = "inputImg", .blocking = true, .queueSize = 2, .types = {{DatatypeEnum::ImgFrame, false}}, .waitForMessage = true}};
+    Input inputImg{*this, {"inputImg", DEFAULT_GROUP, true, 2, {{{DatatypeEnum::ImgFrame, false}}}, true}};
 
     /**
      * Input message with input detections object
      * Default queue is blocking with size 1
      */
-    Input inputDetections{*this,
-                          {
-                              .name = "inputDetections",
-                              .blocking = true,
-                              .queueSize = 5,
-                              .types = {{DatatypeEnum::ImgDetections, false}},
-                              .waitForMessage = true,
-                          }};
+    Input inputDetections{*this, {"inputDetections", DEFAULT_GROUP, true, 5, {{{DatatypeEnum::ImgDetections, false}}}, true}};
 
     /**
      * Outputs ImgDetections message that carries parsed detection results.

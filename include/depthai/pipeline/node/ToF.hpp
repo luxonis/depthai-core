@@ -41,19 +41,20 @@ class ToF : public DeviceNodeCRTP<DeviceNode, ToF, ToFProperties> {
      * Input ToFConfig message with ability to modify parameters in runtime.
      * Default queue is non-blocking with size 4.
      */
-    Input inputConfig{*this, {.name = "inputConfig", .types = {{DatatypeEnum::ToFConfig, false}}}};
+    Input inputConfig{*this,
+                      {"inputConfig", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ToFConfig, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Input message with frame data on which feature tracking is performed.
      * Default queue is non-blocking with size 4.
      */
-    Input inputRaw{*this, {.name = "inputRaw", .types = {{DatatypeEnum::ImgFrame, false}}}};
+    Input inputRaw{*this, {"inputRaw", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ImgFrame, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     Output depth{*this, {"depth", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     // Note on API limitation:
     // TODO(before mainline) - API not supported on RVC3
-    Input input{*this, {.name = "input", .types = {{DatatypeEnum::ImgFrame, true}}}};
+    Input input{*this, {"input", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ImgFrame, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Passthrough message on which the calculation was performed.

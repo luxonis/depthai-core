@@ -33,7 +33,7 @@ class IMU : public DeviceNodeCRTP<DeviceNode, IMU, IMUProperties> {
     /**
      * Mock IMU data for replaying recorded data
      */
-    Input mockIn{*this, {.name = "mockIn", .types = {{DatatypeEnum::IMUData, false}}}};
+    Input mockIn{*this, {"mockIn", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::IMUData, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Enable a new IMU sensor with explicit configuration

@@ -32,7 +32,7 @@ class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNet
     /**
      * Input message with data to be inferred upon
      */
-    Input input{*this, {.name = "in", .types = {{DatatypeEnum::Buffer, true}}}};
+    Input input{*this, {"in", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Outputs NNData message that carries inference results
@@ -50,7 +50,7 @@ class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNet
      * Inputs mapped to network inputs. Useful for inferring from separate data sources
      * Default input is non-blocking with queue size 1 and waits for messages
      */
-    InputMap inputs{*this, "inputs", {.blocking = false, .queueSize = 1, .types = {{DatatypeEnum::Buffer, true}}, .waitForMessage = true}};
+    InputMap inputs{*this, {DEFAULT_NAME, DEFAULT_GROUP, false, 1, {{{DatatypeEnum::Buffer, true}}}, true}};
 
     /**
      * Passthroughs which correspond to specified input

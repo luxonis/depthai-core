@@ -59,31 +59,35 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
     /**
      * Input StereoDepthConfig message with ability to modify parameters in runtime.
      */
-    Input inputConfig{*this, {.name = "inputConfig", .types = {{DatatypeEnum::StereoDepthConfig, false}}}};
+    Input inputConfig{
+        *this, {"inputConfig", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::StereoDepthConfig, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Input for left ImgFrame of left-right pair
      */
-    Input left{*this, {.name = "left", .types = {{DatatypeEnum::ImgFrame, true}}}};
+    Input left{*this, {"left", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ImgFrame, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Input for right ImgFrame of left-right pair
      */
-    Input right{*this, {.name = "right", .types = {{DatatypeEnum::ImgFrame, true}}}};
+    Input right{*this, {"right", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ImgFrame, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     // TODO(before mainline) - API not supported on RVC2
     /**
      * Input pixel descriptor for left ImgFrame.
      * Input type must be 4 bytes per pixel
      */
-    Input inputLeftPixelDescriptor{*this, {.name = "inputLeftPixelDescriptor", .types = {{DatatypeEnum::ImgFrame, true}}}};
+    Input inputLeftPixelDescriptor{
+        *this, {"inputLeftPixelDescriptor", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ImgFrame, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     // TODO(before mainline) - API not supported on RVC2
     /**
      * Input pixel descriptor for right ImgFrame.
      * Input type must be 4 bytes per pixel
      */
-    Input inputRightPixelDescriptor{*this, {.name = "inputRightPixelDescriptor", .types = {{DatatypeEnum::ImgFrame, true}}}};
+    Input inputRightPixelDescriptor{
+        *this,
+        {"inputRightPixelDescriptor", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ImgFrame, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Outputs ImgFrame message that carries RAW16 encoded (0..65535) depth data in depth units (millimeter by default).

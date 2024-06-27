@@ -20,7 +20,7 @@ class BenchmarkIn : public DeviceNodeCRTP<DeviceNode, BenchmarkIn, BenchmarkProp
     /**
      * Receive messages as fast as possible
      */
-    Input input{*this, {.name = "input", .blocking = false, .queueSize = 4, .types = {{DatatypeEnum::Buffer, true}}}};
+    Input input{*this, {"input", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Passthrough for input messages (so the node can be placed between other nodes)

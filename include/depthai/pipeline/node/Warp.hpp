@@ -40,7 +40,7 @@ class Warp : public DeviceNodeCRTP<DeviceNode, Warp, WarpProperties> {
      * Input image to be modified
      * Default queue is blocking with size 8
      */
-    Input inputImage{*this, {.name = "inputImage", .types = {{DatatypeEnum::ImgFrame, true}}}};
+    Input inputImage{*this, {"inputImage", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ImgFrame, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Outputs ImgFrame message that carries warped image.

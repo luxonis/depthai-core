@@ -41,13 +41,14 @@ class MonoCamera : public DeviceNodeCRTP<DeviceNode, MonoCamera, MonoCameraPrope
      * Default queue is blocking with size 8
      */
     // Input inputControl{*this, "inputControl", Input::Type::SReceiver, true, 8, {{DatatypeEnum::CameraControl, false}}};
-    Input inputControl{*this, {.name = "inputControl", .types = {{DatatypeEnum::CameraControl, false}}}};
+    Input inputControl{
+        *this, {"inputControl", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::CameraControl, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Input for mocking 'isp' functionality.
      * Default queue is blocking with size 8
      */
-    Input mockIsp{*this, {.name = "mockIsp", .blocking = true, .queueSize = 8, .types = {{DatatypeEnum::ImgFrame, false}}}};
+    Input mockIsp{*this, {"mockIsp", DEFAULT_GROUP, true, 8, {{{DatatypeEnum::ImgFrame, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Outputs ImgFrame message that carries RAW8 encoded (grayscale) frame data.

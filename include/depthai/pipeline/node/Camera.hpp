@@ -35,7 +35,8 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties> {
     /**
      * Input for CameraControl message, which can modify camera parameters in runtime
      */
-    Input inputControl{*this, {.name = "inputControl", .types = {{DatatypeEnum::CameraControl, false}}}};
+    Input inputControl{
+        *this, {"inputControl", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::CameraControl, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Specify which board socket to use

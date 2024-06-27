@@ -33,7 +33,7 @@ class Record : public NodeCRTP<ThreadedHostNode, Record> {
      *
      * Default queue is blocking with size 8
      */
-    Input input{*this, {.name = "in", .queueSize = 15, .types = {{DatatypeEnum::Buffer, true}}}};
+    Input input{*this, {"in", DEFAULT_GROUP, DEFAULT_BLOCKING, 15, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     void run() override;
 
