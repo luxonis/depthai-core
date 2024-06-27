@@ -34,6 +34,10 @@ bool setupHolisticRecord(Pipeline& pipeline, const std::string& mxId, RecordConf
             outFilenames[nodeName] = filePath;
             if(std::dynamic_pointer_cast<node::Camera>(node) != nullptr || std::dynamic_pointer_cast<node::ColorCamera>(node) != nullptr
                || std::dynamic_pointer_cast<node::MonoCamera>(node) != nullptr) {
+                if(std::dynamic_pointer_cast<node::Camera>(node) != nullptr) {
+                    // TODO(asahtik)
+                    throw std::runtime_error("Holistic record with Camera node is not yet supported.");
+                }
                 auto recordNode = pipeline.create<dai::node::RecordVideo>();
                 recordNode->setRecordMetadataFile(filePath + ".mcap");
                 recordNode->setRecordVideoFile(filePath + ".mp4");
