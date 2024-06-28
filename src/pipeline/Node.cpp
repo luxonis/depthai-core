@@ -290,7 +290,7 @@ Node::OutputMap::OutputMap(Node& parent, std::string name, Node::OutputDescripti
     }
 }
 
-Node::OutputMap::OutputMap(Node& parent, Node::OutputDescription defaultOutput, bool ref) : OutputMap(parent, "", std::move(defaultOutput), ref) {};
+Node::OutputMap::OutputMap(Node& parent, Node::OutputDescription defaultOutput, bool ref) : OutputMap(parent, "", std::move(defaultOutput), ref){};
 
 Node::Output& Node::OutputMap::operator[](const std::string& key) {
     if(count({name, key}) == 0) {
@@ -322,7 +322,7 @@ Node::InputMap::InputMap(Node& parent, std::string name, Node::InputDescription 
     parent.setInputMapRefs(this);
 }
 
-Node::InputMap::InputMap(Node& parent, Node::InputDescription description) : InputMap(parent, "", std::move(description)) {};
+Node::InputMap::InputMap(Node& parent, Node::InputDescription description) : InputMap(parent, "", std::move(description)){};
 
 Node::Input& Node::InputMap::operator[](const std::string& key) {
     if(count({name, key}) == 0) {

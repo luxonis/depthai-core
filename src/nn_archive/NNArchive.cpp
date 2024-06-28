@@ -43,7 +43,7 @@ class NNArchive::Impl {
     Impl(const std::vector<uint8_t>& data, NNArchiveEntry::Compression compression)
         : mConfig(NNArchiveConfig(data, compression)), mBlob(NNArchiveBlob(mConfig, data, compression)) {}
 
-    Impl(NNArchiveConfig config, NNArchiveBlob blob) : mConfig(std::move(config)), mBlob(std::move(blob)) {};
+    Impl(NNArchiveConfig config, NNArchiveBlob blob) : mConfig(std::move(config)), mBlob(std::move(blob)){};
 
     Impl(const Path& path, NNArchiveEntry::Compression compression)
         : mConfig(NNArchiveConfig(path, compression)), mBlob(blobFromConfig(mConfig, path, compression)) {}
@@ -62,7 +62,7 @@ class NNArchive::Impl {
     }
 };
 
-NNArchive::NNArchive(const std::vector<uint8_t>& data, NNArchiveEntry::Compression compression) : pimpl(spimpl::make_impl<Impl>(data, compression)) {};
+NNArchive::NNArchive(const std::vector<uint8_t>& data, NNArchiveEntry::Compression compression) : pimpl(spimpl::make_impl<Impl>(data, compression)){};
 
 NNArchive::NNArchive(const NNArchiveConfig& config, const NNArchiveBlob& blob) : pimpl(spimpl::make_impl<Impl>(config, blob)) {}
 

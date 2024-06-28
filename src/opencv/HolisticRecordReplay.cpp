@@ -26,7 +26,8 @@ bool setupHolisticRecord(Pipeline& pipeline, const std::string& mxId, RecordConf
         for(auto& node : sources) {
             auto nodeS = std::dynamic_pointer_cast<SourceNode>(node);
             if(nodeS == nullptr) {
-                throw std::runtime_error("Node " + std::string(node->getName()) + " is listed as a source node but does not implement the SourceNode interface.");
+                throw std::runtime_error("Node " + std::string(node->getName())
+                                         + " is listed as a source node but does not implement the SourceNode interface.");
             }
             NodeRecordParams nodeParams = nodeS->getNodeRecordParams();
             std::string nodeName = nodeParams.name;
