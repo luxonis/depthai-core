@@ -203,7 +203,7 @@ jobs:
         if: matrix.python-architecture == 'x86'
         run: |
           choco install opencv --x86
-          echo "OpenCV_DIR=C:\tools\opencv\x86\build" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          echo "OpenCV_DIR=C:\tools\opencv\build" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Install dependencies for x64
         if: matrix.python-architecture == 'x64'
