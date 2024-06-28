@@ -85,15 +85,15 @@ static uint64_t readInt64(const uint8_t* data) {
     return bigEndianToHost(value);
 }
 
-OpenVINO::Superblob::Superblob(const std::string& pathToSuperblobFile) {
-    data = readSuperblobFile(pathToSuperblobFile);
-    header = SuperblobHeader::fromData(data);
+OpenVINO::SuperBlob::SuperBlob(const std::string& pathToSuperBlobFile) {
+    data = readSuperBlobFile(pathToSuperBlobFile);
+    header = SuperBlobHeader::fromData(data);
 }
 
-dai::OpenVINO::Blob OpenVINO::Superblob::getBlobWithNShaves(int nShaves) {
-    if(nShaves < 1 || nShaves > static_cast<int>(OpenVINO::Superblob::NUMBER_OF_PATCHES)) {
-        throw std::runtime_error("Invalid number of shaves: " + std::to_string(nShaves) + " (expected 1 to "
-                                 + std::to_string(OpenVINO::Superblob::NUMBER_OF_PATCHES) + ")");
+dai::OpenVINO::Blob OpenVINO::SuperBlob::getBlobWithNShaves(int numShaves) {
+    if(numShaves < 1 || numShaves > static_cast<int>(OpenVINO::SuperBlob::NUMBER_OF_PATCHES)) {
+        throw std::runtime_error("Invalid number of shaves: " + std::to_string(numShaves) + " (expected 1 to "
+                                 + std::to_string(OpenVINO::SuperBlob::NUMBER_OF_PATCHES) + ")");
     }
 
     // Load main blob data
@@ -101,8 +101,8 @@ dai::OpenVINO::Blob OpenVINO::Superblob::getBlobWithNShaves(int nShaves) {
     int64_t blobSize = getBlobDataSize();
 
     // Load blob patch
-    const uint8_t* patchData = getPatchDataPointer(nShaves);
-    int64_t patchSize = getPatchDataSize(nShaves);
+    const uint8_t* patchData = getPatchDataPointer(numShaves);
+    int64_t patchSize = getPatchDataSize(numShaves);
 
     // Prepare patched blob data
     std::vector<uint8_t> patchedBlobData;
@@ -127,7 +127,7 @@ dai::OpenVINO::Blob OpenVINO::Superblob::getBlobWithNShaves(int nShaves) {
     return patchedBlob;
 }
 
-std::vector<uint8_t> OpenVINO::Superblob::readSuperblobFile(const std::string& path) {
+std::vector<uint8_t> OpenVINO::SuperBlob::readSuperBlobFile(const std::string& path) {
     // Make sure file exists before opening it
     if(!std::filesystem::exists(path)) throw std::runtime_error("File does not exist: " + path);
 
@@ -139,37 +139,37 @@ std::vector<uint8_t> OpenVINO::Superblob::readSuperblobFile(const std::string& p
     return std::vector<uint8_t>(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
 }
 
-OpenVINO::Superblob::SuperblobHeader OpenVINO::Superblob::SuperblobHeader::fromData(const std::vector<uint8_t>& data) {
-    SuperblobHeader header;
+OpenVINO::SuperBlob::SuperBlobHeader OpenVINO::SuperBlob::SuperBlobHeader::fromData(const std::vector<uint8_t>& data) {
+    SuperBlobHeader header;
     const uint8_t* ptr = data.data();
     header.blobSize = readInt64(ptr);
     ptr += sizeof(uint64_t);
 
-    header.patchSizes.resize(OpenVINO::Superblob::NUMBER_OF_PATCHES);
-    for(size_t i = 0; i < OpenVINO::Superblob::NUMBER_OF_PATCHES; ++i) {
+    header.patchSizes.resize(OpenVINO::SuperBlob::NUMBER_OF_PATCHES);
+    for(size_t i = 0; i < OpenVINO::SuperBlob::NUMBER_OF_PATCHES; ++i) {
         header.patchSizes[i] = readInt64(ptr);
         ptr += sizeof(uint64_t);
     }
     return header;
 }
 
-const uint8_t* OpenVINO::Superblob::getBlobDataPointer() {
-    const uint64_t offset = SuperblobHeader::HEADER_SIZE;
+const uint8_t* OpenVINO::SuperBlob::getBlobDataPointer() {
+    const uint64_t offset = SuperBlobHeader::HEADER_SIZE;
     return data.data() + offset;
 }
 
-int64_t OpenVINO::Superblob::getBlobDataSize() {
+int64_t OpenVINO::SuperBlob::getBlobDataSize() {
     return header.blobSize;
 }
 
-const uint8_t* OpenVINO::Superblob::getPatchDataPointer(int nShaves) {
+const uint8_t* OpenVINO::SuperBlob::getPatchDataPointer(int numShaves) {
     const uint64_t offset =
-        SuperblobHeader::HEADER_SIZE + header.blobSize + std::accumulate(header.patchSizes.begin(), header.patchSizes.begin() + nShaves - 1, 0);
+        SuperBlobHeader::HEADER_SIZE + header.blobSize + std::accumulate(header.patchSizes.begin(), header.patchSizes.begin() + numShaves - 1, 0);
     return data.data() + offset;
 }
 
-int64_t OpenVINO::Superblob::getPatchDataSize(int nShaves) {
-    return header.patchSizes[nShaves - 1];
+int64_t OpenVINO::SuperBlob::getPatchDataSize(int numShaves) {
+    return header.patchSizes[numShaves - 1];
 }
 
 std::vector<OpenVINO::Version> OpenVINO::getVersions() {

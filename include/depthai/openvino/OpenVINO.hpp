@@ -57,39 +57,39 @@ class OpenVINO {
     /**
      * @brief A superblob is an efficient way of storing generated blobs for all different number of shaves.
      */
-    class Superblob {
+    class SuperBlob {
        public:
         /** Number of patches in a superblob*/
         static constexpr size_t NUMBER_OF_PATCHES = 16;
 
         /**
-         * @brief Construct a new Superblob object
+         * @brief Construct a new SuperBlob object
          *
-         * @param pathToSuperblobFile: Path to the superblob file (.superblob suffix)
+         * @param pathToSuperBlobFile: Path to the superblob file (.superblob suffix)
          */
-        Superblob(const std::string& pathToSuperblobFile);
+        SuperBlob(const std::string& pathToSuperBlobFile);
 
         /**
          * @brief Generate a blob with a specific number of shaves
          *
-         * @param nShaves: Number of shaves to generate the blob for. Must be between 1 and NUMBER_OF_PATCHES.
+         * @param numShaves: Number of shaves to generate the blob for. Must be between 1 and NUMBER_OF_PATCHES.
          * @return dai::OpenVINO::Blob: Blob compiled for the specified number of shaves
          */
-        dai::OpenVINO::Blob getBlobWithNumShaves(int numShaves);
+        dai::OpenVINO::Blob getBlobWithNShaves(int numShaves);
 
        private:
         // A header in the superblob containing metadata about the blob and patches
-        struct SuperblobHeader {
+        struct SuperBlobHeader {
             static constexpr size_t HEADER_SIZE = 1 * sizeof(uint64_t) + NUMBER_OF_PATCHES * sizeof(uint64_t);
 
-            static SuperblobHeader fromData(const std::vector<uint8_t>& data);
+            static SuperBlobHeader fromData(const std::vector<uint8_t>& data);
 
             int64_t blobSize;
             std::vector<int64_t> patchSizes;
         };
 
-        // Read the superblob file into memory
-        std::vector<uint8_t> readSuperblobFile(const std::string& path);
+        // Read the SuperBlob file into memory
+        std::vector<uint8_t> readSuperBlobFile(const std::string& path);
 
         // Get a pointer to the first byte of the blob data
         const uint8_t* getBlobDataPointer();
@@ -98,12 +98,12 @@ class OpenVINO {
         int64_t getBlobDataSize();
 
         // Get a pointer to the first byte of the patch data for a specific number of shaves
-        const uint8_t* getPatchDataPointer(int nShaves);
+        const uint8_t* getPatchDataPointer(int numShaves);
 
         // Get the size in bytes of the patch data for a specific number of shaves
-        int64_t getPatchDataSize(int nShaves);
+        int64_t getPatchDataSize(int numShaves);
 
-        SuperblobHeader header;
+        SuperBlobHeader header;
         std::vector<uint8_t> data;
     };
 
