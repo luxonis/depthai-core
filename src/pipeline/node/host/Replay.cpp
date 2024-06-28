@@ -1,8 +1,9 @@
+#define _USE_MATH_DEFINES
+#include <cmath>
 #include "depthai/pipeline/node/host/Replay.hpp"
 
 #include <chrono>
 #include <memory>
-
 #include "depthai/pipeline/datatype/IMUData.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/utility/RecordReplay.hpp"
