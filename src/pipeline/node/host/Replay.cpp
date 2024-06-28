@@ -1,12 +1,14 @@
 #include "depthai/pipeline/node/host/Replay.hpp"
 
 #include <chrono>
+#include <cstdio>
+#include <filesystem>
 #include <memory>
 
 #include "depthai/pipeline/datatype/IMUData.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
-#include "depthai/utility/RecordReplay.hpp"
 #include "depthai/utility/RecordReplaySchema.hpp"
+#include "utility/RecordReplayImpl.hpp"
 
 namespace dai {
 namespace node {
@@ -73,6 +75,7 @@ void ReplayVideo::run() {
     auto start = std::chrono::steady_clock::now();
     uint64_t index = 0;
     auto loopStart = std::chrono::steady_clock::now();
+    auto prevMsgTs = loopStart;
     while(isRunning()) {
         nlohmann::json metadata;
         std::vector<uint8_t> frame;
@@ -144,13 +147,22 @@ void ReplayVideo::run() {
 
         auto buffer = getVideoMessage(metadata, outFrameType, frame);
 
+        if(first) prevMsgTs = buffer->getTimestampDevice();
+
+        if(hasMetadata && !(fps.has_value() && fps.value() > 0.1f)) {
+            std::this_thread::sleep_until(loopStart + (buffer->getTimestampDevice() - prevMsgTs));
+        }
+
         if(buffer) out.send(buffer);
 
         if(fps.has_value() && fps.value() > 0.1f) {
             std::this_thread::sleep_until(loopStart + std::chrono::milliseconds((uint32_t)roundf(1000.f / fps.value())));
+        } else if(!hasMetadata) {
+            std::this_thread::sleep_until(loopStart + std::chrono::milliseconds(1000 / 30));
         }
 
         loopStart = std::chrono::steady_clock::now();
+        prevMsgTs = buffer->getTimestampDevice();
 
         first = false;
     }
@@ -158,9 +170,9 @@ void ReplayVideo::run() {
     stopPipeline();
 }
 
-void ReplayMessage::run() {
+void ReplayMetadataOnly::run() {
     if(replayFile.empty()) {
-        throw std::runtime_error("ReplayMessage node requires replayFile to be set");
+        throw std::runtime_error("ReplayMetadataOnly node requires replayFile to be set");
     }
     utility::BytePlayer bytePlayer;
     bool hasMetadata = !replayFile.empty();
@@ -176,32 +188,41 @@ void ReplayMessage::run() {
     utility::RecordType type = utility::RecordType::Other;
     bool first = true;
     auto loopStart = std::chrono::steady_clock::now();
+    auto prevMsgTs = loopStart;
     while(isRunning()) {
         nlohmann::json metadata;
         std::vector<uint8_t> frame;
-        if(hasMetadata) {
-            auto msg = bytePlayer.next();
-            if(msg.has_value()) {
-                metadata = msg.value();
-                if(first) {
-                    type = metadata["type"].get<utility::RecordType>();
-                }
-            } else if(!first) {
-                // End of file
-                if(loop) {
-                    bytePlayer.restart();
-                    continue;
-                }
-                break;
-            } else {
-                throw std::runtime_error("Metadata file contains no messages");
+        auto msg = bytePlayer.next();
+        if(msg.has_value()) {
+            metadata = msg.value();
+            if(first) {
+                type = metadata["type"].get<utility::RecordType>();
             }
+        } else if(!first) {
+            // End of file
+            if(loop) {
+                bytePlayer.restart();
+                continue;
+            }
+            break;
+        } else {
+            throw std::runtime_error("Metadata file contains no messages");
         }
         auto buffer = getMessage(metadata, type);
+        if(first) prevMsgTs = buffer->getTimestampDevice();
+
+        if(!(fps.has_value() && fps.value() > 0.1f)) {
+            std::this_thread::sleep_until(loopStart + (buffer->getTimestampDevice() - prevMsgTs));
+        }
 
         if(buffer) out.send(buffer);
 
+        if(fps.has_value() && fps.value() > 0.1f) {
+            std::this_thread::sleep_until(loopStart + std::chrono::milliseconds((uint32_t)roundf(1000.f / fps.value())));
+        }
+
         loopStart = std::chrono::steady_clock::now();
+        prevMsgTs = buffer->getTimestampDevice();
 
         first = false;
     }
@@ -209,11 +230,11 @@ void ReplayMessage::run() {
     stop();
 }
 
-std::string ReplayVideo::getReplayMetadataFile() const {
+std::filesystem::path ReplayVideo::getReplayMetadataFile() const {
     return replayFile;
 }
 
-std::string ReplayVideo::getReplayVideoFile() const {
+std::filesystem::path ReplayVideo::getReplayVideoFile() const {
     return replayVideo;
 }
 
@@ -233,12 +254,12 @@ bool ReplayVideo::getLoop() const {
     return loop;
 }
 
-ReplayVideo& ReplayVideo::setReplayMetadataFile(const std::string& replayFile) {
+ReplayVideo& ReplayVideo::setReplayMetadataFile(const std::filesystem::path& replayFile) {
     this->replayFile = replayFile;
     return *this;
 }
 
-ReplayVideo& ReplayVideo::setReplayVideoFile(const std::string& replayVideo) {
+ReplayVideo& ReplayVideo::setReplayVideoFile(const std::filesystem::path& replayVideo) {
     this->replayVideo = replayVideo;
     return *this;
 }
@@ -264,18 +285,25 @@ ReplayVideo& ReplayVideo::setLoop(bool loop) {
     return *this;
 }
 
-std::string ReplayMessage::getReplayFile() const {
+std::filesystem::path ReplayMetadataOnly::getReplayFile() const {
     return replayFile;
 }
-bool ReplayMessage::getLoop() const {
+float ReplayMetadataOnly::getFps() const {
+    return fps.value_or(0.0f);
+}
+bool ReplayMetadataOnly::getLoop() const {
     return loop;
 }
 
-ReplayMessage& ReplayMessage::setReplayFile(const std::string& replayFile) {
+ReplayMetadataOnly& ReplayMetadataOnly::setReplayFile(const std::filesystem::path& replayFile) {
     this->replayFile = replayFile;
     return *this;
 }
-ReplayMessage& ReplayMessage::setLoop(bool loop) {
+ReplayMetadataOnly& ReplayMetadataOnly::setFps(float fps) {
+    this->fps = fps;
+    return *this;
+}
+ReplayMetadataOnly& ReplayMetadataOnly::setLoop(bool loop) {
     this->loop = loop;
     return *this;
 }

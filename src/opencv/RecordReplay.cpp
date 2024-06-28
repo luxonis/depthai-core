@@ -1,5 +1,3 @@
-#include "depthai/utility/RecordReplay.hpp"
-
 #include <spdlog/spdlog.h>
 
 #include <fstream>
@@ -7,6 +5,8 @@
 #include <opencv2/videoio.hpp>
 #include <optional>
 #include <stdexcept>
+
+#include "../utility/RecordReplayImpl.hpp"
 
 namespace dai {
 namespace utility {

@@ -27,5 +27,5 @@ int main(int argc, char** argv) {
     cam->video.link(display->input);
     videoEncoder->out.link(record->input);
 
-    pipeline.run(); // Let the display node stop the pipeline
+    pipeline.run();  // Let the display node stop the pipeline
 }

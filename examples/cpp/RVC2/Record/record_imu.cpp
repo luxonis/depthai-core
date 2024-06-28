@@ -9,15 +9,12 @@
 #include "depthai/depthai.hpp"
 
 int main(int argc, char** argv) {
-    using namespace std;
-    using namespace std::chrono;
-
     // Create pipeline
     dai::Pipeline pipeline;
 
     // Define sources and outputs
     auto imu = pipeline.create<dai::node::IMU>();
-    auto record = pipeline.create<dai::node::RecordMessage>();
+    auto record = pipeline.create<dai::node::RecordMetadataOnly>();
 
     // enable ACCELEROMETER_RAW at 500 hz rate
     imu->enableIMUSensor(dai::IMUSensor::ACCELEROMETER_RAW, 500);

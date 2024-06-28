@@ -18,19 +18,24 @@
 
 #include<thread>
 #include<unordered_map>
+#include<stack>
 
-std::unordered_map<std::thread::id, dai::Pipeline&> implicitPipelines;
-dai::Pipeline& getImplicitPipeline() {
+std::unordered_map<std::thread::id, std::stack<dai::Pipeline*>> implicitPipelines;
+dai::Pipeline* getImplicitPipeline() {
     auto rv = implicitPipelines.find(std::this_thread::get_id());
-    if (rv == implicitPipelines.end())
+    if (rv == implicitPipelines.end() || rv->second.empty())
         throw std::runtime_error("No implicit pipeline was found. Use `with Pipeline()` to use one");
-    return rv->second;
+    return rv->second.top();
 }
-void setImplicitPipeline(dai::Pipeline& pipeline) {
-    implicitPipelines.emplace(std::this_thread::get_id(), pipeline);
+void setImplicitPipeline(dai::Pipeline* pipeline) {
+    auto stack = implicitPipelines.find(std::this_thread::get_id());
+    if (stack == implicitPipelines.end()) {
+        stack = implicitPipelines.emplace(std::this_thread::get_id(), std::stack<dai::Pipeline*>{}).first;
+    }
+    stack->second.push(pipeline);
 }
 void delImplicitPipeline() {
-    implicitPipelines.erase(implicitPipelines.find(std::this_thread::get_id()));
+    implicitPipelines[std::this_thread::get_id()].pop();
 }
 
 // Map of python node classes and call to pipeline to create it

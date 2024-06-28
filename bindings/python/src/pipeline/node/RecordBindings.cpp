@@ -7,7 +7,7 @@ void bind_record(pybind11::module& m, void* pCallstack){
     using namespace node;
 
     auto recordVideo = ADD_NODE_DERIVED(RecordVideo, ThreadedHostNode);
-    auto recordMessage = ADD_NODE_DERIVED(RecordMessage, ThreadedHostNode);
+    auto recordMessage = ADD_NODE_DERIVED(RecordMetadataOnly, ThreadedHostNode);
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -30,11 +30,10 @@ void bind_record(pybind11::module& m, void* pCallstack){
         .def("getRecordVideoFile", &RecordVideo::getRecordVideoFile, DOC(dai, node, RecordVideo, getRecordVideoFile))
         .def("getCompressionLevel", &RecordVideo::getCompressionLevel, DOC(dai, node, RecordVideo, getCompressionLevel));
 
-    recordMessage.def_readonly("input", &RecordMessage::input, DOC(dai, node, RecordMessage, input))
-        .def("setRecordFile", &RecordMessage::setRecordFile, py::arg("recordFile"), DOC(dai, node, RecordMessage, setRecordFile))
-        .def("setRecordFile", &RecordMessage::setRecordFile, py::arg("recordFile"), DOC(dai, node, RecordMessage, setRecordFile))
-        .def("setCompressionLevel", &RecordMessage::setCompressionLevel, py::arg("compressionLevel"), DOC(dai, node, RecordMessage, setCompressionLevel))
-        .def("getRecordFile", &RecordMessage::getRecordFile, DOC(dai, node, RecordMessage, getRecordFile))
-        .def("getCompressionLevel", &RecordMessage::getCompressionLevel, DOC(dai, node, RecordMessage, getCompressionLevel));
+    recordMessage.def_readonly("input", &RecordMetadataOnly::input, DOC(dai, node, RecordMetadataOnly, input))
+        .def("setRecordFile", &RecordMetadataOnly::setRecordFile, py::arg("recordFile"), DOC(dai, node, RecordMetadataOnly, setRecordFile))
+        .def("setCompressionLevel", &RecordMetadataOnly::setCompressionLevel, py::arg("compressionLevel"), DOC(dai, node, RecordMetadataOnly, setCompressionLevel))
+        .def("getRecordFile", &RecordMetadataOnly::getRecordFile, DOC(dai, node, RecordMetadataOnly, getRecordFile))
+        .def("getCompressionLevel", &RecordMetadataOnly::getCompressionLevel, DOC(dai, node, RecordMetadataOnly, getCompressionLevel));
 
 }

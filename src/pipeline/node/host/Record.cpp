@@ -9,9 +9,9 @@
 #include "depthai/pipeline/datatype/IMUData.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/properties/VideoEncoderProperties.hpp"
-#include "depthai/utility/RecordReplay.hpp"
-#include "depthai/utility/span.hpp"
 #include "depthai/utility/RecordReplaySchema.hpp"
+#include "depthai/utility/span.hpp"
+#include "utility/RecordReplayImpl.hpp"
 
 namespace dai {
 namespace node {
@@ -55,7 +55,7 @@ void RecordVideo::run() {
                 streamType = StreamType::RawVideo;
                 width = imgFrame->getWidth();
                 height = imgFrame->getHeight();
-                if (recordMetadata) byteRecorder.init(recordMetadataFile, compressionLevel, utility::RecordType::Video);
+                if(recordMetadata) byteRecorder.init(recordMetadataFile, compressionLevel, utility::RecordType::Video);
             } else if(std::dynamic_pointer_cast<EncodedFrame>(msg) != nullptr) {
                 auto encFrame = std::dynamic_pointer_cast<EncodedFrame>(msg);
                 if(encFrame->getProfile() == EncodedFrame::Profile::HEVC) {
@@ -147,7 +147,7 @@ void RecordVideo::run() {
     videoRecorder->close();
 }
 
-void RecordMessage::run() {
+void RecordMetadataOnly::run() {
     utility::ByteRecorder byteRecorder;
 
     StreamType streamType = StreamType::Unknown;
@@ -159,10 +159,10 @@ void RecordMessage::run() {
                 streamType = StreamType::Imu;
                 byteRecorder.init(recordFile, compressionLevel, utility::RecordType::Imu);
             } else {
-                throw std::runtime_error("RecordMessage node does not support this type of message");
+                throw std::runtime_error("RecordMetadataOnly node does not support this type of message");
             }
             if(logger)
-                logger->trace("RecordMessage node detected stream type {}",
+                logger->trace("RecordMetadataOnly node detected stream type {}",
                               streamType == StreamType::RawVideo       ? "RawVideo"
                               : streamType == StreamType::EncodedVideo ? "EncodedVideo"
                                                                        : "Byte");
@@ -212,26 +212,26 @@ void RecordMessage::run() {
             }
             byteRecorder.write(record);
         } else {
-            throw std::runtime_error("RecordMessage unsupported message type");
+            throw std::runtime_error("RecordMetadataOnly unsupported message type");
         }
     }
 }
 
-std::string RecordVideo::getRecordMetadataFile() const {
+std::filesystem::path RecordVideo::getRecordMetadataFile() const {
     return recordMetadataFile;
 }
-std::string RecordVideo::getRecordVideoFile() const {
+std::filesystem::path RecordVideo::getRecordVideoFile() const {
     return recordVideoFile;
 }
 RecordVideo::CompressionLevel RecordVideo::getCompressionLevel() const {
     return compressionLevel;
 }
 
-RecordVideo& RecordVideo::setRecordMetadataFile(const std::string& recordFile) {
+RecordVideo& RecordVideo::setRecordMetadataFile(const std::filesystem::path& recordFile) {
     this->recordMetadataFile = recordFile;
     return *this;
 }
-RecordVideo& RecordVideo::setRecordVideoFile(const std::string& recordFile) {
+RecordVideo& RecordVideo::setRecordVideoFile(const std::filesystem::path& recordFile) {
     this->recordVideoFile = recordFile;
     return *this;
 }
@@ -240,18 +240,18 @@ RecordVideo& RecordVideo::setCompressionLevel(CompressionLevel compressionLevel)
     return *this;
 }
 
-std::string RecordMessage::getRecordFile() const {
+std::filesystem::path RecordMetadataOnly::getRecordFile() const {
     return recordFile;
 }
-RecordMessage::CompressionLevel RecordMessage::getCompressionLevel() const {
+RecordMetadataOnly::CompressionLevel RecordMetadataOnly::getCompressionLevel() const {
     return compressionLevel;
 }
 
-RecordMessage& RecordMessage::setRecordFile(const std::string& recordFile) {
+RecordMetadataOnly& RecordMetadataOnly::setRecordFile(const std::filesystem::path& recordFile) {
     this->recordFile = recordFile;
     return *this;
 }
-RecordMessage& RecordMessage::setCompressionLevel(CompressionLevel compressionLevel) {
+RecordMetadataOnly& RecordMetadataOnly::setCompressionLevel(CompressionLevel compressionLevel) {
     this->compressionLevel = compressionLevel;
     return *this;
 }

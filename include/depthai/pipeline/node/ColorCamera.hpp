@@ -15,7 +15,7 @@ namespace node {
 /**
  * @brief ColorCamera node. For use with color sensors.
  */
-class ColorCamera : public DeviceNodeCRTP<DeviceNode, ColorCamera, ColorCameraProperties> {
+class ColorCamera : public DeviceNodeCRTP<DeviceNode, ColorCamera, ColorCameraProperties>, public SourceNode {
     friend class PipelineImpl;    // Allow only PipelineImpl to construct this node
     friend class DeviceNodeCRTP;  // Allow DeviceNodeCRTP to construct this node
    public:
@@ -29,7 +29,7 @@ class ColorCamera : public DeviceNodeCRTP<DeviceNode, ColorCamera, ColorCameraPr
     using DeviceNodeCRTP::DeviceNodeCRTP;
 
     bool isSourceNode() const override;
-    utility::NodeRecordParams getNodeRecordParams() const override;
+    NodeRecordParams getNodeRecordParams() const override;
     Output& getRecordOutput() override;
     Input& getReplayInput() override;
 

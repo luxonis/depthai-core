@@ -13,8 +13,6 @@ namespace node {
 
 class ImageManipHost : public NodeCRTP<ThreadedHostNode, ImageManipHost> {
    public:
-    using CompressionLevel = dai::utility::ByteRecorder::CompressionLevel;
-
     constexpr static const char* NAME = "ImageManipHost";
 
     explicit ImageManipHost() = default;

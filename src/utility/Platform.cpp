@@ -1,4 +1,5 @@
 #include "Platform.hpp"
+
 #include <filesystem>
 
 // Platform specific

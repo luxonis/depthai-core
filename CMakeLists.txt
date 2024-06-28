@@ -364,7 +364,7 @@ set(TARGET_CORE_SOURCES
     src/nn_archive/NNArchiveConfigHelper.cpp
 )
 
-set(TARGET_OPENCV_SOURCES 
+set(TARGET_OPENCV_SOURCES
     src/opencv/ImgFrame.cpp
     src/pipeline/node/host/Display.cpp
     src/pipeline/node/host/ImageManipHost.cpp

@@ -2,10 +2,12 @@
 
 #include <spdlog/spdlog.h>
 
+#include <mcap/types.hpp>
 #include <optional>
 #include <stdexcept>
 
 #include "Environment.hpp"
+#include "RecordReplayImpl.hpp"
 #include "build/version.hpp"
 #include "depthai/utility/RecordReplaySchema.hpp"
 #include "utility/Compression.hpp"
@@ -18,7 +20,7 @@ ByteRecorder::~ByteRecorder() {
     close();
 }
 
-void ByteRecorder::init(const std::string& filePath, CompressionLevel compressionLevel, RecordType recordingType) {
+void ByteRecorder::init(const std::string& filePath, RecordConfig::CompressionLevel compressionLevel, RecordType recordingType) {
     if(initialized) {
         throw std::runtime_error("ByteRecorder already initialized");
     }
@@ -29,22 +31,22 @@ void ByteRecorder::init(const std::string& filePath, CompressionLevel compressio
         auto options = mcap::McapWriterOptions("");
         options.library = "depthai" + std::string(build::VERSION);
         switch(compressionLevel) {
-            case CompressionLevel::NONE:
+            case RecordConfig::CompressionLevel::NONE:
                 options.compression = mcap::Compression::None;
                 break;
-            case CompressionLevel::FASTEST:
+            case RecordConfig::CompressionLevel::FASTEST:
                 options.compressionLevel = mcap::CompressionLevel::Fastest;
                 break;
-            case CompressionLevel::FAST:
+            case RecordConfig::CompressionLevel::FAST:
                 options.compressionLevel = mcap::CompressionLevel::Fast;
                 break;
-            case CompressionLevel::DEFAULT:
+            case RecordConfig::CompressionLevel::DEFAULT:
                 options.compressionLevel = mcap::CompressionLevel::Default;
                 break;
-            case CompressionLevel::SLOW:
+            case RecordConfig::CompressionLevel::SLOW:
                 options.compressionLevel = mcap::CompressionLevel::Slow;
                 break;
-            case CompressionLevel::SLOWEST:
+            case RecordConfig::CompressionLevel::SLOWEST:
                 options.compressionLevel = mcap::CompressionLevel::Slowest;
                 break;
         }

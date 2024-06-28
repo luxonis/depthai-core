@@ -130,7 +130,8 @@ inline std::ostream& operator<<(std::ostream& out, const dai::CameraSensorConfig
     out << "minFps: " << config.minFps << ", ";
     out << "maxFps: " << config.maxFps << ", ";
     out << "type: " << config.type << ", ";
-    out << "fov: " << "{x:" << config.fov.x << ", ";
+    out << "fov: "
+        << "{x:" << config.fov.x << ", ";
     out << "y: " << config.fov.y << ", ";
     out << "width: " << config.fov.width << ", ";
     out << "height: " << config.fov.height << "}";

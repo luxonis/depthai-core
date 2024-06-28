@@ -97,11 +97,6 @@ Node::Output* Camera::requestOutput(std::pair<uint32_t, uint32_t> size, ImgFrame
     return pimpl->requestOutput(*this, cap, false);
 }
 
-void Camera::setMockIspSize(int width, int height) {
-    properties.mockIspWidth = width;
-    properties.mockIspHeight = height;
-}
-
 Node::Output* Camera::requestOutput(const Capability& capability, bool onHost) {
     return pimpl->requestOutput(*this, capability, onHost);
 }
@@ -114,11 +109,11 @@ bool Camera::isSourceNode() const {
     return true;
 }
 
-utility::NodeRecordParams Camera::getNodeRecordParams() const {
+NodeRecordParams Camera::getNodeRecordParams() const {
     if(properties.boardSocket == CameraBoardSocket::AUTO) {
         throw std::runtime_error("For record and replay functionality, board socket must be specified (Camera).");
     }
-    utility::NodeRecordParams params;
+    NodeRecordParams params;
     params.name = "Camera" + toString(properties.boardSocket);
     return params;
 }

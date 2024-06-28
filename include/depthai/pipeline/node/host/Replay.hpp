@@ -24,8 +24,8 @@ class ReplayVideo : public NodeCRTP<ThreadedHostNode, ReplayVideo> {
    private:
     std::optional<std::tuple<int, int>> size;
     std::optional<float> fps;
-    std::string replayVideo;
-    std::string replayFile;
+    std::filesystem::path replayVideo;
+    std::filesystem::path replayFile;
     ImgFrame::Type outFrameType = ImgFrame::Type::YUV420p;
 
     bool loop = true;
@@ -42,15 +42,15 @@ class ReplayVideo : public NodeCRTP<ThreadedHostNode, ReplayVideo> {
 
     void run() override;
 
-    std::string getReplayMetadataFile() const;
-    std::string getReplayVideoFile() const;
+    std::filesystem::path getReplayMetadataFile() const;
+    std::filesystem::path getReplayVideoFile() const;
     ImgFrame::Type getOutFrameType() const;
     std::tuple<int, int> getSize() const;
     float getFps() const;
     bool getLoop() const;
 
-    ReplayVideo& setReplayMetadataFile(const std::string& replayFile);
-    ReplayVideo& setReplayVideoFile(const std::string& replayVideo);
+    ReplayVideo& setReplayMetadataFile(const std::filesystem::path& replayFile);
+    ReplayVideo& setReplayVideoFile(const std::filesystem::path& replayVideo);
     ReplayVideo& setOutFrameType(ImgFrame::Type outFrameType);
     ReplayVideo& setSize(std::tuple<int, int> size);
     ReplayVideo& setSize(int width, int height);
@@ -61,14 +61,15 @@ class ReplayVideo : public NodeCRTP<ThreadedHostNode, ReplayVideo> {
 /**
  * @brief Replay node, used to replay a file to a source node
  */
-class ReplayMessage : public NodeCRTP<ThreadedHostNode, ReplayMessage> {
+class ReplayMetadataOnly : public NodeCRTP<ThreadedHostNode, ReplayMetadataOnly> {
    private:
-    std::string replayFile;
+    std::filesystem::path replayFile;
 
+    std::optional<float> fps;
     bool loop = true;
 
    public:
-    constexpr static const char* NAME = "ReplayMessage";
+    constexpr static const char* NAME = "ReplayMetadataOnly";
 
     /**
      * Output for any type of messages to be transferred over XLink stream
@@ -79,11 +80,13 @@ class ReplayMessage : public NodeCRTP<ThreadedHostNode, ReplayMessage> {
 
     void run() override;
 
-    std::string getReplayFile() const;
+    std::filesystem::path getReplayFile() const;
+    float getFps() const;
     bool getLoop() const;
 
-    ReplayMessage& setReplayFile(const std::string& replayFile);
-    ReplayMessage& setLoop(bool loop);
+    ReplayMetadataOnly& setReplayFile(const std::filesystem::path& replayFile);
+    ReplayMetadataOnly& setFps(float fps);
+    ReplayMetadataOnly& setLoop(bool loop);
 };
 
 }  // namespace node

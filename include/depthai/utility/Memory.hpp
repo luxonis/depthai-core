@@ -110,7 +110,7 @@ holder(std::move(holder)) {}
 // memory as interface
 class Memory {
    public:
-    virtual ~Memory(){};
+    virtual ~Memory() {};
     virtual span<std::uint8_t> getData() = 0;
     virtual span<const std::uint8_t> getData() const = 0;
     virtual std::size_t getMaxSize() const = 0;

@@ -8,12 +8,13 @@
 #include "depthai/pipeline/node/XLinkOut.hpp"
 #include "depthai/pipeline/node/host/XLinkInHost.hpp"
 #include "depthai/pipeline/node/host/XLinkOutHost.hpp"
-#include "depthai/utility/HolisticRecordReplay.hpp"
 #include "depthai/utility/Initialization.hpp"
 #include "pipeline/datatype/ImgFrame.hpp"
 #include "utility/Compression.hpp"
 #include "utility/Environment.hpp"
+#include "utility/HolisticRecordReplay.hpp"
 #include "utility/Platform.hpp"
+#include "utility/RecordReplayImpl.hpp"
 #include "utility/spdlog-fmt.hpp"
 
 // shared
@@ -1006,6 +1007,9 @@ void Pipeline::enableHolisticRecord(const RecordConfig& config) {
     if(this->isRunning()) {
         throw std::runtime_error("Cannot enable record while pipeline is running");
     }
+    if(impl()->enableHolisticRecordReplay && impl()->recordConfig.state == RecordConfig::RecordReplayState::REPLAY) {
+        throw std::runtime_error("Cannot enable record while replay is enabled");
+    }
     if(!platform::checkPathExists(config.outputDir, true)) {
         throw std::runtime_error("Record output directory does not exist or is invalid");
     }
@@ -1017,6 +1021,9 @@ void Pipeline::enableHolisticRecord(const RecordConfig& config) {
 void Pipeline::enableHolisticReplay(const std::string& pathToRecording) {
     if(this->isRunning()) {
         throw std::runtime_error("Cannot enable replay while pipeline is running");
+    }
+    if(impl()->enableHolisticRecordReplay && impl()->recordConfig.state == RecordConfig::RecordReplayState::RECORD) {
+        throw std::runtime_error("Cannot enable replay while record is enabled");
     }
     if(!platform::checkPathExists(pathToRecording, false)) {
         throw std::runtime_error("Replay file does not exist or is invalid");

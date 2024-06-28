@@ -587,9 +587,6 @@ class Node : public std::enable_shared_from_this<Node> {
 
     // For record and replay
     virtual bool isSourceNode() const;
-    virtual utility::NodeRecordParams getNodeRecordParams() const;
-    virtual Output& getRecordOutput();
-    virtual Input& getReplayInput();
 
    protected:
     Node() = default;
@@ -646,6 +643,14 @@ class Node : public std::enable_shared_from_this<Node> {
     const NodeMap& getNodeMap() const {
         return nodeMap;
     }
+};
+
+class SourceNode {
+   public:
+    virtual ~SourceNode() = default;
+    virtual NodeRecordParams getNodeRecordParams() const;
+    virtual Node::Output& getRecordOutput();
+    virtual Node::Input& getReplayInput();
 };
 
 // Node CRTP class
