@@ -97,7 +97,7 @@ void XLinkStream::write(const void* data, std::size_t size) {
 }
 
 void XLinkStream::write(long fd) {
-    auto status = XLinkWriteFd(streamId, &fd); 
+    auto status = XLinkWriteFd(streamId, fd); 
     if(status != X_LINK_SUCCESS) {
         throw XLinkWriteError(status, streamName);
     }
