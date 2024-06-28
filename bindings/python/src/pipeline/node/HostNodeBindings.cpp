@@ -44,23 +44,19 @@ void bind_hostnode(pybind11::module& m, void* pCallstack){
     ///////////////////////////////////////////////////////////////////////
 
     threadedHostNode
-        .def(py::init<>([](bool autoAddToPipeline) {
+        .def(py::init<>([]() {
             auto node = std::make_shared<PyThreadedHostNode>();
-            if(autoAddToPipeline) {
-                getImplicitPipeline().add(node);
-            }
+            getImplicitPipeline()->add(node);
             return node;
-        }), py::arg("autoAddToPipeline") = true)
+        }))
         .def("run", &ThreadedHostNode::run);
 
     hostNode
-        .def(py::init([](bool autoAddToPipeline) {
+        .def(py::init([]() {
             auto node = std::make_shared<PyHostNode>();
-            if(autoAddToPipeline) {
-                getImplicitPipeline().add(node);
-            }
+            getImplicitPipeline()->add(node);
             return node;
-        }), py::arg("autoAddToPipeline") = true)
+        }))
         .def("processGroup", &HostNode::processGroup)
         .def_property_readonly(
             "inputs", [](HostNode& node) { return &node.inputs; }, py::return_value_policy::reference_internal)
@@ -114,8 +110,8 @@ void bind_hostnode(pybind11::module& m, void* pCallstack){
                 return self
             cls.link_args = link_args
 
-            def __init__(self, *args, autoAddToPipeline=True):
-                node.HostNode.__init__(self, autoAddToPipeline)
+            def __init__(self, *args):
+                node.HostNode.__init__(self)
                 self.link_args(*args)
             if not hasattr(cls, "__init__"):
                 cls.__init__ = __init__
