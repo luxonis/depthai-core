@@ -209,7 +209,7 @@ bool setupHolisticReplay(Pipeline& pipeline,
                 replay->setReplayVideoFile(platform::joinPaths(rootPath, nodeName + ".mp4"));
                 replay->setOutFrameType(ImgFrame::Type::YUV420p);
 
-                auto videoSize = BytePlayer::getVideoSize(replay->getReplayMetadataFile());
+                auto videoSize = BytePlayer::getVideoSize(replay->getReplayMetadataFile().string());
                 if(videoSize.has_value()) {
                     auto [width, height] = videoSize.value();
                     if(std::dynamic_pointer_cast<node::Camera>(node) != nullptr) {

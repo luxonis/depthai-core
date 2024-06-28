@@ -51,7 +51,7 @@ void ReplayVideo::run() {
     bool hasVideo = !replayVideo.empty();
     bool hasMetadata = !replayFile.empty();
     if(!replayVideo.empty()) try {
-            videoPlayer.init(replayVideo);
+            videoPlayer.init(replayVideo.string());
             if(size.has_value()) {
                 const auto& [width, height] = size.value();
                 videoPlayer.setSize(width, height);
@@ -61,7 +61,7 @@ void ReplayVideo::run() {
             if(logger) logger->warn("Video not replaying: {}", e.what());
         }
     if(!replayFile.empty()) try {
-            bytePlayer.init(replayFile);
+            bytePlayer.init(replayFile.string());
         } catch(const std::exception& e) {
             hasMetadata = false;
             if(logger) logger->warn("Metadata not replaying: {}", e.what());
@@ -179,7 +179,7 @@ void ReplayMetadataOnly::run() {
     utility::BytePlayer bytePlayer;
     bool hasMetadata = !replayFile.empty();
     if(!replayFile.empty()) try {
-            bytePlayer.init(replayFile);
+            bytePlayer.init(replayFile.string());
         } catch(const std::exception& e) {
             hasMetadata = false;
             if(logger) logger->warn("Metadata not replaying: {}", e.what());
