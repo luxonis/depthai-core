@@ -238,12 +238,18 @@ endif()
 # Add include directory
 target_include_directories(${TARGET_NAME} PRIVATE src ${DOCSTRINGS_INCLUDE_PLACEHOLDER_DIR})
 
+if(DEPTHAI_MERGED_TARGET)
+    set(DEPTHAI_LINK_TARGET depthai::core)
+else()
+    set(DEPTHAI_LINK_TARGET depthai::opencv)
+endif()
+
 # Link with libraries
 target_link_libraries(${TARGET_NAME}
     PUBLIC
         # pybind11
         pybind11::pybind11
-        depthai::opencv # Use non-opencv target as we use opencv-python in bindings
+        ${DEPTHAI_LINK_TARGET}
         hedley
         pybind11_json
         xtensor-python

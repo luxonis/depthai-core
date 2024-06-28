@@ -25,7 +25,7 @@ int main(int argc, char** argv) {
     std::vector<std::shared_ptr<dai::MessageQueue>> videos;
     for(const auto& size : sizes) {
         dai::ImgFrameCapability cap;
-        cap.type = dai::ImgFrame::Type::NV12; // Fastest
+        cap.type = dai::ImgFrame::Type::NV12;  // Fastest
         cap.size.value = std::pair{std::get<0>(size), std::get<1>(size)};
         auto mode = std::get<2>(size);
         switch(mode) {

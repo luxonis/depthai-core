@@ -11,7 +11,7 @@ class XLinkOutHost : public NodeCRTP<ThreadedHostNode, XLinkOutHost> {
     std::string streamName;
 
    public:
-    constexpr static const char* NAME = "XLinkInHost";
+    constexpr static const char* NAME = "XLinkOutHost";
     // Input in{*this, "in", Input::Type::SReceiver, true, 4, {{DatatypeEnum::Buffer, true}}};
     Input in{*this, {.name = "in", .types = {{DatatypeEnum::Buffer, true}}}};
     // XLinkOutHost(std::shared_ptr<XLinkConnection> conn, const std::string& streamName);
