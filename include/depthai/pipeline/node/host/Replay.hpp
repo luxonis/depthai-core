@@ -76,7 +76,7 @@ class ReplayMetadataOnly : public NodeCRTP<ThreadedHostNode, ReplayMetadataOnly>
      *
      * Default queue is blocking with size 8
      */
-    Output out{*this, {.name = "out", .types = {{DatatypeEnum::Buffer, true}}}};
+    Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::Buffer, true}}}}};
 
     void run() override;
 
