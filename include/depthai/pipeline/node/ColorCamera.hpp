@@ -16,24 +16,21 @@ namespace node {
  * @brief ColorCamera node. For use with color sensors.
  */
 class ColorCamera : public DeviceNodeCRTP<DeviceNode, ColorCamera, ColorCameraProperties> {
-    friend class PipelineImpl;    // Allow only PipelineImpl to construct this node
-    friend class DeviceNodeCRTP;  // Allow DeviceNodeCRTP to construct this node
    public:
-    std::shared_ptr<ColorCamera> build();
     constexpr static const char* NAME = "ColorCamera";
-
-   protected:
-    ColorCamera(std::shared_ptr<Device> device, dai::CameraBoardSocket boardSocket);
-    Properties& getProperties();
-    ColorCamera(std::unique_ptr<Properties> props);
+    std::shared_ptr<ColorCamera> build();
     using DeviceNodeCRTP::DeviceNodeCRTP;
 
+   protected:
+    Properties& getProperties();
     bool isSourceNode() const override;
     utility::NodeRecordParams getNodeRecordParams() const override;
     Output& getRecordOutput() override;
     Input& getReplayInput() override;
 
    public:
+    ColorCamera() = default;
+    ColorCamera(std::unique_ptr<Properties> props);
     /**
      * Computes the scaled size given numerator and denominator
      */
