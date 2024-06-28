@@ -14,7 +14,7 @@ namespace node {
 /**
  * @brief MonoCamera node. For use with grayscale sensors.
  */
-class MonoCamera : public DeviceNodeCRTP<DeviceNode, MonoCamera, MonoCameraProperties> {
+class MonoCamera : public DeviceNodeCRTP<DeviceNode, MonoCamera, MonoCameraProperties>, public SourceNode {
    public:
     constexpr static const char* NAME = "MonoCamera";
     using DeviceNodeCRTP::DeviceNodeCRTP;
@@ -23,7 +23,7 @@ class MonoCamera : public DeviceNodeCRTP<DeviceNode, MonoCamera, MonoCameraPrope
    protected:
     Properties& getProperties();
     bool isSourceNode() const override;
-    utility::NodeRecordParams getNodeRecordParams() const override;
+    NodeRecordParams getNodeRecordParams() const override;
     Output& getRecordOutput() override;
     Input& getReplayInput() override;
 
@@ -112,6 +112,8 @@ class MonoCamera : public DeviceNodeCRTP<DeviceNode, MonoCamera, MonoCameraPrope
 
     /// Get camera image orientation
     CameraImageOrientation getImageOrientation() const;
+
+    void setMockIspSize(int width, int height);
 
     /// Set sensor resolution
     void setResolution(Properties::SensorResolution resolution);

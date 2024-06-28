@@ -143,15 +143,16 @@ void untarFiles(const std::string& path, const std::vector<std::string>& files, 
     if(r != ARCHIVE_OK) {
         throw std::runtime_error("Could not open archive.");
     }
-    for(size_t i = 0; i < files.size(); i++) {
-        const auto& file = files[i];
-        const auto& outFile = outFiles[i];
-        while(archive_read_next_header(a, &entry) == ARCHIVE_OK) {
+    assert(files.size() == outFiles.size());
+    while(archive_read_next_header(a, &entry) == ARCHIVE_OK) {
+        for(size_t i = 0; i < files.size(); i++) {
+            const auto& file = files[i];
             if(file == archive_entry_pathname(entry)) {
+                const auto& outFile = outFiles[i];
                 std::filesystem::path outFilePath(outFile);
                 outFileStream.open(outFilePath, std::ios::binary);
                 if(!outFileStream) {
-                    throw std::runtime_error("Could not open file.");
+                    throw std::runtime_error("Could not open file " + outFile + " for writing.");
                 }
                 size_t size = archive_entry_size(entry);
                 std::vector<uint8_t> buff(size);
@@ -160,8 +161,8 @@ void untarFiles(const std::string& path, const std::vector<std::string>& files, 
                 outFileStream.close();
                 break;
             }
-            archive_read_data_skip(a);
         }
+        archive_read_data_skip(a);
     }
 
     r = archive_read_free(a);

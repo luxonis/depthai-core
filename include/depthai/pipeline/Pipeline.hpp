@@ -21,6 +21,7 @@
 #include "depthai/device/BoardConfig.hpp"
 #include "depthai/pipeline/PipelineSchema.hpp"
 #include "depthai/properties/GlobalProperties.hpp"
+#include "depthai/utility/RecordReplay.hpp"
 
 namespace dai {
 
@@ -106,6 +107,12 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
 
     // Board configuration
     BoardConfig board;
+
+    // Record and Replay
+    RecordConfig recordConfig;
+    bool enableHolisticRecordReplay = false;
+    std::unordered_map<std::string, std::string> recordReplayFilenames;
+    std::string defaultDeviceMxId;
 
     // parent
     Pipeline& parent;
@@ -207,17 +214,16 @@ class Pipeline {
 
     std::shared_ptr<PipelineImpl> pimpl;
 
-   protected:
-    std::vector<std::shared_ptr<Node>> getSourceNodes() {
-        return impl()->getSourceNodes();
-    }
-
    public:
     PipelineImpl* impl() {
         return pimpl.get();
     }
     const PipelineImpl* impl() const {
         return pimpl.get();
+    }
+
+    std::vector<std::shared_ptr<Node>> getSourceNodes() {
+        return impl()->getSourceNodes();
     }
 
     /**
@@ -477,6 +483,10 @@ class Pipeline {
     void processTasks() {
         impl()->processTasks();
     }
+
+    /// Record and Replay
+    void enableHolisticRecord(const RecordConfig& config);
+    void enableHolisticReplay(const std::string& pathToRecording);
 };
 
 }  // namespace dai

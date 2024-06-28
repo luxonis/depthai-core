@@ -82,33 +82,6 @@ void Device::closeImpl() {
     // for(auto& kv : inputQueueMap) kv.second->close();
     // outputQueueMap.clear();
     // inputQueueMap.clear();
-
-    // // TODO(asahtik): Move to pipeline
-    // if(recordConfig.state == utility::RecordConfig::RecordReplayState::RECORD) {
-    //     std::vector<std::string> filenames = {recordReplayFilenames["record_config"]};
-    //     std::vector<std::string> outFiles = {"record_config.json"};
-    //     filenames.reserve(recordReplayFilenames.size() * 2 + 1);
-    //     outFiles.reserve(recordReplayFilenames.size() * 2 + 1);
-    //     for(auto& rstr : recordReplayFilenames) {
-    //         if(rstr.first != "record_config") {
-    //             filenames.push_back(rstr.second);
-    //             filenames.push_back(rstr.second + ".meta");
-    //             outFiles.push_back(rstr.first);
-    //             outFiles.push_back(rstr.first + ".meta");
-    //         }
-    //     }
-    //     spdlog::info("Record: Creating tar file with {} files", filenames.size());
-    //     utility::tarFiles(platform::joinPaths(recordConfig.outputDir, "recording.tar.gz"), filenames, outFiles);
-    //     std::remove(platform::joinPaths(recordConfig.outputDir, "record_config.json").c_str());
-    // }
-    //
-    // if(recordConfig.state != utility::RecordConfig::RecordReplayState::NONE) {
-    //     spdlog::info("Record and Replay: Removing temporary files");
-    //     for(auto& kv : recordReplayFilenames) {
-    //         std::remove(kv.second.c_str());
-    //         if(kv.first != "record_config") std::remove((kv.second + ".meta").c_str());
-    //     }
-    // }
 }
 
 // std::shared_ptr<DataOutputQueue> Device::getOutputQueue(const std::string& name) {

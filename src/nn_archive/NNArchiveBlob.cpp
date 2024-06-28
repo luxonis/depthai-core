@@ -64,7 +64,7 @@ class NNArchiveBlob::Impl {
 };
 
 NNArchiveBlob::NNArchiveBlob(const NNArchiveConfig& config, const std::vector<uint8_t>& data, NNArchiveEntry::Compression compression)
-    : pimpl(spimpl::make_impl<Impl>(config, data, compression)){};
+    : pimpl(spimpl::make_impl<Impl>(config, data, compression)) {};
 
 NNArchiveBlob::NNArchiveBlob(const NNArchiveConfig& config, const Path& path, NNArchiveEntry::Compression compression)
     : pimpl(spimpl::make_impl<Impl>(config, path, compression)) {}

@@ -6,14 +6,16 @@
     #error This example needs OpenCV support, which is not available on your system
 #endif
 
-int main() {
+int main(int argc, char** argv) {
     dai::Pipeline pipeline(true);
     auto cam = pipeline.create<dai::node::ColorCamera>();
     auto display = pipeline.create<dai::node::Display>();
     auto videoEncoder = pipeline.create<dai::node::VideoEncoder>();
-    auto record = pipeline.create<dai::node::Record>();
+    auto record = pipeline.create<dai::node::RecordVideo>();
 
-    record->setRecordFile("recording");
+    std::string path = argc > 1 ? argv[1] : "recording";
+    record->setRecordVideoFile(path + std::string(".mp4"));
+    record->setRecordMetadataFile(path + std::string(".mcap"));
 
     cam->setBoardSocket(dai::CameraBoardSocket::CAM_A);
     cam->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);

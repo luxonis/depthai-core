@@ -15,7 +15,7 @@ namespace node {
 /**
  * @brief ColorCamera node. For use with color sensors.
  */
-class ColorCamera : public DeviceNodeCRTP<DeviceNode, ColorCamera, ColorCameraProperties> {
+class ColorCamera : public DeviceNodeCRTP<DeviceNode, ColorCamera, ColorCameraProperties>, public SourceNode {
    public:
     constexpr static const char* NAME = "ColorCamera";
     std::shared_ptr<ColorCamera> build();
@@ -24,7 +24,7 @@ class ColorCamera : public DeviceNodeCRTP<DeviceNode, ColorCamera, ColorCameraPr
    protected:
     Properties& getProperties();
     bool isSourceNode() const override;
-    utility::NodeRecordParams getNodeRecordParams() const override;
+    NodeRecordParams getNodeRecordParams() const override;
     Output& getRecordOutput() override;
     Input& getReplayInput() override;
 
@@ -187,6 +187,8 @@ class ColorCamera : public DeviceNodeCRTP<DeviceNode, ColorCamera, ColorCameraPr
 
     /// Set still output size, as a tuple <width, height>
     void setStillSize(std::tuple<int, int> size);
+
+    void setMockIspSize(int width, int height);
 
     /// Set number of frames in preview pool
     void setStillNumFramesPool(int num);

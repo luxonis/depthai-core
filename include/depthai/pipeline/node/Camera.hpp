@@ -13,7 +13,7 @@
 namespace dai {
 namespace node {
 
-class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties> {
+class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, public SourceNode {
    public:
     /**
      * Get video output with specified size.
@@ -90,7 +90,7 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties> {
    protected:
     Properties& getProperties() override;
     bool isSourceNode() const override;
-    utility::NodeRecordParams getNodeRecordParams() const override;
+    NodeRecordParams getNodeRecordParams() const override;
     /*
     Output& getRecordOutput() override;
     Input& getReplayInput() override;
