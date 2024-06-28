@@ -58,6 +58,7 @@ EMSCRIPTEN_BINDINGS(depthai_js) {
         .value("EncodedFrame", dai::DatatypeEnum::EncodedFrame)
         .value("NNData", dai::DatatypeEnum::NNData)
         .value("ImageManipConfig", dai::DatatypeEnum::ImageManipConfig)
+        .value("ImageManipConfigV2", dai::DatatypeEnum::ImageManipConfig)
         .value("CameraControl", dai::DatatypeEnum::CameraControl)
         .value("ImgDetections", dai::DatatypeEnum::ImgDetections)
         .value("SpatialImgDetections", dai::DatatypeEnum::SpatialImgDetections)

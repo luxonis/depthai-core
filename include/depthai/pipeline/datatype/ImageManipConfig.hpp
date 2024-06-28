@@ -1,13 +1,18 @@
 #pragma once
 
-#include <unordered_map>
+#include <nop/structure.h>
+#include <spdlog/async_logger.h>
+
+#include <nlohmann/json.hpp>
 #include <vector>
 
 #include "depthai/common/Colormap.hpp"
 #include "depthai/common/Interpolation.hpp"
+#include "depthai/common/Point2f.hpp"
 #include "depthai/common/RotatedRect.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
+
 namespace dai {
 
 /**
@@ -344,8 +349,16 @@ class ImageManipConfig : public Buffer {
     bool reusePreviousImage = false;
     bool skipCurrentImage = false;
     Interpolation interpolation = Interpolation::AUTO;
-    DEPTHAI_SERIALIZE(
-        ImageManipConfig, cropConfig, resizeConfig, formatConfig, enableCrop, enableResize, enableFormat, reusePreviousImage, skipCurrentImage, interpolation);
+    DEPTHAI_SERIALIZE(ImageManipConfig,
+                      cropConfig,
+                      resizeConfig,
+                      formatConfig,
+                      enableCrop,
+                      enableResize,
+                      enableFormat,
+                      reusePreviousImage,
+                      skipCurrentImage,
+                      interpolation);
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
         metadata = utility::serialize(*this);
         datatype = DatatypeEnum::ImageManipConfig;
@@ -354,5 +367,4 @@ class ImageManipConfig : public Buffer {
     /// Retrieve which interpolation method to use
     dai::Interpolation getInterpolation() const;
 };
-
 }  // namespace dai

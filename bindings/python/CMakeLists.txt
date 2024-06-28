@@ -84,6 +84,7 @@ set(SOURCE_LIST
     src/pipeline/node/NeuralNetworkBindings.cpp
     src/pipeline/node/VideoEncoderBindings.cpp
     src/pipeline/node/ImageManipBindings.cpp
+    src/pipeline/node/ImageManipV2Bindings.cpp
     src/pipeline/node/SPIOutBindings.cpp
     src/pipeline/node/SPIInBindings.cpp
     src/pipeline/node/DetectionNetworkBindings.cpp
@@ -119,6 +120,7 @@ set(SOURCE_LIST
     src/pipeline/datatype/FeatureTrackerConfigBindings.cpp
     src/pipeline/datatype/ToFConfigBindings.cpp
     src/pipeline/datatype/ImageManipConfigBindings.cpp
+    src/pipeline/datatype/ImageManipConfigV2Bindings.cpp
     src/pipeline/datatype/ImgDetectionsBindings.cpp
     src/pipeline/datatype/ImgFrameBindings.cpp
     src/pipeline/datatype/EncodedFrameBindings.cpp

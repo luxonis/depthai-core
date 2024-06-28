@@ -103,7 +103,7 @@ cv::Mat ImgFrame::getFrame(bool deepCopy) {
         // TODO stride handling
     } else {
         // TMP TMP
-        if(fb.stride != 0) {
+        if(fb.stride == 0) {
             mat = cv::Mat(size, type, data->getData().data());
         } else {
             mat = cv::Mat(size, type, data->getData().data(), getStride());
