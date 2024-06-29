@@ -186,6 +186,8 @@ endif()
 
 # Include project dependencies
 set(DEPTHAI_DEPENDENCY_INCLUDE "" CACHE FILEPATH "Optional cmake file to append to dependency processing, e.g. additional find_package()")
+# Set as it is used in depthaiDependencies
+set(DEPTHAI_HUNTER_ENABLED ${HUNTER_ENABLED})
 include(depthaiDependencies)
 
 # Add threads preference
@@ -461,6 +463,32 @@ if(DEPTHAI_CLANG_FORMAT)
     target_clangformat_setup(${TARGET_CORE_NAME} "${header_dirs}")
 endif()
 
+# Some libraries have target names that change between the hunter/luxonis fork
+# and the upstream version. If HUNTER_ENABLED is ON we want to force the
+# use of the hunter/luxonis fork target, otherwise if HUNTER_ENABLED is OFF we
+# fallback to the upstream target name if the hunter/luxonis fork one is not available
+if(HUNTER_ENABLED)
+    set(DEPTHAI_BZIP2_TARGET "BZip2::bz2")
+    set(DEPTHAI_ARCHIVE_TARGET "archive_static")
+    set(DEPTHAI_ZLIB_TARGET "ZLIB::zlib")
+else()
+    if(TARGET BZip2::bz2)
+        set(DEPTHAI_BZIP2_TARGET "BZip2::bz2")
+    else()
+        set(DEPTHAI_BZIP2_TARGET "BZip2::BZip2")
+    endif()
+    if(TARGET archive_static)
+        set(DEPTHAI_ARCHIVE_TARGET "archive_static")
+    else()
+        set(DEPTHAI_ARCHIVE_TARGET "LibArchive::LibArchive")
+    endif()
+    if(TARGET ZLIB::zlib)
+        set(DEPTHAI_ZLIB_TARGET "ZLIB::zlib")
+    else()
+        set(DEPTHAI_ZLIB_TARGET "ZLIB::ZLIB")
+    endif()
+endif()
+
 # link libraries
 target_link_libraries(${TARGET_CORE_NAME}
     PUBLIC
@@ -471,11 +499,11 @@ target_link_libraries(${TARGET_CORE_NAME}
     PRIVATE
         XLink
         Threads::Threads
-        BZip2::bz2
+        ${DEPTHAI_BZIP2_TARGET}
         FP16::fp16
-        archive_static
+        ${DEPTHAI_ARCHIVE_TARGET}
         spdlog::spdlog
-        ZLIB::zlib
+        ${DEPTHAI_ZLIB_TARGET}
         ghcFilesystem::ghc_filesystem
 )
 
