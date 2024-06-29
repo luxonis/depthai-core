@@ -37,6 +37,7 @@
 #include "depthai-shared/device/CrashDump.hpp"
 #include "depthai-shared/log/LogLevel.hpp"
 #include "depthai-shared/log/LogMessage.hpp"
+#include "depthai-shared/pipeline/PipelineSchema.hpp"
 
 // bootloader
 #include "depthai-bootloader-shared/Bootloader.hpp"
@@ -1077,5 +1078,8 @@ class DeviceBase {
     // void receiveResponseThrow(T& response);
     dai::Path firmwarePath;
     bool dumpOnly = false;
+
+    // Schema of the started pipeline
+    tl::optional<PipelineSchema> pipelineSchema;
 };
 }  // namespace dai

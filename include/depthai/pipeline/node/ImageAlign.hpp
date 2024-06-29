@@ -2,9 +2,6 @@
 
 #include <depthai/pipeline/Node.hpp>
 
-// standard
-#include <fstream>
-
 // shared
 #include <depthai-shared/properties/ImageAlignProperties.hpp>
 
@@ -65,9 +62,29 @@ class ImageAlign : public NodeCRTP<Node, ImageAlign, ImageAlignProperties> {
     Output passthroughInput{*this, "passthroughInput", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
-     * Specify the output size of the aligned depth map
+     * Specify the output size of the aligned image
      */
     ImageAlign& setOutputSize(int alignWidth, int alignHeight);
+
+    /**
+     * Specify whether to keep aspect ratio when resizing
+     */
+    ImageAlign& setOutKeepAspectRatio(bool keep);
+
+    /**
+     * Specify interpolation method to use when resizing
+     */
+    ImageAlign& setInterpolation(Interpolation interp);
+
+    /**
+     * Specify number of shaves to use for this node
+     */
+    ImageAlign& setNumShaves(int numShaves);
+
+    /**
+     * Specify number of frames in the pool
+     */
+    ImageAlign& setNumFramesPool(int numFramesPool);
 };
 
 }  // namespace node

@@ -9,6 +9,15 @@ endif()
 # Early options
 option(DEPTHAI_ENABLE_LIBUSB "Enable usage of libusb and interaction with USB devices" ON)
 
+# Set to use native tls for windows before including Hunter (used for Curl)
+if(WIN32)
+    set(DEPTHAI_CURL_USE_SCHANNEL ON)
+    set(DEPTHAI_CURL_USE_OPENSSL OFF)
+else()
+    set(DEPTHAI_CURL_USE_SCHANNEL OFF)
+    set(DEPTHAI_CURL_USE_OPENSSL ON)
+endif()
+
 # Set type to canonicalize relative paths for user-provided toolchain
 set(CMAKE_TOOLCHAIN_FILE "" CACHE FILEPATH "CMake toolchain path")
 
@@ -35,8 +44,8 @@ endif()
 
 include("cmake/HunterGate.cmake")
 HunterGate(
-    URL "https://github.com/cpp-pm/hunter/archive/v0.23.322.tar.gz"
-    SHA1 "cb0ea1f74f4a2c49a807de34885743495fccccbe"
+    URL "https://github.com/cpp-pm/hunter/archive/9d9242b60d5236269f894efd3ddd60a9ca83dd7f.tar.gz"
+    SHA1 "16cc954aa723bccd16ea45fc91a858d0c5246376"
     LOCAL # Local config for dependencies
 )
 
@@ -46,7 +55,7 @@ if(WIN32)
 endif()
 
 # Create depthai project
-project(depthai VERSION "2.25.1" LANGUAGES CXX C)
+project(depthai VERSION "2.26.0" LANGUAGES CXX C)
 get_directory_property(has_parent PARENT_DIRECTORY)
 if(has_parent)
     set(DEPTHAI_VERSION ${PROJECT_VERSION} PARENT_SCOPE)
@@ -110,6 +119,16 @@ else()
         set(CMAKE_ENABLE_EXPORTS ON)
     endif()
 endif()
+
+# Check if on 32 bit linux - default without CURL support
+if(CMAKE_SIZEOF_VOID_P EQUAL 4 AND UNIX)
+    set(DEPTHAI_DEFAULT_CURL_SUPPORT OFF)
+else()
+    set(DEPTHAI_DEFAULT_CURL_SUPPORT ON)
+endif()
+
+option(DEPTHAI_ENABLE_CURL "Enable CURL support" ${DEPTHAI_DEFAULT_CURL_SUPPORT})
+message(STATUS "CURL support: ${DEPTHAI_ENABLE_CURL}")
 
 # Force Colored output when using Ninja
 # Global option - affects all targets
@@ -231,6 +250,7 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/node/DetectionParser.cpp
     src/pipeline/node/UVC.cpp
     src/pipeline/node/PointCloud.cpp
+    src/pipeline/node/Cast.cpp
     src/pipeline/datatype/Buffer.cpp
     src/pipeline/datatype/ImgFrame.cpp
     src/pipeline/datatype/EncodedFrame.cpp
@@ -265,6 +285,7 @@ add_library(${TARGET_CORE_NAME}
     src/utility/XLinkGlobalProfilingLogger.cpp
     src/utility/Logging.cpp
     src/utility/EepromDataParser.cpp
+    src/utility/LogCollection.cpp
     src/xlink/XLinkConnection.cpp
     src/xlink/XLinkStream.cpp
     src/openvino/OpenVINO.cpp
@@ -455,7 +476,16 @@ target_link_libraries(${TARGET_CORE_NAME}
         archive_static
         spdlog::spdlog
         ZLIB::zlib
+        ghcFilesystem::ghc_filesystem
 )
+
+if(DEPTHAI_ENABLE_CURL)
+    target_link_libraries(${TARGET_CORE_NAME} PRIVATE
+        CURL::libcurl
+        cpr::cpr
+    )
+    target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_ENABLE_CURL)
+endif()
 
 # Add compile & CMake definitions
 set(DEPTHAI_DEVICE_VERSION "${DEPTHAI_DEVICE_SIDE_COMMIT}")
