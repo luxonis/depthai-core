@@ -129,6 +129,11 @@ CameraControl& CameraControl::setAutoExposureLimit(uint32_t maxExposureTimeUs) {
 CameraControl& CameraControl::setAutoExposureLimit(std::chrono::microseconds maxExposureTime) {
     return setAutoExposureLimit(maxExposureTime.count());
 }
+CameraControl& CameraControl::setFps(float fps) {
+    cfg.setCommand(RawCameraControl::Command::FRAME_DURATION);
+    cfg.frameDurationUs = fps > 0 ? (1000000 / fps) : 0;
+    return *this;
+}
 CameraControl& CameraControl::setAntiBandingMode(AntiBandingMode mode) {
     cfg.setCommand(RawCameraControl::Command::ANTIBANDING_MODE);
     cfg.antiBandingMode = mode;

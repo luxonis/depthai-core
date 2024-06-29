@@ -186,6 +186,12 @@ class CameraControl : public Buffer {
     CameraControl& setAutoExposureLimit(std::chrono::microseconds maxExposureTime);
 
     /**
+     * Set a command to adjust the frame rate
+     * @param fps Frame rate, frames per second
+     */
+    CameraControl& setFps(float fps);
+
+    /**
      * Set a command to specify anti-banding mode. Anti-banding / anti-flicker
      * works in auto-exposure mode, by controlling the exposure time to be applied
      * in multiples of half the mains period, for example in multiple of 10ms
