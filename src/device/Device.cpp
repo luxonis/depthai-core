@@ -118,6 +118,10 @@ Platform Device::getPlatform() const {
     }
 }
 
+std::string Device::getPlatformAsString() const {
+    return platform2string(getPlatform());
+}
+
 void Device::closeImpl() {
     // // Remove callbacks to this from queues
     // for(const auto& kv : callbackIdMap) {

@@ -125,6 +125,12 @@ class Device : public DeviceBase {
      */
     Platform getPlatform() const;
 
+    /**
+     * @brief Get the platform of the connected device as string
+     * @return std::string String representation of Platform
+     */
+    std::string getPlatformAsString() const;
+
     // /// Maximum number of elements in event queue
     // static constexpr std::size_t EVENT_QUEUE_MAXIMUM_SIZE{2048};
 
