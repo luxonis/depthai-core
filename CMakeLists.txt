@@ -328,6 +328,12 @@ set_target_properties(${TARGET_CORE_NAME} PROPERTIES EXPORT_NAME ${TARGET_CORE_A
 # Add to list of targets to export and install
 list(APPEND targets_to_export ${TARGET_CORE_NAME})
 
+# Add model_zoo helper binary
+add_executable(zoo_helper src/modelzoo/zoo_helper.cpp)
+target_compile_definitions(zoo_helper PRIVATE DEPTHAI_TARGET_CORE)
+target_link_libraries(zoo_helper PRIVATE ${TARGET_CORE_NAME})
+list(APPEND targets_to_export zoo_helper)
+
 # Add default flags to core
 add_default_flags(${TARGET_CORE_NAME})
 
