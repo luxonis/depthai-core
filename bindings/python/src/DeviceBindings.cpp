@@ -693,7 +693,10 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack){
     // Bind constructors
     bindConstructors<Device>(device);
 
-    device.def("getPlatform", &Device::getPlatform, DOC(dai, Device, getPlatform));
+    device
+    .def("getPlatform", &Device::getPlatform, DOC(dai, Device, getPlatform))
+    .def("getPlatformAsString", &Device::getPlatformAsString, DOC(dai, Device, getPlatformAsString))
+    ;
 
     // // Bind the rest
     // device
