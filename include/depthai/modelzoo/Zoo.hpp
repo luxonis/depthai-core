@@ -1,8 +1,13 @@
 #pragma once
 
+#include <cpr/cpr.h>
+
 #include "depthai/modelzoo/NNModelDescription.hpp"
 
 namespace dai {
+
+constexpr const char* MODEL_ZOO_URL = "https://api.cloud-stg.luxonis.com/graphql";
+constexpr const char* MODEL_ZOO_DEFAULT_CACHE_DIRECTORY = ".depthai_cached_models";
 
 class ZooManager {
    public:
@@ -12,7 +17,7 @@ class ZooManager {
      * @param modelDescription: Model description
      * @param cacheDirectory: Cache directory, default is "."
      */
-    ZooManager(const NNModelDescription& modelDescription, const std::string& cacheDirectory = ".")
+    ZooManager(const NNModelDescription& modelDescription, const std::string& cacheDirectory = MODEL_ZOO_DEFAULT_CACHE_DIRECTORY)
         : modelDescription(modelDescription), cacheDirectory(cacheDirectory) {}
 
     /**
@@ -32,10 +37,10 @@ class ZooManager {
     /**
      * @brief Get path to the folder where model is cached
      *
-     * @param cacheDirectory: Cache directory where the cached models are stores, default is "."
+     * @param cacheDirectory: Cache directory where the cached models are stores
      * @return std::string: Cache folder name
      */
-    std::string getModelCacheFolderPath(const std::string& cacheDirectory = ".") const;
+    std::string getModelCacheFolderPath(const std::string& cacheDirectory) const;
 
     /**
      * @brief Combine two paths
@@ -61,7 +66,7 @@ class ZooManager {
      *
      * @return bool: True if model is cached
      */
-    bool isCached() const;
+    bool isModelCached() const;
 
     /**
      * @brief Check if path exists
@@ -99,8 +104,42 @@ class ZooManager {
      */
     std::vector<std::string> getFilesInFolder(const std::string& folder) const;
 
-   private:
+    /**
+     * @brief Check if response from Hub is an error
+     *
+     * @param response: HTTP response from Hub
+     * @return bool: True if response is an error
+     */
+    bool checkIsErrorHub(const cpr::Response& response) const;
+
+    /**
+     * @brief Generate error message from Hub response
+     *
+     * @param response: HTTP response from Hub
+     * @return std::string: Error message
+     */
+    std::string generateErrorMessageHub(const cpr::Response& response) const;
+
+    /**
+     * @brief Check if response from model download is an error
+     *
+     * @param response: HTTP response from model download
+     * @return bool: True if response is an error
+     */
+    bool checkIsErrorModelDownload(const cpr::Response& response) const;
+
+    /**
+     * @brief Generate error message from model download response
+     *
+     * @param response: HTTP response from model download
+     * @return std::string: Error message
+     */
+    std::string generateErrorMessageModelDownload(const cpr::Response& response) const;
+
+    // Description of the model
     const NNModelDescription& modelDescription;
+
+    // Path to directory where to store the cached models
     const std::string cacheDirectory;
 };
 
@@ -108,19 +147,22 @@ class ZooManager {
  * @brief Get model from model zoo
  *
  * @param modelDescription: Model description
- * @param cacheDirectory: Cache directory where the cached models are stored, default is "."
  * @param useCached: Use cached model if present, default is true
- * @param cacheModel: Whether to store the downloaded model in the cache directory, default is true
+ * @param cacheDirectory: Cache directory where the cached models are stored, default is MODEL_ZOO_DEFAULT_CACHE_DIRECTORY
+ * @param verbose: Print verbose output, default is false
  * @return std::string: Path to the model in cache
  */
-std::string getModelFromZoo(const NNModelDescription& modelDescription, const std::string& cacheDirectory = ".", bool useCached = true, bool verbose = false);
+std::string getModelFromZoo(const NNModelDescription& modelDescription,
+                            bool useCached = true,
+                            const std::string& cacheDirectory = MODEL_ZOO_DEFAULT_CACHE_DIRECTORY,
+                            bool verbose = false);
 
 /**
  * @brief Helper function allowing one to download all models specified in yaml files in the given path and store them in the cache directory
  *
  * @param path: Path to the directory containing yaml files
- * @param cacheDirectory: Cache directory where the cached models are stored, default is "."
- * @param verbose: Print verbose output
+ * @param cacheDirectory: Cache directory where the cached models are stored, default is MODEL_ZOO_DEFAULT_CACHE_DIRECTORY
+ * @param verbose: Print verbose output, default is false
  */
-void downloadModelsFromZoo(const std::string& path, const std::string& cacheDirectory = ".", bool verbose = false);
+void downloadModelsFromZoo(const std::string& path, const std::string& cacheDirectory = MODEL_ZOO_DEFAULT_CACHE_DIRECTORY, bool verbose = false);
 }  // namespace dai

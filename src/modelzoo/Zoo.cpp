@@ -2,34 +2,22 @@
 
 #include <cpr/cpr.h>
 
-#include <depthai/utility/Path.hpp>
 #include <iostream>
+#include <nlohmann/json.hpp>
 
+#include "../utility/YamlHelpers.hpp"
 #include "../utility/sha1.hpp"
 
 namespace dai {
 
 std::string ZooManager::computeModelHash() const {
     SHA1 hasher;
-    hasher.update(modelDescription.getModelSlug() + modelDescription.getmodelVersionSlug() + modelDescription.getPlatform());
+    hasher.update(modelDescription.toString());
     return hasher.final();
 }
 
 std::string ZooManager::getModelCacheFolderName() const {
-    const std::string separator = "--";
-    std::string foldername = "";
-
-    // REQUIRED fields first
-    foldername += "model_slug=" + modelDescription.getModelSlug() + separator;
-    foldername += "platform=" + modelDescription.getPlatform() + separator;
-
-    // OPTIONAL fields
-    if(modelDescription.getmodelVersionSlug().size() > 0) foldername += "model_version_slug=" + modelDescription.getmodelVersionSlug() + separator;
-
-    // Append hash
-    foldername += "hash=" + computeModelHash();
-
-    return foldername;
+    return computeModelHash();
 }
 
 std::string ZooManager::getModelCacheFolderPath(const std::string& cacheDirectory) const {
@@ -50,7 +38,7 @@ void ZooManager::removeModelCacheFolder() const {
     std::filesystem::remove_all(cacheFolderName);
 }
 
-bool ZooManager::isCached() const {
+bool ZooManager::isModelCached() const {
     return checkExists(getModelCacheFolderPath(cacheDirectory));
 }
 
@@ -59,61 +47,48 @@ bool ZooManager::checkExists(const std::string& path) const {
 }
 
 void ZooManager::downloadModel() {
-    // Setup download url
-    const std::string modelUrl = "http://mlcloud-services-load-balancer.default.stg.easyml/models/api/v1/models/download";
-    cpr::Url url = cpr::Url{modelUrl};
+    // graphql query to send to Hub - always the same
+    constexpr std::string_view MODEL_ZOO_QUERY = "query MlDownloads($input: MlModelDownloadsInput!) {ml { modelDownloads(input : $input) { data }}}";
 
-    // Setup header
-    cpr::Header header;
-    header.insert({"x-team-id", "ecc1ccd9-daa6-45d0-a4c7-81fb11b4b0b9"});
+    // Setup request body
+    nlohmann::json requestBody;
+    requestBody["query"] = MODEL_ZOO_QUERY;
 
-    // Setup HTTP request parameters
-    cpr::Parameters parameters;
-    parameters.AddParameter(cpr::Parameter("model_slug", modelDescription.getModelSlug()));
-    parameters.AddParameter(cpr::Parameter("platform", modelDescription.getPlatform()));
+    // Add REQUIRED parameters
+    requestBody["variables"]["input"]["platform"] = modelDescription.platform;
+    requestBody["variables"]["input"]["modelSlug"] = modelDescription.modelSlug;
 
-    // Add optional parameters
-    std::string modelVersionSlug = modelDescription.getmodelVersionSlug();
-    if(modelVersionSlug.size() > 0) {
-        parameters.AddParameter(cpr::Parameter("model_version_slug", modelVersionSlug));
-    }
+    // Add OPTIONAL parameters
+    if(!modelDescription.modelVersionSlug.empty()) requestBody["variables"]["input"]["modelVersionSlug"] = modelDescription.modelVersionSlug;
 
-    // Send HTTP request
-    cpr::Response response = cpr::Get(url, header, parameters);
-    if(response.status_code != cpr::status::HTTP_OK) {
-        // Cleanup cache folder
+    // Send HTTP request to Hub
+    cpr::Response response = cpr::Post(cpr::Url{MODEL_ZOO_URL}, cpr::Body{requestBody.dump()});
+    if(checkIsErrorHub(response)) {
         removeModelCacheFolder();
-
-        // Inform the user about the error and print out model description
-        // for easier debugging
-        throw std::runtime_error("Failed to download model\n" + modelDescription.toString() + "\nError: " + response.text
-                                 + "\n HTTP status code: " + std::to_string(response.status_code));
+        throw std::runtime_error(generateErrorMessageHub(response));
     }
 
-    // Unpack model download link - slice off first and last two characters
-    // The returned text is in the format: ["link"]
-    std::string link = response.text.substr(2, response.text.size() - 2 - 2);
+    // Extract download link from response
+    nlohmann::json responseJson = nlohmann::json::parse(response.text);
+    auto downloadLinks = responseJson["data"]["ml"]["modelDownloads"]["data"].get<std::vector<std::string>>();
 
-    // Download model
-    cpr::Url downloadUrl = cpr::Url{link};
-    cpr::Response downloadResponse = cpr::Get(downloadUrl);
-    if(downloadResponse.status_code != cpr::status::HTTP_OK) {
-        // Cleanup cache folder
-        removeModelCacheFolder();
+    // std::vector<std::string> downloadLinks = responseJson["data"]["ml"]["modelDownloads"];
 
-        // Inform the user about the error and print out model description
-        // for easier debugging
-        throw std::runtime_error("Failed to download model\n" + modelDescription.toString() + "\nError: " + downloadResponse.text
-                                 + "\n HTTP status code: " + std::to_string(downloadResponse.status_code));
+    // Download all files and store them in cache folder
+    for(const auto& downloadLink : downloadLinks) {
+        cpr::Response downloadResponse = cpr::Get(downloadLink);
+        if(checkIsErrorModelDownload(downloadResponse)) {
+            removeModelCacheFolder();
+            throw std::runtime_error(generateErrorMessageModelDownload(downloadResponse));
+        }
+
+        // Save downloaded file to cache folder
+        std::string filename = getFilenameFromUrl(downloadLink);
+        std::string filepath = combinePaths(getModelCacheFolderPath(cacheDirectory), filename);
+        std::ofstream file(filepath, std::ios::binary);
+        file.write(downloadResponse.text.c_str(), downloadResponse.text.size());
+        file.close();
     }
-
-    // Save file to cache folder
-    std::string folder = getModelCacheFolderPath(cacheDirectory);
-    std::string downloadFilename = getFilenameFromUrl(link);
-    std::string tarPath = combinePaths(folder, downloadFilename);
-    std::ofstream outStream(tarPath, std::ios::binary);
-    outStream.write(downloadResponse.text.c_str(), downloadResponse.text.size());
-    outStream.close();
 }
 
 std::string ZooManager::loadModelFromCache() const {
@@ -135,6 +110,7 @@ std::string ZooManager::loadModelFromCache() const {
 std::string ZooManager::getFilenameFromUrl(const std::string& url) const {
     // Example url: https://storage.googleapis.com/luxonis/bla/resnet18_rvc2.blob?a=33a&b=443b&last=elon
     // It's fake ^^^ :) but it's just to show how the function works
+    // For this example url, the function would return "resnet18_rvc2.blob"
 
     // Find query string start
     size_t queryStart = url.find('?');
@@ -160,17 +136,17 @@ std::vector<std::string> ZooManager::getFilesInFolder(const std::string& folder)
     return files;
 }
 
-std::string getModelFromZoo(const NNModelDescription& modelDescription, const std::string& cacheDirectory, bool useCached, bool verbose) {
+std::string getModelFromZoo(const NNModelDescription& modelDescription, bool useCached, const std::string& cacheDirectory, bool verbose) {
     // Initialize ZooManager
     ZooManager zooManager(modelDescription, cacheDirectory);
 
     // Check if model is cached
-    bool modelIsCached = zooManager.isCached();
+    bool modelIsCached = zooManager.isModelCached();
     bool useCachedModel = useCached && modelIsCached;
 
     // Use cached model if present and useCached is true
     if(useCachedModel) {
-        auto modelPath = zooManager.loadModelFromCache();
+        std::string modelPath = zooManager.loadModelFromCache();
         if(verbose) std::cout << "Using cached model located at " << modelPath << std::endl;
         return modelPath;
     }
@@ -192,7 +168,53 @@ std::string getModelFromZoo(const NNModelDescription& modelDescription, const st
     return modelPath;
 }
 
+bool ZooManager::checkIsErrorHub(const cpr::Response& response) const {
+    // Check if response is an HTTP error
+    if(response.status_code != cpr::status::HTTP_OK) return true;
+
+    // If there was no HTTP error, check response content for errors
+    nlohmann::json responseJson = nlohmann::json::parse(response.text);
+    if(responseJson.contains("errors")) return true;
+    if(responseJson["data"]["ml"]["modelDownloads"].is_null()) return true;
+
+    // All checks passed - no errors yay
+    return false;
+}
+
+std::string ZooManager::generateErrorMessageHub(const cpr::Response& response) const {
+    std::string errorMessage = "";
+    errorMessage += "There was an error while sending a request to the Hub\n";
+    errorMessage += "HTTP status code: " + std::to_string(response.status_code) + "\n";
+
+    if(response.status_code == cpr::status::HTTP_OK) {
+        nlohmann::json responseJson = nlohmann::json::parse(response.text);
+        if(responseJson.contains("errors")) {
+            errorMessage += "Errors: " + responseJson["errors"].dump() + "\n";
+        }
+
+        if(!responseJson["data"].is_null()) {
+            errorMessage += "No model found for the given model description\n";
+        }
+    }
+
+    return errorMessage;
+}
+
+bool ZooManager::checkIsErrorModelDownload(const cpr::Response& response) const {
+    bool isError = response.status_code != cpr::status::HTTP_OK;
+    return isError;
+}
+
+std::string ZooManager::generateErrorMessageModelDownload(const cpr::Response& response) const {
+    std::string errorMessage = "";
+    errorMessage += "There was an error while downloading the model\n";
+    errorMessage += "HTTP status code: " + std::to_string(response.status_code) + "\n";
+    return errorMessage;
+}
+
 void downloadModelsFromZoo(const std::string& path, const std::string& cacheDirectory, bool verbose) {
+    if(verbose) std::cout << "Downloading models from zoo" << std::endl;
+
     // Make sure 'path' exists
     if(!std::filesystem::exists(path)) throw std::runtime_error("Path does not exist: " + path);
 
@@ -209,20 +231,14 @@ void downloadModelsFromZoo(const std::string& path, const std::string& cacheDire
     for(size_t i = 0; i < yamlFiles.size(); ++i) {
         // Parse yaml file
         const std::string& yamlFile = yamlFiles[i];
-        auto modelDescription = NNModelDescription::fromYaml(yamlFile);
 
         // Download model - ignore the returned model path here == we are only interested in downloading the model
-        bool errorOccurred = false;
         try {
-            getModelFromZoo(modelDescription, cacheDirectory, false);
+            auto modelDescription = NNModelDescription::fromYamlFile(yamlFile);
+            getModelFromZoo(modelDescription, false, cacheDirectory);
+            if(verbose) std::cout << "Downloaded model [" << i + 1 << "/" << yamlFiles.size() << "]: " << yamlFile << std::endl;
         } catch(const std::exception& e) {
-            std::cerr << "Failed to download model [" << i + 1 << "/" << yamlFiles.size() << "]:\n" << e.what() << std::endl;
-            errorOccurred = true;
-        }
-
-        // Print verbose output
-        if(verbose && !errorOccurred) {
-            std::cout << "Downloaded model [" << i + 1 << "/" << yamlFile.size() << "]:\n" << modelDescription << std::endl;
+            std::cerr << "Failed to download model [" << i + 1 << "/" << yamlFiles.size() << "]: " << yamlFile << "\n" << e.what() << std::endl;
         }
     }
 }
