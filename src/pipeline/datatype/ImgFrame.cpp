@@ -76,6 +76,14 @@ float ImgFrame::getLensPositionRaw() const {
     return img.cam.lensPositionRaw;
 }
 
+float ImgFrame::getSensorTemperature() const {
+    return img.cam.sensorTemperature;
+}
+
+float ImgFrame::getAuxTemperature() const {
+    return img.cam.auxTemperature;
+}
+
 // setters
 ImgFrame& ImgFrame::setTimestamp(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> tp) {
     // Set timestamp from timepoint

@@ -62,6 +62,16 @@ class EncodedFrame : public Buffer {
     float getLensPositionRaw() const;
 
     /**
+     * Retrieves sensor temperature, in degrees Celsius
+     */
+    float getSensorTemperature() const;
+
+    /**
+     * Retrieves auxiliary sensor temperature, in degrees Celsius. For ToF this is the VCSEL driver temperature
+     */
+    float getAuxTemperature() const;
+
+    /**
      * Retrieves the encoding quality
      */
     unsigned int getQuality() const;
