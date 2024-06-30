@@ -13,6 +13,7 @@ int main(int argc, char* argv[]) {
     modelDescription.modelSlug = "ales-test";
     modelDescription.platform = pipeline.getDefaultDevice()->getPlatformAsString();
     std::string modelPath = dai::getModelFromZoo(modelDescription, true);  // True means use cached model if available
+    std::cout << "Model path: " << modelPath << std::endl;
 
     // Color camera node
     auto camRgb = pipeline.create<dai::node::ColorCamera>();
@@ -28,8 +29,8 @@ int main(int argc, char* argv[]) {
     // Linking
     camRgb->preview.link(neuralNetwork->input);
 
-    auto nnDetectionQueue = neuralNetwork->out.createQueue();
-    auto nnPassthroughQueue = neuralNetwork->passthrough.createQueue();
+    auto nnDetectionQueue = neuralNetwork->out.createOutputQueue();
+    auto nnPassthroughQueue = neuralNetwork->passthrough.createOutputQueue();
 
     pipeline.start();
 

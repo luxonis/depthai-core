@@ -45,8 +45,8 @@ with dai.Pipeline() as pipeline:
     # Linking
     camRgb.preview.link(neuralNetwork.input)
 
-    nnDetectionQueue = neuralNetwork.out.createQueue()
-    nnPassthroughQueue = neuralNetwork.passthrough.createQueue()
+    nnDetectionQueue = neuralNetwork.out.createOutputQueue()
+    nnPassthroughQueue = neuralNetwork.passthrough.createOutputQueue()
 
     pipeline.start()
 
