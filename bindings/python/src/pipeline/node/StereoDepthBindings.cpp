@@ -71,7 +71,7 @@ void bind_stereodepth(pybind11::module& m, void* pCallstack){
     // Node
     stereoDepth
         .def(py::init([](Node::Output& left, Node::Output& right, StereoDepth::PresetMode presetMode) {
-            auto self = getImplicitPipeline().create<StereoDepth>();
+            auto self = getImplicitPipeline()->create<StereoDepth>();
             self->build(left, right, presetMode);
             return self;
                     }),
@@ -80,7 +80,7 @@ void bind_stereodepth(pybind11::module& m, void* pCallstack){
              py::arg("presetMode") = StereoDepth::PresetMode::HIGH_DENSITY
                     )
         .def(py::init([](bool autoCreateCameras, StereoDepth::PresetMode presetMode) {
-            auto self = getImplicitPipeline().create<StereoDepth>();
+            auto self = getImplicitPipeline()->create<StereoDepth>();
             self->build(autoCreateCameras, presetMode);
             return self;
                     }),

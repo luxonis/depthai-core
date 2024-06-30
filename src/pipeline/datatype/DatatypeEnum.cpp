@@ -8,6 +8,7 @@
 namespace dai {
 
 const std::unordered_map<DatatypeEnum, std::vector<DatatypeEnum>> hierarchy = {
+    {DatatypeEnum::ADatatype, {DatatypeEnum::Buffer}},
     {DatatypeEnum::Buffer,
      {
          DatatypeEnum::ImgFrame,

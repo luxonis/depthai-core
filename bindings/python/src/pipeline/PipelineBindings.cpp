@@ -40,6 +40,7 @@
 
 // depthai/
 #include "depthai/properties/GlobalProperties.hpp"
+#include "depthai/utility/RecordReplay.hpp"
 #include <memory>
 
 std::shared_ptr<dai::Node> createNode(dai::Pipeline& p, py::object class_){
@@ -59,6 +60,8 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack){
 
     // Type definitions
     py::class_<GlobalProperties> globalProperties(m, "GlobalProperties", DOC(dai, GlobalProperties));
+    py::class_<RecordConfig> recordConfig(m, "RecordConfig", DOC(dai, RecordConfig));
+    py::class_<RecordConfig::VideoEncoding> recordVideoConfig(recordConfig, "VideoEncoding", DOC(dai, RecordConfig, VideoEncoding));
     py::class_<Pipeline> pipeline(m, "Pipeline", DOC(dai, Pipeline, 2));
 
     ///////////////////////////////////////////////////////////////////////
@@ -88,13 +91,25 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack){
         .def_readwrite("sippDmaBufferSize", &GlobalProperties::sippDmaBufferSize, DOC(dai, GlobalProperties, sippDmaBufferSize))
         ;
 
+    recordVideoConfig
+        .def_readwrite("enabled", &RecordConfig::VideoEncoding::enabled, DOC(dai, RecordConfig, VideoEncoding, enabled))
+        .def_readwrite("bitrate", &RecordConfig::VideoEncoding::bitrate, DOC(dai, RecordConfig, VideoEncoding, bitrate))
+        .def_readwrite("profile", &RecordConfig::VideoEncoding::profile, DOC(dai, RecordConfig, VideoEncoding, profile))
+        .def_readwrite("lossless", &RecordConfig::VideoEncoding::lossless, DOC(dai, RecordConfig, VideoEncoding, lossless))
+        .def_readwrite("quality", &RecordConfig::VideoEncoding::quality, DOC(dai, RecordConfig, VideoEncoding, quality));
+
+    recordConfig
+        .def_readwrite("outputDir", &RecordConfig::outputDir, DOC(dai, RecordConfig, outputDir))
+        .def_readwrite("videoEncoding", &RecordConfig::videoEncoding, DOC(dai, RecordConfig, videoEncoding))
+        .def_readwrite("compressionLevel", &RecordConfig::compressionLevel, DOC(dai, RecordConfig, compressionLevel));
+
     // bind pipeline
     pipeline.def(py::init<bool>(), py::arg("createImplicitDevice") = true, DOC(dai, Pipeline, Pipeline))
         .def(py::init<std::shared_ptr<Device>>(), py::arg("defaultDevice"), DOC(dai, Pipeline, Pipeline))
         // Python only methods
         .def("__enter__",
              [](Pipeline& p) -> Pipeline& {
-                 setImplicitPipeline(p);
+                 setImplicitPipeline(&p);
                  return p;
              })
         .def("__exit__",
@@ -105,6 +120,11 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack){
                  d.wait();
              })
         //.def(py::init<const Pipeline&>())
+        .def("getDefaultDevice", [](Pipeline& p) -> py::object {
+            auto device = p.getDefaultDevice();
+            if(!device) return py::none();
+            return py::cast(device);
+        }, DOC(dai, Pipeline, getDefaultDevice))
         .def("getGlobalProperties", &Pipeline::getGlobalProperties, DOC(dai, Pipeline, getGlobalProperties))
         //.def("create", &Pipeline::create<node::XLinkIn>)
         .def("remove", &Pipeline::remove, py::arg("node"), DOC(dai, Pipeline, remove))
@@ -160,8 +180,11 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack){
                  // Check if the class is directly from bindings (__module__ == "depthai.node"). If so, the node comes from bindings,
                  // so we create in the same manner as device nodes.
                  auto isFromBindings = class_.attr("__module__").cast<std::string>() == "depthai.node";
+                 // Create a copy from kwargs and add autoAddToPipeline to false
                  if(isSubclass && !isFromBindings) {
+                     setImplicitPipeline(&p);
                      std::shared_ptr<Node> hostNode = py::cast<std::shared_ptr<node::ThreadedHostNode>>(class_(*args, **kwargs));
+                     delImplicitPipeline();
                      // Node already adds itself to the pipeline in the constructor
                      // To be sure - check if it is already added
                      auto allNodes = p.getAllNodes();
@@ -173,9 +196,8 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack){
                          }
                      }
                      if(!found) {
-                         throw std::runtime_error("Node was not added to the pipeline in the constructor");
+                         throw std::invalid_argument("Internal error: Node wasn't added to the pipeline");
                      }
-                     //  p.add(hostNode);
                      return hostNode;
                  }
                  // Otherwise create the node with `pipeline.create()` method
@@ -226,7 +248,9 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack){
                  p.run();
              })
         .def("isRunning", &Pipeline::isRunning)
-        .def("processTasks", &Pipeline::processTasks);
+        .def("processTasks", &Pipeline::processTasks)
+        .def("enableHolisticRecord", &Pipeline::enableHolisticRecord, py::arg("recordConfig"), DOC(dai, Pipeline, enableHolisticRecord))
+        .def("enableHolisticReplay", &Pipeline::enableHolisticReplay, py::arg("recordingPath"), DOC(dai, Pipeline, enableHolisticReplay));
     ;
 
 

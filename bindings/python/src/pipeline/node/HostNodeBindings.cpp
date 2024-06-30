@@ -46,7 +46,7 @@ void bind_hostnode(pybind11::module& m, void* pCallstack){
     threadedHostNode
         .def(py::init<>([]() {
             auto node = std::make_shared<PyThreadedHostNode>();
-            getImplicitPipeline().add(node);
+            getImplicitPipeline()->add(node);
             return node;
         }))
         .def("run", &ThreadedHostNode::run);
@@ -54,7 +54,7 @@ void bind_hostnode(pybind11::module& m, void* pCallstack){
     hostNode
         .def(py::init([]() {
             auto node = std::make_shared<PyHostNode>();
-            getImplicitPipeline().add(node);
+            getImplicitPipeline()->add(node);
             return node;
         }))
         .def("processGroup", &HostNode::processGroup)
@@ -117,5 +117,6 @@ void bind_hostnode(pybind11::module& m, void* pCallstack){
                 cls.__init__ = __init__
 
         node.HostNode.__init_subclass__ = classmethod(__init_subclass__)
-    )", m.attr("__dict__"));
+    )",
+             m.attr("__dict__"));
 }

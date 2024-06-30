@@ -2,7 +2,6 @@ import sys
 import os
 import re
 
-
 project_root = os.path.dirname(__file__)
 version_depthai_core_path = project_root + "/" + "../../CMakeLists.txt"
 version_depthai_python_path = project_root + "/" + "CMakeLists.txt"

@@ -29,6 +29,9 @@ namespace dai {
 class Pipeline;
 class PipelineImpl;
 
+// fwd declare input queue class
+class InputQueue;
+
 /**
  * @brief Abstract Node
  */
@@ -73,12 +76,6 @@ class Node : public std::enable_shared_from_this<Node> {
     void setNodeRefs(std::initializer_list<std::pair<std::string, std::shared_ptr<Node>*>> l);
     void setNodeRefs(std::pair<std::string, std::shared_ptr<Node>*> nodeRef);
     void setNodeRefs(std::string alias, std::shared_ptr<Node>* nodeRef);
-
-    // For record and replay
-    virtual bool isSourceNode() const;
-    virtual utility::NodeRecordParams getNodeRecordParams() const;
-    virtual Output& getRecordOutput();
-    virtual Input& getReplayInput();
 
     template <typename T>
     class Subnode {
@@ -229,7 +226,22 @@ class Node : public std::enable_shared_from_this<Node> {
             return queueConnections;
         }
 
-        std::shared_ptr<dai::MessageQueue> createQueue(unsigned int maxSize = 16, bool blocking = true);
+        /** Default value for the blocking argument in the createOutputQueue method */
+        static constexpr bool OUTPUT_QUEUE_DEFAULT_BLOCKING = false;
+
+        /** Default value for the maxSize argument in the createOutputQueue method */
+        static constexpr unsigned int OUTPUT_QUEUE_DEFAULT_MAX_SIZE = 16;
+
+        /**
+         * @brief Construct and return a shared pointer to an output message queue
+         *
+         * @param maxSize: Maximum size of the output queue
+         * @param blocking: Whether the output queue should block when full
+         *
+         * @return std::shared_ptr<dai::MessageQueue>: shared pointer to an output queue
+         */
+        std::shared_ptr<dai::MessageQueue> createOutputQueue(unsigned int maxSize = OUTPUT_QUEUE_DEFAULT_MAX_SIZE,
+                                                             bool blocking = OUTPUT_QUEUE_DEFAULT_BLOCKING);
 
        private:
         void link(const std::shared_ptr<dai::MessageQueue>& queue) {
@@ -394,6 +406,22 @@ class Node : public std::enable_shared_from_this<Node> {
          * Get group name for this input
          */
         std::string getGroup() const;
+
+        /** Default value for the blocking argument in the createInputQueue method */
+        static constexpr bool INPUT_QUEUE_DEFAULT_BLOCKING = false;
+
+        /** Default value for the maxSize argument in the createInputQueue method */
+        static constexpr unsigned int INPUT_QUEUE_DEFAULT_MAX_SIZE = 16;
+
+        /**
+         * @brief Create an shared pointer to an input queue that can be used to send messages to this input from onhost
+         *
+         * @param maxSize: Maximum size of the input queue
+         * @param blocking: Whether the input queue should block when full
+         *
+         * @return std::shared_ptr<InputQueue>: shared pointer to an input queue
+         */
+        std::shared_ptr<InputQueue> createInputQueue(unsigned int maxSize = INPUT_QUEUE_DEFAULT_MAX_SIZE, bool blocking = INPUT_QUEUE_DEFAULT_BLOCKING);
     };
 
     /**
@@ -504,13 +532,13 @@ class Node : public std::enable_shared_from_this<Node> {
     virtual const char* getName() const = 0;
 
     /// Start node execution
-    virtual void start(){};
+    virtual void start() {};
 
     /// Wait for node to finish execution
-    virtual void wait(){};
+    virtual void wait() {};
 
     /// Stop node execution
-    virtual void stop(){};
+    virtual void stop() {};
 
     void stopPipeline();
 
@@ -556,6 +584,9 @@ class Node : public std::enable_shared_from_this<Node> {
 
     /// Retrieves reference to specific input map
     InputMap* getInputMapRef(std::string group);
+
+    // For record and replay
+    virtual bool isSourceNode() const;
 
    protected:
     Node() = default;
@@ -612,6 +643,14 @@ class Node : public std::enable_shared_from_this<Node> {
     const NodeMap& getNodeMap() const {
         return nodeMap;
     }
+};
+
+class SourceNode {
+   public:
+    virtual ~SourceNode() = default;
+    virtual NodeRecordParams getNodeRecordParams() const;
+    virtual Node::Output& getRecordOutput();
+    virtual Node::Input& getReplayInput();
 };
 
 // Node CRTP class

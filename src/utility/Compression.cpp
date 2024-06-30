@@ -91,6 +91,7 @@ void tarFiles(const std::string& path, const std::vector<std::string>& files, co
         archive_entry_set_perm(entry, 0644);
         archive_write_header(a, entry);
         fd = open(file.c_str(), O_RDONLY);
+        if(fd < 0) continue;
         len = read(fd, buff, sizeof(buff));
         while(len > 0) {
             archive_write_data(a, buff, len);
@@ -141,14 +142,15 @@ void untarFiles(const std::string& path, const std::vector<std::string>& files, 
     if(r != ARCHIVE_OK) {
         throw std::runtime_error("Could not open archive.");
     }
-    for(size_t i = 0; i < files.size(); i++) {
-        const auto& file = files[i];
-        const auto& outFile = outFiles[i];
-        while(archive_read_next_header(a, &entry) == ARCHIVE_OK) {
+    assert(files.size() == outFiles.size());
+    while(archive_read_next_header(a, &entry) == ARCHIVE_OK) {
+        for(size_t i = 0; i < files.size(); i++) {
+            const auto& file = files[i];
             if(file == archive_entry_pathname(entry)) {
+                const auto& outFile = outFiles[i];
                 int fd = open(outFile.c_str(), O_WRONLY | O_CREAT, archive_entry_perm(entry));
                 if(fd < 0) {
-                    throw std::runtime_error("Could not open file.");
+                    throw std::runtime_error("Could not open file " + outFile + " for writing.");
                 }
                 size_t size = archive_entry_size(entry);
                 std::vector<uint8_t> buff(size);
@@ -157,8 +159,8 @@ void untarFiles(const std::string& path, const std::vector<std::string>& files, 
                 close(fd);
                 break;
             }
-            archive_read_data_skip(a);
         }
+        archive_read_data_skip(a);
     }
 
     r = archive_read_free(a);
