@@ -873,6 +873,11 @@ void PipelineImpl::stop() {
         }
     }
 
+    // Close all the output queues
+    for (auto& queue: outputQueues) {
+        queue->close();
+    }
+
     // Close the task queue
     tasks.destruct();
     // TODO(Morato) - handle multiple devices correctly, stop pipeline on all of them

@@ -230,8 +230,7 @@ void ReplayMetadataOnly::run() {
 
         first = false;
     }
-
-    stop();
+    stopPipeline();
 }
 
 std::filesystem::path ReplayVideo::getReplayMetadataFile() const {

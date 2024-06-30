@@ -114,6 +114,9 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     std::unordered_map<std::string, std::string> recordReplayFilenames;
     std::string defaultDeviceMxId;
 
+    // Output queues
+    std::vector<std::shared_ptr<MessageQueue>> outputQueues;
+
     // parent
     Pipeline& parent;
 

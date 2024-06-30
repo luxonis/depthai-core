@@ -17,7 +17,8 @@ if not Path(args.inputVideo).exists():
 with dai.Pipeline() as pipeline:
     replay = pipeline.create(dai.node.ReplayVideo)
     replay.setReplayVideoFile(Path(args.inputVideo))
-    replay.setOutFrameType(dai.ImgFrame.Type.BGR888p)
+    replay.setOutFrameType(dai.ImgFrame.Type.NV12)
+    replay.setLoop(False)
 
     imageManip = pipeline.create(dai.node.ImageManip)
     imageManip.initialConfig.setResize(300, 300)
@@ -27,7 +28,11 @@ with dai.Pipeline() as pipeline:
 
     pipeline.start()
     while pipeline.isRunning() and replay.isRunning():
-        outFrame : dai.ImgFrame = manipOutQueue.get()
+        try:
+            outFrame : dai.ImgFrame = manipOutQueue.get()
+        except dai.MessageQueue.QueueException:
+            # Replay stopped the pipeline
+            break
         outFrameCv = outFrame.getCvFrame()
         cv2.imshow("video", outFrameCv)
         if cv2.waitKey(1) == ord('q'):
