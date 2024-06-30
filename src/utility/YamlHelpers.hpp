@@ -16,6 +16,18 @@ inline YAML::Node loadYaml(const std::string& path) {
 }
 
 /**
+ * @brief Save yaml node to file
+ *
+ * @param node: YAML node to save
+ * @param path: Path to save yaml file
+ */
+inline void saveYaml(const YAML::Node& node, const std::string& path) {
+    std::ofstream fout(path);
+    fout << node;
+    fout.close();
+}
+
+/**
  * @brief Check if file is yaml file
  *
  * @param path: Path to file
@@ -56,8 +68,7 @@ T yamlGet(const YAML::Node& node, const std::string& key) {
     if(node[key]) {
         return node[key].as<T>();
     }
-    std::string errorMessage = "Key not found in yaml: " + key;
-    throw std::runtime_error(errorMessage);
+    throw std::runtime_error("Key not found in yaml: " + key);
 }
 
 }  // namespace utility
