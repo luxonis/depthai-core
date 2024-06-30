@@ -27,7 +27,7 @@ To install PCL:
 MacOS: `brew install pcl`
 Linux: `sudo apt install libpcl-dev`
 
-> ℹ️ On Linux distributions based on RPMs, you need to install `perl-core` for us to OpenSSL dependency.
+> ℹ️ On Linux distributions based on RPMs, you need to install `perl-core` required by OpenSSL dependency.
 >```
 >sudo yum install perl-core
 >```

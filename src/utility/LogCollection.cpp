@@ -74,6 +74,7 @@ std::string getOSPlatform() {
 }
 
 std::string calculateSHA1(const std::string& input) {
+    // We could also use SHA1 from OpenSSL and SChannel
     SHA1 checksum;
     checksum.update(input);
     return checksum.final();
