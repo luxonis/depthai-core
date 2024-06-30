@@ -2,9 +2,12 @@
 
 #include <iostream>
 
+#include <yaml-cpp/yaml.h>
+#include "../utility/YamlHelpers.hpp"
+
 namespace dai {
 
-NNModelDescription NNModelDescription::fromYaml(const std::string& yamlPath) {
+NNModelDescription NNModelDescription::fromYamlFile(const std::string& yamlPath) {
     // Make sure the file exists
     if(!std::filesystem::exists(yamlPath)) throw std::runtime_error("File does not exist: " + yamlPath);
 
@@ -18,22 +21,28 @@ NNModelDescription NNModelDescription::fromYaml(const std::string& yamlPath) {
     // Load OPTIONAL parameters - use default value if key not found
     auto modelVersionSlug = utility::yamlGet<std::string>(yamlNode, "model_version_slug", "");
 
-    return NNModelDescription(modelSlug, platform, modelVersionSlug);
+    return {modelSlug, platform, modelVersionSlug};
 }
 
-NNModelDescription NNModelDescription::fromParameters(const std::string& modelSlug, const std::string& platform, const std::string& modelVersionSlug) {
-    return NNModelDescription(modelSlug, platform, modelVersionSlug);
-}
+void NNModelDescription::saveToYamlFile(const std::string& yamlPath) const {
+    YAML::Node yamlNode;
 
-NNModelDescription NNModelDescription::fromParameters(const std::string& modelSlug, const Platform platform, const std::string& modelVersionSlug) {
-    return fromParameters(modelSlug, platform2string(platform), modelVersionSlug);
+    // Write REQUIRED parameters
+    yamlNode["model_slug"] = modelSlug;
+    yamlNode["platform"] = platform;
+
+    // Write OPTIONAL parameters
+    if(!modelVersionSlug.empty()) yamlNode["model_version_slug"] = modelVersionSlug;
+
+    // Write yaml node to file
+    utility::saveYaml(yamlNode, yamlPath);
 }
 
 std::string NNModelDescription::toString() const {
-    std::string out = "NNModelDescription[\n";
-    out += "\tmodel_slug: " + modelSlug + "\n";
-    out += "\tplatform: " + platform + "\n";
-    out += "\tmodel_version_slug: " + modelVersionSlug + "\n";
+    std::string out = "NNModelDescription [\n";
+    out += "  model_slug: " + modelSlug + "\n";
+    out += "  platform: " + platform + "\n";
+    out += "  model_version_slug: " + modelVersionSlug + "\n";
     out += "]";
     return out;
 }
