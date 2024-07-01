@@ -15,7 +15,7 @@ if(WIN32)
     set(DEPTHAI_CURL_USE_OPENSSL OFF)
 else()
     set(DEPTHAI_CURL_USE_SCHANNEL OFF)
-    set(DEPTHAI_CURL_USE_OPENSSL ON)
+    set(DEPTHAI_CURL_USE_OPENSSL OFF)
 endif()
 
 # Set type to canonicalize relative paths for user-provided toolchain
