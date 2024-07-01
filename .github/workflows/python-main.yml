@@ -435,6 +435,7 @@ jobs:
   build-linux-arm64:
     needs: build-docstrings
     runs-on: [self-hosted, linux, ARM64]
+    timeout-minutes: 1440  # Set timeout to 24 hours
     container:
       image: mmorato/depthai-manylinux2014_aarch64:0.1
       env:
