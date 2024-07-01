@@ -112,7 +112,7 @@ void ReplayVideo::run() {
             } else if(!first) {
                 // End of file
                 if(loop) {
-                    if (hasMetadata) {
+                    if(hasMetadata) {
                         bytePlayer.restart();
                     }
                     videoPlayer.restart();
