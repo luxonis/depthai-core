@@ -635,6 +635,7 @@ target_link_libraries(${TARGET_CORE_NAME}
         LZ4::lz4
         httplib::httplib
         mp4v2::mp4v2
+        semver::semver
 )
 
 if(DEPTHAI_ENABLE_CURL)

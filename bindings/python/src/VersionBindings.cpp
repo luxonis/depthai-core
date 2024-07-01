@@ -32,7 +32,6 @@ void VersionBindings::bind(pybind11::module& m, void* pCallstack){
         .def("__gt__", &Version::operator>)
         .def("toStringSemver", &Version::toStringSemver, DOC(dai, Version, toStringSemver))
         .def("getBuildInfo", &Version::getBuildInfo, DOC(dai, Version, getBuildInfo))
-        .def("getSemver", &Version::getSemver, DOC(dai, Version, getSemver))
         ;
 
 }
