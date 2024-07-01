@@ -2,6 +2,7 @@
 
 #include <spdlog/spdlog.h>
 
+#include <filesystem>
 #include <mcap/types.hpp>
 #include <optional>
 #include <stdexcept>
@@ -177,8 +178,13 @@ std::optional<std::tuple<uint32_t, uint32_t>> BytePlayer::getVideoSize(const std
 
 bool checkRecordConfig(std::string& recordPath, RecordConfig& config) {
     if(!platform::checkPathExists(recordPath)) {
-        spdlog::warn("DEPTHAI_RECORD path does not exist or is invalid. Record disabled.");
-        return false;
+        if(!std::filesystem::create_directories(recordPath)) {
+            spdlog::warn("DEPTHAI_RECORD path is invalid. Record disabled.");
+            return false;
+        }
+        std::filesystem::permissions(recordPath, std::filesystem::perms::owner_write, std::filesystem::perm_options::add);
+        config.outputDir = recordPath;
+        return true;
     }
     if(platform::checkPathExists(recordPath, true)) {
         // Is a directory
@@ -199,8 +205,18 @@ bool checkRecordConfig(std::string& recordPath, RecordConfig& config) {
                 // Is a directory
                 recordPath = config.outputDir;
             } else {
-                spdlog::warn("DEPTHAI_RECORD outputDir is not a directory. Record disabled.");
-                return false;
+                bool ok = true;
+                if(platform::checkPathExists(config.outputDir, false)) {
+                    spdlog::warn("Record config path is a file");
+                    ok = false;
+                } else {
+                    if(!std::filesystem::create_directories(config.outputDir)) {
+                        spdlog::warn("Record config output directory is invalid");
+                        ok = false;
+                    }
+                    std::filesystem::permissions(config.outputDir, std::filesystem::perms::owner_write, std::filesystem::perm_options::add);
+                }
+                return ok;
             }
         } catch(const std::exception& e) {
             spdlog::warn("Error while processing DEPTHAI_RECORD json file: {}. Record disabled.", e.what());

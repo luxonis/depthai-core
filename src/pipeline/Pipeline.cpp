@@ -22,6 +22,7 @@
 
 // std
 #include <cassert>
+#include <filesystem>
 #include <fstream>
 #include <memory>
 #include <mutex>
@@ -1018,7 +1019,14 @@ void Pipeline::enableHolisticRecord(const RecordConfig& config) {
         throw std::runtime_error("Cannot enable record while replay is enabled");
     }
     if(!platform::checkPathExists(config.outputDir, true)) {
-        throw std::runtime_error("Record output directory does not exist or is invalid");
+        if(platform::checkPathExists(config.outputDir, false)) {
+            throw std::runtime_error("Path is a file");
+        } else {
+            if(!std::filesystem::create_directories(config.outputDir)) {
+                throw std::runtime_error("Record output directory is invalid");
+            }
+            std::filesystem::permissions(config.outputDir, std::filesystem::perms::owner_write, std::filesystem::perm_options::add);
+        }
     }
     impl()->recordConfig = config;
     impl()->recordConfig.state = RecordConfig::RecordReplayState::RECORD;
