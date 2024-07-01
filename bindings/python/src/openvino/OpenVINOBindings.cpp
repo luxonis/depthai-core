@@ -82,7 +82,7 @@ void OpenVINOBindings::bind(pybind11::module& m, void* pCallstack){
     // Bind OpenVINO::SuperBlob
     openvinoSuperBlob
         .def(py::init<std::string>(), py::arg("pathToSuperBlobFile"), DOC(dai, OpenVINO, SuperBlob, SuperBlob))
-        .def("getBlobWithNShaves", &OpenVINO::SuperBlob::getBlobWithNShaves, py::arg("numShaves"), DOC(dai, OpenVINO, SuperBlob, getBlobWithNShaves))
+        .def("getBlobWithNumShaves", &OpenVINO::SuperBlob::getBlobWithNumShaves, py::arg("numShaves"), DOC(dai, OpenVINO, SuperBlob, getBlobWithNumShaves))
         .def_readonly_static("NUMBER_OF_PATCHES", &OpenVINO::SuperBlob::NUMBER_OF_PATCHES);
     ;
 }
