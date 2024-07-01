@@ -873,6 +873,11 @@ void PipelineImpl::stop() {
         }
     }
 
+    // Close all the output queues
+    for(auto& queue : outputQueues) {
+        queue->close();
+    }
+
     // Close the task queue
     tasks.destruct();
     // TODO(Morato) - handle multiple devices correctly, stop pipeline on all of them
@@ -896,12 +901,14 @@ PipelineImpl::~PipelineImpl() {
         outFiles.reserve(recordReplayFilenames.size() * 2 + 1);
         for(auto& rstr : recordReplayFilenames) {
             if(rstr.first != "record_config") {
-                std::string nodeName = rstr.first;
+                std::string nodeName = rstr.first.substr(2);
                 std::string filePath = rstr.second;
-                filenames.push_back(filePath + ".mp4");
                 filenames.push_back(filePath + ".mcap");
-                outFiles.push_back(nodeName + ".mp4");
                 outFiles.push_back(nodeName + ".mcap");
+                if(rstr.first[0] == 'v') {
+                    filenames.push_back(filePath + ".mp4");
+                    outFiles.push_back(nodeName + ".mp4");
+                }
             }
         }
         spdlog::info("Record: Creating tar file with {} files", filenames.size());
@@ -913,8 +920,8 @@ PipelineImpl::~PipelineImpl() {
         spdlog::info("Record and Replay: Removing temporary files");
         for(auto& kv : recordReplayFilenames) {
             if(kv.first != "record_config") {
-                std::remove((kv.second + ".mp4").c_str());
                 std::remove((kv.second + ".mcap").c_str());
+                std::remove((kv.second + ".mp4").c_str());
             } else
                 std::remove(kv.second.c_str());
         }

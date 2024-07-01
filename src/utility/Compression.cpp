@@ -1,8 +1,8 @@
 #include "depthai/utility/Compression.hpp"
 
-#include <fcntl.h>
-
 #include <cassert>
+#include <filesystem>
+#include <fstream>
 #include <stdexcept>
 
 #include "archive.h"
@@ -39,6 +39,7 @@ std::vector<uint8_t> deflate(span<uint8_t>& data, int compressionLevel) {
     result.resize(stream.total_out);
     return result;
 }
+
 std::vector<uint8_t> inflate(span<uint8_t>& data) {
     z_stream stream;
     stream.zalloc = Z_NULL;
@@ -71,33 +72,32 @@ void tarFiles(const std::string& path, const std::vector<std::string>& files, co
 
     struct archive* a;
     struct archive_entry* entry;
-    struct stat st;
     char buff[8192];
-    int len;
-    int fd;
+    std::ifstream fileStream;
 
     a = archive_write_new();
-    // archive_write_add_filter_gzip(a);
     archive_write_set_format_pax_restricted(a);
     archive_write_open_filename(a, path.c_str());
     for(size_t i = 0; i < files.size(); i++) {
         const auto& file = files[i];
         const auto& outFile = outFiles[i];
-        stat(file.c_str(), &st);
         entry = archive_entry_new();
         archive_entry_set_pathname(entry, outFile.c_str());
-        archive_entry_set_size(entry, st.st_size);
         archive_entry_set_filetype(entry, AE_IFREG);
         archive_entry_set_perm(entry, 0644);
+
+        std::filesystem::path filePath(file);
+        archive_entry_set_size(entry, std::filesystem::file_size(filePath));
+
         archive_write_header(a, entry);
-        fd = open(file.c_str(), O_RDONLY);
-        if(fd < 0) continue;
-        len = read(fd, buff, sizeof(buff));
-        while(len > 0) {
-            archive_write_data(a, buff, len);
-            len = read(fd, buff, sizeof(buff));
+        fileStream.open(filePath, std::ios::binary);
+        while(fileStream.read(buff, sizeof(buff))) {
+            archive_write_data(a, buff, fileStream.gcount());
         }
-        close(fd);
+        if(fileStream.gcount() > 0) {
+            archive_write_data(a, buff, fileStream.gcount());
+        }
+        fileStream.close();
         archive_entry_free(entry);
     }
     archive_write_close(a);
@@ -134,6 +134,7 @@ void untarFiles(const std::string& path, const std::vector<std::string>& files, 
     struct archive* a;
     struct archive_entry* entry;
     int r;
+    std::ofstream outFileStream;
 
     a = archive_read_new();
     archive_read_support_filter_all(a);
@@ -148,15 +149,16 @@ void untarFiles(const std::string& path, const std::vector<std::string>& files, 
             const auto& file = files[i];
             if(file == archive_entry_pathname(entry)) {
                 const auto& outFile = outFiles[i];
-                int fd = open(outFile.c_str(), O_WRONLY | O_CREAT, archive_entry_perm(entry));
-                if(fd < 0) {
+                std::filesystem::path outFilePath(outFile);
+                outFileStream.open(outFilePath, std::ios::binary);
+                if(!outFileStream) {
                     throw std::runtime_error("Could not open file " + outFile + " for writing.");
                 }
                 size_t size = archive_entry_size(entry);
                 std::vector<uint8_t> buff(size);
                 archive_read_data(a, buff.data(), size);
-                write(fd, buff.data(), size);
-                close(fd);
+                outFileStream.write(reinterpret_cast<char*>(buff.data()), size);
+                outFileStream.close();
                 break;
             }
         }

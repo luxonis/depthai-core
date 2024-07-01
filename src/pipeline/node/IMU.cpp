@@ -57,6 +57,7 @@ bool IMU::isSourceNode() const {
 
 NodeRecordParams IMU::getNodeRecordParams() const {
     NodeRecordParams params;
+    params.video = false;
     params.name = "IMU";
     return params;
 }

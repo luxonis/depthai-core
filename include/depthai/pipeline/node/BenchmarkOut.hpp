@@ -18,12 +18,12 @@ class BenchmarkOut : public DeviceNodeCRTP<DeviceNode, BenchmarkOut, BenchmarkPr
     /**
      * Send messages out as fast as possible
      */
-    Output out{*this, {.name = "out", .types = {{DatatypeEnum::Buffer, true}}}};
+    Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::Buffer, true}}}}};
 
     /**
      * Message that will be sent repeatedly
      */
-    Input input{*this, {.name = "input", .blocking = true, .queueSize = 1, .types = {{DatatypeEnum::Buffer, true}}}};
+    Input input{*this, {"input", DEFAULT_GROUP, true, 1, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Sets number of messages to send, by default send messages indefinitely

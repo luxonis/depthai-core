@@ -44,8 +44,8 @@ endif()
 
 include("cmake/HunterGate.cmake")
 HunterGate(
-    URL "https://github.com/cpp-pm/hunter/archive/v0.25.5.tar.gz"
-    SHA1 "a20151e4c0740ee7d0f9994476856d813cdead29"
+    URL "https://github.com/cpp-pm/hunter/archive/9d9242b60d5236269f894efd3ddd60a9ca83dd7f.tar.gz"
+    SHA1 "16cc954aa723bccd16ea45fc91a858d0c5246376"
     LOCAL # Local config for dependencies
 )
 
@@ -425,7 +425,6 @@ if(DEPTHAI_HAVE_OPENCV_SUPPORT AND DEPTHAI_MERGED_TARGET)
     target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_TARGET_OPENCV)
     target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_HAVE_OPENCV_SUPPORT)
 
-    set_source_files_properties(${TARGET_OPENCV_SOURCES} PROPERTIES COMPILE_FLAGS "-Wno-switch-enum")
 endif()
 if(DEPTHAI_HAVE_PCL_SUPPORT AND DEPTHAI_MERGED_TARGET)
     # Link to PCL (publically)
@@ -736,7 +735,6 @@ if(DEPTHAI_HAVE_OPENCV_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
 
     # Add default flags
     add_default_flags(${TARGET_OPENCV_NAME})
-    add_flag(${TARGET_OPENCV_NAME} -Wno-switch-enum)
 
     # Link to OpenCV (publically)
     target_link_libraries(${TARGET_OPENCV_NAME} PUBLIC ${REQUIRED_OPENCV_LIBRARIES} ${THIRDPARTY_OPENCV_LIBRARIES})
@@ -769,7 +767,6 @@ if(DEPTHAI_HAVE_PCL_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
 
         # Add default flags
         add_default_flags(${TARGET_PCL_NAME})
-        add_flag(${TARGET_PCL_NAME} -Wno-switch-enum)
 
         # Link to PCL (publically)
         target_link_libraries(${TARGET_PCL_NAME} PUBLIC ${PCL_LIBRARIES})

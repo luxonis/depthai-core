@@ -40,23 +40,23 @@ class EdgeDetector : public DeviceNodeCRTP<DeviceNode, EdgeDetector, EdgeDetecto
      * Input EdgeDetectorConfig message with ability to modify parameters in runtime.
      * Default queue is non-blocking with size 4.
      */
-    Input inputConfig{*this, {.name = "inputConfig", .blocking = false, .queueSize = 4, .types = {{DatatypeEnum::EdgeDetectorConfig, false}}}};
+    Input inputConfig{*this, {"inputConfig", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::EdgeDetectorConfig, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Input image on which edge detection is performed.
      * Default queue is non-blocking with size 4.
      */
-    Input inputImage{*this, {.name = "inputImage", .blocking = false, .queueSize = 4, .types = {{DatatypeEnum::ImgFrame, false}}, .waitForMessage = true}};
+    Input inputImage{*this, {"inputImage", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::ImgFrame, false}}}, true}};
 
     /**
      * Outputs image frame with detected edges
      */
-    Output outputImage{*this, {.name = "outputImage", .types = {{DatatypeEnum::ImgFrame, false}}}};
+    Output outputImage{*this, {"outputImage", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     /**
      * Passthrough message on which the calculation was performed.
      */
-    Output passthroughInputImage{*this, {.name = "passthroughInputImage", .types = {{DatatypeEnum::ImgFrame, false}}}};
+    Output passthroughInputImage{*this, {"passthroughInputImage", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     // Functions to set properties
     /**

@@ -6,7 +6,8 @@
 // #include "spdlog/spdlog.h"
 
 namespace dai {
-
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wswitch-enum"
 ImgFrame& ImgFrame::setFrame(cv::Mat frame) {
     std::vector<uint8_t> dataVec;
     assert(frame.isContinuous());
@@ -20,7 +21,6 @@ cv::Mat ImgFrame::getFrame(bool deepCopy) {
     cv::Mat mat;
     cv::Size size = {0, 0};
     int type = 0;
-
     switch(getType()) {
         case Type::RGB888i:
         case Type::BGR888i:
@@ -312,5 +312,6 @@ ImgFrame& ImgFrame::setCvFrame(cv::Mat mat, Type type) {
     }
     return *this;
 }
+#pragma GCC diagnostic pop
 
 }  // namespace dai

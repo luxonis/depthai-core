@@ -1,6 +1,8 @@
+#define _USE_MATH_DEFINES
 #include "depthai/pipeline/node/host/Replay.hpp"
 
 #include <chrono>
+#include <cmath>
 #include <cstdio>
 #include <filesystem>
 #include <memory>
@@ -49,7 +51,7 @@ void ReplayVideo::run() {
     bool hasVideo = !replayVideo.empty();
     bool hasMetadata = !replayFile.empty();
     if(!replayVideo.empty()) try {
-            videoPlayer.init(replayVideo);
+            videoPlayer.init(replayVideo.string());
             if(size.has_value()) {
                 const auto& [width, height] = size.value();
                 videoPlayer.setSize(width, height);
@@ -59,7 +61,7 @@ void ReplayVideo::run() {
             if(logger) logger->warn("Video not replaying: {}", e.what());
         }
     if(!replayFile.empty()) try {
-            bytePlayer.init(replayFile);
+            bytePlayer.init(replayFile.string());
         } catch(const std::exception& e) {
             hasMetadata = false;
             if(logger) logger->warn("Metadata not replaying: {}", e.what());
@@ -110,7 +112,9 @@ void ReplayVideo::run() {
             } else if(!first) {
                 // End of file
                 if(loop) {
-                    bytePlayer.restart();
+                    if(hasMetadata) {
+                        bytePlayer.restart();
+                    }
                     videoPlayer.restart();
                     continue;
                 }
@@ -177,7 +181,7 @@ void ReplayMetadataOnly::run() {
     utility::BytePlayer bytePlayer;
     bool hasMetadata = !replayFile.empty();
     if(!replayFile.empty()) try {
-            bytePlayer.init(replayFile);
+            bytePlayer.init(replayFile.string());
         } catch(const std::exception& e) {
             hasMetadata = false;
             if(logger) logger->warn("Metadata not replaying: {}", e.what());
@@ -226,8 +230,7 @@ void ReplayMetadataOnly::run() {
 
         first = false;
     }
-
-    stop();
+    stopPipeline();
 }
 
 std::filesystem::path ReplayVideo::getReplayMetadataFile() const {

@@ -26,10 +26,11 @@ bool setupHolisticRecord(Pipeline& pipeline, const std::string& mxId, RecordConf
         for(auto& node : sources) {
             auto nodeS = std::dynamic_pointer_cast<SourceNode>(node);
             if(nodeS == nullptr) {
-                throw std::runtime_error("Node " + std::string(node->getName()) + " is listed as a source node but does not implement the SourceNode interface.");
+                throw std::runtime_error("Node " + std::string(node->getName())
+                                         + " is listed as a source node but does not implement the SourceNode interface.");
             }
             NodeRecordParams nodeParams = nodeS->getNodeRecordParams();
-            std::string nodeName = nodeParams.name;
+            std::string nodeName = (nodeParams.video ? "v_" : "b_") + nodeParams.name;
             std::string filePath = platform::joinPaths(recordPath, (mxId + "_").append(nodeName));
             outFilenames[nodeName] = filePath;
             if(std::dynamic_pointer_cast<node::Camera>(node) != nullptr || std::dynamic_pointer_cast<node::ColorCamera>(node) != nullptr
@@ -208,7 +209,7 @@ bool setupHolisticReplay(Pipeline& pipeline,
                 replay->setReplayVideoFile(platform::joinPaths(rootPath, nodeName + ".mp4"));
                 replay->setOutFrameType(ImgFrame::Type::YUV420p);
 
-                auto videoSize = BytePlayer::getVideoSize(replay->getReplayMetadataFile());
+                auto videoSize = BytePlayer::getVideoSize(replay->getReplayMetadataFile().string());
                 if(videoSize.has_value()) {
                     auto [width, height] = videoSize.value();
                     if(std::dynamic_pointer_cast<node::Camera>(node) != nullptr) {
