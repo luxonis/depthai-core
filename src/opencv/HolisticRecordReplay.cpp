@@ -30,7 +30,7 @@ bool setupHolisticRecord(Pipeline& pipeline, const std::string& mxId, RecordConf
                                          + " is listed as a source node but does not implement the SourceNode interface.");
             }
             NodeRecordParams nodeParams = nodeS->getNodeRecordParams();
-            std::string nodeName = nodeParams.name;
+            std::string nodeName = (nodeParams.video ? "v_" : "b_") + nodeParams.name;
             std::string filePath = platform::joinPaths(recordPath, (mxId + "_").append(nodeName));
             outFilenames[nodeName] = filePath;
             if(std::dynamic_pointer_cast<node::Camera>(node) != nullptr || std::dynamic_pointer_cast<node::ColorCamera>(node) != nullptr

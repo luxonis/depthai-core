@@ -734,6 +734,7 @@ NodeRecordParams ColorCamera::getNodeRecordParams() const {
         throw std::runtime_error("For record and replay functionality, board socket must be specified (Camera).");
     }
     NodeRecordParams params;
+    params.video = true;
     params.name = "Camera" + toString(properties.boardSocket);
     return params;
 }
