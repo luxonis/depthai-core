@@ -874,7 +874,7 @@ void PipelineImpl::stop() {
     }
 
     // Close all the output queues
-    for (auto& queue: outputQueues) {
+    for(auto& queue : outputQueues) {
         queue->close();
     }
 
