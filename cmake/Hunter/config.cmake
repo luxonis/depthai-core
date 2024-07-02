@@ -199,3 +199,13 @@ hunter_config(
     URL "https://github.com/luxonis/cpr/archive/a1d28dbbaccda3df8fddd993b2cd916f64f9da56.tar.gz"
     SHA1 "14e18d04d05e36e920aa90ee744952bf55783ea4"
 )
+
+
+hunter_config(
+    yaml-cpp
+    VERSION "0.6.3l"
+    URL "https://github.com/jbeder/yaml-cpp/archive/refs/tags/yaml-cpp-0.6.3.tar.gz"
+    SHA1 "98d98632b3a62fdf1172442f8ad8190fc11cbef7"
+    CMAKE_ARGS
+        YAML_BUILD_SHARED_LIBS=ON
+)
