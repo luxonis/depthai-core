@@ -476,14 +476,14 @@ if(DEPTHAI_RTABMAP_SUPPORT)
     include(FetchContent)
     FetchContent_Declare(rerun_sdk URL  https://github.com/rerun-io/rerun/releases/download/0.15.0/rerun_cpp_sdk.zip)
     FetchContent_MakeAvailable(rerun_sdk)
-    dai_add_example(rtabmap_vio HostNodes/VSLAM/rtabmap_vio.cpp OFF OFF)
+    dai_add_example(rtabmap_vio RVC2/VSLAM/rtabmap_vio.cpp OFF OFF)
     target_link_libraries(rtabmap_vio PRIVATE depthai::rtabmap rerun_sdk)
 
-    dai_add_example(rtabmap_vio_slam HostNodes/VSLAM/rtabmap_vio_slam.cpp OFF ON)
+    dai_add_example(rtabmap_vio_slam RVC2/VSLAM/rtabmap_vio_slam.cpp OFF ON)
     target_link_libraries(rtabmap_vio_slam PRIVATE depthai::rtabmap rerun_sdk)
 
     if(DEPTHAI_BASALT_SUPPORT)
-        dai_add_example(basalt_vio_rtabmap_slam HostNodes/VSLAM/basalt_vio_rtabmap_slam.cpp OFF ON)
+        dai_add_example(basalt_vio_rtabmap_slam RVC2/VSLAM/basalt_vio_rtabmap_slam.cpp OFF ON)
         target_link_libraries(basalt_vio_rtabmap_slam PRIVATE depthai::basalt depthai::rtabmap rerun_sdk)
     endif()
 
@@ -494,7 +494,7 @@ if(DEPTHAI_BASALT_SUPPORT)
     FetchContent_Declare(rerun_sdk URL  https://github.com/rerun-io/rerun/releases/download/0.15.0/rerun_cpp_sdk.zip)
     FetchContent_MakeAvailable(rerun_sdk)
 
-    dai_add_example(basalt_vio HostNodes/VSLAM/basalt_vio.cpp OFF OFF)
+    dai_add_example(basalt_vio RVC2/VSLAM/basalt_vio.cpp OFF OFF)
     target_link_libraries(basalt_vio PRIVATE depthai::basalt rerun_sdk)
 endif()
 
