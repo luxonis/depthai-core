@@ -184,13 +184,13 @@ void RTABMapSLAM::publishPointClouds(const std::map<int, rtabmap::Transform>& op
     if(publishObstacleCloud) {
         auto obstaclesMap = cloudMap->getMapObstacles();
         auto pclData = std::make_shared<dai::PointCloudData>();
-        pclData->setPclData(obstaclesMap);
+        pclData->setPclDataRGB(obstaclesMap);
         obstaclePCL.send(pclData);
     }
     if(publishGroundCloud) {
         auto groundMap = cloudMap->getMapGround();
         auto pclData = std::make_shared<dai::PointCloudData>();
-        pclData->setPclData(groundMap);
+        pclData->setPclDataRGB(groundMap);
         groundPCL.send(pclData);
     }
 }

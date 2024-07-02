@@ -69,19 +69,29 @@ class RerunNode : public dai::NodeCRTP<dai::node::ThreadedHostNode, RerunNode> {
 #ifdef DEPTHAI_HAVE_PCL_SUPPORT
                 if(pclObstData != nullptr) {
                     std::vector<rerun::Position3D> points;
-                    auto pclData = pclObstData->getPoints();
+                    std::vector<rerun::Color> colors;
+                    auto size = pclObstData->getWidth() * pclObstData->getHeight();
+                    points.reserve(size);
+                    colors.reserve(size);
+                    auto pclData = pclObstData->getPointsRGB();
                     for(auto& point : pclData) {
                         points.push_back(rerun::Position3D(point.x, point.y, point.z));
+                        colors.push_back(rerun::Color{point.r, point.g, point.b});
                     }
-                    rec.log("world/obstacle_pcl", rerun::Points3D(points).with_radii({0.01f}));
+                    rec.log("world/obstacle_pcl", rerun::Points3D(points).with_colors(colors).with_radii({0.01f}));
                 }
                 if(pclGrndData != nullptr) {
                     std::vector<rerun::Position3D> points;
-                    auto pclData = pclGrndData->getPoints();
+                    std::vector<rerun::Color> colors;
+                    auto size = pclGrndData->getWidth() * pclGrndData->getHeight();
+                    points.reserve(size);
+                    colors.reserve(size);
+                    auto pclData = pclGrndData->getPointsRGB();
                     for(auto& point : pclData) {
                         points.push_back(rerun::Position3D(point.x, point.y, point.z));
+                        colors.push_back(rerun::Color{point.r, point.g, point.b});
                     }
-                    rec.log("world/ground_pcl", rerun::Points3D(points).with_colors(rerun::Color{0, 255, 0}).with_radii({0.01f}));
+                    rec.log("world/ground_pcl", rerun::Points3D(points).with_colors(colors).with_radii({0.01f}));
                 }
 #endif
                 if(mapData != nullptr) {
