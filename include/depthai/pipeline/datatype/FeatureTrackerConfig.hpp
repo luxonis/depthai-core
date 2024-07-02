@@ -320,7 +320,7 @@ class FeatureTrackerConfig : public Buffer {
         datatype = DatatypeEnum::FeatureTrackerConfig;
     };
 
-    DEPTHAI_SERIALIZE(FeatureTrackerConfig, cornerDetector, motionEstimator, featureMaintainer);
+    DEPTHAI_SERIALIZE(FeatureTrackerConfig, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, cornerDetector, motionEstimator, featureMaintainer);
 };
 
 }  // namespace dai
