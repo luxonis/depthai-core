@@ -70,9 +70,6 @@ set(SOURCE_LIST
     src/pipeline/AssetManagerBindings.cpp
     src/openvino/OpenVINOBindings.cpp
     src/nn_archive/NNArchiveBindings.cpp
-    src/nn_archive/NNArchiveBlobBindings.cpp
-    src/nn_archive/NNArchiveConfigBindings.cpp
-    src/nn_archive/NNArchiveEntryBindings.cpp
     src/log/LogBindings.cpp
     src/VersionBindings.cpp
 

@@ -27,9 +27,6 @@
 #include "MessageQueueBindings.hpp"
 #include "openvino/OpenVINOBindings.hpp"
 #include "nn_archive/NNArchiveBindings.hpp"
-#include "nn_archive/NNArchiveBlobBindings.hpp"
-#include "nn_archive/NNArchiveEntryBindings.hpp"
-#include "nn_archive/NNArchiveConfigBindings.hpp"
 #include "log/LogBindings.hpp"
 #include "VersionBindings.hpp"
 #include "capabilities/CapabilityBindings.hpp"
@@ -66,9 +63,6 @@ PYBIND11_MODULE(depthai, m)
     callstack.push_front(&MessageQueueBindings::bind);
     callstack.push_front(&OpenVINOBindings::bind);
     callstack.push_front(&NNArchiveBindings::bind);
-    callstack.push_front(&NNArchiveBlobBindings::bind);
-    callstack.push_front(&NNArchiveEntryBindings::bind);
-    callstack.push_front(&NNArchiveConfigBindings::bind);
     callstack.push_front(&CapabilityBindings::bind);
     callstack.push_front(&CapabilityRangeBindings::bind);
     callstack.push_front(&ImgFrameCapabilityBindings::bind);
