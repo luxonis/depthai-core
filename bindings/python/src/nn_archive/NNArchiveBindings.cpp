@@ -77,18 +77,18 @@ void NNArchiveBindings::bind(pybind11::module& m, void* pCallstack) {
                   py::arg("data"),
                   py::arg("compression") = NNArchiveEntry::Compression::AUTO,
                   DOC(dai, NNArchive, NNArchive));
-    nnArchive.def(py::init<const std::function<int()>&,
-                           const std::function<std::shared_ptr<std::vector<uint8_t>>()>&,
-                           const std::function<int64_t(int64_t, NNArchiveEntry::Seek)>&,
-                           const std::function<int64_t(int64_t)>&,
-                           const std::function<int()>&,
-                           NNArchiveEntry::Compression>());
-     nnArchive.def(py::init<const NNArchiveConfig&, const NNArchiveBlob&>(),
-                  py::arg("config"),
-                  py::arg("blob"),
-                  DOC(dai, NNArchive, NNArchive));
-     nnArchive.def("getConfig", &NNArchive::getConfig, DOC(dai, NNArchive, getConfig));
-     nnArchive.def("getBlob", &NNArchive::getBlob, DOC(dai, NNArchive, getBlob));
+    nnArchive.def(py::init([](const std::function<int()>& openCallback,
+                              const std::function<std::vector<uint8_t>()>& readCallback,
+                              const std::function<int64_t(int64_t, NNArchiveEntry::Seek)>& seekCallback,
+                              const std::function<int64_t(int64_t)>& skipCallback,
+                              const std::function<int()>& closeCallback,
+                              NNArchiveEntry::Compression compression) {
+        auto readCallbackWrapper = [readCallback]() { return std::make_shared<std::vector<uint8_t>>(readCallback()); };
+        return NNArchive(openCallback, readCallbackWrapper, seekCallback, skipCallback, closeCallback, compression);
+    }));
+    nnArchive.def(py::init<const NNArchiveConfig&, const NNArchiveBlob&>(), py::arg("config"), py::arg("blob"), DOC(dai, NNArchive, NNArchive));
+    nnArchive.def("getConfig", &NNArchive::getConfig, DOC(dai, NNArchive, getConfig));
+    nnArchive.def("getBlob", &NNArchive::getBlob, DOC(dai, NNArchive, getBlob));
 
     // Bind NNArchiveBlob
     nnArchiveBlob.def(py::init<const NNArchiveConfig&, const std::vector<uint8_t>&, NNArchiveEntry::Compression>(),
@@ -101,20 +101,16 @@ void NNArchiveBindings::bind(pybind11::module& m, void* pCallstack) {
                       py::arg("path"),
                       py::arg("compression") = NNArchiveEntry::Compression::AUTO,
                       DOC(dai, NNArchiveBlob, NNArchiveBlob));
-    nnArchiveBlob.def(py::init<const NNArchiveConfig&,
-                               const std::function<int()>&,
-                               const std::function<std::shared_ptr<std::vector<uint8_t>>()>&,
-                               const std::function<int64_t(int64_t, NNArchiveEntry::Seek)>&,
-                               const std::function<int64_t(int64_t)>&,
-                               const std::function<int()>&,
-                               NNArchiveEntry::Compression>(),
-                      py::arg("config"),
-                      py::arg("openCallback"),
-                      py::arg("readCallback"),
-                      py::arg("seekCallback"),
-                      py::arg("skipCallback"),
-                      py::arg("closeCallback"),
-                      py::arg("compression") = NNArchiveEntry::Compression::AUTO);
+    nnArchiveBlob.def(py::init([](const NNArchiveConfig& config,
+                                  const std::function<int()>& openCallback,
+                                  const std::function<std::vector<uint8_t>()>& readCallback,
+                                  const std::function<int64_t(int64_t, NNArchiveEntry::Seek)>& seekCallback,
+                                  const std::function<int64_t(int64_t)>& skipCallback,
+                                  const std::function<int()>& closeCallback,
+                                  NNArchiveEntry::Compression compression) {
+        auto readCallbackWrapper = [readCallback]() { return std::make_shared<std::vector<uint8_t>>(readCallback()); };
+        return NNArchiveBlob(config, openCallback, readCallbackWrapper, seekCallback, skipCallback, closeCallback, compression);
+    }));
     nnArchiveBlob.def("getOpenVINOBlob", &NNArchiveBlob::getOpenVINOBlob, DOC(dai, NNArchiveBlob, getOpenVINOBlob));
 
     // Bind NNArchiveConfig
@@ -126,13 +122,16 @@ void NNArchiveBindings::bind(pybind11::module& m, void* pCallstack) {
                         py::arg("data"),
                         py::arg("compression") = NNArchiveEntry::Compression::AUTO,
                         DOC(dai, NNArchiveConfig, NNArchiveConfig));
-    nnArchiveConfig.def(py::init<const std::function<int()>&,
-                                 const std::function<std::shared_ptr<std::vector<uint8_t>>()>&,
-                                 const std::function<int64_t(int64_t, NNArchiveEntry::Seek)>&,
-                                 const std::function<int64_t(int64_t)>&,
-                                 const std::function<int()>&,
-                                 NNArchiveEntry::Compression>());
-     nnArchiveConfig.def("getConfigV1", &NNArchiveConfig::getConfigV1, DOC(dai, NNArchiveConfig, getConfigV1));
+    nnArchiveConfig.def(py::init([](const std::function<int()>& openCallback,
+                                    const std::function<std::vector<uint8_t>()>& readCallback,
+                                    const std::function<int64_t(int64_t, NNArchiveEntry::Seek)>& seekCallback,
+                                    const std::function<int64_t(int64_t)>& skipCallback,
+                                    const std::function<int()>& closeCallback,
+                                    NNArchiveEntry::Compression compression) {
+        auto readCallbackWrapper = [readCallback]() { return std::make_shared<std::vector<uint8_t>>(readCallback()); };
+        return NNArchiveConfig(openCallback, readCallbackWrapper, seekCallback, skipCallback, closeCallback, compression);
+    }));
+    nnArchiveConfig.def("getConfigV1", &NNArchiveConfig::getConfigV1, DOC(dai, NNArchiveConfig, getConfigV1));
 
     // Bind NNArchiveEntry
     archiveEntryCompression.value("AUTO", NNArchiveEntry::Compression::AUTO)
@@ -143,14 +142,10 @@ void NNArchiveBindings::bind(pybind11::module& m, void* pCallstack) {
     archiveEntrySeek.value("SET", NNArchiveEntry::Seek::SET).value("CUR", NNArchiveEntry::Seek::CUR).value("END", NNArchiveEntry::Seek::END);
 
     // Bind NNArchive v1
-    v1configVersion.
-        value("THE_10", v1::ConfigVersion::THE_10);
+    v1configVersion.value("THE_10", v1::ConfigVersion::THE_10);
 
     v1config.def(py::init<>());
-    v1config.def(py::init<v1::ConfigVersion, v1::Model>(),
-                 py::arg("configVersion"),
-                 py::arg("model"),
-                 DOC(dai, nn_archive, v1, Config, Config));
+    v1config.def(py::init<v1::ConfigVersion, v1::Model>(), py::arg("configVersion"), py::arg("model"), DOC(dai, nn_archive, v1, Config, Config));
     v1config.def_readwrite("configVersion", &v1::Config::configVersion, DOC(dai, nn_archive, v1, Config, configVersion));
     v1config.def_readwrite("model", &v1::Config::model, DOC(dai, nn_archive, v1, Config, model));
 
@@ -166,8 +161,7 @@ void NNArchiveBindings::bind(pybind11::module& m, void* pCallstack) {
     v1model.def_readwrite("metadata", &v1::Model::metadata, DOC(dai, nn_archive, v1, Model, metadata));
     v1model.def_readwrite("outputs", &v1::Model::outputs, DOC(dai, nn_archive, v1, Model, outputs));
 
-    v1objectDetectionSubtypeYolo.
-        value("YOLOV5", v1::ObjectDetectionSubtypeYolo::YOLOV5)
+    v1objectDetectionSubtypeYolo.value("YOLOV5", v1::ObjectDetectionSubtypeYolo::YOLOV5)
         .value("YOLOV6", v1::ObjectDetectionSubtypeYolo::YOLOV6)
         .value("YOLOV7", v1::ObjectDetectionSubtypeYolo::YOLOV7)
         .value("YOLOV8", v1::ObjectDetectionSubtypeYolo::YOLOV8);
@@ -188,15 +182,12 @@ void NNArchiveBindings::bind(pybind11::module& m, void* pCallstack) {
     v1head.def_readwrite("subtype", &v1::Head::subtype, DOC(dai, nn_archive, v1, Head, subtype));
     v1head.def_readwrite("postprocessorPath", &v1::Head::postprocessorPath, DOC(dai, nn_archive, v1, Head, postprocessorPath));
 
-    v1dataType.
-        value("FLOAT16", v1::DataType::FLOAT16)
+    v1dataType.value("FLOAT16", v1::DataType::FLOAT16)
         .value("FLOAT32", v1::DataType::FLOAT32)
         .value("INT8", v1::DataType::INT8)
         .value("NV12", v1::DataType::NV12)
         .value("UINT8", v1::DataType::UINT8);
-    v1inputType
-        .value("IMAGE", v1::InputType::IMAGE)
-        .value("RAW", v1::InputType::RAW);
+    v1inputType.value("IMAGE", v1::InputType::IMAGE).value("RAW", v1::InputType::RAW);
 
     v1input.def(py::init<>());
     v1input.def(py::init<v1::DataType, v1::InputType, std::string, v1::PreprocessingBlock, std::vector<int64_t>>(),
@@ -213,18 +204,12 @@ void NNArchiveBindings::bind(pybind11::module& m, void* pCallstack) {
     v1input.def_readwrite("shape", &v1::Input::shape, DOC(dai, nn_archive, v1, Input, shape));
 
     v1metadata.def(py::init<>());
-    v1metadata.def(py::init<std::string, std::string>(),
-                   py::arg("name"),
-                   py::arg("path"),
-                   DOC(dai, nn_archive, v1, Metadata, Metadata));
+    v1metadata.def(py::init<std::string, std::string>(), py::arg("name"), py::arg("path"), DOC(dai, nn_archive, v1, Metadata, Metadata));
     v1metadata.def_readwrite("name", &v1::Metadata::name, DOC(dai, nn_archive, v1, Metadata, name));
     v1metadata.def_readwrite("path", &v1::Metadata::path, DOC(dai, nn_archive, v1, Metadata, path));
 
     v1output.def(py::init<>());
-    v1output.def(py::init<v1::DataType, std::string>(),
-                 py::arg("dtype"),
-                 py::arg("name"),
-                 DOC(dai, nn_archive, v1, Output, Output));
+    v1output.def(py::init<v1::DataType, std::string>(), py::arg("dtype"), py::arg("name"), DOC(dai, nn_archive, v1, Output, Output));
     v1output.def_readwrite("dtype", &v1::Output::dtype, DOC(dai, nn_archive, v1, Output, dtype));
     v1output.def_readwrite("name", &v1::Output::name, DOC(dai, nn_archive, v1, Output, name));
 
@@ -237,8 +222,10 @@ void NNArchiveBindings::bind(pybind11::module& m, void* pCallstack) {
     v1outputs.def_readwrite("protos", &v1::Outputs::protos, DOC(dai, nn_archive, v1, Outputs, protos));
 
     v1preprocessingBlock.def(py::init<>());
-    v1preprocessingBlock.def_readwrite("interleavedToPlanar", &v1::PreprocessingBlock::interleavedToPlanar, DOC(dai, nn_archive, v1, PreprocessingBlock, interleavedToPlanar));
+    v1preprocessingBlock.def_readwrite(
+        "interleavedToPlanar", &v1::PreprocessingBlock::interleavedToPlanar, DOC(dai, nn_archive, v1, PreprocessingBlock, interleavedToPlanar));
     v1preprocessingBlock.def_readwrite("mean", &v1::PreprocessingBlock::mean, DOC(dai, nn_archive, v1, PreprocessingBlock, mean));
-    v1preprocessingBlock.def_readwrite("reverseChannels", &v1::PreprocessingBlock::reverseChannels, DOC(dai, nn_archive, v1, PreprocessingBlock, reverseChannels));
+    v1preprocessingBlock.def_readwrite(
+        "reverseChannels", &v1::PreprocessingBlock::reverseChannels, DOC(dai, nn_archive, v1, PreprocessingBlock, reverseChannels));
     v1preprocessingBlock.def_readwrite("scale", &v1::PreprocessingBlock::scale, DOC(dai, nn_archive, v1, PreprocessingBlock, scale));
 }
