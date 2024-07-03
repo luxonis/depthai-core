@@ -83,17 +83,21 @@ void bind_pointclouddata(pybind11::module& m, void* pCallstack){
             }
             Point3fRGB* points = (Point3fRGB*)data.getData().data();
             unsigned long size = data.getData().size() / sizeof(Point3fRGB);
-            py::array_t<float> arr({size, 6UL});
+            py::array_t<float> arr({size, 3UL});
             auto ra = arr.mutable_unchecked();
             for (int i = 0; i < size; i++) {
                 ra(i, 0) = points[i].x;
                 ra(i, 1) = points[i].y;
                 ra(i, 2) = points[i].z;
-                ra(i, 3) = points[i].r;
-                ra(i, 4) = points[i].g;
-                ra(i, 5) = points[i].b;
             }
-            return arr;
+            py::array_t<uint8_t> arr2({size, 3UL});
+            auto ra2 = arr2.mutable_unchecked();
+            for (int i = 0; i < size; i++) {
+                ra2(i, 0) = points[i].r;
+                ra2(i, 1) = points[i].g;
+                ra2(i, 2) = points[i].b;
+            }
+            return py::make_tuple(arr, arr2);
         })
         .def("getWidth", &PointCloudData::getWidth, DOC(dai, PointCloudData, getWidth))
         .def("getHeight", &PointCloudData::getHeight, DOC(dai, PointCloudData, getHeight))
