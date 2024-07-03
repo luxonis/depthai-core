@@ -70,26 +70,26 @@ class RerunNode : public dai::NodeCRTP<dai::node::ThreadedHostNode, RerunNode> {
                 if(pclObstData != nullptr) {
                     std::vector<rerun::Position3D> points;
                     std::vector<rerun::Color> colors;
-                    auto size = pclObstData->getWidth() * pclObstData->getHeight();
+                    const auto& size = pclObstData->getWidth() * pclObstData->getHeight();
                     points.reserve(size);
                     colors.reserve(size);
-                    auto pclData = pclObstData->getPointsRGB();
-                    for(auto& point : pclData) {
-                        points.push_back(rerun::Position3D(point.x, point.y, point.z));
-                        colors.push_back(rerun::Color{point.r, point.g, point.b});
+                    const auto& pclData = pclObstData->getPointsRGB();
+                    for(size_t i = 0; i < size; ++i) {
+                        points.push_back(rerun::Position3D(pclData[i].x, pclData[i].y, pclData[i].z));
+                        colors.push_back(rerun::Color{pclData[i].r, pclData[i].g, pclData[i].b});
                     }
                     rec.log("world/obstacle_pcl", rerun::Points3D(points).with_colors(colors).with_radii({0.01f}));
                 }
                 if(pclGrndData != nullptr) {
                     std::vector<rerun::Position3D> points;
                     std::vector<rerun::Color> colors;
-                    auto size = pclGrndData->getWidth() * pclGrndData->getHeight();
+                    const auto& size = pclGrndData->getWidth() * pclGrndData->getHeight();
                     points.reserve(size);
                     colors.reserve(size);
-                    auto pclData = pclGrndData->getPointsRGB();
-                    for(auto& point : pclData) {
-                        points.push_back(rerun::Position3D(point.x, point.y, point.z));
-                        colors.push_back(rerun::Color{point.r, point.g, point.b});
+                    const auto& pclData = pclGrndData->getPointsRGB();
+                    for(size_t i = 0; i < size; ++i) {
+                        points.push_back(rerun::Position3D(pclData[i].x, pclData[i].y, pclData[i].z));
+                        colors.push_back(rerun::Color{pclData[i].r, pclData[i].g, pclData[i].b});
                     }
                     rec.log("world/ground_pcl", rerun::Points3D(points).with_colors(colors).with_radii({0.01f}));
                 }

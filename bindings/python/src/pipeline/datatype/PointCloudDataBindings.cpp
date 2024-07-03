@@ -53,6 +53,18 @@ void bind_pointclouddata(pybind11::module& m, void* pCallstack){
         // .def_property("points", [](PointCloudData& data) { return &data.getPoints(); }, [](PointCloudData& data, std::vector<Point3f> points) {data.getPoints() = points;})
         .def("getPoints", [](py::object &obj){
             dai::PointCloudData& data = obj.cast<dai::PointCloudData&>();
+            if(data.isColor()){
+                Point3fRGB* points = (Point3fRGB*)data.getData().data();
+                unsigned long size = data.getData().size() / sizeof(Point3fRGB);
+                py::array_t<float> arr({size, 3UL});
+                auto ra = arr.mutable_unchecked();
+                for (int i = 0; i < size; i++) {
+                    ra(i, 0) = points[i].x;
+                    ra(i, 1) = points[i].y;
+                    ra(i, 2) = points[i].z;
+                }
+                return arr;
+            }
             Point3f* points = (Point3f*)data.getData().data();
             unsigned long size = data.getData().size() / sizeof(Point3f);
             py::array_t<float> arr({size, 3UL});
@@ -64,9 +76,29 @@ void bind_pointclouddata(pybind11::module& m, void* pCallstack){
             }
             return arr;
         })
+        .def("getPointsRGB", [](py::object &obj){
+            dai::PointCloudData& data = obj.cast<dai::PointCloudData&>();
+            if(!data.isColor()) {
+                throw std::runtime_error("PointCloudData does not contain color data");
+            }
+            Point3fRGB* points = (Point3fRGB*)data.getData().data();
+            unsigned long size = data.getData().size() / sizeof(Point3fRGB);
+            py::array_t<float> arr({size, 6UL});
+            auto ra = arr.mutable_unchecked();
+            for (int i = 0; i < size; i++) {
+                ra(i, 0) = points[i].x;
+                ra(i, 1) = points[i].y;
+                ra(i, 2) = points[i].z;
+                ra(i, 3) = points[i].r;
+                ra(i, 4) = points[i].g;
+                ra(i, 5) = points[i].b;
+            }
+            return arr;
+        })
         .def("getWidth", &PointCloudData::getWidth, DOC(dai, PointCloudData, getWidth))
         .def("getHeight", &PointCloudData::getHeight, DOC(dai, PointCloudData, getHeight))
         .def("isSparse", &PointCloudData::isSparse, DOC(dai, PointCloudData, isSparse))
+        .def("isColor", &PointCloudData::isColor, DOC(dai, PointCloudData, isColor))
         .def("getMinX", &PointCloudData::getMinX, DOC(dai, PointCloudData, getMinX))
         .def("getMinY", &PointCloudData::getMinY, DOC(dai, PointCloudData, getMinY))
         .def("getMinZ", &PointCloudData::getMinZ, DOC(dai, PointCloudData, getMinZ))

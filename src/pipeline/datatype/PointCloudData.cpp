@@ -25,6 +25,9 @@ std::vector<Point3f> PointCloudData::getPoints() {
 }
 
 std::vector<Point3fRGB> PointCloudData::getPointsRGB() {
+    if (!isColor()) {
+        throw std::runtime_error("PointCloudData does not contain color data");
+    }
     span<const Point3fRGB> pointData(reinterpret_cast<Point3fRGB*>(data->getData().data()), data->getData().size() / sizeof(Point3fRGB));
     std::vector<Point3fRGB> points(pointData.begin(), pointData.end());
     assert(isSparse() || points.size() == width * height);
