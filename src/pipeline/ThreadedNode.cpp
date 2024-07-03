@@ -17,6 +17,7 @@ ThreadedNode::ThreadedNode() {
 }
 
 void ThreadedNode::start() {
+    onStart();
     // Start the thread
     running = true;
     thread = std::thread([this]() {
@@ -49,6 +50,7 @@ void ThreadedNode::wait() {
 }
 
 void ThreadedNode::stop() {
+    onStop();
     // TBD
     // Sets running to false
     running = false;
@@ -59,6 +61,16 @@ void ThreadedNode::stop() {
     // for(auto& rout : getOutputRefs()) {
     // }
     // wait();
+}
+
+std::shared_ptr<Node::Input> ThreadedNode::createInput() {
+    createdInputs.push_back(std::make_shared<Input>(*this, InputDescription{}));
+    return createdInputs.back();
+}
+
+std::shared_ptr<Node::Output> ThreadedNode::createOutput() {
+    createdOutputs.push_back(std::make_shared<Output>(*this, OutputDescription{}));
+    return createdOutputs.back();
 }
 
 bool ThreadedNode::isRunning() const {

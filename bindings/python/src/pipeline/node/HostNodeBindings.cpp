@@ -15,6 +15,12 @@ class PyThreadedHostNode : public NodeCRTP<ThreadedHostNode, PyThreadedHostNode>
     void run() override {
         PYBIND11_OVERRIDE_PURE(void, ThreadedHostNode, run);
     }
+    void onStart() override {
+        PYBIND11_OVERRIDE(void, ThreadedHostNode, onStart);
+    }
+    void onStop() override {
+        PYBIND11_OVERRIDE(void, ThreadedHostNode, onStop);
+    }
 };
 
 class PyHostNode : public NodeCRTP<HostNode, PyHostNode> {

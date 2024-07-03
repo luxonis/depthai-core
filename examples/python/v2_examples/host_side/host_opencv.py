@@ -6,8 +6,8 @@ p = dai.Pipeline(True)
 
 class HostDisplay(dai.node.ThreadedHostNode):
     def __init__(self):
-        dai.node.ThreadedHostNode.__init__(self)
-        self.input = dai.Node.Input(self)
+        super().__init__()
+        self.input = self.createInput()
     def run(self):
         while True:
             message : dai.ImgFrame = self.input.get()

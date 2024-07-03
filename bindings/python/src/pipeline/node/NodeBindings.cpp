@@ -29,7 +29,7 @@ dai::Pipeline* getImplicitPipeline() {
 }
 void setImplicitPipeline(dai::Pipeline* pipeline) {
     auto stack = implicitPipelines.find(std::this_thread::get_id());
-    if (stack == implicitPipelines.end()) {
+    if(stack == implicitPipelines.end()) {
         stack = implicitPipelines.emplace(std::this_thread::get_id(), std::stack<dai::Pipeline*>{}).first;
     }
     stack->second.push(pipeline);
@@ -211,11 +211,10 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
 
     py::class_<Node::Input, MessageQueue, std::shared_ptr<Node::Input>> pyInput(pyNode, "Input", DOC(dai, Node, Input));
     py::enum_<Node::Input::Type> nodeInputType(pyInput, "Type");
-    py::class_<Node::Output> pyOutput(pyNode, "Output", DOC(dai, Node, Output));
+    py::class_<Node::Output, std::shared_ptr<Node::Output>> pyOutput(pyNode, "Output", DOC(dai, Node, Output));
     py::enum_<Node::Output::Type> nodeOutputType(pyOutput, "Type");
     py::class_<Properties, std::shared_ptr<Properties>> pyProperties(m, "Properties", DOC(dai, Properties));
     py::class_<Node::DatatypeHierarchy> nodeDatatypeHierarchy(pyNode, "DatatypeHierarchy", DOC(dai, Node, DatatypeHierarchy));
-    
     
     py::class_<InputQueue, std::shared_ptr<InputQueue>> pyInputQueue(m, "InputQueue", DOC(dai, InputQueue));
     pyInputQueue.def("send", &InputQueue::send, py::arg("msg"), DOC(dai, InputQueue, send));
@@ -405,5 +404,8 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("warn", [](dai::ThreadedNode& node, const std::string& msg) { node.logger->warn(msg); })
         .def("error", [](dai::ThreadedNode& node, const std::string& msg) { node.logger->error(msg); })
         .def("critical", [](dai::ThreadedNode& node, const std::string& msg) { node.logger->critical(msg); })
-        .def("isRunning", &ThreadedNode::isRunning, DOC(dai, ThreadedNode, isRunning));
+        .def("isRunning", &ThreadedNode::isRunning, DOC(dai, ThreadedNode, isRunning))
+        .def("createInput", py::overload_cast<>(&ThreadedNode::createInput), DOC(dai, ThreadedNode, createInput))
+        .def("createOutput", py::overload_cast<>(&ThreadedNode::createOutput), DOC(dai, ThreadedNode, createOutput))
+        ;
 }

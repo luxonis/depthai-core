@@ -17,10 +17,32 @@ class ThreadedNode : public Node {
     AtomicBool running{false};
     static inline std::shared_ptr<spdlog::details::thread_pool> threadPool = std::make_shared<spdlog::details::thread_pool>(8192, 1);
 
+    // Keep track of created inputs and outputs - we need to make sure they are kept
+    // alive so that `getInputRefs` and `getOutputRefs` don't use dangling Input/Output
+    // pointers
+    std::vector<std::shared_ptr<Input>> createdInputs;
+    std::vector<std::shared_ptr<Output>> createdOutputs;
+
    public:
     using Node::Node;
     ThreadedNode();
     virtual ~ThreadedNode() = default;
+
+    /**
+     * @brief Function called at the beginning of the `start` function.
+     *
+     * This function may be overridden by the user to perform any needed tasks prior
+     * to starting this node's main thread.
+     */
+    virtual void onStart() {}
+
+    /**
+     * @brief Function called at the end of the `stop` function.
+     *
+     * This function may be overridden by the user to perform any needed tasks
+     * directly after stopping this node's main thread.
+     */
+    virtual void onStop() {}
 
     // override the following methods
     void start() override;
@@ -29,6 +51,20 @@ class ThreadedNode : public Node {
 
     // virtual 'run' method
     virtual void run() = 0;
+
+    /**
+     * @brief Create an input for this node with default Input settings
+     *
+     * @return std::shared_ptr<Input>: A shared pointer to the created Input
+     */
+    std::shared_ptr<Input> createInput();
+
+    /**
+     * @brief Create an output for this node with default Output settings
+     *
+     * @return std::shared_ptr<Output>: A shared pointer to the created Output
+     */
+    std::shared_ptr<Output> createOutput();
 
     // check if still running
     bool isRunning() const;

@@ -74,7 +74,7 @@ def test_with_host_nodes():
     class TestSource(dai.node.ThreadedHostNode):
         def __init__(self):
             super().__init__()
-            self.output = dai.Node.Output(self)
+            self.output = self.createOutput()
 
         def run(self):
             for i in range(10):
