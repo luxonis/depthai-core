@@ -72,7 +72,7 @@ class Tracklets : public Buffer {
      */
     std::vector<Tracklet> tracklets;
 
-    DEPTHAI_SERIALIZE(Tracklets, tracklets);
+    DEPTHAI_SERIALIZE(Tracklets, tracklets, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum);
 };
 
 }  // namespace dai
