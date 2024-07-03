@@ -27,6 +27,7 @@
 #include "utility/Initialization.hpp"
 #include "utility/PimplImpl.hpp"
 #include "utility/Resources.hpp"
+#include "utility/spdlog-fmt.hpp"
 
 // libraries
 #include "XLink/XLink.h"
