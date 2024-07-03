@@ -145,4 +145,18 @@ cd build/examples
 ./MobileNet/rgb_mobilenet
 ```
 
+## VSLAM
+The VSLAM example is a bit more complex and requires additional dependencies - OpenCV and PCL. To install them, run the following command:
+```
+sudo apt install -y libopencv-dev libpcl-dev
+```
+
+Then, build the examples with the VSLAM example enabled:
+```
+cmake -S. -Bbuild -D'DEPTHAI_BUILD_EXAMPLES=ON'  -D'DEPTHAI_BASALT_SUPPORT=ON' -D'DEPTHAI_PCL_SUPPORT=ON' -D'DEPTHAI_RTABMAP_SUPPORT=ON'
+cmake --build build
+```
+To run those examples you also need to install Rerun Viewer, installation instructions can be found [here](https://rerun.io/docs/getting-started/installing-viewer)
+
+
 > ℹ️ Multi-Config generators (like Visual Studio on Windows) will have the examples built in `build/examples/MobileNet/[Debug/Release/...]/rgb_mobilenet`
