@@ -18,19 +18,24 @@
 
 #include<thread>
 #include<unordered_map>
+#include<stack>
 
-std::unordered_map<std::thread::id, dai::Pipeline&> implicitPipelines;
-dai::Pipeline& getImplicitPipeline() {
+std::unordered_map<std::thread::id, std::stack<dai::Pipeline*>> implicitPipelines;
+dai::Pipeline* getImplicitPipeline() {
     auto rv = implicitPipelines.find(std::this_thread::get_id());
-    if (rv == implicitPipelines.end())
+    if (rv == implicitPipelines.end() || rv->second.empty())
         throw std::runtime_error("No implicit pipeline was found. Use `with Pipeline()` to use one");
-    return rv->second;
+    return rv->second.top();
 }
-void setImplicitPipeline(dai::Pipeline& pipeline) {
-    implicitPipelines.emplace(std::this_thread::get_id(), pipeline);
+void setImplicitPipeline(dai::Pipeline* pipeline) {
+    auto stack = implicitPipelines.find(std::this_thread::get_id());
+    if (stack == implicitPipelines.end()) {
+        stack = implicitPipelines.emplace(std::this_thread::get_id(), std::stack<dai::Pipeline*>{}).first;
+    }
+    stack->second.push(pipeline);
 }
 void delImplicitPipeline() {
-    implicitPipelines.erase(implicitPipelines.find(std::this_thread::get_id()));
+    implicitPipelines[std::this_thread::get_id()].pop();
 }
 
 // Map of python node classes and call to pipeline to create it
@@ -276,7 +281,7 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
                         bool waitForMessage) {
                 return std::unique_ptr<Node::Input>(new Node::Input(
                     parent,
-                    {.name = name, .group = group, .blocking = blocking, .queueSize = queueSize, .types = std::move(types), .waitForMessage = waitForMessage}));
+                    {name,group,blocking,queueSize,std::move(types), waitForMessage}));
             }),
             py::arg("parent"),
             py::arg("name") = Node::InputDescription{}.name,
@@ -309,7 +314,7 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
     nodeOutputType.value("MSender", Node::Output::Type::MSender).value("SSender", Node::Output::Type::SSender);
     pyOutput
         .def(py::init([](Node& parent, const std::string& name, const std::string& group, std::vector<Node::DatatypeHierarchy> types) {
-                 return std::unique_ptr<Node::Output>(new Node::Output(parent, {.name = name, .group = group, .types = std::move(types)}));
+                 return std::unique_ptr<Node::Output>(new Node::Output(parent, {name, group, std::move(types)}));
              }),
              py::arg("parent"),
              py::arg("name") = Node::OutputDescription{}.name,

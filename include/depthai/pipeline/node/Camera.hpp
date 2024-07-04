@@ -13,7 +13,7 @@
 namespace dai {
 namespace node {
 
-class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties> {
+class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, public SourceNode {
    public:
     /**
      * Get video output with specified size.
@@ -35,7 +35,8 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties> {
     /**
      * Input for CameraControl message, which can modify camera parameters in runtime
      */
-    Input inputControl{*this, {.name = "inputControl", .types = {{DatatypeEnum::CameraControl, false}}}};
+    Input inputControl{
+        *this, {"inputControl", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::CameraControl, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Specify which board socket to use
@@ -89,7 +90,7 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties> {
    protected:
     Properties& getProperties() override;
     bool isSourceNode() const override;
-    utility::NodeRecordParams getNodeRecordParams() const override;
+    NodeRecordParams getNodeRecordParams() const override;
     /*
     Output& getRecordOutput() override;
     Input& getReplayInput() override;

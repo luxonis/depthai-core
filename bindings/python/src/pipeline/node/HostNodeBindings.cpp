@@ -1,11 +1,12 @@
+#include <pybind11/eval.h>
+
 #include "Common.hpp"
 #include "NodeBindings.hpp"
 #include "depthai/pipeline/ThreadedHostNode.hpp"
 #include "depthai/pipeline/node/host/HostNode.hpp"
 
-#include <pybind11/eval.h>
-
 extern py::handle daiNodeModule;
+extern py::object messageQueueException; // Needed to be able to catch in C++ after it's raised on the Python side
 
 using namespace dai;
 using namespace dai::node;
@@ -13,7 +14,15 @@ using namespace dai::node;
 class PyThreadedHostNode : public NodeCRTP<ThreadedHostNode, PyThreadedHostNode> {
    public:
     void run() override {
-        PYBIND11_OVERRIDE_PURE(void, ThreadedHostNode, run);
+        try {
+            PYBIND11_OVERRIDE_PURE(void, ThreadedHostNode, run);
+        } catch(py::error_already_set& e) {
+            if(e.matches(messageQueueException)) {
+                logger->trace("Caught MessageQueue exception in ThreadedHostNode::run");
+            } else {
+                throw;
+            }
+        }
     }
 };
 
@@ -44,23 +53,19 @@ void bind_hostnode(pybind11::module& m, void* pCallstack){
     ///////////////////////////////////////////////////////////////////////
 
     threadedHostNode
-        .def(py::init<>([](bool autoAddToPipeline) {
+        .def(py::init<>([]() {
             auto node = std::make_shared<PyThreadedHostNode>();
-            if(autoAddToPipeline) {
-                getImplicitPipeline().add(node);
-            }
+            getImplicitPipeline()->add(node);
             return node;
-        }), py::arg("autoAddToPipeline") = true)
+        }))
         .def("run", &ThreadedHostNode::run);
 
     hostNode
-        .def(py::init([](bool autoAddToPipeline) {
+        .def(py::init([]() {
             auto node = std::make_shared<PyHostNode>();
-            if(autoAddToPipeline) {
-                getImplicitPipeline().add(node);
-            }
+            getImplicitPipeline()->add(node);
             return node;
-        }), py::arg("autoAddToPipeline") = true)
+        }))
         .def("processGroup", &HostNode::processGroup)
         .def_property_readonly(
             "inputs", [](HostNode& node) { return &node.inputs; }, py::return_value_policy::reference_internal)
@@ -114,8 +119,8 @@ void bind_hostnode(pybind11::module& m, void* pCallstack){
                 return self
             cls.link_args = link_args
 
-            def __init__(self, *args, autoAddToPipeline=True):
-                node.HostNode.__init__(self, autoAddToPipeline)
+            def __init__(self, *args):
+                node.HostNode.__init__(self)
                 self.link_args(*args)
             if not hasattr(cls, "__init__"):
                 cls.__init__ = __init__

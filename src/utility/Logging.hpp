@@ -38,7 +38,7 @@ public:
 
     // Public API
     spdlog::logger logger;
-    spdlog::level::level_enum parseLevel(std::string lvl);
+    static spdlog::level::level_enum parseLevel(std::string lvl);
 };
 
 

@@ -163,6 +163,9 @@ std::shared_ptr<dai::MessageQueue> Node::Output::createOutputQueue(unsigned int 
     }
     auto queue = std::make_shared<MessageQueue>(maxSize, blocking);
     link(queue);
+
+    // No need to expose this on the public pipeline interface
+    pipelinePtr.impl()->outputQueues.push_back(queue);
     return queue;
 }
 
@@ -606,18 +609,16 @@ bool Node::isSourceNode() const {
     return false;
 }
 
-utility::NodeRecordParams Node::getNodeRecordParams() const {
-    utility::NodeRecordParams params;
-    params.name = getName();
-    return params;
+NodeRecordParams SourceNode::getNodeRecordParams() const {
+    throw std::runtime_error("Not implemented");
 }
 
-Node::Output& Node::getRecordOutput() {
-    throw std::runtime_error("getRecordOutput is not implemented for non-source nodes.");
+Node::Output& SourceNode::getRecordOutput() {
+    throw std::runtime_error("Not implemented");
 }
 
-Node::Input& Node::getReplayInput() {
-    throw std::runtime_error("getReplayInput is not implemented for non-source nodes.");
+Node::Input& SourceNode::getReplayInput() {
+    throw std::runtime_error("Not implemented");
 }
 
 // Recursive helpers for pipelines

@@ -39,6 +39,6 @@ with dai.Pipeline(False) as p:
     source.output.link(passthrough.input)
     passthrough.output.link(sink.input)
     p.start()
-    while True:
+    while p.isRunning():
         time.sleep(1)
         print("Pipeline is running...")

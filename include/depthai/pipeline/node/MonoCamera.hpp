@@ -14,7 +14,7 @@ namespace node {
 /**
  * @brief MonoCamera node. For use with grayscale sensors.
  */
-class MonoCamera : public DeviceNodeCRTP<DeviceNode, MonoCamera, MonoCameraProperties> {
+class MonoCamera : public DeviceNodeCRTP<DeviceNode, MonoCamera, MonoCameraProperties>, public SourceNode {
    public:
     constexpr static const char* NAME = "MonoCamera";
     using DeviceNodeCRTP::DeviceNodeCRTP;
@@ -23,7 +23,7 @@ class MonoCamera : public DeviceNodeCRTP<DeviceNode, MonoCamera, MonoCameraPrope
    protected:
     Properties& getProperties();
     bool isSourceNode() const override;
-    utility::NodeRecordParams getNodeRecordParams() const override;
+    NodeRecordParams getNodeRecordParams() const override;
     Output& getRecordOutput() override;
     Input& getReplayInput() override;
 
@@ -41,13 +41,14 @@ class MonoCamera : public DeviceNodeCRTP<DeviceNode, MonoCamera, MonoCameraPrope
      * Default queue is blocking with size 8
      */
     // Input inputControl{*this, "inputControl", Input::Type::SReceiver, true, 8, {{DatatypeEnum::CameraControl, false}}};
-    Input inputControl{*this, {.name = "inputControl", .types = {{DatatypeEnum::CameraControl, false}}}};
+    Input inputControl{
+        *this, {"inputControl", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::CameraControl, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Input for mocking 'isp' functionality.
      * Default queue is blocking with size 8
      */
-    Input mockIsp{*this, {.name = "mockIsp", .blocking = true, .queueSize = 8, .types = {{DatatypeEnum::ImgFrame, false}}}};
+    Input mockIsp{*this, {"mockIsp", DEFAULT_GROUP, true, 8, {{{DatatypeEnum::ImgFrame, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Outputs ImgFrame message that carries RAW8 encoded (grayscale) frame data.
@@ -55,7 +56,7 @@ class MonoCamera : public DeviceNodeCRTP<DeviceNode, MonoCamera, MonoCameraPrope
      * Suitable for use StereoDepth node. Processed by ISP
      */
     // Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
-    Output out{*this, {.name = "out", .types = {{DatatypeEnum::ImgFrame, false}}}};
+    Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     /**
      * Outputs ImgFrame message that carries RAW10-packed (MIPI CSI-2 format) frame data.
@@ -63,7 +64,7 @@ class MonoCamera : public DeviceNodeCRTP<DeviceNode, MonoCamera, MonoCameraPrope
      * Captured directly from the camera sensor
      */
     // Output raw{*this, "raw", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
-    Output raw{*this, {.name = "raw", .types = {{DatatypeEnum::ImgFrame, false}}}};
+    Output raw{*this, {"raw", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     /**
      * Outputs metadata-only ImgFrame message as an early indicator of an incoming frame.
@@ -74,7 +75,7 @@ class MonoCamera : public DeviceNodeCRTP<DeviceNode, MonoCamera, MonoCameraPrope
      * Fields populated: camera id, sequence number, timestamp
      */
     // Output frameEvent{*this, "frameEvent", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
-    Output frameEvent{*this, {.name = "frameEvent", .types = {{DatatypeEnum::ImgFrame, false}}}};
+    Output frameEvent{*this, {"frameEvent", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     /**
      * Specify which board socket to use
@@ -111,6 +112,8 @@ class MonoCamera : public DeviceNodeCRTP<DeviceNode, MonoCamera, MonoCameraPrope
 
     /// Get camera image orientation
     CameraImageOrientation getImageOrientation() const;
+
+    void setMockIspSize(int width, int height);
 
     /// Set sensor resolution
     void setResolution(Properties::SensorResolution resolution);
