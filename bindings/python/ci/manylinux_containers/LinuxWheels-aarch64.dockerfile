@@ -1,15 +1,12 @@
 FROM quay.io/opencv-ci/opencv-python-manylinux2014-aarch64:20231225
 USER root
 
-# Clone the OpenCV repository
-RUN git clone https://github.com/opencv/opencv.git /tmp/opencv
 
-# Setup the build environment
-RUN cd /tmp/opencv && git checkout 4.9.0
-RUN cd /tmp/opencv && cmake -S . -B build -D CMAKE_BUILD_TYPE=RELEASE
-
-# Buiild the OpenCV library
-RUN cd /tmp/opencv && cmake --build build --target install --parallel 8
+RUN sed -i 's/enabled=1/enabled=0/g' /etc/yum/pluginconf.d/fastestmirror.conf && \
+    sed -i 's/^mirrorlist/#mirrorlist/g' /etc/yum.repos.d/*.repo && \
+    sed -i 's;^.*baseurl=http://mirror;baseurl=https://vault;g' /etc/yum.repos.d/*.repo && \
+    sed -i 's;/centos/7/;/altarch/7/;g' /etc/yum.repos.d/*.repo && \
+    yum install epel-release -y
 
 # Update the package list and install necessary packages
 RUN yum -y update && \
@@ -26,6 +23,16 @@ RUN yum install -y lz4-devel \
     libatomic \
     devtoolset-10-libatomic-devel \ 
     libatomic_ops-devel
+
+# Clone the OpenCV repository
+RUN git clone https://github.com/opencv/opencv.git /tmp/opencv
+
+# Setup the build environment
+RUN cd /tmp/opencv && git checkout 4.9.0
+RUN cd /tmp/opencv && cmake -S . -B build -D CMAKE_BUILD_TYPE=RELEASE
+
+# Buiild the OpenCV library
+RUN cd /tmp/opencv && cmake --build build --target install --parallel 8
 
 RUN git clone --branch 1.9.2 https://github.com/flann-lib/flann.git \
     && cd flann \

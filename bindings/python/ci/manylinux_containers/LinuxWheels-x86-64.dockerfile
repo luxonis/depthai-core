@@ -1,6 +1,20 @@
 FROM quay.io/opencv-ci/opencv-python-manylinux2014-x86-64:20231225
 USER root
 WORKDIR /work
+
+RUN sed -i 's/enabled=1/enabled=0/g' /etc/yum/pluginconf.d/fastestmirror.conf && \
+    sed -i 's/^mirrorlist/#mirrorlist/g' /etc/yum.repos.d/*.repo && \
+    sed -i 's;^.*baseurl=http://mirror;baseurl=https://vault;g' /etc/yum.repos.d/*.repo && \
+    yum install epel-release -y
+
+
+# lz4 for flann, mpi for boost-mpi, libatomic for pcl
+RUN yum install -y lz4-devel \
+    openmpi \
+    openmpi-devel \
+    libatomic \
+    devtoolset-10-libatomic-devel
+
 # Clone the OpenCV repository
 RUN git clone https://github.com/opencv/opencv.git /tmp/opencv
 
