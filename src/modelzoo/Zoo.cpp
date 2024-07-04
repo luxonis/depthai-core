@@ -60,6 +60,10 @@ void ZooManager::downloadModel() {
 
     // Add OPTIONAL parameters
     if(!modelDescription.modelVersionSlug.empty()) requestBody["variables"]["input"]["modelVersionSlug"] = modelDescription.modelVersionSlug;
+    if(!modelDescription.modelInstanceSlug.empty()) requestBody["variables"]["input"]["modelInstanceSlug"] = modelDescription.modelInstanceSlug;
+    if(!modelDescription.modelInstanceHash.empty()) requestBody["variables"]["input"]["modelInstanceHash"] = modelDescription.modelInstanceHash;
+    if(!modelDescription.optimizationLevel.empty()) requestBody["variables"]["input"]["optimizationLevel"] = modelDescription.optimizationLevel;
+    if(!modelDescription.compressionLevel.empty()) requestBody["variables"]["input"]["compressionLevel"] = modelDescription.compressionLevel;
 
     // Send HTTP request to Hub
     cpr::Response response = cpr::Post(cpr::Url{MODEL_ZOO_URL}, cpr::Body{requestBody.dump()});
@@ -71,8 +75,6 @@ void ZooManager::downloadModel() {
     // Extract download link from response
     nlohmann::json responseJson = nlohmann::json::parse(response.text);
     auto downloadLinks = responseJson["data"]["ml"]["modelDownloads"]["data"].get<std::vector<std::string>>();
-
-    // std::vector<std::string> downloadLinks = responseJson["data"]["ml"]["modelDownloads"];
 
     // Download all files and store them in cache folder
     for(const auto& downloadLink : downloadLinks) {
@@ -235,7 +237,7 @@ void downloadModelsFromZoo(const std::string& path, const std::string& cacheDire
         // Download model - ignore the returned model path here == we are only interested in downloading the model
         try {
             auto modelDescription = NNModelDescription::fromYamlFile(yamlFile);
-            getModelFromZoo(modelDescription, false, cacheDirectory);
+            getModelFromZoo(modelDescription, true, cacheDirectory, verbose);
             if(verbose) std::cout << "Downloaded model [" << i + 1 << "/" << yamlFiles.size() << "]: " << yamlFile << std::endl;
         } catch(const std::exception& e) {
             std::cerr << "Failed to download model [" << i + 1 << "/" << yamlFiles.size() << "]: " << yamlFile << "\n" << e.what() << std::endl;

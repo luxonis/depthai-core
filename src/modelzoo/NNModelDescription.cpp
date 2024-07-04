@@ -20,8 +20,12 @@ NNModelDescription NNModelDescription::fromYamlFile(const std::string& yamlPath)
 
     // Load OPTIONAL parameters - use default value if key not found
     auto modelVersionSlug = utility::yamlGet<std::string>(yamlNode, "model_version_slug", "");
+    auto modelInstanceSlug = utility::yamlGet<std::string>(yamlNode, "model_instance_slug", "");
+    auto modelInstanceHash = utility::yamlGet<std::string>(yamlNode, "model_instance_hash", "");
+    auto optimizationLevel = utility::yamlGet<std::string>(yamlNode, "optimization_level", "");
+    auto compressionLevel = utility::yamlGet<std::string>(yamlNode, "compression_level", "");
 
-    return {modelSlug, platform, modelVersionSlug};
+    return {modelSlug, platform, modelVersionSlug, modelInstanceSlug, modelInstanceHash, optimizationLevel, compressionLevel};
 }
 
 void NNModelDescription::saveToYamlFile(const std::string& yamlPath) const {
@@ -33,6 +37,10 @@ void NNModelDescription::saveToYamlFile(const std::string& yamlPath) const {
 
     // Write OPTIONAL parameters
     if(!modelVersionSlug.empty()) yamlNode["model_version_slug"] = modelVersionSlug;
+    if(!modelInstanceSlug.empty()) yamlNode["model_instance_slug"] = modelInstanceSlug;
+    if(!modelInstanceHash.empty()) yamlNode["model_instance_hash"] = modelInstanceHash;
+    if(!optimizationLevel.empty()) yamlNode["optimization_level"] = optimizationLevel;
+    if(!compressionLevel.empty()) yamlNode["compression_level"] = compressionLevel;
 
     // Write yaml node to file
     utility::saveYaml(yamlNode, yamlPath);
@@ -43,6 +51,10 @@ std::string NNModelDescription::toString() const {
     out += "  model_slug: " + modelSlug + "\n";
     out += "  platform: " + platform + "\n";
     out += "  model_version_slug: " + modelVersionSlug + "\n";
+    out += "  model_instance_slug: " + modelInstanceSlug + "\n";
+    out += "  model_instance_hash: " + modelInstanceHash + "\n";
+    out += "  optimization_level: " + optimizationLevel + "\n";
+    out += "  compression_level: " + compressionLevel + "\n";
     out += "]";
     return out;
 }

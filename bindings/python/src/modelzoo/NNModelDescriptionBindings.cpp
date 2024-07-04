@@ -31,5 +31,9 @@ void NNModelDescriptionBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("modelSlug", &NNModelDescription::modelSlug, DOC(dai, NNModelDescription, modelSlug))
         .def_readwrite("platform", &NNModelDescription::platform, DOC(dai, NNModelDescription, platform))
         .def_readwrite("modelVersionSlug", &NNModelDescription::modelVersionSlug, DOC(dai, NNModelDescription, modelVersionSlug))
+        .def_readwrite("modelInstanceSlug", &NNModelDescription::modelInstanceSlug, DOC(dai, NNModelDescription, modelInstanceSlug))
+        .def_readwrite("modelInstanceHash", &NNModelDescription::modelInstanceHash, DOC(dai, NNModelDescription, modelInstanceHash))
+        .def_readwrite("optimizationLevel", &NNModelDescription::optimizationLevel, DOC(dai, NNModelDescription, optimizationLevel))
+        .def_readwrite("compressionLevel", &NNModelDescription::compressionLevel, DOC(dai, NNModelDescription, compressionLevel))
         ;
 }
