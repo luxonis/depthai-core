@@ -90,3 +90,4 @@ RUN cd pcl \
     -D'PCL_ONLY_CORE_POINT_TYPES=ON' \
     && cmake --build build --target install --parallel 8
 RUN yum install -y perl-core
+RUN yum erase -y git
