@@ -6,7 +6,6 @@ class TestPassthrough(dai.node.ThreadedHostNode):
         super().__init__()
         self.input = self.createInput()
         self.output = self.createOutput()
-        print(self.getOutputRefs())
 
     def onStart(self):
         print("Hello, this is", __class__.__name__)
