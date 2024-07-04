@@ -482,8 +482,8 @@ jobs:
         with:
           name: audited-wheels
           path: bindings/python/wheelhouse/audited/
-      - name: Deploy wheels to artifactory (if not a release)
-        if: startsWith(github.ref, 'refs/tags/v') != true
+      - name: Deploy wheels to artifactory (if not a normal release)
+        if: ${{startsWith(github.ref, 'refs/tags/v') != true || contains(github.ref, '-') || contains(github.ref, 'alpha') || contains(github.ref, 'beta') || contains(github.ref, 'rc')}}
         run: cd bindings/python && bash ./ci/upload-artifactory.sh
         env:
           ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
@@ -491,7 +491,7 @@ jobs:
           ARTIFACTORY_PASS: ${{ secrets.ARTIFACTORY_PASS }}
 
   release:
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: ${{startsWith(github.ref, 'refs/tags/v') && !contains(github.ref, '-') && !contains(github.ref, 'alpha') && !contains(github.ref, 'beta') && !contains(github.ref, 'rc')}}
     # needs: [pytest, build-linux-armhf, build-windows-x86_64, build-macos-x86_64, build-macos-arm64, build-linux-x86_64, build-linux-arm64]
     # needs: [pytest, build-windows-x86_64, build-macos, build-linux-x86_64, build-linux-arm64]
     needs: [build-windows-x86_64, build-macos, build-linux-x86_64, build-linux-arm64]
@@ -511,7 +511,7 @@ jobs:
 
   # Deploy to PyPi and Artifactory. Only when a commit is tagged
   deploy:
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: ${{startsWith(github.ref, 'refs/tags/v') && !contains(github.ref, '-') && !contains(github.ref, 'alpha') && !contains(github.ref, 'beta') && !contains(github.ref, 'rc')}}
     needs: [release]
     runs-on: ubuntu-latest
     steps:
