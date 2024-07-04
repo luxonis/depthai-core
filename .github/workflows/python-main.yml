@@ -370,7 +370,7 @@ jobs:
     needs: build-docstrings
     runs-on: ubuntu-latest
     container:
-      image: mmorato/depthai-manylinux2014:0.3 # TODO(mmorato) temporary location, push to luxonis namespace
+      image: mmorato/depthai-manylinux2014:0.4 # TODO(mmorato) temporary location, push to luxonis namespace
       env:
         PLAT: manylinux2014_x86_64
     steps:
@@ -437,7 +437,7 @@ jobs:
     runs-on: [self-hosted, linux, ARM64]
     timeout-minutes: 1440  # Set timeout to 24 hours
     container:
-      image: mmorato/depthai-manylinux2014_aarch64:0.3
+      image: mmorato/depthai-manylinux2014_aarch64:0.4
       env:
         PLAT: manylinux2014_aarch64
       # Mount local hunter cache directory, instead of transfering to Github and back
