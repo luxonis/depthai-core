@@ -373,9 +373,10 @@ jobs:
       image: mmorato/depthai-manylinux2014:0.4 # TODO(mmorato) temporary location, push to luxonis namespace
       env:
         PLAT: manylinux2014_x86_64
-        # workaround required for cache@v3, https://github.com/actions/cache/issues/1428
-        # to be removed when upgrading the manylinux image
-        ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
+    env:
+      # workaround required for cache@v3, https://github.com/actions/cache/issues/1428
+      # to be removed when upgrading the manylinux image
+      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
     steps:
       - name: Cache .hunter folder
         uses: actions/cache@v3
@@ -443,12 +444,13 @@ jobs:
       image: mmorato/depthai-manylinux2014_aarch64:0.4
       env:
         PLAT: manylinux2014_aarch64
-        # workaround required for cache@v3, https://github.com/actions/cache/issues/1428
-        # to be removed when upgrading the manylinux image
-        ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
       # Mount local hunter cache directory, instead of transfering to Github and back
       volumes:
         - /.hunter:/github/home/.hunter
+    env:
+      # workaround required for cache@v3, https://github.com/actions/cache/issues/1428
+      # to be removed when upgrading the manylinux image
+      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
     steps:
       - uses: actions/checkout@v3
         with:
