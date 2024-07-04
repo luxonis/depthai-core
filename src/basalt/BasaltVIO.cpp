@@ -2,6 +2,7 @@
 
 #include "../utility/PimplImpl.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
+#include "depthai/pipeline/ThreadedHostNode.hpp"
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "tbb/concurrent_queue.h"
 #include "tbb/global_control.h"
@@ -128,6 +129,13 @@ void BasaltVIO::imuCB(std::shared_ptr<ADatatype> imuData) {
         if(pimpl->imuDataQueue) pimpl->imuDataQueue->push(data);
     }
 };
+
+void BasaltVIO::stop() {
+    pimpl->imageDataQueue->push(nullptr);
+    pimpl->imuDataQueue->push(nullptr);
+    ThreadedHostNode::stop();
+}
+
 void BasaltVIO::initialize(std::vector<std::shared_ptr<ImgFrame>> frames) {
     if(threadNum > 0) {
         pimpl->tbbGlobalControl = std::make_shared<tbb::global_control>(tbb::global_control::max_allowed_parallelism, threadNum);

@@ -80,6 +80,7 @@ class BasaltVIO : public NodeCRTP<ThreadedHostNode, BasaltVIO> {
     void initialize(std::vector<std::shared_ptr<ImgFrame>> frames);
     void stereoCB(std::shared_ptr<ADatatype> in);
     void imuCB(std::shared_ptr<ADatatype> imuData);
+    void stop() override;
     Input inSync{*this, {.name = "inSync", .types = {{DatatypeEnum::MessageGroup, true}}}};
     std::shared_ptr<basalt::Calibration<double>> calib;
 
