@@ -109,9 +109,6 @@ set(SOURCE_LIST
     src/pipeline/node/HostNodeBindings.cpp
     src/pipeline/node/RecordBindings.cpp
     src/pipeline/node/ReplayBindings.cpp
-    src/pipeline/node/BasaltVIOBindings.cpp
-    src/pipeline/node/RTABMapVIOBindings.cpp
-    src/pipeline/node/RTABMapSLAMBindings.cpp
 
     src/pipeline/datatype/ADatatypeBindings.cpp
     src/pipeline/datatype/AprilTagConfigBindings.cpp
@@ -144,6 +141,19 @@ set(SOURCE_LIST
     src/capabilities/CapabilityRangeBindings.cpp
     src/capabilities/ImgFrameCapabilityBindings.cpp
 )
+
+if(DEPTHAI_BASALT_SUPPORT)
+    list(APPEND SOURCE_LIST
+        src/pipeline/node/BasaltVIOBindings.cpp
+    )
+endif()
+
+if(DEPTHAI_RTABMAP_SUPPORT)
+    list(APPEND SOURCE_LIST
+        src/pipeline/node/RTABMapVIOBindings.cpp
+        src/pipeline/node/RTABMapSLAMBindings.cpp
+    )
+endif()
 
 # Add files for python module
 if(DEPTHAI_PYTHON_EMBEDDED_MODULE)
@@ -243,9 +253,17 @@ endif()
 target_include_directories(${TARGET_NAME} PRIVATE src ${DOCSTRINGS_INCLUDE_PLACEHOLDER_DIR})
 
 if(DEPTHAI_MERGED_TARGET)
-    set(DEPTHAI_LINK_TARGET depthai::core depthai::basalt depthai::rtabmap)
+    set(DEPTHAI_LINK_TARGET depthai::core)
 else()
     set(DEPTHAI_LINK_TARGET depthai::all)
+endif()
+
+if(DEPTHAI_MERGED_TARGET AND DEPTHAI_BASALT_SUPPORT)
+    list(APPEND DEPTHAI_LINK_TARGET depthai::basalt)
+endif()
+
+if(DEPTHAI_MERGED_TARGET AND DEPTHAI_RTABMAP_SUPPORT)
+    list(APPEND DEPTHAI_LINK_TARGET depthai::rtabmap)
 endif()
 
 # Link with libraries
