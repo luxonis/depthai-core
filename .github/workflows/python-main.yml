@@ -233,8 +233,8 @@ jobs:
         with:
           name: audited-wheels
           path: bindings/python/wheelhouse/audited/
-      - name: Deploy wheels to artifactory (if not a release)
-        if: startsWith(github.ref, 'refs/tags/v') != true
+      - name: Deploy wheels to artifactory (if not a normal release)
+        if: ${{startsWith(github.ref, 'refs/tags/v') != true || contains(github.ref, '-') || contains(github.ref, 'alpha') || contains(github.ref, 'beta') || contains(github.ref, 'rc')}}
         run: cd bindings/python && bash ./ci/upload-artifactory.sh
         env:
           ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
@@ -294,9 +294,8 @@ jobs:
         with:
           name: audited-wheels
           path: bindings/python/wheelhouse/audited/
-      - name: Deploy wheels to artifactory (if not a release)
-        if: startsWith(github.ref, 'refs/tags/v') != true
-        run: cd bindings/python && bash ./ci/upload-artifactory.sh
+      - name: Deploy wheels to artifactory (if not a normal release)
+        if: ${{startsWith(github.ref, 'refs/tags/v') != true || contains(github.ref, '-') || contains(github.ref, 'alpha') || contains(github.ref, 'beta') || contains(github.ref, 'rc')}}
         env:
           ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
           ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
@@ -427,8 +426,8 @@ jobs:
         with:
           name: audited-wheels
           path: bindings/python/wheelhouse/audited/
-      - name: Deploy wheels to artifactory (if not a release)
-        if: startsWith(github.ref, 'refs/tags/v') != true
+      - name: Deploy wheels to artifactory (if not a normal release)
+        if: ${{startsWith(github.ref, 'refs/tags/v') != true || contains(github.ref, '-') || contains(github.ref, 'alpha') || contains(github.ref, 'beta') || contains(github.ref, 'rc')}}
         run: cd bindings/python && bash ./ci/upload-artifactory.sh
         env:
           ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
