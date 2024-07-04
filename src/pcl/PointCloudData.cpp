@@ -1,6 +1,6 @@
 #include "depthai/pipeline/datatype/PointCloudData.hpp"
 
-#include <execution>
+#include <algorithm>
 pcl::PointCloud<pcl::PointXYZ>::Ptr dai::PointCloudData::getPclData() const {
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
 
@@ -14,7 +14,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr dai::PointCloudData::getPclData() const {
 
         cloud->points.resize(size);
 
-        std::for_each(std::execution::par, cloud->points.begin(), cloud->points.end(), [dataPtr, &cloud](pcl::PointXYZ& point) mutable {
+        std::for_each(cloud->points.begin(), cloud->points.end(), [dataPtr, &cloud](pcl::PointXYZ& point) mutable {
             size_t i = &point - &cloud->points[0];
             point.x = dataPtr[i].x;
             point.y = dataPtr[i].y;
@@ -51,7 +51,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr dai::PointCloudData::getPclDataRGB() cons
 
     cloud->points.resize(size);
 
-    std::for_each(std::execution::par_unseq, cloud->points.begin(), cloud->points.end(), [dataPtr, &cloud](pcl::PointXYZRGB& point) mutable {
+    std::for_each(cloud->points.begin(), cloud->points.end(), [dataPtr, &cloud](pcl::PointXYZRGB& point) mutable {
         size_t i = &point - &cloud->points[0];
         point.x = dataPtr[i].x;
         point.y = dataPtr[i].y;
@@ -76,7 +76,7 @@ void dai::PointCloudData::setPclData(const pcl::PointCloud<pcl::PointXYZ>::Ptr& 
     setHeight(cloud->height);
     setSparse(!cloud->is_dense);
 
-    std::for_each(std::execution::par_unseq, cloud->points.begin(), cloud->points.end(), [dataPtr, &cloud](const pcl::PointXYZ& point) mutable {
+    std::for_each(cloud->points.begin(), cloud->points.end(), [dataPtr, &cloud](const pcl::PointXYZ& point) mutable {
         size_t i = &point - &cloud->points[0];
         dataPtr[i] = Point3f{point.x, point.y, point.z};
     });
@@ -96,12 +96,13 @@ void dai::PointCloudData::setPclData(const pcl::PointCloud<pcl::PointXYZRGB>::Pt
     setHeight(cloud->height);
     setSparse(!cloud->is_dense);
 
-    std::for_each(std::execution::par_unseq, cloud->points.begin(), cloud->points.end(), [dataPtr, &cloud](const pcl::PointXYZRGB& point) mutable {
+    std::for_each(cloud->points.begin(), cloud->points.end(), [dataPtr, &cloud](const pcl::PointXYZRGB& point) mutable {
         size_t i = &point - &cloud->points[0];
         dataPtr[i] = Point3f{point.x, point.y, point.z};
     });
     setData(data);
 }
+
 void dai::PointCloudData::setPclDataRGB(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr& cloud) {
     // Ensure cloud is valid
     if(!cloud) {
@@ -115,7 +116,7 @@ void dai::PointCloudData::setPclDataRGB(const pcl::PointCloud<pcl::PointXYZRGB>:
     setHeight(cloud->height);
     setSparse(!cloud->is_dense);
 
-    std::for_each(std::execution::par_unseq, cloud->points.begin(), cloud->points.end(), [dataPtr, &cloud](const pcl::PointXYZRGB& point) mutable {
+    std::for_each(cloud->points.begin(), cloud->points.end(), [dataPtr, &cloud](const pcl::PointXYZRGB& point) mutable {
         size_t i = &point - &cloud->points[0];
         dataPtr[i] = Point3fRGB{point.x, point.y, point.z, point.r, point.g, point.b};
     });
