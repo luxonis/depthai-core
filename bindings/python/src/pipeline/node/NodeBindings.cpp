@@ -215,7 +215,7 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
     py::enum_<Node::Output::Type> nodeOutputType(pyOutput, "Type");
     py::class_<Properties, std::shared_ptr<Properties>> pyProperties(m, "Properties", DOC(dai, Properties));
     py::class_<Node::DatatypeHierarchy> nodeDatatypeHierarchy(pyNode, "DatatypeHierarchy", DOC(dai, Node, DatatypeHierarchy));
-    
+
     py::class_<InputQueue, std::shared_ptr<InputQueue>> pyInputQueue(m, "InputQueue", DOC(dai, InputQueue));
     pyInputQueue.def("send", &InputQueue::send, py::arg("msg"), DOC(dai, InputQueue, send));
 
@@ -405,7 +405,33 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("error", [](dai::ThreadedNode& node, const std::string& msg) { node.logger->error(msg); })
         .def("critical", [](dai::ThreadedNode& node, const std::string& msg) { node.logger->critical(msg); })
         .def("isRunning", &ThreadedNode::isRunning, DOC(dai, ThreadedNode, isRunning))
-        .def("createInput", py::overload_cast<>(&ThreadedNode::createInput), DOC(dai, ThreadedNode, createInput))
-        .def("createOutput", py::overload_cast<>(&ThreadedNode::createOutput), DOC(dai, ThreadedNode, createOutput))
-        ;
+        .def(
+            "createInput",
+            [](ThreadedNode& node,
+               std::string name,
+               std::string group,
+               bool blocking,
+               int queueSize,
+               std::vector<Node::DatatypeHierarchy> types,
+               bool waitForMessage) {
+                static std::vector<std::shared_ptr<Node::Input>> createdInputs;
+                createdInputs.push_back(std::make_shared<Node::Input>(node, Node::InputDescription{name, group, blocking, queueSize, types, waitForMessage}));
+                return createdInputs.back();
+            },
+            py::arg("name") = Node::InputDescription{}.name,
+            py::arg("group") = Node::InputDescription{}.group,
+            py::arg("blocking") = Node::InputDescription{}.blocking,
+            py::arg("queueSize") = Node::InputDescription{}.queueSize,
+            py::arg("types") = Node::InputDescription{}.types,
+            py::arg("waitForMessage") = Node::InputDescription{}.waitForMessage)
+        .def(
+            "createOutput",
+            [](ThreadedNode& node, std::string name, std::string group, std::vector<Node::DatatypeHierarchy> types) {
+                static std::vector<std::shared_ptr<Node::Output>> createdOutputs;
+                createdOutputs.push_back(std::make_shared<Node::Output>(node, Node::OutputDescription{name, group, types}));
+                return createdOutputs.back();
+            },
+            py::arg("name") = Node::OutputDescription{}.name,
+            py::arg("group") = Node::OutputDescription{}.group,
+            py::arg("possibleDatatypes") = Node::OutputDescription{}.types);
 }

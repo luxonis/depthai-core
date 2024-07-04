@@ -63,16 +63,6 @@ void ThreadedNode::stop() {
     // wait();
 }
 
-std::shared_ptr<Node::Input> ThreadedNode::createInput() {
-    createdInputs.push_back(std::make_shared<Input>(*this, InputDescription{}));
-    return createdInputs.back();
-}
-
-std::shared_ptr<Node::Output> ThreadedNode::createOutput() {
-    createdOutputs.push_back(std::make_shared<Output>(*this, OutputDescription{}));
-    return createdOutputs.back();
-}
-
 bool ThreadedNode::isRunning() const {
     return running;
 }

@@ -52,20 +52,6 @@ class ThreadedNode : public Node {
     // virtual 'run' method
     virtual void run() = 0;
 
-    /**
-     * @brief Create an input for this node with default Input settings
-     *
-     * @return std::shared_ptr<Input>: A shared pointer to the created Input
-     */
-    std::shared_ptr<Input> createInput();
-
-    /**
-     * @brief Create an output for this node with default Output settings
-     *
-     * @return std::shared_ptr<Output>: A shared pointer to the created Output
-     */
-    std::shared_ptr<Output> createOutput();
-
     // check if still running
     bool isRunning() const;
     std::shared_ptr<spdlog::async_logger> logger =
