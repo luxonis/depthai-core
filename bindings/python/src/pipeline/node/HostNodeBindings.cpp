@@ -1,11 +1,12 @@
+#include <pybind11/eval.h>
+
 #include "Common.hpp"
 #include "NodeBindings.hpp"
 #include "depthai/pipeline/ThreadedHostNode.hpp"
 #include "depthai/pipeline/node/host/HostNode.hpp"
 
-#include <pybind11/eval.h>
-
 extern py::handle daiNodeModule;
+extern py::object messageQueueException; // Needed to be able to catch in C++ after it's raised on the Python side
 
 using namespace dai;
 using namespace dai::node;
@@ -13,7 +14,15 @@ using namespace dai::node;
 class PyThreadedHostNode : public NodeCRTP<ThreadedHostNode, PyThreadedHostNode> {
    public:
     void run() override {
-        PYBIND11_OVERRIDE_PURE(void, ThreadedHostNode, run);
+        try {
+            PYBIND11_OVERRIDE_PURE(void, ThreadedHostNode, run);
+        } catch(py::error_already_set& e) {
+            if(e.matches(messageQueueException)) {
+                logger->trace("Caught MessageQueue exception in ThreadedHostNode::run");
+            } else {
+                throw;
+            }
+        }
     }
 };
 

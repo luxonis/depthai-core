@@ -41,7 +41,7 @@ One syntax uses the `Pipeline.create(...)` and `Node.build(...)` methods like th
 
 The other syntax uses the pipeline from the `with` statement and does all the work in the constructor -- e.g. `dai.node.StereoDepth(autoCreateCameras=True`.
 
-In Python, both syntaxes also accept keyword arguments that mirror setter methods -- e.g. `dai.node.Camera(previewSize=(300, 300))`. Currently, not all parameters are available.
+In Python, both syntaxes also accept keyword arguments that mirror setter methods -- e.g. `dai.node.VideoEncoder(bitrate=2*24)`. Currently, not all parameters are available.
 
 We'd love to hear your opinion which one you prefer. Currently, this syntax is now available only for `Camera`, `DetectionNetwork`, `StereoDepth` and `VideoEncoder`. Other nodes still have to be created with `pipeline.create`, parameters set with setter methods and inputs linked with `.link`.
 

@@ -75,7 +75,7 @@ class OpenVINO {
          * @param numShaves: Number of shaves to generate the blob for. Must be between 1 and NUMBER_OF_PATCHES.
          * @return dai::OpenVINO::Blob: Blob compiled for the specified number of shaves
          */
-        dai::OpenVINO::Blob getBlobWithNShaves(int numShaves);
+        dai::OpenVINO::Blob getBlobWithNumShaves(int numShaves);
 
        private:
         // A header in the superblob containing metadata about the blob and patches

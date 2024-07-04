@@ -39,6 +39,7 @@ void ThreadedNode::start() {
                 spdlog::error(expStr);
             }
             running = false;
+            stopPipeline();
         }
     });
     platform::setThreadName(thread, fmt::format("{}({})", getName(), id));
