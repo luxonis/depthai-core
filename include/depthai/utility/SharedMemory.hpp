@@ -38,24 +38,20 @@ class SharedMemory : public Memory {
     }
    public:
     SharedMemory(long argFd) : fd(argFd) {
-	kind = MemoryKinds::MEMORY_KIND_SHARED_MEMORY;
 	mapFd();
     }
 
     SharedMemory(long argFd, std::size_t size) : fd(argFd) {
-	kind = MemoryKinds::MEMORY_KIND_SHARED_MEMORY;
 	setSize(size);
 	mapFd();
     }
 
     /* TODO: memfd_create() those?
     SharedMemory() {
-	kind = MemoryKinds::MEMORY_KIND_SHARED_MEMORY;
 	mapFd();
     }
 
     SharedMemory(std::size_t size) {
-	kind = MemoryKinds::MEMORY_KIND_SHARED_MEMORY;
 	setSize(size);
 	mapFd();
     }
