@@ -1,0 +1,17 @@
+#include <catch2/catch_all.hpp>
+
+#include <depthai/openvino/OpenVINO.hpp>
+
+TEST_CASE("Pipeline node creation, link, unlink and removal") {
+    dai::OpenVINO::SuperBlob superblob(SUPERBLOB_PATH);
+
+    // Generate blobs for all possible number of shaves
+    for(size_t numShaves = 1; numShaves <= dai::OpenVINO::SuperBlob::NUMBER_OF_PATCHES; ++numShaves) {
+        dai::OpenVINO::Blob blob = superblob.getBlobWithNumShaves(static_cast<int>(numShaves));
+        REQUIRE(blob.numShaves == numShaves);
+    }
+
+    // Out of bounds
+    REQUIRE_THROWS(superblob.getBlobWithNumShaves(-1));
+    REQUIRE_THROWS(superblob.getBlobWithNumShaves(dai::OpenVINO::SuperBlob::NUMBER_OF_PATCHES + 1));
+}

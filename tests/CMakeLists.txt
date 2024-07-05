@@ -197,15 +197,25 @@ hunter_private_data(
     LOCATION tiny_yolo_v4_2021-4_4shave_blob
 )
 
+# Superblob
+hunter_private_data(
+    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/person-reidentification-retail-0277_openvino_2022.1_8shave.superblob"
+    SHA1 "6f14e3a5388946d6de849ff4f6432702601b1003"
+    FILE "person-reidentification-retail-0277_openvino_2022.1_8shave.superblob"
+    LOCATION superblob_path
+)
 
-# Add tests
-dai_add_test(color_camera_node_test src/color_camera_node_test.cpp)
-dai_add_test(image_manip_node_test src/image_manip_node_test.cpp)
+
+# Add tests (lnotspotl - REMOVED - old API device)
+# dai_add_test(color_camera_node_test src/color_camera_node_test.cpp)
+# (lnotspotl - REMOVED - old API device)
+# dai_add_test(image_manip_node_test src/image_manip_node_test.cpp)
 dai_add_test(pipeline_test src/pipeline_test.cpp)
-dai_add_test(logging_test src/logging_test.cpp)
+# (lnotspotl - REMOVED - old API device)
+# dai_add_test(logging_test src/logging_test.cpp)
 
-dai_add_test(neural_network_test src/neural_network_test.cpp)
-dai_test_compile_definitions(neural_network_test PRIVATE BLOB_PATH="${mobilenet_blob}")
+# dai_add_test(neural_network_test src/neural_network_test.cpp)
+# dai_test_compile_definitions(neural_network_test PRIVATE BLOB_PATH="${mobilenet_blob}")
 
 dai_add_test(openvino_blob_test src/openvino_blob_test.cpp)
 dai_test_compile_definitions(openvino_blob_test PRIVATE
@@ -224,23 +234,25 @@ dai_add_test(bootloader_config_test src/bootloader_config_test.cpp)
 # Eeprom naming parsing tests
 dai_add_test(naming_test src/naming_test.cpp)
 
-# Device USB Speed and serialization macros test
-dai_add_test(device_usbspeed_test    src/device_usbspeed_test.cpp CONFORMING)
-dai_add_test(device_usbspeed_test_17 src/device_usbspeed_test.cpp CONFORMING CXX_STANDARD 17)
-dai_add_test(device_usbspeed_test_20 src/device_usbspeed_test.cpp CONFORMING CXX_STANDARD 20)
+# Device USB Speed and serialization macros test (lnotspotl - REMOVED - old API device)
+# dai_add_test(device_usbspeed_test    src/device_usbspeed_test.cpp CONFORMING)
+# dai_add_test(device_usbspeed_test_17 src/device_usbspeed_test.cpp CONFORMING CXX_STANDARD 17)
+# dai_add_test(device_usbspeed_test_20 src/device_usbspeed_test.cpp CONFORMING CXX_STANDARD 20)
 
-dai_add_test(encoded_frame_test src/encoded_frame_test.cpp CXX_STANDARD 17)
+# (lnotspotl - REMOVED - old API device)
+# dai_add_test(encoded_frame_test src/encoded_frame_test.cpp CXX_STANDARD 17)
 
-dai_add_test(message_group_frame_test src/message_group_test.cpp CXX_STANDARD 17)
+# (lnotspotl - REMOVED - old API device)
+# dai_add_test(message_group_frame_test src/message_group_test.cpp CXX_STANDARD 17)
 
-# Unlimited io connections test
-dai_add_test(unlimited_io_connection_test src/unlimited_io_connection_test.cpp)
+# Unlimited io connections test (lnotspotl - REMOVED - old API device)
+# dai_add_test(unlimited_io_connection_test src/unlimited_io_connection_test.cpp)
 
 # Serialization test
 dai_add_test(serialization_test src/serialization_test.cpp)
 
-# Multiple devices test
-dai_add_test(multiple_devices_test src/multiple_devices_test.cpp)
+# Multiple devices test (lnotspotl - REMOVED - old API device)
+# dai_add_test(multiple_devices_test src/multiple_devices_test.cpp)
 
 # Filesystem test
 dai_add_test(filesystem_test src/filesystem_test.cpp)
@@ -253,32 +265,46 @@ dai_test_compile_definitions(filesystem_test_20 PRIVATE BLOB_PATH="${mobilenet_b
 # Bootloader version tests
 dai_add_test(bootloader_version_test src/bootloader_version_test.cpp)
 
-# XLinkIn -> XLinkOut passthrough with large frames
-dai_add_test(xlink_roundtrip_test src/xlink_roundtrip_test.cpp)
+# XLinkIn -> XLinkOut passthrough with large frames (lnotspotl - REMOVED - old API device)
+# dai_add_test(xlink_roundtrip_test src/xlink_roundtrip_test.cpp)
 
 dai_add_test(image_transformations_test src/image_transformations_test.cpp)
 
 # Stability stress test (OAK-D oriented USB/PoE)
-# TODO
+# (lnotspotl - REMOVED - old API device)
 # # dai_add_test(stability_stress_test src/stability_stress_test.cpp)
-option(DEPTHAI_STABILITY_STRESS_TEST_DEBUG "Enable visualization for stability stress test" OFF)
-add_executable(stability_stress_test src/stability_stress_test.cpp)
-# Set compiler features (c++17), and disables extensions (g++17)
-set_property(TARGET stability_stress_test PROPERTY CXX_STANDARD 17)
-set_property(TARGET stability_stress_test PROPERTY CXX_STANDARD_REQUIRED ON)
-set_property(TARGET stability_stress_test PROPERTY CXX_EXTENSIONS OFF)
+# option(DEPTHAI_STABILITY_STRESS_TEST_DEBUG "Enable visualization for stability stress test" OFF)
+# add_executable(stability_stress_test src/stability_stress_test.cpp)
+# # Set compiler features (c++17), and disables extensions (g++17)
+# set_property(TARGET stability_stress_test PROPERTY CXX_STANDARD 17)
+# set_property(TARGET stability_stress_test PROPERTY CXX_STANDARD_REQUIRED ON)
+# set_property(TARGET stability_stress_test PROPERTY CXX_EXTENSIONS OFF)
 
-add_default_flags(stability_stress_test LEAN)
-if(COMMAND target_clangformat_setup)
-    target_clangformat_setup(stability_stress_test "")
-endif()
-if(DEPTHAI_STABILITY_TEST_DEBUG)
-    target_link_libraries(stability_stress_test PRIVATE depthai::opencv opencv_highgui Threads::Threads)
-    target_compile_definitions(stability_stress_test PRIVATE DEPTHAI_STABILITY_TEST_DEBUG)
-else()
-    target_link_libraries(stability_stress_test PRIVATE depthai::core Threads::Threads)
-endif()
-target_compile_definitions(stability_stress_test PRIVATE BLOB_PATH="${tiny_yolo_v4_2021-4_4shave_blob}")
+# add_default_flags(stability_stress_test LEAN)
+# if(COMMAND target_clangformat_setup)
+#     target_clangformat_setup(stability_stress_test "")
+# endif()
+# if(DEPTHAI_STABILITY_TEST_DEBUG)
+#     target_link_libraries(stability_stress_test PRIVATE depthai::opencv opencv_highgui Threads::Threads)
+#     target_compile_definitions(stability_stress_test PRIVATE DEPTHAI_STABILITY_TEST_DEBUG)
+# else()
+#     target_link_libraries(stability_stress_test PRIVATE depthai::core Threads::Threads)
+# endif()
+# target_compile_definitions(stability_stress_test PRIVATE BLOB_PATH="${tiny_yolo_v4_2021-4_4shave_blob}")
+
+# (lnotspotl - REMOVED - old API device)
+# add_default_flags(stability_stress_test LEAN)
+# if(COMMAND target_clangformat_setup)
+#     target_clangformat_setup(stability_stress_test "")
+# endif()
+# if(DEPTHAI_STABILITY_TEST_DEBUG)
+#     target_link_libraries(stability_stress_test PRIVATE depthai::opencv opencv_highgui Threads::Threads)
+#     target_compile_definitions(stability_stress_test PRIVATE DEPTHAI_STABILITY_TEST_DEBUG)
+# else()
+#     target_link_libraries(stability_stress_test PRIVATE depthai::core Threads::Threads)
+# endif()
+# target_compile_definitions(stability_stress_test PRIVATE BLOB_PATH="${tiny_yolo_v4_2021-4_4shave_blob}")
+
 # add_test(stability_stress_test stability_stress_test)
 # add_test(stability_stress_test_poe stability_stress_test)
 # set_tests_properties(stability_stress_test PROPERTIES ENVIRONMENT "UBSAN_OPTIONS=halt_on_error=1;DEPTHAI_PROTOCOL=usb" LABELS stability_usb)
@@ -291,3 +317,8 @@ dai_add_test(stream_message_parser_test src/stream_message_parser_test.cpp)
 dai_add_test(message_queue_test src/message_queue_test.cpp)
 
 dai_add_test(resolutions_test src/resolutions_test.cpp)
+
+
+# Superblob tests
+dai_add_test(superblob_test src/superblob_test.cpp)
+target_compile_definitions(superblob_test PRIVATE SUPERBLOB_PATH="${superblob_path}")
