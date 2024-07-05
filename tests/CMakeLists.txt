@@ -247,10 +247,6 @@ dai_add_test(naming_test src/naming_test.cpp)
 
 # Unlimited io connections test (lnotspotl - REMOVED - old API device)
 # dai_add_test(unlimited_io_connection_test src/unlimited_io_connection_test.cpp)
-
-# Serialization test
-dai_add_test(serialization_test src/serialization_test.cpp)
-
 # Multiple devices test (lnotspotl - REMOVED - old API device)
 # dai_add_test(multiple_devices_test src/multiple_devices_test.cpp)
 
@@ -324,6 +320,8 @@ dai_add_test(resolutions_test src/resolutions_test.cpp)
 dai_add_test(superblob_test src/onhost_tests/superblob_test.cpp)
 target_compile_definitions(superblob_test PRIVATE SUPERBLOB_PATH="${superblob_path}")
 
+# Serialization test
+dai_add_test(serialization_test src/onhost_tests/serialization_test.cpp)
 
 ### On-device tests
 
