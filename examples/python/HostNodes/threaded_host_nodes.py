@@ -12,7 +12,7 @@ class TestPassthrough(dai.node.ThreadedHostNode):
 
     def onStop(self):
         print("Goodbye from", __class__.__name__)
-    
+
     def run(self):
         while self.isRunning():
             buffer = self.input.get()
