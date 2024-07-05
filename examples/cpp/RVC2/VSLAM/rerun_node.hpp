@@ -11,6 +11,7 @@
 #endif
 #include "rerun.hpp"
 
+
 rerun::Collection<rerun::TensorDimension> tensorShape(const cv::Mat& img) {
     return {size_t(img.rows), size_t(img.cols), size_t(img.channels())};
 };
@@ -64,8 +65,10 @@ class RerunNode : public dai::NodeCRTP<dai::node::ThreadedHostNode, RerunNode> {
                 rec.log("world/camera/image",
                         rerun::Pinhole::from_focal_length_and_resolution({fx, fy}, {float(imgFrame->getWidth()), float(imgFrame->getHeight())})
                             .with_camera_xyz(rerun::components::ViewCoordinates::FLU));
+                auto image = imgFrame->getCvFrame();
+                cv::cvtColor(image, image, cv::COLOR_BGR2RGB);
                 rec.log("world/camera/image/rgb",
-                        rerun::Image(tensorShape(imgFrame->getCvFrame()), reinterpret_cast<const uint8_t*>(imgFrame->getCvFrame().data)));
+                        rerun::Image(tensorShape(image), reinterpret_cast<const uint8_t*>(image.data)));
 #ifdef DEPTHAI_HAVE_PCL_SUPPORT
                 if(pclObstData != nullptr) {
                     std::vector<rerun::Position3D> points;
