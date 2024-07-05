@@ -34,9 +34,29 @@ dai::Pipeline getPipeline(bool sparse) {
 }
 
 TEST_CASE("dense pointcloud") {
-    dai::Device device(getPipeline(false));
+    dai::Pipeline pipeline;
+    auto monoLeft = pipeline.create<dai::node::MonoCamera>();
+    auto monoRight = pipeline.create<dai::node::MonoCamera>();
+    auto stereo = pipeline.create<dai::node::StereoDepth>();
+    auto pointcloud = pipeline.create<dai::node::PointCloud>();
 
-    auto outQ = device.getOutputQueue("out");
+    monoLeft->setCamera("left");
+    monoRight->setCamera("right");
+
+    monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
+    monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
+
+    stereo->setDefaultProfilePreset(dai::node::StereoDepth::PresetMode::HIGH_DENSITY);
+    stereo->setOutputSize(1280, 720);
+
+    pointcloud->initialConfig.setSparse(false);
+
+    monoLeft->out.link(stereo->left);
+    monoRight->out.link(stereo->right);
+    stereo->depth.link(pointcloud->inputDepth);
+
+    auto outQ = pointcloud->outputPointCloud.createOutputQueue();
+    pipeline.start();
     for(int i = 0; i < 10; ++i) {
         auto pcl = outQ->get<dai::PointCloudData>();
         REQUIRE(pcl != nullptr);
@@ -51,9 +71,29 @@ TEST_CASE("dense pointcloud") {
 }
 
 TEST_CASE("sparse pointcloud") {
-    dai::Device device(getPipeline(true));
+    dai::Pipeline pipeline;
+    auto monoLeft = pipeline.create<dai::node::MonoCamera>();
+    auto monoRight = pipeline.create<dai::node::MonoCamera>();
+    auto stereo = pipeline.create<dai::node::StereoDepth>();
+    auto pointcloud = pipeline.create<dai::node::PointCloud>();
 
-    auto outQ = device.getOutputQueue("out");
+    monoLeft->setCamera("left");
+    monoRight->setCamera("right");
+
+    monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
+    monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
+
+    stereo->setDefaultProfilePreset(dai::node::StereoDepth::PresetMode::HIGH_DENSITY);
+    stereo->setOutputSize(1280, 720);
+
+    pointcloud->initialConfig.setSparse(true);
+
+    monoLeft->out.link(stereo->left);
+    monoRight->out.link(stereo->right);
+    stereo->depth.link(pointcloud->inputDepth);
+
+    auto outQ = pointcloud->outputPointCloud.createOutputQueue();
+    pipeline.start();
     for(int i = 0; i < 10; ++i) {
         auto pcl = outQ->get<dai::PointCloudData>();
         REQUIRE(pcl != nullptr);

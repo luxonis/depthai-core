@@ -215,7 +215,6 @@ hunter_private_data(
 # (lnotspotl - REMOVED - old API device)
 
 # (lnotspotl - REMOVED - old API device)
-# dai_add_test(message_group_frame_test src/message_group_test.cpp CXX_STANDARD 17)
 
 # Unlimited io connections test (lnotspotl - REMOVED - old API device)
 # dai_add_test(unlimited_io_connection_test src/unlimited_io_connection_test.cpp)
@@ -263,9 +262,6 @@ hunter_private_data(
 # add_test(stability_stress_test_poe stability_stress_test)
 # set_tests_properties(stability_stress_test PROPERTIES ENVIRONMENT "UBSAN_OPTIONS=halt_on_error=1;DEPTHAI_PROTOCOL=usb" LABELS stability_usb)
 # set_tests_properties(stability_stress_test_poe PROPERTIES ENVIRONMENT "UBSAN_OPTIONS=halt_on_error=1;DEPTHAI_PROTOCOL=poe" LABELS stability_poe)
-
-
-dai_add_test(resolutions_test src/resolutions_test.cpp)
 
 ### On-host tests
 
@@ -340,3 +336,12 @@ dai_test_compile_definitions(filesystem_test_20 PRIVATE BLOB_PATH="${mobilenet_b
 
 # Encoded frame test
 dai_add_test(encoded_frame_test src/ondevice_tests/encoded_frame_test.cpp CXX_STANDARD 17)
+
+# MessageGroup tests
+dai_add_test(message_group_frame_test src/ondevice_tests/message_group_test.cpp CXX_STANDARD 17) 
+
+# Pointcloud test
+dai_add_test(pointcloud_test src/ondevice_tests/pointcloud_test.cpp)
+
+# Resolutions test
+dai_add_test(resolutions_test src/ondevice_tests/resolutions_test.cpp)
