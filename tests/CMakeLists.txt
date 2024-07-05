@@ -217,17 +217,6 @@ dai_add_test(pipeline_test src/pipeline_test.cpp)
 # dai_add_test(neural_network_test src/neural_network_test.cpp)
 # dai_test_compile_definitions(neural_network_test PRIVATE BLOB_PATH="${mobilenet_blob}")
 
-dai_add_test(openvino_blob_test src/openvino_blob_test.cpp)
-dai_test_compile_definitions(openvino_blob_test PRIVATE
-    OPENVINO_2020_3_BLOB_PATH="${openvino_2020_3_blob}"
-    OPENVINO_2020_4_BLOB_PATH="${openvino_2020_4_blob}"
-    OPENVINO_2021_1_BLOB_PATH="${openvino_2021_1_blob}"
-    OPENVINO_2021_2_BLOB_PATH="${openvino_2021_2_blob}"
-    OPENVINO_2021_3_BLOB_PATH="${openvino_2021_3_blob}"
-    OPENVINO_2021_4_BLOB_PATH="${openvino_2021_4_2_blob}"
-    OPENVINO_2022_1_BLOB_PATH="${openvino_2022_1_blob}"
-)
-
 # Bootloader configuration tests
 dai_add_test(bootloader_config_test src/bootloader_config_test.cpp)
 
@@ -309,8 +298,8 @@ dai_add_test(resolutions_test src/resolutions_test.cpp)
 ### On-host tests
 
 # Superblob test
-dai_add_test(superblob_test src/onhost_tests/superblob_test.cpp)
-target_compile_definitions(superblob_test PRIVATE SUPERBLOB_PATH="${superblob_path}")
+dai_add_test(openvino_superblob_test src/onhost_tests/openvino_superblob_test.cpp)
+target_compile_definitions(openvino_superblob_test PRIVATE SUPERBLOB_PATH="${superblob_path}")
 
 # Serialization test
 dai_add_test(serialization_test src/onhost_tests/serialization_test.cpp)
@@ -328,3 +317,14 @@ dai_add_test(message_queue_test src/onhost_tests/message_queue_test.cpp)
 
 # Depthai logging test
 dai_add_test(logging_test src/ondevice_tests/logging_test.cpp)
+
+dai_add_test(openvino_blob_test src/ondevice_tests/openvino_blob_test.cpp)
+dai_test_compile_definitions(openvino_blob_test PRIVATE
+    OPENVINO_2020_3_BLOB_PATH="${openvino_2020_3_blob}"
+    OPENVINO_2020_4_BLOB_PATH="${openvino_2020_4_blob}"
+    OPENVINO_2021_1_BLOB_PATH="${openvino_2021_1_blob}"
+    OPENVINO_2021_2_BLOB_PATH="${openvino_2021_2_blob}"
+    OPENVINO_2021_3_BLOB_PATH="${openvino_2021_3_blob}"
+    OPENVINO_2021_4_BLOB_PATH="${openvino_2021_4_2_blob}"
+    OPENVINO_2022_1_BLOB_PATH="${openvino_2022_1_blob}"
+)
