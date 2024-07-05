@@ -207,7 +207,6 @@ hunter_private_data(
 
 
 # Add tests (lnotspotl - REMOVED - old API device)
-# dai_add_test(color_camera_node_test src/color_camera_node_test.cpp)
 # (lnotspotl - REMOVED - old API device)
 # dai_add_test(image_manip_node_test src/image_manip_node_test.cpp)
 dai_add_test(pipeline_test src/pipeline_test.cpp)
@@ -334,3 +333,6 @@ dai_test_compile_definitions(openvino_blob_test PRIVATE
 # Neural network test
 dai_add_test(neural_network_test src/ondevice_tests/neural_network_test.cpp)
 dai_test_compile_definitions(neural_network_test PRIVATE BLOB_PATH="${mobilenet_blob}")
+
+# Color camera test
+dai_add_test(color_camera_node_test src/ondevice_tests/color_camera_node_test.cpp)
