@@ -35,7 +35,6 @@ TEST_CASE("Test ColorCamera node") {
     // Retrieve N messages
     constexpr size_t N = 20;
     for(size_t i = 0; i < N; ++i) {
-        auto t1 = std::chrono::steady_clock::now();
         auto preview = previewQueue->get<dai::ImgFrame>();
 
         // Check output dimensions
