@@ -376,6 +376,13 @@ class MessageQueue {
      * Can either block if 'blocking' behavior is true or overwrite oldest
      * @param msg Message to add to the queue
      */
+    void send(std::shared_ptr<ADatatype>&& msg);
+
+    /**
+     * Adds a message to the queue, which will be picked up and sent to the device.
+     * Can either block if 'blocking' behavior is true or overwrite oldest
+     * @param msg Message to add to the queue
+     */
     // void send(const ADatatype& msg);
 
     // /**

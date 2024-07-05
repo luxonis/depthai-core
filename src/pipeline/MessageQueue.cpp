@@ -100,6 +100,11 @@ void MessageQueue::send(const std::shared_ptr<ADatatype>& msg) {
     queue.push(msg);
 }
 
+void MessageQueue::send(std::shared_ptr<ADatatype>&& msg) {
+    if(!msg) throw std::invalid_argument("Message passed is not valid (nullptr)");
+    queue.push(std::move(msg));
+}
+
 // void MessageQueue::send(const ADatatype& msg) {
 //     send(std::make_shared<ADatatype>(msg.serialize()));
 // }
