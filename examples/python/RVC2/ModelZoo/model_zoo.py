@@ -6,30 +6,30 @@ import depthai as dai
 # Describe the model I want to download - two options: in program or from yaml file
 
 # Option 1: In program
-# model_description = dai.NNModelDescription()
-# model_description.modelSlug = "ales-test"
-# model_description.modelPath = "RVC2"
+# modelDescription = dai.NNModelDescription()
+# modelDescription.modelSlug = "ales-test"
+# modelDescription.modelPath = "RVC2"
 
 # Option 2: From yaml file
-model_description = dai.NNModelDescription.fromYamlFile("mymodel.yaml")
+modelDescription = dai.NNModelDescription.fromYamlFile("mymodel.yaml")
 
 # Return path to downloaded model - resnet18_xxx.blob for this example
-model_path = dai.getModelFromZoo(model_description, verbose=True, useCached=True)
+modelPath = dai.getModelFromZoo(modelDescription, verbose=True, useCached=True)
 
-print("Using model cached at path: ", model_path)
+print("Using model cached at path: ", modelPath)
 
-assert model_path.endswith(".blob") # We expect a blob for this particular example
+assert modelPath.endswith(".blob") # We expect a blob for this particular example
 
 # Construct pipeline and start using downloaded NN model :-)
 with dai.Pipeline() as pipeline:
 
     # It's even possible to download a model for the used device
-    # model_description = dai.NNModelDescription()
-    # model_description.modelSlug = "ales-test"
+    # modelDescription = dai.NNModelDescription()
+    # modelDescription.modelSlug = "ales-test"
 
     #  The two are equivalent
-    # model_description.platform = pipeline.getDefaultDevice().getPlatformAsString()
-    # model_description = dai.platform2string(pipeline.getDefaultDevice().getPlatform())
+    # modelDescription.platform = pipeline.getDefaultDevice().getPlatformAsString()
+    # modelDescription = dai.platform2string(pipeline.getDefaultDevice().getPlatform())
 
     # Color camera node
     camRgb = pipeline.createColorCamera()
@@ -39,7 +39,7 @@ with dai.Pipeline() as pipeline:
 
     # Neural network node
     neuralNetwork = pipeline.createNeuralNetwork()
-    neuralNetwork.setBlobPath(model_path)
+    neuralNetwork.setBlobPath(modelPath)
     neuralNetwork.setNumInferenceThreads(2)
 
     # Linking
