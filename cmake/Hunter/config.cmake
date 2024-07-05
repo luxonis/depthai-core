@@ -165,7 +165,7 @@ hunter_config(
         BUILD_EXAMPLES=OFF
         BUILD_TOOLS=OFF
         # Build shared libs by default to not cause licensing issues
-        BUILD_SHARED_LIBS=ON
+        BUILD_SHARED_LIBS=OFF
         WITH_QT=OFF
         WITH_ORB_OCTREE=OFF
         WITH_TORCH=OFF
