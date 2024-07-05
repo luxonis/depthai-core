@@ -1,8 +1,9 @@
 #pragma once
 
-#include <string>
 #include <spimpl.h>
+
 #include <optional>
+#include <string>
 namespace dai {
 
 /// Version structure
@@ -16,9 +17,15 @@ struct Version {
     /// Construct Version from string
     explicit Version(const std::string& v);
     /// Construct Version major, minor, patch, and pre-release information
-    Version(unsigned major, unsigned minor, unsigned patch, const PreReleaseType& type = PreReleaseType::NONE, const std::optional<uint16_t>& preReleaseVersion = std::nullopt, const std::string& buildInfo = "");
+    Version(unsigned major,
+            unsigned minor,
+            unsigned patch,
+            const PreReleaseType& type = PreReleaseType::NONE,
+            const std::optional<uint16_t>& preReleaseVersion = std::nullopt,
+            const std::string& buildInfo = "");
 
-    Version(unsigned major, unsigned minor, unsigned patch, const std::string& buildInfo) : Version(major, minor, patch, PreReleaseType::NONE, std::nullopt, buildInfo) {}
+    Version(unsigned major, unsigned minor, unsigned patch, const std::string& buildInfo)
+        : Version(major, minor, patch, PreReleaseType::NONE, std::nullopt, buildInfo) {}
     bool operator==(const Version& other) const;
     bool operator<(const Version& other) const;
     inline bool operator!=(const Version& rhs) const {

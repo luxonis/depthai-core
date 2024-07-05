@@ -46,7 +46,7 @@ TEST_CASE("Version comparisons") {
     REQUIRE(Version("22.7.15") == Version(22, 7, 15));
     REQUIRE(Version("0.7.15") == Version(0, 7, 15));
     REQUIRE(Version("0.7.15+abc123") == Version(0, 7, 15, "abc123"));
-    REQUIRE(Version("0.7.15+abc123") == Version("0.7.15+somethingElse")); // To comply with semver, build info is ignored in equality
+    REQUIRE(Version("0.7.15+abc123") == Version("0.7.15+somethingElse"));  // To comply with semver, build info is ignored in equality
 
     // Inequality
     REQUIRE_FALSE(Version("0.0.15") == Version("0.0.14"));
@@ -85,4 +85,29 @@ TEST_CASE("Version build info") {
 
     Version v3("1.2.3");
     REQUIRE(v3.getBuildInfo() == "");
+}
+
+TEST_CASE("Version copy and move semantics") {
+    // Copy constructor
+    Version v1("1.2.3");
+    Version v2 = v1;  // Copy construction
+    REQUIRE(v2.toString() == "1.2.3");
+    REQUIRE(v1 == v2);
+
+    // Copy assignment operator
+    Version v3("4.5.6");
+    v3 = v1;  // Copy assignment
+    REQUIRE(v3.toString() == "1.2.3");
+    REQUIRE(v1 == v3);
+
+    // Move constructor
+    Version v4 = std::move(v1);  // Move construction
+    REQUIRE(v4.toString() == "1.2.3");
+
+    // Move assignment operator
+    Version v5("7.8.9");
+    v5 = std::move(v2);  // Move assignment
+    REQUIRE(v5.toString() == "1.2.3");
+
+    // Destructor is implicitly tested by scope exit
 }
