@@ -61,7 +61,6 @@ function(pybind11_mkdoc_setup_internal_combined output_path mkdoc_headers includ
     execute_process(COMMAND ${PYTHON_EXECUTABLE} -m ${PYBIND11_MKDOC_MODULE_NAME} --help RESULT_VARIABLE error OUTPUT_QUIET ERROR_QUIET)
     if(error)
         set(message "Checking for pybind11_mkdoc - not found, docstrings not available")
-        message(STATUS ${enforce})
         if(NOT enforce)
             message(STATUS ${message})
         else()
