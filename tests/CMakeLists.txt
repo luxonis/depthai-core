@@ -290,8 +290,6 @@ dai_add_test(bootloader_version_test src/bootloader_version_test.cpp)
 # set_tests_properties(stability_stress_test PROPERTIES ENVIRONMENT "UBSAN_OPTIONS=halt_on_error=1;DEPTHAI_PROTOCOL=usb" LABELS stability_usb)
 # set_tests_properties(stability_stress_test_poe PROPERTIES ENVIRONMENT "UBSAN_OPTIONS=halt_on_error=1;DEPTHAI_PROTOCOL=poe" LABELS stability_poe)
 
-# StreamMessageParser tests
-dai_add_test(stream_message_parser_test src/stream_message_parser_test.cpp)
 
 dai_add_test(resolutions_test src/resolutions_test.cpp)
 
@@ -312,6 +310,9 @@ dai_add_test(image_transformations_test src/onhost_tests/image_transformations_t
 
 # MessageQueue tests
 dai_add_test(message_queue_test src/onhost_tests/message_queue_test.cpp)
+
+# StreamMessageParser tests
+dai_add_test(stream_message_parser_test src/onhost_tests/stream_message_parser_test.cpp)
 
 ### On-device tests
 
