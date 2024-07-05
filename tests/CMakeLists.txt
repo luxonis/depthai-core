@@ -304,9 +304,6 @@ dai_add_test(bootloader_version_test src/bootloader_version_test.cpp)
 # StreamMessageParser tests
 dai_add_test(stream_message_parser_test src/stream_message_parser_test.cpp)
 
-# MessageQueue tests
-dai_add_test(message_queue_test src/message_queue_test.cpp)
-
 dai_add_test(resolutions_test src/resolutions_test.cpp)
 
 ### On-host tests
@@ -323,6 +320,9 @@ dai_add_test(naming_test src/onhost_tests/naming_test.cpp)
 
 # Image transformations test
 dai_add_test(image_transformations_test src/onhost_tests/image_transformations_test.cpp)
+
+# MessageQueue tests
+dai_add_test(message_queue_test src/onhost_tests/message_queue_test.cpp)
 
 ### On-device tests
 
