@@ -18,6 +18,7 @@ class Buffer : public ADatatype {
     Buffer() = default;
     Buffer(size_t size);
     Buffer(long fd);
+    Buffer(long fd, size_t size);
     virtual ~Buffer() = default;
 
     virtual void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const {

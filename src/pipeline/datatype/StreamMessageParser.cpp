@@ -40,6 +40,7 @@
 #include "depthai/pipeline/datatype/DatatypeEnum.hpp"
 #include "depthai/utility/Serialization.hpp"
 #include "utility/VectorMemory.hpp"
+#include "utility/SharedMemory.hpp"
 #include "xlink/XLinkStream.hpp"
 
 // StreamPacket structure ->  || imgframepixels... , serialized_object, object_type, serialized_object_size ||

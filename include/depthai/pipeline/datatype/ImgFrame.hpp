@@ -72,6 +72,7 @@ class ImgFrame : public Buffer {
     ImgFrame();
     ImgFrame(long fd);
     ImgFrame(size_t size);
+    ImgFrame(long fd, size_t size);
     virtual ~ImgFrame() = default;
 
     ImgTransformations transformations;

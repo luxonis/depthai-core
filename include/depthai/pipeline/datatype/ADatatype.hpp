@@ -6,7 +6,6 @@
 #include "depthai/utility/Memory.hpp"
 #include "depthai/utility/Serialization.hpp"
 #include "depthai/utility/VectorMemory.hpp"
-#include "depthai/utility/SharedMemory.hpp"
 
 namespace dai {
 

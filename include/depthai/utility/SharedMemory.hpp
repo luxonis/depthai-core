@@ -37,14 +37,29 @@ class SharedMemory : public Memory {
 	munmap(mapping, getSize());
     }
    public:
-    SharedMemory() {
-	kind = MemoryKinds::MEMORY_KIND_SHARED_MEMORY;
-	fd = -1;
-    }
     SharedMemory(long argFd) : fd(argFd) {
 	kind = MemoryKinds::MEMORY_KIND_SHARED_MEMORY;
 	mapFd();
     }
+
+    SharedMemory(long argFd, std::size_t size) : fd(argFd) {
+	kind = MemoryKinds::MEMORY_KIND_SHARED_MEMORY;
+	setSize(size);
+	mapFd();
+    }
+
+    /* TODO: memfd_create() those?
+    SharedMemory() {
+	kind = MemoryKinds::MEMORY_KIND_SHARED_MEMORY;
+	mapFd();
+    }
+
+    SharedMemory(std::size_t size) {
+	kind = MemoryKinds::MEMORY_KIND_SHARED_MEMORY;
+	setSize(size);
+	mapFd();
+    }
+    */
 
     ~SharedMemory() {
 	unmapFd();
@@ -63,6 +78,7 @@ class SharedMemory : public Memory {
 	if (mapping == NULL) {
 	    mapFd();
 	}
+
         return {(uint8_t*)mapping, getSize()};
     }
     span<const std::uint8_t> getData() const override {
@@ -78,7 +94,12 @@ class SharedMemory : public Memory {
         return ftell(fdopen(fd, "r"));
     }
     void setSize(std::size_t size) override {
+	if (mapping != NULL) {
+	    unmapFd();
+	}
+
 	ftruncate(fd, size);
+	mapFd();
     }
 
     std::size_t getSize() const {

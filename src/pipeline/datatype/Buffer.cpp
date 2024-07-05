@@ -1,6 +1,7 @@
 #include "depthai/pipeline/datatype/Buffer.hpp"
 
 #include "depthai/utility/VectorMemory.hpp"
+#include "depthai/utility/SharedMemory.hpp"
 
 namespace dai {
 Buffer::Buffer(size_t size) : Buffer() {
@@ -11,6 +12,11 @@ Buffer::Buffer(size_t size) : Buffer() {
 
 Buffer::Buffer(long fd) : Buffer() {
     auto mem = std::make_shared<SharedMemory>(fd);
+    data = mem;
+}
+    
+Buffer::Buffer(long fd, size_t size) : Buffer() {
+    auto mem = std::make_shared<SharedMemory>(fd, size);
     data = mem;
 }
 
