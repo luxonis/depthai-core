@@ -217,9 +217,6 @@ dai_add_test(pipeline_test src/pipeline_test.cpp)
 # dai_add_test(neural_network_test src/neural_network_test.cpp)
 # dai_test_compile_definitions(neural_network_test PRIVATE BLOB_PATH="${mobilenet_blob}")
 
-# Bootloader configuration tests
-dai_add_test(bootloader_config_test src/bootloader_config_test.cpp)
-
 # Device USB Speed and serialization macros test (lnotspotl - REMOVED - old API device)
 # dai_add_test(device_usbspeed_test    src/device_usbspeed_test.cpp CONFORMING)
 # dai_add_test(device_usbspeed_test_17 src/device_usbspeed_test.cpp CONFORMING CXX_STANDARD 17)
@@ -244,8 +241,6 @@ dai_test_compile_definitions(filesystem_test_17 PRIVATE BLOB_PATH="${mobilenet_b
 dai_add_test(filesystem_test_20 src/filesystem_test.cpp CXX_STANDARD 20)
 dai_test_compile_definitions(filesystem_test_20 PRIVATE BLOB_PATH="${mobilenet_blob}")
 
-# Bootloader version tests
-dai_add_test(bootloader_version_test src/bootloader_version_test.cpp)
 
 # XLinkIn -> XLinkOut passthrough with large frames (lnotspotl - REMOVED - old API device)
 # dai_add_test(xlink_roundtrip_test src/xlink_roundtrip_test.cpp)
@@ -313,6 +308,12 @@ dai_add_test(message_queue_test src/onhost_tests/message_queue_test.cpp)
 
 # StreamMessageParser tests
 dai_add_test(stream_message_parser_test src/onhost_tests/stream_message_parser_test.cpp)
+
+# Bootloader version tests
+dai_add_test(bootloader_version_test src/onhost_tests/bootloader_version_test.cpp)
+
+# Bootloader configuration tests
+dai_add_test(bootloader_config_test src/bootloader_config_test.cpp)
 
 ### On-device tests
 
