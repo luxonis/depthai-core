@@ -261,8 +261,6 @@ dai_add_test(bootloader_version_test src/bootloader_version_test.cpp)
 # XLinkIn -> XLinkOut passthrough with large frames (lnotspotl - REMOVED - old API device)
 # dai_add_test(xlink_roundtrip_test src/xlink_roundtrip_test.cpp)
 
-dai_add_test(image_transformations_test src/image_transformations_test.cpp)
-
 # Stability stress test (OAK-D oriented USB/PoE)
 # (lnotspotl - REMOVED - old API device)
 # # dai_add_test(stability_stress_test src/stability_stress_test.cpp)
@@ -321,7 +319,10 @@ target_compile_definitions(superblob_test PRIVATE SUPERBLOB_PATH="${superblob_pa
 dai_add_test(serialization_test src/onhost_tests/serialization_test.cpp)
 
 # Eeprom naming parsing tests
-dai_add_test(naming_test src/naming_test.cpp)
+dai_add_test(naming_test src/onhost_tests/naming_test.cpp)
+
+# Image transformations test
+dai_add_test(image_transformations_test src/onhost_tests/image_transformations_test.cpp)
 
 ### On-device tests
 
