@@ -214,8 +214,6 @@ dai_add_test(pipeline_test src/pipeline_test.cpp)
 # (lnotspotl - REMOVED - old API device)
 # dai_add_test(logging_test src/logging_test.cpp)
 
-# dai_add_test(neural_network_test src/neural_network_test.cpp)
-# dai_test_compile_definitions(neural_network_test PRIVATE BLOB_PATH="${mobilenet_blob}")
 
 # Device USB Speed and serialization macros test (lnotspotl - REMOVED - old API device)
 # dai_add_test(device_usbspeed_test    src/device_usbspeed_test.cpp CONFORMING)
@@ -313,13 +311,14 @@ dai_add_test(stream_message_parser_test src/onhost_tests/stream_message_parser_t
 dai_add_test(bootloader_version_test src/onhost_tests/bootloader_version_test.cpp)
 
 # Bootloader configuration tests
-dai_add_test(bootloader_config_test src/bootloader_config_test.cpp)
+dai_add_test(bootloader_config_test src/onhost_tests/bootloader_config_test.cpp)
 
 ### On-device tests
 
 # Depthai logging test
 dai_add_test(logging_test src/ondevice_tests/logging_test.cpp)
 
+# OpenVINO blob test
 dai_add_test(openvino_blob_test src/ondevice_tests/openvino_blob_test.cpp)
 dai_test_compile_definitions(openvino_blob_test PRIVATE
     OPENVINO_2020_3_BLOB_PATH="${openvino_2020_3_blob}"
@@ -330,3 +329,8 @@ dai_test_compile_definitions(openvino_blob_test PRIVATE
     OPENVINO_2021_4_BLOB_PATH="${openvino_2021_4_2_blob}"
     OPENVINO_2022_1_BLOB_PATH="${openvino_2022_1_blob}"
 )
+
+
+# Neural network test
+dai_add_test(neural_network_test src/ondevice_tests/neural_network_test.cpp)
+dai_test_compile_definitions(neural_network_test PRIVATE BLOB_PATH="${mobilenet_blob}")
