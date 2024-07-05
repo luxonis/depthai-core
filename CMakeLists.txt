@@ -807,7 +807,7 @@ endif()
 ########################
 # RTABMap Support
 ########################
-set(THIRDPARTY_RTABMAP_LIBRARIES "" CACHE STRING "Optional libraries to link RTABMap support, e.g. TBB::tbb")
+set(THIRDPARTY_RTABMAP_LIBRARIES "rtabmap::utilite" CACHE STRING "Optional libraries to link RTABMap support, e.g. TBB::tbb")
 set(TARGET_RTABMAP_NAME ${PROJECT_NAME}-rtabmap)
 set(TARGET_RTABMAP_ALIAS rtabmap)
 if(DEPTHAI_RTABMAP_SUPPORT)
@@ -827,6 +827,8 @@ if(DEPTHAI_RTABMAP_SUPPORT)
         add_flag(${TARGET_RTABMAP_NAME} -Wno-switch-enum)
         if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
             target_link_options(${TARGET_RTABMAP_NAME} INTERFACE LINKER:--disable-new-dtags)
+        elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" AND CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+            target_link_options(${TARGET_RTABMAP_NAME} INTERFACE LINKER:-Wl,-no_dyld)
         endif()
         # Link to RTABMap (publically)
         if(DEPTHAI_MERGED_TARGET)
