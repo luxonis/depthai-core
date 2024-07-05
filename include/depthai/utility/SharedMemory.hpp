@@ -24,6 +24,10 @@ class SharedMemory : public Memory {
     long fd = -1;
     void* mapping;
     void mapFd() {
+	if (fd < 0) {
+	    /* Error handling here */
+	}
+
 	mapping = mmap(NULL, getSize(), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 	if (mapping == NULL) {
 	    /* Error handling here */
@@ -37,6 +41,10 @@ class SharedMemory : public Memory {
 	munmap(mapping, getSize());
     }
    public:
+    SharedMemory() {
+	fd = -1;
+    }
+
     SharedMemory(long argFd) : fd(argFd) {
 	mapFd();
     }
