@@ -3,7 +3,7 @@ include(target-public-headers)
 
 # Usage:
 # target_pybind11_mkdoc_setup([path/to/output/docstring.hpp] [Library for which to generate: target-name] [Enforce pybind11_mkdoc existing ON/OFF])
-function(target_pybind11_mkdoc_setup_combined output_file_base targets enforce)
+function(target_pybind11_mkdoc_setup_combined output_file_base enforce targets)
 
     set(all_filtered_header_files)
     set(include_directories)
@@ -61,6 +61,7 @@ function(pybind11_mkdoc_setup_internal_combined output_path mkdoc_headers includ
     execute_process(COMMAND ${PYTHON_EXECUTABLE} -m ${PYBIND11_MKDOC_MODULE_NAME} --help RESULT_VARIABLE error OUTPUT_QUIET ERROR_QUIET)
     if(error)
         set(message "Checking for pybind11_mkdoc - not found, docstrings not available")
+        message(STATUS ${enforce})
         if(NOT enforce)
             message(STATUS ${message})
         else()

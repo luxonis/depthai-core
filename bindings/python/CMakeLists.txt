@@ -241,7 +241,7 @@ if (DEPTHAI_PYTHON_BUILD_DOCSTRINGS)
         list(APPEND DEPTHAI_MKDOC_TARGETS depthai::rtabmap)
     endif()
     # Set up docstrings for combined targets
-    target_pybind11_mkdoc_setup_combined(${docstring_output_path} ${DEPTHAI_MKDOC_TARGETS} ${DEPTHAI_PYTHON_FORCE_DOCSTRINGS})
+    target_pybind11_mkdoc_setup_combined(${docstring_output_path} ${DEPTHAI_PYTHON_FORCE_DOCSTRINGS} ${DEPTHAI_MKDOC_TARGETS})
 
     if(TARGET pybind11_mkdoc)
         # Add dependency to mkdoc target (makes sure that mkdoc is executed, and docstrings available)
