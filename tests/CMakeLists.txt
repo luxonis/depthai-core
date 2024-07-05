@@ -213,7 +213,6 @@ hunter_private_data(
 
 
 # (lnotspotl - REMOVED - old API device)
-# dai_add_test(encoded_frame_test src/encoded_frame_test.cpp CXX_STANDARD 17)
 
 # (lnotspotl - REMOVED - old API device)
 # dai_add_test(message_group_frame_test src/message_group_test.cpp CXX_STANDARD 17)
@@ -222,16 +221,6 @@ hunter_private_data(
 # dai_add_test(unlimited_io_connection_test src/unlimited_io_connection_test.cpp)
 # Multiple devices test (lnotspotl - REMOVED - old API device)
 # dai_add_test(multiple_devices_test src/multiple_devices_test.cpp)
-
-# Filesystem test
-dai_add_test(filesystem_test src/filesystem_test.cpp)
-dai_test_compile_definitions(filesystem_test PRIVATE BLOB_PATH="${mobilenet_blob}")
-dai_add_test(filesystem_test_17 src/filesystem_test.cpp CXX_STANDARD 17)
-dai_test_compile_definitions(filesystem_test_17 PRIVATE BLOB_PATH="${mobilenet_blob}")
-dai_add_test(filesystem_test_20 src/filesystem_test.cpp CXX_STANDARD 20)
-dai_test_compile_definitions(filesystem_test_20 PRIVATE BLOB_PATH="${mobilenet_blob}")
-
-
 # XLinkIn -> XLinkOut passthrough with large frames (lnotspotl - REMOVED - old API device)
 # dai_add_test(xlink_roundtrip_test src/xlink_roundtrip_test.cpp)
 
@@ -340,3 +329,14 @@ dai_add_test(pipeline_test src/ondevice_tests/pipeline_test.cpp)
 dai_add_test(device_usbspeed_test    src/ondevice_tests/device_usbspeed_test.cpp CONFORMING)
 dai_add_test(device_usbspeed_test_17 src/ondevice_tests/device_usbspeed_test.cpp CONFORMING CXX_STANDARD 17)
 dai_add_test(device_usbspeed_test_20 src/ondevice_tests/device_usbspeed_test.cpp CONFORMING CXX_STANDARD 20)
+
+# Filesystem test
+dai_add_test(filesystem_test src/ondevice_tests/filesystem_test.cpp)
+dai_test_compile_definitions(filesystem_test PRIVATE BLOB_PATH="${mobilenet_blob}")
+dai_add_test(filesystem_test_17 src/ondevice_tests/filesystem_test.cpp CXX_STANDARD 17)
+dai_test_compile_definitions(filesystem_test_17 PRIVATE BLOB_PATH="${mobilenet_blob}")
+dai_add_test(filesystem_test_20 src/ondevice_tests/filesystem_test.cpp CXX_STANDARD 20)
+dai_test_compile_definitions(filesystem_test_20 PRIVATE BLOB_PATH="${mobilenet_blob}")
+
+# Encoded frame test
+dai_add_test(encoded_frame_test src/ondevice_tests/encoded_frame_test.cpp CXX_STANDARD 17)
