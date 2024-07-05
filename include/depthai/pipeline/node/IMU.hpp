@@ -28,12 +28,12 @@ class IMU : public DeviceNodeCRTP<DeviceNode, IMU, IMUProperties>, public Source
     /**
      * Outputs IMUData message that carries IMU packets.
      */
-    Output out{*this, {.name = "out", .types = {{DatatypeEnum::IMUData, false}}}};
+    Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::IMUData, false}}}}};
 
     /**
      * Mock IMU data for replaying recorded data
      */
-    Input mockIn{*this, {.name = "mockIn", .types = {{DatatypeEnum::IMUData, false}}}};
+    Input mockIn{*this, {"mockIn", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::IMUData, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Enable a new IMU sensor with explicit configuration

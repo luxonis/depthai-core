@@ -1,5 +1,6 @@
-#include "Common.hpp"
+#include <pybind11/stl/filesystem.h>
 
+#include "Common.hpp"
 #include "depthai/pipeline/node/host/Record.hpp"
 
 void bind_record(pybind11::module& m, void* pCallstack){

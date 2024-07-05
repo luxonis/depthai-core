@@ -55,7 +55,7 @@ void RecordVideo::run() {
                 streamType = StreamType::RawVideo;
                 width = imgFrame->getWidth();
                 height = imgFrame->getHeight();
-                if(recordMetadata) byteRecorder.init(recordMetadataFile, compressionLevel, utility::RecordType::Video);
+                if(recordMetadata) byteRecorder.init(recordMetadataFile.string(), compressionLevel, utility::RecordType::Video);
             } else if(std::dynamic_pointer_cast<EncodedFrame>(msg) != nullptr) {
                 auto encFrame = std::dynamic_pointer_cast<EncodedFrame>(msg);
                 if(encFrame->getProfile() == EncodedFrame::Profile::HEVC) {
@@ -65,15 +65,13 @@ void RecordVideo::run() {
                 width = encFrame->getWidth();
                 height = encFrame->getHeight();
                 if(logger) logger->trace("RecordVideo node detected {}x{} resolution", width, height);
-                if(recordMetadata) byteRecorder.init(recordMetadataFile, compressionLevel, utility::RecordType::Video);
+                if(recordMetadata) byteRecorder.init(recordMetadataFile.string(), compressionLevel, utility::RecordType::Video);
             } else {
                 throw std::runtime_error("RecordVideo can only record video streams.");
             }
             if(logger)
                 logger->trace("RecordVideo node detected stream type {}",
-                              streamType == StreamType::RawVideo       ? "RawVideo"
-                              : streamType == StreamType::EncodedVideo ? "EncodedVideo"
-                                                                       : "Byte");
+                              streamType == StreamType::RawVideo ? "RawVideo" : streamType == StreamType::EncodedVideo ? "EncodedVideo" : "Byte");
         }
         if(streamType == StreamType::RawVideo || streamType == StreamType::EncodedVideo) {
             if(i == 0)
@@ -84,10 +82,13 @@ void RecordVideo::run() {
                 if(logger) logger->trace("RecordVideo node detected {} fps", fps);
                 if(streamType == StreamType::EncodedVideo) {
                     auto encFrame = std::dynamic_pointer_cast<EncodedFrame>(msg);
-                    videoRecorder->init(
-                        recordVideoFile, width, height, fps, encFrame->getProfile() == EncodedFrame::Profile::JPEG ? VideoCodec::MJPEG : VideoCodec::H264);
+                    videoRecorder->init(recordVideoFile.string(),
+                                        width,
+                                        height,
+                                        fps,
+                                        encFrame->getProfile() == EncodedFrame::Profile::JPEG ? VideoCodec::MJPEG : VideoCodec::H264);
                 } else {
-                    videoRecorder->init(recordVideoFile, width, height, fps, VideoCodec::RAW);
+                    videoRecorder->init(recordVideoFile.string(), width, height, fps, VideoCodec::RAW);
                 }
             }
             if(i >= fpsInitLength - 1) {
@@ -157,15 +158,13 @@ void RecordMetadataOnly::run() {
         if(streamType == StreamType::Unknown) {
             if(std::dynamic_pointer_cast<IMUData>(msg) != nullptr) {
                 streamType = StreamType::Imu;
-                byteRecorder.init(recordFile, compressionLevel, utility::RecordType::Imu);
+                byteRecorder.init(recordFile.string(), compressionLevel, utility::RecordType::Imu);
             } else {
                 throw std::runtime_error("RecordMetadataOnly node does not support this type of message");
             }
             if(logger)
                 logger->trace("RecordMetadataOnly node detected stream type {}",
-                              streamType == StreamType::RawVideo       ? "RawVideo"
-                              : streamType == StreamType::EncodedVideo ? "EncodedVideo"
-                                                                       : "Byte");
+                              streamType == StreamType::RawVideo ? "RawVideo" : streamType == StreamType::EncodedVideo ? "EncodedVideo" : "Byte");
         }
         if(streamType == StreamType::Imu) {
             auto imuData = std::dynamic_pointer_cast<IMUData>(msg);

@@ -46,6 +46,7 @@ struct RecordConfig {
 };
 
 struct NodeRecordParams {
+    bool video;
     std::string name;
 };
 

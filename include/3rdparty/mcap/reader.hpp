@@ -318,7 +318,8 @@ class MCAP_PUBLIC McapReader final {
      * upon requesting summary data or first seek if Summary section parsing is
      * allowed by the configuration options.
      */
-    Status readSummary(ReadSummaryMethod method, const ProblemCallback& onProblem = [](const Status&) {});
+    Status readSummary(
+        ReadSummaryMethod method, const ProblemCallback& onProblem = [](const Status&) {});
 
     /**
      * @brief Returns an iterable view with `begin()` and `end()` methods for

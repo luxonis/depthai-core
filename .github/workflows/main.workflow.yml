@@ -9,7 +9,7 @@ on:
       - rvc3_support
       - rvc3_develop
     tags:
-      - 'v*'
+      - 'v2*'
   pull_request:
     branches:
       - main

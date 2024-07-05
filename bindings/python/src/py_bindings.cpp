@@ -56,6 +56,7 @@ PYBIND11_MODULE(depthai, m)
     m.attr("__device_version__") = dai::build::DEVICE_VERSION;
     m.attr("__bootloader_version__") = dai::build::BOOTLOADER_VERSION;
     m.attr("__device_rvc3_version__") = dai::build::DEVICE_RVC3_VERSION;
+    m.attr("__device_rvc4_version__") = dai::build::DEVICE_RVC4_VERSION;
 
     // Add bindings
     std::deque<StackFunction> callstack;

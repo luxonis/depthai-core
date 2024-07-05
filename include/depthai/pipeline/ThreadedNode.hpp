@@ -19,6 +19,7 @@ class ThreadedNode : public Node {
 
    public:
     using Node::Node;
+    ThreadedNode();
     virtual ~ThreadedNode() = default;
 
     // override the following methods

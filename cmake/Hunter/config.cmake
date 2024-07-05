@@ -200,7 +200,6 @@ hunter_config(
     SHA1 "14e18d04d05e36e920aa90ee744952bf55783ea4"
 )
 
-
 hunter_config(
     yaml-cpp
     VERSION "0.6.3l"
@@ -208,4 +207,11 @@ hunter_config(
     SHA1 "98d98632b3a62fdf1172442f8ad8190fc11cbef7"
     CMAKE_ARGS
         YAML_BUILD_SHARED_LIBS=ON
+)
+
+hunter_config(
+    semver
+    VERSION "v0.3.1"
+    URL "https://github.com/Neargye/semver/archive/v0.3.1.tar.gz"
+    SHA1 "c9ac79025cc259d8cca454be0865e88f154402be"
 )

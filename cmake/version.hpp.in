@@ -8,10 +8,12 @@ namespace dai
 {
 namespace build
 {
-    constexpr static const char* VERSION = "${PROJECT_VERSION}";
+    constexpr static const char* VERSION = "${DEPTHAI_VERSION}";
     constexpr static const int VERSION_MAJOR = ${PROJECT_VERSION_MAJOR};
     constexpr static const int VERSION_MINOR = ${PROJECT_VERSION_MINOR};
     constexpr static const int VERSION_PATCH = ${PROJECT_VERSION_PATCH};
+    constexpr static const char* PRE_RELEASE_TYPE = "${DEPTHAI_PRE_RELEASE_TYPE}";
+    constexpr static const int PRE_RELEASE_VERSION = ${DEPTHAI_PRE_RELEASE_VERSION};
 
     constexpr static const char* COMMIT = "${BUILD_COMMIT}";
     constexpr static const char* COMMIT_DATETIME = "${BUILD_COMMIT_DATETIME}";

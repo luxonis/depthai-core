@@ -32,7 +32,7 @@ class RecordVideo : public NodeCRTP<ThreadedHostNode, RecordVideo> {
      *
      * Default queue is blocking with size 15
      */
-    Input input{*this, {.name = "input", .queueSize = 15, .types = {{DatatypeEnum::Buffer, true}}}};
+    Input input{*this, {"input", DEFAULT_GROUP, DEFAULT_BLOCKING, 15, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     void run() override;
 
@@ -65,7 +65,7 @@ class RecordMetadataOnly : public NodeCRTP<ThreadedHostNode, RecordMetadataOnly>
      *
      * Default queue is blocking with size 8
      */
-    Input input{*this, {.name = "input", .queueSize = 15, .types = {{DatatypeEnum::Buffer, true}}}};
+    Input input{*this, {"input", DEFAULT_GROUP, DEFAULT_BLOCKING, 15, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     void run() override;
 

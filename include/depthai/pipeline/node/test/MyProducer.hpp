@@ -16,7 +16,7 @@ class MyProducer : public NodeCRTP<ThreadedHostNode, MyProducer> {
     /**
      * Outputs message of same type as sent from host.
      */
-    Output out{*this, {.name = "out", .types = {{DatatypeEnum::Buffer, true}}}};
+    Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::Buffer, true}}}}};
 
     void run() override;
 };

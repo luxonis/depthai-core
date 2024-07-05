@@ -10,20 +10,6 @@ namespace node {
 
 ColorCamera::ColorCamera(std::unique_ptr<Properties> props) : DeviceNodeCRTP<DeviceNode, ColorCamera, ColorCameraProperties>(std::move(props)) {}
 
-ColorCamera::ColorCamera(std::shared_ptr<Device> device, dai::CameraBoardSocket socket)
-    : DeviceNodeCRTP<DeviceNode, ColorCamera, ColorCameraProperties>(device) {
-    // Check if the board socket is valid
-    if(socket == CameraBoardSocket::AUTO) {
-        // TODO(Morato) - should we remove this as it disables the ability to check any resolutions, ...
-    } else {
-        std::vector<dai::CameraBoardSocket> connected = device->getConnectedCameras();
-        if(std::find(connected.begin(), connected.end(), socket) == connected.end()) {
-            throw std::invalid_argument(fmt::format("Camera on the specified board socket is not connected"));
-        }
-    }
-    properties.boardSocket = socket;
-}
-
 std::shared_ptr<ColorCamera> ColorCamera::build() {
     return std::static_pointer_cast<ColorCamera>(shared_from_this());
 }
@@ -748,6 +734,7 @@ NodeRecordParams ColorCamera::getNodeRecordParams() const {
         throw std::runtime_error("For record and replay functionality, board socket must be specified (Camera).");
     }
     NodeRecordParams params;
+    params.video = true;
     params.name = "Camera" + toString(properties.boardSocket);
     return params;
 }
