@@ -158,10 +158,13 @@ void bind_messagedemux(pybind11::module& m, void* pCallstack);
 void bind_hostnode(pybind11::module& m, void* pCallstack);
 void bind_record(pybind11::module& m, void* pCallstack);
 void bind_replay(pybind11::module& m, void* pCallstack);
+#ifdef DEPTHAI_HAVE_BASALT_SUPPORT
 void bind_basaltnode(pybind11::module& m, void* pCallstack);
+#endif
+#ifdef DEPTHAI_HAVE_RTABMAP_SUPPORT
 void bind_rtabmapvionode(pybind11::module& m, void* pCallstack);
 void bind_rtabmapslamnode(pybind11::module& m, void* pCallstack);
-
+#endif
 void NodeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     // Bind Node et al
     callstack.push_front(NodeBindings::bind);
@@ -199,9 +202,13 @@ void NodeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_hostnode);
     callstack.push_front(bind_record);
     callstack.push_front(bind_replay);
+#ifdef DEPTHAI_HAVE_BASALT_SUPPORT
     callstack.push_front(bind_basaltnode);
+#endif
+#ifdef DEPTHAI_HAVE_RTABMAP_SUPPORT
     callstack.push_front(bind_rtabmapvionode);
     callstack.push_front(bind_rtabmapslamnode);
+#endif
 }
 
 void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
