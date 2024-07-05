@@ -212,11 +212,6 @@ hunter_private_data(
 # dai_add_test(logging_test src/logging_test.cpp)
 
 
-# Device USB Speed and serialization macros test (lnotspotl - REMOVED - old API device)
-# dai_add_test(device_usbspeed_test    src/device_usbspeed_test.cpp CONFORMING)
-# dai_add_test(device_usbspeed_test_17 src/device_usbspeed_test.cpp CONFORMING CXX_STANDARD 17)
-# dai_add_test(device_usbspeed_test_20 src/device_usbspeed_test.cpp CONFORMING CXX_STANDARD 20)
-
 # (lnotspotl - REMOVED - old API device)
 # dai_add_test(encoded_frame_test src/encoded_frame_test.cpp CXX_STANDARD 17)
 
@@ -340,3 +335,8 @@ dai_add_test(image_manip_node_test src/ondevice_tests/image_manip_node_test.cpp)
 
 # Pipeline test
 dai_add_test(pipeline_test src/ondevice_tests/pipeline_test.cpp)
+
+# Device USB Speed and serialization macros test
+dai_add_test(device_usbspeed_test    src/ondevice_tests/device_usbspeed_test.cpp CONFORMING)
+dai_add_test(device_usbspeed_test_17 src/ondevice_tests/device_usbspeed_test.cpp CONFORMING CXX_STANDARD 17)
+dai_add_test(device_usbspeed_test_20 src/ondevice_tests/device_usbspeed_test.cpp CONFORMING CXX_STANDARD 20)
