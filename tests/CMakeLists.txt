@@ -318,7 +318,14 @@ dai_add_test(message_queue_test src/message_queue_test.cpp)
 
 dai_add_test(resolutions_test src/resolutions_test.cpp)
 
+### On-host tests
 
-# Superblob tests
-dai_add_test(superblob_test src/superblob_test.cpp)
+# Superblob test
+dai_add_test(superblob_test src/onhost_tests/superblob_test.cpp)
 target_compile_definitions(superblob_test PRIVATE SUPERBLOB_PATH="${superblob_path}")
+
+
+### On-device tests
+
+# Depthai logging test
+dai_add_test(logging_test src/ondevice_tests/logging_test.cpp)
