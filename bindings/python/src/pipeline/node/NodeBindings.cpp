@@ -211,7 +211,7 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
 
     py::class_<Node::Input, MessageQueue, std::shared_ptr<Node::Input>> pyInput(pyNode, "Input", DOC(dai, Node, Input));
     py::enum_<Node::Input::Type> nodeInputType(pyInput, "Type");
-    py::class_<Node::Output, std::shared_ptr<Node::Output>> pyOutput(pyNode, "Output", DOC(dai, Node, Output));
+    py::class_<Node::Output> pyOutput(pyNode, "Output", DOC(dai, Node, Output));
     py::enum_<Node::Output::Type> nodeOutputType(pyOutput, "Type");
     py::class_<Properties, std::shared_ptr<Properties>> pyProperties(m, "Properties", DOC(dai, Properties));
     py::class_<Node::DatatypeHierarchy> nodeDatatypeHierarchy(pyNode, "DatatypeHierarchy", DOC(dai, Node, DatatypeHierarchy));
@@ -266,24 +266,24 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
     pyInput
         .def(
             py::init([](Node& parent,
-                        const std::string& name,
-                        const std::string& group,
-                        bool blocking,
-                        int queueSize,
-                        std::vector<Node::DatatypeHierarchy> types,
-                        bool waitForMessage) {
+                         const std::string& name,
+                         const std::string& group,
+                         bool blocking,
+                         int queueSize,
+                         std::vector<Node::DatatypeHierarchy> types,
+                         bool waitForMessage) {
                 return std::unique_ptr<Node::Input>(new Node::Input(
                     parent,
                     {name,group,blocking,queueSize,std::move(types), waitForMessage}));
-            }),
-            py::arg("parent"),
-            py::arg("name") = Node::InputDescription{}.name,
-            py::arg("group") = Node::InputDescription{}.group,
-            py::arg("blocking") = Node::InputDescription{}.blocking,
-            py::arg("queueSize") = Node::InputDescription{}.queueSize,
-            py::arg("types") = Node::InputDescription{}.types,
-            py::arg("waitForMessage") = Node::InputDescription{}.waitForMessage,
-            py::keep_alive<2, 1>())
+             }),
+             py::arg("parent"),
+             py::arg("name") = Node::InputDescription{}.name,
+             py::arg("group") = Node::InputDescription{}.group,
+             py::arg("blocking") = Node::InputDescription{}.blocking,
+             py::arg("queueSize") = Node::InputDescription{}.queueSize,
+             py::arg("types") = Node::InputDescription{}.types,
+             py::arg("waitForMessage") = Node::InputDescription{}.waitForMessage,
+             py::keep_alive<2, 1>())
         .def_readwrite("possibleDatatypes", &Node::Input::possibleDatatypes, DOC(dai, Node, Input, possibleDatatypes))
         .def("getParent",
              static_cast<const Node& (Node::Input::*)() const>(&Node::Input::getParent),
@@ -414,24 +414,22 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
                int queueSize,
                std::vector<Node::DatatypeHierarchy> types,
                bool waitForMessage) {
-                static std::vector<std::shared_ptr<Node::Input>> createdInputs;
-                createdInputs.push_back(std::make_shared<Node::Input>(node, Node::InputDescription{name, group, blocking, queueSize, types, waitForMessage}));
-                return createdInputs.back();
+                return std::make_unique<Node::Input>(node, Node::InputDescription{name, group, blocking, queueSize, types, waitForMessage});
             },
             py::arg("name") = Node::InputDescription{}.name,
             py::arg("group") = Node::InputDescription{}.group,
             py::arg("blocking") = Node::InputDescription{}.blocking,
             py::arg("queueSize") = Node::InputDescription{}.queueSize,
             py::arg("types") = Node::InputDescription{}.types,
-            py::arg("waitForMessage") = Node::InputDescription{}.waitForMessage)
+            py::arg("waitForMessage") = Node::InputDescription{}.waitForMessage,
+            py::keep_alive<2, 1>())
         .def(
             "createOutput",
             [](ThreadedNode& node, std::string name, std::string group, std::vector<Node::DatatypeHierarchy> types) {
-                static std::vector<std::shared_ptr<Node::Output>> createdOutputs;
-                createdOutputs.push_back(std::make_shared<Node::Output>(node, Node::OutputDescription{name, group, types}));
-                return createdOutputs.back();
+                return std::make_unique<Node::Output>(node, Node::OutputDescription{name, group, types});
             },
             py::arg("name") = Node::OutputDescription{}.name,
             py::arg("group") = Node::OutputDescription{}.group,
-            py::arg("possibleDatatypes") = Node::OutputDescription{}.types);
+            py::arg("possibleDatatypes") = Node::OutputDescription{}.types,
+            py::keep_alive<2, 1>());
 }
