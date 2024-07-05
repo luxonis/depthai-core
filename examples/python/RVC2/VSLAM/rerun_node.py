@@ -1,5 +1,6 @@
 import depthai as dai
 import rerun as rr
+import cv2
 
 class RerunNode(dai.node.ThreadedHostNode):
     def __init__(self):
@@ -44,7 +45,9 @@ class RerunNode(dai.node.ThreadedHostNode):
                 lineStrip = rr.components.LineStrip3D(self.positions)
                 rr.log("world/trajectory", rr.LineStrips3D(lineStrip))
                 rr.log("world/camera/image", rr.Pinhole(resolution=[imgFrame.getWidth(), imgFrame.getHeight()], focal_length=[self.fx, self.fy], camera_xyz=rr.ViewCoordinates.FLU))
-                rr.log("world/camera/image/rgb", rr.Image(imgFrame.getCvFrame()))
+                img = imgFrame.getCvFrame()
+                img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                rr.log("world/camera/image/rgb", rr.Image(img))
                 if pclObstData is not None:
                     points, colors = pclObstData.getPointsRGB()
                     rr.log("world/obstacle_pcl", rr.Points3D(points, colors=colors, radii=[0.01]))
