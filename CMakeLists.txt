@@ -55,10 +55,16 @@ if(WIN32)
 endif()
 
 # Create depthai project
-project(depthai VERSION "2.25.0" LANGUAGES CXX C)
+project(depthai VERSION "3.0.0" LANGUAGES CXX C)
+set(DEPTHAI_PRE_RELEASE_TYPE "alpha") # Valid options are "alpha", "beta", "rc", ""
+set(DEPTHAI_PRE_RELEASE_VERSION "0")
+
+# Set DEPTHAI_VERSION universally, not conditionally
+set(DEPTHAI_VERSION ${PROJECT_VERSION}-${DEPTHAI_PRE_RELEASE_TYPE}.${DEPTHAI_PRE_RELEASE_VERSION})
+
 get_directory_property(has_parent PARENT_DIRECTORY)
 if(has_parent)
-    set(DEPTHAI_VERSION ${PROJECT_VERSION} PARENT_SCOPE)
+    set(DEPTHAI_VERSION ${DEPTHAI_VERSION} PARENT_SCOPE)  # Set in parent scope if there's a parent
 endif()
 
 # Set default build type depending on context
@@ -639,6 +645,7 @@ target_link_libraries(${TARGET_CORE_NAME}
         LZ4::lz4
         httplib::httplib
         mp4v2::mp4v2
+        semver::semver
 )
 
 if(DEPTHAI_ENABLE_CURL)

@@ -41,6 +41,7 @@ else()
         hunter_add_package(oneTBB)
         hunter_add_package(opengv)
     endif()
+    hunter_add_package(semver)
 endif()
 
 # If library was build as static, find all dependencies
@@ -78,6 +79,7 @@ if(NOT CONFIG_MODE OR (CONFIG_MODE AND NOT DEPTHAI_SHARED_LIBS))
         find_package(Backward ${_QUIET} CONFIG REQUIRED)
         unset(STACK_DETAILS_AUTO_DETECT)
     endif()
+    find_package(semver ${_QUIET} CONFIG REQUIRED)
 endif()
 
 # Xtensor

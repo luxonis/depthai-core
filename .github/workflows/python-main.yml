@@ -13,7 +13,7 @@ on:
     branches:
     - v3_develop*
     tags:
-    - 'v*'
+    - 'v3*'
 
 ###################################
 ###################################
@@ -371,9 +371,13 @@ jobs:
     needs: build-docstrings
     runs-on: ubuntu-latest
     container:
-      image: mmorato/depthai-manylinux2014:0.1 # TODO(mmorato) temporary location, push to luxonis namespace
+      image: mmorato/depthai-manylinux2014:0.4 # TODO(mmorato) temporary location, push to luxonis namespace
       env:
         PLAT: manylinux2014_x86_64
+    env:
+      # workaround required for cache@v3, https://github.com/actions/cache/issues/1428
+      # to be removed when upgrading the manylinux image
+      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
     steps:
       - name: Cache .hunter folder
         uses: actions/cache@v3
@@ -438,12 +442,16 @@ jobs:
     runs-on: [self-hosted, linux, ARM64]
     timeout-minutes: 1440  # Set timeout to 24 hours
     container:
-      image: mmorato/depthai-manylinux2014_aarch64:0.1
+      image: mmorato/depthai-manylinux2014_aarch64:0.4
       env:
         PLAT: manylinux2014_aarch64
       # Mount local hunter cache directory, instead of transfering to Github and back
       volumes:
         - /.hunter:/github/home/.hunter
+    env:
+      # workaround required for cache@v3, https://github.com/actions/cache/issues/1428
+      # to be removed when upgrading the manylinux image
+      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
     steps:
       - uses: actions/checkout@v3
         with:
@@ -508,7 +516,7 @@ jobs:
         python-version: '3.8'
 
     - name: Check if version matches
-      run: python3.8 -c 'import find_version as v; exit(0) if "${{ github.ref_name }}" == f"v{v.get_package_version()}" else exit(1)'
+      run: cd bindings/pyyhon && python3.8 -c 'import find_version as v; exit(0) if "${{ github.ref_name }}" == f"v{v.get_package_version()}" else exit(1)'
 
   # Deploy to PyPi and Artifactory. Only when a commit is tagged
   deploy:
@@ -527,6 +535,7 @@ jobs:
         run: ls -lah
       - name: Run deploy to PyPi
         run: cd bindings/python && bash ./ci/upload-pypi.sh
+        if: ${{!contains(github.ref, '-') && !contains(github.ref, 'alpha') && !contains(github.ref, 'beta') && !contains(github.ref, 'rc')}}
         env:
           PYPI_SERVER: ${{ secrets.PYPI_SERVER }}
           PYPI_USER: ${{ secrets.PYPI_USER }}
@@ -538,21 +547,21 @@ jobs:
           ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
           ARTIFACTORY_PASS: ${{ secrets.ARTIFACTORY_PASS }}
 
-  notify_hil_workflow_linux_x86_64:
-    needs: [build-linux-x86_64]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Dispatch an action and get the run ID
-        uses: codex-/return-dispatch@v1
-        id: return_dispatch
-        with:
-          token: ${{ secrets.HIL_CORE_DISPATCH_TOKEN }} # Note this is NOT GITHUB_TOKEN but a PAT
-          ref: main # or refs/heads/target_branch
-          repo: depthai-core-hil-tests
-          owner: luxonis
-          workflow: regression_test.yml
-          workflow_inputs: '{"commit": "${{ github.ref }}", "parent_url": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"}'
-          workflow_timeout_seconds: 300 # was 120  Default: 300
+  # notify_hil_workflow_linux_x86_64:
+  #   needs: [build-linux-x86_64]
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Dispatch an action and get the run ID
+  #       uses: codex-/return-dispatch@v1
+  #       id: return_dispatch
+  #       with:
+  #         token: ${{ secrets.HIL_CORE_DISPATCH_TOKEN }} # Note this is NOT GITHUB_TOKEN but a PAT
+  #         ref: main # or refs/heads/target_branch
+  #         repo: depthai-core-hil-tests
+  #         owner: luxonis
+  #         workflow: regression_test.yml
+  #         workflow_inputs: '{"commit": "${{ github.ref }}", "parent_url": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"}'
+  #         workflow_timeout_seconds: 300 # was 120  Default: 300
 
-      - name: Release
-        run: echo "https://github.com/luxonis/depthai-core-hil-tests/actions/runs/${{steps.return_dispatch.outputs.run_id}}" >> $GITHUB_STEP_SUMMARY
+  #     - name: Release
+  #       run: echo "https://github.com/luxonis/depthai-core-hil-tests/actions/runs/${{steps.return_dispatch.outputs.run_id}}" >> $GITHUB_STEP_SUMMARY
