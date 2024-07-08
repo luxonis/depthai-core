@@ -828,7 +828,6 @@ if(DEPTHAI_RTABMAP_SUPPORT)
         add_library("${PROJECT_NAME}::${TARGET_RTABMAP_ALIAS}" ALIAS ${TARGET_RTABMAP_NAME})
         # Specifies name of generated IMPORTED target (set to alias)
         set_target_properties(${TARGET_RTABMAP_NAME} PROPERTIES EXPORT_NAME ${TARGET_RTABMAP_ALIAS})
-        target_link_options(${TARGET_RTABMAP_NAME} INTERFACE LINKER:--no-as-needed)
 
         # Add default flags
         add_default_flags(${TARGET_RTABMAP_NAME})

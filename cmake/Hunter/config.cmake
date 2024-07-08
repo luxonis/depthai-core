@@ -164,7 +164,7 @@ hunter_config(
         WITH_UDEV=OFF
         BUILD_EXAMPLES=OFF
         BUILD_TOOLS=OFF
-        BUILD_SHARED_LIBS=ON
+        BUILD_SHARED_LIBS=OFF
         WITH_QT=OFF
         WITH_ORB_OCTREE=OFF
         WITH_TORCH=OFF
@@ -244,12 +244,6 @@ hunter_config(
         BUILD_UTILS=OFF
 )
 
-hunter_config(
-    opengv
-    VERSION 1.0.0
-    URL "https://github.com/luxonis/opengv/archive/6d96ed4046dd36b250a20b08db46f508394b864d.tar.gz"
-    SHA1 "1ff8746b66d7211b35a36c7e1a511d7884d8da17"
-)
 
 hunter_config(
     basalt-headers
@@ -274,8 +268,8 @@ hunter_config(
 hunter_config(
     basalt
     VERSION 0.1.0
-    URL "https://github.com/luxonis/basalt/archive/4e5675b6985e0b4a74fe484608eabd0e4c7adbaf.tar.gz"
-    SHA1 "8fb6a78dd968be4ada37cfc5b15f815cb31739c8"
+    URL "https://github.com/luxonis/basalt/archive/3352562a0147d33280faf16b1b0478c09c623d28.tar.gz"
+    SHA1 "0ae6da745a1df2b0aae9cf626078393beacc710b"
     CMAKE_ARGS
         BASALT_SDK_ONLY=ON
 )
