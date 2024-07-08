@@ -272,7 +272,6 @@ hunter_config(
     SHA1 "c91e0db0a3888cc7aa091e13ec4c2064295b3964"
     CMAKE_ARGS
         BASALT_SDK_ONLY=ON
-        A=OFF
 )
 
 hunter_config(
