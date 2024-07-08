@@ -51,6 +51,12 @@ class ImageManip : public NodeCRTP<DeviceNode, ImageManip, ImageManipProperties>
      */
     Output out{true, *this, "out", Output::Type::MSender, {{DatatypeEnum::ImgFrame, true}}};
 
+    /**
+     * Passthrough message on which the calculation was performed.
+     * Suitable for when input queue is set to non-blocking behavior.
+     */
+    Output passthroughInputImage{true, *this, "passthroughInputImage", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+
     // Functions to set ImageManipConfig - deprecated
     [[deprecated("Use 'initialConfig.setCropRect()' instead")]] void setCropRect(float xmin, float ymin, float xmax, float ymax);
     [[deprecated("Use 'initialConfig.setCenterCrop()' instead")]] void setCenterCrop(float ratio, float whRatio = 1.0f);
