@@ -9,8 +9,8 @@
 
 // optional
 #ifdef DEPTHAI_HAVE_PCL_SUPPORT
-    #include <pcl/point_types.h>
     #include <pcl/point_cloud.h>
+    #include <pcl/point_types.h>
 #endif
 
 namespace dai {

@@ -1,7 +1,7 @@
 #pragma once
-#include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/common/Point3d.hpp"
 #include "depthai/common/Quaterniond.hpp"
+#include "depthai/pipeline/datatype/Buffer.hpp"
 
 #ifdef DEPTHAI_HAVE_RTABMAP_SUPPORT
     #include "rtabmap/core/Transform.h"

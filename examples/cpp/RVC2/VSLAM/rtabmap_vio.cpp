@@ -1,12 +1,10 @@
-#include "rerun_node.hpp"
-
 #include "depthai/depthai.hpp"
-
+#include "rerun_node.hpp"
 
 int main() {
     using namespace std;
     // ULogger::setType(ULogger::kTypeConsole);
-	// ULogger::setLevel(ULogger::kDebug);
+    // ULogger::setLevel(ULogger::kDebug);
     // Create pipeline
     dai::Pipeline pipeline;
     int fps = 30;
@@ -40,12 +38,12 @@ int main() {
     right->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
     right->setCamera("right");
     right->setFps(fps);
-	stereo->setExtendedDisparity(false);
+    stereo->setExtendedDisparity(false);
 
     stereo->setDefaultProfilePreset(dai::node::StereoDepth::PresetMode::HIGH_DENSITY);
     stereo->setLeftRightCheck(true);
-    stereo->setRectifyEdgeFillColor(0); // black, to better see the cutout
-	stereo->enableDistortionCorrection(true);
+    stereo->setRectifyEdgeFillColor(0);  // black, to better see the cutout
+    stereo->enableDistortionCorrection(true);
     stereo->initialConfig.setLeftRightCheckThreshold(10);
     stereo->setDepthAlign(dai::StereoDepthProperties::DepthAlign::RECTIFIED_LEFT);
 

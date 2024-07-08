@@ -12,7 +12,6 @@
 #include "depthai/pipeline/node/Sync.hpp"
 #include "depthai/utility/Pimpl.hpp"
 
-
 namespace dai {
 namespace node {
 

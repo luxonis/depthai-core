@@ -7,11 +7,11 @@
 namespace dai {
 
 std::vector<Point3f> PointCloudData::getPoints() {
-    if (isColor()) {
+    if(isColor()) {
         span<const Point3fRGB> pointData(reinterpret_cast<Point3fRGB*>(data->getData().data()), data->getData().size() / sizeof(Point3fRGB));
         std::vector<Point3fRGB> points(pointData.begin(), pointData.end());
         std::vector<Point3f> points3f;
-        for (const auto& p : points) {
+        for(const auto& p : points) {
             points3f.push_back({p.x, p.y, p.z});
         }
         return points3f;
@@ -25,7 +25,7 @@ std::vector<Point3f> PointCloudData::getPoints() {
 }
 
 std::vector<Point3fRGB> PointCloudData::getPointsRGB() {
-    if (!isColor()) {
+    if(!isColor()) {
         throw std::runtime_error("PointCloudData does not contain color data");
     }
     span<const Point3fRGB> pointData(reinterpret_cast<Point3fRGB*>(data->getData().data()), data->getData().size() / sizeof(Point3fRGB));

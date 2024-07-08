@@ -38,7 +38,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr dai::PointCloudData::getPclData() const {
 
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr dai::PointCloudData::getPclDataRGB() const {
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-    if (!isColor()) {
+    if(!isColor()) {
         throw std::runtime_error("PointCloudData does not contain color data");
     }
     auto data = getData();

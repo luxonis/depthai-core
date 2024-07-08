@@ -113,8 +113,7 @@ void RTABMapVIO::syncCB(std::shared_ptr<dai::ADatatype> data) {
                     }
                     gyroBuffer.erase(gyroBuffer.begin(), iterB);
                 }
-                sensorData.setIMU(
-                    rtabmap::IMU(gyro, cv::Mat::eye(3, 3, CV_64FC1), acc, cv::Mat::eye(3, 3, CV_64FC1), imuLocalTransform));
+                sensorData.setIMU(rtabmap::IMU(gyro, cv::Mat::eye(3, 3, CV_64FC1), acc, cv::Mat::eye(3, 3, CV_64FC1), imuLocalTransform));
             }
             rtabmap::OdometryInfo info;
             auto pose = odom->process(sensorData, &info);

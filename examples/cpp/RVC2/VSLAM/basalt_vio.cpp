@@ -1,6 +1,5 @@
-#include "rerun_node.hpp"
-
 #include "depthai/depthai.hpp"
+#include "rerun_node.hpp"
 
 int main() {
     using namespace std;

@@ -41,9 +41,9 @@
 #include "ThreadedHostNode.hpp"
 #include "node/host/HostNode.hpp"
 #ifdef DEPTHAI_HAVE_RTABMAP_SUPPORT
-#include "depthai/rtabmap/RTABMapSLAM.hpp"
-#include "depthai/rtabmap/RTABMapVIO.hpp"
+    #include "depthai/rtabmap/RTABMapSLAM.hpp"
+    #include "depthai/rtabmap/RTABMapVIO.hpp"
 #endif
 #ifdef DEPTHAI_HAVE_BASALT_SUPPORT
-#include "depthai/basalt/BasaltVIO.hpp"
+    #include "depthai/basalt/BasaltVIO.hpp"
 #endif
