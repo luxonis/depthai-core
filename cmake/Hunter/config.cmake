@@ -268,8 +268,8 @@ hunter_config(
 hunter_config(
     basalt
     VERSION 0.1.0
-    URL "https://github.com/luxonis/basalt/archive/3352562a0147d33280faf16b1b0478c09c623d28.tar.gz"
-    SHA1 "0ae6da745a1df2b0aae9cf626078393beacc710b"
+    URL "https://github.com/luxonis/basalt/archive/c7e3cdf82edc392d0693966f1a449e0203c53d1b.tar.gz"
+    SHA1 "11a856279192f71a821ec0302a4e633ed97fa625"
     CMAKE_ARGS
         BASALT_SDK_ONLY=ON
 )
