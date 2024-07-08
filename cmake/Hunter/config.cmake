@@ -164,7 +164,7 @@ hunter_config(
         WITH_UDEV=OFF
         BUILD_EXAMPLES=OFF
         BUILD_TOOLS=OFF
-        BUILD_SHARED_LIBS=OFF
+        BUILD_SHARED_LIBS=ON
         WITH_QT=OFF
         WITH_ORB_OCTREE=OFF
         WITH_TORCH=OFF

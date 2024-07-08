@@ -816,11 +816,19 @@ if(DEPTHAI_RTABMAP_SUPPORT)
 
     if(RTABMAP_SUPPORT_AVAILABLE)
 
+        if(NOT APPLE)
+            SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
+        endif()
         # Add depthai-rtabmap library and depthai::rtabmap alias
-        add_library(${TARGET_RTABMAP_NAME} src/rtabmap/CalibrationHandler.cpp src/rtabmap/TransformData.cpp  src/rtabmap/RTABMapVIO.cpp src/rtabmap/RTABMapSLAM.cpp )
+        add_library(${TARGET_RTABMAP_NAME} 
+        src/rtabmap/CalibrationHandler.cpp 
+        src/rtabmap/TransformData.cpp 
+        src/rtabmap/RTABMapVIO.cpp src/rtabmap/RTABMapSLAM.cpp
+        )
         add_library("${PROJECT_NAME}::${TARGET_RTABMAP_ALIAS}" ALIAS ${TARGET_RTABMAP_NAME})
         # Specifies name of generated IMPORTED target (set to alias)
         set_target_properties(${TARGET_RTABMAP_NAME} PROPERTIES EXPORT_NAME ${TARGET_RTABMAP_ALIAS})
+        target_link_options(${TARGET_RTABMAP_NAME} INTERFACE LINKER:--no-as-needed)
 
         # Add default flags
         add_default_flags(${TARGET_RTABMAP_NAME})
