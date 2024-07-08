@@ -97,9 +97,9 @@ static XLinkProtocol_t getDefaultProtocol() {
     } else if(protocolStr == "usb") {
         defaultProtocol = X_LINK_USB_VSC;
     } else if(protocolStr == "tcpip") {
-        defaultProtocol = X_LINK_TCP_IP_OR_LOCAL_SHDMEM;
-    } else if(protocolStr == "tcponly") {
         defaultProtocol = X_LINK_TCP_IP;
+    } else if(protocolStr == "tcpshd") {
+        defaultProtocol = X_LINK_TCP_IP_OR_LOCAL_SHDMEM;
     } else {
         logger::warn("Unsupported protocol specified");
     }

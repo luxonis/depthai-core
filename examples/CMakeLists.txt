@@ -22,7 +22,7 @@ set(test_poe_env
     # Misc
     "UBSAN_OPTIONS=halt_on_error=1"
     # DepthAI
-    "DEPTHAI_PROTOCOL=tcpip;DEPTHAI_SEARCH_TIMEOUT=15000"
+    "DEPTHAI_PROTOCOL=tcpshd;DEPTHAI_SEARCH_TIMEOUT=15000"
 )
 
 # Helper for adding new examples
