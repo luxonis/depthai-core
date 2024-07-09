@@ -34,6 +34,12 @@ void bind_detectionparser(pybind11::module& m, void* pCallstack){
     ;
     // Node
     detectionParser
+        .def("build", [](DetectionParser& self) {})
+        .def(py::init([]() {
+                auto self = getImplicitPipeline()->create<DetectionParser>(); 
+                self->build();
+                return self;
+            }))
         .def_readonly("input", &DetectionParser::input, DOC(dai, node, DetectionParser, input))
         .def_readonly("out", &DetectionParser::out, DOC(dai, node, DetectionParser, out))
         .def("setBlobPath", &DetectionParser::setBlobPath, py::arg("path"), DOC(dai, node, DetectionParser, setBlobPath))

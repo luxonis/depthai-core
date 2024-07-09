@@ -36,6 +36,12 @@ void bind_xlinkin(pybind11::module& m, void* pCallstack){
 
     // Node
     xlinkIn
+        .def("build", [](XLinkIn& self) {})
+        .def(py::init([]() {
+                auto self = getImplicitPipeline()->create<XLinkIn>(); 
+                self->build();
+                return self;
+            }))
         .def_readonly("out", &XLinkIn::out, DOC(dai, node, XLinkIn, out))
         .def("setStreamName", &XLinkIn::setStreamName, py::arg("streamName"), DOC(dai, node, XLinkIn, setStreamName))
         .def("setMaxDataSize", &XLinkIn::setMaxDataSize, py::arg("maxDataSize"), DOC(dai, node, XLinkIn, setMaxDataSize))

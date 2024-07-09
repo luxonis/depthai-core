@@ -38,7 +38,14 @@ void bind_neuralnetwork(pybind11::module& m, void* pCallstack){
         ;
 
     // Node
-    neuralNetwork.def_readonly("input", &NeuralNetwork::input, DOC(dai, node, NeuralNetwork, input))
+    neuralNetwork
+        .def("build", [](NeuralNetwork& self) {})
+        .def(py::init([]() {
+                auto self = getImplicitPipeline()->create<NeuralNetwork>(); 
+                self->build();
+                return self;
+            }))
+        .def_readonly("input", &NeuralNetwork::input, DOC(dai, node, NeuralNetwork, input))
         .def_readonly("out", &NeuralNetwork::out, DOC(dai, node, NeuralNetwork, out))
         .def_readonly("passthrough", &NeuralNetwork::passthrough, DOC(dai, node, NeuralNetwork, passthrough))
         .def("setBlobPath", &NeuralNetwork::setBlobPath, py::arg("path"), DOC(dai, node, NeuralNetwork, setBlobPath))

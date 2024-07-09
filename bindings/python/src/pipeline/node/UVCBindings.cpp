@@ -37,6 +37,12 @@ void bind_uvc(pybind11::module& m, void* pCallstack){
 
     // UVC node
     uvc
+        .def("build", [](UVC& self) {})
+        .def(py::init([]() {
+                auto self = getImplicitPipeline()->create<UVC>(); 
+                self->build();
+                return self;
+            }))
         .def_readonly("input", &UVC::input, DOC(dai, node, UVC, input))
         .def("setGpiosOnInit", &UVC::setGpiosOnInit, py::arg("list"), DOC(dai, node, UVC, setGpiosOnInit))
         .def("setGpiosOnStreamOn", &UVC::setGpiosOnStreamOn, py::arg("list"), DOC(dai, node, UVC, setGpiosOnStreamOn))

@@ -53,6 +53,12 @@ void bind_monocamera(pybind11::module& m, void* pCallstack){
 
     // Node
     monoCamera
+        .def("build", [](MonoCamera& self) {})
+        .def(py::init([]() {
+                auto self = getImplicitPipeline()->create<MonoCamera>(); 
+                self->build();
+                return self;
+            }))
         .def_readonly("inputControl", &MonoCamera::inputControl, DOC(dai, node, MonoCamera, inputControl))
         .def_readonly("out",  &MonoCamera::out, DOC(dai, node, MonoCamera, out))
         .def_readonly("raw",  &MonoCamera::raw, DOC(dai, node, MonoCamera, raw))

@@ -33,6 +33,9 @@ class ReplayVideo : public NodeCRTP<ThreadedHostNode, ReplayVideo> {
    public:
     constexpr static const char* NAME = "ReplayVideo";
 
+    std::shared_ptr<ReplayVideo> build() {
+        return std::static_pointer_cast<ReplayVideo>(shared_from_this());
+    }
     /**
      * Output for any type of messages to be transferred over XLink stream
      *
@@ -71,6 +74,9 @@ class ReplayMetadataOnly : public NodeCRTP<ThreadedHostNode, ReplayMetadataOnly>
    public:
     constexpr static const char* NAME = "ReplayMetadataOnly";
 
+    std::shared_ptr<ReplayMetadataOnly> build() {
+        return std::static_pointer_cast<ReplayMetadataOnly>(shared_from_this());
+    }
     /**
      * Output for any type of messages to be transferred over XLink stream
      *

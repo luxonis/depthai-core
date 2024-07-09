@@ -27,6 +27,9 @@ class RecordVideo : public NodeCRTP<ThreadedHostNode, RecordVideo> {
 
     constexpr static const char* NAME = "RecordVideo";
 
+    std::shared_ptr<RecordVideo> build() {
+        return std::static_pointer_cast<RecordVideo>(shared_from_this());
+    }
     /**
      * Input for ImgFrame or EncodedFrame messages to be recorded
      *
@@ -60,6 +63,9 @@ class RecordMetadataOnly : public NodeCRTP<ThreadedHostNode, RecordMetadataOnly>
 
     constexpr static const char* NAME = "RecordMetadataOnly";
 
+    std::shared_ptr<RecordMetadataOnly> build() {
+        return std::static_pointer_cast<RecordMetadataOnly>(shared_from_this());
+    }
     /**
      * Input IMU messages to be recorded (will support other types in the future)
      *

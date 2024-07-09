@@ -36,6 +36,12 @@ void bind_edgedetector(pybind11::module& m, void* pCallstack){
 
     // Node
     edgeDetector
+        .def("build", [](EdgeDetector& self) {})
+        .def(py::init([]() {
+                auto self = getImplicitPipeline()->create<EdgeDetector>(); 
+                self->build();
+                return self;
+            }))
         .def_readonly("initialConfig", &EdgeDetector::initialConfig, DOC(dai, node, EdgeDetector, initialConfig))
         .def_readonly("inputConfig", &EdgeDetector::inputConfig, DOC(dai, node, EdgeDetector, inputConfig))
         .def_readonly("inputImage", &EdgeDetector::inputImage, DOC(dai, node, EdgeDetector, inputImage))

@@ -37,6 +37,12 @@ void bind_featuretracker(pybind11::module& m, void* pCallstack){
 
     // FeatureTracker Node
     featureTracker
+        .def("build", [](FeatureTracker& self) {})
+        .def(py::init([]() {
+                auto self = getImplicitPipeline()->create<FeatureTracker>(); 
+                self->build();
+                return self;
+            }))
         .def_readonly("inputConfig", &FeatureTracker::inputConfig, DOC(dai, node, FeatureTracker, inputConfig))
         .def_readonly("inputImage", &FeatureTracker::inputImage, DOC(dai, node, FeatureTracker, inputImage))
         .def_readonly("outputFeatures", &FeatureTracker::outputFeatures, DOC(dai, node, FeatureTracker, outputFeatures))

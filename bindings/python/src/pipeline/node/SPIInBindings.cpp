@@ -38,6 +38,12 @@ void bind_spiin(pybind11::module& m, void* pCallstack){
 
     // Node
     spiIn
+        .def("build", [](SPIIn& self) {})
+        .def(py::init([]() {
+                auto self = getImplicitPipeline()->create<SPIIn>(); 
+                self->build();
+                return self;
+            }))
         .def_readonly("out", &SPIIn::out, DOC(dai, node, SPIIn, out))
         .def("setStreamName", &SPIIn::setStreamName, py::arg("name"), DOC(dai, node, SPIIn, setStreamName))
         .def("setBusId", &SPIIn::setBusId, py::arg("id"), DOC(dai, node, SPIIn, setBusId))

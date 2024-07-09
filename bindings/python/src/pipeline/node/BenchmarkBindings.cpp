@@ -30,9 +30,25 @@ void bind_benchmark(pybind11::module& m, void* pCallstack) {
     benchmarkOut.def_readonly("out", &BenchmarkOut::out, DOC(dai, node, BenchmarkOut, out))
         .def_readonly("input", &BenchmarkOut::input, DOC(dai, node, BenchmarkOut, input))
         .def("setNumMessagesToSend", &BenchmarkOut::setNumMessagesToSend, py::arg("num"), DOC(dai, node, BenchmarkOut, setNumMessagesToSend))
-        .def("setFps", &BenchmarkOut::setFps, py::arg("fps"), DOC(dai, node, BenchmarkOut, setFps));
-    benchmarkIn.def_readonly("input", &BenchmarkIn::input, DOC(dai, node, BenchmarkIn, input))
+        .def("setFps", &BenchmarkOut::setFps, py::arg("fps"), DOC(dai, node, BenchmarkOut, setFps))
+        .def("build", [](BenchmarkOut& self) {})
+        .def(py::init([]() {
+                auto self = getImplicitPipeline()->create<BenchmarkOut>(); 
+                self->build();
+                return self;
+            }))
+        ;
+
+    benchmarkIn
+        .def("build", [](BenchmarkIn& self) {})
+        .def(py::init([]() {
+                auto self = getImplicitPipeline()->create<BenchmarkIn>(); 
+                self->build();
+                return self;
+            }))
+        .def_readonly("input", &BenchmarkIn::input, DOC(dai, node, BenchmarkIn, input))
         .def_readonly("report", &BenchmarkIn::report, DOC(dai, node, BenchmarkIn, report))
         .def_readonly("passthrough", &BenchmarkIn::passthrough, DOC(dai, node, BenchmarkIn, passthrough))
-        .def("setNumMessagesToGet", &BenchmarkIn::setNumMessagesToGet, py::arg("num"), DOC(dai, node, BenchmarkIn, setNumMessagesToGet));
+        .def("setNumMessagesToGet", &BenchmarkIn::setNumMessagesToGet, py::arg("num"), DOC(dai, node, BenchmarkIn, setNumMessagesToGet))
+        ;
 }

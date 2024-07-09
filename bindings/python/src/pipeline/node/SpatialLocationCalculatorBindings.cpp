@@ -35,6 +35,12 @@ void bind_spatiallocationcalculator(pybind11::module& m, void* pCallstack){
 
     // Node
     spatialLocationCalculator
+        .def("build", [](SpatialLocationCalculator& self) {})
+        .def(py::init([]() {
+                auto self = getImplicitPipeline()->create<SpatialLocationCalculator>(); 
+                self->build();
+                return self;
+            }))
         .def_readonly("inputConfig", &SpatialLocationCalculator::inputConfig, DOC(dai, node, SpatialLocationCalculator, inputConfig))
         .def_readonly("inputDepth", &SpatialLocationCalculator::inputDepth, DOC(dai, node, SpatialLocationCalculator, inputDepth))
         .def_readonly("out", &SpatialLocationCalculator::out, DOC(dai, node, SpatialLocationCalculator, out))

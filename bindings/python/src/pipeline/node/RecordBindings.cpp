@@ -1,6 +1,7 @@
 #include <pybind11/stl/filesystem.h>
 
 #include "Common.hpp"
+#include "NodeBindings.hpp"
 #include "depthai/pipeline/node/host/Record.hpp"
 
 void bind_record(pybind11::module& m, void* pCallstack){
@@ -23,7 +24,14 @@ void bind_record(pybind11::module& m, void* pCallstack){
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
     // Node
-    recordVideo.def_readonly("input", &RecordVideo::input, DOC(dai, node, RecordVideo, input))
+    recordVideo
+        .def("build", [](RecordVideo& self) {})
+        .def(py::init([]() {
+                auto self = getImplicitPipeline()->create<RecordVideo>(); 
+                self->build();
+                return self;
+            }))
+        .def_readonly("input", &RecordVideo::input, DOC(dai, node, RecordVideo, input))
         .def("setRecordMetadataFile", &RecordVideo::setRecordMetadataFile, py::arg("recordFile"), DOC(dai, node, RecordVideo, setRecordMetadataFile))
         .def("setRecordVideoFile", &RecordVideo::setRecordVideoFile, py::arg("recordFile"), DOC(dai, node, RecordVideo, setRecordVideoFile))
         .def("setCompressionLevel", &RecordVideo::setCompressionLevel, py::arg("compressionLevel"), DOC(dai, node, RecordVideo, setCompressionLevel))

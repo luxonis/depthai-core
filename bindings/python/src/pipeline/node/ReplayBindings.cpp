@@ -1,6 +1,7 @@
 #include <pybind11/stl/filesystem.h>
 
 #include "Common.hpp"
+#include "NodeBindings.hpp"
 #include "depthai/pipeline/node/host/Replay.hpp"
 
 void bind_replay(pybind11::module& m, void* pCallstack){
@@ -23,7 +24,14 @@ void bind_replay(pybind11::module& m, void* pCallstack){
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
     // Node
-    replayVideo.def_readonly("out", &ReplayVideo::out, DOC(dai, node, ReplayVideo, out))
+    replayVideo
+        .def("build", [](ReplayVideo& self) {})
+        .def(py::init([]() {
+                auto self = getImplicitPipeline()->create<ReplayVideo>(); 
+                self->build();
+                return self;
+            }))
+        .def_readonly("out", &ReplayVideo::out, DOC(dai, node, ReplayVideo, out))
         .def("setReplayMetadataFile", &ReplayVideo::setReplayMetadataFile, py::arg("replayFile"), DOC(dai, node, ReplayVideo, setReplayMetadataFile))
         .def("setReplayVideoFile", &ReplayVideo::setReplayVideoFile, py::arg("replayVideoFile"), DOC(dai, node, ReplayVideo, setReplayVideoFile))
         .def("setOutFrameType", &ReplayVideo::setOutFrameType, py::arg("frameType"), DOC(dai, node, ReplayVideo, setOutFrameType))

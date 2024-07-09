@@ -35,6 +35,12 @@ void bind_systemlogger(pybind11::module& m, void* pCallstack){
 
     // Node
     systemLogger
+        .def("build", [](SystemLogger& self) {})
+        .def(py::init([]() {
+                auto self = getImplicitPipeline()->create<SystemLogger>(); 
+                self->build();
+                return self;
+            }))
         .def_readonly("out", &SystemLogger::out, DOC(dai, node, SystemLogger, out))
         .def("setRate", &SystemLogger::setRate, py::arg("hz"), DOC(dai, node, SystemLogger, setRate))
         .def("getRate", &SystemLogger::getRate, DOC(dai, node, SystemLogger, getRate))

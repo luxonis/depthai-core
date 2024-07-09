@@ -36,6 +36,12 @@ void bind_xlinkout(pybind11::module& m, void* pCallstack){
 
     // Node
     xlinkOut
+        .def("build", [](XLinkOut& self) {})
+        .def(py::init([]() {
+                auto self = getImplicitPipeline()->create<XLinkOut>(); 
+                self->build();
+                return self;
+            }))
         .def_readonly("input", &XLinkOut::input, DOC(dai, node, XLinkOut, input))
         .def("setStreamName", &XLinkOut::setStreamName, py::arg("streamName"), DOC(dai, node, XLinkOut, setStreamName))
         .def("setFpsLimit", &XLinkOut::setFpsLimit, py::arg("fpsLimit"), DOC(dai, node, XLinkOut, setFpsLimit))

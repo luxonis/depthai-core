@@ -35,7 +35,14 @@ void bind_sync(pybind11::module& m, void* pCallstack){
         ;
 
     // Node
-    sync.def_readonly("out", &Sync::out, DOC(dai, node, Sync, out))
+    sync
+        .def("build", [](Sync& self) {})
+        .def(py::init([]() {
+                auto self = getImplicitPipeline()->create<Sync>(); 
+                self->build();
+                return self;
+            }))
+        .def_readonly("out", &Sync::out, DOC(dai, node, Sync, out))
         .def_readonly("inputs", &Sync::inputs, DOC(dai, node, Sync, inputs))
         .def("setSyncThreshold", &Sync::setSyncThreshold, py::arg("syncThreshold"), DOC(dai, node, Sync, setSyncThreshold))
         .def("setSyncAttempts", &Sync::setSyncAttempts, py::arg("maxDataSize"), DOC(dai, node, Sync, setSyncAttempts))

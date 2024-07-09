@@ -31,6 +31,12 @@ void bind_warp(pybind11::module& m, void* pCallstack){
 
     // ImageManip Node
     warp
+        .def("build", [](Warp& self) {})
+        .def(py::init([]() {
+                auto self = getImplicitPipeline()->create<Warp>(); 
+                self->build();
+                return self;
+            }))
         // .def_readonly("inputConfig", &Warp::inputConfig, DOC(dai, node, Warp, inputConfig))
         .def_readonly("inputImage", &Warp::inputImage, DOC(dai, node, Warp, inputImage))
         .def_readonly("out", &Warp::out, DOC(dai, node, Warp, out))

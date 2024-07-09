@@ -35,6 +35,12 @@ void bind_pointcloud(pybind11::module& m, void* pCallstack){
 
     // Node
     node
+        .def("build", [](PointCloud& self) {})
+        .def(py::init([]() {
+                auto self = getImplicitPipeline()->create<PointCloud>(); 
+                self->build();
+                return self;
+            }))
         .def_readonly("inputConfig", &PointCloud::inputConfig, DOC(dai, node, PointCloud, inputConfig), DOC(dai, node, PointCloud, inputConfig))
         .def_readonly("inputDepth", &PointCloud::inputDepth, DOC(dai, node, PointCloud, inputDepth), DOC(dai, node, PointCloud, inputDepth))
         .def_readonly("outputPointCloud", &PointCloud::outputPointCloud, DOC(dai, node, PointCloud, outputPointCloud), DOC(dai, node, PointCloud, outputPointCloud))

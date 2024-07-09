@@ -36,6 +36,12 @@ void bind_spiout(pybind11::module& m, void* pCallstack){
 
     // Node
     spiOut
+        .def("build", [](SPIOut& self) {})
+        .def(py::init([]() {
+                auto self = getImplicitPipeline()->create<SPIOut>(); 
+                self->build();
+                return self;
+            }))
         .def_readonly("input", &SPIOut::input, DOC(dai, node, SPIOut, input))
         .def("setStreamName", &SPIOut::setStreamName, py::arg("name"), DOC(dai, node, SPIOut, setStreamName))
         .def("setBusId", &SPIOut::setBusId, py::arg("id"), DOC(dai, node, SPIOut, setBusId))

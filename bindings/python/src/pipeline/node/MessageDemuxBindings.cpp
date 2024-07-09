@@ -33,6 +33,12 @@ void bind_messagedemux(pybind11::module &m, void *pCallstack) {
 
   // Node
   messageDemux
+      .def("build", [](MessageDemux& self) {})
+      .def(py::init([]() {
+                auto self = getImplicitPipeline()->create<MessageDemux>(); 
+                self->build();
+                return self;
+            }))
       .def_readonly("outputs", &MessageDemux::outputs,
                     DOC(dai, node, MessageDemux, outputs))
       .def_readonly("input", &MessageDemux::input,

@@ -67,6 +67,12 @@ void bind_imu(pybind11::module& m, void* pCallstack){
 
     // Node
     imu
+        .def("build", [](IMU& self) {})
+        .def(py::init([]() {
+                auto self = getImplicitPipeline()->create<IMU>(); 
+                self->build();
+                return self;
+            }))
         .def_readonly("out", &IMU::out, DOC(dai, node, IMU, out))
         .def("enableIMUSensor", static_cast<void(IMU::*)(IMUSensorConfig imuSensor)>(&IMU::enableIMUSensor), py::arg("sensorConfig"), DOC(dai, node, IMU, enableIMUSensor))
         .def("enableIMUSensor", static_cast<void(IMU::*)(const std::vector<IMUSensorConfig>& imuSensors)>(&IMU::enableIMUSensor), py::arg("sensorConfigs"), DOC(dai, node, IMU, enableIMUSensor, 2))

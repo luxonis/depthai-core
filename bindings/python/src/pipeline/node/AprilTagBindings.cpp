@@ -34,6 +34,12 @@ void bind_apriltag(pybind11::module& m, void* pCallstack){
     ;
     // Node
     aprilTag
+        .def("build", [](AprilTag& self) {})
+        .def(py::init([]() {
+                auto self = getImplicitPipeline()->create<AprilTag>(); 
+                self->build();
+                return self;
+            }))
         .def_readonly("inputConfig", &AprilTag::inputConfig, DOC(dai, node, AprilTag, inputConfig))
         .def_readonly("inputImage", &AprilTag::inputImage, DOC(dai, node, AprilTag, inputImage))
         .def_readonly("out", &AprilTag::out, DOC(dai, node, AprilTag, out))

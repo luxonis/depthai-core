@@ -52,6 +52,12 @@ void bind_objecttracker(pybind11::module& m, void* pCallstack){
 
     // Node
     objectTracker
+        .def("build", [](ObjectTracker& self) {})
+        .def(py::init([]() {
+                auto self = getImplicitPipeline()->create<ObjectTracker>(); 
+                self->build();
+                return self;
+            }))
         .def_readonly("inputTrackerFrame", &ObjectTracker::inputTrackerFrame, DOC(dai, node, ObjectTracker, inputTrackerFrame))
         .def_readonly("inputDetectionFrame", &ObjectTracker::inputDetectionFrame, DOC(dai, node, ObjectTracker, inputDetectionFrame))
         .def_readonly("inputDetections", &ObjectTracker::inputDetections, DOC(dai, node, ObjectTracker, inputDetections))

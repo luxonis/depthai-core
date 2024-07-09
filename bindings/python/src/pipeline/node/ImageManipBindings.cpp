@@ -28,6 +28,12 @@ void bind_imagemanip(pybind11::module& m, void* pCallstack){
 
     // ImageManip Node
     imageManip
+        .def("build", [](ImageManip& self) {})
+        .def(py::init([]() {
+                auto self = getImplicitPipeline()->create<ImageManip>(); 
+                self->build();
+                return self;
+            }))
         .def_readonly("inputConfig", &ImageManip::inputConfig, DOC(dai, node, ImageManip, inputConfig))
         .def_readonly("inputImage", &ImageManip::inputImage, DOC(dai, node, ImageManip, inputImage))
         .def_readonly("out", &ImageManip::out, DOC(dai, node, ImageManip, out))

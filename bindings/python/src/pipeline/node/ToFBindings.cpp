@@ -35,6 +35,12 @@ void bind_tof(pybind11::module& m, void* pCallstack){
 
     // Node
     tof
+        .def("build", [](ToF& self) {})
+        .def(py::init([]() {
+                auto self = getImplicitPipeline()->create<ToF>(); 
+                self->build();
+                return self;
+            }))
         .def_readonly("inputConfig", &ToF::inputConfig, DOC(dai, node, ToF, inputConfig), DOC(dai, node, ToF, inputConfig))
         .def_readonly("input", &ToF::input, DOC(dai, node, ToF, input), DOC(dai, node, ToF, input))
         .def_readonly("depth", &ToF::depth, DOC(dai, node, ToF, depth), DOC(dai, node, ToF, depth))

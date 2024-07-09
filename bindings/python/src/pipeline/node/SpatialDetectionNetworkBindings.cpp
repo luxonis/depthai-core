@@ -40,6 +40,11 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack){
     // Node
     spatialDetectionNetwork
         // Copied from NN node
+        .def(py::init([]() {
+                auto self = getImplicitPipeline()->create<SpatialDetectionNetwork>(); 
+                self->build();
+                return self;
+            }))
         .def("build", &SpatialDetectionNetwork::build, DOC(dai, node, SpatialDetectionNetwork, build))
         .def("setBlobPath", &SpatialDetectionNetwork::setBlobPath, py::arg("path"), DOC(dai, node, SpatialDetectionNetwork, setBlobPath))
         .def("setNumPoolFrames", &SpatialDetectionNetwork::setNumPoolFrames, py::arg("numFrames"), DOC(dai, node, SpatialDetectionNetwork, setNumPoolFrames))
@@ -132,9 +137,23 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack){
     daiNodeModule.attr("SpatialDetectionNetwork").attr("Properties") = spatialDetectionNetworkProperties;
 
     // // MobileNetSpatialDetectionNetwork
-    mobileNetSpatialDetectionNetwork.def("build", &MobileNetSpatialDetectionNetwork::build, DOC(dai, node, MobileNetSpatialDetectionNetwork, build));
+    mobileNetSpatialDetectionNetwork
+        .def(py::init([]() {
+                auto self = getImplicitPipeline()->create<MobileNetSpatialDetectionNetwork>(); 
+                self->build();
+                return self;
+            }))
+        .def("build", &MobileNetSpatialDetectionNetwork::build, DOC(dai, node, MobileNetSpatialDetectionNetwork, build))
+        ;
+
     // YoloSpatialDetectionNetwork
-    yoloSpatialDetectionNetwork.def("build", &YoloSpatialDetectionNetwork::build, DOC(dai, node, YoloSpatialDetectionNetwork, build))
+    yoloSpatialDetectionNetwork
+        .def(py::init([]() {
+                auto self = getImplicitPipeline()->create<YoloSpatialDetectionNetwork>(); 
+                self->build();
+                return self;
+            }))
+        .def("build", &YoloSpatialDetectionNetwork::build, DOC(dai, node, YoloSpatialDetectionNetwork, build))
         .def("setNumClasses", &YoloSpatialDetectionNetwork::setNumClasses, py::arg("numClasses"), DOC(dai, node, YoloSpatialDetectionNetwork, setNumClasses))
         .def("setCoordinateSize",
              &YoloSpatialDetectionNetwork::setCoordinateSize,

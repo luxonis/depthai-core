@@ -36,6 +36,12 @@ void bind_script(pybind11::module& m, void* pCallstack){
 
     // Node
     script
+        .def("build", [](Script& self) {})
+        .def(py::init([]() {
+                auto self = getImplicitPipeline()->create<Script>(); 
+                self->build();
+                return self;
+            }))
         .def_readonly("inputs", &Script::inputs)
         .def_readonly("outputs", &Script::outputs)
         .def("setScriptPath", &Script::setScriptPath, DOC(dai, node, Script, setScriptPath))
