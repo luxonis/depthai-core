@@ -205,7 +205,7 @@ class Camera : public NodeCRTP<Node, Camera, CameraProperties> {
      * Note that camera controls will be processed at this rate. E.g. if camera is running at 30 fps, and camera control is sent at every frame,
      * but 3A fps is set to 15, the camera control messages will be processed at 15 fps rate, which will lead to queueing.
      */
-    void setIsp3aFps(int isp3aFps);
+    [[deprecated("setIsp3aFps is unstable")]] void setIsp3aFps(int isp3aFps);
 
     /**
      * Get rate at which camera should produce frames

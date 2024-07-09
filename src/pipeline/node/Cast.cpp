@@ -1,7 +1,5 @@
 #include "depthai/pipeline/node/Cast.hpp"
 
-#include "spdlog/fmt/fmt.h"
-
 namespace dai {
 namespace node {
 
