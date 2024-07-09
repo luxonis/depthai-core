@@ -1098,15 +1098,7 @@ if(DEPTHAI_INSTALL)
     )
 
 endif()
-set(CMAKE_DEBUG_TARGET_PROPERTIES
-INCLUDE_DIRECTORIES
-COMPILE_DEFINITIONS
-POSITION_INDEPENDENT_CODE
-LINK_OPTIONS
-COMPILE_OPTIONS
-LINK_DIRECTORIES
-COMPILE_FEATURES
-)
+
 ##############################
 # Integration settings export
 ##############################
