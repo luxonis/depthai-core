@@ -21,10 +21,15 @@ void bind_camera(pybind11::module& m, void* pCallstack) {
     // Actual bindings
     camera.def_readonly("inputControl", &Camera::inputControl, DOC(dai, node, Camera, inputControl))
         .def_readonly("initialControl", &Camera::initialControl, DOC(dai, node, Camera, initialControl))
-#define CAMERA_ARGS CameraBoardSocket boardSocket
-#define CAMERA_PYARGS "boardSocket"_a = CameraBoardSocket::AUTO
-    // TODO (Zimamazim) Automatically fetch default arguments to avoid duplicity
-#define CAMERA_CODE(OP) self OP setBoardSocket(boardSocket);
+#define CAMERA_ARGS \
+        CameraBoardSocket boardSocket, \
+        std::string camera
+#define CAMERA_PYARGS \
+        "boardSocket"_a = CameraProperties().boardSocket, \
+        "camera"_a = CameraProperties().cameraName
+#define CAMERA_CODE(OP)\
+        self OP setBoardSocket(boardSocket); \
+        self OP setCamera(camera);
         .def(
             "build",
             [](Camera& self, CAMERA_ARGS) {
