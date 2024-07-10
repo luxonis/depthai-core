@@ -5,7 +5,6 @@
 #include <pybind11/stl_bind.h>
 
 #include "depthai/nn_archive/NNArchive.hpp"
-#include "depthai/nn_archive/NNArchiveBlob.hpp"
 #include "depthai/nn_archive/NNArchiveConfig.hpp"
 #include "depthai/nn_archive/NNArchiveEntry.hpp"
 
@@ -31,9 +30,8 @@ void NNArchiveBindings::bind(pybind11::module& m, void* pCallstack) {
 
     // NNArchive
     py::class_<NNArchive> nnArchive(m, "NNArchive", DOC(dai, NNArchive));
-
-    // NNArchiveBlob
-    py::class_<NNArchiveBlob> nnArchiveBlob(m, "NNArchiveBlob", DOC(dai, NNArchiveBlob));
+    py::class_<NNArchiveOptions> nnArchiveOptions(m, "NNArchiveOptions", DOC(dai, NNArchiveOptions));
+    py::enum_<NNArchiveType> nnArchiveType(m, "NNArchiveType", DOC(dai, NNArchiveType));
 
     // NNArchiveConfig
     py::class_<NNArchiveConfig> nnArchiveConfig(m, "NNArchiveConfig", DOC(dai, NNArchiveConfig));
@@ -73,49 +71,29 @@ void NNArchiveBindings::bind(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
 
     // Bind NNArchive
-    nnArchive.def(py::init<const dai::Path&, NNArchiveEntry::Compression>(),
+    nnArchive.def(py::init([](const std::string& path, NNArchiveEntry::Compression compression, int numShaves) {
+                      NNArchiveOptions options;
+                      options.compression = compression;
+                      options.numShaves(numShaves);
+                      return NNArchive(path, options);
+                  }),
                   py::arg("path"),
                   py::arg("compression") = NNArchiveEntry::Compression::AUTO,
+                  py::arg("numShaves") = -1,
                   DOC(dai, NNArchive, NNArchive));
-    nnArchive.def(py::init<const std::vector<uint8_t>&, NNArchiveEntry::Compression>(),
-                  py::arg("data"),
-                  py::arg("compression") = NNArchiveEntry::Compression::AUTO,
-                  DOC(dai, NNArchive, NNArchive));
-    nnArchive.def(py::init([](const std::function<int()>& openCallback,
-                              const std::function<std::vector<uint8_t>()>& readCallback,
-                              const std::function<int64_t(int64_t, NNArchiveEntry::Seek)>& seekCallback,
-                              const std::function<int64_t(int64_t)>& skipCallback,
-                              const std::function<int()>& closeCallback,
-                              NNArchiveEntry::Compression compression) {
-        auto readCallbackWrapper = [readCallback]() { return std::make_shared<std::vector<uint8_t>>(readCallback()); };
-        return NNArchive(openCallback, readCallbackWrapper, seekCallback, skipCallback, closeCallback, compression);
-    }));
-    nnArchive.def(py::init<const NNArchiveConfig&, const NNArchiveBlob&>(), py::arg("config"), py::arg("blob"), DOC(dai, NNArchive, NNArchive));
+    nnArchive.def(py::init<const std::string&, NNArchiveOptions>(), py::arg("path"), py::arg("options") = NNArchiveOptions(), DOC(dai, NNArchive, NNArchive));
     nnArchive.def("getConfig", &NNArchive::getConfig, DOC(dai, NNArchive, getConfig));
     nnArchive.def("getBlob", &NNArchive::getBlob, DOC(dai, NNArchive, getBlob));
 
-    // Bind NNArchiveBlob
-    nnArchiveBlob.def(py::init<const NNArchiveConfig&, const std::vector<uint8_t>&, NNArchiveEntry::Compression>(),
-                      py::arg("config"),
-                      py::arg("data"),
-                      py::arg("compression") = NNArchiveEntry::Compression::AUTO,
-                      DOC(dai, NNArchiveBlob, NNArchiveBlob));
-    nnArchiveBlob.def(py::init<const NNArchiveConfig&, const dai::Path&, NNArchiveEntry::Compression>(),
-                      py::arg("config"),
-                      py::arg("path"),
-                      py::arg("compression") = NNArchiveEntry::Compression::AUTO,
-                      DOC(dai, NNArchiveBlob, NNArchiveBlob));
-    nnArchiveBlob.def(py::init([](const NNArchiveConfig& config,
-                                  const std::function<int()>& openCallback,
-                                  const std::function<std::vector<uint8_t>()>& readCallback,
-                                  const std::function<int64_t(int64_t, NNArchiveEntry::Seek)>& seekCallback,
-                                  const std::function<int64_t(int64_t)>& skipCallback,
-                                  const std::function<int()>& closeCallback,
-                                  NNArchiveEntry::Compression compression) {
-        auto readCallbackWrapper = [readCallback]() { return std::make_shared<std::vector<uint8_t>>(readCallback()); };
-        return NNArchiveBlob(config, openCallback, readCallbackWrapper, seekCallback, skipCallback, closeCallback, compression);
-    }));
-    nnArchiveBlob.def("getOpenVINOBlob", &NNArchiveBlob::getOpenVINOBlob, DOC(dai, NNArchiveBlob, getOpenVINOBlob));
+    // Bind NNArchive options
+    nnArchiveOptions.def(py::init<>(), DOC(dai, NNArchiveOptions, NNArchiveOptions));
+    nnArchiveOptions.def_readwrite("compression", &NNArchiveOptions::compression, DOC(dai, NNArchiveOptions, compression));
+    nnArchiveOptions.def_property(
+        "numShaves", [](const NNArchiveOptions& opt) { return opt.numShaves(); }, [](NNArchiveOptions& opt, int numShaves) { opt.numShaves(numShaves); });
+
+    // Bind NNArchiveType
+    nnArchiveType.value("BLOB", NNArchiveType::BLOB);
+    nnArchiveType.value("SUPERBLOB", NNArchiveType::SUPERBLOB);
 
     // Bind NNArchiveConfig
     nnArchiveConfig.def(py::init<const dai::Path&, NNArchiveEntry::Compression>(),
