@@ -25,10 +25,7 @@ BasaltVIO::~BasaltVIO() = default;
 std::shared_ptr<BasaltVIO> BasaltVIO::build() {
     sync->out.link(inSync);
     sync->setRunOnHost(false);
-    inSync.setBlocking(false);
     inSync.addCallback(std::bind(&BasaltVIO::stereoCB, this, std::placeholders::_1));
-    imu.setMaxSize(0);
-    imu.setBlocking(false);
     imu.addCallback(std::bind(&BasaltVIO::imuCB, this, std::placeholders::_1));
 
     basalt::PoseState<double>::SE3 initTrans(Eigen::Quaterniond::Identity(), Eigen::Vector3d(0, 0, 0));

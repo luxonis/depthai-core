@@ -43,16 +43,16 @@ class BasaltVIO : public NodeCRTP<ThreadedHostNode, BasaltVIO> {
     /**
      * Input IMU data.
      */
-    Input imu{*this, {.name = "inIMU", .types = {{DatatypeEnum::IMUData, true}}}};
+    Input imu{*this, {"inIMU", DEFAULT_GROUP, false, 0, {{DatatypeEnum::IMUData, true}}}};
 
     /**
      * Output transform data.
      */
-    Output transform{*this, {.name = "transform", .types = {{DatatypeEnum::TransformData, true}}}};
+    Output transform{*this, {"transform", DEFAULT_GROUP, {{DatatypeEnum::TransformData, true}}}};
     /**
      * Output passthrough of left image.
      */
-    Output passthrough{*this, {.name = "imgPassthrough", .types = {{DatatypeEnum::ImgFrame, true}}}};
+    Output passthrough{*this, {"imgPassthrough", DEFAULT_GROUP, {{DatatypeEnum::ImgFrame, true}}}};
 
     /**
      * VIO configuration file.
@@ -80,7 +80,7 @@ class BasaltVIO : public NodeCRTP<ThreadedHostNode, BasaltVIO> {
     void stereoCB(std::shared_ptr<ADatatype> in);
     void imuCB(std::shared_ptr<ADatatype> imuData);
     void stop() override;
-    Input inSync{*this, {.name = "inSync", .types = {{DatatypeEnum::MessageGroup, true}}}};
+    Input inSync{*this, {"inSync", DEFAULT_GROUP, false, 0, {{DatatypeEnum::MessageGroup, true}}}};
     std::shared_ptr<basalt::Calibration<double>> calib;
 
     basalt::OpticalFlowBase::Ptr optFlowPtr;
