@@ -54,16 +54,17 @@ class SharedMemory : public Memory {
 	mapFd();
     }
 
-    /* TODO: memfd_create() those?
-    SharedMemory() {
+    SharedMemory(const char *name) {
+	fd = memfd_create(name, 0);
 	mapFd();
     }
 
-    SharedMemory(std::size_t size) {
+    SharedMemory(const char *name, std::size_t size) {
+	fd = memfd_create(name, 0);
+
 	setSize(size);
 	mapFd();
     }
-    */
 
     ~SharedMemory() {
 	unmapFd();
