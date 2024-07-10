@@ -17,12 +17,6 @@ class ThreadedNode : public Node {
     AtomicBool running{false};
     static inline std::shared_ptr<spdlog::details::thread_pool> threadPool = std::make_shared<spdlog::details::thread_pool>(8192, 1);
 
-    // Keep track of created inputs and outputs - we need to make sure they are kept
-    // alive so that `getInputRefs` and `getOutputRefs` don't use dangling Input/Output
-    // pointers
-    std::vector<std::shared_ptr<Input>> createdInputs;
-    std::vector<std::shared_ptr<Output>> createdOutputs;
-
    public:
     using Node::Node;
     ThreadedNode();

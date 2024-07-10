@@ -422,7 +422,7 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
             py::arg("queueSize") = Node::InputDescription{}.queueSize,
             py::arg("types") = Node::InputDescription{}.types,
             py::arg("waitForMessage") = Node::InputDescription{}.waitForMessage,
-            py::keep_alive<2, 1>())
+            py::keep_alive<1, 0>())
         .def(
             "createOutput",
             [](ThreadedNode& node, std::string name, std::string group, std::vector<Node::DatatypeHierarchy> types) {
@@ -431,5 +431,5 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
             py::arg("name") = Node::OutputDescription{}.name,
             py::arg("group") = Node::OutputDescription{}.group,
             py::arg("possibleDatatypes") = Node::OutputDescription{}.types,
-            py::keep_alive<2, 1>());
+            py::keep_alive<1, 0>());
 }
