@@ -25,20 +25,27 @@ std::reference_wrapper<const OpenVINO::Blob> DetectionParser::setNNArchive(const
                 "There should be exactly one head per model in the NN Archive config file define  d. Found {} heads.",
                 (*model.heads).size());
     const auto head = (*model.heads)[0];
-    if(head.family == "ObjectDetectionYOLO") {
-        properties.parser.nnFamily = DetectionNetworkType::YOLO;
+
+    // TODO: (lnotspotl) - NN model family not present anymore. Should we use model.metadata.name instead?
+    // if(head.family == "ObjectDetectionYOLO") {
+    //     properties.parser.nnFamily = DetectionNetworkType::YOLO;
+    // }
+
+    if(head.metadata.classes) {
+        setClasses(*head.metadata.classes);
     }
-    setClasses(head.classes);
-    setNumClasses(static_cast<int>(head.nClasses));
-    if(head.iouThreshold) {
-        properties.parser.iouThreshold = static_cast<float>(*head.iouThreshold);
+    if(head.metadata.nClasses) {
+        setNumClasses(static_cast<int>(*head.metadata.nClasses));
     }
-    if(head.confThreshold) {
-        setConfidenceThreshold(static_cast<float>(*head.confThreshold));
+    if(head.metadata.iouThreshold) {
+        properties.parser.iouThreshold = static_cast<float>(*head.metadata.iouThreshold);
+    }
+    if(head.metadata.confThreshold) {
+        setConfidenceThreshold(static_cast<float>(*head.metadata.confThreshold));
     }
     setCoordinateSize(4);
-    if(head.anchors) {
-        const auto anchorsIn = *head.anchors;
+    if(head.metadata.anchors) {
+        const auto anchorsIn = *head.metadata.anchors;
         std::vector<std::vector<std::vector<float>>> anchorsOut(anchorsIn.size());
         for(size_t layer = 0; layer < anchorsOut.size(); ++layer) {
             std::vector<std::vector<float>> layerOut(anchorsIn[layer].size());

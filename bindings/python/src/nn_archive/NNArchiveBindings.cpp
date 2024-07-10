@@ -8,15 +8,19 @@
 #include "depthai/nn_archive/NNArchiveBlob.hpp"
 #include "depthai/nn_archive/NNArchiveConfig.hpp"
 #include "depthai/nn_archive/NNArchiveEntry.hpp"
+
+// v1 nn_archive bindings
 #include "depthai/nn_archive/v1/Config.hpp"
 #include "depthai/nn_archive/v1/ConfigVersion.hpp"
 #include "depthai/nn_archive/v1/DataType.hpp"
+#include "depthai/nn_archive/v1/Head.hpp"
+#include "depthai/nn_archive/v1/Input.hpp"
 #include "depthai/nn_archive/v1/InputType.hpp"
 #include "depthai/nn_archive/v1/Metadata.hpp"
+#include "depthai/nn_archive/v1/MetadataClass.hpp"
 #include "depthai/nn_archive/v1/Model.hpp"
 #include "depthai/nn_archive/v1/ObjectDetectionSubtypeYolo.hpp"
 #include "depthai/nn_archive/v1/Output.hpp"
-#include "depthai/nn_archive/v1/Outputs.hpp"
 #include "depthai/nn_archive/v1/PreprocessingBlock.hpp"
 
 PYBIND11_MAKE_OPAQUE(std::vector<uint8_t>);
@@ -41,8 +45,8 @@ void NNArchiveBindings::bind(pybind11::module& m, void* pCallstack) {
 
     // NNArchive v1
     auto v1m = m.def_submodule("nn_archive").def_submodule("v1");
-    py::enum_<v1::ConfigVersion> v1configVersion(v1m, "ConfigVersion", DOC(dai, nn_archive, v1, ConfigVersion));
     py::class_<v1::Config> v1config(v1m, "Config", DOC(dai, nn_archive, v1, Config));
+    py::enum_<v1::ConfigVersion> v1configVersion(v1m, "ConfigVersion", DOC(dai, nn_archive, v1, ConfigVersion));
     py::class_<v1::Model> v1model(v1m, "Model", DOC(dai, nn_archive, v1, Model));
     py::enum_<v1::ObjectDetectionSubtypeYolo> v1objectDetectionSubtypeYolo(
         v1m, "ObjectDetectionSubtypeYolo", DOC(dai, nn_archive, v1, ObjectDetectionSubtypeYolo));
@@ -51,8 +55,8 @@ void NNArchiveBindings::bind(pybind11::module& m, void* pCallstack) {
     py::enum_<v1::InputType> v1inputType(v1m, "InputType", DOC(dai, nn_archive, v1, InputType));
     py::class_<v1::Input> v1input(v1m, "Input", DOC(dai, nn_archive, v1, Input));
     py::class_<v1::Metadata> v1metadata(v1m, "Metadata", DOC(dai, nn_archive, v1, Metadata));
+    py::class_<v1::MetadataClass> v1metadataClass(v1m, "MetadataClass", DOC(dai, nn_archive, v1, MetadataClass));
     py::class_<v1::Output> v1output(v1m, "Output", DOC(dai, nn_archive, v1, Output));
-    py::class_<v1::Outputs> v1outputs(v1m, "Outputs", DOC(dai, nn_archive, v1, Outputs));
     py::class_<v1::PreprocessingBlock> v1preprocessingBlock(v1m, "PreprocessingBlock", DOC(dai, nn_archive, v1, PreprocessingBlock));
 
     ///////////////////////////////////////////////////////////////////////
@@ -150,76 +154,67 @@ void NNArchiveBindings::bind(pybind11::module& m, void* pCallstack) {
     v1config.def_readwrite("model", &v1::Config::model, DOC(dai, nn_archive, v1, Config, model));
 
     v1model.def(py::init<>());
-    v1model.def(py::init<std::optional<std::vector<v1::Head>>, std::vector<v1::Input>, v1::Metadata, std::vector<v1::Output>>(),
-                py::arg("heads"),
-                py::arg("inputs"),
-                py::arg("metadata"),
-                py::arg("outputs"),
-                DOC(dai, nn_archive, v1, Model, Model));
     v1model.def_readwrite("heads", &v1::Model::heads, DOC(dai, nn_archive, v1, Model, heads));
     v1model.def_readwrite("inputs", &v1::Model::inputs, DOC(dai, nn_archive, v1, Model, inputs));
     v1model.def_readwrite("metadata", &v1::Model::metadata, DOC(dai, nn_archive, v1, Model, metadata));
     v1model.def_readwrite("outputs", &v1::Model::outputs, DOC(dai, nn_archive, v1, Model, outputs));
 
-    v1objectDetectionSubtypeYolo.value("YOLOV5", v1::ObjectDetectionSubtypeYolo::YOLOV5)
-        .value("YOLOV6", v1::ObjectDetectionSubtypeYolo::YOLOV6)
-        .value("YOLOV7", v1::ObjectDetectionSubtypeYolo::YOLOV7)
-        .value("YOLOV8", v1::ObjectDetectionSubtypeYolo::YOLOV8);
+    v1objectDetectionSubtypeYolo.value("YOLOV10", v1::ObjectDetectionSubtypeYolo::YOLOV10);
+    v1objectDetectionSubtypeYolo.value("YOLOV5", v1::ObjectDetectionSubtypeYolo::YOLOV5);
+    v1objectDetectionSubtypeYolo.value("YOLOV6", v1::ObjectDetectionSubtypeYolo::YOLOV6);
+    v1objectDetectionSubtypeYolo.value("YOLOV6_R2", v1::ObjectDetectionSubtypeYolo::YOLOV6_R2);
+    v1objectDetectionSubtypeYolo.value("YOLOV7", v1::ObjectDetectionSubtypeYolo::YOLOV7);
+    v1objectDetectionSubtypeYolo.value("YOLOV8", v1::ObjectDetectionSubtypeYolo::YOLOV8);
 
     v1head.def(py::init<>());
-    v1head.def_readwrite("classes", &v1::Head::classes, DOC(dai, nn_archive, v1, Head, classes));
-    v1head.def_readwrite("family", &v1::Head::family, DOC(dai, nn_archive, v1, Head, family));
-    v1head.def_readwrite("isSoftmax", &v1::Head::isSoftmax, DOC(dai, nn_archive, v1, Head, isSoftmax));
-    v1head.def_readwrite("nClasses", &v1::Head::nClasses, DOC(dai, nn_archive, v1, Head, nClasses));
+    v1head.def_readwrite("metadata", &v1::Head::metadata, DOC(dai, nn_archive, v1, Head, metadata));
     v1head.def_readwrite("outputs", &v1::Head::outputs, DOC(dai, nn_archive, v1, Head, outputs));
-    v1head.def_readwrite("anchors", &v1::Head::anchors, DOC(dai, nn_archive, v1, Head, anchors));
-    v1head.def_readwrite("confThreshold", &v1::Head::confThreshold, DOC(dai, nn_archive, v1, Head, confThreshold));
-    v1head.def_readwrite("iouThreshold", &v1::Head::iouThreshold, DOC(dai, nn_archive, v1, Head, iouThreshold));
-    v1head.def_readwrite("maxDet", &v1::Head::maxDet, DOC(dai, nn_archive, v1, Head, maxDet));
-    v1head.def_readwrite("nKeypoints", &v1::Head::nKeypoints, DOC(dai, nn_archive, v1, Head, nKeypoints));
-    v1head.def_readwrite("nPrototypes", &v1::Head::nPrototypes, DOC(dai, nn_archive, v1, Head, nPrototypes));
-    v1head.def_readwrite("prototypeOutputName", &v1::Head::prototypeOutputName, DOC(dai, nn_archive, v1, Head, prototypeOutputName));
-    v1head.def_readwrite("subtype", &v1::Head::subtype, DOC(dai, nn_archive, v1, Head, subtype));
-    v1head.def_readwrite("postprocessorPath", &v1::Head::postprocessorPath, DOC(dai, nn_archive, v1, Head, postprocessorPath));
+    v1head.def_readwrite("parser", &v1::Head::parser, DOC(dai, nn_archive, v1, Head, parser));
 
-    v1dataType.value("FLOAT16", v1::DataType::FLOAT16)
-        .value("FLOAT32", v1::DataType::FLOAT32)
-        .value("INT8", v1::DataType::INT8)
-        .value("NV12", v1::DataType::NV12)
-        .value("UINT8", v1::DataType::UINT8);
-    v1inputType.value("IMAGE", v1::InputType::IMAGE).value("RAW", v1::InputType::RAW);
+    v1dataType.value("FLOAT16", v1::DataType::FLOAT16);
+    v1dataType.value("FLOAT32", v1::DataType::FLOAT32);
+    v1dataType.value("INT8", v1::DataType::INT8);
+    v1dataType.value("UINT8", v1::DataType::UINT8);
+
+    v1inputType.value("IMAGE", v1::InputType::IMAGE);
+    v1inputType.value("RAW", v1::InputType::RAW);
 
     v1input.def(py::init<>());
-    v1input.def(py::init<v1::DataType, v1::InputType, std::string, v1::PreprocessingBlock, std::vector<int64_t>>(),
-                py::arg("dtype"),
-                py::arg("inputType"),
-                py::arg("name"),
-                py::arg("preprocessing"),
-                py::arg("shape"),
-                DOC(dai, nn_archive, v1, Input, Input));
     v1input.def_readwrite("dtype", &v1::Input::dtype, DOC(dai, nn_archive, v1, Input, dtype));
     v1input.def_readwrite("inputType", &v1::Input::inputType, DOC(dai, nn_archive, v1, Input, inputType));
+    v1input.def_readwrite("layout", &v1::Input::layout, DOC(dai, nn_archive, v1, Input, layout));
     v1input.def_readwrite("name", &v1::Input::name, DOC(dai, nn_archive, v1, Input, name));
     v1input.def_readwrite("preprocessing", &v1::Input::preprocessing, DOC(dai, nn_archive, v1, Input, preprocessing));
     v1input.def_readwrite("shape", &v1::Input::shape, DOC(dai, nn_archive, v1, Input, shape));
 
     v1metadata.def(py::init<>());
-    v1metadata.def(py::init<std::string, std::string>(), py::arg("name"), py::arg("path"), DOC(dai, nn_archive, v1, Metadata, Metadata));
-    v1metadata.def_readwrite("name", &v1::Metadata::name, DOC(dai, nn_archive, v1, Metadata, name));
-    v1metadata.def_readwrite("path", &v1::Metadata::path, DOC(dai, nn_archive, v1, Metadata, path));
+    v1metadata.def_readwrite("postprocessorPath", &v1::Metadata::postprocessorPath, DOC(dai, nn_archive, v1, Metadata, postprocessorPath));
+    v1metadata.def_readwrite("anchors", &v1::Metadata::anchors, DOC(dai, nn_archive, v1, Metadata, anchors));
+    v1metadata.def_readwrite("classes", &v1::Metadata::classes, DOC(dai, nn_archive, v1, Metadata, classes));
+    v1metadata.def_readwrite("confThreshold", &v1::Metadata::confThreshold, DOC(dai, nn_archive, v1, Metadata, confThreshold));
+    v1metadata.def_readwrite("iouThreshold", &v1::Metadata::iouThreshold, DOC(dai, nn_archive, v1, Metadata, iouThreshold));
+    v1metadata.def_readwrite("maxDet", &v1::Metadata::maxDet, DOC(dai, nn_archive, v1, Metadata, maxDet));
+    v1metadata.def_readwrite("nClasses", &v1::Metadata::nClasses, DOC(dai, nn_archive, v1, Metadata, nClasses));
+    v1metadata.def_readwrite("isSoftmax", &v1::Metadata::isSoftmax, DOC(dai, nn_archive, v1, Metadata, isSoftmax));
+    v1metadata.def_readwrite("boxesOutputs", &v1::Metadata::boxesOutputs, DOC(dai, nn_archive, v1, Metadata, boxesOutputs));
+    v1metadata.def_readwrite("scoresOutputs", &v1::Metadata::scoresOutputs, DOC(dai, nn_archive, v1, Metadata, scoresOutputs));
+    v1metadata.def_readwrite("anglesOutputs", &v1::Metadata::anglesOutputs, DOC(dai, nn_archive, v1, Metadata, anglesOutputs));
+    v1metadata.def_readwrite("keypointsOutputs", &v1::Metadata::keypointsOutputs, DOC(dai, nn_archive, v1, Metadata, keypointsOutputs));
+    v1metadata.def_readwrite("maskOutputs", &v1::Metadata::maskOutputs, DOC(dai, nn_archive, v1, Metadata, maskOutputs));
+    v1metadata.def_readwrite("nKeypoints", &v1::Metadata::nKeypoints, DOC(dai, nn_archive, v1, Metadata, nKeypoints));
+    v1metadata.def_readwrite("nPrototypes", &v1::Metadata::nPrototypes, DOC(dai, nn_archive, v1, Metadata, nPrototypes));
+    v1metadata.def_readwrite("protosOutputs", &v1::Metadata::protosOutputs, DOC(dai, nn_archive, v1, Metadata, protosOutputs));
+    v1metadata.def_readwrite("subtype", &v1::Metadata::subtype, DOC(dai, nn_archive, v1, Metadata, subtype));
+    v1metadata.def_readwrite("yoloOutputs", &v1::Metadata::yoloOutputs, DOC(dai, nn_archive, v1, Metadata, yoloOutputs));
+
+    v1metadataClass.def(py::init<>());
+    v1metadataClass.def_readwrite("name", &v1::MetadataClass::name, DOC(dai, nn_archive, v1, MetadataClass, name));
+    v1metadataClass.def_readwrite("path", &v1::MetadataClass::path, DOC(dai, nn_archive, v1, MetadataClass, path));
+    v1metadataClass.def_readwrite("precision", &v1::MetadataClass::precision, DOC(dai, nn_archive, v1, MetadataClass, precision));
 
     v1output.def(py::init<>());
-    v1output.def(py::init<v1::DataType, std::string>(), py::arg("dtype"), py::arg("name"), DOC(dai, nn_archive, v1, Output, Output));
     v1output.def_readwrite("dtype", &v1::Output::dtype, DOC(dai, nn_archive, v1, Output, dtype));
     v1output.def_readwrite("name", &v1::Output::name, DOC(dai, nn_archive, v1, Output, name));
-
-    v1outputs.def(py::init<>());
-    v1outputs.def_readwrite("predictions", &v1::Outputs::predictions, DOC(dai, nn_archive, v1, Outputs, predictions));
-    v1outputs.def_readwrite("yoloOutputs", &v1::Outputs::yoloOutputs, DOC(dai, nn_archive, v1, Outputs, yoloOutputs));
-    v1outputs.def_readwrite("boxes", &v1::Outputs::boxes, DOC(dai, nn_archive, v1, Outputs, boxes));
-    v1outputs.def_readwrite("scores", &v1::Outputs::scores, DOC(dai, nn_archive, v1, Outputs, scores));
-    v1outputs.def_readwrite("maskOutputs", &v1::Outputs::maskOutputs, DOC(dai, nn_archive, v1, Outputs, maskOutputs));
-    v1outputs.def_readwrite("protos", &v1::Outputs::protos, DOC(dai, nn_archive, v1, Outputs, protos));
 
     v1preprocessingBlock.def(py::init<>());
     v1preprocessingBlock.def_readwrite(
