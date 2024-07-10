@@ -248,8 +248,8 @@ hunter_config(
 hunter_config(
     basalt-headers
     VERSION 0.1.0
-    URL "https://github.com/luxonis/basalt-headers/archive/57b934e6b7bcf4643c9e37aec8205c65b7a2a9a5.tar.gz"
-    SHA1 "8f60a224139b70b89a7f4dfa191a24c4968c52b8"
+    URL "https://github.com/luxonis/basalt-headers/archive/e3ee456469f21a356a0a59088779b32721918f11.tar.gz"
+    SHA1 "73955ab90ae77ee32c88744b945b3fd8b175833b"
 )
 
 hunter_config(
@@ -268,8 +268,8 @@ hunter_config(
 hunter_config(
     basalt
     VERSION 0.1.0
-    URL "https://github.com/luxonis/basalt/archive/7f4a2ccf649d90982d602715e78202cfc897d179.tar.gz"
-    SHA1 "ecebcc6873e7036a6fb26c180e628a6b2a984f4f"
+    URL "https://github.com/luxonis/basalt/archive/8a766f34c69ba974ccd16b71e265afd3c338b066.tar.gz"
+    SHA1 "46eaeb6d7182bacbe2bd58bd293c46e36f31ee63"
     CMAKE_ARGS
         BASALT_SDK_ONLY=ON
 )
@@ -277,8 +277,8 @@ hunter_config(
 hunter_config(
     Sophus
     VERSION 1.22.10
-    URL "https://github.com/luxonis/Sophus/archive/87554f73e6f303d8acd6a220bc9aefb444793a71.tar.gz"
-    SHA1 "48574ad9cddb3ad1b5c71cc030ecac0083e71cea"
+    URL "https://github.com/luxonis/Sophus/archive/54e9b230edc4df47f819cef0d15b1fcc165342df.tar.gz"
+    SHA1 "4c67d2d3415511446ed65705f00b23854dae6cd6"
     CMAKE_ARGS
         BUILD_SOPHUS_TESTS=OFF
         BUILD_SOPHUS_EXAMPLES=OFF
