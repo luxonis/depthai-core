@@ -358,8 +358,6 @@ set(TARGET_CORE_SOURCES
     src/utility/ArchiveUtil.cpp
     src/nn_archive/NNArchive.cpp
     src/nn_archive/NNArchiveConfig.cpp
-    src/nn_archive/NNArchiveBlob.cpp
-    src/nn_archive/NNArchiveConfigHelper.cpp
 )
 
 set(TARGET_OPENCV_SOURCES

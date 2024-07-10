@@ -1,4 +1,5 @@
 #include "OpenVINOBindings.hpp"
+#include <cstdint>
 
 // depthai
 #include "depthai/openvino/OpenVINO.hpp"
@@ -81,6 +82,7 @@ void OpenVINOBindings::bind(pybind11::module& m, void* pCallstack){
 
     // Bind OpenVINO::SuperBlob
     openvinoSuperBlob
+        .def(py::init<std::vector<uint8_t>>(), DOC(dai, OpenVINO, SuperBlob, SuperBlob))
         .def(py::init<std::string>(), py::arg("pathToSuperBlobFile"), DOC(dai, OpenVINO, SuperBlob, SuperBlob))
         .def("getBlobWithNumShaves", &OpenVINO::SuperBlob::getBlobWithNumShaves, py::arg("numShaves"), DOC(dai, OpenVINO, SuperBlob, getBlobWithNumShaves))
         .def_readonly_static("NUMBER_OF_PATCHES", &OpenVINO::SuperBlob::NUMBER_OF_PATCHES);

@@ -14,7 +14,7 @@ std::reference_wrapper<const OpenVINO::Blob> DetectionParser::setNNArchive(const
     const auto configMaybe = nnArchive.getConfig().getConfigV1();
     DAI_CHECK(configMaybe, "Unsupported NNArchive format / version. Check which depthai version you are running.");
     const auto& config = *configMaybe;
-    const auto& blob = nnArchive.getBlob().getOpenVINOBlob();
+    const auto& blob = nnArchive.getBlob();
     DAI_CHECK_IN(blob);
     setBlob(*blob);
     const auto model = config.model;
