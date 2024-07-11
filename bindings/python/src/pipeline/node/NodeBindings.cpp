@@ -4,8 +4,8 @@
 
 #include "Common.hpp"
 #include "depthai/pipeline/DeviceNode.hpp"
-#include "depthai/pipeline/Node.hpp"
 #include "depthai/pipeline/InputQueue.hpp"
+#include "depthai/pipeline/Node.hpp"
 #include "depthai/pipeline/NodeGroup.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/ThreadedNode.hpp"
@@ -14,22 +14,21 @@
 #include "hedley/hedley.h"
 
 // pybind11
-#include "pybind11/stl_bind.h"
+#include <stack>
+#include <thread>
+#include <unordered_map>
 
-#include<thread>
-#include<unordered_map>
-#include<stack>
+#include "pybind11/stl_bind.h"
 
 std::unordered_map<std::thread::id, std::stack<dai::Pipeline*>> implicitPipelines;
 dai::Pipeline* getImplicitPipeline() {
     auto rv = implicitPipelines.find(std::this_thread::get_id());
-    if (rv == implicitPipelines.end() || rv->second.empty())
-        throw std::runtime_error("No implicit pipeline was found. Use `with Pipeline()` to use one");
+    if(rv == implicitPipelines.end() || rv->second.empty()) throw std::runtime_error("No implicit pipeline was found. Use `with Pipeline()` to use one");
     return rv->second.top();
 }
 void setImplicitPipeline(dai::Pipeline* pipeline) {
     auto stack = implicitPipelines.find(std::this_thread::get_id());
-    if (stack == implicitPipelines.end()) {
+    if(stack == implicitPipelines.end()) {
         stack = implicitPipelines.emplace(std::this_thread::get_id(), std::stack<dai::Pipeline*>{}).first;
     }
     stack->second.push(pipeline);
@@ -224,12 +223,11 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
 
     py::class_<Node::Input, MessageQueue, std::shared_ptr<Node::Input>> pyInput(pyNode, "Input", DOC(dai, Node, Input));
     py::enum_<Node::Input::Type> nodeInputType(pyInput, "Type");
-    py::class_<Node::Output> pyOutput(pyNode, "Output", DOC(dai, Node, Output));
+    py::class_<Node::Output, std::shared_ptr<Node::Output>> pyOutput(pyNode, "Output", DOC(dai, Node, Output));
     py::enum_<Node::Output::Type> nodeOutputType(pyOutput, "Type");
     py::class_<Properties, std::shared_ptr<Properties>> pyProperties(m, "Properties", DOC(dai, Properties));
     py::class_<Node::DatatypeHierarchy> nodeDatatypeHierarchy(pyNode, "DatatypeHierarchy", DOC(dai, Node, DatatypeHierarchy));
-    
-    
+
     py::class_<InputQueue, std::shared_ptr<InputQueue>> pyInputQueue(m, "InputQueue", DOC(dai, InputQueue));
     pyInputQueue.def("send", &InputQueue::send, py::arg("msg"), DOC(dai, InputQueue, send));
 
@@ -278,26 +276,24 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
     nodeInputType.value("SReceiver", Node::Input::Type::SReceiver).value("MReceiver", Node::Input::Type::MReceiver);
 
     pyInput
-        .def(
-            py::init([](Node& parent,
-                        const std::string& name,
-                        const std::string& group,
-                        bool blocking,
-                        int queueSize,
-                        std::vector<Node::DatatypeHierarchy> types,
-                        bool waitForMessage) {
-                return std::unique_ptr<Node::Input>(new Node::Input(
-                    parent,
-                    {name,group,blocking,queueSize,std::move(types), waitForMessage}));
-            }),
-            py::arg("parent"),
-            py::arg("name") = Node::InputDescription{}.name,
-            py::arg("group") = Node::InputDescription{}.group,
-            py::arg("blocking") = Node::InputDescription{}.blocking,
-            py::arg("queueSize") = Node::InputDescription{}.queueSize,
-            py::arg("types") = Node::InputDescription{}.types,
-            py::arg("waitForMessage") = Node::InputDescription{}.waitForMessage,
-            py::keep_alive<2, 1>())
+        .def(py::init([](Node& parent,
+                         const std::string& name,
+                         const std::string& group,
+                         bool blocking,
+                         int queueSize,
+                         std::vector<Node::DatatypeHierarchy> types,
+                         bool waitForMessage) {
+                 PyErr_WarnEx(PyExc_DeprecationWarning, "Constructing Input explicitly is deprecated, use createInput method instead.", 1);
+                 return std::shared_ptr<Node::Input>(new Node::Input(parent, {name, group, blocking, queueSize, types, waitForMessage}));
+             }),
+             py::arg("parent"),
+             py::arg("name") = Node::InputDescription{}.name,
+             py::arg("group") = Node::InputDescription{}.group,
+             py::arg("blocking") = Node::InputDescription{}.blocking,
+             py::arg("queueSize") = Node::InputDescription{}.queueSize,
+             py::arg("types") = Node::InputDescription{}.types,
+             py::arg("waitForMessage") = Node::InputDescription{}.waitForMessage,
+             py::keep_alive<1, 0>())
         .def_readwrite("possibleDatatypes", &Node::Input::possibleDatatypes, DOC(dai, Node, Input, possibleDatatypes))
         .def("getParent",
              static_cast<const Node& (Node::Input::*)() const>(&Node::Input::getParent),
@@ -321,13 +317,14 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
     nodeOutputType.value("MSender", Node::Output::Type::MSender).value("SSender", Node::Output::Type::SSender);
     pyOutput
         .def(py::init([](Node& parent, const std::string& name, const std::string& group, std::vector<Node::DatatypeHierarchy> types) {
-                 return std::unique_ptr<Node::Output>(new Node::Output(parent, {name, group, std::move(types)}));
+                 PyErr_WarnEx(PyExc_DeprecationWarning, "Constructing Output explicitly is deprecated, use createOutput method instead.", 1);
+                 return std::shared_ptr<Node::Output>(new Node::Output(parent, {name, group, std::move(types)}));
              }),
              py::arg("parent"),
              py::arg("name") = Node::OutputDescription{}.name,
              py::arg("group") = Node::OutputDescription{}.group,
              py::arg("possibleDatatypes") = Node::OutputDescription{}.types,
-             py::keep_alive<2, 1>())
+             py::keep_alive<1, 0>())
         .def("getPossibleDatatypes", &Node::Output::getPossibleDatatypes, DOC(dai, Node, Output, getPossibleDatatypes))
         .def("getParent",
              static_cast<const Node& (Node::Output::*)() const>(&Node::Output::getParent),
@@ -418,5 +415,32 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("warn", [](dai::ThreadedNode& node, const std::string& msg) { node.logger->warn(msg); })
         .def("error", [](dai::ThreadedNode& node, const std::string& msg) { node.logger->error(msg); })
         .def("critical", [](dai::ThreadedNode& node, const std::string& msg) { node.logger->critical(msg); })
-        .def("isRunning", &ThreadedNode::isRunning, DOC(dai, ThreadedNode, isRunning));
+        .def("isRunning", &ThreadedNode::isRunning, DOC(dai, ThreadedNode, isRunning))
+        .def(
+            "createInput",
+            [](ThreadedNode& node,
+               std::string name,
+               std::string group,
+               bool blocking,
+               int queueSize,
+               std::vector<Node::DatatypeHierarchy> types,
+               bool waitForMessage) {
+                return std::make_shared<Node::Input>(node, Node::InputDescription{name, group, blocking, queueSize, types, waitForMessage});
+            },
+            py::arg("name") = Node::InputDescription{}.name,
+            py::arg("group") = Node::InputDescription{}.group,
+            py::arg("blocking") = Node::InputDescription{}.blocking,
+            py::arg("queueSize") = Node::InputDescription{}.queueSize,
+            py::arg("types") = Node::InputDescription{}.types,
+            py::arg("waitForMessage") = Node::InputDescription{}.waitForMessage,
+            py::keep_alive<1, 0>())
+        .def(
+            "createOutput",
+            [](ThreadedNode& node, std::string name, std::string group, std::vector<Node::DatatypeHierarchy> types) {
+                return std::make_shared<Node::Output>(node, Node::OutputDescription{name, group, types});
+            },
+            py::arg("name") = Node::OutputDescription{}.name,
+            py::arg("group") = Node::OutputDescription{}.group,
+            py::arg("possibleDatatypes") = Node::OutputDescription{}.types,
+            py::keep_alive<1, 0>());
 }

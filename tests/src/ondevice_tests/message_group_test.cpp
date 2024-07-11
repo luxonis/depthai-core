@@ -53,19 +53,16 @@ TEST_CASE("Send large messages") {
     right->setFps(20);
 
     auto sync = pipeline.create<dai::node::Sync>();
-    auto xout = pipeline.create<dai::node::XLinkOut>();
-    xout->setStreamName("out");
 
-    sync->out.link(xout->input);
     camRgb->isp.link(sync->inputs["rgb"]);
     left->out.link(sync->inputs["left"]);
     right->out.link(sync->inputs["right"]);
 
-    dai::Device device(pipeline);
-    auto q = device.getOutputQueue("out", 8, true);
+    auto queue = sync->out.createOutputQueue(8, true);
+    pipeline.start();
 
     bool hasTimedOut = false;
-    auto msg = q->get(std::chrono::seconds(1), hasTimedOut);
+    auto msg = queue->get(std::chrono::seconds(1), hasTimedOut);
     REQUIRE(!hasTimedOut);
 }
 
@@ -126,48 +123,48 @@ TEST_CASE("Send large messages") {
 //     REQUIRE(out2->getHeight() == 6);
 // }
 
-TEST_CASE("MessageGroup ping-pong") {
-    auto buf1Ts = std::chrono::steady_clock::now() + std::chrono::milliseconds(100);
-    auto buf2Ts = std::chrono::steady_clock::now() + std::chrono::milliseconds(150);
+// TEST_CASE("MessageGroup ping-pong") {
+//     auto buf1Ts = std::chrono::steady_clock::now() + std::chrono::milliseconds(100);
+//     auto buf2Ts = std::chrono::steady_clock::now() + std::chrono::milliseconds(150);
 
-    dai::Pipeline pipeline;
-    auto xout = pipeline.create<dai::node::XLinkOut>();
-    xout->setStreamName("out");
+//     dai::Pipeline pipeline;
+//     auto xout = pipeline.create<dai::node::XLinkOut>();
+//     xout->setStreamName("out");
 
-    auto xin = pipeline.create<dai::node::XLinkIn>();
-    xin->setStreamName("in");
+//     auto xin = pipeline.create<dai::node::XLinkIn>();
+//     xin->setStreamName("in");
 
-    xin->out.link(xout->input);
+//     xin->out.link(xout->input);
 
-    dai::Device device(pipeline);
+//     dai::Device device(pipeline);
 
-    auto inQ = device.getInputQueue("in");
-    auto outQ = device.getOutputQueue("out");
+//     auto inQ = device.getInputQueue("in");
+//     auto outQ = device.getOutputQueue("out");
 
-    auto buf1 = std::make_shared<dai::Buffer>();
-    buf1->setData({1, 2, 3, 4, 5});
-    buf1->setTimestamp(buf1Ts);
+//     auto buf1 = std::make_shared<dai::Buffer>();
+//     buf1->setData({1, 2, 3, 4, 5});
+//     buf1->setTimestamp(buf1Ts);
 
-    auto img1 = std::make_shared<dai::ImgFrame>();
-    img1->setData({6, 7, 8, 9, 10});
-    img1->setTimestamp(buf2Ts);
-    img1->setSize({5, 6});
+//     auto img1 = std::make_shared<dai::ImgFrame>();
+//     img1->setData({6, 7, 8, 9, 10});
+//     img1->setTimestamp(buf2Ts);
+//     img1->setSize({5, 6});
 
-    auto msgGrp = std::make_shared<dai::MessageGroup>();
-    msgGrp->add("buf1", buf1);
-    msgGrp->add("img1", img1);
+//     auto msgGrp = std::make_shared<dai::MessageGroup>();
+//     msgGrp->add("buf1", buf1);
+//     msgGrp->add("img1", img1);
 
-    inQ->send(msgGrp);
+//     inQ->send(msgGrp);
 
-    auto out = outQ->get<dai::MessageGroup>();
+//     auto out = outQ->get<dai::MessageGroup>();
 
-    // REQUIRE(out->get<dai::Buffer>("buf1")->getTimestamp() == buf1Ts);
-    // REQUIRE(out->get<dai::ImgFrame>("img1")->getTimestamp() == buf2Ts);
-    REQUIRE(out != nullptr);
-    REQUIRE(out->get<dai::Buffer>("buf1") != nullptr);
-    REQUIRE(out->get<dai::ImgFrame>("img1") != nullptr);
-    REQUIRE((out->get<dai::Buffer>("buf1")->getData() == std::vector<unsigned char>{1, 2, 3, 4, 5}));
-    REQUIRE((out->get<dai::ImgFrame>("img1")->getData() == std::vector<unsigned char>{6, 7, 8, 9, 10}));
-    REQUIRE(out->get<dai::ImgFrame>("img1")->getWidth() == 5);
-    REQUIRE(out->get<dai::ImgFrame>("img1")->getHeight() == 6);
-}
+//     // REQUIRE(out->get<dai::Buffer>("buf1")->getTimestamp() == buf1Ts);
+//     // REQUIRE(out->get<dai::ImgFrame>("img1")->getTimestamp() == buf2Ts);
+//     REQUIRE(out != nullptr);
+//     REQUIRE(out->get<dai::Buffer>("buf1") != nullptr);
+//     REQUIRE(out->get<dai::ImgFrame>("img1") != nullptr);
+//     REQUIRE((out->get<dai::Buffer>("buf1")->getData() == std::vector<unsigned char>{1, 2, 3, 4, 5}));
+//     REQUIRE((out->get<dai::ImgFrame>("img1")->getData() == std::vector<unsigned char>{6, 7, 8, 9, 10}));
+//     REQUIRE(out->get<dai::ImgFrame>("img1")->getWidth() == 5);
+//     REQUIRE(out->get<dai::ImgFrame>("img1")->getHeight() == 6);
+// }

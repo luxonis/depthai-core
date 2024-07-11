@@ -3,10 +3,14 @@
 import cv2
 import depthai as dai
 import argparse
+from pathlib import Path
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-o", "--output", default="recordings", help="Output path")
 args = parser.parse_args()
+
+# Create output directory if it doesn't exist
+Path(args.output).mkdir(parents=True, exist_ok=True)
 
 # Create pipeline
 with dai.Pipeline(True) as pipeline:

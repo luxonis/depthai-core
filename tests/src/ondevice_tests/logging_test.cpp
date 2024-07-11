@@ -5,22 +5,14 @@
 #include <thread>
 
 #include "depthai/depthai.hpp"
+#include "depthai/pipeline/InputQueue.hpp"
 
 int test(dai::LogLevel logLevel) {
     // Create pipeline
     dai::Pipeline pipeline;
 
-    auto xIn = pipeline.create<dai::node::XLinkIn>();
+    // Setup script node
     auto script = pipeline.create<dai::node::Script>();
-    auto xOut = pipeline.create<dai::node::XLinkOut>();
-
-    xIn->setStreamName("input");
-    xOut->setStreamName("output");
-
-    // Link xin node to script node
-    xIn->out.link(script->inputs["log"]);
-    script->outputs["out"].link(xOut->input);
-
     script->setScript(R"(
     while True:
         _ = node.io["log"].get()
@@ -35,20 +27,17 @@ int test(dai::LogLevel logLevel) {
         node.io["out"].send(message)
     )");
 
-    dai::Device device(pipeline);
+    auto in = script->inputs["log"].createInputQueue();
+    auto out = script->outputs["out"].createOutputQueue();
 
-    auto in = device.getInputQueue("input");
-    auto out = device.getOutputQueue("output");
-    auto message = std::make_shared<dai::Buffer>();  // Arbitrary message, used only to control flow
-
-    device.setLogLevel(logLevel);
-    device.setLogOutputLevel(logLevel);
+    pipeline.getDefaultDevice()->setLogLevel(logLevel);
+    pipeline.getDefaultDevice()->setLogOutputLevel(logLevel);
+    pipeline.start();
 
     // -1 below is for no_error, which cannot arrive
     std::array<bool, spdlog::level::n_levels - 1> arrivedLogs;
-    for(auto& level : arrivedLogs) {
-        level = false;
-    }
+    arrivedLogs.fill(false);
+
     bool testPassed = true;
     auto logLevelConverted = static_cast<typename std::underlying_type<dai::LogLevel>::type>(logLevel);
     auto callbackSink = [&testPassed, &arrivedLogs, logLevelConverted](dai::LogMessage message) {
@@ -61,23 +50,25 @@ int test(dai::LogLevel logLevel) {
             FAIL();
         }
     };
+    pipeline.getDefaultDevice()->addLogCallback(callbackSink);
 
-    device.addLogCallback(callbackSink);
-    in->send(message);
-    out->get();  // Wait for the device to send the log(s)
+    // Send message and wait for response
+    in->send(std::make_shared<dai::Buffer>());
+    out->get();
+
+    // Wait for logs to arrive
     using namespace std::chrono;
-    std::this_thread::sleep_for(milliseconds(200));  // Wait for the logs to arrive
+    std::this_thread::sleep_for(milliseconds(200));
 
     for(int i = 0; i < arrivedLogs.size(); i++) {
-        if(i < logLevelConverted) {
-            REQUIRE(!arrivedLogs[i]);
-        } else {
-            REQUIRE(arrivedLogs[i]);
-        }
+        if(i < logLevelConverted) REQUIRE(!arrivedLogs[i]);
+        if(i >= logLevelConverted) REQUIRE(arrivedLogs[i]);
     }
-    device.setLogLevel(dai::LogLevel::WARN);
-    device.setLogOutputLevel(dai::LogLevel::WARN);
-    // Exit with success error code
+
+    // Restore default log levels
+    pipeline.getDefaultDevice()->setLogLevel(dai::LogLevel::WARN);
+    pipeline.getDefaultDevice()->setLogOutputLevel(dai::LogLevel::WARN);
+
     return 0;
 }
 

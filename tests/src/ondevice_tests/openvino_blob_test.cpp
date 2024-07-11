@@ -60,7 +60,6 @@ TEST_CASE("OpenVINO 2020.4 setBlob") {
 
     auto networkOpenvinoVersion = p.getOpenVINOVersion();
     REQUIRE(networkOpenvinoVersion == dai::OpenVINO::VERSION_2020_4);
-    dai::Device d(p);
 }
 
 TEST_CASE("OpenVINO 2021.1 setBlob") {
@@ -74,7 +73,6 @@ TEST_CASE("OpenVINO 2021.1 setBlob") {
 
     auto networkOpenvinoVersion = p.getOpenVINOVersion();
     REQUIRE(networkOpenvinoVersion == dai::OpenVINO::VERSION_2021_1);
-    dai::Device d(p);
 }
 
 TEST_CASE("OpenVINO 2021.2 setBlob") {
@@ -88,7 +86,6 @@ TEST_CASE("OpenVINO 2021.2 setBlob") {
 
     auto networkOpenvinoVersion = p.getOpenVINOVersion();
     REQUIRE(networkOpenvinoVersion == dai::OpenVINO::VERSION_2021_2);
-    dai::Device d(p);
 }
 
 TEST_CASE("OpenVINO 2021.3 setBlob") {
@@ -102,7 +99,6 @@ TEST_CASE("OpenVINO 2021.3 setBlob") {
 
     auto networkOpenvinoVersion = p.getOpenVINOVersion();
     REQUIRE(networkOpenvinoVersion == dai::OpenVINO::VERSION_2021_3);
-    dai::Device d(p);
 }
 
 TEST_CASE("OpenVINO 2021.4 setBlob") {
@@ -116,7 +112,6 @@ TEST_CASE("OpenVINO 2021.4 setBlob") {
 
     auto networkOpenvinoVersion = p.getOpenVINOVersion();
     REQUIRE(networkOpenvinoVersion == dai::OpenVINO::VERSION_2021_4);
-    dai::Device d(p);
 }
 
 TEST_CASE("OpenVINO 2022.1 setBlob") {
@@ -130,7 +125,6 @@ TEST_CASE("OpenVINO 2022.1 setBlob") {
 
     auto networkOpenvinoVersion = p.getOpenVINOVersion();
     REQUIRE(networkOpenvinoVersion == dai::OpenVINO::VERSION_2022_1);
-    dai::Device d(p);
 }
 
 // setBlobPath
@@ -150,7 +144,6 @@ TEST_CASE("OpenVINO 2020.4 blob") {
     nn->setBlobPath(OPENVINO_2020_4_BLOB_PATH);
     auto networkOpenvinoVersion = p.getOpenVINOVersion();
     REQUIRE(networkOpenvinoVersion == dai::OpenVINO::VERSION_2020_4);
-    dai::Device d(p);
 }
 
 TEST_CASE("OpenVINO 2021.1 blob") {
@@ -159,7 +152,6 @@ TEST_CASE("OpenVINO 2021.1 blob") {
     nn->setBlobPath(OPENVINO_2021_1_BLOB_PATH);
     auto networkOpenvinoVersion = p.getOpenVINOVersion();
     REQUIRE(networkOpenvinoVersion == dai::OpenVINO::VERSION_2021_1);
-    dai::Device d(p);
 }
 
 TEST_CASE("OpenVINO 2021.2 blob") {
@@ -168,7 +160,6 @@ TEST_CASE("OpenVINO 2021.2 blob") {
     nn->setBlobPath(OPENVINO_2021_2_BLOB_PATH);
     auto networkOpenvinoVersion = p.getOpenVINOVersion();
     REQUIRE(networkOpenvinoVersion == dai::OpenVINO::VERSION_2021_2);
-    dai::Device d(p);
 }
 
 TEST_CASE("OpenVINO 2021.3 blob") {
@@ -177,7 +168,6 @@ TEST_CASE("OpenVINO 2021.3 blob") {
     nn->setBlobPath(OPENVINO_2021_3_BLOB_PATH);
     auto networkOpenvinoVersion = p.getOpenVINOVersion();
     REQUIRE(networkOpenvinoVersion == dai::OpenVINO::VERSION_2021_3);
-    dai::Device d(p);
 }
 
 TEST_CASE("OpenVINO 2021.4 blob") {
@@ -186,7 +176,6 @@ TEST_CASE("OpenVINO 2021.4 blob") {
     nn->setBlobPath(OPENVINO_2021_4_BLOB_PATH);
     auto networkOpenvinoVersion = p.getOpenVINOVersion();
     REQUIRE(networkOpenvinoVersion == dai::OpenVINO::VERSION_2021_4);
-    dai::Device d(p);
 }
 
 TEST_CASE("OpenVINO 2022.1 blob") {
@@ -195,7 +184,6 @@ TEST_CASE("OpenVINO 2022.1 blob") {
     nn->setBlobPath(OPENVINO_2022_1_BLOB_PATH);
     auto networkOpenvinoVersion = p.getOpenVINOVersion();
     REQUIRE(networkOpenvinoVersion == dai::OpenVINO::VERSION_2022_1);
-    dai::Device d(p);
 }
 
 // Check if an exception is thrown if blob is corrupted
@@ -218,7 +206,6 @@ TEST_CASE("OpenVINO 2020.4 blob, test with universal FW") {
     auto networkOpenvinoVersion = p.getOpenVINOVersion();
     REQUIRE(networkOpenvinoVersion == dai::OpenVINO::VERSION_2020_4);
     p.setOpenVINOVersion(dai::OpenVINO::VERSION_UNIVERSAL);
-    dai::Device d(p);
 }
 
 TEST_CASE("OpenVINO 2021.1 blob, test with universal FW") {
@@ -228,7 +215,6 @@ TEST_CASE("OpenVINO 2021.1 blob, test with universal FW") {
     auto networkOpenvinoVersion = p.getOpenVINOVersion();
     REQUIRE(networkOpenvinoVersion == dai::OpenVINO::VERSION_2021_1);
     p.setOpenVINOVersion(dai::OpenVINO::VERSION_UNIVERSAL);
-    dai::Device d(p);
 }
 
 TEST_CASE("OpenVINO 2021.2 blob, test with universal FW") {
@@ -238,7 +224,6 @@ TEST_CASE("OpenVINO 2021.2 blob, test with universal FW") {
     auto networkOpenvinoVersion = p.getOpenVINOVersion();
     REQUIRE(networkOpenvinoVersion == dai::OpenVINO::VERSION_2021_2);
     p.setOpenVINOVersion(dai::OpenVINO::VERSION_UNIVERSAL);
-    dai::Device d(p);
 }
 
 TEST_CASE("OpenVINO 2021.3 blob, test with universal FW") {
@@ -248,7 +233,6 @@ TEST_CASE("OpenVINO 2021.3 blob, test with universal FW") {
     auto networkOpenvinoVersion = p.getOpenVINOVersion();
     REQUIRE(networkOpenvinoVersion == dai::OpenVINO::VERSION_2021_3);
     p.setOpenVINOVersion(dai::OpenVINO::VERSION_UNIVERSAL);
-    dai::Device d(p);
 }
 
 TEST_CASE("OpenVINO 2021.4 blob, test with universal FW") {
@@ -258,7 +242,6 @@ TEST_CASE("OpenVINO 2021.4 blob, test with universal FW") {
     auto networkOpenvinoVersion = p.getOpenVINOVersion();
     REQUIRE(networkOpenvinoVersion == dai::OpenVINO::VERSION_2021_4);
     p.setOpenVINOVersion(dai::OpenVINO::VERSION_UNIVERSAL);
-    dai::Device d(p);
 }
 
 TEST_CASE("OpenVINO 2022.1 blob, test with universal FW") {
@@ -268,5 +251,4 @@ TEST_CASE("OpenVINO 2022.1 blob, test with universal FW") {
     auto networkOpenvinoVersion = p.getOpenVINOVersion();
     REQUIRE(networkOpenvinoVersion == dai::OpenVINO::VERSION_2022_1);
     p.setOpenVINOVersion(dai::OpenVINO::VERSION_UNIVERSAL);
-    dai::Device d(p);
 }

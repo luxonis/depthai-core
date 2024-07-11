@@ -528,7 +528,7 @@ jobs:
         python-version: '3.8'
 
     - name: Check if version matches
-      run: cd bindings/pyyhon && python3.8 -c 'import find_version as v; exit(0) if "${{ github.ref_name }}" == f"v{v.get_package_version()}" else exit(1)'
+      run: cd bindings/python && python3.8 -c 'import find_version as v; exit(0) if "${{ github.ref_name }}" == f"v{v.get_package_version()}" else exit(1)'
 
   # Deploy to PyPi and Artifactory. Only when a commit is tagged
   deploy:

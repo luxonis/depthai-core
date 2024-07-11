@@ -140,6 +140,9 @@ set(SOURCE_LIST
     src/capabilities/CapabilityBindings.cpp
     src/capabilities/CapabilityRangeBindings.cpp
     src/capabilities/ImgFrameCapabilityBindings.cpp
+
+    src/modelzoo/NNModelDescriptionBindings.cpp
+    src/modelzoo/ZooBindings.cpp
 )
 
 if(DEPTHAI_BASALT_SUPPORT)

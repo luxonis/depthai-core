@@ -132,7 +132,7 @@ std::tuple<uint32_t, uint32_t> getRandomResolution(dai::Pipeline& pipeline) {
 }
 
 void testResolution(std::optional<std::tuple<uint32_t, uint32_t>> wantedSize = std::nullopt) {
-    dai::Pipeline pipeline();
+    dai::Pipeline pipeline;
 
     auto camRgb = pipeline.create<dai::node::Camera>();
     camRgb->setBoardSocket(getBoardSocket());
@@ -150,7 +150,7 @@ void testResolution(std::optional<std::tuple<uint32_t, uint32_t>> wantedSize = s
     // cap.type = dai::ImgFrame::Type::NV12;
     cap.type = dai::ImgFrame::Type::BGR888i;
     auto* output = camRgb->requestOutput(cap, true);
-    const auto queueFrames = output->createQueue();
+    const auto queueFrames = output->createOutputQueue();
 
     const auto& qRgb = queueFrames;
     ScopeHelper scopeHelper([&pipeline]() { pipeline.start(); },
@@ -178,7 +178,7 @@ void getImages(bool debugOn,
                std::tuple<uint32_t, uint32_t>& sizeOut,
                dai::ImgResizeMode resizeMode,
                std::optional<std::tuple<uint32_t, uint32_t>> wantedSize = std::nullopt) {
-    dai::Pipeline pipeline();
+    dai::Pipeline pipeline;
 
     auto camRgb = pipeline.create<dai::node::Camera>();
     camRgb->setBoardSocket(getBoardSocket());
@@ -203,15 +203,15 @@ void getImages(bool debugOn,
     capOrig.size.value = bestResolution;
     capOrig.resizeMode = dai::ImgResizeMode::CROP;
     capOrig.type = dai::ImgFrame::Type::BGR888i;
-    const auto queueFramesOrig = camRgb->requestOutput(capOrig, true)->createQueue();
+    const auto queueFramesOrig = camRgb->requestOutput(capOrig, true)->createOutputQueue();
 
     dai::ImgFrameCapability cap;
     cap.size.value = std::pair{std::get<0>(size), std::get<1>(size)};
     cap.type = dai::ImgFrame::Type::BGR888i;
     cap.resizeMode = resizeMode;
-    // TODO(jakgra) fail hard and throw an error when user calls requestOutput() but doesn't call createQueue() and doesn't link it anywhere
+    // TODO(jakgra) fail hard and throw an error when user calls requestOutput() but doesn't call createOutputQueue() and doesn't link it anywhere
     // auto* output = camRgb->requestOutput(cap, true);
-    const auto queueFrames = camRgb->requestOutput(cap, true)->createQueue();
+    const auto queueFrames = camRgb->requestOutput(cap, true)->createOutputQueue();
 
     ScopeHelper scopeHelper([&pipeline]() { pipeline.start(); },
                             [&pipeline]() {
@@ -361,7 +361,7 @@ struct MultipleResHelper {
 
 // NOLINTNEXTLINE(readability-function-cognitive-complexity)
 void testMultipleResolutions(const std::vector<std::tuple<uint32_t, uint32_t>>& wantedSizes) {
-    dai::Pipeline pipeline();
+    dai::Pipeline pipeline;
     auto camRgb = pipeline.create<dai::node::Camera>();
     camRgb->setBoardSocket(getBoardSocket());
 
@@ -379,7 +379,7 @@ void testMultipleResolutions(const std::vector<std::tuple<uint32_t, uint32_t>>& 
         // cap.type = dai::ImgFrame::Type::NV12;
         cap.type = dai::ImgFrame::Type::BGR888i;
         auto* output = camRgb->requestOutput(cap, true);
-        helper.queue = output->createQueue();
+        helper.queue = output->createOutputQueue();
     }
     std::cout << "\n" << std::flush;
     ScopeHelper scopeHelper([&pipeline]() { pipeline.start(); },
