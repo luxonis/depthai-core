@@ -7,8 +7,10 @@
 
 // Include depthai library
 #include <depthai/depthai.hpp>
+#include <depthai/pipeline/InputQueue.hpp>
 
 #include "depthai/pipeline/datatype/ADatatype.hpp"
+#include "depthai/pipeline/node/NeuralNetwork.hpp"
 
 const auto MOBILENET_BLOB_PATH = BLOB_PATH;
 const auto MOBILENET_WIDTH = 300;
@@ -20,8 +22,6 @@ const auto MOBILENET_OUTPUT_TENSOR = "detection_out";
 
 dai::Pipeline createNeuralNetworkPipeline(bool manualBlob) {
     dai::Pipeline p;
-    auto x_in = p.create<dai::node::XLinkIn>();
-    auto x_out = p.create<dai::node::XLinkOut>();
     auto nn = p.create<dai::node::NeuralNetwork>();
 
     // Load blob
@@ -31,14 +31,6 @@ dai::Pipeline createNeuralNetworkPipeline(bool manualBlob) {
     } else {
         nn->setBlobPath(BLOB_PATH);
     }
-    // Set input stream
-    x_in->setStreamName("input");
-    // Set output stream
-    x_out->setStreamName("output");
-
-    // Link nodes
-    x_in->out.link(nn->input);
-    nn->out.link(x_out->input);
 
     return p;
 }
@@ -48,21 +40,21 @@ void test(bool manualBlob) {
     using namespace std::chrono_literals;
 
     auto pipeline = createNeuralNetworkPipeline(manualBlob);
+    std::shared_ptr<dai::node::NeuralNetwork> nn = std::dynamic_pointer_cast<dai::node::NeuralNetwork>(pipeline.getAllNodes()[0]);
 
-    dai::Device device(pipeline.getOpenVINOVersion());
+    auto inputQueue = nn->input.createInputQueue();
+    auto outputQueue = nn->out.createOutputQueue();
 
     std::atomic<bool> receivedLogMessage{false};
 
     // no warnings should appear
-    device.setLogLevel(dai::LogLevel::WARN);
-    device.addLogCallback([&receivedLogMessage](dai::LogMessage msg) {
+    pipeline.getDefaultDevice()->setLogLevel(dai::LogLevel::WARN);
+    pipeline.getDefaultDevice()->addLogCallback([&receivedLogMessage](dai::LogMessage msg) {
         if(msg.level >= dai::LogLevel::WARN) {
             receivedLogMessage = true;
         }
     });
-
-    // Start pipeline and feed correct sized data in various forms (Planar BGR 300*300*3 for mobilenet)
-    device.startPipeline(pipeline);
+    pipeline.start();
 
     // Iterate 10 times
     for(int i = 0; i < 10; i++) {
@@ -89,9 +81,9 @@ void test(bool manualBlob) {
         int msgIndex = 0;
         for(const auto& msg : messages) {
             std::cout << msgIndex << "\n";
-            device.getInputQueue("input")->send(msg);
+            inputQueue->send(msg);
             bool timedOut = false;
-            auto inference = device.getOutputQueue("output")->get<dai::NNData>(1s, timedOut);
+            auto inference = outputQueue->get<dai::NNData>(1s, timedOut);
             REQUIRE(inference != nullptr);
             REQUIRE(timedOut == false);
             REQUIRE(inference->hasLayer(MOBILENET_OUTPUT_TENSOR));

@@ -207,68 +207,21 @@ hunter_private_data(
 
 
 # Add tests (lnotspotl - REMOVED - old API device)
-# dai_add_test(color_camera_node_test src/color_camera_node_test.cpp)
 # (lnotspotl - REMOVED - old API device)
-# dai_add_test(image_manip_node_test src/image_manip_node_test.cpp)
-dai_add_test(pipeline_test src/pipeline_test.cpp)
 # (lnotspotl - REMOVED - old API device)
 # dai_add_test(logging_test src/logging_test.cpp)
 
-# dai_add_test(neural_network_test src/neural_network_test.cpp)
-# dai_test_compile_definitions(neural_network_test PRIVATE BLOB_PATH="${mobilenet_blob}")
-
-dai_add_test(openvino_blob_test src/openvino_blob_test.cpp)
-dai_test_compile_definitions(openvino_blob_test PRIVATE
-    OPENVINO_2020_3_BLOB_PATH="${openvino_2020_3_blob}"
-    OPENVINO_2020_4_BLOB_PATH="${openvino_2020_4_blob}"
-    OPENVINO_2021_1_BLOB_PATH="${openvino_2021_1_blob}"
-    OPENVINO_2021_2_BLOB_PATH="${openvino_2021_2_blob}"
-    OPENVINO_2021_3_BLOB_PATH="${openvino_2021_3_blob}"
-    OPENVINO_2021_4_BLOB_PATH="${openvino_2021_4_2_blob}"
-    OPENVINO_2022_1_BLOB_PATH="${openvino_2022_1_blob}"
-)
-
-# Bootloader configuration tests
-dai_add_test(bootloader_config_test src/bootloader_config_test.cpp)
-
-# Eeprom naming parsing tests
-dai_add_test(naming_test src/naming_test.cpp)
-
-# Device USB Speed and serialization macros test (lnotspotl - REMOVED - old API device)
-# dai_add_test(device_usbspeed_test    src/device_usbspeed_test.cpp CONFORMING)
-# dai_add_test(device_usbspeed_test_17 src/device_usbspeed_test.cpp CONFORMING CXX_STANDARD 17)
-# dai_add_test(device_usbspeed_test_20 src/device_usbspeed_test.cpp CONFORMING CXX_STANDARD 20)
 
 # (lnotspotl - REMOVED - old API device)
-# dai_add_test(encoded_frame_test src/encoded_frame_test.cpp CXX_STANDARD 17)
 
 # (lnotspotl - REMOVED - old API device)
-# dai_add_test(message_group_frame_test src/message_group_test.cpp CXX_STANDARD 17)
 
 # Unlimited io connections test (lnotspotl - REMOVED - old API device)
 # dai_add_test(unlimited_io_connection_test src/unlimited_io_connection_test.cpp)
-
-# Serialization test
-dai_add_test(serialization_test src/serialization_test.cpp)
-
 # Multiple devices test (lnotspotl - REMOVED - old API device)
 # dai_add_test(multiple_devices_test src/multiple_devices_test.cpp)
-
-# Filesystem test
-dai_add_test(filesystem_test src/filesystem_test.cpp)
-dai_test_compile_definitions(filesystem_test PRIVATE BLOB_PATH="${mobilenet_blob}")
-dai_add_test(filesystem_test_17 src/filesystem_test.cpp CXX_STANDARD 17)
-dai_test_compile_definitions(filesystem_test_17 PRIVATE BLOB_PATH="${mobilenet_blob}")
-dai_add_test(filesystem_test_20 src/filesystem_test.cpp CXX_STANDARD 20)
-dai_test_compile_definitions(filesystem_test_20 PRIVATE BLOB_PATH="${mobilenet_blob}")
-
-# Bootloader version tests
-dai_add_test(bootloader_version_test src/bootloader_version_test.cpp)
-
 # XLinkIn -> XLinkOut passthrough with large frames (lnotspotl - REMOVED - old API device)
 # dai_add_test(xlink_roundtrip_test src/xlink_roundtrip_test.cpp)
-
-dai_add_test(image_transformations_test src/image_transformations_test.cpp)
 
 # Stability stress test (OAK-D oriented USB/PoE)
 # (lnotspotl - REMOVED - old API device)
@@ -310,15 +263,85 @@ dai_add_test(image_transformations_test src/image_transformations_test.cpp)
 # set_tests_properties(stability_stress_test PROPERTIES ENVIRONMENT "UBSAN_OPTIONS=halt_on_error=1;DEPTHAI_PROTOCOL=usb" LABELS stability_usb)
 # set_tests_properties(stability_stress_test_poe PROPERTIES ENVIRONMENT "UBSAN_OPTIONS=halt_on_error=1;DEPTHAI_PROTOCOL=poe" LABELS stability_poe)
 
-# StreamMessageParser tests
-dai_add_test(stream_message_parser_test src/stream_message_parser_test.cpp)
+### On-host tests
+
+# Superblob test
+dai_add_test(openvino_superblob_test src/onhost_tests/openvino_superblob_test.cpp)
+target_compile_definitions(openvino_superblob_test PRIVATE SUPERBLOB_PATH="${superblob_path}")
+
+# Serialization test
+dai_add_test(serialization_test src/onhost_tests/serialization_test.cpp)
+
+# Eeprom naming parsing tests
+dai_add_test(naming_test src/onhost_tests/naming_test.cpp)
+
+# Image transformations test
+dai_add_test(image_transformations_test src/onhost_tests/image_transformations_test.cpp)
 
 # MessageQueue tests
-dai_add_test(message_queue_test src/message_queue_test.cpp)
+dai_add_test(message_queue_test src/onhost_tests/message_queue_test.cpp)
 
-dai_add_test(resolutions_test src/resolutions_test.cpp)
+# StreamMessageParser tests
+dai_add_test(stream_message_parser_test src/onhost_tests/stream_message_parser_test.cpp)
+
+# Bootloader version tests
+dai_add_test(bootloader_version_test src/onhost_tests/bootloader_version_test.cpp)
+
+# Bootloader configuration tests
+dai_add_test(bootloader_config_test src/onhost_tests/bootloader_config_test.cpp)
+
+### On-device tests
+
+# Depthai logging test
+dai_add_test(logging_test src/ondevice_tests/logging_test.cpp)
+
+# OpenVINO blob test
+dai_add_test(openvino_blob_test src/ondevice_tests/openvino_blob_test.cpp)
+dai_test_compile_definitions(openvino_blob_test PRIVATE
+    OPENVINO_2020_3_BLOB_PATH="${openvino_2020_3_blob}"
+    OPENVINO_2020_4_BLOB_PATH="${openvino_2020_4_blob}"
+    OPENVINO_2021_1_BLOB_PATH="${openvino_2021_1_blob}"
+    OPENVINO_2021_2_BLOB_PATH="${openvino_2021_2_blob}"
+    OPENVINO_2021_3_BLOB_PATH="${openvino_2021_3_blob}"
+    OPENVINO_2021_4_BLOB_PATH="${openvino_2021_4_2_blob}"
+    OPENVINO_2022_1_BLOB_PATH="${openvino_2022_1_blob}"
+)
 
 
-# Superblob tests
-dai_add_test(superblob_test src/superblob_test.cpp)
-target_compile_definitions(superblob_test PRIVATE SUPERBLOB_PATH="${superblob_path}")
+# Neural network test
+dai_add_test(neural_network_test src/ondevice_tests/neural_network_test.cpp)
+dai_test_compile_definitions(neural_network_test PRIVATE BLOB_PATH="${mobilenet_blob}")
+
+# Color camera test
+dai_add_test(color_camera_node_test src/ondevice_tests/color_camera_node_test.cpp)
+
+# Image manip test
+dai_add_test(image_manip_node_test src/ondevice_tests/image_manip_node_test.cpp)
+
+# Pipeline test
+dai_add_test(pipeline_test src/ondevice_tests/pipeline_test.cpp)
+
+# Device USB Speed and serialization macros test
+dai_add_test(device_usbspeed_test    src/ondevice_tests/device_usbspeed_test.cpp CONFORMING)
+dai_add_test(device_usbspeed_test_17 src/ondevice_tests/device_usbspeed_test.cpp CONFORMING CXX_STANDARD 17)
+dai_add_test(device_usbspeed_test_20 src/ondevice_tests/device_usbspeed_test.cpp CONFORMING CXX_STANDARD 20)
+
+# Filesystem test
+dai_add_test(filesystem_test src/ondevice_tests/filesystem_test.cpp)
+dai_test_compile_definitions(filesystem_test PRIVATE BLOB_PATH="${mobilenet_blob}")
+dai_add_test(filesystem_test_17 src/ondevice_tests/filesystem_test.cpp CXX_STANDARD 17)
+dai_test_compile_definitions(filesystem_test_17 PRIVATE BLOB_PATH="${mobilenet_blob}")
+dai_add_test(filesystem_test_20 src/ondevice_tests/filesystem_test.cpp CXX_STANDARD 20)
+dai_test_compile_definitions(filesystem_test_20 PRIVATE BLOB_PATH="${mobilenet_blob}")
+
+# Encoded frame test
+dai_add_test(encoded_frame_test src/ondevice_tests/encoded_frame_test.cpp CXX_STANDARD 17)
+
+# MessageGroup tests
+dai_add_test(message_group_frame_test src/ondevice_tests/message_group_test.cpp CXX_STANDARD 17) 
+
+# Pointcloud test
+dai_add_test(pointcloud_test src/ondevice_tests/pointcloud_test.cpp)
+
+# Resolutions test
+dai_add_test(resolutions_test src/ondevice_tests/resolutions_test.cpp)
