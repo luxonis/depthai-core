@@ -59,7 +59,6 @@ inline std::shared_ptr<T> parseDatatype(std::uint8_t* metadata, size_t size, std
 
     // deserialize
     utility::deserialize(metadata, size, *tmp);
-    // Move data - TODO(Morato) change this back to zero copy
     if (fd < 0) {
 	tmp->data = std::make_shared<dai::VectorMemory>(std::move(data));
     } else {

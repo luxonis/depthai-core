@@ -42,24 +42,29 @@ class SharedMemory : public Memory {
     }
    public:
     SharedMemory() {
+	kind = MemoryKinds::MEMORY_KIND_SHARED;
 	fd = -1;
     }
 
     SharedMemory(long argFd) : fd(argFd) {
+	kind = MemoryKinds::MEMORY_KIND_SHARED;
 	mapFd();
     }
 
     SharedMemory(long argFd, std::size_t size) : fd(argFd) {
+	kind = MemoryKinds::MEMORY_KIND_SHARED;
 	setSize(size);
 	mapFd();
     }
 
     SharedMemory(const char *name) {
+	kind = MemoryKinds::MEMORY_KIND_SHARED;
 	fd = memfd_create(name, 0);
 	mapFd();
     }
 
     SharedMemory(const char *name, std::size_t size) {
+	kind = MemoryKinds::MEMORY_KIND_SHARED;
 	fd = memfd_create(name, 0);
 
 	setSize(size);
