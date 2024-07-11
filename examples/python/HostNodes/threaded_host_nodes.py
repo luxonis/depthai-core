@@ -3,9 +3,16 @@ import time
 
 class TestPassthrough(dai.node.ThreadedHostNode):
     def __init__(self):
-        dai.node.ThreadedHostNode.__init__(self)
-        self.input = dai.Node.Input(self)
-        self.output = dai.Node.Output(self)
+        super().__init__()
+        self.input = self.createInput()
+        self.output = self.createOutput()
+
+    def onStart(self):
+        print("Hello, this is", __class__.__name__)
+
+    def onStop(self):
+        print("Goodbye from", __class__.__name__)
+
     def run(self):
         while self.isRunning():
             buffer = self.input.get()
@@ -14,8 +21,12 @@ class TestPassthrough(dai.node.ThreadedHostNode):
 
 class TestSink(dai.node.ThreadedHostNode):
     def __init__(self):
-        dai.node.ThreadedHostNode.__init__(self)
-        self.input = dai.Node.Input(self)
+        super().__init__()
+        self.input = self.createInput()
+
+    def onStart(self):
+        print("Hello, this is", __class__.__name__)
+
     def run(self):
         while self.isRunning():
             buffer = self.input.get()
@@ -23,8 +34,9 @@ class TestSink(dai.node.ThreadedHostNode):
 
 class TestSource(dai.node.ThreadedHostNode):
     def __init__(self):
-        dai.node.ThreadedHostNode.__init__(self)
-        self.output = dai.Node.Output(self)
+        super().__init__()
+        self.output = self.createOutput()
+
     def run(self):
         while self.isRunning():
             buffer = dai.Buffer()

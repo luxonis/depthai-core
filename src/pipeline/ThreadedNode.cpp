@@ -17,6 +17,7 @@ ThreadedNode::ThreadedNode() {
 }
 
 void ThreadedNode::start() {
+    onStart();
     // Start the thread
     running = true;
     thread = std::thread([this]() {
@@ -50,6 +51,7 @@ void ThreadedNode::wait() {
 }
 
 void ThreadedNode::stop() {
+    onStop();
     // TBD
     // Sets running to false
     running = false;
