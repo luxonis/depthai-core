@@ -1,9 +1,6 @@
 #pragma once
 
-#include <filesystem>
 #include <string>
-
-#include "depthai/device/Device.hpp"
 
 namespace dai {
 

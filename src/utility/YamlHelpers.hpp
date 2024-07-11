@@ -2,6 +2,8 @@
 
 #include <yaml-cpp/yaml.h>
 
+#include <fstream>
+
 namespace dai {
 namespace utility {
 

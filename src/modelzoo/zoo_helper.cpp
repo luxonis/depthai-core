@@ -15,7 +15,7 @@ int main(int argc, char* argv[]) {
     const std::string cacheFolder = argv[2];
 
     // Download models
-    dai::downloadModelsFromZoo(yamlFolder, cacheFolder, true); // true for verbose
+    dai::downloadModelsFromZoo(yamlFolder, cacheFolder, true);  // true for verbose
 
     return EXIT_SUCCESS;
 }

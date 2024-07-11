@@ -1,8 +1,10 @@
 #include "depthai/modelzoo/NNModelDescription.hpp"
 
+#include <yaml-cpp/yaml.h>
+
+#include <filesystem>
 #include <iostream>
 
-#include <yaml-cpp/yaml.h>
 #include "../utility/YamlHelpers.hpp"
 
 namespace dai {
