@@ -201,6 +201,15 @@ hunter_config(
 )
 
 hunter_config(
+    yaml-cpp
+    VERSION "0.6.3l"
+    URL "https://github.com/jbeder/yaml-cpp/archive/refs/tags/yaml-cpp-0.6.3.tar.gz"
+    SHA1 "98d98632b3a62fdf1172442f8ad8190fc11cbef7"
+    CMAKE_ARGS
+        YAML_BUILD_SHARED_LIBS=ON
+)
+
+hunter_config(
     semver
     VERSION "v0.3.1"
     URL "https://github.com/Neargye/semver/archive/v0.3.1.tar.gz"

@@ -473,6 +473,8 @@ dai_add_example(rgb_video RVC2/ColorCamera/rgb_video.cpp ON OFF)
 dai_add_example(host_node HostNodes/host_node.cpp ON OFF)
 dai_add_example(threaded_host_node HostNodes/threaded_host_node.cpp ON OFF)
 
+# Model zoo
+dai_add_example(model_zoo RVC2/ModelZoo/model_zoo.cpp ON OFF)
 
 # if(DEPTHAI_HAVE_PCL_SUPPORT)
 #     dai_add_example(visualize_pointcloud PointCloud/visualize_pointcloud.cpp ON ON)
