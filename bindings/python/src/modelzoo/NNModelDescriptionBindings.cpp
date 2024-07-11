@@ -22,7 +22,7 @@ void NNModelDescriptionBindings::bind(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
 
     // Bind DeviceBootloader
-    modelDescription.def(py::init<>(), DOC(dai, NNModelDescription, NNModelDescription))
+    modelDescription.def(py::init<>())
         .def(py::init([](const std::string& modelSlug,
                          const std::string& platform,
                          const std::string& modelVersionSlug,
@@ -38,8 +38,7 @@ void NNModelDescriptionBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("modelInstanceSlug") = "",
              py::arg("modelInstanceHash") = "",
              py::arg("optimizationLevel") = "",
-             py::arg("compressionLevel") = "",
-             DOC(dai, NNModelDescription, NNModelDescription))
+             py::arg("compressionLevel") = "")
         .def_static("fromYamlFile", &NNModelDescription::fromYamlFile, py::arg("yamlPath"), DOC(dai, NNModelDescription, fromYamlFile))
         .def("saveToYamlFile", &NNModelDescription::saveToYamlFile, py::arg("yamlPath"), DOC(dai, NNModelDescription, saveToYamlFile))
         .def("toString", &NNModelDescription::toString, DOC(dai, NNModelDescription, toString))
