@@ -163,9 +163,9 @@ hunter_config(
 # Pybind11 2.9.2-smart_holder
 hunter_config(
     pybind11
-    VERSION "2.9.2-smart_holder"
-    URL "https://github.com/luxonis/pybind11/archive/9fa714f524fdbaf8e81c1a1b1637c547fed4e18f.tar.gz"
-    SHA1 "0cdb8fe12d33bac220b58aa85b219de02716f537"
+    VERSION "luxonis_smart_holder"
+    URL "https://github.com/luxonis/pybind11/archive/f760e2b984b66be2cfa202c93da9d341a557fb5d.tar.gz"
+    SHA1 "d53247e4d1af52be040b647de0c25eb336bc85c7"
 )
 
 hunter_config(
