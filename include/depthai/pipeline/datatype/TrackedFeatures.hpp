@@ -69,4 +69,3 @@ class TrackedFeatures : public Buffer {
 };
 
 }  // namespace dai
-

@@ -2,7 +2,6 @@
 
 // Include depthai library
 #include <depthai/depthai.hpp>
-#include "depthai/depthai.hpp"
 
 TEST_CASE("Pipeline link and remove") {
     dai::Pipeline p;

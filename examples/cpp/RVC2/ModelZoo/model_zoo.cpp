@@ -1,11 +1,10 @@
+#include <chrono>
 #include <iostream>
 #include <string>
-#include <chrono>
 
 #include "depthai/depthai.hpp"
 
 int main(int argc, char* argv[]) {
-
     dai::Pipeline pipeline(true);
 
     // Download model from zoo
@@ -35,7 +34,6 @@ int main(int argc, char* argv[]) {
     pipeline.start();
 
     while(pipeline.isRunning()) {
-
         auto detection = nnDetectionQueue->get<dai::NNData>();
         auto passthrough = nnPassthroughQueue->get<dai::ImgFrame>();
 
