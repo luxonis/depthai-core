@@ -13,7 +13,6 @@ TEST_CASE("Test ColorCamera node") {
     dai::Pipeline p;
     auto colorCam = p.create<dai::node::ColorCamera>();
 
-
     int previewWidth, previewHeight;
     SECTION("640x320") {
         previewWidth = 640, previewHeight = 320;
