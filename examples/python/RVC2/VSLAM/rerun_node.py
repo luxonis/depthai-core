@@ -1,5 +1,13 @@
 import depthai as dai
-import rerun as rr
+import sys
+
+from pathlib import Path
+installExamplesStr = Path(__file__).absolute().parents[2] / 'install_requirements.py --install_rerun'
+try:
+    import rerun as rr
+except ImportError:
+    sys.exit("Critical dependency missing: Rerun. Please install it using the command: '{} {}' and then rerun the script.".format(sys.executable, installExamplesStr))
+
 import cv2
 
 class RerunNode(dai.node.ThreadedHostNode):
@@ -14,7 +22,7 @@ class RerunNode(dai.node.ThreadedHostNode):
         self.fx = 400.0
         self.fy = 400.0
         self.intrinsicsSet = False
-    
+
     def getFocalLengthFromImage(self, imgFrame):
         p = self.getParentPipeline()
         calibHandler = p.getDefaultDevice().readCalibration()
