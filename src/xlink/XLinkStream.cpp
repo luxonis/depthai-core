@@ -104,6 +104,13 @@ void XLinkStream::write(long fd) {
     }
 }
 
+void XLinkStream::write(long fd, span<const uint8_t> data) {
+    auto status = XLinkWriteFdData(streamId, fd, data.data(), data.size()); 
+
+    if(status != X_LINK_SUCCESS) {
+        throw XLinkWriteError(status, streamName);
+    }
+}
 
 void XLinkStream::read(std::vector<std::uint8_t>& data) {
     XLinkTimespec timestampReceived;

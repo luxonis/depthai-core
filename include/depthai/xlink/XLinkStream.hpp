@@ -90,6 +90,7 @@ class XLinkStream {
     void write(span<const uint8_t> data, span<const uint8_t> data2);
     void write(span<const uint8_t> data);
     void write(long fd);
+    void write(long fd, span<const uint8_t> data);
     void write(const void* data, std::size_t size);
     std::vector<std::uint8_t> read();
     std::vector<std::uint8_t> read(XLinkTimespec& timestampReceived);
