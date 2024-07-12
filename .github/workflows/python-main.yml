@@ -13,7 +13,7 @@ on:
     branches:
     - v3_develop*
     tags:
-    - 'v*'
+    - 'v3*'
 
 ###################################
 ###################################
@@ -45,10 +45,10 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          sudo apt install libusb-1.0-0-dev libopencv-dev
+          sudo apt install libusb-1.0-0-dev libopencv-dev libpcl-dev
           python -m pip install -r bindings/python/docs/requirements_mkdoc.txt
       - name: Configure project
-        run: cmake -S . -B build -DDEPTHAI_BUILD_PYTHON=ON -DDEPTHAI_PYTHON_FORCE_DOCSTRINGS=ON -DDEPTHAI_PYTHON_DOCSTRINGS_OUTPUT="$PWD/bindings/python/docstrings/depthai_python_docstring.hpp"
+        run: cmake -S . -B build -DDEPTHAI_BUILD_PYTHON=ON -DDEPTHAI_PYTHON_FORCE_DOCSTRINGS=ON -DDEPTHAI_BASALT_SUPPORT=ON -DDEPTHAI_PCL_SUPPORT=ON -DDEPTHAI_RTABMAP_SUPPORT=ON -DDEPTHAI_PYTHON_DOCSTRINGS_OUTPUT="$PWD/bindings/python/docstrings/depthai_python_docstring.hpp"
       - name: Build target 'pybind11_mkdoc'
         run: cmake --build build --target pybind11_mkdoc --parallel 4
       - name: Upload docstring artifacts
@@ -59,69 +59,70 @@ jobs:
           retention-days: 1
 
 
-  # Build and test bindings
-  pytest:
-    needs: build-docstrings
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - name: Print home directory
-        run: echo Home directory inside container $HOME
+# TODO(Morato) - re-enable
+  # # Build and test bindings
+  # pytest:
+  #   needs: build-docstrings
+  #   strategy:
+  #     matrix:
+  #       os: [ubuntu-latest, windows-latest, macos-latest]
+  #   runs-on: ${{ matrix.os }}
+  #   steps:
+  #     - name: Print home directory
+  #       run: echo Home directory inside container $HOME
 
-      - name: Cache .hunter folder
-        if: matrix.os != 'windows-latest'
-        uses: actions/cache@v3
-        with:
-          path: ~/.hunter/
-          key: hunter-pytest-${{ matrix.os }}-v3-develop
-      - name: Cache .hunter folder
-        if: matrix.os == 'windows-latest'
-        uses: actions/cache@v3
-        with:
-          path: C:/.hunter/
-          key: hunter-pytest-${{ matrix.os }}-v3-develop
+  #     - name: Cache .hunter folder
+  #       if: matrix.os != 'windows-latest'
+  #       uses: actions/cache@v3
+  #       with:
+  #         path: ~/.hunter/
+  #         key: hunter-pytest-${{ matrix.os }}-v3-develop
+  #     - name: Cache .hunter folder
+  #       if: matrix.os == 'windows-latest'
+  #       uses: actions/cache@v3
+  #       with:
+  #         path: C:/.hunter/
+  #         key: hunter-pytest-${{ matrix.os }}-v3-develop
 
-      - uses: actions/checkout@v3
-        with:
-          submodules: 'recursive'
+  #     - uses: actions/checkout@v3
+  #       with:
+  #         submodules: 'recursive'
 
-      - uses: actions/download-artifact@v3
-        with:
-          name: 'docstrings'
-          path: bindings/python/docstrings
-      - name: Specify docstring to use while building the wheel
-        run: echo "DEPTHAI_PYTHON_DOCSTRINGS_INPUT=$PWD/bindings/python/docstrings/depthai_python_docstring.hpp" >> $GITHUB_ENV
+  #     - uses: actions/download-artifact@v3
+  #       with:
+  #         name: 'docstrings'
+  #         path: bindings/python/docstrings
+  #     - name: Specify docstring to use while building the wheel
+  #       run: echo "DEPTHAI_PYTHON_DOCSTRINGS_INPUT=$PWD/bindings/python/docstrings/depthai_python_docstring.hpp" >> $GITHUB_ENV
 
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.10"
+  #     - name: Set up Python ${{ matrix.python-version }}
+  #       uses: actions/setup-python@v4
+  #       with:
+  #         python-version: "3.10"
 
-      - name: Install dependencies (Ubuntu)
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          python -m pip install --upgrade pip
-          sudo apt install libusb-1.0-0-dev
+  #     - name: Install dependencies (Ubuntu)
+  #       if: matrix.os == 'ubuntu-latest'
+  #       run: |
+  #         python -m pip install --upgrade pip
+  #         sudo apt install libusb-1.0-0-dev
 
-      - name: Install dependencies (MacOS)
-        if: matrix.os == 'macos-latest'
-        run: |
-          python -m pip install --upgrade pip
-          brew install libusb
+  #     - name: Install dependencies (MacOS)
+  #       if: matrix.os == 'macos-latest'
+  #       run: |
+  #         python -m pip install --upgrade pip
+  #         brew install libusb
 
-      - name: Install pytest
-        run: |
-          python -m pip install pytest numpy
+  #     - name: Install pytest
+  #       run: |
+  #         python -m pip install pytest numpy
 
-      - name: Compile
-        run: |
-          cmake -S . -B build -DDEPTHAI_BUILD_PYTHON=ON -D CMAKE_BUILD_TYPE=Release -D DEPTHAI_PYTHON_DOCSTRINGS_INPUT=$PWD/bindings/python/docstrings/depthai_python_docstring.hpp -D DEPTHAI_PYTHON_ENABLE_TESTS=ON
-          cmake --build build --parallel 4
-      - name: Test
-        run: |
-          cmake --build build --target pytest --config Release
+  #     - name: Compile
+  #       run: |
+  #         cmake -S . -B build -DDEPTHAI_BUILD_PYTHON=ON -D CMAKE_BUILD_TYPE=Release -D DEPTHAI_PYTHON_DOCSTRINGS_INPUT=$PWD/bindings/python/docstrings/depthai_python_docstring.hpp -D DEPTHAI_PYTHON_ENABLE_TESTS=ON
+  #         cmake --build build --parallel 4
+  #     - name: Test
+  #       run: |
+  #         cmake --build build --target pytest --config Release
 
 
   # # This job builds wheels for armhf arch (RPi)
@@ -179,8 +180,11 @@ jobs:
     strategy:
       matrix:
         python-version: [3.6, 3.7, 3.8, 3.9, '3.10', '3.11', '3.12']
-        python-architecture: [x64, x86]
+        # python-architecture: [x64, x86]
+        python-architecture: [x64] # TODO(Morato) - re-enable x86 - it complains that OpenCV even though it's 32 bit is not compatible
       fail-fast: false
+    env:
+      DEPTHAI_BUILD_BASALT: ON
     steps:
       - name: Cache .hunter folder
         uses: actions/cache@v3
@@ -198,10 +202,17 @@ jobs:
       - name: Specify docstring to use while building the wheel
         run: echo "DEPTHAI_PYTHON_DOCSTRINGS_INPUT=$PWD/bindings/python/docstrings/depthai_python_docstring.hpp" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
-      - name: Install dependanices
+      - name: Install dependencies for x86
+        if: matrix.python-architecture == 'x86'
         run: |
-           choco install opencv
-           echo "OpenCV_DIR=C:\tools\opencv\build" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          choco install opencv --x86
+          echo "OpenCV_DIR=C:\tools\opencv\build" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Install dependencies for x64
+        if: matrix.python-architecture == 'x64'
+        run: |
+          choco install opencv
+          echo "OpenCV_DIR=C:\tools\opencv\build" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Select Windows SDK
         run: echo "CMAKE_ARGS=-DCMAKE_SYSTEM_VERSION=${{ env.CMAKE_WINDOWS_SDK_VERSION }}" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
@@ -241,6 +252,10 @@ jobs:
         os: [macos-13, macos-14] # macos-13 is x64, macos-14 is arm64
       fail-fast: false
     runs-on: ${{ matrix.os }}
+    env:
+      DEPTHAI_BUILD_BASALT: ON
+      DEPTHAI_BUILD_PCL: ON
+      DEPTHAI_BUILD_RTABMAP: ON
     steps:
       - name: Cache .hunter folder
         uses: actions/cache@v3
@@ -275,6 +290,7 @@ jobs:
           python -m pip install --upgrade pip
           brew install libusb
           brew install opencv
+          brew install pcl
           python -m pip install delocate
       - name: Building wheels
         run: cd bindings/python && python -m pip wheel . -w ./wheelhouse/ --verbose
@@ -361,9 +377,16 @@ jobs:
     needs: build-docstrings
     runs-on: ubuntu-latest
     container:
-      image: mmorato/depthai-manylinux2014:0.1 # TODO(mmorato) temporary location, push to luxonis namespace
+      image: mmorato/depthai-manylinux2014:0.4 # TODO(mmorato) temporary location, push to luxonis namespace
       env:
         PLAT: manylinux2014_x86_64
+    env:
+      # workaround required for cache@v3, https://github.com/actions/cache/issues/1428
+      # to be removed when upgrading the manylinux image
+      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
+      DEPTHAI_BUILD_BASALT: ON
+      DEPTHAI_BUILD_PCL: ON
+      DEPTHAI_BUILD_RTABMAP: ON
     steps:
       - name: Cache .hunter folder
         uses: actions/cache@v3
@@ -374,7 +397,7 @@ jobs:
         with:
           submodules: 'recursive'
       - name: Installing libusb1-devel dependency
-        run: yum install -y --disableplugin=fastestmirror libusb1-devel
+        run: yum install -y --disableplugin=fastestmirror libusb1-devel perl-core
       - name: Installing cmake dependency
         run: |
           cd bindings/python
@@ -426,19 +449,27 @@ jobs:
   build-linux-arm64:
     needs: build-docstrings
     runs-on: [self-hosted, linux, ARM64]
+    timeout-minutes: 1440  # Set timeout to 24 hours
     container:
-      image: mmorato/depthai-manylinux2014_aarch64:0.1
+      image: mmorato/depthai-manylinux2014_aarch64:0.4
       env:
         PLAT: manylinux2014_aarch64
       # Mount local hunter cache directory, instead of transfering to Github and back
       volumes:
         - /.hunter:/github/home/.hunter
+    env:
+      # workaround required for cache@v3, https://github.com/actions/cache/issues/1428
+      # to be removed when upgrading the manylinux image
+      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
+      DEPTHAI_BUILD_BASALT: ON
+      DEPTHAI_BUILD_PCL: ON
+      DEPTHAI_BUILD_RTABMAP: ON
     steps:
       - uses: actions/checkout@v3
         with:
           submodules: 'recursive'
       - name: Installing libusb1-devel dependency
-        run: yum install -y --disableplugin=fastestmirror libusb1-devel
+        run: yum install -y --disableplugin=fastestmirror libusb1-devel perl-core
       - name: Installing cmake dependency
         run: |
           cd bindings/python
@@ -483,7 +514,8 @@ jobs:
   release:
     if: startsWith(github.ref, 'refs/tags/v')
     # needs: [pytest, build-linux-armhf, build-windows-x86_64, build-macos-x86_64, build-macos-arm64, build-linux-x86_64, build-linux-arm64]
-    needs: [pytest, build-windows-x86_64, build-macos, build-linux-x86_64, build-linux-arm64]
+    # needs: [pytest, build-windows-x86_64, build-macos, build-linux-x86_64, build-linux-arm64]
+    needs: [build-windows-x86_64, build-macos, build-linux-x86_64, build-linux-arm64]
     runs-on: ubuntu-latest
 
     steps:
@@ -496,7 +528,7 @@ jobs:
         python-version: '3.8'
 
     - name: Check if version matches
-      run: python3.8 -c 'import find_version as v; exit(0) if "${{ github.ref_name }}" == f"v{v.get_package_version()}" else exit(1)'
+      run: cd bindings/python && python3.8 -c 'import find_version as v; exit(0) if "${{ github.ref_name }}" == f"v{v.get_package_version()}" else exit(1)'
 
   # Deploy to PyPi and Artifactory. Only when a commit is tagged
   deploy:
@@ -515,6 +547,7 @@ jobs:
         run: ls -lah
       - name: Run deploy to PyPi
         run: cd bindings/python && bash ./ci/upload-pypi.sh
+        if: ${{!contains(github.ref, '-') && !contains(github.ref, 'alpha') && !contains(github.ref, 'beta') && !contains(github.ref, 'rc')}}
         env:
           PYPI_SERVER: ${{ secrets.PYPI_SERVER }}
           PYPI_USER: ${{ secrets.PYPI_USER }}
@@ -526,21 +559,21 @@ jobs:
           ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
           ARTIFACTORY_PASS: ${{ secrets.ARTIFACTORY_PASS }}
 
-  notify_hil_workflow_linux_x86_64:
-    needs: [build-linux-x86_64]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Dispatch an action and get the run ID
-        uses: codex-/return-dispatch@v1
-        id: return_dispatch
-        with:
-          token: ${{ secrets.HIL_CORE_DISPATCH_TOKEN }} # Note this is NOT GITHUB_TOKEN but a PAT
-          ref: main # or refs/heads/target_branch
-          repo: depthai-core-hil-tests
-          owner: luxonis
-          workflow: regression_test.yml
-          workflow_inputs: '{"commit": "${{ github.ref }}", "parent_url": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"}'
-          workflow_timeout_seconds: 300 # was 120  Default: 300
+  # notify_hil_workflow_linux_x86_64:
+  #   needs: [build-linux-x86_64]
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Dispatch an action and get the run ID
+  #       uses: codex-/return-dispatch@v1
+  #       id: return_dispatch
+  #       with:
+  #         token: ${{ secrets.HIL_CORE_DISPATCH_TOKEN }} # Note this is NOT GITHUB_TOKEN but a PAT
+  #         ref: main # or refs/heads/target_branch
+  #         repo: depthai-core-hil-tests
+  #         owner: luxonis
+  #         workflow: regression_test.yml
+  #         workflow_inputs: '{"commit": "${{ github.ref }}", "parent_url": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"}'
+  #         workflow_timeout_seconds: 300 # was 120  Default: 300
 
-      - name: Release
-        run: echo "https://github.com/luxonis/depthai-core-hil-tests/actions/runs/${{steps.return_dispatch.outputs.run_id}}" >> $GITHUB_STEP_SUMMARY
+  #     - name: Release
+  #       run: echo "https://github.com/luxonis/depthai-core-hil-tests/actions/runs/${{steps.return_dispatch.outputs.run_id}}" >> $GITHUB_STEP_SUMMARY

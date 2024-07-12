@@ -62,49 +62,42 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
      * Input message with depth data used to retrieve spatial information about detected object
      * Default queue is non-blocking with size 4
      */
-    Input inputDepth{*this, {.name = "inputDepth", .blocking = false, .queueSize = 4, .types = {{DatatypeEnum::ImgFrame, false}}, .waitForMessage = true}};
+    Input inputDepth{*this, {"inputDepth", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::ImgFrame, false}}}, true}};
 
     /**
      * Input message with image data used to retrieve image transformation from detected object
      * Default queue is blocking with size 1
      */
-    Input inputImg{*this, {.name = "inputImg", .blocking = true, .queueSize = 2, .types = {{DatatypeEnum::ImgFrame, false}}, .waitForMessage = true}};
+    Input inputImg{*this, {"inputImg", DEFAULT_GROUP, true, 2, {{{DatatypeEnum::ImgFrame, false}}}, true}};
 
     /**
      * Input message with input detections object
      * Default queue is blocking with size 1
      */
-    Input inputDetections{*this,
-                          {
-                              .name = "inputDetections",
-                              .blocking = true,
-                              .queueSize = 5,
-                              .types = {{DatatypeEnum::ImgDetections, false}},
-                              .waitForMessage = true,
-                          }};
+    Input inputDetections{*this, {"inputDetections", DEFAULT_GROUP, true, 5, {{{DatatypeEnum::ImgDetections, false}}}, true}};
 
     /**
      * Outputs ImgDetections message that carries parsed detection results.
      */
-    Output out{*this, {.name = "out", .types = {{DatatypeEnum::SpatialImgDetections, false}}}};
+    Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::SpatialImgDetections, false}}}}};
 
     /**
      * Outputs mapping of detected bounding boxes relative to depth map
      * Suitable for when displaying remapped bounding boxes on depth frame
      */
-    Output boundingBoxMapping{*this, {.name = "boundingBoxMapping", .types = {{DatatypeEnum::SpatialLocationCalculatorConfig, false}}}};
+    Output boundingBoxMapping{*this, {"boundingBoxMapping", DEFAULT_GROUP, {{{DatatypeEnum::SpatialLocationCalculatorConfig, false}}}}};
 
     /**
      * Passthrough message for depth frame on which the spatial location calculation was performed.
      * Suitable for when input queue is set to non-blocking behavior.
      */
-    Output passthroughDepth{*this, {.name = "passthroughDepth", .types = {{DatatypeEnum::ImgFrame, false}}}};
+    Output passthroughDepth{*this, {"passthroughDepth", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     /**
      * Output of SpatialLocationCalculator node, which is used internally by SpatialDetectionNetwork.
      * Suitable when extra information is required from SpatialLocationCalculator node, e.g. minimum, maximum distance.
      */
-    Output spatialLocationCalculatorOutput{*this, {.name = "spatialLocationCalculatorOutput", .types = {{DatatypeEnum::SpatialLocationCalculatorData, false}}}};
+    Output spatialLocationCalculatorOutput{*this, {"spatialLocationCalculatorOutput", DEFAULT_GROUP, {{{DatatypeEnum::SpatialLocationCalculatorData, false}}}}};
 
     void setNNArchive(const NNArchive& nnArchive);
 

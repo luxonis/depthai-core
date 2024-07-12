@@ -2,10 +2,22 @@
 
 #include <spdlog/spdlog.h>
 
+#include "utility/Environment.hpp"
+#include "utility/Logging.hpp"
 #include "utility/Platform.hpp"
+
 namespace dai {
+ThreadedNode::ThreadedNode() {
+    auto level = spdlog::level::warn;
+    auto envLevel = utility::getEnv("DEPTHAI_LEVEL");
+    if(!envLevel.empty()) {
+        level = Logging::parseLevel(envLevel);
+    }
+    logger->set_level(level);
+}
 
 void ThreadedNode::start() {
+    onStart();
     // Start the thread
     running = true;
     thread = std::thread([this]() {
@@ -28,6 +40,7 @@ void ThreadedNode::start() {
                 spdlog::error(expStr);
             }
             running = false;
+            stopPipeline();
         }
     });
     platform::setThreadName(thread, fmt::format("{}({})", getName(), id));
@@ -38,6 +51,7 @@ void ThreadedNode::wait() {
 }
 
 void ThreadedNode::stop() {
+    onStop();
     // TBD
     // Sets running to false
     running = false;

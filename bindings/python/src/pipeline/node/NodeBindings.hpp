@@ -11,8 +11,8 @@
 #include "depthai/pipeline/ThreadedHostNode.hpp"
 
 
-dai::Pipeline& getImplicitPipeline();
-void setImplicitPipeline(dai::Pipeline& pipeline);
+dai::Pipeline* getImplicitPipeline();
+void setImplicitPipeline(dai::Pipeline* pipeline);
 void delImplicitPipeline();
 
 struct NodeBindings {

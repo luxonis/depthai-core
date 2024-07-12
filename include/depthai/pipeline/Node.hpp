@@ -56,6 +56,20 @@ class Node : public std::enable_shared_from_this<Node> {
     class Output;
     class InputMap;
     class OutputMap;
+    struct DatatypeHierarchy {
+        DatatypeHierarchy(DatatypeEnum d, bool c) : datatype(d), descendants(c) {}
+        DatatypeEnum datatype;
+        bool descendants;
+    };
+    static constexpr auto DEFAULT_GROUP = "";
+    static constexpr auto DEFAULT_NAME = "";
+#define DEFAULT_TYPES                  \
+    {                                  \
+        { DatatypeEnum::Buffer, true } \
+    }
+    static constexpr auto DEFAULT_BLOCKING = true;
+    static constexpr auto DEFAULT_QUEUE_SIZE = 3;
+    static constexpr auto DEFAULT_WAIT_FOR_MESSAGE = false;
 
    protected:
     std::vector<Output*> outputRefs;
@@ -76,12 +90,6 @@ class Node : public std::enable_shared_from_this<Node> {
     void setNodeRefs(std::initializer_list<std::pair<std::string, std::shared_ptr<Node>*>> l);
     void setNodeRefs(std::pair<std::string, std::shared_ptr<Node>*> nodeRef);
     void setNodeRefs(std::string alias, std::shared_ptr<Node>* nodeRef);
-
-    // For record and replay
-    virtual bool isSourceNode() const;
-    virtual utility::NodeRecordParams getNodeRecordParams() const;
-    virtual Output& getRecordOutput();
-    virtual Input& getReplayInput();
 
     template <typename T>
     class Subnode {
@@ -109,16 +117,10 @@ class Node : public std::enable_shared_from_this<Node> {
     };
 
    public:
-    struct DatatypeHierarchy {
-        DatatypeHierarchy(DatatypeEnum d, bool c) : datatype(d), descendants(c) {}
-        DatatypeEnum datatype;
-        bool descendants;
-    };
-
     struct OutputDescription {
-        std::string name{};                                                  // Name of the output
-        std::string group{};                                                 // Group of the output
-        std::vector<DatatypeHierarchy> types{{DatatypeEnum::Buffer, true}};  // Possible datatypes that can be sent
+        std::string name{DEFAULT_NAME};
+        std::string group{DEFAULT_GROUP};
+        std::vector<DatatypeHierarchy> types DEFAULT_TYPES;
     };
 
     class Output {
@@ -322,12 +324,12 @@ class Node : public std::enable_shared_from_this<Node> {
 
     // Input extends the message queue with additional option that specifies whether to wait for message or not
     struct InputDescription {
-        std::string name{};                                                  // Name of the input
-        std::string group{};                                                 // Group of the input
-        bool blocking{true};                                                 // Whether to block when input queue is full
-        int queueSize{3};                                                    // Size of the queue
-        std::vector<DatatypeHierarchy> types{{DatatypeEnum::Buffer, true}};  // Possible datatypes that can be received
-        bool waitForMessage{false};
+        std::string name = DEFAULT_NAME;                     // Name of the input
+        std::string group = DEFAULT_GROUP;                   // Group of the input
+        bool blocking{DEFAULT_BLOCKING};                     // Whether to block when input queue is full
+        int queueSize{DEFAULT_QUEUE_SIZE};                   // Size of the queue
+        std::vector<DatatypeHierarchy> types DEFAULT_TYPES;  // Possible datatypes that can be received
+        bool waitForMessage{DEFAULT_WAIT_FOR_MESSAGE};
     };
 
     class Input : public MessageQueue {
@@ -591,6 +593,9 @@ class Node : public std::enable_shared_from_this<Node> {
     /// Retrieves reference to specific input map
     InputMap* getInputMapRef(std::string group);
 
+    // For record and replay
+    virtual bool isSourceNode() const;
+
    protected:
     Node() = default;
     Node(bool conf);
@@ -646,6 +651,14 @@ class Node : public std::enable_shared_from_this<Node> {
     const NodeMap& getNodeMap() const {
         return nodeMap;
     }
+};
+
+class SourceNode {
+   public:
+    virtual ~SourceNode() = default;
+    virtual NodeRecordParams getNodeRecordParams() const;
+    virtual Node::Output& getRecordOutput();
+    virtual Node::Input& getReplayInput();
 };
 
 // Node CRTP class

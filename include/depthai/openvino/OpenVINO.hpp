@@ -54,6 +54,59 @@ class OpenVINO {
         std::vector<uint8_t> data;
     };
 
+    /**
+     * @brief A superblob is an efficient way of storing generated blobs for all different number of shaves.
+     */
+    class SuperBlob {
+       public:
+        /** Number of patches in a superblob*/
+        static constexpr size_t NUMBER_OF_PATCHES = 16;
+
+        /**
+         * @brief Construct a new SuperBlob object
+         *
+         * @param pathToSuperBlobFile: Path to the superblob file (.superblob suffix)
+         */
+        SuperBlob(const std::string& pathToSuperBlobFile);
+
+        /**
+         * @brief Generate a blob with a specific number of shaves
+         *
+         * @param numShaves: Number of shaves to generate the blob for. Must be between 1 and NUMBER_OF_PATCHES.
+         * @return dai::OpenVINO::Blob: Blob compiled for the specified number of shaves
+         */
+        dai::OpenVINO::Blob getBlobWithNumShaves(int numShaves);
+
+       private:
+        // A header in the superblob containing metadata about the blob and patches
+        struct SuperBlobHeader {
+            static constexpr size_t HEADER_SIZE = 1 * sizeof(uint64_t) + NUMBER_OF_PATCHES * sizeof(uint64_t);
+
+            static SuperBlobHeader fromData(const std::vector<uint8_t>& data);
+
+            int64_t blobSize;
+            std::vector<int64_t> patchSizes;
+        };
+
+        // Read the SuperBlob file into memory
+        std::vector<uint8_t> readSuperBlobFile(const std::string& path);
+
+        // Get a pointer to the first byte of the blob data
+        const uint8_t* getBlobDataPointer();
+
+        // Get the size in bytes of the blob data
+        int64_t getBlobDataSize();
+
+        // Get a pointer to the first byte of the patch data for a specific number of shaves
+        const uint8_t* getPatchDataPointer(int numShaves);
+
+        // Get the size in bytes of the patch data for a specific number of shaves
+        int64_t getPatchDataSize(int numShaves);
+
+        SuperBlobHeader header;
+        std::vector<uint8_t> data;
+    };
+
     /// Main OpenVINO version
     constexpr static const Version DEFAULT_VERSION = VERSION_2022_1;
 

@@ -44,8 +44,8 @@ endif()
 
 include("cmake/HunterGate.cmake")
 HunterGate(
-    URL "https://github.com/cpp-pm/hunter/archive/v0.25.5.tar.gz"
-    SHA1 "a20151e4c0740ee7d0f9994476856d813cdead29"
+    URL "https://github.com/cpp-pm/hunter/archive/9d9242b60d5236269f894efd3ddd60a9ca83dd7f.tar.gz"
+    SHA1 "16cc954aa723bccd16ea45fc91a858d0c5246376"
     LOCAL # Local config for dependencies
 )
 
@@ -55,10 +55,16 @@ if(WIN32)
 endif()
 
 # Create depthai project
-project(depthai VERSION "2.25.0" LANGUAGES CXX C)
+project(depthai VERSION "3.0.0" LANGUAGES CXX C)
+set(DEPTHAI_PRE_RELEASE_TYPE "alpha") # Valid options are "alpha", "beta", "rc", ""
+set(DEPTHAI_PRE_RELEASE_VERSION "0")
+
+# Set DEPTHAI_VERSION universally, not conditionally
+set(DEPTHAI_VERSION ${PROJECT_VERSION}-${DEPTHAI_PRE_RELEASE_TYPE}.${DEPTHAI_PRE_RELEASE_VERSION})
+
 get_directory_property(has_parent PARENT_DIRECTORY)
 if(has_parent)
-    set(DEPTHAI_VERSION ${PROJECT_VERSION} PARENT_SCOPE)
+    set(DEPTHAI_VERSION ${DEPTHAI_VERSION} PARENT_SCOPE)  # Set in parent scope if there's a parent
 endif()
 
 # Set default build type depending on context
@@ -186,6 +192,10 @@ endif()
 option(DEPTHAI_XTENSOR_SUPPORT "Enable optional xtensor support" ON)
 option(DEPTHAI_OPENCV_SUPPORT "Enable optional OpenCV support" ON)
 option(DEPTHAI_PCL_SUPPORT "Enable optional PCL support" OFF)
+option(DEPTHAI_RTABMAP_SUPPORT "Enable optional RTABMap support" OFF)
+option(DEPTHAI_BASALT_SUPPORT "Enable optional Basalt support" OFF)
+
+option(DEPTHAI_MERGED_TARGET "Enable merged target build" ON)
 
 # Include project dependencies
 set(DEPTHAI_DEPENDENCY_INCLUDE "" CACHE FILEPATH "Optional cmake file to append to dependency processing, e.g. additional find_package()")
@@ -209,8 +219,50 @@ include(Flags)
 set(TARGET_CORE_NAME ${PROJECT_NAME}-core)
 set(TARGET_CORE_ALIAS core)
 
+########################
+# OpenCV Support 1
+########################
+set(THIRDPARTY_OPENCV_LIBRARIES "" CACHE STRING "Optional libraries to link OpenCV support, e.g. TBB::tbb")
+set(TARGET_OPENCV_NAME ${PROJECT_NAME}-opencv)
+set(TARGET_OPENCV_ALIAS opencv)
+if(DEPTHAI_OPENCV_SUPPORT)
+    # Check if required libraries are available
+    set(REQUIRED_OPENCV_LIBRARIES "opencv_core" "opencv_imgproc" "opencv_videoio")
+    set(OPENCV_SUPPORT_AVAILABLE ${OpenCV_FOUND})
+    foreach(lib ${REQUIRED_OPENCV_LIBRARIES})
+        if(NOT (lib IN_LIST OpenCV_LIBS))
+            set(OPENCV_SUPPORT_AVAILABLE FALSE)
+        endif()
+    endforeach()
+
+    if(OPENCV_SUPPORT_AVAILABLE)
+        # Add public compile definition indicating that OpenCV support is available
+        set(DEPTHAI_HAVE_OPENCV_SUPPORT ON)
+
+        message(STATUS "OpenCV and required libraries (${REQUIRED_OPENCV_LIBRARIES}) found. OpenCV Support enabled")
+    else()
+        message(STATUS "OpenCV or required libraries (${REQUIRED_OPENCV_LIBRARIES}) not found. OpenCV Support disabled")
+    endif()
+endif()
+
+########################
+# PCL Support 1
+########################
+set(TARGET_PCL_NAME ${PROJECT_NAME}-pcl)
+set(TARGET_PCL_ALIAS pcl)
+if(DEPTHAI_PCL_SUPPORT)
+    if(PCL_FOUND)
+        # Add public compile definition indicating that PCL support is available
+        set(DEPTHAI_HAVE_PCL_SUPPORT ON)
+
+        message(STATUS "PCL found. PCL Support enabled")
+    else()
+        message(STATUS "PCL not found. PCL Support disabled")
+    endif()
+endif()
+
 # Create core library
-add_library(${TARGET_CORE_NAME}
+set(TARGET_CORE_SOURCES
     # depthai-bootloader-shared sources
     "${DEPTHAI_BOOTLOADER_SHARED_SOURCES}"
     # sources
@@ -291,6 +343,7 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/datatype/PointCloudConfig.cpp
     src/pipeline/datatype/PointCloudData.cpp
     src/pipeline/datatype/MessageGroup.cpp
+    src/pipeline/datatype/TransformData.cpp
     src/utility/H26xParsers.cpp
     src/utility/Initialization.cpp
     src/utility/Resources.cpp
@@ -317,7 +370,34 @@ add_library(${TARGET_CORE_NAME}
     src/nn_archive/NNArchiveConfig.cpp
     src/nn_archive/NNArchiveBlob.cpp
     src/nn_archive/NNArchiveConfigHelper.cpp
+    src/modelzoo/NNModelDescription.cpp
+    src/modelzoo/Zoo.cpp
 )
+
+set(TARGET_OPENCV_SOURCES
+    src/opencv/ImgFrame.cpp
+    src/pipeline/node/host/Display.cpp
+    src/pipeline/node/host/HostCamera.cpp
+    src/pipeline/node/host/Record.cpp
+    src/pipeline/node/host/Replay.cpp
+    src/opencv/RecordReplay.cpp
+    src/opencv/HolisticRecordReplay.cpp
+)
+
+set(TARGET_PCL_SOURCES src/pcl/PointCloudData.cpp)
+
+if(DEPTHAI_HAVE_OPENCV_SUPPORT AND DEPTHAI_MERGED_TARGET)
+    list(APPEND TARGET_CORE_SOURCES
+        ${TARGET_OPENCV_SOURCES}
+    )
+endif()
+if(DEPTHAI_HAVE_PCL_SUPPORT AND DEPTHAI_MERGED_TARGET)
+    list(APPEND TARGET_CORE_SOURCES
+        ${TARGET_PCL_SOURCES}
+    )
+endif()
+
+add_library(${TARGET_CORE_NAME} ${TARGET_CORE_SOURCES})
 add_library("${PROJECT_NAME}::${TARGET_CORE_ALIAS}" ALIAS ${TARGET_CORE_NAME})
 # Specify that we are building core
 target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_TARGET_CORE)
@@ -325,6 +405,12 @@ target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_TARGET_CORE)
 set_target_properties(${TARGET_CORE_NAME} PROPERTIES EXPORT_NAME ${TARGET_CORE_ALIAS})
 # Add to list of targets to export and install
 list(APPEND targets_to_export ${TARGET_CORE_NAME})
+
+# Add model_zoo helper binary
+add_executable(zoo_helper src/modelzoo/zoo_helper.cpp)
+target_compile_definitions(zoo_helper PRIVATE DEPTHAI_TARGET_CORE)
+target_link_libraries(zoo_helper PRIVATE ${TARGET_CORE_NAME})
+list(APPEND targets_to_export zoo_helper)
 
 # Add default flags to core
 add_default_flags(${TARGET_CORE_NAME})
@@ -347,6 +433,32 @@ else()
 endif()
 # Minimal supported macOS SDK version for C++17 support with std::filesystem
 set(CMAKE_OSX_DEPLOYMENT_TARGET 10.15)
+
+# Link merged target libraries and add compile definitions
+if(DEPTHAI_HAVE_OPENCV_SUPPORT AND DEPTHAI_MERGED_TARGET)
+    # Link to OpenCV (publically)
+    target_link_libraries(${TARGET_CORE_NAME} PUBLIC ${REQUIRED_OPENCV_LIBRARIES} ${THIRDPARTY_OPENCV_LIBRARIES})
+
+    # Specify that we are building target opencv
+    target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_TARGET_OPENCV)
+    target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_HAVE_OPENCV_SUPPORT)
+
+endif()
+if(DEPTHAI_HAVE_PCL_SUPPORT AND DEPTHAI_MERGED_TARGET)
+    # Link to PCL (publically)
+    target_link_libraries(${TARGET_CORE_NAME} PUBLIC ${PCL_LIBRARIES})
+
+    # Specify that we are building target pcl
+    target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_TARGET_PCL)
+    target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_HAVE_PCL_SUPPORT)
+
+    target_include_directories(${TARGET_CORE_NAME} PUBLIC ${PCL_INCLUDE_DIRS})
+    target_link_directories(${TARGET_CORE_NAME} PUBLIC ${PCL_LIBRARY_DIRS})
+    target_compile_definitions(${TARGET_CORE_NAME} PUBLIC ${PCL_DEFINITIONS})
+endif()
+if(DEPTHAI_MERGED_TARGET)
+    target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_MERGED_TARGET)
+endif()
 
 # First specify options
 option(DEPTHAI_BUILD_TESTS "Build tests" OFF)
@@ -529,6 +641,7 @@ target_link_libraries(${TARGET_CORE_NAME}
         nlohmann_json::nlohmann_json
         libnop
         spdlog::spdlog
+        yaml-cpp
     INTERFACE
         XLinkPublic
     PRIVATE
@@ -541,6 +654,7 @@ target_link_libraries(${TARGET_CORE_NAME}
         LZ4::lz4
         httplib::httplib
         mp4v2::mp4v2
+        semver::semver
 )
 
 if(DEPTHAI_ENABLE_CURL)
@@ -628,95 +742,59 @@ endmacro()
 add_runtime_dependencies(${TARGET_CORE_NAME} usb-1.0)
 
 ########################
-# OpenCV Support
+# OpenCV Support 2
 ########################
-set(THIRDPARTY_OPENCV_LIBRARIES "" CACHE STRING "Optional libraries to link OpenCV support, e.g. TBB::tbb")
-set(TARGET_OPENCV_NAME ${PROJECT_NAME}-opencv)
-set(TARGET_OPENCV_ALIAS opencv)
-if(DEPTHAI_OPENCV_SUPPORT)
-    # Check if required libraries are available
-    set(REQUIRED_OPENCV_LIBRARIES "opencv_core" "opencv_imgproc" "opencv_videoio")
-    set(OPENCV_SUPPORT_AVAILABLE ${OpenCV_FOUND})
-    foreach(lib ${REQUIRED_OPENCV_LIBRARIES})
-        if(NOT (lib IN_LIST OpenCV_LIBS))
-            set(OPENCV_SUPPORT_AVAILABLE FALSE)
-        endif()
-    endforeach()
+if(DEPTHAI_HAVE_OPENCV_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
+    # Add depthai-core-opencv library and depthai::core::opencv alias
+    add_library(${TARGET_OPENCV_NAME}
+        ${TARGET_OPENCV_SOURCES}
+    )
+    add_library("${PROJECT_NAME}::${TARGET_OPENCV_ALIAS}" ALIAS ${TARGET_OPENCV_NAME})
+    # Specifies name of generated IMPORTED target (set to alias)
+    set_target_properties(${TARGET_OPENCV_NAME} PROPERTIES EXPORT_NAME ${TARGET_OPENCV_ALIAS})
 
-    if(OPENCV_SUPPORT_AVAILABLE)
+    # Add default flags
+    add_default_flags(${TARGET_OPENCV_NAME})
 
-        # Add depthai-core-opencv library and depthai::core::opencv alias
-        add_library(${TARGET_OPENCV_NAME}
-            src/opencv/ImgFrame.cpp
-            src/pipeline/node/host/Display.cpp
-            src/pipeline/node/host/HostCamera.cpp
-            src/pipeline/node/host/Record.cpp
-            src/pipeline/node/host/Replay.cpp
-            src/opencv/RecordReplay.cpp
-        )
-        add_library("${PROJECT_NAME}::${TARGET_OPENCV_ALIAS}" ALIAS ${TARGET_OPENCV_NAME})
-        # Specifies name of generated IMPORTED target (set to alias)
-        set_target_properties(${TARGET_OPENCV_NAME} PROPERTIES EXPORT_NAME ${TARGET_OPENCV_ALIAS})
+    # Link to OpenCV (publically)
+    target_link_libraries(${TARGET_OPENCV_NAME} PUBLIC ${REQUIRED_OPENCV_LIBRARIES} ${THIRDPARTY_OPENCV_LIBRARIES})
 
-        # Add default flags
-        add_default_flags(${TARGET_OPENCV_NAME})
-        add_flag(${TARGET_OPENCV_NAME} -Wno-switch-enum)
+    # Specify that we are building target opencv
+    target_compile_definitions(${TARGET_OPENCV_NAME} PUBLIC DEPTHAI_TARGET_OPENCV)
+    target_compile_definitions(${TARGET_OPENCV_NAME} PUBLIC DEPTHAI_HAVE_OPENCV_SUPPORT)
+    # Add public dependency to depthai::core library
+    target_link_libraries(${TARGET_OPENCV_NAME} PUBLIC ${TARGET_CORE_NAME})
 
-        # Link to OpenCV (publically)
-        target_link_libraries(${TARGET_OPENCV_NAME} PUBLIC ${REQUIRED_OPENCV_LIBRARIES} ${THIRDPARTY_OPENCV_LIBRARIES})
-
-        # Add public compile definition indicating that OpenCV support is available
-        set(DEPTHAI_HAVE_OPENCV_SUPPORT ON)
-
-        # Specify that we are building target opencv
-        target_compile_definitions(${TARGET_OPENCV_NAME} PUBLIC DEPTHAI_TARGET_OPENCV)
-        target_compile_definitions(${TARGET_OPENCV_NAME} PUBLIC DEPTHAI_HAVE_OPENCV_SUPPORT)
-        # Add public dependency to depthai::core library
-        target_link_libraries(${TARGET_OPENCV_NAME} PUBLIC ${TARGET_CORE_NAME})
-
-        # Add to clangformat target
-        if(COMMAND target_clangformat_setup)
-            target_clangformat_setup(${TARGET_OPENCV_NAME} "")
-        endif()
-
-        # Add to list of targets to export and install
-        list(APPEND targets_to_export ${TARGET_OPENCV_NAME})
-
-        message(STATUS "OpenCV and required libraries (${REQUIRED_OPENCV_LIBRARIES}) found. OpenCV Support enabled")
-
-    else()
-        message(STATUS "OpenCV or required libraries (${REQUIRED_OPENCV_LIBRARIES}) not found. OpenCV Support disabled")
+    # Add to clangformat target
+    if(COMMAND target_clangformat_setup)
+        target_clangformat_setup(${TARGET_OPENCV_NAME} "")
     endif()
+
+    # Add to list of targets to export and install
+    list(APPEND targets_to_export ${TARGET_OPENCV_NAME})
 endif()
 
 
 ########################
-# PCL Support
+# PCL Support 2
 ########################
-set(TARGET_PCL_NAME ${PROJECT_NAME}-pcl)
-set(TARGET_PCL_ALIAS pcl)
-if(DEPTHAI_PCL_SUPPORT)
-    if(PCL_FOUND)
+if(DEPTHAI_HAVE_PCL_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
         # Add depthai-core-pcl library and depthai::core::pcl alias
-        add_library(${TARGET_PCL_NAME} src/pcl/PointCloudData.cpp)
+        add_library(${TARGET_PCL_NAME} ${TARGET_PCL_SOURCES})
         add_library("${PROJECT_NAME}::${TARGET_PCL_ALIAS}" ALIAS ${TARGET_PCL_NAME})
         # Specifies name of generated IMPORTED target (set to alias)
         set_target_properties(${TARGET_PCL_NAME} PROPERTIES EXPORT_NAME ${TARGET_PCL_ALIAS})
 
         # Add default flags
         add_default_flags(${TARGET_PCL_NAME})
-        add_flag(${TARGET_PCL_NAME} -Wno-switch-enum)
 
         # Link to PCL (publically)
         target_link_libraries(${TARGET_PCL_NAME} PUBLIC ${PCL_LIBRARIES})
-
-        # Add public compile definition indicating that PCL support is available
-        set(DEPTHAI_HAVE_PCL_SUPPORT ON)
+        target_link_libraries(${TARGET_PCL_NAME} PUBLIC pcl_io_ply)
 
         # Specify that we are building target pcl
         target_compile_definitions(${TARGET_PCL_NAME} PUBLIC DEPTHAI_TARGET_PCL)
         target_compile_definitions(${TARGET_PCL_NAME} PUBLIC DEPTHAI_HAVE_PCL_SUPPORT)
-
 
         target_include_directories(${TARGET_PCL_NAME} PUBLIC ${PCL_INCLUDE_DIRS})
         target_link_directories(${TARGET_PCL_NAME} PUBLIC ${PCL_LIBRARY_DIRS})
@@ -733,11 +811,122 @@ if(DEPTHAI_PCL_SUPPORT)
 
         # Add to list of targets to export and install
         list(APPEND targets_to_export ${TARGET_PCL_NAME})
+endif()
 
-        message(STATUS "PCL found. PCL Support enabled")
+########################
+# RTABMap Support
+########################
+set(THIRDPARTY_RTABMAP_LIBRARIES "rtabmap::utilite" CACHE STRING "Optional libraries to link RTABMap support, e.g. TBB::tbb")
+set(TARGET_RTABMAP_NAME ${PROJECT_NAME}-rtabmap)
+set(TARGET_RTABMAP_ALIAS rtabmap)
+if(DEPTHAI_RTABMAP_SUPPORT)
+    # Check if required libraries are available
+    set(RTABMAP_SUPPORT_AVAILABLE ${RTABMap_FOUND})
+
+    if(RTABMAP_SUPPORT_AVAILABLE)
+
+        if(NOT APPLE)
+            SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
+        endif()
+        # Add depthai-rtabmap library and depthai::rtabmap alias
+        add_library(${TARGET_RTABMAP_NAME} 
+        src/rtabmap/CalibrationHandler.cpp 
+        src/rtabmap/TransformData.cpp 
+        src/rtabmap/RTABMapVIO.cpp src/rtabmap/RTABMapSLAM.cpp
+        )
+        add_library("${PROJECT_NAME}::${TARGET_RTABMAP_ALIAS}" ALIAS ${TARGET_RTABMAP_NAME})
+        # Specifies name of generated IMPORTED target (set to alias)
+        set_target_properties(${TARGET_RTABMAP_NAME} PROPERTIES EXPORT_NAME ${TARGET_RTABMAP_ALIAS})
+
+        # Add default flags
+        add_default_flags(${TARGET_RTABMAP_NAME})
+        add_flag(${TARGET_RTABMAP_NAME} -Wno-switch-enum)
+        # Link to RTABMap (publically)
+        if(DEPTHAI_MERGED_TARGET)
+            target_link_libraries(${TARGET_RTABMAP_NAME} PUBLIC rtabmap::core ${THIRDPARTY_RTABMAP_LIBRARIES})
+        else()
+            target_link_libraries(${TARGET_RTABMAP_NAME} PUBLIC rtabmap::core ${TARGET_OPENCV_NAME} ${TARGET_PCL_NAME} ${THIRDPARTY_RTABMAP_LIBRARIES})
+        endif()
+        # Add public compile definition indicating that RTABMap support is available
+        set(DEPTHAI_HAVE_RTABMAP_SUPPORT ON)
+
+        # Specify that we are building target rtabmap
+        target_compile_definitions(${TARGET_RTABMAP_NAME} PUBLIC DEPTHAI_TARGET_RTABMAP)
+        target_compile_definitions(${TARGET_RTABMAP_NAME} PUBLIC DEPTHAI_HAVE_RTABMAP_SUPPORT)
+        # Add public dependency to depthai::core library
+        target_link_libraries(${TARGET_RTABMAP_NAME} PUBLIC ${TARGET_CORE_NAME})
+
+        # Add to clangformat target
+        if(COMMAND target_clangformat_setup)
+            target_clangformat_setup(${TARGET_RTABMAP_NAME} "")
+        endif()
+
+        # Add to list of targets to export and install
+        list(APPEND targets_to_export ${TARGET_RTABMAP_NAME})
+
+        message(STATUS "RTABMap and required libraries (${REQUIRED_RTABMAP_LIBRARIES}) found. RTABMap Support enabled")
 
     else()
-        message(STATUS "PCL not found. PCL Support disabled")
+        message(STATUS "RTABMap or required libraries (${REQUIRED_RTABMAP_LIBRARIES}) not found. RTABMap Support disabled")
+    endif()
+endif()
+
+
+########################
+# Basalt Support
+########################
+
+set(THIRDPARTY_BASALT_LIBRARIES "TBB::tbb;Eigen3::Eigen;basalt_sdk::basalt_sdk" CACHE STRING "Optional libraries to link Basalt support, e.g. TBB::tbb")
+set(TARGET_BASALT_NAME ${PROJECT_NAME}-basalt)
+set(TARGET_BASALT_ALIAS basalt)
+
+if(DEPTHAI_BASALT_SUPPORT)
+    # Check if required libraries are available
+    find_package(basalt_sdk CONFIG REQUIRED)
+    find_package(TBB CONFIG REQUIRED)
+    set(BASALT_SUPPORT_AVAILABLE ${basalt_sdk_FOUND})
+
+    if(BASALT_SUPPORT_AVAILABLE)
+
+        # Add depthai-basalt library and depthai::basalt alias
+        add_library(${TARGET_BASALT_NAME} src/basalt/BasaltVIO.cpp )
+        add_library("${PROJECT_NAME}::${TARGET_BASALT_ALIAS}" ALIAS ${TARGET_BASALT_NAME})
+
+        # Specifies name of generated IMPORTED target (set to alias)
+        set_target_properties(${TARGET_BASALT_NAME} PROPERTIES EXPORT_NAME ${TARGET_BASALT_ALIAS})
+
+        # Add default flags
+        add_default_flags(${TARGET_BASALT_NAME})
+        add_flag(${TARGET_BASALT_NAME} -Wno-switch-enum)
+
+        # Link to Basalt (publically)
+        if(DEPTHAI_MERGED_TARGET)
+            target_link_libraries(${TARGET_BASALT_NAME} PUBLIC ${THIRDPARTY_BASALT_LIBRARIES})
+        else()
+            target_link_libraries(${TARGET_BASALT_NAME} PUBLIC ${THIRDPARTY_BASALT_LIBRARIES} ${TARGET_OPENCV_NAME})
+        endif()
+        # Add public compile definition indicating that Basalt support is available
+        set(DEPTHAI_HAVE_BASALT_SUPPORT ON)
+
+        # Specify that we are building target basalt
+        target_compile_definitions(${TARGET_BASALT_NAME} PUBLIC DEPTHAI_TARGET_BASALT)
+        target_compile_definitions(${TARGET_BASALT_NAME} PUBLIC DEPTHAI_HAVE_BASALT_SUPPORT)
+
+        # Add public dependency to depthai::core library
+        target_link_libraries(${TARGET_BASALT_NAME} PUBLIC ${TARGET_CORE_NAME})
+
+        # Add to clangformat target
+        if(COMMAND target_clangformat_setup)
+            target_clangformat_setup(${TARGET_BASALT_NAME} "")
+        endif()
+
+        # Add to list of targets to export and install
+        list(APPEND targets_to_export ${TARGET_BASALT_NAME})
+
+        message(STATUS "Basalt and required libraries (${REQUIRED_BASALT_LIBRARIES}) found. Basalt Support enabled")
+
+    else()
+        message(STATUS "Basalt or required libraries (${REQUIRED_BASALT_LIBRARIES}) not found. Basalt Support disabled")
     endif()
 endif()
 
@@ -746,18 +935,20 @@ endif()
 ########################
 set(TARGET_ALL_ALIAS all)
 set(TARGET_ALL_NAME ${PROJECT_NAME}-all)
-if(DEPTHAI_HAVE_OPENCV_SUPPORT AND DEPTHAI_HAVE_PCL_SUPPORT)
+if(DEPTHAI_HAVE_OPENCV_SUPPORT AND DEPTHAI_HAVE_PCL_SUPPORT AND DEPTHAI_HAVE_BASALT_SUPPORT AND DEPTHAI_HAVE_RTABMAP_SUPPORT)
     add_library(${TARGET_ALL_NAME} INTERFACE)
     add_library("${PROJECT_NAME}::${TARGET_ALL_ALIAS}" ALIAS ${TARGET_ALL_NAME})
     # Specifies name of generated IMPORTED target (set to alias)
     set_target_properties(${TARGET_ALL_NAME} PROPERTIES EXPORT_NAME ${TARGET_ALL_ALIAS})
-    target_link_libraries(${TARGET_ALL_NAME} INTERFACE ${TARGET_CORE_NAME} ${TARGET_OPENCV_NAME} ${TARGET_PCL_NAME})
+    target_link_libraries(${TARGET_ALL_NAME} INTERFACE ${TARGET_CORE_NAME} ${TARGET_OPENCV_NAME} ${TARGET_PCL_NAME} ${TARGET_BASALT_NAME} ${TARGET_RTABMAP_NAME})
 
     # Add to list of targets to export and install
     list(APPEND targets_to_export ${TARGET_ALL_NAME})
 
-    message(STATUS "OpenCV and PCL found. Combined target enabled")
+    message(STATUS "OpenCV, PCL, Basalt and RTABMap found. Combined target enabled")
 endif()
+
+
 
 ########################
 # Sanitizers
@@ -767,10 +958,16 @@ if(DEPTHAI_SANITIZE)
     set(SANITIZE_UNDEFINED ON CACHE BOOL "Enable UndefinedBehaviorSanitizer for sanitized targets." FORCE)
     find_package(Sanitizers)
     add_sanitizers(${TARGET_CORE_NAME})
-    if(DEPTHAI_HAVE_OPENCV_SUPPORT)
+    if(DEPTHAI_HAVE_OPENCV_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
         add_sanitizers(${TARGET_OPENCV_NAME})
     endif()
-    if(DEPTHAI_HAVE_PCL_SUPPORT)
+    if(DEPTHAI_HAVE_RTABMAP_SUPPORT)
+        add_sanitizers(${TARGET_RTABMAP_NAME})
+    endif()
+    if(DEPTHAI_HAVE_BASALT_SUPPORT)
+        add_sanitizers(${TARGET_BASALT_NAME})
+    endif()
+    if(DEPTHAI_HAVE_PCL_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
         add_sanitizers(${TARGET_PCL_NAME})
     endif()
     if(DEPTHAI_XLINK_LOCAL)
@@ -909,31 +1106,4 @@ if(DEPTHAI_INSTALL)
         DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}"
     )
 
-endif()
-
-##############################
-# Integration settings export
-##############################
-set(tmp_definitions "$<TARGET_PROPERTY:${TARGET_CORE_NAME},INTERFACE_COMPILE_DEFINITIONS>")
-set(tmp_includes "$<TARGET_PROPERTY:${TARGET_CORE_NAME},INTERFACE_INCLUDE_DIRECTORIES>")
-file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/depthai-core-integration.txt" CONTENT
-    "$<$<BOOL:${tmp_definitions}>:\n-D\'$<JOIN:${tmp_definitions},\'\n-D\'>\'>\n
-    $<$<BOOL:${tmp_includes}>:\n-I\'$<JOIN:${tmp_includes},\'\n-I\'>\'>\n"
-)
-
-if(DEPTHAI_HAVE_OPENCV_SUPPORT)
-    set(tmp_definitions "$<TARGET_PROPERTY:${TARGET_OPENCV_NAME},INTERFACE_COMPILE_DEFINITIONS>")
-    set(tmp_includes "$<TARGET_PROPERTY:${TARGET_OPENCV_NAME},INTERFACE_INCLUDE_DIRECTORIES>")
-    file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/depthai-opencv-integration.txt" CONTENT
-        "$<$<BOOL:${tmp_definitions}>:\n-D\'$<JOIN:${tmp_definitions},\'\n-D\'>\'>\n
-        $<$<BOOL:${tmp_includes}>:\n-I\'$<JOIN:${tmp_includes},\'\n-I\'>\'>\n"
-    )
-endif()
-if(DEPTHAI_HAVE_PCL_SUPPORT)
-    set(tmp_definitions "$<TARGET_PROPERTY:${TARGET_PCL_NAME},INTERFACE_COMPILE_DEFINITIONS>")
-    set(tmp_includes "$<TARGET_PROPERTY:${TARGET_PCL_NAME},INTERFACE_INCLUDE_DIRECTORIES>")
-    file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/depthai-pcl-integration.txt" CONTENT
-        "$<$<BOOL:${tmp_definitions}>:\n-D\'$<JOIN:${tmp_definitions},\'\n-D\'>\'>\n
-        $<$<BOOL:${tmp_includes}>:\n-I\'$<JOIN:${tmp_includes},\'\n-I\'>\'>\n"
-    )
 endif()

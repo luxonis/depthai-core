@@ -55,7 +55,7 @@ void bind_detectionnetwork(pybind11::module& m, void* pCallstack) {
             DETECTION_NETWORK_BUILD_PYARGS,
             DETECTION_NETWORK_PYARGS)
         .def(py::init([](DETECTION_NETWORK_BUILD_ARGS, DETECTION_NETWORK_ARGS) {
-                 auto self = getImplicitPipeline().create<DetectionNetwork>();
+                 auto self = getImplicitPipeline()->create<DetectionNetwork>();
                  self->build(input, nnArchive);
                  DETECTION_NETWORK_CODE(->)
                  return self;
@@ -123,11 +123,14 @@ void bind_detectionnetwork(pybind11::module& m, void* pCallstack) {
     yoloDetectionNetwork.def("build", &YoloDetectionNetwork::build, DOC(dai, node, YoloDetectionNetwork, build))
         .def("setNumClasses", &YoloDetectionNetwork::setNumClasses, py::arg("numClasses"), DOC(dai, node, YoloDetectionNetwork, setNumClasses))
         .def("setCoordinateSize", &YoloDetectionNetwork::setCoordinateSize, py::arg("coordinates"), DOC(dai, node, YoloDetectionNetwork, setCoordinateSize))
-        /*
-        .def("setAnchors", py::overload_cast<const std::vector<std::vector<std::vector<float>>>&>(&YoloDetectionNetwork::setAnchors), py::arg("anchors"),
-        DOC(dai, node, YoloDetectionNetwork, setAnchors)) .def("setAnchors", py::overload_cast<std::vector<float>>(&YoloDetectionNetwork::setAnchors),
-        py::arg("anchors"), DOC(dai, node, YoloDetectionNetwork, setAnchors, 2))
-        */
+        .def("setAnchors",
+             py::overload_cast<const std::vector<std::vector<std::vector<float>>>&>(&YoloDetectionNetwork::setAnchors),
+             py::arg("anchors"),
+             DOC(dai, node, YoloDetectionNetwork, setAnchors))
+        .def("setAnchors",
+             py::overload_cast<std::vector<float>>(&YoloDetectionNetwork::setAnchors),
+             py::arg("anchors"),
+             DOC(dai, node, YoloDetectionNetwork, setAnchors, 2))
         .def("setAnchorMasks", &YoloDetectionNetwork::setAnchorMasks, py::arg("anchorMasks"), DOC(dai, node, YoloDetectionNetwork, setAnchorMasks))
         .def("setIouThreshold", &YoloDetectionNetwork::setIouThreshold, py::arg("thresh"), DOC(dai, node, YoloDetectionNetwork, setIouThreshold))
         .def("getNumClasses", &YoloDetectionNetwork::getNumClasses, DOC(dai, node, YoloDetectionNetwork, getNumClasses))

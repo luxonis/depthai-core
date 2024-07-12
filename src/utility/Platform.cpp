@@ -1,5 +1,7 @@
 #include "Platform.hpp"
 
+#include <filesystem>
+
 // Platform specific
 #if defined(_WIN32) || defined(__USE_W32_SOCKETS)
     #include <ws2tcpip.h>
@@ -150,8 +152,9 @@ std::string joinPaths(const std::string& p1, const std::string& p2) {
 }
 
 std::string getDirFromPath(const std::string& path) {
-    size_t found = path.find_last_of("/\\");
-    return path.substr(0, found);
+    std::string absPath = std::filesystem::absolute(path).string();
+    size_t found = absPath.find_last_of("/\\");
+    return absPath.substr(0, found);
 }
 
 }  // namespace platform
