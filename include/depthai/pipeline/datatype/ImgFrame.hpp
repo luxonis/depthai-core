@@ -70,7 +70,9 @@ class ImgFrame : public Buffer {
      * Timestamp is set to now
      */
     ImgFrame();
+    ImgFrame(long fd);
     ImgFrame(size_t size);
+    ImgFrame(long fd, size_t size);
     virtual ~ImgFrame() = default;
 
     ImgTransformations transformations;

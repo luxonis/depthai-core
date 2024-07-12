@@ -174,7 +174,7 @@ The following environment variables can be set to alter default behavior of the 
 | DEPTHAI_SEARCH_TIMEOUT | Specifies timeout in milliseconds for device searching in blocking functions. |
 | DEPTHAI_CONNECT_TIMEOUT | Specifies timeout in milliseconds for establishing a connection to a given device. |
 | DEPTHAI_BOOTUP_TIMEOUT | Specifies timeout in milliseconds for waiting the device to boot after sending the binary. |
-| DEPTHAI_PROTOCOL | Restricts default search to the specified protocol. Options: `any`, `usb`, `tcpip`. |
+| DEPTHAI_PROTOCOL | Restricts default search to the specified protocol. Options: `any`, `usb`, `tcpip`, `tcpshd`. |
 | DEPTHAI_PLATFORM | Restricts default search to the specified platform. Options: `any`, `rvc2`, `rvc3`, `rvc4`. |
 | DEPTHAI_DEVICE_MXID_LIST | Restricts default search to the specified MXIDs. Accepts comma separated list of MXIDs. Lists filter results in an "AND" manner and not "OR" |
 | DEPTHAI_DEVICE_ID_LIST | Alias to MXID list. Lists filter results in an "AND" manner and not "OR" |

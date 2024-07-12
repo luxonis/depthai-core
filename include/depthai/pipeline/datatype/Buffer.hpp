@@ -17,6 +17,8 @@ class Buffer : public ADatatype {
    public:
     Buffer() = default;
     Buffer(size_t size);
+    Buffer(long fd);
+    Buffer(long fd, size_t size);
     virtual ~Buffer() = default;
 
     virtual void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const {
@@ -35,6 +37,7 @@ class Buffer : public ADatatype {
      * @param data Copies data to internal buffer
      */
     void setData(const std::vector<std::uint8_t>& data);
+    void setData(const long fd);
 
     /**
      * @param data Moves data to internal buffer

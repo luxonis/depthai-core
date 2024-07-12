@@ -5,6 +5,7 @@
 #include "spdlog/fmt/fmt.h"
 
 // project
+#include "depthai/utility/SharedMemory.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
 
 namespace dai {
@@ -54,7 +55,8 @@ XLinkStream::~XLinkStream() {
     }
 }
 
-StreamPacketDesc::StreamPacketDesc(StreamPacketDesc&& other) noexcept : streamPacketDesc_t{other.data, other.length, other.tRemoteSent, other.tReceived} {
+StreamPacketDesc::StreamPacketDesc(StreamPacketDesc&& other) noexcept
+    : streamPacketDesc_t{other.data, other.length, other.fd, other.tRemoteSent, other.tReceived} {
     other.data = nullptr;
     other.length = 0;
 }
@@ -63,6 +65,7 @@ StreamPacketDesc& StreamPacketDesc::operator=(StreamPacketDesc&& other) noexcept
     if(this != &other) {
         data = std::exchange(other.data, nullptr);
         length = std::exchange(other.length, 0);
+        fd = std::exchange(other.fd, -1);
         tRemoteSent = std::exchange(other.tRemoteSent, {});
         tReceived = std::exchange(other.tReceived, {});
     }
@@ -94,22 +97,52 @@ void XLinkStream::write(const void* data, std::size_t size) {
     write(span<const uint8_t>(reinterpret_cast<const uint8_t*>(data), size));
 }
 
-void XLinkStream::read(std::vector<std::uint8_t>& data) {
-    StreamPacketDesc packet;
-    const auto status = XLinkReadMoveData(streamId, &packet);
+void XLinkStream::write(long fd) {
+    auto status = XLinkWriteFd(streamId, fd);
+
     if(status != X_LINK_SUCCESS) {
-        throw XLinkReadError(status, streamName);
+        throw XLinkWriteError(status, streamName);
     }
-    data = std::vector<std::uint8_t>(packet.data, packet.data + packet.length);
+}
+
+void XLinkStream::write(long fd, span<const uint8_t> data) {
+    auto status = XLinkWriteFdData(streamId, fd, data.data(), data.size());
+
+    if(status != X_LINK_SUCCESS) {
+        throw XLinkWriteError(status, streamName);
+    }
+}
+
+void XLinkStream::read(std::vector<std::uint8_t>& data) {
+    XLinkTimespec timestampReceived;
+    read(data, timestampReceived);
 }
 
 void XLinkStream::read(std::vector<std::uint8_t>& data, XLinkTimespec& timestampReceived) {
+    long fd;
+    read(data, fd, timestampReceived);
+
+    if(fd >= 0) {
+        SharedMemory mem = SharedMemory(fd);
+        uint8_t* memoryData = (uint8_t*)mem.getData().data();
+        std::size_t memoryLength = mem.getData().size();
+        data.insert(data.end(), &memoryData[0], &memoryData[memoryLength - 1]);
+    }
+}
+
+void XLinkStream::read(std::vector<std::uint8_t>& data, long& fd) {
+    XLinkTimespec timestampReceived;
+    read(data, fd, timestampReceived);
+}
+
+void XLinkStream::read(std::vector<std::uint8_t>& data, long& fd, XLinkTimespec& timestampReceived) {
     StreamPacketDesc packet;
     const auto status = XLinkReadMoveData(streamId, &packet);
     if(status != X_LINK_SUCCESS) {
         throw XLinkReadError(status, streamName);
     }
     data = std::vector<std::uint8_t>(packet.data, packet.data + packet.length);
+    fd = packet.fd;
     timestampReceived = packet.tReceived;
 }
 
