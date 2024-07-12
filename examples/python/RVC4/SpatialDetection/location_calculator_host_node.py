@@ -6,7 +6,7 @@ import time
 import numpy as np
 from pathlib import Path
 
-datasetDefault = str((Path(__file__).parent / Path('../../models/dataset')).resolve().absolute())
+datasetDefault = str((Path(__file__).parent / Path('../../models/')).resolve().absolute())
 if not Path(datasetDefault).exists():
     import sys
     raise FileNotFoundError(f'Required file/s not found, please run "{sys.executable} install_requirements.py"')
@@ -22,7 +22,7 @@ doubleData = np.zeros(height*width*2)
 doubleData = (doubleData).astype('uint8')
 
 for i in range(height*width):
-    temp = data[i] & 0xFFFF
+    temp = data[i]
 
     doubleData[i*2+1]= temp >> 8
     doubleData[i*2] = temp & 0xFF
