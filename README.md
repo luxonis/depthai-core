@@ -225,6 +225,7 @@ ctest -L onhost_poe # Run all onhost tests with disabled USB
 - These tests require a connected device (either via usb or poe)
 
 ```bash
+cd build 
 ctest -L ondevice # Run all ondevice tests
 ctest -L ondevice_usb # Run all ondevice tests with disabled POE
 ctest -L ondevice_poe # Run all ondevice tests with disabled USB
