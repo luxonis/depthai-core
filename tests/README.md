@@ -6,8 +6,8 @@
 
 ```bash
 ctest -L onhost # Run all tests runnable onhost
-ctest -L usb_onhost # Run all tests runnable onhost with disable POE
-ctest -L poe_onhost # Run all tests runnable onhost with disable USB
+ctest -L usb_onhost # Run all tests runnable onhost with disabled POE
+ctest -L poe_onhost # Run all tests runnable onhost with disabled USB
 ```
 
 ### All ondevice tests
@@ -16,6 +16,6 @@ ctest -L poe_onhost # Run all tests runnable onhost with disable USB
 
 ```bash
 ctest -L ondevice # Run all tests runnable ondevice
-ctest -L usb_ondevice # Run all tests runnable ondevice with disable POE
-ctest -L poe_ondevice # Run all tests runnable ondevice with disable USB
+ctest -L usb_ondevice # Run all tests runnable ondevice with disabled POE
+ctest -L poe_ondevice # Run all tests runnable ondevice with disabled USB
 ```
