@@ -213,7 +213,7 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
             return parseDatatype<MessageGroup>(metadataStart, serializedObjectSize, data, fd);
             break;
         case DatatypeEnum::TransformData:
-            return parseDatatype<TransformData>(metadataStart, serializedObjectSize, data);
+            return parseDatatype<TransformData>(metadataStart, serializedObjectSize, data, fd);
             break;
     }
 
