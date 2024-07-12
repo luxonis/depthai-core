@@ -110,6 +110,6 @@ function(pybind11_mkdoc_setup_internal_combined output_path mkdoc_headers includ
     )
 
     # Force target build
-    #file(TOUCH_NOCREATE ${mkdoc_headers})
+    file(TOUCH_NOCREATE ${mkdoc_headers})
 
 endfunction()
