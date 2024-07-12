@@ -422,7 +422,6 @@ dai_add_example(host_pipeline host_side/host_pipeline.cpp ON OFF)
 dai_add_example(host_pipeline_opencv host_side/host_pipeline_opencv.cpp ON OFF)
 dai_add_example(host_pipeline_synced_node host_side/host_pipeline_synced_node.cpp ON OFF)
 dai_add_example(host_only_camera host_side/host_only_camera.cpp OFF OFF)
-dai_add_example(host_only_image host_side/host_only_image.cpp OFF OFF)
 
 #
 # # TMP
