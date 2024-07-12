@@ -5,7 +5,7 @@
 #include <cstring>
 #include <functional>
 #include <iostream>
-#ifdef __unix__
+#if defined(__unix__) && !defined(__APPLE__)
     #include <fcntl.h>
     #include <sys/mman.h>
     #include <sys/stat.h>
@@ -27,18 +27,20 @@ class SharedMemory : public Memory {
         if(fd < 0) {
             /* Error handling here */
         }
-
+#if defined(__unix__) && !defined(__APPLE__)
         mapping = mmap(NULL, getSize(), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
         if(mapping == NULL) {
             /* Error handling here */
         }
+#endif
     }
     void unmapFd() {
         if(mapping == NULL) {
             return;
         }
-
+#if defined(__unix__) && !defined(__APPLE__)
         munmap(mapping, getSize());
+#endif
     }
 
    public:
@@ -60,13 +62,23 @@ class SharedMemory : public Memory {
 
     SharedMemory(const char* name) {
         kind = MemoryKinds::MEMORY_KIND_SHARED;
+#if defined(__unix__) && !defined(__APPLE__)
         fd = memfd_create(name, 0);
+#else
+	(void)name;
+	fd = -1;
+#endif
         mapFd();
     }
 
     SharedMemory(const char* name, std::size_t size) {
         kind = MemoryKinds::MEMORY_KIND_SHARED;
+#if defined(__unix__) && !defined(__APPLE__)
         fd = memfd_create(name, 0);
+#else
+	(void)name;
+	fd = -1;
+#endif
 
         setSize(size);
         mapFd();
@@ -96,20 +108,30 @@ class SharedMemory : public Memory {
         return {(const uint8_t*)mapping, getSize()};
     }
     std::size_t getMaxSize() const override {
+#if defined(__unix__) && !defined(__APPLE__)
         struct stat fileStats;
         fstat(fd, &fileStats);
 
         return fileStats.st_size;
+#else
+	return 0;
+#endif
     }
     std::size_t getOffset() const override {
+#if defined(__unix__) && !defined(__APPLE__)
         return ftell(fdopen(fd, "r"));
+#else
+	return 0;
+#endif
     }
     void setSize(std::size_t size) override {
         if(mapping != NULL) {
             unmapFd();
         }
 
+#if defined(__unix__) && !defined(__APPLE__)
         ftruncate(fd, size);
+#endif
         mapFd();
     }
 
