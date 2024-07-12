@@ -11,16 +11,19 @@ namespace dai {
 
 struct NNArchiveOptions {
     // General parameters
-    NNArchiveEntry::Compression compression = NNArchiveEntry::Compression::AUTO;
+    DEPTAHI_ARG_DEFAULT(NNArchiveEntry::Compression, compression, NNArchiveEntry::Compression::AUTO);
 
     // Blob parameters
     // ...
 
     // Superblob parameters
-    DEPTAHI_ARG_DEFAULT(int, numShaves, -1);
+    // ...
+
+    // Parameters for other formats, ONNX, PT, etc..
+    DEPTAHI_ARG_DEFAULT(std::string, extractFolder, "/tmp/");
 };
 
-enum class NNArchiveType { BLOB, SUPERBLOB };
+enum class NNArchiveType { BLOB, SUPERBLOB, OTHER };
 
 class NNArchive {
    public:
@@ -33,16 +36,30 @@ class NNArchive {
     NNArchive(const std::string& archivePath, NNArchiveOptions options = {});
 
     /**
-     * @brief Generate a SuperVINO::Blob from the archive. The return value is std::optional<OpenVINO::SuperBlob> for backward compatibility.
+     * @brief Return a SuperVINO::Blob from the archive if getArchiveType() returns BLOB, nothing otherwise
      *
      * @return std::optional<OpenVINO::Blob>: Model blob
      */
     std::optional<OpenVINO::Blob> getBlob() const;
 
     /**
-     * @brief Generate a SuperVINO::SuperBlob from the archive
+     * @brief Return a SuperVINO::SuperBlob from the archive if getArchiveType() returns SUPERBLOB, nothing otherwise
      *
-     * @return OpenVINO::SuperBlob: Model superblob
+     * @return std::optional<OpenVINO::SuperBlob>: Model superblob
+     */
+    std::optional<OpenVINO::SuperBlob> getSuperBlob() const;
+
+    /**
+     * @brief Return a path to the model inside the archive if getArchiveType() returns OTHER, nothing otherwise
+     *
+     * @return std::optional<std::string>: Model path
+     */
+    std::optional<std::string> getModelPath() const;
+
+    /**
+     * @brief Get NNArchive config, i.e. contents of `config.json` inside the archive.
+     *
+     * @return NNArchiveConfig: Archive config
      */
     const NNArchiveConfig& getConfig() const;
 
@@ -53,20 +70,16 @@ class NNArchive {
      */
     NNArchiveType getArchiveType() const;
 
-    /**
-     * @brief Set number of shaves for the superblob
-     *
-     * @param numShaves: Number of shaves. Must be greater than 0.
-     */
-    void optionsSetNumberOfShaves(int numShaves);
-
    private:
     // Helper functions:
     // Check what kind of archive is read
-    NNArchiveType readArchiveType(const std::string& modelPathInArchive) const;
+    static NNArchiveType readArchiveType(const std::string& modelPathInArchive);
 
     // Read model from archive
     std::vector<uint8_t> readModelFromArchive(const std::string& archivePath, const std::string& modelPathInArchive) const;
+
+    // Unpack archive to tmp directory
+    void unpackArchiveInDirectory(const std::string& archivePath, const std::string& directory) const;
 
     NNArchiveType archiveType;
     NNArchiveOptions archiveOptions;
@@ -79,6 +92,9 @@ class NNArchive {
 
     // Superblob related stuff
     std::shared_ptr<OpenVINO::SuperBlob> superblobPtr;
+
+    // Other formats - return path to the unpacked archive
+    std::string unpackedModelPath;
 };
 
 }  // namespace dai

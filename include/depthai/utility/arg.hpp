@@ -21,7 +21,7 @@
     }                                                                     \
                                                                           \
    private:                                                               \
-    T name##_ /* NOLINT */ 
+    T name##_ /* NOLINT */
 
 #define DEPTAHI_ARG_DEFAULT(T, name, default_value)                       \
    public:                                                                \
@@ -41,4 +41,4 @@
     }                                                                     \
                                                                           \
    private:                                                               \
-    T name##_ = default_value /* NOLINT */ 
+    T name##_ = default_value /* NOLINT */
