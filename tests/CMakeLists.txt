@@ -24,6 +24,12 @@ set(test_poe_env
 # Creates separate tests for USB and PoE devices
 include(CMakeParseArguments)
 function(dai_add_test test_name test_src test_type)
+
+    # Check test type
+    if((NOT "${test_type}" STREQUAL "ondevice") AND (NOT "${test_type}" STREQUAL "onhost"))
+        message(FATAL_ERROR "Invalid test type: ${test_type}. Must be either 'ondevice' or 'onhost'")
+    endif()
+
     # parse arguments
     cmake_parse_arguments(DAT "CONFORMING" "CXX_STANDARD" "" ${ARGN})
 
@@ -63,7 +69,7 @@ function(dai_add_test test_name test_src test_type)
     # Add to list of tests
     add_test(${test_name} ${test_name})
     # Add ubsan halt on error
-    set_tests_properties(${test_name} PROPERTIES ENVIRONMENT "${test_usb_env}" LABELS "usb_${test_type}")
+    set_tests_properties(${test_name} PROPERTIES ENVIRONMENT "${test_usb_env}" LABELS "${test_type}_usb")
 
     # add a conforming preprocessor test (serialization macros) if MSVC and CONFORMING option set on function call
     if(MSVC AND DAT_CONFORMING)
@@ -87,18 +93,18 @@ function(dai_add_test test_name test_src test_type)
         add_test(${test_name}_conforming ${test_name}_conforming)
 
         # Add ubsan halt on error
-        set_tests_properties(${test_name}_conforming PROPERTIES ENVIRONMENT "${test_usb_env}" LABELS "usb_${test_type}")
+        set_tests_properties(${test_name}_conforming PROPERTIES ENVIRONMENT "${test_usb_env}" LABELS "${test_type}_usb")
     endif()
 
     # Add PoE test variants
     add_test(${test_name}_poe ${test_name})
     # Add ubsan halt on error
-    set_tests_properties(${test_name}_poe PROPERTIES ENVIRONMENT "${test_poe_env}" LABELS "poe_${test_type}")
+    set_tests_properties(${test_name}_poe PROPERTIES ENVIRONMENT "${test_poe_env}" LABELS "${test_type}_poe")
     if(MSVC AND DAT_CONFORMING)
         # Add to list of tests
         add_test(${test_name}_conforming_poe ${test_name}_conforming)
         # Add ubsan halt on error
-        set_tests_properties(${test_name}_conforming_poe PROPERTIES ENVIRONMENT "${test_poe_env}" LABELS "poe_${test_type}")
+        set_tests_properties(${test_name}_conforming_poe PROPERTIES ENVIRONMENT "${test_poe_env}" LABELS "${test_type}_poe")
     endif()
 
     # Copy over required DLLs (Windows)
