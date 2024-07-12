@@ -211,7 +211,7 @@ Currently available labels are:
 
 ### Run all onhost tests
 
-- These tests do NOT require a connected device (either via usb or poe)
+- These tests do NOT require a connected device
 
 ```bash
 cd build 
