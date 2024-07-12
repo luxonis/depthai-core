@@ -1,7 +1,5 @@
 #include "depthai/modelzoo/Zoo.hpp"
 
-#include <cpr/cpr.h>
-
 #include <filesystem>
 #include <iostream>
 #include <nlohmann/json.hpp>
@@ -9,6 +7,9 @@
 #include "../utility/YamlHelpers.hpp"
 #include "../utility/sha1.hpp"
 #include "utility/Logging.hpp"
+
+#ifdef DEPTHAI_ENABLE_CURL
+    #include <cpr/cpr.h>
 namespace dai {
 class ZooManager {
    public:
@@ -309,5 +310,21 @@ void downloadModelsFromZoo(const std::string& path, const std::string& cacheDire
         }
     }
 }
-
 }  // namespace dai
+
+#else
+namespace dai {
+std::string getModelFromZoo(const NNModelDescription& modelDescription, bool useCached, const std::string& cacheDirectory) {
+    (void)modelDescription;
+    (void)useCached;
+    (void)cacheDirectory;
+    throw std::runtime_error("getModelFromZoo requires libcurl to be enabled. Please recompile DepthAI with libcurl enabled.");
+}
+
+void downloadModelsFromZoo(const std::string& path, const std::string& cacheDirectory) {
+    (void)path;
+    (void)cacheDirectory;
+    throw std::runtime_error("downloadModelsFromZoo requires libcurl to be enabled. Please recompile DepthAI with libcurl enabled.");
+}
+}  // namespace dai
+#endif
