@@ -192,6 +192,9 @@ endif()
 option(DEPTHAI_XTENSOR_SUPPORT "Enable optional xtensor support" ON)
 option(DEPTHAI_OPENCV_SUPPORT "Enable optional OpenCV support" ON)
 option(DEPTHAI_PCL_SUPPORT "Enable optional PCL support" OFF)
+option(DEPTHAI_RTABMAP_SUPPORT "Enable optional RTABMap support" OFF)
+option(DEPTHAI_BASALT_SUPPORT "Enable optional Basalt support" OFF)
+
 option(DEPTHAI_MERGED_TARGET "Enable merged target build" ON)
 
 # Include project dependencies
@@ -340,6 +343,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/PointCloudConfig.cpp
     src/pipeline/datatype/PointCloudData.cpp
     src/pipeline/datatype/MessageGroup.cpp
+    src/pipeline/datatype/TransformData.cpp
     src/utility/H26xParsers.cpp
     src/utility/Initialization.cpp
     src/utility/Resources.cpp
@@ -786,6 +790,7 @@ if(DEPTHAI_HAVE_PCL_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
 
         # Link to PCL (publically)
         target_link_libraries(${TARGET_PCL_NAME} PUBLIC ${PCL_LIBRARIES})
+        target_link_libraries(${TARGET_PCL_NAME} PUBLIC pcl_io_ply)
 
         # Specify that we are building target pcl
         target_compile_definitions(${TARGET_PCL_NAME} PUBLIC DEPTHAI_TARGET_PCL)
@@ -809,22 +814,141 @@ if(DEPTHAI_HAVE_PCL_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
 endif()
 
 ########################
+# RTABMap Support
+########################
+set(THIRDPARTY_RTABMAP_LIBRARIES "rtabmap::utilite" CACHE STRING "Optional libraries to link RTABMap support, e.g. TBB::tbb")
+set(TARGET_RTABMAP_NAME ${PROJECT_NAME}-rtabmap)
+set(TARGET_RTABMAP_ALIAS rtabmap)
+if(DEPTHAI_RTABMAP_SUPPORT)
+    # Check if required libraries are available
+    set(RTABMAP_SUPPORT_AVAILABLE ${RTABMap_FOUND})
+
+    if(RTABMAP_SUPPORT_AVAILABLE)
+
+        if(NOT APPLE)
+            SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
+        endif()
+        # Add depthai-rtabmap library and depthai::rtabmap alias
+        add_library(${TARGET_RTABMAP_NAME} 
+        src/rtabmap/CalibrationHandler.cpp 
+        src/rtabmap/TransformData.cpp 
+        src/rtabmap/RTABMapVIO.cpp src/rtabmap/RTABMapSLAM.cpp
+        )
+        add_library("${PROJECT_NAME}::${TARGET_RTABMAP_ALIAS}" ALIAS ${TARGET_RTABMAP_NAME})
+        # Specifies name of generated IMPORTED target (set to alias)
+        set_target_properties(${TARGET_RTABMAP_NAME} PROPERTIES EXPORT_NAME ${TARGET_RTABMAP_ALIAS})
+
+        # Add default flags
+        add_default_flags(${TARGET_RTABMAP_NAME})
+        add_flag(${TARGET_RTABMAP_NAME} -Wno-switch-enum)
+        # Link to RTABMap (publically)
+        if(DEPTHAI_MERGED_TARGET)
+            target_link_libraries(${TARGET_RTABMAP_NAME} PUBLIC rtabmap::core ${THIRDPARTY_RTABMAP_LIBRARIES})
+        else()
+            target_link_libraries(${TARGET_RTABMAP_NAME} PUBLIC rtabmap::core ${TARGET_OPENCV_NAME} ${TARGET_PCL_NAME} ${THIRDPARTY_RTABMAP_LIBRARIES})
+        endif()
+        # Add public compile definition indicating that RTABMap support is available
+        set(DEPTHAI_HAVE_RTABMAP_SUPPORT ON)
+
+        # Specify that we are building target rtabmap
+        target_compile_definitions(${TARGET_RTABMAP_NAME} PUBLIC DEPTHAI_TARGET_RTABMAP)
+        target_compile_definitions(${TARGET_RTABMAP_NAME} PUBLIC DEPTHAI_HAVE_RTABMAP_SUPPORT)
+        # Add public dependency to depthai::core library
+        target_link_libraries(${TARGET_RTABMAP_NAME} PUBLIC ${TARGET_CORE_NAME})
+
+        # Add to clangformat target
+        if(COMMAND target_clangformat_setup)
+            target_clangformat_setup(${TARGET_RTABMAP_NAME} "")
+        endif()
+
+        # Add to list of targets to export and install
+        list(APPEND targets_to_export ${TARGET_RTABMAP_NAME})
+
+        message(STATUS "RTABMap and required libraries (${REQUIRED_RTABMAP_LIBRARIES}) found. RTABMap Support enabled")
+
+    else()
+        message(STATUS "RTABMap or required libraries (${REQUIRED_RTABMAP_LIBRARIES}) not found. RTABMap Support disabled")
+    endif()
+endif()
+
+
+########################
+# Basalt Support
+########################
+
+set(THIRDPARTY_BASALT_LIBRARIES "TBB::tbb;Eigen3::Eigen;basalt_sdk::basalt_sdk" CACHE STRING "Optional libraries to link Basalt support, e.g. TBB::tbb")
+set(TARGET_BASALT_NAME ${PROJECT_NAME}-basalt)
+set(TARGET_BASALT_ALIAS basalt)
+
+if(DEPTHAI_BASALT_SUPPORT)
+    # Check if required libraries are available
+    find_package(basalt_sdk CONFIG REQUIRED)
+    find_package(TBB CONFIG REQUIRED)
+    set(BASALT_SUPPORT_AVAILABLE ${basalt_sdk_FOUND})
+
+    if(BASALT_SUPPORT_AVAILABLE)
+
+        # Add depthai-basalt library and depthai::basalt alias
+        add_library(${TARGET_BASALT_NAME} src/basalt/BasaltVIO.cpp )
+        add_library("${PROJECT_NAME}::${TARGET_BASALT_ALIAS}" ALIAS ${TARGET_BASALT_NAME})
+
+        # Specifies name of generated IMPORTED target (set to alias)
+        set_target_properties(${TARGET_BASALT_NAME} PROPERTIES EXPORT_NAME ${TARGET_BASALT_ALIAS})
+
+        # Add default flags
+        add_default_flags(${TARGET_BASALT_NAME})
+        add_flag(${TARGET_BASALT_NAME} -Wno-switch-enum)
+
+        # Link to Basalt (publically)
+        if(DEPTHAI_MERGED_TARGET)
+            target_link_libraries(${TARGET_BASALT_NAME} PUBLIC ${THIRDPARTY_BASALT_LIBRARIES})
+        else()
+            target_link_libraries(${TARGET_BASALT_NAME} PUBLIC ${THIRDPARTY_BASALT_LIBRARIES} ${TARGET_OPENCV_NAME})
+        endif()
+        # Add public compile definition indicating that Basalt support is available
+        set(DEPTHAI_HAVE_BASALT_SUPPORT ON)
+
+        # Specify that we are building target basalt
+        target_compile_definitions(${TARGET_BASALT_NAME} PUBLIC DEPTHAI_TARGET_BASALT)
+        target_compile_definitions(${TARGET_BASALT_NAME} PUBLIC DEPTHAI_HAVE_BASALT_SUPPORT)
+
+        # Add public dependency to depthai::core library
+        target_link_libraries(${TARGET_BASALT_NAME} PUBLIC ${TARGET_CORE_NAME})
+
+        # Add to clangformat target
+        if(COMMAND target_clangformat_setup)
+            target_clangformat_setup(${TARGET_BASALT_NAME} "")
+        endif()
+
+        # Add to list of targets to export and install
+        list(APPEND targets_to_export ${TARGET_BASALT_NAME})
+
+        message(STATUS "Basalt and required libraries (${REQUIRED_BASALT_LIBRARIES}) found. Basalt Support enabled")
+
+    else()
+        message(STATUS "Basalt or required libraries (${REQUIRED_BASALT_LIBRARIES}) not found. Basalt Support disabled")
+    endif()
+endif()
+
+########################
 # Combined target
 ########################
 set(TARGET_ALL_ALIAS all)
 set(TARGET_ALL_NAME ${PROJECT_NAME}-all)
-if(DEPTHAI_HAVE_OPENCV_SUPPORT AND DEPTHAI_HAVE_PCL_SUPPORT)
+if(DEPTHAI_HAVE_OPENCV_SUPPORT AND DEPTHAI_HAVE_PCL_SUPPORT AND DEPTHAI_HAVE_BASALT_SUPPORT AND DEPTHAI_HAVE_RTABMAP_SUPPORT)
     add_library(${TARGET_ALL_NAME} INTERFACE)
     add_library("${PROJECT_NAME}::${TARGET_ALL_ALIAS}" ALIAS ${TARGET_ALL_NAME})
     # Specifies name of generated IMPORTED target (set to alias)
     set_target_properties(${TARGET_ALL_NAME} PROPERTIES EXPORT_NAME ${TARGET_ALL_ALIAS})
-    target_link_libraries(${TARGET_ALL_NAME} INTERFACE ${TARGET_CORE_NAME} ${TARGET_OPENCV_NAME} ${TARGET_PCL_NAME})
+    target_link_libraries(${TARGET_ALL_NAME} INTERFACE ${TARGET_CORE_NAME} ${TARGET_OPENCV_NAME} ${TARGET_PCL_NAME} ${TARGET_BASALT_NAME} ${TARGET_RTABMAP_NAME})
 
     # Add to list of targets to export and install
     list(APPEND targets_to_export ${TARGET_ALL_NAME})
 
-    message(STATUS "OpenCV and PCL found. Combined target enabled")
+    message(STATUS "OpenCV, PCL, Basalt and RTABMap found. Combined target enabled")
 endif()
+
+
 
 ########################
 # Sanitizers
@@ -836,6 +960,12 @@ if(DEPTHAI_SANITIZE)
     add_sanitizers(${TARGET_CORE_NAME})
     if(DEPTHAI_HAVE_OPENCV_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
         add_sanitizers(${TARGET_OPENCV_NAME})
+    endif()
+    if(DEPTHAI_HAVE_RTABMAP_SUPPORT)
+        add_sanitizers(${TARGET_RTABMAP_NAME})
+    endif()
+    if(DEPTHAI_HAVE_BASALT_SUPPORT)
+        add_sanitizers(${TARGET_BASALT_NAME})
     endif()
     if(DEPTHAI_HAVE_PCL_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
         add_sanitizers(${TARGET_PCL_NAME})
@@ -976,31 +1106,4 @@ if(DEPTHAI_INSTALL)
         DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}"
     )
 
-endif()
-
-##############################
-# Integration settings export
-##############################
-set(tmp_definitions "$<TARGET_PROPERTY:${TARGET_CORE_NAME},INTERFACE_COMPILE_DEFINITIONS>")
-set(tmp_includes "$<TARGET_PROPERTY:${TARGET_CORE_NAME},INTERFACE_INCLUDE_DIRECTORIES>")
-file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/depthai-core-integration.txt" CONTENT
-    "$<$<BOOL:${tmp_definitions}>:\n-D\'$<JOIN:${tmp_definitions},\'\n-D\'>\'>\n
-    $<$<BOOL:${tmp_includes}>:\n-I\'$<JOIN:${tmp_includes},\'\n-I\'>\'>\n"
-)
-
-if(DEPTHAI_HAVE_OPENCV_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
-    set(tmp_definitions "$<TARGET_PROPERTY:${TARGET_OPENCV_NAME},INTERFACE_COMPILE_DEFINITIONS>")
-    set(tmp_includes "$<TARGET_PROPERTY:${TARGET_OPENCV_NAME},INTERFACE_INCLUDE_DIRECTORIES>")
-    file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/depthai-opencv-integration.txt" CONTENT
-        "$<$<BOOL:${tmp_definitions}>:\n-D\'$<JOIN:${tmp_definitions},\'\n-D\'>\'>\n
-        $<$<BOOL:${tmp_includes}>:\n-I\'$<JOIN:${tmp_includes},\'\n-I\'>\'>\n"
-    )
-endif()
-if(DEPTHAI_HAVE_PCL_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
-    set(tmp_definitions "$<TARGET_PROPERTY:${TARGET_PCL_NAME},INTERFACE_COMPILE_DEFINITIONS>")
-    set(tmp_includes "$<TARGET_PROPERTY:${TARGET_PCL_NAME},INTERFACE_INCLUDE_DIRECTORIES>")
-    file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/depthai-pcl-integration.txt" CONTENT
-        "$<$<BOOL:${tmp_definitions}>:\n-D\'$<JOIN:${tmp_definitions},\'\n-D\'>\'>\n
-        $<$<BOOL:${tmp_includes}>:\n-I\'$<JOIN:${tmp_includes},\'\n-I\'>\'>\n"
-    )
 endif()

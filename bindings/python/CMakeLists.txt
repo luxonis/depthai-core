@@ -135,6 +135,7 @@ set(SOURCE_LIST
     src/pipeline/datatype/BenchmarkReportBindings.cpp
     src/pipeline/datatype/PointCloudConfigBindings.cpp
     src/pipeline/datatype/PointCloudDataBindings.cpp
+    src/pipeline/datatype/TransformDataBindings.cpp
 
     src/capabilities/CapabilityBindings.cpp
     src/capabilities/CapabilityRangeBindings.cpp
@@ -143,6 +144,19 @@ set(SOURCE_LIST
     src/modelzoo/NNModelDescriptionBindings.cpp
     src/modelzoo/ZooBindings.cpp
 )
+
+if(DEPTHAI_BASALT_SUPPORT)
+    list(APPEND SOURCE_LIST
+        src/pipeline/node/BasaltVIOBindings.cpp
+    )
+endif()
+
+if(DEPTHAI_RTABMAP_SUPPORT)
+    list(APPEND SOURCE_LIST
+        src/pipeline/node/RTABMapVIOBindings.cpp
+        src/pipeline/node/RTABMapSLAMBindings.cpp
+    )
+endif()
 
 # Add files for python module
 if(DEPTHAI_PYTHON_EMBEDDED_MODULE)
@@ -222,9 +236,15 @@ configure_file(cmake/docstring.hpp.in ${DOCSTRINGS_INCLUDE_PLACEHOLDER_PATH})
 # Add target to generate docstrings
 if (DEPTHAI_PYTHON_BUILD_DOCSTRINGS)
     include(pybind11-mkdoc)
-
-    # Check if pybind11_mkdoc available and create target
-    target_pybind11_mkdoc_setup(${docstring_output_path} depthai::core ${DEPTHAI_PYTHON_FORCE_DOCSTRINGS})
+    set(DEPTHAI_MKDOC_TARGETS depthai::core)
+    if(DEPTHAI_BASALT_SUPPORT)
+        list(APPEND DEPTHAI_MKDOC_TARGETS depthai::basalt)
+    endif()
+    if(DEPTHAI_RTABMAP_SUPPORT)
+        list(APPEND DEPTHAI_MKDOC_TARGETS depthai::rtabmap)
+    endif()
+    # Set up docstrings for combined targets
+    target_pybind11_mkdoc_setup_combined(${docstring_output_path} ${DEPTHAI_PYTHON_FORCE_DOCSTRINGS} ${DEPTHAI_MKDOC_TARGETS})
 
     if(TARGET pybind11_mkdoc)
         # Add dependency to mkdoc target (makes sure that mkdoc is executed, and docstrings available)
@@ -241,10 +261,16 @@ endif()
 # Add include directory
 target_include_directories(${TARGET_NAME} PRIVATE src ${DOCSTRINGS_INCLUDE_PLACEHOLDER_DIR})
 
-if(DEPTHAI_MERGED_TARGET)
-    set(DEPTHAI_LINK_TARGET depthai::core)
-else()
-    set(DEPTHAI_LINK_TARGET depthai::opencv)
+set(DEPTHAI_LINK_TARGET depthai::core)
+if(NOT DEPTHAI_MERGED_TARGET)
+    list(APPEND DEPTHAI_LINK_TARGET depthai::opencv)
+endif()
+
+if(DEPTHAI_BASALT_SUPPORT)
+    list(APPEND DEPTHAI_LINK_TARGET depthai::basalt)
+endif()
+if(DEPTHAI_RTABMAP_SUPPORT AND DEPTHAI_PCL_SUPPORT)
+    list(APPEND DEPTHAI_LINK_TARGET depthai::rtabmap)
 endif()
 
 # Link with libraries

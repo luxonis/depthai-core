@@ -4,12 +4,13 @@
 #include <vector>
 
 #include "depthai/common/Point3f.hpp"
+#include "depthai/common/Point3fRGB.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 
 // optional
 #ifdef DEPTHAI_HAVE_PCL_SUPPORT
+    #include <pcl/point_cloud.h>
     #include <pcl/point_types.h>
-    #include <pcl/visualization/cloud_viewer.h>
 #endif
 
 namespace dai {
@@ -24,6 +25,7 @@ class PointCloudData : public Buffer {
     float minx, miny, minz;
     float maxx, maxy, maxz;
     bool sparse = false;
+    bool color = false;
 
    public:
     using Buffer::getSequenceNum;
@@ -37,6 +39,7 @@ class PointCloudData : public Buffer {
     virtual ~PointCloudData() = default;
 
     std::vector<Point3f> getPoints();
+    std::vector<Point3fRGB> getPointsRGB();
 
     /**
      * Retrieves instance number
@@ -87,6 +90,11 @@ class PointCloudData : public Buffer {
      * Retrieves whether point cloud is sparse
      */
     bool isSparse() const;
+
+    /**
+     * Retrieves whether point cloud is color
+     */
+    bool isColor() const;
 
     /**
      * Specifies frame width
@@ -167,6 +175,13 @@ class PointCloudData : public Buffer {
     PointCloudData& setSparse(bool val);
 
     /**
+     * Specifies whether point cloud is color
+     *
+     * @param val whether point cloud is color
+     */
+    PointCloudData& setColor(bool val);
+
+    /**
      * Specifies instance number
      *
      * @param instanceNum instance number
@@ -178,7 +193,10 @@ class PointCloudData : public Buffer {
      * Converts PointCloudData to pcl::PointCloud<pcl::PointXYZ>
      */
     pcl::PointCloud<pcl::PointXYZ>::Ptr getPclData() const;
-
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr getPclDataRGB() const;
+    void setPclData(const pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud);
+    void setPclData(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr& cloud);
+    void setPclDataRGB(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr& cloud);
 #else
     template <typename... T>
     struct dependent_false {
@@ -186,6 +204,10 @@ class PointCloudData : public Buffer {
     };
     template <typename... T>
     void getPclData() const {
+        static_assert(dependent_false<T...>::value, "Library not configured with PCL support");
+    }
+    template <typename... T>
+    void setPclData(T...) {
         static_assert(dependent_false<T...>::value, "Library not configured with PCL support");
     }
 #endif

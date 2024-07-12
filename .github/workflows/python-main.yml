@@ -45,10 +45,10 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          sudo apt install libusb-1.0-0-dev libopencv-dev
+          sudo apt install libusb-1.0-0-dev libopencv-dev libpcl-dev
           python -m pip install -r bindings/python/docs/requirements_mkdoc.txt
       - name: Configure project
-        run: cmake -S . -B build -DDEPTHAI_BUILD_PYTHON=ON -DDEPTHAI_PYTHON_FORCE_DOCSTRINGS=ON -DDEPTHAI_PYTHON_DOCSTRINGS_OUTPUT="$PWD/bindings/python/docstrings/depthai_python_docstring.hpp"
+        run: cmake -S . -B build -DDEPTHAI_BUILD_PYTHON=ON -DDEPTHAI_PYTHON_FORCE_DOCSTRINGS=ON -DDEPTHAI_BASALT_SUPPORT=ON -DDEPTHAI_PCL_SUPPORT=ON -DDEPTHAI_RTABMAP_SUPPORT=ON -DDEPTHAI_PYTHON_DOCSTRINGS_OUTPUT="$PWD/bindings/python/docstrings/depthai_python_docstring.hpp"
       - name: Build target 'pybind11_mkdoc'
         run: cmake --build build --target pybind11_mkdoc --parallel 4
       - name: Upload docstring artifacts
@@ -183,6 +183,8 @@ jobs:
         # python-architecture: [x64, x86]
         python-architecture: [x64] # TODO(Morato) - re-enable x86 - it complains that OpenCV even though it's 32 bit is not compatible
       fail-fast: false
+    env:
+      DEPTHAI_BUILD_BASALT: ON
     steps:
       - name: Cache .hunter folder
         uses: actions/cache@v3
@@ -250,6 +252,10 @@ jobs:
         os: [macos-13, macos-14] # macos-13 is x64, macos-14 is arm64
       fail-fast: false
     runs-on: ${{ matrix.os }}
+    env:
+      DEPTHAI_BUILD_BASALT: ON
+      DEPTHAI_BUILD_PCL: ON
+      DEPTHAI_BUILD_RTABMAP: ON
     steps:
       - name: Cache .hunter folder
         uses: actions/cache@v3
@@ -284,6 +290,7 @@ jobs:
           python -m pip install --upgrade pip
           brew install libusb
           brew install opencv
+          brew install pcl
           python -m pip install delocate
       - name: Building wheels
         run: cd bindings/python && python -m pip wheel . -w ./wheelhouse/ --verbose
@@ -377,6 +384,9 @@ jobs:
       # workaround required for cache@v3, https://github.com/actions/cache/issues/1428
       # to be removed when upgrading the manylinux image
       ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
+      DEPTHAI_BUILD_BASALT: ON
+      DEPTHAI_BUILD_PCL: ON
+      DEPTHAI_BUILD_RTABMAP: ON
     steps:
       - name: Cache .hunter folder
         uses: actions/cache@v3
@@ -451,6 +461,9 @@ jobs:
       # workaround required for cache@v3, https://github.com/actions/cache/issues/1428
       # to be removed when upgrading the manylinux image
       ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
+      DEPTHAI_BUILD_BASALT: ON
+      DEPTHAI_BUILD_PCL: ON
+      DEPTHAI_BUILD_RTABMAP: ON
     steps:
       - uses: actions/checkout@v3
         with:
