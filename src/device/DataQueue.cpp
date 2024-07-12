@@ -9,10 +9,10 @@
 #include "depthai/pipeline/datatype/ADatatype.hpp"
 #include "depthai/pipeline/datatype/DatatypeEnum.hpp"
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
+#include "depthai/utility/SharedMemory.hpp"
 #include "depthai/xlink/XLinkStream.hpp"
 #include "pipeline/datatype/MessageGroup.hpp"
 #include "pipeline/datatype/StreamMessageParser.hpp"
-#include "depthai/utility/SharedMemory.hpp"
 
 // shared
 #include "depthai/xlink/XLinkConstants.hpp"
@@ -206,14 +206,14 @@ DataInputQueue::DataInputQueue(
 
                 // Blocking
                 auto t1 = steady_clock::now();
-		
-		if(outgoing->data->getSize() > 0) {
-		    if (outgoing->data->getKind() == dai::MemoryKinds::MEMORY_KIND_VECTOR) {
-		        stream.write(outgoing->data->getData(), metadata);
-		    } else if (outgoing->data->getKind() == dai::MemoryKinds::MEMORY_KIND_VECTOR) {
-		        std::shared_ptr<SharedMemory> memory = std::dynamic_pointer_cast<SharedMemory>(outgoing->data);
-		        stream.write(memory->getFd(), metadata);
-		    }
+
+                if(outgoing->data->getSize() > 0) {
+                    if(outgoing->data->getKind() == dai::MemoryKinds::MEMORY_KIND_VECTOR) {
+                        stream.write(outgoing->data->getData(), metadata);
+                    } else if(outgoing->data->getKind() == dai::MemoryKinds::MEMORY_KIND_VECTOR) {
+                        std::shared_ptr<SharedMemory> memory = std::dynamic_pointer_cast<SharedMemory>(outgoing->data);
+                        stream.write(memory->getFd(), metadata);
+                    }
                 } else {
                     stream.write(metadata);
                 }
@@ -234,12 +234,12 @@ DataInputQueue::DataInputQueue(
                         logger::trace("Sending part of a group message: {}", msg.first);
                         auto metadata = StreamMessageParser::serializeMetadata(msg.second);
                         if(msg.second->data->getSize() > 0) {
-			    if (msg.second->data->getKind() == dai::MemoryKinds::MEMORY_KIND_VECTOR) {
-				stream.write(msg.second->data->getData(), metadata);
-			    } else if (msg.second->data->getKind() == dai::MemoryKinds::MEMORY_KIND_VECTOR) {
-				std::shared_ptr<SharedMemory> memory = std::dynamic_pointer_cast<SharedMemory>(msg.second->data);
-				stream.write(memory->getFd(), metadata);
-			    }
+                            if(msg.second->data->getKind() == dai::MemoryKinds::MEMORY_KIND_VECTOR) {
+                                stream.write(msg.second->data->getData(), metadata);
+                            } else if(msg.second->data->getKind() == dai::MemoryKinds::MEMORY_KIND_VECTOR) {
+                                std::shared_ptr<SharedMemory> memory = std::dynamic_pointer_cast<SharedMemory>(msg.second->data);
+                                stream.write(memory->getFd(), metadata);
+                            }
                         } else {
                             stream.write(metadata);
                         }

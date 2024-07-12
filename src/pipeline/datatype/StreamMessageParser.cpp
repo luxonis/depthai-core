@@ -39,8 +39,8 @@
 // shared
 #include "depthai/pipeline/datatype/DatatypeEnum.hpp"
 #include "depthai/utility/Serialization.hpp"
-#include "utility/VectorMemory.hpp"
 #include "utility/SharedMemory.hpp"
+#include "utility/VectorMemory.hpp"
 #include "xlink/XLinkStream.hpp"
 
 // StreamPacket structure ->  || imgframepixels... , serialized_object, object_type, serialized_object_size ||
@@ -59,10 +59,10 @@ inline std::shared_ptr<T> parseDatatype(std::uint8_t* metadata, size_t size, std
 
     // deserialize
     utility::deserialize(metadata, size, *tmp);
-    if (fd < 0) {
-	tmp->data = std::make_shared<dai::VectorMemory>(std::move(data));
+    if(fd < 0) {
+        tmp->data = std::make_shared<dai::VectorMemory>(std::move(data));
     } else {
-	tmp->data = std::make_shared<dai::SharedMemory>(fd);
+        tmp->data = std::make_shared<dai::SharedMemory>(fd);
     }
 
     return tmp;

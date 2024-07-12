@@ -16,7 +16,7 @@ class ThreadedHostNode : public ThreadedNode {
     }
 };
 
-template<typename T>
+template <typename T>
 using CustomThreadedNode = NodeCRTP<ThreadedHostNode, T>;
 }  // namespace node
 }  // namespace dai

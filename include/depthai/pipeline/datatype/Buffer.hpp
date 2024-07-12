@@ -43,7 +43,6 @@ class Buffer : public ADatatype {
      * @param data Moves data to internal buffer
      */
     void setData(std::vector<std::uint8_t>&& data);
-    
 
     /**
      * Retrieves timestamp related to dai::Clock::now()

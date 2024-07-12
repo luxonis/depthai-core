@@ -518,7 +518,7 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit, XLinkDeviceStat
         deviceLinkId = connectionHandler.linkId;
         deviceInfo = lastDeviceInfo;
         deviceInfo.state = X_LINK_BOOTED;
-	deviceInfo.protocol = connectionHandler.protocol;
+        deviceInfo.protocol = connectionHandler.protocol;
     }
 }
 

@@ -6,11 +6,11 @@
 #include <functional>
 #include <iostream>
 #ifdef __unix__
-#include <fcntl.h>
-#include <sys/mman.h>
-#include <sys/stat.h>
-#include <sys/un.h>
-#include <unistd.h>
+    #include <fcntl.h>
+    #include <sys/mman.h>
+    #include <sys/stat.h>
+    #include <sys/un.h>
+    #include <unistd.h>
 #endif
 
 // project
@@ -24,70 +24,71 @@ class SharedMemory : public Memory {
     long fd = -1;
     void* mapping;
     void mapFd() {
-	if (fd < 0) {
-	    /* Error handling here */
-	}
+        if(fd < 0) {
+            /* Error handling here */
+        }
 
-	mapping = mmap(NULL, getSize(), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-	if (mapping == NULL) {
-	    /* Error handling here */
-	}
+        mapping = mmap(NULL, getSize(), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+        if(mapping == NULL) {
+            /* Error handling here */
+        }
     }
     void unmapFd() {
-	if (mapping == NULL) {
-	    return;
-	}
+        if(mapping == NULL) {
+            return;
+        }
 
-	munmap(mapping, getSize());
+        munmap(mapping, getSize());
     }
+
    public:
     SharedMemory() {
-	kind = MemoryKinds::MEMORY_KIND_SHARED;
-	fd = -1;
+        kind = MemoryKinds::MEMORY_KIND_SHARED;
+        fd = -1;
     }
 
     SharedMemory(long argFd) : fd(argFd) {
-	kind = MemoryKinds::MEMORY_KIND_SHARED;
-	mapFd();
+        kind = MemoryKinds::MEMORY_KIND_SHARED;
+        mapFd();
     }
 
     SharedMemory(long argFd, std::size_t size) : fd(argFd) {
-	kind = MemoryKinds::MEMORY_KIND_SHARED;
-	setSize(size);
-	mapFd();
+        kind = MemoryKinds::MEMORY_KIND_SHARED;
+        setSize(size);
+        mapFd();
     }
 
-    SharedMemory(const char *name) {
-	kind = MemoryKinds::MEMORY_KIND_SHARED;
-	fd = memfd_create(name, 0);
-	mapFd();
+    SharedMemory(const char* name) {
+        kind = MemoryKinds::MEMORY_KIND_SHARED;
+        fd = memfd_create(name, 0);
+        mapFd();
     }
 
-    SharedMemory(const char *name, std::size_t size) {
-	kind = MemoryKinds::MEMORY_KIND_SHARED;
-	fd = memfd_create(name, 0);
+    SharedMemory(const char* name, std::size_t size) {
+        kind = MemoryKinds::MEMORY_KIND_SHARED;
+        fd = memfd_create(name, 0);
 
-	setSize(size);
-	mapFd();
+        setSize(size);
+        mapFd();
     }
 
     ~SharedMemory() {
-	unmapFd();
-	close(fd);
+        unmapFd();
+        close(fd);
     }
 
     SharedMemory& operator=(long argFd) {
-	unmapFd();
-	fd = argFd;
-	mapFd();
+        unmapFd();
+        fd = argFd;
+        mapFd();
 
         return *this;
     }
 
     span<std::uint8_t> getData() override {
-	if (mapping == NULL) {
-	    mapFd();
-	}
+        if(mapping == NULL) {
+            mapFd();
+        }
 
         return {(uint8_t*)mapping, getSize()};
     }
@@ -95,8 +96,8 @@ class SharedMemory : public Memory {
         return {(const uint8_t*)mapping, getSize()};
     }
     std::size_t getMaxSize() const override {
-	struct stat fileStats;
-	fstat(fd, &fileStats);
+        struct stat fileStats;
+        fstat(fd, &fileStats);
 
         return fileStats.st_size;
     }
@@ -104,20 +105,20 @@ class SharedMemory : public Memory {
         return ftell(fdopen(fd, "r"));
     }
     void setSize(std::size_t size) override {
-	if (mapping != NULL) {
-	    unmapFd();
-	}
+        if(mapping != NULL) {
+            unmapFd();
+        }
 
-	ftruncate(fd, size);
-	mapFd();
+        ftruncate(fd, size);
+        mapFd();
     }
 
     std::size_t getSize() const {
-	return getMaxSize();
+        return getMaxSize();
     }
 
     long getFd() const {
-	return fd;
+        return fd;
     }
 };
 

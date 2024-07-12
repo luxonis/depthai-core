@@ -5,8 +5,8 @@
 #include "spdlog/fmt/fmt.h"
 
 // project
-#include "depthai/xlink/XLinkConnection.hpp"
 #include "depthai/utility/SharedMemory.hpp"
+#include "depthai/xlink/XLinkConnection.hpp"
 
 namespace dai {
 
@@ -55,7 +55,8 @@ XLinkStream::~XLinkStream() {
     }
 }
 
-StreamPacketDesc::StreamPacketDesc(StreamPacketDesc&& other) noexcept : streamPacketDesc_t{other.data, other.length, other.fd, other.tRemoteSent, other.tReceived} {
+StreamPacketDesc::StreamPacketDesc(StreamPacketDesc&& other) noexcept
+    : streamPacketDesc_t{other.data, other.length, other.fd, other.tRemoteSent, other.tReceived} {
     other.data = nullptr;
     other.length = 0;
 }
@@ -64,7 +65,7 @@ StreamPacketDesc& StreamPacketDesc::operator=(StreamPacketDesc&& other) noexcept
     if(this != &other) {
         data = std::exchange(other.data, nullptr);
         length = std::exchange(other.length, 0);
-	fd = std::exchange(other.fd, -1);
+        fd = std::exchange(other.fd, -1);
         tRemoteSent = std::exchange(other.tRemoteSent, {});
         tReceived = std::exchange(other.tReceived, {});
     }
@@ -97,7 +98,7 @@ void XLinkStream::write(const void* data, std::size_t size) {
 }
 
 void XLinkStream::write(long fd) {
-    auto status = XLinkWriteFd(streamId, fd); 
+    auto status = XLinkWriteFd(streamId, fd);
 
     if(status != X_LINK_SUCCESS) {
         throw XLinkWriteError(status, streamName);
@@ -105,7 +106,7 @@ void XLinkStream::write(long fd) {
 }
 
 void XLinkStream::write(long fd, span<const uint8_t> data) {
-    auto status = XLinkWriteFdData(streamId, fd, data.data(), data.size()); 
+    auto status = XLinkWriteFdData(streamId, fd, data.data(), data.size());
 
     if(status != X_LINK_SUCCESS) {
         throw XLinkWriteError(status, streamName);
@@ -122,10 +123,10 @@ void XLinkStream::read(std::vector<std::uint8_t>& data, XLinkTimespec& timestamp
     read(data, fd, timestampReceived);
 
     if(fd >= 0) {
-	SharedMemory mem = SharedMemory(fd);
-	uint8_t *memoryData = (uint8_t*)mem.getData().data();
-	std::size_t memoryLength = mem.getData().size();
-	data.insert(data.end(), &memoryData[0], &memoryData[memoryLength - 1]);
+        SharedMemory mem = SharedMemory(fd);
+        uint8_t* memoryData = (uint8_t*)mem.getData().data();
+        std::size_t memoryLength = mem.getData().size();
+        data.insert(data.end(), &memoryData[0], &memoryData[memoryLength - 1]);
     }
 }
 

@@ -40,7 +40,7 @@ class HostNode : public ThreadedHostNode {
     }
 };
 
-template<typename T>
+template <typename T>
 using CustomNode = NodeCRTP<HostNode, T>;
 }  // namespace node
 }  // namespace dai

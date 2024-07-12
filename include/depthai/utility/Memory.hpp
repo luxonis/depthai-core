@@ -128,7 +128,7 @@ class Memory {
     };
 
     MemoryKinds getKind() {
-	return kind;
+        return kind;
     }
 
    protected:

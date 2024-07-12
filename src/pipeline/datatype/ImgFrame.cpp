@@ -2,7 +2,6 @@
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 
 #include "depthai/utility/SharedMemory.hpp"
-
 #include "spdlog/fmt/fmt.h"
 #include "spdlog/spdlog.h"
 namespace dai {
@@ -21,15 +20,12 @@ ImgFrame::ImgFrame(size_t size) : ImgFrame() {
 ImgFrame::ImgFrame(long fd) : ImgFrame() {
     auto mem = std::make_shared<SharedMemory>(fd);
     data = mem;
-    
 }
 
 ImgFrame::ImgFrame(long fd, size_t size) : ImgFrame() {
     auto mem = std::make_shared<SharedMemory>(fd, size);
     data = mem;
 }
-
-
 
 std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> ImgFrame::getTimestamp(CameraExposureOffset offset) const {
     auto ts = getTimestamp();

@@ -54,10 +54,10 @@ std::string protocolToString(XLinkProtocol_t protocol) {
             return "X_LINK_IPC";
         case X_LINK_TCP_IP:
             return "X_LINK_TCP_IP";
-	case X_LINK_LOCAL_SHDMEM:
+        case X_LINK_LOCAL_SHDMEM:
             return "X_LINK_LOCAL_SHDMEM";
-	case X_LINK_TCP_IP_OR_LOCAL_SHDMEM:
-	    return "X_LINK_TCP_IP_OR_LOCAL_SHDMEM";
+        case X_LINK_TCP_IP_OR_LOCAL_SHDMEM:
+            return "X_LINK_TCP_IP_OR_LOCAL_SHDMEM";
         case X_LINK_NMB_OF_PROTOCOLS:
             return "X_LINK_NMB_OF_PROTOCOLS";
         case X_LINK_ANY_PROTOCOL:
