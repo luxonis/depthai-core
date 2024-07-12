@@ -99,7 +99,9 @@ class SharedMemory : public Memory {
 
     ~SharedMemory() {
         unmapFd();
+#if defined(__unix__) && !defined(__APPLE__)
         close(fd);
+#endif
     }
 
     SharedMemory& operator=(long argFd) {
