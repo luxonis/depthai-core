@@ -71,29 +71,39 @@ void NNArchiveBindings::bind(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
 
     // Bind NNArchive
-    nnArchive.def(py::init([](const std::string& path, NNArchiveEntry::Compression compression, int numShaves) {
+    nnArchive.def(py::init([](const std::string& archivePath, NNArchiveEntry::Compression compression, const std::string& extractFolder) {
                       NNArchiveOptions options;
-                      options.compression = compression;
-                      options.numShaves(numShaves);
-                      return NNArchive(path, options);
+                      options.compression(compression);
+                      options.extractFolder(extractFolder);
+                      return NNArchive(archivePath, options);
                   }),
-                  py::arg("path"),
+                  py::arg("archivePath"),
                   py::arg("compression") = NNArchiveEntry::Compression::AUTO,
-                  py::arg("numShaves") = -1,
+                  py::arg("extractFolder") = "/tmp/",
                   DOC(dai, NNArchive, NNArchive));
-    nnArchive.def(py::init<const std::string&, NNArchiveOptions>(), py::arg("path"), py::arg("options") = NNArchiveOptions(), DOC(dai, NNArchive, NNArchive));
-    nnArchive.def("getConfig", &NNArchive::getConfig, DOC(dai, NNArchive, getConfig));
+    nnArchive.def(
+        py::init<const std::string&, NNArchiveOptions>(), py::arg("archivePath"), py::arg("options") = NNArchiveOptions(), DOC(dai, NNArchive, NNArchive));
     nnArchive.def("getBlob", &NNArchive::getBlob, DOC(dai, NNArchive, getBlob));
+    nnArchive.def("getSuperBlob", &NNArchive::getSuperBlob, DOC(dai, NNArchive, getBlob));
+    nnArchive.def("getModelPath", &NNArchive::getModelPath, DOC(dai, NNArchive, getModelPath));
+    nnArchive.def("getConfig", &NNArchive::getConfig, DOC(dai, NNArchive, getConfig));
+    nnArchive.def("getArchiveType", &NNArchive::getArchiveType, DOC(dai, NNArchive, getArchiveType));
 
     // Bind NNArchive options
     nnArchiveOptions.def(py::init<>(), DOC(dai, NNArchiveOptions, NNArchiveOptions));
-    nnArchiveOptions.def_readwrite("compression", &NNArchiveOptions::compression, DOC(dai, NNArchiveOptions, compression));
     nnArchiveOptions.def_property(
-        "numShaves", [](const NNArchiveOptions& opt) { return opt.numShaves(); }, [](NNArchiveOptions& opt, int numShaves) { opt.numShaves(numShaves); });
+        "compression",
+        [](const NNArchiveOptions& opt) { return opt.compression(); },
+        [](NNArchiveOptions& opt, NNArchiveEntry::Compression compression) { opt.compression(compression); });
+    nnArchiveOptions.def_property(
+        "extractFolder",
+        [](const NNArchiveOptions& opt) { return opt.extractFolder(); },
+        [](NNArchiveOptions& opt, const std::string& extractFolder) { opt.extractFolder(extractFolder); });
 
     // Bind NNArchiveType
     nnArchiveType.value("BLOB", NNArchiveType::BLOB);
     nnArchiveType.value("SUPERBLOB", NNArchiveType::SUPERBLOB);
+    nnArchiveType.value("OTHER", NNArchiveType::OTHER);
 
     // Bind NNArchiveConfig
     nnArchiveConfig.def(py::init<const dai::Path&, NNArchiveEntry::Compression>(),
@@ -115,13 +125,15 @@ void NNArchiveBindings::bind(pybind11::module& m, void* pCallstack) {
     }));
     nnArchiveConfig.def("getConfigV1", &NNArchiveConfig::getConfigV1, DOC(dai, NNArchiveConfig, getConfigV1));
 
-    // Bind NNArchiveEntry
-    archiveEntryCompression.value("AUTO", NNArchiveEntry::Compression::AUTO)
-        .value("RAW_FS", NNArchiveEntry::Compression::RAW_FS)
-        .value("TAR", NNArchiveEntry::Compression::TAR)
-        .value("TAR_GZ", NNArchiveEntry::Compression::TAR_GZ)
-        .value("TAR_XZ", NNArchiveEntry::Compression::TAR_XZ);
-    archiveEntrySeek.value("SET", NNArchiveEntry::Seek::SET).value("CUR", NNArchiveEntry::Seek::CUR).value("END", NNArchiveEntry::Seek::END);
+    archiveEntryCompression.value("AUTO", NNArchiveEntry::Compression::AUTO);
+    archiveEntryCompression.value("RAW_FS", NNArchiveEntry::Compression::RAW_FS);
+    archiveEntryCompression.value("TAR", NNArchiveEntry::Compression::TAR);
+    archiveEntryCompression.value("TAR_GZ", NNArchiveEntry::Compression::TAR_GZ);
+    archiveEntryCompression.value("TAR_XZ", NNArchiveEntry::Compression::TAR_XZ);
+
+    archiveEntrySeek.value("SET", NNArchiveEntry::Seek::SET);
+    archiveEntrySeek.value("CUR", NNArchiveEntry::Seek::CUR);
+    archiveEntrySeek.value("END", NNArchiveEntry::Seek::END);
 
     // Bind NNArchive v1
     v1configVersion.value("THE_10", v1::ConfigVersion::THE_10);

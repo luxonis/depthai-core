@@ -1,4 +1,5 @@
 // C++ std
+#include <filesystem>
 #include <functional>
 #include <optional>
 #include <string>
@@ -30,6 +31,7 @@ class ArchiveUtil {
     struct archive* getA();
     // Throws on error
     void readEntry(struct archive_entry* entry, std::vector<uint8_t>& out);
+    void unpackArchiveInDirectory(const std::filesystem::path directory);
     // Reads entryName from archive to curEntry member.
     // Returns true if entry found, false otherwise.
     // Throws on other errors

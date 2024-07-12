@@ -2,6 +2,7 @@
 
 // c std
 #include <cstdio>
+#include <filesystem>
 #include <optional>
 
 #include "utility/ErrorMacros.hpp"
@@ -36,6 +37,26 @@ void ArchiveUtil::init(NNArchiveEntry::Compression format) {
         default:
             DAI_CHECK_IN(false);
             break;
+    }
+}
+
+void ArchiveUtil::unpackArchiveInDirectory(const std::filesystem::path directory) {
+    struct archive* a = getA();
+    struct archive_entry* entry = nullptr;
+    std::filesystem::create_directories(directory);
+    while(archive_read_next_header(a, &entry) == ARCHIVE_OK && entry != nullptr) {
+        const auto entryPath = directory / archive_entry_pathname(entry);
+        std::filesystem::remove(entryPath);
+        if(archive_entry_filetype(entry) == AE_IFREG) {
+            std::vector<uint8_t> data;
+            readEntry(entry, data);
+            std::ofstream out(entryPath, std::ios::binary);
+            out.write(reinterpret_cast<const char*>(data.data()), data.size());
+            out.close();
+        } else {
+            std::filesystem::create_directories(entryPath);
+        }
+        entry = nullptr;
     }
 }
 

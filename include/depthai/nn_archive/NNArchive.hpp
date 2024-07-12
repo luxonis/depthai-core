@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <memory>
+#include <optional>
 
 #include "depthai/nn_archive/NNArchiveConfig.hpp"
 #include "depthai/nn_archive/NNArchiveEntry.hpp"
