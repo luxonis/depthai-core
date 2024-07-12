@@ -5,8 +5,8 @@ import time
 
 class HostCamera(dai.node.ThreadedHostNode):
     def __init__(self):
-        dai.node.ThreadedHostNode.__init__(self)
-        self.output = dai.Node.Output(self)
+        super().__init__()
+        self.output = self.createOutput()
     def run(self):
         # Create a VideoCapture object
         cap = cv2.VideoCapture(0)

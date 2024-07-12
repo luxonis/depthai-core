@@ -98,6 +98,10 @@ static XLinkProtocol_t getDefaultProtocol() {
         defaultProtocol = X_LINK_USB_VSC;
     } else if(protocolStr == "tcpip") {
         defaultProtocol = X_LINK_TCP_IP;
+    } else if(protocolStr == "tcpshd") {
+        defaultProtocol = X_LINK_TCP_IP_OR_LOCAL_SHDMEM;
+    } else if(protocolStr == "shdmem") {
+        defaultProtocol = X_LINK_LOCAL_SHDMEM;
     } else {
         logger::warn("Unsupported protocol specified");
     }
@@ -514,6 +518,7 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit, XLinkDeviceStat
         deviceLinkId = connectionHandler.linkId;
         deviceInfo = lastDeviceInfo;
         deviceInfo.state = X_LINK_BOOTED;
+        deviceInfo.protocol = connectionHandler.protocol;
     }
 }
 

@@ -19,8 +19,8 @@ if not Path(args.inputVideo).exists():
     raise FileNotFoundError(f'Input video file not found: {args.inputVideo}')
 
 with dai.Pipeline() as pipeline:
-    replay = pipeline.create(dai.node.Replay)
-    replay.setReplayVideo(args.inputVideo)
+    replay = pipeline.create(dai.node.ReplayVideo)
+    replay.setReplayVideoFile(args.inputVideo)
     replay.setOutFrameType(dai.ImgFrame.Type.NV12)
 
     imageManip = pipeline.create(dai.node.ImageManip)

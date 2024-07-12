@@ -7,8 +7,29 @@
 namespace dai {
 
 std::vector<Point3f> PointCloudData::getPoints() {
+    if(isColor()) {
+        span<const Point3fRGB> pointData(reinterpret_cast<Point3fRGB*>(data->getData().data()), data->getData().size() / sizeof(Point3fRGB));
+        std::vector<Point3fRGB> points(pointData.begin(), pointData.end());
+        std::vector<Point3f> points3f;
+        for(const auto& p : points) {
+            points3f.push_back({p.x, p.y, p.z});
+        }
+        return points3f;
+    }
     span<const Point3f> pointData(reinterpret_cast<Point3f*>(data->getData().data()), data->getData().size() / sizeof(Point3f));
     std::vector<Point3f> points(pointData.begin(), pointData.end());
+    assert(isSparse() || points.size() == width * height);
+    assert(!isSparse() || points.size() <= width * height);
+
+    return points;
+}
+
+std::vector<Point3fRGB> PointCloudData::getPointsRGB() {
+    if(!isColor()) {
+        throw std::runtime_error("PointCloudData does not contain color data");
+    }
+    span<const Point3fRGB> pointData(reinterpret_cast<Point3fRGB*>(data->getData().data()), data->getData().size() / sizeof(Point3fRGB));
+    std::vector<Point3fRGB> points(pointData.begin(), pointData.end());
     assert(isSparse() || points.size() == width * height);
     assert(!isSparse() || points.size() <= width * height);
 
@@ -44,6 +65,10 @@ float PointCloudData::getMaxZ() const {
 }
 bool PointCloudData::isSparse() const {
     return sparse;
+}
+
+bool PointCloudData::isColor() const {
+    return color;
 }
 
 PointCloudData& PointCloudData::setInstanceNum(unsigned int instanceNum) {
@@ -94,6 +119,11 @@ PointCloudData& PointCloudData::setMaxZ(float val) {
 }
 PointCloudData& PointCloudData::setSparse(bool val) {
     sparse = val;
+    return *this;
+}
+
+PointCloudData& PointCloudData::setColor(bool val) {
+    color = val;
     return *this;
 }
 

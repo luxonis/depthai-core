@@ -41,7 +41,7 @@ One syntax uses the `Pipeline.create(...)` and `Node.build(...)` methods like th
 
 The other syntax uses the pipeline from the `with` statement and does all the work in the constructor -- e.g. `dai.node.StereoDepth(autoCreateCameras=True`.
 
-In Python, both syntaxes also accept keyword arguments that mirror setter methods -- e.g. `dai.node.Camera(previewSize=(300, 300))`. Currently, not all parameters are available.
+In Python, both syntaxes also accept keyword arguments that mirror setter methods -- e.g. `dai.node.VideoEncoder(bitrate=2*24)`. Currently, not all parameters are available.
 
 We'd love to hear your opinion which one you prefer. Currently, this syntax is now available only for `Camera`, `DetectionNetwork`, `StereoDepth` and `VideoEncoder`. Other nodes still have to be created with `pipeline.create`, parameters set with setter methods and inputs linked with `.link`.
 
@@ -144,5 +144,23 @@ Then navigate to `build/examples` folder and run a preferred example
 cd build/examples
 ./MobileNet/rgb_mobilenet
 ```
+
+## VSLAM
+The VSLAM example is a bit more complex and requires additional dependencies - OpenCV and PCL. To install them, run the following command:
+```
+sudo apt install -y libopencv-dev libpcl-dev
+```
+
+Then, build the examples with the VSLAM example enabled:
+```
+cmake -S. -Bbuild -D'DEPTHAI_BUILD_EXAMPLES=ON'  -D'DEPTHAI_BASALT_SUPPORT=ON' -D'DEPTHAI_PCL_SUPPORT=ON' -D'DEPTHAI_RTABMAP_SUPPORT=ON'
+cmake --build build
+```
+To run those examples you also need to install Rerun, you can install it automatically with
+```
+python3 depthai-core/examples/python/install_requirements.py --install_rerun
+```
+You can also install it separately, installation instructions can be found [here](https://rerun.io/docs/getting-started/installing-viewer). If you use Numpy v2.0 you might need to downgrade it for Rerun.
+**NOTE** Currently, Rerun does not work with Numpy 2.0, you need to downgrade it to, for example 1.24.4 to be able to properly view images.
 
 > ℹ️ Multi-Config generators (like Visual Studio on Windows) will have the examples built in `build/examples/MobileNet/[Debug/Release/...]/rgb_mobilenet`

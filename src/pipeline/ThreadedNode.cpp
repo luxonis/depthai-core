@@ -17,6 +17,7 @@ ThreadedNode::ThreadedNode() {
 }
 
 void ThreadedNode::start() {
+    onStart();
     // Start the thread
     running = true;
     thread = std::thread([this]() {
@@ -39,6 +40,7 @@ void ThreadedNode::start() {
                 spdlog::error(expStr);
             }
             running = false;
+            stopPipeline();
         }
     });
     platform::setThreadName(thread, fmt::format("{}({})", getName(), id));
@@ -49,6 +51,7 @@ void ThreadedNode::wait() {
 }
 
 void ThreadedNode::stop() {
+    onStop();
     // TBD
     // Sets running to false
     running = false;
