@@ -32,6 +32,7 @@ class Resources {
     bool readyBootloader;
     std::unordered_map<std::string, std::vector<std::uint8_t>> resourceMapBootloader;
     std::vector<std::uint8_t> getDeviceFwp(const std::string& fwPath, const std::string& envPath) const;
+    std::vector<std::uint8_t> getDeviceSig(const std::string& sigPath, const std::string& envPath) const;
 
 public:
     static Resources& getInstance();
@@ -44,6 +45,8 @@ public:
     std::vector<std::uint8_t> getBootloaderFirmware(DeviceBootloader::Type type = DeviceBootloader::Type::USB) const;
     std::vector<std::uint8_t> getDeviceRVC3Fwp() const;
     std::vector<std::uint8_t> getDeviceRVC4Fwp() const;
+    std::vector<std::uint8_t> getDeviceRVC3Sig() const;
+    std::vector<std::uint8_t> getDeviceRVC4Sig() const;
 
 };
 

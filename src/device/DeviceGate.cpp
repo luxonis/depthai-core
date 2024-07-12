@@ -123,18 +123,29 @@ bool DeviceGate::createSession(bool exclusive) {
 
         if(!fwpExists) {
             std::vector<uint8_t> package;
-            std::string path;
-            if(!path.empty()) {
-                std::ifstream fwStream(path, std::ios::binary);
-                if(!fwStream.is_open()) throw std::runtime_error(fmt::format("Cannot flash bootloader, binary at path: {} doesn't exist", path));
+            std::vector<uint8_t> signature;
+            std::string fwPath;
+            std::string sigPath;
+            if(!fwPath.empty()) {
+                std::ifstream fwStream(fwPath, std::ios::binary);
+                if(!fwStream.is_open()) throw std::runtime_error(fmt::format("Cannot flash bootloader, binary at path: {} doesn't exist", fwPath));
                 package = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(fwStream), {});
             } else {
                 package = platform == X_LINK_RVC3 ? Resources::getInstance().getDeviceRVC3Fwp() : Resources::getInstance().getDeviceRVC4Fwp();
             }
 
+	    if(!sigPath.empty()) {
+                std::ifstream sigStream(sigPath, std::ios::binary);
+                if(!sigStream.is_open()) throw std::runtime_error(fmt::format("Cannot flash bootloader signature, binary at path: {} doesn't exist", sigPath));
+                signature = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(sigStream), {});
+            } else {
+                signature = platform == X_LINK_RVC3 ? Resources::getInstance().getDeviceRVC3Sig() : Resources::getInstance().getDeviceRVC4Sig();
+            }
+
             // TODO(themarpe) - Inefficient
             httplib::MultipartFormDataItems items = {
                 {"file", std::string(package.begin(), package.end()), "depthai-device-kb-fwp.tar.xz", "application/octet-stream"},
+		{"signature", std::string(signature.begin(), signature.end()), "depthai-device-kb-fwp.tar.xz.sig", "application/octet-stream"},
             };
 
             std::string url = fmt::format("{}/{}/fwp", sessionsEndpoint, sessionId);

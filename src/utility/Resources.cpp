@@ -259,10 +259,12 @@ std::vector<std::uint8_t> Resources::getBootloaderFirmware(dai::bootloader::Type
 
 #ifdef DEPTHAI_ENABLE_DEVICE_RVC3_FW
 constexpr static auto CMRC_DEPTHAI_DEVICE_KB_FWP_TAR_XZ = "depthai-device-kb-fwp-" DEPTHAI_DEVICE_RVC3_VERSION ".tar.xz";
+constexpr static auto CMRC_DEPTHAI_DEVICE_KB_FWP_TAR_XZ_SIG = "depthai-device-kb-fwp-" DEPTHAI_DEVICE_RVC3_VERSION ".tar.xz.sig";
 #endif
 
 #ifdef DEPTHAI_ENABLE_DEVICE_RVC4_FW
 constexpr static auto CMRC_DEPTHAI_DEVICE_RVC4_FWP_TAR_XZ = "depthai-device-rvc4-fwp-" DEPTHAI_DEVICE_RVC4_VERSION ".tar.xz";
+constexpr static auto CMRC_DEPTHAI_DEVICE_RVC4_FWP_TAR_XZ_SIG = "depthai-device-rvc4-fwp-" DEPTHAI_DEVICE_RVC4_VERSION ".tar.xz.sig";
 #endif
 
 std::vector<std::uint8_t> Resources::getDeviceRVC3Fwp() const {
@@ -280,6 +282,24 @@ std::vector<std::uint8_t> Resources::getDeviceRVC4Fwp() const {
     throw std::invalid_argument("DepthAI compiled without support for RVC3 Device FW");
 #else
     return getDeviceFwp(CMRC_DEPTHAI_DEVICE_RVC4_FWP_TAR_XZ, "DEPTHAI_DEVICE_RVC4_FWP");
+#endif
+}
+
+std::vector<std::uint8_t> Resources::getDeviceRVC3Sig() const {
+// First check if device bootloader fw is enabled
+#ifndef DEPTHAI_ENABLE_DEVICE_RVC3_FW
+    throw std::invalid_argument("DepthAI compiled without support for RVC3 Device SIG");
+#else
+    return getDeviceSig(CMRC_DEPTHAI_DEVICE_KB_FWP_TAR_XZ_SIG, "DEPTHAI_DEVICE_KB_FWP_SIG");
+#endif
+}
+
+std::vector<std::uint8_t> Resources::getDeviceRVC4Sig() const {
+// First check if device bootloader fw is enabled
+#ifndef DEPTHAI_ENABLE_DEVICE_RVC4_FW
+    throw std::invalid_argument("DepthAI compiled without support for RVC3 Device SIG");
+#else
+    return getDeviceSig(CMRC_DEPTHAI_DEVICE_RVC4_FWP_TAR_XZ_SIG, "DEPTHAI_DEVICE_RVC4_FWP_SIG");
 #endif
 }
 
@@ -315,6 +335,41 @@ std::vector<std::uint8_t> Resources::getDeviceFwp(const std::string& fwPath, con
         auto fs = cmrc::depthai::get_filesystem();
         auto tarXz = fs.open(fwPath);
         return {tarXz.begin(), tarXz.end()};
+    }
+}
+
+std::vector<std::uint8_t> Resources::getDeviceSig(const std::string& sigPath, const std::string& envPath) const {
+    std::string pathToSig;
+
+    // Check if pathToMvcmd variable is set
+    dai::Path finalSigPath;
+    if(!pathToSig.empty()) {
+        finalSigPath = pathToSig;
+    }
+
+    // Override if env variable DEPTHAI_DEVICE_KB_FWP is set
+    dai::Path sigPathEnv = utility::getEnv(envPath);
+    if(!sigPathEnv.empty()) {
+        finalSigPath = sigPathEnv;
+        spdlog::warn("Overriding device fwp: {}", finalSigPath);
+    }
+
+    // Return binary from file if any of above paths are present
+    if(!finalSigPath.empty()) {
+        // Load binary file at path
+        std::ifstream stream(finalSigPath, std::ios::binary);
+        if(!stream.is_open()) {
+            // Throw an error
+            // TODO(themarpe) - Unify exceptions into meaningful groups
+            throw std::runtime_error(fmt::format("File at path {}{} doesn't exist.", finalSigPath));
+        }
+        // Read the file and return its contents
+        return std::vector<std::uint8_t>(std::istreambuf_iterator<char>(stream), {});
+    } else {
+        // Load from resources
+        auto fs = cmrc::depthai::get_filesystem();
+        auto sig = fs.open(sigPath);
+        return {sig.begin(), sig.end()};
     }
 }
 
