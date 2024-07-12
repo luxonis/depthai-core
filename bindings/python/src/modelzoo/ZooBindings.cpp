@@ -19,17 +19,15 @@ void ZooBindings::bind(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
 
     m.def("getModelFromZoo",
-          dai::getModelFromZoo,
+          getModelFromZoo,
           py::arg("modelDescription"),
           py::arg("useCached") = true,
           py::arg("cacheDirectory") = MODEL_ZOO_DEFAULT_CACHE_DIRECTORY,
-          py::arg("verbose") = false,
           DOC(dai, getModelFromZoo));
 
     m.def("downloadModelsFromZoo",
-          dai::downloadModelsFromZoo,
+          downloadModelsFromZoo,
           py::arg("path"),
           py::arg("cacheDirectory") = MODEL_ZOO_DEFAULT_CACHE_DIRECTORY,
-          py::arg("verbose") = false,
           DOC(dai, downloadModelsFromZoo));
 }
