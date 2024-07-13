@@ -14,20 +14,13 @@ namespace dai {
 class VectorMemory : public std::vector<std::uint8_t>, public Memory {
    public:
     // using std::vector<std::uint8_t>::vector;
-    VectorMemory() {
-        kind = MemoryKinds::MEMORY_KIND_VECTOR;
-    }
-    VectorMemory(const std::vector<std::uint8_t>& d) : vector(std::move(d)) {
-        kind = MemoryKinds::MEMORY_KIND_VECTOR;
-    }
-    VectorMemory(std::vector<std::uint8_t>&& d) : vector(std::move(d)) {
-        kind = MemoryKinds::MEMORY_KIND_VECTOR;
-    }
+    VectorMemory() = default;
+    VectorMemory(const std::vector<std::uint8_t>& d) : vector(std::move(d)) {}
+    VectorMemory(std::vector<std::uint8_t>&& d) : vector(std::move(d)) {}
     VectorMemory& operator=(std::vector<std::uint8_t>&& d) {
         std::vector<std::uint8_t>::operator=(std::move(d));
         return *this;
     }
-
     span<std::uint8_t> getData() override {
         return {data(), size()};
     }

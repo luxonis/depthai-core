@@ -3,8 +3,6 @@
 // std
 #include <cstdint>
 #include <cstring>
-#include <functional>
-#include <iostream>
 #if defined(__unix__) && !defined(__APPLE__)
     #include <fcntl.h>
     #include <sys/mman.h>
@@ -57,24 +55,18 @@ class SharedMemory : public Memory {
     }
 
    public:
-    SharedMemory() {
-        kind = MemoryKinds::MEMORY_KIND_SHARED;
-        fd = -1;
-    }
+    SharedMemory() = default;
 
     SharedMemory(long argFd) : fd(argFd) {
-        kind = MemoryKinds::MEMORY_KIND_SHARED;
         mapFd();
     }
 
     SharedMemory(long argFd, std::size_t size) : fd(argFd) {
-        kind = MemoryKinds::MEMORY_KIND_SHARED;
         setSize(size);
         mapFd();
     }
 
     SharedMemory(const char* name) {
-        kind = MemoryKinds::MEMORY_KIND_SHARED;
 #if defined(__unix__) && !defined(__APPLE__)
         fd = memfd_create(name, 0);
 #else
@@ -85,7 +77,6 @@ class SharedMemory : public Memory {
     }
 
     SharedMemory(const char* name, std::size_t size) {
-        kind = MemoryKinds::MEMORY_KIND_SHARED;
 #if defined(__unix__) && !defined(__APPLE__)
         fd = memfd_create(name, 0);
 #else
@@ -99,7 +90,9 @@ class SharedMemory : public Memory {
 
     ~SharedMemory() {
         unmapFd();
-        close(fd);
+        if(fd > 0){
+            close(fd);
+        }
     }
 
     SharedMemory& operator=(long argFd) {
