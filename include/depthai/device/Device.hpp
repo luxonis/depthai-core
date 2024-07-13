@@ -12,7 +12,6 @@
 #include <unordered_map>
 
 // project
-#include "DataQueue.hpp"
 #include "depthai/device/DeviceBase.hpp"
 #include "depthai/utility/RecordReplay.hpp"
 
