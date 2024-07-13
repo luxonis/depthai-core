@@ -145,7 +145,7 @@ class SharedMemory : public Memory {
         return getMaxSize();
     }
 
-    long getFd() const {
+    virtual long getFd() const {
         return fd;
     }
 };
