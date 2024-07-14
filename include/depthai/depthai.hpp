@@ -21,6 +21,9 @@
 // Include common datatypes
 #include "pipeline/datatypes.hpp"
 
+// Model zoo
+#include "modelzoo/Zoo.hpp"
+
 // namespace dai {
 // namespace{
 // bool initializeForce = [](){initialize();};

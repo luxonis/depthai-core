@@ -10,6 +10,7 @@
 // libraries
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "utility/Logging.hpp"
+#include "utility/SharedMemory.hpp"
 
 namespace dai {
 namespace node {
@@ -42,7 +43,12 @@ void XLinkOutHost::run() {
                 throw std::runtime_error("Data size exceeds the maximum buffer size");
             }
             if(outgoing->data->getSize() > 0) {
-                stream.write(outgoing->data->getData(), metadata);
+                auto sharedMemory = std::dynamic_pointer_cast<SharedMemory>(outgoing->data);
+                if(sharedMemory && sharedMemory->getFd() > 0) {
+                    stream.write(sharedMemory->getFd(), metadata);
+                } else {
+                    stream.write(outgoing->data->getData(), metadata);
+                }
             } else {
                 stream.write(metadata);
             }

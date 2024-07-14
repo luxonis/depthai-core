@@ -22,6 +22,22 @@ class ThreadedNode : public Node {
     ThreadedNode();
     virtual ~ThreadedNode() = default;
 
+    /**
+     * @brief Function called at the beginning of the `start` function.
+     *
+     * This function may be overridden by the user to perform any needed tasks prior
+     * to starting this node's main thread.
+     */
+    virtual void onStart() {}
+
+    /**
+     * @brief Function called at the end of the `stop` function.
+     *
+     * This function may be overridden by the user to perform any needed tasks
+     * directly after stopping this node's main thread.
+     */
+    virtual void onStop() {}
+
     // override the following methods
     void start() override;
     void wait() override;

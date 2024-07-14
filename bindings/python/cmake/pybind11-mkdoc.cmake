@@ -3,26 +3,56 @@ include(target-public-headers)
 
 # Usage:
 # target_pybind11_mkdoc_setup([path/to/output/docstring.hpp] [Library for which to generate: target-name] [Enforce pybind11_mkdoc existing ON/OFF])
-function(target_pybind11_mkdoc_setup output_file target enforce)
+function(target_pybind11_mkdoc_setup_combined output_file_base enforce targets)
 
-    # Get unaliased target if alias target passed in
-    get_target_property(original_target ${target} ALIASED_TARGET)
-    if(original_target)
-        set(target ${original_target})
-    endif()
+    set(all_filtered_header_files)
+    set(include_directories)
+    set(compile_definitions)
 
-    # gets target public headers
-    get_target_public_headers(${target} header_files)
+    foreach(target ${targets})
+        # Get unaliased target if alias target passed in
+        get_target_property(original_target ${target} ALIASED_TARGET)
+        if(original_target)
+            set(target ${original_target})
+        endif()
 
-    # Setup mkdoc target
-    pybind11_mkdoc_setup_internal("${target}" "${output_file}" "${header_files}" ${enforce})
+        # Check if target is valid
+        if(NOT TARGET ${target})
+            message(FATAL_ERROR "Target ${target} does not exist.")
+        endif()
 
+        # Get target public headers
+        get_target_public_headers(${target} header_files)
+        foreach(header ${header_files})
+            if(NOT header MATCHES "^/usr/include")
+                list(APPEND all_filtered_header_files ${header})
+            endif()
+        endforeach()
+
+        # Collect include directories and compile definitions
+        get_target_property(target_include_dirs ${target} INTERFACE_INCLUDE_DIRECTORIES)
+        get_target_property(target_compile_defs ${target} INTERFACE_COMPILE_DEFINITIONS)
+
+        if(target_include_dirs)
+            list(APPEND include_directories ${target_include_dirs})
+        endif()
+
+        if(target_compile_defs)
+            list(APPEND compile_definitions ${target_compile_defs})
+        endif()
+    endforeach()
+
+    # Construct a unique output file path for the combined targets
+    set(output_file "${output_file_base}")
+
+    # Setup mkdoc target for the combined headers
+    pybind11_mkdoc_setup_internal_combined("${output_file}" "${all_filtered_header_files}" "${include_directories}" "${compile_definitions}" ${enforce})
 endfunction()
 
-# Internal helper, sets up pybind11_mkdoc target
-function(pybind11_mkdoc_setup_internal target output_path mkdoc_headers enforce)
+# Internal helper, sets up pybind11_mkdoc target for combined headers
+function(pybind11_mkdoc_setup_internal_combined output_path mkdoc_headers include_dirs compile_defs enforce)
 
-    # constants
+    # Constants
     set(PYBIND11_MKDOC_MODULE_NAME "pybind11_mkdoc")
     set(PYBIND11_MKDOC_TARGET_NAME "pybind11_mkdoc")
 
@@ -59,11 +89,11 @@ function(pybind11_mkdoc_setup_internal target output_path mkdoc_headers enforce)
             # C++ standard
             -std=c++17
             # List of include directories
-            "-I$<JOIN:$<TARGET_PROPERTY:${target},INTERFACE_INCLUDE_DIRECTORIES>,;-I>"
+            "-I$<JOIN:${include_dirs},;-I>"
             # List of compiler definitions
-            "-D$<JOIN:$<TARGET_PROPERTY:${target},INTERFACE_COMPILE_DEFINITIONS>,;-D>"
+            "-D$<JOIN:${compile_defs},;-D>"
             # List of headers for which to generate docstrings
-            "${mkdoc_headers}"
+            ${mkdoc_headers}
             # Redirect stderr to not spam output
             # 2> /dev/null
         DEPENDS ${mkdoc_headers} #${target}

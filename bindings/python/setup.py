@@ -119,6 +119,12 @@ class CMakeBuild(build_ext):
         env = os.environ.copy()
 
         cmake_args += ['-DDEPTHAI_BUILD_PYTHON=ON']
+        if env.get('DEPTHAI_BUILD_BASALT') == 'ON':
+            cmake_args += ['-DDEPTHAI_BASALT_SUPPORT=ON']
+        if env.get('DEPTHAI_BUILD_PCL') == 'ON':
+            cmake_args += ['-DDEPTHAI_PCL_SUPPORT=ON']
+        if env.get('DEPTHAI_BUILD_RTABMAP') == 'ON': 
+            cmake_args += ['-DDEPTHAI_RTABMAP_SUPPORT=ON']
         build_args += ['--target=depthai']
 
         # Specify output directory and python executable
