@@ -58,8 +58,8 @@ class SharedMemory : public Memory {
 #if defined(__unix__) && !defined(__APPLE__)
         fd = memfd_create(name, 0);
 #else
-	(void)name;
-	fd = -1;
+        (void)name;
+        fd = -1;
 #endif
         mapFd();
     }
@@ -68,8 +68,8 @@ class SharedMemory : public Memory {
 #if defined(__unix__) && !defined(__APPLE__)
         fd = memfd_create(name, 0);
 #else
-	(void)name;
-	fd = -1;
+        (void)name;
+        fd = -1;
 #endif
 
         setSize(size);
@@ -79,7 +79,7 @@ class SharedMemory : public Memory {
     ~SharedMemory() {
         unmapFd();
 #if defined(__unix__) && !defined(__APPLE__)
-        if(fd > 0){
+        if(fd > 0) {
             close(fd);
         }
 #endif
@@ -110,14 +110,14 @@ class SharedMemory : public Memory {
 
         return fileStats.st_size;
 #else
-	return 0;
+        return 0;
 #endif
     }
     std::size_t getOffset() const override {
 #if defined(__unix__) && !defined(__APPLE__)
         return ftell(fdopen(fd, "r"));
 #else
-	return 0;
+        return 0;
 #endif
     }
     void setSize(std::size_t size) override {
