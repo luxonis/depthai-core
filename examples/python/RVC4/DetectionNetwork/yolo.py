@@ -5,15 +5,31 @@ import cv2
 import depthai as dai
 import numpy as np
 import time
+from enum import Enum
+
+class Model(Enum):
+    YOLO_V10 = 1
+    YOLO_WORLD = 2
+    YOLO_WORLD_MULTI = 3
 
 USE_REPLAY = True
+USE_MODE = Model.YOLO_WORLD_MULTI
+
+
+
+def model_to_strings(argument):
+    switcher = {
+        Model.YOLO_V10: "yolov10n.dlc",
+        Model.YOLO_WORLD: "yolo_world_v2_model_only.dlc",
+        Model.YOLO_WORLD_MULTI: "yolo_world_v2_texts.dlc",
+    }
+
+    return switcher.get(argument, "nothing")
 
 examplesRoot = Path(__file__).parent / Path('../../').resolve()
 models = examplesRoot / Path('models')
 videoPath = models / Path('construction_vest.mp4')
-modelPath = models / Path('yolov10n.dlc')
-
-
+modelPath = models / Path(model_to_strings(USE_MODE))
 
 # tiny yolo v4 label texts
 labelMap = [
