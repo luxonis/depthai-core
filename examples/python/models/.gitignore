@@ -1,5 +1,6 @@
 *.blob
 *.mp4
+*.pgm
 *.json
 *.calib
 dataset/
