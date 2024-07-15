@@ -62,10 +62,9 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack){
              py::arg("path"),
              DOC(dai, node, SpatialDetectionNetwork, setBlob, 2))
         .def("setXmlModelPath",
-             &SpatialDetectionNetwork::setXmlModelPath,
-             py::arg("xmlModelPath"),
-             py::arg("binModelPath") = Path{""},
-             DOC(dai, node, SpatialDetectionNetwork, setXmlModelPath))
+             &SpatialDetectionNetwork::setModelPath,
+             py::arg("modelPath"),
+             DOC(dai, node, SpatialDetectionNetwork, setModelPath))
         .def("setNumShavesPerInferenceThread",
              &SpatialDetectionNetwork::setNumShavesPerInferenceThread,
              py::arg("numShavesPerInferenceThread"),

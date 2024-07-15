@@ -57,8 +57,8 @@ void SpatialDetectionNetwork::setBlob(const dai::Path& path) {
     detectionParser->setBlob(path);
 }
 
-void SpatialDetectionNetwork::setXmlModelPath(const dai::Path& xmlModelPath, const dai::Path& binModelPath) {
-    neuralNetwork->setXmlModelPath(xmlModelPath, binModelPath);
+void SpatialDetectionNetwork::setModelPath(const dai::Path& modelPath) {
+    neuralNetwork->setModelPath(modelPath);
 }
 
 void SpatialDetectionNetwork::setNumPoolFrames(int numFrames) {

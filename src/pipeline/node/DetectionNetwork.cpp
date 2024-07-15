@@ -80,8 +80,8 @@ void DetectionNetwork::setBlob(const dai::Path& path) {
     detectionParser->setBlob(path);
 }
 
-void DetectionNetwork::setXmlModelPath(const dai::Path& xmlModelPath, const dai::Path& binModelPath) {
-    neuralNetwork->setXmlModelPath(xmlModelPath, binModelPath);
+void DetectionNetwork::setModelPath(const dai::Path& modelPath) {
+    neuralNetwork->setModelPath(modelPath);
 }
 
 void DetectionNetwork::setNumPoolFrames(int numFrames) {
