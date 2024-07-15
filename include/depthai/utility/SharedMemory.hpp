@@ -43,6 +43,8 @@ class SharedMemory : public Memory {
     }
 
    public:
+    bool closeOnDestruct = true;
+
     SharedMemory() = default;
 
     SharedMemory(long argFd) : fd(argFd) {
@@ -79,7 +81,7 @@ class SharedMemory : public Memory {
     ~SharedMemory() {
         unmapFd();
 #if defined(__unix__) && !defined(__APPLE__)
-        if(fd > 0){
+        if(fd > 0 && closeOnDestruct) {
             close(fd);
         }
 #endif
