@@ -77,7 +77,7 @@ void bind_detectionnetwork(pybind11::module& m, void* pCallstack) {
         .def("setNNArchive", &DetectionNetwork::setNNArchive, DOC(dai, node, DetectionNetwork, setNNArchive))
         .def("setBlob", py::overload_cast<dai::OpenVINO::Blob>(&DetectionNetwork::setBlob), py::arg("blob"), DOC(dai, node, DetectionNetwork, setBlob))
         .def("setBlob", py::overload_cast<const dai::Path&>(&DetectionNetwork::setBlob), py::arg("path"), DOC(dai, node, DetectionNetwork, setBlob, 2))
-        .def("setXmlModelPath",
+        .def("setModelPath",
              &DetectionNetwork::setModelPath,
              py::arg("modelPath"),
              DOC(dai, node, DetectionNetwork, setModelPath))
