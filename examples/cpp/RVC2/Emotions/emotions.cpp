@@ -33,7 +33,7 @@ public:
 
 std::array<const char* const,5> emotions = {"neutral", "happy", "sad", "surprise", "anger"};
 
-void displayFrame(cv::Mat& frame, std::vector<dai::ImgDetection>& detections, xt::xarray<float>& resultLayer)
+void displayFrame(cv::Mat& frame, std::vector<dai::ImgDetection>& detections, std::vector<xt::xarray<float>>& resultLayers)
 {
     auto color = cv::Scalar(255, 0, 0);
     for(int i = 0; i < detections.size(); i++) {
@@ -44,13 +44,16 @@ void displayFrame(cv::Mat& frame, std::vector<dai::ImgDetection>& detections, xt
         int y2 = detection.ymax * frame.rows;
  
         std::stringstream confStr;
-        auto emotionIndex = xt::argmax(resultLayer)(0);
-        if(emotionIndex < emotions.size()) {
-            confStr << emotions[emotionIndex];
+        if(i < resultLayers.size()) {
+            auto emotionIndex = xt::argmax(resultLayers[i])(0);
+            if(emotionIndex < emotions.size()) {
+                confStr << emotions[emotionIndex];
+            } else {
+               confStr << "Err index: " << emotionIndex;
+            }
         } else {
-           confStr << "Err index: " << emotionIndex;
+            confStr << "NA";
         }
-        
         
         cv::putText(frame, confStr.str(), cv::Point(x1 + 10, y1 + 40), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
         cv::rectangle(frame, cv::Rect(cv::Point(x1, y1), cv::Point(x2, y2)), color, cv::FONT_HERSHEY_SIMPLEX);
@@ -127,15 +130,15 @@ int main(int argc, char** argv) {
     while(pipeline.isRunning()) {
         std::shared_ptr<dai::ImgFrame> inRgb;
         std::shared_ptr<dai::ImgDetections> inDet;
-        std::shared_ptr<dai::NNData> inNNEmo;
+        std::vector<std::shared_ptr<dai::NNData>> inNNEmos;
         
         inRgb = outPassthrough->get<dai::ImgFrame>();
         inDet = outDet->get<dai::ImgDetections>();
-        inNNEmo = outNNEmo->get<dai::NNData>();
+        inNNEmos = outNNEmo->getAll<dai::NNData>();
         
         cv::Mat frame;
         std::vector<dai::ImgDetection> detections;
-        xt::xarray<float> resultLayer;
+        std::vector<xt::xarray<float>> resultLayers;
         
         if(inRgb) {
             frame = inRgb->getCvFrame();
@@ -145,12 +148,18 @@ int main(int argc, char** argv) {
             detections = inDet->detections;
         }
 
-        if(inNNEmo && !inNNEmo->tensors.empty()) {
-            resultLayer = inNNEmo->getTensor<float>(inNNEmo->tensors.back().name, false);
+        for(auto& inNN : inNNEmos) {
+            if(inNN && !inNN->tensors.empty()) {
+                resultLayers.push_back(inNN->getTensor<float>(inNN->tensors.back().name, false));
+            } else {
+                resultLayers.push_back({});
+            }
         }
         
+        
+        
         if(!frame.empty()) {
-            displayFrame(frame, detections, resultLayer);
+            displayFrame(frame, detections, resultLayers);
         }
 
         int key = cv::waitKey(1);
