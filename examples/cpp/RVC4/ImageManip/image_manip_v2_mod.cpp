@@ -4,7 +4,6 @@
 #include "depthai/depthai.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/node/host/Display.hpp"
-#include "depthai/pipeline/node/host/ImageManipHost.hpp"
 
 using namespace dai::impl;
 int main(int argc, char** argv) {
@@ -37,8 +36,5 @@ int main(int argc, char** argv) {
     manip->out.link(display->input);
 
     pipeline.start();
-
-    std::this_thread::sleep_for(std::chrono::seconds(30));
-
-    pipeline.stop();
+    pipeline.wait();
 }

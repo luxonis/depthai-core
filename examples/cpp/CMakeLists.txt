@@ -459,6 +459,7 @@ hunter_private_data(
 
 # ImageManip
 dai_add_example(image_manip_host HostNodes/image_manip_host.cpp ON OFF)
+dai_add_example(image_manip_color_conversion_host HostNodes/image_manip_color_conversion.cpp ON OFF)
 dai_add_example(image_manip_v2_resize RVC4/ImageManip/image_manip_v2_resize.cpp ON OFF)
 dai_add_example(image_manip_v2_mod RVC4/ImageManip/image_manip_v2_mod.cpp ON OFF)
 dai_add_example(image_manip_color_conversion RVC4/ImageManip/image_manip_color_conversion.cpp ON OFF)

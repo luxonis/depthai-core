@@ -20,14 +20,15 @@ int main(int argc, char** argv) {
     auto display = pipeline.create<dai::node::Display>();
     auto manip = pipeline.create<dai::node::ImageManipHost>();
     // After doing the rest of the operations, resize the frame to 1270x710 and keep the aspect ratio by cropping from the center
+    manip->setMaxOutputFrameSize(4000000);
     manip->initialConfig.setOutputSize(1270, 710, dai::ImageManipConfigV2::ResizeMode::CENTER_CROP);
     manip->initialConfig.rotateDeg(45);
     manip->initialConfig.crop(0, 0, 400, 400);
     manip->initialConfig.scale(0.5);
     manip->initialConfig.flipVertical();
-    manip->initialConfig.setFrameType(dai::ImgFrame::Type::RGB888i);
+    manip->initialConfig.setFrameType(dai::ImgFrame::Type::NV12);
 
-    replay->setReplayVideoFile("vid.mp4");
+    replay->setReplayVideoFile(argv[1]);
     replay->setOutFrameType(dai::ImgFrame::Type::NV12);
     replay->setFps(30);
 
@@ -36,7 +37,5 @@ int main(int argc, char** argv) {
 
     pipeline.start();
 
-    std::this_thread::sleep_for(std::chrono::seconds(30));
-
-    pipeline.stop();
+    pipeline.wait();
 }

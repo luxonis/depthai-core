@@ -5,11 +5,12 @@
 
 #include <array>
 #include <nlohmann/json.hpp>
+#include <string>
 #include <vector>
 
-#include "depthai/common/RotatedRect.hpp"
 #include "depthai/common/Colormap.hpp"
 #include "depthai/common/Point2f.hpp"
+#include "depthai/common/RotatedRect.hpp"
 #include "depthai/common/variant.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
@@ -40,15 +41,20 @@ struct Translate : OpBase {
 struct Rotate : OpBase {
     float angle;  // in radians
     bool center;  // if true, rotation is around center of image, otherwise around top-left corner
+    float offsetX;
+    float offsetY;
+    bool normalized;
 
     Rotate() = default;
-    explicit Rotate(float angle, bool center = true) : angle(angle), center(center) {}
+    explicit Rotate(float angle, bool center = true, float offsetX = 0, float offsetY = 0, bool normalized = false)
+        : angle(angle), center(center), offsetX(offsetX), offsetY(offsetY), normalized(normalized) {}
 
     std::string toStr() const override {
-        return "Rot:a=" + std::to_string(angle) + ",c=" + std::to_string(center);
+        return "Rot:a=" + std::to_string(angle) + ",c=" + std::to_string(center) + ",x=" + std::to_string(offsetX) + ",y" + std::to_string(offsetY)
+               + ",n=" + std::to_string(normalized);
     }
 
-    DEPTHAI_SERIALIZE(Rotate, angle, center);
+    DEPTHAI_SERIALIZE(Rotate, angle, center, offsetX, offsetY, normalized);
 };
 
 struct Resize : OpBase {
@@ -135,7 +141,8 @@ struct FourPoints : OpBase {
         return "4P:s1=" + std::to_string(src[0].x) + "," + std::to_string(src[0].y) + ",s2=" + std::to_string(src[1].x) + "," + std::to_string(src[1].y)
                + ",s3=" + std::to_string(src[2].x) + "," + std::to_string(src[2].y) + ",s4=" + std::to_string(src[3].x) + "," + std::to_string(src[3].y)
                + "d1=" + std::to_string(dst[0].x) + "," + std::to_string(dst[0].y) + ",d2=" + std::to_string(dst[1].x) + "," + std::to_string(dst[1].y)
-               + ",d3=" + std::to_string(dst[2].x) + "," + std::to_string(dst[2].y) + ",d4=" + std::to_string(dst[3].x) + "," + std::to_string(dst[3].y);
+               + ",d3=" + std::to_string(dst[2].x) + "," + std::to_string(dst[2].y) + ",d4=" + std::to_string(dst[3].x) + "," + std::to_string(dst[3].y)
+               + ",d=" + std::to_string(normalized);
     }
 
     DEPTHAI_SERIALIZE(FourPoints, src, dst, normalized);
@@ -165,14 +172,14 @@ struct ManipOp {
     std::variant<Translate, Rotate, Resize, Flip, Affine, Perspective, FourPoints, Crop> op;
 
     ManipOp() = default;
-    ManipOp(Translate op) : op(op) {}      // NOLINT
-    ManipOp(Rotate op) : op(op) {}         // NOLINT
-    ManipOp(Resize op) : op(op) {}         // NOLINT
-    ManipOp(Flip op) : op(op) {}           // NOLINT
-    ManipOp(Affine op) : op(op) {}         // NOLINT
-    ManipOp(Perspective op) : op(op) {}    // NOLINT
-    ManipOp(FourPoints op) : op(op) {}     // NOLINT
-    ManipOp(Crop op) : op(op) {}           // NOLINT
+    ManipOp(Translate op) : op(op) {}    // NOLINT
+    ManipOp(Rotate op) : op(op) {}       // NOLINT
+    ManipOp(Resize op) : op(op) {}       // NOLINT
+    ManipOp(Flip op) : op(op) {}         // NOLINT
+    ManipOp(Affine op) : op(op) {}       // NOLINT
+    ManipOp(Perspective op) : op(op) {}  // NOLINT
+    ManipOp(FourPoints op) : op(op) {}   // NOLINT
+    ManipOp(Crop op) : op(op) {}         // NOLINT
 
     DEPTHAI_SERIALIZE(ManipOp, op);
 };
@@ -198,6 +205,10 @@ class ImageManipOpsBase {
 
     ImageManipOpsBase() = default;
     virtual ~ImageManipOpsBase() = default;
+
+    bool hasWarp(const size_t inputWidth, const size_t inputHeight) const {
+        return operations.size() > 0 || (outputWidth != 0 && outputWidth != inputWidth) || (outputHeight != 0 && outputHeight != inputHeight);
+    }
 
     ImageManipOpsBase& addOp(ManipOp op) {
         operations.push_back(op);
@@ -260,13 +271,13 @@ class ImageManipOpsBase {
         return *this;
     }
 
-    ImageManipOpsBase& rotateRadians(float angle, bool center = true) {
-        operations.emplace_back(Rotate(angle, center));
+    ImageManipOpsBase& rotateRadians(float angle, bool center = true, float offsetX = 0, float offsetY = 0, bool normalized = false) {
+        operations.emplace_back(Rotate(angle, center, offsetX, offsetY, normalized));
         return *this;
     }
 
-    ImageManipOpsBase& rotateDegrees(float angle, bool center = true) {
-        return rotateRadians(angle * 3.14159265358979323846f / 180.0f, center);
+    ImageManipOpsBase& rotateDegrees(float angle, bool center = true, float offsetX = 0, float offsetY = 0, bool normalized = false) {
+        return rotateRadians(angle * 3.14159265358979323846f / 180.0f, center, offsetX, offsetY, normalized);
     }
 
     ImageManipOpsBase& translate(float offsetX, float offsetY, bool normalizedCoords = false) {
@@ -289,7 +300,7 @@ class ImageManipOpsBase {
         return *this;
     }
 
-    ImageManipOpsBase& setOutputCenter(bool c=true) {
+    ImageManipOpsBase& setOutputCenter(bool c = true) {
         center = c;
         return *this;
     }
@@ -418,7 +429,8 @@ class ImageManipConfigV2 : public Buffer {
      * Sets the output size of the image
      * @param w Width of the output image
      * @param h Height of the output image
-     * @param mode Resize mode. NONE - no resize, STRETCH - stretch to fit, LETTERBOX - keep aspect ratio and pad with background color, CENTER_CROP - keep aspect ratio and crop
+     * @param mode Resize mode. NONE - no resize, STRETCH - stretch to fit, LETTERBOX - keep aspect ratio and pad with background color, CENTER_CROP - keep
+     * aspect ratio and crop
      */
     ImageManipConfigV2& setOutputSize(uint32_t w, uint32_t h, ResizeMode mode = ResizeMode::NONE);
     /**

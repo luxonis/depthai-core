@@ -32,10 +32,8 @@ ImageManipConfigV2& ImageManipConfigV2::rotateDeg(float angle) {
     base.rotateDegrees(angle);
     return *this;
 }
-ImageManipConfigV2& ImageManipConfigV2::rotateDeg(float angle, Point2f center) {
-    base.translate(-center.x, -center.y, true);
-    base.rotateDegrees(angle);
-    base.translate(center.x, center.y, true);
+ImageManipConfigV2& ImageManipConfigV2::rotateDeg(float angle, Point2f centerOffset) {
+    base.rotateDegrees(angle, true, centerOffset.x, centerOffset.y, true);
     return *this;
 }
 ImageManipConfigV2& ImageManipConfigV2::flipHorizontal() {
