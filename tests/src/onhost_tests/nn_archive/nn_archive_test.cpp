@@ -38,7 +38,7 @@ class OnnxTestHelper {
    public:
     OnnxTestHelper() {
         srand(time(nullptr));
-        extractFolder = "/tmp/depthai_test_" + std::to_string(rand());
+        extractFolder = std::filesystem::path("/tmp/depthai_test_" + std::to_string(rand())).string();
     }
 
     ~OnnxTestHelper() {
