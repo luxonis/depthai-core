@@ -38,7 +38,7 @@ class ImageManipV2 : public DeviceNodeCRTP<DeviceNode, ImageManipV2, ImageManipP
     ImageManipConfigV2 initialConfig;
 
     /**
-     * Input ImageManipConfig message with ability to modify parameters in runtime
+     * Input ImageManipConfigV2 message with ability to modify parameters in runtime
      */
     Input inputConfig{*this, {.name = "inputConfig", .types = {{DatatypeEnum::ImageManipConfigV2, true}}, .waitForMessage = false}};
 
