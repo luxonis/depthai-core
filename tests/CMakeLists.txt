@@ -176,7 +176,7 @@ hunter_private_data(
 )
 # OpenVINO 2021.3 blob
 hunter_private_data(
-    URL "https://artifacts.luxonis.com/artifa../src/modelzoo/zoo_helper.cppctory/luxonis-depthai-data-local/network/text-image-super-resolution-0001_2021.3_4shave.blob"
+    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/text-image-super-resolution-0001_2021.3_4shave.blob"
     SHA1 "af19470feb59317e74d045bc31d93ca129c46674"
     FILE "text-image-super-resolution-0001_2021.3_4shave.blob"
     LOCATION openvino_2021_3_blob
@@ -211,6 +211,28 @@ hunter_private_data(
     LOCATION superblob_path
 )
 
+# NNarchives of different types
+hunter_private_data(
+    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/nnarchive/yolo_blob_nnarchive.tar.xz"
+    SHA1 "62c413a53e534b959fb326b62d9a50c1f967159b"
+    FILE "yolo_blob_nnarchive.tar.xz"
+    LOCATION yolo_blob_nnarchive_path
+)
+
+hunter_private_data(
+    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/nnarchive/yolo_superblob_nnarchive.tar.xz"
+    SHA1 "2356fd7e5a203446211a891a74f0b23e0912eaf6"
+    FILE "yolo_superblob_nnarchive.tar.xz"
+    LOCATION yolo_superblob_nnarchive_path
+)
+
+hunter_private_data(
+    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/nnarchive/yolo_onnx_nnarchive.tar.xz"
+    SHA1 "7abb6a8c05c5f66897cd2c5c6b4f0170620dff8b"
+    FILE "yolo_onnx_nnarchive.tar.xz"
+    LOCATION yolo_onnx_nnarchive_path
+)
+
 ### On-host tests ####################################################################################
 ### On-host tests ####################################################################################
 ### On-host tests ####################################################################################
@@ -219,9 +241,13 @@ hunter_private_data(
 dai_add_test(openvino_test src/onhost_tests/openvino/openvino_test.cpp onhost)
 target_compile_definitions(openvino_test PRIVATE SUPERBLOB_PATH="${superblob_path}")
 
-# NNArchive test TODO: (lnotspotl) enable once there are archives in artifactory
-# dai_add_test(nn_archive_test src/onhost_tests/nn_archive/nn_archive_test.cpp onhost)
-# target_compile_definitions(nn_archive_test PRIVATE BLOB_PATH="${...}" SUPERBLOB_PATH="${...}")
+# NNArchive test
+dai_add_test(nn_archive_test src/onhost_tests/nn_archive/nn_archive_test.cpp onhost)
+target_compile_definitions(nn_archive_test PRIVATE
+    BLOB_ARCHIVE_PATH="${yolo_blob_nnarchive_path}"
+    SUPERBLOB_ARCHIVE_PATH="${yolo_superblob_nnarchive_path}"
+    ONNX_ARCHIVE_PATH="${yolo_onnx_nnarchive_path}"
+)
 
 # Eeprom naming parsing tests
 dai_add_test(naming_test src/onhost_tests/naming_test.cpp onhost)
