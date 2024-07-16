@@ -36,8 +36,8 @@ class InputQueue {
         void run() override;
         const char* getName() const override;
 
-        Node::Input input{*this, {.name = "input", .types = {{DatatypeEnum::Buffer, true}}}};
-        Node::Output output{*this, {.name = "output", .types = {{DatatypeEnum::Buffer, true}}}};
+        Node::Input input{*this, {"input", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+        Node::Output output{*this, {"output", DEFAULT_GROUP, {{{DatatypeEnum::Buffer, true}}}}};
     };
 
     // Helper access functions

@@ -163,6 +163,9 @@ std::shared_ptr<dai::MessageQueue> Node::Output::createOutputQueue(unsigned int 
     }
     auto queue = std::make_shared<MessageQueue>(maxSize, blocking);
     link(queue);
+
+    // No need to expose this on the public pipeline interface
+    pipelinePtr.impl()->outputQueues.push_back(queue);
     return queue;
 }
 

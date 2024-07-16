@@ -16,7 +16,7 @@ class HostNode : public ThreadedHostNode {
     bool sendProcessToPipeline = false;
     Subnode<dai::node::Sync> sync{*this, "sync"};
     // Input input{*this, "in", Input::Type::SReceiver, true, 3, {{DatatypeEnum::MessageGroup, true}}};
-    Input input{*this, {.name = "in", .types = {{DatatypeEnum::MessageGroup, true}}}};
+    Input input{*this, {"in", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::MessageGroup, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
    protected:
     void buildStage1() override;
@@ -25,7 +25,7 @@ class HostNode : public ThreadedHostNode {
    public:
     InputMap& inputs = sync->inputs;
     // Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::Buffer, true}}};
-    Output out{*this, {.name = "out", .types = {{DatatypeEnum::Buffer, true}}}};
+    Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::Buffer, true}}}}};
     virtual std::shared_ptr<Buffer> processGroup(std::shared_ptr<dai::MessageGroup> in) = 0;
 
     void sendProcessingToPipeline(bool send) {

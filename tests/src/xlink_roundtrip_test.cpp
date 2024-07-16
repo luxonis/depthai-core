@@ -128,5 +128,3 @@ TEST_CASE("EncodedFrame message type") {
 TEST_CASE("NNData message type") {
     test_xlink_message_type(dai::NNData());
 }
-
-// TODO(Morato) - add the rest of the messages here

@@ -22,9 +22,7 @@ class VideoSaver(dai.node.HostNode):
         frame.getData().tofile(self.file_handle)
 
 with dai.Pipeline() as pipeline:
-    camRgb = dai.node.Camera(
-            boardSocket = dai.CameraBoardSocket.CAM_A,
-            videoSize = (1920, 1080))
+    camRgb = dai.node.ColorCamera()
     encoded = dai.node.VideoEncoder(camRgb.video,
             frameRate = 30,
             profile = dai.VideoEncoderProperties.Profile.H265_MAIN)

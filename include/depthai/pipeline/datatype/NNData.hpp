@@ -327,13 +327,19 @@ class NNData : public Buffer {
     TensorInfo::DataType getTensorDatatype(const std::string& name);
 
     /**
+     * Get the datatype of the first tensor
+     * @returns TensorInfo::DataType tensor datatype
+     */
+    TensorInfo::DataType getFirstTensorDatatype();
+
+    /**
      * Convenience function to retrieve values from the first tensor
      * @returns xt::xarray<_Ty> tensor
      */
     template <typename _Ty>
-    xt::xarray<_Ty> getFirstTensor() {
+    xt::xarray<_Ty> getFirstTensor(bool dequantize = false) {
         if(!tensors.empty()) {
-            return getTensor<_Ty>(tensors[0].name);
+            return getTensor<_Ty>(tensors[0].name, dequantize);
         }
 
         return {};

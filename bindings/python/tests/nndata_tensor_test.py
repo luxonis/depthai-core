@@ -24,3 +24,8 @@ def test_nndata_tensor():
   assert((nndata.getTensor("b") == tensorB).all())
   assert((nndata.getTensor("c") == tensorC).all())
   assert(np.allclose(nndata.getTensor("d"), tensorD, atol=0.002))
+
+  assert(np.allclose(nndata.getFirstTensor(), tensorA, atol=0.002))
+
+if __name__ == '__main__':
+  test_nndata_tensor()

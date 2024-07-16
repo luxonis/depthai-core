@@ -339,4 +339,12 @@ TensorInfo::DataType NNData::getTensorDatatype(const std::string& name) {
 
     return it->dataType;
 };
+
+TensorInfo::DataType NNData::getFirstTensorDatatype() {
+    if(tensors.empty()) {
+        throw std::runtime_error("Tensor does not exist");
+    }
+
+    return tensors.front().dataType;
+};
 }  // namespace dai

@@ -32,6 +32,8 @@
 #include "capabilities/CapabilityBindings.hpp"
 #include "capabilities/CapabilityRangeBindings.hpp"
 #include "capabilities/ImgFrameCapabilityBindings.hpp"
+#include "modelzoo/NNModelDescriptionBindings.hpp"
+#include "modelzoo/ZooBindings.hpp"
 
 #ifdef DEPTHAI_PYTHON_EMBEDDED_MODULE
 #include <pybind11/embed.h>
@@ -54,6 +56,7 @@ PYBIND11_MODULE(depthai, m)
     m.attr("__device_version__") = dai::build::DEVICE_VERSION;
     m.attr("__bootloader_version__") = dai::build::BOOTLOADER_VERSION;
     m.attr("__device_rvc3_version__") = dai::build::DEVICE_RVC3_VERSION;
+    m.attr("__device_rvc4_version__") = dai::build::DEVICE_RVC4_VERSION;
 
     // Add bindings
     std::deque<StackFunction> callstack;
@@ -73,6 +76,8 @@ PYBIND11_MODULE(depthai, m)
     callstack.push_front(&DeviceBindings::bind);
     callstack.push_front(&DeviceBootloaderBindings::bind);
     callstack.push_front(&CalibrationHandlerBindings::bind);
+    callstack.push_front(&NNModelDescriptionBindings::bind);
+    callstack.push_front(&ZooBindings::bind);
     // end of the callstack
     callstack.push_front([](py::module &, void *) {});
 

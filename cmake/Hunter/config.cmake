@@ -11,9 +11,9 @@ hunter_config(
 
 hunter_config(
     XLink
-    VERSION "luxonis-2021.4.3-develop"
-    URL "https://github.com/luxonis/XLink/archive/061709357b06a74510b5b9e3e2832d9d80efd3ff.tar.gz"
-    SHA1 "affa1bdd7487cf70c9caf40365844967ae761ea3"
+    VERSION "luxonis-develop-server"
+    URL "https://github.com/luxonis/XLink/archive/585a38fe4707e5f023de277135d8cb6ff9c4e0c4.tar.gz"
+    SHA1 "d82827dec8b6f2702f4b31d8186fd70265cd0ca4"
     CMAKE_ARGS
         XLINK_ENABLE_LIBUSB=${DEPTHAI_ENABLE_LIBUSB}
 )
@@ -152,6 +152,72 @@ hunter_config(
         HTTPLIB_USE_BROTLI_IF_AVAILABLE=OFF
 )
 
+
+# RTABMap
+hunter_config(
+    rtbmap
+    VERSION "0.21.4"
+    URL "https://github.com/introlab/rtabmap/archive/623d056436946c35beb12199831f178a84eaad73.zip" # until fixes are merged to main
+    SHA1 "98768b5adea093cc5e1bbe74b2ad3749e61de0ef"
+    CMAKE_ARGS
+        BUILD_APP=OFF
+        WITH_UDEV=OFF
+        BUILD_EXAMPLES=OFF
+        BUILD_TOOLS=OFF
+        BUILD_SHARED_LIBS=OFF
+        WITH_QT=OFF
+        WITH_ORB_OCTREE=OFF
+        WITH_TORCH=OFF
+        WITH_PYTHON=OFF
+        WITH_PYTHON_THREADING=OFF
+        WITH_PDAL=OFF
+        WITH_FREENECT=OFF
+        WITH_FREENECT2=OFF
+        WITH_K4W2=OFF
+        WITH_K4A=OFF
+        WITH_OPENNI=OFF
+        WITH_OPENNI2=OFF
+        WITH_DC1394=OFF
+        WITH_G2O=ON
+        WITH_GTSAM=ON
+        WITH_TORO=ON
+        WITH_CERES=OFF
+        WITH_MRPT=OFF
+        WITH_VERTIGO=ON
+        WITH_CVSBA=OFF
+        WITH_POINTMATCHER=ON
+        WITH_CCCORELIB=OFF
+        WITH_OPEN3D=OFF
+        WITH_LOAM=OFF
+        WITH_FLOAM=OFF
+        WITH_FLYCAPTURE2=OFF
+        WITH_ZED=OFF
+        WITH_ZEDOC=OFF
+        WITH_REALSENSE=OFF
+        WITH_REALSENSE_SLAM=OFF
+        WITH_REALSENSE2=OFF
+        WITH_MYNTEYE=OFF
+        WITH_DEPTHAI=OFF
+        WITH_OCTOMAP=OFF
+        WITH_GRIDMAP=OFF
+        WITH_CPUTSDF=OFF
+        WITH_OPENCHISEL=OFF
+        WITH_ALICE_VISION=OFF
+        WITH_FOVIS=OFF
+        WITH_VISO2=OFF
+        WITH_DVO=OFF
+        WITH_ORB_SLAM=OFF
+        WITH_OKVIS=OFF
+        WITH_MSCKF_VIO=OFF
+        WITH_VINS=OFF
+        WITH_OPENVINS=OFF
+        WITH_MADGWICK=OFF
+        WITH_FASTCV=OFF
+        WITH_OPENMP=OFF
+        WITH_OPENGV=OFF
+        PCL_OMP=OFF
+)
+# Pybind11 2.9.2
 # # Pybind11 2.11.0-smart_holder
 # hunter_config(
 #     pybind11
@@ -163,9 +229,9 @@ hunter_config(
 # Pybind11 2.9.2-smart_holder
 hunter_config(
     pybind11
-    VERSION "2.9.2-smart_holder"
-    URL "https://github.com/luxonis/pybind11/archive/9fa714f524fdbaf8e81c1a1b1637c547fed4e18f.tar.gz"
-    SHA1 "0cdb8fe12d33bac220b58aa85b219de02716f537"
+    VERSION "luxonis_smart_holder"
+    URL "https://github.com/luxonis/pybind11/archive/f760e2b984b66be2cfa202c93da9d341a557fb5d.tar.gz"
+    SHA1 "d53247e4d1af52be040b647de0c25eb336bc85c7"
 )
 
 hunter_config(
@@ -178,6 +244,52 @@ hunter_config(
         BUILD_UTILS=OFF
 )
 
+
+hunter_config(
+    basalt-headers
+    VERSION 0.1.0
+    URL "https://github.com/luxonis/basalt-headers/archive/e3ee456469f21a356a0a59088779b32721918f11.tar.gz"
+    SHA1 "73955ab90ae77ee32c88744b945b3fd8b175833b"
+)
+
+hunter_config(
+    oneTBB
+    VERSION 2021.12.0
+    URL "https://github.com/oneapi-src/oneTBB/archive/refs/tags/v2021.12.0.zip"
+    SHA1 "f6b0eb4e45af600684282341115a3c2fb9834978"
+    CMAKE_ARGS
+        TBB_PREVIEW_GLOBAL_CONTROL=ON
+        TBB_TEST=OFF
+        CMAKE_CXX_VISIBILITY_PRESET=hidden
+        CMAKE_C_VISIBILITY_PRESET=hidden
+)
+
+
+hunter_config(
+    basalt
+    VERSION 0.1.0
+    URL "https://github.com/luxonis/basalt/archive/5763210cd48e2dfc560f80ee0d3648163e69a901.tar.gz"
+    SHA1 "d5301f8edfce5372962851b3d7928c053f0b1628"
+    CMAKE_ARGS
+        BASALT_SDK_ONLY=ON
+)
+
+hunter_config(
+    Sophus
+    VERSION 1.22.10
+    URL "https://github.com/luxonis/Sophus/archive/54e9b230edc4df47f819cef0d15b1fcc165342df.tar.gz"
+    SHA1 "4c67d2d3415511446ed65705f00b23854dae6cd6"
+    CMAKE_ARGS
+        BUILD_SOPHUS_TESTS=OFF
+        BUILD_SOPHUS_EXAMPLES=OFF
+)
+
+
+hunter_config(
+    magic_enum
+    URL "https://github.com/Neargye/magic_enum/archive/3d1f6a5a2a3fbcba077e00ad0ccc2dd9fefc2ca7.zip"
+    SHA1 "c9a27f6ff8311f0c6b2adb959d0598f079fcc9f3"
+)
 hunter_config(
     CURL
     VERSION "7.88.1-p0-custom"
@@ -198,4 +310,20 @@ hunter_config(
     VERSION "1.4.0"
     URL "https://github.com/luxonis/cpr/archive/a1d28dbbaccda3df8fddd993b2cd916f64f9da56.tar.gz"
     SHA1 "14e18d04d05e36e920aa90ee744952bf55783ea4"
+)
+
+hunter_config(
+    yaml-cpp
+    VERSION "0.6.3l"
+    URL "https://github.com/jbeder/yaml-cpp/archive/refs/tags/yaml-cpp-0.6.3.tar.gz"
+    SHA1 "98d98632b3a62fdf1172442f8ad8190fc11cbef7"
+    CMAKE_ARGS
+        YAML_BUILD_SHARED_LIBS=ON
+)
+
+hunter_config(
+    semver
+    VERSION "v0.3.1"
+    URL "https://github.com/Neargye/semver/archive/v0.3.1.tar.gz"
+    SHA1 "c9ac79025cc259d8cca454be0865e88f154402be"
 )

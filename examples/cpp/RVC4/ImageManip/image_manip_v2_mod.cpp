@@ -22,7 +22,9 @@ int main(int argc, char** argv) {
     camRgb->setBoardSocket(dai::CameraBoardSocket::CAM_A);
     camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
 
-    // First rotate the frame around the center by 45 degrees (clockwise), then scale it down to half its size, then crop a rectangle beginning at (0, 0) with width 400 and height 400, then flip it vertically. At the end resize the frame to 1270x710 and keep the aspect ratio by cropping from the center. Set output frame type to RGB888i.
+    // First rotate the frame around the center by 45 degrees (clockwise), then scale it down to half its size, then crop a rectangle beginning at (0, 0) with
+    // width 400 and height 400, then flip it vertically. At the end resize the frame to 1270x710 and keep the aspect ratio by cropping from the center. Set
+    // output frame type to RGB888i.
     manip->initialConfig.setOutputSize(1270, 710, dai::ImageManipConfigV2::ResizeMode::CENTER_CROP);
     manip->initialConfig.rotateDeg(45);
     manip->initialConfig.scale(0.5);

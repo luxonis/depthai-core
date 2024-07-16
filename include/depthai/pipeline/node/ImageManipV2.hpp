@@ -7,7 +7,7 @@
 #include <depthai/properties/ImageManipPropertiesV2.hpp>
 
 #ifdef TARGET_DEVICE_RVC4
-#include "utilities/EvaDataMemory.hpp"
+    #include "utilities/EvaDataMemory.hpp"
 #endif
 
 namespace dai {
@@ -65,10 +65,10 @@ class ImageManipV2 : public DeviceNodeCRTP<DeviceNode, ImageManipV2, ImageManipP
      */
     void setMaxOutputFrameSize(int maxFrameSize);
 
-   /**
-    * Specify whether to run on host or device
-    * @param runOnHost Run node on host
-    */
+    /**
+     * Specify whether to run on host or device
+     * @param runOnHost Run node on host
+     */
     ImageManipV2& setRunOnHost(bool runOnHost = true);
 
     /**
@@ -198,26 +198,15 @@ class ColorChange {
     FrameSpecs srcSpecs;
     FrameSpecs dstSpecs;
 
-    bool colorConvertToRGB888i(
-        span<const uint8_t> inputFrame, span<uint8_t> outputFrame, FrameSpecs srcSpecs, FrameSpecs dstSpecs, ImgFrame::Type from);
-    bool colorConvertToBGR888p(
-        span<const uint8_t> inputFrame, span<uint8_t> outputFrame, FrameSpecs srcSpecs, FrameSpecs dstSpecs, ImgFrame::Type from);
-    bool colorConvertToRGB888p(
-        span<const uint8_t> inputFrame, span<uint8_t> outputFrame, FrameSpecs srcSpecs, FrameSpecs dstSpecs, ImgFrame::Type from);
-    bool colorConvertToBGR888i(
-        span<const uint8_t> inputFrame, span<uint8_t> outputFrame, FrameSpecs srcSpecs, FrameSpecs dstSpecs, ImgFrame::Type from);
-    bool colorConvertToNV12(
-        span<const uint8_t> inputFrame, span<uint8_t> outputFrame, FrameSpecs srcSpecs, FrameSpecs dstSpecs, ImgFrame::Type from);
-    bool colorConvertToYUV420p(
-        span<const uint8_t> inputFrame, span<uint8_t> outputFrame, FrameSpecs srcSpecs, FrameSpecs dstSpecs, ImgFrame::Type from);
-    bool colorConvertToGRAY8(
-        span<const uint8_t> inputFrame, span<uint8_t> outputFrame, FrameSpecs srcSpecs, FrameSpecs dstSpecs, ImgFrame::Type from);
-    bool colorConvert(const span<uint8_t> inputFrame,
-                      span<uint8_t> outputFrame,
-                      FrameSpecs srcSpecs,
-                      FrameSpecs dstSpecs,
-                      ImgFrame::Type from,
-                      ImgFrame::Type to);
+    bool colorConvertToRGB888i(span<const uint8_t> inputFrame, span<uint8_t> outputFrame, FrameSpecs srcSpecs, FrameSpecs dstSpecs, ImgFrame::Type from);
+    bool colorConvertToBGR888p(span<const uint8_t> inputFrame, span<uint8_t> outputFrame, FrameSpecs srcSpecs, FrameSpecs dstSpecs, ImgFrame::Type from);
+    bool colorConvertToRGB888p(span<const uint8_t> inputFrame, span<uint8_t> outputFrame, FrameSpecs srcSpecs, FrameSpecs dstSpecs, ImgFrame::Type from);
+    bool colorConvertToBGR888i(span<const uint8_t> inputFrame, span<uint8_t> outputFrame, FrameSpecs srcSpecs, FrameSpecs dstSpecs, ImgFrame::Type from);
+    bool colorConvertToNV12(span<const uint8_t> inputFrame, span<uint8_t> outputFrame, FrameSpecs srcSpecs, FrameSpecs dstSpecs, ImgFrame::Type from);
+    bool colorConvertToYUV420p(span<const uint8_t> inputFrame, span<uint8_t> outputFrame, FrameSpecs srcSpecs, FrameSpecs dstSpecs, ImgFrame::Type from);
+    bool colorConvertToGRAY8(span<const uint8_t> inputFrame, span<uint8_t> outputFrame, FrameSpecs srcSpecs, FrameSpecs dstSpecs, ImgFrame::Type from);
+    bool colorConvert(
+        const span<uint8_t> inputFrame, span<uint8_t> outputFrame, FrameSpecs srcSpecs, FrameSpecs dstSpecs, ImgFrame::Type from, ImgFrame::Type to);
 
    public:
     ColorChange() = default;

@@ -6,7 +6,7 @@ on:
     - main
     - develop
     tags:
-    - 'v*'
+    - 'v2*'
 jobs:
 
   build:

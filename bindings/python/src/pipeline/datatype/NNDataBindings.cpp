@@ -195,6 +195,15 @@ void bind_nndata(pybind11::module& m, void* pCallstack){
                 return py::cast(obj.getTensor<float>(name, dequantize));
             }
         }, py::arg("name"), py::arg("dequantize") = false, DOC(dai, NNData, getTensor))
+        .def("getFirstTensor", [](NNData& obj, bool dequantize) -> py::object {
+            const auto datatype = obj.getFirstTensorDatatype();
+            if(datatype == dai::TensorInfo::DataType::U8F) {
+                return py::cast(obj.getFirstTensor<int>(dequantize));
+            }
+            else {
+                return py::cast(obj.getFirstTensor<float>(dequantize));
+            }
+        }, py::arg("dequantize") = false, DOC(dai, NNData, getFirstTensor))
         // .def("getTensor", static_cast<xt::xarray<double>(NNData::*)(const std::string&)>(&NNData::getTensor<double>), py::arg("name"), DOC(dai, NNData, getTensor))
         // .def("getTensor", static_cast<xt::xarray<float>(NNData::*)(const std::string&)>(&NNData::getTensor<float>), py::arg("name"), DOC(dai, NNData, getTensor, 2))
         // .def("getTensor", static_cast<xt::xarray<int>(NNData::*)(const std::string&)>(&NNData::getTensor<int>), py::arg("name"), DOC(dai, NNData, getTensor, 3))

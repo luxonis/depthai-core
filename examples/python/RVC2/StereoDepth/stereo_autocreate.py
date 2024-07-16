@@ -26,5 +26,6 @@ with dai.Pipeline() as pipeline:
     stereo = pipeline.create(dai.node.StereoDepth).build(autoCreateCameras=True)
     visualizer = pipeline.create(StereoVisualizer)
     visualizer.link_args(stereo.disparity)
+    visualizer.sendProcessingToPipeline(True)
 
     pipeline.run()

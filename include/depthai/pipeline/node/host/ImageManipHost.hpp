@@ -7,13 +7,13 @@
 
 #include "depthai/pipeline/ThreadedHostNode.hpp"
 #include "depthai/pipeline/datatype/ImageManipConfigV2.hpp"
-#include "depthai/properties/ImageManipPropertiesV2.hpp"
 #include "depthai/pipeline/node/ImageManipV2.hpp"
+#include "depthai/properties/ImageManipPropertiesV2.hpp"
 
 namespace dai {
 namespace node {
 
-class ImageManipHost : public NodeCRTP<ThreadedHostNode, ImageManipHost/*, ImageManipPropertiesV2*/> {
+class ImageManipHost : public NodeCRTP<ThreadedHostNode, ImageManipHost /*, ImageManipPropertiesV2*/> {
    public:
     constexpr static const char* NAME = "ImageManipHost";
 

@@ -71,6 +71,8 @@ class Tracklets : public Buffer {
      * @returns Vector of object tracker data, carrying tracking information.
      */
     std::vector<Tracklet> tracklets;
+
+    DEPTHAI_SERIALIZE(Tracklets, tracklets, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum);
 };
 
 }  // namespace dai

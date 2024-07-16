@@ -32,30 +32,30 @@ class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNet
     /**
      * Input message with data to be inferred upon
      */
-    Input input{*this, {.name = "in", .types = {{DatatypeEnum::Buffer, true}}}};
+    Input input{*this, {"in", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Outputs NNData message that carries inference results
      */
-    Output out{*this, {.name = "out", .types = {{DatatypeEnum::NNData, false}}}};
+    Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::NNData, false}}}}};
 
     /**
      * Passthrough message on which the inference was performed.
      *
      * Suitable for when input queue is set to non-blocking behavior.
      */
-    Output passthrough{*this, {.name = "passthrough", .types = {{DatatypeEnum::Buffer, true}}}};
+    Output passthrough{*this, {"passthrough", DEFAULT_GROUP, {{{DatatypeEnum::Buffer, true}}}}};
 
     /**
      * Inputs mapped to network inputs. Useful for inferring from separate data sources
      * Default input is non-blocking with queue size 1 and waits for messages
      */
-    InputMap inputs{*this, "inputs", {.blocking = false, .queueSize = 1, .types = {{DatatypeEnum::Buffer, true}}, .waitForMessage = true}};
+    InputMap inputs{*this, {DEFAULT_NAME, DEFAULT_GROUP, false, 1, {{{DatatypeEnum::Buffer, true}}}, true}};
 
     /**
      * Passthroughs which correspond to specified input
      */
-    OutputMap passthroughs{*this, "passthroughs", {.name = "", .types = {{DatatypeEnum::Buffer, true}}}};
+    OutputMap passthroughs{*this, "passthroughs", {"", DEFAULT_GROUP, {{{DatatypeEnum::Buffer, true}}}}};
 
     // Specify local filesystem path to load the blob (which gets loaded at loadAssets)
     /**

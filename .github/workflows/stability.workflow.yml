@@ -7,7 +7,7 @@ on:
       - main
       - develop
     tags:
-      - 'v*'
+      - 'v2*'
   pull_request:
     branches:
       - main

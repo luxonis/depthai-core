@@ -1,6 +1,7 @@
 #define _USE_MATH_DEFINES
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 
+#include "depthai/utility/SharedMemory.hpp"
 #include "spdlog/fmt/fmt.h"
 #include "spdlog/spdlog.h"
 namespace dai {
@@ -13,6 +14,16 @@ ImgFrame::ImgFrame() {
 ImgFrame::ImgFrame(size_t size) : ImgFrame() {
     auto mem = std::make_shared<VectorMemory>();
     mem->resize(size);
+    data = mem;
+}
+
+ImgFrame::ImgFrame(long fd) : ImgFrame() {
+    auto mem = std::make_shared<SharedMemory>(fd);
+    data = mem;
+}
+
+ImgFrame::ImgFrame(long fd, size_t size) : ImgFrame() {
+    auto mem = std::make_shared<SharedMemory>(fd, size);
     data = mem;
 }
 

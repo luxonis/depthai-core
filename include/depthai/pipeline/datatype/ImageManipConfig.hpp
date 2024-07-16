@@ -349,16 +349,8 @@ class ImageManipConfig : public Buffer {
     bool reusePreviousImage = false;
     bool skipCurrentImage = false;
     Interpolation interpolation = Interpolation::AUTO;
-    DEPTHAI_SERIALIZE(ImageManipConfig,
-                      cropConfig,
-                      resizeConfig,
-                      formatConfig,
-                      enableCrop,
-                      enableResize,
-                      enableFormat,
-                      reusePreviousImage,
-                      skipCurrentImage,
-                      interpolation);
+    DEPTHAI_SERIALIZE(
+        ImageManipConfig, cropConfig, resizeConfig, formatConfig, enableCrop, enableResize, enableFormat, reusePreviousImage, skipCurrentImage, interpolation);
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
         metadata = utility::serialize(*this);
         datatype = DatatypeEnum::ImageManipConfig;

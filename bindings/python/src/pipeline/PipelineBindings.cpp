@@ -93,6 +93,7 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack){
         ;
 
     recordVideoConfig
+        .def(py::init<>())
         .def_readwrite("enabled", &RecordConfig::VideoEncoding::enabled, DOC(dai, RecordConfig, VideoEncoding, enabled))
         .def_readwrite("bitrate", &RecordConfig::VideoEncoding::bitrate, DOC(dai, RecordConfig, VideoEncoding, bitrate))
         .def_readwrite("profile", &RecordConfig::VideoEncoding::profile, DOC(dai, RecordConfig, VideoEncoding, profile))
@@ -100,6 +101,7 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack){
         .def_readwrite("quality", &RecordConfig::VideoEncoding::quality, DOC(dai, RecordConfig, VideoEncoding, quality));
 
     recordConfig
+        .def(py::init<>())
         .def_readwrite("outputDir", &RecordConfig::outputDir, DOC(dai, RecordConfig, outputDir))
         .def_readwrite("videoEncoding", &RecordConfig::videoEncoding, DOC(dai, RecordConfig, videoEncoding))
         .def_readwrite("compressionLevel", &RecordConfig::compressionLevel, DOC(dai, RecordConfig, compressionLevel));
@@ -161,6 +163,7 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack){
         .def("serializeToJson", &Pipeline::serializeToJson, DOC(dai, Pipeline, serializeToJson))
         .def("setBoardConfig", &Pipeline::setBoardConfig, DOC(dai, Pipeline, setBoardConfig))
         .def("getBoardConfig", &Pipeline::getBoardConfig, DOC(dai, Pipeline, getBoardConfig))
+        .def("getDefaultDevice", &Pipeline::getDefaultDevice, DOC(dai, Pipeline, getDefaultDevice))
         // 'Template' create function
         .def(
             "add",

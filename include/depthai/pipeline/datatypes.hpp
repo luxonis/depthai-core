@@ -29,3 +29,4 @@
 #include "datatype/ToFConfig.hpp"
 #include "datatype/TrackedFeatures.hpp"
 #include "datatype/Tracklets.hpp"
+#include "datatype/TransformData.hpp"

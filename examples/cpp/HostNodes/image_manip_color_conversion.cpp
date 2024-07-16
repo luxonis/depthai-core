@@ -1,8 +1,9 @@
 #include <memory>
+
 #include "depthai/depthai.hpp"
+#include "depthai/pipeline/InputQueue.hpp"
 #include "depthai/pipeline/datatype/ImageManipConfigV2.hpp"
 #include "depthai/pipeline/node/host/ImageManipHost.hpp"
-#include "depthai/pipeline/InputQueue.hpp"
 #include "opencv2/opencv.hpp"
 
 constexpr int NUM_FRAMES_PER_CONFIG = 1;
@@ -30,7 +31,7 @@ int main(int argc, char** argv) {
     std::vector<Type> supportedTypesFrom = {Type::RGB888i, Type::RGB888p, Type::BGR888i, Type::BGR888p, Type::NV12, Type::YUV420p};
     std::vector<Type> supportedTypesTo = {Type::RGB888i, Type::RGB888p, Type::BGR888i, Type::BGR888p, Type::NV12, Type::YUV420p, Type::GRAY8};
     for(const auto from : supportedTypesFrom) {
-        for (const auto to : supportedTypesTo) {
+        for(const auto to : supportedTypesTo) {
             for(unsigned int i = 0; i < NUM_FRAMES_PER_CONFIG * (argc - 1); i++) {
                 cv::Mat frame = cv::imread(filenames[i / NUM_FRAMES_PER_CONFIG], cv::IMREAD_COLOR);
                 cv::resize(frame, frame, cv::Size(640, 480));

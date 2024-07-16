@@ -36,8 +36,16 @@
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     #include "node/host/Display.hpp"
     #include "node/host/HostCamera.hpp"
+    #include "node/host/HostNode.hpp"
     #include "node/host/Record.hpp"
     #include "node/host/Replay.hpp"
-#include "node/host/HostNode.hpp"
 #endif
 #include "ThreadedHostNode.hpp"
+#include "node/host/HostNode.hpp"
+#ifdef DEPTHAI_HAVE_RTABMAP_SUPPORT
+    #include "depthai/rtabmap/RTABMapSLAM.hpp"
+    #include "depthai/rtabmap/RTABMapVIO.hpp"
+#endif
+#ifdef DEPTHAI_HAVE_BASALT_SUPPORT
+    #include "depthai/basalt/BasaltVIO.hpp"
+#endif

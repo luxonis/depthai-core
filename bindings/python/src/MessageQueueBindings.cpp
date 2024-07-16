@@ -10,14 +10,17 @@
 #include "depthai/pipeline/MessageQueue.hpp"
 #include "depthai/pipeline/datatype/ADatatype.hpp"
 
+py::object messageQueueException; // Needed to be able to catch in C++ after it's raised on the Python side
+
 void MessageQueueBindings::bind(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace std::chrono;
 
     // Type definitions
     py::class_<MessageQueue, std::shared_ptr<MessageQueue>> messageQueue(m, "MessageQueue", DOC(dai, MessageQueue));
-    py::register_exception<dai::MessageQueue::QueueException>(messageQueue, "QueueException");
-    // py::class_<DataInputQueue, std::shared_ptr<DataInputQueue>> dataInputQueue(m, "DataInputQueue", DOC(dai, DataInputQueue));
+    constexpr auto QUEUE_EXCEPTION_NAME = "QueueException";
+    py::register_exception<dai::MessageQueue::QueueException>(messageQueue, QUEUE_EXCEPTION_NAME);
+    messageQueueException = messageQueue.attr(QUEUE_EXCEPTION_NAME);
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////

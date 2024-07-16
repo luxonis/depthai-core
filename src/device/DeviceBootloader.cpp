@@ -690,7 +690,7 @@ bool DeviceBootloader::isUserBootloaderSupported() {
     }
 
     // Check if bootloader version is adequate
-    if(getVersion().getSemver() < Version(Request::IsUserBootloader::VERSION)) {
+    if(getVersion() < Version(Request::IsUserBootloader::VERSION)) {
         return false;
     }
 
@@ -699,7 +699,7 @@ bool DeviceBootloader::isUserBootloaderSupported() {
 
 bool DeviceBootloader::isUserBootloader() {
     // Check if bootloader version is adequate
-    if(getVersion().getSemver() < Version(Request::IsUserBootloader::VERSION)) {
+    if(getVersion() < Version(Request::IsUserBootloader::VERSION)) {
         return false;
     }
 
@@ -918,7 +918,7 @@ std::tuple<bool, std::string> DeviceBootloader::flashUserBootloader(std::functio
     // }
 
     // Check if bootloader version is adequate
-    if(getVersion().getSemver() < Version(Request::IsUserBootloader::VERSION)) {
+    if(getVersion() < Version(Request::IsUserBootloader::VERSION)) {
         throw std::runtime_error("Current bootloader version doesn't support User Bootloader");
     }
 
@@ -1370,7 +1370,7 @@ bool DeviceBootloader::sendRequest(const T& request) {
     if(stream == nullptr) return false;
 
     // Do a version check beforehand (compare just the semver)
-    if(getVersion().getSemver() < Version(T::VERSION)) {
+    if(getVersion() < Version(T::VERSION)) {
         throw std::runtime_error(
             fmt::format("Bootloader version {} required to send request '{}'. Current version {}", T::VERSION, T::NAME, getVersion().toString()));
     }
@@ -1389,7 +1389,7 @@ void DeviceBootloader::sendRequestThrow(const T& request) {
     if(stream == nullptr) throw std::runtime_error("Couldn't send request. Stream is null");
 
     // Do a version check beforehand (compare just the semver)
-    if(getVersion().getSemver() < Version(T::VERSION)) {
+    if(getVersion() < Version(T::VERSION)) {
         throw std::runtime_error(
             fmt::format("Bootloader version {} required to send request '{}'. Current version {}", T::VERSION, T::NAME, getVersion().toString()));
     }
