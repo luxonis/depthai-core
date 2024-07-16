@@ -36,5 +36,20 @@ std::string getEnv(const std::string& var, spdlog::logger& logger) {
     return value;
 }
 
+std::vector<std::string> splitList(const std::string& list, const std::string& delimiter) {
+    std::vector<std::string> result;
+    if(list.empty()) {
+        return result;  // Return an empty vector if the input string is empty
+    }
+    size_t pos = 0;
+    size_t end = 0;
+    while((end = list.find(delimiter, pos)) != std::string::npos) {
+        result.push_back(list.substr(pos, end - pos));
+        pos = end + delimiter.size();
+    }
+    result.push_back(list.substr(pos));
+    return result;
+}
+
 }  // namespace utility
 }  // namespace dai
