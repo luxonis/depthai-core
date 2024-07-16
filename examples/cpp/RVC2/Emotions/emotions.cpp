@@ -1,5 +1,6 @@
 // Includes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
+#include "xtensor/xsort.hpp"
 
 class Face2ImageManipConfig : public dai::NodeCRTP<dai::node::ThreadedHostNode, Face2ImageManipConfig> {
 public:
@@ -30,7 +31,9 @@ public:
     }
 };
 
-void displayFrame(cv::Mat& frame, std::vector<dai::ImgDetection>& detections, std::vector<dai::ImgDetection>& detectionsEmo)
+std::array<const char* const,5> emotions = {"neutral", "happy", "sad", "surprise", "anger"};
+
+void displayFrame(cv::Mat& frame, std::vector<dai::ImgDetection>& detections, xt::xarray<float>& resultLayer)
 {
     auto color = cv::Scalar(255, 0, 0);
     for(int i = 0; i < detections.size(); i++) {
@@ -41,14 +44,14 @@ void displayFrame(cv::Mat& frame, std::vector<dai::ImgDetection>& detections, st
         int y2 = detection.ymax * frame.rows;
  
         std::stringstream confStr;
-        if(i < detectionsEmo.size()) {
-          auto& detEmo = detectionsEmo[i];
-          confStr << "label: " << detEmo.label << " " <<std::fixed << std::setprecision(2) << detEmo.confidence * 100;
+        auto emotionIndex = xt::argmax(resultLayer)(0);
+        if(emotionIndex < emotions.size()) {
+            confStr << emotions[emotionIndex];
+        } else {
+           confStr << "Err index: " << emotionIndex;
         }
-        else
-        {
-          confStr << "no emotion";
-        }
+        
+        
         cv::putText(frame, confStr.str(), cv::Point(x1 + 10, y1 + 40), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
         cv::rectangle(frame, cv::Rect(cv::Point(x1, y1), cv::Point(x2, y2)), color, cv::FONT_HERSHEY_SIMPLEX);
     }
@@ -75,7 +78,6 @@ int main(int argc, char** argv) {
     auto nn = pipeline.create<dai::node::NeuralNetwork>();
     auto nnEmo = pipeline.create<dai::node::NeuralNetwork>();
     auto det = pipeline.create<dai::node::DetectionParser>();
-    auto detEmo = pipeline.create<dai::node::DetectionParser>();
     auto manipConf = pipeline.create<Face2ImageManipConfig>();
     auto manip = pipeline.create<dai::node::ImageManip>();
     
@@ -102,18 +104,12 @@ int main(int argc, char** argv) {
     dai::OpenVINO::Blob blob2(nnEmoPath);
     nnEmo->setBlob(blob2);
     
-    // Emotion detection NN parser props
-    detEmo->setBlob(blob2);
-    detEmo->setNNFamily(DetectionNetworkType::MOBILENET);
-    detEmo->setConfidenceThreshold(0.5);
-    detEmo->setNumClasses(5);
-    
     // ImageManip props
     manip->initialConfig.setResize(64,64);
 
     // Linking
     /*
-      rgb -> nn -> det -> manipConf -> manip -> nnEmo -> detEmo
+      rgb -> nn -> det -> manipConf -> manip -> nnEmo
           --------------------------->
     */
     camRgb->preview.link(nn->input);
@@ -122,26 +118,25 @@ int main(int argc, char** argv) {
     manipConf->outputManipulators.link(manip->inputConfig);
     camRgb->preview.link(manip->inputImage);
     manip->out.link(nnEmo->input);
-    nnEmo->out.link(detEmo->input);
     
     auto outPassthrough = nn->passthrough.createOutputQueue();
     auto outDet = det->out.createOutputQueue();
-    auto outDetEmo = detEmo->out.createOutputQueue();
+    auto outNNEmo = nnEmo->out.createOutputQueue();
     
     pipeline.start();
     while(pipeline.isRunning()) {
         std::shared_ptr<dai::ImgFrame> inRgb;
         std::shared_ptr<dai::ImgDetections> inDet;
-        std::shared_ptr<dai::ImgDetections> inDetEmo;
+        std::shared_ptr<dai::NNData> inNNEmo;
         
         inRgb = outPassthrough->get<dai::ImgFrame>();
         inDet = outDet->get<dai::ImgDetections>();
-        inDetEmo = outDetEmo->get<dai::ImgDetections>();
+        inNNEmo = outNNEmo->get<dai::NNData>();
         
         cv::Mat frame;
         std::vector<dai::ImgDetection> detections;
-        std::vector<dai::ImgDetection> detectionsEmo;
-
+        xt::xarray<float> resultLayer;
+        
         if(inRgb) {
             frame = inRgb->getCvFrame();
         }
@@ -150,13 +145,12 @@ int main(int argc, char** argv) {
             detections = inDet->detections;
         }
 
-        if(inDetEmo)
-        {
-            detectionsEmo = inDetEmo->detections;
+        if(inNNEmo && !inNNEmo->tensors.empty()) {
+            resultLayer = inNNEmo->getTensor<float>(inNNEmo->tensors.back().name, false);
         }
-
+        
         if(!frame.empty()) {
-            displayFrame(frame, detections, detectionsEmo);
+            displayFrame(frame, detections, resultLayer);
         }
 
         int key = cv::waitKey(1);
