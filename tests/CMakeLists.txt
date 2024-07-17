@@ -214,7 +214,7 @@ hunter_private_data(
 # NNarchives of different types
 hunter_private_data(
     URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/nnarchive/yolo_blob_nnarchive.tar.xz"
-    SHA1 "62c413a53e534b959fb326b62d9a50c1f967159b"
+    SHA1 "6b9697e5aaf1560efbdea7f8d7487bae51def619"
     FILE "yolo_blob_nnarchive.tar.xz"
     LOCATION yolo_blob_nnarchive_path
 )
