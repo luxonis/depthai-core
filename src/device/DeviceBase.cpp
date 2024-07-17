@@ -1037,6 +1037,13 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
         pimpl->rpcClient->call("enableCrashDump", true);
     }
 
+    auto crashdumpForceStr = utility::getEnv("DEPTHAI_CRASHDUMP_FORCE");
+    if(!crashdumpForceStr.empty() && crashdumpForceStr == "1") {
+        pimpl->logger.warn("Crash dump forced at exit");
+        pimpl->rpcClient->call("enableCrashDump", true);
+        pimpl->rpcClient->call("forceCrashDumpAtExit", true);
+    }
+
     // Below can throw - make sure to gracefully exit threads
     try {
         // Starts and waits for inital timesync
