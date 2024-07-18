@@ -345,3 +345,6 @@ dai_add_test(pointcloud_test src/ondevice_tests/pointcloud_test.cpp)
 
 # Resolutions test
 dai_add_test(resolutions_test src/ondevice_tests/resolutions_test.cpp)
+
+# Shdmem test
+dai_add_test(shdmem_test src/ondevice_tests/shdmem_test.cpp)

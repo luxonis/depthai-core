@@ -457,6 +457,8 @@ hunter_private_data(
 # dai_add_example(depth_video_synced Sync/depth_video_synced.cpp ON OFF)
 # dai_add_example(imu_video_synced Sync/imu_video_synced.cpp ON OFF)
 
+dai_add_example(camera_single RVC4/Camera/camera_single.cpp ON OFF)
+
 # Record
 dai_add_example(record_encoded_h264 RVC2/Record/record_encoded_h264.cpp ON OFF)
 dai_add_example(record_encoded_mjpeg RVC2/Record/record_encoded_mjpeg.cpp ON OFF)
