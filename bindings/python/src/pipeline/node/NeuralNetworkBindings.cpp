@@ -51,11 +51,10 @@ void bind_neuralnetwork(pybind11::module& m, void* pCallstack){
         .def("getNumInferenceThreads", &NeuralNetwork::getNumInferenceThreads, DOC(dai, node, NeuralNetwork, getNumInferenceThreads))
         .def("setBlob", py::overload_cast<dai::OpenVINO::Blob>(&NeuralNetwork::setBlob), py::arg("blob"), DOC(dai, node, NeuralNetwork, setBlob))
         .def("setBlob", py::overload_cast<const dai::Path&>(&NeuralNetwork::setBlob), py::arg("path"), DOC(dai, node, NeuralNetwork, setBlob, 2))
-        .def("setXmlModelPath",
-             &NeuralNetwork::setXmlModelPath,
-             py::arg("xmlModelPath"),
-             py::arg("binModelPath") = Path{""},
-             DOC(dai, node, NeuralNetwork, setXmlModelPath))
+        .def("setModelPath",
+             &NeuralNetwork::setModelPath,
+             py::arg("modelPath"),
+             DOC(dai, node, NeuralNetwork, setModelPath))
         .def("setNumShavesPerInferenceThread",
              &NeuralNetwork::setNumShavesPerInferenceThread,
              py::arg("numShavesPerInferenceThread"),
