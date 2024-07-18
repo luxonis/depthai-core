@@ -1,5 +1,7 @@
 #include "depthai/pipeline/node/NeuralNetwork.hpp"
+#include <stdexcept>
 
+#include "depthai/depthai.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "openvino/BlobReader.hpp"
 
@@ -20,6 +22,14 @@ void NeuralNetwork::setBlob(const dai::Path& path) {
 }
 
 void NeuralNetwork::setBlob(OpenVINO::Blob blob) {
+    if(device) {
+        if(blob.device == OpenVINO::Device::VPUX && device->getPlatform() != Platform::RVC3) {
+            throw std::runtime_error(fmt::format("Loaded model is for RVC3, but the device is {}", device->getPlatformAsString()));
+        }
+        if(blob.device == OpenVINO::Device::VPU && device->getPlatform() != Platform::RVC2) {
+            throw std::runtime_error(fmt::format("Loaded model is for RVC2, but the device is {}", device->getPlatformAsString()));
+        }
+    }
     networkOpenvinoVersion = blob.version;
     auto asset = assetManager.set("__blob", std::move(blob.data));
     properties.blobUri = asset->getRelativeUri();
@@ -27,19 +37,17 @@ void NeuralNetwork::setBlob(OpenVINO::Blob blob) {
     properties.modelSource = Properties::ModelSource::BLOB;
 }
 
-void NeuralNetwork::setXmlModelPath(const dai::Path& xmlModelPath, const dai::Path& binModelPath) {
-    auto xmlAsset = assetManager.set("__xmlModel", xmlModelPath);
-    dai::Path localBinModelPath;
-    if(!binModelPath.empty()) {  // Path for the bin file IS set
-        localBinModelPath = binModelPath;
-    } else {  // Path for the bin file IS NOT set
-        auto lastDotPos = xmlModelPath.string().find_last_of('.');
-        localBinModelPath = xmlModelPath.string().substr(0, lastDotPos) + ".bin";
+void NeuralNetwork::setModelPath(const dai::Path& modelPath) {
+    // Check if the modelPath is a blob
+    if(modelPath.string().find(".blob") != std::string::npos) {
+        setBlobPath(modelPath);
+        return;
     }
-    auto binAsset = assetManager.set("__binModel", localBinModelPath);
-    properties.xmlUri = xmlAsset->getRelativeUri();
-    properties.binUri = binAsset->getRelativeUri();
-    properties.modelSource = Properties::ModelSource::XML;
+
+    // Generic case
+    auto modelAsset = assetManager.set("__model", modelPath);
+    properties.modelUri = modelAsset->getRelativeUri();
+    properties.modelSource = Properties::ModelSource::CUSTOM_MODEL;
 }
 
 void NeuralNetwork::setNumPoolFrames(int numFrames) {

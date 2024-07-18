@@ -248,7 +248,6 @@ setup(
         "Operating System :: Unix",
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
@@ -260,7 +259,7 @@ setup(
         "Topic :: Scientific/Engineering",
         "Topic :: Software Development",
     ],
-    python_requires='>=3.6',
+    python_requires='>=3.7',
     entry_points={
         "console_scripts": [
             f'depthai={DEPTHAI_CLI_MODULE_NAME}.depthai_cli:cli'

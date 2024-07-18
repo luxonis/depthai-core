@@ -556,6 +556,17 @@ void DeviceBase::closeImpl() {
         }
     }
 
+    bool waitForGate = true;
+    if(!isRvc2) {
+        // Check if the device is still alive and well, if yes, don't wait for gate, crash dump not relevant
+        try {
+            waitForGate = !pimpl->rpcClient->call("isRunning").as<bool>();
+            pimpl->logger.debug("Will wait for gate: {}", waitForGate);
+        } catch(const std::exception& ex) {
+            pimpl->logger.debug("isRunning call error: {}", ex.what());
+        }
+    }
+
     // Close connection first; causes Xlink internal calls to unblock semaphore waits and
     // return error codes, which then allows queues to unblock
     // always manage ownership because other threads (e.g. watchdog) are running and need to
@@ -581,14 +592,14 @@ void DeviceBase::closeImpl() {
     // At the end stop the monitor thread
     if(monitorThread.joinable()) monitorThread.join();
 
+    // If the device was operated throgh gate, wait for the session to end
+    if(gate && waitForGate) {
+        gate->waitForSessionEnd();
+    }
+
     // Close rpcStream
     pimpl->rpcStream = nullptr;
     pimpl->rpcClient = nullptr;
-
-    // If the device was operated throgh gate, wait for the session to end
-    if(gate) {
-        gate->waitForSessionEnd();
-    }
 
     if(!dumpOnly) {
         auto timeout = getCrashdumpTimeout(deviceInfo.protocol);

@@ -268,11 +268,8 @@ dai_add_test(bootloader_version_test src/onhost_tests/bootloader_version_test.cp
 dai_add_test(bootloader_config_test src/onhost_tests/bootloader_config_test.cpp onhost)
 
 
-
-
-### On-device tests ####################################################################################
-### On-device tests ####################################################################################
-### On-device tests ####################################################################################
+dai_add_test(env_test src/onhost_tests/env_test.cpp)
+### On-device tests
 
 # Depthai logging test
 dai_add_test(logging_test src/ondevice_tests/logging_test.cpp ondevice)

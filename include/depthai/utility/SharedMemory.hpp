@@ -3,8 +3,6 @@
 // std
 #include <cstdint>
 #include <cstring>
-#include <functional>
-#include <iostream>
 #if defined(__unix__) && !defined(__APPLE__)
     #include <fcntl.h>
     #include <sys/mman.h>
@@ -15,19 +13,7 @@
 
 // project
 #include "depthai/utility/Memory.hpp"
-
-// memfd_create wrapper for glibc < 2.27
-#if defined(__unix__) && !defined(__APPLE__)
-#if (__GLIBC__ <= 2) && (__GLIBC_MINOR__ < 27)
-#include <sys/syscall.h>
-#define __NR_memfd_create 319
-#define SYS_memfd_create __NR_memfd_create
-
-int memfd_create(const char *name, unsigned int flags) {
-    return syscall(SYS_memfd_create, name, flags);
-}
-#endif
-#endif
+#include "depthai/utility/MemoryWrappers.hpp"
 
 namespace dai {
 
@@ -57,40 +43,33 @@ class SharedMemory : public Memory {
     }
 
    public:
-    SharedMemory() {
-        kind = MemoryKinds::MEMORY_KIND_SHARED;
-        fd = -1;
-    }
+    SharedMemory() = default;
 
     SharedMemory(long argFd) : fd(argFd) {
-        kind = MemoryKinds::MEMORY_KIND_SHARED;
         mapFd();
     }
 
     SharedMemory(long argFd, std::size_t size) : fd(argFd) {
-        kind = MemoryKinds::MEMORY_KIND_SHARED;
         setSize(size);
         mapFd();
     }
 
     SharedMemory(const char* name) {
-        kind = MemoryKinds::MEMORY_KIND_SHARED;
 #if defined(__unix__) && !defined(__APPLE__)
         fd = memfd_create(name, 0);
 #else
-	(void)name;
-	fd = -1;
+        (void)name;
+        fd = -1;
 #endif
         mapFd();
     }
 
     SharedMemory(const char* name, std::size_t size) {
-        kind = MemoryKinds::MEMORY_KIND_SHARED;
 #if defined(__unix__) && !defined(__APPLE__)
         fd = memfd_create(name, 0);
 #else
-	(void)name;
-	fd = -1;
+        (void)name;
+        fd = -1;
 #endif
 
         setSize(size);
@@ -99,7 +78,11 @@ class SharedMemory : public Memory {
 
     ~SharedMemory() {
         unmapFd();
-        close(fd);
+#if defined(__unix__) && !defined(__APPLE__)
+        if(fd > 0) {
+            close(fd);
+        }
+#endif
     }
 
     SharedMemory& operator=(long argFd) {
@@ -127,14 +110,14 @@ class SharedMemory : public Memory {
 
         return fileStats.st_size;
 #else
-	return 0;
+        return 0;
 #endif
     }
     std::size_t getOffset() const override {
 #if defined(__unix__) && !defined(__APPLE__)
         return ftell(fdopen(fd, "r"));
 #else
-	return 0;
+        return 0;
 #endif
     }
     void setSize(std::size_t size) override {
@@ -152,7 +135,7 @@ class SharedMemory : public Memory {
         return getMaxSize();
     }
 
-    long getFd() const {
+    virtual long getFd() const {
         return fd;
     }
 };

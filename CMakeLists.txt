@@ -269,7 +269,6 @@ set(TARGET_CORE_SOURCES
     src/device/Device.cpp
     src/device/DeviceBase.cpp
     src/device/DeviceBootloader.cpp
-    src/device/DataQueue.cpp
     # src/device/CallbackHandler.cpp
     src/device/CalibrationHandler.cpp
     src/device/Version.cpp
@@ -359,6 +358,7 @@ set(TARGET_CORE_SOURCES
     src/utility/matrixOps.cpp
     src/utility/EepromDataParser.cpp
     src/utility/LogCollection.cpp
+    src/utility/MemoryWrappers.cpp
     src/xlink/XLinkConnection.cpp
     src/xlink/XLinkStream.cpp
     src/openvino/OpenVINO.cpp
