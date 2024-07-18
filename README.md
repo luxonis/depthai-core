@@ -197,40 +197,18 @@ cmake -S. -Bbuild -D'DEPTHAI_TEST_EXAMPLES=ON' -D'DEPTHAI_BUILD_TESTS=ON' -D'DEP
 cmake --build build
 ```
 
-Then navigate to `build` folder and run `ctest` with specified labels.
+Then navigate to `build` folder and run `ctest` with specified labels that denote device type to test on.
+Currently available labels:
+ - usb
+ - poe
 
-The are two types of tests: `onhost` and `ondevice`.
-`onhost` tests don't require a camera to be connected.
-`ondevice` tests do require a connected camera for the tests to succeed.
-
-Currently available labels are:
- - onhost_usb
- - onhost_poe
- - ondevice_usb
- - ondevice_poe
-
-### Run all onhost tests
-
-- These tests do NOT require a connected device
-
-```bash
-cd build 
-ctest -L onhost # Run all onhost tests
-ctest -L onhost_usb # Run all onhost tests with disabled POE
-ctest -L onhost_poe # Run all onhost tests with disabled USB
 ```
-
-### Run all ondevice tests
-
-- These tests require a connected device (either via usb or poe)
-
-```bash
-cd build 
-ctest -L ondevice # Run all ondevice tests
-ctest -L ondevice_usb # Run all ondevice tests with disabled POE
-ctest -L ondevice_poe # Run all ondevice tests with disabled USB
+cd build
+# Run tests on USB devices
+ctest -L usb
+# Run tests on PoE devices
+ctest -L poe
 ```
-
 
 ## Style check
 
