@@ -2,7 +2,7 @@
 
 import time
 import depthai as dai
-
+from pathlib import Path
 # Describe the model I want to download - two options: in program or from yaml file
 
 # Option 1: In program
@@ -15,10 +15,13 @@ modelDescription = dai.NNModelDescription.fromYamlFile("mymodel.yaml")
 
 # Return path to downloaded model - resnet18_xxx.blob for this example
 modelPath = dai.getModelFromZoo(modelDescription, useCached=True)
-
 print("Using model cached at path: ", modelPath)
 
-assert modelPath.endswith(".blob") # We expect a blob for this particular example
+
+archive = dai.NNArchive(modelPath)
+blob = archive.getSuperBlob().getBlobWithNumShaves(6)
+print("Number of shaves: ", blob.numShaves)
+print(archive.getConfig().getConfigV1().model.heads[0].metadata.classes)
 
 # Construct pipeline and start using downloaded NN model :-)
 with dai.Pipeline() as pipeline:
@@ -33,13 +36,13 @@ with dai.Pipeline() as pipeline:
 
     # Color camera node
     camRgb = pipeline.createColorCamera()
-    camRgb.setPreviewSize(256, 256)
-    camRgb.setColorOrder(dai.ColorCameraProperties.ColorOrder.RGB)
+    camRgb.setPreviewSize(512, 288)
+    camRgb.setColorOrder(dai.ColorCameraProperties.ColorOrder.BGR)
     camRgb.setInterleaved(False)
 
     # Neural network node
     neuralNetwork = pipeline.createNeuralNetwork()
-    neuralNetwork.setBlobPath(modelPath)
+    neuralNetwork.setBlob(blob)
     neuralNetwork.setNumInferenceThreads(2)
 
     # Linking
