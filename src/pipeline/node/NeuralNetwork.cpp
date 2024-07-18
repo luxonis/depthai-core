@@ -22,11 +22,13 @@ void NeuralNetwork::setBlob(const dai::Path& path) {
 }
 
 void NeuralNetwork::setBlob(OpenVINO::Blob blob) {
-    if(blob.device == OpenVINO::Device::VPUX && device->getPlatform() != Platform::RVC3) {
-        throw std::runtime_error(fmt::format("Loaded model is for RVC3, but the device is {}", device->getPlatformAsString()));
-    }
-    if(blob.device == OpenVINO::Device::VPU && device->getPlatform() != Platform::RVC2) {
-        throw std::runtime_error(fmt::format("Loaded model is for RVC2, but the device is {}", device->getPlatformAsString()));
+    if(device) {
+        if(blob.device == OpenVINO::Device::VPUX && device->getPlatform() != Platform::RVC3) {
+            throw std::runtime_error(fmt::format("Loaded model is for RVC3, but the device is {}", device->getPlatformAsString()));
+        }
+        if(blob.device == OpenVINO::Device::VPU && device->getPlatform() != Platform::RVC2) {
+            throw std::runtime_error(fmt::format("Loaded model is for RVC2, but the device is {}", device->getPlatformAsString()));
+        }
     }
     networkOpenvinoVersion = blob.version;
     auto asset = assetManager.set("__blob", std::move(blob.data));
