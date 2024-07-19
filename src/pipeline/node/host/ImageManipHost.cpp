@@ -1,7 +1,7 @@
 #include "depthai/pipeline/node/host/ImageManipHost.hpp"
 
 #include "depthai/pipeline/node/ImageManipV2.hpp"
-#include "utility/ImageManipV2Impl.hpp"
+#include "depthai/utility/ImageManipV2Impl.hpp"
 
 namespace dai {
 namespace node {
@@ -18,7 +18,7 @@ void ImageManipHost::run() {
             manip.build(config.base, config.outputFrameType, srcFrameSpecs, frame.getType());
             return manip.getOutputSize();
         },
-        [&](const std::shared_ptr<Memory> src, span<uint8_t> dst) { return manip.apply(src, dst); },
+        [&](std::shared_ptr<Memory>& src, span<uint8_t> dst) { return manip.apply(src, dst); },
         [&](const ImageManipConfigV2& config, const ImgFrame& srcFrame, ImgFrame& dstFrame) {
             auto outType = config.outputFrameType == ImgFrame::Type::NONE ? srcFrame.getType() : config.outputFrameType;
             auto dstSpecs = manip.getOutputFrameSpecs(outType);

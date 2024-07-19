@@ -82,7 +82,7 @@ class ImageManipV2 : public DeviceNodeCRTP<DeviceNode, ImageManipV2, ImageManipP
               const ImageManipConfigV2& initialConfig,
               std::shared_ptr<spdlog::async_logger> logger,
               std::function<size_t(const ImageManipConfigV2&, const ImgFrame&)> build,
-              std::function<bool(const std::shared_ptr<Memory>, span<uint8_t>)> apply,
+              std::function<bool(std::shared_ptr<Memory>&, span<uint8_t>)> apply,
               std::function<void(const ImageManipConfigV2&, const ImgFrame&, ImgFrame&)> getFrame);
 };
 
@@ -97,7 +97,7 @@ void ImageManipV2::loop(N& node,
                         const ImageManipConfigV2& initialConfig,
                         std::shared_ptr<spdlog::async_logger> logger,
                         std::function<size_t(const ImageManipConfigV2&, const ImgFrame&)> build,
-                        std::function<bool(const std::shared_ptr<Memory>, span<uint8_t>)> apply,
+                        std::function<bool(std::shared_ptr<Memory>&, span<uint8_t>)> apply,
                         std::function<void(const ImageManipConfigV2&, const ImgFrame&, ImgFrame&)> getFrame) {
     using namespace std::chrono;
     auto config = initialConfig;
@@ -128,17 +128,7 @@ void ImageManipV2::loop(N& node,
 
         if(needsImage) {
             inImage = node.inputImage.template get<ImgFrame>();
-#ifdef TARGET_DEVICE_RVC4
-            {
-                auto t1 = steady_clock::now();
-                // Converts or just returns the same pointer if already EvaData
-                inImageData = EvaDataMemory::convert(inImage->data);
-                auto t2 = steady_clock::now();
-                /*logger->info("Input image to EvaData convert time: {}us", duration_cast<microseconds>(t2 - t1).count());*/
-            }
-#else
             inImageData = inImage->data;
-#endif
             if(!hasConfig) {
                 auto _pConfig = node.inputConfig.template tryGet<ImageManipConfigV2>();
                 if(_pConfig != nullptr) {
@@ -146,7 +136,6 @@ void ImageManipV2::loop(N& node,
                     hasConfig = true;
                 }
             }
-
             if(skipImage) {
                 continue;
             }

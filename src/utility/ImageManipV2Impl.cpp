@@ -1,4 +1,4 @@
-#include "ImageManipV2Impl.hpp"
+#include "depthai/utility/ImageManipV2Impl.hpp"
 
 dai::impl::AEEResult dai::impl::manipGetSrcMask(const uint32_t width,
                                                 const uint32_t height,
