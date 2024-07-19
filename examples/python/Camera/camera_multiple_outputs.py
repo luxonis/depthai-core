@@ -4,6 +4,7 @@ import sys
 
 import cv2
 import depthai as dai
+import time
 
 # Create pipeline
 
@@ -16,6 +17,21 @@ def exit_usage() -> None:
         "and 30 is FPS"
     )
     exit(1)
+
+class FPSCounter:
+    def __init__(self):
+        self.frameTimes = []
+
+    def tick(self):
+        now = time.time()
+        self.frameTimes.append(now)
+        self.frameTimes = self.frameTimes[-100:]
+
+    def getFps(self):
+        if len(self.frameTimes) <= 1:
+            return 0
+        # Calculate the FPS
+        return (len(self.frameTimes) - 1) / (self.frameTimes[-1] - self.frameTimes[0])
 
 
 args = sys.argv[1:]
@@ -37,7 +53,7 @@ with dai.Pipeline() as pipeline:
             cap.resizeMode = dai.ImgResizeMode.LETTERBOX
         else:
             exit_usage()
-        cap.fps.fixed(int(args[i + 3]))
+        cap.fps.fixed(float(args[i + 3]))
         camArg = args[i + 4]
         socket: dai.CameraBoardSocket
         if camArg == "CAM_A":
@@ -57,17 +73,22 @@ with dai.Pipeline() as pipeline:
 
     # Connect to device and start pipeline
     pipeline.start()
+    FPSCounters = [FPSCounter() for _ in queues]
     while pipeline.isRunning():
         for index, queue in enumerate(queues):
             videoIn = queue.tryGet()
             if videoIn is not None:
+                FPSCounters[index].tick()
                 assert isinstance(videoIn, dai.ImgFrame)
                 print(
                     f"frame {videoIn.getWidth()}x{videoIn.getHeight()} | {videoIn.getSequenceNum()}: exposure={videoIn.getExposureTime()}us, timestamp: {videoIn.getTimestampDevice()}"
                 )
                 # Get BGR frame from NV12 encoded video frame to show with opencv
                 # Visualizing the frame on slower hosts might have overhead
-                cv2.imshow("video " + str(index), videoIn.getCvFrame())
+                cvFrame = videoIn.getCvFrame()
+                # Draw FPS
+                cv2.putText(cvFrame, f"{FPSCounters[index].getFps():.2f} FPS", (2, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0))
+                cv2.imshow("video " + str(index), cvFrame)
 
         if cv2.waitKey(1) == ord("q"):
             break
