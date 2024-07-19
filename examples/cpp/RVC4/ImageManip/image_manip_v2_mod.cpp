@@ -25,6 +25,7 @@ int main(int argc, char** argv) {
     // width 400 and height 400, then flip it vertically. At the end resize the frame to 1270x710 and keep the aspect ratio by cropping from the center. Set
     // output frame type to RGB888i.
     manip->initialConfig.setOutputSize(1270, 710, dai::ImageManipConfigV2::ResizeMode::CENTER_CROP);
+    manip->initialConfig.setBackgroundColor(100, 100, 100);
     manip->initialConfig.rotateDeg(45);
     manip->initialConfig.scale(0.5);
     manip->initialConfig.crop(50, 100, 200, 200);
