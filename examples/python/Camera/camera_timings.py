@@ -32,7 +32,7 @@ with dai.Pipeline() as pipeline:
     cameraNode = pipeline.create(dai.node.Camera)
     cameraNode.setBoardSocket(dai.CameraBoardSocket.CAM_A)
     cap = dai.ImgFrameCapability()
-    cap.type = dai.ImgFrame.Type.BGR888i
+    cap.type = dai.ImgFrame.Type.NV12
     cropArg = int(args[2])
     if cropArg == 0:
         cap.resizeMode = dai.ImgResizeMode.CROP
@@ -45,7 +45,7 @@ with dai.Pipeline() as pipeline:
     cap.size.fixed([int(args[0]), int(args[1])])
     cap.fps.fixed(int(args[3]))
     cameraNode.requestOutput(cap, False).link(script.inputs["frames"])
-    out = script.outputs["out"].createQueue()
+    out = script.outputs["out"].createOutputQueue()
     pipeline.start()
     nextSecondStart = time.time_ns() + 10**9
     fpsCount = 0
