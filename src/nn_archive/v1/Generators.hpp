@@ -83,6 +83,7 @@ namespace v1 {
         x.protosOutputs = get_stack_optional<std::string>(j, "protos_outputs");
         x.subtype = get_stack_optional<ObjectDetectionSubtypeYolo>(j, "subtype");
         x.yoloOutputs = get_stack_optional<std::vector<std::string>>(j, "yolo_outputs");
+        x.extraParams = j;
     }
 
     inline void to_json(json & j, const Metadata & x) {

@@ -3,7 +3,7 @@
 #include <optional>
 #include <string>
 #include <vector>
-
+#include <nlohmann/json.hpp>
 namespace dai {
 namespace nn_archive {
 namespace v1 {
@@ -243,6 +243,11 @@ struct Metadata {
      * A list of output names for each of the different YOLO grid sizes.
      */
     std::optional<std::vector<std::string>> yoloOutputs;
+
+    /**
+    * Additional parameters
+    */
+    nlohmann::json extraParams;
 };
 }  // namespace v1
 }  // namespace nn_archive

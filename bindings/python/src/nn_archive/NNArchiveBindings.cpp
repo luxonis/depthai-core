@@ -196,6 +196,7 @@ void NNArchiveBindings::bind(pybind11::module& m, void* pCallstack) {
     v1metadata.def_readwrite("protosOutputs", &v1::Metadata::protosOutputs, DOC(dai, nn_archive, v1, Metadata, protosOutputs));
     v1metadata.def_readwrite("subtype", &v1::Metadata::subtype, DOC(dai, nn_archive, v1, Metadata, subtype));
     v1metadata.def_readwrite("yoloOutputs", &v1::Metadata::yoloOutputs, DOC(dai, nn_archive, v1, Metadata, yoloOutputs));
+    v1metadata.def_readwrite("extraParams", &v1::Metadata::extraParams, DOC(dai, nn_archive, v1, Metadata, extraParams));
 
     v1metadataClass.def(py::init<>());
     v1metadataClass.def_readwrite("name", &v1::MetadataClass::name, DOC(dai, nn_archive, v1, MetadataClass, name));
