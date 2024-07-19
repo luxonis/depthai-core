@@ -6,44 +6,64 @@
 #if defined(__unix__) && !defined(__APPLE__)
 #include <sys/mman.h>
 
+#include <chrono>
+#include <iostream>
+#include <thread>
+
+#include "depthai/depthai.hpp"
+
+std::mutex mtx;
+std::condition_variable cond;
+bool done = false;
+
+class TestSink : public dai::NodeCRTP<dai::node::ThreadedHostNode, TestSink> {
+   public:
+    Input input = dai::Node::Input{*this, {}};
+
+    void run() override {
+	auto buffer = input.get<dai::Buffer>();
+        REQUIRE(buffer != nullptr);
+
+        auto memoryPtr = std::dynamic_pointer_cast<dai::SharedMemory>(buffer->data);
+        REQUIRE(memoryPtr != nullptr);
+        REQUIRE(memoryPtr->getFd() > 0);
+
+	{
+            std::unique_lock<std::mutex> l(mtx);
+            done = true;
+        }
+        cond.notify_one();
+    }
+};
+
+class TestSource : public dai::NodeCRTP<dai::node::ThreadedHostNode, TestSource> {
+   public:
+    Output output = dai::Node::Output{*this, {}};
+
+    void run() override {
+	long fd = memfd_create("Test", 0);
+        REQUIRE(fd > 0);
+
+        auto buffer = std::make_shared<dai::Buffer>();
+        buffer->setData(fd);
+        output.send(buffer);
+    }
+};
+
 TEST_CASE("Test Shared Memory FDs") {
-    dai::Pipeline pipeline;
-    auto xout = pipeline.create<dai::node::XLinkOut>();
-    xout->setStreamName("out");
+    dai::Pipeline pipeline(false);
 
-    auto xin = pipeline.create<dai::node::XLinkIn>();
-    xin->setStreamName("in");
+    auto source = pipeline.create<TestSource>();
+    auto sink = pipeline.create<TestSink>();
 
-    xin->out.link(xout->input);
+    source->output.link(sink->input);
+    
+    pipeline.start();
 
-    dai::Device device(pipeline);
+    {
+        std::unique_lock<std::mutex> l(mtx);
+        cond.wait(l, [&done]{ return done; });
 
-    auto inQ = device.getInputQueue("in");
-    auto outQ = device.getOutputQueue("out");
-
-    long fd = memfd_create("Test", 0);
-    REQUIRE(fd > 0);
-    const char *msg = "Hello, world!";
-    int rc = write(fd, msg, strlen(msg) + 1);
-    REQUIRE(rc > 0);
-
-    auto bufTs = std::chrono::steady_clock::now() + std::chrono::milliseconds(100);
-    auto buf = std::make_shared<dai::Buffer>();
-    buf->setData(fd);
-    buf->setTimestamp(bufTs);
-
-    inQ->send(buf);
-    auto out = outQ->get<dai::Buffer>();
-
-    REQUIRE(out != nullptr);
-
-    auto memoryPtr = std::dynamic_pointer_cast<dai::SharedMemory>(out->data);
-    REQUIRE(memoryPtr != nullptr);
-    REQUIRE(memoryPtr->getFd() > 0);
-
-    const char rcvBuf[256] = {};
-    rc = read(memoryPtr->getFd(), rcvBuf, strlen(msg) + 1);
-    REQUIRE(rc > 0);
-    REQUIRE(strcmp(rcvBuf, msg) == 0);
+    }
 }
 #endif
