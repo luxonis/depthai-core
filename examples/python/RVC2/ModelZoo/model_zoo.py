@@ -14,7 +14,7 @@ import depthai as dai
 modelDescription = dai.NNModelDescription.fromYamlFile("mymodel.yaml")
 
 # Return path to downloaded model - resnet18_xxx.blob for this example
-modelPath = dai.getModelFromZoo(modelDescription, verbose=True, useCached=True)
+modelPath = dai.getModelFromZoo(modelDescription, useCached=True)
 
 print("Using model cached at path: ", modelPath)
 

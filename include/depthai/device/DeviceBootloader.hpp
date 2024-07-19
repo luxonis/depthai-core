@@ -8,7 +8,6 @@
 
 // project
 #include "CallbackHandler.hpp"
-#include "DataQueue.hpp"
 #include "depthai/common/UsbSpeed.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"

@@ -21,7 +21,6 @@ class VectorMemory : public std::vector<std::uint8_t>, public Memory {
         std::vector<std::uint8_t>::operator=(std::move(d));
         return *this;
     }
-
     span<std::uint8_t> getData() override {
         return {data(), size()};
     }

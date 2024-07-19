@@ -11,9 +11,9 @@ hunter_config(
 
 hunter_config(
     XLink
-    VERSION "luxonis-2021.4.3-develop"
-    URL "https://github.com/luxonis/XLink/archive/061709357b06a74510b5b9e3e2832d9d80efd3ff.tar.gz"
-    SHA1 "affa1bdd7487cf70c9caf40365844967ae761ea3"
+    VERSION "luxonis-develop-server"
+    URL "https://github.com/luxonis/XLink/archive/585a38fe4707e5f023de277135d8cb6ff9c4e0c4.tar.gz"
+    SHA1 "d82827dec8b6f2702f4b31d8186fd70265cd0ca4"
     CMAKE_ARGS
         XLINK_ENABLE_LIBUSB=${DEPTHAI_ENABLE_LIBUSB}
 )
