@@ -130,11 +130,11 @@ void ImageManipV2::loop(N& node,
             inImage = node.inputImage.template get<ImgFrame>();
 #ifdef TARGET_DEVICE_RVC4
             {
+                auto t1 = steady_clock::now();
                 // Converts or just returns the same pointer if already EvaData
                 inImageData = EvaDataMemory::convert(inImage->data);
                 auto t2 = steady_clock::now();
-                wastedTime += duration_cast<microseconds>(t2 - t1);
-                logger->info("Input image to EvaData convert time: {}us", duration_cast<microseconds>(t2 - t1).count());
+                /*logger->info("Input image to EvaData convert time: {}us", duration_cast<microseconds>(t2 - t1).count());*/
             }
 #else
             inImageData = inImage->data;

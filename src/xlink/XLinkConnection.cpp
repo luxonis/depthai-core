@@ -139,7 +139,7 @@ std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices(XLinkDeviceState
     initialize();
 
     std::vector<DeviceInfo> devices;
-
+    std::vector<DeviceInfo> devicesFiltered;
     unsigned int numdev = 0;
     std::array<deviceDesc_t, 64> deviceDescAll = {};
     deviceDesc_t suitableDevice = {};
@@ -156,7 +156,35 @@ std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices(XLinkDeviceState
 
     for(unsigned i = 0; i < numdev; i++) {
         DeviceInfo info(deviceDescAll.at(i));
+        devices.push_back(info);
+    }
 
+    // Now also try to find all devices in the DEPTHAI_DEVICE_NAME_LIST (they were not found earlier if they were not in the same subnet)
+    std::string delimiter = ",";
+    for(auto& name : utility::splitList(allowedDeviceNames, delimiter)) {
+        deviceDesc_t desc = suitableDevice;
+        desc.name[sizeof(desc.name) - 1] = 0;
+        strncpy(desc.name, name.c_str(), sizeof(desc.name) - 1);
+        auto status = XLinkFindAllSuitableDevices(desc, deviceDescAll.data(), static_cast<unsigned int>(deviceDescAll.size()), &numdev);
+        if(status != X_LINK_SUCCESS) throw std::runtime_error("Couldn't retrieve all connected devices while searching by name");
+        for(unsigned i = 0; i < numdev; i++) {
+            DeviceInfo info(deviceDescAll.at(i));
+            Logging::getInstance().logger.debug("Found device by name: {}", info.toString());
+            // Check if device info was already found and is between the found devices
+            bool alreadyExists = false;
+            for(const auto& existingInfo : devices) {
+                if(existingInfo.getMxId() == info.getMxId()) {
+                    alreadyExists = true;
+                    break;
+                }
+            }
+            if(!alreadyExists) {
+                devices.push_back(info);
+            }
+        }
+    }
+
+    for(auto& info : devices) {
         if(skipInvalidDevices) {
             if(info.status == X_LINK_SUCCESS) {
                 // device is okay
@@ -175,11 +203,11 @@ std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices(XLinkDeviceState
         bool allowedId = allowedDeviceIds.find(info.getMxId()) != std::string::npos || allowedDeviceIds.empty();
         bool allowedName = allowedDeviceNames.find(info.name) != std::string::npos || allowedDeviceNames.empty();
         if(allowedMxId && allowedId && allowedName) {
-            devices.push_back(info);
+            devicesFiltered.push_back(info);
         }
     }
 
-    return devices;
+    return devicesFiltered;
 }
 
 std::tuple<bool, DeviceInfo> XLinkConnection::getFirstDevice(XLinkDeviceState_t state, bool skipInvalidDevice) {
