@@ -5,6 +5,7 @@
 
 #include <array>
 #include <nlohmann/json.hpp>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -186,7 +187,7 @@ struct ManipOp {
 
 class ImageManipOpsBase {
    public:
-    enum class Background : uint8_t { COLOR, REPLICATE, MIRROR };
+    enum class Background : uint8_t { COLOR/* , REPLICATE, MIRROR */ }; // TODO(asahtik): replicate impl
     enum class ResizeMode : uint8_t { NONE, STRETCH, LETTERBOX, CENTER_CROP };
 
    protected:
@@ -198,9 +199,9 @@ class ImageManipOpsBase {
     bool center = false;
     ResizeMode resizeMode = ResizeMode::NONE;
     Background background = Background::COLOR;
-    uint8_t red = 0;
-    uint8_t green = 0;
-    uint8_t blue = 0;
+    uint8_t backgroundR = 0;
+    uint8_t backgroundG = 0;
+    uint8_t backgroundB = 0;
     Colormap colormap = Colormap::NONE;
 
     ImageManipOpsBase() = default;
@@ -307,16 +308,25 @@ class ImageManipOpsBase {
 
     ImageManipOpsBase& setBackgroundColor(uint8_t red, uint8_t green, uint8_t blue) {
         background = Background::COLOR;
-        this->red = red;
-        this->green = green;
-        this->blue = blue;
+        backgroundR = red;
+        backgroundG = green;
+        backgroundB = blue;
         return *this;
     }
 
-    ImageManipOpsBase& setBackgroundReplicate() {
-        background = Background::REPLICATE;
+    ImageManipOpsBase& setBackgroundColor(uint8_t val) {
+        background = Background::COLOR;
+        backgroundR = val;
+        backgroundG = val;
+        backgroundB = val;
         return *this;
     }
+
+    // ImageManipOpsBase& setBackgroundReplicate() {
+    //     throw std::runtime_error("Not implemented");
+    //     background = Background::REPLICATE;
+    //     return *this;
+    // }
 
     ImageManipOpsBase& setColormap(Colormap clr) {
         colormap = clr;
@@ -332,7 +342,7 @@ class ImageManipOpsBase {
         return *this;
     }
 
-    DEPTHAI_SERIALIZE(ImageManipOpsBase, operations, outputWidth, outputHeight, center, resizeMode, background, red, green, blue, colormap);
+    DEPTHAI_SERIALIZE(ImageManipOpsBase, operations, outputWidth, outputHeight, center, resizeMode, background, backgroundR, backgroundG, backgroundB, colormap);
 };
 
 /**
@@ -438,6 +448,18 @@ class ImageManipConfigV2 : public Buffer {
      * @param colormap Colormap type to be applied
      */
     ImageManipConfigV2& setColormap(Colormap colormap);
+    /**
+     * Sets the rgb background color of the output image
+     * @param red Red component of the background color
+     * @param green Green component of the background color
+     * @param blue Blue component of the background color
+     */
+    ImageManipConfigV2& setBackgroundColor(uint8_t red, uint8_t green, uint8_t blue);
+    /**
+     * Sets the grayscale background color of the output image
+     * @param val Grayscale value of the background color
+     */
+    ImageManipConfigV2& setBackgroundColor(uint8_t val);
     /**
      * Sets the frame type of the output image
      * @param frameType Frame type of the output image

@@ -34,10 +34,10 @@ int main(int argc, char** argv) {
         for(const auto to : supportedTypesTo) {
             for(unsigned int i = 0; i < NUM_FRAMES_PER_CONFIG * (argc - 1); i++) {
                 cv::Mat frame = cv::imread(filenames[i / NUM_FRAMES_PER_CONFIG], cv::IMREAD_COLOR);
-                cv::resize(frame, frame, cv::Size(640, 480));
                 if(frame.empty()) {
                     std::cerr << "File not found: " << filenames[i / NUM_FRAMES_PER_CONFIG] << std::endl;
                 }
+                cv::resize(frame, frame, cv::Size(640, 480));
                 dai::ImgFrame imgFrame;
                 imgFrame.setCvFrame(frame, from);
                 dai::ImageManipConfigV2 config;

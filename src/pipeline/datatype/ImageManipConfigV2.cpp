@@ -64,6 +64,14 @@ ImageManipConfigV2& ImageManipConfigV2::setColormap(Colormap colormap) {
     base.setColormap(colormap);
     return *this;
 }
+ImageManipConfigV2& ImageManipConfigV2::setBackgroundColor(uint8_t red, uint8_t green, uint8_t blue) {
+    base.setBackgroundColor(red, green, blue);
+    return *this;
+}
+ImageManipConfigV2& ImageManipConfigV2::setBackgroundColor(uint8_t val) {
+    base.setBackgroundColor(val);
+    return *this;
+}
 ImageManipConfigV2& ImageManipConfigV2::setFrameType(ImgFrame::Type frameType) {
     outputFrameType = frameType;
     return *this;

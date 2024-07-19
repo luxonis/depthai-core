@@ -5,7 +5,6 @@
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/node/host/Display.hpp"
 
-using namespace dai::impl;
 int main(int argc, char** argv) {
     std::shared_ptr<dai::Device> device = nullptr;
     if(argc <= 1) {

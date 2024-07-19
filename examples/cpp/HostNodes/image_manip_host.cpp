@@ -6,7 +6,6 @@
 #include "depthai/pipeline/node/host/ImageManipHost.hpp"
 #include "depthai/pipeline/node/host/Replay.hpp"
 
-using namespace dai::impl;
 int main(int argc, char** argv) {
     if(argc <= 1) {
         std::cout << "Video parameter is missing" << std::endl;
@@ -21,12 +20,13 @@ int main(int argc, char** argv) {
     auto manip = pipeline.create<dai::node::ImageManipHost>();
     // After doing the rest of the operations, resize the frame to 1270x710 and keep the aspect ratio by cropping from the center
     manip->setMaxOutputFrameSize(4000000);
-    manip->initialConfig.setOutputSize(1270, 710, dai::ImageManipConfigV2::ResizeMode::CENTER_CROP);
+    manip->initialConfig.setOutputSize(1280, 720, dai::ImageManipConfigV2::ResizeMode::LETTERBOX);
+    manip->initialConfig.setBackgroundColor(100, 100, 100);
     manip->initialConfig.rotateDeg(45);
-    manip->initialConfig.crop(0, 0, 400, 400);
+    manip->initialConfig.crop(100, 100, 800, 600);
     manip->initialConfig.scale(0.5);
     manip->initialConfig.flipVertical();
-    manip->initialConfig.setFrameType(dai::ImgFrame::Type::NV12);
+    manip->initialConfig.setFrameType(dai::ImgFrame::Type::RGB888p);
 
     replay->setReplayVideoFile(argv[1]);
     replay->setOutFrameType(dai::ImgFrame::Type::NV12);
