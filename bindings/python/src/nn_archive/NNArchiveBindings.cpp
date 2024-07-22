@@ -90,7 +90,7 @@ void NNArchiveBindings::bind(pybind11::module& m, void* pCallstack) {
     nnArchive.def("getArchiveType", &NNArchive::getArchiveType, DOC(dai, NNArchive, getArchiveType));
 
     // Bind NNArchive options
-    nnArchiveOptions.def(py::init<>(), DOC(dai, NNArchiveOptions, NNArchiveOptions));
+    nnArchiveOptions.def(py::init<>());
     nnArchiveOptions.def_property(
         "compression",
         [](const NNArchiveOptions& opt) { return opt.compression(); },
