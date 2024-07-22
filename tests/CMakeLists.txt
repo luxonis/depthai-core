@@ -18,11 +18,117 @@ set(test_poe_env
     "UBSAN_OPTIONS=halt_on_error=1"
     # DepthAI
     "DEPTHAI_PROTOCOL=tcpshd;DEPTHAI_SEARCH_TIMEOUT=15000"
-)
+    )
+
+include(CMakeParseArguments)
+
+# Create a new onhost test
+function(dai_add_onhost_test test_name test_src)
+
+    # parse arguments
+    cmake_parse_arguments(DAT "CONFORMING" "CXX_STANDARD" "" ${ARGN})
+
+    # Create test executable
+    add_executable(${test_name} ${test_src})
+    add_default_flags(${test_name} LEAN)
+
+    # Add to clangformat target
+    if(COMMAND target_clangformat_setup)
+        target_clangformat_setup(${test_name} "")
+    endif()
+
+    if(NOT DEPTHAI_MERGED_TARGET)
+        target_link_libraries(${test_name} PRIVATE depthai::opencv ${OpenCV_LIBS} Catch2::Catch2WithMain Threads::Threads)
+    else()
+        target_link_libraries(${test_name} PRIVATE depthai::core ${OpenCV_LIBS} Catch2::Catch2WithMain Threads::Threads)
+    endif()
+
+    # Add sanitizers for tests as well
+    if(COMMAND add_sanitizers)
+        add_sanitizers(${test_name})
+    endif()
+
+    add_test(${test_name} ${test_name})
+    set_tests_properties(${test_name} PROPERTIES LABELS "onhost")
+endfunction()
+
+# Create two tests for USB and PoE devices
+function(dai_add_ondevice_test test_name test_src)
+
+    # parse arguments
+    cmake_parse_arguments(DAT "CONFORMING" "CXX_STANDARD" "" ${ARGN})
+
+    # Create test executable
+    add_executable(${test_name} ${test_src})
+    add_default_flags(${test_name} LEAN)
+    target_compile_options(${test_name} PRIVATE "${CMAKE_CXX${DAT_CXX_STANDARD}_STANDARD_COMPILE_OPTION}")
+
+    # Add to clangformat target
+    if(COMMAND target_clangformat_setup)
+        target_clangformat_setup(${test_name} "")
+    endif()
+
+    # Link to core and Catch2 testing framework
+    if(NOT DEPTHAI_MERGED_TARGET)
+        target_link_libraries(${test_name} PRIVATE depthai::opencv ${OpenCV_LIBS} Catch2::Catch2WithMain Threads::Threads)
+    else()
+        target_link_libraries(${test_name} PRIVATE depthai::core ${OpenCV_LIBS} Catch2::Catch2WithMain Threads::Threads)
+    endif()
+
+    # Add sanitizers for tests as well
+    if(COMMAND add_sanitizers)
+        add_sanitizers(${test_name})
+    endif()
+
+    # Add USB test variant
+    add_test(${test_name}_usb ${test_name})
+    set_tests_properties(${test_name}_usb PROPERTIES ENVIRONMENT "${test_usb_env}" LABELS "ondevice_usb")
+
+    # Add PoE test variant
+    add_test(${test_name}_poe ${test_name})
+    set_tests_properties(${test_name}_poe PROPERTIES ENVIRONMENT "${test_poe_env}" LABELS "ondevice_poe")
+
+    # Add conforming variants
+    if(MSVC AND DAT_CONFORMING) 
+        # Create test executable with MSVC conforming preprocessor
+        add_executable(${test_name}_conforming_usb ${test_src})
+        add_default_flags(${test_name}_conforming_usb LEAN)
+        add_executable(${test_name}_conforming_poe ${test_src})
+        add_default_flags(${test_name}_conforming_poe LEAN)
+
+        # Link to core and Catch2 testing framework
+        if(NOT DEPTHAI_MERGED_TARGET)
+            target_link_libraries(${test_name}_conforming_usb PRIVATE depthai::opencv ${OpenCV_LIBS} Catch2::Catch2WithMain Threads::Threads)
+            target_link_libraries(${test_name}_conforming_poe PRIVATE depthai::opencv ${OpenCV_LIBS} Catch2::Catch2WithMain Threads::Threads)
+        else()
+            target_link_libraries(${test_name}_conforming_usb PRIVATE depthai::core ${OpenCV_LIBS} Catch2::Catch2WithMain Threads::Threads)
+            target_link_libraries(${test_name}_conforming_poe PRIVATE depthai::core ${OpenCV_LIBS} Catch2::Catch2WithMain Threads::Threads)
+        endif()
+
+        # Set compiler c++ standard
+        target_compile_options(${test_name}_conforming_usb PRIVATE "${CMAKE_CXX${DAT_CXX_STANDARD}_STANDARD_COMPILE_OPTION}")
+        target_compile_options(${test_name}_conforming_poe PRIVATE "${CMAKE_CXX${DAT_CXX_STANDARD}_STANDARD_COMPILE_OPTION}")
+
+        if(MSVC_VERSION LESS 1925)
+            target_compile_options(${test_name}_conforming_usb PRIVATE "/experimental:preprocessor")
+            target_compile_options(${test_name}_conforming_poe PRIVATE "/experimental:preprocessor")
+        else()
+            target_compile_options(${test_name}_conforming_usb PRIVATE "/Zc:preprocessor")
+            target_compile_options(${test_name}_conforming_poe PRIVATE "/Zc:preprocessor")
+        endif()
+
+        # Add to list of tests
+        add_test(${test_name}_conforming_usb ${test_name}_conforming_usb)
+        add_test(${test_name}_conforming_poe ${test_name}_conforming_poe)
+
+        # Add ubsan halt on error
+        set_tests_properties(${test_name}_conforming_usb PROPERTIES ENVIRONMENT "${test_usb_env}" LABELS "${test_type}_usb")
+        set_tests_properties(${test_name}_conforming_poe PROPERTIES ENVIRONMENT "${test_poe_env}" LABELS "${test_type}_poe")
+    endif()
+
+endfunction()
 
 # Function for adding new tests
-# Creates separate tests for USB and PoE devices
-include(CMakeParseArguments)
 function(dai_add_test test_name test_src test_type)
 
     # Check test type
@@ -42,69 +148,12 @@ function(dai_add_test test_name test_src test_type)
         return()
     endif()
 
-    # Create test executable
-    add_executable(${test_name} ${test_src})
-    add_default_flags(${test_name} LEAN)
-
-    # Add to clangformat target
-    if(COMMAND target_clangformat_setup)
-        target_clangformat_setup(${test_name} "")
+    if(("${test_type}" STREQUAL "onhost"))
+        dai_add_onhost_test(${test_name} ${test_src} ${ARGN})
     endif()
 
-    # Link to core and Catch2 testing framework
-    if(NOT DEPTHAI_MERGED_TARGET)
-        target_link_libraries(${test_name} PRIVATE depthai::opencv ${OpenCV_LIBS} Catch2::Catch2WithMain Threads::Threads)
-    else()
-        target_link_libraries(${test_name} PRIVATE depthai::core ${OpenCV_LIBS} Catch2::Catch2WithMain Threads::Threads)
-    endif()
-
-    # Add sanitizers for tests as well
-    if(COMMAND add_sanitizers)
-        add_sanitizers(${test_name})
-    endif()
-
-    # Set compiler c++ standard
-    target_compile_options(${test_name} PRIVATE "${CMAKE_CXX${DAT_CXX_STANDARD}_STANDARD_COMPILE_OPTION}")
-
-    # Add to list of tests
-    add_test(${test_name} ${test_name})
-    # Add ubsan halt on error
-    set_tests_properties(${test_name} PROPERTIES ENVIRONMENT "${test_usb_env}" LABELS "${test_type}_usb")
-
-    # add a conforming preprocessor test (serialization macros) if MSVC and CONFORMING option set on function call
-    if(MSVC AND DAT_CONFORMING)
-        # Create test executable with MSVC conforming preprocessor
-        add_executable(${test_name}_conforming ${test_src})
-        add_default_flags(${test_name}_conforming LEAN)
-
-        # Link to core and Catch2 testing framework
-        target_link_libraries(${test_name}_conforming PRIVATE depthai-core Catch2::Catch2WithMain Threads::Threads)
-
-        # Set compiler c++ standard
-        target_compile_options(${test_name}_conforming PRIVATE "${CMAKE_CXX${DAT_CXX_STANDARD}_STANDARD_COMPILE_OPTION}")
-
-        if(MSVC_VERSION LESS 1925)
-            target_compile_options(${test_name}_conforming PRIVATE "/experimental:preprocessor")
-        else()
-            target_compile_options(${test_name}_conforming PRIVATE "/Zc:preprocessor")
-        endif()
-
-        # Add to list of tests
-        add_test(${test_name}_conforming ${test_name}_conforming)
-
-        # Add ubsan halt on error
-        set_tests_properties(${test_name}_conforming PROPERTIES ENVIRONMENT "${test_usb_env}" LABELS "${test_type}_usb")
-    endif()
-
-    # Add PoE test variants
-    add_test(${test_name}_poe ${test_name})
-    # Add ubsan halt on error
-    set_tests_properties(${test_name}_poe PROPERTIES ENVIRONMENT "${test_poe_env}" LABELS "${test_type}_poe")
-    if(MSVC AND DAT_CONFORMING)
-        # Add to list of tests
-        add_test(${test_name}_conforming_poe ${test_name}_conforming)
-        # Add ubsan halt on error
-        set_tests_properties(${test_name}_conforming_poe PROPERTIES ENVIRONMENT "${test_poe_env}" LABELS "${test_type}_poe")
+    if(("${test_type}" STREQUAL "ondevice"))
+        dai_add_ondevice_test(${test_name} ${test_src} ${ARGN})
     endif()
 
     # Copy over required DLLs (Windows)
@@ -267,10 +316,11 @@ dai_add_test(bootloader_version_test src/onhost_tests/bootloader_version_test.cp
 # Bootloader configuration tests
 dai_add_test(bootloader_config_test src/onhost_tests/bootloader_config_test.cpp onhost)
 
-
 dai_add_test(env_test src/onhost_tests/env_test.cpp onhost)
 
-### On-device tests
+### On-device tests ####################################################################################
+### On-device tests ####################################################################################
+### On-device tests ####################################################################################
 
 # Depthai logging test
 dai_add_test(logging_test src/ondevice_tests/logging_test.cpp ondevice)
