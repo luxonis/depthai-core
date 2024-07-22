@@ -104,7 +104,7 @@ void RecordVideo::run() {
                     }
                     assert(frame.isContinuous());
                     span cvData(frame.data, frame.total() * frame.elemSize());
-                    videoRecorder->write(cvData);
+                    videoRecorder->write(cvData, frame.step);
                     if(recordMetadata) {
                         utility::VideoRecordSchema record;
                         record.timestamp.set(std::chrono::duration_cast<std::chrono::nanoseconds>(imgFrame->getTimestampDevice().time_since_epoch()));

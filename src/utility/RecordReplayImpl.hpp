@@ -9,7 +9,7 @@ class VideoRecorder {
 
     ~VideoRecorder();
     void init(const std::string& filePath, unsigned int width, unsigned int height, unsigned int fps, VideoCodec codec);
-    void write(span<uint8_t>&);
+    void write(span<uint8_t>&, const uint32_t stride = 0);
     void close();
     bool isInitialized() const {
         return initialized;
