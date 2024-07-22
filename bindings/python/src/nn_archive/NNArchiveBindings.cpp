@@ -139,7 +139,7 @@ void NNArchiveBindings::bind(pybind11::module& m, void* pCallstack) {
     v1configVersion.value("THE_10", v1::ConfigVersion::THE_10);
 
     v1config.def(py::init<>());
-    v1config.def(py::init<v1::ConfigVersion, v1::Model>(), py::arg("configVersion"), py::arg("model"), DOC(dai, nn_archive, v1, Config, Config));
+    v1config.def(py::init<v1::ConfigVersion, v1::Model>(), py::arg("configVersion"), py::arg("model"));
     v1config.def_readwrite("configVersion", &v1::Config::configVersion, DOC(dai, nn_archive, v1, Config, configVersion));
     v1config.def_readwrite("model", &v1::Config::model, DOC(dai, nn_archive, v1, Config, model));
 
