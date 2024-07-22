@@ -27,7 +27,8 @@ NNArchive::NNArchive(const std::string& archivePath, NNArchiveOptions options) :
             superblobPtr.reset(new OpenVINO::SuperBlob(readModelFromArchive(archivePath, modelPathInArchive)));
             break;
         case NNArchiveType::OTHER:
-            unpackArchiveInDirectory(archivePath, std::filesystem::path(archiveOptions.extractFolder()) / std::filesystem::path(archivePath).filename());
+            unpackArchiveInDirectory(archivePath,
+                                     (std::filesystem::path(archiveOptions.extractFolder()) / std::filesystem::path(archivePath).filename()).string());
             unpackedModelPath = std::filesystem::path(archiveOptions.extractFolder()) / std::filesystem::path(archivePath).filename() / modelPathInArchive;
             break;
         default:
