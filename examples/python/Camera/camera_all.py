@@ -14,6 +14,9 @@ with dai.Pipeline(device) as pipeline:
         if(cameraFeature.sensorName == "IMX586"):
             cap = dai.ImgFrameCapability()
             cap.size.fixed((4000, 3000))
+        elif(cameraFeature.sensorName == "IMX378"):
+            cap = dai.ImgFrameCapability()
+            cap.size.fixed((4056, 3040))
         elif(cameraFeature.sensorName == "OV9282"):
             cap = dai.ImgFrameCapability()
             cap.size.fixed((1280, 800))
