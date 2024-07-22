@@ -29,7 +29,8 @@ NNArchive::NNArchive(const std::string& archivePath, NNArchiveOptions options) :
         case NNArchiveType::OTHER:
             unpackArchiveInDirectory(archivePath,
                                      (std::filesystem::path(archiveOptions.extractFolder()) / std::filesystem::path(archivePath).filename()).string());
-            unpackedModelPath = std::filesystem::path(archiveOptions.extractFolder()) / std::filesystem::path(archivePath).filename() / modelPathInArchive;
+            unpackedModelPath =
+                (std::filesystem::path(archiveOptions.extractFolder()) / std::filesystem::path(archivePath).filename() / modelPathInArchive).string();
             break;
         default:
             DAI_CHECK(false, "Unknown archive type");
