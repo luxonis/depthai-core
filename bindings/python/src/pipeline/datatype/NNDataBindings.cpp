@@ -188,19 +188,19 @@ void bind_nndata(pybind11::module& m, void* pCallstack){
         .def("addTensor", static_cast<NNData&(NNData::*)(const std::string&, const xt::xarray<double>&)>(&NNData::addTensor), py::arg("name"), py::arg("tensor"), DOC(dai, NNData, addTensor, 2))
         .def("getTensor", [](NNData& obj, const std::string& name, bool dequantize) -> py::object {
             const auto datatype = obj.getTensorDatatype(name);
-            if(datatype == dai::TensorInfo::DataType::U8F) {
-                return py::cast(obj.getTensor<int>(name, dequantize));
-            }
-            else {
+            if(datatype == dai::TensorInfo::DataType::U8F && !dequantize) {
+                // In case of dequantization, we should always return float
+                return py::cast(obj.getTensor<int>(name));
+            } else {
                 return py::cast(obj.getTensor<float>(name, dequantize));
             }
         }, py::arg("name"), py::arg("dequantize") = false, DOC(dai, NNData, getTensor))
         .def("getFirstTensor", [](NNData& obj, bool dequantize) -> py::object {
             const auto datatype = obj.getFirstTensorDatatype();
-            if(datatype == dai::TensorInfo::DataType::U8F) {
-                return py::cast(obj.getFirstTensor<int>(dequantize));
-            }
-            else {
+            if(datatype == dai::TensorInfo::DataType::U8F && !dequantize) {
+                // In case of dequantization, we should always return float
+                return py::cast(obj.getFirstTensor<int>());
+            } else {
                 return py::cast(obj.getFirstTensor<float>(dequantize));
             }
         }, py::arg("dequantize") = false, DOC(dai, NNData, getFirstTensor))
