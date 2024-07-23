@@ -2,18 +2,21 @@
 
 import time
 import depthai as dai
-from pathlib import Path
+
 # Describe the model I want to download - two options: in program or from yaml file
 
 # Option 1: In program
 # modelDescription = dai.NNModelDescription()
-# modelDescription.modelSlug = "ales-test"
-# modelDescription.modelPath = "RVC2"
+# modelDescription.modelSlug = "yolov6n"
+# modelDescription.platform = "RVC2"
 
 # Option 2: From yaml file
 modelDescription = dai.NNModelDescription.fromYamlFile("mymodel.yaml")
 
-# Return path to downloaded model - resnet18_xxx.blob for this example
+# If you want, you can store the model description in a yaml file
+modelDescription.saveToYamlFile("mymodel.yaml")
+
+# Return path to downloaded model - yolov6n-r2-288x512.tar.xz for this example
 modelPath = dai.getModelFromZoo(modelDescription, useCached=True)
 print("Using model cached at path: ", modelPath)
 
@@ -28,7 +31,7 @@ with dai.Pipeline() as pipeline:
 
     # It's even possible to download a model for the used device
     # modelDescription = dai.NNModelDescription()
-    # modelDescription.modelSlug = "ales-test"
+    # modelDescription.modelSlug = "yolov6n"
 
     #  The two are equivalent
     # modelDescription.platform = pipeline.getDefaultDevice().getPlatformAsString()
