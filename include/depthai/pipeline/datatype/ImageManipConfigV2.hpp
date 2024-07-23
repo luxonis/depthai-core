@@ -4,7 +4,9 @@
 #include <spdlog/async_logger.h>
 
 #include <array>
+#include <locale>
 #include <nlohmann/json.hpp>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -33,7 +35,10 @@ struct Translate : OpBase {
     Translate(float offsetX, float offsetY, bool normalized = false) : offsetX(offsetX), offsetY(offsetY), normalized(normalized) {}
 
     std::string toStr() const override {
-        return "T:x=" + std::to_string(offsetX) + ",y=" + std::to_string(offsetY) + ",n=" + std::to_string(normalized);
+        std::stringstream ss;
+        ss.imbue(std::locale(""));
+        ss << "T:x=" << offsetX << ",y=" << offsetY << ",n=" << normalized;
+        return ss.str();
     }
 
     DEPTHAI_SERIALIZE(Translate, offsetX, offsetY, normalized);
@@ -51,8 +56,11 @@ struct Rotate : OpBase {
         : angle(angle), center(center), offsetX(offsetX), offsetY(offsetY), normalized(normalized) {}
 
     std::string toStr() const override {
-        return "Rot:a=" + std::to_string(angle) + ",c=" + std::to_string(center) + ",x=" + std::to_string(offsetX) + ",y" + std::to_string(offsetY)
-               + ",n=" + std::to_string(normalized);
+        std::stringstream ss;
+        ss.imbue(std::locale(""));
+        ss << "Rot:a=" << angle << ",c=" << center << ",x=" << offsetX << ",y" << offsetY
+           << ",n=" << normalized;
+        return ss.str();
     }
 
     DEPTHAI_SERIALIZE(Rotate, angle, center, offsetX, offsetY, normalized);
@@ -81,7 +89,10 @@ struct Resize : OpBase {
     }
 
     std::string toStr() const override {
-        return "Res:w=" + std::to_string(width) + ",h=" + std::to_string(height) + ",n=" + std::to_string(normalized) + ",m=" + std::to_string(mode);
+        std::stringstream ss;
+        ss.imbue(std::locale(""));
+        ss << "Res:w=" << width << ",h=" << height << ",n=" << normalized << ",m=" << mode;
+        return ss.str();
     }
 
     DEPTHAI_SERIALIZE(Resize, width, height, normalized, mode);
@@ -96,7 +107,10 @@ struct Flip : OpBase {
     explicit Flip(Direction direction, bool center = true) : direction(direction), center(center) {}
 
     std::string toStr() const override {
-        return "F:d=" + std::to_string(direction) + ",c=" + std::to_string(center);
+        std::stringstream ss;
+        ss.imbue(std::locale(""));
+        ss << "F:d=" << direction << ",c=" << center;
+        return ss.str();
     }
 
     DEPTHAI_SERIALIZE(Flip, direction, center);
@@ -109,7 +123,10 @@ struct Affine : OpBase {
     explicit Affine(std::array<float, 4> matrix) : matrix(matrix) {}
 
     std::string toStr() const override {
-        return "A:m=" + std::to_string(matrix[0]) + "," + std::to_string(matrix[1]) + "," + std::to_string(matrix[2]) + "," + std::to_string(matrix[3]);
+        std::stringstream ss;
+        ss.imbue(std::locale(""));
+        ss << "A:m=" << matrix[0] << "," << matrix[1] << "," << matrix[2] << "," << matrix[3];
+        return ss.str();
     }
 
     DEPTHAI_SERIALIZE(Affine, matrix);
@@ -122,9 +139,12 @@ struct Perspective : OpBase {
     explicit Perspective(std::array<float, 9> matrix) : matrix(matrix) {}
 
     std::string toStr() const override {
-        return "P:m=" + std::to_string(matrix[0]) + "," + std::to_string(matrix[1]) + "," + std::to_string(matrix[2]) + "," + std::to_string(matrix[3]) + ","
-               + std::to_string(matrix[4]) + "," + std::to_string(matrix[5]) + "," + std::to_string(matrix[6]) + "," + std::to_string(matrix[7]) + ","
-               + std::to_string(matrix[8]);
+        std::stringstream ss;
+        ss.imbue(std::locale(""));
+        ss << "P:m=" << matrix[0] << "," << matrix[1] << "," << matrix[2] << "," << matrix[3]
+           << "," << matrix[4] << "," << matrix[5] << "," << matrix[6] << "," << matrix[7]
+           << "," << matrix[8];
+        return ss.str();
     }
 
     DEPTHAI_SERIALIZE(Perspective, matrix);
@@ -139,11 +159,14 @@ struct FourPoints : OpBase {
     FourPoints(std::array<dai::Point2f, 4> src, std::array<dai::Point2f, 4> dst, bool normalized = false) : src(src), dst(dst), normalized(normalized) {}
 
     std::string toStr() const override {
-        return "4P:s1=" + std::to_string(src[0].x) + "," + std::to_string(src[0].y) + ",s2=" + std::to_string(src[1].x) + "," + std::to_string(src[1].y)
-               + ",s3=" + std::to_string(src[2].x) + "," + std::to_string(src[2].y) + ",s4=" + std::to_string(src[3].x) + "," + std::to_string(src[3].y)
-               + "d1=" + std::to_string(dst[0].x) + "," + std::to_string(dst[0].y) + ",d2=" + std::to_string(dst[1].x) + "," + std::to_string(dst[1].y)
-               + ",d3=" + std::to_string(dst[2].x) + "," + std::to_string(dst[2].y) + ",d4=" + std::to_string(dst[3].x) + "," + std::to_string(dst[3].y)
-               + ",d=" + std::to_string(normalized);
+        std::stringstream ss;
+        ss.imbue(std::locale(""));
+        ss << "4P:s1=" << src[0].x << "," << src[0].y << ",s2=" << src[1].x << "," << src[1].y
+                  << ",s3=" << src[2].x << "," << src[2].y << ",s4=" << src[3].x << "," << src[3].y
+                  << "d1=" << dst[0].x << "," << dst[0].y << ",d2=" << dst[1].x << "," << dst[1].y
+                  << ",d3=" << dst[2].x << "," << dst[2].y << ",d4=" << dst[3].x << "," << dst[3].y
+                  << ",d=" << normalized;
+        return ss.str();
     }
 
     DEPTHAI_SERIALIZE(FourPoints, src, dst, normalized);
@@ -163,7 +186,10 @@ struct Crop : OpBase {
     }
 
     std::string toStr() const override {
-        return "C:w=" + std::to_string(width) + ",h=" + std::to_string(height) + ",n=" + std::to_string(normalized) + ",c=" + std::to_string(center);
+        std::stringstream ss;
+        ss.imbue(std::locale(""));
+        ss << "C:w=" << width << ",h=" << height << ",n=" << normalized << ",c=" << center;
+        return ss.str();
     }
 
     DEPTHAI_SERIALIZE(Crop, width, height, normalized, center);

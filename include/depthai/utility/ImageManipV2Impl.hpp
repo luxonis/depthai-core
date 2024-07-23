@@ -2219,7 +2219,7 @@ ImageManipOperations<ImageManipBuffer, ImageManipData>& ImageManipOperations<Ima
                                                                                                                       ImgFrame::Type outType,
                                                                                                                       FrameSpecs srcFrameSpecs,
                                                                                                                       ImgFrame::Type inFrameType) {
-    auto newCfgStr = getConfigString(newBase);
+    const auto newCfgStr = getConfigString(newBase);
     if(newCfgStr == prevConfig && outType == outputFrameType && srcFrameSpecs.width == srcSpecs.width && srcFrameSpecs.height == srcSpecs.height
        && inFrameType == inType)
         return *this;
