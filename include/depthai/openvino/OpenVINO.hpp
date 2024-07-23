@@ -65,6 +65,13 @@ class OpenVINO {
         /**
          * @brief Construct a new SuperBlob object
          *
+         * @param data: In memory superblob data
+         */
+        SuperBlob(std::vector<uint8_t> data);
+
+        /**
+         * @brief Construct a new SuperBlob object
+         *
          * @param pathToSuperBlobFile: Path to the superblob file (.superblob suffix)
          */
         SuperBlob(const std::string& pathToSuperBlobFile);

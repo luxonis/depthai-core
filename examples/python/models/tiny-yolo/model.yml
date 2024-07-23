@@ -32,9 +32,9 @@ files:
     size: 5647272
     sha256: 82fe09ad02799c00e6a2b8814015969ae5d4479c952c4c0b5b4977e630bdc675
     source: https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/yolov6n_416x416_openvino2022.1_vpux.blob
-  - name: yolov10n.dlc
-    size: 5544721
-    sha256: ae6dd24631e7c292876c31d2df8371330df1201c2a8ec6f404692658a4dc05d5
-    source: https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/yolov10n.dlc
+  - name: yolo_blob_nnarchive.tar.xz
+    size: 8689664
+    sha256: b6aaabbeffcf4a41c2b2cee1869767751cd1ab4a905a7d591296fe03a7788192
+    source: https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/nnarchive/yolo_blob_nnarchive.tar.xz
 framework: dldt
 license: https://raw.githubusercontent.com/openvinotoolkit/open_model_zoo/master/LICENSE

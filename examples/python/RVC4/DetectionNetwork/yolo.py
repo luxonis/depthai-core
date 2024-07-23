@@ -26,7 +26,11 @@ labelMap = [
 examplesRoot = Path(__file__).parent / Path('../../').resolve()
 models = examplesRoot / Path('models')
 videoPath = models / Path('construction_vest.mp4')
-modelPath = models / Path('yolov10n.dlc')
+
+# Download yolo model from zoo
+modelDescription = dai.NNModelDescription(modelSlug="yolov10n", platform="RVC4")
+modelPath = dai.getModelFromZoo(modelDescription, useCached=True)
+
 # Create pipeline
 with dai.Pipeline() as pipeline:
 

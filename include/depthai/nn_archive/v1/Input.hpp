@@ -32,7 +32,10 @@ namespace v1 {
  *
  * @type shape: list
  * @ivar shape: Shape of the input data as a list of integers (e.g. [H,W], [H,W,C],
- * [BS,H,W,C], ...).
+ * [N,H,W,C], ...).
+ *
+ * @type layout: str
+ * @ivar layout: Lettercode interpretation of the input data dimensions (e.g., 'NCHW').
  *
  * @type preprocessing: PreprocessingBlock
  * @ivar preprocessing: Preprocessing steps applied to the input data.
@@ -52,7 +55,10 @@ namespace v1 {
  *
  * @type shape: list
  * @ivar shape: Shape of the input data as a list of integers (e.g. [H,W], [H,W,C],
- * [BS,H,W,C], ...).
+ * [N,H,W,C], ...).
+ *
+ * @type layout: str
+ * @ivar layout: Lettercode interpretation of the input data dimensions (e.g., 'NCHW').
  *
  * @type preprocessing: PreprocessingBlock
  * @ivar preprocessing: Preprocessing steps applied to the input data.
@@ -67,6 +73,10 @@ struct Input {
      */
     InputType inputType;
     /**
+     * Lettercode interpretation of the input layout (e.g., 'NCHW').
+     */
+    std::optional<std::string> layout;
+    /**
      * Name of the input layer.
      */
     std::string name;
@@ -75,7 +85,7 @@ struct Input {
      */
     PreprocessingBlock preprocessing;
     /**
-     * Shape of the input data as a list of integers (e.g. [H,W], [H,W,C], [BS,H,W,C], ...).
+     * Shape of the input data as a list of integers (e.g. [H,W], [H,W,C], [N,H,W,C], ...).
      */
     std::vector<int64_t> shape;
 };
