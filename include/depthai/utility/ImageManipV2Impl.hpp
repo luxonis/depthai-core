@@ -6,6 +6,7 @@
 #include <depthai/pipeline/datatype/ImgFrame.hpp>
 #include <opencv2/core/base.hpp>
 #include <opencv2/core/types.hpp>
+#include <sstream>
 
 #define PLANE_ALIGNMENT 128
 
@@ -177,6 +178,8 @@ class ImageManipOperations {
     uint8_t mode = 0;
     std::string prevConfig;
 
+    std::vector<ManipOp> outputOps;
+
     std::array<std::array<float, 3>, 3> matrix{{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
     std::array<std::array<float, 3>, 3> matrixInv{{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
     ImageManipOpsBase base;
@@ -217,6 +220,8 @@ class ImageManipOperations {
     size_t getOutputHeight() const;
     size_t getOutputStride(uint8_t plane = 0) const;
     FrameSpecs getOutputFrameSpecs(ImgFrame::Type type) const;
+
+    std::string toString() const;
 };
 
 FrameSpecs getSrcFrameSpecs(dai::ImgFrame::Specs srcSpecs);
@@ -2219,6 +2224,7 @@ ImageManipOperations<ImageManipBuffer, ImageManipData>& ImageManipOperations<Ima
        && inFrameType == inType)
         return *this;
     prevConfig = newCfgStr;
+    outputOps.clear();
 
     if(newBase.hasWarp(srcFrameSpecs.width, srcFrameSpecs.height)) mode = mode | MODE_WARP;
     if(newBase.colormap != Colormap::NONE && isSingleChannelu8(inFrameType)) mode = mode | MODE_COLORMAP;
@@ -2297,19 +2303,29 @@ ImageManipOperations<ImageManipBuffer, ImageManipData>& ImageManipOperations<Ima
             imageCorners = {
                 {{matvecmul(mat, imageCorners[0])}, {matvecmul(mat, imageCorners[1])}, {matvecmul(mat, imageCorners[2])}, {matvecmul(mat, imageCorners[2])}}};
             matrix = matmul(mat, matrix);
+            outputOps.emplace_back(res);
         }
 
         if(base.center) {
             float width = base.outputWidth;
             float height = base.outputHeight;
             auto [minx, maxx, miny, maxy] = getOuterRect(std::vector(imageCorners.begin(), imageCorners.end()));
-            std::array<std::array<float, 3>, 3> mat = {{{1, 0, -minx + (width - (maxx - minx)) / 2}, {0, 1, -miny + (height - (maxy - miny)) / 2}, {0, 0, 1}}};
+            float tx = -minx + (width - (maxx - minx)) / 2;
+            float ty = -miny + (height - (maxy - miny)) / 2;
+            std::array<std::array<float, 3>, 3> mat = {{{1, 0, tx}, {0, 1, ty}, {0, 0, 1}}};
             imageCorners = {
                 {{matvecmul(mat, imageCorners[0])}, {matvecmul(mat, imageCorners[1])}, {matvecmul(mat, imageCorners[2])}, {matvecmul(mat, imageCorners[2])}}};
             matrix = matmul(mat, matrix);
+            outputOps.emplace_back(Translate(tx, ty));
         }
 
         matrixInv = getInverse(matrix);
+
+        if(type == ImgFrame::Type::NV12 || type == ImgFrame::Type::YUV420p || outputFrameType == ImgFrame::Type::NV12
+           || outputFrameType == ImgFrame::Type::YUV420p) {
+            base.outputWidth = base.outputWidth - (base.outputWidth % 2);
+            base.outputHeight = base.outputHeight - (base.outputHeight % 2);
+        }
 
         srcCorners.push_back({matvecmul(matrixInv, {0, 0}),
                               matvecmul(matrixInv, {(float)base.outputWidth, 0}),
@@ -2348,7 +2364,8 @@ ImageManipOperations<ImageManipBuffer, ImageManipData>& ImageManipOperations<Ima
     getFrameTypeInfo(isSingleChannelu8(type) && base.colormap != Colormap::NONE ? VALID_TYPE_COLOR : type, numPlanesPost, bppPost);
     size_t newConvertedSize = getAlignedOutputFrameSize(type, inputWidth, inputHeight);
     size_t newColormapSize = getAlignedOutputFrameSize(type, base.outputWidth, base.outputHeight);
-    size_t newWarpedSize = getAlignedOutputFrameSize(isSingleChannelu8(type) && base.colormap != Colormap::NONE ? VALID_TYPE_COLOR : type, base.outputWidth, base.outputHeight);
+    size_t newWarpedSize =
+        getAlignedOutputFrameSize(isSingleChannelu8(type) && base.colormap != Colormap::NONE ? VALID_TYPE_COLOR : type, base.outputWidth, base.outputHeight);
 
     if(!convertedFrame || convertedFrame->size() < newConvertedSize) convertedFrame = std::make_shared<ImageManipData>(newConvertedSize);
     if(!colormapFrame || colormapFrame->size() < newColormapSize) colormapFrame = std::make_shared<ImageManipData>(newColormapSize);
@@ -2594,6 +2611,21 @@ FrameSpecs ImageManipOperations<ImageManipBuffer, ImageManipData>::getOutputFram
             break;
     }
     return specs;
+}
+
+template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
+std::string ImageManipOperations<ImageManipBuffer, ImageManipData>::toString() const {
+    std::stringstream cStr;
+    cStr << getConfigString(base);
+    if(outputOps.size() > 0) {
+        cStr << " | ";
+        for(auto i = 0U; i < outputOps.size(); ++i) {
+            cStr << std::visit([](auto&& op) { return getOpStr(op); }, outputOps[i].op);
+            if(i != outputOps.size() - 1) cStr << " ";
+        }
+    }
+    cStr << "; o=" << base.outputWidth << "x" << base.outputHeight;
+    return cStr.str();
 }
 
 typedef enum AEEResult { AEE_SUCCESS, AEE_EBADPARM, AEE_ERROR } AEEResult;

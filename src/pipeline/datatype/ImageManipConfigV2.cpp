@@ -60,6 +60,11 @@ ImageManipConfigV2& ImageManipConfigV2::setOutputSize(uint32_t w, uint32_t h, Re
     base.setOutputResize(w, h, mode);
     return *this;
 }
+ImageManipConfigV2& ImageManipConfigV2::setOutputCenter(bool c) {
+    base.setOutputResize(0, 0, ResizeMode::NONE);
+    base.setOutputCenter(c);
+    return *this;
+}
 ImageManipConfigV2& ImageManipConfigV2::setColormap(Colormap colormap) {
     base.setColormap(colormap);
     return *this;

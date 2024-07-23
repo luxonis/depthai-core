@@ -187,7 +187,7 @@ struct ManipOp {
 
 class ImageManipOpsBase {
    public:
-    enum class Background : uint8_t { COLOR/* , REPLICATE, MIRROR */ }; // TODO(asahtik): replicate impl
+    enum class Background : uint8_t { COLOR /* , REPLICATE, MIRROR */ };  // TODO(asahtik): replicate impl
     enum class ResizeMode : uint8_t { NONE, STRETCH, LETTERBOX, CENTER_CROP };
 
    protected:
@@ -342,7 +342,8 @@ class ImageManipOpsBase {
         return *this;
     }
 
-    DEPTHAI_SERIALIZE(ImageManipOpsBase, operations, outputWidth, outputHeight, center, resizeMode, background, backgroundR, backgroundG, backgroundB, colormap);
+    DEPTHAI_SERIALIZE(
+        ImageManipOpsBase, operations, outputWidth, outputHeight, center, resizeMode, background, backgroundR, backgroundG, backgroundB, colormap);
 };
 
 /**
@@ -443,6 +444,11 @@ class ImageManipConfigV2 : public Buffer {
      * aspect ratio and crop
      */
     ImageManipConfigV2& setOutputSize(uint32_t w, uint32_t h, ResizeMode mode = ResizeMode::NONE);
+    /**
+     * Centers the content in the output image without resizing
+     * @param c True to center the content, false otherwise
+     */
+    ImageManipConfigV2& setOutputCenter(bool c = true);
     /**
      * Sets the colormap to be applied to a grayscale image
      * @param colormap Colormap type to be applied

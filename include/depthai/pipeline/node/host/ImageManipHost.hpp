@@ -33,6 +33,8 @@ class ImageManipHost : public NodeCRTP<ThreadedHostNode, ImageManipHost /*, Imag
         properties.outputFrameSize = size;
         return *this;
     }
+
+    std::string getConfigString(const size_t inWidth, const size_t inHeight);
 };
 }  // namespace node
 

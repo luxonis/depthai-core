@@ -41,5 +41,15 @@ void ImageManipHost::run() {
         });
 }
 
+std::string ImageManipHost::getConfigString(const size_t inWidth, const size_t inHeight) {
+    impl::ImageManipOperations<impl::_ImageManipBuffer, impl::_ImageManipMemory> manip(logger);
+    manip.init();
+    impl::FrameSpecs srcFrameSpecs;
+    srcFrameSpecs.width = inWidth;
+    srcFrameSpecs.height = inHeight;
+    manip.build(initialConfig.base, initialConfig.outputFrameType, srcFrameSpecs, ImgFrame::Type::BGR888i);
+    return manip.toString();
+}
+
 }  // namespace node
 }  // namespace dai
