@@ -1,9 +1,9 @@
 #pragma once
 
+#include <nlohmann/json.hpp>
 #include <optional>
 #include <string>
 #include <vector>
-#include <nlohmann/json.hpp>
 namespace dai {
 namespace nn_archive {
 namespace v1 {
@@ -245,8 +245,8 @@ struct Metadata {
     std::optional<std::vector<std::string>> yoloOutputs;
 
     /**
-    * Additional parameters
-    */
+     * Additional parameters
+     */
     nlohmann::json extraParams;
 };
 }  // namespace v1
