@@ -22,6 +22,8 @@ void CapabilityRangeBindings::bind(pybind11::module& m, void* pCallstack) {
 
     ADD_TYPE(Uint, uint32_t);
     ADD_TYPE(UintPair, std::pair<uint32_t, uint32_t>);
+    ADD_TYPE(Float, float);
+    ADD_TYPE(FloatPair, std::pair<float, float>);
 
 #undef ADD_TYPE
 
