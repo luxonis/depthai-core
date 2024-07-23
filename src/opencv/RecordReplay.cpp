@@ -74,7 +74,7 @@ void VideoRecorder::init(const std::string& filePath, unsigned int width, unsign
     initialized = true;
 }
 
-void VideoRecorder::write(span<uint8_t>& data) {
+void VideoRecorder::write(span<uint8_t>& data, const uint32_t stride) {
     if(!initialized) {
         throw std::runtime_error("VideoRecorder not initialized");
     }
@@ -134,8 +134,13 @@ void VideoRecorder::write(span<uint8_t>& data) {
             if(!cvWriter->isOpened()) {
                 throw std::runtime_error("VideoRecorder OpenCV writer is not initialized");
             }
-            cv::Mat img(height, width, CV_8UC3, (void*)data.data());
-            cvWriter->write(img);
+            if(stride > 0) {
+                cv::Mat img(height, width, CV_8UC3, (void*)data.data(), stride);
+                cvWriter->write(img);
+            } else {
+                cv::Mat img(height, width, CV_8UC3, (void*)data.data());
+                cvWriter->write(img);
+            }
             break;
         }
     }
