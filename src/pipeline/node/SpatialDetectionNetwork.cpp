@@ -2,8 +2,11 @@
 
 #include <sstream>
 
+#include "../../utility/ErrorMacros.hpp"
 #include "depthai/common/DetectionNetworkType.hpp"
+#include "nn_archive/NNArchive.hpp"
 #include "openvino/BlobReader.hpp"
+#include "openvino/OpenVINO.hpp"
 
 namespace dai {
 namespace node {
@@ -38,8 +41,50 @@ std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build() {
 // -------------------------------------------------------------------
 
 void SpatialDetectionNetwork::setNNArchive(const NNArchive& nnArchive) {
-    const auto blob = detectionParser->setNNArchive(nnArchive);
+    constexpr int DEFAULT_SUPERBLOB_NUM_SHAVES = 8;
+
+    switch(nnArchive.getArchiveType()) {
+        case dai::NNArchiveType::BLOB:
+            setNNArchiveBlob(nnArchive);
+            break;
+        case dai::NNArchiveType::SUPERBLOB:
+            setNNArchiveSuperblob(nnArchive, DEFAULT_SUPERBLOB_NUM_SHAVES);
+            break;
+        case dai::NNArchiveType::OTHER:
+            setNNArchiveOther(nnArchive);
+            break;
+    }
+}
+
+void SpatialDetectionNetwork::setNNArchive(const NNArchive& nnArchive, int numShaves) {
+    switch(nnArchive.getArchiveType()) {
+        case dai::NNArchiveType::SUPERBLOB:
+            setNNArchiveSuperblob(nnArchive, numShaves);
+            break;
+        case dai::NNArchiveType::BLOB:
+        case dai::NNArchiveType::OTHER:
+            DAI_CHECK_V(false, "NNArchive type is not SUPERBLOB. Use setNNArchive(const NNArchive& nnArchive) instead.");
+            break;
+    }
+}
+
+void SpatialDetectionNetwork::setNNArchiveBlob(const NNArchive& nnArchive) {
+    DAI_CHECK_V(nnArchive.getArchiveType() == dai::NNArchiveType::BLOB, "NNArchive type is not BLOB");
+    detectionParser->setNNArchive(nnArchive);
+    dai::OpenVINO::Blob blob = *nnArchive.getBlob();  // Get blob and 'unpack' std::optional - we know it's a blob
     neuralNetwork->setBlob(blob);
+}
+
+void SpatialDetectionNetwork::setNNArchiveSuperblob(const NNArchive& nnArchive, int numShaves) {
+    DAI_CHECK_V(nnArchive.getArchiveType() == dai::NNArchiveType::SUPERBLOB, "NNArchive type is not SUPERBLOB");
+    detectionParser->setNNArchive(nnArchive);
+    dai::OpenVINO::Blob blob = (*nnArchive.getSuperBlob()).getBlobWithNumShaves(numShaves);
+    neuralNetwork->setBlob(blob);
+}
+
+void SpatialDetectionNetwork::setNNArchiveOther(const NNArchive& nnArchive) {
+    DAI_CHECK_V(nnArchive.getArchiveType() == dai::NNArchiveType::OTHER, "NNArchive type is not OTHER");
+    DAI_CHECK_V(false, "Other NNArchive type not supported yet.");
 }
 
 void SpatialDetectionNetwork::setBlobPath(const dai::Path& path) {

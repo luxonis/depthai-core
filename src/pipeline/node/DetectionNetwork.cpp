@@ -10,6 +10,7 @@
 // internal
 #include "depthai/capabilities/ImgFrameCapability.hpp"
 #include "depthai/nn_archive/NNArchive.hpp"
+#include "nn_archive/NNArchiveConfig.hpp"
 #include "utility/ArchiveUtil.hpp"
 #include "utility/ErrorMacros.hpp"
 #include "utility/PimplImpl.hpp"
@@ -61,8 +62,49 @@ std::shared_ptr<DetectionNetwork> DetectionNetwork::build(Node::Output& input, c
 }
 
 void DetectionNetwork::setNNArchive(const NNArchive& nnArchive) {
-    const auto blob = detectionParser->setNNArchive(nnArchive);
+    constexpr int DEFAULT_SUPERBLOB_NUM_SHAVES = 8;
+    switch(nnArchive.getArchiveType()) {
+        case dai::NNArchiveType::BLOB:
+            setNNArchiveBlob(nnArchive);
+            break;
+        case dai::NNArchiveType::SUPERBLOB:
+            setNNArchiveSuperblob(nnArchive, DEFAULT_SUPERBLOB_NUM_SHAVES);
+            break;
+        case dai::NNArchiveType::OTHER:
+            setNNArchiveOther(nnArchive);
+            break;
+    }
+}
+
+void DetectionNetwork::setNNArchive(const NNArchive& nnArchive, int numShaves) {
+    switch(nnArchive.getArchiveType()) {
+        case dai::NNArchiveType::SUPERBLOB:
+            setNNArchiveSuperblob(nnArchive, numShaves);
+            break;
+        case dai::NNArchiveType::BLOB:
+        case dai::NNArchiveType::OTHER:
+            DAI_CHECK_V(false, "NNArchive type is not SUPERBLOB. Use setNNArchive(const NNArchive& nnArchive) instead.");
+            break;
+    }
+}
+
+void DetectionNetwork::setNNArchiveBlob(const NNArchive& nnArchive) {
+    DAI_CHECK_V(nnArchive.getArchiveType() == dai::NNArchiveType::BLOB, "NNArchive type is not BLOB");
+    detectionParser->setNNArchive(nnArchive);
+    dai::OpenVINO::Blob blob = *nnArchive.getBlob();  // Get blob and 'unpack' std::optional - we know it's a blob
     neuralNetwork->setBlob(blob);
+}
+
+void DetectionNetwork::setNNArchiveSuperblob(const NNArchive& nnArchive, int numShaves) {
+    DAI_CHECK_V(nnArchive.getArchiveType() == dai::NNArchiveType::SUPERBLOB, "NNArchive type is not SUPERBLOB");
+    detectionParser->setNNArchive(nnArchive);
+    dai::OpenVINO::Blob blob = nnArchive.getSuperBlob()->getBlobWithNumShaves(numShaves);
+    neuralNetwork->setBlob(blob);
+}
+
+void DetectionNetwork::setNNArchiveOther(const NNArchive& nnArchive) {
+    DAI_CHECK_V(nnArchive.getArchiveType() == dai::NNArchiveType::OTHER, "NNArchive type is not OTHER");
+    DAI_CHECK_V(false, "Other NNArchive type not supported yet.");
 }
 
 void DetectionNetwork::setBlobPath(const dai::Path& path) {
@@ -121,14 +163,14 @@ float DetectionNetwork::getConfidenceThreshold() const {
 }
 
 std::vector<std::pair<Node::Input&, std::shared_ptr<Capability>>> DetectionNetwork::getRequiredInputs() {
-    const auto* archive = detectionParser->getNNArchive();
-    // TODO(jakgra) only call getRequiredInputs() in the build stage after all user code is supposed to be finished.
-    DAI_CHECK_V(archive, "Please call setNNArchive(), before the linking the DetectionNetwork node.");
+    const dai::NNArchiveConfig& config = detectionParser->getNNArchiveConfig();
+    const auto configV1 = config.getConfigV1();
+    DAI_CHECK(configV1.has_value(), "Only NNConfigV1 is supported for DetectionNetwork");
+
+    const auto width = configV1->model.inputs[0].shape[2];
+    const auto height = configV1->model.inputs[0].shape[3];
+
     auto cap = std::make_shared<ImgFrameCapability>();
-    const auto& config = archive->getConfig().getConfigV1();
-    DAI_CHECK_V(config, "Wrong NNArchive config version");
-    const auto width = (*config).model.inputs[0].shape[2];
-    const auto height = (*config).model.inputs[0].shape[3];
     cap->size.value = std::pair(width, height);
     return {{input, cap}};
 }

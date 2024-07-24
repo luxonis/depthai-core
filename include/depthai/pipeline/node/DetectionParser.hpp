@@ -7,7 +7,10 @@
 
 // shared
 #include <depthai/nn_archive/NNArchive.hpp>
+#include <depthai/nn_archive/NNArchiveConfig.hpp>
+#include <depthai/openvino/OpenVINO.hpp>
 #include <depthai/properties/DetectionParserProperties.hpp>
+#include <optional>
 
 namespace dai {
 namespace node {
@@ -51,9 +54,21 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
      */
     int getNumFramesPool();
 
-    std::reference_wrapper<const OpenVINO::Blob> setNNArchive(const NNArchive& nnArchive);
+    /**
+     * @brief Set NNArchive for this Node. If the archive's type is SUPERBLOB, use default number of shaves.
+     *
+     * @param nnArchive: NNArchive to set
+     */
+    void setNNArchive(const NNArchive& nnArchive);
 
-    // Specify local filesystem path to load the blob (which gets loaded at loadAssets)
+    /**
+     * @brief Set NNArchive for this Node, throws if the archive's type is not SUPERBLOB
+     *
+     * @param nnArchive: NNArchive to set
+     * @param numShaves: Number of shaves to use
+     */
+    void setNNArchive(const NNArchive& nnArchive, int numShaves);
+
     /**
      * Load network blob into assets and use once pipeline is started.
      *
@@ -137,11 +152,18 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
     /// Get Iou threshold
     float getIouThreshold() const;
 
-    const NNArchive* getNNArchive() const;
+    const NNArchiveConfig& getNNArchiveConfig() const;
 
    private:
+    void setNNArchiveBlob(const NNArchive& nnArchive);
+    void setNNArchiveSuperblob(const NNArchive& nnArchive, int numShaves);
+    void setNNArchiveOther(const NNArchive& nnArchive);
+    void setConfigAndBlob(const dai::NNArchiveConfig& config, const dai::OpenVINO::Blob& blob);
+
     std::optional<std::vector<std::string>> mClasses;
     std::optional<NNArchive> mArchive;
+
+    std::optional<NNArchiveConfig> archiveConfig;
 };
 
 }  // namespace node
