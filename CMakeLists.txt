@@ -378,7 +378,6 @@ set(TARGET_CORE_SOURCES
 set(TARGET_OPENCV_SOURCES
     src/opencv/ImgFrame.cpp
     src/pipeline/node/host/Display.cpp
-    src/pipeline/node/host/ImageManipHost.cpp
     src/pipeline/node/host/HostCamera.cpp
     src/pipeline/node/host/Record.cpp
     src/pipeline/node/host/Replay.cpp

@@ -3,7 +3,6 @@
 #include "depthai/depthai.hpp"
 #include "depthai/pipeline/InputQueue.hpp"
 #include "depthai/pipeline/datatype/ImageManipConfigV2.hpp"
-#include "depthai/pipeline/node/host/ImageManipHost.hpp"
 #include "opencv2/opencv.hpp"
 
 constexpr int NUM_FRAMES_PER_CONFIG = 1;
@@ -18,7 +17,8 @@ int main(int argc, char** argv) {
     if(filenames.empty()) filenames.push_back("img.png");
     dai::Pipeline pipeline(false);
 
-    auto imageManip = pipeline.create<dai::node::ImageManipHost>();
+    auto imageManip = pipeline.create<dai::node::ImageManipV2>();
+    imageManip->setRunOnHost();
 
     imageManip->setMaxOutputFrameSize(4803988);
 

@@ -15,7 +15,7 @@ namespace node {
 /**
  * @brief ImageManip node. Capability to crop, resize, warp, ... incoming image frames
  */
-class ImageManipV2 : public DeviceNodeCRTP<DeviceNode, ImageManipV2, ImageManipPropertiesV2> {
+class ImageManipV2 : public DeviceNodeCRTP<DeviceNode, ImageManipV2, ImageManipPropertiesV2>, public HostRunnable {
    private:
     bool runOnHostVar = false;
 
