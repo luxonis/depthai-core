@@ -64,7 +64,9 @@ void bind_hostnode(pybind11::module& m, void* pCallstack){
             getImplicitPipeline()->add(node);
             return node;
         }))
-        .def("run", &ThreadedHostNode::run);
+        .def("run", &ThreadedHostNode::run)
+        .def("onStart", &ThreadedHostNode::onStart)
+        .def("onStop", &ThreadedHostNode::onStop);
 
     hostNode
         .def(py::init([]() {
