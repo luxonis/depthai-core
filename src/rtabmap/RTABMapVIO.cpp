@@ -4,7 +4,7 @@
 
 namespace dai {
 namespace node {
-std::shared_ptr<RTABMapVIO> RTABMapVIO::build() {
+void RTABMapVIO::buildInternal() {
     sync->out.link(inSync);
     sync->setRunOnHost(false);
 
@@ -29,7 +29,6 @@ std::shared_ptr<RTABMapVIO> RTABMapVIO::build() {
     inSync.setMaxSize(1);
     inSync.setBlocking(false);
     imu.addCallback(std::bind(&RTABMapVIO::imuCB, this, std::placeholders::_1));
-    return std::static_pointer_cast<RTABMapVIO>(shared_from_this());
 }
 
 void RTABMapVIO::setUseFeatures(bool use) {

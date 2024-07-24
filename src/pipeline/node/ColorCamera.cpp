@@ -10,10 +10,6 @@ namespace node {
 
 ColorCamera::ColorCamera(std::unique_ptr<Properties> props) : DeviceNodeCRTP<DeviceNode, ColorCamera, ColorCameraProperties>(std::move(props)) {}
 
-std::shared_ptr<ColorCamera> ColorCamera::build() {
-    return std::static_pointer_cast<ColorCamera>(shared_from_this());
-}
-
 ColorCamera::Properties& ColorCamera::getProperties() {
     properties.initialControl = initialControl;
     return properties;

@@ -29,7 +29,6 @@ class RTABMapSLAM : public dai::NodeCRTP<dai::node::ThreadedHostNode, RTABMapSLA
    public:
     constexpr static const char* NAME = "RTABMapSLAM";
     ~RTABMapSLAM() override;
-    std::shared_ptr<RTABMapSLAM> build();
     Subnode<node::Sync> sync{*this, "sync"};
     InputMap& inputs = sync->inputs;
     std::string rectInputName = "rect";

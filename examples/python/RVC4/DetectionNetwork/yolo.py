@@ -45,7 +45,7 @@ with dai.Pipeline() as pipeline:
         camRgb = pipeline.create(dai.node.Camera)
         camRgb.setBoardSocket(dai.CameraBoardSocket.CAM_A)
         sourceOutput = camRgb.requestOutput((640, 640), dai.ImgFrame.Type.BGR888i)
-    detectionNetwork = pipeline.create(dai.node.YoloDetectionNetwork).build()
+    detectionNetwork = pipeline.create(dai.node.YoloDetectionNetwork)
     detectionNetwork.setNumInferenceThreads(2)
     detectionNetwork.setModelPath(modelPath)
     detectionNetwork.setNumClasses(80)

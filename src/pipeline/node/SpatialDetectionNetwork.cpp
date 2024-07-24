@@ -12,7 +12,7 @@ namespace node {
 // Base Detection Network Class
 //--------------------------------------------------------------------
 
-std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build() {
+void SpatialDetectionNetwork::buildInternal() {
     // Default confidence threshold
     detectionParser->properties.parser.confidenceThreshold = 0.5;
     neuralNetwork->out.link(detectionParser->input);
@@ -27,10 +27,6 @@ std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build() {
     detectionParser->imageIn.setMaxSize(1);
     inputDetections.setMaxSize(1);
     inputDetections.setBlocking(true);
-
-    isBuild = true;
-
-    return std::static_pointer_cast<SpatialDetectionNetwork>(shared_from_this());
 }
 
 // -------------------------------------------------------------------
@@ -124,19 +120,17 @@ std::optional<std::vector<std::string>> SpatialDetectionNetwork::getClasses() co
 //--------------------------------------------------------------------
 // MobileNet
 //--------------------------------------------------------------------
-std::shared_ptr<MobileNetSpatialDetectionNetwork> MobileNetSpatialDetectionNetwork::build() {
-    SpatialDetectionNetwork::build();
+void MobileNetSpatialDetectionNetwork::buildInternal() {
+    SpatialDetectionNetwork::buildInternal();
     detectionParser->setNNFamily(DetectionNetworkType::MOBILENET);
-    return std::static_pointer_cast<MobileNetSpatialDetectionNetwork>(shared_from_this());
 }
 
 //--------------------------------------------------------------------
 // YOLO
 //--------------------------------------------------------------------
-std::shared_ptr<YoloSpatialDetectionNetwork> YoloSpatialDetectionNetwork::build() {
-    SpatialDetectionNetwork::build();
+void YoloSpatialDetectionNetwork::buildInternal() {
+    SpatialDetectionNetwork::buildInternal();
     detectionParser->setNNFamily(DetectionNetworkType::YOLO);
-    return std::static_pointer_cast<YoloSpatialDetectionNetwork>(shared_from_this());
 }
 
 void YoloSpatialDetectionNetwork::setNumClasses(const int numClasses) {

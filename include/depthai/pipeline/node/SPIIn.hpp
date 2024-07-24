@@ -15,7 +15,6 @@ class SPIIn : public DeviceNodeCRTP<DeviceNode, SPIIn, SPIInProperties> {
    public:
     constexpr static const char* NAME = "SPIIn";
     using DeviceNodeCRTP::DeviceNodeCRTP;
-    std::shared_ptr<SPIIn> build();
 
     /**
      * Outputs message of same type as send from host.
@@ -55,11 +54,7 @@ class SPIIn : public DeviceNodeCRTP<DeviceNode, SPIIn, SPIInProperties> {
     /// Get number of frames in pool
     std::uint32_t getNumFrames() const;
 
-   protected:
-    bool isBuild = false;
-    bool needsBuild() override {
-        return !isBuild;
-    }
+    void buildInternal() override;
 };
 
 }  // namespace node

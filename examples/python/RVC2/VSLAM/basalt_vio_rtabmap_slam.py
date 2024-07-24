@@ -12,8 +12,8 @@ with dai.Pipeline() as p:
     left = p.create(dai.node.MonoCamera)
     right = p.create(dai.node.MonoCamera)
     imu = p.create(dai.node.IMU)
-    odom = p.create(dai.node.BasaltVIO).build()
-    slam = p.create(dai.node.RTABMapSLAM).build()
+    odom = p.create(dai.node.BasaltVIO)
+    slam = p.create(dai.node.RTABMapSLAM)
     stereo = p.create(dai.node.StereoDepth)
     params = {"RGBD/CreateOccupancyGrid": "true",
             "Grid/3D": "true",

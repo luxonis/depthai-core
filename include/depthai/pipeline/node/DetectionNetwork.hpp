@@ -149,16 +149,12 @@ class DetectionNetwork : public NodeGroup {
 
     std::optional<std::vector<std::string>> getClasses() const;
 
+   protected:
+    virtual void buildInternal();
+
    private:
     class Impl;
     Pimpl<Impl> pimpl;
-
-   protected:
-    void build();
-    bool isBuild = false;
-    bool needsBuild() override {
-        return !isBuild;
-    }
 };
 
 /**
@@ -173,7 +169,8 @@ class MobileNetDetectionNetwork : public DetectionNetwork {
         return false;
     };
 
-    std::shared_ptr<MobileNetDetectionNetwork> build();
+   protected:
+    void buildInternal() override;
 };
 
 /**
@@ -181,7 +178,6 @@ class MobileNetDetectionNetwork : public DetectionNetwork {
  */
 class YoloDetectionNetwork : public DetectionNetwork {
    public:
-    std::shared_ptr<YoloDetectionNetwork> build();
     [[nodiscard]] static std::shared_ptr<YoloDetectionNetwork> create() {
         return std::make_shared<YoloDetectionNetwork>();
     }
@@ -255,6 +251,8 @@ class YoloDetectionNetwork : public DetectionNetwork {
     std::map<std::string, std::vector<int>> getAnchorMasks() const;
     /// Get Iou threshold
     float getIouThreshold() const;
+
+    void buildInternal() override;
 };
 
 }  // namespace node

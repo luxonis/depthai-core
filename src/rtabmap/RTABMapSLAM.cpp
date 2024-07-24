@@ -10,7 +10,7 @@
 
 namespace dai {
 namespace node {
-std::shared_ptr<RTABMapSLAM> RTABMapSLAM::build() {
+void RTABMapSLAM::buildInternal() {
     sync->out.link(inSync);
     sync->setRunOnHost(false);
     alphaScaling = -1.0;

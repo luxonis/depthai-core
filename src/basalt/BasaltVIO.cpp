@@ -22,7 +22,7 @@ class BasaltVIO::Impl {
 BasaltVIO::BasaltVIO() {}
 BasaltVIO::~BasaltVIO() = default;
 
-std::shared_ptr<BasaltVIO> BasaltVIO::build() {
+void BasaltVIO::buildInternal() {
     sync->out.link(inSync);
     sync->setRunOnHost(false);
     inSync.addCallback(std::bind(&BasaltVIO::stereoCB, this, std::placeholders::_1));

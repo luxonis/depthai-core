@@ -24,7 +24,6 @@ class BasaltVIO : public NodeCRTP<ThreadedHostNode, BasaltVIO> {
     constexpr static const char* NAME = "BasaltVIO";
     BasaltVIO();
     ~BasaltVIO();
-    std::shared_ptr<BasaltVIO> build();
 
     Subnode<node::Sync> sync{*this, "sync"};
     InputMap& inputs = sync->inputs;
@@ -69,6 +68,8 @@ class BasaltVIO : public NodeCRTP<ThreadedHostNode, BasaltVIO> {
     }
     void setLocalTransform(const std::shared_ptr<TransformData>& transform);
     void setDefaultVIOConfig();
+
+    void buildInternal() override;
 
    private:
     // pimpl

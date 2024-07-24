@@ -71,12 +71,12 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
     using DeviceNodeCRTP::DeviceNodeCRTP;
     [[nodiscard]] static std::shared_ptr<Camera> create() {
         auto node = std::make_shared<Camera>();
-        node->build();
+        node->buildInternal();
         return node;
     }
     [[nodiscard]] static std::shared_ptr<Camera> create(std::shared_ptr<Device>& defaultDevice) {
         auto node = std::make_shared<Camera>(defaultDevice);
-        node->build();
+        node->buildInternal();
         return node;
     }
     OutputMap dynamicOutputs{*this, "dynamicOutputs", {"", "", {{DatatypeEnum::ImgFrame, false}}}};
@@ -84,8 +84,9 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
     explicit Camera(std::shared_ptr<Device>& defaultDevice);
     explicit Camera(std::unique_ptr<Properties> props);
 
-    std::shared_ptr<Camera> build();
     void buildStage1() override;
+
+    void buildInternal() override;
 
    protected:
     Properties& getProperties() override;
@@ -95,11 +96,6 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
     Output& getRecordOutput() override;
     Input& getReplayInput() override;
     */
-
-    bool isBuild = false;
-    bool needsBuild() override {
-        return !isBuild;
-    }
 };
 
 }  // namespace node

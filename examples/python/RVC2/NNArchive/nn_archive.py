@@ -16,7 +16,7 @@ archivePath = dai.getModelFromZoo(modelDescription, useCached=True)
 # Create pipeline
 with dai.Pipeline() as pipeline:
     # Define sources and outputs
-    camRgb = pipeline.create(dai.node.ColorCamera).build()
+    camRgb = pipeline.create(dai.node.ColorCamera)
     # Properties
     camRgb.setResolution(dai.ColorCameraProperties.SensorResolution.THE_1080_P)
     camRgb.setInterleaved(False)

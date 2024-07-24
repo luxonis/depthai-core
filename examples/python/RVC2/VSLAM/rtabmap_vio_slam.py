@@ -14,8 +14,8 @@ with dai.Pipeline() as p:
     imu = p.create(dai.node.IMU)
     stereo = p.create(dai.node.StereoDepth)
     featureTracker = p.create(dai.node.FeatureTracker)
-    odom = p.create(dai.node.RTABMapVIO).build()
-    slam = p.create(dai.node.RTABMapSLAM).build()
+    odom = p.create(dai.node.RTABMapVIO)
+    slam = p.create(dai.node.RTABMapSLAM)
 
     params = {"RGBD/CreateOccupancyGrid": "true",
               "Grid/3D": "true",
