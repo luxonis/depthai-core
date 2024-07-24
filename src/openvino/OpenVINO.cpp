@@ -90,6 +90,11 @@ OpenVINO::SuperBlob::SuperBlob(const std::string& pathToSuperBlobFile) {
     header = SuperBlobHeader::fromData(data);
 }
 
+OpenVINO::SuperBlob::SuperBlob(std::vector<uint8_t> data) {
+    this->data = std::move(data);
+    header = SuperBlobHeader::fromData(this->data);
+}
+
 dai::OpenVINO::Blob OpenVINO::SuperBlob::getBlobWithNumShaves(int numShaves) {
     if(numShaves < 1 || numShaves > static_cast<int>(OpenVINO::SuperBlob::NUMBER_OF_PATCHES)) {
         throw std::runtime_error("Invalid number of shaves: " + std::to_string(numShaves) + " (expected 1 to "

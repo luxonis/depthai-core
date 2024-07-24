@@ -7,25 +7,31 @@ import depthai as dai
 
 # Option 1: In program
 # modelDescription = dai.NNModelDescription()
-# modelDescription.modelSlug = "ales-test"
-# modelDescription.modelPath = "RVC2"
+# modelDescription.modelSlug = "yolov6n"
+# modelDescription.platform = "RVC2"
 
 # Option 2: From yaml file
 modelDescription = dai.NNModelDescription.fromYamlFile("mymodel.yaml")
 
-# Return path to downloaded model - resnet18_xxx.blob for this example
-modelPath = dai.getModelFromZoo(modelDescription, useCached=True)
+# If you want, you can store the model description in a yaml file
+modelDescription.saveToYamlFile("mymodel.yaml")
 
+# Return path to downloaded model - yolov6n-r2-288x512.tar.xz for this example
+modelPath = dai.getModelFromZoo(modelDescription, useCached=True)
 print("Using model cached at path: ", modelPath)
 
-assert modelPath.endswith(".blob") # We expect a blob for this particular example
+
+archive = dai.NNArchive(modelPath)
+blob = archive.getSuperBlob().getBlobWithNumShaves(6)
+print("Number of shaves: ", blob.numShaves)
+print(archive.getConfig().getConfigV1().model.heads[0].metadata.classes)
 
 # Construct pipeline and start using downloaded NN model :-)
 with dai.Pipeline() as pipeline:
 
     # It's even possible to download a model for the used device
     # modelDescription = dai.NNModelDescription()
-    # modelDescription.modelSlug = "ales-test"
+    # modelDescription.modelSlug = "yolov6n"
 
     #  The two are equivalent
     # modelDescription.platform = pipeline.getDefaultDevice().getPlatformAsString()
@@ -33,13 +39,13 @@ with dai.Pipeline() as pipeline:
 
     # Color camera node
     camRgb = pipeline.createColorCamera()
-    camRgb.setPreviewSize(256, 256)
-    camRgb.setColorOrder(dai.ColorCameraProperties.ColorOrder.RGB)
+    camRgb.setPreviewSize(512, 288)
+    camRgb.setColorOrder(dai.ColorCameraProperties.ColorOrder.BGR)
     camRgb.setInterleaved(False)
 
     # Neural network node
     neuralNetwork = pipeline.createNeuralNetwork()
-    neuralNetwork.setBlobPath(modelPath)
+    neuralNetwork.setBlob(blob)
     neuralNetwork.setNumInferenceThreads(2)
 
     # Linking

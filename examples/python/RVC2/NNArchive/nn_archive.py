@@ -8,34 +8,24 @@ import numpy as np
 import time
 
 # Get argument first
-nnPath = str(
-    (
-        Path(__file__).parent
-        / Path("../../models/yolo-v6-openvino_2022.1_6shave-rvc2.tar.xz")
-    )
-    .resolve()
-    .absolute()
+modelDescription = dai.NNModelDescription(
+    modelSlug="yolov6n-r2-288x512-8shave-blob", platform="RVC2"
 )
-
-if not Path(nnPath).exists():
-    import sys
-
-    raise FileNotFoundError(
-        f'Required file/s not found, please run "{sys.executable} install_requirements.py" - required files are: {nnPath}'
-    )
+archivePath = dai.getModelFromZoo(modelDescription, useCached=True)
 
 # Create pipeline
 with dai.Pipeline() as pipeline:
-
     # Define sources and outputs
     camRgb = pipeline.create(dai.node.ColorCamera).build()
     # Properties
-    camRgb.setPreviewSize(640, 640)
     camRgb.setResolution(dai.ColorCameraProperties.SensorResolution.THE_1080_P)
     camRgb.setInterleaved(False)
     camRgb.setColorOrder(dai.ColorCameraProperties.ColorOrder.BGR)
     camRgb.setFps(15)
-    nnArchive = dai.NNArchive(nnPath)
+    nnArchive = dai.NNArchive(archivePath)
+    h, w = nnArchive.getConfig().getConfigV1().model.inputs[0].shape[-2:]
+    camRgb.setPreviewSize(w, h)
+    print(h, w)
     detectionNetwork = pipeline.create(dai.node.DetectionNetwork).build(
         camRgb.preview, nnArchive
     )

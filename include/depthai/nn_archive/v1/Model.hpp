@@ -5,7 +5,7 @@
 
 #include "Head.hpp"
 #include "Input.hpp"
-#include "Metadata.hpp"
+#include "MetadataClass.hpp"
 #include "Output.hpp"
 
 namespace dai {
@@ -54,7 +54,7 @@ struct Model {
     /**
      * Metadata object defining the model metadata.
      */
-    Metadata metadata;
+    MetadataClass metadata;
     /**
      * List of Output objects defining the model outputs.
      */
