@@ -11,9 +11,10 @@ ImageManipV2::ImageManipV2(std::unique_ptr<Properties> props) : DeviceNodeCRTP<D
 void ImageManipV2::run() {
     impl::ImageManipOperations<impl::_ImageManipBuffer, impl::_ImageManipMemory> manip(logger);
     manip.init();
+    auto iConf = runOnHost() ? initialConfig : properties.initialConfig;
     loop<ImageManipV2, impl::_ImageManipBuffer, impl::_ImageManipMemory>(
         *this,
-        properties.initialConfig,
+        iConf,
         logger,
         [&](const ImageManipConfigV2& config, const ImgFrame& frame) {
             auto srcFrameSpecs = impl::getSrcFrameSpecs(frame.fb);
