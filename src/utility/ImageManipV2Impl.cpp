@@ -1,5 +1,11 @@
 #include "depthai/utility/ImageManipV2Impl.hpp"
 
+#if defined(WIN32) || defined(_WIN32)
+#define _RESTRICT
+#else
+#define _RESTRICT __restrict__
+#endif
+
 dai::impl::AEEResult dai::impl::manipGetSrcMask(const uint32_t width,
                                                 const uint32_t height,
                                                 const float* corners,
@@ -92,17 +98,17 @@ dai::impl::AEEResult dai::impl::manipGetRemap3x3(const uint32_t inWidth,
                                                  const uint32_t outHeight,
                                                  const float* matrix,
                                                  const uint32_t matrixLen,
-                                                 const uint8_t* __restrict__ srcMask,
+                                                 const uint8_t* _RESTRICT srcMask,
                                                  const uint32_t srcMaskLen,
                                                  const uint32_t minx,
                                                  const uint32_t maxx,
                                                  const uint32_t miny,
                                                  const uint32_t maxy,
-                                                 float* __restrict__ mapX,
+                                                 float* _RESTRICT mapX,
                                                  const uint32_t mapXLen,
-                                                 float* __restrict__ mapY,
+                                                 float* _RESTRICT mapY,
                                                  const uint32_t mapYLen,
-                                                 uint8_t* __restrict__ dstMask,
+                                                 uint8_t* _RESTRICT dstMask,
                                                  const uint32_t dstMaskLen) {
     if(mapXLen != outWidth * outHeight || mapYLen != outWidth * outHeight || matrixLen != 9 || srcMaskLen != inWidth * inHeight
        || dstMaskLen != outWidth * outHeight) {
@@ -139,17 +145,17 @@ dai::impl::AEEResult dai::impl::manipGetRemap3x3(const uint32_t inWidth,
 
 dai::impl::AEEResult dai::impl::subsampleMap2x2(const uint32_t width,
                                                 const uint32_t height,
-                                                const float* __restrict__ mapX,
+                                                const float* _RESTRICT mapX,
                                                 const uint32_t mapXLen,
-                                                const float* __restrict__ mapY,
+                                                const float* _RESTRICT mapY,
                                                 const uint32_t mapYLen,
-                                                const uint8_t* __restrict__ dstMask,
+                                                const uint8_t* _RESTRICT dstMask,
                                                 const uint32_t dstMaskLen,
-                                                float* __restrict__ mapXss,
+                                                float* _RESTRICT mapXss,
                                                 const uint32_t mapXssLen,
-                                                float* __restrict__ mapYss,
+                                                float* _RESTRICT mapYss,
                                                 const uint32_t mapYssLen,
-                                                uint8_t* __restrict__ dstMaskss,
+                                                uint8_t* _RESTRICT dstMaskss,
                                                 const uint32_t dstMaskssLen) {
     if(mapXLen != width * height || mapYLen != width * height || dstMaskLen != width * height || mapXssLen != width * height / 4
        || mapYssLen != width * height / 4 || dstMaskssLen != width * height / 4 || width % 2 != 0 || height % 2 != 0) {
@@ -170,13 +176,13 @@ dai::impl::AEEResult dai::impl::subsampleMap2x2(const uint32_t width,
     return AEE_SUCCESS;
 }
 
-dai::impl::AEEResult dai::impl::remapImage(const uint8_t* __restrict__ inData,
+dai::impl::AEEResult dai::impl::remapImage(const uint8_t* _RESTRICT inData,
                                            const uint32_t inDataLen,
-                                           const float* __restrict__ mapX,
+                                           const float* _RESTRICT mapX,
                                            const uint32_t mapXLen,
-                                           const float* __restrict__ mapY,
+                                           const float* _RESTRICT mapY,
                                            const uint32_t mapYLen,
-                                           const uint8_t* __restrict__ dstMask,
+                                           const uint8_t* _RESTRICT dstMask,
                                            const uint32_t dstMaskLen,
                                            const uint16_t numChannels,
                                            const uint32_t inWidth,
@@ -185,7 +191,7 @@ dai::impl::AEEResult dai::impl::remapImage(const uint8_t* __restrict__ inData,
                                            const uint32_t outWidth,
                                            const uint32_t outHeight,
                                            const uint32_t outStride,
-                                           uint8_t* __restrict__ outData,
+                                           uint8_t* _RESTRICT outData,
                                            const uint32_t outDataLen) {
     if(mapXLen != mapYLen || mapXLen != outWidth * outHeight || dstMaskLen != outWidth * outHeight || numChannels == 0 || numChannels > 3) return AEE_EBADPARM;
 
