@@ -11,7 +11,7 @@
 #define PLANE_ALIGNMENT 128
 
 #if defined(WIN32) || defined(_WIN32)
-#define RESTRICT __restrict
+#define _RESTRICT __declspec (restrict)
 #else
 #define _RESTRICT __restrict__
 #endif
