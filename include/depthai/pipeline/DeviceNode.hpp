@@ -77,4 +77,6 @@ class DeviceNodeCRTP : public Base {
     friend PipelineImpl;
 };
 
+class HostRunnable {};
+
 }  // namespace dai
