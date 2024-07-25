@@ -103,7 +103,7 @@ cv::Mat ImgFrame::getFrame(bool deepCopy) {
         // TODO stride handling
     } else {
         // TMP TMP
-        if(fb.stride != 0) {
+        if(fb.stride == 0) {
             mat = cv::Mat(size, type, data->getData().data());
         } else {
             mat = cv::Mat(size, type, data->getData().data(), getStride());
@@ -130,9 +130,9 @@ cv::Mat ImgFrame::getCvFrame() {
             cv::Size s(getWidth(), getHeight());
             std::vector<cv::Mat> channels;
             // RGB
-            channels.push_back(cv::Mat(s, CV_8UC1, (uint8_t*)getData().data() + s.area() * 2));
-            channels.push_back(cv::Mat(s, CV_8UC1, (uint8_t*)getData().data() + s.area() * 1));
-            channels.push_back(cv::Mat(s, CV_8UC1, (uint8_t*)getData().data() + s.area() * 0));
+            channels.push_back(cv::Mat(s, CV_8UC1, (uint8_t*)getData().data() + fb.p3Offset, getStride()));
+            channels.push_back(cv::Mat(s, CV_8UC1, (uint8_t*)getData().data() + fb.p2Offset, getStride()));
+            channels.push_back(cv::Mat(s, CV_8UC1, (uint8_t*)getData().data() + fb.p1Offset, getStride()));
             cv::merge(channels, output);
         } break;
 
@@ -140,9 +140,9 @@ cv::Mat ImgFrame::getCvFrame() {
             cv::Size s(getWidth(), getHeight());
             std::vector<cv::Mat> channels;
             // BGR
-            channels.push_back(cv::Mat(s, CV_8UC1, (uint8_t*)getData().data() + s.area() * 0));
-            channels.push_back(cv::Mat(s, CV_8UC1, (uint8_t*)getData().data() + s.area() * 1));
-            channels.push_back(cv::Mat(s, CV_8UC1, (uint8_t*)getData().data() + s.area() * 2));
+            channels.push_back(cv::Mat(s, CV_8UC1, (uint8_t*)getData().data() + fb.p1Offset, getStride()));
+            channels.push_back(cv::Mat(s, CV_8UC1, (uint8_t*)getData().data() + fb.p2Offset, getStride()));
+            channels.push_back(cv::Mat(s, CV_8UC1, (uint8_t*)getData().data() + fb.p3Offset, getStride()));
             cv::merge(channels, output);
         } break;
 

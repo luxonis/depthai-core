@@ -1,16 +1,12 @@
 #!/usr/bin/env python3
 
-from pathlib import Path
-import sys
 import cv2
 import depthai as dai
 import numpy as np
 import time
 
 # Get argument first
-modelDescription = dai.NNModelDescription(
-    modelSlug="yolov6n-r2-288x512-8shave-blob", platform="RVC2"
-)
+modelDescription = dai.NNModelDescription(modelSlug="yolov6n", platform="RVC2")
 archivePath = dai.getModelFromZoo(modelDescription, useCached=True)
 
 # Create pipeline
@@ -25,11 +21,18 @@ with dai.Pipeline() as pipeline:
     nnArchive = dai.NNArchive(archivePath)
     h, w = nnArchive.getConfig().getConfigV1().model.inputs[0].shape[-2:]
     camRgb.setPreviewSize(w, h)
-    print(h, w)
     detectionNetwork = pipeline.create(dai.node.DetectionNetwork).build(
         camRgb.preview, nnArchive
     )
     detectionNetwork.setNumInferenceThreads(2)
+
+    # If needed, you can set the NNArchive by yourself
+    # detectionNetwork.setNNArchive(nnArchive)
+
+    # If nnArchive.getArchiveType() == dai.NNArchiveType.SUPERBLOB
+    # you can specify the number of shaves
+    # detectionNetwork.setNNArchive(nnArchive, numShaves=9)
+    # When ^^^ is used and the archive type is not SUPERBLOB, an exception will be thrown
 
     qRgb = detectionNetwork.passthrough.createOutputQueue()
     qDet = detectionNetwork.out.createOutputQueue()
