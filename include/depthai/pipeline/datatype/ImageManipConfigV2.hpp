@@ -216,9 +216,6 @@ class ImageManipOpsBase {
     enum class Background : uint8_t { COLOR /* , REPLICATE, MIRROR */ };  // TODO(asahtik): replicate impl
     enum class ResizeMode : uint8_t { NONE, STRETCH, LETTERBOX, CENTER_CROP };
 
-   protected:
-    std::vector<ManipOp> operations{};
-
    public:
     uint32_t outputWidth = 0;
     uint32_t outputHeight = 0;
@@ -229,6 +226,8 @@ class ImageManipOpsBase {
     uint8_t backgroundG = 0;
     uint8_t backgroundB = 0;
     Colormap colormap = Colormap::NONE;
+
+    std::vector<ManipOp> operations{};
 
     ImageManipOpsBase() = default;
     virtual ~ImageManipOpsBase() = default;

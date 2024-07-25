@@ -7,6 +7,7 @@
 #include <opencv2/core/base.hpp>
 #include <opencv2/core/types.hpp>
 #include <sstream>
+#include <stdint.h>
 
 #define PLANE_ALIGNMENT 128
 
@@ -2634,7 +2635,7 @@ std::string ImageManipOperations<ImageManipBuffer, ImageManipData>::toString() c
     return cStr.str();
 }
 
-typedef enum AEEResult { AEE_SUCCESS, AEE_EBADPARM, AEE_ERROR } AEEResult;
+enum AEEResult { AEE_SUCCESS, AEE_EBADPARM, AEE_ERROR };
 
 AEEResult manipGetSrcMask(const uint32_t width,
                           const uint32_t height,
