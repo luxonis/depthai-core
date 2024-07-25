@@ -793,7 +793,6 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipelin
     if(deviceInfo.state == X_LINK_UNBOOTED) {
         // Unbooted device found, boot and connect with XLinkConnection constructor
         std::vector<std::uint8_t> fwWithConfig = Resources::getInstance().getDeviceFirmware(config, pathToMvcmd);
-        std::cout<<"fwlength: "<<fwWithConfig.size()<<std::endl;
         connection = std::make_shared<XLinkConnection>(deviceInfo, fwWithConfig);
         if(connection != nullptr) std::cout<<"connection created 0\n";
         else std::cout<<"connection is null 0\n";
@@ -900,7 +899,6 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipelin
     // separate stream so it doesn't miss between potentially long RPC calls
     // Only create the thread if watchdog is enabled
     if(watchdogTimeout > std::chrono::milliseconds(0)) {
-        std::cout<<"inside dog\n";
         // Specify "last" ping time (5s in the future, for some grace time)
         {
             std::unique_lock<std::mutex> lock(lastWatchdogPingTimeMtx);
@@ -910,7 +908,6 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipelin
         // Start watchdog thread for device
         watchdogThread = std::thread([this, watchdogTimeout]() {
             try {
-                std::cout<<"dog trying\n"<<watchdogRunning<<std::endl;
                 XLinkStream stream(connection, device::XLINK_CHANNEL_WATCHDOG, 128);
                 std::vector<uint8_t> watchdogKeepalive = {0, 0, 0, 0};
                 while(watchdogRunning) {
@@ -1021,7 +1018,6 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipelin
             using namespace std::chrono;
 
             try {
-                std::cout<<"inside time\n";
                 XLinkStream stream(connection, device::XLINK_CHANNEL_TIMESYNC, 128);
                 while(timesyncRunning) {
                     // Block
@@ -1048,7 +1044,6 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipelin
                 XLinkStream stream(connection, device::XLINK_CHANNEL_LOG, 128);
                 while(loggingRunning) {
                     // Block
-                    std::cout<<"logging\n";
                     auto log = stream.read();
 
                     try {
