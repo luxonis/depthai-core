@@ -462,9 +462,6 @@ class Pipeline {
     }
     void start() {
         impl()->start();
-        std::shared_ptr<PipelineImpl> shared = pimpl->shared_from_this();
-        const auto weak = std::weak_ptr<PipelineImpl>(shared);
-        impl()->defaultDevice->pipeline_ptr = weak;
     }
     void wait() {
         impl()->wait();

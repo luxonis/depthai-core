@@ -849,6 +849,11 @@ void PipelineImpl::start() {
             node->start();
         }
     }
+
+    // Add pointer to the pipeline to the device
+    std::shared_ptr<PipelineImpl> shared = shared_from_this();
+    const auto weak = std::weak_ptr<PipelineImpl>(shared);
+    defaultDevice->pipeline_ptr = weak;
 }
 
 void PipelineImpl::resetConnections(){
