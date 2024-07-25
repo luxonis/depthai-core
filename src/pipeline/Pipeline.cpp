@@ -598,10 +598,15 @@ bool PipelineImpl::isBuilt() const {
     return isBuild;
 }
 
-void PipelineImpl::build() {
+void PipelineImpl::build(bool reconnect) {
+    std::cout<<"Build1\n";
     // TODO(themarpe) - add mutex and set running up ahead
     if(isBuild) return;
     isBuild = true;
+    /*
+        On reconnect:
+        
+    */
 
     if(defaultDevice) {
         std::string recordPath = utility::getEnv("DEPTHAI_RECORD");
@@ -726,7 +731,7 @@ void PipelineImpl::build() {
     std::unordered_map<dai::Node::Output*, XLinkOutBridge> bridgesOut;
     std::unordered_map<dai::Node::Input*, XLinkInBridge> bridgesIn;
     std::unordered_set<std::string> uniqueStreamNames;
-
+    //std::cout<<"Build2\n";
     for(auto& connection : getConnectionsInternal()) {
         auto inNode = connection.inputNode.lock();
         auto outNode = connection.outputNode.lock();
@@ -752,7 +757,12 @@ void PipelineImpl::build() {
                 uniqueStreamNames.insert(streamName);
                 xLinkBridge.xLinkOut->setStreamName(streamName);
                 xLinkBridge.xLinkInHost->setStreamName(streamName);
+                std::cout<<"SET CONNECTION 1\n";
                 xLinkBridge.xLinkInHost->setConnection(defaultDevice->getConnection());
+                if(reconnect){
+                    xLinkBridge.xLinkInHost->isWaitingForReconnect.notify_all();
+                    std::cout<<"NOTIFIED 1 \n";
+                } 
                 connection.out->link(xLinkBridge.xLinkOut->input);
             }
             auto xLinkBridge = bridgesOut[connection.out];
@@ -784,18 +794,25 @@ void PipelineImpl::build() {
             connection.out->link(xLinkBridge.xLinkOutHost->in);
         }
     }
-
+    //std::cout<<"Build3\n";
     // Create a vector of all nodes in the pipeline
     std::vector<std::shared_ptr<Node>> allNodes = getAllNodes();
     for(auto node : allNodes) {
         if(node->runOnHost()) {
             // Nothing special to do for host nodes
+            std::cout<<"HOST RUNNNING ON HOST NODE ON HOST\n";
             continue;
         }
+        //std::cout<<"node stuff size: "<<node->getOutputRefs().size()<<"\n";
         for(auto* output : node->getOutputRefs()) {
+            //std::cout<<"sdaasddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddn\n";
+            //std::cout<<"other size: "<<output->getQueueConnections().size()<<"\n";
+            //auto queueConnsCopy = output->getQueueConnections();
             for(auto& queueConnection : output->getQueueConnections()) {
+                std::cout<<"looper\n";
                 // For every queue connection, if it's connected to a device node, create a bridge, if it doesn't exist
                 if(bridgesOut.count(queueConnection.output) == 0) {
+                    std::cout<<"im in\n";
                     // // Create a new bridge
                     bridgesOut[queueConnection.output] = XLinkOutBridge{
                         create<node::XLinkOut>(shared_from_this()),
@@ -808,24 +825,34 @@ void PipelineImpl::build() {
                     if(uniqueStreamNames.count(streamName) > 0) {
                         throw std::runtime_error(fmt::format("Stream name '{}' is not unique", streamName));
                     }
+                    //std::cout<<"roger roger\n";
                     uniqueStreamNames.insert(streamName);
                     xLinkBridge.xLinkOut->setStreamName(streamName);
                     xLinkBridge.xLinkInHost->setStreamName(streamName);
+                    //std::cout<<"SET CONNECTION\n";
                     xLinkBridge.xLinkInHost->setConnection(defaultDevice->getConnection());
+                    //if(reconnect){
+                    //    std::lock_guard<std::mutex> lock(xLinkBridge.xLinkInHost->mtx);
+                    //    xLinkBridge.xLinkInHost->isWaitingForReconnect.notify_all();
+                    //std::cout<<"NOTIFIED\n";
+                    //}
                     queueConnection.output->link(xLinkBridge.xLinkOut->input);
                 }
                 auto xLinkBridge = bridgesOut[queueConnection.output];
                 queueConnection.output->unlink(queueConnection.queue);  // Unlink the original connection
                 xLinkBridge.xLinkInHost->out.link(queueConnection.queue);
             }
+            //output->setQueueConnections(queueConnsCopy);
+            //std::cout<<"post size: "<<output->getQueueConnections().size()<<"\n";
         }
     }
-
+    //std::cout<<"Build4\n";
     // Build
     if(!isHostOnly()) {
         // TODO(Morato) - handle multiple devices correctly, start pipeline on all of them
         defaultDevice->startPipeline(Pipeline(shared_from_this()));
     }
+    //std::cout<<"BuildR\n";
 }
 
 void PipelineImpl::start() {
@@ -851,6 +878,35 @@ void PipelineImpl::start() {
             node->start();
         }
     }
+}
+//void PipelineImpl::deviceReconnect(std::shared_ptr<XLinkConnection> connection) {
+//    for node in getAllNodes
+//        std::dynamic_pointer_cast<node::XLinkInHost>(node)->setConnection(connection);
+//
+//}
+
+void PipelineImpl::resetConnections(){
+    std::cout<<"resetting connections\n";
+    //isBuild=false;
+    //build(true);
+
+    for(auto node : getAllNodes()){
+        if(defaultDevice->getConnection() == nullptr){
+            throw std::runtime_error("Connection is null");
+        }
+        auto con = defaultDevice->getConnection();
+        std::cout<<con->isClosed()<<"\n";
+        auto tmp = std::dynamic_pointer_cast<node::XLinkInHost>(node);
+        if(tmp != nullptr) tmp->setConnection(con);
+    }
+
+
+    if(!isHostOnly()) {
+        // TODO(Morato) - handle multiple devices correctly, start pipeline on all of them
+        std::cout<<"restarting pipeline\n";
+        defaultDevice->startPipeline(Pipeline(shared_from_this()));
+    }
+    std::cout<<"reset connections\n";
 }
 
 void PipelineImpl::wait() {

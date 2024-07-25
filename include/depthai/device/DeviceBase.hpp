@@ -43,12 +43,15 @@ namespace dai {
 
 // Forward declare Pipeline
 class Pipeline;
-
+class PipelineImpl;
 /**
  * The core of depthai device for RAII, connects to device and maintains watchdog, timesync, ...
  */
 class DeviceBase {
    public:
+    int maxReconnectionAttempts = 5;
+    void setMaxReconnectionAttempts(int maxReconnectionAttempts);
+
     // constants
 
     /// Default search time for constructors which discover devices
@@ -941,7 +944,7 @@ class DeviceBase {
 
    private:
     // private functions
-    void init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipeline);
+    void init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipeline, bool reconnect = 0);
     void tryGetDevice();
 
     DeviceInfo deviceInfo = {};
@@ -995,5 +998,8 @@ class DeviceBase {
 
     // Started pipeline
     std::optional<PipelineSchema> pipelineSchema;
+
+public:
+    std::weak_ptr<PipelineImpl> pipeline_ptr;
 };
 }  // namespace dai

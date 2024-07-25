@@ -2,6 +2,7 @@
 
 // std
 #include <spdlog/fmt/ostr.h>
+#include <unistd.h>
 
 #include <iostream>
 #include <optional>
@@ -573,7 +574,7 @@ void DeviceBase::closeImpl() {
     // keep the shared_ptr valid (even if closed). Otherwise leads to using null pointers,
     // invalid memory, etc. which hard crashes main app
     connection->close();
-
+    
     watchdogRunning = false;
     // Stop watchdog first (this resets and waits for link to fall down)
     if(watchdogThread.joinable()) watchdogThread.join();
@@ -682,10 +683,19 @@ void DeviceBase::init(Config config, UsbSpeed maxUsbSpeed, const dai::Path& path
     init2(cfg, pathToMvcmd, {});
 }
 
-void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipeline) {
+void DeviceBase::setMaxReconnectionAttempts(int maxAttempts) {
+    maxReconnectionAttempts = maxAttempts;
+}
+
+void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipeline, bool reconnect) {
     // Initalize depthai library if not already
     if(!dumpOnly) initialize();
 
+    std::cout<<"Saving info\n";
+    auto prevDeviceInfo = deviceInfo;
+    auto prevCfg = cfg;
+    auto prevPath = dai::Path(pathToMvcmd);
+    auto prevHasPipeline = hasPipeline;
     // Specify cfg
     config = cfg;
     firmwarePath = pathToMvcmd;
@@ -760,7 +770,7 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipelin
             pimpl->logger.warn("DEPTHAI_WATCHDOG_INITIAL_DELAY value invalid: {}", e.what());
         }
     }
-
+    
     auto deviceDebugStr = utility::getEnv("DEPTHAI_DEBUG");
     if(!deviceDebugStr.empty()) {
         // Try parsing the string as a number
@@ -777,12 +787,16 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipelin
         nlohmann::json jBoardConfig = config.board;
         pimpl->logger.debug("Device - BoardConfig: {} \nlibnop:{}", jBoardConfig.dump(), spdlog::to_hex(utility::serialize(config.board)));
     }
-
+    if(connection == nullptr) std::cout<<"connection is null, as expected\n";
+    else std::cout<<"connection is not null, unexpected\n";
     // Init device (if bootloader, handle correctly - issue USB boot command)
     if(deviceInfo.state == X_LINK_UNBOOTED) {
         // Unbooted device found, boot and connect with XLinkConnection constructor
         std::vector<std::uint8_t> fwWithConfig = Resources::getInstance().getDeviceFirmware(config, pathToMvcmd);
+        std::cout<<"fwlength: "<<fwWithConfig.size()<<std::endl;
         connection = std::make_shared<XLinkConnection>(deviceInfo, fwWithConfig);
+        if(connection != nullptr) std::cout<<"connection created 0\n";
+        else std::cout<<"connection is null 0\n";
     } else if(deviceInfo.state == X_LINK_BOOTLOADER || deviceInfo.state == X_LINK_FLASH_BOOTED) {
         std::vector<std::uint8_t> fwWithConfig = Resources::getInstance().getDeviceFirmware(config, pathToMvcmd);
         // Scope so DeviceBootloader is disconnected
@@ -816,11 +830,15 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipelin
 
         // Boot and connect with XLinkConnection constructor
         connection = std::make_shared<XLinkConnection>(deviceInfo, fwWithConfig, expectedBootState);
-
+        if(connection != nullptr) std::cout<<"connection created 1\n";
+        else std::cout<<"connection is null 1\n";
     } else if(deviceInfo.state == X_LINK_BOOTED) {
         // Connect without booting
         std::vector<std::uint8_t> fwWithConfig = Resources::getInstance().getDeviceFirmware(config, pathToMvcmd);
+        std::cout<<"fwlength: "<<fwWithConfig.size()<<std::endl;
         connection = std::make_shared<XLinkConnection>(deviceInfo, fwWithConfig);
+        if(connection != nullptr) std::cout<<"connection created 2\n";
+        else std::cout<<"connection is null 2\n";
     } else if(deviceInfo.state == X_LINK_GATE || deviceInfo.state == X_LINK_GATE_BOOTED) {
         // Boot FW using DeviceGate then connect directly
         gate = std::make_unique<DeviceGate>(deviceInfo);
@@ -843,10 +861,11 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipelin
 
         // Connect with XLinkConnection (skip checking if booted)
         connection = std::make_shared<XLinkConnection>(deviceInfo, X_LINK_ANY_STATE);
+        if(connection != nullptr) std::cout<<"connection created 3\n";
+        else std::cout<<"connection is null 3\n";
     } else {
         throw std::runtime_error("Cannot find any device with given deviceInfo");
     }
-
     deviceInfo.state = expectedBootState;
 
     // prepare rpc for both attached and host controlled mode
@@ -893,6 +912,7 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipelin
                 XLinkStream stream(connection, device::XLINK_CHANNEL_WATCHDOG, 128);
                 std::vector<uint8_t> watchdogKeepalive = {0, 0, 0, 0};
                 while(watchdogRunning) {
+                    std::cout<<"watchdog\n";
                     stream.write(watchdogKeepalive);
                     {
                         std::unique_lock<std::mutex> lock(lastWatchdogPingTimeMtx);
@@ -915,9 +935,12 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipelin
             // Watchdog ended. Useful for checking disconnects
             watchdogRunning = false;
         });
-
+        
         // Start monitor thread for host - makes sure that device is responding to pings, otherwise it disconnects
-        monitorThread = std::thread([this, watchdogTimeout]() {
+        if(!reconnect){
+
+        monitorThread = std::thread([this, watchdogTimeout, prevHasPipeline,prevDeviceInfo,prevCfg,prevPath]() {
+            startMonitor:
             while(watchdogRunning) {
                 // Ping with a period half of that of the watchdog timeout
                 std::this_thread::sleep_for(watchdogTimeout);
@@ -929,15 +952,44 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipelin
                 }
                 // Recheck if watchdogRunning wasn't already closed and close if more than twice of WD passed
                 if(watchdogRunning && std::chrono::steady_clock::now() - prevPingTime > watchdogTimeout * 2) {
+                    std::cout<<"Monitor exit\n";
                     pimpl->logger.warn("Monitor thread (device: {} [{}]) - ping was missed, closing the device connection", deviceInfo.mxid, deviceInfo.name);
                     // ping was missed, reset the device
                     watchdogRunning = false;
                     // close the underlying connection
                     connection->close();
-                }
+                }else std::cout<<"Monitor running\n";
             }
+            std::cout<<"Watchdog not running\n";
+            // stop other threads 
+            if(watchdogThread.joinable()) watchdogThread.join();
+            timesyncRunning = false;
+            loggingRunning = false;
+            profilingRunning = false;
+            if(timesyncThread.joinable()) timesyncThread.join();
+            if(loggingThread.joinable()) loggingThread.join();
+            if(profilingThread.joinable()) profilingThread.join();
+            pimpl->rpcStream = nullptr;
+            pimpl->rpcClient = nullptr;
+            std::cout<<"Stopped other threads\n";
+            if(!connection->isClosed())connection->close();
+            std::cout<<"Closed connection\nAttempting reconnection in 3s\n";
+            deviceInfo = prevDeviceInfo;
+            connection = nullptr;
+            sleep(3);
+            // reconnect
+            init2(prevCfg, prevPath, prevHasPipeline, true);
+            std::cout<<"Reconnected, resetting connections on pipeline\n";
+            //pipeline_ptr->resetConnections();
+            auto shared= pipeline_ptr.lock();
+            shared->resetConnections();
+            std::cout<<"\"restart monitor\"\n";
+            watchdogRunning=true;
+            goto startMonitor;
+            //throw std::runtime_error("Where art thou");
         });
 
+        }
     } else {
         // Still set watchdogRunning explictitly
         // as it indicates device not being closed
@@ -967,6 +1019,7 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipelin
                 XLinkStream stream(connection, device::XLINK_CHANNEL_TIMESYNC, 128);
                 while(timesyncRunning) {
                     // Block
+                    std::cout<<"timesync\n";
                     XLinkTimespec timestamp;
                     stream.read(timestamp);
 
@@ -989,6 +1042,7 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipelin
                 XLinkStream stream(connection, device::XLINK_CHANNEL_LOG, 128);
                 while(loggingRunning) {
                     // Block
+                    std::cout<<"logging\n";
                     auto log = stream.read();
 
                     try {
@@ -1064,7 +1118,7 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipelin
         // Below can throw - make sure to gracefully exit threads
         try {
             // Starts and waits for inital timesync
-            setTimesync(DEFAULT_TIMESYNC_PERIOD, DEFAULT_TIMESYNC_NUM_SAMPLES, DEFAULT_TIMESYNC_RANDOM);
+            //setTimesync(DEFAULT_TIMESYNC_PERIOD, DEFAULT_TIMESYNC_NUM_SAMPLES, DEFAULT_TIMESYNC_RANDOM);
         } catch(const std::exception&) {
             // close device (cleanup)
             close();

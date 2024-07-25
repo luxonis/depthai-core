@@ -197,12 +197,14 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     // Run only host side, if any device nodes are present, error out
     bool isRunning() const;
     bool isBuilt() const;
-    void build();
+    void build(bool reconnect = 0);
     void start();
     void wait();
     void stop();
     void run();
-
+public:
+    void resetConnections();
+private:
     // Resource
     std::vector<uint8_t> loadResource(dai::Path uri);
     std::vector<uint8_t> loadResourceCwd(dai::Path uri, dai::Path cwd);
@@ -460,6 +462,9 @@ class Pipeline {
     }
     void start() {
         impl()->start();
+        std::shared_ptr<PipelineImpl> shared = pimpl->shared_from_this();
+        const auto weak = std::weak_ptr<PipelineImpl>(shared);
+        impl()->defaultDevice->pipeline_ptr = weak;
     }
     void wait() {
         impl()->wait();
@@ -471,7 +476,6 @@ class Pipeline {
     void run() {
         impl()->run();
     }
-
     /*
      * @note In case of a host only pipeline, this function returns a nullptr
      */
