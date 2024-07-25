@@ -20,7 +20,6 @@ void XLinkInHost::setStreamName(const std::string& name) {
 }
 
 void XLinkInHost::setConnection(std::shared_ptr<XLinkConnection> conn) {
-    if(conn == nullptr) std::cout<<"conn is null in XLinkInHost"<<std::endl;
     this->conn = std::move(conn);
     std::lock_guard<std::mutex> lock(mtx);
     isWaitingForReconnect.notify_all();

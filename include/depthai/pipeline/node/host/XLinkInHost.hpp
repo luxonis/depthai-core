@@ -10,6 +10,8 @@ class XLinkInHost : public NodeCRTP<ThreadedHostNode, XLinkInHost> {
    private:
     std::shared_ptr<XLinkConnection> conn;
     std::string streamName;
+    std::condition_variable isWaitingForReconnect;
+    std::mutex mtx;
 
    public:
     constexpr static const char* NAME = "XLinkInHost";
@@ -19,8 +21,6 @@ class XLinkInHost : public NodeCRTP<ThreadedHostNode, XLinkInHost> {
     void setStreamName(const std::string& name);
     void setConnection(std::shared_ptr<XLinkConnection> conn);
     void run() override;
-    std::condition_variable isWaitingForReconnect;
-    std::mutex mtx;
 };
 }  // namespace node
 }  // namespace dai

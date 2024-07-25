@@ -857,12 +857,9 @@ void PipelineImpl::start() {
 }
 
 void PipelineImpl::resetConnections(){
-    std::cout<<"resetting connections\n";
-
+    // reset connection on all nod<es
     for(auto node : getAllNodes()){
-        if(defaultDevice->getConnection() == nullptr){
-            throw std::runtime_error("Connection is null");
-        }
+        if(defaultDevice->getConnection() == nullptr) continue;
         auto con = defaultDevice->getConnection();
         if(!con) continue;
         auto tmp = std::dynamic_pointer_cast<node::XLinkInHost>(node);
@@ -870,12 +867,10 @@ void PipelineImpl::resetConnections(){
         tmp->setConnection(con);
     }
 
-
+    // restart pipeline
     if(!isHostOnly()) {
-        std::cout<<"restarting pipeline\n";
         defaultDevice->startPipeline(Pipeline(shared_from_this()));
     }
-    std::cout<<"reset connections\n";
 }
 
 void PipelineImpl::wait() {
