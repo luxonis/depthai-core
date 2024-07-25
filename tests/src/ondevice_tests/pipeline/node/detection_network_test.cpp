@@ -10,9 +10,20 @@ TEST_CASE("DetectionNetwork can load BLOB properly") {
     dai::Pipeline p;
     auto nn = p.create<dai::node::DetectionNetwork>();
 
+    // No classes at the beginning
+    REQUIRE(!nn->getClasses().has_value());
+
     // Load NNArchive
     dai::NNArchive nnArchive(archivePath);
     REQUIRE_NOTHROW(nn->setNNArchive(nnArchive));
+
+    // Network loads classes
+    REQUIRE(nn->getClasses().has_value());
+
+    // Classes match
+    auto loadedClasses = nn->getClasses().value();
+    auto archiveClasses = nnArchive.getConfig().getConfigV1()->model.heads->at(0).metadata.classes.value();
+    REQUIRE(loadedClasses == archiveClasses);
 
     // Throws if number of shaves is specified
     REQUIRE_THROWS(nn->setNNArchive(nnArchive, 6));
