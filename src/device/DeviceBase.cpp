@@ -913,7 +913,6 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipelin
                 std::cout<<"dog trying\n"<<watchdogRunning<<std::endl;
                 XLinkStream stream(connection, device::XLINK_CHANNEL_WATCHDOG, 128);
                 std::vector<uint8_t> watchdogKeepalive = {0, 0, 0, 0};
-                watchdogRunning=1;
                 while(watchdogRunning) {
                     std::cout<<"watchdog\n";
                     stream.write(watchdogKeepalive);
@@ -981,13 +980,16 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipelin
             connection = nullptr;
             sleep(3);
             // reconnect
+            watchdogRunning=true;
+            timesyncRunning=true;
+            loggingRunning = true;
+            profilingRunning = true;
             init2(prevCfg, prevPath, prevHasPipeline, true);
             std::cout<<"Reconnected, resetting connections on pipeline\n";
             //pipeline_ptr->resetConnections();
             auto shared= pipeline_ptr.lock();
             shared->resetConnections();
             std::cout<<"\"restart monitor\"\n";
-            watchdogRunning=true;
             goto startMonitor;
             //throw std::runtime_error("Where art thou");
         });
@@ -1019,6 +1021,7 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipelin
             using namespace std::chrono;
 
             try {
+                std::cout<<"inside time\n";
                 XLinkStream stream(connection, device::XLINK_CHANNEL_TIMESYNC, 128);
                 while(timesyncRunning) {
                     // Block
@@ -1121,7 +1124,7 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipelin
         // Below can throw - make sure to gracefully exit threads
         try {
             // Starts and waits for inital timesync
-            //setTimesync(DEFAULT_TIMESYNC_PERIOD, DEFAULT_TIMESYNC_NUM_SAMPLES, DEFAULT_TIMESYNC_RANDOM);
+            setTimesync(DEFAULT_TIMESYNC_PERIOD, DEFAULT_TIMESYNC_NUM_SAMPLES, DEFAULT_TIMESYNC_RANDOM);
         } catch(const std::exception&) {
             // close device (cleanup)
             close();
