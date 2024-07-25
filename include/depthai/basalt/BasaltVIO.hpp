@@ -69,8 +69,6 @@ class BasaltVIO : public NodeCRTP<ThreadedHostNode, BasaltVIO> {
     void setLocalTransform(const std::shared_ptr<TransformData>& transform);
     void setDefaultVIOConfig();
 
-    void buildInternal() override;
-
    private:
     // pimpl
     class Impl;

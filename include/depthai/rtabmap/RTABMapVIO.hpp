@@ -25,6 +25,7 @@ namespace node {
 class RTABMapVIO : public NodeCRTP<ThreadedHostNode, RTABMapVIO> {
    public:
     constexpr static const char* NAME = "RTABMapVIO";
+    RTABMapVIO();
 
     std::string rectInputName = "rect";
     std::string depthInputName = "depth";

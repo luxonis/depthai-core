@@ -4,7 +4,8 @@
 
 namespace dai {
 namespace node {
-void RTABMapVIO::buildInternal() {
+
+RTABMapVIO::RTABMapVIO() {
     sync->out.link(inSync);
     sync->setRunOnHost(false);
 
