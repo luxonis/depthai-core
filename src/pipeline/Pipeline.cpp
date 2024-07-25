@@ -807,7 +807,6 @@ void PipelineImpl::build() {
                     if(uniqueStreamNames.count(streamName) > 0) {
                         throw std::runtime_error(fmt::format("Stream name '{}' is not unique", streamName));
                     }
-                    //std::cout<<"roger roger\n";
                     uniqueStreamNames.insert(streamName);
                     xLinkBridge.xLinkOut->setStreamName(streamName);
                     xLinkBridge.xLinkInHost->setStreamName(streamName);

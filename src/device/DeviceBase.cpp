@@ -692,10 +692,21 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipelin
     if(!dumpOnly) initialize();
 
     std::cout<<"Saving info\n";
-    auto prevDeviceInfo = deviceInfo;
-    auto prevCfg = cfg;
-    auto prevPath = dai::Path(pathToMvcmd);
-    auto prevHasPipeline = hasPipeline;
+    struct{
+        DeviceInfo deviceInfo;
+        Config cfg;
+        dai::Path pathToMvcmd;
+        bool hasPipeline, loggingRunning, profilingRunning,timesyncRunning;
+    } prev;
+    prev.deviceInfo = deviceInfo;
+    prev.cfg = cfg;
+    prev.pathToMvcmd = dai::Path(pathToMvcmd);
+    prev.hasPipeline = hasPipeline;
+    prev.loggingRunning = loggingRunning;
+    prev.profilingRunning = profilingRunning;
+    prev.timesyncRunning = timesyncRunning;
+    std::cout<<"Saved info\n";
+
     // Specify cfg
     config = cfg;
     firmwarePath = pathToMvcmd;
@@ -834,7 +845,6 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipelin
     } else if(deviceInfo.state == X_LINK_BOOTED) {
         // Connect without booting
         std::vector<std::uint8_t> fwWithConfig = Resources::getInstance().getDeviceFirmware(config, pathToMvcmd);
-        std::cout<<"fwlength: "<<fwWithConfig.size()<<std::endl;
         connection = std::make_shared<XLinkConnection>(deviceInfo, fwWithConfig);
         if(connection != nullptr) std::cout<<"connection created 2\n";
         else std::cout<<"connection is null 2\n";
@@ -938,7 +948,7 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipelin
         // Start monitor thread for host - makes sure that device is responding to pings, otherwise it disconnects
         if(!reconnect){
 
-        monitorThread = std::thread([this, watchdogTimeout, prevHasPipeline,prevDeviceInfo,prevCfg,prevPath]() {
+        monitorThread = std::thread([this, watchdogTimeout, prev]() {
             startMonitor:
             while(watchdogRunning) {
                 // Ping with a period half of that of the watchdog timeout
@@ -972,23 +982,21 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipelin
             pimpl->rpcClient = nullptr;
             std::cout<<"Stopped other threads\n";
             if(!connection->isClosed())connection->close();
-            std::cout<<"Closed connection\nAttempting reconnection in 3s\n";
-            deviceInfo = prevDeviceInfo;
+            std::cout<<"Closed connection\nAttempting to reconnect in 3s\n";
+            deviceInfo = prev.deviceInfo;
             connection = nullptr;
             sleep(3);
             // reconnect
-            watchdogRunning=true;
-            timesyncRunning=true;
-            loggingRunning = true;
-            profilingRunning = true;
-            init2(prevCfg, prevPath, prevHasPipeline, true);
+            watchdogRunning = true;
+            timesyncRunning = prev.timesyncRunning;
+            loggingRunning = prev.loggingRunning;
+            profilingRunning = prev.profilingRunning;
+            init2(prev.cfg, prev.pathToMvcmd, prev.hasPipeline, true);
             std::cout<<"Reconnected, resetting connections on pipeline\n";
-            //pipeline_ptr->resetConnections();
             auto shared= pipeline_ptr.lock();
             shared->resetConnections();
             std::cout<<"\"restart monitor\"\n";
             goto startMonitor;
-            //throw std::runtime_error("Where art thou");
         });
 
         }
