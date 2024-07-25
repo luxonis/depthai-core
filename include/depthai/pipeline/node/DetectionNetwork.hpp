@@ -56,10 +56,19 @@ class DetectionNetwork : public NodeGroup {
     Output& passthrough;
 
     /**
-     * Apply NNArchive config to this Node and load network blob into assets and use once pipeline is started.
+     * @brief Set NNArchive for this Node. If the archive's type is SUPERBLOB, use default number of shaves.
      *
+     * @param nnArchive: NNArchive to set
      */
     void setNNArchive(const NNArchive& nnArchive);
+
+    /**
+     * @brief Set NNArchive for this Node, throws if the archive's type is not SUPERBLOB
+     *
+     * @param nnArchive: NNArchive to set
+     * @param numShaves: Number of shaves to use
+     */
+    void setNNArchive(const NNArchive& nnArchive, int numShaves);
 
     // Specify local filesystem path to load the blob (which gets loaded at loadAssets)
     /**
@@ -150,6 +159,10 @@ class DetectionNetwork : public NodeGroup {
     std::optional<std::vector<std::string>> getClasses() const;
 
    private:
+    void setNNArchiveBlob(const NNArchive& nnArchive);
+    void setNNArchiveSuperblob(const NNArchive& nnArchive, int numShaves);
+    void setNNArchiveOther(const NNArchive& nnArchive);
+
     class Impl;
     Pimpl<Impl> pimpl;
 

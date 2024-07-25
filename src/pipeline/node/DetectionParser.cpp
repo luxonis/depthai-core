@@ -9,15 +9,48 @@
 namespace dai {
 namespace node {
 
-std::reference_wrapper<const OpenVINO::Blob> DetectionParser::setNNArchive(const NNArchive& nnArchive) {
-    mArchive = nnArchive;
-    const auto configMaybe = nnArchive.getConfig().getConfigV1();
-    DAI_CHECK(configMaybe, "Unsupported NNArchive format / version. Check which depthai version you are running.");
-    const auto& config = *configMaybe;
-    const auto& blob = nnArchive.getBlob();
-    DAI_CHECK_IN(blob);
-    setBlob(*blob);
-    const auto model = config.model;
+void DetectionParser::setNNArchive(const NNArchive& nnArchive) {
+    constexpr int DEFAULT_SUPERBLOB_NUM_SHAVES = 8;
+    switch(nnArchive.getArchiveType()) {
+        case dai::NNArchiveType::BLOB:
+            setNNArchiveBlob(nnArchive);
+            break;
+        case dai::NNArchiveType::SUPERBLOB:
+            setNNArchiveSuperblob(nnArchive, DEFAULT_SUPERBLOB_NUM_SHAVES);
+            break;
+        case dai::NNArchiveType::OTHER:
+            setNNArchiveOther(nnArchive);
+            break;
+    }
+}
+
+const NNArchiveConfig& DetectionParser::getNNArchiveConfig() const {
+    DAI_CHECK_V(archiveConfig.has_value(), "NNArchiveConfig is not set. Use setNNArchive(...) first.");
+    return archiveConfig.value();
+}
+
+void DetectionParser::setNNArchive(const NNArchive& nnArchive, int numShaves) {
+    switch(nnArchive.getArchiveType()) {
+        case dai::NNArchiveType::SUPERBLOB:
+            setNNArchiveSuperblob(nnArchive, numShaves);
+            break;
+        case dai::NNArchiveType::BLOB:
+        case dai::NNArchiveType::OTHER:
+            DAI_CHECK_V(false, "NNArchive type is not SUPERBLOB. Use setNNArchive(const NNArchive& nnArchive) instead.");
+            break;
+    }
+}
+
+void DetectionParser::setConfigAndBlob(const dai::NNArchiveConfig& config, const dai::OpenVINO::Blob& blob) {
+    archiveConfig = config;
+
+    DAI_CHECK_V(config.getConfigV1().has_value(), "Only NNArchive config V1 is supported.");
+
+    auto configV1 = *config.getConfigV1();
+
+    setBlob(blob);
+
+    const auto model = configV1.model;
     // TODO(jakgra) is NN Archive valid without this? why is this optional?
     DAI_CHECK(model.heads, "Heads array is not defined in the NN Archive config file.");
     // TODO(jakgra) for now get info from heads[0] but in the future correctly support multiple outputs and mapped h  eads
@@ -60,7 +93,21 @@ std::reference_wrapper<const OpenVINO::Blob> DetectionParser::setNNArchive(const
         }
         setAnchors(anchorsOut);
     }
-    return *blob;
+}
+
+void DetectionParser::setNNArchiveBlob(const NNArchive& nnArchive) {
+    DAI_CHECK_V(nnArchive.getArchiveType() == dai::NNArchiveType::BLOB, "NNArchive type is not BLOB");
+    setConfigAndBlob(nnArchive.getConfig(), *nnArchive.getBlob());
+}
+
+void DetectionParser::setNNArchiveSuperblob(const NNArchive& nnArchive, int numShaves) {
+    DAI_CHECK_V(nnArchive.getArchiveType() == dai::NNArchiveType::SUPERBLOB, "NNArchive type is not SUPERBLOB");
+    setConfigAndBlob(nnArchive.getConfig(), nnArchive.getSuperBlob()->getBlobWithNumShaves(numShaves));
+}
+
+void DetectionParser::setNNArchiveOther(const NNArchive& nnArchive) {
+    DAI_CHECK_V(nnArchive.getArchiveType() == dai::NNArchiveType::OTHER, "NNArchive type is not OTHER");
+    DAI_CHECK_V(false, "Other NNArchive type not supported yet.");
 }
 
 void DetectionParser::setBlob(OpenVINO::Blob blob) {
@@ -169,10 +216,6 @@ std::map<std::string, std::vector<int>> DetectionParser::getAnchorMasks() const 
 /// Get Iou threshold
 float DetectionParser::getIouThreshold() const {
     return properties.parser.iouThreshold;
-}
-
-const NNArchive* DetectionParser::getNNArchive() const {
-    return mArchive ? &(*mArchive) : nullptr;
 }
 
 std::shared_ptr<DetectionParser> DetectionParser::build() {

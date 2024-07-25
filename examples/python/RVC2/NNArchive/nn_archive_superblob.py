@@ -11,7 +11,6 @@ modelDescription.platform = "RVC2"
 
 # Download model from zoo and load it
 archivePath = dai.getModelFromZoo(modelDescription, useCached=True)
-assert archivePath.endswith("yolov6n-r2-288x512.tar.xz")
 archive = dai.NNArchive(archivePath)
 
 # Archive knows it is a blob archive
