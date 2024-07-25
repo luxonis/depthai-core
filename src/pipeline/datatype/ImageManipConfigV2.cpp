@@ -7,6 +7,10 @@
 namespace dai {
 
 // New API
+ImageManipConfigV2& ImageManipConfigV2::clearOps() {
+    base.clear();
+    return *this;
+}
 ImageManipConfigV2& ImageManipConfigV2::crop(uint32_t x, uint32_t y, uint32_t w, uint32_t h) {
     base.crop(x, y, w, h);
     return *this;

@@ -44,6 +44,7 @@ void bind_imagemanipconfigv2(pybind11::module& m, void* pCallstack) {
     imageManipConfig
         .def(py::init<>())
         // New API Setters
+        .def("clearOps", &ImageManipConfigV2::clearOps, DOC(dai, ImageManipConfigV2, clearOps))
         .def("crop", &ImageManipConfigV2::crop, py::arg("x"), py::arg("y"), py::arg("w"), py::arg("h"), DOC(dai, ImageManipConfigV2, crop))
         .def("cropRotatedRect",
              &ImageManipConfigV2::cropRotatedRect,

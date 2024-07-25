@@ -58,8 +58,7 @@ struct Rotate : OpBase {
     std::string toStr() const override {
         std::stringstream ss;
         ss.imbue(std::locale(""));
-        ss << "Rot:a=" << angle << ",c=" << center << ",x=" << offsetX << ",y" << offsetY
-           << ",n=" << normalized;
+        ss << "Rot:a=" << angle << ",c=" << center << ",x=" << offsetX << ",y" << offsetY << ",n=" << normalized;
         return ss.str();
     }
 
@@ -141,9 +140,8 @@ struct Perspective : OpBase {
     std::string toStr() const override {
         std::stringstream ss;
         ss.imbue(std::locale(""));
-        ss << "P:m=" << matrix[0] << "," << matrix[1] << "," << matrix[2] << "," << matrix[3]
-           << "," << matrix[4] << "," << matrix[5] << "," << matrix[6] << "," << matrix[7]
-           << "," << matrix[8];
+        ss << "P:m=" << matrix[0] << "," << matrix[1] << "," << matrix[2] << "," << matrix[3] << "," << matrix[4] << "," << matrix[5] << "," << matrix[6] << ","
+           << matrix[7] << "," << matrix[8];
         return ss.str();
     }
 
@@ -161,11 +159,9 @@ struct FourPoints : OpBase {
     std::string toStr() const override {
         std::stringstream ss;
         ss.imbue(std::locale(""));
-        ss << "4P:s1=" << src[0].x << "," << src[0].y << ",s2=" << src[1].x << "," << src[1].y
-                  << ",s3=" << src[2].x << "," << src[2].y << ",s4=" << src[3].x << "," << src[3].y
-                  << "d1=" << dst[0].x << "," << dst[0].y << ",d2=" << dst[1].x << "," << dst[1].y
-                  << ",d3=" << dst[2].x << "," << dst[2].y << ",d4=" << dst[3].x << "," << dst[3].y
-                  << ",d=" << normalized;
+        ss << "4P:s1=" << src[0].x << "," << src[0].y << ",s2=" << src[1].x << "," << src[1].y << ",s3=" << src[2].x << "," << src[2].y << ",s4=" << src[3].x
+           << "," << src[3].y << "d1=" << dst[0].x << "," << dst[0].y << ",d2=" << dst[1].x << "," << dst[1].y << ",d3=" << dst[2].x << "," << dst[2].y
+           << ",d4=" << dst[3].x << "," << dst[3].y << ",d=" << normalized;
         return ss.str();
     }
 
@@ -399,6 +395,10 @@ class ImageManipConfigV2 : public Buffer {
     bool skipCurrentImage = false;
 
     // New API
+    /**
+     * Removes all operations from the list (does not affect output configuration)
+     */
+    ImageManipConfigV2& clearOps();
     /**
      * Crops the image to the specified rectangle
      * @param x X coordinate of the top-left corner
