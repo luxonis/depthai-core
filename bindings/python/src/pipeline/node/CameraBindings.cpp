@@ -28,14 +28,12 @@ void bind_camera(pybind11::module& m, void* pCallstack) {
         .def(
             "build",
             [](Camera& self, CAMERA_ARGS) {
-                self.buildInternal();
                 CAMERA_CODE(.)
                 return std::static_pointer_cast<Camera>(self.shared_from_this());
             },
             CAMERA_PYARGS)
         .def(py::init([](CAMERA_ARGS) {
                  auto self = getImplicitPipeline()->create<Camera>();
-                 self->buildInternal();
                  CAMERA_CODE(->)
                  return self;
              }),

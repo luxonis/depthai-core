@@ -101,7 +101,6 @@ void bind_colorcamera(pybind11::module& m, void* pCallstack){
     colorCamera
         .def(py::init([]() {
             auto camera = getImplicitPipeline()->create<ColorCamera>();
-            camera->buildInternal();
             return camera;
         }))
         .def_readonly("inputConfig", &ColorCamera::inputConfig, DOC(dai, node, ColorCamera, inputConfig))
