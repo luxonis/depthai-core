@@ -110,6 +110,12 @@ class OpenVINO {
         // Get the size in bytes of the patch data for a specific number of shaves
         int64_t getPatchDataSize(int numShaves);
 
+        // Load header - throw if an error occurs
+        void loadAndCheckHeader();
+
+        // Validate superblob - throw if an error occurs
+        void validateSuperblob();
+
         SuperBlobHeader header;
         std::vector<uint8_t> data;
     };
