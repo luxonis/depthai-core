@@ -37,6 +37,12 @@ class PyHostNode : public NodeCRTP<HostNode, PyHostNode> {
     std::shared_ptr<Buffer> processGroup(std::shared_ptr<dai::MessageGroup> in) override {
         PYBIND11_OVERRIDE_PURE(std::shared_ptr<Buffer>, HostNode, processGroup, in);
     }
+    void onStart() override {
+        PYBIND11_OVERRIDE(void, HostNode, onStart);
+    }
+    void onStop() override {
+        PYBIND11_OVERRIDE(void, HostNode, onStop);
+    }
 };
 
 void bind_hostnode(pybind11::module& m, void* pCallstack){
@@ -80,7 +86,9 @@ void bind_hostnode(pybind11::module& m, void* pCallstack){
         .def_readonly("out", &HostNode::out, DOC(dai, node, HostNode, out))
         .def("runSyncingOnHost", &HostNode::runSyncingOnHost, DOC(dai, node, HostNode, runSyncingOnHost))
         .def("runSyncingOnDevice", &HostNode::runSyncingOnDevice, DOC(dai, node, HostNode, runSyncingOnDevice))
-        .def("sendProcessingToPipeline", &HostNode::sendProcessingToPipeline, DOC(dai, node, HostNode, sendProcessingToPipeline));
+        .def("sendProcessingToPipeline", &HostNode::sendProcessingToPipeline, DOC(dai, node, HostNode, sendProcessingToPipeline))
+        .def("onStart", &HostNode::onStart)
+        .def("onStop", &HostNode::onStop);
 
     py::exec(R"(
         def __init_subclass__(cls):
