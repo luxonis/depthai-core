@@ -383,10 +383,7 @@ jobs:
         PLAT: manylinux2014_x86_64
     strategy:
       matrix:
-        python-set:
-          - ['7..9']
-          - ['10..12']
-    fail-fast: false
+        python-set: ["7..9", "10..12"]
     env:
       # workaround required for cache@v3, https://github.com/actions/cache/issues/1428
       # to be removed when upgrading the manylinux image
