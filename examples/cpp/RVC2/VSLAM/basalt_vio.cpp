@@ -10,10 +10,10 @@ int main() {
     int width = 640;
     int height = 400;
     // Define sources and outputs
-    auto left = pipeline.create<dai::node::MonoCamera>()->build();
-    auto right = pipeline.create<dai::node::MonoCamera>()->build();
-    auto imu = pipeline.create<dai::node::IMU>()->build();
-    auto odom = pipeline.create<dai::node::BasaltVIO>()->build();
+    auto left = pipeline.create<dai::node::MonoCamera>();
+    auto right = pipeline.create<dai::node::MonoCamera>();
+    auto imu = pipeline.create<dai::node::IMU>();
+    auto odom = pipeline.create<dai::node::BasaltVIO>();
 
     auto rerun = pipeline.create<RerunNode>();
     imu->enableIMUSensor({dai::IMUSensor::ACCELEROMETER_RAW, dai::IMUSensor::GYROSCOPE_RAW}, 200);

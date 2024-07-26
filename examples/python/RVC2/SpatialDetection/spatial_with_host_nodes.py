@@ -89,7 +89,7 @@ class SpatialVisualizer(dai.node.HostNode):
 with dai.Pipeline() as p:
     # Define sources and outputs
     camRgb = p.create(dai.node.ColorCamera)
-    spatialDetectionNetwork = p.create(dai.node.YoloSpatialDetectionNetwork).build()
+    spatialDetectionNetwork = p.create(dai.node.YoloSpatialDetectionNetwork)
     monoLeft = p.create(dai.node.MonoCamera)
     monoRight = p.create(dai.node.MonoCamera)
     stereo = p.create(dai.node.StereoDepth)

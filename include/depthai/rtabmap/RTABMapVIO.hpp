@@ -21,13 +21,11 @@ namespace node {
 
 /**
  * @brief RTABMap Visual Inertial Odometry node. Performs VIO on rectified frame, depth frame and IMU data.
-
-*/
+ */
 class RTABMapVIO : public NodeCRTP<ThreadedHostNode, RTABMapVIO> {
    public:
     constexpr static const char* NAME = "RTABMapVIO";
-
-    std::shared_ptr<RTABMapVIO> build();
+    RTABMapVIO();
 
     std::string rectInputName = "rect";
     std::string depthInputName = "depth";

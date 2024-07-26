@@ -17,9 +17,6 @@ class SpatialLocationCalculator : public DeviceNodeCRTP<DeviceNode, SpatialLocat
    public:
     constexpr static const char* NAME = "SpatialLocationCalculator";
     using DeviceNodeCRTP::DeviceNodeCRTP;
-    std::shared_ptr<SpatialLocationCalculator> build() {
-        return std::static_pointer_cast<SpatialLocationCalculator>(shared_from_this());
-    }
 
    protected:
     Properties& getProperties();

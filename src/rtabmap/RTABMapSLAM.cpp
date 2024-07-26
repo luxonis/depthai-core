@@ -10,7 +10,8 @@
 
 namespace dai {
 namespace node {
-std::shared_ptr<RTABMapSLAM> RTABMapSLAM::build() {
+
+RTABMapSLAM::RTABMapSLAM() {
     sync->out.link(inSync);
     sync->setRunOnHost(false);
     alphaScaling = -1.0;
@@ -28,7 +29,6 @@ std::shared_ptr<RTABMapSLAM> RTABMapSLAM::build() {
     odom.setBlocking(false);
     odom.addCallback(std::bind(&RTABMapSLAM::odomPoseCB, this, std::placeholders::_1));
     localMaps = std::make_shared<rtabmap::LocalGridCache>();
-    return std::static_pointer_cast<RTABMapSLAM>(shared_from_this());
 }
 
 RTABMapSLAM::~RTABMapSLAM() {
