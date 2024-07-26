@@ -37,7 +37,6 @@ void bind_rtabmapvionode(pybind11::module& m, void* pCallstack){
         .def_readonly("passthroughRect", &RTABMapVIO::passthroughRect, DOC(dai, node, RTABMapVIO, passthroughRect))
         .def_readonly("passthroughDepth", &RTABMapVIO::passthroughDepth, DOC(dai, node, RTABMapVIO, passthroughDepth))
         .def_readonly("passthroughFeatures", &RTABMapVIO::passthroughFeatures, DOC(dai, node, RTABMapVIO, passthroughFeatures))
-        .def("build", &RTABMapVIO::build)
         .def("setParams", &RTABMapVIO::setParams, py::arg("params"), DOC(dai, node, RTABMapVIO, setParams))
         .def("setUseFeatures", &RTABMapVIO::setUseFeatures, py::arg("useFeatures"), DOC(dai, node, RTABMapVIO, setUseFeatures))
         .def("setLocalTransform", &RTABMapVIO::setLocalTransform, py::arg("transform"), DOC(dai, node, RTABMapVIO, setLocalTransform))

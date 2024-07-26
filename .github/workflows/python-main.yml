@@ -44,6 +44,7 @@ jobs:
           python-version: 3.8
       - name: Install dependencies
         run: |
+          sudo apt update
           python -m pip install --upgrade pip
           sudo apt install libusb-1.0-0-dev libopencv-dev libpcl-dev
           python -m pip install -r bindings/python/docs/requirements_mkdoc.txt
