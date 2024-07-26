@@ -218,9 +218,5 @@ float DetectionParser::getIouThreshold() const {
     return properties.parser.iouThreshold;
 }
 
-std::shared_ptr<DetectionParser> DetectionParser::build() {
-    return std::static_pointer_cast<DetectionParser>(shared_from_this());
-}
-
 }  // namespace node
 }  // namespace dai

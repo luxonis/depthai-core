@@ -52,7 +52,7 @@ Camera::Camera(std::unique_ptr<Properties> props) : DeviceNodeCRTP<DeviceNode, C
 Camera::Camera(std::shared_ptr<Device>& defaultDevice)
     : DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>(defaultDevice), pimpl(spimpl::make_impl<Impl>()) {}
 
-std::shared_ptr<Camera> Camera::build() {
+void Camera::buildInternal() {
     properties.boardSocket = CameraBoardSocket::AUTO;
     properties.imageOrientation = CameraImageOrientation::AUTO;
     properties.colorOrder = CameraProperties::ColorOrder::BGR;
@@ -61,8 +61,6 @@ std::shared_ptr<Camera> Camera::build() {
     properties.previewWidth = 300;
     properties.fps = 30.0;
     properties.previewKeepAspectRatio = true;
-    isBuild = true;
-    return std::static_pointer_cast<Camera>(shared_from_this());
 }
 
 Camera::Properties& Camera::getProperties() {

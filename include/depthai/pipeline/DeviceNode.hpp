@@ -28,6 +28,9 @@ class DeviceNode : public ThreadedNode {
     // Get properties
     virtual Properties& getProperties();
 
+    // Internal build. Called frm within DeviceNodeCRTP's create function
+    virtual void buildInternal(){};
+
    protected:
     DeviceNode(const std::shared_ptr<Device>& device, std::unique_ptr<Properties> props, bool conf);
     DeviceNode(std::unique_ptr<Properties> props, bool conf);
@@ -57,7 +60,9 @@ class DeviceNodeCRTP : public Base {
     // No public constructor, only a factory function.
     template <typename... Args>
     [[nodiscard]] static std::shared_ptr<Derived> create(std::shared_ptr<Device> device, Args&&... args) {
-        return std::shared_ptr<Derived>(new Derived(device, std::forward<Args>(args)...));
+        auto nodePtr = std::shared_ptr<Derived>(new Derived(device, std::forward<Args>(args)...));
+        nodePtr->buildInternal();
+        return nodePtr;
     }
     [[nodiscard]] static std::shared_ptr<Derived> create(std::unique_ptr<Properties> props) {
         return std::shared_ptr<Derived>(new Derived(props));
