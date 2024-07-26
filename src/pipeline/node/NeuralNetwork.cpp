@@ -5,12 +5,63 @@
 #include "depthai/depthai.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "openvino/BlobReader.hpp"
+#include "utility/ErrorMacros.hpp"
 
 namespace dai {
 namespace node {
 
 std::optional<OpenVINO::Version> NeuralNetwork::getRequiredOpenVINOVersion() {
     return networkOpenvinoVersion;
+}
+
+std::shared_ptr<NeuralNetwork> NeuralNetwork::build(Node::Output &output, const NNArchive &nnArchive) {
+    setNNArchive(nnArchive);
+    output.link(this->input);
+    return std::static_pointer_cast<NeuralNetwork>(shared_from_this());
+}
+
+void NeuralNetwork::setNNArchive(const NNArchive& nnArchive) {
+    constexpr int DEFAULT_SUPERBLOB_NUM_SHAVES = 8;
+    switch(nnArchive.getArchiveType()) {
+        case dai::NNArchiveType::BLOB:
+            setNNArchiveBlob(nnArchive);
+            break;
+        case dai::NNArchiveType::SUPERBLOB:
+            setNNArchiveSuperblob(nnArchive, DEFAULT_SUPERBLOB_NUM_SHAVES);
+            break;
+        case dai::NNArchiveType::OTHER:
+            setNNArchiveOther(nnArchive);
+            break;
+    }
+}
+
+void NeuralNetwork::setNNArchive(const NNArchive& nnArchive, int numShaves) {
+    switch(nnArchive.getArchiveType()) {
+        case dai::NNArchiveType::SUPERBLOB:
+            setNNArchiveSuperblob(nnArchive, numShaves);
+            break;
+        case dai::NNArchiveType::BLOB:
+        case dai::NNArchiveType::OTHER:
+            DAI_CHECK_V(false, "NNArchive type is not SUPERBLOB. Use setNNArchive(const NNArchive& nnArchive) instead.");
+            break;
+    }
+}
+
+void NeuralNetwork::setNNArchiveBlob(const NNArchive& nnArchive) {
+    DAI_CHECK_V(nnArchive.getArchiveType() == dai::NNArchiveType::BLOB, "NNArchive type is not BLOB");
+    dai::OpenVINO::Blob blob = *nnArchive.getBlob();
+    setBlob(blob);
+}
+
+void NeuralNetwork::setNNArchiveSuperblob(const NNArchive& nnArchive, int numShaves) {
+    DAI_CHECK_V(nnArchive.getArchiveType() == dai::NNArchiveType::SUPERBLOB, "NNArchive type is not SUPERBLOB");
+    dai::OpenVINO::Blob blob = nnArchive.getSuperBlob()->getBlobWithNumShaves(numShaves);
+    setBlob(blob);
+}
+
+void NeuralNetwork::setNNArchiveOther(const NNArchive& nnArchive) {
+    DAI_CHECK_V(nnArchive.getArchiveType() == dai::NNArchiveType::OTHER, "NNArchive type is not OTHER");
+    DAI_CHECK_V(false, "Other NNArchive type not supported yet.");
 }
 
 // Specify local filesystem path to load the blob (which gets loaded at loadAssets)

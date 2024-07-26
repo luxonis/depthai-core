@@ -91,15 +91,13 @@ void DetectionNetwork::setNNArchive(const NNArchive& nnArchive, int numShaves) {
 void DetectionNetwork::setNNArchiveBlob(const NNArchive& nnArchive) {
     DAI_CHECK_V(nnArchive.getArchiveType() == dai::NNArchiveType::BLOB, "NNArchive type is not BLOB");
     detectionParser->setNNArchive(nnArchive);
-    dai::OpenVINO::Blob blob = *nnArchive.getBlob();  // Get blob and 'unpack' std::optional - we know it's a blob
-    neuralNetwork->setBlob(blob);
+    neuralNetwork->setNNArchive(nnArchive);
 }
 
 void DetectionNetwork::setNNArchiveSuperblob(const NNArchive& nnArchive, int numShaves) {
     DAI_CHECK_V(nnArchive.getArchiveType() == dai::NNArchiveType::SUPERBLOB, "NNArchive type is not SUPERBLOB");
-    detectionParser->setNNArchive(nnArchive);
-    dai::OpenVINO::Blob blob = nnArchive.getSuperBlob()->getBlobWithNumShaves(numShaves);
-    neuralNetwork->setBlob(blob);
+    detectionParser->setNNArchive(nnArchive, numShaves);
+    neuralNetwork->setNNArchive(nnArchive, numShaves);
 }
 
 void DetectionNetwork::setNNArchiveOther(const NNArchive& nnArchive) {
