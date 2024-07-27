@@ -238,6 +238,7 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/node/test/MyConsumer.cpp
     src/pipeline/node/PointCloud.cpp
     src/pipeline/node/UVC.cpp
+    src/pipeline/node/VisionHealth.cpp
     src/pipeline/datatype/Buffer.cpp
     src/pipeline/datatype/ImgFrame.cpp
     src/pipeline/datatype/ImageManipConfig.cpp
@@ -263,6 +264,8 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/datatype/PointCloudConfig.cpp
     src/pipeline/datatype/OccupancyPool.cpp
     src/pipeline/datatype/TraceEvents.cpp
+    src/pipeline/datatype/VisionHealthMetrics.cpp
+    src/pipeline/datatype/VisionHealthConfig.cpp
     src/utility/Initialization.cpp
     src/utility/Resources.cpp
     src/utility/Path.cpp

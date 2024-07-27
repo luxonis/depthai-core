@@ -34,6 +34,8 @@
 #include "depthai/pipeline/datatype/TraceEvents.hpp"
 #include "depthai/pipeline/datatype/TrackedFeatures.hpp"
 #include "depthai/pipeline/datatype/Tracklets.hpp"
+#include "depthai/pipeline/datatype/VisionHealthConfig.hpp"
+#include "depthai/pipeline/datatype/VisionHealthMetrics.hpp"
 
 // shared
 #include "depthai-shared/datatype/DatatypeEnum.hpp"
@@ -60,6 +62,8 @@
 #include "depthai-shared/datatype/RawToFConfig.hpp"
 #include "depthai-shared/datatype/RawTraceEvents.hpp"
 #include "depthai-shared/datatype/RawTracklets.hpp"
+#include "depthai-shared/datatype/RawVisionHealthConfig.hpp"
+#include "depthai-shared/datatype/RawVisionHealthMetrics.hpp"
 #include "depthai-shared/utility/Serialization.hpp"
 
 // StreamPacket structure ->  || imgframepixels... , serialized_object, object_type, serialized_object_size ||
@@ -221,6 +225,14 @@ std::shared_ptr<RawBuffer> StreamMessageParser::parseMessage(streamPacketDesc_t*
         case DatatypeEnum::OccupancyPool:
             return parseDatatype<RawOccupancyPool>(metadataStart, serializedObjectSize, data);
             break;
+
+        case DatatypeEnum::VisionHealthConfig:
+            return parseDatatype<RawVisionHealthConfig>(metadataStart, serializedObjectSize, data);
+            break;
+
+        case DatatypeEnum::VisionHealthMetrics:
+            return parseDatatype<RawVisionHealthMetrics>(metadataStart, serializedObjectSize, data);
+            break;
     }
 
     throw std::runtime_error("Bad packet, couldn't parse");
@@ -354,6 +366,14 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessageToADatatype(streamPa
 
         case DatatypeEnum::OccupancyPool:
             return std::make_shared<OccupancyPool>(parseDatatype<RawOccupancyPool>(metadataStart, serializedObjectSize, data));
+            break;
+
+        case DatatypeEnum::VisionHealthConfig:
+            return std::make_shared<VisionHealthConfig>(parseDatatype<RawVisionHealthConfig>(metadataStart, serializedObjectSize, data));
+            break;
+
+        case DatatypeEnum::VisionHealthMetrics:
+            return std::make_shared<VisionHealthMetrics>(parseDatatype<RawVisionHealthMetrics>(metadataStart, serializedObjectSize, data));
             break;
     }
 
