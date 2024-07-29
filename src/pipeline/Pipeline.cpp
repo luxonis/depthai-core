@@ -858,10 +858,9 @@ void PipelineImpl::start() {
 
 void PipelineImpl::resetConnections() {
     // reset connection on all nodes
+    if(defaultDevice->getConnection() == nullptr) return;
+    auto con = defaultDevice->getConnection();
     for(auto node : getAllNodes()) {
-        if(defaultDevice->getConnection() == nullptr) continue;
-        auto con = defaultDevice->getConnection();
-        if(!con) continue;
         auto tmp = std::dynamic_pointer_cast<node::XLinkInHost>(node);
         if(!tmp) continue;
         tmp->setConnection(con);
