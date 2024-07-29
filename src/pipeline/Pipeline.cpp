@@ -602,7 +602,7 @@ void PipelineImpl::build() {
     // TODO(themarpe) - add mutex and set running up ahead
     if(isBuild) return;
     isBuild = true;
-    
+
     if(defaultDevice) {
         std::string recordPath = utility::getEnv("DEPTHAI_RECORD");
         std::string replayPath = utility::getEnv("DEPTHAI_REPLAY");
@@ -856,9 +856,9 @@ void PipelineImpl::start() {
     defaultDevice->pipeline_ptr = weak;
 }
 
-void PipelineImpl::resetConnections(){
-    // reset connection on all nod<es
-    for(auto node : getAllNodes()){
+void PipelineImpl::resetConnections() {
+    // reset connection on all nodes
+    for(auto node : getAllNodes()) {
         if(defaultDevice->getConnection() == nullptr) continue;
         auto con = defaultDevice->getConnection();
         if(!con) continue;
@@ -1061,7 +1061,7 @@ void Pipeline::enableHolisticReplay(const std::string& pathToRecording) {
     impl()->enableHolisticRecordReplay = true;
 }
 
-void Pipeline::setMaxReconnections(int maxAttempts){
+void Pipeline::setMaxReconnections(int maxAttempts) {
     impl()->defaultDevice->setMaxReconnectionAttempts(maxAttempts);
 }
 

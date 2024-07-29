@@ -26,8 +26,8 @@ void XLinkInHost::setConnection(std::shared_ptr<XLinkConnection> conn) {
 }
 
 void XLinkInHost::run() {
-    // Create a stream for the connection
-    start:
+// Create a stream for the connection
+start:
     XLinkStream stream(std::move(conn), streamName, 1);
     while(isRunning()) {
         try {
@@ -79,10 +79,10 @@ void XLinkInHost::run() {
             if(isRunning()) {
                 auto exceptionMessage = fmt::format("Communication exception - possible device error/misconfiguration. Original message '{}'", ex.what());
                 std::unique_lock<std::mutex> lck(mtx);
-                std::cout<<"Waiting for reconnect (XLINKINHOST)"<<std::endl;
+                logger::info("Waiting for reconnect (XLINKINHOST)\n");
                 isWaitingForReconnect.wait(lck);
-                std::cout<<"Reconnected (XLINKINHOST)"<<std::endl;
-                //throw std::runtime_error(exceptionMessage);
+                logger::info("Reconnected (XLINKINHOST)\n");
+                // throw std::runtime_error(exceptionMessage);
                 goto start;
             } else {
                 // If the node is not running, we can safely ignore the exception, since it's expected
