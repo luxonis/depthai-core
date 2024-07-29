@@ -156,7 +156,7 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
     void setNNArchiveBlob(const NNArchive& nnArchive);
     void setNNArchiveSuperblob(const NNArchive& nnArchive, int numShaves);
     void setNNArchiveOther(const NNArchive& nnArchive);
-    void setConfigAndBlob(const dai::NNArchiveConfig& config, const dai::OpenVINO::Blob& blob);
+    void setConfig(const dai::NNArchiveConfig& config);
 
     std::optional<std::vector<std::string>> mClasses;
     std::optional<NNArchive> mArchive;
