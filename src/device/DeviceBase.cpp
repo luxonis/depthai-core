@@ -999,6 +999,8 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipelin
                     while(true) {
                         try {
                             init2(prev.cfg, prev.pathToMvcmd, prev.hasPipeline, true);
+                            auto shared = pipeline_ptr.lock();
+                            shared->resetConnections();
                         } catch(std::exception& e) {
                             attempts++;
                             if(attempts >= maxReconnectionAttempts) {
@@ -1014,8 +1016,6 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipelin
                         }
                         break;
                     }
-                    auto shared = pipeline_ptr.lock();
-                    shared->resetConnections();
                     pimpl->logger.warn("Reconnection successful\n");
                 }
             });
