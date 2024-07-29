@@ -31,6 +31,7 @@ class BasaltVIO : public NodeCRTP<ThreadedHostNode, BasaltVIO> {
     std::string leftInputName = "left";
     std::string rightInputName = "right";
 
+    void buildInternal() override;
     /**
      * Input left image on which VIO is performed.
      */

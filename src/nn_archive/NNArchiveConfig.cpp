@@ -94,7 +94,7 @@ class NNArchiveConfig::Impl {
 };
 
 NNArchiveConfig::NNArchiveConfig(const std::vector<uint8_t>& data, NNArchiveEntry::Compression compression)
-    : pimpl(spimpl::make_impl<Impl>(data, compression)) {};
+    : pimpl(spimpl::make_impl<Impl>(data, compression)){};
 
 NNArchiveConfig::NNArchiveConfig(const Path& path, NNArchiveEntry::Compression compression) : pimpl(spimpl::make_impl<Impl>(path, compression)) {}
 

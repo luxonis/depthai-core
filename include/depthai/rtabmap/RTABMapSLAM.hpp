@@ -28,7 +28,7 @@ namespace node {
 class RTABMapSLAM : public dai::NodeCRTP<dai::node::ThreadedHostNode, RTABMapSLAM> {
    public:
     constexpr static const char* NAME = "RTABMapSLAM";
-    RTABMapSLAM();
+
     ~RTABMapSLAM() override;
     Subnode<node::Sync> sync{*this, "sync"};
     InputMap& inputs = sync->inputs;
@@ -174,6 +174,8 @@ class RTABMapSLAM : public dai::NodeCRTP<dai::node::ThreadedHostNode, RTABMapSLA
      * Trigger a new map.
      */
     void triggerNewMap();
+
+    void buildInternal() override;
 
    private:
     void run() override;

@@ -540,13 +540,13 @@ class Node : public std::enable_shared_from_this<Node> {
     virtual const char* getName() const = 0;
 
     /// Start node execution
-    virtual void start() {};
+    virtual void start(){};
 
     /// Wait for node to finish execution
-    virtual void wait() {};
+    virtual void wait(){};
 
     /// Stop node execution
-    virtual void stop() {};
+    virtual void stop(){};
 
     void stopPipeline();
 
@@ -651,6 +651,13 @@ class Node : public std::enable_shared_from_this<Node> {
     const NodeMap& getNodeMap() const {
         return nodeMap;
     }
+
+    /**
+     * @brief Function called from within the `create` function to build the node.
+     * This function is useful for initialization, setting up inputs and outputs =
+     * stuff that cannot be perform in the constuctor.
+     */
+    virtual void buildInternal(){};
 };
 
 class SourceNode {
@@ -677,7 +684,9 @@ class NodeCRTP : public Base {
     // No public constructor, only a factory function.
     template <typename... Args>
     [[nodiscard]] static std::shared_ptr<Derived> create(Args&&... args) {
-        return std::make_shared<Derived>(std::forward<Args>(args)...);
+        auto nodePtr = std::shared_ptr<Derived>(new Derived(std::forward<Args>(args)...));
+        nodePtr->buildInternal();
+        return nodePtr;
     }
     [[nodiscard]] static std::shared_ptr<Derived> create(std::unique_ptr<Properties> props) {
         return std::shared_ptr<Derived>(new Derived(props));

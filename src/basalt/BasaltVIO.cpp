@@ -19,7 +19,11 @@ class BasaltVIO::Impl {
     std::shared_ptr<tbb::detail::d1::global_control> tbbGlobalControl;
 };
 
-BasaltVIO::BasaltVIO() {
+BasaltVIO::BasaltVIO() {}
+
+BasaltVIO::~BasaltVIO() = default;
+
+void BasaltVIO::buildInternal() {
     sync->out.link(inSync);
     sync->setRunOnHost(false);
     inSync.addCallback(std::bind(&BasaltVIO::stereoCB, this, std::placeholders::_1));
@@ -34,7 +38,6 @@ BasaltVIO::BasaltVIO() {
     localTransform = std::make_shared<basalt::PoseState<double>::SE3>(initTrans * opticalTransform180.inverse());
     setDefaultVIOConfig();
 }
-BasaltVIO::~BasaltVIO() = default;
 
 void BasaltVIO::setLocalTransform(const std::shared_ptr<TransformData>& transform) {
     auto trans = transform->getTranslation();

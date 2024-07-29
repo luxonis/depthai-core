@@ -11,7 +11,7 @@
 namespace dai {
 namespace node {
 
-RTABMapSLAM::RTABMapSLAM() {
+void RTABMapSLAM::buildInternal() {
     sync->out.link(inSync);
     sync->setRunOnHost(false);
     alphaScaling = -1.0;
