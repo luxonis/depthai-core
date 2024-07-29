@@ -950,7 +950,13 @@ class DeviceBase {
     // private functions
     void init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipeline, bool reconnect = 0);
     void tryGetDevice();
-
+    struct PrevInfo {
+        DeviceInfo deviceInfo;
+        Config cfg;
+        dai::Path pathToMvcmd;
+        bool hasPipeline;
+    };
+    void monitorCallback(std::chrono::milliseconds watchdogTimeout, PrevInfo prev);
     DeviceInfo deviceInfo = {};
     std::optional<Version> bootloaderVersion;
 
