@@ -25,7 +25,6 @@ namespace node {
 class RTABMapVIO : public NodeCRTP<ThreadedHostNode, RTABMapVIO> {
    public:
     constexpr static const char* NAME = "RTABMapVIO";
-    RTABMapVIO();
 
     std::string rectInputName = "rect";
     std::string depthInputName = "depth";
@@ -84,6 +83,8 @@ class RTABMapVIO : public NodeCRTP<ThreadedHostNode, RTABMapVIO> {
      * Reset Odometry.
      */
     void reset(std::shared_ptr<TransformData> transform = nullptr);
+
+    void buildInternal() override;
 
    private:
     void run() override;
