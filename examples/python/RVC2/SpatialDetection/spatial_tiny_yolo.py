@@ -13,19 +13,8 @@ Spatial Tiny-yolo example
   Can be used for tiny-yolo-v3 or tiny-yolo-v4 networks
 '''
 
-nnPath = str(
-    (
-        Path(__file__).parent
-        / Path("../../models/yolo-v6-openvino_2022.1_6shave-rvc2.tar.xz")
-    )
-    .resolve()
-    .absolute()
-)
-
-if not Path(nnPath).exists():
-    import sys
-    raise FileNotFoundError(f'Required file/s not found, please run "{sys.executable} install_requirements.py". Missing file: {nnPath}')
-
+modelDescription = dai.NNModelDescription(modelSlug="yolov6n", platform="RVC2")
+archivePath = dai.getModelFromZoo(modelDescription, useCached=True)
 
 # Creates the pipeline and a default device implicitly
 with dai.Pipeline() as p:
@@ -37,8 +26,12 @@ with dai.Pipeline() as p:
     stereo = p.create(dai.node.StereoDepth)
     sync = p.create(dai.node.Sync)
 
+    # Archive
+    archive = dai.NNArchive(archivePath)
+    h, w = archive.getConfig().getConfigV1().model.inputs[0].shape[-2:]
+
     # Properties
-    camRgb.setPreviewSize(640, 640)
+    camRgb.setPreviewSize(w, h)
     camRgb.setResolution(dai.ColorCameraProperties.SensorResolution.THE_1080_P)
     camRgb.setInterleaved(False)
     camRgb.setColorOrder(dai.ColorCameraProperties.ColorOrder.BGR)
@@ -55,7 +48,7 @@ with dai.Pipeline() as p:
     stereo.setOutputSize(monoLeft.getResolutionWidth(), monoLeft.getResolutionHeight())
     stereo.setSubpixel(False)
 
-    spatialDetectionNetwork.setNNArchive(dai.NNArchive(nnPath))
+    spatialDetectionNetwork.setNNArchive(archive, numShaves=6)
     spatialDetectionNetwork.input.setBlocking(False)
     spatialDetectionNetwork.setBoundingBoxScaleFactor(0.5)
     spatialDetectionNetwork.setDepthLowerThreshold(100)
