@@ -53,7 +53,6 @@ void DetectionNetwork::buildInternal() {
 }
 
 std::shared_ptr<DetectionNetwork> DetectionNetwork::build(Node::Output& input, const NNArchive& nnArchive) {
-    buildInternal();
     setNNArchive(nnArchive);
     input.link(this->input);
     return std::static_pointer_cast<DetectionNetwork>(shared_from_this());
