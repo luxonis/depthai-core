@@ -973,11 +973,23 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipelin
                     if(profilingThread.joinable()) profilingThread.join();
                     pimpl->rpcStream = nullptr;
                     pimpl->rpcClient = nullptr;
+                    // close connection
                     if(!connection->isClosed()) connection->close();
                     connection = nullptr;
-                    pimpl->logger.warn("Closed connection\nAttempting to reconnect in 1s\n");
+                    // get timeout (in seconds)
+                    int reconnectTimeout = 1;
+                    auto timeoutStr = utility::getEnv("DEPTHAI_RECONNECT_TIMEOUT");
+                    if(!timeoutStr.empty()) {
+                        // Try parsing the string as a number
+                        try {
+                            reconnectTimeout = std::stoi(timeoutStr);
+                        } catch(const std::invalid_argument& e) {
+                            pimpl->logger.warn("DEPTHAI_RECONNECT_TIMEOUT value invalid: {}, should be a number (non-zero to enable)", e.what());
+                        }
+                    }
+                    pimpl->logger.warn("Closed connection\nAttempting to reconnect in {}s\n", reconnectTimeout);
                     deviceInfo = prev.deviceInfo;
-                    sleep(1);
+                    sleep(reconnectTimeout);
                     // Reconnect
                     watchdogRunning = true;
                     timesyncRunning = true;
@@ -993,10 +1005,10 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipelin
                                 pimpl->logger.warn("Reconnection unsuccessful, aborting");
                                 throw std::runtime_error("Connection lost");
                             } else {
-                                std::string tmp = "Reconnection unsuccessful, trying again in 1s. Attempts left: "
-                                                  + std::to_string(maxReconnectionAttempts - attempts) + "\n";
-                                pimpl->logger.warn(tmp);
-                                sleep(1);
+                                pimpl->logger.warn("Reconnection unsuccessful, trying again in {}s. Attempts left: {}\n",
+                                                   reconnectTimeout,
+                                                   maxReconnectionAttempts - attempts);
+                                sleep(reconnectTimeout);
                                 continue;
                             }
                         }
