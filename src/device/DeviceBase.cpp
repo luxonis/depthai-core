@@ -1007,10 +1007,11 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipelin
                 }
                 break;
             }
-            std::cout<<"Reconnection successful, resetting connections on pipeline\n";
+            //std::cout<<"Reconnection successful, resetting connections on pipeline\n";
             auto shared= pipeline_ptr.lock();
             shared->resetConnections();
-            std::cout<<"\"Connections reset, restarting monitor thread\"\n";
+            //std::cout<<"\"Connections reset, restarting monitor thread\"\n";
+            std::cout<<"Reconnection successful\n";
             goto startMonitor;
         });
 
