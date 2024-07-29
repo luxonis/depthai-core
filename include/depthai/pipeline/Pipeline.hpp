@@ -491,6 +491,9 @@ class Pipeline {
     /// Record and Replay
     void enableHolisticRecord(const RecordConfig& config);
     void enableHolisticReplay(const std::string& pathToRecording);
+
+    // Reconnections
+    void setMaxReconnections(int maxAttempts);
 };
 
 }  // namespace dai

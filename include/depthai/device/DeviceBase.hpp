@@ -49,9 +49,6 @@ class PipelineImpl;
  */
 class DeviceBase {
    public:
-    int maxReconnectionAttempts = 5;
-    void setMaxReconnectionAttempts(int maxReconnectionAttempts);
-
     // constants
 
     /// Default search time for constructors which discover devices
@@ -895,6 +892,11 @@ class DeviceBase {
     std::shared_ptr<const XLinkConnection> getConnection() const {
         return connection;
     }
+    /**
+    * Sets max number of automatic reconnection attempts
+    * @param maxAttempts 
+    */
+    void setMaxReconnectionAttempts(int maxAttempts);
 
    protected:
     std::shared_ptr<XLinkConnection> connection;
@@ -921,6 +923,7 @@ class DeviceBase {
      * @note Remember to call this function in the overload to setup the communication properly
      */
     virtual void closeImpl();
+
 
    protected:
     // protected functions
@@ -999,6 +1002,8 @@ class DeviceBase {
     // Started pipeline
     std::optional<PipelineSchema> pipelineSchema;
 
+    // Reconnection attempts
+    int maxReconnectionAttempts=0;
 public:
     std::weak_ptr<PipelineImpl> pipeline_ptr;
 };

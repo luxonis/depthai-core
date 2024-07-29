@@ -637,6 +637,11 @@ void DeviceBase::closeImpl() {
     }
 }
 
+
+void DeviceBase::setMaxReconnectionAttempts(int maxAttempts){
+    maxReconnectionAttempts = maxAttempts;
+}
+
 // This function is thread-unsafe. The idea of "isClosed" is ephemerial and
 // is invalidated during the return by value and continues to degrade in
 // validity to the caller
@@ -681,10 +686,6 @@ void DeviceBase::init(Config config, UsbSpeed maxUsbSpeed, const dai::Path& path
     // Modify usb speed
     cfg.board.usb.maxSpeed = maxUsbSpeed;
     init2(cfg, pathToMvcmd, {});
-}
-
-void DeviceBase::setMaxReconnectionAttempts(int maxAttempts) {
-    maxReconnectionAttempts = maxAttempts;
 }
 
 void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipeline, bool reconnect) {
@@ -796,6 +797,13 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipelin
     if(getLogOutputLevel() <= LogLevel::DEBUG) {
         nlohmann::json jBoardConfig = config.board;
         pimpl->logger.debug("Device - BoardConfig: {} \nlibnop:{}", jBoardConfig.dump(), spdlog::to_hex(utility::serialize(config.board)));
+    }
+
+    // Check if the device actually exists
+    try{
+        tryGetDevice();
+    }catch(std::exception&){
+        throw;
     }
 
     // Init device (if bootloader, handle correctly - issue USB boot command)
@@ -913,7 +921,7 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipelin
                 XLinkStream stream(connection, device::XLINK_CHANNEL_WATCHDOG, 128);
                 std::vector<uint8_t> watchdogKeepalive = {0, 0, 0, 0};
                 while(watchdogRunning) {
-                    std::cout<<"watchdog\n";
+                    //std::cout<<"watchdog\n";
                     stream.write(watchdogKeepalive);
                     {
                         std::unique_lock<std::mutex> lock(lastWatchdogPingTimeMtx);
@@ -960,6 +968,7 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipelin
                     connection->close();
                 }
             }
+            if(maxReconnectionAttempts == 0) throw std::runtime_error("Connection lost");
             // reconnection attempt  
             // stop other threads 
             if(watchdogThread.joinable()) watchdogThread.join();
@@ -971,18 +980,34 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipelin
             if(profilingThread.joinable()) profilingThread.join();
             pimpl->rpcStream = nullptr;
             pimpl->rpcClient = nullptr;
-            if(!connection->isClosed())connection->close();
+            if(!connection->isClosed()) connection->close();
             connection = nullptr;
-            std::cout<<"Closed connection\nAttempting to reconnect in 3s\n";
+            std::cout<<"Closed connection\nAttempting to reconnect in 1s\n";
             deviceInfo = prev.deviceInfo;
-            sleep(3);
+            sleep(1);
             // Reconnect
             watchdogRunning = true;
             timesyncRunning = prev.timesyncRunning;
             loggingRunning = prev.loggingRunning;
             profilingRunning = prev.profilingRunning;
-            init2(prev.cfg, prev.pathToMvcmd, prev.hasPipeline, true);
-            std::cout<<"Reconnected, resetting connections on pipeline\n";
+            int attempts = 0;
+            while(true){
+                try{
+                    init2(prev.cfg, prev.pathToMvcmd, prev.hasPipeline, true);
+                }catch(std::exception&e){
+                    attempts++;
+                    if(attempts >= maxReconnectionAttempts) {
+                        std::cout<<"Reconnection unsuccessful, aborting"<<std::endl;
+                        throw std::runtime_error("Connection lost");
+                    }else{
+                        std::cout<<"Reconnection unsuccessful, trying again in 1s. Attempts left:"<<maxReconnectionAttempts-attempts<<std::endl;                    
+                        sleep(1);
+                        continue;
+                    }
+                }
+                break;
+            }
+            std::cout<<"Reconnection successful, resetting connections on pipeline\n";
             auto shared= pipeline_ptr.lock();
             shared->resetConnections();
             std::cout<<"\"Connections reset, restarting monitor thread\"\n";
@@ -1019,7 +1044,7 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipelin
                 XLinkStream stream(connection, device::XLINK_CHANNEL_TIMESYNC, 128);
                 while(timesyncRunning) {
                     // Block
-                    std::cout<<"timesync\n";
+                    //std::cout<<"timesync\n";
                     XLinkTimespec timestamp;
                     stream.read(timestamp);
 
