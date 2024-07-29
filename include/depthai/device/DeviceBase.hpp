@@ -48,6 +48,8 @@ class PipelineImpl;
  * The core of depthai device for RAII, connects to device and maintains watchdog, timesync, ...
  */
 class DeviceBase {
+    friend class PipelineImpl;  // Needed for reconnections
+
    public:
     // constants
 
@@ -893,9 +895,9 @@ class DeviceBase {
         return connection;
     }
     /**
-    * Sets max number of automatic reconnection attempts
-    * @param maxAttempts 
-    */
+     * Sets max number of automatic reconnection attempts
+     * @param maxAttempts
+     */
     void setMaxReconnectionAttempts(int maxAttempts);
 
    protected:
@@ -923,7 +925,6 @@ class DeviceBase {
      * @note Remember to call this function in the overload to setup the communication properly
      */
     virtual void closeImpl();
-
 
    protected:
     // protected functions
@@ -1002,9 +1003,8 @@ class DeviceBase {
     // Started pipeline
     std::optional<PipelineSchema> pipelineSchema;
 
-    // Reconnection attempts
-    int maxReconnectionAttempts=0;
-public:
+    // Reconnection attempts and pointer to reset connections
+    int maxReconnectionAttempts = 0;
     std::weak_ptr<PipelineImpl> pipeline_ptr;
 };
 }  // namespace dai
