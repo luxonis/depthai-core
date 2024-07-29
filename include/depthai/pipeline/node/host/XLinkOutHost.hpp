@@ -9,6 +9,8 @@ class XLinkOutHost : public NodeCRTP<ThreadedHostNode, XLinkOutHost> {
    private:
     std::shared_ptr<XLinkConnection> conn;
     std::string streamName;
+    std::condition_variable isWaitingForReconnect;
+    std::mutex mtx;
 
    public:
     constexpr static const char* NAME = "XLinkOutHost";
