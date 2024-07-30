@@ -61,7 +61,7 @@ void NeuralNetwork::setNNArchiveSuperblob(const NNArchive& nnArchive, int numSha
 
 void NeuralNetwork::setNNArchiveOther(const NNArchive& nnArchive) {
     DAI_CHECK_V(nnArchive.getArchiveType() == dai::NNArchiveType::OTHER, "NNArchive type is not OTHER");
-    DAI_CHECK_V(false, "Other NNArchive type not supported yet.");
+    setModelPath(nnArchive.getModelPath().value());
 }
 
 // Specify local filesystem path to load the blob (which gets loaded at loadAssets)

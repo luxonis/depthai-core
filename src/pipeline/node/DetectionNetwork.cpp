@@ -100,8 +100,7 @@ void DetectionNetwork::setNNArchiveSuperblob(const NNArchive& nnArchive, int num
 void DetectionNetwork::setNNArchiveOther(const NNArchive& nnArchive) {
     DAI_CHECK_V(nnArchive.getArchiveType() == dai::NNArchiveType::OTHER, "NNArchive type is not OTHER");
     detectionParser->setNNArchive(nnArchive);
-    DAI_CHECK_V(nnArchive.getModelPath().has_value(), "Model path is not set in NNArchive");
-    neuralNetwork->setModelPath(nnArchive.getModelPath().value());
+    neuralNetwork->setNNArchive(nnArchive);
 }
 
 void DetectionNetwork::setBlobPath(const dai::Path& path) {
