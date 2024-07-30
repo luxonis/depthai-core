@@ -41,14 +41,12 @@ void DetectionParser::setNNArchive(const NNArchive& nnArchive, int numShaves) {
     }
 }
 
-void DetectionParser::setConfigAndBlob(const dai::NNArchiveConfig& config, const dai::OpenVINO::Blob& blob) {
+void DetectionParser::setConfig(const dai::NNArchiveConfig& config) {
     archiveConfig = config;
 
     DAI_CHECK_V(config.getConfigV1().has_value(), "Only NNArchive config V1 is supported.");
 
     auto configV1 = *config.getConfigV1();
-
-    setBlob(blob);
 
     const auto model = configV1.model;
     // TODO(jakgra) is NN Archive valid without this? why is this optional?
@@ -59,10 +57,11 @@ void DetectionParser::setConfigAndBlob(const dai::NNArchiveConfig& config, const
                 (*model.heads).size());
     const auto head = (*model.heads)[0];
 
-    // TODO: (lnotspotl) - NN model family not present anymore. Should we use model.metadata.name instead?
-    // if(head.family == "ObjectDetectionYOLO") {
-    //     properties.parser.nnFamily = DetectionNetworkType::YOLO;
-    // }
+    if(head.parser == "YOLO") {
+        properties.parser.nnFamily = DetectionNetworkType::YOLO;
+    } else {
+        DAI_CHECK_V(false, "Unsupported parser: {}", head.parser);
+    }
 
     if(head.metadata.classes) {
         setClasses(*head.metadata.classes);
@@ -97,17 +96,19 @@ void DetectionParser::setConfigAndBlob(const dai::NNArchiveConfig& config, const
 
 void DetectionParser::setNNArchiveBlob(const NNArchive& nnArchive) {
     DAI_CHECK_V(nnArchive.getArchiveType() == dai::NNArchiveType::BLOB, "NNArchive type is not BLOB");
-    setConfigAndBlob(nnArchive.getConfig(), *nnArchive.getBlob());
+    setConfig(nnArchive.getConfig());
+    setBlob(nnArchive.getBlob().value());
 }
 
 void DetectionParser::setNNArchiveSuperblob(const NNArchive& nnArchive, int numShaves) {
     DAI_CHECK_V(nnArchive.getArchiveType() == dai::NNArchiveType::SUPERBLOB, "NNArchive type is not SUPERBLOB");
-    setConfigAndBlob(nnArchive.getConfig(), nnArchive.getSuperBlob()->getBlobWithNumShaves(numShaves));
+    setConfig(nnArchive.getConfig());
+    setBlob(nnArchive.getSuperBlob()->getBlobWithNumShaves(numShaves));
 }
 
 void DetectionParser::setNNArchiveOther(const NNArchive& nnArchive) {
     DAI_CHECK_V(nnArchive.getArchiveType() == dai::NNArchiveType::OTHER, "NNArchive type is not OTHER");
-    DAI_CHECK_V(false, "Other NNArchive type not supported yet.");
+    setConfig(nnArchive.getConfig());
 }
 
 void DetectionParser::setBlob(OpenVINO::Blob blob) {

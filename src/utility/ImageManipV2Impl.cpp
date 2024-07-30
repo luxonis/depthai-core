@@ -1,9 +1,9 @@
 #include "depthai/utility/ImageManipV2Impl.hpp"
 
 #if defined(WIN32) || defined(_WIN32)
-#define _RESTRICT
+    #define _RESTRICT
 #else
-#define _RESTRICT __restrict__
+    #define _RESTRICT __restrict__
 #endif
 
 dai::impl::AEEResult dai::impl::manipGetSrcMask(const uint32_t width,
@@ -813,7 +813,9 @@ std::tuple<std::array<std::array<float, 3>, 3>, std::array<std::array<float, 2>,
 #endif
                            }
                        },
-                       [&](Affine o) { mat = {{{o.matrix[0], o.matrix[1], 0}, {o.matrix[2], o.matrix[3], 0}, {0, 0, 1}}}; },
+                       [&](Affine o) {
+                           mat = {{{o.matrix[0], o.matrix[1], 0}, {o.matrix[2], o.matrix[3], 0}, {0, 0, 1}}};
+                       },
                        [&](Perspective o) {
                            mat = {{{o.matrix[0], o.matrix[1], o.matrix[2]}, {o.matrix[3], o.matrix[4], o.matrix[5]}, {o.matrix[6], o.matrix[7], o.matrix[8]}}};
                        },
@@ -905,20 +907,21 @@ size_t dai::impl::getFrameSize(const ImgFrame::Type type, const FrameSpecs& spec
 }
 void dai::impl::printSpecs(spdlog::async_logger& logger, FrameSpecs specs) {
     logger.debug("Width: {}, Height: {}, P1Offset: {}, P1Stride: {}, P2Offset: {}, P2Stride: {}, P3Offset: {}, P3Stride: {}",
-                specs.width,
-                specs.height,
-                specs.p1Offset,
-                specs.p1Stride,
-                specs.p2Offset,
-                specs.p2Stride,
-                specs.p3Offset,
-                specs.p3Stride);
+                 specs.width,
+                 specs.height,
+                 specs.p1Offset,
+                 specs.p1Stride,
+                 specs.p2Offset,
+                 specs.p2Stride,
+                 specs.p3Offset,
+                 specs.p3Stride);
 }
 
 size_t dai::impl::getAlignedOutputFrameSize(ImgFrame::Type type, size_t width, size_t height) {
     switch(type) {
         case ImgFrame::Type::YUV420p:
-            return ALIGN_UP(ALIGN_UP(width, 8) * height, PLANE_ALIGNMENT) + ALIGN_UP(ALIGN_UP(width / 2, 8) * (height / 2), PLANE_ALIGNMENT) + ALIGN_UP(width / 2, 8) * (height / 2);
+            return ALIGN_UP(ALIGN_UP(width, 8) * height, PLANE_ALIGNMENT) + ALIGN_UP(ALIGN_UP(width / 2, 8) * (height / 2), PLANE_ALIGNMENT)
+                   + ALIGN_UP(width / 2, 8) * (height / 2);
         case ImgFrame::Type::RGB888p:
         case ImgFrame::Type::BGR888p:
             return 2 * ALIGN_UP(ALIGN_UP(width, 8) * height, PLANE_ALIGNMENT) + ALIGN_UP(width, 8) * height;
@@ -959,4 +962,3 @@ size_t dai::impl::getAlignedOutputFrameSize(ImgFrame::Type type, size_t width, s
     }
     return 0;
 }
-

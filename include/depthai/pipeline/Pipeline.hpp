@@ -176,7 +176,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
         // N is a subclass of DeviceNode
         // return N::create();  // Specific create call for DeviceNode subclasses
         if(defaultDevice == nullptr) {
-            return N::create(std::forward<Args>(args)...);       // Generic create call
+            return N::create(std::forward<Args>(args)...);  // Generic create call
         } else {
             return N::create(defaultDevice, std::forward<Args>(args)...);  // Specific create call for DeviceNode subclasses
         }

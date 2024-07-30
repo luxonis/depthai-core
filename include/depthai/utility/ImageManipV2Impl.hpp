@@ -1,20 +1,20 @@
 #pragma once
 
 #include <spdlog/async_logger.h>
+#include <stdint.h>
 
 #include <depthai/pipeline/datatype/ImageManipConfigV2.hpp>
 #include <depthai/pipeline/datatype/ImgFrame.hpp>
 #include <opencv2/core/base.hpp>
 #include <opencv2/core/types.hpp>
 #include <sstream>
-#include <stdint.h>
 
 #define PLANE_ALIGNMENT 128
 
 #if defined(WIN32) || defined(_WIN32)
-#define _RESTRICT
+    #define _RESTRICT
 #else
-#define _RESTRICT __restrict__
+    #define _RESTRICT __restrict__
 #endif
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
@@ -2379,7 +2379,7 @@ ImageManipOperations<ImageManipBuffer, ImageManipData>& ImageManipOperations<Ima
     if(!warpedFrame || warpedFrame->size() < newWarpedSize) warpedFrame = std::make_shared<ImageManipData>(newWarpedSize);
 
     return *this;
-}
+}  // namespace impl
 
 size_t getFrameSize(const ImgFrame::Type type, const FrameSpecs& specs);
 

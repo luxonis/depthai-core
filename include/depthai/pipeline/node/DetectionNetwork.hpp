@@ -24,7 +24,7 @@ class DetectionNetwork : public NodeGroup {
     [[nodiscard]] static std::shared_ptr<DetectionNetwork> create() {
         auto networkPtr = std::make_shared<DetectionNetwork>();
         networkPtr->buildInternal();
-        return networkPtr; 
+        return networkPtr;
     }
     std::shared_ptr<DetectionNetwork> build(Node::Output& input, const NNArchive& nnArchive);
     bool runOnHost() const override {
