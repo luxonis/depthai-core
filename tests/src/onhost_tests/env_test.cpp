@@ -15,6 +15,12 @@ TEST_CASE("splitList - Basic functionality", "[splitList]") {
         REQUIRE(splitList(input, ",") == expected);
     }
 
+    SECTION("Comma and space delimiter") {
+        std::string input = "apple, banana, cherry, date";
+        std::vector<std::string> expected = {"apple", "banana", "cherry", "date"};
+        REQUIRE(splitList(input, ",") == expected);
+    }
+
     SECTION("Single element") {
         std::string input = "apple";
         std::vector<std::string> expected = {"apple"};
