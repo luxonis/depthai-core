@@ -79,11 +79,11 @@ class ImageManipV2 : public DeviceNodeCRTP<DeviceNode, ImageManipV2, ImageManipP
 
     template <typename N, template <typename T> typename ImageManipBuffer, typename ImageManipData>
     static void loop(N& node,
-              const ImageManipConfigV2& initialConfig,
-              std::shared_ptr<spdlog::async_logger> logger,
-              std::function<size_t(const ImageManipConfigV2&, const ImgFrame&)> build,
-              std::function<bool(std::shared_ptr<Memory>&, span<uint8_t>)> apply,
-              std::function<void(const ImageManipConfigV2&, const ImgFrame&, ImgFrame&)> getFrame);
+                     const ImageManipConfigV2& initialConfig,
+                     std::shared_ptr<spdlog::async_logger> logger,
+                     std::function<size_t(const ImageManipConfigV2&, const ImgFrame&)> build,
+                     std::function<bool(std::shared_ptr<Memory>&, span<uint8_t>)> apply,
+                     std::function<void(const ImageManipConfigV2&, const ImgFrame&, ImgFrame&)> getFrame);
 };
 
 }  // namespace node
