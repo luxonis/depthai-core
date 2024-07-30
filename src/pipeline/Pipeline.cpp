@@ -726,6 +726,7 @@ void PipelineImpl::build() {
     std::unordered_map<dai::Node::Output*, XLinkOutBridge> bridgesOut;
     std::unordered_map<dai::Node::Input*, XLinkInBridge> bridgesIn;
     std::unordered_set<std::string> uniqueStreamNames;
+
     for(auto& connection : getConnectionsInternal()) {
         auto inNode = connection.inputNode.lock();
         auto outNode = connection.outputNode.lock();
@@ -819,6 +820,7 @@ void PipelineImpl::build() {
             }
         }
     }
+
     // Build
     if(!isHostOnly()) {
         // TODO(Morato) - handle multiple devices correctly, start pipeline on all of them
@@ -848,28 +850,6 @@ void PipelineImpl::start() {
         if(node->runOnHost()) {
             node->start();
         }
-    }
-
-    // Add pointer to the pipeline to the device
-    std::shared_ptr<PipelineImpl> shared = shared_from_this();
-    const auto weak = std::weak_ptr<PipelineImpl>(shared);
-    defaultDevice->pipeline_ptr = weak;
-}
-
-void PipelineImpl::resetConnections() {
-    // reset connection on all nodes
-    if(defaultDevice->getConnection() == nullptr) return;
-    auto con = defaultDevice->getConnection();
-    for(auto node : getAllNodes()) {
-        auto tmp = std::dynamic_pointer_cast<node::XLinkInHost>(node);
-        if(tmp) tmp->setConnection(con);
-        auto tmp2 = std::dynamic_pointer_cast<node::XLinkOutHost>(node);
-        if(tmp2) tmp2->setConnection(con);
-    }
-
-    // restart pipeline
-    if(!isHostOnly()) {
-        defaultDevice->startPipeline(Pipeline(shared_from_this()));
     }
 }
 
@@ -1059,10 +1039,6 @@ void Pipeline::enableHolisticReplay(const std::string& pathToRecording) {
     impl()->recordConfig.outputDir = pathToRecording;
     impl()->recordConfig.state = RecordConfig::RecordReplayState::REPLAY;
     impl()->enableHolisticRecordReplay = true;
-}
-
-void Pipeline::setMaxReconnections(int maxAttempts) {
-    impl()->defaultDevice->setMaxReconnectionAttempts(maxAttempts);
 }
 
 }  // namespace dai
