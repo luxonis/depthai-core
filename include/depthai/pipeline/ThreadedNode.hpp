@@ -31,6 +31,11 @@ class ThreadedNode : public Node {
     bool isRunning() const;
 
     std::shared_ptr<spdlog::async_logger> logger;
+
+    void setThreadPriority(int priority);
+
+    int getMinThreadPriority();
+    int getMaxThreadPriority();
 };
 
 }  // namespace dai
