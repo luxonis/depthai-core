@@ -14,6 +14,7 @@ std::string getIPv4AddressAsString(std::uint32_t binary);
 void setThreadName(JoiningThread& thread, const std::string& name);
 
 void setThreadPriority(JoiningThread& thread, int priority);
+int getThreadPriority(JoiningThread& thread);
 int getMinThreadPriority(JoiningThread& thread);
 int getMaxThreadPriority(JoiningThread& thread);
 

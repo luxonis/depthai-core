@@ -48,6 +48,10 @@ void ThreadedNode::setThreadPriority(int priority) {
     platform::setThreadPriority(thread, priority);
 }
 
+int ThreadedNode::getThreadPriority() {
+    return platform::getThreadPriority(thread);
+}
+
 int ThreadedNode::getMinThreadPriority() {
     return platform::getMinThreadPriority(thread);
 }

@@ -80,6 +80,17 @@ void setThreadPriority(JoiningThread& thread, int priority) {
     return;
 }
 
+int getThreadPriority(JoiningThread& thread) {
+#ifdef __linux__
+    auto handle = thread.native_handle();
+    int policy;
+    struct sched_param param;
+    pthread_getschedparam(handle, &policy, &param);
+    return param.sched_priority;
+#endif
+    return;
+}
+
 int getMinThreadPriority(JoiningThread& thread) {
 #ifdef __linux__
     auto handle = thread.native_handle();

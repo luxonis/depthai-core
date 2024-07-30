@@ -33,6 +33,7 @@ class ThreadedNode : public Node {
     std::shared_ptr<spdlog::async_logger> logger;
 
     void setThreadPriority(int priority);
+    int getThreadPriority();
 
     int getMinThreadPriority();
     int getMaxThreadPriority();
