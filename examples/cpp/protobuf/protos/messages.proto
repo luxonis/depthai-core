@@ -1,0 +1,10 @@
+syntax = "proto3";
+package hunter_example;
+
+message Message {
+    string line = 1;
+}
+
+message Messages {
+    repeated Message msgs = 2;
+}

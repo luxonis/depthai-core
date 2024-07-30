@@ -513,3 +513,8 @@ endif()
 # if(DEPTHAI_HAVE_PCL_SUPPORT)
 #     dai_add_example(visualize_pointcloud PointCloud/visualize_pointcloud.cpp ON ON)
 # endif()
+
+# Protobuf
+add_subdirectory(protobuf/protos)
+dai_add_example(protobuf_test protobuf/test.cpp OFF OFF)
+target_link_libraries(protobuf_test PRIVATE messages)

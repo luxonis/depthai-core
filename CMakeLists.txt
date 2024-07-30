@@ -657,6 +657,7 @@ target_link_libraries(${TARGET_CORE_NAME}
         httplib::httplib
         mp4v2::mp4v2
         semver::semver
+        protobuf::libprotobuf
 )
 
 if(DEPTHAI_ENABLE_CURL)
