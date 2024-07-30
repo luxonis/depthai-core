@@ -533,6 +533,7 @@ unsigned int getCrashdumpTimeout(XLinkProtocol_t protocol) {
 }
 
 void DeviceBase::closeImpl() {
+    isClosing = true;
     using namespace std::chrono;
     auto t1 = steady_clock::now();
     bool shouldGetCrashDump = false;
@@ -1092,6 +1093,7 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, Prev
                 connection->close();
             }
         }
+        if(isClosing) return;
         if(maxReconnectionAttempts == 0) throw std::runtime_error("Connection lost");
         // reconnection attempt
         // stop other threads

@@ -1012,5 +1012,6 @@ class DeviceBase {
     // Reconnection attempts and pointer to reset connections
     int maxReconnectionAttempts = 0;
     std::weak_ptr<PipelineImpl> pipeline_ptr;
+    bool isClosing = false; // if true, don't attempt to reconnect
 };
 }  // namespace dai
