@@ -28,6 +28,7 @@ namespace dai {
 class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     friend class Pipeline;
     friend class Node;
+    friend class DeviceBase;
 
    public:
     PipelineImpl(Pipeline& pipeline, bool createImplicitDevice = true) : assetManager("/pipeline/"), parent(pipeline) {
@@ -214,6 +215,10 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     void stop();
     void run();
 
+    // Reset connections
+    void resetConnections();
+
+   private:
     // Resource
     std::vector<uint8_t> loadResource(dai::Path uri);
     std::vector<uint8_t> loadResourceCwd(dai::Path uri, dai::Path cwd);
@@ -482,7 +487,6 @@ class Pipeline {
     void run() {
         impl()->run();
     }
-
     /*
      * @note In case of a host only pipeline, this function returns a nullptr
      */
@@ -501,6 +505,9 @@ class Pipeline {
     /// Record and Replay
     void enableHolisticRecord(const RecordConfig& config);
     void enableHolisticReplay(const std::string& pathToRecording);
+
+    // Reconnections
+    void setMaxReconnections(int maxAttempts);
 };
 
 }  // namespace dai
