@@ -10,16 +10,8 @@ VisionHealthConfig::VisionHealthConfig() : Buffer(std::make_shared<RawVisionHeal
 VisionHealthConfig::VisionHealthConfig(std::shared_ptr<RawVisionHealthConfig> ptr)
     : Buffer(std::move(ptr)), cfg(*dynamic_cast<RawVisionHealthConfig*>(raw.get())) {}
 
-VisionHealthConfig& VisionHealthConfig::addRelativeVisionHealthConfig(VisionHealthMetricTypes metric,
-                                                                      std::string oper,
-                                                                      tl::optional<float> threshold,
-                                                                      float sigmas) {
-    cfg.relativeVisionHealthConfigs[metric] = {threshold, oper, sigmas};
-    return *this;
-}
-
-VisionHealthConfig& VisionHealthConfig::addAbsoluteVisionHealthConfig(VisionHealthMetricTypes metric, std::string oper, float threshold) {
-    cfg.absoluteVisionHealthConfigs[metric] = {threshold, oper};
+VisionHealthConfig& VisionHealthConfig::addVisionHealthConfig(VisionHealthMetricTypes metric) {
+    cfg.visionHealthConfigs.push_back(metric);
     return *this;
 }
 

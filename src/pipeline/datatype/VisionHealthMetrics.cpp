@@ -9,13 +9,9 @@ VisionHealthMetrics::Serialized VisionHealthMetrics::serialize() const {
 VisionHealthMetrics::VisionHealthMetrics()
     : Buffer(std::make_shared<RawVisionHealthMetrics>()),
       rawdata(*dynamic_cast<RawVisionHealthMetrics*>(raw.get())),
-      absoluteVisionHealthMetrics(rawdata.absoluteVisionHealthMetrics),
-      relativeVisionHealthMetrics(rawdata.relativeVisionHealthMetrics) {}
+      visionHealthMetrics(rawdata.visionHealthMetrics) {}
 VisionHealthMetrics::VisionHealthMetrics(std::shared_ptr<RawVisionHealthMetrics> ptr)
-    : Buffer(std::move(ptr)),
-      rawdata(*dynamic_cast<RawVisionHealthMetrics*>(raw.get())),
-      absoluteVisionHealthMetrics(rawdata.absoluteVisionHealthMetrics),
-      relativeVisionHealthMetrics(rawdata.relativeVisionHealthMetrics) {}
+    : Buffer(std::move(ptr)), rawdata(*dynamic_cast<RawVisionHealthMetrics*>(raw.get())), visionHealthMetrics(rawdata.visionHealthMetrics) {}
 
 // setters
 VisionHealthMetrics& VisionHealthMetrics::setTimestamp(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> tp) {

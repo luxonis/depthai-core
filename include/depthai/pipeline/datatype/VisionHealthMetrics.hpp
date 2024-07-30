@@ -23,8 +23,7 @@ class VisionHealthMetrics : public Buffer {
     explicit VisionHealthMetrics(std::shared_ptr<RawVisionHealthMetrics> ptr);
     virtual ~VisionHealthMetrics() = default;
 
-    std::unordered_map<VisionHealthMetricTypes, AbsoluteVisionHealthMetric>& absoluteVisionHealthMetrics;
-    std::unordered_map<VisionHealthMetricTypes, RelativeVisionHealthMetric>& relativeVisionHealthMetrics;
+    std::unordered_map<VisionHealthMetricTypes, VisionHealthMetric>& visionHealthMetrics;
 
     /**
      * Retrieves image timestamp related to dai::Clock::now()

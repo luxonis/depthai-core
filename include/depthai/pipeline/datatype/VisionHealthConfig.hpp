@@ -23,9 +23,7 @@ class VisionHealthConfig : public Buffer {
     explicit VisionHealthConfig(std::shared_ptr<RawVisionHealthConfig> ptr);
     virtual ~VisionHealthConfig() = default;
 
-    VisionHealthConfig& addRelativeVisionHealthConfig(VisionHealthMetricTypes metric, std::string oper, tl::optional<float> threshold, float sigmas);
-
-    VisionHealthConfig& addAbsoluteVisionHealthConfig(VisionHealthMetricTypes metric, std::string oper, float threshold);
+    VisionHealthConfig& addVisionHealthConfig(VisionHealthMetricTypes metric);
 
     /**
      * Set explicit configuration.
