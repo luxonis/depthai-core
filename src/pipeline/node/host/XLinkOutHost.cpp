@@ -26,6 +26,12 @@ void XLinkOutHost::setConnection(std::shared_ptr<XLinkConnection> conn) {
     isWaitingForReconnect.notify_all();
 }
 
+void XLinkOutHost::disconnect() {
+    isDisconnected = true;
+    std::lock_guard<std::mutex> lock(mtx);
+    isWaitingForReconnect.notify_all();
+}
+
 void XLinkOutHost::run() {
     // // Create a stream for the connection
     // TODO(Morato) - automatically increase the buffer size lazily
@@ -86,8 +92,8 @@ void XLinkOutHost::run() {
                     std::unique_lock<std::mutex> lck(mtx);
                     logger::info("Waiting for reconnect (XLINKOUTHOST)\n");
                     isWaitingForReconnect.wait(lck);
+                    if(isDisconnected) throw std::runtime_error(exceptionMessage);
                     logger::info("Reconnected (XLINKOUTHOST)\n");
-                    // throw std::runtime_error(exceptionMessage);
                     reconnect = true;
                     break;
                 } else {

@@ -858,7 +858,7 @@ void PipelineImpl::start() {
 
 void PipelineImpl::resetConnections() {
     // reset connection on all nodes
-    if(defaultDevice->getConnection() == nullptr) return;
+    if(defaultDevice->getConnection() == nullptr) throw std::runtime_error("Connection lost");
     auto con = defaultDevice->getConnection();
     for(auto node : getAllNodes()) {
         auto tmp = std::dynamic_pointer_cast<node::XLinkInHost>(node);
@@ -870,6 +870,16 @@ void PipelineImpl::resetConnections() {
     // restart pipeline
     if(!isHostOnly()) {
         defaultDevice->startPipeline(Pipeline(shared_from_this()));
+    }
+}
+
+void PipelineImpl::unblockQueues() {
+    // make connections throw instead of reconnecting
+    for(auto node : getAllNodes()) {
+        auto tmp = std::dynamic_pointer_cast<node::XLinkInHost>(node);
+        if(tmp) tmp->disconnect();
+        auto tmp2 = std::dynamic_pointer_cast<node::XLinkOutHost>(node);
+        if(tmp2) tmp2->disconnect();
     }
 }
 

@@ -206,6 +206,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
 
     // Reset connections
     void resetConnections();
+    void unblockQueues();
 
    private:
     // Resource

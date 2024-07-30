@@ -25,6 +25,12 @@ void XLinkInHost::setConnection(std::shared_ptr<XLinkConnection> conn) {
     isWaitingForReconnect.notify_all();
 }
 
+void XLinkInHost::disconnect() {
+    isDisconnected = true;
+    std::lock_guard<std::mutex> lock(mtx);
+    isWaitingForReconnect.notify_all();
+}
+
 void XLinkInHost::run() {
     // Create a stream for the connection
     bool reconnect = true;
@@ -83,8 +89,8 @@ void XLinkInHost::run() {
                     std::unique_lock<std::mutex> lck(mtx);
                     logger::info("Waiting for reconnect (XLINKINHOST)\n");
                     isWaitingForReconnect.wait(lck);
+                    if(isDisconnected) throw std::runtime_error(exceptionMessage);
                     logger::info("Reconnected (XLINKINHOST)\n");
-                    // throw std::runtime_error(exceptionMessage);
                     reconnect = true;
                     break;
                 } else {
