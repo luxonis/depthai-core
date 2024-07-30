@@ -28,9 +28,6 @@ class DeviceNode : public ThreadedNode {
     // Get properties
     virtual Properties& getProperties();
 
-    // Internal build. Called frm within DeviceNodeCRTP's create function
-    virtual void buildInternal(){};
-
    protected:
     DeviceNode(const std::shared_ptr<Device>& device, std::unique_ptr<Properties> props, bool conf);
     DeviceNode(std::unique_ptr<Properties> props, bool conf);
