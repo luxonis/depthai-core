@@ -88,7 +88,7 @@ int getThreadPriority(JoiningThread& thread) {
     pthread_getschedparam(handle, &policy, &param);
     return param.sched_priority;
 #endif
-    return;
+    return -1;
 }
 
 int getMinThreadPriority(JoiningThread& thread) {
