@@ -12,7 +12,7 @@ with dai.Pipeline() as p:
     left = p.create(dai.node.MonoCamera)
     right = p.create(dai.node.MonoCamera)
     imu = p.create(dai.node.IMU)
-    odom = p.create(dai.node.BasaltVIO).build()
+    odom = p.create(dai.node.BasaltVIO)
 
     rerunViewer = RerunNode()
     imu.enableIMUSensor([dai.IMUSensor.ACCELEROMETER_RAW, dai.IMUSensor.GYROSCOPE_RAW], 200)

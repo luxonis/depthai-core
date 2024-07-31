@@ -22,9 +22,6 @@ class IMU : public DeviceNodeCRTP<DeviceNode, IMU, IMUProperties>, public Source
     constexpr static const char* NAME = "IMU";
     using DeviceNodeCRTP::DeviceNodeCRTP;
 
-    std::shared_ptr<IMU> build() {
-        return std::static_pointer_cast<IMU>(shared_from_this());
-    }
     /**
      * Outputs IMUData message that carries IMU packets.
      */

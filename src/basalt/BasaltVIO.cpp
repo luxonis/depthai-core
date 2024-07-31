@@ -20,9 +20,10 @@ class BasaltVIO::Impl {
 };
 
 BasaltVIO::BasaltVIO() {}
+
 BasaltVIO::~BasaltVIO() = default;
 
-std::shared_ptr<BasaltVIO> BasaltVIO::build() {
+void BasaltVIO::buildInternal() {
     sync->out.link(inSync);
     sync->setRunOnHost(false);
     inSync.addCallback(std::bind(&BasaltVIO::stereoCB, this, std::placeholders::_1));
@@ -36,7 +37,6 @@ std::shared_ptr<BasaltVIO> BasaltVIO::build() {
     // to output pose in FLU world coordinates
     localTransform = std::make_shared<basalt::PoseState<double>::SE3>(initTrans * opticalTransform180.inverse());
     setDefaultVIOConfig();
-    return std::static_pointer_cast<BasaltVIO>(shared_from_this());
 }
 
 void BasaltVIO::setLocalTransform(const std::shared_ptr<TransformData>& transform) {

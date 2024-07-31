@@ -5,10 +5,6 @@
 namespace dai {
 namespace node {
 
-std::shared_ptr<MonoCamera> MonoCamera::build() {
-    return std::static_pointer_cast<MonoCamera>(shared_from_this());
-}
-
 MonoCamera::MonoCamera(std::unique_ptr<Properties> props) : DeviceNodeCRTP<DeviceNode, MonoCamera, MonoCameraProperties>(std::move(props)) {}
 
 MonoCamera::Properties& MonoCamera::getProperties() {

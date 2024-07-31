@@ -6,7 +6,6 @@
 
 namespace dai {
 
-// helpers
 // Functions to set properties
 ImageManipConfig& ImageManipConfig::setCropRect(float xmin, float ymin, float xmax, float ymax) {
     // Enable crop stage
@@ -20,6 +19,7 @@ ImageManipConfig& ImageManipConfig::setCropRect(float xmin, float ymin, float xm
     cropConfig.cropRect.ymin = std::max(ymin, 0.0f);
     cropConfig.cropRect.xmax = std::min(xmax, 1.0f);
     cropConfig.cropRect.ymax = std::min(ymax, 1.0f);
+
     return *this;
 }
 
@@ -35,6 +35,7 @@ ImageManipConfig& ImageManipConfig::setCropRotatedRect(RotatedRect rr, bool norm
 
     cropConfig.cropRotatedRect = rr;
     cropConfig.normalizedCoords = normalizedCoords;
+
     return *this;
 }
 
@@ -54,6 +55,7 @@ ImageManipConfig& ImageManipConfig::setWarpTransformMatrix3x3(std::vector<float>
     enableResize = true;
     resizeConfig.enableWarpMatrix = true;
     resizeConfig.warpMatrix3x3 = mat;
+
     return *this;
 }
 
@@ -89,6 +91,7 @@ ImageManipConfig& ImageManipConfig::setCenterCrop(float ratio, float whRatio) {
     }
 
     cropConfig.widthHeightAspectRatio = whRatio;
+
     return *this;
 }
 
@@ -96,12 +99,14 @@ ImageManipConfig& ImageManipConfig::setRotationDegrees(float deg) {
     enableResize = true;
     resizeConfig.rotationAngleDeg = deg;
     resizeConfig.enableRotation = true;
+
     return *this;
 }
 
 ImageManipConfig& ImageManipConfig::setRotationRadians(float rad) {
     static constexpr float rad2degFactor = static_cast<float>(180 / M_PI);
     setRotationDegrees(rad * rad2degFactor);
+
     return *this;
 }
 
@@ -115,6 +120,7 @@ ImageManipConfig& ImageManipConfig::setResize(int w, int h) {
     // Set resize config
     resizeConfig.width = w;
     resizeConfig.height = h;
+
     return *this;
 }
 
@@ -138,6 +144,7 @@ ImageManipConfig& ImageManipConfig::setResizeThumbnail(int w, int h, int bgRed, 
     resizeConfig.bgRed = bgRed;
     resizeConfig.bgGreen = bgGreen;
     resizeConfig.bgBlue = bgBlue;
+
     return *this;
 }
 
@@ -166,6 +173,7 @@ ImageManipConfig& ImageManipConfig::setColormap(Colormap colormap, float maxf) {
     formatConfig.colormap = colormap;
     formatConfig.colormapMin = 0;
     formatConfig.colormapMax = max;
+
     return *this;
 }
 
@@ -179,6 +187,7 @@ ImageManipConfig& ImageManipConfig::setColormap(Colormap colormap, int max) {
     formatConfig.colormap = colormap;
     formatConfig.colormapMin = 0;
     formatConfig.colormapMax = max;
+
     return *this;
 }
 
@@ -193,6 +202,7 @@ ImageManipConfig& ImageManipConfig::setColormap(Colormap colormap, int min, int 
     formatConfig.colormap = colormap;
     formatConfig.colormapMin = min;
     formatConfig.colormapMax = max;
+
     return *this;
 }
 
@@ -202,6 +212,7 @@ ImageManipConfig& ImageManipConfig::setHorizontalFlip(bool flip) {
 
     // Set pixel format
     formatConfig.flipHorizontal = flip;
+
     return *this;
 }
 

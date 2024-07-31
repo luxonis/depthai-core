@@ -2,8 +2,10 @@
 #include "depthai/openvino/OpenVINO.hpp"
 
 #include <algorithm>
+#include <cstdint>
 #include <exception>
 #include <fstream>
+#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
@@ -87,13 +89,20 @@ static uint64_t readInt64(const uint8_t* data) {
 
 OpenVINO::SuperBlob::SuperBlob(const std::string& pathToSuperBlobFile) {
     data = readSuperBlobFile(pathToSuperBlobFile);
-    header = SuperBlobHeader::fromData(data);
+    loadAndCheckHeader();
+    validateSuperblob();
+}
+
+OpenVINO::SuperBlob::SuperBlob(std::vector<uint8_t> data) {
+    this->data = std::move(data);
+    loadAndCheckHeader();
+    validateSuperblob();
 }
 
 dai::OpenVINO::Blob OpenVINO::SuperBlob::getBlobWithNumShaves(int numShaves) {
     if(numShaves < 1 || numShaves > static_cast<int>(OpenVINO::SuperBlob::NUMBER_OF_PATCHES)) {
-        throw std::runtime_error("Invalid number of shaves: " + std::to_string(numShaves) + " (expected 1 to "
-                                 + std::to_string(OpenVINO::SuperBlob::NUMBER_OF_PATCHES) + ")");
+        throw std::out_of_range("Invalid number of shaves: " + std::to_string(numShaves) + " (expected 1 to "
+                                + std::to_string(OpenVINO::SuperBlob::NUMBER_OF_PATCHES) + ")");
     }
 
     // Load main blob data
@@ -170,6 +179,33 @@ const uint8_t* OpenVINO::SuperBlob::getPatchDataPointer(int numShaves) {
 
 int64_t OpenVINO::SuperBlob::getPatchDataSize(int numShaves) {
     return header.patchSizes[numShaves - 1];
+}
+
+void OpenVINO::SuperBlob::loadAndCheckHeader() {
+    if(data.size() < SuperBlobHeader::HEADER_SIZE) {
+        throw std::invalid_argument("Invalid superblob data: not enough bytes for the header: " + std::to_string(data.size()) + " Data should be at least "
+                                    + std::to_string(SuperBlobHeader::HEADER_SIZE) + " bytes long.");
+    }
+    header = SuperBlobHeader::fromData(data);
+}
+
+void OpenVINO::SuperBlob::validateSuperblob() {
+    // Check that superblob is of the expected size
+    size_t expectedSize = SuperBlobHeader::HEADER_SIZE + header.blobSize + std::accumulate(header.patchSizes.begin(), header.patchSizes.end(), 0);
+    if(expectedSize != data.size()) {
+        throw std::invalid_argument("Invalid superblob data: size mismatch. Expected " + std::to_string(expectedSize) + " bytes, got "
+                                    + std::to_string(data.size()) + " bytes.");
+    }
+
+    // Validate that there are the 'BSDIFF' bytes for each patch
+    for(size_t numShaves = 1; numShaves <= OpenVINO::SuperBlob::NUMBER_OF_PATCHES; ++numShaves) {
+        int64_t patchSize = getPatchDataSize(numShaves);
+        if(patchSize == 0) continue;
+        const uint8_t* patchDataPointer = getPatchDataPointer(numShaves);
+        if(memcmp(patchDataPointer, "BSDIFF", 6) != 0) {
+            throw std::invalid_argument("Invalid superblob data: patch " + std::to_string(numShaves) + " is not a valid bsdiff patch.");
+        }
+    }
 }
 
 std::vector<OpenVINO::Version> OpenVINO::getVersions() {

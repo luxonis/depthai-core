@@ -40,7 +40,6 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack){
     // Node
     spatialDetectionNetwork
         // Copied from NN node
-        .def("build", &SpatialDetectionNetwork::build, DOC(dai, node, SpatialDetectionNetwork, build))
         .def("setBlobPath", &SpatialDetectionNetwork::setBlobPath, py::arg("path"), DOC(dai, node, SpatialDetectionNetwork, setBlobPath))
         .def("setNumPoolFrames", &SpatialDetectionNetwork::setNumPoolFrames, py::arg("numFrames"), DOC(dai, node, SpatialDetectionNetwork, setNumPoolFrames))
         .def("setNumInferenceThreads",
@@ -52,7 +51,8 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack){
              py::arg("numNCEPerThread"),
              DOC(dai, node, SpatialDetectionNetwork, setNumNCEPerInferenceThread))
         .def("getNumInferenceThreads", &SpatialDetectionNetwork::getNumInferenceThreads, DOC(dai, node, SpatialDetectionNetwork, getNumInferenceThreads))
-        .def("setNNArchive", &SpatialDetectionNetwork::setNNArchive, DOC(dai, node, SpatialDetectionNetwork, setNNArchive))
+        .def("setNNArchive", py::overload_cast<const NNArchive&>(&SpatialDetectionNetwork::setNNArchive), py::arg("archive"), DOC(dai, node, SpatialDetectionNetwork, setNNArchive))
+        .def("setNNArchive", py::overload_cast<const NNArchive&, int>(&SpatialDetectionNetwork::setNNArchive), py::arg("archive"), py::arg("numShaves"), DOC(dai, node, SpatialDetectionNetwork, setNNArchive))
         .def("setBlob",
              py::overload_cast<dai::OpenVINO::Blob>(&SpatialDetectionNetwork::setBlob),
              py::arg("blob"),
@@ -131,10 +131,9 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack){
     daiNodeModule.attr("SpatialDetectionNetwork").attr("Properties") = spatialDetectionNetworkProperties;
 
     // // MobileNetSpatialDetectionNetwork
-    mobileNetSpatialDetectionNetwork.def("build", &MobileNetSpatialDetectionNetwork::build, DOC(dai, node, MobileNetSpatialDetectionNetwork, build));
+
     // YoloSpatialDetectionNetwork
-    yoloSpatialDetectionNetwork.def("build", &YoloSpatialDetectionNetwork::build, DOC(dai, node, YoloSpatialDetectionNetwork, build))
-        .def("setNumClasses", &YoloSpatialDetectionNetwork::setNumClasses, py::arg("numClasses"), DOC(dai, node, YoloSpatialDetectionNetwork, setNumClasses))
+    yoloSpatialDetectionNetwork.def("setNumClasses", &YoloSpatialDetectionNetwork::setNumClasses, py::arg("numClasses"), DOC(dai, node, YoloSpatialDetectionNetwork, setNumClasses))
         .def("setCoordinateSize",
              &YoloSpatialDetectionNetwork::setCoordinateSize,
              py::arg("coordinates"),

@@ -2,8 +2,11 @@
 
 #include <sstream>
 
+#include "../../utility/ErrorMacros.hpp"
 #include "depthai/common/DetectionNetworkType.hpp"
+#include "nn_archive/NNArchive.hpp"
 #include "openvino/BlobReader.hpp"
+#include "openvino/OpenVINO.hpp"
 
 namespace dai {
 namespace node {
@@ -12,7 +15,7 @@ namespace node {
 // Base Detection Network Class
 //--------------------------------------------------------------------
 
-std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build() {
+void SpatialDetectionNetwork::buildInternal() {
     // Default confidence threshold
     detectionParser->properties.parser.confidenceThreshold = 0.5;
     neuralNetwork->out.link(detectionParser->input);
@@ -27,10 +30,6 @@ std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build() {
     detectionParser->imageIn.setMaxSize(1);
     inputDetections.setMaxSize(1);
     inputDetections.setBlocking(true);
-
-    isBuild = true;
-
-    return std::static_pointer_cast<SpatialDetectionNetwork>(shared_from_this());
 }
 
 // -------------------------------------------------------------------
@@ -38,8 +37,49 @@ std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build() {
 // -------------------------------------------------------------------
 
 void SpatialDetectionNetwork::setNNArchive(const NNArchive& nnArchive) {
-    const auto blob = detectionParser->setNNArchive(nnArchive);
-    neuralNetwork->setBlob(blob);
+    constexpr int DEFAULT_SUPERBLOB_NUM_SHAVES = 8;
+
+    switch(nnArchive.getArchiveType()) {
+        case dai::NNArchiveType::BLOB:
+            setNNArchiveBlob(nnArchive);
+            break;
+        case dai::NNArchiveType::SUPERBLOB:
+            setNNArchiveSuperblob(nnArchive, DEFAULT_SUPERBLOB_NUM_SHAVES);
+            break;
+        case dai::NNArchiveType::OTHER:
+            setNNArchiveOther(nnArchive);
+            break;
+    }
+}
+
+void SpatialDetectionNetwork::setNNArchive(const NNArchive& nnArchive, int numShaves) {
+    switch(nnArchive.getArchiveType()) {
+        case dai::NNArchiveType::SUPERBLOB:
+            setNNArchiveSuperblob(nnArchive, numShaves);
+            break;
+        case dai::NNArchiveType::BLOB:
+        case dai::NNArchiveType::OTHER:
+            DAI_CHECK_V(false, "NNArchive type is not SUPERBLOB. Use setNNArchive(const NNArchive& nnArchive) instead.");
+            break;
+    }
+}
+
+void SpatialDetectionNetwork::setNNArchiveBlob(const NNArchive& nnArchive) {
+    DAI_CHECK_V(nnArchive.getArchiveType() == dai::NNArchiveType::BLOB, "NNArchive type is not BLOB");
+    detectionParser->setNNArchive(nnArchive);
+    neuralNetwork->setNNArchive(nnArchive);
+}
+
+void SpatialDetectionNetwork::setNNArchiveSuperblob(const NNArchive& nnArchive, int numShaves) {
+    DAI_CHECK_V(nnArchive.getArchiveType() == dai::NNArchiveType::SUPERBLOB, "NNArchive type is not SUPERBLOB");
+    detectionParser->setNNArchive(nnArchive, numShaves);
+    neuralNetwork->setNNArchive(nnArchive, numShaves);
+}
+
+void SpatialDetectionNetwork::setNNArchiveOther(const NNArchive& nnArchive) {
+    DAI_CHECK_V(nnArchive.getArchiveType() == dai::NNArchiveType::OTHER, "NNArchive type is not OTHER");
+    detectionParser->setNNArchive(nnArchive);
+    neuralNetwork->setNNArchive(nnArchive);
 }
 
 void SpatialDetectionNetwork::setBlobPath(const dai::Path& path) {
@@ -124,19 +164,17 @@ std::optional<std::vector<std::string>> SpatialDetectionNetwork::getClasses() co
 //--------------------------------------------------------------------
 // MobileNet
 //--------------------------------------------------------------------
-std::shared_ptr<MobileNetSpatialDetectionNetwork> MobileNetSpatialDetectionNetwork::build() {
-    SpatialDetectionNetwork::build();
+void MobileNetSpatialDetectionNetwork::buildInternal() {
+    SpatialDetectionNetwork::buildInternal();
     detectionParser->setNNFamily(DetectionNetworkType::MOBILENET);
-    return std::static_pointer_cast<MobileNetSpatialDetectionNetwork>(shared_from_this());
 }
 
 //--------------------------------------------------------------------
 // YOLO
 //--------------------------------------------------------------------
-std::shared_ptr<YoloSpatialDetectionNetwork> YoloSpatialDetectionNetwork::build() {
-    SpatialDetectionNetwork::build();
+void YoloSpatialDetectionNetwork::buildInternal() {
+    SpatialDetectionNetwork::buildInternal();
     detectionParser->setNNFamily(DetectionNetworkType::YOLO);
-    return std::static_pointer_cast<YoloSpatialDetectionNetwork>(shared_from_this());
 }
 
 void YoloSpatialDetectionNetwork::setNumClasses(const int numClasses) {

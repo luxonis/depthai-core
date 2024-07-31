@@ -38,8 +38,6 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
     Subnode<NeuralNetwork> neuralNetwork{*this, "neuralNetwork"};
     Subnode<DetectionParser> detectionParser{*this, "detectionParser"};
 
-    std::shared_ptr<SpatialDetectionNetwork> build();
-
     /**
      * Input message with data to be inferred upon
      * Default queue is blocking with size 5
@@ -99,7 +97,20 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
      */
     Output spatialLocationCalculatorOutput{*this, {"spatialLocationCalculatorOutput", DEFAULT_GROUP, {{{DatatypeEnum::SpatialLocationCalculatorData, false}}}}};
 
+    /**
+     * @brief Set NNArchive for this Node. If the archive's type is SUPERBLOB, use default number of shaves.
+     *
+     * @param nnArchive: NNArchive to set
+     */
     void setNNArchive(const NNArchive& nnArchive);
+
+    /**
+     * @brief Set NNArchive for this Node, throws if the archive's type is not SUPERBLOB
+     *
+     * @param nnArchive: NNArchive to set
+     * @param numShaves: Number of shaves to use
+     */
+    void setNNArchive(const NNArchive& nnArchive, int numShaves);
 
     /** Backwards compatibility interface **/
     // Specify local filesystem path to load the blob (which gets loaded at loadAssets)
@@ -221,13 +232,15 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
     /// Get classes labels
     std::optional<std::vector<std::string>> getClasses() const;
 
+    void buildInternal() override;
+
+   private:
+    void setNNArchiveBlob(const NNArchive& nnArchive);
+    void setNNArchiveSuperblob(const NNArchive& nnArchive, int numShaves);
+    void setNNArchiveOther(const NNArchive& nnArchive);
+
    protected:
     using DeviceNodeCRTP::DeviceNodeCRTP;
-
-    bool isBuild = false;
-    bool needsBuild() override {
-        return !isBuild;
-    }
 };
 
 /**
@@ -235,7 +248,7 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
  */
 class MobileNetSpatialDetectionNetwork : public DeviceNodeCRTP<SpatialDetectionNetwork, MobileNetSpatialDetectionNetwork, SpatialDetectionNetworkProperties> {
    public:
-    std::shared_ptr<MobileNetSpatialDetectionNetwork> build();
+    void buildInternal() override;
 
    protected:
     using DeviceNodeCRTP::DeviceNodeCRTP;
@@ -246,8 +259,6 @@ class MobileNetSpatialDetectionNetwork : public DeviceNodeCRTP<SpatialDetectionN
  */
 class YoloSpatialDetectionNetwork : public DeviceNodeCRTP<SpatialDetectionNetwork, YoloSpatialDetectionNetwork, SpatialDetectionNetworkProperties> {
    public:
-    std::shared_ptr<YoloSpatialDetectionNetwork> build();
-
     /// Set num classes
     void setNumClasses(const int numClasses);
     /// Set coordianate size
@@ -270,6 +281,8 @@ class YoloSpatialDetectionNetwork : public DeviceNodeCRTP<SpatialDetectionNetwor
     std::map<std::string, std::vector<int>> getAnchorMasks() const;
     /// Get Iou threshold
     float getIouThreshold() const;
+
+    void buildInternal() override;
 
    protected:
     using DeviceNodeCRTP::DeviceNodeCRTP;

@@ -26,7 +26,11 @@ labelMap = [
 examplesRoot = Path(__file__).parent / Path('../../').resolve()
 models = examplesRoot / Path('models')
 videoPath = models / Path('construction_vest.mp4')
-modelPath = models / Path('yolov10n.dlc')
+
+# Download yolo model from zoo
+modelDescription = dai.NNModelDescription(modelSlug="yolov10n", platform="RVC4")
+modelPath = dai.getModelFromZoo(modelDescription, useCached=True)
+
 # Create pipeline
 with dai.Pipeline() as pipeline:
 
@@ -41,7 +45,7 @@ with dai.Pipeline() as pipeline:
         camRgb = pipeline.create(dai.node.Camera)
         camRgb.setBoardSocket(dai.CameraBoardSocket.CAM_A)
         sourceOutput = camRgb.requestOutput((640, 640), dai.ImgFrame.Type.BGR888i)
-    detectionNetwork = pipeline.create(dai.node.YoloDetectionNetwork).build()
+    detectionNetwork = pipeline.create(dai.node.YoloDetectionNetwork)
     detectionNetwork.setNumInferenceThreads(2)
     detectionNetwork.setModelPath(modelPath)
     detectionNetwork.setNumClasses(80)
