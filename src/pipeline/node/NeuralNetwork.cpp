@@ -1,5 +1,4 @@
 #include "depthai/pipeline/node/NeuralNetwork.hpp"
-
 #include <stdexcept>
 
 #include "depthai/depthai.hpp"
