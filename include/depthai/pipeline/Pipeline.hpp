@@ -19,6 +19,7 @@
 
 // shared
 #include "depthai/device/BoardConfig.hpp"
+#include "depthai/pipeline/NodeGroup.hpp"
 #include "depthai/pipeline/PipelineSchema.hpp"
 #include "depthai/properties/GlobalProperties.hpp"
 #include "depthai/utility/RecordReplay.hpp"
@@ -183,9 +184,19 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     }
 
     template <typename N, typename... Args>
-    std::enable_if_t<!std::is_base_of<DeviceNode, N>::value, std::shared_ptr<N>> createNode(Args&&... args) {
+    std::enable_if_t<!std::is_base_of<DeviceNode, N>::value && !std::is_base_of<NodeGroup, N>::value, std::shared_ptr<N>> createNode(Args&&... args) {
         // N is not a subclass of DeviceNode
         return N::create(std::forward<Args>(args)...);  // Generic create call
+    }
+
+    template <typename N, typename... Args>
+    std::enable_if_t<std::is_base_of<NodeGroup, N>::value, std::shared_ptr<N>> createNode(Args&&... args) {
+        auto node = N::create(std::forward<Args>(args)...);  // Generic create call
+        std::cout << "NodeGroup created :)" << std::endl;
+        if(node->hasDeviceNodes()) {
+            node->setDevice(defaultDevice);
+        }
+        return node;
     }
 
     // Template create function

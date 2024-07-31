@@ -23,6 +23,10 @@ class DeviceNode : public ThreadedNode {
         return false;
     }
 
+    void setDevice(std::shared_ptr<Device> device) {
+        this->device = device;
+    }
+
     copyable_unique_ptr<Properties> propertiesHolder;
 
     // Get properties
