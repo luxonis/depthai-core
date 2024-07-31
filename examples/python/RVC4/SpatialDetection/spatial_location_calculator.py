@@ -5,27 +5,10 @@ import depthai as dai
 import numpy as np
 from pathlib import Path
 
-# Temporary toy example until the RVC4 devices are calibrated
-examplePath = (Path(__file__).parent / ".." / "..").resolve().absolute()
-calibJsonFile = examplePath / "models" / "depthai_calib.json"
-# Check if file exists otherwise provoke the user to run `python3 examples/python/install_requirements.py`
-if not calibJsonFile.exists():
-    import sys
-
-    print(
-        f"Calibration file not found at: {calibJsonFile}. Please run {sys.executable} {examplePath}/install_requirements.py to get it downloaded."
-    )
-    exit(1)
-
-
-calibData = dai.CalibrationHandler(calibJsonFile)
-
 color = (255, 255, 255)
 
 # Create pipeline
 pipeline = dai.Pipeline()
-# pipeline.setCalibrationData(calibData)
-
 # Config
 topLeft = dai.Point2f(0.4, 0.4)
 bottomRight = dai.Point2f(0.6, 0.6)
@@ -37,22 +20,17 @@ stereo = pipeline.create(dai.node.StereoDepth)
 spatialLocationCalculator = pipeline.create(dai.node.SpatialLocationCalculator)
 
 # Define sources and outputs
-monoLeft.setBoardSocket(dai.CameraBoardSocket.CAM_A)
+monoLeft.setBoardSocket(dai.CameraBoardSocket.CAM_B)
 monoRight.setBoardSocket(dai.CameraBoardSocket.CAM_C)
 
 # Linking
-monoLeftOut = monoLeft.requestOutput((640, 400), type=dai.ImgFrame.Type.NV12)
-monoRightOut = monoRight.requestOutput((640, 400), type=dai.ImgFrame.Type.NV12)
+monoLeftOut = monoLeft.requestOutput((640, 400))
+monoRightOut = monoRight.requestOutput((640, 400))
 monoLeftOut.link(stereo.left)
 monoRightOut.link(stereo.right)
 
-stereo.setInputResolution(640, 400)
 stereo.setRectification(True)
 stereo.setExtendedDisparity(True)
-stereo.setNumFramesPool(10)
-syncedLeftQueue = stereo.syncedLeft.createOutputQueue()
-syncedRightQueue = stereo.syncedRight.createOutputQueue()
-# disparityQueue = stereo.disparity.createOutputQueue()
 
 stepSize = 0.05
 
@@ -69,8 +47,6 @@ spatialLocationCalculator.initialConfig.addROI(config)
 xoutSpatialQueue = spatialLocationCalculator.out.createOutputQueue()
 outputDepthQueue = spatialLocationCalculator.passthroughDepth.createOutputQueue()
 
-
-# spatialLocationCalculator.passthroughDepth.link(xoutDepth.input)
 stereo.depth.link(spatialLocationCalculator.inputDepth)
 
 
@@ -117,7 +93,6 @@ with pipeline:
 
         newConfig = False
 
-        key = cv2.waitKey(1000)
         if key == ord('q'):
             break
         elif key == ord('w'):
