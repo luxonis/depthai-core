@@ -1107,7 +1107,7 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, Prev
             if(!connection->isClosed()) connection->close();
             connection = nullptr;
             // get timeout (in seconds)
-            std::chrono::milliseconds reconnectTimeout = getDefaultSearchTime();
+            std::chrono::milliseconds reconnectTimeout(10'000);
             auto timeoutStr = utility::getEnv("DEPTHAI_RECONNECT_TIMEOUT");
             if(!timeoutStr.empty()) {
                 try {
