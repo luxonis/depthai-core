@@ -11,17 +11,8 @@ with dai.Pipeline(device) as pipeline:
     for cameraFeature in connectedCameras:
         cam = pipeline.create(dai.node.Camera)
         cam.setBoardSocket(cameraFeature.socket)
-        if(cameraFeature.sensorName == "IMX586"):
-            cap = dai.ImgFrameCapability()
-            cap.size.fixed((4000, 3000))
-        elif(cameraFeature.sensorName == "IMX378"):
-            cap = dai.ImgFrameCapability()
-            cap.size.fixed((4056, 3040))
-        elif(cameraFeature.sensorName == "OV9282"):
-            cap = dai.ImgFrameCapability()
-            cap.size.fixed((1280, 800))
-        else:
-            raise RuntimeError(f"Unsupported camera in the example: {cameraFeature.sensorName}")
+        cap = dai.ImgFrameCapability()
+        cap.size.fixed((cameraFeature.width, cameraFeature.height))
         videoQueue = cam.requestOutput(cap, True).createOutputQueue()
         outputQueues[str(cameraFeature.socket) + cameraFeature.name] = videoQueue
     pipeline.start()
