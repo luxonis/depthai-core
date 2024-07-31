@@ -6,13 +6,14 @@ import time
 import numpy as np
 from pathlib import Path
 
-datasetDefault = str((Path(__file__).parent / Path('../../models/')).resolve().absolute())
+examplePath = str((Path(__file__).parent / Path('../../')).resolve().absolute())
+datasetDefault = examplePath + "/models/DFS_DispMap.pgm"
+# Check if file exists otherwise provoke the user to run `python3 examples/python/install_requirements.py`
 if not Path(datasetDefault).exists():
     import sys
-    raise FileNotFoundError(f'Required file/s not found, please run "{sys.executable} install_requirements.py"')
+    raise FileNotFoundError(f'Required file/s not found, please run "{sys.executable} {examplePath}/install_requirements.py"')
 
-depthImg = cv2.imread(datasetDefault+"/DFS_DispMap.pgm", cv2.IMREAD_GRAYSCALE)
-
+depthImg = cv2.imread(datasetDefault, cv2.IMREAD_GRAYSCALE)
 width = 1280
 height = 720
 color = (255, 255, 255)
