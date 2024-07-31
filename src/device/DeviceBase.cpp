@@ -792,13 +792,6 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipelin
         pimpl->logger.debug("Device - BoardConfig: {} \nlibnop:{}", jBoardConfig.dump(), spdlog::to_hex(utility::serialize(config.board)));
     }
 
-    // Check if the device actually exists
-    try {
-        tryGetDevice();
-    } catch(std::exception&) {
-        throw;
-    }
-
     // Init device (if bootloader, handle correctly - issue USB boot command)
     if(deviceInfo.state == X_LINK_UNBOOTED) {
         // Unbooted device found, boot and connect with XLinkConnection constructor
@@ -1114,28 +1107,28 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, Prev
             if(!connection->isClosed()) connection->close();
             connection = nullptr;
             // get timeout (in seconds)
-            int reconnectTimeout = 1;
+            std::chrono::milliseconds reconnectTimeout = getDefaultSearchTime();
             auto timeoutStr = utility::getEnv("DEPTHAI_RECONNECT_TIMEOUT");
             if(!timeoutStr.empty()) {
-                // Try parsing the string as a number
                 try {
-                    reconnectTimeout = std::stoi(timeoutStr);
+                    reconnectTimeout = std::chrono::milliseconds(std::stoi(timeoutStr));
                 } catch(const std::invalid_argument& e) {
                     pimpl->logger.warn("DEPTHAI_RECONNECT_TIMEOUT value invalid: {}, should be a number (non-zero to enable)", e.what());
                 }
             }
-            pimpl->logger.warn("Closed connection\nAttempting to reconnect in {}s\n", reconnectTimeout);
-            deviceInfo = prev.deviceInfo;
-            sleep(reconnectTimeout);
+            pimpl->logger.warn("Closed connection\n");
             // Reconnect
+            deviceInfo = prev.deviceInfo;
             watchdogRunning = true;
             timesyncRunning = true;
             loggingRunning = true;
             profilingRunning = true;
             int attempts = 0;
+            pimpl->logger.warn("Attempting to reconnect. Timeout is {}\n", reconnectTimeout);
             while(true) {
                 if(reconnectionCallback) reconnectionCallback(ReconnectionStatus::RECONNECTING);
                 try {
+                    if(std::get<0>(getAnyAvailableDevice(reconnectTimeout))) throw std::runtime_error("No device found");
                     init2(prev.cfg, prev.pathToMvcmd, prev.hasPipeline, true);
                     auto shared = pipeline_ptr.lock();
                     shared->resetConnections();
@@ -1146,9 +1139,7 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, Prev
                         if(reconnectionCallback) reconnectionCallback(ReconnectionStatus::RECONNECT_FAILED);
                         throw std::runtime_error("Connection lost");
                     } else {
-                        pimpl->logger.warn(
-                            "Reconnection unsuccessful, trying again in {}s. Attempts left: {}\n", reconnectTimeout, maxReconnectionAttempts - attempts);
-                        sleep(reconnectTimeout);
+                        pimpl->logger.warn("Reconnection unsuccessful, trying again. Attempts left: {}\n", maxReconnectionAttempts - attempts);
                         continue;
                     }
                 }
