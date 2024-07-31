@@ -6,10 +6,7 @@ import depthai as dai
 # Create pipeline
 with dai.Pipeline() as pipeline:
     # Define source and output
-    cam = pipeline.create(dai.node.Camera)
-
-    # Properties
-    cam.setBoardSocket(dai.CameraBoardSocket.CAM_A)
+    cam = pipeline.create(dai.node.Camera).build()
     videoQueue = cam.requestOutput((640,400)).createOutputQueue()
 
     # Connect to device and start pipeline

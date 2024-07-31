@@ -21,11 +21,31 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
     Node::Output* requestOutput(std::pair<uint32_t, uint32_t> size,
                                 ImgFrame::Type type = ImgFrame::Type::NV12,
                                 ImgResizeMode resizeMode = ImgResizeMode::CROP,
-                                uint32_t fps = 30);
+                                float fps = 30);
     /**
      * Request output with advanced controls. Mainly to be used by custom node writers.
      */
     Node::Output* requestOutput(const Capability& capability, bool onHost) override;
+
+    /**
+     * Get full resolution output
+     */
+    Node::Output* requestFullResolutionOutput(ImgFrame::Type type = ImgFrame::Type::NV12, float fps = 30);
+
+    /**
+    * Build with a specific board socket
+    */
+    std::shared_ptr<Camera> build(dai::CameraBoardSocket boardSocket = dai::CameraBoardSocket::AUTO);
+
+    /**
+     * Get max width of the camera (can only be called after build)
+     */
+    uint32_t getMaxWidth() const;
+
+    /**
+     * Get max height of the camera (can only be called after build)
+     */
+    uint32_t getMaxHeight() const;
 
     /**
      * Initial control options to apply to sensor
@@ -39,28 +59,10 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
         *this, {"inputControl", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::CameraControl, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
-     * Specify which board socket to use
-     * @param boardSocket Board socket to use
-     */
-    void setBoardSocket(CameraBoardSocket boardSocket);
-
-    /**
      * Retrieves which board socket to use
      * @returns Board socket to use
      */
     CameraBoardSocket getBoardSocket() const;
-
-    /**
-     * Specify which camera to use by name
-     * @param name Name of the camera to use
-     */
-    void setCamera(std::string name);
-
-    /**
-     * Retrieves which camera to use by name
-     * @returns Name of the camera to use
-     */
-    std::string getCamera() const;
 
    private:
     class Impl;
@@ -92,6 +94,10 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
     Properties& getProperties() override;
     bool isSourceNode() const override;
     NodeRecordParams getNodeRecordParams() const override;
+   private:
+    bool isBuilt = false;
+    uint32_t maxWidth = 0;
+    uint32_t maxHeight = 0;
     /*
     Output& getRecordOutput() override;
     Input& getReplayInput() override;

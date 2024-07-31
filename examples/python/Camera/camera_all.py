@@ -7,14 +7,11 @@ import depthai as dai
 device = dai.Device()
 with dai.Pipeline(device) as pipeline:
     outputQueues = {}
-    connectedCameras = device.getConnectedCameraFeatures()
-    for cameraFeature in connectedCameras:
-        cam = pipeline.create(dai.node.Camera)
-        cam.setBoardSocket(cameraFeature.socket)
-        cap = dai.ImgFrameCapability()
-        cap.size.fixed((cameraFeature.width, cameraFeature.height))
-        videoQueue = cam.requestOutput(cap, True).createOutputQueue()
-        outputQueues[str(cameraFeature.socket) + cameraFeature.name] = videoQueue
+    sockets = device.getConnectedCameras()
+    for socket in sockets:
+        cam = pipeline.create(dai.node.Camera).build(socket)
+        outputQueues[str(socket)] = cam.requestFullResolutionOutput().createOutputQueue()
+
     pipeline.start()
     while pipeline.isRunning():
         for name in outputQueues.keys():
