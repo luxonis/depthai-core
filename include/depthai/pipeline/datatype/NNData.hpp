@@ -197,23 +197,18 @@ class NNData : public Buffer {
 
 #ifdef DEPTHAI_XTENSOR_SUPPORT
     // Various overloads for different types
-    template <typename _Ty = int>
     NNData& addTensor(const std::string& name, const std::vector<int>& data) {
         return addTensor<int>(name, xt::adapt(data, std::vector<size_t>{1, data.size()}), dai::TensorInfo::DataType::INT);
     }; 
-    template <typename _Ty = float>
     NNData& addTensor(const std::string& name, const std::vector<float>& data) {
         return addTensor<float>(name, xt::adapt(data, std::vector<size_t>{1, data.size()}), dai::TensorInfo::DataType::FP16);
     }; 
-    template <typename _Ty = double>
     NNData& addTensor(const std::string& name, const std::vector<double>& data) {
         return addTensor<double>(name, xt::adapt(data, std::vector<size_t>{1, data.size()}), dai::TensorInfo::DataType::FP32);
     }; 
-    template <typename _Ty = std::int8_t>
     NNData& addTensor(const std::string& name, const std::vector<std::int8_t>& data) {
         return addTensor<std::int8_t>(name, xt::adapt(data, std::vector<size_t>{1, data.size()}), dai::TensorInfo::DataType::I8);
     }; 
-    template <typename _Ty = std::uint8_t>
     NNData& addTensor(const std::string& name, const std::vector<std::uint8_t>& data) {
         return addTensor<std::uint8_t>(name, xt::adapt(data, std::vector<size_t>{1, data.size()}), dai::TensorInfo::DataType::U8F);
     };    
@@ -227,23 +222,18 @@ class NNData : public Buffer {
         return addTensor<_Ty>(name, xt::adapt(data, std::vector<size_t>{1, data.size()}), dataType);
     };
     // Various overloads for different types
-    template<typename _Ty = int> 
     NNData& addTensor(const std::string& name, const xt::xarray<int>& data) {
         return addTensor(name, data, dai::TensorInfo::DataType::INT);
     };
-    template<typename _Ty = float> 
     NNData& addTensor(const std::string& name, const xt::xarray<float>& data) {
         return addTensor(name, data, dai::TensorInfo::DataType::FP16);
     };
-    template<typename _Ty = double> 
     NNData& addTensor(const std::string& name, const xt::xarray<double>& data) {
         return addTensor(name, data, dai::TensorInfo::DataType::FP32);
     };
-    template<typename _Ty = std::int8_t> 
     NNData& addTensor(const std::string& name, const xt::xarray<std::int8_t>& data) {
         return addTensor(name, data, dai::TensorInfo::DataType::I8);
     };
-    template<typename _Ty = std::uint8_t> 
     NNData& addTensor(const std::string& name, const xt::xarray<std::uint8_t>& data) {
         return addTensor(name, data, dai::TensorInfo::DataType::U8F);
     };
