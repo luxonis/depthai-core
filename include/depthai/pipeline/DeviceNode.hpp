@@ -51,7 +51,9 @@ class DeviceNodeCRTP : public Base {
     // No public constructor, only a factory function.
     template <typename... Args>
     [[nodiscard]] static std::shared_ptr<Derived> create(Args&&... args) {
-        return std::make_shared<Derived>(std::forward(args)...);
+        auto nodePtr = std::shared_ptr<Derived>(new Derived(std::forward<Args>(args)...));
+        nodePtr->buildInternal();
+        return nodePtr;
     }
 
     // No public constructor, only a factory function.
