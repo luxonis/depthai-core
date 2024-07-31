@@ -447,7 +447,7 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack){
         })
         .def("close", [](DeviceBase& d) { py::gil_scoped_release release; d.close(); }, "Closes the connection to device. Better alternative is the usage of context manager: `with depthai.Device(pipeline) as device:`")
         .def("isClosed", [](DeviceBase& d) { py::gil_scoped_release release; return d.isClosed(); }, DOC(dai, DeviceBase, isClosed))
-        .def("setMaxReconnections", &DeviceBase::setMaxReconnections, py::arg("maxAttempts"), py::arg("reconnectCallback"), DOC(dai, DeviceBase, setMaxReconnections))
+        .def("setMaxReconnectionAttempts", &DeviceBase::setMaxReconnectionAttempts, py::arg("maxAttempts"), py::arg("callback"), DOC(dai, DeviceBase, setMaxReconnectionAttempts))
         
         //dai::Device methods
         //static

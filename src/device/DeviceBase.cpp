@@ -638,9 +638,9 @@ void DeviceBase::closeImpl() {
     }
 }
 
-void DeviceBase::setMaxReconnectionAttempts(int maxAttempts, std::function<void(ReconnectionStatus)> reconnectionCallback) {
+void DeviceBase::setMaxReconnectionAttempts(int maxAttempts, std::function<void(ReconnectionStatus)> callback) {
     maxReconnectionAttempts = maxAttempts;
-    this->reconnectionCallback = reconnectionCallback;
+    reconnectionCallback = callback;
 }
 
 // This function is thread-unsafe. The idea of "isClosed" is ephemerial and
