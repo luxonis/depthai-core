@@ -30,7 +30,7 @@ for i in range(height*width):
 cv2.imshow("depthImg", depthImg)
 cv2.waitKey(10)
 
-class HostNode(dai.node.ThreadedHostNode):
+class DepthNode(dai.node.ThreadedHostNode):
     def __init__(self):
         dai.node.ThreadedHostNode.__init__(self)
         self.output = dai.Node.Output(self)
@@ -51,8 +51,8 @@ class HostNode(dai.node.ThreadedHostNode):
 # Create pipeline
 with dai.Pipeline() as pipeline:
     cnt = 0
-    hostNode = pipeline.create(HostNode)
-    camQueue = hostNode.output.createOutputQueue()
+    depthNode = pipeline.create(DepthNode)
+    camQueue = depthNode.output.createOutputQueue()
     
     # Config
     topLeft = dai.Point2f(0.35, 0.35)
@@ -73,7 +73,7 @@ with dai.Pipeline() as pipeline:
     outputDepthQueue = spatialLocationCalculator.passthroughDepth.createOutputQueue()
 
 
-    hostNode.output.link(spatialLocationCalculator.inputDepth)
+    depthNode.output.link(spatialLocationCalculator.inputDepth)
 
     inputConfigQueue = spatialLocationCalculator.inputConfig.createInputQueue()
 
