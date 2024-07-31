@@ -1128,7 +1128,7 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, Prev
             while(true) {
                 if(reconnectionCallback) reconnectionCallback(ReconnectionStatus::RECONNECTING);
                 try {
-                    if(std::get<0>(getAnyAvailableDevice(reconnectTimeout))) throw std::runtime_error("No device found");
+                    if(!std::get<0>(getAnyAvailableDevice(reconnectTimeout))) throw std::runtime_error("No device found");
                     init2(prev.cfg, prev.pathToMvcmd, prev.hasPipeline, true);
                     auto shared = pipeline_ptr.lock();
                     shared->resetConnections();
