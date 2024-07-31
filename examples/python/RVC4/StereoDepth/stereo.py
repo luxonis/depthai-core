@@ -30,7 +30,7 @@ stereo = pipeline.create(dai.node.StereoDepth)
 
 # Define sources and outputs
 monoLeft.setBoardSocket(dai.CameraBoardSocket.CAM_A)
-monoRight.setBoardSocket(dai.CameraBoardSocket.CAM_B)
+monoRight.setBoardSocket(dai.CameraBoardSocket.CAM_C)
 
 # Linking
 monoLeftOut = monoLeft.requestOutput((640, 400), type=dai.ImgFrame.Type.NV12)
