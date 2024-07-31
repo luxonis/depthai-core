@@ -1070,9 +1070,4 @@ void Pipeline::enableHolisticReplay(const std::string& pathToRecording) {
     impl()->recordConfig.state = RecordConfig::RecordReplayState::REPLAY;
     impl()->enableHolisticRecordReplay = true;
 }
-
-void Pipeline::setMaxReconnections(int maxAttempts) {
-    impl()->defaultDevice->setMaxReconnectionAttempts(maxAttempts);
-}
-
 }  // namespace dai

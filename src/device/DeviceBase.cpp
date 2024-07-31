@@ -638,8 +638,9 @@ void DeviceBase::closeImpl() {
     }
 }
 
-void DeviceBase::setMaxReconnectionAttempts(int maxAttempts) {
+void DeviceBase::setMaxReconnectionAttempts(int maxAttempts, std::function<void(ReconnectionStatus)> reconnectionCallback) {
     maxReconnectionAttempts = maxAttempts;
+    this->reconnectionCallback = reconnectionCallback;
 }
 
 // This function is thread-unsafe. The idea of "isClosed" is ephemerial and
@@ -1095,6 +1096,7 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, Prev
             }
             if(isClosing) return;
             if(maxReconnectionAttempts == 0) {
+                if(reconnectionCallback) reconnectionCallback(ReconnectionStatus::RECONNECT_FAILED);
                 throw std::runtime_error("Connection lost");
             }
             // reconnection attempt
@@ -1132,6 +1134,7 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, Prev
             profilingRunning = true;
             int attempts = 0;
             while(true) {
+                if(reconnectionCallback) reconnectionCallback(ReconnectionStatus::RECONNECTING);
                 try {
                     init2(prev.cfg, prev.pathToMvcmd, prev.hasPipeline, true);
                     auto shared = pipeline_ptr.lock();
@@ -1140,6 +1143,7 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, Prev
                     attempts++;
                     if(attempts >= maxReconnectionAttempts) {
                         pimpl->logger.warn("Reconnection unsuccessful, aborting");
+                        if(reconnectionCallback) reconnectionCallback(ReconnectionStatus::RECONNECT_FAILED);
                         throw std::runtime_error("Connection lost");
                     } else {
                         pimpl->logger.warn(
@@ -1151,6 +1155,7 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, Prev
                 break;
             }
             pimpl->logger.warn("Reconnection successful\n");
+            if(reconnectionCallback) reconnectionCallback(ReconnectionStatus::RECONNECTED);
         }
     } catch(...) {
         auto shared = pipeline_ptr.lock();

@@ -894,11 +894,13 @@ class DeviceBase {
     std::shared_ptr<const XLinkConnection> getConnection() const {
         return connection;
     }
+    enum ReconnectionStatus { RECONNECTED, RECONNECTING, RECONNECT_FAILED };
     /**
      * Sets max number of automatic reconnection attempts
-     * @param maxAttempts
+     * @param maxAttempts Maximum number of reconnection attempts, 0 to disable reconnection
+     * @param callBack Callback to be called when reconnection is attempted
      */
-    void setMaxReconnectionAttempts(int maxAttempts);
+    void setMaxReconnectionAttempts(int maxAttempts, std::function<void(ReconnectionStatus)> callBack = nullptr);
 
    protected:
     std::shared_ptr<XLinkConnection> connection;
@@ -1012,6 +1014,7 @@ class DeviceBase {
     // Reconnection attempts and pointer to reset connections
     int maxReconnectionAttempts = 0;
     std::weak_ptr<PipelineImpl> pipeline_ptr;
-    bool isClosing = false; // if true, don't attempt to reconnect
+    bool isClosing = false;  // if true, don't attempt to reconnect
+    std::function<void(ReconnectionStatus)> reconnectionCallback = nullptr;
 };
 }  // namespace dai
