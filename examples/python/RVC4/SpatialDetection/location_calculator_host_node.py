@@ -54,7 +54,7 @@ with dai.Pipeline() as pipeline:
     cnt = 0
     depthNode = pipeline.create(DepthNode)
     camQueue = depthNode.output.createOutputQueue()
-    
+
     # Config
     topLeft = dai.Point2f(0.35, 0.35)
     bottomRight = dai.Point2f(0.38, 0.38)
@@ -119,7 +119,6 @@ with dai.Pipeline() as pipeline:
 
         newConfig = False
 
-        key = cv2.waitKey(1000)
         if key == ord('q'):
             break
         elif key == ord('w'):
