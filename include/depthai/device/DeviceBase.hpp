@@ -1012,7 +1012,7 @@ class DeviceBase {
     std::optional<PipelineSchema> pipelineSchema;
 
     // Reconnection attempts and pointer to reset connections
-    int maxReconnectionAttempts = 0;
+    int maxReconnectionAttempts = 1;
     std::weak_ptr<PipelineImpl> pipelinePtr;
     bool isClosing = false;  // if true, don't attempt to reconnect
     std::function<void(ReconnectionStatus)> reconnectionCallback = nullptr;
