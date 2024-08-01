@@ -20,16 +20,16 @@ class Subnode {
             node->parentNode = node;
             // Add node to parents map
             parent.nodeMap.push_back(node);
-        }
 
-        // If node is DeviceNode, copy device from parent
-        if(std::dynamic_pointer_cast<DeviceNode>(node) != nullptr) {
-            auto device = dynamic_cast<DeviceNode*>(&parent)->getDevice();
-            std::dynamic_pointer_cast<DeviceNode>(node)->setDevice(device);
-        }
+            // If node is DeviceNode, copy device from parent
+            if(std::dynamic_pointer_cast<DeviceNode>(node) != nullptr) {
+                auto device = dynamic_cast<DeviceNode*>(&parent)->getDevice();
+                std::dynamic_pointer_cast<DeviceNode>(node)->setDevice(device);
+            }
 
-        // Now that node is created, call buildInternal
-        node->buildInternal();
+            // Now that node is created, call buildInternal
+            node->buildInternal();
+        }
 
         // Add reference
         parent.nodeRefs.push_back(&node);
