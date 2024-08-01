@@ -33,8 +33,8 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
     Node::Output* requestFullResolutionOutput(ImgFrame::Type type = ImgFrame::Type::NV12, float fps = 30);
 
     /**
-    * Build with a specific board socket
-    */
+     * Build with a specific board socket
+     */
     std::shared_ptr<Camera> build(dai::CameraBoardSocket boardSocket = dai::CameraBoardSocket::AUTO);
 
     /**
@@ -92,6 +92,7 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
     Properties& getProperties() override;
     bool isSourceNode() const override;
     NodeRecordParams getNodeRecordParams() const override;
+
    private:
     bool isBuilt = false;
     uint32_t maxWidth = 0;

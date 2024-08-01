@@ -1126,9 +1126,9 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, Prev
             auto reconnected = false;
             for(attempts = 0; attempts < maxReconnectionAttempts; attempts++) {
                 if(reconnectionCallback) reconnectionCallback(ReconnectionStatus::RECONNECTING);
-                if(std::get<0>(getAnyAvailableDevice(reconnectTimeout))){
+                if(std::get<0>(getAnyAvailableDevice(reconnectTimeout))) {
                     init2(prev.cfg, prev.pathToMvcmd, prev.hasPipeline, true);
-                    if(hasCrashDump()){
+                    if(hasCrashDump()) {
                         auto dump = getCrashDump();
                         logCollection::logCrashDump(pipelineSchema, dump, deviceInfo);
                     }

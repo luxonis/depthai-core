@@ -56,7 +56,6 @@ Camera::Camera(std::unique_ptr<Properties> props) : DeviceNodeCRTP<DeviceNode, C
 Camera::Camera(std::shared_ptr<Device>& defaultDevice)
     : DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>(defaultDevice), pimpl(spimpl::make_impl<Impl>()) {}
 
-
 std::shared_ptr<Camera> Camera::build(CameraBoardSocket boardSocket) {
     if(isBuilt) {
         throw std::runtime_error("Camera node is already built");
