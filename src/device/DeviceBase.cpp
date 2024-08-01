@@ -1128,6 +1128,10 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, Prev
                 if(reconnectionCallback) reconnectionCallback(ReconnectionStatus::RECONNECTING);
                 if(std::get<0>(getAnyAvailableDevice(reconnectTimeout))){
                     init2(prev.cfg, prev.pathToMvcmd, prev.hasPipeline, true);
+                    if(hasCrashDump()){
+                        auto dump = getCrashDump();
+                        logCollection::logCrashDump(pipelineSchema, dump, deviceInfo);
+                    }
                     auto shared = pipelinePtr.lock();
                     if(!shared) throw std::runtime_error("Pipeline was destroyed");
                     shared->resetConnections();
