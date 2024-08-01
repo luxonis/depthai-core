@@ -894,7 +894,7 @@ class DeviceBase {
     std::shared_ptr<const XLinkConnection> getConnection() const {
         return connection;
     }
-    enum ReconnectionStatus { RECONNECTED, RECONNECTING, RECONNECT_FAILED };
+    enum class ReconnectionStatus { RECONNECTED, RECONNECTING, RECONNECT_FAILED };
     /**
      * Sets max number of automatic reconnection attempts
      * @param maxAttempts Maximum number of reconnection attempts, 0 to disable reconnection
