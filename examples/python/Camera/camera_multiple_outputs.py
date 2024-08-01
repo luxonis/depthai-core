@@ -67,8 +67,7 @@ with dai.Pipeline() as pipeline:
         else:
             exit_usage()
         if socket not in cams:
-            cams[socket] = pipeline.create(dai.node.Camera)
-            cams[socket].setBoardSocket(socket)
+            cams[socket] = pipeline.create(dai.node.Camera).build(socket)
         queues.append(cams[socket].requestOutput(cap, True).createOutputQueue())
 
     # Connect to device and start pipeline
