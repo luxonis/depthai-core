@@ -22,18 +22,10 @@ namespace node {
 // Base Detection Network Class
 //--------------------------------------------------------------------
 
-class DetectionNetwork::Impl {
-   public:
-    Impl() = default;
-
-    /*
-     * Place for future private stuff.
-     */
+DetectionNetwork::DetectionNetwork(const std::shared_ptr<Device>& device)
+    : DeviceNodeGroup(device), out{detectionParser->out}, outNetwork{neuralNetwork->out}, input{neuralNetwork->input}, passthrough{neuralNetwork->passthrough} {
+    setDeviceForAllDeviceNodes(device);
 };
-
-DetectionNetwork::DetectionNetwork()
-    : out{detectionParser->out}, outNetwork{neuralNetwork->out}, input{neuralNetwork->input}, passthrough{neuralNetwork->passthrough} {};
-DetectionNetwork::~DetectionNetwork() = default;
 
 // -------------------------------------------------------------------
 // Neural Network API

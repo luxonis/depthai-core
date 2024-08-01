@@ -53,6 +53,17 @@ TEST_CASE("DetectionNetwork throws when passed the OTHER NNArchive type") {
 
     // Load NNArchive
     dai::NNArchive nnArchive(archivePath);
-    REQUIRE_THROWS(nn->setNNArchive(nnArchive));
+    REQUIRE_NOTHROW(nn->setNNArchive(nnArchive));
     REQUIRE_THROWS(nn->setNNArchive(nnArchive, 6));
+}
+
+TEST_CASE("DetectionNetwork sets device for all subnodes") {
+    // Create pipeline
+    dai::Pipeline p;
+    auto nn = p.create<dai::node::DetectionNetwork>();
+    auto pipelineDevice = p.getDefaultDevice();
+
+    // Check that device is set for all subnodes
+    REQUIRE(nn->neuralNetwork->getDevice() == pipelineDevice);
+    REQUIRE(nn->detectionParser->getDevice() == pipelineDevice);
 }

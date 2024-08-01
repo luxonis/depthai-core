@@ -1,6 +1,6 @@
 #pragma once
 
-#include <depthai/pipeline/NodeGroup.hpp>
+#include <depthai/pipeline/DeviceNodeGroup.hpp>
 #include <depthai/pipeline/node/DetectionParser.hpp>
 #include <depthai/pipeline/node/NeuralNetwork.hpp>
 #include <optional>
@@ -16,20 +16,11 @@ namespace node {
 /**
  * @brief DetectionNetwork, base for different network specializations
  */
-class DetectionNetwork : public NodeGroup {
+class DetectionNetwork : public DeviceNodeGroup<DetectionNetwork> {
    public:
-    DetectionNetwork();
-    ~DetectionNetwork() override;
+    DetectionNetwork(const std::shared_ptr<Device>& device);
 
-    [[nodiscard]] static std::shared_ptr<DetectionNetwork> create() {
-        auto networkPtr = std::make_shared<DetectionNetwork>();
-        networkPtr->buildInternal();
-        return networkPtr;
-    }
     std::shared_ptr<DetectionNetwork> build(Node::Output& input, const NNArchive& nnArchive);
-    bool runOnHost() const override {
-        return false;
-    };
 
     Subnode<NeuralNetwork> neuralNetwork{*this, "neuralNetwork"};
     Subnode<DetectionParser> detectionParser{*this, "detectionParser"};
@@ -166,9 +157,6 @@ class DetectionNetwork : public NodeGroup {
     void setNNArchiveBlob(const NNArchive& nnArchive);
     void setNNArchiveSuperblob(const NNArchive& nnArchive, int numShaves);
     void setNNArchiveOther(const NNArchive& nnArchive);
-
-    class Impl;
-    Pimpl<Impl> pimpl;
 };
 
 /**
@@ -176,31 +164,16 @@ class DetectionNetwork : public NodeGroup {
  */
 class MobileNetDetectionNetwork : public DetectionNetwork {
    public:
-    [[nodiscard]] static std::shared_ptr<MobileNetDetectionNetwork> create() {
-        auto networkPtr = std::make_shared<MobileNetDetectionNetwork>();
-        networkPtr->buildInternal();
-        return networkPtr;
-    }
-    bool runOnHost() const override {
-        return false;
-    };
-
+    using DetectionNetwork::DetectionNetwork;
     void buildInternal() override;
 };
 
-/**
+/**x
  * @brief YoloDetectionNetwork node. Parses Yolo results
  */
 class YoloDetectionNetwork : public DetectionNetwork {
    public:
-    [[nodiscard]] static std::shared_ptr<YoloDetectionNetwork> create() {
-        auto networkPtr = std::make_shared<YoloDetectionNetwork>();
-        networkPtr->buildInternal();
-        return networkPtr;
-    }
-    bool runOnHost() const override {
-        return false;
-    };
+    using DetectionNetwork::DetectionNetwork;
 
     /// Set num classes
     void setNumClasses(int numClasses);
