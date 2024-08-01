@@ -13,11 +13,7 @@
 
 namespace dai {
 namespace node {
-
-void XLinkInHost::stop() {
-    disconnect();
-    ThreadedHostNode::stop();
-}
+// XLinkInHost::XLinkInHost(std::shared_ptr<XLinkConnection> conn, std::string streamName) : conn(std::move(conn)), streamName(std::move(streamName)){};
 
 void XLinkInHost::setStreamName(const std::string& name) {
     streamName = name;

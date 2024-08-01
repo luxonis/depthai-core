@@ -873,6 +873,16 @@ void PipelineImpl::resetConnections() {
     }
 }
 
+void PipelineImpl::disconnectXLinkHosts() {
+    // make connections throw instead of reconnecting
+    for(auto node : getAllNodes()) {
+        auto tmp = std::dynamic_pointer_cast<node::XLinkInHost>(node);
+        if(tmp) tmp->disconnect();
+        auto tmp2 = std::dynamic_pointer_cast<node::XLinkOutHost>(node);
+        if(tmp2) tmp2->disconnect();
+    }
+}
+
 void PipelineImpl::wait() {
     // Waits for all nodes to finish the execution
     for(const auto& node : getAllNodes()) {

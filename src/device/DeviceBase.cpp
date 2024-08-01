@@ -1103,11 +1103,7 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, Prev
             if(timesyncThread.joinable()) timesyncThread.join();
             if(loggingThread.joinable()) loggingThread.join();
             if(profilingThread.joinable()) profilingThread.join();
-            pimpl->rpcStream = nullptr;
-            pimpl->rpcClient = nullptr;
-            // close connection
-            if(!connection->isClosed()) connection->close();
-            connection = nullptr;
+
             // get timeout (in seconds)
             std::chrono::milliseconds reconnectTimeout(10'000);
             auto timeoutStr = utility::getEnv("DEPTHAI_RECONNECT_TIMEOUT");
@@ -1130,7 +1126,7 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, Prev
             auto reconnected = false;
             for(attempts = 0; attempts < maxReconnectionAttempts; attempts++) {
                 if(reconnectionCallback) reconnectionCallback(ReconnectionStatus::RECONNECTING);
-                if(!std::get<0>(getAnyAvailableDevice(reconnectTimeout))){
+                if(std::get<0>(getAnyAvailableDevice(reconnectTimeout))){
                     init2(prev.cfg, prev.pathToMvcmd, prev.hasPipeline, true);
                     auto shared = pipelinePtr.lock();
                     if(!shared) throw std::runtime_error("Pipeline was destroyed");
@@ -1150,6 +1146,11 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, Prev
         }
     } catch(const std::exception& ex) {
         pimpl->logger.info("Monitor thread exception caught: {}", ex.what());
+    }
+    // Close the pipeline
+    auto shared = pipelinePtr.lock();
+    if(shared) {
+        shared->disconnectXLinkHosts();
     }
 }
 

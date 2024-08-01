@@ -32,11 +32,6 @@ void XLinkOutHost::disconnect() {
     isWaitingForReconnect.notify_all();
 }
 
-void XLinkOutHost::stop() {
-    disconnect();
-    ThreadedHostNode::stop();
-}
-
 void XLinkOutHost::run() {
     // // Create a stream for the connection
     // TODO(Morato) - automatically increase the buffer size lazily
