@@ -12,12 +12,6 @@ class DeviceNodeGroup : public DeviceNode {
     using DeviceNode::DeviceNode;
     DeviceNodeGroup(const std::shared_ptr<Device>& device) : DeviceNode(device, std::make_unique<DeviceNodeGroupProperties>(), false) {}
     friend class PipelineImpl;
-
-    void buildInternal() override;
-
-   protected:
-    // Set device for all device nodes in this node group
-    void setDeviceForAllDeviceNodes(const std::shared_ptr<Device>& device);
 };
 
 }  // namespace dai

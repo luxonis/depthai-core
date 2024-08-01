@@ -1,5 +1,6 @@
 #pragma once
 
+#include <depthai/pipeline/Subnode.hpp>
 #include <depthai/pipeline/ThreadedHostNode.hpp>
 #include <depthai/pipeline/datatype/ImgFrame.hpp>
 #include <depthai/pipeline/datatype/MessageGroup.hpp>

@@ -2,6 +2,7 @@
 
 #include <depthai/modelzoo/NNModelDescription.hpp>
 #include <depthai/pipeline/DeviceNodeGroup.hpp>
+#include <depthai/pipeline/Subnode.hpp>
 #include <depthai/pipeline/node/DetectionParser.hpp>
 #include <depthai/pipeline/node/NeuralNetwork.hpp>
 #include <optional>

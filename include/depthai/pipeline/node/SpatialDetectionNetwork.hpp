@@ -1,6 +1,7 @@
 #pragma once
 
 #include <depthai/pipeline/DeviceNode.hpp>
+#include <depthai/pipeline/Subnode.hpp>
 #include <depthai/pipeline/node/DetectionNetwork.hpp>
 
 #include "depthai/openvino/OpenVINO.hpp"
