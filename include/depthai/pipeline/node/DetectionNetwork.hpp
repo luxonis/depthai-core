@@ -206,7 +206,7 @@ class MobileNetDetectionNetwork : public DetectionNetwork {
     void buildInternal() override;
 };
 
-/**x
+/**
  * @brief YoloDetectionNetwork node. Parses Yolo results
  */
 class YoloDetectionNetwork : public DetectionNetwork {
