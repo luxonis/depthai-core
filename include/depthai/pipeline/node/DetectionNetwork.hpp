@@ -1,5 +1,6 @@
 #pragma once
 
+#include <depthai/modelzoo/NNModelDescription.hpp>
 #include <depthai/pipeline/DeviceNodeGroup.hpp>
 #include <depthai/pipeline/node/DetectionParser.hpp>
 #include <depthai/pipeline/node/NeuralNetwork.hpp>
@@ -62,6 +63,23 @@ class DetectionNetwork : public DeviceNodeGroup<DetectionNetwork> {
      * @param numShaves: Number of shaves to use
      */
     void setNNArchive(const NNArchive& nnArchive, int numShaves);
+
+    /**
+     * @brief Download model from zoo and set it for this Node
+     *
+     * @param description: Model description to download
+     * @param useCached: Use cached model if available
+     */
+    void setFromModelzoo(const NNModelDescription& description, bool useCached = true);
+
+    /**
+     * @brief Download model from zoo and set it for this node.
+     *
+     * @param description: Model description to download
+     * @param numShaves: Number of shaves to use
+     * @param useCached: Use cached model if available
+     */
+    void setFromModelzoo(const NNModelDescription& description, int numShaves, bool useCached = true);
 
     // Specify local filesystem path to load the blob (which gets loaded at loadAssets)
     /**

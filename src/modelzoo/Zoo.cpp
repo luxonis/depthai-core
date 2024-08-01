@@ -310,6 +310,11 @@ void downloadModelsFromZoo(const std::string& path, const std::string& cacheDire
         }
     }
 }
+
+void removeCacheFolder(const std::string& cacheDirectory) {
+    std::filesystem::remove_all(cacheDirectory);
+}
+
 }  // namespace dai
 
 #else

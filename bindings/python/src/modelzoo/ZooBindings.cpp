@@ -30,4 +30,6 @@ void ZooBindings::bind(pybind11::module& m, void* pCallstack) {
           py::arg("path"),
           py::arg("cacheDirectory") = MODEL_ZOO_DEFAULT_CACHE_DIRECTORY,
           DOC(dai, downloadModelsFromZoo));
+
+    m.def("removeCacheFolder", removeCacheFolder, py::arg("cacheDirectory") = MODEL_ZOO_DEFAULT_CACHE_DIRECTORY, DOC(dai, removeCacheFolder));
 }

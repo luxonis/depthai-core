@@ -3,7 +3,10 @@
 #include <stdexcept>
 
 #include "depthai/depthai.hpp"
+#include "depthai/modelzoo/Zoo.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
+#include "modelzoo/Zoo.hpp"
+#include "nn_archive/NNArchive.hpp"
 #include "openvino/BlobReader.hpp"
 #include "utility/ErrorMacros.hpp"
 
@@ -45,6 +48,28 @@ void NeuralNetwork::setNNArchive(const NNArchive& nnArchive, int numShaves) {
             DAI_CHECK_V(false, "NNArchive type is not SUPERBLOB. Use setNNArchive(const NNArchive& nnArchive) instead.");
             break;
     }
+}
+
+void NeuralNetwork::setFromModelzoo(NNModelDescription description, bool useCached) {
+    // Set platform if not set
+    if(description.platform.empty()) {
+        DAI_CHECK(getDevice() != nullptr, "Device is not set. Use setDevice(...) first.");
+        description.platform = getDevice()->getPlatformAsString();
+    }
+    auto archivePath = getModelFromZoo(description, useCached);
+    NNArchive archive(archivePath);
+    setNNArchive(archive);
+}
+
+void NeuralNetwork::setFromModelzoo(NNModelDescription description, int numShaves, bool useCached) {
+    // Set platform if not set
+    if(description.platform.empty()) {
+        DAI_CHECK(getDevice() != nullptr, "Device is not set. Use setDevice(...) first.");
+        description.platform = getDevice()->getPlatformAsString();
+    }
+    auto archivePath = getModelFromZoo(description, useCached);
+    NNArchive archive(archivePath);
+    setNNArchive(archive, numShaves);
 }
 
 void NeuralNetwork::setNNArchiveBlob(const NNArchive& nnArchive) {

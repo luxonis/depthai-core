@@ -77,6 +77,16 @@ void DetectionNetwork::setNNArchive(const NNArchive& nnArchive, int numShaves) {
     }
 }
 
+void DetectionNetwork::setFromModelzoo(const NNModelDescription& description, bool useCached) {
+    neuralNetwork->setFromModelzoo(description, useCached);
+    detectionParser->setFromModelzoo(description, true);  // Model downloaded in neuralNetwork => use it
+}
+
+void DetectionNetwork::setFromModelzoo(const NNModelDescription& description, int numShaves, bool useCached) {
+    neuralNetwork->setFromModelzoo(description, numShaves, useCached);
+    detectionParser->setFromModelzoo(description, numShaves, true);  // Model downloaded in neuralNetwork - use it
+}
+
 void DetectionNetwork::setNNArchiveBlob(const NNArchive& nnArchive) {
     DAI_CHECK_V(nnArchive.getArchiveType() == dai::NNArchiveType::BLOB, "NNArchive type is not BLOB");
     detectionParser->setNNArchive(nnArchive);

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <depthai/modelzoo/NNModelDescription.hpp>
 #include <depthai/pipeline/DeviceNode.hpp>
 
 // standard
@@ -66,6 +67,23 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
      * @param numShaves: Number of shaves to use
      */
     void setNNArchive(const NNArchive& nnArchive, int numShaves);
+
+    /**
+     * @brief Download model from zoo and set it for this Node
+     *
+     * @param description: Model description to download
+     * @param useCached: Use cached model if available
+     */
+    void setFromModelzoo(NNModelDescription description, bool useCached = true);
+
+    /**
+     * @brief Download model from zoo and set it for this node.
+     *
+     * @param description: Model description to download
+     * @param numShaves: Number of shaves to use
+     * @param useCached: Use cached model if available
+     */
+    void setFromModelzoo(NNModelDescription description, int numShaves, bool useCached = true);
 
     /**
      * Load network blob into assets and use once pipeline is started.

@@ -1,5 +1,6 @@
 #include "depthai/pipeline/node/DetectionParser.hpp"
 
+#include "depthai/modelzoo/Zoo.hpp"
 #include "nn_archive/NNArchive.hpp"
 #include "spdlog/fmt/fmt.h"
 
@@ -39,6 +40,28 @@ void DetectionParser::setNNArchive(const NNArchive& nnArchive, int numShaves) {
             DAI_CHECK_V(false, "NNArchive type is not SUPERBLOB. Use setNNArchive(const NNArchive& nnArchive) instead.");
             break;
     }
+}
+
+void DetectionParser::setFromModelzoo(NNModelDescription description, bool useCached) {
+    // Set platform if not set
+    if(description.platform.empty()) {
+        DAI_CHECK(getDevice() != nullptr, "Device is not set. Use setDevice(...) first.");
+        description.platform = getDevice()->getPlatformAsString();
+    }
+    auto archivePath = getModelFromZoo(description, useCached);
+    NNArchive archive(archivePath);
+    setNNArchive(archive);
+}
+
+void DetectionParser::setFromModelzoo(NNModelDescription description, int numShaves, bool useCached) {
+    // Set platform if not set
+    if(description.platform.empty()) {
+        DAI_CHECK(getDevice() != nullptr, "Device is not set. Use setDevice(...) first.");
+        description.platform = getDevice()->getPlatformAsString();
+    }
+    auto archivePath = getModelFromZoo(description, useCached);
+    NNArchive archive(archivePath);
+    setNNArchive(archive, numShaves);
 }
 
 void DetectionParser::setConfig(const dai::NNArchiveConfig& config) {
