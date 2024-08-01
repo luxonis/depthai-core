@@ -2,6 +2,7 @@
 
 #include "Common.hpp"
 #include "NodeBindings.hpp"
+#include "depthai/pipeline/DeviceNodeGroup.hpp"
 #include "depthai/pipeline/Node.hpp"
 #include "depthai/pipeline/NodeGroup.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
@@ -11,7 +12,7 @@ void bind_detectionnetwork(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::node;
 
-    auto detectionNetwork = ADD_NODE_DERIVED(DetectionNetwork, NodeGroup);
+    auto detectionNetwork = ADD_NODE_DERIVED(DetectionNetwork, DeviceNodeGroup);
     auto mobileNetDetectionNetwork = ADD_NODE_DERIVED(MobileNetDetectionNetwork, DetectionNetwork);
     auto yoloDetectionNetwork = ADD_NODE_DERIVED(YoloDetectionNetwork, DetectionNetwork);
 
@@ -77,7 +78,7 @@ void bind_detectionnetwork(pybind11::module& m, void* pCallstack) {
         .def("setNNArchive", py::overload_cast<const NNArchive&>(&DetectionNetwork::setNNArchive), py::arg("archive"), DOC(dai, node, DetectionNetwork, setNNArchive))
         .def("setNNArchive", py::overload_cast<const NNArchive&, int>(&DetectionNetwork::setNNArchive), py::arg("archive"), py::arg("numShaves"), DOC(dai, node, DetectionNetwork, setNNArchive))
         .def("setFromModelzoo", py::overload_cast<NNModelDescription, bool>(&DetectionNetwork::setFromModelzoo), py::arg("description"), py::arg("useCached"), DOC(dai, node, DetectionNetwork, setFromModelzoo))
-        .def("setFromModelzoo", py::overload_cast<NNModelDescription, int, bool>(&DetectionNetwork::setFromModelzoo), py::arg("description"), py::arg("numShaves"), py::arg("useCached"), DOC(dai, node, DetectionNetwork, setFromModelzoo, 2))
+        .def("setFromModelzoo", py::overload_cast<NNModelDescription, int, bool>(&DetectionNetwork::setFromModelzoo), py::arg("description"), py::arg("numShaves"), py::arg("useCached"), DOC(dai, node, DetectionNetwork, setFromModelzoo))
         .def("setBlob", py::overload_cast<dai::OpenVINO::Blob>(&DetectionNetwork::setBlob), py::arg("blob"), DOC(dai, node, DetectionNetwork, setBlob))
         .def("setBlob", py::overload_cast<const dai::Path&>(&DetectionNetwork::setBlob), py::arg("path"), DOC(dai, node, DetectionNetwork, setBlob, 2))
         .def("setModelPath",

@@ -7,11 +7,10 @@
 
 namespace dai {
 
-template <typename T>
-class DeviceNodeGroup : public DeviceNodeCRTP<DeviceNode, T, DeviceNodeGroupProperties> {
+class DeviceNodeGroup : public DeviceNode {
    public:
-    constexpr static const char* NAME = "DeviceNodeGroup";
-    using DeviceNodeCRTP<DeviceNode, T, DeviceNodeGroupProperties>::DeviceNodeCRTP;
+    using DeviceNode::DeviceNode;
+    DeviceNodeGroup(const std::shared_ptr<Device>& device) : DeviceNode(device, std::make_unique<DeviceNodeGroupProperties>(), false) {}
     friend class PipelineImpl;
 
    protected:

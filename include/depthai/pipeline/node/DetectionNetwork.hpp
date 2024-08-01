@@ -9,7 +9,6 @@
 
 #include "depthai/nn_archive/NNArchive.hpp"
 #include "depthai/openvino/OpenVINO.hpp"
-#include "depthai/utility/Pimpl.hpp"
 
 namespace dai {
 namespace node {
@@ -17,9 +16,19 @@ namespace node {
 /**
  * @brief DetectionNetwork, base for different network specializations
  */
-class DetectionNetwork : public DeviceNodeGroup<DetectionNetwork> {
+class DetectionNetwork : public DeviceNodeGroup {
    public:
     DetectionNetwork(const std::shared_ptr<Device>& device);
+
+    const char* getName() const override {
+        return "DetectionNetwork";
+    }
+
+    [[nodiscard]] static std::shared_ptr<DetectionNetwork> create(const std::shared_ptr<Device>& device) {
+        auto networkPtr = std::make_shared<DetectionNetwork>(device);
+        networkPtr->buildInternal();
+        return networkPtr;
+    }
 
     std::shared_ptr<DetectionNetwork> build(Node::Output& input, const NNArchive& nnArchive);
 
@@ -70,7 +79,7 @@ class DetectionNetwork : public DeviceNodeGroup<DetectionNetwork> {
      * @param description: Model description to download
      * @param useCached: Use cached model if available
      */
-    void setFromModelzoo(const NNModelDescription& description, bool useCached = true);
+    void setFromModelzoo(NNModelDescription description, bool useCached = true);
 
     /**
      * @brief Download model from zoo and set it for this node.
@@ -79,7 +88,7 @@ class DetectionNetwork : public DeviceNodeGroup<DetectionNetwork> {
      * @param numShaves: Number of shaves to use
      * @param useCached: Use cached model if available
      */
-    void setFromModelzoo(const NNModelDescription& description, int numShaves, bool useCached = true);
+    void setFromModelzoo(NNModelDescription description, int numShaves, bool useCached = true);
 
     // Specify local filesystem path to load the blob (which gets loaded at loadAssets)
     /**
@@ -183,6 +192,17 @@ class DetectionNetwork : public DeviceNodeGroup<DetectionNetwork> {
 class MobileNetDetectionNetwork : public DetectionNetwork {
    public:
     using DetectionNetwork::DetectionNetwork;
+
+    const char* getName() const override {
+        return "MobileNetDetectionNetwork";
+    }
+
+    [[nodiscard]] static std::shared_ptr<MobileNetDetectionNetwork> create(const std::shared_ptr<Device>& device) {
+        auto networkPtr = std::make_shared<MobileNetDetectionNetwork>(device);
+        networkPtr->buildInternal();
+        return networkPtr;
+    }
+
     void buildInternal() override;
 };
 
@@ -192,6 +212,16 @@ class MobileNetDetectionNetwork : public DetectionNetwork {
 class YoloDetectionNetwork : public DetectionNetwork {
    public:
     using DetectionNetwork::DetectionNetwork;
+
+    const char* getName() const override {
+        return "YoloDetectionNetwork";
+    }
+
+    [[nodiscard]] static std::shared_ptr<YoloDetectionNetwork> create(const std::shared_ptr<Device>& device) {
+        auto networkPtr = std::make_shared<YoloDetectionNetwork>(device);
+        networkPtr->buildInternal();
+        return networkPtr;
+    }
 
     /// Set num classes
     void setNumClasses(int numClasses);
