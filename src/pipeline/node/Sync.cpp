@@ -63,7 +63,7 @@ void Sync::run() {
         for(const auto& frame : inputFrames) {
             logger->debug("Starting input {} timestamp is {} ms",
                           frame.first,
-                          static_cast<float>(frame.second->getTimestampDevice().time_since_epoch().count()) / 1000000.f);
+                          static_cast<float>(frame.second->getTimestamp().time_since_epoch().count()) / 1000000.f);
         }
         auto tAfterMessageBeginning = steady_clock::now();
         int attempts = 0;
@@ -74,7 +74,7 @@ void Sync::run() {
                 for(const auto& frame : inputFrames) {
                     logger->warn("Output {} timestamp is {} ms",
                                  frame.first,
-                                 static_cast<float>(frame.second->getTimestampDevice().time_since_epoch().count()) / 1000000.f);
+                                 static_cast<float>(frame.second->getTimestamp().time_since_epoch().count()) / 1000000.f);
                 }
             }
             if(attempts > properties.syncAttempts && properties.syncAttempts != -1) {
@@ -85,18 +85,18 @@ void Sync::run() {
                 break;
             }
             // Find a minimum timestamp
-            auto minTs = inputFrames.begin()->second->getTimestampDevice();
+            auto minTs = inputFrames.begin()->second->getTimestamp();
             for(const auto& frame : inputFrames) {
-                if(frame.second->getTimestampDevice() < minTs) {
-                    minTs = frame.second->getTimestampDevice();
+                if(frame.second->getTimestamp() < minTs) {
+                    minTs = frame.second->getTimestamp();
                 }
             }
 
             // Find a max timestamp
-            auto maxTs = inputFrames.begin()->second->getTimestampDevice();
+            auto maxTs = inputFrames.begin()->second->getTimestamp();
             for(const auto& frame : inputFrames) {
-                if(frame.second->getTimestampDevice() > maxTs) {
-                    maxTs = frame.second->getTimestampDevice();
+                if(frame.second->getTimestamp() > maxTs) {
+                    maxTs = frame.second->getTimestamp();
                 }
             }
             logger->debug("Diff: {} ms", duration_cast<milliseconds>(maxTs - minTs).count());
@@ -108,7 +108,7 @@ void Sync::run() {
             // Get the message with the minimum timestamp (oldest message)
             std::string minTsName;
             for(const auto& frame : inputFrames) {
-                if(frame.second->getTimestampDevice() == minTs) {
+                if(frame.second->getTimestamp() == minTs) {
                     minTsName = frame.first;
                     break;
                 }
@@ -122,7 +122,7 @@ void Sync::run() {
         for(const auto& name : inputNames) {
             logger->trace("Sending output: {}", name);
             logger->trace("Timestamp: {} ms",
-                          static_cast<float>(duration_cast<microseconds>(inputFrames[name]->getTimestampDevice().time_since_epoch()).count()) / 1000.f);
+                          static_cast<float>(duration_cast<microseconds>(inputFrames[name]->getTimestamp().time_since_epoch()).count()) / 1000.f);
             outputGroup->add(name, inputFrames[name]);
         }
         out.send(outputGroup);
