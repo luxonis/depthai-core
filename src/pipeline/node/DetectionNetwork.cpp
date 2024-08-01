@@ -88,22 +88,19 @@ void DetectionNetwork::setNNArchive(const NNArchive& nnArchive, int numShaves) {
 void DetectionNetwork::setNNArchiveBlob(const NNArchive& nnArchive) {
     DAI_CHECK_V(nnArchive.getArchiveType() == dai::NNArchiveType::BLOB, "NNArchive type is not BLOB");
     detectionParser->setNNArchive(nnArchive);
-    dai::OpenVINO::Blob blob = *nnArchive.getBlob();  // Get blob and 'unpack' std::optional - we know it's a blob
-    neuralNetwork->setBlob(blob);
+    neuralNetwork->setNNArchive(nnArchive);
 }
 
 void DetectionNetwork::setNNArchiveSuperblob(const NNArchive& nnArchive, int numShaves) {
     DAI_CHECK_V(nnArchive.getArchiveType() == dai::NNArchiveType::SUPERBLOB, "NNArchive type is not SUPERBLOB");
-    detectionParser->setNNArchive(nnArchive);
-    dai::OpenVINO::Blob blob = nnArchive.getSuperBlob()->getBlobWithNumShaves(numShaves);
-    neuralNetwork->setBlob(blob);
+    detectionParser->setNNArchive(nnArchive, numShaves);
+    neuralNetwork->setNNArchive(nnArchive, numShaves);
 }
 
 void DetectionNetwork::setNNArchiveOther(const NNArchive& nnArchive) {
     DAI_CHECK_V(nnArchive.getArchiveType() == dai::NNArchiveType::OTHER, "NNArchive type is not OTHER");
     detectionParser->setNNArchive(nnArchive);
-    DAI_CHECK_V(nnArchive.getModelPath().has_value(), "Model path is not set in NNArchive");
-    neuralNetwork->setModelPath(nnArchive.getModelPath().value());
+    neuralNetwork->setNNArchive(nnArchive);
 }
 
 void DetectionNetwork::setBlobPath(const dai::Path& path) {
