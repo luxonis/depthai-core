@@ -1,0 +1,25 @@
+# Copyright (c) 2021 Intel Corporation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+description: >-
+  spatial location image to test frames sent from host
+task_type: object_attributes
+files:
+  - name: DFS_DispMap.pgm
+    size: 921616
+    sha256: e0249c4065877a4c98e0b928d775886010c47099df16f02b8d5216dbfd9e7223
+    source: https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/DFS_DispMap.pgm
+
+framework: dldt
+license: https://raw.githubusercontent.com/openvinotoolkit/open_model_zoo/master/LICENSE
