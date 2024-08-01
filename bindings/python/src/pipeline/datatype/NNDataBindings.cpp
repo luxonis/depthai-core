@@ -196,11 +196,23 @@ void bind_nndata(pybind11::module& m, void* pCallstack){
         .def("addTensor", [](NNData&obj, const std::string &name, py::array tensor){
             auto dtype = tensor.dtype();
             if (dtype.is(py::dtype::of<float>()) || dtype.is(py::dtype::of<double>())) {
-                obj.addTensorFP32(name,tensor.cast<xt::xarray<float>>());
+                //auto tmp = tensor.cast<xt::xarray<double>>();
+                //for(auto u : tmp) std::cout<<u<<" ";
+                //std::cout<<std::endl;
+                obj.addTensorFP32(name,tensor.cast<xt::xarray<double>>());
             } else if (dtype.is(py::dtype::of<int>())) {
                 obj.addTensorINT(name,tensor.cast<xt::xarray<int>>());
             } else if (dtype.is(py::dtype("float16"))) {
-                obj.addTensorFP16(name,tensor.cast<xt::xarray<uint16_t>>());
+                // seems like the cast truncates values, not memcopies
+                //obj.addTensorFP16(name,tensor.cast<xt::xarray<uint16_t>>());
+                obj.addTensorFP32(name,tensor.cast<xt::xarray<double>>());
+                
+                //auto tmp = tensor.cast<xt::xarray<uint16_t>>();
+                //for(auto u : tmp) std::cout<<u<<" ";
+                //std::cout<<std::endl;
+                //xt::xarray<uint16_t> xt_array = xt::empty<uint16_t>({tensor.size()});
+                //std::memcpy(xt_array.data(), tensor.data(), tensor.size() * sizeof(uint16_t));
+                //obj.addTensorFP16(name, xt_array);
             } else {
                 throw std::runtime_error("Unsupported datatype");
             }

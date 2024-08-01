@@ -204,8 +204,8 @@ class NNData : public Buffer {
     //NNData& addTensorF32(const std::string& name, const std::vector<float>& data) {
     //    return addTensor<float>(name, xt::adapt(data, std::vector<size_t>{1, data.size()}), dai::TensorInfo::DataType::FP16);
     //}; 
-    //NNData& addTensorF64(const std::string& name, const std::vector<double>& data) {
-    //    return addTensor<double>(name, xt::adapt(data, std::vector<size_t>{1, data.size()}), dai::TensorInfo::DataType::FP32);
+    //NNData& addTensorFP16(const std::string& name, const std::vector<uint8_t>& data) {
+    //    return addTensor<uint8_t>(name, xt::adapt(data, std::vector<size_t>{1, data.size()}), dai::TensorInfo::DataType::FP32);
     //}; 
     //NNData& addTensorI8(const std::string& name, const std::vector<std::int8_t>& data) {
     //    return addTensor<std::int8_t>(name, xt::adapt(data, std::vector<size_t>{1, data.size()}), dai::TensorInfo::DataType::I8);
@@ -224,23 +224,23 @@ class NNData : public Buffer {
     };
     // Various overloads for different types
     NNData& addTensorINT(const std::string& name, const xt::xarray<int>& tensor) {
-        std::cout<<"INT OVERLOAD\n";
+        //std::cout<<"INT OVERLOAD\n";
         return addTensor<int>(name, tensor, dai::TensorInfo::DataType::INT);
     };
     NNData& addTensorFP32(const std::string& name, const xt::xarray<double>& tensor) {
-        std::cout<<"FP32 OVERLOAD\n";
+        //std::cout<<"FP32 OVERLOAD\n";
         return addTensor<double>(name, tensor, dai::TensorInfo::DataType::FP32);
     };
-    NNData& addTensorFP16(const std::string& name, const xt::xarray<float>& tensor) {
-        std::cout<<"FP16 OVERLOAD\n";
-        return addTensor<float>(name, tensor, dai::TensorInfo::DataType::FP16);
+    NNData& addTensorFP16(const std::string& name, const xt::xarray<uint16_t>& tensor) {
+        //std::cout<<"FP16 OVERLOAD\n";
+        return addTensor<uint16_t>(name, tensor, dai::TensorInfo::DataType::FP16);
     };
     NNData& addTensorI8(const std::string& name, const xt::xarray<std::int8_t>& tensor) {
-        std::cout<<"I8 OVERLOAD\n";
+        //std::cout<<"I8 OVERLOAD\n";
         return addTensor<std::int8_t>(name, tensor, dai::TensorInfo::DataType::I8);
     };
     NNData& addTensorU8F(const std::string& name, const xt::xarray<std::uint8_t>& tensor) {
-        std::cout<<"U8F OVERLOAD\n";
+        //std::cout<<"U8F OVERLOAD\n";
         return addTensor<std::uint8_t>(name, tensor, dai::TensorInfo::DataType::U8F);
     };
     /**
@@ -251,6 +251,11 @@ class NNData : public Buffer {
     template <typename _Ty = double>
     NNData& addTensor(const std::string& name, const xt::xarray<_Ty>& tensor, dai::TensorInfo::DataType dataType) {
         static_assert(std::is_integral<_Ty>::value || std::is_floating_point<_Ty>::value, "Tensor type needs to be integral or floating point");
+        //if(dataType==dai::TensorInfo::DataType::FP32) std::cout<<"FP32\n";  
+        //if(dataType==dai::TensorInfo::DataType::FP16) std::cout<<"FP16\n";
+        //if(dataType==dai::TensorInfo::DataType::INT) std::cout<<"INT\n";
+        //if(dataType==dai::TensorInfo::DataType::I8) std::cout<<"I8\n";
+        //if(dataType==dai::TensorInfo::DataType::U8F) std::cout<<"U8F\n";
 
         // Check if data is vector type of data
         if(std::dynamic_pointer_cast<VectorMemory>(data) == nullptr) {
@@ -263,7 +268,7 @@ class NNData : public Buffer {
         //const size_t sConvertedData = std::is_integral<_Ty>::value ? tensor.size() : 2 * tensor.size();
         size_t sConvertedData = tensor.size();
         if(dataType == dai::TensorInfo::DataType::FP16) sConvertedData *= 2;
-        if(dataType == dai::TensorInfo::DataType::FP32 || dataType == dai::TensorInfo::DataType::INT) sConvertedData *= 4;
+        else if(dataType == dai::TensorInfo::DataType::FP32 || dataType == dai::TensorInfo::DataType::INT) sConvertedData *= 4;
 
         // Append bytes so that each new tensor is DATA_ALIGNMENT aligned
         size_t remainder = (vecData->end() - vecData->begin()) % DATA_ALIGNMENT;
@@ -288,7 +293,7 @@ class NNData : public Buffer {
             }
         } else if(dataType == dai::TensorInfo::DataType::FP32){
             for(uint32_t i = 0; i < tensor.size(); i++) {
-                vecData->data()[4 * i + offset] = tensor.data()[i];
+                *(float*)(&vecData->data()[4 * i + offset]) = tensor.data()[i];
             }
         } else if(dataType == dai::TensorInfo::DataType::INT){
             for(uint32_t i = 0; i < tensor.size(); i++) {
