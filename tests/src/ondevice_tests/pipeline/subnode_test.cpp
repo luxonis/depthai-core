@@ -31,7 +31,7 @@ class CustomHostSubnode : public dai::Node {
    public:
     CustomHostSubnode() : Node() {}
 
-    virtual bool runOnHost() {
+    bool runOnHost() const override {
         return true;
     }
 
@@ -63,7 +63,7 @@ class CustomDeviceNode : public dai::DeviceNode {
     }
 
     dai::Subnode<CustomDeviceSubnode> deviceSubnode{*this, "deviceSubnode"};
-    dai::Subnode<CustomDeviceSubnode> hostSubnode{*this, "hostSubnode"};
+    dai::Subnode<CustomHostSubnode> hostSubnode{*this, "hostSubnode"};
 
     void buildInternal() override {
         buildInternalCalled = true;
