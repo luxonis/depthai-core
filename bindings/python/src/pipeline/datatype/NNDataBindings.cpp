@@ -9,6 +9,7 @@
 //pybind
 #include <pybind11/chrono.h>
 #include <pybind11/numpy.h>
+#include <pybind11/stl.h>
 
 //xtensor
 #define FORCE_IMPORT_ARRAY
@@ -181,36 +182,44 @@ void bind_nndata(pybind11::module& m, void* pCallstack){
         // .def("setTimestampDevice", &NNData::setTimestampDevice, DOC(dai, NNData, setTimestampDevice))
         // .def("setSequenceNum", &NNData::setSequenceNum, DOC(dai, NNData, setSequenceNum))
         //.def("addTensor", static_cast<NNData&(NNData::*)(const std::string&, const std::vector<double>&)>(&NNData::addTensor), py::arg("name"), py::arg("tensor"), DOC(dai, NNData, addTensor))
-        //.def("addTensor", static_cast<NNData&(NNData::*)(const std::string&, const std::vector<float>&)>(&NNData::addTensor), py::arg("name"), py::arg("tensor"), DOC(dai, NNData, addTensor))
         //.def("addTensor", static_cast<NNData&(NNData::*)(const std::string&, const std::vector<int>&)>(&NNData::addTensor), py::arg("name"), py::arg("tensor"),DOC(dai, NNData, addTensor))
         //.def("addTensor", static_cast<NNData&(NNData::*)(const std::string&, const xt::xarray<double>&)>(&NNData::addTensor), py::arg("name"), py::arg("tensor"), DOC(dai, NNData, addTensor, 2))
         //.def("addTensor", static_cast<NNData&(NNData::*)(const std::string&, const xt::xarray<float>&)>(&NNData::addTensor), py::arg("name"), py::arg("tensor"),DOC(dai, NNData, addTensor, 2))
         //.def("addTensor", static_cast<NNData&(NNData::*)(const std::string&, const xt::xarray<int>&)>(&NNData::addTensor), py::arg("name"), py::arg("tensor"),DOC(dai, NNData, addTensor, 2))
         //.def("addTensor" , &NNData::addTensorINT, py::arg("name"), py::arg("tensor")., DOC(dai, NNData, addTensor))
-        .def("addTensor", [](NNData&obj, const std::string &name, py::array arr){
-            if(py::isinstance(arr, py::dtype::of<float>())) {
-                return obj.addTensorF32(name, arr.cast<std::vector<float>>());
-            } else if(py::isinstance(arr, py::dtype::of<int>())) {
-                return obj.addTensorINT(name, arr.cast<std::vector<int>>());
-            } else if(py::isinstance(arr, py::dtype::of<std::uint8_t>())) {
-                return obj.addTensorU8F(name, arr.cast<std::vector<std::uint8_t>>());
-            } else if(py::isinstance(arr, py::dtype::of<double>())) {
-                return obj.addTensorF64(name, arr.cast<std::vector<double>>());
-            } else if(py::isinstance(arr, py::dtype::of<std::int8_t>())) {
-                return obj.addTensorI8(name, arr.cast<std::vector<std::int8_t>>());
+        //.def("addTensorINT", &NNData::addTensorINT, py::arg("name"), py::arg("tensor"), DOC(dai, NNData, addTensorINT))
+        .def("addTensorINT", &NNData::addTensorINT, py::arg("name"), py::arg("tensor"), DOC(dai, NNData, addTensorINT))
+        .def("addTensorFP32", &NNData::addTensorFP32, py::arg("name"), py::arg("tensor"), DOC(dai, NNData, addTensorFP32))
+        .def("addTensorFP16", &NNData::addTensorFP16, py::arg("name"), py::arg("tensor"), DOC(dai, NNData, addTensorFP16))
+        .def("addTensorI8", &NNData::addTensorI8, py::arg("name"), py::arg("tensor"), DOC(dai, NNData, addTensorI8))
+        .def("addTensorU8F", &NNData::addTensorU8F, py::arg("name"), py::arg("tensor"), DOC(dai, NNData, addTensorU8F))
+        .def("addTensor", [](NNData&obj, const std::string &name, py::array tensor){
+            auto dtype = tensor.dtype();
+            if (dtype.is(py::dtype::of<float>()) || dtype.is(py::dtype::of<double>())) {
+                obj.addTensorFP32(name,tensor.cast<xt::xarray<float>>());
+            } else if (dtype.is(py::dtype::of<int>())) {
+                obj.addTensorINT(name,tensor.cast<xt::xarray<int>>());
+            } else if (dtype.is(py::dtype("float16"))) {
+                obj.addTensorFP16(name,tensor.cast<xt::xarray<uint16_t>>());
             } else {
                 throw std::runtime_error("Unsupported datatype");
             }
-        })
+        }, py::arg("name"), py::arg("tensor"), DOC(dai, NNData, addTensor))
+        
+        //.def("addTensor", static_cast<NNData&(NNData::*)(const std::string&, const std::vector<float>&)>(&NNData::addTensor), py::arg("name"), py::arg("tensor"), DOC(dai, NNData, addTensor))
+        //.def("addTensor", &NNData::addTensorF32, py::arg("name"), py::arg("tensor"), DOC(dai, NNData, addTensor, 2))
         .def("getTensor", [](NNData& obj, const std::string& name, bool dequantize) -> py::object {
             const auto datatype = obj.getTensorDatatype(name);
-            if(datatype == dai::TensorInfo::DataType::U8F && !dequantize) {
+            if((datatype == dai::TensorInfo::DataType::U8F && !dequantize) || 
+               (datatype == dai::TensorInfo::DataType::I8 && !dequantize) || 
+               (datatype == dai::TensorInfo::DataType::INT && !dequantize)) {
                 // In case of dequantization, we should always return float
                 return py::cast(obj.getTensor<int>(name));
             } else {
                 return py::cast(obj.getTensor<float>(name, dequantize));
             }
         }, py::arg("name"), py::arg("dequantize") = false, DOC(dai, NNData, getTensor))
+        
         .def("getFirstTensor", [](NNData& obj, bool dequantize) -> py::object {
             const auto datatype = obj.getFirstTensorDatatype();
             if(datatype == dai::TensorInfo::DataType::U8F && !dequantize) {

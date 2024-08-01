@@ -196,22 +196,23 @@ class NNData : public Buffer {
     span<std::uint8_t> emplaceTensor(TensorInfo& tensor);
 
 #ifdef DEPTHAI_XTENSOR_SUPPORT
+    // Doesnt work if xarray overloads are used
     // Various overloads for different types
-    NNData& addTensorINT(const std::string& name, const std::vector<int>& data) {
-        return addTensor<int>(name, xt::adapt(data, std::vector<size_t>{1, data.size()}), dai::TensorInfo::DataType::INT);
-    }; 
-    NNData& addTensorF32(const std::string& name, const std::vector<float>& data) {
-        return addTensor<float>(name, xt::adapt(data, std::vector<size_t>{1, data.size()}), dai::TensorInfo::DataType::FP16);
-    }; 
-    NNData& addTensorF64(const std::string& name, const std::vector<double>& data) {
-        return addTensor<double>(name, xt::adapt(data, std::vector<size_t>{1, data.size()}), dai::TensorInfo::DataType::FP32);
-    }; 
-    NNData& addTensorI8(const std::string& name, const std::vector<std::int8_t>& data) {
-        return addTensor<std::int8_t>(name, xt::adapt(data, std::vector<size_t>{1, data.size()}), dai::TensorInfo::DataType::I8);
-    }; 
-    NNData& addTensorU8F(const std::string& name, const std::vector<std::uint8_t>& data) {
-        return addTensor<std::uint8_t>(name, xt::adapt(data, std::vector<size_t>{1, data.size()}), dai::TensorInfo::DataType::U8F);
-    };    
+    //NNData& addTensorINT(const std::string& name, const std::vector<int>& data) {
+    //    return addTensor<int>(name, xt::adapt(data, std::vector<size_t>{1, data.size()}), dai::TensorInfo::DataType::INT);
+    //}; 
+    //NNData& addTensorF32(const std::string& name, const std::vector<float>& data) {
+    //    return addTensor<float>(name, xt::adapt(data, std::vector<size_t>{1, data.size()}), dai::TensorInfo::DataType::FP16);
+    //}; 
+    //NNData& addTensorF64(const std::string& name, const std::vector<double>& data) {
+    //    return addTensor<double>(name, xt::adapt(data, std::vector<size_t>{1, data.size()}), dai::TensorInfo::DataType::FP32);
+    //}; 
+    //NNData& addTensorI8(const std::string& name, const std::vector<std::int8_t>& data) {
+    //    return addTensor<std::int8_t>(name, xt::adapt(data, std::vector<size_t>{1, data.size()}), dai::TensorInfo::DataType::I8);
+    //}; 
+    //NNData& addTensorU8F(const std::string& name, const std::vector<std::uint8_t>& data) {
+    //    return addTensor<std::uint8_t>(name, xt::adapt(data, std::vector<size_t>{1, data.size()}), dai::TensorInfo::DataType::U8F);
+    //};    
     /**
      * Set a layer with datatype FP16. Double values are converted to FP16.
      * @param name Name of the layer
@@ -222,20 +223,25 @@ class NNData : public Buffer {
         return addTensor<_Ty>(name, xt::adapt(data, std::vector<size_t>{1, data.size()}), dataType);
     };
     // Various overloads for different types
-    NNData& addTensorINT(const std::string& name, const xt::xarray<int>& data) {
-        return addTensor(name, data, dai::TensorInfo::DataType::INT);
+    NNData& addTensorINT(const std::string& name, const xt::xarray<int>& tensor) {
+        std::cout<<"INT OVERLOAD\n";
+        return addTensor<int>(name, tensor, dai::TensorInfo::DataType::INT);
     };
-    NNData& addTensorFP16(const std::string& name, const xt::xarray<float>& data) {
-        return addTensor(name, data, dai::TensorInfo::DataType::FP16);
+    NNData& addTensorFP32(const std::string& name, const xt::xarray<double>& tensor) {
+        std::cout<<"FP32 OVERLOAD\n";
+        return addTensor<double>(name, tensor, dai::TensorInfo::DataType::FP32);
     };
-    NNData& addTensorFP32(const std::string& name, const xt::xarray<double>& data) {
-        return addTensor(name, data, dai::TensorInfo::DataType::FP32);
+    NNData& addTensorFP16(const std::string& name, const xt::xarray<float>& tensor) {
+        std::cout<<"FP16 OVERLOAD\n";
+        return addTensor<float>(name, tensor, dai::TensorInfo::DataType::FP16);
     };
-    NNData& addTensorI8(const std::string& name, const xt::xarray<std::int8_t>& data) {
-        return addTensor(name, data, dai::TensorInfo::DataType::I8);
+    NNData& addTensorI8(const std::string& name, const xt::xarray<std::int8_t>& tensor) {
+        std::cout<<"I8 OVERLOAD\n";
+        return addTensor<std::int8_t>(name, tensor, dai::TensorInfo::DataType::I8);
     };
-    NNData& addTensorU8F(const std::string& name, const xt::xarray<std::uint8_t>& data) {
-        return addTensor(name, data, dai::TensorInfo::DataType::U8F);
+    NNData& addTensorU8F(const std::string& name, const xt::xarray<std::uint8_t>& tensor) {
+        std::cout<<"U8F OVERLOAD\n";
+        return addTensor<std::uint8_t>(name, tensor, dai::TensorInfo::DataType::U8F);
     };
     /**
      * Add a tensor. Float values are converted to FP16 and integers are cast to bytes.
