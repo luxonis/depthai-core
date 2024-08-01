@@ -89,15 +89,6 @@ class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNet
      */
     void setFromModelzoo(NNModelDescription description, bool useCached = true);
 
-    /**
-     * @brief Download model from zoo and set it for this node.
-     *
-     * @param description: Model description to download
-     * @param numShaves: Number of shaves to use
-     * @param useCached: Use cached model if available
-     */
-    void setFromModelzoo(NNModelDescription description, int numShaves, bool useCached = true);
-
     // Specify local filesystem path to load the blob (which gets loaded at loadAssets)
     /**
      * Load network blob into assets and use once pipeline is started.

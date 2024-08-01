@@ -64,6 +64,11 @@ void SpatialDetectionNetwork::setNNArchive(const NNArchive& nnArchive, int numSh
     }
 }
 
+void SpatialDetectionNetwork::setFromModelzoo(NNModelDescription description, bool useCached) {
+    neuralNetwork->setFromModelzoo(description, useCached);
+    detectionParser->setFromModelzoo(description, true);  // Model downloaded and cached above => use it
+}
+
 void SpatialDetectionNetwork::setNNArchiveBlob(const NNArchive& nnArchive) {
     DAI_CHECK_V(nnArchive.getArchiveType() == dai::NNArchiveType::BLOB, "NNArchive type is not BLOB");
     detectionParser->setNNArchive(nnArchive);
@@ -72,7 +77,7 @@ void SpatialDetectionNetwork::setNNArchiveBlob(const NNArchive& nnArchive) {
 
 void SpatialDetectionNetwork::setNNArchiveSuperblob(const NNArchive& nnArchive, int numShaves) {
     DAI_CHECK_V(nnArchive.getArchiveType() == dai::NNArchiveType::SUPERBLOB, "NNArchive type is not SUPERBLOB");
-    detectionParser->setNNArchive(nnArchive, numShaves);
+    detectionParser->setNNArchive(nnArchive);
     neuralNetwork->setNNArchive(nnArchive, numShaves);
 }
 

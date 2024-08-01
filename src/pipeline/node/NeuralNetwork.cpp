@@ -61,17 +61,6 @@ void NeuralNetwork::setFromModelzoo(NNModelDescription description, bool useCach
     setNNArchive(archive);
 }
 
-void NeuralNetwork::setFromModelzoo(NNModelDescription description, int numShaves, bool useCached) {
-    // Set platform if not set
-    if(description.platform.empty()) {
-        DAI_CHECK(getDevice() != nullptr, "Device is not set. Use setDevice(...) first.");
-        description.platform = getDevice()->getPlatformAsString();
-    }
-    auto archivePath = getModelFromZoo(description, useCached);
-    NNArchive archive(archivePath);
-    setNNArchive(archive, numShaves);
-}
-
 void NeuralNetwork::setNNArchiveBlob(const NNArchive& nnArchive) {
     DAI_CHECK_V(nnArchive.getArchiveType() == dai::NNArchiveType::BLOB, "NNArchive type is not BLOB");
     dai::OpenVINO::Blob blob = *nnArchive.getBlob();

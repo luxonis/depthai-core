@@ -33,6 +33,7 @@ DetectionNetwork::DetectionNetwork(const std::shared_ptr<Device>& device)
 // -------------------------------------------------------------------
 
 void DetectionNetwork::buildInternal() {
+    // Call parent's buildInternal
     DeviceNodeGroup::buildInternal();
 
     // Default confidence threshold
@@ -82,12 +83,7 @@ void DetectionNetwork::setNNArchive(const NNArchive& nnArchive, int numShaves) {
 
 void DetectionNetwork::setFromModelzoo(NNModelDescription description, bool useCached) {
     neuralNetwork->setFromModelzoo(description, useCached);
-    detectionParser->setFromModelzoo(description, true);  // Model downloaded in neuralNetwork => use it
-}
-
-void DetectionNetwork::setFromModelzoo(NNModelDescription description, int numShaves, bool useCached) {
-    neuralNetwork->setFromModelzoo(description, numShaves, useCached);
-    detectionParser->setFromModelzoo(description, numShaves, true);  // Model downloaded in neuralNetwork - use it
+    detectionParser->setFromModelzoo(description, true);  // Model downloaded and cached above => use it
 }
 
 void DetectionNetwork::setNNArchiveBlob(const NNArchive& nnArchive) {
@@ -98,7 +94,7 @@ void DetectionNetwork::setNNArchiveBlob(const NNArchive& nnArchive) {
 
 void DetectionNetwork::setNNArchiveSuperblob(const NNArchive& nnArchive, int numShaves) {
     DAI_CHECK_V(nnArchive.getArchiveType() == dai::NNArchiveType::SUPERBLOB, "NNArchive type is not SUPERBLOB");
-    detectionParser->setNNArchive(nnArchive, numShaves);
+    detectionParser->setNNArchive(nnArchive);
     neuralNetwork->setNNArchive(nnArchive, numShaves);
 }
 
