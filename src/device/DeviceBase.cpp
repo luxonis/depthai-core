@@ -533,8 +533,8 @@ unsigned int getCrashdumpTimeout(XLinkProtocol_t protocol) {
 }
 
 void DeviceBase::closeImpl() {
-    isClosing = true;
     using namespace std::chrono;
+    isClosing = true;
     auto t1 = steady_clock::now();
     bool shouldGetCrashDump = false;
     // Check if the device is RVC3 - in case it is, crash dump retrieval is done differently
@@ -640,7 +640,7 @@ void DeviceBase::closeImpl() {
 
 void DeviceBase::setMaxReconnectionAttempts(int maxAttempts, std::function<void(ReconnectionStatus)> callback) {
     maxReconnectionAttempts = maxAttempts;
-    reconnectionCallback = callback;
+    reconnectionCallback = std::move(callback);
 }
 
 // This function is thread-unsafe. The idea of "isClosed" is ephemerial and
@@ -830,6 +830,7 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipelin
 
         // Boot and connect with XLinkConnection constructor
         connection = std::make_shared<XLinkConnection>(deviceInfo, fwWithConfig, expectedBootState);
+
     } else if(deviceInfo.state == X_LINK_BOOTED) {
         // Connect without booting
         std::vector<std::uint8_t> fwWithConfig = Resources::getInstance().getDeviceFirmware(config, pathToMvcmd);
@@ -859,6 +860,7 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipelin
     } else {
         throw std::runtime_error("Cannot find any device with given deviceInfo");
     }
+
     deviceInfo.state = expectedBootState;
 
     // prepare rpc for both attached and host controlled mode
@@ -1090,7 +1092,7 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, Prev
             if(isClosing) return;
             if(maxReconnectionAttempts == 0) {
                 if(reconnectionCallback) reconnectionCallback(ReconnectionStatus::RECONNECT_FAILED);
-                throw std::runtime_error("Connection lost");
+                break;
             }
             // reconnection attempt
             // stop other threads
@@ -1125,32 +1127,29 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, Prev
             profilingRunning = true;
             int attempts = 0;
             pimpl->logger.warn("Attempting to reconnect. Timeout is {}\n", reconnectTimeout);
-            while(true) {
+            auto reconnected = false;
+            for(attempts = 0; attempts < maxReconnectionAttempts; attempts++) {
                 if(reconnectionCallback) reconnectionCallback(ReconnectionStatus::RECONNECTING);
-                try {
-                    if(!std::get<0>(getAnyAvailableDevice(reconnectTimeout))) throw std::runtime_error("No device found");
+                if(!std::get<0>(getAnyAvailableDevice(reconnectTimeout))){
                     init2(prev.cfg, prev.pathToMvcmd, prev.hasPipeline, true);
-                    auto shared = pipeline_ptr.lock();
+                    auto shared = pipelinePtr.lock();
+                    if(!shared) throw std::runtime_error("Pipeline was destroyed");
                     shared->resetConnections();
-                } catch(std::exception& e) {
-                    attempts++;
-                    if(attempts >= maxReconnectionAttempts) {
-                        pimpl->logger.warn("Reconnection unsuccessful, aborting");
-                        if(reconnectionCallback) reconnectionCallback(ReconnectionStatus::RECONNECT_FAILED);
-                        throw std::runtime_error("Connection lost");
-                    } else {
-                        pimpl->logger.warn("Reconnection unsuccessful, trying again. Attempts left: {}\n", maxReconnectionAttempts - attempts);
-                        continue;
-                    }
+                    reconnected = true;
+                    break;
                 }
+                pimpl->logger.warn("Reconnection unsuccessful, trying again. Attempts left: {}\n", maxReconnectionAttempts - attempts);
+            }
+            if(!reconnected) {
+                if(reconnectionCallback) reconnectionCallback(ReconnectionStatus::RECONNECT_FAILED);
+                pimpl->logger.warn("Reconnection unsuccessful, closing the device\n");
                 break;
             }
-            pimpl->logger.warn("Reconnection successful\n");
             if(reconnectionCallback) reconnectionCallback(ReconnectionStatus::RECONNECTED);
+            pimpl->logger.warn("Reconnection successful\n");
         }
-    } catch(...) {
-        auto shared = pipeline_ptr.lock();
-        shared->unblockQueues();
+    } catch(const std::exception& ex) {
+        pimpl->logger.info("Monitor thread exception caught: {}", ex.what());
     }
 }
 

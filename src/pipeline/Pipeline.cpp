@@ -853,7 +853,7 @@ void PipelineImpl::start() {
     // Add pointer to the pipeline to the device
     std::shared_ptr<PipelineImpl> shared = shared_from_this();
     const auto weak = std::weak_ptr<PipelineImpl>(shared);
-    defaultDevice->pipeline_ptr = weak;
+    defaultDevice->pipelinePtr = weak;
 }
 
 void PipelineImpl::resetConnections() {
@@ -870,16 +870,6 @@ void PipelineImpl::resetConnections() {
     // restart pipeline
     if(!isHostOnly()) {
         defaultDevice->startPipeline(Pipeline(shared_from_this()));
-    }
-}
-
-void PipelineImpl::unblockQueues() {
-    // make connections throw instead of reconnecting
-    for(auto node : getAllNodes()) {
-        auto tmp = std::dynamic_pointer_cast<node::XLinkInHost>(node);
-        if(tmp) tmp->disconnect();
-        auto tmp2 = std::dynamic_pointer_cast<node::XLinkOutHost>(node);
-        if(tmp2) tmp2->disconnect();
     }
 }
 

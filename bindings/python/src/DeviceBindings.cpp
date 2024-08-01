@@ -15,6 +15,7 @@
 // hedley
 #include <hedley/hedley.h>
 // STL Bind
+#include <pybind11/pytypes.h>
 #include <pybind11/stl_bind.h>
 
 PYBIND11_MAKE_OPAQUE(std::unordered_map<std::int8_t, dai::BoardConfig::GPIO>);
@@ -447,8 +448,8 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack){
         })
         .def("close", [](DeviceBase& d) { py::gil_scoped_release release; d.close(); }, "Closes the connection to device. Better alternative is the usage of context manager: `with depthai.Device(pipeline) as device:`")
         .def("isClosed", [](DeviceBase& d) { py::gil_scoped_release release; return d.isClosed(); }, DOC(dai, DeviceBase, isClosed))
-        .def("setMaxReconnectionAttempts", &DeviceBase::setMaxReconnectionAttempts, py::arg("maxAttempts"), py::arg("callback"), DOC(dai, DeviceBase, setMaxReconnectionAttempts))
-        
+        .def("setMaxReconnectionAttempts", &DeviceBase::setMaxReconnectionAttempts, py::arg("maxAttempts"), py::arg("callback") = py::none(), DOC(dai, DeviceBase, setMaxReconnectionAttempts))
+
         //dai::Device methods
         //static
         .def_static("getAnyAvailableDevice", [](std::chrono::milliseconds ms){ return DeviceBase::getAnyAvailableDevice(ms); }, py::arg("timeout"), DOC(dai, DeviceBase, getAnyAvailableDevice))

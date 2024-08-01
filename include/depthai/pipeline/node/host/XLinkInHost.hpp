@@ -21,8 +21,10 @@ class XLinkInHost : public NodeCRTP<ThreadedHostNode, XLinkInHost> {
     // XLinkInHost(std::shared_ptr<XLinkConnection> conn, std::string streamName);
     void setStreamName(const std::string& name);
     void setConnection(std::shared_ptr<XLinkConnection> conn);
-    void disconnect();
     void run() override;
+    void stop() override;
+private:
+    void disconnect();
 };
 }  // namespace node
 }  // namespace dai
