@@ -15,7 +15,6 @@ class XLinkOut : public DeviceNodeCRTP<DeviceNode, XLinkOut, XLinkOutProperties>
    public:
     constexpr static const char* NAME = "XLinkOut";
     using DeviceNodeCRTP::DeviceNodeCRTP;
-    std::shared_ptr<XLinkOut> build();
 
    public:
     /**
@@ -54,11 +53,7 @@ class XLinkOut : public DeviceNodeCRTP<DeviceNode, XLinkOut, XLinkOutProperties>
     /// Get whether to transfer only messages attributes and not buffer data
     bool getMetadataOnly() const;
 
-   protected:
-    bool isBuild = false;
-    bool needsBuild() override {
-        return !isBuild;
-    }
+    void buildInternal() override;
 };
 
 }  // namespace node

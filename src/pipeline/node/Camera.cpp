@@ -26,6 +26,10 @@ class Camera::Impl {
     std::vector<OutputRequest> outputRequests;
 
     Node::Output* requestOutput(Camera& parent, const Capability& genericCapability, bool onHost) {
+        if(!parent.isBuilt) {
+            throw std::runtime_error("Camera node must be built before requesting outputs from it");
+        }
+
         if(const auto* capability = ImgFrameCapability::get(genericCapability)) {
             const auto requestId = nextOutputRequestId;
             outputRequests.push_back({requestId, *capability, onHost});
@@ -52,16 +56,50 @@ Camera::Camera(std::unique_ptr<Properties> props) : DeviceNodeCRTP<DeviceNode, C
 Camera::Camera(std::shared_ptr<Device>& defaultDevice)
     : DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>(defaultDevice), pimpl(spimpl::make_impl<Impl>()) {}
 
-std::shared_ptr<Camera> Camera::build() {
-    properties.boardSocket = CameraBoardSocket::AUTO;
-    properties.imageOrientation = CameraImageOrientation::AUTO;
-    properties.colorOrder = CameraProperties::ColorOrder::BGR;
-    properties.interleaved = true;
-    properties.previewHeight = 300;
-    properties.previewWidth = 300;
-    properties.fps = 30.0;
-    properties.previewKeepAspectRatio = true;
-    isBuild = true;
+
+std::shared_ptr<Camera> Camera::build(CameraBoardSocket boardSocket) {
+    if(isBuilt) {
+        throw std::runtime_error("Camera node is already built");
+    }
+    if(!device) {
+        throw std::runtime_error("Device pointer is not valid");
+    }
+
+    auto cameraFeatures = device->getConnectedCameraFeatures();
+    // First handle the case if the boardSocket is set to AUTO
+    if(boardSocket == CameraBoardSocket::AUTO) {
+        auto defaultSockets = {CameraBoardSocket::CAM_A, CameraBoardSocket::CAM_B, CameraBoardSocket::CAM_C};
+        for(auto socket : defaultSockets) {
+            bool found = false;
+            for(const auto& cf : cameraFeatures) {
+                if(cf.socket == socket) {
+                    found = true;
+                    break;
+                }
+            }
+            if(found) {
+                boardSocket = socket;
+                break;
+            }
+        }
+    }
+
+    // Check if the board socket is valid
+    bool found = false;
+    for(const auto& cf : cameraFeatures) {
+        if(cf.socket == boardSocket) {
+            found = true;
+            maxWidth = cf.width;
+            maxHeight = cf.height;
+            break;
+        }
+    }
+    if(!found) {
+        throw std::runtime_error("Camera socket not found on the connected device");
+    }
+
+    properties.boardSocket = boardSocket;
+    isBuilt = true;
     return std::static_pointer_cast<Camera>(shared_from_this());
 }
 
@@ -70,25 +108,47 @@ Camera::Properties& Camera::getProperties() {
     return properties;
 }
 
-// Set board socket to use
-void Camera::setBoardSocket(dai::CameraBoardSocket boardSocket) {
-    properties.boardSocket = boardSocket;
-}
-
 // Get current board socket
 CameraBoardSocket Camera::getBoardSocket() const {
+    if(!isBuilt) {
+        throw std::runtime_error("Camera node must be built before calling getBoardSocket()");
+    }
     return properties.boardSocket;
 }
 
-void Camera::setCamera(std::string name) {
-    properties.cameraName = name;
+uint32_t Camera::getMaxWidth() const {
+    if(!isBuilt) {
+        throw std::runtime_error("Camera node must be built before calling getMaxWidth()");
+    }
+    return maxWidth;
 }
 
-std::string Camera::getCamera() const {
-    return properties.cameraName;
+uint32_t Camera::getMaxHeight() const {
+    if(!isBuilt) {
+        throw std::runtime_error("Camera node must be built before calling getMaxHeight()");
+    }
+    return maxHeight;
 }
 
-Node::Output* Camera::requestOutput(std::pair<uint32_t, uint32_t> size, ImgFrame::Type type, ImgResizeMode resizeMode, uint32_t fps) {
+Node::Output* Camera::requestFullResolutionOutput(ImgFrame::Type type, float fps) {
+    if(!isBuilt) {
+        throw std::runtime_error("Camera node must be built before requesting outputs from it");
+    }
+    if(!device) {
+        throw std::runtime_error("Invalid device pointer");
+    }
+
+    if(maxHeight == 0 || maxWidth == 0) {
+        throw std::runtime_error(fmt::format("Invalid max width or height - {}x{}", maxWidth, maxHeight));
+    }
+    ImgFrameCapability cap;
+    cap.size.fixed({maxWidth, maxHeight});
+    cap.fps.fixed(fps);
+    cap.type = type;
+    return pimpl->requestOutput(*this, cap, false);
+}
+
+Node::Output* Camera::requestOutput(std::pair<uint32_t, uint32_t> size, ImgFrame::Type type, ImgResizeMode resizeMode, float fps) {
     ImgFrameCapability cap;
     cap.size.fixed(size);
     cap.fps.fixed(fps);

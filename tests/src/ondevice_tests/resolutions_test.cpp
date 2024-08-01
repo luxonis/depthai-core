@@ -134,8 +134,7 @@ std::tuple<uint32_t, uint32_t> getRandomResolution(dai::Pipeline& pipeline) {
 void testResolution(std::optional<std::tuple<uint32_t, uint32_t>> wantedSize = std::nullopt) {
     dai::Pipeline pipeline;
 
-    auto camRgb = pipeline.create<dai::node::Camera>();
-    camRgb->setBoardSocket(getBoardSocket());
+    auto camRgb = pipeline.create<dai::node::Camera>()->build(getBoardSocket());
 
     const auto size = wantedSize ? *wantedSize : getRandomResolution(pipeline);
     std::cout << "TESTING RESOLUTION: " << std::get<0>(size) << "x" << std::get<1>(size) << "\n" << std::flush;
@@ -180,8 +179,7 @@ void getImages(bool debugOn,
                std::optional<std::tuple<uint32_t, uint32_t>> wantedSize = std::nullopt) {
     dai::Pipeline pipeline;
 
-    auto camRgb = pipeline.create<dai::node::Camera>();
-    camRgb->setBoardSocket(getBoardSocket());
+    auto camRgb = pipeline.create<dai::node::Camera>()->build(getBoardSocket());
 
     const auto size = wantedSize ? *wantedSize : getRandomResolution(pipeline);
     sizeOut = size;
@@ -362,8 +360,7 @@ struct MultipleResHelper {
 // NOLINTNEXTLINE(readability-function-cognitive-complexity)
 void testMultipleResolutions(const std::vector<std::tuple<uint32_t, uint32_t>>& wantedSizes) {
     dai::Pipeline pipeline;
-    auto camRgb = pipeline.create<dai::node::Camera>();
-    camRgb->setBoardSocket(getBoardSocket());
+    auto camRgb = pipeline.create<dai::node::Camera>()->build(getBoardSocket());
 
     std::vector<MultipleResHelper> helpers;
     std::cout << "TESTING MULTIPLE RESOLUTIONS: ";

@@ -10,6 +10,7 @@
 // internal
 #include "depthai/capabilities/ImgFrameCapability.hpp"
 #include "depthai/nn_archive/NNArchive.hpp"
+#include "nn_archive/NNArchiveConfig.hpp"
 #include "utility/ArchiveUtil.hpp"
 #include "utility/ErrorMacros.hpp"
 #include "utility/PimplImpl.hpp"
@@ -38,7 +39,7 @@ DetectionNetwork::~DetectionNetwork() = default;
 // Neural Network API
 // -------------------------------------------------------------------
 
-void DetectionNetwork::build() {
+void DetectionNetwork::buildInternal() {
     // Default confidence threshold
     detectionParser->properties.parser.confidenceThreshold = 0.5;
     neuralNetwork->out.link(detectionParser->input);
@@ -49,20 +50,57 @@ void DetectionNetwork::build() {
     detectionParser->input.setMaxSize(1);
     detectionParser->imageIn.setBlocking(false);
     detectionParser->imageIn.setMaxSize(1);
-
-    isBuild = true;
 }
 
 std::shared_ptr<DetectionNetwork> DetectionNetwork::build(Node::Output& input, const NNArchive& nnArchive) {
-    build();
     setNNArchive(nnArchive);
     input.link(this->input);
     return std::static_pointer_cast<DetectionNetwork>(shared_from_this());
 }
 
 void DetectionNetwork::setNNArchive(const NNArchive& nnArchive) {
-    const auto blob = detectionParser->setNNArchive(nnArchive);
-    neuralNetwork->setBlob(blob);
+    constexpr int DEFAULT_SUPERBLOB_NUM_SHAVES = 8;
+    switch(nnArchive.getArchiveType()) {
+        case dai::NNArchiveType::BLOB:
+            setNNArchiveBlob(nnArchive);
+            break;
+        case dai::NNArchiveType::SUPERBLOB:
+            setNNArchiveSuperblob(nnArchive, DEFAULT_SUPERBLOB_NUM_SHAVES);
+            break;
+        case dai::NNArchiveType::OTHER:
+            setNNArchiveOther(nnArchive);
+            break;
+    }
+}
+
+void DetectionNetwork::setNNArchive(const NNArchive& nnArchive, int numShaves) {
+    switch(nnArchive.getArchiveType()) {
+        case dai::NNArchiveType::SUPERBLOB:
+            setNNArchiveSuperblob(nnArchive, numShaves);
+            break;
+        case dai::NNArchiveType::BLOB:
+        case dai::NNArchiveType::OTHER:
+            DAI_CHECK_V(false, "NNArchive type is not SUPERBLOB. Use setNNArchive(const NNArchive& nnArchive) instead.");
+            break;
+    }
+}
+
+void DetectionNetwork::setNNArchiveBlob(const NNArchive& nnArchive) {
+    DAI_CHECK_V(nnArchive.getArchiveType() == dai::NNArchiveType::BLOB, "NNArchive type is not BLOB");
+    detectionParser->setNNArchive(nnArchive);
+    neuralNetwork->setNNArchive(nnArchive);
+}
+
+void DetectionNetwork::setNNArchiveSuperblob(const NNArchive& nnArchive, int numShaves) {
+    DAI_CHECK_V(nnArchive.getArchiveType() == dai::NNArchiveType::SUPERBLOB, "NNArchive type is not SUPERBLOB");
+    detectionParser->setNNArchive(nnArchive, numShaves);
+    neuralNetwork->setNNArchive(nnArchive, numShaves);
+}
+
+void DetectionNetwork::setNNArchiveOther(const NNArchive& nnArchive) {
+    DAI_CHECK_V(nnArchive.getArchiveType() == dai::NNArchiveType::OTHER, "NNArchive type is not OTHER");
+    detectionParser->setNNArchive(nnArchive);
+    neuralNetwork->setNNArchive(nnArchive);
 }
 
 void DetectionNetwork::setBlobPath(const dai::Path& path) {
@@ -121,14 +159,14 @@ float DetectionNetwork::getConfidenceThreshold() const {
 }
 
 std::vector<std::pair<Node::Input&, std::shared_ptr<Capability>>> DetectionNetwork::getRequiredInputs() {
-    const auto* archive = detectionParser->getNNArchive();
-    // TODO(jakgra) only call getRequiredInputs() in the build stage after all user code is supposed to be finished.
-    DAI_CHECK_V(archive, "Please call setNNArchive(), before the linking the DetectionNetwork node.");
+    const dai::NNArchiveConfig& config = detectionParser->getNNArchiveConfig();
+    const auto configV1 = config.getConfigV1();
+    DAI_CHECK(configV1.has_value(), "Only NNConfigV1 is supported for DetectionNetwork");
+
+    const auto width = configV1->model.inputs[0].shape[2];
+    const auto height = configV1->model.inputs[0].shape[3];
+
     auto cap = std::make_shared<ImgFrameCapability>();
-    const auto& config = archive->getConfig().getConfigV1();
-    DAI_CHECK_V(config, "Wrong NNArchive config version");
-    const auto width = (*config).model.inputs[0].shape[2];
-    const auto height = (*config).model.inputs[0].shape[3];
     cap->size.value = std::pair(width, height);
     return {{input, cap}};
 }
@@ -140,22 +178,18 @@ std::optional<std::vector<std::string>> DetectionNetwork::getClasses() const {
 //--------------------------------------------------------------------
 // MobileNet
 //--------------------------------------------------------------------
-std::shared_ptr<MobileNetDetectionNetwork> MobileNetDetectionNetwork::build() {
-    DetectionNetwork::build();
+void MobileNetDetectionNetwork::buildInternal() {
+    DetectionNetwork::buildInternal();
     detectionParser->properties.parser.nnFamily = DetectionNetworkType::MOBILENET;
-
-    return std::static_pointer_cast<MobileNetDetectionNetwork>(shared_from_this());
 }
 
 //--------------------------------------------------------------------
 // YOLO
 //--------------------------------------------------------------------
-std::shared_ptr<YoloDetectionNetwork> YoloDetectionNetwork::build() {
-    DetectionNetwork::build();
+void YoloDetectionNetwork::buildInternal() {
+    DetectionNetwork::buildInternal();
     detectionParser->properties.parser.nnFamily = DetectionNetworkType::YOLO;
     detectionParser->properties.parser.iouThreshold = 0.5f;
-
-    return std::static_pointer_cast<YoloDetectionNetwork>(shared_from_this());
 }
 
 void YoloDetectionNetwork::setNumClasses(const int numClasses) {

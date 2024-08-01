@@ -24,6 +24,7 @@ std::shared_ptr<Buffer> getVideoMessage(const nlohmann::json& metadata, ImgFrame
     assert(frame.size() == recordSchema.width * recordSchema.height * 3);
     cv::Mat img(recordSchema.height, recordSchema.width, CV_8UC3, frame.data());
     imgFrame.setCvFrame(img, outFrameType);
+    imgFrame.sourceFb = imgFrame.fb;
     return std::dynamic_pointer_cast<Buffer>(std::make_shared<ImgFrame>(imgFrame));
 }
 

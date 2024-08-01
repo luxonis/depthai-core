@@ -1,13 +1,18 @@
 #pragma once
 
-#include <unordered_map>
+#include <nop/structure.h>
+#include <spdlog/async_logger.h>
+
+#include <nlohmann/json.hpp>
 #include <vector>
 
 #include "depthai/common/Colormap.hpp"
 #include "depthai/common/Interpolation.hpp"
+#include "depthai/common/Point2f.hpp"
 #include "depthai/common/RotatedRect.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
+
 namespace dai {
 
 /**
@@ -354,5 +359,4 @@ class ImageManipConfig : public Buffer {
     /// Retrieve which interpolation method to use
     dai::Interpolation getInterpolation() const;
 };
-
 }  // namespace dai

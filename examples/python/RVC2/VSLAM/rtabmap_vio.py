@@ -14,7 +14,7 @@ with dai.Pipeline() as p:
     imu = p.create(dai.node.IMU)
     stereo = p.create(dai.node.StereoDepth)
     featureTracker = p.create(dai.node.FeatureTracker)
-    odom = p.create(dai.node.RTABMapVIO).build()
+    odom = p.create(dai.node.RTABMapVIO)
 
     rerunViewer = RerunNode()
     imu.enableIMUSensor([dai.IMUSensor.ACCELEROMETER_RAW, dai.IMUSensor.GYROSCOPE_RAW], 200)

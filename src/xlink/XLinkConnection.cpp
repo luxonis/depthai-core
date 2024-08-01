@@ -135,6 +135,36 @@ constexpr std::chrono::milliseconds XLinkConnection::WAIT_FOR_BOOTUP_TIMEOUT;
 constexpr std::chrono::milliseconds XLinkConnection::WAIT_FOR_CONNECT_TIMEOUT;
 constexpr std::chrono::milliseconds XLinkConnection::POLLING_DELAY_TIME;
 
+bool isInCommaSeparatedVar(std::string list, std::string value) {
+    const std::string delimiter = ",";
+    for(auto& val : utility::splitList(list, delimiter)) {
+        if(val == value) {
+            return true;
+        }
+    }
+    return false;
+}
+
+std::vector<DeviceInfo> filterDevices(const std::vector<DeviceInfo>& deviceInfos) {
+    auto allowedDeviceMxIds = utility::getEnv("DEPTHAI_DEVICE_MXID_LIST");
+    auto allowedDeviceIds = utility::getEnv("DEPTHAI_DEVICE_ID_LIST");
+    auto allowedDeviceNames = utility::getEnv("DEPTHAI_DEVICE_NAME_LIST");
+    std::vector<DeviceInfo> filtered;
+    for(auto& info : deviceInfos) {
+        bool allowedMxId = isInCommaSeparatedVar(allowedDeviceMxIds, info.getMxId()) || allowedDeviceMxIds.empty();
+        bool allowedId = isInCommaSeparatedVar(allowedDeviceIds, info.getMxId()) || allowedDeviceIds.empty();
+        bool allowedName = isInCommaSeparatedVar(allowedDeviceNames, info.name) || allowedDeviceNames.empty();
+        if(allowedMxId && allowedId && allowedName) {
+            filtered.push_back(info);
+            logger::info("Adding device to the filtered list: {}", info.toString());
+        } else {
+            logger::info("Skipping device: {}", info.toString());
+        }
+    }
+
+    return filtered;
+}
+
 std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices(XLinkDeviceState_t state, bool skipInvalidDevices) {
     initialize();
 
@@ -147,10 +177,6 @@ std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices(XLinkDeviceState
     suitableDevice.platform = getDefaultPlatform();
     suitableDevice.state = state;
 
-    auto allowedDeviceMxIds = utility::getEnv("DEPTHAI_DEVICE_MXID_LIST");
-    auto allowedDeviceIds = utility::getEnv("DEPTHAI_DEVICE_ID_LIST");
-    auto allowedDeviceNames = utility::getEnv("DEPTHAI_DEVICE_NAME_LIST");
-
     auto status = XLinkFindAllSuitableDevices(suitableDevice, deviceDescAll.data(), static_cast<unsigned int>(deviceDescAll.size()), &numdev);
     if(status != X_LINK_SUCCESS) throw std::runtime_error("Couldn't retrieve all connected devices");
 
@@ -160,6 +186,7 @@ std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices(XLinkDeviceState
     }
 
     // Now also try to find all devices in the DEPTHAI_DEVICE_NAME_LIST (they were not found earlier if they were not in the same subnet)
+    auto allowedDeviceNames = utility::getEnv("DEPTHAI_DEVICE_NAME_LIST");
     std::string delimiter = ",";
     for(auto& name : utility::splitList(allowedDeviceNames, delimiter)) {
         deviceDesc_t desc = suitableDevice;
@@ -198,15 +225,10 @@ std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices(XLinkDeviceState
                 continue;
             }
         }
-
-        bool allowedMxId = allowedDeviceMxIds.find(info.getMxId()) != std::string::npos || allowedDeviceMxIds.empty();
-        bool allowedId = allowedDeviceIds.find(info.getMxId()) != std::string::npos || allowedDeviceIds.empty();
-        bool allowedName = allowedDeviceNames.find(info.name) != std::string::npos || allowedDeviceNames.empty();
-        if(allowedMxId && allowedId && allowedName) {
-            devicesFiltered.push_back(info);
-        }
+        devicesFiltered.push_back(info);
     }
 
+    devicesFiltered = filterDevices(devicesFiltered);
     return devicesFiltered;
 }
 

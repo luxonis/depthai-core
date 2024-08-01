@@ -8,25 +8,13 @@ import time
 
 USE_REPLAY = False
 
-labelMap = [
-    "person",         "bicycle",    "car",           "motorbike",     "aeroplane",   "bus",           "train",
-    "truck",          "boat",       "traffic light", "fire hydrant",  "stop sign",   "parking meter", "bench",
-    "bird",           "cat",        "dog",           "horse",         "sheep",       "cow",           "elephant",
-    "bear",           "zebra",      "giraffe",       "backpack",      "umbrella",    "handbag",       "tie",
-    "suitcase",       "frisbee",    "skis",          "snowboard",     "sports ball", "kite",          "baseball bat",
-    "baseball glove", "skateboard", "surfboard",     "tennis racket", "bottle",      "wine glass",    "cup",
-    "fork",           "knife",      "spoon",         "bowl",          "banana",      "apple",         "sandwich",
-    "orange",         "broccoli",   "carrot",        "hot dog",       "pizza",       "donut",         "cake",
-    "chair",          "sofa",       "pottedplant",   "bed",           "diningtable", "toilet",        "tvmonitor",
-    "laptop",         "mouse",      "remote",        "keyboard",      "cell phone",  "microwave",     "oven",
-    "toaster",        "sink",       "refrigerator",  "book",          "clock",       "vase",          "scissors",
-    "teddy bear",     "hair drier", "toothbrush"
-]
-
 examplesRoot = Path(__file__).parent / Path('../../').resolve()
 models = examplesRoot / Path('models')
 videoPath = models / Path('construction_vest.mp4')
-modelPath = models / Path('yolov10n.dlc')
+
+# Download yolo model from zoo
+modelDescription = dai.NNModelDescription(modelSlug="yolov10-nano", platform="RVC4")
+modelPath = dai.getModelFromZoo(modelDescription, useCached=True)
 # Create pipeline
 with dai.Pipeline() as pipeline:
 
@@ -34,20 +22,17 @@ with dai.Pipeline() as pipeline:
     if USE_REPLAY:
         replay = pipeline.create(dai.node.ReplayVideo)
         replay.setReplayVideoFile(videoPath)
-        replay.setSize(640, 640)
+        replay.setSize(512, 288)
         replay.setOutFrameType(dai.ImgFrame.Type.BGR888i)
         sourceOutput = replay.out
     else:
         camRgb = pipeline.create(dai.node.Camera)
         camRgb.setBoardSocket(dai.CameraBoardSocket.CAM_A)
-        sourceOutput = camRgb.requestOutput((640, 640), dai.ImgFrame.Type.BGR888i)
-    detectionNetwork = pipeline.create(dai.node.YoloDetectionNetwork).build()
-    detectionNetwork.setNumInferenceThreads(2)
-    detectionNetwork.setModelPath(modelPath)
-    detectionNetwork.setNumClasses(80)
-    detectionNetwork.setCoordinateSize(4)
-    detectionNetwork.setIouThreshold(0.25)
+        sourceOutput = camRgb.requestOutput((512, 288), dai.ImgFrame.Type.BGR888i)
+    detectionNetwork = pipeline.create(dai.node.DetectionNetwork)
+    detectionNetwork.setNNArchive(dai.NNArchive(modelPath))
     sourceOutput.link(detectionNetwork.input)
+    labelMap = detectionNetwork.getClasses()
 
     qRgb = detectionNetwork.passthrough.createOutputQueue()
     qDet = detectionNetwork.out.createOutputQueue()

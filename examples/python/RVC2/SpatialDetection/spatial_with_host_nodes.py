@@ -13,17 +13,8 @@ Spatial Tiny-yolo example
   Can be used for tiny-yolo-v3 or tiny-yolo-v4 networks
 '''
 
-nnPath = str(
-    (
-        Path(__file__).parent
-        / Path("../../models/yolo-v6-openvino_2022.1_6shave-rvc2.tar.xz")
-    )
-    .resolve()
-    .absolute()
-)
-if not Path(nnPath).exists():
-    import sys
-    raise FileNotFoundError(f'Required file/s not found, please run "{sys.executable} install_requirements.py". Missing file: {nnPath}')
+modelDescription = dai.NNModelDescription(modelSlug="yolov6n", platform="RVC2")
+archivePath = dai.getModelFromZoo(modelDescription, useCached=True)
 
 
 class SpatialVisualizer(dai.node.HostNode):
@@ -89,14 +80,18 @@ class SpatialVisualizer(dai.node.HostNode):
 with dai.Pipeline() as p:
     # Define sources and outputs
     camRgb = p.create(dai.node.ColorCamera)
-    spatialDetectionNetwork = p.create(dai.node.YoloSpatialDetectionNetwork).build()
+    spatialDetectionNetwork = p.create(dai.node.YoloSpatialDetectionNetwork)
     monoLeft = p.create(dai.node.MonoCamera)
     monoRight = p.create(dai.node.MonoCamera)
     stereo = p.create(dai.node.StereoDepth)
     visualizer = p.create(SpatialVisualizer)
 
+    # Archive
+    archive = dai.NNArchive(archivePath)
+    h, w = archive.getConfig().getConfigV1().model.inputs[0].shape[-2:]
+
     # Properties
-    camRgb.setPreviewSize(640, 640)
+    camRgb.setPreviewSize(w, h)
     camRgb.setResolution(dai.ColorCameraProperties.SensorResolution.THE_1080_P)
     camRgb.setInterleaved(False)
     camRgb.setColorOrder(dai.ColorCameraProperties.ColorOrder.BGR)
@@ -113,7 +108,7 @@ with dai.Pipeline() as p:
     stereo.setOutputSize(monoLeft.getResolutionWidth(), monoLeft.getResolutionHeight())
     stereo.setSubpixel(False)
 
-    spatialDetectionNetwork.setNNArchive(dai.NNArchive(nnPath))
+    spatialDetectionNetwork.setNNArchive(archive, numShaves=6)
     spatialDetectionNetwork.input.setBlocking(False)
     spatialDetectionNetwork.setBoundingBoxScaleFactor(0.5)
     spatialDetectionNetwork.setDepthLowerThreshold(100)

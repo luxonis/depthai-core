@@ -24,7 +24,6 @@ class BasaltVIO : public NodeCRTP<ThreadedHostNode, BasaltVIO> {
     constexpr static const char* NAME = "BasaltVIO";
     BasaltVIO();
     ~BasaltVIO();
-    std::shared_ptr<BasaltVIO> build();
 
     Subnode<node::Sync> sync{*this, "sync"};
     InputMap& inputs = sync->inputs;
@@ -32,6 +31,7 @@ class BasaltVIO : public NodeCRTP<ThreadedHostNode, BasaltVIO> {
     std::string leftInputName = "left";
     std::string rightInputName = "right";
 
+    void buildInternal() override;
     /**
      * Input left image on which VIO is performed.
      */

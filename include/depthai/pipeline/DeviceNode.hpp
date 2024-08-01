@@ -57,7 +57,9 @@ class DeviceNodeCRTP : public Base {
     // No public constructor, only a factory function.
     template <typename... Args>
     [[nodiscard]] static std::shared_ptr<Derived> create(std::shared_ptr<Device> device, Args&&... args) {
-        return std::shared_ptr<Derived>(new Derived(device, std::forward<Args>(args)...));
+        auto nodePtr = std::shared_ptr<Derived>(new Derived(device, std::forward<Args>(args)...));
+        nodePtr->buildInternal();
+        return nodePtr;
     }
     [[nodiscard]] static std::shared_ptr<Derived> create(std::unique_ptr<Properties> props) {
         return std::shared_ptr<Derived>(new Derived(props));
@@ -76,5 +78,7 @@ class DeviceNodeCRTP : public Base {
     friend Base;
     friend PipelineImpl;
 };
+
+class HostRunnable {};
 
 }  // namespace dai

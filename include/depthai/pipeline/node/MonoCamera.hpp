@@ -18,7 +18,6 @@ class MonoCamera : public DeviceNodeCRTP<DeviceNode, MonoCamera, MonoCameraPrope
    public:
     constexpr static const char* NAME = "MonoCamera";
     using DeviceNodeCRTP::DeviceNodeCRTP;
-    std::shared_ptr<MonoCamera> build();
 
    protected:
     Properties& getProperties();

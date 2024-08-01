@@ -23,7 +23,7 @@ fullFrameTracking = args.full_frame
 with dai.Pipeline() as pipeline:
     # Define sources and outputs
     camRgb = pipeline.create(dai.node.ColorCamera)
-    spatialDetectionNetwork = pipeline.create(dai.node.MobileNetSpatialDetectionNetwork).build()
+    spatialDetectionNetwork = pipeline.create(dai.node.MobileNetSpatialDetectionNetwork)
     monoLeft = pipeline.create(dai.node.MonoCamera)
     monoRight = pipeline.create(dai.node.MonoCamera)
     stereo = pipeline.create(dai.node.StereoDepth)
