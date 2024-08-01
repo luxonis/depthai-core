@@ -15,8 +15,7 @@ int main(int argc, char** argv) {
 
     dai::Pipeline pipeline;
 
-    auto camRgb = pipeline.create<dai::node::Camera>();
-    camRgb->setBoardSocket(dai::CameraBoardSocket::CAM_C);  // TODO(Morato) - change to semantic name
+    auto camRgb = pipeline.create<dai::node::Camera>()->build();
 
     if(sizes.empty()) {
         throw std::runtime_error("internal error to few sizes");
@@ -53,10 +52,6 @@ int main(int argc, char** argv) {
             // Get BGR frame from NV12 encoded video frame to show with opencv
             // Visualizing the frame on slower hosts might have overhead
             if(videoIn) {
-                // std::cout << "Showing frame on index " << videoIndex << " with size: " << videoIn->getWidth() << "x" << videoIn->getHeight()
-                //           << " and stride: " << videoIn->getStride() << " and plane 2 offset: " << videoIn->fb.p2Offset
-                //           << " for queue name: " << video->getName() << "\n"
-                //           << std::flush;
                 cv::imshow("video_" + std::to_string(videoIndex), videoIn->getCvFrame());
             }
             ++videoIndex;

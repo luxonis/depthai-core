@@ -29,8 +29,7 @@ with dai.Pipeline() as pipeline:
         node.outputs['out'].send(Buffer(32))
 """
     )
-    cameraNode = pipeline.create(dai.node.Camera)
-    cameraNode.setBoardSocket(dai.CameraBoardSocket.CAM_A)
+    cameraNode = pipeline.create(dai.node.Camera).build()
     cap = dai.ImgFrameCapability()
     cap.type = dai.ImgFrame.Type.NV12
     cropArg = int(args[2])
