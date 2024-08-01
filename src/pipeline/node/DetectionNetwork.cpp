@@ -11,6 +11,7 @@
 #include "depthai/capabilities/ImgFrameCapability.hpp"
 #include "depthai/nn_archive/NNArchive.hpp"
 #include "nn_archive/NNArchiveConfig.hpp"
+#include "pipeline/DeviceNodeGroup.hpp"
 #include "utility/ArchiveUtil.hpp"
 #include "utility/ErrorMacros.hpp"
 #include "utility/PimplImpl.hpp"
@@ -32,6 +33,8 @@ DetectionNetwork::DetectionNetwork(const std::shared_ptr<Device>& device)
 // -------------------------------------------------------------------
 
 void DetectionNetwork::buildInternal() {
+    DeviceNodeGroup::buildInternal();
+
     // Default confidence threshold
     detectionParser->properties.parser.confidenceThreshold = 0.5;
     neuralNetwork->out.link(detectionParser->input);
