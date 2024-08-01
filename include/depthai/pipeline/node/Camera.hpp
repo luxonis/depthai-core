@@ -88,8 +88,6 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
 
     void buildStage1() override;
 
-    void buildInternal() override;
-
    protected:
     Properties& getProperties() override;
     bool isSourceNode() const override;

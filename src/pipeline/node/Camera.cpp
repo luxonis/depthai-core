@@ -58,6 +58,9 @@ Camera::Camera(std::shared_ptr<Device>& defaultDevice)
 
 
 std::shared_ptr<Camera> Camera::build(CameraBoardSocket boardSocket) {
+    if(isBuilt) {
+        throw std::runtime_error("Camera node is already built");
+    }
     if(!device) {
         throw std::runtime_error("Device pointer is not valid");
     }
@@ -103,10 +106,6 @@ std::shared_ptr<Camera> Camera::build(CameraBoardSocket boardSocket) {
 Camera::Properties& Camera::getProperties() {
     properties.initialControl = initialControl;
     return properties;
-}
-
-void Camera::buildInternal() {
-    build();
 }
 
 // Get current board socket
