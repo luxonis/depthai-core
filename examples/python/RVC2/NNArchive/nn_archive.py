@@ -38,8 +38,6 @@ with dai.Pipeline() as pipeline:
     qDet = detectionNetwork.out.createOutputQueue()
 
     labelMap = detectionNetwork.getClasses()
-    print(labelMap)
-    print(pipeline.getAllNodes())
 
     pipeline.start()
 
