@@ -14,14 +14,10 @@ topLeft = dai.Point2f(0.4, 0.4)
 bottomRight = dai.Point2f(0.6, 0.6)
 
 # Define sources and outputs
-monoLeft = pipeline.create(dai.node.Camera)
-monoRight = pipeline.create(dai.node.Camera)
+monoLeft = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
+monoRight = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C)
 stereo = pipeline.create(dai.node.StereoDepth)
 spatialLocationCalculator = pipeline.create(dai.node.SpatialLocationCalculator)
-
-# Define sources and outputs
-monoLeft.setBoardSocket(dai.CameraBoardSocket.CAM_B)
-monoRight.setBoardSocket(dai.CameraBoardSocket.CAM_C)
 
 # Linking
 monoLeftOut = monoLeft.requestOutput((640, 400))
@@ -61,6 +57,8 @@ with pipeline:
         outputDepthIMage : dai.ImgFrame = outputDepthQueue.get()
 
         frameDepth = outputDepthIMage.getCvFrame()
+        frameDepth = outputDepthIMage.getFrame()
+        print("Median depth value: ", np.median(frameDepth))
 
         depthFrameColor = cv2.normalize(frameDepth, None, 255, 0, cv2.NORM_INF, cv2.CV_8UC1)
         depthFrameColor = cv2.equalizeHist(depthFrameColor)

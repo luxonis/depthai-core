@@ -26,8 +26,7 @@ with dai.Pipeline() as pipeline:
         replay.setOutFrameType(dai.ImgFrame.Type.BGR888i)
         sourceOutput = replay.out
     else:
-        camRgb = pipeline.create(dai.node.Camera)
-        camRgb.setBoardSocket(dai.CameraBoardSocket.CAM_A)
+        camRgb = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
         sourceOutput = camRgb.requestOutput((512, 288), dai.ImgFrame.Type.BGR888i)
     detectionNetwork = pipeline.create(dai.node.DetectionNetwork)
     detectionNetwork.setNNArchive(dai.NNArchive(modelPath))
