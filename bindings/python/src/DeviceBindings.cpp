@@ -202,7 +202,7 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack){
     py::class_<BoardConfig::USB> boardConfigUsb(boardConfig, "USB", DOC(dai, BoardConfig, USB));
     py::class_<BoardConfig::Network> boardConfigNetwork(boardConfig, "Network", DOC(dai, BoardConfig, Network));
     py::class_<BoardConfig::GPIO> boardConfigGpio(boardConfig, "GPIO", DOC(dai, BoardConfig, GPIO));
-    py::enum_<dai::Device::ReconnectionStatus> enumReconnectionStatus(device, "ReconnectionStatus", DOC(dai, Device, ReconnectionStatus));
+    py::enum_<dai::Device::ReconnectionStatus> enumReconnectionStatus(device, "ReconnectionStatus", DOC(dai, DeviceBase, ReconnectionStatus));
     py::enum_<BoardConfig::GPIO::Mode> boardConfigGpioMode(boardConfigGpio, "Mode", DOC(dai, BoardConfig, GPIO, Mode));
     py::enum_<BoardConfig::GPIO::Direction> boardConfigGpioDirection(boardConfigGpio, "Direction", DOC(dai, BoardConfig, GPIO, Direction));
     py::enum_<BoardConfig::GPIO::Level> boardConfigGpioLevel(boardConfigGpio, "Level", DOC(dai, BoardConfig, GPIO, Level));
