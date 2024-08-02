@@ -21,10 +21,6 @@ class DetectionNetwork : public DeviceNodeGroup {
    public:
     DetectionNetwork(const std::shared_ptr<Device>& device);
 
-    const char* getName() const override {
-        return "DetectionNetwork";
-    }
-
     [[nodiscard]] static std::shared_ptr<DetectionNetwork> create(const std::shared_ptr<Device>& device) {
         auto networkPtr = std::make_shared<DetectionNetwork>(device);
         networkPtr->buildInternal();
@@ -194,10 +190,6 @@ class MobileNetDetectionNetwork : public DetectionNetwork {
    public:
     using DetectionNetwork::DetectionNetwork;
 
-    const char* getName() const override {
-        return "MobileNetDetectionNetwork";
-    }
-
     [[nodiscard]] static std::shared_ptr<MobileNetDetectionNetwork> create(const std::shared_ptr<Device>& device) {
         auto networkPtr = std::make_shared<MobileNetDetectionNetwork>(device);
         networkPtr->buildInternal();
@@ -213,10 +205,6 @@ class MobileNetDetectionNetwork : public DetectionNetwork {
 class YoloDetectionNetwork : public DetectionNetwork {
    public:
     using DetectionNetwork::DetectionNetwork;
-
-    const char* getName() const override {
-        return "YoloDetectionNetwork";
-    }
 
     [[nodiscard]] static std::shared_ptr<YoloDetectionNetwork> create(const std::shared_ptr<Device>& device) {
         auto networkPtr = std::make_shared<YoloDetectionNetwork>(device);

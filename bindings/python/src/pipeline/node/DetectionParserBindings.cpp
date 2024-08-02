@@ -42,7 +42,6 @@ void bind_detectionparser(pybind11::module& m, void* pCallstack){
         .def("setBlob", py::overload_cast<dai::OpenVINO::Blob>(&DetectionParser::setBlob), py::arg("blob"), DOC(dai, node, DetectionParser, setBlob))
         .def("setBlob", py::overload_cast<const dai::Path&>(&DetectionParser::setBlob), py::arg("path"), DOC(dai, node, DetectionParser, setBlob, 2))
         .def("setNNArchive", py::overload_cast<const NNArchive&>(&DetectionParser::setNNArchive), py::arg("nnArchive"), DOC(dai, node, DetectionParser, setNNArchive))
-        .def("setFromModelZoo", py::overload_cast<NNModelDescription, bool>(&DetectionParser::setFromModelZoo), py::arg("description"), py::arg("useCached"), DOC(dai, node, DetectionParser, setFromModelZoo))
         .def("setInputImageSize", static_cast<void(DetectionParser::*)(int,int)>(&DetectionParser::setInputImageSize), py::arg("width"), py::arg("height"), DOC(dai, node, DetectionParser, setInputImageSize))
         .def("setInputImageSize", static_cast<void(DetectionParser::*)(std::tuple<int,int>)>(&DetectionParser::setInputImageSize), py::arg("size"), DOC(dai, node, DetectionParser, setInputImageSize, 2))
         .def("setNNFamily", &DetectionParser::setNNFamily, py::arg("type"), DOC(dai, node, DetectionParser, setNNFamily))

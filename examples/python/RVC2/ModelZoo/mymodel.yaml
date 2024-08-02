@@ -1,2 +1,2 @@
-model_slug: "yolov6n"
-platform: "RVC2"
+model_slug: yolov6n
+platform: RVC2

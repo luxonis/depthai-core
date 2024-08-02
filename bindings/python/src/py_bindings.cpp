@@ -15,6 +15,7 @@
 
 // project
 #include "depthai/depthai.hpp"
+#include "common/ModelTypeBindings.hpp"
 #include "pipeline/AssetManagerBindings.hpp"
 #include "pipeline/PipelineBindings.hpp"
 #include "pipeline/CommonBindings.hpp"
@@ -61,6 +62,7 @@ PYBIND11_MODULE(depthai, m)
     // Add bindings
     std::deque<StackFunction> callstack;
     DatatypeBindings::addToCallstack(callstack);
+    callstack.push_front(&ModelTypeBindings::bind);
     callstack.push_front(&LogBindings::bind);
     callstack.push_front(&VersionBindings::bind);
     callstack.push_front(&MessageQueueBindings::bind);
