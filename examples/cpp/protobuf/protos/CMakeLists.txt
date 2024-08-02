@@ -1,4 +1,4 @@
-set(MESSAGES_PROTOS messages.proto)
+set(MESSAGES_PROTOS messages.proto ImgDetection.proto)
 set(MESSAGES_SRCS)
 set(MESSAGES_HDRS)
 
