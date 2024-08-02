@@ -28,7 +28,6 @@ class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNet
     std::optional<OpenVINO::Version> networkOpenvinoVersion;
 
    public:
-
     /**
      * @brief Build NeuralNetwork node. Connect output to this node's input. Also call setNNArchive() with provided NNArchive.
      *

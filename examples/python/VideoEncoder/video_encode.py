@@ -28,8 +28,7 @@ class VideoSaver(dai.node.HostNode):
         frame.getData().tofile(self.file_handle)
 
 with dai.Pipeline() as pipeline:
-    camRgb = pipeline.create(dai.node.Camera)
-    camRgb.setBoardSocket(dai.CameraBoardSocket.CAM_A)
+    camRgb = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
     output = camRgb.requestOutput((1920, 1440))
     outputQueue = output.createOutputQueue()
     encoded = pipeline.create(dai.node.VideoEncoder).build(output,

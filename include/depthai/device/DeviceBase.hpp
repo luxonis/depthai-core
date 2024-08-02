@@ -43,11 +43,13 @@ namespace dai {
 
 // Forward declare Pipeline
 class Pipeline;
-
+class PipelineImpl;
 /**
  * The core of depthai device for RAII, connects to device and maintains watchdog, timesync, ...
  */
 class DeviceBase {
+    friend class PipelineImpl;  // Needed for reconnections
+
    public:
     // constants
 
@@ -892,6 +894,13 @@ class DeviceBase {
     std::shared_ptr<const XLinkConnection> getConnection() const {
         return connection;
     }
+    enum class ReconnectionStatus { RECONNECTED, RECONNECTING, RECONNECT_FAILED };
+    /**
+     * Sets max number of automatic reconnection attempts
+     * @param maxAttempts Maximum number of reconnection attempts, 0 to disable reconnection
+     * @param callBack Callback to be called when reconnection is attempted
+     */
+    void setMaxReconnectionAttempts(int maxAttempts, std::function<void(ReconnectionStatus)> callBack = nullptr);
 
    protected:
     std::shared_ptr<XLinkConnection> connection;
@@ -941,9 +950,15 @@ class DeviceBase {
 
    private:
     // private functions
-    void init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipeline);
+    void init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipeline, bool reconnect = false);
     void tryGetDevice();
-
+    struct PrevInfo {
+        DeviceInfo deviceInfo;
+        Config cfg;
+        dai::Path pathToMvcmd;
+        bool hasPipeline;
+    };
+    void monitorCallback(std::chrono::milliseconds watchdogTimeout, PrevInfo prev);
     DeviceInfo deviceInfo = {};
     std::optional<Version> bootloaderVersion;
 
@@ -995,5 +1010,11 @@ class DeviceBase {
 
     // Started pipeline
     std::optional<PipelineSchema> pipelineSchema;
+
+    // Reconnection attempts and pointer to reset connections
+    int maxReconnectionAttempts = 1;
+    std::weak_ptr<PipelineImpl> pipelinePtr;
+    bool isClosing = false;  // if true, don't attempt to reconnect
+    std::function<void(ReconnectionStatus)> reconnectionCallback = nullptr;
 };
 }  // namespace dai
