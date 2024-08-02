@@ -2,7 +2,6 @@
 
 // std
 #include <spdlog/fmt/ostr.h>
-#include <unistd.h>
 
 #include <iostream>
 #include <optional>
