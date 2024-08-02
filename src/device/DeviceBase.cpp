@@ -2,6 +2,7 @@
 
 // std
 #include <spdlog/fmt/ostr.h>
+#include <unistd.h>
 
 #include <iostream>
 #include <optional>
@@ -533,6 +534,7 @@ unsigned int getCrashdumpTimeout(XLinkProtocol_t protocol) {
 
 void DeviceBase::closeImpl() {
     using namespace std::chrono;
+    isClosing = true;
     auto t1 = steady_clock::now();
     bool shouldGetCrashDump = false;
     // Check if the device is RVC3 - in case it is, crash dump retrieval is done differently
@@ -636,6 +638,11 @@ void DeviceBase::closeImpl() {
     }
 }
 
+void DeviceBase::setMaxReconnectionAttempts(int maxAttempts, std::function<void(ReconnectionStatus)> callback) {
+    maxReconnectionAttempts = maxAttempts;
+    reconnectionCallback = std::move(callback);
+}
+
 // This function is thread-unsafe. The idea of "isClosed" is ephemerial and
 // is invalidated during the return by value and continues to degrade in
 // validity to the caller
@@ -682,9 +689,16 @@ void DeviceBase::init(Config config, UsbSpeed maxUsbSpeed, const dai::Path& path
     init2(cfg, pathToMvcmd, {});
 }
 
-void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipeline) {
+void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipeline, bool reconnect) {
     // Initalize depthai library if not already
     if(!dumpOnly) initialize();
+
+    // Save previous state in case of a reconnection attempt
+    PrevInfo prev;
+    prev.deviceInfo = deviceInfo;
+    prev.cfg = cfg;
+    prev.pathToMvcmd = dai::Path(pathToMvcmd);
+    prev.hasPipeline = hasPipeline;
 
     // Specify cfg
     config = cfg;
@@ -917,27 +931,7 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipelin
         });
 
         // Start monitor thread for host - makes sure that device is responding to pings, otherwise it disconnects
-        monitorThread = std::thread([this, watchdogTimeout]() {
-            while(watchdogRunning) {
-                // Ping with a period half of that of the watchdog timeout
-                std::this_thread::sleep_for(watchdogTimeout);
-                // Check if wd was pinged in the specified watchdogTimeout time.
-                decltype(lastWatchdogPingTime) prevPingTime;
-                {
-                    std::unique_lock<std::mutex> lock(lastWatchdogPingTimeMtx);
-                    prevPingTime = lastWatchdogPingTime;
-                }
-                // Recheck if watchdogRunning wasn't already closed and close if more than twice of WD passed
-                if(watchdogRunning && std::chrono::steady_clock::now() - prevPingTime > watchdogTimeout * 2) {
-                    pimpl->logger.warn("Monitor thread (device: {} [{}]) - ping was missed, closing the device connection", deviceInfo.mxid, deviceInfo.name);
-                    // ping was missed, reset the device
-                    watchdogRunning = false;
-                    // close the underlying connection
-                    connection->close();
-                }
-            }
-        });
-
+        if(!reconnect) monitorThread = std::thread(&DeviceBase::monitorCallback, this, watchdogTimeout, prev);
     } else {
         // Still set watchdogRunning explictitly
         // as it indicates device not being closed
@@ -1071,6 +1065,96 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipelin
             // Rethrow original exception
             throw;
         }
+    }
+}
+
+void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, PrevInfo prev) {
+    try {
+        while(true) {
+            while(watchdogRunning) {
+                // Ping with a period half of that of the watchdog timeout
+                std::this_thread::sleep_for(watchdogTimeout);
+                // Check if wd was pinged in the specified watchdogTimeout time.
+                decltype(lastWatchdogPingTime) prevPingTime;
+                {
+                    std::unique_lock<std::mutex> lock(lastWatchdogPingTimeMtx);
+                    prevPingTime = lastWatchdogPingTime;
+                }
+                // Recheck if watchdogRunning wasn't already closed and close if more than twice of WD passed
+                if(watchdogRunning && std::chrono::steady_clock::now() - prevPingTime > watchdogTimeout * 2) {
+                    pimpl->logger.warn("Monitor thread (device: {} [{}]) - ping was missed, closing the device connection", deviceInfo.mxid, deviceInfo.name);
+                    // ping was missed, reset the device
+                    watchdogRunning = false;
+                    // close the underlying connection
+                    connection->close();
+                }
+            }
+            if(isClosing) return;
+            if(maxReconnectionAttempts == 0) {
+                if(reconnectionCallback) reconnectionCallback(ReconnectionStatus::RECONNECT_FAILED);
+                break;
+            }
+            // reconnection attempt
+            // stop other threads
+            if(watchdogThread.joinable()) watchdogThread.join();
+            timesyncRunning = false;
+            loggingRunning = false;
+            profilingRunning = false;
+            if(timesyncThread.joinable()) timesyncThread.join();
+            if(loggingThread.joinable()) loggingThread.join();
+            if(profilingThread.joinable()) profilingThread.join();
+
+            // get timeout (in seconds)
+            std::chrono::milliseconds reconnectTimeout(10'000);
+            auto timeoutStr = utility::getEnv("DEPTHAI_RECONNECT_TIMEOUT");
+            if(!timeoutStr.empty()) {
+                try {
+                    reconnectTimeout = std::chrono::milliseconds(std::stoi(timeoutStr));
+                } catch(const std::invalid_argument& e) {
+                    pimpl->logger.warn("DEPTHAI_RECONNECT_TIMEOUT value invalid: {}, should be a number (non-zero to enable)", e.what());
+                }
+            }
+            pimpl->logger.warn("Closed connection\n");
+            // Reconnect
+            deviceInfo = prev.deviceInfo;
+            watchdogRunning = true;
+            timesyncRunning = true;
+            loggingRunning = true;
+            profilingRunning = true;
+            int attempts = 0;
+            pimpl->logger.warn("Attempting to reconnect. Timeout is {}\n", reconnectTimeout);
+            auto reconnected = false;
+            for(attempts = 0; attempts < maxReconnectionAttempts; attempts++) {
+                if(reconnectionCallback) reconnectionCallback(ReconnectionStatus::RECONNECTING);
+                if(std::get<0>(getAnyAvailableDevice(reconnectTimeout))) {
+                    init2(prev.cfg, prev.pathToMvcmd, prev.hasPipeline, true);
+                    if(hasCrashDump()) {
+                        auto dump = getCrashDump();
+                        logCollection::logCrashDump(pipelineSchema, dump, deviceInfo);
+                    }
+                    auto shared = pipelinePtr.lock();
+                    if(!shared) throw std::runtime_error("Pipeline was destroyed");
+                    shared->resetConnections();
+                    reconnected = true;
+                    break;
+                }
+                pimpl->logger.warn("Reconnection unsuccessful, trying again. Attempts left: {}\n", maxReconnectionAttempts - attempts - 1);
+            }
+            if(!reconnected) {
+                if(reconnectionCallback) reconnectionCallback(ReconnectionStatus::RECONNECT_FAILED);
+                pimpl->logger.warn("Reconnection unsuccessful, closing the device\n");
+                break;
+            }
+            if(reconnectionCallback) reconnectionCallback(ReconnectionStatus::RECONNECTED);
+            pimpl->logger.warn("Reconnection successful\n");
+        }
+    } catch(const std::exception& ex) {
+        pimpl->logger.info("Monitor thread exception caught: {}", ex.what());
+    }
+    // Close the pipeline
+    auto shared = pipelinePtr.lock();
+    if(shared) {
+        shared->disconnectXLinkHosts();
     }
 }
 
