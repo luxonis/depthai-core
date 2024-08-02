@@ -98,11 +98,8 @@ void DetectionNetwork::setFromModelZoo(NNModelDescription description, bool useC
         DAI_CHECK(getDevice() != nullptr, "Device is not set. Use setDevice(...) first.");
         description.platform = getDevice()->getPlatformAsString();
     }
-    auto archivePath = getModelFromZoo(description, useCached);
-    NNArchive archive(archivePath);
-
-    // Set the NNArchive
-    setNNArchive(archive);
+    auto path = getModelFromZoo(description, useCached);
+    setModelPath(path);
 }
 
 void DetectionNetwork::setNNArchiveBlob(const NNArchive& nnArchive) {
@@ -139,6 +136,7 @@ void DetectionNetwork::setBlob(const dai::Path& path) {
 
 void DetectionNetwork::setModelPath(const dai::Path& modelPath) {
     neuralNetwork->setModelPath(modelPath);
+    detectionParser->setModelPath(modelPath);
 }
 
 void DetectionNetwork::setNumPoolFrames(int numFrames) {

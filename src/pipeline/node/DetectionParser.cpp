@@ -1,5 +1,6 @@
 #include "depthai/pipeline/node/DetectionParser.hpp"
 
+#include "common/ModelType.hpp"
 #include "depthai/modelzoo/Zoo.hpp"
 #include "nn_archive/NNArchive.hpp"
 #include "spdlog/fmt/fmt.h"
@@ -25,6 +26,22 @@ void DetectionParser::setNNArchive(const NNArchive& nnArchive) {
             break;
         case dai::model::ModelType::NNARCHIVE:
             DAI_CHECK_V(false, "NNArchive inside NNArchive is not supported. Please unpack the inner archive first.");
+            break;
+    }
+}
+
+void DetectionParser::setModelPath(const dai::Path& modelPath) {
+    switch(model::readModelType(modelPath)) {
+        case model::ModelType::BLOB:
+        case model::ModelType::SUPERBLOB:
+        case model::ModelType::DLC:
+        case model::ModelType::OTHER:
+            break;  // Just do nothing
+        case model::ModelType::NNARCHIVE:
+            setNNArchive(dai::NNArchive(modelPath));
+            break;
+        default:
+            DAI_CHECK_V(false, "Unknown model type");
             break;
     }
 }

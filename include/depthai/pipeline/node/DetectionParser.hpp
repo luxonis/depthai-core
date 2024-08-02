@@ -61,6 +61,12 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
     void setNNArchive(const NNArchive& nnArchive);
 
     /**
+     * Load network xml and bin files into assets.
+     * @param xmlModelPath Path to the neural network model file.
+     */
+    void setModelPath(const dai::Path& modelPath);
+
+    /**
      * Load network blob into assets and use once pipeline is started.
      *
      * @throws Error if file doesn't exist or isn't a valid network blob.

@@ -9,6 +9,7 @@
 #include "modelzoo/Zoo.hpp"
 #include "nn_archive/NNArchive.hpp"
 #include "openvino/BlobReader.hpp"
+#include "openvino/OpenVINO.hpp"
 #include "utility/ErrorMacros.hpp"
 
 namespace dai {
@@ -18,7 +19,7 @@ std::optional<OpenVINO::Version> NeuralNetwork::getRequiredOpenVINOVersion() {
     return networkOpenvinoVersion;
 }
 
-std::shared_ptr<NeuralNetwork> NeuralNetwork::build(Node::Output &output, const NNArchive &nnArchive) {
+std::shared_ptr<NeuralNetwork> NeuralNetwork::build(Node::Output& output, const NNArchive& nnArchive) {
     setNNArchive(nnArchive);
     output.link(this->input);
     return std::static_pointer_cast<NeuralNetwork>(shared_from_this());
@@ -65,9 +66,8 @@ void NeuralNetwork::setFromModelZoo(NNModelDescription description, bool useCach
         DAI_CHECK(getDevice() != nullptr, "Device is not set. Use setDevice(...) first.");
         description.platform = getDevice()->getPlatformAsString();
     }
-    auto archivePath = getModelFromZoo(description, useCached);
-    NNArchive archive(archivePath);
-    setNNArchive(archive);
+    auto path = getModelFromZoo(description, useCached);
+    setModelPath(path);
 }
 
 void NeuralNetwork::setNNArchiveBlob(const NNArchive& nnArchive) {
@@ -112,16 +112,23 @@ void NeuralNetwork::setBlob(OpenVINO::Blob blob) {
 }
 
 void NeuralNetwork::setModelPath(const dai::Path& modelPath) {
-    // Check if the modelPath is a blob
-    if(modelPath.string().find(".blob") != std::string::npos) {
-        setBlobPath(modelPath);
-        return;
+    switch(model::readModelType(modelPath)) {
+        case model::ModelType::BLOB:
+            setBlob(OpenVINO::Blob(modelPath));
+            break;
+        case model::ModelType::SUPERBLOB:
+            setBlob(OpenVINO::SuperBlob(modelPath).getBlobWithNumShaves(8));
+            break;
+        case model::ModelType::NNARCHIVE:
+            setNNArchive(NNArchive(modelPath));
+            break;
+        case model::ModelType::DLC:
+        case model::ModelType::OTHER: {
+            auto modelAsset = assetManager.set("__model", modelPath);
+            properties.modelUri = modelAsset->getRelativeUri();
+            properties.modelSource = Properties::ModelSource::CUSTOM_MODEL;
+        } break;
     }
-
-    // Generic case
-    auto modelAsset = assetManager.set("__model", modelPath);
-    properties.modelUri = modelAsset->getRelativeUri();
-    properties.modelSource = Properties::ModelSource::CUSTOM_MODEL;
 }
 
 void NeuralNetwork::setNumPoolFrames(int numFrames) {

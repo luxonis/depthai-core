@@ -49,7 +49,11 @@ void SpatialDetectionNetwork::setNNArchive(const NNArchive& nnArchive) {
             setNNArchiveSuperblob(nnArchive, DEFAULT_SUPERBLOB_NUM_SHAVES);
             break;
         case dai::model::ModelType::OTHER:
+        case dai::model::ModelType::DLC:
             setNNArchiveOther(nnArchive);
+            break;
+        case dai::model::ModelType::NNARCHIVE:
+            DAI_CHECK_V(false, "Cannot set NNArchive inside NNArchive. %s: %s", __FILE__, __LINE__);
             break;
     }
 }
@@ -61,7 +65,11 @@ void SpatialDetectionNetwork::setNNArchive(const NNArchive& nnArchive, int numSh
             break;
         case dai::model::ModelType::BLOB:
         case dai::model::ModelType::OTHER:
+        case dai::model::ModelType::DLC:
             DAI_CHECK_V(false, "NNArchive type is not SUPERBLOB. Use setNNArchive(const NNArchive& nnArchive) instead.");
+            break;
+        case dai::model::ModelType::NNARCHIVE:
+            DAI_CHECK_V(false, "Cannot set NNArchive inside NNArchive. %s: %s", __FILE__, __LINE__);
             break;
     }
 }
@@ -73,11 +81,8 @@ void SpatialDetectionNetwork::setFromModelZoo(NNModelDescription description, bo
         DAI_CHECK(getDevice() != nullptr, "Device is not set. Use setDevice(...) first.");
         description.platform = getDevice()->getPlatformAsString();
     }
-    auto archivePath = getModelFromZoo(description, useCached);
-    NNArchive archive(archivePath);
-
-    // Set the NNArchive
-    setNNArchive(archive);
+    auto path = getModelFromZoo(description, useCached);
+    setModelPath(path);
 }
 
 void SpatialDetectionNetwork::setNNArchiveBlob(const NNArchive& nnArchive) {
@@ -115,6 +120,7 @@ void SpatialDetectionNetwork::setBlob(const dai::Path& path) {
 
 void SpatialDetectionNetwork::setModelPath(const dai::Path& modelPath) {
     neuralNetwork->setModelPath(modelPath);
+    detectionParser->setModelPath(modelPath);
 }
 
 void SpatialDetectionNetwork::setNumPoolFrames(int numFrames) {
