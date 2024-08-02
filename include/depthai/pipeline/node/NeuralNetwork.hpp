@@ -87,7 +87,7 @@ class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNet
      * @param description: Model description to download
      * @param useCached: Use cached model if available
      */
-    void setFromModelzoo(NNModelDescription description, bool useCached = true);
+    void setFromModelZoo(NNModelDescription description, bool useCached = true);
 
     // Specify local filesystem path to load the blob (which gets loaded at loadAssets)
     /**

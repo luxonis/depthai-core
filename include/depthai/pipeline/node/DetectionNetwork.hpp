@@ -80,7 +80,7 @@ class DetectionNetwork : public DeviceNodeGroup {
      * @param description: Model description to download
      * @param useCached: Use cached model if available
      */
-    void setFromModelzoo(NNModelDescription description, bool useCached = true);
+    void setFromModelZoo(NNModelDescription description, bool useCached = true);
 
     /**
      * @brief Download model from zoo and set it for this node.
@@ -89,7 +89,7 @@ class DetectionNetwork : public DeviceNodeGroup {
      * @param numShaves: Number of shaves to use
      * @param useCached: Use cached model if available
      */
-    void setFromModelzoo(NNModelDescription description, int numShaves, bool useCached = true);
+    void setFromModelZoo(NNModelDescription description, int numShaves, bool useCached = true);
 
     // Specify local filesystem path to load the blob (which gets loaded at loadAssets)
     /**

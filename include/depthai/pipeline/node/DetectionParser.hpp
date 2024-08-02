@@ -66,7 +66,7 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
      * @param description: Model description to download
      * @param useCached: Use cached model if available
      */
-    void setFromModelzoo(NNModelDescription description, bool useCached = true);
+    void setFromModelZoo(NNModelDescription description, bool useCached = true);
 
     /**
      * Load network blob into assets and use once pipeline is started.

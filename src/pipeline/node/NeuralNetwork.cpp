@@ -50,7 +50,7 @@ void NeuralNetwork::setNNArchive(const NNArchive& nnArchive, int numShaves) {
     }
 }
 
-void NeuralNetwork::setFromModelzoo(NNModelDescription description, bool useCached) {
+void NeuralNetwork::setFromModelZoo(NNModelDescription description, bool useCached) {
     // Set platform if not set
     if(description.platform.empty()) {
         DAI_CHECK(getDevice() != nullptr, "Device is not set. Use setDevice(...) first.");

@@ -111,7 +111,7 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
      * @param description: Model description to download
      * @param useCached: Use cached model if available
      */
-    void setFromModelzoo(NNModelDescription description, bool useCached = true);
+    void setFromModelZoo(NNModelDescription description, bool useCached = true);
 
     /**
      * @brief Set NNArchive for this Node, throws if the archive's type is not SUPERBLOB

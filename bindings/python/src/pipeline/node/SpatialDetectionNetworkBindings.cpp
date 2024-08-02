@@ -53,7 +53,7 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack){
         .def("getNumInferenceThreads", &SpatialDetectionNetwork::getNumInferenceThreads, DOC(dai, node, SpatialDetectionNetwork, getNumInferenceThreads))
         .def("setNNArchive", py::overload_cast<const NNArchive&>(&SpatialDetectionNetwork::setNNArchive), py::arg("archive"), DOC(dai, node, SpatialDetectionNetwork, setNNArchive))
         .def("setNNArchive", py::overload_cast<const NNArchive&, int>(&SpatialDetectionNetwork::setNNArchive), py::arg("archive"), py::arg("numShaves"), DOC(dai, node, SpatialDetectionNetwork, setNNArchive))
-        .def("setFromModelzoo", py::overload_cast<NNModelDescription, bool>(&SpatialDetectionNetwork::setFromModelzoo), py::arg("description"), py::arg("useCached"), DOC(dai, node, SpatialDetectionNetwork, setFromModelzoo))
+        .def("setFromModelZoo", py::overload_cast<NNModelDescription, bool>(&SpatialDetectionNetwork::setFromModelZoo), py::arg("description"), py::arg("useCached"), DOC(dai, node, SpatialDetectionNetwork, setFromModelZoo))
         .def("setBlob",
              py::overload_cast<dai::OpenVINO::Blob>(&SpatialDetectionNetwork::setBlob),
              py::arg("blob"),

@@ -64,9 +64,9 @@ void SpatialDetectionNetwork::setNNArchive(const NNArchive& nnArchive, int numSh
     }
 }
 
-void SpatialDetectionNetwork::setFromModelzoo(NNModelDescription description, bool useCached) {
-    neuralNetwork->setFromModelzoo(description, useCached);
-    detectionParser->setFromModelzoo(description, true);  // Model downloaded and cached above => use it
+void SpatialDetectionNetwork::setFromModelZoo(NNModelDescription description, bool useCached) {
+    neuralNetwork->setFromModelZoo(description, useCached);
+    detectionParser->setFromModelZoo(description, true);  // Model downloaded and cached above => use it
 }
 
 void SpatialDetectionNetwork::setNNArchiveBlob(const NNArchive& nnArchive) {

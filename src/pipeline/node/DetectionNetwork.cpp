@@ -83,9 +83,9 @@ void DetectionNetwork::setNNArchive(const NNArchive& nnArchive, int numShaves) {
     }
 }
 
-void DetectionNetwork::setFromModelzoo(NNModelDescription description, bool useCached) {
-    neuralNetwork->setFromModelzoo(description, useCached);
-    detectionParser->setFromModelzoo(description, true);  // Model downloaded and cached above => use it
+void DetectionNetwork::setFromModelZoo(NNModelDescription description, bool useCached) {
+    neuralNetwork->setFromModelZoo(description, useCached);
+    detectionParser->setFromModelZoo(description, true);  // Model downloaded and cached above => use it
 }
 
 void DetectionNetwork::setNNArchiveBlob(const NNArchive& nnArchive) {

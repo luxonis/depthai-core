@@ -30,7 +30,7 @@ const NNArchiveConfig& DetectionParser::getNNArchiveConfig() const {
     return archiveConfig.value();
 }
 
-void DetectionParser::setFromModelzoo(NNModelDescription description, bool useCached) {
+void DetectionParser::setFromModelZoo(NNModelDescription description, bool useCached) {
     // Set platform if not set
     if(description.platform.empty()) {
         DAI_CHECK(getDevice() != nullptr, "Device is not set. Use setDevice(...) first.");
