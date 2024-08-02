@@ -24,13 +24,6 @@ class DeviceNode : public ThreadedNode {
     }
 
     /**
-     * @brief Set device for this node
-     *
-     * @param device: shared pointer to device
-     */
-    void setDevice(std::shared_ptr<Device> device);
-
-    /**
      * @brief Get device for this node
      *
      * @return shared pointer to device
@@ -45,6 +38,17 @@ class DeviceNode : public ThreadedNode {
    protected:
     DeviceNode(const std::shared_ptr<Device>& device, std::unique_ptr<Properties> props, bool conf);
     DeviceNode(std::unique_ptr<Properties> props, bool conf);
+
+    template <typename T>
+    friend class Subnode;
+
+    /**
+     * @brief Set device for this node
+     *
+     * @param device: shared pointer to device
+     */
+    void setDevice(std::shared_ptr<Device> device);
+
 };
 
 // Node CRTP class
