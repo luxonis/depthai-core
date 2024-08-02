@@ -342,9 +342,9 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack){
         .value("RVC4", Platform::RVC4, DOC(dai, Platform, RVC4));
 
     // Bind Device::ReconnectionStatus
-    enumReconnectionStatus.value("RECONNECT_FAILED", Device::ReconnectionStatus::RECONNECT_FAILED, DOC(dai, Device, ReconnectionStatus, RECONNECT_FAILED));
-    enumReconnectionStatus.value("RECONNECTED", Device::ReconnectionStatus::RECONNECTED, DOC(dai, Device, ReconnectionStatus, RECONNECTED));
-    enumReconnectionStatus.value("RECONNECTING", Device::ReconnectionStatus::RECONNECTING, DOC(dai, Device, ReconnectionStatus, RECONNECTING));
+    enumReconnectionStatus.value("RECONNECT_FAILED", Device::ReconnectionStatus::RECONNECT_FAILED);
+    enumReconnectionStatus.value("RECONNECTED", Device::ReconnectionStatus::RECONNECTED);
+    enumReconnectionStatus.value("RECONNECTING", Device::ReconnectionStatus::RECONNECTING);
 
     // Platform - string conversion
     m.def("platform2string", &platform2string, DOC(dai, platform2string));
