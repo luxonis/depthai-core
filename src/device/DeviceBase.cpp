@@ -1138,7 +1138,7 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, Prev
                     reconnected = true;
                     break;
                 }
-                pimpl->logger.warn("Reconnection unsuccessful, trying again. Attempts left: {}\n", maxReconnectionAttempts - attempts);
+                pimpl->logger.warn("Reconnection unsuccessful, trying again. Attempts left: {}\n", maxReconnectionAttempts - attempts - 1);
             }
             if(!reconnected) {
                 if(reconnectionCallback) reconnectionCallback(ReconnectionStatus::RECONNECT_FAILED);
