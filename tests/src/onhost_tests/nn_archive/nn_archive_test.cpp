@@ -9,7 +9,7 @@ TEST_CASE("NNArchive loads a BLOB properly") {
     dai::NNArchive nnArchive(BLOB_ARCHIVE_PATH);
 
     // Loaded archive is BLOB
-    REQUIRE(nnArchive.getArchiveType() == dai::NNArchiveType::BLOB);
+    REQUIRE(nnArchive.getModelType() == dai::model::ModelType::BLOB);
 
     // Returns blob
     REQUIRE(nnArchive.getBlob().has_value());
@@ -23,7 +23,7 @@ TEST_CASE("NNArchive loads a SUPERBLOB properly") {
     dai::NNArchive nnArchive(SUPERBLOB_ARCHIVE_PATH);
 
     // Loaded archive is SUPERBLOB
-    REQUIRE(nnArchive.getArchiveType() == dai::NNArchiveType::SUPERBLOB);
+    REQUIRE(nnArchive.getModelType() == dai::model::ModelType::SUPERBLOB);
 
     // Returns superblob
     REQUIRE(nnArchive.getSuperBlob().has_value());
@@ -57,7 +57,7 @@ TEST_CASE("NNArchive loads other formats properly") {
     dai::NNArchive nnArchive(ONNX_ARCHIVE_PATH, dai::NNArchiveOptions().extractFolder(extractFolder));
 
     // Loaded archive is ONNX
-    REQUIRE(nnArchive.getArchiveType() == dai::NNArchiveType::OTHER);
+    REQUIRE(nnArchive.getModelType() == dai::model::ModelType::OTHER);
 
     // Returns model path
     REQUIRE(nnArchive.getModelPath().has_value());

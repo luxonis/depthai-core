@@ -29,7 +29,7 @@ with dai.Pipeline() as pipeline:
     # If needed, you can set the NNArchive by yourself
     # detectionNetwork.setNNArchive(nnArchive)
 
-    # If nnArchive.getArchiveType() == dai.NNArchiveType.SUPERBLOB
+    # If nnArchive.getModelType() == dai.NNArchiveType.SUPERBLOB
     # you can specify the number of shaves
     # detectionNetwork.setNNArchive(nnArchive, numShaves=9)
     # When ^^^ is used and the archive type is not SUPERBLOB, an exception will be thrown

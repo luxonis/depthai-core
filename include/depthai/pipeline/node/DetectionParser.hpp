@@ -61,14 +61,6 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
     void setNNArchive(const NNArchive& nnArchive);
 
     /**
-     * @brief Download model from zoo and set it for this Node
-     *
-     * @param description: Model description to download
-     * @param useCached: Use cached model if available
-     */
-    void setFromModelZoo(NNModelDescription description, bool useCached = true);
-
-    /**
      * Load network blob into assets and use once pipeline is started.
      *
      * @throws Error if file doesn't exist or isn't a valid network blob.

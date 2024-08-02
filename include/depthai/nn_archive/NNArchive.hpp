@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include <depthai/common/ModelType.hpp>
 #include <memory>
 #include <optional>
 
@@ -24,8 +25,6 @@ struct NNArchiveOptions {
     DEPTAHI_ARG_DEFAULT(std::string, extractFolder, "/tmp/");
 };
 
-enum class NNArchiveType { BLOB, SUPERBLOB, OTHER };
-
 class NNArchive {
    public:
     /**
@@ -37,21 +36,21 @@ class NNArchive {
     NNArchive(const std::string& archivePath, NNArchiveOptions options = {});
 
     /**
-     * @brief Return a SuperVINO::Blob from the archive if getArchiveType() returns BLOB, nothing otherwise
+     * @brief Return a SuperVINO::Blob from the archive if getModelType() returns BLOB, nothing otherwise
      *
      * @return std::optional<OpenVINO::Blob>: Model blob
      */
     std::optional<OpenVINO::Blob> getBlob() const;
 
     /**
-     * @brief Return a SuperVINO::SuperBlob from the archive if getArchiveType() returns SUPERBLOB, nothing otherwise
+     * @brief Return a SuperVINO::SuperBlob from the archive if getModelType() returns SUPERBLOB, nothing otherwise
      *
      * @return std::optional<OpenVINO::SuperBlob>: Model superblob
      */
     std::optional<OpenVINO::SuperBlob> getSuperBlob() const;
 
     /**
-     * @brief Return a path to the model inside the archive if getArchiveType() returns OTHER, nothing otherwise
+     * @brief Return a path to the model inside the archive if getModelType() returns OTHER or DLC, nothing otherwise
      *
      * @return std::optional<std::string>: Model path
      */
@@ -65,16 +64,16 @@ class NNArchive {
     const NNArchiveConfig& getConfig() const;
 
     /**
-     * @brief Return loaded archive type. Can be either BLOB or SUPERBLOB.
+     * @brief Get type of model contained in NNArchive
      *
-     * @return NNArchiveType: Archive type
+     * @return model::ModelType: type of model in archive
      */
-    NNArchiveType getArchiveType() const;
+    model::ModelType getModelType() const;
 
    private:
     // Helper functions:
     // Check what kind of archive is read
-    static NNArchiveType readArchiveType(const std::string& modelPathInArchive);
+    static model::ModelType readModelType(const std::string& modelPathInArchive);
 
     // Read model from archive
     std::vector<uint8_t> readModelFromArchive(const std::string& archivePath, const std::string& modelPathInArchive) const;
@@ -82,7 +81,7 @@ class NNArchive {
     // Unpack archive to tmp directory
     void unpackArchiveInDirectory(const std::string& archivePath, const std::string& directory) const;
 
-    NNArchiveType archiveType;
+    model::ModelType modelType;
     NNArchiveOptions archiveOptions;
 
     // Archive config

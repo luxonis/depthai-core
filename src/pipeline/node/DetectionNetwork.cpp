@@ -15,6 +15,7 @@
 #include "utility/ArchiveUtil.hpp"
 #include "utility/ErrorMacros.hpp"
 #include "utility/PimplImpl.hpp"
+#include "depthai/modelzoo/Zoo.hpp"
 
 namespace dai {
 namespace node {
@@ -58,50 +59,65 @@ std::shared_ptr<DetectionNetwork> DetectionNetwork::build(Node::Output& input, c
 
 void DetectionNetwork::setNNArchive(const NNArchive& nnArchive) {
     constexpr int DEFAULT_SUPERBLOB_NUM_SHAVES = 8;
-    switch(nnArchive.getArchiveType()) {
-        case dai::NNArchiveType::BLOB:
+    switch(nnArchive.getModelType()) {
+        case dai::model::ModelType::BLOB:
             setNNArchiveBlob(nnArchive);
             break;
-        case dai::NNArchiveType::SUPERBLOB:
+        case dai::model::ModelType::SUPERBLOB:
             setNNArchiveSuperblob(nnArchive, DEFAULT_SUPERBLOB_NUM_SHAVES);
             break;
-        case dai::NNArchiveType::OTHER:
+        case dai::model::ModelType::DLC:
+        case dai::model::ModelType::OTHER:
             setNNArchiveOther(nnArchive);
+            break;
+        case dai::model::ModelType::NNARCHIVE:
+            DAI_CHECK_V(false, "Cannot set NNArchive inside NNArchive. %s: %s" __FILE__, __LINE__);
             break;
     }
 }
 
 void DetectionNetwork::setNNArchive(const NNArchive& nnArchive, int numShaves) {
-    switch(nnArchive.getArchiveType()) {
-        case dai::NNArchiveType::SUPERBLOB:
+    switch(nnArchive.getModelType()) {
+        case dai::model::ModelType::SUPERBLOB:
             setNNArchiveSuperblob(nnArchive, numShaves);
             break;
-        case dai::NNArchiveType::BLOB:
-        case dai::NNArchiveType::OTHER:
+        case dai::model::ModelType::BLOB:
+        case dai::model::ModelType::DLC:
+        case dai::model::ModelType::OTHER:
             DAI_CHECK_V(false, "NNArchive type is not SUPERBLOB. Use setNNArchive(const NNArchive& nnArchive) instead.");
+            break;
+        case dai::model::ModelType::NNARCHIVE:
+            DAI_CHECK_V(false, "Cannot set NNArchive inside NNArchive. %s: %s" __FILE__, __LINE__);
             break;
     }
 }
 
 void DetectionNetwork::setFromModelZoo(NNModelDescription description, bool useCached) {
-    neuralNetwork->setFromModelZoo(description, useCached);
-    detectionParser->setFromModelZoo(description, true);  // Model downloaded and cached above => use it
+    // Download model from zoo
+    if(description.platform.empty()) {
+        DAI_CHECK(getDevice() != nullptr, "Device is not set. Use setDevice(...) first.");
+        description.platform = getDevice()->getPlatformAsString();
+    }
+    auto archivePath = getModelFromZoo(description, useCached);
+    NNArchive archive(archivePath);
+
+    // Set the NNArchive
+    setNNArchive(archive);
 }
 
 void DetectionNetwork::setNNArchiveBlob(const NNArchive& nnArchive) {
-    DAI_CHECK_V(nnArchive.getArchiveType() == dai::NNArchiveType::BLOB, "NNArchive type is not BLOB");
+    DAI_CHECK_V(nnArchive.getModelType() == dai::model::ModelType::BLOB, "NNArchive type is not BLOB");
     detectionParser->setNNArchive(nnArchive);
     neuralNetwork->setNNArchive(nnArchive);
 }
 
 void DetectionNetwork::setNNArchiveSuperblob(const NNArchive& nnArchive, int numShaves) {
-    DAI_CHECK_V(nnArchive.getArchiveType() == dai::NNArchiveType::SUPERBLOB, "NNArchive type is not SUPERBLOB");
+    DAI_CHECK_V(nnArchive.getModelType() == dai::model::ModelType::SUPERBLOB, "NNArchive type is not SUPERBLOB");
     detectionParser->setNNArchive(nnArchive);
     neuralNetwork->setNNArchive(nnArchive, numShaves);
 }
 
 void DetectionNetwork::setNNArchiveOther(const NNArchive& nnArchive) {
-    DAI_CHECK_V(nnArchive.getArchiveType() == dai::NNArchiveType::OTHER, "NNArchive type is not OTHER");
     detectionParser->setNNArchive(nnArchive);
     neuralNetwork->setNNArchive(nnArchive);
 }

@@ -14,7 +14,7 @@ archivePath = dai.getModelFromZoo(modelDescription, useCached=True)
 archive = dai.NNArchive(archivePath)
 
 # Archive knows it is a blob archive
-assert archive.getArchiveType() == dai.NNArchiveType.SUPERBLOB
+assert archive.getModelType() == dai.NNArchiveType.SUPERBLOB
 
 # Therefore, only getSuperBlob() is available
 assert archive.getSuperBlob() is not None

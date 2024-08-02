@@ -2,6 +2,7 @@
 
 #include <stdexcept>
 
+#include "common/ModelType.hpp"
 #include "depthai/depthai.hpp"
 #include "depthai/modelzoo/Zoo.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
@@ -25,27 +26,35 @@ std::shared_ptr<NeuralNetwork> NeuralNetwork::build(Node::Output &output, const 
 
 void NeuralNetwork::setNNArchive(const NNArchive& nnArchive) {
     constexpr int DEFAULT_SUPERBLOB_NUM_SHAVES = 8;
-    switch(nnArchive.getArchiveType()) {
-        case dai::NNArchiveType::BLOB:
+    switch(nnArchive.getModelType()) {
+        case dai::model::ModelType::BLOB:
             setNNArchiveBlob(nnArchive);
             break;
-        case dai::NNArchiveType::SUPERBLOB:
+        case dai::model::ModelType::SUPERBLOB:
             setNNArchiveSuperblob(nnArchive, DEFAULT_SUPERBLOB_NUM_SHAVES);
             break;
-        case dai::NNArchiveType::OTHER:
+        case dai::model::ModelType::OTHER:
+        case dai::model::ModelType::DLC:
             setNNArchiveOther(nnArchive);
+            break;
+        case dai::model::ModelType::NNARCHIVE:
+            DAI_CHECK_V(false, "NNArchive inside NNArchive is not supported. %s: %s", __FILE__, __LINE__);
             break;
     }
 }
 
 void NeuralNetwork::setNNArchive(const NNArchive& nnArchive, int numShaves) {
-    switch(nnArchive.getArchiveType()) {
-        case dai::NNArchiveType::SUPERBLOB:
+    switch(nnArchive.getModelType()) {
+        case dai::model::ModelType::SUPERBLOB:
             setNNArchiveSuperblob(nnArchive, numShaves);
             break;
-        case dai::NNArchiveType::BLOB:
-        case dai::NNArchiveType::OTHER:
+        case dai::model::ModelType::BLOB:
+        case dai::model::ModelType::OTHER:
+        case dai::model::ModelType::DLC:
             DAI_CHECK_V(false, "NNArchive type is not SUPERBLOB. Use setNNArchive(const NNArchive& nnArchive) instead.");
+            break;
+        case dai::model::ModelType::NNARCHIVE:
+            DAI_CHECK_V(false, "NNArchive inside NNArchive is not supported. %s: %s", __FILE__, __LINE__);
             break;
     }
 }
@@ -62,19 +71,18 @@ void NeuralNetwork::setFromModelZoo(NNModelDescription description, bool useCach
 }
 
 void NeuralNetwork::setNNArchiveBlob(const NNArchive& nnArchive) {
-    DAI_CHECK_V(nnArchive.getArchiveType() == dai::NNArchiveType::BLOB, "NNArchive type is not BLOB");
+    DAI_CHECK_V(nnArchive.getModelType() == dai::model::ModelType::BLOB, "NNArchive type is not BLOB");
     dai::OpenVINO::Blob blob = *nnArchive.getBlob();
     setBlob(blob);
 }
 
 void NeuralNetwork::setNNArchiveSuperblob(const NNArchive& nnArchive, int numShaves) {
-    DAI_CHECK_V(nnArchive.getArchiveType() == dai::NNArchiveType::SUPERBLOB, "NNArchive type is not SUPERBLOB");
+    DAI_CHECK_V(nnArchive.getModelType() == dai::model::ModelType::SUPERBLOB, "NNArchive type is not SUPERBLOB");
     dai::OpenVINO::Blob blob = nnArchive.getSuperBlob()->getBlobWithNumShaves(numShaves);
     setBlob(blob);
 }
 
 void NeuralNetwork::setNNArchiveOther(const NNArchive& nnArchive) {
-    DAI_CHECK_V(nnArchive.getArchiveType() == dai::NNArchiveType::OTHER, "NNArchive type is not OTHER");
     setModelPath(nnArchive.getModelPath().value());
 }
 

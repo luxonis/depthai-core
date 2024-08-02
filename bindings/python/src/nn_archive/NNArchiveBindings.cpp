@@ -87,7 +87,7 @@ void NNArchiveBindings::bind(pybind11::module& m, void* pCallstack) {
     nnArchive.def("getSuperBlob", &NNArchive::getSuperBlob, DOC(dai, NNArchive, getBlob));
     nnArchive.def("getModelPath", &NNArchive::getModelPath, DOC(dai, NNArchive, getModelPath));
     nnArchive.def("getConfig", &NNArchive::getConfig, DOC(dai, NNArchive, getConfig));
-    nnArchive.def("getArchiveType", &NNArchive::getArchiveType, DOC(dai, NNArchive, getArchiveType));
+    nnArchive.def("getModelType", &NNArchive::getModelType, DOC(dai, NNArchive, getModelType));
 
     // Bind NNArchive options
     nnArchiveOptions.def(py::init<>());

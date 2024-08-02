@@ -12,15 +12,19 @@ namespace node {
 
 void DetectionParser::setNNArchive(const NNArchive& nnArchive) {
     constexpr int DEFAULT_SUPERBLOB_NUM_SHAVES = 8;
-    switch(nnArchive.getArchiveType()) {
-        case dai::NNArchiveType::BLOB:
+    switch(nnArchive.getModelType()) {
+        case dai::model::ModelType::BLOB:
             setNNArchiveBlob(nnArchive);
             break;
-        case dai::NNArchiveType::SUPERBLOB:
+        case dai::model::ModelType::SUPERBLOB:
             setNNArchiveSuperblob(nnArchive, DEFAULT_SUPERBLOB_NUM_SHAVES);
             break;
-        case dai::NNArchiveType::OTHER:
+        case dai::model::ModelType::DLC:
+        case dai::model::ModelType::OTHER:
             setNNArchiveOther(nnArchive);
+            break;
+        case dai::model::ModelType::NNARCHIVE:
+            DAI_CHECK_V(false, "NNArchive inside NNArchive is not supported. Please unpack the inner archive first.");
             break;
     }
 }
@@ -28,17 +32,6 @@ void DetectionParser::setNNArchive(const NNArchive& nnArchive) {
 const NNArchiveConfig& DetectionParser::getNNArchiveConfig() const {
     DAI_CHECK_V(archiveConfig.has_value(), "NNArchiveConfig is not set. Use setNNArchive(...) first.");
     return archiveConfig.value();
-}
-
-void DetectionParser::setFromModelZoo(NNModelDescription description, bool useCached) {
-    // Set platform if not set
-    if(description.platform.empty()) {
-        DAI_CHECK(getDevice() != nullptr, "Device is not set. Use setDevice(...) first.");
-        description.platform = getDevice()->getPlatformAsString();
-    }
-    auto archivePath = getModelFromZoo(description, useCached);
-    NNArchive archive(archivePath);
-    setNNArchive(archive);
 }
 
 void DetectionParser::setConfig(const dai::NNArchiveConfig& config) {
@@ -95,19 +88,18 @@ void DetectionParser::setConfig(const dai::NNArchiveConfig& config) {
 }
 
 void DetectionParser::setNNArchiveBlob(const NNArchive& nnArchive) {
-    DAI_CHECK_V(nnArchive.getArchiveType() == dai::NNArchiveType::BLOB, "NNArchive type is not BLOB");
+    DAI_CHECK_V(nnArchive.getModelType() == dai::model::ModelType::BLOB, "NNArchive type is not BLOB");
     setConfig(nnArchive.getConfig());
     setBlob(nnArchive.getBlob().value());
 }
 
 void DetectionParser::setNNArchiveSuperblob(const NNArchive& nnArchive, int numShaves) {
-    DAI_CHECK_V(nnArchive.getArchiveType() == dai::NNArchiveType::SUPERBLOB, "NNArchive type is not SUPERBLOB");
+    DAI_CHECK_V(nnArchive.getModelType() == dai::model::ModelType::SUPERBLOB, "NNArchive type is not SUPERBLOB");
     setConfig(nnArchive.getConfig());
     setBlob(nnArchive.getSuperBlob()->getBlobWithNumShaves(numShaves));
 }
 
 void DetectionParser::setNNArchiveOther(const NNArchive& nnArchive) {
-    DAI_CHECK_V(nnArchive.getArchiveType() == dai::NNArchiveType::OTHER, "NNArchive type is not OTHER");
     setConfig(nnArchive.getConfig());
 }
 
