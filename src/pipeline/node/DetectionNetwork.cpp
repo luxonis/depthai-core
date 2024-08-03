@@ -9,13 +9,13 @@
 
 // internal
 #include "depthai/capabilities/ImgFrameCapability.hpp"
+#include "depthai/modelzoo/Zoo.hpp"
 #include "depthai/nn_archive/NNArchive.hpp"
 #include "nn_archive/NNArchiveConfig.hpp"
 #include "pipeline/DeviceNodeGroup.hpp"
 #include "utility/ArchiveUtil.hpp"
 #include "utility/ErrorMacros.hpp"
 #include "utility/PimplImpl.hpp"
-#include "depthai/modelzoo/Zoo.hpp"
 
 namespace dai {
 namespace node {

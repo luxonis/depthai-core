@@ -4,11 +4,10 @@
 
 #include "../../utility/ErrorMacros.hpp"
 #include "depthai/common/DetectionNetworkType.hpp"
+#include "depthai/modelzoo/Zoo.hpp"
 #include "nn_archive/NNArchive.hpp"
 #include "openvino/BlobReader.hpp"
 #include "openvino/OpenVINO.hpp"
-#include "depthai/modelzoo/Zoo.hpp"
-
 
 namespace dai {
 namespace node {
@@ -75,7 +74,6 @@ void SpatialDetectionNetwork::setNNArchive(const NNArchive& nnArchive, int numSh
 }
 
 void SpatialDetectionNetwork::setFromModelZoo(NNModelDescription description, bool useCached) {
-
     // Download model from zoo
     if(description.platform.empty()) {
         DAI_CHECK(getDevice() != nullptr, "Device is not set. Use setDevice(...) first.");

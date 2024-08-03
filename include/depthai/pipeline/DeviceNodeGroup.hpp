@@ -9,8 +9,7 @@ namespace dai {
 
 class DeviceNodeGroup : public DeviceNode {
    public:
-
-    const char *getName() const final {
+    const char* getName() const final {
         return "DeviceNodeGroup";
     }
 

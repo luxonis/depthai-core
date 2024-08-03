@@ -68,7 +68,7 @@ TEST_CASE("DetectionNetwork throws when passed the OTHER NNArchive type") {
     }
     SECTION("setModelPath") {
         REQUIRE_NOTHROW(nn->setModelPath(archivePath));
-    }   
+    }
 }
 
 TEST_CASE("DetectionNetwork sets device for all subnodes") {
