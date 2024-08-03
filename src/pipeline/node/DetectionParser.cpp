@@ -38,7 +38,7 @@ void DetectionParser::setModelPath(const dai::Path& modelPath) {
         case model::ModelType::OTHER:
             break;  // Just do nothing
         case model::ModelType::NNARCHIVE:
-            setNNArchive(dai::NNArchive(modelPath));
+            setNNArchive(dai::NNArchive(modelPath.string()));
             break;
         default:
             DAI_CHECK_V(false, "Unknown model type");
