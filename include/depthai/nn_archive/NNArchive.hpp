@@ -71,10 +71,6 @@ class NNArchive {
     model::ModelType getModelType() const;
 
    private:
-    // Helper functions:
-    // Check what kind of archive is read
-    static model::ModelType readModelType(const std::string& modelPathInArchive);
-
     // Read model from archive
     std::vector<uint8_t> readModelFromArchive(const std::string& archivePath, const std::string& modelPathInArchive) const;
 
