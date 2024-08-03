@@ -277,7 +277,6 @@ set(TARGET_CORE_SOURCES
     src/pipeline/AssetManager.cpp
     src/pipeline/MessageQueue.cpp
     src/pipeline/Node.cpp
-    src/pipeline/DeviceNodeGroup.cpp
     src/pipeline/InputQueue.cpp
     src/pipeline/ThreadedNode.cpp
     src/pipeline/DeviceNode.cpp
