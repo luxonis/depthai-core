@@ -31,7 +31,7 @@ void DetectionParser::setNNArchive(const NNArchive& nnArchive) {
 }
 
 void DetectionParser::setModelPath(const dai::Path& modelPath) {
-    switch(model::readModelType(modelPath)) {
+    switch(model::readModelType(modelPath.string())) {
         case model::ModelType::BLOB:
         case model::ModelType::SUPERBLOB:
         case model::ModelType::DLC:

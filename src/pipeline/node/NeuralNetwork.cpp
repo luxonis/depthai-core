@@ -112,7 +112,7 @@ void NeuralNetwork::setBlob(OpenVINO::Blob blob) {
 }
 
 void NeuralNetwork::setModelPath(const dai::Path& modelPath) {
-    switch(model::readModelType(modelPath)) {
+    switch(model::readModelType(modelPath.string())) {
         case model::ModelType::BLOB:
             setBlob(OpenVINO::Blob(modelPath.string()));
             break;
