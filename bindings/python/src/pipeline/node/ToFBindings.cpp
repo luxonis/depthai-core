@@ -41,7 +41,15 @@ void bind_tof(pybind11::module& m, void* pCallstack){
         .def_readonly("amplitude", &ToF::amplitude, DOC(dai, node, ToF, amplitude), DOC(dai, node, ToF, amplitude))
         .def_readonly("intensity", &ToF::intensity, DOC(dai, node, ToF, intensity), DOC(dai, node, ToF, intensity))
         .def_readonly("error", &ToF::error, DOC(dai, node, ToF, error), DOC(dai, node, ToF, error))
-        .def_readonly("initialConfig", &ToF::initialConfig, DOC(dai, node, ToF, initialConfig), DOC(dai, node, ToF, initialConfig))
+        .def_property("initialConfig",
+            [](ToF& self) {
+                return self.initialConfig;
+            },
+            [](ToF& self, decltype(self.initialConfig) config) {
+                self.initialConfig = config;
+            },
+            DOC(dai, node, ToF, initialConfig)
+        )
     ;
     // ALIAS
     daiNodeModule.attr("ToF").attr("Properties") = tofProperties;

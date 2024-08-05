@@ -41,8 +41,15 @@ void bind_featuretracker(pybind11::module& m, void* pCallstack){
         .def_readonly("inputImage", &FeatureTracker::inputImage, DOC(dai, node, FeatureTracker, inputImage))
         .def_readonly("outputFeatures", &FeatureTracker::outputFeatures, DOC(dai, node, FeatureTracker, outputFeatures))
         .def_readonly("passthroughInputImage", &FeatureTracker::passthroughInputImage, DOC(dai, node, FeatureTracker, passthroughInputImage))
-        .def_readonly("initialConfig", &FeatureTracker::initialConfig, DOC(dai, node, FeatureTracker, initialConfig))
-
+        .def_property("initialConfig",
+            [](FeatureTracker& self) {
+                return self.initialConfig;
+            },
+            [](FeatureTracker& self, decltype(self.initialConfig) config) {
+                self.initialConfig = config;
+            },
+            DOC(dai, node, FeatureTracker, initialConfig)
+        )
         .def("setWaitForConfigInput", [](FeatureTracker& obj, bool wait){
             // Issue a deprecation warning
             PyErr_WarnEx(PyExc_DeprecationWarning, "Use 'inputConfig.setWaitForMessage()' instead", 1);

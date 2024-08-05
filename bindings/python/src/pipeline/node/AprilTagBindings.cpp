@@ -39,6 +39,15 @@ void bind_apriltag(pybind11::module& m, void* pCallstack){
         .def_readonly("out", &AprilTag::out, DOC(dai, node, AprilTag, out))
         .def_readonly("passthroughInputImage", &AprilTag::passthroughInputImage, DOC(dai, node, AprilTag, passthroughInputImage))
         .def_readonly("initialConfig", &AprilTag::initialConfig, DOC(dai, node, AprilTag, initialConfig))
+        .def_property("initialConfig",
+            [](AprilTag& self) {
+                return self.initialConfig;
+            },
+            [](AprilTag& self, decltype(self.initialConfig) config) {
+                self.initialConfig = config;
+            },
+            DOC(dai, node, AprilTag, initialConfig)
+        )
         .def("setWaitForConfigInput", &AprilTag::setWaitForConfigInput, py::arg("wait"), DOC(dai, node, AprilTag, setWaitForConfigInput))
         ;
 	daiNodeModule.attr("AprilTag").attr("Properties") = aprilTagProperties;

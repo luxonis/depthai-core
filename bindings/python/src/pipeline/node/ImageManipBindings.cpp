@@ -31,7 +31,15 @@ void bind_imagemanip(pybind11::module& m, void* pCallstack){
         .def_readonly("inputConfig", &ImageManip::inputConfig, DOC(dai, node, ImageManip, inputConfig))
         .def_readonly("inputImage", &ImageManip::inputImage, DOC(dai, node, ImageManip, inputImage))
         .def_readonly("out", &ImageManip::out, DOC(dai, node, ImageManip, out))
-        .def_readonly("initialConfig", &ImageManip::initialConfig, DOC(dai, node, ImageManip, initialConfig))
+        .def_property("initialConfig",
+            [](ImageManip& self) {
+                return self.initialConfig;
+            },
+            [](ImageManip& self, decltype(self.initialConfig) config) {
+                self.initialConfig = config;
+            },
+            DOC(dai, node, ImageManip, initialConfig)
+        )
         // setters
 
         .def("setCropRect", [](ImageManip& im, float xmin, float ymin, float xmax, float ymax) {

@@ -39,8 +39,15 @@ void bind_spatiallocationcalculator(pybind11::module& m, void* pCallstack){
         .def_readonly("inputDepth", &SpatialLocationCalculator::inputDepth, DOC(dai, node, SpatialLocationCalculator, inputDepth))
         .def_readonly("out", &SpatialLocationCalculator::out, DOC(dai, node, SpatialLocationCalculator, out))
         .def_readonly("passthroughDepth", &SpatialLocationCalculator::passthroughDepth, DOC(dai, node, SpatialLocationCalculator, passthroughDepth))
-        .def_readonly("initialConfig", &SpatialLocationCalculator::initialConfig, DOC(dai, node, SpatialLocationCalculator, initialConfig))
-
+        .def_property("initialConfig",
+            [](SpatialLocationCalculator& self) {
+                return self.initialConfig;
+            },
+            [](SpatialLocationCalculator& self, decltype(self.initialConfig) config) {
+                self.initialConfig = config;
+            },
+            DOC(dai, node, SpatialLocationCalculator, initialConfig)
+        )
         .def("setWaitForConfigInput", [](SpatialLocationCalculator& obj, bool wait){
             // Issue a deprecation warning
             PyErr_WarnEx(PyExc_DeprecationWarning, "Use 'inputConfig.setWaitForMessage()' instead", 1);
