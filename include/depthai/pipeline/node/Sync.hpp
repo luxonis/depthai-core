@@ -15,7 +15,7 @@ namespace node {
 /**
  * @brief Sync node. Performs syncing between image frames
  */
-class Sync : public DeviceNodeCRTP<DeviceNode, Sync, SyncProperties> {
+class Sync : public DeviceNodeCRTP<DeviceNode, Sync, SyncProperties>, public HostRunnable {
    private:
     bool runOnHostVar = false;
 

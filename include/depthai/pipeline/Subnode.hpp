@@ -23,8 +23,15 @@ class Subnode {
 
             // If node is DeviceNode, copy device from parent
             if(std::dynamic_pointer_cast<DeviceNode>(node) != nullptr) {
-                auto device = dynamic_cast<DeviceNode*>(&parent)->getDevice();
-                std::dynamic_pointer_cast<DeviceNode>(node)->setDevice(device);
+                // Check if the parent is DeviceNode
+                if(dynamic_cast<DeviceNode*>(&parent) == nullptr) {
+                    if(std::dynamic_pointer_cast<HostRunnable>(node) == nullptr) {
+                        throw std::runtime_error("The parent node of a non HostRunnable DeviceNode must be a DeviceNode");
+                    }
+                } else {
+                    auto device = dynamic_cast<DeviceNode*>(&parent)->getDevice();
+                    std::dynamic_pointer_cast<DeviceNode>(node)->setDevice(device);
+                }
             }
 
             // Now that node is created, call buildInternal
