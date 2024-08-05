@@ -11,6 +11,7 @@
 #include "depthai/common/TensorInfo.hpp"
 #include "depthai/utility/VectorMemory.hpp"
 #include "depthai/utility/span.hpp"
+#include "xtensor/xmanipulation.hpp"
 
 #if defined(__clang__)
     #if __has_warning("-Wswitch-enum")
@@ -317,6 +318,100 @@ class NNData : public Buffer {
                 tensor = (tensor - it->qpZp) * it->qpScale;
             }
         }
+        return tensor;
+    }
+
+    /**
+     * Convenience function to retrieve values from a tensor
+     * @returns xt::xarray<_Ty> tensor
+     */
+    template <typename _Ty>
+    xt::xarray<_Ty> getTensor(const std::string& name, TensorInfo::StorageOrder order, bool dequantize = false) {
+        // Get tensor
+        xt::xarray<_Ty> tensor = getTensor<_Ty>(name, dequantize);
+
+        const auto it = std::find_if(tensors.begin(), tensors.end(), [&name](const TensorInfo& ti) { return ti.name == name; });
+
+        // Reshape
+        std::vector<int> fromShape = tensor.shape();
+        std::vector<int> fromOrder;
+        std::vector<int> toOrder;
+
+        int from = static_cast<int>(it->order);
+        int to = static_cast<int>(order);
+
+        while(to > 0) {
+            fromOrder.push_back(to % 10);
+            to /= 10;
+        }
+
+        while(from > 0) {
+            toOrder.push_back(from % 10);
+            from /= 10;
+        }
+
+        // Just permute
+        if(fromOrder.size() == toOrder.size()) {
+            std::vector<int> permutation;
+            for(int dim : fromOrder) {
+                auto it = std::find(toOrder.begin(), toOrder.end(), dim);
+                int index = std::distance(toOrder.begin(), it);
+                if(index == static_cast<int>(toOrder.size())) {
+                    throw std::runtime_error("Cannot permute dimensions");
+                }
+                permutation.push_back(index);
+            }
+
+            tensor = xt::transpose(tensor, permutation);
+        }
+
+        // Expand and permute
+        if(fromOrder.size() < toOrder.size()) {
+            std::vector<int> permutation;
+            std::vector<int> expansion;
+
+            for(int dim : fromOrder) {
+                auto it = std::find(toOrder.begin(), toOrder.end(), dim);
+                int index = std::distance(toOrder.begin(), it);
+                if(index != static_cast<int>(toOrder.size())) {
+                    permutation.push_back(index);
+                }
+            }
+
+            for(int i = 0; i < static_cast<int>(toOrder.size()); ++i) {
+                auto it = std::find(fromOrder.begin(), fromOrder.end(), i);
+                if(it == fromOrder.end()) {
+                    expansion.push_back(i);
+                }
+            }
+
+            tensor = xt::expand_dims(tensor, expansion);
+            tensor = xt::transpose(tensor, permutation);
+        }
+
+        // Squeeze and permute
+        if(fromOrder.size() > toOrder.size()) {
+            std::vector<int> permutation;
+            std::vector<int> squeeze;
+
+            for(int i = 0; i < static_cast<int>(fromOrder.size()); ++i) {
+                int dim = fromOrder[i];
+                auto it = std::find(toOrder.begin(), toOrder.end(), dim);
+                int index = std::distance(toOrder.begin(), it);
+                if(it == toOrder.end()) {
+                    if(tensor.shape()[i] != 1) {
+                        throw std::runtime_error("Cannot squeeze dimension with size != 1");
+                    }
+                    squeeze.push_back(i);
+                } else {
+                    permutation.push_back(index);
+                }
+            }
+
+            tensor = xt::squeeze(tensor, squeeze);
+            tensor = xt::transpose(tensor, permutation);
+        }
+
         return tensor;
     }
 
