@@ -6,6 +6,7 @@
 // project
 #include "build/version.hpp"
 #include "device/Device.hpp"
+#include "device/Version.hpp"
 #include "utility/Environment.hpp"
 #include "utility/PimplImpl.hpp"
 #include "utility/Platform.hpp"
@@ -95,6 +96,11 @@ bool DeviceGate::createSession(bool exclusive) {
                                         {"protected", exclusive}};
 
     spdlog::debug("DeviceGate createSession: {}", createSessionBody.dump());
+    auto versionAll = getAllVersion();
+    if(Version(versionAll.os) < Version(1, 19, 0)) {
+        spdlog::error("OS needs to be updated to support the new NN SDK. Please update the gate to at least 0.0.19");
+        return false;
+    }
 
     if(auto res = pimpl->cli->Post(sessionsEndpoint.c_str(), createSessionBody.dump(), "application/json")) {
         // Parse response

@@ -10,15 +10,16 @@ namespace dai {
 Version::Version(const std::string& v) : versionMajor(0), versionMinor(0), versionPatch(0), buildInfo{""} {
     // Parse string
     char buffer[256]{0};
-    if(std::sscanf(v.c_str(), "%u.%u.%u+%255s", &versionMajor, &versionMinor, &versionPatch, buffer) != 4) {
-        if(std::sscanf(v.c_str(), "%u.%u.%u", &versionMajor, &versionMinor, &versionPatch) != 3) {
-            throw std::runtime_error("Cannot parse version: " + v);
-        }
-    } else {
+    if (std::sscanf(v.c_str(), "%u.%u.%u+%255s", &versionMajor, &versionMinor, &versionPatch, buffer) == 4) {
         buildInfo = std::string{buffer};
+    } else if (std::sscanf(v.c_str(), "%u.%u.%u", &versionMajor, &versionMinor, &versionPatch) == 3) {
+        // Parsed successfully without build info
+    } else if (std::sscanf(v.c_str(), "%u.%u", &versionMajor, &versionMinor) == 2) {
+        versionPatch = 0; // Default patch version to 0 when not specified
+    } else {
+        throw std::runtime_error("Cannot parse version: " + v);
     }
 }
-
 Version::Version(unsigned vmajor, unsigned vminor, unsigned vpatch) : versionMajor(vmajor), versionMinor(vminor), versionPatch(vpatch), buildInfo{""} {}
 
 Version::Version(unsigned vmajor, unsigned vminor, unsigned vpatch, std::string buildInfo)
