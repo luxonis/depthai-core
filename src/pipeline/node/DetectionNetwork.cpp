@@ -36,9 +36,6 @@ DetectionNetwork::DetectionNetwork(const std::shared_ptr<Device>& device)
 // -------------------------------------------------------------------
 
 void DetectionNetwork::buildInternal() {
-    // Call parent's buildInternal
-    DeviceNodeGroup::buildInternal();
-
     // Default confidence threshold
     detectionParser->properties.parser.confidenceThreshold = 0.5;
     neuralNetwork->out.link(detectionParser->input);
