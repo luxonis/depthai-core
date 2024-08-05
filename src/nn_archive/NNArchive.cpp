@@ -20,6 +20,10 @@ NNArchive::NNArchive(const std::string& archivePath, NNArchiveOptions options) :
     // Read archive type
     modelType = model::readModelType(modelPathInArchive);
 
+    // Unpack model
+    unpackArchiveInDirectory(archivePath, (std::filesystem::path(archiveOptions.extractFolder()) / std::filesystem::path(archivePath).filename()).string());
+    unpackedModelPath = (std::filesystem::path(archiveOptions.extractFolder()) / std::filesystem::path(archivePath).filename() / modelPathInArchive).string();
+
     switch(modelType) {
         case model::ModelType::BLOB:
             blobPtr.reset(new OpenVINO::Blob(readModelFromArchive(archivePath, modelPathInArchive)));
@@ -29,11 +33,7 @@ NNArchive::NNArchive(const std::string& archivePath, NNArchiveOptions options) :
             break;
         case model::ModelType::DLC:
         case model::ModelType::OTHER:
-            unpackArchiveInDirectory(archivePath,
-                                     (std::filesystem::path(archiveOptions.extractFolder()) / std::filesystem::path(archivePath).filename()).string());
-            unpackedModelPath =
-                (std::filesystem::path(archiveOptions.extractFolder()) / std::filesystem::path(archivePath).filename() / modelPathInArchive).string();
-            break;
+            break;  // Just do nothing, model is already unpacked
         case model::ModelType::NNARCHIVE:
             DAI_CHECK_V(false, "NNArchive inside NNArchive is not supported. Please unpack the inner archive first.");
             break;
@@ -85,11 +85,9 @@ std::optional<std::string> NNArchive::getModelPath() const {
     switch(modelType) {
         case model::ModelType::OTHER:
         case model::ModelType::DLC:
-            return unpackedModelPath;
-            break;
         case model::ModelType::BLOB:
         case model::ModelType::SUPERBLOB:
-            return std::nullopt;
+            return unpackedModelPath;
             break;
         case model::ModelType::NNARCHIVE:
             DAI_CHECK_V(false, "NNArchive inside NNArchive is not supported. Please unpack the inner archive first.");
