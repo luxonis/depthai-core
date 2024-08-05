@@ -3,6 +3,7 @@
 #include <depthai/modelzoo/NNModelDescription.hpp>
 #include <depthai/pipeline/DeviceNodeGroup.hpp>
 #include <depthai/pipeline/Subnode.hpp>
+#include <depthai/pipeline/node/Camera.hpp>
 #include <depthai/pipeline/node/DetectionParser.hpp>
 #include <depthai/pipeline/node/NeuralNetwork.hpp>
 #include <optional>
@@ -28,6 +29,7 @@ class DetectionNetwork : public DeviceNodeGroup {
     }
 
     std::shared_ptr<DetectionNetwork> build(Node::Output& input, const NNArchive& nnArchive);
+    std::shared_ptr<DetectionNetwork> build(std::shared_ptr<Camera> input, dai::NNModelDescription modelDesc, float fps = 30.0f);
 
     Subnode<NeuralNetwork> neuralNetwork{*this, "neuralNetwork"};
     Subnode<DetectionParser> detectionParser{*this, "detectionParser"};
