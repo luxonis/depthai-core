@@ -199,12 +199,7 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
             info.id = node->id;
             info.name = node->getName();
             info.alias = node->getAlias();
-            auto parentNode = node->parentNode.lock();
-            if(parentNode) {
-                info.parentId = parentNode->id;
-            } else {
-                info.parentId = -1;
-            }
+            info.parentId = node->parentId;
             const auto& deviceNode = std::dynamic_pointer_cast<DeviceNode>(node);
             if(!deviceNode) {
                 throw std::invalid_argument(fmt::format("Node '{}' should subclass DeviceNode or have hostNode == true", info.name));
@@ -583,6 +578,7 @@ void PipelineImpl::add(std::shared_ptr<Node> node) {
         }
 
         for(auto& n : curNode->nodeMap) {
+            n->parentId = curNode->id; // Set node parent id
             search.push(n);
         }
     }

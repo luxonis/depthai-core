@@ -569,7 +569,7 @@ void Node::setNodeRefs(std::string alias, std::shared_ptr<Node>* nodeRef) {
 
 void Node::add(std::shared_ptr<Node> node) {
     // TODO(themarpe) - check if node is already added somewhere else, etc... (as in Pipeline)
-    node->parentNode = shared_from_this();
+    node->parentId = this->id;
     nodeMap.push_back(node);
 }
 

@@ -468,7 +468,9 @@ class Node : public std::enable_shared_from_this<Node> {
 
     // when Pipeline tries to serialize and construct on remote, it will check if all connected nodes are on same pipeline
     std::weak_ptr<PipelineImpl> parent;
-    std::weak_ptr<Node> parentNode;
+
+    // Node ID of the parent node
+    int parentId{-1};
 
     // used to improve error messages
     // when pipeline starts all nodes are checked
