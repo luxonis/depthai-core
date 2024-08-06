@@ -40,6 +40,7 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack){
     // Node
     spatialDetectionNetwork
         // Copied from NN node
+        .def("build", py::overload_cast<std::shared_ptr<Camera>, std::shared_ptr<StereoDepth>, NNModelDescription, float>(&SpatialDetectionNetwork::build), py::arg("input"), py::arg("stereo"), py::arg("model"), py::arg("fps") = 30.0f)
         .def("setBlobPath", &SpatialDetectionNetwork::setBlobPath, py::arg("path"), DOC(dai, node, SpatialDetectionNetwork, setBlobPath))
         .def("setNumPoolFrames", &SpatialDetectionNetwork::setNumPoolFrames, py::arg("numFrames"), DOC(dai, node, SpatialDetectionNetwork, setNumPoolFrames))
         .def("setNumInferenceThreads",

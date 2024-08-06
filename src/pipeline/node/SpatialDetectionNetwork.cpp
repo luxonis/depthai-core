@@ -33,6 +33,55 @@ void SpatialDetectionNetwork::buildInternal() {
     inputDetections.setBlocking(true);
 }
 
+std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build(std::shared_ptr<Camera> camera,
+                                                                        std::shared_ptr<StereoDepth> stereo,
+                                                                        dai::NNModelDescription modelDesc,
+                                                                        float fps) {
+    setFromModelZoo(modelDesc);
+    // Get the input size
+    auto nnArchiveConfig = detectionParser->getNNArchiveConfig().getConfigV1();
+    if(!nnArchiveConfig.has_value()) {
+        DAI_CHECK_V(false, "The DetectionNetwork.build method only supports for NNConfigV1");
+    }
+    if(nnArchiveConfig->model.inputs.size() != 1) {
+        DAI_CHECK_V(false, "Only single input model is supported");
+    }
+
+    if(nnArchiveConfig->model.inputs[0].shape.size() != 4) {
+        DAI_CHECK_V(false, "Only 4D input shape is supported");
+    }
+
+    // Check that the first two dimesions are 1 and 3
+    if(nnArchiveConfig->model.inputs[0].shape[0] != 1 || nnArchiveConfig->model.inputs[0].shape[1] != 3) {
+        DAI_CHECK_V(false, "Only 3 channel input is supported");
+    }
+    auto inputHeight = nnArchiveConfig->model.inputs[0].shape[2];
+    auto inputWidth = nnArchiveConfig->model.inputs[0].shape[3];
+
+    auto type = dai::ImgFrame::Type::BGR888p;
+    auto platform = getDevice()->getPlatform();
+    if(platform == dai::Platform::RVC2 || platform == dai::Platform::RVC3) {
+        type = dai::ImgFrame::Type::BGR888p;
+    } else if(platform == dai::Platform::RVC4) {
+        type = dai::ImgFrame::Type::BGR888i;
+    } else {
+        DAI_CHECK_V(false, "Unsupported platform");
+    }
+
+    auto cap = ImgFrameCapability();
+    cap.size.value = std::pair(inputWidth, inputHeight);
+    cap.type = type;
+    cap.fps.value = fps;
+    auto* input = camera->requestOutput(cap, false);
+    if(!input) {
+        DAI_CHECK_V(false, "Camera does not have output with requested capabilities");
+    }
+    input->link(this->input);
+    stereo->depth.link(this->inputDepth);
+    stereo->setDepthAlign(camera->getBoardSocket());
+    return std::static_pointer_cast<SpatialDetectionNetwork>(shared_from_this());
+}
+
 // -------------------------------------------------------------------
 // Neural Network API
 // -------------------------------------------------------------------
