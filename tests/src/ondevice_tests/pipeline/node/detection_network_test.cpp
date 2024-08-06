@@ -15,7 +15,12 @@ TEST_CASE("DetectionNetwork can load BLOB properly") {
 
     // Load NNArchive
     dai::NNArchive nnArchive(archivePath);
-    REQUIRE_NOTHROW(nn->setNNArchive(nnArchive));
+    SECTION("setNNArchive") {
+        REQUIRE_NOTHROW(nn->setNNArchive(nnArchive));
+    }
+    SECTION("setModelPath") {
+        REQUIRE_NOTHROW(nn->setModelPath(archivePath));
+    }
 
     // Network loads classes
     REQUIRE(nn->getClasses().has_value());
@@ -38,10 +43,14 @@ TEST_CASE("DetectionNetwork can load SUPERBLOB properly") {
 
     // Load NNArchive
     dai::NNArchive nnArchive(archivePath);
-    REQUIRE_NOTHROW(nn->setNNArchive(nnArchive));
-
-    // Does not throw if number of shaves is specified
-    REQUIRE_NOTHROW(nn->setNNArchive(nnArchive, 6));
+    SECTION("setNNArchive") {
+        REQUIRE_NOTHROW(nn->setNNArchive(nnArchive));
+        // Does not throw if number of shaves is specified
+        REQUIRE_NOTHROW(nn->setNNArchive(nnArchive, 6));
+    }
+    SECTION("setModelPath") {
+        REQUIRE_NOTHROW(nn->setModelPath(archivePath));
+    }
 }
 
 TEST_CASE("DetectionNetwork throws when passed the OTHER NNArchive type") {
@@ -53,6 +62,22 @@ TEST_CASE("DetectionNetwork throws when passed the OTHER NNArchive type") {
 
     // Load NNArchive
     dai::NNArchive nnArchive(archivePath);
-    REQUIRE_THROWS(nn->setNNArchive(nnArchive));
-    REQUIRE_THROWS(nn->setNNArchive(nnArchive, 6));
+    SECTION("setNNArchive") {
+        REQUIRE_NOTHROW(nn->setNNArchive(nnArchive));
+        REQUIRE_THROWS(nn->setNNArchive(nnArchive, 6));
+    }
+    SECTION("setModelPath") {
+        REQUIRE_NOTHROW(nn->setModelPath(archivePath));
+    }
+}
+
+TEST_CASE("DetectionNetwork sets device for all subnodes") {
+    // Create pipeline
+    dai::Pipeline p;
+    auto nn = p.create<dai::node::DetectionNetwork>();
+    auto pipelineDevice = p.getDefaultDevice();
+
+    // Check that device is set for all subnodes
+    REQUIRE(nn->neuralNetwork->getDevice() == pipelineDevice);
+    REQUIRE(nn->detectionParser->getDevice() == pipelineDevice);
 }

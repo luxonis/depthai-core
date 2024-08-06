@@ -310,6 +310,7 @@ void downloadModelsFromZoo(const std::string& path, const std::string& cacheDire
         }
     }
 }
+
 }  // namespace dai
 
 #else

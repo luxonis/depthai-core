@@ -23,6 +23,13 @@ class DeviceNode : public ThreadedNode {
         return false;
     }
 
+    /**
+     * @brief Get device for this node
+     *
+     * @return shared pointer to device
+     */
+    const std::shared_ptr<Device> getDevice() const;
+
     copyable_unique_ptr<Properties> propertiesHolder;
 
     // Get properties
@@ -31,6 +38,16 @@ class DeviceNode : public ThreadedNode {
    protected:
     DeviceNode(const std::shared_ptr<Device>& device, std::unique_ptr<Properties> props, bool conf);
     DeviceNode(std::unique_ptr<Properties> props, bool conf);
+
+    template <typename T>
+    friend class Subnode;
+
+    /**
+     * @brief Set device for this node
+     *
+     * @param device: shared pointer to device
+     */
+    void setDevice(std::shared_ptr<Device> device);
 };
 
 // Node CRTP class
@@ -51,7 +68,9 @@ class DeviceNodeCRTP : public Base {
     // No public constructor, only a factory function.
     template <typename... Args>
     [[nodiscard]] static std::shared_ptr<Derived> create(Args&&... args) {
-        return std::make_shared<Derived>(std::forward(args)...);
+        auto nodePtr = std::shared_ptr<Derived>(new Derived(std::forward<Args>(args)...));
+        nodePtr->buildInternal();
+        return nodePtr;
     }
 
     // No public constructor, only a factory function.

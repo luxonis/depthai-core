@@ -10,6 +10,7 @@
 #include "depthai/pipeline/node/host/XLinkOutHost.hpp"
 #include "depthai/utility/Initialization.hpp"
 #include "pipeline/datatype/ImgFrame.hpp"
+#include "pipeline/node/DetectionNetwork.hpp"
 #include "utility/Compression.hpp"
 #include "utility/Environment.hpp"
 #include "utility/HolisticRecordReplay.hpp"
@@ -185,7 +186,7 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
     // Loop over all nodes, and add them to schema
     for(const auto& node : getAllNodes()) {
         // const auto& node = kv.second;
-        if(std::string(node->getName()) == std::string("NodeGroup")) {
+        if(std::string(node->getName()) == std::string("NodeGroup") || std::string(node->getName()) == std::string("DeviceNodeGroup")) {
             continue;
         }
         // Check if its a host node or device node
@@ -198,12 +199,7 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
             info.id = node->id;
             info.name = node->getName();
             info.alias = node->getAlias();
-            auto parentNode = node->parentNode.lock();
-            if(parentNode) {
-                info.parentId = parentNode->id;
-            } else {
-                info.parentId = -1;
-            }
+            info.parentId = node->parentId;
             const auto& deviceNode = std::dynamic_pointer_cast<DeviceNode>(node);
             if(!deviceNode) {
                 throw std::invalid_argument(fmt::format("Node '{}' should subclass DeviceNode or have hostNode == true", info.name));
@@ -582,6 +578,7 @@ void PipelineImpl::add(std::shared_ptr<Node> node) {
         }
 
         for(auto& n : curNode->nodeMap) {
+            n->parentId = curNode->id;  // Set node parent id
             search.push(n);
         }
     }

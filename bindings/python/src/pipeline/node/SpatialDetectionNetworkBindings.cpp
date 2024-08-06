@@ -40,6 +40,7 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack){
     // Node
     spatialDetectionNetwork
         // Copied from NN node
+        .def("build", py::overload_cast<std::shared_ptr<Camera>, std::shared_ptr<StereoDepth>, NNModelDescription, float>(&SpatialDetectionNetwork::build), py::arg("input"), py::arg("stereo"), py::arg("model"), py::arg("fps") = 30.0f)
         .def("setBlobPath", &SpatialDetectionNetwork::setBlobPath, py::arg("path"), DOC(dai, node, SpatialDetectionNetwork, setBlobPath))
         .def("setNumPoolFrames", &SpatialDetectionNetwork::setNumPoolFrames, py::arg("numFrames"), DOC(dai, node, SpatialDetectionNetwork, setNumPoolFrames))
         .def("setNumInferenceThreads",
@@ -53,6 +54,7 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack){
         .def("getNumInferenceThreads", &SpatialDetectionNetwork::getNumInferenceThreads, DOC(dai, node, SpatialDetectionNetwork, getNumInferenceThreads))
         .def("setNNArchive", py::overload_cast<const NNArchive&>(&SpatialDetectionNetwork::setNNArchive), py::arg("archive"), DOC(dai, node, SpatialDetectionNetwork, setNNArchive))
         .def("setNNArchive", py::overload_cast<const NNArchive&, int>(&SpatialDetectionNetwork::setNNArchive), py::arg("archive"), py::arg("numShaves"), DOC(dai, node, SpatialDetectionNetwork, setNNArchive))
+        .def("setFromModelZoo", py::overload_cast<NNModelDescription, bool>(&SpatialDetectionNetwork::setFromModelZoo), py::arg("description"), py::arg("useCached"), DOC(dai, node, SpatialDetectionNetwork, setFromModelZoo))
         .def("setBlob",
              py::overload_cast<dai::OpenVINO::Blob>(&SpatialDetectionNetwork::setBlob),
              py::arg("blob"),

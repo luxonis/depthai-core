@@ -13,9 +13,8 @@ Spatial Tiny-yolo example
   Can be used for tiny-yolo-v3 or tiny-yolo-v4 networks
 '''
 
-modelDescription = dai.NNModelDescription(modelSlug="yolov6n", platform="RVC2")
-archivePath = dai.getModelFromZoo(modelDescription, useCached=True)
-
+modelDescription = dai.NNModelDescription(modelSlug="yolov6n")
+FPS = 30
 
 class SpatialVisualizer(dai.node.HostNode):
     def __init__(self):
@@ -24,7 +23,7 @@ class SpatialVisualizer(dai.node.HostNode):
     def build(self, depth:dai.Node.Output, detections: dai.Node.Output, rgb: dai.Node.Output):
         self.link_args(depth, detections, rgb) # Must match the inputs to the process method
 
-    def process(self, depthPreview: dai.ImgFrame, detections: dai.ImgDetections, rgbPreview: dai.ImgFrame):
+    def process(self, depthPreview, detections, rgbPreview):
         depthPreview = depthPreview.getCvFrame()
         rgbPreview = rgbPreview.getCvFrame()
         depthFrameColor = self.processDepthFrame(depthPreview)
@@ -79,48 +78,28 @@ class SpatialVisualizer(dai.node.HostNode):
 # Creates the pipeline and a default device implicitly
 with dai.Pipeline() as p:
     # Define sources and outputs
-    camRgb = p.create(dai.node.ColorCamera)
-    spatialDetectionNetwork = p.create(dai.node.YoloSpatialDetectionNetwork)
-    monoLeft = p.create(dai.node.MonoCamera)
-    monoRight = p.create(dai.node.MonoCamera)
+    camRgb = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
+    monoLeft = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
+    monoRight = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C)
     stereo = p.create(dai.node.StereoDepth)
+    spatialDetectionNetwork = p.create(dai.node.SpatialDetectionNetwork).build(camRgb, stereo, modelDescription, fps=FPS)
     visualizer = p.create(SpatialVisualizer)
-
-    # Archive
-    archive = dai.NNArchive(archivePath)
-    h, w = archive.getConfig().getConfigV1().model.inputs[0].shape[-2:]
-
-    # Properties
-    camRgb.setPreviewSize(w, h)
-    camRgb.setResolution(dai.ColorCameraProperties.SensorResolution.THE_1080_P)
-    camRgb.setInterleaved(False)
-    camRgb.setColorOrder(dai.ColorCameraProperties.ColorOrder.BGR)
-
-    monoLeft.setResolution(dai.MonoCameraProperties.SensorResolution.THE_400_P)
-    monoLeft.setCamera("left")
-    monoRight.setResolution(dai.MonoCameraProperties.SensorResolution.THE_400_P)
-    monoRight.setCamera("right")
 
     # setting node configs
     stereo.setDefaultProfilePreset(dai.node.StereoDepth.PresetMode.HIGH_DENSITY)
-    # Align depth map to the perspective of RGB camera, on which inference is done
-    stereo.setDepthAlign(dai.CameraBoardSocket.CAM_A)
-    stereo.setOutputSize(monoLeft.getResolutionWidth(), monoLeft.getResolutionHeight())
-    stereo.setSubpixel(False)
+    stereo.setExtendedDisparity(True)
+    stereo.setOutputSize(640, 400)
 
-    spatialDetectionNetwork.setNNArchive(archive, numShaves=6)
     spatialDetectionNetwork.input.setBlocking(False)
     spatialDetectionNetwork.setBoundingBoxScaleFactor(0.5)
     spatialDetectionNetwork.setDepthLowerThreshold(100)
     spatialDetectionNetwork.setDepthUpperThreshold(5000)
 
     # Linking
-    monoLeft.out.link(stereo.left)
-    monoRight.out.link(stereo.right)
-    stereo.depth.link(spatialDetectionNetwork.inputDepth)
-    camRgb.preview.link(spatialDetectionNetwork.input)
+    monoLeft.requestOutput((640, 400)).link(stereo.left)
+    monoRight.requestOutput((640, 400)).link(stereo.right)
     visualizer.labelMap = spatialDetectionNetwork.getClasses()
 
-    visualizer.build(stereo.depth, spatialDetectionNetwork.out, camRgb.preview)
+    visualizer.build(stereo.depth, spatialDetectionNetwork.out, spatialDetectionNetwork.passthrough)
 
     p.run()

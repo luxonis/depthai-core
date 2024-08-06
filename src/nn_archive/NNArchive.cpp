@@ -1,6 +1,7 @@
 #include "depthai/nn_archive/NNArchive.hpp"
 
 // internal private
+#include "common/ModelType.hpp"
 #include "utility/ArchiveUtil.hpp"
 #include "utility/ErrorMacros.hpp"
 
@@ -17,20 +18,24 @@ NNArchive::NNArchive(const std::string& archivePath, NNArchiveOptions options) :
     std::string modelPathInArchive = archiveConfigPtr->getConfigV1()->model.metadata.path;
 
     // Read archive type
-    archiveType = readArchiveType(modelPathInArchive);
+    modelType = model::readModelType(modelPathInArchive);
 
-    switch(archiveType) {
-        case NNArchiveType::BLOB:
+    // Unpack model
+    unpackArchiveInDirectory(archivePath, (std::filesystem::path(archiveOptions.extractFolder()) / std::filesystem::path(archivePath).filename()).string());
+    unpackedModelPath = (std::filesystem::path(archiveOptions.extractFolder()) / std::filesystem::path(archivePath).filename() / modelPathInArchive).string();
+
+    switch(modelType) {
+        case model::ModelType::BLOB:
             blobPtr.reset(new OpenVINO::Blob(readModelFromArchive(archivePath, modelPathInArchive)));
             break;
-        case NNArchiveType::SUPERBLOB:
+        case model::ModelType::SUPERBLOB:
             superblobPtr.reset(new OpenVINO::SuperBlob(readModelFromArchive(archivePath, modelPathInArchive)));
             break;
-        case NNArchiveType::OTHER:
-            unpackArchiveInDirectory(archivePath,
-                                     (std::filesystem::path(archiveOptions.extractFolder()) / std::filesystem::path(archivePath).filename()).string());
-            unpackedModelPath =
-                (std::filesystem::path(archiveOptions.extractFolder()) / std::filesystem::path(archivePath).filename() / modelPathInArchive).string();
+        case model::ModelType::DLC:
+        case model::ModelType::OTHER:
+            break;  // Just do nothing, model is already unpacked
+        case model::ModelType::NNARCHIVE:
+            DAI_CHECK_V(false, "NNArchive inside NNArchive is not supported. Please unpack the inner archive first.");
             break;
         default:
             DAI_CHECK(false, "Unknown archive type");
@@ -39,13 +44,17 @@ NNArchive::NNArchive(const std::string& archivePath, NNArchiveOptions options) :
 }
 
 std::optional<OpenVINO::Blob> NNArchive::getBlob() const {
-    switch(archiveType) {
-        case NNArchiveType::BLOB:
+    switch(modelType) {
+        case model::ModelType::BLOB:
             return *blobPtr;
             break;
-        case NNArchiveType::SUPERBLOB:
-        case NNArchiveType::OTHER:
+        case model::ModelType::SUPERBLOB:
+        case model::ModelType::DLC:
+        case model::ModelType::OTHER:
             return std::nullopt;
+            break;
+        case model::ModelType::NNARCHIVE:
+            DAI_CHECK_V(false, "NNArchive inside NNArchive is not supported. Please unpack the inner archive first.");
             break;
         default:
             DAI_CHECK(false, "Unknown archive type");
@@ -54,13 +63,17 @@ std::optional<OpenVINO::Blob> NNArchive::getBlob() const {
 }
 
 std::optional<OpenVINO::SuperBlob> NNArchive::getSuperBlob() const {
-    switch(archiveType) {
-        case NNArchiveType::SUPERBLOB:
+    switch(modelType) {
+        case model::ModelType::SUPERBLOB:
             return *superblobPtr;
             break;
-        case NNArchiveType::BLOB:
-        case NNArchiveType::OTHER:
+        case model::ModelType::BLOB:
+        case model::ModelType::OTHER:
+        case model::ModelType::DLC:
             return std::nullopt;
+            break;
+        case model::ModelType::NNARCHIVE:
+            DAI_CHECK_V(false, "NNArchive inside NNArchive is not supported. Please unpack the inner archive first.");
             break;
         default:
             DAI_CHECK(false, "Unknown archive type");
@@ -69,13 +82,15 @@ std::optional<OpenVINO::SuperBlob> NNArchive::getSuperBlob() const {
 }
 
 std::optional<std::string> NNArchive::getModelPath() const {
-    switch(archiveType) {
-        case NNArchiveType::OTHER:
+    switch(modelType) {
+        case model::ModelType::OTHER:
+        case model::ModelType::DLC:
+        case model::ModelType::BLOB:
+        case model::ModelType::SUPERBLOB:
             return unpackedModelPath;
             break;
-        case NNArchiveType::BLOB:
-        case NNArchiveType::SUPERBLOB:
-            return std::nullopt;
+        case model::ModelType::NNARCHIVE:
+            DAI_CHECK_V(false, "NNArchive inside NNArchive is not supported. Please unpack the inner archive first.");
             break;
         default:
             DAI_CHECK(false, "Unknown archive type");
@@ -83,23 +98,12 @@ std::optional<std::string> NNArchive::getModelPath() const {
     }
 }
 
-NNArchiveType NNArchive::getArchiveType() const {
-    return archiveType;
+model::ModelType NNArchive::getModelType() const {
+    return modelType;
 }
 
 const NNArchiveConfig& NNArchive::getConfig() const {
     return *archiveConfigPtr;
-}
-
-NNArchiveType NNArchive::readArchiveType(const std::string& modelPathInArchive) {
-    auto endsWith = [](const std::string& path, const std::string& ending) {
-        if(ending.size() > path.size()) return false;
-        return std::equal(ending.rbegin(), ending.rend(), path.rbegin());
-    };
-
-    if(endsWith(modelPathInArchive, ".blob")) return NNArchiveType::BLOB;
-    if(endsWith(modelPathInArchive, ".superblob")) return NNArchiveType::SUPERBLOB;
-    return NNArchiveType::OTHER;
 }
 
 std::vector<uint8_t> NNArchive::readModelFromArchive(const std::string& archivePath, const std::string& modelPathInArchive) const {

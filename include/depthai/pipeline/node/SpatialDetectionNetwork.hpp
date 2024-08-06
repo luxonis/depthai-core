@@ -1,7 +1,10 @@
 #pragma once
 
 #include <depthai/pipeline/DeviceNode.hpp>
+#include <depthai/pipeline/Subnode.hpp>
+#include <depthai/pipeline/node/Camera.hpp>
 #include <depthai/pipeline/node/DetectionNetwork.hpp>
+#include <depthai/pipeline/node/StereoDepth.hpp>
 
 #include "depthai/openvino/OpenVINO.hpp"
 
@@ -35,6 +38,11 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
           passthrough{neuralNetwork->passthrough} {};
 
     constexpr static const char* NAME = "SpatialDetectionNetwork";
+    std::shared_ptr<SpatialDetectionNetwork> build(std::shared_ptr<Camera> inputRgb,
+                                                   std::shared_ptr<StereoDepth> stereo,
+                                                   dai::NNModelDescription modelDesc,
+                                                   float fps = 30.0f);
+
     Subnode<NeuralNetwork> neuralNetwork{*this, "neuralNetwork"};
     Subnode<DetectionParser> detectionParser{*this, "detectionParser"};
 
@@ -103,6 +111,14 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
      * @param nnArchive: NNArchive to set
      */
     void setNNArchive(const NNArchive& nnArchive);
+
+    /**
+     * @brief Download model from zoo and set it for this Node
+     *
+     * @param description: Model description to download
+     * @param useCached: Use cached model if available
+     */
+    void setFromModelZoo(NNModelDescription description, bool useCached = true);
 
     /**
      * @brief Set NNArchive for this Node, throws if the archive's type is not SUPERBLOB

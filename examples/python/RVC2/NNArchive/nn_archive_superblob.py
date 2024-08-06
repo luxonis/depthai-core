@@ -14,14 +14,16 @@ archivePath = dai.getModelFromZoo(modelDescription, useCached=True)
 archive = dai.NNArchive(archivePath)
 
 # Archive knows it is a blob archive
-assert archive.getArchiveType() == dai.NNArchiveType.SUPERBLOB
+assert archive.getModelType() == dai.ModelType.SUPERBLOB
 
-# Therefore, only getSuperBlob() is available
+# Therefore, getSuperBlob() is available
 assert archive.getSuperBlob() is not None
 
-# There is no blob or modelpath available
+# The archive is unpacked and thus a path to the superblob model is also available
+assert archive.getModelPath() is not None
+
+# There is no blob available
 assert archive.getBlob() is None
-assert archive.getModelPath() is None
 
 # One can access the NNArchive config as follows
 config = archive.getConfig()

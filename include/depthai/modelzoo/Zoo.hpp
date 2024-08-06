@@ -26,4 +26,5 @@ std::string getModelFromZoo(const NNModelDescription& modelDescription,
  * @param verbose: Print verbose output, default is false
  */
 void downloadModelsFromZoo(const std::string& path, const std::string& cacheDirectory = MODEL_ZOO_DEFAULT_CACHE_DIRECTORY);
+
 }  // namespace dai
