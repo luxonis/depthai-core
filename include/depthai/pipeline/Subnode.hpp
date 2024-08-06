@@ -17,7 +17,7 @@ class Subnode {
             // Create node as well
             node = std::make_shared<T>();
             node->setAlias(alias);
-            
+
             // Add node to parents map
             parent.nodeMap.push_back(node);
 

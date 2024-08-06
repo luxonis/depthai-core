@@ -21,7 +21,6 @@ class TestHelper {
 };
 }  // namespace
 
-
 TEST_CASE("NNArchive loads a BLOB properly") {
     dai::NNArchive nnArchive(BLOB_ARCHIVE_PATH);
 

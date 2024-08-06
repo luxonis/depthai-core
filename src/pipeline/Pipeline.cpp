@@ -578,7 +578,7 @@ void PipelineImpl::add(std::shared_ptr<Node> node) {
         }
 
         for(auto& n : curNode->nodeMap) {
-            n->parentId = curNode->id; // Set node parent id
+            n->parentId = curNode->id;  // Set node parent id
             search.push(n);
         }
     }
