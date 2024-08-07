@@ -14,6 +14,8 @@
 #include "depthai/common/FrameEvent.hpp"
 #include "depthai/common/ImgTransformations.hpp"
 #include "depthai/common/Rect.hpp"
+#include "depthai/utility/ProtoSerializable.hpp"
+#include "depthai/utility/protos/ImgFrame.pb.h"
 
 // optional
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
@@ -25,7 +27,7 @@ namespace dai {
 /**
  * ImgFrame message. Carries image data and metadata.
  */
-class ImgFrame : public Buffer {
+class ImgFrame : public Buffer, public utility::ProtoSerializable {
    public:
     using Buffer::getTimestamp;
     using Buffer::getTimestampDevice;
@@ -81,6 +83,81 @@ class ImgFrame : public Buffer {
         metadata = utility::serialize(*this);
         datatype = DatatypeEnum::ImgFrame;
     };
+
+    google::protobuf::Message* getProtoMessage() const override
+        //create and populate ImgFrame protobuf message
+        proto::ImgFrame imgFrame;
+        
+        proto::Timestamp ts;
+        ts.set_sec(this->ts.sec);
+        ts.set_ns(this->ts.sec);
+        imgFrame->set_ts(ts);
+        
+        proto::Timestamp tsDevice;
+        tsDevice.set_sec(this->tsDevice.sec);
+        tsDevice.set_ns(this->tsDevice.nsec);
+        imgFrame->set_tsDevice(tsDevice);
+
+        imgFrame->set_sequenceNum(this->sequenceNum);
+
+        proto::FrameSpecs fb;
+        fb.set_type(static_cast<proto::Specs.Type>(this->fb.type));
+        fb.set_width(this->fb.width);
+        fb.set_height(this->fb.height);
+        fb.set_stride(this->fb.stride);
+        fb.set_bytesPP(this->fb.bytesPP);
+        fb.set_p1Offset(this->fb.p1Offset);
+        fb.set_p2Offset(this->fb.p2Offset);
+        fb.set_p3Offset(this->fb.p3Offset);
+        imgFrame->set_fb(fb);
+
+        proto::FrameSpecs sourceFb;
+        sourceFb.set_type(static_cast<proto::Specs.Type>(this->sourceFb.type));
+        sourceFb.set_width(this->sourceFb.width);
+        sourceFb.set_height(this->sourceFb.height);
+        sourceFb.set_stride(this->sourceFb.stride);
+        sourceFb.set_bytesPP(this->sourceFb.bytesPP);
+        sourceFb.set_p1Offset(this->sourceFb.p1Offset);
+        sourceFb.set_p2Offset(this->sourceFb.p2Offset);
+        sourceFb.set_p3Offset(this->sourceFb.p3Offset);
+        imgFrame->set_sourceFb(sourceFb);
+
+        proto::CameraSettings cam;
+        cam.set_exposureTimeUs(this->cam.exposureTimeUs);
+        cam.set_sensitivityIsos(this->cam.sensitivityIso);
+        cam.set_lensPosition(this->cam.lensPosition);
+        cam.set_wbColorTemp(this->cam.wbColorTemp);
+        cam.set_lensPositionRaw(this->cam.lensPositionRaw);
+        imgFrame->set_cam(cam);
+
+        imgFrame.set_HFovDegrees(this->HFovDegrees);
+
+        imgFrame.set_instanceNum(this->instanceNum);
+
+        proto::ImgTransformations transformations;
+        for (const auto& transformation : this->transformations.transformations) {
+            proto::ImgTransformation transformationProto = transformations.add_transformations();
+
+            transformationProto.set_transformationType(static_cast<proto::Transformation.Type>(transformation.type));
+            transformationProto.set_topLeftCropX(transformation.topLeftCropX);
+            transformationProto.set_topLeftCropY(transformation.topLeftCropY);
+            transformationProto.set_bottomRightCropX(transformation.bottomRightCropX);
+            transformationProto.set_bottomRightCropY(transformation.bottomRightCropY);
+            transformationProto.set_topPadding(transformation.topPadding);
+            transformationProto.set_bottomPadding(transformation.bottomPadding);
+            transformationProto.set_leftPadding(transformation.leftPadding);
+            transformationProto.set_rightPadding(transformation.rightPadding);
+            transformationProto.set_afterTransformWidth(transformation.afterTransformWidth);
+            transformationProto.set_afterTransformHeight(transformation.afterTransformHeight);
+            transformationProto.set_beforeTransformWidth(transformation.beforeTransformWidth);
+            transformationProto.set_beforeTransformHeight(transformation.beforeTransformHeight);
+
+
+        }
+        
+        return imgFrame;
+    }
+    
 
     // getters
     /**

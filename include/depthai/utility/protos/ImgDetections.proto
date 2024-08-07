@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package proto;
+
+message ImgDetections {
+    int64 sequenceNum = 1;
+    Timestamp ts = 2;
+    Timestamp tsDevice = 3;
+    repeated Detection detections = 4;
+}
+
+message Timestamp {
+    int64 sec = 1
+    int64 nsec = 2;
+}
+
+message ImgDetection {
+    uint32 label = 1;
+    float confidence = 2;
+    float xmin = 3;
+    float ymin = 4;
+    float xmax = 5;
+    float ymax = 6;
+}

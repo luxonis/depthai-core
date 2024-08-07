@@ -1,0 +1,111 @@
+import "SpatialImgDetections.proto";
+
+syntax = "proto3";
+
+package proto;
+
+message ImgFrame {
+    Timestamp ts = 1;
+    Timestamp tsDevice = 2;
+    int64 sequenceNum = 3;
+    Specs fb = 4;
+    Specs sourceFb = 5;
+    CameraSettings cam = 6;
+    float HFovDegrees = 7;
+    uint32_t instanceNum = 8;
+    ImgTransformations transformations = 9;
+}
+
+message Specs {
+    Type type = 1;
+    unsigned int width = 2;     // width in pixels
+    unsigned int height = 3;    // height in pixels
+    unsigned int stride = 4;    // defined as distance in bytes from pix(y,x) to pix(y+1,x)
+    unsigned int bytesPP = 5;   // bytes per pixel (for LUT types 1)
+    unsigned int p1Offset = 6;  // Offset to first plane
+    unsigned int p2Offset = 7;  // Offset to second plane
+    unsigned int p3Offset = 8;  // Offset to third plane
+}
+
+enum Type {
+    YUV422i = 0;    // interleaved 8 bit
+    YUV444p = 1;    // planar 4:4:4 format
+    YUV420p = 2;    // planar 4:2:0 format
+    YUV422p = 3;    // planar 8 bit
+    YUV400p = 4;    // 8-bit greyscale
+    RGBA8888 = 5;   // RGBA interleaved stored in 32 bit word
+    RGB161616 = 6;  // Planar 16 bit RGB data
+    RGB888p = 7;    // Planar 8 bit RGB data
+    BGR888p = 8;    // Planar 8 bit BGR data
+    RGB888i = 9;    // Interleaved 8 bit RGB data
+    BGR888i = 10;   // Interleaved 8 bit BGR data
+    LUT2 = 11;      // 1 bit  per pixel, Lookup table (used for graphics layers)
+    LUT4 = 12;      // 2 bits per pixel, Lookup table (used for graphics layers)
+    LUT16 = 13;     // 4 bits per pixel, Lookup table (used for graphics layers)
+    RAW16 = 14;     // save any raw type (8, 10, 12bit) on 16 bits
+    RAW14 = 15;     // 14bit value in 16bit storage
+    RAW12 = 16;     // 12bit value in 16bit storage
+    RAW10 = 17;     // 10bit value in 16bit storage
+    RAW8 = 18;
+    PACK10 = 19;  // SIPP 10bit packed format
+    PACK12 = 20;  // SIPP 12bit packed format
+    YUV444i = 21;
+    NV12 = 22;
+    NV21 = 23;
+    BITSTREAM = 24;  // used for video encoder bitstream
+    HDR = 25;
+    RGBF16F16F16p = 26;  // Planar FP16 RGB data
+    BGRF16F16F16p = 27;  // Planar FP16 BGR data
+    RGBF16F16F16i = 28;  // Interleaved FP16 RGB data
+    BGRF16F16F16i = 29;  // Interleaved FP16 BGR data
+    GRAY8 = 30;          // 8 bit grayscale (1 plane)
+    GRAYF16 = 31;        // FP16 grayscale (normalized)
+    RAW32 = 32;          // 32 bits raw
+    NONE = 33;
+}
+
+message CameraSettings {
+    int32_t exposureTimeUs = 1;
+    int32_t sensitivityIso = 2;
+    int32_t lensPosition = 3;
+    int32_t wbColorTemp = 4;
+    float lensPositionRaw = 5;
+}
+
+message ImgTransformations {
+    repeated ImgTransformation transformations = 1;
+}
+
+message ImgTransformation {
+    Transformation transformationType = 1;
+    int32 topLeftCropX = 2;
+    int32 topLeftCropY = 3;
+    int32 bottomRightCropX = 4;
+    int32 bottomRightCropY = 5;
+    int32 topPadding = 6;
+    int32 bottomPadding = 7;
+    int32 leftPadding = 8;
+    int32 rightPadding = 9;
+    InvTransformationMatrix invTransformationMatrix = 10;
+    uint32 afterTransformWidth = 11;
+    uint32 afterTransformHeight = 12;
+	uint32 beforeTransformWidth = 13;
+    uint32 beforeTransformHeight = 14;
+}
+
+enum Transformation {
+    INIT = 0;
+    CROP = 1;
+    ROTATION = 2;
+    PAD = 3;
+    FLIP = 4;
+    SCALE = 5;
+}
+
+message InvTransformationMatrix {
+    repeated FloatArray arrays = 1;
+}
+
+message FloatArray {
+    repeated float values = 1;
+}
