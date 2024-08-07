@@ -36,7 +36,15 @@ void bind_edgedetector(pybind11::module& m, void* pCallstack){
 
     // Node
     edgeDetector
-        .def_readonly("initialConfig", &EdgeDetector::initialConfig, DOC(dai, node, EdgeDetector, initialConfig))
+        .def_property("initialConfig",
+            [](EdgeDetector& self) {
+                return self.initialConfig;
+            },
+            [](EdgeDetector& self, decltype(self.initialConfig) config) {
+                self.initialConfig = config;
+            },
+            DOC(dai, node, EdgeDetector, initialConfig)
+        )
         .def_readonly("inputConfig", &EdgeDetector::inputConfig, DOC(dai, node, EdgeDetector, inputConfig))
         .def_readonly("inputImage", &EdgeDetector::inputImage, DOC(dai, node, EdgeDetector, inputImage))
         .def_readonly("outputImage", &EdgeDetector::outputImage, DOC(dai, node, EdgeDetector, outputImage))
