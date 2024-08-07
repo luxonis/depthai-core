@@ -1,3 +1,4 @@
+
 #pragma once
 
 // std
@@ -11,20 +12,20 @@ namespace dai {
 /// TensorInfo structure
 struct TensorInfo {
     enum class StorageOrder : int {
-        NHWC = 0x4213,
-        NHCW = 0x4231,
-        NCHW = 0x4321,
-        HWC = 0x213,
-        CHW = 0x321,
-        WHC = 0x123,
-        HCW = 0x231,
-        WCH = 0x132,
-        CWH = 0x312,
-        NC = 0x43,
-        CN = 0x34,
-        C = 0x3,
-        H = 0x2,
-        W = 0x1,
+        NHWC = 4213,
+        NHCW = 4231,
+        NCHW = 4321,
+        HWC = 213,
+        CHW = 321,
+        WHC = 123,
+        HCW = 231,
+        WCH = 132,
+        CWH = 312,
+        NC = 43,
+        CN = 34,
+        C = 3,
+        H = 2,
+        W = 1,
     };
 
     enum class DataType : int {
