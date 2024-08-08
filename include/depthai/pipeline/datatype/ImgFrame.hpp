@@ -84,7 +84,7 @@ class ImgFrame : public Buffer, public utility::ProtoSerializable {
         datatype = DatatypeEnum::ImgFrame;
     };
 
-    google::protobuf::Message* getProtoMessage() const override
+    google::protobuf::Message& getProtoMessage() const override
         //create and populate ImgFrame protobuf message
         proto::ImgFrame imgFrame;
         

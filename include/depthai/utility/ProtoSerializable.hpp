@@ -10,8 +10,8 @@ public:
     virtual ~ProtoSerializable() = default;
 
     // This function is final to prevent overriding
-    std::vector<std::uint8_t> serializeProto() const final {
-        google::protobuf::Message protoMessage = getProtoMessage();        
+    virtual std::vector<std::uint8_t> serializeProto() const final {
+        const google::protobuf::Message& protoMessage = this.getProtoMessage();
         std::size_t nbytes = protoMessage.ByteSizeLong();
         std::vector<std::uint8_t> buffer(nbytes);
 
@@ -25,7 +25,7 @@ public:
 
 protected:
     // Pure virtual function to be implemented by derived classes
-    virtual google::protobuf::Message getProtoMessage() const = 0;
+    virtual const google::protobuf::Message& getProtoMessage() const = 0;
 };
 
 }  // namespace utility
