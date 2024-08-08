@@ -136,23 +136,42 @@ class ImgFrame : public Buffer, public utility::ProtoSerializable {
 
         proto::ImgTransformations transformations;
         for (const auto& transformation : this->transformations.transformations) {
-            proto::ImgTransformation transformationProto = transformations.add_transformations();
+            proto::ImgTransformation imgTransformation = transformations.add_transformations();
 
-            transformationProto.set_transformationType(static_cast<proto::Transformation.Type>(transformation.type));
-            transformationProto.set_topLeftCropX(transformation.topLeftCropX);
-            transformationProto.set_topLeftCropY(transformation.topLeftCropY);
-            transformationProto.set_bottomRightCropX(transformation.bottomRightCropX);
-            transformationProto.set_bottomRightCropY(transformation.bottomRightCropY);
-            transformationProto.set_topPadding(transformation.topPadding);
-            transformationProto.set_bottomPadding(transformation.bottomPadding);
-            transformationProto.set_leftPadding(transformation.leftPadding);
-            transformationProto.set_rightPadding(transformation.rightPadding);
-            transformationProto.set_afterTransformWidth(transformation.afterTransformWidth);
-            transformationProto.set_afterTransformHeight(transformation.afterTransformHeight);
-            transformationProto.set_beforeTransformWidth(transformation.beforeTransformWidth);
-            transformationProto.set_beforeTransformHeight(transformation.beforeTransformHeight);
+            imgTransformation.set_transformationType(static_cast<proto::Transformation.Type>(transformation.type));
+            imgTransformation.set_topLeftCropX(transformation.topLeftCropX);
+            imgTransformation.set_topLeftCropY(transformation.topLeftCropY);
+            imgTransformation.set_bottomRightCropX(transformation.bottomRightCropX);
+            imgTransformation.set_bottomRightCropY(transformation.bottomRightCropY);
+            imgTransformation.set_topPadding(transformation.topPadding);
+            imgTransformation.set_bottomPadding(transformation.bottomPadding);
+            imgTransformation.set_leftPadding(transformation.leftPadding);
+            imgTransformation.set_rightPadding(transformation.rightPadding);
+            imgTransformation.set_afterTransformWidth(transformation.afterTransformWidth);
+            imgTransformation.set_afterTransformHeight(transformation.afterTransformHeight);
+            imgTransformation.set_beforeTransformWidth(transformation.beforeTransformWidth);
+            imgTransformation.set_beforeTransformHeight(transformation.beforeTransformHeight);
 
+            proto::ImgTransformation.TransformationMatrix transformationMatrix;
+            for (const auto& array : transformation.transformationMatrix.arrays) {
+                proto::ImgTransformation.TransformationMatrix.FloatArray floatArray;
 
+                //or floatArray.mutable_samples() = {array.values.begin(), array.values.end()}; ?
+                for (const auto& value : array.values) {
+                    floatArray.add_values(value);
+                }
+
+                transformationMatrix.add_arrays(floatArray);
+            }
+
+            proto::ImgTransformation.TransformationMatrix invTransformationMatrix;
+            for (const auto& array : transformation.invTransformationMatrix.arrays) {
+                proto::ImgTransformation.TransformationMatrix.FloatArray floatArray;
+                for (const auto& value : array.values) {
+                    floatArray.add_values(value);
+                }
+                invTransformationMatrix.add_arrays(floatArray);
+            }
         }
         
         return imgFrame;

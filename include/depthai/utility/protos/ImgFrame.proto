@@ -74,6 +74,7 @@ message CameraSettings {
 
 message ImgTransformations {
     repeated ImgTransformation transformations = 1;
+    bool invalidFlag = 2;
 }
 
 message ImgTransformation {
@@ -86,11 +87,12 @@ message ImgTransformation {
     int32 bottomPadding = 7;
     int32 leftPadding = 8;
     int32 rightPadding = 9;
-    InvTransformationMatrix invTransformationMatrix = 10;
-    uint32 afterTransformWidth = 11;
-    uint32 afterTransformHeight = 12;
-	uint32 beforeTransformWidth = 13;
-    uint32 beforeTransformHeight = 14;
+    TransformationMatrix transformationMatrix = 10;
+    TransformationMatrix invTransformationMatrix = 11;
+    uint32 afterTransformWidth = 12;
+    uint32 afterTransformHeight = 13;
+	uint32 beforeTransformWidth = 14;
+    uint32 beforeTransformHeight = 15;
 }
 
 enum Transformation {
@@ -102,7 +104,7 @@ enum Transformation {
     SCALE = 5;
 }
 
-message InvTransformationMatrix {
+message TransformationMatrix {
     repeated FloatArray arrays = 1;
 }
 
