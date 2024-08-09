@@ -181,7 +181,7 @@ void bind_imgframe(pybind11::module& m, void* pCallstack){
                 case ImgFrame::Type::BGR888i :
                     // HWC
                     shape = {img.getHeight(), img.getWidth(), 3};
-                    strides = {img.getStride(), 3, 1};
+                    strides = {img.getStride(), 3, static_cast<std::size_t>(std::round(img.getBytesPerPixel()))};
                     dtype = py::dtype::of<uint8_t>();
                 break;
 
@@ -189,7 +189,7 @@ void bind_imgframe(pybind11::module& m, void* pCallstack){
                 case ImgFrame::Type::BGR888p :
                     // CHW
                     shape = {3, img.getHeight(), img.getWidth()};
-                    strides = {img.fb.p2Offset - img.fb.p1Offset, img.getStride(), 1};
+                    strides = {img.fb.p2Offset - img.fb.p1Offset, img.getStride(), static_cast<std::size_t>(std::round(img.getBytesPerPixel()))};
                     dtype = py::dtype::of<uint8_t>();
                 break;
 
@@ -198,20 +198,20 @@ void bind_imgframe(pybind11::module& m, void* pCallstack){
                 case ImgFrame::Type::NV21:
                     // Height 1.5x actual size
                     shape = {img.getPlaneHeight() * 3 / 2, img.getWidth()};
-                    strides = {img.getStride(), 1};
+                    strides = {img.getStride(), static_cast<std::size_t>(std::round(img.getBytesPerPixel()))};
                     dtype = py::dtype::of<uint8_t>();
                 break;
 
                 case ImgFrame::Type::RAW8:
                 case ImgFrame::Type::GRAY8:
                     shape = {img.getHeight(), img.getWidth()};
-                    strides = {img.getStride(), 1};
+                    strides = {img.getStride(), static_cast<std::size_t>(std::round(img.getBytesPerPixel()))};
                     dtype = py::dtype::of<uint8_t>();
                 break;
 
                 case ImgFrame::Type::GRAYF16:
                     shape = {img.getHeight(), img.getWidth()};
-                    strides = {img.getStride(), 1};
+                    strides = {img.getStride(), static_cast<std::size_t>(std::round(img.getBytesPerPixel()))};
                     dtype = py::dtype("half");
                 break;
 
@@ -220,7 +220,7 @@ void bind_imgframe(pybind11::module& m, void* pCallstack){
                 case ImgFrame::Type::RAW12:
                 case ImgFrame::Type::RAW10:
                     shape = {img.getHeight(), img.getWidth()};
-                    strides = {img.getStride(), 1};
+                    strides = {img.getStride(), static_cast<std::size_t>(std::round(img.getBytesPerPixel()))};
                     dtype = py::dtype::of<uint16_t>();
                 break;
 

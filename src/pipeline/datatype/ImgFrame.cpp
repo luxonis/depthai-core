@@ -63,8 +63,11 @@ unsigned int ImgFrame::getCategory() const {
 unsigned int ImgFrame::getWidth() const {
     return fb.width;
 }
+
 unsigned int ImgFrame::getStride() const {
-    if(fb.stride == 0) return getWidth();
+    if(fb.stride == 0) {
+        return static_cast<unsigned>(std::round(static_cast<float>(getWidth()) * getBytesPerPixel()));
+    }
     return fb.stride;
 }
 unsigned int ImgFrame::getPlaneStride(int planeIndex) const {
