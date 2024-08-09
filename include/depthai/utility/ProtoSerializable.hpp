@@ -11,7 +11,7 @@ public:
 
     // This function is final to prevent overriding
     virtual std::vector<std::uint8_t> serializeProto() const final {
-        const google::protobuf::Message& protoMessage = this.getProtoMessage();
+        const google::protobuf::Message& protoMessage = getProtoMessage();
         std::size_t nbytes = protoMessage.ByteSizeLong();
         std::vector<std::uint8_t> buffer(nbytes);
 

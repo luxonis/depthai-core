@@ -1,6 +1,6 @@
-import "SpatialImgDetections.proto";
-
 syntax = "proto3";
+
+import "ImgDetections.proto";
 
 package proto;
 
@@ -12,19 +12,19 @@ message ImgFrame {
     Specs sourceFb = 5;
     CameraSettings cam = 6;
     float HFovDegrees = 7;
-    uint32_t instanceNum = 8;
+    uint32 instanceNum = 8;
     ImgTransformations transformations = 9;
 }
 
 message Specs {
     Type type = 1;
-    unsigned int width = 2;     // width in pixels
-    unsigned int height = 3;    // height in pixels
-    unsigned int stride = 4;    // defined as distance in bytes from pix(y,x) to pix(y+1,x)
-    unsigned int bytesPP = 5;   // bytes per pixel (for LUT types 1)
-    unsigned int p1Offset = 6;  // Offset to first plane
-    unsigned int p2Offset = 7;  // Offset to second plane
-    unsigned int p3Offset = 8;  // Offset to third plane
+    uint32 width = 2;
+    uint32 height = 3;
+    uint32 stride = 4;
+    uint32 bytesPP = 5;
+    uint32 p1Offset = 6;
+    uint32 p2Offset = 7;
+    uint32 p3Offset = 8;
 }
 
 enum Type {
@@ -65,10 +65,10 @@ enum Type {
 }
 
 message CameraSettings {
-    int32_t exposureTimeUs = 1;
-    int32_t sensitivityIso = 2;
-    int32_t lensPosition = 3;
-    int32_t wbColorTemp = 4;
+    int32 exposureTimeUs = 1;
+    int32 sensitivityIso = 2;
+    int32 lensPosition = 3;
+    int32 wbColorTemp = 4;
     float lensPositionRaw = 5;
 }
 

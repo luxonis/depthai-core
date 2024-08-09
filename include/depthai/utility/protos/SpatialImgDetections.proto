@@ -1,6 +1,6 @@
-import "ImgDetections.proto";
-
 syntax = "proto3";
+
+import "ImgDetections.proto";
 
 package proto;
 
@@ -11,7 +11,7 @@ message SpatialImgDetections {
     repeated SpatialImgDetection detections = 4;
 }
 
-SpatialImgDetection {
+message SpatialImgDetection {
     ImgDetection detection = 1;
     Point3f spatialCoordinates = 2;
     SpatialLocationCalculatorConfigData boundingBoxMapping = 3;
@@ -24,7 +24,7 @@ message Point3f {
 }
 
 message SpatialLocationCalculatorConfigData {
-    int32_t AUTO = 1; // default value: -1
+    int32 AUTO = 1; // default value: -1
     Rect roi = 2;
     SpatialLocationCalculatorAlgorithm calculationAlgorithm = 3;
     int32 stepSize = 4; // default value: AUTO

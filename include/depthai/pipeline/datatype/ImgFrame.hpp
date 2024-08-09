@@ -84,23 +84,21 @@ class ImgFrame : public Buffer, public utility::ProtoSerializable {
         datatype = DatatypeEnum::ImgFrame;
     };
 
-    google::protobuf::Message& getProtoMessage() const override
+    google::protobuf::Message& getProtoMessage() const override {
         //create and populate ImgFrame protobuf message
         proto::ImgFrame imgFrame;
         
-        proto::Timestamp ts;
-        ts.set_sec(this->ts.sec);
-        ts.set_ns(this->ts.sec);
-        imgFrame->set_ts(ts);
+        proto::Timestamp* ts = imgFrame.mutable_ts();
+        ts-set_sec(this->ts.sec);
+        ts-set_nsec(this->ts.sec);
         
-        proto::Timestamp tsDevice;
-        tsDevice.set_sec(this->tsDevice.sec);
-        tsDevice.set_ns(this->tsDevice.nsec);
-        imgFrame->set_tsDevice(tsDevice);
+        proto::Timestamp* tsDevice = imgFrame.mutable_tsdevice();
+        tsDevice->set_sec(this->tsDevice.sec);
+        tsDevice->set_nsec(this->tsDevice.nsec);
 
-        imgFrame->set_sequenceNum(this->sequenceNum);
+        imgFrame.set_sequenceNum(this->sequenceNum);
 
-        proto::FrameSpecs fb;
+        proto::FrameSpecs* fb = imgFrame.mutable_fb();
         fb.set_type(static_cast<proto::Specs.Type>(this->fb.type));
         fb.set_width(this->fb.width);
         fb.set_height(this->fb.height);
@@ -109,9 +107,9 @@ class ImgFrame : public Buffer, public utility::ProtoSerializable {
         fb.set_p1Offset(this->fb.p1Offset);
         fb.set_p2Offset(this->fb.p2Offset);
         fb.set_p3Offset(this->fb.p3Offset);
-        imgFrame->set_fb(fb);
+        imgFrame.set_fb(fb);
 
-        proto::FrameSpecs sourceFb;
+        proto::FrameSpecs* sourceFb = imgFrame.mutable_sourceFb();
         sourceFb.set_type(static_cast<proto::Specs.Type>(this->sourceFb.type));
         sourceFb.set_width(this->sourceFb.width);
         sourceFb.set_height(this->sourceFb.height);
@@ -120,15 +118,14 @@ class ImgFrame : public Buffer, public utility::ProtoSerializable {
         sourceFb.set_p1Offset(this->sourceFb.p1Offset);
         sourceFb.set_p2Offset(this->sourceFb.p2Offset);
         sourceFb.set_p3Offset(this->sourceFb.p3Offset);
-        imgFrame->set_sourceFb(sourceFb);
+        imgFrame.set_sourceFb(sourceFb);
 
-        proto::CameraSettings cam;
+        proto::CameraSettings* cam = imgFrame.mutable_cam();
         cam.set_exposureTimeUs(this->cam.exposureTimeUs);
         cam.set_sensitivityIsos(this->cam.sensitivityIso);
         cam.set_lensPosition(this->cam.lensPosition);
         cam.set_wbColorTemp(this->cam.wbColorTemp);
         cam.set_lensPositionRaw(this->cam.lensPositionRaw);
-        imgFrame->set_cam(cam);
 
         imgFrame.set_HFovDegrees(this->HFovDegrees);
 

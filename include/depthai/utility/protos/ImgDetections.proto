@@ -6,11 +6,11 @@ message ImgDetections {
     int64 sequenceNum = 1;
     Timestamp ts = 2;
     Timestamp tsDevice = 3;
-    repeated Detection detections = 4;
+    repeated ImgDetection detections = 4;
 }
 
 message Timestamp {
-    int64 sec = 1
+    int64 sec = 1;
     int64 nsec = 2;
 }
 
