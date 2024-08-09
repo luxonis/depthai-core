@@ -35,6 +35,9 @@
 #include "capabilities/ImgFrameCapabilityBindings.hpp"
 #include "modelzoo/NNModelDescriptionBindings.hpp"
 #include "modelzoo/ZooBindings.hpp"
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    #include <ndarray_converter.h>
+#endif
 
 #ifdef DEPTHAI_PYTHON_EMBEDDED_MODULE
 #include <pybind11/embed.h>
@@ -48,7 +51,9 @@ PYBIND11_EMBEDDED_MODULE(depthai, m)
 PYBIND11_MODULE(depthai, m)
 #endif
 {
-
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    NDArrayConverter::init_numpy();
+#endif
     // Depthai python version consists of: (depthai-core).(bindings revision)[+bindings hash]
     m.attr("__version__") = DEPTHAI_PYTHON_VERSION;
     m.attr("__commit__") = DEPTHAI_PYTHON_COMMIT_HASH;
