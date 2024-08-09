@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package proto_speed_test;
+
+message ImgDetections {
+    message Detection {
+        uint32 label = 1;
+        float confidence = 2;
+        float xmin = 3;
+        float ymin = 4;
+        float xmax = 5;
+        float ymax = 6;
+    }
+
+    repeated Detection detections = 1;
+}

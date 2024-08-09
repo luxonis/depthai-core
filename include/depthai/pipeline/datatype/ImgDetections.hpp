@@ -1,8 +1,10 @@
 #pragma once
 
 #include <vector>
-
 #include "depthai/pipeline/datatype/Buffer.hpp"
+#include "depthai/utility/ProtoSerializable.hpp"
+#include "depthai/utility/protos/ImgDetections.pb.h"
+
 namespace dai {
 
 struct ImgDetection {
@@ -19,7 +21,7 @@ DEPTHAI_SERIALIZE_EXT(ImgDetection, label, confidence, xmin, ymin, xmax, ymax);
 /**
  * ImgDetections message. Carries normalized detection results
  */
-class ImgDetections : public Buffer {
+class ImgDetections : public Buffer, public utility::ProtoSerializable {
    public:
     /**
      * Construct ImgDetections message.
@@ -34,6 +36,33 @@ class ImgDetections : public Buffer {
         metadata = utility::serialize(*this);
         datatype = DatatypeEnum::ImgDetections;
     };
+
+    google::protobuf::Message& getProtoMessage() const override {
+        proto::ImgDetections imgDetections;
+
+        imgDetections.set_sequencenum(this->sequenceNum);
+        
+        proto::Timestamp* ts = imgDetections.mutable_ts();
+        ts->set_sec(this->ts.sec);
+        ts->set_nsec(this->ts.nsec);
+        
+        proto::Timestamp* tsDevice = imgDetections.mutable_tsdevice();
+        tsDevice->set_sec(this->tsDevice.sec);
+        tsDevice->set_nsec(this->tsDevice.nsec);
+
+
+        for(const auto& detection : this->detections) {
+            proto::ImgDetection* imgDetection = imgDetections.add_detections();
+            imgDetection->set_label(detection.label);
+            imgDetection->set_confidence(detection.confidence);
+            imgDetection->set_xmin(detection.xmin);
+            imgDetection->set_ymin(detection.ymin);
+            imgDetection->set_xmax(detection.xmax);
+            imgDetection->set_ymax(detection.ymax);
+        }
+        
+        return imgDetections;
+    }
 
     DEPTHAI_SERIALIZE(ImgDetections, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, detections);
 };

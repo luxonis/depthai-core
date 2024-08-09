@@ -637,6 +637,9 @@ if(DEPTHAI_CLANG_FORMAT)
     target_clangformat_setup(${TARGET_CORE_NAME} "${header_dirs}")
 endif()
 
+# Load protobuf support into library messages_proto
+add_subdirectory(include/depthai/utility/protos)
+list(APPEND targets_to_export libProto)
 # link libraries
 target_link_libraries(${TARGET_CORE_NAME}
     PUBLIC
@@ -657,6 +660,7 @@ target_link_libraries(${TARGET_CORE_NAME}
         httplib::httplib
         mp4v2::mp4v2
         semver::semver
+        libProto
 )
 
 if(DEPTHAI_ENABLE_CURL)
