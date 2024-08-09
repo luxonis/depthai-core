@@ -63,8 +63,9 @@ PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT Point3fDefaultTypeInternal _Poi
 constexpr SpatialLocationCalculatorConfigData::SpatialLocationCalculatorConfigData(
   ::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized)
   : roi_(nullptr)
-  , calculationalgorithm_(nullptr)
-  , auto__(0)
+  , depththresholds_(nullptr)
+  , calculationalgorithm_(0)
+
   , stepsize_(0){}
 struct SpatialLocationCalculatorConfigDataDefaultTypeInternal {
   constexpr SpatialLocationCalculatorConfigDataDefaultTypeInternal()
@@ -90,22 +91,22 @@ struct RectDefaultTypeInternal {
   };
 };
 PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT RectDefaultTypeInternal _Rect_default_instance_;
-constexpr SpatialLocationCalculatorAlgorithm::SpatialLocationCalculatorAlgorithm(
+constexpr SpatialLocationCalculatorConfigThresholds::SpatialLocationCalculatorConfigThresholds(
   ::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized)
   : lowerthreshold_(0u)
   , upperthreshold_(0u){}
-struct SpatialLocationCalculatorAlgorithmDefaultTypeInternal {
-  constexpr SpatialLocationCalculatorAlgorithmDefaultTypeInternal()
+struct SpatialLocationCalculatorConfigThresholdsDefaultTypeInternal {
+  constexpr SpatialLocationCalculatorConfigThresholdsDefaultTypeInternal()
     : _instance(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized{}) {}
-  ~SpatialLocationCalculatorAlgorithmDefaultTypeInternal() {}
+  ~SpatialLocationCalculatorConfigThresholdsDefaultTypeInternal() {}
   union {
-    SpatialLocationCalculatorAlgorithm _instance;
+    SpatialLocationCalculatorConfigThresholds _instance;
   };
 };
-PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT SpatialLocationCalculatorAlgorithmDefaultTypeInternal _SpatialLocationCalculatorAlgorithm_default_instance_;
+PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT SpatialLocationCalculatorConfigThresholdsDefaultTypeInternal _SpatialLocationCalculatorConfigThresholds_default_instance_;
 }  // namespace proto
 static ::PROTOBUF_NAMESPACE_ID::Metadata file_level_metadata_SpatialImgDetections_2eproto[6];
-static constexpr ::PROTOBUF_NAMESPACE_ID::EnumDescriptor const** file_level_enum_descriptors_SpatialImgDetections_2eproto = nullptr;
+static const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* file_level_enum_descriptors_SpatialImgDetections_2eproto[1];
 static constexpr ::PROTOBUF_NAMESPACE_ID::ServiceDescriptor const** file_level_service_descriptors_SpatialImgDetections_2eproto = nullptr;
 
 const uint32_t TableStruct_SpatialImgDetections_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
@@ -143,8 +144,8 @@ const uint32_t TableStruct_SpatialImgDetections_2eproto::offsets[] PROTOBUF_SECT
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
   ~0u,  // no _inlined_string_donated_
-  PROTOBUF_FIELD_OFFSET(::proto::SpatialLocationCalculatorConfigData, auto__),
   PROTOBUF_FIELD_OFFSET(::proto::SpatialLocationCalculatorConfigData, roi_),
+  PROTOBUF_FIELD_OFFSET(::proto::SpatialLocationCalculatorConfigData, depththresholds_),
   PROTOBUF_FIELD_OFFSET(::proto::SpatialLocationCalculatorConfigData, calculationalgorithm_),
   PROTOBUF_FIELD_OFFSET(::proto::SpatialLocationCalculatorConfigData, stepsize_),
   ~0u,  // no _has_bits_
@@ -158,13 +159,13 @@ const uint32_t TableStruct_SpatialImgDetections_2eproto::offsets[] PROTOBUF_SECT
   PROTOBUF_FIELD_OFFSET(::proto::Rect, width_),
   PROTOBUF_FIELD_OFFSET(::proto::Rect, height_),
   ~0u,  // no _has_bits_
-  PROTOBUF_FIELD_OFFSET(::proto::SpatialLocationCalculatorAlgorithm, _internal_metadata_),
+  PROTOBUF_FIELD_OFFSET(::proto::SpatialLocationCalculatorConfigThresholds, _internal_metadata_),
   ~0u,  // no _extensions_
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
   ~0u,  // no _inlined_string_donated_
-  PROTOBUF_FIELD_OFFSET(::proto::SpatialLocationCalculatorAlgorithm, lowerthreshold_),
-  PROTOBUF_FIELD_OFFSET(::proto::SpatialLocationCalculatorAlgorithm, upperthreshold_),
+  PROTOBUF_FIELD_OFFSET(::proto::SpatialLocationCalculatorConfigThresholds, lowerthreshold_),
+  PROTOBUF_FIELD_OFFSET(::proto::SpatialLocationCalculatorConfigThresholds, upperthreshold_),
 };
 static const ::PROTOBUF_NAMESPACE_ID::internal::MigrationSchema schemas[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
   { 0, -1, -1, sizeof(::proto::SpatialImgDetections)},
@@ -172,7 +173,7 @@ static const ::PROTOBUF_NAMESPACE_ID::internal::MigrationSchema schemas[] PROTOB
   { 19, -1, -1, sizeof(::proto::Point3f)},
   { 28, -1, -1, sizeof(::proto::SpatialLocationCalculatorConfigData)},
   { 38, -1, -1, sizeof(::proto::Rect)},
-  { 48, -1, -1, sizeof(::proto::SpatialLocationCalculatorAlgorithm)},
+  { 48, -1, -1, sizeof(::proto::SpatialLocationCalculatorConfigThresholds)},
 };
 
 static ::PROTOBUF_NAMESPACE_ID::Message const * const file_default_instances[] = {
@@ -181,7 +182,7 @@ static ::PROTOBUF_NAMESPACE_ID::Message const * const file_default_instances[] =
   reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::proto::_Point3f_default_instance_),
   reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::proto::_SpatialLocationCalculatorConfigData_default_instance_),
   reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::proto::_Rect_default_instance_),
-  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::proto::_SpatialLocationCalculatorAlgorithm_default_instance_),
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::proto::_SpatialLocationCalculatorConfigThresholds_default_instance_),
 };
 
 const char descriptor_table_protodef_SpatialImgDetections_2eproto[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) =
@@ -196,22 +197,26 @@ const char descriptor_table_protodef_SpatialImgDetections_2eproto[] PROTOBUF_SEC
   "nt3f\022F\n\022boundingBoxMapping\030\003 \001(\0132*.proto"
   ".SpatialLocationCalculatorConfigData\"*\n\007"
   "Point3f\022\t\n\001x\030\001 \001(\002\022\t\n\001y\030\002 \001(\002\022\t\n\001z\030\003 \001(\002"
-  "\"\250\001\n#SpatialLocationCalculatorConfigData"
-  "\022\014\n\004AUTO\030\001 \001(\005\022\030\n\003roi\030\002 \001(\0132\013.proto.Rect"
-  "\022G\n\024calculationAlgorithm\030\003 \001(\0132).proto.S"
-  "patialLocationCalculatorAlgorithm\022\020\n\010ste"
-  "pSize\030\004 \001(\005\";\n\004Rect\022\t\n\001x\030\001 \001(\002\022\t\n\001y\030\002 \001("
-  "\002\022\r\n\005width\030\003 \001(\002\022\016\n\006height\030\004 \001(\002\"T\n\"Spat"
-  "ialLocationCalculatorAlgorithm\022\026\n\016lowerT"
-  "hreshold\030\001 \001(\r\022\026\n\016upperThreshold\030\002 \001(\rb\006"
-  "proto3"
+  "\"\345\001\n#SpatialLocationCalculatorConfigData"
+  "\022\030\n\003roi\030\001 \001(\0132\013.proto.Rect\022I\n\017depthThres"
+  "holds\030\002 \001(\01320.proto.SpatialLocationCalcu"
+  "latorConfigThresholds\022G\n\024calculationAlgo"
+  "rithm\030\003 \001(\0162).proto.SpatialLocationCalcu"
+  "latorAlgorithm\022\020\n\010stepSize\030\004 \001(\005\";\n\004Rect"
+  "\022\t\n\001x\030\001 \001(\002\022\t\n\001y\030\002 \001(\002\022\r\n\005width\030\003 \001(\002\022\016\n"
+  "\006height\030\004 \001(\002\"[\n)SpatialLocationCalculat"
+  "orConfigThresholds\022\026\n\016lowerThreshold\030\001 \001"
+  "(\r\022\026\n\016upperThreshold\030\002 \001(\r*g\n\"SpatialLoc"
+  "ationCalculatorAlgorithm\022\013\n\007AVERAGE\020\000\022\010\n"
+  "\004MEAN\020\000\022\007\n\003MIN\020\001\022\007\n\003MAX\020\002\022\010\n\004MODE\020\003\022\n\n\006M"
+  "EDIAN\020\004\032\002\020\001b\006proto3"
   ;
 static const ::PROTOBUF_NAMESPACE_ID::internal::DescriptorTable*const descriptor_table_SpatialImgDetections_2eproto_deps[1] = {
   &::descriptor_table_ImgDetections_2eproto,
 };
 static ::PROTOBUF_NAMESPACE_ID::internal::once_flag descriptor_table_SpatialImgDetections_2eproto_once;
 const ::PROTOBUF_NAMESPACE_ID::internal::DescriptorTable descriptor_table_SpatialImgDetections_2eproto = {
-  false, false, 766, descriptor_table_protodef_SpatialImgDetections_2eproto, "SpatialImgDetections.proto", 
+  false, false, 939, descriptor_table_protodef_SpatialImgDetections_2eproto, "SpatialImgDetections.proto", 
   &descriptor_table_SpatialImgDetections_2eproto_once, descriptor_table_SpatialImgDetections_2eproto_deps, 1, 6,
   schemas, file_default_instances, TableStruct_SpatialImgDetections_2eproto::offsets,
   file_level_metadata_SpatialImgDetections_2eproto, file_level_enum_descriptors_SpatialImgDetections_2eproto, file_level_service_descriptors_SpatialImgDetections_2eproto,
@@ -223,6 +228,23 @@ PROTOBUF_ATTRIBUTE_WEAK const ::PROTOBUF_NAMESPACE_ID::internal::DescriptorTable
 // Force running AddDescriptors() at dynamic initialization time.
 PROTOBUF_ATTRIBUTE_INIT_PRIORITY static ::PROTOBUF_NAMESPACE_ID::internal::AddDescriptorsRunner dynamic_init_dummy_SpatialImgDetections_2eproto(&descriptor_table_SpatialImgDetections_2eproto);
 namespace proto {
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* SpatialLocationCalculatorAlgorithm_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_SpatialImgDetections_2eproto);
+  return file_level_enum_descriptors_SpatialImgDetections_2eproto[0];
+}
+bool SpatialLocationCalculatorAlgorithm_IsValid(int value) {
+  switch (value) {
+    case 0:
+    case 1:
+    case 2:
+    case 3:
+    case 4:
+      return true;
+    default:
+      return false;
+  }
+}
+
 
 // ===================================================================
 
@@ -1103,16 +1125,16 @@ void Point3f::InternalSwap(Point3f* other) {
 class SpatialLocationCalculatorConfigData::_Internal {
  public:
   static const ::proto::Rect& roi(const SpatialLocationCalculatorConfigData* msg);
-  static const ::proto::SpatialLocationCalculatorAlgorithm& calculationalgorithm(const SpatialLocationCalculatorConfigData* msg);
+  static const ::proto::SpatialLocationCalculatorConfigThresholds& depththresholds(const SpatialLocationCalculatorConfigData* msg);
 };
 
 const ::proto::Rect&
 SpatialLocationCalculatorConfigData::_Internal::roi(const SpatialLocationCalculatorConfigData* msg) {
   return *msg->roi_;
 }
-const ::proto::SpatialLocationCalculatorAlgorithm&
-SpatialLocationCalculatorConfigData::_Internal::calculationalgorithm(const SpatialLocationCalculatorConfigData* msg) {
-  return *msg->calculationalgorithm_;
+const ::proto::SpatialLocationCalculatorConfigThresholds&
+SpatialLocationCalculatorConfigData::_Internal::depththresholds(const SpatialLocationCalculatorConfigData* msg) {
+  return *msg->depththresholds_;
 }
 SpatialLocationCalculatorConfigData::SpatialLocationCalculatorConfigData(::PROTOBUF_NAMESPACE_ID::Arena* arena,
                          bool is_message_owned)
@@ -1131,14 +1153,14 @@ SpatialLocationCalculatorConfigData::SpatialLocationCalculatorConfigData(const S
   } else {
     roi_ = nullptr;
   }
-  if (from._internal_has_calculationalgorithm()) {
-    calculationalgorithm_ = new ::proto::SpatialLocationCalculatorAlgorithm(*from.calculationalgorithm_);
+  if (from._internal_has_depththresholds()) {
+    depththresholds_ = new ::proto::SpatialLocationCalculatorConfigThresholds(*from.depththresholds_);
   } else {
-    calculationalgorithm_ = nullptr;
+    depththresholds_ = nullptr;
   }
-  ::memcpy(&auto__, &from.auto__,
+  ::memcpy(&calculationalgorithm_, &from.calculationalgorithm_,
     static_cast<size_t>(reinterpret_cast<char*>(&stepsize_) -
-    reinterpret_cast<char*>(&auto__)) + sizeof(stepsize_));
+    reinterpret_cast<char*>(&calculationalgorithm_)) + sizeof(stepsize_));
   // @@protoc_insertion_point(copy_constructor:proto.SpatialLocationCalculatorConfigData)
 }
 
@@ -1159,7 +1181,7 @@ SpatialLocationCalculatorConfigData::~SpatialLocationCalculatorConfigData() {
 inline void SpatialLocationCalculatorConfigData::SharedDtor() {
   GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
   if (this != internal_default_instance()) delete roi_;
-  if (this != internal_default_instance()) delete calculationalgorithm_;
+  if (this != internal_default_instance()) delete depththresholds_;
 }
 
 void SpatialLocationCalculatorConfigData::ArenaDtor(void* object) {
@@ -1182,13 +1204,13 @@ void SpatialLocationCalculatorConfigData::Clear() {
     delete roi_;
   }
   roi_ = nullptr;
-  if (GetArenaForAllocation() == nullptr && calculationalgorithm_ != nullptr) {
-    delete calculationalgorithm_;
+  if (GetArenaForAllocation() == nullptr && depththresholds_ != nullptr) {
+    delete depththresholds_;
   }
-  calculationalgorithm_ = nullptr;
-  ::memset(&auto__, 0, static_cast<size_t>(
+  depththresholds_ = nullptr;
+  ::memset(&calculationalgorithm_, 0, static_cast<size_t>(
       reinterpret_cast<char*>(&stepsize_) -
-      reinterpret_cast<char*>(&auto__)) + sizeof(stepsize_));
+      reinterpret_cast<char*>(&calculationalgorithm_)) + sizeof(stepsize_));
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
@@ -1198,27 +1220,28 @@ const char* SpatialLocationCalculatorConfigData::_InternalParse(const char* ptr,
     uint32_t tag;
     ptr = ::PROTOBUF_NAMESPACE_ID::internal::ReadTag(ptr, &tag);
     switch (tag >> 3) {
-      // int32 AUTO = 1;
+      // .proto.Rect roi = 1;
       case 1:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 8)) {
-          auto__ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 10)) {
+          ptr = ctx->ParseMessage(_internal_mutable_roi(), ptr);
           CHK_(ptr);
         } else
           goto handle_unusual;
         continue;
-      // .proto.Rect roi = 2;
+      // .proto.SpatialLocationCalculatorConfigThresholds depthThresholds = 2;
       case 2:
         if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 18)) {
-          ptr = ctx->ParseMessage(_internal_mutable_roi(), ptr);
+          ptr = ctx->ParseMessage(_internal_mutable_depththresholds(), ptr);
           CHK_(ptr);
         } else
           goto handle_unusual;
         continue;
       // .proto.SpatialLocationCalculatorAlgorithm calculationAlgorithm = 3;
       case 3:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 26)) {
-          ptr = ctx->ParseMessage(_internal_mutable_calculationalgorithm(), ptr);
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 24)) {
+          uint64_t val = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
           CHK_(ptr);
+          _internal_set_calculationalgorithm(static_cast<::proto::SpatialLocationCalculatorAlgorithm>(val));
         } else
           goto handle_unusual;
         continue;
@@ -1259,26 +1282,27 @@ uint8_t* SpatialLocationCalculatorConfigData::_InternalSerialize(
   uint32_t cached_has_bits = 0;
   (void) cached_has_bits;
 
-  // int32 AUTO = 1;
-  if (this->_internal_auto_() != 0) {
-    target = stream->EnsureSpace(target);
-    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteInt32ToArray(1, this->_internal_auto_(), target);
-  }
-
-  // .proto.Rect roi = 2;
+  // .proto.Rect roi = 1;
   if (this->_internal_has_roi()) {
     target = stream->EnsureSpace(target);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::
       InternalWriteMessage(
-        2, _Internal::roi(this), target, stream);
+        1, _Internal::roi(this), target, stream);
   }
 
-  // .proto.SpatialLocationCalculatorAlgorithm calculationAlgorithm = 3;
-  if (this->_internal_has_calculationalgorithm()) {
+  // .proto.SpatialLocationCalculatorConfigThresholds depthThresholds = 2;
+  if (this->_internal_has_depththresholds()) {
     target = stream->EnsureSpace(target);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::
       InternalWriteMessage(
-        3, _Internal::calculationalgorithm(this), target, stream);
+        2, _Internal::depththresholds(this), target, stream);
+  }
+
+  // .proto.SpatialLocationCalculatorAlgorithm calculationAlgorithm = 3;
+  if (this->_internal_calculationalgorithm() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteEnumToArray(
+      3, this->_internal_calculationalgorithm(), target);
   }
 
   // int32 stepSize = 4;
@@ -1303,23 +1327,24 @@ size_t SpatialLocationCalculatorConfigData::ByteSizeLong() const {
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  // .proto.Rect roi = 2;
+  // .proto.Rect roi = 1;
   if (this->_internal_has_roi()) {
     total_size += 1 +
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(
         *roi_);
   }
 
-  // .proto.SpatialLocationCalculatorAlgorithm calculationAlgorithm = 3;
-  if (this->_internal_has_calculationalgorithm()) {
+  // .proto.SpatialLocationCalculatorConfigThresholds depthThresholds = 2;
+  if (this->_internal_has_depththresholds()) {
     total_size += 1 +
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(
-        *calculationalgorithm_);
+        *depththresholds_);
   }
 
-  // int32 AUTO = 1;
-  if (this->_internal_auto_() != 0) {
-    total_size += ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::Int32SizePlusOne(this->_internal_auto_());
+  // .proto.SpatialLocationCalculatorAlgorithm calculationAlgorithm = 3;
+  if (this->_internal_calculationalgorithm() != 0) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::EnumSize(this->_internal_calculationalgorithm());
   }
 
   // int32 stepSize = 4;
@@ -1352,11 +1377,11 @@ void SpatialLocationCalculatorConfigData::MergeFrom(const SpatialLocationCalcula
   if (from._internal_has_roi()) {
     _internal_mutable_roi()->::proto::Rect::MergeFrom(from._internal_roi());
   }
-  if (from._internal_has_calculationalgorithm()) {
-    _internal_mutable_calculationalgorithm()->::proto::SpatialLocationCalculatorAlgorithm::MergeFrom(from._internal_calculationalgorithm());
+  if (from._internal_has_depththresholds()) {
+    _internal_mutable_depththresholds()->::proto::SpatialLocationCalculatorConfigThresholds::MergeFrom(from._internal_depththresholds());
   }
-  if (from._internal_auto_() != 0) {
-    _internal_set_auto_(from._internal_auto_());
+  if (from._internal_calculationalgorithm() != 0) {
+    _internal_set_calculationalgorithm(from._internal_calculationalgorithm());
   }
   if (from._internal_stepsize() != 0) {
     _internal_set_stepsize(from._internal_stepsize());
@@ -1698,58 +1723,58 @@ void Rect::InternalSwap(Rect* other) {
 
 // ===================================================================
 
-class SpatialLocationCalculatorAlgorithm::_Internal {
+class SpatialLocationCalculatorConfigThresholds::_Internal {
  public:
 };
 
-SpatialLocationCalculatorAlgorithm::SpatialLocationCalculatorAlgorithm(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+SpatialLocationCalculatorConfigThresholds::SpatialLocationCalculatorConfigThresholds(::PROTOBUF_NAMESPACE_ID::Arena* arena,
                          bool is_message_owned)
   : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
   SharedCtor();
   if (!is_message_owned) {
     RegisterArenaDtor(arena);
   }
-  // @@protoc_insertion_point(arena_constructor:proto.SpatialLocationCalculatorAlgorithm)
+  // @@protoc_insertion_point(arena_constructor:proto.SpatialLocationCalculatorConfigThresholds)
 }
-SpatialLocationCalculatorAlgorithm::SpatialLocationCalculatorAlgorithm(const SpatialLocationCalculatorAlgorithm& from)
+SpatialLocationCalculatorConfigThresholds::SpatialLocationCalculatorConfigThresholds(const SpatialLocationCalculatorConfigThresholds& from)
   : ::PROTOBUF_NAMESPACE_ID::Message() {
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   ::memcpy(&lowerthreshold_, &from.lowerthreshold_,
     static_cast<size_t>(reinterpret_cast<char*>(&upperthreshold_) -
     reinterpret_cast<char*>(&lowerthreshold_)) + sizeof(upperthreshold_));
-  // @@protoc_insertion_point(copy_constructor:proto.SpatialLocationCalculatorAlgorithm)
+  // @@protoc_insertion_point(copy_constructor:proto.SpatialLocationCalculatorConfigThresholds)
 }
 
-inline void SpatialLocationCalculatorAlgorithm::SharedCtor() {
+inline void SpatialLocationCalculatorConfigThresholds::SharedCtor() {
 ::memset(reinterpret_cast<char*>(this) + static_cast<size_t>(
     reinterpret_cast<char*>(&lowerthreshold_) - reinterpret_cast<char*>(this)),
     0, static_cast<size_t>(reinterpret_cast<char*>(&upperthreshold_) -
     reinterpret_cast<char*>(&lowerthreshold_)) + sizeof(upperthreshold_));
 }
 
-SpatialLocationCalculatorAlgorithm::~SpatialLocationCalculatorAlgorithm() {
-  // @@protoc_insertion_point(destructor:proto.SpatialLocationCalculatorAlgorithm)
+SpatialLocationCalculatorConfigThresholds::~SpatialLocationCalculatorConfigThresholds() {
+  // @@protoc_insertion_point(destructor:proto.SpatialLocationCalculatorConfigThresholds)
   if (GetArenaForAllocation() != nullptr) return;
   SharedDtor();
   _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
-inline void SpatialLocationCalculatorAlgorithm::SharedDtor() {
+inline void SpatialLocationCalculatorConfigThresholds::SharedDtor() {
   GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
 }
 
-void SpatialLocationCalculatorAlgorithm::ArenaDtor(void* object) {
-  SpatialLocationCalculatorAlgorithm* _this = reinterpret_cast< SpatialLocationCalculatorAlgorithm* >(object);
+void SpatialLocationCalculatorConfigThresholds::ArenaDtor(void* object) {
+  SpatialLocationCalculatorConfigThresholds* _this = reinterpret_cast< SpatialLocationCalculatorConfigThresholds* >(object);
   (void)_this;
 }
-void SpatialLocationCalculatorAlgorithm::RegisterArenaDtor(::PROTOBUF_NAMESPACE_ID::Arena*) {
+void SpatialLocationCalculatorConfigThresholds::RegisterArenaDtor(::PROTOBUF_NAMESPACE_ID::Arena*) {
 }
-void SpatialLocationCalculatorAlgorithm::SetCachedSize(int size) const {
+void SpatialLocationCalculatorConfigThresholds::SetCachedSize(int size) const {
   _cached_size_.Set(size);
 }
 
-void SpatialLocationCalculatorAlgorithm::Clear() {
-// @@protoc_insertion_point(message_clear_start:proto.SpatialLocationCalculatorAlgorithm)
+void SpatialLocationCalculatorConfigThresholds::Clear() {
+// @@protoc_insertion_point(message_clear_start:proto.SpatialLocationCalculatorConfigThresholds)
   uint32_t cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
@@ -1760,7 +1785,7 @@ void SpatialLocationCalculatorAlgorithm::Clear() {
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
-const char* SpatialLocationCalculatorAlgorithm::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
+const char* SpatialLocationCalculatorConfigThresholds::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
 #define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
   while (!ctx->Done(&ptr)) {
     uint32_t tag;
@@ -1805,9 +1830,9 @@ failure:
 #undef CHK_
 }
 
-uint8_t* SpatialLocationCalculatorAlgorithm::_InternalSerialize(
+uint8_t* SpatialLocationCalculatorConfigThresholds::_InternalSerialize(
     uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
-  // @@protoc_insertion_point(serialize_to_array_start:proto.SpatialLocationCalculatorAlgorithm)
+  // @@protoc_insertion_point(serialize_to_array_start:proto.SpatialLocationCalculatorConfigThresholds)
   uint32_t cached_has_bits = 0;
   (void) cached_has_bits;
 
@@ -1827,12 +1852,12 @@ uint8_t* SpatialLocationCalculatorAlgorithm::_InternalSerialize(
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
   }
-  // @@protoc_insertion_point(serialize_to_array_end:proto.SpatialLocationCalculatorAlgorithm)
+  // @@protoc_insertion_point(serialize_to_array_end:proto.SpatialLocationCalculatorConfigThresholds)
   return target;
 }
 
-size_t SpatialLocationCalculatorAlgorithm::ByteSizeLong() const {
-// @@protoc_insertion_point(message_byte_size_start:proto.SpatialLocationCalculatorAlgorithm)
+size_t SpatialLocationCalculatorConfigThresholds::ByteSizeLong() const {
+// @@protoc_insertion_point(message_byte_size_start:proto.SpatialLocationCalculatorConfigThresholds)
   size_t total_size = 0;
 
   uint32_t cached_has_bits = 0;
@@ -1852,21 +1877,21 @@ size_t SpatialLocationCalculatorAlgorithm::ByteSizeLong() const {
   return MaybeComputeUnknownFieldsSize(total_size, &_cached_size_);
 }
 
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData SpatialLocationCalculatorAlgorithm::_class_data_ = {
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData SpatialLocationCalculatorConfigThresholds::_class_data_ = {
     ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSizeCheck,
-    SpatialLocationCalculatorAlgorithm::MergeImpl
+    SpatialLocationCalculatorConfigThresholds::MergeImpl
 };
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*SpatialLocationCalculatorAlgorithm::GetClassData() const { return &_class_data_; }
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*SpatialLocationCalculatorConfigThresholds::GetClassData() const { return &_class_data_; }
 
-void SpatialLocationCalculatorAlgorithm::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message* to,
+void SpatialLocationCalculatorConfigThresholds::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message* to,
                       const ::PROTOBUF_NAMESPACE_ID::Message& from) {
-  static_cast<SpatialLocationCalculatorAlgorithm *>(to)->MergeFrom(
-      static_cast<const SpatialLocationCalculatorAlgorithm &>(from));
+  static_cast<SpatialLocationCalculatorConfigThresholds *>(to)->MergeFrom(
+      static_cast<const SpatialLocationCalculatorConfigThresholds &>(from));
 }
 
 
-void SpatialLocationCalculatorAlgorithm::MergeFrom(const SpatialLocationCalculatorAlgorithm& from) {
-// @@protoc_insertion_point(class_specific_merge_from_start:proto.SpatialLocationCalculatorAlgorithm)
+void SpatialLocationCalculatorConfigThresholds::MergeFrom(const SpatialLocationCalculatorConfigThresholds& from) {
+// @@protoc_insertion_point(class_specific_merge_from_start:proto.SpatialLocationCalculatorConfigThresholds)
   GOOGLE_DCHECK_NE(&from, this);
   uint32_t cached_has_bits = 0;
   (void) cached_has_bits;
@@ -1880,29 +1905,29 @@ void SpatialLocationCalculatorAlgorithm::MergeFrom(const SpatialLocationCalculat
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
 }
 
-void SpatialLocationCalculatorAlgorithm::CopyFrom(const SpatialLocationCalculatorAlgorithm& from) {
-// @@protoc_insertion_point(class_specific_copy_from_start:proto.SpatialLocationCalculatorAlgorithm)
+void SpatialLocationCalculatorConfigThresholds::CopyFrom(const SpatialLocationCalculatorConfigThresholds& from) {
+// @@protoc_insertion_point(class_specific_copy_from_start:proto.SpatialLocationCalculatorConfigThresholds)
   if (&from == this) return;
   Clear();
   MergeFrom(from);
 }
 
-bool SpatialLocationCalculatorAlgorithm::IsInitialized() const {
+bool SpatialLocationCalculatorConfigThresholds::IsInitialized() const {
   return true;
 }
 
-void SpatialLocationCalculatorAlgorithm::InternalSwap(SpatialLocationCalculatorAlgorithm* other) {
+void SpatialLocationCalculatorConfigThresholds::InternalSwap(SpatialLocationCalculatorConfigThresholds* other) {
   using std::swap;
   _internal_metadata_.InternalSwap(&other->_internal_metadata_);
   ::PROTOBUF_NAMESPACE_ID::internal::memswap<
-      PROTOBUF_FIELD_OFFSET(SpatialLocationCalculatorAlgorithm, upperthreshold_)
-      + sizeof(SpatialLocationCalculatorAlgorithm::upperthreshold_)
-      - PROTOBUF_FIELD_OFFSET(SpatialLocationCalculatorAlgorithm, lowerthreshold_)>(
+      PROTOBUF_FIELD_OFFSET(SpatialLocationCalculatorConfigThresholds, upperthreshold_)
+      + sizeof(SpatialLocationCalculatorConfigThresholds::upperthreshold_)
+      - PROTOBUF_FIELD_OFFSET(SpatialLocationCalculatorConfigThresholds, lowerthreshold_)>(
           reinterpret_cast<char*>(&lowerthreshold_),
           reinterpret_cast<char*>(&other->lowerthreshold_));
 }
 
-::PROTOBUF_NAMESPACE_ID::Metadata SpatialLocationCalculatorAlgorithm::GetMetadata() const {
+::PROTOBUF_NAMESPACE_ID::Metadata SpatialLocationCalculatorConfigThresholds::GetMetadata() const {
   return ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(
       &descriptor_table_SpatialImgDetections_2eproto_getter, &descriptor_table_SpatialImgDetections_2eproto_once,
       file_level_metadata_SpatialImgDetections_2eproto[5]);
@@ -1926,8 +1951,8 @@ template<> PROTOBUF_NOINLINE ::proto::SpatialLocationCalculatorConfigData* Arena
 template<> PROTOBUF_NOINLINE ::proto::Rect* Arena::CreateMaybeMessage< ::proto::Rect >(Arena* arena) {
   return Arena::CreateMessageInternal< ::proto::Rect >(arena);
 }
-template<> PROTOBUF_NOINLINE ::proto::SpatialLocationCalculatorAlgorithm* Arena::CreateMaybeMessage< ::proto::SpatialLocationCalculatorAlgorithm >(Arena* arena) {
-  return Arena::CreateMessageInternal< ::proto::SpatialLocationCalculatorAlgorithm >(arena);
+template<> PROTOBUF_NOINLINE ::proto::SpatialLocationCalculatorConfigThresholds* Arena::CreateMaybeMessage< ::proto::SpatialLocationCalculatorConfigThresholds >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::proto::SpatialLocationCalculatorConfigThresholds >(arena);
 }
 PROTOBUF_NAMESPACE_CLOSE
 

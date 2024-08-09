@@ -47,65 +47,60 @@ class SpatialImgDetections : public Buffer, public utility::ProtoSerializable {
         datatype = DatatypeEnum::SpatialImgDetections;
     };
 
-    google::protobuf::Message getProtoMessage() const override {
+    google::protobuf::Message& getProtoMessage() const override {
         //create and populate SpatialImgDetections protobuf message
-        proto::SpatialImgDetections spatImgDets;
-        spatImgDets.set_sequenceNum(this->sequenceNum);
+        proto::SpatialImgDetections spatialImgDetections;
+        spatialImgDetections.set_sequencenum(this->sequenceNum);
         
-        proto::Timestamp ts;
-        ts.set_sec(this->ts.sec);
-        ts.set_ns(this->ts.sec);
-        spatImgDets->set_ts(ts);
+        proto::Timestamp* ts = spatialImgDetections.mutable_ts();
+        ts->set_sec(this->ts.sec);
+        ts->set_nsec(this->ts.nsec);
         
-        proto::Timestamp tsDevice;
-        tsDevice.set_sec(this->tsDevice.sec);
-        tsDevice.set_ns(this->tsDevice.nsec);
-        spatImgDets->set_tsDevice(tsDevice);
+        proto::Timestamp* tsDevice = spatialImgDetections.mutable_tsdevice();
+        tsDevice->set_sec(this->tsDevice.sec);
+        tsDevice->set_nsec(this->tsDevice.nsec);
 
         for(const auto& detection : this->detections) {
-            proto::SpatialImgDetection det = spatImgDets.add_detections();
+            proto::SpatialImgDetection* spatialImgDetection = spatialImgDetections.add_detections();
 
             // populate SpatialImgDetection.ImgDetection from struct inheritance
-            proto::ImgDetection detection;
-            detection.set_label(detection.label);
-            detection.set_confidence(detection.confidence);
-            detection.set_xmin(detection.xmin);
-            detection.set_ymin(detection.ymin);
-            detection.set_xmax(detection.xmax);
-            detection.set_ymax(detection.ymax);
-            det->set_detection(detection);
+            proto::ImgDetection* imgDetection = spatialImgDetection->mutable_detection();
+            imgDetection->set_label(detection.label);
+            imgDetection->set_confidence(detection.confidence);
+            imgDetection->set_xmin(detection.xmin);
+            imgDetection->set_ymin(detection.ymin);
+            imgDetection->set_xmax(detection.xmax);
+            imgDetection->set_ymax(detection.ymax);
 
             // populate SpatialImgDetection.Point3f
-            proto::Point3f spatialCoordinates;
-            spatialCoordinates.set_x(detection.spatialCoordinates.x);
-            spatialCoordinates.set_y(detection.spatialCoordinates.y);
-            spatialCoordinates.set_z(detection.spatialCoordinates.z);
-            det->set_spatialCoordinates(spatialCoordinates);
+            proto::Point3f* spatialCoordinates = spatialImgDetection->mutable_spatialcoordinates();
+            spatialCoordinates->set_x(detection.spatialCoordinates.x);
+            spatialCoordinates->set_y(detection.spatialCoordinates.y);
+            spatialCoordinates->set_z(detection.spatialCoordinates.z);
 
             // populate SpatialImgDetection.SpatialLocationCalculatorConfigData
-            proto::SpatialLocationCalculatorConfigData boundingBoxMapping;
-            boundingBoxMapping.set_AUTO(detection.boundingBoxMapping.AUTO);
+            proto::SpatialLocationCalculatorConfigData* boundingBoxMapping = spatialImgDetection->mutable_boundingboxmapping();
 
             // populate SpatialImgDetection.SpatialLocationCalculatorConfigData.Rect
-            proto::Rect roi;
-            roi.set_x(detection.boundingBoxMapping.roi.x);
-            roi.set_y(detection.boundingBoxMapping.roi.y);
-            roi.set_width(detection.boundingBoxMapping.roi.width);
-            roi.set_height(detection.boundingBoxMapping.roi.height);
-            boundingBoxMapping.set_roi(roi)
+            proto::Rect* roi = boundingBoxMapping->mutable_roi();
+            roi->set_x(detection.boundingBoxMapping.roi.x);
+            roi->set_y(detection.boundingBoxMapping.roi.y);
+            roi->set_width(detection.boundingBoxMapping.roi.width);
+            roi->set_height(detection.boundingBoxMapping.roi.height);
+
+            // populate SpatialImgDetection.SpatialLocationCalculatorConfigData.SpatialLocationCalculatorConfigThresholds
+            proto::SpatialLocationCalculatorConfigThresholds* depthTresholds = boundingBoxMapping->mutable_depththresholds();
+            depthTresholds->set_lowerthreshold(detection.boundingBoxMapping.depthThresholds.lowerThreshold);
+            depthTresholds->set_upperthreshold(detection.boundingBoxMapping.depthThresholds.upperThreshold);
 
             // populate SpatialImgDetection.SpatialLocationCalculatorConfigData.SpatialLocationCalculatorAlgorithm
-            proto::SpatialLocationCalculatorAlgorithm calculationAlgorithm;
-            calculationAlgorithm.set_lowerThreshold(detection.boundingBoxMapping.calculationAlgorithm.lowerThreshold);
-            calculationAlgorithm.set_upperThreshold(detection.boundingBoxMapping.calculationAlgorithm.upperThreshold);
-            boundingBoxMapping.set_calculationAlgorithm(calculationAlgorithm);
-
-            boundingBoxMapping.set_stepSize(detection.boundingBoxMapping.stepSize);
-    
-            det->set_boundingBoxMapping(boundingBoxMapping);
+            boundingBoxMapping->set_calculationalgorithm(static_cast<proto::SpatialLocationCalculatorAlgorithm>(detection.boundingBoxMapping.calculationAlgorithm));
+            
+            // populate SpatialImgDetection.SpatialLocationCalculatorConfigData.stepSize
+            boundingBoxMapping->set_stepsize(detection.boundingBoxMapping.stepSize);
         }
         
-        return spatImgDets;
+        return spatialImgDetections;
     }
 
     DEPTHAI_SERIALIZE(SpatialImgDetections, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, detections);

@@ -24,8 +24,8 @@ message Point3f {
 }
 
 message SpatialLocationCalculatorConfigData {
-    int32 AUTO = 1; // default value: -1
-    Rect roi = 2;
+    Rect roi = 1;
+    SpatialLocationCalculatorConfigThresholds depthThresholds = 2;
     SpatialLocationCalculatorAlgorithm calculationAlgorithm = 3;
     int32 stepSize = 4; // default value: AUTO
 }
@@ -38,7 +38,17 @@ message Rect {
     float height = 4; // default value: 0.0f
 }
 
-message SpatialLocationCalculatorAlgorithm {
+message SpatialLocationCalculatorConfigThresholds {
     uint32 lowerThreshold = 1; // default value: 0
 	uint32 upperThreshold = 2; // default value: 65535
+}
+
+enum SpatialLocationCalculatorAlgorithm {
+    option allow_alias = true;
+    AVERAGE = 0;
+    MEAN = 0;
+    MIN = 1;
+    MAX = 2;
+    MODE = 3;
+    MEDIAN = 4;
 }

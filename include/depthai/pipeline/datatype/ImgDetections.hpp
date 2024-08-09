@@ -2,6 +2,7 @@
 
 #include <vector>
 #include "depthai/pipeline/datatype/Buffer.hpp"
+#include "depthai/utility/ProtoSerializable.hpp"
 #include "depthai/utility/protos/ImgDetections.pb.h"
 
 namespace dai {
@@ -36,32 +37,31 @@ class ImgDetections : public Buffer, public utility::ProtoSerializable {
         datatype = DatatypeEnum::ImgDetections;
     };
 
-    google::protobuf::Message getProtoMessage() const override {
-        proto::ImgDetectionsProto imgDets;
+    google::protobuf::Message& getProtoMessage() const override {
+        proto::ImgDetections imgDetections;
 
-        imgDets.set_sequenceNum(this->sequenceNum);
+        imgDetections.set_sequencenum(this->sequenceNum);
         
-        proto::Timestamp ts;
-        ts.set_sec(this->ts.sec);
-        ts.set_ns(this->ts.sec);
-        imgDets->set_ts(ts);
+        proto::Timestamp* ts = imgDetections.mutable_ts();
+        ts->set_sec(this->ts.sec);
+        ts->set_nsec(this->ts.nsec);
         
-        proto::Timestamp tsDevice;
-        tsDevice.set_sec(this->tsDevice.sec);
-        tsDevice.set_ns(this->tsDevice.nsec);
-        imgDets->set_tsDevice(tsDevice);
+        proto::Timestamp* tsDevice = imgDetections.mutable_tsdevice();
+        tsDevice->set_sec(this->tsDevice.sec);
+        tsDevice->set_nsec(this->tsDevice.nsec);
+
 
         for(const auto& detection : this->detections) {
-            proto::ImgDetection det = imgDets.add_detections();
-            det->set_label(detection.label);
-            det->set_confidence(detection.confidence);
-            det->set_xmin(detection.xmin);
-            det->set_ymin(detection.ymin);
-            det->set_xmax(detection.xmax);
-            det->set_ymax(detection.ymax);
+            proto::ImgDetection* imgDetection = imgDetections.add_detections();
+            imgDetection->set_label(detection.label);
+            imgDetection->set_confidence(detection.confidence);
+            imgDetection->set_xmin(detection.xmin);
+            imgDetection->set_ymin(detection.ymin);
+            imgDetection->set_xmax(detection.xmax);
+            imgDetection->set_ymax(detection.ymax);
         }
         
-        return imgDets;
+        return imgDetections;
     }
 
     DEPTHAI_SERIALIZE(ImgDetections, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, detections);

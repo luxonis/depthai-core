@@ -32,7 +32,6 @@
 #include <google/protobuf/extension_set.h>  // IWYU pragma: export
 #include <google/protobuf/generated_enum_reflection.h>
 #include <google/protobuf/unknown_field_set.h>
-#include "SpatialImgDetections.pb.h"
 #include "ImgDetections.pb.h"
 // @@protoc_insertion_point(includes)
 #include <google/protobuf/port_def.inc>

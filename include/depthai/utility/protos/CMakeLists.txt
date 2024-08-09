@@ -19,6 +19,7 @@ message("Generating files: ${generated_files}")
   add_custom_command(
       OUTPUT ${generated_files}
       COMMAND protobuf::protoc --cpp_out ${PROTO_OUTPUT_DIR} -I ${CMAKE_CURRENT_SOURCE_DIR} ${proto_file_abs}
+      COMMAND protobuf::protoc --cpp_out ${CMAKE_CURRENT_BINARY_DIR} -I ${CMAKE_CURRENT_SOURCE_DIR} ${proto_file_abs}
       COMMENT "Generating ${generated_files} from ${proto_file}"
       VERBATIM
   )
@@ -26,10 +27,8 @@ endforeach()
 
 add_library(libProto ${MESSAGES_SRCS})
 target_link_libraries(libProto protobuf::libprotobuf)
-#target_include_directories(libProto PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/..)
 target_include_directories(libProto
   PUBLIC
-    #${CMAKE_CURRENT_BINARY_DIR}/..
     "$<INSTALL_INTERFACE:include>"
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>"
 )

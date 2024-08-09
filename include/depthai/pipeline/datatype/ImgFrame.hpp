@@ -89,85 +89,82 @@ class ImgFrame : public Buffer, public utility::ProtoSerializable {
         proto::ImgFrame imgFrame;
         
         proto::Timestamp* ts = imgFrame.mutable_ts();
-        ts-set_sec(this->ts.sec);
-        ts-set_nsec(this->ts.sec);
+        ts->set_sec(this->ts.sec);
+        ts->set_nsec(this->ts.nsec);
         
         proto::Timestamp* tsDevice = imgFrame.mutable_tsdevice();
         tsDevice->set_sec(this->tsDevice.sec);
         tsDevice->set_nsec(this->tsDevice.nsec);
 
-        imgFrame.set_sequenceNum(this->sequenceNum);
+        imgFrame.set_sequencenum(this->sequenceNum);
 
-        proto::FrameSpecs* fb = imgFrame.mutable_fb();
-        fb.set_type(static_cast<proto::Specs.Type>(this->fb.type));
-        fb.set_width(this->fb.width);
-        fb.set_height(this->fb.height);
-        fb.set_stride(this->fb.stride);
-        fb.set_bytesPP(this->fb.bytesPP);
-        fb.set_p1Offset(this->fb.p1Offset);
-        fb.set_p2Offset(this->fb.p2Offset);
-        fb.set_p3Offset(this->fb.p3Offset);
-        imgFrame.set_fb(fb);
+        proto::Specs* fb = imgFrame.mutable_fb();
+        fb->set_type(static_cast<proto::Type>(this->fb.type));
+        fb->set_width(this->fb.width);
+        fb->set_height(this->fb.height);
+        fb->set_stride(this->fb.stride);
+        fb->set_bytespp(this->fb.bytesPP);
+        fb->set_p1offset(this->fb.p1Offset);
+        fb->set_p2offset(this->fb.p2Offset);
+        fb->set_p3offset(this->fb.p3Offset);
 
-        proto::FrameSpecs* sourceFb = imgFrame.mutable_sourceFb();
-        sourceFb.set_type(static_cast<proto::Specs.Type>(this->sourceFb.type));
-        sourceFb.set_width(this->sourceFb.width);
-        sourceFb.set_height(this->sourceFb.height);
-        sourceFb.set_stride(this->sourceFb.stride);
-        sourceFb.set_bytesPP(this->sourceFb.bytesPP);
-        sourceFb.set_p1Offset(this->sourceFb.p1Offset);
-        sourceFb.set_p2Offset(this->sourceFb.p2Offset);
-        sourceFb.set_p3Offset(this->sourceFb.p3Offset);
-        imgFrame.set_sourceFb(sourceFb);
+        proto::Specs* sourceFb = imgFrame.mutable_sourcefb();
+        sourceFb->set_type(static_cast<proto::Type>(this->sourceFb.type));
+        sourceFb->set_width(this->sourceFb.width);
+        sourceFb->set_height(this->sourceFb.height);
+        sourceFb->set_stride(this->sourceFb.stride);
+        sourceFb->set_bytespp(this->sourceFb.bytesPP);
+        sourceFb->set_p1offset(this->sourceFb.p1Offset);
+        sourceFb->set_p2offset(this->sourceFb.p2Offset);
+        sourceFb->set_p3offset(this->sourceFb.p3Offset);
 
         proto::CameraSettings* cam = imgFrame.mutable_cam();
-        cam.set_exposureTimeUs(this->cam.exposureTimeUs);
-        cam.set_sensitivityIsos(this->cam.sensitivityIso);
-        cam.set_lensPosition(this->cam.lensPosition);
-        cam.set_wbColorTemp(this->cam.wbColorTemp);
-        cam.set_lensPositionRaw(this->cam.lensPositionRaw);
+        cam->set_exposuretimeus(this->cam.exposureTimeUs);
+        cam->set_sensitivityiso(this->cam.sensitivityIso);
+        cam->set_lensposition(this->cam.lensPosition);
+        cam->set_wbcolortemp(this->cam.wbColorTemp);
+        cam->set_lenspositionraw(this->cam.lensPositionRaw);
 
-        imgFrame.set_HFovDegrees(this->HFovDegrees);
+        imgFrame.set_hfovdegrees(this->HFovDegrees);
 
-        imgFrame.set_instanceNum(this->instanceNum);
+        imgFrame.set_instancenum(this->instanceNum);
 
-        proto::ImgTransformations transformations;
+        proto::ImgTransformations* transformations = imgFrame.mutable_transformations();
         for (const auto& transformation : this->transformations.transformations) {
-            proto::ImgTransformation imgTransformation = transformations.add_transformations();
+            proto::ImgTransformation* imgTransformation = transformations->add_transformations();
 
-            imgTransformation.set_transformationType(static_cast<proto::Transformation.Type>(transformation.type));
-            imgTransformation.set_topLeftCropX(transformation.topLeftCropX);
-            imgTransformation.set_topLeftCropY(transformation.topLeftCropY);
-            imgTransformation.set_bottomRightCropX(transformation.bottomRightCropX);
-            imgTransformation.set_bottomRightCropY(transformation.bottomRightCropY);
-            imgTransformation.set_topPadding(transformation.topPadding);
-            imgTransformation.set_bottomPadding(transformation.bottomPadding);
-            imgTransformation.set_leftPadding(transformation.leftPadding);
-            imgTransformation.set_rightPadding(transformation.rightPadding);
-            imgTransformation.set_afterTransformWidth(transformation.afterTransformWidth);
-            imgTransformation.set_afterTransformHeight(transformation.afterTransformHeight);
-            imgTransformation.set_beforeTransformWidth(transformation.beforeTransformWidth);
-            imgTransformation.set_beforeTransformHeight(transformation.beforeTransformHeight);
+            imgTransformation->set_transformationtype(static_cast<proto::Transformation>(transformation.transformationType));
+            imgTransformation->set_topleftcropx(transformation.topLeftCropX);
+            imgTransformation->set_topleftcropy(transformation.topLeftCropY);
+            imgTransformation->set_bottomrightcropx(transformation.bottomRightCropX);
+            imgTransformation->set_bottomrightcropy(transformation.bottomRightCropY);
+            imgTransformation->set_toppadding(transformation.topPadding);
+            imgTransformation->set_bottompadding(transformation.bottomPadding);
+            imgTransformation->set_leftpadding(transformation.leftPadding);
+            imgTransformation->set_rightpadding(transformation.rightPadding);
+            imgTransformation->set_aftertransformwidth(transformation.afterTransformWidth);
+            imgTransformation->set_aftertransformheight(transformation.afterTransformHeight);
+            imgTransformation->set_beforetransformwidth(transformation.beforeTransformWidth);
+            imgTransformation->set_beforetransformheight(transformation.beforeTransformHeight);
 
-            proto::ImgTransformation.TransformationMatrix transformationMatrix;
-            for (const auto& array : transformation.transformationMatrix.arrays) {
-                proto::ImgTransformation.TransformationMatrix.FloatArray floatArray;
+            proto::TransformationMatrix* transformationMatrix = imgTransformation->mutable_transformationmatrix();
+            for (const auto& array : transformation.transformationMatrix) {
+                proto::FloatArray* floatArray = transformationMatrix->add_arrays();
 
-                //or floatArray.mutable_samples() = {array.values.begin(), array.values.end()}; ?
-                for (const auto& value : array.values) {
-                    floatArray.add_values(value);
+                //or floatArray.mutable_values() = {array.values.begin(), array.values.end()}; ?
+                for (const auto& value : array) {
+                    floatArray->add_values(value);
                 }
-
-                transformationMatrix.add_arrays(floatArray);
             }
 
-            proto::ImgTransformation.TransformationMatrix invTransformationMatrix;
-            for (const auto& array : transformation.invTransformationMatrix.arrays) {
-                proto::ImgTransformation.TransformationMatrix.FloatArray floatArray;
-                for (const auto& value : array.values) {
-                    floatArray.add_values(value);
+            proto::TransformationMatrix* invTransformationMatrix = imgTransformation->mutable_invtransformationmatrix();
+            for (const auto& array : transformation.invTransformationMatrix) {
+                proto::FloatArray* floatArray = invTransformationMatrix->add_arrays();
+
+                //or floatArray.mutable_values() = {array.values.begin(), array.values.end()}; ?
+                for (const auto& value : array) {
+                    floatArray->add_values(value);
                 }
-                invTransformationMatrix.add_arrays(floatArray);
             }
         }
         
