@@ -10,3 +10,6 @@
 [submodule "bindings/python/external/xtensor-python"]
 	path = bindings/python/external/xtensor-python
 	url = https://github.com/xtensor-stack/xtensor-python.git
+[submodule "3rdparty/pybind11_opencv_numpy"]
+	path = bindings/python/external/pybind11_opencv_numpy
+	url = git@github.com:edmBernard/pybind11_opencv_numpy.git
