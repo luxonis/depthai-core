@@ -96,24 +96,24 @@ jobs:
     - name: Install dependencies
       if: matrix.os == 'macos-latest'
       run: |
-        brew install opencv
+        brew install opencv clang ninja
 
     - name: Install dependencies
       if: matrix.os == 'ubuntu-latest'
       run: |
         sudo apt-get update
-        sudo apt-get install libopencv-dev
+        sudo apt-get install libopencv-dev clang ninja-build
 
     - name: Install dependencies
       if: matrix.os == 'windows-latest'
       run: |
-        choco install opencv
+        choco install opencv llvm ninja
         echo "OpenCV_DIR=C:\tools\opencv\build" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
     - name: Build (old CMake, gcc/Clang)
       if: matrix.cmake == '3.10.x' && matrix.os != 'windows-latest'
       run: |
-        cmake -H. -Bbuild -D'CMAKE_BUILD_TYPE=Release' -D'HUNTER_CONFIGURATION_TYPES=Release' -D'DEPTHAI_BUILD_EXAMPLES=ON' -D'DEPTHAI_BUILD_TESTS=ON' ${{ env.CMAKE_ARGS }}
+        cmake -G Ninja -H. -Bbuild -D'CMAKE_BUILD_TYPE=Release' -D'HUNTER_CONFIGURATION_TYPES=Release' -D'DEPTHAI_BUILD_EXAMPLES=ON' -D'DEPTHAI_BUILD_TESTS=ON' ${{ env.CMAKE_ARGS }}
         cmake --build build --config Release -- -j4
 
     # CMake binaries unavailable
@@ -126,7 +126,7 @@ jobs:
     - name: Build (newest CMake)
       if: matrix.cmake != '3.10.x'
       run: |
-        cmake -S . -B build -D CMAKE_BUILD_TYPE=Release -D HUNTER_CONFIGURATION_TYPES=Release -D DEPTHAI_BUILD_EXAMPLES=ON -D DEPTHAI_BUILD_TESTS=ON ${{ env.CMAKE_ARGS }}
+        cmake -G Ninja -S . -B build -D CMAKE_BUILD_TYPE=Release -D HUNTER_CONFIGURATION_TYPES=Release -D DEPTHAI_BUILD_EXAMPLES=ON -D DEPTHAI_BUILD_TESTS=ON ${{ env.CMAKE_ARGS }}
         cmake --build build --parallel 4 --config Release
 
   integration:
@@ -167,27 +167,27 @@ jobs:
     - name: Install dependencies
       if: matrix.os == 'macos-latest'
       run: |
-        brew install opencv
+        brew install opencv clang ninja
 
     - name: Install dependencies
       if: matrix.os == 'ubuntu-latest'
       run: |
         sudo apt-get update
-        sudo apt-get install libopencv-dev
+        sudo apt-get install libopencv-dev clang ninja-build
 
     - name: Install dependencies
       if: matrix.os == 'windows-latest'
       run: |
-        choco install opencv
+        choco install opencv llvm ninja
         echo "OpenCV_DIR=C:\tools\opencv\build" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-        echo "CMAKE_GENERATOR=Visual Studio 17 2022" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+        echo "CMAKE_GENERATOR=Ninja" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
         echo "CMAKE_GENERATOR_PLATFORM=${{ matrix.platform }}" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
     - name: Setup cmake
       uses: jwlawson/actions-setup-cmake@v1.13
 
-    - name: Configure ${{ matrix.build-type }}, shared ${{ matrix.shared }}, ${{ matrix.platform }}
-      run: cmake -S . -B build -D BUILD_SHARED_LIBS=${{ matrix.shared}} -D CMAKE_BUILD_TYPE=${{ matrix.build-type }} -D CMAKE_INSTALL_PREFIX=$GITHUB_WORKSPACE/depthai_install ${{ env.CMAKE_ARGS }}
+    - name: Configure (Clang and Ninja) ${{ matrix.build-type }}, shared ${{ matrix.shared }}, ${{ matrix.platform }}
+      run: cmake -G Ninja -S . -B build -D BUILD_SHARED_LIBS=${{ matrix.shared}} -D CMAKE_BUILD_TYPE=${{ matrix.build-type }} -D CMAKE_INSTALL_PREFIX=$GITHUB_WORKSPACE/depthai_install ${{ env.CMAKE_ARGS }}
 
     - name: Set path to shared library dll (Windows)
       if: matrix.os == 'windows-latest'
