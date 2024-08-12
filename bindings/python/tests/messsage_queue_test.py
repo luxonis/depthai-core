@@ -181,7 +181,7 @@ def test_close():
     # Test close
     queue.close()
     assert queue.isClosed()
-    with pytest.raises(RuntimeError):
+    with pytest.raises(MessageQueue.QueueException):
         queue.get()
 
 
