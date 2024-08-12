@@ -13,7 +13,6 @@
 #include "depthai/common/TensorInfo.hpp"
 #include "depthai/utility/VectorMemory.hpp"
 #include "depthai/utility/span.hpp"
-#include "xtensor/xmanipulation.hpp"
 
 #if defined(__clang__)
     #if __has_warning("-Wswitch-enum")
@@ -34,6 +33,7 @@
 #ifdef DEPTHAI_XTENSOR_SUPPORT
     #include "xtensor/xadapt.hpp"
     #include "xtensor/xarray.hpp"
+    #include "xtensor/xmanipulation.hpp"
 #endif
 #if defined(_ON_DEF)
     #define ON _ON_DEF
