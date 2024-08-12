@@ -348,3 +348,6 @@ dai_add_test(resolutions_test src/ondevice_tests/resolutions_test.cpp)
 
 # Shdmem test
 dai_add_test(shdmem_test src/ondevice_tests/shdmem_test.cpp)
+dai_add_test(shdmem_device_test src/ondevice_tests/shdmem_device_test.cpp)
+dai_add_test(shdmem_camera_test src/ondevice_tests/shdmem_camera_test.cpp)
+dai_add_test(shdmem_imgmanip_test src/ondevice_tests/shdmem_imgmanip_test.cpp)
