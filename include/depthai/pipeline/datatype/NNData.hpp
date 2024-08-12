@@ -239,10 +239,10 @@ class NNData : public Buffer {
         TensorInfo::StorageOrder order;
         switch(tensor.shape().size()) {
             case 1:
-                order = TensorInfo::StorageOrder::H;
+                order = TensorInfo::StorageOrder::C;
                 break;
             case 2:
-                order = TensorInfo::StorageOrder::CN;
+                order = TensorInfo::StorageOrder::NC;
                 break;
             case 3:
                 order = TensorInfo::StorageOrder::CHW;
