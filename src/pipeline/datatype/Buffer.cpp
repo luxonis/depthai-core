@@ -10,6 +10,18 @@ Buffer::Buffer(size_t size) : Buffer() {
     data = mem;
 }
 
+Buffer::Buffer(const char *name) {
+    auto mem = std::make_shared<SharedMemory>(name);
+    data = mem;
+}
+
+Buffer::Buffer(const char *name, size_t size) {
+    auto mem = std::make_shared<SharedMemory>(name, size);
+    mem->setSize(size);
+    data = mem;
+
+}
+
 Buffer::Buffer(long fd) : Buffer() {
     auto mem = std::make_shared<SharedMemory>(fd);
     data = mem;
