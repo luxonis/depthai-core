@@ -185,15 +185,15 @@ void bind_nndata(pybind11::module& m, void* pCallstack){
         .def("addTensor", static_cast<NNData&(NNData::*)(const std::string&, const std::vector<int>&)>(&NNData::addTensor), py::arg("name"), py::arg("tensor"), DOC(dai, NNData, addTensor))
         .def("addTensor", static_cast<NNData&(NNData::*)(const std::string&, const std::vector<float>&)>(&NNData::addTensor), py::arg("name"), py::arg("tensor"), DOC(dai, NNData, addTensor))
         .def("addTensor", static_cast<NNData&(NNData::*)(const std::string&, const std::vector<double>&)>(&NNData::addTensor), py::arg("name"), py::arg("tensor"), DOC(dai, NNData, addTensor))
-        
+
         .def("addTensor", static_cast<NNData&(NNData::*)(const std::string&, const std::vector<int>&, TensorInfo::StorageOrder)>(&NNData::addTensor), py::arg("name"), py::arg("tensor"), py::arg("storageOrder"), DOC(dai, NNData, addTensor))
         .def("addTensor", static_cast<NNData&(NNData::*)(const std::string&, const std::vector<float>&, TensorInfo::StorageOrder)>(&NNData::addTensor), py::arg("name"), py::arg("tensor"), py::arg("storageOrder"), DOC(dai, NNData, addTensor))
         .def("addTensor", static_cast<NNData&(NNData::*)(const std::string&, const std::vector<double>&, TensorInfo::StorageOrder)>(&NNData::addTensor), py::arg("name"), py::arg("tensor"), py::arg("storageOrder"), DOC(dai, NNData, addTensor))
-        
+
         .def("addTensor", static_cast<NNData&(NNData::*)(const std::string&, const xt::xarray<int>&)>(&NNData::addTensor), py::arg("name"), py::arg("tensor"), DOC(dai, NNData, addTensor, 2))
         .def("addTensor", static_cast<NNData&(NNData::*)(const std::string&, const xt::xarray<float>&)>(&NNData::addTensor), py::arg("name"), py::arg("tensor"), DOC(dai, NNData, addTensor, 2))
         .def("addTensor", static_cast<NNData&(NNData::*)(const std::string&, const xt::xarray<double>&)>(&NNData::addTensor), py::arg("name"), py::arg("tensor"), DOC(dai, NNData, addTensor, 2))
-        
+
         .def("addTensor", static_cast<NNData&(NNData::*)(const std::string&, const xt::xarray<int>&, TensorInfo::StorageOrder)>(&NNData::addTensor), py::arg("name"), py::arg("tensor"), py::arg("storageOrder"), DOC(dai, NNData, addTensor, 2))
         .def("addTensor", static_cast<NNData&(NNData::*)(const std::string&, const xt::xarray<float>&, TensorInfo::StorageOrder)>(&NNData::addTensor), py::arg("name"), py::arg("tensor"), py::arg("storageOrder"), DOC(dai, NNData, addTensor, 2))
         .def("addTensor", static_cast<NNData&(NNData::*)(const std::string&, const xt::xarray<double>&, TensorInfo::StorageOrder)>(&NNData::addTensor), py::arg("name"), py::arg("tensor"), py::arg("storageOrder"), DOC(dai, NNData, addTensor, 2))

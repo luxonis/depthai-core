@@ -92,7 +92,7 @@ TEST_CASE("NNData double storage conversions") {
     REQUIRE(nndata.getTensor<float>("c1", dai::TensorInfo::StorageOrder::C).shape() == std::vector<size_t>{6});
     REQUIRE(nndata.getTensor<float>("c1", dai::TensorInfo::StorageOrder::NCHW).shape() == std::vector<size_t>{1, 6, 1, 1});
 
-    REQUIRE_THROWS_AS(nndata.getTensor<float>("c1", dai::TensorInfo::StorageOrder::W),  std::runtime_error);
+    REQUIRE_THROWS_AS(nndata.getTensor<float>("c1", dai::TensorInfo::StorageOrder::W), std::runtime_error);
 
     REQUIRE(nndata.getTensor<float>("c1", dai::TensorInfo::StorageOrder::NC) == tensorC1);
 }

@@ -202,10 +202,10 @@ class NNData : public Buffer {
     /**
      * @brief Add a tensor to this NNData object.
      * The provided array is stored as a 1xN tensor where N is the length of the array.
-     * 
+     *
      * @param name: Name of the tensor
      * @param data: array
-     * @return NNData&: reference to this object 
+     * @return NNData&: reference to this object
      */
     template <typename _Ty = double>
     NNData& addTensor(const std::string& name, const std::vector<_Ty>& data) {
@@ -215,11 +215,11 @@ class NNData : public Buffer {
     /**
      * @brief Add a tensor to this NNData object.
      * The provided array is stored as a 1xN tensor where N is the length of the array.
-     * 
+     *
      * @param name: Name of the tensor
      * @param data: array
      * @param order: Storage order of the tensor
-     * @return NNData&: reference to this object 
+     * @return NNData&: reference to this object
      */
     template <typename _Ty = double>
     NNData& addTensor(const std::string& name, const std::vector<_Ty>& data, TensorInfo::StorageOrder order) {
@@ -229,10 +229,10 @@ class NNData : public Buffer {
     /**
      * @brief Add a tensor to this NNData object. The storage order is picked based on the number of dimensions of the tensor.
      * Float values are converted to FP16 and integers are cast to bytes.
-     * 
+     *
      * @param name: Name of the tensor
      * @param tensor: tensor
-     * @return NNData&: reference to this object 
+     * @return NNData&: reference to this object
      */
     template <typename _Ty = double>
     NNData& addTensor(const std::string& name, const xt::xarray<_Ty>& tensor) {
@@ -259,11 +259,11 @@ class NNData : public Buffer {
     /**
      * @brief Add a tensor to this NNData object. The storage order is picked based on the number of dimensions of the tensor.
      * Float values are converted to FP16 and integers are cast to bytes.
-     * 
+     *
      * @param name: Name of the tensor
      * @param tensor: tensor
      * @param order: Storage order of the tensor
-     * @return NNData&: reference to this object 
+     * @return NNData&: reference to this object
      */
     template <typename _Ty = double>
     NNData& addTensor(const std::string& name, const xt::xarray<_Ty>& tensor, const TensorInfo::StorageOrder order) {
@@ -317,8 +317,8 @@ class NNData : public Buffer {
         // Validate storage order - past this point, the tensor shape and storage order should be correct
         try {
             info.validateStorageOrder();
-        } catch (...) {
-            vecData->resize(offset); // Resize vector back to its size prior to adding tensor
+        } catch(...) {
+            vecData->resize(offset);  // Resize vector back to its size prior to adding tensor
             throw;
         }
 
@@ -407,7 +407,7 @@ class NNData : public Buffer {
             size_t ord = static_cast<size_t>(order);
             std::vector<size_t> vec;
             while(ord > 0) {
-                vec.push_back(ord % 16 - 1); // 16 because order values are base 16
+                vec.push_back(ord % 16 - 1);  // 16 because order values are base 16
                 ord /= 16;
             }
             std::reverse(vec.begin(), vec.end());
