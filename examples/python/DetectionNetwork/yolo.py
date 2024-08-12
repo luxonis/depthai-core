@@ -6,31 +6,10 @@ import depthai as dai
 import numpy as np
 import time
 
-USE_REPLAY = False
-
-examplesRoot = Path(__file__).parent / Path('../../').resolve()
-models = examplesRoot / Path('models')
-videoPath = models / Path('construction_vest.mp4')
-
-# Download yolo model from zoo
-modelDescription = dai.NNModelDescription(modelSlug="yolov10-nano", platform="RVC4")
-modelPath = dai.getModelFromZoo(modelDescription, useCached=True)
 # Create pipeline
 with dai.Pipeline() as pipeline:
-
-    # Define sources and outputs
-    if USE_REPLAY:
-        replay = pipeline.create(dai.node.ReplayVideo)
-        replay.setReplayVideoFile(videoPath)
-        replay.setSize(512, 288)
-        replay.setOutFrameType(dai.ImgFrame.Type.BGR888i)
-        sourceOutput = replay.out
-    else:
-        camRgb = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
-        sourceOutput = camRgb.requestOutput((512, 288), dai.ImgFrame.Type.BGR888i)
-    detectionNetwork = pipeline.create(dai.node.DetectionNetwork)
-    detectionNetwork.setNNArchive(dai.NNArchive(modelPath))
-    sourceOutput.link(detectionNetwork.input)
+    cameraNode = pipeline.create(dai.node.Camera).build()
+    detectionNetwork = pipeline.create(dai.node.YoloDetectionNetwork).build(cameraNode, dai.NNModelDescription("yolov6n"))
     labelMap = detectionNetwork.getClasses()
 
     qRgb = detectionNetwork.passthrough.createOutputQueue()

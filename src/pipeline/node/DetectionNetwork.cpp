@@ -9,8 +9,11 @@
 
 // internal
 #include "depthai/capabilities/ImgFrameCapability.hpp"
+#include "depthai/depthai.hpp"
+#include "depthai/modelzoo/Zoo.hpp"
 #include "depthai/nn_archive/NNArchive.hpp"
 #include "nn_archive/NNArchiveConfig.hpp"
+#include "pipeline/DeviceNodeGroup.hpp"
 #include "utility/ArchiveUtil.hpp"
 #include "utility/ErrorMacros.hpp"
 #include "utility/PimplImpl.hpp"
@@ -22,18 +25,12 @@ namespace node {
 // Base Detection Network Class
 //--------------------------------------------------------------------
 
-class DetectionNetwork::Impl {
-   public:
-    Impl() = default;
-
-    /*
-     * Place for future private stuff.
-     */
-};
-
-DetectionNetwork::DetectionNetwork()
-    : out{detectionParser->out}, outNetwork{neuralNetwork->out}, input{neuralNetwork->input}, passthrough{neuralNetwork->passthrough} {};
-DetectionNetwork::~DetectionNetwork() = default;
+DetectionNetwork::DetectionNetwork(const std::shared_ptr<Device>& device)
+    : DeviceNodeGroup(device),
+      out{detectionParser->out},
+      outNetwork{neuralNetwork->out},
+      input{neuralNetwork->input},
+      passthrough{neuralNetwork->passthrough} {};
 
 // -------------------------------------------------------------------
 // Neural Network API
@@ -58,47 +55,108 @@ std::shared_ptr<DetectionNetwork> DetectionNetwork::build(Node::Output& input, c
     return std::static_pointer_cast<DetectionNetwork>(shared_from_this());
 }
 
+std::shared_ptr<DetectionNetwork> DetectionNetwork::build(std::shared_ptr<Camera> camera, dai::NNModelDescription modelDesc, float fps) {
+    setFromModelZoo(modelDesc);
+    // Get the input size
+    auto nnArchiveConfig = detectionParser->getNNArchiveConfig().getConfigV1();
+    if(!nnArchiveConfig.has_value()) {
+        DAI_CHECK_V(false, "The DetectionNetwork.build method only supports for NNConfigV1");
+    }
+    if(nnArchiveConfig->model.inputs.size() != 1) {
+        DAI_CHECK_V(false, "Only single input model is supported");
+    }
+
+    if(nnArchiveConfig->model.inputs[0].shape.size() != 4) {
+        DAI_CHECK_V(false, "Only 4D input shape is supported");
+    }
+
+    // Check that the first two dimesions are 1 and 3
+    if(nnArchiveConfig->model.inputs[0].shape[0] != 1 || nnArchiveConfig->model.inputs[0].shape[1] != 3) {
+        DAI_CHECK_V(false, "Only 3 channel input is supported");
+    }
+    auto inputHeight = nnArchiveConfig->model.inputs[0].shape[2];
+    auto inputWidth = nnArchiveConfig->model.inputs[0].shape[3];
+
+    auto type = dai::ImgFrame::Type::BGR888p;
+    auto platform = getDevice()->getPlatform();
+    if(platform == dai::Platform::RVC2 || platform == dai::Platform::RVC3) {
+        type = dai::ImgFrame::Type::BGR888p;
+    } else if(platform == dai::Platform::RVC4) {
+        type = dai::ImgFrame::Type::BGR888i;
+    } else {
+        DAI_CHECK_V(false, "Unsupported platform");
+    }
+
+    auto cap = ImgFrameCapability();
+    cap.size.value = std::pair(inputWidth, inputHeight);
+    cap.type = type;
+    cap.fps.value = fps;
+    auto* input = camera->requestOutput(cap, false);
+    if(!input) {
+        DAI_CHECK_V(false, "Camera does not have output with requested capabilities");
+    }
+    input->link(this->input);
+    return std::static_pointer_cast<DetectionNetwork>(shared_from_this());
+}
+
 void DetectionNetwork::setNNArchive(const NNArchive& nnArchive) {
     constexpr int DEFAULT_SUPERBLOB_NUM_SHAVES = 8;
-    switch(nnArchive.getArchiveType()) {
-        case dai::NNArchiveType::BLOB:
+    switch(nnArchive.getModelType()) {
+        case dai::model::ModelType::BLOB:
             setNNArchiveBlob(nnArchive);
             break;
-        case dai::NNArchiveType::SUPERBLOB:
+        case dai::model::ModelType::SUPERBLOB:
             setNNArchiveSuperblob(nnArchive, DEFAULT_SUPERBLOB_NUM_SHAVES);
             break;
-        case dai::NNArchiveType::OTHER:
+        case dai::model::ModelType::DLC:
+        case dai::model::ModelType::OTHER:
             setNNArchiveOther(nnArchive);
+            break;
+        case dai::model::ModelType::NNARCHIVE:
+            DAI_CHECK_V(false, "Cannot set NNArchive inside NNArchive. %s: %s" __FILE__, __LINE__);
             break;
     }
 }
 
 void DetectionNetwork::setNNArchive(const NNArchive& nnArchive, int numShaves) {
-    switch(nnArchive.getArchiveType()) {
-        case dai::NNArchiveType::SUPERBLOB:
+    switch(nnArchive.getModelType()) {
+        case dai::model::ModelType::SUPERBLOB:
             setNNArchiveSuperblob(nnArchive, numShaves);
             break;
-        case dai::NNArchiveType::BLOB:
-        case dai::NNArchiveType::OTHER:
+        case dai::model::ModelType::BLOB:
+        case dai::model::ModelType::DLC:
+        case dai::model::ModelType::OTHER:
             DAI_CHECK_V(false, "NNArchive type is not SUPERBLOB. Use setNNArchive(const NNArchive& nnArchive) instead.");
+            break;
+        case dai::model::ModelType::NNARCHIVE:
+            DAI_CHECK_V(false, "Cannot set NNArchive inside NNArchive. %s: %s" __FILE__, __LINE__);
             break;
     }
 }
 
+void DetectionNetwork::setFromModelZoo(NNModelDescription description, bool useCached) {
+    // Download model from zoo
+    if(description.platform.empty()) {
+        DAI_CHECK(getDevice() != nullptr, "Device is not set. Use setDevice(...) first.");
+        description.platform = getDevice()->getPlatformAsString();
+    }
+    auto path = getModelFromZoo(description, useCached);
+    setModelPath(path);
+}
+
 void DetectionNetwork::setNNArchiveBlob(const NNArchive& nnArchive) {
-    DAI_CHECK_V(nnArchive.getArchiveType() == dai::NNArchiveType::BLOB, "NNArchive type is not BLOB");
+    DAI_CHECK_V(nnArchive.getModelType() == dai::model::ModelType::BLOB, "NNArchive type is not BLOB");
     detectionParser->setNNArchive(nnArchive);
     neuralNetwork->setNNArchive(nnArchive);
 }
 
 void DetectionNetwork::setNNArchiveSuperblob(const NNArchive& nnArchive, int numShaves) {
-    DAI_CHECK_V(nnArchive.getArchiveType() == dai::NNArchiveType::SUPERBLOB, "NNArchive type is not SUPERBLOB");
-    detectionParser->setNNArchive(nnArchive, numShaves);
+    DAI_CHECK_V(nnArchive.getModelType() == dai::model::ModelType::SUPERBLOB, "NNArchive type is not SUPERBLOB");
+    detectionParser->setNNArchive(nnArchive);
     neuralNetwork->setNNArchive(nnArchive, numShaves);
 }
 
 void DetectionNetwork::setNNArchiveOther(const NNArchive& nnArchive) {
-    DAI_CHECK_V(nnArchive.getArchiveType() == dai::NNArchiveType::OTHER, "NNArchive type is not OTHER");
     detectionParser->setNNArchive(nnArchive);
     neuralNetwork->setNNArchive(nnArchive);
 }
@@ -120,6 +178,7 @@ void DetectionNetwork::setBlob(const dai::Path& path) {
 
 void DetectionNetwork::setModelPath(const dai::Path& modelPath) {
     neuralNetwork->setModelPath(modelPath);
+    detectionParser->setModelPath(modelPath);
 }
 
 void DetectionNetwork::setNumPoolFrames(int numFrames) {

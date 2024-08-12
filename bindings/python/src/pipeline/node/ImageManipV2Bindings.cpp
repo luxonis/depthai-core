@@ -32,6 +32,7 @@ void bind_imagemanipv2(pybind11::module& m, void* pCallstack){
         .def_readonly("inputImage", &ImageManipV2::inputImage, DOC(dai, node, ImageManipV2, inputImage))
         .def_readonly("out", &ImageManipV2::out, DOC(dai, node, ImageManipV2, out))
         .def_readonly("initialConfig", &ImageManipV2::initialConfig, DOC(dai, node, ImageManipV2, initialConfig))
+        .def("setRunOnHost", &ImageManipV2::setRunOnHost, DOC(dai, node, ImageManipV2, setRunOnHost))
         .def("setNumFramesPool", &ImageManipV2::setNumFramesPool, DOC(dai, node, ImageManipV2, setNumFramesPool))
         .def("setMaxOutputFrameSize", &ImageManipV2::setMaxOutputFrameSize, DOC(dai, node, ImageManipV2, setMaxOutputFrameSize))
         ;

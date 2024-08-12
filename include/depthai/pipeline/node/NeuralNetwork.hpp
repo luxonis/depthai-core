@@ -1,5 +1,6 @@
 #pragma once
 
+#include <depthai/modelzoo/NNModelDescription.hpp>
 #include <depthai/pipeline/DeviceNode.hpp>
 
 #include "depthai/nn_archive/NNArchive.hpp"
@@ -78,6 +79,14 @@ class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNet
      * @param numShaves: Number of shaves to use
      */
     void setNNArchive(const NNArchive& nnArchive, int numShaves);
+
+    /**
+     * @brief Download model from zoo and set it for this Node
+     *
+     * @param description: Model description to download
+     * @param useCached: Use cached model if available
+     */
+    void setFromModelZoo(NNModelDescription description, bool useCached = true);
 
     // Specify local filesystem path to load the blob (which gets loaded at loadAssets)
     /**

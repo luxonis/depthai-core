@@ -1,5 +1,6 @@
 #pragma once
 
+#include <depthai/modelzoo/NNModelDescription.hpp>
 #include <depthai/pipeline/DeviceNode.hpp>
 
 // standard
@@ -60,12 +61,10 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
     void setNNArchive(const NNArchive& nnArchive);
 
     /**
-     * @brief Set NNArchive for this Node, throws if the archive's type is not SUPERBLOB
-     *
-     * @param nnArchive: NNArchive to set
-     * @param numShaves: Number of shaves to use
+     * Load network xml and bin files into assets.
+     * @param xmlModelPath Path to the neural network model file.
      */
-    void setNNArchive(const NNArchive& nnArchive, int numShaves);
+    void setModelPath(const dai::Path& modelPath);
 
     /**
      * Load network blob into assets and use once pipeline is started.

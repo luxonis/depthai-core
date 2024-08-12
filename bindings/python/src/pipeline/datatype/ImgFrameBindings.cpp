@@ -181,6 +181,7 @@ void bind_imgframe(pybind11::module& m, void* pCallstack){
                 case ImgFrame::Type::BGR888i :
                     // HWC
                     shape = {img.getHeight(), img.getWidth(), 3};
+                    strides = {img.getStride(), 3, 1};
                     dtype = py::dtype::of<uint8_t>();
                 break;
 
@@ -188,6 +189,7 @@ void bind_imgframe(pybind11::module& m, void* pCallstack){
                 case ImgFrame::Type::BGR888p :
                     // CHW
                     shape = {3, img.getHeight(), img.getWidth()};
+                    strides = {img.fb.p2Offset - img.fb.p1Offset, img.getStride(), 1};
                     dtype = py::dtype::of<uint8_t>();
                 break;
 
@@ -203,11 +205,13 @@ void bind_imgframe(pybind11::module& m, void* pCallstack){
                 case ImgFrame::Type::RAW8:
                 case ImgFrame::Type::GRAY8:
                     shape = {img.getHeight(), img.getWidth()};
+                    strides = {img.getStride(), 1};
                     dtype = py::dtype::of<uint8_t>();
                 break;
 
                 case ImgFrame::Type::GRAYF16:
                     shape = {img.getHeight(), img.getWidth()};
+                    strides = {img.getStride(), 1};
                     dtype = py::dtype("half");
                 break;
 
@@ -216,18 +220,21 @@ void bind_imgframe(pybind11::module& m, void* pCallstack){
                 case ImgFrame::Type::RAW12:
                 case ImgFrame::Type::RAW10:
                     shape = {img.getHeight(), img.getWidth()};
+                    strides = {img.getStride(), 1};
                     dtype = py::dtype::of<uint16_t>();
                 break;
 
                 case ImgFrame::Type::RGBF16F16F16i:
                 case ImgFrame::Type::BGRF16F16F16i:
                     shape = {img.getHeight(), img.getWidth(), 3};
+                    strides = {img.getStride(), 3, 1};
                     dtype = py::dtype("half");
                 break;
 
                 case ImgFrame::Type::RGBF16F16F16p:
                 case ImgFrame::Type::BGRF16F16F16p:
                     shape = {3, img.getHeight(), img.getWidth()};
+                    strides = {img.fb.p2Offset - img.fb.p1Offset, img.getStride(), 1};
                     dtype = py::dtype("half");
                 break;
 

@@ -85,6 +85,7 @@ std::string generateErrorMessageHub(const cpr::Response& response) {
     std::string errorMessage;
     errorMessage += "There was an error while sending a request to the Hub\n";
     errorMessage += "HTTP status code: " + std::to_string(response.status_code) + "\n";
+    errorMessage += "CPR error code: " + std::to_string(static_cast<int>(response.error.code)) + "\n";
 
     if(response.status_code == cpr::status::HTTP_OK) {
         nlohmann::json responseJson = nlohmann::json::parse(response.text);
@@ -109,6 +110,7 @@ std::string generateErrorMessageModelDownload(const cpr::Response& response) {
     std::string errorMessage;
     errorMessage += "There was an error while downloading the model\n";
     errorMessage += "HTTP status code: " + std::to_string(response.status_code) + "\n";
+    errorMessage += "CPR error code: " + std::to_string(static_cast<int>(response.error.code)) + "\n";
     return errorMessage;
 }
 
@@ -310,6 +312,7 @@ void downloadModelsFromZoo(const std::string& path, const std::string& cacheDire
         }
     }
 }
+
 }  // namespace dai
 
 #else

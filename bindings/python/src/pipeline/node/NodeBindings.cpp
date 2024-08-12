@@ -4,6 +4,7 @@
 
 #include "Common.hpp"
 #include "depthai/pipeline/DeviceNode.hpp"
+#include "depthai/pipeline/DeviceNodeGroup.hpp"
 #include "depthai/pipeline/InputQueue.hpp"
 #include "depthai/pipeline/Node.hpp"
 #include "depthai/pipeline/NodeGroup.hpp"
@@ -248,6 +249,9 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
     // // Threaded & Device nodes
     py::class_<ThreadedNode, Node, std::shared_ptr<ThreadedNode>> pyThreadedNode(m, "ThreadedNode", DOC(dai, ThreadedNode));
     py::class_<DeviceNode, ThreadedNode, std::shared_ptr<DeviceNode>> pyDeviceNode(m, "DeviceNode", DOC(dai, DeviceNode));
+
+    // Device Nodegroup
+    py::class_<DeviceNodeGroup, DeviceNode, std::shared_ptr<DeviceNodeGroup>> pyDeviceNodeGroup(m, "DeviceNodeGroup", DOC(dai, DeviceNodeGroup));
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////

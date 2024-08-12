@@ -15,7 +15,7 @@ namespace node {
 /**
  * @brief Sync node. Performs syncing between image frames
  */
-class Sync : public DeviceNodeCRTP<DeviceNode, Sync, SyncProperties> {
+class Sync : public DeviceNodeCRTP<DeviceNode, Sync, SyncProperties>, public HostRunnable {
    private:
     bool runOnHostVar = false;
 
@@ -26,7 +26,7 @@ class Sync : public DeviceNodeCRTP<DeviceNode, Sync, SyncProperties> {
     /**
      * A map of inputs
      */
-    InputMap inputs{*this, "inputs", {"", DEFAULT_GROUP, false, 3, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+    InputMap inputs{*this, "inputs", {"", DEFAULT_GROUP, false, 10, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Output message of type MessageGroup

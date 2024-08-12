@@ -382,6 +382,9 @@ dai_add_test(resolutions_test src/ondevice_tests/resolutions_test.cpp ondevice)
 # Serialization test
 dai_add_test(serialization_test src/onhost_tests/serialization_test.cpp ondevice)
 
+# Subnode test
+dai_add_test(subnode_test src/ondevice_tests/pipeline/subnode_test.cpp ondevice)
+
 # Detection network test
 dai_add_test(detection_network_test src/ondevice_tests/pipeline/node/detection_network_test.cpp ondevice)
 target_compile_definitions(detection_network_test PRIVATE
@@ -389,3 +392,6 @@ target_compile_definitions(detection_network_test PRIVATE
     SUPERBLOB_ARCHIVE_PATH="${yolo_superblob_nnarchive_path}"
     ONNX_ARCHIVE_PATH="${yolo_onnx_nnarchive_path}"
 )
+
+# Spatial detection network test
+dai_add_test(spatial_detection_network_test src/ondevice_tests/pipeline/node/spatial_detection_network_test.cpp ondevice)

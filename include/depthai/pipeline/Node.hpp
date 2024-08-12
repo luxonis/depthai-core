@@ -91,37 +91,15 @@ class Node : public std::enable_shared_from_this<Node> {
     void setNodeRefs(std::pair<std::string, std::shared_ptr<Node>*> nodeRef);
     void setNodeRefs(std::string alias, std::shared_ptr<Node>* nodeRef);
 
-    template <typename T>
-    class Subnode {
-        std::shared_ptr<Node> node;
-
-       public:
-        Subnode(Node& parent, std::string alias) {
-            if(!parent.configureMode) {
-                // Create node as well
-                node = std::make_shared<T>();
-                node->setAlias(alias);
-                node->parentNode = node;
-                // Add node to parents map
-                parent.nodeMap.push_back(node);
-            }
-            // Add reference
-            parent.nodeRefs.push_back(&node);
-        }
-        T& operator*() const noexcept {
-            return *std::static_pointer_cast<T>(node).get();
-        }
-        T* operator->() const noexcept {
-            return std::static_pointer_cast<T>(node).get();
-        }
-    };
-
    public:
     struct OutputDescription {
         std::string name{DEFAULT_NAME};
         std::string group{DEFAULT_GROUP};
         std::vector<DatatypeHierarchy> types DEFAULT_TYPES;
     };
+
+    template <typename U>
+    friend class Subnode;
 
     class Output {
         friend class PipelineImpl;
@@ -490,7 +468,9 @@ class Node : public std::enable_shared_from_this<Node> {
 
     // when Pipeline tries to serialize and construct on remote, it will check if all connected nodes are on same pipeline
     std::weak_ptr<PipelineImpl> parent;
-    std::weak_ptr<Node> parentNode;
+
+    // Node ID of the parent node
+    int parentId{-1};
 
     // used to improve error messages
     // when pipeline starts all nodes are checked

@@ -31,7 +31,6 @@ void NNArchiveBindings::bind(pybind11::module& m, void* pCallstack) {
     // NNArchive
     py::class_<NNArchive> nnArchive(m, "NNArchive", DOC(dai, NNArchive));
     py::class_<NNArchiveOptions> nnArchiveOptions(m, "NNArchiveOptions", DOC(dai, NNArchiveOptions));
-    py::enum_<NNArchiveType> nnArchiveType(m, "NNArchiveType", DOC(dai, NNArchiveType));
 
     // NNArchiveConfig
     py::class_<NNArchiveConfig> nnArchiveConfig(m, "NNArchiveConfig", DOC(dai, NNArchiveConfig));
@@ -87,7 +86,7 @@ void NNArchiveBindings::bind(pybind11::module& m, void* pCallstack) {
     nnArchive.def("getSuperBlob", &NNArchive::getSuperBlob, DOC(dai, NNArchive, getBlob));
     nnArchive.def("getModelPath", &NNArchive::getModelPath, DOC(dai, NNArchive, getModelPath));
     nnArchive.def("getConfig", &NNArchive::getConfig, DOC(dai, NNArchive, getConfig));
-    nnArchive.def("getArchiveType", &NNArchive::getArchiveType, DOC(dai, NNArchive, getArchiveType));
+    nnArchive.def("getModelType", &NNArchive::getModelType, DOC(dai, NNArchive, getModelType));
 
     // Bind NNArchive options
     nnArchiveOptions.def(py::init<>());
@@ -99,11 +98,6 @@ void NNArchiveBindings::bind(pybind11::module& m, void* pCallstack) {
         "extractFolder",
         [](const NNArchiveOptions& opt) { return opt.extractFolder(); },
         [](NNArchiveOptions& opt, const std::string& extractFolder) { opt.extractFolder(extractFolder); });
-
-    // Bind NNArchiveType
-    nnArchiveType.value("BLOB", NNArchiveType::BLOB);
-    nnArchiveType.value("SUPERBLOB", NNArchiveType::SUPERBLOB);
-    nnArchiveType.value("OTHER", NNArchiveType::OTHER);
 
     // Bind NNArchiveConfig
     nnArchiveConfig.def(py::init<const dai::Path&, NNArchiveEntry::Compression>(),

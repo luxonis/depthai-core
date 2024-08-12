@@ -1,7 +1,10 @@
+#include <pybind11/cast.h>
 #include <memory>
 
 #include "Common.hpp"
 #include "NodeBindings.hpp"
+#include "depthai/modelzoo/NNModelDescription.hpp"
+#include "depthai/pipeline/DeviceNodeGroup.hpp"
 #include "depthai/pipeline/Node.hpp"
 #include "depthai/pipeline/NodeGroup.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
@@ -11,7 +14,7 @@ void bind_detectionnetwork(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::node;
 
-    auto detectionNetwork = ADD_NODE_DERIVED(DetectionNetwork, NodeGroup);
+    auto detectionNetwork = ADD_NODE_DERIVED(DetectionNetwork, DeviceNodeGroup);
     auto mobileNetDetectionNetwork = ADD_NODE_DERIVED(MobileNetDetectionNetwork, DetectionNetwork);
     auto yoloDetectionNetwork = ADD_NODE_DERIVED(YoloDetectionNetwork, DetectionNetwork);
 
@@ -54,6 +57,7 @@ void bind_detectionnetwork(pybind11::module& m, void* pCallstack) {
             },
             DETECTION_NETWORK_BUILD_PYARGS,
             DETECTION_NETWORK_PYARGS)
+        .def("build", py::overload_cast<std::shared_ptr<Camera>, NNModelDescription, float>(&DetectionNetwork::build), py::arg("input"), py::arg("model"), py::arg("fps") = 30.0f)
         .def(py::init([](DETECTION_NETWORK_BUILD_ARGS, DETECTION_NETWORK_ARGS) {
                  auto self = getImplicitPipeline()->create<DetectionNetwork>();
                  self->build(input, nnArchive);
@@ -76,6 +80,7 @@ void bind_detectionnetwork(pybind11::module& m, void* pCallstack) {
         .def("getNumInferenceThreads", &DetectionNetwork::getNumInferenceThreads, DOC(dai, node, DetectionNetwork, getNumInferenceThreads))
         .def("setNNArchive", py::overload_cast<const NNArchive&>(&DetectionNetwork::setNNArchive), py::arg("archive"), DOC(dai, node, DetectionNetwork, setNNArchive))
         .def("setNNArchive", py::overload_cast<const NNArchive&, int>(&DetectionNetwork::setNNArchive), py::arg("archive"), py::arg("numShaves"), DOC(dai, node, DetectionNetwork, setNNArchive))
+        .def("setFromModelZoo", py::overload_cast<NNModelDescription, bool>(&DetectionNetwork::setFromModelZoo), py::arg("description"), py::arg("useCached") = false, DOC(dai, node, DetectionNetwork, setFromModelZoo))
         .def("setBlob", py::overload_cast<dai::OpenVINO::Blob>(&DetectionNetwork::setBlob), py::arg("blob"), DOC(dai, node, DetectionNetwork, setBlob))
         .def("setBlob", py::overload_cast<const dai::Path&>(&DetectionNetwork::setBlob), py::arg("path"), DOC(dai, node, DetectionNetwork, setBlob, 2))
         .def("setModelPath",

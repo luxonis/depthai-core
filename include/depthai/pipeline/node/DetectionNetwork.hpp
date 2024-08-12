@@ -1,6 +1,9 @@
 #pragma once
 
-#include <depthai/pipeline/NodeGroup.hpp>
+#include <depthai/modelzoo/NNModelDescription.hpp>
+#include <depthai/pipeline/DeviceNodeGroup.hpp>
+#include <depthai/pipeline/Subnode.hpp>
+#include <depthai/pipeline/node/Camera.hpp>
 #include <depthai/pipeline/node/DetectionParser.hpp>
 #include <depthai/pipeline/node/NeuralNetwork.hpp>
 #include <optional>
@@ -8,7 +11,6 @@
 
 #include "depthai/nn_archive/NNArchive.hpp"
 #include "depthai/openvino/OpenVINO.hpp"
-#include "depthai/utility/Pimpl.hpp"
 
 namespace dai {
 namespace node {
@@ -16,20 +18,18 @@ namespace node {
 /**
  * @brief DetectionNetwork, base for different network specializations
  */
-class DetectionNetwork : public NodeGroup {
+class DetectionNetwork : public DeviceNodeGroup {
    public:
-    DetectionNetwork();
-    ~DetectionNetwork() override;
+    DetectionNetwork(const std::shared_ptr<Device>& device);
 
-    [[nodiscard]] static std::shared_ptr<DetectionNetwork> create() {
-        auto networkPtr = std::make_shared<DetectionNetwork>();
+    [[nodiscard]] static std::shared_ptr<DetectionNetwork> create(const std::shared_ptr<Device>& device) {
+        auto networkPtr = std::make_shared<DetectionNetwork>(device);
         networkPtr->buildInternal();
         return networkPtr;
     }
+
     std::shared_ptr<DetectionNetwork> build(Node::Output& input, const NNArchive& nnArchive);
-    bool runOnHost() const override {
-        return false;
-    };
+    std::shared_ptr<DetectionNetwork> build(std::shared_ptr<Camera> input, dai::NNModelDescription modelDesc, float fps = 30.0f);
 
     Subnode<NeuralNetwork> neuralNetwork{*this, "neuralNetwork"};
     Subnode<DetectionParser> detectionParser{*this, "detectionParser"};
@@ -71,6 +71,23 @@ class DetectionNetwork : public NodeGroup {
      * @param numShaves: Number of shaves to use
      */
     void setNNArchive(const NNArchive& nnArchive, int numShaves);
+
+    /**
+     * @brief Download model from zoo and set it for this Node
+     *
+     * @param description: Model description to download
+     * @param useCached: Use cached model if available
+     */
+    void setFromModelZoo(NNModelDescription description, bool useCached = true);
+
+    /**
+     * @brief Download model from zoo and set it for this node.
+     *
+     * @param description: Model description to download
+     * @param numShaves: Number of shaves to use
+     * @param useCached: Use cached model if available
+     */
+    void setFromModelZoo(NNModelDescription description, int numShaves, bool useCached = true);
 
     // Specify local filesystem path to load the blob (which gets loaded at loadAssets)
     /**
@@ -166,9 +183,6 @@ class DetectionNetwork : public NodeGroup {
     void setNNArchiveBlob(const NNArchive& nnArchive);
     void setNNArchiveSuperblob(const NNArchive& nnArchive, int numShaves);
     void setNNArchiveOther(const NNArchive& nnArchive);
-
-    class Impl;
-    Pimpl<Impl> pimpl;
 };
 
 /**
@@ -176,14 +190,13 @@ class DetectionNetwork : public NodeGroup {
  */
 class MobileNetDetectionNetwork : public DetectionNetwork {
    public:
-    [[nodiscard]] static std::shared_ptr<MobileNetDetectionNetwork> create() {
-        auto networkPtr = std::make_shared<MobileNetDetectionNetwork>();
+    using DetectionNetwork::DetectionNetwork;
+
+    [[nodiscard]] static std::shared_ptr<MobileNetDetectionNetwork> create(const std::shared_ptr<Device>& device) {
+        auto networkPtr = std::make_shared<MobileNetDetectionNetwork>(device);
         networkPtr->buildInternal();
         return networkPtr;
     }
-    bool runOnHost() const override {
-        return false;
-    };
 
     void buildInternal() override;
 };
@@ -193,14 +206,13 @@ class MobileNetDetectionNetwork : public DetectionNetwork {
  */
 class YoloDetectionNetwork : public DetectionNetwork {
    public:
-    [[nodiscard]] static std::shared_ptr<YoloDetectionNetwork> create() {
-        auto networkPtr = std::make_shared<YoloDetectionNetwork>();
+    using DetectionNetwork::DetectionNetwork;
+
+    [[nodiscard]] static std::shared_ptr<YoloDetectionNetwork> create(const std::shared_ptr<Device>& device) {
+        auto networkPtr = std::make_shared<YoloDetectionNetwork>(device);
         networkPtr->buildInternal();
         return networkPtr;
     }
-    bool runOnHost() const override {
-        return false;
-    };
 
     /// Set num classes
     void setNumClasses(int numClasses);
