@@ -17,10 +17,12 @@ TEST_CASE("Test Device Shared Memory FDs ImgManip") {
     auto inputQueue = manip->inputImage.createInputQueue();
     auto outputQueue = manip->out.createOutputQueue();
 
-    long fd = memfd_create("Test", 0);
+    long fd = memfd_create("test", 0);
     REQUIRE(fd > 0);
 
     const long size = 1024 * 768 * 2;
+//    std::vector<uint8_t> data = std::vector<uint8_t>(size);
+//    std::fill(data.begin(), data.end(), 0xFF);
     ftruncate(fd, size);
     void *inFile = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
     REQUIRE(inFile != nullptr);
@@ -30,12 +32,11 @@ TEST_CASE("Test Device Shared Memory FDs ImgManip") {
     auto inFrame = std::make_shared<dai::ImgFrame>();
     REQUIRE(inFrame != nullptr);
     inFrame->setData(fd);
+    //inFrame->setData(data);
     inFrame->data->setSize(size);
     inFrame->setWidth(1024);
     inFrame->setHeight(768);
     inFrame->setType(dai::ImgFrame::Type::NV12);
-
-    ftruncate(fd, size);
 
     auto inMemoryPtr = std::dynamic_pointer_cast<dai::SharedMemory>(inFrame->data);
     REQUIRE(inMemoryPtr != nullptr);
