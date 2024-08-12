@@ -12,4 +12,4 @@
 	url = https://github.com/xtensor-stack/xtensor-python.git
 [submodule "3rdparty/pybind11_opencv_numpy"]
 	path = bindings/python/external/pybind11_opencv_numpy
-	url = https://github.com/edmBernard/pybind11_opencv_numpy.git
+	url = https://github.com/luxonis/pybind11_opencv_numpy.git

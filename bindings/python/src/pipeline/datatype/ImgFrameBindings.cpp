@@ -140,9 +140,11 @@ void bind_imgframe(pybind11::module& m, void* pCallstack){
         .def("getLensPosition", &ImgFrame::getLensPosition, DOC(dai, ImgFrame, getLensPosition))
         .def("getLensPositionRaw", &ImgFrame::getLensPositionRaw, DOC(dai, ImgFrame, getLensPositionRaw))
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-        .def("getFrame", &ImgFrame::getFrame, py::arg("copy") = true, DOC(dai, ImgFrame, getFrame))
+        // The cast function itself does a copy, so we can avoid two copies by always not copying
+        .def(
+            "getFrame", [](ImgFrame& self) { return self.getFrame(false); }, DOC(dai, ImgFrame, getFrame))
         .def("setFrame", &ImgFrame::setFrame, DOC(dai, ImgFrame, setFrame))
-        .def("getCvFrame", &ImgFrame::getCvFrame, DOC(dai, ImgFrame, getCvFrame))
+        .def("getCvFrame", [](ImgFrame& self) {return self.getCvFrame(&g_numpyAllocator);}, DOC(dai, ImgFrame, getCvFrame))
         .def("setCvFrame", &ImgFrame::setCvFrame, DOC(dai, ImgFrame, setCvFrame))
 #else
         .def(
