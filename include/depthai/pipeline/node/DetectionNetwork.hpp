@@ -190,7 +190,13 @@ class DetectionNetwork : public DeviceNodeGroup {
  */
 class MobileNetDetectionNetwork : public DetectionNetwork {
    public:
-    using DetectionNetwork::DetectionNetwork;
+    MobileNetDetectionNetwork(const std::shared_ptr<Device>& device) : DetectionNetwork(device) {
+        static bool warned = false;
+        if(!warned) {
+            std::cerr << "MobileNetDetectionNetwork is deprecated, use DetectionNetwork instead" << std::endl;
+            warned = true;
+        }
+    }
 
     [[nodiscard]] static std::shared_ptr<MobileNetDetectionNetwork> create(const std::shared_ptr<Device>& device) {
         auto networkPtr = std::make_shared<MobileNetDetectionNetwork>(device);
@@ -206,7 +212,13 @@ class MobileNetDetectionNetwork : public DetectionNetwork {
  */
 class YoloDetectionNetwork : public DetectionNetwork {
    public:
-    using DetectionNetwork::DetectionNetwork;
+    YoloDetectionNetwork(const std::shared_ptr<Device>& device) : DetectionNetwork(device) {
+        static bool warned = false;
+        if(!warned) {
+            std::cerr << "YoloDetectionNetwork is deprecated, use DetectionNetwork instead" << std::endl;
+            warned = true;
+        }
+    }
 
     [[nodiscard]] static std::shared_ptr<YoloDetectionNetwork> create(const std::shared_ptr<Device>& device) {
         auto networkPtr = std::make_shared<YoloDetectionNetwork>(device);
