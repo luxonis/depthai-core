@@ -104,13 +104,19 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           python -m pip install --upgrade pip
-          sudo apt install libusb-1.0-0-dev
+          sudo apt install libusb-1.0-0-dev libopencv-dev
 
       - name: Install dependencies (MacOS)
         if: matrix.os == 'macos-latest'
         run: |
           python -m pip install --upgrade pip
           brew install libusb
+          brew install opencv
+      - name: Install dependencies (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          choco install opencv
+          echo "OpenCV_DIR=C:\tools\opencv\build" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Install pytest
         run: |
