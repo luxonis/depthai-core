@@ -21,8 +21,7 @@ class HostDisplay(dai.node.HostNode):
 # with dai.Pipeline() as p:
 p = dai.Pipeline()
 with p:
-    camera = p.create(dai.node.ColorCamera)
-    camera.setBoardSocket(dai.CameraBoardSocket.CAM_A)
-    hostDisplay = p.create(HostDisplay).build(camera.video)
+    camera = p.create(dai.node.Camera).build()
+    hostDisplay = p.create(HostDisplay).build(camera.requestOutput((300, 300)))
 
     p.run() # Will block until the pipeline is stopped by someone else (in this case it's the display node)

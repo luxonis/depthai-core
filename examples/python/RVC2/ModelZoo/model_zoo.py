@@ -7,7 +7,7 @@ import depthai as dai
 
 # Option 1: In program
 # modelDescription = dai.NNModelDescription()
-# modelDescription.modelSlug = "yolov6n"
+# modelDescription.modelSlug = "yolov6-nano"
 # modelDescription.platform = "RVC2"
 
 # Option 2: From yaml file
@@ -16,7 +16,7 @@ modelDescription = dai.NNModelDescription.fromYamlFile("mymodel.yaml")
 # If you want, you can store the model description in a yaml file
 modelDescription.saveToYamlFile("mymodel.yaml")
 
-# Return path to downloaded model - yolov6n-r2-288x512.tar.xz for this example
+# Return path to downloaded model - yolov6-nano-r2-288x512.tar.xz for this example
 modelPath = dai.getModelFromZoo(modelDescription, useCached=True)
 print("Using model cached at path: ", modelPath)
 
@@ -31,7 +31,7 @@ with dai.Pipeline() as pipeline:
 
     # It's even possible to download a model for the used device
     # modelDescription = dai.NNModelDescription()
-    # modelDescription.modelSlug = "yolov6n"
+    # modelDescription.modelSlug = "yolov6-nano"
 
     #  The two are equivalent
     # modelDescription.platform = pipeline.getDefaultDevice().getPlatformAsString()

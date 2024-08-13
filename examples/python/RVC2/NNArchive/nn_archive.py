@@ -6,7 +6,7 @@ import numpy as np
 import time
 
 # Get argument first
-modelDescription = dai.NNModelDescription(modelSlug="yolov6n", platform="RVC2")
+modelDescription = dai.NNModelDescription(modelSlug="yolov6-nano", platform="RVC2")
 archivePath = dai.getModelFromZoo(modelDescription, useCached=True)
 
 # Create pipeline

@@ -7,13 +7,7 @@ import depthai as dai
 import numpy as np
 import time
 
-'''
-Spatial Tiny-yolo example
-  Performs inference on RGB camera and retrieves spatial location coordinates: x,y,z relative to the center of depth map.
-  Can be used for tiny-yolo-v3 or tiny-yolo-v4 networks
-'''
-
-modelDescription = dai.NNModelDescription(modelSlug="yolov6n")
+modelDescription = dai.NNModelDescription(modelSlug="yolov6-nano")
 FPS = 30
 
 class SpatialVisualizer(dai.node.HostNode):

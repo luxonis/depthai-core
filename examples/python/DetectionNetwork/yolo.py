@@ -9,7 +9,7 @@ import time
 # Create pipeline
 with dai.Pipeline() as pipeline:
     cameraNode = pipeline.create(dai.node.Camera).build()
-    detectionNetwork = pipeline.create(dai.node.YoloDetectionNetwork).build(cameraNode, dai.NNModelDescription("yolov6n"))
+    detectionNetwork = pipeline.create(dai.node.DetectionNetwork).build(cameraNode, dai.NNModelDescription("yolov6-nano"))
     labelMap = detectionNetwork.getClasses()
 
     qRgb = detectionNetwork.passthrough.createOutputQueue()

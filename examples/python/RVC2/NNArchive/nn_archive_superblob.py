@@ -6,7 +6,7 @@ import depthai as dai
 # We will download a blob NNArchive from the model zoo
 # Pick your own model from
 modelDescription = dai.NNModelDescription()
-modelDescription.modelSlug = "yolov6n"
+modelDescription.modelSlug = "yolov6-nano"
 modelDescription.platform = "RVC2"
 
 # Download model from zoo and load it
