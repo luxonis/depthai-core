@@ -21,15 +21,10 @@ class AudioIn: public DeviceNodeCRTP<DeviceNode, AudioIn, AudioInProperties>, pu
     AudioIn() = default;
     AudioIn(std::unique_ptr<Properties> props);
 
+    ~AudioIn();
+
     std::shared_ptr<AudioIn> build();
    protected:
-    Properties& getProperties() override;
-    bool isSourceNode() const override;
-    /*
-    Output& getRecordOutput() override;
-    Input& getReplayInput() override;
-    */
-
     bool isBuild = false;
     bool needsBuild() override {
         return !isBuild;

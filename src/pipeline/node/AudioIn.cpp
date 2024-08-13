@@ -7,6 +7,10 @@ namespace node {
 
 AudioIn::AudioIn(std::unique_ptr<Properties> props) : DeviceNodeCRTP<DeviceNode, AudioIn, AudioInProperties>(std::move(props)) { }
 
+AudioIn::~AudioIn() {
+	stop();
+}
+
 std::shared_ptr<AudioIn> AudioIn::build() {
 	isBuild = true;
 

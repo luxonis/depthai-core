@@ -27,6 +27,7 @@ struct AudioInProperties : PropertiesSerializable<Properties, AudioInProperties>
 
     /**
      *  Number of buffered audio frames before sending over
+     *  More frames = longer delay, but less load
      */
     unsigned int bufferFrames = 128;
 
