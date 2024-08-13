@@ -1,4 +1,5 @@
 #include <catch2/catch_all.hpp>
+#include <catch2/catch_test_macros.hpp>
 #include <depthai/openvino/OpenVINO.hpp>
 
 #include "depthai/depthai.hpp"
@@ -62,6 +63,7 @@ TEST_CASE("DetectionNetwork throws when passed the OTHER NNArchive type") {
 
     // Load NNArchive
     dai::NNArchive nnArchive(archivePath);
+
     SECTION("setNNArchive") {
         REQUIRE_NOTHROW(nn->setNNArchive(nnArchive));
         REQUIRE_THROWS(nn->setNNArchive(nnArchive, 6));
