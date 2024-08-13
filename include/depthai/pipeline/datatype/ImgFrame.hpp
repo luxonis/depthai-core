@@ -1,6 +1,7 @@
 #pragma once
 
 #include <chrono>
+#include <opencv2/core/mat.hpp>
 #include <unordered_map>
 #include <vector>
 
@@ -384,7 +385,7 @@ class ImgFrame : public Buffer {
      *
      * @returns cv::Mat for use in opencv functions
      */
-    cv::Mat getCvFrame();
+    cv::Mat getCvFrame(cv::MatAllocator* allocator = nullptr);
 
     /**
      * @note This API only available if OpenCV support is enabled

@@ -147,6 +147,11 @@ set(SOURCE_LIST
     src/modelzoo/NNModelDescriptionBindings.cpp
     src/modelzoo/ZooBindings.cpp
 )
+if(DEPTHAI_MERGED_TARGET)
+    list(APPEND SOURCE_LIST
+        external/pybind11_opencv_numpy/ndarray_converter.cpp
+    )
+endif()
 
 if(DEPTHAI_BASALT_SUPPORT)
     list(APPEND SOURCE_LIST
@@ -263,6 +268,9 @@ endif()
 
 # Add include directory
 target_include_directories(${TARGET_NAME} PRIVATE src ${DOCSTRINGS_INCLUDE_PLACEHOLDER_DIR})
+if(DEPTHAI_MERGED_TARGET)
+    target_include_directories(${TARGET_NAME} PRIVATE external/pybind11_opencv_numpy)
+endif()
 
 set(DEPTHAI_LINK_TARGET depthai::core)
 if(NOT DEPTHAI_MERGED_TARGET)

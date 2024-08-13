@@ -1,6 +1,7 @@
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 
 #include <cmath>
+#include <opencv2/core/mat.hpp>
 #include <opencv2/imgproc.hpp>
 
 // #include "spdlog/spdlog.h"
@@ -113,9 +114,12 @@ cv::Mat ImgFrame::getFrame(bool deepCopy) {
     return mat;
 }
 
-cv::Mat ImgFrame::getCvFrame() {
+cv::Mat ImgFrame::getCvFrame(cv::MatAllocator* allocator) {
     cv::Mat frame = getFrame();
     cv::Mat output;
+    if(allocator != nullptr) {
+        output.allocator = allocator;
+    }
 
     switch(getType()) {
         case Type::RGB888i:
@@ -123,7 +127,7 @@ cv::Mat ImgFrame::getCvFrame() {
             break;
 
         case Type::BGR888i:
-            output = frame.clone();
+            frame.copyTo(output);
             break;
 
         case Type::RGB888p: {
@@ -172,11 +176,11 @@ cv::Mat ImgFrame::getCvFrame() {
         case Type::RAW10:
         case Type::GRAY8:
         case Type::GRAYF16:
-            output = frame.clone();
+            frame.copyTo(output);
             break;
 
         default:
-            output = frame.clone();
+            frame.copyTo(output);
             break;
     }
 
