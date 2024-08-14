@@ -281,6 +281,10 @@ set(TARGET_CORE_SOURCES
     src/pipeline/ThreadedNode.cpp
     src/pipeline/DeviceNode.cpp
     src/pipeline/node/AudioIn.cpp
+    src/pipeline/node/AudioOut.cpp
+    src/pipeline/node/AudioEncoder.cpp
+    src/pipeline/node/AudioReplay.cpp
+    src/pipeline/node/AudioMixer.cpp
     src/pipeline/node/XLinkIn.cpp
     src/pipeline/node/XLinkOut.cpp
     src/pipeline/node/ColorCamera.cpp
@@ -436,6 +440,9 @@ else()
 endif()
 # Minimal supported macOS SDK version for C++17 support with std::filesystem
 set(CMAKE_OSX_DEPLOYMENT_TARGET 10.15)
+
+# Add audio libraries
+target_link_libraries(${TARGET_CORE_NAME} PRIVATE sndfile)
 
 # Link merged target libraries and add compile definitions
 if(DEPTHAI_HAVE_OPENCV_SUPPORT AND DEPTHAI_MERGED_TARGET)

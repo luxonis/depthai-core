@@ -5,20 +5,20 @@
 namespace dai {
 
 /**
- *  Specify properties for AudioIn such as audio device, ...
+ *  Specify properties for AudioOut such as audio device, ...
  */
-struct AudioInProperties : PropertiesSerializable<Properties, AudioInProperties> {
+struct AudioOutProperties : PropertiesSerializable<Properties, AudioOutProperties> {
     static constexpr int AUTO = -1;
 
     /**
      *  Human readable name for the device
      */
-    std::string audioInName = "";
+    std::string audioOutName = "";
 
     /**
      *  ALSA name for the device
      */
-    std::string audioInPath = "hw:0";
+    std::string audioOutPath = "hw:0";
 
     /**
      *  Bitrate for the output
@@ -38,9 +38,9 @@ struct AudioInProperties : PropertiesSerializable<Properties, AudioInProperties>
 
 };
 
-DEPTHAI_SERIALIZE_EXT(AudioInProperties,
-		      audioInName,
-		      audioInPath,
+DEPTHAI_SERIALIZE_EXT(AudioOutProperties,
+		      audioOutName,
+		      audioOutPath,
 		      bitrate,
 		      framesPerSecond,
 		      channels);

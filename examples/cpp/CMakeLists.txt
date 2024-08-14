@@ -475,6 +475,9 @@ dai_add_example(record_imu RVC2/Record/record_imu.cpp ON OFF)
 dai_add_example(replay_video_meta RVC2/Replay/replay_video_meta.cpp ON OFF)
 dai_add_example(camera_multiple_outputs RVC4/Camera/camera_multiple_outputs.cpp ON OFF)
 
+# Audio nodes
+dai_add_example(audio_in RVC4/Audio/audio_in.cpp ON OFF)
+
 # Host nodes
 dai_add_example(rgb_video RVC2/ColorCamera/rgb_video.cpp ON OFF)
 dai_add_example(host_node HostNodes/host_node.cpp ON OFF)
