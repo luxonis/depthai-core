@@ -63,7 +63,7 @@ jobs:
     strategy:
       matrix:
         os: [macos-latest, windows-latest, ubuntu-latest]
-        cmake: ['3.10.x', ''] # Older version (Ubuntu 18.04) and newest
+        cmake: ['3.10.x', '3.29.x'] # Older version (Ubuntu 18.04) and newest
         exclude:
           - os: windows-latest
             cmake: '3.10.x'
