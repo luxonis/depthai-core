@@ -185,6 +185,8 @@ jobs:
 
     - name: Setup cmake
       uses: jwlawson/actions-setup-cmake@v1.13
+      with:
+        cmake-version: '3.29.x'
 
     - name: Configure ${{ matrix.build-type }}, shared ${{ matrix.shared }}, ${{ matrix.platform }}
       run: cmake -S . -B build -D BUILD_SHARED_LIBS=${{ matrix.shared}} -D CMAKE_BUILD_TYPE=${{ matrix.build-type }} -D CMAKE_INSTALL_PREFIX=$GITHUB_WORKSPACE/depthai_install ${{ env.CMAKE_ARGS }}
