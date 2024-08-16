@@ -30,6 +30,7 @@ colorMap[0] = [0, 0, 0]  # to make zero-disparity pixels black
 
 with pipeline:
     pipeline.start()
+    maxDisparity = 0
     while pipeline.isRunning():
         leftSynced = syncedLeftQueue.get()
         rightSynced = syncedRightQueue.get()
@@ -40,7 +41,7 @@ with pipeline:
         cv2.imshow("left", leftSynced.getCvFrame())
         cv2.imshow("right", rightSynced.getCvFrame())
         npDisparity = disparity.getFrame()
-        maxDisparity = np.max(npDisparity)
+        maxDisparity = max(maxDisparity, np.max(npDisparity))
         colorizedDisparity = cv2.applyColorMap(((npDisparity / maxDisparity) * 255).astype(np.uint8), colorMap)
         cv2.imshow("disparity", colorizedDisparity)
         key = cv2.waitKey(1)
