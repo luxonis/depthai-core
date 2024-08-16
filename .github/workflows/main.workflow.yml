@@ -96,7 +96,11 @@ jobs:
     - name: Install dependencies
       if: matrix.os == 'macos-latest'
       run: |
-        brew install opencv clang ninja
+        brew install opencv ninja
+        curl -LO https://github.com/llvm/llvm-project/releases/download/llvmorg-17.0.6/clang+llvm-17.0.6-arm64-apple-darwin22.0.tar.xz
+        tar -xf clang+llvm-17.0.6-arm64-apple-darwin22.0.tar.xz
+        mv clang+llvm-17.0.6-arm64-apple-darwin22.0 clang-llvm
+        echo "$(pwd)/clang-llvm/bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
     - name: Install dependencies
       if: matrix.os == 'ubuntu-latest'
@@ -113,7 +117,7 @@ jobs:
     - name: Build (old CMake, gcc/Clang)
       if: matrix.cmake == '3.10.x' && matrix.os != 'windows-latest'
       run: |
-        cmake -G Ninja -H. -Bbuild -D'CMAKE_BUILD_TYPE=Release' -D'HUNTER_CONFIGURATION_TYPES=Release' -D'DEPTHAI_BUILD_EXAMPLES=ON' -D'DEPTHAI_BUILD_TESTS=ON' ${{ env.CMAKE_ARGS }}
+        cmake -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -H. -Bbuild -D'CMAKE_BUILD_TYPE=Release' -D'HUNTER_CONFIGURATION_TYPES=Release' -D'DEPTHAI_BUILD_EXAMPLES=ON' -D'DEPTHAI_BUILD_TESTS=ON' ${{ env.CMAKE_ARGS }}
         cmake --build build --config Release -- -j4
 
     # CMake binaries unavailable
@@ -126,7 +130,7 @@ jobs:
     - name: Build (newest CMake)
       if: matrix.cmake != '3.10.x'
       run: |
-        cmake -G Ninja -S . -B build -D CMAKE_BUILD_TYPE=Release -D HUNTER_CONFIGURATION_TYPES=Release -D DEPTHAI_BUILD_EXAMPLES=ON -D DEPTHAI_BUILD_TESTS=ON ${{ env.CMAKE_ARGS }}
+        cmake -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -S . -B build -D CMAKE_BUILD_TYPE=Release -D HUNTER_CONFIGURATION_TYPES=Release -D DEPTHAI_BUILD_EXAMPLES=ON -D DEPTHAI_BUILD_TESTS=ON ${{ env.CMAKE_ARGS }}
         cmake --build build --parallel 4 --config Release
 
   integration:
@@ -171,7 +175,7 @@ jobs:
         curl -LO https://github.com/llvm/llvm-project/releases/download/llvmorg-17.0.6/clang+llvm-17.0.6-arm64-apple-darwin22.0.tar.xz
         tar -xf clang+llvm-17.0.6-arm64-apple-darwin22.0.tar.xz
         mv clang+llvm-17.0.6-arm64-apple-darwin22.0 clang-llvm
-        echo "::add-path::$(pwd)/clang-llvm/bin"
+        echo "$(pwd)/clang-llvm/bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
     - name: Install dependencies
       if: matrix.os == 'ubuntu-latest'
@@ -191,7 +195,7 @@ jobs:
       uses: jwlawson/actions-setup-cmake@v1.13
 
     - name: Configure (Clang and Ninja) ${{ matrix.build-type }}, shared ${{ matrix.shared }}, ${{ matrix.platform }}
-      run: cmake -G Ninja -S . -B build -D BUILD_SHARED_LIBS=${{ matrix.shared}} -D CMAKE_BUILD_TYPE=${{ matrix.build-type }} -D CMAKE_INSTALL_PREFIX=$GITHUB_WORKSPACE/depthai_install ${{ env.CMAKE_ARGS }}
+      run: cmake -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -S . -B build -D BUILD_SHARED_LIBS=${{ matrix.shared}} -D CMAKE_BUILD_TYPE=${{ matrix.build-type }} -D CMAKE_INSTALL_PREFIX=$GITHUB_WORKSPACE/depthai_install ${{ env.CMAKE_ARGS }}
 
     - name: Set path to shared library dll (Windows)
       if: matrix.os == 'windows-latest'
