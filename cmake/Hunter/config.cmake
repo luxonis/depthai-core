@@ -140,11 +140,12 @@ hunter_config(
         BUILD_STATIC_LIBS=ON
 )
 
+# A hunterized and patched version of cpr- see https://github.com/luxonis/cpr/pull/1
 hunter_config(
     cpr
     VERSION "1.4.0"
-    URL "https://github.com/luxonis/cpr/archive/a1d28dbbaccda3df8fddd993b2cd916f64f9da56.tar.gz"
-    SHA1 "14e18d04d05e36e920aa90ee744952bf55783ea4"
+    URL "https://github.com/luxonis/cpr/archive/50a1321738554e0152b0a6f1b0ca24e4fdecff5c.tar.gz"
+    SHA1 "2e2ba9920ed99c19887592ca89d9be5ffce4722b"
 )
 
 hunter_config(
