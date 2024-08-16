@@ -167,7 +167,11 @@ jobs:
     - name: Install dependencies
       if: matrix.os == 'macos-latest'
       run: |
-        brew install opencv clang ninja
+        brew install opencv ninja
+        curl -LO https://github.com/llvm/llvm-project/releases/download/llvmorg-17.0.6/clang+llvm-17.0.6-arm64-apple-darwin22.0.tar.xz
+        tar -xf clang+llvm-17.0.6-arm64-apple-darwin22.0.tar.xz
+        mv clang+llvm-17.0.6-arm64-apple-darwin22.0 clang-llvm
+        echo "::add-path::$(pwd)/clang-llvm/bin"
 
     - name: Install dependencies
       if: matrix.os == 'ubuntu-latest'
