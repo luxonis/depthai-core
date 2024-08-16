@@ -69,6 +69,8 @@ void DetectionParser::setConfig(const dai::NNArchiveConfig& config) {
 
     if(head.parser == "YOLO") {
         properties.parser.nnFamily = DetectionNetworkType::YOLO;
+    } else if(head.parser == "SSD" || head.parser == "MOBILENET") {
+        properties.parser.nnFamily = DetectionNetworkType::MOBILENET;
     } else {
         DAI_CHECK_V(false, "Unsupported parser: {}", head.parser);
     }
