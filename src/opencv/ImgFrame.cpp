@@ -133,20 +133,36 @@ cv::Mat ImgFrame::getCvFrame(cv::MatAllocator* allocator) {
         case Type::RGB888p: {
             cv::Size s(getWidth(), getHeight());
             std::vector<cv::Mat> channels;
+            size_t offset0 = 0;
+            size_t offset1 = s.area();
+            size_t offset2 = s.area() * 2;
+            if(fb.p1Offset != 0 || fb.p2Offset != 0 || fb.p3Offset != 0) {  // If any of the offsets are set, use all of them
+                offset0 = fb.p1Offset;
+                offset1 = fb.p2Offset;
+                offset2 = fb.p3Offset;
+            }
             // RGB
-            channels.push_back(cv::Mat(s, CV_8UC1, (uint8_t*)getData().data() + fb.p3Offset, getStride()));
-            channels.push_back(cv::Mat(s, CV_8UC1, (uint8_t*)getData().data() + fb.p2Offset, getStride()));
-            channels.push_back(cv::Mat(s, CV_8UC1, (uint8_t*)getData().data() + fb.p1Offset, getStride()));
+            channels.push_back(cv::Mat(s, CV_8UC1, (uint8_t*)getData().data() + offset0, getStride()));
+            channels.push_back(cv::Mat(s, CV_8UC1, (uint8_t*)getData().data() + offset1, getStride()));
+            channels.push_back(cv::Mat(s, CV_8UC1, (uint8_t*)getData().data() + offset2, getStride()));
             cv::merge(channels, output);
         } break;
 
         case Type::BGR888p: {
             cv::Size s(getWidth(), getHeight());
             std::vector<cv::Mat> channels;
+            size_t offset0 = 0;
+            size_t offset1 = s.area();
+            size_t offset2 = s.area() * 2;
+            if(fb.p1Offset != 0 || fb.p2Offset != 0 || fb.p3Offset != 0) {  // If any of the offsets are set, use all of them
+                offset0 = fb.p1Offset;
+                offset1 = fb.p2Offset;
+                offset2 = fb.p3Offset;
+            }
             // BGR
-            channels.push_back(cv::Mat(s, CV_8UC1, (uint8_t*)getData().data() + fb.p1Offset, getStride()));
-            channels.push_back(cv::Mat(s, CV_8UC1, (uint8_t*)getData().data() + fb.p2Offset, getStride()));
-            channels.push_back(cv::Mat(s, CV_8UC1, (uint8_t*)getData().data() + fb.p3Offset, getStride()));
+            channels.push_back(cv::Mat(s, CV_8UC1, (uint8_t*)getData().data() + offset0, getStride()));
+            channels.push_back(cv::Mat(s, CV_8UC1, (uint8_t*)getData().data() + offset1, getStride()));
+            channels.push_back(cv::Mat(s, CV_8UC1, (uint8_t*)getData().data() + offset2, getStride()));
             cv::merge(channels, output);
         } break;
 
