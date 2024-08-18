@@ -62,6 +62,17 @@ class FeatureTrackerConfig : public Buffer {
         std::int32_t numMaxFeatures = AUTO;
 
         /**
+         * Robustness settings.
+         * Robustness parameter of Harris Corner Detector
+         */
+        int robustness = 90;
+
+        /**
+         * Enable 32 bytes descriptor calculation
+         */
+        bool enableDescriptorCalculation = true;
+
+        /**
          * Enable 3x3 Sobel operator to smoothen the image whose gradient is to be computed.
          * If disabled, a simple 1D row/column differentiator is used for gradient.
          */
@@ -120,7 +131,7 @@ class FeatureTrackerConfig : public Buffer {
          */
         Thresholds thresholds;
 
-        DEPTHAI_SERIALIZE(CornerDetector, type, cellGridDimension, numTargetFeatures, numMaxFeatures, thresholds, enableSobel, enableSorting);
+        DEPTHAI_SERIALIZE(CornerDetector, type, cellGridDimension, numTargetFeatures, numMaxFeatures, thresholds, robustness, enableDescriptorCalculation, enableSobel, enableSorting);
     };
 
     /**

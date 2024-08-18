@@ -66,6 +66,8 @@ void bind_featuretrackerconfig(pybind11::module& m, void* pCallstack){
         .def_readwrite("type", &FeatureTrackerConfig::CornerDetector::type, DOC(dai, FeatureTrackerConfig, CornerDetector, type))
         .def_readwrite("cellGridDimension", &FeatureTrackerConfig::CornerDetector::cellGridDimension, DOC(dai, FeatureTrackerConfig, CornerDetector, cellGridDimension))
         .def_readwrite("numTargetFeatures", &FeatureTrackerConfig::CornerDetector::numTargetFeatures, DOC(dai, FeatureTrackerConfig, CornerDetector, numTargetFeatures))
+        .def_readwrite("robustness", &FeatureTrackerConfig::CornerDetector::robustness, DOC(dai, FeatureTrackerConfig, CornerDetector, robustness))
+        .def_readwrite("enableDescriptorCalculation", &FeatureTrackerConfig::CornerDetector::enableDescriptorCalculation, DOC(dai, FeatureTrackerConfig, CornerDetector, enableDescriptorCalculation))
         .def_readwrite("numMaxFeatures", &FeatureTrackerConfig::CornerDetector::numMaxFeatures, DOC(dai, FeatureTrackerConfig, CornerDetector, numMaxFeatures))
         .def_readwrite("enableSobel", &FeatureTrackerConfig::CornerDetector::enableSobel, DOC(dai, FeatureTrackerConfig, CornerDetector, enableSobel))
         .def_readwrite("enableSorting", &FeatureTrackerConfig::CornerDetector::enableSorting, DOC(dai, FeatureTrackerConfig, CornerDetector, enableSorting))
