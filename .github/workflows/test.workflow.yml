@@ -54,7 +54,7 @@ jobs:
     - name: Configure, Build and Test
       if: matrix.os != 'linux'
       run: |
-        cmake -S . -B build -D CMAKE_BUILD_TYPE=Release -D HUNTER_ROOT=$HOME/.hun2_${{ matrix.flavor }} -D DEPTHAI_BUILD_EXAMPLES=ON -D DEPTHAI_BUILD_TESTS=ON -D DEPTHAI_TEST_EXAMPLES=ON
+        cmake -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -S . -B build -D CMAKE_BUILD_TYPE=Release -D HUNTER_ROOT=$HOME/.hun2_${{ matrix.flavor }} -D DEPTHAI_BUILD_EXAMPLES=ON -D DEPTHAI_BUILD_TESTS=ON -D DEPTHAI_TEST_EXAMPLES=ON
         cmake --build build --parallel 4 --config Release
         cd build
         ctest -C Release --output-on-failure -L usb --no-tests=error --repeat until-pass:3
@@ -64,7 +64,7 @@ jobs:
       run: |
         export DISPLAY=:99
         xdpyinfo -display $DISPLAY >/dev/null 2>&1 || (Xvfb $DISPLAY &)
-        cmake -S . -B build -D CMAKE_BUILD_TYPE=Release -D HUNTER_ROOT=$HOME/.hun2_${{ matrix.flavor }} -D DEPTHAI_BUILD_EXAMPLES=ON -D DEPTHAI_BUILD_TESTS=ON -D DEPTHAI_TEST_EXAMPLES=ON
+        cmake -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -S . -B build -D CMAKE_BUILD_TYPE=Release -D HUNTER_ROOT=$HOME/.hun2_${{ matrix.flavor }} -D DEPTHAI_BUILD_EXAMPLES=ON -D DEPTHAI_BUILD_TESTS=ON -D DEPTHAI_TEST_EXAMPLES=ON
         cmake --build build --parallel 4 --config Release
         cd build
         ctest -C Release --output-on-failure -L usb --no-tests=error --repeat until-pass:3
