@@ -164,99 +164,93 @@ cv2.createTrackbar(switchDescriptorCalculation, 'Features2',1,1,on_trackbar2)
 
 
 # Create pipeline
-info = dai.DeviceInfo("127.0.0.1")
-info.protocol = dai.X_LINK_TCP_IP
-info.state = dai.X_LINK_GATE
-info.platform = dai.X_LINK_RVC3
-with dai.Device(info) as device:
-    with dai.Pipeline(device) as pipeline:
-        InputImgNode1 = pipeline.create(InputImgNode1)
-        InputImgNode2 = pipeline.create(InputImgNode2)
 
-        featureTracker1 = pipeline.create(dai.node.FeatureTracker)
-        featureTracker2 = pipeline.create(dai.node.FeatureTracker)
-        
-        featureTracker1.initialConfig.setCornerDetector(dai.FeatureTrackerConfig.CornerDetector.Type.HARRIS)
-        featureTracker2.initialConfig.setCornerDetector(dai.FeatureTrackerConfig.CornerDetector.Type.HARRIS)
+with dai.Pipeline() as pipeline:
+    InputImgNode1 = pipeline.create(InputImgNode1)
+    InputImgNode2 = pipeline.create(InputImgNode2)
 
-        featureTracker1.initialConfig.setMotionEstimator(False)
-        featureTracker2.initialConfig.setMotionEstimator(False)
+    featureTracker1 = pipeline.create(dai.node.FeatureTracker)
+    featureTracker2 = pipeline.create(dai.node.FeatureTracker)
+    
+    featureTracker1.initialConfig.setCornerDetector(dai.FeatureTrackerConfig.CornerDetector.Type.HARRIS)
+    featureTracker2.initialConfig.setCornerDetector(dai.FeatureTrackerConfig.CornerDetector.Type.HARRIS)
 
-        motionEstimator1 = dai.FeatureTrackerConfig.MotionEstimator()
-        motionEstimator2 = dai.FeatureTrackerConfig.MotionEstimator()
+    featureTracker1.initialConfig.setMotionEstimator(False)
+    featureTracker2.initialConfig.setMotionEstimator(False)
 
-        motionEstimator1.enable = False
-        motionEstimator2.enable = False
+    motionEstimator1 = dai.FeatureTrackerConfig.MotionEstimator()
+    motionEstimator2 = dai.FeatureTrackerConfig.MotionEstimator()
 
-        featureTracker1.initialConfig.setMotionEstimator(motionEstimator1)
-        featureTracker2.initialConfig.setMotionEstimator(motionEstimator2)
+    motionEstimator1.enable = False
+    motionEstimator2.enable = False
 
-        cornerDetector1 = dai.FeatureTrackerConfig.CornerDetector()
-        cornerDetector2 = dai.FeatureTrackerConfig.CornerDetector()
+    featureTracker1.initialConfig.setMotionEstimator(motionEstimator1)
+    featureTracker2.initialConfig.setMotionEstimator(motionEstimator2)
 
-        cornerDetector1.numMaxFeatures = 256
-        cornerDetector2.numMaxFeatures = 256
+    cornerDetector1 = dai.FeatureTrackerConfig.CornerDetector()
+    cornerDetector2 = dai.FeatureTrackerConfig.CornerDetector()
 
-        outputFeaturePassthroughQueue1 = featureTracker1.passthroughInputImage.createOutputQueue()
-        outputFeaturePassthroughQueue2 = featureTracker2.passthroughInputImage.createOutputQueue()
+    cornerDetector1.numMaxFeatures = 256
+    cornerDetector2.numMaxFeatures = 256
 
-        outputFeatureQueue1 = featureTracker1.outputFeatures.createOutputQueue()
-        outputFeatureQueue2 = featureTracker2.outputFeatures.createOutputQueue()
+    outputFeaturePassthroughQueue1 = featureTracker1.passthroughInputImage.createOutputQueue()
+    outputFeaturePassthroughQueue2 = featureTracker2.passthroughInputImage.createOutputQueue()
 
-        InputImgNode1.output.link(featureTracker1.inputImage)
-        InputImgNode2.output.link(featureTracker2.inputImage)
+    outputFeatureQueue1 = featureTracker1.outputFeatures.createOutputQueue()
+    outputFeatureQueue2 = featureTracker2.outputFeatures.createOutputQueue()
 
-        inputConfigQueue1 = featureTracker1.inputConfig.createInputQueue()
-        inputConfigQueue2 = featureTracker2.inputConfig.createInputQueue()
+    InputImgNode1.output.link(featureTracker1.inputImage)
+    InputImgNode2.output.link(featureTracker2.inputImage)
 
-        thresholds1 = dai.FeatureTrackerConfig.CornerDetector.Thresholds()
-        thresholds2 = dai.FeatureTrackerConfig.CornerDetector.Thresholds()
+    inputConfigQueue1 = featureTracker1.inputConfig.createInputQueue()
+    inputConfigQueue2 = featureTracker2.inputConfig.createInputQueue()
 
-        thresholds1.initialValue = cv2.getTrackbarPos('harris_score','Features1')
-        thresholds2.initialValue = cv2.getTrackbarPos('harris_score','Features2')
+    thresholds1 = dai.FeatureTrackerConfig.CornerDetector.Thresholds()
+    thresholds2 = dai.FeatureTrackerConfig.CornerDetector.Thresholds()
 
-        cornerDetector1.thresholds = thresholds1
-        cornerDetector2.thresholds = thresholds2
+    thresholds1.initialValue = cv2.getTrackbarPos('harris_score','Features1')
+    thresholds2.initialValue = cv2.getTrackbarPos('harris_score','Features2')
 
-        featureTracker1.initialConfig.setCornerDetector(cornerDetector1)
-        featureTracker2.initialConfig.setCornerDetector(cornerDetector2)
+    cornerDetector1.thresholds = thresholds1
+    cornerDetector2.thresholds = thresholds2
 
-        # Create a Brute Force Matcher object.
-        bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck = True)
+    featureTracker1.initialConfig.setCornerDetector(cornerDetector1)
+    featureTracker2.initialConfig.setCornerDetector(cornerDetector2)
 
-        pipeline.start()
-        while pipeline.isRunning():
-            trackedFeatures1 = outputFeatureQueue1.get().trackedFeatures
-            trackedFeatures2 = outputFeatureQueue2.get().trackedFeatures
+    # Create a Brute Force Matcher object.
+    bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck = True)
 
-            outputPassthroughImage1 : dai.ImgFrame = outputFeaturePassthroughQueue1.get()
-            outputPassthroughImage2 : dai.ImgFrame = outputFeaturePassthroughQueue2.get()
+    pipeline.start()
+    while pipeline.isRunning():
+        trackedFeatures1 = outputFeatureQueue1.get().trackedFeatures
+        trackedFeatures2 = outputFeatureQueue2.get().trackedFeatures
 
-            passthroughImage1 = outputPassthroughImage1.getCvFrame()
-            passthroughImage2 = outputPassthroughImage2.getCvFrame()
+        outputPassthroughImage1 : dai.ImgFrame = outputFeaturePassthroughQueue1.get()
+        outputPassthroughImage2 : dai.ImgFrame = outputFeaturePassthroughQueue2.get()
 
-            passthroughImage1 = cv2.cvtColor(passthroughImage1, cv2.COLOR_GRAY2BGR)
-            passthroughImage2 = cv2.cvtColor(passthroughImage2, cv2.COLOR_GRAY2BGR)
+        passthroughImage1 = outputPassthroughImage1.getCvFrame()
+        passthroughImage2 = outputPassthroughImage2.getCvFrame()
 
-            [keyPoints1, keyDescriptors1] = drawFeatures(passthroughImage1, trackedFeatures1)
-            [keyPoints2, keyDescriptors2] = drawFeatures(passthroughImage2, trackedFeatures2)
+        passthroughImage1 = cv2.cvtColor(passthroughImage1, cv2.COLOR_GRAY2BGR)
+        passthroughImage2 = cv2.cvtColor(passthroughImage2, cv2.COLOR_GRAY2BGR)
 
-            train_descriptorNp = np.asarray(keyDescriptors1).reshape((-1, 32))
-            test_descriptorNp = np.asarray(keyDescriptors2).reshape(-1, 32)
+        [keyPoints1, keyDescriptors1] = drawFeatures(passthroughImage1, trackedFeatures1)
+        [keyPoints2, keyDescriptors2] = drawFeatures(passthroughImage2, trackedFeatures2)
 
-            train_descriptorNp = (train_descriptorNp).astype('uint8')
-            test_descriptorNp = (test_descriptorNp).astype('uint8')
+        train_descriptorNp = np.asarray(keyDescriptors1).reshape((-1, 32))
+        test_descriptorNp = np.asarray(keyDescriptors2).reshape(-1, 32)
 
-            train_keypoints = keyPoints1
-            test_keypoints = keyPoints2
+        train_descriptorNp = (train_descriptorNp).astype('uint8')
+        test_descriptorNp = (test_descriptorNp).astype('uint8')
 
+        train_keypoints = keyPoints1
+        test_keypoints = keyPoints2
 
+        if (cv2.getTrackbarPos(switchDescriptorCalculation, 'Features1') == 1 and cv2.getTrackbarPos(switchDescriptorCalculation, 'Features2') == 1):
             if (test_descriptorNp.size <= train_descriptorNp.size):
                 print ('correct size of descriptors')
             else:
                 raise Exception("Test image should not have more descriptors than train image") 
-
-
             # Perform the matching between the descriptors of the training image and the test image
             matches = bf.match(train_descriptorNp, test_descriptorNp)
 
@@ -277,10 +271,10 @@ with dai.Device(info) as device:
             cv2.imshow('Result', result)
 
 
-            # Show the frame
-            cv2.imshow("Features1", passthroughImage1)
-            cv2.imshow("Features2", passthroughImage2)
+        # Show the frame
+        cv2.imshow("Features1", passthroughImage1)
+        cv2.imshow("Features2", passthroughImage2)
 
-            key = cv2.waitKey(1)
-            if key == ord('q'):
-                break
+        key = cv2.waitKey(1)
+        if key == ord('q'):
+            break

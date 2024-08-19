@@ -83,6 +83,7 @@ def on_trackbar(val):
     cfg = dai.FeatureTrackerConfig()
     cornerDetector = dai.FeatureTrackerConfig.CornerDetector()
     cornerDetector.numMaxFeatures = cv2.getTrackbarPos('numMaxFeatures', 'Features')
+    cornerDetector.robustness = cv2.getTrackbarPos('robustness', 'Features')
 
     thresholds = dai.FeatureTrackerConfig.CornerDetector.Thresholds()
     thresholds.initialValue = cv2.getTrackbarPos('harris_score','Features')
@@ -98,6 +99,7 @@ cv2.namedWindow('Features')
 # create trackbars threshold change
 cv2.createTrackbar('harris_score','Features',20000,25000, on_trackbar)
 cv2.createTrackbar('numMaxFeatures','Features',256,1024, on_trackbar)
+cv2.createTrackbar('robustness','Features',0, 127, on_trackbar)
 
 # Create pipeline
 with dai.Pipeline() as pipeline:
@@ -117,6 +119,7 @@ with dai.Pipeline() as pipeline:
 
     cornerDetector = dai.FeatureTrackerConfig.CornerDetector()
     cornerDetector.numMaxFeatures = 256
+    cornerDetector.robustness = 0
 
     outputFeaturePassthroughQueue = featureTrackerLeft.passthroughInputImage.createOutputQueue()
     outputFeatureQueue = featureTrackerLeft.outputFeatures.createOutputQueue()
@@ -157,6 +160,7 @@ with dai.Pipeline() as pipeline:
             cfg = dai.FeatureTrackerConfig()
             cornerDetector = dai.FeatureTrackerConfig.CornerDetector()
             cornerDetector.numMaxFeatures = cv2.getTrackbarPos('numMaxFeatures', 'Features')
+            cornerDetector.robustness = cv2.getTrackbarPos('robustness', 'Features')
 
             thresholds = dai.FeatureTrackerConfig.CornerDetector.Thresholds()
             thresholds.initialValue = cv2.getTrackbarPos('harris_score','Features')
