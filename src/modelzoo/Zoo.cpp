@@ -19,8 +19,22 @@ class ZooManager {
      * @param modelDescription: Model description
      * @param cacheDirectory: Cache directory, default is ".depthai_cached_models"
      */
-    explicit ZooManager(NNModelDescription modelDescription, std::string cacheDirectory = MODEL_ZOO_DEFAULT_CACHE_DIRECTORY)
-        : modelDescription(std::move(modelDescription)), cacheDirectory(std::move(cacheDirectory)) {}
+    explicit ZooManager(NNModelDescription modelDescription, std::string cacheDirectory = MODEL_ZOO_DEFAULT_CACHE_DIRECTORY, std::string apiKey = "")
+        : modelDescription(std::move(modelDescription)), apiKey(std::move(apiKey)), cacheDirectory(std::move(cacheDirectory)) {
+        // If the API is empty override from environment variable, if it exists
+        if(this->apiKey.empty()) {
+            logger::info("Trying to get API key from environment variable DEPTHAI_MODEL_ZOO_API_KEY");
+            auto envApiKey = utility::getEnv("DEPTHAI_MODEL_ZOO_API_KEY");
+            if(!envApiKey.empty()) {
+                this->apiKey = envApiKey;
+                logger::info("API key found in environment variable DEPTHAI_MODEL_ZOO_API_KEY");
+            } else {
+                logger::info("API key not provided");
+            }
+        } else {
+            logger::info("API key provided");
+        }
+    }
 
     /**
      * @brief Compute hash based on name, version and platform
@@ -76,6 +90,9 @@ class ZooManager {
    private:
     // Description of the model
     NNModelDescription modelDescription;
+
+    // Private key to access the Hub
+    std::string apiKey;
 
     // Path to directory where to store the cached models
     std::string cacheDirectory;
@@ -207,8 +224,15 @@ void ZooManager::downloadModel() {
     if(!modelDescription.optimizationLevel.empty()) requestBody["variables"]["input"]["optimizationLevel"] = modelDescription.optimizationLevel;
     if(!modelDescription.compressionLevel.empty()) requestBody["variables"]["input"]["compressionLevel"] = modelDescription.compressionLevel;
 
+    // Set the Authorization headers
+    cpr::Header headers = {
+        {"Content-Type", "application/json"},
+    };
+    if(!apiKey.empty()) {
+        headers["Authorization"] = "Bearer " + apiKey;
+    }
     // Send HTTP request to Hub
-    cpr::Response response = cpr::Post(cpr::Url{MODEL_ZOO_URL}, cpr::Body{requestBody.dump()});
+    cpr::Response response = cpr::Post(cpr::Url{MODEL_ZOO_URL}, headers, cpr::Body{requestBody.dump()});
     if(checkIsErrorHub(response)) {
         removeModelCacheFolder();
         throw std::runtime_error(generateErrorMessageHub(response));
@@ -251,9 +275,9 @@ std::string ZooManager::loadModelFromCache() const {
     return std::filesystem::absolute(folderFiles[0]).string();
 }
 
-std::string getModelFromZoo(const NNModelDescription& modelDescription, bool useCached, const std::string& cacheDirectory) {
+std::string getModelFromZoo(const NNModelDescription& modelDescription, bool useCached, const std::string& cacheDirectory, const std::string& apiKey) {
     // Initialize ZooManager
-    ZooManager zooManager(modelDescription, cacheDirectory);
+    ZooManager zooManager(modelDescription, cacheDirectory, apiKey);
 
     // Check if model is cached
     bool modelIsCached = zooManager.isModelCached();
@@ -283,7 +307,7 @@ std::string getModelFromZoo(const NNModelDescription& modelDescription, bool use
     return modelPath;
 }
 
-void downloadModelsFromZoo(const std::string& path, const std::string& cacheDirectory) {
+void downloadModelsFromZoo(const std::string& path, const std::string& cacheDirectory, const std::string& apiKey) {
     Logging::getInstance().logger.info("Downloading models from zoo");
     // Make sure 'path' exists
     if(!std::filesystem::exists(path)) throw std::runtime_error("Path does not exist: " + path);
@@ -305,7 +329,7 @@ void downloadModelsFromZoo(const std::string& path, const std::string& cacheDire
         // Download model - ignore the returned model path here == we are only interested in downloading the model
         try {
             auto modelDescription = NNModelDescription::fromYamlFile(yamlFile);
-            getModelFromZoo(modelDescription, true, cacheDirectory);
+            getModelFromZoo(modelDescription, true, cacheDirectory, apiKey);
             Logging::getInstance().logger.info("Downloaded model [{} / {}]: {}", i + 1, yamlFiles.size(), yamlFile);
         } catch(const std::exception& e) {
             Logging::getInstance().logger.error("Failed to download model [{} / {}]: {}\n{}", i + 1, yamlFiles.size(), yamlFile, e.what());
