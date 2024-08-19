@@ -28,6 +28,8 @@ class ZooManager {
             if(!envApiKey.empty()) {
                 this->apiKey = envApiKey;
                 logger::info("API key found in environment variable DEPTHAI_MODEL_ZOO_API_KEY");
+            } else {
+                logger::info("API key not provided");
             }
         } else {
             logger::info("API key provided");
