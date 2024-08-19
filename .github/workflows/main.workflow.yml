@@ -63,7 +63,7 @@ jobs:
     strategy:
       matrix:
         os: [macos-latest, windows-latest, ubuntu-latest]
-        cmake: ['3.10.x', ''] # Older version (Ubuntu 18.04) and newest
+        cmake: ['3.10.x', '3.29.x'] # Older version (Ubuntu 18.04) and newest
         exclude:
           - os: windows-latest
             cmake: '3.10.x'
@@ -185,6 +185,8 @@ jobs:
 
     - name: Setup cmake
       uses: jwlawson/actions-setup-cmake@v1.13
+      with:
+        cmake-version: '3.29.x'
 
     - name: Configure ${{ matrix.build-type }}, shared ${{ matrix.shared }}, ${{ matrix.platform }}
       run: cmake -S . -B build -D BUILD_SHARED_LIBS=${{ matrix.shared}} -D CMAKE_BUILD_TYPE=${{ matrix.build-type }} -D CMAKE_INSTALL_PREFIX=$GITHUB_WORKSPACE/depthai_install ${{ env.CMAKE_ARGS }}
