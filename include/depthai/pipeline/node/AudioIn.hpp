@@ -19,6 +19,18 @@ class AudioIn: public DeviceNodeCRTP<DeviceNode, AudioIn, AudioInProperties>, pu
 
     std::shared_ptr<AudioIn> build();
 
+    void setDeviceName(std::string audioInName);
+    void setDevicePath(std::string audioInPath);
+    void setBitrate(unsigned int bitrate);
+    void setFps(unsigned int fps);
+    void setChannels(unsigned int channels);
+
+    std::string getDeviceName();
+    std::string getDevicePath();
+    unsigned int getBitrate();
+    unsigned int getFps();
+    unsigned int getChannels();
+
    Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::Buffer, true}}}}};
    protected:
     bool isBuild = false;
