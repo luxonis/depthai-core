@@ -23,11 +23,11 @@ class ZooManager {
         : modelDescription(std::move(modelDescription)), apiKey(std::move(apiKey)), cacheDirectory(std::move(cacheDirectory)) {
         // If the API is empty override from environment variable, if it exists
         if(this->apiKey.empty()) {
-            logger::info("Trying to get API key from environment variable DEPTHAI_MODEL_ZOO_API_KEY");
-            auto envApiKey = utility::getEnv("DEPTHAI_MODEL_ZOO_API_KEY");
+            logger::info("Trying to get API key from environment variable DEPTHAI_HUB_API_KEY");
+            auto envApiKey = utility::getEnv("DEPTHAI_HUB_API_KEY");
             if(!envApiKey.empty()) {
                 this->apiKey = envApiKey;
-                logger::info("API key found in environment variable DEPTHAI_MODEL_ZOO_API_KEY");
+                logger::info("API key found in environment variable DEPTHAI_HUB_API_KEY");
             } else {
                 logger::info("API key not provided");
             }
