@@ -3,7 +3,6 @@
 #include "depthai/properties/Properties.hpp"
 
 namespace dai {
-
 /**
  * Specify properties for ImageManip
  */
