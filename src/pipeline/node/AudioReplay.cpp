@@ -2,6 +2,7 @@
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/utility/AudioHelpers.hpp"
 
+#include <spdlog/async_logger.h>
 #include <fstream>
 #include <vector>
 
@@ -9,25 +10,68 @@ namespace dai {
 namespace node {
 
 void AudioReplay::run() {
-	dai::audio::AudioFile file(sourceFile.c_str(), SFM_READ);
+	std::string pathStr = sourceFile.string();
+	dai::audio::AudioFile file(pathStr.c_str(), SFM_READ);
 	SF_INFO info = file.getInfo();
 
-	std::vector<uint8_t> audioData(fps * info.channels * sizeof(int));
-
+	std::vector<uint8_t> audioData;
 	sf_count_t durationFrames = static_cast<sf_count_t>((1.0 / fps) * info.samplerate);
 
-	while (isRunning()) {
+	if(info.format & SF_FORMAT_PCM_S8) {
+		format = SF_FORMAT_PCM_S8;
+		audioData.resize(durationFrames * info.channels * (16 / 8));
+	} else 	if(info.format & SF_FORMAT_PCM_16) {
+		format = SF_FORMAT_PCM_16;
+		audioData.resize(durationFrames * info.channels * (16 / 8));
+	} else 	if(info.format & SF_FORMAT_PCM_24) {
+		format = SF_FORMAT_PCM_24;
+		audioData.resize(durationFrames * info.channels * (32 / 8));
+	} else 	if(info.format & SF_FORMAT_PCM_32) {
+		format = SF_FORMAT_PCM_32;
+		audioData.resize(durationFrames * info.channels * (32 / 8));
+	} 
+	
+
+	std::cout << "Duration frames: " << durationFrames << std::endl;
+
+	bool done = false;
+	while (isRunning() && !done) {
 		std::shared_ptr<Buffer> buf = std::make_shared<Buffer>();
 
-		sf_count_t framesRead = file.readFrame((int*)audioData.data(), durationFrames);
+		sf_count_t framesRead;
+		switch(format) {
+			case SF_FORMAT_PCM_S8:
+			case SF_FORMAT_PCM_16:
+				framesRead = file.readFrame((short*)audioData.data(), durationFrames);
+				break;
+			case SF_FORMAT_PCM_24:
+			case SF_FORMAT_PCM_32:
+				framesRead = file.readFrame((int*)audioData.data(), durationFrames);
+				break;
+		}
+		std::cout << "Read frames: " << framesRead << std::endl;
 		if (framesRead <= 0) {
-			//logger->warn("AudioReplay {}: End of file or error reading audio file", __func__);
-			break;
+			if (file.getError() == SF_ERR_NO_ERROR) {
+				if(loop) {
+					file.seek(0, SEEK_SET);
+					continue;
+				} else {
+					audioData.resize(0);
+					done = true;
+				}
+			} else {
+				logger->error("AudioReplay {}: Failed to read audio file", __func__);
+				done = true;
+				break;
+			}
 		}
 
+		std::cout << "Set data" << std::endl;
 		buf->setData(audioData);
+		std::cout << "Sending..." << std::endl;
 		out.send(buf);
 
+		std::cout << "Waiting" << std::endl;
 		// Wait for the next period (1 second in this case)
 		std::this_thread::sleep_for(std::chrono::milliseconds(1000 / fps));
 	}
@@ -57,6 +101,10 @@ bool AudioReplay::getLoop() const {
 
 int AudioReplay::getFps() const {
     return fps;
+}
+
+int AudioReplay::getFormat() const {
+    return format;
 }
 
 }

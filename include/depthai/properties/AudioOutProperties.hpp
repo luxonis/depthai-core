@@ -2,6 +2,8 @@
 
 #include "depthai/properties/Properties.hpp"
 
+#include <alsa/asoundlib.h>
+
 namespace dai {
 
 /**
@@ -36,6 +38,8 @@ struct AudioOutProperties : PropertiesSerializable<Properties, AudioOutPropertie
      */
     unsigned int channels = 2;
 
+    snd_pcm_format_t format;
+
 };
 
 DEPTHAI_SERIALIZE_EXT(AudioOutProperties,
@@ -43,6 +47,7 @@ DEPTHAI_SERIALIZE_EXT(AudioOutProperties,
 		      audioOutPath,
 		      bitrate,
 		      framesPerSecond,
-		      channels);
+		      channels,
+		      format);
 
 }  // namespace dai

@@ -25,7 +25,12 @@ namespace audio {
 		~AudioFile();
 
 		sf_count_t readItem(int *ptr, sf_count_t items);
+
+		sf_count_t readFrame(short *ptr, sf_count_t frames);
 		sf_count_t readFrame(int *ptr, sf_count_t frames);
+		sf_count_t readFrame(float *ptr, sf_count_t frames);
+		sf_count_t readFrame(double *ptr, sf_count_t frames);
+
 		sf_count_t readRaw(void *ptr, sf_count_t bytes);
 
 		sf_count_t writeItem(int *ptr, sf_count_t items);
@@ -34,7 +39,8 @@ namespace audio {
 
 		sf_count_t seek(sf_count_t frames, int whence);
 
-		SF_INFO getInfo() { return fileInfo; }
+		SF_INFO getInfo() const { return fileInfo; }
+		int getError();
 	private:
 		SNDFILE *file;
 		SF_INFO fileInfo;

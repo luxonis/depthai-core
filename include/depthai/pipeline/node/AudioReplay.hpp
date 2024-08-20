@@ -20,7 +20,9 @@ class AudioReplay : public NodeCRTP<ThreadedHostNode, AudioReplay> {
     std::filesystem::path getSourceFile() const;
     bool getLoop() const;
     int getFps() const;
+    int getFormat() const;
    private:
+    int format;
     int fps = 10;
     std::filesystem::path sourceFile;
     bool loop = false;

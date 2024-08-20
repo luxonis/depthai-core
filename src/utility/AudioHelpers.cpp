@@ -4,6 +4,8 @@
 
 #include <stdexcept>
 
+#include <iostream>
+
 namespace dai {
 namespace audio {
 
@@ -87,8 +89,20 @@ sf_count_t AudioFile::readItem(int *ptr, sf_count_t items) {
 	return sf_read_int(file, ptr, items);
 }
 
+sf_count_t AudioFile::readFrame(short *ptr, sf_count_t frames) {
+	return sf_readf_short(file, ptr, frames);
+}
+
 sf_count_t AudioFile::readFrame(int *ptr, sf_count_t frames) {
 	return sf_readf_int(file, ptr, frames);
+}
+
+sf_count_t AudioFile::readFrame(float *ptr, sf_count_t frames) {
+	return sf_readf_float (file, ptr, frames);
+}
+
+sf_count_t AudioFile::readFrame(double *ptr, sf_count_t frames) {
+	return sf_readf_double(file, ptr, frames);
 }
 
 sf_count_t AudioFile::readRaw(void *ptr, sf_count_t bytes) {
@@ -109,6 +123,10 @@ sf_count_t AudioFile::writeRaw(void *ptr, sf_count_t bytes) {
 
 sf_count_t AudioFile::seek(sf_count_t frames, int whence) {
 	return sf_seek(file, frames, whence);
+}
+
+int AudioFile::getError() {
+	return sf_error(file);
 }
 
 }
