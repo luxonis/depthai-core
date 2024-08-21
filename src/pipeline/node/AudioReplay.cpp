@@ -37,6 +37,7 @@ void AudioReplay::run() {
 	bool done = false;
 	while (isRunning() && !done) {
 		std::shared_ptr<Buffer> buf = std::make_shared<Buffer>();
+		std::memset(audioData.data(), 0, audioData.size());
 
 		sf_count_t framesRead;
 		switch(format) {
