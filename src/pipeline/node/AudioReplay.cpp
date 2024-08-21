@@ -17,18 +17,21 @@ void AudioReplay::run() {
 	std::vector<uint8_t> audioData;
 	sf_count_t durationFrames = static_cast<sf_count_t>((1.0 / fps) * info.samplerate);
 
-	if(info.format & SF_FORMAT_PCM_S8) {
-		format = SF_FORMAT_PCM_S8;
-		audioData.resize(durationFrames * info.channels * (16 / 8));
-	} else 	if(info.format & SF_FORMAT_PCM_16) {
-		format = SF_FORMAT_PCM_16;
-		audioData.resize(durationFrames * info.channels * (16 / 8));
-	} else 	if(info.format & SF_FORMAT_PCM_24) {
-		format = SF_FORMAT_PCM_24;
-		audioData.resize(durationFrames * info.channels * (32 / 8));
-	} else 	if(info.format & SF_FORMAT_PCM_32) {
-		format = SF_FORMAT_PCM_32;
-		audioData.resize(durationFrames * info.channels * (32 / 8));
+	format = file.getFormat();
+	switch(format) {
+		case SF_FORMAT_PCM_S8:
+		case SF_FORMAT_PCM_16:
+			audioData.resize(durationFrames * info.channels * (16 / 8));
+			break;
+		case SF_FORMAT_PCM_24:
+		case SF_FORMAT_PCM_32:
+		case SF_FORMAT_FLOAT:
+			audioData.resize(durationFrames * info.channels * (32 / 8));
+			break;
+		case SF_FORMAT_DOUBLE:
+			audioData.resize(durationFrames * info.channels * (64 / 8));
+			break;
+
 	} 
 	
 
@@ -48,6 +51,12 @@ void AudioReplay::run() {
 			case SF_FORMAT_PCM_24:
 			case SF_FORMAT_PCM_32:
 				framesRead = file.readFrame((int*)audioData.data(), durationFrames);
+				break;
+			case SF_FORMAT_FLOAT:
+				framesRead = file.readFrame((float*)audioData.data(), durationFrames);
+				break;
+			case SF_FORMAT_DOUBLE:
+				framesRead = file.readFrame((double*)audioData.data(), durationFrames);
 				break;
 		}
 		std::cout << "Read frames: " << framesRead << std::endl;

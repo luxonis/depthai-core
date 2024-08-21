@@ -111,6 +111,8 @@ void AudioOut::setFormat(int format) {
 	case SF_FORMAT_PCM_16: properties.format = SND_PCM_FORMAT_S16_LE; break;
 	case SF_FORMAT_PCM_24: properties.format = SND_PCM_FORMAT_S24_LE; break;
 	case SF_FORMAT_PCM_32: properties.format = SND_PCM_FORMAT_S32_LE; break;
+	case SF_FORMAT_FLOAT: properties.format = SND_PCM_FORMAT_FLOAT_LE; break;
+	case SF_FORMAT_DOUBLE: properties.format = SND_PCM_FORMAT_FLOAT64_LE; break;
 	}
 }
 

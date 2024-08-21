@@ -17,6 +17,7 @@ namespace audio {
 
 	class AudioFile {
 	public:
+		AudioFile() {}
 		AudioFile(const char *path, int mode);
 		AudioFile(int fd, int mode, bool closeOnDestruct);
 		AudioFile(SF_VIRTUAL_IO *virtualFile, int mode, void *userData);
@@ -40,8 +41,10 @@ namespace audio {
 		sf_count_t seek(sf_count_t frames, int whence);
 
 		SF_INFO getInfo() const { return fileInfo; }
+		int getFormat() const;
+		int getSampleSize() const;
 		int getError();
-	private:
+	protected:
 		SNDFILE *file;
 		SF_INFO fileInfo;
 	};

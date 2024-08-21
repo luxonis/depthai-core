@@ -17,9 +17,7 @@ void AudioEncoder::run() {
 	while(isRunning()) {
 		std::shared_ptr<Buffer> recvBuf = input.get<Buffer>();
 			
-		std::shared_ptr<Buffer> sendBuf;
-
-
+		std::shared_ptr<Buffer> sendBuf = recvBuf;
 
 		out.send(sendBuf);
 	}
@@ -31,5 +29,7 @@ void AudioEncoder::setRunOnHost(bool runOnHost) {
 
 bool AudioEncoder::runOnHost() const {
     return runOnHostVar;
+}
+
 }
 }

@@ -125,6 +125,40 @@ sf_count_t AudioFile::seek(sf_count_t frames, int whence) {
 	return sf_seek(file, frames, whence);
 }
 
+int AudioFile::getFormat() const {
+	if(fileInfo.format & SF_FORMAT_PCM_S8) {
+		return SF_FORMAT_PCM_S8;
+	} else 	if(fileInfo.format & SF_FORMAT_PCM_16) {
+		return SF_FORMAT_PCM_16;
+	} else 	if(fileInfo.format & SF_FORMAT_PCM_24) {
+		return SF_FORMAT_PCM_24;
+	} else 	if(fileInfo.format & SF_FORMAT_PCM_32) {
+		return SF_FORMAT_PCM_32;
+	} else 	if(fileInfo.format & SF_FORMAT_FLOAT) {
+		return SF_FORMAT_FLOAT;
+	} else 	if(fileInfo.format & SF_FORMAT_DOUBLE) {
+		return SF_FORMAT_DOUBLE;
+	} else {
+		return 0;
+	}
+}
+
+int AudioFile::getSampleSize() const {
+	switch(getFormat()) {
+		case SF_FORMAT_PCM_S8:
+		case SF_FORMAT_PCM_16:
+			return 16;
+		case SF_FORMAT_PCM_24:
+		case SF_FORMAT_PCM_32:
+		case SF_FORMAT_FLOAT:
+			return 32;
+		case SF_FORMAT_DOUBLE:
+			return 64;
+		default:
+			return 0;
+	}
+}
+
 int AudioFile::getError() {
 	return sf_error(file);
 }

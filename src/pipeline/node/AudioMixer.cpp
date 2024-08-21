@@ -153,6 +153,40 @@ std::shared_ptr<Buffer> AudioMixer::AudioMixerSink::mix() {
 		        	}
 				}
 				break;
+			case SF_FORMAT_FLOAT: {
+				std::cout << "float32 mix" << std::endl;
+				float *floatDataToMix = (float*)dataToMix;
+				float *floatMixedData = (float*)mixedData.data();
+
+				const double min = std::numeric_limits<float>::min();
+				const double max = std::numeric_limits<float>::max();
+
+				count /= sizeof(float);
+
+		        	for (size_t i = 0; i < count; ++i) {
+				    double result = floatMixedData[i] + floatDataToMix[i] * source->volume;
+				    std::clamp(result, min, max);
+	        		    floatMixedData[i] = (float)result;
+		        	}
+				}
+				break;
+			case SF_FORMAT_DOUBLE: {
+				std::cout << "float64 mix" << std::endl;
+				double *doubleDataToMix = (double*)dataToMix;
+				double *doubleMixedData = (double*)mixedData.data();
+
+				const long double min = std::numeric_limits<double>::min();
+				const long double max = std::numeric_limits<double>::max();
+
+				count /= sizeof(double);
+
+		        	for (size_t i = 0; i < count; ++i) {
+				    long double result = doubleMixedData[i] + doubleDataToMix[i] * (double)source->volume;
+				    std::clamp(result, min, max);
+	        		    doubleMixedData[i] = (double)result;
+		        	}
+				}
+				break;
 			default:
 				std::cout << "PANICC: " << format << std::endl;
 				std::terminate();
