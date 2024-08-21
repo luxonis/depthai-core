@@ -13,50 +13,37 @@ class HostCamera(dai.node.ThreadedHostNode):
     def __init__(self):
         dai.node.ThreadedHostNode.__init__(self)
         self.output = dai.Node.Output(self)
+        frame = cv2.imread(str(tagImage.resolve()))
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        imgFrame = dai.ImgFrame()
+        imgFrame.setData(frame)
+        imgFrame.setWidth(frame.shape[1])
+        imgFrame.setHeight(frame.shape[0])
+        imgFrame.setType(dai.ImgFrame.Type.GRAY8)
+        self.imgFrame = imgFrame
     def run(self):
         while self.isRunning():
-            frame = cv2.imread(str(tagImage.resolve()))
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            imgFrame = dai.ImgFrame()
-            imgFrame.setData(frame)
-            imgFrame.setWidth(frame.shape[1])
-            imgFrame.setHeight(frame.shape[0])
-            imgFrame.setType(dai.ImgFrame.Type.GRAY8)
-            # Send the message
-            self.output.send(imgFrame)
-            # Wait for the next frame
-            time.sleep(0.1)
+            self.output.send(self.imgFrame)
+            time.sleep(0.005)
 
-info = dai.DeviceInfo("127.0.0.1")
-info.protocol = dai.X_LINK_TCP_IP
-info.state = dai.X_LINK_GATE
-info.platform = dai.X_LINK_RVC4
-device = dai.Device(info)
+device = dai.Device()
 with dai.Pipeline(device) as pipeline:
+    print(device.getDeviceInfo())
     hostCamera = pipeline.create(HostCamera)
-    camQueue = hostCamera.output.createOutputQueue()
-
     aprilTag = pipeline.create(dai.node.AprilTag)
-
     hostCamera.output.link(aprilTag.inputImage)
-
     aprilTag.initialConfig.setFamily(dai.AprilTagConfig.Family.TAG_16H5)
-
 
     outputFeaturePassthroughQueue = aprilTag.passthroughInputImage.createOutputQueue()
     outQueue = aprilTag.out.createOutputQueue()
 
-
-
     color = (0, 255, 0)
-
     startTime = time.monotonic()
     counter = 0
     fps = 0
 
     pipeline.start()
     while pipeline.isRunning():
-        image : dai.ImgFrame = camQueue.get()
         aprilTagData = outQueue.get().aprilTags
 
         counter+=1
@@ -89,8 +76,10 @@ with dai.Pipeline(device) as pipeline:
             idStr = "ID: " + str(aprilTag.id)
             cv2.putText(frame, idStr, center, cv2.FONT_HERSHEY_TRIPLEX, 0.5, color)
 
+            cv2.putText(frame, f"fps: {fps:.1f}", (200, 20), cv2.FONT_HERSHEY_TRIPLEX, 0.5, color)
+
         cv2.imshow("detections", frame)
-        cv2.imshow("passthrough", passthroughImage)
+        # cv2.imshow("passthrough", passthroughImage)
 
         if cv2.waitKey(1) == ord('q'):
             break
