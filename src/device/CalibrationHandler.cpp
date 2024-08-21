@@ -359,13 +359,11 @@ std::vector<std::vector<float>> CalibrationHandler::getCameraExtrinsics(CameraBo
                                                                         bool useSpecTranslation) const {
     /**
      * 1. Check if both camera ID exists.
-     * 2. Check if the forward link exists from source to dest camera. if No go to step 5
-     * 3. Call computeExtrinsicMatrix to get the projection matrix from source -> destination camera.
-     * 4. Jump to end and return the projection matrix
-     * 5. if no check if there is forward link from dest to source. if No return an error that link doesn't exist.
-     * 6. Call computeExtrinsicMatrix to get the projection matrix from destination -> source camera.
-     * 7. Carry Transpose on the rotation matrix and get neg of Final translation
-     * 8. Return the Final TransformationMatrix containing both rotation matrix and Translation
+     * 2. Check if the forward link exists from source and destination camera to origin camera.
+     * 3. Call computeExtrinsicMatrix to get the projection matrix from source -> origin camera.
+     * 4. Invert the matrix from destination -> origin camera.
+     * 5. Multiply the two matrices to get the projection matrix from source -> destination camera.
+     * 6. Return the projection matrix.
      */
     if(eepromData.cameraData.find(srcCamera) == eepromData.cameraData.end()) {
         throw std::runtime_error("There is no Camera data available corresponding to the the requested source cameraId");
@@ -375,15 +373,67 @@ std::vector<std::vector<float>> CalibrationHandler::getCameraExtrinsics(CameraBo
     }
 
     std::vector<std::vector<float>> extrinsics;
-    if(checkExtrinsicsLink(srcCamera, dstCamera)) {
-        return computeExtrinsicMatrix(srcCamera, dstCamera, useSpecTranslation);
-    } else if(checkExtrinsicsLink(dstCamera, srcCamera)) {
-        extrinsics = computeExtrinsicMatrix(dstCamera, srcCamera, useSpecTranslation);
-        invertSe3Matrix4x4InPlace(extrinsics);
-        return extrinsics;
-    } else {
-        throw std::runtime_error("Extrinsic connection between the requested cameraId's doesn't exist. Please recalibrate or modify your calibration data");
+
+    // Get matrix from src to -1 camera and dst to -1 camera
+    std::vector<std::vector<float>> srcOriginMatrix = getOriginMatrix(srcCamera, useSpecTranslation);
+    std::vector<std::vector<float>> dstOriginMatrix = getOriginMatrix(dstCamera, useSpecTranslation);
+
+    // Invert the matrix dstOriginMatrix
+    invertSe3Matrix4x4InPlace(dstOriginMatrix);
+
+    // Get the matrix from src to dst camera
+    extrinsics = matMul(srcOriginMatrix, dstOriginMatrix);
+    return extrinsics;
+}
+
+std::vector<std::vector<float>> CalibrationHandler::getOriginMatrix(CameraBoardSocket cameraId, bool useSpecTranslation) const {
+    std::vector<std::vector<float>> extrinsics;
+
+    // Check if the cameraId exists in the data
+    logger::debug("Checking if camera ID {} exists in the calibration data.", static_cast<int>(cameraId));
+    auto cameraIt = eepromData.cameraData.find(cameraId);
+    if (cameraIt == eepromData.cameraData.end()) {
+        logger::error("Camera ID {} does not exist in the calibration data.", static_cast<int>(cameraId));
+        throw std::runtime_error("Camera ID does not exist in the calibration data.");
     }
+
+    // Traverse to find the origin camera (the one that has toCameraSocket == AUTO/-1)
+    CameraBoardSocket currentCameraId = cameraId;
+    std::vector<CameraBoardSocket> path; // To store the path of sockets
+    path.push_back(currentCameraId);
+
+    while (true) {
+        auto currentIt = eepromData.cameraData.find(currentCameraId);
+        if (currentIt == eepromData.cameraData.end()) {
+            logger::error("Invalid camera link detected at camera ID {}.", static_cast<int>(currentCameraId));
+            throw std::runtime_error("Invalid camera link detected.");
+        }
+
+        CameraBoardSocket nextCameraSocket = currentIt->second.extrinsics.toCameraSocket;
+
+        // Prevent infinite loop in case of cyclic connections
+        if (std::find(path.begin(), path.end(), nextCameraSocket) != path.end()) {
+            throw std::runtime_error("Cyclic extrinsics detected in device calibration data.");
+        }
+
+        if (nextCameraSocket == CameraBoardSocket::AUTO) {
+            break;
+        }
+
+        // Move to the next camera in the chain
+        currentCameraId = nextCameraSocket;
+        path.push_back(currentCameraId);
+    }
+
+    // Now compute the extrinsic matrix from cameraId to the origin
+    
+    // If the cameraId is the origin (no actual transformation needed), return identity matrix
+    if (cameraId == currentCameraId) {
+        extrinsics = {{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}};
+    } else {
+        extrinsics = computeExtrinsicMatrix(cameraId, currentCameraId, useSpecTranslation);
+    }
+
     return extrinsics;
 }
 
