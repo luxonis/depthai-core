@@ -1,6 +1,24 @@
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Changelog for package depthai
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2.28.0 (2024-08-21)
+-----------
+Features
+* Changed the automatic crashdump collection to always on unless DEPTHAI_DISABLE_CRASHDUMP_COLLECTION is set.
+* Added DEPTHAI_ENABLE_ANALYTICS_COLLECTION environment varialbe - when set, analytic data (pipeline schema) is sent to Luxonis which will be used to further improve the library.
+* Undistort both outputs of ToF by default.
+* Improved 3A syncing on OAK-D-LR
+* Added support for YoloV10
+* Bug fixes
+* Fix Camera node to correctly allocate resources for undistortion
+* Fix StereoDepth node when decimation filter and depth alignment are used
+* Fix host timestamps of thermal frames to be synced
+* Misc
+* Updated XLink to support clangd and shared libraries on Windows:
+* luxonis/XLink#81
+* luxonis/XLink#84
+* Remove a custom assert to always produce a crash dump to improve the UX with the automatic crashdump collection
+* Increased watchdog priority on device side to improve stability during high load
 
 2.26.1 (2024-06-12)
 -----------
