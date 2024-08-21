@@ -230,7 +230,7 @@ class ColorCamera : public NodeCRTP<Node, ColorCamera, ColorCameraProperties> {
      * but 3A fps is set to 15, the camera control messages will be processed at 15 fps rate, which will lead to queueing.
 
      */
-    void setIsp3aFps(int isp3aFps);
+    [[deprecated("setIsp3aFps is unstable")]] void setIsp3aFps(int isp3aFps);
 
     // Set events on which frames will be received
     void setFrameEventFilter(const std::vector<dai::FrameEvent>& events);
