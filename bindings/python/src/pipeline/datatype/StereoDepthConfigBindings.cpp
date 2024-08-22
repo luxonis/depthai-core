@@ -191,6 +191,8 @@ void bind_stereodepthconfig(pybind11::module& m, void* pCallstack){
         .def_readwrite("brightnessFilter", &StereoDepthConfig::PostProcessing::brightnessFilter, DOC(dai, StereoDepthConfig, PostProcessing, brightnessFilter))
         .def_readwrite("speckleFilter", &StereoDepthConfig::PostProcessing::speckleFilter, DOC(dai, StereoDepthConfig, PostProcessing, speckleFilter))
         .def_readwrite("decimationFilter", &StereoDepthConfig::PostProcessing::decimationFilter, DOC(dai, StereoDepthConfig, PostProcessing, decimationFilter))
+        .def_readwrite("adaptiveMedianFilter", &StereoDepthConfig::PostProcessing::adaptiveMedianFilter, DOC(dai, StereoDepthConfig, PostProcessing, adaptiveMedianFilter))
+        .def_readwrite("holeFilling", &StereoDepthConfig::PostProcessing::holeFilling, DOC(dai, StereoDepthConfig, PostProcessing, holeFilling))
         ;
 
     // KernelSize
