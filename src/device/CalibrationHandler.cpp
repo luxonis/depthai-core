@@ -392,19 +392,19 @@ std::vector<std::vector<float>> CalibrationHandler::getOriginMatrix(CameraBoardS
     // Check if the cameraId exists in the data
     logger::debug("Checking if camera ID {} exists in the calibration data.", static_cast<int>(cameraId));
     auto cameraIt = eepromData.cameraData.find(cameraId);
-    if (cameraIt == eepromData.cameraData.end()) {
+    if(cameraIt == eepromData.cameraData.end()) {
         logger::error("Camera ID {} does not exist in the calibration data.", static_cast<int>(cameraId));
         throw std::runtime_error("Camera ID does not exist in the calibration data.");
     }
 
     // Traverse to find the origin camera (the one that has toCameraSocket == AUTO/-1)
     CameraBoardSocket currentCameraId = cameraId;
-    std::vector<CameraBoardSocket> path; // To store the path of sockets
+    std::vector<CameraBoardSocket> path;  // To store the path of sockets
     path.push_back(currentCameraId);
 
-    while (true) {
+    while(true) {
         auto currentIt = eepromData.cameraData.find(currentCameraId);
-        if (currentIt == eepromData.cameraData.end()) {
+        if(currentIt == eepromData.cameraData.end()) {
             logger::error("Invalid camera link detected at camera ID {}.", static_cast<int>(currentCameraId));
             throw std::runtime_error("Invalid camera link detected.");
         }
@@ -412,11 +412,11 @@ std::vector<std::vector<float>> CalibrationHandler::getOriginMatrix(CameraBoardS
         CameraBoardSocket nextCameraSocket = currentIt->second.extrinsics.toCameraSocket;
 
         // Prevent infinite loop in case of cyclic connections
-        if (std::find(path.begin(), path.end(), nextCameraSocket) != path.end()) {
+        if(std::find(path.begin(), path.end(), nextCameraSocket) != path.end()) {
             throw std::runtime_error("Cyclic extrinsics detected in device calibration data.");
         }
 
-        if (nextCameraSocket == CameraBoardSocket::AUTO) {
+        if(nextCameraSocket == CameraBoardSocket::AUTO) {
             break;
         }
 
@@ -426,9 +426,9 @@ std::vector<std::vector<float>> CalibrationHandler::getOriginMatrix(CameraBoardS
     }
 
     // Now compute the extrinsic matrix from cameraId to the origin
-    
+
     // If the cameraId is the origin (no actual transformation needed), return identity matrix
-    if (cameraId == currentCameraId) {
+    if(cameraId == currentCameraId) {
         extrinsics = {{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}};
     } else {
         extrinsics = computeExtrinsicMatrix(cameraId, currentCameraId, useSpecTranslation);

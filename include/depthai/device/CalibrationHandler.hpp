@@ -219,7 +219,7 @@ class CalibrationHandler {
     std::vector<std::vector<float>> getCameraExtrinsics(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera, bool useSpecTranslation = false) const;
 
     /**
-     * Get the Transformation matrix from the given camera to the coordinate system origin (one without extrinsics 
+     * Get the Transformation matrix from the given camera to the coordinate system origin (one without extrinsics
      * and linked to CameraBoardSocket.AUTO)
      * @param cameraId Camera Id of the camera for which the origin matrix is being calculated
      * @param useSpecTranslation Enabling this bool uses the translation information from the board design data
