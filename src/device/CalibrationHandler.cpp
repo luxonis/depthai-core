@@ -373,10 +373,11 @@ std::vector<std::vector<float>> CalibrationHandler::getCameraExtrinsics(CameraBo
     }
 
     std::vector<std::vector<float>> extrinsics;
+    CameraBoardSocket originCamera = CameraBoardSocket::AUTO;
 
     // Get matrix from src to -1 camera and dst to -1 camera
-    std::vector<std::vector<float>> srcOriginMatrix = getOriginMatrix(srcCamera, useSpecTranslation);
-    std::vector<std::vector<float>> dstOriginMatrix = getOriginMatrix(dstCamera, useSpecTranslation);
+    std::vector<std::vector<float>> srcOriginMatrix = getCamToOriginMatrix(srcCamera, useSpecTranslation, originCamera);
+    std::vector<std::vector<float>> dstOriginMatrix = getCamToOriginMatrix(dstCamera, useSpecTranslation, originCamera);
 
     // Invert the matrix dstOriginMatrix
     invertSe3Matrix4x4InPlace(dstOriginMatrix);
@@ -386,11 +387,12 @@ std::vector<std::vector<float>> CalibrationHandler::getCameraExtrinsics(CameraBo
     return extrinsics;
 }
 
-std::vector<std::vector<float>> CalibrationHandler::getOriginMatrix(CameraBoardSocket cameraId, bool useSpecTranslation) const {
+std::vector<std::vector<float>> CalibrationHandler::getCamToOriginMatrix(CameraBoardSocket cameraId,
+                                                                         bool useSpecTranslation,
+                                                                         CameraBoardSocket& originSocket) const {
     std::vector<std::vector<float>> extrinsics;
 
     // Check if the cameraId exists in the data
-    logger::debug("Checking if camera ID {} exists in the calibration data.", static_cast<int>(cameraId));
     auto cameraIt = eepromData.cameraData.find(cameraId);
     if(cameraIt == eepromData.cameraData.end()) {
         logger::error("Camera ID {} does not exist in the calibration data.", static_cast<int>(cameraId));
@@ -423,6 +425,13 @@ std::vector<std::vector<float>> CalibrationHandler::getOriginMatrix(CameraBoardS
         // Move to the next camera in the chain
         currentCameraId = nextCameraSocket;
         path.push_back(currentCameraId);
+    }
+
+    // Check if the origin camera is the same for all cameras in the chain
+    if((originSocket != CameraBoardSocket::AUTO) && (originSocket != currentCameraId)) {
+        throw std::runtime_error("Missing extrinsic link from source camera to to destination camera.");
+    } else {
+        originSocket = currentCameraId;
     }
 
     // Now compute the extrinsic matrix from cameraId to the origin
