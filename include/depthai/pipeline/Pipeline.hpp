@@ -43,7 +43,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     PipelineImpl& operator=(PipelineImpl&&) = delete;
     ~PipelineImpl();
 
-   private:
+   public:
     // static functions
     static bool isSamePipeline(const Node::Output& out, const Node::Input& in);
     static bool canConnect(const Node::Output& out, const Node::Input& in);
@@ -140,10 +140,16 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
         tasks.push(std::move(task));
     }
 
-    void processTasks(bool waitForTasks = false) {
+    void processTasks(bool waitForTasks = false, double timeoutSeconds = -1.0) {
+        bool timeoutSet = timeoutSeconds >= 0.0;
         if(waitForTasks) {
             std::function<void()> task;
-            auto success = tasks.waitAndPop(task);
+            bool success;
+            if(timeoutSet) {
+                success = tasks.tryWaitAndPop(task, std::chrono::duration<double>(timeoutSeconds));
+            } else {
+                success = tasks.waitAndPop(task);
+            }
             if(!success) {
                 return;
             }

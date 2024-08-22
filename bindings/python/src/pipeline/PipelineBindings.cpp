@@ -247,8 +247,20 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack){
         .def("stop", &Pipeline::stop)
         .def("run",
              [](Pipeline& p) {
-                 py::gil_scoped_release release;
-                 p.run();
+                 {
+                     py::gil_scoped_release release;
+                     p.impl()->start();
+                 }
+                 constexpr double timeoutSeconds = 0.1;
+                 while(p.isRunning()) {
+                     {
+                         // Process tasks
+                         py::gil_scoped_release release;
+                         p.impl()->processTasks(false, timeoutSeconds);
+                     }
+                     if(PyErr_CheckSignals() != 0) throw py::error_already_set();
+                 }
+                 p.impl()->stop();
              })
         .def("isRunning", &Pipeline::isRunning)
         .def("processTasks", &Pipeline::processTasks)
