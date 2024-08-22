@@ -442,6 +442,12 @@ class DeviceBootloader {
     Version getVersion() const;
 
     /**
+     * @return Version of the bootloader that is flashed on the device.
+     * Nullopt when the version could not be retrieved because the device was in X_LINK_UNBOOTED state before booting the bootloader.
+     */
+    tl::optional<Version> getFlashedVersion() const;
+
+    /**
      * @returns True when bootloader was booted using latest bootloader integrated in the library.
      * False when bootloader is already running on the device and just connected to.
      */
@@ -504,6 +510,7 @@ class DeviceBootloader {
 
     bool isEmbedded = false;
     Type bootloaderType;
+    tl::optional<Version> flashedVersion;
 
     // closed
     std::atomic<bool> closed{false};

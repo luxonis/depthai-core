@@ -27,6 +27,7 @@
 #include "utility/Initialization.hpp"
 #include "utility/PimplImpl.hpp"
 #include "utility/Resources.hpp"
+#include "utility/spdlog-fmt.hpp"
 
 // libraries
 #include "XLink/XLink.h"
@@ -38,6 +39,7 @@
 #include "spdlog/fmt/chrono.h"
 #include "spdlog/sinks/stdout_color_sinks.h"
 #include "spdlog/spdlog.h"
+#include "utility/LogCollection.hpp"
 #include "utility/Logging.hpp"
 
 namespace dai {
@@ -527,13 +529,6 @@ unsigned int getCrashdumpTimeout(XLinkProtocol_t protocol) {
     return DEFAULT_CRASHDUMP_TIMEOUT + (protocol == X_LINK_TCP_IP ? device::XLINK_TCP_WATCHDOG_TIMEOUT.count() : device::XLINK_USB_WATCHDOG_TIMEOUT.count());
 }
 
-tl::optional<std::string> saveCrashDump(dai::CrashDump& dump, std::string mxId) {
-    std::vector<uint8_t> data;
-    utility::serialize<SerializationType::JSON>(dump, data);
-    auto crashDumpPathStr = utility::getEnv("DEPTHAI_CRASHDUMP");
-    return saveFileToTemporaryDirectory(data, mxId + "-depthai_crash_dump.json", crashDumpPathStr);
-}
-
 void DeviceBase::closeImpl() {
     using namespace std::chrono;
     auto t1 = steady_clock::now();
@@ -544,12 +539,7 @@ void DeviceBase::closeImpl() {
             if(hasCrashDump()) {
                 connection->setRebootOnDestruction(true);
                 auto dump = getCrashDump();
-                auto path = saveCrashDump(dump, deviceInfo.getMxId());
-                if(path.has_value()) {
-                    pimpl->logger.warn("There was a fatal error. Crash dump saved to {}", path.value());
-                } else {
-                    pimpl->logger.warn("There was a fatal error. Crash dump could not be saved");
-                }
+                logCollection::logCrashDump(pipelineSchema, dump, deviceInfo);
             } else {
                 bool isRunning = pimpl->rpcClient->call("isRunning").as<bool>();
                 shouldGetCrashDump = !isRunning;
@@ -573,21 +563,19 @@ void DeviceBase::closeImpl() {
     // Stop watchdog first (this resets and waits for link to fall down)
     if(watchdogThread.joinable()) watchdogThread.join();
 
-    if(!dumpOnly) {
-        // Stop various threads
-        timesyncRunning = false;
-        loggingRunning = false;
-        profilingRunning = false;
+    // Stop various threads
+    timesyncRunning = false;
+    loggingRunning = false;
+    profilingRunning = false;
 
-        // Then stop timesync
-        if(timesyncThread.joinable()) timesyncThread.join();
-        // And at the end stop logging thread
-        if(loggingThread.joinable()) loggingThread.join();
-        // And at the end stop profiling thread
-        if(profilingThread.joinable()) profilingThread.join();
-        // At the end stop the monitor thread
-        if(monitorThread.joinable()) monitorThread.join();
-    }
+    // Then stop timesync
+    if(timesyncThread.joinable()) timesyncThread.join();
+    // And at the end stop logging thread
+    if(loggingThread.joinable()) loggingThread.join();
+    // And at the end stop profiling thread
+    if(profilingThread.joinable()) profilingThread.join();
+    // At the end stop the monitor thread
+    if(monitorThread.joinable()) monitorThread.join();
 
     // Close rpcStream
     pimpl->rpcStream = nullptr;
@@ -609,12 +597,8 @@ void DeviceBase::closeImpl() {
                     DeviceBase rebootingDevice(config, rebootingDeviceInfo, firmwarePath, true);
                     if(rebootingDevice.hasCrashDump()) {
                         auto dump = rebootingDevice.getCrashDump();
-                        auto path = saveCrashDump(dump, deviceInfo.getMxId());
-                        if(path.has_value()) {
-                            pimpl->logger.warn("Device crashed. Crash dump saved to {}", path.value());
-                        } else {
-                            pimpl->logger.warn("Device crashed. Crash dump could not be saved");
-                        }
+                        logCollection::logCrashDump(pipelineSchema, dump, deviceInfo);
+
                     } else {
                         pimpl->logger.warn("Device crashed, but no crash dump could be extracted.");
                     }
@@ -1160,8 +1144,8 @@ bool DeviceBase::startIMUFirmwareUpdate(bool forceUpdate) {
     return pimpl->rpcClient->call("startIMUFirmwareUpdate", forceUpdate).as<bool>();
 }
 
-std::tuple<bool, float> DeviceBase::getIMUFirmwareUpdateStatus() {
-    return pimpl->rpcClient->call("getIMUFirmwareUpdateStatus").as<std::tuple<bool, float>>();
+std::tuple<bool, unsigned int> DeviceBase::getIMUFirmwareUpdateStatus() {
+    return pimpl->rpcClient->call("getIMUFirmwareUpdateStatus").as<std::tuple<bool, unsigned int>>();
 }
 
 // Convenience functions for querying current system information
@@ -1219,6 +1203,10 @@ void DeviceBase::setXLinkChunkSize(int sizeBytes) {
 
 int DeviceBase::getXLinkChunkSize() {
     return pimpl->rpcClient->call("getXLinkChunkSize").as<int>();
+}
+
+void DeviceBase::setXLinkRateLimit(int maxRateBytesPerSecond, int burstSize, int waitUs) {
+    pimpl->rpcClient->call("setXLinkRateLimit", maxRateBytesPerSecond, burstSize, waitUs);
 }
 
 DeviceInfo DeviceBase::getDeviceInfo() const {
@@ -1555,6 +1543,10 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
 
     // print assets on device side for test
     pimpl->rpcClient->call("printAssets");
+
+    // Log the pipeline
+    logCollection::logPipeline(schema, deviceInfo);
+    this->pipelineSchema = schema;  // Save the schema so it can be passed alongside the crashdump
 
     // Build and start the pipeline
     bool success = false;

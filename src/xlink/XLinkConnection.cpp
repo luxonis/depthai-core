@@ -127,7 +127,7 @@ std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices(XLinkDeviceState
     auto allowedDeviceNames = utility::getEnv("DEPTHAI_DEVICE_NAME_LIST");
 
     auto status = XLinkFindAllSuitableDevices(suitableDevice, deviceDescAll.data(), static_cast<unsigned int>(deviceDescAll.size()), &numdev);
-    if(status != X_LINK_SUCCESS) throw std::runtime_error("Couldn't retrieve all connected devices");
+    if(status != X_LINK_SUCCESS && status != X_LINK_DEVICE_NOT_FOUND) throw std::runtime_error("Couldn't retrieve all connected devices");
 
     for(unsigned i = 0; i < numdev; i++) {
         DeviceInfo info(deviceDescAll.at(i));

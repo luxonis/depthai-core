@@ -16,7 +16,7 @@ class FeatureTrackerDrawer {
     // for how many frames the feature is tracked
     static int trackedFeaturesPathLength;
 
-    using featureIdType = decltype(dai::Point2f::x);
+    using featureIdType = decltype(dai::TrackedFeature::id);
 
     std::unordered_set<featureIdType> trackedIDs;
     std::unordered_map<featureIdType, std::deque<dai::Point2f>> trackedFeaturesPath;

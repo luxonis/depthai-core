@@ -4,6 +4,7 @@
 #include <depthai/pipeline/datatype/Buffer.hpp>
 #include <depthai/pipeline/datatype/ImgFrame.hpp>
 #include <depthai/pipeline/datatype/MessageGroup.hpp>
+
 #include "depthai-shared/common/CameraBoardSocket.hpp"
 
 TEST_CASE("Set and get messages") {
@@ -64,7 +65,6 @@ TEST_CASE("Send large messages") {
     bool hasTimedOut = false;
     auto msg = q->get(std::chrono::seconds(1), hasTimedOut);
     REQUIRE(!hasTimedOut);
-    
 }
 
 // TODO(asahtik): Bring back when the [issue](https://github.com/luxonis/depthai-core/issues/929) is fixed
