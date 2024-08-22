@@ -139,6 +139,9 @@ void bind_imgframe(pybind11::module& m, void* pCallstack){
         .def("getColorTemperature", &ImgFrame::getColorTemperature, DOC(dai, ImgFrame, getColorTemperature))
         .def("getLensPosition", &ImgFrame::getLensPosition, DOC(dai, ImgFrame, getLensPosition))
         .def("getLensPositionRaw", &ImgFrame::getLensPositionRaw, DOC(dai, ImgFrame, getLensPositionRaw))
+		// test
+        .def("print_for_test", &ImgFrame::print_for_test, DOC(dai, ImgFrame, print_for_test))
+
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
         // The cast function itself does a copy, so we can avoid two copies by always not copying
         .def(

@@ -14,6 +14,8 @@ message ImgFrame {
     float HFovDegrees = 7;
     uint32 instanceNum = 8;
     ImgTransformations transformations = 9;
+    uint32 category = 10;
+    repeated bytes data = 11;
 }
 
 message Specs {

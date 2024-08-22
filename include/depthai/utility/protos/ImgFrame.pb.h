@@ -308,6 +308,7 @@ class ImgFrame final :
     kSequenceNumFieldNumber = 3,
     kHFovDegreesFieldNumber = 7,
     kInstanceNumFieldNumber = 8,
+    kCategoryFieldNumber = 10,
   };
   // .proto.Timestamp ts = 1;
   bool has_ts() const;
@@ -444,6 +445,15 @@ class ImgFrame final :
   void _internal_set_instancenum(uint32_t value);
   public:
 
+  // uint32 category = 10;
+  void clear_category();
+  uint32_t category() const;
+  void set_category(uint32_t value);
+  private:
+  uint32_t _internal_category() const;
+  void _internal_set_category(uint32_t value);
+  public:
+
   // @@protoc_insertion_point(class_scope:proto.ImgFrame)
  private:
   class _Internal;
@@ -460,6 +470,7 @@ class ImgFrame final :
   int64_t sequencenum_;
   float hfovdegrees_;
   uint32_t instancenum_;
+  uint32_t category_;
   mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
   friend struct ::TableStruct_ImgFrame_2eproto;
 };
@@ -2275,6 +2286,26 @@ inline void ImgFrame::set_allocated_transformations(::proto::ImgTransformations*
   }
   transformations_ = transformations;
   // @@protoc_insertion_point(field_set_allocated:proto.ImgFrame.transformations)
+}
+
+// uint32 category = 10;
+inline void ImgFrame::clear_category() {
+  category_ = 0u;
+}
+inline uint32_t ImgFrame::_internal_category() const {
+  return category_;
+}
+inline uint32_t ImgFrame::category() const {
+  // @@protoc_insertion_point(field_get:proto.ImgFrame.category)
+  return _internal_category();
+}
+inline void ImgFrame::_internal_set_category(uint32_t value) {
+  
+  category_ = value;
+}
+inline void ImgFrame::set_category(uint32_t value) {
+  _internal_set_category(value);
+  // @@protoc_insertion_point(field_set:proto.ImgFrame.category)
 }
 
 // -------------------------------------------------------------------

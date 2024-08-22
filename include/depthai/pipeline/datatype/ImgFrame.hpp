@@ -84,6 +84,10 @@ class ImgFrame : public Buffer, public utility::ProtoSerializable {
         datatype = DatatypeEnum::ImgFrame;
     };
 
+    std::string typeToString(Type tajp);
+    std::string transformationToString(ImgTransformation::Transformation tajp);
+    void print_for_test();
+
     google::protobuf::Message& getProtoMessage() const override {
         //create and populate ImgFrame protobuf message
         proto::ImgFrame imgFrame;
@@ -129,9 +133,12 @@ class ImgFrame : public Buffer, public utility::ProtoSerializable {
 
         imgFrame.set_instancenum(this->instanceNum);
 
-        proto::ImgTransformations* transformations = imgFrame.mutable_transformations();
+        imgFrame.set_category(this->category);
+
+        proto::ImgTransformations* imgTransformations = imgFrame.mutable_transformations();
+        imgTransformations->set_invalidflag(this->transformations.invalidFlag);
         for (const auto& transformation : this->transformations.transformations) {
-            proto::ImgTransformation* imgTransformation = transformations->add_transformations();
+            proto::ImgTransformation* imgTransformation = imgTransformations->add_transformations();
 
             imgTransformation->set_transformationtype(static_cast<proto::Transformation>(transformation.transformationType));
             imgTransformation->set_topleftcropx(transformation.topLeftCropX);

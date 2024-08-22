@@ -27,7 +27,8 @@ constexpr ImgFrame::ImgFrame(
   , transformations_(nullptr)
   , sequencenum_(int64_t{0})
   , hfovdegrees_(0)
-  , instancenum_(0u){}
+  , instancenum_(0u)
+  , category_(0u){}
 struct ImgFrameDefaultTypeInternal {
   constexpr ImgFrameDefaultTypeInternal()
     : _instance(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized{}) {}
@@ -158,6 +159,7 @@ const uint32_t TableStruct_ImgFrame_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE
   PROTOBUF_FIELD_OFFSET(::proto::ImgFrame, hfovdegrees_),
   PROTOBUF_FIELD_OFFSET(::proto::ImgFrame, instancenum_),
   PROTOBUF_FIELD_OFFSET(::proto::ImgFrame, transformations_),
+  PROTOBUF_FIELD_OFFSET(::proto::ImgFrame, category_),
   ~0u,  // no _has_bits_
   PROTOBUF_FIELD_OFFSET(::proto::Specs, _internal_metadata_),
   ~0u,  // no _extensions_
@@ -229,12 +231,12 @@ const uint32_t TableStruct_ImgFrame_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE
 };
 static const ::PROTOBUF_NAMESPACE_ID::internal::MigrationSchema schemas[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
   { 0, -1, -1, sizeof(::proto::ImgFrame)},
-  { 15, -1, -1, sizeof(::proto::Specs)},
-  { 29, -1, -1, sizeof(::proto::CameraSettings)},
-  { 40, -1, -1, sizeof(::proto::ImgTransformations)},
-  { 48, -1, -1, sizeof(::proto::ImgTransformation)},
-  { 69, -1, -1, sizeof(::proto::TransformationMatrix)},
-  { 76, -1, -1, sizeof(::proto::FloatArray)},
+  { 16, -1, -1, sizeof(::proto::Specs)},
+  { 30, -1, -1, sizeof(::proto::CameraSettings)},
+  { 41, -1, -1, sizeof(::proto::ImgTransformations)},
+  { 49, -1, -1, sizeof(::proto::ImgTransformation)},
+  { 70, -1, -1, sizeof(::proto::TransformationMatrix)},
+  { 77, -1, -1, sizeof(::proto::FloatArray)},
 };
 
 static ::PROTOBUF_NAMESPACE_ID::Message const * const file_default_instances[] = {
@@ -249,58 +251,59 @@ static ::PROTOBUF_NAMESPACE_ID::Message const * const file_default_instances[] =
 
 const char descriptor_table_protodef_ImgFrame_2eproto[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) =
   "\n\016ImgFrame.proto\022\005proto\032\023ImgDetections.p"
-  "roto\"\235\002\n\010ImgFrame\022\034\n\002ts\030\001 \001(\0132\020.proto.Ti"
+  "roto\"\257\002\n\010ImgFrame\022\034\n\002ts\030\001 \001(\0132\020.proto.Ti"
   "mestamp\022\"\n\010tsDevice\030\002 \001(\0132\020.proto.Timest"
   "amp\022\023\n\013sequenceNum\030\003 \001(\003\022\030\n\002fb\030\004 \001(\0132\014.p"
   "roto.Specs\022\036\n\010sourceFb\030\005 \001(\0132\014.proto.Spe"
   "cs\022\"\n\003cam\030\006 \001(\0132\025.proto.CameraSettings\022\023"
   "\n\013HFovDegrees\030\007 \001(\002\022\023\n\013instanceNum\030\010 \001(\r"
   "\0222\n\017transformations\030\t \001(\0132\031.proto.ImgTra"
-  "nsformations\"\230\001\n\005Specs\022\031\n\004type\030\001 \001(\0162\013.p"
-  "roto.Type\022\r\n\005width\030\002 \001(\r\022\016\n\006height\030\003 \001(\r"
-  "\022\016\n\006stride\030\004 \001(\r\022\017\n\007bytesPP\030\005 \001(\r\022\020\n\010p1O"
-  "ffset\030\006 \001(\r\022\020\n\010p2Offset\030\007 \001(\r\022\020\n\010p3Offse"
-  "t\030\010 \001(\r\"\204\001\n\016CameraSettings\022\026\n\016exposureTi"
-  "meUs\030\001 \001(\005\022\026\n\016sensitivityIso\030\002 \001(\005\022\024\n\014le"
-  "nsPosition\030\003 \001(\005\022\023\n\013wbColorTemp\030\004 \001(\005\022\027\n"
-  "\017lensPositionRaw\030\005 \001(\002\"\\\n\022ImgTransformat"
-  "ions\0221\n\017transformations\030\001 \003(\0132\030.proto.Im"
-  "gTransformation\022\023\n\013invalidFlag\030\002 \001(\010\"\355\003\n"
-  "\021ImgTransformation\0221\n\022transformationType"
-  "\030\001 \001(\0162\025.proto.Transformation\022\024\n\014topLeft"
-  "CropX\030\002 \001(\005\022\024\n\014topLeftCropY\030\003 \001(\005\022\030\n\020bot"
-  "tomRightCropX\030\004 \001(\005\022\030\n\020bottomRightCropY\030"
-  "\005 \001(\005\022\022\n\ntopPadding\030\006 \001(\005\022\025\n\rbottomPaddi"
-  "ng\030\007 \001(\005\022\023\n\013leftPadding\030\010 \001(\005\022\024\n\014rightPa"
-  "dding\030\t \001(\005\0229\n\024transformationMatrix\030\n \001("
-  "\0132\033.proto.TransformationMatrix\022<\n\027invTra"
-  "nsformationMatrix\030\013 \001(\0132\033.proto.Transfor"
-  "mationMatrix\022\033\n\023afterTransformWidth\030\014 \001("
-  "\r\022\034\n\024afterTransformHeight\030\r \001(\r\022\034\n\024befor"
-  "eTransformWidth\030\016 \001(\r\022\035\n\025beforeTransform"
-  "Height\030\017 \001(\r\"9\n\024TransformationMatrix\022!\n\006"
-  "arrays\030\001 \003(\0132\021.proto.FloatArray\"\034\n\nFloat"
-  "Array\022\016\n\006values\030\001 \003(\002*\267\003\n\004Type\022\013\n\007YUV422"
-  "i\020\000\022\013\n\007YUV444p\020\001\022\013\n\007YUV420p\020\002\022\013\n\007YUV422p"
-  "\020\003\022\013\n\007YUV400p\020\004\022\014\n\010RGBA8888\020\005\022\r\n\tRGB1616"
-  "16\020\006\022\013\n\007RGB888p\020\007\022\013\n\007BGR888p\020\010\022\013\n\007RGB888"
-  "i\020\t\022\013\n\007BGR888i\020\n\022\010\n\004LUT2\020\013\022\010\n\004LUT4\020\014\022\t\n\005"
-  "LUT16\020\r\022\t\n\005RAW16\020\016\022\t\n\005RAW14\020\017\022\t\n\005RAW12\020\020"
-  "\022\t\n\005RAW10\020\021\022\010\n\004RAW8\020\022\022\n\n\006PACK10\020\023\022\n\n\006PAC"
-  "K12\020\024\022\013\n\007YUV444i\020\025\022\010\n\004NV12\020\026\022\010\n\004NV21\020\027\022\r"
-  "\n\tBITSTREAM\020\030\022\007\n\003HDR\020\031\022\021\n\rRGBF16F16F16p\020"
-  "\032\022\021\n\rBGRF16F16F16p\020\033\022\021\n\rRGBF16F16F16i\020\034\022"
-  "\021\n\rBGRF16F16F16i\020\035\022\t\n\005GRAY8\020\036\022\013\n\007GRAYF16"
-  "\020\037\022\t\n\005RAW32\020 \022\010\n\004NONE\020!*P\n\016Transformatio"
-  "n\022\010\n\004INIT\020\000\022\010\n\004CROP\020\001\022\014\n\010ROTATION\020\002\022\007\n\003P"
-  "AD\020\003\022\010\n\004FLIP\020\004\022\t\n\005SCALE\020\005b\006proto3"
+  "nsformations\022\020\n\010category\030\n \001(\r\"\230\001\n\005Specs"
+  "\022\031\n\004type\030\001 \001(\0162\013.proto.Type\022\r\n\005width\030\002 \001"
+  "(\r\022\016\n\006height\030\003 \001(\r\022\016\n\006stride\030\004 \001(\r\022\017\n\007by"
+  "tesPP\030\005 \001(\r\022\020\n\010p1Offset\030\006 \001(\r\022\020\n\010p2Offse"
+  "t\030\007 \001(\r\022\020\n\010p3Offset\030\010 \001(\r\"\204\001\n\016CameraSett"
+  "ings\022\026\n\016exposureTimeUs\030\001 \001(\005\022\026\n\016sensitiv"
+  "ityIso\030\002 \001(\005\022\024\n\014lensPosition\030\003 \001(\005\022\023\n\013wb"
+  "ColorTemp\030\004 \001(\005\022\027\n\017lensPositionRaw\030\005 \001(\002"
+  "\"\\\n\022ImgTransformations\0221\n\017transformation"
+  "s\030\001 \003(\0132\030.proto.ImgTransformation\022\023\n\013inv"
+  "alidFlag\030\002 \001(\010\"\355\003\n\021ImgTransformation\0221\n\022"
+  "transformationType\030\001 \001(\0162\025.proto.Transfo"
+  "rmation\022\024\n\014topLeftCropX\030\002 \001(\005\022\024\n\014topLeft"
+  "CropY\030\003 \001(\005\022\030\n\020bottomRightCropX\030\004 \001(\005\022\030\n"
+  "\020bottomRightCropY\030\005 \001(\005\022\022\n\ntopPadding\030\006 "
+  "\001(\005\022\025\n\rbottomPadding\030\007 \001(\005\022\023\n\013leftPaddin"
+  "g\030\010 \001(\005\022\024\n\014rightPadding\030\t \001(\005\0229\n\024transfo"
+  "rmationMatrix\030\n \001(\0132\033.proto.Transformati"
+  "onMatrix\022<\n\027invTransformationMatrix\030\013 \001("
+  "\0132\033.proto.TransformationMatrix\022\033\n\023afterT"
+  "ransformWidth\030\014 \001(\r\022\034\n\024afterTransformHei"
+  "ght\030\r \001(\r\022\034\n\024beforeTransformWidth\030\016 \001(\r\022"
+  "\035\n\025beforeTransformHeight\030\017 \001(\r\"9\n\024Transf"
+  "ormationMatrix\022!\n\006arrays\030\001 \003(\0132\021.proto.F"
+  "loatArray\"\034\n\nFloatArray\022\016\n\006values\030\001 \003(\002*"
+  "\267\003\n\004Type\022\013\n\007YUV422i\020\000\022\013\n\007YUV444p\020\001\022\013\n\007YU"
+  "V420p\020\002\022\013\n\007YUV422p\020\003\022\013\n\007YUV400p\020\004\022\014\n\010RGB"
+  "A8888\020\005\022\r\n\tRGB161616\020\006\022\013\n\007RGB888p\020\007\022\013\n\007B"
+  "GR888p\020\010\022\013\n\007RGB888i\020\t\022\013\n\007BGR888i\020\n\022\010\n\004LU"
+  "T2\020\013\022\010\n\004LUT4\020\014\022\t\n\005LUT16\020\r\022\t\n\005RAW16\020\016\022\t\n\005"
+  "RAW14\020\017\022\t\n\005RAW12\020\020\022\t\n\005RAW10\020\021\022\010\n\004RAW8\020\022\022"
+  "\n\n\006PACK10\020\023\022\n\n\006PACK12\020\024\022\013\n\007YUV444i\020\025\022\010\n\004"
+  "NV12\020\026\022\010\n\004NV21\020\027\022\r\n\tBITSTREAM\020\030\022\007\n\003HDR\020\031"
+  "\022\021\n\rRGBF16F16F16p\020\032\022\021\n\rBGRF16F16F16p\020\033\022\021"
+  "\n\rRGBF16F16F16i\020\034\022\021\n\rBGRF16F16F16i\020\035\022\t\n\005"
+  "GRAY8\020\036\022\013\n\007GRAYF16\020\037\022\t\n\005RAW32\020 \022\010\n\004NONE\020"
+  "!*P\n\016Transformation\022\010\n\004INIT\020\000\022\010\n\004CROP\020\001\022"
+  "\014\n\010ROTATION\020\002\022\007\n\003PAD\020\003\022\010\n\004FLIP\020\004\022\t\n\005SCAL"
+  "E\020\005b\006proto3"
   ;
 static const ::PROTOBUF_NAMESPACE_ID::internal::DescriptorTable*const descriptor_table_ImgFrame_2eproto_deps[1] = {
   &::descriptor_table_ImgDetections_2eproto,
 };
 static ::PROTOBUF_NAMESPACE_ID::internal::once_flag descriptor_table_ImgFrame_2eproto_once;
 const ::PROTOBUF_NAMESPACE_ID::internal::DescriptorTable descriptor_table_ImgFrame_2eproto = {
-  false, false, 1833, descriptor_table_protodef_ImgFrame_2eproto, "ImgFrame.proto", 
+  false, false, 1851, descriptor_table_protodef_ImgFrame_2eproto, "ImgFrame.proto", 
   &descriptor_table_ImgFrame_2eproto_once, descriptor_table_ImgFrame_2eproto_deps, 1, 7,
   schemas, file_default_instances, TableStruct_ImgFrame_2eproto::offsets,
   file_level_metadata_ImgFrame_2eproto, file_level_enum_descriptors_ImgFrame_2eproto, file_level_service_descriptors_ImgFrame_2eproto,
@@ -468,16 +471,16 @@ ImgFrame::ImgFrame(const ImgFrame& from)
     transformations_ = nullptr;
   }
   ::memcpy(&sequencenum_, &from.sequencenum_,
-    static_cast<size_t>(reinterpret_cast<char*>(&instancenum_) -
-    reinterpret_cast<char*>(&sequencenum_)) + sizeof(instancenum_));
+    static_cast<size_t>(reinterpret_cast<char*>(&category_) -
+    reinterpret_cast<char*>(&sequencenum_)) + sizeof(category_));
   // @@protoc_insertion_point(copy_constructor:proto.ImgFrame)
 }
 
 inline void ImgFrame::SharedCtor() {
 ::memset(reinterpret_cast<char*>(this) + static_cast<size_t>(
     reinterpret_cast<char*>(&ts_) - reinterpret_cast<char*>(this)),
-    0, static_cast<size_t>(reinterpret_cast<char*>(&instancenum_) -
-    reinterpret_cast<char*>(&ts_)) + sizeof(instancenum_));
+    0, static_cast<size_t>(reinterpret_cast<char*>(&category_) -
+    reinterpret_cast<char*>(&ts_)) + sizeof(category_));
 }
 
 ImgFrame::~ImgFrame() {
@@ -538,8 +541,8 @@ void ImgFrame::Clear() {
   }
   transformations_ = nullptr;
   ::memset(&sequencenum_, 0, static_cast<size_t>(
-      reinterpret_cast<char*>(&instancenum_) -
-      reinterpret_cast<char*>(&sequencenum_)) + sizeof(instancenum_));
+      reinterpret_cast<char*>(&category_) -
+      reinterpret_cast<char*>(&sequencenum_)) + sizeof(category_));
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
@@ -617,6 +620,14 @@ const char* ImgFrame::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::i
       case 9:
         if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 74)) {
           ptr = ctx->ParseMessage(_internal_mutable_transformations(), ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // uint32 category = 10;
+      case 10:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 80)) {
+          category_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
           CHK_(ptr);
         } else
           goto handle_unusual;
@@ -720,6 +731,12 @@ uint8_t* ImgFrame::_InternalSerialize(
         9, _Internal::transformations(this), target, stream);
   }
 
+  // uint32 category = 10;
+  if (this->_internal_category() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteUInt32ToArray(10, this->_internal_category(), target);
+  }
+
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
@@ -797,6 +814,11 @@ size_t ImgFrame::ByteSizeLong() const {
     total_size += ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::UInt32SizePlusOne(this->_internal_instancenum());
   }
 
+  // uint32 category = 10;
+  if (this->_internal_category() != 0) {
+    total_size += ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::UInt32SizePlusOne(this->_internal_category());
+  }
+
   return MaybeComputeUnknownFieldsSize(total_size, &_cached_size_);
 }
 
@@ -850,6 +872,9 @@ void ImgFrame::MergeFrom(const ImgFrame& from) {
   if (from._internal_instancenum() != 0) {
     _internal_set_instancenum(from._internal_instancenum());
   }
+  if (from._internal_category() != 0) {
+    _internal_set_category(from._internal_category());
+  }
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
 }
 
@@ -868,8 +893,8 @@ void ImgFrame::InternalSwap(ImgFrame* other) {
   using std::swap;
   _internal_metadata_.InternalSwap(&other->_internal_metadata_);
   ::PROTOBUF_NAMESPACE_ID::internal::memswap<
-      PROTOBUF_FIELD_OFFSET(ImgFrame, instancenum_)
-      + sizeof(ImgFrame::instancenum_)
+      PROTOBUF_FIELD_OFFSET(ImgFrame, category_)
+      + sizeof(ImgFrame::category_)
       - PROTOBUF_FIELD_OFFSET(ImgFrame, ts_)>(
           reinterpret_cast<char*>(&ts_),
           reinterpret_cast<char*>(&other->ts_));
