@@ -78,6 +78,8 @@ class AprilTag : public DeviceNodeCRTP<DeviceNode, AprilTag, AprilTagProperties>
     bool runOnHost() const override;
 
     void run() override;
+
+    void buildInternal() override;
 };
 
 }  // namespace node

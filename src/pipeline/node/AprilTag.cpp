@@ -40,6 +40,17 @@ bool AprilTag::runOnHost() const {
     return runOnHostVar;
 }
 
+void AprilTag::buildInternal() {
+    if(device) {
+        auto platform = device->getPlatform();
+        runOnHostVar = platform == Platform::RVC2 || platform == Platform::RVC3;
+    } else {
+        // No device, default to host
+        runOnHostVar = true;
+    }
+    logger->info("AprilTag node running on host: {}", runOnHostVar);
+}
+
 void AprilTag::run() {
     std::shared_ptr<ImgFrame> inFrame = nullptr;
 

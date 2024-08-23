@@ -29,8 +29,6 @@ class ImageReplay(dai.node.ThreadedHostNode):
 with dai.Pipeline() as pipeline:
     imageReplay = pipeline.create(ImageReplay)
     aprilTagNode = pipeline.create(dai.node.AprilTag)
-    # Optionally run AprilTag on host (for most hosts a lot faster than on device on RVC2)
-    aprilTagNode.setRunOnHost(True)
     imageReplay.output.link(aprilTagNode.inputImage)
     aprilTagNode.initialConfig.setFamily(dai.AprilTagConfig.Family.TAG_16H5)
 

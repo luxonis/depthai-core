@@ -7,8 +7,6 @@ import time
 with dai.Pipeline() as pipeline:
     hostCamera = pipeline.create(dai.node.Camera).build()
     aprilTagNode = pipeline.create(dai.node.AprilTag)
-    # Optionally run AprilTag on host (for most hosts a lot faster than on device on RVC2)
-    aprilTagNode.setRunOnHost(True)
     hostCamera.requestOutput((1920, 1080)).link(aprilTagNode.inputImage)
     aprilTagNode.initialConfig.setFamily(dai.AprilTagConfig.Family.TAG_16H5)
 
