@@ -41,29 +41,24 @@ class ToF : public DeviceNodeCRTP<DeviceNode, ToF, ToFProperties> {
     Input inputConfig{*this,
                       {"inputConfig", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ToFConfig, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
-    /**
-     * Input message with frame data on which feature tracking is performed.
-     * Default queue is non-blocking with size 4.
-     */
-    Input inputRaw{*this, {"inputRaw", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ImgFrame, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
-
     Output depth{*this, {"depth", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     // Note on API limitation:
     // TODO(before mainline) - API not supported on RVC3
-    Input input{*this, {"input", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ImgFrame, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+    Output amplitude{*this, {"amplitude", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};
+    Output intensity{*this, {"intensity", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};
+    Output phase{*this, {"phase", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};
 
     /**
-     * Passthrough message on which the calculation was performed.
-     * Suitable for when input queue is set to non-blocking behavior.
+     * Specify number of shaves reserved for ToF decoding.
      */
-    Output passthroughInputRaw{*this, {"passthroughInputRaw", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
+    ToF& setNumShaves(int numShaves);
 
-    // Note on API limitation:
-    // TODO(before mainline) - API not supported on RVC3
-    Output amplitude{*this, {"amplitude", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};
-    Output error{*this, {"error", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};
-    Output intensity{*this, {"intensity", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};
+    /**
+     * Specify number of frames in output pool
+     * @param numFramesPool Number of frames in output pool
+     */
+    ToF& setNumFramesPool(int numFramesPool);
 };
 
 }  // namespace node
