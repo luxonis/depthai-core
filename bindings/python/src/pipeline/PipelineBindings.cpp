@@ -249,21 +249,21 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack){
              [](Pipeline& p) {
                  {
                      py::gil_scoped_release release;
-                     p.impl()->start();
+                     p.start();
                  }
                  constexpr double timeoutSeconds = 0.1;
                  while(p.isRunning()) {
                      {
                          // Process tasks
                          py::gil_scoped_release release;
-                         p.impl()->processTasks(false, timeoutSeconds);
+                         p.processTasks(false, timeoutSeconds);
                      }
                      if(PyErr_CheckSignals() != 0) throw py::error_already_set();
                  }
-                 p.impl()->stop();
+                 p.stop();
              })
         .def("isRunning", &Pipeline::isRunning)
-        .def("processTasks", &Pipeline::processTasks)
+        .def("processTasks", &Pipeline::processTasks, py::arg("waitForTasks") = false, py::arg("timeoutSeconds") = -1.0)
         .def("enableHolisticRecord", &Pipeline::enableHolisticRecord, py::arg("recordConfig"), DOC(dai, Pipeline, enableHolisticRecord))
         .def("enableHolisticReplay", &Pipeline::enableHolisticReplay, py::arg("recordingPath"), DOC(dai, Pipeline, enableHolisticReplay));
     ;
