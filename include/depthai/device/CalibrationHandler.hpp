@@ -556,7 +556,7 @@ class CalibrationHandler {
      * @param useSpecTranslation Enabling this bool uses the translation information from the board design data
      * @return a transformationMatrix which is 4x4 in homogeneous coordinate system
      */
-    std::vector<std::vector<float>> getCamToOriginMatrix(CameraBoardSocket cameraId, bool useSpecTranslation, CameraBoardSocket& originSocket) const;
+    std::vector<std::vector<float>> getExtrinsicsToOrigin(CameraBoardSocket cameraId, bool useSpecTranslation, CameraBoardSocket& originSocket) const;
 };
 
 }  // namespace dai

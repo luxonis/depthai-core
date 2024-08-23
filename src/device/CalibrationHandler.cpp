@@ -373,11 +373,16 @@ std::vector<std::vector<float>> CalibrationHandler::getCameraExtrinsics(CameraBo
     }
 
     std::vector<std::vector<float>> extrinsics;
-    CameraBoardSocket originCamera = CameraBoardSocket::AUTO;
+    CameraBoardSocket originCamera1;
+    CameraBoardSocket originCamera2;
 
-    // Get matrix from src to -1 camera and dst to -1 camera
-    std::vector<std::vector<float>> srcOriginMatrix = getCamToOriginMatrix(srcCamera, useSpecTranslation, originCamera);
-    std::vector<std::vector<float>> dstOriginMatrix = getCamToOriginMatrix(dstCamera, useSpecTranslation, originCamera);
+    // Get matrix from src to -1 camera and dst to -1 camera and set originCamera1 and originCamera2
+    std::vector<std::vector<float>> srcOriginMatrix = getExtrinsicsToOrigin(srcCamera, useSpecTranslation, originCamera1);
+    std::vector<std::vector<float>> dstOriginMatrix = getExtrinsicsToOrigin(dstCamera, useSpecTranslation, originCamera2);
+
+    if(originCamera1 != originCamera2) {
+        throw std::runtime_error("Missing extrinsic link from source camera to to destination camera.");
+    }
 
     // Invert the matrix dstOriginMatrix
     invertSe3Matrix4x4InPlace(dstOriginMatrix);
@@ -387,9 +392,9 @@ std::vector<std::vector<float>> CalibrationHandler::getCameraExtrinsics(CameraBo
     return extrinsics;
 }
 
-std::vector<std::vector<float>> CalibrationHandler::getCamToOriginMatrix(CameraBoardSocket cameraId,
-                                                                         bool useSpecTranslation,
-                                                                         CameraBoardSocket& originSocket) const {
+std::vector<std::vector<float>> CalibrationHandler::getExtrinsicsToOrigin(CameraBoardSocket cameraId,
+                                                                          bool useSpecTranslation,
+                                                                          CameraBoardSocket& originSocket) const {
     std::vector<std::vector<float>> extrinsics;
 
     // Check if the cameraId exists in the data
@@ -427,12 +432,8 @@ std::vector<std::vector<float>> CalibrationHandler::getCamToOriginMatrix(CameraB
         path.push_back(currentCameraId);
     }
 
-    // Check if the origin camera is the same for all cameras in the chain
-    if((originSocket != CameraBoardSocket::AUTO) && (originSocket != currentCameraId)) {
-        throw std::runtime_error("Missing extrinsic link from source camera to to destination camera.");
-    } else {
-        originSocket = currentCameraId;
-    }
+    // Set the origin camera
+    originSocket = currentCameraId;
 
     // Now compute the extrinsic matrix from cameraId to the origin
 
