@@ -3,6 +3,8 @@
 // depthai
 #include "depthai/pipeline/DeviceNode.hpp"
 #include "depthai/properties/AudioEncoderProperties.hpp"
+#include "depthai/pipeline/datatype/AudioFrame.hpp"
+#include "depthai/utility/AudioHelpers.hpp"
 
 namespace dai {
 namespace node {
@@ -21,8 +23,20 @@ class AudioEncoder: public DeviceNodeCRTP<DeviceNode, AudioEncoder, AudioEncoder
 
     std::shared_ptr<AudioEncoder> build();
 
-    Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::Buffer, true}}}}};
-    Input input{*this, {"input", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+    std::vector<float> convertToFloat(std::shared_ptr<AudioFrame> input);
+std::vector<float> resampleAudio(std::vector<float> input, int inputSampleRate, int outputSampleRate, int channels);
+std::shared_ptr<AudioFrame> convertFromFloat(std::vector<float> input, std::shared_ptr<AudioFrame> output);
+
+    Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::AudioFrame, true}}}}};
+    Input input{*this, {"input", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::AudioFrame, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+	
+	unsigned int getBitrate() const;
+	unsigned int getChannels() const;
+	int getFormat() const;
+
+	void setBitrate(unsigned int bitrate);
+	void setChannels(unsigned int channels);
+	void setFormat(int format);
 
         /**
      * Specify whether to run on host or device
