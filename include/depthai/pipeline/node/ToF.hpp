@@ -50,15 +50,30 @@ class ToF : public DeviceNodeCRTP<DeviceNode, ToF, ToFProperties> {
     Output phase{*this, {"phase", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};
 
     /**
-     * Specify number of shaves reserved for ToF decoding.
+     * Build with a specific board socket
      */
-    ToF& setNumShaves(int numShaves);
+    std::shared_ptr<ToF> build(dai::CameraBoardSocket boardSocket = dai::CameraBoardSocket::AUTO);
 
     /**
-     * Specify number of frames in output pool
-     * @param numFramesPool Number of frames in output pool
+     * Retrieves which board socket to use
+     * @returns Board socket to use
      */
-    ToF& setNumFramesPool(int numFramesPool);
+    CameraBoardSocket getBoardSocket() const;
+
+    // /**
+    //  * Specify number of shaves reserved for ToF decoding.
+    //  */
+    // ToF& setNumShaves(int numShaves);
+
+    // /**
+    //  * Specify number of frames in output pool
+    //  * @param numFramesPool Number of frames in output pool
+    //  */
+    // ToF& setNumFramesPool(int numFramesPool);
+   private:
+    bool isBuilt = false;
+    uint32_t maxWidth = 0;
+    uint32_t maxHeight = 0;
 };
 
 }  // namespace node

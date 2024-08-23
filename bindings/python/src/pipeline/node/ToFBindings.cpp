@@ -9,6 +9,7 @@ void bind_tof(pybind11::module& m, void* pCallstack){
 
     using namespace dai;
     using namespace dai::node;
+    using namespace pybind11::literals;
 
     // Node and Properties declare upfront
     py::class_<ToFProperties> tofProperties(m, "ToFProperties", DOC(dai, ToFProperties));
@@ -44,8 +45,10 @@ void bind_tof(pybind11::module& m, void* pCallstack){
         .def_readonly("phase", &ToF::phase, DOC(dai, node, ToF, phase), DOC(dai, node, ToF, phase))
         .def_readonly("initialConfig", &ToF::initialConfig, DOC(dai, node, ToF, initialConfig), DOC(dai, node, ToF, initialConfig))
 
-        .def("setNumShaves", &ToF::setNumShaves, DOC(dai, node, ToF, setNumShaves))
-        .def("setNumFramesPool", &ToF::setNumFramesPool, DOC(dai, node, ToF, setNumFramesPool))
+        .def("build", &ToF::build, "boardSocket"_a = CameraBoardSocket::AUTO, DOC(dai, node, ToF, build))
+        .def("getBoardSocket", &ToF::getBoardSocket, DOC(dai, node, ToF, getBoardSocket))
+        // .def("setNumShaves", &ToF::setNumShaves, DOC(dai, node, ToF, setNumShaves))
+        // .def("setNumFramesPool", &ToF::setNumFramesPool, DOC(dai, node, ToF, setNumFramesPool))
     ;
     // ALIAS
     daiNodeModule.attr("ToF").attr("Properties") = tofProperties;
