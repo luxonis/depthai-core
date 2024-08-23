@@ -13,7 +13,9 @@ namespace node {
 /**
  * @brief AprilTag node.
  */
-class AprilTag : public DeviceNodeCRTP<DeviceNode, AprilTag, AprilTagProperties> {
+class AprilTag : public DeviceNodeCRTP<DeviceNode, AprilTag, AprilTagProperties>, public HostRunnable {
+   private:
+    bool runOnHostVar = false;
    public:
     constexpr static const char* NAME = "AprilTag";
     using DeviceNodeCRTP::DeviceNodeCRTP;
@@ -63,6 +65,19 @@ class AprilTag : public DeviceNodeCRTP<DeviceNode, AprilTag, AprilTagProperties>
      * @param wait True to wait for configuration message, false otherwise.
      */
     void setWaitForConfigInput(bool wait);
+
+    /**
+     * Specify whether to run on host or device
+     * By default, the node will run on device.
+     */
+    void setRunOnHost(bool runOnHost);
+
+    /**
+     * Check if the node is set to run on host
+     */
+    bool runOnHost() const override;
+
+    void run() override;
 };
 
 }  // namespace node
