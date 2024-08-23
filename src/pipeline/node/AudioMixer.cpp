@@ -43,7 +43,7 @@ void AudioMixer::linkSourceToSink(std::string sourceName, std::string sinkName) 
 	    audioSinks.find(sinkName) != audioSinks.end()) {
 		std::shared_ptr<AudioMixerSource> source = audioSources[sourceName];
 		std::shared_ptr<AudioMixerSink> sink = audioSinks[sinkName];
-		std::shared_ptr<Buffer> nullBuf = std::make_shared<Buffer>((size_t)0);
+		std::shared_ptr<AudioFrame> nullBuf = std::make_shared<AudioFrame>();
 		source->sinks.insert(sink);
 		sink->sourceData[source] = nullBuf;
 	} else {
@@ -83,25 +83,25 @@ void AudioMixer::unregisterSink(std::string name) {
 void AudioMixer::run() {
 	while(isRunning()) {
 		for (auto [name, source] : audioSources) {
-			std::shared_ptr<Buffer> buf = inputs[name].get<Buffer>();
+			std::shared_ptr<AudioFrame> buf = inputs[name].get<AudioFrame>();
 			source->sendOut(buf);
 		}
 
 		for (auto [name, sink] : audioSinks) {
-			std::shared_ptr<Buffer> buf = sink->mix();
+			std::shared_ptr<AudioFrame> buf = sink->mix();
 			outputs[name].send(buf);
 		}
 	}
 }
 
-void AudioMixer::AudioMixerSource::sendOut(std::shared_ptr<Buffer> buf) {
+void AudioMixer::AudioMixerSource::sendOut(std::shared_ptr<AudioFrame> buf) {
 	for (auto sink : sinks) {
 		sink->sourceData[this->shared_from_this()] = buf;
 	}
 }
 
-std::shared_ptr<Buffer> AudioMixer::AudioMixerSink::mix() {
-	std::shared_ptr<Buffer> buf = std::make_shared<Buffer>();
+std::shared_ptr<AudioFrame> AudioMixer::AudioMixerSink::mix() {
+	std::shared_ptr<AudioFrame> buf = std::make_shared<AudioFrame>();
 	size_t largestSize = 0;
 
 	for (auto [source, data] : sourceData) {

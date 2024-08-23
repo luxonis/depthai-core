@@ -3,6 +3,7 @@
 // depthai
 #include "depthai/pipeline/DeviceNode.hpp"
 #include "depthai/properties/AudioOutProperties.hpp"
+#include "depthai/pipeline/datatype/AudioFrame.hpp"
 
 #include <alsa/asoundlib.h>
 
@@ -51,7 +52,7 @@ class AudioOut: public DeviceNodeCRTP<DeviceNode, AudioOut, AudioOutProperties>,
 
     void run() override;
 
-    Input input{*this, {"input", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+    Input input{*this, {"input", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::AudioFrame, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
    protected:
     bool isBuild = false;
     bool needsBuild() override {

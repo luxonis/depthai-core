@@ -48,8 +48,8 @@ void AudioOut::run() {
 	long unsigned int bufferFrames;
 	snd_pcm_hw_params_get_period_size(hwParams, &bufferFrames, 0);
 	size_t bufferSize = bufferFrames * snd_pcm_format_width(properties.format) / 8 * properties.channels;
-	std::cout << "Buffer frames " << bufferFrames << std::endl;
-	std::cout << "Buffer size " << bufferSize << std::endl;
+	std::cout << "AudioFrame frames " << bufferFrames << std::endl;
+	std::cout << "AudioFrame size " << bufferSize << std::endl;
 
 	snd_pcm_hw_params(captureHandle, hwParams);
 	snd_pcm_hw_params_free(hwParams);
@@ -58,7 +58,8 @@ void AudioOut::run() {
 	std::vector<uint8_t> data;
 	data.resize(bufferSize);
 	while(isRunning()) {
-		std::shared_ptr<Buffer> recvBuf = input.get<Buffer>();
+		std::shared_ptr<AudioFrame> recvBuf = input.get<AudioFrame>();
+		// Check if recv has same audio metadata as output
 
 		const auto& recvData = recvBuf->getData();
 		size_t recvSize = recvData.size();
@@ -79,7 +80,7 @@ void AudioOut::run() {
 
 		}
 
-		std::cout << "Buffer size: " << bufferSize << " Write size: " << writeSize << " Recv size: " << recvSize << std::endl;
+		std::cout << "AudioFrame size: " << bufferSize << " Write size: " << writeSize << " Recv size: " << recvSize << std::endl;
 
 		std::memcpy(data.data(), recvData.data(), writeSize);
 		std::cout << "Memcpy" << std::endl;
@@ -105,6 +106,21 @@ void AudioOut::run() {
 	logger->info("AudioOutHost {}: Audio interface closed", __func__);
 }
 
+int AudioOut::getFormat() const {
+	// This cast is to avoid 'unhandled value in switch' errors
+	switch((long)properties.format) {
+		case SND_PCM_FORMAT_S8: return SF_FORMAT_PCM_S8;
+		case SND_PCM_FORMAT_S16_LE: return SF_FORMAT_PCM_16;
+		case SND_PCM_FORMAT_S24_LE: return SF_FORMAT_PCM_24;
+		case SND_PCM_FORMAT_S32_LE: return SF_FORMAT_PCM_32;
+		case SND_PCM_FORMAT_FLOAT_LE: return SF_FORMAT_FLOAT;
+		case SND_PCM_FORMAT_FLOAT64_LE: return SF_FORMAT_DOUBLE;
+		default: break;
+	}
+
+	return 0;
+}
+
 void AudioOut::setFormat(int format) {
 	switch(format) {
 	case SF_FORMAT_PCM_S8: properties.format = SND_PCM_FORMAT_S8; break;
@@ -113,6 +129,7 @@ void AudioOut::setFormat(int format) {
 	case SF_FORMAT_PCM_32: properties.format = SND_PCM_FORMAT_S32_LE; break;
 	case SF_FORMAT_FLOAT: properties.format = SND_PCM_FORMAT_FLOAT_LE; break;
 	case SF_FORMAT_DOUBLE: properties.format = SND_PCM_FORMAT_FLOAT64_LE; break;
+	default: break;
 	}
 }
 

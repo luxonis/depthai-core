@@ -56,7 +56,6 @@ void AudioIn::run() {
 	std::vector<uint8_t> data;
 	data.resize(bufferSize);
 	while(isRunning()) {
-		std::shared_ptr<Buffer> buf = std::make_shared<Buffer>();
 		std::fill(data.begin(), data.end(), 0);
 
 		err = snd_pcm_readi(captureHandle, data.data(), bufferFrames);
@@ -64,11 +63,15 @@ void AudioIn::run() {
 			// EPIPE means overrun
 			logger->warn("AudioInHost {}: Overrun occurred", __func__);
 			snd_pcm_prepare(captureHandle);
+			continue;
 		} else if (err < 0) {
 			logger->warn("AudioInHost {}: Error from read: {}", __func__, snd_strerror(err));
+			continue;
 		} else if (err != (int)bufferFrames) {
 			logger->warn("AudioInHost {}: Short read, read {} frames", __func__, err);
 		}
+		
+		std::shared_ptr<AudioFrame> buf = std::make_shared<AudioFrame>(err, properties.bitrate, properties.channels, getFormat());
 
 //			logger->warn("AudioInHost {}: read from audio interface failed ({}, {})", __func__, err, snd_strerror(err));
 
@@ -82,6 +85,21 @@ void AudioIn::run() {
 	logger->info("AudioInHost {}: Audio interface closed", __func__);
 }
 
+int AudioIn::getFormat() const {
+	// This cast is to avoid 'unhandled value in switch' errors
+	switch((long)properties.format) {
+		case SND_PCM_FORMAT_S8: return SF_FORMAT_PCM_S8;
+		case SND_PCM_FORMAT_S16_LE: return SF_FORMAT_PCM_16;
+		case SND_PCM_FORMAT_S24_LE: return SF_FORMAT_PCM_24;
+		case SND_PCM_FORMAT_S32_LE: return SF_FORMAT_PCM_32;
+		case SND_PCM_FORMAT_FLOAT_LE: return SF_FORMAT_FLOAT;
+		case SND_PCM_FORMAT_FLOAT64_LE: return SF_FORMAT_DOUBLE;
+			default: break;
+	}
+
+	return 0;
+}
+
 void AudioIn::setFormat(int format) {
 	switch(format) {
 	case SF_FORMAT_PCM_S8: properties.format = SND_PCM_FORMAT_S8; break;
@@ -90,6 +108,7 @@ void AudioIn::setFormat(int format) {
 	case SF_FORMAT_PCM_32: properties.format = SND_PCM_FORMAT_S32_LE; break;
 	case SF_FORMAT_FLOAT: properties.format = SND_PCM_FORMAT_FLOAT_LE; break;
 	case SF_FORMAT_DOUBLE: properties.format = SND_PCM_FORMAT_FLOAT64_LE; break;
+	default: break;
 	}
 }
 

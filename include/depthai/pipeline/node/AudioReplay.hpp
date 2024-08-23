@@ -2,6 +2,7 @@
 
 // depthai
 #include "depthai/pipeline/ThreadedHostNode.hpp"
+#include "depthai/pipeline/datatype/AudioFrame.hpp"
 
 namespace dai {
 namespace node {
@@ -12,7 +13,7 @@ class AudioReplay : public NodeCRTP<ThreadedHostNode, AudioReplay> {
 
     void run() override;
 
-    Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::Buffer, true}}}}};
+    Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::AudioFrame, true}}}}};
 
     AudioReplay& setSourceFile(const std::filesystem::path& sourceFile);
     AudioReplay& setLoop(bool loop);

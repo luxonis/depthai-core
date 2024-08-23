@@ -1,5 +1,5 @@
 #include "depthai/pipeline/node/AudioReplay.hpp"
-#include "depthai/pipeline/datatype/Buffer.hpp"
+#include "depthai/pipeline/datatype/AudioFrame.hpp"
 #include "depthai/utility/AudioHelpers.hpp"
 
 #include <spdlog/async_logger.h>
@@ -39,7 +39,6 @@ void AudioReplay::run() {
 
 	bool done = false;
 	while (isRunning() && !done) {
-		std::shared_ptr<Buffer> buf = std::make_shared<Buffer>();
 		std::memset(audioData.data(), 0, audioData.size());
 
 		sf_count_t framesRead;
@@ -75,6 +74,9 @@ void AudioReplay::run() {
 				break;
 			}
 		}
+		
+		std::shared_ptr<AudioFrame> buf =
+			std::make_shared<AudioFrame>(framesRead, info.samplerate, info.channels, format);
 
 		std::cout << "Set data" << std::endl;
 		buf->setData(audioData);

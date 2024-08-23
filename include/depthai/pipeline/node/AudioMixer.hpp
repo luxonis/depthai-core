@@ -3,6 +3,7 @@
 // depthai
 #include "depthai/pipeline/DeviceNode.hpp"
 #include "depthai/properties/AudioMixerProperties.hpp"
+#include "depthai/pipeline/datatype/AudioFrame.hpp"
 
 namespace dai {
 namespace node {
@@ -29,8 +30,8 @@ class AudioMixer: public DeviceNodeCRTP<DeviceNode, AudioMixer, AudioMixerProper
     void unregisterSink(std::string name);
 
 
-    OutputMap outputs{*this, "outputs", {DEFAULT_NAME, DEFAULT_GROUP, {{{DatatypeEnum::Buffer, true}}}}};
-    InputMap inputs{*this, "inputs", {DEFAULT_NAME, DEFAULT_GROUP, false, 1, {{{DatatypeEnum::Buffer, true}}}, true}};
+    OutputMap outputs{*this, "outputs", {DEFAULT_NAME, DEFAULT_GROUP, {{{DatatypeEnum::AudioFrame, true}}}}};
+    InputMap inputs{*this, "inputs", {DEFAULT_NAME, DEFAULT_GROUP, false, 1, {{{DatatypeEnum::AudioFrame, true}}}, true}};
 
         /**
      * Specify whether to run on host or device
@@ -62,17 +63,17 @@ class AudioMixer: public DeviceNodeCRTP<DeviceNode, AudioMixer, AudioMixerProper
 
 	    float volume;
 
-	    void sendOut(std::shared_ptr<Buffer> buf);
+	    void sendOut(std::shared_ptr<AudioFrame> buf);
     };
 
     class AudioMixerSink : public std::enable_shared_from_this<AudioMixerSink>{
 	    public:
 	    std::map<std::shared_ptr<AudioMixerSource>,
-		     std::shared_ptr<Buffer>> sourceData;
+		     std::shared_ptr<AudioFrame>> sourceData;
 
 	    int format;
 
-	    std::shared_ptr<Buffer> mix();
+	    std::shared_ptr<AudioFrame> mix();
     };
 };
 
