@@ -26,13 +26,13 @@ void AudioMixer::registerSource(std::string name, float volume) {
 	}
 }
 
-void AudioMixer::registerSink(std::string name, int format) {
+void AudioMixer::registerSink(std::string name, unsigned int bitrate, unsigned int channels, int format) {
 	if(audioSinks.find(name) == audioSinks.end()) {
 		audioSinks[name] = std::make_shared<AudioMixerSink>();
 		std::shared_ptr<AudioMixerSink> sink = audioSinks[name];
 		sink->format = format;
-		std::cout << "Format: " << format << std::endl;
-		std::cout << "Format: " << sink->format << std::endl;
+		sink->bitrate = bitrate;
+		sink->channels = channels;
 	} else {
 		// Already registered
 	}
@@ -43,9 +43,8 @@ void AudioMixer::linkSourceToSink(std::string sourceName, std::string sinkName) 
 	    audioSinks.find(sinkName) != audioSinks.end()) {
 		std::shared_ptr<AudioMixerSource> source = audioSources[sourceName];
 		std::shared_ptr<AudioMixerSink> sink = audioSinks[sinkName];
-		std::shared_ptr<AudioFrame> nullBuf = std::make_shared<AudioFrame>();
 		source->sinks.insert(sink);
-		sink->sourceData[source] = nullBuf;
+		sink->sourceData[source] = nullptr;
 	} else {
 		// they dont exist
 	}
@@ -101,7 +100,7 @@ void AudioMixer::AudioMixerSource::sendOut(std::shared_ptr<AudioFrame> buf) {
 }
 
 std::shared_ptr<AudioFrame> AudioMixer::AudioMixerSink::mix() {
-	std::shared_ptr<AudioFrame> buf = std::make_shared<AudioFrame>();
+	std::shared_ptr<AudioFrame> buf = std::make_shared<AudioFrame>(0, bitrate, channels, format);
 	size_t largestSize = 0;
 
 	for (auto [source, data] : sourceData) {
@@ -112,8 +111,18 @@ std::shared_ptr<AudioFrame> AudioMixer::AudioMixerSink::mix() {
 	}
 
 	std::vector<uint8_t> mixedData(largestSize);
+
+	size_t frames = largestSize * bitrate;
+	buf->setFrames(frames);
+
 	std::memset(mixedData.data(), 0, largestSize);
 	for (auto [source, data] : sourceData) {
+		if(data->getBitrate() != bitrate ||
+		   data->getFormat() != format ||
+		   data->getChannels() != channels) {
+			throw std::runtime_error("Data contained different bitrate/format/channel data compared to sink");
+		}
+
 		auto dataToMix = data->getData().data();
 		size_t count = largestSize > data->getData().size() ?
 			       data->getData().size() : largestSize;

@@ -23,7 +23,7 @@ class AudioMixer: public DeviceNodeCRTP<DeviceNode, AudioMixer, AudioMixerProper
     std::shared_ptr<AudioMixer> build();
 
     void registerSource(std::string name, float volume);
-    void registerSink(std::string name, int format);
+    void registerSink(std::string name, unsigned int bitrate, unsigned int channels, int format);
     void linkSourceToSink(std::string sourceName, std::string sinkName);
     void unlinkSourceFromSink(std::string sourceName, std::string sinkName);
     void unregisterSource(std::string name);
@@ -72,6 +72,8 @@ class AudioMixer: public DeviceNodeCRTP<DeviceNode, AudioMixer, AudioMixerProper
 		     std::shared_ptr<AudioFrame>> sourceData;
 
 	    int format;
+	    unsigned int bitrate;
+	    unsigned int channels;
 
 	    std::shared_ptr<AudioFrame> mix();
     };
