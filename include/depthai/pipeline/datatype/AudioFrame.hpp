@@ -1,8 +1,7 @@
 #pragma once
 
 #include <vector>
-#include <mutex>
-#include <condition_variable>
+#include <memory>
 
 // project
 #include "depthai/config/config.hpp"
@@ -15,14 +14,14 @@ namespace dai {
 /**
  * AudioFrame message. Carries audio data and metadata.
  */
-class AudioFrame : public Buffer, public dai::audio::AudioFile {
+class AudioFrame : public Buffer {
    public:
     /**
      * Construct AudioFrame message.
      * Timestamp is set to now
      */
     AudioFrame() = default;
-    AudioFrame(SF_INFO info);
+    AudioFrame(sf_count_t frames, unsigned int bitrate, unsigned int channels, int format);
     virtual ~AudioFrame() = default;
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
@@ -30,22 +29,24 @@ class AudioFrame : public Buffer, public dai::audio::AudioFile {
         datatype = DatatypeEnum::AudioFrame;
     };
 
-   public:
-	sf_count_t getSize();
-	sf_count_t seek(sf_count_t offset, int whence);
-	sf_count_t read(void* ptr, sf_count_t count);
-	sf_count_t write(const void* ptr, sf_count_t count);
-	sf_count_t tell();
+	void setFrames(sf_count_t frames);
+	void setBitrate(unsigned int bitrate);
+	void setChannels(unsigned int channels);
+	void setFormat(int format);
+
+	sf_count_t getFrames() const;
+	unsigned int getBitrate() const;
+	unsigned int getChannels() const;
+	int getFormat() const;
 
    private:
-    sf_count_t position;
-    std::mutex mtx;
-    std::condition_variable cv;
-    bool dataReady;
-    SF_VIRTUAL_IO virtualIo;
+    sf_count_t frames;
+    unsigned int bitrate;
+    unsigned int channels;
+    int format;
 
    public:
-//    DEPTHAI_SERIALIZE(AudioFrame); //, position, mtx, cv, dataReady);
+    DEPTHAI_SERIALIZE(AudioFrame, bitrate, channels, format);
 };
 
 }  // namespace dai
