@@ -4,6 +4,7 @@
 
 extern "C" {
 #include <sndfile.h>
+#include <samplerate.h>
 }
 
 namespace dai {

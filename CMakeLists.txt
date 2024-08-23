@@ -655,6 +655,7 @@ target_link_libraries(${TARGET_CORE_NAME}
         XLinkPublic
     PRIVATE
         sndfile
+	samplerate
 	asound
         XLink
         Threads::Threads
