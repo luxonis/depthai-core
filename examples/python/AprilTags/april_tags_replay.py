@@ -3,13 +3,35 @@
 import cv2
 import depthai as dai
 import time
+from pathlib import Path
+
+examplesRoot = Path(__file__).parent / Path('../').resolve()
+models = examplesRoot / Path('models')
+tagImage = models / Path('april_tags.jpg')
+
+class ImageReplay(dai.node.ThreadedHostNode):
+    def __init__(self):
+        dai.node.ThreadedHostNode.__init__(self)
+        self.output = dai.Node.Output(self)
+        frame = cv2.imread(str(tagImage.resolve()))
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        imgFrame = dai.ImgFrame()
+        imgFrame.setData(frame)
+        imgFrame.setWidth(frame.shape[1])
+        imgFrame.setHeight(frame.shape[0])
+        imgFrame.setType(dai.ImgFrame.Type.GRAY8)
+        self.imgFrame = imgFrame
+    def run(self):
+        while self.isRunning():
+            self.output.send(self.imgFrame)
+            time.sleep(0.03)
 
 with dai.Pipeline() as pipeline:
-    hostCamera = pipeline.create(dai.node.Camera).build()
+    imageReplay = pipeline.create(ImageReplay)
     aprilTagNode = pipeline.create(dai.node.AprilTag)
     # Optionally run AprilTag on host (for most hosts a lot faster than on device on RVC2)
     aprilTagNode.setRunOnHost(True)
-    hostCamera.requestOutput((1920, 1080)).link(aprilTagNode.inputImage)
+    imageReplay.output.link(aprilTagNode.inputImage)
     aprilTagNode.initialConfig.setFamily(dai.AprilTagConfig.Family.TAG_16H5)
 
     passthroughOutputQueue = aprilTagNode.passthroughInputImage.createOutputQueue()
@@ -35,6 +57,7 @@ with dai.Pipeline() as pipeline:
 
         passthroughImage: dai.ImgFrame = passthroughOutputQueue.get()
         frame = passthroughImage.getCvFrame()
+        frame = cv2.cvtColor(frame, cv2.COLOR_GRAY2BGR)
         for aprilTagDetection in aprilTags:
             topLeft = aprilTagDetection.topLeft
             topRight = aprilTagDetection.topRight
