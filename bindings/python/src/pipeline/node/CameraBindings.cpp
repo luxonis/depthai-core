@@ -27,9 +27,9 @@ void bind_camera(pybind11::module& m, void* pCallstack) {
         // .def("setCamera", &Camera::setCamera, "name"_a, DOC(dai, node, Camera, setCamera))
         // .def("getCamera", &Camera::getCamera, DOC(dai, node, Camera, getCamera))
         .def("requestOutput",
-             py::overload_cast<std::pair<uint32_t, uint32_t>, ImgFrame::Type, ImgResizeMode, float>(&Camera::requestOutput),
+             py::overload_cast<std::pair<uint32_t, uint32_t>, std::optional<ImgFrame::Type>, ImgResizeMode, float>(&Camera::requestOutput),
              "size"_a,
-             "type"_a = dai::ImgFrame::Type::NV12,
+             "type"_a = std::nullopt,
              "resizeMode"_a = dai::ImgResizeMode::CROP,
              "fps"_a = 30,
              py::return_value_policy::reference_internal,
