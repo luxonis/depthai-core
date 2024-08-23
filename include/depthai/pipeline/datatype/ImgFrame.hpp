@@ -1,7 +1,6 @@
 #pragma once
 
 #include <chrono>
-#include <opencv2/core/mat.hpp>
 #include <unordered_map>
 #include <vector>
 
@@ -17,6 +16,7 @@
 
 // optional
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    #include <opencv2/core/mat.hpp>
     #include <opencv2/opencv.hpp>
 #endif
 
