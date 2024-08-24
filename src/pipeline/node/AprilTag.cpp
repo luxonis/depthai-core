@@ -1,7 +1,11 @@
 #include "depthai/pipeline/node/AprilTag.hpp"
-#include "depthai/pipeline/datatype/AprilTags.hpp"
 
+#include <opencv2/imgproc.hpp>
 #include <thread>
+
+#include "depthai/pipeline/datatype/AprilTags.hpp"
+#include "pipeline/datatype/AprilTagConfig.hpp"
+#include "properties/AprilTagProperties.hpp"
 #include "spdlog/fmt/fmt.h"
 
 extern "C" {
@@ -9,6 +13,7 @@ extern "C" {
 #include "common/getopt.h"
 #include "tag16h5.h"
 #include "tag25h9.h"
+#include "tag36h10.h"
 #include "tag36h11.h"
 #include "tagCircle21h7.h"
 #include "tagCircle49h12.h"
@@ -51,44 +56,102 @@ void AprilTag::buildInternal() {
     logger->info("AprilTag node running on host: {}", runOnHostVar);
 }
 
-void AprilTag::run() {
-    std::shared_ptr<ImgFrame> inFrame = nullptr;
+apriltag_family_t* getAprilTagFamily(dai::AprilTagConfig::Family family) {
+    apriltag_family_t* tf = nullptr;
+    switch(family) {
+        case dai::AprilTagConfig::Family::TAG_36H11:
+            tf = tag36h11_create();
+            break;
+        case dai::AprilTagConfig::Family::TAG_36H10:
+            tf = tag36h10_create();
+            break;
+        case dai::AprilTagConfig::Family::TAG_25H9:
+            tf = tag25h9_create();
+            break;
+        case dai::AprilTagConfig::Family::TAG_16H5:
+            tf = tag16h5_create();
+            break;
+        case dai::AprilTagConfig::Family::TAG_CIR21H7:
+            tf = tagCircle21h7_create();
+            break;
+        case dai::AprilTagConfig::Family::TAG_STAND41H12:
+            tf = tagStandard41h12_create();
+            break;
+        default:
+            throw std::runtime_error("Unsupported AprilTag family");
+    }
+    return tf;
+}
 
-    // Initialize tag detector with options
-    apriltag_family_t* tf = tag36h11_create();
+void setDetectorConfig(apriltag_detector_t* td, const dai::AprilTagConfig& config) {
+    // Set detector family
+    apriltag_detector_add_family(td, getAprilTagFamily(config.family));
+
+    // Set detector config
+    td->quad_decimate = config.quadDecimate;
+    td->quad_sigma = config.quadSigma;
+    td->refine_edges = config.refineEdges;
+    td->decode_sharpening = config.decodeSharpening;
+
+    // Tresholds
+    td->qtp.min_cluster_pixels = config.quadThresholds.minClusterPixels;
+    td->qtp.critical_rad = config.quadThresholds.criticalDegree * (3.14159 / 180.0);  // Convert to radians
+    td->qtp.max_line_fit_mse = config.quadThresholds.maxLineFitMse;
+    td->qtp.deglitch = config.quadThresholds.deglitch;
+
+    // We don't want to debug
+    td->debug = 0;
+}
+
+void setDetectorProperties(apriltag_detector_t* td, const dai::AprilTagProperties& properties) {
+    td->nthreads = properties.numThreads;
+}
+
+void AprilTag::run() {
+    // Retrieve properties and initial config
+    const dai::AprilTagProperties& properties = getProperties();
+    dai::AprilTagConfig config = properties.initialConfig;
+
+    // Prepare other variables
+    std::shared_ptr<ImgFrame> inFrame = nullptr;
+    std::shared_ptr<AprilTagConfig> inConfig = nullptr;
+
+    // Setup april tag detector
     apriltag_detector_t* td = apriltag_detector_create();
 
-    apriltag_detector_add_family(td, tf);
+    // Set detector properties
+    setDetectorProperties(td, properties);
 
-    // if(errno == ENOMEM) {
-    //         printf(
-    //             "Unable to add family to detector due to insufficient memory to allocate the tag-family decoder with the default maximum hamming value of 2.
-    //             Try
-    //    " "choosing an alternative tag family.\n"); exit(-1);
-    // }
-
-    td->quad_decimate = 2.0f;
-    td->quad_sigma = 0.0f;
-    td->nthreads = 2;
-    td->debug = 0;
-    td->refine_edges = 1;
-
+    // Set detector config
+    setDetectorConfig(td, config);
 
     // TODOs:
-    // - Handle everything that is settable in properties (family, etc)
-    // - In the case of a dynamic config setting different family, etc - handle it
+    // - Handle everything that is settable in properties (family, etc) [DONE]
+    // - In the case of a dynamic config setting different family, etc - handle it [DONE]
     // - Handle different input types (right now GRAY and NV12 work, but not the rest - not everything needs to be handled, but types that don't work should
-    // error out)
-    // - Better error handling
-    // - Expose number of CPU threads as a property
+    // error out) [DONE]
+    // - Better error handling 
+    // - Expose number of CPU threads as a property [DONE]
     while(isRunning()) {
+        // Try getting config
+        if(properties.inputConfigSync) {
+            inConfig = inputConfig.get<AprilTagConfig>();
+        } else {
+            inConfig = inputConfig.tryGet<AprilTagConfig>();
+        }
+
+        // Set config if there is one
+        if(inConfig != nullptr) {
+            setDetectorConfig(td, *inConfig);
+        }
+
+        // Get latest frame
         inFrame = inputImage.get<ImgFrame>();
-        // TODO: This only works for types that have a grayscale image at the beginning
-        uint8_t* src = inFrame->data->getData().data() + inFrame->fb.p1Offset;
-        auto width = static_cast<int32_t>(inFrame->getWidth());
-        auto height = static_cast<int32_t>(inFrame->getHeight());
-        auto stride = static_cast<int32_t>(inFrame->getStride());
-        image_u8_t aprilImg = {.width = width, .height = height, .stride = stride, .buf = src};
+
+        cv::Mat img;
+        cv::cvtColor(inFrame->getCvFrame(), img, cv::COLOR_BGR2GRAY);
+
+        image_u8_t aprilImg = {.width = img.cols, .height = img.rows, .stride = img.cols, .buf = img.data};
 
         auto now = std::chrono::system_clock::now();
         zarray_t* detections = apriltag_detector_detect(td, &aprilImg);

@@ -65,7 +65,7 @@ class AprilTagConfig : public Buffer {
      * lighting conditions or low light conditions.
      * The default value is 0.25.
      */
-    float decodeSharpening = 0.25f;
+    double decodeSharpening = 0.25;
 
     /**
      * Max number of error bits that should be corrected. Accepting large numbers of
@@ -94,7 +94,7 @@ class AprilTagConfig : public Buffer {
          * straight or close to 180 degrees. Zero means that no quads are
          * rejected. (In degrees).
          */
-        float criticalDegree = 10.f;
+        double criticalDegree = 10.0;
 
         /**
          * When fitting lines to the contours, what is the maximum mean
@@ -102,7 +102,7 @@ class AprilTagConfig : public Buffer {
          * that are far from being quad shaped; rejecting these quads "early"
          * saves expensive decoding processing.
          */
-        float maxLineFitMse = 10.f;
+        double maxLineFitMse = 10.0;
 
         /**
          * When we build our model of black & white pixels, we add an
