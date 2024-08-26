@@ -179,7 +179,7 @@ void AprilTag::run() {
         // Prepare data for AprilTag detection based on input frame type
         ImgFrame::Type frameType = inFrame->getType();
 
-        if(frameType == ImgFrame::Type::GRAY8 || frameType == ImgFrame::Type::BGR888i) {
+        if(frameType == ImgFrame::Type::GRAY8 || frameType == ImgFrame::Type::NV12) {
             width = static_cast<int32_t>(inFrame->getWidth());
             height = static_cast<int32_t>(inFrame->getHeight());
             stride = static_cast<int32_t>(inFrame->getStride());
