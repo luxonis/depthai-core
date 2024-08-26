@@ -16,10 +16,7 @@ void bind_tofconfig(pybind11::module& m, void* pCallstack){
 
     using namespace dai;
 
-    // py::class_<RawToFConfig, RawBuffer, std::shared_ptr<RawToFConfig>> rawToFConfig(m, "RawToFConfig", DOC(dai, RawToFConfig));
     py::class_<ToFConfig, Py<ToFConfig>, Buffer, std::shared_ptr<ToFConfig>> toFConfig(m, "ToFConfig", DOC(dai, ToFConfig));
-    py::class_<ToFConfig::DepthParams> depthParams(toFConfig, "DepthParams", DOC(dai, ToFConfig, DepthParams));
-    py::enum_<ToFConfig::DepthParams::TypeFMod> depthParamsTypeFMod(depthParams, "TypeFMod", DOC(dai, ToFConfig, DepthParams, TypeFMod));
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -34,35 +31,23 @@ void bind_tofconfig(pybind11::module& m, void* pCallstack){
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
 
-    // // Metadata / raw
-    // toFConfig
-    //     .def(py::init<>())
-    //     .def_readwrite("depthParams", &ToFConfig::depthParams, DOC(dai, ToFConfig, depthParams))
-    //     ;
-
-    depthParamsTypeFMod
-        .value("ALL", ToFConfig::DepthParams::TypeFMod::F_MOD_ALL)
-        .value("MIN", ToFConfig::DepthParams::TypeFMod::F_MOD_MIN)
-        .value("MAX", ToFConfig::DepthParams::TypeFMod::F_MOD_MAX)
-    ;
-
-    depthParams
-        .def(py::init<>())
-        .def_readwrite("freqModUsed", &ToFConfig::DepthParams::freqModUsed, DOC(dai, ToFConfig, DepthParams, freqModUsed))
-        .def_readwrite("avgPhaseShuffle", &ToFConfig::DepthParams::avgPhaseShuffle, DOC(dai, ToFConfig, DepthParams, avgPhaseShuffle))
-        .def_readwrite("minimumAmplitude", &ToFConfig::DepthParams::minimumAmplitude, DOC(dai, ToFConfig, DepthParams, minimumAmplitude))
-        .def_readwrite("median", &ToFConfig::DepthParams::median, DOC(dai, ToFConfig, DepthParams, median))
-        ;
-
     // Message
     toFConfig
         .def(py::init<>())
         // .def(py::init<std::shared_ptr<ToFConfig>>())
-        
-        .def("setDepthParams", static_cast<ToFConfig&(ToFConfig::*)(dai::ToFConfig::DepthParams)>(&ToFConfig::setDepthParams), py::arg("config"), DOC(dai, ToFConfig, setDepthParams))
-        .def("setFreqModUsed", static_cast<ToFConfig&(ToFConfig::*)(dai::ToFConfig::DepthParams::TypeFMod)>(&ToFConfig::setFreqModUsed), DOC(dai, ToFConfig, setFreqModUsed))
-        .def("setAvgPhaseShuffle", &ToFConfig::setAvgPhaseShuffle, DOC(dai, ToFConfig, setAvgPhaseShuffle))
-        .def("setMinAmplitude", &ToFConfig::setMinAmplitude, DOC(dai, ToFConfig, setMinAmplitude))
+
+        .def_readwrite("median", &ToFConfig::median, DOC(dai, ToFConfig, median))
+        .def_readwrite("enablePhaseShuffleTemporalFilter", &ToFConfig::enablePhaseShuffleTemporalFilter, DOC(dai, ToFConfig, enablePhaseShuffleTemporalFilter))
+        .def_readwrite("enableBurstMode", &ToFConfig::enableBurstMode, DOC(dai, ToFConfig, enableBurstMode))
+        .def_readwrite("enableDistortionCorrection", &ToFConfig::enableDistortionCorrection, DOC(dai, ToFConfig, enableDistortionCorrection))
+        .def_readwrite("phaseUnwrappingLevel", &ToFConfig::phaseUnwrappingLevel, DOC(dai, ToFConfig, phaseUnwrappingLevel))
+        .def_readwrite("enableFPPNCorrection", &ToFConfig::enableFPPNCorrection, DOC(dai, ToFConfig, enableFPPNCorrection))
+        .def_readwrite("enableOpticalCorrection", &ToFConfig::enableOpticalCorrection, DOC(dai, ToFConfig, enableOpticalCorrection))
+        .def_readwrite("enableTemperatureCorrection", &ToFConfig::enableTemperatureCorrection, DOC(dai, ToFConfig, enableTemperatureCorrection))
+        .def_readwrite("enableWiggleCorrection", &ToFConfig::enableWiggleCorrection, DOC(dai, ToFConfig, enableWiggleCorrection))
+        .def_readwrite("enablePhaseUnwrapping", &ToFConfig::enablePhaseUnwrapping, DOC(dai, ToFConfig, enablePhaseUnwrapping))
+        .def_readwrite("phaseUnwrapErrorThreshold", &ToFConfig::phaseUnwrapErrorThreshold, DOC(dai, ToFConfig, phaseUnwrapErrorThreshold))
+
         .def("setMedianFilter", &ToFConfig::setMedianFilter, DOC(dai, ToFConfig, setMedianFilter))
 
         // .def("set", &ToFConfig::set, py::arg("config"), DOC(dai, ToFConfig, set))
