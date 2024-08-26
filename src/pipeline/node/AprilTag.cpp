@@ -152,13 +152,6 @@ void AprilTag::run() {
     // Handle possible errors during configuration
     handleErrors(errno);
 
-    // TODOs:
-    // - Handle everything that is settable in properties (family, etc) [DONE]
-    // - In the case of a dynamic config setting different family, etc - handle it [DONE]
-    // - Handle different input types (right now GRAY and NV12 work, but not the rest - not everything needs to be handled, but types that don't work should
-    // error out) [DONE]
-    // - Better error handling
-    // - Expose number of CPU threads as a property [DONE]
     while(isRunning()) {
         // Retrieve config from user if available
         if(properties.inputConfigSync) {
