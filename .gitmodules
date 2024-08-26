@@ -13,3 +13,9 @@
 [submodule "3rdparty/pybind11_opencv_numpy"]
 	path = bindings/python/external/pybind11_opencv_numpy
 	url = https://github.com/luxonis/pybind11_opencv_numpy.git
+[submodule "3rdparty/ws-protocol"]
+	path = 3rdparty/foxglove/ws-protocol
+	url = https://github.com/foxglove/ws-protocol.git
+[submodule "3rdparty/foxglove/schemas"]
+	path = 3rdparty/foxglove/schemas
+	url = https://github.com/foxglove/schemas.git
