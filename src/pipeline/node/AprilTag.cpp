@@ -1,8 +1,12 @@
 #include "depthai/pipeline/node/AprilTag.hpp"
 
+#include <stdexcept>
+
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-#include <opencv2/imgproc.hpp>
+    #include <opencv2/imgproc.hpp>
 #endif
+
+#include <math.h>
 
 #include "depthai/pipeline/datatype/AprilTags.hpp"
 #include "pipeline/datatype/AprilTagConfig.hpp"
@@ -80,6 +84,18 @@ apriltag_family_t* getAprilTagFamily(dai::AprilTagConfig::Family family) {
     return tf;
 }
 
+void handleErrors(int e) {
+    // Hamming distance error
+    if(e == ENOMEM) {
+        throw std::runtime_error("AprilTag node: Unable to add family to detector due to insufficient memory to allocate the tag-family decoder.");
+    }
+
+    // Memory allocation error
+    if(e == EINVAL) {
+        throw std::runtime_error("AprilTag node: memory error");
+    }
+}
+
 void setDetectorConfig(apriltag_detector_t* td, const dai::AprilTagConfig& config) {
     // Set detector family
     apriltag_detector_add_family(td, getAprilTagFamily(config.family));
@@ -92,7 +108,7 @@ void setDetectorConfig(apriltag_detector_t* td, const dai::AprilTagConfig& confi
 
     // Tresholds
     td->qtp.min_cluster_pixels = config.quadThresholds.minClusterPixels;
-    td->qtp.critical_rad = config.quadThresholds.criticalDegree * (3.14159 / 180.0);  // Convert to radians
+    td->qtp.critical_rad = config.quadThresholds.criticalDegree * (M_PI / 180.0);  // Convert degrees to radians
     td->qtp.max_line_fit_mse = config.quadThresholds.maxLineFitMse;
     td->qtp.deglitch = config.quadThresholds.deglitch;
 
@@ -120,6 +136,9 @@ void AprilTag::run() {
     // Prepare other variables
     std::shared_ptr<ImgFrame> inFrame = nullptr;
     std::shared_ptr<AprilTagConfig> inConfig = nullptr;
+    #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    std::unique_ptr<cv::Mat> cvimgPtr = nullptr;
+    #endif
 
     // Setup april tag detector
     apriltag_detector_t* td = apriltag_detector_create();
@@ -130,6 +149,9 @@ void AprilTag::run() {
     // Set detector config
     setDetectorConfig(td, config);
 
+    // Handle possible errors during configuration
+    handleErrors(errno);
+
     // TODOs:
     // - Handle everything that is settable in properties (family, etc) [DONE]
     // - In the case of a dynamic config setting different family, etc - handle it [DONE]
@@ -138,17 +160,17 @@ void AprilTag::run() {
     // - Better error handling
     // - Expose number of CPU threads as a property [DONE]
     while(isRunning()) {
-
-        // Try getting config
+        // Retrieve config from user if available
         if(properties.inputConfigSync) {
             inConfig = inputConfig.get<AprilTagConfig>();
         } else {
             inConfig = inputConfig.tryGet<AprilTagConfig>();
         }
 
-        // Set config if there is one
+        // Set config if there is one and handle possible errors
         if(inConfig != nullptr) {
             setDetectorConfig(td, *inConfig);
+            handleErrors(errno);
         }
 
         // Get latest frame
@@ -158,12 +180,8 @@ void AprilTag::run() {
         int32_t width, height, stride;
         uint8_t* imgbuf;
 
-        // 
+        // Prepare data for AprilTag detection based on input frame type
         ImgFrame::Type frameType = inFrame->getType();
-
-    #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-        std::unique_ptr<cv::Mat> cvimgPtr;
-    #endif
 
         if(frameType == ImgFrame::Type::GRAY8 || frameType == ImgFrame::Type::BGR888i) {
             width = static_cast<int32_t>(inFrame->getWidth());
@@ -183,8 +201,10 @@ void AprilTag::run() {
     #endif
         }
 
+        // Create AprilTag image
         image_u8_t aprilImg{width, height, stride, imgbuf};
 
+        // Detect AprilTags
         auto now = std::chrono::system_clock::now();
         zarray_t* detections = apriltag_detector_detect(td, &aprilImg);
         auto end = std::chrono::system_clock::now();
