@@ -45,6 +45,7 @@ class AudioMixer: public DeviceNodeCRTP<DeviceNode, AudioMixer, AudioMixerProper
     bool runOnHost() const override;
 
     void run() override;
+    bool isReady() {return properties.ready;}
    protected:
     bool isBuild = false;
     bool needsBuild() override {
@@ -59,17 +60,29 @@ class AudioMixer: public DeviceNodeCRTP<DeviceNode, AudioMixer, AudioMixerProper
 
     class AudioMixerSource : public std::enable_shared_from_this<AudioMixerSource>  {
 	    public:
-	    std::set<std::shared_ptr<AudioMixerSink>> sinks;
+	    std::shared_ptr<AudioFrame> currentBuf;
+	    std::map<std::shared_ptr<AudioMixerSink>, std::thread> sinks;
+
+	    std::thread thread;
+	    std::mutex currentBufferMtx;
+	    std::condition_variable notifyBufferChange;
+	    bool bufferReady;
 
 	    float volume;
-
-	    void sendOut(std::shared_ptr<AudioFrame> buf);
     };
 
     class AudioMixerSink : public std::enable_shared_from_this<AudioMixerSink>{
 	    public:
-	    std::map<std::shared_ptr<AudioMixerSource>,
-		     std::shared_ptr<AudioFrame>> sourceData;
+	    struct sourceData_t {
+	    	std::list<std::shared_ptr<AudioFrame>> frames;
+		std::mutex mtx;
+	    	std::condition_variable frameCv;
+		bool framePresent;
+	    };
+
+	    std::map<std::shared_ptr<AudioMixerSource>, std::shared_ptr<sourceData_t>> sourceData;
+	    
+	    std::thread thread;
 
 	    int format;
 	    unsigned int bitrate;

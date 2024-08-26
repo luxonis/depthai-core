@@ -9,9 +9,9 @@ namespace dai {
 struct AudioMixerProperties: PropertiesSerializable<Properties, AudioMixerProperties> {
     static constexpr int AUTO = -1;
 
-    int dummy;
+    bool ready = false;
 };
 
-DEPTHAI_SERIALIZE_EXT(AudioMixerProperties, dummy);
+DEPTHAI_SERIALIZE_EXT(AudioMixerProperties, ready);
 
 }  // namespace dai

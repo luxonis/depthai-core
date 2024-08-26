@@ -19,8 +19,28 @@ std::shared_ptr<AudioMixer> AudioMixer::build() {
 void AudioMixer::registerSource(std::string name, float volume) {
 	if(audioSources.find(name) == audioSources.end()) {
 		audioSources[name] = std::make_shared<AudioMixerSource>();
-		std::shared_ptr<AudioMixerSource> source = audioSources[name];
-		source->volume = volume;
+		std::shared_ptr<AudioMixerSource> src = audioSources[name];
+		src->volume = volume;
+		src->bufferReady = false;
+		src->thread = std::thread([this, &name] {
+			std::shared_ptr<AudioMixerSource> source = audioSources[name];
+			while(!isReady()) {
+			}
+
+			while(isRunning()) {
+				std::shared_ptr<AudioFrame> frame = inputs[name].get<AudioFrame>();
+
+				{
+					std::lock_guard lck(source->currentBufferMtx);
+					source->currentBuf = frame;
+					source->bufferReady = true;
+					std::cout << "Set current buf" << std::endl;
+				}
+
+				std::cout << "Src call all threads" << std::endl;
+				source->notifyBufferChange.notify_all();
+			}
+		});
 	} else {
 		// Already registered
 	}
@@ -29,10 +49,21 @@ void AudioMixer::registerSource(std::string name, float volume) {
 void AudioMixer::registerSink(std::string name, unsigned int bitrate, unsigned int channels, int format) {
 	if(audioSinks.find(name) == audioSinks.end()) {
 		audioSinks[name] = std::make_shared<AudioMixerSink>();
-		std::shared_ptr<AudioMixerSink> sink = audioSinks[name];
-		sink->format = format;
-		sink->bitrate = bitrate;
-		sink->channels = channels;
+		std::shared_ptr<AudioMixerSink> snk = audioSinks[name];
+		snk->format = format;
+		snk->bitrate = bitrate;
+		snk->channels = channels;
+		snk->thread = std::thread([this, &snk, &name] {
+			std::shared_ptr<AudioMixerSink> sink = audioSinks[name];
+			while(!isReady()) {
+			}
+
+			while(isRunning()) {
+				std::shared_ptr<AudioFrame> buf = sink->mix();
+				std::cout << "Send buf" << std::endl;
+				outputs[name].send(buf);
+			}
+		});
 	} else {
 		// Already registered
 	}
@@ -41,10 +72,38 @@ void AudioMixer::registerSink(std::string name, unsigned int bitrate, unsigned i
 void AudioMixer::linkSourceToSink(std::string sourceName, std::string sinkName) {
 	if (audioSources.find(sourceName) != audioSources.end() &&
 	    audioSinks.find(sinkName) != audioSinks.end()) {
-		std::shared_ptr<AudioMixerSource> source = audioSources[sourceName];
-		std::shared_ptr<AudioMixerSink> sink = audioSinks[sinkName];
-		source->sinks.insert(sink);
-		sink->sourceData[source] = nullptr;
+		std::shared_ptr<AudioMixerSource> src = audioSources[sourceName];
+		std::shared_ptr<AudioMixerSink> snk = audioSinks[sinkName];
+		src->sinks[snk] = std::thread([this, &sourceName, &sinkName] {
+			std::shared_ptr<AudioMixerSource> source = audioSources[sourceName];
+			std::shared_ptr<AudioMixerSink> sink = audioSinks[sinkName];
+			sink->sourceData[source->shared_from_this()] = std::make_shared<AudioMixerSink::sourceData_t>();
+			auto data = sink->sourceData[source->shared_from_this()];
+			data->framePresent = false;
+
+			while(!isReady()) {
+			}
+
+			while(isRunning()) {
+				std::unique_lock lck(source->currentBufferMtx);
+				source->notifyBufferChange.wait(lck, [&source]{ return source->bufferReady; });
+				source->bufferReady = false;
+
+				std::cout << "Lock mutex link" << std::endl;
+
+				{
+					std::lock_guard dataLck(data->mtx);
+					std::cout << "Set link data" << std::endl;
+					data->frames.push_back(source->currentBuf);
+					data->framePresent = true;
+				}
+				data->frameCv.notify_all();
+
+				std::cout << "Unlock mutex link" << std::endl;
+				lck.unlock();
+				source->notifyBufferChange.notify_all();
+			}
+		});
 	} else {
 		// they dont exist
 	}
@@ -53,11 +112,11 @@ void AudioMixer::linkSourceToSink(std::string sourceName, std::string sinkName) 
 void AudioMixer::unlinkSourceFromSink(std::string sourceName, std::string sinkName) {
 	if (audioSources.find(sourceName) != audioSources.end() &&
 	    audioSinks.find(sinkName) != audioSinks.end()) {
-		std::shared_ptr<AudioMixerSource> source = audioSources[sourceName];
-		std::shared_ptr<AudioMixerSink> sink = audioSinks[sinkName];
+		std::shared_ptr<AudioMixerSource> src = audioSources[sourceName];
+		std::shared_ptr<AudioMixerSink> snk = audioSinks[sinkName];
 
-		source->sinks.erase(sink);
-		sink->sourceData.erase(source);
+		src->sinks.erase(snk);
+		snk->sourceData.erase(src);
 	} else {
 		// they dont exist
 	}
@@ -81,21 +140,9 @@ void AudioMixer::unregisterSink(std::string name) {
 
 void AudioMixer::run() {
 	while(isRunning()) {
-		for (auto [name, source] : audioSources) {
-			std::shared_ptr<AudioFrame> buf = inputs[name].get<AudioFrame>();
-			source->sendOut(buf);
-		}
+		properties.ready = true;
 
-		for (auto [name, sink] : audioSinks) {
-			std::shared_ptr<AudioFrame> buf = sink->mix();
-			outputs[name].send(buf);
-		}
-	}
-}
-
-void AudioMixer::AudioMixerSource::sendOut(std::shared_ptr<AudioFrame> buf) {
-	for (auto sink : sinks) {
-		sink->sourceData[this->shared_from_this()] = buf;
+		while(isRunning()) { }
 	}
 }
 
@@ -104,9 +151,25 @@ std::shared_ptr<AudioFrame> AudioMixer::AudioMixerSink::mix() {
 	size_t largestSize = 0;
 
 	for (auto [source, data] : sourceData) {
-		std::cout << "Size: " << data->getData().size() << std::endl;
-		if(data->getData().size() > largestSize) {
-			largestSize = data->getData().size();
+		bool isMissing = true;
+		while(isMissing) {
+			std::unique_lock lck(data->mtx);
+			data->frameCv.wait(lck, [&data]{ return data->framePresent; });
+
+			if(data->frames.front() == nullptr) {
+				std::cout << "Missing..." << std::endl;
+				isMissing = true;
+			} else {
+				std::cout << "Not missing..." << std::endl;
+				isMissing = false;
+			}
+		}
+
+		std::lock_guard dataLck(data->mtx);
+
+		std::cout << "Size: " << data->frames.front()->getData().size() << std::endl;
+		if(data->frames.front()->getData().size() > largestSize) {
+			largestSize = data->frames.front()->getData().size();
 		}
 	}
 
@@ -117,15 +180,15 @@ std::shared_ptr<AudioFrame> AudioMixer::AudioMixerSink::mix() {
 
 	std::memset(mixedData.data(), 0, largestSize);
 	for (auto [source, data] : sourceData) {
-		if(data->getBitrate() != bitrate ||
-		   data->getFormat() != format ||
-		   data->getChannels() != channels) {
+		if(data->frames.front()->getBitrate() != bitrate ||
+		   data->frames.front()->getFormat() != format ||
+		   data->frames.front()->getChannels() != channels) {
 			throw std::runtime_error("Data contained different bitrate/format/channel data compared to sink");
 		}
 
-		auto dataToMix = data->getData().data();
-		size_t count = largestSize > data->getData().size() ?
-			       data->getData().size() : largestSize;
+		auto dataToMix = data->frames.front()->getData().data();
+		size_t count = largestSize > data->frames.front()->getData().size() ?
+			       data->frames.front()->getData().size() : largestSize;
 
 		switch(format) {
 			case SF_FORMAT_PCM_S8:
@@ -201,6 +264,13 @@ std::shared_ptr<AudioFrame> AudioMixer::AudioMixerSink::mix() {
 				std::terminate();
 				break;
 		}
+
+		std::unique_lock lck(data->mtx);
+		data->frames.pop_front();
+		if(data->frames.front() == nullptr) {
+			data->framePresent = false;
+		}
+
 	}
 
 	buf->setData(mixedData);
