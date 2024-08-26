@@ -97,7 +97,10 @@ void handleErrors(int e) {
 }
 
 void setDetectorConfig(apriltag_detector_t* td, const dai::AprilTagConfig& config) {
-    // Set detector family
+    // Remove old detector family
+    apriltag_detector_clear_families(td);
+
+    // Set new detector family
     apriltag_detector_add_family(td, getAprilTagFamily(config.family));
 
     // Set detector config
@@ -141,13 +144,13 @@ void AprilTag::run() {
     #endif
 
     // Setup april tag detector
-    apriltag_detector_t* td = apriltag_detector_create();
+    std::unique_ptr<apriltag_detector_t, void (*)(apriltag_detector_t*)> td(apriltag_detector_create(), apriltag_detector_destroy);
 
     // Set detector properties
-    setDetectorProperties(td, properties);
+    setDetectorProperties(td.get(), properties);
 
     // Set detector config
-    setDetectorConfig(td, config);
+    setDetectorConfig(td.get(), config);
 
     // Handle possible errors during configuration
     handleErrors(errno);
@@ -162,7 +165,7 @@ void AprilTag::run() {
 
         // Set config if there is one and handle possible errors
         if(inConfig != nullptr) {
-            setDetectorConfig(td, *inConfig);
+            setDetectorConfig(td.get(), *inConfig);
             handleErrors(errno);
         }
 
@@ -199,7 +202,7 @@ void AprilTag::run() {
 
         // Detect AprilTags
         auto now = std::chrono::system_clock::now();
-        zarray_t* detections = apriltag_detector_detect(td, &aprilImg);
+        std::unique_ptr<zarray_t, void (*)(zarray_t*)> detections(apriltag_detector_detect(td.get(), &aprilImg), apriltag_detections_destroy);
         auto end = std::chrono::system_clock::now();
         std::chrono::duration<double> elapsedSeconds = end - now;
         logger->trace("April detections took {} ms", elapsedSeconds.count() / 1000.0);
@@ -207,11 +210,11 @@ void AprilTag::run() {
         std::shared_ptr<dai::AprilTags> aprilTags = std::make_shared<dai::AprilTags>();
 
         if(detections != nullptr) {
-            int numDetections = zarray_size(detections);
+            int numDetections = zarray_size(detections.get());
             aprilTags->aprilTags.reserve(numDetections);
             for(int i = 0; i < numDetections; i++) {
                 apriltag_detection_t* det = nullptr;
-                zarray_get(detections, i, &det);
+                zarray_get(detections.get(), i, &det);
                 if(det == nullptr) {
                     continue;
                 }
@@ -246,9 +249,12 @@ void AprilTag::run() {
             }
         }
 
-        logger->trace("Detected {} april tags", zarray_size(detections));
+        // Send detections and pass through input frame
         out.send(aprilTags);
         passthroughInputImage.send(inFrame);
+
+        // Logging
+        logger->trace("Detected {} april tags", zarray_size(detections.get()));
     }
 }
 #endif
