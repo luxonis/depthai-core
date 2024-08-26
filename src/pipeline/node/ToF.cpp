@@ -23,13 +23,17 @@ std::shared_ptr<ToF> ToF::build(CameraBoardSocket boardSocket) {
     auto cameraFeatures = device->getConnectedCameraFeatures();
     // First handle the case if the boardSocket is set to AUTO
     if(boardSocket == CameraBoardSocket::AUTO) {
-        auto defaultSockets = {CameraBoardSocket::CAM_A, CameraBoardSocket::CAM_B, CameraBoardSocket::CAM_C};
+        auto defaultSockets = {CameraBoardSocket::CAM_A, CameraBoardSocket::CAM_B, CameraBoardSocket::CAM_C, CameraBoardSocket::CAM_D};
         for(auto socket : defaultSockets) {
             bool found = false;
             for(const auto& cf : cameraFeatures) {
                 if(cf.socket == socket) {
-                    found = true;
-                    break;
+                    for(const auto& sensorType : cf.supportedTypes) {
+                        if(sensorType == CameraSensorType::TOF) {
+                            found = true;
+                            break;
+                        }
+                    }
                 }
             }
             if(found) {
