@@ -1,25 +1,22 @@
 #include "depthai/pipeline/node/AprilTag.hpp"
 
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
 #include <opencv2/imgproc.hpp>
-#include <thread>
+#endif
 
 #include "depthai/pipeline/datatype/AprilTags.hpp"
 #include "pipeline/datatype/AprilTagConfig.hpp"
+#include "pipeline/datatype/ImgFrame.hpp"
 #include "properties/AprilTagProperties.hpp"
-#include "spdlog/fmt/fmt.h"
 
 extern "C" {
 #include "apriltag.h"
-#include "common/getopt.h"
 #include "tag16h5.h"
 #include "tag25h9.h"
 #include "tag36h10.h"
 #include "tag36h11.h"
 #include "tagCircle21h7.h"
-#include "tagCircle49h12.h"
-#include "tagCustom48h12.h"
 #include "tagStandard41h12.h"
-#include "tagStandard52h13.h"
 }
 
 namespace dai {
@@ -107,6 +104,14 @@ void setDetectorProperties(apriltag_detector_t* td, const dai::AprilTagPropertie
     td->nthreads = properties.numThreads;
 }
 
+#ifdef _WIN32
+
+void AprilTage::run() {
+    throw std::runtime_error("AprilTag node is not supported on Windows");
+}
+
+#else
+
 void AprilTag::run() {
     // Retrieve properties and initial config
     const dai::AprilTagProperties& properties = getProperties();
@@ -130,9 +135,10 @@ void AprilTag::run() {
     // - In the case of a dynamic config setting different family, etc - handle it [DONE]
     // - Handle different input types (right now GRAY and NV12 work, but not the rest - not everything needs to be handled, but types that don't work should
     // error out) [DONE]
-    // - Better error handling 
+    // - Better error handling
     // - Expose number of CPU threads as a property [DONE]
     while(isRunning()) {
+
         // Try getting config
         if(properties.inputConfigSync) {
             inConfig = inputConfig.get<AprilTagConfig>();
@@ -148,10 +154,36 @@ void AprilTag::run() {
         // Get latest frame
         inFrame = inputImage.get<ImgFrame>();
 
-        cv::Mat img;
-        cv::cvtColor(inFrame->getCvFrame(), img, cv::COLOR_BGR2GRAY);
+        // Preallocate data on stack for AprilTag detection
+        int32_t width, height, stride;
+        uint8_t* imgbuf;
 
-        image_u8_t aprilImg = {.width = img.cols, .height = img.rows, .stride = img.cols, .buf = img.data};
+        // 
+        ImgFrame::Type frameType = inFrame->getType();
+
+    #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+        std::unique_ptr<cv::Mat> cvimgPtr;
+    #endif
+
+        if(frameType == ImgFrame::Type::GRAY8 || frameType == ImgFrame::Type::BGR888i) {
+            width = static_cast<int32_t>(inFrame->getWidth());
+            height = static_cast<int32_t>(inFrame->getHeight());
+            stride = static_cast<int32_t>(inFrame->getStride());
+            imgbuf = inFrame->data->getData().data() + inFrame->fb.p1Offset;
+        } else {
+    #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+            cvimgPtr = std::make_unique<cv::Mat>();
+            cv::cvtColor(inFrame->getCvFrame(), *cvimgPtr, cv::COLOR_BGR2GRAY);
+            width = cvimgPtr->cols;
+            height = cvimgPtr->rows;
+            stride = cvimgPtr->cols;
+            imgbuf = cvimgPtr->data;
+    #else
+            throw std::runtime_error("AprilTag node: Unsupported frame type " << static_cast<int>(frameType));
+    #endif
+        }
+
+        image_u8_t aprilImg{width, height, stride, imgbuf};
 
         auto now = std::chrono::system_clock::now();
         zarray_t* detections = apriltag_detector_detect(td, &aprilImg);
@@ -206,6 +238,7 @@ void AprilTag::run() {
         passthroughInputImage.send(inFrame);
     }
 }
+#endif
 
 }  // namespace node
 }  // namespace dai
