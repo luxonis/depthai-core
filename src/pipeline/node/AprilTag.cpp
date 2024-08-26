@@ -106,7 +106,7 @@ void setDetectorConfig(apriltag_detector_t* td, const dai::AprilTagConfig& confi
     td->refine_edges = config.refineEdges;
     td->decode_sharpening = config.decodeSharpening;
 
-    // Tresholds
+    // Set detector thresholds
     td->qtp.min_cluster_pixels = config.quadThresholds.minClusterPixels;
     td->qtp.critical_rad = config.quadThresholds.criticalDegree * (M_PI / 180.0);  // Convert degrees to radians
     td->qtp.max_line_fit_mse = config.quadThresholds.maxLineFitMse;
