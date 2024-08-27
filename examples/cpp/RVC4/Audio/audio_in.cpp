@@ -13,14 +13,14 @@ int main() {
     auto replay = pipeline.create<dai::node::AudioReplay>();
     replay->setSourceFile("/tmp/test.wav");
     replay->setLoop(true);
-    replay->setFps(512); 
+    replay->setFps(16); 
 
     auto inHost = pipeline.create<dai::node::AudioIn>();
     inHost->setRunOnHost(true);
     inHost->setDeviceName("microphone");
     inHost->setDevicePath("default");
     inHost->setBitrate(48000);
-    inHost->setFps(512);
+    inHost->setFps(16);
     inHost->setChannels(2);
     inHost->setFormat(SF_FORMAT_PCM_32);
 
@@ -29,7 +29,7 @@ int main() {
     outHost->setDeviceName("speaker");
     outHost->setDevicePath("default");
     outHost->setBitrate(48000);
-    outHost->setFps(512);
+    outHost->setFps(16);
     outHost->setChannels(2);
     outHost->setFormat(SF_FORMAT_PCM_32);
     
@@ -41,23 +41,19 @@ int main() {
 
     auto mixer = pipeline.create<dai::node::AudioMixer>();
     mixer->setRunOnHost(true);
-
     mixer->registerSource("source1", 0.2);
-//    mixer->registerSource("source2", 0.8);
+    mixer->registerSource("source2", 0.8);
     mixer->registerSink("sink1", 48000, 2, SF_FORMAT_PCM_32);
-
     mixer->linkSourceToSink("source1", "sink1");
-//    mixer->linkSourceToSink("source2", "sink1");
+    mixer->linkSourceToSink("source2", "sink2");
 
     replay->out.link(encoder->input);
     encoder->out.link(mixer->inputs["source1"]);
-//    inHost->out.link(mixer->inputs["source2"]);
-
+    inHost->out.link(mixer->inputs["source2"]);
     mixer->outputs["sink1"].link(outHost->input);
 
     pipeline.start();
     while(pipeline.isRunning()) {
-
     }
 
     return 0;

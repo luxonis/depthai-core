@@ -48,8 +48,8 @@ void AudioOut::run() {
 	long unsigned int bufferFrames;
 	snd_pcm_hw_params_get_period_size(hwParams, &bufferFrames, 0);
 	size_t bufferSize = bufferFrames * snd_pcm_format_width(properties.format) / 8 * properties.channels;
-	std::cout << "AudioFrame frames " << bufferFrames << std::endl;
-	std::cout << "AudioFrame size " << bufferSize << std::endl;
+	//std::cout << "AudioFrame frames " << bufferFrames << std::endl;
+	//std::cout << "AudioFrame size " << bufferSize << std::endl;
 
 	snd_pcm_hw_params(captureHandle, hwParams);
 	snd_pcm_hw_params_free(hwParams);
@@ -66,7 +66,7 @@ void AudioOut::run() {
 		size_t writeSize = recvSize;
 
 		if (recvSize == 0) {
-			std::cout << "Empty packet received, waiting for next one" << std::endl;
+			//std::cout << "Empty packet received, waiting for next one" << std::endl;
 			continue;
 		}
 
@@ -80,13 +80,13 @@ void AudioOut::run() {
 
 		}
 
-		std::cout << "AudioFrame size: " << bufferSize << " Write size: " << writeSize << " Recv size: " << recvSize << std::endl;
+		//std::cout << "AudioFrame size: " << bufferSize << " Write size: " << writeSize << " Recv size: " << recvSize << std::endl;
 
 		std::memcpy(data.data(), recvData.data(), writeSize);
-		std::cout << "Memcpy" << std::endl;
+		//std::cout << "Memcpy" << std::endl;
 
 		err = snd_pcm_writei(captureHandle, data.data(), bufferFrames);
-		std::cout << "Write" << std::endl;
+		//std::cout << "Write" << std::endl;
 		if (err == -EPIPE) {
 			// EPIPE means overrun
 			logger->warn("AudioOutHost {}: Underrun occurred", __func__);

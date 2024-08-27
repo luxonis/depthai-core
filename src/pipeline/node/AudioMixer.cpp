@@ -29,15 +29,18 @@ void AudioMixer::registerSource(std::string name, float volume) {
 
 			while(isRunning()) {
 				std::shared_ptr<AudioFrame> frame = inputs[name].get<AudioFrame>();
+				if (frame == nullptr) {
+					continue;
+				}
 
 				{
 					std::lock_guard lck(source->currentBufferMtx);
 					source->currentBuf = frame;
 					source->bufferReady = true;
-					std::cout << "Set current buf" << std::endl;
+					//std::cout << "Set current buf" << std::endl;
 				}
 
-				std::cout << "Src call all threads" << std::endl;
+				//std::cout << "Src call all threads" << std::endl;
 				source->notifyBufferChange.notify_all();
 			}
 		});
@@ -53,14 +56,14 @@ void AudioMixer::registerSink(std::string name, unsigned int bitrate, unsigned i
 		snk->format = format;
 		snk->bitrate = bitrate;
 		snk->channels = channels;
-		snk->thread = std::thread([this, &snk, &name] {
+		snk->thread = std::thread([this, &name] {
 			std::shared_ptr<AudioMixerSink> sink = audioSinks[name];
 			while(!isReady()) {
 			}
 
 			while(isRunning()) {
 				std::shared_ptr<AudioFrame> buf = sink->mix();
-				std::cout << "Send buf" << std::endl;
+				//std::cout << "Send buf" << std::endl;
 				outputs[name].send(buf);
 			}
 		});
@@ -77,8 +80,8 @@ void AudioMixer::linkSourceToSink(std::string sourceName, std::string sinkName) 
 		src->sinks[snk] = std::thread([this, &sourceName, &sinkName] {
 			std::shared_ptr<AudioMixerSource> source = audioSources[sourceName];
 			std::shared_ptr<AudioMixerSink> sink = audioSinks[sinkName];
-			sink->sourceData[source->shared_from_this()] = std::make_shared<AudioMixerSink::sourceData_t>();
-			auto data = sink->sourceData[source->shared_from_this()];
+			sink->sourceData[source] = std::make_shared<AudioMixerSink::sourceData_t>();
+			auto data = sink->sourceData[source];
 			data->framePresent = false;
 
 			while(!isReady()) {
@@ -89,17 +92,19 @@ void AudioMixer::linkSourceToSink(std::string sourceName, std::string sinkName) 
 				source->notifyBufferChange.wait(lck, [&source]{ return source->bufferReady; });
 				source->bufferReady = false;
 
-				std::cout << "Lock mutex link" << std::endl;
+				//std::cout << "Lock mutex link" << std::endl;
 
 				{
 					std::lock_guard dataLck(data->mtx);
-					std::cout << "Set link data" << std::endl;
-					data->frames.push_back(source->currentBuf);
-					data->framePresent = true;
+					//std::cout << "Set link data" << std::endl;
+					if(source->currentBuf != nullptr) {
+						data->frames.push_back(source->currentBuf);
+						data->framePresent = true;
+					}
 				}
 				data->frameCv.notify_all();
 
-				std::cout << "Unlock mutex link" << std::endl;
+				//std::cout << "Unlock mutex link" << std::endl;
 				lck.unlock();
 				source->notifyBufferChange.notify_all();
 			}
@@ -157,17 +162,17 @@ std::shared_ptr<AudioFrame> AudioMixer::AudioMixerSink::mix() {
 			data->frameCv.wait(lck, [&data]{ return data->framePresent; });
 
 			if(data->frames.front() == nullptr) {
-				std::cout << "Missing..." << std::endl;
+				//std::cout << "Missing..." << std::endl;
 				isMissing = true;
 			} else {
-				std::cout << "Not missing..." << std::endl;
+				//std::cout << "Not missing..." << std::endl;
 				isMissing = false;
 			}
 		}
 
 		std::lock_guard dataLck(data->mtx);
 
-		std::cout << "Size: " << data->frames.front()->getData().size() << std::endl;
+		//std::cout << "Size: " << data->frames.front()->getData().size() << std::endl;
 		if(data->frames.front()->getData().size() > largestSize) {
 			largestSize = data->frames.front()->getData().size();
 		}
@@ -193,7 +198,7 @@ std::shared_ptr<AudioFrame> AudioMixer::AudioMixerSink::mix() {
 		switch(format) {
 			case SF_FORMAT_PCM_S8:
 			case SF_FORMAT_PCM_16: {
-				std::cout << "16 mix" << std::endl;
+				//std::cout << "16 mix" << std::endl;
 				short *shortDataToMix = (short*)dataToMix;
 				short *shortMixedData = (short*)mixedData.data();
 				const long min = std::numeric_limits<short>::min();
@@ -209,7 +214,7 @@ std::shared_ptr<AudioFrame> AudioMixer::AudioMixerSink::mix() {
 				break;
 			case SF_FORMAT_PCM_24:
 			case SF_FORMAT_PCM_32: {
-				std::cout << "32 mix" << std::endl;
+				//std::cout << "32 mix" << std::endl;
 				int *intDataToMix = (int*)dataToMix;
 				int *intMixedData = (int*)mixedData.data();
 
@@ -226,7 +231,7 @@ std::shared_ptr<AudioFrame> AudioMixer::AudioMixerSink::mix() {
 				}
 				break;
 			case SF_FORMAT_FLOAT: {
-				std::cout << "float32 mix" << std::endl;
+				//std::cout << "float32 mix" << std::endl;
 				float *floatDataToMix = (float*)dataToMix;
 				float *floatMixedData = (float*)mixedData.data();
 
@@ -243,7 +248,7 @@ std::shared_ptr<AudioFrame> AudioMixer::AudioMixerSink::mix() {
 				}
 				break;
 			case SF_FORMAT_DOUBLE: {
-				std::cout << "float64 mix" << std::endl;
+				//std::cout << "float64 mix" << std::endl;
 				double *doubleDataToMix = (double*)dataToMix;
 				double *doubleMixedData = (double*)mixedData.data();
 
@@ -260,8 +265,7 @@ std::shared_ptr<AudioFrame> AudioMixer::AudioMixerSink::mix() {
 				}
 				break;
 			default:
-				std::cout << "PANICC: " << format << std::endl;
-				std::terminate();
+				throw std::runtime_error("Invalid format in mixer");
 				break;
 		}
 
