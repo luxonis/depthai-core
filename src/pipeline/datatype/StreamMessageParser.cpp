@@ -10,6 +10,7 @@
 
 // project
 #include "depthai/pipeline/datatype/ADatatype.hpp"
+#include "depthai/pipeline/datatype/AudioFrame.hpp"
 #include "depthai/pipeline/datatype/AprilTagConfig.hpp"
 #include "depthai/pipeline/datatype/AprilTags.hpp"
 #include "depthai/pipeline/datatype/BenchmarkReport.hpp"
@@ -219,6 +220,9 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
             break;
         case DatatypeEnum::TransformData:
             return parseDatatype<TransformData>(metadataStart, serializedObjectSize, data, fd);
+            break;
+        case DatatypeEnum::AudioFrame:
+            return parseDatatype<AudioFrame>(metadataStart, serializedObjectSize, data, fd);
             break;
     }
 
