@@ -11,7 +11,7 @@ namespace dai {
 namespace node {
 
 class AudioIn: public DeviceNodeCRTP<DeviceNode, AudioIn, AudioInProperties>, public HostRunnable {
-   private:
+   protected:
     bool runOnHostVar = false;
     snd_pcm_t *captureHandle;
    public:  // internal usage

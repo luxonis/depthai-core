@@ -9,7 +9,7 @@ namespace dai {
 namespace node {
 
 class AudioMixer: public DeviceNodeCRTP<DeviceNode, AudioMixer, AudioMixerProperties>, public HostRunnable {
-   private:
+   protected:
     bool runOnHostVar = false;
    public:  // internal usage
     constexpr static const char* NAME = "AudioMixer";
@@ -51,7 +51,7 @@ class AudioMixer: public DeviceNodeCRTP<DeviceNode, AudioMixer, AudioMixerProper
     bool needsBuild() override {
         return !isBuild;
     }
-   private:
+   protected:
     class AudioMixerSink;
     class AudioMixerSource;
 
