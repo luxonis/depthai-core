@@ -3,6 +3,8 @@
 // libraries
 #include <spimpl.h>
 
+#include <optional>
+
 // depthai
 #include "depthai/capabilities/ImgFrameCapability.hpp"
 #include "depthai/pipeline/DeviceNode.hpp"
@@ -19,7 +21,7 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
      * Get video output with specified size.
      */
     Node::Output* requestOutput(std::pair<uint32_t, uint32_t> size,
-                                ImgFrame::Type type = ImgFrame::Type::NV12,
+                                std::optional<ImgFrame::Type> type = std::nullopt,
                                 ImgResizeMode resizeMode = ImgResizeMode::CROP,
                                 float fps = 30);
     /**

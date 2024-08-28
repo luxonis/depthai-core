@@ -19,9 +19,9 @@ std::optional<OpenVINO::Version> NeuralNetwork::getRequiredOpenVINOVersion() {
     return networkOpenvinoVersion;
 }
 
-std::shared_ptr<NeuralNetwork> NeuralNetwork::build(Node::Output& output, const NNArchive& nnArchive) {
+std::shared_ptr<NeuralNetwork> NeuralNetwork::build(Node::Output& input, const NNArchive& nnArchive) {
     setNNArchive(nnArchive);
-    output.link(this->input);
+    input.link(this->input);
     return std::static_pointer_cast<NeuralNetwork>(shared_from_this());
 }
 
