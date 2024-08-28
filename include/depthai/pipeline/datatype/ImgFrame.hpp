@@ -196,6 +196,13 @@ class ImgFrame : public Buffer {
     ImgFrame& setWidth(unsigned int width);
 
     /**
+     * Specifies frame stride
+     *
+     * @param stride frame stride
+     */
+    ImgFrame& setStride(unsigned int stride);
+
+    /**
      * Specifies frame height
      *
      * @param height frame height
