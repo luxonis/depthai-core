@@ -566,10 +566,9 @@ class StereoDepthConfig : public Buffer {
         uint8_t invalidDisparityValue = 0;
 
         /**
-         * Disparities with confidence value under this threshold are accepted.
-         * Higher confidence threshold means disparities with less confidence are accepted too.
+         * Disparities with confidence value over this threshold are accepted.
          */
-        uint8_t confidenceThreshold = 245;
+        uint8_t confidenceThreshold = 15;
 
         /**
          * The linear equation applied for computing the cost is:
