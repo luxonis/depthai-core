@@ -1394,6 +1394,7 @@ with pipeline:
                 img.setInstanceNum(inStreamsCameraID[i])
                 img.setType(dai.ImgFrame.Type.RAW8)
                 img.setWidth(width)
+                img.setStride(width)
                 img.setHeight(height)
                 q.send(img)
                 # print("Sent frame: {:25s}".format(path), "timestamp_ms:", timestamp_ms)

@@ -133,6 +133,10 @@ ImgFrame& ImgFrame::setWidth(unsigned int width) {
     fb.width = width;
     return *this;
 }
+ImgFrame& ImgFrame::setStride(unsigned int stride) {
+    fb.stride = stride;
+    return *this;
+}
 ImgFrame& ImgFrame::setHeight(unsigned int height) {
     fb.height = height;
     return *this;
