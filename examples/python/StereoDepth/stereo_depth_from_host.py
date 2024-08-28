@@ -9,6 +9,8 @@ import argparse
 from pathlib import Path
 import math
 import os, re
+import csv
+import datetime
 
 datasetDefault = str((Path(__file__).parent / Path("../models/dataset")).resolve().absolute())
 parser = argparse.ArgumentParser()
@@ -1243,12 +1245,22 @@ def calculate_err_measures(gt_img, oak_img):
     bad4_p = 100. * bad4 / n
     total_bad4_p = 100. * (bad4 + invalid) / n
     invalid_p = 100. * invalid / n
-    avg_err = sum_err / (n - invalid)
-    mse = sum_sq_err / (n - invalid)
-    a50 = np.percentile(errs, 50)
-    a90 = np.percentile(errs, 90)
-    a95 = np.percentile(errs, 95)
-    a99 = np.percentile(errs, 99)
+    if n == invalid:
+        avg_err = 0.
+        mse = 0.
+    else:
+        avg_err = sum_err / (n - invalid)
+        mse = sum_sq_err / (n - invalid)
+    if len(errs) == 0:
+        a50 = 0.
+        a90 = 0.
+        a95 = 0.
+        a99 = 0.
+    else:
+        a50 = np.percentile(errs, 50)
+        a90 = np.percentile(errs, 90)
+        a95 = np.percentile(errs, 95)
+        a99 = np.percentile(errs, 99)
 
     return {
         "bad0.5": bad05_p,
@@ -1320,6 +1332,18 @@ def show_debug_disparity(gt_img, oak_img):
 if evaluation_mode:
     dataset = DatasetManager(args.evaluate)
 
+    # Get the current timestamp
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    # Create the filename with the timestamp
+    filename = f"stereo_middleburry_{"RVC2" if platform == dai.Platform.RVC2 else "RVC4"}_{timestamp}.csv"
+    # Write the dictionary to a CSV file (append mode)
+    file_exists = False
+
+    try:
+        with open(filename, 'r'):
+            file_exists = True
+    except FileNotFoundError:
+        pass
 
 print("Connecting and starting the pipeline")
 # Connect to device and start pipeline
@@ -1445,13 +1469,27 @@ with pipeline:
             show_debug_disparity(gt_disparity, disparity)
             err_vals = calculate_err_measures(gt_disparity, disparity)
             show_evaluation(dataset.get_name(), err_vals)
+            err_vals["name"] = dataset.get_name()
 
+        saveToCsvFile = False
         key = cv2.waitKey(1)
         if key == ord("q"):
             break
         elif evaluation_mode and key == ord("["):
             dataset.next()
+            saveToCsvFile = True
         elif evaluation_mode and key == ord("]"):
             dataset.prev()
+            saveToCsvFile = True
+
+        if saveToCsvFile:
+            with open(filename, 'a', newline='') as csvfile:
+                writer = csv.writer(csvfile)
+                # Write the header only if the file doesn't exist
+                if not file_exists:
+                    writer.writerow(err_vals.keys())
+                    file_exists = True
+                # Write the err_vals
+                writer.writerow(err_vals.values())
 
         StereoConfigHandler.handleKeypress(key, stereoDepthConfigInQueue)
