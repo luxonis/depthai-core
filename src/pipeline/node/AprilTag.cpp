@@ -84,6 +84,35 @@ apriltag_family_t* getAprilTagFamily(dai::AprilTagConfig::Family family) {
     return tf;
 }
 
+void destroyAprilTagFamily(apriltag_family_t* tf, dai::AprilTagConfig::Family family) {
+    if(tf == nullptr) {
+        return;
+    }
+
+    switch(family) {
+        case dai::AprilTagConfig::Family::TAG_36H11:
+            tag36h11_destroy(tf);
+            break;
+        case dai::AprilTagConfig::Family::TAG_36H10:
+            tag36h10_destroy(tf);
+            break;
+        case dai::AprilTagConfig::Family::TAG_25H9:
+            tag25h9_destroy(tf);
+            break;
+        case dai::AprilTagConfig::Family::TAG_16H5:
+            tag16h5_destroy(tf);
+            break;
+        case dai::AprilTagConfig::Family::TAG_CIR21H7:
+            tagCircle21h7_destroy(tf);
+            break;
+        case dai::AprilTagConfig::Family::TAG_STAND41H12:
+            tagStandard41h12_destroy(tf);
+            break;
+        default:
+            throw std::runtime_error("Unsupported AprilTag family");
+    }
+}
+
 void handleErrors(int e) {
     // Hamming distance error
     if(e == ENOMEM) {
@@ -96,12 +125,16 @@ void handleErrors(int e) {
     }
 }
 
-void setDetectorConfig(apriltag_detector_t* td, const dai::AprilTagConfig& config) {
+void setDetectorConfig(apriltag_detector_t* td, apriltag_family_t* tf, AprilTagConfig::Family& family, const dai::AprilTagConfig& config) {
     // Remove old detector family
     apriltag_detector_clear_families(td);
 
+    // Destroy old detector family
+    destroyAprilTagFamily(tf, family);
+
     // Set new detector family
     apriltag_detector_add_family(td, getAprilTagFamily(config.family));
+    family = config.family;
 
     // Set detector config
     td->quad_decimate = config.quadDecimate;
@@ -145,13 +178,15 @@ void AprilTag::run() {
     #endif
 
     // Setup april tag detector
+    apriltag_family_t* tf = nullptr;
+    AprilTagConfig::Family tfamily = config.family;
     std::unique_ptr<apriltag_detector_t, void (*)(apriltag_detector_t*)> td(apriltag_detector_create(), apriltag_detector_destroy);
 
     // Set detector properties
     setDetectorProperties(td.get(), properties);
 
     // Set detector config
-    setDetectorConfig(td.get(), config);
+    setDetectorConfig(td.get(), tf, tfamily, config);
 
     // Handle possible errors during configuration
     handleErrors(errno);
@@ -166,7 +201,7 @@ void AprilTag::run() {
 
         // Set config if there is one and handle possible errors
         if(inConfig != nullptr) {
-            setDetectorConfig(td.get(), *inConfig);
+            setDetectorConfig(td.get(), tf, tfamily, *inConfig);
             handleErrors(errno);
         }
 
@@ -257,6 +292,9 @@ void AprilTag::run() {
         // Logging
         logger->trace("Detected {} april tags", zarray_size(detections.get()));
     }
+
+    // Destroy AprilTag family
+    destroyAprilTagFamily(tf, tfamily);
 }
 #endif
 

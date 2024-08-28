@@ -41,7 +41,7 @@ class AprilTagConfig : public Buffer {
      * decrease in detection rate. Decoding the binary payload is
      * still done at full resolution.
      */
-    std::int32_t quadDecimate = 4;
+    std::int32_t quadDecimate = 2;
 
     /**
      * What Gaussian blur should be applied to the segmented image.
