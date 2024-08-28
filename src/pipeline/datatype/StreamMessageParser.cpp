@@ -89,7 +89,7 @@ static std::tuple<DatatypeEnum, size_t, size_t> parseHeader(streamPacketDesc_t* 
         //logger::warn("StreamMessageParser end-of-packet marker mismatch, got: " + hex);
     }
 
-    const auto info = fmt::format(", total size {}, type {}, metadata size {}", packet->length, objectType, serializedObjectSize);
+    const auto info = fmt::format(", total size {}, type {}, metadata size {}", packet->length, (int32_t)objectType, serializedObjectSize);
 
     if(serializedObjectSize < 0) {
         throw std::runtime_error("Bad packet, couldn't parse (metadata size negative)" + info);
