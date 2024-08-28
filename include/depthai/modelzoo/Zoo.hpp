@@ -16,7 +16,8 @@ constexpr const char* MODEL_ZOO_DEFAULT_CACHE_DIRECTORY = ".depthai_cached_model
  */
 std::string getModelFromZoo(const NNModelDescription& modelDescription,
                             bool useCached = true,
-                            const std::string& cacheDirectory = MODEL_ZOO_DEFAULT_CACHE_DIRECTORY);
+                            const std::string& cacheDirectory = MODEL_ZOO_DEFAULT_CACHE_DIRECTORY,
+                            const std::string& apiKey = "");
 
 /**
  * @brief Helper function allowing one to download all models specified in yaml files in the given path and store them in the cache directory
@@ -25,6 +26,6 @@ std::string getModelFromZoo(const NNModelDescription& modelDescription,
  * @param cacheDirectory: Cache directory where the cached models are stored, default is MODEL_ZOO_DEFAULT_CACHE_DIRECTORY
  * @param verbose: Print verbose output, default is false
  */
-void downloadModelsFromZoo(const std::string& path, const std::string& cacheDirectory = MODEL_ZOO_DEFAULT_CACHE_DIRECTORY);
+void downloadModelsFromZoo(const std::string& path, const std::string& cacheDirectory = MODEL_ZOO_DEFAULT_CACHE_DIRECTORY, const std::string& apiKey = "");
 
 }  // namespace dai

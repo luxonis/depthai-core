@@ -35,7 +35,7 @@ class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNet
      * @param nnArchive: Neural network archive
      * @returns Shared pointer to NeuralNetwork node
      */
-    std::shared_ptr<NeuralNetwork> build(Node::Output& output, const NNArchive& nnArchive);
+    std::shared_ptr<NeuralNetwork> build(Node::Output& input, const NNArchive& nnArchive);
 
     /**
      * Input message with data to be inferred upon
