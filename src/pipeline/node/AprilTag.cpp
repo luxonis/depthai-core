@@ -1,20 +1,26 @@
 #include "depthai/pipeline/node/AprilTag.hpp"
-#include "depthai/pipeline/datatype/AprilTags.hpp"
 
-#include <thread>
-#include "spdlog/fmt/fmt.h"
+#include <stdexcept>
+
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    #include <opencv2/imgproc.hpp>
+#endif
+
+#include <math.h>
+
+#include "depthai/pipeline/datatype/AprilTags.hpp"
+#include "pipeline/datatype/AprilTagConfig.hpp"
+#include "pipeline/datatype/ImgFrame.hpp"
+#include "properties/AprilTagProperties.hpp"
 
 extern "C" {
 #include "apriltag.h"
-#include "common/getopt.h"
 #include "tag16h5.h"
 #include "tag25h9.h"
+#include "tag36h10.h"
 #include "tag36h11.h"
 #include "tagCircle21h7.h"
-#include "tagCircle49h12.h"
-#include "tagCustom48h12.h"
 #include "tagStandard41h12.h"
-#include "tagStandard52h13.h"
 }
 
 namespace dai {
@@ -51,47 +57,153 @@ void AprilTag::buildInternal() {
     logger->info("AprilTag node running on host: {}", runOnHostVar);
 }
 
-void AprilTag::run() {
-    std::shared_ptr<ImgFrame> inFrame = nullptr;
+apriltag_family_t* getAprilTagFamily(dai::AprilTagConfig::Family family) {
+    apriltag_family_t* tf = nullptr;
+    switch(family) {
+        case dai::AprilTagConfig::Family::TAG_36H11:
+            tf = tag36h11_create();
+            break;
+        case dai::AprilTagConfig::Family::TAG_36H10:
+            tf = tag36h10_create();
+            break;
+        case dai::AprilTagConfig::Family::TAG_25H9:
+            tf = tag25h9_create();
+            break;
+        case dai::AprilTagConfig::Family::TAG_16H5:
+            tf = tag16h5_create();
+            break;
+        case dai::AprilTagConfig::Family::TAG_CIR21H7:
+            tf = tagCircle21h7_create();
+            break;
+        case dai::AprilTagConfig::Family::TAG_STAND41H12:
+            tf = tagStandard41h12_create();
+            break;
+        default:
+            throw std::runtime_error("Unsupported AprilTag family");
+    }
+    return tf;
+}
 
-    // Initialize tag detector with options
-    apriltag_family_t* tf = tag36h11_create();
-    apriltag_detector_t* td = apriltag_detector_create();
+void handleErrors(int e) {
+    // Hamming distance error
+    if(e == ENOMEM) {
+        throw std::runtime_error("AprilTag node: Unable to add family to detector due to insufficient memory to allocate the tag-family decoder.");
+    }
 
-    apriltag_detector_add_family(td, tf);
+    // Memory allocation error
+    if(e == EINVAL) {
+        throw std::runtime_error("AprilTag node: memory error");
+    }
+}
 
-    // if(errno == ENOMEM) {
-    //         printf(
-    //             "Unable to add family to detector due to insufficient memory to allocate the tag-family decoder with the default maximum hamming value of 2.
-    //             Try
-    //    " "choosing an alternative tag family.\n"); exit(-1);
-    // }
+void setDetectorConfig(apriltag_detector_t* td, const dai::AprilTagConfig& config) {
+    // Remove old detector family
+    apriltag_detector_clear_families(td);
 
-    td->quad_decimate = 2.0f;
-    td->quad_sigma = 0.0f;
-    td->nthreads = 2;
+    // Set new detector family
+    apriltag_detector_add_family(td, getAprilTagFamily(config.family));
+
+    // Set detector config
+    td->quad_decimate = config.quadDecimate;
+    td->quad_sigma = config.quadSigma;
+    td->refine_edges = config.refineEdges;
+    td->decode_sharpening = config.decodeSharpening;
+
+    // Set detector thresholds
+    td->qtp.min_cluster_pixels = config.quadThresholds.minClusterPixels;
+    td->qtp.critical_rad = config.quadThresholds.criticalDegree * (M_PI / 180.0);  // Convert degrees to radians
+    td->qtp.cos_critical_rad = cos(td->qtp.critical_rad);
+    td->qtp.max_line_fit_mse = config.quadThresholds.maxLineFitMse;
+    td->qtp.deglitch = config.quadThresholds.deglitch;
+
+    // We don't want to debug
     td->debug = 0;
-    td->refine_edges = 1;
+}
 
+void setDetectorProperties(apriltag_detector_t* td, const dai::AprilTagProperties& properties) {
+    td->nthreads = properties.numThreads;
+}
 
-    // TODOs:
-    // - Handle everything that is settable in properties (family, etc)
-    // - In the case of a dynamic config setting different family, etc - handle it
-    // - Handle different input types (right now GRAY and NV12 work, but not the rest - not everything needs to be handled, but types that don't work should
-    // error out)
-    // - Better error handling
-    // - Expose number of CPU threads as a property
+#ifdef _WIN32
+
+void AprilTage::run() {
+    throw std::runtime_error("AprilTag node is not supported on Windows");
+}
+
+#else
+
+void AprilTag::run() {
+    // Retrieve properties and initial config
+    const dai::AprilTagProperties& properties = getProperties();
+    dai::AprilTagConfig config = properties.initialConfig;
+
+    // Prepare other variables
+    std::shared_ptr<ImgFrame> inFrame = nullptr;
+    std::shared_ptr<AprilTagConfig> inConfig = nullptr;
+    #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    std::unique_ptr<cv::Mat> cvimgPtr = nullptr;
+    #endif
+
+    // Setup april tag detector
+    std::unique_ptr<apriltag_detector_t, void (*)(apriltag_detector_t*)> td(apriltag_detector_create(), apriltag_detector_destroy);
+
+    // Set detector properties
+    setDetectorProperties(td.get(), properties);
+
+    // Set detector config
+    setDetectorConfig(td.get(), config);
+
+    // Handle possible errors during configuration
+    handleErrors(errno);
+
     while(isRunning()) {
-        inFrame = inputImage.get<ImgFrame>();
-        // TODO: This only works for types that have a grayscale image at the beginning
-        uint8_t* src = inFrame->data->getData().data() + inFrame->fb.p1Offset;
-        auto width = static_cast<int32_t>(inFrame->getWidth());
-        auto height = static_cast<int32_t>(inFrame->getHeight());
-        auto stride = static_cast<int32_t>(inFrame->getStride());
-        image_u8_t aprilImg = {.width = width, .height = height, .stride = stride, .buf = src};
+        // Retrieve config from user if available
+        if(properties.inputConfigSync) {
+            inConfig = inputConfig.get<AprilTagConfig>();
+        } else {
+            inConfig = inputConfig.tryGet<AprilTagConfig>();
+        }
 
+        // Set config if there is one and handle possible errors
+        if(inConfig != nullptr) {
+            setDetectorConfig(td.get(), *inConfig);
+            handleErrors(errno);
+        }
+
+        // Get latest frame
+        inFrame = inputImage.get<ImgFrame>();
+
+        // Preallocate data on stack for AprilTag detection
+        int32_t width, height, stride;
+        uint8_t* imgbuf;
+
+        // Prepare data for AprilTag detection based on input frame type
+        ImgFrame::Type frameType = inFrame->getType();
+
+        if(frameType == ImgFrame::Type::GRAY8 || frameType == ImgFrame::Type::NV12) {
+            width = static_cast<int32_t>(inFrame->getWidth());
+            height = static_cast<int32_t>(inFrame->getHeight());
+            stride = static_cast<int32_t>(inFrame->getStride());
+            imgbuf = inFrame->data->getData().data() + inFrame->fb.p1Offset;
+        } else {
+    #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+            cvimgPtr = std::make_unique<cv::Mat>();
+            cv::cvtColor(inFrame->getCvFrame(), *cvimgPtr, cv::COLOR_BGR2GRAY);
+            width = cvimgPtr->cols;
+            height = cvimgPtr->rows;
+            stride = cvimgPtr->cols;
+            imgbuf = cvimgPtr->data;
+    #else
+            throw std::runtime_error("AprilTag node: Unsupported frame type " << static_cast<int>(frameType));
+    #endif
+        }
+
+        // Create AprilTag image
+        image_u8_t aprilImg{width, height, stride, imgbuf};
+
+        // Detect AprilTags
         auto now = std::chrono::system_clock::now();
-        zarray_t* detections = apriltag_detector_detect(td, &aprilImg);
+        std::unique_ptr<zarray_t, void (*)(zarray_t*)> detections(apriltag_detector_detect(td.get(), &aprilImg), apriltag_detections_destroy);
         auto end = std::chrono::system_clock::now();
         std::chrono::duration<double> elapsedSeconds = end - now;
         logger->trace("April detections took {} ms", elapsedSeconds.count() / 1000.0);
@@ -99,11 +211,11 @@ void AprilTag::run() {
         std::shared_ptr<dai::AprilTags> aprilTags = std::make_shared<dai::AprilTags>();
 
         if(detections != nullptr) {
-            int numDetections = zarray_size(detections);
+            int numDetections = zarray_size(detections.get());
             aprilTags->aprilTags.reserve(numDetections);
             for(int i = 0; i < numDetections; i++) {
                 apriltag_detection_t* det = nullptr;
-                zarray_get(detections, i, &det);
+                zarray_get(detections.get(), i, &det);
                 if(det == nullptr) {
                     continue;
                 }
@@ -138,11 +250,15 @@ void AprilTag::run() {
             }
         }
 
-        logger->trace("Detected {} april tags", zarray_size(detections));
+        // Send detections and pass through input frame
         out.send(aprilTags);
         passthroughInputImage.send(inFrame);
+
+        // Logging
+        logger->trace("Detected {} april tags", zarray_size(detections.get()));
     }
 }
+#endif
 
 }  // namespace node
 }  // namespace dai
