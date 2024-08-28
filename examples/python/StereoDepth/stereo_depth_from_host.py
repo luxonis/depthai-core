@@ -1079,9 +1079,8 @@ stereo.initialConfig.setSubpixelFractionalBits(4)
 
 stereo.initialConfig.costMatching.disparityWidth = dai.StereoDepthConfig.CostMatching.DisparityWidth.DISPARITY_64
 
-#TODO: RVC2 and 4 mismatch
 stereo.initialConfig.setConfidenceThreshold(127)
-stereo.initialConfig.setLeftRightCheckThreshold(4*16)
+stereo.initialConfig.setLeftRightCheckThreshold(4)
 
 # Switching depthAlign mode at runtime is not supported while aligning to a specific camera is enabled
 stereo.setDepthAlign(dai.StereoDepthConfig.AlgorithmControl.DepthAlign.RECTIFIED_LEFT)
