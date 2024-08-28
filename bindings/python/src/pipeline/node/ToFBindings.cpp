@@ -45,7 +45,7 @@ void bind_tof(pybind11::module& m, void* pCallstack){
         .def_readonly("phase", &ToF::phase, DOC(dai, node, ToF, phase), DOC(dai, node, ToF, phase))
         .def_readonly("initialConfig", &ToF::initialConfig, DOC(dai, node, ToF, initialConfig), DOC(dai, node, ToF, initialConfig))
 
-        .def("build", &ToF::build, "boardSocket"_a = CameraBoardSocket::AUTO, DOC(dai, node, ToF, build))
+        .def("build", &ToF::build, "boardSocket"_a = CameraBoardSocket::AUTO, "fps"_a = float(30), DOC(dai, node, ToF, build))
         .def("getBoardSocket", &ToF::getBoardSocket, DOC(dai, node, ToF, getBoardSocket))
         // .def("setNumShaves", &ToF::setNumShaves, DOC(dai, node, ToF, setNumShaves))
         // .def("setNumFramesPool", &ToF::setNumFramesPool, DOC(dai, node, ToF, setNumFramesPool))

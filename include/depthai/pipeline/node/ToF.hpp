@@ -52,7 +52,7 @@ class ToF : public DeviceNodeCRTP<DeviceNode, ToF, ToFProperties> {
     /**
      * Build with a specific board socket
      */
-    std::shared_ptr<ToF> build(dai::CameraBoardSocket boardSocket = dai::CameraBoardSocket::AUTO);
+    std::shared_ptr<ToF> build(dai::CameraBoardSocket boardSocket = dai::CameraBoardSocket::AUTO, float fps = 30);
 
     /**
      * Retrieves which board socket to use
@@ -60,16 +60,6 @@ class ToF : public DeviceNodeCRTP<DeviceNode, ToF, ToFProperties> {
      */
     CameraBoardSocket getBoardSocket() const;
 
-    // /**
-    //  * Specify number of shaves reserved for ToF decoding.
-    //  */
-    // ToF& setNumShaves(int numShaves);
-
-    // /**
-    //  * Specify number of frames in output pool
-    //  * @param numFramesPool Number of frames in output pool
-    //  */
-    // ToF& setNumFramesPool(int numFramesPool);
    private:
     bool isBuilt = false;
     uint32_t maxWidth = 0;

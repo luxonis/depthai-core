@@ -12,7 +12,7 @@ ToF::Properties& ToF::getProperties() {
     return properties;
 }
 
-std::shared_ptr<ToF> ToF::build(CameraBoardSocket boardSocket) {
+std::shared_ptr<ToF> ToF::build(CameraBoardSocket boardSocket, float fps) {
     if(isBuilt) {
         throw std::runtime_error("ToF node is already built");
     }
@@ -58,6 +58,7 @@ std::shared_ptr<ToF> ToF::build(CameraBoardSocket boardSocket) {
     }
 
     properties.boardSocket = boardSocket;
+    properties.fps = fps;
     isBuilt = true;
     return std::static_pointer_cast<ToF>(shared_from_this());
 }
