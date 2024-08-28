@@ -32,7 +32,8 @@ enum class DatatypeEnum : std::int32_t {
     MessageGroup,
     TransformData,
     PointCloudConfig,
-    PointCloudData
+    PointCloudData,
+    AudioFrame
 };
 bool isDatatypeSubclassOf(DatatypeEnum parent, DatatypeEnum children);
 

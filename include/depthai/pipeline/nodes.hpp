@@ -2,6 +2,11 @@
 
 // all the nodes
 #include "node/AprilTag.hpp"
+#include "node/AudioIn.hpp"
+#include "node/AudioOut.hpp"
+#include "node/AudioReplay.hpp"
+#include "node/AudioEncoder.hpp"
+#include "node/AudioMixer.hpp"
 #include "node/BenchmarkIn.hpp"
 #include "node/BenchmarkOut.hpp"
 #include "node/Camera.hpp"

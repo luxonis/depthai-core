@@ -280,6 +280,11 @@ set(TARGET_CORE_SOURCES
     src/pipeline/InputQueue.cpp
     src/pipeline/ThreadedNode.cpp
     src/pipeline/DeviceNode.cpp
+    src/pipeline/node/AudioIn.cpp
+    src/pipeline/node/AudioOut.cpp
+    src/pipeline/node/AudioEncoder.cpp
+    src/pipeline/node/AudioMixer.cpp
+    src/pipeline/node/AudioReplay.cpp
     src/pipeline/node/XLinkIn.cpp
     src/pipeline/node/XLinkOut.cpp
     src/pipeline/node/ColorCamera.cpp
@@ -317,6 +322,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/node/host/HostNode.cpp
     src/pipeline/datatype/DatatypeEnum.cpp
     src/pipeline/node/PointCloud.cpp
+    src/pipeline/datatype/AudioFrame.cpp
     src/pipeline/datatype/Buffer.cpp
     src/pipeline/datatype/ImgFrame.cpp
     src/pipeline/datatype/ImgTransformations.cpp
@@ -347,6 +353,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/MessageGroup.cpp
     src/pipeline/datatype/TransformData.cpp
     src/utility/H26xParsers.cpp
+    src/utility/AudioHelpers.cpp
     src/utility/ImageManipV2Impl.cpp
     src/utility/Initialization.cpp
     src/utility/Resources.cpp
@@ -647,6 +654,9 @@ target_link_libraries(${TARGET_CORE_NAME}
     INTERFACE
         XLinkPublic
     PRIVATE
+        sndfile
+	samplerate
+	asound
         XLink
         Threads::Threads
         BZip2::bz2
