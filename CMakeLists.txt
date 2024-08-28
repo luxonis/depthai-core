@@ -388,18 +388,6 @@ set(TARGET_OPENCV_SOURCES
 
 set(TARGET_PCL_SOURCES src/pcl/PointCloudData.cpp)
 
-
-# Path to the generated files
-set(PROTO_GEN_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include/depthai/schemas)
-
-# Alternatively, if your generated files are in subdirectories:
-file(GLOB_RECURSE PROTO_SRCS ${PROTO_GEN_DIR}/*.cc)
-file(GLOB_RECURSE PROTO_HDRS ${PROTO_GEN_DIR}/*.h)
-# Extend depthai-core sources variable
-list(APPEND TARGET_CORE_SOURCES
-    ${PROTO_SRCS}
-)
-
 if(DEPTHAI_HAVE_OPENCV_SUPPORT AND DEPTHAI_MERGED_TARGET)
     list(APPEND TARGET_CORE_SOURCES
         ${TARGET_OPENCV_SOURCES}
@@ -627,7 +615,6 @@ target_include_directories(${TARGET_CORE_NAME}
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>"
         "$<BUILD_INTERFACE:${DEPTHAI_SHARED_PUBLIC_INCLUDE}>"
         "$<BUILD_INTERFACE:${DEPTHAI_BOOTLOADER_SHARED_PUBLIC_INCLUDE}>"
-        "$<BUILD_INTERFACE:${PROTO_GEN_DIR}>"
     #INTERFACE
     #    # ...
     PRIVATE
@@ -657,6 +644,7 @@ target_link_libraries(${TARGET_CORE_NAME}
         libnop
         spdlog::spdlog
         yaml-cpp
+        # TODO(Morato) - potentiially move this to private
         foxglove-websocket::foxglove-websocket
         protobuf::libprotobuf
     INTERFACE
@@ -681,7 +669,6 @@ if(DEPTHAI_ENABLE_CURL)
     )
     target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_ENABLE_CURL)
 endif()
-
 
 # Add compile & CMake definitions
 set(DEPTHAI_DEVICE_VERSION "${DEPTHAI_DEVICE_SIDE_COMMIT}")
@@ -1047,81 +1034,81 @@ configure_file("${CMAKE_CURRENT_LIST_DIR}/cmake/version.hpp.in" "${CMAKE_CURRENT
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 
-# # Add additional targets to export group
-# if(NOT BUILD_SHARED_LIBS)
-#     list(APPEND targets_to_export ${DEPTHAI_RESOURCE_LIBRARY_NAME} cmrc-base)
-# endif()
+# Add additional targets to export group
+if(NOT BUILD_SHARED_LIBS)
+    list(APPEND targets_to_export ${DEPTHAI_RESOURCE_LIBRARY_NAME} cmrc-base)
+endif()
 
-# # Export targets (capability to import current build directory)
-# export(TARGETS ${targets_to_export} NAMESPACE ${PROJECT_NAME}:: FILE "${PROJECT_NAME}Targets.cmake")
+# Export targets (capability to import current build directory)
+export(TARGETS ${targets_to_export} NAMESPACE ${PROJECT_NAME}:: FILE "${PROJECT_NAME}Targets.cmake")
 
-# # Dependencies file
-# configure_file("cmake/${PROJECT_NAME}Dependencies.cmake" ${PROJECT_NAME}Dependencies.cmake COPYONLY)
+# Dependencies file
+configure_file("cmake/${PROJECT_NAME}Dependencies.cmake" ${PROJECT_NAME}Dependencies.cmake COPYONLY)
 
-# # Write project version
-# write_basic_package_version_file(${PROJECT_NAME}ConfigVersion.cmake VERSION ${PROJECT_VERSION} COMPATIBILITY AnyNewerVersion)
+# Write project version
+write_basic_package_version_file(${PROJECT_NAME}ConfigVersion.cmake VERSION ${PROJECT_VERSION} COMPATIBILITY AnyNewerVersion)
 
-# # Configure config file (one for exporting build directory, one for installation)
-# file(RELATIVE_PATH DEPTHAI_DEPENDENCIES_INSTALLATION_PATH_REL "${CMAKE_CURRENT_BINARY_DIR}" "${HUNTER_INSTALL_PREFIX}")
-# configure_file(cmake/${PROJECT_NAME}Config.cmake.in ${PROJECT_NAME}Config.cmake @ONLY)
+# Configure config file (one for exporting build directory, one for installation)
+file(RELATIVE_PATH DEPTHAI_DEPENDENCIES_INSTALLATION_PATH_REL "${CMAKE_CURRENT_BINARY_DIR}" "${HUNTER_INSTALL_PREFIX}")
+configure_file(cmake/${PROJECT_NAME}Config.cmake.in ${PROJECT_NAME}Config.cmake @ONLY)
 
-# # Config for installation
-# set(DEPTHAI_DEPENDENCIES_INSTALLATION_PATH_REL "./dependencies")
-# configure_file(cmake/${PROJECT_NAME}Config.cmake.in _install/${PROJECT_NAME}Config.cmake @ONLY)
+# Config for installation
+set(DEPTHAI_DEPENDENCIES_INSTALLATION_PATH_REL "./dependencies")
+configure_file(cmake/${PROJECT_NAME}Config.cmake.in _install/${PROJECT_NAME}Config.cmake @ONLY)
 
-# # Modify RPath to point to the cmake/depthai/dependencies/lib
-# # note: macOS is APPLE and also UNIX!
-# if(APPLE)
-#   set_target_properties(${TARGET_CORE_NAME} PROPERTIES INSTALL_RPATH "@loader_path;@loader_path/cmake/${PROJECT_NAME}/dependencies/lib")
-# elseif(UNIX)
-#   set_target_properties(${TARGET_CORE_NAME} PROPERTIES INSTALL_RPATH "$ORIGIN:$ORIGIN/cmake/${PROJECT_NAME}/dependencies/lib")
-# endif()
+# Modify RPath to point to the cmake/depthai/dependencies/lib
+# note: macOS is APPLE and also UNIX!
+if(APPLE)
+  set_target_properties(${TARGET_CORE_NAME} PROPERTIES INSTALL_RPATH "@loader_path;@loader_path/cmake/${PROJECT_NAME}/dependencies/lib")
+elseif(UNIX)
+  set_target_properties(${TARGET_CORE_NAME} PROPERTIES INSTALL_RPATH "$ORIGIN:$ORIGIN/cmake/${PROJECT_NAME}/dependencies/lib")
+endif()
 
-# # Export to CMake registry if specified
-# if(CMAKE_EXPORT_PACKAGE_REGISTRY)
-#     export(PACKAGE depthai)
-# endif()
+# Export to CMake registry if specified
+if(CMAKE_EXPORT_PACKAGE_REGISTRY)
+    export(PACKAGE depthai)
+endif()
 
-# if(DEPTHAI_INSTALL)
+if(DEPTHAI_INSTALL)
 
-#     # Install targets
-#     install(
-#         TARGETS ${targets_to_export}
-#         EXPORT ${PROJECT_EXPORT_GROUP}
-#         RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
-#         LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
-#         ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
-#     )
+    # Install targets
+    install(
+        TARGETS ${targets_to_export}
+        EXPORT ${PROJECT_EXPORT_GROUP}
+        RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
+        LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+        ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+    )
 
-#     # Install depthai public headers
-#     install(DIRECTORY include/ DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
-#     # Install depthai-bootloader-shared public headers
-#     install(DIRECTORY "${DEPTHAI_BOOTLOADER_SHARED_PUBLIC_INCLUDE}/" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
-#     # Install Hunter dependencies
-#     install(DIRECTORY "${HUNTER_INSTALL_PREFIX}/" DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}/dependencies")
-#     # Install depthai-core dependencies
-#     install(DIRECTORY "${CMAKE_CURRENT_LIST_DIR}/3rdparty" DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake")
-#     # Install resources if not RC'd
-#     if(NOT DEPTHAI_BINARIES_RESOURCE_COMPILE)
-#         install(DIRECTORY "${DEPTHAI_RESOURCES_OUTPUT_DIR}/" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/${PROJECT_NAME}")
-#     endif()
-#     # Install any required dll files
-#     if(DEFINED required_dll_files)
-#         install(FILES ${required_dll_files} DESTINATION "${CMAKE_INSTALL_BINDIR}")
-#     endif()
+    # Install depthai public headers
+    install(DIRECTORY include/ DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
+    # Install depthai-bootloader-shared public headers
+    install(DIRECTORY "${DEPTHAI_BOOTLOADER_SHARED_PUBLIC_INCLUDE}/" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
+    # Install Hunter dependencies
+    install(DIRECTORY "${HUNTER_INSTALL_PREFIX}/" DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}/dependencies")
+    # Install depthai-core dependencies
+    install(DIRECTORY "${CMAKE_CURRENT_LIST_DIR}/3rdparty" DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake")
+    # Install resources if not RC'd
+    if(NOT DEPTHAI_BINARIES_RESOURCE_COMPILE)
+        install(DIRECTORY "${DEPTHAI_RESOURCES_OUTPUT_DIR}/" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/${PROJECT_NAME}")
+    endif()
+    # Install any required dll files
+    if(DEFINED required_dll_files)
+        install(FILES ${required_dll_files} DESTINATION "${CMAKE_INSTALL_BINDIR}")
+    endif()
 
-#     # Install export group (information about targets)
-#     install(EXPORT ${PROJECT_EXPORT_GROUP}
-#         NAMESPACE ${PROJECT_NAME}::
-#         DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}"
-#     )
+    # Install export group (information about targets)
+    install(EXPORT ${PROJECT_EXPORT_GROUP}
+        NAMESPACE ${PROJECT_NAME}::
+        DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}"
+    )
 
-#     # Install CMake specific files
-#     install(FILES
-#         "${CMAKE_CURRENT_BINARY_DIR}/_install/${PROJECT_NAME}Config.cmake"
-#         "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
-#         "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Dependencies.cmake"
-#         DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}"
-#     )
+    # Install CMake specific files
+    install(FILES
+        "${CMAKE_CURRENT_BINARY_DIR}/_install/${PROJECT_NAME}Config.cmake"
+        "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
+        "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Dependencies.cmake"
+        DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}"
+    )
 
-# endif()
+endif()
