@@ -637,6 +637,9 @@ if(DEPTHAI_CLANG_FORMAT)
     target_clangformat_setup(${TARGET_CORE_NAME} "${header_dirs}")
 endif()
 
+# Load protobuf support into library messages_proto
+add_subdirectory(include/depthai/utility/protos)
+list(APPEND targets_to_export messages)
 # link libraries
 target_link_libraries(${TARGET_CORE_NAME}
     PUBLIC
@@ -647,6 +650,7 @@ target_link_libraries(${TARGET_CORE_NAME}
         # TODO(Morato) - potentiially move this to private
         foxglove-websocket::foxglove-websocket
         protobuf::libprotobuf
+        messages
     INTERFACE
         XLinkPublic
     PRIVATE
