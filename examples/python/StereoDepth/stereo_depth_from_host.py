@@ -955,7 +955,7 @@ class StereoConfigHandlerRVC4:
         cv2.namedWindow(stream, cv2.WINDOW_NORMAL)
 
         StereoConfigHandlerRVC4.trConfidence.append(StereoConfigHandlerRVC4.Trackbar("Disparity confidence", stream, 0, 255, StereoConfigHandlerRVC4.config.costMatching.confidenceThreshold, StereoConfigHandlerRVC4.trackbarConfidence))
-        StereoConfigHandlerRVC4.trLrCheck.append(StereoConfigHandlerRVC4.Trackbar("LR-check threshold", stream, 0, 16*10, StereoConfigHandlerRVC4.config.algorithmControl.leftRightCheckThreshold, StereoConfigHandlerRVC4.trackbarLrCheckThreshold))
+        StereoConfigHandlerRVC4.trLrCheck.append(StereoConfigHandlerRVC4.Trackbar("LR-check threshold", stream, 0, 16, StereoConfigHandlerRVC4.config.algorithmControl.leftRightCheckThreshold, StereoConfigHandlerRVC4.trackbarLrCheckThreshold))
         StereoConfigHandlerRVC4.trDisparityShift.append(StereoConfigHandlerRVC4.Trackbar("Disparity shift", stream, 0, 100, StereoConfigHandlerRVC4.config.algorithmControl.disparityShift, StereoConfigHandlerRVC4.trackbarDisparityShift))
         StereoConfigHandlerRVC4.trCenterAlignmentShift.append(StereoConfigHandlerRVC4.Trackbar("Center alignment shift factor", stream, 0, 100, StereoConfigHandlerRVC4.config.algorithmControl.centerAlignmentShiftFactor, StereoConfigHandlerRVC4.trackbarCenterAlignmentShift))
         StereoConfigHandlerRVC4.trInvalidateEdgePixels.append(StereoConfigHandlerRVC4.Trackbar("Invalidate edge pixels", stream, 0, 100, StereoConfigHandlerRVC4.config.algorithmControl.numInvalidateEdgePixels, StereoConfigHandlerRVC4.trackbarInvalidateEdgePixels))

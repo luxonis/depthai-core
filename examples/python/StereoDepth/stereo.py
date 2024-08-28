@@ -18,8 +18,6 @@ monoRightOut.link(stereo.right)
 stereo.setRectification(True)
 stereo.setExtendedDisparity(True)
 stereo.setLeftRightCheck(True)
-stereo.initialConfig.setConfidenceThreshold(220)
-stereo.initialConfig.setLeftRightCheckThreshold(2*16)
 
 syncedLeftQueue = stereo.syncedLeft.createOutputQueue()
 syncedRightQueue = stereo.syncedRight.createOutputQueue()
