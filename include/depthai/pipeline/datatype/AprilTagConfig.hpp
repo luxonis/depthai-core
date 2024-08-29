@@ -41,7 +41,7 @@ class AprilTagConfig : public Buffer {
      * decrease in detection rate. Decoding the binary payload is
      * still done at full resolution.
      */
-    std::int32_t quadDecimate = 2;
+    std::int32_t quadDecimate = 4;
 
     /**
      * What Gaussian blur should be applied to the segmented image.
@@ -65,7 +65,7 @@ class AprilTagConfig : public Buffer {
      * lighting conditions or low light conditions.
      * The default value is 0.25.
      */
-    float decodeSharpening = 0.25;
+    float decodeSharpening = 0.25f;
 
     /**
      * Max number of error bits that should be corrected. Accepting large numbers of
@@ -94,7 +94,7 @@ class AprilTagConfig : public Buffer {
          * straight or close to 180 degrees. Zero means that no quads are
          * rejected. (In degrees).
          */
-        float criticalDegree = 10.0;
+        float criticalDegree = 10.f;
 
         /**
          * When fitting lines to the contours, what is the maximum mean
@@ -102,7 +102,7 @@ class AprilTagConfig : public Buffer {
          * that are far from being quad shaped; rejecting these quads "early"
          * saves expensive decoding processing.
          */
-        float maxLineFitMse = 10.0;
+        float maxLineFitMse = 10.f;
 
         /**
          * When we build our model of black & white pixels, we add an
