@@ -6,6 +6,9 @@ if(NOT WIN32)
     set(HUNTER_CONFIGURATION_TYPES "Release" CACHE STRING "Hunter dependencies list of build configurations")
 endif()
 
+set(BUILD_SHARED_LIBS ON)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
 # Early options
 option(DEPTHAI_ENABLE_LIBUSB "Enable usage of libusb and interaction with USB devices" ON)
 
@@ -155,6 +158,7 @@ set(PROJECT_EXPORT_GROUP "${PROJECT_NAME}Targets")
 
 ## Check if cloned or sources
 find_package(Git)
+find_package(ament_cmake QUIET)
 if(GIT_FOUND)
     execute_process(
         COMMAND ${GIT_EXECUTABLE} rev-parse --show-toplevel
@@ -411,7 +415,7 @@ list(APPEND targets_to_export ${TARGET_CORE_NAME})
 # Add model_zoo helper binary
 add_executable(zoo_helper src/modelzoo/zoo_helper.cpp)
 target_compile_definitions(zoo_helper PRIVATE DEPTHAI_TARGET_CORE)
-target_link_libraries(zoo_helper PRIVATE ${TARGET_CORE_NAME})
+target_link_libraries(zoo_helper PRIVATE ${TARGET_CORE_NAME} ${OpenCV_LIBS})
 list(APPEND targets_to_export zoo_helper)
 
 # Add default flags to core
@@ -689,7 +693,7 @@ endif()
 
 if(DEPTHAI_XTENSOR_SUPPORT)
     target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_XTENSOR_SUPPORT)
-    target_link_libraries(${TARGET_CORE_NAME} PUBLIC xtensor)
+	target_link_libraries(${TARGET_CORE_NAME} PRIVATE xtensor)
 endif()
 
 # Specify available FW
