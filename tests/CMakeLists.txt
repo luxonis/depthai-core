@@ -298,6 +298,9 @@ target_compile_definitions(nn_archive_test PRIVATE
     ONNX_ARCHIVE_PATH="${yolo_onnx_nnarchive_path}"
 )
 
+# Audio tests
+dai_add_test(audio_test src/onhost_tests/audio_test.cpp onhost)
+
 # Eeprom naming parsing tests
 dai_add_test(naming_test src/onhost_tests/naming_test.cpp onhost)
 
