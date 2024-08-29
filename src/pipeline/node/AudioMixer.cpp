@@ -172,7 +172,22 @@ std::shared_ptr<AudioFrame> AudioMixer::AudioMixerSink::mix() {
 
     std::vector<uint8_t> mixedData(largestSize);
 
-    size_t frames = largestSize * bitrate;
+    size_t frames = largestSize / (channels);
+    switch(format) {
+        case SF_FORMAT_PCM_S8:
+        case SF_FORMAT_PCM_16:
+            frames /= (16 / 8);
+            break;
+        case SF_FORMAT_PCM_24:
+        case SF_FORMAT_PCM_32:
+        case SF_FORMAT_FLOAT:
+	    frames /= (32 / 8);
+            break;
+        case SF_FORMAT_DOUBLE:
+	    frames /= (64 / 8);
+            break;
+    }
+
     buf->setFrames(frames);
 
     std::memset(mixedData.data(), 0, largestSize);
