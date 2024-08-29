@@ -20,7 +20,7 @@ int main() {
     inHost->setFormat(SF_FORMAT_PCM_32);
 
     auto encoder = pipeline.create<dai::node::AudioEncoder>();
-    encoder->setRunOnHost(true);
+    encoder->setRunOnHost(false);
     encoder->setFormat(SF_FORMAT_PCM_16);
     encoder->setBitrate(48000);
     encoder->setChannels(2);

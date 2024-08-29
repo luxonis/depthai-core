@@ -34,18 +34,18 @@ int main() {
     outHost->setFormat(SF_FORMAT_PCM_32);
     
     auto encoder = pipeline.create<dai::node::AudioEncoder>();
-    encoder->setRunOnHost(true);
+    encoder->setRunOnHost(false);
     encoder->setFormat(SF_FORMAT_PCM_32);
     encoder->setBitrate(48000);
     encoder->setChannels(2);
 
     auto mixer = pipeline.create<dai::node::AudioMixer>();
-    mixer->setRunOnHost(true);
+    mixer->setRunOnHost(false);
     mixer->registerSource("source1", 0.2);
     mixer->registerSource("source2", 0.8);
     mixer->registerSink("sink1", 48000, 2, SF_FORMAT_PCM_32);
     mixer->linkSourceToSink("source1", "sink1");
-    mixer->linkSourceToSink("source2", "sink2");
+    mixer->linkSourceToSink("source2", "sink1");
 
     replay->out.link(encoder->input);
     encoder->out.link(mixer->inputs["source1"]);
