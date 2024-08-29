@@ -328,3 +328,10 @@ hunter_config(
     URL "https://github.com/Neargye/semver/archive/v0.3.1.tar.gz"
     SHA1 "c9ac79025cc259d8cca454be0865e88f154402be"
 )
+
+hunter_config(
+    apriltag
+    VERSION "3.4.2"
+    URL "https://github.com/AprilRobotics/apriltag/archive/v3.4.2.tar.gz"
+    SHA1 "5fe51a652e451aedd11f8966abdb8f16bb1faefe"
+)

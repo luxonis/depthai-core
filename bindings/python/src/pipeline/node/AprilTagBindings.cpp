@@ -33,13 +33,14 @@ void bind_apriltag(pybind11::module& m, void* pCallstack){
         .def_readwrite("inputConfigSync", &AprilTagProperties::inputConfigSync, DOC(dai, AprilTagProperties, inputConfigSync))
     ;
     // Node
-    aprilTag
-        .def_readonly("inputConfig", &AprilTag::inputConfig, DOC(dai, node, AprilTag, inputConfig))
+    aprilTag.def_readonly("inputConfig", &AprilTag::inputConfig, DOC(dai, node, AprilTag, inputConfig))
         .def_readonly("inputImage", &AprilTag::inputImage, DOC(dai, node, AprilTag, inputImage))
         .def_readonly("out", &AprilTag::out, DOC(dai, node, AprilTag, out))
         .def_readonly("passthroughInputImage", &AprilTag::passthroughInputImage, DOC(dai, node, AprilTag, passthroughInputImage))
         .def_readonly("initialConfig", &AprilTag::initialConfig, DOC(dai, node, AprilTag, initialConfig))
         .def("setWaitForConfigInput", &AprilTag::setWaitForConfigInput, py::arg("wait"), DOC(dai, node, AprilTag, setWaitForConfigInput))
+        .def("runOnHost", &AprilTag::runOnHost, DOC(dai, node, AprilTag, runOnHost))
+        .def("setRunOnHost", &AprilTag::setRunOnHost, DOC(dai, node, AprilTag, setRunOnHost))
         ;
 	daiNodeModule.attr("AprilTag").attr("Properties") = aprilTagProperties;
 
