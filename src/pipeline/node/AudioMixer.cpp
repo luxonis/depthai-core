@@ -274,6 +274,8 @@ std::shared_ptr<AudioFrame> AudioMixer::AudioMixerSink::mix() {
 }
 
 void AudioMixer::setRunOnHost(bool runOnHost) {
+    // TODO (themutta): mixer support only for host
+    runOnHost = true;
     runOnHostVar = runOnHost;
 }
 
