@@ -29,10 +29,10 @@ class RemoteConnector {
         server->stop();
     }
 
-    void addTopic(const std::string& topicName, Node::Output& output, const std::string& paneName) {
+    void addTopic(const std::string& topicName, Node::Output& output) {
         auto outputQueue = output.createOutputQueue();
         // Start a thread to handle the schema extraction and message forwarding
-        std::thread([this, topicName, outputQueue, paneName]() {
+        std::thread([this, topicName, outputQueue]() {
             bool isRunning = true;
             // Wait for the first message to extract schema
             auto firstMessage = outputQueue->get();
