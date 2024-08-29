@@ -5,7 +5,7 @@
 namespace dai {
 
 /**
- * Specify properties for VideoEncoder such as profile, bitrate, ...
+ * Specify properties for AudioEncoder such as profile, bitrate, ...
  */
 struct AudioEncoderProperties : PropertiesSerializable<Properties, AudioEncoderProperties> {
     static constexpr int AUTO = -1;
@@ -13,7 +13,6 @@ struct AudioEncoderProperties : PropertiesSerializable<Properties, AudioEncoderP
      *  Bitrate for the output
      */
     unsigned int bitrate = 44100;
-
 
     /**
      *  Number of audio channels (1 = mono, 2 = stereo)

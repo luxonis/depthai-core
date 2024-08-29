@@ -11,18 +11,6 @@ namespace node {
 
 AudioIn::AudioIn(std::unique_ptr<Properties> props) : DeviceNodeCRTP<DeviceNode, AudioIn, AudioInProperties>(std::move(props)) { }
 
-AudioIn::~AudioIn() {}
-
-std::shared_ptr<AudioIn> AudioIn::build() {
-	if (isBuild) {
-	        throw std::runtime_error("AudioIn node is already built");
-	}
-
-	isBuild = true;
-
-	return std::static_pointer_cast<AudioIn>(shared_from_this());;
-}
-
 void AudioIn::run() {
 	snd_pcm_hw_params_t *hwParams;
 

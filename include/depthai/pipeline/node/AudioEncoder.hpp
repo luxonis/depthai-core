@@ -19,13 +19,13 @@ class AudioEncoder: public DeviceNodeCRTP<DeviceNode, AudioEncoder, AudioEncoder
     AudioEncoder() = default;
     AudioEncoder(std::unique_ptr<Properties> props);
 
-    ~AudioEncoder();
-
-    std::shared_ptr<AudioEncoder> build();
+    std::shared_ptr<AudioEncoder> build() {
+        return std::static_pointer_cast<AudioEncoder>(shared_from_this());
+    }
 
     std::vector<float> convertToFloat(std::shared_ptr<AudioFrame> input);
-std::vector<float> resampleAudio(std::vector<float> input, int inputSampleRate, int outputSampleRate, int channels);
-std::shared_ptr<AudioFrame> convertFromFloat(std::vector<float> input, std::shared_ptr<AudioFrame> output);
+    std::vector<float> resampleAudio(std::vector<float> input, int inputSampleRate, int outputSampleRate, int channels);
+    std::shared_ptr<AudioFrame> convertFromFloat(std::vector<float> input, std::shared_ptr<AudioFrame> output);
 
     Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::AudioFrame, true}}}}};
     Input input{*this, {"input", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::AudioFrame, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
@@ -50,11 +50,6 @@ std::shared_ptr<AudioFrame> convertFromFloat(std::vector<float> input, std::shar
     bool runOnHost() const override;
     
     void run() override;
-   protected:
-    bool isBuild = false;
-    bool needsBuild() override {
-        return !isBuild;
-    }
 };
 
 }  // namespace node

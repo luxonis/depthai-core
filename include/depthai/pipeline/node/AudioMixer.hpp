@@ -18,9 +18,9 @@ class AudioMixer: public DeviceNodeCRTP<DeviceNode, AudioMixer, AudioMixerProper
     AudioMixer() = default;
     AudioMixer(std::unique_ptr<Properties> props);
 
-    ~AudioMixer();
-
-    std::shared_ptr<AudioMixer> build();
+    std::shared_ptr<AudioMixer> build() {
+        return std::static_pointer_cast<AudioMixer>(shared_from_this());
+    }
 
     void registerSource(std::string name, float volume);
     void registerSink(std::string name, unsigned int bitrate, unsigned int channels, int format);
@@ -46,12 +46,8 @@ class AudioMixer: public DeviceNodeCRTP<DeviceNode, AudioMixer, AudioMixerProper
 
     void run() override;
     bool isReady() {return properties.ready;}
-   protected:
-    bool isBuild = false;
-    bool needsBuild() override {
-        return !isBuild;
-    }
-   protected:
+
+   private:
     class AudioMixerSink;
     class AudioMixerSource;
 

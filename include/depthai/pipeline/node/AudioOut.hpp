@@ -20,10 +20,9 @@ class AudioOut: public DeviceNodeCRTP<DeviceNode, AudioOut, AudioOutProperties>,
     using DeviceNodeCRTP::DeviceNodeCRTP;
     AudioOut() = default;
     AudioOut(std::unique_ptr<Properties> props);
-
-    ~AudioOut();
-
-    std::shared_ptr<AudioOut> build();
+    std::shared_ptr<AudioOut> build() {
+        return std::static_pointer_cast<AudioOut>(shared_from_this());
+    }
 
     void setDeviceName(std::string audioInName);
     void setDevicePath(std::string audioInPath);
@@ -53,11 +52,6 @@ class AudioOut: public DeviceNodeCRTP<DeviceNode, AudioOut, AudioOutProperties>,
     void run() override;
 
     Input input{*this, {"input", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::AudioFrame, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
-   protected:
-    bool isBuild = false;
-    bool needsBuild() override {
-        return !isBuild;
-    }
 };
 
 }  // namespace node
