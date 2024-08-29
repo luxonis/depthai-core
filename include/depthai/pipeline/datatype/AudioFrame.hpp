@@ -4,7 +4,6 @@
 #include <memory>
 
 // project
-#include "depthai/config/config.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/utility/AudioHelpers.hpp"
 
@@ -16,11 +15,16 @@ namespace dai {
  */
 class AudioFrame : public Buffer {
    public:
+    using Buffer::getTimestamp;
+    using Buffer::getTimestampDevice;
     /**
      * Construct AudioFrame message.
      * Timestamp is set to now
      */
-    AudioFrame() = default;
+    AudioFrame();
+    AudioFrame(size_t size);
+    AudioFrame(long fd);
+    AudioFrame(long fd, size_t size);
     AudioFrame(sf_count_t frames, unsigned int bitrate, unsigned int channels, int format);
     virtual ~AudioFrame() = default;
 
@@ -39,14 +43,13 @@ class AudioFrame : public Buffer {
 	unsigned int getChannels() const;
 	int getFormat() const;
 
-   private:
+   public:
     sf_count_t frames;
     unsigned int bitrate;
     unsigned int channels;
     int format;
 
-   public:
-    DEPTHAI_SERIALIZE(AudioFrame, bitrate, channels, format);
+    DEPTHAI_SERIALIZE(AudioFrame, Buffer::ts, bitrate, channels, format);
 };
 
 }  // namespace dai

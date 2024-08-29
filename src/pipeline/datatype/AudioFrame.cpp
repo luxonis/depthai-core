@@ -1,9 +1,39 @@
 #include "depthai/pipeline/datatype/AudioFrame.hpp"
+#include "depthai/utility/SharedMemory.hpp"
 
 namespace dai {
 
+AudioFrame::AudioFrame() {
+    setTimestamp(std::chrono::steady_clock::now());
+}
+
+AudioFrame::AudioFrame(size_t size) : AudioFrame() {
+    auto mem = std::make_shared<VectorMemory>();
+    mem->resize(size);
+    data = mem;
+}
+
+AudioFrame::AudioFrame(long fd) : AudioFrame() {
+    auto mem = std::make_shared<SharedMemory>(fd);
+    data = mem;
+}
+
+AudioFrame::AudioFrame(long fd, size_t size) : AudioFrame() {
+    auto mem = std::make_shared<SharedMemory>(fd, size);
+    data = mem;
+}
+
 AudioFrame::AudioFrame(sf_count_t frames, unsigned int bitrate, unsigned int channels, int format) :
-	frames(frames), bitrate(bitrate), channels(channels), format(format) {}
+	AudioFrame() {
+    auto mem = std::make_shared<VectorMemory>();
+    data = mem;
+
+    this->frames = frames;
+    this->bitrate = bitrate;
+    this->channels = channels;
+    this->format = format;
+
+}
 
 void AudioFrame::setFrames(sf_count_t frames) {
 	this->frames = frames;
