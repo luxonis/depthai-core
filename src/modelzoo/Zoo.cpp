@@ -341,16 +341,18 @@ void downloadModelsFromZoo(const std::string& path, const std::string& cacheDire
 
 #else
 namespace dai {
-std::string getModelFromZoo(const NNModelDescription& modelDescription, bool useCached, const std::string& cacheDirectory) {
+std::string getModelFromZoo(const NNModelDescription& modelDescription, bool useCached, const std::string& cacheDirectory, const std::string& apiKey) {
     (void)modelDescription;
     (void)useCached;
     (void)cacheDirectory;
+    (void)apiKey;
     throw std::runtime_error("getModelFromZoo requires libcurl to be enabled. Please recompile DepthAI with libcurl enabled.");
 }
 
-void downloadModelsFromZoo(const std::string& path, const std::string& cacheDirectory) {
+void downloadModelsFromZoo(const std::string& path, const std::string& cacheDirectory, const std::string& apiKey) {
     (void)path;
     (void)cacheDirectory;
+    (void)apiKey;
     throw std::runtime_error("downloadModelsFromZoo requires libcurl to be enabled. Please recompile DepthAI with libcurl enabled.");
 }
 }  // namespace dai

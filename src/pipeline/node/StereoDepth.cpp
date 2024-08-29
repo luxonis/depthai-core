@@ -35,7 +35,8 @@ std::shared_ptr<StereoDepth> StereoDepth::build(bool autoCreateCameras, PresetMo
     return build(left->out, right->out, presetMode);
 }
 
-StereoDepth::StereoDepth(std::unique_ptr<Properties> props) : DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthProperties>(std::move(props)) {}
+StereoDepth::StereoDepth(std::unique_ptr<Properties> props)
+    : DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthProperties>(std::move(props)), initialConfig(properties.initialConfig) {}
 
 StereoDepth::Properties& StereoDepth::getProperties() {
     properties.initialConfig = initialConfig;
@@ -218,12 +219,12 @@ void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
     presetMode = mode;
     switch(presetMode) {
         case PresetMode::HIGH_ACCURACY: {
-            initialConfig.setConfidenceThreshold(200);
+            initialConfig.setConfidenceThreshold(55);
             initialConfig.setLeftRightCheck(true);
             initialConfig.setLeftRightCheckThreshold(5);
         } break;
         case PresetMode::HIGH_DENSITY: {
-            initialConfig.setConfidenceThreshold(245);
+            initialConfig.setConfidenceThreshold(15);
             initialConfig.setLeftRightCheck(true);
             initialConfig.setLeftRightCheckThreshold(10);
         } break;

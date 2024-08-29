@@ -164,7 +164,7 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
 
     /**
      * Outputs ImgFrame message that carries RAW8 confidence map.
-     * Lower values mean higher confidence of the calculated disparity value.
+     * Lower values mean lower confidence of the calculated disparity value.
      * RGB alignment, left-right check or any postprocessing (e.g., median filter) is not performed on confidence map.
      */
     Output confidenceMap{*this, {"confidenceMap", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};

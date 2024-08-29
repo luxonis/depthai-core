@@ -42,6 +42,7 @@ else()
     endif()
     hunter_add_package(yaml-cpp)
     hunter_add_package(semver)
+    hunter_add_package(apriltag)
 endif()
 
 # If library was build as static, find all dependencies
@@ -81,6 +82,7 @@ if(NOT CONFIG_MODE OR (CONFIG_MODE AND NOT DEPTHAI_SHARED_LIBS))
     endif()
     find_package(yaml-cpp ${_QUIET} CONFIG REQUIRED)
     find_package(semver ${_QUIET} CONFIG REQUIRED)
+    find_package(apriltag ${_QUIET} CONFIG REQUIRED)
 endif()
 
 # Xtensor
