@@ -8,8 +8,6 @@ with dai.Pipeline() as pipeline:
     hostCamera = pipeline.create(dai.node.Camera).build()
     aprilTagNode = pipeline.create(dai.node.AprilTag)
     hostCamera.requestOutput((1920, 1080)).link(aprilTagNode.inputImage)
-    aprilTagNode.initialConfig.setFamily(dai.AprilTagConfig.Family.TAG_16H5)
-
     passthroughOutputQueue = aprilTagNode.passthroughInputImage.createOutputQueue()
     outQueue = aprilTagNode.out.createOutputQueue()
 
