@@ -29,6 +29,4 @@ TEST_CASE("AudioEncoder") {
     REQUIRE(outputFrame->getBitrate() == 48000);
     REQUIRE(outputFrame->getChannels() == 2);
     REQUIRE(outputFrame->getFormat() == SF_FORMAT_PCM_16);
-    
-    pipeline.stop();
 }

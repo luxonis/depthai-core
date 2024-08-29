@@ -299,7 +299,8 @@ target_compile_definitions(nn_archive_test PRIVATE
 )
 
 # Audio tests
-dai_add_test(audio_test src/onhost_tests/audio_test.cpp onhost)
+dai_add_test(audio_encoder_test src/onhost_tests/audio_encoder_test.cpp onhost)
+dai_add_test(audio_mixer_test src/onhost_tests/audio_mixer_test.cpp onhost)
 
 # Eeprom naming parsing tests
 dai_add_test(naming_test src/onhost_tests/naming_test.cpp onhost)
