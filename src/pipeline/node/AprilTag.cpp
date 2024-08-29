@@ -138,20 +138,20 @@ void setDetectorConfig(apriltag_detector_t* td, apriltag_family_t* tf, AprilTagC
     family = config.family;
 
     // Set detector config
-    td->quad_decimate = config.quadDecimate;
+    td->quad_decimate = static_cast<float>(config.quadDecimate);
     td->quad_sigma = config.quadSigma;
     td->refine_edges = config.refineEdges;
-    td->decode_sharpening = config.decodeSharpening;
+    td->decode_sharpening = static_cast<double>(config.decodeSharpening);
 
     // Set detector thresholds
     td->qtp.min_cluster_pixels = config.quadThresholds.minClusterPixels;
-    td->qtp.critical_rad = config.quadThresholds.criticalDegree * (M_PI / 180.0);  // Convert degrees to radians
+    td->qtp.critical_rad = static_cast<float>((static_cast<double>(config.quadThresholds.criticalDegree) * (M_PI / 180.0)));  // Convert degrees to radians
     td->qtp.cos_critical_rad = cos(td->qtp.critical_rad);
     td->qtp.max_line_fit_mse = config.quadThresholds.maxLineFitMse;
-    td->qtp.deglitch = config.quadThresholds.deglitch;
+    td->qtp.deglitch = static_cast<int>(config.quadThresholds.deglitch);
 
     // We don't want to debug
-    td->debug = 0;
+    td->debug = false;
 }
 
 void setDetectorProperties(apriltag_detector_t* td, const dai::AprilTagProperties& properties) {
@@ -210,8 +210,10 @@ void AprilTag::run() {
         inFrame = inputImage.get<ImgFrame>();
 
         // Preallocate data on stack for AprilTag detection
-        int32_t width, height, stride;
-        uint8_t* imgbuf;
+        int32_t width = 0;
+        int32_t height = 0;
+        int32_t stride = 0;
+        uint8_t* imgbuf = nullptr;
 
         // Prepare data for AprilTag detection based on input frame type
         ImgFrame::Type frameType = inFrame->getType();
