@@ -35,7 +35,8 @@ std::shared_ptr<StereoDepth> StereoDepth::build(bool autoCreateCameras, PresetMo
     return build(left->out, right->out, presetMode);
 }
 
-StereoDepth::StereoDepth(std::unique_ptr<Properties> props) : DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthProperties>(std::move(props)) {}
+StereoDepth::StereoDepth(std::unique_ptr<Properties> props)
+    : DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthProperties>(std::move(props)), initialConfig(properties.initialConfig) {}
 
 StereoDepth::Properties& StereoDepth::getProperties() {
     properties.initialConfig = initialConfig;

@@ -26,7 +26,8 @@ extern "C" {
 namespace dai {
 namespace node {
 
-AprilTag::AprilTag(std::unique_ptr<Properties> props) : DeviceNodeCRTP<DeviceNode, AprilTag, AprilTagProperties>(std::move(props)) {}
+AprilTag::AprilTag(std::unique_ptr<Properties> props)
+    : DeviceNodeCRTP<DeviceNode, AprilTag, AprilTagProperties>(std::move(props)), initialConfig(properties.initialConfig) {}
 
 AprilTag::Properties& AprilTag::getProperties() {
     properties.initialConfig = initialConfig;

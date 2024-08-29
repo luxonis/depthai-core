@@ -6,7 +6,8 @@ namespace dai {
 
 namespace node {
 
-ImageManipV2::ImageManipV2(std::unique_ptr<Properties> props) : DeviceNodeCRTP<DeviceNode, ImageManipV2, ImageManipPropertiesV2>(std::move(props)) {}
+ImageManipV2::ImageManipV2(std::unique_ptr<Properties> props)
+    : DeviceNodeCRTP<DeviceNode, ImageManipV2, ImageManipPropertiesV2>(std::move(props)), initialConfig(properties.initialConfig) {}
 
 void ImageManipV2::run() {
     impl::ImageManipOperations<impl::_ImageManipBuffer, impl::_ImageManipMemory> manip(logger);
