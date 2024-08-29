@@ -1,5 +1,6 @@
 syntax = "proto3";
 
+import "common.proto";
 package proto;
 
 message ImgDetections {
@@ -9,10 +10,6 @@ message ImgDetections {
     repeated ImgDetection detections = 4;
 }
 
-message Timestamp {
-    int64 sec = 1;
-    int64 nsec = 2;
-}
 
 message ImgDetection {
     uint32 label = 1;

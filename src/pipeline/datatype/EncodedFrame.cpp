@@ -122,4 +122,45 @@ EncodedFrame& EncodedFrame::setProfile(Profile profile) {
     return *this;
 }
 
+std::unique_ptr<google::protobuf::Message> EncodedFrame::getProtoMessage() const {
+    // Create a unique pointer to the protobuf EncodedFrame message
+    auto encodedFrame = std::make_unique<proto::EncodedFrame>();
+
+    // Populate the protobuf message fields with the EncodedFrame data
+    encodedFrame->set_instancenum(this->instanceNum);  // instanceNum -> instancenum
+    encodedFrame->set_width(this->width);
+    encodedFrame->set_height(this->height);
+    encodedFrame->set_quality(this->quality);
+    encodedFrame->set_bitrate(this->bitrate);
+    encodedFrame->set_profile(static_cast<proto::Profile>(this->profile));  // Profile enum
+    encodedFrame->set_lossless(this->lossless);
+    encodedFrame->set_type(static_cast<proto::FrameType>(this->type));  // FrameType enum
+    encodedFrame->set_frameoffset(this->frameOffset);  // frameOffset -> frameoffset
+    encodedFrame->set_framesize(this->frameSize);      // frameSize -> framesize
+    encodedFrame->set_sequencenum(this->sequenceNum);  // sequenceNum -> sequencenum
+
+    // Set timestamps
+    proto::Timestamp* ts = encodedFrame->mutable_ts();
+    ts->set_sec(this->ts.sec);
+    ts->set_nsec(this->ts.nsec);
+
+    proto::Timestamp* tsDevice = encodedFrame->mutable_tsdevice();
+    tsDevice->set_sec(this->tsDevice.sec);
+    tsDevice->set_nsec(this->tsDevice.nsec);
+
+    // Set camera settings
+    proto::CameraSettings* cam = encodedFrame->mutable_cam();
+    cam->set_exposuretimeus(this->cam.exposureTimeUs);  // exposureTimeUs -> exposuretimeus
+    cam->set_sensitivityiso(this->cam.sensitivityIso);  // sensitivityIso -> sensitivityiso
+    cam->set_lensposition(this->cam.lensPosition);      // lensPosition -> lensposition
+    cam->set_wbcolortemp(this->cam.wbColorTemp);        // wbColorTemp -> wbcolortemp
+    cam->set_lenspositionraw(this->cam.lensPositionRaw);  // lensPositionRaw -> lenspositionraw
+
+    // Set the encoded frame data
+    encodedFrame->set_data(this->data->getData().data(), this->data->getData().size());
+
+    // Return the populated protobuf message
+    return encodedFrame;
+}
+
 }  // namespace dai
