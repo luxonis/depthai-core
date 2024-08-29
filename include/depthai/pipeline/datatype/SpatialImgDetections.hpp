@@ -8,10 +8,9 @@
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
 #include "depthai/pipeline/datatype/SpatialLocationCalculatorConfig.hpp"
-#include "depthai/utility/Serialization.hpp"
-#include "depthai/pipeline/datatype/Buffer.hpp"
-#include "depthai/utility/ProtoSerializable.hpp"
 #include "depthai/schemas/SpatialImgDetections.pb.h"
+#include "depthai/utility/ProtoSerializable.hpp"
+#include "depthai/utility/Serialization.hpp"
 
 namespace dai {
 
@@ -48,7 +47,7 @@ class SpatialImgDetections : public Buffer, public utility::ProtoSerializable {
     };
 
     std::unique_ptr<google::protobuf::Message> getProtoMessage() const override {
-        //create and populate SpatialImgDetections protobuf message
+        // create and populate SpatialImgDetections protobuf message
         auto spatialImgDetections = std::make_unique<proto::SpatialImgDetections>();
         spatialImgDetections->set_sequencenum(this->sequenceNum);
 
@@ -94,7 +93,8 @@ class SpatialImgDetections : public Buffer, public utility::ProtoSerializable {
             depthTresholds->set_upperthreshold(detection.boundingBoxMapping.depthThresholds.upperThreshold);
 
             // populate SpatialImgDetection.SpatialLocationCalculatorConfigData.SpatialLocationCalculatorAlgorithm
-            boundingBoxMapping->set_calculationalgorithm(static_cast<proto::SpatialLocationCalculatorAlgorithm>(detection.boundingBoxMapping.calculationAlgorithm));
+            boundingBoxMapping->set_calculationalgorithm(
+                static_cast<proto::SpatialLocationCalculatorAlgorithm>(detection.boundingBoxMapping.calculationAlgorithm));
 
             // populate SpatialImgDetection.SpatialLocationCalculatorConfigData.stepSize
             boundingBoxMapping->set_stepsize(detection.boundingBoxMapping.stepSize);

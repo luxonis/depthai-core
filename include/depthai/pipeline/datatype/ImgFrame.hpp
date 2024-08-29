@@ -13,8 +13,8 @@
 #include "depthai/common/FrameEvent.hpp"
 #include "depthai/common/ImgTransformations.hpp"
 #include "depthai/common/Rect.hpp"
-#include "depthai/utility/ProtoSerializable.hpp"
 #include "depthai/schemas/ImgFrame.pb.h"
+#include "depthai/utility/ProtoSerializable.hpp"
 
 // optional
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
@@ -85,13 +85,11 @@ class ImgFrame : public Buffer, public utility::ProtoSerializable {
     };
 
     std::unique_ptr<google::protobuf::Message> getProtoMessage() const override {
-        //create and populate ImgFrame protobuf message
+        // create and populate ImgFrame protobuf message
         auto imgFrame = std::make_unique<proto::ImgFrame>();
-        
         proto::Timestamp* ts = imgFrame->mutable_ts();
         ts->set_sec(this->ts.sec);
         ts->set_nsec(this->ts.nsec);
-        
         proto::Timestamp* tsDevice = imgFrame->mutable_tsdevice();
         tsDevice->set_sec(this->tsDevice.sec);
         tsDevice->set_nsec(this->tsDevice.nsec);
@@ -133,7 +131,7 @@ class ImgFrame : public Buffer, public utility::ProtoSerializable {
 
         proto::ImgTransformations* imgTransformations = imgFrame->mutable_transformations();
         imgTransformations->set_invalidflag(this->transformations.invalidFlag);
-        for (const auto& transformation : this->transformations.transformations) {
+        for(const auto& transformation : this->transformations.transformations) {
             proto::ImgTransformation* imgTransformation = imgTransformations->add_transformations();
 
             imgTransformation->set_transformationtype(static_cast<proto::Transformation>(transformation.transformationType));
@@ -151,25 +149,26 @@ class ImgFrame : public Buffer, public utility::ProtoSerializable {
             imgTransformation->set_beforetransformheight(transformation.beforeTransformHeight);
 
             proto::TransformationMatrix* transformationMatrix = imgTransformation->mutable_transformationmatrix();
-            for (const auto& array : transformation.transformationMatrix) {
+            for(const auto& array : transformation.transformationMatrix) {
                 proto::FloatArray* floatArray = transformationMatrix->add_arrays();
 
-                //or floatArray.mutable_values() = {array.values.begin(), array.values.end()}; ?
-                for (const auto& value : array) {
+                // or floatArray.mutable_values() = {array.values.begin(), array.values.end()}; ?
+                for(const auto& value : array) {
                     floatArray->add_values(value);
                 }
             }
 
             proto::TransformationMatrix* invTransformationMatrix = imgTransformation->mutable_invtransformationmatrix();
-            for (const auto& array : transformation.invTransformationMatrix) {
+            for(const auto& array : transformation.invTransformationMatrix) {
                 proto::FloatArray* floatArray = invTransformationMatrix->add_arrays();
 
-                //or floatArray.mutable_values() = {array.values.begin(), array.values.end()}; ?
-                for (const auto& value : array) {
+                // or floatArray.mutable_values() = {array.values.begin(), array.values.end()}; ?
+                for(const auto& value : array) {
                     floatArray->add_values(value);
                 }
             }
         }
+        imgFrame->set_data(this->data->getData().data(), this->data->getData().size());
         return imgFrame;
     }
 
