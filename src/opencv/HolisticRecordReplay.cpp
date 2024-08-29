@@ -35,9 +35,14 @@ bool setupHolisticRecord(Pipeline& pipeline, const std::string& mxId, RecordConf
             outFilenames[nodeName] = filePath;
             if(std::dynamic_pointer_cast<node::Camera>(node) != nullptr || std::dynamic_pointer_cast<node::ColorCamera>(node) != nullptr
                || std::dynamic_pointer_cast<node::MonoCamera>(node) != nullptr) {
+                Node::Output* output;
                 if(std::dynamic_pointer_cast<node::Camera>(node) != nullptr) {
-                    // TODO(asahtik)
-                    throw std::runtime_error("Holistic record with Camera node is not yet supported.");
+                    auto cam = std::dynamic_pointer_cast<dai::node::Camera>(node);
+                    auto fps = cam->getMaxRequestedFps();
+                    const auto [width, height] = cam->getMaxRequestedSize();
+                    output = cam->requestOutput({width, height}, dai::ImgFrame::Type::NV12, dai::ImgResizeMode::CROP, fps);
+                } else {
+                    output = &nodeS->getRecordOutput();
                 }
                 auto recordNode = pipeline.create<dai::node::RecordVideo>();
                 recordNode->setRecordMetadataFile(filePath + ".mcap");
@@ -59,14 +64,14 @@ bool setupHolisticRecord(Pipeline& pipeline, const std::string& mxId, RecordConf
                         imageManip->initialConfig.setFrameType(ImgFrame::Type::NV12);
                         imageManip->setMaxOutputFrameSize(maxOutputFrameSize);
 
-                        nodeS->getRecordOutput().link(imageManip->inputImage);
+                        output->link(imageManip->inputImage);
                         imageManip->out.link(videnc->input);
                     } else {
-                        nodeS->getRecordOutput().link(videnc->input);
+                        output->link(videnc->input);
                     }
                     videnc->out.link(recordNode->input);
                 } else {
-                    nodeS->getRecordOutput().link(recordNode->input);
+                    output->link(recordNode->input);
                 }
             } else {
                 auto recordNode = pipeline.create<dai::node::RecordMetadataOnly>();
