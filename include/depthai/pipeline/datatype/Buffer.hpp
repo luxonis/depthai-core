@@ -17,8 +17,8 @@ class Buffer : public ADatatype {
    public:
     Buffer() = default;
     Buffer(size_t size);
-    Buffer(const char *name);
-    Buffer(const char *name, size_t size);
+    Buffer(const char* name);
+    Buffer(const char* name, size_t size);
     Buffer(long fd);
     Buffer(long fd, size_t size);
     virtual ~Buffer() = default;

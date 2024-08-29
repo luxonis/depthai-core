@@ -1,36 +1,37 @@
 #include "depthai/pipeline/node/AudioEncoder.hpp"
+
 #include "depthai/utility/AudioHelpers.hpp"
 
 namespace dai {
 namespace node {
 
-AudioEncoder::AudioEncoder(std::unique_ptr<Properties> props) : DeviceNodeCRTP<DeviceNode, AudioEncoder, AudioEncoderProperties>(std::move(props)) { }
-    
+AudioEncoder::AudioEncoder(std::unique_ptr<Properties> props) : DeviceNodeCRTP<DeviceNode, AudioEncoder, AudioEncoderProperties>(std::move(props)) {}
+
 void AudioEncoder::run() {
-	while(isRunning()) {
-		std::shared_ptr<AudioFrame> recvBuf = input.get<AudioFrame>();
-			
-		std::shared_ptr<AudioFrame> sendBuf = std::make_shared<AudioFrame>(0, properties.bitrate, properties.channels, properties.format);
+    while(isRunning()) {
+        std::shared_ptr<AudioFrame> recvBuf = input.get<AudioFrame>();
 
-		std::vector<float> floatData = convertToFloat(recvBuf);
+        std::shared_ptr<AudioFrame> sendBuf = std::make_shared<AudioFrame>(0, properties.bitrate, properties.channels, properties.format);
 
-		if(recvBuf->getChannels() != sendBuf->getChannels()) {
-	            throw std::runtime_error("Different channels counts not supported");
-			// TODO: deal with channels
-		}
+        std::vector<float> floatData = convertToFloat(recvBuf);
 
-		if(recvBuf->getBitrate() != sendBuf->getBitrate()) {
-			floatData = resampleAudio(floatData, recvBuf->getBitrate(), properties.bitrate, properties.channels);
-		}
+        if(recvBuf->getChannels() != sendBuf->getChannels()) {
+            throw std::runtime_error("Different channels counts not supported");
+            // TODO: deal with channels
+        }
 
-		sendBuf = convertFromFloat(floatData, sendBuf);
+        if(recvBuf->getBitrate() != sendBuf->getBitrate()) {
+            floatData = resampleAudio(floatData, recvBuf->getBitrate(), properties.bitrate, properties.channels);
+        }
 
-		out.send(sendBuf);
-	}
+        sendBuf = convertFromFloat(floatData, sendBuf);
+
+        out.send(sendBuf);
+    }
 }
 
 std::vector<float> AudioEncoder::convertToFloat(std::shared_ptr<AudioFrame> inputFrame) {
-    uint8_t *inputData = inputFrame->getData().data();
+    uint8_t* inputData = inputFrame->getData().data();
     std::vector<float> floatData;
 
     // Determine how to convert based on the input format
@@ -38,28 +39,28 @@ std::vector<float> AudioEncoder::convertToFloat(std::shared_ptr<AudioFrame> inpu
 
     floatData.resize(frameCount * inputFrame->getChannels());
 
-    switch (inputFrame->getFormat()) {
+    switch(inputFrame->getFormat()) {
         case SF_FORMAT_PCM_S8:
-            for (size_t i = 0; i < frameCount * inputFrame->getChannels(); ++i) {
-                floatData[i] = inputData[i] / 128.0f; // Convert S8 to float [-1.0, 1.0]
+            for(size_t i = 0; i < frameCount * inputFrame->getChannels(); ++i) {
+                floatData[i] = inputData[i] / 128.0f;  // Convert S8 to float [-1.0, 1.0]
             }
             break;
         case SF_FORMAT_PCM_16:
-            for (size_t i = 0; i < frameCount * inputFrame->getChannels(); ++i) {
+            for(size_t i = 0; i < frameCount * inputFrame->getChannels(); ++i) {
                 int16_t sample = (inputData[i * 2 + 1] << 8) | inputData[i * 2];
-                floatData[i] = sample / 32768.0f; // Convert S16 to float [-1.0, 1.0]
+                floatData[i] = sample / 32768.0f;  // Convert S16 to float [-1.0, 1.0]
             }
             break;
         case SF_FORMAT_PCM_24:
-            for (size_t i = 0; i < frameCount * inputFrame->getChannels(); ++i) {
+            for(size_t i = 0; i < frameCount * inputFrame->getChannels(); ++i) {
                 int32_t sample = (inputData[i * 3 + 2] << 16) | (inputData[i * 3 + 1] << 8) | inputData[i * 3];
-                floatData[i] = sample / 8388608.0f; // Convert S24 to float [-1.0, 1.0]
+                floatData[i] = sample / 8388608.0f;  // Convert S24 to float [-1.0, 1.0]
             }
             break;
         case SF_FORMAT_PCM_32:
-            for (size_t i = 0; i < frameCount * inputFrame->getChannels(); ++i) {
+            for(size_t i = 0; i < frameCount * inputFrame->getChannels(); ++i) {
                 int32_t sample = (inputData[i * 4 + 3] << 24) | (inputData[i * 4 + 2] << 16) | (inputData[i * 4 + 1] << 8) | inputData[i * 4];
-                floatData[i] = sample / 2147483648.0f; // Convert S32 to float [-1.0, 1.0]
+                floatData[i] = sample / 2147483648.0f;  // Convert S32 to float [-1.0, 1.0]
             }
             break;
         default:
@@ -82,7 +83,7 @@ std::vector<float> AudioEncoder::resampleAudio(std::vector<float> inputData, int
     srcData.data_out = outputData.data();
 
     int error = src_simple(&srcData, SRC_SINC_BEST_QUALITY, channels);
-    if (error) {
+    if(error) {
         throw std::runtime_error(src_strerror(error));
     }
 
@@ -97,39 +98,38 @@ std::shared_ptr<AudioFrame> AudioEncoder::convertFromFloat(std::vector<float> in
 
     outputFrame->setFrames(frameCount);
 
-	switch(outputFrame->getFormat()) {
-		case SF_FORMAT_PCM_S8:
-		case SF_FORMAT_PCM_16:
-			outputSize *= (16 / 8);
-			break;
-		case SF_FORMAT_PCM_24:
-		case SF_FORMAT_PCM_32:
-		case SF_FORMAT_FLOAT:
-			outputSize *= (32 / 8);
-			break;
-		case SF_FORMAT_DOUBLE:
-			outputSize *= (64/ 8);
-			break;
-
-	} 
+    switch(outputFrame->getFormat()) {
+        case SF_FORMAT_PCM_S8:
+        case SF_FORMAT_PCM_16:
+            outputSize *= (16 / 8);
+            break;
+        case SF_FORMAT_PCM_24:
+        case SF_FORMAT_PCM_32:
+        case SF_FORMAT_FLOAT:
+            outputSize *= (32 / 8);
+            break;
+        case SF_FORMAT_DOUBLE:
+            outputSize *= (64 / 8);
+            break;
+    }
 
     outputData.resize(outputSize);
 
-    switch (outputFrame->getFormat()) {
+    switch(outputFrame->getFormat()) {
         case SF_FORMAT_PCM_S8:
-            for (size_t i = 0; i < frameCount * outputFrame->getChannels(); ++i) {
+            for(size_t i = 0; i < frameCount * outputFrame->getChannels(); ++i) {
                 outputData[i] = static_cast<uint8_t>(std::clamp(inputData[i] * 128.0f, -128.0f, 127.0f));
             }
             break;
         case SF_FORMAT_PCM_16:
-            for (size_t i = 0; i < frameCount * outputFrame->getChannels(); ++i) {
+            for(size_t i = 0; i < frameCount * outputFrame->getChannels(); ++i) {
                 int16_t sample = static_cast<int16_t>(std::clamp(inputData[i] * 32768.0f, -32768.0f, 32767.0f));
                 outputData[i * 2] = sample & 0xFF;
                 outputData[i * 2 + 1] = (sample >> 8) & 0xFF;
             }
             break;
         case SF_FORMAT_PCM_24:
-            for (size_t i = 0; i < frameCount * outputFrame->getChannels(); ++i) {
+            for(size_t i = 0; i < frameCount * outputFrame->getChannels(); ++i) {
                 int32_t sample = static_cast<int32_t>(std::clamp(inputData[i] * 8388608.0f, -8388608.0f, 8388607.0f));
                 outputData[i * 3] = sample & 0xFF;
                 outputData[i * 3 + 1] = (sample >> 8) & 0xFF;
@@ -137,7 +137,7 @@ std::shared_ptr<AudioFrame> AudioEncoder::convertFromFloat(std::vector<float> in
             }
             break;
         case SF_FORMAT_PCM_32:
-            for (size_t i = 0; i < frameCount * outputFrame->getChannels(); ++i) {
+            for(size_t i = 0; i < frameCount * outputFrame->getChannels(); ++i) {
                 int32_t sample = static_cast<int32_t>(std::clamp(inputData[i] * 2147483648.0f, -2147483648.0f, 2147483647.0f));
                 outputData[i * 4] = sample & 0xFF;
                 outputData[i * 4 + 1] = (sample >> 8) & 0xFF;
@@ -155,27 +155,27 @@ std::shared_ptr<AudioFrame> AudioEncoder::convertFromFloat(std::vector<float> in
 }
 
 unsigned int AudioEncoder::getBitrate() const {
-	return properties.bitrate;
+    return properties.bitrate;
 }
 
 unsigned int AudioEncoder::getChannels() const {
-	return properties.channels;
+    return properties.channels;
 }
 
 int AudioEncoder::getFormat() const {
-	return properties.format;
+    return properties.format;
 }
 
 void AudioEncoder::setBitrate(unsigned int bitrate) {
-	properties.bitrate = bitrate;
+    properties.bitrate = bitrate;
 }
 
 void AudioEncoder::setChannels(unsigned int channels) {
-	properties.channels = channels;
+    properties.channels = channels;
 }
 
 void AudioEncoder::setFormat(int format) {
-	properties.format = format;
+    properties.format = format;
 }
 
 void AudioEncoder::setRunOnHost(bool runOnHost) {
@@ -186,5 +186,5 @@ bool AudioEncoder::runOnHost() const {
     return runOnHostVar;
 }
 
-}
-}
+}  // namespace node
+}  // namespace dai

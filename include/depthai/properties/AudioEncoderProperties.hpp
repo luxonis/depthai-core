@@ -20,12 +20,8 @@ struct AudioEncoderProperties : PropertiesSerializable<Properties, AudioEncoderP
     unsigned int channels = 2;
 
     int format;
-
 };
 
-DEPTHAI_SERIALIZE_EXT(AudioEncoderProperties,
-		      bitrate,
-		      channels,
-		      format);
+DEPTHAI_SERIALIZE_EXT(AudioEncoderProperties, bitrate, channels, format);
 
 }  // namespace dai

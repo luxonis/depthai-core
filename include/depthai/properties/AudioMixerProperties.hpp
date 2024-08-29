@@ -6,7 +6,7 @@ namespace dai {
 /**
  * Specify properties for ImageManip
  */
-struct AudioMixerProperties: PropertiesSerializable<Properties, AudioMixerProperties> {
+struct AudioMixerProperties : PropertiesSerializable<Properties, AudioMixerProperties> {
     static constexpr int AUTO = -1;
 
     bool ready = false;

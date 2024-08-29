@@ -1,10 +1,10 @@
 // Includes common necessary includes for development using depthai library
-#include "depthai/depthai.hpp"
-#include "depthai/utility/AudioHelpers.hpp"
-#include "depthai/pipeline/InputQueue.hpp"
-
-#include <iostream>
 #include <chrono>
+#include <iostream>
+
+#include "depthai/depthai.hpp"
+#include "depthai/pipeline/InputQueue.hpp"
+#include "depthai/utility/AudioHelpers.hpp"
 
 int main() {
     // Create pipeline

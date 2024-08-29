@@ -38,7 +38,7 @@ const std::unordered_map<DatatypeEnum, std::vector<DatatypeEnum>> hierarchy = {
          DatatypeEnum::PointCloudConfig,
          DatatypeEnum::PointCloudData,
          DatatypeEnum::TransformData,
-	 DatatypeEnum::AudioFrame,
+         DatatypeEnum::AudioFrame,
      }},
     {DatatypeEnum::Buffer,
      {
@@ -68,7 +68,7 @@ const std::unordered_map<DatatypeEnum, std::vector<DatatypeEnum>> hierarchy = {
          DatatypeEnum::PointCloudConfig,
          DatatypeEnum::PointCloudData,
          DatatypeEnum::TransformData,
-	 DatatypeEnum::AudioFrame,
+         DatatypeEnum::AudioFrame,
      }},
     {DatatypeEnum::ImgFrame, {}},
     {DatatypeEnum::EncodedFrame, {}},

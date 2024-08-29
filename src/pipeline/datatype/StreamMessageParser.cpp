@@ -10,9 +10,9 @@
 
 // project
 #include "depthai/pipeline/datatype/ADatatype.hpp"
-#include "depthai/pipeline/datatype/AudioFrame.hpp"
 #include "depthai/pipeline/datatype/AprilTagConfig.hpp"
 #include "depthai/pipeline/datatype/AprilTags.hpp"
+#include "depthai/pipeline/datatype/AudioFrame.hpp"
 #include "depthai/pipeline/datatype/BenchmarkReport.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/CameraControl.hpp"

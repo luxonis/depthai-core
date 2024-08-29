@@ -1,10 +1,10 @@
 // Includes common necessary includes for development using depthai library
-#include "depthai/depthai.hpp"
-#include "depthai/utility/AudioHelpers.hpp"
-#include "depthai/pipeline/InputQueue.hpp"
-
-#include <iostream>
 #include <chrono>
+#include <iostream>
+
+#include "depthai/depthai.hpp"
+#include "depthai/pipeline/InputQueue.hpp"
+#include "depthai/utility/AudioHelpers.hpp"
 
 int main() {
     // Create pipeline
@@ -13,7 +13,7 @@ int main() {
     auto replay = pipeline.create<dai::node::AudioReplay>();
     replay->setSourceFile("/tmp/test.wav");
     replay->setLoop(true);
-    replay->setFps(16); 
+    replay->setFps(16);
 
     auto inHost = pipeline.create<dai::node::AudioIn>();
     inHost->setRunOnHost(true);
@@ -32,7 +32,7 @@ int main() {
     outHost->setFps(16);
     outHost->setChannels(2);
     outHost->setFormat(SF_FORMAT_PCM_32);
-    
+
     auto encoder = pipeline.create<dai::node::AudioEncoder>();
     encoder->setRunOnHost(false);
     encoder->setFormat(SF_FORMAT_PCM_32);

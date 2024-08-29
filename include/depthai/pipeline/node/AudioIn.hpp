@@ -1,19 +1,20 @@
 #pragma once
 
 // depthai
-#include "depthai/pipeline/DeviceNode.hpp"
-#include "depthai/properties/AudioInProperties.hpp"
-#include "depthai/pipeline/datatype/AudioFrame.hpp"
-
 #include <alsa/asoundlib.h>
+
+#include "depthai/pipeline/DeviceNode.hpp"
+#include "depthai/pipeline/datatype/AudioFrame.hpp"
+#include "depthai/properties/AudioInProperties.hpp"
 
 namespace dai {
 namespace node {
 
-class AudioIn: public DeviceNodeCRTP<DeviceNode, AudioIn, AudioInProperties>, public HostRunnable {
+class AudioIn : public DeviceNodeCRTP<DeviceNode, AudioIn, AudioInProperties>, public HostRunnable {
    protected:
     bool runOnHostVar = false;
-    snd_pcm_t *captureHandle;
+    snd_pcm_t* captureHandle;
+
    public:  // internal usage
     constexpr static const char* NAME = "AudioIn";
 
@@ -51,7 +52,7 @@ class AudioIn: public DeviceNodeCRTP<DeviceNode, AudioIn, AudioInProperties>, pu
 
     void run() override;
 
-   Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::AudioFrame, true}}}}};
+    Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::AudioFrame, true}}}}};
 };
 
 }  // namespace node

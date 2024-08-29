@@ -2,15 +2,16 @@
 
 // depthai
 #include "depthai/pipeline/DeviceNode.hpp"
-#include "depthai/properties/AudioMixerProperties.hpp"
 #include "depthai/pipeline/datatype/AudioFrame.hpp"
+#include "depthai/properties/AudioMixerProperties.hpp"
 
 namespace dai {
 namespace node {
 
-class AudioMixer: public DeviceNodeCRTP<DeviceNode, AudioMixer, AudioMixerProperties>, public HostRunnable {
+class AudioMixer : public DeviceNodeCRTP<DeviceNode, AudioMixer, AudioMixerProperties>, public HostRunnable {
    protected:
     bool runOnHostVar = false;
+
    public:  // internal usage
     constexpr static const char* NAME = "AudioMixer";
 
@@ -29,11 +30,10 @@ class AudioMixer: public DeviceNodeCRTP<DeviceNode, AudioMixer, AudioMixerProper
     void unregisterSource(std::string name);
     void unregisterSink(std::string name);
 
-
     OutputMap outputs{*this, "outputs", {DEFAULT_NAME, DEFAULT_GROUP, {{{DatatypeEnum::AudioFrame, true}}}}};
     InputMap inputs{*this, "inputs", {DEFAULT_NAME, DEFAULT_GROUP, false, 1, {{{DatatypeEnum::AudioFrame, true}}}, true}};
 
-        /**
+    /**
      * Specify whether to run on host or device
      * By default, the node will run on device.
      */
@@ -45,7 +45,9 @@ class AudioMixer: public DeviceNodeCRTP<DeviceNode, AudioMixer, AudioMixerProper
     bool runOnHost() const override;
 
     void run() override;
-    bool isReady() {return properties.ready;}
+    bool isReady() {
+        return properties.ready;
+    }
 
    private:
     class AudioMixerSink;
@@ -54,37 +56,37 @@ class AudioMixer: public DeviceNodeCRTP<DeviceNode, AudioMixer, AudioMixerProper
     std::map<std::string, std::shared_ptr<AudioMixerSource>> audioSources;
     std::map<std::string, std::shared_ptr<AudioMixerSink>> audioSinks;
 
-    class AudioMixerSource : public std::enable_shared_from_this<AudioMixerSource>  {
-	    public:
-	    std::shared_ptr<AudioFrame> currentBuf;
-	    std::map<std::shared_ptr<AudioMixerSink>, std::thread> sinks;
+    class AudioMixerSource : public std::enable_shared_from_this<AudioMixerSource> {
+       public:
+        std::shared_ptr<AudioFrame> currentBuf;
+        std::map<std::shared_ptr<AudioMixerSink>, std::thread> sinks;
 
-	    std::thread thread;
-	    std::mutex currentBufferMtx;
-	    std::condition_variable notifyBufferChange;
-	    bool bufferReady;
+        std::thread thread;
+        std::mutex currentBufferMtx;
+        std::condition_variable notifyBufferChange;
+        bool bufferReady;
 
-	    float volume;
+        float volume;
     };
 
-    class AudioMixerSink : public std::enable_shared_from_this<AudioMixerSink>{
-	    public:
-	    struct sourceData_t {
-	    	std::list<std::shared_ptr<AudioFrame>> frames;
-		std::mutex mtx;
-	    	std::condition_variable frameCv;
-		bool framePresent;
-	    };
+    class AudioMixerSink : public std::enable_shared_from_this<AudioMixerSink> {
+       public:
+        struct sourceData_t {
+            std::list<std::shared_ptr<AudioFrame>> frames;
+            std::mutex mtx;
+            std::condition_variable frameCv;
+            bool framePresent;
+        };
 
-	    std::map<std::shared_ptr<AudioMixerSource>, std::shared_ptr<sourceData_t>> sourceData;
-	    
-	    std::thread thread;
+        std::map<std::shared_ptr<AudioMixerSource>, std::shared_ptr<sourceData_t>> sourceData;
 
-	    int format;
-	    unsigned int bitrate;
-	    unsigned int channels;
+        std::thread thread;
 
-	    std::shared_ptr<AudioFrame> mix();
+        int format;
+        unsigned int bitrate;
+        unsigned int channels;
+
+        std::shared_ptr<AudioFrame> mix();
     };
 };
 

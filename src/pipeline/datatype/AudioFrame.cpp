@@ -1,4 +1,5 @@
 #include "depthai/pipeline/datatype/AudioFrame.hpp"
+
 #include "depthai/utility/SharedMemory.hpp"
 
 namespace dai {
@@ -23,8 +24,7 @@ AudioFrame::AudioFrame(long fd, size_t size) : AudioFrame() {
     data = mem;
 }
 
-AudioFrame::AudioFrame(sf_count_t frames, unsigned int bitrate, unsigned int channels, int format) :
-	AudioFrame() {
+AudioFrame::AudioFrame(sf_count_t frames, unsigned int bitrate, unsigned int channels, int format) : AudioFrame() {
     auto mem = std::make_shared<VectorMemory>();
     data = mem;
 
@@ -32,39 +32,38 @@ AudioFrame::AudioFrame(sf_count_t frames, unsigned int bitrate, unsigned int cha
     this->bitrate = bitrate;
     this->channels = channels;
     this->format = format;
-
 }
 
 void AudioFrame::setFrames(sf_count_t frames) {
-	this->frames = frames;
+    this->frames = frames;
 }
 
 void AudioFrame::setBitrate(unsigned int bitrate) {
-	this->bitrate = bitrate;
+    this->bitrate = bitrate;
 }
 
 void AudioFrame::setChannels(unsigned int channels) {
-	this->channels = channels;
+    this->channels = channels;
 }
 
 void AudioFrame::setFormat(int format) {
-	this->format = format;
+    this->format = format;
 }
 
 sf_count_t AudioFrame::getFrames() const {
-	return frames;
+    return frames;
 }
 
 unsigned int AudioFrame::getBitrate() const {
-	return bitrate;
+    return bitrate;
 }
 
 unsigned int AudioFrame::getChannels() const {
-	return channels;
+    return channels;
 }
 
 int AudioFrame::getFormat() const {
-	return format;
+    return format;
 }
 
 }  // namespace dai

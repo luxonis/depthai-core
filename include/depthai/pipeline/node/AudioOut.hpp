@@ -1,19 +1,20 @@
 #pragma once
 
 // depthai
-#include "depthai/pipeline/DeviceNode.hpp"
-#include "depthai/properties/AudioOutProperties.hpp"
-#include "depthai/pipeline/datatype/AudioFrame.hpp"
-
 #include <alsa/asoundlib.h>
+
+#include "depthai/pipeline/DeviceNode.hpp"
+#include "depthai/pipeline/datatype/AudioFrame.hpp"
+#include "depthai/properties/AudioOutProperties.hpp"
 
 namespace dai {
 namespace node {
 
-class AudioOut: public DeviceNodeCRTP<DeviceNode, AudioOut, AudioOutProperties>, public HostRunnable { 
+class AudioOut : public DeviceNodeCRTP<DeviceNode, AudioOut, AudioOutProperties>, public HostRunnable {
    protected:
     bool runOnHostVar = false;
-    snd_pcm_t *captureHandle;
+    snd_pcm_t* captureHandle;
+
    public:  // internal usage
     constexpr static const char* NAME = "AudioOut";
 

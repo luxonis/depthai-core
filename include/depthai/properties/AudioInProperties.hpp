@@ -1,8 +1,8 @@
 #pragma once
 
-#include "depthai/properties/Properties.hpp"
-
 #include <alsa/asoundlib.h>
+
+#include "depthai/properties/Properties.hpp"
 
 namespace dai {
 
@@ -37,17 +37,10 @@ struct AudioInProperties : PropertiesSerializable<Properties, AudioInProperties>
      *  Number of audio channels (1 = mono, 2 = stereo)
      */
     unsigned int channels = 2;
-    
-    snd_pcm_format_t format;
 
+    snd_pcm_format_t format;
 };
 
-DEPTHAI_SERIALIZE_EXT(AudioInProperties,
-		      audioInName,
-		      audioInPath,
-		      bitrate,
-		      framesPerSecond,
-		      channels,
-		      format);
+DEPTHAI_SERIALIZE_EXT(AudioInProperties, audioInName, audioInPath, bitrate, framesPerSecond, channels, format);
 
 }  // namespace dai

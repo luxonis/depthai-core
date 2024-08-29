@@ -1,12 +1,11 @@
 #pragma once
 
-#include <vector>
 #include <memory>
+#include <vector>
 
 // project
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/utility/AudioHelpers.hpp"
-
 
 namespace dai {
 
@@ -33,15 +32,15 @@ class AudioFrame : public Buffer {
         datatype = DatatypeEnum::AudioFrame;
     };
 
-	void setFrames(sf_count_t frames);
-	void setBitrate(unsigned int bitrate);
-	void setChannels(unsigned int channels);
-	void setFormat(int format);
+    void setFrames(sf_count_t frames);
+    void setBitrate(unsigned int bitrate);
+    void setChannels(unsigned int channels);
+    void setFormat(int format);
 
-	sf_count_t getFrames() const;
-	unsigned int getBitrate() const;
-	unsigned int getChannels() const;
-	int getFormat() const;
+    sf_count_t getFrames() const;
+    unsigned int getBitrate() const;
+    unsigned int getChannels() const;
+    int getFormat() const;
 
    public:
     sf_count_t frames;

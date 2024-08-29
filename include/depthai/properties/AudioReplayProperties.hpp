@@ -1,8 +1,8 @@
 #pragma once
 
-#include "depthai/properties/Properties.hpp"
-
 #include <alsa/asoundlib.h>
+
+#include "depthai/properties/Properties.hpp"
 
 namespace dai {
 
@@ -13,7 +13,6 @@ struct AudioReplayProperties : PropertiesSerializable<Properties, AudioReplayPro
     static constexpr int AUTO = -1;
 
     int dummy
-
 };
 
 DEPTHAI_SERIALIZE_EXT(AudioReplayProperties, dummy);
