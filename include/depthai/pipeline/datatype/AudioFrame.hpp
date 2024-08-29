@@ -49,7 +49,7 @@ class AudioFrame : public Buffer {
     unsigned int channels;
     int format;
 
-    DEPTHAI_SERIALIZE(AudioFrame, Buffer::ts, bitrate, channels, format);
+    DEPTHAI_SERIALIZE(AudioFrame, Buffer::ts, frames, bitrate, channels, format);
 };
 
 }  // namespace dai
