@@ -4,7 +4,6 @@
 #include "depthai/utility/AudioHelpers.hpp"
 
 int main() {
-    dai::Pipeline pipeline;
     dai::Device device;
 
     auto devices = device.getAlsaDevices();
