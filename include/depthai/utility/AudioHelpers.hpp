@@ -7,6 +7,8 @@ extern "C" {
 #include <sndfile.h>
 }
 
+#include "depthai/utility/Serialization.hpp"
+
 namespace dai {
 namespace audio {
 class AudioDevice {
@@ -14,6 +16,8 @@ class AudioDevice {
     std::string name = "";
     std::string desc = "";
     std::string ioid = "";
+    
+    DEPTHAI_SERIALIZE(AudioDevice, name, desc, ioid);
 };
 
 class AudioFile {
@@ -53,7 +57,7 @@ class AudioFile {
     SF_INFO fileInfo;
 };
 
-std::vector<AudioDevice> ListAlsaDevices();
+std::vector<AudioDevice> GetAlsaDevices();
 
 }  // namespace audio
 }  // namespace dai

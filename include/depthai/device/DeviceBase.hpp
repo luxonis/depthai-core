@@ -25,6 +25,7 @@
 #include "depthai/pipeline/PipelineSchema.hpp"
 #include "depthai/utility/Pimpl.hpp"
 #include "depthai/utility/ProfilingData.hpp"
+#include "depthai/utility/AudioHelpers.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
 #include "depthai/xlink/XLinkStream.hpp"
 
@@ -726,6 +727,13 @@ class DeviceBase {
      * @returns Average CPU usage and sampling duration
      */
     CpuUsage getLeonMssCpuUsage();
+
+    /**
+     * Retrives all ALSA audio devices from the device
+     *
+     * @returns All the available ALSA devices
+     */
+    std::vector<dai::audio::AudioDevice> getAlsaDevices();
 
     /**
      * Check if EEPROM is available

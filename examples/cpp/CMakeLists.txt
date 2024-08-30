@@ -476,6 +476,7 @@ dai_add_example(replay_video_meta RVC2/Replay/replay_video_meta.cpp ON OFF)
 dai_add_example(camera_multiple_outputs RVC4/Camera/camera_multiple_outputs.cpp ON OFF)
 
 # Audio nodes
+dai_add_example(audio_list RVC4/Audio/audio_list.cpp ON OFF)
 dai_add_example(audio_in_out RVC4/Audio/audio_in_out.cpp ON OFF)
 dai_add_example(audio_encoder RVC4/Audio/audio_encoder.cpp ON OFF)
 dai_add_example(audio_replay RVC4/Audio/audio_replay.cpp ON OFF)

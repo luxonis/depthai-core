@@ -1342,6 +1342,10 @@ int DeviceBase::getXLinkChunkSize() {
     return pimpl->rpcClient->call("getXLinkChunkSize").as<int>();
 }
 
+std::vector<dai::audio::AudioDevice> DeviceBase::getAlsaDevices() {
+    return pimpl->rpcClient->call("getAlsaDevices").as<std::vector<dai::audio::AudioDevice>>();
+}
+
 DeviceInfo DeviceBase::getDeviceInfo() const {
     return deviceInfo;
 }

@@ -8,7 +8,7 @@
 namespace dai {
 namespace audio {
 
-std::vector<AudioDevice> ListAlsaDevices() {
+std::vector<AudioDevice> GetAlsaDevices() {
     int status;
     char** hints;
 
