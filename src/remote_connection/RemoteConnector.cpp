@@ -7,6 +7,7 @@ void RemoteConnector::initServer(const std::string& address, uint16_t port) {
     // Create the WebSocket server with a simple log handler
     const auto logHandler = [](foxglove::WebSocketLogLevel, const char* msg) { std::cout << msg << std::endl; };
     foxglove::ServerOptions serverOptions;
+    serverOptions.sendBufferLimitBytes = 100 * 1024 * 1024;  // 50 MB
 
     // Instantiate the server using the factory
     server = foxglove::ServerFactory::createServer<websocketpp::connection_hdl>("DepthAI RemoteConnector", logHandler, serverOptions);
