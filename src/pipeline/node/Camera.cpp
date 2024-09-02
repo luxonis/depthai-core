@@ -178,6 +178,9 @@ NodeRecordParams Camera::getNodeRecordParams() const {
     params.name = "Camera" + toString(properties.boardSocket);
     return params;
 }
+Camera::Input& Camera::getReplayInput() {
+    return mockIsp;
+}
 
 std::pair<size_t, size_t> Camera::getMaxRequestedSize() const {
     uint32_t maxWidth = 0;

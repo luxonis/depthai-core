@@ -477,6 +477,7 @@ dai_add_example(camera_multiple_outputs RVC4/Camera/camera_multiple_outputs.cpp 
 
 # Host nodes
 dai_add_example(rgb_video RVC2/ColorCamera/rgb_video.cpp ON OFF)
+dai_add_example(rgb_video2 RVC2/Camera/rgb_video2.cpp ON OFF)
 dai_add_example(host_node HostNodes/host_node.cpp ON OFF)
 dai_add_example(threaded_host_node HostNodes/threaded_host_node.cpp ON OFF)
 
