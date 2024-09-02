@@ -564,6 +564,11 @@ class DeviceBase {
     bool hasCrashDump();
 
     /**
+     * Retrieves the reason of previous disconnection or crash
+     */
+    std::string getResetInfo(bool alsoLogAsWarning = false);
+
+    /**
      * Get current accumulated profiling data
      *
      * @returns ProfilingData from the specific device

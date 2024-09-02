@@ -600,17 +600,17 @@ void DeviceBase::closeImpl() {
                         logCollection::logCrashDump(pipelineSchema, dump, deviceInfo);
 
                     } else {
-                        pimpl->logger.warn("Device crashed, but no crash dump could be extracted.");
+                        pimpl->logger.warn("{}", rebootingDevice.getResetInfo());
                     }
                     gotDump = true;
                     break;
                 }
             } while(!found && steady_clock::now() - t1 < std::chrono::milliseconds(timeout));
             if(!gotDump) {
-                pimpl->logger.error("Device likely crashed but did not reboot in time to get the crash dump");
+                pimpl->logger.error("Device disconnected but did not reboot in time to check the reset reason");
             }
         } else if(shouldGetCrashDump) {
-            pimpl->logger.warn("Device crashed. Crash dump retrieval disabled.");
+            pimpl->logger.warn("Device disconnected. Crash dump check/retrieval disabled");
         }
 
         pimpl->logger.debug("Device closed, {}", duration_cast<milliseconds>(steady_clock::now() - t1).count());
@@ -1259,6 +1259,10 @@ dai::CrashDump DeviceBase::getCrashDump(bool clearCrashDump) {
 
 bool DeviceBase::hasCrashDump() {
     return pimpl->rpcClient->call("hasCrashDump").as<bool>();
+}
+
+std::string DeviceBase::getResetInfo(bool alsoLogAsWarning) {
+    return pimpl->rpcClient->call("getResetInfo", alsoLogAsWarning).as<std::string>();
 }
 
 ProfilingData DeviceBase::getProfilingData() {
