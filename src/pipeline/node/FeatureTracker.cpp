@@ -5,7 +5,8 @@
 namespace dai {
 namespace node {
 
-FeatureTracker::FeatureTracker(std::unique_ptr<Properties> props) : DeviceNodeCRTP<DeviceNode, FeatureTracker, FeatureTrackerProperties>(std::move(props)) {}
+FeatureTracker::FeatureTracker(std::unique_ptr<Properties> props)
+    : DeviceNodeCRTP<DeviceNode, FeatureTracker, FeatureTrackerProperties>(std::move(props)), initialConfig(properties.initialConfig) {}
 
 FeatureTracker::Properties& FeatureTracker::getProperties() {
     properties.initialConfig = initialConfig;

@@ -1,0 +1,11 @@
+description: >-
+  april-tags frame
+task_type: object_attributes
+files:
+  - name: april_tags.jpg
+    size: 15745
+    sha256: 30f801256414aecc94510f08ac52647de3b41b8f3ba3a934f8062c2cdcb63c1a
+    source: https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/images/april_tags.jpg
+
+framework: dldt
+license: https://raw.githubusercontent.com/openvinotoolkit/open_model_zoo/master/LICENSE
