@@ -20,7 +20,7 @@ void bind_audioencoder(pybind11::module& m, void* pCallstack) {
 
     // Actual bindings
     audioEncoder.def_readonly("input", &AudioEncoder::input, DOC(dai, node, AudioEncoder, input))
-        .def("out", &AudioEncoder::out, DOC(dai, node, AudioEncoder, out))
+        .def_readonly("out", &AudioEncoder::out, DOC(dai, node, AudioEncoder, out))
         .def("build", &AudioEncoder::build, DOC(dai, node, AudioEncoder, build))
         .def("setBitrate", &AudioEncoder::setBitrate, DOC(dai, node, AudioEncoder, setBitrate))
         .def("setChannels", &AudioEncoder::setChannels, DOC(dai, node, AudioEncoder, setChannels))
@@ -28,5 +28,7 @@ void bind_audioencoder(pybind11::module& m, void* pCallstack) {
         .def("getBitrate", &AudioEncoder::getBitrate, DOC(dai, node, AudioEncoder, getBitrate))
         .def("getChannels", &AudioEncoder::getChannels, DOC(dai, node, AudioEncoder, getChannels))
         .def("getFormat", &AudioEncoder::getFormat, DOC(dai, node, AudioEncoder, getFormat))
+	.def("setRunOnHost", &AudioEncoder::setRunOnHost, py::arg("runOnHost"), DOC(dai, node, AudioEncoder, setRunOnHost))
+        .def("runOnHost", &AudioEncoder::runOnHost, DOC(dai, node, AudioEncoder, runOnHost))
 	;
 }

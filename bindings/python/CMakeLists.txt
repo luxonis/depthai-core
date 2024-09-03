@@ -111,11 +111,11 @@ set(SOURCE_LIST
     src/pipeline/node/HostNodeBindings.cpp
     src/pipeline/node/RecordBindings.cpp
     src/pipeline/node/ReplayBindings.cpp
-    src/pipeline/node/AudioIn.cpp
-    src/pipeline/node/AudioOut.cpp
-    src/pipeline/node/AudioMixer.cpp
-    src/pipeline/node/AudioEncoder.cpp
-    src/pipeline/node/AudioReplay.cpp
+    src/pipeline/node/AudioInBindings.cpp
+    src/pipeline/node/AudioOutBindings.cpp
+    src/pipeline/node/AudioMixerBindings.cpp
+    src/pipeline/node/AudioEncoderBindings.cpp
+    src/pipeline/node/AudioReplayBindings.cpp
 
     src/pipeline/datatype/ADatatypeBindings.cpp
     src/pipeline/datatype/AprilTagConfigBindings.cpp

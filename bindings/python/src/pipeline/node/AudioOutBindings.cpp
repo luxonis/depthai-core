@@ -19,7 +19,7 @@ void bind_audioout(pybind11::module& m, void* pCallstack) {
     cb(m, pCallstack);
 
     // Actual bindings
-    audioOut.def_readonly("out", &AudioOut::out, DOC(dai, node, AudioOut, out))
+    audioOut.def_readonly("input", &AudioOut::input, DOC(dai, node, AudioOut, input))
         .def("build", &AudioOut::build, DOC(dai, node, AudioOut, build))
         .def("setDeviceName", &AudioOut::setDeviceName, DOC(dai, node, AudioOut, setDeviceName))
         .def("setDevicePath", &AudioOut::setDevicePath, DOC(dai, node, AudioOut, setDevicePath))

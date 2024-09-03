@@ -4,7 +4,7 @@
 #include <memory>
 
 // depthai
-#include "depthai/pipeline/datatype/Buffer.hpp"
+#include "depthai/pipeline/datatype/AudioFrame.hpp"
 
 //pybind
 #include <pybind11/chrono.h>
@@ -80,7 +80,7 @@ void bind_audioframe(pybind11::module& m, void* pCallstack){
         .def("setData", [](AudioFrame& audioFrame, py::array_t<std::uint8_t, py::array::c_style | py::array::forcecast> array){
             audioFrame.setData({array.data(), array.data() + array.nbytes()});
         }, DOC(dai, AudioFrame, setData))
-        .def("setData", [](AudioFrame& audioFrame, py::audioFrame data){
+        .def("setData", [](AudioFrame& audioFrame, py::buffer data){
             std::string str = data.cast<std::string>();
             audioFrame.setData({str.data(), str.data() + str.size()});
         }, DOC(dai, AudioFrame, setData))

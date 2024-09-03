@@ -19,7 +19,7 @@ void bind_audioin(pybind11::module& m, void* pCallstack) {
     cb(m, pCallstack);
 
     // Actual bindings
-    audioIn.def_readonly("input", &AudioIn::input, DOC(dai, node, AudioIn, input))
+    audioIn.def_readonly("out", &AudioIn::out, DOC(dai, node, AudioIn, out))
         .def("build", &AudioIn::build, DOC(dai, node, AudioIn, build))
         .def("setDeviceName", &AudioIn::setDeviceName, DOC(dai, node, AudioIn, setDeviceName))
         .def("setDevicePath", &AudioIn::setDevicePath, DOC(dai, node, AudioIn, setDevicePath))
@@ -33,5 +33,8 @@ void bind_audioin(pybind11::module& m, void* pCallstack) {
         .def("getFps", &AudioIn::getFps, DOC(dai, node, AudioIn, getFps))
         .def("getChannels", &AudioIn::getChannels, DOC(dai, node, AudioIn, getChannels))
         .def("getFormat", &AudioIn::getFormat, DOC(dai, node, AudioIn, getFormat))
+	.def("setRunOnHost", &AudioIn::setRunOnHost, py::arg("runOnHost"), DOC(dai, node, AudioIn, setRunOnHost))
+        .def("runOnHost", &AudioIn::runOnHost, DOC(dai, node, AudioIn, runOnHost))
+
 	;
 }

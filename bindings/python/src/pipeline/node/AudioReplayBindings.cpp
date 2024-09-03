@@ -10,7 +10,7 @@ void bind_audioreplay(pybind11::module& m, void* pCallstack) {
     using namespace pybind11::literals;
 
     // Declare node upfront
-    auto audioReplay = ADD_NODE(AudioReplay);
+    auto audioReplay = ADD_NODE_DERIVED(AudioReplay, ThreadedHostNode);
 
     // Call the rest of the type defines, then perform the actual bindings
     Callstack* callstack = (Callstack*)pCallstack;
@@ -19,13 +19,13 @@ void bind_audioreplay(pybind11::module& m, void* pCallstack) {
     cb(m, pCallstack);
 
     // Actual bindings
-    audioReplay.def_readonly("input", &AudioReplay::input, DOC(dai, node, AudioReplay, input))
+    audioReplay.def_readonly("out", &AudioReplay::out, DOC(dai, node, AudioReplay, out))
         .def("setSourceFile", &AudioReplay::setSourceFile, DOC(dai, node, AudioReplay, setSourceFile))
-        .def("setSourceLoop", &AudioReplay::setSourceLoop, DOC(dai, node, AudioReplay, setSourceLoop))
-        .def("setSourceFps", &AudioReplay::setSourceFps, DOC(dai, node, AudioReplay, setSourceFps))
+        .def("setLoop", &AudioReplay::setLoop, DOC(dai, node, AudioReplay, setLoop))
+        .def("setFps", &AudioReplay::setFps, DOC(dai, node, AudioReplay, setFps))
 	.def("getSourceFile", &AudioReplay::getSourceFile, DOC(dai, node, AudioReplay, getSourceFile))
-        .def("getSourceLoop", &AudioReplay::getSourceLoop, DOC(dai, node, AudioReplay, getSourceLoop))
-        .def("getSourceFps", &AudioReplay::getSourceFps, DOC(dai, node, AudioReplay, getSourceFps))
+        .def("getLoop", &AudioReplay::getLoop, DOC(dai, node, AudioReplay, getLoop))
+        .def("getFps", &AudioReplay::getFps, DOC(dai, node, AudioReplay, getFps))
         .def("getFormat", &AudioReplay::getFormat, DOC(dai, node, AudioReplay, getFormat))
 	;
 }

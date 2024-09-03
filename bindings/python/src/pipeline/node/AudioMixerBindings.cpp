@@ -20,7 +20,7 @@ void bind_audiomixer(pybind11::module& m, void* pCallstack) {
 
     // Actual bindings
     audioMixer.def_readonly("outputs", &AudioMixer::outputs, DOC(dai, node, AudioMixer, outputs))
-        .def("inputs", &AudioMixer::inputs, DOC(dai, node, AudioMixer, inputs))
+        .def_readonly("inputs", &AudioMixer::inputs, DOC(dai, node, AudioMixer, inputs))
         .def("build", &AudioMixer::build,DOC(dai, node, AudioMixer, build))
         .def("registerSource", &AudioMixer::registerSource, DOC(dai, node, AudioMixer, registerSource))
         .def("registerSink", &AudioMixer::registerSink, DOC(dai, node, AudioMixer, registerSink))
@@ -28,6 +28,9 @@ void bind_audiomixer(pybind11::module& m, void* pCallstack) {
 	.def("unregisterSource", &AudioMixer::unregisterSource, DOC(dai, node, AudioMixer, unregisterSource))
         .def("unregisterSink", &AudioMixer::unregisterSink, DOC(dai, node, AudioMixer, unregisterSink))
         .def("unlinkSourceFromSink", &AudioMixer::unlinkSourceFromSink, DOC(dai, node, AudioMixer, unlinkSourceFromSink))
+	.def("setRunOnHost", &AudioMixer::setRunOnHost, py::arg("runOnHost"), DOC(dai, node, AudioMixer, setRunOnHost))
+        .def("runOnHost", &AudioMixer::runOnHost, DOC(dai, node, AudioMixer, runOnHost))
+
 	;
 
 }
