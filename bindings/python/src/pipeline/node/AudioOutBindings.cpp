@@ -33,5 +33,7 @@ void bind_audioout(pybind11::module& m, void* pCallstack) {
         .def("getFps", &AudioOut::getFps, DOC(dai, node, AudioOut, getFps))
         .def("getChannels", &AudioOut::getChannels, DOC(dai, node, AudioOut, getChannels))
         .def("getFormat", &AudioOut::getFormat, DOC(dai, node, AudioOut, getFormat))
+	.def("setRunOnHost", &AudioOut::setRunOnHost, py::arg("runOnHost"), DOC(dai, node, AudioOut, setRunOnHost))
+        .def("runOnHost", &AudioOut::runOnHost, DOC(dai, node, AudioOut, runOnHost))
 	;
 }
