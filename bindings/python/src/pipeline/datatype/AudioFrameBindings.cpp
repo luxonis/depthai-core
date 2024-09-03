@@ -18,6 +18,15 @@ void bind_audioframe(pybind11::module& m, void* pCallstack){
 
     // py::class_<RawBuffer, std::shared_ptr<RawBuffer>> rawBuffer(m, "RawBuffer", DOC(dai, RawBuffer));
     py::class_<AudioFrame, Py<AudioFrame>, Buffer, std::shared_ptr<AudioFrame>> audioFrame(m, "AudioFrame", DOC(dai, AudioFrame));
+    py::enum_<AudioFrame::AudioFormat> audioFormat(audioFrame, "AudioFormat");
+
+    audioFormat
+        .value("AUDIO_FORMAT_PCM_S8", AudioFrame::AudioFormat::AUDIO_FORMAT_PCM_S8)
+        .value("AUDIO_FORMAT_PCM_16", AudioFrame::AudioFormat::AUDIO_FORMAT_PCM_16)
+        .value("AUDIO_FORMAT_PCM_24", AudioFrame::AudioFormat::AUDIO_FORMAT_PCM_24)
+        .value("AUDIO_FORMAT_PCM_32", AudioFrame::AudioFormat::AUDIO_FORMAT_PCM_32)
+	;
+
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
