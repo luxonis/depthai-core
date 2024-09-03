@@ -159,6 +159,12 @@ void bind_messagedemux(pybind11::module& m, void* pCallstack);
 void bind_hostnode(pybind11::module& m, void* pCallstack);
 void bind_record(pybind11::module& m, void* pCallstack);
 void bind_replay(pybind11::module& m, void* pCallstack);
+void bind_audioin(pybind11::module& m, void* pCallstack);
+void bind_audioout(pybind11::module& m, void* pCallstack);
+void bind_audioreplay(pybind11::module& m, void* pCallstack);
+void bind_audiomixer(pybind11::module& m, void* pCallstack);
+void bind_audioencoder(pybind11::module& m, void* pCallstack);
+
 #ifdef DEPTHAI_HAVE_BASALT_SUPPORT
 void bind_basaltnode(pybind11::module& m, void* pCallstack);
 #endif
@@ -204,6 +210,11 @@ void NodeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_hostnode);
     callstack.push_front(bind_record);
     callstack.push_front(bind_replay);
+    callstack.push_front(bind_audioin);
+    callstack.push_front(bind_audioout);
+    callstack.push_front(bind_audioreplay);
+    callstack.push_front(bind_audiomixer);
+    callstack.push_front(bind_audioencoder);
 #ifdef DEPTHAI_HAVE_BASALT_SUPPORT
     callstack.push_front(bind_basaltnode);
 #endif

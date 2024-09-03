@@ -15,7 +15,6 @@ namespace dai {
 class AudioFrame : public Buffer {
    public:
     using Buffer::getTimestamp;
-    using Buffer::getTimestampDevice;
     /**
      * Construct AudioFrame message.
      * Timestamp is set to now

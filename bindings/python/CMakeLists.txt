@@ -111,6 +111,11 @@ set(SOURCE_LIST
     src/pipeline/node/HostNodeBindings.cpp
     src/pipeline/node/RecordBindings.cpp
     src/pipeline/node/ReplayBindings.cpp
+    src/pipeline/node/AudioIn.cpp
+    src/pipeline/node/AudioOut.cpp
+    src/pipeline/node/AudioMixer.cpp
+    src/pipeline/node/AudioEncoder.cpp
+    src/pipeline/node/AudioReplay.cpp
 
     src/pipeline/datatype/ADatatypeBindings.cpp
     src/pipeline/datatype/AprilTagConfigBindings.cpp
@@ -139,6 +144,7 @@ set(SOURCE_LIST
     src/pipeline/datatype/PointCloudConfigBindings.cpp
     src/pipeline/datatype/PointCloudDataBindings.cpp
     src/pipeline/datatype/TransformDataBindings.cpp
+    src/pipeline/datatype/AudioFrameBindings.cpp
 
     src/capabilities/CapabilityBindings.cpp
     src/capabilities/CapabilityRangeBindings.cpp
