@@ -22,14 +22,14 @@ int main() {
     auto encoder = pipeline.create<dai::node::AudioEncoder>();
     encoder->setRunOnHost(false);
     encoder->setFormat(SF_FORMAT_PCM_16);
-    encoder->setBitrate(48000);
+    encoder->setBitrate(44100);
     encoder->setChannels(2);
 
     auto outHost = pipeline.create<dai::node::AudioOut>();
     outHost->setRunOnHost(true);
     outHost->setDeviceName("speaker");
     outHost->setDevicePath("default");
-    outHost->setBitrate(48000);
+    outHost->setBitrate(44100);
     outHost->setFps(16);
     outHost->setChannels(2);
     outHost->setFormat(SF_FORMAT_PCM_16);
