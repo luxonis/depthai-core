@@ -16,8 +16,18 @@ class AudioDevice {
     std::string name = "";
     std::string desc = "";
     std::string ioid = "";
-    
+
     DEPTHAI_SERIALIZE(AudioDevice, name, desc, ioid);
+};
+
+class AudioPCM {
+   public:
+    std::string name = "";
+    std::string id = "";
+    unsigned long cardNumber;
+    unsigned long deviceNumber;
+
+    DEPTHAI_SERIALIZE(AudioPCM, name, id, cardNumber, deviceNumber);
 };
 
 class AudioFile {
@@ -58,6 +68,7 @@ class AudioFile {
 };
 
 std::vector<AudioDevice> GetAlsaDevices();
+std::vector<AudioPCM> GetAlsaPCMs();
 
 }  // namespace audio
 }  // namespace dai

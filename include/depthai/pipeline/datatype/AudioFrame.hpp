@@ -26,9 +26,8 @@ class AudioFrame : public Buffer {
     AudioFrame(sf_count_t frames, unsigned int bitrate, unsigned int channels, int format);
     virtual ~AudioFrame() = default;
 
-
     enum AudioFormat {
-	AUDIO_FORMAT_PCM_S8 = SF_FORMAT_PCM_S8,
+        AUDIO_FORMAT_PCM_S8 = SF_FORMAT_PCM_S8,
         AUDIO_FORMAT_PCM_16 = SF_FORMAT_PCM_16,
         AUDIO_FORMAT_PCM_24 = SF_FORMAT_PCM_24,
         AUDIO_FORMAT_PCM_32 = SF_FORMAT_PCM_32,

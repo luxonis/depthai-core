@@ -23,9 +23,9 @@
 #include "depthai/device/Version.hpp"
 #include "depthai/openvino/OpenVINO.hpp"
 #include "depthai/pipeline/PipelineSchema.hpp"
+#include "depthai/utility/AudioHelpers.hpp"
 #include "depthai/utility/Pimpl.hpp"
 #include "depthai/utility/ProfilingData.hpp"
-#include "depthai/utility/AudioHelpers.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
 #include "depthai/xlink/XLinkStream.hpp"
 
@@ -734,6 +734,13 @@ class DeviceBase {
      * @returns All the available ALSA devices
      */
     std::vector<dai::audio::AudioDevice> getAlsaDevices();
+
+    /**
+     * Retrives all ALSA PCMs from the device
+     *
+     * @returns All the available ALSA PCMs
+     */
+    std::vector<dai::audio::AudioPCM> getAlsaPCMs();
 
     /**
      * Check if EEPROM is available

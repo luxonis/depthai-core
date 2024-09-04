@@ -181,10 +181,10 @@ std::shared_ptr<AudioFrame> AudioMixer::AudioMixerSink::mix() {
         case SF_FORMAT_PCM_24:
         case SF_FORMAT_PCM_32:
         case SF_FORMAT_FLOAT:
-	    frames /= (32 / 8);
+            frames /= (32 / 8);
             break;
         case SF_FORMAT_DOUBLE:
-	    frames /= (64 / 8);
+            frames /= (64 / 8);
             break;
     }
 
