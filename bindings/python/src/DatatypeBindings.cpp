@@ -10,6 +10,7 @@ void bind_buffer(pybind11::module& m, void* pCallstack);
 void bind_cameracontrol(pybind11::module& m, void* pCallstack);
 void bind_edgedetectorconfig(pybind11::module& m, void* pCallstack);
 void bind_featuretrackerconfig(pybind11::module& m, void* pCallstack);
+void bind_thermalconfig(pybind11::module& m, void* pCallstack);
 void bind_tofconfig(pybind11::module& m, void* pCallstack);
 void bind_imagemanipconfig(pybind11::module& m, void* pCallstack);
 void bind_imagemanipconfigv2(pybind11::module& m, void* pCallstack);

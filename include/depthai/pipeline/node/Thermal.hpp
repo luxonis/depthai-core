@@ -42,11 +42,18 @@ class Thermal : public DeviceNodeCRTP<DeviceNode, Thermal, ThermalProperties> {
     //                   {"inputConfig", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ThermalConfig, false}}},
     //                   DEFAULT_WAIT_FOR_MESSAGE}};
 
+    /**
+     * Outputs FP16 (degC) thermal image.
+     */
     Output temperature{*this, {"temperature", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
+
+    /**
+     * Outputs YUV422i grayscale thermal image.
+     */
     Output color{*this, {"color", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     /**
-     * Build with a specific board socket
+     * Build with a specific board socket and fps.
      */
     std::shared_ptr<Thermal> build(dai::CameraBoardSocket boardSocket = dai::CameraBoardSocket::AUTO, float fps = 25);
 
