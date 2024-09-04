@@ -40,6 +40,11 @@ cv::Mat ImgFrame::getFrame(bool deepCopy) {
             type = CV_8UC1;
             break;
 
+        case Type::YUV422i:
+            size = cv::Size(getWidth(), getHeight());
+            type = CV_8UC2;
+            break;
+
         case Type::RAW8:
         case Type::GRAY8:
             size = cv::Size(getWidth(), getHeight());
@@ -168,6 +173,10 @@ cv::Mat ImgFrame::getCvFrame(cv::MatAllocator* allocator) {
 
         case Type::YUV420p:
             cv::cvtColor(frame, output, cv::ColorConversionCodes::COLOR_YUV2BGR_IYUV);
+            break;
+
+        case Type::YUV422i:
+            cv::cvtColor(frame, output, cv::ColorConversionCodes::COLOR_YUV2BGR_YUYV);
             break;
 
         case Type::NV12:
