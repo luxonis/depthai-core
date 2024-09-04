@@ -1347,7 +1347,7 @@ std::vector<dai::audio::AudioDevice> DeviceBase::getAlsaDevices() {
 }
 
 std::vector<dai::audio::AudioPCM> DeviceBase::getAlsaPCMs() {
-    return pimpl->rpcClient->call("getAlsaPCM").as<std::vector<dai::audio::AudioPCM>>();
+    return pimpl->rpcClient->call("getAlsaPCMs").as<std::vector<dai::audio::AudioPCM>>();
 }
 
 DeviceInfo DeviceBase::getDeviceInfo() const {

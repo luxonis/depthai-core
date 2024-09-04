@@ -2,8 +2,8 @@
 
 // Include depthai library
 #include <depthai/depthai.hpp>
-#include <depthai/utility/AudioHelpers.hpp>
 #include <depthai/pipeline/InputQueue.hpp>
+#include <depthai/utility/AudioHelpers.hpp>
 
 TEST_CASE("AudioEncoder") {
     dai::Pipeline pipeline;
@@ -19,7 +19,7 @@ TEST_CASE("AudioEncoder") {
 
     auto inputQueue = encoder->input.createInputQueue();
     auto outputQueue = encoder->out.createOutputQueue();
-    
+
     pipeline.start();
 
     inputQueue->send(inputFrame);

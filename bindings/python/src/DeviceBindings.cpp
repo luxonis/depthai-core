@@ -557,6 +557,7 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack){
         .def("getDeviceName", [](DeviceBase& d) { std::string name; { py::gil_scoped_release release; name = d.getDeviceName(); } return py::bytes(name).attr("decode")("utf-8", "replace"); }, DOC(dai, DeviceBase, getDeviceName))
         .def("getProductName", [](DeviceBase& d) { std::string name; { py::gil_scoped_release release; name = d.getProductName(); } return py::bytes(name).attr("decode")("utf-8", "replace"); }, DOC(dai, DeviceBase, getProductName))
         .def("getAlsaDevices", [](DeviceBase& d) { py::gil_scoped_release release; return d.getAlsaDevices(); }, DOC(dai, DeviceBase, getAlsaDevices))
+        .def("getAlsaPCMs", [](DeviceBase& d) { py::gil_scoped_release release; return d.getAlsaPCMs(); }, DOC(dai, DeviceBase, getAlsaPCMs))
     ;
 
 

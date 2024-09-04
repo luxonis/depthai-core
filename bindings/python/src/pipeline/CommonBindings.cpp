@@ -37,6 +37,7 @@
 #include "depthai/common/CameraExposureOffset.hpp"
 #include "depthai/common/StereoPair.hpp"
 #include "depthai/utility/ProfilingData.hpp"
+#include "depthai/utility/AudioHelpers.hpp"
 
 void CommonBindings::bind(pybind11::module& m, void* pCallstack){
 
@@ -77,6 +78,8 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack){
     py::enum_<FrameEvent> frameEvent(m, "FrameEvent", DOC(dai, FrameEvent));
     py::class_<ProfilingData> profilingData(m, "ProfilingData", DOC(dai, ProfilingData));
     py::enum_<Interpolation> interpolation(m, "Interpolation", DOC(dai, Interpolation));
+    py::class_<dai::audio::AudioDevice> audioDevice(m, "AudioDevice", DOC(dai, audio, AudioDevice));
+    py::class_<dai::audio::AudioPCM> audioPCM(m, "AudioPCM", DOC(dai, audio, AudioPCM));
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -472,6 +475,22 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack){
     profilingData
         .def_readwrite("numBytesWritten", &ProfilingData::numBytesWritten, DOC(dai, ProfilingData, numBytesWritten))
         .def_readwrite("numBytesRead", &ProfilingData::numBytesRead, DOC(dai, ProfilingData, numBytesRead))
+    ;
+
+
+    audioDevice
+        .def(py::init<>())
+        .def_readwrite("name", &dai::audio::AudioDevice::name)
+        .def_readwrite("desc", &dai::audio::AudioDevice::desc)
+        .def_readwrite("ioid", &dai::audio::AudioDevice::ioid)
+    ;
+
+    audioPCM
+        .def(py::init<>())
+        .def_readwrite("name", &dai::audio::AudioPCM::name)
+        .def_readwrite("id", &dai::audio::AudioPCM::id)
+        .def_readwrite("cardNumber", &dai::audio::AudioPCM::cardNumber)
+        .def_readwrite("deviceNumber", &dai::audio::AudioPCM::deviceNumber)
     ;
 
 }

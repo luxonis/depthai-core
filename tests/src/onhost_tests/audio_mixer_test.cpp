@@ -2,8 +2,8 @@
 
 // Include depthai library
 #include <depthai/depthai.hpp>
-#include <depthai/utility/AudioHelpers.hpp>
 #include <depthai/pipeline/InputQueue.hpp>
+#include <depthai/utility/AudioHelpers.hpp>
 
 TEST_CASE("AudioMixer") {
     dai::Pipeline pipeline;
@@ -11,7 +11,7 @@ TEST_CASE("AudioMixer") {
     std::vector<uint8_t> frameData((32 / 8) * 2 * 2);
     inputFrame->setData(frameData);
 
-    auto mixer= pipeline.create<dai::node::AudioMixer>();
+    auto mixer = pipeline.create<dai::node::AudioMixer>();
     mixer->setRunOnHost(true);
     mixer->registerSource("source1", 1);
     mixer->registerSink("sink1", 48000, 2, SF_FORMAT_PCM_32);
@@ -19,7 +19,7 @@ TEST_CASE("AudioMixer") {
 
     auto inputQueue = mixer->inputs["source1"].createInputQueue();
     auto outputQueue = mixer->outputs["sink1"].createOutputQueue();
-    
+
     pipeline.start();
 
     inputQueue->send(inputFrame);
@@ -32,4 +32,3 @@ TEST_CASE("AudioMixer") {
 
     pipeline.stop();
 }
-
