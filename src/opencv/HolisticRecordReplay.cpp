@@ -19,7 +19,8 @@
 namespace dai {
 namespace utility {
 
-bool setupHolisticRecord(Pipeline& pipeline, const std::string& mxId, RecordConfig& recordConfig, std::unordered_map<std::string, std::string>& outFilenames) {
+bool setupHolisticRecord(
+    Pipeline& pipeline, const std::string& mxId, RecordConfig& recordConfig, std::unordered_map<std::string, std::string>& outFilenames, bool legacy) {
     auto sources = pipeline.getSourceNodes();
     const auto recordPath = recordConfig.outputDir;
     try {
@@ -40,6 +41,7 @@ bool setupHolisticRecord(Pipeline& pipeline, const std::string& mxId, RecordConf
                     auto cam = std::dynamic_pointer_cast<dai::node::Camera>(node);
                     auto fps = cam->getMaxRequestedFps();
                     const auto [width, height] = cam->getMaxRequestedSize();
+                    // TODO(asahtik): RVC4 H264 video encoder only supports native resolutions. Get min larger native resolution (also removes upscaling).
                     output = cam->requestOutput({width, height}, dai::ImgFrame::Type::NV12, dai::ImgResizeMode::CROP, fps);
                 } else {
                     output = &nodeS->getRecordOutput();
@@ -54,8 +56,8 @@ bool setupHolisticRecord(Pipeline& pipeline, const std::string& mxId, RecordConf
                     videnc->setLossless(recordConfig.videoEncoding.lossless);
                     videnc->setBitrate(recordConfig.videoEncoding.bitrate);
                     videnc->setQuality(recordConfig.videoEncoding.quality);
-                    int maxOutputFrameSize = 3110400;
-                    if(std::dynamic_pointer_cast<node::Camera>(node) != nullptr || std::dynamic_pointer_cast<node::ColorCamera>(node) != nullptr) {
+                    if((std::dynamic_pointer_cast<node::Camera>(node) != nullptr || std::dynamic_pointer_cast<node::ColorCamera>(node) != nullptr) && legacy) {
+                        int maxOutputFrameSize = 3110400;
                         if(std::dynamic_pointer_cast<node::ColorCamera>(node) != nullptr) {
                             auto cam = std::dynamic_pointer_cast<dai::node::ColorCamera>(node);
                             maxOutputFrameSize = std::get<0>(cam->getIspSize()) * std::get<1>(cam->getIspSize()) * 3;
@@ -67,6 +69,7 @@ bool setupHolisticRecord(Pipeline& pipeline, const std::string& mxId, RecordConf
                         output->link(imageManip->inputImage);
                         imageManip->out.link(videnc->input);
                     } else {
+                        // TODO(asahtik): RVC4 video encoder only supports native resolutions.
                         output->link(videnc->input);
                     }
                     videnc->out.link(recordNode->input);
@@ -102,7 +105,8 @@ bool setupHolisticReplay(Pipeline& pipeline,
                          std::string replayPath,
                          const std::string& mxId,
                          RecordConfig& recordConfig,
-                         std::unordered_map<std::string, std::string>& outFilenames) {
+                         std::unordered_map<std::string, std::string>& outFilenames,
+                         bool legacy) {
     const std::string rootPath = platform::getDirFromPath(replayPath);
     auto sources = pipeline.getSourceNodes();
     try {
@@ -212,7 +216,7 @@ bool setupHolisticReplay(Pipeline& pipeline,
                 replay->setReplayMetadataFile(platform::joinPaths(rootPath, nodeName + ".mcap"));
                 // replay->setReplayVideo(platform::joinPaths(rootPath, (mxId + "_").append(nodeName).append(".mp4")));
                 replay->setReplayVideoFile(platform::joinPaths(rootPath, nodeName + ".mp4"));
-                replay->setOutFrameType(ImgFrame::Type::YUV420p);
+                replay->setOutFrameType(legacy ? ImgFrame::Type::YUV420p : ImgFrame::Type::NV12);
 
                 auto videoSize = BytePlayer::getVideoSize(replay->getReplayMetadataFile().string());
                 if(videoSize.has_value()) {

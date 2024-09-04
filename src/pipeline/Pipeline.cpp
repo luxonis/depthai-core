@@ -605,7 +605,8 @@ void PipelineImpl::build() {
         std::string replayPath = utility::getEnv("DEPTHAI_REPLAY");
 
         if(defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_2
-           || defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_X) {
+           || defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_X
+           || defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_RVC4) {
             try {
 #ifdef DEPTHAI_MERGED_TARGET
                 if(enableHolisticRecordReplay) {
@@ -631,7 +632,12 @@ void PipelineImpl::build() {
                 } else if(!recordPath.empty()) {
                     if(enableHolisticRecordReplay || utility::checkRecordConfig(recordPath, recordConfig)) {
                         if(platform::checkWritePermissions(recordPath)) {
-                            if(utility::setupHolisticRecord(parent, defaultDeviceMxId, recordConfig, recordReplayFilenames)) {
+                            if(utility::setupHolisticRecord(parent,
+                                                            defaultDeviceMxId,
+                                                            recordConfig,
+                                                            recordReplayFilenames,
+                                                            defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_2
+                                                                || defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_X)) {
                                 recordConfig.state = RecordConfig::RecordReplayState::RECORD;
                                 Logging::getInstance().logger.info("Record enabled.");
                             } else {
@@ -646,7 +652,13 @@ void PipelineImpl::build() {
                 } else if(!replayPath.empty()) {
                     if(platform::checkPathExists(replayPath)) {
                         if(platform::checkWritePermissions(replayPath)) {
-                            if(utility::setupHolisticReplay(parent, replayPath, defaultDeviceMxId, recordConfig, recordReplayFilenames)) {
+                            if(utility::setupHolisticReplay(parent,
+                                                            replayPath,
+                                                            defaultDeviceMxId,
+                                                            recordConfig,
+                                                            recordReplayFilenames,
+                                                            defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_2
+                                                                || defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_X)) {
                                 recordConfig.state = RecordConfig::RecordReplayState::REPLAY;
                                 Logging::getInstance().logger.info("Replay enabled.");
                             } else {
