@@ -29,7 +29,7 @@ try:
         print(f'Could not import depthai: {ex}')
 
     print(f'PYTHONPATH set to {env["PYTHONPATH"]}')
-    subprocess.check_call(['stubgen', '-p', MODULE_NAME, '-o', f'{DIRECTORY}'], cwd=DIRECTORY, env=env)
+    subprocess.check_call(['stubgen', '-p', MODULE_NAME, '-o', f'{DIRECTORY}', '--recursive'], cwd=DIRECTORY, env=env)
 
     # Add py.typed
     open(f'{DIRECTORY}/depthai/py.typed', 'a').close()
@@ -44,6 +44,7 @@ try:
             # Ensures that the stubs are picked up - thanks, numpy project
             from depthai import (
                 node as node,
+                nn_archive as nn_archive,
             )
 
             import typing
@@ -117,6 +118,24 @@ try:
 
     # # TODO(thamarpe) - Pylance / Pyright check
     # subprocess.check_call([sys.executable, '-m' 'pyright', f'{DIRECTORY}/{MODULE_NAME}'], env=env)
+
+    # Add a function to process __init__.pyi files
+    def process_init_pyi(file_path):
+        with open(file_path, 'r+') as file:
+            contents = file.read()
+            if not contents.strip():
+                # If the file is empty, add imports for all modules in the directory
+                dir_path = os.path.dirname(file_path)
+                modules = [f for f in os.listdir(dir_path) if f.endswith('.pyi') and f != '__init__.pyi']
+                imports = '\n'.join([f'from . import {os.path.splitext(m)[0]}' for m in modules])
+                file.seek(0)
+                file.write(imports)
+                file.truncate()
+
+    # Process all __init__.pyi files
+    for root, dirs, files in os.walk(f'{DIRECTORY}/{MODULE_NAME}'):
+        if '__init__.pyi':
+            process_init_pyi(os.path.join(root, '__init__.pyi'))
 
 except subprocess.CalledProcessError as err:
     exit(err.returncode)
