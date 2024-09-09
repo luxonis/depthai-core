@@ -665,8 +665,13 @@ target_link_libraries(${TARGET_CORE_NAME}
         httplib::httplib
         mp4v2::mp4v2
         semver::semver
-        apriltag::apriltag
 )
+
+if(DEPTHAI_HAS_APRIL_TAG)
+    target_link_libraries(${TARGET_CORE_NAME} PRIVATE
+        apriltag::apriltag
+    )
+endif()
 
 if(DEPTHAI_ENABLE_CURL)
     target_link_libraries(${TARGET_CORE_NAME} PRIVATE
