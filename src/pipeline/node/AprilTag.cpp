@@ -303,6 +303,7 @@ void AprilTag::run() {
         // Inherit sequence number and timestamp from input image
         aprilTags->setSequenceNum(inFrame->getSequenceNum());
         aprilTags->setTimestamp(inFrame->getTimestamp());
+        aprilTags->setTimestampDevice(inFrame->getTimestampDevice());
 
         // Send detections and pass through input frame
         out.send(aprilTags);
