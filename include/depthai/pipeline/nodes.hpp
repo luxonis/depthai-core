@@ -28,6 +28,7 @@
 #include "node/SystemLogger.hpp"
 #include "node/ToF.hpp"
 #include "node/VideoEncoder.hpp"
+#include "node/VisionHealth.hpp"
 #include "node/Warp.hpp"
 #include "node/XLinkIn.hpp"
 #include "node/XLinkOut.hpp"
