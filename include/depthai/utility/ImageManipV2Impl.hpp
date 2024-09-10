@@ -1973,7 +1973,7 @@ bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToGRAY8(
                                              ccAuxFrame->data(),
                                              auxStride);
             fcvColorRGB888ToGrayu8(ccAuxFrame->data(), srcSpecs.width, srcSpecs.height, auxStride, outputFrame.data() + dstSpecs.p1Offset, dstSpecs.p1Stride);
-#else
+#elif defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
             for(uint32_t i = 0; i < srcSpecs.height; ++i) {
                 const uint32_t lineStartY = srcSpecs.p1Offset + i * srcSpecs.p1Stride;
                 const uint32_t lineStartU = srcSpecs.p2Offset + (i / 2) * srcSpecs.p2Stride;
@@ -1993,6 +1993,8 @@ bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToGRAY8(
             cv::Mat auxBGR(srcSpecs.height, srcSpecs.width, CV_8UC3, ccAuxFrame->data(), auxStride);
             cv::Mat gray(dstSpecs.height, dstSpecs.width, CV_8UC1, outputFrame.data() + dstSpecs.p1Offset, dstSpecs.p1Stride);
             cv::cvtColor(auxBGR, gray, cv::COLOR_BGR2GRAY);
+#else
+            throw std::runtime_error("FastCV or OpenCV support required for this conversion");
 #endif
             done = true;
             break;
