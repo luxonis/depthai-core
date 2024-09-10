@@ -42,11 +42,6 @@ try:
         # Add imports
         stubs_import = textwrap.dedent('''
             # Ensures that the stubs are picked up - thanks, numpy project
-            from depthai import (
-                node as node,
-                nn_archive as nn_archive,
-            )
-
             import typing
             json = dict
             from pathlib import Path
@@ -119,23 +114,37 @@ try:
     # # TODO(thamarpe) - Pylance / Pyright check
     # subprocess.check_call([sys.executable, '-m' 'pyright', f'{DIRECTORY}/{MODULE_NAME}'], env=env)
 
-    # Add a function to process __init__.pyi files
-    def process_init_pyi(file_path):
+    def process_init_pyi(file_path, is_depthai_root=False):
+        # Read old __init__.pyi
         with open(file_path, 'r+') as file:
             contents = file.read()
-            if not contents.strip():
-                # If the file is empty, add imports for all modules in the directory
-                dir_path = os.path.dirname(file_path)
-                modules = [f for f in os.listdir(dir_path) if f.endswith('.pyi') and f != '__init__.pyi']
-                imports = '\n'.join([f'from . import {os.path.splitext(m)[0]}' for m in modules])
-                file.seek(0)
-                file.write(imports)
-                file.truncate()
+
+        # Prepare imports
+        dir_path = os.path.dirname(file_path)
+
+        modules = list()
+        # Find all .pyi files and directories
+        for f in os.listdir(dir_path):
+            if f.endswith('.pyi') and f != '__init__.pyi':
+                modules.append(f)
+            elif os.path.isdir(os.path.join(dir_path, f)):
+                modules.append(f)
+
+        prefix = "from depthai import " if is_depthai_root else "from . import "
+        imports = '\n'.join([f'{prefix}{os.path.splitext(m)[0]}' for m in modules])
+
+        # Add imports to old __init__.pyi
+        new_contents = imports + '\n' + contents
+
+        # Writeout changes
+        with open(file_path, 'w') as file:
+            file.write(new_contents)
 
     # Process all __init__.pyi files
     for root, dirs, files in os.walk(f'{DIRECTORY}/{MODULE_NAME}'):
         if '__init__.pyi':
-            process_init_pyi(os.path.join(root, '__init__.pyi'))
+            is_depthai_root = (root == f'{DIRECTORY}/{MODULE_NAME}')
+            process_init_pyi(os.path.join(root, '__init__.pyi'), is_depthai_root)
 
 except subprocess.CalledProcessError as err:
     exit(err.returncode)
