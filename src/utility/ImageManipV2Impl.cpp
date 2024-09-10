@@ -1,4 +1,5 @@
 #include "depthai/utility/ImageManipV2Impl.hpp"
+#include "pipeline/datatype/ImageManipConfigV2.hpp"
 
 #if defined(WIN32) || defined(_WIN32)
     #define _RESTRICT
@@ -856,6 +857,74 @@ std::tuple<std::array<std::array<float, 3>, 3>, std::array<std::array<float, 2>,
     /*printf("Transform: %f %f %f %f %f %f %f %f %f\n", transform[0][0], transform[0][1], transform[0][2], transform[1][0], transform[1][1], transform[1][2],
      * transform[2][0], transform[2][1], transform[2][2]);*/
     return {transform, imageCorners, srcCorners};
+}
+
+std::tuple<std::array<std::array<float, 3>, 3>, std::array<std::array<float, 2>, 4>, std::vector<std::array<std::array<float, 2>, 4>>> dai::impl::getFullTransform(dai::ImageManipOpsBase base, size_t inputWidth, size_t inputHeight, dai::ImgFrame::Type type, dai::ImgFrame::Type outputFrameType, std::vector<ManipOp>& outputOps) {
+    using namespace dai;
+    using namespace dai::impl;
+
+    outputOps.clear();
+
+    auto operations = base.getOperations();
+
+    auto [matrix, imageCorners, srcCorners] = getTransform(operations, inputWidth, inputHeight, base.outputWidth, base.outputHeight);
+
+    {
+        auto [minx, maxx, miny, maxy] = getOuterRect(std::vector(imageCorners.begin(), imageCorners.end()));
+        if(base.outputWidth == 0) base.outputWidth = maxx;
+        if(base.outputHeight == 0) base.outputHeight = maxy;
+    }
+
+    if(base.resizeMode != ImageManipOpsBase::ResizeMode::NONE) {
+        Resize res;
+        switch(base.resizeMode) {
+            case ImageManipOpsBase::ResizeMode::NONE:
+                break;
+            case ImageManipOpsBase::ResizeMode::STRETCH:
+                res = Resize(base.outputWidth, base.outputHeight);
+                break;
+            case ImageManipOpsBase::ResizeMode::LETTERBOX:
+                res = Resize::fit();
+                break;
+            case ImageManipOpsBase::ResizeMode::CENTER_CROP:
+                res = Resize::fill();
+                break;
+        }
+        auto [minx, maxx, miny, maxy] = getOuterRect(std::vector(imageCorners.begin(), imageCorners.end()));
+        auto mat = getResizeMat(res, maxx - minx, maxy - miny, base.outputWidth, base.outputHeight);
+        imageCorners = {
+            {{matvecmul(mat, imageCorners[0])}, {matvecmul(mat, imageCorners[1])}, {matvecmul(mat, imageCorners[2])}, {matvecmul(mat, imageCorners[2])}}};
+        matrix = matmul(mat, matrix);
+        outputOps.emplace_back(res);
+    }
+
+    if(base.center) {
+        float width = base.outputWidth;
+        float height = base.outputHeight;
+        auto [minx, maxx, miny, maxy] = getOuterRect(std::vector(imageCorners.begin(), imageCorners.end()));
+        float tx = -minx + (width - (maxx - minx)) / 2;
+        float ty = -miny + (height - (maxy - miny)) / 2;
+        std::array<std::array<float, 3>, 3> mat = {{{1, 0, tx}, {0, 1, ty}, {0, 0, 1}}};
+        imageCorners = {
+            {{matvecmul(mat, imageCorners[0])}, {matvecmul(mat, imageCorners[1])}, {matvecmul(mat, imageCorners[2])}, {matvecmul(mat, imageCorners[2])}}};
+        matrix = matmul(mat, matrix);
+        outputOps.emplace_back(Translate(tx, ty));
+    }
+
+    auto matrixInv = getInverse(matrix);
+
+    if(type == ImgFrame::Type::NV12 || type == ImgFrame::Type::YUV420p || outputFrameType == ImgFrame::Type::NV12
+       || outputFrameType == ImgFrame::Type::YUV420p) {
+        base.outputWidth = base.outputWidth - (base.outputWidth % 2);
+        base.outputHeight = base.outputHeight - (base.outputHeight % 2);
+    }
+
+    srcCorners.push_back({matvecmul(matrixInv, {0, 0}),
+                          matvecmul(matrixInv, {(float)base.outputWidth, 0}),
+                          matvecmul(matrixInv, {(float)base.outputWidth, (float)base.outputHeight}),
+                          matvecmul(matrixInv, {0, (float)base.outputHeight})});
+
+    return {matrix, imageCorners, srcCorners};
 }
 
 size_t dai::impl::getFrameSize(const ImgFrame::Type type, const FrameSpecs& specs) {

@@ -2202,6 +2202,8 @@ std::array<std::array<float, 3>, 3> getResizeMat(Resize o, float width, float he
 std::tuple<std::array<std::array<float, 3>, 3>, std::array<std::array<float, 2>, 4>, std::vector<std::array<std::array<float, 2>, 4>>> getTransform(
     const std::vector<ManipOp>& ops, uint32_t inputWidth, uint32_t inputHeight, uint32_t outputWidth, uint32_t outputHeight);
 
+std::tuple<std::array<std::array<float, 3>, 3>, std::array<std::array<float, 2>, 4>, std::vector<std::array<std::array<float, 2>, 4>>> getFullTransform(dai::ImageManipOpsBase base, size_t inputWidth, size_t inputHeight, dai::ImgFrame::Type type, dai::ImgFrame::Type outputFrameType, std::vector<ManipOp>& outputOps);
+
 inline dai::ImgFrame::Type getValidType(dai::ImgFrame::Type type) {
     return isSingleChannelu8(type) ? VALID_TYPE_GRAY : VALID_TYPE_COLOR;
 }
@@ -2279,65 +2281,10 @@ ImageManipOperations<ImageManipBuffer, ImageManipData>& ImageManipOperations<Ima
     matrix = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
 
     if(mode & MODE_WARP) {
-        auto operations = base.getOperations();
+        auto [matrix, imageCorners, srcCorners] = getFullTransform(base, inputWidth, inputHeight, type, outputFrameType, outputOps);
 
-        auto [transformMat, imageCorners, srcCorners] = getTransform(operations, inputWidth, inputHeight, base.outputWidth, base.outputHeight);
-        matrix = transformMat;
-
-        {
-            auto [minx, maxx, miny, maxy] = getOuterRect(std::vector(imageCorners.begin(), imageCorners.end()));
-            if(base.outputWidth == 0) base.outputWidth = maxx;
-            if(base.outputHeight == 0) base.outputHeight = maxy;
-        }
-
-        if(base.resizeMode != ImageManipOpsBase::ResizeMode::NONE) {
-            Resize res;
-            switch(base.resizeMode) {
-                case ImageManipOpsBase::ResizeMode::NONE:
-                    break;
-                case ImageManipOpsBase::ResizeMode::STRETCH:
-                    res = Resize(base.outputWidth, base.outputHeight);
-                    break;
-                case ImageManipOpsBase::ResizeMode::LETTERBOX:
-                    res = Resize::fit();
-                    break;
-                case ImageManipOpsBase::ResizeMode::CENTER_CROP:
-                    res = Resize::fill();
-                    break;
-            }
-            auto [minx, maxx, miny, maxy] = getOuterRect(std::vector(imageCorners.begin(), imageCorners.end()));
-            auto mat = getResizeMat(res, maxx - minx, maxy - miny, base.outputWidth, base.outputHeight);
-            imageCorners = {
-                {{matvecmul(mat, imageCorners[0])}, {matvecmul(mat, imageCorners[1])}, {matvecmul(mat, imageCorners[2])}, {matvecmul(mat, imageCorners[2])}}};
-            matrix = matmul(mat, matrix);
-            outputOps.emplace_back(res);
-        }
-
-        if(base.center) {
-            float width = base.outputWidth;
-            float height = base.outputHeight;
-            auto [minx, maxx, miny, maxy] = getOuterRect(std::vector(imageCorners.begin(), imageCorners.end()));
-            float tx = -minx + (width - (maxx - minx)) / 2;
-            float ty = -miny + (height - (maxy - miny)) / 2;
-            std::array<std::array<float, 3>, 3> mat = {{{1, 0, tx}, {0, 1, ty}, {0, 0, 1}}};
-            imageCorners = {
-                {{matvecmul(mat, imageCorners[0])}, {matvecmul(mat, imageCorners[1])}, {matvecmul(mat, imageCorners[2])}, {matvecmul(mat, imageCorners[2])}}};
-            matrix = matmul(mat, matrix);
-            outputOps.emplace_back(Translate(tx, ty));
-        }
-
-        matrixInv = getInverse(matrix);
-
-        if(type == ImgFrame::Type::NV12 || type == ImgFrame::Type::YUV420p || outputFrameType == ImgFrame::Type::NV12
-           || outputFrameType == ImgFrame::Type::YUV420p) {
-            base.outputWidth = base.outputWidth - (base.outputWidth % 2);
-            base.outputHeight = base.outputHeight - (base.outputHeight % 2);
-        }
-
-        srcCorners.push_back({matvecmul(matrixInv, {0, 0}),
-                              matvecmul(matrixInv, {(float)base.outputWidth, 0}),
-                              matvecmul(matrixInv, {(float)base.outputWidth, (float)base.outputHeight}),
-                              matvecmul(matrixInv, {0, (float)base.outputHeight})});
+        this->matrix = matrix;
+        this->matrixInv = getInverse(matrix);
 
         if(logger) {
             logger->trace("Image corners: ");
