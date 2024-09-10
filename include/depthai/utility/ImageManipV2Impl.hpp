@@ -5,9 +5,12 @@
 
 #include <depthai/pipeline/datatype/ImageManipConfigV2.hpp>
 #include <depthai/pipeline/datatype/ImgFrame.hpp>
-#include <opencv2/core/base.hpp>
-#include <opencv2/core/types.hpp>
 #include <sstream>
+
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    #include <opencv2/core/base.hpp>
+    #include <opencv2/core/types.hpp>
+#endif
 
 #define PLANE_ALIGNMENT 128
 
@@ -2202,7 +2205,13 @@ std::array<std::array<float, 3>, 3> getResizeMat(Resize o, float width, float he
 std::tuple<std::array<std::array<float, 3>, 3>, std::array<std::array<float, 2>, 4>, std::vector<std::array<std::array<float, 2>, 4>>> getTransform(
     const std::vector<ManipOp>& ops, uint32_t inputWidth, uint32_t inputHeight, uint32_t outputWidth, uint32_t outputHeight);
 
-std::tuple<std::array<std::array<float, 3>, 3>, std::array<std::array<float, 2>, 4>, std::vector<std::array<std::array<float, 2>, 4>>> getFullTransform(dai::ImageManipOpsBase base, size_t inputWidth, size_t inputHeight, dai::ImgFrame::Type type, dai::ImgFrame::Type outputFrameType, std::vector<ManipOp>& outputOps);
+std::tuple<std::array<std::array<float, 3>, 3>, std::array<std::array<float, 2>, 4>, std::vector<std::array<std::array<float, 2>, 4>>> getFullTransform(
+    dai::ImageManipOpsBase base,
+    size_t inputWidth,
+    size_t inputHeight,
+    dai::ImgFrame::Type type,
+    dai::ImgFrame::Type outputFrameType,
+    std::vector<ManipOp>& outputOps);
 
 inline dai::ImgFrame::Type getValidType(dai::ImgFrame::Type type) {
     return isSingleChannelu8(type) ? VALID_TYPE_GRAY : VALID_TYPE_COLOR;
