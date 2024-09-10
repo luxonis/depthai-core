@@ -90,7 +90,7 @@ void bind_imagemanipconfigv2(pybind11::module& m, void* pCallstack) {
              static_cast<ImageManipConfigV2& (ImageManipConfigV2::*)(uint8_t)>(&ImageManipConfigV2::setBackgroundColor),
              py::arg("val"),
              DOC(dai, ImageManipConfigV2, setBackgroundColor))
-        .def("setOutputSize", &ImageManipConfigV2::setOutputSize, py::arg("w"), py::arg("h"), py::arg("mode"), DOC(dai, ImageManipConfigV2, setOutputSize))
+        .def("setOutputSize", &ImageManipConfigV2::setOutputSize, py::arg("w"), py::arg("h"), py::arg("mode") = ImageManipConfigV2::ResizeMode::STRETCH, DOC(dai, ImageManipConfigV2, setOutputSize))
         .def("setOutputCenter", &ImageManipConfigV2::setOutputCenter, py::arg("c"), DOC(dai, ImageManipConfigV2, setOutputCenter))
         .def("setReusePreviousImage", &ImageManipConfigV2::setReusePreviousImage, py::arg("reuse"), DOC(dai, ImageManipConfigV2, setReusePreviousImage))
         .def("setSkipCurrentImage", &ImageManipConfigV2::setSkipCurrentImage, py::arg("skip"), DOC(dai, ImageManipConfigV2, setSkipCurrentImage))

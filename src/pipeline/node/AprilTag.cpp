@@ -44,6 +44,18 @@ void AprilTag::setWaitForConfigInput(bool wait) {
     properties.inputConfigSync = wait;
 }
 
+bool AprilTag::getWaitForConfigInput() const {
+    return properties.inputConfigSync;
+}
+
+void AprilTag::setNumThreads(int numThreads) {
+    properties.numThreads = numThreads;
+}
+
+int AprilTag::getNumThreads() const {
+    return properties.numThreads;
+}
+
 void AprilTag::setRunOnHost(bool runOnHost) {
     runOnHostVar = runOnHost;
 }
@@ -286,6 +298,11 @@ void AprilTag::run() {
                 aprilTags->aprilTags.push_back(daiDet);
             }
         }
+
+        // Inherit sequence number and timestamp from input image
+        aprilTags->setSequenceNum(inFrame->getSequenceNum());
+        aprilTags->setTimestamp(inFrame->getTimestamp());
+        aprilTags->setTimestampDevice(inFrame->getTimestampDevice());
 
         // Send detections and pass through input frame
         out.send(aprilTags);

@@ -59,12 +59,29 @@ class AprilTag : public DeviceNodeCRTP<DeviceNode, AprilTag, AprilTagProperties>
      * Suitable for when input queue is set to non-blocking behavior.
      */
     Output passthroughInputImage{*this, {"passthroughInputImage", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
-    // Functions to set properties
+    
     /**
      * Specify whether or not wait until configuration message arrives to inputConfig Input.
      * @param wait True to wait for configuration message, false otherwise.
      */
     void setWaitForConfigInput(bool wait);
+
+    /**
+     * @brief Get whether or not wait until configuration message arrives to inputConfig Input.
+     */
+    bool getWaitForConfigInput() const;
+
+    /**
+     * Set number of threads to use for AprilTag detection.
+     * @param numThreads Number of threads to use.
+     */
+    void setNumThreads(int numThreads);
+
+    /**
+     * Get number of threads to use for AprilTag detection.
+     * @return Number of threads to use.
+     */
+    int getNumThreads() const;
 
     /**
      * Specify whether to run on host or device
