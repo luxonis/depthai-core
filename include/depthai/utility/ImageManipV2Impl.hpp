@@ -2851,7 +2851,7 @@ void Warp<ImageManipBuffer, ImageManipData>::transform(const uint8_t* src,
         if(sourceMinX != 0 || sourceMinY != 0) {
             projection[2] = projection[0] * (float)(sourceMinX / ssF) + projection[1] * (float)(sourceMinY / ssF) + projection[2];
             projection[5] = projection[3] * (float)(sourceMinX / ssF) + projection[4] * (float)(sourceMinY / ssF) + projection[5];
-            projection[7] = projection[6] * (float)(sourceMinX / ssF) + projection[7] * (float)(sourceMinY / ssF) + projection[8];
+            projection[8] = projection[6] * (float)(sourceMinX / ssF) + projection[7] * (float)(sourceMinY / ssF) + projection[8];
         }
         cv::Mat cvProjection(3, 3, CV_32F, projection);
         cv::warpPerspective(cvSrc(roi),
