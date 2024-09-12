@@ -99,7 +99,7 @@ bool DeviceGate::createSession(bool exclusive) {
     auto versionAll = getAllVersion();
     if(Version(versionAll.os) < Version(1, 19, 0)) {
         spdlog::error("OS needs to be updated to support the new NN SDK. Please update the gate to at least 0.0.19");
-        return false;
+        //return false;
     }
 
     if(auto res = pimpl->cli->Post(sessionsEndpoint.c_str(), createSessionBody.dump(), "application/json")) {
