@@ -368,7 +368,7 @@ class ImageManipOpsBase {
 };
 
 /**
- * ImageManipConfig message. Specifies image manipulation options like:
+ * ImageManipConfigV2 message. Specifies image manipulation options like:
  *
  *  - Crop
  *

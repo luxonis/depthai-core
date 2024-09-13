@@ -2208,7 +2208,7 @@ std::tuple<std::array<std::array<float, 3>, 3>, std::array<std::array<float, 2>,
     const std::vector<ManipOp>& ops, uint32_t inputWidth, uint32_t inputHeight, uint32_t outputWidth, uint32_t outputHeight);
 
 std::tuple<std::array<std::array<float, 3>, 3>, std::array<std::array<float, 2>, 4>, std::vector<std::array<std::array<float, 2>, 4>>> getFullTransform(
-    dai::ImageManipOpsBase base,
+    dai::ImageManipOpsBase& base,
     size_t inputWidth,
     size_t inputHeight,
     dai::ImgFrame::Type type,
