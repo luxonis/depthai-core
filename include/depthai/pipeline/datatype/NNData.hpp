@@ -267,8 +267,18 @@ class NNData : public Buffer {
         // Get size in bytes of the converted tensor data, u8 for integral and fp16 for floating point
         //const size_t sConvertedData = std::is_integral<_Ty>::value ? tensor.size() : 2 * tensor.size();
         size_t sConvertedData = tensor.size();
-        if(dataType == dai::TensorInfo::DataType::FP16) sConvertedData *= 2;
-        else if(dataType == dai::TensorInfo::DataType::FP32 || dataType == dai::TensorInfo::DataType::INT) sConvertedData *= 4;
+        switch(dataType){
+            case dai::TensorInfo::DataType::FP16:
+                sConvertedData *= 2;
+                break;
+            case dai::TensorInfo::DataType::FP32:
+            case dai::TensorInfo::DataType::INT:
+                sConvertedData *= 4;
+                break;
+            case dai::TensorInfo::DataType::U8F:
+            case dai::TensorInfo::DataType::I8:
+                break;
+        }
 
         // Append bytes so that each new tensor is DATA_ALIGNMENT aligned
         size_t remainder = (vecData->end() - vecData->begin()) % DATA_ALIGNMENT;
@@ -276,7 +286,7 @@ class NNData : public Buffer {
             vecData->insert(vecData->end(), DATA_ALIGNMENT - remainder, 0);
         }
 
-        // Then get offset to beginning of data
+        // Then get offset to beginning of data1
         size_t offset = vecData->end() - vecData->begin();
 
         // Reserve space
