@@ -44,4 +44,20 @@ bool ThreadedNode::isRunning() const {
     return running;
 }
 
+void ThreadedNode::setThreadPriority(int priority) {
+    platform::setThreadPriority(thread, priority);
+}
+
+int ThreadedNode::getThreadPriority() {
+    return platform::getThreadPriority(thread);
+}
+
+int ThreadedNode::getMinThreadPriority() {
+    return platform::getMinThreadPriority(thread);
+}
+
+int ThreadedNode::getMaxThreadPriority() {
+    return platform::getMaxThreadPriority(thread);
+}
+
 }  // namespace dai

@@ -22,6 +22,8 @@
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
+#include "depthai/pipeline/datatype/OccupancyPool.hpp"
+#include "depthai/pipeline/datatype/PointCloudConfig.hpp"
 #include "depthai/pipeline/datatype/SpatialImgDetections.hpp"
 #include "depthai/pipeline/datatype/SpatialLocationCalculatorConfig.hpp"
 #include "depthai/pipeline/datatype/SpatialLocationCalculatorData.hpp"
@@ -29,8 +31,11 @@
 #include "depthai/pipeline/datatype/SystemInformation.hpp"
 #include "depthai/pipeline/datatype/SystemInformationS3.hpp"
 #include "depthai/pipeline/datatype/ToFConfig.hpp"
+#include "depthai/pipeline/datatype/TraceEvents.hpp"
 #include "depthai/pipeline/datatype/TrackedFeatures.hpp"
 #include "depthai/pipeline/datatype/Tracklets.hpp"
+#include "depthai/pipeline/datatype/VisionHealthConfig.hpp"
+#include "depthai/pipeline/datatype/VisionHealthMetrics.hpp"
 
 // shared
 #include "depthai-shared/datatype/DatatypeEnum.hpp"
@@ -46,6 +51,8 @@
 #include "depthai-shared/datatype/RawImgDetections.hpp"
 #include "depthai-shared/datatype/RawImgFrame.hpp"
 #include "depthai-shared/datatype/RawNNData.hpp"
+#include "depthai-shared/datatype/RawOccupancyPool.hpp"
+#include "depthai-shared/datatype/RawPointCloudConfig.hpp"
 #include "depthai-shared/datatype/RawSpatialImgDetections.hpp"
 #include "depthai-shared/datatype/RawSpatialLocationCalculatorConfig.hpp"
 #include "depthai-shared/datatype/RawSpatialLocations.hpp"
@@ -53,7 +60,10 @@
 #include "depthai-shared/datatype/RawSystemInformation.hpp"
 #include "depthai-shared/datatype/RawSystemInformationS3.hpp"
 #include "depthai-shared/datatype/RawToFConfig.hpp"
+#include "depthai-shared/datatype/RawTraceEvents.hpp"
 #include "depthai-shared/datatype/RawTracklets.hpp"
+#include "depthai-shared/datatype/RawVisionHealthConfig.hpp"
+#include "depthai-shared/datatype/RawVisionHealthMetrics.hpp"
 #include "depthai-shared/utility/Serialization.hpp"
 
 // StreamPacket structure ->  || imgframepixels... , serialized_object, object_type, serialized_object_size ||
@@ -194,11 +204,34 @@ std::shared_ptr<RawBuffer> StreamMessageParser::parseMessage(streamPacketDesc_t*
         case DatatypeEnum::FeatureTrackerConfig:
             return parseDatatype<RawFeatureTrackerConfig>(metadataStart, serializedObjectSize, data);
             break;
+
         case DatatypeEnum::BenchmarkReport:
             return parseDatatype<RawBenchmarkReport>(metadataStart, serializedObjectSize, data);
             break;
         case DatatypeEnum::ToFConfig:
             return parseDatatype<RawToFConfig>(metadataStart, serializedObjectSize, data);
+
+        case DatatypeEnum::QueueTraceEvent:
+            return parseDatatype<RawQueueTraceEvent>(metadataStart, serializedObjectSize, data);
+            break;
+        case DatatypeEnum::NodeTraceEvent:
+            return parseDatatype<RawNodeTraceEvent>(metadataStart, serializedObjectSize, data);
+            break;
+
+        case DatatypeEnum::PointCloudConfig:
+            return parseDatatype<RawPointCloudConfig>(metadataStart, serializedObjectSize, data);
+            break;
+
+        case DatatypeEnum::OccupancyPool:
+            return parseDatatype<RawOccupancyPool>(metadataStart, serializedObjectSize, data);
+            break;
+
+        case DatatypeEnum::VisionHealthConfig:
+            return parseDatatype<RawVisionHealthConfig>(metadataStart, serializedObjectSize, data);
+            break;
+
+        case DatatypeEnum::VisionHealthMetrics:
+            return parseDatatype<RawVisionHealthMetrics>(metadataStart, serializedObjectSize, data);
             break;
     }
 
@@ -313,11 +346,34 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessageToADatatype(streamPa
         case DatatypeEnum::FeatureTrackerConfig:
             return std::make_shared<FeatureTrackerConfig>(parseDatatype<RawFeatureTrackerConfig>(metadataStart, serializedObjectSize, data));
             break;
+
         case DatatypeEnum::BenchmarkReport:
             return std::make_shared<BenchmarkReport>(parseDatatype<RawBenchmarkReport>(metadataStart, serializedObjectSize, data));
             break;
         case DatatypeEnum::ToFConfig:
             return std::make_shared<ToFConfig>(parseDatatype<RawToFConfig>(metadataStart, serializedObjectSize, data));
+
+        case DatatypeEnum::QueueTraceEvent:
+            return std::make_shared<QueueTraceEvent>(parseDatatype<RawQueueTraceEvent>(metadataStart, serializedObjectSize, data));
+            break;
+        case DatatypeEnum::NodeTraceEvent:
+            return std::make_shared<NodeTraceEvent>(parseDatatype<RawNodeTraceEvent>(metadataStart, serializedObjectSize, data));
+            break;
+
+        case DatatypeEnum::PointCloudConfig:
+            return std::make_shared<PointCloudConfig>(parseDatatype<RawPointCloudConfig>(metadataStart, serializedObjectSize, data));
+            break;
+
+        case DatatypeEnum::OccupancyPool:
+            return std::make_shared<OccupancyPool>(parseDatatype<RawOccupancyPool>(metadataStart, serializedObjectSize, data));
+            break;
+
+        case DatatypeEnum::VisionHealthConfig:
+            return std::make_shared<VisionHealthConfig>(parseDatatype<RawVisionHealthConfig>(metadataStart, serializedObjectSize, data));
+            break;
+
+        case DatatypeEnum::VisionHealthMetrics:
+            return std::make_shared<VisionHealthMetrics>(parseDatatype<RawVisionHealthMetrics>(metadataStart, serializedObjectSize, data));
             break;
     }
 

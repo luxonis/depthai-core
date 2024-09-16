@@ -102,6 +102,7 @@ class Node : public std::enable_shared_from_this<Node> {
         enum class Type { MSender, SSender };
         std::string group = "";
         std::string name;
+        int id{-1};
         Type type;
         // Which types and do descendants count as well?
         std::vector<DatatypeHierarchy> possibleDatatypes;
@@ -129,6 +130,14 @@ class Node : public std::enable_shared_from_this<Node> {
         }
         const Node& getParent() const {
             return parent;
+        }
+
+        void setId(int id) {
+            this->id = id;
+        }
+
+        int getId() {
+            return id;
         }
 
         /// Output to string representation
@@ -219,6 +228,7 @@ class Node : public std::enable_shared_from_this<Node> {
         enum class Type { SReceiver, MReceiver };
         std::string group = "";
         std::string name;
+        int id{-1};
         Type type;
         bool defaultBlocking{true};
         int defaultQueueSize{8};
@@ -323,6 +333,15 @@ class Node : public std::enable_shared_from_this<Node> {
         }
         const Node& getParent() const {
             return parent;
+        }
+
+        void setId(int id) {
+            this->id = id;
+            this->queue.setId(id);
+        }
+
+        int getId() {
+            return id;
         }
 
         /// Input to string representation
@@ -607,6 +626,9 @@ class Node : public std::enable_shared_from_this<Node> {
     /// alias or name
     std::string alias;
 
+    // TODO(morato) make private
+    std::shared_ptr<SideChannel> sideChannel;
+
    protected:
     AssetManager assetManager;
 
@@ -651,13 +673,13 @@ class Node : public std::enable_shared_from_this<Node> {
 
     // TBD - might be an default impl instead
     /// Start node execution
-    virtual void start(){};
+    virtual void start() {};
 
     /// Wait for node to finish execution
-    virtual void wait(){};
+    virtual void wait() {};
 
     /// Stop node execution
-    virtual void stop(){};
+    virtual void stop() {};
 
     /// Build stages;
     virtual void buildStage1();
@@ -706,6 +728,7 @@ class Node : public std::enable_shared_from_this<Node> {
     Node() = default;
     Node(std::unique_ptr<Properties> props, bool conf);
     void build();
+    void removeConnectionToNode(std::shared_ptr<Node> node);
 
    public:
     virtual ~Node() = default;

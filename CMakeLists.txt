@@ -35,8 +35,8 @@ endif()
 
 include("cmake/HunterGate.cmake")
 HunterGate(
-    URL "https://github.com/cpp-pm/hunter/archive/v0.24.18.tar.gz"
-    SHA1 "1292e4d661e1770d6d6ca08c12c07cf34a0bf718"
+    URL "https://github.com/cpp-pm/hunter/archive/9d9242b60d5236269f894efd3ddd60a9ca83dd7f.tar.gz"
+    SHA1 "16cc954aa723bccd16ea45fc91a858d0c5246376"
     LOCAL # Local config for dependencies
 )
 
@@ -203,6 +203,7 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/Pipeline.cpp
     src/pipeline/AssetManager.cpp
     src/pipeline/MessageQueue.cpp
+    src/pipeline/SideChannel.cpp
     src/pipeline/Node.cpp
     src/pipeline/ThreadedNode.cpp
     src/pipeline/DeviceNode.cpp
@@ -232,9 +233,12 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/node/ToF.cpp
     src/pipeline/node/DetectionParser.cpp
     src/pipeline/node/Sync.cpp
+    src/pipeline/node/DepthEncoder.cpp
     src/pipeline/node/test/MyProducer.cpp
     src/pipeline/node/test/MyConsumer.cpp
+    src/pipeline/node/PointCloud.cpp
     src/pipeline/node/UVC.cpp
+    src/pipeline/node/VisionHealth.cpp
     src/pipeline/datatype/Buffer.cpp
     src/pipeline/datatype/ImgFrame.cpp
     src/pipeline/datatype/ImageManipConfig.cpp
@@ -257,6 +261,11 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/datatype/FeatureTrackerConfig.cpp
     src/pipeline/datatype/ToFConfig.cpp
     src/pipeline/datatype/BenchmarkReport.cpp
+    src/pipeline/datatype/PointCloudConfig.cpp
+    src/pipeline/datatype/OccupancyPool.cpp
+    src/pipeline/datatype/TraceEvents.cpp
+    src/pipeline/datatype/VisionHealthMetrics.cpp
+    src/pipeline/datatype/VisionHealthConfig.cpp
     src/utility/Initialization.cpp
     src/utility/Resources.cpp
     src/utility/Path.cpp

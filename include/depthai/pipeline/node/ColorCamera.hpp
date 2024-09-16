@@ -55,6 +55,8 @@ class ColorCamera : public NodeCRTP<DeviceNode, ColorCamera, ColorCameraProperti
      */
     Input inputControl{true, *this, "inputControl", Input::Type::SReceiver, true, 8, {{DatatypeEnum::CameraControl, false}}};
 
+    Input inputMesh{true, *this, "inputMesh", Input::Type::SReceiver, false, 1, {{DatatypeEnum::Buffer, false}}};
+
     /**
      * Outputs ImgFrame message that carries NV12 encoded (YUV420, UV plane interleaved) frame data.
      *

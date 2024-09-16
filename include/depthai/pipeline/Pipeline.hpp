@@ -68,6 +68,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     CalibrationHandler getCalibrationData() const;
     void setEepromData(tl::optional<EepromData> eepromData);
     tl::optional<EepromData> getEepromData() const;
+    uint32_t getEepromId() const;
     bool isHostOnly() const;
     bool isDeviceOnly() const;
 
@@ -102,6 +103,8 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
 
     // was pipeline built
     AtomicBool isBuild{false};
+
+    uint32_t eepromId = 0;
 
     // TMP TMP - to be moved
     // DeviceBase for hybrid pipelines
@@ -293,6 +296,10 @@ class Pipeline {
      */
     void setEepromData(tl::optional<EepromData> eepromData) {
         impl()->setEepromData(eepromData);
+    }
+
+    uint32_t getEepromId() const {
+        return impl()->getEepromId();
     }
 
     /// Get possible OpenVINO version to run this pipeline

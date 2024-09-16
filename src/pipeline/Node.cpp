@@ -1,6 +1,8 @@
 #include <depthai/pipeline/DeviceNode.hpp>
 
 #include "depthai/pipeline/Pipeline.hpp"
+#include "depthai/pipeline/SideChannel.hpp"
+#include "depthai/pipeline/datatype/TraceEvents.hpp"
 #include "spdlog/fmt/fmt.h"
 
 namespace dai {
@@ -178,6 +180,19 @@ void Node::Output::send(const std::shared_ptr<ADatatype>& msg) {
                 // Corresponding input to a given connection
                 // Send the message
                 input->queue.send(msg);
+                using namespace std::chrono;
+                auto traceEvent = std::make_shared<dai::QueueTraceEvent>();
+                RawQueueTraceEvent rawTraceEvent;
+                rawTraceEvent.dstId = input->getId();
+                rawTraceEvent.srcId = getId();
+                rawTraceEvent.event = RawQueueTraceEvent::Event::SEND;
+                rawTraceEvent.status = RawQueueTraceEvent::Status::START;
+                rawTraceEvent.queueSize = input->queue.getSize();
+                auto ts = steady_clock::now().time_since_epoch();
+                rawTraceEvent.timestamp.sec = duration_cast<seconds>(ts).count();
+                rawTraceEvent.timestamp.nsec = duration_cast<nanoseconds>(ts).count() % 1000000000;
+                traceEvent->set(rawTraceEvent);
+                getParent().sideChannel->sendMessage(traceEvent);
             }
         }
     }
@@ -550,6 +565,38 @@ void Node::add(std::shared_ptr<Node> node) {
     // Add to the map (node holds its children itself)
     // nodeMap[node->id] = node;
     nodeMap.push_back(node);
+}
+
+void Node::remove(std::shared_ptr<Node> node) {
+    // Remove the connection to the removed node and all it's children from all the nodes in the pipeline
+    auto pipeline = parent.lock();
+    if(pipeline == nullptr) {
+        throw std::runtime_error("Pipeline is null");
+    }
+
+    for(auto& n : pipeline->nodes) {
+        for(auto& childNode : node->nodeMap) {
+            n->removeConnectionToNode(childNode);
+        }
+        n->removeConnectionToNode(node);
+    }
+
+    // Finally remove the node from the map
+    nodeMap.erase(std::remove(nodeMap.begin(), nodeMap.end(), node), nodeMap.end());
+}
+
+void Node::removeConnectionToNode(std::shared_ptr<Node> node) {
+    // Remove all connections to this node
+    for(auto it = connections.begin(); it != connections.end();) {
+        if(it->inputNode.lock() == node || it->outputNode.lock() == node) {
+            it = connections.erase(it);
+        } else {
+            ++it;
+        }
+    }
+    for(auto& n : nodeMap) {
+        n->removeConnectionToNode(node);
+    }
 }
 
 // Recursive helpers for pipelines

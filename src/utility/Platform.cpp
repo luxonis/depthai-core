@@ -68,6 +68,53 @@ void setThreadName(JoiningThread& thread, const std::string& name) {
     return;
 }
 
+void setThreadPriority(JoiningThread& thread, int priority) {
+#ifdef __linux__
+    auto handle = thread.native_handle();
+    int policy;
+    struct sched_param param;
+    pthread_getschedparam(handle, &policy, &param);
+    param.sched_priority = priority;
+    pthread_setschedparam(handle, policy, &param);
+#endif
+    return;
+}
+
+int getThreadPriority(JoiningThread& thread) {
+#ifdef __linux__
+    auto handle = thread.native_handle();
+    int policy;
+    struct sched_param param;
+    pthread_getschedparam(handle, &policy, &param);
+    return param.sched_priority;
+#endif
+    return -1;
+}
+
+int getMinThreadPriority(JoiningThread& thread) {
+#ifdef __linux__
+    auto handle = thread.native_handle();
+    int policy;
+    struct sched_param param;
+    pthread_getschedparam(handle, &policy, &param);
+    int minPriority = sched_get_priority_min(policy);
+    return minPriority;
+#endif
+    return -1;
+}
+
+int getMaxThreadPriority(JoiningThread& thread) {
+#ifdef __linux__
+    auto handle = thread.native_handle();
+    int policy;
+    struct sched_param param;
+    pthread_getschedparam(handle, &policy, &param);
+    int maxPriority = sched_get_priority_max(policy);
+    return maxPriority;
+#endif
+    return -1;
+}
+
 std::string getTempPath() {
     std::string tmpPath;
 #if defined(_WIN32) || defined(__USE_W32_SOCKETS)

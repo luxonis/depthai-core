@@ -715,6 +715,10 @@ class DeviceBase {
      */
     void flashCalibration2(CalibrationHandler calibrationDataHandler);
 
+    void setCalibration(CalibrationHandler calibrationDataHandler);
+
+    CalibrationHandler getCalibration();
+
     /**
      * Fetches the EEPROM data from the device and loads it into CalibrationHandler object
      * If no calibration is flashed, it returns default
@@ -915,9 +919,14 @@ class DeviceBase {
     tl::optional<Version> bootloaderVersion;
 
     // Log callback
-    int uniqueCallbackId = 0;
+    int uniqueLogCallbackId = 0;
     std::mutex logCallbackMapMtx;
     std::unordered_map<int, std::function<void(LogMessage)>> logCallbackMap;
+
+    // Side channel callback
+    int traceEventsCallbackId = 0;
+    std::mutex traceEventsCallbackMapMtx;
+    std::unordered_map<int, std::function<void(LogMessage)>> traceEventsCallbackMap;
 
     // Watchdog thread
     std::thread watchdogThread;
@@ -934,6 +943,10 @@ class DeviceBase {
     // Profiling thread
     std::thread profilingThread;
     std::atomic<bool> profilingRunning{true};
+
+    // Side channel thread
+    std::thread sideChannelThread;
+    std::atomic<bool> sideChannelRunning{true};
 
     // Monitor thread
     std::thread monitorThread;

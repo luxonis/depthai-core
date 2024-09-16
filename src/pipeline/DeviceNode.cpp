@@ -36,7 +36,6 @@ void DeviceNode::run() {
             }
         }
     }
-
 }
 
 }  // namespace dai

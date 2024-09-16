@@ -63,8 +63,6 @@ class DeviceGate {
     // private
     DeviceInfo deviceInfo;
 
-    std::thread stateMonitoringThread;
-
     tl::optional<std::vector<uint8_t>> getFile(const std::string& fileUrl, std::string& filename);
 
     tl::optional<std::string> saveFileToTemporaryDirectory(std::vector<uint8_t> data, std::string filename, std::string direcotryPath = "");

@@ -4,6 +4,7 @@
 
 #include "depthai/pipeline/Node.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
+#include "depthai/pipeline/SideChannel.hpp"
 #include "depthai/utility/AtomicBool.hpp"
 #include "depthai/utility/JoiningThread.hpp"
 
@@ -30,6 +31,12 @@ class ThreadedNode : public Node {
     bool isRunning() const;
 
     std::shared_ptr<spdlog::async_logger> logger;
+
+    void setThreadPriority(int priority);
+    int getThreadPriority();
+
+    int getMinThreadPriority();
+    int getMaxThreadPriority();
 };
 
 }  // namespace dai

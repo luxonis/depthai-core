@@ -175,6 +175,8 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
     PipelineSchema schema;
     schema.globalProperties = globalProperties;
 
+    std::uint32_t latestIoId = 0;
+
     // Loop over all nodes, and add them to schema
     for(const auto& node : getAllNodes()) {
         // const auto& node = kv.second;
@@ -208,6 +210,7 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
             // Add inputs
             for(const auto& input : inputs) {
                 NodeIoInfo io;
+                io.id = ++latestIoId;
                 io.blocking = input.getBlocking();
                 io.queueSize = input.getQueueSize();
                 io.name = input.name;
@@ -238,6 +241,7 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
             // Add outputs
             for(const auto& output : outputs) {
                 NodeIoInfo io;
+                io.id = ++latestIoId;
                 io.blocking = false;
                 io.name = output.name;
                 io.group = output.group;
@@ -559,63 +563,23 @@ BoardConfig PipelineImpl::getBoardConfig() const {
 
 // Remove node capability
 void PipelineImpl::remove(std::shared_ptr<Node> toRemove) {
-    // Search for this node in 'nodes' vector.
-    // If found, remove from vector
+    if(toRemove->parent.lock() == nullptr) {
+        throw std::invalid_argument("Cannot remove a node that is not a part of any pipeline");
+    }
 
-    // // Go through and modify nodes and its children
-    // // that they are now part of this pipeline
-    // std::weak_ptr<PipelineImpl> curParent;
-    // std::queue<std::shared_ptr<Node>> search;
-    // search.push(toRemove);
-    // while(!search.empty()) {
-    //     auto curNode = search.front();
+    if(toRemove->parent.lock() != parent.pimpl) {
+        throw std::invalid_argument("Cannot remove a node that is not a part of this pipeline");
+    }
 
-    //     if(curNode->parent.lock() == nullptr) {
-    //         // pass
-    //     } else if(curNode->parent.lock() != parent.pimpl) {
-    //         throw std::invalid_argument("Cannot remove a node that is a part of another pipeline");
-    //     } else {
-    //         curNode->parent = nullptr;
-    //     }
+    // First remove the node from the pipeline directly
+    auto it = std::remove(nodes.begin(), nodes.end(), toRemove);
+    nodes.erase(it, nodes.end());
 
-    //     for(auto& n : curNode->nodeMap) {
-    //         search.push(n.second);
-    //     }
-    // }
-
-    // nodeMap.count(toRemove->id) {
-    // }
-
-    // // First check if node is on this pipeline (and that they are the same)
-    // if(nodeMap.count(toRemove->id) > 0) {
-    //     if(nodeMap.at(toRemove->id) == toRemove) {
-    //         // its same object, (not same id but from different pipeline)
-
-    //         // Steps to remove
-    //         // 1. Iterate and remove this nodes output connections
-    //         // 2. Remove this nodes entry in 'nodeConnectionMap'
-    //         // 3. Remove node from 'nodeMap'
-
-    //         // 1. Iterate and remove this nodes output connections
-    //         for(auto& kv : nodeConnectionMap) {
-    //             for(auto it = kv.second.begin(); it != kv.second.end();) {
-    //                 // check if output belongs to 'toRemove' node
-    //                 if(it->outputId == toRemove->id) {
-    //                     // remove this connection from set
-    //                     it = kv.second.erase(it);
-    //                 } else {
-    //                     ++it;
-    //                 }
-    //             }
-    //         }
-
-    //         // 2. Remove this nodes entry in 'nodeConnectionMap'
-    //         nodeConnectionMap.erase(toRemove->id);
-
-    //         // 3. Remove node from 'nodeMap'
-    //         nodeMap.erase(toRemove->id);
-    //     }
-    // }
+    // Then also remove it from all connections & subnodes
+    for(auto& node : nodes) {
+        // The function below handles removing all the connections and removes the node if the node is not directly attached to a pipline
+        node->remove(toRemove);
+    }
 }
 
 bool PipelineImpl::isSamePipeline(const Node::Output& out, const Node::Input& in) {
@@ -677,10 +641,15 @@ CalibrationHandler PipelineImpl::getCalibrationData() const {
 
 void PipelineImpl::setEepromData(tl::optional<EepromData> eepromData) {
     globalProperties.calibData = eepromData;
+    eepromId++;
 }
 
 tl::optional<EepromData> PipelineImpl::getEepromData() const {
     return globalProperties.calibData;
+}
+
+uint32_t PipelineImpl::getEepromId() const {
+    return eepromId;
 }
 
 bool PipelineImpl::isHostOnly() const {
