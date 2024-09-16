@@ -17,7 +17,6 @@ class Script : public DeviceNodeCRTP<DeviceNode, Script, ScriptProperties> {
    public:
     constexpr static const char* NAME = "Script";
     using DeviceNodeCRTP::DeviceNodeCRTP;
-    std::shared_ptr<Script> build();
 
    private:
     dai::Path scriptPath;
@@ -85,11 +84,7 @@ class Script : public DeviceNodeCRTP<DeviceNode, Script, ScriptProperties> {
      */
     ProcessorType getProcessor() const;
 
-   protected:
-    bool isBuild = false;
-    bool needsBuild() override {
-        return !isBuild;
-    }
+    void buildInternal() override;
 };
 
 }  // namespace node

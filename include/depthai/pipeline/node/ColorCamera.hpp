@@ -18,7 +18,6 @@ namespace node {
 class ColorCamera : public DeviceNodeCRTP<DeviceNode, ColorCamera, ColorCameraProperties>, public SourceNode {
    public:
     constexpr static const char* NAME = "ColorCamera";
-    std::shared_ptr<ColorCamera> build();
     using DeviceNodeCRTP::DeviceNodeCRTP;
 
    protected:

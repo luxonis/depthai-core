@@ -1,6 +1,9 @@
 #pragma once
 
-#include <depthai/pipeline/NodeGroup.hpp>
+#include <depthai/modelzoo/NNModelDescription.hpp>
+#include <depthai/pipeline/DeviceNodeGroup.hpp>
+#include <depthai/pipeline/Subnode.hpp>
+#include <depthai/pipeline/node/Camera.hpp>
 #include <depthai/pipeline/node/DetectionParser.hpp>
 #include <depthai/pipeline/node/NeuralNetwork.hpp>
 #include <optional>
@@ -8,7 +11,6 @@
 
 #include "depthai/nn_archive/NNArchive.hpp"
 #include "depthai/openvino/OpenVINO.hpp"
-#include "depthai/utility/Pimpl.hpp"
 
 namespace dai {
 namespace node {
@@ -16,18 +18,18 @@ namespace node {
 /**
  * @brief DetectionNetwork, base for different network specializations
  */
-class DetectionNetwork : public NodeGroup {
+class DetectionNetwork : public DeviceNodeGroup {
    public:
-    DetectionNetwork();
-    ~DetectionNetwork() override;
+    DetectionNetwork(const std::shared_ptr<Device>& device);
 
-    [[nodiscard]] static std::shared_ptr<DetectionNetwork> create() {
-        return std::make_shared<DetectionNetwork>();
+    [[nodiscard]] static std::shared_ptr<DetectionNetwork> create(const std::shared_ptr<Device>& device) {
+        auto networkPtr = std::make_shared<DetectionNetwork>(device);
+        networkPtr->buildInternal();
+        return networkPtr;
     }
+
     std::shared_ptr<DetectionNetwork> build(Node::Output& input, const NNArchive& nnArchive);
-    bool runOnHost() const override {
-        return false;
-    };
+    std::shared_ptr<DetectionNetwork> build(std::shared_ptr<Camera> input, dai::NNModelDescription modelDesc, float fps = 30.0f);
 
     Subnode<NeuralNetwork> neuralNetwork{*this, "neuralNetwork"};
     Subnode<DetectionParser> detectionParser{*this, "detectionParser"};
@@ -56,10 +58,36 @@ class DetectionNetwork : public NodeGroup {
     Output& passthrough;
 
     /**
-     * Apply NNArchive config to this Node and load network blob into assets and use once pipeline is started.
+     * @brief Set NNArchive for this Node. If the archive's type is SUPERBLOB, use default number of shaves.
      *
+     * @param nnArchive: NNArchive to set
      */
     void setNNArchive(const NNArchive& nnArchive);
+
+    /**
+     * @brief Set NNArchive for this Node, throws if the archive's type is not SUPERBLOB
+     *
+     * @param nnArchive: NNArchive to set
+     * @param numShaves: Number of shaves to use
+     */
+    void setNNArchive(const NNArchive& nnArchive, int numShaves);
+
+    /**
+     * @brief Download model from zoo and set it for this Node
+     *
+     * @param description: Model description to download
+     * @param useCached: Use cached model if available
+     */
+    void setFromModelZoo(NNModelDescription description, bool useCached = true);
+
+    /**
+     * @brief Download model from zoo and set it for this node.
+     *
+     * @param description: Model description to download
+     * @param numShaves: Number of shaves to use
+     * @param useCached: Use cached model if available
+     */
+    void setFromModelZoo(NNModelDescription description, int numShaves, bool useCached = true);
 
     // Specify local filesystem path to load the blob (which gets loaded at loadAssets)
     /**
@@ -149,16 +177,12 @@ class DetectionNetwork : public NodeGroup {
 
     std::optional<std::vector<std::string>> getClasses() const;
 
-   private:
-    class Impl;
-    Pimpl<Impl> pimpl;
+    virtual void buildInternal();
 
-   protected:
-    void build();
-    bool isBuild = false;
-    bool needsBuild() override {
-        return !isBuild;
-    }
+   private:
+    void setNNArchiveBlob(const NNArchive& nnArchive);
+    void setNNArchiveSuperblob(const NNArchive& nnArchive, int numShaves);
+    void setNNArchiveOther(const NNArchive& nnArchive);
 };
 
 /**
@@ -166,14 +190,21 @@ class DetectionNetwork : public NodeGroup {
  */
 class MobileNetDetectionNetwork : public DetectionNetwork {
    public:
-    [[nodiscard]] static std::shared_ptr<MobileNetDetectionNetwork> create() {
-        return std::make_shared<MobileNetDetectionNetwork>();
+    MobileNetDetectionNetwork(const std::shared_ptr<Device>& device) : DetectionNetwork(device) {
+        static bool warned = false;
+        if(!warned) {
+            std::cerr << "MobileNetDetectionNetwork is deprecated, use DetectionNetwork instead" << std::endl;
+            warned = true;
+        }
     }
-    bool runOnHost() const override {
-        return false;
-    };
 
-    std::shared_ptr<MobileNetDetectionNetwork> build();
+    [[nodiscard]] static std::shared_ptr<MobileNetDetectionNetwork> create(const std::shared_ptr<Device>& device) {
+        auto networkPtr = std::make_shared<MobileNetDetectionNetwork>(device);
+        networkPtr->buildInternal();
+        return networkPtr;
+    }
+
+    void buildInternal() override;
 };
 
 /**
@@ -181,13 +212,19 @@ class MobileNetDetectionNetwork : public DetectionNetwork {
  */
 class YoloDetectionNetwork : public DetectionNetwork {
    public:
-    std::shared_ptr<YoloDetectionNetwork> build();
-    [[nodiscard]] static std::shared_ptr<YoloDetectionNetwork> create() {
-        return std::make_shared<YoloDetectionNetwork>();
+    YoloDetectionNetwork(const std::shared_ptr<Device>& device) : DetectionNetwork(device) {
+        static bool warned = false;
+        if(!warned) {
+            std::cerr << "YoloDetectionNetwork is deprecated, use DetectionNetwork instead" << std::endl;
+            warned = true;
+        }
     }
-    bool runOnHost() const override {
-        return false;
-    };
+
+    [[nodiscard]] static std::shared_ptr<YoloDetectionNetwork> create(const std::shared_ptr<Device>& device) {
+        auto networkPtr = std::make_shared<YoloDetectionNetwork>(device);
+        networkPtr->buildInternal();
+        return networkPtr;
+    }
 
     /// Set num classes
     void setNumClasses(int numClasses);
@@ -255,6 +292,8 @@ class YoloDetectionNetwork : public DetectionNetwork {
     std::map<std::string, std::vector<int>> getAnchorMasks() const;
     /// Get Iou threshold
     float getIouThreshold() const;
+
+    void buildInternal() override;
 };
 
 }  // namespace node

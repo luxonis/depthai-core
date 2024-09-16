@@ -65,6 +65,13 @@ class OpenVINO {
         /**
          * @brief Construct a new SuperBlob object
          *
+         * @param data: In memory superblob data
+         */
+        SuperBlob(std::vector<uint8_t> data);
+
+        /**
+         * @brief Construct a new SuperBlob object
+         *
          * @param pathToSuperBlobFile: Path to the superblob file (.superblob suffix)
          */
         SuperBlob(const std::string& pathToSuperBlobFile);
@@ -102,6 +109,12 @@ class OpenVINO {
 
         // Get the size in bytes of the patch data for a specific number of shaves
         int64_t getPatchDataSize(int numShaves);
+
+        // Load header - throw if an error occurs
+        void loadAndCheckHeader();
+
+        // Validate superblob - throw if an error occurs
+        void validateSuperblob();
 
         SuperBlobHeader header;
         std::vector<uint8_t> data;

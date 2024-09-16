@@ -894,7 +894,7 @@ class DeviceBase {
     std::shared_ptr<const XLinkConnection> getConnection() const {
         return connection;
     }
-    enum ReconnectionStatus { RECONNECTED, RECONNECTING, RECONNECT_FAILED };
+    enum class ReconnectionStatus { RECONNECTED, RECONNECTING, RECONNECT_FAILED };
     /**
      * Sets max number of automatic reconnection attempts
      * @param maxAttempts Maximum number of reconnection attempts, 0 to disable reconnection
@@ -950,7 +950,7 @@ class DeviceBase {
 
    private:
     // private functions
-    void init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipeline, bool reconnect = 0);
+    void init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipeline, bool reconnect = false);
     void tryGetDevice();
     struct PrevInfo {
         DeviceInfo deviceInfo;
@@ -1012,8 +1012,8 @@ class DeviceBase {
     std::optional<PipelineSchema> pipelineSchema;
 
     // Reconnection attempts and pointer to reset connections
-    int maxReconnectionAttempts = 0;
-    std::weak_ptr<PipelineImpl> pipeline_ptr;
+    int maxReconnectionAttempts = 1;
+    std::weak_ptr<PipelineImpl> pipelinePtr;
     bool isClosing = false;  // if true, don't attempt to reconnect
     std::function<void(ReconnectionStatus)> reconnectionCallback = nullptr;
 };

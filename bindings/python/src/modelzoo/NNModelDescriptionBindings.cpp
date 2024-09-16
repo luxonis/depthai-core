@@ -33,7 +33,7 @@ void NNModelDescriptionBindings::bind(pybind11::module& m, void* pCallstack) {
                  return NNModelDescription{modelSlug, platform, modelVersionSlug, modelInstanceSlug, modelInstanceHash, optimizationLevel, compressionLevel};
              }),
              py::arg("modelSlug"),
-             py::arg("platform"),
+             py::arg("platform") = "",
              py::arg("modelVersionSlug") = "",
              py::arg("modelInstanceSlug") = "",
              py::arg("modelInstanceHash") = "",

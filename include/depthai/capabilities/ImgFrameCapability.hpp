@@ -43,7 +43,7 @@ class ImgFrameCapability : public CapabilityCRTP<Capability, ImgFrameCapability>
     // Capability getIntersection(const Capability& other) override;
 
     CapabilityRange<std::pair<uint32_t, uint32_t>> size;
-    CapabilityRange<uint32_t> fps;
+    CapabilityRange<float> fps;
     std::optional<ImgFrame::Type> type;
     ImgResizeMode resizeMode{ImgResizeMode::CROP};
     // TODO(jakgra) add optional CapabilityRange fov / max-min horiz. / vertical crop;

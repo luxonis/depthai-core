@@ -1,5 +1,7 @@
 #pragma once
 
+#include <depthai/pipeline/Subnode.hpp>
+
 #include "depthai/pipeline/DeviceNode.hpp"
 #include "depthai/pipeline/ThreadedHostNode.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
@@ -28,8 +30,8 @@ namespace node {
 class RTABMapSLAM : public dai::NodeCRTP<dai::node::ThreadedHostNode, RTABMapSLAM> {
    public:
     constexpr static const char* NAME = "RTABMapSLAM";
+
     ~RTABMapSLAM() override;
-    std::shared_ptr<RTABMapSLAM> build();
     Subnode<node::Sync> sync{*this, "sync"};
     InputMap& inputs = sync->inputs;
     std::string rectInputName = "rect";
@@ -174,6 +176,8 @@ class RTABMapSLAM : public dai::NodeCRTP<dai::node::ThreadedHostNode, RTABMapSLA
      * Trigger a new map.
      */
     void triggerNewMap();
+
+    void buildInternal() override;
 
    private:
     void run() override;

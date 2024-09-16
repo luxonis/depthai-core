@@ -140,10 +140,16 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
         tasks.push(std::move(task));
     }
 
-    void processTasks(bool waitForTasks = false) {
+    void processTasks(bool waitForTasks = false, double timeoutSeconds = -1.0) {
+        bool timeoutSet = timeoutSeconds >= 0.0;
         if(waitForTasks) {
             std::function<void()> task;
-            auto success = tasks.waitAndPop(task);
+            bool success;
+            if(timeoutSet) {
+                success = tasks.tryWaitAndPop(task, std::chrono::duration<double>(timeoutSeconds));
+            } else {
+                success = tasks.waitAndPop(task);
+            }
             if(!success) {
                 return;
             }
@@ -163,13 +169,24 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     }
 
     template <typename N, typename... Args>
-    std::enable_if_t<std::is_base_of<DeviceNode, N>::value, std::shared_ptr<N>> createNode(Args&&... args) {
+    std::enable_if_t<std::is_base_of<DeviceNode, N>::value && !std::is_base_of<HostRunnable, N>::value, std::shared_ptr<N>> createNode(Args&&... args) {
         // N is a subclass of DeviceNode
         // return N::create();  // Specific create call for DeviceNode subclasses
         if(defaultDevice == nullptr) {
             throw std::runtime_error("Pipeline is host only, cannot create device node");
         }
         return N::create(defaultDevice, std::forward<Args>(args)...);  // Specific create call for DeviceNode subclasses
+    }
+
+    template <typename N, typename... Args>
+    std::enable_if_t<std::is_base_of<DeviceNode, N>::value && std::is_base_of<HostRunnable, N>::value, std::shared_ptr<N>> createNode(Args&&... args) {
+        // N is a subclass of DeviceNode
+        // return N::create();  // Specific create call for DeviceNode subclasses
+        if(defaultDevice == nullptr) {
+            return N::create(std::forward<Args>(args)...);  // Generic create call
+        } else {
+            return N::create(defaultDevice, std::forward<Args>(args)...);  // Specific create call for DeviceNode subclasses
+        }
     }
 
     template <typename N, typename... Args>
@@ -206,7 +223,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
 
     // Reset connections
     void resetConnections();
-    void unblockQueues();
+    void disconnectXLinkHosts();
 
    private:
     // Resource
@@ -473,7 +490,9 @@ class Pipeline {
     void stop() {
         impl()->stop();
     }
-
+    void processTasks(bool waitForTasks = false, double timeoutSeconds = -1.0) {
+        impl()->processTasks(waitForTasks, timeoutSeconds);
+    }
     void run() {
         impl()->run();
     }
@@ -486,10 +505,6 @@ class Pipeline {
 
     void addTask(std::function<void()> task) {
         impl()->addTask(std::move(task));
-    }
-
-    void processTasks() {
-        impl()->processTasks();
     }
 
     /// Record and Replay

@@ -1,6 +1,8 @@
 #pragma once
 #define SOPHUS_USE_BASIC_LOGGING
 
+#include <depthai/pipeline/Subnode.hpp>
+
 #include "basalt/calibration/calibration.hpp"
 #include "basalt/serialization/headers_serialization.h"
 #include "basalt/spline/se3_spline.h"
@@ -24,7 +26,6 @@ class BasaltVIO : public NodeCRTP<ThreadedHostNode, BasaltVIO> {
     constexpr static const char* NAME = "BasaltVIO";
     BasaltVIO();
     ~BasaltVIO();
-    std::shared_ptr<BasaltVIO> build();
 
     Subnode<node::Sync> sync{*this, "sync"};
     InputMap& inputs = sync->inputs;
@@ -32,6 +33,7 @@ class BasaltVIO : public NodeCRTP<ThreadedHostNode, BasaltVIO> {
     std::string leftInputName = "left";
     std::string rightInputName = "right";
 
+    void buildInternal() override;
     /**
      * Input left image on which VIO is performed.
      */

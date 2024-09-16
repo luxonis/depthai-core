@@ -305,11 +305,12 @@ hunter_config(
         BUILD_STATIC_LIBS=ON
 )
 
+# A hunterized and patched version of cpr- see https://github.com/luxonis/cpr/pull/1
 hunter_config(
     cpr
     VERSION "1.4.0"
-    URL "https://github.com/luxonis/cpr/archive/a1d28dbbaccda3df8fddd993b2cd916f64f9da56.tar.gz"
-    SHA1 "14e18d04d05e36e920aa90ee744952bf55783ea4"
+    URL "https://github.com/luxonis/cpr/archive/50a1321738554e0152b0a6f1b0ca24e4fdecff5c.tar.gz"
+    SHA1 "2e2ba9920ed99c19887592ca89d9be5ffce4722b"
 )
 
 hunter_config(
@@ -326,4 +327,11 @@ hunter_config(
     VERSION "v0.3.1"
     URL "https://github.com/Neargye/semver/archive/v0.3.1.tar.gz"
     SHA1 "c9ac79025cc259d8cca454be0865e88f154402be"
+)
+
+hunter_config(
+    apriltag
+    VERSION "3.4.2"
+    URL "https://github.com/AprilRobotics/apriltag/archive/v3.4.2.tar.gz"
+    SHA1 "5fe51a652e451aedd11f8966abdb8f16bb1faefe"
 )

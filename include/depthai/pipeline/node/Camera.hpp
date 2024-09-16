@@ -3,6 +3,8 @@
 // libraries
 #include <spimpl.h>
 
+#include <optional>
+
 // depthai
 #include "depthai/capabilities/ImgFrameCapability.hpp"
 #include "depthai/pipeline/DeviceNode.hpp"
@@ -19,13 +21,33 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
      * Get video output with specified size.
      */
     Node::Output* requestOutput(std::pair<uint32_t, uint32_t> size,
-                                ImgFrame::Type type = ImgFrame::Type::NV12,
+                                std::optional<ImgFrame::Type> type = std::nullopt,
                                 ImgResizeMode resizeMode = ImgResizeMode::CROP,
-                                uint32_t fps = 30);
+                                float fps = 30);
     /**
      * Request output with advanced controls. Mainly to be used by custom node writers.
      */
     Node::Output* requestOutput(const Capability& capability, bool onHost) override;
+
+    /**
+     * Get full resolution output
+     */
+    Node::Output* requestFullResolutionOutput(ImgFrame::Type type = ImgFrame::Type::NV12, float fps = 30);
+
+    /**
+     * Build with a specific board socket
+     */
+    std::shared_ptr<Camera> build(dai::CameraBoardSocket boardSocket = dai::CameraBoardSocket::AUTO);
+
+    /**
+     * Get max width of the camera (can only be called after build)
+     */
+    uint32_t getMaxWidth() const;
+
+    /**
+     * Get max height of the camera (can only be called after build)
+     */
+    uint32_t getMaxHeight() const;
 
     /**
      * Initial control options to apply to sensor
@@ -39,28 +61,10 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
         *this, {"inputControl", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::CameraControl, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
-     * Specify which board socket to use
-     * @param boardSocket Board socket to use
-     */
-    void setBoardSocket(CameraBoardSocket boardSocket);
-
-    /**
      * Retrieves which board socket to use
      * @returns Board socket to use
      */
     CameraBoardSocket getBoardSocket() const;
-
-    /**
-     * Specify which camera to use by name
-     * @param name Name of the camera to use
-     */
-    void setCamera(std::string name);
-
-    /**
-     * Retrieves which camera to use by name
-     * @returns Name of the camera to use
-     */
-    std::string getCamera() const;
 
    private:
     class Impl;
@@ -71,12 +75,12 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
     using DeviceNodeCRTP::DeviceNodeCRTP;
     [[nodiscard]] static std::shared_ptr<Camera> create() {
         auto node = std::make_shared<Camera>();
-        node->build();
+        node->buildInternal();
         return node;
     }
     [[nodiscard]] static std::shared_ptr<Camera> create(std::shared_ptr<Device>& defaultDevice) {
         auto node = std::make_shared<Camera>(defaultDevice);
-        node->build();
+        node->buildInternal();
         return node;
     }
     OutputMap dynamicOutputs{*this, "dynamicOutputs", {"", "", {{DatatypeEnum::ImgFrame, false}}}};
@@ -84,22 +88,21 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
     explicit Camera(std::shared_ptr<Device>& defaultDevice);
     explicit Camera(std::unique_ptr<Properties> props);
 
-    std::shared_ptr<Camera> build();
     void buildStage1() override;
 
    protected:
     Properties& getProperties() override;
     bool isSourceNode() const override;
     NodeRecordParams getNodeRecordParams() const override;
+
+   private:
+    bool isBuilt = false;
+    uint32_t maxWidth = 0;
+    uint32_t maxHeight = 0;
     /*
     Output& getRecordOutput() override;
     Input& getReplayInput() override;
     */
-
-    bool isBuild = false;
-    bool needsBuild() override {
-        return !isBuild;
-    }
 };
 
 }  // namespace node

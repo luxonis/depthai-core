@@ -72,6 +72,7 @@ set(SOURCE_LIST
     src/nn_archive/NNArchiveBindings.cpp
     src/log/LogBindings.cpp
     src/VersionBindings.cpp
+    src/common/ModelTypeBindings.cpp
 
     src/pipeline/node/NodeBindings.cpp
 
@@ -84,6 +85,7 @@ set(SOURCE_LIST
     src/pipeline/node/NeuralNetworkBindings.cpp
     src/pipeline/node/VideoEncoderBindings.cpp
     src/pipeline/node/ImageManipBindings.cpp
+    src/pipeline/node/ImageManipV2Bindings.cpp
     src/pipeline/node/SPIOutBindings.cpp
     src/pipeline/node/SPIInBindings.cpp
     src/pipeline/node/DetectionNetworkBindings.cpp
@@ -119,6 +121,7 @@ set(SOURCE_LIST
     src/pipeline/datatype/FeatureTrackerConfigBindings.cpp
     src/pipeline/datatype/ToFConfigBindings.cpp
     src/pipeline/datatype/ImageManipConfigBindings.cpp
+    src/pipeline/datatype/ImageManipConfigV2Bindings.cpp
     src/pipeline/datatype/ImgDetectionsBindings.cpp
     src/pipeline/datatype/ImgFrameBindings.cpp
     src/pipeline/datatype/EncodedFrameBindings.cpp
@@ -144,6 +147,11 @@ set(SOURCE_LIST
     src/modelzoo/NNModelDescriptionBindings.cpp
     src/modelzoo/ZooBindings.cpp
 )
+if(DEPTHAI_MERGED_TARGET)
+    list(APPEND SOURCE_LIST
+        external/pybind11_opencv_numpy/ndarray_converter.cpp
+    )
+endif()
 
 if(DEPTHAI_BASALT_SUPPORT)
     list(APPEND SOURCE_LIST
@@ -260,6 +268,9 @@ endif()
 
 # Add include directory
 target_include_directories(${TARGET_NAME} PRIVATE src ${DOCSTRINGS_INCLUDE_PLACEHOLDER_DIR})
+if(DEPTHAI_MERGED_TARGET)
+    target_include_directories(${TARGET_NAME} PRIVATE external/pybind11_opencv_numpy)
+endif()
 
 set(DEPTHAI_LINK_TARGET depthai::core)
 if(NOT DEPTHAI_MERGED_TARGET)

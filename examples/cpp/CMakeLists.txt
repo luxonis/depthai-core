@@ -457,6 +457,13 @@ hunter_private_data(
 # dai_add_example(depth_video_synced Sync/depth_video_synced.cpp ON OFF)
 # dai_add_example(imu_video_synced Sync/imu_video_synced.cpp ON OFF)
 
+# ImageManip
+dai_add_example(image_manip_host HostNodes/image_manip_host.cpp ON OFF)
+dai_add_example(image_manip_color_conversion_host HostNodes/image_manip_color_conversion.cpp ON OFF)
+dai_add_example(image_manip_v2_resize RVC4/ImageManip/image_manip_v2_resize.cpp ON OFF)
+dai_add_example(image_manip_v2_mod RVC4/ImageManip/image_manip_v2_mod.cpp ON OFF)
+dai_add_example(image_manip_color_conversion RVC4/ImageManip/image_manip_color_conversion.cpp ON OFF)
+
 # Record
 dai_add_example(record_encoded_h264 RVC2/Record/record_encoded_h264.cpp ON OFF)
 dai_add_example(record_encoded_mjpeg RVC2/Record/record_encoded_mjpeg.cpp ON OFF)

@@ -15,6 +15,7 @@
 // hedley
 #include <hedley/hedley.h>
 // STL Bind
+#include <pybind11/pytypes.h>
 #include <pybind11/stl_bind.h>
 
 PYBIND11_MAKE_OPAQUE(std::unordered_map<std::int8_t, dai::BoardConfig::GPIO>);
@@ -201,6 +202,7 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack){
     py::class_<BoardConfig::USB> boardConfigUsb(boardConfig, "USB", DOC(dai, BoardConfig, USB));
     py::class_<BoardConfig::Network> boardConfigNetwork(boardConfig, "Network", DOC(dai, BoardConfig, Network));
     py::class_<BoardConfig::GPIO> boardConfigGpio(boardConfig, "GPIO", DOC(dai, BoardConfig, GPIO));
+    py::enum_<dai::Device::ReconnectionStatus> enumReconnectionStatus(device, "ReconnectionStatus", DOC(dai, DeviceBase, ReconnectionStatus));
     py::enum_<BoardConfig::GPIO::Mode> boardConfigGpioMode(boardConfigGpio, "Mode", DOC(dai, BoardConfig, GPIO, Mode));
     py::enum_<BoardConfig::GPIO::Direction> boardConfigGpioDirection(boardConfigGpio, "Direction", DOC(dai, BoardConfig, GPIO, Direction));
     py::enum_<BoardConfig::GPIO::Level> boardConfigGpioLevel(boardConfigGpio, "Level", DOC(dai, BoardConfig, GPIO, Level));
@@ -335,11 +337,14 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack){
     ;
 
     // Bind Platform
-    platform
-        .value("RVC2", Platform::RVC2, DOC(dai, Platform, RVC2))
+    platform.value("RVC2", Platform::RVC2, DOC(dai, Platform, RVC2))
         .value("RVC3", Platform::RVC3, DOC(dai, Platform, RVC3))
-        .value("RVC4", Platform::RVC4, DOC(dai, Platform, RVC4))
-    ;
+        .value("RVC4", Platform::RVC4, DOC(dai, Platform, RVC4));
+
+    // Bind Device::ReconnectionStatus
+    enumReconnectionStatus.value("RECONNECT_FAILED", Device::ReconnectionStatus::RECONNECT_FAILED);
+    enumReconnectionStatus.value("RECONNECTED", Device::ReconnectionStatus::RECONNECTED);
+    enumReconnectionStatus.value("RECONNECTING", Device::ReconnectionStatus::RECONNECTING);
 
     // Platform - string conversion
     m.def("platform2string", &platform2string, DOC(dai, platform2string));
@@ -447,8 +452,8 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack){
         })
         .def("close", [](DeviceBase& d) { py::gil_scoped_release release; d.close(); }, "Closes the connection to device. Better alternative is the usage of context manager: `with depthai.Device(pipeline) as device:`")
         .def("isClosed", [](DeviceBase& d) { py::gil_scoped_release release; return d.isClosed(); }, DOC(dai, DeviceBase, isClosed))
-        .def("setMaxReconnectionAttempts", &DeviceBase::setMaxReconnectionAttempts, py::arg("maxAttempts"), py::arg("callback"), DOC(dai, DeviceBase, setMaxReconnectionAttempts))
-        
+        .def("setMaxReconnectionAttempts", &DeviceBase::setMaxReconnectionAttempts, py::arg("maxAttempts"), py::arg("callback") = py::none(), DOC(dai, DeviceBase, setMaxReconnectionAttempts))
+
         //dai::Device methods
         //static
         .def_static("getAnyAvailableDevice", [](std::chrono::milliseconds ms){ return DeviceBase::getAnyAvailableDevice(ms); }, py::arg("timeout"), DOC(dai, DeviceBase, getAnyAvailableDevice))

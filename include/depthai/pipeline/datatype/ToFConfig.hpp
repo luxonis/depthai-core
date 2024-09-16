@@ -1,5 +1,6 @@
 #pragma once
 #include "depthai/common/MedianFilter.hpp"
+#include "depthai/common/optional.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/utility/Serialization.hpp"
 namespace dai {
@@ -9,50 +10,65 @@ namespace dai {
  */
 class ToFConfig : public Buffer {
    public:
-    struct DepthParams {
-        /**
-         * Enable feature maintaining or not.
-         */
-        bool enable = true;
+    /**
+     * Set kernel size for depth median filtering, or disable
+     */
+    MedianFilter median = MedianFilter::MEDIAN_OFF;
 
-        /**
-         * Enable averaging between phases with same modulation frequency(e.g. for ToF cameras with phase shuffle).
-         * The depth frame rate will be half if this is enabled
-         */
-        bool avgPhaseShuffle = false;
+    /*
+     * Phase unwrapping level.
+     */
+    int phaseUnwrappingLevel = 4;
 
-        /**
-         * Perform depth calculation only for pixels with amplitude greater than provided value
-         */
-        float minimumAmplitude = 5.0;
+    /*
+     * Phase unwrapping error threshold.
+     */
+    uint16_t phaseUnwrapErrorThreshold = 100;
 
-        /**
-         * Frequency modulation frames used for depth calculation. If the ToF sensor supports multiple modulation frequencies,
-         * all will be used for depth calculation.
-         */
-        enum class TypeFMod : std::int32_t { F_MOD_ALL, F_MOD_MIN, F_MOD_MAX };
+    /*
+     * Enable phase shuffle temporal filter.
+     * Temporal filter that averages the shuffle and non-shuffle frequencies.
+     */
+    bool enablePhaseShuffleTemporalFilter = true;
 
-        TypeFMod freqModUsed = TypeFMod::F_MOD_MIN;
-        /**
-         * Set kernel size for depth median filtering, or disable
-         */
-        MedianFilter median = MedianFilter::KERNEL_5x5;
+    /*
+     * Enable burst mode.
+     * Decoding is performed on a series of 4 frames.
+     * Output fps will be 4 times lower, but reduces motion blur artifacts.
+     */
+    bool enableBurstMode = false;
 
-        DEPTHAI_SERIALIZE(DepthParams, enable, avgPhaseShuffle, minimumAmplitude, freqModUsed, median);
-    };
+    /*
+     * Enable distortion correction for intensity, amplitude and depth output, if calibration is present.
+     */
+    bool enableDistortionCorrection = true;
 
-    DepthParams depthParams;
+    /*
+     * Enable FPN correction. Used for debugging.
+     */
+    std::optional<bool> enableFPPNCorrection;
+    /*
+     * Enable optical correction. Used for debugging.
+     */
+    std::optional<bool> enableOpticalCorrection;
+    /*
+     * Enable temperature correction. Used for debugging.
+     */
+    std::optional<bool> enableTemperatureCorrection;
+    /*
+     * Enable wiggle correction. Used for debugging.
+     */
+    std::optional<bool> enableWiggleCorrection;
+    /*
+     * Enable phase unwrapping. Used for debugging.
+     */
+    std::optional<bool> enablePhaseUnwrapping;
+
     /**
      * Construct ToFConfig message.
      */
     ToFConfig() = default;
     virtual ~ToFConfig() = default;
-
-    // TODO(before mainline) - API not supported on RVC3
-    ToFConfig& setDepthParams(dai::ToFConfig::DepthParams config);
-    ToFConfig& setFreqModUsed(dai::ToFConfig::DepthParams::TypeFMod fmod);
-    ToFConfig& setAvgPhaseShuffle(bool enable);
-    ToFConfig& setMinAmplitude(float minamp);
 
     /**
      * @param median Set kernel size for median filtering, or disable
@@ -64,7 +80,18 @@ class ToFConfig : public Buffer {
         datatype = DatatypeEnum::ToFConfig;
     };
 
-    DEPTHAI_SERIALIZE(ToFConfig, depthParams);
+    DEPTHAI_SERIALIZE(ToFConfig,
+                      median,
+                      enablePhaseShuffleTemporalFilter,
+                      enableBurstMode,
+                      enableDistortionCorrection,
+                      enableFPPNCorrection,
+                      enableOpticalCorrection,
+                      enableTemperatureCorrection,
+                      enableWiggleCorrection,
+                      enablePhaseUnwrapping,
+                      phaseUnwrappingLevel,
+                      phaseUnwrapErrorThreshold);
 };
 
 }  // namespace dai

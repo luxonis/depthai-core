@@ -1,6 +1,7 @@
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 
 #include <cmath>
+#include <opencv2/core/mat.hpp>
 #include <opencv2/imgproc.hpp>
 
 // #include "spdlog/spdlog.h"
@@ -10,8 +11,13 @@ namespace dai {
 #pragma GCC diagnostic ignored "-Wswitch-enum"
 ImgFrame& ImgFrame::setFrame(cv::Mat frame) {
     std::vector<uint8_t> dataVec;
-    assert(frame.isContinuous());
-    dataVec.insert(dataVec.begin(), frame.datastart, frame.dataend);
+    if(!frame.isContinuous()) {
+        for(int i = 0; i < frame.rows; i++) {
+            dataVec.insert(dataVec.end(), frame.ptr(i), frame.ptr(i) + frame.cols * frame.elemSize());
+        }
+    } else {
+        dataVec.insert(dataVec.begin(), frame.datastart, frame.dataend);
+    }
     setData(dataVec);
     return *this;
 }
@@ -103,7 +109,7 @@ cv::Mat ImgFrame::getFrame(bool deepCopy) {
         // TODO stride handling
     } else {
         // TMP TMP
-        if(fb.stride != 0) {
+        if(fb.stride == 0) {
             mat = cv::Mat(size, type, data->getData().data());
         } else {
             mat = cv::Mat(size, type, data->getData().data(), getStride());
@@ -113,9 +119,12 @@ cv::Mat ImgFrame::getFrame(bool deepCopy) {
     return mat;
 }
 
-cv::Mat ImgFrame::getCvFrame() {
+cv::Mat ImgFrame::getCvFrame(cv::MatAllocator* allocator) {
     cv::Mat frame = getFrame();
     cv::Mat output;
+    if(allocator != nullptr) {
+        output.allocator = allocator;
+    }
 
     switch(getType()) {
         case Type::RGB888i:
@@ -123,26 +132,42 @@ cv::Mat ImgFrame::getCvFrame() {
             break;
 
         case Type::BGR888i:
-            output = frame.clone();
+            frame.copyTo(output);
             break;
 
         case Type::RGB888p: {
             cv::Size s(getWidth(), getHeight());
             std::vector<cv::Mat> channels;
+            size_t offset0 = 0;
+            size_t offset1 = s.area();
+            size_t offset2 = s.area() * 2;
+            if(fb.p1Offset != 0 || fb.p2Offset != 0 || fb.p3Offset != 0) {  // If any of the offsets are set, use all of them
+                offset0 = fb.p1Offset;
+                offset1 = fb.p2Offset;
+                offset2 = fb.p3Offset;
+            }
             // RGB
-            channels.push_back(cv::Mat(s, CV_8UC1, (uint8_t*)getData().data() + s.area() * 2));
-            channels.push_back(cv::Mat(s, CV_8UC1, (uint8_t*)getData().data() + s.area() * 1));
-            channels.push_back(cv::Mat(s, CV_8UC1, (uint8_t*)getData().data() + s.area() * 0));
+            channels.push_back(cv::Mat(s, CV_8UC1, (uint8_t*)getData().data() + offset0, getStride()));
+            channels.push_back(cv::Mat(s, CV_8UC1, (uint8_t*)getData().data() + offset1, getStride()));
+            channels.push_back(cv::Mat(s, CV_8UC1, (uint8_t*)getData().data() + offset2, getStride()));
             cv::merge(channels, output);
         } break;
 
         case Type::BGR888p: {
             cv::Size s(getWidth(), getHeight());
             std::vector<cv::Mat> channels;
+            size_t offset0 = 0;
+            size_t offset1 = s.area();
+            size_t offset2 = s.area() * 2;
+            if(fb.p1Offset != 0 || fb.p2Offset != 0 || fb.p3Offset != 0) {  // If any of the offsets are set, use all of them
+                offset0 = fb.p1Offset;
+                offset1 = fb.p2Offset;
+                offset2 = fb.p3Offset;
+            }
             // BGR
-            channels.push_back(cv::Mat(s, CV_8UC1, (uint8_t*)getData().data() + s.area() * 0));
-            channels.push_back(cv::Mat(s, CV_8UC1, (uint8_t*)getData().data() + s.area() * 1));
-            channels.push_back(cv::Mat(s, CV_8UC1, (uint8_t*)getData().data() + s.area() * 2));
+            channels.push_back(cv::Mat(s, CV_8UC1, (uint8_t*)getData().data() + offset0, getStride()));
+            channels.push_back(cv::Mat(s, CV_8UC1, (uint8_t*)getData().data() + offset1, getStride()));
+            channels.push_back(cv::Mat(s, CV_8UC1, (uint8_t*)getData().data() + offset2, getStride()));
             cv::merge(channels, output);
         } break;
 
@@ -172,11 +197,11 @@ cv::Mat ImgFrame::getCvFrame() {
         case Type::RAW10:
         case Type::GRAY8:
         case Type::GRAYF16:
-            output = frame.clone();
+            frame.copyTo(output);
             break;
 
         default:
-            output = frame.clone();
+            frame.copyTo(output);
             break;
     }
 
@@ -283,22 +308,22 @@ ImgFrame& ImgFrame::setCvFrame(cv::Mat mat, Type type) {
             setData(dataVec);
             break;
         }
-        // case Type::RAW8:
-        // case Type::RAW16:
         // case Type::RAW14:
         // case Type::RAW12:
         // case Type::RAW10:
+        case Type::RAW8:
+        case Type::RAW16:
         case Type::GRAY8:
         case Type::GRAYF16:
             fb.width = mat.cols;
             fb.height = mat.rows;
-            fb.stride = type == Type::GRAY8 ? mat.cols : mat.cols * 2;
+            fb.stride = type == Type::GRAY8 || type == Type::RAW8 ? mat.cols : mat.cols * 2;
             if(mat.channels() == 3) {
                 cv::cvtColor(mat, output, cv::ColorConversionCodes::COLOR_BGR2GRAY);
             } else {
                 output = mat;
             }
-            if(type == Type::GRAY8) {
+            if(type == Type::GRAY8 || type == Type::RAW8) {
                 output.convertTo(output, CV_8UC1);
             } else {
                 output.convertTo(output, CV_16FC1);
