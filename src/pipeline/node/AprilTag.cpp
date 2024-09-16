@@ -2,26 +2,31 @@
 
 #include <stdexcept>
 
+#include <math.h>
+
+#include "pipeline/datatype/AprilTagConfig.hpp"
+#include "properties/AprilTagProperties.hpp"
+
+#ifdef DEPTHAI_HAS_APRIL_TAG
+
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     #include <opencv2/imgproc.hpp>
 #endif
 
-#include <math.h>
-
 #include "depthai/pipeline/datatype/AprilTags.hpp"
-#include "pipeline/datatype/AprilTagConfig.hpp"
 #include "pipeline/datatype/ImgFrame.hpp"
-#include "properties/AprilTagProperties.hpp"
 
 extern "C" {
-#include "apriltag.h"
-#include "tag16h5.h"
-#include "tag25h9.h"
-#include "tag36h10.h"
-#include "tag36h11.h"
-#include "tagCircle21h7.h"
-#include "tagStandard41h12.h"
+    #include "apriltag.h"
+    #include "tag16h5.h"
+    #include "tag25h9.h"
+    #include "tag36h10.h"
+    #include "tag36h11.h"
+    #include "tagCircle21h7.h"
+    #include "tagStandard41h12.h"
 }
+
+#endif
 
 namespace dai {
 namespace node {
@@ -69,6 +74,8 @@ void AprilTag::buildInternal() {
     }
     logger->info("AprilTag node running on host: {}", runOnHostVar);
 }
+
+#ifdef DEPTHAI_HAS_APRIL_TAG
 
 apriltag_family_t* getAprilTagFamily(dai::AprilTagConfig::Family family) {
     apriltag_family_t* tf = nullptr;
@@ -169,14 +176,6 @@ void setDetectorConfig(apriltag_detector_t* td, apriltag_family_t* tf, AprilTagC
 void setDetectorProperties(apriltag_detector_t* td, const dai::AprilTagProperties& properties) {
     td->nthreads = properties.numThreads;
 }
-
-#ifdef _WIN32
-
-void AprilTage::run() {
-    throw std::runtime_error("AprilTag node is not supported on Windows");
-}
-
-#else
 
 void AprilTag::run() {
     // Retrieve properties and initial config
@@ -316,6 +315,13 @@ void AprilTag::run() {
     // Destroy AprilTag family
     destroyAprilTagFamily(tf, tfamily);
 }
+
+#else
+
+void AprilTag::run() {
+    throw std::runtime_error("AprilTag node is not supported on Windows");
+}
+
 #endif
 
 }  // namespace node
