@@ -195,7 +195,8 @@ void bind_nndata(pybind11::module& m, void* pCallstack){
         //.def("addTensorFP16", &NNData::addTensorFP16, py::arg("name"), py::arg("tensor"), DOC(dai, NNData, addTensorFP16))
         //.def("addTensorI8", &NNData::addTensorI8, py::arg("name"), py::arg("tensor"), DOC(dai, NNData, addTensorI8))
         //.def("addTensorU8F", &NNData::addTensorU8F, py::arg("name"), py::arg("tensor"), DOC(dai, NNData, addTensorU8F))
-        .def("addTensor", [](NNData&obj, const std::string&name, py::array tensor, dai::TensorInfo::DataType dataType){       
+        .def("addTensor", [](NNData&obj, const std::string&name, py::object tensor_obj, dai::TensorInfo::DataType dataType){       
+            auto tensor = py::array(tensor_obj);
             if (dataType == dai::TensorInfo::DataType::INT)
                 obj.addTensor<int>(name, tensor.cast<xt::xarray<int>>(), dai::TensorInfo::DataType::INT);
             else if (dataType == dai::TensorInfo::DataType::FP32  ||
@@ -205,7 +206,8 @@ void bind_nndata(pybind11::module& m, void* pCallstack){
             //    obj.addTensor(name,tensor.cast<xt::xarray<)
             else throw std::runtime_error("Unsupported type");
         }, py::arg("name"), py::arg("tensor"), py::arg("dataType"), DOC(dai, NNData, addTensor))
-        .def("addTensor", [](NNData&obj, const std::string &name, py::array tensor){
+        .def("addTensor", [](NNData&obj, const std::string &name, py::object tensor_obj){
+            auto tensor = py::array(tensor_obj);
             auto dtype = tensor.dtype();
             if (dtype.is(py::dtype::of<float>()) || dtype.is(py::dtype::of<double>())) {
                 //auto tmp = tensor.cast<xt::xarray<double>>();
