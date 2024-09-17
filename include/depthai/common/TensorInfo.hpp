@@ -33,6 +33,7 @@ struct TensorInfo {
         INT = 2,   // Signed integer (4 byte)
         FP32 = 3,  // Single precision floating point
         I8 = 4,    // Signed byte
+        FP64 = 5,  // Double precision floating point
     };
 
     void validateStorageOrder() {
@@ -82,6 +83,8 @@ struct TensorInfo {
             case DataType::INT:
             case DataType::FP32:
                 return sizeof(float);
+            case DataType::FP64:
+                return sizeof(double);
             default:
                 return 0;
                 break;

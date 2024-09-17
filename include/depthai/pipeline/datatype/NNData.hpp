@@ -196,23 +196,6 @@ class NNData : public Buffer {
     span<std::uint8_t> emplaceTensor(TensorInfo& tensor);
 
 //#ifdef DEPTHAI_XTENSOR_SUPPORT
-    // Doesnt work if xarray overloads are used
-    // Various overloads for different types
-    //NNData& addTensorINT(const std::string& name, const std::vector<int>& data) {
-    //    return addTensor<int>(name, xt::adapt(data, std::vector<size_t>{1, data.size()}), dai::TensorInfo::DataType::INT);
-    //}; 
-    //NNData& addTensorF32(const std::string& name, const std::vector<float>& data) {
-    //    return addTensor<float>(name, xt::adapt(data, std::vector<size_t>{1, data.size()}), dai::TensorInfo::DataType::FP16);
-    //}; 
-    //NNData& addTensorFP16(const std::string& name, const std::vector<uint8_t>& data) {
-    //    return addTensor<uint8_t>(name, xt::adapt(data, std::vector<size_t>{1, data.size()}), dai::TensorInfo::DataType::FP32);
-    //}; 
-    //NNData& addTensorI8(const std::string& name, const std::vector<std::int8_t>& data) {
-    //    return addTensor<std::int8_t>(name, xt::adapt(data, std::vector<size_t>{1, data.size()}), dai::TensorInfo::DataType::I8);
-    //}; 
-    //NNData& addTensorU8F(const std::string& name, const std::vector<std::uint8_t>& data) {
-    //    return addTensor<std::uint8_t>(name, xt::adapt(data, std::vector<size_t>{1, data.size()}), dai::TensorInfo::DataType::U8F);
-    //};    
     /**
      * Set a layer with datatype FP16. Double values are converted to FP16.
      * @param name Name of the layer
@@ -246,16 +229,16 @@ class NNData : public Buffer {
 
     // addTensor overloads
     NNData& addTensor(const std::string& name, const xt::xarray<int>& tensor) {
-        return addTensor<int>(name, tensor, dai::TEnsorInfo::DataType::INT);
+        return addTensor<int>(name, tensor, dai::TensorInfo::DataType::INT);
+    };
+    NNData& addTensor(const std::string& name, const xt::xarray<uint16_t>& tensor) {
+        return addTensor<uint16_t>(name, tensor, dai::TensorInfo::DataType::FP16);
     };
     NNData& addTensor(const std::string& name, const xt::xarray<float>& tensor) {
         return addTensor<float>(name, tensor, dai::TensorInfo::DataType::FP32);
     };
-    //NNData& addTensor(const std::string& name, const xt::xarray<double>& tensor) {
-    //    return addTensor<double>(name, tensor, dai::TensorInfo::DataType::FP64);
-    //};
-    NNData& addTensor(const std::string& name, const xt::xarray<uint16_t>& tensor) {
-        return addTensor<uint16_t>(name, tensor, dai::TensorInfo::DataType::FP16);
+    NNData& addTensor(const std::string& name, const xt::xarray<double>& tensor) {
+        return addTensor<double>(name, tensor, dai::TensorInfo::DataType::FP64);
     };
     NNData& addTensor(const std::string& name, const xt::xarray<std::int8_t>& tensor) {
         return addTensor<std::int8_t>(name, tensor, dai::TensorInfo::DataType::I8);
@@ -272,12 +255,12 @@ class NNData : public Buffer {
     template <typename _Ty = double>
     NNData& addTensor(const std::string& name, const xt::xarray<_Ty>& tensor, dai::TensorInfo::DataType dataType) {
         static_assert(std::is_integral<_Ty>::value || std::is_floating_point<_Ty>::value, "Tensor type needs to be integral or floating point");
-        //if(dataType==dai::TensorInfo::DataType::FP32) std::cout<<"FP32\n";  
-        //else if(dataType==dai::TensorInfo::DataType::FP16) std::cout<<"FP16\n";
-        //else if(dataType==dai::TensorInfo::DataType::INT) std::cout<<"INT\n";
-        //else if(dataType==dai::TensorInfo::DataType::I8) std::cout<<"I8\n";
-        //else if(dataType==dai::TensorInfo::DataType::U8F) std::cout<<"U8F\n";
-        //else std::cout<<"Unsupported type\n";
+        if(dataType==dai::TensorInfo::DataType::FP32) std::cout<<"FP32\n";  
+        else if(dataType==dai::TensorInfo::DataType::FP16) std::cout<<"FP16\n";
+        else if(dataType==dai::TensorInfo::DataType::INT) std::cout<<"INT\n";
+        else if(dataType==dai::TensorInfo::DataType::I8) std::cout<<"I8\n";
+        else if(dataType==dai::TensorInfo::DataType::U8F) std::cout<<"U8F\n";
+        else std::cout<<"Unsupported type\n";
 
         // Check if data is vector type of data
         if(std::dynamic_pointer_cast<VectorMemory>(data) == nullptr) {
@@ -290,12 +273,15 @@ class NNData : public Buffer {
         //const size_t sConvertedData = std::is_integral<_Ty>::value ? tensor.size() : 2 * tensor.size();
         size_t sConvertedData = tensor.size();
         switch(dataType){
-            case dai::TensorInfo::DataType::FP16:
-                sConvertedData *= 2;
+            case dai::TensorInfo::DataType::FP64:
+                sConvertedData *= 8;
                 break;
             case dai::TensorInfo::DataType::FP32:
             case dai::TensorInfo::DataType::INT:
                 sConvertedData *= 4;
+                break;
+            case dai::TensorInfo::DataType::FP16:
+                sConvertedData *= 2;
                 break;
             case dai::TensorInfo::DataType::U8F:
             case dai::TensorInfo::DataType::I8:
@@ -334,6 +320,10 @@ class NNData : public Buffer {
         } else if(dataType == dai::TensorInfo::DataType::U8F) {
             for(uint32_t i = 0; i < tensor.size(); i++) {
                 vecData->data()[i + offset] = (uint8_t)tensor.data()[i];
+            }
+        }else if(dataType == dai::TensorInfo::DataType::FP64){
+            for(uint32_t i = 0; i < tensor.size(); i++) {
+                *(double*)(&vecData->data()[8 * i + offset]) = tensor.data()[i];
             }
         }
 
@@ -398,6 +388,11 @@ class NNData : public Buffer {
             case TensorInfo::DataType::FP32:
                 for(uint32_t i = 0; i < tensor.size(); i++) {
                     tensor.data()[i] = reinterpret_cast<float_t*>(data->getData().data())[it->offset / sizeof(float_t) + i];
+                }
+                break;
+            case TensorInfo::DataType::FP64:
+                for(uint32_t i = 0; i < tensor.size(); i++) {
+                    tensor.data()[i] = reinterpret_cast<double_t*>(data->getData().data())[it->offset / sizeof(double_t) + i];
                 }
                 break;
         }

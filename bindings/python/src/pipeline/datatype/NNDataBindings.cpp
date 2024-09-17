@@ -15,6 +15,8 @@
 #define FORCE_IMPORT_ARRAY
 #include <xtensor-python/pyarray.hpp>
 
+#include "fp16/fp16.h"
+
 // #include "spdlog/spdlog.h"
 
 void bind_nndata(pybind11::module& m, void* pCallstack){
@@ -201,7 +203,9 @@ void bind_nndata(pybind11::module& m, void* pCallstack){
                 obj.addTensor<int>(name, tensor.cast<xt::xarray<int>>(), dai::TensorInfo::DataType::INT);
             else if (dataType == dai::TensorInfo::DataType::FP32  ||
                      dataType == dai::TensorInfo::DataType::FP16)
-                obj.addTensor<double>(name, tensor.cast<xt::xarray<double>>(), dai::TensorInfo::DataType::FP32);
+                obj.addTensor<float>(name, tensor.cast<xt::xarray<float>>(), dai::TensorInfo::DataType::FP32);
+            else if(dataType == dai::TensorInfo::DataType::FP64)
+                obj.addTensor<double>(name, tensor.cast<xt::xarray<double>>(), dai::TensorInfo::DataType::FP64);
             //else if (dataType == dai::TensorInfo::DataType::I8)
             //    obj.addTensor(name,tensor.cast<xt::xarray<)
             else throw std::runtime_error("Unsupported type");
@@ -209,28 +213,17 @@ void bind_nndata(pybind11::module& m, void* pCallstack){
         .def("addTensor", [](NNData&obj, const std::string &name, py::object tensor_obj){
             auto tensor = py::array(tensor_obj);
             auto dtype = tensor.dtype();
-            if (dtype.is(py::dtype::of<float>()) || dtype.is(py::dtype::of<double>())) {
-                //auto tmp = tensor.cast<xt::xarray<double>>();
-                //for(auto u : tmp) std::cout<<u<<" ";
-                //std::cout<<std::endl;
-                //obj.addTensorFP32(name,tensor.cast<xt::xarray<double>>());
-                obj.addTensor<double>(name, tensor.cast<xt::xarray<double>>(), dai::TensorInfo::DataType::FP32);
+            if (dtype.is(py::dtype::of<float>())) {
+                obj.addTensor<float>(name, tensor.cast<xt::xarray<float>>(), dai::TensorInfo::DataType::FP32);
+            } else if(dtype.is(py::dtype::of<double>())){
+                obj.addTensor<double>(name, tensor.cast<xt::xarray<double>>(), dai::TensorInfo::DataType::FP64);
             } else if (dtype.is(py::dtype::of<int>()) || dtype.is(py::dtype::of<int64_t>())) {
-                //obj.addTensorINT(name,tensor.cast<xt::xarray<int>>());
                 obj.addTensor<int>(name, tensor.cast<xt::xarray<int>>(), dai::TensorInfo::DataType::INT);
             } else if (dtype.is(py::dtype("float16"))) {
-                // seems like the cast truncates values, not memcopies
-                //obj.addTensorFP16(name,tensor.cast<xt::xarray<uint16_t>>());
-                //obj.addTensorFP32(name,tensor.cast<xt::xarray<double>>())
-                obj.addTensor<double>(name, tensor.cast<xt::xarray<double>>(), dai::TensorInfo::DataType::FP32);
-                
-                //auto tmp = tensor.cast<xt::xarray<uint16_t>>();
-                //for(auto u : tmp) std::cout<<u<<" ";
-                //std::cout<<std::endl;
-                //xt::xarray<uint16_t> xt_array = xt::empty<uint16_t>({tensor.size()});
-                //std::memcpy(xt_array.data(), tensor.data(), tensor.size() * sizeof(uint16_t));
-                //obj.addTensor<double>(name,  xt_array, dai::TensorInfo::DataType::FP16);
-                //obj.addTensorFP16(name, xt_array);
+                std::cout<<"CALLING FP16\n";
+                auto arg = tensor.cast<xt::xarray<float>>();
+                for(auto& u : arg) u = fp16_ieee_from_fp32_value(u);
+                obj.addTensor<float>(name, arg, dai::TensorInfo::DataType::FP16);
             } else {
                 std::cout<<dtype<<"\n";
                 throw std::runtime_error("Unsupported datatype");
@@ -246,6 +239,8 @@ void bind_nndata(pybind11::module& m, void* pCallstack){
                (datatype == dai::TensorInfo::DataType::INT && !dequantize)) {
                 // In case of dequantization, we should always return float
                 return py::cast(obj.getTensor<int>(name));
+            } else if(datatype == dai::TensorInfo::DataType::FP64) {
+                return py::cast(obj.getTensor<double>(name, dequantize));
             } else {
                 return py::cast(obj.getTensor<float>(name, dequantize));
             }
