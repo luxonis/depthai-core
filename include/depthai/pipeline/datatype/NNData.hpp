@@ -243,6 +243,27 @@ class NNData : public Buffer {
     //    //std::cout<<"U8F OVERLOAD\n";
     //    return addTensor<std::uint8_t>(name, tensor, dai::TensorInfo::DataType::U8F);
     //};
+
+    // addTensor overloads
+    NNData& addTensor(const std::string& name, const xt::xarray<int>& tensor) {
+        return addTensor<int>(name, tensor, dai::TEnsorInfo::DataType::INT);
+    };
+    NNData& addTensor(const std::string& name, const xt::xarray<float>& tensor) {
+        return addTensor<float>(name, tensor, dai::TensorInfo::DataType::FP32);
+    };
+    //NNData& addTensor(const std::string& name, const xt::xarray<double>& tensor) {
+    //    return addTensor<double>(name, tensor, dai::TensorInfo::DataType::FP64);
+    //};
+    NNData& addTensor(const std::string& name, const xt::xarray<uint16_t>& tensor) {
+        return addTensor<uint16_t>(name, tensor, dai::TensorInfo::DataType::FP16);
+    };
+    NNData& addTensor(const std::string& name, const xt::xarray<std::int8_t>& tensor) {
+        return addTensor<std::int8_t>(name, tensor, dai::TensorInfo::DataType::I8);
+    };
+    NNData& addTensor(const std::string& name, const xt::xarray<std::uint8_t>& tensor) {
+        return addTensor<std::uint8_t>(name, tensor, dai::TensorInfo::DataType::U8F);
+    };
+
     /**
      * Add a tensor. Float values are converted to FP16 and integers are cast to bytes.
      * @param name Name of the tensor
@@ -250,7 +271,7 @@ class NNData : public Buffer {
      */
     template <typename _Ty = double>
     NNData& addTensor(const std::string& name, const xt::xarray<_Ty>& tensor, dai::TensorInfo::DataType dataType) {
-        //static_assert(std::is_integral<_Ty>::value || std::is_floating_point<_Ty>::value, "Tensor type needs to be integral or floating point");
+        static_assert(std::is_integral<_Ty>::value || std::is_floating_point<_Ty>::value, "Tensor type needs to be integral or floating point");
         //if(dataType==dai::TensorInfo::DataType::FP32) std::cout<<"FP32\n";  
         //else if(dataType==dai::TensorInfo::DataType::FP16) std::cout<<"FP16\n";
         //else if(dataType==dai::TensorInfo::DataType::INT) std::cout<<"INT\n";
