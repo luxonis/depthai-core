@@ -53,7 +53,7 @@ if thisPlatform == "aarch64":
         requireOpenCv = True
 
 if requireOpenCv:
-    DEPENDENCIES.append('numpy==1.24.4') # rerun doesn't work with numpy 2.0 for now
+    DEPENDENCIES.append('numpy<2.0') # rerun doesn't work with numpy>=2 for now
     # 4.5.4.58 package is broken for python 3.9
     if sys.version_info[0] == 3 and sys.version_info[1] == 9:
         DEPENDENCIES.append('opencv-python!=4.5.4.58')
