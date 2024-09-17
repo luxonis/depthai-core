@@ -2,6 +2,7 @@
 
 #include <google/protobuf/descriptor.pb.h>
 #include <google/protobuf/util/time_util.h>
+#include <httplib.h>
 #include <memory.h>
 
 #include <depthai/pipeline/Node.hpp>
@@ -13,6 +14,8 @@
 #include <memory>
 #include <optional>
 
+#include "foxglove/websocket/server_interface.hpp"
+
 static uint64_t nanosecondsSinceEpoch() {
     return uint64_t(std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count());
 }
@@ -22,11 +25,14 @@ class RemoteConnector {
    public:
     // Constructor and Destructor
     explicit RemoteConnector(const std::string& address = "0.0.0.0", uint16_t port = 8765) {
-        initServer(address, port);
+        initWebsocketServer(address, port);
+        initHttpServer(address, 8000);
     }
 
     ~RemoteConnector() {
         server->stop();
+        httpServer->stop();
+        httpServerThread->join();
     }
 
     void addTopic(const std::string& topicName, Node::Output& output) {
@@ -79,6 +85,7 @@ class RemoteConnector {
                 }
 
                 auto serializedMsg = serializableMessage->serializeProto();
+                std::cout << "Sending the message to topic: " << topicName << std::endl;
                 server->broadcastMessage(channelId, nanosecondsSinceEpoch(), static_cast<const uint8_t*>(serializedMsg.data()), serializedMsg.size());
             }
         }).detach();  // Detach the thread to run independently
@@ -90,7 +97,10 @@ class RemoteConnector {
     // Expose the pipeline
    private:
     // Initializes the WebSocket server
-    void initServer(const std::string& address, uint16_t port);
+    void initWebsocketServer(const std::string& address, uint16_t port);
+    void initHttpServer(const std::string& address, uint16_t port);
     std::unique_ptr<foxglove::ServerInterface<websocketpp::connection_hdl>> server;
+    std::unique_ptr<httplib::Server> httpServer;  // For the frontend
+    std::unique_ptr<std::thread> httpServerThread;
 };
 }  // namespace dai

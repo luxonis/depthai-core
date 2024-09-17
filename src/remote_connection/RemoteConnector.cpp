@@ -3,7 +3,7 @@
 #include <iostream>
 #include <websocketpp/common/connection_hdl.hpp>
 namespace dai {
-void RemoteConnector::initServer(const std::string& address, uint16_t port) {
+void RemoteConnector::initWebsocketServer(const std::string& address, uint16_t port) {
     // Create the WebSocket server with a simple log handler
     const auto logHandler = [](foxglove::WebSocketLogLevel, const char* msg) { std::cout << msg << std::endl; };
     foxglove::ServerOptions serverOptions;
@@ -31,5 +31,15 @@ void RemoteConnector::initServer(const std::string& address, uint16_t port) {
     } catch(const std::exception& ex) {
         std::cerr << "Failed to start server: " << ex.what() << std::endl;
     }
+}
+
+void RemoteConnector::initHttpServer(const std::string& address, uint16_t port) {
+    httpServer = std::make_unique<httplib::Server>();
+    httpServer->set_mount_point("/", "/home/matevz/Downloads/viewer-fe-2");
+    std::cout << "Starting HTTP server at " << address << ":" << port << std::endl;
+    // Run the server in a separate thread
+    httpServerThread = std::make_unique<std::thread>([this, address, port]() {
+        httpServer->listen(address.c_str(), port);
+    });
 }
 }  // namespace dai
