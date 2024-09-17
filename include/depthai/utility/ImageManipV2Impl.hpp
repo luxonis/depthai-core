@@ -291,7 +291,7 @@ static inline void RGBfromYUV(float& R, float& G, float& B, float Y, float U, fl
 template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
 bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToRGB888p(
     const dai::span<const uint8_t> inputFrame, dai::span<uint8_t> outputFrame, FrameSpecs srcSpecs, FrameSpecs dstSpecs, dai::ImgFrame::Type from) {
-    dai::ImgFrame::Type to = dai::ImgFrame::Type::RGB888p;
+    // dai::ImgFrame::Type to = dai::ImgFrame::Type::RGB888p;
 
     auto src = inputFrame.data();
     auto inputSize = inputFrame.size();
@@ -606,7 +606,7 @@ bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToRGB888p(
 template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
 bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToBGR888p(
     const dai::span<const uint8_t> inputFrame, dai::span<uint8_t> outputFrame, FrameSpecs srcSpecs, FrameSpecs dstSpecs, dai::ImgFrame::Type from) {
-    dai::ImgFrame::Type to = dai::ImgFrame::Type::BGR888p;
+    // dai::ImgFrame::Type to = dai::ImgFrame::Type::BGR888p;
 
     auto src = inputFrame.data();
     auto inputSize = inputFrame.size();
@@ -921,7 +921,7 @@ bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToBGR888p(
 template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
 bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToRGB888i(
     const dai::span<const uint8_t> inputFrame, dai::span<uint8_t> outputFrame, FrameSpecs srcSpecs, FrameSpecs dstSpecs, dai::ImgFrame::Type from) {
-    dai::ImgFrame::Type to = dai::ImgFrame::Type::RGB888i;
+    // dai::ImgFrame::Type to = dai::ImgFrame::Type::RGB888i;
 
     auto src = inputFrame.data();
     auto inputSize = inputFrame.size();
@@ -1124,11 +1124,13 @@ bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToRGB888i(
 template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
 bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToBGR888i(
     const dai::span<const uint8_t> inputFrame, dai::span<uint8_t> outputFrame, FrameSpecs srcSpecs, FrameSpecs dstSpecs, dai::ImgFrame::Type from) {
-    dai::ImgFrame::Type to = dai::ImgFrame::Type::BGR888i;
+    // dai::ImgFrame::Type to = dai::ImgFrame::Type::BGR888i;
 
     auto src = inputFrame.data();
     auto inputSize = inputFrame.size();
+#if defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
     uint32_t auxStride = ALIGN_UP(3 * srcSpecs.width, 8);
+#endif
 
     bool done = false;
     switch(from) {
@@ -1327,11 +1329,13 @@ bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToBGR888i(
 template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
 bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToNV12(
     const dai::span<const uint8_t> inputFrame, dai::span<uint8_t> outputFrame, FrameSpecs srcSpecs, FrameSpecs dstSpecs, dai::ImgFrame::Type from) {
-    dai::ImgFrame::Type to = dai::ImgFrame::Type::NV12;
+    // dai::ImgFrame::Type to = dai::ImgFrame::Type::NV12;
 
     auto src = inputFrame.data();
     auto inputSize = inputFrame.size();
+#if defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
     uint32_t auxStride = ALIGN_UP(3 * srcSpecs.width, 8);
+#endif
 
     bool done = false;
     switch(from) {
@@ -1572,11 +1576,13 @@ bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToNV12(
 template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
 bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToYUV420p(
     const dai::span<const uint8_t> inputFrame, dai::span<uint8_t> outputFrame, FrameSpecs srcSpecs, FrameSpecs dstSpecs, dai::ImgFrame::Type from) {
-    dai::ImgFrame::Type to = dai::ImgFrame::Type::YUV420p;
+    // dai::ImgFrame::Type to = dai::ImgFrame::Type::YUV420p;
 
     auto src = inputFrame.data();
     auto inputSize = inputFrame.size();
+#if defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
     uint32_t auxStride = ALIGN_UP(3 * srcSpecs.width, 8);
+#endif
 
     bool done = false;
     switch(from) {
@@ -1841,7 +1847,7 @@ bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToYUV420p(
 template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
 bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToGRAY8(
     const dai::span<const uint8_t> inputFrame, dai::span<uint8_t> outputFrame, FrameSpecs srcSpecs, FrameSpecs dstSpecs, dai::ImgFrame::Type from) {
-    dai::ImgFrame::Type to = dai::ImgFrame::Type::GRAY8;
+    // dai::ImgFrame::Type to = dai::ImgFrame::Type::GRAY8;
 
     auto src = inputFrame.data();
     auto inputSize = inputFrame.size();
