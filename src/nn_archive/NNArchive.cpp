@@ -106,6 +106,14 @@ const NNArchiveConfig& NNArchive::getConfig() const {
     return *archiveConfigPtr;
 }
 
+const nn_archive::v1::Config NNArchive::getConfigV1() const {
+    std::optional<nn_archive::v1::Config> maybeConfig = archiveConfigPtr->getConfigV1();
+    if(!maybeConfig.has_value()) {
+        DAI_CHECK_V(false, "ConfigV1 not found in NNArchive. Please check your NNArchive.");
+    }
+    return maybeConfig.value();
+}
+
 std::vector<uint8_t> NNArchive::readModelFromArchive(const std::string& archivePath, const std::string& modelPathInArchive) const {
     utility::ArchiveUtil archive(archivePath, archiveOptions.compression());
     std::vector<uint8_t> modelBytes;

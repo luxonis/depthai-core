@@ -57,11 +57,18 @@ class NNArchive {
     std::optional<std::string> getModelPath() const;
 
     /**
-     * @brief Get NNArchive config, i.e. contents of `config.json` inside the archive.
+     * @brief Get NNArchive config wrapper
      *
      * @return NNArchiveConfig: Archive config
      */
     const NNArchiveConfig& getConfig() const;
+
+    /**
+     * @brief Get NNArchive config V1. If not present, this method will throw an error.
+     *
+     * @return nn_archive::v1::Config: Archive config V1
+     */
+    const nn_archive::v1::Config getConfigV1() const;
 
     /**
      * @brief Get type of model contained in NNArchive
