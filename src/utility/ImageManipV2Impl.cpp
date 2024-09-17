@@ -6,6 +6,8 @@
     #define _RESTRICT __restrict__
 #endif
 
+#define UNUSED(x) (void)(x)
+
 dai::impl::AEEResult dai::impl::manipGetSrcMask(const uint32_t width,
                                                 const uint32_t height,
                                                 const float* corners,
@@ -39,7 +41,12 @@ dai::impl::AEEResult dai::impl::manipGetSrcMask(const uint32_t width,
         }
         for(uint32_t i = iminy; i < imaxy; ++i) {
             const uint32_t lineStart = i * width;
-#pragma clang loop vectorize(enable) interleave(enable) unroll_count(8) distribute(enable)
+#ifdef __clang__
+    #pragma clang loop vectorize(enable) interleave(enable) unroll_count(4) distribute(enable)
+#else
+    #pragma GCC unroll 4
+    #pragma GCC ivdep
+#endif
             for(uint32_t j = lineStart + iminx; j < lineStart + imaxx; ++j) {
                 const float x = j - lineStart;
                 const float y = i;
@@ -72,7 +79,12 @@ dai::impl::AEEResult dai::impl::manipGetSrcMask(const uint32_t width,
 
         for(uint32_t i = iminy; i < imaxy; ++i) {
             const uint32_t lineStart = i * width;
-#pragma clang loop vectorize(enable) interleave(enable) unroll_count(8) distribute(enable)
+#ifdef __clang__
+    #pragma clang loop vectorize(enable) interleave(enable) unroll_count(4) distribute(enable)
+#else
+    #pragma GCC unroll 4
+    #pragma GCC ivdep
+#endif
             for(uint32_t j = lineStart + iminx; j < lineStart + imaxx; ++j) {
                 const float x = j - lineStart;
                 const float y = i;
@@ -119,7 +131,12 @@ dai::impl::AEEResult dai::impl::manipGetRemap3x3(const uint32_t inWidth,
  * 3 4 5 x 1
  * 6 7 8   2
  */
-#pragma clang loop vectorize(enable) interleave(enable) unroll_count(8) distribute(enable)
+#ifdef __clang__
+    #pragma clang loop vectorize(enable) interleave(enable) unroll_count(4) distribute(enable)
+#else
+    #pragma GCC unroll 4
+    #pragma GCC ivdep
+#endif
     for(uint32_t i = 0; i < outWidth * outHeight; ++i) {
         uint32_t x = i % outWidth;
         uint32_t y = i / outWidth;
@@ -161,7 +178,12 @@ dai::impl::AEEResult dai::impl::subsampleMap2x2(const uint32_t width,
        || mapYssLen != width * height / 4 || dstMaskssLen != width * height / 4 || width % 2 != 0 || height % 2 != 0) {
         return AEE_EBADPARM;
     }
-#pragma clang loop vectorize(enable) interleave(enable) unroll_count(8) distribute(enable)
+#ifdef __clang__
+    #pragma clang loop vectorize(enable) interleave(enable) unroll_count(4) distribute(enable)
+#else
+    #pragma GCC unroll 4
+    #pragma GCC ivdep
+#endif
     for(uint32_t idx = 0; idx < width * height / 4; ++idx) {
         const uint32_t i = idx / (width / 2);
         const uint32_t j = idx % (width / 2);
@@ -193,15 +215,20 @@ dai::impl::AEEResult dai::impl::remapImage(const uint8_t* _RESTRICT inData,
                                            const uint32_t outStride,
                                            uint8_t* _RESTRICT outData,
                                            const uint32_t outDataLen) {
+    UNUSED(inDataLen);
+    UNUSED(outDataLen);
     if(mapXLen != mapYLen || mapXLen != outWidth * outHeight || dstMaskLen != outWidth * outHeight || numChannels == 0 || numChannels > 3) return AEE_EBADPARM;
 
     for(uint32_t i = 0; i < outHeight; ++i) {
         const uint32_t lineStart = i * outStride;
         switch(numChannels) {
             case 1:
-// #pragma clang loop vectorize(enable) interleave(enable) unroll_count(8) distribute(enable)
-#pragma GCC unroll 4
-#pragma GCC ivdep
+#ifdef __clang__
+    #pragma clang loop vectorize(enable) interleave(enable) unroll_count(4) distribute(enable)
+#else
+    #pragma GCC unroll 4
+    #pragma GCC ivdep
+#endif
                 for(uint32_t j = 0; j < outWidth; ++j) {
                     const uint32_t idx = lineStart + j * numChannels;
                     const uint32_t mapIdx = i * outWidth + j;
@@ -229,9 +256,12 @@ dai::impl::AEEResult dai::impl::remapImage(const uint8_t* _RESTRICT inData,
                 }
                 break;
             case 2:
-// #pragma clang loop vectorize(enable) interleave(enable) unroll_count(8) distribute(enable)
-#pragma GCC unroll 4
-#pragma GCC ivdep
+#ifdef __clang__
+    #pragma clang loop vectorize(enable) interleave(enable) unroll_count(4) distribute(enable)
+#else
+    #pragma GCC unroll 4
+    #pragma GCC ivdep
+#endif
                 for(uint32_t j = 0; j < outWidth; ++j) {
                     const uint32_t idx = lineStart + j * numChannels;
                     const uint32_t mapIdx = i * outWidth + j;
@@ -266,9 +296,12 @@ dai::impl::AEEResult dai::impl::remapImage(const uint8_t* _RESTRICT inData,
                 }
                 break;
             case 3:
-// #pragma clang loop vectorize(enable) interleave(enable) unroll_count(8) distribute(enable)
-#pragma GCC unroll 4
-#pragma GCC ivdep
+#ifdef __clang__
+    #pragma clang loop vectorize(enable) interleave(enable) unroll_count(4) distribute(enable)
+#else
+    #pragma GCC unroll 4
+    #pragma GCC ivdep
+#endif
                 for(uint32_t j = 0; j < outWidth; ++j) {
                     const uint32_t idx = lineStart + j * numChannels;
                     const uint32_t mapIdx = i * outWidth + j;
