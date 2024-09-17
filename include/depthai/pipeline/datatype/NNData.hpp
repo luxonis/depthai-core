@@ -195,7 +195,7 @@ class NNData : public Buffer {
      */
     span<std::uint8_t> emplaceTensor(TensorInfo& tensor);
 
-#ifdef DEPTHAI_XTENSOR_SUPPORT
+//#ifdef DEPTHAI_XTENSOR_SUPPORT
     // Doesnt work if xarray overloads are used
     // Various overloads for different types
     //NNData& addTensorINT(const std::string& name, const std::vector<int>& data) {
@@ -223,26 +223,26 @@ class NNData : public Buffer {
         return addTensor<_Ty>(name, xt::adapt(data, std::vector<size_t>{1, data.size()}), dataType);
     };
     // Various overloads for different types
-    NNData& addTensorINT(const std::string& name, const xt::xarray<int>& tensor) {
-        //std::cout<<"INT OVERLOAD\n";
-        return addTensor<int>(name, tensor, dai::TensorInfo::DataType::INT);
-    };
-    NNData& addTensorFP32(const std::string& name, const xt::xarray<double>& tensor) {
-        //std::cout<<"FP32 OVERLOAD\n";
-        return addTensor<double>(name, tensor, dai::TensorInfo::DataType::FP32);
-    };
-    NNData& addTensorFP16(const std::string& name, const xt::xarray<uint16_t>& tensor) {
-        //std::cout<<"FP16 OVERLOAD\n";
-        return addTensor<uint16_t>(name, tensor, dai::TensorInfo::DataType::FP16);
-    };
-    NNData& addTensorI8(const std::string& name, const xt::xarray<std::int8_t>& tensor) {
-        //std::cout<<"I8 OVERLOAD\n";
-        return addTensor<std::int8_t>(name, tensor, dai::TensorInfo::DataType::I8);
-    };
-    NNData& addTensorU8F(const std::string& name, const xt::xarray<std::uint8_t>& tensor) {
-        //std::cout<<"U8F OVERLOAD\n";
-        return addTensor<std::uint8_t>(name, tensor, dai::TensorInfo::DataType::U8F);
-    };
+    //NNData& addTensorINT(const std::string& name, const xt::xarray<int>& tensor) {
+    //    //std::cout<<"INT OVERLOAD\n";
+    //    return addTensor<int>(name, tensor, dai::TensorInfo::DataType::INT);
+    //};
+    //NNData& addTensorFP32(const std::string& name, const xt::xarray<double>& tensor) {
+    //    //std::cout<<"FP32 OVERLOAD\n";
+    //    return addTensor<double>(name, tensor, dai::TensorInfo::DataType::FP32);
+    //};
+    //NNData& addTensorFP16(const std::string& name, const xt::xarray<uint16_t>& tensor) {
+    //    //std::cout<<"FP16 OVERLOAD\n";
+    //    return addTensor<uint16_t>(name, tensor, dai::TensorInfo::DataType::FP16);
+    //};
+    //NNData& addTensorI8(const std::string& name, const xt::xarray<std::int8_t>& tensor) {
+    //    //std::cout<<"I8 OVERLOAD\n";
+    //    return addTensor<std::int8_t>(name, tensor, dai::TensorInfo::DataType::I8);
+    //};
+    //NNData& addTensorU8F(const std::string& name, const xt::xarray<std::uint8_t>& tensor) {
+    //    //std::cout<<"U8F OVERLOAD\n";
+    //    return addTensor<std::uint8_t>(name, tensor, dai::TensorInfo::DataType::U8F);
+    //};
     /**
      * Add a tensor. Float values are converted to FP16 and integers are cast to bytes.
      * @param name Name of the tensor
@@ -252,10 +252,11 @@ class NNData : public Buffer {
     NNData& addTensor(const std::string& name, const xt::xarray<_Ty>& tensor, dai::TensorInfo::DataType dataType) {
         static_assert(std::is_integral<_Ty>::value || std::is_floating_point<_Ty>::value, "Tensor type needs to be integral or floating point");
         //if(dataType==dai::TensorInfo::DataType::FP32) std::cout<<"FP32\n";  
-        //if(dataType==dai::TensorInfo::DataType::FP16) std::cout<<"FP16\n";
-        //if(dataType==dai::TensorInfo::DataType::INT) std::cout<<"INT\n";
-        //if(dataType==dai::TensorInfo::DataType::I8) std::cout<<"I8\n";
-        //if(dataType==dai::TensorInfo::DataType::U8F) std::cout<<"U8F\n";
+        //else if(dataType==dai::TensorInfo::DataType::FP16) std::cout<<"FP16\n";
+        //else if(dataType==dai::TensorInfo::DataType::INT) std::cout<<"INT\n";
+        //else if(dataType==dai::TensorInfo::DataType::I8) std::cout<<"I8\n";
+        //else if(dataType==dai::TensorInfo::DataType::U8F) std::cout<<"U8F\n";
+        //else std::cout<<"Unsupported type\n";
 
         // Check if data is vector type of data
         if(std::dynamic_pointer_cast<VectorMemory>(data) == nullptr) {
@@ -411,7 +412,7 @@ class NNData : public Buffer {
 
         return {};
     }
-#endif
+//#endif
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
         metadata = utility::serialize(*this);
         datatype = DatatypeEnum::NNData;
