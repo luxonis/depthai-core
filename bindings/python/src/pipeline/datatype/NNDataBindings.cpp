@@ -211,10 +211,8 @@ void bind_nndata(pybind11::module& m, void* pCallstack){
         .def("addTensor", [](NNData&obj, const std::string &name, py::object tensor_obj){
             auto tensor = py::array(tensor_obj);
             auto dtype = tensor.dtype();
-            if (dtype.is(py::dtype::of<float>())) {
+            if (dtype.is(py::dtype::of<float>()) || dtype.is(py::dtype::of<double>())) {
                 obj.addTensor<float>(name, tensor.cast<xt::xarray<float>>(), dai::TensorInfo::DataType::FP32);
-            } else if(dtype.is(py::dtype::of<double>())){
-                obj.addTensor<double>(name, tensor.cast<xt::xarray<double>>(), dai::TensorInfo::DataType::FP64);
             } else if (dtype.is(py::dtype::of<int>()) || dtype.is(py::dtype::of<int64_t>()) ) {
                 obj.addTensor<int>(name, tensor.cast<xt::xarray<int>>(), dai::TensorInfo::DataType::INT);
             } else if (dtype.is(py::dtype("float16"))) {
