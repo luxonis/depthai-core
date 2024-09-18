@@ -208,17 +208,15 @@ void bind_nndata(pybind11::module& m, void* pCallstack){
                 obj.addTensor<float>(name, tensor.cast<xt::xarray<float>>(), dai::TensorInfo::DataType::FP32);
             else if(dataType == dai::TensorInfo::DataType::FP64)
                 obj.addTensor<double>(name, tensor.cast<xt::xarray<double>>(), dai::TensorInfo::DataType::FP64);
-            else if(dataType == dai::TensorInfo::DataType::FP16){
-                auto arg = tensor.cast<xt::xarray<float>>();
-                for(auto& u : arg) u = fp16_ieee_from_fp32_value(u);
-                obj.addTensor<double>(name, arg, dai::TensorInfo::DataType::FP16);
-            }
+            else if(dataType == dai::TensorInfo::DataType::FP16)
+                obj.addTensor<double>(name, tensor.cast<xt::xarray<float>>(), dai::TensorInfo::DataType::FP16);
             else if (dataType == dai::TensorInfo::DataType::U8F)
                 obj.addTensor<uint8_t>(name, tensor.cast<xt::xarray<uint8_t>>(), dai::TensorInfo::DataType::U8F);
             else if (dataType == dai::TensorInfo::DataType::I8)
                 obj.addTensor<int8_t>(name, tensor.cast<xt::xarray<int8_t>>(), dai::TensorInfo::DataType::I8);
             else throw std::runtime_error("Unsupported datatype");
         }, py::arg("name"), py::arg("tensor"), py::arg("dataType"), DOC(dai, NNData, addTensor))
+
         .def("addTensor", [](NNData&obj, const std::string &name, py::object tensor_obj){
             auto tensor = py::array(tensor_obj);
             auto dtype = tensor.dtype();
@@ -229,10 +227,7 @@ void bind_nndata(pybind11::module& m, void* pCallstack){
             } else if (dtype.is(py::dtype::of<int>()) || dtype.is(py::dtype::of<int64_t>()) ) {
                 obj.addTensor<int>(name, tensor.cast<xt::xarray<int>>(), dai::TensorInfo::DataType::INT);
             } else if (dtype.is(py::dtype("float16"))) {
-                //std::cout<<"CALLING FP16\n";
-                auto arg = tensor.cast<xt::xarray<float>>();
-                for(auto& u : arg) u = fp16_ieee_from_fp32_value(u);
-                obj.addTensor<double>(name, arg, dai::TensorInfo::DataType::FP16);
+                obj.addTensor<double>(name, tensor.cast<xt::xarray<float>>(), dai::TensorInfo::DataType::FP16);
             } else if(dtype.is(py::dtype::of<int8_t>())){
                 obj.addTensor<int8_t>(name, tensor.cast<xt::xarray<int8_t>>(), dai::TensorInfo::DataType::I8);
             } else if(dtype.is(py::dtype::of<uint8_t>())){
