@@ -4,6 +4,8 @@
     displays it with a crosshair with the temperature value at that point.
 */
 #include "depthai/depthai.hpp"
+#include "depthai/pipeline/InputQueue.hpp"
+#include "depthai/pipeline/datatype/ThermalConfig.hpp"
 
 volatile int mouseX, mouseY = 0;
 void mouseCallback(int event, int x, int y, int flags, void* userdata) {
@@ -17,6 +19,8 @@ int main(int argc, char** args) {
     dai::Pipeline pipeline(true);
     auto thermal = pipeline.create<dai::node::Thermal>();
     auto outTemp = thermal->temperature.createOutputQueue();
+    auto inConfig = thermal->inputConfig.createInputQueue();
+    auto thermalConfig = std::make_shared<dai::ThermalConfig>();
     pipeline.start();
 
     const char* TEMP_WINDOW = "Thermal";
@@ -58,8 +62,64 @@ int main(int argc, char** args) {
         cv::imshow(TEMP_WINDOW, colormapped);
         // Can add controls for the sensor in the future here.
         int key = cv::waitKey(1);
+        bool confUpdated = false;
         if(key == 'q') {
             break;
+        } else if(key == 'a') {
+            thermalConfig->ffcParams.maxFFCInterval = 1;
+            confUpdated = true;
+        } else if(key == 'n') {
+            if(!thermalConfig->imageParams.brightnessLevel) {
+                thermalConfig->imageParams.brightnessLevel = 1;
+            }
+            if(*thermalConfig->imageParams.brightnessLevel >= 1) {
+                *thermalConfig->imageParams.brightnessLevel -= 1;
+            } else {
+                thermalConfig->imageParams.brightnessLevel = 0;
+            }
+            confUpdated = true;
+        } else if(key == 'm') {
+            if(!thermalConfig->imageParams.brightnessLevel) {
+                thermalConfig->imageParams.brightnessLevel = 0;
+            }
+            if(thermalConfig->imageParams.brightnessLevel >= 3) {
+                thermalConfig->imageParams.brightnessLevel = 3;
+            }
+            *thermalConfig->imageParams.brightnessLevel += 1;
+            confUpdated = true;
+        } else if(key == 'r') {
+            if(!thermalConfig->imageParams.orientation) {
+                thermalConfig->imageParams.orientation = dai::ThermalImageOrientation::Normal;
+            }
+            auto orientation = static_cast<uint8_t>(*thermalConfig->imageParams.orientation) + 1;
+            if(orientation > 3) {
+                orientation = 0;
+            }
+            thermalConfig->imageParams.orientation = static_cast<dai::ThermalImageOrientation>(orientation);
+            confUpdated = true;
+        } else if(key == 't') {
+            if(!thermalConfig->imageParams.timeNoiseFilterLevel) {
+                thermalConfig->imageParams.timeNoiseFilterLevel = 1;
+            }
+            if(*thermalConfig->imageParams.timeNoiseFilterLevel == 0) {
+                thermalConfig->imageParams.timeNoiseFilterLevel = 0;
+            } else {
+                *thermalConfig->imageParams.timeNoiseFilterLevel -= 1;
+            }
+            confUpdated = true;
+        } else if(key == 'z') {
+            if(!thermalConfig->imageParams.timeNoiseFilterLevel) {
+                thermalConfig->imageParams.timeNoiseFilterLevel = 0;
+            }
+            if(*thermalConfig->imageParams.timeNoiseFilterLevel == 3) {
+                thermalConfig->imageParams.timeNoiseFilterLevel = 3;
+            } else {
+                *thermalConfig->imageParams.timeNoiseFilterLevel += 1;
+            }
+            confUpdated = true;
+        }
+        if(confUpdated) {
+            inConfig->send(thermalConfig);
         }
     }
 

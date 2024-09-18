@@ -38,9 +38,8 @@ class Thermal : public DeviceNodeCRTP<DeviceNode, Thermal, ThermalProperties> {
      * Input ThermalConfig message with ability to modify parameters in runtime.
      * Default queue is non-blocking with size 4.
      */
-    // Input inputConfig{*this,
-    //                   {"inputConfig", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ThermalConfig, false}}},
-    //                   DEFAULT_WAIT_FOR_MESSAGE}};
+    Input inputConfig{*this,
+                      {"inputConfig", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ThermalConfig, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Outputs FP16 (degC) thermal image.

@@ -33,6 +33,7 @@
 #include "depthai/pipeline/datatype/StereoDepthConfig.hpp"
 #include "depthai/pipeline/datatype/SystemInformation.hpp"
 #include "depthai/pipeline/datatype/SystemInformationS3.hpp"
+#include "depthai/pipeline/datatype/ThermalConfig.hpp"
 #include "depthai/pipeline/datatype/ToFConfig.hpp"
 #include "depthai/pipeline/datatype/TrackedFeatures.hpp"
 #include "depthai/pipeline/datatype/Tracklets.hpp"
@@ -218,6 +219,9 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
             break;
         case DatatypeEnum::BenchmarkReport:
             return parseDatatype<BenchmarkReport>(metadataStart, serializedObjectSize, data, fd);
+            break;
+        case DatatypeEnum::ThermalConfig:
+            return parseDatatype<ThermalConfig>(metadataStart, serializedObjectSize, data, fd);
             break;
         case DatatypeEnum::ToFConfig:
             return parseDatatype<ToFConfig>(metadataStart, serializedObjectSize, data, fd);
