@@ -260,6 +260,7 @@ class NNData : public Buffer {
         else if(dataType==dai::TensorInfo::DataType::INT) std::cout<<"INT\n";
         else if(dataType==dai::TensorInfo::DataType::I8) std::cout<<"I8\n";
         else if(dataType==dai::TensorInfo::DataType::U8F) std::cout<<"U8F\n";
+        else if(dataType==dai::TensorInfo::DataType::FP64) std::cout<<"FP64\n";
         else std::cout<<"Unsupported type\n";
 
         // Check if data is vector type of data
