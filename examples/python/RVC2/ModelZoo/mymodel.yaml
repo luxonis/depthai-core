@@ -1,2 +1,2 @@
-model_slug: "ales-test"
-platform: "RVC2"
+model_slug: yolov6-nano
+platform: RVC2

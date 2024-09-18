@@ -28,6 +28,7 @@ namespace dai {
 class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     friend class Pipeline;
     friend class Node;
+    friend class DeviceBase;
 
    public:
     PipelineImpl(Pipeline& pipeline, bool createImplicitDevice = true) : assetManager("/pipeline/"), parent(pipeline) {
@@ -139,10 +140,16 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
         tasks.push(std::move(task));
     }
 
-    void processTasks(bool waitForTasks = false) {
+    void processTasks(bool waitForTasks = false, double timeoutSeconds = -1.0) {
+        bool timeoutSet = timeoutSeconds >= 0.0;
         if(waitForTasks) {
             std::function<void()> task;
-            auto success = tasks.waitAndPop(task);
+            bool success;
+            if(timeoutSet) {
+                success = tasks.tryWaitAndPop(task, std::chrono::duration<double>(timeoutSeconds));
+            } else {
+                success = tasks.waitAndPop(task);
+            }
             if(!success) {
                 return;
             }
@@ -162,13 +169,24 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     }
 
     template <typename N, typename... Args>
-    std::enable_if_t<std::is_base_of<DeviceNode, N>::value, std::shared_ptr<N>> createNode(Args&&... args) {
+    std::enable_if_t<std::is_base_of<DeviceNode, N>::value && !std::is_base_of<HostRunnable, N>::value, std::shared_ptr<N>> createNode(Args&&... args) {
         // N is a subclass of DeviceNode
         // return N::create();  // Specific create call for DeviceNode subclasses
         if(defaultDevice == nullptr) {
             throw std::runtime_error("Pipeline is host only, cannot create device node");
         }
         return N::create(defaultDevice, std::forward<Args>(args)...);  // Specific create call for DeviceNode subclasses
+    }
+
+    template <typename N, typename... Args>
+    std::enable_if_t<std::is_base_of<DeviceNode, N>::value && std::is_base_of<HostRunnable, N>::value, std::shared_ptr<N>> createNode(Args&&... args) {
+        // N is a subclass of DeviceNode
+        // return N::create();  // Specific create call for DeviceNode subclasses
+        if(defaultDevice == nullptr) {
+            return N::create(std::forward<Args>(args)...);  // Generic create call
+        } else {
+            return N::create(defaultDevice, std::forward<Args>(args)...);  // Specific create call for DeviceNode subclasses
+        }
     }
 
     template <typename N, typename... Args>
@@ -203,6 +221,11 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     void stop();
     void run();
 
+    // Reset connections
+    void resetConnections();
+    void disconnectXLinkHosts();
+
+   private:
     // Resource
     std::vector<uint8_t> loadResource(dai::Path uri);
     std::vector<uint8_t> loadResourceCwd(dai::Path uri, dai::Path cwd);
@@ -467,11 +490,12 @@ class Pipeline {
     void stop() {
         impl()->stop();
     }
-
+    void processTasks(bool waitForTasks = false, double timeoutSeconds = -1.0) {
+        impl()->processTasks(waitForTasks, timeoutSeconds);
+    }
     void run() {
         impl()->run();
     }
-
     /*
      * @note In case of a host only pipeline, this function returns a nullptr
      */
@@ -481,10 +505,6 @@ class Pipeline {
 
     void addTask(std::function<void()> task) {
         impl()->addTask(std::move(task));
-    }
-
-    void processTasks() {
-        impl()->processTasks();
     }
 
     /// Record and Replay

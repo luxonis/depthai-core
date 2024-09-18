@@ -15,21 +15,18 @@ namespace node {
 /**
  * @brief Sync node. Performs syncing between image frames
  */
-class Sync : public DeviceNodeCRTP<DeviceNode, Sync, SyncProperties> {
+class Sync : public DeviceNodeCRTP<DeviceNode, Sync, SyncProperties>, public HostRunnable {
    private:
     bool runOnHostVar = false;
 
    public:
     constexpr static const char* NAME = "Sync";
     using DeviceNodeCRTP::DeviceNodeCRTP;
-    std::shared_ptr<Sync> build() {
-        return std::static_pointer_cast<Sync>(shared_from_this());
-    }
 
     /**
      * A map of inputs
      */
-    InputMap inputs{*this, "inputs", InputDescription()};
+    InputMap inputs{*this, "inputs", {"", DEFAULT_GROUP, false, 10, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Output message of type MessageGroup

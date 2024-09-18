@@ -15,10 +15,10 @@ namespace v1 {
  * @ivar mean: Mean values in channel order. Typically, this is BGR order.
  * @type scale: list
  * @ivar scale: Standardization values in channel order. Typically, this is BGR order.
- * @type reverse_channels: bool
+ * @type reverse_channels: bool | None
  * @ivar reverse_channels: If True, color channels are reversed (e.g. BGR to RGB or
  * vice versa).
- * @type interleaved_to_planar: bool
+ * @type interleaved_to_planar: bool | None
  * @ivar interleaved_to_planar: If True, format is changed from interleaved to planar.
  */
 
@@ -31,10 +31,10 @@ namespace v1 {
  * @ivar mean: Mean values in channel order. Typically, this is BGR order.
  * @type scale: list
  * @ivar scale: Standardization values in channel order. Typically, this is BGR order.
- * @type reverse_channels: bool
+ * @type reverse_channels: bool | None
  * @ivar reverse_channels: If True, color channels are reversed (e.g. BGR to RGB or
  * vice versa).
- * @type interleaved_to_planar: bool
+ * @type interleaved_to_planar: bool | None
  * @ivar interleaved_to_planar: If True, format is changed from interleaved to planar.
  */
 struct PreprocessingBlock {

@@ -46,7 +46,7 @@ Platform string2platform(const std::string& platform);
 class Device : public DeviceBase {
    public:
     using DeviceBase::DeviceBase;  // inherit the ctors
-
+    using DeviceBase::ReconnectionStatus;
     /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
      * @param pipeline Pipeline to be executed on the device

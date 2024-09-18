@@ -48,6 +48,19 @@ std::vector<std::string> splitList(const std::string& list, const std::string& d
         pos = end + delimiter.size();
     }
     result.push_back(list.substr(pos));
+
+    // Strip down whitespace from each element
+    for(auto& elem : result) {
+        size_t start = 0;
+        while(start < elem.size() && std::isspace(elem[start])) {
+            start++;
+        }
+        size_t end = elem.size();
+        while(end > 0 && std::isspace(elem[end - 1])) {
+            end--;
+        }
+        elem = elem.substr(start, end - start);
+    }
     return result;
 }
 

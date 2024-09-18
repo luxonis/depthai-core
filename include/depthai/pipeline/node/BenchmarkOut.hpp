@@ -13,8 +13,6 @@ class BenchmarkOut : public DeviceNodeCRTP<DeviceNode, BenchmarkOut, BenchmarkPr
     constexpr static const char* NAME = "BenchmarkOut";
     using DeviceNodeCRTP::DeviceNodeCRTP;
 
-    std::shared_ptr<BenchmarkOut> build();
-
     /**
      * Send messages out as fast as possible
      */
@@ -36,11 +34,7 @@ class BenchmarkOut : public DeviceNodeCRTP<DeviceNode, BenchmarkOut, BenchmarkPr
      */
     void setFps(float fps);
 
-   protected:
-    bool isBuild = false;
-    bool needsBuild() override {
-        return !isBuild;
-    }
+    void buildInternal() override;
 };
 
 }  // namespace node

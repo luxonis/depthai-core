@@ -2,6 +2,8 @@
 
 #include <algorithm>
 #include <chrono>
+#include <ctime>
+#include <iterator>
 #include <limits>
 #include <optional>
 #include <unordered_map>
@@ -31,6 +33,7 @@
 #ifdef DEPTHAI_XTENSOR_SUPPORT
     #include "xtensor/xadapt.hpp"
     #include "xtensor/xarray.hpp"
+    #include "xtensor/xmanipulation.hpp"
 #endif
 #if defined(_ON_DEF)
     #define ON _ON_DEF
@@ -197,9 +200,12 @@ class NNData : public Buffer {
 
 //#ifdef DEPTHAI_XTENSOR_SUPPORT
     /**
-     * Set a layer with datatype FP16. Double values are converted to FP16.
-     * @param name Name of the layer
-     * @param data Data to store
+     * @brief Add a tensor to this NNData object.
+     * The provided array is stored as a 1xN tensor where N is the length of the array.
+     *
+     * @param name: Name of the tensor
+     * @param data: array
+     * @return NNData&: reference to this object
      */
     template <typename _Ty = double>
     NNData& addTensor(const std::string& name, const std::vector<_Ty>& data, dai::TensorInfo::DataType dataType) {
@@ -246,12 +252,76 @@ class NNData : public Buffer {
     };
 
     /**
-     * Add a tensor. Float values are converted to FP16 and integers are cast to bytes.
-     * @param name Name of the tensor
-     * @param tensor Tensor to store
+     * @brief Add a tensor to this NNData object.
+     * The provided array is stored as a 1xN tensor where N is the length of the array.
+     *
+     * @param name: Name of the tensor
+     * @param data: array
+     * @param order: Storage order of the tensor
+     * @return NNData&: reference to this object
+     */
+    template <typename _Ty = double>
+    NNData& addTensor(const std::string& name, const std::vector<_Ty>& data, TensorInfo::StorageOrder order) {
+        return addTensor<_Ty>(name, xt::adapt(data, std::vector<size_t>{1, data.size()}), order);
+    };
+
+    /**
+     * @brief Add a tensor to this NNData object.
+     * Implicitly adds a TensorInfo::DataType
+     *
+     * @param name: Name of the tensor
+     * @param data: array
+     * @param order: Storage order of the tensor
+     * @return NNData&: reference to this object
+     */
+
+    template <typename _Ty = double>
+    NNData& addTensor(const std::string& name, const xt::xarray<_Ty>& data, TensorInfo::StorageOrder order) {
+        auto dataType = std::is_integral<_Ty>::value ? dai::TensorInfo::DataType::U8F : dai::TensorInfo::DataType::FP16;
+        return addTensor<_Ty>(name, data, dataType, order);
+    };
+
+    /**
+     * @brief Add a tensor to this NNData object. The storage order is picked based on the number of dimensions of the tensor.
+     * Float values are converted to FP16 and integers are cast to bytes.
+     *
+     * @param name: Name of the tensor
+     * @param tensor: tensor
+     * @return NNData&: reference to this object
      */
     template <typename _Ty = double>
     NNData& addTensor(const std::string& name, const xt::xarray<_Ty>& tensor, dai::TensorInfo::DataType dataType) {
+        TensorInfo::StorageOrder order;
+        switch(tensor.shape().size()) {
+            case 1:
+                order = TensorInfo::StorageOrder::C;
+                break;
+            case 2:
+                order = TensorInfo::StorageOrder::NC;
+                break;
+            case 3:
+                order = TensorInfo::StorageOrder::CHW;
+                break;
+            case 4:
+                order = TensorInfo::StorageOrder::NCHW;
+                break;
+            default:
+                throw std::runtime_error("Unsupported tensor shape. Only 1D, 2D, 3D and 4D tensors are supported");
+        }
+        return addTensor(name, tensor, dataType, order);
+    }
+
+    /**
+     * @brief Add a tensor to this NNData object. The storage order is picked based on the number of dimensions of the tensor.
+     * Float values are converted to FP16 and integers are cast to bytes.
+     *
+     * @param name: Name of the tensor
+     * @param tensor: tensor
+     * @param order: Storage order of the tensor
+     * @return NNData&: reference to this object
+     */
+    template <typename _Ty = double>
+    NNData& addTensor(const std::string& name, const xt::xarray<_Ty>& tensor, dai::TensorInfo::DataType dataType, const TensorInfo::StorageOrder order) {
         static_assert(std::is_integral<_Ty>::value || std::is_floating_point<_Ty>::value, "Tensor type needs to be integral or floating point");
         //if(dataType==dai::TensorInfo::DataType::FP32) std::cout<<"FP32\n";  
         //else if(dataType==dai::TensorInfo::DataType::FP16) std::cout<<"FP16\n";
@@ -288,13 +358,13 @@ class NNData : public Buffer {
         }
 
         // Append bytes so that each new tensor is DATA_ALIGNMENT aligned
-        size_t remainder = (vecData->end() - vecData->begin()) % DATA_ALIGNMENT;
+        size_t remainder = std::distance(vecData->begin(), vecData->end()) % DATA_ALIGNMENT;
         if(remainder > 0) {
             vecData->insert(vecData->end(), DATA_ALIGNMENT - remainder, 0);
         }
 
-        // Then get offset to beginning of data1
-        size_t offset = vecData->end() - vecData->begin();
+        // Then get offset to beginning of data
+        size_t offset = std::distance(vecData->begin(), vecData->end());
 
         // Reserve space
         vecData->resize(offset + sConvertedData);
@@ -332,9 +402,18 @@ class NNData : public Buffer {
         info.offset = static_cast<unsigned int>(offset);
         info.dataType = dataType;
         info.numDimensions = tensor.dimension();
+        info.order = order;
         for(uint32_t i = 0; i < tensor.dimension(); i++) {
             info.dims.push_back(tensor.shape()[i]);
             info.strides.push_back(tensor.strides()[i] * sizeof(uint16_t));
+        }
+
+        // Validate storage order - past this point, the tensor shape and storage order should be correct
+        try {
+            info.validateStorageOrder();
+        } catch(...) {
+            vecData->resize(offset);  // Resize vector back to its size prior to adding tensor
+            throw;
         }
 
         tensors.push_back(info);
@@ -401,6 +480,117 @@ class NNData : public Buffer {
             }
         }
         return tensor;
+    }
+
+    /**
+     * Convenience function to retrieve values from a tensor
+     * @returns xt::xarray<_Ty> tensor
+     */
+    template <typename _Ty>
+    xt::xarray<_Ty> getTensor(const std::string& name, TensorInfo::StorageOrder order, bool dequantize = false) {
+        // Get tensor
+        xt::xarray<_Ty> tensor = getTensor<_Ty>(name, dequantize);
+
+        // Change storage order
+        const auto storageit = std::find_if(tensors.begin(), tensors.end(), [&name](const TensorInfo& ti) { return ti.name == name; });
+        TensorInfo::StorageOrder from = storageit->order;
+        TensorInfo::StorageOrder to = order;
+        changeStorageOrder(tensor, from, to);
+        return tensor;
+    }
+
+    template <typename _Ty>
+    void changeStorageOrder(xt::xarray<_Ty>& array, TensorInfo::StorageOrder from, TensorInfo::StorageOrder to) {
+        // Convert storage order to vector
+        auto order2vec = [](TensorInfo::StorageOrder order) {
+            size_t ord = static_cast<size_t>(order);
+            std::vector<size_t> vec;
+            while(ord > 0) {
+                vec.push_back(ord % 16 - 1);  // 16 because order values are base 16
+                ord /= 16;
+            }
+            std::reverse(vec.begin(), vec.end());
+            return vec;
+        };
+        std::vector<size_t> fromOrder = order2vec(from);
+        std::vector<size_t> toOrder = order2vec(to);
+
+        // Just permute dimensions
+        if(fromOrder.size() == toOrder.size()) {
+            std::vector<size_t> permute;
+            for(size_t i = 0; i < toOrder.size(); ++i) {
+                auto it = std::find(fromOrder.begin(), fromOrder.end(), toOrder[i]);
+                if(it == fromOrder.end()) {
+                    throw std::runtime_error("Cannot change storage order. Dimension not found [Permute]");
+                }
+                size_t dim = std::distance(fromOrder.begin(), it);
+                permute.push_back(dim);
+            }
+            array = xt::transpose(array, permute);
+        }
+
+        // Expand and permute
+        if(fromOrder.size() < toOrder.size()) {
+            // Expand dimensions
+            std::vector<size_t> expand;
+            std::vector<size_t> fromOrderExpanded = fromOrder;
+            for(size_t i = 0; i < toOrder.size(); ++i) {
+                auto it = std::find(fromOrder.begin(), fromOrder.end(), toOrder[i]);
+                if(it == fromOrder.end()) {
+                    expand.push_back(fromOrderExpanded.size());
+                    fromOrderExpanded.push_back(toOrder[i]);
+                }
+            }
+            for(size_t i = 0; i < expand.size(); ++i) {
+                array = xt::expand_dims(array, expand[i]);
+            }
+
+            // Permute
+            std::vector<size_t> permute;
+            for(size_t i = 0; i < toOrder.size(); ++i) {
+                auto it = std::find(fromOrderExpanded.begin(), fromOrderExpanded.end(), toOrder[i]);
+                if(it == fromOrderExpanded.end()) {
+                    throw std::runtime_error("Cannot change storage order. Dimension not found [Expand and Permute]");
+                }
+                size_t dim = std::distance(fromOrderExpanded.begin(), it);
+                permute.push_back(dim);
+            }
+            array = xt::transpose(array, permute);
+        }
+
+        // Squeeze and permute
+        if(fromOrder.size() > toOrder.size()) {
+            // Squeeze extra dimensions
+            std::vector<size_t> squeeze;
+            std::vector<size_t> fromOrderSqueezed;
+            for(size_t i = 0; i < fromOrder.size(); ++i) {
+                auto it = std::find(toOrder.begin(), toOrder.end(), fromOrder[i]);
+                if(it == toOrder.end()) {
+                    if(array.shape()[i] != 1) {
+                        throw std::runtime_error("Cannot change storage order. Squeeze dimension is not 1");
+                    } else {
+                        squeeze.push_back(i);
+                    }
+                } else {
+                    fromOrderSqueezed.push_back(fromOrder[i]);
+                }
+            }
+            for(size_t i = 0; i < squeeze.size(); ++i) {
+                array = xt::squeeze(array, squeeze[i]);
+            }
+
+            // Permute
+            std::vector<size_t> permute;
+            for(size_t i = 0; i < toOrder.size(); ++i) {
+                auto it = std::find(fromOrderSqueezed.begin(), fromOrderSqueezed.end(), toOrder[i]);
+                if(it == fromOrderSqueezed.end()) {
+                    throw std::runtime_error("Cannot change storage order. Dimension not found [Squeeze and Permute]");
+                }
+                size_t dim = std::distance(fromOrderSqueezed.begin(), it);
+                permute.push_back(dim);
+            }
+            array = xt::transpose(array, permute);
+        }
     }
 
     /**

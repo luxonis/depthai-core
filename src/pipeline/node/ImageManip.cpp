@@ -2,7 +2,8 @@
 namespace dai {
 namespace node {
 
-ImageManip::ImageManip(std::unique_ptr<Properties> props) : DeviceNodeCRTP<DeviceNode, ImageManip, ImageManipProperties>(std::move(props)) {}
+ImageManip::ImageManip(std::unique_ptr<Properties> props)
+    : DeviceNodeCRTP<DeviceNode, ImageManip, ImageManipProperties>(std::move(props)), initialConfig(properties.initialConfig) {}
 
 ImageManip::Properties& ImageManip::getProperties() {
     properties.initialConfig = initialConfig;

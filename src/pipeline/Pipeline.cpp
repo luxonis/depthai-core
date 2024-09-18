@@ -10,6 +10,7 @@
 #include "depthai/pipeline/node/host/XLinkOutHost.hpp"
 #include "depthai/utility/Initialization.hpp"
 #include "pipeline/datatype/ImgFrame.hpp"
+#include "pipeline/node/DetectionNetwork.hpp"
 #include "utility/Compression.hpp"
 #include "utility/Environment.hpp"
 #include "utility/HolisticRecordReplay.hpp"
@@ -185,7 +186,7 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
     // Loop over all nodes, and add them to schema
     for(const auto& node : getAllNodes()) {
         // const auto& node = kv.second;
-        if(std::string(node->getName()) == std::string("NodeGroup")) {
+        if(std::string(node->getName()) == std::string("NodeGroup") || std::string(node->getName()) == std::string("DeviceNodeGroup")) {
             continue;
         }
         // Check if its a host node or device node
@@ -198,12 +199,7 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
             info.id = node->id;
             info.name = node->getName();
             info.alias = node->getAlias();
-            auto parentNode = node->parentNode.lock();
-            if(parentNode) {
-                info.parentId = parentNode->id;
-            } else {
-                info.parentId = -1;
-            }
+            info.parentId = node->parentId;
             const auto& deviceNode = std::dynamic_pointer_cast<DeviceNode>(node);
             if(!deviceNode) {
                 throw std::invalid_argument(fmt::format("Node '{}' should subclass DeviceNode or have hostNode == true", info.name));
@@ -582,6 +578,7 @@ void PipelineImpl::add(std::shared_ptr<Node> node) {
         }
 
         for(auto& n : curNode->nodeMap) {
+            n->parentId = curNode->id;  // Set node parent id
             search.push(n);
         }
     }
@@ -726,7 +723,6 @@ void PipelineImpl::build() {
     std::unordered_map<dai::Node::Output*, XLinkOutBridge> bridgesOut;
     std::unordered_map<dai::Node::Input*, XLinkInBridge> bridgesIn;
     std::unordered_set<std::string> uniqueStreamNames;
-
     for(auto& connection : getConnectionsInternal()) {
         auto inNode = connection.inputNode.lock();
         auto outNode = connection.outputNode.lock();
@@ -820,7 +816,6 @@ void PipelineImpl::build() {
             }
         }
     }
-
     // Build
     if(!isHostOnly()) {
         // TODO(Morato) - handle multiple devices correctly, start pipeline on all of them
@@ -850,6 +845,40 @@ void PipelineImpl::start() {
         if(node->runOnHost()) {
             node->start();
         }
+    }
+
+    // Add pointer to the pipeline to the device
+    if(defaultDevice) {
+        std::shared_ptr<PipelineImpl> shared = shared_from_this();
+        const auto weak = std::weak_ptr<PipelineImpl>(shared);
+        defaultDevice->pipelinePtr = weak;
+    }
+}
+
+void PipelineImpl::resetConnections() {
+    // reset connection on all nodes
+    if(defaultDevice->getConnection() == nullptr) throw std::runtime_error("Connection lost");
+    auto con = defaultDevice->getConnection();
+    for(auto node : getAllNodes()) {
+        auto tmp = std::dynamic_pointer_cast<node::XLinkInHost>(node);
+        if(tmp) tmp->setConnection(con);
+        auto tmp2 = std::dynamic_pointer_cast<node::XLinkOutHost>(node);
+        if(tmp2) tmp2->setConnection(con);
+    }
+
+    // restart pipeline
+    if(!isHostOnly()) {
+        defaultDevice->startPipeline(Pipeline(shared_from_this()));
+    }
+}
+
+void PipelineImpl::disconnectXLinkHosts() {
+    // make connections throw instead of reconnecting
+    for(auto node : getAllNodes()) {
+        auto tmp = std::dynamic_pointer_cast<node::XLinkInHost>(node);
+        if(tmp) tmp->disconnect();
+        auto tmp2 = std::dynamic_pointer_cast<node::XLinkOutHost>(node);
+        if(tmp2) tmp2->disconnect();
     }
 }
 
@@ -1040,5 +1069,4 @@ void Pipeline::enableHolisticReplay(const std::string& pathToRecording) {
     impl()->recordConfig.state = RecordConfig::RecordReplayState::REPLAY;
     impl()->enableHolisticRecordReplay = true;
 }
-
 }  // namespace dai

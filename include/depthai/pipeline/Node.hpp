@@ -91,37 +91,15 @@ class Node : public std::enable_shared_from_this<Node> {
     void setNodeRefs(std::pair<std::string, std::shared_ptr<Node>*> nodeRef);
     void setNodeRefs(std::string alias, std::shared_ptr<Node>* nodeRef);
 
-    template <typename T>
-    class Subnode {
-        std::shared_ptr<Node> node;
-
-       public:
-        Subnode(Node& parent, std::string alias) {
-            if(!parent.configureMode) {
-                // Create node as well
-                node = std::make_shared<T>();
-                node->setAlias(alias);
-                node->parentNode = node;
-                // Add node to parents map
-                parent.nodeMap.push_back(node);
-            }
-            // Add reference
-            parent.nodeRefs.push_back(&node);
-        }
-        T& operator*() const noexcept {
-            return *std::static_pointer_cast<T>(node).get();
-        }
-        T* operator->() const noexcept {
-            return std::static_pointer_cast<T>(node).get();
-        }
-    };
-
    public:
     struct OutputDescription {
         std::string name{DEFAULT_NAME};
         std::string group{DEFAULT_GROUP};
         std::vector<DatatypeHierarchy> types DEFAULT_TYPES;
     };
+
+    template <typename U>
+    friend class Subnode;
 
     class Output {
         friend class PipelineImpl;
@@ -490,7 +468,9 @@ class Node : public std::enable_shared_from_this<Node> {
 
     // when Pipeline tries to serialize and construct on remote, it will check if all connected nodes are on same pipeline
     std::weak_ptr<PipelineImpl> parent;
-    std::weak_ptr<Node> parentNode;
+
+    // Node ID of the parent node
+    int parentId{-1};
 
     // used to improve error messages
     // when pipeline starts all nodes are checked
@@ -540,13 +520,13 @@ class Node : public std::enable_shared_from_this<Node> {
     virtual const char* getName() const = 0;
 
     /// Start node execution
-    virtual void start(){};
+    virtual void start() {};
 
     /// Wait for node to finish execution
-    virtual void wait(){};
+    virtual void wait() {};
 
     /// Stop node execution
-    virtual void stop(){};
+    virtual void stop() {};
 
     void stopPipeline();
 
@@ -651,6 +631,13 @@ class Node : public std::enable_shared_from_this<Node> {
     const NodeMap& getNodeMap() const {
         return nodeMap;
     }
+
+    /**
+     * @brief Function called from within the `create` function to build the node.
+     * This function is useful for initialization, setting up inputs and outputs =
+     * stuff that cannot be perform in the constuctor.
+     */
+    virtual void buildInternal() {};
 };
 
 class SourceNode {
@@ -677,7 +664,9 @@ class NodeCRTP : public Base {
     // No public constructor, only a factory function.
     template <typename... Args>
     [[nodiscard]] static std::shared_ptr<Derived> create(Args&&... args) {
-        return std::make_shared<Derived>(std::forward<Args>(args)...);
+        auto nodePtr = std::shared_ptr<Derived>(new Derived(std::forward<Args>(args)...));
+        nodePtr->buildInternal();
+        return nodePtr;
     }
     [[nodiscard]] static std::shared_ptr<Derived> create(std::unique_ptr<Properties> props) {
         return std::shared_ptr<Derived>(new Derived(props));

@@ -22,6 +22,7 @@
 #include "depthai/pipeline/node/SPIOut.hpp"
 #include "depthai/pipeline/node/SPIIn.hpp"
 #include "depthai/pipeline/node/ImageManip.hpp"
+#include "depthai/pipeline/node/ImageManipV2.hpp"
 #include "depthai/pipeline/node/MonoCamera.hpp"
 #include "depthai/pipeline/node/StereoDepth.hpp"
 #include "depthai/pipeline/node/DetectionNetwork.hpp"
@@ -246,11 +247,23 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack){
         .def("stop", &Pipeline::stop)
         .def("run",
              [](Pipeline& p) {
-                 py::gil_scoped_release release;
-                 p.run();
+                 {
+                     py::gil_scoped_release release;
+                     p.start();
+                 }
+                 constexpr double timeoutSeconds = 0.1;
+                 while(p.isRunning()) {
+                     {
+                         // Process tasks
+                         py::gil_scoped_release release;
+                         p.processTasks(false, timeoutSeconds);
+                     }
+                     if(PyErr_CheckSignals() != 0) throw py::error_already_set();
+                 }
+                 p.stop();
              })
         .def("isRunning", &Pipeline::isRunning)
-        .def("processTasks", &Pipeline::processTasks)
+        .def("processTasks", &Pipeline::processTasks, py::arg("waitForTasks") = false, py::arg("timeoutSeconds") = -1.0)
         .def("enableHolisticRecord", &Pipeline::enableHolisticRecord, py::arg("recordConfig"), DOC(dai, Pipeline, enableHolisticRecord))
         .def("enableHolisticReplay", &Pipeline::enableHolisticReplay, py::arg("recordingPath"), DOC(dai, Pipeline, enableHolisticReplay));
     ;

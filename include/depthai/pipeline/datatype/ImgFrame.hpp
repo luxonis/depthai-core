@@ -16,6 +16,7 @@
 
 // optional
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    #include <opencv2/core/mat.hpp>
     #include <opencv2/opencv.hpp>
 #endif
 
@@ -193,6 +194,13 @@ class ImgFrame : public Buffer {
      * @param width frame width
      */
     ImgFrame& setWidth(unsigned int width);
+
+    /**
+     * Specifies frame stride
+     *
+     * @param stride frame stride
+     */
+    ImgFrame& setStride(unsigned int stride);
 
     /**
      * Specifies frame height
@@ -384,7 +392,7 @@ class ImgFrame : public Buffer {
      *
      * @returns cv::Mat for use in opencv functions
      */
-    cv::Mat getCvFrame();
+    cv::Mat getCvFrame(cv::MatAllocator* allocator = nullptr);
 
     /**
      * @note This API only available if OpenCV support is enabled

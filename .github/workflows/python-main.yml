@@ -44,6 +44,7 @@ jobs:
           python-version: 3.8
       - name: Install dependencies
         run: |
+          sudo apt update
           python -m pip install --upgrade pip
           sudo apt install libusb-1.0-0-dev libopencv-dev libpcl-dev
           python -m pip install -r bindings/python/docs/requirements_mkdoc.txt
@@ -59,70 +60,81 @@ jobs:
           retention-days: 1
 
 
-# TODO(Morato) - re-enable
-  # # Build and test bindings
-  # pytest:
-  #   needs: build-docstrings
-  #   strategy:
-  #     matrix:
-  #       os: [ubuntu-latest, windows-latest, macos-latest]
-  #   runs-on: ${{ matrix.os }}
-  #   steps:
-  #     - name: Print home directory
-  #       run: echo Home directory inside container $HOME
+  # Build and test bindings
+  pytest:
+    needs: build-docstrings
+    strategy:
+      matrix:
+        # os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest] # TODO(Morato) - re-enable windows & macos
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Print home directory
+        run: echo Home directory inside container $HOME
 
-  #     - name: Cache .hunter folder
-  #       if: matrix.os != 'windows-latest'
-  #       uses: actions/cache@v3
-  #       with:
-  #         path: ~/.hunter/
-  #         key: hunter-pytest-${{ matrix.os }}-v3-develop
-  #     - name: Cache .hunter folder
-  #       if: matrix.os == 'windows-latest'
-  #       uses: actions/cache@v3
-  #       with:
-  #         path: C:/.hunter/
-  #         key: hunter-pytest-${{ matrix.os }}-v3-develop
+      - name: Cache .hunter folder
+        if: matrix.os != 'windows-latest'
+        uses: actions/cache@v3
+        with:
+          path: ~/.hunter/
+          key: hunter-pytest-${{ matrix.os }}-v3-develop
+      - name: Cache .hunter folder
+        if: matrix.os == 'windows-latest'
+        uses: actions/cache@v3
+        with:
+          path: C:/.hunter/
+          key: hunter-pytest-${{ matrix.os }}-v3-develop
 
-  #     - uses: actions/checkout@v3
-  #       with:
-  #         submodules: 'recursive'
+      - uses: actions/checkout@v3
+        with:
+          submodules: 'recursive'
 
-  #     - uses: actions/download-artifact@v3
-  #       with:
-  #         name: 'docstrings'
-  #         path: bindings/python/docstrings
-  #     - name: Specify docstring to use while building the wheel
-  #       run: echo "DEPTHAI_PYTHON_DOCSTRINGS_INPUT=$PWD/bindings/python/docstrings/depthai_python_docstring.hpp" >> $GITHUB_ENV
+      - uses: actions/download-artifact@v3
+        with:
+          name: 'docstrings'
+          path: bindings/python/docstrings
+      - name: Specify docstring to use while building the wheel
+        run: echo "DEPTHAI_PYTHON_DOCSTRINGS_INPUT=$PWD/bindings/python/docstrings/depthai_python_docstring.hpp" >> $GITHUB_ENV
 
-  #     - name: Set up Python ${{ matrix.python-version }}
-  #       uses: actions/setup-python@v4
-  #       with:
-  #         python-version: "3.10"
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
 
-  #     - name: Install dependencies (Ubuntu)
-  #       if: matrix.os == 'ubuntu-latest'
-  #       run: |
-  #         python -m pip install --upgrade pip
-  #         sudo apt install libusb-1.0-0-dev
+      - name: Install dependencies (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          python -m pip install --upgrade pip
+          sudo apt install libusb-1.0-0-dev libopencv-dev
 
-  #     - name: Install dependencies (MacOS)
-  #       if: matrix.os == 'macos-latest'
-  #       run: |
-  #         python -m pip install --upgrade pip
-  #         brew install libusb
+      - name: Install dependencies (MacOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          python -m pip install --upgrade pip
+          brew install libusb
+          brew install opencv
 
-  #     - name: Install pytest
-  #       run: |
-  #         python -m pip install pytest numpy
+      - name: Setup cmake
+        if: matrix.os == 'macos-latest'
+        uses: jwlawson/actions-setup-cmake@v1.13
 
-  #     - name: Compile
-  #       run: |
-  #         cmake -S . -B build -DDEPTHAI_BUILD_PYTHON=ON -D CMAKE_BUILD_TYPE=Release -D DEPTHAI_PYTHON_DOCSTRINGS_INPUT=$PWD/bindings/python/docstrings/depthai_python_docstring.hpp -D DEPTHAI_PYTHON_ENABLE_TESTS=ON
-  #         cmake --build build --parallel 4
-  #     - name: Test
-  #       run: |
-  #         cmake --build build --target pytest --config Release
+      - name: Install dependencies (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          choco install opencv
+          echo "OpenCV_DIR=C:\tools\opencv\build" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Install pytest
+        run: |
+          python -m pip install pytest numpy opencv-python
+
+      - name: Compile
+        run: |
+          cmake -S . -B build -DDEPTHAI_BUILD_PYTHON=ON -D CMAKE_BUILD_TYPE=Release -D DEPTHAI_PYTHON_DOCSTRINGS_INPUT=$PWD/bindings/python/docstrings/depthai_python_docstring.hpp -D DEPTHAI_PYTHON_ENABLE_TESTS=ON
+          cmake --build build --parallel 4
+      - name: Test
+        run: |
+          cmake --build build --target pytest --config Release
 
 
   # # This job builds wheels for armhf arch (RPi)
@@ -380,6 +392,9 @@ jobs:
       image: mmorato/depthai-manylinux2014:0.4 # TODO(mmorato) temporary location, push to luxonis namespace
       env:
         PLAT: manylinux2014_x86_64
+    strategy:
+      matrix:
+        python-set: ["7..9", "10..12"]
     env:
       # workaround required for cache@v3, https://github.com/actions/cache/issues/1428
       # to be removed when upgrading the manylinux image
@@ -429,7 +444,7 @@ jobs:
           /opt/python/cp38-cp38/bin/python3.8 setup.py sdist --formats=gztar
           mv dist/* wheelhouse/audited/
       - name: Build wheels
-        run: cd bindings/python && for PYBIN in /opt/python/cp3{7..12}*/bin; do "${PYBIN}/pip" wheel . -w ./wheelhouse/ --verbose; done
+        run: cd bindings/python && for PYBIN in /opt/python/cp3{${{ matrix.python-set }}}*/bin; do "${PYBIN}/pip" wheel . -w ./wheelhouse/ --verbose; done
       - name: Audit wheels
         run: cd bindings/python && for whl in wheelhouse/*.whl; do auditwheel repair "$whl" --plat $PLAT -w wheelhouse/audited/; done
       - name: Archive wheel artifacts
@@ -457,6 +472,9 @@ jobs:
       # Mount local hunter cache directory, instead of transfering to Github and back
       volumes:
         - /.hunter:/github/home/.hunter
+    strategy:
+      matrix:
+        python-set: ["7..9", "10..12"]
     env:
       # workaround required for cache@v3, https://github.com/actions/cache/issues/1428
       # to be removed when upgrading the manylinux image
@@ -495,7 +513,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v') != true
         run: echo "BUILD_COMMIT_HASH=${{github.sha}}" >> $GITHUB_ENV
       - name: Building wheels
-        run: cd bindings/python && for PYBIN in /opt/python/cp3{7..12}*/bin; do "${PYBIN}/pip" wheel . -w ./wheelhouse/ --verbose; done
+        run: cd bindings/python && for PYBIN in /opt/python/cp3{${{ matrix.python-set }}}*/bin; do "${PYBIN}/pip" wheel . -w ./wheelhouse/ --verbose; done
       - name: Auditing wheels
         run: cd bindings/python && for whl in wheelhouse/*.whl; do auditwheel repair "$whl" --plat $PLAT -w wheelhouse/audited/; done
       - name: Archive wheel artifacts
