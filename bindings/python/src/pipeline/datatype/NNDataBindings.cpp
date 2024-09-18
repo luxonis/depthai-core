@@ -189,17 +189,8 @@ void bind_nndata(pybind11::module& m, void* pCallstack){
         //.def("addTensor", static_cast<NNData&(NNData::*)(const std::string&, const xt::xarray<double>&)>(&NNData::addTensor), py::arg("name"), py::arg("tensor"), DOC(dai, NNData, addTensor,2))
         //.def("addTensor", static_cast<NNData&(NNData::*)(const std::string&, const xt::xarray<float>&)>(&NNData::addTensor), py::arg("name"), py::arg("tensor"),DOC(dai, NNData, addTensor, 2))
         //.def("addTensor", static_cast<NNData&(NNData::*)(const std::string&, const xt::xarray<int>&)>(&NNData::addTensor), py::arg("name"), py::arg("tensor"),DOC(dai, NNData, addTensor, 2))
-        //.def("addTensor" , &NNData::addTensorINT, py::arg("name"), py::arg("tensor")., DOC(dai, NNData, addTensor))
-        //.def("addTensorINT", &NNData::addTensorINT, py::arg("name"), py::arg("tensor"), DOC(dai, NNData, addTensorINT))
-        
-        
-        //.def("addTensorINT", &NNData::addTensorINT, py::arg("name"), py::arg("tensor"), DOC(dai, NNData, addTensorINT))
-        //.def("addTensorFP32", &NNData::addTensorFP32, py::arg("name"), py::arg("tensor"), DOC(dai, NNData, addTensorFP32))
-        //.def("addTensorFP16", &NNData::addTensorFP16, py::arg("name"), py::arg("tensor"), DOC(dai, NNData, addTensorFP16))
-        //.def("addTensorI8", &NNData::addTensorI8, py::arg("name"), py::arg("tensor"), DOC(dai, NNData, addTensorI8))
-        //.def("addTensorU8F", &NNData::addTensorU8F, py::arg("name"), py::arg("tensor"), DOC(dai, NNData, addTensorU8F))
         //.def("addTensor", static_cast<NNData&(NNData::*)(const std::string&, const std::vector<float>&)>(&NNData::addTensor), py::arg("name"), py::arg("tensor"), DOC(dai, NNData, addTensor))
-        //.def("addTensor", &NNData::addTensorF32, py::arg("name"), py::arg("tensor"), DOC(dai, NNData, addTensor, 2))
+        
         .def("addTensor", [](NNData&obj, const std::string&name, py::object tensor_obj, dai::TensorInfo::DataType dataType){       
             auto tensor = py::array(tensor_obj);
             if (dataType == dai::TensorInfo::DataType::INT)
