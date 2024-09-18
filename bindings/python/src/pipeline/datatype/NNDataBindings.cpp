@@ -223,7 +223,7 @@ void bind_nndata(pybind11::module& m, void* pCallstack){
                 obj.addTensor<int8_t>(name, tensor.cast<xt::xarray<int8_t>>(), dai::TensorInfo::DataType::I8);
             } else if(dtype.is(py::dtype::of<uint8_t>())){
                 obj.addTensor<uint8_t>(name, tensor.cast<xt::xarray<uint8_t>>(), dai::TensorInfo::DataType::U8F);
-            } else  throw std::runtime_error("Unsupported type");
+            } else  throw std::runtime_error("Unsupported object type");
         }, py::arg("name"), py::arg("tensor"), DOC(dai, NNData, addTensor, 2))
         
         .def("getTensor", [](NNData& obj, const std::string& name, bool dequantize) -> py::object {
