@@ -4,7 +4,7 @@
 
 
 // shared
-#include <depthai-shared/properties/ImageAlignProperties.hpp>
+#include <depthai/properties/ImageAlignProperties.hpp>
 
 #include "depthai/pipeline/datatype/ImageAlignConfig.hpp"
 

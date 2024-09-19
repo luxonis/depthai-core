@@ -307,6 +307,8 @@ set(TARGET_CORE_SOURCES
     src/pipeline/node/EdgeDetector.cpp
     src/pipeline/node/SPIIn.cpp
     src/pipeline/node/FeatureTracker.cpp
+    src/pipeline/node/ImageAlign.cpp
+    src/pipeline/node/ImageManip.cpp
     src/pipeline/node/ToF.cpp
     src/pipeline/node/DetectionParser.cpp
     src/pipeline/node/test/MyProducer.cpp
