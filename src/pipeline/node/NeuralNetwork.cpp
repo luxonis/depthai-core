@@ -25,12 +25,12 @@ std::shared_ptr<NeuralNetwork> NeuralNetwork::build(Node::Output& input, const N
     return std::static_pointer_cast<NeuralNetwork>(shared_from_this());
 }
 
-std::shared_ptr<NeuralNetwork> NeuralNetwork::build(std::shared_ptr<Camera> camera, dai::NNModelDescription modelDesc, float fps){
+std::shared_ptr<NeuralNetwork> NeuralNetwork::build(const NNArchiveConfig& nnArchiveCfg, std::shared_ptr<Camera> camera, dai::NNModelDescription modelDesc, float fps){
     setFromModelZoo(modelDesc);
     // Get the input size
-    auto nnArchiveConfig = detectionParser->getNNArchiveConfig().getConfigV1();
+    auto nnArchiveConfig = nnArchiveCfg.getConfigV1();
     if(!nnArchiveConfig.has_value()) {
-        DAI_CHECK_V(false, "The DetectionNetwork.build method only supports for NNConfigV1");
+        DAI_CHECK_V(false, "The NeuralNetwork.build method only supports for NNConfigV1");
     }
     if(nnArchiveConfig->model.inputs.size() != 1) {
         DAI_CHECK_V(false, "Only single input model is supported");
