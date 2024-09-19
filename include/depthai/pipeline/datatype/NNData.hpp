@@ -198,7 +198,7 @@ class NNData : public Buffer {
      */
     span<std::uint8_t> emplaceTensor(TensorInfo& tensor);
 
-//#ifdef DEPTHAI_XTENSOR_SUPPORT
+#ifdef DEPTHAI_XTENSOR_SUPPORT
     /**
      * @brief Add a tensor to this NNData object.
      * The provided array is stored as a 1xN tensor where N is the length of the array.
@@ -617,7 +617,7 @@ class NNData : public Buffer {
 
         return {};
     }
-//#endif
+#endif
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
         metadata = utility::serialize(*this);
         datatype = DatatypeEnum::NNData;
