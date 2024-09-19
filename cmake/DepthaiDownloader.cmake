@@ -13,11 +13,9 @@ function(DepthaiDownload)
     # Prefix
     set(DEPTHAI_ARTIFACT_PREFIX "depthai-device-side")
 
-    # Errors and retry count
-    set(DEPTHAI_TIMEOUT_S 300)
-    set(DEPTHAI_INACTIVE_TIMEOUT_S 60)
-    set(DEPTHAI_DOWNLOAD_RETRY_NUM 5)
-    ### END VARIABLES
+    set(DOWNLOADER_TIMEOUT_S 300)
+    set(DOWNLOADER_INACTIVE_TIMEOUT_S 60)
+    set(DOWNLOADER_RETRY_NUM 5)
 
 
     # PARSE ARGUMENTS

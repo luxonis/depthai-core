@@ -10,7 +10,7 @@
         endif()
 
         # Retry again if failed
-        set(_num_retries_left "5")
+        set(_num_retries_left ${DOWNLOADER_RETRY_NUM})
         # Set error by default
         set("${status_var}" "1" PARENT_SCOPE)
 
