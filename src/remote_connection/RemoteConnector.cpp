@@ -75,7 +75,8 @@ void RemoteConnector::initHttpServer(const std::string& address, uint16_t port) 
             res.set_content("File not found", "text/plain");
         }
     });
-    std::cout << "To connect to the DepthAI visualizer, open http://" << address << ":" << port << " in your browser" << std::endl;
+    std::cout << "To connect to the DepthAI visualizer, open http://localhost:" << port << " in your browser" << std::endl;
+    std::cout << "In case of a different client, replace 'localhost' with the correct hostname" << std::endl;
     // Run the server in a separate thread
     httpServerThread = std::make_unique<std::thread>([this, address, port]() { httpServer->listen(address, port); });
 }

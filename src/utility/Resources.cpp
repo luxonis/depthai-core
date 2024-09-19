@@ -66,7 +66,6 @@ TarGzAccessor::TarGzAccessor(const std::vector<std::uint8_t>& tarGzFile) {
 
         // Store the data in a map
         resourceMap[path] = std::move(fileData);
-        std::cout << "Loaded file: " << path << std::endl;
     }
 
     archive_read_free(archive);

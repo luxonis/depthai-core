@@ -78,7 +78,6 @@ with dai.Pipeline() as pipeline:
         inRgb: dai.ImgFrame = qRgb.get()
         inDet: dai.ImgDetections = qDet.get()
         encdoedMessage = encoderQueue.get()
-        print(type(encdoedMessage))
         if inRgb is not None:
             frame = inRgb.getCvFrame()
             cv2.putText(
@@ -96,7 +95,6 @@ with dai.Pipeline() as pipeline:
 
         if frame is not None:
             displayFrame("rgb", frame)
-            print("FPS: {:.2f}".format(counter / (time.monotonic() - startTime)))
         if cv2.waitKey(1) == ord("q"):
             pipeline.stop()
             break

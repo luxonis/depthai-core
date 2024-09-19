@@ -84,7 +84,6 @@ class RemoteConnector {
                 }
 
                 auto serializedMsg = serializableMessage->serializeProto();
-                std::cout << "Sending the message to topic: " << topicName << std::endl;
                 server->broadcastMessage(channelId, nanosecondsSinceEpoch(), static_cast<const uint8_t*>(serializedMsg.data()), serializedMsg.size());
             }
         }).detach();  // Detach the thread to run independently
