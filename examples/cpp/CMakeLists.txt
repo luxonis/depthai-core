@@ -483,6 +483,10 @@ dai_add_example(threaded_host_node HostNodes/threaded_host_node.cpp ON OFF)
 # Model zoo
 dai_add_example(model_zoo RVC2/ModelZoo/model_zoo.cpp ON OFF)
 
+# Keypoints parser
+dai_add_example(keypoints_device parsers/keypoints_device.cpp ON OFF)
+dai_add_example(keypoints_host parsers/keypoints_host.cpp ON OFF)
+
 if(DEPTHAI_RTABMAP_SUPPORT)
     include(FetchContent)
     FetchContent_Declare(rerun_sdk URL  https://github.com/rerun-io/rerun/releases/download/0.16.1/rerun_cpp_sdk.zip)

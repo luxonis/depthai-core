@@ -312,6 +312,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/node/AprilTag.cpp
     src/pipeline/node/ObjectTracker.cpp
     src/pipeline/node/IMU.cpp
+    src/pipeline/node/KeypointsParser.cpp
     src/pipeline/node/EdgeDetector.cpp
     src/pipeline/node/SPIIn.cpp
     src/pipeline/node/FeatureTracker.cpp
@@ -325,9 +326,11 @@ set(TARGET_CORE_SOURCES
     src/pipeline/node/host/HostNode.cpp
     src/pipeline/datatype/DatatypeEnum.cpp
     src/pipeline/node/PointCloud.cpp
+    src/pipeline/datatype/creators/KeypointsCreator.cpp
     src/pipeline/datatype/Buffer.cpp
     src/pipeline/datatype/ImgFrame.cpp
     src/pipeline/datatype/ImgTransformations.cpp
+    src/pipeline/datatype/Keypoints.cpp
     src/pipeline/datatype/EncodedFrame.cpp
     src/pipeline/datatype/ImageManipConfig.cpp
     src/pipeline/datatype/ImageManipConfigV2.cpp
