@@ -76,7 +76,6 @@ class ImgFrame : public Buffer {
     ImgFrame(long fd, size_t size);
     virtual ~ImgFrame() = default;
 
-    ImgTransformations transformations;
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
         metadata = utility::serialize(*this);
         datatype = DatatypeEnum::ImgFrame;
@@ -323,13 +322,6 @@ class ImgFrame : public Buffer {
      * @param degrees field of view in degrees
      */
     float getSourceVFov() const;
-
-    /**
-     * Check that the image transformation match the image size
-     *
-     * @returns true if the transformations are valid
-     */
-    bool validateTransformations() const;
 
     /**
      * Remap point between two source frames
@@ -703,9 +695,10 @@ class ImgFrame : public Buffer {
     uint32_t category = 0;     //
     uint32_t instanceNum = 0;  // Which source created this frame (color, mono, ...)
     dai::FrameEvent event = dai::FrameEvent::NONE;
+    ImgTransformation transformation;
 
    public:
-    DEPTHAI_SERIALIZE(ImgFrame, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum, fb, sourceFb, cam, HFovDegrees, category, instanceNum, transformations);
+    DEPTHAI_SERIALIZE(ImgFrame, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum, fb, sourceFb, cam, HFovDegrees, category, instanceNum, transformation);
 };
 
 }  // namespace dai
