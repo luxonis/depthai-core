@@ -475,6 +475,8 @@ option(DEPTHAI_ENABLE_DEVICE_BOOTLOADER_FW "Enable MyriadX Device Bootloader FW"
 option(DEPTHAI_ENABLE_DEVICE_RVC3_FW "Enable RVC3 Device FW" ON)
 option(DEPTHAI_ENABLE_DEVICE_RVC4_FW "Enable RVC4 Device FW" ON)
 
+option(DEPTHAI_EMBED_FRONTEND "Embed frontend resources into library" ON)
+
 option(DEPTHAI_BINARIES_RESOURCE_COMPILE "Compile Depthai device side binaries into library" ON)
 
 # Set constant
@@ -485,12 +487,13 @@ include(Depthai/DepthaiDeviceSideConfig)    # Depthai device binary commit/versi
 include(Depthai/DepthaiBootloaderConfig)    # Depthai bootloader binary commit/version configuration
 include(Depthai/DepthaiDeviceKbConfig)    # depthai-device-kb fwp commit/version configuration
 include(Depthai/DepthaiDeviceRVC4Config)    # depthai-device-rvc4 fwp commit/version configuration
+include(Depthai/DepthaiVisualizerConfig)    # depthai-visualizer commit/version configuration
 
 # Include downloaders
 include(DepthaiDownloader)                  # Depthai device binary downloader
 include(DepthaiBootloaderDownloader)        # Depthai bootloader binary downloader
 include(DepthaiDeviceKbDownloader)          # depthai-device-kb fwp downloader
-
+include(DepthaiVisualizerDownloader)        # depthai-visualizer downloader
 
 # depthai-shared enforce commit hash match if CI
 if($ENV{CI})
@@ -579,8 +582,17 @@ if(DEPTHAI_ENABLE_DEVICE_RVC4_FW)
     list(APPEND RESOURCE_COMPILED_FILES ${DEPTHAI_DEVICE_RVC4_RESOURCE_LIST})
 endif()
 
-message(STATUS "LIST OF RESOURCE COMPILED FILES: ${RESOURCE_COMPILED_FILES}")
 
+if(DEPTHAI_EMBED_FRONTEND)
+    DepthaiVisualizerDownloader(
+        "${DEPTHAI_VISUALIZER_COMMIT}"                # Visualizer hash
+        "${DEPTHAI_RESOURCES_OUTPUT_DIR}"
+        DEPTHAI_VISUALIZER_RESOURCE_LIST                 # List of output resources
+    )
+    list(APPEND RESOURCE_COMPILED_FILES ${DEPTHAI_VISUALIZER_RESOURCE_LIST}) # TODO - Handle the case non debug case
+endif()
+
+message(STATUS "LIST OF RESOURCE COMPILED FILES: ${RESOURCE_COMPILED_FILES}")
 if(DEPTHAI_BINARIES_RESOURCE_COMPILE)
     # Add RC and resource compile the binares
     include(CMakeRC)
