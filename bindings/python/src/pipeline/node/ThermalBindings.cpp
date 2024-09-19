@@ -39,6 +39,7 @@ void bind_thermal(pybind11::module& m, void* pCallstack){
     // Node
     thermal
         .def_readonly("initialConfig", &Thermal::initialConfig, DOC(dai, node, Thermal, initialConfig), DOC(dai, node, Thermal, initialConfig))
+        .def_readonly("inputConfig", &Thermal::inputConfig, DOC(dai, node, Thermal, inputConfig), DOC(dai, node, Thermal, inputConfig))
         .def_readonly("temperature", &Thermal::temperature, DOC(dai, node, Thermal, temperature), DOC(dai, node, Thermal, temperature))
         .def_readonly("color", &Thermal::color, DOC(dai, node, Thermal, color), DOC(dai, node, Thermal, color))
 

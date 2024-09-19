@@ -66,7 +66,10 @@ int main(int argc, char** args) {
         if(key == 'q') {
             break;
         } else if(key == 'a') {
-            thermalConfig->ffcParams.maxFFCInterval = 1;
+            if(!thermalConfig->ffcParams.autoFFC) {
+                thermalConfig->ffcParams.autoFFC = false;
+            }
+            thermalConfig->ffcParams.autoFFC = !*thermalConfig->ffcParams.autoFFC;
             confUpdated = true;
         } else if(key == 'n') {
             if(!thermalConfig->imageParams.brightnessLevel) {

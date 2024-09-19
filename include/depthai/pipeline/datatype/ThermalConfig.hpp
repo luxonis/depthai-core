@@ -16,7 +16,7 @@ enum ThermalGainMode { LOW, HIGH };
 /**
  * Ambient factors that affect the temperature measurement of a Thermal sensor.
  */
-class ThermalAmbientParams {
+class ThermalAmbientParams : public Buffer {
    public:
     /// Distance to the measured object. unit:cnt(128cnt=1m), range:0-25600(0-200m)
     std::optional<uint16_t> distance;
@@ -38,7 +38,7 @@ class ThermalAmbientParams {
     DEPTHAI_SERIALIZE(ThermalAmbientParams, distance, reflectionTemperature, atmosphericTemperature, targetEmissivity, atmosphericTransmittance, gainMode);
 };
 
-class ThermalFFCParams {
+class ThermalFFCParams : public Buffer {
    public:
     /// Auto Flat-Field-Correction. Controls wheather the shutter is controlled by the sensor module automatically or not.
     std::optional<bool> autoFFC;
@@ -63,14 +63,20 @@ class ThermalFFCParams {
     /// Regardless of which mechanism triggers FFC, the minimum trigger interval must be limited.
     std::optional<uint16_t> minShutterInterval;
 
+    /// Set this to True/False to close/open the shutter when autoFFC is disabled.
+    std::optional<bool> closeManualShutter;
+
     std::optional<uint16_t> antiFallProtectionThresholdHighGainMode;
     std::optional<uint16_t> antiFallProtectionThresholdLowGainMode;
+
     DEPTHAI_SERIALIZE(ThermalFFCParams,
+                      autoFFC,
                       minFFCInterval,
                       maxFFCInterval,
                       autoFFCTempThreshold,
                       fallProtection,
                       minShutterInterval,
+                      closeManualShutter,
                       antiFallProtectionThresholdHighGainMode,
                       antiFallProtectionThresholdLowGainMode);
 };
@@ -78,7 +84,7 @@ class ThermalFFCParams {
 /// Orientation of the image.
 enum ThermalImageOrientation { Normal, Mirror, Flip, MirrorFlip };
 
-class ThermalImageParams {
+class ThermalImageParams : public Buffer {
    public:
     /// 0-3. Time noise filter level. Filters out the noise that appears over time.
     std::optional<uint8_t> timeNoiseFilterLevel;

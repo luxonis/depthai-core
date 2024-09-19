@@ -45,6 +45,7 @@ void DatatypeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_cameracontrol);
     callstack.push_front(bind_edgedetectorconfig);
     callstack.push_front(bind_featuretrackerconfig);
+    callstack.push_front(bind_thermalconfig);
     callstack.push_front(bind_tofconfig);
     callstack.push_front(bind_imagemanipconfig);
     callstack.push_front(bind_imagemanipconfigv2);
