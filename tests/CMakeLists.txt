@@ -6,6 +6,13 @@ enable_testing()
 hunter_add_package(Catch2)
 find_package(Catch2 CONFIG REQUIRED)
 
+# Print details of the Catch2 package
+message(STATUS "Catch2_FOUND: ${Catch2_FOUND}")
+message(STATUS "Catch2_VERSION: ${Catch2_VERSION}")
+message(STATUS "Catch2_INCLUDE_DIRS: ${Catch2_INCLUDE_DIRS}")
+message(STATUS "Catch2_LIBRARIES: ${Catch2_LIBRARIES}")
+
+
 # Create environments for usb & poe labels
 set(test_usb_env
     # Misc

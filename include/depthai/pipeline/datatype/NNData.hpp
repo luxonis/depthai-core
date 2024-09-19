@@ -211,7 +211,26 @@ class NNData : public Buffer {
     NNData& addTensor(const std::string& name, const std::vector<_Ty>& data, dai::TensorInfo::DataType dataType) {
         return addTensor<_Ty>(name, xt::adapt(data, std::vector<size_t>{1, data.size()}), dataType);
     };
-    // addTensor vector overloads
+    // addTensor vector dispatch
+    template<typename _Ty = double> 
+    NNData& addTensor(const std::string& name, const std::vector<_Ty>& tensor){
+        if constexpr(std::is_same<_Ty,int>::value) {
+            return addTensor<int>(name, tensor, dai::TensorInfo::DataType::INT);
+        } else if constexpr(std::is_same<_Ty,uint16_t>::value) {
+            return addTensor<uint16_t>(name, tensor, dai::TensorInfo::DataType::FP16);
+        } else if constexpr(std::is_same<_Ty,float>::value) {
+            return addTensor<float>(name, tensor, dai::TensorInfo::DataType::FP32);
+        } else if constexpr(std::is_same<_Ty,double>::value) {
+            return addTensor<double>(name, tensor, dai::TensorInfo::DataType::FP64);
+        } else if constexpr(std::is_same<_Ty,std::int8_t>::value) {
+            return addTensor<std::int8_t>(name, tensor, dai::TensorInfo::DataType::I8);
+        } else if constexpr(std::is_same<_Ty,std::uint8_t>::value) {
+            return addTensor<std::uint8_t>(name, tensor, dai::TensorInfo::DataType::U8F);
+        } else {
+            throw std::runtime_error("Unsupported datatype");
+        }
+    }
+    
     NNData& addTensor(const std::string& name, const std::vector<int>& tensor) {
         return addTensor<int>(name, tensor, dai::TensorInfo::DataType::INT);
     };
@@ -231,7 +250,26 @@ class NNData : public Buffer {
         return addTensor<std::uint8_t>(name, tensor, dai::TensorInfo::DataType::U8F);
     };
 
-    // addTensor overloads
+    // addTensor dispatch
+    template<typename _Ty = double> 
+    NNData& addTensor(const std::string& name, const xt::xarray<_Ty>& tensor){
+        if constexpr(std::is_same<_Ty,int>::value) {
+            return addTensor<int>(name, tensor, dai::TensorInfo::DataType::INT);
+        } else if (std::is_same<_Ty,uint16_t>::value) {
+            return addTensor<uint16_t>(name, tensor, dai::TensorInfo::DataType::FP16);
+        } else if constexpr(std::is_same<_Ty,float>::value) {
+            return addTensor<float>(name, tensor, dai::TensorInfo::DataType::FP32);
+        } else if constexpr(std::is_same<_Ty,double>::value) {
+            return addTensor<double>(name, tensor, dai::TensorInfo::DataType::FP64);
+        } else if constexpr(std::is_same<_Ty,std::int8_t>::value) {
+            return addTensor<std::int8_t>(name, tensor, dai::TensorInfo::DataType::I8);
+        } else if constexpr(std::is_same<_Ty,std::uint8_t>::value) {
+            return addTensor<std::uint8_t>(name, tensor, dai::TensorInfo::DataType::U8F);
+        } else {
+            throw std::runtime_error("Unsupported datatype");
+        }
+    }
+
     NNData& addTensor(const std::string& name, const xt::xarray<int>& tensor) {
         return addTensor<int>(name, tensor, dai::TensorInfo::DataType::INT);
     };
