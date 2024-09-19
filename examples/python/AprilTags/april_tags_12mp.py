@@ -4,19 +4,29 @@ import cv2
 import depthai as dai
 import time
 
+FULL_RES = (4000, 3000) # 12MP
+PREVIEW_SIZE = (1332, 1000) # 1/3 of 12MP, to preserve bandwidth
+
 with dai.Pipeline() as pipeline:
     hostCamera = pipeline.create(dai.node.Camera).build()
     aprilTagNode = pipeline.create(dai.node.AprilTag)
-    hostCamera.requestOutput((1920, 1080)).link(aprilTagNode.inputImage)
-    passthroughOutputQueue = aprilTagNode.passthroughInputImage.createOutputQueue()
+    hostCamera.requestOutput(FULL_RES).link(aprilTagNode.inputImage)
     outQueue = aprilTagNode.out.createOutputQueue()
+
+    # We use ImageManip instead of creating a new smaller output because of the syncing,
+    # ATM, AprilTags don't contain timestamps, so we can't sync them with frames
+    manip = pipeline.create(dai.node.ImageManipV2)
+    manip.initialConfig.setOutputSize(PREVIEW_SIZE[0], PREVIEW_SIZE[1], dai.ImageManipConfigV2.ResizeMode.STRETCH)
+    manip.setMaxOutputFrameSize(2004096)
+    aprilTagNode.passthroughInputImage.link(manip.inputImage)
+    frameQ = manip.out.createOutputQueue()
 
     color = (0, 255, 0)
     startTime = time.monotonic()
     counter = 0
     fps = 0.0
-
     pipeline.start()
+
     while pipeline.isRunning():
         aprilTagMessage = outQueue.get()
         assert(isinstance(aprilTagMessage, dai.AprilTags))
@@ -29,17 +39,17 @@ with dai.Pipeline() as pipeline:
             counter = 0
             startTime = currentTime
 
-        passthroughImage: dai.ImgFrame = passthroughOutputQueue.get()
+        def rescale(p: dai.Point2f):
+            return (int(p.x / FULL_RES[0] * PREVIEW_SIZE[0]),
+                    int(p.y / FULL_RES[1] * PREVIEW_SIZE[1]))
+
+        passthroughImage: dai.ImgFrame = frameQ.get()
         frame = passthroughImage.getCvFrame()
-
-        def to_int(tag):
-            return (int(tag.x), int(tag.y))
-
         for tag in aprilTags:
-            topLeft = to_int(tag.topLeft)
-            topRight = to_int(tag.topRight)
-            bottomRight = to_int(tag.bottomRight)
-            bottomLeft = to_int(tag.bottomLeft)
+            topLeft = rescale(tag.topLeft)
+            topRight = rescale(tag.topRight)
+            bottomRight = rescale(tag.bottomRight)
+            bottomLeft = rescale(tag.bottomLeft)
 
             center = (int((topLeft[0] + bottomRight[0]) / 2), int((topLeft[1] + bottomRight[1]) / 2))
 
@@ -51,8 +61,10 @@ with dai.Pipeline() as pipeline:
             idStr = "ID: " + str(tag.id)
             cv2.putText(frame, idStr, center, cv2.FONT_HERSHEY_TRIPLEX, 0.5, color)
 
-            cv2.putText(frame, f"fps: {fps:.1f}", (200, 20), cv2.FONT_HERSHEY_TRIPLEX, 0.5, color)
+            cv2.putText(frame, f"fps: {fps:.1f}", (200, 20), cv2.FONT_HERSHEY_TRIPLEX, 1, color)
 
         cv2.imshow("detections", frame)
+
         if cv2.waitKey(1) == ord("q"):
             break
+
