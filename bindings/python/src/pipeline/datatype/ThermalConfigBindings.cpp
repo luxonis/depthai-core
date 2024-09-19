@@ -38,7 +38,7 @@ void bind_thermalconfig(pybind11::module& m, void* pCallstack) {
         .def_readwrite("targetEmissivity", &ThermalConfig::ThermalAmbientParams::targetEmissivity, DOC(dai, ThermalConfig, ThermalAmbientParams, targetEmissivity))
         .def_readwrite("atmosphericTransmittance",
                        &ThermalConfig::ThermalAmbientParams::atmosphericTransmittance,
-                       DOC(dai, ThermalAmbientParams, atmosphericTransmittance))
+                       DOC(dai, ThermalConfig, ThermalAmbientParams, atmosphericTransmittance))
         .def_readwrite("gainMode", &ThermalConfig::ThermalAmbientParams::gainMode, DOC(dai, ThermalConfig, ThermalAmbientParams, gainMode));
 
     thermalFFCParams.def(py::init<>())
