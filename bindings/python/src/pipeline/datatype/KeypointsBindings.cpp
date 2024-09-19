@@ -41,7 +41,8 @@ void bind_keypoints(pybind11::module& m, void* pCallstack){
         .def("setTimestamp", &Keypoints::Buffer::setTimestamp, py::arg("timestamp"), DOC(dai, Buffer, setTimestamp))
         .def("setTimestampDevice", &Keypoints::Buffer::setTimestampDevice, DOC(dai, Buffer, setTimestampDevice))
         .def("setSequenceNum", &Keypoints::Buffer::setSequenceNum, DOC(dai, Buffer, setSequenceNum))
-        .def("setKeypoints", &Keypoints::setKeypoints, py::arg("points"), DOC(dai, Keypoints, setKeypoints))
+        // Binds only the overload that takes 3D points without scores and confidence threshold
+        .def("setKeypoints", py::overload_cast<const std::vector<Point3f>&>(&Keypoints::setKeypoints), DOC(dai, Keypoints, setKeypoints))
         ;
 
 }

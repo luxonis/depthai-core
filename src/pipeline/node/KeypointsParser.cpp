@@ -47,14 +47,14 @@ void KeypointsParser::run() {
         int totalCoords = std::accumulate(keypoints.shape().begin(), keypoints.shape().end(), 1, std::multiplies<int>());
 
         if (numKeypoints * 2 != totalCoords && numKeypoints * 3 != totalCoords) {
-            throw std::runtime_error("Expected 2 or 3 coordinates per keypoint, got " + std::to_string(float(totalCoords) / float(numKeypoints)));
+            throw std::runtime_error("Expected 2 or 3 coordinates per keypoint, got " + std::to_string(static_cast<float>(totalCoords) / static_cast<float>(numKeypoints)));
         }
         int pointDimension = totalCoords / numKeypoints;
 
         keypoints = keypoints.reshape({numKeypoints, pointDimension});
         keypoints /= scaleFactor;
 
-        std::shared_ptr<Keypoints> msg = nullptr;
+        std::shared_ptr<Keypoints> msg = std::make_shared<Keypoints>();
 
         if (pointDimension == 2) {
             std::vector<Point2f> keypointsVector = std::vector<Point2f>(numKeypoints);
@@ -62,7 +62,7 @@ void KeypointsParser::run() {
                 keypointsVector[i].x = keypoints(i, 0);
                 keypointsVector[i].y = keypoints(i, 1);
             }
-            msg = createKeypointsMessage(keypointsVector);
+            msg->setKeypoints(keypointsVector);
         }
         else {
             std::vector<Point3f> keypointsVector = std::vector<Point3f>(numKeypoints);
@@ -71,7 +71,7 @@ void KeypointsParser::run() {
                 keypointsVector[i].y = keypoints(i, 1);
                 keypointsVector[i].z = keypoints(i, 2);
             }
-            msg = createKeypointsMessage(keypointsVector);
+            msg->setKeypoints(keypointsVector);
         }
 
         msg->setTimestamp(inputData->getTimestamp());

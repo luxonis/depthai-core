@@ -5,7 +5,6 @@
 #include "depthai/pipeline/datatype/NNData.hpp"
 #include "depthai/properties/KeypointsParserProperties.hpp"
 #include "depthai/pipeline/datatype/Keypoints.hpp"
-#include "depthai/pipeline/datatype/creators/KeypointsCreator.hpp"
 
 // shared
 #include "depthai/common/Point2f.hpp"
