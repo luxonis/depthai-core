@@ -15,7 +15,6 @@
 #include <optional>
 
 #include "foxglove/websocket/server_interface.hpp"
-
 static uint64_t nanosecondsSinceEpoch() {
     return uint64_t(std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count());
 }
