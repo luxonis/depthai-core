@@ -147,6 +147,7 @@ void bind_spatiallocationcalculator(pybind11::module& m, void* pCallstack);
 void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack);
 void bind_objecttracker(pybind11::module& m, void* pCallstack);
 void bind_imu(pybind11::module& m, void* pCallstack);
+void bind_keypointsparser(pybind11::module& m, void* pCallstack);
 void bind_edgedetector(pybind11::module& m, void* pCallstack);
 void bind_featuretracker(pybind11::module& m, void* pCallstack);
 void bind_apriltag(pybind11::module& m, void* pCallstack);
@@ -192,6 +193,7 @@ void NodeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_spatialdetectionnetwork);
     callstack.push_front(bind_objecttracker);
     callstack.push_front(bind_imu);
+    callstack.push_front(bind_keypointsparser);
     callstack.push_front(bind_edgedetector);
     callstack.push_front(bind_featuretracker);
     callstack.push_front(bind_apriltag);

@@ -17,6 +17,7 @@ void bind_imgdetections(pybind11::module& m, void* pCallstack);
 void bind_imgframe(pybind11::module& m, void* pCallstack);
 void bind_encodedframe(pybind11::module& m, void* pCallstack);
 void bind_imudata(pybind11::module& m, void* pCallstack);
+void bind_keypoints(pybind11::module& m, void* pCallstack);
 void bind_message_group(pybind11::module& m, void* pCallstack);
 void bind_nndata(pybind11::module& m, void* pCallstack);
 void bind_spatialimgdetections(pybind11::module& m, void* pCallstack);
@@ -51,6 +52,7 @@ void DatatypeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_imgframe);
     callstack.push_front(bind_encodedframe);
     callstack.push_front(bind_imudata);
+    callstack.push_front(bind_keypoints);
     callstack.push_front(bind_message_group);
     callstack.push_front(bind_nndata);
     callstack.push_front(bind_spatialimgdetections);
@@ -96,6 +98,7 @@ void DatatypeBindings::bind(pybind11::module& m, void* pCallstack){
         .value("ImageManipConfigV2", DatatypeEnum::ImageManipConfigV2)
         .value("CameraControl", DatatypeEnum::CameraControl)
         .value("ImgDetections", DatatypeEnum::ImgDetections)
+        .value("Keypoints", DatatypeEnum::Keypoints)
         .value("SpatialImgDetections", DatatypeEnum::SpatialImgDetections)
         .value("SystemInformation", DatatypeEnum::SystemInformation)
         .value("SpatialLocationCalculatorConfig", DatatypeEnum::SpatialLocationCalculatorConfig)
