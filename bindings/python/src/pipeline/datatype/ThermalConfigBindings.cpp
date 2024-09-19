@@ -14,7 +14,7 @@ void bind_thermalconfig(pybind11::module& m, void* pCallstack) {
     py::class_<ThermalConfig::ThermalFFCParams> thermalFFCParams(m, "ThermalFFCParams", DOC(dai, ThermalConfig, ThermalFFCParams));
     py::class_<ThermalConfig::ThermalAmbientParams> thermalAmbientParams(m, "ThermalAmbientParams", DOC(dai, ThermalConfig, ThermalAmbientParams));
 
-    py::enum_<ThermalConfig::ThermalGainMode> thermalGainMode(m, "ThermalGainMode", DOC(dai, ThermalGainMode));
+    py::enum_<ThermalConfig::ThermalGainMode> thermalGainMode(m, "ThermalGainMode", DOC(dai, ThermalConfig, ThermalGainMode));
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -30,16 +30,16 @@ void bind_thermalconfig(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
 
     thermalAmbientParams.def(py::init<>())
-        .def_readwrite("distance", &ThermalConfig::ThermalAmbientParams::distance, DOC(dai, ThermalAmbientParams, distance))
+        .def_readwrite("distance", &ThermalConfig::ThermalAmbientParams::distance, DOC(dai, ThermalConfig, ThermalAmbientParams, distance))
         .def_readwrite(
-            "reflectionTemperature", &ThermalConfig::ThermalAmbientParams::reflectionTemperature, DOC(dai, ThermalAmbientParams, reflectionTemperature))
+            "reflectionTemperature", &ThermalConfig::ThermalAmbientParams::reflectionTemperature, DOC(dai, ThermalConfig, ThermalAmbientParams, reflectionTemperature))
         .def_readwrite(
-            "atmosphericTemperature", &ThermalConfig::ThermalAmbientParams::atmosphericTemperature, DOC(dai, ThermalAmbientParams, atmosphericTemperature))
-        .def_readwrite("targetEmissivity", &ThermalConfig::ThermalAmbientParams::targetEmissivity, DOC(dai, ThermalAmbientParams, targetEmissivity))
+            "atmosphericTemperature", &ThermalConfig::ThermalAmbientParams::atmosphericTemperature, DOC(dai, ThermalConfig, ThermalAmbientParams, atmosphericTemperature))
+        .def_readwrite("targetEmissivity", &ThermalConfig::ThermalAmbientParams::targetEmissivity, DOC(dai, ThermalConfig, ThermalAmbientParams, targetEmissivity))
         .def_readwrite("atmosphericTransmittance",
                        &ThermalConfig::ThermalAmbientParams::atmosphericTransmittance,
                        DOC(dai, ThermalAmbientParams, atmosphericTransmittance))
-        .def_readwrite("gainMode", &ThermalConfig::ThermalAmbientParams::gainMode, DOC(dai, ThermalAmbientParams, gainMode));
+        .def_readwrite("gainMode", &ThermalConfig::ThermalAmbientParams::gainMode, DOC(dai, ThermalConfig, ThermalAmbientParams, gainMode));
 
     thermalFFCParams.def(py::init<>())
         .def_readwrite("autoFFC", &ThermalConfig::ThermalFFCParams::autoFFC, DOC(dai, ThermalConfig, ThermalFFCParams, autoFFC))
@@ -60,14 +60,14 @@ void bind_thermalconfig(pybind11::module& m, void* pCallstack) {
                        DOC(dai, ThermalConfig, ThermalFFCParams, antiFallProtectionThresholdLowGainMode));
 
     thermalImageParams.def(py::init<>())
-        .def_readwrite("timeNoiseFilterLevel", &ThermalConfig::ThermalImageParams::timeNoiseFilterLevel, DOC(dai, ThermalImageParams, timeNoiseFilterLevel))
+        .def_readwrite("timeNoiseFilterLevel", &ThermalConfig::ThermalImageParams::timeNoiseFilterLevel, DOC(dai, ThermalConfig, ThermalImageParams, timeNoiseFilterLevel))
         .def_readwrite(
-            "spatialNoiseFilterLevel", &ThermalConfig::ThermalImageParams::spatialNoiseFilterLevel, DOC(dai, ThermalImageParams, spatialNoiseFilterLevel))
+            "spatialNoiseFilterLevel", &ThermalConfig::ThermalImageParams::spatialNoiseFilterLevel, DOC(dai, ThermalConfig, ThermalImageParams, spatialNoiseFilterLevel))
         .def_readwrite(
-            "digitalDetailEnhanceLevel", &ThermalConfig::ThermalImageParams::digitalDetailEnhanceLevel, DOC(dai, ThermalImageParams, digitalDetailEnhanceLevel))
-        .def_readwrite("brightnessLevel", &ThermalConfig::ThermalImageParams::brightnessLevel, DOC(dai, ThermalImageParams, brightnessLevel))
-        .def_readwrite("contrastLevel", &ThermalConfig::ThermalImageParams::contrastLevel, DOC(dai, ThermalImageParams, contrastLevel))
-        .def_readwrite("orientation", &ThermalConfig::ThermalImageParams::orientation, DOC(dai, ThermalImageParams, orientation));
+            "digitalDetailEnhanceLevel", &ThermalConfig::ThermalImageParams::digitalDetailEnhanceLevel, DOC(dai, ThermalConfig, ThermalImageParams, digitalDetailEnhanceLevel))
+        .def_readwrite("brightnessLevel", &ThermalConfig::ThermalImageParams::brightnessLevel, DOC(dai, ThermalConfig, ThermalImageParams, brightnessLevel))
+        .def_readwrite("contrastLevel", &ThermalConfig::ThermalImageParams::contrastLevel, DOC(dai, ThermalConfig, ThermalImageParams, contrastLevel))
+        .def_readwrite("orientation", &ThermalConfig::ThermalImageParams::orientation, DOC(dai, ThermalConfig, ThermalImageParams, orientation));
 
     thermalGainMode.value("LOW", ThermalConfig::ThermalGainMode::LOW, DOC(dai, ThermalConfig, ThermalGainMode, LOW))
         .value("HIGH", ThermalConfig::ThermalGainMode::HIGH, DOC(dai, ThermalConfig, ThermalGainMode, HIGH));
