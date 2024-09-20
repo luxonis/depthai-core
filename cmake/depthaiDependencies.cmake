@@ -42,6 +42,9 @@ else()
     endif()
     hunter_add_package(yaml-cpp)
     hunter_add_package(semver)
+    if(DEPTHAI_HAS_APRIL_TAG)
+        hunter_add_package(apriltag)
+    endif()
 endif()
 
 # If library was build as static, find all dependencies
@@ -81,6 +84,9 @@ if(NOT CONFIG_MODE OR (CONFIG_MODE AND NOT DEPTHAI_SHARED_LIBS))
     endif()
     find_package(yaml-cpp ${_QUIET} CONFIG REQUIRED)
     find_package(semver ${_QUIET} CONFIG REQUIRED)
+    if(DEPTHAI_HAS_APRIL_TAG)
+        find_package(apriltag ${_QUIET} CONFIG REQUIRED)
+    endif()
 endif()
 
 # Xtensor
@@ -101,6 +107,7 @@ find_package(libnop ${_QUIET} CONFIG REQUIRED)
 
 # MP4V2 for video encoding
 find_package(mp4v2 ${_QUIET} CONFIG REQUIRED)
+
 
 # XLink
 if(DEPTHAI_XLINK_LOCAL AND (NOT CONFIG_MODE))

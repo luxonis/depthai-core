@@ -19,6 +19,7 @@ void bind_stereodepthconfig(pybind11::module& m, void* pCallstack){
     // py::class_<RawStereoDepthConfig, RawBuffer, std::shared_ptr<RawStereoDepthConfig>> rawStereoDepthConfig(m, "RawStereoDepthConfig", DOC(dai, RawStereoDepthConfig));
     py::class_<StereoDepthConfig, Py<StereoDepthConfig>, Buffer, std::shared_ptr<StereoDepthConfig>> stereoDepthConfig(m, "StereoDepthConfig", DOC(dai, StereoDepthConfig));
     py::enum_<StereoDepthConfig::MedianFilter> medianFilter(m, "MedianFilter", DOC(dai, MedianFilter));
+    py::class_<StereoDepthConfig::ConfidenceMetrics> _ConfidenceMetrics(stereoDepthConfig, "ConfidenceMetrics", DOC(dai, StereoDepthConfig, ConfidenceMetrics));
     py::class_<StereoDepthConfig::AlgorithmControl> algorithmControl(stereoDepthConfig, "AlgorithmControl", DOC(dai, StereoDepthConfig, AlgorithmControl));
     py::enum_<StereoDepthConfig::AlgorithmControl::DepthAlign> depthAlign(algorithmControl, "DepthAlign", DOC(dai, StereoDepthConfig, AlgorithmControl, DepthAlign));
     py::enum_<StereoDepthConfig::AlgorithmControl::DepthUnit> depthUnit(algorithmControl, "DepthUnit", DOC(dai, StereoDepthConfig, AlgorithmControl, DepthUnit));
@@ -31,8 +32,11 @@ void bind_stereodepthconfig(pybind11::module& m, void* pCallstack){
     py::class_<StereoDepthConfig::PostProcessing::SpeckleFilter> speckleFilter(postProcessing, "SpeckleFilter", DOC(dai, StereoDepthConfig, PostProcessing, SpeckleFilter));
     py::class_<StereoDepthConfig::PostProcessing::DecimationFilter> decimationFilter(postProcessing, "DecimationFilter", DOC(dai, StereoDepthConfig, PostProcessing, DecimationFilter));
     py::enum_<StereoDepthConfig::PostProcessing::DecimationFilter::DecimationMode> decimationMode(decimationFilter, "DecimationMode", DOC(dai, StereoDepthConfig, PostProcessing, DecimationFilter, DecimationMode));
+    py::class_<StereoDepthConfig::PostProcessing::HoleFilling> _HoleFilling(postProcessing, "HoleFilling", DOC(dai, StereoDepthConfig, PostProcessing, HoleFilling));
+    py::class_<StereoDepthConfig::PostProcessing::AdaptiveMedianFilter> _AdaptiveMedianFilter(postProcessing, "AdaptiveMedianFilter", DOC(dai, StereoDepthConfig, PostProcessing, AdaptiveMedianFilter));
     py::class_<StereoDepthConfig::CostAggregation> costAggregation(stereoDepthConfig, "CostAggregation", DOC(dai, StereoDepthConfig, CostAggregation));
-    py::enum_<StereoDepthConfig::CostAggregation::LocalAggregationMode> localAggregationMode(costAggregation, "LocalAggregationMode", DOC(dai, StereoDepthConfig, CostAggregation, LocalAggregationMode));
+    py::class_<StereoDepthConfig::CostAggregation::P1Config> _P1Config(costAggregation, "P1Config", DOC(dai, StereoDepthConfig, CostAggregation, P1Config));
+    py::class_<StereoDepthConfig::CostAggregation::P2Config> _P2Config(costAggregation, "P2Config", DOC(dai, StereoDepthConfig, CostAggregation, P2Config));
     py::class_<StereoDepthConfig::CostMatching> costMatching(stereoDepthConfig, "CostMatching", DOC(dai, StereoDepthConfig, CostMatching));
     py::class_<StereoDepthConfig::CostMatching::LinearEquationParameters> costMatchingLinearEquationParameters(costMatching, "LinearEquationParameters", DOC(dai, StereoDepthConfig, CostMatching, LinearEquationParameters));
     py::enum_<StereoDepthConfig::CostMatching::DisparityWidth> costMatchingDisparityWidth(costMatching, "DisparityWidth", DOC(dai, StereoDepthConfig, CostMatching, DisparityWidth));
@@ -89,12 +93,18 @@ void bind_stereodepthconfig(pybind11::module& m, void* pCallstack){
         .def_readwrite("leftRightCheckThreshold", &StereoDepthConfig::AlgorithmControl::leftRightCheckThreshold, DOC(dai, StereoDepthConfig, AlgorithmControl, leftRightCheckThreshold))
         .def_readwrite("subpixelFractionalBits", &StereoDepthConfig::AlgorithmControl::subpixelFractionalBits, DOC(dai, StereoDepthConfig, AlgorithmControl, subpixelFractionalBits))
         .def_readwrite("disparityShift", &StereoDepthConfig::AlgorithmControl::disparityShift, DOC(dai, StereoDepthConfig, AlgorithmControl, disparityShift))
-        .def_readwrite("replaceInvalidDisparity", &StereoDepthConfig::AlgorithmControl::replaceInvalidDisparity, DOC(dai, StereoDepthConfig, AlgorithmControl, replaceInvalidDisparity))
-        .def_readwrite("outlierRemoveThreshold", &StereoDepthConfig::AlgorithmControl::outlierRemoveThreshold, DOC(dai, StereoDepthConfig, AlgorithmControl, outlierRemoveThreshold))
-        .def_readwrite("outlierCensusThreshold", &StereoDepthConfig::AlgorithmControl::outlierCensusThreshold, DOC(dai, StereoDepthConfig, AlgorithmControl, outlierCensusThreshold))
-        .def_readwrite("outlierDiffThreshold", &StereoDepthConfig::AlgorithmControl::outlierDiffThreshold, DOC(dai, StereoDepthConfig, AlgorithmControl, outlierDiffThreshold))
         .def_readwrite("centerAlignmentShiftFactor", &StereoDepthConfig::AlgorithmControl::centerAlignmentShiftFactor, DOC(dai, StereoDepthConfig, AlgorithmControl, centerAlignmentShiftFactor))
         .def_readwrite("numInvalidateEdgePixels", &StereoDepthConfig::AlgorithmControl::numInvalidateEdgePixels, DOC(dai, StereoDepthConfig, AlgorithmControl, numInvalidateEdgePixels))
+        ;
+
+    _ConfidenceMetrics
+        .def(py::init<>())
+        .def_readwrite("occlusionConfidenceWeight", &StereoDepthConfig::ConfidenceMetrics::occlusionConfidenceWeight, DOC(dai, StereoDepthConfig, ConfidenceMetrics, occlusionConfidenceWeight))
+        .def_readwrite("motionVectorConfidenceWeight", &StereoDepthConfig::ConfidenceMetrics::motionVectorConfidenceWeight, DOC(dai, StereoDepthConfig, ConfidenceMetrics, motionVectorConfidenceWeight))
+        .def_readwrite("motionVectorConfidenceThreshold", &StereoDepthConfig::ConfidenceMetrics::motionVectorConfidenceThreshold, DOC(dai, StereoDepthConfig, ConfidenceMetrics, motionVectorConfidenceThreshold))
+        .def_readwrite("flatnessConfidenceWeight", &StereoDepthConfig::ConfidenceMetrics::flatnessConfidenceWeight, DOC(dai, StereoDepthConfig, ConfidenceMetrics, flatnessConfidenceWeight))
+        .def_readwrite("flatnessConfidenceThreshold", &StereoDepthConfig::ConfidenceMetrics::flatnessConfidenceThreshold, DOC(dai, StereoDepthConfig, ConfidenceMetrics, flatnessConfidenceThreshold))
+        .def_readwrite("flatnessOverride", &StereoDepthConfig::ConfidenceMetrics::flatnessOverride, DOC(dai, StereoDepthConfig, ConfidenceMetrics, flatnessOverride))
         ;
 
     spatialFilter
@@ -156,6 +166,21 @@ void bind_stereodepthconfig(pybind11::module& m, void* pCallstack){
         .def_readwrite("decimationMode", &StereoDepthConfig::PostProcessing::DecimationFilter::decimationMode, DOC(dai, StereoDepthConfig, PostProcessing, DecimationFilter, decimationMode))
         ;
 
+    _HoleFilling
+        .def(py::init<>())
+        .def_readwrite("enable", &StereoDepthConfig::PostProcessing::HoleFilling::enable, DOC(dai, StereoDepthConfig, PostProcessing, HoleFilling, enable))
+        .def_readwrite("highConfidenceThreshold", &StereoDepthConfig::PostProcessing::HoleFilling::highConfidenceThreshold, DOC(dai, StereoDepthConfig, PostProcessing, HoleFilling, highConfidenceThreshold))
+        .def_readwrite("fillConfidenceThreshold", &StereoDepthConfig::PostProcessing::HoleFilling::fillConfidenceThreshold, DOC(dai, StereoDepthConfig, PostProcessing, HoleFilling, fillConfidenceThreshold))
+        .def_readwrite("minValidDisparity", &StereoDepthConfig::PostProcessing::HoleFilling::minValidDisparity, DOC(dai, StereoDepthConfig, PostProcessing, HoleFilling, minValidDisparity))
+        .def_readwrite("invalidateDisparities", &StereoDepthConfig::PostProcessing::HoleFilling::invalidateDisparities, DOC(dai, StereoDepthConfig, PostProcessing, HoleFilling, invalidateDisparities))
+        ;
+
+    _AdaptiveMedianFilter
+        .def(py::init<>())
+        .def_readwrite("enable", &StereoDepthConfig::PostProcessing::AdaptiveMedianFilter::enable, DOC(dai, StereoDepthConfig, PostProcessing, AdaptiveMedianFilter, enable))
+        .def_readwrite("confidenceThreshold", &StereoDepthConfig::PostProcessing::AdaptiveMedianFilter::confidenceThreshold, DOC(dai, StereoDepthConfig, PostProcessing, AdaptiveMedianFilter, confidenceThreshold))
+        ;
+
     postProcessing
         .def(py::init<>())
         .def_readwrite("median", &StereoDepthConfig::PostProcessing::median, DOC(dai, StereoDepthConfig, PostProcessing, median))
@@ -166,6 +191,8 @@ void bind_stereodepthconfig(pybind11::module& m, void* pCallstack){
         .def_readwrite("brightnessFilter", &StereoDepthConfig::PostProcessing::brightnessFilter, DOC(dai, StereoDepthConfig, PostProcessing, brightnessFilter))
         .def_readwrite("speckleFilter", &StereoDepthConfig::PostProcessing::speckleFilter, DOC(dai, StereoDepthConfig, PostProcessing, speckleFilter))
         .def_readwrite("decimationFilter", &StereoDepthConfig::PostProcessing::decimationFilter, DOC(dai, StereoDepthConfig, PostProcessing, decimationFilter))
+        .def_readwrite("adaptiveMedianFilter", &StereoDepthConfig::PostProcessing::adaptiveMedianFilter, DOC(dai, StereoDepthConfig, PostProcessing, adaptiveMedianFilter))
+        .def_readwrite("holeFilling", &StereoDepthConfig::PostProcessing::holeFilling, DOC(dai, StereoDepthConfig, PostProcessing, holeFilling))
         ;
 
     // KernelSize
@@ -182,6 +209,8 @@ void bind_stereodepthconfig(pybind11::module& m, void* pCallstack){
         .def_readwrite("kernelMask", &StereoDepthConfig::CensusTransform::kernelMask, DOC(dai, StereoDepthConfig, CensusTransform, kernelMask))
         .def_readwrite("enableMeanMode", &StereoDepthConfig::CensusTransform::enableMeanMode, DOC(dai, StereoDepthConfig, CensusTransform, enableMeanMode))
         .def_readwrite("threshold", &StereoDepthConfig::CensusTransform::threshold, DOC(dai, StereoDepthConfig, CensusTransform, threshold))
+        .def_readwrite("noiseThresholdOffset", &StereoDepthConfig::CensusTransform::noiseThresholdOffset, DOC(dai, StereoDepthConfig, CensusTransform, noiseThresholdOffset))
+        .def_readwrite("noiseThresholdScale", &StereoDepthConfig::CensusTransform::noiseThresholdScale, DOC(dai, StereoDepthConfig, CensusTransform, noiseThresholdScale))
         ;
 
     costMatchingLinearEquationParameters
@@ -206,11 +235,22 @@ void bind_stereodepthconfig(pybind11::module& m, void* pCallstack){
         .def_readwrite("linearEquationParameters", &StereoDepthConfig::CostMatching::linearEquationParameters, DOC(dai, StereoDepthConfig, CostMatching, linearEquationParameters))
         ;
 
-    // KernelSize
-    localAggregationMode
-        .value("AVG3x3", StereoDepthConfig::CostAggregation::LocalAggregationMode::AVG3x3, DOC(dai, StereoDepthConfig, CostAggregation, LocalAggregationMode, AVG3x3))
-        .value("CLAMP3x3", StereoDepthConfig::CostAggregation::LocalAggregationMode::CLAMP3x3, DOC(dai, StereoDepthConfig, CostAggregation, LocalAggregationMode, CLAMP3x3))
-        .value("PASS3x3", StereoDepthConfig::CostAggregation::LocalAggregationMode::PASS3x3, DOC(dai, StereoDepthConfig, CostAggregation, LocalAggregationMode, PASS3x3))
+    _P1Config
+        .def(py::init<>())
+        .def_readwrite("enableAdaptive", &StereoDepthConfig::CostAggregation::P1Config::enableAdaptive, DOC(dai, StereoDepthConfig, CostAggregation, P1Config, enableAdaptive))
+        .def_readwrite("defaultValue", &StereoDepthConfig::CostAggregation::P1Config::defaultValue, DOC(dai, StereoDepthConfig, CostAggregation, P1Config, defaultValue))
+        .def_readwrite("edgeValue", &StereoDepthConfig::CostAggregation::P1Config::edgeValue, DOC(dai, StereoDepthConfig, CostAggregation, P1Config, edgeValue))
+        .def_readwrite("smoothValue", &StereoDepthConfig::CostAggregation::P1Config::smoothValue, DOC(dai, StereoDepthConfig, CostAggregation, P1Config, smoothValue))
+        .def_readwrite("edgeThreshold", &StereoDepthConfig::CostAggregation::P1Config::edgeThreshold, DOC(dai, StereoDepthConfig, CostAggregation, P1Config, edgeThreshold))
+        .def_readwrite("smoothThreshold", &StereoDepthConfig::CostAggregation::P1Config::smoothThreshold, DOC(dai, StereoDepthConfig, CostAggregation, P1Config, smoothThreshold))
+        ;
+
+    _P2Config
+        .def(py::init<>())
+        .def_readwrite("enableAdaptive", &StereoDepthConfig::CostAggregation::P2Config::enableAdaptive, DOC(dai, StereoDepthConfig, CostAggregation, P2Config, enableAdaptive))
+        .def_readwrite("defaultValue", &StereoDepthConfig::CostAggregation::P2Config::defaultValue, DOC(dai, StereoDepthConfig, CostAggregation, P2Config, defaultValue))
+        .def_readwrite("edgeValue", &StereoDepthConfig::CostAggregation::P2Config::edgeValue, DOC(dai, StereoDepthConfig, CostAggregation, P2Config, edgeValue))
+        .def_readwrite("smoothValue", &StereoDepthConfig::CostAggregation::P2Config::smoothValue, DOC(dai, StereoDepthConfig, CostAggregation, P2Config, smoothValue))
         ;
 
     costAggregation
@@ -220,7 +260,8 @@ void bind_stereodepthconfig(pybind11::module& m, void* pCallstack){
         .def_readwrite("horizontalPenaltyCostP2", &StereoDepthConfig::CostAggregation::horizontalPenaltyCostP2, DOC(dai, StereoDepthConfig, CostAggregation, horizontalPenaltyCostP2))
         .def_readwrite("verticalPenaltyCostP1", &StereoDepthConfig::CostAggregation::verticalPenaltyCostP1, DOC(dai, StereoDepthConfig, CostAggregation, verticalPenaltyCostP1))
         .def_readwrite("verticalPenaltyCostP2", &StereoDepthConfig::CostAggregation::verticalPenaltyCostP2, DOC(dai, StereoDepthConfig, CostAggregation, verticalPenaltyCostP2))
-        .def_readwrite("localAggregationMode", &StereoDepthConfig::CostAggregation::localAggregationMode, DOC(dai, StereoDepthConfig, CostAggregation, localAggregationMode))
+        .def_readwrite("p1Config", &StereoDepthConfig::CostAggregation::p1Config, DOC(dai, StereoDepthConfig, CostAggregation, p1Config))
+        .def_readwrite("p2Config", &StereoDepthConfig::CostAggregation::p2Config, DOC(dai, StereoDepthConfig, CostAggregation, p2Config))
         ;
 
     stereoDepthConfig
@@ -230,6 +271,7 @@ void bind_stereodepthconfig(pybind11::module& m, void* pCallstack){
         .def_readwrite("censusTransform", &StereoDepthConfig::censusTransform,  DOC(dai, StereoDepthConfig, censusTransform))
         .def_readwrite("costMatching", &StereoDepthConfig::costMatching,  DOC(dai, StereoDepthConfig, costMatching))
         .def_readwrite("costAggregation", &StereoDepthConfig::costAggregation,  DOC(dai, StereoDepthConfig, costAggregation))
+        .def_readwrite("confidenceMetrics", &StereoDepthConfig::confidenceMetrics,  DOC(dai, StereoDepthConfig, confidenceMetrics))
         ;
     // legacy
     m.attr("StereoDepthConfig").attr("MedianFilter") = medianFilter;

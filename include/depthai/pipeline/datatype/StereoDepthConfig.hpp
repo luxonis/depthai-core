@@ -97,23 +97,6 @@ class StereoDepthConfig : public Buffer {
          */
         std::int32_t disparityShift = 0;
 
-        /**
-         * Replace of invalid disparity with computed spatial kernel average.
-         */
-        bool replaceInvalidDisparity = false;
-
-        /**
-         * Outliers Remove Threshold
-         */
-        uint8_t outlierRemoveThreshold = 15;
-        /**
-         * Census Threshold
-         */
-        uint8_t outlierCensusThreshold = 32;
-        /**
-         * Kernel radius difference threshold
-         */
-        uint8_t outlierDiffThreshold = 4;
         /*
          * Used only for debug purposes. centerAlignmentShiftFactor is set automatically in firmware,
          * from camera extrinsics when depth alignment to camera is enabled.
@@ -146,12 +129,49 @@ class StereoDepthConfig : public Buffer {
                           leftRightCheckThreshold,
                           subpixelFractionalBits,
                           disparityShift,
-                          replaceInvalidDisparity,
-                          outlierRemoveThreshold,
-                          outlierCensusThreshold,
-                          outlierDiffThreshold,
                           centerAlignmentShiftFactor,
                           numInvalidateEdgePixels);
+    };
+
+    struct ConfidenceMetrics {
+        /**
+         * Weight used with occlusion estimation to generate final confidence map.
+         * Valid range is [0,32]
+         */
+        uint8_t occlusionConfidenceWeight = 20;
+        /**
+         * Weight used with local neighborhood motion vector variance estimation to generate final confidence map.
+         * Valid range is [0,32].
+         */
+        uint8_t motionVectorConfidenceWeight = 4;
+        /**
+         * Threshold offset for MV variance in confidence generation. A value of 0 allows most variance.
+         * Valid range is [0,3].
+         */
+        uint8_t motionVectorConfidenceThreshold = 1;
+        /**
+         * Weight used with flatness estimation to generate final confidence map.
+         * Valid range is [0,32].
+         */
+        uint8_t flatnessConfidenceWeight = 8;
+        /**
+         * Threshold for flatness check in SGM block.
+         * Valid range is [1,7].
+         */
+        uint8_t flatnessConfidenceThreshold = 2;
+        /**
+         * Flag to indicate whether final confidence value will be overidden by flatness value.
+         * Valid range is {true,false}.
+         */
+        bool flatnessOverride = false;
+
+        DEPTHAI_SERIALIZE(ConfidenceMetrics,
+                          occlusionConfidenceWeight,
+                          motionVectorConfidenceWeight,
+                          motionVectorConfidenceThreshold,
+                          flatnessConfidenceWeight,
+                          flatnessConfidenceThreshold,
+                          flatnessOverride);
     };
 
     /**
@@ -380,8 +400,71 @@ class StereoDepthConfig : public Buffer {
          */
         DecimationFilter decimationFilter;
 
-        DEPTHAI_SERIALIZE(
-            PostProcessing, median, bilateralSigmaValue, spatialFilter, temporalFilter, thresholdFilter, brightnessFilter, speckleFilter, decimationFilter);
+        struct HoleFilling {
+            /**
+             * Flag to enable post-processing hole-filling.
+             */
+            bool enable = true;
+
+            /**
+             * Pixels with confidence higher than this value are used to calculate an average disparity per superpixel.
+             * Valid range is [1,255]
+             */
+            uint8_t highConfidenceThreshold = 210;
+            /**
+             * Pixels with confidence below this value will be filled with the average disparity of their corresponding superpixel.
+             * Valid range is [1,255].
+             */
+            uint8_t fillConfidenceThreshold = 200;
+            /**
+             *    Represents the required percentange of pixels with confidence value
+             *    above nHighConfThresh that are used to calculate average disparity per
+             *    superpixel, where 1 means 50% or half, 2 means 25% or a quarter and 3
+             *    means 12.5% or an eighth. If the required number of pixels are not
+             *    found, the holes will not be filled.
+             */
+            uint8_t minValidDisparity = 1;  // todo enum: 50%, 25%, 12.5%
+            /**
+             * If enabled, sets to 0 the disparity of pixels with confidence below
+             * nFillConfThresh, which did not pass nMinValidPixels criteria.
+             * Valid range is {true, false}.
+             */
+            bool invalidateDisparities = true;
+
+            DEPTHAI_SERIALIZE(HoleFilling, enable, highConfidenceThreshold, fillConfidenceThreshold, minValidDisparity, invalidateDisparities);
+        };
+
+        HoleFilling holeFilling;
+
+        struct AdaptiveMedianFilter {
+            /**
+             * Flag to enable adaptive median filtering for a final pass of filtering on low confidence pixels.
+             */
+            bool enable = true;
+
+            /**
+             * Confidence threshold for adaptive median filtering.
+             * Should be less than nFillConfThresh value used in evaDfsHoleFillConfig.
+             * Valid range is [0,255].
+             */
+            uint8_t confidenceThreshold = 200;
+
+            DEPTHAI_SERIALIZE(AdaptiveMedianFilter, enable, confidenceThreshold);
+        };
+
+        AdaptiveMedianFilter adaptiveMedianFilter;
+
+        DEPTHAI_SERIALIZE(PostProcessing,
+                          median,
+                          bilateralSigmaValue,
+                          spatialFilter,
+                          temporalFilter,
+                          thresholdFilter,
+                          brightnessFilter,
+                          speckleFilter,
+                          decimationFilter,
+                          holeFilling,
+                          adaptiveMedianFilter);
     };
 
     /**
@@ -434,7 +517,20 @@ class StereoDepthConfig : public Buffer {
          */
         uint32_t threshold = 0;
 
-        DEPTHAI_SERIALIZE(CensusTransform, kernelSize, kernelMask, enableMeanMode, threshold);
+        /**
+         * Used to reduce small fixed levels of noise across all luminance values
+         * in the current image.
+         * Valid range is [0,127]. Default value is 0.
+         */
+        int8_t noiseThresholdOffset = 1;
+        /**
+         * Used to reduce noise values that increase with luminance in the
+         * current image.
+         * Valid range is [-128,127]. Default value is 0.
+         */
+        int8_t noiseThresholdScale = 1;
+
+        DEPTHAI_SERIALIZE(CensusTransform, kernelSize, kernelMask, enableMeanMode, threshold, noiseThresholdOffset, noiseThresholdScale);
     };
 
     /**
@@ -470,10 +566,9 @@ class StereoDepthConfig : public Buffer {
         uint8_t invalidDisparityValue = 0;
 
         /**
-         * Disparities with confidence value under this threshold are accepted.
-         * Higher confidence threshold means disparities with less confidence are accepted too.
+         * Disparities with confidence value over this threshold are accepted.
          */
-        uint8_t confidenceThreshold = 245;
+        uint8_t confidenceThreshold = 55;
 
         /**
          * The linear equation applied for computing the cost is:
@@ -533,9 +628,89 @@ class StereoDepthConfig : public Buffer {
          */
         uint16_t verticalPenaltyCostP2 = defaultPenaltyP2;
 
-        enum class LocalAggregationMode : std::uint32_t { AVG3x3, CLAMP3x3, PASS3x3 };
+        /**
+         * Structure for adaptive P1 penalty configuration.
+         */
+        struct P1Config {
+            /**
+             * Used to disable/enable adaptive penalty.
+             */
+            bool enableAdaptive = true;
+            /**
+             * Used as the default penalty value when nAdapEnable is disabled.
+             * A bigger value enforces higher smoothness and reduced noise at the cost of lower edge accuracy.
+             * This value must be smaller than P2 default penalty.
+             * Valid range is [10,50].
+             */
+            uint8_t defaultValue = 11;
+            /**
+             * Penalty value on edges when nAdapEnable is enabled.
+             * A smaller penalty value permits higher change in disparity.
+             * This value must be smaller than or equal to P2 edge penalty.
+             * Valid range is [10,50].
+             */
+            uint8_t edgeValue = 10;
+            /**
+             * Penalty value on low texture regions when nAdapEnable is enabled.
+             * A smaller penalty value permits higher change in disparity.
+             * This value must be smaller than or equal to P2 smoothness penalty.
+             * Valid range is [10,50].
+             */
+            uint8_t smoothValue = 22;
+            /**
+             * Threshold value on edges when nAdapEnable is enabled.
+             * A bigger value permits higher neighboring feature dissimilarity tolerance.
+             * This value is shared with P2 penalty configuration.
+             * Valid range is [8,16].
+             */
+            uint8_t edgeThreshold = 15;
+            /**
+             * Threshold value on low texture regions when nAdapEnable is enabled.
+             * A bigger value permits higher neighboring feature dissimilarity tolerance.
+             * This value is shared with P2 penalty configuration.
+             * Valid range is [2,12].
+             */
+            uint8_t smoothThreshold = 5;
 
-        LocalAggregationMode localAggregationMode = LocalAggregationMode::AVG3x3;
+            DEPTHAI_SERIALIZE(P1Config, enableAdaptive, defaultValue, edgeValue, smoothValue, edgeThreshold, smoothThreshold);
+        };
+
+        P1Config p1Config;
+
+        /**
+         * Structure for adaptive P2 penalty configuration.
+         */
+        struct P2Config {
+            /**
+             * Used to disable/enable adaptive penalty.
+             */
+            bool enableAdaptive = true;
+            /**
+             * Used as the default penalty value when nAdapEnable is disabled.
+             * A bigger value enforces higher smoothness and reduced noise at the cost of lower edge accuracy.
+             * This value must be larger than P1 default penalty.
+             * Valid range is [20,100].
+             */
+            uint8_t defaultValue = 33;
+            /**
+             * Penalty value on edges when nAdapEnable is enabled.
+             * A smaller penalty value permits higher change in disparity.
+             * This value must be larger than or equal to P1 edge penalty.
+             * Valid range is [20,100].
+             */
+            uint8_t edgeValue = 22;
+            /**
+             * Penalty value on low texture regions when nAdapEnable is enabled.
+             * A smaller penalty value permits higher change in disparity.
+             * This value must be larger than or equal to P1 smoothness penalty.
+             * Valid range is [20,100].
+             */
+            uint8_t smoothValue = 63;
+
+            DEPTHAI_SERIALIZE(P2Config, enableAdaptive, defaultValue, edgeValue, smoothValue);
+        };
+
+        P2Config p2Config;
 
         DEPTHAI_SERIALIZE(CostAggregation,
                           divisionFactor,
@@ -543,7 +718,8 @@ class StereoDepthConfig : public Buffer {
                           horizontalPenaltyCostP2,
                           verticalPenaltyCostP1,
                           verticalPenaltyCostP2,
-                          localAggregationMode);
+                          p1Config,
+                          p2Config);
     };
 
     /**
@@ -681,11 +857,13 @@ class StereoDepthConfig : public Buffer {
      */
     CostAggregation costAggregation;
 
+    ConfidenceMetrics confidenceMetrics;
+
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
         metadata = utility::serialize(*this);
         datatype = DatatypeEnum::StereoDepthConfig;
     };
-    DEPTHAI_SERIALIZE(StereoDepthConfig, algorithmControl, postProcessing, censusTransform, costMatching, costAggregation);
+    DEPTHAI_SERIALIZE(StereoDepthConfig, algorithmControl, postProcessing, censusTransform, costMatching, costAggregation, confidenceMetrics);
 };
 
 }  // namespace dai
