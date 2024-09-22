@@ -1,0 +1,268 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 772063235..9dd7026d6 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -382,8 +382,13 @@ set(TARGET_CORE_SOURCES
+     src/nn_archive/NNArchiveConfig.cpp
+     src/modelzoo/NNModelDescription.cpp
+     src/modelzoo/Zoo.cpp
++    src/models/Models.cpp
++    src/models/ModelLoader.cpp
+ )
+ 
++add_executable(model_test src/models/main.cpp)
++target_link_libraries(model_test PRIVATE ${TARGET_CORE_NAME})
++
+ set(TARGET_OPENCV_SOURCES
+     src/opencv/ImgFrame.cpp
+     src/pipeline/node/host/Display.cpp
+diff --git a/bindings/python/src/modelzoo/ZooBindings.cpp b/bindings/python/src/modelzoo/ZooBindings.cpp
+index 020906074..508534dbc 100644
+--- a/bindings/python/src/modelzoo/ZooBindings.cpp
++++ b/bindings/python/src/modelzoo/ZooBindings.cpp
+@@ -2,6 +2,11 @@
+ 
+ // depthai
+ #include "depthai/modelzoo/Zoo.hpp"
++#include <depthai/models/Models.hpp>
++#include <depthai/models/ModelLoader.hpp>
++#include <depthai/models/ModelZoo.hpp>
++
++// Model bindings
+ 
+ void ZooBindings::bind(pybind11::module& m, void* pCallstack) {
+     using namespace dai;
+@@ -32,4 +37,43 @@ void ZooBindings::bind(pybind11::module& m, void* pCallstack) {
+           py::arg("cacheDirectory") = MODEL_ZOO_DEFAULT_CACHE_DIRECTORY,
+           py::arg("apiKey") = "",
+           DOC(dai, downloadModelsFromZoo));
+-}
+\ No newline at end of file
++
++    // Create a new submodule
++    py::module m_model = m.def_submodule("model");
++    py::module m_zoo = m_model.def_submodule("zoo");
++
++    // Bind Model
++    py::class_<depthai::model::Model, std::shared_ptr<depthai::model::Model>>(m_model, "Model");
++    py::enum_<depthai::model::ModelType>(m_model, "ModelType")
++        .value("BLOB", depthai::model::ModelType::BLOB)
++        .value("SUPERBLOB", depthai::model::ModelType::SUPERBLOB)
++        .value("DLC", depthai::model::ModelType::DLC)
++        .value("NNARCHIVE", depthai::model::ModelType::NNARCHIVE)
++        .export_values();
++
++    // Bind ModelSettings
++    py::class_<depthai::model::ModelSettings, std::shared_ptr<depthai::model::ModelSettings>>(m_model, "ModelSettings");
++
++    // Bind BlobSettings
++    py::class_<depthai::model::BlobSettings, std::shared_ptr<depthai::model::BlobSettings>>(m_model, "BlobSettings");
++
++    // Bind SuperBlobSettings
++    py::class_<depthai::model::SuperBlobSettings, std::shared_ptr<depthai::model::SuperBlobSettings>>(m_model, "SuperBlobSettings");
++
++    // Bind DlcSettings
++    py::class_<depthai::model::DlcSettings, std::shared_ptr<depthai::model::DlcSettings>>(m_model, "DlcSettings");
++
++    // Bind BlobModel
++    py::class_<depthai::model::BlobModel, std::shared_ptr<depthai::model::BlobModel>>(m_model, "BlobModel");
++
++    // Bind SuperBlobModel
++    py::class_<depthai::model::SuperBlobModel, std::shared_ptr<depthai::model::SuperBlobModel>>(m_model, "SuperBlobModel");
++
++    // Bind DlcModel
++    py::class_<depthai::model::DlcModel, std::shared_ptr<depthai::model::DlcModel>>(m_model, "DlcModel");
++
++    // Bind load function
++    m_model.def("load", py::overload_cast<const std::string&>(&depthai::model::load), py::arg("path"));
++    m_zoo.def("load", &depthai::model::zoo::load, py::arg("ModelDescription"));
++
++}
+diff --git a/bindings/python/src/pipeline/node/NeuralNetworkBindings.cpp b/bindings/python/src/pipeline/node/NeuralNetworkBindings.cpp
+index c6288efc7..04028d327 100644
+--- a/bindings/python/src/pipeline/node/NeuralNetworkBindings.cpp
++++ b/bindings/python/src/pipeline/node/NeuralNetworkBindings.cpp
+@@ -5,6 +5,8 @@
+ #include "depthai/pipeline/Node.hpp"
+ #include "depthai/pipeline/node/NeuralNetwork.hpp"
+ 
++#include "depthai/models/Models.hpp"
++
+ 
+ void bind_neuralnetwork(pybind11::module& m, void* pCallstack){
+ 
+@@ -44,6 +46,9 @@ void bind_neuralnetwork(pybind11::module& m, void* pCallstack){
+         .def("setBlobPath", &NeuralNetwork::setBlobPath, py::arg("path"), DOC(dai, node, NeuralNetwork, setBlobPath))
+         .def("setNumPoolFrames", &NeuralNetwork::setNumPoolFrames, py::arg("numFrames"), DOC(dai, node, NeuralNetwork, setNumPoolFrames))
+         .def("setNumInferenceThreads", &NeuralNetwork::setNumInferenceThreads, py::arg("numThreads"), DOC(dai, node, NeuralNetwork, setNumInferenceThreads))
++        .def("setModel", py::overload_cast<const depthai::model::BlobModel&>(&NeuralNetwork::setModel), py::arg("model"))
++        .def("setModel", py::overload_cast<const depthai::model::SuperBlobModel&>(&NeuralNetwork::setModel), py::arg("model"))
++        .def("setModel", py::overload_cast<const depthai::model::DlcModel&>(&NeuralNetwork::setModel), py::arg("model"))
+         .def("setNumNCEPerInferenceThread",
+              &NeuralNetwork::setNumNCEPerInferenceThread,
+              py::arg("numNCEPerThread"),
+diff --git a/examples/python/RVC2/NNArchive/nn_archive.py b/examples/python/RVC2/NNArchive/nn_archive.py
+index a1d62aff7..02e9f9adf 100644
+--- a/examples/python/RVC2/NNArchive/nn_archive.py
++++ b/examples/python/RVC2/NNArchive/nn_archive.py
+@@ -6,7 +6,6 @@ import numpy as np
+ import time
+ 
+ # Get argument first
+-modelDescription = dai.NNModelDescription(modelSlug="yolov6-nano", platform="RVC2")
+ archivePath = dai.getModelFromZoo(modelDescription, useCached=True)
+ 
+ # Create pipeline
+@@ -21,6 +20,18 @@ with dai.Pipeline() as pipeline:
+     nnArchive = dai.NNArchive(archivePath)
+     h, w = nnArchive.getConfig().getConfigV1().model.inputs[0].shape[-2:]
+     camRgb.setPreviewSize(w, h)
++
++    """
++    # load model
++    modelDescription = dai.NNModelDescription(modelSlug="yolov6-nano", platform="RVC2")
++    model = dai.model.zoo.load(modelDescription)
++    settings = model.settings()
++
++    # Set model
++    detectionNetwork.setModel
++    """
++
++
+     detectionNetwork = pipeline.create(dai.node.DetectionNetwork).build(
+         camRgb.preview, nnArchive
+     )
+diff --git a/include/depthai/openvino/OpenVINO.hpp b/include/depthai/openvino/OpenVINO.hpp
+index 6e4218301..49dc69854 100644
+--- a/include/depthai/openvino/OpenVINO.hpp
++++ b/include/depthai/openvino/OpenVINO.hpp
+@@ -82,7 +82,7 @@ class OpenVINO {
+          * @param numShaves: Number of shaves to generate the blob for. Must be between 1 and NUMBER_OF_PATCHES.
+          * @return dai::OpenVINO::Blob: Blob compiled for the specified number of shaves
+          */
+-        dai::OpenVINO::Blob getBlobWithNumShaves(int numShaves);
++        dai::OpenVINO::Blob getBlobWithNumShaves(int numShaves) const;
+ 
+        private:
+         // A header in the superblob containing metadata about the blob and patches
+@@ -99,16 +99,16 @@ class OpenVINO {
+         std::vector<uint8_t> readSuperBlobFile(const std::string& path);
+ 
+         // Get a pointer to the first byte of the blob data
+-        const uint8_t* getBlobDataPointer();
++        const uint8_t* getBlobDataPointer() const;
+ 
+         // Get the size in bytes of the blob data
+-        int64_t getBlobDataSize();
++        int64_t getBlobDataSize() const;
+ 
+         // Get a pointer to the first byte of the patch data for a specific number of shaves
+-        const uint8_t* getPatchDataPointer(int numShaves);
++        const uint8_t* getPatchDataPointer(int numShaves) const;
+ 
+         // Get the size in bytes of the patch data for a specific number of shaves
+-        int64_t getPatchDataSize(int numShaves);
++        int64_t getPatchDataSize(int numShaves) const;
+ 
+         // Load header - throw if an error occurs
+         void loadAndCheckHeader();
+diff --git a/include/depthai/pipeline/node/DetectionNetwork.hpp b/include/depthai/pipeline/node/DetectionNetwork.hpp
+index c2ee2ce35..ddd2dcf35 100644
+--- a/include/depthai/pipeline/node/DetectionNetwork.hpp
++++ b/include/depthai/pipeline/node/DetectionNetwork.hpp
+@@ -28,6 +28,23 @@ class DetectionNetwork : public DeviceNodeGroup {
+         return networkPtr;
+     }
+ 
++
++    void setModel(const depthai::model::ModelVariant& model) {
++        std::visit([this](auto &&p){this->setModel(p);}, model);
++    }
++
++    void setModel(const depthai::model::BlobModel& model) {
++        neuralNetwork->setModel(model);
++    }
++
++    void setModel(const depthai::model::SuperBlobModel& model) {
++        neuralNetwork->setModel(model);
++    }
++
++    void setModel(const depthai::model::DlcModel& model) {
++        neuralNetwork->setModel(model);
++    }
++
+     std::shared_ptr<DetectionNetwork> build(Node::Output& input, const NNArchive& nnArchive);
+     std::shared_ptr<DetectionNetwork> build(std::shared_ptr<Camera> input, dai::NNModelDescription modelDesc, float fps = 30.0f);
+ 
+diff --git a/include/depthai/pipeline/node/NeuralNetwork.hpp b/include/depthai/pipeline/node/NeuralNetwork.hpp
+index 1cdba3298..32428eddc 100644
+--- a/include/depthai/pipeline/node/NeuralNetwork.hpp
++++ b/include/depthai/pipeline/node/NeuralNetwork.hpp
+@@ -1,5 +1,6 @@
+ #pragma once
+ 
++#include <depthai/models/Models.hpp>
+ #include <depthai/modelzoo/NNModelDescription.hpp>
+ #include <depthai/pipeline/DeviceNode.hpp>
+ #include <depthai/pipeline/node/Camera.hpp>
+@@ -74,6 +75,20 @@ class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNet
+      */
+     void setNNArchive(const NNArchive& nnArchive);
+ 
++    void setModel(const depthai::model::ModelVariant& model) {
++        std::visit([this](auto &&p){this->setModel(p);}, model);
++    }
++
++    void setModel(const depthai::model::BlobModel& model) {
++        setBlob(model.model());
++    }
++    void setModel(const depthai::model::SuperBlobModel& model) {
++        setBlob(model.model().getBlobWithNumShaves(model.settings().numShaves));
++    }
++    void setModel(const depthai::model::DlcModel& model) {
++        // pass
++    }
++
+     /**
+      * @brief Set NNArchive for this Node, throws if the archive's type is not SUPERBLOB
+      *
+diff --git a/src/openvino/OpenVINO.cpp b/src/openvino/OpenVINO.cpp
+index e52553b56..834181a00 100644
+--- a/src/openvino/OpenVINO.cpp
++++ b/src/openvino/OpenVINO.cpp
+@@ -99,7 +99,7 @@ OpenVINO::SuperBlob::SuperBlob(std::vector<uint8_t> data) {
+     validateSuperblob();
+ }
+ 
+-dai::OpenVINO::Blob OpenVINO::SuperBlob::getBlobWithNumShaves(int numShaves) {
++dai::OpenVINO::Blob OpenVINO::SuperBlob::getBlobWithNumShaves(int numShaves) const{
+     if(numShaves < 1 || numShaves > static_cast<int>(OpenVINO::SuperBlob::NUMBER_OF_PATCHES)) {
+         throw std::out_of_range("Invalid number of shaves: " + std::to_string(numShaves) + " (expected 1 to "
+                                 + std::to_string(OpenVINO::SuperBlob::NUMBER_OF_PATCHES) + ")");
+@@ -162,22 +162,22 @@ OpenVINO::SuperBlob::SuperBlobHeader OpenVINO::SuperBlob::SuperBlobHeader::fromD
+     return header;
+ }
+ 
+-const uint8_t* OpenVINO::SuperBlob::getBlobDataPointer() {
++const uint8_t* OpenVINO::SuperBlob::getBlobDataPointer() const {
+     const uint64_t offset = SuperBlobHeader::HEADER_SIZE;
+     return data.data() + offset;
+ }
+ 
+-int64_t OpenVINO::SuperBlob::getBlobDataSize() {
++int64_t OpenVINO::SuperBlob::getBlobDataSize() const {
+     return header.blobSize;
+ }
+ 
+-const uint8_t* OpenVINO::SuperBlob::getPatchDataPointer(int numShaves) {
++const uint8_t* OpenVINO::SuperBlob::getPatchDataPointer(int numShaves) const {
+     const uint64_t offset =
+         SuperBlobHeader::HEADER_SIZE + header.blobSize + std::accumulate(header.patchSizes.begin(), header.patchSizes.begin() + numShaves - 1, 0);
+     return data.data() + offset;
+ }
+ 
+-int64_t OpenVINO::SuperBlob::getPatchDataSize(int numShaves) {
++int64_t OpenVINO::SuperBlob::getPatchDataSize(int numShaves) const {
+     return header.patchSizes[numShaves - 1];
+ }
+ 

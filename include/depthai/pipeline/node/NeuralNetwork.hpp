@@ -1,5 +1,6 @@
 #pragma once
 
+#include <depthai/models/Models.hpp>
 #include <depthai/modelzoo/NNModelDescription.hpp>
 #include <depthai/pipeline/DeviceNode.hpp>
 #include <depthai/pipeline/node/Camera.hpp>
@@ -73,6 +74,20 @@ class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNet
      * @param nnArchive: NNArchive to set
      */
     void setNNArchive(const NNArchive& nnArchive);
+
+    void setModel(const depthai::model::ModelVariant& model) {
+        std::visit([this](auto &&p){this->setModel(p);}, model);
+    }
+
+    void setModel(const depthai::model::BlobModel& model) {
+        setBlob(model.model());
+    }
+    void setModel(const depthai::model::SuperBlobModel& model) {
+        setBlob(model.model().getBlobWithNumShaves(model.settings().numShaves));
+    }
+    void setModel(const depthai::model::DlcModel& model) {
+        // pass
+    }
 
     /**
      * @brief Set NNArchive for this Node, throws if the archive's type is not SUPERBLOB

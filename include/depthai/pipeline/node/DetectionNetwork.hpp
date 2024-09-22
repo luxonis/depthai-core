@@ -28,6 +28,23 @@ class DetectionNetwork : public DeviceNodeGroup {
         return networkPtr;
     }
 
+
+    void setModel(const depthai::model::ModelVariant& model) {
+        std::visit([this](auto &&p){this->setModel(p);}, model);
+    }
+
+    void setModel(const depthai::model::BlobModel& model) {
+        neuralNetwork->setModel(model);
+    }
+
+    void setModel(const depthai::model::SuperBlobModel& model) {
+        neuralNetwork->setModel(model);
+    }
+
+    void setModel(const depthai::model::DlcModel& model) {
+        neuralNetwork->setModel(model);
+    }
+
     std::shared_ptr<DetectionNetwork> build(Node::Output& input, const NNArchive& nnArchive);
     std::shared_ptr<DetectionNetwork> build(std::shared_ptr<Camera> input, dai::NNModelDescription modelDesc, float fps = 30.0f);
 

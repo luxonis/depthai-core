@@ -99,7 +99,7 @@ OpenVINO::SuperBlob::SuperBlob(std::vector<uint8_t> data) {
     validateSuperblob();
 }
 
-dai::OpenVINO::Blob OpenVINO::SuperBlob::getBlobWithNumShaves(int numShaves) {
+dai::OpenVINO::Blob OpenVINO::SuperBlob::getBlobWithNumShaves(int numShaves) const{
     if(numShaves < 1 || numShaves > static_cast<int>(OpenVINO::SuperBlob::NUMBER_OF_PATCHES)) {
         throw std::out_of_range("Invalid number of shaves: " + std::to_string(numShaves) + " (expected 1 to "
                                 + std::to_string(OpenVINO::SuperBlob::NUMBER_OF_PATCHES) + ")");
@@ -162,22 +162,22 @@ OpenVINO::SuperBlob::SuperBlobHeader OpenVINO::SuperBlob::SuperBlobHeader::fromD
     return header;
 }
 
-const uint8_t* OpenVINO::SuperBlob::getBlobDataPointer() {
+const uint8_t* OpenVINO::SuperBlob::getBlobDataPointer() const {
     const uint64_t offset = SuperBlobHeader::HEADER_SIZE;
     return data.data() + offset;
 }
 
-int64_t OpenVINO::SuperBlob::getBlobDataSize() {
+int64_t OpenVINO::SuperBlob::getBlobDataSize() const {
     return header.blobSize;
 }
 
-const uint8_t* OpenVINO::SuperBlob::getPatchDataPointer(int numShaves) {
+const uint8_t* OpenVINO::SuperBlob::getPatchDataPointer(int numShaves) const {
     const uint64_t offset =
         SuperBlobHeader::HEADER_SIZE + header.blobSize + std::accumulate(header.patchSizes.begin(), header.patchSizes.begin() + numShaves - 1, 0);
     return data.data() + offset;
 }
 
-int64_t OpenVINO::SuperBlob::getPatchDataSize(int numShaves) {
+int64_t OpenVINO::SuperBlob::getPatchDataSize(int numShaves) const {
     return header.patchSizes[numShaves - 1];
 }
 

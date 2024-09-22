@@ -6,7 +6,6 @@ import numpy as np
 import time
 
 # Get argument first
-modelDescription = dai.NNModelDescription(modelSlug="yolov6-nano", platform="RVC2")
 archivePath = dai.getModelFromZoo(modelDescription, useCached=True)
 
 # Create pipeline
@@ -21,6 +20,18 @@ with dai.Pipeline() as pipeline:
     nnArchive = dai.NNArchive(archivePath)
     h, w = nnArchive.getConfig().getConfigV1().model.inputs[0].shape[-2:]
     camRgb.setPreviewSize(w, h)
+
+    """
+    # load model
+    modelDescription = dai.NNModelDescription(modelSlug="yolov6-nano", platform="RVC2")
+    model = dai.model.zoo.load(modelDescription)
+    settings = model.settings()
+
+    # Set model
+    detectionNetwork.setModel
+    """
+
+
     detectionNetwork = pipeline.create(dai.node.DetectionNetwork).build(
         camRgb.preview, nnArchive
     )
