@@ -5,7 +5,7 @@
 #include <pybind11/stl_bind.h>
 
 #include "depthai/nn_archive/NNArchive.hpp"
-#include "depthai/nn_archive/NNArchiveConfig.hpp"
+#include "depthai/nn_archive/NNArchiveVersionedConfig.hpp"
 #include "depthai/nn_archive/NNArchiveEntry.hpp"
 
 // v1 nn_archive bindings
@@ -32,8 +32,9 @@ void NNArchiveBindings::bind(pybind11::module& m, void* pCallstack) {
     py::class_<NNArchive> nnArchive(m, "NNArchive", DOC(dai, NNArchive));
     py::class_<NNArchiveOptions> nnArchiveOptions(m, "NNArchiveOptions", DOC(dai, NNArchiveOptions));
 
-    // NNArchiveConfig
-    py::class_<NNArchiveConfig> nnArchiveConfig(m, "NNArchiveConfig", DOC(dai, NNArchiveConfig));
+    // NNArchiveVersionedConfig
+    py::class_<NNArchiveVersionedConfig> nnArchiveVersionedConfig(m, "NNArchiveVersionedConfig", DOC(dai, NNArchiveVersionedConfig));
+    py::enum_<NNArchiveConfigVersion> nnArchiveConfigVersion(m, "NNArchiveConfigVersion", DOC(dai, NNArchiveConfigVersion));
 
     // NNArchiveEntry
     py::class_<NNArchiveEntry> nnArchiveEntry(m, "NNArchiveEntry", DOC(dai, NNArchiveEntry));
@@ -85,7 +86,8 @@ void NNArchiveBindings::bind(pybind11::module& m, void* pCallstack) {
     nnArchive.def("getBlob", &NNArchive::getBlob, DOC(dai, NNArchive, getBlob));
     nnArchive.def("getSuperBlob", &NNArchive::getSuperBlob, DOC(dai, NNArchive, getBlob));
     nnArchive.def("getModelPath", &NNArchive::getModelPath, DOC(dai, NNArchive, getModelPath));
-    nnArchive.def("getConfig", &NNArchive::getConfig, DOC(dai, NNArchive, getConfig));
+    nnArchive.def("getConfig", &NNArchive::getConfig<NNArchiveConfig>, DOC(dai, NNArchive, getConfig));
+    nnArchive.def("getConfigV1", &NNArchive::getConfig<v1::Config>, DOC(dai, NNArchive, getConfig));
     nnArchive.def("getModelType", &NNArchive::getModelType, DOC(dai, NNArchive, getModelType));
 
     // Bind NNArchive options
@@ -99,25 +101,32 @@ void NNArchiveBindings::bind(pybind11::module& m, void* pCallstack) {
         [](const NNArchiveOptions& opt) { return opt.extractFolder(); },
         [](NNArchiveOptions& opt, const std::string& extractFolder) { opt.extractFolder(extractFolder); });
 
-    // Bind NNArchiveConfig
-    nnArchiveConfig.def(py::init<const dai::Path&, NNArchiveEntry::Compression>(),
+    // Bind NNArchiveVersionedConfig
+    nnArchiveVersionedConfig.def(py::init<const dai::Path&, NNArchiveEntry::Compression>(),
                         py::arg("path"),
                         py::arg("compression") = NNArchiveEntry::Compression::AUTO,
-                        DOC(dai, NNArchiveConfig, NNArchiveConfig));
-    nnArchiveConfig.def(py::init<const std::vector<uint8_t>&, NNArchiveEntry::Compression>(),
+                        DOC(dai, NNArchiveVersionedConfig, NNArchiveVersionedConfig));
+    nnArchiveVersionedConfig.def(py::init<const std::vector<uint8_t>&, NNArchiveEntry::Compression>(),
                         py::arg("data"),
                         py::arg("compression") = NNArchiveEntry::Compression::AUTO,
-                        DOC(dai, NNArchiveConfig, NNArchiveConfig));
-    nnArchiveConfig.def(py::init([](const std::function<int()>& openCallback,
+                        DOC(dai, NNArchiveVersionedConfig, NNArchiveVersionedConfig));
+    nnArchiveVersionedConfig.def(py::init([](const std::function<int()>& openCallback,
                                     const std::function<std::vector<uint8_t>()>& readCallback,
                                     const std::function<int64_t(int64_t, NNArchiveEntry::Seek)>& seekCallback,
                                     const std::function<int64_t(int64_t)>& skipCallback,
                                     const std::function<int()>& closeCallback,
                                     NNArchiveEntry::Compression compression) {
         auto readCallbackWrapper = [readCallback]() { return std::make_shared<std::vector<uint8_t>>(readCallback()); };
-        return NNArchiveConfig(openCallback, readCallbackWrapper, seekCallback, skipCallback, closeCallback, compression);
+        return NNArchiveVersionedConfig(openCallback, readCallbackWrapper, seekCallback, skipCallback, closeCallback, compression);
     }));
-    nnArchiveConfig.def("getConfigV1", &NNArchiveConfig::getConfigV1, DOC(dai, NNArchiveConfig, getConfigV1));
+
+    // Bind NNArchiveVersionedConfig.
+    nnArchiveVersionedConfig.def("getConfig", &NNArchiveVersionedConfig::getConfig<NNArchiveConfig>, DOC(dai, NNArchiveVersionedConfig, getConfig));
+    nnArchiveVersionedConfig.def("getConfigV1", &NNArchiveVersionedConfig::getConfig<v1::Config>, DOC(dai, NNArchiveVersionedConfig, getConfig));
+    nnArchiveVersionedConfig.def("getVersion", &NNArchiveVersionedConfig::getVersion, DOC(dai, NNArchiveVersionedConfig, getVersion));
+
+    // Bind NNArchiveConfigVersion
+    nnArchiveConfigVersion.value("V1", NNArchiveConfigVersion::V1);
 
     archiveEntryCompression.value("AUTO", NNArchiveEntry::Compression::AUTO);
     archiveEntryCompression.value("RAW_FS", NNArchiveEntry::Compression::RAW_FS);

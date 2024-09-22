@@ -4,7 +4,7 @@
 #include <memory>
 #include <optional>
 
-#include "depthai/nn_archive/NNArchiveConfig.hpp"
+#include "depthai/nn_archive/NNArchiveVersionedConfig.hpp"
 #include "depthai/nn_archive/NNArchiveEntry.hpp"
 #include "depthai/openvino/OpenVINO.hpp"
 #include "depthai/utility/arg.hpp"
@@ -59,16 +59,20 @@ class NNArchive {
     /**
      * @brief Get NNArchive config wrapper
      *
-     * @return NNArchiveConfig: Archive config
+     * @return NNArchiveVersionedConfig: Archive config
      */
-    const NNArchiveConfig& getConfig() const;
+    const NNArchiveVersionedConfig& getVersionedConfig() const;
 
     /**
-     * @brief Get NNArchive config V1. If not present, this method will throw an error.
+     * @brief Get NNArchive config.
      *
-     * @return nn_archive::v1::Config: Archive config V1
+     * @tparam T: Type of config to get
+     * @return const T&: Config
      */
-    const nn_archive::v1::Config getConfigV1() const;
+    template <typename T>
+    const T& getConfig() const {
+        return getVersionedConfig().getConfig<T>();
+    }
 
     /**
      * @brief Get type of model contained in NNArchive
@@ -88,7 +92,7 @@ class NNArchive {
     NNArchiveOptions archiveOptions;
 
     // Archive config
-    std::shared_ptr<NNArchiveConfig> archiveConfigPtr;
+    std::shared_ptr<NNArchiveVersionedConfig> archiveVersionedConfigPtr;
 
     // Blob related stuff
     std::shared_ptr<OpenVINO::Blob> blobPtr;

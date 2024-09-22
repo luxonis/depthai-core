@@ -38,25 +38,16 @@ std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build(std::sha
                                                                         dai::NNModelDescription modelDesc,
                                                                         float fps) {
     setFromModelZoo(modelDesc);
-    // Get the input size
-    auto nnArchiveConfig = detectionParser->getNNArchiveConfig().getConfigV1();
-    if(!nnArchiveConfig.has_value()) {
-        DAI_CHECK_V(false, "The DetectionNetwork.build method only supports for NNConfigV1");
-    }
-    if(nnArchiveConfig->model.inputs.size() != 1) {
-        DAI_CHECK_V(false, "Only single input model is supported");
-    }
 
-    if(nnArchiveConfig->model.inputs[0].shape.size() != 4) {
-        DAI_CHECK_V(false, "Only 4D input shape is supported");
-    }
+    DAI_CHECK(detectionParser->getNNArchiveVersionedConfig().getVersion() == NNArchiveConfigVersion::V1, "Only NNArchive config V1 is supported.");
+    auto configV1 = detectionParser->getNNArchiveVersionedConfig().getConfig<nn_archive::v1::Config>();
 
-    // Check that the first two dimesions are 1 and 3
-    if(nnArchiveConfig->model.inputs[0].shape[0] != 1 || nnArchiveConfig->model.inputs[0].shape[1] != 3) {
-        DAI_CHECK_V(false, "Only 3 channel input is supported");
-    }
-    auto inputHeight = nnArchiveConfig->model.inputs[0].shape[2];
-    auto inputWidth = nnArchiveConfig->model.inputs[0].shape[3];
+    DAI_CHECK(configV1.model.inputs.size() == 1, "Only single input model is supported");
+    DAI_CHECK(configV1.model.inputs[0].shape.size() == 4, "Only 4D input shape is supported");
+    DAI_CHECK(configV1.model.inputs[0].shape[0] == 1 && configV1.model.inputs[0].shape[1] == 3, "Only 3 channel input is supported");
+
+    auto inputHeight = configV1.model.inputs[0].shape[2];
+    auto inputWidth = configV1.model.inputs[0].shape[3];
 
     auto type = dai::ImgFrame::Type::BGR888p;
     auto platform = getDevice()->getPlatform();

@@ -28,7 +28,7 @@ TEST_CASE("DetectionNetwork can load BLOB properly") {
 
     // Classes match
     auto loadedClasses = nn->getClasses().value();
-    auto archiveClasses = nnArchive.getConfig().getConfigV1()->model.heads->at(0).metadata.classes.value();
+    auto archiveClasses = nnArchive.getConfig().model.heads->at(0).metadata.classes.value();
     REQUIRE(loadedClasses == archiveClasses);
 
     // Throws if number of shaves is specified

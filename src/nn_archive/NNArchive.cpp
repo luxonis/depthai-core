@@ -1,4 +1,5 @@
 #include "depthai/nn_archive/NNArchive.hpp"
+#include "depthai/nn_archive/NNArchiveVersionedConfig.hpp"
 
 // internal private
 #include "common/ModelType.hpp"
@@ -12,10 +13,11 @@ NNArchive::NNArchive(const std::string& archivePath, NNArchiveOptions options) :
     if(!std::filesystem::exists(archivePath)) DAI_CHECK_V(false, "Archive file does not exist: {}", archivePath);
 
     // Read config
-    archiveConfigPtr.reset(new NNArchiveConfig(archivePath, archiveOptions.compression()));
+    archiveVersionedConfigPtr.reset(new NNArchiveVersionedConfig(archivePath, archiveOptions.compression()));
 
-    // Based on the config, read model path in archive
-    std::string modelPathInArchive = archiveConfigPtr->getConfigV1()->model.metadata.path;
+    // Only V1 config is supported at the moment
+    DAI_CHECK(archiveVersionedConfigPtr->getVersion() == NNArchiveConfigVersion::V1, "Only V1 config is supported at the moment");
+    std::string modelPathInArchive = archiveVersionedConfigPtr->getConfig<nn_archive::v1::Config>().model.metadata.path;
 
     // Read archive type
     modelType = model::readModelType(modelPathInArchive);
@@ -102,16 +104,8 @@ model::ModelType NNArchive::getModelType() const {
     return modelType;
 }
 
-const NNArchiveConfig& NNArchive::getConfig() const {
-    return *archiveConfigPtr;
-}
-
-const nn_archive::v1::Config NNArchive::getConfigV1() const {
-    std::optional<nn_archive::v1::Config> maybeConfig = archiveConfigPtr->getConfigV1();
-    if(!maybeConfig.has_value()) {
-        DAI_CHECK_V(false, "ConfigV1 not found in NNArchive. Please check your NNArchive.");
-    }
-    return maybeConfig.value();
+const NNArchiveVersionedConfig& NNArchive::getVersionedConfig() const {
+    return *archiveVersionedConfigPtr;
 }
 
 std::vector<uint8_t> NNArchive::readModelFromArchive(const std::string& archivePath, const std::string& modelPathInArchive) const {
