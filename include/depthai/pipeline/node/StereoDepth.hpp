@@ -31,14 +31,14 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
          */
         HIGH_DENSITY
     };
-    std::shared_ptr<StereoDepth> build(Node::Output& left, Node::Output& right, PresetMode presetMode = PresetMode::HIGH_DENSITY) {
+    std::shared_ptr<StereoDepth> build(Node::Output& left, Node::Output& right, PresetMode presetMode = PresetMode::HIGH_ACCURACY) {
         this->presetMode = presetMode;
         left.link(this->left);
         right.link(this->right);
         return std::static_pointer_cast<StereoDepth>(shared_from_this());
     }
 
-    std::shared_ptr<StereoDepth> build(bool autoCreateCameras, PresetMode presetMode = PresetMode::HIGH_DENSITY);
+    std::shared_ptr<StereoDepth> build(bool autoCreateCameras, PresetMode presetMode = PresetMode::HIGH_ACCURACY);
 
    protected:
     Properties& getProperties();
@@ -46,7 +46,7 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
     StereoDepth(std::unique_ptr<Properties> props);
 
    private:
-    PresetMode presetMode = PresetMode::HIGH_DENSITY;
+    PresetMode presetMode = PresetMode::HIGH_ACCURACY;
 
    public:
     using MedianFilter = dai::StereoDepthConfig::MedianFilter;
