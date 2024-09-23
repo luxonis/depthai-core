@@ -10,9 +10,15 @@ with dai.Pipeline(True) as pipeline:
     thermalConf = dai.ThermalConfig()
 
     pipeline.start()
+    WINDOW_NAME = "thermal"
+    cv2.namedWindow(WINDOW_NAME, cv2.WINDOW_NORMAL)
+    initialRescaleDone = False
     while True:
         thermalImg = thermalImgOut.get()
-        cv2.imshow("thermal", thermalImg.getCvFrame())
+        if not initialRescaleDone:
+            cv2.resizeWindow(WINDOW_NAME, thermalImg.getWidth(), thermalImg.getHeight())
+            initialRescaleDone = True
+        cv2.imshow(WINDOW_NAME, thermalImg.getCvFrame())
         key = cv2.waitKey(1)
         changed = False
         if key == ord("q"):

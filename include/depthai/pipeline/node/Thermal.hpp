@@ -30,7 +30,6 @@ class Thermal : public DeviceNodeCRTP<DeviceNode, Thermal, ThermalProperties> {
 
     /**
      * Initial config to use for thermal sensor.
-     * TODO(filip): Add this. But some stuff could become very tiny1c specific.
      */
     ThermalConfig initialConfig;
 

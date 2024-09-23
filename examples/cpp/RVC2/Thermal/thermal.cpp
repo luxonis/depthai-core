@@ -92,13 +92,13 @@ int main(int argc, char** args) {
             confUpdated = true;
         } else if(key == 'r') {
             if(!thermalConfig->imageParams.orientation) {
-                thermalConfig->imageParams.orientation = dai::ThermalImageOrientation::Normal;
+                thermalConfig->imageParams.orientation = dai::ThermalConfig::ThermalImageOrientation::Normal;
             }
             auto orientation = static_cast<uint8_t>(*thermalConfig->imageParams.orientation) + 1;
             if(orientation > 3) {
                 orientation = 0;
             }
-            thermalConfig->imageParams.orientation = static_cast<dai::ThermalImageOrientation>(orientation);
+            thermalConfig->imageParams.orientation = static_cast<dai::ThermalConfig::ThermalImageOrientation>(orientation);
             confUpdated = true;
         } else if(key == 't') {
             if(!thermalConfig->imageParams.timeNoiseFilterLevel) {
