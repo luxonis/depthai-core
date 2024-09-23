@@ -83,7 +83,11 @@ std::optional<std::vector<std::uint8_t>> TarGzAccessor::getFile(const std::strin
 TarGzAccessor Resources::getEmbeddedVisualizer() const {
     // Load visualizer tar.gz archive from memory
     auto fs = cmrc::depthai::get_filesystem();
-    auto visualizerTarGz = fs.open("depthai-visualizer-test-hash.tar.gz");
+    constexpr static auto FILE_NAME = "depthai-visualizer-" DEPTHAI_VISUALIZER_VERSION ".tar.gz";
+    if(!fs.exists(FILE_NAME)) {
+        throw std::runtime_error("Visualizer not found in embedded resources");
+    }
+    auto visualizerTarGz = fs.open(FILE_NAME);
     std::vector<std::uint8_t> visualizerTarGzData(visualizerTarGz.begin(), visualizerTarGz.end());
 
     // Create and return TarGzAccessor
