@@ -1,22 +1,25 @@
 #include "depthai/pipeline/node/ImageAlign.hpp"
 
-namespace dai {
-namespace node {
 
 namespace dai {
 namespace node {
 
-ImageAlign::ImageAlign(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : ImageAlign(par, nodeId, std::make_unique<ImageAlign::Properties>()) {}
-ImageAlign::ImageAlign(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
-    : NodeCRTP<Node, ImageAlign, ImageAlignProperties>(par, nodeId, std::move(props)),
-      rawConfig(std::make_shared<RawImageAlignConfig>()),
-      initialConfig(rawConfig) {
+ImageAlign::ImageAlign(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : ImageAlign(par, nodeId, std::make_unique<ImageAlignProperties>()) {}
+ImageAlign::ImageAlign(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<ImageAlignProperties> props)
+//: NodeCRTP<Node,ImageAlign>(par, nodeId)
+    {
+    //: NodeCRTP<Node, ImageAlign>(par, nodeId, std::move(props)),
+      //rawConfig(std::make_shared<RawImageAlignConfig>()),
+      //initialConfig(rawConfig) {
+    
+
+    //this->create(par,nodeId);
     setInputRefs({&inputConfig, &input, &inputAlignTo});
     setOutputRefs({&outputAligned, &passthroughInput});
 }
 
-ImageAlign::Properties& ImageAlign::getProperties() {
-    properties.initialConfig = *rawConfig;
+ImageAlignProperties& ImageAlign::getProperties() {
+    //properties.initialConfig = *rawConfig;
     return properties;
 }
 
@@ -45,5 +48,5 @@ ImageAlign& ImageAlign::setNumFramesPool(int numFramesPool) {
     return *this;
 }
 
-}  // namespace node
-}  // namespace dai
+};  // namespace node
+};  // namespace dai
