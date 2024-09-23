@@ -41,5 +41,5 @@ ImageAlign& ImageAlign::setNumFramesPool(int numFramesPool) {
     return *this;
 }
 
-};  // namespace node
-};  // namespace dai
+}  // namespace node
+}  // namespace dai

@@ -91,5 +91,5 @@ class ImageAlign : public NodeCRTP<Node, ImageAlign> {
     ImageAlign& setNumFramesPool(int numFramesPool);
 };
 
-};  // namespace node
-}; // namespace dai
+}  // namespace node
+} // namespace dai
