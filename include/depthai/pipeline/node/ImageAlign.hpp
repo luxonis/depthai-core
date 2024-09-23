@@ -22,7 +22,6 @@ class ImageAlign : public NodeCRTP<Node, ImageAlign> {
     ImageAlignProperties& getProperties();
 
    private:
-    //std::shared_ptr<RawImageAlignConfig> rawConfig;
     ImageAlignProperties properties;
 
    public:
@@ -38,10 +37,6 @@ class ImageAlign : public NodeCRTP<Node, ImageAlign> {
      * Input message with ability to modify parameters in runtime.
      * Default queue is non-blocking with size 4.
      */
-    // Input(Node& par, std::string n, Type t, bool blocking, int queueSize, std::vector<DatatypeHierarchy> types) 
-    //Input inputConfig{*this, "inputConfig", Input::Type::SReceiver, false, 4, {{DatatypeEnum::ImageAlignConfig, false}}};
-
-    //new consturctor: Input(Node& par, InputDescription desc, bool ref = true); 
     Input inputConfig{*this, {"inputConfig", DEFAULT_GROUP, false, 4, {{DatatypeEnum::ImageAlignConfig,false}}}};
 
 
@@ -57,20 +52,17 @@ class ImageAlign : public NodeCRTP<Node, ImageAlign> {
      * Input align to message.
      * Default queue is non-blocking with size 1.
      */
-    //Input inputAlignTo{*this, "inputAlignTo", Input::Type::SReceiver, false, 1, true, {{DatatypeEnum::ImgFrame, false}}}};
     Input inputAlignTo{*this, {"inputAlignTo", DEFAULT_GROUP, false , 1, {{DatatypeEnum::ImgFrame, false}}, true}};
 
     /**
      * Outputs ImgFrame message that is aligned to inputAlignTo.
      */
-    //Output outputAligned{*this, "outputAligned", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
     Output outputAligned{*this, {"outputAligned", DEFAULT_GROUP, {{DatatypeEnum::ImgFrame, false}}}};
 
     /**
      * Passthrough message on which the calculation was performed.
      * Suitable for when input queue is set to non-blocking behavior.
      */
-    //Output passthroughInput{*this, "passthroughInput", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
     Output passthroughInput{*this, {"passthroughInput", DEFAULT_GROUP, {{DatatypeEnum::ImgFrame, false}}}};
 
     /**
