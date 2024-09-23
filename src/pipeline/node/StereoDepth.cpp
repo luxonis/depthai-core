@@ -35,7 +35,8 @@ std::shared_ptr<StereoDepth> StereoDepth::build(bool autoCreateCameras, PresetMo
     return build(left->out, right->out, presetMode);
 }
 
-StereoDepth::StereoDepth(std::unique_ptr<Properties> props) : DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthProperties>(std::move(props)) {}
+StereoDepth::StereoDepth(std::unique_ptr<Properties> props)
+    : DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthProperties>(std::move(props)), initialConfig(properties.initialConfig) {}
 
 StereoDepth::Properties& StereoDepth::getProperties() {
     properties.initialConfig = initialConfig;
@@ -221,11 +222,44 @@ void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
             initialConfig.setConfidenceThreshold(55);
             initialConfig.setLeftRightCheck(true);
             initialConfig.setLeftRightCheckThreshold(5);
+
+            initialConfig.postProcessing.holeFilling.enable = true;
+            initialConfig.postProcessing.adaptiveMedianFilter.enable = true;
+
+            initialConfig.confidenceMetrics.occlusionConfidenceWeight = 20;
+            initialConfig.confidenceMetrics.motionVectorConfidenceWeight = 4;
+            initialConfig.confidenceMetrics.flatnessConfidenceWeight = 4;
+            initialConfig.confidenceMetrics.flatnessConfidenceThreshold = 2;
+
+            initialConfig.costAggregation.p1Config.defaultValue = 11;
+            initialConfig.costAggregation.p1Config.edgeValue = 10;
+            initialConfig.costAggregation.p1Config.smoothValue = 22;
+
         } break;
         case PresetMode::HIGH_DENSITY: {
             initialConfig.setConfidenceThreshold(15);
             initialConfig.setLeftRightCheck(true);
             initialConfig.setLeftRightCheckThreshold(10);
+
+            initialConfig.postProcessing.holeFilling.enable = true;
+            initialConfig.postProcessing.holeFilling.highConfidenceThreshold = 100;
+            initialConfig.postProcessing.holeFilling.fillConfidenceThreshold = 210;
+            initialConfig.postProcessing.holeFilling.minValidDisparity = 3;
+
+            initialConfig.postProcessing.adaptiveMedianFilter.enable = true;
+
+            initialConfig.confidenceMetrics.occlusionConfidenceWeight = 20;
+            initialConfig.confidenceMetrics.motionVectorConfidenceWeight = 10;
+            initialConfig.confidenceMetrics.flatnessConfidenceWeight = 2;
+            initialConfig.confidenceMetrics.flatnessConfidenceThreshold = 5;
+
+            initialConfig.costAggregation.p1Config.defaultValue = 45;
+            initialConfig.costAggregation.p1Config.edgeValue = 40;
+            initialConfig.costAggregation.p1Config.smoothValue = 49;
+
+            initialConfig.costAggregation.p2Config.defaultValue = 95;
+            initialConfig.costAggregation.p2Config.edgeValue = 90;
+            initialConfig.costAggregation.p2Config.smoothValue = 99;
         } break;
     }
 }

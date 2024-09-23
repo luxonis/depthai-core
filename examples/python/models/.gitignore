@@ -6,3 +6,6 @@
 dataset/
 *.tar.xz
 *.dlc
+*.png
+*.jpg
+

@@ -11,8 +11,13 @@ namespace dai {
 #pragma GCC diagnostic ignored "-Wswitch-enum"
 ImgFrame& ImgFrame::setFrame(cv::Mat frame) {
     std::vector<uint8_t> dataVec;
-    assert(frame.isContinuous());
-    dataVec.insert(dataVec.begin(), frame.datastart, frame.dataend);
+    if(!frame.isContinuous()) {
+        for(int i = 0; i < frame.rows; i++) {
+            dataVec.insert(dataVec.end(), frame.ptr(i), frame.ptr(i) + frame.cols * frame.elemSize());
+        }
+    } else {
+        dataVec.insert(dataVec.begin(), frame.datastart, frame.dataend);
+    }
     setData(dataVec);
     return *this;
 }

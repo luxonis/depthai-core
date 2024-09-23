@@ -42,6 +42,14 @@ else()
     message(STATUS "Using toolchain file: ${CMAKE_TOOLCHAIN_FILE}")
 endif()
 
+# Build AprilTag node code (note, that even if set to OFF, an AprilTagNode can be used with setRunOnHost(false))
+option(DEPTHAI_ENABLE_APRIL_TAG "Enable AprilTag node" ON)
+set(DEPTHAI_HAS_APRIL_TAG ${DEPTHAI_ENABLE_APRIL_TAG})
+if(WIN32)
+    message(STATUS "AprilTag node is not supported on Windows")
+    set(DEPTHAI_HAS_APRIL_TAG OFF)
+endif()
+
 include("cmake/HunterGate.cmake")
 HunterGate(
     URL "https://github.com/cpp-pm/hunter/archive/9d9242b60d5236269f894efd3ddd60a9ca83dd7f.tar.gz"
@@ -57,7 +65,7 @@ endif()
 # Create depthai project
 project(depthai VERSION "3.0.0" LANGUAGES CXX C)
 set(DEPTHAI_PRE_RELEASE_TYPE "alpha") # Valid options are "alpha", "beta", "rc", ""
-set(DEPTHAI_PRE_RELEASE_VERSION "2")
+set(DEPTHAI_PRE_RELEASE_VERSION "3")
 
 # Set DEPTHAI_VERSION universally, not conditionally
 set(DEPTHAI_VERSION ${PROJECT_VERSION}-${DEPTHAI_PRE_RELEASE_TYPE}.${DEPTHAI_PRE_RELEASE_VERSION})
@@ -660,6 +668,12 @@ target_link_libraries(${TARGET_CORE_NAME}
         semver::semver
 )
 
+if(DEPTHAI_HAS_APRIL_TAG)
+    target_link_libraries(${TARGET_CORE_NAME} PRIVATE
+        apriltag::apriltag
+    )
+endif()
+
 if(DEPTHAI_ENABLE_CURL)
     target_link_libraries(${TARGET_CORE_NAME} PRIVATE
         CURL::libcurl
@@ -705,6 +719,9 @@ if(DEPTHAI_ENABLE_DEVICE_RVC3_FW)
 endif()
 if(DEPTHAI_ENABLE_DEVICE_RVC4_FW)
     target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_ENABLE_DEVICE_RVC4_FW)
+endif()
+if(DEPTHAI_HAS_APRIL_TAG)
+    target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_HAS_APRIL_TAG)
 endif()
 
 # Add Backward dependency if enabled (On by default)

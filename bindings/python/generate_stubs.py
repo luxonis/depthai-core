@@ -42,10 +42,6 @@ try:
         # Add imports
         stubs_import = textwrap.dedent('''
             # Ensures that the stubs are picked up - thanks, numpy project
-            from depthai import (
-                node as node,
-            )
-
             import typing
             json = dict
             from pathlib import Path
@@ -117,6 +113,38 @@ try:
 
     # # TODO(thamarpe) - Pylance / Pyright check
     # subprocess.check_call([sys.executable, '-m' 'pyright', f'{DIRECTORY}/{MODULE_NAME}'], env=env)
+
+    def process_init_pyi(file_path, is_depthai_root=False):
+        # Read old __init__.pyi
+        with open(file_path, 'r+') as file:
+            contents = file.read()
+
+        # Prepare imports
+        dir_path = os.path.dirname(file_path)
+
+        modules = list()
+        # Find all .pyi files and directories
+        for f in os.listdir(dir_path):
+            if f.endswith('.pyi') and f != '__init__.pyi':
+                modules.append(f)
+            elif os.path.isdir(os.path.join(dir_path, f)):
+                modules.append(f)
+
+        prefix = "from depthai import " if is_depthai_root else "from . import "
+        imports = '\n'.join([f'{prefix}{os.path.splitext(m)[0]}' for m in modules])
+
+        # Add imports to old __init__.pyi
+        new_contents = imports + '\n' + contents
+
+        # Writeout changes
+        with open(file_path, 'w') as file:
+            file.write(new_contents)
+
+    # Process all __init__.pyi files
+    for root, dirs, files in os.walk(f'{DIRECTORY}/{MODULE_NAME}'):
+        if '__init__.pyi':
+            is_depthai_root = (root == f'{DIRECTORY}/{MODULE_NAME}')
+            process_init_pyi(os.path.join(root, '__init__.pyi'), is_depthai_root)
 
 except subprocess.CalledProcessError as err:
     exit(err.returncode)
