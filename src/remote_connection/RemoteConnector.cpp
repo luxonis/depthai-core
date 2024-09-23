@@ -3,6 +3,7 @@
 #include <iostream>
 #include <websocketpp/common/connection_hdl.hpp>
 
+#include "foxglove/websocket/common.hpp"
 #include "utility/Resources.hpp"
 
 namespace dai {
@@ -11,7 +12,8 @@ void RemoteConnector::initWebsocketServer(const std::string& address, uint16_t p
     const auto logHandler = [](foxglove::WebSocketLogLevel, const char* msg) { std::cout << msg << std::endl; };
     foxglove::ServerOptions serverOptions;
     serverOptions.sendBufferLimitBytes = 100 * 1024 * 1024;  // 100 MB
-
+    serverOptions.capabilities.emplace_back("services");
+    serverOptions.supportedEncodings.emplace_back("json");
     // Instantiate the server using the factory
     server = foxglove::ServerFactory::createServer<websocketpp::connection_hdl>("DepthAI RemoteConnector", logHandler, serverOptions);
 
@@ -24,6 +26,21 @@ void RemoteConnector::initWebsocketServer(const std::string& address, uint16_t p
     hdlrs.unsubscribeHandler = [&](foxglove::ChannelId chanId, foxglove::ConnHandle clientHandle) {
         const auto clientStr = server->remoteEndpointString(clientHandle);
         std::cout << "Client " << clientStr << " unsubscribed from " << chanId << std::endl;
+    };
+
+    hdlrs.serviceRequestHandler = [&](const foxglove::ServiceRequest& request, foxglove::ConnHandle clientHandle) {
+        std::cout << "Received service request from client " << server->remoteEndpointString(clientHandle) << std::endl;
+        // Check that the service handler is registered
+        auto it = serviceMap.find(request.serviceId);
+        if(it == serviceMap.end()) {
+            server->sendServiceFailure(clientHandle, request.serviceId, request.callId, "Service not found");
+            return;
+        }
+        // Call the service handler
+        auto response = it->second(request);
+        response.callId = request.callId;
+        response.serviceId = request.serviceId;
+        server->sendServiceResponse(clientHandle, response);
     };
 
     server->setHandlers(std::move(hdlrs));

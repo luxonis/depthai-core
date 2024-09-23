@@ -14,7 +14,7 @@ with dai.Pipeline() as pipeline:
         cameraNode, dai.NNModelDescription("yolov6-nano")
     )
 
-    outputToEncode = cameraNode.requestOutput((1920, 1080), type=dai.ImgFrame.Type.NV12)
+    outputToEncode = cameraNode.requestOutput((1920, 1440), type=dai.ImgFrame.Type.NV12)
     h264Encoder = pipeline.create(dai.node.VideoEncoder)
     h264Encoder.setDefaultProfilePreset(30, dai.VideoEncoderProperties.Profile.H264_MAIN)
     outputToEncode.link(h264Encoder.input)
@@ -33,6 +33,9 @@ with dai.Pipeline() as pipeline:
     remoteConnector.addTopic("mjpeg", mjpegEncoder.out)
     remoteConnector.addTopic("detections", detectionNetwork.out)
     encoderQueue = mjpegEncoder.out.createOutputQueue()
+
+    # Register the pipeline with the remote connector
+    remoteConnector.registerPipeline(pipeline)
     pipeline.start()
 
     frame = None

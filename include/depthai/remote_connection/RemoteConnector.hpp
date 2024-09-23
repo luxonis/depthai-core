@@ -6,6 +6,7 @@
 #include <memory.h>
 
 #include <depthai/pipeline/Node.hpp>
+#include <depthai/pipeline/Pipeline.hpp>
 #include <depthai/utility/ProtoSerializable.hpp>
 #include <foxglove/websocket/base64.hpp>
 #include <foxglove/websocket/server_factory.hpp>
@@ -89,6 +90,33 @@ class RemoteConnector {
         }).detach();  // Detach the thread to run independently
     }
 
+    void registerPipeline(const Pipeline& pipeline) {
+        // Add the service
+        std::vector<foxglove::ServiceWithoutId> services;
+        auto pipelineService = foxglove::ServiceWithoutId();
+        pipelineService.name = "pipelineSchema";
+        auto request = foxglove::ServiceRequestDefinition();
+        request.schemaName = "pipelineSchema";
+        request.schema = "";
+        request.encoding = "json";
+        pipelineService.request = request;
+        pipelineService.response = request;
+        pipelineService.type = "json";
+        services.push_back(pipelineService);
+        auto ids = server->addServices(services);
+        assert(ids.size() == 1);
+        auto id = ids[0];
+
+        // Add the handler
+        auto serializedPipeline = pipeline.serializeToJson();
+        auto serializedPipelineStr = serializedPipeline.dump();
+        serviceMap[id] = [serializedPipelineStr](foxglove::ServiceResponse request) {
+            (void)request;  // Nothing to do with the request
+            auto response = foxglove::ServiceResponse();
+            response.data = std::vector<uint8_t>(serializedPipelineStr.begin(), serializedPipelineStr.end());
+            return response;
+        };
+    }
     // TODO
     // add a function for better low level API
     // Subscribe to events
@@ -100,5 +128,7 @@ class RemoteConnector {
     std::unique_ptr<foxglove::ServerInterface<websocketpp::connection_hdl>> server;
     std::unique_ptr<httplib::Server> httpServer;  // For the frontend
     std::unique_ptr<std::thread> httpServerThread;
+    // Add a serviceId - function map
+    std::map<foxglove::ServiceId, std::function<foxglove::ServiceResponse(foxglove::ServiceResponse)>> serviceMap;
 };
 }  // namespace dai
