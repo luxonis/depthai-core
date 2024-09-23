@@ -8,6 +8,8 @@
 
 #include "depthai/pipeline/datatype/ImageAlignConfig.hpp"
 
+
+
 namespace dai {
 namespace node {
 
@@ -25,6 +27,7 @@ class ImageAlign : public NodeCRTP<Node, ImageAlign> {
     ImageAlignProperties properties;
 
    public:
+    ImageAlign() = default;
     ImageAlign(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
     ImageAlign(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<ImageAlignProperties> props);
 
@@ -89,6 +92,8 @@ class ImageAlign : public NodeCRTP<Node, ImageAlign> {
      * Specify number of frames in the pool
      */
     ImageAlign& setNumFramesPool(int numFramesPool);
+
+    bool runOnHost() const override {return false;};
 };
 
 }  // namespace node

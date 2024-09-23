@@ -51,9 +51,7 @@ int main() {
     auto camRgb = pipeline.create<dai::node::ColorCamera>();
     auto left = pipeline.create<dai::node::MonoCamera>();
     auto sync = pipeline.create<dai::node::Sync>();
-    //auto out = pipeline.create<dai::node::XLinkOut>();
     auto align = pipeline.create<dai::node::ImageAlign>();
-    auto cfgIn = pipeline.create<dai::node::XLinkIn>();
 
     left->setResolution(LEFT_RIGHT_RESOLUTION);
     left->setBoardSocket(LEFT_SOCKET);
@@ -64,24 +62,17 @@ int main() {
     camRgb->setFps(FPS);
     camRgb->setIspScale(1, 3);
 
-    //out->setStreamName("out");
-
     sync->setSyncThreshold(std::chrono::milliseconds(static_cast<int>((1 / FPS) * 1000.0 * 0.5)));
-
-    cfgIn->setStreamName("config");
-
+    
     align->outputAligned.link(sync->inputs["aligned"]);
     camRgb->isp.link(sync->inputs["rgb"]);
     camRgb->isp.link(align->inputAlignTo);
     left->out.link(align->input);
     //sync->out.link(out->input);
     auto out = sync->out.createOutputQueue();
-    cfgIn->out.link(align->inputConfig);
 
-    //dai::Device device(pipeline);
     auto queue = camRgb->video.createOutputQueue();
-   // auto queue = device.getOutputQueue("out", 8, false);
-  //  auto cfgQ = device.getInputQueue("config");
+    auto alignQ = align->inputConfig.createInputQueue();
 
     FPSCounter fpsCounter;
 
@@ -124,7 +115,7 @@ int main() {
         cfg.staticDepthPlane = staticDepthPlane;
         auto alignConfig = std::make_shared<dai::ImageAlignConfig>();
         alignConfig->set(cfg);
-        //cfgQ->send(alignConfig);
+        //alignQ->send(alignConfig); //fucks everything up
     }
 
     return 0;
