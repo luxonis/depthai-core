@@ -104,6 +104,20 @@ int ImgFrame::getLensPosition() const {
     return img.cam.lensPosition;
 }
 
+float ImgFrame::getLensPositionRaw() const {
+    return img.cam.lensPositionRaw;
+}
+
+ImgFrame& ImgFrame::setLensPosition(int lensPosition) {
+    img.cam.lensPosition = lensPosition;
+    return *this;
+}
+
+ImgFrame& ImgFrame::setLensPositionRaw(float lensPositionRaw) {
+    img.cam.lensPositionRaw = lensPositionRaw;
+    return *this;
+}
+
 unsigned int ImgFrame::getSourceWidth() const {
     return img.sourceFb.width;
 }
