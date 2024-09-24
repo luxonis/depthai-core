@@ -35,7 +35,7 @@ void initializeNNArchiveFromServer(const std::string& urlBase,        // NOLINT(
     httplib::Client cli(urlBase);
     int64_t curPos = 0;
     uint64_t wholeBytesRead = 0;
-    const dai::NNArchiveConfig config([]() { return 0; },
+    const dai::NNArchiveVersionedConfig config([]() { return 0; },
                                       [&nnArchivePath, &wholeBytesRead, &curPos, &cli]() {
                                           auto bufferSize = 1024;
                                           const auto bytes = std::make_shared<std::vector<uint8_t>>();
@@ -116,7 +116,7 @@ bool initializeNNArchive(const std::string& urlBase,        // NOLINT(bugprone-e
         std::vector<uint8_t> fileContents((std::istreambuf_iterator<char>(archiveFile)), std::istreambuf_iterator<char>());
         detectionNetwork->setNNArchive(dai::NNArchive(fileContents));
     } else if(exampleType == "advanced") {
-        const dai::NNArchiveConfig config(nnArchivePath);
+        const dai::NNArchiveVersionedConfig config(nnArchivePath);
         const auto& configV1 = config.getConfigV1();
         if(!configV1) {
             throw std::runtime_error("Wrong config version");
