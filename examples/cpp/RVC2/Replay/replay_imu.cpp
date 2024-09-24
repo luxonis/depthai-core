@@ -35,7 +35,6 @@ int main(int argc, char** argv) {
 
         while(true) {
             auto imuData = imuQ->get<dai::IMUData>();
-            std::cout << "From replay:\n";
             for (auto& imuPacket : imuData->packets) {
                 std::cout << "\tAccelerometer: \n";
                 std::cout << "\t\tts: " << imuPacket.acceleroMeter.tsDevice.sec << "s " << imuPacket.acceleroMeter.tsDevice.nsec << "\n";
