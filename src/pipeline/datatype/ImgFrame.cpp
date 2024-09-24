@@ -1,4 +1,4 @@
-#include "common/ImgTransformations.hpp"
+#include "depthai/common/ImgTransformations.hpp"
 #define _USE_MATH_DEFINES
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 
