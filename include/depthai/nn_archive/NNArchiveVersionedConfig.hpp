@@ -26,6 +26,11 @@ enum class NNArchiveConfigVersion {
 
 using NNArchiveConfig = std::variant<dai::nn_archive::v1::Config>;
 
+// This assumes that the config is always stored in the same order as the enum
+inline NNArchiveConfigVersion getNNArchiveConfigVersion(const NNArchiveConfig& config) {
+    return static_cast<NNArchiveConfigVersion>(config.index());
+}
+
 class NNArchiveVersionedConfig {
    public:
     /**
@@ -53,6 +58,12 @@ class NNArchiveVersionedConfig {
                              const std::function<int64_t(int64_t request)>& skipCallback,
                              const std::function<int()>& closeCallback,
                              NNArchiveEntry::Compression compression = NNArchiveEntry::Compression::AUTO);
+
+    /**
+     * @brief Construct NNArchiveVersionedConfig from a specific version of a config.
+     * @param version: Version of the config.
+     */
+    NNArchiveVersionedConfig(const NNArchiveConfig& config) : version(getNNArchiveConfigVersion(config)), config(config) {}
 
     /**
      * @brief Get version of the underlying config.
