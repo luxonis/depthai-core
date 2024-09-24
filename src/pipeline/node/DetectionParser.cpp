@@ -61,9 +61,9 @@ void DetectionParser::setConfig(const dai::NNArchiveConfig& config) {
     const auto model = configV1.model;
     // TODO(jakgra) is NN Archive valid without this? why is this optional?
     DAI_CHECK(model.heads, "Heads array is not defined in the NN Archive config file.");
-    // TODO(jakgra) for now get info from heads[0] but in the future correctly support multiple outputs and mapped h  eads
+    // TODO(jakgra) for now get info from heads[0] but in the future correctly support multiple outputs and mapped heads
     DAI_CHECK_V((*model.heads).size() == 1,
-                "There should be exactly one head per model in the NN Archive config file define  d. Found {} heads.",
+                "There should be exactly one head per model in the NN Archive config file defined. Found {} heads.",
                 (*model.heads).size());
     const auto head = (*model.heads)[0];
 
