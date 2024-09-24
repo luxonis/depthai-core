@@ -146,14 +146,26 @@ void DetectionNetwork::setFromModelZoo(NNModelDescription description, bool useC
 
 void DetectionNetwork::setNNArchiveBlob(const NNArchive& nnArchive) {
     DAI_CHECK_V(nnArchive.getModelType() == dai::model::ModelType::BLOB, "NNArchive type is not BLOB");
-    detectionParser->setNNArchive(nnArchive);
     neuralNetwork->setNNArchive(nnArchive);
+    try {
+        detectionParser->setNNArchive(nnArchive);
+    } catch (const std::exception& e) {
+        std::cerr << "Error setting NNArchive in DetectionParser: " << e.what() << std::endl;
+        std::cerr << "In case your model has no parser heads, try switching to NeuralNetwork node instead." << std::endl;
+        throw;
+    }
 }
 
 void DetectionNetwork::setNNArchiveSuperblob(const NNArchive& nnArchive, int numShaves) {
     DAI_CHECK_V(nnArchive.getModelType() == dai::model::ModelType::SUPERBLOB, "NNArchive type is not SUPERBLOB");
-    detectionParser->setNNArchive(nnArchive);
     neuralNetwork->setNNArchive(nnArchive, numShaves);
+    try {
+        detectionParser->setNNArchive(nnArchive);
+    } catch (const std::exception& e) {
+        std::cerr << "Error setting NNArchive in DetectionParser: " << e.what() << std::endl;
+        std::cerr << "In case your model has no parser heads, try switching to NeuralNetwork node instead." << std::endl;
+        throw;
+    }
 }
 
 void DetectionNetwork::setNNArchiveOther(const NNArchive& nnArchive) {

@@ -73,6 +73,7 @@ EMSCRIPTEN_BINDINGS(depthai_js) {
         .value("IMUData", dai::DatatypeEnum::IMUData)
         .value("StereoDepthConfig", dai::DatatypeEnum::StereoDepthConfig)
         .value("FeatureTrackerConfig", dai::DatatypeEnum::FeatureTrackerConfig)
+        .value("ThermalConfig", dai::DatatypeEnum::ThermalConfig)
         .value("ToFConfig", dai::DatatypeEnum::ToFConfig)
         .value("TrackedFeatures", dai::DatatypeEnum::TrackedFeatures)
         .value("BenchmarkReport", dai::DatatypeEnum::BenchmarkReport)
