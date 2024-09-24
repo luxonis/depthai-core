@@ -476,6 +476,9 @@ dai_add_example(replay_video_meta RVC2/Replay/replay_video_meta.cpp ON OFF)
 dai_add_example(replay_imu RVC2/Replay/replay_imu.cpp ON OFF)
 dai_add_example(camera_multiple_outputs RVC4/Camera/camera_multiple_outputs.cpp ON OFF)
 
+# Thermal
+dai_add_example(thermal RVC2/Thermal/thermal.cpp ON OFF)
+
 # Host nodes
 dai_add_example(rgb_video RVC2/ColorCamera/rgb_video.cpp ON OFF)
 dai_add_example(host_node HostNodes/host_node.cpp ON OFF)
