@@ -324,6 +324,13 @@ class ImgFrame : public Buffer {
     float getSourceVFov() const;
 
     /**
+     * Check that the image transformation match the image size
+     *
+     * @returns true if the transformations are valid
+     */
+    bool validateTransformations() const;
+
+    /**
      * Remap point between two source frames
      * @param point point to remap
      * @param sourceImage source image

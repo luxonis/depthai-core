@@ -184,11 +184,17 @@ ImgFrame& ImgFrame::setMetadata(const std::shared_ptr<ImgFrame>& sourceFrame) {
     return setMetadata(*sourceFrame);
 }
 
+bool ImgFrame::validateTransformations() const {
+    const auto [width, height] = transformation.getSize();
+    const auto [srcWidth, srcHeight] = transformation.getSourceSize();
+    return transformation.isValid() && width == getWidth() && height == getHeight() && srcWidth == getSourceWidth() && srcHeight == getSourceHeight();
+}
+
 Point2f ImgFrame::remapPointFromSource(const Point2f& point) const {
     if(point.isNormalized()) {
         throw std::runtime_error("Point must be denormalized");
     }
-    if(!transformation.isValid()) {
+    if(!validateTransformations()) {
         throw std::runtime_error("ImgTransformation is not valid");
     }
     return transformation.transformPoint(point);
@@ -198,7 +204,7 @@ Point2f ImgFrame::remapPointToSource(const Point2f& point) const {
     if(point.isNormalized()) {
         throw std::runtime_error("Point must be denormalized");
     }
-    if(!transformation.isValid()) {
+    if(!validateTransformations()) {
         throw std::runtime_error("ImgTransformation is not valid");
     }
     return transformation.invTransformPoint(point);

@@ -48,6 +48,7 @@ struct ImgTransformation {
     dai::RotatedRect invTransformRect(dai::RotatedRect rect) const;
 
     std::pair<size_t, size_t> getSize() const;
+    std::pair<size_t, size_t> getSourceSize() const;
     std::array<std::array<float, 3>, 3> getMatrix() const;
 
     bool getSrcMaskPt(size_t x, size_t y);
@@ -55,7 +56,12 @@ struct ImgTransformation {
     const std::vector<uint8_t>& getSrcMask(size_t srcWidth, size_t srcHeight);
     const std::vector<uint8_t>& getDstMask();
 
-    ImgTransformation& addTransformation(std::array<std::array<float, 3>, 3> matrix, size_t newWidth = 0, size_t newHeight = 0);
+    ImgTransformation& addTransformation(std::array<std::array<float, 3>, 3> matrix);
+    ImgTransformation& addCrop(int x, int y, int width, int height);
+    ImgTransformation& addFlipVertical();
+    ImgTransformation& addFlipHorizontal();
+    ImgTransformation& addRotation(float angle, dai::Point2f rotationPoint);
+    ImgTransformation& addScale(float scaleX, float scaleY);
     
     bool isValid() const;
 

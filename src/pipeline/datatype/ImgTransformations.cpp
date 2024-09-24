@@ -4,6 +4,8 @@
 
 #include <cstring>
 
+#include "depthai/utility/ImageManipV2Impl.hpp"
+
 namespace dai {
 
 // Function to check if a point is inside a rotated rectangle
@@ -219,6 +221,9 @@ dai::RotatedRect ImgTransformation::invTransformRect(dai::RotatedRect rect) cons
 std::pair<size_t, size_t> ImgTransformation::getSize() const {
     return {width, height};
 }
+std::pair<size_t, size_t> ImgTransformation::getSourceSize() const {
+    return {srcWidth, srcHeight};
+}
 std::array<std::array<float, 3>, 3> ImgTransformation::getMatrix() const {
     return transformationMatrix;
 }
@@ -324,16 +329,72 @@ const std::vector<uint8_t>& ImgTransformation::getDstMask() {
     return dstMask;
 };
 
-ImgTransformation& ImgTransformation::addTransformation(std::array<std::array<float, 3>, 3> matrix, size_t newWidth, size_t newHeight) {
+ImgTransformation& ImgTransformation::addTransformation(std::array<std::array<float, 3>, 3> matrix) {
     transformationMatrix = matmul(matrix, transformationMatrix);
     transformationMatrixInv = getInverse(transformationMatrix);
-    if(newWidth != 0) {
-        width = newWidth;
-    }
-    if(newHeight != 0) {
-        height = newHeight;
-    }
     srcMaskValid = dstMaskValid = srcBorderValid = dstBorderValid = false;
+    return *this;
+}
+ImgTransformation& ImgTransformation::addCrop(int x, int y, int width, int height) {
+    this->width = width;
+    this->height = height;
+    if(x != 0 || y != 0) {
+        std::array<std::array<float, 3>, 3> cropMatrix = {{{1, 0, (float)-x}, {0, 1, (float)-y}, {0, 0, 1}}};
+        addTransformation(cropMatrix);
+    }
+    std::array<std::array<float, 2>, 4> corners = {{{0, 0}, {(float)width, 0}, {(float)width, (float)height}, {0, (float)height}}};
+    std::vector<std::array<float, 2>> srcCorners(4);
+    for(auto i = 0; i < 4; ++i) {
+        srcCorners[i] = matvecmul(transformationMatrix, corners[i]);
+    }
+    auto rrCorners = impl::getOuterRotatedRect(srcCorners);
+    dai::RotatedRect rect;
+    rect.size.width = std::sqrt(std::pow(rrCorners[1][0] - rrCorners[0][0], 2) + std::pow(rrCorners[1][1] - rrCorners[0][1], 2));
+    rect.size.height = std::sqrt(std::pow(rrCorners[2][0] - rrCorners[1][0], 2) + std::pow(rrCorners[2][1] - rrCorners[1][1], 2));
+    rect.center.x = (rrCorners[0][0] + rrCorners[1][0] + rrCorners[2][0] + rrCorners[3][0]) / 4.0f;
+    rect.center.y = (rrCorners[0][1] + rrCorners[1][1] + rrCorners[2][1] + rrCorners[3][1]) / 4.0f;
+    rect.angle = std::atan2(rrCorners[1][1] - rrCorners[0][1], rrCorners[1][0] - rrCorners[0][0]) * 180.0f / (float)M_PI;
+    srcCrops.push_back(rect);
+    return *this;
+}
+ImgTransformation& ImgTransformation::addFlipVertical() {
+    std::array<std::array<float, 3>, 3> translateMatrix = {{{1, 0, -(width / 2.0f)}, {0, 1, -(height / 2.0f)}, {0, 0, 1}}};
+    std::array<std::array<float, 3>, 3> flipMatrix = {{{1, 0, 0}, {0, -1, 0}, {0, 0, 1}}};
+    std::array<std::array<float, 3>, 3> translateMatrixInv = {{{1, 0, width / 2.0f}, {0, 1, height / 2.0f}, {0, 0, 1}}};
+    addTransformation(translateMatrix);
+    addTransformation(flipMatrix);
+    addTransformation(translateMatrixInv);
+    return *this;
+}
+ImgTransformation& ImgTransformation::addFlipHorizontal() {
+    std::array<std::array<float, 3>, 3> translateMatrix = {{{1, 0, -(width / 2.0f)}, {0, 1, -(height / 2.0f)}, {0, 0, 1}}};
+    std::array<std::array<float, 3>, 3> flipMatrix = {{{-1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
+    std::array<std::array<float, 3>, 3> translateMatrixInv = {{{1, 0, width / 2.0f}, {0, 1, height / 2.0f}, {0, 0, 1}}};
+    addTransformation(translateMatrix);
+    addTransformation(flipMatrix);
+    addTransformation(translateMatrixInv);
+    return *this;
+}
+ImgTransformation& ImgTransformation::addRotation(float angle, dai::Point2f rotationPoint) {
+    float angleRad = angle * (float)M_PI / 180.0f;
+    if(rotationPoint.isNormalized()) {
+        rotationPoint.x *= width;
+        rotationPoint.y *= height;
+        rotationPoint.normalized = false;
+    }
+    std::array<std::array<float, 3>, 3> translateMatrix = {{{1, 0, -rotationPoint.x}, {0, 1, -rotationPoint.y}, {0, 0, 1}}};
+    std::array<std::array<float, 3>, 3> rotateMatrix = {{{std::cos(angleRad), -std::sin(angleRad), 0}, {std::sin(angleRad), std::cos(angleRad), 0}, {0, 0, 1}}};
+    std::array<std::array<float, 3>, 3> translateMatrixInv = {{{1, 0, rotationPoint.x}, {0, 1, rotationPoint.y}, {0, 0, 1}}};
+    addTransformation(translateMatrix);
+    addTransformation(rotateMatrix);
+    addTransformation(translateMatrixInv);
+    return *this;
+}
+ImgTransformation& ImgTransformation::addScale(float scaleX, float scaleY) {
+    width *= scaleX;
+    height *= scaleY;
+    std::array<std::array<float, 3>, 3> scaleMatrix = {{{scaleX, 0, 0}, {0, scaleY, 0}, {0, 0, 1}}};
+    addTransformation(scaleMatrix);
     return *this;
 }
 
