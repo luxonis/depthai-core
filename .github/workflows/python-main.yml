@@ -265,9 +265,9 @@ jobs:
       fail-fast: false
     runs-on: ${{ matrix.os }}
     env:
-      DEPTHAI_BUILD_BASALT: ON
-      DEPTHAI_BUILD_PCL: ON
-      DEPTHAI_BUILD_RTABMAP: ON
+      # DEPTHAI_BUILD_BASALT: ON
+      # DEPTHAI_BUILD_PCL: ON
+      # DEPTHAI_BUILD_RTABMAP: ON
     steps:
       - name: Cache .hunter folder
         uses: actions/cache@v3
@@ -302,7 +302,7 @@ jobs:
           python -m pip install --upgrade pip
           brew install libusb
           brew install opencv
-          brew install pcl
+          # brew install pcl
           python -m pip install delocate
       - name: Building wheels
         run: cd bindings/python && python -m pip wheel . -w ./wheelhouse/ --verbose
