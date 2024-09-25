@@ -49,7 +49,7 @@ std::shared_ptr<Thermal> Thermal::build(CameraBoardSocket boardSocket, float fps
         for(const auto& cf : cameraFeatures) {
             if(cf.socket == boardSocket) {
                 if(std::find(cf.supportedTypes.begin(), cf.supportedTypes.end(), CameraSensorType::THERMAL) == cf.supportedTypes.end()) {
-                    throw std::runtime_error(fmt::format("Camera on socket {} doesn't have a thermal sensor.", boardSocket));
+                    throw std::runtime_error(fmt::format("Camera on socket {} doesn't have a thermal sensor.", (int)boardSocket));
                 }
                 found = true;
                 break;
