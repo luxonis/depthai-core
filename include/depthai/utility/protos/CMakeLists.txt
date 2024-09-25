@@ -1,7 +1,10 @@
 cmake_minimum_required(VERSION 3.10)
 
 # Find Protobuf package
-find_package(Protobuf REQUIRED)
+find_package(Protobuf CONFIG REQUIRED)
+
+# Print out where Protobuf was found
+message(STATUS "Found Protobuf: ${Protobuf_DIR}")
 
 # Get the directory containing the CMakeLists.txt file
 set(PROTO_DIR ${CMAKE_CURRENT_SOURCE_DIR})
