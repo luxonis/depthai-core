@@ -23,9 +23,7 @@ with dai.Pipeline() as pipeline:
         nnArchive=nnArchive
     )
 
-    parser = pipeline.create(dai.node.KeypointsParser)
-    parser.setNumKeypoints(468)
-    parser.setScaleFactor(192)
+    parser = pipeline.create(dai.node.KeypointsParser).build(nnArchive)
     parser.setRunOnHost(RUN_ON_HOST)
     nn.out.link(parser.input)
 

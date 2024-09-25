@@ -39,6 +39,8 @@ void bind_keypointsparser(pybind11::module& m, void* pCallstack){
         .def_readonly("input", &KeypointsParser::input, DOC(dai, node, KeypointsParser, input))
         .def_readonly("out", &KeypointsParser::out, DOC(dai, node, KeypointsParser, out))
 
+        .def("build", &KeypointsParser::build, DOC(dai, node, KeypointsParser, build))
+
         // getters
         .def("runOnHost", &KeypointsParser::runOnHost, DOC(dai, node, KeypointsParser, runOnHost))
         .def("getScaleFactor", &KeypointsParser::getScaleFactor, DOC(dai, node, KeypointsParser, getScaleFactor))

@@ -6,6 +6,7 @@ int main() {
     modelDescription.modelVersionSlug = "192x192";
     modelDescription.platform = "RVC2";
     std::string archivePath = dai::getModelFromZoo(modelDescription, true);
+    dai::NNArchive nnArchive(archivePath);
 
     dai::Pipeline pipeline;
 
@@ -16,12 +17,10 @@ int main() {
     manip->initialConfig.setResize(192, 192);
     largeOutput->link(manip->inputImage);
 
-    auto nn = pipeline.create<dai::node::NeuralNetwork>()->build(manip->out, dai::NNArchive(archivePath));
+    auto nn = pipeline.create<dai::node::NeuralNetwork>()->build(manip->out, nnArchive);
 
-    auto parser = pipeline.create<dai::node::KeypointsParser>();
+    auto parser = pipeline.create<dai::node::KeypointsParser>()->build(nnArchive);
     parser->setRunOnHost(true);
-    parser->setNumKeypoints(468);
-    parser->setScaleFactor(192);
     nn->out.link(parser->input);
 
     auto videoQ = largeOutput->createOutputQueue();

@@ -13,6 +13,7 @@ void bind_keypoints(pybind11::module& m, void* pCallstack){
     using namespace dai;
 
     py::class_<Keypoints, Py<Keypoints>, Buffer, std::shared_ptr<Keypoints>> keypoints(m, "Keypoints", DOC(dai, Keypoints));
+    py::class_<Keypoint> keypoint(m, "Keypoint", DOC(dai, Keypoint));
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -26,6 +27,15 @@ void bind_keypoints(pybind11::module& m, void* pCallstack){
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
+
+    // Single point struct
+    keypoint
+        .def(py::init<>())
+        .def_readwrite("x", &Keypoint::x)
+        .def_readwrite("y", &Keypoint::y)
+        .def_readwrite("z", &Keypoint::z)
+        .def_readwrite("confidence", &Keypoint::confidence)
+        ;
 
     // Message
     keypoints
@@ -41,8 +51,8 @@ void bind_keypoints(pybind11::module& m, void* pCallstack){
         .def("setTimestamp", &Keypoints::Buffer::setTimestamp, py::arg("timestamp"), DOC(dai, Buffer, setTimestamp))
         .def("setTimestampDevice", &Keypoints::Buffer::setTimestampDevice, DOC(dai, Buffer, setTimestampDevice))
         .def("setSequenceNum", &Keypoints::Buffer::setSequenceNum, DOC(dai, Buffer, setSequenceNum))
-        // Binds only the overload that takes 3D points without scores and confidence threshold
-        .def("setKeypoints", py::overload_cast<const std::vector<Point3f>&>(&Keypoints::setKeypoints), DOC(dai, Keypoints, setKeypoints))
+        // Binds only the overload that takes Keypoint objects
+        .def("setKeypoints", py::overload_cast<const std::vector<Keypoint>&>(&Keypoints::setKeypoints), DOC(dai, Keypoints, setKeypoints))
         ;
 
 }

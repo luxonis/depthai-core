@@ -9,6 +9,7 @@
 // shared
 #include "depthai/common/Point2f.hpp"
 #include "depthai/common/Point3f.hpp"
+#include "depthai/nn_archive/NNArchive.hpp"
 
 #if defined(__clang__)
     #if __has_warning("-Wswitch-enum")
@@ -44,6 +45,7 @@ namespace node {
  */
 class KeypointsParser : public DeviceNodeCRTP<DeviceNode, KeypointsParser, KeypointsParserProperties>, public HostRunnable {
    private:
+    bool isBuilt = false;
     bool runOnHostVar = false;
 
    public:
@@ -59,6 +61,11 @@ class KeypointsParser : public DeviceNodeCRTP<DeviceNode, KeypointsParser, Keypo
      * Outputs Keypoints message that carries the detected keypoints.
      */
     Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::Keypoints, false}}}}};
+
+    /**
+     * Extract scale factor and number of keypoints from the NNArchive.
+     */
+    std::shared_ptr<KeypointsParser> build(const NNArchive& nnArchive);
 
     /**
      * Set the scale factor to divide the keypoints by.

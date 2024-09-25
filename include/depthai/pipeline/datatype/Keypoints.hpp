@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <optional>
 
 // project
 #include "depthai/pipeline/datatype/Buffer.hpp"
@@ -10,6 +11,20 @@
 #include "depthai/common/Point3f.hpp"
 
 namespace dai {
+
+struct Keypoint {
+    float x = 0.f;
+    float y = 0.f;
+    // TODO(NicikD):
+    // should be 
+    //  std::optional<float> z;
+    //  std::optional<float> confidence;
+    // but DEPTHAI_SERIALIZE_EXT doesn't support std::optional
+    float z = 0.f;
+    float confidence = -1.f;
+};
+
+DEPTHAI_SERIALIZE_EXT(Keypoint, x, y, z, confidence);
 
 /**
  * Keypoints message. Carries keypoints data.
@@ -23,7 +38,7 @@ namespace dai {
     ~Keypoints() override = default;
 
     /// Keypoints
-    std::vector<Point3f> keypoints;
+    std::vector<Keypoint> keypoints;
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
         metadata = utility::serialize(*this);
@@ -31,33 +46,36 @@ namespace dai {
     };
 
     // getters
-    const std::vector<Point3f>& getKeypoints() const;
+    const std::vector<Keypoint>& getKeypoints() const;
 
     // setters
+    Keypoints& setKeypoints(const std::vector<Keypoint>& keypoints);
 
     /**
-     * Set 3D keypoints
+     * From 3D points
      *
      * @param keypoints detected 3D keypoints
      * @param scores confidence scores for each keypoint
-     * @param confidence_threshold confidence threshold
+     * @param confidence_threshold confidence threshold, filters out keypoints with confidence below threshold
      *  
      * @returns keypoints message
      */
-    Keypoints& setKeypoints(const std::vector<Point3f>& keypoints);
-    Keypoints& setKeypoints(const std::vector<Point3f>& keypoints, const std::vector<float>& scores, float confidenceThreshold);
+    Keypoints& setKeypoints(const std::vector<Point3f>& points);
+    Keypoints& setKeypoints(const std::vector<Point3f>& points, const std::vector<float>& scores);
+    Keypoints& setKeypoints(const std::vector<Point3f>& points, const std::vector<float>& scores, float confidenceThreshold);
 
     /**
-     * Set 2D keypoints
+     * From 2D points
      *
      * @param keypoints detected 2D keypoints
      * @param scores confidence scores for each keypoint
-     * @param confidence_threshold confidence threshold
+     * @param confidence_threshold confidence threshold, filters out keypoints with confidence below threshold
      *  
      * @returns keypoints message
      */
-    Keypoints& setKeypoints(const std::vector<Point2f>& keypoints);
-    Keypoints& setKeypoints(const std::vector<Point2f>& keypoints, const std::vector<float>& scores, float confidenceThreshold);
+    Keypoints& setKeypoints(const std::vector<Point2f>& points);
+    Keypoints& setKeypoints(const std::vector<Point2f>& points, const std::vector<float>& scores);
+    Keypoints& setKeypoints(const std::vector<Point2f>& points, const std::vector<float>& scores, float confidenceThreshold);
 
     DEPTHAI_SERIALIZE(Keypoints, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, keypoints);
 };
