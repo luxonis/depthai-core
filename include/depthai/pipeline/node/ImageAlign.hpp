@@ -1,6 +1,6 @@
 #pragma once
 
-#include <depthai/pipeline/Node.hpp>
+#include <depthai/pipeline/DeviceNode.hpp>
 
 
 // shared
@@ -16,20 +16,20 @@ namespace node {
 /**
  * @brief ImageAlign node. Calculates spatial location data on a set of ROIs on depth map.
  */
-class ImageAlign : public NodeCRTP<Node, ImageAlign> {
+class ImageAlign : public DeviceNodeCRTP<DeviceNode, ImageAlign, ImageAlignProperties> {
    public:
     constexpr static const char* NAME = "ImageAlign";
+    using DeviceNodeCRTP::DeviceNodeCRTP;
 
    protected:
-    ImageAlignProperties& getProperties();
+    Properties& getProperties();
 
    private:
-    ImageAlignProperties properties;
+    //ImageAlignProperties properties;
 
    public:
     ImageAlign() = default;
-    ImageAlign(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
-    ImageAlign(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<ImageAlignProperties> props);
+    ImageAlign(std::unique_ptr<Properties> props);
 
     /**
      * Initial config to use when calculating spatial location data.
@@ -92,8 +92,6 @@ class ImageAlign : public NodeCRTP<Node, ImageAlign> {
      * Specify number of frames in the pool
      */
     ImageAlign& setNumFramesPool(int numFramesPool);
-
-    bool runOnHost() const override {return false;};
 };
 
 }  // namespace node

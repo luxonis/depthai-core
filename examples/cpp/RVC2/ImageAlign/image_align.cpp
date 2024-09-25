@@ -72,7 +72,7 @@ int main() {
     auto out = sync->out.createOutputQueue();
 
     auto queue = camRgb->video.createOutputQueue();
-    auto alignQ = align->inputConfig.createInputQueue();
+    //auto alignQ = align->inputConfig.createInputQueue();
 
     FPSCounter fpsCounter;
 
@@ -114,7 +114,7 @@ int main() {
         //auto cfg = align->initialConfig.get();
         cfg.staticDepthPlane = staticDepthPlane;
         auto alignConfig = std::make_shared<dai::ImageAlignConfig>();
-        alignConfig->set(cfg);
+        *alignConfig = cfg;
         //alignQ->send(alignConfig); //fucks everything up
     }
 

@@ -23,10 +23,6 @@ class ImageAlignConfig : public Buffer {
         datatype = DatatypeEnum::ImageAlignConfig;
     };
 
-    void set(const ImageAlignConfig& cfg) {
-        staticDepthPlane = cfg.staticDepthPlane;
-    };
-
     DEPTHAI_SERIALIZE(ImageAlignConfig, staticDepthPlane);
 };
 

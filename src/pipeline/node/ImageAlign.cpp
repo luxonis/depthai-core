@@ -4,15 +4,16 @@
 namespace dai {
 namespace node {
 
-ImageAlign::ImageAlign(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : ImageAlign(par, nodeId, std::make_unique<ImageAlignProperties>()) {}
-ImageAlign::ImageAlign(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<ImageAlignProperties> props)
+ImageAlign::ImageAlign(std::unique_ptr<Properties> props)
+   : DeviceNodeCRTP<DeviceNode, ImageAlign, ImageAlignProperties>(std::move(props)),
+   initialConfig(properties.initialConfig) 
 {
-    properties = *props;
     setInputRefs({&inputConfig, &input, &inputAlignTo});
     setOutputRefs({&outputAligned, &passthroughInput});
 }
 
 ImageAlignProperties& ImageAlign::getProperties() {
+    properties.initialConfig = initialConfig;
     return properties;
 }
 
