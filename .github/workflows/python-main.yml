@@ -264,7 +264,7 @@ jobs:
         os: [macos-13, macos-14] # macos-13 is x64, macos-14 is arm64
       fail-fast: false
     runs-on: ${{ matrix.os }}
-    env:
+    #env:
       # DEPTHAI_BUILD_BASALT: ON
       # DEPTHAI_BUILD_PCL: ON
       # DEPTHAI_BUILD_RTABMAP: ON
