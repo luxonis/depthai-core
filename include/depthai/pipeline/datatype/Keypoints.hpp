@@ -9,19 +9,15 @@
 // shared
 #include "depthai/common/Point2f.hpp"
 #include "depthai/common/Point3f.hpp"
+#include "depthai/common/optional.hpp"
 
 namespace dai {
 
 struct Keypoint {
     float x = 0.f;
     float y = 0.f;
-    // TODO(NicikD):
-    // should be 
-    //  std::optional<float> z;
-    //  std::optional<float> confidence;
-    // but DEPTHAI_SERIALIZE_EXT doesn't support std::optional
-    float z = 0.f;
-    float confidence = -1.f;
+    std::optional<float> z;
+    std::optional<float> confidence;;
 };
 
 DEPTHAI_SERIALIZE_EXT(Keypoint, x, y, z, confidence);
