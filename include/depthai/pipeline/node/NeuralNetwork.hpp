@@ -39,8 +39,14 @@ class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNet
      * @returns Shared pointer to NeuralNetwork node
      */
     std::shared_ptr<NeuralNetwork> build(Node::Output& input, const NNArchive& nnArchive);
-    std::shared_ptr<NeuralNetwork> build(const NNArchiveConfig& nnArchiveConfig, std::shared_ptr<Camera> input, dai::NNModelDescription modelDesc, float fps = 30.0f);
-    std::shared_ptr<NeuralNetwork> build(const NNArchiveVersionedConfig& nnArchiveConfig, std::shared_ptr<Camera> input, dai::NNModelDescription modelDesc, float fps = 30.0f);
+    std::shared_ptr<NeuralNetwork> build(const NNArchiveConfig& nnArchiveConfig,
+                                         std::shared_ptr<Camera> input,
+                                         dai::NNModelDescription modelDesc,
+                                         float fps = 30.0f);
+    std::shared_ptr<NeuralNetwork> build(const NNArchiveVersionedConfig& nnArchiveConfig,
+                                         std::shared_ptr<Camera> input,
+                                         dai::NNModelDescription modelDesc,
+                                         float fps = 30.0f);
 
     /**
      * Input message with data to be inferred upon
@@ -78,15 +84,18 @@ class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNet
     void setNNArchive(const NNArchive& nnArchive);
 
     void setModel(const depthai::model::ModelVariant& model) {
-        std::visit([this](auto &&p){this->setModel(p);}, model);
+        std::visit([this](auto&& p) { this->setModel(p); }, model);
     }
 
     void setModel(const depthai::model::BlobModel& model) {
         setBlob(model.model());
     }
+    
     void setModel(const depthai::model::SuperBlobModel& model) {
-        setBlob(model.model().getBlobWithNumShaves(model.settings().numShaves));
+        int numShaves = model.settings().numShaves;
+        setBlob(model.model().getBlobWithNumShaves(numShaves));
     }
+
     void setModel(const depthai::model::DlcModel& model) {
         // pass
     }

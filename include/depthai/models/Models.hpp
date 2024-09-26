@@ -1,8 +1,13 @@
 #pragma once
 
+#include <depthai/device/Device.hpp>
 #include <depthai/openvino/OpenVINO.hpp>
+#include <memory>
 #include <string>
 #include <variant>
+#include <vector>
+#include <optional>
+#include <depthai/nn_archive/NNArchiveVersionedConfig.hpp>
 
 namespace depthai {
 namespace model {
@@ -17,14 +22,28 @@ enum class ModelType {
 
 struct ModelSettings {
     std::string modelName = "";
+    std::vector<dai::Platform> supportedPlatforms = {};
 
     virtual bool isValid() const {
         return true;
     }
+
+    bool isSupported(dai::Platform platform) const {
+        return std::find(supportedPlatforms.begin(), supportedPlatforms.end(), platform) != supportedPlatforms.end();
+    }
+
+    bool isSupported(const dai::Device& device) const {
+        return isSupported(device.getPlatform());
+    }
+
     virtual ~ModelSettings() = default;
+
+    // Archive config for NNArchive models
+    std::optional<dai::NNArchiveVersionedConfig> nnArchiveConfig;
 };
 
-struct BlobSettings : ModelSettings {};
+struct BlobSettings : ModelSettings {
+};
 
 struct SuperBlobSettings : BlobSettings {
     int numShaves = 6;
@@ -43,19 +62,20 @@ class BlobModel : public Model {
     ModelType type() const override {
         return ModelType::BLOB;
     }
-    BlobModel(dai::OpenVINO::Blob model, BlobSettings settings) : model_(model), settings_(settings) {}
 
-    const dai::OpenVINO::Blob& model() const {
-        return model_;
+    BlobModel(std::shared_ptr<dai::OpenVINO::Blob> model, std::shared_ptr<BlobSettings> settings) : modelPtr_(model), settingsPtr_(settings) {}
+
+    inline const dai::OpenVINO::Blob& model() const {
+        return *modelPtr_;
     }
 
-    const BlobSettings& settings() const {
-        return settings_;
+    inline const BlobSettings& settings() const {
+        return *settingsPtr_;
     }
 
    private:
-    dai::OpenVINO::Blob model_;
-    BlobSettings settings_;
+    std::shared_ptr<dai::OpenVINO::Blob> modelPtr_;
+    std::shared_ptr<BlobSettings> settingsPtr_;
 };
 
 class SuperBlobModel : public Model {
@@ -64,19 +84,19 @@ class SuperBlobModel : public Model {
         return ModelType::SUPERBLOB;
     }
 
-    SuperBlobModel(dai::OpenVINO::SuperBlob model, SuperBlobSettings settings) : model_(model), settings_(settings) {}
+    SuperBlobModel(std::shared_ptr<dai::OpenVINO::SuperBlob> model, std::shared_ptr<SuperBlobSettings> settings) : modelPtr_(model), settingsPtr_(settings) {}
 
-    const dai::OpenVINO::SuperBlob& model() const {
-        return model_;
+    inline const dai::OpenVINO::SuperBlob& model() const {
+        return *modelPtr_;
     }
 
-    const SuperBlobSettings& settings() const {
-        return settings_;
+    inline const SuperBlobSettings& settings() const {
+        return *settingsPtr_;
     }
 
    private:
-    dai::OpenVINO::SuperBlob model_;
-    SuperBlobSettings settings_;
+    std::shared_ptr<dai::OpenVINO::SuperBlob> modelPtr_;
+    std::shared_ptr<SuperBlobSettings> settingsPtr_;
 };
 
 class DlcModel : public Model {
@@ -85,11 +105,19 @@ class DlcModel : public Model {
         return ModelType::DLC;
     }
 
-    DlcModel(const std::string& modelPath, DlcSettings settings) : modelPath_(modelPath), settings_(settings) {}
+    DlcModel(const std::string& modelPath, std::shared_ptr<DlcSettings> settings) : modelPath_(modelPath), settingsPtr_(settings) {}
+
+    inline const std::string& modelPath() const {
+        return modelPath_;
+    }
+
+    inline const DlcSettings& settings() const {
+        return *settingsPtr_;
+    }
 
    private:
     std::string modelPath_;
-    DlcSettings settings_;
+    std::shared_ptr<DlcSettings> settingsPtr_;
 };
 
 using ModelVariant = std::variant<BlobModel, SuperBlobModel, DlcModel>;

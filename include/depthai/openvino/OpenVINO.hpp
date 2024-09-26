@@ -77,6 +77,13 @@ class OpenVINO {
         SuperBlob(const std::string& pathToSuperBlobFile);
 
         /**
+         * @brief Copy constructor
+         *
+         * @param other: Other superblob to copy
+         */
+        SuperBlob(const SuperBlob& other) = default;
+
+        /**
          * @brief Generate a blob with a specific number of shaves
          *
          * @param numShaves: Number of shaves to generate the blob for. Must be between 1 and NUMBER_OF_PATCHES.

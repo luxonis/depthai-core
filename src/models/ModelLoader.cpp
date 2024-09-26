@@ -114,9 +114,9 @@ void ModelLoader::loadBlobModel(std::vector<uint8_t> data) {
 /**********************************************************************************************************************/
 void ModelLoader::loadBlobModel(const std::string& path) {
     modelType_ = ModelType::BLOB;
-    dai::OpenVINO::Blob blob(path);
-    depthai::model::BlobSettings settings;
-    modelVariant_ = BlobModel(blob, settings);
+    auto blobPtr = std::make_shared<dai::OpenVINO::Blob>(path);
+    auto settingsPtr = std::make_shared<depthai::model::BlobSettings>();
+    modelVariant_ = BlobModel(blobPtr, settingsPtr);
 }
 
 /**********************************************************************************************************************/
@@ -131,9 +131,9 @@ void ModelLoader::loadSuperblobModel(std::vector<uint8_t> data) {
 /**********************************************************************************************************************/
 void ModelLoader::loadSuperblobModel(const std::string& path) {
     modelType_ = ModelType::SUPERBLOB;
-    dai::OpenVINO::SuperBlob superblob(path);
-    depthai::model::SuperBlobSettings settings;
-    modelVariant_ = SuperBlobModel(superblob, settings);
+    auto superblobPtr = std::make_shared<dai::OpenVINO::SuperBlob>(path);
+    auto settingsPtr = std::make_shared<depthai::model::SuperBlobSettings>();
+    modelVariant_ = SuperBlobModel(superblobPtr, settingsPtr);
 }
 
 /**********************************************************************************************************************/
@@ -148,7 +148,8 @@ void ModelLoader::loadDlcModel(std::vector<uint8_t> data) {
 /**********************************************************************************************************************/
 void ModelLoader::loadDlcModel(const std::string& path) {
     modelType_ = ModelType::DLC;
-    modelVariant_ = DlcModel(path, DlcSettings());
+    auto settingsPtr = std::make_shared<depthai::model::DlcSettings>();
+    modelVariant_ = DlcModel(path, settingsPtr);
 }
 
 /**********************************************************************************************************************/
@@ -162,17 +163,26 @@ void ModelLoader::loadNNArchive(std::vector<uint8_t> data) {
 /**********************************************************************************************************************/
 /**********************************************************************************************************************/
 void ModelLoader::loadNNArchive(const std::string& path) {
-
-    
+    // TODO: Remove NNArchive type completely == Load data from NNArchive but return a ModelVariant, not an NNArchive object
     dai::NNArchive archive(path);
     switch(archive.getModelType()) {
         case dai::model::ModelType::BLOB:
             modelType_ = ModelType::BLOB;
-            modelVariant_ = BlobModel(archive.getBlob().value(), BlobSettings());
+            {
+                auto blobPtr = std::make_shared<dai::OpenVINO::Blob>(archive.getBlob().value().data);
+                auto settingsPtr = std::make_shared<depthai::model::BlobSettings>();
+                settingsPtr->nnArchiveConfig = archive.getVersionedConfig();
+                modelVariant_ = BlobModel(blobPtr, settingsPtr);
+            }
             break;
         case dai::model::ModelType::SUPERBLOB:
             modelType_ = ModelType::SUPERBLOB;
-            modelVariant_ = SuperBlobModel(archive.getSuperBlob().value(), SuperBlobSettings());
+            {
+                auto superblobPtr = std::make_shared<dai::OpenVINO::SuperBlob>(archive.getSuperBlob().value());
+                auto settingsPtr = std::make_shared<depthai::model::SuperBlobSettings>();
+                settingsPtr->nnArchiveConfig = archive.getVersionedConfig();
+                modelVariant_ = SuperBlobModel(superblobPtr, settingsPtr);
+            }
             break;
         case dai::model::ModelType::DLC:
         case dai::model::ModelType::OTHER:

@@ -3,6 +3,8 @@
 #include <depthai/modelzoo/NNModelDescription.hpp>
 #include <depthai/pipeline/DeviceNode.hpp>
 
+#include <depthai/models/Models.hpp>
+
 // standard
 #include <fstream>
 
@@ -52,6 +54,29 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
      *
      */
     int getNumFramesPool();
+
+    void setModel(const depthai::model::ModelVariant& model) {
+        std::visit([this](auto&& p) { this->setModel(p); }, model);
+    }
+
+    void setModel(const depthai::model::BlobModel& model) {
+        const auto &settings = model.settings();
+        if(settings.nnArchiveConfig.has_value()) {
+            setConfig(settings.nnArchiveConfig.value());
+        }
+    }
+    
+    void setModel(const depthai::model::SuperBlobModel& model) {
+        const auto &settings = model.settings();
+        if(settings.nnArchiveConfig.has_value()) {
+            setConfig(settings.nnArchiveConfig.value());
+        }
+    }
+
+    void setModel(const depthai::model::DlcModel& model) {
+        // pass
+    }
+
 
     /**
      * @brief Set NNArchive for this Node. If the archive's type is SUPERBLOB, use default number of shaves.
