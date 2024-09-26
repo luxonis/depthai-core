@@ -479,9 +479,10 @@ jobs:
       # workaround required for cache@v3, https://github.com/actions/cache/issues/1428
       # to be removed when upgrading the manylinux image
       ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
-      DEPTHAI_BUILD_BASALT: ON
-      DEPTHAI_BUILD_PCL: ON
-      DEPTHAI_BUILD_RTABMAP: ON
+      CFLAGS: "-std=c99" # Needed so vpckg can bootstrap itself with the old GCC on the manylinux image
+      # DEPTHAI_BUILD_BASALT: ON
+      # DEPTHAI_BUILD_PCL: ON
+      # DEPTHAI_BUILD_RTABMAP: ON
     steps:
       - uses: actions/checkout@v3
         with:
