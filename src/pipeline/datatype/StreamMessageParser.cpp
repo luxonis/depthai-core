@@ -9,6 +9,7 @@
 #include <spdlog/spdlog.h>
 
 #include "utility/Logging.hpp"
+#include "utility/spdlog-fmt.hpp"
 
 // project
 #include "depthai/pipeline/datatype/ADatatype.hpp"

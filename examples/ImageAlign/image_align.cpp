@@ -8,7 +8,6 @@ constexpr auto FPS = 30.0;
 
 constexpr auto RGB_SOCKET = dai::CameraBoardSocket::CAM_A;
 constexpr auto LEFT_SOCKET = dai::CameraBoardSocket::CAM_B;
-constexpr auto RIGHT_SOCKET = dai::CameraBoardSocket::CAM_C;
 constexpr auto ALIGN_SOCKET = LEFT_SOCKET;
 
 constexpr auto COLOR_RESOLUTION = dai::ColorCameraProperties::SensorResolution::THE_1080_P;
@@ -35,12 +34,12 @@ class FPSCounter {
 };
 
 double rgbWeight = 0.4;
-double depthWeight = 0.6;
+double leftWeight = 0.6;
 int staticDepthPlane = 0;
 
 void updateBlendWeights(int percentRgb, void*) {
     rgbWeight = static_cast<double>(percentRgb) / 100.0;
-    depthWeight = 1.0 - rgbWeight;
+    leftWeight = 1.0 - rgbWeight;
 }
 
 void updateDepthPlane(int depth, void*) {
@@ -52,7 +51,6 @@ int main() {
 
     auto camRgb = pipeline.create<dai::node::ColorCamera>();
     auto left = pipeline.create<dai::node::MonoCamera>();
-    auto right = pipeline.create<dai::node::MonoCamera>();
     auto sync = pipeline.create<dai::node::Sync>();
     auto out = pipeline.create<dai::node::XLinkOut>();
     auto align = pipeline.create<dai::node::ImageAlign>();
@@ -61,10 +59,6 @@ int main() {
     left->setResolution(LEFT_RIGHT_RESOLUTION);
     left->setBoardSocket(LEFT_SOCKET);
     left->setFps(FPS);
-
-    right->setResolution(LEFT_RIGHT_RESOLUTION);
-    right->setBoardSocket(RIGHT_SOCKET);
-    right->setFps(FPS);
 
     camRgb->setBoardSocket(RGB_SOCKET);
     camRgb->setResolution(COLOR_RESOLUTION);
@@ -115,7 +109,7 @@ int main() {
             }
 
             cv::Mat blended;
-            cv::addWeighted(frameRgbCv, rgbWeight, leftCv, depthWeight, 0, blended);
+            cv::addWeighted(frameRgbCv, rgbWeight, leftCv, leftWeight, 0, blended);
             cv::imshow(windowName, blended);
         }
 
