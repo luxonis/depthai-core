@@ -28,7 +28,32 @@ class DetectionNetwork : public DeviceNodeGroup {
         return networkPtr;
     }
 
+
+    void setModel(const depthai::model::ModelVariant& model) {
+        std::visit([this](auto &&p){this->setModel(p);}, model);
+    }
+
+    void setModel(const depthai::model::BlobModel& model) {
+        neuralNetwork->setModel(model);
+        detectionParser->setModel(model);
+    }
+
+    void setModel(const depthai::model::SuperBlobModel& model) {
+        neuralNetwork->setModel(model);
+        detectionParser->setModel(model);
+    }
+
+    void setModel(const depthai::model::DlcModel& model) {
+        neuralNetwork->setModel(model);
+        detectionParser->setModel(model);
+    }
+
     std::shared_ptr<DetectionNetwork> build(Node::Output& input, const NNArchive& nnArchive);
+    std::shared_ptr<DetectionNetwork> build(Node::Output& input, const depthai::model::ModelVariant& model) {
+        setModel(model);
+        input.link(this->input);
+        return std::static_pointer_cast<DetectionNetwork>(shared_from_this());
+    }
     std::shared_ptr<DetectionNetwork> build(std::shared_ptr<Camera> input, dai::NNModelDescription modelDesc, float fps = 30.0f);
 
     Subnode<NeuralNetwork> neuralNetwork{*this, "neuralNetwork"};

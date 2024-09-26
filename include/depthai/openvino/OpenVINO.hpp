@@ -77,12 +77,19 @@ class OpenVINO {
         SuperBlob(const std::string& pathToSuperBlobFile);
 
         /**
+         * @brief Copy constructor
+         *
+         * @param other: Other superblob to copy
+         */
+        SuperBlob(const SuperBlob& other) = default;
+
+        /**
          * @brief Generate a blob with a specific number of shaves
          *
          * @param numShaves: Number of shaves to generate the blob for. Must be between 1 and NUMBER_OF_PATCHES.
          * @return dai::OpenVINO::Blob: Blob compiled for the specified number of shaves
          */
-        dai::OpenVINO::Blob getBlobWithNumShaves(int numShaves);
+        dai::OpenVINO::Blob getBlobWithNumShaves(int numShaves) const;
 
        private:
         // A header in the superblob containing metadata about the blob and patches
@@ -99,16 +106,16 @@ class OpenVINO {
         std::vector<uint8_t> readSuperBlobFile(const std::string& path);
 
         // Get a pointer to the first byte of the blob data
-        const uint8_t* getBlobDataPointer();
+        const uint8_t* getBlobDataPointer() const;
 
         // Get the size in bytes of the blob data
-        int64_t getBlobDataSize();
+        int64_t getBlobDataSize() const;
 
         // Get a pointer to the first byte of the patch data for a specific number of shaves
-        const uint8_t* getPatchDataPointer(int numShaves);
+        const uint8_t* getPatchDataPointer(int numShaves) const;
 
         // Get the size in bytes of the patch data for a specific number of shaves
-        int64_t getPatchDataSize(int numShaves);
+        int64_t getPatchDataSize(int numShaves) const;
 
         // Load header - throw if an error occurs
         void loadAndCheckHeader();

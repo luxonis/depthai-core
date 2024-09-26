@@ -5,9 +5,6 @@ import depthai as dai
 import numpy as np
 import time
 
-# Get argument first
-archivePath = dai.getModelFromZoo(modelDescription, useCached=True)
-
 # Create pipeline
 with dai.Pipeline() as pipeline:
     # Define sources and outputs
@@ -17,25 +14,30 @@ with dai.Pipeline() as pipeline:
     camRgb.setInterleaved(False)
     camRgb.setColorOrder(dai.ColorCameraProperties.ColorOrder.BGR)
     camRgb.setFps(15)
-    nnArchive = dai.NNArchive(archivePath)
-    h, w = nnArchive.getConfig().model.inputs[0].shape[-2:]
-    camRgb.setPreviewSize(w, h)
+
 
     """
     # load model
-    modelDescription = dai.NNModelDescription(modelSlug="yolov6-nano", platform="RVC2")
     model = dai.model.zoo.load(modelDescription)
     settings = model.settings()
 
     # Set model
     detectionNetwork.setModel
     """
+    modelDescription = dai.NNModelDescription(modelSlug="yolov6-nano", platform="RVC2")
+    model = dai.model.zoo.load(modelDescription)
 
 
     detectionNetwork = pipeline.create(dai.node.DetectionNetwork).build(
-        camRgb.preview, nnArchive
+        camRgb.preview, model
     )
     detectionNetwork.setNumInferenceThreads(2)
+
+
+    # detectionNetwork.setModel(model)
+    h,w = model.settings().nnArchiveConfig.getConfigV1().model.inputs[0].shape[-2:]
+    camRgb.setPreviewSize(w, h)
+
 
     # If needed, you can set the NNArchive by yourself
     # detectionNetwork.setNNArchive(nnArchive)

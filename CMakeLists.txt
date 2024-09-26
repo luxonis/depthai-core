@@ -380,10 +380,15 @@ set(TARGET_CORE_SOURCES
     src/device/DeviceGate.cpp
     src/utility/ArchiveUtil.cpp
     src/nn_archive/NNArchive.cpp
-    src/nn_archive/NNArchiveConfig.cpp
+    src/nn_archive/NNArchiveVersionedConfig.cpp
     src/modelzoo/NNModelDescription.cpp
     src/modelzoo/Zoo.cpp
+    src/models/Models.cpp
+    src/models/ModelLoader.cpp
 )
+
+add_executable(model_test src/models/main.cpp)
+target_link_libraries(model_test PRIVATE ${TARGET_CORE_NAME})
 
 set(TARGET_OPENCV_SOURCES
     src/opencv/ImgFrame.cpp

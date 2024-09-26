@@ -5,6 +5,8 @@
 #include "depthai/pipeline/Node.hpp"
 #include "depthai/pipeline/node/NeuralNetwork.hpp"
 
+#include "depthai/models/Models.hpp"
+
 
 void bind_neuralnetwork(pybind11::module& m, void* pCallstack){
 
@@ -44,6 +46,9 @@ void bind_neuralnetwork(pybind11::module& m, void* pCallstack){
         .def("setBlobPath", &NeuralNetwork::setBlobPath, py::arg("path"), DOC(dai, node, NeuralNetwork, setBlobPath))
         .def("setNumPoolFrames", &NeuralNetwork::setNumPoolFrames, py::arg("numFrames"), DOC(dai, node, NeuralNetwork, setNumPoolFrames))
         .def("setNumInferenceThreads", &NeuralNetwork::setNumInferenceThreads, py::arg("numThreads"), DOC(dai, node, NeuralNetwork, setNumInferenceThreads))
+        .def("setModel", py::overload_cast<const depthai::model::BlobModel&>(&NeuralNetwork::setModel), py::arg("model"))
+        .def("setModel", py::overload_cast<const depthai::model::SuperBlobModel&>(&NeuralNetwork::setModel), py::arg("model"))
+        .def("setModel", py::overload_cast<const depthai::model::DlcModel&>(&NeuralNetwork::setModel), py::arg("model"))
         .def("setNumNCEPerInferenceThread",
              &NeuralNetwork::setNumNCEPerInferenceThread,
              py::arg("numNCEPerThread"),
@@ -53,6 +58,7 @@ void bind_neuralnetwork(pybind11::module& m, void* pCallstack){
         .def("setNNArchive", py::overload_cast<const NNArchive&, int>(&NeuralNetwork::setNNArchive), py::arg("nnArchive"), py::arg("numShaves"), DOC(dai, node, NeuralNetwork, setNNArchive, 2))
         .def("setFromModelZoo", py::overload_cast<NNModelDescription, bool>(&NeuralNetwork::setFromModelZoo), py::arg("description"), py::arg("useCached"), DOC(dai, node, NeuralNetwork, setFromModelZoo))
         .def("build", py::overload_cast<dai::Node::Output&, const NNArchive&>(&NeuralNetwork::build), py::arg("input"), py::arg("nnArchive"), DOC(dai, node, NeuralNetwork, build))
+        .def("build", py::overload_cast<const NNArchiveVersionedConfig&, std::shared_ptr<Camera>, dai::NNModelDescription, float>(&NeuralNetwork::build), py::arg("nnArchiveVersionedConfig"), py::arg("input"), py::arg("modelDesc"), py::arg("fps"), DOC(dai, node, NeuralNetwork, build,2))
         .def("build", py::overload_cast<const NNArchiveConfig&, std::shared_ptr<Camera>, dai::NNModelDescription, float>(&NeuralNetwork::build), py::arg("nnArchiveConfig"), py::arg("input"), py::arg("modelDesc"), py::arg("fps"), DOC(dai, node, NeuralNetwork, build,2))
         .def("setBlob", py::overload_cast<dai::OpenVINO::Blob>(&NeuralNetwork::setBlob), py::arg("blob"), DOC(dai, node, NeuralNetwork, setBlob))
         .def("setBlob", py::overload_cast<const dai::Path&>(&NeuralNetwork::setBlob), py::arg("path"), DOC(dai, node, NeuralNetwork, setBlob, 2))

@@ -46,17 +46,16 @@ void DetectionParser::setModelPath(const dai::Path& modelPath) {
     }
 }
 
-const NNArchiveConfig& DetectionParser::getNNArchiveConfig() const {
-    DAI_CHECK_V(archiveConfig.has_value(), "NNArchiveConfig is not set. Use setNNArchive(...) first.");
+const NNArchiveVersionedConfig& DetectionParser::getNNArchiveVersionedConfig() const {
+    DAI_CHECK_V(archiveConfig.has_value(), "NNArchiveVersionedConfig is not set. Use setNNArchive(...) first.");
     return archiveConfig.value();
 }
 
-void DetectionParser::setConfig(const dai::NNArchiveConfig& config) {
+void DetectionParser::setConfig(const dai::NNArchiveVersionedConfig& config) {
     archiveConfig = config;
 
-    DAI_CHECK_V(config.getConfigV1().has_value(), "Only NNArchive config V1 is supported.");
-
-    auto configV1 = *config.getConfigV1();
+    DAI_CHECK_V(config.getVersion() == NNArchiveConfigVersion::V1, "Only NNArchive config V1 is supported.");
+    auto configV1 = config.getConfig<nn_archive::v1::Config>();
 
     const auto model = configV1.model;
     // TODO(jakgra) is NN Archive valid without this? why is this optional?
@@ -108,18 +107,18 @@ void DetectionParser::setConfig(const dai::NNArchiveConfig& config) {
 
 void DetectionParser::setNNArchiveBlob(const NNArchive& nnArchive) {
     DAI_CHECK_V(nnArchive.getModelType() == dai::model::ModelType::BLOB, "NNArchive type is not BLOB");
-    setConfig(nnArchive.getConfig());
+    setConfig(nnArchive.getVersionedConfig());
     setBlob(nnArchive.getBlob().value());
 }
 
 void DetectionParser::setNNArchiveSuperblob(const NNArchive& nnArchive, int numShaves) {
     DAI_CHECK_V(nnArchive.getModelType() == dai::model::ModelType::SUPERBLOB, "NNArchive type is not SUPERBLOB");
-    setConfig(nnArchive.getConfig());
+    setConfig(nnArchive.getVersionedConfig());
     setBlob(nnArchive.getSuperBlob()->getBlobWithNumShaves(numShaves));
 }
 
 void DetectionParser::setNNArchiveOther(const NNArchive& nnArchive) {
-    setConfig(nnArchive.getConfig());
+    setConfig(nnArchive.getVersionedConfig());
 }
 
 void DetectionParser::setBlob(OpenVINO::Blob blob) {

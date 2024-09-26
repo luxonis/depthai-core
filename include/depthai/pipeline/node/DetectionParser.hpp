@@ -3,12 +3,14 @@
 #include <depthai/modelzoo/NNModelDescription.hpp>
 #include <depthai/pipeline/DeviceNode.hpp>
 
+#include <depthai/models/Models.hpp>
+
 // standard
 #include <fstream>
 
 // shared
 #include <depthai/nn_archive/NNArchive.hpp>
-#include <depthai/nn_archive/NNArchiveConfig.hpp>
+#include <depthai/nn_archive/NNArchiveVersionedConfig.hpp>
 #include <depthai/openvino/OpenVINO.hpp>
 #include <depthai/properties/DetectionParserProperties.hpp>
 #include <optional>
@@ -52,6 +54,29 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
      *
      */
     int getNumFramesPool();
+
+    void setModel(const depthai::model::ModelVariant& model) {
+        std::visit([this](auto&& p) { this->setModel(p); }, model);
+    }
+
+    void setModel(const depthai::model::BlobModel& model) {
+        const auto &settings = model.settings();
+        if(settings.nnArchiveConfig.has_value()) {
+            setConfig(settings.nnArchiveConfig.value());
+        }
+    }
+    
+    void setModel(const depthai::model::SuperBlobModel& model) {
+        const auto &settings = model.settings();
+        if(settings.nnArchiveConfig.has_value()) {
+            setConfig(settings.nnArchiveConfig.value());
+        }
+    }
+
+    void setModel(const depthai::model::DlcModel& model) {
+        // pass
+    }
+
 
     /**
      * @brief Set NNArchive for this Node. If the archive's type is SUPERBLOB, use default number of shaves.
@@ -149,18 +174,18 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
     /// Get Iou threshold
     float getIouThreshold() const;
 
-    const NNArchiveConfig& getNNArchiveConfig() const;
+    const NNArchiveVersionedConfig& getNNArchiveVersionedConfig() const;
 
    private:
     void setNNArchiveBlob(const NNArchive& nnArchive);
     void setNNArchiveSuperblob(const NNArchive& nnArchive, int numShaves);
     void setNNArchiveOther(const NNArchive& nnArchive);
-    void setConfig(const dai::NNArchiveConfig& config);
+    void setConfig(const dai::NNArchiveVersionedConfig& config);
 
     std::optional<std::vector<std::string>> mClasses;
     std::optional<NNArchive> mArchive;
 
-    std::optional<NNArchiveConfig> archiveConfig;
+    std::optional<NNArchiveVersionedConfig> archiveConfig;
 };
 
 }  // namespace node

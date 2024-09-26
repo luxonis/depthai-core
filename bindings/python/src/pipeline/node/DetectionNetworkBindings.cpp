@@ -1,4 +1,6 @@
 #include <pybind11/cast.h>
+#include <pybind11/pybind11.h>
+
 #include <memory>
 
 #include "Common.hpp"
@@ -9,6 +11,11 @@
 #include "depthai/pipeline/NodeGroup.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/node/DetectionNetwork.hpp"
+
+#include "depthai/models/Models.hpp"
+
+PYBIND11_MAKE_OPAQUE(depthai::model::ModelVariant);
+
 
 void bind_detectionnetwork(pybind11::module& m, void* pCallstack) {
     using namespace dai;
@@ -58,6 +65,16 @@ void bind_detectionnetwork(pybind11::module& m, void* pCallstack) {
             DETECTION_NETWORK_BUILD_PYARGS,
             DETECTION_NETWORK_PYARGS)
         .def("build", py::overload_cast<std::shared_ptr<Camera>, NNModelDescription, float>(&DetectionNetwork::build), py::arg("input"), py::arg("model"), py::arg("fps") = 30.0f)
+        // .def("build", py::overload_cast<Node::Output&, const depthai::model::ModelVariant&>(&DetectionNetwork::build), py::arg("input"), py::arg("model"))
+        .def("build", [](DetectionNetwork& self, Node::Output& input, const depthai::model::BlobModel& model) {
+            return self.build(input, model);
+        }, py::arg("input"), py::arg("model"))
+        .def("build", [](DetectionNetwork& self, Node::Output& input, const depthai::model::SuperBlobModel& model) {
+            return self.build(input, model);
+        }, py::arg("input"), py::arg("model"))
+        .def("build", [](DetectionNetwork& self, Node::Output& input, const depthai::model::DlcModel& model) {
+            return self.build(input, model);
+        }, py::arg("input"), py::arg("model"))
         .def(py::init([](DETECTION_NETWORK_BUILD_ARGS, DETECTION_NETWORK_ARGS) {
                  auto self = getImplicitPipeline()->create<DetectionNetwork>();
                  self->build(input, nnArchive);
