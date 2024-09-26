@@ -1,9 +1,8 @@
 #pragma once
 
-#include "depthai/common/RotatedRect.hpp"
 #include "depthai/common/Point2f.hpp"
+#include "depthai/common/RotatedRect.hpp"
 #include "depthai/utility/Serialization.hpp"
-#include "depthai/utility/matrixOps.hpp"
 
 namespace dai {
 struct ImgTransformation {
@@ -58,11 +57,13 @@ struct ImgTransformation {
 
     ImgTransformation& addTransformation(std::array<std::array<float, 3>, 3> matrix);
     ImgTransformation& addCrop(int x, int y, int width, int height);
+    ImgTransformation& addPadding(int x, int y, int width, int height);
     ImgTransformation& addFlipVertical();
     ImgTransformation& addFlipHorizontal();
     ImgTransformation& addRotation(float angle, dai::Point2f rotationPoint);
     ImgTransformation& addScale(float scaleX, float scaleY);
-    
+    ImgTransformation& addSrcCrops(const std::vector<dai::RotatedRect>& crops);
+
     bool isValid() const;
 
     DEPTHAI_SERIALIZE(ImgTransformation, transformationMatrix, transformationMatrixInv, srcWidth, srcHeight, width, height, srcCrops);

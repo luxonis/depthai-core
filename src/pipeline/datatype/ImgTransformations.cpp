@@ -347,14 +347,17 @@ ImgTransformation& ImgTransformation::addCrop(int x, int y, int width, int heigh
     for(auto i = 0; i < 4; ++i) {
         srcCorners[i] = matvecmul(transformationMatrix, corners[i]);
     }
-    auto rrCorners = impl::getOuterRotatedRect(srcCorners);
-    dai::RotatedRect rect;
-    rect.size.width = std::sqrt(std::pow(rrCorners[1][0] - rrCorners[0][0], 2) + std::pow(rrCorners[1][1] - rrCorners[0][1], 2));
-    rect.size.height = std::sqrt(std::pow(rrCorners[2][0] - rrCorners[1][0], 2) + std::pow(rrCorners[2][1] - rrCorners[1][1], 2));
-    rect.center.x = (rrCorners[0][0] + rrCorners[1][0] + rrCorners[2][0] + rrCorners[3][0]) / 4.0f;
-    rect.center.y = (rrCorners[0][1] + rrCorners[1][1] + rrCorners[2][1] + rrCorners[3][1]) / 4.0f;
-    rect.angle = std::atan2(rrCorners[1][1] - rrCorners[0][1], rrCorners[1][0] - rrCorners[0][0]) * 180.0f / (float)M_PI;
+    auto rect = impl::getRotatedRectFromPoints(srcCorners);
     srcCrops.push_back(rect);
+    return *this;
+}
+ImgTransformation& ImgTransformation::addPadding(int top, int bottom, int left, int right) {
+    width += left + right;
+    height += top + bottom;
+    if(top != 0 || left != 0) {
+        std::array<std::array<float, 3>, 3> padMatrix = {{{1, 0, (float)left}, {0, 1, (float)top}, {0, 0, 1}}};
+        addTransformation(padMatrix);
+    }
     return *this;
 }
 ImgTransformation& ImgTransformation::addFlipVertical() {
@@ -395,6 +398,11 @@ ImgTransformation& ImgTransformation::addScale(float scaleX, float scaleY) {
     height *= scaleY;
     std::array<std::array<float, 3>, 3> scaleMatrix = {{{scaleX, 0, 0}, {0, scaleY, 0}, {0, 0, 1}}};
     addTransformation(scaleMatrix);
+    return *this;
+}
+
+ImgTransformation& ImgTransformation::addSrcCrops(const std::vector<dai::RotatedRect>& crops) {
+    srcCrops.insert(srcCrops.end(), crops.begin(), crops.end());
     return *this;
 }
 
