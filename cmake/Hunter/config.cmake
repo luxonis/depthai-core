@@ -25,9 +25,9 @@ hunter_config(
 
 hunter_config(
     spdlog
-    VERSION "1.8.2"
-    URL "https://github.com/gabime/spdlog/archive/v1.8.2.tar.gz"
-    SHA1 "4437f350ca7fa89a0cd8faca1198afb36823f775"
+    VERSION "1.9.1"
+    URL "https://github.com/gabime/spdlog/archive/v1.9.1.tar.gz"
+    SHA1 "a26883f0fc3d511e1cd5b696603b2816922db8e0"
     CMAKE_ARGS
         SPDLOG_BUILD_EXAMPLE=OFF
         SPDLOG_FMT_EXTERNAL=OFF
@@ -155,7 +155,7 @@ hunter_config(
 
 # RTABMap
 hunter_config(
-    rtbmap
+    rtabmap
     VERSION "0.21.4"
     URL "https://github.com/introlab/rtabmap/archive/623d056436946c35beb12199831f178a84eaad73.zip" # until fixes are merged to main
     SHA1 "98768b5adea093cc5e1bbe74b2ad3749e61de0ef"
@@ -178,14 +178,14 @@ hunter_config(
         WITH_OPENNI=OFF
         WITH_OPENNI2=OFF
         WITH_DC1394=OFF
-        WITH_G2O=ON
-        WITH_GTSAM=ON
+		WITH_G2O=OFF
+		WITH_GTSAM=OFF
         WITH_TORO=ON
         WITH_CERES=OFF
         WITH_MRPT=OFF
         WITH_VERTIGO=ON
         WITH_CVSBA=OFF
-        WITH_POINTMATCHER=ON
+		WITH_POINTMATCHER=OFF
         WITH_CCCORELIB=OFF
         WITH_OPEN3D=OFF
         WITH_LOAM=OFF
@@ -268,8 +268,8 @@ hunter_config(
 hunter_config(
     basalt
     VERSION 0.1.0
-    URL "https://github.com/luxonis/basalt/archive/5763210cd48e2dfc560f80ee0d3648163e69a901.tar.gz"
-    SHA1 "d5301f8edfce5372962851b3d7928c053f0b1628"
+    URL "https://github.com/luxonis/basalt/archive/5d5c05347060f4301f40e9e8131bd37e1f89af09.tar.gz"
+    SHA1 "050ea5a43752c584ba854fdc6095f11918ab6700"
     CMAKE_ARGS
         BASALT_SDK_ONLY=ON
 )

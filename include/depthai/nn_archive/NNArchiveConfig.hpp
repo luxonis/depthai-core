@@ -9,7 +9,7 @@
 #include <vector>
 
 // libraries
-#include <spimpl.h>
+#include "3rdparty/spimpl.h"
 
 // internal
 #include "depthai/nn_archive/NNArchiveEntry.hpp"

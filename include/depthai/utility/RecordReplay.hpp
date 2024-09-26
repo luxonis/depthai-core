@@ -1,7 +1,7 @@
 #pragma once
 
 #include <mp4v2/mp4v2.h>
-#include <spdlog/logger.h>
+// #include "spdlog/logger.h"
 
 #include <cstdint>
 #include <fstream>
