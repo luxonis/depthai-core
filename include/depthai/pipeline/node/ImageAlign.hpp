@@ -47,7 +47,6 @@ class ImageAlign : public DeviceNodeCRTP<DeviceNode, ImageAlign, ImageAlignPrope
      * Input message.
      * Default queue is non-blocking with size 4.
      */
-    //Input input{*this, "input", Input::Type::SReceiver, false, 4, true, {{DatatypeEnum::ImgFrame, false}}};
     Input input{*this, {"input", DEFAULT_GROUP, false, 4, {{DatatypeEnum::ImgFrame, false}}}};
 
 
