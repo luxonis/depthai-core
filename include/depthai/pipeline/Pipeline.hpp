@@ -113,6 +113,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     RecordConfig recordConfig;
     bool enableHolisticRecordReplay = false;
     std::unordered_map<std::string, std::string> recordReplayFilenames;
+    bool removeRecordReplayFiles = true;
     std::string defaultDeviceMxId;
 
     // Output queues
