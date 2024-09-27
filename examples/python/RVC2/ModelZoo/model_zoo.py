@@ -24,7 +24,7 @@ print("Using model cached at path: ", modelPath)
 archive = dai.NNArchive(modelPath)
 blob = archive.getSuperBlob().getBlobWithNumShaves(6)
 print("Number of shaves: ", blob.numShaves)
-print(archive.getConfig().getConfigV1().model.heads[0].metadata.classes)
+print(archive.getConfig().model.heads[0].metadata.classes)
 
 # Construct pipeline and start using downloaded NN model :-)
 with dai.Pipeline() as pipeline:
