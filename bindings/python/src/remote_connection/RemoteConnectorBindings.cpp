@@ -21,6 +21,7 @@ void RemoteConnectorBindings::bind(pybind11::module& m, void* pCallstack) {
 
     py::class_<RemoteConnector>(m, "RemoteConnector")
         .def(py::init<const std::string&, uint16_t>(), py::arg("address") = "0.0.0.0", py::arg("port") = 8765)
-        .def("addTopic", &RemoteConnector::addTopic, py::arg("topicName"), py::arg("output"))
-        .def("registerPipeline", &RemoteConnector::registerPipeline, py::arg("pipeline"));
+        .def("addTopic", &RemoteConnector::addTopic, py::arg("topicName"), py::arg("output"), py::arg("group") = "")
+        .def("registerPipeline", &RemoteConnector::registerPipeline, py::arg("pipeline"))
+        .def("waitKey", &RemoteConnector::waitKey, py::arg("delay"));
 }

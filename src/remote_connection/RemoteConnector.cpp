@@ -7,6 +7,59 @@
 #include "utility/Resources.hpp"
 
 namespace dai {
+
+inline static uint64_t nanosecondsSinceEpoch() {
+    return uint64_t(std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count());
+}
+
+RemoteConnector::RemoteConnector(const std::string& address, uint16_t port) {
+    initWebsocketServer(address, port);
+    initHttpServer(address, 8000);
+
+    // Expose services
+    exposeKeyPressedService();
+    exposeTopicGroupsService();
+}
+
+RemoteConnector::~RemoteConnector() {
+    server->stop();
+    httpServer->stop();
+    httpServerThread->join();
+}
+
+int RemoteConnector::waitKey(int delay_ms) {
+    // Implemented based on opencv's waitKey method
+    // https://docs.opencv.org/4.x/d7/dfc/group__highgui.html#ga5628525ad33f52eab17feebcfba38bd7
+
+    constexpr int NEUTRAL_VALUE = -1;
+
+    std::unique_lock<std::mutex> lock(keyMutex);
+    int ret = keyPressed;
+    keyPressed = NEUTRAL_VALUE;
+
+    // If key has been pressed already, just return
+    if(ret != NEUTRAL_VALUE) {
+        return ret;
+    }
+
+    // Wait indefinitely if delay_ms is non-positive
+    if(delay_ms <= 0) {
+        keyCv.wait(lock);
+    } else {
+        keyCv.wait_for(lock, std::chrono::milliseconds(delay_ms));
+    }
+
+    ret = keyPressed;
+    keyPressed = NEUTRAL_VALUE;
+    return ret;
+}
+
+void RemoteConnector::keyPressedCallback(int key) {
+    std::unique_lock<std::mutex> lock(keyMutex);
+    keyPressed = key;
+    keyCv.notify_all();
+}
+
 void RemoteConnector::initWebsocketServer(const std::string& address, uint16_t port) {
     // Create the WebSocket server with a simple log handler
     const auto logHandler = [](foxglove::WebSocketLogLevel, const char* msg) { std::cout << msg << std::endl; };
@@ -53,6 +106,74 @@ void RemoteConnector::initWebsocketServer(const std::string& address, uint16_t p
     }
 }
 
+void RemoteConnector::addTopic(const std::string& topicName, Node::Output& output, const std::string& group) {
+    auto outputQueue = output.createOutputQueue();
+    // Start a thread to handle the schema extraction and message forwarding
+    std::thread([this, topicName, outputQueue, group]() {
+        bool isRunning = true;
+        // Wait for the first message to extract schema
+        auto firstMessage = outputQueue->get();
+        if(!firstMessage) {
+            std::cerr << "No message received from the output for topic: " << topicName << std::endl;
+            return;
+        }
+
+        auto serializableMessage = std::dynamic_pointer_cast<utility::ProtoSerializable>(firstMessage);
+        if(!serializableMessage) {
+            std::cerr << "First message is not a ProtoSerializable message for topic: " << topicName << std::endl;
+            return;
+        }
+        // Assuming the first message is a protobuf message
+        const auto descriptor = serializableMessage->serializeSchema();
+
+        // Add the topic to the server
+        auto channelId = server->addChannels({{.topic = topicName,
+                                               .encoding = "protobuf",
+                                               .schemaName = descriptor.schemaName,
+                                               .schema = foxglove::base64Encode(descriptor.schema),
+                                               .schemaEncoding = std::nullopt}})[0];
+
+        // Store the group information
+        if(!group.empty()) {
+            if(topicGroups.find(topicName) != topicGroups.end()) {
+                std::cerr << "Topic named " << topicName << "is already present" << std::endl;
+                return;
+            }
+            topicGroups[group] = topicName;
+        }
+
+        // Start the message forwarding loop
+        while(isRunning) {
+            std::shared_ptr<ADatatype> message;
+            try {
+                message = outputQueue->get();
+            } catch(const dai::MessageQueue::QueueException& ex) {
+                std::cout << "Error while getting message from output queue for topic: " << topicName << std::endl;
+                isRunning = false;
+                continue;
+            } catch(const std::exception& ex) {
+                std::cerr << "Error while getting message from output queue for topic: " << topicName << std::endl;
+                isRunning = false;
+                continue;
+            }
+            if(!message) continue;
+
+            auto serializableMessage = std::dynamic_pointer_cast<utility::ProtoSerializable>(message);
+            if(!serializableMessage) {
+                std::cerr << "Message is not a ProtoSerializable message for topic: " << topicName << std::endl;
+                continue;
+            }
+
+            auto serializedMsg = serializableMessage->serializeProto();
+            server->broadcastMessage(channelId, nanosecondsSinceEpoch(), static_cast<const uint8_t*>(serializedMsg.data()), serializedMsg.size());
+        }
+    }).detach();  // Detach the thread to run independently
+}
+
+void RemoteConnector::registerPipeline(const Pipeline& pipeline) {
+    exposePipelineService(pipeline);
+}
+
 std::string getMimeType(const std::string& path) {
     static std::map<std::string, std::string> mimeTypes = {{".html", "text/html"},
                                                            {".htm", "text/html"},
@@ -97,4 +218,94 @@ void RemoteConnector::initHttpServer(const std::string& address, uint16_t port) 
     // Run the server in a separate thread
     httpServerThread = std::make_unique<std::thread>([this, address, port]() { httpServer->listen(address, port); });
 }
+
+void RemoteConnector::exposeTopicGroupsService() {
+    std::vector<foxglove::ServiceWithoutId> services;
+    auto topicGroupsService = foxglove::ServiceWithoutId();
+    topicGroupsService.name = "topicGroups";
+    auto request = foxglove::ServiceRequestDefinition();
+    request.schemaName = "topicGroups";
+    request.schema = "";
+    request.encoding = "json";
+    topicGroupsService.request = request;
+    topicGroupsService.response = request;
+    topicGroupsService.type = "json";
+    services.push_back(topicGroupsService);
+    auto ids = server->addServices(services);
+    assert(ids.size() == 1);
+    auto id = ids[0];
+
+    // Add the handler
+    serviceMap[id] = [this](foxglove::ServiceResponse request) {
+        (void)request;  // Nothing to do with the request
+        auto response = foxglove::ServiceResponse();
+        nlohmann::json topicGroupsJson = this->topicGroups;
+        std::string serializedTopicGroups = topicGroupsJson.dump();
+        response.data = std::vector<uint8_t>(serializedTopicGroups.begin(), serializedTopicGroups.end());
+        return response;
+    };
+}
+
+void RemoteConnector::exposeKeyPressedService() {
+    std::string serviceName = "keyPressed";
+    foxglove::ServiceWithoutId service;
+    service.name = serviceName;
+    service.type = "json";
+
+    foxglove::ServiceRequestDefinition requestDef;
+    requestDef.schemaName = serviceName + "Request";
+    requestDef.encoding = "json";
+    service.request = requestDef;
+
+    foxglove::ServiceRequestDefinition responseDef;
+    responseDef.schemaName = serviceName + "Response";
+    responseDef.encoding = "json";
+    service.response = responseDef;
+
+    auto ids = server->addServices({service});
+    assert(ids.size() == 1);
+    auto id = ids[0];
+
+    auto callback = [this](int key) {
+        std::unique_lock<std::mutex> lock(keyMutex);
+        this->keyPressed = key;
+        this->keyCv.notify_all();
+    };
+
+    serviceMap[id] = [this](foxglove::ServiceResponse request) {
+        std::string strInt(request.data.begin(), request.data.end());
+        int keyPressed = std::stoi(strInt);
+        this->keyPressedCallback(keyPressed);
+        return foxglove::ServiceResponse{};
+    };
+}
+
+void RemoteConnector::exposePipelineService(const Pipeline& pipeline) {
+    // Add the service
+    std::vector<foxglove::ServiceWithoutId> services;
+    auto pipelineService = foxglove::ServiceWithoutId();
+    pipelineService.name = "pipelineSchema";
+    auto request = foxglove::ServiceRequestDefinition();
+    request.schemaName = "pipelineSchema";
+    request.schema = "";
+    request.encoding = "json";
+    pipelineService.request = request;
+    pipelineService.response = request;
+    pipelineService.type = "json";
+    services.push_back(pipelineService);
+    auto ids = server->addServices(services);
+    assert(ids.size() == 1);
+    auto id = ids[0];
+
+    // Add the handler
+    auto serializedPipeline = pipeline.serializeToJson();
+    auto serializedPipelineStr = serializedPipeline.dump();
+    serviceMap[id] = [serializedPipelineStr](foxglove::ServiceResponse request) {
+        (void)request;  // Nothing to do with the request
+        auto response = foxglove::ServiceResponse();
+        response.data = std::vector<uint8_t>(serializedPipelineStr.begin(), serializedPipelineStr.end());
+        return response;
+    };
+}
+
 }  // namespace dai

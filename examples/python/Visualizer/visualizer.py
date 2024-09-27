@@ -98,6 +98,7 @@ with dai.Pipeline() as pipeline:
 
         if frame is not None:
             displayFrame("rgb", frame)
+
         if cv2.waitKey(1) == ord("q"):
             pipeline.stop()
             break
