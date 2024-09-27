@@ -479,7 +479,7 @@ jobs:
       # workaround required for cache@v3, https://github.com/actions/cache/issues/1428
       # to be removed when upgrading the manylinux image
       ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
-      CFLAGS: "-std=c99" # Needed so vpckg can bootstrap itself with the old GCC on the manylinux image
+      DEPTHAI_VCPKG_CFLAGS: "-std=c99" # Needed so vpckg can bootstrap itself with the old GCC on the manylinux image
       VCPKG_FORCE_SYSTEM_BINARIES: "1" # Needed so vpckg can bootstrap itself
       # DEPTHAI_BUILD_BASALT: ON
       # DEPTHAI_BUILD_PCL: ON

@@ -184,7 +184,24 @@ function(vcpkg_init)
             # endif()
 
             # build vcpkg
-            execute_process(COMMAND ${VCPKG_BUILD_CMD} ${VCPKG_USE_SYSTEM_BINARIES_FLAG} ${VCPKG_METRICS_FLAG} WORKING_DIRECTORY "${VCPKG_DIRECTORY}" RESULT_VARIABLE VCPKG_BUILD_OK)
+            if(UNIX AND DEFINED ENV{DEPTHAI_VCPKG_CFLAGS})
+                # Build the command string for Unix-like systems
+                set(_cmd "CFLAGS=\"\$CFLAGS $ENV{DEPTHAI_VCPKG_CFLAGS}\" ${VCPKG_BUILD_CMD} ${VCPKG_USE_SYSTEM_BINARIES_FLAG} ${VCPKG_METRICS_FLAG}")
+                # Execute the command using sh -c
+                execute_process(
+                    COMMAND sh -c "${_cmd}"
+                    WORKING_DIRECTORY "${VCPKG_DIRECTORY}"
+                    RESULT_VARIABLE VCPKG_BUILD_OK
+                )
+            else()
+                # Execute the process without modifying the environment
+                execute_process(
+                    COMMAND ${VCPKG_BUILD_CMD} ${VCPKG_USE_SYSTEM_BINARIES_FLAG} ${VCPKG_METRICS_FLAG}
+                    WORKING_DIRECTORY "${VCPKG_DIRECTORY}"
+                    RESULT_VARIABLE VCPKG_BUILD_OK
+                )
+            endif()
+
             if(NOT VCPKG_BUILD_OK EQUAL "0")
                 message(FATAL_ERROR "Bootstrapping VCPKG failed!")
             endif()
