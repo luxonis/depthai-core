@@ -2,12 +2,16 @@
 
 #include <google/protobuf/descriptor.pb.h>
 #include <google/protobuf/util/time_util.h>
+
+// clang-format off
+#include <depthai/pipeline/Pipeline.hpp> // Pipeline has to be included before httplib for some reason
+// clang-format on
+
 #include <httplib.h>
 #include <memory.h>
 
 #include <condition_variable>
 #include <depthai/pipeline/Node.hpp>
-#include <depthai/pipeline/Pipeline.hpp>
 #include <depthai/utility/ProtoSerializable.hpp>
 #include <foxglove/websocket/base64.hpp>
 #include <foxglove/websocket/server_factory.hpp>
