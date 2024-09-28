@@ -265,13 +265,6 @@ void RemoteConnector::exposeKeyPressedService() {
     auto ids = server->addServices({service});
     assert(ids.size() == 1);
     auto id = ids[0];
-
-    auto callback = [this](int key) {
-        std::unique_lock<std::mutex> lock(keyMutex);
-        this->keyPressed = key;
-        this->keyCv.notify_all();
-    };
-
     serviceMap[id] = [this](foxglove::ServiceResponse request) {
         std::string strInt(request.data.begin(), request.data.end());
         int keyPressed = std::stoi(strInt);
