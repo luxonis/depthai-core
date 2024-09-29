@@ -9,7 +9,7 @@ import time
 remoteConnector = dai.RemoteConnector()
 # Create pipeline
 with dai.Pipeline() as pipeline:
-    cameraNode = pipeline.create(dai.node.Camera).build()
+    cameraNode = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
     detectionNetwork = pipeline.create(dai.node.DetectionNetwork).build(
         cameraNode, dai.NNModelDescription("yolov6-nano")
     )
@@ -28,10 +28,10 @@ with dai.Pipeline() as pipeline:
     qRgb = detectionNetwork.passthrough.createOutputQueue()
     qDet = detectionNetwork.out.createOutputQueue()
     # Add the remote connector topics
-    remoteConnector.addTopic("rawVideo", outputToEncode)
-    remoteConnector.addTopic("h264", h264Encoder.out)
-    remoteConnector.addTopic("mjpeg", mjpegEncoder.out)
-    remoteConnector.addTopic("detections", detectionNetwork.out)
+    remoteConnector.addTopic("rawVideo", outputToEncode, "testGroup")
+    remoteConnector.addTopic("h264", h264Encoder.out, "testGroup")
+    remoteConnector.addTopic("mjpeg", mjpegEncoder.out, "specialMjpegGroup")
+    remoteConnector.addTopic("detections", detectionNetwork.out, "testGroup")
     encoderQueue = mjpegEncoder.out.createOutputQueue()
 
     # Register the pipeline with the remote connector
@@ -78,6 +78,11 @@ with dai.Pipeline() as pipeline:
         cv2.imshow(name, frame)
 
     while pipeline.isRunning():
+        key = remoteConnector.waitKey(1)
+        if key == ord("q"):
+            print("Got q key from the remote connection!")
+        if(key != -1):
+            print("Got key from the remote connection: ", key)
         inRgb: dai.ImgFrame = qRgb.get()
         inDet: dai.ImgDetections = qDet.get()
         encdoedMessage = encoderQueue.get()

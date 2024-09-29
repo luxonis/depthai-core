@@ -27,7 +27,7 @@ RemoteConnector::~RemoteConnector() {
     httpServerThread->join();
 }
 
-int RemoteConnector::waitKey(int delay_ms) {
+int RemoteConnector::waitKey(int delayMs) {
     // Implemented based on opencv's waitKey method
     // https://docs.opencv.org/4.x/d7/dfc/group__highgui.html#ga5628525ad33f52eab17feebcfba38bd7
 
@@ -43,10 +43,10 @@ int RemoteConnector::waitKey(int delay_ms) {
     }
 
     // Wait indefinitely if delay_ms is non-positive
-    if(delay_ms <= 0) {
+    if(delayMs <= 0) {
         keyCv.wait(lock);
     } else {
-        keyCv.wait_for(lock, std::chrono::milliseconds(delay_ms));
+        keyCv.wait_for(lock, std::chrono::milliseconds(delayMs));
     }
 
     ret = keyPressed;
@@ -134,13 +134,11 @@ void RemoteConnector::addTopic(const std::string& topicName, Node::Output& outpu
                                                .schemaEncoding = std::nullopt}})[0];
 
         // Store the group information
-        if(!group.empty()) {
-            if(topicGroups.find(topicName) != topicGroups.end()) {
-                std::cerr << "Topic named " << topicName << "is already present" << std::endl;
-                return;
-            }
-            topicGroups[group] = topicName;
+        if(topicGroups.find(topicName) != topicGroups.end()) {
+            std::cerr << "Topic named " << topicName << "is already present" << std::endl;
+            return;
         }
+        topicGroups[topicName] = group;
 
         // Start the message forwarding loop
         while(isRunning) {
@@ -266,10 +264,18 @@ void RemoteConnector::exposeKeyPressedService() {
     assert(ids.size() == 1);
     auto id = ids[0];
     serviceMap[id] = [this](foxglove::ServiceResponse request) {
-        std::string strInt(request.data.begin(), request.data.end());
-        int keyPressed = std::stoi(strInt);
-        this->keyPressedCallback(keyPressed);
-        return foxglove::ServiceResponse{};
+        // Create a json object from the request data
+        nlohmann::json jsonRequest = nlohmann::json::parse(request.data);
+        auto keyPressed = jsonRequest["key"].get<std::string>();
+        // Check that the keyPressed is a single character
+        if(keyPressed.size() != 1) {
+            std::string errorMsg = R"({"error": "Invalid key pressed. Expected a single character"})";
+            return foxglove::ServiceResponse{.data = std::vector<uint8_t>(errorMsg.begin(), errorMsg.end())};
+        }
+
+        this->keyPressedCallback(static_cast<int>(keyPressed[0]));
+        std::string responseMsg = R"({"status": "Received key"})";
+        return foxglove::ServiceResponse{.data = std::vector<uint8_t>(responseMsg.begin(), responseMsg.end())};
     };
 }
 
