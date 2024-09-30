@@ -49,7 +49,7 @@ void bind_imagealign(pybind11::module& m, void* pCallstack){
         .def_readonly("passthroughInput", &ImageAlign::passthroughInput, DOC(dai, node, ImageAlign, passthroughInput), DOC(dai, node, ImageAlign, passthroughInput))
         .def_readonly("outputAligned", &ImageAlign::outputAligned, DOC(dai, node, ImageAlign, outputAligned), DOC(dai, node, ImageAlign, outputAligned))
         .def("setOutputSize",&ImageAlign::setOutputSize, py::arg("alignWidth"),py::arg("alignHeight") ,DOC(dai, node, ImageAlign, setOutputSize))
-        .def("setOutKeepAspectRatio", &ImageAlign::setOutKeepAspectRatio,py::arg("keep"), DOC(dai, node, ImageAlign, setOutKeepAspectRation))
+        .def("setOutKeepAspectRatio", &ImageAlign::setOutKeepAspectRatio,py::arg("keep"), DOC(dai, node, ImageAlign, setOutKeepAspectRatio))
         .def("setInterpolation",  &ImageAlign::setInterpolation,py::arg("interp"), DOC(dai, node, ImageAlign, setInterpolation))
         .def("setNumShaves",  &ImageAlign::setNumShaves, py::arg("numShaves"),DOC(dai, node, ImageAlign, setNumShaves))
         .def("setNumFramesPool", &ImageAlign::setNumFramesPool,py::arg("numFramesPool") , DOC(dai, node, ImageAlign, setNumFramesPool))
