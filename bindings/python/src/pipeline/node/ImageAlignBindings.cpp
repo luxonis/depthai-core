@@ -47,7 +47,7 @@ void bind_imagealign(pybind11::module& m, void* pCallstack){
         .def_readonly("input", &ImageAlign::input, DOC(dai, node, ImageAlign, input), DOC(dai, node, ImageAlign, input))
         .def_readonly("inputAlignTo", &ImageAlign::inputAlignTo, DOC(dai, node, ImageAlign, inputAlignTo), DOC(dai, node, ImageAlign, inputAlignTo))
         .def_readonly("passthroughInput", &ImageAlign::passthroughInput, DOC(dai, node, ImageAlign, passthroughInput), DOC(dai, node, ImageAlign, passthroughInput))
-        
+        .def_readonly("outputAligned", &ImageAlign::outputAligned, DOC(dai, node, ImageAlign, outputAligned), DOC(dai, node, ImageAlign, outputAligned))
         .def("setOutputSize",&ImageAlign::setOutputSize, py::arg("alignWidth"),py::arg("alignHeight") ,DOC(dai, node, ImageAlign, setOutputSize))
         .def("setOutKeepAspectRatio", &ImageAlign::setOutKeepAspectRatio,py::arg("keep"), DOC(dai, node, ImageAlign, setOutKeepAspectRation))
         .def("setInterpolation",  &ImageAlign::setInterpolation,py::arg("interp"), DOC(dai, node, ImageAlign, setInterpolation))
