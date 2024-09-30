@@ -10,8 +10,6 @@
 #include <pybind11/chrono.h>
 #include <pybind11/numpy.h>
 
-// #include "spdlog/spdlog.h"
-
 void bind_imagealignconfig(pybind11::module& m, void* pCallstack){
 
     using namespace dai;
@@ -34,13 +32,7 @@ void bind_imagealignconfig(pybind11::module& m, void* pCallstack){
     // Message
     imageAlignConfig
         .def(py::init<>())
-        // .def(py::init<std::shared_ptr<ToFConfig>>())
-        .def_readwrite("staticDepthPlane", &ImageAlignConfig::staticDepthPlane, DOC(dai, ToFConfig, staticDepthPlane))
-
-        .def("serialize", &ImageAlignConfig::serialize, py::arg("metadata"), py::arg("datatype"), DOC(dai, ToFConfig, serialize))
+        .def_readwrite("staticDepthPlane", &ImageAlignConfig::staticDepthPlane, DOC(dai, ImageAlignConfig, staticDepthPlane))
         ;
-
-    // add aliases
-    // m.attr("ToFConfig").attr("DepthParams") = m.attr("ToFConfig").attr("DepthParams");
 
 }
