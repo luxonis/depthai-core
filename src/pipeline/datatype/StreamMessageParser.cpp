@@ -19,6 +19,7 @@
 #include "depthai/pipeline/datatype/EncodedFrame.hpp"
 #include "depthai/pipeline/datatype/FeatureTrackerConfig.hpp"
 #include "depthai/pipeline/datatype/IMUData.hpp"
+#include "depthai/pipeline/datatype/ImageAlignConfig.hpp"
 #include "depthai/pipeline/datatype/ImageManipConfig.hpp"
 #include "depthai/pipeline/datatype/ImageManipConfigV2.hpp"
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
@@ -87,7 +88,7 @@ static std::tuple<DatatypeEnum, size_t, size_t> parseHeader(streamPacketDesc_t* 
         for(std::uint32_t i = 0; i < endOfPacketMarker.size(); i++) {
             hex += fmt::format("{:02X}", marker[i]);
         }
-        //logger::warn("StreamMessageParser end-of-packet marker mismatch, got: " + hex);
+        // logger::warn("StreamMessageParser end-of-packet marker mismatch, got: " + hex);
     }
 
     const auto info = fmt::format(", total size {}, type {}, metadata size {}", packet->length, (int32_t)objectType, serializedObjectSize);
@@ -156,6 +157,10 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
 
         case DatatypeEnum::ImageManipConfigV2:
             return parseDatatype<ImageManipConfigV2>(metadataStart, serializedObjectSize, data, fd);
+            break;
+
+        case DatatypeEnum::ImageAlignConfig:
+            return parseDatatype<ImageAlignConfig>(metadataStart, serializedObjectSize, data, fd);
             break;
 
         case DatatypeEnum::CameraControl:
