@@ -2,13 +2,10 @@
 
 #include <depthai/pipeline/DeviceNode.hpp>
 
-
 // shared
 #include <depthai/properties/ImageAlignProperties.hpp>
 
 #include "depthai/pipeline/datatype/ImageAlignConfig.hpp"
-
-
 
 namespace dai {
 namespace node {
@@ -24,13 +21,7 @@ class ImageAlign : public DeviceNodeCRTP<DeviceNode, ImageAlign, ImageAlignPrope
    protected:
     Properties& getProperties();
 
-   private:
-    //ImageAlignProperties properties;
-
    public:
-    ImageAlign() = default;
-    ImageAlign(std::unique_ptr<Properties> props);
-
     /**
      * Initial config to use when calculating spatial location data.
      */
@@ -40,8 +31,7 @@ class ImageAlign : public DeviceNodeCRTP<DeviceNode, ImageAlign, ImageAlignPrope
      * Input message with ability to modify parameters in runtime.
      * Default queue is non-blocking with size 4.
      */
-    Input inputConfig{*this, {"inputConfig", DEFAULT_GROUP, false, 4, {{DatatypeEnum::ImageAlignConfig,false}}}};
-
+    Input inputConfig{*this, {"inputConfig", DEFAULT_GROUP, false, 4, {{DatatypeEnum::ImageAlignConfig, false}}}};
 
     /**
      * Input message.
@@ -49,12 +39,11 @@ class ImageAlign : public DeviceNodeCRTP<DeviceNode, ImageAlign, ImageAlignPrope
      */
     Input input{*this, {"input", DEFAULT_GROUP, false, 4, {{DatatypeEnum::ImgFrame, false}}}};
 
-
     /**
      * Input align to message.
      * Default queue is non-blocking with size 1.
      */
-    Input inputAlignTo{*this, {"inputAlignTo", DEFAULT_GROUP, false , 1, {{DatatypeEnum::ImgFrame, false}}, true}};
+    Input inputAlignTo{*this, {"inputAlignTo", DEFAULT_GROUP, false, 1, {{DatatypeEnum::ImgFrame, false}}, true}};
 
     /**
      * Outputs ImgFrame message that is aligned to inputAlignTo.
@@ -94,4 +83,4 @@ class ImageAlign : public DeviceNodeCRTP<DeviceNode, ImageAlign, ImageAlignPrope
 };
 
 }  // namespace node
-} // namespace dai
+}  // namespace dai

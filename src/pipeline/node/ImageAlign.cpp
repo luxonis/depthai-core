@@ -1,16 +1,7 @@
 #include "depthai/pipeline/node/ImageAlign.hpp"
 
-
 namespace dai {
 namespace node {
-
-ImageAlign::ImageAlign(std::unique_ptr<Properties> props)
-   : DeviceNodeCRTP<DeviceNode, ImageAlign, ImageAlignProperties>(std::move(props)),
-   initialConfig(properties.initialConfig) 
-{
-    setInputRefs({&inputConfig, &input, &inputAlignTo});
-    setOutputRefs({&outputAligned, &passthroughInput});
-}
 
 ImageAlignProperties& ImageAlign::getProperties() {
     properties.initialConfig = initialConfig;
