@@ -41,8 +41,8 @@
     #include "node/host/Replay.hpp"
 #endif
 #include "ThreadedHostNode.hpp"
-#include "node/host/HostNode.hpp"
 #include "node/ImageAlign.hpp"
+#include "node/host/HostNode.hpp"
 #ifdef DEPTHAI_HAVE_RTABMAP_SUPPORT
     #include "depthai/rtabmap/RTABMapSLAM.hpp"
     #include "depthai/rtabmap/RTABMapVIO.hpp"

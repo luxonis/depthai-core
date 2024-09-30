@@ -63,16 +63,14 @@ int main() {
     camRgb->setIspScale(1, 3);
 
     sync->setSyncThreshold(std::chrono::milliseconds(static_cast<int>((1 / FPS) * 1000.0 * 0.5)));
-    
+
     align->outputAligned.link(sync->inputs["aligned"]);
     camRgb->isp.link(sync->inputs["rgb"]);
     camRgb->isp.link(align->inputAlignTo);
     left->out.link(align->input);
-    //sync->out.link(out->input);
-    auto out = sync->out.createOutputQueue();
+    auto queue = sync->out.createOutputQueue();
 
-    auto queue = camRgb->video.createOutputQueue();
-    //auto alignQ = align->inputConfig.createInputQueue();
+    auto alignQ = align->inputConfig.createInputQueue();
 
     FPSCounter fpsCounter;
 
@@ -81,7 +79,7 @@ int main() {
     cv::resizeWindow(windowName, 1280, 720);
     cv::createTrackbar("RGB Weight %", windowName, nullptr, 100, updateBlendWeights);
     cv::createTrackbar("Static Depth Plane [mm]", windowName, nullptr, 2000, updateDepthPlane);
-
+    pipeline.start();
     while(true) {
         auto messageGroup = queue->get<dai::MessageGroup>();
         fpsCounter.tick();
@@ -109,13 +107,12 @@ int main() {
         if(key == 'q' || key == 'Q') {
             break;
         }
-        
+
         auto cfg = align->initialConfig;
-        //auto cfg = align->initialConfig.get();
-        cfg.staticDepthPlane = staticDepthPlane;
         auto alignConfig = std::make_shared<dai::ImageAlignConfig>();
         *alignConfig = cfg;
-        //alignQ->send(alignConfig); //fucks everything up
+        alignConfig->staticDepthPlane = staticDepthPlane;
+        alignQ->send(alignConfig);
     }
 
     return 0;
