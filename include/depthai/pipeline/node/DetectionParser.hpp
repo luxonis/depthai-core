@@ -8,7 +8,7 @@
 
 // shared
 #include <depthai/nn_archive/NNArchive.hpp>
-#include <depthai/nn_archive/NNArchiveConfig.hpp>
+#include <depthai/nn_archive/NNArchiveVersionedConfig.hpp>
 #include <depthai/openvino/OpenVINO.hpp>
 #include <depthai/properties/DetectionParserProperties.hpp>
 #include <optional>
@@ -149,18 +149,18 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
     /// Get Iou threshold
     float getIouThreshold() const;
 
-    const NNArchiveConfig& getNNArchiveConfig() const;
+    const NNArchiveVersionedConfig& getNNArchiveVersionedConfig() const;
 
    private:
     void setNNArchiveBlob(const NNArchive& nnArchive);
     void setNNArchiveSuperblob(const NNArchive& nnArchive, int numShaves);
     void setNNArchiveOther(const NNArchive& nnArchive);
-    void setConfig(const dai::NNArchiveConfig& config);
+    void setConfig(const dai::NNArchiveVersionedConfig& config);
 
     std::optional<std::vector<std::string>> mClasses;
     std::optional<NNArchive> mArchive;
 
-    std::optional<NNArchiveConfig> archiveConfig;
+    std::optional<NNArchiveVersionedConfig> archiveConfig;
 };
 
 }  // namespace node

@@ -19,7 +19,7 @@ with dai.Pipeline() as pipeline:
     camRgb.setColorOrder(dai.ColorCameraProperties.ColorOrder.BGR)
     camRgb.setFps(15)
     nnArchive = dai.NNArchive(archivePath)
-    h, w = nnArchive.getConfig().getConfigV1().model.inputs[0].shape[-2:]
+    h, w = nnArchive.getConfig().model.inputs[0].shape[-2:]
     camRgb.setPreviewSize(w, h)
     detectionNetwork = pipeline.create(dai.node.DetectionNetwork).build(
         camRgb.preview, nnArchive

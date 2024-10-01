@@ -5,6 +5,7 @@
 #include <depthai/pipeline/node/Camera.hpp>
 
 #include "depthai/nn_archive/NNArchive.hpp"
+#include "depthai/nn_archive/NNArchiveVersionedConfig.hpp"
 #include "depthai/openvino/OpenVINO.hpp"
 
 // standard
@@ -37,7 +38,8 @@ class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNet
      * @returns Shared pointer to NeuralNetwork node
      */
     std::shared_ptr<NeuralNetwork> build(Node::Output& input, const NNArchive& nnArchive);
-    std::shared_ptr<NeuralNetwork> build(const NNArchiveConfig& nnArchiveConfig,std::shared_ptr<Camera> input, dai::NNModelDescription modelDesc, float fps = 30.0f);
+    std::shared_ptr<NeuralNetwork> build(const NNArchiveConfig& nnArchiveConfig, std::shared_ptr<Camera> input, dai::NNModelDescription modelDesc, float fps = 30.0f);
+    std::shared_ptr<NeuralNetwork> build(const NNArchiveVersionedConfig& nnArchiveConfig, std::shared_ptr<Camera> input, dai::NNModelDescription modelDesc, float fps = 30.0f);
 
     /**
      * Input message with data to be inferred upon
