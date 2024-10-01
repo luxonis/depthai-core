@@ -227,6 +227,12 @@ std::pair<size_t, size_t> ImgTransformation::getSourceSize() const {
 std::array<std::array<float, 3>, 3> ImgTransformation::getMatrix() const {
     return transformationMatrix;
 }
+std::array<std::array<float, 3>, 3> ImgTransformation::getMatrixInv() const {
+    return transformationMatrixInv;
+}
+std::vector<dai::RotatedRect> ImgTransformation::getSrcCrops() const {
+    return srcCrops;
+}
 bool ImgTransformation::getSrcMaskPt(size_t x, size_t y) {
     if(srcMaskValid) {
         return srcMask[y * width + x] != 0;
