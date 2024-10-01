@@ -945,7 +945,7 @@ PipelineImpl::~PipelineImpl() {
             }
         }
         Logging::getInstance().logger.info("Record: Creating tar file with {} files", filenames.size());
-        utility::tarFiles(platform::joinPaths(recordConfig.outputDir, "recording.tar.gz"), filenames, outFiles);
+        utility::tarFiles(platform::joinPaths(recordConfig.outputDir, "recording.tar"), filenames, outFiles);
         std::remove(platform::joinPaths(recordConfig.outputDir, "record_config.json").c_str());
     }
 
