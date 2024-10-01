@@ -96,7 +96,7 @@ function(dai_add_ondevice_test test_name test_src)
     set_tests_properties(${test_name}_poe PROPERTIES ENVIRONMENT "${test_poe_env}" LABELS "ondevice_poe")
 
     # Add conforming variants
-    if(MSVC AND DAT_CONFORMING) 
+    if(MSVC AND DAT_CONFORMING)
         # Create test executable with MSVC conforming preprocessor
         add_executable(${test_name}_conforming_usb ${test_src})
         add_default_flags(${test_name}_conforming_usb LEAN)
