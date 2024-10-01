@@ -226,7 +226,7 @@ class IMUData : public Buffer {
 
     span<const uint8_t> getRecordData() const override;
 
-    DEPTHAI_SERIALIZE(IMUData, packets);
+    DEPTHAI_SERIALIZE(IMUData, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum, packets);
 };
 
 }  // namespace dai
