@@ -349,6 +349,7 @@ ImgTransformation& ImgTransformation::addCrop(int x, int y, int width, int heigh
     }
     auto rect = impl::getRotatedRectFromPoints(srcCorners);
     srcCrops.push_back(rect);
+    srcMaskValid = dstMaskValid = srcBorderValid = dstBorderValid = false;
     return *this;
 }
 ImgTransformation& ImgTransformation::addPadding(int top, int bottom, int left, int right) {
@@ -358,6 +359,7 @@ ImgTransformation& ImgTransformation::addPadding(int top, int bottom, int left, 
         std::array<std::array<float, 3>, 3> padMatrix = {{{1, 0, (float)left}, {0, 1, (float)top}, {0, 0, 1}}};
         addTransformation(padMatrix);
     }
+    srcMaskValid = dstMaskValid = srcBorderValid = dstBorderValid = false;
     return *this;
 }
 ImgTransformation& ImgTransformation::addFlipVertical() {
@@ -367,6 +369,7 @@ ImgTransformation& ImgTransformation::addFlipVertical() {
     addTransformation(translateMatrix);
     addTransformation(flipMatrix);
     addTransformation(translateMatrixInv);
+    srcMaskValid = dstMaskValid = srcBorderValid = dstBorderValid = false;
     return *this;
 }
 ImgTransformation& ImgTransformation::addFlipHorizontal() {
@@ -376,6 +379,7 @@ ImgTransformation& ImgTransformation::addFlipHorizontal() {
     addTransformation(translateMatrix);
     addTransformation(flipMatrix);
     addTransformation(translateMatrixInv);
+    srcMaskValid = dstMaskValid = srcBorderValid = dstBorderValid = false;
     return *this;
 }
 ImgTransformation& ImgTransformation::addRotation(float angle, dai::Point2f rotationPoint) {
@@ -391,6 +395,7 @@ ImgTransformation& ImgTransformation::addRotation(float angle, dai::Point2f rota
     addTransformation(translateMatrix);
     addTransformation(rotateMatrix);
     addTransformation(translateMatrixInv);
+    srcMaskValid = dstMaskValid = srcBorderValid = dstBorderValid = false;
     return *this;
 }
 ImgTransformation& ImgTransformation::addScale(float scaleX, float scaleY) {
@@ -398,11 +403,13 @@ ImgTransformation& ImgTransformation::addScale(float scaleX, float scaleY) {
     height *= scaleY;
     std::array<std::array<float, 3>, 3> scaleMatrix = {{{scaleX, 0, 0}, {0, scaleY, 0}, {0, 0, 1}}};
     addTransformation(scaleMatrix);
+    srcMaskValid = dstMaskValid = srcBorderValid = dstBorderValid = false;
     return *this;
 }
 
 ImgTransformation& ImgTransformation::addSrcCrops(const std::vector<dai::RotatedRect>& crops) {
     srcCrops.insert(srcCrops.end(), crops.begin(), crops.end());
+    srcMaskValid = dstMaskValid = srcBorderValid = dstBorderValid = false;
     return *this;
 }
 
