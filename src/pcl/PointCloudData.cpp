@@ -123,5 +123,3 @@ void dai::PointCloudData::setPclDataRGB(const pcl::PointCloud<pcl::PointXYZRGB>:
     color = true;
     setData(data);
 }
-
-}  // namespace dai
