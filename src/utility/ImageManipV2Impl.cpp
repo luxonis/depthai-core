@@ -904,8 +904,13 @@ std::tuple<std::array<std::array<float, 3>, 3>, std::array<std::array<float, 2>,
 
     {
         auto [minx, maxx, miny, maxy] = getOuterRect(std::vector(imageCorners.begin(), imageCorners.end()));
-        if(base.outputWidth == 0) base.outputWidth = maxx;
-        if(base.outputHeight == 0) base.outputHeight = maxy;
+        if(!base.center) {
+            if(base.outputWidth == 0) base.outputWidth = maxx;
+            if(base.outputHeight == 0) base.outputHeight = maxy;
+        } else {
+            if(base.outputWidth == 0) base.outputWidth = maxx - minx;
+            if(base.outputHeight == 0) base.outputHeight = maxy - miny;
+        }
     }
 
     if(base.resizeMode != ImageManipOpsBase::ResizeMode::NONE) {

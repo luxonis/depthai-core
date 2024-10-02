@@ -215,7 +215,7 @@ class ImageManipOpsBase {
    public:
     uint32_t outputWidth = 0;
     uint32_t outputHeight = 0;
-    bool center = false;
+    bool center = true;
     ResizeMode resizeMode = ResizeMode::NONE;
     Background background = Background::COLOR;
     uint8_t backgroundR = 0;
