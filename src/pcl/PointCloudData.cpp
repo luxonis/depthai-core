@@ -1,7 +1,5 @@
 #include "depthai/pipeline/datatype/PointCloudData.hpp"
 
-#include "depthai/schemas/PointCloudData.pb.h"
-
 #include <algorithm>
 pcl::PointCloud<pcl::PointXYZ>::Ptr dai::PointCloudData::getPclData() const {
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
@@ -126,31 +124,4 @@ void dai::PointCloudData::setPclDataRGB(const pcl::PointCloud<pcl::PointXYZRGB>:
     setData(data);
 }
 
-std::unique_ptr<google::protobuf::Message> dai::PointCloudData::getProtoMessage() const {
-    auto pointCloudData = std::make_unique<proto::PointCloudData>();
-
-    auto timestamp = pointCloudData->mutable_ts();
-    timestamp->set_sec(ts.sec);
-    timestamp->set_nsec(ts.nsec);
-
-    auto timestampDevice = pointCloudData->mutable_tsdevice();
-    timestampDevice->set_sec(tsDevice.sec);
-    timestampDevice->set_nsec(tsDevice.nsec);
-
-    pointCloudData->set_sequencenum(sequenceNum);
-    pointCloudData->set_width(width);
-    pointCloudData->set_height(height);
-    pointCloudData->set_instancenum(instanceNum);
-    pointCloudData->set_minx(minx);
-    pointCloudData->set_miny(miny);
-    pointCloudData->set_minz(minz);
-    pointCloudData->set_maxx(maxx);
-    pointCloudData->set_maxy(maxy);
-    pointCloudData->set_maxz(maxz);
-    pointCloudData->set_sparse(sparse);
-    pointCloudData->set_color(color);
-
-    pointCloudData->set_data(data->getData().data(), data->getSize());
-
-    return pointCloudData;
-}
+}  // namespace dai

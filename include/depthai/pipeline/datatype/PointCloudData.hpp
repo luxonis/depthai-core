@@ -7,6 +7,7 @@
 #include "depthai/common/Point3fRGB.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 
+#include "depthai/schemas/PointCloudData.pb.h"
 #include "depthai/utility/ProtoSerializable.hpp"
 
 // optional
