@@ -355,6 +355,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/MessageGroup.cpp
     src/pipeline/datatype/TransformData.cpp
     src/utility/H26xParsers.cpp
+	src/utility/EventsManager.cpp
     src/utility/ImageManipV2Impl.cpp
     src/utility/Initialization.cpp
     src/utility/Resources.cpp
