@@ -51,7 +51,6 @@ std::string EventsManager::sendEvent(const std::string& name, const std::shared_
     std::string serializedEvent;
     event->SerializeToString(&serializedEvent);
     cpr::Response r = cpr::Post(cpr::Url{url}, cpr::Body{serializedEvent}, cpr::Authentication{sessionToken, agentToken});
-    std::cout << r.text << std::endl;
     return r.text;
 }
 
