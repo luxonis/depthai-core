@@ -41,5 +41,5 @@ message Event {
 
   // Identifier of sending Hub application
   // (to be provided by agent as ENV - `AGENT_APP_IDENTIFIER` - eg `com.luxonis.counter-app`)
-  optional string source_app_identified = 9;
+  optional string source_app_identifier = 9;
 }

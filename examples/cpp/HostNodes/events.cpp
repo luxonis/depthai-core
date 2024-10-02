@@ -10,6 +10,7 @@ int main(int argc, char* argv[]) {
     dai::Pipeline pipeline(true);
 
 	auto eventsManager = std::make_shared<dai::utility::EventsManager>("sessionToken", "agentToken", "deviceSerialNumber");
+	eventsManager->setUrl("http://0.0.0.0:80/post");
     // Download model from zoo
     // dai::NNModelDescription modelDescription;
     // modelDescription.modelSlug = "ales-test";

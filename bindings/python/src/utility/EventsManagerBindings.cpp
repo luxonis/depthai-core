@@ -1,7 +1,7 @@
 #include "EventsManagerBindings.hpp"
 
 // depthai
-#include resources #include "depthai/utility/EventsManager.hpp"
+#include "depthai/utility/EventsManager.hpp"
 
 
 void EventsManagerBindings::bind(pybind11::module& m, void* pCallstack){
@@ -19,10 +19,13 @@ void EventsManagerBindings::bind(pybind11::module& m, void* pCallstack){
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
 
-    py::class_<EventsManager>(m, "EventsManager")
+    py::class_<utility::EventsManager>(m, "EventsManager")
         .def(py::init<const std::string&, const std::string&, const std::string&>(), py::arg("sessionToken") = "token", py::arg("agentToken") = "token", py::arg("deviceSerialNumber") = "serial")
-		.def("sendEvent", &EventsManager::sendEvent, py::arg("name"), py::arg("data"), py::arg("tags"))
-		.def("sendSnap", &EventsManager::sendSnap, py::arg("name"), py::arg("data"), py::arg("tags"));
+		.def("setUrl", &utility::EventsManager::setUrl, py::arg("url"))
+		.def("setSourceAppId", &utility::EventsManager::setSourceAppId, py::arg("sourceAppId"))
+		.def("setSourceAppIdentifier", &utility::EventsManager::setSourceAppIdentifier, py::arg("sourceAppIdentifier"))
+		.def("sendEvent", &utility::EventsManager::sendEvent, py::arg("name"), py::arg("data"), py::arg("tags"))
+		.def("sendSnap", &utility::EventsManager::sendSnap, py::arg("name"), py::arg("data"), py::arg("tags"));
 }
 
 

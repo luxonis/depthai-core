@@ -148,6 +148,7 @@ set(SOURCE_LIST
     src/modelzoo/ZooBindings.cpp
 
     src/remote_connection/RemoteConnectorBindings.cpp
+	src/utility/EventsManagerBindings.cpp
 )
 if(DEPTHAI_MERGED_TARGET)
     list(APPEND SOURCE_LIST
