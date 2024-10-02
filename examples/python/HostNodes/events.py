@@ -40,6 +40,7 @@ with dai.Pipeline() as pipeline:
 
     labelMap = detectionNetwork.getClasses()
     eventMan = dai.EventsManager()
+    eventMan.setUrl("http://0.0.0.0:80/post")
     pipeline.start()
 
     frame = None
@@ -87,7 +88,9 @@ with dai.Pipeline() as pipeline:
         inDet: dai.ImgDetections = qDet.get()
         if inRgb is not None:
             frame = inRgb.getCvFrame()
-            print(eventMan.sendEvent("rgb", inRgb, ["dets"]))
+            if not eventSent:
+                eventMan.sendEvent("rgb", inRgb, ["dets"])
+                eventSent = True
             cv2.putText(
                 frame,
                 "NN fps: {:.2f}".format(counter / (time.monotonic() - startTime)),
