@@ -215,7 +215,7 @@ class ImageManipOpsBase {
    public:
     uint32_t outputWidth = 0;
     uint32_t outputHeight = 0;
-    bool center = false;
+    bool center = true;
     ResizeMode resizeMode = ResizeMode::NONE;
     Background background = Background::COLOR;
     uint8_t backgroundR = 0;
@@ -368,7 +368,7 @@ class ImageManipOpsBase {
 };
 
 /**
- * ImageManipConfig message. Specifies image manipulation options like:
+ * ImageManipConfigV2 message. Specifies image manipulation options like:
  *
  *  - Crop
  *
@@ -406,61 +406,61 @@ class ImageManipConfigV2 : public Buffer {
      * @param w Width of the rectangle
      * @param h Height of the rectangle
      */
-    ImageManipConfigV2& crop(uint32_t x, uint32_t y, uint32_t w, uint32_t h);
+    ImageManipConfigV2& addCrop(uint32_t x, uint32_t y, uint32_t w, uint32_t h);
     /**
      * Crops the image to the specified (rotated) rectangle
      * @param rect RotatedRect to crop
      * @param normalizedCoords If true, the coordinates are normalized to range [0, 1] where 1 maps to the width/height of the image
      */
-    ImageManipConfigV2& cropRotatedRect(dai::RotatedRect rotatedRect, bool normalizedCoords = false);
+    ImageManipConfigV2& addCropRotatedRect(dai::RotatedRect rotatedRect, bool normalizedCoords = false);
     /**
      * Resizes the image to the specified width and height
      * @param w Width of the output image
      * @param h Height of the output image
      */
-    ImageManipConfigV2& resize(uint32_t w, uint32_t h);
+    ImageManipConfigV2& addResize(uint32_t w, uint32_t h);
     /**
      * Rescales the image using the specified factors
      * @param scaleX Scale factor for the X axis
      * @param scaleY Scale factor for the Y axis. If not specified, scaleY is set to the same value as scaleX
      */
-    ImageManipConfigV2& scale(float scaleX, float scaleY = 0);
+    ImageManipConfigV2& addScale(float scaleX, float scaleY = 0);
     /**
      * Rotates the image around its center by the specified angle in degrees
      * @param angle Angle in radians
      */
-    ImageManipConfigV2& rotateDeg(float angle);
+    ImageManipConfigV2& addRotateDeg(float angle);
     /**
      * Rotates the image around the specified point by the specified angle in degrees
      * @param angle Angle in radians
      * @param center Center of the rotation using normalized coordinates
      */
-    ImageManipConfigV2& rotateDeg(float angle, Point2f center);
+    ImageManipConfigV2& addRotateDeg(float angle, Point2f center);
     /**
      * Flips the image horizontally
      */
-    ImageManipConfigV2& flipHorizontal();
+    ImageManipConfigV2& addFlipHorizontal();
     /**
      * Flips the image vertically
      */
-    ImageManipConfigV2& flipVertical();
+    ImageManipConfigV2& addFlipVertical();
     /**
      * Applies an affine transformation to the image
      * @param matrix an array containing a 2x2 matrix representing the affine transformation
      */
-    ImageManipConfigV2& transformAffine(std::array<float, 4> matrix);
+    ImageManipConfigV2& addTransformAffine(std::array<float, 4> matrix);
     /**
      * Applies a perspective transformation to the image
      * @param matrix an array containing a 3x3 matrix representing the perspective transformation
      */
-    ImageManipConfigV2& transformPerspective(std::array<float, 9> matrix);
+    ImageManipConfigV2& addTransformPerspective(std::array<float, 9> matrix);
     /**
      * Applies a perspective transformation to the image
      * @param src Source points
      * @param dst Destination points
      * @param normalizedCoords If true, the coordinates are normalized to range [0, 1] where 1 maps to the width/height of the image
      */
-    ImageManipConfigV2& transformFourPoints(std::array<dai::Point2f, 4> src, std::array<dai::Point2f, 4> dst, bool normalizedCoords = false);
+    ImageManipConfigV2& addTransformFourPoints(std::array<dai::Point2f, 4> src, std::array<dai::Point2f, 4> dst, bool normalizedCoords = false);
     /**
      * Sets the output size of the image
      * @param w Width of the output image

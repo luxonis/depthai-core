@@ -5,9 +5,12 @@
 
 #include <depthai/pipeline/datatype/ImageManipConfigV2.hpp>
 #include <depthai/pipeline/datatype/ImgFrame.hpp>
-#include <opencv2/core/base.hpp>
-#include <opencv2/core/types.hpp>
 #include <sstream>
+
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    #include <opencv2/core/base.hpp>
+    #include <opencv2/core/types.hpp>
+#endif
 
 #define PLANE_ALIGNMENT 128
 
@@ -288,7 +291,7 @@ static inline void RGBfromYUV(float& R, float& G, float& B, float Y, float U, fl
 template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
 bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToRGB888p(
     const dai::span<const uint8_t> inputFrame, dai::span<uint8_t> outputFrame, FrameSpecs srcSpecs, FrameSpecs dstSpecs, dai::ImgFrame::Type from) {
-    dai::ImgFrame::Type to = dai::ImgFrame::Type::RGB888p;
+    // dai::ImgFrame::Type to = dai::ImgFrame::Type::RGB888p;
 
     auto src = inputFrame.data();
     auto inputSize = inputFrame.size();
@@ -603,7 +606,7 @@ bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToRGB888p(
 template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
 bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToBGR888p(
     const dai::span<const uint8_t> inputFrame, dai::span<uint8_t> outputFrame, FrameSpecs srcSpecs, FrameSpecs dstSpecs, dai::ImgFrame::Type from) {
-    dai::ImgFrame::Type to = dai::ImgFrame::Type::BGR888p;
+    // dai::ImgFrame::Type to = dai::ImgFrame::Type::BGR888p;
 
     auto src = inputFrame.data();
     auto inputSize = inputFrame.size();
@@ -918,7 +921,7 @@ bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToBGR888p(
 template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
 bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToRGB888i(
     const dai::span<const uint8_t> inputFrame, dai::span<uint8_t> outputFrame, FrameSpecs srcSpecs, FrameSpecs dstSpecs, dai::ImgFrame::Type from) {
-    dai::ImgFrame::Type to = dai::ImgFrame::Type::RGB888i;
+    // dai::ImgFrame::Type to = dai::ImgFrame::Type::RGB888i;
 
     auto src = inputFrame.data();
     auto inputSize = inputFrame.size();
@@ -1121,11 +1124,13 @@ bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToRGB888i(
 template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
 bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToBGR888i(
     const dai::span<const uint8_t> inputFrame, dai::span<uint8_t> outputFrame, FrameSpecs srcSpecs, FrameSpecs dstSpecs, dai::ImgFrame::Type from) {
-    dai::ImgFrame::Type to = dai::ImgFrame::Type::BGR888i;
+    // dai::ImgFrame::Type to = dai::ImgFrame::Type::BGR888i;
 
     auto src = inputFrame.data();
     auto inputSize = inputFrame.size();
+#if defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
     uint32_t auxStride = ALIGN_UP(3 * srcSpecs.width, 8);
+#endif
 
     bool done = false;
     switch(from) {
@@ -1324,11 +1329,13 @@ bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToBGR888i(
 template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
 bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToNV12(
     const dai::span<const uint8_t> inputFrame, dai::span<uint8_t> outputFrame, FrameSpecs srcSpecs, FrameSpecs dstSpecs, dai::ImgFrame::Type from) {
-    dai::ImgFrame::Type to = dai::ImgFrame::Type::NV12;
+    // dai::ImgFrame::Type to = dai::ImgFrame::Type::NV12;
 
     auto src = inputFrame.data();
     auto inputSize = inputFrame.size();
+#if defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
     uint32_t auxStride = ALIGN_UP(3 * srcSpecs.width, 8);
+#endif
 
     bool done = false;
     switch(from) {
@@ -1569,11 +1576,13 @@ bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToNV12(
 template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
 bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToYUV420p(
     const dai::span<const uint8_t> inputFrame, dai::span<uint8_t> outputFrame, FrameSpecs srcSpecs, FrameSpecs dstSpecs, dai::ImgFrame::Type from) {
-    dai::ImgFrame::Type to = dai::ImgFrame::Type::YUV420p;
+    // dai::ImgFrame::Type to = dai::ImgFrame::Type::YUV420p;
 
     auto src = inputFrame.data();
     auto inputSize = inputFrame.size();
+#if defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
     uint32_t auxStride = ALIGN_UP(3 * srcSpecs.width, 8);
+#endif
 
     bool done = false;
     switch(from) {
@@ -1838,7 +1847,7 @@ bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToYUV420p(
 template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
 bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToGRAY8(
     const dai::span<const uint8_t> inputFrame, dai::span<uint8_t> outputFrame, FrameSpecs srcSpecs, FrameSpecs dstSpecs, dai::ImgFrame::Type from) {
-    dai::ImgFrame::Type to = dai::ImgFrame::Type::GRAY8;
+    // dai::ImgFrame::Type to = dai::ImgFrame::Type::GRAY8;
 
     auto src = inputFrame.data();
     auto inputSize = inputFrame.size();
@@ -1970,7 +1979,7 @@ bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToGRAY8(
                                              ccAuxFrame->data(),
                                              auxStride);
             fcvColorRGB888ToGrayu8(ccAuxFrame->data(), srcSpecs.width, srcSpecs.height, auxStride, outputFrame.data() + dstSpecs.p1Offset, dstSpecs.p1Stride);
-#else
+#elif defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
             for(uint32_t i = 0; i < srcSpecs.height; ++i) {
                 const uint32_t lineStartY = srcSpecs.p1Offset + i * srcSpecs.p1Stride;
                 const uint32_t lineStartU = srcSpecs.p2Offset + (i / 2) * srcSpecs.p2Stride;
@@ -1990,6 +1999,8 @@ bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToGRAY8(
             cv::Mat auxBGR(srcSpecs.height, srcSpecs.width, CV_8UC3, ccAuxFrame->data(), auxStride);
             cv::Mat gray(dstSpecs.height, dstSpecs.width, CV_8UC1, outputFrame.data() + dstSpecs.p1Offset, dstSpecs.p1Stride);
             cv::cvtColor(auxBGR, gray, cv::COLOR_BGR2GRAY);
+#else
+            throw std::runtime_error("FastCV or OpenCV support required for this conversion");
 #endif
             done = true;
             break;
@@ -2202,6 +2213,14 @@ std::array<std::array<float, 3>, 3> getResizeMat(Resize o, float width, float he
 std::tuple<std::array<std::array<float, 3>, 3>, std::array<std::array<float, 2>, 4>, std::vector<std::array<std::array<float, 2>, 4>>> getTransform(
     const std::vector<ManipOp>& ops, uint32_t inputWidth, uint32_t inputHeight, uint32_t outputWidth, uint32_t outputHeight);
 
+std::tuple<std::array<std::array<float, 3>, 3>, std::array<std::array<float, 2>, 4>, std::vector<std::array<std::array<float, 2>, 4>>> getFullTransform(
+    dai::ImageManipOpsBase& base,
+    size_t inputWidth,
+    size_t inputHeight,
+    dai::ImgFrame::Type type,
+    dai::ImgFrame::Type outputFrameType,
+    std::vector<ManipOp>& outputOps);
+
 inline dai::ImgFrame::Type getValidType(dai::ImgFrame::Type type) {
     return isSingleChannelu8(type) ? VALID_TYPE_GRAY : VALID_TYPE_COLOR;
 }
@@ -2279,65 +2298,10 @@ ImageManipOperations<ImageManipBuffer, ImageManipData>& ImageManipOperations<Ima
     matrix = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
 
     if(mode & MODE_WARP) {
-        auto operations = base.getOperations();
+        auto [matrix, imageCorners, srcCorners] = getFullTransform(base, inputWidth, inputHeight, type, outputFrameType, outputOps);
 
-        auto [transformMat, imageCorners, srcCorners] = getTransform(operations, inputWidth, inputHeight, base.outputWidth, base.outputHeight);
-        matrix = transformMat;
-
-        {
-            auto [minx, maxx, miny, maxy] = getOuterRect(std::vector(imageCorners.begin(), imageCorners.end()));
-            if(base.outputWidth == 0) base.outputWidth = maxx;
-            if(base.outputHeight == 0) base.outputHeight = maxy;
-        }
-
-        if(base.resizeMode != ImageManipOpsBase::ResizeMode::NONE) {
-            Resize res;
-            switch(base.resizeMode) {
-                case ImageManipOpsBase::ResizeMode::NONE:
-                    break;
-                case ImageManipOpsBase::ResizeMode::STRETCH:
-                    res = Resize(base.outputWidth, base.outputHeight);
-                    break;
-                case ImageManipOpsBase::ResizeMode::LETTERBOX:
-                    res = Resize::fit();
-                    break;
-                case ImageManipOpsBase::ResizeMode::CENTER_CROP:
-                    res = Resize::fill();
-                    break;
-            }
-            auto [minx, maxx, miny, maxy] = getOuterRect(std::vector(imageCorners.begin(), imageCorners.end()));
-            auto mat = getResizeMat(res, maxx - minx, maxy - miny, base.outputWidth, base.outputHeight);
-            imageCorners = {
-                {{matvecmul(mat, imageCorners[0])}, {matvecmul(mat, imageCorners[1])}, {matvecmul(mat, imageCorners[2])}, {matvecmul(mat, imageCorners[2])}}};
-            matrix = matmul(mat, matrix);
-            outputOps.emplace_back(res);
-        }
-
-        if(base.center) {
-            float width = base.outputWidth;
-            float height = base.outputHeight;
-            auto [minx, maxx, miny, maxy] = getOuterRect(std::vector(imageCorners.begin(), imageCorners.end()));
-            float tx = -minx + (width - (maxx - minx)) / 2;
-            float ty = -miny + (height - (maxy - miny)) / 2;
-            std::array<std::array<float, 3>, 3> mat = {{{1, 0, tx}, {0, 1, ty}, {0, 0, 1}}};
-            imageCorners = {
-                {{matvecmul(mat, imageCorners[0])}, {matvecmul(mat, imageCorners[1])}, {matvecmul(mat, imageCorners[2])}, {matvecmul(mat, imageCorners[2])}}};
-            matrix = matmul(mat, matrix);
-            outputOps.emplace_back(Translate(tx, ty));
-        }
-
-        matrixInv = getInverse(matrix);
-
-        if(type == ImgFrame::Type::NV12 || type == ImgFrame::Type::YUV420p || outputFrameType == ImgFrame::Type::NV12
-           || outputFrameType == ImgFrame::Type::YUV420p) {
-            base.outputWidth = base.outputWidth - (base.outputWidth % 2);
-            base.outputHeight = base.outputHeight - (base.outputHeight % 2);
-        }
-
-        srcCorners.push_back({matvecmul(matrixInv, {0, 0}),
-                              matvecmul(matrixInv, {(float)base.outputWidth, 0}),
-                              matvecmul(matrixInv, {(float)base.outputWidth, (float)base.outputHeight}),
-                              matvecmul(matrixInv, {0, (float)base.outputHeight})});
+        this->matrix = matrix;
+        this->matrixInv = getInverse(matrix);
 
         if(logger) {
             logger->trace("Image corners: ");
@@ -2893,7 +2857,7 @@ void Warp<ImageManipBuffer, ImageManipData>::transform(const uint8_t* src,
         if(sourceMinX != 0 || sourceMinY != 0) {
             projection[2] = projection[0] * (float)(sourceMinX / ssF) + projection[1] * (float)(sourceMinY / ssF) + projection[2];
             projection[5] = projection[3] * (float)(sourceMinX / ssF) + projection[4] * (float)(sourceMinY / ssF) + projection[5];
-            projection[7] = projection[6] * (float)(sourceMinX / ssF) + projection[7] * (float)(sourceMinY / ssF) + projection[8];
+            projection[8] = projection[6] * (float)(sourceMinX / ssF) + projection[7] * (float)(sourceMinY / ssF) + projection[8];
         }
         cv::Mat cvProjection(3, 3, CV_32F, projection);
         cv::warpPerspective(cvSrc(roi),
