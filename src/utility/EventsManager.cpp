@@ -1,6 +1,7 @@
 #include "depthai/utility/EventsManager.hpp"
 
 #include <chrono>
+#include <iostream>
 #include <random>
 #include <sstream>
 
@@ -10,17 +11,20 @@
 namespace dai {
 
 namespace utility {
-using std::cout;
 
 EventsManager::EventsManager(const std::string& deviceSerialNumber)
-    : deviceSerialNumber(deviceSerialNumber), url("https://events-ingest.cloud.luxonis.com/v1/events/"), queueSize(2), sendFrequency(1.0f) {
+    : deviceSerialNumber(deviceSerialNumber),
+      url("https://events-ingest.cloud.luxonis.com/v1/events/"),
+      queueSize(10),
+      publishInterval(5.0f),
+      logResponse(false) {
     sourceAppId = utility::getEnv("AGENT_APP_ID");
     sourceAppIdentifier = utility::getEnv("AGENT_APP_IDENTIFIER");
     token = utility::getEnv("DEPTHAI_HUB_API_KEY");
     eventBufferThread = std::thread([this]() {
         while(true) {
             sendEventBuffer();
-            std::this_thread::sleep_for(std::chrono::milliseconds(int(sendFrequency * 1000)));
+            std::this_thread::sleep_for(std::chrono::milliseconds(int(publishInterval * 1000)));
         }
     });
 }
@@ -33,18 +37,13 @@ void EventsManager::sendEventBuffer() {
     // Create request
     std::cout << "Sending events" << std::endl;
     cpr::Url url = cpr::Url(this->url);
-    cpr::Header header = cpr::Header{{"Content-Type", "application/x-protobuf"}, {"Authorization", "Bearer " + token}};
     cpr::Body body;
     auto batchEvent = std::make_unique<proto::BatchUploadEvents>();
     for(auto& eventM : eventBuffer) {
         auto& event = eventM->event;
-        std::cout << "Event: " << event->name() << std::endl;
-        std::cout << "Tags: ";
         for(int i = 0; i < event->tags_size(); i++) {
             std::cout << event->tags(i) << " ";
         }
-        std::cout << std::endl;
-        std::cout << "Extras: ";
         for(int i = 0; i < event->extras_size(); i++) {
             auto extra = event->extras(i).data();
             for(auto& [key, value] : extra) {
@@ -57,12 +56,15 @@ void EventsManager::sendEventBuffer() {
     std::string serializedEvent;
     batchEvent->SerializeToString(&serializedEvent);
     body = cpr::Body(serializedEvent);
-    cpr::Response r = cpr::Post(url, header, cpr::Body(body));
+    cpr::Response r = cpr::Post(url, cpr::Header{{"Authorization", "Bearer " + token}}, cpr::Body(body));
     if(r.status_code != 200) {
         std::cerr << "Failed to send event: " << r.text << std::endl;
     } else {
         std::cout << "Events sent" << std::endl;
-        // upload filek
+        if(logResponse) {
+            std::cout << "Response: " << r.text << std::endl;
+        }
+        // upload files
         auto BatchUploadEventResult = std::make_unique<proto::BatchUploadEventsResult>();
         BatchUploadEventResult->ParseFromString(r.text);
         for(int i = 0; i < BatchUploadEventResult->events_size(); i++) {
@@ -70,33 +72,56 @@ void EventsManager::sendEventBuffer() {
             if(eventResult.file_upload_urls().size() > 0) {
                 std::cout << "Uploading files" << std::endl;
                 for(int j = 0; j < eventResult.file_upload_urls().size(); j++) {
-                    cout << "Uploading file: " << eventResult.file_upload_urls(j) << std::endl;
+                    std::cout << "Uploading file: " << eventResult.file_upload_urls(j) << std::endl;
                     cpr::Url fileUrl = cpr::Url(url + eventResult.file_upload_urls(j));
 
                     // if file struct contains byte data, send it, along with filename and mime type
                     // if it file url, send it directly via url
+                    cpr::Multipart file{};
                     if(eventBuffer[i]->files[j].data.size() > 0) {
-                        cpr::Multipart file = cpr::Multipart{{
-                            "file",
-                            cpr::Buffer{eventBuffer[i]->files[j].data.begin(),
-                                        eventBuffer[i]->files[j].data.end(),
-                                        eventBuffer[i]->files[j].fileName + eventBuffer[i]->files[j].mimeType},
-                        }};
-                        cpr::Response r = cpr::Post(fileUrl, header, file);
-                        if(r.status_code != 200) {
-                            std::cerr << "Failed to upload file: " << r.text << std::endl;
-                        }
+                        cpr::Multipart{
+                            {"file",
+                             cpr::Buffer{eventBuffer[i]->files[j].data.begin(), eventBuffer[i]->files[j].data.end(), eventBuffer[i]->files[j].fileName}},
+                            {"filename", eventBuffer[i]->files[j].fileName},
+                            {"file_size", std::to_string(eventBuffer[i]->files[j].data.size())},
+                            {"mime_type", eventBuffer[i]->files[j].mimeType}};
                     } else {
-                        cpr::Response r = cpr::Post(fileUrl, header);
-                        if(r.status_code != 200) {
-                            std::cerr << "Failed to upload file: " << r.text << std::endl;
-                        }
+                        file = cpr::Multipart{{
+                            "file",
+                            cpr::File{eventBuffer[i]->files[j].fileUrl},
+                        }};
+                    }
+                    cpr::Response r = cpr::Post(fileUrl, cpr::Header{{"Authorization", "Bearer " + token}}, file);
+                    if(r.status_code != 200) {
+                        std::cerr << "Failed to upload file: " << r.text << std::endl;
                     }
                 }
             }
         }
+        // uncomment to publish files anyway
+        for(auto& eventM : eventBuffer) {
+            for(auto& file : eventM->files) {
+                cpr::Multipart fileM{};
+                if(!file.data.empty()) {
+                    fileM = cpr::Multipart{{"file", cpr::Buffer{file.data.begin(), file.data.end(), file.fileName}},
+                                           {"filename", file.fileName},
+                                           {"file_size", std::to_string(file.data.size())},
+                                           {"mime_type", file.mimeType}};
+                } else {
+                    fileM = cpr::Multipart{{
+                        "file",
+                        cpr::File{file.fileUrl},
+                    }};
+                }
+                cpr::Response r = cpr::Post(url, cpr::Header{{"Authorization", "Bearer " + token}}, fileM);
+                if(r.status_code != 200) {
+                    std::cerr << "Failed to upload file: " << r.text << std::endl;
+                }
+                std::cout << "File uploaded" << std::endl;
+                std::cout << "Response: " << r.text << std::endl;
+            }
+        }
         eventBuffer.clear();
-        std::cout << "Event sent" << std::endl;
     }
 }
 
@@ -201,6 +226,12 @@ std::string EventsManager::createUUID() {
 }
 void EventsManager::setQueueSize(unsigned long queueSize) {
     this->queueSize = queueSize;
+}
+void EventsManager::setPublishInterval(float publishInterval) {
+    this->publishInterval = publishInterval;
+}
+void EventsManager::setLogResponse(bool logResponse) {
+    this->logResponse = logResponse;
 }
 }  // namespace utility
 }  // namespace dai

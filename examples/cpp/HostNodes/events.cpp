@@ -11,6 +11,7 @@ int main(int argc, char* argv[]) {
 
 	auto eventsManager = std::make_shared<dai::utility::EventsManager>("deviceSerialNumber");
 	eventsManager->setUrl("http://0.0.0.0:80/post");
+	eventsManager->setLogResponse(true);
     // Download model from zoo
     // dai::NNModelDescription modelDescription;
     // modelDescription.modelSlug = "ales-test";
@@ -46,6 +47,15 @@ int main(int argc, char* argv[]) {
 	eventsManager->sendSnap("test5", {{"key5", "value5"}}, {"tag9", "tag10"});
 	eventsManager->sendSnap("test6", {{"key6", "value6"}}, {"tag11", "tag12"});
 	eventsManager->sendSnap("test7", {{"key7", "value7"}}, {"tag13", "tag14"});
+        std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+	dai::utility::FileData fileData;
+	fileData.data = {'a', 'b', 'c'};
+	fileData.fileName = "test.txt";
+	fileData.mimeType = "text/plain";
+	eventsManager->sendSnap("testdata", {{"key8", "value8"}}, {"tag15", "tag16"}, {fileData});
+	dai::utility::FileData fileData2;
+	fileData2.fileUrl = "/test.txt";
+	eventsManager->sendSnap("testdata2", {{"key8", "value8"}}, {"tag15", "tag16"}, {fileData2});
     while(pipeline.isRunning()) {
         auto detection = previewQ->get<dai::ImgFrame>();
 

@@ -40,7 +40,29 @@ with dai.Pipeline() as pipeline:
 
     labelMap = detectionNetwork.getClasses()
     eventMan = dai.EventsManager()
+    eventMan.setLogResponse(True)
     eventMan.setUrl("http://0.0.0.0:80/post")
+	# eventsManager->sendSnap("test3", {{"key3", "value3"}}, {"tag5", "tag6"});
+
+    eventMan.sendSnap("test1", {"key1": "key2"}, ["tag1"])
+    eventMan.sendSnap("test2", {"key3": "key4"}, ["tag2"])
+    eventMan.sendSnap("test3", {"key5": "key6"}, ["tag3"])
+    eventMan.sendSnap("test4", {"key7": "key8"}, ["tag4"])
+    eventMan.sendSnap("test5", {"key9": "key10"}, ["tag5"])
+    eventMan.sendSnap("test6", {"key11": "key12"}, ["tag6"])
+    eventMan.sendSnap("test7", {"key13": "key14"}, ["tag7"])
+    eventMan.sendSnap("test8", {"key15": "key16"}, ["tag8"])
+    eventMan.sendSnap("test9", {"key17": "key18"}, ["tag9"])
+    time.sleep(2)
+    fileData = dai.FileData()
+    fileData.data = b'Hello, world!'
+    fileData.fileName = "hello.txt"
+    fileData.mimeType = "text/plain"
+    eventMan.sendSnap("test10", {"key19": "key20"}, ["tag10"], [fileData])
+    fileData2 = dai.FileData()
+    fileData2.fileUrl = "/test.txt"
+    eventMan.sendSnap("test11", {"key21": "key22"}, ["tag11"], [fileData2])
+    eventMan.sendSnap("test12", {"key23": "key24"}, ["tag12"], [fileData, fileData2])
     pipeline.start()
 
     frame = None
@@ -89,7 +111,7 @@ with dai.Pipeline() as pipeline:
         if inRgb is not None:
             frame = inRgb.getCvFrame()
             if not eventSent:
-                eventMan.sendEvent("rgb", inRgb, ["dets"])
+                # eventMan.sendSnap("test5", {"key9": "key10"}, ["tag5"], [], inRgb)
                 eventSent = True
             cv2.putText(
                 frame,

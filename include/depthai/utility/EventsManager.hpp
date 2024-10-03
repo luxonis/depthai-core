@@ -13,10 +13,9 @@
 namespace dai {
 namespace utility {
 struct FileData {
-    std::vector<char> data;
+    std::string data;
     std::string fileName;
     std::string fileUrl;
-    std::uintmax_t fileSize;
     std::string mimeType;
 };
 struct EventMessage {
@@ -43,7 +42,8 @@ class EventsManager {
     void setSourceAppIdentifier(const std::string& sourceAppIdentifier);
     void setToken(const std::string& token);
     void setQueueSize(unsigned long queuSize);
-    void setSendFrequency(float sendFrequency);
+    void setPublishInterval(float publishInterval);
+	void setLogResponse(bool logResponse);
 
    private:
     std::string createUUID();
@@ -57,7 +57,8 @@ class EventsManager {
     std::thread eventBufferThread;
     std::vector<std::unique_ptr<EventMessage>> eventBuffer;
     std::mutex eventBufferMutex;
-    float sendFrequency = 1.0f;
+    float publishInterval;
+	bool logResponse;
 };
 }  // namespace utility
 }  // namespace dai
