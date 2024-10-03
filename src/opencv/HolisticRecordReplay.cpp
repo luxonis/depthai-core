@@ -16,6 +16,8 @@
 #include "depthai/utility/RecordReplay.hpp"
 #include "pipeline/Node.hpp"
 
+#define UNUSED(x) (void)(x)
+
 namespace dai {
 namespace utility {
 
@@ -98,6 +100,8 @@ bool setupHolisticReplay(Pipeline& pipeline,
                          const std::string& mxId,
                          RecordConfig& recordConfig,
                          std::unordered_map<std::string, std::string>& outFilenames) {
+    UNUSED(mxId);
+    const std::string rootPath = platform::getDirFromPath(replayPath);
     auto sources = pipeline.getSourceNodes();
     try {
         bool useTar = !platform::checkPathExists(replayPath, true);
