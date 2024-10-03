@@ -9,7 +9,7 @@
 int main(int argc, char* argv[]) {
     dai::Pipeline pipeline(true);
 
-	auto eventsManager = std::make_shared<dai::utility::EventsManager>("sessionToken", "agentToken", "deviceSerialNumber");
+	auto eventsManager = std::make_shared<dai::utility::EventsManager>("deviceSerialNumber");
 	eventsManager->setUrl("http://0.0.0.0:80/post");
     // Download model from zoo
     // dai::NNModelDescription modelDescription;
@@ -37,6 +37,15 @@ int main(int argc, char* argv[]) {
 
     pipeline.start();
 	bool sent = false;
+	eventsManager->sendEvent("test", {{"key", "value"}}, {"tag1", "tag2"});
+	eventsManager->sendSnap("test2", {{"key1", "value2"}}, {"tag3", "tag4"});
+	eventsManager->sendSnap("test3", {{"key3", "value3"}}, {"tag5", "tag6"});
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+	eventsManager->sendSnap("test4", {{"key4", "value4"}}, {"tag7", "tag8"});
+	eventsManager->sendSnap("test5", {{"key5", "value5"}}, {"tag9", "tag10"});
+	eventsManager->sendSnap("test6", {{"key6", "value6"}}, {"tag11", "tag12"});
+	eventsManager->sendSnap("test7", {{"key7", "value7"}}, {"tag13", "tag14"});
     while(pipeline.isRunning()) {
         auto detection = previewQ->get<dai::ImgFrame>();
 
@@ -44,11 +53,12 @@ int main(int argc, char* argv[]) {
         // ...
 
 		if (!sent) {
-			eventsManager->sendEvent("Detected", detection, {"tag1", "tag2"});
+			eventsManager->sendEvent("dets", {{"key", "value"}}, {"tag1", "tag2"}, {}, detection);
 			sent = true;
 		}
 		//
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
+		eventsManager->sendSnap("test8", {{"key8", "value8"}}, {"tag15", "tag16"});
     }
 
     return EXIT_SUCCESS;

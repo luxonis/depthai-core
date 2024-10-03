@@ -43,3 +43,14 @@ message Event {
   // (to be provided by agent as ENV - `AGENT_APP_IDENTIFIER` - eg `com.luxonis.counter-app`)
   optional string source_app_identifier = 9;
 }
+message BatchUploadEventsResult {
+  repeated AcceptedEvent events = 1;
+}
+
+message AcceptedEvent {
+  // ID of event
+  string id = 1;
+  
+  // file URLs
+  repeated string file_upload_urls = 2;
+}
