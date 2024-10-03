@@ -99,28 +99,28 @@ void EventsManager::sendEventBuffer() {
             }
         }
         // uncomment to publish files anyway
-        for(auto& eventM : eventBuffer) {
-            for(auto& file : eventM->files) {
-                cpr::Multipart fileM{};
-                if(!file.data.empty()) {
-                    fileM = cpr::Multipart{{"file", cpr::Buffer{file.data.begin(), file.data.end(), file.fileName}},
-                                           {"filename", file.fileName},
-                                           {"file_size", std::to_string(file.data.size())},
-                                           {"mime_type", file.mimeType}};
-                } else {
-                    fileM = cpr::Multipart{{
-                        "file",
-                        cpr::File{file.fileUrl},
-                    }};
-                }
-                cpr::Response r = cpr::Post(url, cpr::Header{{"Authorization", "Bearer " + token}}, fileM);
-                if(r.status_code != 200) {
-                    std::cerr << "Failed to upload file: " << r.text << std::endl;
-                }
-                std::cout << "File uploaded" << std::endl;
-                std::cout << "Response: " << r.text << std::endl;
-            }
-        }
+        // for(auto& eventM : eventBuffer) {
+        //     for(auto& file : eventM->files) {
+        //         cpr::Multipart fileM{};
+        //         if(!file.data.empty()) {
+        //             fileM = cpr::Multipart{{"file", cpr::Buffer{file.data.begin(), file.data.end(), file.fileName}},
+        //                                    {"filename", file.fileName},
+        //                                    {"file_size", std::to_string(file.data.size())},
+        //                                    {"mime_type", file.mimeType}};
+        //         } else {
+        //             fileM = cpr::Multipart{{
+        //                 "file",
+        //                 cpr::File{file.fileUrl},
+        //             }};
+        //         }
+        //         cpr::Response r = cpr::Post(url, cpr::Header{{"Authorization", "Bearer " + token}}, fileM);
+        //         if(r.status_code != 200) {
+        //             std::cerr << "Failed to upload file: " << r.text << std::endl;
+        //         }
+        //         std::cout << "File uploaded" << std::endl;
+        //         std::cout << "Response: " << r.text << std::endl;
+        //     }
+        // }
         eventBuffer.clear();
     }
 }
