@@ -42,11 +42,11 @@ class EventsManager {
     void setSourceAppId(const std::string& sourceAppId);
     void setSourceAppIdentifier(const std::string& sourceAppIdentifier);
     void setToken(const std::string& token);
-    std::string createUUID();
     void setQueueSize(unsigned long queuSize);
     void setSendFrequency(float sendFrequency);
 
    private:
+    std::string createUUID();
     void sendEventBuffer();
     std::string token;
     std::string deviceSerialNumber;
