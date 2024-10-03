@@ -291,13 +291,13 @@ dai_set_test_labels(pipeline_test ondevice rvc2_all ci)
 
 # Device USB Speed and serialization macros test
 dai_add_test(device_usbspeed_test src/ondevice_tests/device_usbspeed_test.cpp)
-dai_set_test_labels(device_usbspeed_test ondevice rvc2_all ci)
+dai_set_test_labels(device_usbspeed_test ondevice rvc2 usb ci)
 
 dai_add_test(device_usbspeed_test_17 src/ondevice_tests/device_usbspeed_test.cpp CXX_STANDARD 17)
-dai_set_test_labels(device_usbspeed_test_17 ondevice rvc2_all ci)
+dai_set_test_labels(device_usbspeed_test_17 ondevice rvc2 usb ci)
 
 dai_add_test(device_usbspeed_test_20 src/ondevice_tests/device_usbspeed_test.cpp CXX_STANDARD 20)
-dai_set_test_labels(device_usbspeed_test_20 ondevice rvc2_all ci)
+dai_set_test_labels(device_usbspeed_test_20 ondevice rvc2 usb ci)
 
 # Filesystem test
 dai_add_test(filesystem_test src/ondevice_tests/filesystem_test.cpp)
@@ -330,11 +330,11 @@ dai_set_test_labels(resolutions_test ondevice) # TODO(jakob) Make the test runna
 
 # Serialization test
 dai_add_test(serialization_test src/onhost_tests/serialization_test.cpp)
-dai_set_test_labels(serialization_test ondevice, rvc2_all, ci)
+dai_set_test_labels(serialization_test ondevice rvc2_all ci)
 
 # Subnode test
 dai_add_test(subnode_test src/ondevice_tests/pipeline/subnode_test.cpp)
-dai_set_test_labels(subnode_test ondevice, rvc2_all, rvc4, ci)
+dai_set_test_labels(subnode_test ondevice rvc2_all rvc4 ci)
 
 # Detection network test
 dai_add_test(detection_network_test src/ondevice_tests/pipeline/node/detection_network_test.cpp)
@@ -343,8 +343,8 @@ target_compile_definitions(detection_network_test PRIVATE
     SUPERBLOB_ARCHIVE_PATH="${yolo_superblob_nnarchive_path}"
     ONNX_ARCHIVE_PATH="${yolo_onnx_nnarchive_path}"
 )
-dai_set_test_labels(detection_network_test ondevice, rvc2_all, ci)
+dai_set_test_labels(detection_network_test ondevice rvc2_all ci)
 
 # Spatial detection network test
 dai_add_test(spatial_detection_network_test src/ondevice_tests/pipeline/node/spatial_detection_network_test.cpp)
-dai_set_test_labels(spatial_detection_network_test ondevice, rvc2_all, ci)
+dai_set_test_labels(spatial_detection_network_test ondevice rvc2_all ci)
