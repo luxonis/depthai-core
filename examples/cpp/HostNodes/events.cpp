@@ -12,7 +12,7 @@ int main(int argc, char* argv[]) {
     auto eventsManager = std::make_shared<dai::utility::EventsManager>("deviceSerialNumber");
     eventsManager->setUrl("https://events-ingest.apps.stg.hubcloud/v1/events/");
     eventsManager->setLogResponse(true);
-    eventsManager->setToken("tapi.7-yg7mpG0prDfDRZs1aSAQ.nUm5Kl3tg-sRmTvdsQzIwtmi9yH-m0jn-hJSXlJ-2ZfUsjRFDr-SqG9Ce66SQBPGLmuHmccidO86YtfIrPAdKw");
+    eventsManager->setToken();
     // Download model from zoo
     // dai::NNModelDescription modelDescription;
     // modelDescription.modelSlug = "ales-test";
