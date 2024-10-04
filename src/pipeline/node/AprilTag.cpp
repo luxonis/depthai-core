@@ -1,20 +1,20 @@
 #include "depthai/pipeline/node/AprilTag.hpp"
 
-#include <stdexcept>
-
 #include <math.h>
+
+#include <stdexcept>
 
 #include "pipeline/datatype/AprilTagConfig.hpp"
 #include "properties/AprilTagProperties.hpp"
 
 #ifdef DEPTHAI_HAS_APRIL_TAG
 
-#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-    #include <opencv2/imgproc.hpp>
-#endif
+    #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+        #include <opencv2/imgproc.hpp>
+    #endif
 
-#include "depthai/pipeline/datatype/AprilTags.hpp"
-#include "pipeline/datatype/ImgFrame.hpp"
+    #include "depthai/pipeline/datatype/AprilTags.hpp"
+    #include "pipeline/datatype/ImgFrame.hpp"
 
 extern "C" {
     #include "apriltag.h"

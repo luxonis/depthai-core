@@ -25,11 +25,17 @@ std::shared_ptr<NeuralNetwork> NeuralNetwork::build(Node::Output& input, const N
     return std::static_pointer_cast<NeuralNetwork>(shared_from_this());
 }
 
-std::shared_ptr<NeuralNetwork> NeuralNetwork::build(const NNArchiveConfig& nnArchiveConfig, std::shared_ptr<Camera> input, dai::NNModelDescription modelDesc, float fps) {
+std::shared_ptr<NeuralNetwork> NeuralNetwork::build(const NNArchiveConfig& nnArchiveConfig,
+                                                    std::shared_ptr<Camera> input,
+                                                    dai::NNModelDescription modelDesc,
+                                                    float fps) {
     return build(NNArchiveVersionedConfig(nnArchiveConfig), input, modelDesc, fps);
 }
 
-std::shared_ptr<NeuralNetwork> NeuralNetwork::build(const NNArchiveVersionedConfig& nnArchiveCfg, std::shared_ptr<Camera> camera, dai::NNModelDescription modelDesc, float fps){
+std::shared_ptr<NeuralNetwork> NeuralNetwork::build(const NNArchiveVersionedConfig& nnArchiveCfg,
+                                                    std::shared_ptr<Camera> camera,
+                                                    dai::NNModelDescription modelDesc,
+                                                    float fps) {
     setFromModelZoo(modelDesc);
 
     DAI_CHECK_V(nnArchiveCfg.getVersion() == dai::NNArchiveConfigVersion::V1, "Only V1 configs are supported for NeuralNetwork.build method");
@@ -62,7 +68,6 @@ std::shared_ptr<NeuralNetwork> NeuralNetwork::build(const NNArchiveVersionedConf
     input->link(this->input);
     return std::static_pointer_cast<NeuralNetwork>(shared_from_this());
 }
-
 
 void NeuralNetwork::setNNArchive(const NNArchive& nnArchive) {
     constexpr int DEFAULT_SUPERBLOB_NUM_SHAVES = 8;

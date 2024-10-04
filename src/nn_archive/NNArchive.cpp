@@ -1,4 +1,5 @@
 #include "depthai/nn_archive/NNArchive.hpp"
+
 #include "depthai/nn_archive/NNArchiveVersionedConfig.hpp"
 
 // internal private

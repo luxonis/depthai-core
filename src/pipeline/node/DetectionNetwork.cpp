@@ -143,7 +143,7 @@ void DetectionNetwork::setNNArchiveBlob(const NNArchive& nnArchive) {
     neuralNetwork->setNNArchive(nnArchive);
     try {
         detectionParser->setNNArchive(nnArchive);
-    } catch (const std::exception& e) {
+    } catch(const std::exception& e) {
         std::cerr << "Error setting NNArchive in DetectionParser: " << e.what() << std::endl;
         std::cerr << "In case your model has no parser heads, try switching to NeuralNetwork node instead." << std::endl;
         throw;
@@ -155,7 +155,7 @@ void DetectionNetwork::setNNArchiveSuperblob(const NNArchive& nnArchive, int num
     neuralNetwork->setNNArchive(nnArchive, numShaves);
     try {
         detectionParser->setNNArchive(nnArchive);
-    } catch (const std::exception& e) {
+    } catch(const std::exception& e) {
         std::cerr << "Error setting NNArchive in DetectionParser: " << e.what() << std::endl;
         std::cerr << "In case your model has no parser heads, try switching to NeuralNetwork node instead." << std::endl;
         throw;

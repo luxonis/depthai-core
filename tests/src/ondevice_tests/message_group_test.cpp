@@ -6,6 +6,7 @@
 #include <depthai/pipeline/datatype/ImgFrame.hpp>
 #include <depthai/pipeline/datatype/MessageGroup.hpp>
 #include <depthai/utility/span.hpp>
+
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/pipeline/MessageQueue.hpp"
 #include "depthai/pipeline/datatype/CameraControl.hpp"
@@ -45,14 +46,11 @@ TEST_CASE("Send large messages") {
     auto left = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B);
     auto right = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_C);
 
-
-
     auto sync = pipeline.create<dai::node::Sync>();
 
     camRgb->requestFullResolutionOutput()->link(sync->inputs["rgb"]);
     left->requestFullResolutionOutput()->link(sync->inputs["left"]);
     right->requestFullResolutionOutput()->link(sync->inputs["right"]);
-
 
     auto queue = sync->out.createOutputQueue(8, true);
     pipeline.start();
@@ -63,7 +61,7 @@ TEST_CASE("Send large messages") {
     REQUIRE(!hasTimedOut);
     REQUIRE(msg != nullptr);
     REQUIRE(msg->getNumMessages() == 3);
-    for (const auto& name : {"rgb", "left", "right"}) {
+    for(const auto& name : {"rgb", "left", "right"}) {
         REQUIRE(msg->get(name) != nullptr);
     }
 }
@@ -115,7 +113,7 @@ TEST_CASE("MessageGroup ping-pong without XLink") {
     dai::Pipeline pipeline;
     // Create nodes that are required
     auto sync = pipeline.create<dai::node::Sync>();
-    sync->setSyncThreshold(std::chrono::milliseconds(100)); // Should let the messages through
+    sync->setSyncThreshold(std::chrono::milliseconds(100));  // Should let the messages through
     auto demux = pipeline.create<dai::node::MessageDemux>();
     sync->out.link(demux->input);
 
