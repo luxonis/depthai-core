@@ -86,6 +86,7 @@ void XLinkInHost::run() {
             } catch(const std::exception& ex) {
                 if(isRunning()) {
                     auto exceptionMessage = fmt::format("Communication exception - possible device error/misconfiguration. Original message '{}'", ex.what());
+                    logger::error(exceptionMessage);
                     std::unique_lock<std::mutex> lck(mtx);
                     logger::info("Waiting for reconnect (XLINKINHOST)\n");
                     isWaitingForReconnect.wait(lck);
