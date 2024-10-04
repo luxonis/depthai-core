@@ -6,11 +6,37 @@
 #include <sstream>
 
 #include "Environment.hpp"
-#include "cpr/cpr.h"
+#include "Logging.hpp"
 #include "depthai/schemas/Event.pb.h"
+#ifdef DEPTHAI_ENABLE_CURL
+    #include <cpr/cpr.h>
 namespace dai {
 
 namespace utility {
+
+EventData::EventData(const std::string& data, const std::string& fileName, const std::string& mimeType)
+    : fileName(fileName), mimeType(mimeType), type(EventDataType::DATA) {
+    this->data = data;
+}
+
+
+EventData::EventData(const std::string& fileUrl) : data(fileUrl), type(EventDataType::FILE_URL) {}
+
+EventData::EventData(const std::shared_ptr<ImgFrame>& imgFrame, const std::string& fileName) : fileName(fileName), type(EventDataType::IMG_FRAME) {
+    // Convert ImgFrame to bytes
+    std::stringstream ss;
+    ss.write((const char*)imgFrame->data->getData().data(), imgFrame->data->getData().size());
+    data = ss.str();
+    mimeType = "image/jpeg";
+}
+
+EventData::EventData(const std::shared_ptr<NNData>& nnData, const std::string& fileName) : fileName(fileName), type(EventDataType::NN_DATA) {
+    // Convert NNData to bytes
+    std::stringstream ss;
+    ss.write((const char*)nnData->data->getData().data(), nnData->data->getData().size());
+    data = ss.str();
+    mimeType = "application/octet-stream";
+}
 
 EventsManager::EventsManager(const std::string& deviceSerialNumber)
     : deviceSerialNumber(deviceSerialNumber),
@@ -35,34 +61,24 @@ void EventsManager::sendEventBuffer() {
         return;
     }
     // Create request
-    std::cout << "Sending events" << std::endl;
+    logger::info("Sending events to: {} token: {}", url, token);
     cpr::Url url = cpr::Url(this->url);
     cpr::Body body;
     auto batchEvent = std::make_unique<proto::BatchUploadEvents>();
     for(auto& eventM : eventBuffer) {
         auto& event = eventM->event;
-        for(int i = 0; i < event->tags_size(); i++) {
-            std::cout << event->tags(i) << " ";
-        }
-        for(int i = 0; i < event->extras_size(); i++) {
-            auto extra = event->extras(i).data();
-            for(auto& [key, value] : extra) {
-                std::cout << key << ": " << value << " ";
-            }
-        }
-        std::cout << std::endl;
         batchEvent->add_events()->Swap(event.get());
     }
     std::string serializedEvent;
     batchEvent->SerializeToString(&serializedEvent);
     body = cpr::Body(serializedEvent);
-    cpr::Response r = cpr::Post(url, cpr::Header{{"Authorization", "Bearer " + token}}, cpr::Body(body));
-    if(r.status_code != 200) {
-        std::cerr << "Failed to send event: " << r.text << std::endl;
+    cpr::Response r = cpr::Post(url, cpr::Header{{"Authorization", token}}, cpr::Body(body), cpr::VerifySsl(false));
+    if(r.status_code != cpr::status::HTTP_OK) {
+        logger::error("Failed to send event: {} {}", r.text, r.status_code);
     } else {
-        std::cout << "Events sent" << std::endl;
+        logger::debug("Event sent successfully");
         if(logResponse) {
-            std::cout << "Response: " << r.text << std::endl;
+            logger::info("Response: {}", r.text);
         }
         // upload files
         auto BatchUploadEventResult = std::make_unique<proto::BatchUploadEventsResult>();
@@ -70,55 +86,19 @@ void EventsManager::sendEventBuffer() {
         for(int i = 0; i < BatchUploadEventResult->events_size(); i++) {
             auto eventResult = BatchUploadEventResult->events(i);
             if(eventResult.file_upload_urls().size() > 0) {
-                std::cout << "Uploading files" << std::endl;
+                logger::debug("Uploading files");
                 for(int j = 0; j < eventResult.file_upload_urls().size(); j++) {
-                    std::cout << "Uploading file: " << eventResult.file_upload_urls(j) << std::endl;
+                    logger::debug("Uploading file {}", j);
                     cpr::Url fileUrl = cpr::Url(url + eventResult.file_upload_urls(j));
 
-                    // if file struct contains byte data, send it, along with filename and mime type
-                    // if it file url, send it directly via url
-                    cpr::Multipart file{};
-                    if(eventBuffer[i]->files[j].data.size() > 0) {
-                        cpr::Multipart{
-                            {"file",
-                             cpr::Buffer{eventBuffer[i]->files[j].data.begin(), eventBuffer[i]->files[j].data.end(), eventBuffer[i]->files[j].fileName}},
-                            {"filename", eventBuffer[i]->files[j].fileName},
-                            {"file_size", std::to_string(eventBuffer[i]->files[j].data.size())},
-                            {"mime_type", eventBuffer[i]->files[j].mimeType}};
-                    } else {
-                        file = cpr::Multipart{{
-                            "file",
-                            cpr::File{eventBuffer[i]->files[j].fileUrl},
-                        }};
-                    }
-                    cpr::Response r = cpr::Post(fileUrl, cpr::Header{{"Authorization", "Bearer " + token}}, file);
-                    if(r.status_code != 200) {
-                        std::cerr << "Failed to upload file: " << r.text << std::endl;
-                    }
+                    sendFile(std::move(eventBuffer[i]->data[j]), fileUrl);
                 }
             }
         }
         // uncomment to publish files anyway
         // for(auto& eventM : eventBuffer) {
         //     for(auto& file : eventM->files) {
-        //         cpr::Multipart fileM{};
-        //         if(!file.data.empty()) {
-        //             fileM = cpr::Multipart{{"file", cpr::Buffer{file.data.begin(), file.data.end(), file.fileName}},
-        //                                    {"filename", file.fileName},
-        //                                    {"file_size", std::to_string(file.data.size())},
-        //                                    {"mime_type", file.mimeType}};
-        //         } else {
-        //             fileM = cpr::Multipart{{
-        //                 "file",
-        //                 cpr::File{file.fileUrl},
-        //             }};
-        //         }
-        //         cpr::Response r = cpr::Post(url, cpr::Header{{"Authorization", "Bearer " + token}}, fileM);
-        //         if(r.status_code != 200) {
-        //             std::cerr << "Failed to upload file: " << r.text << std::endl;
-        //         }
-        //         std::cout << "File uploaded" << std::endl;
-        //         std::cout << "Response: " << r.text << std::endl;
+        //         sendFile(file, url);
         //     }
         // }
         eventBuffer.clear();
@@ -126,10 +106,10 @@ void EventsManager::sendEventBuffer() {
 }
 
 void EventsManager::sendEvent(const std::string& name,
-                              const std::unordered_map<std::string, std::string>& data,
+                              const std::shared_ptr<ImgFrame>& imgFrame,
+                              std::vector<std::unique_ptr<EventData>> data,
                               const std::vector<std::string>& tags,
-                              const std::vector<FileData>& files,
-                              const std::shared_ptr<ADatatype>& daiMsg) {
+                              const std::unordered_map<std::string, std::string>& extraData) {
     // Create event
     auto event = std::make_unique<proto::Event>();
     event->set_nonce(createUUID());
@@ -139,18 +119,16 @@ void EventsManager::sendEvent(const std::string& name,
         event->add_tags(tag);
     }
     proto::Extras* extras = event->add_extras();
-    auto* extraData = extras->mutable_data();
-    for(const auto& [key, value] : data) {
-        extraData->insert({key, value});
-    }
-    if(daiMsg != nullptr) {
-        // bytes to stringstream
-        std::stringstream ss;
-        ss.write((const char*)daiMsg->data->getData().data(), daiMsg->data->getData().size());
-        extraData->insert({name, ss.str()});
+    auto* extrasData = extras->mutable_data();
+    for(const auto& [key, value] : extraData) {
+        extrasData->insert({key, value});
     }
 
-    event->set_expect_files_num(files.size());
+    if(imgFrame != nullptr) {
+        auto fileData = std::make_unique<EventData>(imgFrame, "img.jpg");
+		data.push_back(std::move(fileData));
+    }
+    event->set_expect_files_num(data.size());
 
     event->set_source_serial_number(deviceSerialNumber);
     event->set_source_app_id(sourceAppId);
@@ -159,22 +137,53 @@ void EventsManager::sendEvent(const std::string& name,
     if(eventBuffer.size() <= queueSize) {
         std::lock_guard<std::mutex> lock(eventBufferMutex);
         auto eventMessage = std::make_unique<EventMessage>();
-        eventMessage->files = files;
+        eventMessage->data = std::move(data);
         eventMessage->event = std::move(event);
         eventBuffer.push_back(std::move(eventMessage));
     } else {
-        std::cerr << "Event buffer is full, dropping event: " << name << std::endl;
+        logger::warn("Event buffer is full, dropping event");
     }
 }
 
 void EventsManager::sendSnap(const std::string& name,
-                             const std::unordered_map<std::string, std::string>& data,
+                             const std::shared_ptr<ImgFrame>& imgFrame,
+                             std::vector<std::unique_ptr<EventData>> data,
                              const std::vector<std::string>& tags,
-                             const std::vector<FileData>& files,
-                             const std::shared_ptr<ADatatype>& daiMsg) {
+                             const std::unordered_map<std::string, std::string>& extraData) {
     std::vector<std::string> tagsTmp = tags;
     tagsTmp.push_back("snap");
-    return sendEvent(name, data, tagsTmp, files, daiMsg);
+    // only one image can be in files
+    for(const auto& file : data) {
+        if(std::any_of(data.begin(), data.end(), [](const std::unique_ptr<EventData>& file) { return file->type == EventDataType::IMG_FRAME; })) {
+            logger::error("You can only send one ImgFrame via method argument, sending ImgFrames via files is not supported");
+            return;
+        }
+    }
+    return sendEvent(name, imgFrame, std::move(data), tagsTmp, extraData);
+}
+
+void EventsManager::sendFile(std::unique_ptr<EventData> file, const std::string& url) {
+    // if file struct contains byte data, send it, along with filename and mime type
+    // if it file url, send it directly via url
+    cpr::Multipart fileM{};
+    if(!file->data.empty()) {
+        fileM = cpr::Multipart{{"file", cpr::Buffer{file->data.begin(), file->data.end(), file->fileName}},
+                               {"filename", file->fileName},
+                               {"file_size", std::to_string(file->data.size())},
+                               {"mime_type", file->mimeType}};
+    } else {
+        fileM = cpr::Multipart{{
+            "file",
+            cpr::File{file->data},
+        }};
+    }
+    cpr::Response r = cpr::Post(url, cpr::Header{{"Authorization", "Bearer " + token}}, fileM);
+    if(r.status_code != cpr::status::HTTP_OK) {
+        logger::error("Failed to upload file: {}", r.text);
+    }
+    if(logResponse) {
+        logger::info("Response: {}", r.text);
+    }
 }
 
 void EventsManager::setUrl(const std::string& url) {
@@ -235,3 +244,46 @@ void EventsManager::setLogResponse(bool logResponse) {
 }
 }  // namespace utility
 }  // namespace dai
+#else
+namespace dai {
+namespace utility {
+EventsManager::EventsManager(const std::string& deviceSerialNumber) {
+    logger::warn("EventsManager is disabled, please enable DEPTHAI_ENABLE_CURL in CMake to use this feature");
+}
+void EventsManager::sendEvent(const std::string& name,
+                              const std::unordered_map<std::string, std::string>& data,
+                              const std::vector<std::string>& tags,
+                              const std::vector<FileData>& files,
+                              const std::shared_ptr<ADatatype>& daiMsg) {
+    logger::warn("EventsManager is disabled, please enable DEPTHAI_ENABLE_CURL in CMake to use this feature");
+}
+void EventsManager::sendSnap(const std::string& name,
+                             const std::vector<std::string>& tags,
+                             const std::vector<FileData>& files,
+                             const std::unordered_map<std::string, std::string>& extraData) {
+    logger::warn("EventsManager is disabled, please enable DEPTHAI_ENABLE_CURL in CMake to use this feature");
+}
+void EventsManager::setUrl(const std::string& url) {
+    logger::warn("EventsManager is disabled, please enable DEPTHAI_ENABLE_CURL in CMake to use this feature");
+}
+void EventsManager::setSourceAppId(const std::string& sourceAppId) {
+    logger::warn("EventsManager is disabled, please enable DEPTHAI_ENABLE_CURL in CMake to use this feature");
+}
+void EventsManager::setSourceAppIdentifier(const std::string& sourceAppIdentifier) {
+    logger::warn("EventsManager is disabled, please enable DEPTHAI_ENABLE_CURL in CMake to use this feature");
+}
+void EventsManager::setToken(const std::string& token) {
+    logger::warn("EventsManager is disabled, please enable DEPTHAI_ENABLE_CURL in CMake to use this feature");
+}
+void EventsManager::setQueueSize(unsigned long queueSize) {
+    logger::warn("EventsManager is disabled, please enable DEPTHAI_ENABLE_CURL in CMake to use this feature");
+}
+void EventsManager::setPublishInterval(float publishInterval) {
+    logger::warn("EventsManager is disabled, please enable DEPTHAI_ENABLE_CURL in CMake to use this feature");
+}
+void EventsManager::setLogResponse(bool logResponse) {
+    logger::warn("EventsManager is disabled, please enable DEPTHAI_ENABLE_CURL in CMake to use this feature");
+}
+}  // namespace utility
+}  // namespace dai
+#endif
