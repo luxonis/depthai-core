@@ -44,11 +44,11 @@ int main(int argc, char* argv[]) {
     std::this_thread::sleep_for(std::chrono::milliseconds(2000));
     std::this_thread::sleep_for(std::chrono::milliseconds(2000));
     auto fileData = std::make_unique<dai::utility::EventData>("abc", "test.txt", "text/plain");
-	std::vector<std::unique_ptr<dai::utility::EventData>> data;
+	std::vector<std::shared_ptr<dai::utility::EventData>> data;
 	data.emplace_back(std::move(fileData));
     eventsManager->sendSnap("testdata", nullptr, std::move(data), {"tag3, tag4"}, {{"key8", "value8"}});
     auto fileData2 = std::make_unique<dai::utility::EventData>("/test.txt");
-	std::vector<std::unique_ptr<dai::utility::EventData>> data2;
+	std::vector<std::shared_ptr<dai::utility::EventData>> data2;
 	data2.emplace_back(std::move(fileData2));
     eventsManager->sendSnap("testdata2", nullptr, std::move(data2), {"tag5, tag6"}, {{"key8", "value8"}});
     while(pipeline.isRunning()) {

@@ -91,7 +91,7 @@ void EventsManager::sendEventBuffer() {
                     logger::debug("Uploading file {}", j);
                     cpr::Url fileUrl = cpr::Url(url + eventResult.file_upload_urls(j));
 
-                    sendFile(std::move(eventBuffer[i]->data[j]), fileUrl);
+                    sendFile(eventBuffer[i]->data[j], fileUrl);
                 }
             }
         }
@@ -107,7 +107,7 @@ void EventsManager::sendEventBuffer() {
 
 void EventsManager::sendEvent(const std::string& name,
                               const std::shared_ptr<ImgFrame>& imgFrame,
-                              std::vector<std::unique_ptr<EventData>> data,
+                              std::vector<std::shared_ptr<EventData>> data,
                               const std::vector<std::string>& tags,
                               const std::unordered_map<std::string, std::string>& extraData) {
     // Create event
@@ -125,8 +125,8 @@ void EventsManager::sendEvent(const std::string& name,
     }
 
     if(imgFrame != nullptr) {
-        auto fileData = std::make_unique<EventData>(imgFrame, "img.jpg");
-		data.push_back(std::move(fileData));
+        auto fileData = std::make_shared<EventData>(imgFrame, "img.jpg");
+		data.push_back(fileData);
     }
     event->set_expect_files_num(data.size());
 
@@ -147,22 +147,22 @@ void EventsManager::sendEvent(const std::string& name,
 
 void EventsManager::sendSnap(const std::string& name,
                              const std::shared_ptr<ImgFrame>& imgFrame,
-                             std::vector<std::unique_ptr<EventData>> data,
+                             std::vector<std::shared_ptr<EventData>> data,
                              const std::vector<std::string>& tags,
                              const std::unordered_map<std::string, std::string>& extraData) {
     std::vector<std::string> tagsTmp = tags;
     tagsTmp.push_back("snap");
     // only one image can be in files
     for(const auto& file : data) {
-        if(std::any_of(data.begin(), data.end(), [](const std::unique_ptr<EventData>& file) { return file->type == EventDataType::IMG_FRAME; })) {
+        if(std::any_of(data.begin(), data.end(), [](const std::shared_ptr<EventData>& file) { return file->type == EventDataType::IMG_FRAME; })) {
             logger::error("You can only send one ImgFrame via method argument, sending ImgFrames via files is not supported");
             return;
         }
     }
-    return sendEvent(name, imgFrame, std::move(data), tagsTmp, extraData);
+    return sendEvent(name, imgFrame, data, tagsTmp, extraData);
 }
 
-void EventsManager::sendFile(std::unique_ptr<EventData> file, const std::string& url) {
+void EventsManager::sendFile(std::shared_ptr<EventData> file, const std::string& url) {
     // if file struct contains byte data, send it, along with filename and mime type
     // if it file url, send it directly via url
     cpr::Multipart fileM{};

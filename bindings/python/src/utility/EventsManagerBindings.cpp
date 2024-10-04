@@ -18,12 +18,11 @@ void EventsManagerBindings::bind(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
 
-    py::class_<utility::FileData>(m, "FileData")
-		.def(py::init<>())
-        .def_readwrite("data", &utility::FileData::data)
-        .def_readwrite("fileName", &utility::FileData::fileName)
-        .def_readwrite("fileUrl", &utility::FileData::fileUrl)
-        .def_readwrite("mimeType", &utility::FileData::mimeType);
+    py::class_<utility::EventData, std::shared_ptr<utility::EventData>>(m, "EventData")
+		.def(py::init<const std::string&, const std::string&, const std::string&>(), py::arg("data"), py::arg("fileName"), py::arg("mimeType"))
+		.def(py::init<const std::string&>(), py::arg("fileUrl"))
+		.def(py::init<const std::shared_ptr<ImgFrame>&, const std::string&>(), py::arg("imgFrame"), py::arg("fileName"))
+		.def(py::init<const std::shared_ptr<NNData>&, const std::string&>(), py::arg("nnData"), py::arg("fileName"));
 
     py::class_<utility::EventsManager>(m, "EventsManager")
         .def(py::init<const std::string&>(), py::arg("deviceSerialNumber") = "serial")
@@ -36,16 +35,16 @@ void EventsManagerBindings::bind(pybind11::module& m, void* pCallstack) {
 		.def("setLogResponse", &utility::EventsManager::setLogResponse, py::arg("logResponse"))
         .def("sendEvent",
              &utility::EventsManager::sendEvent,
-             py::arg("name"),
-             py::arg("data"),
-             py::arg("tags"),
-             py::arg("files") = std::vector<utility::FileData>(),
-             py::arg("daiMsg") = nullptr)
+			 py::arg("name"),
+			 py::arg("imgFrame").none(true) = nullptr,
+			 py::arg("data") = std::vector<std::shared_ptr<utility::EventData>>(),
+			 py::arg("tags") = std::vector<std::string>(),
+			 py::arg("extraData") = std::unordered_map<std::string, std::string>())
         .def("sendSnap",
              &utility::EventsManager::sendSnap,
-             py::arg("name"),
-             py::arg("data"),
-             py::arg("tags"),
-             py::arg("files") = std::vector<utility::FileData>(),
-             py::arg("daiMsg") = nullptr);
+			 py::arg("name"),
+			 py::arg("imgFrame").none(true) = nullptr,
+			 py::arg("data") = std::vector<std::shared_ptr<utility::EventData>>(),
+			 py::arg("tags") = std::vector<std::string>(),
+			 py::arg("extraData") = std::unordered_map<std::string, std::string>());
 }

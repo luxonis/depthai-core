@@ -31,7 +31,7 @@ private:
 };
 struct EventMessage {
     std::shared_ptr<proto::Event> event;
-    std::vector<std::unique_ptr<EventData>> data;
+    std::vector<std::shared_ptr<EventData>> data;
 };
 class EventsManager {
    public:
@@ -40,13 +40,13 @@ class EventsManager {
 
     void sendEvent(const std::string& name,
 				   const std::shared_ptr<ImgFrame>& imgFrame = nullptr,
-                   std::vector<std::unique_ptr<EventData>> data = {},
+                   std::vector<std::shared_ptr<EventData>> data = {},
                    const std::vector<std::string>& tags = {},
                    const std::unordered_map<std::string, std::string>& extraData = {}
 				   );
     void sendSnap(const std::string& name,
 				   const std::shared_ptr<ImgFrame>& imgFrame = nullptr,
-                   std::vector<std::unique_ptr<EventData>> data = {},
+                   std::vector<std::shared_ptr<EventData>> data = {},
                    const std::vector<std::string>& tags = {},
                    const std::unordered_map<std::string, std::string>& extraData = {}
 				   );
@@ -63,7 +63,7 @@ class EventsManager {
    private:
     std::string createUUID();
     void sendEventBuffer();
-	void sendFile(std::unique_ptr<EventData> file, const std::string& url);
+	void sendFile(std::shared_ptr<EventData> file, const std::string& url);
     std::string token;
     std::string deviceSerialNumber;
     std::string url;
