@@ -6,22 +6,44 @@ from functools import reduce
 import pathlib
 
 
-# Custom Thread class to capture the result of subprocess.run
 class ResultThread(threading.Thread):
-    def __init__(self, cmd, env):
+
+    def __init__(self, cmd, env, name):
         threading.Thread.__init__(self)
         self.cmd = cmd
         self.env = env
+        self.name = name
         self.result = None
+        self.stdout_lines = []
+        self.stderr_lines = []
 
     def run(self):
-        self.result = subprocess.run(
-            self.cmd, env=self.env, capture_output=True, text=True
+        process = subprocess.Popen(
+            self.cmd,
+            env=self.env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
         )
+        # Capture stdout in real-time
+        while True:
+            output = process.stdout.readline()
+            if output == "" and process.poll() is not None:
+                break
+            if output:
+                print(f"[{self.name}] {output.strip()}")
+                self.stdout_lines.append(output.strip())
 
+        # Capture stderr in real-time
+        stderr_output, _ = process.communicate()
+        if stderr_output:
+            print(f"[{self.name} ERROR] {stderr_output.strip()}")
+            self.stderr_lines.append(stderr_output.strip())
+
+        self.result = process
 
 # Function to run ctest with specific environment variables and labels
-def run_ctest(env_vars, labels, blocking=True):
+def run_ctest(env_vars, labels, blocking=True, name=""):
     env = os.environ.copy()
     env.update(env_vars)
 
@@ -30,7 +52,7 @@ def run_ctest(env_vars, labels, blocking=True):
         # Encapsulate label in ^label$ to match exactly
         label = f"^{label}$"
         cmd.extend(["-L", label])
-    thread = ResultThread(cmd, env)
+    thread = ResultThread(cmd, env, name)
     thread.start()
     if blocking:
         thread.join()
@@ -93,7 +115,7 @@ if __name__ == "__main__":
         labels = config.get("labels") or config.get("label")
 
         print(f"Running tests for configuration: {name}")
-        resultThread = run_ctest(env_vars, labels, blocking=False)
+        resultThread = run_ctest(env_vars, labels, blocking=False, name=name)
         resultThreads.append((name, resultThread))
 
     # Process the results
@@ -103,12 +125,9 @@ if __name__ == "__main__":
         result = resultThread.result
         if result.returncode != 0:
             print(f"Tests failed for configuration: {name}")
-            print(result.stdout)
-            print(result.stderr)
             any_failures = True
         else:
             print(f"Tests passed for configuration: {name}")
-            print(result.stdout)
 
     if any_failures:
         print("Some tests failed")
