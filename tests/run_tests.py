@@ -30,11 +30,11 @@ def run_ctest(env_vars, labels, blocking=True):
         # Encapsulate label in ^label$ to match exactly
         label = f"^{label}$"
         cmd.extend(["-L", label])
-        thread = ResultThread(cmd, env)
-        thread.start()
-        if blocking:
-            thread.join()
-        return thread
+    thread = ResultThread(cmd, env)
+    thread.start()
+    if blocking:
+        thread.join()
+    return thread
 
 
 def compute_or_result(results):
