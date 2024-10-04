@@ -348,3 +348,7 @@ dai_set_test_labels(detection_network_test ondevice rvc2_all ci)
 # Spatial detection network test
 dai_add_test(spatial_detection_network_test src/ondevice_tests/pipeline/node/spatial_detection_network_test.cpp)
 dai_set_test_labels(spatial_detection_network_test ondevice rvc2_all ci)
+
+# NeuralNetwork node test
+dai_add_test(neural_network_node_test src/ondevice_tests/pipeline/node/neural_network_node_test.cpp)
+dai_set_test_labels(neural_network_node_test ondevice rvc2_all rvc4 ci)

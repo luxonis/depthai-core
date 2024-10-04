@@ -25,18 +25,11 @@ std::shared_ptr<NeuralNetwork> NeuralNetwork::build(Node::Output& input, const N
     return std::static_pointer_cast<NeuralNetwork>(shared_from_this());
 }
 
-std::shared_ptr<NeuralNetwork> NeuralNetwork::build(const NNArchiveConfig& nnArchiveConfig,
-                                                    std::shared_ptr<Camera> input,
-                                                    dai::NNModelDescription modelDesc,
-                                                    float fps) {
-    return build(NNArchiveVersionedConfig(nnArchiveConfig), input, modelDesc, fps);
-}
-
-std::shared_ptr<NeuralNetwork> NeuralNetwork::build(const NNArchiveVersionedConfig& nnArchiveCfg,
-                                                    std::shared_ptr<Camera> camera,
-                                                    dai::NNModelDescription modelDesc,
-                                                    float fps) {
+std::shared_ptr<NeuralNetwork> NeuralNetwork::build(std::shared_ptr<Camera> input, dai::NNModelDescription modelDesc, float fps) {
     setFromModelZoo(modelDesc);
+    // Check that nnArchive is set
+    DAI_CHECK(nnArchive.has_value(), "NNArchive is not set, the method can only be used with models that are loaded as NNArchive");
+    auto nnArchiveCfg = nnArchive->getVersionedConfig();
 
     DAI_CHECK_V(nnArchiveCfg.getVersion() == dai::NNArchiveConfigVersion::V1, "Only V1 configs are supported for NeuralNetwork.build method");
 
@@ -63,14 +56,15 @@ std::shared_ptr<NeuralNetwork> NeuralNetwork::build(const NNArchiveVersionedConf
     cap.size.value = std::pair(inputWidth, inputHeight);
     cap.type = type;
     cap.fps.value = fps;
-    auto* input = camera->requestOutput(cap, false);
-    DAI_CHECK_V(input != nullptr, "Camera does not have output with requested capabilities");
-    input->link(this->input);
+    auto* camInput = input->requestOutput(cap, false);
+    DAI_CHECK_V(camInput != nullptr, "Camera does not have output with requested capabilities");
+    camInput->link(this->input);
     return std::static_pointer_cast<NeuralNetwork>(shared_from_this());
 }
 
 void NeuralNetwork::setNNArchive(const NNArchive& nnArchive) {
     constexpr int DEFAULT_SUPERBLOB_NUM_SHAVES = 8;
+    this->nnArchive = nnArchive;
     switch(nnArchive.getModelType()) {
         case dai::model::ModelType::BLOB:
             setNNArchiveBlob(nnArchive);
