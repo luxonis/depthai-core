@@ -57,6 +57,7 @@ function(add_python_example example_name python_script_path)
             "PATH=${HUNTER_INSTALL_PREFIX}/bin${SYS_PATH_SEPARATOR}$ENV{PATH}"
             # Python path (to find compiled module)
             "PYTHONPATH=$<TARGET_FILE_DIR:${TARGET_NAME}>${SYS_PATH_SEPARATOR}$ENV{PYTHONPATH}"
+            "DEPTHAI_SEARCH_TIMEOUT=15000"
             # ASAN in case of sanitizers
             ${ASAN_ENVIRONMENT_VARS}
             ${CMAKE_COMMAND} -DFORCE_TIMEOUT_SECONDS=10 -P ${CMAKE_CURRENT_LIST_DIR}/../cpp/cmake/ExecuteTestTimeout.cmake
@@ -70,6 +71,24 @@ function(add_python_example example_name python_script_path)
 
     endif()
 
+endfunction()
+
+
+# Function for setting test labels, including label shortcuts
+function(dai_set_example_test_labels example_name)
+    # Modify example name to match the one created by add_python_example
+    set(example_name "py_${example_name}")
+    set(expanded_labels "")
+    foreach(label IN LISTS ARGN)
+        if(label STREQUAL "rvc2_all")
+            list(APPEND expanded_labels "rvc2" "poe" "usb")
+        else()
+            list(APPEND expanded_labels ${label})
+        endif()
+    endforeach()
+    # Add "cpp_example" label
+    list(APPEND expanded_labels "python_example")
+    set_tests_properties(${example_name} PROPERTIES LABELS "${expanded_labels}")
 endfunction()
 
 if(DEPTHAI_PYTHON_TEST_EXAMPLES)
@@ -94,8 +113,10 @@ if(DEPTHAI_PYTHON_TEST_EXAMPLES)
 
 endif()
 
-# Add examples
 
 ## Camera output
 add_python_example(camera_output Camera/camera_output.py)
+dai_set_example_test_labels(camera_output ondevice rvc2_all rvc4 ci)
+
 add_python_example(camera_all Camera/camera_all.py)
+dai_set_example_test_labels(camera_all ondevice rvc2_all rvc4 ci)
