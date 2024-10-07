@@ -125,3 +125,16 @@ dai_set_example_test_labels(camera_output ondevice rvc2_all rvc4 ci)
 
 add_python_example(camera_all Camera/camera_all.py)
 dai_set_example_test_labels(camera_all ondevice rvc2_all rvc4 ci)
+
+add_python_example(camera_multiple_outputs Camera/camera_multiple_outputs.py 640 480 0 30 CAM_A 300 300 0 30 CAM_A 300 300 1 30 CAM_A)
+dai_set_example_test_labels(camera_multiple_outputs ondevice rvc2_all rvc4 ci)
+
+## AprilTags
+add_python_example(april_tags_12mp AprilTags/april_tags_12mp.py)
+dai_set_example_test_labels(april_tags_12mp ondevice rvc2_all rvc4 ci)
+
+add_python_example(april_tags AprilTags/april_tags.py)
+dai_set_example_test_labels(april_tags ondevice rvc2_all rvc4 ci)
+
+add_python_example(april_tags_replay AprilTags/april_tags_replay.py)
+dai_set_example_test_labels(april_tags_replay ondevice rvc2_all rvc4 ci)
