@@ -1,4 +1,5 @@
 add_subdirectory(cpp)
-if (DEPTHAI_BUILD_PYTHON)
-    add_subdirectory(python)
-endif()
+# Included by bindgins so the variables are set
+# if (DEPTHAI_BUILD_PYTHON)
+#     add_subdirectory(python)
+# endif()
