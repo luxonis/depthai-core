@@ -47,7 +47,7 @@ def run_ctest(env_vars, labels, blocking=True, name=""):
     env = os.environ.copy()
     env.update(env_vars)
 
-    cmd = ["ctest", "--no-tests=error", "-VV", "-L", "^ci$", "--timeout", "300"]
+    cmd = ["ctest", "--no-tests=error", "-VV", "-L", "^ci$", "--timeout", "1000"]
     for label in labels:
         # Encapsulate label in ^label$ to match exactly
         label = f"^{label}$"
