@@ -138,3 +138,51 @@ dai_set_example_test_labels(april_tags ondevice rvc2_all rvc4 ci)
 
 add_python_example(april_tags_replay AprilTags/april_tags_replay.py)
 dai_set_example_test_labels(april_tags_replay ondevice rvc2_all rvc4 ci)
+
+## Detection network
+add_python_example(detection_network DetectionNetwork/detection_network.py)
+dai_set_example_test_labels(detection_network ondevice rvc2_all rvc4 ci)
+
+## Host nodes
+add_python_example(display HostNodes/display.py)
+dai_set_example_test_labels(display ondevice rvc2_all rvc4 ci)
+
+add_python_example(threaded_host_nodes HostNodes/threaded_host_nodes.py)
+dai_set_example_test_labels(threaded_host_nodes ondevice rvc2_all rvc4 ci)
+
+## ImageManip
+add_python_example(image_manip_mod ImageManip/image_manip_v2_mod.py)
+dai_set_example_test_labels(image_manip_mod ondevice rvc2_all rvc4 ci)
+
+add_python_example(image_manip_resize ImageManip/image_manip_v2_resize.py)
+dai_set_example_test_labels(image_manip_resize ondevice rvc2_all rvc4 ci)
+
+## Misc
+add_python_example(reconnect_callback Misc/AutoReconnect/reconnect_callback.py)
+dai_set_example_test_labels(reconnect_callback ondevice rvc2_all rvc4 ci)
+
+## NeuralNetwork
+add_python_example(neural_network NeuralNetwork/neural_network.py)
+dai_set_example_test_labels(neural_network ondevice rvc2_all rvc4 ci)
+
+## Spatial detection network
+add_python_example(spatial_detection SpatialDetectionNetwork/spatial_detection.py)
+dai_set_example_test_labels(spatial_detection ondevice rvc2_all rvc4 ci)
+
+## StereoDepth
+add_python_example(stereo StereoDepth/stereo.py)
+dai_set_example_test_labels(stereo ondevice rvc2_all rvc4 ci)
+
+#TODO(Morato)  - add the from host example when it works on both platforms
+
+## VideoEncoder
+add_python_example(video_encoder VideoEncoder/video_encode.py)
+dai_set_example_test_labels(video_encoder ondevice rvc2_all rvc4 ci)
+
+## SpatialLocationCalculator
+add_python_example(spatial_location_calculator SpatialLocationCalculator/spatial_location_calculator.py)
+dai_set_example_test_labels(spatial_location_calculator ondevice rvc2_all rvc4 ci)
+
+add_python_example(spatial_location_calculator_replay SpatialLocationCalculator/spatial_location_calculator_replay.py)
+dai_set_example_test_labels(spatial_location_calculator_replay ondevice rvc2_all rvc4 ci)
+

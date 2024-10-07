@@ -6,7 +6,7 @@ import time
 import numpy as np
 from pathlib import Path
 
-examplePath = str((Path(__file__).parent / Path('../../')).resolve().absolute())
+examplePath = str((Path(__file__).parent / Path('../')).resolve().absolute())
 datasetDefault = examplePath + "/models/DFS_DispMap.pgm"
 # Check if file exists otherwise provoke the user to run `python3 examples/python/install_requirements.py`
 if not Path(datasetDefault).exists():
@@ -62,15 +62,15 @@ with dai.Pipeline() as pipeline:
     config = dai.SpatialLocationCalculatorConfigData()
     config.depthThresholds.lowerThreshold = 10
     config.depthThresholds.upperThreshold = 10000
-    calculationAlgorithm = dai.SpatialLocationCalculatorAlgorithm.MEDIAN
     config.roi = dai.Rect(topLeft, bottomRight)
+    config.calculationAlgorithm = calculationAlgorithm = dai.SpatialLocationCalculatorAlgorithm.AVERAGE
 
     spatialLocationCalculator = pipeline.create(dai.node.SpatialLocationCalculator)
     spatialLocationCalculator.inputConfig.setWaitForMessage(False)
     spatialLocationCalculator.initialConfig.addROI(config)
 
 
-    xoutSpatialQueue = spatialLocationCalculator.out.createOutputQueue()
+    spatialQueue = spatialLocationCalculator.out.createOutputQueue()
     outputDepthQueue = spatialLocationCalculator.passthroughDepth.createOutputQueue()
 
 
@@ -80,7 +80,7 @@ with dai.Pipeline() as pipeline:
 
     pipeline.start()
     while pipeline.isRunning():
-        spatialData = xoutSpatialQueue.get().getSpatialLocations()
+        spatialData = spatialQueue.get().getSpatialLocations()
 
         image : dai.ImgFrame = camQueue.get()
         outputDepthIMage : dai.ImgFrame = outputDepthQueue.get()
