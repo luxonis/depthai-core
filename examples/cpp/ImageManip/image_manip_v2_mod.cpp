@@ -24,9 +24,9 @@ int main(int argc, char** argv) {
     manip->setMaxOutputFrameSize(4000000);
     manip->initialConfig.setOutputSize(1280, 720, dai::ImageManipConfigV2::ResizeMode::LETTERBOX);
     manip->initialConfig.setBackgroundColor(100, 100, 100);
-    manip->initialConfig.rotateDeg(45);
-    manip->initialConfig.crop(100, 100, 800, 600);
-    manip->initialConfig.flipVertical();
+    manip->initialConfig.addRotateDeg(45);
+    manip->initialConfig.addCrop(100, 100, 800, 600);
+    manip->initialConfig.addFlipVertical();
     manip->initialConfig.setFrameType(dai::ImgFrame::Type::RGB888p);
 
     camRgb->video.link(manip->inputImage);

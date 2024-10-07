@@ -104,22 +104,29 @@ bool setupHolisticReplay(Pipeline& pipeline,
     const std::string rootPath = platform::getDirFromPath(replayPath);
     auto sources = pipeline.getSourceNodes();
     try {
-        auto tarNodenames = filenamesInTar(replayPath);
-        tarNodenames.erase(std::remove_if(tarNodenames.begin(),
-                                          tarNodenames.end(),
-                                          [](const std::string& path) {
-                                              auto pathDelim = path.find_last_of("/\\");
-                                              auto filename = pathDelim == std::string::npos ? path : path.substr(path.find_last_of("/\\") + 1);
-                                              return filename.size() < 4 || filename.substr(filename.size() - 4, filename.size()) == "mcap"
-                                                     || filename == "record_config.json";
-                                          }),
-                           tarNodenames.end());
+        bool useTar = !platform::checkPathExists(replayPath, true);
+        std::vector<std::string> tarNodenames;
+        std::string tarRoot;
+        std::string rootPath = replayPath;
+        if(useTar) {
+            rootPath = platform::getDirFromPath(replayPath);
+            tarNodenames = filenamesInTar(replayPath);
+            tarNodenames.erase(std::remove_if(tarNodenames.begin(),
+                                              tarNodenames.end(),
+                                              [](const std::string& path) {
+                                                  auto pathDelim = path.find_last_of("/\\");
+                                                  auto filename = pathDelim == std::string::npos ? path : path.substr(path.find_last_of("/\\") + 1);
+                                                  return filename.size() < 4 || filename.substr(filename.size() - 4, filename.size()) == "mcap"
+                                                         || filename == "record_config.json";
+                                              }),
+                               tarNodenames.end());
 
-        std::string tarRoot = tarNodenames.empty() ? "" : tarNodenames[0].substr(0, tarNodenames[0].find_first_of("/\\") + 1);
-        for(auto& path : tarNodenames) {
-            auto pathDelim = path.find_last_of("/\\");
-            path = pathDelim == std::string::npos ? path : path.substr(path.find_last_of("/\\") + 1);
-            path = path.substr(0, path.find_last_of('.'));
+            tarRoot = tarNodenames.empty() ? "" : tarNodenames[0].substr(0, tarNodenames[0].find_first_of("/\\") + 1);
+            for(auto& path : tarNodenames) {
+                auto pathDelim = path.find_last_of("/\\");
+                path = pathDelim == std::string::npos ? path : path.substr(path.find_last_of("/\\") + 1);
+                path = path.substr(0, path.find_last_of('.'));
+            }
         }
 
         std::vector<std::string> nodeNames;
@@ -142,22 +149,24 @@ bool setupHolisticReplay(Pipeline& pipeline,
         std::vector<std::string> outFiles;
         inFiles.reserve(sources.size() + 1);
         outFiles.reserve(sources.size() + 1);
-        if(allMatch(tarNodenames, pipelineFilenames)) {
+        if(!useTar || allMatch(tarNodenames, pipelineFilenames)) {
             for(auto& nodeName : nodeNames) {
                 // auto filename = (mxId + "_").append(nodeName);
                 auto filename = nodeName;
-                inFiles.push_back(tarRoot + filename + ".mp4");
-                inFiles.push_back(tarRoot + filename + ".mcap");
+                if(useTar) {
+                    inFiles.push_back(tarRoot + filename + ".mp4");
+                    inFiles.push_back(tarRoot + filename + ".mcap");
+                }
                 std::string filePath = platform::joinPaths(rootPath, filename);
                 outFiles.push_back(filePath + ".mp4");
                 outFiles.push_back(filePath + ".mcap");
                 outFilenames[nodeName] = filePath;
             }
-            inFiles.emplace_back(tarRoot + "record_config.json");
+            if(useTar) inFiles.emplace_back(tarRoot + "record_config.json");
             configPath = platform::joinPaths(rootPath, "record_config.json");
             outFiles.push_back(configPath);
             outFilenames["record_config"] = configPath;
-            untarFiles(replayPath, inFiles, outFiles);
+            if(useTar) untarFiles(replayPath, inFiles, outFiles);
         } else {
             throw std::runtime_error("Recording does not match the pipeline configuration.");
             // For multi-device recordings, where devices are not the same

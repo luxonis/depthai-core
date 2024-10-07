@@ -142,6 +142,13 @@ void bind_hostnode(pybind11::module& m, void* pCallstack){
                 cls.__init__ = __init__
 
         node.HostNode.__init_subclass__ = classmethod(__init_subclass__)
+
+        # Create a subnode as part of this user node
+        def createSubnode(self, class_, *args, **kwargs):
+            return self.getParentPipeline().create(class_, *args, **kwargs)
+
+        node.HostNode.createSubnode = createSubnode
+        node.ThreadedHostNode.createSubnode = createSubnode
     )",
              m.attr("__dict__"));
 }

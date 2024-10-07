@@ -35,16 +35,18 @@ int main(int argc, char** argv) {
 
         while(true) {
             auto imuData = imuQ->get<dai::IMUData>();
-            for (auto& imuPacket : imuData->packets) {
+            std::cout << "Packet seqNo: " << (int)imuData->getSequenceNum() << "\n";
+            std::cout << "Packet ts: " << imuData->tsDevice.sec << "s " << imuData->tsDevice.nsec << "ns\n";
+            for(auto& imuPacket : imuData->packets) {
                 std::cout << "\tAccelerometer: \n";
-                std::cout << "\t\tts: " << imuPacket.acceleroMeter.tsDevice.sec << "s " << imuPacket.acceleroMeter.tsDevice.nsec << "\n";
+                std::cout << "\t\tts: " << imuPacket.acceleroMeter.tsDevice.sec << "s " << imuPacket.acceleroMeter.tsDevice.nsec << "ns\n";
                 std::cout << "\t\tseqNo: " << imuPacket.acceleroMeter.sequence << "\n";
                 std::cout << "\t\tx: " << imuPacket.acceleroMeter.x << "\n";
                 std::cout << "\t\ty: " << imuPacket.acceleroMeter.y << "\n";
                 std::cout << "\t\tz: " << imuPacket.acceleroMeter.z << "\n";
 
                 std::cout << "\tGyroscope: \n";
-                std::cout << "\t\tts: " << imuPacket.gyroscope.tsDevice.sec << "s " << imuPacket.gyroscope.tsDevice.nsec << "\n";
+                std::cout << "\t\tts: " << imuPacket.gyroscope.tsDevice.sec << "s " << imuPacket.gyroscope.tsDevice.nsec << "ns\n";
                 std::cout << "\t\tseqNo: " << imuPacket.gyroscope.sequence << "\n";
                 std::cout << "\t\tx: " << imuPacket.gyroscope.x << "\n";
                 std::cout << "\t\ty: " << imuPacket.gyroscope.y << "\n";

@@ -1,4 +1,5 @@
 #include "depthai/utility/ImageManipV2Impl.hpp"
+
 #include "depthai/pipeline/datatype/ImageManipConfigV2.hpp"
 
 #if defined(WIN32) || defined(_WIN32)
@@ -847,7 +848,9 @@ std::tuple<std::array<std::array<float, 3>, 3>, std::array<std::array<float, 2>,
 #endif
                            }
                        },
-                       [&](Affine o) { mat = {{{o.matrix[0], o.matrix[1], 0}, {o.matrix[2], o.matrix[3], 0}, {0, 0, 1}}}; },
+                       [&](Affine o) {
+                           mat = {{{o.matrix[0], o.matrix[1], 0}, {o.matrix[2], o.matrix[3], 0}, {0, 0, 1}}};
+                       },
                        [&](Perspective o) {
                            mat = {{{o.matrix[0], o.matrix[1], o.matrix[2]}, {o.matrix[3], o.matrix[4], o.matrix[5]}, {o.matrix[6], o.matrix[7], o.matrix[8]}}};
                        },
@@ -892,7 +895,13 @@ std::tuple<std::array<std::array<float, 3>, 3>, std::array<std::array<float, 2>,
     return {transform, imageCorners, srcCorners};
 }
 
-std::tuple<std::array<std::array<float, 3>, 3>, std::array<std::array<float, 2>, 4>, std::vector<std::array<std::array<float, 2>, 4>>> dai::impl::getFullTransform(dai::ImageManipOpsBase& base, size_t inputWidth, size_t inputHeight, dai::ImgFrame::Type type, dai::ImgFrame::Type outputFrameType, std::vector<ManipOp>& outputOps) {
+std::tuple<std::array<std::array<float, 3>, 3>, std::array<std::array<float, 2>, 4>, std::vector<std::array<std::array<float, 2>, 4>>>
+dai::impl::getFullTransform(dai::ImageManipOpsBase& base,
+                            size_t inputWidth,
+                            size_t inputHeight,
+                            dai::ImgFrame::Type type,
+                            dai::ImgFrame::Type outputFrameType,
+                            std::vector<ManipOp>& outputOps) {
     using namespace dai;
     using namespace dai::impl;
 
@@ -904,8 +913,13 @@ std::tuple<std::array<std::array<float, 3>, 3>, std::array<std::array<float, 2>,
 
     {
         auto [minx, maxx, miny, maxy] = getOuterRect(std::vector(imageCorners.begin(), imageCorners.end()));
-        if(base.outputWidth == 0) base.outputWidth = maxx;
-        if(base.outputHeight == 0) base.outputHeight = maxy;
+        if(!base.center) {
+            if(base.outputWidth == 0) base.outputWidth = maxx;
+            if(base.outputHeight == 0) base.outputHeight = maxy;
+        } else {
+            if(base.outputWidth == 0) base.outputWidth = maxx - minx;
+            if(base.outputHeight == 0) base.outputHeight = maxy - miny;
+        }
     }
 
     if(base.resizeMode != ImageManipOpsBase::ResizeMode::NONE) {

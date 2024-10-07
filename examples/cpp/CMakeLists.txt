@@ -460,9 +460,9 @@ hunter_private_data(
 # ImageManip
 dai_add_example(image_manip_host HostNodes/image_manip_host.cpp ON OFF)
 dai_add_example(image_manip_color_conversion_host HostNodes/image_manip_color_conversion.cpp ON OFF)
-dai_add_example(image_manip_v2_resize RVC4/ImageManip/image_manip_v2_resize.cpp ON OFF)
-dai_add_example(image_manip_v2_mod RVC4/ImageManip/image_manip_v2_mod.cpp ON OFF)
-dai_add_example(image_manip_color_conversion RVC4/ImageManip/image_manip_color_conversion.cpp ON OFF)
+dai_add_example(image_manip_v2_resize ImageManip/image_manip_v2_resize.cpp ON OFF)
+dai_add_example(image_manip_v2_mod ImageManip/image_manip_v2_mod.cpp ON OFF)
+dai_add_example(image_manip_color_conversion ImageManip/image_manip_color_conversion.cpp ON OFF)
 
 # Record
 dai_add_example(record_encoded_h264 RVC2/Record/record_encoded_h264.cpp ON OFF)
@@ -486,6 +486,9 @@ dai_add_example(threaded_host_node HostNodes/threaded_host_node.cpp ON OFF)
 
 # Model zoo
 dai_add_example(model_zoo RVC2/ModelZoo/model_zoo.cpp ON OFF)
+
+# Image Align
+dai_add_example(image_align RVC2/ImageAlign/image_align.cpp ON OFF)
 
 if(DEPTHAI_RTABMAP_SUPPORT)
     include(FetchContent)

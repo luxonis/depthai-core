@@ -6,6 +6,8 @@
 
 // TODO(themarpe) - fuzz me instead
 
+constexpr auto MARKER_SIZE = 16;
+
 TEST_CASE("Correct message") {
     dai::ImgFrame frm;
     auto ser = dai::StreamMessageParser::serializeMetadata(frm);
@@ -25,7 +27,7 @@ TEST_CASE("Incorrect message bad size") {
     auto ser = dai::StreamMessageParser::serializeMetadata(frm);
 
     // wreak havoc on serialized data
-    ser[ser.size() - 1] = 100;
+    ser[ser.size() - 1 - MARKER_SIZE] = 100;
 
     streamPacketDesc_t packet;
     packet.data = ser.data();
@@ -39,7 +41,7 @@ TEST_CASE("Incorrect message negative size") {
     auto ser = dai::StreamMessageParser::serializeMetadata(frm);
 
     // wreak havoc on serialized data
-    ser[ser.size() - 1] = 200;
+    ser[ser.size() - 1 - MARKER_SIZE] = 200;
 
     streamPacketDesc_t packet;
     packet.data = ser.data();
@@ -87,7 +89,7 @@ TEST_CASE("Raw - Incorrect message bad size") {
     auto ser = dai::StreamMessageParser::serializeMetadata(frm);
 
     // wreak havoc on serialized data
-    ser[ser.size() - 1] = 100;
+    ser[ser.size() - 1 - MARKER_SIZE] = 100;
 
     streamPacketDesc_t packet;
     packet.data = ser.data();
@@ -101,7 +103,7 @@ TEST_CASE("Raw - Incorrect message negative size") {
     auto ser = dai::StreamMessageParser::serializeMetadata(frm);
 
     // wreak havoc on serialized data
-    ser[ser.size() - 1] = 200;
+    ser[ser.size() - 1 - MARKER_SIZE] = 200;
 
     streamPacketDesc_t packet;
     packet.data = ser.data();

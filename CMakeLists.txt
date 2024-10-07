@@ -316,6 +316,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/node/EdgeDetector.cpp
     src/pipeline/node/SPIIn.cpp
     src/pipeline/node/FeatureTracker.cpp
+    src/pipeline/node/ImageAlign.cpp
     src/pipeline/node/ToF.cpp
     src/pipeline/node/DetectionParser.cpp
     src/pipeline/node/test/MyProducer.cpp
@@ -380,7 +381,7 @@ set(TARGET_CORE_SOURCES
     src/device/DeviceGate.cpp
     src/utility/ArchiveUtil.cpp
     src/nn_archive/NNArchive.cpp
-    src/nn_archive/NNArchiveConfig.cpp
+    src/nn_archive/NNArchiveVersionedConfig.cpp
     src/modelzoo/NNModelDescription.cpp
     src/modelzoo/Zoo.cpp
 )
