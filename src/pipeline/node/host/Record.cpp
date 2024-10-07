@@ -71,9 +71,7 @@ void RecordVideo::run() {
             }
             if(logger)
                 logger->trace("RecordVideo node detected stream type {}",
-                              streamType == StreamType::RawVideo       ? "RawVideo"
-                              : streamType == StreamType::EncodedVideo ? "EncodedVideo"
-                                                                       : "Byte");
+                              streamType == StreamType::RawVideo ? "RawVideo" : streamType == StreamType::EncodedVideo ? "EncodedVideo" : "Byte");
         }
         if(streamType == StreamType::RawVideo || streamType == StreamType::EncodedVideo) {
             if(i == 0)
@@ -166,9 +164,7 @@ void RecordMetadataOnly::run() {
             }
             if(logger)
                 logger->trace("RecordMetadataOnly node detected stream type {}",
-                              streamType == StreamType::RawVideo       ? "RawVideo"
-                              : streamType == StreamType::EncodedVideo ? "EncodedVideo"
-                                                                       : "Byte");
+                              streamType == StreamType::RawVideo ? "RawVideo" : streamType == StreamType::EncodedVideo ? "EncodedVideo" : "Byte");
         }
         if(streamType == StreamType::Imu) {
             auto imuData = std::dynamic_pointer_cast<IMUData>(msg);

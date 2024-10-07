@@ -7,7 +7,7 @@
 #include <spimpl.h>
 
 // internal private
-#include "nn_archive/NNArchiveConfigHelper.hpp"
+#include "nn_archive/NNArchiveVersionedConfigHelper.hpp"
 #include "utility/ArchiveUtil.hpp"
 #include "utility/ErrorMacros.hpp"
 
@@ -18,11 +18,11 @@ class NNArchiveBlob::Impl {
     std::optional<OpenVINO::Blob> mBlob;
 
     template <typename T>
-    void init(const NNArchiveConfig& config, const T& dataOrPath, NNArchiveEntry::Compression compression) {
+    void init(const NNArchiveVersionedConfig& config, const T& dataOrPath, NNArchiveEntry::Compression compression) {
         if(compression == NNArchiveEntry::Compression::RAW_FS) {
             mBlob.emplace(OpenVINO::Blob(dataOrPath));
         } else {
-            const auto& blobPath = nn_archive::NNArchiveConfigHelper::getBlobPath(config);
+            const auto& blobPath = nn_archive::NNArchiveVersionedConfigHelper::getBlobPath(config);
             utility::ArchiveUtil archive(dataOrPath, compression);
             std::vector<uint8_t> blobBytes;
             const bool success = archive.readEntry(blobPath, blobBytes);
@@ -31,15 +31,15 @@ class NNArchiveBlob::Impl {
         }
     }
 
-    Impl(const NNArchiveConfig& config, const std::vector<uint8_t>& data, NNArchiveEntry::Compression compression) {
+    Impl(const NNArchiveVersionedConfig& config, const std::vector<uint8_t>& data, NNArchiveEntry::Compression compression) {
         init(config, data, compression);
     }
 
-    Impl(const NNArchiveConfig& config, const Path& path, NNArchiveEntry::Compression compression) {
+    Impl(const NNArchiveVersionedConfig& config, const Path& path, NNArchiveEntry::Compression compression) {
         init(config, path, compression);
     }
 
-    Impl(const NNArchiveConfig& config,
+    Impl(const NNArchiveVersionedConfig& config,
          const std::function<int()>& openCallback,
          const std::function<std::shared_ptr<std::vector<uint8_t>>()>& readCallback,
          const std::function<int64_t(int64_t offset, NNArchiveEntry::Seek whence)>& seekCallback,
@@ -49,7 +49,7 @@ class NNArchiveBlob::Impl {
         if(compression == NNArchiveEntry::Compression::RAW_FS) {
             DAI_CHECK(false, "RAW_FS with callbacks NOT IMPLEMENTED YET for NNArchiveBlob");
         } else {
-            const auto& blobPath = nn_archive::NNArchiveConfigHelper::getBlobPath(config);
+            const auto& blobPath = nn_archive::NNArchiveVersionedConfigHelper::getBlobPath(config);
             utility::ArchiveUtil archive(openCallback, readCallback, seekCallback, skipCallback, closeCallback, compression);
             std::vector<uint8_t> blobBytes;
             const bool success = archive.readEntry(blobPath, blobBytes);
@@ -63,13 +63,13 @@ class NNArchiveBlob::Impl {
     }
 };
 
-NNArchiveBlob::NNArchiveBlob(const NNArchiveConfig& config, const std::vector<uint8_t>& data, NNArchiveEntry::Compression compression)
+NNArchiveBlob::NNArchiveBlob(const NNArchiveVersionedConfig& config, const std::vector<uint8_t>& data, NNArchiveEntry::Compression compression)
     : pimpl(spimpl::make_impl<Impl>(config, data, compression)) {};
 
-NNArchiveBlob::NNArchiveBlob(const NNArchiveConfig& config, const Path& path, NNArchiveEntry::Compression compression)
+NNArchiveBlob::NNArchiveBlob(const NNArchiveVersionedConfig& config, const Path& path, NNArchiveEntry::Compression compression)
     : pimpl(spimpl::make_impl<Impl>(config, path, compression)) {}
 
-NNArchiveBlob::NNArchiveBlob(const NNArchiveConfig& config,
+NNArchiveBlob::NNArchiveBlob(const NNArchiveVersionedConfig& config,
                              const std::function<int()>& openCallback,
                              const std::function<std::shared_ptr<std::vector<uint8_t>>()>& readCallback,
                              const std::function<int64_t(int64_t offset, NNArchiveEntry::Seek whence)>& seekCallback,

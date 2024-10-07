@@ -31,20 +31,24 @@ with dai.Pipeline() as pipeline:
 
         passthroughImage: dai.ImgFrame = passthroughOutputQueue.get()
         frame = passthroughImage.getCvFrame()
-        for aprilTagDetection in aprilTags:
-            topLeft = aprilTagDetection.topLeft
-            topRight = aprilTagDetection.topRight
-            bottomRight = aprilTagDetection.bottomRight
-            bottomLeft = aprilTagDetection.bottomLeft
 
-            center = (int((topLeft.x + bottomRight.x) / 2), int((topLeft.y + bottomRight.y) / 2))
+        def to_int(tag):
+            return (int(tag.x), int(tag.y))
 
-            cv2.line(frame, (int(topLeft.x), int(topLeft.y)), (int(topRight.x), int(topRight.y)), color, 2, cv2.LINE_AA, 0)
-            cv2.line(frame, (int(topRight.x), int(topRight.y)), (int(bottomRight.x), int(bottomRight.y)), color, 2, cv2.LINE_AA, 0)
-            cv2.line(frame, (int(bottomRight.x), int(bottomRight.y)), (int(bottomLeft.x), int(bottomLeft.y)), color, 2, cv2.LINE_AA, 0)
-            cv2.line(frame, (int(bottomLeft.x), int(bottomLeft.y)), (int(topLeft.x), int(topLeft.y)), color, 2, cv2.LINE_AA, 0)
+        for tag in aprilTags:
+            topLeft = to_int(tag.topLeft)
+            topRight = to_int(tag.topRight)
+            bottomRight = to_int(tag.bottomRight)
+            bottomLeft = to_int(tag.bottomLeft)
 
-            idStr = "ID: " + str(aprilTagDetection.id)
+            center = (int((topLeft[0] + bottomRight[0]) / 2), int((topLeft[1] + bottomRight[1]) / 2))
+
+            cv2.line(frame, topLeft, topRight, color, 2, cv2.LINE_AA, 0)
+            cv2.line(frame, topRight,bottomRight, color, 2, cv2.LINE_AA, 0)
+            cv2.line(frame, bottomRight,bottomLeft, color, 2, cv2.LINE_AA, 0)
+            cv2.line(frame, bottomLeft,topLeft, color, 2, cv2.LINE_AA, 0)
+
+            idStr = "ID: " + str(tag.id)
             cv2.putText(frame, idStr, center, cv2.FONT_HERSHEY_TRIPLEX, 0.5, color)
 
             cv2.putText(frame, f"fps: {fps:.1f}", (200, 20), cv2.FONT_HERSHEY_TRIPLEX, 0.5, color)

@@ -153,6 +153,9 @@ std::string joinPaths(const std::string& p1, const std::string& p2) {
 
 std::string getDirFromPath(const std::string& path) {
     std::string absPath = std::filesystem::absolute(path).string();
+    if(checkPathExists(absPath, true)) {
+        return absPath;
+    }
     size_t found = absPath.find_last_of("/\\");
     return absPath.substr(0, found);
 }

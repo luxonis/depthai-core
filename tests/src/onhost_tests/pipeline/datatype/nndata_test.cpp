@@ -96,3 +96,37 @@ TEST_CASE("NNData double storage conversions") {
 
     REQUIRE(nndata.getTensor<float>("c1", dai::TensorInfo::StorageOrder::NC) == tensorC1);
 }
+
+TEST_CASE("addTensor overloads") {
+    dai::NNData nndata;
+    xt::xarray<int> tensorINT = {{1, 2, 1}, {4, -5, 9}};
+    xt::xarray<uint16_t> tensorUINT16 = {{1, 2, 1}, {4, 5, 9}};
+    xt::xarray<float> tensorFLOAT = {{1.1, 2, 1.3}, {4.4, 5.5, 9.6}};
+    xt::xarray<double> tensorDOUBLE = {{1, 2, 1.1}, {4, 5.2, 9.3}};
+    xt::xarray<std::int8_t> tensorINT8 = {{1, 2, -1}, {4, 5, 9}};
+    xt::xarray<std::uint8_t> tensorUINT8 = {{1, 2, 1}, {4, 5, 9}};
+
+    std::vector<int> vectorINT = {1, 2, 1, 4, -5, 9};
+    std::vector<uint16_t> vectorUINT16 = {1, 2, 1, 4, 5, 9};
+    std::vector<float> vectorFLOAT = {1.1, 2, 1.3, 4.4, 5.5, 9.6};
+    std::vector<double> vectorDOUBLE = {1, 2, 1.1, 4, 5.2, 9.3};
+    std::vector<std::int8_t> vectorINT8 = {1, 2, -1, 4, 5, 9};
+    std::vector<std::uint8_t> vectorUINT8 = {1, 2, 1, 4, 5, 9};
+
+    REQUIRE_NOTHROW(nndata.addTensor("INT", tensorINT));
+    REQUIRE_NOTHROW(nndata.addTensor("UINT16", tensorUINT16));
+    REQUIRE_NOTHROW(nndata.addTensor("FLOAT", tensorFLOAT));
+    REQUIRE_NOTHROW(nndata.addTensor("DOUBLE", tensorDOUBLE));
+    REQUIRE_NOTHROW(nndata.addTensor("INT8", tensorINT8));
+    REQUIRE_NOTHROW(nndata.addTensor("UINT8", tensorUINT8));
+
+    REQUIRE_NOTHROW(nndata.addTensor("VINT", vectorINT));
+    REQUIRE_NOTHROW(nndata.addTensor("VUINT16", vectorUINT16));
+    REQUIRE_NOTHROW(nndata.addTensor("VFLOAT", vectorFLOAT));
+    REQUIRE_NOTHROW(nndata.addTensor("VDOUBLE", vectorDOUBLE));
+    REQUIRE_NOTHROW(nndata.addTensor("VINT8", vectorINT8));
+    REQUIRE_NOTHROW(nndata.addTensor("VUINT8", vectorUINT8));
+
+    std::vector<std::string> thr = {"abc", "asdf", "jkl;"};
+    REQUIRE_THROWS(nndata.addTensor("STR", thr));
+}

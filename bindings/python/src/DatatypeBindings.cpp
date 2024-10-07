@@ -10,6 +10,7 @@ void bind_buffer(pybind11::module& m, void* pCallstack);
 void bind_cameracontrol(pybind11::module& m, void* pCallstack);
 void bind_edgedetectorconfig(pybind11::module& m, void* pCallstack);
 void bind_featuretrackerconfig(pybind11::module& m, void* pCallstack);
+void bind_thermalconfig(pybind11::module& m, void* pCallstack);
 void bind_tofconfig(pybind11::module& m, void* pCallstack);
 void bind_imagemanipconfig(pybind11::module& m, void* pCallstack);
 void bind_imagemanipconfigv2(pybind11::module& m, void* pCallstack);
@@ -31,6 +32,7 @@ void bind_benchmarkreport(pybind11::module& m, void* pCallstack);
 void bind_pointcloudconfig(pybind11::module& m, void* pCallstack);
 void bind_pointclouddata(pybind11::module& m, void* pCallstack);
 void bind_transformdata(pybind11::module& m, void* pCallstack);
+void bind_imagealignconfig(pybind11::module& m, void* pCallstack);
 
 void DatatypeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
      // Bind common datatypebindings
@@ -44,6 +46,7 @@ void DatatypeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_cameracontrol);
     callstack.push_front(bind_edgedetectorconfig);
     callstack.push_front(bind_featuretrackerconfig);
+    callstack.push_front(bind_thermalconfig);
     callstack.push_front(bind_tofconfig);
     callstack.push_front(bind_imagemanipconfig);
     callstack.push_front(bind_imagemanipconfigv2);
@@ -65,6 +68,7 @@ void DatatypeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_pointcloudconfig);
     callstack.push_front(bind_pointclouddata);
     callstack.push_front(bind_transformdata);
+    callstack.push_front(bind_imagealignconfig);
 }
 
 void DatatypeBindings::bind(pybind11::module& m, void* pCallstack){
@@ -111,6 +115,7 @@ void DatatypeBindings::bind(pybind11::module& m, void* pCallstack){
         .value("PointCloudConfig", DatatypeEnum::PointCloudConfig)
         .value("PointCloudData", DatatypeEnum::PointCloudData)
         .value("TransformData", DatatypeEnum::TransformData)
+        .value("ImageAlignConfig", DatatypeEnum::ImageAlignConfig)
     ;
 
 }

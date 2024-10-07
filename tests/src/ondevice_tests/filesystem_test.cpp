@@ -185,36 +185,36 @@ TEST_CASE("dai::Path with NN blobs") {
     nn->getAssetManager().remove("__blob");
 #endif
 }
+// TODO(Morato) - Port to V3
+// TEST_CASE("dai::Path with Device") {
+//     const char badfile[] = PATH5;
+//     const std::string strBadfile(&badfile[0]);
+//     const dai::Path diaBadFile(PATH5);
+//     dai::Pipeline pipeline;
+//     auto nn = pipeline.create<dai::node::NeuralNetwork>();
+//     REQUIRE_NOTHROW(nn->setBlobPath(BLOB_PATH));
+//     REQUIRE_THROWS_WITH(dai::Device(pipeline, PATH5), ContainsSubstring(PATH5));
+//     REQUIRE_THROWS_WITH(dai::Device(pipeline, &badfile[0]), ContainsSubstring(PATH5));
+//     REQUIRE_THROWS_WITH(dai::Device(pipeline, strBadfile), ContainsSubstring(PATH5));
+//     REQUIRE_THROWS_WITH(dai::Device(pipeline, diaBadFile), ContainsSubstring(PATH5));
 
-TEST_CASE("dai::Path with Device") {
-    const char badfile[] = PATH5;
-    const std::string strBadfile(&badfile[0]);
-    const dai::Path diaBadFile(PATH5);
-    dai::Pipeline pipeline;
-    auto nn = pipeline.create<dai::node::NeuralNetwork>();
-    REQUIRE_NOTHROW(nn->setBlobPath(BLOB_PATH));
-    REQUIRE_THROWS_WITH(dai::Device(pipeline, PATH5), ContainsSubstring(PATH5));
-    REQUIRE_THROWS_WITH(dai::Device(pipeline, &badfile[0]), ContainsSubstring(PATH5));
-    REQUIRE_THROWS_WITH(dai::Device(pipeline, strBadfile), ContainsSubstring(PATH5));
-    REQUIRE_THROWS_WITH(dai::Device(pipeline, diaBadFile), ContainsSubstring(PATH5));
+// #if defined(_WIN32) && defined(_MSC_VER)
+//     const wchar_t wideBadfile[] = LPATH5;
+//     const std::wstring wstrBadfile(LPATH5);
+//     const dai::Path diaFileFromWide(LPATH5);
+//     REQUIRE_THROWS_WITH(dai::Device(pipeline, LPATH5), ContainsSubstring(PATH5));
+//     REQUIRE_THROWS_WITH(dai::Device(pipeline, &wideBadfile[0]), ContainsSubstring(PATH5));
+//     REQUIRE_THROWS_WITH(dai::Device(pipeline, wstrBadfile), ContainsSubstring(PATH5));
+//     REQUIRE_THROWS_WITH(dai::Device(pipeline, diaFileFromWide), ContainsSubstring(PATH5));
+// #endif
 
-#if defined(_WIN32) && defined(_MSC_VER)
-    const wchar_t wideBadfile[] = LPATH5;
-    const std::wstring wstrBadfile(LPATH5);
-    const dai::Path diaFileFromWide(LPATH5);
-    REQUIRE_THROWS_WITH(dai::Device(pipeline, LPATH5), ContainsSubstring(PATH5));
-    REQUIRE_THROWS_WITH(dai::Device(pipeline, &wideBadfile[0]), ContainsSubstring(PATH5));
-    REQUIRE_THROWS_WITH(dai::Device(pipeline, wstrBadfile), ContainsSubstring(PATH5));
-    REQUIRE_THROWS_WITH(dai::Device(pipeline, diaFileFromWide), ContainsSubstring(PATH5));
-#endif
+// #if defined(__cpp_lib_filesystem)
+//     std::filesystem::path stdBadfile(PATH5);
+//     REQUIRE_THROWS_WITH(dai::Device(pipeline, stdBadfile), ContainsSubstring(PATH5));
+// #endif
 
-#if defined(__cpp_lib_filesystem)
-    std::filesystem::path stdBadfile(PATH5);
-    REQUIRE_THROWS_WITH(dai::Device(pipeline, stdBadfile), ContainsSubstring(PATH5));
-#endif
-
-    dai::Device d(pipeline);
-}
+//     dai::Device d(pipeline);
+// }
 
 TEST_CASE("dai::Path with CalibrationHandler") {
     U8CHAR tmpFilename[L_tmpnam];

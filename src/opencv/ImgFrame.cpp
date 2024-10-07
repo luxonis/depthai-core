@@ -11,8 +11,13 @@ namespace dai {
 #pragma GCC diagnostic ignored "-Wswitch-enum"
 ImgFrame& ImgFrame::setFrame(cv::Mat frame) {
     std::vector<uint8_t> dataVec;
-    assert(frame.isContinuous());
-    dataVec.insert(dataVec.begin(), frame.datastart, frame.dataend);
+    if(!frame.isContinuous()) {
+        for(int i = 0; i < frame.rows; i++) {
+            dataVec.insert(dataVec.end(), frame.ptr(i), frame.ptr(i) + frame.cols * frame.elemSize());
+        }
+    } else {
+        dataVec.insert(dataVec.begin(), frame.datastart, frame.dataend);
+    }
     setData(dataVec);
     return *this;
 }
@@ -38,6 +43,11 @@ cv::Mat ImgFrame::getFrame(bool deepCopy) {
         case Type::NV21:
             size = cv::Size(getWidth(), getPlaneHeight() * 3 / 2);
             type = CV_8UC1;
+            break;
+
+        case Type::YUV422i:
+            size = cv::Size(getWidth(), getHeight());
+            type = CV_8UC2;
             break;
 
         case Type::RAW8:
@@ -141,10 +151,10 @@ cv::Mat ImgFrame::getCvFrame(cv::MatAllocator* allocator) {
                 offset1 = fb.p2Offset;
                 offset2 = fb.p3Offset;
             }
-            // RGB
-            channels.push_back(cv::Mat(s, CV_8UC1, (uint8_t*)getData().data() + offset0, getStride()));
-            channels.push_back(cv::Mat(s, CV_8UC1, (uint8_t*)getData().data() + offset1, getStride()));
+            // RGB -> BGR
             channels.push_back(cv::Mat(s, CV_8UC1, (uint8_t*)getData().data() + offset2, getStride()));
+            channels.push_back(cv::Mat(s, CV_8UC1, (uint8_t*)getData().data() + offset1, getStride()));
+            channels.push_back(cv::Mat(s, CV_8UC1, (uint8_t*)getData().data() + offset0, getStride()));
             cv::merge(channels, output);
         } break;
 
@@ -168,6 +178,10 @@ cv::Mat ImgFrame::getCvFrame(cv::MatAllocator* allocator) {
 
         case Type::YUV420p:
             cv::cvtColor(frame, output, cv::ColorConversionCodes::COLOR_YUV2BGR_IYUV);
+            break;
+
+        case Type::YUV422i:
+            cv::cvtColor(frame, output, cv::ColorConversionCodes::COLOR_YUV2BGR_YUYV);
             break;
 
         case Type::NV12:

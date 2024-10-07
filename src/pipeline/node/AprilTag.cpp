@@ -1,27 +1,32 @@
 #include "depthai/pipeline/node/AprilTag.hpp"
 
-#include <stdexcept>
-
-#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-    #include <opencv2/imgproc.hpp>
-#endif
-
 #include <math.h>
 
-#include "depthai/pipeline/datatype/AprilTags.hpp"
+#include <stdexcept>
+
 #include "pipeline/datatype/AprilTagConfig.hpp"
-#include "pipeline/datatype/ImgFrame.hpp"
 #include "properties/AprilTagProperties.hpp"
 
+#ifdef DEPTHAI_HAS_APRIL_TAG
+
+    #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+        #include <opencv2/imgproc.hpp>
+    #endif
+
+    #include "depthai/pipeline/datatype/AprilTags.hpp"
+    #include "pipeline/datatype/ImgFrame.hpp"
+
 extern "C" {
-#include "apriltag.h"
-#include "tag16h5.h"
-#include "tag25h9.h"
-#include "tag36h10.h"
-#include "tag36h11.h"
-#include "tagCircle21h7.h"
-#include "tagStandard41h12.h"
+    #include "apriltag.h"
+    #include "tag16h5.h"
+    #include "tag25h9.h"
+    #include "tag36h10.h"
+    #include "tag36h11.h"
+    #include "tagCircle21h7.h"
+    #include "tagStandard41h12.h"
 }
+
+#endif
 
 namespace dai {
 namespace node {
@@ -37,6 +42,18 @@ AprilTag::Properties& AprilTag::getProperties() {
 // Node properties configuration
 void AprilTag::setWaitForConfigInput(bool wait) {
     properties.inputConfigSync = wait;
+}
+
+bool AprilTag::getWaitForConfigInput() const {
+    return properties.inputConfigSync;
+}
+
+void AprilTag::setNumThreads(int numThreads) {
+    properties.numThreads = numThreads;
+}
+
+int AprilTag::getNumThreads() const {
+    return properties.numThreads;
 }
 
 void AprilTag::setRunOnHost(bool runOnHost) {
@@ -57,6 +74,8 @@ void AprilTag::buildInternal() {
     }
     logger->info("AprilTag node running on host: {}", runOnHostVar);
 }
+
+#ifdef DEPTHAI_HAS_APRIL_TAG
 
 apriltag_family_t* getAprilTagFamily(dai::AprilTagConfig::Family family) {
     apriltag_family_t* tf = nullptr;
@@ -157,14 +176,6 @@ void setDetectorConfig(apriltag_detector_t* td, apriltag_family_t* tf, AprilTagC
 void setDetectorProperties(apriltag_detector_t* td, const dai::AprilTagProperties& properties) {
     td->nthreads = properties.numThreads;
 }
-
-#ifdef _WIN32
-
-void AprilTage::run() {
-    throw std::runtime_error("AprilTag node is not supported on Windows");
-}
-
-#else
 
 void AprilTag::run() {
     // Retrieve properties and initial config
@@ -288,6 +299,11 @@ void AprilTag::run() {
             }
         }
 
+        // Inherit sequence number and timestamp from input image
+        aprilTags->setSequenceNum(inFrame->getSequenceNum());
+        aprilTags->setTimestamp(inFrame->getTimestamp());
+        aprilTags->setTimestampDevice(inFrame->getTimestampDevice());
+
         // Send detections and pass through input frame
         out.send(aprilTags);
         passthroughInputImage.send(inFrame);
@@ -299,6 +315,13 @@ void AprilTag::run() {
     // Destroy AprilTag family
     destroyAprilTagFamily(tf, tfamily);
 }
+
+#else
+
+void AprilTag::run() {
+    throw std::runtime_error("AprilTag node is not supported on Windows");
+}
+
 #endif
 
 }  // namespace node

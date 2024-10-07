@@ -143,7 +143,7 @@ class StereoDepthConfig : public Buffer {
          * Weight used with local neighborhood motion vector variance estimation to generate final confidence map.
          * Valid range is [0,32].
          */
-        uint8_t motionVectorConfidenceWeight = 8;
+        uint8_t motionVectorConfidenceWeight = 4;
         /**
          * Threshold offset for MV variance in confidence generation. A value of 0 allows most variance.
          * Valid range is [0,3].
@@ -153,12 +153,12 @@ class StereoDepthConfig : public Buffer {
          * Weight used with flatness estimation to generate final confidence map.
          * Valid range is [0,32].
          */
-        uint8_t flatnessConfidenceWeight = 4;
+        uint8_t flatnessConfidenceWeight = 8;
         /**
          * Threshold for flatness check in SGM block.
          * Valid range is [1,7].
          */
-        uint8_t flatnessConfidenceThreshold = 5;
+        uint8_t flatnessConfidenceThreshold = 2;
         /**
          * Flag to indicate whether final confidence value will be overidden by flatness value.
          * Valid range is {true,false}.
@@ -404,7 +404,7 @@ class StereoDepthConfig : public Buffer {
             /**
              * Flag to enable post-processing hole-filling.
              */
-            bool enable = false;
+            bool enable = true;
 
             /**
              * Pixels with confidence higher than this value are used to calculate an average disparity per superpixel.
@@ -440,7 +440,7 @@ class StereoDepthConfig : public Buffer {
             /**
              * Flag to enable adaptive median filtering for a final pass of filtering on low confidence pixels.
              */
-            bool enable = false;
+            bool enable = true;
 
             /**
              * Confidence threshold for adaptive median filtering.
@@ -568,7 +568,7 @@ class StereoDepthConfig : public Buffer {
         /**
          * Disparities with confidence value over this threshold are accepted.
          */
-        uint8_t confidenceThreshold = 15;
+        uint8_t confidenceThreshold = 55;
 
         /**
          * The linear equation applied for computing the cost is:
@@ -642,21 +642,21 @@ class StereoDepthConfig : public Buffer {
              * This value must be smaller than P2 default penalty.
              * Valid range is [10,50].
              */
-            uint8_t defaultValue = 22;
+            uint8_t defaultValue = 11;
             /**
              * Penalty value on edges when nAdapEnable is enabled.
              * A smaller penalty value permits higher change in disparity.
              * This value must be smaller than or equal to P2 edge penalty.
              * Valid range is [10,50].
              */
-            uint8_t edgeValue = 20;
+            uint8_t edgeValue = 10;
             /**
              * Penalty value on low texture regions when nAdapEnable is enabled.
              * A smaller penalty value permits higher change in disparity.
              * This value must be smaller than or equal to P2 smoothness penalty.
              * Valid range is [10,50].
              */
-            uint8_t smoothValue = 44;
+            uint8_t smoothValue = 22;
             /**
              * Threshold value on edges when nAdapEnable is enabled.
              * A bigger value permits higher neighboring feature dissimilarity tolerance.

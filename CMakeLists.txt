@@ -42,6 +42,14 @@ else()
     message(STATUS "Using toolchain file: ${CMAKE_TOOLCHAIN_FILE}")
 endif()
 
+# Build AprilTag node code (note, that even if set to OFF, an AprilTagNode can be used with setRunOnHost(false))
+option(DEPTHAI_ENABLE_APRIL_TAG "Enable AprilTag node" ON)
+set(DEPTHAI_HAS_APRIL_TAG ${DEPTHAI_ENABLE_APRIL_TAG})
+if(WIN32)
+    message(STATUS "AprilTag node is not supported on Windows")
+    set(DEPTHAI_HAS_APRIL_TAG OFF)
+endif()
+
 include("cmake/HunterGate.cmake")
 HunterGate(
     URL "https://github.com/cpp-pm/hunter/archive/9d9242b60d5236269f894efd3ddd60a9ca83dd7f.tar.gz"
@@ -57,7 +65,7 @@ endif()
 # Create depthai project
 project(depthai VERSION "3.0.0" LANGUAGES CXX C)
 set(DEPTHAI_PRE_RELEASE_TYPE "alpha") # Valid options are "alpha", "beta", "rc", ""
-set(DEPTHAI_PRE_RELEASE_VERSION "2")
+set(DEPTHAI_PRE_RELEASE_VERSION "3")
 
 # Set DEPTHAI_VERSION universally, not conditionally
 set(DEPTHAI_VERSION ${PROJECT_VERSION}-${DEPTHAI_PRE_RELEASE_TYPE}.${DEPTHAI_PRE_RELEASE_VERSION})
@@ -284,6 +292,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/node/XLinkOut.cpp
     src/pipeline/node/ColorCamera.cpp
     src/pipeline/node/Camera.cpp
+    src/pipeline/node/Thermal.cpp
     src/pipeline/node/ToF.cpp
     src/pipeline/node/MessageDemux.cpp
     src/pipeline/node/MonoCamera.cpp
@@ -307,6 +316,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/node/EdgeDetector.cpp
     src/pipeline/node/SPIIn.cpp
     src/pipeline/node/FeatureTracker.cpp
+    src/pipeline/node/ImageAlign.cpp
     src/pipeline/node/ToF.cpp
     src/pipeline/node/DetectionParser.cpp
     src/pipeline/node/test/MyProducer.cpp
@@ -371,7 +381,7 @@ set(TARGET_CORE_SOURCES
     src/device/DeviceGate.cpp
     src/utility/ArchiveUtil.cpp
     src/nn_archive/NNArchive.cpp
-    src/nn_archive/NNArchiveConfig.cpp
+    src/nn_archive/NNArchiveVersionedConfig.cpp
     src/modelzoo/NNModelDescription.cpp
     src/modelzoo/Zoo.cpp
 )
@@ -657,8 +667,13 @@ target_link_libraries(${TARGET_CORE_NAME}
         httplib::httplib
         mp4v2::mp4v2
         semver::semver
-        apriltag::apriltag
 )
+
+if(DEPTHAI_HAS_APRIL_TAG)
+    target_link_libraries(${TARGET_CORE_NAME} PRIVATE
+        apriltag::apriltag
+    )
+endif()
 
 if(DEPTHAI_ENABLE_CURL)
     target_link_libraries(${TARGET_CORE_NAME} PRIVATE
@@ -705,6 +720,9 @@ if(DEPTHAI_ENABLE_DEVICE_RVC3_FW)
 endif()
 if(DEPTHAI_ENABLE_DEVICE_RVC4_FW)
     target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_ENABLE_DEVICE_RVC4_FW)
+endif()
+if(DEPTHAI_HAS_APRIL_TAG)
+    target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_HAS_APRIL_TAG)
 endif()
 
 # Add Backward dependency if enabled (On by default)

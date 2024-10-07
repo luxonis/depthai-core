@@ -1,19 +1,16 @@
 import depthai as dai
 
 # Capture Ctrl+C and set a flag to stop the loop
-import signal
 import time
 import cv2
+import threading
+import signal
 
+PROFILE = dai.VideoEncoderProperties.Profile.MJPEG # or H265_MAIN, H264_MAIN
 
-PROFILE = dai.VideoEncoderProperties.Profile.MJPEG
-stopped = False
-
-def signal_handler(sig, frame):
-    global stopped
-    print('You pressed Ctrl+C!, stopping video saving...')
-    stopped = True
-signal.signal(signal.SIGINT, signal_handler)
+quitEvent = threading.Event()
+signal.signal(signal.SIGTERM, lambda *_args: quitEvent.set())
+signal.signal(signal.SIGINT, lambda *_args: quitEvent.set())
 
 class VideoSaver(dai.node.HostNode):
     def __init__(self, *args, **kwargs):
@@ -29,7 +26,7 @@ class VideoSaver(dai.node.HostNode):
 
 with dai.Pipeline() as pipeline:
     camRgb = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
-    output = camRgb.requestOutput((1920, 1440))
+    output = camRgb.requestOutput((1920, 1440), type=dai.ImgFrame.Type.NV12)
     outputQueue = output.createOutputQueue()
     encoded = pipeline.create(dai.node.VideoEncoder).build(output,
             frameRate = 30,
@@ -40,7 +37,7 @@ with dai.Pipeline() as pipeline:
     print("Started to save video to video.encoded")
     print("Press Ctrl+C to stop")
     timeStart = time.monotonic()
-    while pipeline.isRunning() and not stopped:
+    while pipeline.isRunning() and not quitEvent.is_set():
         frame = outputQueue.get()
         assert isinstance(frame, dai.ImgFrame)
         cv2.imshow("video", frame.getCvFrame())

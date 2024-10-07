@@ -660,6 +660,9 @@ void PipelineImpl::build() {
                                                             defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_2
                                                                 || defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_X)) {
                                 recordConfig.state = RecordConfig::RecordReplayState::REPLAY;
+                                if(platform::checkPathExists(replayPath, true)) {
+                                    removeRecordReplayFiles = false;
+                                }
                                 Logging::getInstance().logger.info("Replay enabled.");
                             } else {
                                 Logging::getInstance().logger.warn("Could not set up holistic replay. Record and replay disabled.");
@@ -954,11 +957,11 @@ PipelineImpl::~PipelineImpl() {
             }
         }
         Logging::getInstance().logger.info("Record: Creating tar file with {} files", filenames.size());
-        utility::tarFiles(platform::joinPaths(recordConfig.outputDir, "recording.tar.gz"), filenames, outFiles);
+        utility::tarFiles(platform::joinPaths(recordConfig.outputDir, "recording.tar"), filenames, outFiles);
         std::remove(platform::joinPaths(recordConfig.outputDir, "record_config.json").c_str());
     }
 
-    if(recordConfig.state != RecordConfig::RecordReplayState::NONE) {
+    if(removeRecordReplayFiles && recordConfig.state != RecordConfig::RecordReplayState::NONE) {
         Logging::getInstance().logger.info("Record and Replay: Removing temporary files");
         for(auto& kv : recordReplayFilenames) {
             if(kv.first != "record_config") {
