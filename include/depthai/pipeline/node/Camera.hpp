@@ -61,6 +61,12 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
         *this, {"inputControl", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::CameraControl, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
+     * Input for mocking 'isp' functionality on RVC2.
+     * Default queue is blocking with size 8
+     */
+    Input mockIsp{*this, {"mockIsp", DEFAULT_GROUP, true, 8, {{{DatatypeEnum::ImgFrame, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+
+    /**
      * Retrieves which board socket to use
      * @returns Board socket to use
      */
@@ -90,10 +96,13 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
 
     void buildStage1() override;
 
+    float getMaxRequestedFps() const;
+
    protected:
     Properties& getProperties() override;
     bool isSourceNode() const override;
     NodeRecordParams getNodeRecordParams() const override;
+    Input& getReplayInput() override;
 
    private:
     bool isBuilt = false;

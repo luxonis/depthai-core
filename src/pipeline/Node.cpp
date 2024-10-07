@@ -80,6 +80,10 @@ std::string Node::Input::getGroup() const {
     return group;
 }
 
+bool Node::Input::isConnected() const {
+    return !connectedOutputs.empty();
+}
+
 std::vector<Node::ConnectionInternal> Node::Output::getConnections() {
     std::vector<Node::ConnectionInternal> myConnections;
     for(const auto& conn : parent.get().connections) {
@@ -153,6 +157,7 @@ void Node::Output::link(Input& in) {
     parent.get().connections.insert(connection);
     // Add the shared_ptr to the input directly for host side
     connectedInputs.push_back(&in);
+    in.connectedOutputs.push_back(this);
 }
 
 std::shared_ptr<dai::MessageQueue> Node::Output::createOutputQueue(unsigned int maxSize, bool blocking) {
@@ -211,6 +216,7 @@ void Node::Output::unlink(Input& in) {
 
     // Remove the shared_ptr to the input directly for host side
     connectedInputs.erase(std::remove(connectedInputs.begin(), connectedInputs.end(), &in), connectedInputs.end());
+    in.connectedOutputs.erase(std::remove(in.connectedOutputs.begin(), in.connectedOutputs.end(), this), in.connectedOutputs.end());
 }
 
 void Node::Output::send(const std::shared_ptr<ADatatype>& msg) {
