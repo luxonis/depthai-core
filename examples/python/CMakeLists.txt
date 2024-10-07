@@ -76,6 +76,11 @@ endfunction()
 
 # Function for setting test labels, including label shortcuts
 function(dai_set_example_test_labels example_name)
+    # If not testing examples, return
+    if(NOT DEPTHAI_PYTHON_TEST_EXAMPLES)
+        return()
+    endif()
+
     # Modify example name to match the one created by add_python_example
     set(example_name "py_${example_name}")
     set(expanded_labels "")

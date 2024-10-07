@@ -1,2 +1,4 @@
 add_subdirectory(cpp)
-add_subdirectory(python)
+if (DEPTHAI_BUILD_PYTHON)
+    add_subdirectory(python)
+endif()

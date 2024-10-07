@@ -84,6 +84,10 @@ endfunction()
 
 # Function for setting test labels, including label shortcuts
 function(dai_set_example_test_labels example_name)
+    # If the example is not enabled for testing, return
+    if(NOT DEPTHAI_TEST_EXAMPLES)
+        return()
+    endif()
     set(expanded_labels "")
     foreach(label IN LISTS ARGN)
         if(label STREQUAL "rvc2_all")
