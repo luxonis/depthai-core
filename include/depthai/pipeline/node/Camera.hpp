@@ -96,7 +96,6 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
 
     void buildStage1() override;
 
-    std::pair<size_t, size_t> getMaxRequestedSize() const;
     float getMaxRequestedFps() const;
 
    protected:

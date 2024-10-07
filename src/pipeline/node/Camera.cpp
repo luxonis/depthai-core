@@ -182,25 +182,6 @@ NodeRecordParams Camera::getNodeRecordParams() const {
 Camera::Input& Camera::getReplayInput() {
     return mockIsp;
 }
-
-std::pair<size_t, size_t> Camera::getMaxRequestedSize() const {
-    uint32_t maxWidth = 0;
-    uint32_t maxHeight = 0;
-    for(const auto& outputRequest : pimpl->outputRequests) {
-        if(outputRequest.capability.size.value) {
-            if(const auto* size = std::get_if<std::pair<uint32_t, uint32_t>>(&(*outputRequest.capability.size.value))) {
-                maxWidth = std::max(maxWidth, size->first);
-                maxHeight = std::max(maxHeight, size->second);
-            } else {
-                throw std::runtime_error("Unsupported size value");
-            }
-        }
-    }
-    if(maxWidth == 0 || maxHeight == 0) {
-        throw std::runtime_error("Invalid max width or height");
-    }
-    return std::make_pair(maxWidth, maxHeight);
-};
 float Camera::getMaxRequestedFps() const {
     float maxFps = 0;
     for(const auto& outputRequest : pimpl->outputRequests) {
