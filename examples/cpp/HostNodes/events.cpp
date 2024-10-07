@@ -9,10 +9,9 @@
 int main(int argc, char* argv[]) {
     dai::Pipeline pipeline(true);
 
-    auto eventsManager = std::make_shared<dai::utility::EventsManager>("deviceSerialNumber");
-    eventsManager->setUrl("https://events-ingest.apps.stg.hubcloud/v1/events/");
+    auto eventsManager = std::make_shared<dai::utility::EventsManager>();
+    eventsManager->setUrl("https://events-ingest.apps.stg.hubcloud/v1/events");
     eventsManager->setLogResponse(true);
-    eventsManager->setToken();
     // Download model from zoo
     // dai::NNModelDescription modelDescription;
     // modelDescription.modelSlug = "ales-test";
@@ -41,16 +40,24 @@ int main(int argc, char* argv[]) {
     bool sent = false;
     eventsManager->sendEvent("test", nullptr, {}, {"tag1", "tag2"}, {{"key1", "value1"}});
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
-    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
-    auto fileData = std::make_unique<dai::utility::EventData>("abc", "test.txt", "text/plain");
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(7000));
+    auto fileData = std::make_shared<dai::utility::EventData>("abc", "test.txt", "text/plain");
 	std::vector<std::shared_ptr<dai::utility::EventData>> data;
-	data.emplace_back(std::move(fileData));
-    eventsManager->sendSnap("testdata", nullptr, std::move(data), {"tag3, tag4"}, {{"key8", "value8"}});
-    auto fileData2 = std::make_unique<dai::utility::EventData>("/test.txt");
+	data.emplace_back(fileData);
+    // eventsManager->sendSnap("testdata", nullptr, data, {"tag3, tag4"}, {{"key8", "value8"}});
+    auto fileData2 = std::make_shared<dai::utility::EventData>("/test.txt");
 	std::vector<std::shared_ptr<dai::utility::EventData>> data2;
-	data2.emplace_back(std::move(fileData2));
-    eventsManager->sendSnap("testdata2", nullptr, std::move(data2), {"tag5, tag6"}, {{"key8", "value8"}});
+	data2.push_back(fileData2);
+    // eventsManager->sendSnap("testdata2", nullptr, data2, {"tag5, tag6"}, {{"key8", "value8"}});
+    auto fileData3 = std::make_shared<dai::utility::EventData>("/test.jpg");
+	std::vector<std::shared_ptr<dai::utility::EventData>> data3;
+	data3.push_back(fileData3);
+    // eventsManager->sendSnap("testdata3", nullptr, data3, {"tag5, tag6"}, {{"key8", "value8"}});
+	std::vector<std::shared_ptr<dai::utility::EventData>> data4;
+	data4.push_back(fileData);
+	data4.push_back(fileData2);
+	eventsManager->sendSnap("testdata4", nullptr, data4, {"tag5, tag6"}, {{"key8", "value8"}});
     while(pipeline.isRunning()) {
         auto detection = previewQ->get<dai::ImgFrame>();
 
@@ -58,7 +65,7 @@ int main(int argc, char* argv[]) {
         // ...
 
         if(!sent) {
-            eventsManager->sendEvent("dets", detection, {}, {"tag1", "tag2"}, {{"key", "value"}});
+            // eventsManager->sendEvent("dets", detection, {}, {"tag1", "tag2"}, {{"key", "value"}});
             sent = true;
         }
         //

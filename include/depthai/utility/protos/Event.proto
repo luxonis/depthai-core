@@ -7,10 +7,6 @@ import "common.proto";
 message BatchUploadEvents {
   repeated Event events = 1;
 }
-message Extras {
-  // arbitrary key/value data
-   map<string, string> data = 1;
-}
 
 message Event {
   // prevents dual uploads, can be a local ID for example
@@ -26,7 +22,7 @@ message Event {
   repeated string tags = 4;
 
   // arbitrary key/value data
-  repeated Extras extras = 5;
+  map<string, string> extras = 5;
 
   // how many files to wait to upload, before event is considered complete,
   // notified about, snap created, ...
@@ -44,13 +40,21 @@ message Event {
   optional string source_app_identifier = 9;
 }
 message BatchUploadEventsResult {
-  repeated AcceptedEvent events = 1;
+  repeated EventResult events = 1;
+}
+
+message EventResult {
+    string nonce = 1;
+    oneof result {
+        AcceptedEvent accepted = 2;
+        IngestError error = 3;
+    }
 }
 
 message AcceptedEvent {
-  // ID of event
-  string id = 1;
-  
-  // file URLs
-  repeated string file_upload_urls = 2;
+    repeated string file_upload_urls = 1;
+}
+
+message IngestError {
+    string message = 1;
 }

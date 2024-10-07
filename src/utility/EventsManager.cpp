@@ -4,6 +4,10 @@
 #include <iostream>
 #include <random>
 #include <sstream>
+#include <fstream>
+#include <filesystem>
+
+
 
 #include "Environment.hpp"
 #include "Logging.hpp"
@@ -24,10 +28,25 @@ EventData::EventData(const std::string& fileUrl) : data(fileUrl), type(EventData
 
 EventData::EventData(const std::shared_ptr<ImgFrame>& imgFrame, const std::string& fileName) : fileName(fileName), type(EventDataType::IMG_FRAME) {
     // Convert ImgFrame to bytes
-    std::stringstream ss;
-    ss.write((const char*)imgFrame->data->getData().data(), imgFrame->data->getData().size());
-    data = ss.str();
+	cv::Mat cvFrame = imgFrame->getCvFrame();
+	std::vector<uchar> buf;
+	cv::imencode(".jpg", cvFrame, buf);
+	std::stringstream ss;
+	ss.write((const char*)buf.data(), buf.size());
+	data = ss.str();
     mimeType = "image/jpeg";
+}
+
+EventData::EventData(const std::shared_ptr<EncodedFrame>& encodedFrame, const std::string& fileName) : fileName(fileName), type(EventDataType::ENCODED_FRAME) {
+	// Convert EncodedFrame to bytes
+	if(encodedFrame->getProfile() != EncodedFrame::Profile::JPEG) {
+		logger::error("Only JPEG encoded frames are supported");
+		return;
+	}
+	std::stringstream ss;
+	ss.write((const char*)encodedFrame->getData().data(), encodedFrame->getData().size());
+	data = ss.str();
+	mimeType = "image/jpeg";
 }
 
 EventData::EventData(const std::shared_ptr<NNData>& nnData, const std::string& fileName) : fileName(fileName), type(EventDataType::NN_DATA) {
@@ -38,12 +57,12 @@ EventData::EventData(const std::shared_ptr<NNData>& nnData, const std::string& f
     mimeType = "application/octet-stream";
 }
 
-EventsManager::EventsManager(const std::string& deviceSerialNumber)
-    : deviceSerialNumber(deviceSerialNumber),
-      url("https://events-ingest.cloud.luxonis.com/v1/events/"),
+EventsManager::EventsManager():
+      url("https://events-ingest.cloud.luxonis.com/v1/events"),
       queueSize(10),
       publishInterval(5.0f),
       logResponse(false) {
+	deviceSerialNumber = "";
     sourceAppId = utility::getEnv("AGENT_APP_ID");
     sourceAppIdentifier = utility::getEnv("AGENT_APP_IDENTIFIER");
     token = utility::getEnv("DEPTHAI_HUB_API_KEY");
@@ -72,24 +91,25 @@ void EventsManager::sendEventBuffer() {
     std::string serializedEvent;
     batchEvent->SerializeToString(&serializedEvent);
     body = cpr::Body(serializedEvent);
-    cpr::Response r = cpr::Post(url, cpr::Header{{"Authorization", token}}, cpr::Body(body), cpr::VerifySsl(false));
+    cpr::Response r = cpr::Post(url, cpr::Header{{"Authorization", "Bearer " +token}}, cpr::Body(body), cpr::VerifySsl(false));
     if(r.status_code != cpr::status::HTTP_OK) {
         logger::error("Failed to send event: {} {}", r.text, r.status_code);
     } else {
-        logger::debug("Event sent successfully");
+        logger::info("Event sent successfully");
         if(logResponse) {
             logger::info("Response: {}", r.text);
+			logger::info("Checking if files need to be uploaded");
         }
         // upload files
         auto BatchUploadEventResult = std::make_unique<proto::BatchUploadEventsResult>();
         BatchUploadEventResult->ParseFromString(r.text);
         for(int i = 0; i < BatchUploadEventResult->events_size(); i++) {
             auto eventResult = BatchUploadEventResult->events(i);
-            if(eventResult.file_upload_urls().size() > 0) {
-                logger::debug("Uploading files");
-                for(int j = 0; j < eventResult.file_upload_urls().size(); j++) {
-                    logger::debug("Uploading file {}", j);
-                    cpr::Url fileUrl = cpr::Url(url + eventResult.file_upload_urls(j));
+			logger::info("Event {} result: {}", i, eventResult.error().message());
+            if(eventResult.accepted().file_upload_urls_size() > 0) {
+                logger::info("Uploading files");
+                for(int j = 0; j < eventResult.accepted().file_upload_urls().size(); j++) {
+                    cpr::Url fileUrl = cpr::Url("https://events-ingest.apps.stg.hubcloud" + eventResult.accepted().file_upload_urls(j));
 
                     sendFile(eventBuffer[i]->data[j], fileUrl);
                 }
@@ -109,7 +129,8 @@ void EventsManager::sendEvent(const std::string& name,
                               const std::shared_ptr<ImgFrame>& imgFrame,
                               std::vector<std::shared_ptr<EventData>> data,
                               const std::vector<std::string>& tags,
-                              const std::unordered_map<std::string, std::string>& extraData) {
+                              const std::unordered_map<std::string, std::string>& extraData,
+							  const std::string& deviceSerialNo) {
     // Create event
     auto event = std::make_unique<proto::Event>();
     event->set_nonce(createUUID());
@@ -118,8 +139,7 @@ void EventsManager::sendEvent(const std::string& name,
     for(const auto& tag : tags) {
         event->add_tags(tag);
     }
-    proto::Extras* extras = event->add_extras();
-    auto* extrasData = extras->mutable_data();
+	auto* extrasData = event->mutable_extras();
     for(const auto& [key, value] : extraData) {
         extrasData->insert({key, value});
     }
@@ -130,7 +150,7 @@ void EventsManager::sendEvent(const std::string& name,
     }
     event->set_expect_files_num(data.size());
 
-    event->set_source_serial_number(deviceSerialNumber);
+    event->set_source_serial_number(deviceSerialNo.empty() ? deviceSerialNumber : deviceSerialNo);
     event->set_source_app_id(sourceAppId);
     event->set_source_app_identifier(sourceAppIdentifier);
     // Add event to buffer
@@ -149,7 +169,8 @@ void EventsManager::sendSnap(const std::string& name,
                              const std::shared_ptr<ImgFrame>& imgFrame,
                              std::vector<std::shared_ptr<EventData>> data,
                              const std::vector<std::string>& tags,
-                             const std::unordered_map<std::string, std::string>& extraData) {
+                             const std::unordered_map<std::string, std::string>& extraData,
+							 const std::string& deviceSerialNo) {
     std::vector<std::string> tagsTmp = tags;
     tagsTmp.push_back("snap");
     // only one image can be in files
@@ -159,27 +180,28 @@ void EventsManager::sendSnap(const std::string& name,
             return;
         }
     }
-    return sendEvent(name, imgFrame, data, tagsTmp, extraData);
+    return sendEvent(name, imgFrame, data, tagsTmp, extraData, deviceSerialNo);
 }
 
 void EventsManager::sendFile(std::shared_ptr<EventData> file, const std::string& url) {
     // if file struct contains byte data, send it, along with filename and mime type
     // if it file url, send it directly via url
+	auto header = cpr::Header{{"Authorization", "Bearer " + token}};
     cpr::Multipart fileM{};
-    if(!file->data.empty()) {
-        fileM = cpr::Multipart{{"file", cpr::Buffer{file->data.begin(), file->data.end(), file->fileName}},
-                               {"filename", file->fileName},
-                               {"file_size", std::to_string(file->data.size())},
-                               {"mime_type", file->mimeType}};
+    if(file->type != EventDataType::FILE_URL) {
+        fileM = cpr::Multipart{{"file", cpr::Buffer{file->data.begin(), file->data.end(), file->fileName}, file->mimeType}
+                               };
+		header["File-Size"] = std::to_string(file->data.size());
     } else {
         fileM = cpr::Multipart{{
             "file",
             cpr::File{file->data},
         }};
+		header["File-Size"] = std::to_string(std::filesystem::file_size(file->data));
     }
-    cpr::Response r = cpr::Post(url, cpr::Header{{"Authorization", "Bearer " + token}}, fileM);
+    cpr::Response r = cpr::Post(url, header, fileM, cpr::VerifySsl(false));
     if(r.status_code != cpr::status::HTTP_OK) {
-        logger::error("Failed to upload file: {}", r.text);
+        logger::error("Failed to upload file: {} error code {}", r.text, r.status_code);
     }
     if(logResponse) {
         logger::info("Response: {}", r.text);
@@ -242,6 +264,9 @@ void EventsManager::setPublishInterval(float publishInterval) {
 void EventsManager::setLogResponse(bool logResponse) {
     this->logResponse = logResponse;
 }
+void EventsManager::setDeviceSerialNumber(const std::string& deviceSerialNumber) {
+	this->deviceSerialNumber = deviceSerialNumber;
+}
 }  // namespace utility
 }  // namespace dai
 #else
@@ -283,6 +308,9 @@ void EventsManager::setPublishInterval(float publishInterval) {
 }
 void EventsManager::setLogResponse(bool logResponse) {
     logger::warn("EventsManager is disabled, please enable DEPTHAI_ENABLE_CURL in CMake to use this feature");
+}
+void EventsManager::setDeviceSerialNumber(const std::string& deviceSerialNumber) {
+	logger::warn("EventsManager is disabled, please enable DEPTHAI_ENABLE_CURL in CMake to use this feature");
 }
 }  // namespace utility
 }  // namespace dai

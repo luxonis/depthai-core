@@ -10,16 +10,18 @@
 #include "depthai/pipeline/datatype/ADatatype.hpp"
 #include "depthai/schemas/Event.pb.h"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
+#include "depthai/pipeline/datatype/EncodedFrame.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
 
 namespace dai {
 namespace utility {
-enum class EventDataType { DATA, FILE_URL, IMG_FRAME, NN_DATA };
+enum class EventDataType { DATA, FILE_URL, IMG_FRAME, ENCODED_FRAME, NN_DATA };
 class EventData {
 public:
 	EventData(const std::string& data, const std::string& fileName, const std::string& mimeType);
 	explicit EventData(const std::string& fileUrl);
 	explicit EventData(const std::shared_ptr<ImgFrame>& imgFrame, const std::string& fileName);
+	explicit EventData(const std::shared_ptr<EncodedFrame>& encodedFrame, const std::string& fileName);
 	explicit EventData(const std::shared_ptr<NNData>& nnData, const std::string& fileName);
 
 private:
@@ -35,23 +37,26 @@ struct EventMessage {
 };
 class EventsManager {
    public:
-    explicit EventsManager(const std::string& deviceSerialNumber);
+     EventsManager();
     virtual ~EventsManager() = default;
 
     void sendEvent(const std::string& name,
 				   const std::shared_ptr<ImgFrame>& imgFrame = nullptr,
                    std::vector<std::shared_ptr<EventData>> data = {},
                    const std::vector<std::string>& tags = {},
-                   const std::unordered_map<std::string, std::string>& extraData = {}
+                   const std::unordered_map<std::string, std::string>& extraData = {},
+				   const std::string& deviceSerialNo = ""
 				   );
     void sendSnap(const std::string& name,
 				   const std::shared_ptr<ImgFrame>& imgFrame = nullptr,
                    std::vector<std::shared_ptr<EventData>> data = {},
                    const std::vector<std::string>& tags = {},
-                   const std::unordered_map<std::string, std::string>& extraData = {}
+                   const std::unordered_map<std::string, std::string>& extraData = {},
+				   const std::string& deviceSerialNo = ""
 				   );
 
 
+	void setDeviceSerialNumber(const std::string& deviceSerialNumber);
     void setUrl(const std::string& url);
     void setSourceAppId(const std::string& sourceAppId);
     void setSourceAppIdentifier(const std::string& sourceAppIdentifier);

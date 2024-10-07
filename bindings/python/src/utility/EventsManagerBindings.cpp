@@ -25,7 +25,7 @@ void EventsManagerBindings::bind(pybind11::module& m, void* pCallstack) {
 		.def(py::init<const std::shared_ptr<NNData>&, const std::string&>(), py::arg("nnData"), py::arg("fileName"));
 
     py::class_<utility::EventsManager>(m, "EventsManager")
-        .def(py::init<const std::string&>(), py::arg("deviceSerialNumber") = "serial")
+        .def(py::init<>())
         .def("setUrl", &utility::EventsManager::setUrl, py::arg("url"))
         .def("setSourceAppId", &utility::EventsManager::setSourceAppId, py::arg("sourceAppId"))
         .def("setSourceAppIdentifier", &utility::EventsManager::setSourceAppIdentifier, py::arg("sourceAppIdentifier"))
@@ -33,18 +33,21 @@ void EventsManagerBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("setQueueSize", &utility::EventsManager::setQueueSize, py::arg("queueSize"))
         .def("setPublishInterval", &utility::EventsManager::setPublishInterval, py::arg("publishInterval"))
 		.def("setLogResponse", &utility::EventsManager::setLogResponse, py::arg("logResponse"))
+		.def("setDeviceSerialNumber", &utility::EventsManager::setDeviceSerialNumber, py::arg("deviceSerialNumber"))
         .def("sendEvent",
              &utility::EventsManager::sendEvent,
 			 py::arg("name"),
 			 py::arg("imgFrame").none(true) = nullptr,
 			 py::arg("data") = std::vector<std::shared_ptr<utility::EventData>>(),
 			 py::arg("tags") = std::vector<std::string>(),
-			 py::arg("extraData") = std::unordered_map<std::string, std::string>())
+			 py::arg("extraData") = std::unordered_map<std::string, std::string>(),
+			 py::arg("deviceSerialNo") = "")
         .def("sendSnap",
              &utility::EventsManager::sendSnap,
 			 py::arg("name"),
 			 py::arg("imgFrame").none(true) = nullptr,
 			 py::arg("data") = std::vector<std::shared_ptr<utility::EventData>>(),
 			 py::arg("tags") = std::vector<std::string>(),
-			 py::arg("extraData") = std::unordered_map<std::string, std::string>());
+			 py::arg("extraData") = std::unordered_map<std::string, std::string>(),
+			 py::arg("deviceSerialNo") = "");
 }
