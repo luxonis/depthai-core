@@ -47,7 +47,7 @@ def run_ctest(env_vars, labels, blocking=True, name=""):
     env = os.environ.copy()
     env.update(env_vars)
 
-    cmd = ["ctest", "--no-tests=error", "-VV", "-L", "^ci$"]
+    cmd = ["ctest", "--no-tests=error", "-VV", "-L", "^ci$", "--timeout", "300"]
     for label in labels:
         # Encapsulate label in ^label$ to match exactly
         label = f"^{label}$"
@@ -68,7 +68,7 @@ def compute_or_result(results):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     # Positional argument for the path to the test directory
-    default_path = pathlib.Path(__file__) / ".." / ".." / "build" / "tests"
+    default_path = pathlib.Path(__file__) / ".." / ".." / "build"
     parser.add_argument(
         "--test_dir",
         type=str,
