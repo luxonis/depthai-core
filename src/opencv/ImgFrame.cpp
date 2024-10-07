@@ -45,6 +45,11 @@ cv::Mat ImgFrame::getFrame(bool deepCopy) {
             type = CV_8UC1;
             break;
 
+        case Type::YUV422i:
+            size = cv::Size(getWidth(), getHeight());
+            type = CV_8UC2;
+            break;
+
         case Type::RAW8:
         case Type::GRAY8:
             size = cv::Size(getWidth(), getHeight());
@@ -146,10 +151,10 @@ cv::Mat ImgFrame::getCvFrame(cv::MatAllocator* allocator) {
                 offset1 = fb.p2Offset;
                 offset2 = fb.p3Offset;
             }
-            // RGB
-            channels.push_back(cv::Mat(s, CV_8UC1, (uint8_t*)getData().data() + offset0, getStride()));
-            channels.push_back(cv::Mat(s, CV_8UC1, (uint8_t*)getData().data() + offset1, getStride()));
+            // RGB -> BGR
             channels.push_back(cv::Mat(s, CV_8UC1, (uint8_t*)getData().data() + offset2, getStride()));
+            channels.push_back(cv::Mat(s, CV_8UC1, (uint8_t*)getData().data() + offset1, getStride()));
+            channels.push_back(cv::Mat(s, CV_8UC1, (uint8_t*)getData().data() + offset0, getStride()));
             cv::merge(channels, output);
         } break;
 
@@ -173,6 +178,10 @@ cv::Mat ImgFrame::getCvFrame(cv::MatAllocator* allocator) {
 
         case Type::YUV420p:
             cv::cvtColor(frame, output, cv::ColorConversionCodes::COLOR_YUV2BGR_IYUV);
+            break;
+
+        case Type::YUV422i:
+            cv::cvtColor(frame, output, cv::ColorConversionCodes::COLOR_YUV2BGR_YUYV);
             break;
 
         case Type::NV12:

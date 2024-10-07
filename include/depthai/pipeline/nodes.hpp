@@ -27,6 +27,7 @@
 #include "node/StereoDepth.hpp"
 #include "node/Sync.hpp"
 #include "node/SystemLogger.hpp"
+#include "node/Thermal.hpp"
 #include "node/ToF.hpp"
 #include "node/UVC.hpp"
 #include "node/VideoEncoder.hpp"
@@ -41,6 +42,7 @@
     #include "node/host/Replay.hpp"
 #endif
 #include "ThreadedHostNode.hpp"
+#include "node/ImageAlign.hpp"
 #include "node/host/HostNode.hpp"
 #ifdef DEPTHAI_HAVE_RTABMAP_SUPPORT
     #include "depthai/rtabmap/RTABMapSLAM.hpp"

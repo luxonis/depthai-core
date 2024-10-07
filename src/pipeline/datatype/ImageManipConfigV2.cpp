@@ -11,11 +11,11 @@ ImageManipConfigV2& ImageManipConfigV2::clearOps() {
     base.clear();
     return *this;
 }
-ImageManipConfigV2& ImageManipConfigV2::crop(uint32_t x, uint32_t y, uint32_t w, uint32_t h) {
+ImageManipConfigV2& ImageManipConfigV2::addCrop(uint32_t x, uint32_t y, uint32_t w, uint32_t h) {
     base.crop(x, y, w, h);
     return *this;
 }
-ImageManipConfigV2& ImageManipConfigV2::cropRotatedRect(dai::RotatedRect rotatedRect, bool normalizedCoords) {
+ImageManipConfigV2& ImageManipConfigV2::addCropRotatedRect(dai::RotatedRect rotatedRect, bool normalizedCoords) {
     base.rotateDegrees(-rotatedRect.angle);
     base.crop(rotatedRect.center.x - rotatedRect.size.width / 2,
               rotatedRect.center.y - rotatedRect.size.height / 2,
@@ -24,39 +24,39 @@ ImageManipConfigV2& ImageManipConfigV2::cropRotatedRect(dai::RotatedRect rotated
               normalizedCoords);
     return *this;
 }
-ImageManipConfigV2& ImageManipConfigV2::resize(uint32_t w, uint32_t h) {
+ImageManipConfigV2& ImageManipConfigV2::addResize(uint32_t w, uint32_t h) {
     base.resize(w, h);
     return *this;
 }
-ImageManipConfigV2& ImageManipConfigV2::scale(float scaleX, float scaleY) {
+ImageManipConfigV2& ImageManipConfigV2::addScale(float scaleX, float scaleY) {
     base.resize(scaleX, scaleY, true);
     return *this;
 }
-ImageManipConfigV2& ImageManipConfigV2::rotateDeg(float angle) {
+ImageManipConfigV2& ImageManipConfigV2::addRotateDeg(float angle) {
     base.rotateDegrees(angle);
     return *this;
 }
-ImageManipConfigV2& ImageManipConfigV2::rotateDeg(float angle, Point2f centerOffset) {
+ImageManipConfigV2& ImageManipConfigV2::addRotateDeg(float angle, Point2f centerOffset) {
     base.rotateDegrees(angle, true, centerOffset.x, centerOffset.y, true);
     return *this;
 }
-ImageManipConfigV2& ImageManipConfigV2::flipHorizontal() {
+ImageManipConfigV2& ImageManipConfigV2::addFlipHorizontal() {
     base.flipHorizontal(true);
     return *this;
 }
-ImageManipConfigV2& ImageManipConfigV2::flipVertical() {
+ImageManipConfigV2& ImageManipConfigV2::addFlipVertical() {
     base.flipVertical(true);
     return *this;
 }
-ImageManipConfigV2& ImageManipConfigV2::transformAffine(std::array<float, 4> matrix) {
+ImageManipConfigV2& ImageManipConfigV2::addTransformAffine(std::array<float, 4> matrix) {
     base.transformAffine(matrix);
     return *this;
 }
-ImageManipConfigV2& ImageManipConfigV2::transformPerspective(std::array<float, 9> matrix) {
+ImageManipConfigV2& ImageManipConfigV2::addTransformPerspective(std::array<float, 9> matrix) {
     base.transformPerspective(matrix);
     return *this;
 }
-ImageManipConfigV2& ImageManipConfigV2::transformFourPoints(std::array<dai::Point2f, 4> src, std::array<dai::Point2f, 4> dst, bool normalizedCoords) {
+ImageManipConfigV2& ImageManipConfigV2::addTransformFourPoints(std::array<dai::Point2f, 4> src, std::array<dai::Point2f, 4> dst, bool normalizedCoords) {
     base.transformFourPoints(src, dst, normalizedCoords);
     return *this;
 }

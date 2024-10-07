@@ -8,7 +8,8 @@
 namespace dai {
 namespace node {
 
-ColorCamera::ColorCamera(std::unique_ptr<Properties> props) : DeviceNodeCRTP<DeviceNode, ColorCamera, ColorCameraProperties>(std::move(props)), initialControl(properties.initialControl){}
+ColorCamera::ColorCamera(std::unique_ptr<Properties> props)
+    : DeviceNodeCRTP<DeviceNode, ColorCamera, ColorCameraProperties>(std::move(props)), initialControl(properties.initialControl) {}
 
 ColorCamera::Properties& ColorCamera::getProperties() {
     properties.initialControl = initialControl;

@@ -57,17 +57,28 @@ python3 -m pip wheel . -w wheelhouse
 ```
 
 #### Shared library
+> ℹ️ This is the recommended way when you are iterating as installing with pip is generally very slow for iteration.
+
 To build a shared library from source perform the following:
-
-> ℹ️ To speed up build times, use `cmake --build build --parallel [num CPU cores]` (CMake >= 3.12).
-For older versions use: Linux/macOS: `cmake --build build -- -j[num CPU cores]`, MSVC: `cmake --build build -- /MP[num CPU cores]`
-
 ```
 cd depthai-core
 cmake -H. -Bbuild -DDEPTHAI_BUILD_PYTHON=ON
 cmake --build build
 ```
+> ℹ️ To speed up build times, use `cmake --build build --parallel [num CPU cores]` (CMake >= 3.12).
+> For older versions use: Linux/macOS: `cmake --build build -- -j[num CPU cores]`, MSVC: `cmake --build build -- /MP[num CPU cores]`
+
 To specify custom Python executable to build for, use `cmake -H. -Bbuild -D PYTHON_EXECUTABLE=/full/path/to/python`.
+
+⚠️ **Important:** To run python code directly with the shared library, you need to set the `PYTHONPATH` environment variable to the directory containing the shared library.
+For example, on Linux:
+```
+export PYTHONPATH=$(pwd)/build/bindings/python
+# Confirm that the right shared library is loaded
+python3 -c "import depthai as dai; print(dai.__file__)"
+# It should print the path to the shared library, something like /path/to/depthai-core/build/bindings/python/depthai.cpython-38-x86_64-linux-gnu.so
+```
+> ℹ️ When using an IDE like VSCode, if you set the `PYTHONPATH` before opening the IDE, it will correctly resolve autocompletion without needing to do `pip install .`.
 
 #### Common issues
 

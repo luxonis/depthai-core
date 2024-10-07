@@ -25,27 +25,22 @@ std::shared_ptr<NeuralNetwork> NeuralNetwork::build(Node::Output& input, const N
     return std::static_pointer_cast<NeuralNetwork>(shared_from_this());
 }
 
-std::shared_ptr<NeuralNetwork> NeuralNetwork::build(const NNArchiveConfig& nnArchiveCfg, std::shared_ptr<Camera> camera, dai::NNModelDescription modelDesc, float fps){
+std::shared_ptr<NeuralNetwork> NeuralNetwork::build(std::shared_ptr<Camera> input, dai::NNModelDescription modelDesc, float fps) {
     setFromModelZoo(modelDesc);
-    // Get the input size
-    auto nnArchiveConfig = nnArchiveCfg.getConfigV1();
-    if(!nnArchiveConfig.has_value()) {
-        DAI_CHECK_V(false, "The NeuralNetwork.build method only supports for NNConfigV1");
-    }
-    if(nnArchiveConfig->model.inputs.size() != 1) {
-        DAI_CHECK_V(false, "Only single input model is supported");
-    }
+    // Check that nnArchive is set
+    DAI_CHECK(nnArchive.has_value(), "NNArchive is not set, the method can only be used with models that are loaded as NNArchive");
+    auto nnArchiveCfg = nnArchive->getVersionedConfig();
 
-    if(nnArchiveConfig->model.inputs[0].shape.size() != 4) {
-        DAI_CHECK_V(false, "Only 4D input shape is supported");
-    }
+    DAI_CHECK_V(nnArchiveCfg.getVersion() == dai::NNArchiveConfigVersion::V1, "Only V1 configs are supported for NeuralNetwork.build method");
 
-    // Check that the first two dimesions are 1 and 3
-    if(nnArchiveConfig->model.inputs[0].shape[0] != 1 || nnArchiveConfig->model.inputs[0].shape[1] != 3) {
-        DAI_CHECK_V(false, "Only 3 channel input is supported");
-    }
-    auto inputHeight = nnArchiveConfig->model.inputs[0].shape[2];
-    auto inputWidth = nnArchiveConfig->model.inputs[0].shape[3];
+    const auto& configV1 = nnArchiveCfg.getConfig<dai::nn_archive::v1::Config>();
+
+    DAI_CHECK_V(configV1.model.inputs.size() == 1, "Only single input model is supported");
+    DAI_CHECK_V(configV1.model.inputs[0].shape.size() == 4, "Only 4D input shape is supported");
+    DAI_CHECK_V(configV1.model.inputs[0].shape[0] == 1 && configV1.model.inputs[0].shape[1] == 3, "Only 3 channel input is supported");
+
+    auto inputHeight = configV1.model.inputs[0].shape[2];
+    auto inputWidth = configV1.model.inputs[0].shape[3];
 
     auto type = dai::ImgFrame::Type::BGR888p;
     auto platform = getDevice()->getPlatform();
@@ -61,17 +56,15 @@ std::shared_ptr<NeuralNetwork> NeuralNetwork::build(const NNArchiveConfig& nnArc
     cap.size.value = std::pair(inputWidth, inputHeight);
     cap.type = type;
     cap.fps.value = fps;
-    auto* input = camera->requestOutput(cap, false);
-    if(!input) {
-        DAI_CHECK_V(false, "Camera does not have output with requested capabilities");
-    }
-    input->link(this->input);
+    auto* camInput = input->requestOutput(cap, false);
+    DAI_CHECK_V(camInput != nullptr, "Camera does not have output with requested capabilities");
+    camInput->link(this->input);
     return std::static_pointer_cast<NeuralNetwork>(shared_from_this());
 }
 
-
 void NeuralNetwork::setNNArchive(const NNArchive& nnArchive) {
     constexpr int DEFAULT_SUPERBLOB_NUM_SHAVES = 8;
+    this->nnArchive = nnArchive;
     switch(nnArchive.getModelType()) {
         case dai::model::ModelType::BLOB:
             setNNArchiveBlob(nnArchive);

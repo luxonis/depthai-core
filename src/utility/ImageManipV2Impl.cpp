@@ -1,10 +1,14 @@
 #include "depthai/utility/ImageManipV2Impl.hpp"
 
+#include "depthai/pipeline/datatype/ImageManipConfigV2.hpp"
+
 #if defined(WIN32) || defined(_WIN32)
     #define _RESTRICT
 #else
     #define _RESTRICT __restrict__
 #endif
+
+#define UNUSED(x) (void)(x)
 
 dai::impl::AEEResult dai::impl::manipGetSrcMask(const uint32_t width,
                                                 const uint32_t height,
@@ -39,7 +43,12 @@ dai::impl::AEEResult dai::impl::manipGetSrcMask(const uint32_t width,
         }
         for(uint32_t i = iminy; i < imaxy; ++i) {
             const uint32_t lineStart = i * width;
-#pragma clang loop vectorize(enable) interleave(enable) unroll_count(8) distribute(enable)
+#ifdef __clang__
+    #pragma clang loop vectorize(enable) interleave(enable) unroll_count(4) distribute(enable)
+#else
+    #pragma GCC unroll 4
+    #pragma GCC ivdep
+#endif
             for(uint32_t j = lineStart + iminx; j < lineStart + imaxx; ++j) {
                 const float x = j - lineStart;
                 const float y = i;
@@ -72,7 +81,12 @@ dai::impl::AEEResult dai::impl::manipGetSrcMask(const uint32_t width,
 
         for(uint32_t i = iminy; i < imaxy; ++i) {
             const uint32_t lineStart = i * width;
-#pragma clang loop vectorize(enable) interleave(enable) unroll_count(8) distribute(enable)
+#ifdef __clang__
+    #pragma clang loop vectorize(enable) interleave(enable) unroll_count(4) distribute(enable)
+#else
+    #pragma GCC unroll 4
+    #pragma GCC ivdep
+#endif
             for(uint32_t j = lineStart + iminx; j < lineStart + imaxx; ++j) {
                 const float x = j - lineStart;
                 const float y = i;
@@ -119,7 +133,12 @@ dai::impl::AEEResult dai::impl::manipGetRemap3x3(const uint32_t inWidth,
  * 3 4 5 x 1
  * 6 7 8   2
  */
-#pragma clang loop vectorize(enable) interleave(enable) unroll_count(8) distribute(enable)
+#ifdef __clang__
+    #pragma clang loop vectorize(enable) interleave(enable) unroll_count(4) distribute(enable)
+#else
+    #pragma GCC unroll 4
+    #pragma GCC ivdep
+#endif
     for(uint32_t i = 0; i < outWidth * outHeight; ++i) {
         uint32_t x = i % outWidth;
         uint32_t y = i / outWidth;
@@ -161,7 +180,12 @@ dai::impl::AEEResult dai::impl::subsampleMap2x2(const uint32_t width,
        || mapYssLen != width * height / 4 || dstMaskssLen != width * height / 4 || width % 2 != 0 || height % 2 != 0) {
         return AEE_EBADPARM;
     }
-#pragma clang loop vectorize(enable) interleave(enable) unroll_count(8) distribute(enable)
+#ifdef __clang__
+    #pragma clang loop vectorize(enable) interleave(enable) unroll_count(4) distribute(enable)
+#else
+    #pragma GCC unroll 4
+    #pragma GCC ivdep
+#endif
     for(uint32_t idx = 0; idx < width * height / 4; ++idx) {
         const uint32_t i = idx / (width / 2);
         const uint32_t j = idx % (width / 2);
@@ -193,15 +217,20 @@ dai::impl::AEEResult dai::impl::remapImage(const uint8_t* _RESTRICT inData,
                                            const uint32_t outStride,
                                            uint8_t* _RESTRICT outData,
                                            const uint32_t outDataLen) {
+    UNUSED(inDataLen);
+    UNUSED(outDataLen);
     if(mapXLen != mapYLen || mapXLen != outWidth * outHeight || dstMaskLen != outWidth * outHeight || numChannels == 0 || numChannels > 3) return AEE_EBADPARM;
 
     for(uint32_t i = 0; i < outHeight; ++i) {
         const uint32_t lineStart = i * outStride;
         switch(numChannels) {
             case 1:
-// #pragma clang loop vectorize(enable) interleave(enable) unroll_count(8) distribute(enable)
-#pragma GCC unroll 4
-#pragma GCC ivdep
+#ifdef __clang__
+    #pragma clang loop vectorize(enable) interleave(enable) unroll_count(4) distribute(enable)
+#else
+    #pragma GCC unroll 4
+    #pragma GCC ivdep
+#endif
                 for(uint32_t j = 0; j < outWidth; ++j) {
                     const uint32_t idx = lineStart + j * numChannels;
                     const uint32_t mapIdx = i * outWidth + j;
@@ -229,9 +258,12 @@ dai::impl::AEEResult dai::impl::remapImage(const uint8_t* _RESTRICT inData,
                 }
                 break;
             case 2:
-// #pragma clang loop vectorize(enable) interleave(enable) unroll_count(8) distribute(enable)
-#pragma GCC unroll 4
-#pragma GCC ivdep
+#ifdef __clang__
+    #pragma clang loop vectorize(enable) interleave(enable) unroll_count(4) distribute(enable)
+#else
+    #pragma GCC unroll 4
+    #pragma GCC ivdep
+#endif
                 for(uint32_t j = 0; j < outWidth; ++j) {
                     const uint32_t idx = lineStart + j * numChannels;
                     const uint32_t mapIdx = i * outWidth + j;
@@ -266,9 +298,12 @@ dai::impl::AEEResult dai::impl::remapImage(const uint8_t* _RESTRICT inData,
                 }
                 break;
             case 3:
-// #pragma clang loop vectorize(enable) interleave(enable) unroll_count(8) distribute(enable)
-#pragma GCC unroll 4
-#pragma GCC ivdep
+#ifdef __clang__
+    #pragma clang loop vectorize(enable) interleave(enable) unroll_count(4) distribute(enable)
+#else
+    #pragma GCC unroll 4
+    #pragma GCC ivdep
+#endif
                 for(uint32_t j = 0; j < outWidth; ++j) {
                     const uint32_t idx = lineStart + j * numChannels;
                     const uint32_t mapIdx = i * outWidth + j;
@@ -813,7 +848,9 @@ std::tuple<std::array<std::array<float, 3>, 3>, std::array<std::array<float, 2>,
 #endif
                            }
                        },
-                       [&](Affine o) { mat = {{{o.matrix[0], o.matrix[1], 0}, {o.matrix[2], o.matrix[3], 0}, {0, 0, 1}}}; },
+                       [&](Affine o) {
+                           mat = {{{o.matrix[0], o.matrix[1], 0}, {o.matrix[2], o.matrix[3], 0}, {0, 0, 1}}};
+                       },
                        [&](Perspective o) {
                            mat = {{{o.matrix[0], o.matrix[1], o.matrix[2]}, {o.matrix[3], o.matrix[4], o.matrix[5]}, {o.matrix[6], o.matrix[7], o.matrix[8]}}};
                        },
@@ -856,6 +893,85 @@ std::tuple<std::array<std::array<float, 3>, 3>, std::array<std::array<float, 2>,
     /*printf("Transform: %f %f %f %f %f %f %f %f %f\n", transform[0][0], transform[0][1], transform[0][2], transform[1][0], transform[1][1], transform[1][2],
      * transform[2][0], transform[2][1], transform[2][2]);*/
     return {transform, imageCorners, srcCorners};
+}
+
+std::tuple<std::array<std::array<float, 3>, 3>, std::array<std::array<float, 2>, 4>, std::vector<std::array<std::array<float, 2>, 4>>>
+dai::impl::getFullTransform(dai::ImageManipOpsBase& base,
+                            size_t inputWidth,
+                            size_t inputHeight,
+                            dai::ImgFrame::Type type,
+                            dai::ImgFrame::Type outputFrameType,
+                            std::vector<ManipOp>& outputOps) {
+    using namespace dai;
+    using namespace dai::impl;
+
+    outputOps.clear();
+
+    auto operations = base.getOperations();
+
+    auto [matrix, imageCorners, srcCorners] = getTransform(operations, inputWidth, inputHeight, base.outputWidth, base.outputHeight);
+
+    {
+        auto [minx, maxx, miny, maxy] = getOuterRect(std::vector(imageCorners.begin(), imageCorners.end()));
+        if(!base.center) {
+            if(base.outputWidth == 0) base.outputWidth = maxx;
+            if(base.outputHeight == 0) base.outputHeight = maxy;
+        } else {
+            if(base.outputWidth == 0) base.outputWidth = maxx - minx;
+            if(base.outputHeight == 0) base.outputHeight = maxy - miny;
+        }
+    }
+
+    if(base.resizeMode != ImageManipOpsBase::ResizeMode::NONE) {
+        Resize res;
+        switch(base.resizeMode) {
+            case ImageManipOpsBase::ResizeMode::NONE:
+                break;
+            case ImageManipOpsBase::ResizeMode::STRETCH:
+                res = Resize(base.outputWidth, base.outputHeight);
+                break;
+            case ImageManipOpsBase::ResizeMode::LETTERBOX:
+                res = Resize::fit();
+                break;
+            case ImageManipOpsBase::ResizeMode::CENTER_CROP:
+                res = Resize::fill();
+                break;
+        }
+        auto [minx, maxx, miny, maxy] = getOuterRect(std::vector(imageCorners.begin(), imageCorners.end()));
+        auto mat = getResizeMat(res, maxx - minx, maxy - miny, base.outputWidth, base.outputHeight);
+        imageCorners = {
+            {{matvecmul(mat, imageCorners[0])}, {matvecmul(mat, imageCorners[1])}, {matvecmul(mat, imageCorners[2])}, {matvecmul(mat, imageCorners[2])}}};
+        matrix = matmul(mat, matrix);
+        outputOps.emplace_back(res);
+    }
+
+    if(base.center) {
+        float width = base.outputWidth;
+        float height = base.outputHeight;
+        auto [minx, maxx, miny, maxy] = getOuterRect(std::vector(imageCorners.begin(), imageCorners.end()));
+        float tx = -minx + (width - (maxx - minx)) / 2;
+        float ty = -miny + (height - (maxy - miny)) / 2;
+        std::array<std::array<float, 3>, 3> mat = {{{1, 0, tx}, {0, 1, ty}, {0, 0, 1}}};
+        imageCorners = {
+            {{matvecmul(mat, imageCorners[0])}, {matvecmul(mat, imageCorners[1])}, {matvecmul(mat, imageCorners[2])}, {matvecmul(mat, imageCorners[2])}}};
+        matrix = matmul(mat, matrix);
+        outputOps.emplace_back(Translate(tx, ty));
+    }
+
+    auto matrixInv = getInverse(matrix);
+
+    if(type == ImgFrame::Type::NV12 || type == ImgFrame::Type::YUV420p || outputFrameType == ImgFrame::Type::NV12
+       || outputFrameType == ImgFrame::Type::YUV420p) {
+        base.outputWidth = base.outputWidth - (base.outputWidth % 2);
+        base.outputHeight = base.outputHeight - (base.outputHeight % 2);
+    }
+
+    srcCorners.push_back({matvecmul(matrixInv, {0, 0}),
+                          matvecmul(matrixInv, {(float)base.outputWidth, 0}),
+                          matvecmul(matrixInv, {(float)base.outputWidth, (float)base.outputHeight}),
+                          matvecmul(matrixInv, {0, (float)base.outputHeight})});
+
+    return {matrix, imageCorners, srcCorners};
 }
 
 size_t dai::impl::getFrameSize(const ImgFrame::Type type, const FrameSpecs& specs) {

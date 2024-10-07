@@ -7,73 +7,53 @@
 // Includes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
-int main() {
+int main(int argc, char** argv) {
     {  // Create pipeline
         dai::Pipeline pipeline;
 
         // Define sources and outputs
         auto replay = pipeline.create<dai::node::ReplayMetadataOnly>();
         auto imu = pipeline.create<dai::node::IMU>();
-        auto record = pipeline.create<dai::node::RecordMetadataOnly>();
 
-        replay->setReplayFile("imu_recording.mcap");
+        std::string filePath = "imu_recording.mcap";
+        if(argc > 1) {
+            filePath = argv[1];
+        }
+
+        replay->setReplayFile(filePath);
 
         // enable ACCELEROMETER_RAW at 500 hz rate
         imu->enableIMUSensor(dai::IMUSensor::ACCELEROMETER_RAW, 500);
         // enable GYROSCOPE_RAW at 400 hz rate
         imu->enableIMUSensor(dai::IMUSensor::GYROSCOPE_RAW, 400);
 
-        record->setRecordFile("imu_recording2");
-
         replay->out.link(imu->mockIn);
-        imu->out.link(record->input);
+
+        auto imuQ = imu->out.createOutputQueue();
 
         pipeline.start();
 
-        std::this_thread::sleep_for(std::chrono::seconds(10));
+        while(true) {
+            auto imuData = imuQ->get<dai::IMUData>();
+            std::cout << "Packet seqNo: " << (int)imuData->getSequenceNum() << "\n";
+            std::cout << "Packet ts: " << imuData->tsDevice.sec << "s " << imuData->tsDevice.nsec << "ns\n";
+            for(auto& imuPacket : imuData->packets) {
+                std::cout << "\tAccelerometer: \n";
+                std::cout << "\t\tts: " << imuPacket.acceleroMeter.tsDevice.sec << "s " << imuPacket.acceleroMeter.tsDevice.nsec << "ns\n";
+                std::cout << "\t\tseqNo: " << imuPacket.acceleroMeter.sequence << "\n";
+                std::cout << "\t\tx: " << imuPacket.acceleroMeter.x << "\n";
+                std::cout << "\t\ty: " << imuPacket.acceleroMeter.y << "\n";
+                std::cout << "\t\tz: " << imuPacket.acceleroMeter.z << "\n";
+
+                std::cout << "\tGyroscope: \n";
+                std::cout << "\t\tts: " << imuPacket.gyroscope.tsDevice.sec << "s " << imuPacket.gyroscope.tsDevice.nsec << "ns\n";
+                std::cout << "\t\tseqNo: " << imuPacket.gyroscope.sequence << "\n";
+                std::cout << "\t\tx: " << imuPacket.gyroscope.x << "\n";
+                std::cout << "\t\ty: " << imuPacket.gyroscope.y << "\n";
+                std::cout << "\t\tz: " << imuPacket.gyroscope.z << "\n";
+            }
+        }
 
         pipeline.stop();
     }
-
-    std::ofstream out1("imu_recording1.json");
-    std::ofstream out2("imu_recording2.json");
-    {
-        mcap::McapReader reader;
-        {
-            const auto res = reader.open("imu_recording.mcap");
-            if(!res.ok()) {
-                std::cerr << "Failed to open "
-                    << "imu_recording"
-                    << " for reading: " << res.message << std::endl;
-                return 1;
-            }
-        }
-        auto messageView = reader.readMessages();
-        for(const auto& msg : messageView) {
-            assert(msg.channel->messageEncoding == "json");
-            std::string_view asString(reinterpret_cast<const char*>(msg.message.data), msg.message.dataSize);
-            nlohmann::json j = nlohmann::json::parse(asString);
-            out1 << j.dump(4) << std::endl;
-        }
-    }
-    {
-        mcap::McapReader reader;
-        {
-            const auto res = reader.open("imu_recording2.mcap");
-            if(!res.ok()) {
-                std::cerr << "Failed to open "
-                    << "imu_recording"
-                    << " for reading: " << res.message << std::endl;
-                return 1;
-            }
-        }
-        auto messageView = reader.readMessages();
-        for(const auto& msg : messageView) {
-            assert(msg.channel->messageEncoding == "json");
-            std::string_view asString(reinterpret_cast<const char*>(msg.message.data), msg.message.dataSize);
-            nlohmann::json j = nlohmann::json::parse(asString);
-            out2 << j.dump(4) << std::endl;
-        }
-    }
-    return 0;
 }
