@@ -22,6 +22,7 @@ void EventsManagerBindings::bind(pybind11::module& m, void* pCallstack) {
 		.def(py::init<const std::string&, const std::string&, const std::string&>(), py::arg("data"), py::arg("fileName"), py::arg("mimeType"))
 		.def(py::init<std::string>(), py::arg("fileUrl"))
 		.def(py::init<const std::shared_ptr<ImgFrame>&, std::string>(), py::arg("imgFrame"), py::arg("fileName"))
+		.def(py::init<const std::shared_ptr<EncodedFrame>&, std::string>(), py::arg("encodedFrame"), py::arg("fileName"))
 		.def(py::init<const std::shared_ptr<NNData>&, std::string>(), py::arg("nnData"), py::arg("fileName"));
 
     py::class_<utility::EventsManager>(m, "EventsManager")

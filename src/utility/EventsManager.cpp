@@ -54,7 +54,7 @@ EventData::EventData(const std::shared_ptr<NNData>& nnData, const std::string& f
 }
 
 EventsManager::EventsManager()
-    : url("https://events-ingest.cloud.luxonis.com/v1/events"), queueSize(10), publishInterval(5.0f), logResponse(false), verifySsl(false) {
+    : url("https://events-ingest.cloud.luxonis.com"), queueSize(10), publishInterval(5.0f), logResponse(false), verifySsl(false) {
     sourceAppId = utility::getEnv("AGENT_APP_ID");
     sourceAppIdentifier = utility::getEnv("AGENT_APP_IDENTIFIER");
     token = utility::getEnv("DEPTHAI_HUB_API_KEY");
@@ -72,7 +72,7 @@ void EventsManager::sendEventBuffer() {
         return;
     }
     // Create request
-    cpr::Url url = cpr::Url(this->url);
+    cpr::Url url = static_cast<cpr::Url>(this->url + "/v1/events");
     cpr::Body body;
     auto batchEvent = std::make_unique<proto::BatchUploadEvents>();
     for(auto& eventM : eventBuffer) {
@@ -98,7 +98,7 @@ void EventsManager::sendEventBuffer() {
             if(eventResult.accepted().file_upload_urls_size() > 0) {
                 logger::info("Uploading files");
                 for(int j = 0; j < eventResult.accepted().file_upload_urls().size(); j++) {
-                    cpr::Url fileUrl = static_cast<cpr::Url>("https://events-ingest.apps.stg.hubcloud" + eventResult.accepted().file_upload_urls(j));
+                    cpr::Url fileUrl = static_cast<cpr::Url>(this->url + eventResult.accepted().file_upload_urls(j));
 
                     sendFile(eventBuffer[i]->data[j], fileUrl);
                 }
@@ -167,6 +167,7 @@ void EventsManager::sendSnap(const std::string& name,
 void EventsManager::sendFile(const std::shared_ptr<EventData>& file, const std::string& url) {
     // if file struct contains byte data, send it, along with filename and mime type
     // if it file url, send it directly via url
+	logger::info("Uploading file: to {}", url);
     auto header = cpr::Header{{"Authorization", "Bearer " + token}};
     cpr::Multipart fileM{};
     if(file->type != EventDataType::FILE_URL) {

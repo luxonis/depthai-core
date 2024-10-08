@@ -41,7 +41,7 @@ with dai.Pipeline() as pipeline:
     labelMap = detectionNetwork.getClasses()
     eventMan = dai.EventsManager()
     eventMan.setLogResponse(True)
-    eventMan.setUrl("https://events-ingest.apps.stg.hubcloud/v1/events")
+    eventMan.setUrl("https://events-ingest.apps.stg.hubcloud")
     # eventsManager->sendEvent("test", nullptr, {}, {"tag1", "tag2"}, {{"key1", "value1"}});
 
     eventMan.sendEvent("test1", None, [], ["tag1", "tag2"], {"key1": "value1"})
