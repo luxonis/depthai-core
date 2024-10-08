@@ -36,17 +36,44 @@ endif()
 # If library was build as static, find all dependencies
 if(NOT CONFIG_MODE OR (CONFIG_MODE AND NOT DEPTHAI_SHARED_LIBS))
 
-    # BZip2 (for bspatch)
-    find_package(BZip2 ${_QUIET} CONFIG REQUIRED)
-
     # FP16 for conversions
     find_package(FP16 ${_QUIET} CONFIG REQUIRED)
 
-    # libarchive for firmware packages
-    find_package(archive_static ${_QUIET} CONFIG REQUIRED)
-    find_package(lzma ${_QUIET} CONFIG REQUIRED)
-    # ZLIB for compressing Apps
-    find_package(ZLIB CONFIG REQUIRED)
+    # Some packages have different package names depending on which
+    # version is installed, if we are using hunter we want to make sure to
+    # use the hunter/luxonis fork, otherwise we try using the hunter/luxonis 
+    # fork and if that can't be found we found the regular version
+    if(DEPTHAI_HUNTER_ENABLED)
+        # BZip2 (for bspatch)
+        find_package(BZip2 ${_QUIET} CONFIG REQUIRED)
+
+        # libarchive for firmware packages
+        find_package(archive_static ${_QUIET} CONFIG REQUIRED)
+        find_package(lzma ${_QUIET} CONFIG REQUIRED)
+
+        # ZLIB for compressing Apps
+        find_package(ZLIB CONFIG REQUIRED)
+    else()
+        # BZip2 (for bspatch)
+        find_package(BZip2 ${_QUIET} CONFIG)
+        if(NOT BZip2_FOUND)
+            find_package(BZip2 ${_QUIET} REQUIRED)
+        endif()
+
+        # libarchive for firmware packages
+        find_package(archive_static ${_QUIET} CONFIG)
+        if(archive_static_FOUND)
+            find_package(lzma ${_QUIET} CONFIG REQUIRED)
+        else()
+            find_package(LibArchive ${_QUIET} REQUIRED)
+        endif()
+
+        # ZLIB for compressing Apps
+        find_package(ZLIB CONFIG)
+        if(NOT ZLIB_FOUND)
+            find_package(ZLIB REQUIRED)
+        endif()
+    endif()
 
     # spdlog for library and device logging
     find_package(spdlog ${_QUIET} CONFIG REQUIRED)
