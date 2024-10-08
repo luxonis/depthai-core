@@ -8,78 +8,77 @@
 #include <vector>
 
 #include "depthai/pipeline/datatype/ADatatype.hpp"
-#include "depthai/schemas/Event.pb.h"
-#include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/datatype/EncodedFrame.hpp"
+#include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
+#include "depthai/schemas/Event.pb.h"
 
 namespace dai {
 namespace utility {
 enum class EventDataType { DATA, FILE_URL, IMG_FRAME, ENCODED_FRAME, NN_DATA };
 class EventData {
-public:
-	EventData(const std::string& data, const std::string& fileName, const std::string& mimeType);
-	explicit EventData(const std::string& fileUrl);
-	explicit EventData(const std::shared_ptr<ImgFrame>& imgFrame, const std::string& fileName);
-	explicit EventData(const std::shared_ptr<EncodedFrame>& encodedFrame, const std::string& fileName);
-	explicit EventData(const std::shared_ptr<NNData>& nnData, const std::string& fileName);
+   public:
+    EventData(const std::string& data, const std::string& fileName, const std::string& mimeType);
+    explicit EventData(std::string fileUrl);
+    explicit EventData(const std::shared_ptr<ImgFrame>& imgFrame, std::string fileName);
+    explicit EventData(const std::shared_ptr<EncodedFrame>& encodedFrame, std::string fileName);
+    explicit EventData(const std::shared_ptr<NNData>& nnData, const std::string& fileName);
 
-private:
+   private:
     std::string fileName;
     std::string mimeType;
-	std::string data;
-	EventDataType type;
-	friend class EventsManager;
-};
-struct EventMessage {
-    std::shared_ptr<proto::Event> event;
-    std::vector<std::shared_ptr<EventData>> data;
+    std::string data;
+    EventDataType type;
+    friend class EventsManager;
 };
 class EventsManager {
    public:
-     EventsManager();
+    EventsManager();
     virtual ~EventsManager() = default;
 
     void sendEvent(const std::string& name,
-				   const std::shared_ptr<ImgFrame>& imgFrame = nullptr,
+                   const std::shared_ptr<ImgFrame>& imgFrame = nullptr,
                    std::vector<std::shared_ptr<EventData>> data = {},
                    const std::vector<std::string>& tags = {},
                    const std::unordered_map<std::string, std::string>& extraData = {},
-				   const std::string& deviceSerialNo = ""
-				   );
+                   const std::string& deviceSerialNo = "");
     void sendSnap(const std::string& name,
-				   const std::shared_ptr<ImgFrame>& imgFrame = nullptr,
-                   std::vector<std::shared_ptr<EventData>> data = {},
-                   const std::vector<std::string>& tags = {},
-                   const std::unordered_map<std::string, std::string>& extraData = {},
-				   const std::string& deviceSerialNo = ""
-				   );
+                  const std::shared_ptr<ImgFrame>& imgFrame = nullptr,
+                  std::vector<std::shared_ptr<EventData>> data = {},
+                  const std::vector<std::string>& tags = {},
+                  const std::unordered_map<std::string, std::string>& extraData = {},
+                  const std::string& deviceSerialNo = "");
 
-
-	void setDeviceSerialNumber(const std::string& deviceSerialNumber);
+    void setDeviceSerialNumber(const std::string& deviceSerialNumber);
     void setUrl(const std::string& url);
     void setSourceAppId(const std::string& sourceAppId);
     void setSourceAppIdentifier(const std::string& sourceAppIdentifier);
     void setToken(const std::string& token);
-    void setQueueSize(unsigned long queuSize);
+    void setQueueSize(uint64 queuSize);
     void setPublishInterval(float publishInterval);
-	void setLogResponse(bool logResponse);
+    void setLogResponse(bool logResponse);
+	void setVerifySsl(bool verifySsl);
 
    private:
-    std::string createUUID();
+    struct EventMessage {
+        std::shared_ptr<proto::Event> event;
+        std::vector<std::shared_ptr<EventData>> data;
+    };
+    static std::string createUUID();
     void sendEventBuffer();
-	void sendFile(std::shared_ptr<EventData> file, const std::string& url);
+    void sendFile(const std::shared_ptr<EventData>& file, const std::string& url);
     std::string token;
     std::string deviceSerialNumber;
     std::string url;
     std::string sourceAppId;
     std::string sourceAppIdentifier;
-    unsigned long queueSize;
+    uint64 queueSize;
     std::thread eventBufferThread;
     std::vector<std::shared_ptr<EventMessage>> eventBuffer;
     std::mutex eventBufferMutex;
     float publishInterval;
-	bool logResponse;
+    bool logResponse;
+	bool verifySsl;
 };
 }  // namespace utility
 }  // namespace dai
