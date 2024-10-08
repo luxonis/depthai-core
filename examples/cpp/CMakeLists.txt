@@ -480,6 +480,7 @@ dai_add_example(camera_multiple_outputs RVC4/Camera/camera_multiple_outputs.cpp 
 dai_add_example(thermal RVC2/Thermal/thermal.cpp ON OFF)
 
 # Host nodes
+dai_add_example(emotions RVC2/Emotions/emotions.cpp ON OFF)
 dai_add_example(rgb_video RVC2/ColorCamera/rgb_video.cpp ON OFF)
 dai_add_example(host_node HostNodes/host_node.cpp ON OFF)
 dai_add_example(threaded_host_node HostNodes/threaded_host_node.cpp ON OFF)
