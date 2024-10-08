@@ -183,6 +183,3 @@ dai_set_example_test_labels(video_encoder ondevice rvc2_all rvc4 ci)
 add_python_example(spatial_location_calculator SpatialLocationCalculator/spatial_location_calculator.py)
 dai_set_example_test_labels(spatial_location_calculator ondevice rvc2_all rvc4 ci)
 
-add_python_example(spatial_location_calculator_replay SpatialLocationCalculator/spatial_location_calculator_replay.py)
-dai_set_example_test_labels(spatial_location_calculator_replay ondevice rvc2_all rvc4 ci)
-
