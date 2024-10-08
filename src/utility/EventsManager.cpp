@@ -170,7 +170,7 @@ void EventsManager::sendFile(const std::shared_ptr<EventData>& file, const std::
     cpr::Multipart fileM{};
     if(file->type != EventDataType::FILE_URL) {
         fileM = cpr::Multipart{{"file", cpr::Buffer{file->data.begin(), file->data.end(), file->fileName}, file->mimeType}};
-        header["File-Size"] = std::to_string(file->data.size());
+        header["File-Size"] = sizeof(file->data);
     } else {
         fileM = cpr::Multipart{{
             "file",
