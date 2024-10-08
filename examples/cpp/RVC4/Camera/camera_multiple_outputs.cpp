@@ -1,8 +1,11 @@
 // Includes common necessary includes for development using depthai library
 #include <stdexcept>
+#include <string>
 
 #include "depthai/capabilities/ImgFrameCapability.hpp"
 #include "depthai/depthai.hpp"
+#include "depthai/pipeline/node/Sync.hpp"
+#include "depthai/pipeline/node/host/Display.hpp"
 
 int main(int argc, char** argv) {
     if(argc < 4 || (argc - 1) % 3 != 0) {
@@ -16,13 +19,19 @@ int main(int argc, char** argv) {
     dai::Pipeline pipeline;
 
     auto camRgb = pipeline.create<dai::node::Camera>()->build();
+    auto sync = pipeline.create<dai::node::Sync>();
+    auto display = pipeline.create<dai::node::Display>();
+
+    sync->setSyncAttempts(0);
+    sync->setRunOnHost(true);
 
     if(sizes.empty()) {
         throw std::runtime_error("internal error to few sizes");
     }
 
-    std::vector<std::shared_ptr<dai::MessageQueue>> videos;
+    int index = 0;
     for(const auto& size : sizes) {
+        ++index;
         dai::ImgFrameCapability cap;
         cap.type = dai::ImgFrame::Type::NV12;  // Fastest
         cap.size.value = std::pair{std::get<0>(size), std::get<1>(size)};
@@ -40,28 +49,14 @@ int main(int argc, char** argv) {
                 throw std::runtime_error("Resize mode argument (every 3rd) must be 0, 1 or 2");
         }
         auto* output = camRgb->requestOutput(cap, true);
-        videos.push_back(output->createOutputQueue());
+        output->link(sync->inputs[std::to_string(index)]);
     }
+
+    sync->out.link(display->input);
 
     pipeline.start();
 
-    while(pipeline.isRunning()) {
-        size_t videoIndex = 0;
-        for(const auto& video : videos) {
-            auto videoIn = video->tryGet<dai::ImgFrame>();
-            // Get BGR frame from NV12 encoded video frame to show with opencv
-            // Visualizing the frame on slower hosts might have overhead
-            if(videoIn) {
-                cv::imshow("video_" + std::to_string(videoIndex), videoIn->getCvFrame());
-            }
-            ++videoIndex;
-        }
+    pipeline.wait();
 
-        int key = cv::waitKey(1);
-        if(key == 'q' || key == 'Q') {
-            pipeline.stop();
-            return 0;
-        }
-    }
     return 0;
 }
