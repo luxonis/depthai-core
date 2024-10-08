@@ -57,7 +57,7 @@ int main(int argc, char* argv[]) {
 	std::vector<std::shared_ptr<dai::utility::EventData>> data4;
 	data4.push_back(fileData);
 	data4.push_back(fileData2);
-	// eventsManager->sendSnap("testdata4", nullptr, data4, {"tag5, tag6"}, {{"key8", "value8"}});
+	eventsManager->sendSnap("testdata4", nullptr, data4, {"tag5, tag6"}, {{"key8", "value8"}});
     while(pipeline.isRunning()) {
         auto detection = previewQ->get<dai::ImgFrame>();
 

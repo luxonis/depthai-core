@@ -45,16 +45,15 @@ EventData::EventData(const std::shared_ptr<EncodedFrame>& encodedFrame, std::str
     mimeType = "image/jpeg";
 }
 
-EventData::EventData(const std::shared_ptr<NNData>& nnData, const std::string& fileName)
-    : fileName(fileName), mimeType("application/octet-stream"), type(EventDataType::NN_DATA) {
+EventData::EventData(const std::shared_ptr<NNData>& nnData, std::string fileName)
+    : fileName(std::move(fileName)), mimeType("application/octet-stream"), type(EventDataType::NN_DATA) {
     // Convert NNData to bytes
     std::stringstream ss;
     ss.write((const char*)nnData->data->getData().data(), nnData->data->getData().size());
     data = ss.str();
 }
 
-EventsManager::EventsManager()
-    : url("https://events-ingest.cloud.luxonis.com"), queueSize(10), publishInterval(5.0f), logResponse(false), verifySsl(false) {
+EventsManager::EventsManager() : url("https://events-ingest.cloud.luxonis.com"), queueSize(10), publishInterval(5.0f), logResponse(false), verifySsl(false) {
     sourceAppId = utility::getEnv("AGENT_APP_ID");
     sourceAppIdentifier = utility::getEnv("AGENT_APP_IDENTIFIER");
     token = utility::getEnv("DEPTHAI_HUB_API_KEY");
@@ -96,7 +95,6 @@ void EventsManager::sendEventBuffer() {
         for(int i = 0; i < batchUploadEventResult->events_size(); i++) {
             auto eventResult = batchUploadEventResult->events(i);
             if(eventResult.accepted().file_upload_urls_size() > 0) {
-                logger::info("Uploading files");
                 for(int j = 0; j < eventResult.accepted().file_upload_urls().size(); j++) {
                     cpr::Url fileUrl = static_cast<cpr::Url>(this->url + eventResult.accepted().file_upload_urls(j));
 
@@ -167,7 +165,7 @@ void EventsManager::sendSnap(const std::string& name,
 void EventsManager::sendFile(const std::shared_ptr<EventData>& file, const std::string& url) {
     // if file struct contains byte data, send it, along with filename and mime type
     // if it file url, send it directly via url
-	logger::info("Uploading file: to {}", url);
+    logger::info("Uploading file: to {}", url);
     auto header = cpr::Header{{"Authorization", "Bearer " + token}};
     cpr::Multipart fileM{};
     if(file->type != EventDataType::FILE_URL) {
@@ -295,6 +293,9 @@ void EventsManager::setLogResponse(bool logResponse) {
 }
 void EventsManager::setDeviceSerialNumber(const std::string& deviceSerialNumber) {
     logger::warn("EventsManager is disabled, please enable DEPTHAI_ENABLE_CURL in CMake to use this feature");
+}
+void EventsManager::setVerifySsl(bool verifySsl) {
+	logger::warn("EventsManager is disabled, please enable DEPTHAI_ENABLE_CURL in CMake to use this feature");
 }
 }  // namespace utility
 }  // namespace dai
