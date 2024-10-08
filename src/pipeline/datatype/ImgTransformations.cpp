@@ -423,6 +423,39 @@ bool ImgTransformation::isValid() const {
     return srcWidth > 0 && srcHeight > 0 && width > 0 && height > 0;
 }
 
+dai::Point2f ImgTransformation::remapPointTo(const ImgTransformation& to, dai::Point2f point) const {
+    return to.transformPoint(invTransformPoint(point));
+}
+dai::Point2f ImgTransformation::remapPointTo(const std::array<std::array<float, 3>, 3>& to, dai::Point2f point) const {
+    ImgTransformation toT(0, 0);
+    toT.addTransformation(to);
+    return remapPointTo(toT, point);
+}
+dai::Point2f ImgTransformation::remapPointFrom(const ImgTransformation& from, dai::Point2f point) const {
+    return transformPoint(from.invTransformPoint(point));
+}
+dai::Point2f ImgTransformation::remapPointFrom(const std::array<std::array<float, 3>, 3>& from, dai::Point2f point) const {
+    ImgTransformation fromT(0, 0);
+    fromT.addTransformation(from);
+    return remapPointFrom(fromT, point);
+}
+dai::RotatedRect ImgTransformation::remapRectTo(const ImgTransformation& to, dai::RotatedRect rect) const {
+    return to.transformRect(invTransformRect(rect));
+}
+dai::RotatedRect ImgTransformation::remapRectTo(const std::array<std::array<float, 3>, 3>& to, dai::RotatedRect rect) const {
+    ImgTransformation toT(0, 0);
+    toT.addTransformation(to);
+    return remapRectTo(toT, rect);
+}
+dai::RotatedRect ImgTransformation::remapRectFrom(const ImgTransformation& from, dai::RotatedRect rect) const {
+    return transformRect(from.invTransformRect(rect));
+}
+dai::RotatedRect ImgTransformation::remapRectFrom(const std::array<std::array<float, 3>, 3>& from, dai::RotatedRect rect) const {
+    ImgTransformation fromT(0, 0);
+    fromT.addTransformation(from);
+    return remapRectFrom(fromT, rect);
+}
+
 // std::vector<std::vector<float>> ImgTransformations::getFlipHorizontalMatrix(int width) {
 //     auto scale = matrix::createScalingMatrix(-1, 1);
 //     auto translate = matrix::createTranslationMatrix(width, 0);

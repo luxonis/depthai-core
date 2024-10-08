@@ -68,6 +68,15 @@ struct ImgTransformation {
     ImgTransformation& addScale(float scaleX, float scaleY);
     ImgTransformation& addSrcCrops(const std::vector<dai::RotatedRect>& crops);
 
+    dai::Point2f remapPointTo(const ImgTransformation& to, dai::Point2f point) const;
+    dai::Point2f remapPointTo(const std::array<std::array<float, 3>, 3>& to, dai::Point2f point) const;
+    dai::Point2f remapPointFrom(const ImgTransformation& from, dai::Point2f point) const;
+    dai::Point2f remapPointFrom(const std::array<std::array<float, 3>, 3>& from, dai::Point2f point) const;
+    dai::RotatedRect remapRectTo(const ImgTransformation& to, dai::RotatedRect rect) const;
+    dai::RotatedRect remapRectTo(const std::array<std::array<float, 3>, 3>& to, dai::RotatedRect rect) const;
+    dai::RotatedRect remapRectFrom(const ImgTransformation& from, dai::RotatedRect rect) const;
+    dai::RotatedRect remapRectFrom(const std::array<std::array<float, 3>, 3>& from, dai::RotatedRect rect) const;
+
     bool isValid() const;
 
     DEPTHAI_SERIALIZE(ImgTransformation, transformationMatrix, transformationMatrixInv, srcWidth, srcHeight, width, height, srcCrops);
