@@ -8,51 +8,49 @@ std::string jsonDisplay(const nlohmann::json& json, int level, int indent) {
     auto doIndent = [&]() {
         for(int i = 0; i < level * indent; ++i) ss << " ";
     };
-    ss << '\n';
     switch(json.type()) {
         case nlohmann::detail::value_t::null:
-            doIndent();
             ss << "null";
             break;
         case nlohmann::detail::value_t::string:
-            doIndent();
             ss << json.get<std::string>();
             break;
         case nlohmann::detail::value_t::boolean:
-            doIndent();
             ss << (json.get<bool>() ? "true" : "false");
             break;
         case nlohmann::detail::value_t::number_integer:
-            doIndent();
             ss << json.get<int>();
             break;
         case nlohmann::detail::value_t::number_unsigned:
-            doIndent();
             ss << json.get<unsigned int>();
             break;
         case nlohmann::detail::value_t::number_float:
-            doIndent();
             ss << json.get<float>();
             break;
         case nlohmann::detail::value_t::object:
             for(const auto& [k, v] : json.items()) {
+                std::string key = k;
+                auto sep = key.find_last_of("::");
+                if(sep != std::string::npos) key = key.substr(sep + 1);
+                ss << '\n';
                 doIndent();
-                ss << k << jsonDisplay(v, level + 1, indent) << '\n';
+                ss << key << ": " << jsonDisplay(v, level + 1, indent);
             }
             break;
         case nlohmann::detail::value_t::array: {
             auto elements = json.get<std::vector<nlohmann::json>>();
-            doIndent();
             ss << '[';
             for(const auto& el : elements) {
-                ss << jsonDisplay(el, level + 1, indent);
+                ss << jsonDisplay(el, level + 1, indent) << ", ";
             }
+            ss << '\n';
             doIndent();
             ss << ']';
             break;
         }
         case nlohmann::detail::value_t::binary:
         case nlohmann::detail::value_t::discarded:
+            ss << "invalid";
             break;
     }
     if(level == 0) ss << '\n';
