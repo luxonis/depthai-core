@@ -524,7 +524,11 @@ macro(add_runtime_dependencies depending_target dependency)
                 set(dlls ${depthai_dll_libraries} $<$<CONFIG:${cfg}>:${dll}>)
             endforeach()
         endif()
-        file(GLOB depthai_dll_libraries "${HUNTER_INSTALL_PREFIX}/bin/*.dll")
+        if(HUNTER_ENABLED)
+            file(GLOB depthai_dll_libraries "${HUNTER_INSTALL_PREFIX}/bin/*.dll")
+        else()
+            set(depthai_dll_libraries "")
+        endif()
         # Create a list of required dll files
         set(required_dll_files ${dlls} ${depthai_dll_libraries})
         # Copy the required dlls
@@ -684,6 +688,50 @@ if(DEPTHAI_SANITIZE)
     endif()
 endif()
 
+# Support use of hunter_private_data (used by tests and examples) even if HUNTER_ENABLED is OFF
+if(NOT HUNTER_ENABLED)
+    if(NOT COMMAND hunter_private_data)
+        function(hunter_private_data)    
+            set(one URL SHA1 CREDENTIALS LOCATION FILE)
+            set(multiple HTTPHEADER)
+    
+            cmake_parse_arguments(x "" "${one}" "${multiple}" "${ARGN}")
+    
+            if(x_HTTPHEADER)
+                message(FATAL_ERROR "HTTPHEADER argument of hunter_private_data not supported if HUNTER_ENABLED is OFF")
+            endif()
+            if(x_CREDENTIALS)
+                message(FATAL_ERROR "CREDENTIALS argument of hunter_private_data not supported if HUNTER_ENABLED is OFF")
+            endif()
+    
+            if(NOT x_URL)
+                message(FATAL_ERROR "URL not provided to hunter_private_data")
+            endif()
+            if(NOT x_SHA1)
+                message(FATAL_ERROR "SHA1 not provided to hunter_private_data")
+            endif()
+            if(NOT x_FILE)
+                message(FATAL_ERROR "FILE not provided to hunter_private_data")
+            endif()
+            if(NOT x_LOCATION)
+                message(FATAL_ERROR "LOCATION not provided to hunter_private_data")
+            endif()
+    
+            set(x_DOWNLOAD_LOCATION "${CMAKE_CURRENT_BINARY_DIR}/_hunter_private_data/${x_FILE}")
+    
+            file(DOWNLOAD
+                ${x_URL}
+                ${x_DOWNLOAD_LOCATION}
+                EXPECTED_HASH SHA1=${x_SHA1}
+                TLS_VERIFY ON
+            )
+    
+            # Set the output variable
+            set(${x_LOCATION} "${x_DOWNLOAD_LOCATION}" PARENT_SCOPE)
+        endfunction()
+    endif()
+endif()
+
 ########################
 # Testing infrastructure
 ########################
@@ -743,7 +791,9 @@ configure_file("cmake/${PROJECT_NAME}Dependencies.cmake" ${PROJECT_NAME}Dependen
 write_basic_package_version_file(${PROJECT_NAME}ConfigVersion.cmake VERSION ${PROJECT_VERSION} COMPATIBILITY AnyNewerVersion)
 
 # Configure config file (one for exporting build directory, one for installation)
-file(RELATIVE_PATH DEPTHAI_DEPENDENCIES_INSTALLATION_PATH_REL "${CMAKE_CURRENT_BINARY_DIR}" "${HUNTER_INSTALL_PREFIX}")
+if(HUNTER_ENABLED)
+    file(RELATIVE_PATH DEPTHAI_DEPENDENCIES_INSTALLATION_PATH_REL "${CMAKE_CURRENT_BINARY_DIR}" "${HUNTER_INSTALL_PREFIX}")
+endif()
 configure_file(cmake/${PROJECT_NAME}Config.cmake.in ${PROJECT_NAME}Config.cmake @ONLY)
 
 # Config for installation
@@ -782,8 +832,10 @@ if(DEPTHAI_INSTALL)
     install(DIRECTORY "${DEPTHAI_SHARED_3RDPARTY_INCLUDE}/" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/${DEPTHAI_SHARED_3RDPARTY_HEADERS_PATH}")
     # Install depthai-bootloader-shared public headers
     install(DIRECTORY "${DEPTHAI_BOOTLOADER_SHARED_PUBLIC_INCLUDE}/" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
-    # Install Hunter dependencies
-    install(DIRECTORY "${HUNTER_INSTALL_PREFIX}/" DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}/dependencies")
+    if(HUNTER_ENABLED)
+        # Install Hunter dependencies
+        install(DIRECTORY "${HUNTER_INSTALL_PREFIX}/" DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}/dependencies")
+    endif()
     # Install resources if not RC'd
     if(NOT DEPTHAI_BINARIES_RESOURCE_COMPILE)
         install(DIRECTORY "${DEPTHAI_RESOURCES_OUTPUT_DIR}/" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/${PROJECT_NAME}")
