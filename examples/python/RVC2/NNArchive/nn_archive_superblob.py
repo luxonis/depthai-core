@@ -25,11 +25,8 @@ assert archive.getModelPath() is not None
 # There is no blob available
 assert archive.getBlob() is None
 
-# One can access the NNArchive config as follows
-config = archive.getConfig()
-
 # You can access any config version
-v1config: dai.nn_archive.v1.Config = config.getConfigV1()
+v1config: dai.nn_archive.v1.Config = archive.getConfig()
 
 # Print some config fields
 print("-" * 10)

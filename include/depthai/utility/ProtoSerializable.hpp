@@ -42,7 +42,10 @@ class ProtoSerializable {
 
     virtual ~ProtoSerializable() = default;
 
-    // This function is final to prevent overriding
+    /**
+     * @brief Serialize the protobuf message of this object
+     * @return serialized protobuf message
+     */
     virtual std::vector<std::uint8_t> serializeProto() const final {
         auto protoMessage = getProtoMessage();
         std::size_t nbytes = protoMessage->ByteSizeLong();
@@ -56,6 +59,10 @@ class ProtoSerializable {
         return buffer;
     }
 
+    /**
+     * @brief Serialize the schema of this object
+     * @return schemaPair
+     */
     virtual schemaPair serializeSchema() const {
         auto protoMessage = getProtoMessage();
         const auto* descriptor = protoMessage->GetDescriptor();
@@ -69,6 +76,11 @@ class ProtoSerializable {
     }
 
    protected:
+
+    /**
+     * @brief Generate the corresponding protobuf message from this object
+     * @return std::unique_ptr<google::protobuf::Message>
+     */
     virtual std::unique_ptr<google::protobuf::Message> getProtoMessage() const = 0;
 };
 

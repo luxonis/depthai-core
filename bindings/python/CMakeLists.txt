@@ -97,6 +97,7 @@ set(SOURCE_LIST
     src/pipeline/node/IMUBindings.cpp
     src/pipeline/node/EdgeDetectorBindings.cpp
     src/pipeline/node/FeatureTrackerBindings.cpp
+    src/pipeline/node/ThermalBindings.cpp
     src/pipeline/node/ToFBindings.cpp
     src/pipeline/node/AprilTagBindings.cpp
     src/pipeline/node/DetectionParserBindings.cpp
@@ -111,6 +112,7 @@ set(SOURCE_LIST
     src/pipeline/node/HostNodeBindings.cpp
     src/pipeline/node/RecordBindings.cpp
     src/pipeline/node/ReplayBindings.cpp
+    src/pipeline/node/ImageAlignBindings.cpp
 
     src/pipeline/datatype/ADatatypeBindings.cpp
     src/pipeline/datatype/AprilTagConfigBindings.cpp
@@ -119,6 +121,7 @@ set(SOURCE_LIST
     src/pipeline/datatype/CameraControlBindings.cpp
     src/pipeline/datatype/EdgeDetectorConfigBindings.cpp
     src/pipeline/datatype/FeatureTrackerConfigBindings.cpp
+    src/pipeline/datatype/ThermalConfigBindings.cpp
     src/pipeline/datatype/ToFConfigBindings.cpp
     src/pipeline/datatype/ImageManipConfigBindings.cpp
     src/pipeline/datatype/ImageManipConfigV2Bindings.cpp
@@ -139,6 +142,7 @@ set(SOURCE_LIST
     src/pipeline/datatype/PointCloudConfigBindings.cpp
     src/pipeline/datatype/PointCloudDataBindings.cpp
     src/pipeline/datatype/TransformDataBindings.cpp
+    src/pipeline/datatype/ImageAlignConfigBindings.cpp
 
     src/capabilities/CapabilityBindings.cpp
     src/capabilities/CapabilityRangeBindings.cpp

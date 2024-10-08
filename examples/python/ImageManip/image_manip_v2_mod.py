@@ -8,8 +8,8 @@ manip = pipeline.create(dai.node.ImageManipV2)
 
 
 manip.initialConfig.setOutputSize(1270, 710, dai.ImageManipConfigV2.ResizeMode.LETTERBOX)
-manip.initialConfig.crop(50, 100, 500, 500)
-manip.initialConfig.flipVertical()
+manip.initialConfig.addCrop(50, 100, 500, 500)
+manip.initialConfig.addFlipVertical()
 manip.initialConfig.setFrameType(dai.ImgFrame.Type.NV12)
 manip.setMaxOutputFrameSize(2709360)
 

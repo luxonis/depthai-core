@@ -208,8 +208,85 @@ class NNData : public Buffer {
      * @return NNData&: reference to this object
      */
     template <typename _Ty = double>
-    NNData& addTensor(const std::string& name, const std::vector<_Ty>& data) {
-        return addTensor<_Ty>(name, xt::adapt(data, std::vector<size_t>{1, data.size()}));
+    NNData& addTensor(const std::string& name, const std::vector<_Ty>& data, dai::TensorInfo::DataType dataType) {
+        return addTensor<_Ty>(name, xt::adapt(data, std::vector<size_t>{1, data.size()}), dataType);
+    };
+    // addTensor vector dispatch
+    template <typename _Ty = double>
+    NNData& addTensor(const std::string& name, const std::vector<_Ty>& tensor) {
+        if constexpr(std::is_same<_Ty, int>::value) {
+            return addTensor<int>(name, tensor, dai::TensorInfo::DataType::INT);
+        } else if constexpr(std::is_same<_Ty, uint16_t>::value) {
+            return addTensor<uint16_t>(name, tensor, dai::TensorInfo::DataType::FP16);
+        } else if constexpr(std::is_same<_Ty, float>::value) {
+            return addTensor<float>(name, tensor, dai::TensorInfo::DataType::FP32);
+        } else if constexpr(std::is_same<_Ty, double>::value) {
+            return addTensor<double>(name, tensor, dai::TensorInfo::DataType::FP64);
+        } else if constexpr(std::is_same<_Ty, std::int8_t>::value) {
+            return addTensor<std::int8_t>(name, tensor, dai::TensorInfo::DataType::I8);
+        } else if constexpr(std::is_same<_Ty, std::uint8_t>::value) {
+            return addTensor<std::uint8_t>(name, tensor, dai::TensorInfo::DataType::U8F);
+        } else {
+            throw std::runtime_error("Unsupported datatype");
+        }
+    }
+
+    NNData& addTensor(const std::string& name, const std::vector<int>& tensor) {
+        return addTensor<int>(name, tensor, dai::TensorInfo::DataType::INT);
+    };
+    NNData& addTensor(const std::string& name, const std::vector<uint16_t>& tensor) {
+        return addTensor<uint16_t>(name, tensor, dai::TensorInfo::DataType::FP16);
+    };
+    NNData& addTensor(const std::string& name, const std::vector<float>& tensor) {
+        return addTensor<float>(name, tensor, dai::TensorInfo::DataType::FP32);
+    };
+    NNData& addTensor(const std::string& name, const std::vector<double>& tensor) {
+        return addTensor<double>(name, tensor, dai::TensorInfo::DataType::FP64);
+    };
+    NNData& addTensor(const std::string& name, const std::vector<std::int8_t>& tensor) {
+        return addTensor<std::int8_t>(name, tensor, dai::TensorInfo::DataType::I8);
+    };
+    NNData& addTensor(const std::string& name, const std::vector<std::uint8_t>& tensor) {
+        return addTensor<std::uint8_t>(name, tensor, dai::TensorInfo::DataType::U8F);
+    };
+
+    // addTensor dispatch
+    template <typename _Ty = double>
+    NNData& addTensor(const std::string& name, const xt::xarray<_Ty>& tensor) {
+        if constexpr(std::is_same<_Ty, int>::value) {
+            return addTensor<int>(name, tensor, dai::TensorInfo::DataType::INT);
+        } else if(std::is_same<_Ty, uint16_t>::value) {
+            return addTensor<uint16_t>(name, tensor, dai::TensorInfo::DataType::FP16);
+        } else if constexpr(std::is_same<_Ty, float>::value) {
+            return addTensor<float>(name, tensor, dai::TensorInfo::DataType::FP32);
+        } else if constexpr(std::is_same<_Ty, double>::value) {
+            return addTensor<double>(name, tensor, dai::TensorInfo::DataType::FP64);
+        } else if constexpr(std::is_same<_Ty, std::int8_t>::value) {
+            return addTensor<std::int8_t>(name, tensor, dai::TensorInfo::DataType::I8);
+        } else if constexpr(std::is_same<_Ty, std::uint8_t>::value) {
+            return addTensor<std::uint8_t>(name, tensor, dai::TensorInfo::DataType::U8F);
+        } else {
+            throw std::runtime_error("Unsupported datatype");
+        }
+    }
+
+    NNData& addTensor(const std::string& name, const xt::xarray<int>& tensor) {
+        return addTensor<int>(name, tensor, dai::TensorInfo::DataType::INT);
+    };
+    NNData& addTensor(const std::string& name, const xt::xarray<uint16_t>& tensor) {
+        return addTensor<uint16_t>(name, tensor, dai::TensorInfo::DataType::FP16);
+    };
+    NNData& addTensor(const std::string& name, const xt::xarray<float>& tensor) {
+        return addTensor<float>(name, tensor, dai::TensorInfo::DataType::FP32);
+    };
+    NNData& addTensor(const std::string& name, const xt::xarray<double>& tensor) {
+        return addTensor<double>(name, tensor, dai::TensorInfo::DataType::FP64);
+    };
+    NNData& addTensor(const std::string& name, const xt::xarray<std::int8_t>& tensor) {
+        return addTensor<std::int8_t>(name, tensor, dai::TensorInfo::DataType::I8);
+    };
+    NNData& addTensor(const std::string& name, const xt::xarray<std::uint8_t>& tensor) {
+        return addTensor<std::uint8_t>(name, tensor, dai::TensorInfo::DataType::U8F);
     };
 
     /**
@@ -227,6 +304,22 @@ class NNData : public Buffer {
     };
 
     /**
+     * @brief Add a tensor to this NNData object.
+     * Implicitly adds a TensorInfo::DataType
+     *
+     * @param name: Name of the tensor
+     * @param data: array
+     * @param order: Storage order of the tensor
+     * @return NNData&: reference to this object
+     */
+
+    template <typename _Ty = double>
+    NNData& addTensor(const std::string& name, const xt::xarray<_Ty>& data, TensorInfo::StorageOrder order) {
+        auto dataType = std::is_integral<_Ty>::value ? dai::TensorInfo::DataType::U8F : dai::TensorInfo::DataType::FP16;
+        return addTensor<_Ty>(name, data, dataType, order);
+    };
+
+    /**
      * @brief Add a tensor to this NNData object. The storage order is picked based on the number of dimensions of the tensor.
      * Float values are converted to FP16 and integers are cast to bytes.
      *
@@ -235,7 +328,7 @@ class NNData : public Buffer {
      * @return NNData&: reference to this object
      */
     template <typename _Ty = double>
-    NNData& addTensor(const std::string& name, const xt::xarray<_Ty>& tensor) {
+    NNData& addTensor(const std::string& name, const xt::xarray<_Ty>& tensor, dai::TensorInfo::DataType dataType) {
         TensorInfo::StorageOrder order;
         switch(tensor.shape().size()) {
             case 1:
@@ -253,7 +346,7 @@ class NNData : public Buffer {
             default:
                 throw std::runtime_error("Unsupported tensor shape. Only 1D, 2D, 3D and 4D tensors are supported");
         }
-        return addTensor(name, tensor, order);
+        return addTensor(name, tensor, dataType, order);
     }
 
     /**
@@ -266,8 +359,15 @@ class NNData : public Buffer {
      * @return NNData&: reference to this object
      */
     template <typename _Ty = double>
-    NNData& addTensor(const std::string& name, const xt::xarray<_Ty>& tensor, const TensorInfo::StorageOrder order) {
+    NNData& addTensor(const std::string& name, const xt::xarray<_Ty>& tensor, dai::TensorInfo::DataType dataType, const TensorInfo::StorageOrder order) {
         static_assert(std::is_integral<_Ty>::value || std::is_floating_point<_Ty>::value, "Tensor type needs to be integral or floating point");
+        // if(dataType==dai::TensorInfo::DataType::FP32) std::cout<<"FP32\n";
+        // else if(dataType==dai::TensorInfo::DataType::FP16) std::cout<<"FP16\n";
+        // else if(dataType==dai::TensorInfo::DataType::INT) std::cout<<"INT\n";
+        // else if(dataType==dai::TensorInfo::DataType::I8) std::cout<<"I8\n";
+        // else if(dataType==dai::TensorInfo::DataType::U8F) std::cout<<"U8F\n";
+        // else if(dataType==dai::TensorInfo::DataType::FP64) std::cout<<"FP64\n";
+        // else std::cout<<"Unsupported type\n";
 
         // Check if data is vector type of data
         if(std::dynamic_pointer_cast<VectorMemory>(data) == nullptr) {
@@ -277,7 +377,23 @@ class NNData : public Buffer {
         auto vecData = std::dynamic_pointer_cast<VectorMemory>(data);
 
         // Get size in bytes of the converted tensor data, u8 for integral and fp16 for floating point
-        const size_t sConvertedData = std::is_integral<_Ty>::value ? tensor.size() : 2 * tensor.size();
+        // const size_t sConvertedData = std::is_integral<_Ty>::value ? tensor.size() : 2 * tensor.size();
+        size_t sConvertedData = tensor.size();
+        switch(dataType) {
+            case dai::TensorInfo::DataType::FP64:
+                sConvertedData *= 8;
+                break;
+            case dai::TensorInfo::DataType::FP32:
+            case dai::TensorInfo::DataType::INT:
+                sConvertedData *= 4;
+                break;
+            case dai::TensorInfo::DataType::FP16:
+                sConvertedData *= 2;
+                break;
+            case dai::TensorInfo::DataType::U8F:
+            case dai::TensorInfo::DataType::I8:
+                break;
+        }
 
         // Append bytes so that each new tensor is DATA_ALIGNMENT aligned
         size_t remainder = std::distance(vecData->begin(), vecData->end()) % DATA_ALIGNMENT;
@@ -291,14 +407,30 @@ class NNData : public Buffer {
         // Reserve space
         vecData->resize(offset + sConvertedData);
 
-        // Convert data to u8 or fp16 and write to data
-        if(std::is_integral<_Ty>::value) {
+        // Convert data to appropriate data type and write to data
+        if(dataType == dai::TensorInfo::DataType::I8) {
+            for(uint32_t i = 0; i < tensor.size(); i++) {
+                vecData->data()[i + offset] = (int8_t)tensor.data()[i];
+            }
+        } else if(dataType == dai::TensorInfo::DataType::FP16) {
+            for(uint32_t i = 0; i < tensor.size(); i++) {
+                *(uint16_t*)(&vecData->data()[2 * i + offset]) = fp32_to_fp16(tensor.data()[i]);
+            }
+        } else if(dataType == dai::TensorInfo::DataType::FP32) {
+            for(uint32_t i = 0; i < tensor.size(); i++) {
+                *(float*)(&vecData->data()[4 * i + offset]) = tensor.data()[i];
+            }
+        } else if(dataType == dai::TensorInfo::DataType::INT) {
+            for(uint32_t i = 0; i < tensor.size(); i++) {
+                *(int32_t*)(&vecData->data()[4 * i + offset]) = tensor.data()[i];
+            }
+        } else if(dataType == dai::TensorInfo::DataType::U8F) {
             for(uint32_t i = 0; i < tensor.size(); i++) {
                 vecData->data()[i + offset] = (uint8_t)tensor.data()[i];
             }
-        } else {
+        } else if(dataType == dai::TensorInfo::DataType::FP64) {
             for(uint32_t i = 0; i < tensor.size(); i++) {
-                *(uint16_t*)(&vecData->data()[2 * i + offset]) = fp32_to_fp16(tensor.data()[i]);
+                *(double*)(&vecData->data()[8 * i + offset]) = tensor.data()[i];
             }
         }
 
@@ -306,7 +438,7 @@ class NNData : public Buffer {
         TensorInfo info;
         info.name = name;
         info.offset = static_cast<unsigned int>(offset);
-        info.dataType = std::is_integral<_Ty>::value ? TensorInfo::DataType::U8F : TensorInfo::DataType::FP16;
+        info.dataType = dataType;
         info.numDimensions = tensor.dimension();
         info.order = order;
         for(uint32_t i = 0; i < tensor.dimension(); i++) {
@@ -372,6 +504,11 @@ class NNData : public Buffer {
             case TensorInfo::DataType::FP32:
                 for(uint32_t i = 0; i < tensor.size(); i++) {
                     tensor.data()[i] = reinterpret_cast<float_t*>(data->getData().data())[it->offset / sizeof(float_t) + i];
+                }
+                break;
+            case TensorInfo::DataType::FP64:
+                for(uint32_t i = 0; i < tensor.size(); i++) {
+                    tensor.data()[i] = reinterpret_cast<double_t*>(data->getData().data())[it->offset / sizeof(double_t) + i];
                 }
                 break;
         }

@@ -214,6 +214,7 @@ void ReplayMetadataOnly::run() {
             throw std::runtime_error("Metadata file contains no messages");
         }
         auto buffer = getMessage(metadata, type);
+
         if(first) prevMsgTs = buffer->getTimestampDevice();
 
         if(!(fps.has_value() && fps.value() > 0.1f)) {

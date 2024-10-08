@@ -1334,7 +1334,7 @@ if evaluation_mode:
     # Get the current timestamp
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     # Create the filename with the timestamp
-    filename = f"stereo_middleburry_{"RVC2" if platform == dai.Platform.RVC2 else "RVC4"}_{timestamp}.csv"
+    filename = f"stereo_middleburry_{'RVC2' if platform == dai.Platform.RVC2 else 'RVC4'}_{timestamp}.csv"
     # Write the dictionary to a CSV file (append mode)
     file_exists = False
 
