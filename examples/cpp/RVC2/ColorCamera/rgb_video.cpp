@@ -1,4 +1,5 @@
 // Includes common necessary includes for development using depthai library
+#include <iostream>
 #include "depthai/depthai.hpp"
 
 int main() {
@@ -18,6 +19,8 @@ int main() {
     pipeline.start();
     while(pipeline.isRunning()) {
         auto videoIn = outputQueue->get<dai::ImgFrame>();
+
+        std::cout << videoIn->to_string() << std::endl;
 
         // Get BGR frame from NV12 encoded video frame to show with opencv
         // Visualizing the frame on slower hosts might have overhead
