@@ -42,7 +42,6 @@ with dai.Pipeline() as pipeline:
     eventMan = dai.EventsManager()
     eventMan.setLogResponse(True)
     eventMan.setUrl("https://events-ingest.apps.stg.hubcloud")
-    # eventsManager->sendEvent("test", nullptr, {}, {"tag1", "tag2"}, {{"key1", "value1"}});
 
     eventMan.sendEvent("test1", None, [], ["tag1", "tag2"], {"key1": "value1"})
     time.sleep(2)
@@ -99,7 +98,7 @@ with dai.Pipeline() as pipeline:
         if inRgb is not None:
             frame = inRgb.getCvFrame()
             if not eventSent:
-                # eventMan.sendSnap("test5", {"key9": "key10"}, ["tag5"], [], inRgb)
+                eventMan.sendSnap("rgb", inRgb, [], ["tag1", "tag2"], {"key1": "value1"})
                 eventSent = True
             cv2.putText(
                 frame,
