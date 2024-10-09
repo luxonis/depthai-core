@@ -24,6 +24,7 @@ enum class DatatypeEnum : std::int32_t {
     AprilTags,
     Tracklets,
     IMUData,
+    Keypoints,
     StereoDepthConfig,
     FeatureTrackerConfig,
     ThermalConfig,

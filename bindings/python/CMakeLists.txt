@@ -95,6 +95,7 @@ set(SOURCE_LIST
     src/pipeline/node/SpatialDetectionNetworkBindings.cpp
     src/pipeline/node/ObjectTrackerBindings.cpp
     src/pipeline/node/IMUBindings.cpp
+    src/pipeline/node/KeypointsParserBindings.cpp
     src/pipeline/node/EdgeDetectorBindings.cpp
     src/pipeline/node/FeatureTrackerBindings.cpp
     src/pipeline/node/ThermalBindings.cpp
@@ -129,6 +130,7 @@ set(SOURCE_LIST
     src/pipeline/datatype/ImgFrameBindings.cpp
     src/pipeline/datatype/EncodedFrameBindings.cpp
     src/pipeline/datatype/IMUDataBindings.cpp
+    src/pipeline/datatype/KeypointsBindings.cpp
     src/pipeline/datatype/MessageGroupBindings.cpp
     src/pipeline/datatype/NNDataBindings.cpp
     src/pipeline/datatype/SpatialImgDetectionsBindings.cpp

@@ -632,18 +632,6 @@ class NNData : public Buffer {
     }
 
     /**
-     * Get the datatype of a given tensor
-     * @returns TensorInfo::DataType tensor datatype
-     */
-    TensorInfo::DataType getTensorDatatype(const std::string& name);
-
-    /**
-     * Get the datatype of the first tensor
-     * @returns TensorInfo::DataType tensor datatype
-     */
-    TensorInfo::DataType getFirstTensorDatatype();
-
-    /**
      * Convenience function to retrieve values from the first tensor
      * @returns xt::xarray<_Ty> tensor
      */
@@ -656,6 +644,18 @@ class NNData : public Buffer {
         return {};
     }
 #endif
+    /**
+     * Get the datatype of a given tensor
+     * @returns TensorInfo::DataType tensor datatype
+     */
+    TensorInfo::DataType getTensorDatatype(const std::string& name);
+
+    /**
+     * Get the datatype of the first tensor
+     * @returns TensorInfo::DataType tensor datatype
+     */
+    TensorInfo::DataType getFirstTensorDatatype();
+
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
         metadata = utility::serialize(*this);
         datatype = DatatypeEnum::NNData;

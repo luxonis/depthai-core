@@ -12,6 +12,7 @@
 #include "datatype/EncodedFrame.hpp"
 #include "datatype/FeatureTrackerConfig.hpp"
 #include "datatype/IMUData.hpp"
+#include "datatype/Keypoints.hpp"
 #include "datatype/ImageManipConfig.hpp"
 #include "datatype/ImageManipConfigV2.hpp"
 #include "datatype/ImgDetections.hpp"
