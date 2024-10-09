@@ -3,6 +3,7 @@
 #include <assert.h>
 
 #include <cstring>
+#include <sstream>
 
 #include "depthai/utility/ImageManipV2Impl.hpp"
 
@@ -454,6 +455,32 @@ dai::RotatedRect ImgTransformation::remapRectFrom(const std::array<std::array<fl
     ImgTransformation fromT(0, 0);
     fromT.addTransformation(from);
     return remapRectFrom(fromT, rect);
+}
+
+std::string ImgTransformation::str() const {
+    const int indent = 1;
+    std::stringstream ss;
+    auto doIndent = [&](int level) {
+        for(auto i = 0; i < indent * level; ++i) ss << '\t';
+    };
+    ss << '\n';
+    ss << "matrix: \n";
+    for(auto i = 0; i < 3; ++i) {
+        doIndent(1);
+        ss << transformationMatrix[i][0];
+        for(auto j = 1; j < 3; ++j) ss << '\t' << transformationMatrix[i][j];
+        ss << '\n';
+    }
+    ss << "matrix inverse: \n";
+    for(auto i = 0; i < 3; ++i) {
+        doIndent(1);
+        ss << transformationMatrixInv[i][0];
+        for(auto j = 1; j < 3; ++j) ss << '\t' << transformationMatrixInv[i][j];
+        ss << '\n';
+    }
+    ss << "size: " << width << " x " << height << '\n';
+    ss << "source size: " << srcWidth << " x " << srcHeight << '\n';
+    return ss.str();
 }
 
 // std::vector<std::vector<float>> ImgTransformations::getFlipHorizontalMatrix(int width) {
