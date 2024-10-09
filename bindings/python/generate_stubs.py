@@ -82,7 +82,7 @@ try:
 
         # Remove import depthai.*
         final_stubs = re.sub(r"import depthai\.\S*", "", stubs_import)
-        
+
         for line in final_stubs.split('\n'):
             final_lines.append(line)
             if "class HostNode(ThreadedHostNode):" in line:
@@ -90,7 +90,7 @@ try:
                 final_lines.append('    def __init__(self, *args) -> None: ...')
 
         final_stubs = '\n'.join(final_lines)
-        # Writeout changes 
+        # Writeout changes
         file.seek(0)
         file.truncate(0)
         file.write(final_stubs)
@@ -131,7 +131,7 @@ try:
                 modules.append(f)
 
         prefix = "from depthai import " if is_depthai_root else "from . import "
-        imports = '\n'.join([f'{prefix}{os.path.splitext(m)[0]}' for m in modules])
+        imports = '\n'.join([f'{prefix}{os.path.splitext(m)[0]} as {os.path.splitext(m)[0]}' for m in modules])
 
         # Add imports to old __init__.pyi
         new_contents = imports + '\n' + contents
