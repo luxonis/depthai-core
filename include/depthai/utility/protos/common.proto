@@ -57,3 +57,15 @@ message TransformationMatrix {
 message FloatArray {
     repeated float values = 1;
 }
+
+message Color {
+    float r = 1;
+    float g = 2;
+    float b = 3;
+    float a = 4;
+}
+
+message Point2f {
+    float x = 1;
+    float y = 2;
+}
