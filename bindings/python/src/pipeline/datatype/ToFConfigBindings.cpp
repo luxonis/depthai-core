@@ -34,6 +34,7 @@ void bind_tofconfig(pybind11::module& m, void* pCallstack){
     // Message
     toFConfig
         .def(py::init<>())
+        .def("__str__", &ToFConfig::to_string)
         // .def(py::init<std::shared_ptr<ToFConfig>>())
 
         .def_readwrite("median", &ToFConfig::median, DOC(dai, ToFConfig, median))

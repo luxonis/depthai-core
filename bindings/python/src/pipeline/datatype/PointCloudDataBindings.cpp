@@ -50,6 +50,7 @@ void bind_pointclouddata(pybind11::module& m, void* pCallstack){
     // Message
     pointCloudData
         .def(py::init<>())
+        .def("__str__", &PointCloudData::to_string)
         // .def_property("points", [](PointCloudData& data) { return &data.getPoints(); }, [](PointCloudData& data, std::vector<Point3f> points) {data.getPoints() = points;})
         .def("getPoints", [](py::object &obj){
             dai::PointCloudData& data = obj.cast<dai::PointCloudData&>();

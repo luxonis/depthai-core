@@ -27,6 +27,7 @@ void bind_benchmarkreport(pybind11::module& m, void* pCallstack) {
 
     // Message
     benchmarkReport.def(py::init<>())
+        .def("__str__", &BenchmarkReport::to_string)
         .def_property_readonly("fps", [](BenchmarkReport& i) { return &i.fps; })
         .def_property_readonly("timeTotal", [](BenchmarkReport& i) { return &i.timeTotal; })
         .def_property_readonly("numMessagesReceived", [](BenchmarkReport& i) { return &i.numMessagesReceived; })

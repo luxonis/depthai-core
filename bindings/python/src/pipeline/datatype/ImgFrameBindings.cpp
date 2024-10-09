@@ -116,6 +116,7 @@ void bind_imgframe(pybind11::module& m, void* pCallstack){
     // Message
     imgFrame.def(py::init<>())
         .def(py::init<size_t>())
+        .def("__str__", &ImgFrame::to_string)
         // getters
         .def("getTimestamp", py::overload_cast<>(&ImgFrame::Buffer::getTimestamp, py::const_), DOC(dai, Buffer, getTimestamp))
         .def("getTimestampDevice", py::overload_cast<>(&ImgFrame::Buffer::getTimestampDevice, py::const_), DOC(dai, Buffer, getTimestampDevice))

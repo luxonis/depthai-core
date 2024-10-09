@@ -42,6 +42,7 @@ void bind_pointcloudconfig(pybind11::module& m, void* pCallstack){
     // Message
     config
         .def(py::init<>())
+        .def("__str__", &PointCloudConfig::to_string)
         // .def(py::init<std::shared_ptr<RawPointCloudConfig>>())
 
         // .def("set", &PointCloudConfig::set, py::arg("config"), DOC(dai, PointCloudConfig, set))

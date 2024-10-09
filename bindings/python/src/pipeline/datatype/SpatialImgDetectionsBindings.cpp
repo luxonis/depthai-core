@@ -69,6 +69,7 @@ void bind_spatialimgdetections(pybind11::module& m, void* pCallstack){
     // Message
     spatialImgDetections
         .def(py::init<>())
+        .def("__str__", &SpatialImgDetections::to_string)
         .def_property("detections", [](SpatialImgDetections& det) { return &det.detections; }, [](SpatialImgDetections& det, std::vector<SpatialImgDetection> val) { det.detections = val; })
         .def("getTimestamp", &SpatialImgDetections::Buffer::getTimestamp, DOC(dai, Buffer, getTimestamp))
         .def("getTimestampDevice", &SpatialImgDetections::Buffer::getTimestampDevice, DOC(dai, Buffer, getTimestampDevice))

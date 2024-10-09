@@ -39,13 +39,16 @@ std::string jsonDisplay(const nlohmann::json& json, int level, int indent) {
             break;
         case nlohmann::detail::value_t::array: {
             auto elements = json.get<std::vector<nlohmann::json>>();
-            ss << '[';
-            for(const auto& el : elements) {
-                ss << jsonDisplay(el, level + 1, indent) << ", ";
+            if(elements.empty()) ss << "[ ]";
+            else {
+                ss << '[';
+                for(const auto& el : elements) {
+                    ss << jsonDisplay(el, level + 1, indent) << ", ";
+                }
+                ss << '\n';
+                doIndent();
+                ss << ']';
             }
-            ss << '\n';
-            doIndent();
-            ss << ']';
             break;
         }
         case nlohmann::detail::value_t::binary:

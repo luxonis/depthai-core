@@ -280,6 +280,7 @@ void bind_stereodepthconfig(pybind11::module& m, void* pCallstack){
     // Message
     stereoDepthConfig
         .def(py::init<>())
+        .def("__str__", &StereoDepthConfig::to_string)
         .def("setDepthAlign", &StereoDepthConfig::setDepthAlign, py::arg("align"), DOC(dai, StereoDepthConfig, setDepthAlign))
         .def("setConfidenceThreshold",  &StereoDepthConfig::setConfidenceThreshold, py::arg("confThr"), DOC(dai, StereoDepthConfig, setConfidenceThreshold))
         .def("setMedianFilter",         &StereoDepthConfig::setMedianFilter, py::arg("median"), DOC(dai, StereoDepthConfig, setMedianFilter))

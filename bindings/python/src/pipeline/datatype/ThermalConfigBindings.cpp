@@ -74,6 +74,7 @@ void bind_thermalconfig(pybind11::module& m, void* pCallstack) {
 
     // ThermalConfig bindings
     thermalConfig.def(py::init<>())
+        .def("__str__", &ThermalConfig::to_string)
         .def_readwrite("ambientParams", &ThermalConfig::ambientParams, DOC(dai, ThermalConfig, ambientParams))
         .def_readwrite("ffcParams", &ThermalConfig::ffcParams, DOC(dai, ThermalConfig, ffcParams))
         .def_readwrite("imageParams", &ThermalConfig::imageParams, DOC(dai, ThermalConfig, imageParams));

@@ -32,6 +32,7 @@ void bind_imagealignconfig(pybind11::module& m, void* pCallstack){
     // Message
     imageAlignConfig
         .def(py::init<>())
+        .def("__str__", &ImageAlignConfig::to_string)
         .def_readwrite("staticDepthPlane", &ImageAlignConfig::staticDepthPlane, DOC(dai, ImageAlignConfig, staticDepthPlane))
         ;
 
