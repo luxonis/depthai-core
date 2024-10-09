@@ -5,6 +5,55 @@ import cv2
 import depthai as dai
 import numpy as np
 import time
+class ImageAnnotationsGenerator(dai.node.ThreadedHostNode):
+    def __init__(self):
+        super().__init__()
+        self.input = self.createInput()
+        self.output = self.createOutput()
+
+    def run(self):
+        while self.isRunning():
+            nnData = self.input.get()
+            if nnData is not None:
+                detections = nnData.detections
+                annotations = dai.ImageAnnotations()
+                annotation = dai.ImageAnnotation()
+                annotation.points = [dai.PointsAnnotation()] * len(detections)
+                annotation.texts = [dai.TextAnnotation()] * len(detections)
+                for i in range(len(detections)):
+                    # create ImageAnnotations message
+                    annotation.points[i].type = dai.PointsAnnotationType.LINE_STRIP
+                    annotation.points[i].points = [
+                        dai.Point2f(detections[i].xmin, detections[i].ymin),
+                        dai.Point2f(detections[i].xmax, detections[i].ymin),
+                        dai.Point2f(detections[i].xmax, detections[i].ymax),
+                        dai.Point2f(detections[i].xmin, detections[i].ymax),
+                    ]
+                    annotation.points[i].outlineColor.r = 0.5
+                    annotation.points[i].outlineColor.g = 0.5
+                    annotation.points[i].outlineColor.b = 0.5
+                    annotation.points[i].outlineColor.a = 1.0
+                    annotation.points[i].fillColor.r = 0.5 
+                    annotation.points[i].fillColor.g = 0.5
+                    annotation.points[i].fillColor.b = 0.5
+                    annotation.points[i].fillColor.a = 0.5
+                    annotation.points[i].thickness = 2.0
+                    annotation.texts[i].position = dai.Point2f(detections[i].xmin, detections[i].ymin)
+                    annotation.texts[i].text = f"{detections[i].label} ({int(detections[i].confidence * 100)}%)"
+                    annotation.texts[i].fontSize = 0.5
+                    annotation.texts[i].textColor.r = 0.5
+                    annotation.texts[i].textColor.g = 0.5
+                    annotation.texts[i].textColor.b = 0.5
+                    annotation.texts[i].textColor.a = 1.0
+                    annotation.texts[i].backgroundColor.r = 0.5
+                    annotation.texts[i].backgroundColor.g = 0.5
+                    annotation.texts[i].backgroundColor.b = 0.5
+                    annotation.texts[i].backgroundColor.a = 1.0
+                self.output.send(annotations)
+
+
+
+
 
 remoteConnector = dai.RemoteConnector()
 # Create pipeline
@@ -14,6 +63,7 @@ with dai.Pipeline() as pipeline:
         cameraNode, dai.NNModelDescription("yolov6-nano")
     )
 
+    imageAnnotationsGenerator = pipeline.create(ImageAnnotationsGenerator)
     outputToEncode = cameraNode.requestOutput((1920, 1440), type=dai.ImgFrame.Type.NV12)
     h264Encoder = pipeline.create(dai.node.VideoEncoder)
     h264Encoder.setDefaultProfilePreset(30, dai.VideoEncoderProperties.Profile.H264_MAIN)
@@ -23,6 +73,7 @@ with dai.Pipeline() as pipeline:
     mjpegEncoder.setDefaultProfilePreset(30, dai.VideoEncoderProperties.Profile.MJPEG)
     outputToEncode.link(mjpegEncoder.input)
 
+    detectionNetwork.out.link(imageAnnotationsGenerator.input)
     labelMap = detectionNetwork.getClasses()
 
     qRgb = detectionNetwork.passthrough.createOutputQueue()
@@ -32,10 +83,11 @@ with dai.Pipeline() as pipeline:
     remoteConnector.addTopic("h264", h264Encoder.out, "testGroup")
     remoteConnector.addTopic("mjpeg", mjpegEncoder.out, "specialMjpegGroup")
     remoteConnector.addTopic("detections", detectionNetwork.out, "testGroup")
+    remoteConnector.addTopic("annotations", imageAnnotationsGenerator.output, "testGroup")
     encoderQueue = mjpegEncoder.out.createOutputQueue()
 
     # Register the pipeline with the remote connector
-    remoteConnector.registerPipeline(pipeline)
+    # remoteConnector.registerPipeline(pipeline)
     pipeline.start()
 
     frame = None

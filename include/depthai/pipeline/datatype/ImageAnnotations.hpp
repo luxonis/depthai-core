@@ -60,8 +60,8 @@ class ImageAnnotations : public Buffer, public utility::ProtoSerializable {
     /**
      * Construct ImageAnnotations message.
      */
-    ImageAnnotations();
-    explicit ImageAnnotations(std::vector<ImageAnnotations> annotations);
+    ImageAnnotations() = default;
+    explicit ImageAnnotations(std::vector<ImageAnnotation> annotations) : annotations(std::move(annotations)) {}
 
     virtual ~ImageAnnotations() = default;
 
@@ -73,7 +73,7 @@ class ImageAnnotations : public Buffer, public utility::ProtoSerializable {
         datatype = DatatypeEnum::ImageAnnotations;
     };
     std::unique_ptr<google::protobuf::Message> getProtoMessage() const override {
-        auto imageAnnotations = std::make_unique<proto::ImageAnnotations>();
+        auto imageAnnotations = std::make_unique<proto::image_annotations::ImageAnnotations>();
 
         imageAnnotations->set_sequencenum(this->sequenceNum);
         proto::Timestamp* ts = imageAnnotations->mutable_ts();
@@ -84,9 +84,9 @@ class ImageAnnotations : public Buffer, public utility::ProtoSerializable {
         tsDevice->set_nsec(this->tsDevice.nsec);
 
         for(const auto& annotation : this->annotations) {
-            proto::ImageAnnotation* imageAnnotation = imageAnnotations->add_annotations();
+            proto::image_annotations::ImageAnnotation* imageAnnotation = imageAnnotations->add_annotations();
             for(const auto& circle : annotation.circles) {
-                proto::CircleAnnotation* circleAnnotation = imageAnnotation->add_circles();
+                proto::image_annotations::CircleAnnotation* circleAnnotation = imageAnnotation->add_circles();
                 circleAnnotation->mutable_position()->set_x(circle.position.x);
                 circleAnnotation->mutable_position()->set_y(circle.position.y);
                 circleAnnotation->set_diameter(circle.diameter);
@@ -101,9 +101,9 @@ class ImageAnnotations : public Buffer, public utility::ProtoSerializable {
                 circleAnnotation->mutable_outlinecolor()->set_a(circle.outlineColor.a);
             }
             for(const auto& points : annotation.points) {
-                proto::PointsAnnotation* pointsAnnotation = imageAnnotation->add_points();
+                proto::image_annotations::PointsAnnotation* pointsAnnotation = imageAnnotation->add_points();
                 PointsAnnotationType type = points.type;
-                pointsAnnotation->set_type(static_cast<proto::PointsAnnotationType>(type));
+                pointsAnnotation->set_type(static_cast<proto::image_annotations::PointsAnnotationType>(type));
                 for(const auto& point : points.points) {
                     proto::Point2f* protoPoint = pointsAnnotation->add_points();
                     protoPoint->set_x(point.x);
@@ -127,7 +127,7 @@ class ImageAnnotations : public Buffer, public utility::ProtoSerializable {
                 pointsAnnotation->set_thickness(points.thickness);
             }
             for(const auto& text : annotation.texts) {
-                proto::TextAnnotation* textAnnotation = imageAnnotation->add_texts();
+                proto::image_annotations::TextAnnotation* textAnnotation = imageAnnotation->add_texts();
                 textAnnotation->mutable_position()->set_x(text.position.x);
                 textAnnotation->mutable_position()->set_y(text.position.y);
                 textAnnotation->set_text(text.text);

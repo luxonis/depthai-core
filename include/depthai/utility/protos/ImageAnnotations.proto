@@ -2,7 +2,7 @@
 syntax = "proto3";
 
 import "common.proto";
-package proto;
+package proto.image_annotations;
 
 message ImageAnnotations {
     int64 sequenceNum = 1;
