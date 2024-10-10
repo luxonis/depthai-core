@@ -63,6 +63,8 @@ TEST_CASE("NNArchive loads a SUPERBLOB properly") {
 
     // Returns nothing for other types
     REQUIRE(!nnArchive.getBlob().has_value());
+    REQUIRE(nnArchive.getSupportedPlatforms().size() == 1);
+    REQUIRE(nnArchive.getSupportedPlatforms()[0] == dai::Platform::RVC2);
 }
 
 TEST_CASE("NNArchive loads other formats properly") {
@@ -98,4 +100,5 @@ TEST_CASE("NNArchive loads other formats properly") {
     REQUIRE(nnArchive.getInputHeight().value() > 0);
 
     REQUIRE_THROWS(nnArchive.getInputHeight(1));
+    REQUIRE(nnArchive.getSupportedPlatforms().empty());
 }

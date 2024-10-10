@@ -8,6 +8,7 @@
 #include "depthai/nn_archive/NNArchiveVersionedConfig.hpp"
 #include "depthai/openvino/OpenVINO.hpp"
 #include "depthai/utility/arg.hpp"
+#include "depthai/device/Device.hpp" // For platform enum
 
 namespace dai {
 
@@ -85,6 +86,12 @@ class NNArchive {
      */
     std::optional<uint32_t> getInputHeight(uint32_t index = 0) const;
 
+    /**
+     * @brief Get supported platforms
+     *
+     * @return std::vector<dai::Platform>: Supported platforms
+     */
+    std::vector<dai::Platform> getSupportedPlatforms() const;
     /**
      * @brief Get NNArchive config.
      *

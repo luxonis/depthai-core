@@ -177,4 +177,32 @@ std::optional<uint32_t> NNArchive::getInputHeight(uint32_t index) const {
     return std::nullopt;
 }
 
+std::vector<dai::Platform> NNArchive::getSupportedPlatforms() const {
+    auto pathToModel = getModelPath();
+    if(!pathToModel) {
+        return {};
+    }
+    auto pathToModelChecked = *pathToModel;
+    // Check if .dlc - in that case add RVC4 to supported platforms
+    if(pathToModelChecked.substr(pathToModelChecked.size() - 4) == ".dlc") {
+        return {Platform::RVC4};
+    }
+    if(pathToModelChecked.substr(pathToModelChecked.size() - 10) == ".superblob") {
+        return {Platform::RVC2};
+    }
+    if(pathToModelChecked.substr(pathToModelChecked.size() - 5) == ".blob") {
+        // Check if it's a blob for RVC3 or RVC2
+        auto model = OpenVINO::Blob(pathToModelChecked);
+        if(model.device == OpenVINO::Device::VPUX) {
+            return {Platform::RVC3};
+        }
+        if(model.device == OpenVINO::Device::VPU) {
+            return {Platform::RVC2};
+        }
+        // Should never get here
+        return {};
+    }
+    return {};
+}
+
 }  // namespace dai
