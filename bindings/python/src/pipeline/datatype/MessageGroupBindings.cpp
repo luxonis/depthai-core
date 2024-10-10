@@ -41,7 +41,7 @@ void bind_message_group(pybind11::module& m, void* pCallstack){
     // Message
     messageGroup
         .def(py::init<>())
-        .def("__str__", &MessageGroup::to_string)
+        .def("__str__", &MessageGroup::str)
         .def("__getitem__", [](MessageGroup& msg, const std::string& name) {
             return msg[name];
         })

@@ -118,7 +118,7 @@ void bind_nndata(pybind11::module& m, void* pCallstack){
 
     nnData.def(py::init<>(), DOC(dai, NNData, NNData))
         .def(py::init<size_t>(), DOC(dai, NNData, NNData, 2))
-        .def("__str__", &NNData::to_string)
+        .def("__str__", &NNData::str)
         // // setters
         // .def("setLayer", [](NNData& obj, const std::string& name,
         // py::array_t<std::uint8_t, py::array::c_style | py::array::forcecast>

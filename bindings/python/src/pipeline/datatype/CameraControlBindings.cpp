@@ -204,7 +204,7 @@ std::vector<const char *> camCtrlAttr;
     // Message
     cameraControl
         .def(py::init<>(), DOC(dai, CameraControl, CameraControl))
-        .def("__str__", &CameraControl::to_string)
+        .def("__str__", &CameraControl::str)
         // setters
         .def("setCaptureStill", &CameraControl::setCaptureStill, py::arg("capture"), DOC(dai, CameraControl, setCaptureStill))
         .def("setStartStreaming", &CameraControl::setStartStreaming, DOC(dai, CameraControl, setStartStreaming))

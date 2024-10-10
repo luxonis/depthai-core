@@ -104,7 +104,7 @@ void bind_featuretrackerconfig(pybind11::module& m, void* pCallstack){
     // Message
     featureTrackerConfig
         .def(py::init<>())
-        .def("__str__", &FeatureTrackerConfig::to_string)
+        .def("__str__", &FeatureTrackerConfig::str)
         // .def(py::init<std::shared_ptr<FeatureTrackerConfig>>())
 
         .def("setCornerDetector", static_cast<FeatureTrackerConfig&(FeatureTrackerConfig::*)(dai::FeatureTrackerConfig::CornerDetector::Type)>(&FeatureTrackerConfig::setCornerDetector), py::arg("cornerDetector"), DOC(dai, FeatureTrackerConfig, setCornerDetector))
