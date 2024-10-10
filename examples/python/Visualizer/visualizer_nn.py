@@ -29,26 +29,19 @@ class ImageAnnotationsGenerator(dai.node.ThreadedHostNode):
                         dai.Point2f(detections[i].xmax, detections[i].ymax),
                         dai.Point2f(detections[i].xmin, detections[i].ymax),
                     ]
-                    annotation.points[i].outlineColor.r = 0.5
-                    annotation.points[i].outlineColor.g = 0.5
-                    annotation.points[i].outlineColor.b = 0.5
-                    annotation.points[i].outlineColor.a = 1.0
-                    annotation.points[i].fillColor.r = 0.5 
-                    annotation.points[i].fillColor.g = 0.5
-                    annotation.points[i].fillColor.b = 0.5
-                    annotation.points[i].fillColor.a = 0.5
+                    outlineColor = dai.Color(0.5, 0.5, 0.5, 1.0)
+                    annotation.points[i].outlineColor = outlineColor
+
+                    fillColor = dai.Color(0.5, 0.5, 0.5, 0.5)
+                    annotation.points[i].fillColor = fillColor
                     annotation.points[i].thickness = 2.0
                     annotation.texts[i].position = dai.Point2f(detections[i].xmin, detections[i].ymin)
                     annotation.texts[i].text = f"{detections[i].label} ({int(detections[i].confidence * 100)}%)"
                     annotation.texts[i].fontSize = 0.5
-                    annotation.texts[i].textColor.r = 0.5
-                    annotation.texts[i].textColor.g = 0.5
-                    annotation.texts[i].textColor.b = 0.5
-                    annotation.texts[i].textColor.a = 1.0
-                    annotation.texts[i].backgroundColor.r = 0.5
-                    annotation.texts[i].backgroundColor.g = 0.5
-                    annotation.texts[i].backgroundColor.b = 0.5
-                    annotation.texts[i].backgroundColor.a = 1.0
+                    textColor = dai.Color(0.5, 0.5, 0.5, 1.0)
+                    annotation.texts[i].textColor = textColor
+                    backgroundColor = dai.Color(0.5, 0.5, 0.5, 1.0)
+                    annotation.texts[i].backgroundColor = backgroundColor
                 self.output.send(annotations)
 
 

@@ -18,7 +18,6 @@ void bind_imageannotations(pybind11::module& m, void* pCallstack){
     using namespace dai;
 
     py::class_<ImageAnnotations, Py<ImageAnnotations>, Buffer, std::shared_ptr<ImageAnnotations>> imageAnnotations(m, "ImageAnnotations", DOC(dai, ImageAnnotations));
-	py::class_<Color> color(m, "Color", DOC(dai, Color));
 	py::class_<CircleAnnotation> circleAnnotation(m, "CircleAnnotation", DOC(dai, CircleAnnotation));
 	py::enum_<PointsAnnotationType>pointsAnnotationType (m, "PointsAnnotationType", DOC(dai, PointsAnnotationType));
 	py::class_<PointsAnnotation> pointsAnnotation(m, "PointsAnnotation", DOC(dai, PointsAnnotation));
@@ -39,13 +38,6 @@ void bind_imageannotations(pybind11::module& m, void* pCallstack){
     ///////////////////////////////////////////////////////////////////////
 
     // Metadata / raw
-	color
-		.def(py::init<>())
-		.def_readwrite("r", &Color::r)
-		.def_readwrite("g", &Color::g)
-		.def_readwrite("b", &Color::b)
-		.def_readwrite("a", &Color::a)
-		;
 	circleAnnotation
 		.def(py::init<>())
 		.def_readwrite("position", &CircleAnnotation::position)
