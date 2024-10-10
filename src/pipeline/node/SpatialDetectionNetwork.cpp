@@ -33,43 +33,30 @@ void SpatialDetectionNetwork::buildInternal() {
     inputDetections.setBlocking(true);
 }
 
-std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build(std::shared_ptr<Camera> camera,
-                                                                        std::shared_ptr<StereoDepth> stereo,
+std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build(const std::shared_ptr<Camera>& camera,
+                                                                        const std::shared_ptr<StereoDepth>& stereo,
                                                                         dai::NNModelDescription modelDesc,
                                                                         float fps) {
-    setFromModelZoo(modelDesc);
-
-    DAI_CHECK(detectionParser->getNNArchiveVersionedConfig().getVersion() == NNArchiveConfigVersion::V1, "Only NNArchive config V1 is supported.");
-    auto configV1 = detectionParser->getNNArchiveVersionedConfig().getConfig<nn_archive::v1::Config>();
-
-    DAI_CHECK(configV1.model.inputs.size() == 1, "Only single input model is supported");
-    DAI_CHECK(configV1.model.inputs[0].shape.size() == 4, "Only 4D input shape is supported");
-    DAI_CHECK(configV1.model.inputs[0].shape[0] == 1 && configV1.model.inputs[0].shape[1] == 3, "Only 3 channel input is supported");
-
-    auto inputHeight = configV1.model.inputs[0].shape[2];
-    auto inputWidth = configV1.model.inputs[0].shape[3];
-
-    auto type = dai::ImgFrame::Type::BGR888p;
-    auto platform = getDevice()->getPlatform();
-    if(platform == dai::Platform::RVC2 || platform == dai::Platform::RVC3) {
-        type = dai::ImgFrame::Type::BGR888p;
-    } else if(platform == dai::Platform::RVC4) {
-        type = dai::ImgFrame::Type::BGR888i;
-    } else {
-        DAI_CHECK_V(false, "Unsupported platform");
+    // Download model from zoo
+    if(modelDesc.platform.empty()) {
+        DAI_CHECK(getDevice() != nullptr, "Device is not set.");
+        modelDesc.platform = getDevice()->getPlatformAsString();
     }
+    auto path = getModelFromZoo(modelDesc);
+    auto modelType = dai::model::readModelType(path);
+    DAI_CHECK(modelType == dai::model::ModelType::NNARCHIVE,
+              "Model from zoo is not NNArchive - it needs to be a NNArchive to use build(Camera, NNModelDescription, float) method");
+    auto nnArchive = dai::NNArchive(path);
+    return build(camera, stereo, nnArchive, fps);
+}
 
-    auto cap = ImgFrameCapability();
-    cap.size.value = std::pair(inputWidth, inputHeight);
-    cap.type = type;
-    cap.fps.value = fps;
-    auto* input = camera->requestOutput(cap, false);
-    if(!input) {
-        DAI_CHECK_V(false, "Camera does not have output with requested capabilities");
-    }
-    input->link(this->input);
-    stereo->depth.link(this->inputDepth);
-    stereo->setDepthAlign(camera->getBoardSocket());
+std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build(const std::shared_ptr<Camera>& camera,
+                                                                        const std::shared_ptr<StereoDepth>& stereo,
+                                                                        dai::NNArchive nnArchive,
+                                                                        float fps) {
+    neuralNetwork->build(camera, nnArchive, fps);
+    detectionParser->setNNArchive(nnArchive);
+    stereo->depth.link(inputDepth);
     return std::static_pointer_cast<SpatialDetectionNetwork>(shared_from_this());
 }
 
