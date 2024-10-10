@@ -1,18 +1,12 @@
 
 #pragma once
 #include "depthai/common/Point2f.hpp"
+#include "depthai/common/Color.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/schemas/ImageAnnotations.pb.h"
 #include "depthai/utility/ProtoSerializable.hpp"
 
 namespace dai {
-struct Color {
-    float r;
-    float g;
-    float b;
-    float a;
-};
-DEPTHAI_SERIALIZE_EXT(Color, r, g, b, a);
 struct CircleAnnotation {
     Point2f position;
     float diameter;
