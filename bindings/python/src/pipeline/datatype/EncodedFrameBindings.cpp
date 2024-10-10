@@ -73,7 +73,7 @@ void bind_encodedframe(pybind11::module& m, void* pCallstack) {
     // Message
     encodedFrame
         .def(py::init<>())
-        .def("__str__", &EncodedFrame::str)
+        .def("__repr__", &EncodedFrame::str)
         // getters
         .def("getTimestamp", py::overload_cast<>(&EncodedFrame::Buffer::getTimestamp, py::const_), DOC(dai, Buffer, getTimestamp))
         .def("getTimestampDevice", py::overload_cast<>(&EncodedFrame::Buffer::getTimestampDevice, py::const_), DOC(dai, Buffer, getTimestampDevice))

@@ -73,7 +73,7 @@ void bind_imgdetections(pybind11::module& m, void* pCallstack){
     // Message
     imgDetections
         .def(py::init<>(), DOC(dai, ImgDetections, ImgDetections))
-        .def("__str__", &ImgDetections::str)
+        .def("__repr__", &ImgDetections::str)
         .def_property("detections", [](ImgDetections& det) { return &det.detections; }, [](ImgDetections& det, std::vector<ImgDetection> val) { det.detections = val; }, DOC(dai, ImgDetections, detections))
         .def("getTimestamp", &ImgDetections::Buffer::getTimestamp, DOC(dai, Buffer, getTimestamp))
         .def("getTimestampDevice", &ImgDetections::Buffer::getTimestampDevice, DOC(dai, Buffer, getTimestampDevice))

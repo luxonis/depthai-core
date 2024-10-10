@@ -48,7 +48,7 @@ void bind_edgedetectorconfig(pybind11::module& m, void* pCallstack){
     // Message
     edgeDetectorConfig
         .def(py::init<>())
-        .def("__str__", &EdgeDetectorConfig::str)
+        .def("__repr__", &EdgeDetectorConfig::str)
         .def("setSobelFilterKernels",  &EdgeDetectorConfig::setSobelFilterKernels, py::arg("horizontalKernel"), py::arg("verticalKernel"), DOC(dai, EdgeDetectorConfig, setSobelFilterKernels))
         .def("getConfigData",         &EdgeDetectorConfig::getConfigData, DOC(dai, EdgeDetectorConfig, getConfigData))
         // .def("get",         &EdgeDetectorConfig::get, DOC(dai, EdgeDetectorConfig, get))

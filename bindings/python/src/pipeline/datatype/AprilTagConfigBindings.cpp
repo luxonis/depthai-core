@@ -70,7 +70,7 @@ void bind_apriltagconfig(pybind11::module& m, void* pCallstack){
     // Message
     aprilTagConfig
         .def(py::init<>())
-        .def("__str__", &AprilTagConfig::str)
+        .def("__repr__", &AprilTagConfig::str)
         .def("setFamily", &AprilTagConfig::setFamily, py::arg("family"), DOC(dai, AprilTagConfig, setFamily))
         // .def("set", &AprilTagConfig::set, DOC(dai, AprilTagConfig, set))
         // .def("get", &AprilTagConfig::get, DOC(dai, AprilTagConfig, get))

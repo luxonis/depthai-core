@@ -90,7 +90,7 @@ void bind_imagemanipconfig(pybind11::module& m, void* pCallstack) {
 
     imageManipConfig
         .def(py::init<>())
-        .def("__str__", &ImageManipConfig::str)
+        .def("__repr__", &ImageManipConfig::str)
         // setters
         .def("setCropRect",
              static_cast<ImageManipConfig& (ImageManipConfig::*)(float, float, float, float)>(&ImageManipConfig::setCropRect),
