@@ -43,7 +43,6 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
                                                    dai::NNModelDescription modelDesc,
                                                    float fps = 30.0f);
 
-
     std::shared_ptr<SpatialDetectionNetwork> build(const std::shared_ptr<Camera>& inputRgb,
                                                    const std::shared_ptr<StereoDepth>& stereo,
                                                    dai::NNArchive nnArchive,

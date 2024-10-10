@@ -16,7 +16,6 @@ TEST_CASE("SpatialDetectionNetwork sets device for all subnodes") {
     REQUIRE(nn->detectionParser->getDevice() == pipelineDevice);
 }
 
-
 TEST_CASE("Detection network model description API") {
     // Create pipeline
     dai::Pipeline p;
@@ -28,7 +27,7 @@ TEST_CASE("Detection network model description API") {
     REQUIRE_NOTHROW(nn->build(camera, modelDesc));
     p.start();
 
-    for (int i = 0; i < 10; i++) {
+    for(int i = 0; i < 10; i++) {
         auto tensor = detectionsQueue->get<dai::ImgDetections>();
         REQUIRE(tensor != nullptr);
     }
@@ -47,7 +46,7 @@ TEST_CASE("Detection network NNArchive API") {
     REQUIRE_NOTHROW(nn->build(camera, nnArchive));
     p.start();
 
-    for (int i = 0; i < 10; i++) {
+    for(int i = 0; i < 10; i++) {
         auto tensor = detectionsQueue->get<dai::ImgDetections>();
         REQUIRE(tensor != nullptr);
     }
@@ -67,7 +66,7 @@ TEST_CASE("SpatialDetectionNetwork model description API") {
     auto detectionsQueue = nn->out.createOutputQueue();
     p.start();
 
-    for (int i = 0; i < 10; i++) {
+    for(int i = 0; i < 10; i++) {
         auto tensor = detectionsQueue->get<dai::SpatialImgDetections>();
         REQUIRE(tensor != nullptr);
     }
@@ -89,7 +88,7 @@ TEST_CASE("SpatialDetectionNetwork NNArchive API") {
     auto detectionsQueue = nn->out.createOutputQueue();
     p.start();
 
-    for (int i = 0; i < 10; i++) {
+    for(int i = 0; i < 10; i++) {
         auto tensor = detectionsQueue->get<dai::SpatialImgDetections>();
         REQUIRE(tensor != nullptr);
     }

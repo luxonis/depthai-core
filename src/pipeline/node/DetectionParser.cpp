@@ -1,4 +1,5 @@
 #include "depthai/pipeline/node/DetectionParser.hpp"
+
 #include <memory>
 
 #include "common/ModelType.hpp"

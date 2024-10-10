@@ -64,7 +64,8 @@ std::shared_ptr<DetectionNetwork> DetectionNetwork::build(const std::shared_ptr<
     }
     auto path = getModelFromZoo(modelDesc);
     auto modelType = dai::model::readModelType(path);
-    DAI_CHECK(modelType == dai::model::ModelType::NNARCHIVE, "Model from zoo is not NNArchive - it needs to be a NNArchive to use build(Camera, NNModelDescription, float) method");
+    DAI_CHECK(modelType == dai::model::ModelType::NNARCHIVE,
+              "Model from zoo is not NNArchive - it needs to be a NNArchive to use build(Camera, NNModelDescription, float) method");
     auto nnArchive = dai::NNArchive(path);
 
     return build(camera, nnArchive, fps);

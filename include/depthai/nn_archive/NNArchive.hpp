@@ -4,11 +4,11 @@
 #include <memory>
 #include <optional>
 
+#include "depthai/device/Device.hpp"  // For platform enum
 #include "depthai/nn_archive/NNArchiveEntry.hpp"
 #include "depthai/nn_archive/NNArchiveVersionedConfig.hpp"
 #include "depthai/openvino/OpenVINO.hpp"
 #include "depthai/utility/arg.hpp"
-#include "depthai/device/Device.hpp" // For platform enum
 
 namespace dai {
 
