@@ -20,8 +20,6 @@ int main() {
     while(pipeline.isRunning()) {
         auto videoIn = outputQueue->get<dai::ImgFrame>();
 
-        std::cout << videoIn->to_string() << std::endl;
-
         // Get BGR frame from NV12 encoded video frame to show with opencv
         // Visualizing the frame on slower hosts might have overhead
         cv::imshow("video", videoIn->getCvFrame());

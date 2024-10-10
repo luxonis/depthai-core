@@ -35,7 +35,7 @@ int main(int argc, char** argv) {
 
         while(true) {
             auto imuData = imuQ->get<dai::IMUData>();
-            std::cout << imuData->to_string() << std::endl;
+            std::cout << imuData->str() << std::endl;
             // std::cout << "Packet seqNo: " << (int)imuData->getSequenceNum() << "\n";
             // std::cout << "Packet ts: " << imuData->tsDevice.sec << "s " << imuData->tsDevice.nsec << "ns\n";
             // for(auto& imuPacket : imuData->packets) {
