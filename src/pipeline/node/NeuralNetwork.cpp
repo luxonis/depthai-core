@@ -26,14 +26,15 @@ std::shared_ptr<NeuralNetwork> NeuralNetwork::build(Node::Output& input, const N
 }
 
 std::shared_ptr<NeuralNetwork> NeuralNetwork::build(const std::shared_ptr<Camera>& input, dai::NNModelDescription modelDesc, float fps) {
-    // Fill out the platform in the model description if not set
+    // Download model from zoo
     if(modelDesc.platform.empty()) {
-        DAI_CHECK(getDevice() != nullptr, "Device is not set");
+        DAI_CHECK(getDevice() != nullptr, "Device is not set.");
         modelDesc.platform = getDevice()->getPlatformAsString();
     }
     auto path = getModelFromZoo(modelDesc);
-    // Create an NNArchive from the model path
-    auto nnArchive = NNArchive(path);
+    auto modelType = dai::model::readModelType(path);
+    DAI_CHECK(modelType == dai::model::ModelType::NNARCHIVE, "Model from zoo is not NNArchive - it needs to be a NNArchive to use build(Camera, NNModelDescription, float) method");
+    auto nnArchive = dai::NNArchive(path);
     return build(input, nnArchive, fps);
 }
 

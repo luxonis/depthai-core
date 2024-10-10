@@ -28,7 +28,7 @@ TEST_CASE("NNArchive API") {
     // Create pipeline
     dai::Pipeline p;
     auto camera = p.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A);
-    std::string platform = dai::Device(p).getPlatformAsString();
+    std::string platform = p.getDefaultDevice()->getPlatformAsString();
     auto description = dai::NNModelDescription{"yolov6-nano", platform};
     auto nnArchive = dai::NNArchive(dai::getModelFromZoo(description));
     auto nn = p.create<dai::node::NeuralNetwork>()->build(camera, nnArchive);
