@@ -58,7 +58,7 @@ TEST_CASE("SpatialDetectionNetwork model description API") {
     dai::Pipeline p;
     auto camera = p.create<dai::node::Camera>()->build();
     auto left = p.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B);
-    auto right = p.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B);
+    auto right = p.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_C);
     auto stereo = p.create<dai::node::StereoDepth>()->build(*left->requestFullResolutionOutput(), *right->requestFullResolutionOutput());
     dai::NNModelDescription modelDesc{"yolov6-nano"};
     // Load NNArchive
@@ -78,7 +78,7 @@ TEST_CASE("SpatialDetectionNetwork NNArchive API") {
     dai::Pipeline p;
     auto camera = p.create<dai::node::Camera>()->build();
     auto left = p.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B);
-    auto right = p.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B);
+    auto right = p.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_C);
     auto stereo = p.create<dai::node::StereoDepth>()->build(*left->requestFullResolutionOutput(), *right->requestFullResolutionOutput());
     // Load NNArchive
     auto platform = p.getDefaultDevice()->getPlatformAsString();
