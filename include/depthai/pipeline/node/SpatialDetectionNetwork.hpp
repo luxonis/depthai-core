@@ -38,9 +38,15 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
           passthrough{neuralNetwork->passthrough} {};
 
     constexpr static const char* NAME = "SpatialDetectionNetwork";
-    std::shared_ptr<SpatialDetectionNetwork> build(std::shared_ptr<Camera> inputRgb,
-                                                   std::shared_ptr<StereoDepth> stereo,
+    std::shared_ptr<SpatialDetectionNetwork> build(const std::shared_ptr<Camera>& inputRgb,
+                                                   const std::shared_ptr<StereoDepth>& stereo,
                                                    dai::NNModelDescription modelDesc,
+                                                   float fps = 30.0f);
+
+
+    std::shared_ptr<SpatialDetectionNetwork> build(const std::shared_ptr<Camera>& inputRgb,
+                                                   const std::shared_ptr<StereoDepth>& stereo,
+                                                   dai::NNArchive nnArchive,
                                                    float fps = 30.0f);
 
     Subnode<NeuralNetwork> neuralNetwork{*this, "neuralNetwork"};
