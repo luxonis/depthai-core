@@ -5,7 +5,7 @@ import time
 
 FPS = 15
 
-remoteConnector = dai.RemoteConnector()
+remoteConnector = dai.RemoteConnection()
 
 
 with dai.Pipeline() as pipeline:

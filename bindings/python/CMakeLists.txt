@@ -152,7 +152,7 @@ set(SOURCE_LIST
     src/modelzoo/NNModelDescriptionBindings.cpp
     src/modelzoo/ZooBindings.cpp
 
-    src/remote_connection/RemoteConnectorBindings.cpp
+	src/remote_connection/RemoteConnectionBindings.cpp
 )
 if(DEPTHAI_MERGED_TARGET)
     list(APPEND SOURCE_LIST

@@ -385,7 +385,7 @@ set(TARGET_CORE_SOURCES
     src/nn_archive/NNArchiveVersionedConfig.cpp
     src/modelzoo/NNModelDescription.cpp
     src/modelzoo/Zoo.cpp
-    src/remote_connection/RemoteConnector.cpp
+    src/remote_connection/RemoteConnection.cpp
 )
 
 set(TARGET_OPENCV_SOURCES

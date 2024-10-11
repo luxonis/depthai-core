@@ -48,7 +48,7 @@ class ImageAnnotationsGenerator(dai.node.ThreadedHostNode):
 
 
 
-remoteConnector = dai.RemoteConnector()
+remoteConnector = dai.RemoteConnection()
 # Create pipeline
 with dai.Pipeline() as pipeline:
     cameraNode = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)

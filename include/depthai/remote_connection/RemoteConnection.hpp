@@ -26,13 +26,13 @@
 #include "foxglove/websocket/server_interface.hpp"
 
 namespace dai {
-class RemoteConnector {
+class RemoteConnection {
    public:
     // Constructor
-    explicit RemoteConnector(const std::string& address = "0.0.0.0", uint16_t port = 8765);
+    explicit RemoteConnection(const std::string& address = "0.0.0.0", uint16_t port = 8765);
 
     // Destructor
-    ~RemoteConnector();
+    ~RemoteConnection();
 
     void addTopic(const std::string& topicName, Node::Output& output, const std::string& group = "");
     std::shared_ptr<MessageQueue> addTopic(const std::string& topicName, const std::string& group = "", unsigned int maxSize = 16, bool blocking = false);
