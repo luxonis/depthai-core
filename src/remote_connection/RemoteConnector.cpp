@@ -3,6 +3,7 @@
 #include <iostream>
 #include <websocketpp/common/connection_hdl.hpp>
 
+#include "depthai/pipeline/MessageQueue.hpp"
 #include "foxglove/websocket/common.hpp"
 #include "utility/Resources.hpp"
 
@@ -106,9 +107,7 @@ void RemoteConnector::initWebsocketServer(const std::string& address, uint16_t p
     }
 }
 
-void RemoteConnector::addTopic(const std::string& topicName, Node::Output& output, const std::string& group) {
-    auto outputQueue = output.createOutputQueue();
-    // Start a thread to handle the schema extraction and message forwarding
+void RemoteConnector::addPublishThread(const std::string& topicName, const std::shared_ptr<MessageQueue>& outputQueue, const std::string& group) {
     std::thread([this, topicName, outputQueue, group]() {
         bool isRunning = true;
         // Wait for the first message to extract schema
@@ -166,6 +165,18 @@ void RemoteConnector::addTopic(const std::string& topicName, Node::Output& outpu
             server->broadcastMessage(channelId, nanosecondsSinceEpoch(), static_cast<const uint8_t*>(serializedMsg.data()), serializedMsg.size());
         }
     }).detach();  // Detach the thread to run independently
+}
+
+void RemoteConnector::addTopic(const std::string& topicName, Node::Output& output, const std::string& group) {
+    auto outputQueue = output.createOutputQueue();
+    // Start a thread to handle the schema extraction and message forwarding
+    addPublishThread(topicName, outputQueue, group);
+}
+
+std::shared_ptr<MessageQueue> RemoteConnector::addTopic(const std::string& topicName, const std::string& group, unsigned int maxSize, bool blocking) {
+    auto outputQueue = std::make_shared<MessageQueue>(maxSize, blocking);
+    addPublishThread(topicName, outputQueue, group);
+    return outputQueue;
 }
 
 void RemoteConnector::registerPipeline(const Pipeline& pipeline) {

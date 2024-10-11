@@ -35,6 +35,7 @@ class RemoteConnector {
     ~RemoteConnector();
 
     void addTopic(const std::string& topicName, Node::Output& output, const std::string& group = "");
+    std::shared_ptr<MessageQueue> addTopic(const std::string& topicName, const std::string& group = "", unsigned int maxSize = 16, bool blocking = false);
 
     void registerPipeline(const Pipeline& pipeline);
 
@@ -48,6 +49,7 @@ class RemoteConnector {
     // Initializes the WebSocket server
     void initWebsocketServer(const std::string& address, uint16_t port);
     void initHttpServer(const std::string& address, uint16_t port);
+    void addPublishThread(const std::string& topicName, const std::shared_ptr<MessageQueue>& outputQueue, const std::string& group);
 
     // Expose services
     void exposeTopicGroupsService();
@@ -62,6 +64,7 @@ class RemoteConnector {
 
     // Map storing added topics their corresponding groups
     std::unordered_map<std::string, std::string> topicGroups;
+    std::vector<std::shared_ptr<InputQueue>> inputQueues;
 
     // Foxglove and http servers
     std::unique_ptr<foxglove::ServerInterface<websocketpp::connection_hdl>> server;

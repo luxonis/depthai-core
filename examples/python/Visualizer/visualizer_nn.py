@@ -77,6 +77,7 @@ with dai.Pipeline() as pipeline:
     remoteConnector.addTopic("mjpeg", mjpegEncoder.out, "specialMjpegGroup")
     remoteConnector.addTopic("detections", detectionNetwork.out, "testGroup")
     remoteConnector.addTopic("annotations", imageAnnotationsGenerator.output, "testGroup")
+    testInput = remoteConnector.addTopic("testInput", "testGroup")
     encoderQueue = mjpegEncoder.out.createOutputQueue()
 
     # Register the pipeline with the remote connector
@@ -131,6 +132,7 @@ with dai.Pipeline() as pipeline:
         inRgb: dai.ImgFrame = qRgb.get()
         inDet: dai.ImgDetections = qDet.get()
         encdoedMessage = encoderQueue.get()
+        testInput.send(encdoedMessage)
         if inRgb is not None:
             frame = inRgb.getCvFrame()
             cv2.putText(
