@@ -133,6 +133,14 @@ class CameraControl : public Buffer {
      */
     CameraControl& setManualFocus(uint8_t lensPosition);
 
+    /**
+     * Set a command to specify manual focus position (more precise control).
+     *
+     * @param lensPositionRaw specify lens position 0.0f .. 1.0f
+     * @return CameraControl&
+     */
+    CameraControl& setManualFocusRaw(float lensPositionRaw);
+
     // Exposure
     /**
      * Set a command to enable auto exposure
@@ -284,6 +292,41 @@ class CameraControl : public Buffer {
      */
     CameraControl& setCaptureIntent(CaptureIntent mode);
 
+    /**
+     * Set a miscellaneous control. The controls set by this function get appended
+     * to a list, processed after the standard controls
+     * @param control Control name
+     * @param value Value as a string
+     */
+    CameraControl& setMisc(std::string control, std::string value);
+
+    /**
+     * Set a miscellaneous control. The controls set by this function get appended
+     * to a list, processed after the standard controls
+     * @param control Control name
+     * @param value Value as an integer number
+     */
+    CameraControl& setMisc(std::string control, int value);
+
+    /**
+     * Set a miscellaneous control. The controls set by this function get appended
+     * to a list, processed after the standard controls
+     * @param control Control name
+     * @param value Value as a floating point number
+     */
+    CameraControl& setMisc(std::string control, float value);
+
+    /**
+     * Clear the list of miscellaneous controls set by `setControl`
+     */
+    void clearMiscControls();
+
+    /**
+     * Get the list of miscellaneous controls set by `setControl`
+     * @returns A list of <key, value> pairs as strings
+     */
+    std::vector<std::pair<std::string, std::string>> getMiscControls();
+
     // Functions to retrieve properties
     /**
      * Check whether command to capture a still is set
@@ -305,6 +348,11 @@ class CameraControl : public Buffer {
      * Retrieves lens position, range 0..255. Returns -1 if not available
      */
     int getLensPosition() const;
+
+    /**
+     * Retrieves lens position, range 0.0f..1.0f.
+     */
+    float getLensPositionRaw() const;
 
     /**
      * Set explicit configuration.

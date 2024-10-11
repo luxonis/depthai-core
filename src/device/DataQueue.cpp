@@ -18,6 +18,7 @@
 
 // libraries
 #include "utility/Logging.hpp"
+#include "utility/spdlog-fmt.hpp"
 
 // Additions
 #include "spdlog/fmt/bin_to_hex.h"
@@ -325,7 +326,7 @@ void DataInputQueue::send(const std::shared_ptr<RawBuffer>& rawMsg) {
 
     // Check if stream receiver has enough space for this message
     if(rawMsg->data.size() > maxDataSize) {
-        throw std::runtime_error(fmt::format("Trying to send larger ({}B) message than XLinkIn maxDataSize ({}B)", rawMsg->data.size(), maxDataSize));
+        throw std::runtime_error(fmt::format("Trying to send larger ({}B) message than XLinkIn maxDataSize ({}B)", rawMsg->data.size(), maxDataSize.load()));
     }
 
     if(!queue.push(rawMsg)) {
@@ -347,7 +348,7 @@ bool DataInputQueue::send(const std::shared_ptr<RawBuffer>& rawMsg, std::chrono:
 
     // Check if stream receiver has enough space for this message
     if(rawMsg->data.size() > maxDataSize) {
-        throw std::runtime_error(fmt::format("Trying to send larger ({}B) message than XLinkIn maxDataSize ({}B)", rawMsg->data.size(), maxDataSize));
+        throw std::runtime_error(fmt::format("Trying to send larger ({}B) message than XLinkIn maxDataSize ({}B)", rawMsg->data.size(), maxDataSize.load()));
     }
 
     return queue.tryWaitAndPush(rawMsg, timeout);

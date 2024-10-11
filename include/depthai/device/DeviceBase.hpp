@@ -31,11 +31,13 @@
 #include "depthai-shared/common/ConnectionInterface.hpp"
 #include "depthai-shared/common/CpuUsage.hpp"
 #include "depthai-shared/common/MemoryInfo.hpp"
+#include "depthai-shared/common/StereoPair.hpp"
 #include "depthai-shared/datatype/RawIMUData.hpp"
 #include "depthai-shared/device/BoardConfig.hpp"
 #include "depthai-shared/device/CrashDump.hpp"
 #include "depthai-shared/log/LogLevel.hpp"
 #include "depthai-shared/log/LogMessage.hpp"
+#include "depthai-shared/pipeline/PipelineSchema.hpp"
 
 namespace dai {
 
@@ -446,6 +448,16 @@ class DeviceBase {
     int getXLinkChunkSize();
 
     /**
+     * Sets the maximum transmission rate for the XLink connection on device side,
+     * using a simple token bucket algorithm. Useful for bandwidth throttling
+     *
+     * @param maxRateBytesPerSecond Rate limit in Bytes/second
+     * @param burstSize Size in Bytes for how much to attempt to send once, 0 = auto
+     * @param waitUs Time in microseconds to wait for replenishing tokens, 0 = auto
+     */
+    void setXLinkRateLimit(int maxRateBytesPerSecond, int burstSize = 0, int waitUs = 0);
+
+    /**
      * Get the Device Info object o the device which is currently running
      *
      * @return DeviceInfo of the current device in execution
@@ -611,6 +623,22 @@ class DeviceBase {
     std::vector<CameraFeatures> getConnectedCameraFeatures();
 
     /**
+     * Get stereo pairs based on the device type.
+     *
+     * @returns Vector of stereo pairs
+     */
+    std::vector<StereoPair> getStereoPairs();
+
+    /**
+     * Get stereo pairs taking into account the calibration and connected cameras.
+     *
+     * @note This method will always return a subset of `getStereoPairs`.
+     *
+     * @returns Vector of stereo pairs
+     */
+    std::vector<StereoPair> getAvailableStereoPairs();
+
+    /**
      * Get sensor names for cameras that are connected to the device
      *
      * @returns Map/dictionary with camera sensor names, indexed by socket
@@ -656,7 +684,7 @@ class DeviceBase {
      * return value true and 100 means that the update was successful
      * return value true and other than 100 means that the update failed
      */
-    std::tuple<bool, float> getIMUFirmwareUpdateStatus();
+    std::tuple<bool, unsigned int> getIMUFirmwareUpdateStatus();
 
     /**
      * Retrieves current DDR memory information from device
@@ -729,6 +757,23 @@ class DeviceBase {
      * @param calibrationObj CalibrationHandler object which is loaded with calibration information.
      */
     void flashCalibration2(CalibrationHandler calibrationDataHandler);
+
+    /**
+     * Sets the Calibration at runtime. This is not persistent and will be lost after device reset.
+     *
+     * @throws std::runtime_exception if failed to set the calibration
+     * @param calibrationObj CalibrationHandler object which is loaded with calibration information.
+     *
+     */
+    void setCalibration(CalibrationHandler calibrationDataHandler);
+
+    /**
+     * Retrieves the CalibrationHandler object containing the non-persistent calibration
+     *
+     * @throws std::runtime_exception if failed to get the calibration
+     * @returns The CalibrationHandler object containing the non-persistent calibration
+     */
+    CalibrationHandler getCalibration();
 
     /**
      * Fetches the EEPROM data from the device and loads it into CalibrationHandler object
@@ -968,5 +1013,8 @@ class DeviceBase {
 
     dai::Path firmwarePath;
     bool dumpOnly = false;
+
+    // Schema of the started pipeline
+    tl::optional<PipelineSchema> pipelineSchema;
 };
 }  // namespace dai

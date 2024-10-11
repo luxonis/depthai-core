@@ -340,9 +340,7 @@ int main(int argc, char** argv) {
                 unique_lock<mutex> l(countersMtx);
 
                 bool failed = counters.size() == 0;
-                cout << "[" << duration_cast<seconds>(steady_clock::now() - timeoutStopwatch).count() << "s] "
-                     << "Usb speed " << usb_speed << " "
-                     << "FPS: ";
+                cout << "[" << duration_cast<seconds>(steady_clock::now() - timeoutStopwatch).count() << "s] " << "Usb speed " << usb_speed << " " << "FPS: ";
                 for(const auto& kv : counters) {
                     if(kv.second == 0) {
                         failed = true;

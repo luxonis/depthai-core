@@ -13,7 +13,6 @@ int main() {
 
     // Create pipeline
     dai::Pipeline p;
-
     auto xin = p.create<dai::node::XLinkIn>();
     auto imageManip = p.create<dai::node::ImageManip>();
     auto xout = p.create<dai::node::XLinkOut>();

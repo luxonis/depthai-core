@@ -99,6 +99,11 @@ class ImgFrame : public Buffer {
      */
     int getLensPosition() const;
 
+    /**
+     * Retrieves lens position, range 0.0f..1.0f. Returns -1 if not available
+     */
+    float getLensPositionRaw() const;
+
     // setters
     /**
      * Retrieves image timestamp related to dai::Clock::now()
