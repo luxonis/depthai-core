@@ -4,6 +4,7 @@
 #include <memory>
 #include <optional>
 
+#include "depthai/device/Device.hpp"  // For platform enum
 #include "depthai/nn_archive/NNArchiveEntry.hpp"
 #include "depthai/nn_archive/NNArchiveVersionedConfig.hpp"
 #include "depthai/openvino/OpenVINO.hpp"
@@ -63,6 +64,34 @@ class NNArchive {
      */
     const NNArchiveVersionedConfig& getVersionedConfig() const;
 
+    /**
+     * @brief Get inputSize of the model
+     * @param index: Index of input
+     * @note this function is only valid for models with NCHW and NHWC input formats
+     * @return std::vector<std::pair<int, int>>: inputSize
+     */
+    std::optional<std::pair<uint32_t, uint32_t>> getInputSize(uint32_t index = 0) const;
+
+    /**
+     * @brief Get inputWidth of the model
+     * @param index: Index of input
+     * @return int: inputWidth
+     */
+    std::optional<uint32_t> getInputWidth(uint32_t index = 0) const;
+
+    /**
+     * @brief Get inputHeight of the model
+     * @param index: Index of input
+     * @return int: inputHeight
+     */
+    std::optional<uint32_t> getInputHeight(uint32_t index = 0) const;
+
+    /**
+     * @brief Get supported platforms
+     *
+     * @return std::vector<dai::Platform>: Supported platforms
+     */
+    std::vector<dai::Platform> getSupportedPlatforms() const;
     /**
      * @brief Get NNArchive config.
      *
