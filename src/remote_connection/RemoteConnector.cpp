@@ -127,11 +127,9 @@ void RemoteConnector::addTopic(const std::string& topicName, Node::Output& outpu
         const auto descriptor = serializableMessage->serializeSchema();
 
         // Add the topic to the server
-        auto channelId = server->addChannels({{.topic = topicName,
-                                               .encoding = "protobuf",
-                                               .schemaName = descriptor.schemaName,
-                                               .schema = foxglove::base64Encode(descriptor.schema),
-                                               .schemaEncoding = std::nullopt}})[0];
+        
+        auto channelId = server->addChannels({{topicName, "protobuf", descriptor.schemaName,
+                                               foxglove::base64Encode(descriptor.schema), std::nullopt}})[0];
 
         // Store the group information
         if(topicGroups.find(topicName) != topicGroups.end()) {
