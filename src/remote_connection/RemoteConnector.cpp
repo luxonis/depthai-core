@@ -268,12 +268,16 @@ void RemoteConnector::exposeKeyPressedService() {
         // Check that the keyPressed is a single character
         if(keyPressed.size() != 1) {
             std::string errorMsg = R"({"error": "Invalid key pressed. Expected a single character"})";
-            return foxglove::ServiceResponse{std::vector<uint8_t>(errorMsg.begin(), errorMsg.end())};
+            foxglove::ServiceResponse ret;
+            ret.data = std::vector<uint8_t>(errorMsg.begin(), errorMsg.end());
+            return ret;
         }
 
         this->keyPressedCallback(static_cast<int>(keyPressed[0]));
         std::string responseMsg = R"({"status": "Received key"})";
-        return foxglove::ServiceResponse{std::vector<uint8_t>(responseMsg.begin(), responseMsg.end())};
+        foxglove::ServiceResponse ret;
+        ret.data = std::vector<uint8_t>(responseMsg.begin(), responseMsg.end());
+        return ret;
     };
 }
 
