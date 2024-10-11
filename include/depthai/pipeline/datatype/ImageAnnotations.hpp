@@ -70,17 +70,17 @@ class ImageAnnotations : public Buffer, public utility::ProtoSerializable {
         auto imageAnnotations = std::make_unique<proto::image_annotations::ImageAnnotations>();
 
         imageAnnotations->set_sequencenum(this->sequenceNum);
-        proto::Timestamp* ts = imageAnnotations->mutable_ts();
+		proto::common::Timestamp* ts = imageAnnotations->mutable_ts();
         ts->set_sec(this->ts.sec);
         ts->set_nsec(this->ts.nsec);
-        proto::Timestamp* tsDevice = imageAnnotations->mutable_tsdevice();
+		proto::common::Timestamp* tsDevice = imageAnnotations->mutable_tsdevice();
         tsDevice->set_sec(this->tsDevice.sec);
         tsDevice->set_nsec(this->tsDevice.nsec);
 
         for(const auto& annotation : this->annotations) {
             proto::image_annotations::ImageAnnotation* imageAnnotation = imageAnnotations->add_annotations();
             for(const auto& circle : annotation.circles) {
-                proto::image_annotations::CircleAnnotation* circleAnnotation = imageAnnotation->add_circles();
+				proto::image_annotations::CircleAnnotation* circleAnnotation = imageAnnotation->add_circles();
                 circleAnnotation->mutable_position()->set_x(circle.position.x);
                 circleAnnotation->mutable_position()->set_y(circle.position.y);
                 circleAnnotation->set_diameter(circle.diameter);
@@ -95,11 +95,11 @@ class ImageAnnotations : public Buffer, public utility::ProtoSerializable {
                 circleAnnotation->mutable_outlinecolor()->set_a(circle.outlineColor.a);
             }
             for(const auto& points : annotation.points) {
-                proto::image_annotations::PointsAnnotation* pointsAnnotation = imageAnnotation->add_points();
+				proto::image_annotations::PointsAnnotation* pointsAnnotation = imageAnnotation->add_points();
                 PointsAnnotationType type = points.type;
                 pointsAnnotation->set_type(static_cast<proto::image_annotations::PointsAnnotationType>(type));
                 for(const auto& point : points.points) {
-                    proto::Point2f* protoPoint = pointsAnnotation->add_points();
+					proto::common::Point2f* protoPoint = pointsAnnotation->add_points();
                     protoPoint->set_x(point.x);
                     protoPoint->set_y(point.y);
                 }
@@ -108,7 +108,7 @@ class ImageAnnotations : public Buffer, public utility::ProtoSerializable {
                 pointsAnnotation->mutable_outlinecolor()->set_b(points.outlineColor.b);
                 pointsAnnotation->mutable_outlinecolor()->set_a(points.outlineColor.a);
                 for(const auto& color : points.outlineColors) {
-                    proto::Color* protoColor = pointsAnnotation->add_outlinecolors();
+					proto::common::Color* protoColor = pointsAnnotation->add_outlinecolors();
                     protoColor->set_r(color.r);
                     protoColor->set_g(color.g);
                     protoColor->set_b(color.b);
@@ -121,7 +121,7 @@ class ImageAnnotations : public Buffer, public utility::ProtoSerializable {
                 pointsAnnotation->set_thickness(points.thickness);
             }
             for(const auto& text : annotation.texts) {
-                proto::image_annotations::TextAnnotation* textAnnotation = imageAnnotation->add_texts();
+				proto::image_annotations::TextAnnotation* textAnnotation = imageAnnotation->add_texts();
                 textAnnotation->mutable_position()->set_x(text.position.x);
                 textAnnotation->mutable_position()->set_y(text.position.y);
                 textAnnotation->set_text(text.text);

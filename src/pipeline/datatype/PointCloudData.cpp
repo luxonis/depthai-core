@@ -126,7 +126,7 @@ PointCloudData& PointCloudData::setColor(bool val) {
 }
 
 std::unique_ptr<google::protobuf::Message> dai::PointCloudData::getProtoMessage() const {
-    auto pointCloudData = std::make_unique<proto::PointCloudData>();
+    auto pointCloudData = std::make_unique<dai::proto::point_cloud_data::PointCloudData>();
 
     auto timestamp = pointCloudData->mutable_ts();
     timestamp->set_sec(ts.sec);

@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package proto;
+package dai.proto.common;
 
 // Shared Timestamp message
 message Timestamp {

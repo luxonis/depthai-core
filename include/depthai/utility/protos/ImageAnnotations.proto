@@ -2,12 +2,12 @@
 syntax = "proto3";
 
 import "common.proto";
-package proto.image_annotations;
+package dai.proto.image_annotations;
 
 message ImageAnnotations {
     int64 sequenceNum = 1;
-    Timestamp ts = 2;
-    Timestamp tsDevice = 3;
+    common.Timestamp ts = 2;
+    common.Timestamp tsDevice = 3;
     repeated ImageAnnotation annotations = 4;
 }
 
@@ -18,19 +18,19 @@ message ImageAnnotation {
 }
 
 message CircleAnnotation {
-    Point2f position = 1;
+    common.Point2f position = 1;
     float diameter = 2;
     float thickness = 3;
-    Color fillColor = 4;
-    Color outlineColor = 5;
+    common.Color fillColor = 4;
+    common.Color outlineColor = 5;
 }
 
 message PointsAnnotation {
     PointsAnnotationType type = 1;
-    repeated Point2f points = 2;
-    Color outlineColor = 3;
-    repeated Color outlineColors = 4;
-    Color fillColor = 5;
+    repeated common.Point2f points = 2;
+    common.Color outlineColor = 3;
+    repeated common.Color outlineColors = 4;
+    common.Color fillColor = 5;
     float thickness = 6;
 }
 
@@ -42,9 +42,9 @@ enum PointsAnnotationType {
     LINE_LIST = 4;
 }
 message TextAnnotation {
-    Point2f position = 1;
+    common.Point2f position = 1;
     string text = 2;
     float fontSize = 3;
-    Color textColor = 4;
-    Color backgroundColor = 5;
+    common.Color textColor = 4;
+    common.Color backgroundColor = 5;
 }
