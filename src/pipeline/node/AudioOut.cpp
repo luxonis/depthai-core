@@ -19,30 +19,66 @@ void AudioOut::run() {
 
     err = snd_pcm_open(&captureHandle, properties.audioOutPath.c_str(), SND_PCM_STREAM_PLAYBACK, 0);
     if(err < 0) {
-        logger->warn("AudioOutHost {}: Unable to open device {}", __func__, properties.audioOutPath.c_str());
+	logger->warn("AudioOutHost {}: Unable to open device {}, {}", __func__, properties.audioOutPath.c_str(), snd_strerror(err));
+	return;
     }
 
-    snd_pcm_hw_params_malloc(&hwParams);
-    snd_pcm_hw_params_any(captureHandle, hwParams);
+    err = snd_pcm_hw_params_malloc(&hwParams);
+    if (err < 0) {
+        logger->warn("AudioOutHost {}: Unable to allocate hw_params: {}", __func__, snd_strerror(err));
+	return;
+    }
 
-    snd_pcm_hw_params_set_access(captureHandle, hwParams, SND_PCM_ACCESS_RW_INTERLEAVED);
-    snd_pcm_hw_params_set_format(captureHandle, hwParams, properties.format);
-    snd_pcm_hw_params_set_rate_near(captureHandle, hwParams, &properties.bitrate, 0);
-    snd_pcm_hw_params_set_channels(captureHandle, hwParams, properties.channels);
+    err = snd_pcm_hw_params_any(captureHandle, hwParams);
+    if (err < 0) {
+        logger->warn("AudioOutHost {}: Broken configuration: {}", __func__, snd_strerror(err));
+	return;
+    }
+
+    err = snd_pcm_hw_params_set_access(captureHandle, hwParams, SND_PCM_ACCESS_RW_INTERLEAVED);
+    if (err < 0) {
+        logger->warn("AudioOutHost {}: Broken configuration: {}", __func__, snd_strerror(err));
+	return;
+    }
+
+    err = snd_pcm_hw_params_set_format(captureHandle, hwParams, properties.format);
+    if (err < 0) {
+        logger->warn("AudioOutHost {}: Broken configuration: {}", __func__, snd_strerror(err));
+	return;
+    }
+
+    err = snd_pcm_hw_params_set_rate_near(captureHandle, hwParams, &properties.bitrate, 0);
+    if (err < 0) {
+        logger->warn("AudioOutHost {}: Broken configuration: {}", __func__, snd_strerror(err));
+	return;
+    }
+
+    err = snd_pcm_hw_params_set_channels(captureHandle, hwParams, properties.channels);
+    if (err < 0) {
+        logger->warn("AudioOutHost {}: Broken configuration: {}", __func__, snd_strerror(err));
+	return;
+    }
 
     // Set period time based on desired packets per second
     unsigned int periodTime = 1000000 / properties.framesPerSecond;  // period time in microseconds
-    snd_pcm_hw_params_set_period_time_near(captureHandle, hwParams, &periodTime, 0);
+    err = snd_pcm_hw_params_set_period_time_near(captureHandle, hwParams, &periodTime, 0);
 
     long unsigned int bufferFrames;
-    snd_pcm_hw_params_get_period_size(hwParams, &bufferFrames, 0);
+    err = snd_pcm_hw_params_get_period_size(hwParams, &bufferFrames, 0);
     size_t bufferSize = bufferFrames * snd_pcm_format_width(properties.format) / 8 * properties.channels;
-    // std::cout << "AudioFrame frames " << bufferFrames << std::endl;
-    // std::cout << "AudioFrame size " << bufferSize << std::endl;
 
-    snd_pcm_hw_params(captureHandle, hwParams);
+    err = snd_pcm_hw_params(captureHandle, hwParams);
+    if (err < 0) {
+        logger->warn("AudioOutHost {}: Broken configuration: {}", __func__, snd_strerror(err));
+	return;
+    }
+
     snd_pcm_hw_params_free(hwParams);
-    snd_pcm_prepare(captureHandle);
+    err = snd_pcm_prepare(captureHandle);
+    if (err < 0) {
+        logger->warn("AudioOutHost {}: Invalid prepare: {}", __func__, snd_strerror(err));
+	return;
+    }
 
     std::vector<uint8_t> data;
     data.resize(bufferSize);
@@ -79,8 +115,10 @@ void AudioOut::run() {
             // EPIPE means overrun
             logger->warn("AudioOutHost {}: Underrun occurred", __func__);
             snd_pcm_prepare(captureHandle);
+            continue;
         } else if(err < 0) {
             logger->warn("AudioOutHost {}: Error from write: {}", __func__, snd_strerror(err));
+	    break;
         } else if(err != (int)bufferFrames) {
             logger->warn("AudioOutHost {}: Short write, wrote {} frames", __func__, err);
         }
