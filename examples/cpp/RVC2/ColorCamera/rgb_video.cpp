@@ -1,4 +1,5 @@
 // Includes common necessary includes for development using depthai library
+#include <iostream>
 #include "depthai/depthai.hpp"
 
 int main() {
