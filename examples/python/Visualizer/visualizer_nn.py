@@ -16,7 +16,7 @@ class ImageAnnotationsGenerator(dai.node.ThreadedHostNode):
             nnData = self.input.get()
             if nnData is not None:
                 detections = nnData.detections
-                annotations = dai.ImageAnnotations()
+                imgAnnt = dai.ImageAnnotations()
                 annotation = dai.ImageAnnotation()
                 annotation.points = [dai.PointsAnnotation()] * len(detections)
                 annotation.texts = [dai.TextAnnotation()] * len(detections)
@@ -42,10 +42,8 @@ class ImageAnnotationsGenerator(dai.node.ThreadedHostNode):
                     annotation.texts[i].textColor = textColor
                     backgroundColor = dai.Color(0.5, 0.5, 0.5, 1.0)
                     annotation.texts[i].backgroundColor = backgroundColor
-                self.output.send(annotations)
-
-
-
+                    imgAnnt.annotations = [annotation]
+                self.output.send(imgAnnt)
 
 
 remoteConnector = dai.RemoteConnection()

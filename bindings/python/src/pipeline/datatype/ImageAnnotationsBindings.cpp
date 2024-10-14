@@ -84,6 +84,7 @@ void bind_imageannotations(pybind11::module& m, void* pCallstack){
     // Message
     imageAnnotations
         .def(py::init<>(), DOC(dai, ImageAnnotations, ImageAnnotations))
+		.def(py::init<const std::vector<ImageAnnotation>&>(), DOC(dai, ImageAnnotations, ImageAnnotations, 2))
 		.def_readwrite("annotations", &ImageAnnotations::annotations)
         .def("getTimestamp", &ImageAnnotations::Buffer::getTimestamp, DOC(dai, Buffer, getTimestamp))
         .def("getTimestampDevice", &ImageAnnotations::Buffer::getTimestampDevice, DOC(dai, Buffer, getTimestampDevice))
