@@ -12,7 +12,6 @@ int main(int argc, char* argv[]) {
     auto eventsManager = std::make_shared<dai::utility::EventsManager>();
     eventsManager->setUrl("https://events-ingest.apps.stg.hubcloud");
     eventsManager->setLogResponse(true);
-
     // Color camera node
     auto camRgb = pipeline.create<dai::node::ColorCamera>();
     camRgb->setPreviewSize(256, 256);
@@ -27,7 +26,7 @@ int main(int argc, char* argv[]) {
 
     std::this_thread::sleep_for(std::chrono::milliseconds(7000));
 
-    auto fileData = std::make_shared<dai::utility::EventData>("abc", "test.txt", "text/plain");
+    auto fileData = std::make_shared<dai::utility::EventData>("abc", "test_bin.txt", "text/plain");
     std::vector<std::shared_ptr<dai::utility::EventData>> data;
     data.emplace_back(fileData);
     eventsManager->sendSnap("testdata", nullptr, data, {"tag3", " ag4"}, {{"key8", "value8"}});
@@ -50,7 +49,7 @@ int main(int argc, char* argv[]) {
         // ...
 
         if(!sent) {
-            // eventsManager->sendEvent("rgb", rgb, {}, {"tag1", "tag2"}, {{"key", "value"}});
+            eventsManager->sendEvent("rgb", rgb, {}, {"tag1", "tag2"}, {{"key", "value"}});
             sent = true;
         }
         //

@@ -6,6 +6,7 @@
 #include <iostream>
 #include <random>
 #include <sstream>
+#include <utility>
 
 #include "Environment.hpp"
 #include "Logging.hpp"
@@ -15,6 +16,7 @@
 namespace dai {
 
 namespace utility {
+using std::move;
 
 EventData::EventData(const std::string& data, const std::string& fileName, const std::string& mimeType)
     : fileName(fileName), mimeType(mimeType), data(data), type(EventDataType::DATA) {}
@@ -53,7 +55,16 @@ EventData::EventData(const std::shared_ptr<NNData>& nnData, std::string fileName
     data = ss.str();
 }
 
-EventsManager::EventsManager() : url("https://events-ingest.cloud.luxonis.com"), queueSize(10), publishInterval(5.0f), logResponse(false), verifySsl(false) {
+EventsManager::EventsManager(std::string url, bool uploadCachedOnStart, float publishInterval)
+    : url(move(url)),
+      queueSize(10),
+      publishInterval(publishInterval),
+      logResponse(false),
+      verifySsl(false),
+      connected(false),
+      cacheDir("/internal/private"),
+      uploadCachedOnStart(uploadCachedOnStart),
+      cacheIfCannotSend(false) {
     sourceAppId = utility::getEnv("AGENT_APP_ID");
     sourceAppIdentifier = utility::getEnv("AGENT_APP_IDENTIFIER");
     token = utility::getEnv("DEPTHAI_HUB_API_KEY");
@@ -63,6 +74,10 @@ EventsManager::EventsManager() : url("https://events-ingest.cloud.luxonis.com"),
             std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(publishInterval * 1000)));
         }
     });
+    checkConnection();
+    if(uploadCachedOnStart) {
+        uploadCachedData();
+    }
 }
 
 void EventsManager::sendEventBuffer() {
@@ -70,9 +85,14 @@ void EventsManager::sendEventBuffer() {
     if(eventBuffer.empty()) {
         return;
     }
+    if(!checkConnection()) {
+        if(cacheIfCannotSend) {
+            cacheEvents();
+        }
+        return;
+    }
     // Create request
     cpr::Url url = static_cast<cpr::Url>(this->url + "/v1/events");
-    cpr::Body body;
     auto batchEvent = std::make_unique<proto::BatchUploadEvents>();
     for(auto& eventM : eventBuffer) {
         auto& event = eventM->event;
@@ -80,8 +100,7 @@ void EventsManager::sendEventBuffer() {
     }
     std::string serializedEvent;
     batchEvent->SerializeToString(&serializedEvent);
-    body = cpr::Body(serializedEvent);
-    cpr::Response r = cpr::Post(url, cpr::Header{{"Authorization", "Bearer " + token}}, cpr::Body(body), cpr::VerifySsl(verifySsl));
+    cpr::Response r = cpr::Post(url, cpr::Header{{"Authorization", "Bearer " + token}}, cpr::Body(serializedEvent), cpr::VerifySsl(verifySsl));
     if(r.status_code != cpr::status::HTTP_OK) {
         logger::error("Failed to send event: {} {}", r.text, r.status_code);
     } else {
@@ -100,6 +119,11 @@ void EventsManager::sendEventBuffer() {
 
                     sendFile(eventBuffer[i]->data[j], fileUrl);
                 }
+            }
+        }
+        for(auto& eventM : eventBuffer) {
+            if(!eventM->cachePath.empty() && std::filesystem::exists(eventM->cachePath)) {
+                std::filesystem::remove_all(eventM->cachePath);
             }
         }
         eventBuffer.clear();
@@ -187,6 +211,74 @@ void EventsManager::sendFile(const std::shared_ptr<EventData>& file, const std::
     }
 }
 
+void EventsManager::cacheEvents() {
+    // for each event, create a unique directory, save protobuf message and associated files
+    for(auto& eventM : eventBuffer) {
+        auto& event = eventM->event;
+        auto& data = eventM->data;
+        std::string eventDir = cacheDir + "/event_" + event->name() + "_" + event->nonce();
+        logger::info("Caching event to {}", eventDir);
+        if(!std::filesystem::exists(cacheDir)) {
+            std::filesystem::create_directories(cacheDir);
+        }
+        std::filesystem::create_directory(eventDir);
+        std::ofstream eventFile(eventDir + "/event.pb", std::ios::binary);
+        event->SerializeToOstream(&eventFile);
+        for(auto& file : data) {
+            if(file->type == EventDataType::FILE_URL) {
+                std::filesystem::copy(file->data, eventDir + "/" + file->fileName);
+            } else {
+                std::string extension = file->mimeType == "image/jpeg" ? ".jpg" : ".txt";
+                std::ofstream fileStream(eventDir + "/" + file->fileName, std::ios::binary);
+                fileStream.write(file->data.data(), file->data.size());
+            }
+        }
+    }
+    eventBuffer.clear();
+}
+
+void EventsManager::uploadCachedData() {
+    // iterate over all directories in cacheDir, read event.pb and associated files, and send them
+    if(!checkConnection()) {
+        return;
+    }
+    // check if cacheDir exists
+    if(!std::filesystem::exists(cacheDir)) {
+        logger::warn("Cache directory does not exist");
+        return;
+    }
+    for(const auto& entry : std::filesystem::directory_iterator(cacheDir)) {
+        if(entry.is_directory()) {
+            std::string eventDir = entry.path();
+            std::ifstream eventFile(eventDir + "/event.pb", std::ios::binary);
+            proto::Event event;
+            event.ParseFromIstream(&eventFile);
+            std::vector<std::shared_ptr<EventData>> data;
+            for(const auto& fileEntry : std::filesystem::directory_iterator(eventDir)) {
+                if(fileEntry.is_regular_file() && fileEntry.path() != eventDir + "/event.pb") {
+                    auto fileData = std::make_shared<EventData>(fileEntry.path());
+                    data.push_back(fileData);
+                }
+            }
+            eventBuffer.push_back(std::make_unique<EventMessage>(EventMessage{std::make_shared<proto::Event>(event), data, eventDir}));
+        }
+    }
+}
+
+bool EventsManager::checkForCachedData() {
+    // check if cacheDir exists
+    if(!std::filesystem::exists(cacheDir)) {
+        logger::warn("Cache directory does not exist");
+        return false;
+    }
+    return std::any_of(
+        std::filesystem::directory_iterator(cacheDir), std::filesystem::directory_iterator(), [](const auto& entry) { return entry.is_directory(); });
+}
+
+void EventsManager::setCacheDir(const std::string& cacheDir) {
+    this->cacheDir = cacheDir;
+}
+
 void EventsManager::setUrl(const std::string& url) {
     this->url = url;
 }
@@ -203,6 +295,15 @@ void EventsManager::setToken(const std::string& token) {
     this->token = token;
 }
 
+bool EventsManager::checkConnection() {
+    cpr::Response r = cpr::Get(cpr::Url{url + "/health"}, cpr::VerifySsl(verifySsl));
+    if(r.status_code != cpr::status::HTTP_OK) {
+        logger::error("Failed to connect to events service: {} {}", r.text, r.status_code);
+        return false;
+    }
+    logger::info("Connected to events service");
+    return true;
+}
 std::string EventsManager::createUUID() {
     std::random_device rd;
     std::mt19937 gen(rd());
@@ -236,9 +337,6 @@ std::string EventsManager::createUUID() {
 }
 void EventsManager::setQueueSize(uint64 queueSize) {
     this->queueSize = queueSize;
-}
-void EventsManager::setPublishInterval(float publishInterval) {
-    this->publishInterval = publishInterval;
 }
 void EventsManager::setLogResponse(bool logResponse) {
     this->logResponse = logResponse;
@@ -285,9 +383,6 @@ void EventsManager::setToken(const std::string& token) {
 void EventsManager::setQueueSize(unsigned long queueSize) {
     logger::warn("EventsManager is disabled, please enable DEPTHAI_ENABLE_CURL in CMake to use this feature");
 }
-void EventsManager::setPublishInterval(float publishInterval) {
-    logger::warn("EventsManager is disabled, please enable DEPTHAI_ENABLE_CURL in CMake to use this feature");
-}
 void EventsManager::setLogResponse(bool logResponse) {
     logger::warn("EventsManager is disabled, please enable DEPTHAI_ENABLE_CURL in CMake to use this feature");
 }
@@ -295,7 +390,7 @@ void EventsManager::setDeviceSerialNumber(const std::string& deviceSerialNumber)
     logger::warn("EventsManager is disabled, please enable DEPTHAI_ENABLE_CURL in CMake to use this feature");
 }
 void EventsManager::setVerifySsl(bool verifySsl) {
-	logger::warn("EventsManager is disabled, please enable DEPTHAI_ENABLE_CURL in CMake to use this feature");
+    logger::warn("EventsManager is disabled, please enable DEPTHAI_ENABLE_CURL in CMake to use this feature");
 }
 }  // namespace utility
 }  // namespace dai
