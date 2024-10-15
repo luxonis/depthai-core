@@ -156,6 +156,18 @@ struct TensorInfo {
         }
     }
 
+    std::size_t getTensorSize() {
+        uint32_t i;
+
+        // Use the first non zero stride
+        for(i = 0; i < strides.size(); i++) {
+            if(strides[i] > 0) {
+                break;
+            }
+        }
+        return dims[i] * strides[i];
+    }
+
     int getChannels() {
         validateStorageOrder();
         switch(order) {
