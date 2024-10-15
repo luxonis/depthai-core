@@ -166,6 +166,12 @@ dai_set_example_test_labels(reconnect_callback ondevice rvc2_all rvc4 ci)
 add_python_example(neural_network NeuralNetwork/neural_network.py)
 dai_set_example_test_labels(neural_network ondevice rvc2_all rvc4 ci)
 
+add_python_example(neural_network_multi_input_combined NeuralNetwork/neural_network_multi_input_combined.py)
+dai_set_example_test_labels(neural_network_multi_input_combined ondevice rvc2_all rvc4 ci)
+
+add_python_example(neural_network_multi_input NeuralNetwork/neural_network_multi_input.py)
+dai_set_example_test_labels(neural_network_multi_input ondevice rvc2_all rvc4 ci)
+
 ## Spatial detection network
 add_python_example(spatial_detection SpatialDetectionNetwork/spatial_detection.py)
 dai_set_example_test_labels(spatial_detection ondevice rvc2_all rvc4 ci)
