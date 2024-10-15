@@ -69,7 +69,7 @@ class RemoteConnection {
     // Foxglove and http servers
     std::unique_ptr<foxglove::ServerInterface<websocketpp::connection_hdl>> server;
     std::unique_ptr<httplib::Server> httpServer;  // For the frontend
-    std::unique_ptr<std::thread> httpServerThread;
+    std::unique_ptr<std::thread> httpServerThread, publishThread;
 
     // Add a serviceId - function map
     std::map<foxglove::ServiceId, std::function<foxglove::ServiceResponse(foxglove::ServiceResponse)>> serviceMap;

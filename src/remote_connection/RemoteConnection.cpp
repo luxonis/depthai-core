@@ -25,6 +25,7 @@ RemoteConnection::RemoteConnection(const std::string& address, uint16_t port) {
 
 RemoteConnection::~RemoteConnection() {
     server->stop();
+	publishThread->join();
     httpServer->stop();
     httpServerThread->join();
 }
@@ -109,7 +110,7 @@ void RemoteConnection::initWebsocketServer(const std::string& address, uint16_t 
 }
 
 void RemoteConnection::addPublishThread(const std::string& topicName, const std::shared_ptr<MessageQueue>& outputQueue, const std::string& group) {
-    std::thread([this, topicName, outputQueue, group]() {
+    publishThread = std::make_unique<std::thread>([this, topicName, outputQueue, group]() {
         bool isRunning = true;
         // Wait for the first message to extract schema
         auto firstMessage = outputQueue->get();
@@ -120,7 +121,7 @@ void RemoteConnection::addPublishThread(const std::string& topicName, const std:
 
         auto serializableMessage = std::dynamic_pointer_cast<utility::ProtoSerializable>(firstMessage);
         if(!serializableMessage) {
-            std::cerr << "First message is not a ProtoSerializable message for topic: " << topicName << std::endl;
+            logger::error("First message is not a ProtoSerializable message for topic: {}", topicName);
             return;
         }
         // Assuming the first message is a protobuf message
@@ -165,7 +166,7 @@ void RemoteConnection::addPublishThread(const std::string& topicName, const std:
             auto serializedMsg = serializableMessage->serializeProto();
             server->broadcastMessage(channelId, nanosecondsSinceEpoch(), static_cast<const uint8_t*>(serializedMsg.data()), serializedMsg.size());
         }
-    }).detach();  // Detach the thread to run independently
+    });  // Detach the thread to run independently
 }
 
 void RemoteConnection::addTopic(const std::string& topicName, Node::Output& output, const std::string& group) {
@@ -207,7 +208,6 @@ std::string getMimeType(const std::string& path) {
 void RemoteConnection::initHttpServer(const std::string& address, uint16_t port) {
     auto visualizerFs = Resources::getInstance().getEmbeddedVisualizer();
     httpServer = std::make_unique<httplib::Server>();
-    // httpServer->set_mount_point("/", "/home/matevz/Downloads/viewer-fe-2");
     httpServer->Get("/(.*)", [visualizerFs](const httplib::Request& req, httplib::Response& res) {
         std::string requestedPath = req.matches[1];
 
