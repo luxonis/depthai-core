@@ -3,6 +3,7 @@
 
 // std
 #include <cstdint>
+#include <ostream>
 
 // project
 #include "depthai/utility/Serialization.hpp"
@@ -217,5 +218,79 @@ struct TensorInfo {
 };
 
 DEPTHAI_SERIALIZE_EXT(TensorInfo, order, dataType, numDimensions, dims, strides, name, offset, quantization, qpScale, qpZp);
+
+
+
+inline std::ostream& operator<<(std::ostream& os, const TensorInfo::StorageOrder& so) {
+    switch(so) {
+        case TensorInfo::StorageOrder::NHWC:
+            os << "NHWC";
+            break;
+        case TensorInfo::StorageOrder::NHCW:
+            os << "NHCW";
+            break;
+        case TensorInfo::StorageOrder::NCHW:
+            os << "NCHW";
+            break;
+        case TensorInfo::StorageOrder::HWC:
+            os << "HWC";
+            break;
+        case TensorInfo::StorageOrder::CHW:
+            os << "CHW";
+            break;
+        case TensorInfo::StorageOrder::WHC:
+            os << "WHC";
+            break;
+        case TensorInfo::StorageOrder::HCW:
+            os << "HCW";
+            break;
+        case TensorInfo::StorageOrder::WCH:
+            os << "WCH";
+            break;
+        case TensorInfo::StorageOrder::CWH:
+            os << "CWH";
+            break;
+        case TensorInfo::StorageOrder::NC:
+            os << "NC";
+            break;
+        case TensorInfo::StorageOrder::CN:
+            os << "CN";
+            break;
+        case TensorInfo::StorageOrder::C:
+            os << "C";
+            break;
+        case TensorInfo::StorageOrder::H:
+            os << "H";
+            break;
+        case TensorInfo::StorageOrder::W:
+            os << "W";
+            break;
+    }
+    return os;
+}
+
+inline std::ostream& operator<<(std::ostream& os, const TensorInfo::DataType& dt) {
+    switch(dt) {
+        case TensorInfo::DataType::FP16:
+            os << "FP16";
+            break;
+        case TensorInfo::DataType::U8F:
+            os << "U8F";
+            break;
+        case TensorInfo::DataType::INT:
+            os << "INT";
+            break;
+        case TensorInfo::DataType::FP32:
+            os << "FP32";
+            break;
+        case TensorInfo::DataType::I8:
+            os << "I8";
+            break;
+        case TensorInfo::DataType::FP64:
+            os << "FP64";
+            break;
+    }
+    return os;
+}
 
 }  // namespace dai
