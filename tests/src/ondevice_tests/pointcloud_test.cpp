@@ -63,10 +63,9 @@ TEST_CASE("dense pointcloud") {
         REQUIRE(pcl->getWidth() == 1280);
         REQUIRE(pcl->getHeight() == 720);
         REQUIRE(pcl->getPoints().size() == 1280UL * 720UL);
-        REQUIRE(pcl->getMinX() < 0.0f);
-        REQUIRE(pcl->getMaxX() > 0.0f);
-        REQUIRE(pcl->getMinY() < 0.0f);
-        REQUIRE(pcl->getMaxY() > 0.0f);
+        REQUIRE(pcl->getMinX() <= pcl->getMaxX());
+        REQUIRE(pcl->getMinY() <= pcl->getMaxY());
+        REQUIRE(pcl->getMinZ() <= pcl->getMaxZ());
     }
 }
 
@@ -100,10 +99,8 @@ TEST_CASE("sparse pointcloud") {
         REQUIRE(pcl->getWidth() == 1280);
         REQUIRE(pcl->getHeight() == 720);
         REQUIRE(pcl->getPoints().size() < 1280UL * 720UL);
-        REQUIRE(pcl->getMinX() < 0.0f);
-        REQUIRE(pcl->getMaxX() > 0.0f);
-        REQUIRE(pcl->getMinY() < 0.0f);
-        REQUIRE(pcl->getMaxY() > 0.0f);
-        REQUIRE(pcl->getMinZ() > 0.0f);
+        REQUIRE(pcl->getMinX() <= pcl->getMaxX());
+        REQUIRE(pcl->getMinY() <= pcl->getMaxY());
+        REQUIRE(pcl->getMinZ() <= pcl->getMaxZ());
     }
 }

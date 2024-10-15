@@ -2,7 +2,7 @@
 include(CTest)
 enable_testing()
 
-# Add catch2 for writing tests
+# Add Catch2 for writing tests
 hunter_add_package(Catch2)
 find_package(Catch2 CONFIG REQUIRED)
 
@@ -12,65 +12,39 @@ message(STATUS "Catch2_VERSION: ${Catch2_VERSION}")
 message(STATUS "Catch2_INCLUDE_DIRS: ${Catch2_INCLUDE_DIRS}")
 message(STATUS "Catch2_LIBRARIES: ${Catch2_LIBRARIES}")
 
-
-# Create environments for usb & poe labels
-set(test_usb_env
+set(test_env
     # Misc
     "UBSAN_OPTIONS=halt_on_error=1"
     # DepthAI
-    "DEPTHAI_PROTOCOL=usb"
-)
-set(test_poe_env
-    # Misc
-    "UBSAN_OPTIONS=halt_on_error=1"
-    # DepthAI
-    "DEPTHAI_PROTOCOL=tcpshd;DEPTHAI_SEARCH_TIMEOUT=15000"
+    "DEPTHAI_SEARCH_TIMEOUT=15000"
     )
 
 include(CMakeParseArguments)
 
-# Create a new onhost test
-function(dai_add_onhost_test test_name test_src)
-
-    # parse arguments
+# Function for adding new tests
+function(dai_add_test test_name test_src)
+    # Parse arguments
     cmake_parse_arguments(DAT "CONFORMING" "CXX_STANDARD" "" ${ARGN})
 
     # Create test executable
     add_executable(${test_name} ${test_src})
     add_default_flags(${test_name} LEAN)
 
-    # Add to clangformat target
-    if(COMMAND target_clangformat_setup)
-        target_clangformat_setup(${test_name} "")
+    # Set compiler C++ standard if specified
+    if(DAT_CXX_STANDARD)
+        target_compile_features(${test_name} PRIVATE cxx_std_${DAT_CXX_STANDARD})
     endif()
 
-    if(NOT DEPTHAI_MERGED_TARGET)
-        target_link_libraries(${test_name} PRIVATE depthai::opencv ${OpenCV_LIBS} Catch2::Catch2WithMain Threads::Threads)
-    else()
-        target_link_libraries(${test_name} PRIVATE depthai::core ${OpenCV_LIBS} Catch2::Catch2WithMain Threads::Threads)
+    # Add conforming preprocessor flags for MSVC if requested
+    if(MSVC AND DAT_CONFORMING)
+        if(MSVC_VERSION LESS 1925)
+            target_compile_options(${test_name} PRIVATE "/experimental:preprocessor")
+        else()
+            target_compile_options(${test_name} PRIVATE "/Zc:preprocessor")
+        endif()
     endif()
 
-    # Add sanitizers for tests as well
-    if(COMMAND add_sanitizers)
-        add_sanitizers(${test_name})
-    endif()
-
-    add_test(${test_name} ${test_name})
-    set_tests_properties(${test_name} PROPERTIES LABELS "onhost")
-endfunction()
-
-# Create two tests for USB and PoE devices
-function(dai_add_ondevice_test test_name test_src)
-
-    # parse arguments
-    cmake_parse_arguments(DAT "CONFORMING" "CXX_STANDARD" "" ${ARGN})
-
-    # Create test executable
-    add_executable(${test_name} ${test_src})
-    add_default_flags(${test_name} LEAN)
-    target_compile_options(${test_name} PRIVATE "${CMAKE_CXX${DAT_CXX_STANDARD}_STANDARD_COMPILE_OPTION}")
-
-    # Add to clangformat target
+    # Add to clang-format target
     if(COMMAND target_clangformat_setup)
         target_clangformat_setup(${test_name} "")
     endif()
@@ -87,85 +61,14 @@ function(dai_add_ondevice_test test_name test_src)
         add_sanitizers(${test_name})
     endif()
 
-    # Add USB test variant
-    add_test(${test_name}_usb ${test_name})
-    set_tests_properties(${test_name}_usb PROPERTIES ENVIRONMENT "${test_usb_env}" LABELS "ondevice_usb")
+    # Add test
+    add_test(NAME ${test_name} COMMAND ${test_name})
+    set_tests_properties(${test_name} PROPERTIES ENVIRONMENT "${test_env}")
 
-    # Add PoE test variant
-    add_test(${test_name}_poe ${test_name})
-    set_tests_properties(${test_name}_poe PROPERTIES ENVIRONMENT "${test_poe_env}" LABELS "ondevice_poe")
-
-    # Add conforming variants
-    if(MSVC AND DAT_CONFORMING) 
-        # Create test executable with MSVC conforming preprocessor
-        add_executable(${test_name}_conforming_usb ${test_src})
-        add_default_flags(${test_name}_conforming_usb LEAN)
-        add_executable(${test_name}_conforming_poe ${test_src})
-        add_default_flags(${test_name}_conforming_poe LEAN)
-
-        # Link to core and Catch2 testing framework
-        if(NOT DEPTHAI_MERGED_TARGET)
-            target_link_libraries(${test_name}_conforming_usb PRIVATE depthai::opencv ${OpenCV_LIBS} Catch2::Catch2WithMain Threads::Threads)
-            target_link_libraries(${test_name}_conforming_poe PRIVATE depthai::opencv ${OpenCV_LIBS} Catch2::Catch2WithMain Threads::Threads)
-        else()
-            target_link_libraries(${test_name}_conforming_usb PRIVATE depthai::core ${OpenCV_LIBS} Catch2::Catch2WithMain Threads::Threads)
-            target_link_libraries(${test_name}_conforming_poe PRIVATE depthai::core ${OpenCV_LIBS} Catch2::Catch2WithMain Threads::Threads)
-        endif()
-
-        # Set compiler c++ standard
-        target_compile_options(${test_name}_conforming_usb PRIVATE "${CMAKE_CXX${DAT_CXX_STANDARD}_STANDARD_COMPILE_OPTION}")
-        target_compile_options(${test_name}_conforming_poe PRIVATE "${CMAKE_CXX${DAT_CXX_STANDARD}_STANDARD_COMPILE_OPTION}")
-
-        if(MSVC_VERSION LESS 1925)
-            target_compile_options(${test_name}_conforming_usb PRIVATE "/experimental:preprocessor")
-            target_compile_options(${test_name}_conforming_poe PRIVATE "/experimental:preprocessor")
-        else()
-            target_compile_options(${test_name}_conforming_usb PRIVATE "/Zc:preprocessor")
-            target_compile_options(${test_name}_conforming_poe PRIVATE "/Zc:preprocessor")
-        endif()
-
-        # Add to list of tests
-        add_test(${test_name}_conforming_usb ${test_name}_conforming_usb)
-        add_test(${test_name}_conforming_poe ${test_name}_conforming_poe)
-
-        # Add ubsan halt on error
-        set_tests_properties(${test_name}_conforming_usb PROPERTIES ENVIRONMENT "${test_usb_env}" LABELS "${test_type}_usb")
-        set_tests_properties(${test_name}_conforming_poe PROPERTIES ENVIRONMENT "${test_poe_env}" LABELS "${test_type}_poe")
-    endif()
-
-endfunction()
-
-# Function for adding new tests
-function(dai_add_test test_name test_src test_type)
-
-    # Check test type
-    if((NOT "${test_type}" STREQUAL "ondevice") AND (NOT "${test_type}" STREQUAL "onhost"))
-        message(FATAL_ERROR "Invalid test type: ${test_type}. Must be either 'ondevice' or 'onhost'")
-    endif()
-
-    # parse arguments
-    cmake_parse_arguments(DAT "CONFORMING" "CXX_STANDARD" "" ${ARGN})
-
-    # check compiler for C++ standard
-    if(NOT DAT_CXX_STANDARD)
-        set(DAT_CXX_STANDARD 17)
-    endif()
-    if(NOT COMPILER_SUPPORTS_CXX${DAT_CXX_STANDARD})
-        message(STATUS "Skipping test ${test_name} with c++${DAT_CXX_STANDARD}; no compiler support")
-        return()
-    endif()
-
-    if(("${test_type}" STREQUAL "onhost"))
-        dai_add_onhost_test(${test_name} ${test_src} ${ARGN})
-    endif()
-
-    if(("${test_type}" STREQUAL "ondevice"))
-        dai_add_ondevice_test(${test_name} ${test_src} ${ARGN})
-    endif()
 
     # Copy over required DLLs (Windows)
     if(WIN32)
-        # Copy dlls to target directory - Windows only
+        # Copy DLLs to target directory - Windows only
         # TARGET_RUNTIME_DLLS generator expression available since CMake 3.21
         if(CMAKE_VERSION VERSION_LESS "3.21")
             file(GLOB depthai_dll_libraries "${HUNTER_INSTALL_PREFIX}/bin/*.dll")
@@ -178,6 +81,19 @@ function(dai_add_test test_name test_src test_type)
             VERBATIM
         )
     endif()
+endfunction()
+
+# Function for setting test labels, including label shortcuts
+function(dai_set_test_labels test_name)
+    set(expanded_labels "")
+    foreach(label IN LISTS ARGN)
+        if(label STREQUAL "rvc2_all")
+            list(APPEND expanded_labels "rvc2" "poe" "usb")
+        else()
+            list(APPEND expanded_labels ${label})
+        endif()
+    endforeach()
+    set_tests_properties(${test_name} PROPERTIES LABELS "${expanded_labels}")
 endfunction()
 
 # Function for adding compile definitions to tests
@@ -289,55 +205,63 @@ hunter_private_data(
     LOCATION yolo_onnx_nnarchive_path
 )
 
-### On-host tests ####################################################################################
-### On-host tests ####################################################################################
-### On-host tests ####################################################################################
+### On-host tests #############################################################
 
 # Superblob test
-dai_add_test(openvino_test src/onhost_tests/openvino/openvino_test.cpp onhost)
+dai_add_test(openvino_test src/onhost_tests/openvino/openvino_test.cpp)
 target_compile_definitions(openvino_test PRIVATE SUPERBLOB_PATH="${superblob_path}")
+dai_set_test_labels(openvino_test onhost ci)
 
 # NNArchive test
-dai_add_test(nn_archive_test src/onhost_tests/nn_archive/nn_archive_test.cpp onhost)
+dai_add_test(nn_archive_test src/onhost_tests/nn_archive/nn_archive_test.cpp)
 target_compile_definitions(nn_archive_test PRIVATE
     BLOB_ARCHIVE_PATH="${yolo_blob_nnarchive_path}"
     SUPERBLOB_ARCHIVE_PATH="${yolo_superblob_nnarchive_path}"
     ONNX_ARCHIVE_PATH="${yolo_onnx_nnarchive_path}"
 )
+dai_set_test_labels(nn_archive_test onhost ci)
 
 # Eeprom naming parsing tests
-dai_add_test(naming_test src/onhost_tests/naming_test.cpp onhost)
+dai_add_test(naming_test src/onhost_tests/naming_test.cpp)
+dai_set_test_labels(naming_test onhost ci)
 
 # Image transformations test
-dai_add_test(image_transformations_test src/onhost_tests/image_transformations_test.cpp onhost)
+dai_add_test(image_transformations_test src/onhost_tests/image_transformations_test.cpp)
+dai_set_test_labels(image_transformations_test onhost ci)
 
 # MessageQueue tests
-dai_add_test(message_queue_test src/onhost_tests/message_queue_test.cpp onhost)
+dai_add_test(message_queue_test src/onhost_tests/message_queue_test.cpp)
+dai_set_test_labels(message_queue_test onhost ci)
 
 # StreamMessageParser tests
-dai_add_test(stream_message_parser_test src/onhost_tests/stream_message_parser_test.cpp onhost)
+dai_add_test(stream_message_parser_test src/onhost_tests/stream_message_parser_test.cpp)
+dai_set_test_labels(stream_message_parser_test onhost ci)
 
 # Bootloader version tests
-dai_add_test(bootloader_version_test src/onhost_tests/bootloader_version_test.cpp onhost)
+dai_add_test(bootloader_version_test src/onhost_tests/bootloader_version_test.cpp)
+dai_set_test_labels(bootloader_version_test onhost ci)
 
 # Bootloader configuration tests
-dai_add_test(bootloader_config_test src/onhost_tests/bootloader_config_test.cpp onhost)
+dai_add_test(bootloader_config_test src/onhost_tests/bootloader_config_test.cpp)
+dai_set_test_labels(bootloader_config_test onhost ci)
 
-dai_add_test(env_test src/onhost_tests/env_test.cpp onhost)
+# Environment test
+dai_add_test(env_test src/onhost_tests/env_test.cpp)
+dai_set_test_labels(env_test onhost ci)
 
 # Datatype tests
-dai_add_test(nndata_test src/onhost_tests/pipeline/datatype/nndata_test.cpp onhost)
+dai_add_test(nndata_test src/onhost_tests/pipeline/datatype/nndata_test.cpp)
+dai_set_test_labels(nndata_test onhost ci)
 
-### On-device tests ####################################################################################
-### On-device tests ####################################################################################
-### On-device tests ####################################################################################
+### On-device tests ###########################################################
 
-# Depthai logging test
-dai_add_test(logging_test src/ondevice_tests/logging_test.cpp ondevice)
+# DepthAI logging test
+dai_add_test(logging_test src/ondevice_tests/logging_test.cpp)
+dai_set_test_labels(logging_test ondevice rvc2_all ci)
 
 # OpenVINO blob test
-dai_add_test(openvino_blob_test src/ondevice_tests/openvino_blob_test.cpp ondevice)
-dai_test_compile_definitions(openvino_blob_test PRIVATE
+dai_add_test(openvino_blob_test src/ondevice_tests/openvino_blob_test.cpp)
+target_compile_definitions(openvino_blob_test PRIVATE
     OPENVINO_2020_3_BLOB_PATH="${openvino_2020_3_blob}"
     OPENVINO_2020_4_BLOB_PATH="${openvino_2020_4_blob}"
     OPENVINO_2021_1_BLOB_PATH="${openvino_2021_1_blob}"
@@ -346,59 +270,85 @@ dai_test_compile_definitions(openvino_blob_test PRIVATE
     OPENVINO_2021_4_BLOB_PATH="${openvino_2021_4_2_blob}"
     OPENVINO_2022_1_BLOB_PATH="${openvino_2022_1_blob}"
 )
-
+dai_set_test_labels(openvino_blob_test ondevice rvc2_all ci)
 
 # Neural network test
-dai_add_test(neural_network_test src/ondevice_tests/neural_network_test.cpp ondevice)
-dai_test_compile_definitions(neural_network_test PRIVATE BLOB_PATH="${mobilenet_blob}")
+dai_add_test(neural_network_test src/ondevice_tests/neural_network_test.cpp)
+target_compile_definitions(neural_network_test PRIVATE BLOB_PATH="${mobilenet_blob}")
+dai_set_test_labels(neural_network_test ondevice rvc2_all ci)
 
 # Color camera test
-dai_add_test(color_camera_node_test src/ondevice_tests/color_camera_node_test.cpp ondevice)
+dai_add_test(color_camera_node_test src/ondevice_tests/color_camera_node_test.cpp)
+dai_set_test_labels(color_camera_node_test ondevice rvc2_all ci)
 
 # Image manip test
-dai_add_test(image_manip_node_test src/ondevice_tests/image_manip_node_test.cpp ondevice)
+dai_add_test(image_manip_node_test src/ondevice_tests/image_manip_node_test.cpp)
+dai_set_test_labels(image_manip_node_test ondevice rvc2_all ci)
 
 # Pipeline test
-dai_add_test(pipeline_test src/ondevice_tests/pipeline_test.cpp ondevice)
+dai_add_test(pipeline_test src/ondevice_tests/pipeline_test.cpp)
+dai_set_test_labels(pipeline_test ondevice rvc2_all ci)
 
 # Device USB Speed and serialization macros test
-dai_add_test(device_usbspeed_test    src/ondevice_tests/device_usbspeed_test.cpp ondevice CONFORMING)
-dai_add_test(device_usbspeed_test_17 src/ondevice_tests/device_usbspeed_test.cpp ondevice CONFORMING CXX_STANDARD 17)
-dai_add_test(device_usbspeed_test_20 src/ondevice_tests/device_usbspeed_test.cpp ondevice CONFORMING CXX_STANDARD 20)
+dai_add_test(device_usbspeed_test src/ondevice_tests/device_usbspeed_test.cpp)
+dai_set_test_labels(device_usbspeed_test ondevice rvc2 usb ci)
+
+dai_add_test(device_usbspeed_test_17 src/ondevice_tests/device_usbspeed_test.cpp CXX_STANDARD 17)
+dai_set_test_labels(device_usbspeed_test_17 ondevice rvc2 usb ci)
+
+dai_add_test(device_usbspeed_test_20 src/ondevice_tests/device_usbspeed_test.cpp CXX_STANDARD 20)
+dai_set_test_labels(device_usbspeed_test_20 ondevice rvc2 usb ci)
 
 # Filesystem test
-dai_add_test(filesystem_test src/ondevice_tests/filesystem_test.cpp ondevice)
-dai_test_compile_definitions(filesystem_test PRIVATE BLOB_PATH="${mobilenet_blob}")
-dai_add_test(filesystem_test_17 src/ondevice_tests/filesystem_test.cpp ondevice CXX_STANDARD 17)
-dai_test_compile_definitions(filesystem_test_17 PRIVATE BLOB_PATH="${mobilenet_blob}")
-dai_add_test(filesystem_test_20 src/ondevice_tests/filesystem_test.cpp ondevice CXX_STANDARD 20)
-dai_test_compile_definitions(filesystem_test_20 PRIVATE BLOB_PATH="${mobilenet_blob}")
+dai_add_test(filesystem_test src/ondevice_tests/filesystem_test.cpp)
+target_compile_definitions(filesystem_test PRIVATE BLOB_PATH="${mobilenet_blob}")
+dai_set_test_labels(filesystem_test rvc2_all ci)
+
+dai_add_test(filesystem_test_17 src/ondevice_tests/filesystem_test.cpp CXX_STANDARD 17)
+target_compile_definitions(filesystem_test_17 PRIVATE BLOB_PATH="${mobilenet_blob}")
+dai_set_test_labels(filesystem_test_17 rvc2_all ci)
+
+dai_add_test(filesystem_test_20 src/ondevice_tests/filesystem_test.cpp CXX_STANDARD 20)
+target_compile_definitions(filesystem_test_20 PRIVATE BLOB_PATH="${mobilenet_blob}")
+dai_set_test_labels(filesystem_test_20 rvc2_all ci)
 
 # Encoded frame test
-dai_add_test(encoded_frame_test src/ondevice_tests/encoded_frame_test.cpp ondevice CXX_STANDARD 17)
+dai_add_test(encoded_frame_test src/ondevice_tests/encoded_frame_test.cpp CXX_STANDARD 17)
+dai_set_test_labels(encoded_frame_test ondevice rvc2_all ci)
 
 # MessageGroup tests
-dai_add_test(message_group_frame_test src/ondevice_tests/message_group_test.cpp ondevice CXX_STANDARD 17) 
+dai_add_test(message_group_frame_test src/ondevice_tests/message_group_test.cpp CXX_STANDARD 17)
+dai_set_test_labels(message_group_frame_test ondevice rvc2_all rvc4 ci)
 
 # Pointcloud test
-dai_add_test(pointcloud_test src/ondevice_tests/pointcloud_test.cpp ondevice)
+dai_add_test(pointcloud_test src/ondevice_tests/pointcloud_test.cpp)
+dai_set_test_labels(pointcloud_test ondevice rvc2_all ci)
 
 # Resolutions test
-dai_add_test(resolutions_test src/ondevice_tests/resolutions_test.cpp ondevice)
+dai_add_test(resolutions_test src/ondevice_tests/resolutions_test.cpp)
+dai_set_test_labels(resolutions_test ondevice) # TODO(jakob) Make the test runnable in CI
 
 # Serialization test
-dai_add_test(serialization_test src/onhost_tests/serialization_test.cpp ondevice)
+dai_add_test(serialization_test src/onhost_tests/serialization_test.cpp)
+dai_set_test_labels(serialization_test ondevice rvc2_all ci)
 
 # Subnode test
-dai_add_test(subnode_test src/ondevice_tests/pipeline/subnode_test.cpp ondevice)
+dai_add_test(subnode_test src/ondevice_tests/pipeline/subnode_test.cpp)
+dai_set_test_labels(subnode_test ondevice rvc2_all rvc4 ci)
 
 # Detection network test
-dai_add_test(detection_network_test src/ondevice_tests/pipeline/node/detection_network_test.cpp ondevice)
+dai_add_test(detection_network_test src/ondevice_tests/pipeline/node/detection_network_test.cpp)
 target_compile_definitions(detection_network_test PRIVATE
     BLOB_ARCHIVE_PATH="${yolo_blob_nnarchive_path}"
     SUPERBLOB_ARCHIVE_PATH="${yolo_superblob_nnarchive_path}"
     ONNX_ARCHIVE_PATH="${yolo_onnx_nnarchive_path}"
 )
+dai_set_test_labels(detection_network_test ondevice rvc2_all ci)
 
 # Spatial detection network test
-dai_add_test(spatial_detection_network_test src/ondevice_tests/pipeline/node/spatial_detection_network_test.cpp ondevice)
+dai_add_test(spatial_detection_network_test src/ondevice_tests/pipeline/node/spatial_detection_network_test.cpp)
+dai_set_test_labels(spatial_detection_network_test ondevice rvc2_all rvc4 ci)
+
+# NeuralNetwork node test
+dai_add_test(neural_network_node_test src/ondevice_tests/pipeline/node/neural_network_node_test.cpp)
+dai_set_test_labels(neural_network_node_test ondevice rvc2_all rvc4 ci)

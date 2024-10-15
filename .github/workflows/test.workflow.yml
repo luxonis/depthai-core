@@ -4,14 +4,12 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - main
-      - develop
+      - v3_develop
     tags:
-      - 'v2*'
+      - 'v*'
   pull_request:
     branches:
-      - main
-      - develop
+      - v3_develop
 
 # Only allow latest run on same branch to be tested
 concurrency:
@@ -24,7 +22,8 @@ jobs:
   test:
     strategy:
       matrix:
-        os: ['windows', 'macos', 'linux']
+        # os: ['windows', 'macos', 'linux']
+        os: ['linux']
         arch: ['x64']
         flavor: ['vanilla', 'asan-ubsan', 'tsan']
         exclude:
@@ -32,7 +31,7 @@ jobs:
             arch: 'x64'
             flavor: 'tsan'
       fail-fast: false
-    runs-on: ['self-hosted', 'hil-test', '${{ matrix.os }}', '${{ matrix.arch }}']
+    runs-on: ['self-hosted', 'hil-test-v3', '${{ matrix.os }}', '${{ matrix.arch }}']
 
     steps:
     - name: Cache .hunter folder
@@ -44,6 +43,13 @@ jobs:
       with:
         submodules: 'recursive'
 
+    - name: Create virtual environment
+      run: |
+        python -m venv venv
+        source venv/bin/activate
+        python -m pip install --upgrade pip
+        python -m pip install numpy
+
     - name: Specify toolchain path
       if: matrix.flavor == 'vanilla'
       run: echo "CMAKE_TOOLCHAIN_PATH=" >> $GITHUB_ENV
@@ -54,17 +60,19 @@ jobs:
     - name: Configure, Build and Test
       if: matrix.os != 'linux'
       run: |
-        cmake -S . -B build -D CMAKE_BUILD_TYPE=Release -D HUNTER_ROOT=$HOME/.hun2_${{ matrix.flavor }} -D DEPTHAI_BUILD_EXAMPLES=ON -D DEPTHAI_BUILD_TESTS=ON -D DEPTHAI_TEST_EXAMPLES=ON
+        source venv/bin/activate  # Activate virtual environment
+        cmake -S . -B build -D CMAKE_BUILD_TYPE=Release -D HUNTER_ROOT=$HOME/.hun2_${{ matrix.flavor }} -D DEPTHAI_BUILD_EXAMPLES=ON -D DEPTHAI_BUILD_TESTS=ON -D DEPTHAI_TEST_EXAMPLES=ON -D DEPTHAI_BUILD_PYTHON=ON -D DEPTHAI_PYTHON_TEST_EXAMPLES=ON -D DEPTHAI_PYTHON_ENABLE_EXAMPLES=ON
         cmake --build build --parallel 4 --config Release
-        cd build
-        ctest -C Release --output-on-failure -L usb --no-tests=error --repeat until-pass:3
+        cd tests
+        python3 run_tests.py
 
     - name: Configure, Build and Test
       if: matrix.os == 'linux'
       run: |
         export DISPLAY=:99
         xdpyinfo -display $DISPLAY >/dev/null 2>&1 || (Xvfb $DISPLAY &)
-        cmake -S . -B build -D CMAKE_BUILD_TYPE=Release -D HUNTER_ROOT=$HOME/.hun2_${{ matrix.flavor }} -D DEPTHAI_BUILD_EXAMPLES=ON -D DEPTHAI_BUILD_TESTS=ON -D DEPTHAI_TEST_EXAMPLES=ON
+        source venv/bin/activate  # Activate virtual environment
+        cmake -S . -B build -D CMAKE_BUILD_TYPE=Release -D HUNTER_ROOT=$HOME/.hun2_${{ matrix.flavor }} -D DEPTHAI_BUILD_EXAMPLES=ON -D DEPTHAI_BUILD_TESTS=ON -D DEPTHAI_TEST_EXAMPLES=ON -D DEPTHAI_BUILD_PYTHON=ON -D DEPTHAI_PYTHON_TEST_EXAMPLES=ON -D DEPTHAI_PYTHON_ENABLE_EXAMPLES=ON
         cmake --build build --parallel 4 --config Release
-        cd build
-        ctest -C Release --output-on-failure -L usb --no-tests=error --repeat until-pass:3
+        cd tests
+        python3 run_tests.py

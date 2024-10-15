@@ -37,7 +37,7 @@ int main(int argc, char** argv) {
             auto imuData = imuQ->get<dai::IMUData>();
             std::cout << "Packet seqNo: " << (int)imuData->getSequenceNum() << "\n";
             std::cout << "Packet ts: " << imuData->tsDevice.sec << "s " << imuData->tsDevice.nsec << "ns\n";
-            for (auto& imuPacket : imuData->packets) {
+            for(auto& imuPacket : imuData->packets) {
                 std::cout << "\tAccelerometer: \n";
                 std::cout << "\t\tts: " << imuPacket.acceleroMeter.tsDevice.sec << "s " << imuPacket.acceleroMeter.tsDevice.nsec << "ns\n";
                 std::cout << "\t\tseqNo: " << imuPacket.acceleroMeter.sequence << "\n";

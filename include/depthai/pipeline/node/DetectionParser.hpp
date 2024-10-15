@@ -26,6 +26,12 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
     using DeviceNodeCRTP::DeviceNodeCRTP;
 
     /**
+     * @brief Build DetectionParser node. Connect output to this node's input. Also call setNNArchive() with provided NNArchive.
+     * @param nnInput: Output to link
+     * @param nnArchive: Neural network archive
+     */
+    std::shared_ptr<DetectionParser> build(Node::Output& nnInput, const NNArchive& nnArchive);
+    /**
      * Input NN results with detection data to parse
      * Default queue is blocking with size 5
      */
