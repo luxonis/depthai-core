@@ -219,8 +219,6 @@ struct TensorInfo {
 
 DEPTHAI_SERIALIZE_EXT(TensorInfo, order, dataType, numDimensions, dims, strides, name, offset, quantization, qpScale, qpZp);
 
-
-
 inline std::ostream& operator<<(std::ostream& os, const TensorInfo::StorageOrder& so) {
     switch(so) {
         case TensorInfo::StorageOrder::NHWC:
