@@ -42,15 +42,15 @@ class ImgDetections : public Buffer, public utility::ProtoSerializable {
         auto imgDetections = std::make_unique<proto::img_detections::ImgDetections>();
 
         imgDetections->set_sequencenum(this->sequenceNum);
-		proto::common::Timestamp* ts = imgDetections->mutable_ts();
+        proto::common::Timestamp* ts = imgDetections->mutable_ts();
         ts->set_sec(this->ts.sec);
         ts->set_nsec(this->ts.nsec);
-		proto::common::Timestamp* tsDevice = imgDetections->mutable_tsdevice();
+        proto::common::Timestamp* tsDevice = imgDetections->mutable_tsdevice();
         tsDevice->set_sec(this->tsDevice.sec);
         tsDevice->set_nsec(this->tsDevice.nsec);
 
         for(const auto& detection : this->detections) {
-			proto::img_detections::ImgDetection* imgDetection = imgDetections->add_detections();
+            proto::img_detections::ImgDetection* imgDetection = imgDetections->add_detections();
             imgDetection->set_label(detection.label);
             imgDetection->set_confidence(detection.confidence);
             imgDetection->set_xmin(detection.xmin);

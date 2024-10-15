@@ -16,10 +16,10 @@ namespace dai {
  */
 struct Color {
     Color() = default;
-    Color(float r, float g, float b, float a) :  r(r), g(g), b(b), a(a) {}
+    Color(float r, float g, float b, float a) : r(r), g(g), b(b), a(a) {}
     float r = 0.0, g = 0.0, b = 0.0, a = 0.0;
 };
 
-DEPTHAI_SERIALIZE_EXT(Color,  r, g, b, a);
+DEPTHAI_SERIALIZE_EXT(Color, r, g, b, a);
 
 }  // namespace dai

@@ -39,13 +39,13 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
     explicit MessageQueue(std::string name, unsigned int maxSize = 16, bool blocking = true);
 
     MessageQueue(const MessageQueue& c)
-        : enable_shared_from_this(c), queue(c.queue), name(c.name), callbacks(c.callbacks), uniqueCallbackId(c.uniqueCallbackId){};
+        : enable_shared_from_this(c), queue(c.queue), name(c.name), callbacks(c.callbacks), uniqueCallbackId(c.uniqueCallbackId) {};
     MessageQueue(MessageQueue&& m) noexcept
         : enable_shared_from_this(m),
           queue(std::move(m.queue)),
           name(std::move(m.name)),
           callbacks(std::move(m.callbacks)),
-          uniqueCallbackId(m.uniqueCallbackId){};
+          uniqueCallbackId(m.uniqueCallbackId) {};
 
     MessageQueue& operator=(const MessageQueue& c) {
         queue = c.queue;

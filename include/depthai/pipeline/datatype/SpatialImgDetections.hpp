@@ -60,10 +60,10 @@ class SpatialImgDetections : public Buffer, public utility::ProtoSerializable {
         tsDevice->set_nsec(this->tsDevice.nsec);
 
         for(const auto& detection : this->detections) {
-			proto::spatial_img_detections::SpatialImgDetection* spatialImgDetection = spatialImgDetections->add_detections();
+            proto::spatial_img_detections::SpatialImgDetection* spatialImgDetection = spatialImgDetections->add_detections();
 
             // populate SpatialImgDetection.ImgDetection from struct inheritance
-			proto::img_detections::ImgDetection* imgDetection = spatialImgDetection->mutable_detection();
+            proto::img_detections::ImgDetection* imgDetection = spatialImgDetection->mutable_detection();
             imgDetection->set_label(detection.label);
             imgDetection->set_confidence(detection.confidence);
             imgDetection->set_xmin(detection.xmin);
@@ -72,23 +72,23 @@ class SpatialImgDetections : public Buffer, public utility::ProtoSerializable {
             imgDetection->set_ymax(detection.ymax);
 
             // populate SpatialImgDetection.Point3f
-			proto::spatial_img_detections::Point3f* spatialCoordinates = spatialImgDetection->mutable_spatialcoordinates();
+            proto::spatial_img_detections::Point3f* spatialCoordinates = spatialImgDetection->mutable_spatialcoordinates();
             spatialCoordinates->set_x(detection.spatialCoordinates.x);
             spatialCoordinates->set_y(detection.spatialCoordinates.y);
             spatialCoordinates->set_z(detection.spatialCoordinates.z);
 
             // populate SpatialImgDetection.SpatialLocationCalculatorConfigData
-			proto::spatial_img_detections::SpatialLocationCalculatorConfigData* boundingBoxMapping = spatialImgDetection->mutable_boundingboxmapping();
+            proto::spatial_img_detections::SpatialLocationCalculatorConfigData* boundingBoxMapping = spatialImgDetection->mutable_boundingboxmapping();
 
             // populate SpatialImgDetection.SpatialLocationCalculatorConfigData.Rect
-			proto::spatial_img_detections::Rect* roi = boundingBoxMapping->mutable_roi();
+            proto::spatial_img_detections::Rect* roi = boundingBoxMapping->mutable_roi();
             roi->set_x(detection.boundingBoxMapping.roi.x);
             roi->set_y(detection.boundingBoxMapping.roi.y);
             roi->set_width(detection.boundingBoxMapping.roi.width);
             roi->set_height(detection.boundingBoxMapping.roi.height);
 
             // populate SpatialImgDetection.SpatialLocationCalculatorConfigData.SpatialLocationCalculatorConfigThresholds
-			proto::spatial_img_detections::SpatialLocationCalculatorConfigThresholds* depthTresholds = boundingBoxMapping->mutable_depththresholds();
+            proto::spatial_img_detections::SpatialLocationCalculatorConfigThresholds* depthTresholds = boundingBoxMapping->mutable_depththresholds();
             depthTresholds->set_lowerthreshold(detection.boundingBoxMapping.depthThresholds.lowerThreshold);
             depthTresholds->set_upperthreshold(detection.boundingBoxMapping.depthThresholds.upperThreshold);
 

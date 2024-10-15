@@ -65,7 +65,9 @@ class Node : public std::enable_shared_from_this<Node> {
     static constexpr auto DEFAULT_NAME = "";
 #define DEFAULT_TYPES                  \
     {                                  \
-        { DatatypeEnum::Buffer, true } \
+        {                              \
+            DatatypeEnum::Buffer, true \
+        }                              \
     }
     static constexpr auto DEFAULT_BLOCKING = true;
     static constexpr auto DEFAULT_QUEUE_SIZE = 3;
@@ -520,13 +522,13 @@ class Node : public std::enable_shared_from_this<Node> {
     virtual const char* getName() const = 0;
 
     /// Start node execution
-    virtual void start(){};
+    virtual void start() {};
 
     /// Wait for node to finish execution
-    virtual void wait(){};
+    virtual void wait() {};
 
     /// Stop node execution
-    virtual void stop(){};
+    virtual void stop() {};
 
     void stopPipeline();
 
@@ -637,7 +639,7 @@ class Node : public std::enable_shared_from_this<Node> {
      * This function is useful for initialization, setting up inputs and outputs =
      * stuff that cannot be perform in the constuctor.
      */
-    virtual void buildInternal(){};
+    virtual void buildInternal() {};
 };
 
 class SourceNode {

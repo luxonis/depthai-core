@@ -25,7 +25,9 @@ RemoteConnection::RemoteConnection(const std::string& address, uint16_t port) {
 
 RemoteConnection::~RemoteConnection() {
     server->stop();
-	publishThread->join();
+    for(auto& thread : publishThreads) {
+        thread->join();
+    }
     httpServer->stop();
     httpServerThread->join();
 }
@@ -65,7 +67,7 @@ void RemoteConnection::keyPressedCallback(int key) {
 
 void RemoteConnection::initWebsocketServer(const std::string& address, uint16_t port) {
     // Create the WebSocket server with a simple log handler
-    const auto logHandler = [](foxglove::WebSocketLogLevel, const char* msg) { logger::info(msg); };
+	const auto logHandler = [](foxglove::WebSocketLogLevel, const char* msg) { std::cout << msg << std::endl; };
     foxglove::ServerOptions serverOptions;
     serverOptions.sendBufferLimitBytes = 100 * 1024 * 1024;  // 100 MB
     serverOptions.capabilities.emplace_back("services");
@@ -110,7 +112,7 @@ void RemoteConnection::initWebsocketServer(const std::string& address, uint16_t 
 }
 
 void RemoteConnection::addPublishThread(const std::string& topicName, const std::shared_ptr<MessageQueue>& outputQueue, const std::string& group) {
-    publishThread = std::make_unique<std::thread>([this, topicName, outputQueue, group]() {
+    auto thread = std::make_unique<std::thread>([this, topicName, outputQueue, group]() {
         bool isRunning = true;
         // Wait for the first message to extract schema
         auto firstMessage = outputQueue->get();
@@ -166,7 +168,8 @@ void RemoteConnection::addPublishThread(const std::string& topicName, const std:
             auto serializedMsg = serializableMessage->serializeProto();
             server->broadcastMessage(channelId, nanosecondsSinceEpoch(), static_cast<const uint8_t*>(serializedMsg.data()), serializedMsg.size());
         }
-    });  // Detach the thread to run independently
+    });
+    publishThreads.push_back(std::move(thread));
 }
 
 void RemoteConnection::addTopic(const std::string& topicName, Node::Output& output, const std::string& group) {

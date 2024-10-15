@@ -35,7 +35,7 @@ enum class DatatypeEnum : std::int32_t {
     PointCloudConfig,
     PointCloudData,
     ImageAlignConfig,
-	ImageAnnotations
+    ImageAnnotations
 };
 bool isDatatypeSubclassOf(DatatypeEnum parent, DatatypeEnum children);
 

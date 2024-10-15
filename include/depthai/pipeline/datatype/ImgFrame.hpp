@@ -87,16 +87,16 @@ class ImgFrame : public Buffer, public utility::ProtoSerializable {
     std::unique_ptr<google::protobuf::Message> getProtoMessage() const override {
         // create and populate ImgFrame protobuf message
         auto imgFrame = std::make_unique<proto::img_frame::ImgFrame>();
-		proto::common::Timestamp* ts = imgFrame->mutable_ts();
+        proto::common::Timestamp* ts = imgFrame->mutable_ts();
         ts->set_sec(this->ts.sec);
         ts->set_nsec(this->ts.nsec);
-		proto::common::Timestamp* tsDevice = imgFrame->mutable_tsdevice();
+        proto::common::Timestamp* tsDevice = imgFrame->mutable_tsdevice();
         tsDevice->set_sec(this->tsDevice.sec);
         tsDevice->set_nsec(this->tsDevice.nsec);
 
         imgFrame->set_sequencenum(this->sequenceNum);
 
-		proto::img_frame::Specs* fb = imgFrame->mutable_fb();
+        proto::img_frame::Specs* fb = imgFrame->mutable_fb();
         fb->set_type(static_cast<proto::img_frame::Type>(this->fb.type));
         fb->set_width(this->fb.width);
         fb->set_height(this->fb.height);
@@ -106,7 +106,7 @@ class ImgFrame : public Buffer, public utility::ProtoSerializable {
         fb->set_p2offset(this->fb.p2Offset);
         fb->set_p3offset(this->fb.p3Offset);
 
-		proto::img_frame::Specs* sourceFb = imgFrame->mutable_sourcefb();
+        proto::img_frame::Specs* sourceFb = imgFrame->mutable_sourcefb();
         sourceFb->set_type(static_cast<proto::img_frame::Type>(this->sourceFb.type));
         sourceFb->set_width(this->sourceFb.width);
         sourceFb->set_height(this->sourceFb.height);
