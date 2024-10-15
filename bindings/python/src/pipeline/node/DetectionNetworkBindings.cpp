@@ -57,7 +57,16 @@ void bind_detectionnetwork(pybind11::module& m, void* pCallstack) {
             },
             DETECTION_NETWORK_BUILD_PYARGS,
             DETECTION_NETWORK_PYARGS)
-        .def("build", py::overload_cast<std::shared_ptr<Camera>, NNModelDescription, float>(&DetectionNetwork::build), py::arg("input"), py::arg("model"), py::arg("fps") = 30.0f)
+        .def("build",
+             py::overload_cast<const std::shared_ptr<Camera>&, NNModelDescription, float>(&DetectionNetwork::build),
+             py::arg("input"),
+             py::arg("model"),
+             py::arg("fps") = 30.0f)
+        .def("build",
+             py::overload_cast<const std::shared_ptr<Camera>&, NNArchive, float>(&DetectionNetwork::build),
+             py::arg("input"),
+             py::arg("nnArchive"),
+             py::arg("fps") = 30.0f)
         .def(py::init([](DETECTION_NETWORK_BUILD_ARGS, DETECTION_NETWORK_ARGS) {
                  auto self = getImplicitPipeline()->create<DetectionNetwork>();
                  self->build(input, nnArchive);

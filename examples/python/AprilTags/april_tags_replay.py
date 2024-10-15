@@ -5,14 +5,16 @@ import depthai as dai
 import time
 from pathlib import Path
 
-examplesRoot = Path(__file__).parent / Path('../').resolve()
-models = examplesRoot / Path('models')
-tagImage = models / Path('april_tags.jpg')
+# Get the absolute path of the current script's directory
+script_dir = Path(__file__).resolve().parent
+examplesRoot = (script_dir / Path('../')).resolve()  # This resolves the parent directory correctly
+models = examplesRoot / 'models'
+tagImage = models / 'april_tags.jpg'
 
 class ImageReplay(dai.node.ThreadedHostNode):
     def __init__(self):
         dai.node.ThreadedHostNode.__init__(self)
-        self.output = dai.Node.Output(self)
+        self.output =  self.createOutput()
         frame = cv2.imread(str(tagImage.resolve()))
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         imgFrame = dai.ImgFrame()
