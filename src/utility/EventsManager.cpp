@@ -21,7 +21,9 @@ using std::move;
 EventData::EventData(const std::string& data, const std::string& fileName, const std::string& mimeType)
     : fileName(fileName), mimeType(mimeType), data(data), type(EventDataType::DATA) {}
 
-EventData::EventData(std::string fileUrl) : data(std::move(fileUrl)), type(EventDataType::FILE_URL) {}
+EventData::EventData(std::string fileUrl) : data(std::move(fileUrl)), type(EventDataType::FILE_URL) {
+    fileName = std::filesystem::path(data).filename().string();
+}
 
 EventData::EventData(const std::shared_ptr<ImgFrame>& imgFrame, std::string fileName)
     : fileName(std::move(fileName)), mimeType("image/jpeg"), type(EventDataType::IMG_FRAME) {
@@ -55,6 +57,31 @@ EventData::EventData(const std::shared_ptr<NNData>& nnData, std::string fileName
     data = ss.str();
 }
 
+bool EventData::toFile(const std::string& path) {
+    // check if filename is not empty
+    if(fileName.empty()) {
+        logger::error("Filename is empty");
+        return false;
+    }
+    std::filesystem::path p(path);
+    if(type == EventDataType::FILE_URL) {
+        // get the filename from the url
+        std::filesystem::copy(data, p / fileName);
+    } else {
+        std::string extension = mimeType == "image/jpeg" ? ".jpg" : ".txt";
+        // check if file exists, if yes, append a number to the filename
+        std::string fileNameTmp = fileName;
+        int i = 0;
+        while(std::filesystem::exists(p / (fileNameTmp + extension))) {
+            logger::warn("File {} already exists, appending number to filename", fileNameTmp);
+            fileNameTmp = fileName + "_" + std::to_string(i);
+            i++;
+        }
+        std::ofstream fileStream(p / (fileNameTmp + extension), std::ios::binary);
+        fileStream.write(data.data(), data.size());
+    }
+    return true;
+}
 EventsManager::EventsManager(std::string url, bool uploadCachedOnStart, float publishInterval)
     : url(move(url)),
       queueSize(10),
@@ -71,7 +98,7 @@ EventsManager::EventsManager(std::string url, bool uploadCachedOnStart, float pu
     eventBufferThread = std::thread([this]() {
         while(true) {
             sendEventBuffer();
-            std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(publishInterval * 1000)));
+            std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(this->publishInterval * 1000)));
         }
     });
     checkConnection();
@@ -145,8 +172,8 @@ void EventsManager::sendEvent(const std::string& name,
         event->add_tags(tag);
     }
     auto* extrasData = event->mutable_extras();
-    for(const auto& [key, value] : extraData) {
-        extrasData->insert({key, value});
+    for(const auto& entry : extraData) {
+        extrasData->insert(entry);
     }
 
     if(imgFrame != nullptr) {
@@ -212,26 +239,22 @@ void EventsManager::sendFile(const std::shared_ptr<EventData>& file, const std::
 }
 
 void EventsManager::cacheEvents() {
+    logger::info("Caching events");
     // for each event, create a unique directory, save protobuf message and associated files
     for(auto& eventM : eventBuffer) {
         auto& event = eventM->event;
         auto& data = eventM->data;
-        std::string eventDir = cacheDir + "/event_" + event->name() + "_" + event->nonce();
+        std::filesystem::path p(cacheDir);
+        std::string eventDir = p / ("event_" + event->name() + "_" + event->nonce());
         logger::info("Caching event to {}", eventDir);
         if(!std::filesystem::exists(cacheDir)) {
             std::filesystem::create_directories(cacheDir);
         }
         std::filesystem::create_directory(eventDir);
-        std::ofstream eventFile(eventDir + "/event.pb", std::ios::binary);
+        std::ofstream eventFile(p / "event.pb", std::ios::binary);
         event->SerializeToOstream(&eventFile);
         for(auto& file : data) {
-            if(file->type == EventDataType::FILE_URL) {
-                std::filesystem::copy(file->data, eventDir + "/" + file->fileName);
-            } else {
-                std::string extension = file->mimeType == "image/jpeg" ? ".jpg" : ".txt";
-                std::ofstream fileStream(eventDir + "/" + file->fileName, std::ios::binary);
-                fileStream.write(file->data.data(), file->data.size());
-            }
+            file->toFile(eventDir);
         }
     }
     eventBuffer.clear();
@@ -239,6 +262,7 @@ void EventsManager::cacheEvents() {
 
 void EventsManager::uploadCachedData() {
     // iterate over all directories in cacheDir, read event.pb and associated files, and send them
+    logger::info("Uploading cached data");
     if(!checkConnection()) {
         return;
     }
@@ -249,13 +273,13 @@ void EventsManager::uploadCachedData() {
     }
     for(const auto& entry : std::filesystem::directory_iterator(cacheDir)) {
         if(entry.is_directory()) {
-            std::string eventDir = entry.path();
-            std::ifstream eventFile(eventDir + "/event.pb", std::ios::binary);
+            const auto& eventDir = entry.path();
+            std::ifstream eventFile(eventDir / "event.pb", std::ios::binary);
             proto::Event event;
             event.ParseFromIstream(&eventFile);
             std::vector<std::shared_ptr<EventData>> data;
             for(const auto& fileEntry : std::filesystem::directory_iterator(eventDir)) {
-                if(fileEntry.is_regular_file() && fileEntry.path() != eventDir + "/event.pb") {
+                if(fileEntry.is_regular_file() && fileEntry.path() != eventDir / "event.pb") {
                     auto fileData = std::make_shared<EventData>(fileEntry.path());
                     data.push_back(fileData);
                 }
@@ -390,6 +414,18 @@ void EventsManager::setDeviceSerialNumber(const std::string& deviceSerialNumber)
     logger::warn("EventsManager is disabled, please enable DEPTHAI_ENABLE_CURL in CMake to use this feature");
 }
 void EventsManager::setVerifySsl(bool verifySsl) {
+    logger::warn("EventsManager is disabled, please enable DEPTHAI_ENABLE_CURL in CMake to use this feature");
+}
+void EventsManager::setCacheDir(const std::string& cacheDir) {
+    logger::warn("EventsManager is disabled, please enable DEPTHAI_ENABLE_CURL in CMake to use this feature");
+}
+void EventsManager::cacheEvents() {
+    logger::warn("EventsManager is disabled, please enable DEPTHAI_ENABLE_CURL in CMake to use this feature");
+}
+void EventsManager::uploadCachedData() {
+    logger::warn("EventsManager is disabled, please enable DEPTHAI_ENABLE_CURL in CMake to use this feature");
+}
+void EventsManager::setCacheIfCannotSend(bool cacheIfCannotSend) {
     logger::warn("EventsManager is disabled, please enable DEPTHAI_ENABLE_CURL in CMake to use this feature");
 }
 }  // namespace utility

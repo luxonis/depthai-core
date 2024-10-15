@@ -23,6 +23,7 @@ class EventData {
     explicit EventData(const std::shared_ptr<ImgFrame>& imgFrame, std::string fileName);
     explicit EventData(const std::shared_ptr<EncodedFrame>& encodedFrame, std::string fileName);
     explicit EventData(const std::shared_ptr<NNData>& nnData, std::string fileName);
+	bool toFile(const std::string& path);
 
    private:
     std::string fileName;
