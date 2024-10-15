@@ -67,7 +67,7 @@ void RemoteConnection::keyPressedCallback(int key) {
 
 void RemoteConnection::initWebsocketServer(const std::string& address, uint16_t port) {
     // Create the WebSocket server with a simple log handler
-	const auto logHandler = [](foxglove::WebSocketLogLevel, const char* msg) { std::cout << msg << std::endl; };
+    const auto logHandler = [](foxglove::WebSocketLogLevel, const char* msg) { logger::info(msg); };
     foxglove::ServerOptions serverOptions;
     serverOptions.sendBufferLimitBytes = 100 * 1024 * 1024;  // 100 MB
     serverOptions.capabilities.emplace_back("services");
