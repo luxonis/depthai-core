@@ -5,10 +5,15 @@
 #include "depthai/utility/Serialization.hpp"
 
 namespace dai {
+
+std::array<std::array<float, 3>, 3> getMatrixInverse(const std::array<std::array<float, 3>, 3>& matrix);
+
 struct ImgTransformation {
    private:
     std::array<std::array<float, 3>, 3> transformationMatrix = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
     std::array<std::array<float, 3>, 3> transformationMatrixInv = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};  // Precomputed inverse matrix
+    std::array<std::array<float, 3>, 3> sourceIntrinsicMatrix = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
+    std::array<std::array<float, 3>, 3> sourceIntrinsicMatrixInv = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
     size_t srcWidth = 0;
     size_t srcHeight = 0;
     size_t width = 0;
@@ -42,6 +47,14 @@ struct ImgTransformation {
     ImgTransformation(size_t width, size_t height) : srcWidth(width), srcHeight(height), width(width), height(height) {}
     ImgTransformation(size_t srcWidth, size_t srcHeight, size_t width, size_t height)
         : srcWidth(srcWidth), srcHeight(srcHeight), width(width), height(height) {}
+    ImgTransformation(size_t width, size_t height, std::array<std::array<float, 3>, 3> sourceIntrinsicMatrix)
+        : sourceIntrinsicMatrix(sourceIntrinsicMatrix), srcWidth(width), srcHeight(height), width(width), height(height) {
+        sourceIntrinsicMatrixInv = getMatrixInverse(sourceIntrinsicMatrix);
+    }
+    ImgTransformation(size_t srcWidth, size_t srcHeight, size_t width, size_t height, std::array<std::array<float, 3>, 3> sourceIntrinsicMatrix)
+        : sourceIntrinsicMatrix(sourceIntrinsicMatrix), srcWidth(srcWidth), srcHeight(srcHeight), width(width), height(height) {
+        sourceIntrinsicMatrixInv = getMatrixInverse(sourceIntrinsicMatrix);
+    }
 
     dai::Point2f transformPoint(dai::Point2f point) const;
     dai::RotatedRect transformRect(dai::RotatedRect rect) const;
@@ -52,6 +65,8 @@ struct ImgTransformation {
     std::pair<size_t, size_t> getSourceSize() const;
     std::array<std::array<float, 3>, 3> getMatrix() const;
     std::array<std::array<float, 3>, 3> getMatrixInv() const;
+    std::array<std::array<float, 3>, 3> getSourceIntrinsicMatrix() const;
+    std::array<std::array<float, 3>, 3> getSourceIntrinsicMatrixInv() const;
     std::vector<dai::RotatedRect> getSrcCrops() const;
 
     bool getSrcMaskPt(size_t x, size_t y);
@@ -81,7 +96,7 @@ struct ImgTransformation {
 
     std::string str() const;
 
-    DEPTHAI_SERIALIZE(ImgTransformation, transformationMatrix, transformationMatrixInv, srcWidth, srcHeight, width, height, srcCrops);
+    DEPTHAI_SERIALIZE(ImgTransformation, transformationMatrix, transformationMatrixInv, sourceIntrinsicMatrix, sourceIntrinsicMatrixInv, srcWidth, srcHeight, width, height, srcCrops);
 };
 
 // class ImgTransformations {

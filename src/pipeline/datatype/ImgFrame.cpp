@@ -1,7 +1,7 @@
-#include "depthai/common/ImgTransformations.hpp"
 #define _USE_MATH_DEFINES
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
-
+#include "depthai/common/RotatedRect.hpp"
+#include "depthai/common/ImgTransformations.hpp"
 #include "depthai/utility/SharedMemory.hpp"
 #include "spdlog/fmt/fmt.h"
 #include "spdlog/spdlog.h"
@@ -341,11 +341,11 @@ Point2f ImgFrame::remapPointBetweenSourceFrames(const Point2f& point, const ImgF
         throw std::runtime_error("Source image has invalid dimensions - all dimensions need to be set before remapping");
     }
 
-    if(!(sourceImage.getSourceHFov() > 0)) {
+    if(!(sourceImage.getSourceHFov() > 0.1f)) {
         throw std::runtime_error("Source image has invalid horizontal FOV - horizontal FOV needs to be set before remapping");
     }
 
-    if(!(destImage.getSourceHFov() > 0)) {
+    if(!(destImage.getSourceHFov() > 0.1f)) {
         throw std::runtime_error("Destination image has invalid horizontal FOV - horizontal FOV needs to be set before remapping");
     }
 
@@ -364,8 +364,8 @@ Point2f ImgFrame::remapPointBetweenSourceFrames(const Point2f& point, const ImgF
     unsigned adjustedWidth = std::round(destImage.getSourceWidth() * kX);
     unsigned adjustedHeight = std::round(destImage.getSourceHeight() * kY);
 
-    int diffX = (adjustedWidth - destImage.getSourceWidth()) / 2;
-    int diffY = (adjustedHeight - destImage.getSourceHeight()) / 2;
+    int diffX = ((int)adjustedWidth - (int)destImage.getSourceWidth()) / 2;
+    int diffY = ((int)adjustedHeight - (int)destImage.getSourceHeight()) / 2;
 
     int adjustedFrameX = returnPoint.x + diffX;
     int adjustedFrameY = returnPoint.y + diffY;
@@ -379,31 +379,32 @@ Point2f ImgFrame::remapPointBetweenSourceFrames(const Point2f& point, const ImgF
 }
 
 Point2f ImgFrame::remapPointBetweenFrames(const Point2f& originPoint, const ImgFrame& originFrame, const ImgFrame& destFrame) {
-    // First get the origin to the origin image
-    // For example if this is a RGB image that was cropped and rotated and the detection was done there,
-    // you remap it back as it was taken on the camera
-    Point2f transformedPoint = originPoint;
-    transformedPoint = originFrame.remapPointToSource(transformedPoint);
-    if(originFrame.getInstanceNum() != destFrame.getInstanceNum()) {
-        transformedPoint = remapPointBetweenSourceFrames(transformedPoint, originFrame, destFrame);
-    } else {
+    if(originFrame.getInstanceNum() == destFrame.getInstanceNum()) {
         if((originFrame.getSourceHeight() != destFrame.getSourceHeight()) || (originFrame.getSourceWidth() != destFrame.getSourceWidth())
            || (originFrame.getSourceHFov() != destFrame.getSourceHFov()) || (originFrame.getSourceVFov() != destFrame.getSourceVFov())) {
             throw std::runtime_error("Frames have the same instance numbers, but different source dimensions and/or FOVs.");
         }
     }
-    transformedPoint = destFrame.remapPointFromSource(transformedPoint);
-
-    return transformedPoint;
+    return originFrame.transformation.remapPointTo(destFrame.transformation, originPoint);
 }
 
 Rect ImgFrame::remapRectBetweenFrames(const Rect& originRect, const ImgFrame& originFrame, const ImgFrame& destFrame) {
+    if(originFrame.getInstanceNum() == destFrame.getInstanceNum()) {
+        if((originFrame.getSourceHeight() != destFrame.getSourceHeight()) || (originFrame.getSourceWidth() != destFrame.getSourceWidth())
+           || (originFrame.getSourceHFov() != destFrame.getSourceHFov()) || (originFrame.getSourceVFov() != destFrame.getSourceVFov())) {
+            throw std::runtime_error("Frames have the same instance numbers, but different source dimensions and/or FOVs.");
+        }
+    }
     bool normalized = originRect.isNormalized();
-    auto returnRect = originRect;
-    returnRect = returnRect.denormalize(originFrame.getWidth(), originFrame.getHeight());
-    auto topLeftTransformed = remapPointBetweenFrames(returnRect.topLeft(), originFrame, destFrame);
-    auto bottomRightTransformed = remapPointBetweenFrames(returnRect.bottomRight(), originFrame, destFrame);
-    returnRect = Rect{topLeftTransformed, bottomRightTransformed};
+    auto srcRect = originRect;
+    srcRect = srcRect.denormalize(originFrame.getWidth(), originFrame.getHeight());
+    dai::RotatedRect srcRRect;
+    srcRRect.size = {srcRect.width, srcRect.height};
+    srcRRect.center = {srcRect.x + srcRect.width / 2.f, srcRect.y + srcRect.height / 2.f};
+    srcRRect.angle = 0.f;
+    auto dstRRect = originFrame.transformation.remapRectTo(destFrame.transformation, srcRRect);
+    auto [minx, miny, maxx, maxy] = dstRRect.getOuterRect();
+    dai::Rect returnRect(minx, miny, maxx - minx, maxy - miny);
     if(normalized) {
         returnRect = returnRect.normalize(destFrame.getWidth(), destFrame.getHeight());
     }

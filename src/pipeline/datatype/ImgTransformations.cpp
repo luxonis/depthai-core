@@ -5,7 +5,9 @@
 #include <cstring>
 #include <sstream>
 
+#include "common/RotatedRect.hpp"
 #include "depthai/utility/ImageManipV2Impl.hpp"
+#include "pipeline/datatype/ImageManipConfigV2.hpp"
 
 namespace dai {
 
@@ -56,7 +58,12 @@ inline std::array<float, 2> matvecmul(std::array<std::array<float, 3>, 3> M, std
     return {x / z, y / z};
 }
 
-std::array<std::array<float, 3>, 3> getInverse(const std::array<std::array<float, 3>, 3>& matrix) {
+inline bool mateq(const std::array<std::array<float, 3>, 3>& A, const std::array<std::array<float, 3>, 3>& B) {
+    for(auto i = 0; i < 3; ++i) for(auto j = 0; j < 3; ++j) if(A[i][j] != B[i][j]) return false;
+    return true;
+}
+
+std::array<std::array<float, 3>, 3> getMatrixInverse(const std::array<std::array<float, 3>, 3>& matrix) {
     std::array<std::array<float, 3>, 3> inv;
     float det = matrix[0][0] * (matrix[1][1] * matrix[2][2] - matrix[1][2] * matrix[2][1])
                 - matrix[0][1] * (matrix[1][0] * matrix[2][2] - matrix[1][2] * matrix[2][0])
@@ -90,6 +97,42 @@ std::array<std::array<float, 3>, 3> getInverse(const std::array<std::array<float
 
     return inv;
 }
+
+dai::Point2f interSourceFrameTransform(dai::Point2f sourcePt, const ImgTransformation& from, const ImgTransformation& to) {
+    auto fromSource = from.getSourceIntrinsicMatrix();
+    auto fromSourceInv = from.getSourceIntrinsicMatrixInv();
+    auto toSource = to.getSourceIntrinsicMatrix();
+    if(mateq(fromSource, toSource)) return sourcePt;
+    auto transformMat = matmul(toSource, fromSourceInv);
+    auto transformed = matvecmul(transformMat, {sourcePt.x, sourcePt.y});
+    return {transformed[0], transformed[1]};
+}
+dai::RotatedRect interSourceFrameTransform(dai::RotatedRect sourceRect, const ImgTransformation& from, const ImgTransformation& to) {
+    auto fromSource = from.getSourceIntrinsicMatrix();
+    auto toSource = to.getSourceIntrinsicMatrix();
+    if(mateq(fromSource, toSource)) return sourceRect;
+
+    auto angleRad = sourceRect.angle * (float)M_PI / 180.0f;
+    auto w = sourceRect.size.width;
+    auto h = sourceRect.size.height;
+    dai::Point2f widthVec = {std::cos(angleRad) * w, std::sin(angleRad) * w};
+    dai::Point2f heightVec = {-std::sin(angleRad) * h, std::cos(angleRad) * h};
+    dai::Point2f originVec = {0.f, 0.f};
+    auto dstCenter = interSourceFrameTransform(sourceRect.center, from, to);
+    auto dstWidthVec = interSourceFrameTransform(widthVec, from, to);
+    auto dstHeightVec = interSourceFrameTransform(heightVec, from, to);
+    auto dstOriginVec = interSourceFrameTransform(originVec, from, to);
+    dstWidthVec.x -= dstOriginVec.x;
+    dstWidthVec.y -= dstOriginVec.y;
+    dstHeightVec.x -= dstOriginVec.x;
+    dstHeightVec.y -= dstOriginVec.y;
+    auto dstAngle = std::atan2(dstWidthVec.y, dstWidthVec.x) * 180.0f / (float)M_PI;
+    return {dstCenter,
+            {std::sqrt(dstWidthVec.x * dstWidthVec.x + dstWidthVec.y * dstWidthVec.y) * 2,
+             std::sqrt(dstHeightVec.x * dstHeightVec.x + dstHeightVec.y * dstHeightVec.y) * 2},
+            dstAngle};
+}
+
 void ImgTransformation::calcSrcBorder() {
     srcBorderComplex = false;
     srcMinX = srcMinY = 0;
@@ -186,13 +229,19 @@ dai::Point2f ImgTransformation::transformPoint(dai::Point2f point) const {
 }
 dai::RotatedRect ImgTransformation::transformRect(dai::RotatedRect rect) const {
     auto angleRad = rect.angle * (float)M_PI / 180.0f;
-    auto w = rect.size.width / 2;
-    auto h = rect.size.height / 2;
+    auto w = rect.size.width;
+    auto h = rect.size.height;
     dai::Point2f widthVec = {std::cos(angleRad) * w, std::sin(angleRad) * w};
     dai::Point2f heightVec = {-std::sin(angleRad) * h, std::cos(angleRad) * h};
+    dai::Point2f originVec = {0.f, 0.f};
     auto dstCenter = transformPoint(rect.center);
     auto dstWidthVec = transformPoint(widthVec);
     auto dstHeightVec = transformPoint(heightVec);
+    auto dstOriginVec = transformPoint(originVec);
+    dstWidthVec.x -= dstOriginVec.x;
+    dstWidthVec.y -= dstOriginVec.y;
+    dstHeightVec.x -= dstOriginVec.x;
+    dstHeightVec.y -= dstOriginVec.y;
     auto dstAngle = std::atan2(dstWidthVec.y, dstWidthVec.x) * 180.0f / (float)M_PI;
     return {dstCenter,
             {std::sqrt(dstWidthVec.x * dstWidthVec.x + dstWidthVec.y * dstWidthVec.y) * 2,
@@ -205,13 +254,19 @@ dai::Point2f ImgTransformation::invTransformPoint(dai::Point2f point) const {
 }
 dai::RotatedRect ImgTransformation::invTransformRect(dai::RotatedRect rect) const {
     auto angleRad = rect.angle * (float)M_PI / 180.0f;
-    auto w = rect.size.width / 2;
-    auto h = rect.size.height / 2;
+    auto w = rect.size.width;
+    auto h = rect.size.height;
     dai::Point2f widthVec = {std::cos(angleRad) * w, std::sin(angleRad) * w};
     dai::Point2f heightVec = {-std::sin(angleRad) * h, std::cos(angleRad) * h};
+    dai::Point2f originVec = {0.f, 0.f};
     auto srcCenter = invTransformPoint(rect.center);
     auto srcWidthVec = invTransformPoint(widthVec);
     auto srcHeightVec = invTransformPoint(heightVec);
+    auto srcOriginVec = invTransformPoint(originVec);
+    srcWidthVec.x -= srcOriginVec.x;
+    srcWidthVec.y -= srcOriginVec.y;
+    srcHeightVec.x -= srcOriginVec.x;
+    srcHeightVec.y -= srcOriginVec.y;
     auto srcAngle = std::atan2(srcWidthVec.y, srcWidthVec.x) * 180.0f / (float)M_PI;
     return {srcCenter,
             {std::sqrt(srcWidthVec.x * srcWidthVec.x + srcWidthVec.y * srcWidthVec.y) * 2,
@@ -230,6 +285,12 @@ std::array<std::array<float, 3>, 3> ImgTransformation::getMatrix() const {
 }
 std::array<std::array<float, 3>, 3> ImgTransformation::getMatrixInv() const {
     return transformationMatrixInv;
+}
+std::array<std::array<float, 3>, 3> ImgTransformation::getSourceIntrinsicMatrix() const {
+    return sourceIntrinsicMatrix;
+}
+std::array<std::array<float, 3>, 3> ImgTransformation::getSourceIntrinsicMatrixInv() const {
+    return sourceIntrinsicMatrixInv;
 }
 std::vector<dai::RotatedRect> ImgTransformation::getSrcCrops() const {
     return srcCrops;
@@ -338,7 +399,7 @@ const std::vector<uint8_t>& ImgTransformation::getDstMask() {
 
 ImgTransformation& ImgTransformation::addTransformation(std::array<std::array<float, 3>, 3> matrix) {
     transformationMatrix = matmul(matrix, transformationMatrix);
-    transformationMatrixInv = getInverse(transformationMatrix);
+    transformationMatrixInv = getMatrixInverse(transformationMatrix);
     srcMaskValid = dstMaskValid = srcBorderValid = dstBorderValid = false;
     return *this;
 }
@@ -425,7 +486,9 @@ bool ImgTransformation::isValid() const {
 }
 
 dai::Point2f ImgTransformation::remapPointTo(const ImgTransformation& to, dai::Point2f point) const {
-    return to.transformPoint(invTransformPoint(point));
+    auto sourcePointFrom = invTransformPoint(point);
+    auto sourcePointTo = interSourceFrameTransform(sourcePointFrom, *this, to);
+    return to.transformPoint(sourcePointTo);
 }
 dai::Point2f ImgTransformation::remapPointTo(const std::array<std::array<float, 3>, 3>& to, dai::Point2f point) const {
     ImgTransformation toT(0, 0);
@@ -433,7 +496,9 @@ dai::Point2f ImgTransformation::remapPointTo(const std::array<std::array<float, 
     return remapPointTo(toT, point);
 }
 dai::Point2f ImgTransformation::remapPointFrom(const ImgTransformation& from, dai::Point2f point) const {
-    return transformPoint(from.invTransformPoint(point));
+    auto sourcePointFrom = from.invTransformPoint(point);
+    auto sourcePointTo = interSourceFrameTransform(sourcePointFrom, from, *this);
+    return transformPoint(sourcePointTo);
 }
 dai::Point2f ImgTransformation::remapPointFrom(const std::array<std::array<float, 3>, 3>& from, dai::Point2f point) const {
     ImgTransformation fromT(0, 0);
@@ -476,6 +541,20 @@ std::string ImgTransformation::str() const {
         doIndent(1);
         ss << transformationMatrixInv[i][0];
         for(auto j = 1; j < 3; ++j) ss << '\t' << transformationMatrixInv[i][j];
+        ss << '\n';
+    }
+    ss << "intrinsics: \n";
+    for(auto i = 0; i < 3; ++i) {
+        doIndent(1);
+        ss << sourceIntrinsicMatrix[i][0];
+        for(auto j = 1; j < 3; ++j) ss << '\t' << sourceIntrinsicMatrix[i][j];
+        ss << '\n';
+    }
+    ss << "intrinsics inverse: \n";
+    for(auto i = 0; i < 3; ++i) {
+        doIndent(1);
+        ss << sourceIntrinsicMatrixInv[i][0];
+        for(auto j = 1; j < 3; ++j) ss << '\t' << sourceIntrinsicMatrixInv[i][j];
         ss << '\n';
     }
     ss << "size: " << width << " x " << height << '\n';
