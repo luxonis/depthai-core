@@ -81,8 +81,8 @@ with dai.Pipeline() as pipeline:
     remoteConnector.addTopic("h264", h264Encoder.out, "testGroup")
     remoteConnector.addTopic("mjpeg", mjpegEncoder.out, "specialMjpegGroup")
     remoteConnector.addTopic("detections", detectionNetwork.out, "testGroup")
-    remoteConnector.addTopic("annotations", imageAnnotationsGenerator.output, "testGroup")
-    testInput = remoteConnector.addTopic("testInput", "testGroup")
+    remoteConnector.addTopic("annotations", imageAnnotationsGenerator.output, "testAnnot")
+    testInput = remoteConnector.addTopic("testInput", "testAnnot")
     imageAnnotationsGenerator.addTestInput(testInput)
     encoderQueue = mjpegEncoder.out.createOutputQueue()
 
