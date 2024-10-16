@@ -391,7 +391,7 @@ endif()
 # Examples (can also act as tests)
 ########################
 if (DEPTHAI_PYTHON_ENABLE_EXAMPLES)
-    add_subdirectory(examples)
+    add_subdirectory(../../examples/python ${CMAKE_BINARY_DIR}/examples/python)
 endif()
 
 ########################
