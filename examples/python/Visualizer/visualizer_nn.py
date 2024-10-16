@@ -17,6 +17,7 @@ class ImageAnnotationsGenerator(dai.node.ThreadedHostNode):
             if nnData is not None:
                 detections = nnData.detections
                 imgAnnt = dai.ImageAnnotations()
+                imgAnnt.setTimestamp(nnData.getTimestamp())
                 annotation = dai.ImageAnnotation()
                 annotation.points = [dai.PointsAnnotation()] * len(detections)
                 annotation.texts = [dai.TextAnnotation()] * len(detections)
@@ -43,6 +44,7 @@ class ImageAnnotationsGenerator(dai.node.ThreadedHostNode):
                     backgroundColor = dai.Color(0.5, 0.5, 0.5, 1.0)
                     annotation.texts[i].backgroundColor = backgroundColor
                     imgAnnt.annotations = [annotation]
+                print(f"Annotation ts: {imgAnnt.getTimestamp()}")
                 self.output.send(imgAnnt)
 
 
