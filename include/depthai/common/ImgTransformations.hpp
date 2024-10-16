@@ -1,5 +1,6 @@
 #pragma once
 
+#include "depthai/common/CameraModel.hpp"
 #include "depthai/common/Point2f.hpp"
 #include "depthai/common/RotatedRect.hpp"
 #include "depthai/utility/Serialization.hpp"
@@ -17,6 +18,8 @@ struct ImgTransformation {
     std::array<std::array<float, 3>, 3> transformationMatrixInv = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};  // Precomputed inverse matrix
     std::array<std::array<float, 3>, 3> sourceIntrinsicMatrix = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
     std::array<std::array<float, 3>, 3> sourceIntrinsicMatrixInv = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
+    CameraModel distortionModel;
+    std::vector<float> distortionCoefficients;
     size_t srcWidth = 0;
     size_t srcHeight = 0;
     size_t width = 0;
@@ -54,8 +57,8 @@ struct ImgTransformation {
         : sourceIntrinsicMatrix(sourceIntrinsicMatrix), srcWidth(width), srcHeight(height), width(width), height(height) {
         sourceIntrinsicMatrixInv = getMatrixInverse(sourceIntrinsicMatrix);
     }
-    ImgTransformation(size_t srcWidth, size_t srcHeight, size_t width, size_t height, std::array<std::array<float, 3>, 3> sourceIntrinsicMatrix)
-        : sourceIntrinsicMatrix(sourceIntrinsicMatrix), srcWidth(srcWidth), srcHeight(srcHeight), width(width), height(height) {
+    ImgTransformation(size_t width, size_t height, std::array<std::array<float, 3>, 3> sourceIntrinsicMatrix, CameraModel distortionModel, std::vector<float> distortionCoefficients)
+        : sourceIntrinsicMatrix(sourceIntrinsicMatrix), distortionModel(distortionModel), distortionCoefficients(distortionCoefficients), srcWidth(width), srcHeight(height), width(width), height(height) {
         sourceIntrinsicMatrixInv = getMatrixInverse(sourceIntrinsicMatrix);
     }
 
@@ -99,7 +102,7 @@ struct ImgTransformation {
 
     std::string str() const;
 
-    DEPTHAI_SERIALIZE(ImgTransformation, transformationMatrix, transformationMatrixInv, sourceIntrinsicMatrix, sourceIntrinsicMatrixInv, srcWidth, srcHeight, width, height, srcCrops);
+    DEPTHAI_SERIALIZE(ImgTransformation, transformationMatrix, transformationMatrixInv, sourceIntrinsicMatrix, sourceIntrinsicMatrixInv, distortionModel, distortionCoefficients, srcWidth, srcHeight, width, height, srcCrops);
 };
 
 // class ImgTransformations {

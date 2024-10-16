@@ -2,6 +2,7 @@
 
 #include <assert.h>
 
+#include <algorithm>
 #include <cstring>
 #include <sstream>
 
@@ -112,25 +113,13 @@ dai::RotatedRect interSourceFrameTransform(dai::RotatedRect sourceRect, const Im
     auto toSource = to.getSourceIntrinsicMatrix();
     if(mateq(fromSource, toSource)) return sourceRect;
 
-    auto angleRad = sourceRect.angle * (float)M_PI / 180.0f;
-    auto w = sourceRect.size.width;
-    auto h = sourceRect.size.height;
-    dai::Point2f widthVec = {std::cos(angleRad) * w, std::sin(angleRad) * w};
-    dai::Point2f heightVec = {-std::sin(angleRad) * h, std::cos(angleRad) * h};
-    dai::Point2f originVec = {0.f, 0.f};
-    auto dstCenter = interSourceFrameTransform(sourceRect.center, from, to);
-    auto dstWidthVec = interSourceFrameTransform(widthVec, from, to);
-    auto dstHeightVec = interSourceFrameTransform(heightVec, from, to);
-    auto dstOriginVec = interSourceFrameTransform(originVec, from, to);
-    dstWidthVec.x -= dstOriginVec.x;
-    dstWidthVec.y -= dstOriginVec.y;
-    dstHeightVec.x -= dstOriginVec.x;
-    dstHeightVec.y -= dstOriginVec.y;
-    auto dstAngle = std::atan2(dstWidthVec.y, dstWidthVec.x) * 180.0f / (float)M_PI;
-    return {dstCenter,
-            {std::sqrt(dstWidthVec.x * dstWidthVec.x + dstWidthVec.y * dstWidthVec.y) * 2,
-             std::sqrt(dstHeightVec.x * dstHeightVec.x + dstHeightVec.y * dstHeightVec.y) * 2},
-            dstAngle};
+    const auto points = sourceRect.getPoints();
+    std::vector<std::array<float, 2>> vPoints(points.size());
+    for(auto i = 0U; i < points.size(); ++i) {
+        auto point = interSourceFrameTransform(points[i], from, to);
+        vPoints[i] = {point.x, point.y};
+    }
+    return impl::getRotatedRectFromPoints(vPoints);
 }
 
 void ImgTransformation::calcSrcBorder() {
@@ -228,50 +217,26 @@ dai::Point2f ImgTransformation::transformPoint(dai::Point2f point) const {
     return {transformed[0], transformed[1]};
 }
 dai::RotatedRect ImgTransformation::transformRect(dai::RotatedRect rect) const {
-    auto angleRad = rect.angle * (float)M_PI / 180.0f;
-    auto w = rect.size.width;
-    auto h = rect.size.height;
-    dai::Point2f widthVec = {std::cos(angleRad) * w, std::sin(angleRad) * w};
-    dai::Point2f heightVec = {-std::sin(angleRad) * h, std::cos(angleRad) * h};
-    dai::Point2f originVec = {0.f, 0.f};
-    auto dstCenter = transformPoint(rect.center);
-    auto dstWidthVec = transformPoint(widthVec);
-    auto dstHeightVec = transformPoint(heightVec);
-    auto dstOriginVec = transformPoint(originVec);
-    dstWidthVec.x -= dstOriginVec.x;
-    dstWidthVec.y -= dstOriginVec.y;
-    dstHeightVec.x -= dstOriginVec.x;
-    dstHeightVec.y -= dstOriginVec.y;
-    auto dstAngle = std::atan2(dstWidthVec.y, dstWidthVec.x) * 180.0f / (float)M_PI;
-    return {dstCenter,
-            {std::sqrt(dstWidthVec.x * dstWidthVec.x + dstWidthVec.y * dstWidthVec.y) * 2,
-             std::sqrt(dstHeightVec.x * dstHeightVec.x + dstHeightVec.y * dstHeightVec.y) * 2},
-            dstAngle};
+    const auto points = rect.getPoints();
+    std::vector<std::array<float, 2>> vPoints(points.size());
+    for(auto i = 0U; i < points.size(); ++i) {
+        auto point = transformPoint(points[i]);
+        vPoints[i] = {point.x, point.y};
+    }
+    return impl::getRotatedRectFromPoints(vPoints);
 }
 dai::Point2f ImgTransformation::invTransformPoint(dai::Point2f point) const {
     auto transformed = matvecmul(transformationMatrixInv, {point.x, point.y});
     return {transformed[0], transformed[1]};
 }
 dai::RotatedRect ImgTransformation::invTransformRect(dai::RotatedRect rect) const {
-    auto angleRad = rect.angle * (float)M_PI / 180.0f;
-    auto w = rect.size.width;
-    auto h = rect.size.height;
-    dai::Point2f widthVec = {std::cos(angleRad) * w, std::sin(angleRad) * w};
-    dai::Point2f heightVec = {-std::sin(angleRad) * h, std::cos(angleRad) * h};
-    dai::Point2f originVec = {0.f, 0.f};
-    auto srcCenter = invTransformPoint(rect.center);
-    auto srcWidthVec = invTransformPoint(widthVec);
-    auto srcHeightVec = invTransformPoint(heightVec);
-    auto srcOriginVec = invTransformPoint(originVec);
-    srcWidthVec.x -= srcOriginVec.x;
-    srcWidthVec.y -= srcOriginVec.y;
-    srcHeightVec.x -= srcOriginVec.x;
-    srcHeightVec.y -= srcOriginVec.y;
-    auto srcAngle = std::atan2(srcWidthVec.y, srcWidthVec.x) * 180.0f / (float)M_PI;
-    return {srcCenter,
-            {std::sqrt(srcWidthVec.x * srcWidthVec.x + srcWidthVec.y * srcWidthVec.y) * 2,
-             std::sqrt(srcHeightVec.x * srcHeightVec.x + srcHeightVec.y * srcHeightVec.y) * 2},
-            srcAngle};
+    const auto points = rect.getPoints();
+    std::vector<std::array<float, 2>> vPoints(points.size());
+    for(auto i = 0U; i < points.size(); ++i) {
+        auto point = invTransformPoint(points[i]);
+        vPoints[i] = {point.x, point.y};
+    }
+    return impl::getRotatedRectFromPoints(vPoints);
 }
 
 std::pair<size_t, size_t> ImgTransformation::getSize() const {
@@ -506,7 +471,9 @@ dai::Point2f ImgTransformation::remapPointFrom(const std::array<std::array<float
     return remapPointFrom(fromT, point);
 }
 dai::RotatedRect ImgTransformation::remapRectTo(const ImgTransformation& to, dai::RotatedRect rect) const {
-    return to.transformRect(invTransformRect(rect));
+    auto sourceRectFrom = invTransformRect(rect);
+    auto sourceRectTo = interSourceFrameTransform(sourceRectFrom, *this, to);
+    return to.transformRect(sourceRectTo);
 }
 dai::RotatedRect ImgTransformation::remapRectTo(const std::array<std::array<float, 3>, 3>& to, dai::RotatedRect rect) const {
     ImgTransformation toT(0, 0);
@@ -514,7 +481,9 @@ dai::RotatedRect ImgTransformation::remapRectTo(const std::array<std::array<floa
     return remapRectTo(toT, rect);
 }
 dai::RotatedRect ImgTransformation::remapRectFrom(const ImgTransformation& from, dai::RotatedRect rect) const {
-    return transformRect(from.invTransformRect(rect));
+    auto sourceRectFrom = from.invTransformRect(rect);
+    auto sourceRectTo = interSourceFrameTransform(sourceRectFrom, from, *this);
+    return transformRect(sourceRectTo);
 }
 dai::RotatedRect ImgTransformation::remapRectFrom(const std::array<std::array<float, 3>, 3>& from, dai::RotatedRect rect) const {
     ImgTransformation fromT(0, 0);
