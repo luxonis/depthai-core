@@ -1,12 +1,12 @@
 syntax = "proto3";
 
-package proto;
+package dai.proto.point_cloud_data;
 
 import "common.proto";
 
 message PointCloudData {
-    Timestamp ts = 1;
-    Timestamp tsDevice = 2;
+    common.Timestamp ts = 1;
+    common.Timestamp tsDevice = 2;
     int64 sequenceNum = 3;
     uint32 width = 4;
     uint32 height = 5;

@@ -1,9 +1,11 @@
-#include "depthai/remote_connection/RemoteConnector.hpp"
+#include "depthai/remote_connection/RemoteConnection.hpp"
 
 #include <iostream>
 #include <websocketpp/common/connection_hdl.hpp>
 
+#include "depthai/pipeline/MessageQueue.hpp"
 #include "foxglove/websocket/common.hpp"
+#include "utility/Logging.hpp"
 #include "utility/Resources.hpp"
 
 namespace dai {
@@ -12,7 +14,7 @@ inline static uint64_t nanosecondsSinceEpoch() {
     return uint64_t(std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count());
 }
 
-RemoteConnector::RemoteConnector(const std::string& address, uint16_t port) {
+RemoteConnection::RemoteConnection(const std::string& address, uint16_t port) {
     initWebsocketServer(address, port);
     initHttpServer(address, 8000);
 
@@ -21,13 +23,16 @@ RemoteConnector::RemoteConnector(const std::string& address, uint16_t port) {
     exposeTopicGroupsService();
 }
 
-RemoteConnector::~RemoteConnector() {
+RemoteConnection::~RemoteConnection() {
     server->stop();
+    for(auto& thread : publishThreads) {
+        thread->join();
+    }
     httpServer->stop();
     httpServerThread->join();
 }
 
-int RemoteConnector::waitKey(int delayMs) {
+int RemoteConnection::waitKey(int delayMs) {
     // Implemented based on opencv's waitKey method
     // https://docs.opencv.org/4.x/d7/dfc/group__highgui.html#ga5628525ad33f52eab17feebcfba38bd7
 
@@ -54,35 +59,35 @@ int RemoteConnector::waitKey(int delayMs) {
     return ret;
 }
 
-void RemoteConnector::keyPressedCallback(int key) {
+void RemoteConnection::keyPressedCallback(int key) {
     std::unique_lock<std::mutex> lock(keyMutex);
     keyPressed = key;
     keyCv.notify_all();
 }
 
-void RemoteConnector::initWebsocketServer(const std::string& address, uint16_t port) {
+void RemoteConnection::initWebsocketServer(const std::string& address, uint16_t port) {
     // Create the WebSocket server with a simple log handler
-    const auto logHandler = [](foxglove::WebSocketLogLevel, const char* msg) { std::cout << msg << std::endl; };
+    const auto logHandler = [](foxglove::WebSocketLogLevel, const char* msg) { logger::info(msg); };
     foxglove::ServerOptions serverOptions;
     serverOptions.sendBufferLimitBytes = 100 * 1024 * 1024;  // 100 MB
     serverOptions.capabilities.emplace_back("services");
     serverOptions.supportedEncodings.emplace_back("json");
     // Instantiate the server using the factory
-    server = foxglove::ServerFactory::createServer<websocketpp::connection_hdl>("DepthAI RemoteConnector", logHandler, serverOptions);
+    server = foxglove::ServerFactory::createServer<websocketpp::connection_hdl>("DepthAI RemoteConnection", logHandler, serverOptions);
 
     // Add handlers for the server
     foxglove::ServerHandlers<websocketpp::connection_hdl> hdlrs;
     hdlrs.subscribeHandler = [&](foxglove::ChannelId chanId, foxglove::ConnHandle clientHandle) {
         const auto clientStr = server->remoteEndpointString(clientHandle);
-        std::cout << "Client " << clientStr << " subscribed to " << chanId << std::endl;
+        logger::info("Client {} subscribed to {}", clientStr, chanId);
     };
     hdlrs.unsubscribeHandler = [&](foxglove::ChannelId chanId, foxglove::ConnHandle clientHandle) {
         const auto clientStr = server->remoteEndpointString(clientHandle);
-        std::cout << "Client " << clientStr << " unsubscribed from " << chanId << std::endl;
+        logger::info("Client {} unsubscribed from {}", clientStr, chanId);
     };
 
     hdlrs.serviceRequestHandler = [&](const foxglove::ServiceRequest& request, foxglove::ConnHandle clientHandle) {
-        std::cout << "Received service request from client " << server->remoteEndpointString(clientHandle) << std::endl;
+        logger::info("Received service request from client {}", server->remoteEndpointString(clientHandle));
         // Check that the service handler is registered
         auto it = serviceMap.find(request.serviceId);
         if(it == serviceMap.end()) {
@@ -100,27 +105,25 @@ void RemoteConnector::initWebsocketServer(const std::string& address, uint16_t p
     // Start the server at the specified address and port
     try {
         server->start(address, port);
-        std::cout << "Server started at " << address << ":" << port << std::endl;
+		logger::info("Server started at {}:{}", address, port);
     } catch(const std::exception& ex) {
-        std::cerr << "Failed to start server: " << ex.what() << std::endl;
+        logger::error("Failed to start server: {}", ex.what());
     }
 }
 
-void RemoteConnector::addTopic(const std::string& topicName, Node::Output& output, const std::string& group) {
-    auto outputQueue = output.createOutputQueue();
-    // Start a thread to handle the schema extraction and message forwarding
-    std::thread([this, topicName, outputQueue, group]() {
+void RemoteConnection::addPublishThread(const std::string& topicName, const std::shared_ptr<MessageQueue>& outputQueue, const std::string& group) {
+    auto thread = std::make_unique<std::thread>([this, topicName, outputQueue, group]() {
         bool isRunning = true;
         // Wait for the first message to extract schema
         auto firstMessage = outputQueue->get();
         if(!firstMessage) {
-            std::cerr << "No message received from the output for topic: " << topicName << std::endl;
+            logger::error("No message received from the output for topic: {}", topicName);
             return;
         }
 
         auto serializableMessage = std::dynamic_pointer_cast<utility::ProtoSerializable>(firstMessage);
         if(!serializableMessage) {
-            std::cerr << "First message is not a ProtoSerializable message for topic: " << topicName << std::endl;
+            logger::error("First message is not a ProtoSerializable message for topic: {}", topicName);
             return;
         }
         // Assuming the first message is a protobuf message
@@ -135,7 +138,7 @@ void RemoteConnector::addTopic(const std::string& topicName, Node::Output& outpu
 
         // Store the group information
         if(topicGroups.find(topicName) != topicGroups.end()) {
-            std::cerr << "Topic named " << topicName << "is already present" << std::endl;
+            logger::error("Topic named {} is already present", topicName);
             return;
         }
         topicGroups[topicName] = group;
@@ -146,11 +149,10 @@ void RemoteConnector::addTopic(const std::string& topicName, Node::Output& outpu
             try {
                 message = outputQueue->get();
             } catch(const dai::MessageQueue::QueueException& ex) {
-                std::cout << "Error while getting message from output queue for topic: " << topicName << std::endl;
                 isRunning = false;
                 continue;
             } catch(const std::exception& ex) {
-                std::cerr << "Error while getting message from output queue for topic: " << topicName << std::endl;
+                logger::error("Error while getting message from output queue for topic: {}", topicName);
                 isRunning = false;
                 continue;
             }
@@ -158,17 +160,30 @@ void RemoteConnector::addTopic(const std::string& topicName, Node::Output& outpu
 
             auto serializableMessage = std::dynamic_pointer_cast<utility::ProtoSerializable>(message);
             if(!serializableMessage) {
-                std::cerr << "Message is not a ProtoSerializable message for topic: " << topicName << std::endl;
+                logger::error("Message is not a ProtoSerializable message for topic: {}", topicName);
                 continue;
             }
 
             auto serializedMsg = serializableMessage->serializeProto();
             server->broadcastMessage(channelId, nanosecondsSinceEpoch(), static_cast<const uint8_t*>(serializedMsg.data()), serializedMsg.size());
         }
-    }).detach();  // Detach the thread to run independently
+    });
+    publishThreads.push_back(std::move(thread));
 }
 
-void RemoteConnector::registerPipeline(const Pipeline& pipeline) {
+void RemoteConnection::addTopic(const std::string& topicName, Node::Output& output, const std::string& group) {
+    auto outputQueue = output.createOutputQueue();
+    // Start a thread to handle the schema extraction and message forwarding
+    addPublishThread(topicName, outputQueue, group);
+}
+
+std::shared_ptr<MessageQueue> RemoteConnection::addTopic(const std::string& topicName, const std::string& group, unsigned int maxSize, bool blocking) {
+    auto outputQueue = std::make_shared<MessageQueue>(maxSize, blocking);
+    addPublishThread(topicName, outputQueue, group);
+    return outputQueue;
+}
+
+void RemoteConnection::registerPipeline(const Pipeline& pipeline) {
     exposePipelineService(pipeline);
 }
 
@@ -192,10 +207,9 @@ std::string getMimeType(const std::string& path) {
     return "application/octet-stream";  // Default binary type if no match
 };
 
-void RemoteConnector::initHttpServer(const std::string& address, uint16_t port) {
+void RemoteConnection::initHttpServer(const std::string& address, uint16_t port) {
     auto visualizerFs = Resources::getInstance().getEmbeddedVisualizer();
     httpServer = std::make_unique<httplib::Server>();
-    // httpServer->set_mount_point("/", "/home/matevz/Downloads/viewer-fe-2");
     httpServer->Get("/(.*)", [visualizerFs](const httplib::Request& req, httplib::Response& res) {
         std::string requestedPath = req.matches[1];
 
@@ -211,13 +225,13 @@ void RemoteConnector::initHttpServer(const std::string& address, uint16_t port) 
             res.set_content("File not found", "text/plain");
         }
     });
-    std::cout << "To connect to the DepthAI visualizer, open http://localhost:" << port << " in your browser" << std::endl;
-    std::cout << "In case of a different client, replace 'localhost' with the correct hostname" << std::endl;
+	std::cout << "To connect to the DepthAI visualizer, open http://localhost:" << port << " in your browser" << std::endl;
+	std::cout << "In case of a different client, replace 'localhost' with the correct hostname" << std::endl;
     // Run the server in a separate thread
     httpServerThread = std::make_unique<std::thread>([this, address, port]() { httpServer->listen(address, port); });
 }
 
-void RemoteConnector::exposeTopicGroupsService() {
+void RemoteConnection::exposeTopicGroupsService() {
     std::vector<foxglove::ServiceWithoutId> services;
     auto topicGroupsService = foxglove::ServiceWithoutId();
     topicGroupsService.name = "topicGroups";
@@ -244,7 +258,7 @@ void RemoteConnector::exposeTopicGroupsService() {
     };
 }
 
-void RemoteConnector::exposeKeyPressedService() {
+void RemoteConnection::exposeKeyPressedService() {
     std::string serviceName = "keyPressed";
     foxglove::ServiceWithoutId service;
     service.name = serviceName;
@@ -279,7 +293,7 @@ void RemoteConnector::exposeKeyPressedService() {
     };
 }
 
-void RemoteConnector::exposePipelineService(const Pipeline& pipeline) {
+void RemoteConnection::exposePipelineService(const Pipeline& pipeline) {
     // Add the service
     std::vector<foxglove::ServiceWithoutId> services;
     auto pipelineService = foxglove::ServiceWithoutId();

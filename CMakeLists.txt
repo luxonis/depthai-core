@@ -331,6 +331,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/ImgFrame.cpp
     src/pipeline/datatype/ImgTransformations.cpp
     src/pipeline/datatype/EncodedFrame.cpp
+	src/pipeline/datatype/ImageAnnotations.cpp
     src/pipeline/datatype/ImageManipConfig.cpp
     src/pipeline/datatype/ImageManipConfigV2.cpp
     src/pipeline/datatype/CameraControl.cpp
@@ -384,7 +385,7 @@ set(TARGET_CORE_SOURCES
     src/nn_archive/NNArchiveVersionedConfig.cpp
     src/modelzoo/NNModelDescription.cpp
     src/modelzoo/Zoo.cpp
-    src/remote_connection/RemoteConnector.cpp
+    src/remote_connection/RemoteConnection.cpp
 )
 
 set(TARGET_OPENCV_SOURCES

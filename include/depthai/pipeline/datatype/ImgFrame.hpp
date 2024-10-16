@@ -86,18 +86,18 @@ class ImgFrame : public Buffer, public utility::ProtoSerializable {
 
     std::unique_ptr<google::protobuf::Message> getProtoMessage() const override {
         // create and populate ImgFrame protobuf message
-        auto imgFrame = std::make_unique<proto::ImgFrame>();
-        proto::Timestamp* ts = imgFrame->mutable_ts();
+        auto imgFrame = std::make_unique<proto::img_frame::ImgFrame>();
+        proto::common::Timestamp* ts = imgFrame->mutable_ts();
         ts->set_sec(this->ts.sec);
         ts->set_nsec(this->ts.nsec);
-        proto::Timestamp* tsDevice = imgFrame->mutable_tsdevice();
+        proto::common::Timestamp* tsDevice = imgFrame->mutable_tsdevice();
         tsDevice->set_sec(this->tsDevice.sec);
         tsDevice->set_nsec(this->tsDevice.nsec);
 
         imgFrame->set_sequencenum(this->sequenceNum);
 
-        proto::Specs* fb = imgFrame->mutable_fb();
-        fb->set_type(static_cast<proto::Type>(this->fb.type));
+        proto::img_frame::Specs* fb = imgFrame->mutable_fb();
+        fb->set_type(static_cast<proto::img_frame::Type>(this->fb.type));
         fb->set_width(this->fb.width);
         fb->set_height(this->fb.height);
         fb->set_stride(this->fb.stride);
@@ -106,8 +106,8 @@ class ImgFrame : public Buffer, public utility::ProtoSerializable {
         fb->set_p2offset(this->fb.p2Offset);
         fb->set_p3offset(this->fb.p3Offset);
 
-        proto::Specs* sourceFb = imgFrame->mutable_sourcefb();
-        sourceFb->set_type(static_cast<proto::Type>(this->sourceFb.type));
+        proto::img_frame::Specs* sourceFb = imgFrame->mutable_sourcefb();
+        sourceFb->set_type(static_cast<proto::img_frame::Type>(this->sourceFb.type));
         sourceFb->set_width(this->sourceFb.width);
         sourceFb->set_height(this->sourceFb.height);
         sourceFb->set_stride(this->sourceFb.stride);
@@ -116,7 +116,7 @@ class ImgFrame : public Buffer, public utility::ProtoSerializable {
         sourceFb->set_p2offset(this->sourceFb.p2Offset);
         sourceFb->set_p3offset(this->sourceFb.p3Offset);
 
-        proto::CameraSettings* cam = imgFrame->mutable_cam();
+        proto::common::CameraSettings* cam = imgFrame->mutable_cam();
         cam->set_exposuretimeus(this->cam.exposureTimeUs);
         cam->set_sensitivityiso(this->cam.sensitivityIso);
         cam->set_lensposition(this->cam.lensPosition);
@@ -129,12 +129,12 @@ class ImgFrame : public Buffer, public utility::ProtoSerializable {
 
         imgFrame->set_category(this->category);
 
-        proto::ImgTransformations* imgTransformations = imgFrame->mutable_transformations();
+        proto::common::ImgTransformations* imgTransformations = imgFrame->mutable_transformations();
         imgTransformations->set_invalidflag(this->transformations.invalidFlag);
         for(const auto& transformation : this->transformations.transformations) {
-            proto::ImgTransformation* imgTransformation = imgTransformations->add_transformations();
+            proto::common::ImgTransformation* imgTransformation = imgTransformations->add_transformations();
 
-            imgTransformation->set_transformationtype(static_cast<proto::Transformation>(transformation.transformationType));
+            imgTransformation->set_transformationtype(static_cast<proto::common::Transformation>(transformation.transformationType));
             imgTransformation->set_topleftcropx(transformation.topLeftCropX);
             imgTransformation->set_topleftcropy(transformation.topLeftCropY);
             imgTransformation->set_bottomrightcropx(transformation.bottomRightCropX);
@@ -148,9 +148,9 @@ class ImgFrame : public Buffer, public utility::ProtoSerializable {
             imgTransformation->set_beforetransformwidth(transformation.beforeTransformWidth);
             imgTransformation->set_beforetransformheight(transformation.beforeTransformHeight);
 
-            proto::TransformationMatrix* transformationMatrix = imgTransformation->mutable_transformationmatrix();
+            proto::common::TransformationMatrix* transformationMatrix = imgTransformation->mutable_transformationmatrix();
             for(const auto& array : transformation.transformationMatrix) {
-                proto::FloatArray* floatArray = transformationMatrix->add_arrays();
+                proto::common::FloatArray* floatArray = transformationMatrix->add_arrays();
 
                 // or floatArray.mutable_values() = {array.values.begin(), array.values.end()}; ?
                 for(const auto& value : array) {
@@ -158,9 +158,9 @@ class ImgFrame : public Buffer, public utility::ProtoSerializable {
                 }
             }
 
-            proto::TransformationMatrix* invTransformationMatrix = imgTransformation->mutable_invtransformationmatrix();
+            proto::common::TransformationMatrix* invTransformationMatrix = imgTransformation->mutable_invtransformationmatrix();
             for(const auto& array : transformation.invTransformationMatrix) {
-                proto::FloatArray* floatArray = invTransformationMatrix->add_arrays();
+                proto::common::FloatArray* floatArray = invTransformationMatrix->add_arrays();
 
                 // or floatArray.mutable_values() = {array.values.begin(), array.values.end()}; ?
                 for(const auto& value : array) {
