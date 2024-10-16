@@ -149,7 +149,6 @@ void RemoteConnection::addPublishThread(const std::string& topicName, const std:
             try {
                 message = outputQueue->get();
             } catch(const dai::MessageQueue::QueueException& ex) {
-                logger::error("Error while getting message from output queue for topic: {}", topicName);
                 isRunning = false;
                 continue;
             } catch(const std::exception& ex) {
