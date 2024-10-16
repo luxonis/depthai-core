@@ -8,16 +8,20 @@ import time
 class ImageAnnotationsGenerator(dai.node.ThreadedHostNode):
     def __init__(self):
         super().__init__()
-        self.input = self.createInput()
+        self.inputDet = self.createInput()
+        self.inputFrame = self.createInput()
         self.output = self.createOutput()
+    def addTestInput(self, testInput):
+        self.testInput = testInput
 
     def run(self):
         while self.isRunning():
-            nnData = self.input.get()
-            if nnData is not None:
+            nnData = self.inputDet.get()
+            frame =self.inputFrame.get()
+            if nnData is not None and frame is not None:
                 detections = nnData.detections
                 imgAnnt = dai.ImageAnnotations()
-                imgAnnt.setTimestamp(nnData.getTimestamp())
+                imgAnnt.setTimestamp(frame.getTimestamp())
                 annotation = dai.ImageAnnotation()
                 annotation.points = [dai.PointsAnnotation()] * len(detections)
                 annotation.texts = [dai.TextAnnotation()] * len(detections)
@@ -44,7 +48,7 @@ class ImageAnnotationsGenerator(dai.node.ThreadedHostNode):
                     backgroundColor = dai.Color(0.5, 0.5, 0.5, 1.0)
                     annotation.texts[i].backgroundColor = backgroundColor
                     imgAnnt.annotations = [annotation]
-                print(f"Annotation ts: {imgAnnt.getTimestamp()}")
+                self.testInput.send(frame)
                 self.output.send(imgAnnt)
 
 
@@ -66,7 +70,8 @@ with dai.Pipeline() as pipeline:
     mjpegEncoder.setDefaultProfilePreset(30, dai.VideoEncoderProperties.Profile.MJPEG)
     outputToEncode.link(mjpegEncoder.input)
 
-    detectionNetwork.out.link(imageAnnotationsGenerator.input)
+    detectionNetwork.out.link(imageAnnotationsGenerator.inputDet)
+    outputToEncode.link(imageAnnotationsGenerator.inputFrame)
     labelMap = detectionNetwork.getClasses()
 
     qRgb = detectionNetwork.passthrough.createOutputQueue()
@@ -78,6 +83,7 @@ with dai.Pipeline() as pipeline:
     remoteConnector.addTopic("detections", detectionNetwork.out, "testGroup")
     remoteConnector.addTopic("annotations", imageAnnotationsGenerator.output, "testGroup")
     testInput = remoteConnector.addTopic("testInput", "testGroup")
+    imageAnnotationsGenerator.addTestInput(testInput)
     encoderQueue = mjpegEncoder.out.createOutputQueue()
 
     # Register the pipeline with the remote connector
@@ -132,7 +138,6 @@ with dai.Pipeline() as pipeline:
         inRgb: dai.ImgFrame = qRgb.get()
         inDet: dai.ImgDetections = qDet.get()
         encdoedMessage = encoderQueue.get()
-        testInput.send(encdoedMessage)
         if inRgb is not None:
             frame = inRgb.getCvFrame()
             cv2.putText(
