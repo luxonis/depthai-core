@@ -404,7 +404,7 @@ Rect ImgFrame::remapRectBetweenFrames(const Rect& originRect, const ImgFrame& or
     srcRRect.angle = 0.f;
     auto dstRRect = originFrame.transformation.remapRectTo(destFrame.transformation, srcRRect);
     auto [minx, miny, maxx, maxy] = dstRRect.getOuterRect();
-    dai::Rect returnRect(minx, miny, maxx - minx, maxy - miny);
+    dai::Rect returnRect((int)roundf(minx), (int)roundf(miny), (int)roundf(maxx - minx), (int)roundf(maxy - miny));
     if(normalized) {
         returnRect = returnRect.normalize(destFrame.getWidth(), destFrame.getHeight());
     }
