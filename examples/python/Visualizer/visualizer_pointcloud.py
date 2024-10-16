@@ -10,6 +10,8 @@ remoteConnector = dai.RemoteConnection()
 
 with dai.Pipeline() as pipeline:
 
+    # Activate laser dot projector
+    pipeline.getDefaultDevice().setIrLaserDotProjectorIntensity(0.7)
     # Create nodes
     monoLeft = pipeline.create(dai.node.MonoCamera)
     monoRight = pipeline.create(dai.node.MonoCamera)
