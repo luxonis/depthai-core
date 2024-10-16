@@ -15,38 +15,37 @@ class ImageAnnotationsGenerator(dai.node.ThreadedHostNode):
         self.labelMap = labelMap
     def run(self):
         while self.isRunning():
-            nnData = self.inputDet.tryGet()
-            if nnData is not None :
-                detections = nnData.detections
-                imgAnnt = dai.ImageAnnotations()
-                imgAnnt.setTimestamp(nnData.getTimestamp())
-                annotation = dai.ImageAnnotation()
-                annotation.points = [dai.PointsAnnotation()] * len(detections)
-                annotation.texts = [dai.TextAnnotation()] * len(detections)
-                for i in range(len(detections)):
-                    # create ImageAnnotations message
-                    annotation.points[i].type = dai.PointsAnnotationType.LINE_STRIP
-                    annotation.points[i].points = [
-                        dai.Point2f(detections[i].xmin, detections[i].ymin),
-                        dai.Point2f(detections[i].xmax, detections[i].ymin),
-                        dai.Point2f(detections[i].xmax, detections[i].ymax),
-                        dai.Point2f(detections[i].xmin, detections[i].ymax),
-                    ]
-                    outlineColor = dai.Color(1.0, 0.5, 0.5, 1.0)
-                    annotation.points[i].outlineColor = outlineColor
+            nnData = self.inputDet.get()
+            detections = nnData.detections
+            imgAnnt = dai.ImageAnnotations()
+            imgAnnt.setTimestamp(nnData.getTimestamp())
+            annotation = dai.ImageAnnotation()
+            annotation.points = [dai.PointsAnnotation()] * len(detections)
+            annotation.texts = [dai.TextAnnotation()] * len(detections)
+            for i in range(len(detections)):
+                # create ImageAnnotations message
+                annotation.points[i].type = dai.PointsAnnotationType.LINE_STRIP
+                annotation.points[i].points = [
+                    dai.Point2f(detections[i].xmin, detections[i].ymin),
+                    dai.Point2f(detections[i].xmax, detections[i].ymin),
+                    dai.Point2f(detections[i].xmax, detections[i].ymax),
+                    dai.Point2f(detections[i].xmin, detections[i].ymax),
+                ]
+                outlineColor = dai.Color(1.0, 0.5, 0.5, 1.0)
+                annotation.points[i].outlineColor = outlineColor
 
-                    fillColor = dai.Color(0.5, 1.0, 0.5, 0.5)
-                    annotation.points[i].fillColor = fillColor
-                    annotation.points[i].thickness = 2.0
-                    annotation.texts[i].position = dai.Point2f(detections[i].xmin, detections[i].ymin)
-                    annotation.texts[i].text = f"{self.labelMap[detections[i].label]} {int(detections[i].confidence * 100)}%"
-                    annotation.texts[i].fontSize = 50.5
-                    textColor = dai.Color(0.5, 0.5, 1.0, 1.0)
-                    annotation.texts[i].textColor = textColor
-                    backgroundColor = dai.Color(1.0, 1.0, 0.5, 1.0)
-                    annotation.texts[i].backgroundColor = backgroundColor
-                    imgAnnt.annotations = [annotation]
-                self.output.send(imgAnnt)
+                fillColor = dai.Color(0.5, 1.0, 0.5, 0.5)
+                annotation.points[i].fillColor = fillColor
+                annotation.points[i].thickness = 2.0
+                annotation.texts[i].position = dai.Point2f(detections[i].xmin, detections[i].ymin)
+                annotation.texts[i].text = f"{self.labelMap[detections[i].label]} {int(detections[i].confidence * 100)}%"
+                annotation.texts[i].fontSize = 50.5
+                textColor = dai.Color(0.5, 0.5, 1.0, 1.0)
+                annotation.texts[i].textColor = textColor
+                backgroundColor = dai.Color(1.0, 1.0, 0.5, 1.0)
+                annotation.texts[i].backgroundColor = backgroundColor
+                imgAnnt.annotations = [annotation]
+            self.output.send(imgAnnt)
 
 
 remoteConnector = dai.RemoteConnection()
@@ -85,8 +84,8 @@ with dai.Pipeline() as pipeline:
 
     # Register the pipeline with the remote connector
     # Not working with host nodes
-    # remoteConnector.registerPipeline(pipeline)
     pipeline.start()
+    remoteConnector.registerPipeline(pipeline)
 
     frame = None
     detections = []
