@@ -105,7 +105,7 @@ void RemoteConnection::initWebsocketServer(const std::string& address, uint16_t 
     // Start the server at the specified address and port
     try {
         server->start(address, port);
-        logger::info("Server started at {}:{}", address, port);
+		logger::info("Server started at {}:{}", address, port);
     } catch(const std::exception& ex) {
         logger::error("Failed to start server: {}", ex.what());
     }
@@ -226,8 +226,8 @@ void RemoteConnection::initHttpServer(const std::string& address, uint16_t port)
             res.set_content("File not found", "text/plain");
         }
     });
-    logger::info("To connect to the DepthAI visualizer, open http://localhost:{} in your browser", port);
-    logger::info("In case of a different client, replace 'localhost' with the correct hostname");
+	std::cout << "To connect to the DepthAI visualizer, open http://localhost:" << port << " in your browser" << std::endl;
+	std::cout << "In case of a different client, replace 'localhost' with the correct hostname" << std::endl;
     // Run the server in a separate thread
     httpServerThread = std::make_unique<std::thread>([this, address, port]() { httpServer->listen(address, port); });
 }

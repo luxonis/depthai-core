@@ -9,19 +9,17 @@ class ImageAnnotationsGenerator(dai.node.ThreadedHostNode):
     def __init__(self):
         super().__init__()
         self.inputDet = self.createInput()
-        self.inputFrame = self.createInput()
         self.output = self.createOutput()
-    def addTestInput(self, testInput):
-        self.testInput = testInput
 
+    def setLabelMap(self, labelMap):
+        self.labelMap = labelMap
     def run(self):
         while self.isRunning():
-            nnData = self.inputDet.get()
-            frame =self.inputFrame.get()
-            if nnData is not None and frame is not None:
+            nnData = self.inputDet.tryGet()
+            if nnData is not None :
                 detections = nnData.detections
                 imgAnnt = dai.ImageAnnotations()
-                imgAnnt.setTimestamp(frame.getTimestamp())
+                imgAnnt.setTimestamp(nnData.getTimestamp())
                 annotation = dai.ImageAnnotation()
                 annotation.points = [dai.PointsAnnotation()] * len(detections)
                 annotation.texts = [dai.TextAnnotation()] * len(detections)
@@ -34,21 +32,20 @@ class ImageAnnotationsGenerator(dai.node.ThreadedHostNode):
                         dai.Point2f(detections[i].xmax, detections[i].ymax),
                         dai.Point2f(detections[i].xmin, detections[i].ymax),
                     ]
-                    outlineColor = dai.Color(0.5, 0.5, 0.5, 1.0)
+                    outlineColor = dai.Color(1.0, 0.5, 0.5, 1.0)
                     annotation.points[i].outlineColor = outlineColor
 
-                    fillColor = dai.Color(0.5, 0.5, 0.5, 0.5)
+                    fillColor = dai.Color(0.5, 1.0, 0.5, 0.5)
                     annotation.points[i].fillColor = fillColor
                     annotation.points[i].thickness = 2.0
                     annotation.texts[i].position = dai.Point2f(detections[i].xmin, detections[i].ymin)
-                    annotation.texts[i].text = f"{detections[i].label} ({int(detections[i].confidence * 100)}%)"
-                    annotation.texts[i].fontSize = 0.5
-                    textColor = dai.Color(0.5, 0.5, 0.5, 1.0)
+                    annotation.texts[i].text = f"{self.labelMap[detections[i].label]} {int(detections[i].confidence * 100)}%"
+                    annotation.texts[i].fontSize = 50.5
+                    textColor = dai.Color(0.5, 0.5, 1.0, 1.0)
                     annotation.texts[i].textColor = textColor
-                    backgroundColor = dai.Color(0.5, 0.5, 0.5, 1.0)
+                    backgroundColor = dai.Color(1.0, 1.0, 0.5, 1.0)
                     annotation.texts[i].backgroundColor = backgroundColor
                     imgAnnt.annotations = [annotation]
-                self.testInput.send(frame)
                 self.output.send(imgAnnt)
 
 
@@ -71,9 +68,9 @@ with dai.Pipeline() as pipeline:
     outputToEncode.link(mjpegEncoder.input)
 
     detectionNetwork.out.link(imageAnnotationsGenerator.inputDet)
-    outputToEncode.link(imageAnnotationsGenerator.inputFrame)
     labelMap = detectionNetwork.getClasses()
 
+    imageAnnotationsGenerator.setLabelMap(labelMap)
     qRgb = detectionNetwork.passthrough.createOutputQueue()
     qDet = detectionNetwork.out.createOutputQueue()
     # Add the remote connector topics
@@ -82,11 +79,12 @@ with dai.Pipeline() as pipeline:
     remoteConnector.addTopic("mjpeg", mjpegEncoder.out, "specialMjpegGroup")
     remoteConnector.addTopic("detections", detectionNetwork.out, "testGroup")
     remoteConnector.addTopic("annotations", imageAnnotationsGenerator.output, "testAnnot")
-    testInput = remoteConnector.addTopic("testInput", "testAnnot")
-    imageAnnotationsGenerator.addTestInput(testInput)
+    # testInput = remoteConnector.addTopic("testInput", "testGroup")
     encoderQueue = mjpegEncoder.out.createOutputQueue()
 
+
     # Register the pipeline with the remote connector
+    # Not working with host nodes
     # remoteConnector.registerPipeline(pipeline)
     pipeline.start()
 
@@ -138,6 +136,7 @@ with dai.Pipeline() as pipeline:
         inRgb: dai.ImgFrame = qRgb.get()
         inDet: dai.ImgDetections = qDet.get()
         encdoedMessage = encoderQueue.get()
+        # testInput.send(encdoedMessage)
         if inRgb is not None:
             frame = inRgb.getCvFrame()
             cv2.putText(

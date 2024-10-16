@@ -1,2 +1,2 @@
 # "full commit hash of depthai visualizer static files"
-set(DEPTHAI_VISUALIZER_COMMIT "dfa30dd7d8f3eb96727d5d53a0b18da36870b166")
+set(DEPTHAI_VISUALIZER_COMMIT "e4bbac1746d958057f14eb535e02718a6a297bff")
