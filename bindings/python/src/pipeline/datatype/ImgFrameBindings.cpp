@@ -114,8 +114,7 @@ void bind_imgframe(pybind11::module& m, void* pCallstack){
         .def_readwrite("p3Offset", &ImgFrame::Specs::p3Offset)
         ;
 
-    imgTransformation
-        .def(py::init<>())
+    imgTransformation.def(py::init<>())
         .def(py::init<size_t, size_t>())
         .def("__repr__", &ImgTransformation::str)
         .def("transformPoint", &ImgTransformation::transformPoint, py::arg("point"), DOC(dai, ImgTransformation, transformPoint))
@@ -124,10 +123,15 @@ void bind_imgframe(pybind11::module& m, void* pCallstack){
         .def("invTransformRect", &ImgTransformation::invTransformRect, py::arg("rect"), DOC(dai, ImgTransformation, invTransformRect))
         .def("getSize", &ImgTransformation::getSize, DOC(dai, ImgTransformation, getSize))
         .def("getSourceSize", &ImgTransformation::getSourceSize, DOC(dai, ImgTransformation, getSourceSize))
-        .def("getMatrix", &ImgTransformation::getMatrix, DOC(dai, ImgTransformation, getMatrix))
-        .def("getMatrixInv", &ImgTransformation::getMatrixInv, DOC(dai, ImgTransformation, getMatrixInv))
-        .def("getSourceIntrinsicMatrix", &ImgTransformation::getSourceIntrinsicMatrix, DOC(dai, ImgTransformation, getSourceIntrinsicMatrix))
-        .def("getSourceIntrinsicMatrixInv", &ImgTransformation::getSourceIntrinsicMatrixInv, DOC(dai, ImgTransformation, getSourceIntrinsicMatrixInv))
+        // TODO(asahtik) - DOCs not generated for those below for some reason
+        // .def("getMatrix", &ImgTransformation::getMatrix, DOC(dai, ImgTransformation, getMatrix))
+        // .def("getMatrixInv", &ImgTransformation::getMatrixInv, DOC(dai, ImgTransformation, getMatrixInv))
+        // .def("getSourceIntrinsicMatrix", &ImgTransformation::getSourceIntrinsicMatrix, DOC(dai, ImgTransformation, getSourceIntrinsicMatrix))
+        // .def("getSourceIntrinsicMatrixInv", &ImgTransformation::getSourceIntrinsicMatrixInv, DOC(dai, ImgTransformation, getSourceIntrinsicMatrixInv))
+        .def("getMatrix", &ImgTransformation::getMatrix)
+        .def("getMatrixInv", &ImgTransformation::getMatrixInv)
+        .def("getSourceIntrinsicMatrix", &ImgTransformation::getSourceIntrinsicMatrix)
+        .def("getSourceIntrinsicMatrixInv", &ImgTransformation::getSourceIntrinsicMatrixInv)
         .def("addTransformation", &ImgTransformation::addTransformation, py::arg("matrix"), DOC(dai, ImgTransformation, addTransformation))
         .def("addCrop", &ImgTransformation::addCrop, py::arg("x"), py::arg("y"), py::arg("width"), py::arg("height"), DOC(dai, ImgTransformation, addCrop))
         .def("addPadding", &ImgTransformation::addPadding, py::arg("x"), py::arg("y"), py::arg("width"), py::arg("height"), DOC(dai, ImgTransformation, addPadding))
