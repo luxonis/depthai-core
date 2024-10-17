@@ -38,7 +38,7 @@ class ReplayVideo : public NodeCRTP<ThreadedHostNode, ReplayVideo> {
      *
      * Default queue is blocking with size 8
      */
-    Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::Buffer, true}}}}};
+    Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     void run() override;
 

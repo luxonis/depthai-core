@@ -29,7 +29,8 @@ class DetectionNetwork : public DeviceNodeGroup {
     }
 
     std::shared_ptr<DetectionNetwork> build(Node::Output& input, const NNArchive& nnArchive);
-    std::shared_ptr<DetectionNetwork> build(std::shared_ptr<Camera> input, dai::NNModelDescription modelDesc, float fps = 30.0f);
+    std::shared_ptr<DetectionNetwork> build(const std::shared_ptr<Camera>& input, dai::NNModelDescription modelDesc, float fps = 30.0f);
+    std::shared_ptr<DetectionNetwork> build(const std::shared_ptr<Camera>& input, dai::NNArchive nnArchive, float fps = 30.0f);
 
     Subnode<NeuralNetwork> neuralNetwork{*this, "neuralNetwork"};
     Subnode<DetectionParser> detectionParser{*this, "detectionParser"};

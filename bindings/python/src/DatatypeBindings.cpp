@@ -33,6 +33,7 @@ void bind_pointcloudconfig(pybind11::module& m, void* pCallstack);
 void bind_pointclouddata(pybind11::module& m, void* pCallstack);
 void bind_transformdata(pybind11::module& m, void* pCallstack);
 void bind_imagealignconfig(pybind11::module& m, void* pCallstack);
+void bind_imageannotations(pybind11::module& m, void* pCallstack);
 
 void DatatypeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
      // Bind common datatypebindings
@@ -69,6 +70,7 @@ void DatatypeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_pointclouddata);
     callstack.push_front(bind_transformdata);
     callstack.push_front(bind_imagealignconfig);
+	callstack.push_front(bind_imageannotations);
 }
 
 void DatatypeBindings::bind(pybind11::module& m, void* pCallstack){
@@ -116,6 +118,7 @@ void DatatypeBindings::bind(pybind11::module& m, void* pCallstack){
         .value("PointCloudData", DatatypeEnum::PointCloudData)
         .value("TransformData", DatatypeEnum::TransformData)
         .value("ImageAlignConfig", DatatypeEnum::ImageAlignConfig)
+		.value("ImageAnnotations", DatatypeEnum::ImageAnnotations)
     ;
 
 }

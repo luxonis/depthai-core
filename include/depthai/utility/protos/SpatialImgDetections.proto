@@ -2,17 +2,17 @@ syntax = "proto3";
 
 import "ImgDetections.proto";
 import "common.proto";
-package proto;
+package dai.proto.spatial_img_detections;
 
 message SpatialImgDetections {
     int64 sequenceNum = 1;
-    Timestamp ts = 2;
-    Timestamp tsDevice = 3;
+    common.Timestamp ts = 2;
+    common.Timestamp tsDevice = 3;
     repeated SpatialImgDetection detections = 4;
 }
 
 message SpatialImgDetection {
-    ImgDetection detection = 1;
+    img_detections.ImgDetection detection = 1;
     Point3f spatialCoordinates = 2;
     SpatialLocationCalculatorConfigData boundingBoxMapping = 3;
 }

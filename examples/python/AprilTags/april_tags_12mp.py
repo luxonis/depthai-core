@@ -10,7 +10,8 @@ PREVIEW_SIZE = (1332, 1000) # 1/3 of 12MP, to preserve bandwidth
 with dai.Pipeline() as pipeline:
     hostCamera = pipeline.create(dai.node.Camera).build()
     aprilTagNode = pipeline.create(dai.node.AprilTag)
-    hostCamera.requestOutput(FULL_RES).link(aprilTagNode.inputImage)
+    outputCam = hostCamera.requestOutput(FULL_RES)
+    outputCam.link(aprilTagNode.inputImage)
     outQueue = aprilTagNode.out.createOutputQueue()
 
     # We use ImageManip instead of creating a new smaller output because of the syncing,
@@ -18,7 +19,7 @@ with dai.Pipeline() as pipeline:
     manip = pipeline.create(dai.node.ImageManipV2)
     manip.initialConfig.setOutputSize(PREVIEW_SIZE[0], PREVIEW_SIZE[1], dai.ImageManipConfigV2.ResizeMode.STRETCH)
     manip.setMaxOutputFrameSize(2004096)
-    aprilTagNode.passthroughInputImage.link(manip.inputImage)
+    outputCam.link(manip.inputImage)
     frameQ = manip.out.createOutputQueue()
 
     color = (0, 255, 0)

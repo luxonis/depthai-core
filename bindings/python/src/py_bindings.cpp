@@ -37,6 +37,7 @@
 #include "modelzoo/ZooBindings.hpp"
 #include "remote_connection/RemoteConnectorBindings.hpp"
 #include "utility/EventsManagerBindings.hpp"
+#include "remote_connection/RemoteConnectionBindings.hpp"
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     #include <ndarray_converter.h>
 #endif
@@ -89,6 +90,7 @@ PYBIND11_MODULE(depthai, m)
     callstack.push_front(&ZooBindings::bind);
     callstack.push_front(&RemoteConnectorBindings::bind);
 	callstack.push_front(&EventsManagerBindings::bind);
+    callstack.push_front(&RemoteConnectionBindings::bind);
     // end of the callstack
     callstack.push_front([](py::module &, void *) {});
 

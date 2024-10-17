@@ -40,7 +40,8 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack){
     // Node
     spatialDetectionNetwork
         // Copied from NN node
-        .def("build", py::overload_cast<std::shared_ptr<Camera>, std::shared_ptr<StereoDepth>, NNModelDescription, float>(&SpatialDetectionNetwork::build), py::arg("input"), py::arg("stereo"), py::arg("model"), py::arg("fps") = 30.0f)
+        .def("build", py::overload_cast<const std::shared_ptr<Camera>&, const std::shared_ptr<StereoDepth>&, NNModelDescription, float>(&SpatialDetectionNetwork::build), py::arg("input"), py::arg("stereo"), py::arg("model"), py::arg("fps") = 30.0f, DOC(dai, node, SpatialDetectionNetwork, build))
+        .def("build", py::overload_cast<const std::shared_ptr<Camera>&, const std::shared_ptr<StereoDepth>&, NNArchive, float>(&SpatialDetectionNetwork::build), py::arg("input"), py::arg("stereo"), py::arg("nnArchive"), py::arg("fps") = 30.0f, DOC(dai, node, SpatialDetectionNetwork, build, 2))
         .def("setBlobPath", &SpatialDetectionNetwork::setBlobPath, py::arg("path"), DOC(dai, node, SpatialDetectionNetwork, setBlobPath))
         .def("setNumPoolFrames", &SpatialDetectionNetwork::setNumPoolFrames, py::arg("numFrames"), DOC(dai, node, SpatialDetectionNetwork, setNumPoolFrames))
         .def("setNumInferenceThreads",

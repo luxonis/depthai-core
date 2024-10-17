@@ -1,12 +1,12 @@
 syntax = "proto3";
 
 import "common.proto";
-package proto;
+package dai.proto.img_detections;
 
 message ImgDetections {
     int64 sequenceNum = 1;
-    Timestamp ts = 2;
-    Timestamp tsDevice = 3;
+    common.Timestamp ts = 2;
+    common.Timestamp tsDevice = 3;
     repeated ImgDetection detections = 4;
 }
 
