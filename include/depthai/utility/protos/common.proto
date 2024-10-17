@@ -1,0 +1,71 @@
+syntax = "proto3";
+
+package dai.proto.common;
+
+// Shared Timestamp message
+message Timestamp {
+    int64 sec = 1;
+    int64 nsec = 2;
+}
+
+// Shared CameraSettings message
+message CameraSettings {
+    int32 exposureTimeUs = 1;
+    int32 sensitivityIso = 2;
+    int32 lensPosition = 3;
+    int32 wbColorTemp = 4;
+    float lensPositionRaw = 5;
+}
+
+// Shared ImgTransformations message
+message ImgTransformations {
+    repeated ImgTransformation transformations = 1;
+    bool invalidFlag = 2;
+}
+
+message ImgTransformation {
+    Transformation transformationType = 1;
+    int32 topLeftCropX = 2;
+    int32 topLeftCropY = 3;
+    int32 bottomRightCropX = 4;
+    int32 bottomRightCropY = 5;
+    int32 topPadding = 6;
+    int32 bottomPadding = 7;
+    int32 leftPadding = 8;
+    int32 rightPadding = 9;
+    TransformationMatrix transformationMatrix = 10;
+    TransformationMatrix invTransformationMatrix = 11;
+    uint32 afterTransformWidth = 12;
+    uint32 afterTransformHeight = 13;
+    uint32 beforeTransformWidth = 14;
+    uint32 beforeTransformHeight = 15;
+}
+
+enum Transformation {
+    INIT = 0;
+    CROP = 1;
+    ROTATION = 2;
+    PAD = 3;
+    FLIP = 4;
+    SCALE = 5;
+}
+
+message TransformationMatrix {
+    repeated FloatArray arrays = 1;
+}
+
+message FloatArray {
+    repeated float values = 1;
+}
+
+message Color {
+    float r = 1;
+    float g = 2;
+    float b = 3;
+    float a = 4;
+}
+
+message Point2f {
+    float x = 1;
+    float y = 2;
+}

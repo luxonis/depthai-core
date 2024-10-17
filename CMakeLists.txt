@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.4) # For Hunter
-
+include(cmake/vcpkg.cmake)
 # MSVC variable isn't available before 'project' call
 # Generalize to Win32 platform for now
 if(NOT WIN32)
@@ -331,6 +331,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/ImgFrame.cpp
     src/pipeline/datatype/ImgTransformations.cpp
     src/pipeline/datatype/EncodedFrame.cpp
+	src/pipeline/datatype/ImageAnnotations.cpp
     src/pipeline/datatype/ImageManipConfig.cpp
     src/pipeline/datatype/ImageManipConfigV2.cpp
     src/pipeline/datatype/CameraControl.cpp
@@ -384,6 +385,7 @@ set(TARGET_CORE_SOURCES
     src/nn_archive/NNArchiveVersionedConfig.cpp
     src/modelzoo/NNModelDescription.cpp
     src/modelzoo/Zoo.cpp
+    src/remote_connection/RemoteConnection.cpp
 )
 
 set(TARGET_OPENCV_SOURCES
@@ -484,6 +486,8 @@ option(DEPTHAI_ENABLE_DEVICE_BOOTLOADER_FW "Enable MyriadX Device Bootloader FW"
 option(DEPTHAI_ENABLE_DEVICE_RVC3_FW "Enable RVC3 Device FW" ON)
 option(DEPTHAI_ENABLE_DEVICE_RVC4_FW "Enable RVC4 Device FW" ON)
 
+option(DEPTHAI_EMBED_FRONTEND "Embed frontend resources into library" ON)
+
 option(DEPTHAI_BINARIES_RESOURCE_COMPILE "Compile Depthai device side binaries into library" ON)
 
 # Set constant
@@ -494,12 +498,13 @@ include(Depthai/DepthaiDeviceSideConfig)    # Depthai device binary commit/versi
 include(Depthai/DepthaiBootloaderConfig)    # Depthai bootloader binary commit/version configuration
 include(Depthai/DepthaiDeviceKbConfig)    # depthai-device-kb fwp commit/version configuration
 include(Depthai/DepthaiDeviceRVC4Config)    # depthai-device-rvc4 fwp commit/version configuration
+include(Depthai/DepthaiVisualizerConfig)    # depthai-visualizer commit/version configuration
 
 # Include downloaders
 include(DepthaiDownloader)                  # Depthai device binary downloader
 include(DepthaiBootloaderDownloader)        # Depthai bootloader binary downloader
 include(DepthaiDeviceKbDownloader)          # depthai-device-kb fwp downloader
-
+include(DepthaiVisualizerDownloader)        # depthai-visualizer downloader
 
 # depthai-shared enforce commit hash match if CI
 if($ENV{CI})
@@ -588,8 +593,18 @@ if(DEPTHAI_ENABLE_DEVICE_RVC4_FW)
     list(APPEND RESOURCE_COMPILED_FILES ${DEPTHAI_DEVICE_RVC4_RESOURCE_LIST})
 endif()
 
-message(STATUS "LIST OF RESOURCE COMPILED FILES: ${RESOURCE_COMPILED_FILES}")
 
+if(DEPTHAI_EMBED_FRONTEND)
+    DepthaiVisualizerDownloader(
+        "${DEPTHAI_VISUALIZER_COMMIT}"                # Visualizer hash
+        "${DEPTHAI_RESOURCES_OUTPUT_DIR}"
+        DEPTHAI_VISUALIZER_RESOURCE_LIST                 # List of output resources
+    )
+    list(APPEND RESOURCE_COMPILED_FILES ${DEPTHAI_VISUALIZER_RESOURCE_LIST}) # TODO - Handle the case non debug case
+    target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_VISUALIZER_VERSION="${DEPTHAI_VISUALIZER_COMMIT}")
+endif()
+
+message(STATUS "LIST OF RESOURCE COMPILED FILES: ${RESOURCE_COMPILED_FILES}")
 if(DEPTHAI_BINARIES_RESOURCE_COMPILE)
     # Add RC and resource compile the binares
     include(CMakeRC)
@@ -647,6 +662,9 @@ if(DEPTHAI_CLANG_FORMAT)
     target_clangformat_setup(${TARGET_CORE_NAME} "${header_dirs}")
 endif()
 
+# Load protobuf support into library messages_proto
+add_subdirectory(include/depthai/utility/protos)
+list(APPEND targets_to_export messages)
 # link libraries
 target_link_libraries(${TARGET_CORE_NAME}
     PUBLIC
@@ -654,6 +672,10 @@ target_link_libraries(${TARGET_CORE_NAME}
         libnop
         spdlog::spdlog
         yaml-cpp
+        # TODO(Morato) - potentiially move this to private
+        foxglove-websocket::foxglove-websocket
+        protobuf::libprotobuf
+        messages
     INTERFACE
         XLinkPublic
     PRIVATE

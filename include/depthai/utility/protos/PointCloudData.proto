@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package dai.proto.point_cloud_data;
+
+import "common.proto";
+
+message PointCloudData {
+    common.Timestamp ts = 1;
+    common.Timestamp tsDevice = 2;
+    int64 sequenceNum = 3;
+    uint32 width = 4;
+    uint32 height = 5;
+    uint32 instanceNum = 6;
+    float minx = 7;
+    float miny = 8;
+    float minz = 9;
+    float maxx = 10;
+    float maxy = 11;
+    float maxz = 12;
+    bool sparse = 13;
+    bool color = 14;
+    bytes data = 15;
+}

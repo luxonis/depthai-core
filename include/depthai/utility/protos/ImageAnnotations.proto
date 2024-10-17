@@ -1,0 +1,50 @@
+
+syntax = "proto3";
+
+import "common.proto";
+package dai.proto.image_annotations;
+
+message ImageAnnotations {
+    int64 sequenceNum = 1;
+    common.Timestamp ts = 2;
+    common.Timestamp tsDevice = 3;
+    repeated ImageAnnotation annotations = 4;
+}
+
+message ImageAnnotation {
+    repeated CircleAnnotation circles = 1;
+    repeated PointsAnnotation points = 2;
+    repeated TextAnnotation texts = 3;
+}
+
+message CircleAnnotation {
+    common.Point2f position = 1;
+    float diameter = 2;
+    float thickness = 3;
+    common.Color fillColor = 4;
+    common.Color outlineColor = 5;
+}
+
+message PointsAnnotation {
+    PointsAnnotationType type = 1;
+    repeated common.Point2f points = 2;
+    common.Color outlineColor = 3;
+    repeated common.Color outlineColors = 4;
+    common.Color fillColor = 5;
+    float thickness = 6;
+}
+
+enum PointsAnnotationType {
+    UNKNOWN = 0;
+    POINTS = 1;
+    LINE_LOOP = 2;
+    LINE_STRIP = 3;
+    LINE_LIST = 4;
+}
+message TextAnnotation {
+    common.Point2f position = 1;
+    string text = 2;
+    float fontSize = 3;
+    common.Color textColor = 4;
+    common.Color backgroundColor = 5;
+}

@@ -1,7 +1,5 @@
 #include "depthai/pipeline/datatype/PointCloudData.hpp"
 
-#include <iostream>
-
 #include "depthai/common/Point3f.hpp"
 
 namespace dai {
@@ -125,6 +123,35 @@ PointCloudData& PointCloudData::setSparse(bool val) {
 PointCloudData& PointCloudData::setColor(bool val) {
     color = val;
     return *this;
+}
+
+std::unique_ptr<google::protobuf::Message> dai::PointCloudData::getProtoMessage() const {
+    auto pointCloudData = std::make_unique<dai::proto::point_cloud_data::PointCloudData>();
+
+    auto timestamp = pointCloudData->mutable_ts();
+    timestamp->set_sec(ts.sec);
+    timestamp->set_nsec(ts.nsec);
+
+    auto timestampDevice = pointCloudData->mutable_tsdevice();
+    timestampDevice->set_sec(tsDevice.sec);
+    timestampDevice->set_nsec(tsDevice.nsec);
+
+    pointCloudData->set_sequencenum(sequenceNum);
+    pointCloudData->set_width(width);
+    pointCloudData->set_height(height);
+    pointCloudData->set_instancenum(instanceNum);
+    pointCloudData->set_minx(minx);
+    pointCloudData->set_miny(miny);
+    pointCloudData->set_minz(minz);
+    pointCloudData->set_maxx(maxx);
+    pointCloudData->set_maxy(maxy);
+    pointCloudData->set_maxz(maxz);
+    pointCloudData->set_sparse(sparse);
+    pointCloudData->set_color(color);
+
+    pointCloudData->set_data(data->getData().data(), data->getSize());
+
+    return pointCloudData;
 }
 
 static_assert(sizeof(Point3f) == 12, "Point3f size must be 12 bytes");

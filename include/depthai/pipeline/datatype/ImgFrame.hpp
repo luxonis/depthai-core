@@ -13,6 +13,8 @@
 #include "depthai/common/FrameEvent.hpp"
 #include "depthai/common/ImgTransformations.hpp"
 #include "depthai/common/Rect.hpp"
+#include "depthai/schemas/ImgFrame.pb.h"
+#include "depthai/utility/ProtoSerializable.hpp"
 
 // optional
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
@@ -25,7 +27,7 @@ namespace dai {
 /**
  * ImgFrame message. Carries image data and metadata.
  */
-class ImgFrame : public Buffer {
+class ImgFrame : public Buffer, public utility::ProtoSerializable {
    public:
     using Buffer::getTimestamp;
     using Buffer::getTimestampDevice;
@@ -81,6 +83,94 @@ class ImgFrame : public Buffer {
         metadata = utility::serialize(*this);
         datatype = DatatypeEnum::ImgFrame;
     };
+
+    std::unique_ptr<google::protobuf::Message> getProtoMessage() const override {
+        // create and populate ImgFrame protobuf message
+        auto imgFrame = std::make_unique<proto::img_frame::ImgFrame>();
+        proto::common::Timestamp* ts = imgFrame->mutable_ts();
+        ts->set_sec(this->ts.sec);
+        ts->set_nsec(this->ts.nsec);
+        proto::common::Timestamp* tsDevice = imgFrame->mutable_tsdevice();
+        tsDevice->set_sec(this->tsDevice.sec);
+        tsDevice->set_nsec(this->tsDevice.nsec);
+
+        imgFrame->set_sequencenum(this->sequenceNum);
+
+        proto::img_frame::Specs* fb = imgFrame->mutable_fb();
+        fb->set_type(static_cast<proto::img_frame::Type>(this->fb.type));
+        fb->set_width(this->fb.width);
+        fb->set_height(this->fb.height);
+        fb->set_stride(this->fb.stride);
+        fb->set_bytespp(this->fb.bytesPP);
+        fb->set_p1offset(this->fb.p1Offset);
+        fb->set_p2offset(this->fb.p2Offset);
+        fb->set_p3offset(this->fb.p3Offset);
+
+        proto::img_frame::Specs* sourceFb = imgFrame->mutable_sourcefb();
+        sourceFb->set_type(static_cast<proto::img_frame::Type>(this->sourceFb.type));
+        sourceFb->set_width(this->sourceFb.width);
+        sourceFb->set_height(this->sourceFb.height);
+        sourceFb->set_stride(this->sourceFb.stride);
+        sourceFb->set_bytespp(this->sourceFb.bytesPP);
+        sourceFb->set_p1offset(this->sourceFb.p1Offset);
+        sourceFb->set_p2offset(this->sourceFb.p2Offset);
+        sourceFb->set_p3offset(this->sourceFb.p3Offset);
+
+        proto::common::CameraSettings* cam = imgFrame->mutable_cam();
+        cam->set_exposuretimeus(this->cam.exposureTimeUs);
+        cam->set_sensitivityiso(this->cam.sensitivityIso);
+        cam->set_lensposition(this->cam.lensPosition);
+        cam->set_wbcolortemp(this->cam.wbColorTemp);
+        cam->set_lenspositionraw(this->cam.lensPositionRaw);
+
+        imgFrame->set_hfovdegrees(this->HFovDegrees);
+
+        imgFrame->set_instancenum(this->instanceNum);
+
+        imgFrame->set_category(this->category);
+
+        proto::common::ImgTransformations* imgTransformations = imgFrame->mutable_transformations();
+        imgTransformations->set_invalidflag(this->transformations.invalidFlag);
+        for(const auto& transformation : this->transformations.transformations) {
+            proto::common::ImgTransformation* imgTransformation = imgTransformations->add_transformations();
+
+            imgTransformation->set_transformationtype(static_cast<proto::common::Transformation>(transformation.transformationType));
+            imgTransformation->set_topleftcropx(transformation.topLeftCropX);
+            imgTransformation->set_topleftcropy(transformation.topLeftCropY);
+            imgTransformation->set_bottomrightcropx(transformation.bottomRightCropX);
+            imgTransformation->set_bottomrightcropy(transformation.bottomRightCropY);
+            imgTransformation->set_toppadding(transformation.topPadding);
+            imgTransformation->set_bottompadding(transformation.bottomPadding);
+            imgTransformation->set_leftpadding(transformation.leftPadding);
+            imgTransformation->set_rightpadding(transformation.rightPadding);
+            imgTransformation->set_aftertransformwidth(transformation.afterTransformWidth);
+            imgTransformation->set_aftertransformheight(transformation.afterTransformHeight);
+            imgTransformation->set_beforetransformwidth(transformation.beforeTransformWidth);
+            imgTransformation->set_beforetransformheight(transformation.beforeTransformHeight);
+
+            proto::common::TransformationMatrix* transformationMatrix = imgTransformation->mutable_transformationmatrix();
+            for(const auto& array : transformation.transformationMatrix) {
+                proto::common::FloatArray* floatArray = transformationMatrix->add_arrays();
+
+                // or floatArray.mutable_values() = {array.values.begin(), array.values.end()}; ?
+                for(const auto& value : array) {
+                    floatArray->add_values(value);
+                }
+            }
+
+            proto::common::TransformationMatrix* invTransformationMatrix = imgTransformation->mutable_invtransformationmatrix();
+            for(const auto& array : transformation.invTransformationMatrix) {
+                proto::common::FloatArray* floatArray = invTransformationMatrix->add_arrays();
+
+                // or floatArray.mutable_values() = {array.values.begin(), array.values.end()}; ?
+                for(const auto& value : array) {
+                    floatArray->add_values(value);
+                }
+            }
+        }
+        imgFrame->set_data(this->data->getData().data(), this->data->getData().size());
+        return imgFrame;
+    }
 
     // getters
     /**

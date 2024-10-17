@@ -6,6 +6,8 @@
 #include "depthai/common/Point3f.hpp"
 #include "depthai/common/Point3fRGB.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
+#include "depthai/schemas/PointCloudData.pb.h"
+#include "depthai/utility/ProtoSerializable.hpp"
 
 // optional
 #ifdef DEPTHAI_HAVE_PCL_SUPPORT
@@ -18,7 +20,7 @@ namespace dai {
 /**
  * PointCloudData message. Carries point cloud data.
  */
-class PointCloudData : public Buffer {
+class PointCloudData : public Buffer, public utility::ProtoSerializable {
     unsigned int width;        // width in pixels
     unsigned int height;       // height in pixels
     uint32_t instanceNum = 0;  // Which source created this frame (color, mono, ...)
@@ -187,6 +189,8 @@ class PointCloudData : public Buffer {
      * @param instanceNum instance number
      */
     PointCloudData& setInstanceNum(unsigned int instanceNum);
+
+    virtual std::unique_ptr<google::protobuf::Message> getProtoMessage() const override;
 
 #ifdef DEPTHAI_HAVE_PCL_SUPPORT
     /**

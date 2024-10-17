@@ -143,6 +143,7 @@ set(SOURCE_LIST
     src/pipeline/datatype/PointCloudDataBindings.cpp
     src/pipeline/datatype/TransformDataBindings.cpp
     src/pipeline/datatype/ImageAlignConfigBindings.cpp
+    src/pipeline/datatype/ImageAnnotationsBindings.cpp
 
     src/capabilities/CapabilityBindings.cpp
     src/capabilities/CapabilityRangeBindings.cpp
@@ -150,6 +151,8 @@ set(SOURCE_LIST
 
     src/modelzoo/NNModelDescriptionBindings.cpp
     src/modelzoo/ZooBindings.cpp
+
+    src/remote_connection/RemoteConnectionBindings.cpp
 )
 if(DEPTHAI_MERGED_TARGET)
     list(APPEND SOURCE_LIST
