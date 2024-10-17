@@ -123,7 +123,7 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack){
                  d.wait();
              })
         //.def(py::init<const Pipeline&>())
-        .def("getDefaultDevice", [](Pipeline& p) -> py::object {
+        .def("getDefaultDevice", [](Pipeline& p) -> dai::Device {
             auto device = p.getDefaultDevice();
             if(!device) return py::none();
             return py::cast(device);
