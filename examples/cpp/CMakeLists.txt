@@ -283,6 +283,7 @@ dai_add_example(threaded_host_node HostNodes/threaded_host_node.cpp OFF OFF)
 # Model zoo
 dai_add_example(model_zoo RVC2/ModelZoo/model_zoo.cpp OFF OFF)
 
+dai_add_example(events HostNodes/events.cpp ON OFF)
 # Image Align
 dai_add_example(image_align RVC2/ImageAlign/image_align.cpp OFF OFF)
 
