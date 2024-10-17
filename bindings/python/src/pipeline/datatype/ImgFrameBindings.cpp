@@ -142,15 +142,15 @@ void bind_imgframe(pybind11::module& m, void* pCallstack){
         .def("remapPointTo", [](const ImgTransformation& self, const ImgTransformation& to, dai::Point2f point) {
             return self.remapPointTo(to, point);
         }, py::arg("to"), py::arg("point"), DOC(dai, ImgTransformation, remapPointTo))
-        .def("remapPointFrom", [](const ImgTransformation& self, const ImgTransformation& from, dai::Point2f point) {
-            return self.remapPointFrom(from, point);
-        }, py::arg("to"), py::arg("point"), DOC(dai, ImgTransformation, remapPointFrom))
-        .def("remapRectTo", [](const ImgTransformation& self, const ImgTransformation& to, dai::RotatedRect rect) {
-            return self.remapRectTo(to, rect);
-        }, py::arg("to"), py::arg("rect"), DOC(dai, ImgTransformation, remapRectTo))
-        .def("remapRectFrom", [](const ImgTransformation& self, const ImgTransformation& from, dai::RotatedRect rect) {
-            return self.remapRectFrom(from, rect);
-        }, py::arg("from"), py::arg("rect"), DOC(dai, ImgTransformation, remapRectFrom))
+        // .def("remapPointFrom", [](const ImgTransformation& self, const ImgTransformation& fromm, dai::Point2f point) {
+        //     return self.remapPointFrom(fromm, point);
+        // }, py::arg("to"), py::arg("point"), DOC(dai, ImgTransformation, remapPointFrom))
+        // .def("remapRectTo", [](const ImgTransformation& self, const ImgTransformation& to, dai::RotatedRect rect) {
+        //     return self.remapRectTo(to, rect);
+        // }, py::arg("to"), py::arg("rect"), DOC(dai, ImgTransformation, remapRectTo))
+        // .def("remapRectFrom", [](const ImgTransformation& self, const ImgTransformation& fromm, dai::RotatedRect rect) {
+        //     return self.remapRectFrom(fromm, rect);
+        // }, py::arg("from"), py::arg("rect"), DOC(dai, ImgTransformation, remapRectFrom))
         .def("isValid", &ImgTransformation::isValid, DOC(dai, ImgTransformation, isValid))
         ;
 
