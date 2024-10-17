@@ -1,9 +1,11 @@
 #include "DatatypeBindings.hpp"
+#include "depthai/common/RotatedRect.hpp"
 #include "pipeline/CommonBindings.hpp"
 #include <unordered_map>
 #include <memory>
 // depthai
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
+#include "depthai/common/ImgTransformations.hpp"
 #include "ndarray_converter.h"
 //pybind
 #include <pybind11/chrono.h>
@@ -17,6 +19,7 @@ void bind_imgframe(pybind11::module& m, void* pCallstack){
     py::class_<ImgFrame, Py<ImgFrame>, Buffer, std::shared_ptr<ImgFrame>> imgFrame(m, "ImgFrame", DOC(dai, ImgFrame));
     py::enum_<ImgFrame::Type> imgFrameType(imgFrame, "Type");
     py::class_<ImgFrame::Specs> imgFrameSpecs(imgFrame, "Specs", DOC(dai, ImgFrame, Specs));
+    py::class_<ImgTransformation> imgTransformation(m, "ImgTransformation", DOC(dai, ImgTransformation));
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -110,6 +113,43 @@ void bind_imgframe(pybind11::module& m, void* pCallstack){
         .def_readwrite("p2Offset", &ImgFrame::Specs::p2Offset)
         .def_readwrite("p3Offset", &ImgFrame::Specs::p3Offset)
         ;
+
+    imgTransformation
+        .def(py::init<>())
+        .def(py::init<size_t, size_t>())
+        .def("__repr__", &ImgTransformation::str)
+        .def("transformPoint", &ImgTransformation::transformPoint, py::arg("point"), DOC(dai, ImgTransformation, transformPoint))
+        .def("transformRect", &ImgTransformation::transformRect, py::arg("rect"), DOC(dai, ImgTransformation, transformRect))
+        .def("invTransformPoint", &ImgTransformation::invTransformPoint, py::arg("point"), DOC(dai, ImgTransformation, invTransformPoint))
+        .def("invTransformRect", &ImgTransformation::invTransformRect, py::arg("rect"), DOC(dai, ImgTransformation, invTransformRect))
+        .def("getSize", &ImgTransformation::getSize, DOC(dai, ImgTransformation, getSize))
+        .def("getSourceSize", &ImgTransformation::getSourceSize, DOC(dai, ImgTransformation, getSourceSize))
+        .def("getMatrix", &ImgTransformation::getMatrix, DOC(dai, ImgTransformation, getMatrix))
+        .def("getMatrixInv", &ImgTransformation::getMatrixInv, DOC(dai, ImgTransformation, getMatrixInv))
+        .def("getSourceIntrinsicMatrix", &ImgTransformation::getSourceIntrinsicMatrix, DOC(dai, ImgTransformation, getSourceIntrinsicMatrix))
+        .def("getSourceIntrinsicMatrixInv", &ImgTransformation::getSourceIntrinsicMatrixInv, DOC(dai, ImgTransformation, getSourceIntrinsicMatrixInv))
+        .def("addTransformation", &ImgTransformation::addTransformation, py::arg("matrix"), DOC(dai, ImgTransformation, addTransformation))
+        .def("addCrop", &ImgTransformation::addCrop, py::arg("x"), py::arg("y"), py::arg("width"), py::arg("height"), DOC(dai, ImgTransformation, addCrop))
+        .def("addPadding", &ImgTransformation::addPadding, py::arg("x"), py::arg("y"), py::arg("width"), py::arg("height"), DOC(dai, ImgTransformation, addPadding))
+        .def("addFlipVertical", &ImgTransformation::addFlipVertical, DOC(dai, ImgTransformation, addFlipVertical))
+        .def("addFlipHorizontal", &ImgTransformation::addFlipHorizontal, DOC(dai, ImgTransformation, addFlipHorizontal))
+        .def("addRotation", &ImgTransformation::addRotation, py::arg("angle"), py::arg("rotationPoint"), DOC(dai, ImgTransformation, addRotation))
+        .def("addScale", &ImgTransformation::addScale, py::arg("scaleX"), py::arg("scaleY"), DOC(dai, ImgTransformation, addScale))
+        .def("remapPointTo", [](const ImgTransformation& self, const ImgTransformation& to, dai::Point2f point) {
+            return self.remapPointTo(to, point);
+        }, py::arg("to"), py::arg("point"), DOC(dai, ImgTransformation, remapPointTo))
+        .def("remapPointFrom", [](const ImgTransformation& self, const ImgTransformation& from, dai::Point2f point) {
+            return self.remapPointFrom(from, point);
+        }, py::arg("to"), py::arg("point"), DOC(dai, ImgTransformation, remapPointFrom))
+        .def("remapRectTo", [](const ImgTransformation& self, const ImgTransformation& to, dai::RotatedRect rect) {
+            return self.remapRectTo(to, rect);
+        }, py::arg("to"), py::arg("rect"), DOC(dai, ImgTransformation, remapRectTo))
+        .def("remapRectFrom", [](const ImgTransformation& self, const ImgTransformation& from, dai::RotatedRect rect) {
+            return self.remapRectFrom(from, rect);
+        }, py::arg("from"), py::arg("rect"), DOC(dai, ImgTransformation, remapRectFrom))
+        .def("isValid", &ImgTransformation::isValid, DOC(dai, ImgTransformation, isValid))
+        ;
+
 
     // TODO add RawImgFrame::CameraSettings
 
