@@ -26,6 +26,7 @@ void EventsManagerBindings::bind(pybind11::module& m, void* pCallstack) {
 		.def(py::init<const std::shared_ptr<NNData>&, std::string>(), py::arg("nnData"), py::arg("fileName"));
 
     py::class_<utility::EventsManager>(m, "EventsManager")
+		.def(py::init<>())
 		.def(py::init<std::string, bool, float>(), py::arg("url"), py::arg("uploadCachedOnStart") = false, py::arg("publishInterval") = 10.0)
         .def("setUrl", &utility::EventsManager::setUrl, py::arg("url"))
         .def("setSourceAppId", &utility::EventsManager::setSourceAppId, py::arg("sourceAppId"))

@@ -37,11 +37,12 @@ int main(int argc, char* argv[]) {
     auto fileData3 = std::make_shared<dai::utility::EventData>("/test.jpg");
     std::vector<std::shared_ptr<dai::utility::EventData>> data3;
     data3.push_back(fileData3);
-    eventsManager->sendSnap("testdata3", nullptr, data3, {"tag5", "tag6"}, {{"key8", "value8"}});
+    eventsManager->sendSnap("testdata3", nullptr, data3, {"tag7", "tag8"}, {{"key8", "value8"}});
     std::vector<std::shared_ptr<dai::utility::EventData>> data4;
     data4.push_back(fileData);
     data4.push_back(fileData2);
-    eventsManager->sendSnap("testdata4", nullptr, data4, {"tag5", "tag6"}, {{"key8", "value8"}});
+    eventsManager->sendSnap("testdata4", nullptr, data4, {"tag9", "tag10"}, {{"key8", "value8"}});
+	data4.push_back(fileData3);
     while(pipeline.isRunning()) {
         auto rgb = previewQ->get<dai::ImgFrame>();
 
@@ -49,7 +50,9 @@ int main(int argc, char* argv[]) {
         // ...
 
         if(!sent) {
-            eventsManager->sendEvent("rgb", rgb, {}, {"tag1", "tag2"}, {{"key", "value"}});
+            eventsManager->sendSnap("rgb", rgb, {}, {"tag11", "tag12"}, {{"key", "value"}});
+			eventsManager->sendSnap("test2", rgb, data3, {"tag13", "tag14"}, {{"key8", "value8"}});
+			eventsManager->sendSnap("test3", rgb, data4, {"tag13", "tag14"}, {{"key8", "value8"}});
             sent = true;
         }
         //

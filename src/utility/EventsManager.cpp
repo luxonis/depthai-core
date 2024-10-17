@@ -23,6 +23,23 @@ EventData::EventData(const std::string& data, const std::string& fileName, const
 
 EventData::EventData(std::string fileUrl) : data(std::move(fileUrl)), type(EventDataType::FILE_URL) {
     fileName = std::filesystem::path(data).filename().string();
+    static std::map<std::string, std::string> mimeTypes = {{".html", "text/html"},
+                                                           {".htm", "text/html"},
+                                                           {".css", "text/css"},
+                                                           {".js", "application/javascript"},
+                                                           {".png", "image/png"},
+                                                           {".jpg", "image/jpeg"},
+                                                           {".jpeg", "image/jpeg"},
+                                                           {".gif", "image/gif"},
+                                                           {".svg", "image/svg+xml"},
+                                                           {".json", "application/json"},
+                                                           {".txt", "text/plain"}};
+    auto ext = std::filesystem::path(data).extension().string();
+    auto it = mimeTypes.find(ext);
+    mimeType = "application/octet-stream";
+    if(it != mimeTypes.end()) {
+        mimeType = it->second;
+    }
 }
 
 EventData::EventData(const std::shared_ptr<ImgFrame>& imgFrame, std::string fileName)
@@ -120,7 +137,7 @@ void EventsManager::sendEventBuffer() {
     }
     // Create request
     cpr::Url url = static_cast<cpr::Url>(this->url + "/v1/events");
-    auto batchEvent = std::make_unique<proto::BatchUploadEvents>();
+    auto batchEvent = std::make_unique<proto::event::BatchUploadEvents>();
     for(auto& eventM : eventBuffer) {
         auto& event = eventM->event;
         batchEvent->add_events()->Swap(event.get());
@@ -136,7 +153,7 @@ void EventsManager::sendEventBuffer() {
             logger::info("Response: {}", r.text);
         }
         // upload files
-        auto batchUploadEventResult = std::make_unique<proto::BatchUploadEventsResult>();
+        auto batchUploadEventResult = std::make_unique<proto::event::BatchUploadEventsResult>();
         batchUploadEventResult->ParseFromString(r.text);
         for(int i = 0; i < batchUploadEventResult->events_size(); i++) {
             auto eventResult = batchUploadEventResult->events(i);
@@ -164,7 +181,7 @@ void EventsManager::sendEvent(const std::string& name,
                               const std::unordered_map<std::string, std::string>& extraData,
                               const std::string& deviceSerialNo) {
     // Create event
-    auto event = std::make_unique<proto::Event>();
+    auto event = std::make_unique<proto::event::Event>();
     event->set_nonce(createUUID());
     event->set_name(name);
     event->set_created_at(std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count());
@@ -205,12 +222,29 @@ void EventsManager::sendSnap(const std::string& name,
                              const std::string& deviceSerialNo) {
     std::vector<std::string> tagsTmp = tags;
     tagsTmp.emplace_back("snap");
-    // only one image can be in files
-    if(std::any_of(data.begin(), data.end(), [](const std::shared_ptr<EventData>& file) { return file->type == EventDataType::IMG_FRAME; })) {
-        logger::error("You can only send one ImgFrame via method argument, sending ImgFrames via files is not supported");
-        return;
+    // exactly one image needs to be sent, either from imgFrame or from data
+    bool send = false;
+    if(imgFrame != nullptr && !data.empty()) {
+        logger::error("For sending snap, provide either imgFrame or single image in data list, not both. Use sendEvent for multiple files");
+    } else if(imgFrame == nullptr && data.empty()) {
+        logger::error("No image or data provided");
+    } else if(imgFrame == nullptr && !data.empty()) {
+        if(data.size() > 1) {
+            logger::error("More than one file provided in data. For sendings snaps, only one image file is allowed. Use sendEvent for multiple files");
+        }
+        if(data[0]->mimeType == "image/jpeg" || data[0]->mimeType == "image/png" || data[0]->mimeType == "image/webp") {
+            send = true;
+        }
+		if(send == false) {
+			logger::error("Only image files are allowed for snaps");
+		}
+    } else {
+        send = true;
     }
-    return sendEvent(name, imgFrame, data, tagsTmp, extraData, deviceSerialNo);
+    if(send) {
+        sendEvent(name, imgFrame, data, tagsTmp, extraData, deviceSerialNo);
+    }
+    return;
 }
 
 void EventsManager::sendFile(const std::shared_ptr<EventData>& file, const std::string& url) {
@@ -275,7 +309,7 @@ void EventsManager::uploadCachedData() {
         if(entry.is_directory()) {
             const auto& eventDir = entry.path();
             std::ifstream eventFile(eventDir / "event.pb", std::ios::binary);
-            proto::Event event;
+            proto::event::Event event;
             event.ParseFromIstream(&eventFile);
             std::vector<std::shared_ptr<EventData>> data;
             for(const auto& fileEntry : std::filesystem::directory_iterator(eventDir)) {
@@ -284,7 +318,7 @@ void EventsManager::uploadCachedData() {
                     data.push_back(fileData);
                 }
             }
-            eventBuffer.push_back(std::make_unique<EventMessage>(EventMessage{std::make_shared<proto::Event>(event), data, eventDir}));
+            eventBuffer.push_back(std::make_unique<EventMessage>(EventMessage{std::make_shared<proto::event::Event>(event), data, eventDir}));
         }
     }
 }
@@ -370,6 +404,9 @@ void EventsManager::setDeviceSerialNumber(const std::string& deviceSerialNumber)
 }
 void EventsManager::setVerifySsl(bool verifySsl) {
     this->verifySsl = verifySsl;
+}
+void EventsManager::setCacheIfCannotSend(bool cacheIfCannotSend) {
+	this->cacheIfCannotSend = cacheIfCannotSend;
 }
 }  // namespace utility
 }  // namespace dai

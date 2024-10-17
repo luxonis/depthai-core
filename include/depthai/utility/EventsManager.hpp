@@ -142,7 +142,7 @@ class EventsManager {
 
    private:
     struct EventMessage {
-        std::shared_ptr<proto::Event> event;
+        std::shared_ptr<proto::event::Event> event;
         std::vector<std::shared_ptr<EventData>> data;
         std::string cachePath;
     };
