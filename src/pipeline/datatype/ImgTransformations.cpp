@@ -6,9 +6,8 @@
 #include <cstring>
 #include <sstream>
 
-#include "common/RotatedRect.hpp"
 #include "depthai/utility/ImageManipV2Impl.hpp"
-#include "pipeline/datatype/ImageManipConfigV2.hpp"
+#include "depthai/pipeline/datatype/ImageManipConfigV2.hpp"
 
 namespace dai {
 
