@@ -152,7 +152,6 @@ set(SOURCE_LIST
     src/modelzoo/NNModelDescriptionBindings.cpp
     src/modelzoo/ZooBindings.cpp
 
-    src/remote_connection/RemoteConnectorBindings.cpp
 	src/utility/EventsManagerBindings.cpp
     src/remote_connection/RemoteConnectionBindings.cpp
 )
