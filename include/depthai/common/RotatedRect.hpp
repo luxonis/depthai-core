@@ -19,20 +19,30 @@ struct RotatedRect {
 
     std::array<dai::Point2f, 4> getPoints() const {
         float angleRad = angle * 3.14159265358979323846f / 180.0f;
-        float cosA = std::cos(angleRad);
-        float sinA = std::sin(angleRad);
 
-        float w = size.width / 2;
-        float h = size.height / 2;
+        float halfWidth = size.width / 2.0f;
+        float halfHeight = size.height / 2.0f;
 
-        std::array<dai::Point2f, 4> points = {
-            dai::Point2f(center.x - w * cosA + h * sinA, center.y - w * sinA + h * cosA),
-            dai::Point2f(center.x + w * cosA + h * sinA, center.y + w * sinA + h * cosA),
-            dai::Point2f(center.x + w * cosA - h * sinA, center.y + w * sinA - h * cosA),
-            dai::Point2f(center.x - w * cosA - h * sinA, center.y - w * sinA - h * cosA),
-        };
+        // Precompute sin and cos of the angle
+        float cosAngle = std::cos(angleRad);
+        float sinAngle = std::sin(angleRad);
 
-        return points;
+        // Corners relative to the center before rotation
+        std::array<dai::Point2f, 4> corners;
+        corners[0] = {-halfWidth, -halfHeight};
+        corners[1] = {halfWidth, -halfHeight};
+        corners[2] = {halfWidth, halfHeight};
+        corners[3] = {-halfWidth, halfHeight};
+
+        // Rotate each corner and translate it back to the center position
+        for(auto& corner : corners) {
+            float x = corner.x;
+            float y = corner.y;
+            corner.x = x * cosAngle - y * sinAngle + center.x;
+            corner.y = x * sinAngle + y * cosAngle + center.y;
+        }
+
+        return corners;
     }
     std::array<float, 4> getOuterRect() const {
         auto points = getPoints();
