@@ -1,6 +1,7 @@
 #define _USE_MATH_DEFINES
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
-
+#include "depthai/common/RotatedRect.hpp"
+#include "depthai/common/ImgTransformations.hpp"
 #include "depthai/utility/SharedMemory.hpp"
 #include "spdlog/fmt/fmt.h"
 #include "spdlog/spdlog.h"
@@ -155,7 +156,7 @@ ImgFrame& ImgFrame::setSourceSize(unsigned int width, unsigned int height) {
     sourceFb.width = width;
     sourceFb.stride = width;
     sourceFb.height = height;
-    transformations.addInitTransformation(width, height);
+    transformation = ImgTransformation(width, height);
     return *this;
 }
 
@@ -183,29 +184,30 @@ ImgFrame& ImgFrame::setMetadata(const std::shared_ptr<ImgFrame>& sourceFrame) {
     return setMetadata(*sourceFrame);
 }
 
+bool ImgFrame::validateTransformations() const {
+    const auto [width, height] = transformation.getSize();
+    const auto [srcWidth, srcHeight] = transformation.getSourceSize();
+    return transformation.isValid() && width == getWidth() && height == getHeight() && srcWidth == getSourceWidth() && srcHeight == getSourceHeight();
+}
+
 Point2f ImgFrame::remapPointFromSource(const Point2f& point) const {
     if(point.isNormalized()) {
         throw std::runtime_error("Point must be denormalized");
     }
-    Point2f transformedPoint = point;
-    bool isClipped = false;
-    for(auto& transformation : transformations.transformations) {
-        transformedPoint = ImgTransformation::transformPoint(transformation, transformedPoint, isClipped);
+    if(!validateTransformations()) {
+        throw std::runtime_error("ImgTransformation is not valid");
     }
-    return transformedPoint;
+    return transformation.transformPoint(point);
 }
 
 Point2f ImgFrame::remapPointToSource(const Point2f& point) const {
     if(point.isNormalized()) {
         throw std::runtime_error("Point must be denormalized");
     }
-    Point2f transformedPoint = point;
-    bool isClipped = false;
-    // Do the loop in reverse order
-    for(auto it = transformations.transformations.rbegin(); it != transformations.transformations.rend(); ++it) {
-        transformedPoint = ImgTransformation::invTransformPoint(*it, transformedPoint, isClipped);
+    if(!validateTransformations()) {
+        throw std::runtime_error("ImgTransformation is not valid");
     }
-    return transformedPoint;
+    return transformation.invTransformPoint(point);
 }
 
 Rect ImgFrame::remapRectFromSource(const Rect& rect) const {
@@ -321,40 +323,6 @@ float ImgFrame::getSourceVFov() const {
     return verticalFovDegrees;
 }
 
-bool ImgFrame::validateTransformations() const {
-    if(!transformations.validateTransformationSizes()) {
-        spdlog::warn("Transformation sizes are invalid");
-        return false;
-    }
-
-    // Initial transformation always has to be set
-    if(transformations.transformations.size() == 0) {
-        spdlog::warn("No transformations set");
-        return false;
-    }
-
-    if(getSourceHeight() != transformations.transformations[0].beforeTransformHeight
-       || getSourceWidth() != transformations.transformations[0].beforeTransformWidth) {
-        spdlog::warn("Initial transformation size is {}x{} - while source image size is {}x{}",
-                     transformations.transformations[0].beforeTransformWidth,
-                     transformations.transformations[0].beforeTransformHeight,
-                     getSourceWidth(),
-                     getSourceHeight());
-        return false;
-    }
-
-    if(getHeight() != transformations.getLastHeight() || getWidth() != transformations.getLastWidth()) {
-        spdlog::warn("Last transformation size is {}x{} while current transformation size is {}x{}",
-                     transformations.getLastWidth(),
-                     transformations.getLastHeight(),
-                     getWidth(),
-                     getHeight());
-        return false;
-    }
-
-    return true;
-}
-
 Point2f ImgFrame::remapPointBetweenSourceFrames(const Point2f& point, const ImgFrame& sourceImage, const ImgFrame& destImage) {
     auto hFovDegreeDest = destImage.getSourceHFov();
     auto vFovDegreeDest = destImage.getSourceVFov();
@@ -373,11 +341,11 @@ Point2f ImgFrame::remapPointBetweenSourceFrames(const Point2f& point, const ImgF
         throw std::runtime_error("Source image has invalid dimensions - all dimensions need to be set before remapping");
     }
 
-    if(!(sourceImage.getSourceHFov() > 0)) {
+    if(!(sourceImage.getSourceHFov() > 0.1f)) {
         throw std::runtime_error("Source image has invalid horizontal FOV - horizontal FOV needs to be set before remapping");
     }
 
-    if(!(destImage.getSourceHFov() > 0)) {
+    if(!(destImage.getSourceHFov() > 0.1f)) {
         throw std::runtime_error("Destination image has invalid horizontal FOV - horizontal FOV needs to be set before remapping");
     }
 
@@ -396,46 +364,47 @@ Point2f ImgFrame::remapPointBetweenSourceFrames(const Point2f& point, const ImgF
     unsigned adjustedWidth = std::round(destImage.getSourceWidth() * kX);
     unsigned adjustedHeight = std::round(destImage.getSourceHeight() * kY);
 
-    int diffX = (adjustedWidth - destImage.getSourceWidth()) / 2;
-    int diffY = (adjustedHeight - destImage.getSourceHeight()) / 2;
+    int diffX = ((int)adjustedWidth - (int)destImage.getSourceWidth()) / 2;
+    int diffY = ((int)adjustedHeight - (int)destImage.getSourceHeight()) / 2;
 
     int adjustedFrameX = returnPoint.x + diffX;
     int adjustedFrameY = returnPoint.y + diffY;
 
     // Scale the point back to the destination frame
     returnPoint = Point2f(std::round(adjustedFrameX / kX), std::round(adjustedFrameY / kY));
-    bool pointClipped = false;
-    returnPoint = ImgTransformation::clipPoint(returnPoint, destImage.getSourceWidth(), destImage.getSourceHeight(), pointClipped);
+    returnPoint.x = std::max(0.0f, std::min(returnPoint.x, (float)destImage.getSourceWidth()));
+    returnPoint.y = std::max(0.0f, std::min(returnPoint.y, (float)destImage.getSourceHeight()));
 
     return returnPoint;
 }
 
 Point2f ImgFrame::remapPointBetweenFrames(const Point2f& originPoint, const ImgFrame& originFrame, const ImgFrame& destFrame) {
-    // First get the origin to the origin image
-    // For example if this is a RGB image that was cropped and rotated and the detection was done there,
-    // you remap it back as it was taken on the camera
-    Point2f transformedPoint = originPoint;
-    transformedPoint = originFrame.remapPointToSource(transformedPoint);
-    if(originFrame.getInstanceNum() != destFrame.getInstanceNum()) {
-        transformedPoint = remapPointBetweenSourceFrames(transformedPoint, originFrame, destFrame);
-    } else {
+    if(originFrame.getInstanceNum() == destFrame.getInstanceNum()) {
         if((originFrame.getSourceHeight() != destFrame.getSourceHeight()) || (originFrame.getSourceWidth() != destFrame.getSourceWidth())
            || (originFrame.getSourceHFov() != destFrame.getSourceHFov()) || (originFrame.getSourceVFov() != destFrame.getSourceVFov())) {
             throw std::runtime_error("Frames have the same instance numbers, but different source dimensions and/or FOVs.");
         }
     }
-    transformedPoint = destFrame.remapPointFromSource(transformedPoint);
-
-    return transformedPoint;
+    return originFrame.transformation.remapPointTo(destFrame.transformation, originPoint);
 }
 
 Rect ImgFrame::remapRectBetweenFrames(const Rect& originRect, const ImgFrame& originFrame, const ImgFrame& destFrame) {
+    if(originFrame.getInstanceNum() == destFrame.getInstanceNum()) {
+        if((originFrame.getSourceHeight() != destFrame.getSourceHeight()) || (originFrame.getSourceWidth() != destFrame.getSourceWidth())
+           || (originFrame.getSourceHFov() != destFrame.getSourceHFov()) || (originFrame.getSourceVFov() != destFrame.getSourceVFov())) {
+            throw std::runtime_error("Frames have the same instance numbers, but different source dimensions and/or FOVs.");
+        }
+    }
     bool normalized = originRect.isNormalized();
-    auto returnRect = originRect;
-    returnRect = returnRect.denormalize(originFrame.getWidth(), originFrame.getHeight());
-    auto topLeftTransformed = remapPointBetweenFrames(returnRect.topLeft(), originFrame, destFrame);
-    auto bottomRightTransformed = remapPointBetweenFrames(returnRect.bottomRight(), originFrame, destFrame);
-    returnRect = Rect{topLeftTransformed, bottomRightTransformed};
+    auto srcRect = originRect;
+    srcRect = srcRect.denormalize(originFrame.getWidth(), originFrame.getHeight());
+    dai::RotatedRect srcRRect;
+    srcRRect.size = {srcRect.width, srcRect.height};
+    srcRRect.center = {srcRect.x + srcRect.width / 2.f, srcRect.y + srcRect.height / 2.f};
+    srcRRect.angle = 0.f;
+    auto dstRRect = originFrame.transformation.remapRectTo(destFrame.transformation, srcRRect);
+    auto [minx, miny, maxx, maxy] = dstRRect.getOuterRect();
+    dai::Rect returnRect((int)roundf(minx), (int)roundf(miny), (int)roundf(maxx - minx), (int)roundf(maxy - miny));
     if(normalized) {
         returnRect = returnRect.normalize(destFrame.getWidth(), destFrame.getHeight());
     }
