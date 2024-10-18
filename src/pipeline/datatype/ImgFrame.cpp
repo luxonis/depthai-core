@@ -289,93 +289,13 @@ float ImgFrame::getSourceDFov() const {
 }
 
 float ImgFrame::getSourceVFov() const {
-    // TODO only works rectlinear lenses (rectified frames).
-    // Calculate the vertical FOV from the source dimensions and the source DFov
-    float sourceWidth = getSourceWidth();
-    float sourceHeight = getSourceHeight();
+    float fy = transformation.getSourceIntrinsicMatrix()[1][1];
 
-    if(sourceHeight <= 0) {
-        throw std::runtime_error(fmt::format("Source height is invalid. Height: {}", sourceHeight));
-    }
-    if(sourceWidth <= 0) {
-        throw std::runtime_error(fmt::format("Source width is invalid. Width: {}", sourceWidth));
-    }
-    float HFovDegrees = getSourceHFov();
+    // Calculate vertical FoV (in radians)
+    float verticalFoV = 2 * atan(getHeight() / (2.0f * fy));
 
-    // Validate the horizontal FOV
-    if(HFovDegrees <= 0 || HFovDegrees >= 180) {
-        throw std::runtime_error(fmt::format("Horizontal FOV is invalid. Horizontal FOV: {}", HFovDegrees));
-    }
-
-    float HFovRadians = HFovDegrees * (static_cast<float>(M_PI) / 180.0f);
-
-    // Calculate the tangent of half of the HFOV
-    float tanHFovHalf = std::tan(HFovRadians / 2);
-
-    // Calculate the tangent of half of the VFOV
-    float tanVerticalFovHalf = (sourceHeight / sourceWidth) * tanHFovHalf;
-
-    // Calculate the VFOV in radians
-    float verticalFovRadians = 2 * std::atan(tanVerticalFovHalf);
-
-    // Convert VFOV to degrees
-    float verticalFovDegrees = verticalFovRadians * (180.0f / static_cast<float>(M_PI));
-    return verticalFovDegrees;
-}
-
-Point2f ImgFrame::remapPointBetweenSourceFrames(const Point2f& point, const ImgFrame& sourceImage, const ImgFrame& destImage) {
-    auto hFovDegreeDest = destImage.getSourceHFov();
-    auto vFovDegreeDest = destImage.getSourceVFov();
-    auto hFovDegreeOrigin = sourceImage.getSourceHFov();
-    auto vFovDegreeOrigin = sourceImage.getSourceVFov();
-
-    float hFovRadiansDest = (hFovDegreeDest * ((float)M_PI / 180.0f));
-    float vFovRadiansDest = (vFovDegreeDest * ((float)M_PI / 180.0f));
-    float hFovRadiansOrigin = (hFovDegreeOrigin * ((float)M_PI / 180.0f));
-    float vFovRadiansOrigin = (vFovDegreeOrigin * ((float)M_PI / 180.0f));
-    if(point.isNormalized()) {
-        throw std::runtime_error("Point is normalized. Cannot remap normalized points");
-    }
-
-    if(sourceImage.getSourceWidth() == 0 || sourceImage.getSourceHeight() == 0 || destImage.getSourceWidth() == 0 || destImage.getSourceHeight() == 0) {
-        throw std::runtime_error("Source image has invalid dimensions - all dimensions need to be set before remapping");
-    }
-
-    if(!(sourceImage.getSourceHFov() > 0.1f)) {
-        throw std::runtime_error("Source image has invalid horizontal FOV - horizontal FOV needs to be set before remapping");
-    }
-
-    if(!(destImage.getSourceHFov() > 0.1f)) {
-        throw std::runtime_error("Destination image has invalid horizontal FOV - horizontal FOV needs to be set before remapping");
-    }
-
-    // Calculate the factor between the FOVs
-    // kX of 1.2 would mean that the destination image has 1.2 times wider FOV than the source image
-    float kX = ((std::tan(hFovRadiansDest / 2) / std::tan(hFovRadiansOrigin / 2)));
-    float kY = ((std::tan(vFovRadiansDest / 2) / std::tan(vFovRadiansOrigin / 2)));
-
-    auto returnPoint = point;
-
-    // Scale the point to the destination image
-    returnPoint.x = std::round(point.x * (static_cast<float>(destImage.getSourceWidth()) / sourceImage.getSourceWidth()));
-    returnPoint.y = std::round(point.y * (static_cast<float>(destImage.getSourceHeight()) / sourceImage.getSourceHeight()));
-
-    // Adjust the point to the destination image
-    unsigned adjustedWidth = std::round(destImage.getSourceWidth() * kX);
-    unsigned adjustedHeight = std::round(destImage.getSourceHeight() * kY);
-
-    int diffX = ((int)adjustedWidth - (int)destImage.getSourceWidth()) / 2;
-    int diffY = ((int)adjustedHeight - (int)destImage.getSourceHeight()) / 2;
-
-    int adjustedFrameX = returnPoint.x + diffX;
-    int adjustedFrameY = returnPoint.y + diffY;
-
-    // Scale the point back to the destination frame
-    returnPoint = Point2f(std::round(adjustedFrameX / kX), std::round(adjustedFrameY / kY));
-    returnPoint.x = std::max(0.0f, std::min(returnPoint.x, (float)destImage.getSourceWidth()));
-    returnPoint.y = std::max(0.0f, std::min(returnPoint.y, (float)destImage.getSourceHeight()));
-
-    return returnPoint;
+    // Convert radians to degrees
+    return verticalFoV * 180.0f / (float)M_PI;
 }
 
 Point2f ImgFrame::remapPointBetweenFrames(const Point2f& originPoint, const ImgFrame& originFrame, const ImgFrame& destFrame) {

@@ -332,16 +332,6 @@ class ImgFrame : public Buffer {
     bool validateTransformations() const;
 
     /**
-     * Remap point between two source frames
-     * @param point point to remap
-     * @param sourceImage source image
-     * @param destImage destination image
-     *
-     * @returns remapped point
-     */
-    static Point2f remapPointBetweenSourceFrames(const Point2f& originPoint, const ImgFrame& sourceImage, const ImgFrame& destImage);
-
-    /**
      * Remap point between two frames
      * @param originPoint point to remap
      * @param originFrame origin frame
