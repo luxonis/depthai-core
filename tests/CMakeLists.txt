@@ -352,3 +352,7 @@ dai_set_test_labels(spatial_detection_network_test ondevice rvc2_all rvc4 ci)
 # NeuralNetwork node test
 dai_add_test(neural_network_node_test src/ondevice_tests/pipeline/node/neural_network_node_test.cpp)
 dai_set_test_labels(neural_network_node_test ondevice rvc2_all rvc4 ci)
+
+# Regression tests for encountered bugs
+dai_add_test(regression_camera_concurrency_test src/ondevice_tests/regression/camera_concurrency.cpp)
+dai_set_test_labels(regression_camera_concurrency_test ondevice rvc4 ci)
