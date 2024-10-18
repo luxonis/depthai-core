@@ -27,26 +27,24 @@ struct ImgTransformation {
 
     std::vector<dai::RotatedRect> srcCrops = {};
 
-    // // To optimize mask calculations
-    // std::vector<uint8_t> srcMask;
+    // To optimize mask calculations
+    std::vector<uint8_t> srcMask;
     bool srcMaskValid = false;
-    // size_t srcMinX = 0;
-    // size_t srcMinY = 0;
-    // size_t srcMaxX = 0;
-    // size_t srcMaxY = 0;
+    size_t srcMinX = 0;
+    size_t srcMinY = 0;
+    size_t srcMaxX = 0;
+    size_t srcMaxY = 0;
     bool srcBorderValid = false;
-    // bool srcBorderComplex = false;
-    // std::vector<uint8_t> dstMask;
+    std::vector<uint8_t> dstMask;
     bool dstMaskValid = false;
-    // size_t dstMinX = 0;
-    // size_t dstMinY = 0;
-    // size_t dstMaxX = 0;
-    // size_t dstMaxY = 0;
+    size_t dstMinX = 0;
+    size_t dstMinY = 0;
+    size_t dstMaxX = 0;
+    size_t dstMaxY = 0;
     bool dstBorderValid = false;
-    // bool dstBorderComplex = false;
-    //
-    // void calcSrcBorder();
-    // void calcDstBorder();
+
+    void calcSrcBorder();
+    void calcDstBorder();
 
    public:
     ImgTransformation() = default;
@@ -75,10 +73,10 @@ struct ImgTransformation {
     std::array<std::array<float, 3>, 3> getSourceIntrinsicMatrixInv() const;
     std::vector<dai::RotatedRect> getSrcCrops() const;
 
-    // bool getSrcMaskPt(size_t x, size_t y);
-    // bool getDstMaskPt(size_t x, size_t y);
-    // const std::vector<uint8_t>& getSrcMask(size_t srcWidth, size_t srcHeight);
-    // const std::vector<uint8_t>& getDstMask();
+    bool getSrcMaskPt(size_t x, size_t y);
+    bool getDstMaskPt(size_t x, size_t y);
+    const std::vector<uint8_t>& getSrcMask(size_t srcWidth, size_t srcHeight);
+    const std::vector<uint8_t>& getDstMask();
 
     ImgTransformation& addTransformation(std::array<std::array<float, 3>, 3> matrix);
     ImgTransformation& addCrop(int x, int y, int width, int height);
