@@ -35,7 +35,7 @@ class EventData {
 class EventsManager {
    public:
     explicit EventsManager(std::string url = "https://events-ingest.cloud.luxonis.com", bool uploadCachedOnStart = false, float publishInterval=10.0);
-    virtual ~EventsManager() = default;
+    ~EventsManager();
 
     /**
      * Send an event to the events service
@@ -157,7 +157,7 @@ class EventsManager {
     std::string sourceAppId;
     std::string sourceAppIdentifier;
     uint64 queueSize;
-    std::thread eventBufferThread;
+	std::unique_ptr<std::thread> eventBufferThread;
     std::vector<std::shared_ptr<EventMessage>> eventBuffer;
     std::mutex eventBufferMutex;
     float publishInterval;

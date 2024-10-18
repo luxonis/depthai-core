@@ -112,7 +112,7 @@ EventsManager::EventsManager(std::string url, bool uploadCachedOnStart, float pu
     sourceAppId = utility::getEnv("AGENT_APP_ID");
     sourceAppIdentifier = utility::getEnv("AGENT_APP_IDENTIFIER");
     token = utility::getEnv("DEPTHAI_HUB_API_KEY");
-    eventBufferThread = std::thread([this]() {
+    eventBufferThread = std::make_unique<std::thread>([this]() {
         while(true) {
             sendEventBuffer();
             std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(this->publishInterval * 1000)));
@@ -124,7 +124,13 @@ EventsManager::EventsManager(std::string url, bool uploadCachedOnStart, float pu
     }
 }
 
+EventsManager::~EventsManager() {
+	eventBufferThread->join();
+}
+
 void EventsManager::sendEventBuffer() {
+    auto batchEvent = std::make_unique<proto::event::BatchUploadEvents>();
+	{
     std::lock_guard<std::mutex> lock(eventBufferMutex);
     if(eventBuffer.empty()) {
         return;
@@ -137,11 +143,11 @@ void EventsManager::sendEventBuffer() {
     }
     // Create request
     cpr::Url url = static_cast<cpr::Url>(this->url + "/v1/events");
-    auto batchEvent = std::make_unique<proto::event::BatchUploadEvents>();
     for(auto& eventM : eventBuffer) {
         auto& event = eventM->event;
         batchEvent->add_events()->Swap(event.get());
     }
+	}
     std::string serializedEvent;
     batchEvent->SerializeToString(&serializedEvent);
     cpr::Response r = cpr::Post(url, cpr::Header{{"Authorization", "Bearer " + token}}, cpr::Body(serializedEvent), cpr::VerifySsl(verifySsl));
@@ -275,6 +281,7 @@ void EventsManager::sendFile(const std::shared_ptr<EventData>& file, const std::
 void EventsManager::cacheEvents() {
     logger::info("Caching events");
     // for each event, create a unique directory, save protobuf message and associated files
+	std::lock_guard<std::mutex> lock(eventBufferMutex);
     for(auto& eventM : eventBuffer) {
         auto& event = eventM->event;
         auto& data = eventM->data;
@@ -318,6 +325,7 @@ void EventsManager::uploadCachedData() {
                     data.push_back(fileData);
                 }
             }
+			std::lock_guard<std::mutex> lock(eventBufferMutex);
             eventBuffer.push_back(std::make_unique<EventMessage>(EventMessage{std::make_shared<proto::event::Event>(event), data, eventDir}));
         }
     }
