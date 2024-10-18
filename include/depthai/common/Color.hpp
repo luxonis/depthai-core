@@ -16,7 +16,26 @@ namespace dai {
  */
 struct Color {
     Color() = default;
-    Color(float r, float g, float b, float a) : r(r), g(g), b(b), a(a) {}
+	/**
+	* @param r Red value
+	* @param g Green value
+	* @param b Blue value
+	* @param a Alpha value
+	* @throws std::invalid_argument if r,g,b,a values are not in range [0.0, 1.0]
+	*/
+    Color(float r, float g, float b, float a) {
+        // r,g,b,a values should be in range [0.0, 1.0]
+        auto check = [](float val) -> float {
+            if(val < 0.0 || val > 1.0) {
+                throw std::invalid_argument("Color values should be in range [0.0, 1.0]");
+            }
+            return val;
+        };
+        this->r = check(r);
+        this->g = check(g);
+        this->b = check(b);
+        this->a = check(a);
+    }
     float r = 0.0, g = 0.0, b = 0.0, a = 0.0;
 };
 
