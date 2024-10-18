@@ -29,8 +29,9 @@ with dai.Pipeline() as pipeline:
     fileData = dai.EventData(b'Hello, world!', "hello.txt", "text/plain")
     eventMan.sendEvent("test2", None,  [fileData], ["tag1", "tag2"], {"key1": "value1"})
     fileData2 = dai.EventData("/test.txt")
+    # will fail, sendSnap needs an image
     eventMan.sendSnap("test3", None, [fileData2], ["tag1", "tag2"], {"key1": "value1"})
-    eventMan.sendSnap("test4", None, [fileData, fileData2], ["tag1", "tag2"], {"key1": "value1"})
+    eventMan.sendEvent("test4", None, [fileData, fileData2], ["tag1", "tag2"], {"key1": "value1"})
     pipeline.start()
 
     frame = None
@@ -44,6 +45,7 @@ with dai.Pipeline() as pipeline:
             frame = inRgb.getCvFrame()
             if not eventSent:
                 eventMan.sendSnap("rgb", inRgb, [], ["tag1", "tag2"], {"key1": "value1"})
+                # will fail, sendSnap requires only image and no extra data
                 eventMan.sendSnap("rgb2", inRgb, [fileData2], ["tag1", "tag2"], {"key1": "value1"})
                 eventSent = True
 
