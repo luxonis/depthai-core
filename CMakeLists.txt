@@ -13,6 +13,7 @@ option(DEPTHAI_ENABLE_LIBUSB "Enable usage of libusb and interaction with USB de
 if(WIN32)
     set(DEPTHAI_CURL_USE_SCHANNEL ON)
     set(DEPTHAI_CURL_USE_OPENSSL OFF)
+    add_compile_definitions(NOMINMAX)
 else()
     set(DEPTHAI_CURL_USE_SCHANNEL OFF)
     set(DEPTHAI_CURL_USE_OPENSSL ON)
