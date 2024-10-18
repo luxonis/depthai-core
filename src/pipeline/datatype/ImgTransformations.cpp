@@ -6,8 +6,8 @@
 #include <cstring>
 #include <sstream>
 
-#include "depthai/utility/ImageManipV2Impl.hpp"
 #include "depthai/pipeline/datatype/ImageManipConfigV2.hpp"
+#include "depthai/utility/ImageManipV2Impl.hpp"
 
 namespace dai {
 
@@ -55,7 +55,9 @@ inline std::array<float, 2> matvecmul(std::array<std::array<float, 3>, 3> M, std
 }
 
 inline bool mateq(const std::array<std::array<float, 3>, 3>& A, const std::array<std::array<float, 3>, 3>& B) {
-    for(auto i = 0; i < 3; ++i) for(auto j = 0; j < 3; ++j) if(A[i][j] != B[i][j]) return false;
+    for(auto i = 0; i < 3; ++i)
+        for(auto j = 0; j < 3; ++j)
+            if(A[i][j] != B[i][j]) return false;
     return true;
 }
 
@@ -388,40 +390,20 @@ dai::Point2f ImgTransformation::remapPointTo(const ImgTransformation& to, dai::P
     auto sourcePointTo = interSourceFrameTransform(sourcePointFrom, *this, to);
     return to.transformPoint(sourcePointTo);
 }
-dai::Point2f ImgTransformation::remapPointTo(const std::array<std::array<float, 3>, 3>& to, dai::Point2f point) const {
-    ImgTransformation toT(0, 0);
-    toT.addTransformation(to);
-    return remapPointTo(toT, point);
-}
 dai::Point2f ImgTransformation::remapPointFrom(const ImgTransformation& from, dai::Point2f point) const {
     auto sourcePointFrom = from.invTransformPoint(point);
     auto sourcePointTo = interSourceFrameTransform(sourcePointFrom, from, *this);
     return transformPoint(sourcePointTo);
-}
-dai::Point2f ImgTransformation::remapPointFrom(const std::array<std::array<float, 3>, 3>& from, dai::Point2f point) const {
-    ImgTransformation fromT(0, 0);
-    fromT.addTransformation(from);
-    return remapPointFrom(fromT, point);
 }
 dai::RotatedRect ImgTransformation::remapRectTo(const ImgTransformation& to, dai::RotatedRect rect) const {
     auto sourceRectFrom = invTransformRect(rect);
     auto sourceRectTo = interSourceFrameTransform(sourceRectFrom, *this, to);
     return to.transformRect(sourceRectTo);
 }
-dai::RotatedRect ImgTransformation::remapRectTo(const std::array<std::array<float, 3>, 3>& to, dai::RotatedRect rect) const {
-    ImgTransformation toT(0, 0);
-    toT.addTransformation(to);
-    return remapRectTo(toT, rect);
-}
 dai::RotatedRect ImgTransformation::remapRectFrom(const ImgTransformation& from, dai::RotatedRect rect) const {
     auto sourceRectFrom = from.invTransformRect(rect);
     auto sourceRectTo = interSourceFrameTransform(sourceRectFrom, from, *this);
     return transformRect(sourceRectTo);
-}
-dai::RotatedRect ImgTransformation::remapRectFrom(const std::array<std::array<float, 3>, 3>& from, dai::RotatedRect rect) const {
-    ImgTransformation fromT(0, 0);
-    fromT.addTransformation(from);
-    return remapRectFrom(fromT, rect);
 }
 
 std::string ImgTransformation::str() const {
