@@ -1,7 +1,8 @@
 #define _USE_MATH_DEFINES
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
-#include "depthai/common/RotatedRect.hpp"
+
 #include "depthai/common/ImgTransformations.hpp"
+#include "depthai/common/RotatedRect.hpp"
 #include "depthai/utility/SharedMemory.hpp"
 #include "spdlog/fmt/fmt.h"
 #include "spdlog/spdlog.h"
@@ -211,31 +212,34 @@ Point2f ImgFrame::remapPointToSource(const Point2f& point) const {
 }
 
 Rect ImgFrame::remapRectFromSource(const Rect& rect) const {
-    bool isNormalized = rect.isNormalized();
-    auto returnRect = rect;
-    if(isNormalized) {
-        returnRect = returnRect.denormalize(getSourceWidth(), getSourceHeight());
-    }
-    auto topLeftTransformed = remapPointFromSource(returnRect.topLeft());
-    auto bottomRightTransformed = remapPointFromSource(returnRect.bottomRight());
-    returnRect = Rect(topLeftTransformed, bottomRightTransformed);
-    if(isNormalized) {
+    bool normalized = rect.isNormalized();
+    auto srcRect = rect;
+    srcRect = srcRect.denormalize(getSourceWidth(), getSourceHeight());
+    dai::RotatedRect srcRRect;
+    srcRRect.size = {srcRect.width, srcRect.height};
+    srcRRect.center = {srcRect.x + srcRect.width / 2.f, srcRect.y + srcRect.height / 2.f};
+    srcRRect.angle = 0.f;
+    auto dstRRect = this->transformation.transformRect(srcRRect);
+    auto [minx, miny, maxx, maxy] = dstRRect.getOuterRect();
+    dai::Rect returnRect((int)roundf(minx), (int)roundf(miny), (int)roundf(maxx - minx), (int)roundf(maxy - miny));
+    if(normalized) {
         returnRect = returnRect.normalize(getWidth(), getHeight());
     }
     return returnRect;
 }
 
 Rect ImgFrame::remapRectToSource(const Rect& rect) const {
-    bool isNormalized = rect.isNormalized();
-    auto returnRect = rect;
-    if(isNormalized) {
-        returnRect = returnRect.denormalize(getWidth(), getHeight());
-    }
-    auto topLeftTransformed = remapPointToSource(returnRect.topLeft());
-    auto bottomRightTransformed = remapPointToSource(returnRect.bottomRight());
-
-    returnRect = Rect(topLeftTransformed, bottomRightTransformed);
-    if(isNormalized) {
+    bool normalized = rect.isNormalized();
+    auto srcRect = rect;
+    srcRect = srcRect.denormalize(getWidth(), getHeight());
+    dai::RotatedRect srcRRect;
+    srcRRect.size = {srcRect.width, srcRect.height};
+    srcRRect.center = {srcRect.x + srcRect.width / 2.f, srcRect.y + srcRect.height / 2.f};
+    srcRRect.angle = 0.f;
+    auto dstRRect = this->transformation.invTransformRect(srcRRect);
+    auto [minx, miny, maxx, maxy] = dstRRect.getOuterRect();
+    dai::Rect returnRect((int)roundf(minx), (int)roundf(miny), (int)roundf(maxx - minx), (int)roundf(maxy - miny));
+    if(normalized) {
         returnRect = returnRect.normalize(getSourceWidth(), getSourceHeight());
     }
     return returnRect;
@@ -247,12 +251,22 @@ ImgFrame& ImgFrame::setSourceHFov(float degrees) {
 }
 
 float ImgFrame::getSourceHFov() const {
-    return HFovDegrees;
+    auto intrMat = transformation.getSourceIntrinsicMatrix();
+    if(HFovDegrees > 0.0f && intrMat[0][0] == 1.0f && intrMat[0][1] == 0.0f && intrMat[0][2] == 0.0f && intrMat[1][0] == 0.0f && intrMat[1][1] == 1.0f
+       && intrMat[1][2] == 0.0f && intrMat[2][0] == 0.0f && intrMat[2][1] == 0 && intrMat[2][2] == 1) {
+        return HFovDegrees;
+    } else {
+        float fx = transformation.getSourceIntrinsicMatrix()[0][0];
+
+        // Calculate vertical FoV (in radians)
+        float horizontalFoV = 2 * atan(getWidth() / (2.0f * fx));
+
+        // Convert radians to degrees
+        return horizontalFoV * 180.0f / (float)M_PI;
+    }
 }
 
 float ImgFrame::getSourceDFov() const {
-    // TODO only works rectlinear lenses (rectified frames).
-    // Calculate the vertical FOV from the source dimensions and the source DFov
     float sourceWidth = getSourceWidth();
     float sourceHeight = getSourceHeight();
 
@@ -289,13 +303,48 @@ float ImgFrame::getSourceDFov() const {
 }
 
 float ImgFrame::getSourceVFov() const {
-    float fy = transformation.getSourceIntrinsicMatrix()[1][1];
+    auto intrMat = transformation.getSourceIntrinsicMatrix();
+    if(HFovDegrees > 0.0f && intrMat[0][0] == 1.0f && intrMat[0][1] == 0.0f && intrMat[0][2] == 0.0f && intrMat[1][0] == 0.0f && intrMat[1][1] == 1.0f
+       && intrMat[1][2] == 0.0f && intrMat[2][0] == 0.0f && intrMat[2][1] == 0 && intrMat[2][2] == 1) {
+        float sourceWidth = getSourceWidth();
+        float sourceHeight = getSourceHeight();
 
-    // Calculate vertical FoV (in radians)
-    float verticalFoV = 2 * atan(getHeight() / (2.0f * fy));
+        if(sourceHeight <= 0) {
+            throw std::runtime_error(fmt::format("Source height is invalid. Height: {}", sourceHeight));
+        }
+        if(sourceWidth <= 0) {
+            throw std::runtime_error(fmt::format("Source width is invalid. Width: {}", sourceWidth));
+        }
+        float HFovDegrees = getSourceHFov();
 
-    // Convert radians to degrees
-    return verticalFoV * 180.0f / (float)M_PI;
+        // Validate the horizontal FOV
+        if(HFovDegrees <= 0 || HFovDegrees >= 180) {
+            throw std::runtime_error(fmt::format("Horizontal FOV is invalid. Horizontal FOV: {}", HFovDegrees));
+        }
+
+        float HFovRadians = HFovDegrees * (static_cast<float>(M_PI) / 180.0f);
+
+        // Calculate the tangent of half of the HFOV
+        float tanHFovHalf = std::tan(HFovRadians / 2);
+
+        // Calculate the tangent of half of the VFOV
+        float tanVerticalFovHalf = (sourceHeight / sourceWidth) * tanHFovHalf;
+
+        // Calculate the VFOV in radians
+        float verticalFovRadians = 2 * std::atan(tanVerticalFovHalf);
+
+        // Convert VFOV to degrees
+        float verticalFovDegrees = verticalFovRadians * (180.0f / static_cast<float>(M_PI));
+        return verticalFovDegrees;
+    } else {
+        float fy = transformation.getSourceIntrinsicMatrix()[1][1];
+
+        // Calculate vertical FoV (in radians)
+        float verticalFoV = 2 * atan(getHeight() / (2.0f * fy));
+
+        // Convert radians to degrees
+        return verticalFoV * 180.0f / (float)M_PI;
+    }
 }
 
 Point2f ImgFrame::remapPointBetweenFrames(const Point2f& originPoint, const ImgFrame& originFrame, const ImgFrame& destFrame) {

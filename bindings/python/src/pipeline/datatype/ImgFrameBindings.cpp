@@ -135,18 +135,10 @@ void bind_imgframe(pybind11::module& m, void* pCallstack){
         .def("addFlipHorizontal", &ImgTransformation::addFlipHorizontal, DOC(dai, ImgTransformation, addFlipHorizontal))
         .def("addRotation", &ImgTransformation::addRotation, py::arg("angle"), py::arg("rotationPoint"), DOC(dai, ImgTransformation, addRotation))
         .def("addScale", &ImgTransformation::addScale, py::arg("scaleX"), py::arg("scaleY"), DOC(dai, ImgTransformation, addScale))
-        .def("remapPointTo", [](const ImgTransformation& self, const ImgTransformation& to, dai::Point2f point) {
-            return self.remapPointTo(to, point);
-        }, py::arg("to"), py::arg("point"), DOC(dai, ImgTransformation, remapPointTo))
-        .def("remapPointFrom", [](const ImgTransformation& self, const ImgTransformation& from, dai::Point2f point) {
-            return self.remapPointFrom(from, point);
-        }, py::arg("to"), py::arg("point"), DOC(dai, ImgTransformation, remapPointFrom))
-        .def("remapRectTo", [](const ImgTransformation& self, const ImgTransformation& to, dai::RotatedRect rect) {
-            return self.remapRectTo(to, rect);
-        }, py::arg("to"), py::arg("rect"), DOC(dai, ImgTransformation, remapRectTo))
-        .def("remapRectFrom", [](const ImgTransformation& self, const ImgTransformation& from, dai::RotatedRect rect) {
-            return self.remapRectFrom(from, rect);
-        }, py::arg("from"), py::arg("rect"), DOC(dai, ImgTransformation, remapRectFrom))
+        .def("remapPointTo", &ImgTransformation::remapPointTo, py::arg("to"), py::arg("point"), DOC(dai, ImgTransformation, remapPointTo))
+        .def("remapPointFrom", &ImgTransformation::remapPointFrom, py::arg("to"), py::arg("point"), DOC(dai, ImgTransformation, remapPointFrom))
+        .def("remapRectTo", &ImgTransformation::remapRectTo, py::arg("to"), py::arg("rect"), DOC(dai, ImgTransformation, remapRectTo))
+        .def("remapRectFrom", &ImgTransformation::remapRectFrom, py::arg("from"), py::arg("rect"), DOC(dai, ImgTransformation, remapRectFrom))
         .def("isValid", &ImgTransformation::isValid, DOC(dai, ImgTransformation, isValid))
         ;
 
