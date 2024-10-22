@@ -206,8 +206,6 @@ struct ImgTransformation {
      */
     bool isValid() const;
 
-    std::string str() const;
-
     DEPTHAI_SERIALIZE(ImgTransformation,
                       transformationMatrix,
                       transformationMatrixInv,

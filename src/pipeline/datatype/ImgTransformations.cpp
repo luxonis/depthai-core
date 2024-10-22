@@ -406,44 +406,4 @@ dai::RotatedRect ImgTransformation::remapRectFrom(const ImgTransformation& from,
     return transformRect(sourceRectTo);
 }
 
-std::string ImgTransformation::str() const {
-    const int indent = 1;
-    std::stringstream ss;
-    auto doIndent = [&](int level) {
-        for(auto i = 0; i < indent * level; ++i) ss << '\t';
-    };
-    ss << '\n';
-    ss << "matrix: \n";
-    for(auto i = 0; i < 3; ++i) {
-        doIndent(1);
-        ss << transformationMatrix[i][0];
-        for(auto j = 1; j < 3; ++j) ss << '\t' << transformationMatrix[i][j];
-        ss << '\n';
-    }
-    ss << "matrix inverse: \n";
-    for(auto i = 0; i < 3; ++i) {
-        doIndent(1);
-        ss << transformationMatrixInv[i][0];
-        for(auto j = 1; j < 3; ++j) ss << '\t' << transformationMatrixInv[i][j];
-        ss << '\n';
-    }
-    ss << "intrinsics: \n";
-    for(auto i = 0; i < 3; ++i) {
-        doIndent(1);
-        ss << sourceIntrinsicMatrix[i][0];
-        for(auto j = 1; j < 3; ++j) ss << '\t' << sourceIntrinsicMatrix[i][j];
-        ss << '\n';
-    }
-    ss << "intrinsics inverse: \n";
-    for(auto i = 0; i < 3; ++i) {
-        doIndent(1);
-        ss << sourceIntrinsicMatrixInv[i][0];
-        for(auto j = 1; j < 3; ++j) ss << '\t' << sourceIntrinsicMatrixInv[i][j];
-        ss << '\n';
-    }
-    ss << "size: " << width << " x " << height << '\n';
-    ss << "source size: " << srcWidth << " x " << srcHeight << '\n';
-    return ss.str();
-}
-
 };  // namespace dai
