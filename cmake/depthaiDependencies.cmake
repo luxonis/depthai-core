@@ -90,11 +90,13 @@ if(NOT CONFIG_MODE OR (CONFIG_MODE AND NOT DEPTHAI_SHARED_LIBS))
 endif()
 
 # Xtensor
+get_filename_component(PARENT_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/.. ABSOLUTE)
 if(DEPTHAI_XTENSOR_SUPPORT)
-    get_filename_component(PARENT_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/.. ABSOLUTE)
     add_subdirectory("${PARENT_DIRECTORY}/3rdparty/xtl" xtl)
     add_subdirectory("${PARENT_DIRECTORY}/3rdparty/xtensor" xtensor)
 endif()
+
+add_subdirectory("${PARENT_DIRECTORY}/3rdparty/foxglove/ws-protocol/cpp/foxglove-websocket" foxglove-websocket)
 
 # Add threads (c++)
 find_package(Threads ${_QUIET} REQUIRED)
@@ -108,6 +110,8 @@ find_package(libnop ${_QUIET} CONFIG REQUIRED)
 # MP4V2 for video encoding
 find_package(mp4v2 ${_QUIET} CONFIG REQUIRED)
 
+# TODO(Morato) - potentially move this to a private library
+find_package(Protobuf ${_QUIET} CONFIG REQUIRED)
 
 # XLink
 if(DEPTHAI_XLINK_LOCAL AND (NOT CONFIG_MODE))

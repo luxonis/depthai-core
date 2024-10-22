@@ -28,7 +28,7 @@ colorMap[0] = [0, 0, 0]  # to make zero-disparity pixels black
 
 with pipeline:
     pipeline.start()
-    maxDisparity = 0
+    maxDisparity = 1
     while pipeline.isRunning():
         leftSynced = syncedLeftQueue.get()
         rightSynced = syncedRightQueue.get()

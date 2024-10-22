@@ -12,6 +12,8 @@ if(UNIX)
     set(SYS_PATH_SEPARATOR ":")
 endif()
 
+set(TARGET_NAME "depthai")
+
 # Add a target to install_requirements (added to ALL)
 add_custom_target(install_requirements ALL
     COMMAND ${PYTHON_EXECUTABLE} "${CMAKE_CURRENT_LIST_DIR}/install_requirements.py" "--skip_depthai"
@@ -37,6 +39,7 @@ function(add_python_example example_name python_script_path)
         "PATH=${HUNTER_INSTALL_PREFIX}/bin${SYS_PATH_SEPARATOR}$ENV{PATH}"
         # Python path (to find compiled module)
         "PYTHONPATH=$<TARGET_FILE_DIR:${TARGET_NAME}>${SYS_PATH_SEPARATOR}$ENV{PYTHONPATH}"
+        "DEPTHAI_SEARCH_TIMEOUT=15000"
         # ASAN in case of sanitizers
         "${ASAN_ENVIRONMENT_VARS}"
         # Example
@@ -55,9 +58,11 @@ function(add_python_example example_name python_script_path)
             "PATH=${HUNTER_INSTALL_PREFIX}/bin${SYS_PATH_SEPARATOR}$ENV{PATH}"
             # Python path (to find compiled module)
             "PYTHONPATH=$<TARGET_FILE_DIR:${TARGET_NAME}>${SYS_PATH_SEPARATOR}$ENV{PYTHONPATH}"
+            "DEPTHAI_SEARCH_TIMEOUT=30000"
             # ASAN in case of sanitizers
             ${ASAN_ENVIRONMENT_VARS}
-            ${CMAKE_COMMAND} -DTIMEOUT_SECONDS=10 -P ${CMAKE_CURRENT_LIST_DIR}/cmake/ExecuteTestTimeout.cmake
+            ${CMAKE_COMMAND} -DFORCE_TIMEOUT_SECONDS=45 -P ${CMAKE_CURRENT_LIST_DIR}/../cpp/cmake/ExecuteTestTimeout.cmake
+
             # Actual script to run
             ${PYTHON_EXECUTABLE} -Werror "${CMAKE_CURRENT_LIST_DIR}/${python_script_path}" ${arguments}
         )
@@ -67,6 +72,29 @@ function(add_python_example example_name python_script_path)
 
     endif()
 
+endfunction()
+
+
+# Function for setting test labels, including label shortcuts
+function(dai_set_example_test_labels example_name)
+    # If not testing examples, return
+    if(NOT DEPTHAI_PYTHON_TEST_EXAMPLES)
+        return()
+    endif()
+
+    # Modify example name to match the one created by add_python_example
+    set(example_name "py_${example_name}")
+    set(expanded_labels "")
+    foreach(label IN LISTS ARGN)
+        if(label STREQUAL "rvc2_all")
+            list(APPEND expanded_labels "rvc2" "poe" "usb")
+        else()
+            list(APPEND expanded_labels ${label})
+        endif()
+    endforeach()
+    # Add "cpp_example" label
+    list(APPEND expanded_labels "python_example")
+    set_tests_properties(${example_name} PROPERTIES LABELS "${expanded_labels}")
 endfunction()
 
 if(DEPTHAI_PYTHON_TEST_EXAMPLES)
@@ -80,7 +108,8 @@ if(DEPTHAI_PYTHON_TEST_EXAMPLES)
         "PYTHONPATH=$<TARGET_FILE_DIR:${TARGET_NAME}>${SYS_PATH_SEPARATOR}$ENV{PYTHONPATH}"
         # ASAN in case of sanitizers
         ${ASAN_ENVIRONMENT_VARS}
-        ${CMAKE_COMMAND} -DFORCE_TIMEOUT_SECONDS=300 -P ${CMAKE_CURRENT_LIST_DIR}/cmake/ExecuteTestTimeout.cmake
+        ${CMAKE_COMMAND} -DFORCE_TIMEOUT_SECONDS=300 -P ${CMAKE_CURRENT_LIST_DIR}/../cpp/cmake/ExecuteTestTimeout.cmake
+
         # Actual script to run
         ${PYTHON_EXECUTABLE} "${CMAKE_CURRENT_LIST_DIR}/install_requirements.py" "--skip_depthai"
     )
@@ -90,112 +119,68 @@ if(DEPTHAI_PYTHON_TEST_EXAMPLES)
 
 endif()
 
-# Add examples
 
-## Bootloader
-# add_python_example(bootloader_config bootloader/bootloader_config.py)
-add_python_example(bootloader_version bootloader/bootloader_version.py)
-# add_python_example(flash_bootloader bootloader/flash_bootloader.py)
+## Camera output
+add_python_example(camera_output Camera/camera_output.py)
+dai_set_example_test_labels(camera_output ondevice rvc2_all rvc4 ci)
 
-## Calibration
-# add_python_example(calibration_flash_v5 calibration/calibration_flash_v5.py)
-# add_python_example(calibration_flash calibration/calibration_flash.py)
-add_python_example(calibration_load calibration/calibration_load.py)
-add_python_example(calibration_reader calibration/calibration_reader.py)
+add_python_example(camera_all Camera/camera_all.py)
+dai_set_example_test_labels(camera_all ondevice rvc2_all rvc4 ci)
 
-## ColorCamera
-add_python_example(autoexposure_roi ColorCamera/autoexposure_roi.py)
-add_python_example(rgb_camera_control ColorCamera/rgb_camera_control.py)
-add_python_example(rgb_preview ColorCamera/rgb_preview.py)
-add_python_example(rgb_scene ColorCamera/rgb_scene.py)
-add_python_example(rgb_video ColorCamera/rgb_video.py)
-add_python_example(rgb_isp_scale ColorCamera/rgb_isp_scale.py)
+add_python_example(camera_multiple_outputs Camera/camera_multiple_outputs.py 640 480 0 30 CAM_A 300 300 0 30 CAM_A 300 300 1 30 CAM_A)
+dai_set_example_test_labels(camera_multiple_outputs ondevice rvc2_all rvc4 ci)
 
-## EdgeDetector
-add_python_example(edge_detector EdgeDetector/edge_detector.py)
+## AprilTags
+add_python_example(april_tags_12mp AprilTags/april_tags_12mp.py)
+dai_set_example_test_labels(april_tags_12mp ondevice rvc2_all rvc4 ci)
 
-## FeatureTracker
-add_python_example(feature_tracker FeatureTracker/feature_tracker.py)
-add_python_example(feature_tracker_color FeatureTracker/feature_tracker_color.py)
-add_python_example(feature_detector FeatureTracker/feature_detector.py)
+add_python_example(april_tags AprilTags/april_tags.py)
+dai_set_example_test_labels(april_tags ondevice rvc2_all rvc4 ci)
 
-## HostSide
-add_python_example(device_queue_event host_side/device_queue_event.py)
-add_python_example(opencv_support host_side/opencv_support.py)
-add_python_example(queue_add_callback host_side/queue_add_callback.py)
+add_python_example(april_tags_replay AprilTags/april_tags_replay.py)
+dai_set_example_test_labels(april_tags_replay ondevice rvc2_all rvc4 ci)
+
+## Detection network
+add_python_example(detection_network DetectionNetwork/detection_network.py)
+dai_set_example_test_labels(detection_network ondevice rvc2_all rvc4 ci)
+
+## Host nodes
+add_python_example(display HostNodes/display.py)
+dai_set_example_test_labels(display ondevice rvc2_all rvc4 ci)
+
+add_python_example(threaded_host_nodes HostNodes/threaded_host_nodes.py)
+dai_set_example_test_labels(threaded_host_nodes ondevice rvc2_all rvc4 ci)
 
 ## ImageManip
-add_python_example(image_manip_rotate ImageManip/image_manip_rotate.py)
-add_python_example(image_manip_tiling ImageManip/image_manip_tiling.py)
-add_python_example(rgb_rotate_warp ImageManip/rgb_rotate_warp.py)
-add_python_example(image_manip_warp_mesh ImageManip/image_manip_warp_mesh.py)
-add_python_example(crop_input_chunck_oom issue_solved/crop_input_chunck_oom.py)
+add_python_example(image_manip_mod ImageManip/image_manip_v2_mod.py)
+dai_set_example_test_labels(image_manip_mod ondevice rvc2_all rvc4 ci)
 
-## IMU
-add_python_example(imu_gyroscope_accelerometer IMU/imu_gyroscope_accelerometer.py)
-add_python_example(imu_rotation_vector IMU/imu_rotation_vector.py)
+add_python_example(image_manip_resize ImageManip/image_manip_v2_resize.py)
+dai_set_example_test_labels(image_manip_resize ondevice rvc2_all rvc4 ci)
 
-## Mixed
-add_python_example(mono_depth_mobilenetssd mixed/mono_depth_mobilenetssd.py)
-add_python_example(rgb_encoding_mobilenet mixed/rgb_encoding_mobilenet.py)
-add_python_example(rgb_encoding_mono_mobilenet mixed/rgb_encoding_mono_mobilenet.py)
-add_python_example(rgb_encoding_mono_mobilenet_depth mixed/rgb_encoding_mono_mobilenet_depth.py)
-
-## MobileNet
-add_python_example(mono_mobilenet MobileNet/mono_mobilenet.py)
-add_python_example(rgb_mobilenet_4k MobileNet/rgb_mobilenet_4k.py)
-add_python_example(rgb_mobilenet MobileNet/rgb_mobilenet.py)
-add_python_example(video_mobilenet MobileNet/video_mobilenet.py)
-
-## MonoCamera
-add_python_example(mono_preview MonoCamera/mono_preview.py)
-add_python_example(mono_full_resolution_saver MonoCamera/mono_full_resolution_saver.py)
-add_python_example(mono_camera_control MonoCamera/mono_camera_control.py)
+## Misc
+add_python_example(reconnect_callback Misc/AutoReconnect/reconnect_callback.py)
+dai_set_example_test_labels(reconnect_callback ondevice rvc2_all rvc4 ci)
 
 ## NeuralNetwork
-# add_python_example(concat_multiple_input NeuralNetwork/concat_multiple_input.py)
-# add_python_example(normalization_multiple_input NeuralNetwork/normalization_multiple_input.py)
+add_python_example(neural_network NeuralNetwork/neural_network.py)
+dai_set_example_test_labels(neural_network ondevice rvc2_all rvc4 ci)
 
-## ObjectTracker
-add_python_example(object_tracker_video ObjectTracker/object_tracker_video.py)
-add_python_example(object_tracker ObjectTracker/object_tracker.py)
-add_python_example(spatial_object_tracker ObjectTracker/spatial_object_tracker.py)
-# add_python_example(spatial_object_tracker_yolo ObjectTracker/spatial_object_tracker_yolo.py)
-
-## Script
-add_python_example(script_camera_control Script/script_camera_control.py)
-add_python_example(script_json_communication Script/script_json_communication.py)
-add_python_example(script_get_device_info Script/script_get_device_info.py)
-
-## SpatialDetection
-add_python_example(spatial_tiny_yolo_v3 SpatialDetection/spatial_tiny_yolo.py yolo3)
-add_python_example(spatial_tiny_yolo_v4 SpatialDetection/spatial_tiny_yolo.py yolo4)
-add_python_example(spatial_mobilenet SpatialDetection/spatial_mobilenet.py)
-add_python_example(spatial_mobilenet_mono SpatialDetection/spatial_mobilenet_mono.py)
-add_python_example(spatial_location_calculator SpatialDetection/spatial_location_calculator.py)
+## Spatial detection network
+add_python_example(spatial_detection SpatialDetectionNetwork/spatial_detection.py)
+dai_set_example_test_labels(spatial_detection ondevice rvc2_all rvc4 ci)
 
 ## StereoDepth
-add_python_example(depth_crop_control StereoDepth/depth_crop_control.py)
-add_python_example(depth_preview StereoDepth/depth_preview.py)
-add_python_example(depth_post_processing StereoDepth/depth_post_processing.py)
-add_python_example(rgb_depth_aligned StereoDepth/rgb_depth_aligned.py)
-add_python_example(rgb_depth_confidence_aligned StereoDepth/rgb_depth_confidence_aligned.py)
-add_python_example(stereo_depth_from_host StereoDepth/stereo_depth_from_host.py)
-add_python_example(stereo_depth_video StereoDepth/stereo_depth_video.py)
+add_python_example(stereo StereoDepth/stereo.py)
+dai_set_example_test_labels(stereo ondevice rvc2_all rvc4 ci)
 
-## SystemLogger
-add_python_example(system_information SystemLogger/system_information.py)
+#TODO(Morato)  - add the from host example when it works on both platforms
 
 ## VideoEncoder
-add_python_example(encoding_max_limit VideoEncoder/encoding_max_limit.py)
-add_python_example(rgb_encoding VideoEncoder/rgb_encoding.py)
-add_python_example(rgb_full_resolution_saver VideoEncoder/rgb_full_resolution_saver.py)
-add_python_example(rgb_mono_encoding VideoEncoder/rgb_mono_encoding.py)
+add_python_example(video_encoder VideoEncoder/video_encode.py)
+dai_set_example_test_labels(video_encoder ondevice rvc2_all rvc4 ci)
 
-## Yolo
-add_python_example(tiny_yolo_v3_device_side_decoding Yolo/tiny_yolo.py yolo3)
-add_python_example(tiny_yolo_v4_device_side_decoding Yolo/tiny_yolo.py yolo4)
+## SpatialLocationCalculator
+add_python_example(spatial_location_calculator SpatialLocationCalculator/spatial_location_calculator.py)
+dai_set_example_test_labels(spatial_location_calculator ondevice rvc2_all rvc4 ci)
 
-## AprilTag
-add_python_example(apriltag AprilTag/apriltag.py)
-add_python_example(apriltag_rgb AprilTag/apriltag_rgb.py)

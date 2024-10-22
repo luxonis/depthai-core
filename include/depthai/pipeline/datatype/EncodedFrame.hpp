@@ -3,10 +3,11 @@
 #include <chrono>
 
 #include "depthai/pipeline/datatype/Buffer.hpp"
-
+#include "depthai/schemas/EncodedFrame.pb.h"
+#include "depthai/utility/ProtoSerializable.hpp"
 namespace dai {
 
-class EncodedFrame : public Buffer {
+class EncodedFrame : public Buffer, public utility::ProtoSerializable {
    public:
     enum class Profile : std::uint8_t { JPEG, AVC, HEVC };
     enum class FrameType : std::uint8_t { I, P, B, Unknown };
@@ -173,6 +174,8 @@ class EncodedFrame : public Buffer {
      * @param profile Encoding profile
      */
     EncodedFrame& setProfile(Profile profile);
+
+    std::unique_ptr<google::protobuf::Message> getProtoMessage() const override;
 
     DEPTHAI_SERIALIZE(EncodedFrame,
                       cam,
