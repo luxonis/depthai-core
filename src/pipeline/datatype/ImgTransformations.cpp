@@ -119,50 +119,6 @@ dai::RotatedRect interSourceFrameTransform(dai::RotatedRect sourceRect, const Im
     return impl::getRotatedRectFromPoints(vPoints);
 }
 
-void ImgTransformation::calcSrcBorder() {
-    srcMinX = srcMinY = 0;
-    srcMaxX = width;
-    srcMaxY = height;
-    for(auto i = 0U; i < srcCrops.size(); ++i) {
-        auto crop = srcCrops[i];
-        const auto [minx, miny, maxx, maxy] = crop.getOuterRect();
-        srcMinX = std::max(srcMinX, (size_t)roundf(minx));
-        srcMinY = std::max(srcMinY, (size_t)roundf(miny));
-        srcMaxX = std::min(srcMaxX, (size_t)roundf(maxx));
-        srcMaxY = std::min(srcMaxY, (size_t)roundf(maxy));
-    }
-    srcMinX = std::max(srcMinX, (size_t)0U);
-    srcMinY = std::max(srcMinY, (size_t)0U);
-    srcMaxX = std::min(srcMaxX, width);
-    srcMaxY = std::min(srcMaxY, height);
-    srcBorderValid = true;
-}
-void ImgTransformation::calcDstBorder() {
-    bool first = true;
-    for(auto i = 0U; i < srcCrops.size(); ++i) {
-        auto dstCrop = transformRect(srcCrops[i]);
-        const auto [minx, miny, maxx, maxy] = dstCrop.getOuterRect();
-        if(first) {
-            dstMinX = (size_t)roundf(minx);
-            dstMinY = (size_t)roundf(miny);
-            dstMaxX = (size_t)roundf(maxx);
-            dstMaxY = (size_t)roundf(maxy);
-            first = false;
-        } else {
-            dstMinX = std::max(dstMinX, (size_t)roundf(minx));
-            dstMinY = std::max(dstMinY, (size_t)roundf(miny));
-            dstMaxX = std::min(dstMaxX, (size_t)roundf(maxx));
-            dstMaxY = std::min(dstMaxY, (size_t)roundf(maxy));
-        }
-    }
-    dstMinX = std::max(dstMinX, (size_t)0U);
-    dstMinY = std::max(dstMinY, (size_t)0U);
-    dstMaxX = std::min(dstMaxX, width);
-    dstMaxY = std::min(dstMaxY, height);
-    assert(dstMinX < dstMaxX && dstMinY < dstMaxY);
-    dstBorderValid = true;
-}
-
 dai::Point2f ImgTransformation::transformPoint(dai::Point2f point) const {
     auto transformed = matvecmul(transformationMatrix, {point.x, point.y});
     return {transformed[0], transformed[1]};
@@ -212,15 +168,6 @@ std::vector<dai::RotatedRect> ImgTransformation::getSrcCrops() const {
     return srcCrops;
 }
 bool ImgTransformation::getSrcMaskPt(size_t x, size_t y) {
-    if(srcMaskValid) {
-        return srcMask[y * width + x] != 0;
-    }
-    if(!srcBorderValid) {
-        calcSrcBorder();
-    }
-    if(x < srcMinX || x >= srcMaxX || y < srcMinY || y >= srcMaxY) {
-        return false;
-    }
     for(auto crop : srcCrops) {
         if(!isPointInRotatedRectangle({(float)x, (float)y}, crop)) {
             return false;
@@ -229,15 +176,6 @@ bool ImgTransformation::getSrcMaskPt(size_t x, size_t y) {
     return true;
 };
 bool ImgTransformation::getDstMaskPt(size_t x, size_t y) {
-    if(dstMaskValid) {
-        return dstMask[y * width + x] != 0;
-    }
-    if(!dstBorderValid) {
-        calcDstBorder();
-    }
-    if(x < dstMinX || x >= dstMaxX || y < dstMinY || y >= dstMaxY) {
-        return false;
-    }
     auto ptSrc = invTransformPoint({(float)x, (float)y});
     for(auto crop : srcCrops) {
         if(!isPointInRotatedRectangle(ptSrc, crop)) {
@@ -246,61 +184,10 @@ bool ImgTransformation::getDstMaskPt(size_t x, size_t y) {
     }
     return true;
 };
-const std::vector<uint8_t>& ImgTransformation::getSrcMask(size_t srcWidth, size_t srcHeight) {
-    if(srcMaskValid) {
-        return srcMask;
-    }
-    if(!srcBorderValid) {
-        calcSrcBorder();
-    }
-    srcMask.resize(srcWidth * srcHeight);
-    memset(srcMask.data(), 0, srcMask.size());
-    for(auto i = srcMinY; i < srcMaxY; ++i) {
-        for(auto j = srcMinX; j < srcMaxX; ++j) {
-            srcMask[i * srcWidth + j] = 255;
-            for(auto crop : srcCrops) {
-                if(!isPointInRotatedRectangle({(float)j, (float)i}, crop)) {
-                    srcMask[i * srcWidth + j] = 0;
-                    break;
-                }
-            }
-        }
-    }
-    srcMaskValid = true;
-    return srcMask;
-};
-const std::vector<uint8_t>& ImgTransformation::getDstMask() {
-    if(dstMaskValid) {
-        return dstMask;
-    }
-    if(!dstBorderValid) {
-        calcDstBorder();
-    }
-    dstMask.resize(width * height);
-    memset(dstMask.data(), 0, dstMask.size());
-    for(auto i = dstMinY; i < dstMaxY; ++i) {
-        for(auto j = dstMinX; j < dstMaxX; ++j) {
-            auto srcPoint = invTransformPoint({(float)j, (float)i});
-            if(srcPoint.x < 0 || srcPoint.x >= srcWidth || srcPoint.y < 0 || srcPoint.y >= srcHeight) {
-                continue;
-            }
-            dstMask[i * width + j] = 255;
-            for(auto crop : srcCrops) {
-                if(!isPointInRotatedRectangle(srcPoint, crop)) {
-                    dstMask[i * width + j] = 0;
-                    break;
-                }
-            }
-        }
-    }
-    dstMaskValid = true;
-    return dstMask;
-};
 
 ImgTransformation& ImgTransformation::addTransformation(std::array<std::array<float, 3>, 3> matrix) {
     transformationMatrix = matmul(matrix, transformationMatrix);
     transformationMatrixInv = getMatrixInverse(transformationMatrix);
-    srcMaskValid = dstMaskValid = srcBorderValid = dstBorderValid = false;
     return *this;
 }
 ImgTransformation& ImgTransformation::addCrop(int x, int y, int width, int height) {
@@ -317,7 +204,6 @@ ImgTransformation& ImgTransformation::addCrop(int x, int y, int width, int heigh
     }
     auto rect = impl::getRotatedRectFromPoints(srcCorners);
     srcCrops.push_back(rect);
-    srcMaskValid = dstMaskValid = srcBorderValid = dstBorderValid = false;
     return *this;
 }
 ImgTransformation& ImgTransformation::addPadding(int top, int bottom, int left, int right) {
@@ -327,7 +213,6 @@ ImgTransformation& ImgTransformation::addPadding(int top, int bottom, int left, 
         std::array<std::array<float, 3>, 3> padMatrix = {{{1, 0, (float)left}, {0, 1, (float)top}, {0, 0, 1}}};
         addTransformation(padMatrix);
     }
-    srcMaskValid = dstMaskValid = srcBorderValid = dstBorderValid = false;
     return *this;
 }
 ImgTransformation& ImgTransformation::addFlipVertical() {
@@ -337,7 +222,6 @@ ImgTransformation& ImgTransformation::addFlipVertical() {
     addTransformation(translateMatrix);
     addTransformation(flipMatrix);
     addTransformation(translateMatrixInv);
-    srcMaskValid = dstMaskValid = srcBorderValid = dstBorderValid = false;
     return *this;
 }
 ImgTransformation& ImgTransformation::addFlipHorizontal() {
@@ -347,7 +231,6 @@ ImgTransformation& ImgTransformation::addFlipHorizontal() {
     addTransformation(translateMatrix);
     addTransformation(flipMatrix);
     addTransformation(translateMatrixInv);
-    srcMaskValid = dstMaskValid = srcBorderValid = dstBorderValid = false;
     return *this;
 }
 ImgTransformation& ImgTransformation::addRotation(float angle, dai::Point2f rotationPoint) {
@@ -363,7 +246,6 @@ ImgTransformation& ImgTransformation::addRotation(float angle, dai::Point2f rota
     addTransformation(translateMatrix);
     addTransformation(rotateMatrix);
     addTransformation(translateMatrixInv);
-    srcMaskValid = dstMaskValid = srcBorderValid = dstBorderValid = false;
     return *this;
 }
 ImgTransformation& ImgTransformation::addScale(float scaleX, float scaleY) {
@@ -371,13 +253,11 @@ ImgTransformation& ImgTransformation::addScale(float scaleX, float scaleY) {
     height *= scaleY;
     std::array<std::array<float, 3>, 3> scaleMatrix = {{{scaleX, 0, 0}, {0, scaleY, 0}, {0, 0, 1}}};
     addTransformation(scaleMatrix);
-    srcMaskValid = dstMaskValid = srcBorderValid = dstBorderValid = false;
     return *this;
 }
 
 ImgTransformation& ImgTransformation::addSrcCrops(const std::vector<dai::RotatedRect>& crops) {
     srcCrops.insert(srcCrops.end(), crops.begin(), crops.end());
-    srcMaskValid = dstMaskValid = srcBorderValid = dstBorderValid = false;
     return *this;
 }
 

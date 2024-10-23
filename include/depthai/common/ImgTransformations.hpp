@@ -28,22 +28,6 @@ struct ImgTransformation {
 
     std::vector<dai::RotatedRect> srcCrops = {};
 
-    // To optimize mask calculations
-    std::vector<uint8_t> srcMask;
-    bool srcMaskValid = false;
-    size_t srcMinX = 0;
-    size_t srcMinY = 0;
-    size_t srcMaxX = 0;
-    size_t srcMaxY = 0;
-    bool srcBorderValid = false;
-    std::vector<uint8_t> dstMask;
-    bool dstMaskValid = false;
-    size_t dstMinX = 0;
-    size_t dstMinY = 0;
-    size_t dstMaxX = 0;
-    size_t dstMaxY = 0;
-    bool dstBorderValid = false;
-
     void calcSrcBorder();
     void calcDstBorder();
 
@@ -130,8 +114,6 @@ struct ImgTransformation {
 
     bool getSrcMaskPt(size_t x, size_t y);
     bool getDstMaskPt(size_t x, size_t y);
-    const std::vector<uint8_t>& getSrcMask(size_t srcWidth, size_t srcHeight);
-    const std::vector<uint8_t>& getDstMask();
 
     /**
      * Add a new transformation.
