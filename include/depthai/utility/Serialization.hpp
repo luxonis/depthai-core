@@ -3,6 +3,8 @@
 // std
 #include <cstddef>
 #include <cstdint>
+#include <nlohmann/json.hpp>
+#include <sstream>
 #include <vector>
 
 // libraries
@@ -217,6 +219,8 @@ inline bool deserialize(const std::vector<std::uint8_t>& data, T& obj) {
     return deserialize<DEFAULT_SERIALIZATION_TYPE>(data, obj);
 }
 
+std::string jsonDisplay(const nlohmann::json& json, int level = 0, int indent = 4);
+
 }  // namespace utility
 
 // // In dai scope
@@ -254,6 +258,11 @@ inline bool deserialize(const std::vector<std::uint8_t>& data, T& obj) {
     friend void from_json(const nlohmann::json& nlohmann_json_j, Type& nlohmann_json_t) {                           \
         DEPTHAI_NLOHMANN_JSON_EXPAND(DEPTHAI_NLOHMANN_JSON_PASTE(DEPTHAI_NLOHMANN_JSON_OPTIONAL_FROM, __VA_ARGS__)) \
     }
+#define DEPTHAI_DISPLAY(Type)     \
+    std::string str() const {     \
+        nlohmann::json j = *this; \
+        return dai::utility::jsonDisplay(j);    \
+    }
 
 // Macros
 #define DEPTHAI_SERIALIZE_OPTIONAL_EXT(...)                                                   \
@@ -268,6 +277,7 @@ inline bool deserialize(const std::vector<std::uint8_t>& data, T& obj) {
     DEPTHAI_DEFERRED_EXPAND(DEPTHAI_NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(__VA_ARGS__)) \
     DEPTHAI_DEFERRED_EXPAND(NOP_EXTERNAL_STRUCTURE(__VA_ARGS__))
 
-#define DEPTHAI_SERIALIZE(...)                                                   \
-    DEPTHAI_DEFERRED_EXPAND(DEPTHAI_NLOHMANN_DEFINE_TYPE_INTRUSIVE(__VA_ARGS__)) \
-    DEPTHAI_DEFERRED_EXPAND(NOP_STRUCTURE(__VA_ARGS__))
+#define DEPTHAI_SERIALIZE(Type, ...)                                                   \
+    DEPTHAI_DEFERRED_EXPAND(DEPTHAI_NLOHMANN_DEFINE_TYPE_INTRUSIVE(Type, __VA_ARGS__)) \
+    DEPTHAI_DEFERRED_EXPAND(DEPTHAI_DISPLAY(Type))                                     \
+    DEPTHAI_DEFERRED_EXPAND(NOP_STRUCTURE(Type, __VA_ARGS__))
