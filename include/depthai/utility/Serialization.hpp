@@ -258,10 +258,10 @@ std::string jsonDisplay(const nlohmann::json& json, int level = 0, int indent = 
     friend void from_json(const nlohmann::json& nlohmann_json_j, Type& nlohmann_json_t) {                           \
         DEPTHAI_NLOHMANN_JSON_EXPAND(DEPTHAI_NLOHMANN_JSON_PASTE(DEPTHAI_NLOHMANN_JSON_OPTIONAL_FROM, __VA_ARGS__)) \
     }
-#define DEPTHAI_DISPLAY(Type)     \
-    std::string str() const {     \
-        nlohmann::json j = *this; \
-        return dai::utility::jsonDisplay(j);    \
+#define DEPTHAI_DISPLAY(Type)                \
+    std::string str() const {                \
+        nlohmann::json j = *this;            \
+        return dai::utility::jsonDisplay(j); \
     }
 
 // Macros
