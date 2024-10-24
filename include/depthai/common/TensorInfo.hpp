@@ -158,7 +158,20 @@ struct TensorInfo {
     }
 
     std::size_t getTensorSize() {
-        uint32_t i;
+        uint32_t i = 0;
+
+        // Handle the edge case if all dimensions are 1
+        // In this case, the size is the size of the data type
+        bool non1dim = false;
+        for(i = 0; i < dims.size(); i++) {
+            if(dims[i] != 1) {
+                non1dim = true;
+                break;
+            }
+        }
+        if(!non1dim) {
+            return getDataTypeSize();
+        }
 
         // Use the first non zero stride
         for(i = 0; i < strides.size(); i++) {
