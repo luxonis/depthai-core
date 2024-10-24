@@ -294,14 +294,6 @@ class ImgFrame : public Buffer {
 
     /**
      * @note Fov API works correctly only on rectilinear frames
-     * Set the source horizontal field of view
-     *
-     * @param degrees field of view in degrees
-     */
-    ImgFrame& setSourceHFov(float degrees);
-
-    /**
-     * @note Fov API works correctly only on rectilinear frames
      * Get the source diagonal field of view in degrees
      *
      * @returns field of view in degrees
@@ -689,14 +681,13 @@ class ImgFrame : public Buffer {
     Specs fb = {};
     Specs sourceFb = {};
     CameraSettings cam;
-    float HFovDegrees = 0.0;   // Horizontal field of view in degrees
     uint32_t category = 0;     //
     uint32_t instanceNum = 0;  // Which source created this frame (color, mono, ...)
     dai::FrameEvent event = dai::FrameEvent::NONE;
     ImgTransformation transformation;
 
    public:
-    DEPTHAI_SERIALIZE(ImgFrame, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum, fb, sourceFb, cam, HFovDegrees, category, instanceNum, transformation);
+    DEPTHAI_SERIALIZE(ImgFrame, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum, fb, sourceFb, cam, category, instanceNum, transformation);
 };
 
 }  // namespace dai

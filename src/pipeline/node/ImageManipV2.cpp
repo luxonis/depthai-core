@@ -32,7 +32,6 @@ void ImageManipV2::run() {
             dstFrame.sequenceNum = srcFrame.sequenceNum;
             dstFrame.tsDevice = srcFrame.tsDevice;
             dstFrame.ts = srcFrame.ts;
-            dstFrame.HFovDegrees = srcFrame.HFovDegrees;
             dstFrame.category = srcFrame.category;
             dstFrame.event = srcFrame.event;
             dstFrame.fb.height = dstSpecs.height;

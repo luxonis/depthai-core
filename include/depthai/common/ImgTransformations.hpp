@@ -19,7 +19,7 @@ struct ImgTransformation {
     std::array<std::array<float, 3>, 3> transformationMatrixInv = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};  // Precomputed inverse matrix
     std::array<std::array<float, 3>, 3> sourceIntrinsicMatrix = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
     std::array<std::array<float, 3>, 3> sourceIntrinsicMatrixInv = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
-    CameraModel distortionModel;
+    CameraModel distortionModel = CameraModel::Perspective;
     std::vector<float> distortionCoefficients;
     size_t srcWidth = 0;
     size_t srcHeight = 0;
@@ -115,7 +115,13 @@ struct ImgTransformation {
     std::array<std::array<float, 3>, 3> getSourceIntrinsicMatrixInv() const;
     std::vector<dai::RotatedRect> getSrcCrops() const;
 
+    /**
+     * Returns true if the point is inside the transformed region of interest (determined by crops used).
+     */
     bool getSrcMaskPt(size_t x, size_t y);
+    /**
+     * Returns true if the point is inside the image region (not in the background region).
+     */
     bool getDstMaskPt(size_t x, size_t y);
 
     /**
