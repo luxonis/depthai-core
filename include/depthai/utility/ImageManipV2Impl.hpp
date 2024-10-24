@@ -2202,6 +2202,11 @@ inline std::array<float, 2> matvecmul(std::array<std::array<float, 3>, 3> M, std
     auto z = M[2][0] * vec[0] + M[2][1] * vec[1] + M[2][2];
     return {x / z, y / z};
 }
+inline std::array<float, 2> matvecmul(std::array<std::array<float, 2>, 2> M, std::array<float, 2> vec) {
+    auto x = M[0][0] * vec[0] + M[0][1] * vec[1];
+    auto y = M[1][0] * vec[0] + M[1][1] * vec[1];
+    return {x, y};
+}
 
 std::tuple<float, float, float, float> getOuterRect(const std::vector<std::array<float, 2>> points);
 

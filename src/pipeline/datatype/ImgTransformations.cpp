@@ -2,29 +2,32 @@
 
 #include <assert.h>
 
-#include <algorithm>
 #include <cstring>
-#include <sstream>
 
-#include "depthai/pipeline/datatype/ImageManipConfigV2.hpp"
 #include "depthai/utility/ImageManipV2Impl.hpp"
 
 namespace dai {
 
 // Function to check if a point is inside a rotated rectangle
 inline bool isPointInRotatedRectangle(const dai::Point2f& p, const dai::RotatedRect& rect) {
-    float theta = rect.angle * (float)M_PI / 180.0f;
+    auto theta = -rect.angle * (float)M_PI / 180.0f;
+    float hw = rect.size.width / 2.0f;
+    float hh = rect.size.height / 2.0f;
+    float wvx = std::cos(theta);
+    float wvy = std::sin(theta);
+    float hvx = -std::sin(theta);
+    float hvy = std::cos(theta);
 
-    float originX = rect.center.x - rect.size.width / 2.0f;
-    float originY = rect.center.y - rect.size.height / 2.0f;
+    // Translate point relative to the center of rectangle
+    float ptx = p.x - rect.center.x;
+    float pty = p.y - rect.center.y;
 
-    std::array<std::array<float, 3>, 3> mat = {{{std::cos(theta), -std::sin(theta), originX}, {std::sin(theta), std::cos(theta), originY}, {0, 0, 1}}};
-    auto matinv = impl::getInverse(mat);
+    std::array<std::array<float, 2>, 2> basis = {{{wvx, hvx}, {wvy, hvy}}};
 
-    float localX = matinv[0][0] * p.x + matinv[0][1] * p.y + matinv[0][2];
-    float localY = matinv[1][0] * p.x + matinv[1][1] * p.y + matinv[1][2];
+    // Rotate point to the rectangle's coordinate system
+    auto transformed = impl::matvecmul(basis, {ptx, pty});
 
-    return localX >= 0.0f && localX <= rect.size.width && localY >= 0.0f && localY <= rect.size.height;
+    return std::abs(transformed[0]) <= hw && std::abs(transformed[1]) <= hh;
 }
 inline bool RRinRR(const dai::RotatedRect& in, const dai::RotatedRect& out) {
     for(auto point : in.getPoints()) {
@@ -119,6 +122,36 @@ dai::RotatedRect interSourceFrameTransform(dai::RotatedRect sourceRect, const Im
     return impl::getRotatedRectFromPoints(vPoints);
 }
 
+void ImgTransformation::calcCrops() {
+    if(cropsValid) return;
+    const uint32_t inWidth = srcWidth;
+    const uint32_t inHeight = srcHeight;
+    // The following is done in ImageManip to get the source region of interest that is transformed
+    size_t sourceMinX = 0;
+    size_t sourceMaxX = inWidth;
+    size_t sourceMinY = 0;
+    size_t sourceMaxY = inHeight;
+    for(const auto& crop : srcCrops) {
+        auto corners = crop.getPoints();
+        auto [minx, maxx, miny, maxy] =
+            impl::getOuterRect({{corners[0].x, corners[0].y}, {corners[1].x, corners[1].y}, {corners[2].x, corners[2].y}, {corners[3].x, corners[3].y}});
+        minx = std::max(minx, 0.0f);
+        maxx = std::min(maxx, (float)inWidth);
+        miny = std::max(miny, 0.0f);
+        maxy = std::min(maxy, (float)inHeight);
+        sourceMinX = std::max(sourceMinX, (size_t)std::floor(minx));
+        sourceMinY = std::max(sourceMinY, (size_t)std::floor(miny));
+        sourceMaxX = std::min(sourceMaxX, (size_t)std::ceil(maxx));
+        sourceMaxY = std::min(sourceMaxY, (size_t)std::ceil(maxy));
+    }
+    srcCrop.center = {(float)(sourceMinX + sourceMaxX) / 2.0f, (float)(sourceMinY + sourceMaxY) / 2.0f};
+    srcCrop.size = {(float)(sourceMaxX - sourceMinX), (float)(sourceMaxY - sourceMinY)};
+    srcCrop.angle = 0.0f;
+    // Calculate the destination crop from the source region of interest
+    dstCrop = transformRect(srcCrop);
+    cropsValid = true;
+}
+
 dai::Point2f ImgTransformation::transformPoint(dai::Point2f point) const {
     auto transformed = matvecmul(transformationMatrix, {point.x, point.y});
     return {transformed[0], transformed[1]};
@@ -168,26 +201,18 @@ std::vector<dai::RotatedRect> ImgTransformation::getSrcCrops() const {
     return srcCrops;
 }
 bool ImgTransformation::getSrcMaskPt(size_t x, size_t y) {
-    for(auto crop : srcCrops) {
-        if(!isPointInRotatedRectangle({(float)x, (float)y}, crop)) {
-            return false;
-        }
-    }
-    return true;
+    calcCrops();
+    return isPointInRotatedRectangle({(float)x, (float)y}, srcCrop);
 };
 bool ImgTransformation::getDstMaskPt(size_t x, size_t y) {
-    auto ptSrc = invTransformPoint({(float)x, (float)y});
-    for(auto crop : srcCrops) {
-        if(!isPointInRotatedRectangle(ptSrc, crop)) {
-            return false;
-        }
-    }
-    return true;
+    calcCrops();
+    return isPointInRotatedRectangle({(float)x, (float)y}, dstCrop);
 };
 
 ImgTransformation& ImgTransformation::addTransformation(std::array<std::array<float, 3>, 3> matrix) {
     transformationMatrix = matmul(matrix, transformationMatrix);
     transformationMatrixInv = getMatrixInverse(transformationMatrix);
+    cropsValid = false;
     return *this;
 }
 ImgTransformation& ImgTransformation::addCrop(int x, int y, int width, int height) {
@@ -204,6 +229,7 @@ ImgTransformation& ImgTransformation::addCrop(int x, int y, int width, int heigh
     }
     auto rect = impl::getRotatedRectFromPoints(srcCorners);
     srcCrops.push_back(rect);
+    cropsValid = false;
     return *this;
 }
 ImgTransformation& ImgTransformation::addPadding(int top, int bottom, int left, int right) {
@@ -213,6 +239,7 @@ ImgTransformation& ImgTransformation::addPadding(int top, int bottom, int left, 
         std::array<std::array<float, 3>, 3> padMatrix = {{{1, 0, (float)left}, {0, 1, (float)top}, {0, 0, 1}}};
         addTransformation(padMatrix);
     }
+    cropsValid = false;
     return *this;
 }
 ImgTransformation& ImgTransformation::addFlipVertical() {
@@ -258,6 +285,7 @@ ImgTransformation& ImgTransformation::addScale(float scaleX, float scaleY) {
 
 ImgTransformation& ImgTransformation::addSrcCrops(const std::vector<dai::RotatedRect>& crops) {
     srcCrops.insert(srcCrops.end(), crops.begin(), crops.end());
+    cropsValid = false;
     return *this;
 }
 

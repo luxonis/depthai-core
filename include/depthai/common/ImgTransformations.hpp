@@ -26,10 +26,13 @@ struct ImgTransformation {
     size_t width = 0;
     size_t height = 0;
 
+    dai::RotatedRect srcCrop;
+    dai::RotatedRect dstCrop;
+    bool cropsValid = false;
+
     std::vector<dai::RotatedRect> srcCrops = {};
 
-    void calcSrcBorder();
-    void calcDstBorder();
+    void calcCrops();
 
    public:
     ImgTransformation() = default;
