@@ -56,7 +56,7 @@ TEST_CASE("Multi-Input NeuralNetwork API") {
     auto inputType = dai::ImgFrame::Type::RGB888p;
     if(platform == dai::Platform::RVC2 || platform == dai::Platform::RVC3) {
         inputType = dai::ImgFrame::Type::BGR888p;
-    } else if (platform == dai::Platform::RVC4) {
+    } else if(platform == dai::Platform::RVC4) {
         inputType = dai::ImgFrame::Type::BGR888i;
     } else {
         FAIL("Unknown platform");
@@ -69,10 +69,9 @@ TEST_CASE("Multi-Input NeuralNetwork API") {
     cameraInput->link(nn->inputs["image1"]);
     auto lennaInputQueue = nn->inputs["image2"].createInputQueue();
 
-
     // Load and prepare Lenna image (assuming path provided in a macro IMAGE_PATH)
     cv::Mat lenaImage = cv::imread(LENNA_PATH, cv::IMREAD_COLOR);
-    REQUIRE(!lenaImage.empty()); // Ensure the image is loaded correctly
+    REQUIRE(!lenaImage.empty());  // Ensure the image is loaded correctly
     cv::resize(lenaImage, lenaImage, cv::Size(256, 256));
 
     // Convert the image to dai::ImgFrame
@@ -81,7 +80,6 @@ TEST_CASE("Multi-Input NeuralNetwork API") {
 
     // Create output queue
     auto outputQueue = nn->out.createOutputQueue();
-
 
     // Reuse the second input image to avoid sending every time
     nn->inputs["image2"].setReusePreviousMessage(true);
@@ -93,7 +91,7 @@ TEST_CASE("Multi-Input NeuralNetwork API") {
     lennaInputQueue->send(daiLenaImage);
 
     // Process output for 10 tensors and verify results
-    for (int i = 0; i < 10; i++) {
+    for(int i = 0; i < 10; i++) {
         auto tensor = outputQueue->get<dai::NNData>();
 
         REQUIRE(tensor != nullptr);

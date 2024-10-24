@@ -39,7 +39,8 @@ std::string jsonDisplay(const nlohmann::json& json, int level, int indent) {
             break;
         case nlohmann::detail::value_t::array: {
             auto elements = json.get<std::vector<nlohmann::json>>();
-            if(elements.empty()) ss << "[ ]";
+            if(elements.empty())
+                ss << "[ ]";
             else {
                 ss << '[';
                 for(const auto& el : elements) {
