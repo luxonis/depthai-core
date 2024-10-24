@@ -2,22 +2,20 @@
 import cv2
 import depthai as dai
 import numpy as np
-import requests
-import time
+from pathlib import Path
 
 # API of the Hub team with test DAI models
 API_KEY = "tapi.RKIViXv_2poidTBST5CSAQ.fdj2dDGH6gADEIsowwAvjFIvgY2fa2Rj5bmhADXrdXpPOBS_eGdHGM2GcaEhhESFlYip_9mFb0BRqQ-fP3gy1A"
 
 
-# Get the Lenna image
-url = "https://upload.wikimedia.org/wikipedia/en/7/7d/Lenna_%28test_image%29.png"
-
-# Download the image from the web
-response = requests.get(url)
-image_array = np.asarray(bytearray(response.content), dtype=np.uint8)
+# Get the absolute path of the current script's directory
+script_dir = Path(__file__).resolve().parent
+examplesRoot = (script_dir / Path('../')).resolve()  # This resolves the parent directory correctly
+models = examplesRoot / 'models'
+tagImage = models / 'april_tags.jpg'
 
 # Decode the image using OpenCV
-lenaImage = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
+lenaImage = cv2.imread(str(tagImage.resolve()))
 lenaImage = cv2.resize(lenaImage, (256, 256))
 lenaImage = cv2.cvtColor(lenaImage, cv2.COLOR_BGR2RGB)
 lenaImage = np.array(lenaImage)
