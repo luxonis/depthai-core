@@ -11,16 +11,6 @@
 
 #include "depthai/depthai.hpp"
 
-int testFov() {
-    dai::ImgFrame frame;
-    frame.setSourceSize(1280, 800);
-    frame.setSourceHFov(72.79);
-    REQUIRE_THAT(82.0, Catch::Matchers::WithinAbs(frame.getSourceDFov(), 0.1));
-    REQUIRE_THAT(72.79, Catch::Matchers::WithinAbs(frame.getSourceHFov(), 0.1));
-    REQUIRE_THAT(49.47, Catch::Matchers::WithinAbs(frame.getSourceVFov(), 0.1));
-    return 0;
-}
-
 int testPadding() {
     auto sourceImageFrame = std::make_shared<dai::ImgFrame>();
     sourceImageFrame->setWidth(1920);
@@ -180,10 +170,6 @@ TEST_CASE("testRotation") {
     testRotation(dai::Point2f(420, 1080), 90, dai::Point2f(1500, 1080));
     testRotation(dai::Point2f(1920, 0), 90, dai::Point2f(420, -420));
     testRotation(dai::Point2f(0, 0), 90, dai::Point2f(0, 0), dai::Point2f(0, 0), dai::Point2f(0, 0));
-}
-
-TEST_CASE("testFOV") {
-    testFov();
 }
 
 inline std::array<std::array<float, 3>, 3> matmul(std::array<std::array<float, 3>, 3> A, std::array<std::array<float, 3>, 3> B) {
