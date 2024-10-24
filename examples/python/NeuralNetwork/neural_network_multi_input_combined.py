@@ -12,7 +12,7 @@ API_KEY = "tapi.RKIViXv_2poidTBST5CSAQ.fdj2dDGH6gADEIsowwAvjFIvgY2fa2Rj5bmhADXrd
 script_dir = Path(__file__).resolve().parent
 examplesRoot = (script_dir / Path('../')).resolve()  # This resolves the parent directory correctly
 models = examplesRoot / 'models'
-tagImage = models / 'april_tags.jpg'
+tagImage = models / 'lenna.png'
 
 # Decode the image using OpenCV
 lenaImage = cv2.imread(str(tagImage.resolve()))
