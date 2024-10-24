@@ -15,6 +15,10 @@ ImageManipConfigV2& ImageManipConfigV2::addCrop(uint32_t x, uint32_t y, uint32_t
     base.crop(x, y, w, h);
     return *this;
 }
+ImageManipConfigV2& ImageManipConfigV2::addCrop(dai::Rect rect, bool normalizedCoords) {
+    base.crop(rect.x, rect.y, rect.width, rect.height, normalizedCoords);
+    return *this;
+}
 ImageManipConfigV2& ImageManipConfigV2::addCropRotatedRect(dai::RotatedRect rotatedRect, bool normalizedCoords) {
     base.rotateDegrees(-rotatedRect.angle);
     base.crop(rotatedRect.center.x - rotatedRect.size.width / 2,

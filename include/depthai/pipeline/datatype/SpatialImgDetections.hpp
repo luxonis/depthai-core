@@ -4,7 +4,9 @@
 #include <unordered_map>
 #include <vector>
 
+#include "depthai/common/ImgTransformations.hpp"
 #include "depthai/common/Point3f.hpp"
+#include "depthai/common/optional.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
 #include "depthai/pipeline/datatype/SpatialLocationCalculatorConfig.hpp"
@@ -39,12 +41,13 @@ class SpatialImgDetections : public Buffer {
      * Detection results.
      */
     std::vector<SpatialImgDetection> detections;
+    std::optional<ImgTransformation> transformation;
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
         metadata = utility::serialize(*this);
         datatype = DatatypeEnum::SpatialImgDetections;
     };
 
-    DEPTHAI_SERIALIZE(SpatialImgDetections, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, detections);
+    DEPTHAI_SERIALIZE(SpatialImgDetections, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, detections, transformation);
 };
 
 }  // namespace dai

@@ -46,7 +46,8 @@ void bind_imagemanipconfigv2(pybind11::module& m, void* pCallstack) {
         .def("__repr__", &ImageManipConfigV2::str)
         // New API Setters
         .def("clearOps", &ImageManipConfigV2::clearOps, DOC(dai, ImageManipConfigV2, clearOps))
-        .def("addCrop", &ImageManipConfigV2::addCrop, py::arg("x"), py::arg("y"), py::arg("w"), py::arg("h"), DOC(dai, ImageManipConfigV2, addCrop))
+        .def("addCrop", static_cast<ImageManipConfigV2& (ImageManipConfigV2::*)(uint32_t, uint32_t, uint32_t, uint32_t)>(&ImageManipConfigV2::addCrop), py::arg("x"), py::arg("y"), py::arg("w"), py::arg("h"), DOC(dai, ImageManipConfigV2, addCrop))
+        .def("addCrop", static_cast<ImageManipConfigV2& (ImageManipConfigV2::*)(dai::Rect, bool)>(&ImageManipConfigV2::addCrop), py::arg("rect"), py::arg("normalizedCoords"), DOC(dai, ImageManipConfigV2, addCrop))
         .def("addCropRotatedRect",
              &ImageManipConfigV2::addCropRotatedRect,
              py::arg("rect"),
