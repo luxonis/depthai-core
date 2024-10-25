@@ -125,29 +125,29 @@ EventsManager::EventsManager(std::string url, bool uploadCachedOnStart, float pu
 }
 
 EventsManager::~EventsManager() {
-	eventBufferThread->join();
+    eventBufferThread->join();
 }
 
 void EventsManager::sendEventBuffer() {
     auto batchEvent = std::make_unique<proto::event::BatchUploadEvents>();
-	{
-    std::lock_guard<std::mutex> lock(eventBufferMutex);
-    if(eventBuffer.empty()) {
-        return;
-    }
-    if(!checkConnection()) {
-        if(cacheIfCannotSend) {
-            cacheEvents();
+    {
+        std::lock_guard<std::mutex> lock(eventBufferMutex);
+        if(eventBuffer.empty()) {
+            return;
         }
-        return;
+        if(!checkConnection()) {
+            if(cacheIfCannotSend) {
+                cacheEvents();
+            }
+            return;
+        }
+        // Create request
+        cpr::Url url = static_cast<cpr::Url>(this->url + "/v1/events");
+        for(auto& eventM : eventBuffer) {
+            auto& event = eventM->event;
+            batchEvent->add_events()->Swap(event.get());
+        }
     }
-    // Create request
-    cpr::Url url = static_cast<cpr::Url>(this->url + "/v1/events");
-    for(auto& eventM : eventBuffer) {
-        auto& event = eventM->event;
-        batchEvent->add_events()->Swap(event.get());
-    }
-	}
     std::string serializedEvent;
     batchEvent->SerializeToString(&serializedEvent);
     cpr::Response r = cpr::Post(url, cpr::Header{{"Authorization", "Bearer " + token}}, cpr::Body(serializedEvent), cpr::VerifySsl(verifySsl));
@@ -180,7 +180,7 @@ void EventsManager::sendEventBuffer() {
     }
 }
 
-void EventsManager::sendEvent(const std::string& name,
+bool EventsManager::sendEvent(const std::string& name,
                               const std::shared_ptr<ImgFrame>& imgFrame,
                               std::vector<std::shared_ptr<EventData>> data,
                               const std::vector<std::string>& tags,
@@ -217,10 +217,12 @@ void EventsManager::sendEvent(const std::string& name,
         eventBuffer.push_back(std::move(eventMessage));
     } else {
         logger::warn("Event buffer is full, dropping event");
+        return false;
     }
+    return true;
 }
 
-void EventsManager::sendSnap(const std::string& name,
+bool EventsManager::sendSnap(const std::string& name,
                              const std::shared_ptr<ImgFrame>& imgFrame,
                              std::vector<std::shared_ptr<EventData>> data,
                              const std::vector<std::string>& tags,
@@ -232,25 +234,29 @@ void EventsManager::sendSnap(const std::string& name,
     bool send = false;
     if(imgFrame != nullptr && !data.empty()) {
         logger::error("For sending snap, provide either imgFrame or single image in data list, not both. Use sendEvent for multiple files");
+        return false;
     } else if(imgFrame == nullptr && data.empty()) {
         logger::error("No image or data provided");
+        return false;
     } else if(imgFrame == nullptr && !data.empty()) {
         if(data.size() > 1) {
             logger::error("More than one file provided in data. For sendings snaps, only one image file is allowed. Use sendEvent for multiple files");
+            return false;
         }
         if(data[0]->mimeType == "image/jpeg" || data[0]->mimeType == "image/png" || data[0]->mimeType == "image/webp") {
             send = true;
         }
-		if(send == false) {
-			logger::error("Only image files are allowed for snaps");
-		}
+        if(send == false) {
+            logger::error("Only image files are allowed for snaps");
+            return false;
+        }
     } else {
         send = true;
     }
     if(send) {
-        sendEvent(name, imgFrame, data, tagsTmp, extraData, deviceSerialNo);
+        return sendEvent(name, imgFrame, data, tagsTmp, extraData, deviceSerialNo);
     }
-    return;
+    return false;
 }
 
 void EventsManager::sendFile(const std::shared_ptr<EventData>& file, const std::string& url) {
@@ -281,7 +287,7 @@ void EventsManager::sendFile(const std::shared_ptr<EventData>& file, const std::
 void EventsManager::cacheEvents() {
     logger::info("Caching events");
     // for each event, create a unique directory, save protobuf message and associated files
-	std::lock_guard<std::mutex> lock(eventBufferMutex);
+    std::lock_guard<std::mutex> lock(eventBufferMutex);
     for(auto& eventM : eventBuffer) {
         auto& event = eventM->event;
         auto& data = eventM->data;
@@ -325,7 +331,7 @@ void EventsManager::uploadCachedData() {
                     data.push_back(fileData);
                 }
             }
-			std::lock_guard<std::mutex> lock(eventBufferMutex);
+            std::lock_guard<std::mutex> lock(eventBufferMutex);
             eventBuffer.push_back(std::make_unique<EventMessage>(EventMessage{std::make_shared<proto::event::Event>(event), data, eventDir}));
         }
     }
@@ -414,7 +420,7 @@ void EventsManager::setVerifySsl(bool verifySsl) {
     this->verifySsl = verifySsl;
 }
 void EventsManager::setCacheIfCannotSend(bool cacheIfCannotSend) {
-	this->cacheIfCannotSend = cacheIfCannotSend;
+    this->cacheIfCannotSend = cacheIfCannotSend;
 }
 }  // namespace utility
 }  // namespace dai

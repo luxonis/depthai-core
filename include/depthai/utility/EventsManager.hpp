@@ -45,9 +45,9 @@ class EventsManager {
      * @param tags List of tags to send
      * @param extraData Extra data to send
      * @param deviceSerialNo Device serial number
-     * @return void
+     * @return bool
      */
-    void sendEvent(const std::string& name,
+    bool sendEvent(const std::string& name,
                    const std::shared_ptr<ImgFrame>& imgFrame = nullptr,
                    std::vector<std::shared_ptr<EventData>> data = {},
                    const std::vector<std::string>& tags = {},
@@ -61,9 +61,9 @@ class EventsManager {
      * @param tags List of tags to send
      * @param extraData Extra data to send
      * @param deviceSerialNo Device serial number
-     * @return void
+     * @return bool
      */
-    void sendSnap(const std::string& name,
+    bool sendSnap(const std::string& name,
                   const std::shared_ptr<ImgFrame>& imgFrame = nullptr,
                   std::vector<std::shared_ptr<EventData>> data = {},
                   const std::vector<std::string>& tags = {},
