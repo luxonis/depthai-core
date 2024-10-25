@@ -182,7 +182,8 @@ dai_set_example_test_labels(spatial_detection ondevice rvc2_all rvc4 ci)
 add_python_example(stereo StereoDepth/stereo.py)
 dai_set_example_test_labels(stereo ondevice rvc2_all rvc4 ci)
 
-#TODO(Morato)  - add the from host example when it works on both platforms
+add_python_example(stereo_depth_from_host StereoDepth/stereo_depth_from_host.py)
+dai_set_example_test_labels(stereo_depth_from_host ondevice rvc2_all rvc4 ci)
 
 ## VideoEncoder
 add_python_example(video_encoder VideoEncoder/video_encode.py)
