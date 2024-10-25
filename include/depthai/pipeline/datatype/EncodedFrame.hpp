@@ -2,6 +2,7 @@
 
 #include <chrono>
 
+#include "depthai/common/ImgTransformations.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 
 namespace dai {
@@ -34,6 +35,8 @@ class EncodedFrame : public Buffer {
 
     uint32_t frameOffset = 0;
     uint32_t frameSize = 0;
+
+    ImgTransformation transformation;
 
     virtual ~EncodedFrame() = default;
 
@@ -186,6 +189,7 @@ class EncodedFrame : public Buffer {
                       type,
                       frameOffset,
                       frameSize,
+                      transformation,
                       Buffer::sequenceNum,
                       Buffer::ts,
                       Buffer::tsDevice);
