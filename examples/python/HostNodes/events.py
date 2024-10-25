@@ -10,15 +10,10 @@ import time
 # Create pipeline
 with dai.Pipeline() as pipeline:
     # Define sources and outputs
-    camRgb = pipeline.create(dai.node.ColorCamera)
+    camRgb = pipeline.create(dai.node.Camera)
     # Properties
-    camRgb.setResolution(dai.ColorCameraProperties.SensorResolution.THE_1080_P)
-    camRgb.setInterleaved(False)
-    camRgb.setColorOrder(dai.ColorCameraProperties.ColorOrder.BGR)
-    camRgb.setFps(15)
 
-
-    qRgb = camRgb.preview.createOutputQueue()
+    qRgb = camRgb.requestOutput((256,256)).createOutputQueue()
 
     eventMan = dai.EventsManager()
     eventMan.setLogResponse(True)
