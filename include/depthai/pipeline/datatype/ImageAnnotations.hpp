@@ -17,7 +17,7 @@ struct CircleAnnotation {
 
 DEPTHAI_SERIALIZE_EXT(CircleAnnotation, position, diameter, thickness, fillColor, outlineColor);
 
-enum class PointsAnnotationType : std::uint8_t { UNKNOWN = 0, POINTS = 1, LINE_LOOP = 2, LINE_STRIP = 4, LINE_LIST = 4 };
+enum class PointsAnnotationType : std::uint8_t { UNKNOWN = 0, POINTS = 1, LINE_LOOP = 2, LINE_STRIP = 3, LINE_LIST = 4 };
 
 struct PointsAnnotation {
     PointsAnnotationType type;
