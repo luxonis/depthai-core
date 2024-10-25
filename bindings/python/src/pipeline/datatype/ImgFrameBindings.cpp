@@ -1,6 +1,7 @@
 #include "DatatypeBindings.hpp"
 #include "depthai/common/RotatedRect.hpp"
 #include "pipeline/CommonBindings.hpp"
+#include <cstddef>
 #include <unordered_map>
 #include <memory>
 // depthai
@@ -114,9 +115,26 @@ void bind_imgframe(pybind11::module& m, void* pCallstack){
         .def_readwrite("p3Offset", &ImgFrame::Specs::p3Offset)
         ;
 
-    imgTransformation
-        .def(py::init<>())
-        .def(py::init<size_t, size_t>())
+    imgTransformation.def(py::init<>(), DOC(dai, ImgTransformation, ImgTransformation))
+        .def(py::init<size_t, size_t>(), py::arg("width"), py::arg("height"), DOC(dai, ImgTransformation, ImgTransformation, 2))
+        .def(py::init<size_t, size_t, size_t, size_t>(),
+             py::arg("srcWidth"),
+             py::arg("srcHeight"),
+             py::arg("width"),
+             py::arg("height"),
+             DOC(dai, ImgTransformation, ImgTransformation, 3))
+        .def(py::init<size_t, size_t, std::array<std::array<float, 3>, 3>>(),
+             py::arg("width"),
+             py::arg("height"),
+             py::arg("sourceIntrinsicMatrix"),
+             DOC(dai, ImgTransformation, ImgTransformation, 4))
+        .def(py::init<size_t, size_t, std::array<std::array<float, 3>, 3>, CameraModel, std::vector<float>>(),
+             py::arg("width"),
+             py::arg("height"),
+             py::arg("sourceIntrinsicMatrix"),
+             py::arg("distortionModel"),
+             py::arg("distortionCoefficients"),
+             DOC(dai, ImgTransformation, ImgTransformation, 5))
         .def("__repr__", &ImgTransformation::str)
         .def("transformPoint", &ImgTransformation::transformPoint, py::arg("point"), DOC(dai, ImgTransformation, transformPoint))
         .def("transformRect", &ImgTransformation::transformRect, py::arg("rect"), DOC(dai, ImgTransformation, transformRect))
@@ -124,10 +142,11 @@ void bind_imgframe(pybind11::module& m, void* pCallstack){
         .def("invTransformRect", &ImgTransformation::invTransformRect, py::arg("rect"), DOC(dai, ImgTransformation, invTransformRect))
         .def("getSize", &ImgTransformation::getSize, DOC(dai, ImgTransformation, getSize))
         .def("getSourceSize", &ImgTransformation::getSourceSize, DOC(dai, ImgTransformation, getSourceSize))
-        .def("getMatrix", &ImgTransformation::getMatrix, DOC(dai, ImgTransformation, getMatrix))
-        .def("getMatrixInv", &ImgTransformation::getMatrixInv, DOC(dai, ImgTransformation, getMatrixInv))
-        .def("getSourceIntrinsicMatrix", &ImgTransformation::getSourceIntrinsicMatrix, DOC(dai, ImgTransformation, getSourceIntrinsicMatrix))
-        .def("getSourceIntrinsicMatrixInv", &ImgTransformation::getSourceIntrinsicMatrixInv, DOC(dai, ImgTransformation, getSourceIntrinsicMatrixInv))
+        // TODO(Morato) - docstrings don't get generated
+        .def("getMatrix", &ImgTransformation::getMatrix)
+        .def("getMatrixInv", &ImgTransformation::getMatrixInv)
+        .def("getSourceIntrinsicMatrix", &ImgTransformation::getSourceIntrinsicMatrix)
+        .def("getSourceIntrinsicMatrixInv", &ImgTransformation::getSourceIntrinsicMatrixInv)
         .def("addTransformation", &ImgTransformation::addTransformation, py::arg("matrix"), DOC(dai, ImgTransformation, addTransformation))
         .def("addCrop", &ImgTransformation::addCrop, py::arg("x"), py::arg("y"), py::arg("width"), py::arg("height"), DOC(dai, ImgTransformation, addCrop))
         .def("addPadding", &ImgTransformation::addPadding, py::arg("x"), py::arg("y"), py::arg("width"), py::arg("height"), DOC(dai, ImgTransformation, addPadding))
