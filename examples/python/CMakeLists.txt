@@ -40,6 +40,7 @@ function(add_python_example example_name python_script_path)
         # Python path (to find compiled module)
         "PYTHONPATH=$<TARGET_FILE_DIR:${TARGET_NAME}>${SYS_PATH_SEPARATOR}$ENV{PYTHONPATH}"
         "DEPTHAI_SEARCH_TIMEOUT=15000"
+        "DEPTHAI_RECONNECT_TIMEOUT=0"
         # ASAN in case of sanitizers
         "${ASAN_ENVIRONMENT_VARS}"
         # Example
@@ -59,6 +60,7 @@ function(add_python_example example_name python_script_path)
             # Python path (to find compiled module)
             "PYTHONPATH=$<TARGET_FILE_DIR:${TARGET_NAME}>${SYS_PATH_SEPARATOR}$ENV{PYTHONPATH}"
             "DEPTHAI_SEARCH_TIMEOUT=30000"
+            "DEPTHAI_RECONNECT_TIMEOUT=0"
             # ASAN in case of sanitizers
             ${ASAN_ENVIRONMENT_VARS}
             ${CMAKE_COMMAND} -DFORCE_TIMEOUT_SECONDS=45 -P ${CMAKE_CURRENT_LIST_DIR}/../cpp/cmake/ExecuteTestTimeout.cmake

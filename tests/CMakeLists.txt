@@ -17,6 +17,7 @@ set(test_env
     "UBSAN_OPTIONS=halt_on_error=1"
     # DepthAI
     "DEPTHAI_SEARCH_TIMEOUT=15000"
+    "DEPTHAI_RECONNECT_TIMEOUT=0"
     )
 
 include(CMakeParseArguments)
