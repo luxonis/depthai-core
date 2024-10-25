@@ -369,3 +369,7 @@ dai_set_test_labels(message_group_frame_test ondevice rvc4 ci)
 # Regression tests for encountered bugs
 dai_add_test(regression_camera_concurrency_test src/ondevice_tests/regression/camera_concurrency.cpp)
 dai_set_test_labels(regression_camera_concurrency_test ondevice rvc4 ci)
+
+# Sync test
+dai_add_test(sync_test src/ondevice_tests/pipeline/node/sync_test.cpp)
+dai_set_test_labels(sync_test ondevice rvc2_all rvc4 ci)
