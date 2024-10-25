@@ -20,7 +20,7 @@ bool isIdentity(const std::array<std::array<float, 3>, 3>& mat) {
 
 TEST_CASE("ImgTransformation in ImgFrame") {
     dai::Pipeline pipeline;
-    auto cam = pipeline.create<dai::node::Camera>();
+    auto cam = pipeline.create<dai::node::Camera>()->build();
     auto camOut = cam->requestOutput({1300, 200}, dai::ImgFrame::Type::NV12);
     auto q = camOut->createOutputQueue();
     pipeline.start();
