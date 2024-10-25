@@ -168,25 +168,29 @@ struct ImgTransformation {
     ImgTransformation& addSrcCrops(const std::vector<dai::RotatedRect>& crops);
 
     /**
-     * Remap a point from this transformation to another. If the intrinsics are different (e.g. different camera), the function will also use the intrinsics to remap the point.
+     * Remap a point from this transformation to another. If the intrinsics are different (e.g. different camera), the function will also use the intrinsics to
+     * remap the point.
      * @param to Transformation to remap to
      * @param point Point to remap
      */
     dai::Point2f remapPointTo(const ImgTransformation& to, dai::Point2f point) const;
     /**
-     * Remap a point to this transformation from another. If the intrinsics are different (e.g. different camera), the function will also use the intrinsics to remap the point.
+     * Remap a point to this transformation from another. If the intrinsics are different (e.g. different camera), the function will also use the intrinsics to
+     * remap the point.
      * @param from Transformation to remap from
      * @param point Point to remap
      */
     dai::Point2f remapPointFrom(const ImgTransformation& from, dai::Point2f point) const;
     /**
-     * Remap a rotated rect from this transformation to another. If the intrinsics are different (e.g. different camera), the function will also use the intrinsics to remap the rect.
+     * Remap a rotated rect from this transformation to another. If the intrinsics are different (e.g. different camera), the function will also use the
+     * intrinsics to remap the rect.
      * @param to Transformation to remap to
      * @param rect RotatedRect to remap
      */
     dai::RotatedRect remapRectTo(const ImgTransformation& to, dai::RotatedRect rect) const;
     /**
-     * Remap a rotated rect to this transformation from another. If the intrinsics are different (e.g. different camera), the function will also use the intrinsics to remap the rect.
+     * Remap a rotated rect to this transformation from another. If the intrinsics are different (e.g. different camera), the function will also use the
+     * intrinsics to remap the rect.
      * @param from Transformation to remap from
      * @param point RotatedRect to remap
      */

@@ -3,8 +3,8 @@
 #include <vector>
 
 #include "depthai/common/ImgTransformations.hpp"
-#include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/common/optional.hpp"
+#include "depthai/pipeline/datatype/Buffer.hpp"
 
 namespace dai {
 

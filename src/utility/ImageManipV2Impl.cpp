@@ -1086,4 +1086,3 @@ dai::RotatedRect dai::impl::getRotatedRectFromPoints(const std::vector<std::arra
     rect.angle = std::atan2(rrCorners[1][1] - rrCorners[0][1], rrCorners[1][0] - rrCorners[0][0]) * 180.0f / (float)M_PI;
     return rect;
 }
-

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <spdlog/async_logger.h>
+
 #include <chrono>
 #include <unordered_map>
 #include <vector>
