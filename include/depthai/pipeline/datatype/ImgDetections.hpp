@@ -2,7 +2,10 @@
 
 #include <vector>
 
+#include "depthai/common/ImgTransformations.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
+#include "depthai/common/optional.hpp"
+
 namespace dai {
 
 struct ImgDetection {
@@ -29,13 +32,14 @@ class ImgDetections : public Buffer {
 
     /// Detections
     std::vector<ImgDetection> detections;
+    std::optional<ImgTransformation> transformation;
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
         metadata = utility::serialize(*this);
         datatype = DatatypeEnum::ImgDetections;
     };
 
-    DEPTHAI_SERIALIZE(ImgDetections, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, detections);
+    DEPTHAI_SERIALIZE(ImgDetections, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, detections, transformation);
 };
 
 }  // namespace dai
