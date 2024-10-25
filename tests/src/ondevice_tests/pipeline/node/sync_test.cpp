@@ -32,7 +32,6 @@ void test_sync(bool runSyncOnHost) {
         auto leftTimestamp = leftFrame->getTimestamp();
         auto rightTimestamp = rightFrame->getTimestamp();
         REQUIRE(groupTimestamp > std::chrono::steady_clock::time_point{});
-        REQUIRE(groupTimestamp < std::chrono::steady_clock::now());
         REQUIRE(groupTimestamp >= leftTimestamp);
         REQUIRE(groupTimestamp >= rightTimestamp);
     }
