@@ -1,16 +1,11 @@
-#define _USE_MATH_DEFINES
 #include "depthai/common/ImgTransformations.hpp"
 
 #include <assert.h>
-#include <math.h>
 
 #include <cstring>
 
 #include "depthai/utility/ImageManipV2Impl.hpp"
 
-#ifndef M_PI
-    #define M_PI 3.14159265358979323846
-#endif
 namespace dai {
 
 // Function to check if a point is inside a rotated rectangle
