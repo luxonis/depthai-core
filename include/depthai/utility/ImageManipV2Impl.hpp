@@ -1,7 +1,9 @@
 #pragma once
+#define _USE_MATH_DEFINES
 
 #include <spdlog/async_logger.h>
 #include <stdint.h>
+#include <cmath>
 
 #include <depthai/pipeline/datatype/ImageManipConfigV2.hpp>
 #include <depthai/pipeline/datatype/ImgFrame.hpp>
@@ -25,6 +27,10 @@
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     #define DEPTHAI_IMAGEMANIPV2_OPENCV 1
     #include <opencv2/opencv.hpp>
+#endif
+
+#ifndef M_PI
+    #define M_PI 3.14159265358979323846
 #endif
 
 namespace dai {
