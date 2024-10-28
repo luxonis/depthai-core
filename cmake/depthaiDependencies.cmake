@@ -9,16 +9,10 @@ if(CONFIG_MODE)
     set(_QUIET "QUIET")
 else()
     set(DEPTHAI_SHARED_LIBS ${BUILD_SHARED_LIBS})
-    hunter_add_package(nlohmann_json)
-    if(NOT DEPTHAI_XLINK_LOCAL)
-        hunter_add_package(XLink)
-    endif()
     hunter_add_package(BZip2)
 	hunter_add_package(FP16)
     hunter_add_package(libarchive-luxonis)
-    hunter_add_package(spdlog)
     hunter_add_package(lz4-luxonis)
-    hunter_add_package(httplib)
     hunter_add_package(mp4v2)
     if(DEPTHAI_ENABLE_CURL)
         hunter_add_package(CURL)
@@ -48,6 +42,8 @@ if(NOT CONFIG_MODE OR (CONFIG_MODE AND NOT DEPTHAI_SHARED_LIBS))
     # libarchive for firmware packages
     find_package(archive_static ${_QUIET} CONFIG REQUIRED)
     find_package(lzma ${_QUIET} CONFIG REQUIRED)
+    # httplib for Gate communication
+    find_package(httplib ${_QUIET} CONFIG REQUIRED)
     # ZLIB for compressing Apps
     find_package(ZLIB CONFIG REQUIRED)
     find_package(lz4 CONFIG REQUIRED)
@@ -55,8 +51,6 @@ if(NOT CONFIG_MODE OR (CONFIG_MODE AND NOT DEPTHAI_SHARED_LIBS))
     # spdlog for library and device logging
     find_package(spdlog ${_QUIET} CONFIG REQUIRED)
 
-    # httplib for Gate communication
-    find_package(httplib ${_QUIET} CONFIG REQUIRED)
     # Log collection dependencies
     if(DEPTHAI_ENABLE_CURL)
         find_package(CURL ${_QUIET} CONFIG REQUIRED)

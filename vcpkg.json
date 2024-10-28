@@ -3,9 +3,15 @@
 	"dependencies": [
 		"websocketpp",
 		"protobuf",
+		"openssl",
 		"libpng",
 		"tiff",
-		"yaml-cpp"
+		"yaml-cpp",
+		"nlohmann-json",
+		"spdlog",
+		"xlink",
+		"httplib",
+		"zlib"
 	],
 	"features": {
 		"rtabmap": {
@@ -27,10 +33,4 @@
 		}
 	},
 	"builtin-baseline": "f5ec6f30ff70f04f841436a0f36600bdbabfcfbf"
-  "dependencies": [
-    "websocketpp",
-    "protobuf",
-    "openssl"
-  ],
-  "builtin-baseline": "f5ec6f30ff70f04f841436a0f36600bdbabfcfbf"
 }

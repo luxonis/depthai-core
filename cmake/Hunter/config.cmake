@@ -1,22 +1,3 @@
-# hunter_config(
-#     nlohmann_json
-#     VERSION "3.9.1"
-#     URL "https://github.com/nlohmann/json/archive/v3.9.1.tar.gz"
-#     SHA1 "f8a20a7e19227906d77de0ede97468fbcfea03e7"
-# )
-hunter_config(
-    nlohmann_json
-    VERSION "3.9.1"
-)
-
-hunter_config(
-    XLink
-    VERSION "luxonis-develop-server"
-    URL "https://github.com/luxonis/XLink/archive/585a38fe4707e5f023de277135d8cb6ff9c4e0c4.tar.gz"
-    SHA1 "d82827dec8b6f2702f4b31d8186fd70265cd0ca4"
-    CMAKE_ARGS
-        XLINK_ENABLE_LIBUSB=${DEPTHAI_ENABLE_LIBUSB}
-)
 
 hunter_config(
     BZip2
@@ -112,13 +93,6 @@ hunter_config(
     SHA1 "4c308576c856a43dc88949a8f64ef90ebf94ae1b"
 )
 
-# ZLib - Luxonis fix for alias on imported target for old CMake versions
-hunter_config(
-    ZLIB
-    VERSION "1.2.11-p2"
-    URL "https://github.com/luxonis/zlib/archive/refs/tags/v1.2.11-p2.tar.gz"
-    SHA1 "fb8b6486183b13a86040f793a939b128f6d27095"
-)
 
 # LZ4 for mcap
 hunter_config(
