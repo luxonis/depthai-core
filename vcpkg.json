@@ -1,16 +1,30 @@
 {
-  "dependencies": [
-    "websocketpp",
-    "protobuf",
-	{
-	"name": "rtabmap",
-	"default-features": false
-		},
+	"name": "depthai",
+	"dependencies": [
+		"websocketpp",
+		"protobuf",
 		"libpng",
 		"tiff",
-		"yaml-cpp",
-		"apriltag",
-		"fp16"
-  ],
-  "builtin-baseline": "f5ec6f30ff70f04f841436a0f36600bdbabfcfbf"
+		"yaml-cpp"
+	],
+	"features": {
+		"rtabmap": {
+			"description": "Enable RTAB-Map support",
+			"dependencies": [
+				{
+					"name": "rtabmap",
+					"default-features": false
+				}
+			]
+		},
+		"apriltag": {
+			"description": "Enable AprilTag support",
+			"dependencies": [
+				{
+					"name": "apriltag"
+				}
+			]
+		}
+	},
+	"builtin-baseline": "f5ec6f30ff70f04f841436a0f36600bdbabfcfbf"
 }

@@ -1,4 +1,18 @@
 cmake_minimum_required(VERSION 3.4) # For Hunter
+# Build AprilTag node code (note, that even if set to OFF, an AprilTagNode can be used with setRunOnHost(false))
+option(DEPTHAI_ENABLE_APRIL_TAG "Enable AprilTag node" ON)
+set(DEPTHAI_HAS_APRIL_TAG ${DEPTHAI_ENABLE_APRIL_TAG})
+if(WIN32)
+    message(STATUS "AprilTag node is not supported on Windows")
+    set(DEPTHAI_HAS_APRIL_TAG OFF)
+endif()
+if(DEPTHAI_HAS_APRIL_TAG)
+list(APPEND VCPKG_MANIFEST_FEATURES "apriltag")
+endif()
+option(DEPTHAI_RTABMAP_SUPPORT "Enable optional RTABMap support" OFF)
+if(DEPTHAI_RTABMAP_SUPPORT)
+list(APPEND VCPKG_MANIFEST_FEATURES "rtabmap")
+endif()
 include(cmake/vcpkg.cmake)
 # MSVC variable isn't available before 'project' call
 # Generalize to Win32 platform for now
@@ -42,13 +56,6 @@ else()
     message(STATUS "Using toolchain file: ${CMAKE_TOOLCHAIN_FILE}")
 endif()
 
-# Build AprilTag node code (note, that even if set to OFF, an AprilTagNode can be used with setRunOnHost(false))
-option(DEPTHAI_ENABLE_APRIL_TAG "Enable AprilTag node" ON)
-set(DEPTHAI_HAS_APRIL_TAG ${DEPTHAI_ENABLE_APRIL_TAG})
-if(WIN32)
-    message(STATUS "AprilTag node is not supported on Windows")
-    set(DEPTHAI_HAS_APRIL_TAG OFF)
-endif()
 
 include("cmake/HunterGate.cmake")
 HunterGate(
@@ -200,7 +207,6 @@ endif()
 option(DEPTHAI_XTENSOR_SUPPORT "Enable optional xtensor support" ON)
 option(DEPTHAI_OPENCV_SUPPORT "Enable optional OpenCV support" ON)
 option(DEPTHAI_PCL_SUPPORT "Enable optional PCL support" OFF)
-option(DEPTHAI_RTABMAP_SUPPORT "Enable optional RTABMap support" OFF)
 option(DEPTHAI_BASALT_SUPPORT "Enable optional Basalt support" OFF)
 
 option(DEPTHAI_MERGED_TARGET "Enable merged target build" ON)

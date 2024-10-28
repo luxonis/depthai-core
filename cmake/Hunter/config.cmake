@@ -153,70 +153,6 @@ hunter_config(
 )
 
 
-# RTABMap
-hunter_config(
-    rtbmap
-    VERSION "0.21.4"
-    URL "https://github.com/introlab/rtabmap/archive/623d056436946c35beb12199831f178a84eaad73.zip" # until fixes are merged to main
-    SHA1 "98768b5adea093cc5e1bbe74b2ad3749e61de0ef"
-    CMAKE_ARGS
-        BUILD_APP=OFF
-        WITH_UDEV=OFF
-        BUILD_EXAMPLES=OFF
-        BUILD_TOOLS=OFF
-        BUILD_SHARED_LIBS=OFF
-        WITH_QT=OFF
-        WITH_ORB_OCTREE=OFF
-        WITH_TORCH=OFF
-        WITH_PYTHON=OFF
-        WITH_PYTHON_THREADING=OFF
-        WITH_PDAL=OFF
-        WITH_FREENECT=OFF
-        WITH_FREENECT2=OFF
-        WITH_K4W2=OFF
-        WITH_K4A=OFF
-        WITH_OPENNI=OFF
-        WITH_OPENNI2=OFF
-        WITH_DC1394=OFF
-        WITH_G2O=ON
-        WITH_GTSAM=ON
-        WITH_TORO=ON
-        WITH_CERES=OFF
-        WITH_MRPT=OFF
-        WITH_VERTIGO=ON
-        WITH_CVSBA=OFF
-        WITH_POINTMATCHER=ON
-        WITH_CCCORELIB=OFF
-        WITH_OPEN3D=OFF
-        WITH_LOAM=OFF
-        WITH_FLOAM=OFF
-        WITH_FLYCAPTURE2=OFF
-        WITH_ZED=OFF
-        WITH_ZEDOC=OFF
-        WITH_REALSENSE=OFF
-        WITH_REALSENSE_SLAM=OFF
-        WITH_REALSENSE2=OFF
-        WITH_MYNTEYE=OFF
-        WITH_DEPTHAI=OFF
-        WITH_OCTOMAP=OFF
-        WITH_GRIDMAP=OFF
-        WITH_CPUTSDF=OFF
-        WITH_OPENCHISEL=OFF
-        WITH_ALICE_VISION=OFF
-        WITH_FOVIS=OFF
-        WITH_VISO2=OFF
-        WITH_DVO=OFF
-        WITH_ORB_SLAM=OFF
-        WITH_OKVIS=OFF
-        WITH_MSCKF_VIO=OFF
-        WITH_VINS=OFF
-        WITH_OPENVINS=OFF
-        WITH_MADGWICK=OFF
-        WITH_FASTCV=OFF
-        WITH_OPENMP=OFF
-        WITH_OPENGV=OFF
-        PCL_OMP=OFF
-)
 # Pybind11 2.9.2
 # # Pybind11 2.11.0-smart_holder
 # hunter_config(
@@ -329,12 +265,3 @@ hunter_config(
     SHA1 "c9ac79025cc259d8cca454be0865e88f154402be"
 )
 
-# Only include april tag if needed
-if(DEPTHAI_HAS_APRIL_TAG)
-    hunter_config(
-        apriltag
-        VERSION "3.4.2"
-        URL "https://github.com/AprilRobotics/apriltag/archive/v3.4.2.tar.gz"
-        SHA1 "5fe51a652e451aedd11f8966abdb8f16bb1faefe"
-    )
-endif()
