@@ -287,6 +287,10 @@ dai_add_example(model_zoo RVC2/ModelZoo/model_zoo.cpp OFF OFF)
 # Image Align
 dai_add_example(image_align RVC2/ImageAlign/image_align.cpp OFF OFF)
 
+# Keypoints parser
+dai_add_example(keypoints_device RVC2/parsers/keypoints_device.cpp ON OFF)
+dai_add_example(keypoints_host RVC2/parsers/keypoints_host.cpp ON OFF)
+
 if(DEPTHAI_RTABMAP_SUPPORT)
     include(FetchContent)
     FetchContent_Declare(rerun_sdk URL  https://github.com/rerun-io/rerun/releases/download/0.16.1/rerun_cpp_sdk.zip)
