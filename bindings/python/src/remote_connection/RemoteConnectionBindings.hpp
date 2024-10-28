@@ -3,6 +3,6 @@
 // pybind
 #include "pybind11_common.hpp"
 
-struct RemoteConnectorBindings {
+struct RemoteConnectionBindings {
     static void bind(pybind11::module& m, void* pCallstack);
 };

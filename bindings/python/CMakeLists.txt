@@ -149,6 +149,7 @@ set(SOURCE_LIST
     src/pipeline/datatype/PointCloudDataBindings.cpp
     src/pipeline/datatype/TransformDataBindings.cpp
     src/pipeline/datatype/ImageAlignConfigBindings.cpp
+    src/pipeline/datatype/ImageAnnotationsBindings.cpp
 
     src/capabilities/CapabilityBindings.cpp
     src/capabilities/CapabilityRangeBindings.cpp
@@ -157,7 +158,7 @@ set(SOURCE_LIST
     src/modelzoo/NNModelDescriptionBindings.cpp
     src/modelzoo/ZooBindings.cpp
 
-    src/remote_connection/RemoteConnectorBindings.cpp
+    src/remote_connection/RemoteConnectionBindings.cpp
 )
 if(DEPTHAI_MERGED_TARGET)
     list(APPEND SOURCE_LIST
@@ -396,7 +397,7 @@ endif()
 # Examples (can also act as tests)
 ########################
 if (DEPTHAI_PYTHON_ENABLE_EXAMPLES)
-    add_subdirectory(examples)
+    add_subdirectory(../../examples/python ${CMAKE_BINARY_DIR}/examples/python)
 endif()
 
 ########################

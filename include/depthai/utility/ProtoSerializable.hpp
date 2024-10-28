@@ -76,7 +76,6 @@ class ProtoSerializable {
     }
 
    protected:
-
     /**
      * @brief Generate the corresponding protobuf message from this object
      * @return std::unique_ptr<google::protobuf::Message>

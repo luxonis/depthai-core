@@ -1,5 +1,7 @@
 #include "depthai/pipeline/node/DetectionParser.hpp"
 
+#include <memory>
+
 #include "common/ModelType.hpp"
 #include "depthai/modelzoo/Zoo.hpp"
 #include "nn_archive/NNArchive.hpp"
@@ -28,6 +30,12 @@ void DetectionParser::setNNArchive(const NNArchive& nnArchive) {
             DAI_CHECK_V(false, "NNArchive inside NNArchive is not supported. Please unpack the inner archive first.");
             break;
     }
+}
+
+std::shared_ptr<DetectionParser> DetectionParser::build(Node::Output& nnInput, const NNArchive& nnArchive) {
+    setNNArchive(nnArchive);
+    nnInput.link(input);
+    return std::static_pointer_cast<DetectionParser>(shared_from_this());
 }
 
 void DetectionParser::setModelPath(const dai::Path& modelPath) {

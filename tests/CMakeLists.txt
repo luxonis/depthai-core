@@ -205,6 +205,13 @@ hunter_private_data(
     LOCATION yolo_onnx_nnarchive_path
 )
 
+hunter_private_data(
+    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/images/lenna.png"
+    SHA1 "3ee0d360dc12003c0d43e3579295b52b64906e85"
+    FILE "lenna.png"
+    LOCATION lenna_png
+)
+
 ### On-host tests #############################################################
 
 # Superblob test
@@ -347,8 +354,13 @@ dai_set_test_labels(detection_network_test ondevice rvc2_all ci)
 
 # Spatial detection network test
 dai_add_test(spatial_detection_network_test src/ondevice_tests/pipeline/node/spatial_detection_network_test.cpp)
-dai_set_test_labels(spatial_detection_network_test ondevice rvc2_all ci)
+dai_set_test_labels(spatial_detection_network_test ondevice rvc2_all rvc4 ci)
 
 # NeuralNetwork node test
 dai_add_test(neural_network_node_test src/ondevice_tests/pipeline/node/neural_network_node_test.cpp)
+target_compile_definitions(neural_network_node_test PRIVATE LENNA_PATH="${lenna_png}")
 dai_set_test_labels(neural_network_node_test ondevice rvc2_all rvc4 ci)
+
+# Regression tests for encountered bugs
+dai_add_test(regression_camera_concurrency_test src/ondevice_tests/regression/camera_concurrency.cpp)
+dai_set_test_labels(regression_camera_concurrency_test ondevice rvc4 ci)

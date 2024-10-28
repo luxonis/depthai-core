@@ -39,7 +39,7 @@ class ImageManipV2 : public DeviceNodeCRTP<DeviceNode, ImageManipV2, ImageManipP
     /**
      * Input ImageManipConfigV2 message with ability to modify parameters in runtime
      */
-    Input inputConfig{*this, {"inputConfig", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ImageManipConfig, true}}}, false}};
+    Input inputConfig{*this, {"inputConfig", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ImageManipConfigV2, true}}}, false}};
 
     /**
      * Input image to be modified

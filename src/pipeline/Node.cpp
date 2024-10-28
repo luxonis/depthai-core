@@ -80,6 +80,10 @@ std::string Node::Input::getGroup() const {
     return group;
 }
 
+bool Node::Input::isConnected() const {
+    return !connectedOutputs.empty();
+}
+
 std::vector<Node::ConnectionInternal> Node::Output::getConnections() {
     std::vector<Node::ConnectionInternal> myConnections;
     for(const auto& conn : parent.get().connections) {
@@ -153,6 +157,7 @@ void Node::Output::link(Input& in) {
     parent.get().connections.insert(connection);
     // Add the shared_ptr to the input directly for host side
     connectedInputs.push_back(&in);
+    in.connectedOutputs.push_back(this);
 }
 
 std::shared_ptr<dai::MessageQueue> Node::Output::createOutputQueue(unsigned int maxSize, bool blocking) {
@@ -211,6 +216,7 @@ void Node::Output::unlink(Input& in) {
 
     // Remove the shared_ptr to the input directly for host side
     connectedInputs.erase(std::remove(connectedInputs.begin(), connectedInputs.end(), &in), connectedInputs.end());
+    in.connectedOutputs.erase(std::remove(in.connectedOutputs.begin(), in.connectedOutputs.end(), this), in.connectedOutputs.end());
 }
 
 void Node::Output::send(const std::shared_ptr<ADatatype>& msg) {
@@ -293,7 +299,7 @@ Node::OutputMap::OutputMap(Node& parent, std::string name, Node::OutputDescripti
     }
 }
 
-Node::OutputMap::OutputMap(Node& parent, Node::OutputDescription defaultOutput, bool ref) : OutputMap(parent, "", std::move(defaultOutput), ref){};
+Node::OutputMap::OutputMap(Node& parent, Node::OutputDescription defaultOutput, bool ref) : OutputMap(parent, "", std::move(defaultOutput), ref) {};
 
 Node::Output& Node::OutputMap::operator[](const std::string& key) {
     if(count({name, key}) == 0) {
@@ -325,7 +331,7 @@ Node::InputMap::InputMap(Node& parent, std::string name, Node::InputDescription 
     parent.setInputMapRefs(this);
 }
 
-Node::InputMap::InputMap(Node& parent, Node::InputDescription description) : InputMap(parent, "", std::move(description)){};
+Node::InputMap::InputMap(Node& parent, Node::InputDescription description) : InputMap(parent, "", std::move(description)) {};
 
 Node::Input& Node::InputMap::operator[](const std::string& key) {
     if(count({name, key}) == 0) {
