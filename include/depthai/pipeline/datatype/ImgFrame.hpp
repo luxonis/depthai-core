@@ -124,51 +124,49 @@ class ImgFrame : public Buffer, public utility::ProtoSerializable {
         cam->set_wbcolortemp(this->cam.wbColorTemp);
         cam->set_lenspositionraw(this->cam.lensPositionRaw);
 
-        imgFrame->set_hfovdegrees(this->HFovDegrees);
-
         imgFrame->set_instancenum(this->instanceNum);
 
         imgFrame->set_category(this->category);
 
-        proto::common::ImgTransformations* imgTransformations = imgFrame->mutable_transformations();
-        imgTransformations->set_invalidflag(this->transformations.invalidFlag);
-        for(const auto& transformation : this->transformations.transformations) {
-            proto::common::ImgTransformation* imgTransformation = imgTransformations->add_transformations();
+    //     proto::common::ImgTransformations* imgTransformations = imgFrame->mutable_transformations();
+    //     imgTransformations->set_invalidflag(this->transformations.invalidFlag);
+    //     for(const auto& transformation : this->transformations.transformations) {
+    //         proto::common::ImgTransformation* imgTransformation = imgTransformations->add_transformations();
 
-            imgTransformation->set_transformationtype(static_cast<proto::common::Transformation>(transformation.transformationType));
-            imgTransformation->set_topleftcropx(transformation.topLeftCropX);
-            imgTransformation->set_topleftcropy(transformation.topLeftCropY);
-            imgTransformation->set_bottomrightcropx(transformation.bottomRightCropX);
-            imgTransformation->set_bottomrightcropy(transformation.bottomRightCropY);
-            imgTransformation->set_toppadding(transformation.topPadding);
-            imgTransformation->set_bottompadding(transformation.bottomPadding);
-            imgTransformation->set_leftpadding(transformation.leftPadding);
-            imgTransformation->set_rightpadding(transformation.rightPadding);
-            imgTransformation->set_aftertransformwidth(transformation.afterTransformWidth);
-            imgTransformation->set_aftertransformheight(transformation.afterTransformHeight);
-            imgTransformation->set_beforetransformwidth(transformation.beforeTransformWidth);
-            imgTransformation->set_beforetransformheight(transformation.beforeTransformHeight);
+    //         imgTransformation->set_transformationtype(static_cast<proto::common::Transformation>(transformation.transformationType));
+    //         imgTransformation->set_topleftcropx(transformation.topLeftCropX);
+    //         imgTransformation->set_topleftcropy(transformation.topLeftCropY);
+    //         imgTransformation->set_bottomrightcropx(transformation.bottomRightCropX);
+    //         imgTransformation->set_bottomrightcropy(transformation.bottomRightCropY);
+    //         imgTransformation->set_toppadding(transformation.topPadding);
+    //         imgTransformation->set_bottompadding(transformation.bottomPadding);
+    //         imgTransformation->set_leftpadding(transformation.leftPadding);
+    //         imgTransformation->set_rightpadding(transformation.rightPadding);
+    //         imgTransformation->set_aftertransformwidth(transformation.afterTransformWidth);
+    //         imgTransformation->set_aftertransformheight(transformation.afterTransformHeight);
+    //         imgTransformation->set_beforetransformwidth(transformation.beforeTransformWidth);
+    //         imgTransformation->set_beforetransformheight(transformation.beforeTransformHeight);
 
-            proto::common::TransformationMatrix* transformationMatrix = imgTransformation->mutable_transformationmatrix();
-            for(const auto& array : transformation.transformationMatrix) {
-                proto::common::FloatArray* floatArray = transformationMatrix->add_arrays();
+    //         proto::common::TransformationMatrix* transformationMatrix = imgTransformation->mutable_transformationmatrix();
+    //         for(const auto& array : transformation.transformationMatrix) {
+    //             proto::common::FloatArray* floatArray = transformationMatrix->add_arrays();
 
-                // or floatArray.mutable_values() = {array.values.begin(), array.values.end()}; ?
-                for(const auto& value : array) {
-                    floatArray->add_values(value);
-                }
-            }
+    //             // or floatArray.mutable_values() = {array.values.begin(), array.values.end()}; ?
+    //             for(const auto& value : array) {
+    //                 floatArray->add_values(value);
+    //             }
+    //         }
 
-            proto::common::TransformationMatrix* invTransformationMatrix = imgTransformation->mutable_invtransformationmatrix();
-            for(const auto& array : transformation.invTransformationMatrix) {
-                proto::common::FloatArray* floatArray = invTransformationMatrix->add_arrays();
+    //         proto::common::TransformationMatrix* invTransformationMatrix = imgTransformation->mutable_invtransformationmatrix();
+    //         for(const auto& array : transformation.invTransformationMatrix) {
+    //             proto::common::FloatArray* floatArray = invTransformationMatrix->add_arrays();
 
-                // or floatArray.mutable_values() = {array.values.begin(), array.values.end()}; ?
-                for(const auto& value : array) {
-                    floatArray->add_values(value);
-                }
-            }
-        }
+    //             // or floatArray.mutable_values() = {array.values.begin(), array.values.end()}; ?
+    //             for(const auto& value : array) {
+    //                 floatArray->add_values(value);
+    //             }
+    //         }
+    //     }
         imgFrame->set_data(this->data->getData().data(), this->data->getData().size());
         return imgFrame;
     }
