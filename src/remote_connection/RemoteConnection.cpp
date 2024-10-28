@@ -130,11 +130,9 @@ void RemoteConnection::addPublishThread(const std::string& topicName, const std:
         const auto descriptor = serializableMessage->serializeSchema();
 
         // Add the topic to the server
-        auto channelId = server->addChannels({{.topic = topicName,
-                                               .encoding = "protobuf",
-                                               .schemaName = descriptor.schemaName,
-                                               .schema = foxglove::base64Encode(descriptor.schema),
-                                               .schemaEncoding = std::nullopt}})[0];
+        
+        auto channelId = server->addChannels({{topicName, "protobuf", descriptor.schemaName,
+                                               foxglove::base64Encode(descriptor.schema), std::nullopt}})[0];
 
         // Store the group information
         if(topicGroups.find(topicName) != topicGroups.end()) {
@@ -284,12 +282,16 @@ void RemoteConnection::exposeKeyPressedService() {
         // Check that the keyPressed is a single character
         if(keyPressed.size() != 1) {
             std::string errorMsg = R"({"error": "Invalid key pressed. Expected a single character"})";
-            return foxglove::ServiceResponse{.data = std::vector<uint8_t>(errorMsg.begin(), errorMsg.end())};
+            foxglove::ServiceResponse ret;
+            ret.data = std::vector<uint8_t>(errorMsg.begin(), errorMsg.end());
+            return ret;
         }
 
         this->keyPressedCallback(static_cast<int>(keyPressed[0]));
         std::string responseMsg = R"({"status": "Received key"})";
-        return foxglove::ServiceResponse{.data = std::vector<uint8_t>(responseMsg.begin(), responseMsg.end())};
+        foxglove::ServiceResponse ret;
+        ret.data = std::vector<uint8_t>(responseMsg.begin(), responseMsg.end());
+        return ret;
     };
 }
 

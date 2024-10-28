@@ -13,6 +13,7 @@ option(DEPTHAI_ENABLE_LIBUSB "Enable usage of libusb and interaction with USB de
 if(WIN32)
     set(DEPTHAI_CURL_USE_SCHANNEL ON)
     set(DEPTHAI_CURL_USE_OPENSSL OFF)
+    add_compile_definitions(NOMINMAX)
 else()
     set(DEPTHAI_CURL_USE_SCHANNEL OFF)
     set(DEPTHAI_CURL_USE_OPENSSL ON)
@@ -448,6 +449,11 @@ else()
 endif()
 # Minimal supported macOS SDK version for C++17 support with std::filesystem
 set(CMAKE_OSX_DEPLOYMENT_TARGET 10.15)
+
+if(WIN32)
+    find_package(OpenSSL REQUIRED)
+    target_link_libraries(${TARGET_CORE_NAME} PUBLIC OpenSSL::Crypto OpenSSL::SSL)
+endif()
 
 # Link merged target libraries and add compile definitions
 if(DEPTHAI_HAVE_OPENCV_SUPPORT AND DEPTHAI_MERGED_TARGET)
