@@ -17,37 +17,17 @@ message CameraSettings {
     float lensPositionRaw = 5;
 }
 
-// Shared ImgTransformations message
-message ImgTransformations {
-    repeated ImgTransformation transformations = 1;
-    bool invalidFlag = 2;
-}
-
 message ImgTransformation {
-    Transformation transformationType = 1;
-    int32 topLeftCropX = 2;
-    int32 topLeftCropY = 3;
-    int32 bottomRightCropX = 4;
-    int32 bottomRightCropY = 5;
-    int32 topPadding = 6;
-    int32 bottomPadding = 7;
-    int32 leftPadding = 8;
-    int32 rightPadding = 9;
-    TransformationMatrix transformationMatrix = 10;
-    TransformationMatrix invTransformationMatrix = 11;
-    uint32 afterTransformWidth = 12;
-    uint32 afterTransformHeight = 13;
-    uint32 beforeTransformWidth = 14;
-    uint32 beforeTransformHeight = 15;
-}
-
-enum Transformation {
-    INIT = 0;
-    CROP = 1;
-    ROTATION = 2;
-    PAD = 3;
-    FLIP = 4;
-    SCALE = 5;
+    TransformationMatrix transformationMatrix = 1;
+    TransformationMatrix transformationMatrixInv = 2;
+    TransformationMatrix sourceIntrinsicMatrix = 3;
+    TransformationMatrix sourceIntrinsicMatrixInv = 4;
+    CameraModel distortionModel = 5;
+    FloatArray distortionCoefficients = 6;
+    uint32 srcWidth = 7;
+    uint32 srcHeight = 8;
+    uint32 width = 9;
+    uint32 height = 10;
 }
 
 message TransformationMatrix {
@@ -56,6 +36,13 @@ message TransformationMatrix {
 
 message FloatArray {
     repeated float values = 1;
+}
+
+enum CameraModel {
+    PERSPECTIVE = 0;
+    FISHEYE = 1;
+    EQUIRECTANGULAR = 2;
+    RADIALDIVISION = 3;
 }
 
 message Color {

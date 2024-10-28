@@ -1,5 +1,7 @@
 #pragma once
 
+#include <spdlog/async_logger.h>
+
 #include <chrono>
 #include <unordered_map>
 #include <vector>
@@ -14,6 +16,7 @@
 #include "depthai/common/ImgTransformations.hpp"
 #include "depthai/common/Rect.hpp"
 #include "depthai/schemas/ImgFrame.pb.h"
+#include "depthai/schemas/common.pb.h"
 #include "depthai/utility/ProtoSerializable.hpp"
 
 // optional
@@ -78,7 +81,6 @@ class ImgFrame : public Buffer, public utility::ProtoSerializable {
     ImgFrame(long fd, size_t size);
     virtual ~ImgFrame() = default;
 
-    ImgTransformations transformations;
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
         metadata = utility::serialize(*this);
         datatype = DatatypeEnum::ImgFrame;
@@ -123,51 +125,53 @@ class ImgFrame : public Buffer, public utility::ProtoSerializable {
         cam->set_wbcolortemp(this->cam.wbColorTemp);
         cam->set_lenspositionraw(this->cam.lensPositionRaw);
 
-        imgFrame->set_hfovdegrees(this->HFovDegrees);
-
         imgFrame->set_instancenum(this->instanceNum);
 
         imgFrame->set_category(this->category);
 
-        proto::common::ImgTransformations* imgTransformations = imgFrame->mutable_transformations();
-        imgTransformations->set_invalidflag(this->transformations.invalidFlag);
-        for(const auto& transformation : this->transformations.transformations) {
-            proto::common::ImgTransformation* imgTransformation = imgTransformations->add_transformations();
+        proto::common::ImgTransformation* imgTransformation = imgFrame->mutable_transformation();
+        const auto [width, height] = this->transformation.getSize();
+        const auto [srcWidth, srcHeight] = this->transformation.getSourceSize();
+        imgTransformation->set_width(width);
+        imgTransformation->set_height(height);
+        imgTransformation->set_srcwidth(srcWidth);
+        imgTransformation->set_srcheight(srcHeight);
 
-            imgTransformation->set_transformationtype(static_cast<proto::common::Transformation>(transformation.transformationType));
-            imgTransformation->set_topleftcropx(transformation.topLeftCropX);
-            imgTransformation->set_topleftcropy(transformation.topLeftCropY);
-            imgTransformation->set_bottomrightcropx(transformation.bottomRightCropX);
-            imgTransformation->set_bottomrightcropy(transformation.bottomRightCropY);
-            imgTransformation->set_toppadding(transformation.topPadding);
-            imgTransformation->set_bottompadding(transformation.bottomPadding);
-            imgTransformation->set_leftpadding(transformation.leftPadding);
-            imgTransformation->set_rightpadding(transformation.rightPadding);
-            imgTransformation->set_aftertransformwidth(transformation.afterTransformWidth);
-            imgTransformation->set_aftertransformheight(transformation.afterTransformHeight);
-            imgTransformation->set_beforetransformwidth(transformation.beforeTransformWidth);
-            imgTransformation->set_beforetransformheight(transformation.beforeTransformHeight);
-
-            proto::common::TransformationMatrix* transformationMatrix = imgTransformation->mutable_transformationmatrix();
-            for(const auto& array : transformation.transformationMatrix) {
-                proto::common::FloatArray* floatArray = transformationMatrix->add_arrays();
-
-                // or floatArray.mutable_values() = {array.values.begin(), array.values.end()}; ?
-                for(const auto& value : array) {
-                    floatArray->add_values(value);
-                }
-            }
-
-            proto::common::TransformationMatrix* invTransformationMatrix = imgTransformation->mutable_invtransformationmatrix();
-            for(const auto& array : transformation.invTransformationMatrix) {
-                proto::common::FloatArray* floatArray = invTransformationMatrix->add_arrays();
-
-                // or floatArray.mutable_values() = {array.values.begin(), array.values.end()}; ?
-                for(const auto& value : array) {
-                    floatArray->add_values(value);
-                }
+        proto::common::TransformationMatrix* transformationMatrix = imgTransformation->mutable_transformationmatrix();
+        for(const auto& array : transformation.getMatrix()) {
+            proto::common::FloatArray* floatArray = transformationMatrix->add_arrays();
+            for(const auto& value : array) {
+                floatArray->add_values(value);
             }
         }
+        proto::common::TransformationMatrix* transformationMatrixInv = imgTransformation->mutable_transformationmatrixinv();
+        for(const auto& array : transformation.getMatrixInv()) {
+            proto::common::FloatArray* floatArray = transformationMatrixInv->add_arrays();
+            for(const auto& value : array) {
+                floatArray->add_values(value);
+            }
+        }
+        proto::common::TransformationMatrix* sourceIntrinsicMatrix = imgTransformation->mutable_sourceintrinsicmatrix();
+        for(const auto& array : transformation.getSourceIntrinsicMatrix()) {
+            proto::common::FloatArray* floatArray = sourceIntrinsicMatrix->add_arrays();
+            for(const auto& value : array) {
+                floatArray->add_values(value);
+            }
+        }
+        proto::common::TransformationMatrix* sourceIntrinsicMatrixInv = imgTransformation->mutable_sourceintrinsicmatrixinv();
+        for(const auto& array : transformation.getSourceIntrinsicMatrixInv()) {
+            proto::common::FloatArray* floatArray = sourceIntrinsicMatrixInv->add_arrays();
+            for(const auto& value : array) {
+                floatArray->add_values(value);
+            }
+        }
+
+        imgTransformation->set_distortionmodel(static_cast<proto::common::CameraModel>(this->transformation.getDistortionModel()));
+        proto::common::FloatArray* distortionCoefficients = imgTransformation->mutable_distortioncoefficients();
+        for(const auto& value : this->transformation.getDistortionCoefficients()) {
+            distortionCoefficients->add_values(value);
+        }
+
         imgFrame->set_data(this->data->getData().data(), this->data->getData().size());
         return imgFrame;
     }
@@ -384,14 +388,6 @@ class ImgFrame : public Buffer, public utility::ProtoSerializable {
 
     /**
      * @note Fov API works correctly only on rectilinear frames
-     * Set the source horizontal field of view
-     *
-     * @param degrees field of view in degrees
-     */
-    ImgFrame& setSourceHFov(float degrees);
-
-    /**
-     * @note Fov API works correctly only on rectilinear frames
      * Get the source diagonal field of view in degrees
      *
      * @returns field of view in degrees
@@ -420,16 +416,6 @@ class ImgFrame : public Buffer, public utility::ProtoSerializable {
      * @returns true if the transformations are valid
      */
     bool validateTransformations() const;
-
-    /**
-     * Remap point between two source frames
-     * @param point point to remap
-     * @param sourceImage source image
-     * @param destImage destination image
-     *
-     * @returns remapped point
-     */
-    static Point2f remapPointBetweenSourceFrames(const Point2f& originPoint, const ImgFrame& sourceImage, const ImgFrame& destImage);
 
     /**
      * Remap point between two frames
@@ -789,13 +775,13 @@ class ImgFrame : public Buffer, public utility::ProtoSerializable {
     Specs fb = {};
     Specs sourceFb = {};
     CameraSettings cam;
-    float HFovDegrees = 0.0;   // Horizontal field of view in degrees
     uint32_t category = 0;     //
     uint32_t instanceNum = 0;  // Which source created this frame (color, mono, ...)
     dai::FrameEvent event = dai::FrameEvent::NONE;
+    ImgTransformation transformation;
 
    public:
-    DEPTHAI_SERIALIZE(ImgFrame, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum, fb, sourceFb, cam, HFovDegrees, category, instanceNum, transformations);
+    DEPTHAI_SERIALIZE(ImgFrame, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum, fb, sourceFb, cam, category, instanceNum, transformation);
 };
 
 }  // namespace dai

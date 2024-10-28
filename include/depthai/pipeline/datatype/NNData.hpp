@@ -10,7 +10,9 @@
 #include <vector>
 
 #include "Buffer.hpp"
+#include "depthai/common/ImgTransformations.hpp"
 #include "depthai/common/TensorInfo.hpp"
+#include "depthai/common/optional.hpp"
 #include "depthai/utility/VectorMemory.hpp"
 #include "depthai/utility/span.hpp"
 
@@ -67,6 +69,7 @@ class NNData : public Buffer {
    public:
     std::vector<TensorInfo> tensors;
     unsigned int batchSize;
+    std::optional<ImgTransformation> transformation;
     /**
      * Construct NNData message.
      */
@@ -661,7 +664,7 @@ class NNData : public Buffer {
         datatype = DatatypeEnum::NNData;
     };
 
-    DEPTHAI_SERIALIZE(NNData, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, tensors, batchSize);
+    DEPTHAI_SERIALIZE(NNData, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, tensors, batchSize, transformation);
 };
 
 }  // namespace dai
