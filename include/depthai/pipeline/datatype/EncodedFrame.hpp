@@ -2,6 +2,7 @@
 
 #include <chrono>
 
+#include "depthai/common/ImgTransformations.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/schemas/EncodedFrame.pb.h"
 #include "depthai/utility/ProtoSerializable.hpp"
@@ -35,6 +36,8 @@ class EncodedFrame : public Buffer, public utility::ProtoSerializable {
 
     uint32_t frameOffset = 0;
     uint32_t frameSize = 0;
+
+    ImgTransformation transformation;
 
     virtual ~EncodedFrame() = default;
 
@@ -189,6 +192,7 @@ class EncodedFrame : public Buffer, public utility::ProtoSerializable {
                       type,
                       frameOffset,
                       frameSize,
+                      transformation,
                       Buffer::sequenceNum,
                       Buffer::ts,
                       Buffer::tsDevice);

@@ -1,11 +1,15 @@
 #pragma once
+#define _USE_MATH_DEFINES
 
 #include <spdlog/async_logger.h>
 #include <stdint.h>
+#include <cmath>
 
 #include <depthai/pipeline/datatype/ImageManipConfigV2.hpp>
 #include <depthai/pipeline/datatype/ImgFrame.hpp>
 #include <sstream>
+
+#include "depthai/common/RotatedRect.hpp"
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     #include <opencv2/core/base.hpp>
@@ -23,6 +27,10 @@
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     #define DEPTHAI_IMAGEMANIPV2_OPENCV 1
     #include <opencv2/opencv.hpp>
+#endif
+
+#ifndef M_PI
+    #define M_PI 3.14159265358979323846
 #endif
 
 namespace dai {
@@ -192,6 +200,7 @@ class ImageManipOperations {
 
     std::array<std::array<float, 3>, 3> matrix{{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
     std::array<std::array<float, 3>, 3> matrixInv{{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
+    std::vector<std::array<std::array<float, 2>, 4>> srcCorners;
     ImageManipOpsBase base;
     ImgFrame::Type outputFrameType;
     ImgFrame::Type type;
@@ -230,6 +239,8 @@ class ImageManipOperations {
     size_t getOutputHeight() const;
     size_t getOutputStride(uint8_t plane = 0) const;
     FrameSpecs getOutputFrameSpecs(ImgFrame::Type type) const;
+    std::vector<RotatedRect> getSrcCrops() const;
+    std::array<std::array<float, 3>, 3> getMatrix() const;
 
     std::string toString() const;
 };
@@ -2197,6 +2208,11 @@ inline std::array<float, 2> matvecmul(std::array<std::array<float, 3>, 3> M, std
     auto z = M[2][0] * vec[0] + M[2][1] * vec[1] + M[2][2];
     return {x / z, y / z};
 }
+inline std::array<float, 2> matvecmul(std::array<std::array<float, 2>, 2> M, std::array<float, 2> vec) {
+    auto x = M[0][0] * vec[0] + M[0][1] * vec[1];
+    auto y = M[1][0] * vec[0] + M[1][1] * vec[1];
+    return {x, y};
+}
 
 std::tuple<float, float, float, float> getOuterRect(const std::vector<std::array<float, 2>> points);
 
@@ -2207,6 +2223,8 @@ std::array<std::array<float, 2>, 2> getInverse(const std::array<std::array<float
 std::array<std::array<float, 3>, 3> getInverse(const std::array<std::array<float, 3>, 3>& matrix);
 
 std::array<std::array<float, 2>, 4> getOuterRotatedRect(const std::vector<std::array<float, 2>>& points);
+
+dai::RotatedRect getRotatedRectFromPoints(const std::vector<std::array<float, 2>>& points);
 
 std::array<std::array<float, 3>, 3> getResizeMat(Resize o, float width, float height, uint32_t outputWidth, uint32_t outputHeight);
 
@@ -2298,10 +2316,11 @@ ImageManipOperations<ImageManipBuffer, ImageManipData>& ImageManipOperations<Ima
     matrix = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
 
     if(mode & MODE_WARP) {
-        auto [matrix, imageCorners, srcCorners] = getFullTransform(base, inputWidth, inputHeight, type, outputFrameType, outputOps);
+        auto [matrix, imageCorners, _srcCorners] = getFullTransform(base, inputWidth, inputHeight, type, outputFrameType, outputOps);
 
         this->matrix = matrix;
         this->matrixInv = getInverse(matrix);
+        this->srcCorners = _srcCorners;
 
         if(logger) {
             logger->trace("Image corners: ");
@@ -2582,6 +2601,21 @@ FrameSpecs ImageManipOperations<ImageManipBuffer, ImageManipData>::getOutputFram
             break;
     }
     return specs;
+}
+
+template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
+std::vector<RotatedRect> ImageManipOperations<ImageManipBuffer, ImageManipData>::getSrcCrops() const {
+    std::vector<RotatedRect> crops;
+    for(const auto& corners : srcCorners) {
+        auto rect = getRotatedRectFromPoints({corners[0], corners[1], corners[2], corners[3]});
+        crops.push_back(rect);
+    }
+    return crops;
+}
+
+template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
+std::array<std::array<float, 3>, 3> ImageManipOperations<ImageManipBuffer, ImageManipData>::getMatrix() const {
+    return matrix;
 }
 
 template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
