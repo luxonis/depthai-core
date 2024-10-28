@@ -40,6 +40,7 @@ function(add_python_example example_name python_script_path)
         # Python path (to find compiled module)
         "PYTHONPATH=$<TARGET_FILE_DIR:${TARGET_NAME}>${SYS_PATH_SEPARATOR}$ENV{PYTHONPATH}"
         "DEPTHAI_SEARCH_TIMEOUT=15000"
+        "DEPTHAI_RECONNECT_TIMEOUT=0"
         # ASAN in case of sanitizers
         "${ASAN_ENVIRONMENT_VARS}"
         # Example
@@ -59,6 +60,7 @@ function(add_python_example example_name python_script_path)
             # Python path (to find compiled module)
             "PYTHONPATH=$<TARGET_FILE_DIR:${TARGET_NAME}>${SYS_PATH_SEPARATOR}$ENV{PYTHONPATH}"
             "DEPTHAI_SEARCH_TIMEOUT=30000"
+            "DEPTHAI_RECONNECT_TIMEOUT=0"
             # ASAN in case of sanitizers
             ${ASAN_ENVIRONMENT_VARS}
             ${CMAKE_COMMAND} -DFORCE_TIMEOUT_SECONDS=45 -P ${CMAKE_CURRENT_LIST_DIR}/../cpp/cmake/ExecuteTestTimeout.cmake
@@ -166,6 +168,12 @@ dai_set_example_test_labels(reconnect_callback ondevice rvc2_all rvc4 ci)
 add_python_example(neural_network NeuralNetwork/neural_network.py)
 dai_set_example_test_labels(neural_network ondevice rvc2_all rvc4 ci)
 
+add_python_example(neural_network_multi_input_combined NeuralNetwork/neural_network_multi_input_combined.py)
+dai_set_example_test_labels(neural_network_multi_input_combined ondevice rvc2_all rvc4 ci)
+
+add_python_example(neural_network_multi_input NeuralNetwork/neural_network_multi_input.py)
+dai_set_example_test_labels(neural_network_multi_input ondevice rvc2_all rvc4 ci)
+
 ## Spatial detection network
 add_python_example(spatial_detection SpatialDetectionNetwork/spatial_detection.py)
 dai_set_example_test_labels(spatial_detection ondevice rvc2_all rvc4 ci)
@@ -174,7 +182,8 @@ dai_set_example_test_labels(spatial_detection ondevice rvc2_all rvc4 ci)
 add_python_example(stereo StereoDepth/stereo.py)
 dai_set_example_test_labels(stereo ondevice rvc2_all rvc4 ci)
 
-#TODO(Morato)  - add the from host example when it works on both platforms
+add_python_example(stereo_depth_from_host StereoDepth/stereo_depth_from_host.py)
+dai_set_example_test_labels(stereo_depth_from_host ondevice rvc2_all rvc4 ci)
 
 ## VideoEncoder
 add_python_example(video_encoder VideoEncoder/video_encode.py)

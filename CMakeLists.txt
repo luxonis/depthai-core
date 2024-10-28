@@ -27,6 +27,7 @@ option(DEPTHAI_ENABLE_LIBUSB "Enable usage of libusb and interaction with USB de
 if(WIN32)
     set(DEPTHAI_CURL_USE_SCHANNEL ON)
     set(DEPTHAI_CURL_USE_OPENSSL OFF)
+    add_compile_definitions(NOMINMAX)
 else()
     set(DEPTHAI_CURL_USE_SCHANNEL OFF)
     set(DEPTHAI_CURL_USE_OPENSSL ON)
@@ -72,7 +73,7 @@ endif()
 # Create depthai project
 project(depthai VERSION "3.0.0" LANGUAGES CXX C)
 set(DEPTHAI_PRE_RELEASE_TYPE "alpha") # Valid options are "alpha", "beta", "rc", ""
-set(DEPTHAI_PRE_RELEASE_VERSION "4")
+set(DEPTHAI_PRE_RELEASE_VERSION "5")
 
 # Set DEPTHAI_VERSION universally, not conditionally
 set(DEPTHAI_VERSION ${PROJECT_VERSION}-${DEPTHAI_PRE_RELEASE_TYPE}.${DEPTHAI_PRE_RELEASE_VERSION})
@@ -380,6 +381,7 @@ set(TARGET_CORE_SOURCES
     src/utility/EepromDataParser.cpp
     src/utility/LogCollection.cpp
     src/utility/MemoryWrappers.cpp
+    src/utility/Serialization.cpp
     src/xlink/XLinkConnection.cpp
     src/xlink/XLinkStream.cpp
     src/openvino/OpenVINO.cpp
@@ -453,6 +455,11 @@ else()
 endif()
 # Minimal supported macOS SDK version for C++17 support with std::filesystem
 set(CMAKE_OSX_DEPLOYMENT_TARGET 10.15)
+
+if(WIN32)
+    find_package(OpenSSL REQUIRED)
+    target_link_libraries(${TARGET_CORE_NAME} PUBLIC OpenSSL::Crypto OpenSSL::SSL)
+endif()
 
 # Link merged target libraries and add compile definitions
 if(DEPTHAI_HAVE_OPENCV_SUPPORT AND DEPTHAI_MERGED_TARGET)

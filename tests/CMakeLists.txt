@@ -17,6 +17,7 @@ set(test_env
     "UBSAN_OPTIONS=halt_on_error=1"
     # DepthAI
     "DEPTHAI_SEARCH_TIMEOUT=15000"
+    "DEPTHAI_RECONNECT_TIMEOUT=0"
     )
 
 include(CMakeParseArguments)
@@ -205,6 +206,13 @@ hunter_private_data(
     LOCATION yolo_onnx_nnarchive_path
 )
 
+hunter_private_data(
+    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/images/lenna.png"
+    SHA1 "3ee0d360dc12003c0d43e3579295b52b64906e85"
+    FILE "lenna.png"
+    LOCATION lenna_png
+)
+
 ### On-host tests #############################################################
 
 # Superblob test
@@ -351,4 +359,17 @@ dai_set_test_labels(spatial_detection_network_test ondevice rvc2_all rvc4 ci)
 
 # NeuralNetwork node test
 dai_add_test(neural_network_node_test src/ondevice_tests/pipeline/node/neural_network_node_test.cpp)
+target_compile_definitions(neural_network_node_test PRIVATE LENNA_PATH="${lenna_png}")
 dai_set_test_labels(neural_network_node_test ondevice rvc2_all rvc4 ci)
+
+# ImgTransformations tests
+dai_add_test(img_transformation_test src/ondevice_tests/img_transformation_test.cpp CXX_STANDARD 17)
+dai_set_test_labels(message_group_frame_test ondevice rvc4 ci)
+
+# Regression tests for encountered bugs
+dai_add_test(regression_camera_concurrency_test src/ondevice_tests/regression/camera_concurrency.cpp)
+dai_set_test_labels(regression_camera_concurrency_test ondevice rvc4 ci)
+
+# Sync test
+dai_add_test(sync_test src/ondevice_tests/pipeline/node/sync_test.cpp)
+dai_set_test_labels(sync_test ondevice rvc2_all rvc4 ci)

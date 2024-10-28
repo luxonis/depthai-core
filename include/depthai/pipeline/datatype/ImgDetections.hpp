@@ -2,6 +2,8 @@
 
 #include <vector>
 
+#include "depthai/common/ImgTransformations.hpp"
+#include "depthai/common/optional.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/schemas/ImgDetections.pb.h"
 #include "depthai/utility/ProtoSerializable.hpp"
@@ -32,6 +34,7 @@ class ImgDetections : public Buffer, public utility::ProtoSerializable {
 
     /// Detections
     std::vector<ImgDetection> detections;
+    std::optional<ImgTransformation> transformation;
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
         metadata = utility::serialize(*this);
@@ -61,7 +64,7 @@ class ImgDetections : public Buffer, public utility::ProtoSerializable {
         return imgDetections;
     }
 
-    DEPTHAI_SERIALIZE(ImgDetections, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, detections);
+    DEPTHAI_SERIALIZE(ImgDetections, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, detections, transformation);
 };
 
 }  // namespace dai

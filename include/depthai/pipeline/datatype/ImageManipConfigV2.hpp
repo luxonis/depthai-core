@@ -408,6 +408,12 @@ class ImageManipConfigV2 : public Buffer {
      */
     ImageManipConfigV2& addCrop(uint32_t x, uint32_t y, uint32_t w, uint32_t h);
     /**
+     * Crops the image to the specified rectangle
+     * @param rect Rect to crop
+     * @param normalizedCoords If true, the coordinates are normalized to range [0, 1] where 1 maps to the width/height of the image
+     */
+    ImageManipConfigV2& addCrop(dai::Rect rect, bool normalizedCoords = false);
+    /**
      * Crops the image to the specified (rotated) rectangle
      * @param rect RotatedRect to crop
      * @param normalizedCoords If true, the coordinates are normalized to range [0, 1] where 1 maps to the width/height of the image

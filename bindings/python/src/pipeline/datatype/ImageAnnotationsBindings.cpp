@@ -10,8 +10,17 @@
 //pybind
 #include <pybind11/chrono.h>
 #include <pybind11/numpy.h>
+#include <pybind11/stl_bind.h>
 
 // #include "spdlog/spdlog.h"
+
+
+PYBIND11_MAKE_OPAQUE(std::vector<dai::Color>);
+PYBIND11_MAKE_OPAQUE(std::vector<dai::Point2f>);
+PYBIND11_MAKE_OPAQUE(std::vector<dai::CircleAnnotation>);
+PYBIND11_MAKE_OPAQUE(std::vector<dai::PointsAnnotation>);
+PYBIND11_MAKE_OPAQUE(std::vector<dai::TextAnnotation>);
+PYBIND11_MAKE_OPAQUE(std::vector<dai::ImageAnnotation>);
 
 void bind_imageannotations(pybind11::module& m, void* pCallstack){
 
@@ -23,6 +32,17 @@ void bind_imageannotations(pybind11::module& m, void* pCallstack){
 	py::class_<PointsAnnotation> pointsAnnotation(m, "PointsAnnotation", DOC(dai, PointsAnnotation));
 	py::class_<TextAnnotation> textAnnotation(m, "TextAnnotation", DOC(dai, TextAnnotation));
     py::class_<ImageAnnotation> imageAnnotation(m, "ImageAnnotation", DOC(dai, ImageAnnotation));
+
+
+
+	py::bind_vector<std::vector<dai::Color>>(m, "VectorColor");
+	py::bind_vector<std::vector<dai::Point2f>>(m, "VectorPoint2f");
+	py::bind_vector<std::vector<dai::CircleAnnotation>>(m, "VectorCircleAnnotation");
+	py::bind_vector<std::vector<dai::PointsAnnotation>>(m, "VectorPointsAnnotation");
+	py::bind_vector<std::vector<dai::TextAnnotation>>(m, "VectorTextAnnotation");
+	py::bind_vector<std::vector<dai::ImageAnnotation>>(m, "VectorImageAnnotation");
+
+
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////

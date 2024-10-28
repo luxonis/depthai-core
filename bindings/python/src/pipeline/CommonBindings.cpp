@@ -427,7 +427,7 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack){
 
 	color
 		.def(py::init<>())
-		.def(py::init<float, float, float, float>())
+		.def(py::init<float, float, float, float>(), py::arg("r"), py::arg("g"), py::arg("b"), py::arg("a") = 1.0, DOC(dai, Color, Color))
 		.def_readwrite("r", &Color::r)
 		.def_readwrite("g", &Color::g)
 		.def_readwrite("b", &Color::b)
