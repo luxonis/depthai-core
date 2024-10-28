@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 3.4) # For Hunter
-include(cmake/vcpkg.cmake)
+option(DEPTHAI_BOOTSTRAP_VCPKG ON)
+if(DEPTHAI_BOOTSTRAP_VCPKG)
+    include(cmake/vcpkg.cmake)
+endif()
 # MSVC variable isn't available before 'project' call
 # Generalize to Win32 platform for now
 if(NOT WIN32)
@@ -388,6 +391,7 @@ set(TARGET_CORE_SOURCES
     src/modelzoo/NNModelDescription.cpp
     src/modelzoo/Zoo.cpp
     src/remote_connection/RemoteConnection.cpp
+    src/remote_connection/RemoteConnectionImpl.cpp
 )
 
 set(TARGET_OPENCV_SOURCES
@@ -450,6 +454,7 @@ endif()
 # Minimal supported macOS SDK version for C++17 support with std::filesystem
 set(CMAKE_OSX_DEPLOYMENT_TARGET 10.15)
 
+# TODO(Morato) resolve this - put under depthaiDependencies, shouldn't be public
 if(WIN32)
     find_package(OpenSSL REQUIRED)
     target_link_libraries(${TARGET_CORE_NAME} PUBLIC OpenSSL::Crypto OpenSSL::SSL)
@@ -679,13 +684,12 @@ target_link_libraries(${TARGET_CORE_NAME}
         libnop
         spdlog::spdlog
         yaml-cpp
-        # TODO(Morato) - potentiially move this to private
-        foxglove-websocket::foxglove-websocket
-        protobuf::libprotobuf
+        protobuf::libprotobuf # Could be made private with a refactor
         messages
     INTERFACE
         XLinkPublic
     PRIVATE
+        foxglove-websocket::foxglove-websocket
         XLink
         Threads::Threads
         BZip2::bz2
