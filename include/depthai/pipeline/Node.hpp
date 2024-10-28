@@ -315,6 +315,7 @@ class Node : public std::enable_shared_from_this<Node> {
     class Input : public MessageQueue {
         friend class Output;
         friend class OutputMap;
+
        public:
         enum class Type { SReceiver, MReceiver };  // TODO(Morato) - refactor, make the MReceiver a separate class (shouldn't inherit from MessageQueue)
 
