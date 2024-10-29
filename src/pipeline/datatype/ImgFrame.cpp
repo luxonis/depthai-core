@@ -248,7 +248,7 @@ float ImgFrame::getSourceHFov() const {
     float fx = transformation.getSourceIntrinsicMatrix()[0][0];
 
     // Calculate vertical FoV (in radians)
-    float horizontalFoV = 2 * atan(getWidth() / (2.0f * fx));
+    float horizontalFoV = 2 * atan(getSourceWidth() / (2.0f * fx));
 
     // Convert radians to degrees
     return horizontalFoV * 180.0f / (float)M_PI;
@@ -294,7 +294,7 @@ float ImgFrame::getSourceVFov() const {
     float fy = transformation.getSourceIntrinsicMatrix()[1][1];
 
     // Calculate vertical FoV (in radians)
-    float verticalFoV = 2 * atan(getHeight() / (2.0f * fy));
+    float verticalFoV = 2 * atan(getSourceHeight() / (2.0f * fy));
 
     // Convert radians to degrees
     return verticalFoV * 180.0f / (float)M_PI;
