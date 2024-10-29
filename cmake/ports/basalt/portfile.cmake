@@ -1,0 +1,17 @@
+
+vcpkg_from_github(
+    OUT_SOURCE_PATH SOURCE_PATH
+    REPO luxonis/basalt
+    REF 2627a83aafa88217370cf3549b19281502e4e205
+    SHA512 fb2a3310ecd3bdea00b14a933231072e089620ab4d10a66997757324c8894f75692dff3282c25dfeb2a75ff901ce9912f4a8a454fbd082dce58c331687e0b9c1
+    HEAD_REF deps_test
+)
+vcpkg_cmake_configure(
+    SOURCE_PATH "${SOURCE_PATH}"
+    OPTIONS
+		-DBUILD_SHARED_LIBS=OFF
+		-DBASALT_SDK_ONLY=ON
+)
+
+vcpkg_cmake_install()
+

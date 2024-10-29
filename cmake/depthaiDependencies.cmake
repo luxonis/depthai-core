@@ -9,44 +9,24 @@ if(CONFIG_MODE)
     set(_QUIET "QUIET")
 else()
     set(DEPTHAI_SHARED_LIBS ${BUILD_SHARED_LIBS})
-    hunter_add_package(BZip2)
-	hunter_add_package(FP16)
-    hunter_add_package(libarchive-luxonis)
-    hunter_add_package(lz4-luxonis)
-    hunter_add_package(mp4v2)
-    if(DEPTHAI_ENABLE_CURL)
-        hunter_add_package(CURL)
-        hunter_add_package(cpr)
-    endif()
-    if(DEPTHAI_ENABLE_BACKWARD)
-        hunter_add_package(Backward)
-    endif()
-    hunter_add_package(libnop)
-    if(DEPTHAI_BASALT_SUPPORT)
-        hunter_add_package(Eigen)
-        hunter_add_package(basalt-headers)
-        hunter_add_package(basalt)
-        hunter_add_package(oneTBB)
-    endif()
-    hunter_add_package(semver)
 endif()
 # If library was build as static, find all dependencies
 if(NOT CONFIG_MODE OR (CONFIG_MODE AND NOT DEPTHAI_SHARED_LIBS))
 
     # BZip2 (for bspatch)
-    find_package(BZip2 ${_QUIET} CONFIG REQUIRED)
+    find_package(BZip2 ${_QUIET}  REQUIRED)
 
+    find_package(lz4 CONFIG REQUIRED)
     # FP16 for conversions
     find_package(FP16 ${_QUIET} CONFIG REQUIRED)
 
     # libarchive for firmware packages
     find_package(archive_static ${_QUIET} CONFIG REQUIRED)
-    find_package(lzma ${_QUIET} CONFIG REQUIRED)
+    find_package(liblzma ${_QUIET} CONFIG REQUIRED)
     # httplib for Gate communication
     find_package(httplib ${_QUIET} CONFIG REQUIRED)
     # ZLIB for compressing Apps
     find_package(ZLIB CONFIG REQUIRED)
-    find_package(lz4 CONFIG REQUIRED)
 
     # spdlog for library and device logging
     find_package(spdlog ${_QUIET} CONFIG REQUIRED)
@@ -143,12 +123,8 @@ set(CMAKE_PREFIX_PATH ${PREFIX_TEMP})
 set(EIGEN_ROOT ${EIGEN_ROOT_TEMP})
 
 if(DEPTHAI_BASALT_SUPPORT)
-    find_package(Eigen3 ${_QUIET} CONFIG REQUIRED)
+find_package(basalt-headers ${_QUIET} CONFIG REQUIRED)
     find_package(basalt_sdk ${_QUIET} CONFIG REQUIRED)
-    find_package(TBB 2021.12.0 EXACT CONFIG REQUIRED)
-    find_package(Sophus ${_QUIET} CONFIG REQUIRED)
-    find_package(magic_enum ${_QUIET} CONFIG REQUIRED)
-    find_package(fmt ${_QUIET} CONFIG REQUIRED)
 endif()
 
 # include optional dependency cmake

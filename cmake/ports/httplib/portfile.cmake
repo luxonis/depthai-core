@@ -1,4 +1,3 @@
-
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO luxonis/cpp-httplib
@@ -9,8 +8,8 @@ vcpkg_from_github(
 vcpkg_cmake_configure(
     SOURCE_PATH "${SOURCE_PATH}"
     OPTIONS
-        HTTPLIB_USE_OPENSSL_IF_AVAILABLE=OFF
-        HTTPLIB_USE_BROTLI_IF_AVAILABLE=OFF
+		-DHTTPLIB_USE_OPENSSL_IF_AVAILABLE=OFF
+		-DHTTPLIB_USE_BROTLI_IF_AVAILABLE=OFF
 )
 
 vcpkg_cmake_install()

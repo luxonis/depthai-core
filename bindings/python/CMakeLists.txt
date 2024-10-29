@@ -43,7 +43,6 @@ option(DEPTHAI_PYTHON_EMBEDDED_MODULE "Create an embeddable module" OFF)
 
 # Add pybind11 dependency
 #add_subdirectory(pybind11-2.5.0)
-hunter_add_package(pybind11)
 
 # Disable LTO if MINGW compiler
 if(MINGW)

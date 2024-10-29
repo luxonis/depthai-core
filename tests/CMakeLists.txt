@@ -3,7 +3,6 @@ include(CTest)
 enable_testing()
 
 # Add Catch2 for writing tests
-hunter_add_package(Catch2)
 find_package(Catch2 CONFIG REQUIRED)
 
 # Print details of the Catch2 package

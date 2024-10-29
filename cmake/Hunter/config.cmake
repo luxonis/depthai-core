@@ -1,90 +1,4 @@
 
-hunter_config(
-    BZip2
-    VERSION "1.0.8-p0"
-)
-
-hunter_config(
-    spdlog
-    VERSION "1.8.2"
-    URL "https://github.com/gabime/spdlog/archive/v1.8.2.tar.gz"
-    SHA1 "4437f350ca7fa89a0cd8faca1198afb36823f775"
-    CMAKE_ARGS
-        SPDLOG_BUILD_EXAMPLE=OFF
-        SPDLOG_FMT_EXTERNAL=OFF
-        CMAKE_CXX_VISIBILITY_PRESET=hidden
-        CMAKE_C_VISIBILITY_PRESET=hidden
-)
-
-# libarchive, luxonis fork
-hunter_config(
-    libarchive-luxonis
-    VERSION "hunter-3.5.2"
-    URL "https://github.com/luxonis/libarchive/archive/45baa3a3e57104519e1165bcd5ac29c3bd8c9f3a.tar.gz"
-    SHA1 "ca5cd0f1c31b9c187d7119cb1aa7467f8c231d29"
-    CMAKE_ARGS
-        ENABLE_ACL=OFF
-        ENABLE_BZip2=OFF
-        ENABLE_CAT=OFF
-        ENABLE_CAT_SHARED=OFF
-        ENABLE_CNG=OFF
-        ENABLE_COVERAGE=OFF
-        ENABLE_CPIO=OFF
-        ENABLE_CPIO_SHARED=OFF
-        ENABLE_EXPAT=OFF
-        ENABLE_ICONV=OFF
-        ENABLE_INSTALL=ON
-        ENABLE_LIBB2=OFF
-        ENABLE_LIBXML2=OFF
-        ENABLE_LZ4=OFF
-        ENABLE_LZMA=ON
-        ENABLE_LZO=OFF
-        ENABLE_LibGCC=OFF
-        ENABLE_MBEDTLS=OFF
-        ENABLE_NETTLE=OFF
-        ENABLE_OPENSSL=OFF
-        ENABLE_PCREPOSIX=OFF
-        ENABLE_SAFESEH=AUTO
-        ENABLE_TAR=OFF
-        ENABLE_TAR_SHARED=OFF
-        ENABLE_TEST=OFF
-        ENABLE_WERROR=OFF
-        ENABLE_XATTR=OFF
-        ENABLE_ZLIB=OFF
-        ENABLE_ZSTD=OFF
-)
-
-# Luxonis FP16 fork which doesn't use git cloning for its dependencies
-hunter_config(
-    FP16
-    VERSION "luxonis-0.0.0"
-    URL "https://github.com/luxonis/FP16/archive/c911175d2717e562976e606c6e5f799bf40cf94e.tar.gz"
-    SHA1 "40e9723c87c2fe21781132c0f2f8b90338500e32"
-    CMAKE_ARGS
-        FP16_BUILD_BENCHMARKS=OFF
-        FP16_BUILD_TESTS=OFF
-)
-
-if(NOT EMSCRIPTEN)
-    # Backward - Stacktrace printer
-    hunter_config(
-      Backward
-      VERSION "1.6"
-      URL "https://github.com/bombela/backward-cpp/archive/refs/tags/v1.6.tar.gz"
-      SHA1 "4ecb711eabfd15bc88ff9dd9342907fc5da46b62"
-      CMAKE_ARGS
-          BACKWARD_TESTS=OFF
-    )
-endif()
-
-# libnop - Serialization
-hunter_config(
-    libnop
-    VERSION "1.0-ec8f75a"
-    URL "https://github.com/luxonis/libnop/archive/ab842f51dc2eb13916dc98417c2186b78320ed10.tar.gz"
-    SHA1 "32f40f084615ba7940ce9d29f05f3294371aabeb"
-)
-
 # Specific Catch2 version
 hunter_config(
     Catch2
@@ -94,13 +8,6 @@ hunter_config(
 )
 
 
-# LZ4 for mcap
-hunter_config(
-    lz4-luxonis
-    VERSION "1.9.4-p2"
-    URL "https://github.com/luxonis/lz4/archive/ba358ed311d125333d245e4c284464a72a168983.tar.gz"
-    SHA1 "43ae0d2343147e32cdd8b85cefb5a311c3ee5504"
-)
 
 # TMP, could be read from XLink
 # libusb without udev
@@ -115,26 +22,6 @@ hunter_config(
         BUILD_SHARED_LIBS=ON
 )
 
-# cpp-httplib
-hunter_config(
-    httplib
-    VERSION "0.11.2"
-    URL "https://github.com/luxonis/cpp-httplib/archive/3ba99c06f655a52e701c9a7ae5dc48850582d95b.tar.gz"
-    SHA1 "84ddd5d58a210b6203c50760d2ebde75b0ff6376"
-    CMAKE_ARGS
-        HTTPLIB_USE_OPENSSL_IF_AVAILABLE=OFF
-        HTTPLIB_USE_BROTLI_IF_AVAILABLE=OFF
-)
-
-
-# Pybind11 2.9.2
-# # Pybind11 2.11.0-smart_holder
-# hunter_config(
-#     pybind11
-#     VERSION "2.11.0-smart_holder"
-#     URL "https://github.com/pybind/pybind11/archive/10283c2ef44a9100bc88d066a4972c4f51ded2b0.tar.gz"
-#     SHA1 "0da09bdd6987a33feb800e4b7f129df5c9aa5aed"
-# )
 
 # Pybind11 2.9.2-smart_holder
 hunter_config(
@@ -144,93 +31,6 @@ hunter_config(
     SHA1 "d53247e4d1af52be040b647de0c25eb336bc85c7"
 )
 
-hunter_config(
-    mp4v2
-    VERSION "2.1.3"
-    URL "https://github.com/luxonis/mp4v2/archive/1dc9f4d24645ea43405582e5c813dec3eaa8fd3e.tar.gz"
-    SHA1 "2ac9e4348c78d09a3b4fc6e147b9eeb356ba31f1"
-    CMAKE_ARGS
-        BUILD_SHARED=OFF
-        BUILD_UTILS=OFF
-)
-
-
-hunter_config(
-    basalt-headers
-    VERSION 0.1.0
-    URL "https://github.com/luxonis/basalt-headers/archive/e3ee456469f21a356a0a59088779b32721918f11.tar.gz"
-    SHA1 "73955ab90ae77ee32c88744b945b3fd8b175833b"
-)
-
-hunter_config(
-    oneTBB
-    VERSION 2021.12.0
-    URL "https://github.com/oneapi-src/oneTBB/archive/refs/tags/v2021.12.0.zip"
-    SHA1 "f6b0eb4e45af600684282341115a3c2fb9834978"
-    CMAKE_ARGS
-        TBB_PREVIEW_GLOBAL_CONTROL=ON
-        TBB_TEST=OFF
-        CMAKE_CXX_VISIBILITY_PRESET=hidden
-        CMAKE_C_VISIBILITY_PRESET=hidden
-)
-
-
-hunter_config(
-    basalt
-    VERSION 0.1.0
-    URL "https://github.com/luxonis/basalt/archive/5763210cd48e2dfc560f80ee0d3648163e69a901.tar.gz"
-    SHA1 "d5301f8edfce5372962851b3d7928c053f0b1628"
-    CMAKE_ARGS
-        BASALT_SDK_ONLY=ON
-)
-
-hunter_config(
-    Sophus
-    VERSION 1.22.10
-    URL "https://github.com/luxonis/Sophus/archive/54e9b230edc4df47f819cef0d15b1fcc165342df.tar.gz"
-    SHA1 "4c67d2d3415511446ed65705f00b23854dae6cd6"
-    CMAKE_ARGS
-        BUILD_SOPHUS_TESTS=OFF
-        BUILD_SOPHUS_EXAMPLES=OFF
-)
-
-
-hunter_config(
-    magic_enum
-    URL "https://github.com/Neargye/magic_enum/archive/3d1f6a5a2a3fbcba077e00ad0ccc2dd9fefc2ca7.zip"
-    SHA1 "c9a27f6ff8311f0c6b2adb959d0598f079fcc9f3"
-)
-hunter_config(
-    CURL
-    VERSION "7.88.1-p0-custom"
-    URL "https://github.com/cpp-pm/curl/archive/25d45e89d140d6ab27103cd7f8f6d7d6cf548d47.tar.gz"
-    SHA1 "db96d87e078e529a90dfb74de8d360a785c053aa"
-    CMAKE_ARGS
-        BUILD_CURL_TESTS=OFF
-        BUILD_CURL_EXE=OFF
-        CURL_USE_SCHANNEL=${DEPTHAI_CURL_USE_SCHANNEL}
-        CURL_USE_OPENSSL=${DEPTHAI_CURL_USE_OPENSSL} # Override hunter flags - no OpenSSL needed on Windows
-        BUILD_STATIC_CURL=ON
-        BUILD_SHARED_LIBS=OFF
-        BUILD_STATIC_LIBS=ON
-)
-
-# A hunterized and patched version of cpr- see https://github.com/luxonis/cpr/pull/1
-hunter_config(
-    cpr
-    VERSION "1.4.0"
-    URL "https://github.com/luxonis/cpr/archive/50a1321738554e0152b0a6f1b0ca24e4fdecff5c.tar.gz"
-    SHA1 "2e2ba9920ed99c19887592ca89d9be5ffce4722b"
-)
-
-hunter_config(
-    yaml-cpp
-    VERSION "0.6.3l"
-    URL "https://github.com/jbeder/yaml-cpp/archive/refs/tags/yaml-cpp-0.6.3.tar.gz"
-    SHA1 "98d98632b3a62fdf1172442f8ad8190fc11cbef7"
-    CMAKE_ARGS
-        YAML_BUILD_SHARED_LIBS=ON
-)
 
 hunter_config(
     semver

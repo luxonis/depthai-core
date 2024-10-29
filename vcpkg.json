@@ -11,7 +11,18 @@
 		"spdlog",
 		"xlink",
 		"httplib",
-		"zlib"
+		"zlib",
+		"spdlog",
+		"bzip2",
+		"lz4-luxonis",
+		"libarchive-luxonis",
+		"liblzma",
+		"fp16",
+		"mp4v2",
+		"libnop",
+		"neargye-semver",
+		"pybind11",
+		"catch2"
 	],
 	"features": {
 		"rtabmap": {
@@ -28,6 +39,33 @@
 			"dependencies": [
 				{
 					"name": "apriltag"
+				}
+			]
+		},
+		"backward": {
+			"description": "Enable backward-cpp support",
+			"dependencies": [
+				{
+					"name": "backward-cpp"
+				}
+			]
+		},
+		"curl": {
+			"description": "Enable cURL support",
+			"dependencies": [
+				{
+					"name": "curl"
+				},
+				{
+					"name": "cpr"
+				}
+			]
+		},
+		"basalt": {
+			"description": "Enable Basalt support",
+			"dependencies": [
+				{
+					"name": "basalt"
 				}
 			]
 		}

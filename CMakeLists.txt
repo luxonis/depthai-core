@@ -1,4 +1,5 @@
 cmake_minimum_required(VERSION 3.4) # For Hunter
+
 # Build AprilTag node code (note, that even if set to OFF, an AprilTagNode can be used with setRunOnHost(false))
 option(DEPTHAI_ENABLE_APRIL_TAG "Enable AprilTag node" ON)
 set(DEPTHAI_HAS_APRIL_TAG ${DEPTHAI_ENABLE_APRIL_TAG})
@@ -13,15 +14,45 @@ option(DEPTHAI_RTABMAP_SUPPORT "Enable optional RTABMap support" OFF)
 if(DEPTHAI_RTABMAP_SUPPORT)
 list(APPEND VCPKG_MANIFEST_FEATURES "rtabmap")
 endif()
+option(DEPTHAI_BASALT_SUPPORT "Enable optional Basalt support" OFF)
+if(DEPTHAI_BASALT_SUPPORT)
+list(APPEND VCPKG_MANIFEST_FEATURES "basalt")
+endif()
+# Enable backward stack printing on crash
+if(ANDROID OR EMSCRIPTEN)
+    # Backward not supported currently on Android
+    set(DEPTHAI_ENABLE_BACKWARD OFF CACHE BOOL "" FORCE)
+else()
+    option(DEPTHAI_ENABLE_BACKWARD "Enable stacktrace printing on crash using Backward" ON)
+    # Additional function information for 'backward' stacktrace
+    if(DEPTHAI_ENABLE_BACKWARD)
+        set(CMAKE_ENABLE_EXPORTS ON)
+        list(APPEND VCPKG_MANIFEST_FEATURES "backward")
+    endif()
+endif()
+
+
+# Check if on 32 bit linux - default without CURL support
+if(CMAKE_SIZEOF_VOID_P EQUAL 4 AND UNIX)
+    set(DEPTHAI_DEFAULT_CURL_SUPPORT OFF)
+else()
+    set(DEPTHAI_DEFAULT_CURL_SUPPORT ON)
+endif()
+
+option(DEPTHAI_ENABLE_CURL "Enable CURL support" ${DEPTHAI_DEFAULT_CURL_SUPPORT})
+if(DEPTHAI_ENABLE_CURL)
+	list(APPEND VCPKG_MANIFEST_FEATURES "curl")
+endif()
+# Early options
+option(DEPTHAI_ENABLE_LIBUSB "Enable usage of libusb and interaction with USB devices" ON)
 include(cmake/vcpkg.cmake)
+
 # MSVC variable isn't available before 'project' call
 # Generalize to Win32 platform for now
 if(NOT WIN32)
     set(HUNTER_CONFIGURATION_TYPES "Release" CACHE STRING "Hunter dependencies list of build configurations")
 endif()
 
-# Early options
-option(DEPTHAI_ENABLE_LIBUSB "Enable usage of libusb and interaction with USB devices" ON)
 
 # Set to use native tls for windows before including Hunter (used for Curl)
 if(WIN32)
@@ -129,26 +160,7 @@ option(DEPTHAI_INSTALL   "Enable install target for depthai-core targets" ON)
 set(DEPTHAI_XLINK_LOCAL "" CACHE STRING "Path to local XLink source to use instead of Hunter")
 set(DEPTHAI_BOOTLOADER_SHARED_LOCAL "" CACHE STRING "Path to local depthai-bootloader-shared source to use instead of submodule")
 
-# Enable backward stack printing on crash
-if(ANDROID OR EMSCRIPTEN)
-    # Backward not supported currently on Android
-    set(DEPTHAI_ENABLE_BACKWARD OFF CACHE BOOL "" FORCE)
-else()
-    option(DEPTHAI_ENABLE_BACKWARD "Enable stacktrace printing on crash using Backward" ON)
-    # Additional function information for 'backward' stacktrace
-    if(DEPTHAI_ENABLE_BACKWARD)
-        set(CMAKE_ENABLE_EXPORTS ON)
-    endif()
-endif()
 
-# Check if on 32 bit linux - default without CURL support
-if(CMAKE_SIZEOF_VOID_P EQUAL 4 AND UNIX)
-    set(DEPTHAI_DEFAULT_CURL_SUPPORT OFF)
-else()
-    set(DEPTHAI_DEFAULT_CURL_SUPPORT ON)
-endif()
-
-option(DEPTHAI_ENABLE_CURL "Enable CURL support" ${DEPTHAI_DEFAULT_CURL_SUPPORT})
 
 # Force Colored output when using Ninja
 # Global option - affects all targets
@@ -208,7 +220,6 @@ endif()
 option(DEPTHAI_XTENSOR_SUPPORT "Enable optional xtensor support" ON)
 option(DEPTHAI_OPENCV_SUPPORT "Enable optional OpenCV support" ON)
 option(DEPTHAI_PCL_SUPPORT "Enable optional PCL support" OFF)
-option(DEPTHAI_BASALT_SUPPORT "Enable optional Basalt support" OFF)
 
 option(DEPTHAI_MERGED_TARGET "Enable merged target build" ON)
 
@@ -694,7 +705,7 @@ target_link_libraries(${TARGET_CORE_NAME}
     PRIVATE
         XLink
         Threads::Threads
-        BZip2::bz2
+        BZip2::BZip2
         FP16::fp16
         archive_static
         ZLIB::zlib
@@ -932,14 +943,13 @@ endif()
 # Basalt Support
 ########################
 
-set(THIRDPARTY_BASALT_LIBRARIES "TBB::tbb;Eigen3::Eigen;basalt_sdk::basalt_sdk" CACHE STRING "Optional libraries to link Basalt support, e.g. TBB::tbb")
+set(THIRDPARTY_BASALT_LIBRARIES "basalt_sdk::basalt_sdk" CACHE STRING "Optional libraries to link Basalt support, e.g. TBB::tbb")
 set(TARGET_BASALT_NAME ${PROJECT_NAME}-basalt)
 set(TARGET_BASALT_ALIAS basalt)
 
 if(DEPTHAI_BASALT_SUPPORT)
     # Check if required libraries are available
     find_package(basalt_sdk CONFIG REQUIRED)
-    find_package(TBB CONFIG REQUIRED)
     set(BASALT_SUPPORT_AVAILABLE ${basalt_sdk_FOUND})
 
     if(BASALT_SUPPORT_AVAILABLE)
@@ -1100,7 +1110,7 @@ configure_file("cmake/${PROJECT_NAME}Dependencies.cmake" ${PROJECT_NAME}Dependen
 write_basic_package_version_file(${PROJECT_NAME}ConfigVersion.cmake VERSION ${PROJECT_VERSION} COMPATIBILITY AnyNewerVersion)
 
 # Configure config file (one for exporting build directory, one for installation)
-file(RELATIVE_PATH DEPTHAI_DEPENDENCIES_INSTALLATION_PATH_REL "${CMAKE_CURRENT_BINARY_DIR}" "${HUNTER_INSTALL_PREFIX}")
+# file(RELATIVE_PATH DEPTHAI_DEPENDENCIES_INSTALLATION_PATH_REL "${CMAKE_CURRENT_BINARY_DIR}" "${HUNTER_INSTALL_PREFIX}")
 configure_file(cmake/${PROJECT_NAME}Config.cmake.in ${PROJECT_NAME}Config.cmake @ONLY)
 
 # Config for installation
