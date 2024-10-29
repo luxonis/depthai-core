@@ -1,10 +1,14 @@
 #pragma once
 
+#include <google/protobuf/message.h>
+
 #include <chrono>
 #include <unordered_map>
 #include <vector>
 
 #include "depthai/pipeline/datatype/Buffer.hpp"
+#include "depthai/utility/ProtoSerializable.hpp"
+
 namespace dai {
 
 struct IMUReport {
@@ -211,7 +215,7 @@ DEPTHAI_SERIALIZE_EXT(IMUPacket, acceleroMeter, gyroscope, magneticField, rotati
 /**
  * IMUData message. Carries normalized detection results
  */
-class IMUData : public Buffer {
+class IMUData : public Buffer, public utility::ProtoSerializable, public utility::ProtoDeserializable {
    public:
     // Construct IMUData message
     IMUData() = default;
@@ -224,7 +228,9 @@ class IMUData : public Buffer {
         datatype = DatatypeEnum::IMUData;
     };
 
-    span<const uint8_t> getRecordData() const override;
+    std::unique_ptr<google::protobuf::Message> getProtoMessage() const override;
+
+    void setProtoMessage(const std::unique_ptr<google::protobuf::Message> msg) override;
 
     DEPTHAI_SERIALIZE(IMUData, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum, packets);
 };

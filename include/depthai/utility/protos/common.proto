@@ -19,15 +19,13 @@ message CameraSettings {
 
 message ImgTransformation {
     TransformationMatrix transformationMatrix = 1;
-    TransformationMatrix transformationMatrixInv = 2;
-    TransformationMatrix sourceIntrinsicMatrix = 3;
-    TransformationMatrix sourceIntrinsicMatrixInv = 4;
-    CameraModel distortionModel = 5;
-    FloatArray distortionCoefficients = 6;
-    uint32 srcWidth = 7;
-    uint32 srcHeight = 8;
-    uint32 width = 9;
-    uint32 height = 10;
+    TransformationMatrix sourceIntrinsicMatrix = 2;
+    CameraModel distortionModel = 3;
+    FloatArray distortionCoefficients = 4;
+    uint32 srcWidth = 5;
+    uint32 srcHeight = 6;
+    uint32 width = 7;
+    uint32 height = 8;
 }
 
 message TransformationMatrix {

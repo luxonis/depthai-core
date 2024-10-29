@@ -180,6 +180,11 @@ class EncodedFrame : public Buffer, public utility::ProtoSerializable {
 
     std::unique_ptr<google::protobuf::Message> getProtoMessage() const override;
 
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
+        metadata = utility::serialize(*this);
+        datatype = DatatypeEnum::EncodedFrame;
+    };
+
     DEPTHAI_SERIALIZE(EncodedFrame,
                       cam,
                       instanceNum,
@@ -196,11 +201,6 @@ class EncodedFrame : public Buffer, public utility::ProtoSerializable {
                       Buffer::sequenceNum,
                       Buffer::ts,
                       Buffer::tsDevice);
-
-    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
-        metadata = utility::serialize(*this);
-        datatype = DatatypeEnum::EncodedFrame;
-    };
 };
 
 }  // namespace dai

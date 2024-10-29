@@ -4,9 +4,12 @@
 #include <google/protobuf/message.h>
 #include <google/protobuf/util/time_util.h>
 
+#include <chrono>
 #include <memory>
 #include <queue>
 #include <vector>
+#include "depthai/schemas/common.pb.h"
+
 namespace dai {
 
 namespace utility {
@@ -82,6 +85,19 @@ class ProtoSerializable {
      */
     virtual std::unique_ptr<google::protobuf::Message> getProtoMessage() const = 0;
 };
+
+class ProtoDeserializable {
+   public:
+    virtual ~ProtoDeserializable() = default;
+
+   protected:
+    virtual void setProtoMessage(const std::unique_ptr<google::protobuf::Message>) = 0;
+};
+
+inline std::chrono::time_point<std::chrono::steady_clock> fromProtoTimestamp(const dai::proto::common::Timestamp& ts) {
+    using namespace std::chrono;
+    return time_point<steady_clock>(seconds(ts.sec()) + nanoseconds(ts.nsec()));
+}
 
 }  // namespace utility
 

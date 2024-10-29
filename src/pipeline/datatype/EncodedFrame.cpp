@@ -156,6 +156,35 @@ std::unique_ptr<google::protobuf::Message> EncodedFrame::getProtoMessage() const
     cam->set_wbcolortemp(this->cam.wbColorTemp);          // wbColorTemp -> wbcolortemp
     cam->set_lenspositionraw(this->cam.lensPositionRaw);  // lensPositionRaw -> lenspositionraw
 
+    proto::common::ImgTransformation* imgTransformation = encodedFrame->mutable_transformation();
+    const auto [width, height] = this->transformation.getSize();
+    const auto [srcWidth, srcHeight] = this->transformation.getSourceSize();
+    imgTransformation->set_width(width);
+    imgTransformation->set_height(height);
+    imgTransformation->set_srcwidth(srcWidth);
+    imgTransformation->set_srcheight(srcHeight);
+
+    proto::common::TransformationMatrix* transformationMatrix = imgTransformation->mutable_transformationmatrix();
+    for(const auto& array : transformation.getMatrix()) {
+        proto::common::FloatArray* floatArray = transformationMatrix->add_arrays();
+        for(const auto& value : array) {
+            floatArray->add_values(value);
+        }
+    }
+    proto::common::TransformationMatrix* sourceIntrinsicMatrix = imgTransformation->mutable_sourceintrinsicmatrix();
+    for(const auto& array : transformation.getSourceIntrinsicMatrix()) {
+        proto::common::FloatArray* floatArray = sourceIntrinsicMatrix->add_arrays();
+        for(const auto& value : array) {
+            floatArray->add_values(value);
+        }
+    }
+
+    imgTransformation->set_distortionmodel(static_cast<proto::common::CameraModel>(this->transformation.getDistortionModel()));
+    proto::common::FloatArray* distortionCoefficients = imgTransformation->mutable_distortioncoefficients();
+    for(const auto& value : this->transformation.getDistortionCoefficients()) {
+        distortionCoefficients->add_values(value);
+    }
+
     // Set the encoded frame data
     encodedFrame->set_data(this->data->getData().data(), this->data->getData().size());
 

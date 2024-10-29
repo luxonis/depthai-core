@@ -30,7 +30,7 @@ namespace dai {
 /**
  * ImgFrame message. Carries image data and metadata.
  */
-class ImgFrame : public Buffer, public utility::ProtoSerializable {
+class ImgFrame : public Buffer, public utility::ProtoSerializable, public utility::ProtoDeserializable {
    public:
     using Buffer::getTimestamp;
     using Buffer::getTimestampDevice;
@@ -86,95 +86,9 @@ class ImgFrame : public Buffer, public utility::ProtoSerializable {
         datatype = DatatypeEnum::ImgFrame;
     };
 
-    std::unique_ptr<google::protobuf::Message> getProtoMessage() const override {
-        // create and populate ImgFrame protobuf message
-        auto imgFrame = std::make_unique<proto::img_frame::ImgFrame>();
-        proto::common::Timestamp* ts = imgFrame->mutable_ts();
-        ts->set_sec(this->ts.sec);
-        ts->set_nsec(this->ts.nsec);
-        proto::common::Timestamp* tsDevice = imgFrame->mutable_tsdevice();
-        tsDevice->set_sec(this->tsDevice.sec);
-        tsDevice->set_nsec(this->tsDevice.nsec);
+    std::unique_ptr<google::protobuf::Message> getProtoMessage() const override;
 
-        imgFrame->set_sequencenum(this->sequenceNum);
-
-        proto::img_frame::Specs* fb = imgFrame->mutable_fb();
-        fb->set_type(static_cast<proto::img_frame::Type>(this->fb.type));
-        fb->set_width(this->fb.width);
-        fb->set_height(this->fb.height);
-        fb->set_stride(this->fb.stride);
-        fb->set_bytespp(this->fb.bytesPP);
-        fb->set_p1offset(this->fb.p1Offset);
-        fb->set_p2offset(this->fb.p2Offset);
-        fb->set_p3offset(this->fb.p3Offset);
-
-        proto::img_frame::Specs* sourceFb = imgFrame->mutable_sourcefb();
-        sourceFb->set_type(static_cast<proto::img_frame::Type>(this->sourceFb.type));
-        sourceFb->set_width(this->sourceFb.width);
-        sourceFb->set_height(this->sourceFb.height);
-        sourceFb->set_stride(this->sourceFb.stride);
-        sourceFb->set_bytespp(this->sourceFb.bytesPP);
-        sourceFb->set_p1offset(this->sourceFb.p1Offset);
-        sourceFb->set_p2offset(this->sourceFb.p2Offset);
-        sourceFb->set_p3offset(this->sourceFb.p3Offset);
-
-        proto::common::CameraSettings* cam = imgFrame->mutable_cam();
-        cam->set_exposuretimeus(this->cam.exposureTimeUs);
-        cam->set_sensitivityiso(this->cam.sensitivityIso);
-        cam->set_lensposition(this->cam.lensPosition);
-        cam->set_wbcolortemp(this->cam.wbColorTemp);
-        cam->set_lenspositionraw(this->cam.lensPositionRaw);
-
-        imgFrame->set_instancenum(this->instanceNum);
-
-        imgFrame->set_category(this->category);
-
-        proto::common::ImgTransformation* imgTransformation = imgFrame->mutable_transformation();
-        const auto [width, height] = this->transformation.getSize();
-        const auto [srcWidth, srcHeight] = this->transformation.getSourceSize();
-        imgTransformation->set_width(width);
-        imgTransformation->set_height(height);
-        imgTransformation->set_srcwidth(srcWidth);
-        imgTransformation->set_srcheight(srcHeight);
-
-        proto::common::TransformationMatrix* transformationMatrix = imgTransformation->mutable_transformationmatrix();
-        for(const auto& array : transformation.getMatrix()) {
-            proto::common::FloatArray* floatArray = transformationMatrix->add_arrays();
-            for(const auto& value : array) {
-                floatArray->add_values(value);
-            }
-        }
-        proto::common::TransformationMatrix* transformationMatrixInv = imgTransformation->mutable_transformationmatrixinv();
-        for(const auto& array : transformation.getMatrixInv()) {
-            proto::common::FloatArray* floatArray = transformationMatrixInv->add_arrays();
-            for(const auto& value : array) {
-                floatArray->add_values(value);
-            }
-        }
-        proto::common::TransformationMatrix* sourceIntrinsicMatrix = imgTransformation->mutable_sourceintrinsicmatrix();
-        for(const auto& array : transformation.getSourceIntrinsicMatrix()) {
-            proto::common::FloatArray* floatArray = sourceIntrinsicMatrix->add_arrays();
-            for(const auto& value : array) {
-                floatArray->add_values(value);
-            }
-        }
-        proto::common::TransformationMatrix* sourceIntrinsicMatrixInv = imgTransformation->mutable_sourceintrinsicmatrixinv();
-        for(const auto& array : transformation.getSourceIntrinsicMatrixInv()) {
-            proto::common::FloatArray* floatArray = sourceIntrinsicMatrixInv->add_arrays();
-            for(const auto& value : array) {
-                floatArray->add_values(value);
-            }
-        }
-
-        imgTransformation->set_distortionmodel(static_cast<proto::common::CameraModel>(this->transformation.getDistortionModel()));
-        proto::common::FloatArray* distortionCoefficients = imgTransformation->mutable_distortioncoefficients();
-        for(const auto& value : this->transformation.getDistortionCoefficients()) {
-            distortionCoefficients->add_values(value);
-        }
-
-        imgFrame->set_data(this->data->getData().data(), this->data->getData().size());
-        return imgFrame;
-    }
+    void setProtoMessage(const std::unique_ptr<google::protobuf::Message> msg) override;
 
     // getters
     /**
