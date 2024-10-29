@@ -29,6 +29,7 @@
 #include "utility/Initialization.hpp"
 #include "utility/PimplImpl.hpp"
 #include "utility/Resources.hpp"
+#include "utility/spdlog-fmt.hpp"
 
 // libraries
 #include "XLink/XLink.h"
@@ -1353,6 +1354,26 @@ void DeviceBase::flashCalibration2(CalibrationHandler calibrationDataHandler) {
     if(!success) {
         throw std::runtime_error(errorMsg);
     }
+}
+
+void DeviceBase::setCalibration(CalibrationHandler calibrationDataHandler) {
+    bool success;
+    std::string errorMsg;
+    std::tie(success, errorMsg) = pimpl->rpcClient->call("setCalibration", calibrationDataHandler.getEepromData()).as<std::tuple<bool, std::string>>();
+    if(!success) {
+        throw std::runtime_error(errorMsg);
+    }
+}
+
+CalibrationHandler DeviceBase::getCalibration() {
+    bool success;
+    std::string errorMsg;
+    dai::EepromData eepromData;
+    std::tie(success, errorMsg, eepromData) = pimpl->rpcClient->call("getCalibration").as<std::tuple<bool, std::string, dai::EepromData>>();
+    if(!success) {
+        throw EepromError(errorMsg);
+    }
+    return CalibrationHandler(eepromData);
 }
 
 CalibrationHandler DeviceBase::readCalibration() {

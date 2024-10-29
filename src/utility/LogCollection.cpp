@@ -74,6 +74,7 @@ std::string getOSPlatform() {
 }
 
 std::string calculateSHA1(const std::string& input) {
+    // We could also use SHA1 from OpenSSL and SChannel
     SHA1 checksum;
     checksum.update(input);
     return checksum.final();
@@ -131,7 +132,7 @@ void logPipeline(const PipelineSchema& pipelineSchema, const dai::DeviceInfo& de
 #else
     namespace fs = ghc::filesystem;
     // Check if logging is explicitly disabled
-    auto loggingEnabled = utility::getEnv("DEPTHAI_ENABLE_FEEDBACK_PIPELINE");
+    auto loggingEnabled = utility::getEnv("DEPTHAI_ENABLE_ANALYTICS_COLLECTION");
     if(loggingEnabled.empty()) {
         logger::info("Logging disabled");
         return;
@@ -217,8 +218,8 @@ void logCrashDump(const tl::optional<PipelineSchema>& pipelineSchema, const Cras
     }
 
     // Check if logging is explicitly disabled
-    auto loggingEnabled = utility::getEnv("DEPTHAI_ENABLE_FEEDBACK_CRASHDUMP");
-    if(!loggingEnabled.empty()) {
+    auto loggingDisabled = utility::getEnv("DEPTHAI_DISABLE_CRASHDUMP_COLLECTION");
+    if(loggingDisabled.empty()) {
         logger::info("Logging enabled");
         auto success = sendLogsToServer(pipelineData, crashDumpData, deviceInfo);
         if(!success) {

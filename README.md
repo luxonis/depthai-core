@@ -27,7 +27,7 @@ To install PCL:
 MacOS: `brew install pcl`
 Linux: `sudo apt install libpcl-dev`
 
-> ℹ️ On Linux distributions based on RPMs, you need to install `perl-core` for us to OpenSSL dependency.
+> ℹ️ On Linux distributions based on RPMs, you need to install `perl-core` required by OpenSSL dependency.
 >```
 >sudo yum install perl-core
 >```
@@ -203,8 +203,8 @@ The following environment variables can be set to alter default behavior of the 
 | DEPTHAI_LIBUSB_ANDROID_JAVAVM | JavaVM pointer that is passed to libusb for rootless Android interaction with devices. Interpreted as decimal value of uintptr_t |
 | DEPTHAI_CRASHDUMP | Directory in which to save the crash dump. |
 | DEPTHAI_CRASHDUMP_TIMEOUT | Specifies the duration in seconds to wait for device reboot when obtaining a crash dump. Crash dump retrieval disabled if 0. |
-| DEPTHAI_ENABLE_FEEDBACK_PIPELINE | Enables automatic pipeline schema collection used to improve the library |
-| DEPTHAI_ENABLE_FEEDBACK_CRASHDUMP | Enables automatic crash dump collection used to improve the library |
+| DEPTHAI_ENABLE_ANALYTICS_COLLECTION | Enables automatic analytics collection (pipeline schemas) used to improve the library |
+| DEPTHAI_DISABLE_CRASHDUMP_COLLECTION | Disables automatic crash dump collection used to improve the library |
 
 ## Running tests
 

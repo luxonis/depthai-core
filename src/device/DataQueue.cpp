@@ -18,6 +18,7 @@
 
 // libraries
 #include "utility/Logging.hpp"
+#include "utility/spdlog-fmt.hpp"
 
 // Additions
 #include "spdlog/fmt/bin_to_hex.h"
