@@ -96,6 +96,8 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack){
         .def_readwrite("center", &RotatedRect::center)
         .def_readwrite("size", &RotatedRect::size)
         .def_readwrite("angle", &RotatedRect::angle)
+        .def("getPoints", &RotatedRect::getPoints, DOC(dai, RotatedRect, getPoints))
+        .def("getOuterRect", &RotatedRect::getOuterRect, DOC(dai, RotatedRect, getOuterRect))
         ;
 
     rect

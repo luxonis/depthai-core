@@ -17,6 +17,10 @@ struct RotatedRect {
     /// degrees, increasing clockwise
     float angle = 0.f;
 
+    /**
+     * Get the 4 corner points of the rotated rectangle
+     * @return 4 corner points
+     */
     std::array<dai::Point2f, 4> getPoints() const {
         float angleRad = angle * 3.14159265358979323846f / 180.0f;
 
@@ -44,6 +48,10 @@ struct RotatedRect {
 
         return corners;
     }
+    /**
+    * Returns the outer non-rotated rectangle
+    * @return [minx, miny, maxx, maxy]
+    */
     std::array<float, 4> getOuterRect() const {
         auto points = getPoints();
         float minx = std::min({points[0].x, points[1].x, points[2].x, points[3].x});
