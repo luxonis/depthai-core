@@ -200,7 +200,7 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
         .def("getSourceDFov", &ImgFrame::getSourceDFov, DOC(dai, ImgFrame, getSourceDFov))
         .def("getSourceWidth", &ImgFrame::getSourceWidth, DOC(dai, ImgFrame, getSourceWidth))
         .def("getSourceHeight", &ImgFrame::getSourceHeight, DOC(dai, ImgFrame, getSourceHeight))
-        .def_readwrite("transformation", &ImgFrame::transformation, DOC(dai, ImgFrame, transformation))
+        .def("getTransformation", [](ImgFrame& msg) {return msg.transformation;})
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
         // The cast function itself does a copy, so we can avoid two copies by always not copying
@@ -252,6 +252,7 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
              py::arg("sizer"),
              DOC(dai, ImgFrame, setSize, 2))
         .def("setType", &ImgFrame::setType, py::arg("type"), DOC(dai, ImgFrame, setType))
+        .def("setTransformation", [](ImgFrame& msg, const ImgTransformation& transformation) {msg.transformation = transformation;})
         // .def("set", &ImgFrame::set, py::arg("type"), DOC(dai, ImgFrame, set))
         ;
     // add aliases dai.ImgFrame.Type and dai.ImgFrame.Specs
