@@ -20,6 +20,7 @@ if(NOT CONFIG_MODE OR (CONFIG_MODE AND NOT DEPTHAI_SHARED_LIBS))
     # FP16 for conversions
     find_package(FP16 ${_QUIET} CONFIG REQUIRED)
 
+find_package(PNG  REQUIRED)
     # libarchive for firmware packages
     find_package(archive_static ${_QUIET} CONFIG REQUIRED)
     find_package(liblzma ${_QUIET} CONFIG REQUIRED)
@@ -76,7 +77,6 @@ find_package(mp4v2 ${_QUIET} CONFIG REQUIRED)
 # TODO(Morato) - potentially move this to a private library
 find_package(Protobuf ${_QUIET} CONFIG REQUIRED)
 
-
 # XLink
 if(DEPTHAI_XLINK_LOCAL AND (NOT CONFIG_MODE))
     set(_BUILD_SHARED_LIBS_SAVED "${BUILD_SHARED_LIBS}")
@@ -92,10 +92,6 @@ else()
 endif()
 
 # OpenCV 4 - (optional)
-message("DEPTHAI_OPENCV_SUPPORT: ${DEPTHAI_OPENCV_SUPPORT}")
-if(DEPTHAI_OPENCV_SUPPORT)
-    find_package(OpenCV 4 ${_QUIET} CONFIG REQUIRED)
-endif()
 
 if(DEPTHAI_PCL_SUPPORT AND NOT TARGET JsonCpp::JsonCpp)
     find_package(jsoncpp)
@@ -110,6 +106,10 @@ set(EIGEN_ROOT "")
 set(CMAKE_FIND_ROOT_PATH_TMP ${CMAKE_FIND_ROOT_PATH})
 set(CMAKE_FIND_ROOT_PATH "")
 
+message("DEPTHAI_OPENCV_SUPPORT: ${DEPTHAI_OPENCV_SUPPORT}")
+if(DEPTHAI_OPENCV_SUPPORT)
+    find_package(OpenCV 4 ${_QUIET} CONFIG REQUIRED)
+endif()
 if(DEPTHAI_PCL_SUPPORT)
     find_package(PCL CONFIG COMPONENTS common)
 endif()
