@@ -197,6 +197,62 @@ std::array<std::array<float, 3>, 3> ImgTransformation::getSourceIntrinsicMatrix(
 std::array<std::array<float, 3>, 3> ImgTransformation::getSourceIntrinsicMatrixInv() const {
     return sourceIntrinsicMatrixInv;
 }
+std::array<std::array<float, 3>, 3> ImgTransformation::getIntrinsicMatrix() const {
+    return matmul(sourceIntrinsicMatrix, transformationMatrix);
+}
+std::array<std::array<float, 3>, 3> ImgTransformation::getIntrinsicMatrixInv() const {
+    return matmul(transformationMatrixInv, sourceIntrinsicMatrixInv);
+}
+float ImgTransformation::getDFov() const {
+    if(height <= 0) {
+        throw std::runtime_error(fmt::format("Height is invalid. Height: {}", height));
+    }
+    if(width <= 0) {
+        throw std::runtime_error(fmt::format("Width is invalid. Width: {}", width));
+    }
+    float HFovDegrees = getHFov();
+
+    // Calculate the diagonal ratio (DR)
+    float dr = std::sqrt(std::pow(width, 2) + std::pow(height, 2));
+
+    // Validate the horizontal FOV
+    if(HFovDegrees <= 0 || HFovDegrees >= 180) {
+        throw std::runtime_error(fmt::format("Horizontal FOV is invalid. Horizontal FOV: {}", HFovDegrees));
+    }
+
+    float HFovRadians = HFovDegrees * (static_cast<float>(M_PI) / 180.0f);
+
+    // Calculate the tangent of half of the HFOV
+    float tanHFovHalf = std::tan(HFovRadians / 2);
+
+    // Calculate the tangent of half of the VFOV
+    float tanDiagonalFovHalf = (dr / width) * tanHFovHalf;
+
+    // Calculate the VFOV in radians
+    float diagonalFovRadians = 2 * std::atan(tanDiagonalFovHalf);
+
+    // Convert VFOV to degrees
+    float diagonalFovDegrees = diagonalFovRadians * (180.0f / static_cast<float>(M_PI));
+    return diagonalFovDegrees;
+}
+float ImgTransformation::getHFov() const {
+    float fx = getIntrinsicMatrix()[0][0];
+
+    // Calculate vertical FoV (in radians)
+    float horizontalFoV = 2 * atan(width / (2.0f * fx));
+
+    // Convert radians to degrees
+    return horizontalFoV * 180.0f / (float)M_PI;
+}
+float ImgTransformation::getVFov() const {
+    float fy = getIntrinsicMatrix()[1][1];
+
+    // Calculate vertical FoV (in radians)
+    float verticalFoV = 2 * atan(height / (2.0f * fy));
+
+    // Convert radians to degrees
+    return verticalFoV * 180.0f / (float)M_PI;
+}
 std::vector<dai::RotatedRect> ImgTransformation::getSrcCrops() const {
     return srcCrops;
 }

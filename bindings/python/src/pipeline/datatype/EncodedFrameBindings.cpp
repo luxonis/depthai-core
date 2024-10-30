@@ -91,7 +91,7 @@ void bind_encodedframe(pybind11::module& m, void* pCallstack) {
         .def("getFrameType", &EncodedFrame::getFrameType, DOC(dai, EncodedFrame, getFrameType))
         .def("getLossless", &EncodedFrame::getLossless, DOC(dai, EncodedFrame, getLossless))
         .def("getProfile", &EncodedFrame::getProfile, DOC(dai, EncodedFrame, getProfile))
-
+        .def_readwrite("transformation", &EncodedFrame::transformation, DOC(dai, EncodedFrame, transformation))
         //  // setters
         //  .def("setTimestamp", &EncodedFrame::setTimestamp,
         //       DOC(dai, EncodedFrame, setTimestamp))

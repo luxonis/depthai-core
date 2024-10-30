@@ -113,6 +113,31 @@ struct ImgTransformation {
      * @return Inverse intrinsic matrix
      */
     std::array<std::array<float, 3>, 3> getSourceIntrinsicMatrixInv() const;
+    /**
+     * Retrieve the total intrinsic matrix calculated from intrinsic * transform.
+     * @return total intrinsic matrix
+     */
+    std::array<std::array<float, 3>, 3> getIntrinsicMatrix() const;
+    /**
+     * Retrieve the inverse of the total intrinsic matrix calculated from intrinsic * transform.
+     * @return inverse total intrinsic matrix
+     */
+    std::array<std::array<float, 3>, 3> getIntrinsicMatrixInv() const;
+    /**
+     * Retrieve the diagonal field of view of the image.
+     * @return Diagonal field of view in degrees
+     */
+    float getDFov() const;
+    /**
+     * Retrieve the horizontal field of view of the image.
+     * @return Horizontal field of view in degrees
+     */
+    float getHFov() const;
+    /**
+     * Retrieve the vertical field of view of the image.
+     * @return Vertical field of view in degrees
+     */
+    float getVFov() const;
     std::vector<dai::RotatedRect> getSrcCrops() const;
 
     /**

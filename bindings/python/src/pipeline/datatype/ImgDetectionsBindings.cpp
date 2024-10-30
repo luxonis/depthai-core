@@ -78,6 +78,7 @@ void bind_imgdetections(pybind11::module& m, void* pCallstack){
         .def("getTimestamp", &ImgDetections::Buffer::getTimestamp, DOC(dai, Buffer, getTimestamp))
         .def("getTimestampDevice", &ImgDetections::Buffer::getTimestampDevice, DOC(dai, Buffer, getTimestampDevice))
         .def("getSequenceNum", &ImgDetections::Buffer::getSequenceNum, DOC(dai, Buffer, getSequenceNum))
+        .def_readwrite("transformation", &ImgDetections::transformation, DOC(dai, ImgDetections, transformation))
         // .def("setTimestamp", &ImgDetections::setTimestamp, DOC(dai, Buffer, setTimestamp))
         // .def("setTimestampDevice", &ImgDetections::setTimestampDevice, DOC(dai, Buffer, setTimestampDevice))
         // .def("setSequenceNum", &ImgDetections::setSequenceNum, DOC(dai, ImgDetections, setSequenceNum))
