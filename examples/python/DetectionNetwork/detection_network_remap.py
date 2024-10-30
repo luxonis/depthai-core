@@ -30,7 +30,7 @@ with dai.Pipeline() as pipeline:
 
     pipeline.start()
 
-    # nn data, being the bounding box locations, are in <0..1> range - they need to be normalized with frame width/height
+    # nn data, being the bounding box locations, are in <0..1> range - they need to be denormalized with frame width/height
     def denormalize(shape, bbox):
         return (int(bbox[0] * shape[0]), int(bbox[1] * shape[1]), int(bbox[2] * shape[0]), int(bbox[3] * shape[1]))
 
@@ -42,14 +42,18 @@ with dai.Pipeline() as pipeline:
             cvFrame = (cvFrame * (255 / stereo.initialConfig.getMaxDisparity())).astype(np.uint8)
             cvFrame = cv2.applyColorMap(cvFrame, cv2.COLORMAP_JET)
         for detection in imgDetections.detections:
+            # Get the shape of the frame from which the detections originated for denormalization
             normShape = imgDetections.getTransformation().getSize()
             (xmin, ymin, xmax, ymax) = denormalize(normShape, (detection.xmin, detection.ymin, detection.xmax, detection.ymax))
+            # Create rotated rectangle to remap
             rotRect = dai.RotatedRect()
             rotRect.center.x = xmin + (xmax - xmin) / 2
             rotRect.center.y = ymin + (ymax - ymin) / 2
             rotRect.size.width = xmax - xmin
             rotRect.size.height = ymax - ymin
+            # Remap the detection rectangle to target frame
             remapped = imgDetections.getTransformation().remapRectTo(frame.getTransformation(), rotRect)
+            # Remapped rectangle could be rotated, so we get the bounding box
             bbox = [int(l) for l in remapped.getOuterRect()]
             cv2.putText(
                 cvFrame,
