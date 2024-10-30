@@ -2,9 +2,10 @@
 
 import cv2
 import depthai as dai
+import numpy as np
 
 # Create pipeline
-with dai.Pipeline(dai.Device("10.12.103.170")) as pipeline:
+with dai.Pipeline() as pipeline:
     cameraNode = pipeline.create(dai.node.Camera).build()
     detectionNetwork = pipeline.create(dai.node.DetectionNetwork).build(cameraNode, dai.NNModelDescription("yolov6-nano"))
     labelMap = detectionNetwork.getClasses()
@@ -34,19 +35,24 @@ with dai.Pipeline(dai.Device("10.12.103.170")) as pipeline:
         return (int(bbox[0] * shape[0]), int(bbox[1] * shape[1]), int(bbox[2] * shape[0]), int(bbox[3] * shape[1]))
 
     def displayFrame(name: str, frame: dai.ImgFrame, imgDetections: dai.ImgDetections):
-        color = (255, 0, 0)
+        color = (0, 255, 0)
         assert imgDetections.getTransformation() is not None
+        cvFrame = frame.getFrame() if frame.getType() == dai.ImgFrame.Type.RAW16 else frame.getCvFrame()
+        if(frame.getType() == dai.ImgFrame.Type.RAW16):
+            cvFrame = (cvFrame * (255 / stereo.initialConfig.getMaxDisparity())).astype(np.uint8)
+            cvFrame = cv2.applyColorMap(cvFrame, cv2.COLORMAP_JET)
         for detection in imgDetections.detections:
-            (xmin, ymin, xmax, ymax) = denormalize((frame.getWidth(), frame.getHeight()), (detection.xmin, detection.ymin, detection.xmax, detection.ymax))
+            normShape = imgDetections.getTransformation().getSize()
+            (xmin, ymin, xmax, ymax) = denormalize(normShape, (detection.xmin, detection.ymin, detection.xmax, detection.ymax))
             rotRect = dai.RotatedRect()
             rotRect.center.x = xmin + (xmax - xmin) / 2
             rotRect.center.y = ymin + (ymax - ymin) / 2
             rotRect.size.width = xmax - xmin
             rotRect.size.height = ymax - ymin
             remapped = imgDetections.getTransformation().remapRectTo(frame.getTransformation(), rotRect)
-            bbox = remapped.getOuterRect()
+            bbox = [int(l) for l in remapped.getOuterRect()]
             cv2.putText(
-                frame,
+                cvFrame,
                 labelMap[detection.label],
                 (bbox[0] + 10, bbox[1] + 20),
                 cv2.FONT_HERSHEY_TRIPLEX,
@@ -54,16 +60,16 @@ with dai.Pipeline(dai.Device("10.12.103.170")) as pipeline:
                 255,
             )
             cv2.putText(
-                frame,
+                cvFrame,
                 f"{int(detection.confidence * 100)}%",
                 (bbox[0] + 10, bbox[1] + 40),
                 cv2.FONT_HERSHEY_TRIPLEX,
                 0.5,
                 255,
             )
-            cv2.rectangle(frame, (bbox[0], bbox[1]), (bbox[2], bbox[3]), color, 2)
+            cv2.rectangle(cvFrame, (bbox[0], bbox[1]), (bbox[2], bbox[3]), color, 2)
         # Show the frame
-        cv2.imshow(name, frame)
+        cv2.imshow(name, cvFrame)
 
     while pipeline.isRunning():
         inRgb: dai.ImgFrame = qRgb.get()
@@ -73,9 +79,9 @@ with dai.Pipeline(dai.Device("10.12.103.170")) as pipeline:
         hasDepth = inDepth is not None
         hasDet = inDet is not None
         if hasRgb:
-            displayFrame("rgb", inRgb, inDet.detections)
+            displayFrame("rgb", inRgb, inDet)
         if hasDepth:
-            displayFrame("depth", inDepth, inDet.detections)
+            displayFrame("depth", inDepth, inDet)
         if cv2.waitKey(1) == ord("q"):
             pipeline.stop()
             break
