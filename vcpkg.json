@@ -5,8 +5,7 @@
       "default-features": false
     },
     {
-      "name": "protobuf",
-      "platform": "windows"
+      "name": "protobuf"
     }
   ],
   "overrides": [{
