@@ -1,8 +1,12 @@
 cmake_minimum_required(VERSION 3.4) # For Hunter
-option(DEPTHAI_BOOTSTRAP_VCPKG ON)
+option(DEPTHAI_BOOTSTRAP_VCPKG "Automatically bootstrap VCPKG" ON)
 if(DEPTHAI_BOOTSTRAP_VCPKG)
+    message(STATUS "Including vcpkg.cmake")
     include(cmake/vcpkg.cmake)
+else()
+    message(STATUS "DEPTHAI_BOOTSTRAP_VCPKG is OFF")
 endif()
+
 # MSVC variable isn't available before 'project' call
 # Generalize to Win32 platform for now
 if(NOT WIN32)

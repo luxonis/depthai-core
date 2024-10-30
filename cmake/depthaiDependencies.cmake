@@ -111,7 +111,7 @@ find_package(libnop ${_QUIET} CONFIG REQUIRED)
 find_package(mp4v2 ${_QUIET} CONFIG REQUIRED)
 
 # TODO(Morato) - potentially move this to a private library
-find_package(Protobuf ${_QUIET} CONFIG REQUIRED)
+find_package(Protobuf ${_QUIET} REQUIRED)
 
 # XLink
 if(DEPTHAI_XLINK_LOCAL AND (NOT CONFIG_MODE))

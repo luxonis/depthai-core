@@ -1,8 +1,17 @@
 {
   "dependencies": [
-    "websocketpp",
-    "protobuf",
-    "openssl"
+    {
+      "name": "websocketpp",
+      "default-features": false
+    },
+    {
+      "name": "protobuf",
+      "platform": "windows"
+    }
   ],
+  "overrides": [{
+    "name": "websocketpp",
+    "version": "0.8.2"
+  }],
   "builtin-baseline": "f5ec6f30ff70f04f841436a0f36600bdbabfcfbf"
 }
