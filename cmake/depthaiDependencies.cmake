@@ -20,14 +20,14 @@ if(NOT CONFIG_MODE OR (CONFIG_MODE AND NOT DEPTHAI_SHARED_LIBS))
     # FP16 for conversions
     find_package(FP16 ${_QUIET} CONFIG REQUIRED)
 
-find_package(PNG  REQUIRED)
+    find_package(PNG  REQUIRED)
     # libarchive for firmware packages
     find_package(archive_static ${_QUIET} CONFIG REQUIRED)
     find_package(liblzma ${_QUIET} CONFIG REQUIRED)
     # httplib for Gate communication
     find_package(httplib ${_QUIET} CONFIG REQUIRED)
     # ZLIB for compressing Apps
-    find_package(ZLIB CONFIG REQUIRED)
+    find_package(ZLIB  REQUIRED)
 
     # spdlog for library and device logging
     find_package(spdlog ${_QUIET} CONFIG REQUIRED)
