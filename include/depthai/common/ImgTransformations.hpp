@@ -125,19 +125,22 @@ struct ImgTransformation {
     std::array<std::array<float, 3>, 3> getIntrinsicMatrixInv() const;
     /**
      * Retrieve the diagonal field of view of the image.
+     * @param source If true, the source field of view will be returned. Otherwise, the current field of view will be returned.
      * @return Diagonal field of view in degrees
      */
-    float getDFov() const;
+    float getDFov(bool source = false) const;
     /**
      * Retrieve the horizontal field of view of the image.
+     * @param source If true, the source field of view will be returned. Otherwise, the current field of view will be returned.
      * @return Horizontal field of view in degrees
      */
-    float getHFov() const;
+    float getHFov(bool source = false) const;
     /**
      * Retrieve the vertical field of view of the image.
+     * @param source If true, the source field of view will be returned. Otherwise, the current field of view will be returned.
      * @return Vertical field of view in degrees
      */
-    float getVFov() const;
+    float getVFov(bool source = false) const;
     std::vector<dai::RotatedRect> getSrcCrops() const;
 
     /**

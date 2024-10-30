@@ -144,9 +144,9 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
         .def("getSourceIntrinsicMatrixInv", &ImgTransformation::getSourceIntrinsicMatrixInv)
         .def("getIntrinsicMatrix", &ImgTransformation::getIntrinsicMatrix)
         .def("getIntrinsicMatrixInv", &ImgTransformation::getIntrinsicMatrixInv)
-        .def("getDFov", &ImgTransformation::getDFov)
-        .def("getHFov", &ImgTransformation::getHFov)
-        .def("getVFov", &ImgTransformation::getVFov)
+        .def("getDFov", &ImgTransformation::getDFov, py::arg("source") = false)
+        .def("getHFov", &ImgTransformation::getHFov, py::arg("source") = false)
+        .def("getVFov", &ImgTransformation::getVFov, py::arg("source") = false)
         .def("addTransformation", &ImgTransformation::addTransformation, py::arg("matrix"), DOC(dai, ImgTransformation, addTransformation))
         .def("addCrop", &ImgTransformation::addCrop, py::arg("x"), py::arg("y"), py::arg("width"), py::arg("height"), DOC(dai, ImgTransformation, addCrop))
         .def("addPadding",
