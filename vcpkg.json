@@ -14,7 +14,7 @@
 		"zlib",
 		"spdlog",
 		"bzip2",
-		"lz4",
+		"lz4-luxonis",
 		"libarchive-luxonis",
 		"liblzma",
 		"fp16",
