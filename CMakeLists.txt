@@ -89,12 +89,6 @@ else()
 endif()
 
 
-include("cmake/HunterGate.cmake")
-HunterGate(
-    URL "https://github.com/cpp-pm/hunter/archive/9d9242b60d5236269f894efd3ddd60a9ca83dd7f.tar.gz"
-    SHA1 "16cc954aa723bccd16ea45fc91a858d0c5246376"
-    LOCAL # Local config for dependencies
-)
 
 # Move binary dir if windows, to shorten the path
 if(WIN32)
