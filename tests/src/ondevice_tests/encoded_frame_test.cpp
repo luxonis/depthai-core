@@ -6,20 +6,20 @@
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/datatype/EncodedFrame.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
-#include "depthai/pipeline/node/ColorCamera.hpp"
+#include "depthai/pipeline/node/Camera.hpp"
 #include "depthai/pipeline/node/VideoEncoder.hpp"
 #include "depthai/pipeline/node/XLinkOut.hpp"
 #include "depthai/properties/VideoEncoderProperties.hpp"
 
 dai::Pipeline getPipeline(dai::VideoEncoderProperties::Profile profile, unsigned int quality, bool lossless, unsigned int bitrate) {
     dai::Pipeline pipeline;
-    auto camNode = pipeline.create<dai::node::ColorCamera>();
+    auto camNode = pipeline.create<dai::node::Camera>();
+    auto camOut = camNode->requestOutput({1280, 720}, dai::ImgFrame::Type::NV12);
     auto encNode = pipeline.create<dai::node::VideoEncoder>();
     auto xlinkOut = pipeline.create<dai::node::XLinkOut>();
-    camNode->video.link(encNode->input);
+    camOut->link(encNode->input);
     encNode->out.link(xlinkOut->input);
 
-    camNode->setVideoSize(1280, 720);
     encNode->setProfile(profile);
     encNode->setBitrate(bitrate);
     encNode->setQuality(quality);
@@ -32,11 +32,11 @@ dai::Pipeline getPipeline(dai::VideoEncoderProperties::Profile profile, unsigned
 
 TEST_CASE("OLD_OUTPUT") {
     dai::Pipeline pipeline;
-    auto camNode = pipeline.create<dai::node::ColorCamera>();
+    auto camNode = pipeline.create<dai::node::Camera>();
+    auto camOut = camNode->requestOutput({1280, 720}, dai::ImgFrame::Type::NV12);
     auto encNode = pipeline.create<dai::node::VideoEncoder>();
-    camNode->video.link(encNode->input);
+    camOut->link(encNode->input);
 
-    camNode->setVideoSize(1280, 720);
     encNode->setProfile(dai::VideoEncoderProperties::Profile::H264_MAIN);
 
     auto outputQueue = encNode->bitstream.createOutputQueue();
@@ -48,16 +48,16 @@ TEST_CASE("OLD_OUTPUT") {
 
 TEST_CASE("JPEG_ENCODING_LOSSLESS") {
     dai::Pipeline pipeline;
-    auto camNode = pipeline.create<dai::node::ColorCamera>();
+    auto camNode = pipeline.create<dai::node::Camera>();
+    auto camOut = camNode->requestOutput({1280, 720}, dai::ImgFrame::Type::NV12);
     auto encNode = pipeline.create<dai::node::VideoEncoder>();
-    camNode->video.link(encNode->input);
+    camOut->link(encNode->input);
 
     dai::VideoEncoderProperties::Profile profile = dai::VideoEncoderProperties::Profile::MJPEG;
     unsigned int quality = 30;
     bool lossless = true;
     unsigned int bitrate = 0;
 
-    camNode->setVideoSize(1280, 720);
     encNode->setProfile(profile);
     encNode->setBitrate(bitrate);
     encNode->setQuality(quality);
@@ -76,16 +76,16 @@ TEST_CASE("JPEG_ENCODING_LOSSLESS") {
 
 TEST_CASE("JPEG_ENCODING_LOSSY") {
     dai::Pipeline pipeline;
-    auto camNode = pipeline.create<dai::node::ColorCamera>();
+    auto camNode = pipeline.create<dai::node::Camera>();
+    auto camOut = camNode->requestOutput({1280, 720}, dai::ImgFrame::Type::NV12);
     auto encNode = pipeline.create<dai::node::VideoEncoder>();
-    camNode->video.link(encNode->input);
+    camOut->link(encNode->input);
 
     dai::VideoEncoderProperties::Profile profile = dai::VideoEncoderProperties::Profile::MJPEG;
     unsigned int quality = 30;
     bool lossless = false;
     unsigned int bitrate = 0;
 
-    camNode->setVideoSize(1280, 720);
     encNode->setProfile(profile);
     encNode->setBitrate(bitrate);
     encNode->setQuality(quality);
@@ -104,16 +104,16 @@ TEST_CASE("JPEG_ENCODING_LOSSY") {
 
 TEST_CASE("AVC_ENCODING") {
     dai::Pipeline pipeline;
-    auto camNode = pipeline.create<dai::node::ColorCamera>();
+    auto camNode = pipeline.create<dai::node::Camera>();
+    auto camOut = camNode->requestOutput({1280, 720}, dai::ImgFrame::Type::NV12);
     auto encNode = pipeline.create<dai::node::VideoEncoder>();
-    camNode->video.link(encNode->input);
+    camOut->link(encNode->input);
 
     dai::VideoEncoderProperties::Profile profile = dai::VideoEncoderProperties::Profile::H264_HIGH;
     unsigned int quality = 30;
     bool lossless = false;
     unsigned int bitrate = 8500000;
 
-    camNode->setVideoSize(1280, 720);
     encNode->setProfile(profile);
     encNode->setBitrate(bitrate);
     encNode->setQuality(quality);
@@ -134,16 +134,16 @@ TEST_CASE("AVC_ENCODING") {
 
 TEST_CASE("HEVC_ENCODING") {
     dai::Pipeline pipeline;
-    auto camNode = pipeline.create<dai::node::ColorCamera>();
+    auto camNode = pipeline.create<dai::node::Camera>();
+    auto camOut = camNode->requestOutput({1280, 720}, dai::ImgFrame::Type::NV12);
     auto encNode = pipeline.create<dai::node::VideoEncoder>();
-    camNode->video.link(encNode->input);
+    camOut->link(encNode->input);
 
     dai::VideoEncoderProperties::Profile profile = dai::VideoEncoderProperties::Profile::H265_MAIN;
     unsigned int quality = 30;
     bool lossless = false;
     unsigned int bitrate = 8500000;
 
-    camNode->setVideoSize(1280, 720);
     encNode->setProfile(profile);
     encNode->setBitrate(bitrate);
     encNode->setQuality(quality);
