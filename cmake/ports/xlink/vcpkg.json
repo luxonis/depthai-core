@@ -11,5 +11,11 @@
       "name": "vcpkg-cmake-config",
       "host": true
     }
-]
+],
+	"features": {
+		"libusb": {
+			"description": "Build with libusb support"
+			
+		}
+	}
 }

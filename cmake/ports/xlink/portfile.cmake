@@ -5,11 +5,15 @@ vcpkg_from_github(
     SHA512 e27834680374f348ffb590e181b3592df77c33d2de2c3b78061ff20d3315be5d4688da4ecfca8b3f914955367713ed53d50e61049b2f4eb95d6606b2426de7be
     HEAD_REF master
 )
+vcpkg_check_features(OUT_FEATURE_OPTIONS FEATURE_OPTIONS
+    FEATURES
+        libusb          DXLINK_ENABLE_LIBUSB
+)
 vcpkg_cmake_configure(
     SOURCE_PATH "${SOURCE_PATH}"
     OPTIONS
-	# temporary
-		-DXLINK_ENABLE_LIBUSB=ON
+    # temporary
+        ${FEATURE_OPTIONS}
 )
 
 vcpkg_cmake_install()

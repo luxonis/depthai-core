@@ -45,6 +45,11 @@ if(DEPTHAI_ENABLE_CURL)
 endif()
 # Early options
 option(DEPTHAI_ENABLE_LIBUSB "Enable usage of libusb and interaction with USB devices" ON)
+if(DEPTHAI_ENABLE_LIBUSB)
+	list(APPEND VCPKG_MANIFEST_FEATURES "xlink-usb")
+else()
+	list(APPEND VCPKG_MANIFEST_FEATURES "xlink")
+endif()
 include(cmake/vcpkg.cmake)
 
 # MSVC variable isn't available before 'project' call

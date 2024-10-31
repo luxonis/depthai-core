@@ -10,7 +10,6 @@
 		"yaml-cpp",
 		"nlohmann-json",
 		"spdlog",
-		"xlink",
 		"zlib",
 		"spdlog",
 		"bzip2",
@@ -66,6 +65,25 @@
 			"dependencies": [
 				{
 					"name": "basalt"
+				}
+			]
+		},
+		"xlink": {
+			"description": "Enable XLink support",
+			"dependencies": [
+				{
+					"name": "xlink"
+				}
+			]
+		},
+		"xlink-usb": {
+			"description": "Enable XLink support",
+			"dependencies": [
+				{
+					"name": "xlink",
+					"features": [
+						"libusb"
+					]
 				}
 			]
 		}
