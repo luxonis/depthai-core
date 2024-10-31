@@ -27,7 +27,7 @@ if(NOT CONFIG_MODE OR (CONFIG_MODE AND NOT DEPTHAI_SHARED_LIBS))
     # httplib for Gate communication
     find_package(httplib ${_QUIET} CONFIG REQUIRED)
     # ZLIB for compressing Apps
-    find_package(ZLIB  REQUIRED)
+    find_package(ZLIB REQUIRED)
 
     # spdlog for library and device logging
     find_package(spdlog ${_QUIET} CONFIG REQUIRED)
@@ -92,6 +92,9 @@ else()
 endif()
 
 # OpenCV 4 - (optional)
+if(DEPTHAI_OPENCV_SUPPORT)
+    find_package(OpenCV 4 ${_QUIET} CONFIG REQUIRED)
+endif()
 
 if(DEPTHAI_PCL_SUPPORT AND NOT TARGET JsonCpp::JsonCpp)
     find_package(jsoncpp)
@@ -107,15 +110,15 @@ set(CMAKE_FIND_ROOT_PATH_TMP ${CMAKE_FIND_ROOT_PATH})
 set(CMAKE_FIND_ROOT_PATH "")
 
 message("DEPTHAI_OPENCV_SUPPORT: ${DEPTHAI_OPENCV_SUPPORT}")
-if(DEPTHAI_OPENCV_SUPPORT)
-    find_package(OpenCV 4 ${_QUIET} CONFIG REQUIRED)
-endif()
 if(DEPTHAI_PCL_SUPPORT)
     find_package(PCL CONFIG COMPONENTS common)
 endif()
 set(CMAKE_FIND_ROOT_PATH ${CMAKE_FIND_ROOT_PATH_TMP})
 if(DEPTHAI_RTABMAP_SUPPORT)
     find_package(RTABMap ${_QUIET} CONFIG REQUIRED COMPONENTS core utilite)
+find_package(g2o ${_QUIET} CONFIG REQUIRED)
+	find_package(Ceres ${_QUIET} CONFIG REQUIRED)
+find_package(OpenMP ${_QUIET} REQUIRED)
 endif()
 
 set(CMAKE_MODULE_PATH ${MODULE_TEMP})

@@ -484,7 +484,6 @@ if(DEPTHAI_HAVE_PCL_SUPPORT AND DEPTHAI_MERGED_TARGET)
     target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_TARGET_PCL)
     target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_HAVE_PCL_SUPPORT)
 
-    target_include_directories(${TARGET_CORE_NAME} PUBLIC ${PCL_INCLUDE_DIRS})
     target_link_directories(${TARGET_CORE_NAME} PUBLIC ${PCL_LIBRARY_DIRS})
     target_compile_definitions(${TARGET_CORE_NAME} PUBLIC ${PCL_DEFINITIONS})
 endif()
@@ -689,7 +688,7 @@ target_link_libraries(${TARGET_CORE_NAME}
         nlohmann_json::nlohmann_json
         libnop
         spdlog::spdlog
-        yaml-cpp
+        yaml-cpp::yaml-cpp
         # TODO(Morato) - potentiially move this to private
         foxglove-websocket::foxglove-websocket
         protobuf::libprotobuf
@@ -702,7 +701,7 @@ target_link_libraries(${TARGET_CORE_NAME}
         BZip2::BZip2
         FP16::fp16
         archive_static
-        ZLIB::zlib
+		ZLIB::ZLIB
         LZ4::lz4
         httplib::httplib
         mp4v2::mp4v2
@@ -1037,6 +1036,44 @@ if(DEPTHAI_SANITIZE)
         endif()
     endif()
 endif()
+function(hunter_private_data)    
+            set(one URL SHA1 CREDENTIALS LOCATION FILE)
+            set(multiple HTTPHEADER)
+
+            cmake_parse_arguments(x "" "${one}" "${multiple}" "${ARGN}")
+
+            if(x_HTTPHEADER)
+                message(FATAL_ERROR "HTTPHEADER argument of hunter_private_data not supported if HUNTER_ENABLED is OFF")
+            endif()
+            if(x_CREDENTIALS)
+                message(FATAL_ERROR "CREDENTIALS argument of hunter_private_data not supported if HUNTER_ENABLED is OFF")
+            endif()
+
+            if(NOT x_URL)
+                message(FATAL_ERROR "URL not provided to hunter_private_data")
+            endif()
+            if(NOT x_SHA1)
+                message(FATAL_ERROR "SHA1 not provided to hunter_private_data")
+            endif()
+            if(NOT x_FILE)
+                message(FATAL_ERROR "FILE not provided to hunter_private_data")
+            endif()
+            if(NOT x_LOCATION)
+                message(FATAL_ERROR "LOCATION not provided to hunter_private_data")
+            endif()
+
+            set(x_DOWNLOAD_LOCATION "${CMAKE_CURRENT_BINARY_DIR}/_hunter_private_data/${x_FILE}")
+
+            file(DOWNLOAD
+                ${x_URL}
+                ${x_DOWNLOAD_LOCATION}
+                EXPECTED_HASH SHA1=${x_SHA1}
+                TLS_VERIFY ON
+            )
+
+            # Set the output variable
+            set(${x_LOCATION} "${x_DOWNLOAD_LOCATION}" PARENT_SCOPE)
+endfunction()
 
 ########################
 # Testing infrastructure

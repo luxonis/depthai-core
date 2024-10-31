@@ -30,23 +30,9 @@
       "host": true
     },
     "zlib",
-	"boost-asio",
-    "boost-date-time",
-    "boost-dynamic-bitset",
     "boost-filesystem",
-    "boost-foreach",
     "boost-graph",
-    "boost-interprocess",
-    "boost-iostreams",
-    "boost-multi-array",
-    "boost-property-map",
-    "boost-ptr-container",
-    "boost-random",
-    "boost-signals2",
-    "boost-sort",
-    "boost-system",
-    "boost-thread",
-    "boost-uuid"
+    "boost-iostreams"
   ],
   "default-features": [
     "gui",
