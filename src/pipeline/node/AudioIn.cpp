@@ -13,7 +13,8 @@ namespace node {
 AudioIn::AudioIn(std::unique_ptr<Properties> props) : DeviceNodeCRTP<DeviceNode, AudioIn, AudioInProperties>(std::move(props)) {}
 
 void AudioIn::run() {
-    snd_pcm_hw_params_t* hwParams;
+    snd_pcm_t *captureHandle;
+    snd_pcm_hw_params_t *hwParams;
 
     int err;
 

@@ -11,10 +11,9 @@ namespace dai {
 namespace node {
 
 class AudioIn : public DeviceNodeCRTP<DeviceNode, AudioIn, AudioInProperties>, public HostRunnable {
-   protected:
+   private:
     bool runOnHostVar = false;
-    snd_pcm_t* captureHandle;
-
+   
    public:  // internal usage
     constexpr static const char* NAME = "AudioIn";
 
