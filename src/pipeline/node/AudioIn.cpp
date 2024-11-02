@@ -36,7 +36,19 @@ void AudioIn::run() {
 	return;
     }
 
+    err = snd_pcm_hw_params_test_access(captureHandle, hwParams, SND_PCM_ACCESS_RW_INTERLEAVED);
+    if (err < 0) {
+        logger->warn("AudioInHost {}: Broken configuration: {}", __func__, snd_strerror(err));
+	return;
+    }
+
     err = snd_pcm_hw_params_set_access(captureHandle, hwParams, SND_PCM_ACCESS_RW_INTERLEAVED);
+    if (err < 0) {
+        logger->warn("AudioInHost {}: Broken configuration: {}", __func__, snd_strerror(err));
+	return;
+    }
+
+    err = snd_pcm_hw_params_test_format(captureHandle, hwParams, properties.format);
     if (err < 0) {
         logger->warn("AudioInHost {}: Broken configuration: {}", __func__, snd_strerror(err));
 	return;
@@ -54,6 +66,18 @@ void AudioIn::run() {
 	return;
     }
 
+    err = snd_pcm_hw_params_get_rate(hwParams, &properties.bitrate, 0);
+    if (err < 0) {
+        logger->warn("AudioInHost {}: Broken configuration: {}", __func__, snd_strerror(err));
+	return;
+    }
+
+    err = snd_pcm_hw_params_test_channels(captureHandle, hwParams, properties.channels);
+    if (err < 0) {
+        logger->warn("AudioInHost {}: Broken configuration: {}", __func__, snd_strerror(err));
+	return;
+    }
+
     err = snd_pcm_hw_params_set_channels(captureHandle, hwParams, properties.channels);
     if (err < 0) {
         logger->warn("AudioInHost {}: Broken configuration: {}", __func__, snd_strerror(err));
@@ -63,6 +87,16 @@ void AudioIn::run() {
     // Set period time based on desired packets per second
     unsigned int periodTime = 1000000 / properties.framesPerSecond;  // period time in microseconds
     err = snd_pcm_hw_params_set_period_time_near(captureHandle, hwParams, &periodTime, 0);
+    if (err < 0) {
+        logger->warn("AudioInHost {}: Broken configuration: {}", __func__, snd_strerror(err));
+	return;
+    }
+
+    err = snd_pcm_hw_params_get_period_time(hwParams, &periodTime, 0);
+    if (err < 0) {
+        logger->warn("AudioInHost {}: Broken configuration: {}", __func__, snd_strerror(err));
+	return;
+    }
 
     long unsigned int bufferFrames;
     err = snd_pcm_hw_params_get_period_size(hwParams, &bufferFrames, 0);
