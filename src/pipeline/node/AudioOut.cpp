@@ -36,7 +36,19 @@ void AudioOut::run() {
 	return;
     }
 
+    err = snd_pcm_hw_params_test_access(captureHandle, hwParams, SND_PCM_ACCESS_RW_INTERLEAVED);
+    if (err < 0) {
+        logger->warn("AudioOutHost {}: Broken configuration: {}", __func__, snd_strerror(err));
+	return;
+    }
+
     err = snd_pcm_hw_params_set_access(captureHandle, hwParams, SND_PCM_ACCESS_RW_INTERLEAVED);
+    if (err < 0) {
+        logger->warn("AudioOutHost {}: Broken configuration: {}", __func__, snd_strerror(err));
+	return;
+    }
+
+    err = snd_pcm_hw_params_test_format(captureHandle, hwParams, properties.format);
     if (err < 0) {
         logger->warn("AudioOutHost {}: Broken configuration: {}", __func__, snd_strerror(err));
 	return;
@@ -54,6 +66,18 @@ void AudioOut::run() {
 	return;
     }
 
+    err = snd_pcm_hw_params_get_rate(hwParams, &properties.bitrate, 0);
+    if (err < 0) {
+        logger->warn("AudioOutHost {}: Broken configuration: {}", __func__, snd_strerror(err));
+	return;
+    }
+
+    err = snd_pcm_hw_params_test_channels(captureHandle, hwParams, properties.channels);
+    if (err < 0) {
+        logger->warn("AudioOutHost {}: Broken configuration: {}", __func__, snd_strerror(err));
+	return;
+    }
+
     err = snd_pcm_hw_params_set_channels(captureHandle, hwParams, properties.channels);
     if (err < 0) {
         logger->warn("AudioOutHost {}: Broken configuration: {}", __func__, snd_strerror(err));
@@ -63,9 +87,24 @@ void AudioOut::run() {
     // Set period time based on desired packets per second
     unsigned int periodTime = 1000000 / properties.framesPerSecond;  // period time in microseconds
     err = snd_pcm_hw_params_set_period_time_near(captureHandle, hwParams, &periodTime, 0);
+    if (err < 0) {
+        logger->warn("AudioOutHost {}: Broken configuration: {}", __func__, snd_strerror(err));
+	return;
+    }
+
+    err = snd_pcm_hw_params_get_period_time(hwParams, &periodTime, 0);
+    if (err < 0) {
+        logger->warn("AudioOutHost {}: Broken configuration: {}", __func__, snd_strerror(err));
+	return;
+    }
 
     long unsigned int bufferFrames;
     err = snd_pcm_hw_params_get_period_size(hwParams, &bufferFrames, 0);
+    if (err < 0) {
+        logger->warn("AudioOutHost {}: Broken configuration: {}", __func__, snd_strerror(err));
+	return;
+    }
+
     size_t bufferSize = bufferFrames * snd_pcm_format_width(properties.format) / 8 * properties.channels;
 
     err = snd_pcm_hw_params(captureHandle, hwParams);
@@ -74,10 +113,15 @@ void AudioOut::run() {
 	return;
     }
 
-    snd_pcm_hw_params_free(hwParams);
     err = snd_pcm_prepare(captureHandle);
     if (err < 0) {
         logger->warn("AudioOutHost {}: Invalid prepare: {}", __func__, snd_strerror(err));
+	return;
+    }    
+
+    err = snd_pcm_start(captureHandle);
+    if (err < 0) {
+        logger->warn("AudioOutHost {}: Invalid start: {}", __func__, snd_strerror(err));
 	return;
     }
 
@@ -129,6 +173,8 @@ void AudioOut::run() {
 
     snd_pcm_drain(captureHandle);
     snd_pcm_close(captureHandle);
+    
+    snd_pcm_hw_params_free(hwParams);
 
     logger->info("AudioOutHost {}: Audio interface closed", __func__);
 }

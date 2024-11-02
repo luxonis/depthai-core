@@ -100,6 +100,11 @@ void AudioIn::run() {
 
     long unsigned int bufferFrames;
     err = snd_pcm_hw_params_get_period_size(hwParams, &bufferFrames, 0);
+    if (err < 0) {
+        logger->warn("AudioInHost {}: Broken configuration: {}", __func__, snd_strerror(err));
+	return;
+    }
+
     size_t bufferSize = bufferFrames * snd_pcm_format_width(properties.format) / 8 * properties.channels;
 
     err = snd_pcm_hw_params(captureHandle, hwParams);
@@ -108,10 +113,15 @@ void AudioIn::run() {
 	return;
     }
 
-    snd_pcm_hw_params_free(hwParams);
     err = snd_pcm_prepare(captureHandle);
     if (err < 0) {
         logger->warn("AudioInHost {}: Invalid prepare: {}", __func__, snd_strerror(err));
+	return;
+    }
+
+    err = snd_pcm_start(captureHandle);
+    if (err < 0) {
+        logger->warn("AudioInHost {}: Invalid start: {}", __func__, snd_strerror(err));
 	return;
     }
 
@@ -135,14 +145,13 @@ void AudioIn::run() {
 
         std::shared_ptr<AudioFrame> buf = std::make_shared<AudioFrame>(err, properties.bitrate, properties.channels, getFormat());
 
-        //			logger->warn("AudioInHost {}: read from audio interface failed ({}, {})", __func__, err, snd_strerror(err));
-
         buf->setData(data);
         out.send(buf);
     }
 
     snd_pcm_drain(captureHandle);
     snd_pcm_close(captureHandle);
+    snd_pcm_hw_params_free(hwParams);
 
     logger->info("AudioInHost {}: Audio interface closed", __func__);
 }
