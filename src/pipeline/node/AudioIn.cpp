@@ -21,7 +21,7 @@ void AudioIn::run() {
     err = snd_pcm_open(&captureHandle, properties.audioInPath.c_str(), SND_PCM_STREAM_CAPTURE, 0);
     if(err < 0) {
         logger->warn("AudioInHost {}: Unable to open device {}, {}", __func__, properties.audioInPath.c_str(), snd_strerror(err));
-	return;192.168.1.4
+	return;
     }
 
     err = snd_pcm_hw_params_malloc(&hwParams);
