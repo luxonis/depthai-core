@@ -13,6 +13,7 @@
       "host": true
     },
 	"basalt-headers",
-	"magic-enum"
+	"magic-enum",
+	"tbb"
 ]
 }
