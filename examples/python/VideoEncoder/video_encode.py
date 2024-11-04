@@ -31,7 +31,7 @@ with dai.Pipeline() as pipeline:
     encoded = pipeline.create(dai.node.VideoEncoder).build(output,
             frameRate = 30,
             profile = PROFILE)
-    saver = pipeline.create(VideoSaver).build(encoded.bitstream)
+    saver = pipeline.create(VideoSaver).build(encoded.out)
 
     pipeline.start()
     print("Started to save video to video.encoded")

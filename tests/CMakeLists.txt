@@ -322,7 +322,7 @@ dai_set_test_labels(filesystem_test_20 rvc2_all ci)
 
 # Encoded frame test
 dai_add_test(encoded_frame_test src/ondevice_tests/encoded_frame_test.cpp CXX_STANDARD 17)
-dai_set_test_labels(encoded_frame_test ondevice rvc2_all ci)
+dai_set_test_labels(encoded_frame_test ondevice rvc2_all rvc4 ci)
 
 # MessageGroup tests
 dai_add_test(message_group_frame_test src/ondevice_tests/message_group_test.cpp CXX_STANDARD 17)
