@@ -30,10 +30,6 @@ with dai.Pipeline() as pipeline:
 
     pipeline.start()
 
-    # nn data, being the bounding box locations, are in <0..1> range - they need to be denormalized with frame width/height
-    def denormalize(shape, bbox):
-        return (int(bbox[0] * shape[0]), int(bbox[1] * shape[1]), int(bbox[2] * shape[0]), int(bbox[3] * shape[1]))
-
     def displayFrame(name: str, frame: dai.ImgFrame, imgDetections: dai.ImgDetections):
         color = (0, 255, 0)
         assert imgDetections.getTransformation() is not None
@@ -44,13 +40,9 @@ with dai.Pipeline() as pipeline:
         for detection in imgDetections.detections:
             # Get the shape of the frame from which the detections originated for denormalization
             normShape = imgDetections.getTransformation().getSize()
-            (xmin, ymin, xmax, ymax) = denormalize(normShape, (detection.xmin, detection.ymin, detection.xmax, detection.ymax))
+
             # Create rotated rectangle to remap
-            rotRect = dai.RotatedRect()
-            rotRect.center.x = xmin + (xmax - xmin) / 2
-            rotRect.center.y = ymin + (ymax - ymin) / 2
-            rotRect.size.width = xmax - xmin
-            rotRect.size.height = ymax - ymin
+            rotRect = dai.RotatedRect(dai.Rect(dai.Point2f(xmin, ymin), dai.Point2f(xmax, ymax)).denormalize(normShape[0], normShape[1]), 0)
             # Remap the detection rectangle to target frame
             remapped = imgDetections.getTransformation().remapRectTo(frame.getTransformation(), rotRect)
             # Remapped rectangle could be rotated, so we get the bounding box

@@ -353,25 +353,61 @@ bool ImgTransformation::isValid() const {
     return srcWidth > 0 && srcHeight > 0 && width > 0 && height > 0;
 }
 
-dai::Point2f ImgTransformation::remapPointTo(const ImgTransformation& to, dai::Point2f point) const {
+dai::Point2f ImgTransformation::remapPointTo(const ImgTransformation& to, dai::Point2f point, bool normalized) const {
+    if(normalized) {
+        point.x *= width;
+        point.y *= height;
+        point.normalized = false;
+    }
     auto sourcePointFrom = invTransformPoint(point);
     auto sourcePointTo = interSourceFrameTransform(sourcePointFrom, *this, to);
-    return to.transformPoint(sourcePointTo);
+    auto transformed = to.transformPoint(sourcePointTo);
+    if(normalized) {
+        transformed.x /= to.width;
+        transformed.y /= to.height;
+        transformed.normalized = true;
+    }
+    return transformed;
 }
-dai::Point2f ImgTransformation::remapPointFrom(const ImgTransformation& from, dai::Point2f point) const {
+dai::Point2f ImgTransformation::remapPointFrom(const ImgTransformation& from, dai::Point2f point, bool normalized) const {
+    if(normalized) {
+        point.x *= from.width;
+        point.y *= from.height;
+        point.normalized = false;
+    }
     auto sourcePointFrom = from.invTransformPoint(point);
     auto sourcePointTo = interSourceFrameTransform(sourcePointFrom, from, *this);
-    return transformPoint(sourcePointTo);
+    auto transformed = transformPoint(sourcePointTo);
+    if(normalized) {
+        transformed.x /= width;
+        transformed.y /= height;
+        transformed.normalized = true;
+    }
+    return transformed;
 }
-dai::RotatedRect ImgTransformation::remapRectTo(const ImgTransformation& to, dai::RotatedRect rect) const {
+dai::RotatedRect ImgTransformation::remapRectTo(const ImgTransformation& to, dai::RotatedRect rect, bool normalized) const {
+    if(normalized) {
+        rect = rect.denormalize(width, height);
+    }
     auto sourceRectFrom = invTransformRect(rect);
     auto sourceRectTo = interSourceFrameTransform(sourceRectFrom, *this, to);
-    return to.transformRect(sourceRectTo);
+    auto transformed = to.transformRect(sourceRectTo);
+    if(normalized) {
+        transformed = transformed.normalize(to.width, to.height);
+    }
+    return transformed;
 }
-dai::RotatedRect ImgTransformation::remapRectFrom(const ImgTransformation& from, dai::RotatedRect rect) const {
+dai::RotatedRect ImgTransformation::remapRectFrom(const ImgTransformation& from, dai::RotatedRect rect, bool normalized) const {
+    if(normalized) {
+        rect = rect.denormalize(from.width, from.height);
+    }
     auto sourceRectFrom = from.invTransformRect(rect);
     auto sourceRectTo = interSourceFrameTransform(sourceRectFrom, from, *this);
-    return transformRect(sourceRectTo);
+    auto transformed = transformRect(sourceRectTo);
+    if(normalized) {
+        transformed = transformed.normalize(width, height);
+    }
+    return transformed;
 }
 
 };  // namespace dai

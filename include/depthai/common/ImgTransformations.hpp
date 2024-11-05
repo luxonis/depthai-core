@@ -200,29 +200,33 @@ struct ImgTransformation {
      * remap the point.
      * @param to Transformation to remap to
      * @param point Point to remap
+     * @param normalized Set to true if the point is normalized
      */
-    dai::Point2f remapPointTo(const ImgTransformation& to, dai::Point2f point) const;
+    dai::Point2f remapPointTo(const ImgTransformation& to, dai::Point2f point, bool normalized = false) const;
     /**
      * Remap a point to this transformation from another. If the intrinsics are different (e.g. different camera), the function will also use the intrinsics to
      * remap the point.
      * @param from Transformation to remap from
      * @param point Point to remap
+     * @param normalized Set to true if the point is normalized
      */
-    dai::Point2f remapPointFrom(const ImgTransformation& from, dai::Point2f point) const;
+    dai::Point2f remapPointFrom(const ImgTransformation& from, dai::Point2f point, bool normalized = false) const;
     /**
      * Remap a rotated rect from this transformation to another. If the intrinsics are different (e.g. different camera), the function will also use the
      * intrinsics to remap the rect.
      * @param to Transformation to remap to
      * @param rect RotatedRect to remap
+     * @param normalized Set to true if the rect is normalized
      */
-    dai::RotatedRect remapRectTo(const ImgTransformation& to, dai::RotatedRect rect) const;
+    dai::RotatedRect remapRectTo(const ImgTransformation& to, dai::RotatedRect rect, bool normalized = false) const;
     /**
      * Remap a rotated rect to this transformation from another. If the intrinsics are different (e.g. different camera), the function will also use the
      * intrinsics to remap the rect.
      * @param from Transformation to remap from
      * @param point RotatedRect to remap
+     * @param normalized Set to true if the rect is normalized
      */
-    dai::RotatedRect remapRectFrom(const ImgTransformation& from, dai::RotatedRect rect) const;
+    dai::RotatedRect remapRectFrom(const ImgTransformation& from, dai::RotatedRect rect, bool normalized = false) const;
 
     /**
      * Check if the transformations are valid. The transformations are valid if the source frame size and the current frame size are set.

@@ -5,6 +5,7 @@
 
 // shared
 #include "depthai/common/Point2f.hpp"
+#include "depthai/common/Rect.hpp"
 #include "depthai/common/Size2f.hpp"
 #include "depthai/utility/Serialization.hpp"
 
@@ -16,6 +17,36 @@ struct RotatedRect {
     Size2f size;
     /// degrees, increasing clockwise
     float angle = 0.f;
+
+    RotatedRect() = default;
+    RotatedRect(const Point2f& center, const Size2f& size, float angle) : center(center), size(size), angle(angle) {}
+    RotatedRect(const Rect& rect, float angle) : center(rect.x + rect.width / 2.0f, rect.y + rect.height / 2.0f), size(rect.width, rect.height), angle(angle) {}
+
+    /**
+     * Normalize the rotated rectangle. The normalized rectangle will have center and size coordinates in range [0,1]
+     * @return Normalized rotated rectangle
+     */
+    RotatedRect normalize(unsigned int width, unsigned int height) const {
+        RotatedRect normalized = *this;
+        normalized.center.x /= width;
+        normalized.center.y /= height;
+        normalized.size.width /= width;
+        normalized.size.height /= height;
+        return normalized;
+    }
+
+    /**
+     * Denormalize the rotated rectangle. The denormalized rectangle will have center and size coordinates in range [0, width] and [0, height]
+     * @return Denormalized rotated rectangle
+     */
+    RotatedRect denormalize(unsigned int width, unsigned int height) const {
+        RotatedRect denormalized = *this;
+        denormalized.center.x *= width;
+        denormalized.center.y *= height;
+        denormalized.size.width *= width;
+        denormalized.size.height *= height;
+        return denormalized;
+    }
 
     /**
      * Get the 4 corner points of the rotated rectangle
@@ -49,9 +80,9 @@ struct RotatedRect {
         return corners;
     }
     /**
-    * Returns the outer non-rotated rectangle
-    * @return [minx, miny, maxx, maxy]
-    */
+     * Returns the outer non-rotated rectangle
+     * @return [minx, miny, maxx, maxy]
+     */
     std::array<float, 4> getOuterRect() const {
         auto points = getPoints();
         float minx = std::min({points[0].x, points[1].x, points[2].x, points[3].x});
