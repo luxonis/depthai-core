@@ -3,8 +3,8 @@
 
 #include <spdlog/async_logger.h>
 #include <stdint.h>
-#include <cmath>
 
+#include <cmath>
 #include <depthai/pipeline/datatype/ImageManipConfigV2.hpp>
 #include <depthai/pipeline/datatype/ImgFrame.hpp>
 #include <sstream>

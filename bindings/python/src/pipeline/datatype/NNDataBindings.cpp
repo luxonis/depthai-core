@@ -75,6 +75,7 @@ void bind_nndata(pybind11::module& m, void* pCallstack){
 
     tensorInfo
         .def(py::init<>())
+        .def("getTensorSize", &TensorInfo::getTensorSize)
         .def_readwrite("order", &TensorInfo::order)
         .def_readwrite("dataType", &TensorInfo::dataType)
         .def_readwrite("numDimensions", &TensorInfo::numDimensions)
