@@ -333,7 +333,7 @@ Rect ImgFrame::remapRectBetweenFrames(const Rect& originRect, const ImgFrame& or
     return returnRect;
 }
 
-std::unique_ptr<google::protobuf::Message> ImgFrame::getProtoMessage() const {
+std::unique_ptr<google::protobuf::Message> ImgFrame::getProtoMessage(bool metadataOnly) const {
     // create and populate ImgFrame protobuf message
     auto imgFrame = std::make_unique<proto::img_frame::ImgFrame>();
     proto::common::Timestamp* ts = imgFrame->mutable_ts();
@@ -405,67 +405,71 @@ std::unique_ptr<google::protobuf::Message> ImgFrame::getProtoMessage() const {
         distortionCoefficients->add_values(value);
     }
 
-    imgFrame->set_data(this->data->getData().data(), this->data->getData().size());
+    if(!metadataOnly) {
+        imgFrame->set_data(this->data->getData().data(), this->data->getData().size());
+    }
     return imgFrame;
 }
 
-void ImgFrame::setProtoMessage(const std::unique_ptr<google::protobuf::Message> msg) {
-    auto imgFrame = dynamic_cast<proto::img_frame::ImgFrame*>(msg.get());
+void ImgFrame::setProtoMessage(const google::protobuf::Message& msg, bool metadataOnly) {
+    auto imgFrame = dynamic_cast<const proto::img_frame::ImgFrame&>(msg);
     // create and populate ImgFrame protobuf message
-    this->setTimestamp(utility::fromProtoTimestamp(imgFrame->ts()));
-    this->setTimestampDevice(utility::fromProtoTimestamp(imgFrame->tsdevice()));
+    this->setTimestamp(utility::fromProtoTimestamp(imgFrame.ts()));
+    this->setTimestampDevice(utility::fromProtoTimestamp(imgFrame.tsdevice()));
 
-    this->setSequenceNum(imgFrame->sequencenum());
+    this->setSequenceNum(imgFrame.sequencenum());
 
-    this->fb.type = static_cast<Type>(imgFrame->fb().type());
-    this->fb.width = imgFrame->fb().width();
-    this->fb.height = imgFrame->fb().height();
-    this->fb.stride = imgFrame->fb().stride();
-    this->fb.bytesPP = imgFrame->fb().bytespp();
-    this->fb.p1Offset = imgFrame->fb().p1offset();
-    this->fb.p2Offset = imgFrame->fb().p2offset();
-    this->fb.p3Offset = imgFrame->fb().p3offset();
+    this->fb.type = static_cast<Type>(imgFrame.fb().type());
+    this->fb.width = imgFrame.fb().width();
+    this->fb.height = imgFrame.fb().height();
+    this->fb.stride = imgFrame.fb().stride();
+    this->fb.bytesPP = imgFrame.fb().bytespp();
+    this->fb.p1Offset = imgFrame.fb().p1offset();
+    this->fb.p2Offset = imgFrame.fb().p2offset();
+    this->fb.p3Offset = imgFrame.fb().p3offset();
 
-    this->sourceFb.type = static_cast<Type>(imgFrame->sourcefb().type());
-    this->sourceFb.width = imgFrame->sourcefb().width();
-    this->sourceFb.height = imgFrame->sourcefb().height();
-    this->sourceFb.stride = imgFrame->sourcefb().stride();
-    this->sourceFb.bytesPP = imgFrame->sourcefb().bytespp();
-    this->sourceFb.p1Offset = imgFrame->sourcefb().p1offset();
-    this->sourceFb.p2Offset = imgFrame->sourcefb().p2offset();
-    this->sourceFb.p3Offset = imgFrame->sourcefb().p3offset();
+    this->sourceFb.type = static_cast<Type>(imgFrame.sourcefb().type());
+    this->sourceFb.width = imgFrame.sourcefb().width();
+    this->sourceFb.height = imgFrame.sourcefb().height();
+    this->sourceFb.stride = imgFrame.sourcefb().stride();
+    this->sourceFb.bytesPP = imgFrame.sourcefb().bytespp();
+    this->sourceFb.p1Offset = imgFrame.sourcefb().p1offset();
+    this->sourceFb.p2Offset = imgFrame.sourcefb().p2offset();
+    this->sourceFb.p3Offset = imgFrame.sourcefb().p3offset();
 
-    this->cam.exposureTimeUs = imgFrame->cam().exposuretimeus();
-    this->cam.sensitivityIso = imgFrame->cam().sensitivityiso();
-    this->cam.lensPosition = imgFrame->cam().lensposition();
-    this->cam.wbColorTemp = imgFrame->cam().wbcolortemp();
-    this->cam.lensPositionRaw = imgFrame->cam().lenspositionraw();
+    this->cam.exposureTimeUs = imgFrame.cam().exposuretimeus();
+    this->cam.sensitivityIso = imgFrame.cam().sensitivityiso();
+    this->cam.lensPosition = imgFrame.cam().lensposition();
+    this->cam.wbColorTemp = imgFrame.cam().wbcolortemp();
+    this->cam.lensPositionRaw = imgFrame.cam().lenspositionraw();
 
-    this->instanceNum = imgFrame->instancenum();
+    this->instanceNum = imgFrame.instancenum();
 
-    this->category = imgFrame->category();
+    this->category = imgFrame.category();
 
     std::array<std::array<float, 3>, 3> transformationMatrix;
     std::array<std::array<float, 3>, 3> sourceIntrinsicMatrix;
     std::vector<float> distortionCoefficients;
-    distortionCoefficients.reserve(imgFrame->transformation().distortioncoefficients().values_size());
+    distortionCoefficients.reserve(imgFrame.transformation().distortioncoefficients().values_size());
     for(auto i = 0U; i < 3; ++i)
-        for(auto j = 0U; j < 3; ++j) transformationMatrix[i][j] = imgFrame->transformation().transformationmatrix().arrays(i).values(j);
+        for(auto j = 0U; j < 3; ++j) transformationMatrix[i][j] = imgFrame.transformation().transformationmatrix().arrays(i).values(j);
     for(auto i = 0U; i < 3; ++i)
-        for(auto j = 0U; j < 3; ++j) sourceIntrinsicMatrix[i][j] = imgFrame->transformation().sourceintrinsicmatrix().arrays(i).values(j);
-    for(auto i = 0; i < imgFrame->transformation().distortioncoefficients().values_size(); ++i)
-        distortionCoefficients.push_back(imgFrame->transformation().distortioncoefficients().values(i));
+        for(auto j = 0U; j < 3; ++j) sourceIntrinsicMatrix[i][j] = imgFrame.transformation().sourceintrinsicmatrix().arrays(i).values(j);
+    for(auto i = 0; i < imgFrame.transformation().distortioncoefficients().values_size(); ++i)
+        distortionCoefficients.push_back(imgFrame.transformation().distortioncoefficients().values(i));
 
-    this->transformation = ImgTransformation(imgFrame->transformation().srcwidth(),
-                                             imgFrame->transformation().srcheight(),
+    this->transformation = ImgTransformation(imgFrame.transformation().srcwidth(),
+                                             imgFrame.transformation().srcheight(),
                                              sourceIntrinsicMatrix,
-                                             static_cast<CameraModel>(imgFrame->transformation().distortionmodel()),
+                                             static_cast<CameraModel>(imgFrame.transformation().distortionmodel()),
                                              distortionCoefficients);
     this->transformation.addTransformation(transformationMatrix);
-    this->transformation.addCrop(0, 0, imgFrame->transformation().width(), imgFrame->transformation().height());
+    this->transformation.addCrop(0, 0, imgFrame.transformation().width(), imgFrame.transformation().height());
 
-    std::vector<uint8_t> data(imgFrame->data().begin(), imgFrame->data().end());
-    this->setData(data);
+    std::vector<uint8_t> data(imgFrame.data().begin(), imgFrame.data().end());
+    if(!metadataOnly) {
+        this->setData(data);
+    }
 }
 
 }  // namespace dai

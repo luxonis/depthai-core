@@ -49,7 +49,7 @@ class SpatialImgDetections : public Buffer, public utility::ProtoSerializable {
         datatype = DatatypeEnum::SpatialImgDetections;
     };
 
-    std::unique_ptr<google::protobuf::Message> getProtoMessage() const override {
+    std::unique_ptr<google::protobuf::Message> getProtoMessage(bool = true) const override {
         // create and populate SpatialImgDetections protobuf message
         auto spatialImgDetections = std::make_unique<proto::spatial_img_detections::SpatialImgDetections>();
         spatialImgDetections->set_sequencenum(this->sequenceNum);

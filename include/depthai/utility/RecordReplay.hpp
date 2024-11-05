@@ -18,7 +18,6 @@
 #ifndef MCAP_COMPRESSION_NO_ZSTD
     #define MCAP_COMPRESSION_NO_ZSTD
 #endif
-#include "RecordReplaySchema.hpp"
 
 namespace dai {
 

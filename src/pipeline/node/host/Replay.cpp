@@ -1,6 +1,7 @@
-#define _USE_MATH_DEFINES
-#include "depthai/pipeline/node/host/Replay.hpp"
+#include <stdexcept>
 
+#include "depthai/schemas/ADatatype.pb.h"
+#define _USE_MATH_DEFINES
 #include <chrono>
 #include <cmath>
 #include <cstdio>
@@ -9,38 +10,45 @@
 
 #include "depthai/pipeline/datatype/IMUData.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
-#include "depthai/utility/RecordReplaySchema.hpp"
+#include "depthai/pipeline/node/host/Replay.hpp"
 #include "utility/RecordReplayImpl.hpp"
 
 namespace dai {
 namespace node {
 
 // Video Message
-std::shared_ptr<Buffer> getVideoMessage(const nlohmann::json& metadata, ImgFrame::Type outFrameType, std::vector<uint8_t>& frame) {
-    // TODO(asahtik): Handle versions
-    utility::VideoRecordSchema recordSchema = metadata;
-    ImgFrame imgFrame = recordSchema.getMessage();
+std::shared_ptr<Buffer> getVideoMessage(const proto::adatatype::ADatatype& metadata, ImgFrame::Type outFrameType, std::vector<uint8_t>& frame) {
+    auto frameMsg = metadata.imgframe();
+    std::shared_ptr<ImgFrame> imgFrame;
+    imgFrame->setProtoMessage(frameMsg, true);
 
-    assert(frame.size() == recordSchema.width * recordSchema.height * 3);
-    cv::Mat img(recordSchema.height, recordSchema.width, CV_8UC3, frame.data());
-    imgFrame.setCvFrame(img, outFrameType);
-    imgFrame.sourceFb = imgFrame.fb;
-    return std::dynamic_pointer_cast<Buffer>(std::make_shared<ImgFrame>(imgFrame));
+    assert(frame.size() == imgFrame->getWidth() * imgFrame->getHeight() * 3);
+    cv::Mat img(imgFrame->getHeight(), imgFrame->getWidth(), CV_8UC3, frame.data());
+    imgFrame->setCvFrame(img, outFrameType);
+    return std::dynamic_pointer_cast<Buffer>(imgFrame);
 }
 
-std::shared_ptr<Buffer> getMessage(const nlohmann::json& metadata, utility::RecordType type) {
-    switch(type) {
-        case utility::RecordType::Other:
-        case utility::RecordType::Video:
-            throw std::runtime_error("Invalid message type");
-            break;
-        case utility::RecordType::Imu: {
-            utility::IMURecordSchema recordSchema = metadata;
-            IMUData imuData = recordSchema.getMessage();
-            return std::dynamic_pointer_cast<Buffer>(std::make_shared<IMUData>(imuData));
+std::shared_ptr<Buffer> getMessage(const proto::adatatype::ADatatype& metadata, std::vector<uint8_t>& frame) {
+    std::shared_ptr<Buffer> buffer;
+    switch(metadata.data_case()) {
+        case proto::adatatype::ADatatype::kImgFrame:
+            return getVideoMessage(metadata, ImgFrame::Type::BGR888i, frame);
+        case proto::adatatype::ADatatype::kImuData: {
+            auto msg = metadata.imudata();
+            auto imuData = std::make_shared<IMUData>();
+            imuData->setProtoMessage(msg);
+            buffer = std::dynamic_pointer_cast<Buffer>(imuData);
         }
+        case proto::adatatype::ADatatype::kEncodedFrame:
+        case proto::adatatype::ADatatype::kImageAnnotations:
+        case proto::adatatype::ADatatype::kImgDetections:
+        case proto::adatatype::ADatatype::kPointCloudData:
+        case proto::adatatype::ADatatype::kSpatialImgDetections:
+            throw std::runtime_error("Cannot replay message type: " + std::to_string(metadata.data_case()));
+        case proto::adatatype::ADatatype::DATA_NOT_SET:
+            throw std::runtime_error("Message data not set");
     }
-    return {};
+    return buffer;
 }
 
 void ReplayVideo::run() {
@@ -67,10 +75,6 @@ void ReplayVideo::run() {
             hasMetadata = false;
             if(logger) logger->warn("Metadata not replaying: {}", e.what());
         }
-    utility::RecordType type = utility::RecordType::Other;
-    if(hasVideo && !hasMetadata) {
-        type = utility::RecordType::Video;
-    }
     if(!hasVideo) {
         throw std::runtime_error("Video file not found or could not be opened");
     }
@@ -80,15 +84,14 @@ void ReplayVideo::run() {
     auto loopStart = std::chrono::steady_clock::now();
     auto prevMsgTs = loopStart;
     while(isRunning()) {
-        nlohmann::json metadata;
+        proto::adatatype::ADatatype metadata;
         std::vector<uint8_t> frame;
         if(hasMetadata) {
             auto msg = bytePlayer.next();
             if(msg.has_value()) {
                 metadata = msg.value();
                 if(first) {
-                    type = metadata["type"].get<utility::RecordType>();
-                    if(type != utility::RecordType::Video) {
+                    if(metadata.data_case() != proto::adatatype::ADatatype::kImgFrame) {
                         throw std::runtime_error("Invalid message type, expected a video stream");
                     }
                 }
@@ -96,7 +99,7 @@ void ReplayVideo::run() {
                 // End of file
                 if(loop) {
                     bytePlayer.restart();
-                    if(hasVideo && type == utility::RecordType::Video) {
+                    if(hasVideo) {
                         videoPlayer.restart();
                     }
                     continue;
@@ -106,7 +109,7 @@ void ReplayVideo::run() {
                 hasMetadata = false;
             }
         }
-        if(hasVideo && type == utility::RecordType::Video) {
+        if(hasVideo) {
             auto msg = videoPlayer.next();
             if(msg.has_value()) {
                 frame = msg.value();
@@ -129,25 +132,27 @@ void ReplayVideo::run() {
             break;
         }
 
-        if(!hasVideo && type == utility::RecordType::Video) {
+        if(!hasVideo) {
             throw std::runtime_error("Video file not found");
         }
 
-        if(!hasMetadata && type == utility::RecordType::Video) {
-            utility::VideoRecordSchema recordSchema;
+        if(!hasMetadata) {
+            ImgFrame frame;
             auto time = std::chrono::steady_clock::now() - start;
             const auto& [width, height] = videoPlayer.size();
-            recordSchema.type = utility::RecordType::Video;
-            recordSchema.timestamp.set(time);
-            recordSchema.sequenceNumber = index++;
-            recordSchema.width = width;
-            recordSchema.height = height;
-            metadata = recordSchema;
-        } else if(type == utility::RecordType::Video && size.has_value()) {
-            utility::VideoRecordSchema recordSchema = metadata;
-            recordSchema.width = std::get<0>(size.value());
-            recordSchema.height = std::get<1>(size.value());
-            metadata = recordSchema;
+            frame.setWidth(width);
+            frame.setHeight(height);
+            frame.setType(outFrameType);
+            frame.setTimestampDevice(std::chrono::time_point<std::chrono::steady_clock>(time));
+            frame.setSequenceNum(index++);
+            frame.sourceFb = frame.fb;
+            metadata.mutable_imgframe()->CopyFrom(*frame.getProtoMessage(true));
+        } else if(size.has_value()) {
+            if(metadata.data_case() != proto::adatatype::ADatatype::kImgFrame) {
+                throw std::runtime_error("Invalid message type, expected a video stream");
+            }
+            metadata.mutable_imgframe()->mutable_fb()->set_width(std::get<0>(size.value()));
+            metadata.mutable_imgframe()->mutable_fb()->set_height(std::get<1>(size.value()));
         }
 
         auto buffer = getVideoMessage(metadata, outFrameType, frame);
@@ -190,19 +195,15 @@ void ReplayMetadataOnly::run() {
     if(!hasMetadata) {
         throw std::runtime_error("Metadata file not found");
     }
-    utility::RecordType type = utility::RecordType::Other;
     bool first = true;
     auto loopStart = std::chrono::steady_clock::now();
     auto prevMsgTs = loopStart;
     while(isRunning()) {
-        nlohmann::json metadata;
+        proto::adatatype::ADatatype metadata;
         std::vector<uint8_t> frame;
         auto msg = bytePlayer.next();
         if(msg.has_value()) {
             metadata = msg.value();
-            if(first) {
-                type = metadata["type"].get<utility::RecordType>();
-            }
         } else if(!first) {
             // End of file
             if(loop) {
@@ -213,7 +214,7 @@ void ReplayMetadataOnly::run() {
         } else {
             throw std::runtime_error("Metadata file contains no messages");
         }
-        auto buffer = getMessage(metadata, type);
+        auto buffer = getMessage(metadata, frame);
 
         if(first) prevMsgTs = buffer->getTimestampDevice();
 

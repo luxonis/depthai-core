@@ -9,9 +9,9 @@
 #include "depthai/pipeline/datatype/IMUData.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/properties/VideoEncoderProperties.hpp"
-#include "depthai/utility/RecordReplaySchema.hpp"
 #include "depthai/utility/span.hpp"
 #include "utility/RecordReplayImpl.hpp"
+#include "depthai/schemas/ADatatype.pb.h"
 
 namespace dai {
 namespace node {
@@ -55,7 +55,7 @@ void RecordVideo::run() {
                 streamType = StreamType::RawVideo;
                 width = imgFrame->getWidth();
                 height = imgFrame->getHeight();
-                if(recordMetadata) byteRecorder.init(recordMetadataFile.string(), compressionLevel, utility::RecordType::Video);
+                if(recordMetadata) byteRecorder.init(recordMetadataFile.string(), compressionLevel, "video");
             } else if(std::dynamic_pointer_cast<EncodedFrame>(msg) != nullptr) {
                 auto encFrame = std::dynamic_pointer_cast<EncodedFrame>(msg);
                 if(encFrame->getProfile() == EncodedFrame::Profile::HEVC) {
@@ -65,7 +65,7 @@ void RecordVideo::run() {
                 width = encFrame->getWidth();
                 height = encFrame->getHeight();
                 if(logger) logger->trace("RecordVideo node detected {}x{} resolution", width, height);
-                if(recordMetadata) byteRecorder.init(recordMetadataFile.string(), compressionLevel, utility::RecordType::Video);
+                if(recordMetadata) byteRecorder.init(recordMetadataFile.string(), compressionLevel, "video");
             } else {
                 throw std::runtime_error("RecordVideo can only record video streams.");
             }
@@ -108,17 +108,9 @@ void RecordVideo::run() {
                     span cvData(frame.data, frame.total() * frame.elemSize());
                     videoRecorder->write(cvData, frame.step);
                     if(recordMetadata) {
-                        utility::VideoRecordSchema record;
-                        record.timestamp.set(std::chrono::duration_cast<std::chrono::nanoseconds>(imgFrame->getTimestampDevice().time_since_epoch()));
-                        record.sequenceNumber = imgFrame->getSequenceNum();
-                        record.instanceNumber = imgFrame->getInstanceNum();
-                        record.width = imgFrame->getWidth();
-                        record.height = imgFrame->getHeight();
-                        record.cameraSettings.exposure = imgFrame->cam.exposureTimeUs;
-                        record.cameraSettings.sensitivity = imgFrame->cam.sensitivityIso;
-                        record.cameraSettings.wbColorTemp = imgFrame->cam.wbColorTemp;
-                        record.cameraSettings.lensPosition = imgFrame->cam.lensPosition;
-                        byteRecorder.write(record);
+                        dai::proto::adatatype::ADatatype adatatype;
+                        adatatype.mutable_imgframe()->CopyFrom((*imgFrame->getProtoMessage(true)));
+                        byteRecorder.write(adatatype);
                     }
 #else
                     throw std::runtime_error("RecordVideo node requires OpenCV support");
@@ -127,17 +119,10 @@ void RecordVideo::run() {
                     videoRecorder->write(data);
                     if(recordMetadata) {
                         auto encFrame = std::dynamic_pointer_cast<EncodedFrame>(msg);
-                        utility::VideoRecordSchema record;
-                        record.timestamp.set(std::chrono::duration_cast<std::chrono::nanoseconds>(encFrame->getTimestampDevice().time_since_epoch()));
-                        record.sequenceNumber = encFrame->getSequenceNum();
-                        record.instanceNumber = encFrame->getInstanceNum();
-                        record.width = encFrame->getWidth();
-                        record.height = encFrame->getHeight();
-                        record.cameraSettings.exposure = encFrame->cam.exposureTimeUs;
-                        record.cameraSettings.sensitivity = encFrame->cam.sensitivityIso;
-                        record.cameraSettings.wbColorTemp = encFrame->cam.wbColorTemp;
-                        record.cameraSettings.lensPosition = encFrame->cam.lensPosition;
-                        byteRecorder.write(record);
+                        auto imgFrame = encFrame->getImgFrameMeta();
+                        dai::proto::adatatype::ADatatype adatatype;
+                        adatatype.mutable_imgframe()->CopyFrom((*imgFrame.getProtoMessage(true)));
+                        byteRecorder.write(adatatype);
                     }
                 }
             }
@@ -160,7 +145,7 @@ void RecordMetadataOnly::run() {
         if(streamType == StreamType::Unknown) {
             if(std::dynamic_pointer_cast<IMUData>(msg) != nullptr) {
                 streamType = StreamType::Imu;
-                byteRecorder.init(recordFile.string(), compressionLevel, utility::RecordType::Imu);
+                byteRecorder.init(recordFile.string(), compressionLevel, "imu");
             } else {
                 throw std::runtime_error("RecordMetadataOnly node does not support this type of message");
             }
@@ -172,48 +157,9 @@ void RecordMetadataOnly::run() {
         }
         if(streamType == StreamType::Imu) {
             auto imuData = std::dynamic_pointer_cast<IMUData>(msg);
-            utility::IMURecordSchema record;
-            record.packets.reserve(imuData->packets.size());
-            for(const auto& packet : imuData->packets) {
-                utility::IMUPacketSchema packetSchema;
-                // Acceleration
-                packetSchema.acceleration.timestamp.set(
-                    std::chrono::duration_cast<std::chrono::nanoseconds>(packet.acceleroMeter.getTimestampDevice().time_since_epoch()));
-                packetSchema.acceleration.sequenceNumber = packet.acceleroMeter.sequence;
-                packetSchema.acceleration.accuracy = (utility::IMUReportSchema::Accuracy)packet.gyroscope.accuracy;
-                packetSchema.acceleration.x = packet.acceleroMeter.x;
-                packetSchema.acceleration.y = packet.acceleroMeter.y;
-                packetSchema.acceleration.z = packet.acceleroMeter.z;
-                // Orientation
-                packetSchema.orientation.timestamp.set(
-                    std::chrono::duration_cast<std::chrono::nanoseconds>(packet.gyroscope.getTimestampDevice().time_since_epoch()));
-                packetSchema.orientation.sequenceNumber = packet.gyroscope.sequence;
-                packetSchema.orientation.accuracy = (utility::IMUReportSchema::Accuracy)packet.gyroscope.accuracy;
-                packetSchema.orientation.x = packet.gyroscope.x;
-                packetSchema.orientation.y = packet.gyroscope.y;
-                packetSchema.orientation.z = packet.gyroscope.z;
-                // Magnetic field
-                packetSchema.magneticField.timestamp.set(
-                    std::chrono::duration_cast<std::chrono::nanoseconds>(packet.magneticField.getTimestampDevice().time_since_epoch()));
-                packetSchema.magneticField.sequenceNumber = packet.magneticField.sequence;
-                packetSchema.magneticField.accuracy = (utility::IMUReportSchema::Accuracy)packet.magneticField.accuracy;
-                packetSchema.magneticField.x = packet.magneticField.x;
-                packetSchema.magneticField.y = packet.magneticField.y;
-                packetSchema.magneticField.z = packet.magneticField.z;
-                // Rotation with accuracy
-                packetSchema.rotationVector.timestamp.set(
-                    std::chrono::duration_cast<std::chrono::nanoseconds>(packet.rotationVector.getTimestampDevice().time_since_epoch()));
-                packetSchema.rotationVector.sequenceNumber = packet.rotationVector.sequence;
-                packetSchema.rotationVector.accuracy = (utility::IMUReportSchema::Accuracy)packet.rotationVector.accuracy;
-                packetSchema.rotationVector.i = packet.rotationVector.i;
-                packetSchema.rotationVector.j = packet.rotationVector.j;
-                packetSchema.rotationVector.k = packet.rotationVector.k;
-                packetSchema.rotationVector.real = packet.rotationVector.real;
-                packetSchema.rotationVector.rotationAccuracy = packet.rotationVector.rotationVectorAccuracy;
-
-                record.packets.push_back(packetSchema);
-            }
-            byteRecorder.write(record);
+            dai::proto::adatatype::ADatatype adatatype;
+            adatatype.mutable_imgframe()->CopyFrom((*imuData->getProtoMessage()));
+            byteRecorder.write(adatatype);
         } else {
             throw std::runtime_error("RecordMetadataOnly unsupported message type");
         }

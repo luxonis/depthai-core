@@ -173,7 +173,9 @@ class EncodedFrame : public Buffer, public utility::ProtoSerializable {
      */
     EncodedFrame& setProfile(Profile profile);
 
-    std::unique_ptr<google::protobuf::Message> getProtoMessage() const override;
+    ImgFrame getImgFrameMeta() const;
+
+    std::unique_ptr<google::protobuf::Message> getProtoMessage(bool metadataOnly = false) const override;
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
         metadata = utility::serialize(*this);

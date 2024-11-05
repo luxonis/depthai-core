@@ -228,9 +228,9 @@ class IMUData : public Buffer, public utility::ProtoSerializable, public utility
         datatype = DatatypeEnum::IMUData;
     };
 
-    std::unique_ptr<google::protobuf::Message> getProtoMessage() const override;
+    std::unique_ptr<google::protobuf::Message> getProtoMessage(bool = true) const override;
 
-    void setProtoMessage(const std::unique_ptr<google::protobuf::Message> msg) override;
+    void setProtoMessage(const google::protobuf::Message& msg, bool = true) override;
 
     DEPTHAI_SERIALIZE(IMUData, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum, packets);
 };

@@ -125,7 +125,7 @@ PointCloudData& PointCloudData::setColor(bool val) {
     return *this;
 }
 
-std::unique_ptr<google::protobuf::Message> dai::PointCloudData::getProtoMessage() const {
+std::unique_ptr<google::protobuf::Message> dai::PointCloudData::getProtoMessage(bool metadataOnly) const {
     auto pointCloudData = std::make_unique<dai::proto::point_cloud_data::PointCloudData>();
 
     auto timestamp = pointCloudData->mutable_ts();
@@ -149,7 +149,9 @@ std::unique_ptr<google::protobuf::Message> dai::PointCloudData::getProtoMessage(
     pointCloudData->set_sparse(sparse);
     pointCloudData->set_color(color);
 
-    pointCloudData->set_data(data->getData().data(), data->getSize());
+    if(!metadataOnly) {
+        pointCloudData->set_data(data->getData().data(), data->getSize());
+    }
 
     return pointCloudData;
 }

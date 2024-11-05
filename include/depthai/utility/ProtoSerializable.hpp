@@ -83,7 +83,7 @@ class ProtoSerializable {
      * @brief Generate the corresponding protobuf message from this object
      * @return std::unique_ptr<google::protobuf::Message>
      */
-    virtual std::unique_ptr<google::protobuf::Message> getProtoMessage() const = 0;
+    virtual std::unique_ptr<google::protobuf::Message> getProtoMessage(bool metadataOnly = false) const = 0;
 };
 
 class ProtoDeserializable {
@@ -91,7 +91,7 @@ class ProtoDeserializable {
     virtual ~ProtoDeserializable() = default;
 
    protected:
-    virtual void setProtoMessage(const std::unique_ptr<google::protobuf::Message>) = 0;
+    virtual void setProtoMessage(const google::protobuf::Message&, bool metadataOnly = false) = 0;
 };
 
 inline std::chrono::time_point<std::chrono::steady_clock> fromProtoTimestamp(const dai::proto::common::Timestamp& ts) {

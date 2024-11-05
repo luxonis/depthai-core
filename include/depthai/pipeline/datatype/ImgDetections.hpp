@@ -41,7 +41,7 @@ class ImgDetections : public Buffer, public utility::ProtoSerializable {
         datatype = DatatypeEnum::ImgDetections;
     };
 
-    std::unique_ptr<google::protobuf::Message> getProtoMessage() const override {
+    std::unique_ptr<google::protobuf::Message> getProtoMessage(bool = true) const override {
         auto imgDetections = std::make_unique<proto::img_detections::ImgDetections>();
 
         imgDetections->set_sequencenum(this->sequenceNum);

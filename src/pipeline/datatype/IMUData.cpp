@@ -4,7 +4,7 @@
 
 namespace dai {
 
-std::unique_ptr<google::protobuf::Message> IMUData::getProtoMessage() const {
+std::unique_ptr<google::protobuf::Message> IMUData::getProtoMessage(bool) const {
     // create and populate ImgFrame protobuf message
     auto imuData = std::make_unique<proto::imu_data::IMUData>();
     auto imuPackets = imuData->mutable_packets();
@@ -59,11 +59,11 @@ std::unique_ptr<google::protobuf::Message> IMUData::getProtoMessage() const {
     return imuData;
 }
 
-void IMUData::setProtoMessage(const std::unique_ptr<google::protobuf::Message> msg) {
-    auto imuData = dynamic_cast<proto::imu_data::IMUData*>(msg.get());
+void IMUData::setProtoMessage(const google::protobuf::Message& msg, bool) {
+    auto imuData = dynamic_cast<const proto::imu_data::IMUData&>(msg);
     packets.clear();
-    packets.reserve(imuData->packets().size());
-    for(auto packet : imuData->packets()) {
+    packets.reserve(imuData.packets().size());
+    for(auto packet : imuData.packets()) {
         IMUPacket imuPacket;
         auto protoAccelerometer = packet.accelerometer();
         auto& daiAccelerometer = imuPacket.acceleroMeter;

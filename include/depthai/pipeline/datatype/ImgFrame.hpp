@@ -86,9 +86,9 @@ class ImgFrame : public Buffer, public utility::ProtoSerializable, public utilit
         datatype = DatatypeEnum::ImgFrame;
     };
 
-    std::unique_ptr<google::protobuf::Message> getProtoMessage() const override;
+    std::unique_ptr<google::protobuf::Message> getProtoMessage(bool metadataOnly = false) const override;
 
-    void setProtoMessage(const std::unique_ptr<google::protobuf::Message> msg) override;
+    void setProtoMessage(const google::protobuf::Message& msg, bool metadataOnly = false) override;
 
     // getters
     /**

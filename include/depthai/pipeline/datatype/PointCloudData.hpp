@@ -190,7 +190,7 @@ class PointCloudData : public Buffer, public utility::ProtoSerializable {
      */
     PointCloudData& setInstanceNum(unsigned int instanceNum);
 
-    virtual std::unique_ptr<google::protobuf::Message> getProtoMessage() const override;
+    virtual std::unique_ptr<google::protobuf::Message> getProtoMessage(bool metadataOnly = false) const override;
 
 #ifdef DEPTHAI_HAVE_PCL_SUPPORT
     /**

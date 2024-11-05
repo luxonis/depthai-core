@@ -66,7 +66,7 @@ class ImageAnnotations : public Buffer, public utility::ProtoSerializable {
         metadata = utility::serialize(*this);
         datatype = DatatypeEnum::ImageAnnotations;
     };
-    std::unique_ptr<google::protobuf::Message> getProtoMessage() const override {
+    std::unique_ptr<google::protobuf::Message> getProtoMessage(bool = true) const override {
         auto imageAnnotations = std::make_unique<proto::image_annotations::ImageAnnotations>();
 
         imageAnnotations->set_sequencenum(this->sequenceNum);

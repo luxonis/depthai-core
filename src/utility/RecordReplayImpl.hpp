@@ -1,3 +1,4 @@
+#include "depthai/schemas/ADatatype.pb.h"
 #include "depthai/utility/RecordReplay.hpp"
 #include "mcap/mcap.hpp"
 
@@ -34,12 +35,11 @@ class VideoRecorder {
 class ByteRecorder {
    public:
     ~ByteRecorder();
-    void init(const std::string& filePath, RecordConfig::CompressionLevel compressionLevel, RecordType recordingType);
+    void init(const std::string& filePath, RecordConfig::CompressionLevel compressionLevel, const std::string& channelName);
     template <typename T>
     void write(const T& data) {
         mcap::Timestamp writeTime = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-        nlohmann::json j = data;
-        std::string serialized = j.dump();
+        std::string serialized = data.SerializeAsString();
         mcap::Message msg;
         msg.channelId = channelId;
         msg.logTime = writeTime;
@@ -95,7 +95,7 @@ class BytePlayer {
    public:
     ~BytePlayer();
     void init(const std::string& filePath);
-    std::optional<nlohmann::json> next();
+    std::optional<proto::adatatype::ADatatype> next();
     void restart();
     void close();
     static std::optional<std::tuple<uint32_t, uint32_t>> getVideoSize(const std::string& filePath);

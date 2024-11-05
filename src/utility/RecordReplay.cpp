@@ -1,5 +1,6 @@
 #include "depthai/utility/RecordReplay.hpp"
 
+#include <google/protobuf/descriptor.pb.h>
 #include <spdlog/spdlog.h>
 
 #include <mcap/types.hpp>
@@ -9,18 +10,44 @@
 #include "Environment.hpp"
 #include "RecordReplayImpl.hpp"
 #include "build/version.hpp"
-#include "depthai/utility/RecordReplaySchema.hpp"
+#include "depthai/schemas/ADatatype.pb.h"
 #include "utility/Compression.hpp"
 #include "utility/Platform.hpp"
 
 namespace dai {
 namespace utility {
 
+// Recursively adds all `fd` dependencies to `fd_set`.
+void fdSetInternal(google::protobuf::FileDescriptorSet& fd_set, std::unordered_set<std::string>& files, const google::protobuf::FileDescriptor* fd) {
+    for(int i = 0; i < fd->dependency_count(); ++i) {
+        const auto* dep = fd->dependency(i);
+        auto [_, inserted] = files.insert(dep->name());
+        if(!inserted) continue;
+        fdSetInternal(fd_set, files, fd->dependency(i));
+    }
+    fd->CopyTo(fd_set.add_file());
+}
+
+// Returns a serialized google::protobuf::FileDescriptorSet containing
+// the necessary google::protobuf::FileDescriptor's to describe d.
+std::string fdSet(const google::protobuf::Descriptor* d) {
+    std::string res;
+    std::unordered_set<std::string> files;
+    google::protobuf::FileDescriptorSet fd_set;
+    fdSetInternal(fd_set, files, d->file());
+    return fd_set.SerializeAsString();
+}
+
+mcap::Schema createSchema(const google::protobuf::Descriptor* d) {
+    mcap::Schema schema(d->full_name(), "protobuf", fdSet(d));
+    return schema;
+}
+
 ByteRecorder::~ByteRecorder() {
     close();
 }
 
-void ByteRecorder::init(const std::string& filePath, RecordConfig::CompressionLevel compressionLevel, RecordType recordingType) {
+void ByteRecorder::init(const std::string& filePath, RecordConfig::CompressionLevel compressionLevel, const std::string& channelName) {
     if(initialized) {
         throw std::runtime_error("ByteRecorder already initialized");
     }
@@ -28,7 +55,7 @@ void ByteRecorder::init(const std::string& filePath, RecordConfig::CompressionLe
         throw std::runtime_error("ByteRecorder file path is empty");
     }
     {
-        auto options = mcap::McapWriterOptions("");
+        auto options = mcap::McapWriterOptions("protobuf");
         options.library = "depthai" + std::string(build::VERSION);
         switch(compressionLevel) {
             case RecordConfig::CompressionLevel::NONE:
@@ -57,25 +84,9 @@ void ByteRecorder::init(const std::string& filePath, RecordConfig::CompressionLe
         }
     }
     {
-        const char* schemaText = DEFAULT_SHEMA;
-        std::string channelName = "default";
-        switch(recordingType) {
-            case RecordType::Video:
-                channelName = "video";
-                schemaText = VIDEO_SHEMA;
-                break;
-            case RecordType::Imu:
-                channelName = "imu";
-                schemaText = IMU_SHEMA;
-                break;
-            case RecordType::Other:
-                channelName = "default";
-                schemaText = DEFAULT_SHEMA;
-                break;
-        }
-        mcap::Schema schema(channelName, "jsonschema", schemaText);
+        mcap::Schema schema = createSchema(dai::proto::adatatype::ADatatype::descriptor());
         writer.addSchema(schema);
-        mcap::Channel channel(channelName, "json", schema.id);
+        mcap::Channel channel(channelName, "protobuf", schema.id);
         writer.addChannel(channel);
         channelId = channel.id;
     }
@@ -112,21 +123,23 @@ void BytePlayer::init(const std::string& filePath) {
     initialized = true;
 }
 
-std::optional<nlohmann::json> BytePlayer::next() {
+std::optional<proto::adatatype::ADatatype> BytePlayer::next() {
     if(!initialized) {
         throw std::runtime_error("BytePlayer not initialized");
     }
     if(*it == messageView->end()) return std::nullopt;
-    if((*it)->channel->messageEncoding != "json") {
+    if((*it)->channel->messageEncoding != "protobuf") {
         throw std::runtime_error("Unsupported message encoding: " + (*it)->channel->messageEncoding);
     }
-    std::string_view asString(reinterpret_cast<const char*>((*it)->message.data), (*it)->message.dataSize);
 
-    nlohmann::json j = nlohmann::json::parse(asString);
+    proto::adatatype::ADatatype adatatype;
+    if(!adatatype.ParseFromArray(reinterpret_cast<const char*>((*it)->message.data), (*it)->message.dataSize)) {
+        throw std::runtime_error("Failed to parse protobuf message");
+    }
 
     ++(*it);
 
-    return j;
+    return adatatype;
 }
 
 void BytePlayer::restart() {
@@ -159,17 +172,27 @@ std::optional<std::tuple<uint32_t, uint32_t>> BytePlayer::getVideoSize(const std
         return std::nullopt;
     } else {
         auto msg = messageView.begin();
-        if(msg->channel->messageEncoding != "json") {
+        if(msg->channel->messageEncoding != "protobuf") {
             throw std::runtime_error("Unsupported message encoding: " + msg->channel->messageEncoding);
         }
-        std::string_view asString(reinterpret_cast<const char*>(msg->message.data), msg->message.dataSize);
-        nlohmann::json j = nlohmann::json::parse(asString);
+        proto::adatatype::ADatatype adatatype;
+        if(!adatatype.ParseFromArray(reinterpret_cast<const char*>(msg->message.data), msg->message.dataSize)) {
+            throw std::runtime_error("Failed to parse protobuf message");
+        }
 
-        auto type = j["type"].get<utility::RecordType>();
-        if(type == utility::RecordType::Video) {
-            auto width = j["width"].get<uint32_t>();
-            auto height = j["height"].get<uint32_t>();
-            return std::make_tuple(width, height);
+        switch(adatatype.data_case()) {
+            case proto::adatatype::ADatatype::kEncodedFrame:
+                return std::make_tuple(adatatype.encodedframe().width(), adatatype.encodedframe().height());
+            case proto::adatatype::ADatatype::kImgFrame:
+                return std::make_tuple(adatatype.imgframe().fb().width(), adatatype.imgframe().fb().height());
+            case proto::adatatype::ADatatype::kImuData:
+            case proto::adatatype::ADatatype::kImageAnnotations:
+            case proto::adatatype::ADatatype::kImgDetections:
+            case proto::adatatype::ADatatype::kPointCloudData:
+            case proto::adatatype::ADatatype::kSpatialImgDetections:
+            case proto::adatatype::ADatatype::DATA_NOT_SET:
+                return std::nullopt;
+                break;
         }
     }
     return std::nullopt;

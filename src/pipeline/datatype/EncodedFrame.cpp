@@ -122,7 +122,19 @@ EncodedFrame& EncodedFrame::setProfile(Profile profile) {
     return *this;
 }
 
-std::unique_ptr<google::protobuf::Message> EncodedFrame::getProtoMessage() const {
+ImgFrame EncodedFrame::getImgFrameMeta() const {
+    ImgFrame frame;
+    frame.cam = cam;
+    frame.setInstanceNum(instanceNum);
+    frame.setWidth(width);
+    frame.setHeight(height);
+    frame.setType(ImgFrame::Type::BITSTREAM);
+    frame.transformation = transformation;
+    frame.setSourceSize(transformation.getSourceSize());
+    return frame;
+}
+
+std::unique_ptr<google::protobuf::Message> EncodedFrame::getProtoMessage(bool metadataOnly) const {
     // Create a unique pointer to the protobuf EncodedFrame message
     auto encodedFrame = std::make_unique<proto::encoded_frame::EncodedFrame>();
 
@@ -185,8 +197,10 @@ std::unique_ptr<google::protobuf::Message> EncodedFrame::getProtoMessage() const
         distortionCoefficients->add_values(value);
     }
 
-    // Set the encoded frame data
-    encodedFrame->set_data(this->data->getData().data(), this->data->getData().size());
+    if(!metadataOnly) {
+        // Set the encoded frame data
+        encodedFrame->set_data(this->data->getData().data(), this->data->getData().size());
+    }
 
     // Return the populated protobuf message
     return encodedFrame;
