@@ -9,6 +9,9 @@ vcpkg_from_github(
 )
 vcpkg_cmake_configure(
     SOURCE_PATH "${SOURCE_PATH}"
+    OPTIONS
+		-DCMAKE_CXX_STANDARD=17
+		-DCMAKE_C_STANDARD=11
 )
 
 vcpkg_cmake_install()
