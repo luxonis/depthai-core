@@ -50,10 +50,10 @@ if(MINGW)
     set(PYBIND11_LTO_CXX_FLAGS "" CACHE STRING "" FORCE)
 endif()
 
-## WARNING!! This is just a temporary fix for Windows. TODO (lnotspotl): Remove this completely
-if(WIN32) 
-    set(pybind11_DIR "$ENV{pybind11_ROOT}/share/cmake/pybind11")
-endif()
+# ## WARNING!! This is just a temporary fix for Windows. TODO (lnotspotl): Remove this completely
+# if(WIN32)
+#     set(pybind11_DIR "$ENV{pybind11_ROOT}/share/cmake/pybind11")
+# endif()
 
 find_package(pybind11 CONFIG REQUIRED)
 
