@@ -26,6 +26,19 @@ else()
     set(DEPTHAI_CURL_USE_OPENSSL ON)
 endif()
 
+# Check if on 32 bit linux - default without CURL support
+if(CMAKE_SIZEOF_VOID_P EQUAL 4 AND UNIX)
+    set(DEPTHAI_DEFAULT_CURL_SUPPORT OFF)
+else()
+    set(DEPTHAI_DEFAULT_CURL_SUPPORT ON)
+endif()
+
+option(DEPTHAI_ENABLE_CURL "Enable CURL support" ${DEPTHAI_DEFAULT_CURL_SUPPORT})
+
+if(DEPTHAI_ENABLE_CURL)
+    list(APPEND VCPKG_MANIFEST_FEATURES "curl-support")
+endif()
+
 # Set type to canonicalize relative paths for user-provided toolchain
 set(CMAKE_TOOLCHAIN_FILE "" CACHE FILEPATH "CMake toolchain path")
 
@@ -141,14 +154,6 @@ else()
     endif()
 endif()
 
-# Check if on 32 bit linux - default without CURL support
-if(CMAKE_SIZEOF_VOID_P EQUAL 4 AND UNIX)
-    set(DEPTHAI_DEFAULT_CURL_SUPPORT OFF)
-else()
-    set(DEPTHAI_DEFAULT_CURL_SUPPORT ON)
-endif()
-
-option(DEPTHAI_ENABLE_CURL "Enable CURL support" ${DEPTHAI_DEFAULT_CURL_SUPPORT})
 
 # Force Colored output when using Ninja
 # Global option - affects all targets
@@ -887,9 +892,9 @@ if(DEPTHAI_RTABMAP_SUPPORT)
             SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
         endif()
         # Add depthai-rtabmap library and depthai::rtabmap alias
-        add_library(${TARGET_RTABMAP_NAME} 
-        src/rtabmap/CalibrationHandler.cpp 
-        src/rtabmap/TransformData.cpp 
+        add_library(${TARGET_RTABMAP_NAME}
+        src/rtabmap/CalibrationHandler.cpp
+        src/rtabmap/TransformData.cpp
         src/rtabmap/RTABMapVIO.cpp src/rtabmap/RTABMapSLAM.cpp
         )
         add_library("${PROJECT_NAME}::${TARGET_RTABMAP_ALIAS}" ALIAS ${TARGET_RTABMAP_NAME})
