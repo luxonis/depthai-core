@@ -262,7 +262,7 @@ jobs:
         os: [macos-13, macos-14] # macos-13 is x64, macos-14 is arm64
       fail-fast: false
     runs-on: ${{ matrix.os }}
-    env:
+    # env:
       # TODO(Morato) - re-enable basalt, pcl, rtabmap after everything is ported  
       # DEPTHAI_BUILD_BASALT: ON
       # DEPTHAI_BUILD_PCL: ON
