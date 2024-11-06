@@ -5,6 +5,8 @@ vcpkg_from_github(
 	REF v2021.12.0
 	SHA512 64022bcb61cf7b2030a1bcc11168445ef9f0d69b70290233a7febb71cc7a12cc2282dddc045f84e30893efe276342f02fd78d176706268eeaefe9aac7446d4e9
 	HEAD_REF master
+	PATCHES
+		overflow-warning.patch
 )
 vcpkg_cmake_configure(
 	SOURCE_PATH "${SOURCE_PATH}"
