@@ -152,12 +152,16 @@ set(SOURCE_LIST
 
     src/modelzoo/NNModelDescriptionBindings.cpp
     src/modelzoo/ZooBindings.cpp
-
-    src/remote_connection/RemoteConnectionBindings.cpp
 )
 if(DEPTHAI_MERGED_TARGET)
     list(APPEND SOURCE_LIST
         external/pybind11_opencv_numpy/ndarray_converter.cpp
+    )
+endif()
+
+if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
+    list(APPEND SOURCE_LIST
+        src/remote_connection/RemoteConnectionBindings.cpp
     )
 endif()
 

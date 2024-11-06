@@ -49,6 +49,16 @@ if(DEPTHAI_ENABLE_CURL)
     list(APPEND VCPKG_MANIFEST_FEATURES "curl-support")
 endif()
 
+
+option(DEPTHAI_ENABLE_PROTOBUF "Enable Protobuf support" ON)
+
+if(DEPTHAI_ENABLE_PROTOBUF)
+    option(DEPTHAI_ENABLE_REMOTE_CONNECTION "Enable Remote Connection support" ON)
+else()
+    option(DEPTHAI_ENABLE_REMOTE_CONNECTION "Enable Remote Connection support" OFF)
+    message(STATUS "Remote Connection support disabled because Protobuf support is disabled.")
+endif()
+
 # Set type to canonicalize relative paths for user-provided toolchain
 set(CMAKE_TOOLCHAIN_FILE "" CACHE FILEPATH "CMake toolchain path")
 
@@ -400,9 +410,14 @@ set(TARGET_CORE_SOURCES
     src/nn_archive/NNArchiveVersionedConfig.cpp
     src/modelzoo/NNModelDescription.cpp
     src/modelzoo/Zoo.cpp
-    src/remote_connection/RemoteConnection.cpp
-    src/remote_connection/RemoteConnectionImpl.cpp
 )
+
+if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
+    list(APPEND TARGET_CORE_SOURCES
+        src/remote_connection/RemoteConnection.cpp
+        src/remote_connection/RemoteConnectionImpl.cpp
+    )
+endif()
 
 set(TARGET_OPENCV_SOURCES
     src/opencv/ImgFrame.cpp
@@ -427,6 +442,10 @@ if(DEPTHAI_HAVE_PCL_SUPPORT AND DEPTHAI_MERGED_TARGET)
     )
 endif()
 
+message(STATUS "pybind11_ROOT2 from ENV: $ENV{pybind11_ROOT}")
+message(STATUS "pybind11_DIR2: ${pybind11_DIR}")
+message(STATUS "pybind11_ROOT2: ${pybind11_ROOT}")
+
 add_library(${TARGET_CORE_NAME} ${TARGET_CORE_SOURCES})
 add_library("${PROJECT_NAME}::${TARGET_CORE_ALIAS}" ALIAS ${TARGET_CORE_NAME})
 # Specify that we are building core
@@ -450,6 +469,8 @@ if(DEPTHAI_CLANG_TIDY)
     include(ClangTidy)
     target_clangtidy_setup(${TARGET_CORE_NAME})
 endif()
+
+
 
 # Set compiler features (c++17), and disables extensions (g++17)
 set_property(TARGET ${TARGET_CORE_NAME} PROPERTY CXX_STANDARD 17)
@@ -508,7 +529,11 @@ option(DEPTHAI_ENABLE_DEVICE_BOOTLOADER_FW "Enable MyriadX Device Bootloader FW"
 option(DEPTHAI_ENABLE_DEVICE_RVC3_FW "Enable RVC3 Device FW" ON)
 option(DEPTHAI_ENABLE_DEVICE_RVC4_FW "Enable RVC4 Device FW" ON)
 
-option(DEPTHAI_EMBED_FRONTEND "Embed frontend resources into library" ON)
+if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
+    option(DEPTHAI_EMBED_FRONTEND "Embed frontend resources into library" ON)
+else()
+    option(DEPTHAI_EMBED_FRONTEND "Embed frontend resources into library" OFF)
+endif()
 
 option(DEPTHAI_BINARIES_RESOURCE_COMPILE "Compile Depthai device side binaries into library" ON)
 
@@ -684,9 +709,6 @@ if(DEPTHAI_CLANG_FORMAT)
     target_clangformat_setup(${TARGET_CORE_NAME} "${header_dirs}")
 endif()
 
-# Load protobuf support into library messages_proto
-add_subdirectory(include/depthai/utility/protos)
-list(APPEND targets_to_export messages)
 # link libraries
 target_link_libraries(${TARGET_CORE_NAME}
     PUBLIC
@@ -694,12 +716,9 @@ target_link_libraries(${TARGET_CORE_NAME}
         libnop
         spdlog::spdlog
         yaml-cpp
-        protobuf::libprotobuf # Could be made private with a refactor
-        messages
     INTERFACE
         XLinkPublic
     PRIVATE
-        foxglove-websocket::foxglove-websocket
         XLink
         Threads::Threads
         BZip2::bz2
@@ -711,6 +730,20 @@ target_link_libraries(${TARGET_CORE_NAME}
         mp4v2::mp4v2
         semver::semver
 )
+
+if(DEPTHAI_ENABLE_PROTOBUF)
+    # Load protobuf support into library messages_proto
+    message(STATUS "Protobuf support enabled")
+    add_subdirectory(include/depthai/utility/protos)
+    list(APPEND targets_to_export messages)
+    target_link_libraries(${TARGET_CORE_NAME} PUBLIC protobuf::libprotobuf messages)
+endif()
+
+if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
+    target_link_libraries(${TARGET_CORE_NAME} PRIVATE
+        foxglove-websocket::foxglove-websocket
+    )
+endif()
 
 if(DEPTHAI_HAS_APRIL_TAG)
     target_link_libraries(${TARGET_CORE_NAME} PRIVATE
