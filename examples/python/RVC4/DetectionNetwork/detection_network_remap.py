@@ -5,7 +5,7 @@ import depthai as dai
 import numpy as np
 
 # Create pipeline
-with dai.Pipeline(dai.Device("10.12.103.170")) as pipeline:
+with dai.Pipeline() as pipeline:
     cameraNode = pipeline.create(dai.node.Camera).build()
     detectionNetwork = pipeline.create(dai.node.DetectionNetwork).build(cameraNode, dai.NNModelDescription("yolov6-nano"))
     labelMap = detectionNetwork.getClasses()
