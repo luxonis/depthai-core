@@ -35,7 +35,7 @@ static std::string serializeFdSet(const google::protobuf::Descriptor* toplevelDe
 
 class ProtoSerializable {
    public:
-    struct schemaPair {
+    struct SchemaPair {
         std::string schemaName;
         std::string schema;
     };
@@ -63,13 +63,13 @@ class ProtoSerializable {
      * @brief Serialize the schema of this object
      * @return schemaPair
      */
-    virtual schemaPair serializeSchema() const {
+    virtual SchemaPair serializeSchema() const {
         auto protoMessage = getProtoMessage();
         const auto* descriptor = protoMessage->GetDescriptor();
         if(descriptor == nullptr) {
             throw std::runtime_error("Failed to get protobuf descriptor");
         }
-        schemaPair returnPair;
+        SchemaPair returnPair;
         returnPair.schemaName = descriptor->full_name();
         returnPair.schema = serializeFdSet(descriptor);
         return returnPair;
