@@ -485,11 +485,6 @@ endif()
 # Minimal supported macOS SDK version for C++17 support with std::filesystem
 set(CMAKE_OSX_DEPLOYMENT_TARGET 10.15)
 
-# # TODO(Morato) resolve this - put under depthaiDependencies, shouldn't be public
-# if(WIN32)
-#     find_package(OpenSSL REQUIRED)
-#     target_link_libraries(${TARGET_CORE_NAME} PUBLIC OpenSSL::Crypto OpenSSL::SSL)
-# endif()
 
 # Link merged target libraries and add compile definitions
 if(DEPTHAI_HAVE_OPENCV_SUPPORT AND DEPTHAI_MERGED_TARGET)
