@@ -5,7 +5,6 @@
 #include "depthai/common/ImgTransformations.hpp"
 #include "depthai/common/optional.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
-#include "depthai/schemas/ImgDetections.pb.h"
 #include "depthai/utility/ProtoSerializable.hpp"
 
 namespace dai {
@@ -41,28 +40,19 @@ class ImgDetections : public Buffer, public utility::ProtoSerializable {
         datatype = DatatypeEnum::ImgDetections;
     };
 
-    std::unique_ptr<google::protobuf::Message> getProtoMessage() const override {
-        auto imgDetections = std::make_unique<proto::img_detections::ImgDetections>();
+    /**
+     * Serialize message to proto buffer
+     *
+     * @returns serialized message
+     */
+    std::vector<std::uint8_t> serializeProto() const override;
 
-        imgDetections->set_sequencenum(this->sequenceNum);
-        proto::common::Timestamp* ts = imgDetections->mutable_ts();
-        ts->set_sec(this->ts.sec);
-        ts->set_nsec(this->ts.nsec);
-        proto::common::Timestamp* tsDevice = imgDetections->mutable_tsdevice();
-        tsDevice->set_sec(this->tsDevice.sec);
-        tsDevice->set_nsec(this->tsDevice.nsec);
-
-        for(const auto& detection : this->detections) {
-            proto::img_detections::ImgDetection* imgDetection = imgDetections->add_detections();
-            imgDetection->set_label(detection.label);
-            imgDetection->set_confidence(detection.confidence);
-            imgDetection->set_xmin(detection.xmin);
-            imgDetection->set_ymin(detection.ymin);
-            imgDetection->set_xmax(detection.xmax);
-            imgDetection->set_ymax(detection.ymax);
-        }
-        return imgDetections;
-    }
+    /**
+     * Serialize schema to proto buffer
+     *
+     * @returns serialized schema
+     */
+    utility::ProtoSerializable::SchemaPair serializeSchema() const override;
 
     DEPTHAI_SERIALIZE(ImgDetections, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, detections, transformation);
 };

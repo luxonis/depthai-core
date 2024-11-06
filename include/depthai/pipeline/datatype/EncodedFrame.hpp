@@ -4,7 +4,6 @@
 
 #include "depthai/common/ImgTransformations.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
-#include "depthai/schemas/EncodedFrame.pb.h"
 #include "depthai/utility/ProtoSerializable.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 
@@ -173,7 +172,19 @@ class EncodedFrame : public Buffer, public utility::ProtoSerializable {
      */
     EncodedFrame& setProfile(Profile profile);
 
-    std::unique_ptr<google::protobuf::Message> getProtoMessage() const override;
+    /**
+     * Serialize message to proto buffer
+     *
+     * @returns serialized message
+     */
+    std::vector<std::uint8_t> serializeProto() const override;
+
+    /**
+     * Serialize schema to proto buffer
+     *
+     * @returns serialized schema
+     */
+    utility::ProtoSerializable::SchemaPair serializeSchema() const override;
 
     DEPTHAI_SERIALIZE(EncodedFrame,
                       cam,

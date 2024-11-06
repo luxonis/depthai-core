@@ -15,7 +15,6 @@
 #include "depthai/common/FrameEvent.hpp"
 #include "depthai/common/ImgTransformations.hpp"
 #include "depthai/common/Rect.hpp"
-#include "depthai/schemas/ImgFrame.pb.h"
 #include "depthai/utility/ProtoSerializable.hpp"
 
 // optional
@@ -85,10 +84,20 @@ class ImgFrame : public Buffer, public utility::ProtoSerializable {
         datatype = DatatypeEnum::ImgFrame;
     };
 
-   protected:
-    std::unique_ptr<google::protobuf::Message> getProtoMessage() const override;
+    /**
+     * Serialize message to proto buffer
+     *
+     * @returns serialized message
+     */
+    std::vector<std::uint8_t> serializeProto() const override;
 
-   public:
+    /**
+     * Serialize schema to proto buffer
+     *
+     * @returns serialized schema
+     */
+    utility::ProtoSerializable::SchemaPair serializeSchema() const override;
+
     // getters
     /**
      * Retrieves image timestamp (at the specified offset of exposure) related to dai::Clock::now()

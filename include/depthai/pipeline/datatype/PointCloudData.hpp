@@ -6,7 +6,6 @@
 #include "depthai/common/Point3f.hpp"
 #include "depthai/common/Point3fRGB.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
-#include "depthai/schemas/PointCloudData.pb.h"
 #include "depthai/utility/ProtoSerializable.hpp"
 
 // optional
@@ -190,7 +189,19 @@ class PointCloudData : public Buffer, public utility::ProtoSerializable {
      */
     PointCloudData& setInstanceNum(unsigned int instanceNum);
 
-    virtual std::unique_ptr<google::protobuf::Message> getProtoMessage() const override;
+        /**
+     * Serialize message to proto buffer
+     *
+     * @returns serialized message
+     */
+    std::vector<std::uint8_t> serializeProto() const override;
+
+    /**
+     * Serialize schema to proto buffer
+     *
+     * @returns serialized schema
+     */
+    utility::ProtoSerializable::SchemaPair serializeSchema() const override;
 
 #ifdef DEPTHAI_HAVE_PCL_SUPPORT
     /**
