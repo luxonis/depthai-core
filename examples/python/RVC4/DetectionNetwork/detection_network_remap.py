@@ -42,6 +42,7 @@ with dai.Pipeline() as pipeline:
             normShape = imgDetections.getTransformation().getSize()
 
             # Create rotated rectangle to remap
+            # Here we use an intermediate dai.Rect to create a dai.RotatedRect to simplify construction and denormalization
             rotRect = dai.RotatedRect(dai.Rect(dai.Point2f(xmin, ymin), dai.Point2f(xmax, ymax)).denormalize(normShape[0], normShape[1]), 0)
             # Remap the detection rectangle to target frame
             remapped = imgDetections.getTransformation().remapRectTo(frame.getTransformation(), rotRect)
