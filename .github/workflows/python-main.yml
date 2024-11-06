@@ -263,9 +263,10 @@ jobs:
       fail-fast: false
     runs-on: ${{ matrix.os }}
     env:
-      DEPTHAI_BUILD_BASALT: ON
-      DEPTHAI_BUILD_PCL: ON
-      DEPTHAI_BUILD_RTABMAP: ON
+      # TODO(Morato) - re-enable basalt, pcl, rtabmap after everything is ported  
+      # DEPTHAI_BUILD_BASALT: ON
+      # DEPTHAI_BUILD_PCL: ON
+      # DEPTHAI_BUILD_RTABMAP: ON
     steps:
       - name: Cache .hunter folder
         uses: actions/cache@v3
