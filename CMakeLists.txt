@@ -1,4 +1,14 @@
 cmake_minimum_required(VERSION 3.4) # For Hunter
+
+# CMP0074 dictates that find_package searches environment variable "[packageName]_ROOT" along with regular variable [packageName]_ROOT
+if(POLICY CMP0074)
+  cmake_policy(SET CMP0074 NEW) # Only introduced in 3.12
+endif()
+
+if(POLICY CMP0028)
+  cmake_policy(SET CMP0028 NEW)
+endif()
+
 option(DEPTHAI_BOOTSTRAP_VCPKG "Automatically bootstrap VCPKG" ON)
 if(DEPTHAI_BOOTSTRAP_VCPKG)
     message(STATUS "Including vcpkg.cmake")
@@ -113,15 +123,6 @@ if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
     set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/install" CACHE PATH "Installation Directory" FORCE)
 endif()
 
-# Set policies
-# CMP0074 dictates that find_package searches environment variable "[packageName]_ROOT" along with regular variable [packageName]_ROOT
-if(POLICY CMP0074)
-  cmake_policy(SET CMP0074 NEW) # Only introduced in 3.12
-endif()
-
-if(POLICY CMP0028)
-  cmake_policy(SET CMP0028 NEW)
-endif()
 
 # Set to export compile commands for tools like clang-tidy and format
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
