@@ -5,7 +5,7 @@ import depthai as dai
 import numpy as np
 
 # Create pipeline
-with dai.Pipeline() as pipeline:
+with dai.Pipeline(dai.Device("10.12.103.170")) as pipeline:
     cameraNode = pipeline.create(dai.node.Camera).build()
     detectionNetwork = pipeline.create(dai.node.DetectionNetwork).build(cameraNode, dai.NNModelDescription("yolov6-nano"))
     labelMap = detectionNetwork.getClasses()
@@ -43,7 +43,7 @@ with dai.Pipeline() as pipeline:
 
             # Create rotated rectangle to remap
             # Here we use an intermediate dai.Rect to create a dai.RotatedRect to simplify construction and denormalization
-            rotRect = dai.RotatedRect(dai.Rect(dai.Point2f(xmin, ymin), dai.Point2f(xmax, ymax)).denormalize(normShape[0], normShape[1]), 0)
+            rotRect = dai.RotatedRect(dai.Rect(dai.Point2f(detection.xmin, detection.ymin), dai.Point2f(detection.xmax, detection.ymax)).denormalize(normShape[0], normShape[1]), 0)
             # Remap the detection rectangle to target frame
             remapped = imgDetections.getTransformation().remapRectTo(frame.getTransformation(), rotRect)
             # Remapped rectangle could be rotated, so we get the bounding box
