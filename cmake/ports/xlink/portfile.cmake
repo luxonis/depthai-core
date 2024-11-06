@@ -14,6 +14,8 @@ vcpkg_cmake_configure(
     OPTIONS
     # temporary
         ${FEATURE_OPTIONS}
+		-DCMAKE_CXX_STANDARD=17
+		-DCMAKE_C_STANDARD=11
 )
 
 vcpkg_cmake_install()
