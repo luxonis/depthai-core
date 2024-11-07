@@ -95,9 +95,15 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack){
 
     rotatedRect
         .def(py::init<>())
+        .def(py::init<Point2f, Size2f, float>())
+        .def(py::init<Rect, float>())
         .def_readwrite("center", &RotatedRect::center)
         .def_readwrite("size", &RotatedRect::size)
         .def_readwrite("angle", &RotatedRect::angle)
+        .def("normalize", &RotatedRect::normalize, py::arg("width"), py::arg("height"), DOC(dai, RotatedRect, normalize))
+        .def("denormalize", &RotatedRect::denormalize, py::arg("width"), py::arg("height"), DOC(dai, RotatedRect, denormalize))
+        .def("getPoints", &RotatedRect::getPoints, DOC(dai, RotatedRect, getPoints))
+        .def("getOuterRect", &RotatedRect::getOuterRect, DOC(dai, RotatedRect, getOuterRect))
         ;
 
     rect

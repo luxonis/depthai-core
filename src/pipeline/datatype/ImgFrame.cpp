@@ -248,59 +248,15 @@ Rect ImgFrame::remapRectToSource(const Rect& rect) const {
 }
 
 float ImgFrame::getSourceHFov() const {
-    float fx = transformation.getSourceIntrinsicMatrix()[0][0];
-
-    // Calculate vertical FoV (in radians)
-    float horizontalFoV = 2 * atan(getWidth() / (2.0f * fx));
-
-    // Convert radians to degrees
-    return horizontalFoV * 180.0f / (float)M_PI;
+    return transformation.getHFov(true);
 }
 
 float ImgFrame::getSourceDFov() const {
-    float sourceWidth = getSourceWidth();
-    float sourceHeight = getSourceHeight();
-
-    if(sourceHeight <= 0) {
-        throw std::runtime_error(fmt::format("Source height is invalid. Height: {}", sourceHeight));
-    }
-    if(sourceWidth <= 0) {
-        throw std::runtime_error(fmt::format("Source width is invalid. Width: {}", sourceWidth));
-    }
-    float HFovDegrees = getSourceHFov();
-
-    // Calculate the diagonal ratio (DR)
-    float dr = std::sqrt(std::pow(sourceWidth, 2) + std::pow(sourceHeight, 2));
-
-    // Validate the horizontal FOV
-    if(HFovDegrees <= 0 || HFovDegrees >= 180) {
-        throw std::runtime_error(fmt::format("Horizontal FOV is invalid. Horizontal FOV: {}", HFovDegrees));
-    }
-
-    float HFovRadians = HFovDegrees * (static_cast<float>(M_PI) / 180.0f);
-
-    // Calculate the tangent of half of the HFOV
-    float tanHFovHalf = std::tan(HFovRadians / 2);
-
-    // Calculate the tangent of half of the VFOV
-    float tanDiagonalFovHalf = (dr / sourceWidth) * tanHFovHalf;
-
-    // Calculate the VFOV in radians
-    float diagonalFovRadians = 2 * std::atan(tanDiagonalFovHalf);
-
-    // Convert VFOV to degrees
-    float diagonalFovDegrees = diagonalFovRadians * (180.0f / static_cast<float>(M_PI));
-    return diagonalFovDegrees;
+    return transformation.getDFov(true);
 }
 
 float ImgFrame::getSourceVFov() const {
-    float fy = transformation.getSourceIntrinsicMatrix()[1][1];
-
-    // Calculate vertical FoV (in radians)
-    float verticalFoV = 2 * atan(getHeight() / (2.0f * fy));
-
-    // Convert radians to degrees
-    return verticalFoV * 180.0f / (float)M_PI;
+    return transformation.getVFov(true);
 }
 
 Point2f ImgFrame::remapPointBetweenFrames(const Point2f& originPoint, const ImgFrame& originFrame, const ImgFrame& destFrame) {

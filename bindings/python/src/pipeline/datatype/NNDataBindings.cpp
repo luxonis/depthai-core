@@ -266,6 +266,8 @@ void bind_nndata(pybind11::module& m, void* pCallstack){
         // .def("getTensor", static_cast<xt::xarray<int>(NNData::*)(const std::string&)>(&NNData::getTensor<int>), py::arg("name"), DOC(dai, NNData, getTensor, 3))
         .def("getTensorDatatype", &NNData::getTensorDatatype, py::arg("name"), DOC(dai, NNData, getTensorDatatype))
         .def("getTensorInfo", &NNData::getTensorInfo, py::arg("name"), DOC(dai, NNData, getTensorInfo))
+        .def("getTransformation", [](NNData& msg) {return msg.transformation;})
+        .def("setTransformation", [](NNData& msg, const std::optional<ImgTransformation>& transformation) {msg.transformation = transformation;})
         ;
 
 
