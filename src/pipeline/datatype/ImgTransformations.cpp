@@ -388,15 +388,29 @@ dai::Point2f ImgTransformation::remapPointFrom(const ImgTransformation& from, da
     return transformed;
 }
 dai::RotatedRect ImgTransformation::remapRectTo(const ImgTransformation& to, dai::RotatedRect rect) const {
+    bool normalized = rect.isNormalized();
+    if(normalized) {
+        rect = rect.denormalize(width, height);
+    }
     auto sourceRectFrom = invTransformRect(rect);
     auto sourceRectTo = interSourceFrameTransform(sourceRectFrom, *this, to);
     auto transformed = to.transformRect(sourceRectTo);
+    if(normalized) {
+        transformed = transformed.normalize(to.width, to.height);
+    }
     return transformed;
 }
 dai::RotatedRect ImgTransformation::remapRectFrom(const ImgTransformation& from, dai::RotatedRect rect) const {
+    bool normalized = rect.isNormalized();
+    if(normalized) {
+        rect = rect.denormalize(from.width, from.height);
+    }
     auto sourceRectFrom = from.invTransformRect(rect);
     auto sourceRectTo = interSourceFrameTransform(sourceRectFrom, from, *this);
     auto transformed = transformRect(sourceRectTo);
+    if(normalized) {
+        transformed = transformed.normalize(width, height);
+    }
     return transformed;
 }
 
