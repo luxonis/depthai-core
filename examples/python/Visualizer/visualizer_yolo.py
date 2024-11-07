@@ -1,10 +1,5 @@
 #!/usr/bin/env python3
-
-from pathlib import Path
-import cv2
 import depthai as dai
-import numpy as np
-import time
 
 remoteConnector = dai.RemoteConnection()
 # Create pipeline
