@@ -37,33 +37,33 @@ struct TextAnnotation {
     Color backgroundColor;
 };
 DEPTHAI_SERIALIZE_EXT(TextAnnotation, position, text, fontSize, textColor, backgroundColor);
-struct ImageAnnotation {
+struct ImgAnnotation {
     std::vector<CircleAnnotation> circles;
     std::vector<PointsAnnotation> points;
     std::vector<TextAnnotation> texts;
 };
 
-DEPTHAI_SERIALIZE_EXT(ImageAnnotation, circles, points, texts);
+DEPTHAI_SERIALIZE_EXT(ImgAnnotation, circles, points, texts);
 
 /**
- * ImageAnnotations message. Carries annotations for an image.
+ * ImgAnnotations message. Carries annotations for an image.
  */
-class ImageAnnotations : public Buffer, public utility::ProtoSerializable {
+class ImgAnnotations : public Buffer, public utility::ProtoSerializable {
    public:
     /**
-     * Construct ImageAnnotations message.
+     * Construct ImgAnnotations message.
      */
-    ImageAnnotations() = default;
-    explicit ImageAnnotations(std::vector<ImageAnnotation> annotations) : annotations(std::move(annotations)) {}
+    ImgAnnotations() = default;
+    explicit ImgAnnotations(std::vector<ImgAnnotation> annotations) : annotations(std::move(annotations)) {}
 
-    virtual ~ImageAnnotations() = default;
+    virtual ~ImgAnnotations() = default;
 
     /// Transform
-    std::vector<ImageAnnotation> annotations;
+    std::vector<ImgAnnotation> annotations;
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
         metadata = utility::serialize(*this);
-        datatype = DatatypeEnum::ImageAnnotations;
+        datatype = DatatypeEnum::ImgAnnotations;
     };
 
     #ifdef DEPTHAI_ENABLE_PROTOBUF
@@ -82,7 +82,7 @@ class ImageAnnotations : public Buffer, public utility::ProtoSerializable {
     utility::ProtoSerializable::SchemaPair serializeSchema() const override;
 #endif
 
-    DEPTHAI_SERIALIZE(ImageAnnotations, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, annotations);
+    DEPTHAI_SERIALIZE(ImgAnnotations, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, annotations);
 };
 
 }  // namespace dai

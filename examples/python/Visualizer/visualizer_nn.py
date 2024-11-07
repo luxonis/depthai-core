@@ -5,7 +5,7 @@ import cv2
 import depthai as dai
 import numpy as np
 import time
-class ImageAnnotationsGenerator(dai.node.ThreadedHostNode):
+class ImgAnnotationsGenerator(dai.node.ThreadedHostNode):
     def __init__(self):
         super().__init__()
         self.inputDet = self.createInput()
@@ -17,9 +17,9 @@ class ImageAnnotationsGenerator(dai.node.ThreadedHostNode):
         while self.isRunning():
             nnData = self.inputDet.get()
             detections = nnData.detections
-            imgAnnt = dai.ImageAnnotations()
+            imgAnnt = dai.ImgAnnotations()
             imgAnnt.setTimestamp(nnData.getTimestamp())
-            annotation = dai.ImageAnnotation()
+            annotation = dai.ImgAnnotation()
             for detection in detections:
                 pointsAnnotation = dai.PointsAnnotation()
                 pointsAnnotation.type = dai.PointsAnnotationType.LINE_STRIP
@@ -57,7 +57,7 @@ with dai.Pipeline() as pipeline:
         cameraNode, dai.NNModelDescription("yolov6-nano")
     )
 
-    imageAnnotationsGenerator = pipeline.create(ImageAnnotationsGenerator)
+    imageAnnotationsGenerator = pipeline.create(ImgAnnotationsGenerator)
     outputToEncode = cameraNode.requestOutput((1920, 1440), type=dai.ImgFrame.Type.NV12)
     h264Encoder = pipeline.create(dai.node.VideoEncoder)
     h264Encoder.setDefaultProfilePreset(30, dai.VideoEncoderProperties.Profile.H264_MAIN)

@@ -362,7 +362,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/ImgFrame.cpp
     src/pipeline/datatype/ImgTransformations.cpp
     src/pipeline/datatype/EncodedFrame.cpp
-	src/pipeline/datatype/ImageAnnotations.cpp
+	src/pipeline/datatype/ImgAnnotations.cpp
     src/pipeline/datatype/ImageManipConfig.cpp
     src/pipeline/datatype/ImageManipConfigV2.cpp
     src/pipeline/datatype/CameraControl.cpp

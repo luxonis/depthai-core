@@ -1,5 +1,5 @@
 
-#include "depthai/pipeline/datatype/ImageAnnotations.hpp"
+#include "depthai/pipeline/datatype/ImgAnnotations.hpp"
 
 #include "../../utility/ProtoSerialize.hpp"
 #ifdef DEPTHAI_ENABLE_PROTOBUF
@@ -9,7 +9,7 @@
 
 namespace dai {
 #ifdef DEPTHAI_ENABLE_PROTOBUF
-std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImageAnnotations* daiAnnotations) {
+std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgAnnotations* daiAnnotations) {
     auto imageAnnotations = std::make_unique<proto::image_annotations::ImageAnnotations>();
 
     imageAnnotations->set_sequencenum(daiAnnotations->sequenceNum);
@@ -82,11 +82,11 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImageAnnotation
     return imageAnnotations;
 }
 
-utility::ProtoSerializable::SchemaPair ImageAnnotations::serializeSchema() const {
+utility::ProtoSerializable::SchemaPair ImgAnnotations::serializeSchema() const {
     return utility::serializeSchema(getProtoMessage(this));
 }
 
-std::vector<std::uint8_t> ImageAnnotations::serializeProto() const {
+std::vector<std::uint8_t> ImgAnnotations::serializeProto() const {
     return utility::serializeProto(getProtoMessage(this));
 }
 

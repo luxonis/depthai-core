@@ -123,7 +123,7 @@ void DatatypeBindings::bind(pybind11::module& m, void* pCallstack){
         .value("PointCloudConfig", DatatypeEnum::PointCloudConfig)
         .value("PointCloudData", DatatypeEnum::PointCloudData)
         .value("ImageAlignConfig", DatatypeEnum::ImageAlignConfig)
-		.value("ImageAnnotations", DatatypeEnum::ImageAnnotations)
+		.value("ImgAnnotations", DatatypeEnum::ImgAnnotations)
     ;
 
 }
