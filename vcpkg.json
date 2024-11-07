@@ -32,11 +32,11 @@
 					"default-features": false
 				},
 				{
-					"name": "opencv",
+					"name": "opencv4",
 					"default-features": false
 				},
 				{
-					"name": "opencv4",
+					"name": "opencv",
 					"default-features": false
 				},
 				{
@@ -76,11 +76,11 @@
 			"description": "Enable Basalt support",
 			"dependencies": [
 				{
-					"name": "opencv",
+					"name": "opencv4",
 					"default-features": false
 				},
 				{
-					"name": "opencv4",
+					"name": "opencv",
 					"default-features": false
 				},
 				{
