@@ -13,7 +13,7 @@
 		"zlib",
 		"spdlog",
 		"bzip2",
-		"lz4-luxonis",
+		"lz4",
 		"libarchive-luxonis",
 		"liblzma",
 		"fp16",
@@ -27,6 +27,18 @@
 		"rtabmap": {
 			"description": "Enable RTAB-Map support",
 			"dependencies": [
+				{
+					"name": "pcl",
+					"default-features": false
+				},
+				{
+					"name": "opencv",
+					"default-features": false
+				},
+				{
+					"name": "opencv4",
+					"default-features": false
+				},
 				{
 					"name": "rtabmap",
 					"default-features": false
@@ -63,6 +75,14 @@
 		"basalt": {
 			"description": "Enable Basalt support",
 			"dependencies": [
+				{
+					"name": "opencv",
+					"default-features": false
+				},
+				{
+					"name": "opencv4",
+					"default-features": false
+				},
 				{
 					"name": "basalt"
 				}

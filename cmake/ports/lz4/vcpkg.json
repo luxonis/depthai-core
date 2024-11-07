@@ -1,5 +1,5 @@
 {
-  "name": "lz4-luxonis",
+  "name": "lz4",
   "version-string": "1.9.4-p2",
   "description": "Extremely Fast Compression algorithm",
   "dependencies": [
