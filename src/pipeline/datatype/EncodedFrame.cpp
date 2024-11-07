@@ -164,6 +164,9 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const EncodedFrame* f
     // Set the encoded frame data
     encodedFrame->set_data(frame->data->getData().data(), frame->data->getData().size());
 
+    proto::common::ImgTransformation* imgTransformation = encodedFrame->mutable_transformation();
+    utility::serializeImgTransormation(imgTransformation, frame->transformation);
+
     // Return the populated protobuf message
     return encodedFrame;
 }

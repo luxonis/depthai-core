@@ -59,6 +59,10 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const dai::SpatialImg
         // populate SpatialImgDetection.SpatialLocationCalculatorConfigData.stepSize
         boundingBoxMapping->set_stepsize(detection.boundingBoxMapping.stepSize);
     }
+    proto::common::ImgTransformation* imgTransformation = spatialImgDetections->mutable_transformation();
+    if(daiSpatialImgDetections->transformation.has_value()) {
+        utility::serializeImgTransormation(imgTransformation, daiSpatialImgDetections->transformation.value());
+    }
 
     return spatialImgDetections;
 }

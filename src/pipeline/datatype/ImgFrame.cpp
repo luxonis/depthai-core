@@ -336,6 +336,9 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgFrame* frame
 
     imgFrame->set_category(frame->category);
 
+    proto::common::ImgTransformation* imgTransformation = imgFrame->mutable_transformation();
+    utility::serializeImgTransormation(imgTransformation, frame->transformation);
+
     imgFrame->set_data(frame->data->getData().data(), frame->data->getData().size());
     return imgFrame;
 }

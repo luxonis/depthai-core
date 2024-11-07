@@ -53,5 +53,35 @@ ProtoSerializable::SchemaPair serializeSchema(std::unique_ptr<google::protobuf::
     return returnPair;
 }
 
+void serializeImgTransormation(proto::common::ImgTransformation* imgTransformation, const ImgTransformation& transformation) {
+    const auto [width, height] = transformation.getSize();
+    const auto [srcWidth, srcHeight] = transformation.getSourceSize();
+    imgTransformation->set_width(width);
+    imgTransformation->set_height(height);
+    imgTransformation->set_srcwidth(srcWidth);
+    imgTransformation->set_srcheight(srcHeight);
+
+    proto::common::TransformationMatrix* transformationMatrix = imgTransformation->mutable_transformationmatrix();
+    for(const auto& array : transformation.getMatrix()) {
+        proto::common::FloatArray* floatArray = transformationMatrix->add_arrays();
+        for(const auto& value : array) {
+            floatArray->add_values(value);
+        }
+    }
+    proto::common::TransformationMatrix* sourceIntrinsicMatrix = imgTransformation->mutable_sourceintrinsicmatrix();
+    for(const auto& array : transformation.getSourceIntrinsicMatrix()) {
+        proto::common::FloatArray* floatArray = sourceIntrinsicMatrix->add_arrays();
+        for(const auto& value : array) {
+            floatArray->add_values(value);
+        }
+    }
+
+    imgTransformation->set_distortionmodel(static_cast<proto::common::CameraModel>(transformation.getDistortionModel()));
+    proto::common::FloatArray* distortionCoefficients = imgTransformation->mutable_distortioncoefficients();
+    for(const auto& value : transformation.getDistortionCoefficients()) {
+        distortionCoefficients->add_values(value);
+    }
+}
+
 };  // namespace utility
 };  // namespace dai

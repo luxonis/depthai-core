@@ -27,6 +27,11 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgDetections* 
         imgDetection->set_xmax(detection.xmax);
         imgDetection->set_ymax(detection.ymax);
     }
+
+    proto::common::ImgTransformation* imgTransformation = imgDetections->mutable_transformation();
+    if(detections->transformation.has_value()) {
+        utility::serializeImgTransormation(imgTransformation, detections->transformation.value());
+    }
     return imgDetections;
 }
 
