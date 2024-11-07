@@ -450,10 +450,6 @@ if(DEPTHAI_HAVE_PCL_SUPPORT AND DEPTHAI_MERGED_TARGET)
     )
 endif()
 
-message(STATUS "pybind11_ROOT2 from ENV: $ENV{pybind11_ROOT}")
-message(STATUS "pybind11_DIR2: ${pybind11_DIR}")
-message(STATUS "pybind11_ROOT2: ${pybind11_ROOT}")
-
 add_library(${TARGET_CORE_NAME} ${TARGET_CORE_SOURCES})
 add_library("${PROJECT_NAME}::${TARGET_CORE_ALIAS}" ALIAS ${TARGET_CORE_NAME})
 # Specify that we are building core
@@ -478,8 +474,6 @@ if(DEPTHAI_CLANG_TIDY)
     target_clangtidy_setup(${TARGET_CORE_NAME})
 endif()
 
-
-
 # Set compiler features (c++17), and disables extensions (g++17)
 set_property(TARGET ${TARGET_CORE_NAME} PROPERTY CXX_STANDARD 17)
 set_property(TARGET ${TARGET_CORE_NAME} PROPERTY CXX_STANDARD_REQUIRED ON)
@@ -492,7 +486,6 @@ else()
 endif()
 # Minimal supported macOS SDK version for C++17 support with std::filesystem
 set(CMAKE_OSX_DEPLOYMENT_TARGET 10.15)
-
 
 # Link merged target libraries and add compile definitions
 if(DEPTHAI_HAVE_OPENCV_SUPPORT AND DEPTHAI_MERGED_TARGET)

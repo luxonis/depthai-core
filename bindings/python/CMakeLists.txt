@@ -49,7 +49,6 @@ hunter_add_package(pybind11)
 if(MINGW)
     set(PYBIND11_LTO_CXX_FLAGS "" CACHE STRING "" FORCE)
 endif()
-
 find_package(pybind11 CONFIG REQUIRED)
 
 # Print out the pybind11 version that was found

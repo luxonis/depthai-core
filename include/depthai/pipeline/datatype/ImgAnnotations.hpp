@@ -48,7 +48,7 @@ DEPTHAI_SERIALIZE_EXT(ImgAnnotation, circles, points, texts);
 /**
  * ImgAnnotations message. Carries annotations for an image.
  */
-class ImgAnnotations : public Buffer, public utility::ProtoSerializable {
+class ImgAnnotations : public Buffer, public ProtoSerializable {
    public:
     /**
      * Construct ImgAnnotations message.
@@ -79,7 +79,7 @@ class ImgAnnotations : public Buffer, public utility::ProtoSerializable {
      *
      * @returns serialized schema
      */
-    utility::ProtoSerializable::SchemaPair serializeSchema() const override;
+    ProtoSerializable::SchemaPair serializeSchema() const override;
 #endif
 
     DEPTHAI_SERIALIZE(ImgAnnotations, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, annotations);

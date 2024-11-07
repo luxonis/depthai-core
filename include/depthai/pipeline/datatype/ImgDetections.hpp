@@ -23,7 +23,7 @@ DEPTHAI_SERIALIZE_EXT(ImgDetection, label, confidence, xmin, ymin, xmax, ymax);
 /**
  * ImgDetections message. Carries normalized detection results
  */
-class ImgDetections : public Buffer, public utility::ProtoSerializable {
+class ImgDetections : public Buffer, public ProtoSerializable {
    public:
     /**
      * Construct ImgDetections message.
@@ -53,7 +53,7 @@ class ImgDetections : public Buffer, public utility::ProtoSerializable {
      *
      * @returns serialized schema
      */
-    utility::ProtoSerializable::SchemaPair serializeSchema() const override;
+    ProtoSerializable::SchemaPair serializeSchema() const override;
 #endif
 
     DEPTHAI_SERIALIZE(ImgDetections, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, detections, transformation);

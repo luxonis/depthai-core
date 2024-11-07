@@ -114,7 +114,7 @@ void RemoteConnectionImpl::addPublishThread(const std::string& topicName, const 
             return;
         }
 
-        auto serializableMessage = std::dynamic_pointer_cast<utility::ProtoSerializable>(firstMessage);
+        auto serializableMessage = std::dynamic_pointer_cast<ProtoSerializable>(firstMessage);
         if(!serializableMessage) {
             logger::error("First message is not a ProtoSerializable message for topic: {}", topicName);
             return;
@@ -143,7 +143,7 @@ void RemoteConnectionImpl::addPublishThread(const std::string& topicName, const 
             }
             if(!message) continue;
 
-            auto serializableMessage = std::dynamic_pointer_cast<utility::ProtoSerializable>(message);
+            auto serializableMessage = std::dynamic_pointer_cast<ProtoSerializable>(message);
             if(!serializableMessage) {
                 logger::error("Message is not a ProtoSerializable message for topic: {}", topicName);
                 continue;

@@ -9,7 +9,7 @@
 
 namespace dai {
 
-class EncodedFrame : public Buffer, public utility::ProtoSerializable {
+class EncodedFrame : public Buffer, public ProtoSerializable {
    public:
     enum class Profile : std::uint8_t { JPEG, AVC, HEVC };
     enum class FrameType : std::uint8_t { I, P, B, Unknown };
@@ -185,7 +185,7 @@ class EncodedFrame : public Buffer, public utility::ProtoSerializable {
      *
      * @returns serialized schema
      */
-    utility::ProtoSerializable::SchemaPair serializeSchema() const override;
+    ProtoSerializable::SchemaPair serializeSchema() const override;
 #endif
 
     DEPTHAI_SERIALIZE(EncodedFrame,

@@ -30,7 +30,7 @@ DEPTHAI_SERIALIZE_EXT(SpatialImgDetection, label, confidence, xmin, ymin, xmax, 
 /**
  * SpatialImgDetections message. Carries detection results together with spatial location data
  */
-class SpatialImgDetections : public Buffer, public utility::ProtoSerializable {
+class SpatialImgDetections : public Buffer, public ProtoSerializable {
    public:
     /**
      * Construct SpatialImgDetections message.
@@ -61,7 +61,7 @@ class SpatialImgDetections : public Buffer, public utility::ProtoSerializable {
      *
      * @returns serialized schema
      */
-    utility::ProtoSerializable::SchemaPair serializeSchema() const override;
+    ProtoSerializable::SchemaPair serializeSchema() const override;
 #endif
 
     DEPTHAI_SERIALIZE(SpatialImgDetections, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, detections, transformation);

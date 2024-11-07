@@ -19,7 +19,7 @@ namespace dai {
 /**
  * PointCloudData message. Carries point cloud data.
  */
-class PointCloudData : public Buffer, public utility::ProtoSerializable {
+class PointCloudData : public Buffer, public ProtoSerializable {
     unsigned int width;        // width in pixels
     unsigned int height;       // height in pixels
     uint32_t instanceNum = 0;  // Which source created this frame (color, mono, ...)
@@ -202,7 +202,7 @@ class PointCloudData : public Buffer, public utility::ProtoSerializable {
      *
      * @returns serialized schema
      */
-    utility::ProtoSerializable::SchemaPair serializeSchema() const override;
+    ProtoSerializable::SchemaPair serializeSchema() const override;
 #endif
 
 #ifdef DEPTHAI_HAVE_PCL_SUPPORT

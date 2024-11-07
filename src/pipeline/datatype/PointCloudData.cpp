@@ -162,7 +162,7 @@ std::vector<std::uint8_t> PointCloudData::serializeProto() const {
     return utility::serializeProto(getProtoMessage(this));
 }
 
-utility::ProtoSerializable::SchemaPair PointCloudData::serializeSchema() const {
+ProtoSerializable::SchemaPair PointCloudData::serializeSchema() const {
     return utility::serializeSchema(getProtoMessage(this));
 }
 

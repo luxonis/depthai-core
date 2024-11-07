@@ -340,7 +340,7 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgFrame* frame
     return imgFrame;
 }
 
-utility::ProtoSerializable::SchemaPair ImgFrame::serializeSchema() const {
+ProtoSerializable::SchemaPair ImgFrame::serializeSchema() const {
     return utility::serializeSchema(getProtoMessage(this));
 }
 

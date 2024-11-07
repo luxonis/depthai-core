@@ -67,7 +67,7 @@ std::vector<std::uint8_t> SpatialImgDetections::serializeProto() const {
     return utility::serializeProto(getProtoMessage(this));
 }
 
-utility::ProtoSerializable::SchemaPair SpatialImgDetections::serializeSchema() const {
+ProtoSerializable::SchemaPair SpatialImgDetections::serializeSchema() const {
     return utility::serializeSchema(getProtoMessage(this));
 }
 #endif

@@ -30,7 +30,7 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgDetections* 
     return imgDetections;
 }
 
-utility::ProtoSerializable::SchemaPair ImgDetections::serializeSchema() const {
+ProtoSerializable::SchemaPair ImgDetections::serializeSchema() const {
     return utility::serializeSchema(getProtoMessage(this));
 }
 

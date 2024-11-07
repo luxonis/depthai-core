@@ -28,7 +28,7 @@ namespace dai {
 /**
  * ImgFrame message. Carries image data and metadata.
  */
-class ImgFrame : public Buffer, public utility::ProtoSerializable {
+class ImgFrame : public Buffer, public ProtoSerializable {
    public:
     using Buffer::getTimestamp;
     using Buffer::getTimestampDevice;
@@ -97,7 +97,7 @@ class ImgFrame : public Buffer, public utility::ProtoSerializable {
      *
      * @returns serialized schema
      */
-    utility::ProtoSerializable::SchemaPair serializeSchema() const override;
+    ProtoSerializable::SchemaPair serializeSchema() const override;
 #endif
 
     // getters

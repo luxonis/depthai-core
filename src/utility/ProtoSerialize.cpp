@@ -42,12 +42,12 @@ std::vector<std::uint8_t> serializeProto(std::unique_ptr<google::protobuf::Messa
     return buffer;
 }
 
-utility::ProtoSerializable::SchemaPair serializeSchema(std::unique_ptr<google::protobuf::Message> protoMessage) {
+ProtoSerializable::SchemaPair serializeSchema(std::unique_ptr<google::protobuf::Message> protoMessage) {
     const auto* descriptor = protoMessage->GetDescriptor();
     if(descriptor == nullptr) {
         throw std::runtime_error("Failed to get protobuf descriptor");
     }
-    utility::ProtoSerializable::SchemaPair returnPair;
+    ProtoSerializable::SchemaPair returnPair;
     returnPair.schemaName = descriptor->full_name();
     returnPair.schema = serializeFdSet(descriptor);
     return returnPair;

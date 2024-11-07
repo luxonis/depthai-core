@@ -168,7 +168,7 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const EncodedFrame* f
     return encodedFrame;
 }
 
-utility::ProtoSerializable::SchemaPair EncodedFrame::serializeSchema() const {
+ProtoSerializable::SchemaPair EncodedFrame::serializeSchema() const {
     return utility::serializeSchema(getProtoMessage(this));
 }
 

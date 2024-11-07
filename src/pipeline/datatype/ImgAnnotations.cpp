@@ -82,7 +82,7 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgAnnotations*
     return imageAnnotations;
 }
 
-utility::ProtoSerializable::SchemaPair ImgAnnotations::serializeSchema() const {
+ProtoSerializable::SchemaPair ImgAnnotations::serializeSchema() const {
     return utility::serializeSchema(getProtoMessage(this));
 }
 

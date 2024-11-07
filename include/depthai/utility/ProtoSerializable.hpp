@@ -5,8 +5,6 @@
 #include <vector>
 namespace dai {
 
-namespace utility {
-
 class ProtoSerializable {
    public:
     struct SchemaPair {
@@ -57,7 +55,5 @@ class ProtoSerializable {
     }
 #endif
 };
-
-}  // namespace utility
 
 }  // namespace dai
