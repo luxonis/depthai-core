@@ -145,6 +145,7 @@ set(SOURCE_LIST
     src/pipeline/datatype/TransformDataBindings.cpp
     src/pipeline/datatype/ImageAlignConfigBindings.cpp
     src/pipeline/datatype/ImageAnnotationsBindings.cpp
+    src/remote_connection/RemoteConnectionBindings.cpp
 
     src/capabilities/CapabilityBindings.cpp
     src/capabilities/CapabilityRangeBindings.cpp
@@ -156,12 +157,6 @@ set(SOURCE_LIST
 if(DEPTHAI_MERGED_TARGET)
     list(APPEND SOURCE_LIST
         external/pybind11_opencv_numpy/ndarray_converter.cpp
-    )
-endif()
-
-if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
-    list(APPEND SOURCE_LIST
-        src/remote_connection/RemoteConnectionBindings.cpp
     )
 endif()
 
@@ -310,6 +305,10 @@ target_link_libraries(${TARGET_NAME}
 # Add embedded module option, otherwise link to pybind11 as usual
 if(DEPTHAI_PYTHON_EMBEDDED_MODULE)
     target_compile_definitions(${TARGET_NAME} PRIVATE DEPTHAI_PYTHON_EMBEDDED_MODULE)
+endif()
+
+if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
+    target_compile_definitions(${TARGET_NAME} PRIVATE DEPTHAI_ENABLE_REMOTE_CONNECTION)
 endif()
 
 # Find Git
