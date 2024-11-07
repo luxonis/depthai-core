@@ -12,7 +12,10 @@
       "name": "vcpkg-cmake-config",
       "host": true
     },
-	"opencv",
+	{
+		"name": "opencv4",
+		"default-features": false
+	},
 	"basalt-headers",
 	"magic-enum",
 	"tbb"
