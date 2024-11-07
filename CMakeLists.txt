@@ -730,7 +730,7 @@ target_link_libraries(${TARGET_CORE_NAME}
 if(DEPTHAI_ENABLE_PROTOBUF)
     # Load protobuf support into library messages_proto
     message(STATUS "Protobuf support enabled")
-    add_subdirectory(include/depthai/utility/protos)
+    add_subdirectory(protos)
     list(APPEND targets_to_export messages)
     target_link_libraries(${TARGET_CORE_NAME} PRIVATE protobuf::libprotobuf messages)
     target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_ENABLE_PROTOBUF)
