@@ -203,8 +203,6 @@ jobs:
   build-windows-x86_64:
     needs: build-docstrings
     runs-on: windows-latest
-    env:
-      VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
     strategy:
       matrix:
         python-version: [3.7, 3.8, 3.9, '3.10', '3.11', '3.12']
@@ -213,6 +211,7 @@ jobs:
       fail-fast: false
     env:
       DEPTHAI_BUILD_BASALT: ON
+      VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
     steps:
       - name: Cache .hunter folder
         uses: actions/cache@v3
