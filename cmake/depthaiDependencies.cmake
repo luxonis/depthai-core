@@ -112,7 +112,6 @@ find_package(libnop ${_QUIET} CONFIG REQUIRED)
 find_package(mp4v2 ${_QUIET} CONFIG REQUIRED)
 
 if(DEPTHAI_ENABLE_PROTOBUF)
-    # TODO(Morato) - potentially move this to a private library
     find_package(Protobuf ${_QUIET} REQUIRED)
 endif()
 
