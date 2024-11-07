@@ -40,10 +40,8 @@ struct RotatedRect {
     RotatedRect normalize(unsigned int width, unsigned int height) const {
         if(isNormalized()) return *this;
         RotatedRect normalized = *this;
-        normalized.center.x /= width;
-        normalized.center.y /= height;
-        normalized.size.width /= width;
-        normalized.size.height /= height;
+        normalized.center = dai::Point2f(center.x / width, center.y / height, true);
+        normalized.size = dai::Size2f(size.width / width, size.height / height, true);
         return normalized;
     }
 
@@ -54,10 +52,8 @@ struct RotatedRect {
     RotatedRect denormalize(unsigned int width, unsigned int height) const {
         if(!isNormalized()) return *this;
         RotatedRect denormalized = *this;
-        denormalized.center.x *= width;
-        denormalized.center.y *= height;
-        denormalized.size.width *= width;
-        denormalized.size.height *= height;
+        denormalized.center = dai::Point2f(center.x * width, center.y * height, false);
+        denormalized.size = dai::Size2f(size.width * width, size.height * height, false);
         return denormalized;
     }
 
