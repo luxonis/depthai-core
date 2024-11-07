@@ -1,10 +1,11 @@
 #pragma once
 
-#include <depthai/pipeline/Node.hpp>
-#include <depthai/pipeline/Pipeline.hpp>
-#include <depthai/utility/Pimpl.hpp>
 #include <memory>
 #include <string>
+
+#include "depthai/pipeline/Node.hpp"
+#include "depthai/pipeline/Pipeline.hpp"
+#include "depthai/utility/Pimpl.hpp"
 
 namespace dai {
 
