@@ -21,12 +21,12 @@ class ImgAnnotationsGenerator(dai.node.ThreadedHostNode):
             for detection in detections:
                 pointsAnnotation = dai.PointsAnnotation()
                 pointsAnnotation.type = dai.PointsAnnotationType.LINE_STRIP
-                # pointsAnnotation.points = dai.VectorPoint2f([
-                #     dai.Point2f(detection.xmin, detection.ymin),
-                #     dai.Point2f(detection.xmax, detection.ymin),
-                #     dai.Point2f(detection.xmax, detection.ymax),
-                #     dai.Point2f(detection.xmin, detection.ymax),
-                # ])
+                pointsAnnotation.points = dai.VectorPoint2f([
+                    dai.Point2f(detection.xmin, detection.ymin),
+                    dai.Point2f(detection.xmax, detection.ymin),
+                    dai.Point2f(detection.xmax, detection.ymax),
+                    dai.Point2f(detection.xmin, detection.ymax),
+                ])
                 outlineColor = dai.Color(1.0, 0.5, 0.5, 1.0)
                 pointsAnnotation.outlineColor = outlineColor
                 fillColor = dai.Color(0.5, 1.0, 0.5, 0.5)
