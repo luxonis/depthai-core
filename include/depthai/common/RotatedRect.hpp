@@ -19,19 +19,29 @@ struct RotatedRect {
     float angle = 0.f;
 
     RotatedRect() = default;
-    RotatedRect(const Point2f& center, const Size2f& size, float angle) : center(center), size(size), angle(angle) {}
-    RotatedRect(const Rect& rect, float angle) : center(rect.x + rect.width / 2.0f, rect.y + rect.height / 2.0f), size(rect.width, rect.height), angle(angle) {}
+    RotatedRect(const Point2f& center, const Size2f& size, float angle) : center(center), size(size), angle(angle) {
+        if(size.isNormalized() != center.isNormalized()) {
+            throw std::runtime_error("Cannot create RotatedRect with mixed normalization");
+        }
+    }
+    RotatedRect(const Rect& rect, float angle) : center(rect.x + rect.width / 2.0f, rect.y + rect.height / 2.0f, rect.isNormalized()), size(rect.width, rect.height, rect.isNormalized()), angle(angle) {}
+
+    bool isNormalized() const {
+        if(size.isNormalized() != center.isNormalized()) {
+            throw std::runtime_error("Cannot denormalize RotatedRect with mixed normalization");
+        }
+        return size.isNormalized();
+    }
 
     /**
      * Normalize the rotated rectangle. The normalized rectangle will have center and size coordinates in range [0,1]
      * @return Normalized rotated rectangle
      */
     RotatedRect normalize(unsigned int width, unsigned int height) const {
+        if(isNormalized()) return *this;
         RotatedRect normalized = *this;
-        normalized.center.x /= width;
-        normalized.center.y /= height;
-        normalized.size.width /= width;
-        normalized.size.height /= height;
+        normalized.center = dai::Point2f(center.x / width, center.y / height, true);
+        normalized.size = dai::Size2f(size.width / width, size.height / height, true);
         return normalized;
     }
 
@@ -40,11 +50,10 @@ struct RotatedRect {
      * @return Denormalized rotated rectangle
      */
     RotatedRect denormalize(unsigned int width, unsigned int height) const {
+        if(!isNormalized()) return *this;
         RotatedRect denormalized = *this;
-        denormalized.center.x *= width;
-        denormalized.center.y *= height;
-        denormalized.size.width *= width;
-        denormalized.size.height *= height;
+        denormalized.center = dai::Point2f(center.x * width, center.y * height, false);
+        denormalized.size = dai::Size2f(size.width * width, size.height * height, false);
         return denormalized;
     }
 
