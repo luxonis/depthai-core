@@ -198,7 +198,7 @@ std::array<std::array<float, 3>, 3> ImgTransformation::getSourceIntrinsicMatrixI
     return sourceIntrinsicMatrixInv;
 }
 std::array<std::array<float, 3>, 3> ImgTransformation::getIntrinsicMatrix() const {
-    return matmul(sourceIntrinsicMatrix, transformationMatrix);
+    return matmul(transformationMatrix, sourceIntrinsicMatrix);
 }
 std::array<std::array<float, 3>, 3> ImgTransformation::getIntrinsicMatrixInv() const {
     return matmul(transformationMatrixInv, sourceIntrinsicMatrixInv);
