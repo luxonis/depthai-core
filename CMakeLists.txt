@@ -51,12 +51,19 @@ endif()
 
 
 option(DEPTHAI_ENABLE_PROTOBUF "Enable Protobuf support" ON)
+if(DEPTHAI_ENABLE_PROTOBUF)
+    list(APPEND VCPKG_MANIFEST_FEATURES "protobuf-support")
+endif()
 
 if(DEPTHAI_ENABLE_PROTOBUF)
     option(DEPTHAI_ENABLE_REMOTE_CONNECTION "Enable Remote Connection support" ON)
 else()
     option(DEPTHAI_ENABLE_REMOTE_CONNECTION "Enable Remote Connection support" OFF)
     message(STATUS "Remote Connection support disabled because Protobuf support is disabled.")
+endif()
+
+if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
+    list(APPEND VCPKG_MANIFEST_FEATURES "remote-connection-support")
 endif()
 
 # Set type to canonicalize relative paths for user-provided toolchain

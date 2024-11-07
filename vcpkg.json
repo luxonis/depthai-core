@@ -1,7 +1,5 @@
 {
   "dependencies": [
-    "websocketpp",
-    "protobuf",
     "zlib"
   ],
   "features": {
@@ -9,6 +7,18 @@
       "description": "Enable CURL support",
       "dependencies": [
         "cpr"
+      ]
+    },
+    "protobuf-support": {
+      "description": "Enable Protobuf support",
+      "dependencies": [
+        "protobuf"
+      ]
+    },
+    "remote-connection-support": {
+      "description": "Enable remote connection support",
+      "dependencies": [
+        "websocketpp"
       ]
     }
   },
