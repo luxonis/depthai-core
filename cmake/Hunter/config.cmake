@@ -112,13 +112,6 @@ hunter_config(
     SHA1 "4c308576c856a43dc88949a8f64ef90ebf94ae1b"
 )
 
-# # ZLib - Luxonis fix for alias on imported target for old CMake versions
-# hunter_config(
-#     ZLIB
-#     VERSION "1.2.11-p2"
-#     URL "https://github.com/luxonis/zlib/archive/refs/tags/v1.2.11-p2.tar.gz"
-#     SHA1 "fb8b6486183b13a86040f793a939b128f6d27095"
-# )
 
 # LZ4 for mcap
 hunter_config(
@@ -290,29 +283,6 @@ hunter_config(
     URL "https://github.com/Neargye/magic_enum/archive/3d1f6a5a2a3fbcba077e00ad0ccc2dd9fefc2ca7.zip"
     SHA1 "c9a27f6ff8311f0c6b2adb959d0598f079fcc9f3"
 )
-# hunter_config(
-#     CURL
-#     VERSION "7.88.1-p0-custom"
-#     URL "https://github.com/cpp-pm/curl/archive/25d45e89d140d6ab27103cd7f8f6d7d6cf548d47.tar.gz"
-#     SHA1 "db96d87e078e529a90dfb74de8d360a785c053aa"
-#     CMAKE_ARGS
-#         BUILD_CURL_TESTS=OFF
-#         BUILD_CURL_EXE=OFF
-#         CURL_USE_SCHANNEL=${DEPTHAI_CURL_USE_SCHANNEL}
-#         CURL_USE_OPENSSL=${DEPTHAI_CURL_USE_OPENSSL} # Override hunter flags - no OpenSSL needed on Windows
-#         BUILD_STATIC_CURL=ON
-#         BUILD_SHARED_LIBS=OFF
-#         BUILD_STATIC_LIBS=ON
-# )
-
-# A hunterized and patched version of cpr- see https://github.com/luxonis/cpr/pull/1
-# hunter_config(
-#     cpr
-#     VERSION "1.4.0"
-#     URL "https://github.com/luxonis/cpr/archive/50a1321738554e0152b0a6f1b0ca24e4fdecff5c.tar.gz"
-#     SHA1 "2e2ba9920ed99c19887592ca89d9be5ffce4722b"
-# )
-
 hunter_config(
     yaml-cpp
     VERSION "0.6.3l"
