@@ -1076,3 +1076,13 @@ size_t dai::impl::getAlignedOutputFrameSize(ImgFrame::Type type, size_t width, s
     }
     return 0;
 }
+dai::RotatedRect dai::impl::getRotatedRectFromPoints(const std::vector<std::array<float, 2>>& points) {
+    auto rrCorners = impl::getOuterRotatedRect(points);
+    dai::RotatedRect rect;
+    rect.size.width = std::sqrt(std::pow(rrCorners[1][0] - rrCorners[0][0], 2) + std::pow(rrCorners[1][1] - rrCorners[0][1], 2));
+    rect.size.height = std::sqrt(std::pow(rrCorners[2][0] - rrCorners[1][0], 2) + std::pow(rrCorners[2][1] - rrCorners[1][1], 2));
+    rect.center.x = (rrCorners[0][0] + rrCorners[1][0] + rrCorners[2][0] + rrCorners[3][0]) / 4.0f;
+    rect.center.y = (rrCorners[0][1] + rrCorners[1][1] + rrCorners[2][1] + rrCorners[3][1]) / 4.0f;
+    rect.angle = std::atan2(rrCorners[1][1] - rrCorners[0][1], rrCorners[1][0] - rrCorners[0][0]) * 180.0f / (float)M_PI;
+    return rect;
+}

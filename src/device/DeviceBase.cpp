@@ -1094,6 +1094,23 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, Prev
                 if(reconnectionCallback) reconnectionCallback(ReconnectionStatus::RECONNECT_FAILED);
                 break;
             }
+            auto reconnectionTimeoutMs = 10000;
+            auto timeoutStr = utility::getEnv("DEPTHAI_RECONNECT_TIMEOUT");
+            if(!timeoutStr.empty()) {
+                try {
+                    reconnectionTimeoutMs = std::stoi(timeoutStr);
+                    if(reconnectionTimeoutMs <= 0) {
+                        pimpl->logger.info("Reconnection timeout set to 0, reconnection disabled");
+                    }
+                } catch(const std::invalid_argument& e) {
+                    pimpl->logger.warn("DEPTHAI_RECONNECT_TIMEOUT value invalid: {}, should be a number (non-zero to enable)", e.what());
+                }
+            }
+
+            if(reconnectionTimeoutMs <= 0) {
+                if(reconnectionCallback) reconnectionCallback(ReconnectionStatus::RECONNECT_FAILED);
+                break;
+            }
             // reconnection attempt
             // stop other threads
             if(watchdogThread.joinable()) watchdogThread.join();
@@ -1105,15 +1122,8 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, Prev
             if(profilingThread.joinable()) profilingThread.join();
 
             // get timeout (in seconds)
-            std::chrono::milliseconds reconnectTimeout(10'000);
-            auto timeoutStr = utility::getEnv("DEPTHAI_RECONNECT_TIMEOUT");
-            if(!timeoutStr.empty()) {
-                try {
-                    reconnectTimeout = std::chrono::milliseconds(std::stoi(timeoutStr));
-                } catch(const std::invalid_argument& e) {
-                    pimpl->logger.warn("DEPTHAI_RECONNECT_TIMEOUT value invalid: {}, should be a number (non-zero to enable)", e.what());
-                }
-            }
+            std::chrono::milliseconds reconnectTimeout(reconnectionTimeoutMs);
+
             pimpl->logger.warn("Closed connection\n");
             // Reconnect
             deviceInfo = prev.deviceInfo;

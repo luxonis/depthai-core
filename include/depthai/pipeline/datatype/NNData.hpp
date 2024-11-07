@@ -10,7 +10,9 @@
 #include <vector>
 
 #include "Buffer.hpp"
+#include "depthai/common/ImgTransformations.hpp"
 #include "depthai/common/TensorInfo.hpp"
+#include "depthai/common/optional.hpp"
 #include "depthai/utility/VectorMemory.hpp"
 #include "depthai/utility/span.hpp"
 
@@ -67,6 +69,7 @@ class NNData : public Buffer {
    public:
     std::vector<TensorInfo> tensors;
     unsigned int batchSize;
+    std::optional<ImgTransformation> transformation;
     /**
      * Construct NNData message.
      */
@@ -443,7 +446,7 @@ class NNData : public Buffer {
         info.order = order;
         for(uint32_t i = 0; i < tensor.dimension(); i++) {
             info.dims.push_back(tensor.shape()[i]);
-            info.strides.push_back(tensor.strides()[i] * sizeof(uint16_t));
+            info.strides.push_back(tensor.strides()[i] * info.getDataTypeSize());
         }
 
         // Validate storage order - past this point, the tensor shape and storage order should be correct
@@ -661,7 +664,7 @@ class NNData : public Buffer {
         datatype = DatatypeEnum::NNData;
     };
 
-    DEPTHAI_SERIALIZE(NNData, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, tensors, batchSize);
+    DEPTHAI_SERIALIZE(NNData, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, tensors, batchSize, transformation);
 };
 
 }  // namespace dai

@@ -75,6 +75,7 @@ void bind_nndata(pybind11::module& m, void* pCallstack){
 
     tensorInfo
         .def(py::init<>())
+        .def("getTensorSize", &TensorInfo::getTensorSize)
         .def_readwrite("order", &TensorInfo::order)
         .def_readwrite("dataType", &TensorInfo::dataType)
         .def_readwrite("numDimensions", &TensorInfo::numDimensions)
@@ -118,6 +119,7 @@ void bind_nndata(pybind11::module& m, void* pCallstack){
 
     nnData.def(py::init<>(), DOC(dai, NNData, NNData))
         .def(py::init<size_t>(), DOC(dai, NNData, NNData, 2))
+        .def("__repr__", &NNData::str)
         // // setters
         // .def("setLayer", [](NNData& obj, const std::string& name,
         // py::array_t<std::uint8_t, py::array::c_style | py::array::forcecast>
@@ -264,6 +266,8 @@ void bind_nndata(pybind11::module& m, void* pCallstack){
         // .def("getTensor", static_cast<xt::xarray<int>(NNData::*)(const std::string&)>(&NNData::getTensor<int>), py::arg("name"), DOC(dai, NNData, getTensor, 3))
         .def("getTensorDatatype", &NNData::getTensorDatatype, py::arg("name"), DOC(dai, NNData, getTensorDatatype))
         .def("getTensorInfo", &NNData::getTensorInfo, py::arg("name"), DOC(dai, NNData, getTensorInfo))
+        .def("getTransformation", [](NNData& msg) {return msg.transformation;})
+        .def("setTransformation", [](NNData& msg, const std::optional<ImgTransformation>& transformation) {msg.transformation = transformation;})
         ;
 
 

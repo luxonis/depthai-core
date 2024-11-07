@@ -2,7 +2,9 @@
 
 #include <chrono>
 
+#include "depthai/common/ImgTransformations.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
+#include "depthai/pipeline/datatype/ImgFrame.hpp"
 
 namespace dai {
 
@@ -10,14 +12,7 @@ class EncodedFrame : public Buffer {
    public:
     enum class Profile : std::uint8_t { JPEG, AVC, HEVC };
     enum class FrameType : std::uint8_t { I, P, B, Unknown };
-    struct CameraSettings {
-        int32_t exposureTimeUs;
-        int32_t sensitivityIso;
-        int32_t lensPosition;
-        int32_t wbColorTemp;
-        float lensPositionRaw;
-        DEPTHAI_SERIALIZE(CameraSettings, exposureTimeUs, sensitivityIso, lensPosition, wbColorTemp, lensPositionRaw);
-    };
+    using CameraSettings = ImgFrame::CameraSettings;
 
     CameraSettings cam;
     uint32_t instanceNum = 0;  // Which source created this frame (color, mono, ...)
@@ -34,6 +29,8 @@ class EncodedFrame : public Buffer {
 
     uint32_t frameOffset = 0;
     uint32_t frameSize = 0;
+
+    ImgTransformation transformation;
 
     virtual ~EncodedFrame() = default;
 
@@ -186,6 +183,7 @@ class EncodedFrame : public Buffer {
                       type,
                       frameOffset,
                       frameSize,
+                      transformation,
                       Buffer::sequenceNum,
                       Buffer::ts,
                       Buffer::tsDevice);

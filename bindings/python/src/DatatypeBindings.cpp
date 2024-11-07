@@ -91,7 +91,7 @@ void DatatypeBindings::bind(pybind11::module& m, void* pCallstack){
 
     m.def("isDatatypeSubclassOf", &isDatatypeSubclassOf);
 
-    datatypeEnum
+    datatypeEnum.value("ADatatype", DatatypeEnum::ADatatype)
         .value("Buffer", DatatypeEnum::Buffer)
         .value("ImgFrame", DatatypeEnum::ImgFrame)
         .value("EncodedFrame", DatatypeEnum::EncodedFrame)
@@ -102,6 +102,7 @@ void DatatypeBindings::bind(pybind11::module& m, void* pCallstack){
         .value("ImgDetections", DatatypeEnum::ImgDetections)
         .value("SpatialImgDetections", DatatypeEnum::SpatialImgDetections)
         .value("SystemInformation", DatatypeEnum::SystemInformation)
+        .value("SystemInformationS3", DatatypeEnum::SystemInformationS3)
         .value("SpatialLocationCalculatorConfig", DatatypeEnum::SpatialLocationCalculatorConfig)
         .value("SpatialLocationCalculatorData", DatatypeEnum::SpatialLocationCalculatorData)
         .value("EdgeDetectorConfig", DatatypeEnum::EdgeDetectorConfig)
@@ -111,10 +112,14 @@ void DatatypeBindings::bind(pybind11::module& m, void* pCallstack){
         .value("IMUData", DatatypeEnum::IMUData)
         .value("StereoDepthConfig", DatatypeEnum::StereoDepthConfig)
         .value("FeatureTrackerConfig", DatatypeEnum::FeatureTrackerConfig)
+        .value("ThermalConfig", DatatypeEnum::ThermalConfig)
+        .value("ToFConfig", DatatypeEnum::ToFConfig)
         .value("TrackedFeatures", DatatypeEnum::TrackedFeatures)
+        .value("BenchmarkReport", DatatypeEnum::BenchmarkReport)
+        .value("MessageGroup", DatatypeEnum::MessageGroup)
+        .value("TransformData", DatatypeEnum::TransformData)
         .value("PointCloudConfig", DatatypeEnum::PointCloudConfig)
         .value("PointCloudData", DatatypeEnum::PointCloudData)
-        .value("TransformData", DatatypeEnum::TransformData)
         .value("ImageAlignConfig", DatatypeEnum::ImageAlignConfig)
     ;
 

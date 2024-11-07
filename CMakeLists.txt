@@ -65,7 +65,7 @@ endif()
 # Create depthai project
 project(depthai VERSION "3.0.0" LANGUAGES CXX C)
 set(DEPTHAI_PRE_RELEASE_TYPE "alpha") # Valid options are "alpha", "beta", "rc", ""
-set(DEPTHAI_PRE_RELEASE_VERSION "4")
+set(DEPTHAI_PRE_RELEASE_VERSION "5")
 
 # Set DEPTHAI_VERSION universally, not conditionally
 set(DEPTHAI_VERSION ${PROJECT_VERSION}-${DEPTHAI_PRE_RELEASE_TYPE}.${DEPTHAI_PRE_RELEASE_VERSION})
@@ -373,6 +373,7 @@ set(TARGET_CORE_SOURCES
     src/utility/EepromDataParser.cpp
     src/utility/LogCollection.cpp
     src/utility/MemoryWrappers.cpp
+    src/utility/Serialization.cpp
     src/xlink/XLinkConnection.cpp
     src/xlink/XLinkStream.cpp
     src/openvino/OpenVINO.cpp
