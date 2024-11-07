@@ -48,7 +48,8 @@ class SpatialImgDetections : public Buffer, public utility::ProtoSerializable {
         datatype = DatatypeEnum::SpatialImgDetections;
     };
 
-    /**
+#ifdef DEPTHAI_ENABLE_PROTOBUF
+   /**
      * Serialize message to proto buffer
      *
      * @returns serialized message
@@ -61,6 +62,7 @@ class SpatialImgDetections : public Buffer, public utility::ProtoSerializable {
      * @returns serialized schema
      */
     utility::ProtoSerializable::SchemaPair serializeSchema() const override;
+#endif
 
     DEPTHAI_SERIALIZE(SpatialImgDetections, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, detections, transformation);
 };

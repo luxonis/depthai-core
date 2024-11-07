@@ -1,6 +1,8 @@
 #include "depthai/pipeline/datatype/EncodedFrame.hpp"
-#include "depthai/schemas/EncodedFrame.pb.h"
-#include "../../utility/ProtoSerialize.hpp"
+#ifdef DEPTHAI_ENABLE_PROTOBUF
+    #include "depthai/schemas/EncodedFrame.pb.h"
+    #include "../../utility/ProtoSerialize.hpp"
+#endif
 
 #include "utility/H26xParsers.hpp"
 
@@ -124,7 +126,7 @@ EncodedFrame& EncodedFrame::setProfile(Profile profile) {
     return *this;
 }
 
-
+#ifdef DEPTHAI_ENABLE_PROTOBUF
 std::unique_ptr<google::protobuf::Message> getProtoMessage(const EncodedFrame* frame) {
     // Create a unique pointer to the protobuf EncodedFrame message
     auto encodedFrame = std::make_unique<proto::encoded_frame::EncodedFrame>();
@@ -174,5 +176,6 @@ utility::ProtoSerializable::SchemaPair EncodedFrame::serializeSchema() const {
 std::vector<std::uint8_t> EncodedFrame::serializeProto() const {
     return utility::serializeProto(getProtoMessage(this));
 }
+#endif
 
 }  // namespace dai

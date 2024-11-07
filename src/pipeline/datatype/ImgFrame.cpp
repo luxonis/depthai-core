@@ -4,9 +4,10 @@
 #include "depthai/common/ImgTransformations.hpp"
 #include "depthai/common/RotatedRect.hpp"
 #include "depthai/utility/SharedMemory.hpp"
-#include "depthai/schemas/ImgFrame.pb.h"
-#include "../../utility/ProtoSerialize.hpp"
-
+#ifdef DEPTHAI_ENABLE_PROTOBUF
+    #include "depthai/schemas/ImgFrame.pb.h"
+    #include "../../utility/ProtoSerialize.hpp"
+#endif
 namespace dai {
 
 ImgFrame::ImgFrame() {
@@ -335,6 +336,7 @@ Rect ImgFrame::remapRectBetweenFrames(const Rect& originRect, const ImgFrame& or
     return returnRect;
 }
 
+#ifdef DEPTHAI_ENABLE_PROTOBUF
 std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgFrame* frame) {
     // create and populate ImgFrame protobuf message
     auto imgFrame = std::make_unique<proto::img_frame::ImgFrame>();
@@ -390,5 +392,5 @@ utility::ProtoSerializable::SchemaPair ImgFrame::serializeSchema() const {
 std::vector<std::uint8_t> ImgFrame::serializeProto() const {
     return utility::serializeProto(getProtoMessage(this));
 }
-
+#endif
 }  // namespace dai

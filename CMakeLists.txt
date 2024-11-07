@@ -733,7 +733,7 @@ if(DEPTHAI_ENABLE_PROTOBUF)
     add_subdirectory(include/depthai/utility/protos)
     list(APPEND targets_to_export messages)
     target_link_libraries(${TARGET_CORE_NAME} PRIVATE protobuf::libprotobuf messages)
-    target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_ENABLE_PROTOBUF)
+    target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_ENABLE_PROTOBUF)
 endif()
 
 if(DEPTHAI_ENABLE_REMOTE_CONNECTION)

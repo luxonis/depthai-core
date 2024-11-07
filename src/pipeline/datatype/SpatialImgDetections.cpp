@@ -1,8 +1,11 @@
 #include "depthai/pipeline/datatype/SpatialImgDetections.hpp"
-#include "depthai/schemas/SpatialImgDetections.pb.h"
-#include "../../utility/ProtoSerialize.hpp"
-namespace dai {
+#ifdef DEPTHAI_ENABLE_PROTOBUF
+    #include "depthai/schemas/SpatialImgDetections.pb.h"
+    #include "../../utility/ProtoSerialize.hpp"
+#endif
 
+namespace dai {
+#ifdef DEPTHAI_ENABLE_PROTOBUF
 std::unique_ptr<google::protobuf::Message> getProtoMessage(const dai::SpatialImgDetections* daiSpatialImgDetections) {
     // create and populate SpatialImgDetections protobuf message
     auto spatialImgDetections = std::make_unique<proto::spatial_img_detections::SpatialImgDetections>();
@@ -68,5 +71,5 @@ std::vector<std::uint8_t> SpatialImgDetections::serializeProto() const {
 utility::ProtoSerializable::SchemaPair SpatialImgDetections::serializeSchema() const {
     return utility::serializeSchema(getProtoMessage(this));
 }
-
+#endif
 }  // namespace dai

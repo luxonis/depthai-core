@@ -1,9 +1,12 @@
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
-#include "depthai/schemas/ImgDetections.pb.h"
-#include "../../utility/ProtoSerialize.hpp"
+#ifdef DEPTHAI_ENABLE_PROTOBUF
+    #include "depthai/schemas/ImgDetections.pb.h"
+    #include "../../utility/ProtoSerialize.hpp"
+#endif
 
 namespace dai {
 
+#ifdef DEPTHAI_ENABLE_PROTOBUF
 std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgDetections* detections) {
     auto imgDetections = std::make_unique<proto::img_detections::ImgDetections>();
 
@@ -35,5 +38,6 @@ utility::ProtoSerializable::SchemaPair ImgDetections::serializeSchema() const {
 std::vector<std::uint8_t> ImgDetections::serializeProto() const {
     return utility::serializeProto(getProtoMessage(this));
 }
+#endif
 
 }  // namespace dai

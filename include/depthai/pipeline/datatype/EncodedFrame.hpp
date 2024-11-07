@@ -172,7 +172,8 @@ class EncodedFrame : public Buffer, public utility::ProtoSerializable {
      */
     EncodedFrame& setProfile(Profile profile);
 
-    /**
+#ifdef DEPTHAI_ENABLE_PROTOBUF
+   /**
      * Serialize message to proto buffer
      *
      * @returns serialized message
@@ -185,6 +186,7 @@ class EncodedFrame : public Buffer, public utility::ProtoSerializable {
      * @returns serialized schema
      */
     utility::ProtoSerializable::SchemaPair serializeSchema() const override;
+#endif
 
     DEPTHAI_SERIALIZE(EncodedFrame,
                       cam,

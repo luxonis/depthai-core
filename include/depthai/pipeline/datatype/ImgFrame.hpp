@@ -84,6 +84,7 @@ class ImgFrame : public Buffer, public utility::ProtoSerializable {
         datatype = DatatypeEnum::ImgFrame;
     };
 
+#ifdef DEPTHAI_ENABLE_PROTOBUF
     /**
      * Serialize message to proto buffer
      *
@@ -97,6 +98,7 @@ class ImgFrame : public Buffer, public utility::ProtoSerializable {
      * @returns serialized schema
      */
     utility::ProtoSerializable::SchemaPair serializeSchema() const override;
+#endif
 
     // getters
     /**

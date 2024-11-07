@@ -66,7 +66,8 @@ class ImageAnnotations : public Buffer, public utility::ProtoSerializable {
         datatype = DatatypeEnum::ImageAnnotations;
     };
 
-        /**
+    #ifdef DEPTHAI_ENABLE_PROTOBUF
+   /**
      * Serialize message to proto buffer
      *
      * @returns serialized message
@@ -79,6 +80,7 @@ class ImageAnnotations : public Buffer, public utility::ProtoSerializable {
      * @returns serialized schema
      */
     utility::ProtoSerializable::SchemaPair serializeSchema() const override;
+#endif
 
     DEPTHAI_SERIALIZE(ImageAnnotations, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, annotations);
 };

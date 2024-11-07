@@ -1,8 +1,10 @@
 #include "depthai/pipeline/datatype/PointCloudData.hpp"
-#include "depthai/schemas/PointCloudData.pb.h"
 
 #include "depthai/common/Point3f.hpp"
-#include "../../utility/ProtoSerialize.hpp"
+#ifdef DEPTHAI_ENABLE_PROTOBUF
+    #include "depthai/schemas/PointCloudData.pb.h"
+    #include "../../utility/ProtoSerialize.hpp"
+#endif
 namespace dai {
 
 std::vector<Point3f> PointCloudData::getPoints() {
@@ -126,7 +128,7 @@ PointCloudData& PointCloudData::setColor(bool val) {
     return *this;
 }
 
-
+#ifdef DEPTHAI_ENABLE_PROTOBUF
 std::unique_ptr<google::protobuf::Message> getProtoMessage(const PointCloudData* daiCloudData) {
     auto pointCloudData = std::make_unique<dai::proto::point_cloud_data::PointCloudData>();
 
@@ -164,5 +166,6 @@ utility::ProtoSerializable::SchemaPair PointCloudData::serializeSchema() const {
     return utility::serializeSchema(getProtoMessage(this));
 }
 
+#endif
 static_assert(sizeof(Point3f) == 12, "Point3f size must be 12 bytes");
 }  // namespace dai

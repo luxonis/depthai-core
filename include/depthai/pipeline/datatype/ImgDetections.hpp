@@ -40,7 +40,8 @@ class ImgDetections : public Buffer, public utility::ProtoSerializable {
         datatype = DatatypeEnum::ImgDetections;
     };
 
-    /**
+#ifdef DEPTHAI_ENABLE_PROTOBUF
+   /**
      * Serialize message to proto buffer
      *
      * @returns serialized message
@@ -53,6 +54,7 @@ class ImgDetections : public Buffer, public utility::ProtoSerializable {
      * @returns serialized schema
      */
     utility::ProtoSerializable::SchemaPair serializeSchema() const override;
+#endif
 
     DEPTHAI_SERIALIZE(ImgDetections, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, detections, transformation);
 };
