@@ -243,16 +243,26 @@ def socket_to_socket_opt(socket: dai.CameraBoardSocket) -> str:
 signal.signal(signal.SIGINT, exit_cleanly)
 
 # Connect to device, so that we can get connected cameras in case of no args
-success, device = dai.Device.getDeviceByMxId(args.device)
+success, device_info = dai.Device.getDeviceByMxId(args.device)
 dai_device_args = []
 if success:
-    dai_device_args.append(device)
-with dai.Device(*dai_device_args) as device:
+    dai_device_args.append(device_info)
+
+
+di = dai.DeviceInfo("127.0.0.1")
+di.state = dai.XLinkDeviceState.X_LINK_GATE
+di.protocol = dai.XLinkProtocol.X_LINK_TCP_IP
+di.platform = dai.XLinkPlatform.X_LINK_RVC3
+
+
+with dai.Pipeline(dai.Device(*dai_device_args)) as pipeline:
+#with dai.Pipeline(dai.Device(di)) as pipeline:
     cam_list = []
     cam_type_color = {}
     cam_type_tof = {}
     cam_type_thermal = {}
 
+    device: dai.Device = pipeline.getDefaultDevice()
     if not args.cameras:
         connected_cameras = device.getConnectedCameraFeatures()
         args.cameras = [(socket_to_socket_opt(cam.socket), cam.supportedTypes[0] ==
@@ -270,19 +280,21 @@ with dai.Device(*dai_device_args) as device:
         print(socket.rjust(7), ':', 'tof' if is_tof else 'color' if is_color else 'thermal' if is_thermal else 'mono')
 
     # Start defining a pipeline
-    pipeline = dai.Pipeline()
+    #pipeline = dai.Pipeline()
+
     # Uncomment to get better throughput
     # pipeline.setXLinkChunkSize(0)
 
     control = pipeline.createXLinkIn()
-    control.setStreamName('control')
+    #control.setStreamName('control')
 
     xinTofConfig = pipeline.createXLinkIn()
-    xinTofConfig.setStreamName('tofConfig')
+    #xinTofConfig.setStreamName('tofConfig')
 
     cam = {}
     tof = {}
     xout = {}
+    control_queues = []
     xout_raw = {}
     xout_tof_amp = {}
     streams = []
@@ -291,11 +303,11 @@ with dai.Device(*dai_device_args) as device:
     for c in cam_list:
         print("CAM: ", c)
         tofEnableRaw = False
-        xout[c] = pipeline.createXLinkOut()
-        xout[c].setStreamName(c)
-        streams.append(c)
+        #xout[c] = pipeline.createXLinkOut()
+        #xout[c].setStreamName(c)
+        #streams.append(c)
         if cam_type_tof[c]:
-            cam[c] = pipeline.create(dai.node.ColorCamera)  # .Camera
+            cam[c] = pipeline.create(dai.node.Camera)  # .Camera
             if args.tof_raw:
                 tofEnableRaw = True
             else:
@@ -333,23 +345,31 @@ with dai.Device(*dai_device_args) as device:
             xout_preview.setStreamName('preview_' + c)
             cam[c].preview.link(xout_preview.input)
             streams.append('preview_' + c)
-        elif cam_type_color[c]:
-            cam[c] = pipeline.createColorCamera()
-            cam[c].setResolution(color_res_opts[args.color_resolution])
-            cam[c].setIspScale(1, args.isp_downscale)
-            # cam[c].initialControl.setManualFocus(85) # TODO
-            if args.rgb_preview:
-                cam[c].preview.link(xout[c].input)
-            else:
-                cam[c].isp.link(xout[c].input)
-            if args.yolo == c:
-                yolo_passthrough_q_name, yolo_q_name = create_yolo(pipeline, cam[c])
-                streams.append(yolo_q_name)
         else:
-            cam[c] = pipeline.createMonoCamera()
-            cam[c].setResolution(mono_res_opts[args.mono_resolution])
-            cam[c].out.link(xout[c].input)
-        cam[c].setBoardSocket(cam_socket_opts[c])
+            cam[c] = pipeline.create(dai.node.Camera).build(cam_socket_opts[c])
+            cap = dai.ImgFrameCapability()
+            cap.size.fixed((1280, 800))
+            cap.fps.fixed(args.fps)
+            stream_name = 'preview_' + c
+            xout[c] = cam[c].requestOutput(cap, True)
+            control_queues.append(cam[c].inputControl.createInputQueue())
+            streams.append(c)
+            #cam[c] = pipeline.createColorCamera()
+            #cam[c].setResolution(color_res_opts[args.color_resolution])
+            #cam[c].setIspScale(1, args.isp_downscale)
+            # cam[c].initialControl.setManualFocus(85) # TODO
+            #if args.rgb_preview:
+            #    cam[c].preview.link(xout[c].input)
+            #else:
+            #    cam[c].isp.link(xout[c].input)
+            #if args.yolo == c:
+            #    yolo_passthrough_q_name, yolo_q_name = create_yolo(pipeline, cam[c])
+            #    streams.append(yolo_q_name)
+        #else:
+        #    cam[c] = pipeline.createMonoCamera()
+        #    cam[c].setResolution(mono_res_opts[args.mono_resolution])
+        #    cam[c].out.link(xout[c].input)
+        #cam[c].setBoardSocket(cam_socket_opts[c])
         # Num frames to capture on trigger, with first to be discarded (due to degraded quality)
         # cam[c].initialControl.setExternalTrigger(2, 1)
         # cam[c].initialControl.setStrobeExternal(48, 1)
@@ -359,12 +379,12 @@ with dai.Device(*dai_device_args) as device:
         # When set, takes effect after the first 2 frames
         # cam[c].initialControl.setManualWhiteBalance(4000)  # light temperature in K, 1000..12000
         control.out.link(cam[c].inputControl)
-        if rotate[c]:
-            cam[c].setImageOrientation(
-                dai.CameraImageOrientation.ROTATE_180_DEG)
-        cam[c].setFps(args.fps)
-        if args.isp3afps:
-            cam[c].setIsp3aFps(args.isp3afps)
+        #if rotate[c]:
+        #    cam[c].setImageOrientation(
+        #        dai.CameraImageOrientation.ROTATE_180_DEG)
+        #cam[c].setFps(args.fps)
+        #if args.isp3afps:
+        #    cam[c].setIsp3aFps(args.isp3afps)
 
         if args.enable_raw or tofEnableRaw:
             raw_name = 'raw_' + c
@@ -453,7 +473,7 @@ with dai.Device(*dai_device_args) as device:
             print("Couldn't create depth:", e)
 
     # Pipeline is defined, now we can start it
-    device.startPipeline(pipeline)
+    #device.startPipeline(pipeline)
 
     print('Connected cameras:')
     cam_name = {}
@@ -470,13 +490,14 @@ with dai.Device(*dai_device_args) as device:
 
     print('USB speed:', device.getUsbSpeed().name)
 
-    print('IR drivers:', device.getIrDrivers())
+    #print('IR drivers:', device.getIrDrivers())
 
     q = {}
     fps_host = {}  # FPS computed based on the time we receive frames in app
     fps_capt = {}  # FPS computed based on capture timestamps from device
     for c in streams:
-        q[c] = device.getOutputQueue(name=c, maxSize=4, blocking=False)
+        # q[c] = device.getOutputQueue(name=c, maxSize=4, blocking=False)
+        q[c] = xout[c].createOutputQueue(maxSize=4, blocking=False)
         # The OpenCV window resize may produce some artifacts
         if args.resizable_windows:
             cv2.namedWindow(c, cv2.WINDOW_NORMAL)
@@ -484,8 +505,12 @@ with dai.Device(*dai_device_args) as device:
         fps_host[c] = FPS()
         fps_capt[c] = FPS()
 
-    controlQueue = device.getInputQueue('control')
-    tofCfgQueue = device.getInputQueue('tofConfig')
+    pipeline.start()
+
+    #controlQueue = device.getInputQueue('control')
+    #tofCfgQueue = device.getInputQueue('tofConfig')
+    #controlQueue = control.createInput()
+    tofCfgQueue = xinTofConfig.createInput()
 
     # Manual exposure/focus set step
     EXP_STEP = 500  # us
@@ -518,6 +543,10 @@ with dai.Device(*dai_device_args) as device:
     scene_mode = Cycle(dai.CameraControl.SceneMode)
     control_mode = Cycle(dai.CameraControl.ControlMode)
     capture_intent = Cycle(dai.CameraControl.CaptureIntent)
+
+    def controlQueueSend(ctrl):
+        for queue in control_queues:
+            queue.send(ctrl)
 
     ae_comp = 0
     ae_lock = False
@@ -676,18 +705,18 @@ with dai.Device(*dai_device_args) as device:
             ctrl = dai.CameraControl()
             ctrl.setAutoFocusMode(dai.CameraControl.AutoFocusMode.AUTO)
             ctrl.setAutoFocusTrigger()
-            controlQueue.send(ctrl)
+            controlQueueSend(ctrl)
         elif key == ord('f'):
             print("Autofocus enable, continuous")
             ctrl = dai.CameraControl()
             ctrl.setAutoFocusMode(
                 dai.CameraControl.AutoFocusMode.CONTINUOUS_VIDEO)
-            controlQueue.send(ctrl)
+            controlQueueSend(ctrl)
         elif key == ord('e'):
             print("Autoexposure enable")
             ctrl = dai.CameraControl()
             ctrl.setAutoExposureEnable()
-            controlQueue.send(ctrl)
+            controlQueueSend(ctrl)
         elif key in [ord(','), ord('.')]:
             if key == ord(','):
                 lensPos -= LENS_STEP
@@ -697,7 +726,7 @@ with dai.Device(*dai_device_args) as device:
             print("Setting manual focus, lens position: ", lensPos)
             ctrl = dai.CameraControl()
             ctrl.setManualFocusRaw(lensPos)
-            controlQueue.send(ctrl)
+            controlQueueSend(ctrl)
         elif key in [ord('i'), ord('o'), ord('k'), ord('l')]:
             if key == ord('i'):
                 expTime -= EXP_STEP
@@ -712,19 +741,19 @@ with dai.Device(*dai_device_args) as device:
             print("Setting manual exposure, time: ", expTime, "iso: ", sensIso)
             ctrl = dai.CameraControl()
             ctrl.setManualExposure(expTime, sensIso)
-            controlQueue.send(ctrl)
+            controlQueueSend(ctrl)
         elif key == ord('1'):
             awb_lock = not awb_lock
             print("Auto white balance lock:", awb_lock)
             ctrl = dai.CameraControl()
             ctrl.setAutoWhiteBalanceLock(awb_lock)
-            controlQueue.send(ctrl)
+            controlQueueSend(ctrl)
         elif key == ord('2'):
             ae_lock = not ae_lock
             print("Auto exposure lock:", ae_lock)
             ctrl = dai.CameraControl()
             ctrl.setAutoExposureLock(ae_lock)
-            controlQueue.send(ctrl)
+            controlQueueSend(ctrl)
         elif key == ord('a'):
             dotIntensity = dotIntensity - DOT_STEP
             if dotIntensity < 0:
@@ -846,6 +875,6 @@ with dai.Device(*dai_device_args) as device:
                 print("Setting min amplitude(confidence) to:", amp_min)
                 tofConfig.depthParams.minimumAmplitude = amp_min
                 tofCfgQueue.send(tofConfig)
-            controlQueue.send(ctrl)
+            controlQueueSend(ctrl)
 
     print()
