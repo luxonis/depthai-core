@@ -231,7 +231,7 @@ void RemoteConnectionImpl::exposeTopicGroupsService() {
     auto id = ids[0];
 
     serviceMap[id] = [this](foxglove::ServiceResponse request) {
-        (void) request;
+        (void)request;
         auto response = foxglove::ServiceResponse();
         nlohmann::json topicGroupsJson = this->topicGroups;
         std::string serializedTopicGroups = topicGroupsJson.dump();

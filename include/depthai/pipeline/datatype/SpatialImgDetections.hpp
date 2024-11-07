@@ -49,7 +49,7 @@ class SpatialImgDetections : public Buffer, public utility::ProtoSerializable {
     };
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF
-   /**
+    /**
      * Serialize message to proto buffer
      *
      * @returns serialized message

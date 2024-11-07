@@ -1,10 +1,10 @@
 #include "depthai/remote_connection/RemoteConnection.hpp"
+
 #include "RemoteConnectionImpl.hpp"
 #include "utility/PimplImpl.hpp"
 namespace dai {
 
-RemoteConnection::RemoteConnection(const std::string& address, uint16_t port)
-    : impl(address, port) {}
+RemoteConnection::RemoteConnection(const std::string& address, uint16_t port) : impl(address, port) {}
 
 RemoteConnection::~RemoteConnection() = default;
 

@@ -1,8 +1,8 @@
 #pragma once
 
-#include <vector>
-#include <string>
 #include <cstdint>
+#include <string>
+#include <vector>
 namespace dai {
 
 namespace utility {

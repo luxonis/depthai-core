@@ -1,7 +1,7 @@
 #include "depthai/pipeline/datatype/EncodedFrame.hpp"
 #ifdef DEPTHAI_ENABLE_PROTOBUF
-    #include "depthai/schemas/EncodedFrame.pb.h"
     #include "../../utility/ProtoSerialize.hpp"
+    #include "depthai/schemas/EncodedFrame.pb.h"
 #endif
 
 #include "utility/H26xParsers.hpp"
@@ -171,7 +171,6 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const EncodedFrame* f
 utility::ProtoSerializable::SchemaPair EncodedFrame::serializeSchema() const {
     return utility::serializeSchema(getProtoMessage(this));
 }
-
 
 std::vector<std::uint8_t> EncodedFrame::serializeProto() const {
     return utility::serializeProto(getProtoMessage(this));

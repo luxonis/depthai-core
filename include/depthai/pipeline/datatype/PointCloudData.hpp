@@ -189,7 +189,7 @@ class PointCloudData : public Buffer, public utility::ProtoSerializable {
      */
     PointCloudData& setInstanceNum(unsigned int instanceNum);
 
-    #ifdef DEPTHAI_ENABLE_PROTOBUF
+#ifdef DEPTHAI_ENABLE_PROTOBUF
     /**
      * Serialize message to proto buffer
      *

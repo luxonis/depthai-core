@@ -5,8 +5,8 @@
 #include "depthai/common/RotatedRect.hpp"
 #include "depthai/utility/SharedMemory.hpp"
 #ifdef DEPTHAI_ENABLE_PROTOBUF
-    #include "depthai/schemas/ImgFrame.pb.h"
     #include "../../utility/ProtoSerialize.hpp"
+    #include "depthai/schemas/ImgFrame.pb.h"
 #endif
 namespace dai {
 
@@ -343,7 +343,6 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgFrame* frame
 utility::ProtoSerializable::SchemaPair ImgFrame::serializeSchema() const {
     return utility::serializeSchema(getProtoMessage(this));
 }
-
 
 std::vector<std::uint8_t> ImgFrame::serializeProto() const {
     return utility::serializeProto(getProtoMessage(this));

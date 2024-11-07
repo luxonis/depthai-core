@@ -4,8 +4,8 @@
 
 #include "depthai/common/ImgTransformations.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
-#include "depthai/utility/ProtoSerializable.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
+#include "depthai/utility/ProtoSerializable.hpp"
 
 namespace dai {
 
@@ -173,7 +173,7 @@ class EncodedFrame : public Buffer, public utility::ProtoSerializable {
     EncodedFrame& setProfile(Profile profile);
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF
-   /**
+    /**
      * Serialize message to proto buffer
      *
      * @returns serialized message
