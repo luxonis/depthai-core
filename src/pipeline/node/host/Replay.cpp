@@ -1,6 +1,11 @@
+#include <google/protobuf/message.h>
+
 #include <stdexcept>
 
-#include "depthai/schemas/ADatatype.pb.h"
+#include "depthai/pipeline/datatype/DatatypeEnum.hpp"
+#include "depthai/schemas/EncodedFrame.pb.h"
+#include "depthai/schemas/IMUData.pb.h"
+#include "depthai/schemas/ImgFrame.pb.h"
 #define _USE_MATH_DEFINES
 #include <chrono>
 #include <cmath>
@@ -12,15 +17,15 @@
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/node/host/Replay.hpp"
 #include "utility/RecordReplayImpl.hpp"
+#include "utility/SchemaHelpers.hpp"
 
 namespace dai {
 namespace node {
 
 // Video Message
-std::shared_ptr<Buffer> getVideoMessage(const proto::adatatype::ADatatype& metadata, ImgFrame::Type outFrameType, std::vector<uint8_t>& frame) {
-    auto frameMsg = metadata.imgframe();
+inline std::shared_ptr<Buffer> getVideoMessage(const proto::img_frame::ImgFrame& metadata, ImgFrame::Type outFrameType, std::vector<uint8_t>& frame) {
     std::shared_ptr<ImgFrame> imgFrame;
-    imgFrame->setProtoMessage(frameMsg, true);
+    imgFrame->setProtoMessage(metadata, true);
 
     assert(frame.size() == imgFrame->getWidth() * imgFrame->getHeight() * 3);
     cv::Mat img(imgFrame->getHeight(), imgFrame->getWidth(), CV_8UC3, frame.data());
@@ -28,27 +33,62 @@ std::shared_ptr<Buffer> getVideoMessage(const proto::adatatype::ADatatype& metad
     return std::dynamic_pointer_cast<Buffer>(imgFrame);
 }
 
-std::shared_ptr<Buffer> getMessage(const proto::adatatype::ADatatype& metadata, std::vector<uint8_t>& frame) {
+inline std::shared_ptr<Buffer> getImuMessage(const proto::imu_data::IMUData& metadata) {
     std::shared_ptr<Buffer> buffer;
-    switch(metadata.data_case()) {
-        case proto::adatatype::ADatatype::kImgFrame:
-            return getVideoMessage(metadata, ImgFrame::Type::BGR888i, frame);
-        case proto::adatatype::ADatatype::kImuData: {
-            auto msg = metadata.imudata();
-            auto imuData = std::make_shared<IMUData>();
-            imuData->setProtoMessage(msg);
-            buffer = std::dynamic_pointer_cast<Buffer>(imuData);
-        }
-        case proto::adatatype::ADatatype::kEncodedFrame:
-        case proto::adatatype::ADatatype::kImageAnnotations:
-        case proto::adatatype::ADatatype::kImgDetections:
-        case proto::adatatype::ADatatype::kPointCloudData:
-        case proto::adatatype::ADatatype::kSpatialImgDetections:
-            throw std::runtime_error("Cannot replay message type: " + std::to_string(metadata.data_case()));
-        case proto::adatatype::ADatatype::DATA_NOT_SET:
-            throw std::runtime_error("Message data not set");
-    }
+    auto imuData = std::make_shared<IMUData>();
+    imuData->setProtoMessage(metadata);
+    buffer = std::dynamic_pointer_cast<Buffer>(imuData);
     return buffer;
+}
+
+inline std::shared_ptr<google::protobuf::Message> getProtoMessage(utility::BytePlayer& bytePlayer, DatatypeEnum datatype) {
+    switch(datatype) {
+        case DatatypeEnum::ImgFrame: {
+            auto msg = bytePlayer.next<proto::img_frame::ImgFrame>();
+            if(msg.has_value()) {
+                return std::make_shared<proto::img_frame::ImgFrame>(msg.value());
+            }
+            break;
+        }
+        case DatatypeEnum::IMUData: {
+            auto msg = bytePlayer.next<proto::imu_data::IMUData>();
+            if(msg.has_value()) {
+                return std::make_shared<proto::imu_data::IMUData>(msg.value());
+            }
+            break;
+        }
+        case DatatypeEnum::EncodedFrame:
+        case DatatypeEnum::ADatatype:
+        case DatatypeEnum::Buffer:
+        case DatatypeEnum::NNData:
+        case DatatypeEnum::ImageManipConfig:
+        case DatatypeEnum::ImageManipConfigV2:
+        case DatatypeEnum::CameraControl:
+        case DatatypeEnum::ImgDetections:
+        case DatatypeEnum::SpatialImgDetections:
+        case DatatypeEnum::SystemInformation:
+        case DatatypeEnum::SystemInformationS3:
+        case DatatypeEnum::SpatialLocationCalculatorConfig:
+        case DatatypeEnum::SpatialLocationCalculatorData:
+        case DatatypeEnum::EdgeDetectorConfig:
+        case DatatypeEnum::AprilTagConfig:
+        case DatatypeEnum::AprilTags:
+        case DatatypeEnum::Tracklets:
+        case DatatypeEnum::StereoDepthConfig:
+        case DatatypeEnum::FeatureTrackerConfig:
+        case DatatypeEnum::ThermalConfig:
+        case DatatypeEnum::ToFConfig:
+        case DatatypeEnum::TrackedFeatures:
+        case DatatypeEnum::BenchmarkReport:
+        case DatatypeEnum::MessageGroup:
+        case DatatypeEnum::TransformData:
+        case DatatypeEnum::PointCloudConfig:
+        case DatatypeEnum::PointCloudData:
+        case DatatypeEnum::ImageAlignConfig:
+        case DatatypeEnum::ImageAnnotations:
+            throw std::runtime_error("Cannot replay message type: " + std::to_string((int)datatype));
+    }
+    return {};
 }
 
 void ReplayVideo::run() {
@@ -57,6 +97,7 @@ void ReplayVideo::run() {
     }
     utility::VideoPlayer videoPlayer;
     utility::BytePlayer bytePlayer;
+    DatatypeEnum datatype = DatatypeEnum::ImgFrame;
     bool hasVideo = !replayVideo.empty();
     bool hasMetadata = !replayFile.empty();
     if(!replayVideo.empty()) try {
@@ -70,7 +111,8 @@ void ReplayVideo::run() {
             if(logger) logger->warn("Video not replaying: {}", e.what());
         }
     if(!replayFile.empty()) try {
-            bytePlayer.init(replayFile.string());
+            auto schemaName = bytePlayer.init(replayFile.string());
+            datatype = utility::schemaNameToDatatype(schemaName);
         } catch(const std::exception& e) {
             hasMetadata = false;
             if(logger) logger->warn("Metadata not replaying: {}", e.what());
@@ -84,17 +126,15 @@ void ReplayVideo::run() {
     auto loopStart = std::chrono::steady_clock::now();
     auto prevMsgTs = loopStart;
     while(isRunning()) {
-        proto::adatatype::ADatatype metadata;
+        std::shared_ptr<proto::img_frame::ImgFrame> metadata;
         std::vector<uint8_t> frame;
         if(hasMetadata) {
-            auto msg = bytePlayer.next();
-            if(msg.has_value()) {
-                metadata = msg.value();
-                if(first) {
-                    if(metadata.data_case() != proto::adatatype::ADatatype::kImgFrame) {
-                        throw std::runtime_error("Invalid message type, expected a video stream");
-                    }
-                }
+            if(datatype != DatatypeEnum::ImgFrame) {
+                throw std::runtime_error("Invalid message type, expected ImgFrame");
+            }
+            auto msg = getProtoMessage(bytePlayer, datatype);
+            if(msg != nullptr) {
+                metadata = std::dynamic_pointer_cast<proto::img_frame::ImgFrame>(msg);
             } else if(!first) {
                 // End of file
                 if(loop) {
@@ -146,16 +186,13 @@ void ReplayVideo::run() {
             frame.setTimestampDevice(std::chrono::time_point<std::chrono::steady_clock>(time));
             frame.setSequenceNum(index++);
             frame.sourceFb = frame.fb;
-            metadata.mutable_imgframe()->CopyFrom(*frame.getProtoMessage(true));
+            metadata->CopyFrom(*frame.getProtoMessage(true));
         } else if(size.has_value()) {
-            if(metadata.data_case() != proto::adatatype::ADatatype::kImgFrame) {
-                throw std::runtime_error("Invalid message type, expected a video stream");
-            }
-            metadata.mutable_imgframe()->mutable_fb()->set_width(std::get<0>(size.value()));
-            metadata.mutable_imgframe()->mutable_fb()->set_height(std::get<1>(size.value()));
+            metadata->mutable_fb()->set_width(std::get<0>(size.value()));
+            metadata->mutable_fb()->set_height(std::get<1>(size.value()));
         }
 
-        auto buffer = getVideoMessage(metadata, outFrameType, frame);
+        auto buffer = getVideoMessage(*metadata, outFrameType, frame);
 
         if(first) prevMsgTs = buffer->getTimestampDevice();
 
@@ -185,9 +222,11 @@ void ReplayMetadataOnly::run() {
         throw std::runtime_error("ReplayMetadataOnly node requires replayFile to be set");
     }
     utility::BytePlayer bytePlayer;
+    DatatypeEnum datatype = DatatypeEnum::ImgFrame;
     bool hasMetadata = !replayFile.empty();
     if(!replayFile.empty()) try {
-            bytePlayer.init(replayFile.string());
+            auto schemaName = bytePlayer.init(replayFile.string());
+            datatype = utility::schemaNameToDatatype(schemaName);
         } catch(const std::exception& e) {
             hasMetadata = false;
             if(logger) logger->warn("Metadata not replaying: {}", e.what());
@@ -199,11 +238,14 @@ void ReplayMetadataOnly::run() {
     auto loopStart = std::chrono::steady_clock::now();
     auto prevMsgTs = loopStart;
     while(isRunning()) {
-        proto::adatatype::ADatatype metadata;
+        std::shared_ptr<proto::imu_data::IMUData> metadata;
         std::vector<uint8_t> frame;
-        auto msg = bytePlayer.next();
-        if(msg.has_value()) {
-            metadata = msg.value();
+        if(datatype != DatatypeEnum::IMUData) {
+            throw std::runtime_error("Invalid message type, expected IMUData");
+        }
+        auto msg = getProtoMessage(bytePlayer, datatype);
+        if(msg != nullptr) {
+            metadata = std::dynamic_pointer_cast<proto::imu_data::IMUData>(msg);
         } else if(!first) {
             // End of file
             if(loop) {
@@ -214,7 +256,7 @@ void ReplayMetadataOnly::run() {
         } else {
             throw std::runtime_error("Metadata file contains no messages");
         }
-        auto buffer = getMessage(metadata, frame);
+        auto buffer = getImuMessage(*metadata);
 
         if(first) prevMsgTs = buffer->getTimestampDevice();
 

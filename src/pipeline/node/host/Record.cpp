@@ -11,7 +11,9 @@
 #include "depthai/properties/VideoEncoderProperties.hpp"
 #include "depthai/utility/span.hpp"
 #include "utility/RecordReplayImpl.hpp"
-#include "depthai/schemas/ADatatype.pb.h"
+
+#include "depthai/schemas/ImgFrame.pb.h"
+#include "depthai/schemas/IMUData.pb.h"
 
 namespace dai {
 namespace node {
@@ -55,7 +57,7 @@ void RecordVideo::run() {
                 streamType = StreamType::RawVideo;
                 width = imgFrame->getWidth();
                 height = imgFrame->getHeight();
-                if(recordMetadata) byteRecorder.init(recordMetadataFile.string(), compressionLevel, "video");
+                if(recordMetadata) byteRecorder.init<dai::proto::img_frame::ImgFrame>(recordMetadataFile.string(), compressionLevel, "video");
             } else if(std::dynamic_pointer_cast<EncodedFrame>(msg) != nullptr) {
                 auto encFrame = std::dynamic_pointer_cast<EncodedFrame>(msg);
                 if(encFrame->getProfile() == EncodedFrame::Profile::HEVC) {
@@ -65,7 +67,7 @@ void RecordVideo::run() {
                 width = encFrame->getWidth();
                 height = encFrame->getHeight();
                 if(logger) logger->trace("RecordVideo node detected {}x{} resolution", width, height);
-                if(recordMetadata) byteRecorder.init(recordMetadataFile.string(), compressionLevel, "video");
+                if(recordMetadata) byteRecorder.init<dai::proto::img_frame::ImgFrame>(recordMetadataFile.string(), compressionLevel, "video");
             } else {
                 throw std::runtime_error("RecordVideo can only record video streams.");
             }
@@ -108,9 +110,7 @@ void RecordVideo::run() {
                     span cvData(frame.data, frame.total() * frame.elemSize());
                     videoRecorder->write(cvData, frame.step);
                     if(recordMetadata) {
-                        dai::proto::adatatype::ADatatype adatatype;
-                        adatatype.mutable_imgframe()->CopyFrom((*imgFrame->getProtoMessage(true)));
-                        byteRecorder.write(adatatype);
+                        byteRecorder.write(*imgFrame->getProtoMessage(true));
                     }
 #else
                     throw std::runtime_error("RecordVideo node requires OpenCV support");
@@ -120,9 +120,7 @@ void RecordVideo::run() {
                     if(recordMetadata) {
                         auto encFrame = std::dynamic_pointer_cast<EncodedFrame>(msg);
                         auto imgFrame = encFrame->getImgFrameMeta();
-                        dai::proto::adatatype::ADatatype adatatype;
-                        adatatype.mutable_imgframe()->CopyFrom((*imgFrame.getProtoMessage(true)));
-                        byteRecorder.write(adatatype);
+                        byteRecorder.write(*imgFrame.getProtoMessage(true));
                     }
                 }
             }
@@ -145,7 +143,7 @@ void RecordMetadataOnly::run() {
         if(streamType == StreamType::Unknown) {
             if(std::dynamic_pointer_cast<IMUData>(msg) != nullptr) {
                 streamType = StreamType::Imu;
-                byteRecorder.init(recordFile.string(), compressionLevel, "imu");
+                byteRecorder.init<dai::proto::imu_data::IMUData>(recordFile.string(), compressionLevel, "imu");
             } else {
                 throw std::runtime_error("RecordMetadataOnly node does not support this type of message");
             }
@@ -157,9 +155,7 @@ void RecordMetadataOnly::run() {
         }
         if(streamType == StreamType::Imu) {
             auto imuData = std::dynamic_pointer_cast<IMUData>(msg);
-            dai::proto::adatatype::ADatatype adatatype;
-            adatatype.mutable_imgframe()->CopyFrom((*imuData->getProtoMessage()));
-            byteRecorder.write(adatatype);
+            byteRecorder.write(*imuData->getProtoMessage());
         } else {
             throw std::runtime_error("RecordMetadataOnly unsupported message type");
         }

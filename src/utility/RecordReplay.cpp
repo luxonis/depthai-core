@@ -10,7 +10,7 @@
 #include "Environment.hpp"
 #include "RecordReplayImpl.hpp"
 #include "build/version.hpp"
-#include "depthai/schemas/ADatatype.pb.h"
+#include "depthai/schemas/ImgFrame.pb.h"
 #include "utility/Compression.hpp"
 #include "utility/Platform.hpp"
 
@@ -43,55 +43,38 @@ mcap::Schema createSchema(const google::protobuf::Descriptor* d) {
     return schema;
 }
 
-ByteRecorder::~ByteRecorder() {
-    close();
+void ByteRecorder::setWriter(const std::string& filePath, RecordConfig::CompressionLevel compressionLevel) {
+    auto options = mcap::McapWriterOptions("protobuf");
+    options.library = "depthai" + std::string(build::VERSION);
+    switch(compressionLevel) {
+        case RecordConfig::CompressionLevel::NONE:
+            options.compression = mcap::Compression::None;
+            break;
+        case RecordConfig::CompressionLevel::FASTEST:
+            options.compressionLevel = mcap::CompressionLevel::Fastest;
+            break;
+        case RecordConfig::CompressionLevel::FAST:
+            options.compressionLevel = mcap::CompressionLevel::Fast;
+            break;
+        case RecordConfig::CompressionLevel::DEFAULT:
+            options.compressionLevel = mcap::CompressionLevel::Default;
+            break;
+        case RecordConfig::CompressionLevel::SLOW:
+            options.compressionLevel = mcap::CompressionLevel::Slow;
+            break;
+        case RecordConfig::CompressionLevel::SLOWEST:
+            options.compressionLevel = mcap::CompressionLevel::Slowest;
+            break;
+    }
+    options.compression = mcap::Compression::Lz4;
+    const auto res = writer.open(filePath, options);
+    if(!res.ok()) {
+        throw std::runtime_error("Failed to open file for writing: " + res.message);
+    }
 }
 
-void ByteRecorder::init(const std::string& filePath, RecordConfig::CompressionLevel compressionLevel, const std::string& channelName) {
-    if(initialized) {
-        throw std::runtime_error("ByteRecorder already initialized");
-    }
-    if(filePath.empty()) {
-        throw std::runtime_error("ByteRecorder file path is empty");
-    }
-    {
-        auto options = mcap::McapWriterOptions("protobuf");
-        options.library = "depthai" + std::string(build::VERSION);
-        switch(compressionLevel) {
-            case RecordConfig::CompressionLevel::NONE:
-                options.compression = mcap::Compression::None;
-                break;
-            case RecordConfig::CompressionLevel::FASTEST:
-                options.compressionLevel = mcap::CompressionLevel::Fastest;
-                break;
-            case RecordConfig::CompressionLevel::FAST:
-                options.compressionLevel = mcap::CompressionLevel::Fast;
-                break;
-            case RecordConfig::CompressionLevel::DEFAULT:
-                options.compressionLevel = mcap::CompressionLevel::Default;
-                break;
-            case RecordConfig::CompressionLevel::SLOW:
-                options.compressionLevel = mcap::CompressionLevel::Slow;
-                break;
-            case RecordConfig::CompressionLevel::SLOWEST:
-                options.compressionLevel = mcap::CompressionLevel::Slowest;
-                break;
-        }
-        options.compression = mcap::Compression::Lz4;
-        const auto res = writer.open(filePath, options);
-        if(!res.ok()) {
-            throw std::runtime_error("Failed to open file for writing: " + res.message);
-        }
-    }
-    {
-        mcap::Schema schema = createSchema(dai::proto::adatatype::ADatatype::descriptor());
-        writer.addSchema(schema);
-        mcap::Channel channel(channelName, "protobuf", schema.id);
-        writer.addChannel(channel);
-        channelId = channel.id;
-    }
-
-    initialized = true;
+ByteRecorder::~ByteRecorder() {
+    close();
 }
 
 void ByteRecorder::close() {
@@ -105,7 +88,7 @@ BytePlayer::~BytePlayer() {
     close();
 }
 
-void BytePlayer::init(const std::string& filePath) {
+std::string BytePlayer::init(const std::string& filePath) {
     if(initialized) {
         throw std::runtime_error("BytePlayer already initialized");
     }
@@ -119,27 +102,12 @@ void BytePlayer::init(const std::string& filePath) {
         }
     }
     messageView = std::make_unique<mcap::LinearMessageView>(reader.readMessages());
+    if(messageView->begin() == messageView->end()) {
+        throw std::runtime_error("No messages in file");
+    }
     it = std::make_unique<mcap::LinearMessageView::Iterator>(messageView->begin());
     initialized = true;
-}
-
-std::optional<proto::adatatype::ADatatype> BytePlayer::next() {
-    if(!initialized) {
-        throw std::runtime_error("BytePlayer not initialized");
-    }
-    if(*it == messageView->end()) return std::nullopt;
-    if((*it)->channel->messageEncoding != "protobuf") {
-        throw std::runtime_error("Unsupported message encoding: " + (*it)->channel->messageEncoding);
-    }
-
-    proto::adatatype::ADatatype adatatype;
-    if(!adatatype.ParseFromArray(reinterpret_cast<const char*>((*it)->message.data), (*it)->message.dataSize)) {
-        throw std::runtime_error("Failed to parse protobuf message");
-    }
-
-    ++(*it);
-
-    return adatatype;
+    return (*it)->schema->name;
 }
 
 void BytePlayer::restart() {
@@ -175,25 +143,12 @@ std::optional<std::tuple<uint32_t, uint32_t>> BytePlayer::getVideoSize(const std
         if(msg->channel->messageEncoding != "protobuf") {
             throw std::runtime_error("Unsupported message encoding: " + msg->channel->messageEncoding);
         }
-        proto::adatatype::ADatatype adatatype;
+        proto::img_frame::ImgFrame adatatype;
         if(!adatatype.ParseFromArray(reinterpret_cast<const char*>(msg->message.data), msg->message.dataSize)) {
             throw std::runtime_error("Failed to parse protobuf message");
         }
 
-        switch(adatatype.data_case()) {
-            case proto::adatatype::ADatatype::kEncodedFrame:
-                return std::make_tuple(adatatype.encodedframe().width(), adatatype.encodedframe().height());
-            case proto::adatatype::ADatatype::kImgFrame:
-                return std::make_tuple(adatatype.imgframe().fb().width(), adatatype.imgframe().fb().height());
-            case proto::adatatype::ADatatype::kImuData:
-            case proto::adatatype::ADatatype::kImageAnnotations:
-            case proto::adatatype::ADatatype::kImgDetections:
-            case proto::adatatype::ADatatype::kPointCloudData:
-            case proto::adatatype::ADatatype::kSpatialImgDetections:
-            case proto::adatatype::ADatatype::DATA_NOT_SET:
-                return std::nullopt;
-                break;
-        }
+        return std::make_tuple(adatatype.fb().width(), adatatype.fb().height());
     }
     return std::nullopt;
 }
