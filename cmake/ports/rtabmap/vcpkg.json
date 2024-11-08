@@ -29,10 +29,7 @@
       "name": "vcpkg-cmake-config",
       "host": true
     },
-    "zlib",
-    "boost-filesystem",
-    "boost-graph",
-    "boost-iostreams"
+    "zlib"
   ],
   "default-features": [
     "gui",
