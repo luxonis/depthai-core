@@ -126,17 +126,11 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           brew install libusb
-          brew install opencv
 
       - name: Setup cmake
         if: matrix.os == 'macos-latest'
         uses: jwlawson/actions-setup-cmake@v1.13
 
-      - name: Install dependencies (Windows)
-        if: matrix.os == 'windows-latest'
-        run: |
-          choco install opencv
-          echo "OpenCV_DIR=C:\tools\opencv\build" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Install pytest
         run: |
@@ -235,18 +229,6 @@ jobs:
       - name: Specify docstring to use while building the wheel
         run: echo "DEPTHAI_PYTHON_DOCSTRINGS_INPUT=$PWD/bindings/python/docstrings/depthai_python_docstring.hpp" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
-      - name: Install dependencies for x86
-        if: matrix.python-architecture == 'x86'
-        run: |
-          choco install opencv --x86
-          echo "OpenCV_DIR=C:\tools\opencv\build" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-
-      - name: Install dependencies for x64
-        if: matrix.python-architecture == 'x64'
-        run: |
-          choco install opencv
-          echo "OpenCV_DIR=C:\tools\opencv\build" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-
       - name: Select Windows SDK
         run: echo "CMAKE_ARGS=-DCMAKE_SYSTEM_VERSION=${{ env.CMAKE_WINDOWS_SDK_VERSION }}" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
@@ -330,7 +312,6 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           brew install libusb
-          brew install opencv
           # brew install pcl
           python -m pip install delocate
       - name: Building wheels
@@ -448,7 +429,7 @@ jobs:
         with:
           submodules: 'recursive'
       - name: Installing libusb1-devel dependency
-        run: yum install -y --disableplugin=fastestmirror libusb1-devel perl-core curl zip unzip tar ninja-build
+        run: yum install -y libusb1-devel perl-core curl zip unzip tar ninja-build
       - name: Installing cmake dependency
         run: |
           cd bindings/python
@@ -466,7 +447,6 @@ jobs:
 
       - name: Build and install depthai-core
         run: |
-          scl enable devtoolset-10 -- bash
           cmake -S . -B build_core -D CMAKE_BUILD_TYPE=Release -D CMAKE_TOOLCHAIN_FILE=$PWD/cmake/toolchain/pic.cmake
           cmake --build build_core --target install --parallel 4
           echo "DEPTHAI_INSTALLATION_DIR=$PWD/build_core/install/" >> $GITHUB_ENV
@@ -533,7 +513,7 @@ jobs:
         with:
           submodules: 'recursive'
       - name: Installing libusb1-devel dependency
-        run: yum install -y --disableplugin=fastestmirror libusb1-devel perl-core curl zip unzip tar ninja-build
+        run: yum install -y libusb1-devel perl-core curl zip unzip tar ninja-build
       - name: Installing cmake dependency
         run: |
           cd bindings/python
@@ -560,7 +540,6 @@ jobs:
         run: echo "BUILD_COMMIT_HASH=${{github.sha}}" >> $GITHUB_ENV
       - name: Building wheels
         run: |
-          scl enable devtoolset-10 -- bash
           cd bindings/python && for PYBIN in /opt/python/cp3{${{ matrix.python-set }}}*/bin; do "${PYBIN}/pip" wheel . -w ./wheelhouse/ --verbose; done
       - name: Auditing wheels
         run: cd bindings/python && for whl in wheelhouse/*.whl; do auditwheel repair "$whl" --plat $PLAT -w wheelhouse/audited/; done
