@@ -2,7 +2,7 @@
 
 #include "depthai/common/Point3f.hpp"
 #ifdef DEPTHAI_ENABLE_PROTOBUF
-    #include "../../utility/ProtoSerialize.hpp"
+    #include "utility/ProtoSerialize.hpp"
     #include "depthai/schemas/PointCloudData.pb.h"
 #endif
 namespace dai {
@@ -129,43 +129,12 @@ PointCloudData& PointCloudData::setColor(bool val) {
 }
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF
-std::unique_ptr<google::protobuf::Message> getProtoMessage(const PointCloudData* daiCloudData, bool metadataOnly = false) {
-    auto pointCloudData = std::make_unique<dai::proto::point_cloud_data::PointCloudData>();
-
-    auto timestamp = pointCloudData->mutable_ts();
-    timestamp->set_sec(daiCloudData->ts.sec);
-    timestamp->set_nsec(daiCloudData->ts.nsec);
-
-    auto timestampDevice = pointCloudData->mutable_tsdevice();
-    timestampDevice->set_sec(daiCloudData->tsDevice.sec);
-    timestampDevice->set_nsec(daiCloudData->tsDevice.nsec);
-
-    pointCloudData->set_sequencenum(daiCloudData->sequenceNum);
-    pointCloudData->set_width(daiCloudData->getWidth());
-    pointCloudData->set_height(daiCloudData->getHeight());
-    pointCloudData->set_instancenum(daiCloudData->getInstanceNum());
-    pointCloudData->set_minx(daiCloudData->getMinX());
-    pointCloudData->set_miny(daiCloudData->getMinY());
-    pointCloudData->set_minz(daiCloudData->getMinZ());
-    pointCloudData->set_maxx(daiCloudData->getMaxX());
-    pointCloudData->set_maxy(daiCloudData->getMaxY());
-    pointCloudData->set_maxz(daiCloudData->getMaxZ());
-    pointCloudData->set_sparse(daiCloudData->isSparse());
-    pointCloudData->set_color(daiCloudData->isColor());
-
-    if(!metadataOnly) {
-        pointCloudData->set_data(daiCloudData->data->getData().data(), daiCloudData->data->getSize());
-    }
-
-    return pointCloudData;
-}
-
-std::vector<std::uint8_t> PointCloudData::serializeProto() const {
-    return utility::serializeProto(getProtoMessage(this));
+std::vector<std::uint8_t> PointCloudData::serializeProto(bool metadataOnly) const {
+    return utility::serializeProto(utility::getProtoMessage(this, metadataOnly));
 }
 
 ProtoSerializable::SchemaPair PointCloudData::serializeSchema() const {
-    return utility::serializeSchema(getProtoMessage(this));
+    return utility::serializeSchema(utility::getProtoMessage(this));
 }
 
 #endif

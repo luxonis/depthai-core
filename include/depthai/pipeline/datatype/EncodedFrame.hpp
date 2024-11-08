@@ -174,8 +174,6 @@ class EncodedFrame : public Buffer, public ProtoSerializable {
 
     ImgFrame getImgFrameMeta() const;
 
-    std::unique_ptr<google::protobuf::Message> getProtoMessage(bool metadataOnly = false) const override;
-
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
         metadata = utility::serialize(*this);
         datatype = DatatypeEnum::EncodedFrame;
@@ -187,7 +185,7 @@ class EncodedFrame : public Buffer, public ProtoSerializable {
      *
      * @returns serialized message
      */
-    std::vector<std::uint8_t> serializeProto() const override;
+    std::vector<std::uint8_t> serializeProto(bool metadataOnly = false) const override;
 
     /**
      * Serialize schema to proto buffer

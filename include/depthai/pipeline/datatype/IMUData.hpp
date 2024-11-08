@@ -1,7 +1,5 @@
 #pragma once
 
-#include <google/protobuf/message.h>
-
 #include <chrono>
 #include <unordered_map>
 #include <vector>
@@ -215,7 +213,7 @@ DEPTHAI_SERIALIZE_EXT(IMUPacket, acceleroMeter, gyroscope, magneticField, rotati
 /**
  * IMUData message. Carries normalized detection results
  */
-class IMUData : public Buffer, public utility::ProtoSerializable, public utility::ProtoDeserializable {
+class IMUData : public Buffer, public ProtoSerializable {
    public:
     // Construct IMUData message
     IMUData() = default;
@@ -228,9 +226,21 @@ class IMUData : public Buffer, public utility::ProtoSerializable, public utility
         datatype = DatatypeEnum::IMUData;
     };
 
-    std::unique_ptr<google::protobuf::Message> getProtoMessage(bool = true) const override;
+#ifdef DEPTHAI_ENABLE_PROTOBUF
+    /**
+     * Serialize message to proto buffer
+     *
+     * @returns serialized message
+     */
+    std::vector<std::uint8_t> serializeProto(bool = false) const override;
 
-    void setProtoMessage(const google::protobuf::Message& msg, bool = true) override;
+    /**
+     * Serialize schema to proto buffer
+     *
+     * @returns serialized schema
+     */
+    ProtoSerializable::SchemaPair serializeSchema() const override;
+#endif
 
     DEPTHAI_SERIALIZE(IMUData, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum, packets);
 };

@@ -51,4 +51,7 @@ message IMUPacket {
 
 message IMUData {
     repeated IMUPacket packets = 1;
+    int64 sequenceNum = 2;          // Sequence number
+    common.Timestamp ts = 3;        // Timestamp
+    common.Timestamp tsDevice = 4;  // Timestamp from device
 }

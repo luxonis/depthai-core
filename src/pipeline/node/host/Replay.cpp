@@ -1,11 +1,9 @@
-#include <google/protobuf/message.h>
-
 #include <stdexcept>
 
 #include "depthai/pipeline/datatype/DatatypeEnum.hpp"
-#include "depthai/schemas/EncodedFrame.pb.h"
-#include "depthai/schemas/IMUData.pb.h"
-#include "depthai/schemas/ImgFrame.pb.h"
+#include "depthai/schemas/PointCloudData.pb.h"
+#include "depthai/pipeline/datatype/EncodedFrame.hpp"
+#include "depthai/pipeline/datatype/PointCloudData.hpp"
 #define _USE_MATH_DEFINES
 #include <chrono>
 #include <cmath>
@@ -17,15 +15,24 @@
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/node/host/Replay.hpp"
 #include "utility/RecordReplayImpl.hpp"
-#include "utility/SchemaHelpers.hpp"
+
+#ifdef DEPTHAI_ENABLE_PROTOBUF
+    #include <google/protobuf/message.h>
+
+    #include "depthai/schemas/EncodedFrame.pb.h"
+    #include "depthai/schemas/IMUData.pb.h"
+    #include "depthai/schemas/ImgFrame.pb.h"
+    #include "utility/ProtoSerialize.hpp"
+#endif
 
 namespace dai {
 namespace node {
 
+#ifdef DEPTHAI_ENABLE_PROTOBUF
 // Video Message
 inline std::shared_ptr<Buffer> getVideoMessage(const proto::img_frame::ImgFrame& metadata, ImgFrame::Type outFrameType, std::vector<uint8_t>& frame) {
     std::shared_ptr<ImgFrame> imgFrame;
-    imgFrame->setProtoMessage(metadata, true);
+    utility::setProtoMessage(*imgFrame, &metadata, true);
 
     assert(frame.size() == imgFrame->getWidth() * imgFrame->getHeight() * 3);
     cv::Mat img(imgFrame->getHeight(), imgFrame->getWidth(), CV_8UC3, frame.data());
@@ -33,31 +40,28 @@ inline std::shared_ptr<Buffer> getVideoMessage(const proto::img_frame::ImgFrame&
     return std::dynamic_pointer_cast<Buffer>(imgFrame);
 }
 
-inline std::shared_ptr<Buffer> getImuMessage(const proto::imu_data::IMUData& metadata) {
-    std::shared_ptr<Buffer> buffer;
-    auto imuData = std::make_shared<IMUData>();
-    imuData->setProtoMessage(metadata);
-    buffer = std::dynamic_pointer_cast<Buffer>(imuData);
-    return buffer;
-}
-
-inline std::shared_ptr<google::protobuf::Message> getProtoMessage(utility::BytePlayer& bytePlayer, DatatypeEnum datatype) {
+inline std::shared_ptr<Buffer> getMessage(const std::shared_ptr<google::protobuf::Message> metadata, DatatypeEnum datatype) {
     switch(datatype) {
         case DatatypeEnum::ImgFrame: {
-            auto msg = bytePlayer.next<proto::img_frame::ImgFrame>();
-            if(msg.has_value()) {
-                return std::make_shared<proto::img_frame::ImgFrame>(msg.value());
-            }
-            break;
+            auto imgFrame = std::make_shared<ImgFrame>();
+            utility::setProtoMessage(*imgFrame, metadata.get(), false);
+            return imgFrame;
+        }
+        case DatatypeEnum::EncodedFrame: {
+            auto encFrame = std::make_shared<EncodedFrame>();
+            utility::setProtoMessage(*encFrame, metadata.get(), false);
+            return encFrame;
         }
         case DatatypeEnum::IMUData: {
-            auto msg = bytePlayer.next<proto::imu_data::IMUData>();
-            if(msg.has_value()) {
-                return std::make_shared<proto::imu_data::IMUData>(msg.value());
-            }
-            break;
+            auto imuData = std::make_shared<IMUData>();
+            utility::setProtoMessage(*imuData, metadata.get(), false);
+            return imuData;
         }
-        case DatatypeEnum::EncodedFrame:
+        case DatatypeEnum::PointCloudData: {
+            auto pclData = std::make_shared<PointCloudData>();
+            utility::setProtoMessage(*pclData, metadata.get(), false);
+            return pclData;
+        }
         case DatatypeEnum::ADatatype:
         case DatatypeEnum::Buffer:
         case DatatypeEnum::NNData:
@@ -83,15 +87,78 @@ inline std::shared_ptr<google::protobuf::Message> getProtoMessage(utility::ByteP
         case DatatypeEnum::MessageGroup:
         case DatatypeEnum::TransformData:
         case DatatypeEnum::PointCloudConfig:
-        case DatatypeEnum::PointCloudData:
         case DatatypeEnum::ImageAlignConfig:
-        case DatatypeEnum::ImageAnnotations:
+        case DatatypeEnum::ImgAnnotations:
+            break;
+    }
+    throw std::runtime_error("Cannot replay message type: " + std::to_string((int)datatype));
+}
+
+inline std::shared_ptr<google::protobuf::Message> getProtoMessage(utility::BytePlayer& bytePlayer, DatatypeEnum datatype) {
+    switch(datatype) {
+        case DatatypeEnum::ImgFrame: {
+            auto msg = bytePlayer.next<proto::img_frame::ImgFrame>();
+            if(msg.has_value()) {
+                return std::make_shared<proto::img_frame::ImgFrame>(msg.value());
+            }
+            break;
+        }
+        case DatatypeEnum::IMUData: {
+            auto msg = bytePlayer.next<proto::imu_data::IMUData>();
+            if(msg.has_value()) {
+                return std::make_shared<proto::imu_data::IMUData>(msg.value());
+            }
+            break;
+        }
+        case DatatypeEnum::EncodedFrame: {
+            auto msg = bytePlayer.next<proto::encoded_frame::EncodedFrame>();
+            if(msg.has_value()) {
+                return std::make_shared<proto::encoded_frame::EncodedFrame>(msg.value());
+            }
+            break;
+        }
+        case DatatypeEnum::PointCloudData: {
+            auto msg = bytePlayer.next<proto::point_cloud_data::PointCloudData>();
+            if(msg.has_value()) {
+                return std::make_shared<proto::point_cloud_data::PointCloudData>(msg.value());
+            }
+            break;
+        }
+        case DatatypeEnum::ADatatype:
+        case DatatypeEnum::Buffer:
+        case DatatypeEnum::NNData:
+        case DatatypeEnum::ImageManipConfig:
+        case DatatypeEnum::ImageManipConfigV2:
+        case DatatypeEnum::CameraControl:
+        case DatatypeEnum::ImgDetections:
+        case DatatypeEnum::SpatialImgDetections:
+        case DatatypeEnum::SystemInformation:
+        case DatatypeEnum::SystemInformationS3:
+        case DatatypeEnum::SpatialLocationCalculatorConfig:
+        case DatatypeEnum::SpatialLocationCalculatorData:
+        case DatatypeEnum::EdgeDetectorConfig:
+        case DatatypeEnum::AprilTagConfig:
+        case DatatypeEnum::AprilTags:
+        case DatatypeEnum::Tracklets:
+        case DatatypeEnum::StereoDepthConfig:
+        case DatatypeEnum::FeatureTrackerConfig:
+        case DatatypeEnum::ThermalConfig:
+        case DatatypeEnum::ToFConfig:
+        case DatatypeEnum::TrackedFeatures:
+        case DatatypeEnum::BenchmarkReport:
+        case DatatypeEnum::MessageGroup:
+        case DatatypeEnum::TransformData:
+        case DatatypeEnum::PointCloudConfig:
+        case DatatypeEnum::ImageAlignConfig:
+        case DatatypeEnum::ImgAnnotations:
             throw std::runtime_error("Cannot replay message type: " + std::to_string((int)datatype));
     }
     return {};
 }
+#endif
 
 void ReplayVideo::run() {
+#ifdef DEPTHAI_ENABLE_PROTOBUF
     if(replayVideo.empty() && replayFile.empty()) {
         throw std::runtime_error("ReplayVideo node requires replayVideo or replayFile to be set");
     }
@@ -186,7 +253,9 @@ void ReplayVideo::run() {
             frame.setTimestampDevice(std::chrono::time_point<std::chrono::steady_clock>(time));
             frame.setSequenceNum(index++);
             frame.sourceFb = frame.fb;
-            metadata->CopyFrom(*frame.getProtoMessage(true));
+            auto protoMsg = utility::getProtoMessage(&frame, true);
+            std::shared_ptr<google::protobuf::Message> sharedProtoMsg = std::move(protoMsg);
+            metadata = std::dynamic_pointer_cast<proto::img_frame::ImgFrame>(sharedProtoMsg);
         } else if(size.has_value()) {
             metadata->mutable_fb()->set_width(std::get<0>(size.value()));
             metadata->mutable_fb()->set_height(std::get<1>(size.value()));
@@ -215,14 +284,18 @@ void ReplayVideo::run() {
     }
     logger->info("Replay finished - stopping the pipeline!");
     stopPipeline();
+#else
+    throw std::runtime_error("ReplayVideo node requires protobuf support");
+#endif
 }
 
 void ReplayMetadataOnly::run() {
+#ifdef DEPTHAI_ENABLE_PROTOBUF
     if(replayFile.empty()) {
         throw std::runtime_error("ReplayMetadataOnly node requires replayFile to be set");
     }
     utility::BytePlayer bytePlayer;
-    DatatypeEnum datatype = DatatypeEnum::ImgFrame;
+    DatatypeEnum datatype = DatatypeEnum::Buffer;
     bool hasMetadata = !replayFile.empty();
     if(!replayFile.empty()) try {
             auto schemaName = bytePlayer.init(replayFile.string());
@@ -238,10 +311,10 @@ void ReplayMetadataOnly::run() {
     auto loopStart = std::chrono::steady_clock::now();
     auto prevMsgTs = loopStart;
     while(isRunning()) {
-        std::shared_ptr<proto::imu_data::IMUData> metadata;
+        std::shared_ptr<google::protobuf::Message> metadata;
         std::vector<uint8_t> frame;
-        if(datatype != DatatypeEnum::IMUData) {
-            throw std::runtime_error("Invalid message type, expected IMUData");
+        if(utility::deserializationSupported(datatype)) {
+            throw std::runtime_error("Invalid message type. Cannot replay");
         }
         auto msg = getProtoMessage(bytePlayer, datatype);
         if(msg != nullptr) {
@@ -256,7 +329,7 @@ void ReplayMetadataOnly::run() {
         } else {
             throw std::runtime_error("Metadata file contains no messages");
         }
-        auto buffer = getImuMessage(*metadata);
+        auto buffer = getMessage(metadata, datatype);
 
         if(first) prevMsgTs = buffer->getTimestampDevice();
 
@@ -276,6 +349,9 @@ void ReplayMetadataOnly::run() {
         first = false;
     }
     stopPipeline();
+#else
+    throw std::runtime_error("ReplayMetadataOnly node requires protobuf support");
+#endif
 }
 
 std::filesystem::path ReplayVideo::getReplayMetadataFile() const {

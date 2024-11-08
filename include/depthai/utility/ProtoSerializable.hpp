@@ -20,7 +20,7 @@ class ProtoSerializable {
      * @brief Serialize the protobuf message of this object
      * @return serialized protobuf message
      */
-    virtual std::vector<std::uint8_t> serializeProto() const = 0;
+    virtual std::vector<std::uint8_t> serializeProto(bool metadataOnly = false) const = 0;
 
     /**
      * @brief Serialize the schema of this object
@@ -56,18 +56,5 @@ class ProtoSerializable {
     }
 #endif
 };
-
-class ProtoDeserializable {
-   public:
-    virtual ~ProtoDeserializable() = default;
-
-   protected:
-    // virtual void setProtoMessage(const google::protobuf::Message&, bool metadataOnly = false) = 0;
-};
-
-// inline std::chrono::time_point<std::chrono::steady_clock> fromProtoTimestamp(const dai::proto::common::Timestamp& ts) {
-//     using namespace std::chrono;
-//     return time_point<steady_clock>(seconds(ts.sec()) + nanoseconds(ts.nsec()));
-// }
 
 }  // namespace dai

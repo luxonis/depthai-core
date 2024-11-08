@@ -28,7 +28,7 @@ namespace dai {
 /**
  * ImgFrame message. Carries image data and metadata.
  */
-class ImgFrame : public Buffer, public ProtoSerializable, public ProtoDeserializable {
+class ImgFrame : public Buffer, public ProtoSerializable {
    public:
     using Buffer::getTimestamp;
     using Buffer::getTimestampDevice;
@@ -84,15 +84,13 @@ class ImgFrame : public Buffer, public ProtoSerializable, public ProtoDeserializ
         datatype = DatatypeEnum::ImgFrame;
     };
 
-    // void setProtoMessage(const google::protobuf::Message& msg, bool metadataOnly = false) override;
-
 #ifdef DEPTHAI_ENABLE_PROTOBUF
     /**
      * Serialize message to proto buffer
      *
      * @returns serialized message
      */
-    std::vector<std::uint8_t> serializeProto() const override;
+    std::vector<std::uint8_t> serializeProto(bool metadataOnly = false) const override;
 
     /**
      * Serialize schema to proto buffer

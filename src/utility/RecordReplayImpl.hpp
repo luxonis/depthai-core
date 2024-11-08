@@ -1,11 +1,16 @@
-#include <google/protobuf/descriptor.h>
 #include "depthai/utility/RecordReplay.hpp"
 #include "mcap/mcap.hpp"
+
+#ifdef DEPTHAI_ENABLE_PROTOBUF
+    #include <google/protobuf/descriptor.h>
+#endif
 
 namespace dai {
 namespace utility {
 
+#ifdef DEPTHAI_ENABLE_PROTOBUF
 mcap::Schema createSchema(const google::protobuf::Descriptor* d);
+#endif
 
 class VideoRecorder {
    public:
@@ -43,6 +48,7 @@ class ByteRecorder {
     ~ByteRecorder();
     template <typename T>
     void init(const std::string& filePath, RecordConfig::CompressionLevel compressionLevel, const std::string& channelName) {
+#ifdef DEPTHAI_ENABLE_PROTOBUF
         if(initialized) {
             throw std::runtime_error("ByteRecorder already initialized");
         }
@@ -59,18 +65,19 @@ class ByteRecorder {
         }
 
         initialized = true;
+#else
+        throw std::runtime_error("ByteRecorder not supported without protobuf support");
+#endif
     }
-    template <typename T>
-    void write(const T& data) {
+    void write(std::vector<uint8_t> data) {
         mcap::Timestamp writeTime = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-        std::string serialized = data.SerializeAsString();
         mcap::Message msg;
         msg.channelId = channelId;
         msg.logTime = writeTime;
         msg.publishTime = writeTime;
         msg.sequence = index++;
-        msg.data = reinterpret_cast<const std::byte*>(serialized.data());
-        msg.dataSize = serialized.size();
+        msg.data = reinterpret_cast<const std::byte*>(data.data());
+        msg.dataSize = data.size();
         const auto res = writer.write(msg);
         if(!res.ok()) {
             writer.close();
