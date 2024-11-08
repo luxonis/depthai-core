@@ -488,8 +488,10 @@ if(DEPTHAI_HAVE_PCL_SUPPORT AND DEPTHAI_MERGED_TARGET)
     # Specify that we are building target pcl
     target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_TARGET_PCL)
     target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_HAVE_PCL_SUPPORT)
-
-	#target_link_directories(${TARGET_CORE_NAME} PUBLIC ${PCL_LIBRARY_DIRS})
+    target_link_directories(${TARGET_CORE_NAME} PUBLIC 
+		$<BUILD_INTERFACE:${PCL_LIBRARY_DIRS}>
+		$<INSTALL_INTERFACE:include>
+	)
     target_compile_definitions(${TARGET_CORE_NAME} PUBLIC ${PCL_DEFINITIONS})
 endif()
 if(DEPTHAI_MERGED_TARGET)
