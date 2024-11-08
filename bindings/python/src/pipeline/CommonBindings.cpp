@@ -10,6 +10,7 @@
 #include "depthai/common/CameraSensorType.hpp"
 #include "depthai/common/ChipTemperature.hpp"
 #include "depthai/common/ChipTemperatureS3.hpp"
+#include "depthai/common/Color.hpp"
 #include "depthai/common/Colormap.hpp"
 #include "depthai/common/ConnectionInterface.hpp"
 #include "depthai/common/CpuUsage.hpp"
@@ -73,6 +74,7 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack){
     py::class_<Rect> rect(m, "Rect", DOC(dai, Rect));
     py::class_<StereoPair> stereoPair(m, "StereoPair", DOC(dai, StereoPair));
     py::enum_<CameraExposureOffset> cameraExposureOffset(m, "CameraExposureOffset");
+    py::class_<Color> color(m, "Color", DOC(dai, Color));
     py::enum_<Colormap> colormap(m, "Colormap", DOC(dai, Colormap));
     py::enum_<FrameEvent> frameEvent(m, "FrameEvent", DOC(dai, FrameEvent));
     py::class_<ProfilingData> profilingData(m, "ProfilingData", DOC(dai, ProfilingData));
@@ -435,6 +437,14 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack){
         .value("END", CameraExposureOffset::END)
     ;
 
+    color
+        .def(py::init<>())
+        .def(py::init<float, float, float, float>(), py::arg("r"), py::arg("g"), py::arg("b"), py::arg("a") = 1.0, DOC(dai, Color, Color))
+        .def_readwrite("r", &Color::r)
+        .def_readwrite("g", &Color::g)
+        .def_readwrite("b", &Color::b)
+        .def_readwrite("a", &Color::a)
+    ;
     colormap
         .value("NONE", Colormap::NONE)
         .value("JET", Colormap::JET)

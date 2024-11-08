@@ -257,6 +257,12 @@ float ImgTransformation::getVFov(bool source) const {
     // Convert radians to degrees
     return verticalFoV * 180.0f / (float)M_PI;
 }
+CameraModel ImgTransformation::getDistortionModel() const {
+    return distortionModel;
+}
+std::vector<float> ImgTransformation::getDistortionCoefficients() const {
+    return distortionCoefficients;
+}
 std::vector<dai::RotatedRect> ImgTransformation::getSrcCrops() const {
     return srcCrops;
 }

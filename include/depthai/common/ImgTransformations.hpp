@@ -114,6 +114,16 @@ struct ImgTransformation {
      */
     std::array<std::array<float, 3>, 3> getSourceIntrinsicMatrixInv() const;
     /**
+     * Retrieve the distortion model of the source sensor
+     * @return Distortion model
+     */
+    CameraModel getDistortionModel() const;
+    /**
+     * Retrieve the distortion coefficients of the source sensor
+     * @return vector of distortion coefficients
+     */
+    std::vector<float> getDistortionCoefficients() const;
+    /**
      * Retrieve the total intrinsic matrix calculated from intrinsic * transform.
      * @return total intrinsic matrix
      */
