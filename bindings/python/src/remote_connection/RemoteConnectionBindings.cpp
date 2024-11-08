@@ -21,7 +21,7 @@ void RemoteConnectionBindings::bind(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
 #ifdef DEPTHAI_ENABLE_REMOTE_CONNECTION
     py::class_<RemoteConnection>(m, "RemoteConnection")
-        .def(py::init<const std::string&, uint16_t>(),
+        .def(py::init<const std::string&, uint16_t, bool, uint16_t>(),
              py::arg("address") = RemoteConnection::DEFAULT_ADDRESS,
              py::arg("webSocketPort") = RemoteConnection::DEFAULT_WEBSOCKET_PORT,
              py::arg("serveFrontend") = true,
