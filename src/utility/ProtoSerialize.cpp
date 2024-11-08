@@ -53,7 +53,7 @@ ProtoSerializable::SchemaPair serializeSchema(std::unique_ptr<google::protobuf::
     return returnPair;
 }
 
-void serializeImgTransormation(proto::common::ImgTransformation* imgTransformation, const ImgTransformation& transformation) {
+void serializeImgTransformation(proto::common::ImgTransformation* imgTransformation, const ImgTransformation& transformation) {
     const auto [width, height] = transformation.getSize();
     const auto [srcWidth, srcHeight] = transformation.getSourceSize();
     imgTransformation->set_width(width);
