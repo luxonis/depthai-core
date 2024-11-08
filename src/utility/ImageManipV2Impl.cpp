@@ -848,7 +848,9 @@ std::tuple<std::array<std::array<float, 3>, 3>, std::array<std::array<float, 2>,
 #endif
                            }
                        },
-                       [&](Affine o) { mat = {{{o.matrix[0], o.matrix[1], 0}, {o.matrix[2], o.matrix[3], 0}, {0, 0, 1}}}; },
+                       [&](Affine o) {
+                           mat = {{{o.matrix[0], o.matrix[1], 0}, {o.matrix[2], o.matrix[3], 0}, {0, 0, 1}}};
+                       },
                        [&](Perspective o) {
                            mat = {{{o.matrix[0], o.matrix[1], o.matrix[2]}, {o.matrix[3], o.matrix[4], o.matrix[5]}, {o.matrix[6], o.matrix[7], o.matrix[8]}}};
                        },

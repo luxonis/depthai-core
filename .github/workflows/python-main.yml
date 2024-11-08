@@ -262,7 +262,8 @@ jobs:
         os: [macos-13, macos-14] # macos-13 is x64, macos-14 is arm64
       fail-fast: false
     runs-on: ${{ matrix.os }}
-    #env:
+    # env:
+      # TODO(Morato) - re-enable basalt, pcl, rtabmap after everything is ported  
       # DEPTHAI_BUILD_BASALT: ON
       # DEPTHAI_BUILD_PCL: ON
       # DEPTHAI_BUILD_RTABMAP: ON
@@ -300,7 +301,7 @@ jobs:
           python -m pip install --upgrade pip
           brew install libusb
           brew install opencv
-          # brew install pcl
+          brew install pcl
           python -m pip install delocate
       - name: Building wheels
         run: cd bindings/python && python -m pip wheel . -w ./wheelhouse/ --verbose
@@ -479,9 +480,9 @@ jobs:
       ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
       DEPTHAI_VCPKG_CFLAGS: "-std=c99" # Needed so vpckg can bootstrap itself with the old GCC on the manylinux image
       VCPKG_FORCE_SYSTEM_BINARIES: "1" # Needed so vpckg can bootstrap itself
-      # DEPTHAI_BUILD_BASALT: ON
-      # DEPTHAI_BUILD_PCL: ON
-      # DEPTHAI_BUILD_RTABMAP: ON
+      DEPTHAI_BUILD_BASALT: ON
+      DEPTHAI_BUILD_PCL: ON
+      DEPTHAI_BUILD_RTABMAP: ON
     steps:
       - uses: actions/checkout@v3
         with:
@@ -503,11 +504,11 @@ jobs:
       - name: Specify docstring to use while building the wheel
         run: echo "DEPTHAI_PYTHON_DOCSTRINGS_INPUT=$PWD/bindings/python/docstrings/depthai_python_docstring.hpp" >> $GITHUB_ENV
 
-      # - name: Build and install depthai-core
-      #   run: |
-      #     cmake -S . -B build_core -D CMAKE_BUILD_TYPE=Release -D CMAKE_TOOLCHAIN_FILE=$PWD/cmake/toolchain/pic.cmake
-      #     cmake --build build_core --target install --parallel 4
-      #     echo "DEPTHAI_INSTALLATION_DIR=$PWD/build_core/install/" >> $GITHUB_ENV
+      - name: Build and install depthai-core
+        run: |
+          cmake -S . -B build_core -D CMAKE_BUILD_TYPE=Release -D CMAKE_TOOLCHAIN_FILE=$PWD/cmake/toolchain/pic.cmake
+          cmake --build build_core --target install --parallel 4
+          echo "DEPTHAI_INSTALLATION_DIR=$PWD/build_core/install/" >> $GITHUB_ENV
 
       - name: Append build hash if not a tagged commit
         if: startsWith(github.ref, 'refs/tags/v') != true

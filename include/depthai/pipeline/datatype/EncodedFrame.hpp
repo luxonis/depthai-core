@@ -4,13 +4,12 @@
 
 #include "depthai/common/ImgTransformations.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
-#include "depthai/schemas/EncodedFrame.pb.h"
-#include "depthai/utility/ProtoSerializable.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
+#include "depthai/utility/ProtoSerializable.hpp"
 
 namespace dai {
 
-class EncodedFrame : public Buffer, public utility::ProtoSerializable {
+class EncodedFrame : public Buffer, public ProtoSerializable {
    public:
     enum class Profile : std::uint8_t { JPEG, AVC, HEVC };
     enum class FrameType : std::uint8_t { I, P, B, Unknown };
@@ -181,6 +180,22 @@ class EncodedFrame : public Buffer, public utility::ProtoSerializable {
         metadata = utility::serialize(*this);
         datatype = DatatypeEnum::EncodedFrame;
     };
+
+#ifdef DEPTHAI_ENABLE_PROTOBUF
+    /**
+     * Serialize message to proto buffer
+     *
+     * @returns serialized message
+     */
+    std::vector<std::uint8_t> serializeProto() const override;
+
+    /**
+     * Serialize schema to proto buffer
+     *
+     * @returns serialized schema
+     */
+    ProtoSerializable::SchemaPair serializeSchema() const override;
+#endif
 
     DEPTHAI_SERIALIZE(EncodedFrame,
                       cam,

@@ -15,8 +15,6 @@
 #include "depthai/common/FrameEvent.hpp"
 #include "depthai/common/ImgTransformations.hpp"
 #include "depthai/common/Rect.hpp"
-#include "depthai/schemas/ImgFrame.pb.h"
-#include "depthai/schemas/common.pb.h"
 #include "depthai/utility/ProtoSerializable.hpp"
 
 // optional
@@ -30,7 +28,7 @@ namespace dai {
 /**
  * ImgFrame message. Carries image data and metadata.
  */
-class ImgFrame : public Buffer, public utility::ProtoSerializable, public utility::ProtoDeserializable {
+class ImgFrame : public Buffer, public ProtoSerializable, public ProtoDeserializable {
    public:
     using Buffer::getTimestamp;
     using Buffer::getTimestampDevice;
@@ -86,9 +84,23 @@ class ImgFrame : public Buffer, public utility::ProtoSerializable, public utilit
         datatype = DatatypeEnum::ImgFrame;
     };
 
-    std::unique_ptr<google::protobuf::Message> getProtoMessage(bool metadataOnly = false) const override;
+    // void setProtoMessage(const google::protobuf::Message& msg, bool metadataOnly = false) override;
 
-    void setProtoMessage(const google::protobuf::Message& msg, bool metadataOnly = false) override;
+#ifdef DEPTHAI_ENABLE_PROTOBUF
+    /**
+     * Serialize message to proto buffer
+     *
+     * @returns serialized message
+     */
+    std::vector<std::uint8_t> serializeProto() const override;
+
+    /**
+     * Serialize schema to proto buffer
+     *
+     * @returns serialized schema
+     */
+    ProtoSerializable::SchemaPair serializeSchema() const override;
+#endif
 
     // getters
     /**

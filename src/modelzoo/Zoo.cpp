@@ -244,7 +244,7 @@ void ZooManager::downloadModel() {
 
     // Download all files and store them in cache folder
     for(const auto& downloadLink : downloadLinks) {
-        cpr::Response downloadResponse = cpr::Get(downloadLink);
+        cpr::Response downloadResponse = cpr::Get(cpr::Url(downloadLink));
         if(checkIsErrorModelDownload(downloadResponse)) {
             removeModelCacheFolder();
             throw std::runtime_error(generateErrorMessageModelDownload(downloadResponse));

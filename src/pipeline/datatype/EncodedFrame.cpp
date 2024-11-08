@@ -1,4 +1,8 @@
 #include "depthai/pipeline/datatype/EncodedFrame.hpp"
+#ifdef DEPTHAI_ENABLE_PROTOBUF
+    #include "../../utility/ProtoSerialize.hpp"
+    #include "depthai/schemas/EncodedFrame.pb.h"
+#endif
 
 #include "utility/H26xParsers.hpp"
 
@@ -134,76 +138,60 @@ ImgFrame EncodedFrame::getImgFrameMeta() const {
     return frame;
 }
 
-std::unique_ptr<google::protobuf::Message> EncodedFrame::getProtoMessage(bool metadataOnly) const {
+#ifdef DEPTHAI_ENABLE_PROTOBUF
+std::unique_ptr<google::protobuf::Message> getProtoMessage(const EncodedFrame* frame, bool metadataOnly = false) {
     // Create a unique pointer to the protobuf EncodedFrame message
     auto encodedFrame = std::make_unique<proto::encoded_frame::EncodedFrame>();
 
     // Populate the protobuf message fields with the EncodedFrame data
-    encodedFrame->set_instancenum(this->instanceNum);  // instanceNum -> instancenum
-    encodedFrame->set_width(this->width);
-    encodedFrame->set_height(this->height);
-    encodedFrame->set_quality(this->quality);
-    encodedFrame->set_bitrate(this->bitrate);
-    encodedFrame->set_profile(static_cast<proto::encoded_frame::Profile>(this->profile));  // Profile enum
-    encodedFrame->set_lossless(this->lossless);
-    encodedFrame->set_type(static_cast<proto::encoded_frame::FrameType>(this->type));  // FrameType enum
-    encodedFrame->set_frameoffset(this->frameOffset);                                  // frameOffset -> frameoffset
-    encodedFrame->set_framesize(this->frameSize);                                      // frameSize -> framesize
-    encodedFrame->set_sequencenum(this->sequenceNum);                                  // sequenceNum -> sequencenum
+    encodedFrame->set_instancenum(frame->instanceNum);  // instanceNum -> instancenum
+    encodedFrame->set_width(frame->width);
+    encodedFrame->set_height(frame->height);
+    encodedFrame->set_quality(frame->quality);
+    encodedFrame->set_bitrate(frame->bitrate);
+    encodedFrame->set_profile(static_cast<proto::encoded_frame::Profile>(frame->profile));  // Profile enum
+    encodedFrame->set_lossless(frame->lossless);
+    encodedFrame->set_type(static_cast<proto::encoded_frame::FrameType>(frame->type));  // FrameType enum
+    encodedFrame->set_frameoffset(frame->frameOffset);                                  // frameOffset -> frameoffset
+    encodedFrame->set_framesize(frame->frameSize);                                      // frameSize -> framesize
+    encodedFrame->set_sequencenum(frame->sequenceNum);                                  // sequenceNum -> sequencenum
 
     // Set timestamps
     proto::common::Timestamp* ts = encodedFrame->mutable_ts();
-    ts->set_sec(this->ts.sec);
-    ts->set_nsec(this->ts.nsec);
+    ts->set_sec(frame->ts.sec);
+    ts->set_nsec(frame->ts.nsec);
 
     proto::common::Timestamp* tsDevice = encodedFrame->mutable_tsdevice();
-    tsDevice->set_sec(this->tsDevice.sec);
-    tsDevice->set_nsec(this->tsDevice.nsec);
+    tsDevice->set_sec(frame->tsDevice.sec);
+    tsDevice->set_nsec(frame->tsDevice.nsec);
 
     // Set camera settings
     proto::common::CameraSettings* cam = encodedFrame->mutable_cam();
-    cam->set_exposuretimeus(this->cam.exposureTimeUs);    // exposureTimeUs -> exposuretimeus
-    cam->set_sensitivityiso(this->cam.sensitivityIso);    // sensitivityIso -> sensitivityiso
-    cam->set_lensposition(this->cam.lensPosition);        // lensPosition -> lensposition
-    cam->set_wbcolortemp(this->cam.wbColorTemp);          // wbColorTemp -> wbcolortemp
-    cam->set_lenspositionraw(this->cam.lensPositionRaw);  // lensPositionRaw -> lenspositionraw
-
-    proto::common::ImgTransformation* imgTransformation = encodedFrame->mutable_transformation();
-    const auto [width, height] = this->transformation.getSize();
-    const auto [srcWidth, srcHeight] = this->transformation.getSourceSize();
-    imgTransformation->set_width(width);
-    imgTransformation->set_height(height);
-    imgTransformation->set_srcwidth(srcWidth);
-    imgTransformation->set_srcheight(srcHeight);
-
-    proto::common::TransformationMatrix* transformationMatrix = imgTransformation->mutable_transformationmatrix();
-    for(const auto& array : transformation.getMatrix()) {
-        proto::common::FloatArray* floatArray = transformationMatrix->add_arrays();
-        for(const auto& value : array) {
-            floatArray->add_values(value);
-        }
-    }
-    proto::common::TransformationMatrix* sourceIntrinsicMatrix = imgTransformation->mutable_sourceintrinsicmatrix();
-    for(const auto& array : transformation.getSourceIntrinsicMatrix()) {
-        proto::common::FloatArray* floatArray = sourceIntrinsicMatrix->add_arrays();
-        for(const auto& value : array) {
-            floatArray->add_values(value);
-        }
-    }
-
-    imgTransformation->set_distortionmodel(static_cast<proto::common::CameraModel>(this->transformation.getDistortionModel()));
-    proto::common::FloatArray* distortionCoefficients = imgTransformation->mutable_distortioncoefficients();
-    for(const auto& value : this->transformation.getDistortionCoefficients()) {
-        distortionCoefficients->add_values(value);
-    }
+    cam->set_exposuretimeus(frame->cam.exposureTimeUs);    // exposureTimeUs -> exposuretimeus
+    cam->set_sensitivityiso(frame->cam.sensitivityIso);    // sensitivityIso -> sensitivityiso
+    cam->set_lensposition(frame->cam.lensPosition);        // lensPosition -> lensposition
+    cam->set_wbcolortemp(frame->cam.wbColorTemp);          // wbColorTemp -> wbcolortemp
+    cam->set_lenspositionraw(frame->cam.lensPositionRaw);  // lensPositionRaw -> lenspositionraw
 
     if(!metadataOnly) {
         // Set the encoded frame data
-        encodedFrame->set_data(this->data->getData().data(), this->data->getData().size());
+        encodedFrame->set_data(frame->data->getData().data(), frame->data->getData().size());
     }
+
+    proto::common::ImgTransformation* imgTransformation = encodedFrame->mutable_transformation();
+    utility::serializeImgTransormation(imgTransformation, frame->transformation);
 
     // Return the populated protobuf message
     return encodedFrame;
 }
+
+ProtoSerializable::SchemaPair EncodedFrame::serializeSchema() const {
+    return utility::serializeSchema(getProtoMessage(this));
+}
+
+std::vector<std::uint8_t> EncodedFrame::serializeProto() const {
+    return utility::serializeProto(getProtoMessage(this));
+}
+#endif
 
 }  // namespace dai

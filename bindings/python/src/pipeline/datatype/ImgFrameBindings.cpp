@@ -1,19 +1,19 @@
+#include <cstddef>
+#include <memory>
+#include <unordered_map>
+
 #include "DatatypeBindings.hpp"
 #include "depthai/common/RotatedRect.hpp"
 #include "pipeline/CommonBindings.hpp"
-#include <cstddef>
-#include <unordered_map>
-#include <memory>
 // depthai
-#include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/common/ImgTransformations.hpp"
+#include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "ndarray_converter.h"
-//pybind
+// pybind
 #include <pybind11/chrono.h>
 #include <pybind11/numpy.h>
 
-void bind_imgframe(pybind11::module& m, void* pCallstack){
-
+void bind_imgframe(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
     // py::class_<RawImgFrame, RawBuffer, std::shared_ptr<RawImgFrame>> rawImgFrame(m, "RawImgFrame", DOC(dai, RawImgFrame));
@@ -26,7 +26,7 @@ void bind_imgframe(pybind11::module& m, void* pCallstack){
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
     // Call the rest of the type defines, then perform the actual bindings
-    Callstack* callstack = (Callstack*) pCallstack;
+    Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
@@ -65,9 +65,7 @@ void bind_imgframe(pybind11::module& m, void* pCallstack){
     //     )
     //     ;
 
-
-    imgFrameType
-        .value("YUV422i", ImgFrame::Type::YUV422i)
+    imgFrameType.value("YUV422i", ImgFrame::Type::YUV422i)
         .value("YUV444p", ImgFrame::Type::YUV444p)
         .value("YUV420p", ImgFrame::Type::YUV420p)
         .value("YUV422p", ImgFrame::Type::YUV422p)
@@ -100,11 +98,9 @@ void bind_imgframe(pybind11::module& m, void* pCallstack){
         .value("BITSTREAM", ImgFrame::Type::BITSTREAM)
         .value("HDR", ImgFrame::Type::HDR)
         .value("RAW32", ImgFrame::Type::RAW32)
-        .value("NONE", ImgFrame::Type::NONE)
-        ;
+        .value("NONE", ImgFrame::Type::NONE);
 
-    imgFrameSpecs
-        .def(py::init<>())
+    imgFrameSpecs.def(py::init<>())
         .def_readwrite("type", &ImgFrame::Specs::type)
         .def_readwrite("width", &ImgFrame::Specs::width)
         .def_readwrite("height", &ImgFrame::Specs::height)
@@ -112,8 +108,7 @@ void bind_imgframe(pybind11::module& m, void* pCallstack){
         .def_readwrite("bytesPP", &ImgFrame::Specs::bytesPP)
         .def_readwrite("p1Offset", &ImgFrame::Specs::p1Offset)
         .def_readwrite("p2Offset", &ImgFrame::Specs::p2Offset)
-        .def_readwrite("p3Offset", &ImgFrame::Specs::p3Offset)
-        ;
+        .def_readwrite("p3Offset", &ImgFrame::Specs::p3Offset);
 
     imgTransformation.def(py::init<>(), DOC(dai, ImgTransformation, ImgTransformation))
         .def(py::init<size_t, size_t>(), py::arg("width"), py::arg("height"), DOC(dai, ImgTransformation, ImgTransformation, 2))
@@ -147,9 +142,20 @@ void bind_imgframe(pybind11::module& m, void* pCallstack){
         .def("getMatrixInv", &ImgTransformation::getMatrixInv)
         .def("getSourceIntrinsicMatrix", &ImgTransformation::getSourceIntrinsicMatrix)
         .def("getSourceIntrinsicMatrixInv", &ImgTransformation::getSourceIntrinsicMatrixInv)
+        .def("getIntrinsicMatrix", &ImgTransformation::getIntrinsicMatrix)
+        .def("getIntrinsicMatrixInv", &ImgTransformation::getIntrinsicMatrixInv)
+        .def("getDFov", &ImgTransformation::getDFov, py::arg("source") = false)
+        .def("getHFov", &ImgTransformation::getHFov, py::arg("source") = false)
+        .def("getVFov", &ImgTransformation::getVFov, py::arg("source") = false)
         .def("addTransformation", &ImgTransformation::addTransformation, py::arg("matrix"), DOC(dai, ImgTransformation, addTransformation))
         .def("addCrop", &ImgTransformation::addCrop, py::arg("x"), py::arg("y"), py::arg("width"), py::arg("height"), DOC(dai, ImgTransformation, addCrop))
-        .def("addPadding", &ImgTransformation::addPadding, py::arg("x"), py::arg("y"), py::arg("width"), py::arg("height"), DOC(dai, ImgTransformation, addPadding))
+        .def("addPadding",
+             &ImgTransformation::addPadding,
+             py::arg("x"),
+             py::arg("y"),
+             py::arg("width"),
+             py::arg("height"),
+             DOC(dai, ImgTransformation, addPadding))
         .def("addFlipVertical", &ImgTransformation::addFlipVertical, DOC(dai, ImgTransformation, addFlipVertical))
         .def("addFlipHorizontal", &ImgTransformation::addFlipHorizontal, DOC(dai, ImgTransformation, addFlipHorizontal))
         .def("addRotation", &ImgTransformation::addRotation, py::arg("angle"), py::arg("rotationPoint"), DOC(dai, ImgTransformation, addRotation))
@@ -158,9 +164,7 @@ void bind_imgframe(pybind11::module& m, void* pCallstack){
         .def("remapPointFrom", &ImgTransformation::remapPointFrom, py::arg("to"), py::arg("point"), DOC(dai, ImgTransformation, remapPointFrom))
         .def("remapRectTo", &ImgTransformation::remapRectTo, py::arg("to"), py::arg("rect"), DOC(dai, ImgTransformation, remapRectTo))
         .def("remapRectFrom", &ImgTransformation::remapRectFrom, py::arg("to"), py::arg("rect"), DOC(dai, ImgTransformation, remapRectFrom))
-        .def("isValid", &ImgTransformation::isValid, DOC(dai, ImgTransformation, isValid))
-        ;
-
+        .def("isValid", &ImgTransformation::isValid, DOC(dai, ImgTransformation, isValid));
 
     // TODO add RawImgFrame::CameraSettings
 
@@ -191,12 +195,20 @@ void bind_imgframe(pybind11::module& m, void* pCallstack){
         .def("getColorTemperature", &ImgFrame::getColorTemperature, DOC(dai, ImgFrame, getColorTemperature))
         .def("getLensPosition", &ImgFrame::getLensPosition, DOC(dai, ImgFrame, getLensPosition))
         .def("getLensPositionRaw", &ImgFrame::getLensPositionRaw, DOC(dai, ImgFrame, getLensPositionRaw))
+        .def("getSourceHFov", &ImgFrame::getSourceHFov, DOC(dai, ImgFrame, getSourceHFov))
+        .def("getSourceVFov", &ImgFrame::getSourceVFov, DOC(dai, ImgFrame, getSourceVFov))
+        .def("getSourceDFov", &ImgFrame::getSourceDFov, DOC(dai, ImgFrame, getSourceDFov))
+        .def("getSourceWidth", &ImgFrame::getSourceWidth, DOC(dai, ImgFrame, getSourceWidth))
+        .def("getSourceHeight", &ImgFrame::getSourceHeight, DOC(dai, ImgFrame, getSourceHeight))
+        .def("getTransformation", [](ImgFrame& msg) {return msg.transformation;})
+
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
         // The cast function itself does a copy, so we can avoid two copies by always not copying
         .def(
             "getFrame", [](ImgFrame& self) { return self.getFrame(false); }, DOC(dai, ImgFrame, getFrame))
         .def("setFrame", &ImgFrame::setFrame, DOC(dai, ImgFrame, setFrame))
-        .def("getCvFrame", [](ImgFrame& self) {return self.getCvFrame(&g_numpyAllocator);}, DOC(dai, ImgFrame, getCvFrame))
+        .def(
+            "getCvFrame", [](ImgFrame& self) { return self.getCvFrame(&g_numpyAllocator); }, DOC(dai, ImgFrame, getCvFrame))
         .def("setCvFrame", &ImgFrame::setCvFrame, DOC(dai, ImgFrame, setCvFrame))
 #else
         .def(
@@ -230,13 +242,20 @@ void bind_imgframe(pybind11::module& m, void* pCallstack){
         .def("setWidth", &ImgFrame::setWidth, py::arg("width"), DOC(dai, ImgFrame, setWidth))
         .def("setStride", &ImgFrame::setStride, py::arg("stride"), DOC(dai, ImgFrame, setStride))
         .def("setHeight", &ImgFrame::setHeight, py::arg("height"), DOC(dai, ImgFrame, setHeight))
-        .def("setSize", static_cast<ImgFrame&(ImgFrame::*)(unsigned int, unsigned int)>(&ImgFrame::setSize), py::arg("width"), py::arg("height"), DOC(dai, ImgFrame, setSize))
-        .def("setSize", static_cast<ImgFrame&(ImgFrame::*)(std::tuple<unsigned int, unsigned int>)>(&ImgFrame::setSize), py::arg("sizer"), DOC(dai, ImgFrame, setSize, 2))
+        .def("setSize",
+             static_cast<ImgFrame& (ImgFrame::*)(unsigned int, unsigned int)>(&ImgFrame::setSize),
+             py::arg("width"),
+             py::arg("height"),
+             DOC(dai, ImgFrame, setSize))
+        .def("setSize",
+             static_cast<ImgFrame& (ImgFrame::*)(std::tuple<unsigned int, unsigned int>)>(&ImgFrame::setSize),
+             py::arg("sizer"),
+             DOC(dai, ImgFrame, setSize, 2))
         .def("setType", &ImgFrame::setType, py::arg("type"), DOC(dai, ImgFrame, setType))
+        .def("setTransformation", [](ImgFrame& msg, const ImgTransformation& transformation) {msg.transformation = transformation;})
         // .def("set", &ImgFrame::set, py::arg("type"), DOC(dai, ImgFrame, set))
         ;
     // add aliases dai.ImgFrame.Type and dai.ImgFrame.Specs
     // m.attr("ImgFrame").attr("Type") = m.attr("RawImgFrame").attr("Type");
     // m.attr("ImgFrame").attr("Specs") = m.attr("RawImgFrame").attr("Specs");
-
 }
