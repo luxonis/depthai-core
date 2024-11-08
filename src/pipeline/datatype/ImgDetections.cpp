@@ -30,7 +30,7 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgDetections* 
 
     proto::common::ImgTransformation* imgTransformation = imgDetections->mutable_transformation();
     if(detections->transformation.has_value()) {
-        utility::serializeImgTransormation(imgTransformation, detections->transformation.value());
+        utility::serializeImgTransformation(imgTransformation, detections->transformation.value());
     }
     return imgDetections;
 }

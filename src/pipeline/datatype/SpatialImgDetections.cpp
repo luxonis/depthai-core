@@ -61,7 +61,7 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const dai::SpatialImg
     }
     proto::common::ImgTransformation* imgTransformation = spatialImgDetections->mutable_transformation();
     if(daiSpatialImgDetections->transformation.has_value()) {
-        utility::serializeImgTransormation(imgTransformation, daiSpatialImgDetections->transformation.value());
+        utility::serializeImgTransformation(imgTransformation, daiSpatialImgDetections->transformation.value());
     }
 
     return spatialImgDetections;
