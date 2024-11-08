@@ -194,9 +194,11 @@ add_python_example(spatial_location_calculator SpatialLocationCalculator/spatial
 dai_set_example_test_labels(spatial_location_calculator ondevice rvc2_all rvc4 ci)
 
 ## Visualizer
+
+# Test both only on RVC4 as tests are run concurrently and it otherwise conflicts, trying to use the same port
 add_python_example(visualizer Visualizer/visualizer_yolo.py)
-dai_set_example_test_labels(visualizer ondevice rvc2_all rvc4 ci)
+dai_set_example_test_labels(visualizer ondevice rvc4 ci)
 
 add_python_example(visualizer_multi Visualizer/visualizer_encoded.py)
-dai_set_example_test_labels(visualizer_multi ondevice rvc2_all rvc4 ci)
+dai_set_example_test_labels(visualizer_multi ondevice rvc4 ci)
 
