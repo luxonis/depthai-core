@@ -16,9 +16,17 @@ inline static uint64_t nanosecondsSinceEpoch() {
     return uint64_t(std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count());
 }
 
-RemoteConnectionImpl::RemoteConnectionImpl(const std::string& address, uint16_t port) {
-    initWebsocketServer(address, port);
-    initHttpServer(address, 8000);
+RemoteConnectionImpl::RemoteConnectionImpl(const std::string& address, uint16_t webSocketPort, bool serveFrontend, uint16_t httpPort) {
+    auto success = initWebsocketServer(address, webSocketPort);
+    if(!success) {
+        throw std::runtime_error("Failed to initialize websocket server");
+    }
+    if(serveFrontend) {
+        success = initHttpServer(address, httpPort);
+        if(!success) {
+            throw std::runtime_error("Failed to initialize http server");
+        }
+    }
 
     // Expose services
     exposeKeyPressedService();
@@ -30,8 +38,12 @@ RemoteConnectionImpl::~RemoteConnectionImpl() {
     for(auto& thread : publishThreads) {
         thread->join();
     }
-    httpServer->stop();
-    httpServerThread->join();
+    if(httpServer) {
+        httpServer->stop();
+    }
+    if(httpServerThread && httpServerThread->joinable()) {
+        httpServerThread->join();
+    }
 }
 
 int RemoteConnectionImpl::waitKey(int delayMs) {
@@ -64,15 +76,40 @@ void RemoteConnectionImpl::keyPressedCallback(int key) {
     keyCv.notify_all();
 }
 
-void RemoteConnectionImpl::initWebsocketServer(const std::string& address, uint16_t port) {
-    const auto logHandler = [](foxglove::WebSocketLogLevel, const char* msg) { logger::info(msg); };
+bool RemoteConnectionImpl::initWebsocketServer(const std::string& address, uint16_t port) {
+    const auto logHandler = [](foxglove::WebSocketLogLevel level, const char* msg) {
+        constexpr auto LOGGER_PREFIX = "WebSocketServer";
+        auto msgStr = fmt::format("{}: {}", LOGGER_PREFIX, msg);
+        switch(level) {
+            case foxglove::WebSocketLogLevel::Debug:
+                logger::debug(msgStr);
+                break;
+            case foxglove::WebSocketLogLevel::Info:
+                logger::info(msgStr);
+                break;
+            case foxglove::WebSocketLogLevel::Warn:
+                logger::warn(msgStr);
+                break;
+            case foxglove::WebSocketLogLevel::Error:
+                logger::error(msgStr);
+                break;
+            case foxglove::WebSocketLogLevel::Critical:
+                logger::critical(msgStr);
+                break;
+            default:
+                logger::info(msgStr);
+        }
+    };
     foxglove::ServerOptions serverOptions;
     serverOptions.sendBufferLimitBytes = 100 * 1024 * 1024;  // 100 MB
     serverOptions.capabilities.emplace_back("services");
     serverOptions.supportedEncodings.emplace_back("json");
 
     server = foxglove::ServerFactory::createServer<websocketpp::connection_hdl>("DepthAI RemoteConnection", logHandler, serverOptions);
-
+    if(!server) {
+        logger::error("Failed to create server");
+        return false;
+    }
     foxglove::ServerHandlers<websocketpp::connection_hdl> hdlrs;
     hdlrs.subscribeHandler = [&](foxglove::ChannelId chanId, foxglove::ConnHandle clientHandle) {
         const auto clientStr = server->remoteEndpointString(clientHandle);
@@ -100,8 +137,10 @@ void RemoteConnectionImpl::initWebsocketServer(const std::string& address, uint1
     try {
         server->start(address, port);
         logger::info("Server started at {}:{}", address, port);
+        return true;
     } catch(const std::exception& ex) {
         logger::error("Failed to start server: {}", ex.what());
+        return false;
     }
 }
 
@@ -191,7 +230,7 @@ std::string getMimeType(const std::string& path) {
     return "application/octet-stream";  // Default binary type if no match
 };
 
-void RemoteConnectionImpl::initHttpServer(const std::string& address, uint16_t port) {
+bool RemoteConnectionImpl::initHttpServer(const std::string& address, uint16_t port) {
     auto visualizerFs = Resources::getInstance().getEmbeddedVisualizer();
     httpServer = std::make_unique<httplib::Server>();
     httpServer->Get("/(.*)", [visualizerFs](const httplib::Request& req, httplib::Response& res) {
@@ -209,9 +248,18 @@ void RemoteConnectionImpl::initHttpServer(const std::string& address, uint16_t p
             res.set_content("File not found", "text/plain");
         }
     });
+
+    // Bind the server to the address and port
+    auto success = httpServer->bind_to_port(address, port);
+    if(!success) {
+        logger::error("Failed to bind the http server to port {}", port);
+        return false;
+    }
+
     std::cout << "To connect to the DepthAI visualizer, open http://localhost:" << port << " in your browser" << std::endl;
     std::cout << "In case of a different client, replace 'localhost' with the correct hostname" << std::endl;
-    httpServerThread = std::make_unique<std::thread>([this, address, port]() { httpServer->listen(address, port); });
+    httpServerThread = std::make_unique<std::thread>([this]() { httpServer->listen_after_bind(); });
+    return true;
 }
 
 void RemoteConnectionImpl::exposeTopicGroupsService() {

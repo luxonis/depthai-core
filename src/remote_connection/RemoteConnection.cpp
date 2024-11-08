@@ -4,7 +4,8 @@
 #include "utility/PimplImpl.hpp"
 namespace dai {
 
-RemoteConnection::RemoteConnection(const std::string& address, uint16_t port) : impl(address, port) {}
+RemoteConnection::RemoteConnection(const std::string& address, uint16_t webSocketPort, bool serveFrontend, uint16_t httpPort)
+    : impl(address, webSocketPort, serveFrontend, httpPort) {}
 
 RemoteConnection::~RemoteConnection() = default;
 

@@ -12,7 +12,13 @@ namespace dai {
 class RemoteConnectionImpl;
 class RemoteConnection {
    public:
-    explicit RemoteConnection(const std::string& address = "0.0.0.0", uint16_t port = 8765);
+    static constexpr auto DEFAULT_WEBSOCKET_PORT = 8765;
+    static constexpr auto DEFAULT_HTTP_PORT = 8080;
+    static constexpr auto DEFAULT_ADDRESS = "0.0.0.0";
+    explicit RemoteConnection(const std::string& address = DEFAULT_ADDRESS,
+                              uint16_t webSocketPort = DEFAULT_WEBSOCKET_PORT,
+                              bool serveFrontend = true,
+                              uint16_t httpPort = DEFAULT_HTTP_PORT);
     ~RemoteConnection();
 
     void addTopic(const std::string& topicName, Node::Output& output, const std::string& group = "");

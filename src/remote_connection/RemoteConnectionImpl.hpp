@@ -1,6 +1,13 @@
 #pragma once
 
+#include <httplib.h>
+
 #include <condition_variable>
+#include <depthai/pipeline/Node.hpp>
+#include <depthai/utility/Pimpl.hpp>
+#include <depthai/utility/ProtoSerializable.hpp>
+#include <foxglove/websocket/server_interface.hpp>
+#include <foxglove/websocket/websocket_server.hpp>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -8,20 +15,13 @@
 #include <unordered_map>
 #include <vector>
 
-#include <foxglove/websocket/server_interface.hpp>
-#include <foxglove/websocket/websocket_server.hpp>
-#include <httplib.h>
-
-#include <depthai/pipeline/Node.hpp>
-#include <depthai/utility/ProtoSerializable.hpp>
-#include <depthai/utility/Pimpl.hpp>
 #include "utility/PimplImpl.hpp"
 
 namespace dai {
 
 class RemoteConnectionImpl {
    public:
-    RemoteConnectionImpl(const std::string& address, uint16_t port);
+    RemoteConnectionImpl(const std::string& address, uint16_t webSocketPort, bool serveFrontend, uint16_t httpPort);
     ~RemoteConnectionImpl();
 
     void addTopic(const std::string& topicName, Node::Output& output, const std::string& group);
@@ -30,8 +30,23 @@ class RemoteConnectionImpl {
     int waitKey(int delayMs);
 
    private:
-    void initWebsocketServer(const std::string& address, uint16_t port);
-    void initHttpServer(const std::string& address, uint16_t port);
+     /**
+      * @brief Initialize websocket server
+      * @param address Address to bind to
+      * @param port Port to bind to
+      * @return True if successful, false otherwise
+      *
+     */
+    bool initWebsocketServer(const std::string& address, uint16_t port);
+
+    /**
+     * @brief Initialize HTTP server
+     * @param address Address to bind to
+     * @param port Port to bind to
+     * @return True if successful, false otherwise
+     */
+    bool initHttpServer(const std::string& address, uint16_t port);
+
     void addPublishThread(const std::string& topicName, const std::shared_ptr<MessageQueue>& outputQueue, const std::string& group);
     void exposeTopicGroupsService();
     void exposeKeyPressedService();
