@@ -5,6 +5,7 @@
 #include <google/protobuf/util/time_util.h>
 
 #include <queue>
+
 #include "depthai/schemas/PointCloudData.pb.h"
 
 namespace dai {
@@ -96,10 +97,10 @@ ImgTransformation deserializeImgTransformation(const proto::common::ImgTransform
         distortionCoefficients.push_back(imgTransformation.distortioncoefficients().values(i));
     ImgTransformation transformation;
     transformation = ImgTransformation(imgTransformation.srcwidth(),
-                                             imgTransformation.srcheight(),
-                                             sourceIntrinsicMatrix,
-                                             static_cast<CameraModel>(imgTransformation.distortionmodel()),
-                                             distortionCoefficients);
+                                       imgTransformation.srcheight(),
+                                       sourceIntrinsicMatrix,
+                                       static_cast<CameraModel>(imgTransformation.distortionmodel()),
+                                       distortionCoefficients);
     transformation.addTransformation(transformationMatrix);
     transformation.addCrop(0, 0, imgTransformation.width(), imgTransformation.height());
     return transformation;

@@ -1,6 +1,5 @@
 #include "depthai/utility/RecordReplay.hpp"
 
-#include <google/protobuf/descriptor.pb.h>
 #include <spdlog/spdlog.h>
 
 #include <mcap/types.hpp>
@@ -10,13 +9,18 @@
 #include "Environment.hpp"
 #include "RecordReplayImpl.hpp"
 #include "build/version.hpp"
-#include "depthai/schemas/ImgFrame.pb.h"
 #include "utility/Compression.hpp"
 #include "utility/Platform.hpp"
+#ifdef DEPTHAI_ENABLE_PROTOBUF
+    #include <google/protobuf/descriptor.pb.h>
+
+    #include "depthai/schemas/ImgFrame.pb.h"
+#endif
 
 namespace dai {
 namespace utility {
 
+#ifdef DEPTHAI_ENABLE_PROTOBUF
 // Recursively adds all `fd` dependencies to `fd_set`.
 void fdSetInternal(google::protobuf::FileDescriptorSet& fd_set, std::unordered_set<std::string>& files, const google::protobuf::FileDescriptor* fd) {
     for(int i = 0; i < fd->dependency_count(); ++i) {
@@ -42,6 +46,7 @@ mcap::Schema createSchema(const google::protobuf::Descriptor* d) {
     mcap::Schema schema(d->full_name(), "protobuf", fdSet(d));
     return schema;
 }
+#endif
 
 void ByteRecorder::setWriter(const std::string& filePath, RecordConfig::CompressionLevel compressionLevel) {
     auto options = mcap::McapWriterOptions("protobuf");
@@ -125,6 +130,7 @@ void BytePlayer::close() {
 }
 
 std::optional<std::tuple<uint32_t, uint32_t>> BytePlayer::getVideoSize(const std::string& filePath) {
+#ifdef DEPTHAI_ENABLE_PROTOBUF
     if(filePath.empty()) {
         throw std::runtime_error("File path is empty in BytePlayer::getVideoSize");
     }
@@ -151,6 +157,9 @@ std::optional<std::tuple<uint32_t, uint32_t>> BytePlayer::getVideoSize(const std
         return std::make_tuple(adatatype.fb().width(), adatatype.fb().height());
     }
     return std::nullopt;
+#else
+    throw std::runtime_error("BytePlayer::getVideoSize requires protobuf support");
+#endif
 }
 
 bool checkRecordConfig(std::string& recordPath, RecordConfig& config) {

@@ -406,7 +406,6 @@ set(TARGET_CORE_SOURCES
     src/utility/LogCollection.cpp
     src/utility/MemoryWrappers.cpp
     src/utility/Serialization.cpp
-    src/utility/ProtoSerialize.cpp
     src/xlink/XLinkConnection.cpp
     src/xlink/XLinkStream.cpp
     src/openvino/OpenVINO.cpp
@@ -424,6 +423,12 @@ if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
     list(APPEND TARGET_CORE_SOURCES
         src/remote_connection/RemoteConnection.cpp
         src/remote_connection/RemoteConnectionImpl.cpp
+    )
+endif()
+
+if(DEPTHAI_ENABLE_PROTOBUF)
+    list(APPEND TARGET_CORE_SOURCES
+        src/utility/ProtoSerialize.cpp
     )
 endif()
 

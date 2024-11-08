@@ -1,7 +1,6 @@
 #include <stdexcept>
 
 #include "depthai/pipeline/datatype/DatatypeEnum.hpp"
-#include "depthai/schemas/PointCloudData.pb.h"
 #include "depthai/pipeline/datatype/EncodedFrame.hpp"
 #include "depthai/pipeline/datatype/PointCloudData.hpp"
 #define _USE_MATH_DEFINES
@@ -22,6 +21,7 @@
     #include "depthai/schemas/EncodedFrame.pb.h"
     #include "depthai/schemas/IMUData.pb.h"
     #include "depthai/schemas/ImgFrame.pb.h"
+    #include "depthai/schemas/PointCloudData.pb.h"
     #include "utility/ProtoSerialize.hpp"
 #endif
 

@@ -2,7 +2,6 @@
 #include "depthai/pipeline/datatype/ImgAnnotations.hpp"
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF
-    #include "depthai/schemas/ImageAnnotations.pb.h"
     #include "utility/ProtoSerializable.hpp"
     #include "utility/ProtoSerialize.hpp"
 #endif
