@@ -1,7 +1,15 @@
 #!/usr/bin/env python3
 
 import depthai as dai
+from argparse import ArgumentParser
 
+parser = ArgumentParser()
+parser.add_argument("--webSocketPort", type=int, default=8765)
+parser.add_argument("--httpPort", type=int, default=8080)
+
+args = parser.parse_args()
+
+remoteConnector = dai.RemoteConnection(webSocketPort=args.webSocketPort, httpPort=args.httpPort)
 ENCODER_PROFILE = dai.VideoEncoderProperties.Profile.MJPEG
 class ImgAnnotationsGenerator(dai.node.ThreadedHostNode):
     def __init__(self):
@@ -46,8 +54,6 @@ class ImgAnnotationsGenerator(dai.node.ThreadedHostNode):
             imgAnnt.annotations.append(annotation)
             self.output.send(imgAnnt)
 
-
-remoteConnector = dai.RemoteConnection()
 # Create pipeline
 with dai.Pipeline() as pipeline:
     cameraNode = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
