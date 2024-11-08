@@ -1,10 +1,11 @@
 
 #include "depthai/pipeline/datatype/ImgAnnotations.hpp"
 
-#include "../../utility/ProtoSerialize.hpp"
+#include "utility/ProtoSerializable.hpp"
+
 #ifdef DEPTHAI_ENABLE_PROTOBUF
+    #include "../../utility/ProtoSerialize.hpp"
     #include "depthai/schemas/ImageAnnotations.pb.h"
-    #include "utility/ProtoSerializable.hpp"
 #endif
 
 namespace dai {

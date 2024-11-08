@@ -47,6 +47,6 @@ void RemoteConnectionBindings::bind(pybind11::module& m, void* pCallstack) {
         }
     };
      py::class_<RemoteConnectionPlaceholder>(m, "RemoteConnection")
-          .def(py::init<const std::string&, uint16_t>(), py::arg("address") = "", py::arg("port") = 0, py::arg("serveFrontend") = true, py::arg("httpPort") = 0);
+          .def(py::init<const std::string&, uint16_t, bool, uint16_t>(), py::arg("address") = "", py::arg("port") = 0, py::arg("serveFrontend") = true, py::arg("httpPort") = 0);
 #endif
 }
