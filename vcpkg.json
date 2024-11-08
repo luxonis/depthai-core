@@ -21,7 +21,11 @@
 		"libnop",
 		"neargye-semver",
 		"pybind11",
-		"catch2"
+		"catch2",
+  {
+    "name": "opencv4",
+    "default-features": false
+  }
 	],
 	"features": {
 		"rtabmap": {
