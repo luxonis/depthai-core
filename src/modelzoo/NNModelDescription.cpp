@@ -60,7 +60,7 @@ NNModelDescription NNModelDescription::fromYamlFile(const std::string& yamlPath)
     auto yamlNode = utility::loadYaml(yamlPath);
 
     // Load REQUIRED parameters - throws if key not found
-    auto model = utility::yamlGet<std::string>(yamlNode, "model_slug");
+    auto model = utility::yamlGet<std::string>(yamlNode, "model");
 
     // Load OPTIONAL parameters - use default value if key not found
     auto platform = utility::yamlGet<std::string>(yamlNode, "platform", "");
@@ -76,7 +76,7 @@ void NNModelDescription::saveToYamlFile(const std::string& yamlPath) const {
     YAML::Node yamlNode;
 
     // Write REQUIRED parameters
-    yamlNode["model_slug"] = model;
+    yamlNode["model"] = model;
 
     // Write OPTIONAL parameters
     if(!platform.empty()) yamlNode["platform"] = platform;
