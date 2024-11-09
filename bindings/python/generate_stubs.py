@@ -29,7 +29,18 @@ try:
         print(f'Could not import depthai: {ex}')
 
     print(f'PYTHONPATH set to {env["PYTHONPATH"]}')
-    subprocess.check_call(['stubgen', '-p', MODULE_NAME, '-o', f'{DIRECTORY}'], cwd=DIRECTORY, env=env)
+    # Check if stubgen has the `--include-docstrings` flag
+    includeDocstrings = False
+    output = subprocess.check_output(['stubgen', '--help'], env=env)
+    if b'--include-docstrings' in output:
+        includeDocstrings = True
+        print("Will include docstrings in stubs")
+    else:
+        print("Will not include docstrings in stubs")
+    parameters = ['stubgen', '-p', MODULE_NAME, '-o', f'{DIRECTORY}']
+    if includeDocstrings:
+        parameters.insert(1, '--include-docstrings')
+    subprocess.check_call(parameters, cwd=DIRECTORY, env=env)
 
     # Add py.typed
     open(f'{DIRECTORY}/depthai/py.typed', 'a').close()
