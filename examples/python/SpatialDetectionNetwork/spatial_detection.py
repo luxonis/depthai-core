@@ -7,7 +7,7 @@ import depthai as dai
 import numpy as np
 import time
 
-modelDescription = dai.NNModelDescription(modelSlug="yolov6-nano")
+modelDescription = dai.NNModelDescription("yolov6-nano")
 FPS = 30
 
 class SpatialVisualizer(dai.node.HostNode):
