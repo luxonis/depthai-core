@@ -70,7 +70,11 @@ try:
         final_lines = []
         for line in final_stubs.split('\n'):
             if 'def create(self, arg0: object, *args, **kwargs) -> Node:' in line:
-                final_lines.append('    def create(self, arg0: Type[T], *args, **kwargs) -> T: ...')
+                if includeDocstrings:
+                    ending = 'T:'
+                else:
+                    ending = 'T: ...'
+                final_lines.append(f"    def create(self, arg0: Type[T], *args, **kwargs) -> {ending}")
                 continue
             final_lines.append(line)
 
