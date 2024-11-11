@@ -848,9 +848,7 @@ std::tuple<std::array<std::array<float, 3>, 3>, std::array<std::array<float, 2>,
 #endif
                            }
                        },
-                       [&](Affine o) {
-                           mat = {{{o.matrix[0], o.matrix[1], 0}, {o.matrix[2], o.matrix[3], 0}, {0, 0, 1}}};
-                       },
+                       [&](Affine o) { mat = {{{o.matrix[0], o.matrix[1], 0}, {o.matrix[2], o.matrix[3], 0}, {0, 0, 1}}}; },
                        [&](Perspective o) {
                            mat = {{{o.matrix[0], o.matrix[1], o.matrix[2]}, {o.matrix[3], o.matrix[4], o.matrix[5]}, {o.matrix[6], o.matrix[7], o.matrix[8]}}};
                        },
@@ -885,13 +883,10 @@ std::tuple<std::array<std::array<float, 3>, 3>, std::array<std::array<float, 2>,
                                                  matvecmul(transformInv, imageCorners[3])});
                        }},
             op.op);
-        /*printf("Mat: %f %f %f %f %f %f %f %f %f\n", mat[0][0], mat[0][1], mat[0][2], mat[1][0], mat[1][1], mat[1][2], mat[2][0], mat[2][1], mat[2][2]);*/
         imageCorners = getOuterRotatedRect(
             {matvecmul(mat, imageCorners[0]), matvecmul(mat, imageCorners[1]), matvecmul(mat, imageCorners[2]), matvecmul(mat, imageCorners[3])});
         transform = matmul(mat, transform);
     }
-    /*printf("Transform: %f %f %f %f %f %f %f %f %f\n", transform[0][0], transform[0][1], transform[0][2], transform[1][0], transform[1][1], transform[1][2],
-     * transform[2][0], transform[2][1], transform[2][2]);*/
     return {transform, imageCorners, srcCorners};
 }
 
@@ -913,12 +908,16 @@ dai::impl::getFullTransform(dai::ImageManipOpsBase& base,
 
     {
         auto [minx, maxx, miny, maxy] = getOuterRect(std::vector(imageCorners.begin(), imageCorners.end()));
+        float rminx = (minx - floorf(minx)) >= 0.8f ? ceilf(minx) : floorf(minx);
+        float rmaxx = (maxx - floorf(maxx)) >= 0.8f ? ceilf(maxx) : floorf(maxx);
+        float rminy = (miny - floorf(miny)) >= 0.8f ? ceilf(miny) : floorf(miny);
+        float rmaxy = (maxy - floorf(maxy)) >= 0.8f ? ceilf(maxy) : floorf(maxy);
         if(!base.center) {
-            if(base.outputWidth == 0) base.outputWidth = maxx;
-            if(base.outputHeight == 0) base.outputHeight = maxy;
+            if(base.outputWidth == 0) base.outputWidth = rmaxx;
+            if(base.outputHeight == 0) base.outputHeight = rmaxy;
         } else {
-            if(base.outputWidth == 0) base.outputWidth = maxx - minx;
-            if(base.outputHeight == 0) base.outputHeight = maxy - miny;
+            if(base.outputWidth == 0) base.outputWidth = rmaxx - rminx;
+            if(base.outputHeight == 0) base.outputHeight = rmaxy - rminy;
         }
     }
 
