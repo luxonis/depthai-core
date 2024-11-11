@@ -100,6 +100,7 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack){
         .def_readwrite("center", &RotatedRect::center)
         .def_readwrite("size", &RotatedRect::size)
         .def_readwrite("angle", &RotatedRect::angle)
+        .def("isNormalized", &RotatedRect::isNormalized, DOC(dai, RotatedRect, isNormalized))
         .def("normalize", &RotatedRect::normalize, py::arg("width"), py::arg("height"), DOC(dai, RotatedRect, normalize))
         .def("denormalize", &RotatedRect::denormalize, py::arg("width"), py::arg("height"), DOC(dai, RotatedRect, denormalize))
         .def("getPoints", &RotatedRect::getPoints, DOC(dai, RotatedRect, getPoints))
@@ -109,8 +110,11 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack){
     rect
         .def(py::init<>())
         .def(py::init<float, float, float, float>())
+        .def(py::init<float, float, float, float, bool>())
         .def(py::init<Point2f, Point2f>())
+        .def(py::init<Point2f, Point2f, bool>())
         .def(py::init<Point2f, Size2f>())
+        .def(py::init<Point2f, Size2f, bool>())
 
         .def("topLeft", &Rect::topLeft, DOC(dai, Rect, topLeft))
         .def("bottomRight", &Rect::bottomRight, DOC(dai, Rect, bottomRight))
@@ -152,6 +156,7 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack){
         .def(py::init<float, float>())
         .def_readwrite("x", &Point2f::x)
         .def_readwrite("y", &Point2f::y)
+        .def("isNormalized", &Point2f::isNormalized)
         ;
 
     point3f
@@ -191,6 +196,7 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack){
         .def(py::init<float, float>())
         .def_readwrite("width", &Size2f::width)
         .def_readwrite("height", &Size2f::height)
+        .def("isNormalized", &Size2f::isNormalized)
         ;
 
     // CameraBoardSocket enum bindings

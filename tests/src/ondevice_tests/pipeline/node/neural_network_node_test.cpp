@@ -61,7 +61,7 @@ TEST_CASE("Multi-Input NeuralNetwork API") {
     } else {
         FAIL("Unknown platform");
     }
-    auto description = dai::NNModelDescription{"simple-concatenate-model", platformStr};
+    auto description = dai::NNModelDescription{"DepthaiTestModels/simple-concatenate-model", platformStr};
     auto nn = p.create<dai::node::NeuralNetwork>();
     nn->setModelPath(dai::getModelFromZoo(description));
 

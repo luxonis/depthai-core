@@ -32,7 +32,7 @@ daiLenaImage = dai.ImgFrame()
 daiLenaImage.setCvFrame(lenaImage, daiType)
 
 with dai.Pipeline(device) as pipeline:
-    model = dai.NNModelDescription("simple-concatenate-model")
+    model = dai.NNModelDescription("DepthaiTestModels/simple-concatenate-model")
     model.platform = platform.name
 
     nnArchive = dai.NNArchive(dai.getModelFromZoo(model, apiKey=API_KEY))

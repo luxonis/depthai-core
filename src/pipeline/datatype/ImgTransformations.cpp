@@ -198,10 +198,10 @@ std::array<std::array<float, 3>, 3> ImgTransformation::getSourceIntrinsicMatrixI
     return sourceIntrinsicMatrixInv;
 }
 std::array<std::array<float, 3>, 3> ImgTransformation::getIntrinsicMatrix() const {
-    return matmul(sourceIntrinsicMatrix, transformationMatrix);
+    return matmul(transformationMatrix, sourceIntrinsicMatrix);
 }
 std::array<std::array<float, 3>, 3> ImgTransformation::getIntrinsicMatrixInv() const {
-    return matmul(transformationMatrixInv, sourceIntrinsicMatrixInv);
+    return matmul(sourceIntrinsicMatrixInv, transformationMatrixInv);
 }
 float ImgTransformation::getDFov(bool source) const {
     float fovWidth = source ? srcWidth : width;
@@ -394,15 +394,29 @@ dai::Point2f ImgTransformation::remapPointFrom(const ImgTransformation& from, da
     return transformed;
 }
 dai::RotatedRect ImgTransformation::remapRectTo(const ImgTransformation& to, dai::RotatedRect rect) const {
+    bool normalized = rect.isNormalized();
+    if(normalized) {
+        rect = rect.denormalize(width, height);
+    }
     auto sourceRectFrom = invTransformRect(rect);
     auto sourceRectTo = interSourceFrameTransform(sourceRectFrom, *this, to);
     auto transformed = to.transformRect(sourceRectTo);
+    if(normalized) {
+        transformed = transformed.normalize(to.width, to.height);
+    }
     return transformed;
 }
 dai::RotatedRect ImgTransformation::remapRectFrom(const ImgTransformation& from, dai::RotatedRect rect) const {
+    bool normalized = rect.isNormalized();
+    if(normalized) {
+        rect = rect.denormalize(from.width, from.height);
+    }
     auto sourceRectFrom = from.invTransformRect(rect);
     auto sourceRectTo = interSourceFrameTransform(sourceRectFrom, from, *this);
     auto transformed = transformRect(sourceRectTo);
+    if(normalized) {
+        transformed = transformed.normalize(width, height);
+    }
     return transformed;
 }
 
