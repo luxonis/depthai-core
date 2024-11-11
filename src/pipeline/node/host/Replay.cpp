@@ -31,7 +31,7 @@ namespace node {
 #ifdef DEPTHAI_ENABLE_PROTOBUF
 // Video Message
 inline std::shared_ptr<Buffer> getVideoMessage(const proto::img_frame::ImgFrame& metadata, ImgFrame::Type outFrameType, std::vector<uint8_t>& frame) {
-    std::shared_ptr<ImgFrame> imgFrame;
+    auto imgFrame = std::make_shared<ImgFrame>();
     utility::setProtoMessage(*imgFrame, &metadata, true);
 
     assert(frame.size() == imgFrame->getWidth() * imgFrame->getHeight() * 3);
@@ -318,7 +318,7 @@ void ReplayMetadataOnly::run() {
         }
         auto msg = getProtoMessage(bytePlayer, datatype);
         if(msg != nullptr) {
-            metadata = std::dynamic_pointer_cast<proto::imu_data::IMUData>(msg);
+            metadata = msg;
         } else if(!first) {
             // End of file
             if(loop) {
