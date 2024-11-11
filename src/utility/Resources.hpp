@@ -13,7 +13,21 @@
 #include <depthai/openvino/OpenVINO.hpp>
 #include <depthai/utility/Path.hpp>
 
+#include "archive.h"
+
 namespace dai {
+
+class TarGzAccessor {
+public:
+    // Constructor takes a tar.gz file in memory (std::vector<std::uint8_t>)
+    TarGzAccessor(const std::vector<std::uint8_t>& tarGzFile);
+
+    // Function to get file data by path
+    std::optional<std::vector<std::uint8_t>> getFile(const std::string& path) const;
+
+private:
+    std::map<std::string, std::vector<std::uint8_t>> resourceMap;  // Path to file data
+};
 
 class Resources {
     // private constructor
@@ -44,6 +58,7 @@ public:
     std::vector<std::uint8_t> getBootloaderFirmware(DeviceBootloader::Type type = DeviceBootloader::Type::USB) const;
     std::vector<std::uint8_t> getDeviceRVC3Fwp() const;
     std::vector<std::uint8_t> getDeviceRVC4Fwp() const;
+    TarGzAccessor getEmbeddedVisualizer() const;
 
 };
 

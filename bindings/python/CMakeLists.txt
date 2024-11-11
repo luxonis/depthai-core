@@ -143,6 +143,8 @@ set(SOURCE_LIST
     src/pipeline/datatype/PointCloudDataBindings.cpp
     src/pipeline/datatype/TransformDataBindings.cpp
     src/pipeline/datatype/ImageAlignConfigBindings.cpp
+    src/pipeline/datatype/ImgAnnotationsBindings.cpp
+    src/remote_connection/RemoteConnectionBindings.cpp
 
     src/capabilities/CapabilityBindings.cpp
     src/capabilities/CapabilityRangeBindings.cpp
@@ -302,6 +304,10 @@ target_link_libraries(${TARGET_NAME}
 # Add embedded module option, otherwise link to pybind11 as usual
 if(DEPTHAI_PYTHON_EMBEDDED_MODULE)
     target_compile_definitions(${TARGET_NAME} PRIVATE DEPTHAI_PYTHON_EMBEDDED_MODULE)
+endif()
+
+if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
+    target_compile_definitions(${TARGET_NAME} PRIVATE DEPTHAI_ENABLE_REMOTE_CONNECTION)
 endif()
 
 # Find Git

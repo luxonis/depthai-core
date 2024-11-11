@@ -15,6 +15,7 @@
 #include "depthai/common/FrameEvent.hpp"
 #include "depthai/common/ImgTransformations.hpp"
 #include "depthai/common/Rect.hpp"
+#include "depthai/utility/ProtoSerializable.hpp"
 
 // optional
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
@@ -27,7 +28,7 @@ namespace dai {
 /**
  * ImgFrame message. Carries image data and metadata.
  */
-class ImgFrame : public Buffer {
+class ImgFrame : public Buffer, public ProtoSerializable {
    public:
     using Buffer::getTimestamp;
     using Buffer::getTimestampDevice;
@@ -82,6 +83,22 @@ class ImgFrame : public Buffer {
         metadata = utility::serialize(*this);
         datatype = DatatypeEnum::ImgFrame;
     };
+
+#ifdef DEPTHAI_ENABLE_PROTOBUF
+    /**
+     * Serialize message to proto buffer
+     *
+     * @returns serialized message
+     */
+    std::vector<std::uint8_t> serializeProto() const override;
+
+    /**
+     * Serialize schema to proto buffer
+     *
+     * @returns serialized schema
+     */
+    ProtoSerializable::SchemaPair serializeSchema() const override;
+#endif
 
     // getters
     /**

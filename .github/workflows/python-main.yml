@@ -262,10 +262,11 @@ jobs:
         os: [macos-13, macos-14] # macos-13 is x64, macos-14 is arm64
       fail-fast: false
     runs-on: ${{ matrix.os }}
-    env:
-      DEPTHAI_BUILD_BASALT: ON
-      DEPTHAI_BUILD_PCL: ON
-      DEPTHAI_BUILD_RTABMAP: ON
+    # env:
+      # TODO(Morato) - re-enable basalt, pcl, rtabmap after everything is ported  
+      # DEPTHAI_BUILD_BASALT: ON
+      # DEPTHAI_BUILD_PCL: ON
+      # DEPTHAI_BUILD_RTABMAP: ON
     steps:
       - name: Cache .hunter folder
         uses: actions/cache@v3
@@ -410,7 +411,7 @@ jobs:
         with:
           submodules: 'recursive'
       - name: Installing libusb1-devel dependency
-        run: yum install -y --disableplugin=fastestmirror libusb1-devel perl-core
+        run: yum install -y --disableplugin=fastestmirror libusb1-devel perl-core curl zip unzip tar ninja-build
       - name: Installing cmake dependency
         run: |
           cd bindings/python
@@ -477,6 +478,8 @@ jobs:
       # workaround required for cache@v3, https://github.com/actions/cache/issues/1428
       # to be removed when upgrading the manylinux image
       ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
+      DEPTHAI_VCPKG_CFLAGS: "-std=c99" # Needed so vpckg can bootstrap itself with the old GCC on the manylinux image
+      VCPKG_FORCE_SYSTEM_BINARIES: "1" # Needed so vpckg can bootstrap itself
       DEPTHAI_BUILD_BASALT: ON
       DEPTHAI_BUILD_PCL: ON
       DEPTHAI_BUILD_RTABMAP: ON
@@ -485,7 +488,7 @@ jobs:
         with:
           submodules: 'recursive'
       - name: Installing libusb1-devel dependency
-        run: yum install -y --disableplugin=fastestmirror libusb1-devel perl-core
+        run: yum install -y --disableplugin=fastestmirror libusb1-devel perl-core curl zip unzip tar ninja-build
       - name: Installing cmake dependency
         run: |
           cd bindings/python

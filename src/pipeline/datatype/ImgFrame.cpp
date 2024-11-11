@@ -4,7 +4,10 @@
 #include "depthai/common/ImgTransformations.hpp"
 #include "depthai/common/RotatedRect.hpp"
 #include "depthai/utility/SharedMemory.hpp"
-
+#ifdef DEPTHAI_ENABLE_PROTOBUF
+    #include "../../utility/ProtoSerialize.hpp"
+    #include "depthai/schemas/ImgFrame.pb.h"
+#endif
 namespace dai {
 
 ImgFrame::ImgFrame() {
@@ -289,4 +292,63 @@ Rect ImgFrame::remapRectBetweenFrames(const Rect& originRect, const ImgFrame& or
     return returnRect;
 }
 
+#ifdef DEPTHAI_ENABLE_PROTOBUF
+std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgFrame* frame) {
+    // create and populate ImgFrame protobuf message
+    auto imgFrame = std::make_unique<proto::img_frame::ImgFrame>();
+    proto::common::Timestamp* ts = imgFrame->mutable_ts();
+    ts->set_sec(frame->ts.sec);
+    ts->set_nsec(frame->ts.nsec);
+    proto::common::Timestamp* tsDevice = imgFrame->mutable_tsdevice();
+    tsDevice->set_sec(frame->tsDevice.sec);
+    tsDevice->set_nsec(frame->tsDevice.nsec);
+
+    imgFrame->set_sequencenum(frame->sequenceNum);
+
+    proto::img_frame::Specs* fb = imgFrame->mutable_fb();
+    fb->set_type(static_cast<proto::img_frame::Type>(frame->fb.type));
+    fb->set_width(frame->fb.width);
+    fb->set_height(frame->fb.height);
+    fb->set_stride(frame->fb.stride);
+    fb->set_bytespp(frame->fb.bytesPP);
+    fb->set_p1offset(frame->fb.p1Offset);
+    fb->set_p2offset(frame->fb.p2Offset);
+    fb->set_p3offset(frame->fb.p3Offset);
+
+    proto::img_frame::Specs* sourceFb = imgFrame->mutable_sourcefb();
+    sourceFb->set_type(static_cast<proto::img_frame::Type>(frame->sourceFb.type));
+    sourceFb->set_width(frame->sourceFb.width);
+    sourceFb->set_height(frame->sourceFb.height);
+    sourceFb->set_stride(frame->sourceFb.stride);
+    sourceFb->set_bytespp(frame->sourceFb.bytesPP);
+    sourceFb->set_p1offset(frame->sourceFb.p1Offset);
+    sourceFb->set_p2offset(frame->sourceFb.p2Offset);
+    sourceFb->set_p3offset(frame->sourceFb.p3Offset);
+
+    proto::common::CameraSettings* cam = imgFrame->mutable_cam();
+    cam->set_exposuretimeus(frame->cam.exposureTimeUs);
+    cam->set_sensitivityiso(frame->cam.sensitivityIso);
+    cam->set_lensposition(frame->cam.lensPosition);
+    cam->set_wbcolortemp(frame->cam.wbColorTemp);
+    cam->set_lenspositionraw(frame->cam.lensPositionRaw);
+
+    imgFrame->set_instancenum(frame->instanceNum);
+
+    imgFrame->set_category(frame->category);
+
+    proto::common::ImgTransformation* imgTransformation = imgFrame->mutable_transformation();
+    utility::serializeImgTransformation(imgTransformation, frame->transformation);
+
+    imgFrame->set_data(frame->data->getData().data(), frame->data->getData().size());
+    return imgFrame;
+}
+
+ProtoSerializable::SchemaPair ImgFrame::serializeSchema() const {
+    return utility::serializeSchema(getProtoMessage(this));
+}
+
+std::vector<std::uint8_t> ImgFrame::serializeProto() const {
+    return utility::serializeProto(getProtoMessage(this));
+}
+#endif
 }  // namespace dai

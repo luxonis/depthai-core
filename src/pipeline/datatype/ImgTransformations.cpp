@@ -201,7 +201,7 @@ std::array<std::array<float, 3>, 3> ImgTransformation::getIntrinsicMatrix() cons
     return matmul(transformationMatrix, sourceIntrinsicMatrix);
 }
 std::array<std::array<float, 3>, 3> ImgTransformation::getIntrinsicMatrixInv() const {
-    return matmul(transformationMatrixInv, sourceIntrinsicMatrixInv);
+    return matmul(sourceIntrinsicMatrixInv, transformationMatrixInv);
 }
 float ImgTransformation::getDFov(bool source) const {
     float fovWidth = source ? srcWidth : width;
@@ -256,6 +256,12 @@ float ImgTransformation::getVFov(bool source) const {
 
     // Convert radians to degrees
     return verticalFoV * 180.0f / (float)M_PI;
+}
+CameraModel ImgTransformation::getDistortionModel() const {
+    return distortionModel;
+}
+std::vector<float> ImgTransformation::getDistortionCoefficients() const {
+    return distortionCoefficients;
 }
 std::vector<dai::RotatedRect> ImgTransformation::getSrcCrops() const {
     return srcCrops;
@@ -388,15 +394,29 @@ dai::Point2f ImgTransformation::remapPointFrom(const ImgTransformation& from, da
     return transformed;
 }
 dai::RotatedRect ImgTransformation::remapRectTo(const ImgTransformation& to, dai::RotatedRect rect) const {
+    bool normalized = rect.isNormalized();
+    if(normalized) {
+        rect = rect.denormalize(width, height);
+    }
     auto sourceRectFrom = invTransformRect(rect);
     auto sourceRectTo = interSourceFrameTransform(sourceRectFrom, *this, to);
     auto transformed = to.transformRect(sourceRectTo);
+    if(normalized) {
+        transformed = transformed.normalize(to.width, to.height);
+    }
     return transformed;
 }
 dai::RotatedRect ImgTransformation::remapRectFrom(const ImgTransformation& from, dai::RotatedRect rect) const {
+    bool normalized = rect.isNormalized();
+    if(normalized) {
+        rect = rect.denormalize(from.width, from.height);
+    }
     auto sourceRectFrom = from.invTransformRect(rect);
     auto sourceRectTo = interSourceFrameTransform(sourceRectFrom, from, *this);
     auto transformed = transformRect(sourceRectTo);
+    if(normalized) {
+        transformed = transformed.normalize(width, height);
+    }
     return transformed;
 }
 
