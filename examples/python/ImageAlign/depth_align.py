@@ -46,7 +46,7 @@ stereo.setDepthAlign(dai.CameraBoardSocket.LEFT)
 
 stereo.setExtendedDisparity(True)
 
-sync.setSyncThreshold(timedelta(seconds=FPS/2))
+sync.setSyncThreshold(timedelta(seconds=1/(2*FPS)))
 
 rgbOut = camRgb.requestOutput(size = (1280, 960))
 leftOut = left.requestOutput(size = (640, 400), fps = FPS)
