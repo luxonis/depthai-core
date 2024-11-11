@@ -39,10 +39,6 @@ else()
     set(DEPTHAI_DEFAULT_CURL_SUPPORT ON)
 endif()
 
-option(DEPTHAI_ENABLE_CURL "Enable CURL support" ${DEPTHAI_DEFAULT_CURL_SUPPORT})
-if(DEPTHAI_ENABLE_CURL)
-	list(APPEND VCPKG_MANIFEST_FEATURES "curl")
-endif()
 # Early options
 option(DEPTHAI_ENABLE_LIBUSB "Enable usage of libusb and interaction with USB devices" ON)
 if(DEPTHAI_ENABLE_LIBUSB)
@@ -741,7 +737,7 @@ target_link_libraries(${TARGET_CORE_NAME}
         nlohmann_json::nlohmann_json
         libnop
         spdlog::spdlog
-        yaml-cpp
+        yaml-cpp::yaml-cpp
     INTERFACE
         XLinkPublic
     PRIVATE
