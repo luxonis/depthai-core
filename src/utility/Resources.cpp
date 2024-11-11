@@ -81,6 +81,7 @@ std::optional<std::vector<std::uint8_t>> TarGzAccessor::getFile(const std::strin
 }
 
 TarGzAccessor Resources::getEmbeddedVisualizer() const {
+#ifdef DEPTHAI_EMBED_FRONTEND
     // Load visualizer tar.gz archive from memory
     auto fs = cmrc::depthai::get_filesystem();
     constexpr static auto FILE_NAME = "depthai-visualizer-" DEPTHAI_VISUALIZER_VERSION ".tar.gz";
@@ -92,6 +93,9 @@ TarGzAccessor Resources::getEmbeddedVisualizer() const {
 
     // Create and return TarGzAccessor
     return TarGzAccessor(visualizerTarGzData);
+#else
+    throw std::runtime_error("Visualizer not embedded in resources");
+#endif
 }
 
 static std::vector<std::uint8_t> createPrebootHeader(const std::vector<uint8_t>& payload, uint32_t magic1, uint32_t magic2);

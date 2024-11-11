@@ -446,7 +446,7 @@ class NNData : public Buffer {
         info.order = order;
         for(uint32_t i = 0; i < tensor.dimension(); i++) {
             info.dims.push_back(tensor.shape()[i]);
-            info.strides.push_back(tensor.strides()[i] * sizeof(uint16_t));
+            info.strides.push_back(tensor.strides()[i] * info.getDataTypeSize());
         }
 
         // Validate storage order - past this point, the tensor shape and storage order should be correct

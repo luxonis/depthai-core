@@ -113,6 +113,44 @@ struct ImgTransformation {
      * @return Inverse intrinsic matrix
      */
     std::array<std::array<float, 3>, 3> getSourceIntrinsicMatrixInv() const;
+    /**
+     * Retrieve the distortion model of the source sensor
+     * @return Distortion model
+     */
+    CameraModel getDistortionModel() const;
+    /**
+     * Retrieve the distortion coefficients of the source sensor
+     * @return vector of distortion coefficients
+     */
+    std::vector<float> getDistortionCoefficients() const;
+    /**
+     * Retrieve the total intrinsic matrix calculated from intrinsic * transform.
+     * @return total intrinsic matrix
+     */
+    std::array<std::array<float, 3>, 3> getIntrinsicMatrix() const;
+    /**
+     * Retrieve the inverse of the total intrinsic matrix calculated from intrinsic * transform.
+     * @return inverse total intrinsic matrix
+     */
+    std::array<std::array<float, 3>, 3> getIntrinsicMatrixInv() const;
+    /**
+     * Retrieve the diagonal field of view of the image.
+     * @param source If true, the source field of view will be returned. Otherwise, the current field of view will be returned.
+     * @return Diagonal field of view in degrees
+     */
+    float getDFov(bool source = false) const;
+    /**
+     * Retrieve the horizontal field of view of the image.
+     * @param source If true, the source field of view will be returned. Otherwise, the current field of view will be returned.
+     * @return Horizontal field of view in degrees
+     */
+    float getHFov(bool source = false) const;
+    /**
+     * Retrieve the vertical field of view of the image.
+     * @param source If true, the source field of view will be returned. Otherwise, the current field of view will be returned.
+     * @return Vertical field of view in degrees
+     */
+    float getVFov(bool source = false) const;
     std::vector<dai::RotatedRect> getSrcCrops() const;
 
     /**

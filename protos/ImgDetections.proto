@@ -8,6 +8,7 @@ message ImgDetections {
     common.Timestamp ts = 2;
     common.Timestamp tsDevice = 3;
     repeated ImgDetection detections = 4;
+    common.ImgTransformation transformation = 5;
 }
 
 

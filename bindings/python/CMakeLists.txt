@@ -48,12 +48,6 @@ option(DEPTHAI_PYTHON_EMBEDDED_MODULE "Create an embeddable module" OFF)
 if(MINGW)
     set(PYBIND11_LTO_CXX_FLAGS "" CACHE STRING "" FORCE)
 endif()
-
-## WARNING!! This is just a temporary fix for Windows. TODO (lnotspotl): Remove this completely
-if(WIN32) 
-    set(pybind11_DIR "$ENV{pybind11_ROOT}/share/cmake/pybind11")
-endif()
-
 find_package(pybind11 CONFIG REQUIRED)
 
 # Print out the pybind11 version that was found
@@ -148,7 +142,8 @@ set(SOURCE_LIST
     src/pipeline/datatype/PointCloudDataBindings.cpp
     src/pipeline/datatype/TransformDataBindings.cpp
     src/pipeline/datatype/ImageAlignConfigBindings.cpp
-    src/pipeline/datatype/ImageAnnotationsBindings.cpp
+    src/pipeline/datatype/ImgAnnotationsBindings.cpp
+    src/remote_connection/RemoteConnectionBindings.cpp
 
     src/capabilities/CapabilityBindings.cpp
     src/capabilities/CapabilityRangeBindings.cpp
@@ -156,8 +151,6 @@ set(SOURCE_LIST
 
     src/modelzoo/NNModelDescriptionBindings.cpp
     src/modelzoo/ZooBindings.cpp
-
-    src/remote_connection/RemoteConnectionBindings.cpp
 )
 if(DEPTHAI_MERGED_TARGET)
     list(APPEND SOURCE_LIST
@@ -310,6 +303,10 @@ target_link_libraries(${TARGET_NAME}
 # Add embedded module option, otherwise link to pybind11 as usual
 if(DEPTHAI_PYTHON_EMBEDDED_MODULE)
     target_compile_definitions(${TARGET_NAME} PRIVATE DEPTHAI_PYTHON_EMBEDDED_MODULE)
+endif()
+
+if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
+    target_compile_definitions(${TARGET_NAME} PRIVATE DEPTHAI_ENABLE_REMOTE_CONNECTION)
 endif()
 
 # Find Git

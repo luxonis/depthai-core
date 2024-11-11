@@ -59,8 +59,9 @@ if(DEPTHAI_XTENSOR_SUPPORT)
     add_subdirectory("${PARENT_DIRECTORY}/3rdparty/xtl" xtl)
     add_subdirectory("${PARENT_DIRECTORY}/3rdparty/xtensor" xtensor)
 endif()
-
-add_subdirectory("${PARENT_DIRECTORY}/3rdparty/foxglove/ws-protocol/cpp/foxglove-websocket" foxglove-websocket)
+if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
+    add_subdirectory("${PARENT_DIRECTORY}/3rdparty/foxglove/ws-protocol/cpp/foxglove-websocket" foxglove-websocket)
+endif()
 
 # Add threads (c++)
 find_package(Threads ${_QUIET} REQUIRED)
@@ -74,8 +75,9 @@ find_package(libnop ${_QUIET} CONFIG REQUIRED)
 # MP4V2 for video encoding
 find_package(mp4v2 ${_QUIET} CONFIG REQUIRED)
 
-# TODO(Morato) - potentially move this to a private library
-find_package(Protobuf ${_QUIET} CONFIG REQUIRED)
+if(DEPTHAI_ENABLE_PROTOBUF)
+    find_package(Protobuf ${_QUIET} REQUIRED)
+endif()
 
 # XLink
 if(DEPTHAI_XLINK_LOCAL AND (NOT CONFIG_MODE))
