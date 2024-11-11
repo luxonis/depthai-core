@@ -20,3 +20,4 @@ vcpkg_cmake_configure(
 
 vcpkg_cmake_install()
 
+vcpkg_fixup_pkgconfig()
