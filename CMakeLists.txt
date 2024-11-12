@@ -67,7 +67,6 @@ if(DEPTHAI_ENABLE_LIBUSB)
 else()
 	list(APPEND VCPKG_MANIFEST_FEATURES "xlink")
 endif()
-include(cmake/vcpkg.cmake)
 
 # CMP0074 dictates that find_package searches environment variable "[packageName]_ROOT" along with regular variable [packageName]_ROOT
 if(POLICY CMP0074)
@@ -91,8 +90,6 @@ endif()
 if(NOT WIN32)
     set(HUNTER_CONFIGURATION_TYPES "Release" CACHE STRING "Hunter dependencies list of build configurations")
 endif()
-
-
 
 
 if(DEPTHAI_ENABLE_PROTOBUF)
