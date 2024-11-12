@@ -13,6 +13,11 @@ endif()
 # If library was build as static, find all dependencies
 if(NOT CONFIG_MODE OR (CONFIG_MODE AND NOT DEPTHAI_SHARED_LIBS))
 
+    if(DEPTHAI_BUILD_PYTHON)
+        find_package(pybind11 CONFIG REQUIRED)
+        # Print out the pybind11 version that was found
+        message(STATUS "Found pybind11 v${pybind11_VERSION}")
+    endif()
     # BZip2 (for bspatch)
     find_package(BZip2 ${_QUIET}  REQUIRED)
 

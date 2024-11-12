@@ -48,10 +48,6 @@ option(DEPTHAI_PYTHON_EMBEDDED_MODULE "Create an embeddable module" OFF)
 if(MINGW)
     set(PYBIND11_LTO_CXX_FLAGS "" CACHE STRING "" FORCE)
 endif()
-find_package(pybind11 CONFIG REQUIRED)
-
-# Print out the pybind11 version that was found
-message(STATUS "Found pybind11 v${pybind11_VERSION}")
 
 # Add external dependencies
 add_subdirectory(external)
