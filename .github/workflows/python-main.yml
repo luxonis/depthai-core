@@ -461,7 +461,7 @@ jobs:
           /opt/python/cp38-cp38/bin/python3.8 setup.py sdist --formats=gztar
           mv dist/* wheelhouse/audited/
       - name: Build wheels
-        run: cd bindings/python && for PYBIN in /opt/python/cp3{${ matrix.python-set }}*/bin; do "${PYBIN}/pip" wheel . -w ./wheelhouse/ --verbose; done
+        run: cd bindings/python && for PYBIN in /opt/python/cp3${{ matrix.python-set }}*/bin; do "${PYBIN}/pip" wheel . -w ./wheelhouse/ --verbose; done
       - name: Audit wheels
         run: cd bindings/python && for whl in wheelhouse/*.whl; do auditwheel repair "$whl" --plat $PLAT -w wheelhouse/audited/; done
       - name: Archive wheel artifacts
@@ -540,7 +540,7 @@ jobs:
         run: echo "BUILD_COMMIT_HASH=${{github.sha}}" >> $GITHUB_ENV
       - name: Building wheels
         run: |
-          cd bindings/python && for PYBIN in /opt/python/cp3{${ matrix.python-set }}*/bin; do "${PYBIN}/pip" wheel . -w ./wheelhouse/ --verbose; done
+          cd bindings/python && for PYBIN in /opt/python/cp3${{ matrix.python-set }}*/bin; do "${PYBIN}/pip" wheel . -w ./wheelhouse/ --verbose; done
       - name: Auditing wheels
         run: cd bindings/python && for whl in wheelhouse/*.whl; do auditwheel repair "$whl" --plat $PLAT -w wheelhouse/audited/; done
       - name: Archive wheel artifacts
