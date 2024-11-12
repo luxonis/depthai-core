@@ -14,7 +14,7 @@
         "spdlog",
         "bzip2",
         "lz4",
-        "libarchive-luxonis",
+        "libarchive",
         "liblzma",
         "fp16",
         "mp4v2",

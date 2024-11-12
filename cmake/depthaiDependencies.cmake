@@ -22,7 +22,7 @@ if(NOT CONFIG_MODE OR (CONFIG_MODE AND NOT DEPTHAI_SHARED_LIBS))
 
     find_package(PNG  REQUIRED)
     # libarchive for firmware packages
-    find_package(archive_static ${_QUIET} CONFIG REQUIRED)
+    find_package(LibArchive ${_QUIET}  REQUIRED)
     find_package(liblzma ${_QUIET} CONFIG REQUIRED)
     # httplib for Gate communication
     find_package(httplib ${_QUIET} CONFIG REQUIRED)

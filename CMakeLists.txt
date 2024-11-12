@@ -745,9 +745,9 @@ target_link_libraries(${TARGET_CORE_NAME}
         Threads::Threads
         BZip2::BZip2
         FP16::fp16
-        archive_static
+        LibArchive::LibArchive
 		ZLIB::ZLIB
-        LZ4::lz4
+        lz4::lz4
         httplib::httplib
         mp4v2::mp4v2
         semver::semver
