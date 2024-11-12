@@ -31,7 +31,28 @@ else()
     endif()
 endif()
 
+option(DEPTHAI_ENABLE_CURL "Enable CURL support" ${DEPTHAI_DEFAULT_CURL_SUPPORT})
 
+if(DEPTHAI_ENABLE_CURL)
+    list(APPEND VCPKG_MANIFEST_FEATURES "curl-support")
+endif()
+
+
+option(DEPTHAI_ENABLE_PROTOBUF "Enable Protobuf support" ON)
+if(DEPTHAI_ENABLE_PROTOBUF)
+    list(APPEND VCPKG_MANIFEST_FEATURES "protobuf-support")
+endif()
+
+
+# Set to use native tls for windows before including Hunter (used for Curl)
+if(WIN32)
+    set(DEPTHAI_CURL_USE_SCHANNEL ON)
+    set(DEPTHAI_CURL_USE_OPENSSL OFF)
+    add_compile_definitions(NOMINMAX)
+else()
+    set(DEPTHAI_CURL_USE_SCHANNEL OFF)
+    set(DEPTHAI_CURL_USE_OPENSSL ON)
+endif()
 # Check if on 32 bit linux - default without CURL support
 if(CMAKE_SIZEOF_VOID_P EQUAL 4 AND UNIX)
     set(DEPTHAI_DEFAULT_CURL_SUPPORT OFF)
@@ -72,34 +93,7 @@ if(NOT WIN32)
 endif()
 
 
-# Set to use native tls for windows before including Hunter (used for Curl)
-if(WIN32)
-    set(DEPTHAI_CURL_USE_SCHANNEL ON)
-    set(DEPTHAI_CURL_USE_OPENSSL OFF)
-    add_compile_definitions(NOMINMAX)
-else()
-    set(DEPTHAI_CURL_USE_SCHANNEL OFF)
-    set(DEPTHAI_CURL_USE_OPENSSL ON)
-endif()
 
-# Check if on 32 bit linux - default without CURL support
-if(CMAKE_SIZEOF_VOID_P EQUAL 4 AND UNIX)
-    set(DEPTHAI_DEFAULT_CURL_SUPPORT OFF)
-else()
-    set(DEPTHAI_DEFAULT_CURL_SUPPORT ON)
-endif()
-
-option(DEPTHAI_ENABLE_CURL "Enable CURL support" ${DEPTHAI_DEFAULT_CURL_SUPPORT})
-
-if(DEPTHAI_ENABLE_CURL)
-    list(APPEND VCPKG_MANIFEST_FEATURES "curl-support")
-endif()
-
-
-option(DEPTHAI_ENABLE_PROTOBUF "Enable Protobuf support" ON)
-if(DEPTHAI_ENABLE_PROTOBUF)
-    list(APPEND VCPKG_MANIFEST_FEATURES "protobuf-support")
-endif()
 
 if(DEPTHAI_ENABLE_PROTOBUF)
     option(DEPTHAI_ENABLE_REMOTE_CONNECTION "Enable Remote Connection support" ON)
@@ -135,8 +129,6 @@ if(DEFINED _INTERNAL_DEPTHAI_ORIGINAL_CMAKE_TOOLCHAIN_FILE)
 else()
     message(STATUS "Using toolchain file: ${CMAKE_TOOLCHAIN_FILE}")
 endif()
-
-
 
 # Move binary dir if windows, to shorten the path
 if(WIN32)
