@@ -404,7 +404,7 @@ jobs:
         PLAT: manylinux_2_28_x86_64
     strategy:
       matrix:
-        python-set: ["7..9", "10..12"]
+        python-set: ["7", "8", "9", "10", "11", "12"]
     env:
       # workaround required for cache@v3, https://github.com/actions/cache/issues/1428
       # to be removed when upgrading the manylinux image
@@ -491,7 +491,7 @@ jobs:
         - /.hunter:/github/home/.hunter
     strategy:
       matrix:
-        python-set: ["7..9", "10..12"]
+        python-set: ["7", "8", "9", "10", "11", "12"]
     env:
       # workaround required for cache@v3, https://github.com/actions/cache/issues/1428
       # to be removed when upgrading the manylinux image
