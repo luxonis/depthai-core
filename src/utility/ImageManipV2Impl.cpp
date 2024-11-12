@@ -10,6 +10,8 @@
 
 #define UNUSED(x) (void)(x)
 
+constexpr float SIZE_ROUND_UP_THRESHOLD = 1.0f - 1e-3f;
+
 dai::impl::AEEResult dai::impl::manipGetSrcMask(const uint32_t width,
                                                 const uint32_t height,
                                                 const float* corners,
@@ -908,10 +910,10 @@ dai::impl::getFullTransform(dai::ImageManipOpsBase& base,
 
     {
         auto [minx, maxx, miny, maxy] = getOuterRect(std::vector(imageCorners.begin(), imageCorners.end()));
-        float rminx = (minx - floorf(minx)) >= 0.8f ? ceilf(minx) : floorf(minx);
-        float rmaxx = (maxx - floorf(maxx)) >= 0.8f ? ceilf(maxx) : floorf(maxx);
-        float rminy = (miny - floorf(miny)) >= 0.8f ? ceilf(miny) : floorf(miny);
-        float rmaxy = (maxy - floorf(maxy)) >= 0.8f ? ceilf(maxy) : floorf(maxy);
+        float rminx = (minx - floorf(minx)) >= SIZE_ROUND_UP_THRESHOLD ? ceilf(minx) : floorf(minx);
+        float rmaxx = (maxx - floorf(maxx)) >= SIZE_ROUND_UP_THRESHOLD ? ceilf(maxx) : floorf(maxx);
+        float rminy = (miny - floorf(miny)) >= SIZE_ROUND_UP_THRESHOLD ? ceilf(miny) : floorf(miny);
+        float rmaxy = (maxy - floorf(maxy)) >= SIZE_ROUND_UP_THRESHOLD ? ceilf(maxy) : floorf(maxy);
         if(!base.center) {
             if(base.outputWidth == 0) base.outputWidth = rmaxx;
             if(base.outputHeight == 0) base.outputHeight = rmaxy;
