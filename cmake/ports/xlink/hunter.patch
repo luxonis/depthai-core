@@ -1,0 +1,15 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 3161667..873cd8c 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -6,8 +6,8 @@ cmake_minimum_required(VERSION 3.2)
+ 
+ include("cmake/HunterGate.cmake")
+ HunterGate(
+-    URL "https://github.com/cpp-pm/hunter/archive/v0.23.320.tar.gz"
+-    SHA1 "9b4e732afd22f40482c11ad6342f7d336634226f"
++    URL "https://github.com/cpp-pm/hunter/archive/v0.25.7.tar.gz"
++    SHA1 "99f05ff154c682f7349546d66294d2f69f7193bc"
+     LOCAL # Local config for dependencies
+ )
+ 
