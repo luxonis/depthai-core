@@ -381,3 +381,7 @@ dai_set_test_labels(regression_camera_concurrency_test ondevice rvc4 ci)
 # Sync test
 dai_add_test(sync_test src/ondevice_tests/pipeline/node/sync_test.cpp)
 dai_set_test_labels(sync_test ondevice rvc2_all rvc4 ci)
+
+# ImageAlign test
+dai_add_test(image_align_node_test src/ondevice_tests/image_align_node_test.cpp)
+dai_set_test_labels(image_align_node_test ondevice rvc2_all rvc4 ci)
