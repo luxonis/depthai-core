@@ -13,6 +13,14 @@
     },
     "zlib"
   ],
+  "default-features": [
+    "bzip2",
+    "crypto",
+    "libxml2",
+    "lz4",
+    "lzma",
+    "zstd"
+  ],
   "features": {
     "bzip2": {
       "description": "BZip2 support",
