@@ -14,8 +14,8 @@ TEST_CASE("Test ImageAlign node image to image alignment") {
     auto rightCam = p.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_C);
     auto align = p.create<dai::node::ImageAlign>();
 
-    auto leftOut = leftCam->requestOutput({1280, 800}, dai::ImgFrame::Type::NV12);
-    auto rightOut = rightCam->requestOutput({1280, 800}, dai::ImgFrame::Type::NV12);
+    auto leftOut = leftCam->requestOutput({1280, 800});
+    auto rightOut = rightCam->requestOutput({1280, 800});
 
     leftOut->link(align->input);
     rightOut->link(align->inputAlignTo);
@@ -46,8 +46,8 @@ TEST_CASE("Test ImageAlign node depth to image alignment") {
     auto stereo = p.create<dai::node::StereoDepth>();
     auto align = p.create<dai::node::ImageAlign>();
 
-    auto leftOut = leftCam->requestOutput({1280, 800}, dai::ImgFrame::Type::NV12);
-    auto rightOut = rightCam->requestOutput({1280, 800}, dai::ImgFrame::Type::NV12);
+    auto leftOut = leftCam->requestOutput({1280, 800});
+    auto rightOut = rightCam->requestOutput({1280, 800});
 
     leftOut->link(stereo->left);
     rightOut->link(stereo->right);
