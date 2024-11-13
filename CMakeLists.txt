@@ -31,11 +31,6 @@ else()
     endif()
 endif()
 
-option(DEPTHAI_ENABLE_CURL "Enable CURL support" ${DEPTHAI_DEFAULT_CURL_SUPPORT})
-
-if(DEPTHAI_ENABLE_CURL)
-    list(APPEND VCPKG_MANIFEST_FEATURES "curl-support")
-endif()
 
 
 option(DEPTHAI_ENABLE_PROTOBUF "Enable Protobuf support" ON)
@@ -58,6 +53,11 @@ if(CMAKE_SIZEOF_VOID_P EQUAL 4 AND UNIX)
     set(DEPTHAI_DEFAULT_CURL_SUPPORT OFF)
 else()
     set(DEPTHAI_DEFAULT_CURL_SUPPORT ON)
+endif()
+option(DEPTHAI_ENABLE_CURL "Enable CURL support" ${DEPTHAI_DEFAULT_CURL_SUPPORT})
+
+if(DEPTHAI_ENABLE_CURL)
+    list(APPEND VCPKG_MANIFEST_FEATURES "curl-support")
 endif()
 
 # Early options
@@ -720,6 +720,7 @@ if(DEPTHAI_CLANG_FORMAT)
     target_clangformat_setup(${TARGET_CORE_NAME} "${header_dirs}")
 endif()
 
+find_package(OpenSSL REQUIRED)
 # link libraries
 target_link_libraries(${TARGET_CORE_NAME}
     PUBLIC

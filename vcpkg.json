@@ -1,9 +1,6 @@
 {
     "name": "depthai",
     "dependencies": [
-        "websocketpp",
-        "protobuf",
-        "openssl",
         "cpp-httplib",
         "libpng",
         "tiff",
@@ -11,10 +8,8 @@
         "nlohmann-json",
         "spdlog",
         "zlib",
-        "spdlog",
         "bzip2",
         "lz4",
-        "libarchive",
         "liblzma",
         "fp16",
         "mp4v2",
@@ -22,6 +17,14 @@
         "neargye-semver",
         "pybind11",
         "catch2",
+        {
+            "name": "libarchive",
+            "default-features": false
+        },
+        {
+            "name": "opencv",
+            "default-features": false
+        },
         {
             "name": "opencv4",
             "default-features": false
