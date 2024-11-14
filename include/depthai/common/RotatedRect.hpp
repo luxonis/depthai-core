@@ -25,7 +25,11 @@ struct RotatedRect {
         }
     }
     RotatedRect(const Rect& rect, float angle) : center(rect.x + rect.width / 2.0f, rect.y + rect.height / 2.0f, rect.isNormalized()), size(rect.width, rect.height, rect.isNormalized()), angle(angle) {}
-
+    RotatedRect(float center_x, float center_y, float size_width, float size_height, float angle) : center(center_x, center_y), size(size_width, size_height), angle(angle) {
+        if(size.isNormalized() != center.isNormalized()) {
+            throw std::runtime_error("Cannot create RotatedRect with mixed normalization");
+        }
+    }
     bool isNormalized() const {
         if(size.isNormalized() != center.isNormalized()) {
             throw std::runtime_error("Cannot denormalize RotatedRect with mixed normalization");
