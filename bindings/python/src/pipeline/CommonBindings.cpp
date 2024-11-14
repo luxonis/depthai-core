@@ -97,7 +97,7 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack){
         .def(py::init<>())
         .def(py::init<Point2f, Size2f, float>())
         .def(py::init<Rect, float>())
-        .def(py::init<float float float float float>(), py::arg("center_x"), py::arg("center_y"), py::arg("size_width"), py::arg("size_height"), py::arg("angle"))
+        .def(py::init<float, float, float, float, float>(), py::arg("center_x"), py::arg("center_y"), py::arg("size_width"), py::arg("size_height"), py::arg("angle"))
         .def_readwrite("center", &RotatedRect::center)
         .def_readwrite("size", &RotatedRect::size)
         .def_readwrite("angle", &RotatedRect::angle)
