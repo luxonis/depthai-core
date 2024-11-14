@@ -37,6 +37,15 @@ class EncodedFrame : public Buffer {
      */
     unsigned int getInstanceNum() const;
     /**
+     * Retrieves image width in pixels
+     */
+    unsigned int getWidth() const;
+
+    /**
+     * Retrieves image height in pixels
+     */
+    unsigned int getHeight() const;
+    /**
      * Retrieves exposure time
      */
     std::chrono::microseconds getExposureTime() const;
@@ -110,6 +119,20 @@ class EncodedFrame : public Buffer {
      * @param instance Instance number
      */
     EncodedFrame& setInstanceNum(unsigned int instance);
+
+    /**
+     * Specifies frame width
+     *
+     * @param width frame width
+     */
+    EncodedFrame& setWidth(unsigned int width);
+
+    /**
+     * Specifies frame height
+     *
+     * @param height frame height
+     */
+    EncodedFrame& setHeight(unsigned int height);
 
     /**
      * Specifies the encoding quality
