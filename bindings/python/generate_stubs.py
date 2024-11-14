@@ -111,7 +111,7 @@ try:
         file.write(final_stubs)
 
     # Flush previous stdout
-    sys.stdout.flush()
+    # sys.stdout.flush()
 
     # Check syntax (Mypy and later Pylance/Pyright)
     # Windows limitation - another process cannot normally read temporary file that is opened by this process
@@ -124,16 +124,19 @@ try:
         # Mypy check
         subprocess.check_call([sys.executable, '-m' 'mypy', f'{DIRECTORY}/{MODULE_NAME}', f'--config-file={config.name}'], env=env)
     finally:
+        print(f'Deleting file: {config.name}')
         os.unlink(config.name)
-
+        print(f'Mypy config file deleted: {config.name}')
     # # TODO(thamarpe) - Pylance / Pyright check
     # subprocess.check_call([sys.executable, '-m' 'pyright', f'{DIRECTORY}/{MODULE_NAME}'], env=env)
 
     def process_init_pyi(file_path, is_depthai_root=False):
         # Read old __init__.pyi
+        print(f'Processing {file_path}')
         with open(file_path, 'r+') as file:
             contents = file.read()
 
+        print(f'Processing {file_path}')
         # Prepare imports
         dir_path = os.path.dirname(file_path)
 
@@ -161,7 +164,9 @@ try:
             is_depthai_root = (root == f'{DIRECTORY}/{MODULE_NAME}')
             process_init_pyi(os.path.join(root, '__init__.pyi'), is_depthai_root)
 
+    print("Fin")
 except subprocess.CalledProcessError as err:
     exit(err.returncode)
 
+print("Done")
 exit(0)
