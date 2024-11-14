@@ -22,7 +22,11 @@ struct fmt::formatter<dai::Path> : formatter<std::string> {
     // https://fmt.dev/latest/api.html#formatting-user-defined-types
     // https://fmt.dev/latest/syntax.html#format-specification-mini-language
     template <typename FormatContext>
+#if FMT_VERSION >= 100000
     auto format(const dai::Path& p, FormatContext& ctx) const {
+#else 
+    auto format(const dai::Path& p, FormatContext& ctx) -> decltype(ctx.out()) {
+#endif
         std::string output;
         try {
             output = p.string();
