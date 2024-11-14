@@ -7,6 +7,7 @@ vcpkg_from_github(
     PATCHES
         hunter.patch
         windows.patch
+        windows-link.patch
 )
 vcpkg_check_features(OUT_FEATURE_OPTIONS FEATURE_OPTIONS
     FEATURES
