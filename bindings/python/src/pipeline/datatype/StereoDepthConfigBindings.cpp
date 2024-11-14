@@ -183,6 +183,7 @@ void bind_stereodepthconfig(pybind11::module& m, void* pCallstack){
 
     postProcessing
         .def(py::init<>())
+        .def_readwrite("filteringOrder", &StereoDepthConfig::PostProcessing::filteringOrder, DOC(dai, StereoDepthConfig, PostProcessing, filteringOrder))
         .def_readwrite("median", &StereoDepthConfig::PostProcessing::median, DOC(dai, StereoDepthConfig, PostProcessing, median))
         .def_readwrite("bilateralSigmaValue", &StereoDepthConfig::PostProcessing::bilateralSigmaValue, DOC(dai, StereoDepthConfig, PostProcessing, bilateralSigmaValue))
         .def_readwrite("spatialFilter", &StereoDepthConfig::PostProcessing::spatialFilter, DOC(dai, StereoDepthConfig, PostProcessing, spatialFilter))
