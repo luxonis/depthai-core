@@ -1,5 +1,7 @@
 #include "depthai/utility/ImageManipV2Impl.hpp"
 
+#include <stdexcept>
+
 #include "depthai/pipeline/datatype/ImageManipConfigV2.hpp"
 
 #if defined(WIN32) || defined(_WIN32)
@@ -858,6 +860,8 @@ std::tuple<std::array<std::array<float, 3>, 3>, std::array<std::array<float, 2>,
                            if(o.normalized) {
                                o.width *= width;
                                o.height *= height;
+                           } else if((o.width > 0 && o.width < 1) || (o.height > 0 && o.height < 1)) {
+                               throw std::runtime_error("Crop not marked as normalized, but values seem to be normalized (height or width is less than 1)");
                            }
                            if(o.width > 0 && o.height <= 0)
                                o.height = roundf(height * ((float)o.width / width));
