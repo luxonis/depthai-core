@@ -1,0 +1,67 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 873cd8c..3806520 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -66,13 +66,18 @@ if(is_multi_config)
+     set_target_properties(${TARGET_NAME} PROPERTIES DEBUG_POSTFIX "d")
+ endif()
+ 
++# Define export header to support shared library on Windows
++include(GenerateExportHeader)
++generate_export_header(${TARGET_NAME}
++    EXPORT_FILE_NAME ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}Export.h)
++
+ # Add dependencies
+ include(cmake/XLinkDependencies.cmake)
+ 
+ if(XLINK_ENABLE_LIBUSB)
+     if(XLINK_LIBUSB_SYSTEM)
+         # Find system libusb
+-        find_path(LIBUSB_INCLUDE_DIR NAMES libusb.h PATH_SUFFIXES "include" "libusb" "libusb-1.0")
++        find_path(LIBUSB_INCLUDE_DIR NAMES "libusb-1.0/libusb.h")
+         find_library(LIBUSB_LIBRARY NAMES usb-1.0 PATH_SUFFIXES "lib")
+         if(NOT LIBUSB_INCLUDE_DIR OR NOT LIBUSB_LIBRARY)
+             message(FATAL_ERROR "libusb is required")
+@@ -129,6 +134,7 @@ add_library(${TARGET_PUBLIC_NAME} INTERFACE)
+ target_include_directories(${TARGET_PUBLIC_NAME} INTERFACE
+     "$<INSTALL_INTERFACE:include>"
+     "$<BUILD_INTERFACE:${XLINK_INCLUDE}>"
++    "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>"
+ )
+ 
+ # Link to headers (public, as itself also needs the headers)
+@@ -233,6 +239,11 @@ install(
+ )
+ #Install include folder
+ install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
++# Install generated export header
++install(
++    FILES ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}Export.h
++    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/XLink
++)
+ # Install Hunter dependencies
+ if(XLINK_ENABLE_LIBUSB)
+     if(NOT XLINK_LIBUSB_LOCAL AND NOT XLINK_LIBUSB_SYSTEM)
+diff --git a/include/XLink/XLinkLog.h b/include/XLink/XLinkLog.h
+index e487c71..7e1ccb3 100644
+--- a/include/XLink/XLinkLog.h
++++ b/include/XLink/XLinkLog.h
+@@ -29,6 +29,7 @@ extern "C" {
+ #include <stdio.h>
+ #include <stdarg.h>
+ #include <inttypes.h>
++#include "XLinkExport.h"
+ 
+ #ifndef _GNU_SOURCE
+ #define _GNU_SOURCE
+@@ -72,8 +73,8 @@ FUNCATTR_WEAK mvLog_t __attribute__ ((weak)) MVLOGLEVEL(MVLOG_UNIT_NAME) = MVLOG
+ #define UNIT_NAME_STR MVLOG_STR(MVLOG_UNIT_NAME)
+ 
+ 
+-extern mvLog_t MVLOGLEVEL(global);
+-extern mvLog_t MVLOGLEVEL(default);
++extern XLINK_EXPORT mvLog_t MVLOGLEVEL(global);
++extern XLINK_EXPORT mvLog_t MVLOGLEVEL(default);
+ 
+ int __attribute__ ((unused)) logprintf(mvLog_t curLogLvl, mvLog_t lvl, const char * func, const int line, const char * format, ...);
+ 
