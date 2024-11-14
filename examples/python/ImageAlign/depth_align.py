@@ -153,10 +153,10 @@ with pipeline:
             # Resize depth to match the rgb frame
             cv2.imshow("Depth aligned", alignedDepthColorized)
 
-            if len(cvFrame.shape) == 2:
-                cvFrame = cv2.cvtColor(cvFrame, cv2.COLOR_GRAY2BGR)
+            if len(cvFrameUndistorted.shape) == 2:
+                cvFrameUndistorted = cv2.cvtColor(cvFrameUndistorted, cv2.COLOR_GRAY2BGR)
             blended = cv2.addWeighted(
-                cvFrame, rgbWeight, alignedDepthColorized, depthWeight, 0
+                cvFrameUndistorted, rgbWeight, alignedDepthColorized, depthWeight, 0
             )
             cv2.putText(
                 blended,
