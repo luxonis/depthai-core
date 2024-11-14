@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import numpy as np
 import cv2
 import depthai as dai
@@ -42,7 +44,7 @@ sync = pipeline.create(dai.node.Sync)
 align = pipeline.create(dai.node.ImageAlign)
 
 stereo.setDefaultProfilePreset(dai.node.StereoDepth.PresetMode.HIGH_DENSITY)
-stereo.setDepthAlign(dai.CameraBoardSocket.LEFT)
+stereo.setDepthAlign(LEFT_SOCKET)
 
 stereo.setExtendedDisparity(True)
 
