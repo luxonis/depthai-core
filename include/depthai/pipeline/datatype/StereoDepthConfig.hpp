@@ -365,7 +365,13 @@ class StereoDepthConfig : public Buffer {
              */
             std::uint32_t speckleRange = 50;
 
-            DEPTHAI_SERIALIZE(SpeckleFilter, enable, speckleRange);
+            /**
+             * Maximum difference between neighbor disparity pixels to put them into the same blob.
+             * Units in disparity integer levels.
+             */
+            std::uint32_t differenceThreshold = 2;
+
+            DEPTHAI_SERIALIZE(SpeckleFilter, enable, speckleRange, differenceThreshold);
         };
 
         /**
