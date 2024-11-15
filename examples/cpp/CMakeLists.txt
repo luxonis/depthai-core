@@ -268,10 +268,12 @@ dai_add_example(record_encoded_mjpeg Record/record_encoded_mjpeg.cpp OFF OFF)
 dai_add_example(record_raw_color Record/record_raw_color.cpp OFF OFF)
 dai_add_example(record_raw_gray Record/record_raw_gray.cpp OFF OFF)
 dai_add_example(record_imu Record/record_imu.cpp OFF OFF)
+dai_add_example(holistic_record Record/holistic_record.cpp OFF OFF)
 
 # Replay
 dai_add_example(replay_video_meta Replay/replay_video_meta.cpp OFF OFF)
 dai_add_example(replay_imu Replay/replay_imu.cpp OFF OFF)
+dai_add_example(holistic_replay Replay/holistic_replay.cpp OFF OFF)
 
 # Thermal
 dai_add_example(thermal RVC2/Thermal/thermal.cpp OFF OFF)

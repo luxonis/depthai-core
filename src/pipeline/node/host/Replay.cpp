@@ -313,7 +313,7 @@ void ReplayMetadataOnly::run() {
     while(isRunning()) {
         std::shared_ptr<google::protobuf::Message> metadata;
         std::vector<uint8_t> frame;
-        if(utility::deserializationSupported(datatype)) {
+        if(!utility::deserializationSupported(datatype)) {
             throw std::runtime_error("Invalid message type. Cannot replay");
         }
         auto msg = getProtoMessage(bytePlayer, datatype);

@@ -7,21 +7,19 @@
 #endif
 
 int main(int argc, char** argv) {
-    dai::Pipeline pipeline(true);
-    auto cam = pipeline.create<dai::node::ColorCamera>();
+    dai::Pipeline pipeline;
+    auto cam = pipeline.create<dai::node::Camera>()->build();
     auto imu = pipeline.create<dai::node::IMU>();
     auto display = pipeline.create<dai::node::Display>();
 
-    cam->setBoardSocket(dai::CameraBoardSocket::CAM_A);
-    cam->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
-    cam->setFps(30);
+    auto camOut = cam->requestOutput({720, 1280}, dai::ImgFrame::Type::NV12);
 
     // enable ACCELEROMETER_RAW at 500 hz rate
     imu->enableIMUSensor(dai::IMUSensor::ACCELEROMETER_RAW, 500);
     // enable GYROSCOPE_RAW at 400 hz rate
     imu->enableIMUSensor(dai::IMUSensor::GYROSCOPE_RAW, 400);
 
-    cam->video.link(display->input);
+    camOut->link(display->input);
     auto q = imu->out.createOutputQueue();
 
     dai::RecordConfig config;
@@ -43,8 +41,8 @@ int main(int argc, char** argv) {
             auto& acceleroValues = imuPacket.acceleroMeter;
             auto& gyroValues = imuPacket.gyroscope;
 
-            printf("Accelerometer [m/s^2]: x: %.3f y: %.3f z: %.3f \n", acceleroValues.x, acceleroValues.y, acceleroValues.z);
-            printf("Gyroscope [rad/s]: x: %.3f y: %.3f z: %.3f \n", gyroValues.x, gyroValues.y, gyroValues.z);
+            // printf("Accelerometer [m/s^2]: x: %.3f y: %.3f z: %.3f \n", acceleroValues.x, acceleroValues.y, acceleroValues.z);
+            // printf("Gyroscope [rad/s]: x: %.3f y: %.3f z: %.3f \n", gyroValues.x, gyroValues.y, gyroValues.z);
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
