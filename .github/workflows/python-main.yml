@@ -205,6 +205,8 @@ jobs:
       fail-fast: false
     env:
       DEPTHAI_BUILD_BASALT: OFF
+      DEPTHAI_BUILD_PCL: ON
+      DEPTHAI_BUILD_RTABMAP: ON
       VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
     steps:
       - name: Cache .hunter folder
@@ -261,19 +263,18 @@ jobs:
   # This job builds wheels for macOS arch
   build-macos:
     needs: build-docstrings
-    env:
-      VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
     strategy:
       matrix:
         python-version: [3.8, 3.9, '3.10', '3.11', '3.12']
         os: [macos-13, macos-14] # macos-13 is x64, macos-14 is arm64
       fail-fast: false
     runs-on: ${{ matrix.os }}
-    # env:
+    env:
+      VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
       # TODO(Morato) - re-enable basalt, pcl, rtabmap after everything is ported  
-      # DEPTHAI_BUILD_BASALT: ON
-      # DEPTHAI_BUILD_PCL: ON
-      # DEPTHAI_BUILD_RTABMAP: ON
+      DEPTHAI_BUILD_BASALT: ON
+      DEPTHAI_BUILD_PCL: ON
+      DEPTHAI_BUILD_RTABMAP: ON
     steps:
       - name: Cache .hunter folder
         uses: actions/cache@v3
