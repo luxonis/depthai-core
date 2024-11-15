@@ -45,6 +45,7 @@ else()
     if(DEPTHAI_HAS_APRIL_TAG)
         hunter_add_package(apriltag)
     endif()
+    hunter_add_package(magic_enum)
 endif()
 
 # If library was build as static, find all dependencies
@@ -87,6 +88,7 @@ if(NOT CONFIG_MODE OR (CONFIG_MODE AND NOT DEPTHAI_SHARED_LIBS))
     if(DEPTHAI_HAS_APRIL_TAG)
         find_package(apriltag ${_QUIET} CONFIG REQUIRED)
     endif()
+    find_package(magic_enum ${_QUIET} CONFIG REQUIRED)
 endif()
 
 # Xtensor
@@ -165,7 +167,6 @@ if(DEPTHAI_BASALT_SUPPORT)
     find_package(basalt_sdk ${_QUIET} CONFIG REQUIRED)
     find_package(TBB 2021.12.0 EXACT CONFIG REQUIRED)
     find_package(Sophus ${_QUIET} CONFIG REQUIRED)
-    find_package(magic_enum ${_QUIET} CONFIG REQUIRED)
     find_package(fmt ${_QUIET} CONFIG REQUIRED)
 endif()
 
