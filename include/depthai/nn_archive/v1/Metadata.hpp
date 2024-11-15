@@ -1,9 +1,9 @@
 #pragma once
 
+#include <nlohmann/json.hpp>
 #include <optional>
 #include <string>
 #include <vector>
-#include <nlohmann/json.hpp>
 
 namespace dai {
 namespace nn_archive {
