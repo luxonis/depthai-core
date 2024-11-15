@@ -385,3 +385,7 @@ dai_set_test_labels(sync_test ondevice rvc2_all rvc4 ci)
 # ImageAlign test
 dai_add_test(image_align_node_test src/ondevice_tests/image_align_node_test.cpp)
 dai_set_test_labels(image_align_node_test ondevice rvc2_all rvc4 ci)
+
+# StereoDepth test
+dai_add_test(stereo_depth_node_test src/ondevice_tests/stereo_depth_node_test.cpp)
+dai_set_test_labels(stereo_depth_node_test ondevice rvc2_all rvc4 ci)
