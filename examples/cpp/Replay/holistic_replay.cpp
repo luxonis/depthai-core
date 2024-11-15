@@ -8,7 +8,7 @@
 
 int main(int argc, char** argv) {
     dai::Pipeline pipeline;
-    auto cam = pipeline.create<dai::node::Camera>();
+    auto cam = pipeline.create<dai::node::Camera>()->build();
     auto imu = pipeline.create<dai::node::IMU>();
     auto display = pipeline.create<dai::node::Display>();
 
