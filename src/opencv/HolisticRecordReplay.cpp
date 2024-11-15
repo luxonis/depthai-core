@@ -21,7 +21,8 @@
 namespace dai {
 namespace utility {
 
-bool setupHolisticRecord(Pipeline& pipeline, const std::string& mxId, RecordConfig& recordConfig, std::unordered_map<std::string, std::string>& outFilenames) {
+bool setupHolisticRecord(
+    Pipeline& pipeline, const std::string& mxId, RecordConfig& recordConfig, std::unordered_map<std::string, std::string>& outFilenames, bool legacy) {
     auto sources = pipeline.getSourceNodes();
     const auto recordPath = recordConfig.outputDir;
     try {
@@ -37,9 +38,16 @@ bool setupHolisticRecord(Pipeline& pipeline, const std::string& mxId, RecordConf
             outFilenames[nodeName] = filePath;
             if(std::dynamic_pointer_cast<node::Camera>(node) != nullptr || std::dynamic_pointer_cast<node::ColorCamera>(node) != nullptr
                || std::dynamic_pointer_cast<node::MonoCamera>(node) != nullptr) {
+                Node::Output* output;
                 if(std::dynamic_pointer_cast<node::Camera>(node) != nullptr) {
-                    // TODO(asahtik)
-                    throw std::runtime_error("Holistic record with Camera node is not yet supported.");
+                    auto cam = std::dynamic_pointer_cast<dai::node::Camera>(node);
+                    auto fps = cam->getMaxRequestedFps();
+                    size_t width = cam->getMaxWidth();
+                    size_t height = cam->getMaxHeight();
+                    // TODO(asahtik): RVC4 H264 video encoder only supports native resolutions. Get min larger native resolution (also removes upscaling).
+                    output = cam->requestOutput({width, height}, dai::ImgFrame::Type::NV12, dai::ImgResizeMode::CROP, fps);
+                } else {
+                    output = &nodeS->getRecordOutput();
                 }
                 auto recordNode = pipeline.create<dai::node::RecordVideo>();
                 recordNode->setRecordMetadataFile(filePath + ".mcap");
@@ -51,8 +59,8 @@ bool setupHolisticRecord(Pipeline& pipeline, const std::string& mxId, RecordConf
                     videnc->setLossless(recordConfig.videoEncoding.lossless);
                     videnc->setBitrate(recordConfig.videoEncoding.bitrate);
                     videnc->setQuality(recordConfig.videoEncoding.quality);
-                    int maxOutputFrameSize = 3110400;
-                    if(std::dynamic_pointer_cast<node::Camera>(node) != nullptr || std::dynamic_pointer_cast<node::ColorCamera>(node) != nullptr) {
+                    if((std::dynamic_pointer_cast<node::Camera>(node) != nullptr || std::dynamic_pointer_cast<node::ColorCamera>(node) != nullptr) && legacy) {
+                        int maxOutputFrameSize = 3110400;
                         if(std::dynamic_pointer_cast<node::ColorCamera>(node) != nullptr) {
                             auto cam = std::dynamic_pointer_cast<dai::node::ColorCamera>(node);
                             maxOutputFrameSize = std::get<0>(cam->getIspSize()) * std::get<1>(cam->getIspSize()) * 3;
@@ -61,14 +69,15 @@ bool setupHolisticRecord(Pipeline& pipeline, const std::string& mxId, RecordConf
                         imageManip->initialConfig.setFrameType(ImgFrame::Type::NV12);
                         imageManip->setMaxOutputFrameSize(maxOutputFrameSize);
 
-                        nodeS->getRecordOutput().link(imageManip->inputImage);
+                        output->link(imageManip->inputImage);
                         imageManip->out.link(videnc->input);
                     } else {
-                        nodeS->getRecordOutput().link(videnc->input);
+                        // TODO(asahtik): RVC4 video encoder only supports native resolutions.
+                        output->link(videnc->input);
                     }
                     videnc->out.link(recordNode->input);
                 } else {
-                    nodeS->getRecordOutput().link(recordNode->input);
+                    output->link(recordNode->input);
                 }
             } else {
                 auto recordNode = pipeline.create<dai::node::RecordMetadataOnly>();
@@ -99,7 +108,8 @@ bool setupHolisticReplay(Pipeline& pipeline,
                          std::string replayPath,
                          const std::string& mxId,
                          RecordConfig& recordConfig,
-                         std::unordered_map<std::string, std::string>& outFilenames) {
+                         std::unordered_map<std::string, std::string>& outFilenames,
+                         bool legacy) {
     UNUSED(mxId);
     const std::string rootPath = platform::getDirFromPath(replayPath);
     auto sources = pipeline.getSourceNodes();
@@ -219,15 +229,15 @@ bool setupHolisticReplay(Pipeline& pipeline,
                 replay->setReplayMetadataFile(platform::joinPaths(rootPath, nodeName + ".mcap"));
                 // replay->setReplayVideo(platform::joinPaths(rootPath, (mxId + "_").append(nodeName).append(".mp4")));
                 replay->setReplayVideoFile(platform::joinPaths(rootPath, nodeName + ".mp4"));
-                replay->setOutFrameType(ImgFrame::Type::YUV420p);
+                replay->setOutFrameType(legacy ? ImgFrame::Type::YUV420p : ImgFrame::Type::NV12);
 
                 auto videoSize = BytePlayer::getVideoSize(replay->getReplayMetadataFile().string());
                 if(videoSize.has_value()) {
                     auto [width, height] = videoSize.value();
                     if(std::dynamic_pointer_cast<node::Camera>(node) != nullptr) {
-                        // TODO(asahtik)
-                        /*auto cam = std::dynamic_pointer_cast<dai::node::Camera>(node);*/
-                        /*cam->setMockIspSize(width, height);*/
+                        auto cam = std::dynamic_pointer_cast<dai::node::Camera>(node);
+                        cam->properties.mockIspWidth = width;
+                        cam->properties.mockIspHeight = height;
                     } else if(std::dynamic_pointer_cast<node::ColorCamera>(node) != nullptr) {
                         auto cam = std::dynamic_pointer_cast<dai::node::ColorCamera>(node);
                         cam->setMockIspSize(width, height);

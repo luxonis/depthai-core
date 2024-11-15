@@ -18,7 +18,6 @@
 #ifndef MCAP_COMPRESSION_NO_ZSTD
     #define MCAP_COMPRESSION_NO_ZSTD
 #endif
-#include "RecordReplaySchema.hpp"
 
 namespace dai {
 
@@ -31,9 +30,9 @@ struct RecordConfig {
     enum class CompressionLevel : uint8_t { NONE, FASTEST, FAST, DEFAULT, SLOW, SLOWEST };
 
     struct VideoEncoding {
-        bool enabled = true;
+        bool enabled = false;
         int bitrate = 0;
-        Profile profile = Profile::H264_MAIN;
+        Profile profile = Profile::MJPEG;
         bool lossless = false;
         int quality = 80;
     };
