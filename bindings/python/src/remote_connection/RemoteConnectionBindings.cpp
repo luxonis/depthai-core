@@ -1,5 +1,6 @@
 #include "RemoteConnectionBindings.hpp"
 
+#include <pybind11/cast.h>
 #include <pybind11/functional.h>
 
 #include "depthai/remote_connection/RemoteConnection.hpp"
@@ -25,24 +26,29 @@ void RemoteConnectionBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("address") = RemoteConnection::DEFAULT_ADDRESS,
              py::arg("webSocketPort") = RemoteConnection::DEFAULT_WEBSOCKET_PORT,
              py::arg("serveFrontend") = true,
-             py::arg("httpPort") = RemoteConnection::DEFAULT_HTTP_PORT)
+             py::arg("httpPort") = RemoteConnection::DEFAULT_HTTP_PORT,
+             DOC(dai, RemoteConnection, RemoteConnection))
         .def("addTopic",
-             py::overload_cast<const std::string&, dai::Node::Output&, const std::string&>(&RemoteConnection::addTopic),
+             py::overload_cast<const std::string&, dai::Node::Output&, const std::string&, bool>(&RemoteConnection::addTopic),
              py::arg("topicName"),
              py::arg("output"),
-             py::arg("group") = "")
+             py::arg("group") = "",
+             py::arg("useVisualizationIfAvailable") = true,
+             DOC(dai, RemoteConnection, addTopic))
         .def("addTopic",
-             py::overload_cast<const std::string&, const std::string&, unsigned int, bool>(&RemoteConnection::addTopic),
+             py::overload_cast<const std::string&, const std::string&, unsigned int, bool, bool>(&RemoteConnection::addTopic),
              py::arg("topicName"),
              py::arg("group") = "",
              py::arg("maxSize") = 16,
-             py::arg("blocking") = false)
-        .def("registerPipeline", &RemoteConnection::registerPipeline, py::arg("pipeline"))
-        .def("registerService",
-             &RemoteConnection::registerService,
-             py::arg("serviceName"),
-             py::arg("callback"))
-        .def("waitKey", &RemoteConnection::waitKey, py::arg("delay"));
+             py::arg("blocking") = false,
+             py::arg("useVisualizationIfAvailable") = true,
+             DOC(dai, RemoteConnection, addTopic))
+        .def("registerPipeline", &RemoteConnection::registerPipeline, py::arg("pipeline"), DOC(dai, RemoteConnection, registerPipeline))
+        .def("registerService", &RemoteConnection::registerService, py::arg("serviceName"), py::arg("callback"), DOC(dai, RemoteConnection, registerService))
+        .def("waitKey",
+             &RemoteConnection::waitKey,
+             py::arg("delay"),
+             DOC(dai, RemoteConnection, waitKey));
 #else
      // Define a placeholder class for RemoteConnection
     struct RemoteConnectionPlaceholder {
