@@ -38,6 +38,10 @@ void RemoteConnectionBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("maxSize") = 16,
              py::arg("blocking") = false)
         .def("registerPipeline", &RemoteConnection::registerPipeline, py::arg("pipeline"))
+        .def("registerService",
+             &RemoteConnection::registerService,
+             py::arg("serviceName"),
+             py::arg("callback"))
         .def("waitKey", &RemoteConnection::waitKey, py::arg("delay"));
 #else
      // Define a placeholder class for RemoteConnection
