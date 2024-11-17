@@ -658,6 +658,20 @@ class NNData : public Buffer {
 
         return {};
     }
+
+    /**
+     * Convenience function to retrieve values from the first tensor
+     * @returns xt::xarray<_Ty> tensor
+     */
+    template <typename _Ty>
+    xt::xarray<_Ty> getFirstTensor(TensorInfo::StorageOrder order, bool dequantize = false) {
+        if(!tensors.empty()) {
+            return getTensor<_Ty>(tensors[0].name, order, dequantize);
+        }
+
+        return {};
+    }
+
 #endif
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
         metadata = utility::serialize(*this);
