@@ -116,7 +116,6 @@ if(DEPTHAI_RTABMAP_SUPPORT)
     find_package(RTABMap ${_QUIET} CONFIG REQUIRED COMPONENTS core utilite)
 find_package(g2o ${_QUIET} CONFIG REQUIRED)
 	find_package(Ceres ${_QUIET} CONFIG REQUIRED)
-find_package(OpenMP ${_QUIET} REQUIRED)
 endif()
 
 if(DEPTHAI_BASALT_SUPPORT)
