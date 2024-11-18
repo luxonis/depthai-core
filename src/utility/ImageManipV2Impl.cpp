@@ -958,7 +958,7 @@ dai::impl::getFullTransform(dai::ImageManipOpsBase& base,
         float ty = -miny + (height - (maxy - miny)) / 2;
         std::array<std::array<float, 3>, 3> mat = {{{1, 0, tx}, {0, 1, ty}, {0, 0, 1}}};
         imageCorners = {
-            {{matvecmul(mat, imageCorners[0])}, {matvecmul(mat, imageCorners[1])}, {matvecmul(mat, imageCorners[2])}, {matvecmul(mat, imageCorners[2])}}};
+            {{matvecmul(mat, imageCorners[0])}, {matvecmul(mat, imageCorners[1])}, {matvecmul(mat, imageCorners[2])}, {matvecmul(mat, imageCorners[3])}}};
         matrix = matmul(mat, matrix);
         outputOps.emplace_back(Translate(tx, ty));
     }
