@@ -19,3 +19,18 @@ index a3f66dd..1870723 100644
    message(STATUS "Compiling with OpenGL support")
    #message(WARNING G2O_OPENGL_TARGET=${G2O_OPENGL_TARGET})
  endif()
+diff --git a/cmake_modules/Config.cmake.in b/cmake_modules/Config.cmake.in
+index d2913a1..ba57e32 100644
+--- a/cmake_modules/Config.cmake.in
++++ b/cmake_modules/Config.cmake.in
+@@ -1,7 +1,9 @@
+ include(CMakeFindDependencyMacro)
+ 
+ find_dependency(Eigen3)
+-find_dependency(OpenGL)
++if (@G2O_HAVE_OPENGL@)
++  find_dependency(OpenGL)
++endif()
+ 
+ include("${CMAKE_CURRENT_LIST_DIR}/@G2O_TARGETS_EXPORT_NAME@.cmake")
+ 
