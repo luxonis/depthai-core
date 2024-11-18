@@ -232,11 +232,11 @@ void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
                                                     RawStereoDepthConfig::PostProcessing::Filter::SPATIAL,
                                                     RawStereoDepthConfig::PostProcessing::Filter::TEMPORAL};
             config.postProcessing.decimationFilter.decimationFactor = 2;
-            config.postProcessing.decimationFilter.decimationMode = RawStereoDepthConfig::PostProcessing::DecimationFilter::DecimationMode::NON_ZERO_MEAN;
+            config.postProcessing.decimationFilter.decimationMode = RawStereoDepthConfig::PostProcessing::DecimationFilter::DecimationMode::PIXEL_SKIPPING;
 
             config.postProcessing.spatialFilter.enable = true;
             config.postProcessing.spatialFilter.holeFillingRadius = 1;
-            config.postProcessing.spatialFilter.numIterations = 2;
+            config.postProcessing.spatialFilter.numIterations = 1;
             config.postProcessing.spatialFilter.alpha = 0.5;
             config.postProcessing.spatialFilter.delta = 3;
 
@@ -271,7 +271,7 @@ void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
                                                     RawStereoDepthConfig::PostProcessing::Filter::SPATIAL,
                                                     RawStereoDepthConfig::PostProcessing::Filter::TEMPORAL};
             config.postProcessing.decimationFilter.decimationFactor = 2;
-            config.postProcessing.decimationFilter.decimationMode = RawStereoDepthConfig::PostProcessing::DecimationFilter::DecimationMode::NON_ZERO_MEAN;
+            config.postProcessing.decimationFilter.decimationMode = RawStereoDepthConfig::PostProcessing::DecimationFilter::DecimationMode::PIXEL_SKIPPING;
 
             config.postProcessing.spatialFilter.enable = true;
             config.postProcessing.spatialFilter.holeFillingRadius = 1;
@@ -310,11 +310,11 @@ void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
                                                     RawStereoDepthConfig::PostProcessing::Filter::SPATIAL,
                                                     RawStereoDepthConfig::PostProcessing::Filter::TEMPORAL};
             config.postProcessing.decimationFilter.decimationFactor = 1;
-            config.postProcessing.decimationFilter.decimationMode = RawStereoDepthConfig::PostProcessing::DecimationFilter::DecimationMode::NON_ZERO_MEAN;
+            config.postProcessing.decimationFilter.decimationMode = RawStereoDepthConfig::PostProcessing::DecimationFilter::DecimationMode::PIXEL_SKIPPING;
 
             config.postProcessing.spatialFilter.enable = true;
             config.postProcessing.spatialFilter.holeFillingRadius = 1;
-            config.postProcessing.spatialFilter.numIterations = 3;
+            config.postProcessing.spatialFilter.numIterations = 1;
             config.postProcessing.spatialFilter.alpha = 0.7;
             config.postProcessing.spatialFilter.delta = 3;
 
@@ -324,45 +324,6 @@ void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
 
             config.postProcessing.speckleFilter.enable = true;
             config.postProcessing.speckleFilter.speckleRange = 200;
-            config.postProcessing.speckleFilter.differenceThreshold = 2;
-
-            config.postProcessing.thresholdFilter.minRange = 0;
-            config.postProcessing.thresholdFilter.maxRange = 15000;
-
-            initialConfig.set(config);
-
-            setPostProcessingHardwareResources(3, 3);
-        } break;
-        case PresetMode::HIGH_FPS: {
-            setDefaultProfilePreset(PresetMode::HIGH_DENSITY);
-            initialConfig.setLeftRightCheck(true);
-            initialConfig.setExtendedDisparity(false);
-            initialConfig.setSubpixel(true);
-            initialConfig.setSubpixelFractionalBits(3);
-            initialConfig.setMedianFilter(MedianFilter::KERNEL_3x3);
-
-            dai::RawStereoDepthConfig config = initialConfig.get();
-
-            config.postProcessing.filteringOrder = {RawStereoDepthConfig::PostProcessing::Filter::DECIMATION,
-                                                    RawStereoDepthConfig::PostProcessing::Filter::MEDIAN,
-                                                    RawStereoDepthConfig::PostProcessing::Filter::SPECKLE,
-                                                    RawStereoDepthConfig::PostProcessing::Filter::SPATIAL,
-                                                    RawStereoDepthConfig::PostProcessing::Filter::TEMPORAL};
-            config.postProcessing.decimationFilter.decimationFactor = 2;
-            config.postProcessing.decimationFilter.decimationMode = RawStereoDepthConfig::PostProcessing::DecimationFilter::DecimationMode::NON_ZERO_MEAN;
-
-            config.postProcessing.spatialFilter.enable = true;
-            config.postProcessing.spatialFilter.holeFillingRadius = 1;
-            config.postProcessing.spatialFilter.numIterations = 2;
-            config.postProcessing.spatialFilter.alpha = 0.5;
-            config.postProcessing.spatialFilter.delta = 3;
-
-            config.postProcessing.temporalFilter.enable = false;
-            config.postProcessing.temporalFilter.alpha = 0.5;
-            config.postProcessing.temporalFilter.delta = 3;
-
-            config.postProcessing.speckleFilter.enable = true;
-            config.postProcessing.speckleFilter.speckleRange = 50;
             config.postProcessing.speckleFilter.differenceThreshold = 2;
 
             config.postProcessing.thresholdFilter.minRange = 0;
@@ -388,11 +349,11 @@ void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
                                                     RawStereoDepthConfig::PostProcessing::Filter::SPATIAL,
                                                     RawStereoDepthConfig::PostProcessing::Filter::TEMPORAL};
             config.postProcessing.decimationFilter.decimationFactor = 2;
-            config.postProcessing.decimationFilter.decimationMode = RawStereoDepthConfig::PostProcessing::DecimationFilter::DecimationMode::NON_ZERO_MEAN;
+            config.postProcessing.decimationFilter.decimationMode = RawStereoDepthConfig::PostProcessing::DecimationFilter::DecimationMode::PIXEL_SKIPPING;
 
             config.postProcessing.spatialFilter.enable = true;
             config.postProcessing.spatialFilter.holeFillingRadius = 1;
-            config.postProcessing.spatialFilter.numIterations = 3;
+            config.postProcessing.spatialFilter.numIterations = 1;
             config.postProcessing.spatialFilter.alpha = 0.5;
             config.postProcessing.spatialFilter.delta = 3;
 
@@ -427,7 +388,7 @@ void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
                                                     RawStereoDepthConfig::PostProcessing::Filter::SPATIAL,
                                                     RawStereoDepthConfig::PostProcessing::Filter::TEMPORAL};
             config.postProcessing.decimationFilter.decimationFactor = 2;
-            config.postProcessing.decimationFilter.decimationMode = RawStereoDepthConfig::PostProcessing::DecimationFilter::DecimationMode::NON_ZERO_MEAN;
+            config.postProcessing.decimationFilter.decimationMode = RawStereoDepthConfig::PostProcessing::DecimationFilter::DecimationMode::PIXEL_SKIPPING;
 
             config.postProcessing.spatialFilter.enable = true;
             config.postProcessing.spatialFilter.holeFillingRadius = 2;
