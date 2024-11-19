@@ -96,10 +96,12 @@ struct FrameSpecs {
 
 template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
 class Warp {
+    using Container = std::vector<ManipOp>;
+
     std::shared_ptr<spdlog::async_logger> logger;
 
     std::array<std::array<float, 3>, 3> matrix;
-    ImageManipOpsBase::Background background = ImageManipOpsBase::Background::COLOR;
+    ImageManipOpsBase<Container>::Background background = ImageManipOpsBase<Container>::Background::COLOR;
     uint8_t backgroundColor[3] = {0, 0, 0};
 
     std::shared_ptr<ImageManipBuffer<float>> mapX;
@@ -189,6 +191,8 @@ class ColorChange {
 
 template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
 class ImageManipOperations {
+    using Container = std::vector<ManipOp>;
+
     static constexpr uint8_t MODE_CONVERT = 1;
     static constexpr uint8_t MODE_COLORMAP = 1 << 1;
     static constexpr uint8_t MODE_WARP = 1 << 2;
@@ -201,7 +205,7 @@ class ImageManipOperations {
     std::array<std::array<float, 3>, 3> matrix{{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
     std::array<std::array<float, 3>, 3> matrixInv{{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
     std::vector<std::array<std::array<float, 2>, 4>> srcCorners;
-    ImageManipOpsBase base;
+    ImageManipOpsBase<Container> base;
     ImgFrame::Type outputFrameType;
     ImgFrame::Type type;
     ImgFrame::Type inType;
@@ -230,7 +234,7 @@ class ImageManipOperations {
 
     void init();
 
-    ImageManipOperations& build(const ImageManipOpsBase& base, ImgFrame::Type outputFrameType, FrameSpecs srcFrameSpecs, ImgFrame::Type type);
+    ImageManipOperations& build(const ImageManipOpsBase<Container>& base, ImgFrame::Type outputFrameType, FrameSpecs srcFrameSpecs, ImgFrame::Type type);
 
     bool apply(const std::shared_ptr<Memory> src, span<uint8_t> dst);
 
@@ -2188,7 +2192,16 @@ inline std::string getOpStr(const T& op) {
     return op.toStr();
 }
 
-std::string getConfigString(const dai::ImageManipOpsBase& ops);
+template <typename C>
+std::string getConfigString(const dai::ImageManipOpsBase<C>& ops) {
+    std::stringstream configSS;
+    const auto operations = ops.getOperations();
+    for(auto i = 0U; i < operations.size(); ++i) {
+        configSS << std::visit([](auto&& op) { return getOpStr(op); }, operations[i].op);
+        if(i != operations.size() - 1) configSS << " ";
+    }
+    return configSS.str();
+}
 
 inline std::array<std::array<float, 3>, 3> matmul(std::array<std::array<float, 3>, 3> A, std::array<std::array<float, 3>, 3> B) {
     return {{{A[0][0] * B[0][0] + A[0][1] * B[1][0] + A[0][2] * B[2][0],
@@ -2228,16 +2241,92 @@ dai::RotatedRect getRotatedRectFromPoints(const std::vector<std::array<float, 2>
 
 std::array<std::array<float, 3>, 3> getResizeMat(Resize o, float width, float height, uint32_t outputWidth, uint32_t outputHeight);
 
-std::tuple<std::array<std::array<float, 3>, 3>, std::array<std::array<float, 2>, 4>, std::vector<std::array<std::array<float, 2>, 4>>> getTransform(
-    const std::vector<ManipOp>& ops, uint32_t inputWidth, uint32_t inputHeight, uint32_t outputWidth, uint32_t outputHeight);
+void getTransformImpl(const ManipOp& op,
+                      std::array<std::array<float, 3>, 3>& transform,
+                      std::array<std::array<float, 2>, 4>& imageCorners,
+                      std::vector<std::array<std::array<float, 2>, 4>>& srcCorners,
+                      uint32_t& outputWidth,
+                      uint32_t& outputHeight);
 
+template <typename C>
+std::tuple<std::array<std::array<float, 3>, 3>, std::array<std::array<float, 2>, 4>, std::vector<std::array<std::array<float, 2>, 4>>> getTransform(
+    const C& ops, uint32_t inputWidth, uint32_t inputHeight, uint32_t outputWidth, uint32_t outputHeight) {
+    std::array<std::array<float, 3>, 3> transform{{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
+    std::array<std::array<float, 2>, 4> imageCorners{{{0, 0}, {(float)inputWidth, 0}, {(float)inputWidth, (float)inputHeight}, {0, (float)inputHeight}}};
+    std::vector<std::array<std::array<float, 2>, 4>> srcCorners;
+    for(const auto& op : ops) {
+        getTransformImpl(op, transform, imageCorners, srcCorners, outputWidth, outputHeight);
+    }
+    return {transform, imageCorners, srcCorners};
+}
+
+void getOutputSizeFromCorners(const std::array<std::array<float, 2>, 4>& corners, const bool center, uint32_t& outputWidth, uint32_t& outputHeight);
+
+template <typename C>
 std::tuple<std::array<std::array<float, 3>, 3>, std::array<std::array<float, 2>, 4>, std::vector<std::array<std::array<float, 2>, 4>>> getFullTransform(
-    dai::ImageManipOpsBase& base,
-    size_t inputWidth,
-    size_t inputHeight,
-    dai::ImgFrame::Type type,
-    dai::ImgFrame::Type outputFrameType,
-    std::vector<ManipOp>& outputOps);
+    dai::ImageManipOpsBase<C>& base, size_t inputWidth, size_t inputHeight, dai::ImgFrame::Type type, dai::ImgFrame::Type outputFrameType, C& outputOps) {
+    using namespace dai;
+    using namespace dai::impl;
+
+    outputOps.clear();
+
+    auto operations = base.getOperations();
+
+    auto [matrix, imageCorners, srcCorners] = getTransform(operations, inputWidth, inputHeight, base.outputWidth, base.outputHeight);
+
+    getOutputSizeFromCorners(imageCorners, base.center, base.outputWidth, base.outputHeight);
+
+    if(base.resizeMode != ImageManipOpsBase<C>::ResizeMode::NONE) {
+        Resize res;
+        switch(base.resizeMode) {
+            case ImageManipOpsBase<C>::ResizeMode::NONE:
+                break;
+            case ImageManipOpsBase<C>::ResizeMode::STRETCH:
+                res = Resize(base.outputWidth, base.outputHeight);
+                break;
+            case ImageManipOpsBase<C>::ResizeMode::LETTERBOX:
+                res = Resize::fit();
+                break;
+            case ImageManipOpsBase<C>::ResizeMode::CENTER_CROP:
+                res = Resize::fill();
+                break;
+        }
+        auto [minx, maxx, miny, maxy] = getOuterRect(std::vector(imageCorners.begin(), imageCorners.end()));
+        auto mat = getResizeMat(res, maxx - minx, maxy - miny, base.outputWidth, base.outputHeight);
+        imageCorners = {
+            {{matvecmul(mat, imageCorners[0])}, {matvecmul(mat, imageCorners[1])}, {matvecmul(mat, imageCorners[2])}, {matvecmul(mat, imageCorners[2])}}};
+        matrix = matmul(mat, matrix);
+        outputOps.emplace_back(res);
+    }
+
+    if(base.center) {
+        float width = base.outputWidth;
+        float height = base.outputHeight;
+        auto [minx, maxx, miny, maxy] = getOuterRect(std::vector(imageCorners.begin(), imageCorners.end()));
+        float tx = -minx + (width - (maxx - minx)) / 2;
+        float ty = -miny + (height - (maxy - miny)) / 2;
+        std::array<std::array<float, 3>, 3> mat = {{{1, 0, tx}, {0, 1, ty}, {0, 0, 1}}};
+        imageCorners = {
+            {{matvecmul(mat, imageCorners[0])}, {matvecmul(mat, imageCorners[1])}, {matvecmul(mat, imageCorners[2])}, {matvecmul(mat, imageCorners[3])}}};
+        matrix = matmul(mat, matrix);
+        outputOps.emplace_back(Translate(tx, ty));
+    }
+
+    auto matrixInv = getInverse(matrix);
+
+    if(type == ImgFrame::Type::NV12 || type == ImgFrame::Type::YUV420p || outputFrameType == ImgFrame::Type::NV12
+       || outputFrameType == ImgFrame::Type::YUV420p) {
+        base.outputWidth = base.outputWidth - (base.outputWidth % 2);
+        base.outputHeight = base.outputHeight - (base.outputHeight % 2);
+    }
+
+    srcCorners.push_back({matvecmul(matrixInv, {0, 0}),
+                          matvecmul(matrixInv, {(float)base.outputWidth, 0}),
+                          matvecmul(matrixInv, {(float)base.outputWidth, (float)base.outputHeight}),
+                          matvecmul(matrixInv, {0, (float)base.outputHeight})});
+
+    return {matrix, imageCorners, srcCorners};
+}
 
 inline dai::ImgFrame::Type getValidType(dai::ImgFrame::Type type) {
     return isSingleChannelu8(type) ? VALID_TYPE_GRAY : VALID_TYPE_COLOR;
@@ -2259,10 +2348,8 @@ void ImageManipOperations<ImageManipBuffer, ImageManipData>::init() {
 }
 
 template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
-ImageManipOperations<ImageManipBuffer, ImageManipData>& ImageManipOperations<ImageManipBuffer, ImageManipData>::build(const ImageManipOpsBase& newBase,
-                                                                                                                      ImgFrame::Type outType,
-                                                                                                                      FrameSpecs srcFrameSpecs,
-                                                                                                                      ImgFrame::Type inFrameType) {
+ImageManipOperations<ImageManipBuffer, ImageManipData>& ImageManipOperations<ImageManipBuffer, ImageManipData>::build(
+    const ImageManipOpsBase<Container>& newBase, ImgFrame::Type outType, FrameSpecs srcFrameSpecs, ImgFrame::Type inFrameType) {
     const auto newCfgStr = getConfigString(newBase);
     if(newCfgStr == prevConfig && outType == outputFrameType && srcFrameSpecs.width == srcSpecs.width && srcFrameSpecs.height == srcSpecs.height
        && inFrameType == inType)
@@ -2316,7 +2403,7 @@ ImageManipOperations<ImageManipBuffer, ImageManipData>& ImageManipOperations<Ima
     matrix = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
 
     if(mode & MODE_WARP) {
-        auto [matrix, imageCorners, _srcCorners] = getFullTransform(base, inputWidth, inputHeight, type, outputFrameType, outputOps);
+        auto [matrix, imageCorners, _srcCorners] = getFullTransform<Container>(base, inputWidth, inputHeight, type, outputFrameType, outputOps);
 
         this->matrix = matrix;
         this->matrixInv = getInverse(matrix);
@@ -3286,7 +3373,7 @@ void Warp<ImageManipBuffer, ImageManipData>::apply(const span<const uint8_t> src
 
 template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
 Warp<ImageManipBuffer, ImageManipData>& Warp<ImageManipBuffer, ImageManipData>::setBackgroundColor(const uint8_t r, const uint8_t g, const uint8_t b) {
-    background = ImageManipOpsBase::Background::COLOR;
+    background = ImageManipOpsBase<Container>::Background::COLOR;
     switch(type) {
         case ImgFrame::Type::YUV420p:
         case ImgFrame::Type::NV12: {

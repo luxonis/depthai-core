@@ -577,16 +577,6 @@ bool dai::impl::getFrameTypeInfo(dai::ImgFrame::Type outFrameType, int& outNumPl
     return true;
 }
 
-std::string dai::impl::getConfigString(const dai::ImageManipOpsBase& ops) {
-    std::stringstream configSS;
-    const auto operations = ops.getOperations();
-    for(auto i = 0U; i < operations.size(); ++i) {
-        configSS << std::visit([](auto&& op) { return getOpStr(op); }, operations[i].op);
-        if(i != operations.size() - 1) configSS << " ";
-    }
-    return configSS.str();
-}
-
 std::tuple<float, float, float, float> dai::impl::getOuterRect(const std::vector<std::array<float, 2>> points) {
     float minx = points[0][0];
     float maxx = points[0][0];
@@ -748,235 +738,165 @@ std::array<std::array<float, 3>, 3> dai::impl::getResizeMat(Resize o, float widt
     return {{{o.width, 0, 0}, {0, o.height, 0}, {0, 0, 1}}};
 }
 
-std::tuple<std::array<std::array<float, 3>, 3>, std::array<std::array<float, 2>, 4>, std::vector<std::array<std::array<float, 2>, 4>>> dai::impl::getTransform(
-    const std::vector<ManipOp>& ops, uint32_t inputWidth, uint32_t inputHeight, uint32_t outputWidth, uint32_t outputHeight) {
-    std::array<std::array<float, 3>, 3> transform{{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
-    std::array<std::array<float, 2>, 4> imageCorners{{{0, 0}, {(float)inputWidth, 0}, {(float)inputWidth, (float)inputHeight}, {0, (float)inputHeight}}};
-    std::vector<std::array<std::array<float, 2>, 4>> srcCorners;
-    for(const auto& op : ops) {
-        std::array<std::array<float, 3>, 3> mat = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
-
-        float centerX = (imageCorners[0][0] + imageCorners[1][0] + imageCorners[2][0] + imageCorners[3][0]) / 4;
-        float centerY = (imageCorners[0][1] + imageCorners[1][1] + imageCorners[2][1] + imageCorners[3][1]) / 4;
-
-        const auto [_minx, _maxx, _miny, _maxy] = getOuterRect(std::vector(imageCorners.begin(), imageCorners.end()));
-        float minx = _minx;
-        float maxx = _maxx;
-        float miny = _miny;
-        float maxy = _maxy;
-        float width = maxx - minx;
-        float height = maxy - miny;
-
-        std::visit(
-            overloaded{[](auto _) {},
-                       [&](Translate o) {
-                           if(o.normalized) {
-                               o.offsetX *= width;
-                               o.offsetY *= height;
-                           }
-                           mat = {{{1, 0, o.offsetX}, {0, 1, o.offsetY}, {0, 0, 1}}};
-                       },
-                       [&](Rotate o) {
-                           float cos = std::cos(o.angle);
-                           float sin = std::sin(o.angle);
-                           if(o.normalized) {
-                               o.offsetX *= width;
-                               o.offsetY *= height;
-                           }
-                           float moveX = centerX + o.offsetX;
-                           float moveY = centerY + o.offsetY;
-                           if(o.center) {
-                               mat = {{{1, 0, -moveX}, {0, 1, -moveY}, {0, 0, 1}}};
-                           }
-                           mat = matmul({{{cos, -sin, 0}, {sin, cos, 0}, {0, 0, 1}}}, mat);
-                           if(o.center) {
-                               mat = matmul({{{1, 0, moveX}, {0, 1, moveY}, {0, 0, 1}}}, mat);
-                           }
-                       },
-                       [&](Resize o) { mat = getResizeMat(o, width, height, outputWidth, outputHeight); },
-                       [&](Flip o) {
-                           float moveX = centerX;
-                           float moveY = centerY;
-                           switch(o.direction) {
-                               case Flip::HORIZONTAL: {
-                                   if(o.center) {
-                                       mat = {{{1, 0, -moveX}, {0, 1, -moveY}, {0, 0, 1}}};
-                                   }
-                                   mat = matmul({{{-1, 0, 0}, {0, 1, 0}, {0, 0, 1}}}, mat);
-                                   if(o.center) {
-                                       mat = matmul({{{1, 0, moveX}, {0, 1, moveY}, {0, 0, 1}}}, mat);
-                                   }
-                                   break;
-                               }
-                               case Flip::VERTICAL: {
-                                   if(o.center) {
-                                       mat = {{{1, 0, -moveX}, {0, 1, -moveY}, {0, 0, 1}}};
-                                   }
-                                   mat = matmul({{{1, 0, 0}, {0, -1, 0}, {0, 0, 1}}}, mat);
-                                   if(o.center) {
-                                       mat = matmul({{{1, 0, moveX}, {0, 1, moveY}, {0, 0, 1}}}, mat);
-                                   }
-                                   break;
-                               }
-                           }
-                       },
-                       [&](FourPoints o) {
-                           if(o.normalized) {
-                               for(auto i = 0; i < 4; ++i) {
-                                   o.src[i].x *= width;
-                                   o.src[i].y *= height;
-                                   o.dst[i].x *= width;
-                                   o.dst[i].y *= height;
-                               }
-#if defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
-                               std::array<float, 9> coeff = {};
-                               std::array<float, 8> srcData = {o.src[0].x, o.src[0].y, o.src[1].x, o.src[1].y, o.src[2].x, o.src[2].y, o.src[3].x, o.src[3].y};
-                               std::array<float, 8> dstData = {o.dst[0].x, o.dst[0].y, o.dst[1].x, o.dst[1].y, o.dst[2].x, o.dst[2].y, o.dst[3].x, o.dst[3].y};
-                               fcvGetPerspectiveTransformf32(srcData.data(), dstData.data(), coeff.data());
-                               mat = {{{coeff[0], coeff[1], coeff[2]}, {coeff[3], coeff[4], coeff[5]}, {coeff[6], coeff[7], coeff[8]}}};
-#elif defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
-                               cv::Point2f srcPoints[4] = {cv::Point2f(o.src[0].x, o.src[0].y),
-                                                           cv::Point2f(o.src[1].x, o.src[1].y),
-                                                           cv::Point2f(o.src[2].x, o.src[2].y),
-                                                           cv::Point2f(o.src[3].x, o.src[3].y)};
-                               cv::Point2f dstPoints[4] = {cv::Point2f(o.dst[0].x, o.dst[0].y),
-                                                           cv::Point2f(o.dst[1].x, o.dst[1].y),
-                                                           cv::Point2f(o.dst[2].x, o.dst[2].y),
-                                                           cv::Point2f(o.dst[3].x, o.dst[3].y)};
-                               cv::Mat cvMat = cv::getPerspectiveTransform(srcPoints, dstPoints);
-                               mat = {{{(float)cvMat.at<double>(0, 0), (float)cvMat.at<double>(0, 1), (float)cvMat.at<double>(0, 2)},
-                                       {(float)cvMat.at<double>(1, 0), (float)cvMat.at<double>(1, 1), (float)cvMat.at<double>(1, 2)},
-                                       {(float)cvMat.at<double>(2, 0), (float)cvMat.at<double>(2, 1), (float)cvMat.at<double>(2, 2)}}};
-#else
-                               throw std::runtime_error("FourPoints not supported without OpenCV or FastCV enabled");
-#endif
-                           }
-                       },
-                       [&](Affine o) { mat = {{{o.matrix[0], o.matrix[1], 0}, {o.matrix[2], o.matrix[3], 0}, {0, 0, 1}}}; },
-                       [&](Perspective o) {
-                           mat = {{{o.matrix[0], o.matrix[1], o.matrix[2]}, {o.matrix[3], o.matrix[4], o.matrix[5]}, {o.matrix[6], o.matrix[7], o.matrix[8]}}};
-                       },
-                       [&](Crop o) {
-                           if(o.normalized) {
-                               o.width *= width;
-                               o.height *= height;
-                           } else if((o.width > 0 && o.width < 1) || (o.height > 0 && o.height < 1)) {
-                               throw std::runtime_error("Crop not marked as normalized, but values seem to be normalized (height or width is less than 1)");
-                           }
-                           if(o.width > 0 && o.height <= 0)
-                               o.height = roundf(height * ((float)o.width / width));
-                           else if(o.height > 0 && o.width <= 0)
-                               o.width = roundf(width * (o.height / height));
-                           else if(o.height <= 0 && o.width <= 0) {
-                               o.width = roundf(maxx);
-                               o.height = roundf(maxy);
-                           }
-
-                           outputWidth = o.width;
-                           outputHeight = o.height;
-
-                           if(o.center) {
-                               std::array<std::array<float, 3>, 3> _mat = {
-                                   {{1, 0, -minx + (outputWidth - (maxx - minx)) / 2}, {0, 1, -miny + (outputHeight - (maxy - miny)) / 2}, {0, 0, 1}}};
-                               transform = matmul(_mat, transform);
-                           }
-
-                           imageCorners = {{{0, 0}, {(float)outputWidth, 0}, {(float)outputWidth, (float)outputHeight}, {0, (float)outputHeight}}};
-                           auto transformInv = getInverse(transform);
-                           srcCorners.push_back({matvecmul(transformInv, imageCorners[0]),
-                                                 matvecmul(transformInv, imageCorners[1]),
-                                                 matvecmul(transformInv, imageCorners[2]),
-                                                 matvecmul(transformInv, imageCorners[3])});
-                       }},
-            op.op);
-        imageCorners = getOuterRotatedRect(
-            {matvecmul(mat, imageCorners[0]), matvecmul(mat, imageCorners[1]), matvecmul(mat, imageCorners[2]), matvecmul(mat, imageCorners[3])});
-        transform = matmul(mat, transform);
+void dai::impl::getOutputSizeFromCorners(const std::array<std::array<float, 2>, 4>& corners, const bool center, uint32_t& outputWidth, uint32_t& outputHeight) {
+    auto [minx, maxx, miny, maxy] = dai::impl::getOuterRect(std::vector(corners.begin(), corners.end()));
+    float rminx = (minx - floorf(minx)) >= SIZE_ROUND_UP_THRESHOLD ? ceilf(minx) : floorf(minx);
+    float rmaxx = (maxx - floorf(maxx)) >= SIZE_ROUND_UP_THRESHOLD ? ceilf(maxx) : floorf(maxx);
+    float rminy = (miny - floorf(miny)) >= SIZE_ROUND_UP_THRESHOLD ? ceilf(miny) : floorf(miny);
+    float rmaxy = (maxy - floorf(maxy)) >= SIZE_ROUND_UP_THRESHOLD ? ceilf(maxy) : floorf(maxy);
+    if(!center) {
+        if(outputWidth == 0) outputWidth = rmaxx;
+        if(outputHeight == 0) outputHeight = rmaxy;
+    } else {
+        if(outputWidth == 0) outputWidth = rmaxx - rminx;
+        if(outputHeight == 0) outputHeight = rmaxy - rminy;
     }
-    return {transform, imageCorners, srcCorners};
 }
 
-std::tuple<std::array<std::array<float, 3>, 3>, std::array<std::array<float, 2>, 4>, std::vector<std::array<std::array<float, 2>, 4>>>
-dai::impl::getFullTransform(dai::ImageManipOpsBase& base,
-                            size_t inputWidth,
-                            size_t inputHeight,
-                            dai::ImgFrame::Type type,
-                            dai::ImgFrame::Type outputFrameType,
-                            std::vector<ManipOp>& outputOps) {
-    using namespace dai;
-    using namespace dai::impl;
+void dai::impl::getTransformImpl(const ManipOp& op,
+                                 std::array<std::array<float, 3>, 3>& transform,
+                                 std::array<std::array<float, 2>, 4>& imageCorners,
+                                 std::vector<std::array<std::array<float, 2>, 4>>& srcCorners,
+                                 uint32_t& outputWidth,
+                                 uint32_t& outputHeight) {
+    std::array<std::array<float, 3>, 3> mat = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
 
-    outputOps.clear();
+    float centerX = (imageCorners[0][0] + imageCorners[1][0] + imageCorners[2][0] + imageCorners[3][0]) / 4;
+    float centerY = (imageCorners[0][1] + imageCorners[1][1] + imageCorners[2][1] + imageCorners[3][1]) / 4;
 
-    auto operations = base.getOperations();
+    const auto [_minx, _maxx, _miny, _maxy] = getOuterRect(std::vector(imageCorners.begin(), imageCorners.end()));
+    float minx = _minx;
+    float maxx = _maxx;
+    float miny = _miny;
+    float maxy = _maxy;
+    float width = maxx - minx;
+    float height = maxy - miny;
 
-    auto [matrix, imageCorners, srcCorners] = getTransform(operations, inputWidth, inputHeight, base.outputWidth, base.outputHeight);
+    std::visit(
+        overloaded{[](auto _) {},
+                   [&](Translate o) {
+                       if(o.normalized) {
+                           o.offsetX *= width;
+                           o.offsetY *= height;
+                       }
+                       mat = {{{1, 0, o.offsetX}, {0, 1, o.offsetY}, {0, 0, 1}}};
+                   },
+                   [&](Rotate o) {
+                       float cos = std::cos(o.angle);
+                       float sin = std::sin(o.angle);
+                       if(o.normalized) {
+                           o.offsetX *= width;
+                           o.offsetY *= height;
+                       }
+                       float moveX = centerX + o.offsetX;
+                       float moveY = centerY + o.offsetY;
+                       if(o.center) {
+                           mat = {{{1, 0, -moveX}, {0, 1, -moveY}, {0, 0, 1}}};
+                       }
+                       mat = matmul({{{cos, -sin, 0}, {sin, cos, 0}, {0, 0, 1}}}, mat);
+                       if(o.center) {
+                           mat = matmul({{{1, 0, moveX}, {0, 1, moveY}, {0, 0, 1}}}, mat);
+                       }
+                   },
+                   [&](Resize o) { mat = getResizeMat(o, width, height, outputWidth, outputHeight); },
+                   [&](Flip o) {
+                       float moveX = centerX;
+                       float moveY = centerY;
+                       switch(o.direction) {
+                           case Flip::HORIZONTAL: {
+                               if(o.center) {
+                                   mat = {{{1, 0, -moveX}, {0, 1, -moveY}, {0, 0, 1}}};
+                               }
+                               mat = matmul({{{-1, 0, 0}, {0, 1, 0}, {0, 0, 1}}}, mat);
+                               if(o.center) {
+                                   mat = matmul({{{1, 0, moveX}, {0, 1, moveY}, {0, 0, 1}}}, mat);
+                               }
+                               break;
+                           }
+                           case Flip::VERTICAL: {
+                               if(o.center) {
+                                   mat = {{{1, 0, -moveX}, {0, 1, -moveY}, {0, 0, 1}}};
+                               }
+                               mat = matmul({{{1, 0, 0}, {0, -1, 0}, {0, 0, 1}}}, mat);
+                               if(o.center) {
+                                   mat = matmul({{{1, 0, moveX}, {0, 1, moveY}, {0, 0, 1}}}, mat);
+                               }
+                               break;
+                           }
+                       }
+                   },
+                   [&](FourPoints o) {
+                       if(o.normalized) {
+                           for(auto i = 0; i < 4; ++i) {
+                               o.src[i].x *= width;
+                               o.src[i].y *= height;
+                               o.dst[i].x *= width;
+                               o.dst[i].y *= height;
+                           }
+#if defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
+                           std::array<float, 9> coeff = {};
+                           std::array<float, 8> srcData = {o.src[0].x, o.src[0].y, o.src[1].x, o.src[1].y, o.src[2].x, o.src[2].y, o.src[3].x, o.src[3].y};
+                           std::array<float, 8> dstData = {o.dst[0].x, o.dst[0].y, o.dst[1].x, o.dst[1].y, o.dst[2].x, o.dst[2].y, o.dst[3].x, o.dst[3].y};
+                           fcvGetPerspectiveTransformf32(srcData.data(), dstData.data(), coeff.data());
+                           mat = {{{coeff[0], coeff[1], coeff[2]}, {coeff[3], coeff[4], coeff[5]}, {coeff[6], coeff[7], coeff[8]}}};
+#elif defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
+                           cv::Point2f srcPoints[4] = {cv::Point2f(o.src[0].x, o.src[0].y),
+                                                       cv::Point2f(o.src[1].x, o.src[1].y),
+                                                       cv::Point2f(o.src[2].x, o.src[2].y),
+                                                       cv::Point2f(o.src[3].x, o.src[3].y)};
+                           cv::Point2f dstPoints[4] = {cv::Point2f(o.dst[0].x, o.dst[0].y),
+                                                       cv::Point2f(o.dst[1].x, o.dst[1].y),
+                                                       cv::Point2f(o.dst[2].x, o.dst[2].y),
+                                                       cv::Point2f(o.dst[3].x, o.dst[3].y)};
+                           cv::Mat cvMat = cv::getPerspectiveTransform(srcPoints, dstPoints);
+                           mat = {{{(float)cvMat.at<double>(0, 0), (float)cvMat.at<double>(0, 1), (float)cvMat.at<double>(0, 2)},
+                                   {(float)cvMat.at<double>(1, 0), (float)cvMat.at<double>(1, 1), (float)cvMat.at<double>(1, 2)},
+                                   {(float)cvMat.at<double>(2, 0), (float)cvMat.at<double>(2, 1), (float)cvMat.at<double>(2, 2)}}};
+#else
+                           throw std::runtime_error("FourPoints not supported without OpenCV or FastCV enabled");
+#endif
+                       }
+                   },
+                   [&](Affine o) { mat = {{{o.matrix[0], o.matrix[1], 0}, {o.matrix[2], o.matrix[3], 0}, {0, 0, 1}}}; },
+                   [&](Perspective o) {
+                       mat = {{{o.matrix[0], o.matrix[1], o.matrix[2]}, {o.matrix[3], o.matrix[4], o.matrix[5]}, {o.matrix[6], o.matrix[7], o.matrix[8]}}};
+                   },
+                   [&](Crop o) {
+                       if(o.normalized) {
+                           o.width *= width;
+                           o.height *= height;
+                       } else if((o.width > 0 && o.width < 1) || (o.height > 0 && o.height < 1)) {
+                           throw std::runtime_error("Crop not marked as normalized, but values seem to be normalized (height or width is less than 1)");
+                       }
+                       if(o.width > 0 && o.height <= 0)
+                           o.height = roundf(height * ((float)o.width / width));
+                       else if(o.height > 0 && o.width <= 0)
+                           o.width = roundf(width * (o.height / height));
+                       else if(o.height <= 0 && o.width <= 0) {
+                           o.width = roundf(maxx);
+                           o.height = roundf(maxy);
+                       }
 
-    {
-        auto [minx, maxx, miny, maxy] = getOuterRect(std::vector(imageCorners.begin(), imageCorners.end()));
-        float rminx = (minx - floorf(minx)) >= SIZE_ROUND_UP_THRESHOLD ? ceilf(minx) : floorf(minx);
-        float rmaxx = (maxx - floorf(maxx)) >= SIZE_ROUND_UP_THRESHOLD ? ceilf(maxx) : floorf(maxx);
-        float rminy = (miny - floorf(miny)) >= SIZE_ROUND_UP_THRESHOLD ? ceilf(miny) : floorf(miny);
-        float rmaxy = (maxy - floorf(maxy)) >= SIZE_ROUND_UP_THRESHOLD ? ceilf(maxy) : floorf(maxy);
-        if(!base.center) {
-            if(base.outputWidth == 0) base.outputWidth = rmaxx;
-            if(base.outputHeight == 0) base.outputHeight = rmaxy;
-        } else {
-            if(base.outputWidth == 0) base.outputWidth = rmaxx - rminx;
-            if(base.outputHeight == 0) base.outputHeight = rmaxy - rminy;
-        }
-    }
+                       outputWidth = o.width;
+                       outputHeight = o.height;
 
-    if(base.resizeMode != ImageManipOpsBase::ResizeMode::NONE) {
-        Resize res;
-        switch(base.resizeMode) {
-            case ImageManipOpsBase::ResizeMode::NONE:
-                break;
-            case ImageManipOpsBase::ResizeMode::STRETCH:
-                res = Resize(base.outputWidth, base.outputHeight);
-                break;
-            case ImageManipOpsBase::ResizeMode::LETTERBOX:
-                res = Resize::fit();
-                break;
-            case ImageManipOpsBase::ResizeMode::CENTER_CROP:
-                res = Resize::fill();
-                break;
-        }
-        auto [minx, maxx, miny, maxy] = getOuterRect(std::vector(imageCorners.begin(), imageCorners.end()));
-        auto mat = getResizeMat(res, maxx - minx, maxy - miny, base.outputWidth, base.outputHeight);
-        imageCorners = {
-            {{matvecmul(mat, imageCorners[0])}, {matvecmul(mat, imageCorners[1])}, {matvecmul(mat, imageCorners[2])}, {matvecmul(mat, imageCorners[2])}}};
-        matrix = matmul(mat, matrix);
-        outputOps.emplace_back(res);
-    }
+                       if(o.center) {
+                           std::array<std::array<float, 3>, 3> _mat = {
+                               {{1, 0, -minx + (outputWidth - (maxx - minx)) / 2}, {0, 1, -miny + (outputHeight - (maxy - miny)) / 2}, {0, 0, 1}}};
+                           transform = matmul(_mat, transform);
+                       }
 
-    if(base.center) {
-        float width = base.outputWidth;
-        float height = base.outputHeight;
-        auto [minx, maxx, miny, maxy] = getOuterRect(std::vector(imageCorners.begin(), imageCorners.end()));
-        float tx = -minx + (width - (maxx - minx)) / 2;
-        float ty = -miny + (height - (maxy - miny)) / 2;
-        std::array<std::array<float, 3>, 3> mat = {{{1, 0, tx}, {0, 1, ty}, {0, 0, 1}}};
-        imageCorners = {
-            {{matvecmul(mat, imageCorners[0])}, {matvecmul(mat, imageCorners[1])}, {matvecmul(mat, imageCorners[2])}, {matvecmul(mat, imageCorners[3])}}};
-        matrix = matmul(mat, matrix);
-        outputOps.emplace_back(Translate(tx, ty));
-    }
-
-    auto matrixInv = getInverse(matrix);
-
-    if(type == ImgFrame::Type::NV12 || type == ImgFrame::Type::YUV420p || outputFrameType == ImgFrame::Type::NV12
-       || outputFrameType == ImgFrame::Type::YUV420p) {
-        base.outputWidth = base.outputWidth - (base.outputWidth % 2);
-        base.outputHeight = base.outputHeight - (base.outputHeight % 2);
-    }
-
-    srcCorners.push_back({matvecmul(matrixInv, {0, 0}),
-                          matvecmul(matrixInv, {(float)base.outputWidth, 0}),
-                          matvecmul(matrixInv, {(float)base.outputWidth, (float)base.outputHeight}),
-                          matvecmul(matrixInv, {0, (float)base.outputHeight})});
-
-    return {matrix, imageCorners, srcCorners};
+                       imageCorners = {{{0, 0}, {(float)outputWidth, 0}, {(float)outputWidth, (float)outputHeight}, {0, (float)outputHeight}}};
+                       auto transformInv = getInverse(transform);
+                       srcCorners.push_back({matvecmul(transformInv, imageCorners[0]),
+                                             matvecmul(transformInv, imageCorners[1]),
+                                             matvecmul(transformInv, imageCorners[2]),
+                                             matvecmul(transformInv, imageCorners[3])});
+                   }},
+        op.op);
+    imageCorners = getOuterRotatedRect(
+        {matvecmul(mat, imageCorners[0]), matvecmul(mat, imageCorners[1]), matvecmul(mat, imageCorners[2]), matvecmul(mat, imageCorners[3])});
+    transform = matmul(mat, transform);
 }
 
 size_t dai::impl::getFrameSize(const ImgFrame::Type type, const FrameSpecs& specs) {
