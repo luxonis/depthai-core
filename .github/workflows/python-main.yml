@@ -206,7 +206,7 @@ jobs:
     env:
       DEPTHAI_BUILD_BASALT: ON
       DEPTHAI_BUILD_PCL: ON
-      DEPTHAI_BUILD_RTABMAP: ON
+      # DEPTHAI_BUILD_RTABMAP: ON
       VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
     steps:
       - name: Cache .hunter folder
@@ -496,7 +496,7 @@ jobs:
       VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
       DEPTHAI_BUILD_BASALT: ON
       DEPTHAI_BUILD_PCL: ON
-      DEPTHAI_BUILD_RTABMAP: ON
+      # DEPTHAI_BUILD_RTABMAP: ON
     steps:
       - name: Export GitHub Actions cache environment variables
         uses: actions/github-script@v7
