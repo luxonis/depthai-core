@@ -111,7 +111,7 @@ try:
         file.write(final_stubs)
 
     # Flush previous stdout
-    # sys.stdout.flush()
+    sys.stdout.flush()
 
     # Check syntax (Mypy and later Pylance/Pyright)
     # Windows limitation - another process cannot normally read temporary file that is opened by this process
@@ -130,11 +130,9 @@ try:
 
     def process_init_pyi(file_path, is_depthai_root=False):
         # Read old __init__.pyi
-        print(f'Processing {file_path}')
         with open(file_path, 'r+') as file:
             contents = file.read()
 
-        print(f'Processing {file_path}')
         # Prepare imports
         dir_path = os.path.dirname(file_path)
 
