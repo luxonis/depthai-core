@@ -46,27 +46,27 @@ class RTABMapVIO : public NodeCRTP<ThreadedHostNode, RTABMapVIO> {
     /**
      * Input tracked features on which VIO is performed (optional).
      */
-    Input features{*this, {.name = featuresInputName, .types = {{DatatypeEnum::TrackedFeatures, true}}}};
+    Input features{*this, {featuresInputName, DEFAULT_GROUP, DEFAULT_BLOCKING, 15, {{{DatatypeEnum::TrackedFeatures, true}}}}};
     /**
      * Input IMU data.
      */
-    Input imu{*this, {.name = "imu", .types = {{DatatypeEnum::IMUData, true}}}};
+    Input imu{*this, {"imu", DEFAULT_GROUP, DEFAULT_BLOCKING, 15, {{{DatatypeEnum::IMUData, true}}}}};
     /**
      * Output transform.
      */
-    Output transform{*this, {.name = "transform", .types = {{DatatypeEnum::TransformData, true}}}};
+    Output transform{*this, {"transform", DEFAULT_GROUP, {{{DatatypeEnum::TransformData, true}}}}};
     /**
      * Passthrough rectified frame.
      */
-    Output passthroughRect{*this, {.name = "passthroughRect", .types = {{DatatypeEnum::ImgFrame, true}}}};
+    Output passthroughRect{*this, {"passthroughRect", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};
     /**
      * Passthrough depth frame.
      */
-    Output passthroughDepth{*this, {.name = "passthroughDepth", .types = {{DatatypeEnum::ImgFrame, true}}}};
+    Output passthroughDepth{*this, {"passthroughDepth", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};
     /**
      * Passthrough features.
      */
-    Output passthroughFeatures{*this, {.name = "passthroughFeatures", .types = {{DatatypeEnum::TrackedFeatures, true}}}};
+    Output passthroughFeatures{*this, {"passthroughFeatures", DEFAULT_GROUP, {{{DatatypeEnum::TrackedFeatures, true}}}}};
 
     /**
      * Set RTABMap parameters.
@@ -91,20 +91,21 @@ class RTABMapVIO : public NodeCRTP<ThreadedHostNode, RTABMapVIO> {
    private:
     void run() override;
     void syncCB(std::shared_ptr<dai::ADatatype> data);
-    Input inSync{*this, {.name = "inSync", .types = {{DatatypeEnum::MessageGroup, true}}}};
-    void imuCB(std::shared_ptr<ADatatype> msg);
-    void initialize(Pipeline& pipeline, int instanceNum, int width, int height);
-    rtabmap::StereoCameraModel model;
-    std::unique_ptr<rtabmap::Odometry> odom;
-    rtabmap::Transform localTransform;
-    rtabmap::Transform imuLocalTransform;
-    std::map<std::string, std::string> rtabParams;
-    std::map<double, cv::Vec3f> accBuffer;
-    std::map<double, cv::Vec3f> gyroBuffer;
-    std::mutex imuMtx;
-    float alphaScaling = -1.0;
-    bool initialized = false;
-    bool useFeatures = true;
-};
+    Input inSync {
+        *this, {"inSync", DEFAULT_GROUP, DEFAULT_BLOCKING, 15, {{{DatatypeEnum::MessageGroup, true}}}}};
+        void imuCB(std::shared_ptr<ADatatype> msg);
+        void initialize(Pipeline & pipeline, int instanceNum, int width, int height);
+        rtabmap::StereoCameraModel model;
+        std::unique_ptr<rtabmap::Odometry> odom;
+        rtabmap::Transform localTransform;
+        rtabmap::Transform imuLocalTransform;
+        std::map<std::string, std::string> rtabParams;
+        std::map<double, cv::Vec3f> accBuffer;
+        std::map<double, cv::Vec3f> gyroBuffer;
+        std::mutex imuMtx;
+        float alphaScaling = -1.0;
+        bool initialized = false;
+        bool useFeatures = true;
+    };
 }  // namespace node
 }  // namespace dai

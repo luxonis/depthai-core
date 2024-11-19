@@ -206,7 +206,7 @@ jobs:
     env:
       # DEPTHAI_BUILD_BASALT: ON
       DEPTHAI_BUILD_PCL: ON
-      # DEPTHAI_BUILD_RTABMAP: ON
+      DEPTHAI_BUILD_RTABMAP: ON
       VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
     steps:
       - name: Cache .hunter folder
