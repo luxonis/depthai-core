@@ -79,6 +79,7 @@ endif()
 
 option(DEPTHAI_BOOTSTRAP_VCPKG "Automatically bootstrap VCPKG" ON)
 if(DEPTHAI_BOOTSTRAP_VCPKG)
+    set(ENV{VCPKG_MAX_CONCURRENCY} "2")
     message(STATUS "Including vcpkg.cmake")
     include(cmake/vcpkg.cmake)
 else()
@@ -737,7 +738,7 @@ target_link_libraries(${TARGET_CORE_NAME}
         FP16::fp16
         LibArchive::LibArchive
         liblzma::liblzma
-		ZLIB::ZLIB
+        ZLIB::ZLIB
         lz4::lz4
         httplib::httplib
         mp4v2::mp4v2
