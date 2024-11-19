@@ -1,7 +1,14 @@
-cmake_minimum_required(VERSION 3.4) # For Hunter
-
+cmake_minimum_required(VERSION 3.16) 
+# Early options
+option(DEPTHAI_ENABLE_LIBUSB "Enable usage of libusb and interaction with USB devices" ON)
 # Build AprilTag node code (note, that even if set to OFF, an AprilTagNode can be used with setRunOnHost(false))
 option(DEPTHAI_ENABLE_APRIL_TAG "Enable AprilTag node" ON)
+option(DEPTHAI_RTABMAP_SUPPORT "Enable optional RTABMap support" OFF)
+option(DEPTHAI_BASALT_SUPPORT "Enable optional Basalt support" OFF)
+option(DEPTHAI_ENABLE_PROTOBUF "Enable Protobuf support" ON)
+option(DEPTHAI_ENABLE_CURL "Enable CURL support" ${DEPTHAI_DEFAULT_CURL_SUPPORT})
+option(DEPTHAI_BOOTSTRAP_VCPKG "Automatically bootstrap VCPKG" ON)
+
 set(DEPTHAI_HAS_APRIL_TAG ${DEPTHAI_ENABLE_APRIL_TAG})
 if(WIN32)
     message(STATUS "AprilTag node is not supported on Windows")
@@ -10,11 +17,9 @@ endif()
 if(DEPTHAI_HAS_APRIL_TAG)
 list(APPEND VCPKG_MANIFEST_FEATURES "apriltag")
 endif()
-option(DEPTHAI_RTABMAP_SUPPORT "Enable optional RTABMap support" OFF)
 if(DEPTHAI_RTABMAP_SUPPORT)
 list(APPEND VCPKG_MANIFEST_FEATURES "rtabmap")
 endif()
-option(DEPTHAI_BASALT_SUPPORT "Enable optional Basalt support" OFF)
 if(DEPTHAI_BASALT_SUPPORT)
 list(APPEND VCPKG_MANIFEST_FEATURES "basalt")
 endif()
@@ -31,37 +36,22 @@ else()
     endif()
 endif()
 
-
-
-option(DEPTHAI_ENABLE_PROTOBUF "Enable Protobuf support" ON)
 if(DEPTHAI_ENABLE_PROTOBUF)
     list(APPEND VCPKG_MANIFEST_FEATURES "protobuf-support")
 endif()
 
 
-# Set to use native tls for windows before including Hunter (used for Curl)
-if(WIN32)
-    set(DEPTHAI_CURL_USE_SCHANNEL ON)
-    set(DEPTHAI_CURL_USE_OPENSSL OFF)
-    add_compile_definitions(NOMINMAX)
-else()
-    set(DEPTHAI_CURL_USE_SCHANNEL OFF)
-    set(DEPTHAI_CURL_USE_OPENSSL ON)
-endif()
 # Check if on 32 bit linux - default without CURL support
 if(CMAKE_SIZEOF_VOID_P EQUAL 4 AND UNIX)
     set(DEPTHAI_DEFAULT_CURL_SUPPORT OFF)
 else()
     set(DEPTHAI_DEFAULT_CURL_SUPPORT ON)
 endif()
-option(DEPTHAI_ENABLE_CURL "Enable CURL support" ${DEPTHAI_DEFAULT_CURL_SUPPORT})
 
 if(DEPTHAI_ENABLE_CURL)
     list(APPEND VCPKG_MANIFEST_FEATURES "curl-support")
 endif()
 
-# Early options
-option(DEPTHAI_ENABLE_LIBUSB "Enable usage of libusb and interaction with USB devices" ON)
 if(DEPTHAI_ENABLE_LIBUSB)
 	list(APPEND VCPKG_MANIFEST_FEATURES "xlink-usb")
 else()
@@ -77,19 +67,12 @@ if(POLICY CMP0028)
   cmake_policy(SET CMP0028 NEW)
 endif()
 
-option(DEPTHAI_BOOTSTRAP_VCPKG "Automatically bootstrap VCPKG" ON)
 if(DEPTHAI_BOOTSTRAP_VCPKG)
     set(ENV{VCPKG_MAX_CONCURRENCY} "2")
     message(STATUS "Including vcpkg.cmake")
     include(cmake/vcpkg.cmake)
 else()
     message(STATUS "DEPTHAI_BOOTSTRAP_VCPKG is OFF")
-endif()
-
-# MSVC variable isn't available before 'project' call
-# Generalize to Win32 platform for now
-if(NOT WIN32)
-    set(HUNTER_CONFIGURATION_TYPES "Release" CACHE STRING "Hunter dependencies list of build configurations")
 endif()
 
 
@@ -831,31 +814,6 @@ if(DEPTHAI_USB2_PATCH_ONLY_MODE)
     target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_PATCH_ONLY_MODE)
 endif()
 
-# Helper function
-macro(add_runtime_dependencies depending_target dependency)
-    if(WIN32)
-        if(TARGET ${dependency})
-            get_property(imported_configs TARGET ${dependency} PROPERTY IMPORTED_CONFIGURATIONS)
-            set(dlls "")
-            foreach(cfg ${imported_configs})
-                get_property(dll TARGET ${dependency} PROPERTY IMPORTED_LOCATION_${cfg})
-                set(dlls ${depthai_dll_libraries} $<$<CONFIG:${cfg}>:${dll}>)
-            endforeach()
-        endif()
-        file(GLOB depthai_dll_libraries "${HUNTER_INSTALL_PREFIX}/bin/*.dll")
-        # Create a list of required dll files
-        set(required_dll_files ${dlls} ${depthai_dll_libraries})
-        # Copy the required dlls
-        add_custom_command(TARGET ${depending_target} POST_BUILD COMMAND
-            "$<$<BOOL:${required_dll_files}>:${CMAKE_COMMAND};-E;copy_if_different;${required_dll_files};$<TARGET_FILE_DIR:${depending_target}>>"
-            COMMAND_EXPAND_LISTS
-            VERBATIM
-        )
-        message(STATUS "Required dlls for core are: ${required_dll_files}")
-    endif()
-endmacro()
-# Add libusb dll in build time
-add_runtime_dependencies(${TARGET_CORE_NAME} usb-1.0)
 
 ########################
 # OpenCV Support 2
@@ -1197,7 +1155,6 @@ configure_file("cmake/${PROJECT_NAME}Dependencies.cmake" ${PROJECT_NAME}Dependen
 write_basic_package_version_file(${PROJECT_NAME}ConfigVersion.cmake VERSION ${PROJECT_VERSION} COMPATIBILITY AnyNewerVersion)
 
 # Configure config file (one for exporting build directory, one for installation)
-# file(RELATIVE_PATH DEPTHAI_DEPENDENCIES_INSTALLATION_PATH_REL "${CMAKE_CURRENT_BINARY_DIR}" "${HUNTER_INSTALL_PREFIX}")
 configure_file(cmake/${PROJECT_NAME}Config.cmake.in ${PROJECT_NAME}Config.cmake @ONLY)
 
 # Config for installation
@@ -1232,8 +1189,6 @@ if(DEPTHAI_INSTALL)
     install(DIRECTORY include/ DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
     # Install depthai-bootloader-shared public headers
     install(DIRECTORY "${DEPTHAI_BOOTLOADER_SHARED_PUBLIC_INCLUDE}/" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
-    # Install Hunter dependencies
-    # install(DIRECTORY "${HUNTER_INSTALL_PREFIX}/" DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}/dependencies")
     # Install depthai-core dependencies
     install(DIRECTORY "${CMAKE_CURRENT_LIST_DIR}/3rdparty" DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake")
     # Install resources if not RC'd
