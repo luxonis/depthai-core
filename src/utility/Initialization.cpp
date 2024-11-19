@@ -103,7 +103,7 @@ bool initialize(const char* additionalInfo, bool installSignalHandler, void* jav
         // Executed at library load time
 
         // Preload Resources (getting instance causes some internal lazy loading to start)
-        // Resources::getInstance();
+        Resources::getInstance();
 
         // Static global handler
         static XLinkGlobalHandler_t xlinkGlobalHandler = {};

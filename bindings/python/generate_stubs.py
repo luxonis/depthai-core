@@ -15,7 +15,6 @@ DIRECTORY = sys.argv[2]
 
 print(f'Generating stubs for module: "{MODULE_NAME}" in directory: "{DIRECTORY}"')
 
-sys.stdout.flush()
 try:
 
     # Create stubs, add PYTHONPATH to find the build module
@@ -32,16 +31,16 @@ try:
     print(f'PYTHONPATH set to {env["PYTHONPATH"]}')
     # Check if stubgen has the `--include-docstrings` flag
     includeDocstrings = False
-    output = subprocess.check_output(['stubgen', '--help'], env=env, timeout=5)
+    output = subprocess.check_output(['stubgen', '--help'], env=env)
     if b'--include-docstrings' in output:
         includeDocstrings = True
         print("Will include docstrings in stubs")
     else:
         print("Will not include docstrings in stubs")
-    parameters = ['stubgen', '-v', '-p', MODULE_NAME, '-o', f'{DIRECTORY}']
+    parameters = ['stubgen', '-p', MODULE_NAME, '-o', f'{DIRECTORY}']
     if includeDocstrings:
         parameters.insert(1, '--include-docstrings')
-    subprocess.check_call(parameters, cwd=DIRECTORY, env=env, timeout=5)
+    subprocess.check_call(parameters, cwd=DIRECTORY, env=env)
 
     # Add py.typed
     open(f'{DIRECTORY}/depthai/py.typed', 'a').close()
@@ -123,11 +122,9 @@ try:
         config.close()
         print(f'Mypy config file: {config.name}')
         # Mypy check
-        subprocess.check_call([sys.executable, '-m' 'mypy', f'{DIRECTORY}/{MODULE_NAME}', f'--config-file={config.name}'], env=env, timeout=5)
+        subprocess.check_call([sys.executable, '-m' 'mypy', f'{DIRECTORY}/{MODULE_NAME}', f'--config-file={config.name}'], env=env)
     finally:
-        print(f'Deleting file: {config.name}')
         os.unlink(config.name)
-        print(f'Mypy config file deleted: {config.name}')
     # # TODO(thamarpe) - Pylance / Pyright check
     # subprocess.check_call([sys.executable, '-m' 'pyright', f'{DIRECTORY}/{MODULE_NAME}'], env=env)
 
@@ -165,10 +162,8 @@ try:
             is_depthai_root = (root == f'{DIRECTORY}/{MODULE_NAME}')
             process_init_pyi(os.path.join(root, '__init__.pyi'), is_depthai_root)
 
-    print("Fin")
 except subprocess.CalledProcessError as err:
     exit(err.returncode)
 
 finally:
-    print("Done")
     exit(0)

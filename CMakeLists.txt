@@ -736,6 +736,7 @@ target_link_libraries(${TARGET_CORE_NAME}
         BZip2::BZip2
         FP16::fp16
         LibArchive::LibArchive
+        liblzma::liblzma
 		ZLIB::ZLIB
         lz4::lz4
         httplib::httplib
