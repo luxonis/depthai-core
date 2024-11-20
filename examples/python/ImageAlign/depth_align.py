@@ -50,7 +50,7 @@ stereo.setExtendedDisparity(True)
 
 sync.setSyncThreshold(timedelta(seconds=1/(2*FPS)))
 
-rgbOut = camRgb.requestOutput(size = (1280, 960))
+rgbOut = camRgb.requestOutput(size = (1280, 960), fps = FPS)
 leftOut = left.requestOutput(size = (640, 400), fps = FPS)
 rightOut = right.requestOutput(size = (640, 400), fps = FPS)
 
