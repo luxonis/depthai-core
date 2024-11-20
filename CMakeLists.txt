@@ -68,7 +68,6 @@ if(POLICY CMP0028)
 endif()
 
 if(DEPTHAI_BOOTSTRAP_VCPKG)
-    set(ENV{VCPKG_MAX_CONCURRENCY} "2")
     message(STATUS "Including vcpkg.cmake")
     include(cmake/vcpkg.cmake)
 else()

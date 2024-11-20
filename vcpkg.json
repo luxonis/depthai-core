@@ -27,7 +27,14 @@
         },
         {
             "name": "opencv4",
-            "default-features": false
+            "default-features": false,
+            "features": [
+            "jpeg",
+            "png",
+            "quirc",
+            "tiff",
+            "webp"
+            ]
         }
     ],
     "features": {
