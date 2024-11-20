@@ -14,7 +14,12 @@
 ],
 	"features": {
 		"libusb": {
-			"description": "Build with libusb support"
+			"description": "Build with libusb support",
+            "dependencies": [
+                {
+                    "name": "libusb"
+                }
+            ]
 			
 		}
 	}
