@@ -11,9 +11,9 @@ vcpkg_from_github(
 vcpkg_cmake_configure(
     SOURCE_PATH "${SOURCE_PATH}"
     OPTIONS
-		-DBUILD_SHARED_LIBS=OFF
 		-DBASALT_SDK_ONLY=ON
 )
 
 vcpkg_cmake_install()
 
+vcpkg_cmake_config_fixup(PACKAGE_NAME basalt_sdk CONFIG_PATH "lib/cmake/basalt_sdk")
