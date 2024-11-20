@@ -35,8 +35,6 @@ void AudioReplay::run() {
             break;
     }
 
-    // std::cout << "Duration frames: " << durationFrames << std::endl;
-
     bool done = false;
     while(isRunning() && !done) {
         std::memset(audioData.data(), 0, audioData.size());
@@ -58,7 +56,6 @@ void AudioReplay::run() {
                 framesRead = file.readFrame((double*)audioData.data(), durationFrames);
                 break;
         }
-        // std::cout << "Read frames: " << framesRead << std::endl;
         if(framesRead <= 0) {
             if(file.getError() == SF_ERR_NO_ERROR) {
                 if(loop) {
@@ -77,13 +74,9 @@ void AudioReplay::run() {
 
         std::shared_ptr<AudioFrame> buf = std::make_shared<AudioFrame>(framesRead, info.samplerate, info.channels, format);
 
-        // std::cout << "Set data" << std::endl;
         buf->setData(audioData);
-        // std::cout << "Sending..." << std::endl;
         out.send(buf);
 
-        // std::cout << "Waiting" << std::endl;
-        //  Wait for the next period (1 second in this case)
         std::this_thread::sleep_for(std::chrono::milliseconds(1000 / fps));
     }
 }
