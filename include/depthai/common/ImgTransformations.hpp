@@ -204,6 +204,7 @@ struct ImgTransformation {
      */
     ImgTransformation& addScale(float scaleX, float scaleY);
     ImgTransformation& addSrcCrops(const std::vector<dai::RotatedRect>& crops);
+    ImgTransformation& setSize(size_t width, size_t height);
 
     /**
      * Remap a point from this transformation to another. If the intrinsics are different (e.g. different camera), the function will also use the intrinsics to

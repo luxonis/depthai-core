@@ -47,6 +47,7 @@ void ImageManipV2::run() {
             auto srcCrops = manip.getSrcCrops();
             dstFrame.transformation.addSrcCrops(srcCrops);
             dstFrame.transformation.addTransformation(manip.getMatrix());
+            dstFrame.transformation.setSize(dstSpecs.width, dstSpecs.height);
         });
 }
 
