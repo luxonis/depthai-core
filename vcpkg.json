@@ -29,12 +29,31 @@
             "name": "opencv4",
             "default-features": false,
             "features": [
+            "calib3d",
             "jpeg",
             "png",
             "quirc",
             "tiff",
-            "webp"
+            "webp",
+            "highgui"
             ]
+        },
+        {
+          "name": "opencv4",
+          "default-features": false,
+          "features": [
+            "gtk"
+          ],
+          "platform": "linux"
+        },
+        {
+          "name": "opencv4",
+          "default-features": false,
+          "features": [
+            "dshow",
+            "win32ui"
+          ],
+          "platform": "windows & !uwp"
         }
     ],
     "features": {
