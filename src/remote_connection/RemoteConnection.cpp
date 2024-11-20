@@ -25,4 +25,8 @@ int RemoteConnection::waitKey(int delayMs) {
     return impl->waitKey(delayMs);
 }
 
+void RemoteConnection::registerService(const std::string& serviceName, std::function<nlohmann::json(const nlohmann::json&)> callback) {
+    impl->registerService(serviceName, std::move(callback));
+}
+
 }  // namespace dai

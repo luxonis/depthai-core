@@ -38,7 +38,8 @@ void RemoteConnectionBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("maxSize") = 16,
              py::arg("blocking") = false)
         .def("registerPipeline", &RemoteConnection::registerPipeline, py::arg("pipeline"))
-        .def("waitKey", &RemoteConnection::waitKey, py::arg("delay"));
+        .def("registerService", &RemoteConnection::registerService, py::arg("serviceName"), py::arg("callback"))
+        .def("waitKey", &RemoteConnection::waitKey, py::arg("delay"), py::call_guard<py::gil_scoped_release>());
 #else
      // Define a placeholder class for RemoteConnection
     struct RemoteConnectionPlaceholder {

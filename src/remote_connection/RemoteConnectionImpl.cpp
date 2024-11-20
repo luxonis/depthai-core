@@ -345,4 +345,34 @@ void RemoteConnectionImpl::exposePipelineService(const Pipeline& pipeline) {
     };
 }
 
+void RemoteConnectionImpl::registerService(const std::string& serviceName, std::function<nlohmann::json(const nlohmann::json&)> callback) {
+    foxglove::ServiceWithoutId service;
+    service.name = serviceName;
+    service.type = "json";
+
+    foxglove::ServiceRequestDefinition requestDef;
+    requestDef.schemaName = serviceName + "Request";
+    requestDef.encoding = "json";
+    service.request = requestDef;
+
+    foxglove::ServiceRequestDefinition responseDef;
+    responseDef.schemaName = serviceName + "Response";
+    responseDef.encoding = "json";
+    service.response = responseDef;
+
+    auto ids = server->addServices({service});
+    assert(ids.size() == 1);
+    auto id = ids[0];
+    serviceMap[id] = [callback](foxglove::ServiceResponse request) {
+        nlohmann::json jsonRequest = nlohmann::json::parse(request.data);
+        auto response = callback(jsonRequest);
+        auto responseStr = response.dump();
+        foxglove::ServiceResponse ret;
+        ret.data = std::vector<uint8_t>(responseStr.begin(), responseStr.end());
+        ret.callId = request.callId;
+        ret.serviceId = request.serviceId;
+        return ret;
+    };
+}
+
 }  // namespace dai
