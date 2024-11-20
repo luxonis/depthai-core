@@ -125,6 +125,7 @@ void AudioIn::run() {
 	return;
     }
 
+    //err = snd_pcm_sw_params_set_start_threshold(captureHandle, )
     err = snd_pcm_start(captureHandle);
     if (err < 0) {
         logger->warn("AudioInHost {}: Invalid start: {}", __func__, snd_strerror(err));
@@ -137,6 +138,7 @@ void AudioIn::run() {
         std::fill(data.begin(), data.end(), 0);
 
         err = snd_pcm_readi(captureHandle, data.data(), bufferFrames);
+    	logger->info("AudioIn Read", __func__);
         if(err == -EPIPE) {
             // EPIPE means overrun
             logger->warn("AudioInHost {}: Overrun occurred", __func__);
