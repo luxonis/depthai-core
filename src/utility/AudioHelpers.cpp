@@ -53,7 +53,7 @@ std::vector<AudioDevice> getAlsaDevices() {
     return vec;
 }
 
-std::vector<AudioPCM> GetAlsaPCMs() {
+std::vector<AudioPCM> getAlsaPCMs() {
     int err;
     int cardNum = -1;
     snd_ctl_t* cardHandle;
