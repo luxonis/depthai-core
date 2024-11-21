@@ -33,7 +33,8 @@
             "png",
             "quirc",
             "tiff",
-            "webp"
+            "webp",
+            "ffmpeg"
             ]
         },
         {

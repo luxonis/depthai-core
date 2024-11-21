@@ -1,5 +1,5 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 3161667..664a20f 100644
+index 3161667..7deaad5 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -4,12 +4,6 @@
@@ -45,12 +45,9 @@ index 3161667..664a20f 100644
          find_library(LIBUSB_LIBRARY NAMES usb-1.0 PATH_SUFFIXES "lib")
          if(NOT LIBUSB_INCLUDE_DIR OR NOT LIBUSB_LIBRARY)
              message(FATAL_ERROR "libusb is required")
-@@ -85,13 +79,16 @@ if(XLINK_ENABLE_LIBUSB)
-         )
-     else()
+@@ -87,11 +81,14 @@ if(XLINK_ENABLE_LIBUSB)
          # Link to CMake libusb
--        target_link_libraries(${TARGET_NAME} PRIVATE usb-1.0)
-+        target_link_libraries(${TARGET_NAME} PRIVATE PkgConfig::libusb)
+         target_link_libraries(${TARGET_NAME} PRIVATE usb-1.0)
          if(WIN32 AND NOT MINGW)
 -            target_link_libraries(${TARGET_NAME} PRIVATE delayimp.lib Pathcch.lib)
 +            target_link_libraries(${TARGET_NAME} PRIVATE delayimp.lib)
@@ -665,7 +662,7 @@ index 6d9cc24..0000000
 -  endif()
 -endmacro()
 diff --git a/cmake/XLinkDependencies.cmake b/cmake/XLinkDependencies.cmake
-index 1072d1d..4cc1e88 100644
+index 1072d1d..7bc47e6 100644
 --- a/cmake/XLinkDependencies.cmake
 +++ b/cmake/XLinkDependencies.cmake
 @@ -5,13 +5,6 @@ if(CONFIG_MODE)
@@ -682,16 +679,6 @@ index 1072d1d..4cc1e88 100644
  endif()
  
  # libusb
-@@ -19,7 +12,8 @@ if(XLINK_ENABLE_LIBUSB)
-     if(XLINK_LIBUSB_LOCAL)
-         add_subdirectory("${XLINK_LIBUSB_LOCAL}" "${CMAKE_CURRENT_BINARY_DIR}/libusb" EXCLUDE_FROM_ALL)
-     elseif(NOT XLINK_LIBUSB_SYSTEM)
--        find_package(usb-1.0 ${_QUIET} CONFIG REQUIRED HINTS "${CMAKE_CURRENT_LIST_DIR}/libusb")
-+        find_package(PkgConfig REQUIRED)
-+        pkg_check_modules(libusb REQUIRED IMPORTED_TARGET libusb-1.0)
-     endif()
- endif()
- 
 diff --git a/include/XLink/XLinkLog.h b/include/XLink/XLinkLog.h
 index e487c71..7e1ccb3 100644
 --- a/include/XLink/XLinkLog.h

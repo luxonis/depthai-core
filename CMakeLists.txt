@@ -486,6 +486,7 @@ set(CMAKE_OSX_DEPLOYMENT_TARGET 10.15)
 
 # Link merged target libraries and add compile definitions
 if(DEPTHAI_HAVE_OPENCV_SUPPORT AND DEPTHAI_MERGED_TARGET)
+    set(CMAKE_SHARED_LINKER_FLAGS "-Wl,-Bsymbolic") # needed for ffmpeg linking
     # Link to OpenCV (publically)
     target_link_libraries(${TARGET_CORE_NAME} PUBLIC ${REQUIRED_OPENCV_LIBRARIES} ${THIRDPARTY_OPENCV_LIBRARIES})
 
@@ -1049,33 +1050,33 @@ if(DEPTHAI_SANITIZE)
         endif()
     endif()
 endif()
-function(hunter_private_data)    
+function(private_data)    
             set(one URL SHA1 CREDENTIALS LOCATION FILE)
             set(multiple HTTPHEADER)
 
             cmake_parse_arguments(x "" "${one}" "${multiple}" "${ARGN}")
 
             if(x_HTTPHEADER)
-                message(FATAL_ERROR "HTTPHEADER argument of hunter_private_data not supported if HUNTER_ENABLED is OFF")
+                message(FATAL_ERROR "HTTPHEADER argument of private_data not supported if HUNTER_ENABLED is OFF")
             endif()
             if(x_CREDENTIALS)
-                message(FATAL_ERROR "CREDENTIALS argument of hunter_private_data not supported if HUNTER_ENABLED is OFF")
+                message(FATAL_ERROR "CREDENTIALS argument of private_data not supported if HUNTER_ENABLED is OFF")
             endif()
 
             if(NOT x_URL)
-                message(FATAL_ERROR "URL not provided to hunter_private_data")
+                message(FATAL_ERROR "URL not provided to private_data")
             endif()
             if(NOT x_SHA1)
-                message(FATAL_ERROR "SHA1 not provided to hunter_private_data")
+                message(FATAL_ERROR "SHA1 not provided to private_data")
             endif()
             if(NOT x_FILE)
-                message(FATAL_ERROR "FILE not provided to hunter_private_data")
+                message(FATAL_ERROR "FILE not provided to private_data")
             endif()
             if(NOT x_LOCATION)
-                message(FATAL_ERROR "LOCATION not provided to hunter_private_data")
+                message(FATAL_ERROR "LOCATION not provided to private_data")
             endif()
 
-            set(x_DOWNLOAD_LOCATION "${CMAKE_CURRENT_BINARY_DIR}/_hunter_private_data/${x_FILE}")
+            set(x_DOWNLOAD_LOCATION "${CMAKE_CURRENT_BINARY_DIR}/_private_data/${x_FILE}")
 
             file(DOWNLOAD
                 ${x_URL}
