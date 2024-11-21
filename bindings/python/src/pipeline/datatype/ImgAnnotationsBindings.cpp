@@ -70,9 +70,9 @@ void bind_imageannotations(pybind11::module& m, void* pCallstack){
 	pointsAnnotationType
 		.value("UNKNOWN", PointsAnnotationType::UNKNOWN)
 		.value("POINTS", PointsAnnotationType::POINTS)
-		.value("LINE_STRIP", PointsAnnotationType::LINE_LOOP)
-		.value("LINE_LOOP", PointsAnnotationType::LINE_STRIP)
-		.value("POLYGON", PointsAnnotationType::LINE_LIST)
+		.value("LINE_LOOP", PointsAnnotationType::LINE_LOOP)
+		.value("LINE_STRIP", PointsAnnotationType::LINE_STRIP)
+		.value("LINE_LIST", PointsAnnotationType::LINE_LIST)
 		.export_values();
 	pointsAnnotation
 		.def(py::init<>())

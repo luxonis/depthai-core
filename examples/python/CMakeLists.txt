@@ -211,3 +211,6 @@ dai_set_example_test_labels(visualizer_rvc2 ondevice rvc2 usb ci)
 
 add_python_example(visualizer_encoded_rvc2 Visualizer/visualizer_encoded.py --webSocketPort 8766 --httpPort 8081)
 dai_set_example_test_labels(visualizer_encoded_rvc2 ondevice rvc2 usb ci)
+
+add_python_example(custom_services Visualizer/custom_services.py)
+dai_set_example_test_labels(custom_services onhost ci)
