@@ -18,6 +18,12 @@ EncodedFrame::EncodedFrame(std::shared_ptr<RawEncodedFrame> ptr) : Buffer(std::m
 unsigned int EncodedFrame::getInstanceNum() const {
     return frame.instanceNum;
 }
+unsigned int EncodedFrame::getWidth() const {
+    return frame.width;
+}
+unsigned int EncodedFrame::getHeight() const {
+    return frame.height;
+}
 std::chrono::microseconds EncodedFrame::getExposureTime() const {
     return std::chrono::microseconds(frame.cam.exposureTimeUs);
 }
@@ -97,6 +103,14 @@ EncodedFrame& EncodedFrame::setSequenceNum(int64_t sequenceNum) {
 }
 EncodedFrame& EncodedFrame::setInstanceNum(unsigned int instanceNum) {
     frame.instanceNum = instanceNum;
+    return *this;
+}
+EncodedFrame& EncodedFrame::setWidth(unsigned int width) {
+    frame.width = width;
+    return *this;
+}
+EncodedFrame& EncodedFrame::setHeight(unsigned int height) {
+    frame.height = height;
     return *this;
 }
 EncodedFrame& EncodedFrame::setQuality(unsigned int quality) {
