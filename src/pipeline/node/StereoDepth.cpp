@@ -97,6 +97,13 @@ void StereoDepth::setInputResolution(std::tuple<int, int> resolution) {
     setInputResolution(std::get<0>(resolution), std::get<1>(resolution));
 }
 void StereoDepth::setOutputSize(int width, int height) {
+    auto device = getDevice();
+    if(device) {
+        auto platform = device->getPlatform();
+        if(platform == Platform::RVC4) {
+            throw std::runtime_error("StereoDepth | setOutputSize is not supported on RVC4 platform");
+        }
+    }
     properties.outWidth = width;
     properties.outHeight = height;
 }
