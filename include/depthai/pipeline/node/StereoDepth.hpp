@@ -32,8 +32,6 @@ class StereoDepth : public NodeCRTP<Node, StereoDepth, StereoDepthProperties> {
         DEFAULT,
         FACE,
         HIGH_DETAIL,
-        HIGH_FPS,
-        HIGH_ACCURACY2,
         ROBOTICS
     };
 
