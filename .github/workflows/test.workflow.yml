@@ -80,6 +80,7 @@ jobs:
         export DISPLAY=:99
         xdpyinfo -display $DISPLAY >/dev/null 2>&1 || (Xvfb $DISPLAY &)
         source venv/bin/activate  # Activate virtual environment
+        sudo apt install libusb-1.0-0-dev pkg-config python3 bison autoconf libtool python3-jinja2 libxi-dev libxtst-dev libxrandr-dev libx11-dev libxft-dev libxext-dev nasm flex libudev-dev
         cmake -S . -B build -D CMAKE_BUILD_TYPE=Release -D HUNTER_ROOT=$HOME/.hun2_${{ matrix.flavor }} -D DEPTHAI_BUILD_EXAMPLES=ON -D DEPTHAI_BUILD_TESTS=ON -D DEPTHAI_TEST_EXAMPLES=ON -D DEPTHAI_BUILD_PYTHON=ON -D DEPTHAI_PYTHON_TEST_EXAMPLES=ON -D DEPTHAI_PYTHON_ENABLE_EXAMPLES=ON
         cmake --build build --parallel 4 --config Release
         cd tests
