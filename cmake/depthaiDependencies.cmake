@@ -20,6 +20,7 @@ if(NOT CONFIG_MODE OR (CONFIG_MODE AND NOT DEPTHAI_SHARED_LIBS))
     endif()
     # BZip2 (for bspatch)
     find_package(BZip2 ${_QUIET}  REQUIRED)
+    find_package(FFMPEG REQUIRED)
 
     find_package(lz4 CONFIG REQUIRED)
     # FP16 for conversions

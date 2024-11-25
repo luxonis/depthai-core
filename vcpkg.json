@@ -18,6 +18,12 @@
         "pybind11",
         "catch2",
         {
+            "name": "ffmpeg",
+            "features": [
+                "openh264"
+            ]
+        },
+        {
             "name": "libarchive",
             "default-features": false
         },
@@ -34,7 +40,8 @@
             "quirc",
             "tiff",
             "webp",
-            "ffmpeg"
+            "ffmpeg",
+            "gstreamer"
             ]
         },
         {

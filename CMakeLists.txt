@@ -486,9 +486,12 @@ set(CMAKE_OSX_DEPLOYMENT_TARGET 10.15)
 
 # Link merged target libraries and add compile definitions
 if(DEPTHAI_HAVE_OPENCV_SUPPORT AND DEPTHAI_MERGED_TARGET)
-    set(CMAKE_SHARED_LINKER_FLAGS "-Wl,-Bsymbolic") # needed for ffmpeg linking
     # Link to OpenCV (publically)
     target_link_libraries(${TARGET_CORE_NAME} PUBLIC ${REQUIRED_OPENCV_LIBRARIES} ${THIRDPARTY_OPENCV_LIBRARIES})
+    # Link to FFMPEG (for video encoding)
+    target_include_directories(${TARGET_CORE_NAME} PRIVATE ${FFMPEG_INCLUDE_DIRS})
+    target_link_directories(${TARGET_CORE_NAME} PRIVATE ${FFMPEG_LIBRARY_DIRS})
+    target_link_libraries(${TARGET_CORE_NAME} PRIVATE ${FFMPEG_LIBRARIES})
 
     # Specify that we are building target opencv
     target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_TARGET_OPENCV)
