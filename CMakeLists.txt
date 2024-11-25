@@ -1,5 +1,22 @@
 cmake_minimum_required(VERSION 3.4) # For Hunter
-include(cmake/vcpkg.cmake)
+
+# CMP0074 dictates that find_package searches environment variable "[packageName]_ROOT" along with regular variable [packageName]_ROOT
+if(POLICY CMP0074)
+  cmake_policy(SET CMP0074 NEW) # Only introduced in 3.12
+endif()
+
+if(POLICY CMP0028)
+  cmake_policy(SET CMP0028 NEW)
+endif()
+
+option(DEPTHAI_BOOTSTRAP_VCPKG "Automatically bootstrap VCPKG" ON)
+if(DEPTHAI_BOOTSTRAP_VCPKG)
+    message(STATUS "Including vcpkg.cmake")
+    include(cmake/vcpkg.cmake)
+else()
+    message(STATUS "DEPTHAI_BOOTSTRAP_VCPKG is OFF")
+endif()
+
 # MSVC variable isn't available before 'project' call
 # Generalize to Win32 platform for now
 if(NOT WIN32)
@@ -13,9 +30,40 @@ option(DEPTHAI_ENABLE_LIBUSB "Enable usage of libusb and interaction with USB de
 if(WIN32)
     set(DEPTHAI_CURL_USE_SCHANNEL ON)
     set(DEPTHAI_CURL_USE_OPENSSL OFF)
+    add_compile_definitions(NOMINMAX)
 else()
     set(DEPTHAI_CURL_USE_SCHANNEL OFF)
     set(DEPTHAI_CURL_USE_OPENSSL ON)
+endif()
+
+# Check if on 32 bit linux - default without CURL support
+if(CMAKE_SIZEOF_VOID_P EQUAL 4 AND UNIX)
+    set(DEPTHAI_DEFAULT_CURL_SUPPORT OFF)
+else()
+    set(DEPTHAI_DEFAULT_CURL_SUPPORT ON)
+endif()
+
+option(DEPTHAI_ENABLE_CURL "Enable CURL support" ${DEPTHAI_DEFAULT_CURL_SUPPORT})
+
+if(DEPTHAI_ENABLE_CURL)
+    list(APPEND VCPKG_MANIFEST_FEATURES "curl-support")
+endif()
+
+
+option(DEPTHAI_ENABLE_PROTOBUF "Enable Protobuf support" ON)
+if(DEPTHAI_ENABLE_PROTOBUF)
+    list(APPEND VCPKG_MANIFEST_FEATURES "protobuf-support")
+endif()
+
+if(DEPTHAI_ENABLE_PROTOBUF)
+    option(DEPTHAI_ENABLE_REMOTE_CONNECTION "Enable Remote Connection support" ON)
+else()
+    option(DEPTHAI_ENABLE_REMOTE_CONNECTION "Enable Remote Connection support" OFF)
+    message(STATUS "Remote Connection support disabled because Protobuf support is disabled.")
+endif()
+
+if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
+    list(APPEND VCPKG_MANIFEST_FEATURES "remote-connection-support")
 endif()
 
 # Set type to canonicalize relative paths for user-provided toolchain
@@ -65,7 +113,7 @@ endif()
 # Create depthai project
 project(depthai VERSION "3.0.0" LANGUAGES CXX C)
 set(DEPTHAI_PRE_RELEASE_TYPE "alpha") # Valid options are "alpha", "beta", "rc", ""
-set(DEPTHAI_PRE_RELEASE_VERSION "4")
+set(DEPTHAI_PRE_RELEASE_VERSION "7")
 
 # Set DEPTHAI_VERSION universally, not conditionally
 set(DEPTHAI_VERSION ${PROJECT_VERSION}-${DEPTHAI_PRE_RELEASE_TYPE}.${DEPTHAI_PRE_RELEASE_VERSION})
@@ -92,15 +140,6 @@ if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
     set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/install" CACHE PATH "Installation Directory" FORCE)
 endif()
 
-# Set policies
-# CMP0074 dictates that find_package searches environment variable "[packageName]_ROOT" along with regular variable [packageName]_ROOT
-if(POLICY CMP0074)
-  cmake_policy(SET CMP0074 NEW) # Only introduced in 3.12
-endif()
-
-if(POLICY CMP0028)
-  cmake_policy(SET CMP0028 NEW)
-endif()
 
 # Set to export compile commands for tools like clang-tidy and format
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -133,14 +172,6 @@ else()
     endif()
 endif()
 
-# Check if on 32 bit linux - default without CURL support
-if(CMAKE_SIZEOF_VOID_P EQUAL 4 AND UNIX)
-    set(DEPTHAI_DEFAULT_CURL_SUPPORT OFF)
-else()
-    set(DEPTHAI_DEFAULT_CURL_SUPPORT ON)
-endif()
-
-option(DEPTHAI_ENABLE_CURL "Enable CURL support" ${DEPTHAI_DEFAULT_CURL_SUPPORT})
 
 # Force Colored output when using Ninja
 # Global option - affects all targets
@@ -331,7 +362,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/ImgFrame.cpp
     src/pipeline/datatype/ImgTransformations.cpp
     src/pipeline/datatype/EncodedFrame.cpp
-	src/pipeline/datatype/ImageAnnotations.cpp
+    src/pipeline/datatype/ImgAnnotations.cpp
     src/pipeline/datatype/ImageManipConfig.cpp
     src/pipeline/datatype/ImageManipConfigV2.cpp
     src/pipeline/datatype/CameraControl.cpp
@@ -387,8 +418,20 @@ set(TARGET_CORE_SOURCES
     src/nn_archive/NNArchiveVersionedConfig.cpp
     src/modelzoo/NNModelDescription.cpp
     src/modelzoo/Zoo.cpp
-    src/remote_connection/RemoteConnection.cpp
 )
+
+if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
+    list(APPEND TARGET_CORE_SOURCES
+        src/remote_connection/RemoteConnection.cpp
+        src/remote_connection/RemoteConnectionImpl.cpp
+    )
+endif()
+
+if(DEPTHAI_ENABLE_PROTOBUF)
+    list(APPEND TARGET_CORE_SOURCES
+        src/utility/ProtoSerialize.cpp
+    )
+endif()
 
 set(TARGET_OPENCV_SOURCES
     src/opencv/ImgFrame.cpp
@@ -488,7 +531,11 @@ option(DEPTHAI_ENABLE_DEVICE_BOOTLOADER_FW "Enable MyriadX Device Bootloader FW"
 option(DEPTHAI_ENABLE_DEVICE_RVC3_FW "Enable RVC3 Device FW" ON)
 option(DEPTHAI_ENABLE_DEVICE_RVC4_FW "Enable RVC4 Device FW" ON)
 
-option(DEPTHAI_EMBED_FRONTEND "Embed frontend resources into library" ON)
+if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
+    option(DEPTHAI_EMBED_FRONTEND "Embed frontend resources into library" ON)
+else()
+    option(DEPTHAI_EMBED_FRONTEND "Embed frontend resources into library" OFF)
+endif()
 
 option(DEPTHAI_BINARIES_RESOURCE_COMPILE "Compile Depthai device side binaries into library" ON)
 
@@ -664,9 +711,6 @@ if(DEPTHAI_CLANG_FORMAT)
     target_clangformat_setup(${TARGET_CORE_NAME} "${header_dirs}")
 endif()
 
-# Load protobuf support into library messages_proto
-add_subdirectory(include/depthai/utility/protos)
-list(APPEND targets_to_export messages)
 # link libraries
 target_link_libraries(${TARGET_CORE_NAME}
     PUBLIC
@@ -674,10 +718,6 @@ target_link_libraries(${TARGET_CORE_NAME}
         libnop
         spdlog::spdlog
         yaml-cpp
-        # TODO(Morato) - potentiially move this to private
-        foxglove-websocket::foxglove-websocket
-        protobuf::libprotobuf
-        messages
     INTERFACE
         XLinkPublic
     PRIVATE
@@ -692,6 +732,22 @@ target_link_libraries(${TARGET_CORE_NAME}
         mp4v2::mp4v2
         semver::semver
 )
+
+if(DEPTHAI_ENABLE_PROTOBUF)
+    # Load protobuf support into library messages_proto
+    message(STATUS "Protobuf support enabled")
+    add_subdirectory(protos)
+    list(APPEND targets_to_export messages)
+    target_link_libraries(${TARGET_CORE_NAME} PRIVATE protobuf::libprotobuf messages)
+    target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_ENABLE_PROTOBUF)
+endif()
+
+if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
+    target_link_libraries(${TARGET_CORE_NAME} PRIVATE
+        foxglove-websocket::foxglove-websocket
+    )
+    target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_ENABLE_REMOTE_CONNECTION)
+endif()
 
 if(DEPTHAI_HAS_APRIL_TAG)
     target_link_libraries(${TARGET_CORE_NAME} PRIVATE
@@ -744,6 +800,9 @@ if(DEPTHAI_ENABLE_DEVICE_RVC3_FW)
 endif()
 if(DEPTHAI_ENABLE_DEVICE_RVC4_FW)
     target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_ENABLE_DEVICE_RVC4_FW)
+endif()
+if(DEPTHAI_EMBED_FRONTEND)
+    target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_EMBED_FRONTEND)
 endif()
 if(DEPTHAI_HAS_APRIL_TAG)
     target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_HAS_APRIL_TAG)
@@ -874,9 +933,9 @@ if(DEPTHAI_RTABMAP_SUPPORT)
             SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
         endif()
         # Add depthai-rtabmap library and depthai::rtabmap alias
-        add_library(${TARGET_RTABMAP_NAME} 
-        src/rtabmap/CalibrationHandler.cpp 
-        src/rtabmap/TransformData.cpp 
+        add_library(${TARGET_RTABMAP_NAME}
+        src/rtabmap/CalibrationHandler.cpp
+        src/rtabmap/TransformData.cpp
         src/rtabmap/RTABMapVIO.cpp src/rtabmap/RTABMapSLAM.cpp
         )
         add_library("${PROJECT_NAME}::${TARGET_RTABMAP_ALIAS}" ALIAS ${TARGET_RTABMAP_NAME})

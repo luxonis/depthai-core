@@ -17,6 +17,7 @@ set(test_env
     "UBSAN_OPTIONS=halt_on_error=1"
     # DepthAI
     "DEPTHAI_SEARCH_TIMEOUT=15000"
+    "DEPTHAI_RECONNECT_TIMEOUT=0"
     )
 
 include(CMakeParseArguments)
@@ -236,6 +237,10 @@ dai_set_test_labels(naming_test onhost ci)
 dai_add_test(image_transformations_test src/onhost_tests/image_transformations_test.cpp)
 dai_set_test_labels(image_transformations_test onhost ci)
 
+# Normalization tests
+dai_add_test(normalization_test src/onhost_tests/normalization_test.cpp)
+dai_set_test_labels(normalization_test onhost ci)
+
 # MessageQueue tests
 dai_add_test(message_queue_test src/onhost_tests/message_queue_test.cpp)
 dai_set_test_labels(message_queue_test onhost ci)
@@ -259,6 +264,10 @@ dai_set_test_labels(env_test onhost ci)
 # Datatype tests
 dai_add_test(nndata_test src/onhost_tests/pipeline/datatype/nndata_test.cpp)
 dai_set_test_labels(nndata_test onhost ci)
+
+# Model description tests
+dai_add_test(model_slug_test src/onhost_tests/model_slug_test.cpp)
+dai_set_test_labels(model_slug_test onhost ci)
 
 ### On-device tests ###########################################################
 
@@ -321,7 +330,7 @@ dai_set_test_labels(filesystem_test_20 rvc2_all ci)
 
 # Encoded frame test
 dai_add_test(encoded_frame_test src/ondevice_tests/encoded_frame_test.cpp CXX_STANDARD 17)
-dai_set_test_labels(encoded_frame_test ondevice rvc2_all ci)
+dai_set_test_labels(encoded_frame_test ondevice rvc2_all rvc4 ci)
 
 # MessageGroup tests
 dai_add_test(message_group_frame_test src/ondevice_tests/message_group_test.cpp CXX_STANDARD 17)
@@ -361,6 +370,19 @@ dai_add_test(neural_network_node_test src/ondevice_tests/pipeline/node/neural_ne
 target_compile_definitions(neural_network_node_test PRIVATE LENNA_PATH="${lenna_png}")
 dai_set_test_labels(neural_network_node_test ondevice rvc2_all rvc4 ci)
 
+# ImgTransformations tests
+dai_add_test(img_transformation_test src/ondevice_tests/img_transformation_test.cpp CXX_STANDARD 17)
+dai_set_test_labels(message_group_frame_test ondevice rvc4 ci)
+
 # Regression tests for encountered bugs
 dai_add_test(regression_camera_concurrency_test src/ondevice_tests/regression/camera_concurrency.cpp)
 dai_set_test_labels(regression_camera_concurrency_test ondevice rvc4 ci)
+
+# Sync test
+dai_add_test(sync_test src/ondevice_tests/pipeline/node/sync_test.cpp)
+dai_set_test_labels(sync_test ondevice rvc2_all rvc4 ci)
+
+## Large messages tests
+dai_add_test(bridge_large_messages src/ondevice_tests/bridge_large_messages.cpp)
+# Only test on RVC4, as RVC2 is not yet supported to auto-increase the max stream capacity
+dai_set_test_labels(bridge_large_messages ondevice rvc4 ci)

@@ -74,7 +74,7 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack){
     py::class_<Rect> rect(m, "Rect", DOC(dai, Rect));
     py::class_<StereoPair> stereoPair(m, "StereoPair", DOC(dai, StereoPair));
     py::enum_<CameraExposureOffset> cameraExposureOffset(m, "CameraExposureOffset");
-	py::class_<Color> color(m, "Color", DOC(dai, Color));
+    py::class_<Color> color(m, "Color", DOC(dai, Color));
     py::enum_<Colormap> colormap(m, "Colormap", DOC(dai, Colormap));
     py::enum_<FrameEvent> frameEvent(m, "FrameEvent", DOC(dai, FrameEvent));
     py::class_<ProfilingData> profilingData(m, "ProfilingData", DOC(dai, ProfilingData));
@@ -95,16 +95,26 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack){
 
     rotatedRect
         .def(py::init<>())
+        .def(py::init<Point2f, Size2f, float>())
+        .def(py::init<Rect, float>())
         .def_readwrite("center", &RotatedRect::center)
         .def_readwrite("size", &RotatedRect::size)
         .def_readwrite("angle", &RotatedRect::angle)
+        .def("isNormalized", &RotatedRect::isNormalized, DOC(dai, RotatedRect, isNormalized))
+        .def("normalize", &RotatedRect::normalize, py::arg("width"), py::arg("height"), DOC(dai, RotatedRect, normalize))
+        .def("denormalize", &RotatedRect::denormalize, py::arg("width"), py::arg("height"), DOC(dai, RotatedRect, denormalize))
+        .def("getPoints", &RotatedRect::getPoints, DOC(dai, RotatedRect, getPoints))
+        .def("getOuterRect", &RotatedRect::getOuterRect, DOC(dai, RotatedRect, getOuterRect))
         ;
 
     rect
         .def(py::init<>())
         .def(py::init<float, float, float, float>())
+        .def(py::init<float, float, float, float, bool>())
         .def(py::init<Point2f, Point2f>())
+        .def(py::init<Point2f, Point2f, bool>())
         .def(py::init<Point2f, Size2f>())
+        .def(py::init<Point2f, Size2f, bool>())
 
         .def("topLeft", &Rect::topLeft, DOC(dai, Rect, topLeft))
         .def("bottomRight", &Rect::bottomRight, DOC(dai, Rect, bottomRight))
@@ -146,6 +156,7 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack){
         .def(py::init<float, float>())
         .def_readwrite("x", &Point2f::x)
         .def_readwrite("y", &Point2f::y)
+        .def("isNormalized", &Point2f::isNormalized)
         ;
 
     point3f
@@ -185,6 +196,7 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack){
         .def(py::init<float, float>())
         .def_readwrite("width", &Size2f::width)
         .def_readwrite("height", &Size2f::height)
+        .def("isNormalized", &Size2f::isNormalized)
         ;
 
     // CameraBoardSocket enum bindings
@@ -425,14 +437,14 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack){
         .value("END", CameraExposureOffset::END)
     ;
 
-	color
-		.def(py::init<>())
-		.def(py::init<float, float, float, float>())
-		.def_readwrite("r", &Color::r)
-		.def_readwrite("g", &Color::g)
-		.def_readwrite("b", &Color::b)
-		.def_readwrite("a", &Color::a)
-	;
+    color
+        .def(py::init<>())
+        .def(py::init<float, float, float, float>(), py::arg("r"), py::arg("g"), py::arg("b"), py::arg("a") = 1.0, DOC(dai, Color, Color))
+        .def_readwrite("r", &Color::r)
+        .def_readwrite("g", &Color::g)
+        .def_readwrite("b", &Color::b)
+        .def_readwrite("a", &Color::a)
+    ;
     colormap
         .value("NONE", Colormap::NONE)
         .value("JET", Colormap::JET)

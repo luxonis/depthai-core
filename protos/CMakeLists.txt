@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.10)
 
 # Find Protobuf package
-find_package(Protobuf CONFIG REQUIRED)
+find_package(Protobuf REQUIRED)
 
 # Print out where Protobuf was found
 message(STATUS "Found Protobuf: ${Protobuf_DIR}")

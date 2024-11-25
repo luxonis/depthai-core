@@ -16,6 +16,7 @@ set(test_env
     "UBSAN_OPTIONS=halt_on_error=1"
     # DepthAI
     "DEPTHAI_SEARCH_TIMEOUT=15000"
+    "DEPTHAI_RECONNECT_TIMEOUT=0"
     )
 
 # Helper for adding new examples
@@ -286,6 +287,11 @@ dai_add_example(model_zoo RVC2/ModelZoo/model_zoo.cpp OFF OFF)
 dai_add_example(events HostNodes/events.cpp ON OFF)
 # Image Align
 dai_add_example(image_align RVC2/ImageAlign/image_align.cpp OFF OFF)
+
+# Visualizer
+dai_add_example(visualizer_yolo Visualizer/visualizer_yolo.cpp ON OFF)
+dai_set_example_test_labels(visualizer_yolo ondevice rvc2_all rvc4)
+
 
 if(DEPTHAI_RTABMAP_SUPPORT)
     include(FetchContent)

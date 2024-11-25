@@ -5,24 +5,44 @@
 #include <memory>
 
 // depthai
-#include "depthai/pipeline/datatype/ImageAnnotations.hpp"
+#include "depthai/pipeline/datatype/ImgAnnotations.hpp"
 
 //pybind
 #include <pybind11/chrono.h>
 #include <pybind11/numpy.h>
+#include <pybind11/stl_bind.h>
 
 // #include "spdlog/spdlog.h"
+
+
+PYBIND11_MAKE_OPAQUE(std::vector<dai::Color>);
+PYBIND11_MAKE_OPAQUE(std::vector<dai::Point2f>);
+PYBIND11_MAKE_OPAQUE(std::vector<dai::CircleAnnotation>);
+PYBIND11_MAKE_OPAQUE(std::vector<dai::PointsAnnotation>);
+PYBIND11_MAKE_OPAQUE(std::vector<dai::TextAnnotation>);
+PYBIND11_MAKE_OPAQUE(std::vector<dai::ImgAnnotation>);
 
 void bind_imageannotations(pybind11::module& m, void* pCallstack){
 
     using namespace dai;
 
-    py::class_<ImageAnnotations, Py<ImageAnnotations>, Buffer, std::shared_ptr<ImageAnnotations>> imageAnnotations(m, "ImageAnnotations", DOC(dai, ImageAnnotations));
+    py::class_<ImgAnnotations, Py<ImgAnnotations>, Buffer, std::shared_ptr<ImgAnnotations>> imageAnnotations(m, "ImgAnnotations", DOC(dai, ImgAnnotations));
 	py::class_<CircleAnnotation> circleAnnotation(m, "CircleAnnotation", DOC(dai, CircleAnnotation));
 	py::enum_<PointsAnnotationType>pointsAnnotationType (m, "PointsAnnotationType", DOC(dai, PointsAnnotationType));
 	py::class_<PointsAnnotation> pointsAnnotation(m, "PointsAnnotation", DOC(dai, PointsAnnotation));
 	py::class_<TextAnnotation> textAnnotation(m, "TextAnnotation", DOC(dai, TextAnnotation));
-    py::class_<ImageAnnotation> imageAnnotation(m, "ImageAnnotation", DOC(dai, ImageAnnotation));
+    py::class_<ImgAnnotation> imageAnnotation(m, "ImgAnnotation", DOC(dai, ImgAnnotation));
+
+
+
+	py::bind_vector<std::vector<dai::Color>>(m, "VectorColor");
+	py::bind_vector<std::vector<dai::Point2f>>(m, "VectorPoint2f");
+	py::bind_vector<std::vector<dai::CircleAnnotation>>(m, "VectorCircleAnnotation");
+	py::bind_vector<std::vector<dai::PointsAnnotation>>(m, "VectorPointsAnnotation");
+	py::bind_vector<std::vector<dai::TextAnnotation>>(m, "VectorTextAnnotation");
+	py::bind_vector<std::vector<dai::ImgAnnotation>>(m, "VectorImgAnnotation");
+
+
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -50,9 +70,9 @@ void bind_imageannotations(pybind11::module& m, void* pCallstack){
 	pointsAnnotationType
 		.value("UNKNOWN", PointsAnnotationType::UNKNOWN)
 		.value("POINTS", PointsAnnotationType::POINTS)
-		.value("LINE_STRIP", PointsAnnotationType::LINE_LOOP)
-		.value("LINE_LOOP", PointsAnnotationType::LINE_STRIP)
-		.value("POLYGON", PointsAnnotationType::LINE_LIST)
+		.value("LINE_LOOP", PointsAnnotationType::LINE_LOOP)
+		.value("LINE_STRIP", PointsAnnotationType::LINE_STRIP)
+		.value("LINE_LIST", PointsAnnotationType::LINE_LIST)
 		.export_values();
 	pointsAnnotation
 		.def(py::init<>())
@@ -75,20 +95,20 @@ void bind_imageannotations(pybind11::module& m, void* pCallstack){
 		
     imageAnnotation
         .def(py::init<>())
-		.def_readwrite("circles", &ImageAnnotation::circles)
-		.def_readwrite("points", &ImageAnnotation::points)
-		.def_readwrite("texts", &ImageAnnotation::texts)
+		.def_readwrite("circles", &ImgAnnotation::circles)
+		.def_readwrite("points", &ImgAnnotation::points)
+		.def_readwrite("texts", &ImgAnnotation::texts)
 		;	
 
 
     // Message
     imageAnnotations
-        .def(py::init<>(), DOC(dai, ImageAnnotations, ImageAnnotations))
-		.def(py::init<const std::vector<ImageAnnotation>&>(), DOC(dai, ImageAnnotations, ImageAnnotations, 2))
-		.def_readwrite("annotations", &ImageAnnotations::annotations)
-        .def("getTimestamp", &ImageAnnotations::Buffer::getTimestamp, DOC(dai, Buffer, getTimestamp))
-        .def("getTimestampDevice", &ImageAnnotations::Buffer::getTimestampDevice, DOC(dai, Buffer, getTimestampDevice))
-        .def("getSequenceNum", &ImageAnnotations::Buffer::getSequenceNum, DOC(dai, Buffer, getSequenceNum))
+        .def(py::init<>(), DOC(dai, ImgAnnotations, ImgAnnotations))
+		.def(py::init<const std::vector<ImgAnnotation>&>(), DOC(dai, ImgAnnotations, ImgAnnotations, 2))
+		.def_readwrite("annotations", &ImgAnnotations::annotations)
+        .def("getTimestamp", &ImgAnnotations::Buffer::getTimestamp, DOC(dai, Buffer, getTimestamp))
+        .def("getTimestampDevice", &ImgAnnotations::Buffer::getTimestampDevice, DOC(dai, Buffer, getTimestampDevice))
+        .def("getSequenceNum", &ImgAnnotations::Buffer::getSequenceNum, DOC(dai, Buffer, getSequenceNum))
         ;
 
 

@@ -71,8 +71,7 @@ void bind_encodedframe(pybind11::module& m, void* pCallstack) {
         .value("Unknown", EncodedFrame::FrameType::Unknown);
 
     // Message
-    encodedFrame
-        .def(py::init<>())
+    encodedFrame.def(py::init<>())
         .def("__repr__", &EncodedFrame::str)
         // getters
         .def("getTimestamp", py::overload_cast<>(&EncodedFrame::Buffer::getTimestamp, py::const_), DOC(dai, Buffer, getTimestamp))
@@ -91,7 +90,7 @@ void bind_encodedframe(pybind11::module& m, void* pCallstack) {
         .def("getFrameType", &EncodedFrame::getFrameType, DOC(dai, EncodedFrame, getFrameType))
         .def("getLossless", &EncodedFrame::getLossless, DOC(dai, EncodedFrame, getLossless))
         .def("getProfile", &EncodedFrame::getProfile, DOC(dai, EncodedFrame, getProfile))
-
+        .def("getTransformation", [](EncodedFrame& msg) { return msg.transformation; })
         //  // setters
         //  .def("setTimestamp", &EncodedFrame::setTimestamp,
         //       DOC(dai, EncodedFrame, setTimestamp))
@@ -114,7 +113,8 @@ void bind_encodedframe(pybind11::module& m, void* pCallstack) {
         .def("setBitrate", &EncodedFrame::setBitrate, DOC(dai, EncodedFrame, getBitrate))
         .def("setFrameType", &EncodedFrame::setFrameType, DOC(dai, EncodedFrame, getFrameType))
         .def("setLossless", &EncodedFrame::setLossless, DOC(dai, EncodedFrame, getLossless))
-        .def("setProfile", &EncodedFrame::setProfile, DOC(dai, EncodedFrame, getProfile));
+        .def("setProfile", &EncodedFrame::setProfile, DOC(dai, EncodedFrame, getProfile))
+        .def("setTransformation", [](EncodedFrame& msg, const ImgTransformation& transformation) { msg.transformation = transformation; });
     //   // add aliases dai.ImgFrame.Type and dai.ImgFrame.Specs
     //   m.attr("EncodedFrame").attr("FrameType") =
     //       m.attr("RawEncodedFrame").attr("FrameType");

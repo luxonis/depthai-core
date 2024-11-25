@@ -195,6 +195,7 @@ struct VideoRecordSchema {
         imgFrame.cam.lensPosition = cameraSettings.lensPosition;
         imgFrame.cam.exposureTimeUs = cameraSettings.exposure;
         imgFrame.cam.sensitivityIso = cameraSettings.sensitivity;
+        imgFrame.transformation = ImgTransformation(width, height);
         return imgFrame;
     }
 };

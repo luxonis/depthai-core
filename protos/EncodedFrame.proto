@@ -19,7 +19,9 @@ message EncodedFrame {
     int64 sequenceNum = 12;  // Sequence number
     common.Timestamp ts = 13;  // Timestamp
     common.Timestamp tsDevice = 14;  // Timestamp from device
-    bytes data = 15;         // Encoded frame data
+    common.ImgTransformation transformation = 15;
+    bytes data = 16;         // Encoded frame data
+
 }
 
 enum Profile {
