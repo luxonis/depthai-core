@@ -10,12 +10,15 @@
 
 #include "Environment.hpp"
 #include "Logging.hpp"
-#include "depthai/schemas/Event.pb.h"
+#ifdef DEPTHAI_ENABLE_PROTOBUF
+    #include "depthai/schemas/Event.pb.h"
+#endif
 #ifdef DEPTHAI_ENABLE_CURL
     #include <cpr/cpr.h>
 namespace dai {
 
 namespace utility {
+    #ifdef DEPTHAI_ENABLE_PROTOBUF
 using std::move;
 
 EventData::EventData(const std::string& data, const std::string& fileName, const std::string& mimeType)
@@ -150,7 +153,7 @@ void EventsManager::sendEventBuffer() {
     }
     std::string serializedEvent;
     batchEvent->SerializeToString(&serializedEvent);
-    cpr::Response r = cpr::Post(url, cpr::Header{{"Authorization", "Bearer " + token}}, cpr::Body(serializedEvent), cpr::VerifySsl(verifySsl));
+    cpr::Response r = cpr::Post(cpr::Url{url}, cpr::Body{serializedEvent}, cpr::Header{{"Authorization", "Bearer " + token}}, cpr::VerifySsl(verifySsl));
     if(r.status_code != cpr::status::HTTP_OK) {
         logger::error("Failed to send event: {} {}", r.text, r.status_code);
     } else {
@@ -167,7 +170,7 @@ void EventsManager::sendEventBuffer() {
                 for(int j = 0; j < eventResult.accepted().file_upload_urls().size(); j++) {
                     cpr::Url fileUrl = static_cast<cpr::Url>(this->url + eventResult.accepted().file_upload_urls(j));
 
-                    sendFile(eventBuffer[i]->data[j], fileUrl);
+                    sendFile(eventBuffer[i]->data[j], fileUrl.str());
                 }
             }
         }
@@ -196,7 +199,7 @@ bool EventsManager::sendEvent(const std::string& name,
     }
     auto* extrasData = event->mutable_extras();
     for(const auto& entry : extraData) {
-        extrasData->insert(entry);
+        extrasData->insert({entry.first, entry.second});
     }
 
     if(imgFrame != nullptr) {
@@ -275,7 +278,7 @@ void EventsManager::sendFile(const std::shared_ptr<EventData>& file, const std::
         }};
         header["File-Size"] = std::to_string(std::filesystem::file_size(file->data));
     }
-    cpr::Response r = cpr::Post(url, header, fileM, cpr::VerifySsl(verifySsl));
+    cpr::Response r = cpr::Post(cpr::Url{url}, cpr::Multipart{fileM}, cpr::Header{header}, cpr::VerifySsl(verifySsl));
     if(r.status_code != cpr::status::HTTP_OK) {
         logger::error("Failed to upload file: {} error code {}", r.text, r.status_code);
     }
@@ -422,6 +425,7 @@ void EventsManager::setVerifySsl(bool verifySsl) {
 void EventsManager::setCacheIfCannotSend(bool cacheIfCannotSend) {
     this->cacheIfCannotSend = cacheIfCannotSend;
 }
+    #endif
 }  // namespace utility
 }  // namespace dai
 #else

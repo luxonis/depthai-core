@@ -11,10 +11,15 @@
 #include "depthai/pipeline/datatype/EncodedFrame.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
-#include "depthai/schemas/Event.pb.h"
 
 namespace dai {
+namespace proto {
+namespace event {
+class Event;
+}  // namespace event
+}  // namespace proto
 namespace utility {
+#ifdef DEPTHAI_ENABLE_PROTOBUF
 enum class EventDataType { DATA, FILE_URL, IMG_FRAME, ENCODED_FRAME, NN_DATA };
 class EventData {
    public:
@@ -23,7 +28,7 @@ class EventData {
     explicit EventData(const std::shared_ptr<ImgFrame>& imgFrame, std::string fileName);
     explicit EventData(const std::shared_ptr<EncodedFrame>& encodedFrame, std::string fileName);
     explicit EventData(const std::shared_ptr<NNData>& nnData, std::string fileName);
-	bool toFile(const std::string& path);
+    bool toFile(const std::string& path);
 
    private:
     std::string fileName;
@@ -34,7 +39,7 @@ class EventData {
 };
 class EventsManager {
    public:
-    explicit EventsManager(std::string url = "https://events-ingest.cloud.luxonis.com", bool uploadCachedOnStart = false, float publishInterval=10.0);
+    explicit EventsManager(std::string url = "https://events-ingest.cloud.luxonis.com", bool uploadCachedOnStart = false, float publishInterval = 10.0);
     ~EventsManager();
 
     /**
@@ -157,7 +162,7 @@ class EventsManager {
     std::string sourceAppId;
     std::string sourceAppIdentifier;
     uint64 queueSize;
-	std::unique_ptr<std::thread> eventBufferThread;
+    std::unique_ptr<std::thread> eventBufferThread;
     std::vector<std::shared_ptr<EventMessage>> eventBuffer;
     std::mutex eventBufferMutex;
     float publishInterval;
@@ -168,5 +173,6 @@ class EventsManager {
     bool uploadCachedOnStart;
     bool cacheIfCannotSend;
 };
+#endif
 }  // namespace utility
 }  // namespace dai

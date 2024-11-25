@@ -266,7 +266,7 @@ set(TARGET_OPENCV_NAME ${PROJECT_NAME}-opencv)
 set(TARGET_OPENCV_ALIAS opencv)
 if(DEPTHAI_OPENCV_SUPPORT)
     # Check if required libraries are available
-    set(REQUIRED_OPENCV_LIBRARIES "opencv_core" "opencv_imgproc" "opencv_videoio")
+    set(REQUIRED_OPENCV_LIBRARIES "opencv_core" "opencv_imgproc" "opencv_videoio" "opencv_highgui")
     set(OPENCV_SUPPORT_AVAILABLE ${OpenCV_FOUND})
     foreach(lib ${REQUIRED_OPENCV_LIBRARIES})
         if(NOT (lib IN_LIST OpenCV_LIBS))
@@ -389,7 +389,6 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/MessageGroup.cpp
     src/pipeline/datatype/TransformData.cpp
     src/utility/H26xParsers.cpp
-    src/utility/EventsManager.cpp
     src/utility/ImageManipV2Impl.cpp
     src/utility/Initialization.cpp
     src/utility/Resources.cpp
@@ -430,6 +429,7 @@ endif()
 if(DEPTHAI_ENABLE_PROTOBUF)
     list(APPEND TARGET_CORE_SOURCES
         src/utility/ProtoSerialize.cpp
+        src/utility/EventsManager.cpp
     )
 endif()
 
