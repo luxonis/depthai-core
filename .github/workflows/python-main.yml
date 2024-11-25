@@ -253,15 +253,17 @@ jobs:
           ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
           ARTIFACTORY_PASS: ${{ secrets.ARTIFACTORY_PASS }}
 
-  # This job builds wheels for macOS arch
+
   build-macos:
     needs: build-docstrings
     strategy:
       matrix:
         python-version: [3.8, 3.9, '3.10', '3.11', '3.12']
-        os: [macos-13, macos-14] # macos-13 is x64, macos-14 is arm64
+        runner:
+        - macos-13
+        - self-hosted macOS ARM64
       fail-fast: false
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.runner }}
     # env:
       # TODO(Morato) - re-enable basalt, pcl, rtabmap after everything is ported  
       # DEPTHAI_BUILD_BASALT: ON
