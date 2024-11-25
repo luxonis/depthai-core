@@ -257,13 +257,11 @@ jobs:
   build-macos:
     needs: build-docstrings
     strategy:
+      fail-fast: false
       matrix:
         python-version: [3.8, 3.9, '3.10', '3.11', '3.12']
-        runner:
-        - macos-13
-        - self-hosted macOS ARM64
-      fail-fast: false
-    runs-on: ${{ matrix.runner }}
+        os: [macos-13, self-hosted]
+    runs-on: ${{ matrix.os == 'self-hosted' && fromJson('["self-hosted", "macOS", "ARM64"]') || matrix.os }}
     # env:
       # TODO(Morato) - re-enable basalt, pcl, rtabmap after everything is ported  
       # DEPTHAI_BUILD_BASALT: ON
