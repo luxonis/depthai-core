@@ -58,7 +58,6 @@ int main(int argc, char* argv[]) {
         }
         //
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
-        // eventsManager->sendSnap("test8", {{"key8", "value8"}}, {"tag15", "tag16"});
     }
 
     return EXIT_SUCCESS;

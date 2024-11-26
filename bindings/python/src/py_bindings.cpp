@@ -87,7 +87,7 @@ PYBIND11_MODULE(depthai, m)
     callstack.push_front(&CalibrationHandlerBindings::bind);
     callstack.push_front(&NNModelDescriptionBindings::bind);
     callstack.push_front(&ZooBindings::bind);
-	callstack.push_front(&EventsManagerBindings::bind);
+    callstack.push_front(&EventsManagerBindings::bind);
     callstack.push_front(&RemoteConnectionBindings::bind);
     // end of the callstack
     callstack.push_front([](py::module &, void *) {});
