@@ -295,7 +295,8 @@ void EventsManager::cacheEvents() {
         auto& event = eventM->event;
         auto& data = eventM->data;
         std::filesystem::path p(cacheDir);
-        std::string eventDir = p / ("event_" + event->name() + "_" + event->nonce());
+        p = p / ("event_" + event->name() + "_" + event->nonce());
+        std::string eventDir = p.string();
         logger::info("Caching event to {}", eventDir);
         if(!std::filesystem::exists(cacheDir)) {
             std::filesystem::create_directories(cacheDir);
