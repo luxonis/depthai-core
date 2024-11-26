@@ -1054,6 +1054,11 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipelin
                 profilingRunning = false;
             });
         }
+        auto crashdumpPathStr = utility::getEnv("DEPTHAI_CRASHDUMP");
+        if(!crashdumpPathStr.empty()) {
+            pimpl->logger.warn("Crash dump enabled");
+            pimpl->rpcClient->call("enableCrashDump", true);
+        }
 
         // Below can throw - make sure to gracefully exit threads
         try {
@@ -1260,6 +1265,16 @@ std::unordered_map<CameraBoardSocket, std::string> DeviceBase::getCameraSensorNa
 std::string DeviceBase::getConnectedIMU() {
     isClosed();
     return pimpl->rpcClient->call("getConnectedIMU").as<std::string>();
+}
+
+void DeviceBase::crashDevice() {
+    isClosed();
+    // Check that the protective ENV variable is set
+    if(utility::getEnv("DEPTHAI_CRASH_DEVICE") != "1") {
+        pimpl->logger.error("Crashing the device is disabled. Set DEPTHAI_CRASH_DEVICE=1 to enable.");
+        return;
+    }
+    pimpl->rpcClient->call("crashDevice");
 }
 
 dai::Version DeviceBase::getIMUFirmwareVersion() {
