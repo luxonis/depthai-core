@@ -5,7 +5,7 @@
 
 void EventsManagerBindings::bind(pybind11::module& m, void* pCallstack) {
     using namespace dai;
-
+    using namespace dai::utility;
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -18,53 +18,53 @@ void EventsManagerBindings::bind(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
 
-    py::class_<utility::EventData, std::shared_ptr<utility::EventData>>(m, "EventData")
+    py::class_<EventData, std::shared_ptr<utility::EventData>>(m, "EventData")
         .def(py::init<const std::string&, const std::string&, const std::string&>(), py::arg("data"), py::arg("fileName"), py::arg("mimeType"))
         .def(py::init<std::string>(), py::arg("fileUrl"))
         .def(py::init<const std::shared_ptr<ImgFrame>&, std::string>(), py::arg("imgFrame"), py::arg("fileName"))
         .def(py::init<const std::shared_ptr<EncodedFrame>&, std::string>(), py::arg("encodedFrame"), py::arg("fileName"))
         .def(py::init<const std::shared_ptr<NNData>&, std::string>(), py::arg("nnData"), py::arg("fileName"));
 
-    py::class_<utility::EventsManager>(m, "EventsManager")
+    py::class_<EventsManager>(m, "EventsManager")
         .def(py::init<>())
         .def(py::init<std::string, bool, float>(), py::arg("url"), py::arg("uploadCachedOnStart") = false, py::arg("publishInterval") = 10.0)
-        .def("setUrl", &utility::EventsManager::setUrl, py::arg("url"), DOC(dai, EventsManager, setUrl))
-        .def("setSourceAppId", &utility::EventsManager::setSourceAppId, py::arg("sourceAppId"), DOC(dai, EventsManager, setSourceAppId))
+        .def("setUrl", &EventsManager::setUrl, py::arg("url"), DOC(dai, utility, EventsManager, setUrl))
+        .def("setSourceAppId", &EventsManager::setSourceAppId, py::arg("sourceAppId"), DOC(dai, utility, EventsManager, setSourceAppId))
         .def("setSourceAppIdentifier",
-             &utility::EventsManager::setSourceAppIdentifier,
+             &EventsManager::setSourceAppIdentifier,
              py::arg("sourceAppIdentifier"),
-             DOC(dai, EventsManager, setSourceAppIdentifier))
-        .def("setToken", &utility::EventsManager::setToken, py::arg("token"), DOC(dai, EventsManager, setToken))
-        .def("setQueueSize", &utility::EventsManager::setQueueSize, py::arg("queueSize"), DOC(dai, EventsManager, setQueueSize))
-        .def("setLogResponse", &utility::EventsManager::setLogResponse, py::arg("logResponse"), DOC(dai, EventsManager, setLogResponse))
+             DOC(dai, utility, EventsManager, setSourceAppIdentifier))
+        .def("setToken", &EventsManager::setToken, py::arg("token"), DOC(dai, utility, EventsManager, setToken))
+        .def("setQueueSize", &EventsManager::setQueueSize, py::arg("queueSize"), DOC(dai, utility, EventsManager, setQueueSize))
+        .def("setLogResponse", &EventsManager::setLogResponse, py::arg("logResponse"), DOC(dai, utility, EventsManager, setLogResponse))
         .def("setDeviceSerialNumber",
-             &utility::EventsManager::setDeviceSerialNumber,
+             &EventsManager::setDeviceSerialNumber,
              py::arg("deviceSerialNumber"),
-             DOC(dai, EventsManager, setDeviceSerialNumber))
-        .def("setVerifySsl", &utility::EventsManager::setVerifySsl, py::arg("verifySsl"), DOC(dai, EventsManager, setVerifySsl))
-        .def("setCacheDir", &utility::EventsManager::setCacheDir, py::arg("cacheDir"), DOC(dai, EventsManager, setCacheDir))
+             DOC(dai, utility, EventsManager, setDeviceSerialNumber))
+        .def("setVerifySsl", &EventsManager::setVerifySsl, py::arg("verifySsl"), DOC(dai, utility, EventsManager, setVerifySsl))
+        .def("setCacheDir", &EventsManager::setCacheDir, py::arg("cacheDir"), DOC(dai, utility, EventsManager, setCacheDir))
         .def("setCacheIfCannotSend",
-             &utility::EventsManager::setCacheIfCannotSend,
+             &EventsManager::setCacheIfCannotSend,
              py::arg("cacheIfCannotUpload"),
-             DOC(dai, EventsManager, setCacheIfCannotSend))
-        .def("checkConnection", &utility::EventsManager::checkConnection, DOC(dai, EventsManager, checkConnection))
-        .def("uploadCachedData", &utility::EventsManager::uploadCachedData, DOC(dai, EventsManager, uploadCachedData))
+             DOC(dai, utility, EventsManager, setCacheIfCannotSend))
+        .def("checkConnection", &EventsManager::checkConnection, DOC(dai, utility, EventsManager, checkConnection))
+        .def("uploadCachedData", &EventsManager::uploadCachedData, DOC(dai, utility, EventsManager, uploadCachedData))
         .def("sendEvent",
-             &utility::EventsManager::sendEvent,
+             &EventsManager::sendEvent,
              py::arg("name"),
              py::arg("imgFrame").none(true) = nullptr,
-             py::arg("data") = std::vector<std::shared_ptr<utility::EventData>>(),
+             py::arg("data") = std::vector<std::shared_ptr<EventData>>(),
              py::arg("tags") = std::vector<std::string>(),
              py::arg("extraData") = std::unordered_map<std::string, std::string>(),
              py::arg("deviceSerialNo") = "",
-             DOC(dai, EventsManager, sendEvent))
+             DOC(dai, utility, EventsManager, sendEvent))
         .def("sendSnap",
-             &utility::EventsManager::sendSnap,
+             &EventsManager::sendSnap,
              py::arg("name"),
              py::arg("imgFrame").none(true) = nullptr,
-             py::arg("data") = std::vector<std::shared_ptr<utility::EventData>>(),
+             py::arg("data") = std::vector<std::shared_ptr<EventData>>(),
              py::arg("tags") = std::vector<std::string>(),
              py::arg("extraData") = std::unordered_map<std::string, std::string>(),
              py::arg("deviceSerialNo") = "",
-             DOC(dai, EventsManager, sendSnap));
+             DOC(dai, utility, EventsManager, sendSnap));
 }
