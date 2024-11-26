@@ -455,7 +455,6 @@ jobs:
           mv dist/* wheelhouse/audited/
       - name: Build wheels
         run: |
-          for PYBIN in /opt/python/cp3${{ matrix.python-set }}*/bin; do "${PYBIN}/pip" install jinja2; done
           cd bindings/python && for PYBIN in /opt/python/cp3${{ matrix.python-set }}*/bin; do "${PYBIN}/pip" wheel . -w ./wheelhouse/ --verbose; done
 
       - name: Audit wheels
@@ -508,7 +507,7 @@ jobs:
         with:
           submodules: 'recursive'
       - name: Installing libusb1-devel dependency
-        run: yum install -y libusb1-devel perl-core curl zip unzip tar ninja-build
+        run: yum install -y libusb1-devel perl-core curl zip unzip tar ninja-build  zlib-devel curl-devel xcb-util-renderutil-devel xcb-util-devel xcb-util-image-devel xcb-util-keysyms-devel xcb-util-wm-devel mesa-libGL-devel libxkbcommon-devel libxkbcommon-x11-devel libXi-devel lapack-devel nasm  libtool autoconf automake
       - name: Installing cmake dependency
         run: |
           cd bindings/python
@@ -529,7 +528,6 @@ jobs:
         run: echo "BUILD_COMMIT_HASH=${{github.sha}}" >> $GITHUB_ENV
       - name: Building wheels
         run: |
-          for PYBIN in /opt/python/cp3${{ matrix.python-set }}*/bin; do "${PYBIN}/pip" install jinja2; done
           cd bindings/python && for PYBIN in /opt/python/cp3${{ matrix.python-set }}*/bin; do "${PYBIN}/pip" wheel . -w ./wheelhouse/ --verbose; done
       - name: Auditing wheels
         run: cd bindings/python && for whl in wheelhouse/*.whl; do auditwheel repair "$whl" --plat $PLAT -w wheelhouse/audited/; done
