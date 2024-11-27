@@ -494,6 +494,7 @@ jobs:
       VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
       DEPTHAI_BUILD_BASALT: ON
       DEPTHAI_BUILD_PCL: ON
+      DEPTHAI_BUILD_RTABMAP: ON
       VCPKG_MAX_CONCURRENCY: "2"
       # DEPTHAI_BUILD_RTABMAP: ON
     steps:
