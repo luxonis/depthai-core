@@ -336,7 +336,12 @@ void EventsManager::uploadCachedData() {
                 }
             }
             std::lock_guard<std::mutex> lock(eventBufferMutex);
-            eventBuffer.push_back(std::make_unique<EventMessage>(EventMessage{std::make_shared<proto::event::Event>(event), data, eventDir}));
+            auto eventPtr = std::make_shared<proto::event::Event>(event);
+            auto eventMessage = std::make_shared<EventMessage>();
+            eventMessage->event = eventPtr;
+            eventMessage->data = data;
+            eventMessage->cachePath = eventDir;
+            eventBuffer.push_back(eventMessage);
         }
     }
 }
