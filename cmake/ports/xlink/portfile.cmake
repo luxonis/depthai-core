@@ -23,3 +23,7 @@ vcpkg_cmake_configure(
 vcpkg_cmake_install()
 
 vcpkg_fixup_pkgconfig()
+file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/LICENSE")
+vcpkg_cmake_config_fixup(PACKAGE_NAME xlink CONFIG_PATH "lib/cmake/XLink")
+file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/share")

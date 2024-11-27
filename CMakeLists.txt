@@ -258,6 +258,8 @@ set(TARGET_OPENCV_NAME ${PROJECT_NAME}-opencv)
 set(TARGET_OPENCV_ALIAS opencv)
 if(DEPTHAI_OPENCV_SUPPORT)
     # Check if required libraries are available
+    set(CMAKE_SHARED_LINKER_FLAGS "-Wl,-Bsymbolic") # for FFMPEG
+
     set(REQUIRED_OPENCV_LIBRARIES "opencv_core" "opencv_imgproc" "opencv_videoio" "opencv_highgui")
     set(OPENCV_SUPPORT_AVAILABLE ${OpenCV_FOUND})
     foreach(lib ${REQUIRED_OPENCV_LIBRARIES})
@@ -488,10 +490,6 @@ set(CMAKE_OSX_DEPLOYMENT_TARGET 10.15)
 if(DEPTHAI_HAVE_OPENCV_SUPPORT AND DEPTHAI_MERGED_TARGET)
     # Link to OpenCV (publically)
     target_link_libraries(${TARGET_CORE_NAME} PUBLIC ${REQUIRED_OPENCV_LIBRARIES} ${THIRDPARTY_OPENCV_LIBRARIES})
-    # Link to FFMPEG (for video encoding)
-    target_include_directories(${TARGET_CORE_NAME} PRIVATE ${FFMPEG_INCLUDE_DIRS})
-    target_link_directories(${TARGET_CORE_NAME} PRIVATE ${FFMPEG_LIBRARY_DIRS})
-    target_link_libraries(${TARGET_CORE_NAME} PRIVATE ${FFMPEG_LIBRARIES})
 
     # Specify that we are building target opencv
     target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_TARGET_OPENCV)
@@ -506,9 +504,9 @@ if(DEPTHAI_HAVE_PCL_SUPPORT AND DEPTHAI_MERGED_TARGET)
     target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_TARGET_PCL)
     target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_HAVE_PCL_SUPPORT)
     target_link_directories(${TARGET_CORE_NAME} PUBLIC 
-		$<BUILD_INTERFACE:${PCL_LIBRARY_DIRS}>
-		$<INSTALL_INTERFACE:include>
-	)
+        $<BUILD_INTERFACE:${PCL_LIBRARY_DIRS}>
+        $<INSTALL_INTERFACE:include>
+    )
     target_compile_definitions(${TARGET_CORE_NAME} PUBLIC ${PCL_DEFINITIONS})
 endif()
 if(DEPTHAI_MERGED_TARGET)
@@ -707,7 +705,6 @@ if(DEPTHAI_CLANG_FORMAT)
     target_clangformat_setup(${TARGET_CORE_NAME} "${header_dirs}")
 endif()
 
-find_package(OpenSSL REQUIRED)
 # link libraries
 target_link_libraries(${TARGET_CORE_NAME}
     PUBLIC
@@ -817,6 +814,31 @@ if(DEPTHAI_USB2_PATCH_ONLY_MODE)
     target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_PATCH_ONLY_MODE)
 endif()
 
+# Helper function
+macro(add_runtime_dependencies depending_target dependency)
+    if(WIN32)
+        if(TARGET ${dependency})
+            get_property(imported_configs TARGET ${dependency} PROPERTY IMPORTED_CONFIGURATIONS)
+            set(dlls "")
+            foreach(cfg ${imported_configs})
+                get_property(dll TARGET ${dependency} PROPERTY IMPORTED_LOCATION_${cfg})
+                set(dlls ${depthai_dll_libraries} $<$<CONFIG:${cfg}>:${dll}>)
+            endforeach()
+        endif()
+        set(depthai_dll_libraries "")
+        # Create a list of required dll files
+        set(required_dll_files ${dlls} ${depthai_dll_libraries})
+        # Copy the required dlls
+        add_custom_command(TARGET ${depending_target} POST_BUILD COMMAND
+            "$<$<BOOL:${required_dll_files}>:${CMAKE_COMMAND};-E;copy_if_different;${required_dll_files};$<TARGET_FILE_DIR:${depending_target}>>"
+            COMMAND_EXPAND_LISTS
+            VERBATIM
+        )
+        message(STATUS "Required dlls for core are: ${required_dll_files}")
+    endif()
+endmacro()
+# Add libusb dll in build time
+add_runtime_dependencies(${TARGET_CORE_NAME} usb-1.0)
 
 ########################
 # OpenCV Support 2
@@ -1053,7 +1075,7 @@ if(DEPTHAI_SANITIZE)
         endif()
     endif()
 endif()
-function(private_data)    
+function(private_data)
             set(one URL SHA1 CREDENTIALS LOCATION FILE)
             set(multiple HTTPHEADER)
 

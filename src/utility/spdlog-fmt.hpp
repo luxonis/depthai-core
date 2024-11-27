@@ -24,7 +24,7 @@ struct fmt::formatter<dai::Path> : formatter<std::string> {
     template <typename FormatContext>
 #if FMT_VERSION >= 100000
     auto format(const dai::Path& p, FormatContext& ctx) const {
-#else 
+#else
     auto format(const dai::Path& p, FormatContext& ctx) -> decltype(ctx.out()) {
 #endif
         std::string output;

@@ -38,6 +38,7 @@ if(NOT CONFIG_MODE OR (CONFIG_MODE AND NOT DEPTHAI_SHARED_LIBS))
     # spdlog for library and device logging
     find_package(spdlog ${_QUIET} CONFIG REQUIRED)
 
+    find_package(OpenSSL REQUIRED)
     # Log collection dependencies
     if(DEPTHAI_ENABLE_CURL)
         find_package(CURL ${_QUIET} CONFIG REQUIRED)

@@ -4,10 +4,7 @@ set(VCPKG_LIBRARY_LINKAGE static)
 
 set(VCPKG_CMAKE_SYSTEM_NAME Linux)
 
-if(PORT MATCHES "ffmpeg")
+if(PORT MATCHES "libusb")
     set(VCPKG_LIBRARY_LINKAGE dynamic)
 endif()
 
-if(PORT MATCHES "opencv")
-    set(VCPKG_LIBRARY_LINKAGE dynamic)
-endif()
