@@ -271,7 +271,6 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
-      # TODO(Morato) - re-enable basalt, pcl, rtabmap after everything is ported  
       DEPTHAI_BUILD_BASALT: ON
       DEPTHAI_BUILD_PCL: ON
       DEPTHAI_BUILD_RTABMAP: ON
@@ -496,7 +495,6 @@ jobs:
       DEPTHAI_BUILD_PCL: ON
       DEPTHAI_BUILD_RTABMAP: ON
       VCPKG_MAX_CONCURRENCY: "2"
-      # DEPTHAI_BUILD_RTABMAP: ON
     steps:
       - name: Export GitHub Actions cache environment variables
         uses: actions/github-script@v7
