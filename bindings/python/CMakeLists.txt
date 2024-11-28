@@ -273,7 +273,10 @@ if(DEPTHAI_MERGED_TARGET)
     target_include_directories(${TARGET_NAME} PRIVATE external/pybind11_opencv_numpy)
 endif()
 
-target_link_options(${TARGET_NAME} PRIVATE "LINKER:-Bsymbolic")
+if(UNIX)
+    # Add -Bsymbolic for FFMPEG linking
+    target_link_options(${TARGET_NAME} PRIVATE "LINKER:-Bsymbolic")
+endif()
 
 set(DEPTHAI_LINK_TARGET depthai::core)
 if(NOT DEPTHAI_MERGED_TARGET)
