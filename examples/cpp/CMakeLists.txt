@@ -9,7 +9,7 @@ find_package(Sanitizers)
 add_library(utility utility/utility.cpp)
 target_include_directories(utility PUBLIC "utility")
 add_default_flags(utility LEAN)
-target_link_libraries(utility FP16::fp16 ${OpenCV_LIBS})
+target_link_libraries(utility ${OpenCV_LIBS})
 
 set(test_env
     # Misc

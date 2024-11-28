@@ -15,8 +15,6 @@
         "mp4v2",
         "libnop",
         "neargye-semver",
-        "pybind11",
-        "catch2",
         {
             "name": "ffmpeg",
             "features": [
@@ -25,10 +23,6 @@
         },
         {
             "name": "libarchive",
-            "default-features": false
-        },
-        {
-            "name": "opencv",
             "default-features": false
         },
         {
@@ -63,6 +57,12 @@
             "description": "Enable Protobuf support",
             "dependencies": [
                 "protobuf"
+            ]
+        },
+        "python-bindings": {
+            "description": "Enable Python bindings",
+            "dependencies": [
+                "pybind11"
             ]
         },
         "remote-connection-support": {
@@ -116,10 +116,6 @@
                     "default-features": false
                 },
                 {
-                    "name": "opencv",
-                    "default-features": false
-                },
-                {
                     "name": "basalt"
                 }
             ]
@@ -140,6 +136,17 @@
                     "features": [
                         "libusb"
                     ]
+                },
+                {
+                    "name": "libusb"
+                }
+            ]
+        },
+        "tests": {
+            "description": "Enable tests",
+            "dependencies": [
+                {
+                    "name": "catch2"
                 }
             ]
         }

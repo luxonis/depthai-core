@@ -24,7 +24,7 @@ if(NOT CONFIG_MODE OR (CONFIG_MODE AND NOT DEPTHAI_SHARED_LIBS))
 
     find_package(lz4 CONFIG REQUIRED)
     # FP16 for conversions
-    find_package(FP16 ${_QUIET} CONFIG REQUIRED)
+    find_path(FP16_INCLUDE_DIR NAMES fp16.h)
 
     find_package(PNG  REQUIRED)
     # libarchive for firmware packages

@@ -273,6 +273,8 @@ if(DEPTHAI_MERGED_TARGET)
     target_include_directories(${TARGET_NAME} PRIVATE external/pybind11_opencv_numpy)
 endif()
 
+target_link_options(${TARGET_NAME} PRIVATE "LINKER:-Bsymbolic")
+
 set(DEPTHAI_LINK_TARGET depthai::core)
 if(NOT DEPTHAI_MERGED_TARGET)
     list(APPEND DEPTHAI_LINK_TARGET depthai::opencv)
@@ -370,6 +372,7 @@ if(SANITIZE_ADDRESS OR SANITIZE_MEMORY OR SANITIZE_THREAD OR SANITIZE_UNDEFINED)
     message(STATUS "ASAN environment variables: ${ASAN_ENVIRONMENT_VARS}")
 endif()
 
+set(CMAKE_SHARED_LINKER_FLAGS "-Wl,-Bsymbolic") # for FFMPEG
 ########################
 # Testing
 ########################

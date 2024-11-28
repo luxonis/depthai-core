@@ -6,6 +6,8 @@ option(DEPTHAI_ENABLE_APRIL_TAG "Enable AprilTag node" ON)
 option(DEPTHAI_RTABMAP_SUPPORT "Enable optional RTABMap support" OFF)
 option(DEPTHAI_BASALT_SUPPORT "Enable optional Basalt support" OFF)
 option(DEPTHAI_ENABLE_PROTOBUF "Enable Protobuf support" ON)
+option(DEPTHAI_BUILD_PYTHON "Build python bindings" OFF)
+option(DEPTHAI_BUILD_TESTS "Build tests" OFF)
 option(DEPTHAI_BOOTSTRAP_VCPKG "Automatically bootstrap VCPKG" ON)
 
 set(DEPTHAI_HAS_APRIL_TAG ${DEPTHAI_ENABLE_APRIL_TAG})
@@ -80,6 +82,14 @@ if(DEPTHAI_ENABLE_PROTOBUF)
 else()
     option(DEPTHAI_ENABLE_REMOTE_CONNECTION "Enable Remote Connection support" OFF)
     message(STATUS "Remote Connection support disabled because Protobuf support is disabled.")
+endif()
+
+if(DEPTHAI_BUILD_PYTHON)
+    list(APPEND VCPKG_MANIFEST_FEATURES "python-bindings")
+endif()
+
+if(DEPTHAI_BUILD_TESTS)
+    list(APPEND VCPKG_MANIFEST_FEATURES "tests")
 endif()
 
 if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
@@ -259,7 +269,6 @@ set(TARGET_OPENCV_ALIAS opencv)
 if(DEPTHAI_OPENCV_SUPPORT)
     # Check if required libraries are available
     set(CMAKE_SHARED_LINKER_FLAGS "-Wl,-Bsymbolic") # for FFMPEG
-
     set(REQUIRED_OPENCV_LIBRARIES "opencv_core" "opencv_imgproc" "opencv_videoio" "opencv_highgui")
     set(OPENCV_SUPPORT_AVAILABLE ${OpenCV_FOUND})
     foreach(lib ${REQUIRED_OPENCV_LIBRARIES})
@@ -514,9 +523,7 @@ if(DEPTHAI_MERGED_TARGET)
 endif()
 
 # First specify options
-option(DEPTHAI_BUILD_TESTS "Build tests" OFF)
 option(DEPTHAI_BUILD_EXAMPLES "Build examples - Requires OpenCV library to be installed" OFF)
-option(DEPTHAI_BUILD_PYTHON "Build python bindings" OFF)
 option(DEPTHAI_BUILD_DOCS "Build documentation - requires doxygen to be installed" OFF)
 
 # Specify support for FW
@@ -690,6 +697,7 @@ target_include_directories(${TARGET_CORE_NAME}
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/src>"
         "$<BUILD_INTERFACE:${DEPTHAI_SHARED_INCLUDE}>"
         "$<BUILD_INTERFACE:${DEPTHAI_BOOTLOADER_SHARED_INCLUDE}>"
+        "$<BUILD_INTERFACE:${FP16_INCLUDE_DIRS}>"
 )
 
 target_include_directories(${TARGET_CORE_NAME} SYSTEM
@@ -718,7 +726,6 @@ target_link_libraries(${TARGET_CORE_NAME}
         XLink
         Threads::Threads
         BZip2::BZip2
-        FP16::fp16
         LibArchive::LibArchive
         liblzma::liblzma
         ZLIB::ZLIB
