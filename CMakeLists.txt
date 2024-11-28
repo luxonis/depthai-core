@@ -268,7 +268,9 @@ set(TARGET_OPENCV_NAME ${PROJECT_NAME}-opencv)
 set(TARGET_OPENCV_ALIAS opencv)
 if(DEPTHAI_OPENCV_SUPPORT)
     # Check if required libraries are available
-    set(CMAKE_SHARED_LINKER_FLAGS "-Wl,-Bsymbolic") # for FFMPEG
+    if(UNIX AND NOT APPLE)
+        set(CMAKE_SHARED_LINKER_FLAGS "-Wl,-Bsymbolic") # for FFMPEG
+    endif()
     set(REQUIRED_OPENCV_LIBRARIES "opencv_core" "opencv_imgproc" "opencv_videoio" "opencv_highgui")
     set(OPENCV_SUPPORT_AVAILABLE ${OpenCV_FOUND})
     foreach(lib ${REQUIRED_OPENCV_LIBRARIES})

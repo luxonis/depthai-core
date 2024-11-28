@@ -273,7 +273,7 @@ if(DEPTHAI_MERGED_TARGET)
     target_include_directories(${TARGET_NAME} PRIVATE external/pybind11_opencv_numpy)
 endif()
 
-if(UNIX)
+if(UNIX AND NOT APPLE)
     # Add -Bsymbolic for FFMPEG linking
     target_link_options(${TARGET_NAME} PRIVATE "LINKER:-Bsymbolic")
 endif()
@@ -375,7 +375,6 @@ if(SANITIZE_ADDRESS OR SANITIZE_MEMORY OR SANITIZE_THREAD OR SANITIZE_UNDEFINED)
     message(STATUS "ASAN environment variables: ${ASAN_ENVIRONMENT_VARS}")
 endif()
 
-set(CMAKE_SHARED_LINKER_FLAGS "-Wl,-Bsymbolic") # for FFMPEG
 ########################
 # Testing
 ########################
