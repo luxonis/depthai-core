@@ -16,6 +16,7 @@ index 4094b79..128e56b 100644
  
 +if(WIN32)
 +set (BASALT_CXX_FLAGS "/bigobj")
++set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 +endif()
 +
  # For avoiding libfmt >9 issues, see https://github.com/strasdat/Sophus/issues/366 #issuecomment-1229178088
