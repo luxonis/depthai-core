@@ -190,6 +190,9 @@ if(WIN32)
 
     # Disable "d" postfix, so python can import the library as is
     set_target_properties(${TARGET_NAME} PROPERTIES DEBUG_POSTFIX "")
+
+    # Statically compile CRT
+    target_compile_options(${TARGET_NAME} PRIVATE "/MT")
 endif()
 
 # Add stubs (pyi) generation step after building bindings
