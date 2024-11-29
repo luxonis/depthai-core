@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16) 
+cmake_minimum_required(VERSION 3.16)
 # Early options
 option(DEPTHAI_ENABLE_LIBUSB "Enable usage of libusb and interaction with USB devices" ON)
 # Build AprilTag node code (note, that even if set to OFF, an AprilTagNode can be used with setRunOnHost(false))
@@ -14,6 +14,10 @@ set(DEPTHAI_HAS_APRIL_TAG ${DEPTHAI_ENABLE_APRIL_TAG})
 if(WIN32)
     message(STATUS "AprilTag node is not supported on Windows")
     set(DEPTHAI_HAS_APRIL_TAG OFF)
+
+    # Statically compile vcruntime library
+    add_compile_options(/MT)
+
 endif()
 if(DEPTHAI_HAS_APRIL_TAG)
 list(APPEND VCPKG_MANIFEST_FEATURES "apriltag")
