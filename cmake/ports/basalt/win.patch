@@ -1,0 +1,15 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 4094b79..5735247 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -104,6 +104,10 @@ endif()
+ # base set of compile flags
+ set (BASALT_CXX_FLAGS)
+ 
++if(WIN32)
++    set(BASALT_CXX_FLAGS "/bigobj")
++    set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
++endif()
+ # For avoiding libfmt >9 issues, see https://github.com/strasdat/Sophus/issues/366 #issuecomment-1229178088
+ add_definitions(-DFMT_DEPRECATED_OSTREAM=1)
+ 

@@ -125,7 +125,6 @@ try:
         subprocess.check_call([sys.executable, '-m' 'mypy', f'{DIRECTORY}/{MODULE_NAME}', f'--config-file={config.name}'], env=env)
     finally:
         os.unlink(config.name)
-
     # # TODO(thamarpe) - Pylance / Pyright check
     # subprocess.check_call([sys.executable, '-m' 'pyright', f'{DIRECTORY}/{MODULE_NAME}'], env=env)
 
@@ -164,4 +163,5 @@ try:
 except subprocess.CalledProcessError as err:
     exit(err.returncode)
 
-exit(0)
+finally:
+    exit(0)
