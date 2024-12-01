@@ -4,7 +4,7 @@
 rm -rf venv
 python3 -m venv venv
 source venv/bin/activate
-
+rm -rf build/
 export PATH="$PATH:/home/hil/hil_framework/lib_testbed/tools"
 export PYTHONPATH="$PYTHONPATH:/home/hil/hil_framework"
 export HIL_FRAMEWORK_PATH="/home/hil/hil_framework"

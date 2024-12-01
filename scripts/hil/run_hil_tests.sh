@@ -16,6 +16,7 @@ TEST_ARGS=$2
 rm -rf venv
 python3 -m venv venv
 source venv/bin/activate
+rm -rf build/
 
 if [ "$TEST_FLAVOR" == "vanilla" ]; then
     echo $CMAKE_TOOLCHAIN_PATH
