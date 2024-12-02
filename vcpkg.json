@@ -29,6 +29,8 @@
             "name": "opencv4",
             "default-features": false,
             "features": [
+            "calib3d",
+            "highgui",
             "jpeg",
             "png",
             "quirc",
