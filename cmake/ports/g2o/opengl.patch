@@ -1,0 +1,36 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index a3f66dd..1870723 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -158,6 +158,7 @@ find_package(OpenGL)
+ 
+ # If OpenGL was found, use the import target if available. If not, use old-style includes
+ set(G2O_USE_OPENGL ON CACHE BOOL "Build g2o with OpenGL support for visualization")
++set(G2O_HAVE_OPENGL 0)
+ if (OPENGL_FOUND AND G2O_USE_OPENGL)
+   if (TARGET OpenGL::GL)
+     set(G2O_OPENGL_TARGET "OpenGL::GL;OpenGL::GLU")
+@@ -165,7 +166,7 @@ if (OPENGL_FOUND AND G2O_USE_OPENGL)
+     set(G2O_OPENGL_TARGET "${OPENGL_LIBRARIES}")
+     include_directories(${OPENGL_INCLUDE_DIR})
+   endif()
+-  set (G2O_HAVE_OPENGL 1)
++  set(G2O_HAVE_OPENGL 1)
+   message(STATUS "Compiling with OpenGL support")
+   #message(WARNING G2O_OPENGL_TARGET=${G2O_OPENGL_TARGET})
+ endif()
+diff --git a/cmake_modules/Config.cmake.in b/cmake_modules/Config.cmake.in
+index d2913a1..ba57e32 100644
+--- a/cmake_modules/Config.cmake.in
++++ b/cmake_modules/Config.cmake.in
+@@ -1,7 +1,9 @@
+ include(CMakeFindDependencyMacro)
+ 
+ find_dependency(Eigen3)
+-find_dependency(OpenGL)
++if (@G2O_HAVE_OPENGL@)
++  find_dependency(OpenGL)
++endif()
+ 
+ include("${CMAKE_CURRENT_LIST_DIR}/@G2O_TARGETS_EXPORT_NAME@.cmake")
+ 
