@@ -152,6 +152,7 @@ void bind_stereodepthconfig(pybind11::module& m, void* pCallstack){
         .def(py::init<>())
         .def_readwrite("enable", &StereoDepthConfig::PostProcessing::SpeckleFilter::enable, DOC(dai, StereoDepthConfig, PostProcessing, SpeckleFilter, enable))
         .def_readwrite("speckleRange", &StereoDepthConfig::PostProcessing::SpeckleFilter::speckleRange, DOC(dai, StereoDepthConfig, PostProcessing, SpeckleFilter, speckleRange))
+        .def_readwrite("differenceThreshold", &StereoDepthConfig::PostProcessing::SpeckleFilter::differenceThreshold, DOC(dai, StereoDepthConfig, PostProcessing, SpeckleFilter, differenceThreshold))
         ;
 
     decimationMode
@@ -183,6 +184,7 @@ void bind_stereodepthconfig(pybind11::module& m, void* pCallstack){
 
     postProcessing
         .def(py::init<>())
+        .def_readwrite("filteringOrder", &StereoDepthConfig::PostProcessing::filteringOrder, DOC(dai, StereoDepthConfig, PostProcessing, filteringOrder))
         .def_readwrite("median", &StereoDepthConfig::PostProcessing::median, DOC(dai, StereoDepthConfig, PostProcessing, median))
         .def_readwrite("bilateralSigmaValue", &StereoDepthConfig::PostProcessing::bilateralSigmaValue, DOC(dai, StereoDepthConfig, PostProcessing, bilateralSigmaValue))
         .def_readwrite("spatialFilter", &StereoDepthConfig::PostProcessing::spatialFilter, DOC(dai, StereoDepthConfig, PostProcessing, spatialFilter))
