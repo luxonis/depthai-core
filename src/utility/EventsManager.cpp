@@ -331,7 +331,7 @@ void EventsManager::uploadCachedData() {
             std::vector<std::shared_ptr<EventData>> data;
             for(const auto& fileEntry : std::filesystem::directory_iterator(eventDir)) {
                 if(fileEntry.is_regular_file() && fileEntry.path() != eventDir / "event.pb") {
-                    auto fileData = std::make_shared<EventData>(fileEntry.path());
+                    auto fileData = std::make_shared<EventData>(fileEntry.path().string());
                     data.push_back(fileData);
                 }
             }
@@ -340,7 +340,7 @@ void EventsManager::uploadCachedData() {
             auto eventMessage = std::make_shared<EventMessage>();
             eventMessage->event = eventPtr;
             eventMessage->data = data;
-            eventMessage->cachePath = eventDir;
+            eventMessage->cachePath = eventDir.string();
             eventBuffer.push_back(eventMessage);
         }
     }
