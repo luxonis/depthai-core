@@ -45,6 +45,7 @@
 #include "spdlog/spdlog.h"
 #include "utility/LogCollection.hpp"
 #include "utility/Logging.hpp"
+#include "utility/spdlog-fmt.hpp"
 
 namespace dai {
 
