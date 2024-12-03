@@ -25,6 +25,8 @@ jobs:
   # Job which builds docstrings for the rest of the wheel builds
   build-docstrings:
     runs-on: ubuntu-latest
+    env:
+      VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
     steps:
       - name: Cache .hunter folder
         uses: actions/cache@v3
@@ -33,6 +35,12 @@ jobs:
           key: hunter-ubuntu-latest-v3-develop
       - name: List .hunter cache directory
         run: ls -a -l ~/.hunter/_Base/ || true
+      - name: Export GitHub Actions cache environment variables
+        uses: actions/github-script@v7
+        with:
+          script: |
+           core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+           core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
       - uses: actions/checkout@v3
         with:
           submodules: 'recursive'
@@ -44,7 +52,7 @@ jobs:
         run: |
           sudo apt update
           python -m pip install --upgrade pip
-          sudo apt install libusb-1.0-0-dev libopencv-dev libpcl-dev
+          sudo apt install libusb-1.0-0-dev pkg-config bison autoconf libtool libxi-dev libxtst-dev libxrandr-dev libx11-dev libxft-dev libxext-dev nasm flex libudev-dev
           python -m pip install -r bindings/python/docs/requirements_mkdoc.txt
       - name: Configure project
         run: cmake -S . -B build -DDEPTHAI_BUILD_PYTHON=ON -DDEPTHAI_PYTHON_FORCE_DOCSTRINGS=ON -DDEPTHAI_BASALT_SUPPORT=ON -DDEPTHAI_PCL_SUPPORT=ON -DDEPTHAI_RTABMAP_SUPPORT=ON -DDEPTHAI_PYTHON_DOCSTRINGS_OUTPUT="$PWD/bindings/python/docstrings/depthai_python_docstring.hpp"
@@ -61,6 +69,8 @@ jobs:
   # Build and test bindings
   pytest:
     needs: build-docstrings
+    env:
+      VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
     strategy:
       matrix:
         # os: [ubuntu-latest, windows-latest, macos-latest]
@@ -82,6 +92,12 @@ jobs:
         with:
           path: C:/.hunter/
           key: hunter-pytest-${{ matrix.os }}-v3-develop
+      - name: Export GitHub Actions cache environment variables
+        uses: actions/github-script@v7
+        with:
+          script: |
+           core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+           core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
 
       - uses: actions/checkout@v3
         with:
@@ -103,28 +119,22 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           python -m pip install --upgrade pip
-          sudo apt install libusb-1.0-0-dev libopencv-dev
+          sudo apt install libusb-1.0-0-dev pkg-config bison autoconf libtool libxi-dev libxtst-dev libxrandr-dev libx11-dev libxft-dev libxext-dev nasm flex libudev-dev
 
       - name: Install dependencies (MacOS)
         if: matrix.os == 'macos-latest'
         run: |
           python -m pip install --upgrade pip
           brew install libusb
-          brew install opencv
 
       - name: Setup cmake
         if: matrix.os == 'macos-latest'
         uses: jwlawson/actions-setup-cmake@v1.13
 
-      - name: Install dependencies (Windows)
-        if: matrix.os == 'windows-latest'
-        run: |
-          choco install opencv
-          echo "OpenCV_DIR=C:\tools\opencv\build" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Install pytest
         run: |
-          python -m pip install pytest numpy opencv-python
+          python -m pip install pytest numpy opencv-python jinja2
 
       - name: Compile
         run: |
@@ -194,7 +204,10 @@ jobs:
         python-architecture: [x64] # TODO(Morato) - re-enable x86 - it complains that OpenCV even though it's 32 bit is not compatible
       fail-fast: false
     env:
-      DEPTHAI_BUILD_BASALT: ON
+      DEPTHAI_BUILD_BASALT: OFF
+      DEPTHAI_BUILD_PCL: ON
+      DEPTHAI_BUILD_RTABMAP: ON
+      VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
     steps:
       - name: Cache .hunter folder
         uses: actions/cache@v3
@@ -204,6 +217,12 @@ jobs:
       - uses: actions/checkout@v3
         with:
           submodules: 'recursive'
+      - name: Export GitHub Actions cache environment variables
+        uses: actions/github-script@v7
+        with:
+          script: |
+           core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+           core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
 
       - uses: actions/download-artifact@v3
         with:
@@ -211,18 +230,6 @@ jobs:
           path: bindings/python/docstrings
       - name: Specify docstring to use while building the wheel
         run: echo "DEPTHAI_PYTHON_DOCSTRINGS_INPUT=$PWD/bindings/python/docstrings/depthai_python_docstring.hpp" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-
-      - name: Install dependencies for x86
-        if: matrix.python-architecture == 'x86'
-        run: |
-          choco install opencv --x86
-          echo "OpenCV_DIR=C:\tools\opencv\build" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-
-      - name: Install dependencies for x64
-        if: matrix.python-architecture == 'x64'
-        run: |
-          choco install opencv
-          echo "OpenCV_DIR=C:\tools\opencv\build" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Select Windows SDK
         run: echo "CMAKE_ARGS=-DCMAKE_SYSTEM_VERSION=${{ env.CMAKE_WINDOWS_SDK_VERSION }}" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
@@ -262,11 +269,11 @@ jobs:
         os: [macos-13, macos-14] # macos-13 is x64, macos-14 is arm64
       fail-fast: false
     runs-on: ${{ matrix.os }}
-    # env:
-      # TODO(Morato) - re-enable basalt, pcl, rtabmap after everything is ported  
-      # DEPTHAI_BUILD_BASALT: ON
-      # DEPTHAI_BUILD_PCL: ON
-      # DEPTHAI_BUILD_RTABMAP: ON
+    env:
+      VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+      DEPTHAI_BUILD_BASALT: ON
+      DEPTHAI_BUILD_PCL: ON
+      DEPTHAI_BUILD_RTABMAP: ON
     steps:
       - name: Cache .hunter folder
         uses: actions/cache@v3
@@ -277,6 +284,12 @@ jobs:
         run: |
           ls -a -l ~/.hunter/_Base/ || true
           echo "PATH=$PATH"
+      - name: Export GitHub Actions cache environment variables
+        uses: actions/github-script@v7
+        with:
+          script: |
+           core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+           core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
 
       - uses: actions/checkout@v3
         with:
@@ -300,8 +313,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           brew install libusb
-          brew install opencv
-          brew install pcl
+          brew install nasm
           python -m pip install delocate
       - name: Building wheels
         run: cd bindings/python && python -m pip wheel . -w ./wheelhouse/ --verbose
@@ -388,30 +400,34 @@ jobs:
     needs: build-docstrings
     runs-on: ubuntu-latest
     container:
-      image: mmorato/depthai-manylinux2014:0.4 # TODO(mmorato) temporary location, push to luxonis namespace
+      image: quay.io/pypa/manylinux_2_28_x86_64
       env:
-        PLAT: manylinux2014_x86_64
+        PLAT: manylinux_2_28_x86_64
     strategy:
       matrix:
-        python-set: ["7..9", "10..12"]
+        python-set: ["7", "8", "9", "10", "11", "12"]
     env:
-      # workaround required for cache@v3, https://github.com/actions/cache/issues/1428
-      # to be removed when upgrading the manylinux image
-      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
       DEPTHAI_BUILD_BASALT: ON
       DEPTHAI_BUILD_PCL: ON
       DEPTHAI_BUILD_RTABMAP: ON
+      VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
     steps:
       - name: Cache .hunter folder
         uses: actions/cache@v3
         with:
           path: ~/.hunter
           key: hunter-x86_64-v3-develop
+      - name: Export GitHub Actions cache environment variables
+        uses: actions/github-script@v7
+        with:
+          script: |
+           core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+           core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
       - uses: actions/checkout@v3
         with:
           submodules: 'recursive'
       - name: Installing libusb1-devel dependency
-        run: yum install -y --disableplugin=fastestmirror libusb1-devel perl-core curl zip unzip tar ninja-build
+        run: yum install -y libusb1-devel perl-core curl zip unzip tar ninja-build  zlib-devel curl-devel xcb-util-renderutil-devel xcb-util-devel xcb-util-image-devel xcb-util-keysyms-devel xcb-util-wm-devel mesa-libGL-devel libxkbcommon-devel libxkbcommon-x11-devel libXi-devel libXrandr-devel libXtst-devel libudev-devel lapack-devel nasm libtool autoconf automake
       - name: Installing cmake dependency
         run: |
           cd bindings/python
@@ -427,12 +443,6 @@ jobs:
       - name: Specify docstring to use while building the wheel
         run: echo "DEPTHAI_PYTHON_DOCSTRINGS_INPUT=$PWD/bindings/python/docstrings/depthai_python_docstring.hpp" >> $GITHUB_ENV
 
-      - name: Build and install depthai-core
-        run: |
-          cmake -S . -B build_core -D CMAKE_BUILD_TYPE=Release -D CMAKE_TOOLCHAIN_FILE=$PWD/cmake/toolchain/pic.cmake
-          cmake --build build_core --target install --parallel 4
-          echo "DEPTHAI_INSTALLATION_DIR=$PWD/build_core/install/" >> $GITHUB_ENV
-
       - name: Append build hash if not a tagged commit
         if: startsWith(github.ref, 'refs/tags/v') != true
         run: echo "BUILD_COMMIT_HASH=${{github.sha}}" >> $GITHUB_ENV
@@ -443,7 +453,9 @@ jobs:
           /opt/python/cp38-cp38/bin/python3.8 setup.py sdist --formats=gztar
           mv dist/* wheelhouse/audited/
       - name: Build wheels
-        run: cd bindings/python && for PYBIN in /opt/python/cp3{${{ matrix.python-set }}}*/bin; do "${PYBIN}/pip" wheel . -w ./wheelhouse/ --verbose; done
+        run: |
+          cd bindings/python && for PYBIN in /opt/python/cp3${{ matrix.python-set }}*/bin; do "${PYBIN}/pip" wheel . -w ./wheelhouse/ --verbose; done
+
       - name: Audit wheels
         run: cd bindings/python && for whl in wheelhouse/*.whl; do auditwheel repair "$whl" --plat $PLAT -w wheelhouse/audited/; done
       - name: Archive wheel artifacts
@@ -465,35 +477,47 @@ jobs:
     runs-on: [self-hosted, linux, ARM64]
     timeout-minutes: 1440  # Set timeout to 24 hours
     container:
-      image: mmorato/depthai-manylinux2014_aarch64:0.4
+      image: quay.io/pypa/manylinux_2_28_aarch64
       env:
-        PLAT: manylinux2014_aarch64
+        PLAT: manylinux_2_28_aarch64
       # Mount local hunter cache directory, instead of transfering to Github and back
       volumes:
         - /.hunter:/github/home/.hunter
     strategy:
       matrix:
-        python-set: ["7..9", "10..12"]
+        python-set: ["7", "8", "9", "10", "11", "12"]
     env:
       # workaround required for cache@v3, https://github.com/actions/cache/issues/1428
-      # to be removed when upgrading the manylinux image
-      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
-      DEPTHAI_VCPKG_CFLAGS: "-std=c99" # Needed so vpckg can bootstrap itself with the old GCC on the manylinux image
       VCPKG_FORCE_SYSTEM_BINARIES: "1" # Needed so vpckg can bootstrap itself
+      VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
       DEPTHAI_BUILD_BASALT: ON
       DEPTHAI_BUILD_PCL: ON
       DEPTHAI_BUILD_RTABMAP: ON
+      VCPKG_MAX_CONCURRENCY: "2"
     steps:
+      - name: Export GitHub Actions cache environment variables
+        uses: actions/github-script@v7
+        with:
+          script: |
+           core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+           core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
       - uses: actions/checkout@v3
         with:
           submodules: 'recursive'
       - name: Installing libusb1-devel dependency
-        run: yum install -y --disableplugin=fastestmirror libusb1-devel perl-core curl zip unzip tar ninja-build
+        run: yum install -y libusb1-devel perl-core curl zip unzip tar  zlib-devel curl-devel xcb-util-renderutil-devel xcb-util-devel xcb-util-image-devel xcb-util-keysyms-devel xcb-util-wm-devel mesa-libGL-devel libxkbcommon-devel libxkbcommon-x11-devel libXi-devel libXrandr-devel libXtst-devel libudev-devel lapack-devel nasm libtool autoconf automake
       - name: Installing cmake dependency
         run: |
           cd bindings/python
           /opt/python/cp38-cp38/bin/python3.8 -m pip install cmake
           ln -s /opt/python/cp38-cp38/bin/cmake /bin/
+      - name: Setup ninja required for arm64 builds
+        run: |
+          git clone https://github.com/ninja-build/ninja.git
+          cd ninja
+          git checkout v1.10.2
+          cmake -Bbuild-cmake
+          cmake --build build-cmake --target install
       - name: Create folder structure
         run: cd bindings/python && mkdir -p wheelhouse/audited/
 
@@ -504,17 +528,12 @@ jobs:
       - name: Specify docstring to use while building the wheel
         run: echo "DEPTHAI_PYTHON_DOCSTRINGS_INPUT=$PWD/bindings/python/docstrings/depthai_python_docstring.hpp" >> $GITHUB_ENV
 
-      - name: Build and install depthai-core
-        run: |
-          cmake -S . -B build_core -D CMAKE_BUILD_TYPE=Release -D CMAKE_TOOLCHAIN_FILE=$PWD/cmake/toolchain/pic.cmake
-          cmake --build build_core --target install --parallel 4
-          echo "DEPTHAI_INSTALLATION_DIR=$PWD/build_core/install/" >> $GITHUB_ENV
-
       - name: Append build hash if not a tagged commit
         if: startsWith(github.ref, 'refs/tags/v') != true
         run: echo "BUILD_COMMIT_HASH=${{github.sha}}" >> $GITHUB_ENV
       - name: Building wheels
-        run: cd bindings/python && for PYBIN in /opt/python/cp3{${{ matrix.python-set }}}*/bin; do "${PYBIN}/pip" wheel . -w ./wheelhouse/ --verbose; done
+        run: |
+          cd bindings/python && for PYBIN in /opt/python/cp3${{ matrix.python-set }}*/bin; do "${PYBIN}/pip" wheel . -w ./wheelhouse/ --verbose; done
       - name: Auditing wheels
         run: cd bindings/python && for whl in wheelhouse/*.whl; do auditwheel repair "$whl" --plat $PLAT -w wheelhouse/audited/; done
       - name: Archive wheel artifacts
