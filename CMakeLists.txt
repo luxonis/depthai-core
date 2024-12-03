@@ -8,7 +8,14 @@ option(DEPTHAI_BASALT_SUPPORT "Enable optional Basalt support" OFF)
 option(DEPTHAI_ENABLE_PROTOBUF "Enable Protobuf support" ON)
 option(DEPTHAI_BUILD_PYTHON "Build python bindings" OFF)
 option(DEPTHAI_BUILD_TESTS "Build tests" OFF)
+option(DEPTHAI_OPENCV_SUPPORT "Enable optional OpenCV support" ON)
+option(DEPTHAI_PCL_SUPPORT "Enable optional PCL support" OFF)
 option(DEPTHAI_BOOTSTRAP_VCPKG "Automatically bootstrap VCPKG" ON)
+option(DEPTHAI_MERGED_TARGET "Enable merged target build" ON)
+
+if(NOT DEPTHAI_OPENCV_SUPPORT)
+    set(DEPTHAI_MERGED_TARGET OFF CACHE BOOL "Enable merged target build" FORCE)
+endif()
 
 set(DEPTHAI_HAS_APRIL_TAG ${DEPTHAI_ENABLE_APRIL_TAG})
 if(WIN32)
@@ -37,6 +44,13 @@ endif()
 if(DEPTHAI_BASALT_SUPPORT)
 list(APPEND VCPKG_MANIFEST_FEATURES "basalt")
 endif()
+if(DEPTHAI_OPENCV_SUPPORT)
+list(APPEND VCPKG_MANIFEST_FEATURES "opencv")
+endif()
+if(DEPTHAI_PCL_SUPPORT)
+list(APPEND VCPKG_MANIFEST_FEATURES "pcl")
+endif()
+
 # Enable backward stack printing on crash
 if(ANDROID OR EMSCRIPTEN)
     # Backward not supported currently on Android
@@ -246,10 +260,6 @@ endif()
 
 # Specify optional dependencies
 option(DEPTHAI_XTENSOR_SUPPORT "Enable optional xtensor support" ON)
-option(DEPTHAI_OPENCV_SUPPORT "Enable optional OpenCV support" ON)
-option(DEPTHAI_PCL_SUPPORT "Enable optional PCL support" OFF)
-
-option(DEPTHAI_MERGED_TARGET "Enable merged target build" ON)
 
 # Include project dependencies
 set(DEPTHAI_DEPENDENCY_INCLUDE "" CACHE FILEPATH "Optional cmake file to append to dependency processing, e.g. additional find_package()")

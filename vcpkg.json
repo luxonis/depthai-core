@@ -16,39 +16,53 @@
         "libnop",
         "neargye-semver",
         {
-            "name": "ffmpeg",
-            "features": [
-                "openh264"
-            ]
-        },
-        {
             "name": "libarchive",
             "default-features": false
-        },
-        {
-            "name": "opencv4",
-            "default-features": false,
-            "features": [
-            "calib3d",
-            "highgui",
-            "jpeg",
-            "png",
-            "quirc",
-            "tiff",
-            "webp",
-            "ffmpeg"
-            ]
-        },
-        {
-          "name": "opencv4",
-          "default-features": false,
-          "features": [
-            "gtk"
-          ],
-          "platform": "linux"
         }
     ],
     "features": {
+        "opencv-support": {
+            "description": "Enable OpenCV support",
+            "dependencies": [
+                {
+                    "name": "opencv4",
+                    "default-features": false,
+                    "features": [
+                        "calib3d",
+                        "highgui",
+                        "jpeg",
+                        "png",
+                        "quirc",
+                        "tiff",
+                        "webp",
+                        "ffmpeg"
+                    ]
+                },
+                {
+                    "name": "opencv4",
+                    "default-features": false,
+                    "features": [
+                        "gtk"
+                    ],
+                    "platform": "linux"
+                },
+                {
+                    "name": "ffmpeg",
+                    "features": [
+                        "openh264"
+                    ]
+                }
+            ]
+        },
+        "pcl-support": {
+            "description": "Enable PCL support",
+            "dependencies": [
+                {
+                    "name": "pcl",
+                    "default-features": false
+                }
+            ]
+        },
         "curl-support": {
             "description": "Enable CURL support",
             "dependencies": [
