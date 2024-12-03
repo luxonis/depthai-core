@@ -45,10 +45,10 @@ if(DEPTHAI_BASALT_SUPPORT)
 list(APPEND VCPKG_MANIFEST_FEATURES "basalt")
 endif()
 if(DEPTHAI_OPENCV_SUPPORT)
-list(APPEND VCPKG_MANIFEST_FEATURES "opencv")
+list(APPEND VCPKG_MANIFEST_FEATURES "opencv-support")
 endif()
 if(DEPTHAI_PCL_SUPPORT)
-list(APPEND VCPKG_MANIFEST_FEATURES "pcl")
+list(APPEND VCPKG_MANIFEST_FEATURES "pcl-support")
 endif()
 
 # Enable backward stack printing on crash
