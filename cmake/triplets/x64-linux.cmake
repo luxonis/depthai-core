@@ -5,6 +5,7 @@ set(VCPKG_BUILD_TYPE release)
 
 if(PORT MATCHES "libusb|ffmpeg")
     set(VCPKG_LIBRARY_LINKAGE dynamic)
+    set(VCPKG_FIXUP_ELF_RPATH ON)
 endif()
 
 set(VCPKG_CMAKE_SYSTEM_NAME Linux)

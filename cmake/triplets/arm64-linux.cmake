@@ -3,9 +3,11 @@ set(VCPKG_CRT_LINKAGE dynamic)
 set(VCPKG_LIBRARY_LINKAGE static)
 
 set(VCPKG_CMAKE_SYSTEM_NAME Linux)
+set(VCPKG_OSX_DEPLOYMENT_TARGET "11")
+
 set(VCPKG_BUILD_TYPE release)
 
-if(PORT MATCHES "libusb|ffmpeg")
+# Add ffmpeg after the shared libraries become relocatable
+if(PORT MATCHES "libusb")
     set(VCPKG_LIBRARY_LINKAGE dynamic)
 endif()
-
