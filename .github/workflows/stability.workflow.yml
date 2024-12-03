@@ -46,5 +46,4 @@ jobs:
     - name: Configure, Build and Test
       run: |
         export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/$GITHUB_RUN_ID+stability"
-        CMD="hil --capabilities depthai-core-hil --reservation-name $RESERVATION_NAME -w -s --commands 'cd /tmp/depthai-core|| exit' 'scripts/hil/run_hil_stability.sh'"
-        eval $CMD
+        exec hil --capabilities depthai-core-hil --reservation-name $RESERVATION_NAME -w -s --commands 'cd /tmp/depthai-core|| exit' 'scripts/hil/run_hil_stability.sh'
