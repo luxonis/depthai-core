@@ -311,12 +311,17 @@ class Node : public std::enable_shared_from_this<Node> {
     };
 
     class Input : public MessageQueue {
+        friend class Output;
+        friend class OutputMap;
+
        public:
         enum class Type { SReceiver, MReceiver };  // TODO(Morato) - refactor, make the MReceiver a separate class (shouldn't inherit from MessageQueue)
 
+       protected:
+        std::vector<Output*> connectedOutputs;
+
        private:
         std::reference_wrapper<Node> parent;
-        std::vector<Output*> connectedOutputs;
         // Options - more information about the input
         bool waitForMessage{false};
         std::string group;
@@ -392,6 +397,11 @@ class Node : public std::enable_shared_from_this<Node> {
          * Get group name for this input
          */
         std::string getGroup() const;
+
+        /**
+         * Check if this input is connected
+         */
+        bool isConnected() const;
 
         /** Default value for the blocking argument in the createInputQueue method */
         static constexpr bool INPUT_QUEUE_DEFAULT_BLOCKING = false;
@@ -520,13 +530,13 @@ class Node : public std::enable_shared_from_this<Node> {
     virtual const char* getName() const = 0;
 
     /// Start node execution
-    virtual void start() {};
+    virtual void start(){};
 
     /// Wait for node to finish execution
-    virtual void wait() {};
+    virtual void wait(){};
 
     /// Stop node execution
-    virtual void stop() {};
+    virtual void stop(){};
 
     void stopPipeline();
 
@@ -637,7 +647,7 @@ class Node : public std::enable_shared_from_this<Node> {
      * This function is useful for initialization, setting up inputs and outputs =
      * stuff that cannot be perform in the constuctor.
      */
-    virtual void buildInternal() {};
+    virtual void buildInternal(){};
 };
 
 class SourceNode {

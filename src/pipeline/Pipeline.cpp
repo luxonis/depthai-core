@@ -648,6 +648,9 @@ void PipelineImpl::build() {
                         if(platform::checkWritePermissions(replayPath)) {
                             if(utility::setupHolisticReplay(parent, replayPath, defaultDeviceMxId, recordConfig, recordReplayFilenames)) {
                                 recordConfig.state = RecordConfig::RecordReplayState::REPLAY;
+                                if(platform::checkPathExists(replayPath, true)) {
+                                    removeRecordReplayFiles = false;
+                                }
                                 Logging::getInstance().logger.info("Replay enabled.");
                             } else {
                                 Logging::getInstance().logger.warn("Could not set up holistic replay. Record and replay disabled.");
@@ -774,6 +777,11 @@ void PipelineImpl::build() {
                 xLinkBridge.xLinkIn->setStreamName(streamName);
                 xLinkBridge.xLinkOutHost->setConnection(defaultDevice->getConnection());
                 xLinkBridge.xLinkIn->out.link(*connection.in);
+                if(defaultDevice->getPlatform() == Platform::RVC4 || defaultDevice->getPlatform() == Platform::RVC3) {
+                    xLinkBridge.xLinkOutHost->allowStreamResize(true);
+                } else {
+                    xLinkBridge.xLinkOutHost->allowStreamResize(false);
+                }
             }
             auto xLinkBridge = bridgesIn[connection.in];
             connection.out->unlink(*connection.in);  // Unlink the original connection
@@ -942,11 +950,11 @@ PipelineImpl::~PipelineImpl() {
             }
         }
         Logging::getInstance().logger.info("Record: Creating tar file with {} files", filenames.size());
-        utility::tarFiles(platform::joinPaths(recordConfig.outputDir, "recording.tar.gz"), filenames, outFiles);
+        utility::tarFiles(platform::joinPaths(recordConfig.outputDir, "recording.tar"), filenames, outFiles);
         std::remove(platform::joinPaths(recordConfig.outputDir, "record_config.json").c_str());
     }
 
-    if(recordConfig.state != RecordConfig::RecordReplayState::NONE) {
+    if(removeRecordReplayFiles && recordConfig.state != RecordConfig::RecordReplayState::NONE) {
         Logging::getInstance().logger.info("Record and Replay: Removing temporary files");
         for(auto& kv : recordReplayFilenames) {
             if(kv.first != "record_config") {

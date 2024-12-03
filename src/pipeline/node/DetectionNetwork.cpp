@@ -8,11 +8,12 @@
 #include "archive_entry.h"
 
 // internal
+#include "common/ModelType.hpp"
 #include "depthai/capabilities/ImgFrameCapability.hpp"
 #include "depthai/depthai.hpp"
 #include "depthai/modelzoo/Zoo.hpp"
 #include "depthai/nn_archive/NNArchive.hpp"
-#include "nn_archive/NNArchiveConfig.hpp"
+#include "nn_archive/NNArchiveVersionedConfig.hpp"
 #include "pipeline/DeviceNodeGroup.hpp"
 #include "utility/ArchiveUtil.hpp"
 #include "utility/ErrorMacros.hpp"
@@ -55,47 +56,24 @@ std::shared_ptr<DetectionNetwork> DetectionNetwork::build(Node::Output& input, c
     return std::static_pointer_cast<DetectionNetwork>(shared_from_this());
 }
 
-std::shared_ptr<DetectionNetwork> DetectionNetwork::build(std::shared_ptr<Camera> camera, dai::NNModelDescription modelDesc, float fps) {
-    setFromModelZoo(modelDesc);
-    // Get the input size
-    auto nnArchiveConfig = detectionParser->getNNArchiveConfig().getConfigV1();
-    if(!nnArchiveConfig.has_value()) {
-        DAI_CHECK_V(false, "The DetectionNetwork.build method only supports for NNConfigV1");
+std::shared_ptr<DetectionNetwork> DetectionNetwork::build(const std::shared_ptr<Camera>& camera, dai::NNModelDescription modelDesc, float fps) {
+    // Download model from zoo
+    if(modelDesc.platform.empty()) {
+        DAI_CHECK(getDevice() != nullptr, "Device is not set.");
+        modelDesc.platform = getDevice()->getPlatformAsString();
     }
-    if(nnArchiveConfig->model.inputs.size() != 1) {
-        DAI_CHECK_V(false, "Only single input model is supported");
-    }
+    auto path = getModelFromZoo(modelDesc);
+    auto modelType = dai::model::readModelType(path);
+    DAI_CHECK(modelType == dai::model::ModelType::NNARCHIVE,
+              "Model from zoo is not NNArchive - it needs to be a NNArchive to use build(Camera, NNModelDescription, float) method");
+    auto nnArchive = dai::NNArchive(path);
 
-    if(nnArchiveConfig->model.inputs[0].shape.size() != 4) {
-        DAI_CHECK_V(false, "Only 4D input shape is supported");
-    }
+    return build(camera, nnArchive, fps);
+}
 
-    // Check that the first two dimesions are 1 and 3
-    if(nnArchiveConfig->model.inputs[0].shape[0] != 1 || nnArchiveConfig->model.inputs[0].shape[1] != 3) {
-        DAI_CHECK_V(false, "Only 3 channel input is supported");
-    }
-    auto inputHeight = nnArchiveConfig->model.inputs[0].shape[2];
-    auto inputWidth = nnArchiveConfig->model.inputs[0].shape[3];
-
-    auto type = dai::ImgFrame::Type::BGR888p;
-    auto platform = getDevice()->getPlatform();
-    if(platform == dai::Platform::RVC2 || platform == dai::Platform::RVC3) {
-        type = dai::ImgFrame::Type::BGR888p;
-    } else if(platform == dai::Platform::RVC4) {
-        type = dai::ImgFrame::Type::BGR888i;
-    } else {
-        DAI_CHECK_V(false, "Unsupported platform");
-    }
-
-    auto cap = ImgFrameCapability();
-    cap.size.value = std::pair(inputWidth, inputHeight);
-    cap.type = type;
-    cap.fps.value = fps;
-    auto* input = camera->requestOutput(cap, false);
-    if(!input) {
-        DAI_CHECK_V(false, "Camera does not have output with requested capabilities");
-    }
-    input->link(this->input);
+std::shared_ptr<DetectionNetwork> DetectionNetwork::build(const std::shared_ptr<Camera>& camera, dai::NNArchive nnArchive, float fps) {
+    neuralNetwork->build(camera, nnArchive, fps);
+    detectionParser->setNNArchive(nnArchive);
     return std::static_pointer_cast<DetectionNetwork>(shared_from_this());
 }
 
@@ -146,14 +124,26 @@ void DetectionNetwork::setFromModelZoo(NNModelDescription description, bool useC
 
 void DetectionNetwork::setNNArchiveBlob(const NNArchive& nnArchive) {
     DAI_CHECK_V(nnArchive.getModelType() == dai::model::ModelType::BLOB, "NNArchive type is not BLOB");
-    detectionParser->setNNArchive(nnArchive);
     neuralNetwork->setNNArchive(nnArchive);
+    try {
+        detectionParser->setNNArchive(nnArchive);
+    } catch(const std::exception& e) {
+        std::cerr << "Error setting NNArchive in DetectionParser: " << e.what() << std::endl;
+        std::cerr << "In case your model has no parser heads, try switching to NeuralNetwork node instead." << std::endl;
+        throw;
+    }
 }
 
 void DetectionNetwork::setNNArchiveSuperblob(const NNArchive& nnArchive, int numShaves) {
     DAI_CHECK_V(nnArchive.getModelType() == dai::model::ModelType::SUPERBLOB, "NNArchive type is not SUPERBLOB");
-    detectionParser->setNNArchive(nnArchive);
     neuralNetwork->setNNArchive(nnArchive, numShaves);
+    try {
+        detectionParser->setNNArchive(nnArchive);
+    } catch(const std::exception& e) {
+        std::cerr << "Error setting NNArchive in DetectionParser: " << e.what() << std::endl;
+        std::cerr << "In case your model has no parser heads, try switching to NeuralNetwork node instead." << std::endl;
+        throw;
+    }
 }
 
 void DetectionNetwork::setNNArchiveOther(const NNArchive& nnArchive) {
@@ -218,12 +208,12 @@ float DetectionNetwork::getConfidenceThreshold() const {
 }
 
 std::vector<std::pair<Node::Input&, std::shared_ptr<Capability>>> DetectionNetwork::getRequiredInputs() {
-    const dai::NNArchiveConfig& config = detectionParser->getNNArchiveConfig();
-    const auto configV1 = config.getConfigV1();
-    DAI_CHECK(configV1.has_value(), "Only NNConfigV1 is supported for DetectionNetwork");
+    const dai::NNArchiveVersionedConfig& config = detectionParser->getNNArchiveVersionedConfig();
+    DAI_CHECK(config.getVersion() == NNArchiveConfigVersion::V1, "Only NNConfigV1 is supported for DetectionNetwork");
+    const auto configV1 = config.getConfig<nn_archive::v1::Config>();
 
-    const auto width = configV1->model.inputs[0].shape[2];
-    const auto height = configV1->model.inputs[0].shape[3];
+    const auto width = configV1.model.inputs[0].shape[2];
+    const auto height = configV1.model.inputs[0].shape[3];
 
     auto cap = std::make_shared<ImgFrameCapability>();
     cap->size.value = std::pair(width, height);

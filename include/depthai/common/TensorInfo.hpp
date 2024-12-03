@@ -3,6 +3,7 @@
 
 // std
 #include <cstdint>
+#include <ostream>
 
 // project
 #include "depthai/utility/Serialization.hpp"
@@ -34,6 +35,7 @@ struct TensorInfo {
         INT = 2,   // Signed integer (4 byte)
         FP32 = 3,  // Single precision floating point
         I8 = 4,    // Signed byte
+        FP64 = 5,  // Double precision floating point
     };
 
     void validateStorageOrder() {
@@ -83,6 +85,8 @@ struct TensorInfo {
             case DataType::INT:
             case DataType::FP32:
                 return sizeof(float);
+            case DataType::FP64:
+                return sizeof(double);
             default:
                 return 0;
                 break;
@@ -153,6 +157,31 @@ struct TensorInfo {
         }
     }
 
+    std::size_t getTensorSize() {
+        uint32_t i = 0;
+
+        // Handle the edge case if all dimensions are 1
+        // In this case, the size is the size of the data type
+        bool non1dim = false;
+        for(i = 0; i < dims.size(); i++) {
+            if(dims[i] != 1) {
+                non1dim = true;
+                break;
+            }
+        }
+        if(!non1dim) {
+            return getDataTypeSize();
+        }
+
+        // Use the first non zero stride
+        for(i = 0; i < strides.size(); i++) {
+            if(strides[i] > 0) {
+                break;
+            }
+        }
+        return dims[i] * strides[i];
+    }
+
     int getChannels() {
         validateStorageOrder();
         switch(order) {
@@ -202,5 +231,77 @@ struct TensorInfo {
 };
 
 DEPTHAI_SERIALIZE_EXT(TensorInfo, order, dataType, numDimensions, dims, strides, name, offset, quantization, qpScale, qpZp);
+
+inline std::ostream& operator<<(std::ostream& os, const TensorInfo::StorageOrder& so) {
+    switch(so) {
+        case TensorInfo::StorageOrder::NHWC:
+            os << "NHWC";
+            break;
+        case TensorInfo::StorageOrder::NHCW:
+            os << "NHCW";
+            break;
+        case TensorInfo::StorageOrder::NCHW:
+            os << "NCHW";
+            break;
+        case TensorInfo::StorageOrder::HWC:
+            os << "HWC";
+            break;
+        case TensorInfo::StorageOrder::CHW:
+            os << "CHW";
+            break;
+        case TensorInfo::StorageOrder::WHC:
+            os << "WHC";
+            break;
+        case TensorInfo::StorageOrder::HCW:
+            os << "HCW";
+            break;
+        case TensorInfo::StorageOrder::WCH:
+            os << "WCH";
+            break;
+        case TensorInfo::StorageOrder::CWH:
+            os << "CWH";
+            break;
+        case TensorInfo::StorageOrder::NC:
+            os << "NC";
+            break;
+        case TensorInfo::StorageOrder::CN:
+            os << "CN";
+            break;
+        case TensorInfo::StorageOrder::C:
+            os << "C";
+            break;
+        case TensorInfo::StorageOrder::H:
+            os << "H";
+            break;
+        case TensorInfo::StorageOrder::W:
+            os << "W";
+            break;
+    }
+    return os;
+}
+
+inline std::ostream& operator<<(std::ostream& os, const TensorInfo::DataType& dt) {
+    switch(dt) {
+        case TensorInfo::DataType::FP16:
+            os << "FP16";
+            break;
+        case TensorInfo::DataType::U8F:
+            os << "U8F";
+            break;
+        case TensorInfo::DataType::INT:
+            os << "INT";
+            break;
+        case TensorInfo::DataType::FP32:
+            os << "FP32";
+            break;
+        case TensorInfo::DataType::I8:
+            os << "I8";
+            break;
+        case TensorInfo::DataType::FP64:
+            os << "FP64";
+            break;
+    }
+    return os;
+}
 
 }  // namespace dai

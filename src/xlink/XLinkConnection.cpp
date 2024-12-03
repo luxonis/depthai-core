@@ -178,7 +178,12 @@ std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices(XLinkDeviceState
     suitableDevice.state = state;
 
     auto status = XLinkFindAllSuitableDevices(suitableDevice, deviceDescAll.data(), static_cast<unsigned int>(deviceDescAll.size()), &numdev);
-    if(status != X_LINK_SUCCESS) throw std::runtime_error("Couldn't retrieve all connected devices");
+    if(status == X_LINK_DEVICE_NOT_FOUND) {
+        return devices;
+    }
+    if(status != X_LINK_SUCCESS) {
+        throw std::runtime_error(fmt::format("Couldn't retrieve all connected devices - status {}", static_cast<int>(status)));
+    }
 
     for(unsigned i = 0; i < numdev; i++) {
         DeviceInfo info(deviceDescAll.at(i));

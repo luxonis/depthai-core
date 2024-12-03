@@ -43,42 +43,44 @@ void bind_imagemanipconfigv2(pybind11::module& m, void* pCallstack) {
 
     imageManipConfig
         .def(py::init<>())
+        .def("__repr__", &ImageManipConfigV2::str)
         // New API Setters
         .def("clearOps", &ImageManipConfigV2::clearOps, DOC(dai, ImageManipConfigV2, clearOps))
-        .def("crop", &ImageManipConfigV2::crop, py::arg("x"), py::arg("y"), py::arg("w"), py::arg("h"), DOC(dai, ImageManipConfigV2, crop))
-        .def("cropRotatedRect",
-             &ImageManipConfigV2::cropRotatedRect,
+        .def("addCrop", static_cast<ImageManipConfigV2& (ImageManipConfigV2::*)(uint32_t, uint32_t, uint32_t, uint32_t)>(&ImageManipConfigV2::addCrop), py::arg("x"), py::arg("y"), py::arg("w"), py::arg("h"), DOC(dai, ImageManipConfigV2, addCrop))
+        .def("addCrop", static_cast<ImageManipConfigV2& (ImageManipConfigV2::*)(dai::Rect, bool)>(&ImageManipConfigV2::addCrop), py::arg("rect"), py::arg("normalizedCoords"), DOC(dai, ImageManipConfigV2, addCrop))
+        .def("addCropRotatedRect",
+             &ImageManipConfigV2::addCropRotatedRect,
              py::arg("rect"),
              py::arg("normalizedCoords"),
-             DOC(dai, ImageManipConfigV2, cropRotatedRect))
-        .def("resize", &ImageManipConfigV2::resize, py::arg("w"), py::arg("h"), DOC(dai, ImageManipConfigV2, resize))
+             DOC(dai, ImageManipConfigV2, addCropRotatedRect))
+        .def("addResize", &ImageManipConfigV2::addResize, py::arg("w"), py::arg("h"), DOC(dai, ImageManipConfigV2, addResize))
         .def(
-            "scale", [](ImageManipConfigV2& self, float scale) { return self.scale(scale); }, py::arg("scale"), DOC(dai, ImageManipConfigV2, scale))
+            "addScale", [](ImageManipConfigV2& self, float scale) { return self.addScale(scale); }, py::arg("scale"), DOC(dai, ImageManipConfigV2, addScale))
         .def(
-            "scale",
-            [](ImageManipConfigV2& self, float scaleX, float scaleY) { return self.scale(scaleX, scaleY); },
+            "addScale",
+            [](ImageManipConfigV2& self, float scaleX, float scaleY) { return self.addScale(scaleX, scaleY); },
             py::arg("scaleX"),
             py::arg("scaleY"),
-            DOC(dai, ImageManipConfigV2, scale))
-        .def("flipHorizontal", &ImageManipConfigV2::flipHorizontal, DOC(dai, ImageManipConfigV2, flipHorizontal))
-        .def("flipVertical", &ImageManipConfigV2::flipVertical, DOC(dai, ImageManipConfigV2, flipVertical))
-        .def("rotateDeg",
-             static_cast<ImageManipConfigV2& (ImageManipConfigV2::*)(float)>(&ImageManipConfigV2::rotateDeg),
+            DOC(dai, ImageManipConfigV2, addScale))
+        .def("addFlipHorizontal", &ImageManipConfigV2::addFlipHorizontal, DOC(dai, ImageManipConfigV2, addFlipHorizontal))
+        .def("addFlipVertical", &ImageManipConfigV2::addFlipVertical, DOC(dai, ImageManipConfigV2, addFlipVertical))
+        .def("addRotateDeg",
+             static_cast<ImageManipConfigV2& (ImageManipConfigV2::*)(float)>(&ImageManipConfigV2::addRotateDeg),
              py::arg("angle"),
-             DOC(dai, ImageManipConfigV2, rotateDeg))
-        .def("rotateDeg",
-             static_cast<ImageManipConfigV2& (ImageManipConfigV2::*)(float, Point2f)>(&ImageManipConfigV2::rotateDeg),
+             DOC(dai, ImageManipConfigV2, addRotateDeg))
+        .def("addRotateDeg",
+             static_cast<ImageManipConfigV2& (ImageManipConfigV2::*)(float, Point2f)>(&ImageManipConfigV2::addRotateDeg),
              py::arg("angle"),
              py::arg("center"),
-             DOC(dai, ImageManipConfigV2, rotateDeg))
-        .def("transformAffine", &ImageManipConfigV2::transformAffine, py::arg("mat"), DOC(dai, ImageManipConfigV2, transformAffine))
-        .def("transformPerspective", &ImageManipConfigV2::transformPerspective, py::arg("mat"), DOC(dai, ImageManipConfigV2, transformPerspective))
-        .def("transformFourPoints",
-             &ImageManipConfigV2::transformFourPoints,
+             DOC(dai, ImageManipConfigV2, addRotateDeg))
+        .def("addTransformAffine", &ImageManipConfigV2::addTransformAffine, py::arg("mat"), DOC(dai, ImageManipConfigV2, addTransformAffine))
+        .def("addTransformPerspective", &ImageManipConfigV2::addTransformPerspective, py::arg("mat"), DOC(dai, ImageManipConfigV2, addTransformPerspective))
+        .def("addTransformFourPoints",
+             &ImageManipConfigV2::addTransformFourPoints,
              py::arg("src"),
              py::arg("dst"),
              py::arg("normalizedCoords"),
-             DOC(dai, ImageManipConfigV2, transformFourPoints))
+             DOC(dai, ImageManipConfigV2, addTransformFourPoints))
         .def("setColormap", &ImageManipConfigV2::setColormap, py::arg("colormap"), DOC(dai, ImageManipConfigV2, setColormap))
         .def("setBackgroundColor",
              static_cast<ImageManipConfigV2& (ImageManipConfigV2::*)(uint8_t, uint8_t, uint8_t)>(&ImageManipConfigV2::setBackgroundColor),

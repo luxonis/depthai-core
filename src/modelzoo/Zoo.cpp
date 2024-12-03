@@ -215,15 +215,21 @@ void ZooManager::downloadModel() {
 
     // Add REQUIRED parameters
     requestBody["variables"]["input"]["platform"] = modelDescription.platform;
-    requestBody["variables"]["input"]["modelSlug"] = modelDescription.modelSlug;
+    requestBody["variables"]["input"]["slug"] = modelDescription.model;
 
     // Add OPTIONAL parameters
-    if(!modelDescription.modelVersionSlug.empty()) requestBody["variables"]["input"]["modelVersionSlug"] = modelDescription.modelVersionSlug;
-    if(!modelDescription.modelInstanceSlug.empty()) requestBody["variables"]["input"]["modelInstanceSlug"] = modelDescription.modelInstanceSlug;
-    if(!modelDescription.modelInstanceHash.empty()) requestBody["variables"]["input"]["modelInstanceHash"] = modelDescription.modelInstanceHash;
-    if(!modelDescription.optimizationLevel.empty()) requestBody["variables"]["input"]["optimizationLevel"] = modelDescription.optimizationLevel;
-    if(!modelDescription.compressionLevel.empty()) requestBody["variables"]["input"]["compressionLevel"] = modelDescription.compressionLevel;
-
+    if(!modelDescription.optimizationLevel.empty()) {
+        requestBody["variables"]["input"]["optimizationLevel"] = modelDescription.optimizationLevel;
+    }
+    if(!modelDescription.compressionLevel.empty()) {
+        requestBody["variables"]["input"]["compressionLevel"] = modelDescription.compressionLevel;
+    }
+    if(!modelDescription.snpeVersion.empty()) {
+        requestBody["variables"]["input"]["snpeVersion"] = modelDescription.snpeVersion;
+    }
+    if(!modelDescription.modelPrecisionType.empty()) {
+        requestBody["variables"]["input"]["modelPrecisionType"] = modelDescription.modelPrecisionType;
+    }
     // Set the Authorization headers
     cpr::Header headers = {
         {"Content-Type", "application/json"},
@@ -244,7 +250,7 @@ void ZooManager::downloadModel() {
 
     // Download all files and store them in cache folder
     for(const auto& downloadLink : downloadLinks) {
-        cpr::Response downloadResponse = cpr::Get(downloadLink);
+        cpr::Response downloadResponse = cpr::Get(cpr::Url(downloadLink));
         if(checkIsErrorModelDownload(downloadResponse)) {
             removeModelCacheFolder();
             throw std::runtime_error(generateErrorMessageModelDownload(downloadResponse));

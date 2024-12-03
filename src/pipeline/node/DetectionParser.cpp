@@ -1,5 +1,7 @@
 #include "depthai/pipeline/node/DetectionParser.hpp"
 
+#include <memory>
+
 #include "common/ModelType.hpp"
 #include "depthai/modelzoo/Zoo.hpp"
 #include "nn_archive/NNArchive.hpp"
@@ -30,6 +32,12 @@ void DetectionParser::setNNArchive(const NNArchive& nnArchive) {
     }
 }
 
+std::shared_ptr<DetectionParser> DetectionParser::build(Node::Output& nnInput, const NNArchive& nnArchive) {
+    setNNArchive(nnArchive);
+    nnInput.link(input);
+    return std::static_pointer_cast<DetectionParser>(shared_from_this());
+}
+
 void DetectionParser::setModelPath(const dai::Path& modelPath) {
     switch(model::readModelType(modelPath.string())) {
         case model::ModelType::BLOB:
@@ -46,25 +54,23 @@ void DetectionParser::setModelPath(const dai::Path& modelPath) {
     }
 }
 
-const NNArchiveConfig& DetectionParser::getNNArchiveConfig() const {
-    DAI_CHECK_V(archiveConfig.has_value(), "NNArchiveConfig is not set. Use setNNArchive(...) first.");
+const NNArchiveVersionedConfig& DetectionParser::getNNArchiveVersionedConfig() const {
+    DAI_CHECK_V(archiveConfig.has_value(), "NNArchiveVersionedConfig is not set. Use setNNArchive(...) first.");
     return archiveConfig.value();
 }
 
-void DetectionParser::setConfig(const dai::NNArchiveConfig& config) {
+void DetectionParser::setConfig(const dai::NNArchiveVersionedConfig& config) {
     archiveConfig = config;
 
-    DAI_CHECK_V(config.getConfigV1().has_value(), "Only NNArchive config V1 is supported.");
-
-    auto configV1 = *config.getConfigV1();
+    DAI_CHECK_V(config.getVersion() == NNArchiveConfigVersion::V1, "Only NNArchive config V1 is supported.");
+    auto configV1 = config.getConfig<nn_archive::v1::Config>();
 
     const auto model = configV1.model;
     // TODO(jakgra) is NN Archive valid without this? why is this optional?
     DAI_CHECK(model.heads, "Heads array is not defined in the NN Archive config file.");
-    // TODO(jakgra) for now get info from heads[0] but in the future correctly support multiple outputs and mapped h  eads
-    DAI_CHECK_V((*model.heads).size() == 1,
-                "There should be exactly one head per model in the NN Archive config file define  d. Found {} heads.",
-                (*model.heads).size());
+    // TODO(jakgra) for now get info from heads[0] but in the future correctly support multiple outputs and mapped heads
+    DAI_CHECK_V(
+        (*model.heads).size() == 1, "There should be exactly one head per model in the NN Archive config file defined. Found {} heads.", (*model.heads).size());
     const auto head = (*model.heads)[0];
 
     if(head.parser == "YOLO") {
@@ -108,18 +114,18 @@ void DetectionParser::setConfig(const dai::NNArchiveConfig& config) {
 
 void DetectionParser::setNNArchiveBlob(const NNArchive& nnArchive) {
     DAI_CHECK_V(nnArchive.getModelType() == dai::model::ModelType::BLOB, "NNArchive type is not BLOB");
-    setConfig(nnArchive.getConfig());
+    setConfig(nnArchive.getVersionedConfig());
     setBlob(nnArchive.getBlob().value());
 }
 
 void DetectionParser::setNNArchiveSuperblob(const NNArchive& nnArchive, int numShaves) {
     DAI_CHECK_V(nnArchive.getModelType() == dai::model::ModelType::SUPERBLOB, "NNArchive type is not SUPERBLOB");
-    setConfig(nnArchive.getConfig());
+    setConfig(nnArchive.getVersionedConfig());
     setBlob(nnArchive.getSuperBlob()->getBlobWithNumShaves(numShaves));
 }
 
 void DetectionParser::setNNArchiveOther(const NNArchive& nnArchive) {
-    setConfig(nnArchive.getConfig());
+    setConfig(nnArchive.getVersionedConfig());
 }
 
 void DetectionParser::setBlob(OpenVINO::Blob blob) {

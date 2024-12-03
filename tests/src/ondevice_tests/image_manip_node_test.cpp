@@ -5,7 +5,7 @@
 #include "depthai/depthai.hpp"
 #include "depthai/pipeline/InputQueue.hpp"
 
-TEST_CASE("Test ColorCamera node") {
+TEST_CASE("Test ImageManip node") {
     using namespace std;
     using namespace std::chrono;
     using namespace std::chrono_literals;

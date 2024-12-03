@@ -1,5 +1,7 @@
 #pragma once
 
+#include <spdlog/async_logger.h>
+
 #include <chrono>
 #include <unordered_map>
 #include <vector>
@@ -13,6 +15,7 @@
 #include "depthai/common/FrameEvent.hpp"
 #include "depthai/common/ImgTransformations.hpp"
 #include "depthai/common/Rect.hpp"
+#include "depthai/utility/ProtoSerializable.hpp"
 
 // optional
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
@@ -25,7 +28,7 @@ namespace dai {
 /**
  * ImgFrame message. Carries image data and metadata.
  */
-class ImgFrame : public Buffer {
+class ImgFrame : public Buffer, public ProtoSerializable {
    public:
     using Buffer::getTimestamp;
     using Buffer::getTimestampDevice;
@@ -76,11 +79,26 @@ class ImgFrame : public Buffer {
     ImgFrame(long fd, size_t size);
     virtual ~ImgFrame() = default;
 
-    ImgTransformations transformations;
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
         metadata = utility::serialize(*this);
         datatype = DatatypeEnum::ImgFrame;
     };
+
+#ifdef DEPTHAI_ENABLE_PROTOBUF
+    /**
+     * Serialize message to proto buffer
+     *
+     * @returns serialized message
+     */
+    std::vector<std::uint8_t> serializeProto() const override;
+
+    /**
+     * Serialize schema to proto buffer
+     *
+     * @returns serialized schema
+     */
+    ProtoSerializable::SchemaPair serializeSchema() const override;
+#endif
 
     // getters
     /**
@@ -294,14 +312,6 @@ class ImgFrame : public Buffer {
 
     /**
      * @note Fov API works correctly only on rectilinear frames
-     * Set the source horizontal field of view
-     *
-     * @param degrees field of view in degrees
-     */
-    ImgFrame& setSourceHFov(float degrees);
-
-    /**
-     * @note Fov API works correctly only on rectilinear frames
      * Get the source diagonal field of view in degrees
      *
      * @returns field of view in degrees
@@ -330,16 +340,6 @@ class ImgFrame : public Buffer {
      * @returns true if the transformations are valid
      */
     bool validateTransformations() const;
-
-    /**
-     * Remap point between two source frames
-     * @param point point to remap
-     * @param sourceImage source image
-     * @param destImage destination image
-     *
-     * @returns remapped point
-     */
-    static Point2f remapPointBetweenSourceFrames(const Point2f& originPoint, const ImgFrame& sourceImage, const ImgFrame& destImage);
 
     /**
      * Remap point between two frames
@@ -699,13 +699,13 @@ class ImgFrame : public Buffer {
     Specs fb = {};
     Specs sourceFb = {};
     CameraSettings cam;
-    float HFovDegrees = 0.0;   // Horizontal field of view in degrees
     uint32_t category = 0;     //
     uint32_t instanceNum = 0;  // Which source created this frame (color, mono, ...)
     dai::FrameEvent event = dai::FrameEvent::NONE;
+    ImgTransformation transformation;
 
    public:
-    DEPTHAI_SERIALIZE(ImgFrame, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum, fb, sourceFb, cam, HFovDegrees, category, instanceNum, transformations);
+    DEPTHAI_SERIALIZE(ImgFrame, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum, fb, sourceFb, cam, category, instanceNum, transformation);
 };
 
 }  // namespace dai

@@ -4,8 +4,9 @@
 #include <memory>
 #include <optional>
 
-#include "depthai/nn_archive/NNArchiveConfig.hpp"
+#include "depthai/device/Device.hpp"  // For platform enum
 #include "depthai/nn_archive/NNArchiveEntry.hpp"
+#include "depthai/nn_archive/NNArchiveVersionedConfig.hpp"
 #include "depthai/openvino/OpenVINO.hpp"
 #include "depthai/utility/arg.hpp"
 
@@ -57,11 +58,50 @@ class NNArchive {
     std::optional<std::string> getModelPath() const;
 
     /**
-     * @brief Get NNArchive config, i.e. contents of `config.json` inside the archive.
+     * @brief Get NNArchive config wrapper
      *
-     * @return NNArchiveConfig: Archive config
+     * @return NNArchiveVersionedConfig: Archive config
      */
-    const NNArchiveConfig& getConfig() const;
+    const NNArchiveVersionedConfig& getVersionedConfig() const;
+
+    /**
+     * @brief Get inputSize of the model
+     * @param index: Index of input
+     * @note this function is only valid for models with NCHW and NHWC input formats
+     * @return std::vector<std::pair<int, int>>: inputSize
+     */
+    std::optional<std::pair<uint32_t, uint32_t>> getInputSize(uint32_t index = 0) const;
+
+    /**
+     * @brief Get inputWidth of the model
+     * @param index: Index of input
+     * @return int: inputWidth
+     */
+    std::optional<uint32_t> getInputWidth(uint32_t index = 0) const;
+
+    /**
+     * @brief Get inputHeight of the model
+     * @param index: Index of input
+     * @return int: inputHeight
+     */
+    std::optional<uint32_t> getInputHeight(uint32_t index = 0) const;
+
+    /**
+     * @brief Get supported platforms
+     *
+     * @return std::vector<dai::Platform>: Supported platforms
+     */
+    std::vector<dai::Platform> getSupportedPlatforms() const;
+    /**
+     * @brief Get NNArchive config.
+     *
+     * @tparam T: Type of config to get
+     * @return const T&: Config
+     */
+    template <typename T>
+    const T& getConfig() const {
+        return getVersionedConfig().getConfig<T>();
+    }
 
     /**
      * @brief Get type of model contained in NNArchive
@@ -81,7 +121,7 @@ class NNArchive {
     NNArchiveOptions archiveOptions;
 
     // Archive config
-    std::shared_ptr<NNArchiveConfig> archiveConfigPtr;
+    std::shared_ptr<NNArchiveVersionedConfig> archiveVersionedConfigPtr;
 
     // Blob related stuff
     std::shared_ptr<OpenVINO::Blob> blobPtr;

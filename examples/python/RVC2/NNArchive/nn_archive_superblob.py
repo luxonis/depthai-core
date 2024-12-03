@@ -6,7 +6,7 @@ import depthai as dai
 # We will download a blob NNArchive from the model zoo
 # Pick your own model from
 modelDescription = dai.NNModelDescription()
-modelDescription.modelSlug = "yolov6-nano"
+modelDescription.model = "yolov6-nano"
 modelDescription.platform = "RVC2"
 
 # Download model from zoo and load it
@@ -25,11 +25,8 @@ assert archive.getModelPath() is not None
 # There is no blob available
 assert archive.getBlob() is None
 
-# One can access the NNArchive config as follows
-config = archive.getConfig()
-
 # You can access any config version
-v1config: dai.nn_archive.v1.Config = config.getConfigV1()
+v1config: dai.nn_archive.v1.Config = archive.getConfig()
 
 # Print some config fields
 print("-" * 10)

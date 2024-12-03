@@ -152,6 +152,7 @@ void bind_featuretracker(pybind11::module& m, void* pCallstack);
 void bind_apriltag(pybind11::module& m, void* pCallstack);
 void bind_detectionparser(pybind11::module& m, void* pCallstack);
 void bind_uvc(pybind11::module& m, void* pCallstack);
+void bind_thermal(pybind11::module& m, void* pCallstack);
 void bind_tof(pybind11::module& m, void* pCallstack);
 void bind_pointcloud(pybind11::module& m, void* pCallstack);
 void bind_sync(pybind11::module& m, void* pCallstack);
@@ -159,6 +160,7 @@ void bind_messagedemux(pybind11::module& m, void* pCallstack);
 void bind_hostnode(pybind11::module& m, void* pCallstack);
 void bind_record(pybind11::module& m, void* pCallstack);
 void bind_replay(pybind11::module& m, void* pCallstack);
+void bind_imagealign(pybind11::module& m, void* pCallstack);
 #ifdef DEPTHAI_HAVE_BASALT_SUPPORT
 void bind_basaltnode(pybind11::module& m, void* pCallstack);
 #endif
@@ -197,6 +199,7 @@ void NodeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_apriltag);
     callstack.push_front(bind_detectionparser);
     callstack.push_front(bind_uvc);
+    callstack.push_front(bind_thermal);
     callstack.push_front(bind_tof);
     callstack.push_front(bind_pointcloud);
     callstack.push_front(bind_sync);
@@ -204,6 +207,7 @@ void NodeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_hostnode);
     callstack.push_front(bind_record);
     callstack.push_front(bind_replay);
+    callstack.push_front(bind_imagealign);
 #ifdef DEPTHAI_HAVE_BASALT_SUPPORT
     callstack.push_front(bind_basaltnode);
 #endif

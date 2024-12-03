@@ -2,6 +2,7 @@
 .project
 .vscode/
 .vs/
+.env
 build*/*
 # Auto-generated
 shared/version.hpp

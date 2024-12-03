@@ -19,6 +19,7 @@
 #include "depthai/pipeline/datatype/EncodedFrame.hpp"
 #include "depthai/pipeline/datatype/FeatureTrackerConfig.hpp"
 #include "depthai/pipeline/datatype/IMUData.hpp"
+#include "depthai/pipeline/datatype/ImageAlignConfig.hpp"
 #include "depthai/pipeline/datatype/ImageManipConfig.hpp"
 #include "depthai/pipeline/datatype/ImageManipConfigV2.hpp"
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
@@ -33,6 +34,7 @@
 #include "depthai/pipeline/datatype/StereoDepthConfig.hpp"
 #include "depthai/pipeline/datatype/SystemInformation.hpp"
 #include "depthai/pipeline/datatype/SystemInformationS3.hpp"
+#include "depthai/pipeline/datatype/ThermalConfig.hpp"
 #include "depthai/pipeline/datatype/ToFConfig.hpp"
 #include "depthai/pipeline/datatype/TrackedFeatures.hpp"
 #include "depthai/pipeline/datatype/Tracklets.hpp"
@@ -86,7 +88,7 @@ static std::tuple<DatatypeEnum, size_t, size_t> parseHeader(streamPacketDesc_t* 
         for(std::uint32_t i = 0; i < endOfPacketMarker.size(); i++) {
             hex += fmt::format("{:02X}", marker[i]);
         }
-        //logger::warn("StreamMessageParser end-of-packet marker mismatch, got: " + hex);
+        // logger::warn("StreamMessageParser end-of-packet marker mismatch, got: " + hex);
     }
 
     const auto info = fmt::format(", total size {}, type {}, metadata size {}", packet->length, (int32_t)objectType, serializedObjectSize);
@@ -157,6 +159,10 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
             return parseDatatype<ImageManipConfigV2>(metadataStart, serializedObjectSize, data, fd);
             break;
 
+        case DatatypeEnum::ImageAlignConfig:
+            return parseDatatype<ImageAlignConfig>(metadataStart, serializedObjectSize, data, fd);
+            break;
+
         case DatatypeEnum::CameraControl:
             return parseDatatype<CameraControl>(metadataStart, serializedObjectSize, data, fd);
             break;
@@ -218,6 +224,9 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
             break;
         case DatatypeEnum::BenchmarkReport:
             return parseDatatype<BenchmarkReport>(metadataStart, serializedObjectSize, data, fd);
+            break;
+        case DatatypeEnum::ThermalConfig:
+            return parseDatatype<ThermalConfig>(metadataStart, serializedObjectSize, data, fd);
             break;
         case DatatypeEnum::ToFConfig:
             return parseDatatype<ToFConfig>(metadataStart, serializedObjectSize, data, fd);

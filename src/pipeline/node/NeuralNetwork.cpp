@@ -25,30 +25,39 @@ std::shared_ptr<NeuralNetwork> NeuralNetwork::build(Node::Output& input, const N
     return std::static_pointer_cast<NeuralNetwork>(shared_from_this());
 }
 
-std::shared_ptr<NeuralNetwork> NeuralNetwork::build(const NNArchiveConfig& nnArchiveCfg, std::shared_ptr<Camera> camera, dai::NNModelDescription modelDesc, float fps){
-    setFromModelZoo(modelDesc);
-    // Get the input size
-    auto nnArchiveConfig = nnArchiveCfg.getConfigV1();
-    if(!nnArchiveConfig.has_value()) {
-        DAI_CHECK_V(false, "The NeuralNetwork.build method only supports for NNConfigV1");
+std::shared_ptr<NeuralNetwork> NeuralNetwork::build(const std::shared_ptr<Camera>& input, dai::NNModelDescription modelDesc, float fps) {
+    // Download model from zoo
+    if(modelDesc.platform.empty()) {
+        DAI_CHECK(getDevice() != nullptr, "Device is not set.");
+        modelDesc.platform = getDevice()->getPlatformAsString();
     }
-    if(nnArchiveConfig->model.inputs.size() != 1) {
-        DAI_CHECK_V(false, "Only single input model is supported");
-    }
+    auto path = getModelFromZoo(modelDesc);
+    auto modelType = dai::model::readModelType(path);
+    DAI_CHECK(modelType == dai::model::ModelType::NNARCHIVE,
+              "Model from zoo is not NNArchive - it needs to be a NNArchive to use build(Camera, NNModelDescription, float) method");
+    auto nnArchive = dai::NNArchive(path);
+    return build(input, nnArchive, fps);
+}
 
-    if(nnArchiveConfig->model.inputs[0].shape.size() != 4) {
-        DAI_CHECK_V(false, "Only 4D input shape is supported");
-    }
+std::shared_ptr<NeuralNetwork> NeuralNetwork::build(const std::shared_ptr<Camera>& input, dai::NNArchive nnArchive, float fps) {
+    setNNArchive(nnArchive);
+    auto nnArchiveCfg = nnArchive.getVersionedConfig();
 
-    // Check that the first two dimesions are 1 and 3
-    if(nnArchiveConfig->model.inputs[0].shape[0] != 1 || nnArchiveConfig->model.inputs[0].shape[1] != 3) {
-        DAI_CHECK_V(false, "Only 3 channel input is supported");
+    DAI_CHECK_V(nnArchiveCfg.getVersion() == dai::NNArchiveConfigVersion::V1, "Only V1 configs are supported for NeuralNetwork.build method");
+    auto platform = getDevice()->getPlatform();
+    auto supportedPlatforms = nnArchive.getSupportedPlatforms();
+    bool platformSupported = std::find(supportedPlatforms.begin(), supportedPlatforms.end(), platform) != supportedPlatforms.end();
+    DAI_CHECK_V(platformSupported, "Platform not supported by the neural network model");
+
+    const auto& configV1 = nnArchiveCfg.getConfig<dai::nn_archive::v1::Config>();
+
+    auto inputHeight = nnArchive.getInputHeight();
+    auto inputWidth = nnArchive.getInputWidth();
+    if(!inputHeight.has_value() || !inputWidth.has_value()) {
+        DAI_CHECK_V(false, "Input height and width not specified in the model");
     }
-    auto inputHeight = nnArchiveConfig->model.inputs[0].shape[2];
-    auto inputWidth = nnArchiveConfig->model.inputs[0].shape[3];
 
     auto type = dai::ImgFrame::Type::BGR888p;
-    auto platform = getDevice()->getPlatform();
     if(platform == dai::Platform::RVC2 || platform == dai::Platform::RVC3) {
         type = dai::ImgFrame::Type::BGR888p;
     } else if(platform == dai::Platform::RVC4) {
@@ -58,20 +67,18 @@ std::shared_ptr<NeuralNetwork> NeuralNetwork::build(const NNArchiveConfig& nnArc
     }
 
     auto cap = ImgFrameCapability();
-    cap.size.value = std::pair(inputWidth, inputHeight);
+    cap.size.value = std::pair(*inputWidth, *inputHeight);
     cap.type = type;
     cap.fps.value = fps;
-    auto* input = camera->requestOutput(cap, false);
-    if(!input) {
-        DAI_CHECK_V(false, "Camera does not have output with requested capabilities");
-    }
-    input->link(this->input);
+    auto* camInput = input->requestOutput(cap, false);
+    DAI_CHECK_V(camInput != nullptr, "Camera does not have output with requested capabilities");
+    camInput->link(this->input);
     return std::static_pointer_cast<NeuralNetwork>(shared_from_this());
 }
 
-
 void NeuralNetwork::setNNArchive(const NNArchive& nnArchive) {
     constexpr int DEFAULT_SUPERBLOB_NUM_SHAVES = 8;
+    this->nnArchive = nnArchive;
     switch(nnArchive.getModelType()) {
         case dai::model::ModelType::BLOB:
             setNNArchiveBlob(nnArchive);

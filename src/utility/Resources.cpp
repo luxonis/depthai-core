@@ -3,6 +3,7 @@
 #include <array>
 #include <cassert>
 #include <condition_variable>
+#include <exception>
 #include <fstream>
 #include <iostream>
 #include <thread>
@@ -39,6 +40,63 @@ CMRC_DECLARE(depthai);
 #endif
 
 namespace dai {
+
+TarGzAccessor::TarGzAccessor(const std::vector<std::uint8_t>& tarGzFile) {
+    // Load tar.gz archive from memory
+    struct archive* archive = archive_read_new();
+    assert(archive != nullptr);
+
+    archive_read_support_filter_gzip(archive);  // Support for gzip compression
+    archive_read_support_format_tar(archive);   // Support for tar format
+
+    // Open the memory archive
+    int r = archive_read_open_memory(archive, tarGzFile.data(), tarGzFile.size());
+    assert(r == ARCHIVE_OK);
+
+    // Read through the archive and store all the file contents
+    struct archive_entry* entry;
+    while(archive_read_next_header(archive, &entry) == ARCHIVE_OK) {
+        std::string path = archive_entry_pathname(entry);
+        std::vector<std::uint8_t> fileData;
+
+        // Read entry data
+        const size_t entrySize = archive_entry_size(entry);
+        fileData.resize(entrySize);
+        archive_read_data(archive, fileData.data(), fileData.size());
+
+        // Store the data in a map
+        resourceMap[path] = std::move(fileData);
+    }
+
+    archive_read_free(archive);
+}
+
+// Method to get file data by path
+std::optional<std::vector<std::uint8_t>> TarGzAccessor::getFile(const std::string& path) const {
+    auto it = resourceMap.find(path);
+    if(it != resourceMap.end()) {
+        return it->second;  // Return the file data
+    }
+    return std::nullopt;  // Return empty optional if file not found
+}
+
+TarGzAccessor Resources::getEmbeddedVisualizer() const {
+#ifdef DEPTHAI_EMBED_FRONTEND
+    // Load visualizer tar.gz archive from memory
+    auto fs = cmrc::depthai::get_filesystem();
+    constexpr static auto FILE_NAME = "depthai-visualizer-" DEPTHAI_VISUALIZER_VERSION ".tar.gz";
+    if(!fs.exists(FILE_NAME)) {
+        throw std::runtime_error("Visualizer not found in embedded resources");
+    }
+    auto visualizerTarGz = fs.open(FILE_NAME);
+    std::vector<std::uint8_t> visualizerTarGzData(visualizerTarGz.begin(), visualizerTarGz.end());
+
+    // Create and return TarGzAccessor
+    return TarGzAccessor(visualizerTarGzData);
+#else
+    throw std::runtime_error("Visualizer not embedded in resources");
+#endif
+}
 
 static std::vector<std::uint8_t> createPrebootHeader(const std::vector<uint8_t>& payload, uint32_t magic1, uint32_t magic2);
 
@@ -405,8 +463,12 @@ Resources::Resources() {
 
 Resources::~Resources() {
     // join the lazy threads
+#ifdef DEPTHAI_ENABLE_DEVICE_FW
     if(lazyThreadDevice.joinable()) lazyThreadDevice.join();
+#endif
+#ifdef DEPTHAI_ENABLE_DEVICE_BOOTLOADER_FW
     if(lazyThreadBootloader.joinable()) lazyThreadBootloader.join();
+#endif
 }
 
 // Get device firmware

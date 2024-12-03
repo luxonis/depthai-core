@@ -1,5 +1,11 @@
 #include "depthai/nn_archive/NNArchive.hpp"
 
+#include <cstdint>
+#include <optional>
+#include <stdexcept>
+
+#include "depthai/nn_archive/NNArchiveVersionedConfig.hpp"
+
 // internal private
 #include "common/ModelType.hpp"
 #include "utility/ArchiveUtil.hpp"
@@ -12,10 +18,11 @@ NNArchive::NNArchive(const std::string& archivePath, NNArchiveOptions options) :
     if(!std::filesystem::exists(archivePath)) DAI_CHECK_V(false, "Archive file does not exist: {}", archivePath);
 
     // Read config
-    archiveConfigPtr.reset(new NNArchiveConfig(archivePath, archiveOptions.compression()));
+    archiveVersionedConfigPtr.reset(new NNArchiveVersionedConfig(archivePath, archiveOptions.compression()));
 
-    // Based on the config, read model path in archive
-    std::string modelPathInArchive = archiveConfigPtr->getConfigV1()->model.metadata.path;
+    // Only V1 config is supported at the moment
+    DAI_CHECK(archiveVersionedConfigPtr->getVersion() == NNArchiveConfigVersion::V1, "Only V1 config is supported at the moment");
+    std::string modelPathInArchive = archiveVersionedConfigPtr->getConfig<nn_archive::v1::Config>().model.metadata.path;
 
     // Read archive type
     modelType = model::readModelType(modelPathInArchive);
@@ -102,8 +109,8 @@ model::ModelType NNArchive::getModelType() const {
     return modelType;
 }
 
-const NNArchiveConfig& NNArchive::getConfig() const {
-    return *archiveConfigPtr;
+const NNArchiveVersionedConfig& NNArchive::getVersionedConfig() const {
+    return *archiveVersionedConfigPtr;
 }
 
 std::vector<uint8_t> NNArchive::readModelFromArchive(const std::string& archivePath, const std::string& modelPathInArchive) const {
@@ -117,6 +124,85 @@ std::vector<uint8_t> NNArchive::readModelFromArchive(const std::string& archiveP
 void NNArchive::unpackArchiveInDirectory(const std::string& archivePath, const std::string& directory) const {
     utility::ArchiveUtil archive(archivePath, archiveOptions.compression());
     archive.unpackArchiveInDirectory(directory);
+}
+
+std::optional<std::pair<uint32_t, uint32_t>> NNArchive::getInputSize(uint32_t index) const {
+    auto inputs = archiveVersionedConfigPtr->getConfig<nn_archive::v1::Config>().model.inputs;
+    if(inputs.size() <= index) {
+        throw std::runtime_error("Input index in NNArchive is out of bounds");
+    }
+
+    auto input = inputs[index];
+    auto layout = input.layout;
+    if(!layout) {
+        return std::nullopt;
+    }
+    if((*layout != "NCHW" && *layout != "NHWC") || input.shape.size() != 4) {
+        return std::nullopt;
+    }
+
+    for(auto& dim : input.shape) {
+        if(dim < 0) {
+            throw std::runtime_error("Input shape must be positive in NNArchive");
+        }
+    }
+    if(*layout == "NCHW") {
+        uint32_t width = input.shape[3];
+        uint32_t height = input.shape[2];
+        return std::make_pair(width, height);
+    }
+    if(*layout == "NHWC") {
+        uint32_t width = input.shape[2];
+        uint32_t height = input.shape[1];
+        return std::make_pair(width, height);
+    }
+
+    // Should never happen
+    throw std::runtime_error("Unknown layout in NNArchive");
+}
+
+std::optional<uint32_t> NNArchive::getInputWidth(uint32_t index) const {
+    auto size = getInputSize(index);
+    if(size) {
+        return size->first;
+    }
+    return std::nullopt;
+}
+
+std::optional<uint32_t> NNArchive::getInputHeight(uint32_t index) const {
+    auto size = getInputSize(index);
+    if(size) {
+        return size->second;
+    }
+    return std::nullopt;
+}
+
+std::vector<dai::Platform> NNArchive::getSupportedPlatforms() const {
+    auto pathToModel = getModelPath();
+    if(!pathToModel) {
+        return {};
+    }
+    auto pathToModelChecked = *pathToModel;
+    // Check if .dlc - in that case add RVC4 to supported platforms
+    if(pathToModelChecked.substr(pathToModelChecked.size() - 4) == ".dlc") {
+        return {Platform::RVC4};
+    }
+    if(pathToModelChecked.substr(pathToModelChecked.size() - 10) == ".superblob") {
+        return {Platform::RVC2};
+    }
+    if(pathToModelChecked.substr(pathToModelChecked.size() - 5) == ".blob") {
+        // Check if it's a blob for RVC3 or RVC2
+        auto model = OpenVINO::Blob(pathToModelChecked);
+        if(model.device == OpenVINO::Device::VPUX) {
+            return {Platform::RVC3};
+        }
+        if(model.device == OpenVINO::Device::VPU) {
+            return {Platform::RVC2};
+        }
+        // Should never get here
+        return {};
+    }
+    return {};
 }
 
 }  // namespace dai

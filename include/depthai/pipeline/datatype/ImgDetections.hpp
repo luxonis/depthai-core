@@ -2,7 +2,11 @@
 
 #include <vector>
 
+#include "depthai/common/ImgTransformations.hpp"
+#include "depthai/common/optional.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
+#include "depthai/utility/ProtoSerializable.hpp"
+
 namespace dai {
 
 struct ImgDetection {
@@ -19,7 +23,7 @@ DEPTHAI_SERIALIZE_EXT(ImgDetection, label, confidence, xmin, ymin, xmax, ymax);
 /**
  * ImgDetections message. Carries normalized detection results
  */
-class ImgDetections : public Buffer {
+class ImgDetections : public Buffer, public ProtoSerializable {
    public:
     /**
      * Construct ImgDetections message.
@@ -29,13 +33,30 @@ class ImgDetections : public Buffer {
 
     /// Detections
     std::vector<ImgDetection> detections;
+    std::optional<ImgTransformation> transformation;
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
         metadata = utility::serialize(*this);
         datatype = DatatypeEnum::ImgDetections;
     };
 
-    DEPTHAI_SERIALIZE(ImgDetections, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, detections);
+#ifdef DEPTHAI_ENABLE_PROTOBUF
+    /**
+     * Serialize message to proto buffer
+     *
+     * @returns serialized message
+     */
+    std::vector<std::uint8_t> serializeProto() const override;
+
+    /**
+     * Serialize schema to proto buffer
+     *
+     * @returns serialized schema
+     */
+    ProtoSerializable::SchemaPair serializeSchema() const override;
+#endif
+
+    DEPTHAI_SERIALIZE(ImgDetections, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, detections, transformation);
 };
 
 }  // namespace dai

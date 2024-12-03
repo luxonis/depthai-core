@@ -117,12 +117,19 @@ void Sync::run() {
         }
         auto tBeforeSend = steady_clock::now();
         auto outputGroup = std::make_shared<dai::MessageGroup>();
+        dai::Buffer* newestFrame = inputFrames.begin()->second.get();
         for(const auto& name : inputNames) {
             logger->trace("Sending output: {}", name);
             logger->trace("Timestamp: {} ms",
                           static_cast<float>(duration_cast<microseconds>(inputFrames[name]->getTimestamp().time_since_epoch()).count()) / 1000.f);
             outputGroup->add(name, inputFrames[name]);
+            if(inputFrames[name]->getTimestamp() > newestFrame->getTimestamp()) {
+                newestFrame = inputFrames[name].get();
+            }
         }
+        outputGroup->setTimestamp(newestFrame->getTimestamp());
+        outputGroup->setTimestampDevice(newestFrame->getTimestampDevice());
+        outputGroup->setSequenceNum(newestFrame->getSequenceNum());
         out.send(outputGroup);
         auto tAbsoluteEnd = steady_clock::now();
         logger->debug("Sync total took {}ms, processing {}ms, getting_frames {}ms, sending_frames {}ms",

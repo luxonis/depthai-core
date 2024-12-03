@@ -29,7 +29,18 @@ try:
         print(f'Could not import depthai: {ex}')
 
     print(f'PYTHONPATH set to {env["PYTHONPATH"]}')
-    subprocess.check_call(['stubgen', '-p', MODULE_NAME, '-o', f'{DIRECTORY}'], cwd=DIRECTORY, env=env)
+    # Check if stubgen has the `--include-docstrings` flag
+    includeDocstrings = False
+    output = subprocess.check_output(['stubgen', '--help'], env=env)
+    if b'--include-docstrings' in output:
+        includeDocstrings = True
+        print("Will include docstrings in stubs")
+    else:
+        print("Will not include docstrings in stubs")
+    parameters = ['stubgen', '-p', MODULE_NAME, '-o', f'{DIRECTORY}']
+    if includeDocstrings:
+        parameters.insert(1, '--include-docstrings')
+    subprocess.check_call(parameters, cwd=DIRECTORY, env=env)
 
     # Add py.typed
     open(f'{DIRECTORY}/depthai/py.typed', 'a').close()
@@ -42,10 +53,6 @@ try:
         # Add imports
         stubs_import = textwrap.dedent('''
             # Ensures that the stubs are picked up - thanks, numpy project
-            from depthai import (
-                node as node,
-            )
-
             import typing
             json = dict
             from pathlib import Path
@@ -63,7 +70,11 @@ try:
         final_lines = []
         for line in final_stubs.split('\n'):
             if 'def create(self, arg0: object, *args, **kwargs) -> Node:' in line:
-                final_lines.append('    def create(self, arg0: Type[T], *args, **kwargs) -> T: ...')
+                if includeDocstrings:
+                    ending = 'T:'
+                else:
+                    ending = 'T: ...'
+                final_lines.append(f"    def create(self, arg0: Type[T], *args, **kwargs) -> {ending}")
                 continue
             final_lines.append(line)
 
@@ -86,7 +97,7 @@ try:
 
         # Remove import depthai.*
         final_stubs = re.sub(r"import depthai\.\S*", "", stubs_import)
-        
+
         for line in final_stubs.split('\n'):
             final_lines.append(line)
             if "class HostNode(ThreadedHostNode):" in line:
@@ -94,7 +105,7 @@ try:
                 final_lines.append('    def __init__(self, *args) -> None: ...')
 
         final_stubs = '\n'.join(final_lines)
-        # Writeout changes 
+        # Writeout changes
         file.seek(0)
         file.truncate(0)
         file.write(final_stubs)
@@ -114,11 +125,43 @@ try:
         subprocess.check_call([sys.executable, '-m' 'mypy', f'{DIRECTORY}/{MODULE_NAME}', f'--config-file={config.name}'], env=env)
     finally:
         os.unlink(config.name)
-
     # # TODO(thamarpe) - Pylance / Pyright check
     # subprocess.check_call([sys.executable, '-m' 'pyright', f'{DIRECTORY}/{MODULE_NAME}'], env=env)
+
+    def process_init_pyi(file_path, is_depthai_root=False):
+        # Read old __init__.pyi
+        with open(file_path, 'r+') as file:
+            contents = file.read()
+
+        # Prepare imports
+        dir_path = os.path.dirname(file_path)
+
+        modules = list()
+        # Find all .pyi files and directories
+        for f in os.listdir(dir_path):
+            if f.endswith('.pyi') and f != '__init__.pyi':
+                modules.append(f)
+            elif os.path.isdir(os.path.join(dir_path, f)):
+                modules.append(f)
+
+        prefix = "from depthai import " if is_depthai_root else "from . import "
+        imports = '\n'.join([f'{prefix}{os.path.splitext(m)[0]} as {os.path.splitext(m)[0]}' for m in modules])
+
+        # Add imports to old __init__.pyi
+        new_contents = imports + '\n' + contents
+
+        # Writeout changes
+        with open(file_path, 'w') as file:
+            file.write(new_contents)
+
+    # Process all __init__.pyi files
+    for root, dirs, files in os.walk(f'{DIRECTORY}/{MODULE_NAME}'):
+        if '__init__.pyi':
+            is_depthai_root = (root == f'{DIRECTORY}/{MODULE_NAME}')
+            process_init_pyi(os.path.join(root, '__init__.pyi'), is_depthai_root)
 
 except subprocess.CalledProcessError as err:
     exit(err.returncode)
 
-exit(0)
+finally:
+    exit(0)
