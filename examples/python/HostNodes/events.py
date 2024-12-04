@@ -17,7 +17,6 @@ with dai.Pipeline() as pipeline:
 
     eventMan = dai.EventsManager()
     eventMan.setLogResponse(True)
-    eventMan.setUrl("https://events-ingest.apps.stg.hubcloud")
 
     eventMan.sendEvent("test1", None, [], ["tag1", "tag2"], {"key1": "value1"})
     time.sleep(2)

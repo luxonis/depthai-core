@@ -10,15 +10,9 @@
 
 #include "Environment.hpp"
 #include "Logging.hpp"
-#ifdef DEPTHAI_ENABLE_PROTOBUF
-    #include "depthai/schemas/Event.pb.h"
-#endif
-#ifdef DEPTHAI_ENABLE_CURL
-    #include <cpr/cpr.h>
 namespace dai {
 
 namespace utility {
-    #ifdef DEPTHAI_ENABLE_PROTOBUF
 using std::move;
 
 EventData::EventData(const std::string& data, const std::string& fileName, const std::string& mimeType)
@@ -431,64 +425,5 @@ void EventsManager::setVerifySsl(bool verifySsl) {
 void EventsManager::setCacheIfCannotSend(bool cacheIfCannotSend) {
     this->cacheIfCannotSend = cacheIfCannotSend;
 }
-    #endif
 }  // namespace utility
 }  // namespace dai
-#else
-namespace dai {
-namespace utility {
-EventsManager::EventsManager(const std::string& deviceSerialNumber) {
-    logger::warn("EventsManager is disabled, please enable DEPTHAI_ENABLE_CURL in CMake to use this feature");
-}
-void EventsManager::sendEvent(const std::string& name,
-                              const std::unordered_map<std::string, std::string>& data,
-                              const std::vector<std::string>& tags,
-                              const std::vector<FileData>& files,
-                              const std::shared_ptr<ADatatype>& daiMsg) {
-    logger::warn("EventsManager is disabled, please enable DEPTHAI_ENABLE_CURL in CMake to use this feature");
-}
-void EventsManager::sendSnap(const std::string& name,
-                             const std::vector<std::string>& tags,
-                             const std::vector<FileData>& files,
-                             const std::unordered_map<std::string, std::string>& extraData) {
-    logger::warn("EventsManager is disabled, please enable DEPTHAI_ENABLE_CURL in CMake to use this feature");
-}
-void EventsManager::setUrl(const std::string& url) {
-    logger::warn("EventsManager is disabled, please enable DEPTHAI_ENABLE_CURL in CMake to use this feature");
-}
-void EventsManager::setSourceAppId(const std::string& sourceAppId) {
-    logger::warn("EventsManager is disabled, please enable DEPTHAI_ENABLE_CURL in CMake to use this feature");
-}
-void EventsManager::setSourceAppIdentifier(const std::string& sourceAppIdentifier) {
-    logger::warn("EventsManager is disabled, please enable DEPTHAI_ENABLE_CURL in CMake to use this feature");
-}
-void EventsManager::setToken(const std::string& token) {
-    logger::warn("EventsManager is disabled, please enable DEPTHAI_ENABLE_CURL in CMake to use this feature");
-}
-void EventsManager::setQueueSize(unsigned long queueSize) {
-    logger::warn("EventsManager is disabled, please enable DEPTHAI_ENABLE_CURL in CMake to use this feature");
-}
-void EventsManager::setLogResponse(bool logResponse) {
-    logger::warn("EventsManager is disabled, please enable DEPTHAI_ENABLE_CURL in CMake to use this feature");
-}
-void EventsManager::setDeviceSerialNumber(const std::string& deviceSerialNumber) {
-    logger::warn("EventsManager is disabled, please enable DEPTHAI_ENABLE_CURL in CMake to use this feature");
-}
-void EventsManager::setVerifySsl(bool verifySsl) {
-    logger::warn("EventsManager is disabled, please enable DEPTHAI_ENABLE_CURL in CMake to use this feature");
-}
-void EventsManager::setCacheDir(const std::string& cacheDir) {
-    logger::warn("EventsManager is disabled, please enable DEPTHAI_ENABLE_CURL in CMake to use this feature");
-}
-void EventsManager::cacheEvents() {
-    logger::warn("EventsManager is disabled, please enable DEPTHAI_ENABLE_CURL in CMake to use this feature");
-}
-void EventsManager::uploadCachedData() {
-    logger::warn("EventsManager is disabled, please enable DEPTHAI_ENABLE_CURL in CMake to use this feature");
-}
-void EventsManager::setCacheIfCannotSend(bool cacheIfCannotSend) {
-    logger::warn("EventsManager is disabled, please enable DEPTHAI_ENABLE_CURL in CMake to use this feature");
-}
-}  // namespace utility
-}  // namespace dai
-#endif

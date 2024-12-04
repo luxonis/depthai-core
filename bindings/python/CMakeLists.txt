@@ -148,9 +148,13 @@ set(SOURCE_LIST
     src/modelzoo/NNModelDescriptionBindings.cpp
     src/modelzoo/ZooBindings.cpp
 
-    src/utility/EventsManagerBindings.cpp
     src/remote_connection/RemoteConnectionBindings.cpp
 )
+if(DEPTHAI_ENABLE_EVENTS_MANAGER)
+    list(APPEND SOURCE_LIST
+        src/events_manager/EventsManagerBindings.cpp
+    )
+endif()
 if(DEPTHAI_MERGED_TARGET)
     list(APPEND SOURCE_LIST
         external/pybind11_opencv_numpy/ndarray_converter.cpp

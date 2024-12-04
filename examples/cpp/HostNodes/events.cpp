@@ -10,7 +10,6 @@ int main(int argc, char* argv[]) {
     dai::Pipeline pipeline(true);
 
     auto eventsManager = std::make_shared<dai::utility::EventsManager>();
-    eventsManager->setUrl("https://events-ingest.apps.stg.hubcloud");
     eventsManager->setLogResponse(true);
     // Color camera node
     auto camRgb = pipeline.create<dai::node::Camera>()->build();
