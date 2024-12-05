@@ -7,7 +7,6 @@
 
 void EventsManagerBindings::bind(pybind11::module& m, void* pCallstack) {
     using namespace dai;
-    using namespace dai::utility;
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -21,6 +20,7 @@ void EventsManagerBindings::bind(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
 
     #ifdef DEPTHAI_ENABLE_EVENTS_MANAGER
+    using namespace dai::utility;
     py::class_<EventData, std::shared_ptr<utility::EventData>>(m, "EventData")
         .def(py::init<const std::string&, const std::string&, const std::string&>(), py::arg("data"), py::arg("fileName"), py::arg("mimeType"))
         .def(py::init<std::string>(), py::arg("fileUrl"))
