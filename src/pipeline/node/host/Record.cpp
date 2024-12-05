@@ -166,7 +166,7 @@ void RecordMetadataOnly::run() {
             } else {
                 throw std::runtime_error("RecordMetadataOnly node does not support this type of message");
             }
-            if(logger) logger->trace("RecordMetadataOnly node detected stream type {}", streamType);
+            if(logger) logger->trace("RecordMetadataOnly node detected stream type {}", (int)streamType);
         }
         auto serializable = std::dynamic_pointer_cast<ProtoSerializable>(msg);
         if(serializable == nullptr) {
