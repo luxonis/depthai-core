@@ -149,12 +149,8 @@ set(SOURCE_LIST
     src/modelzoo/ZooBindings.cpp
 
     src/remote_connection/RemoteConnectionBindings.cpp
+    src/utility/EventsManagerBindings.cpp
 )
-if(DEPTHAI_ENABLE_EVENTS_MANAGER)
-    list(APPEND SOURCE_LIST
-        src/events_manager/EventsManagerBindings.cpp
-    )
-endif()
 if(DEPTHAI_MERGED_TARGET)
     list(APPEND SOURCE_LIST
         external/pybind11_opencv_numpy/ndarray_converter.cpp
@@ -318,6 +314,9 @@ endif()
 
 if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
     target_compile_definitions(${TARGET_NAME} PRIVATE DEPTHAI_ENABLE_REMOTE_CONNECTION)
+endif()
+if(DEPTHAI_ENABLE_EVENTS_MANAGER)
+    target_compile_definitions(${TARGET_NAME} PRIVATE DEPTHAI_ENABLE_EVENTS_MANAGER)
 endif()
 
 # Find Git
