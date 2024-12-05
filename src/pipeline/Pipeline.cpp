@@ -789,6 +789,11 @@ void PipelineImpl::build() {
                 xLinkBridge.xLinkIn->setStreamName(streamName);
                 xLinkBridge.xLinkOutHost->setConnection(defaultDevice->getConnection());
                 xLinkBridge.xLinkIn->out.link(*connection.in);
+                if(defaultDevice->getPlatform() == Platform::RVC4 || defaultDevice->getPlatform() == Platform::RVC3) {
+                    xLinkBridge.xLinkOutHost->allowStreamResize(true);
+                } else {
+                    xLinkBridge.xLinkOutHost->allowStreamResize(false);
+                }
             }
             auto xLinkBridge = bridgesIn[connection.in];
             connection.out->unlink(*connection.in);  // Unlink the original connection

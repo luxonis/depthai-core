@@ -27,6 +27,7 @@ class RemoteConnectionImpl {
     void addTopic(const std::string& topicName, Node::Output& output, const std::string& group);
     std::shared_ptr<MessageQueue> addTopic(const std::string& topicName, const std::string& group, unsigned int maxSize, bool blocking);
     void registerPipeline(const Pipeline& pipeline);
+    void registerService(const std::string& serviceName, std::function<nlohmann::json(const nlohmann::json&)> callback);
     int waitKey(int delayMs);
 
    private:

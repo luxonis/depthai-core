@@ -261,6 +261,16 @@ void bind_nndata(pybind11::module& m, void* pCallstack){
                 return py::cast(obj.getFirstTensor<float>(dequantize));
             }
         }, py::arg("dequantize") = false, DOC(dai, NNData, getFirstTensor))
+
+        .def("getFirstTensor", [](NNData& obj, TensorInfo::StorageOrder order, bool dequantize) -> py::object {
+            const auto datatype = obj.getFirstTensorDatatype();
+            if(datatype == dai::TensorInfo::DataType::U8F && !dequantize) {
+                // In case of dequantization, we should always return float
+                return py::cast(obj.getFirstTensor<int>(order));
+            } else {
+                return py::cast(obj.getFirstTensor<float>(order, dequantize));
+            }
+        }, py::arg("storageOrder"), py::arg("dequantize") = false, DOC(dai, NNData, getFirstTensor, 2))
         // .def("getTensor", static_cast<xt::xarray<double>(NNData::*)(const std::string&)>(&NNData::getTensor<double>), py::arg("name"), DOC(dai, NNData, getTensor))
         // .def("getTensor", static_cast<xt::xarray<float>(NNData::*)(const std::string&)>(&NNData::getTensor<float>), py::arg("name"), DOC(dai, NNData, getTensor, 2))
         // .def("getTensor", static_cast<xt::xarray<int>(NNData::*)(const std::string&)>(&NNData::getTensor<int>), py::arg("name"), DOC(dai, NNData, getTensor, 3))
