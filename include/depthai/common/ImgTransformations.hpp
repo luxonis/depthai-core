@@ -177,12 +177,12 @@ struct ImgTransformation {
     ImgTransformation& addCrop(int x, int y, int width, int height);
     /**
      * Add a pad transformation. Works like crop, but in reverse.
-     * @param x Padding on the left. The x coordinate of the top-left corner in the new image.
-     * @param y Padding on the top. The y coordinate of the top-left corner in the new image.
-     * @param width New image width
-     * @param height New image height
+     * @param top Padding on the top
+     * @param bottom Padding on the bottom
+     * @param left Padding on the left
+     * @param right Padding on the right
      */
-    ImgTransformation& addPadding(int x, int y, int width, int height);
+    ImgTransformation& addPadding(int top, int bottom, int left, int right);
     /**
      * Add a vertical flip transformation.
      */
@@ -204,6 +204,7 @@ struct ImgTransformation {
      */
     ImgTransformation& addScale(float scaleX, float scaleY);
     ImgTransformation& addSrcCrops(const std::vector<dai::RotatedRect>& crops);
+    ImgTransformation& setSize(size_t width, size_t height);
 
     /**
      * Remap a point from this transformation to another. If the intrinsics are different (e.g. different camera), the function will also use the intrinsics to

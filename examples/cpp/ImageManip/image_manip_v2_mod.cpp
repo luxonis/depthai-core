@@ -14,12 +14,9 @@ int main(int argc, char** argv) {
     }
     dai::Pipeline pipeline(device);
 
-    auto camRgb = pipeline.create<dai::node::ColorCamera>();
+    auto camRgb = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A);
     auto display = pipeline.create<dai::node::Display>();
     auto manip = pipeline.create<dai::node::ImageManipV2>();
-
-    camRgb->setBoardSocket(dai::CameraBoardSocket::CAM_A);
-    camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
 
     manip->setMaxOutputFrameSize(4000000);
     manip->initialConfig.setOutputSize(1280, 720, dai::ImageManipConfigV2::ResizeMode::LETTERBOX);
@@ -29,7 +26,8 @@ int main(int argc, char** argv) {
     manip->initialConfig.addFlipVertical();
     manip->initialConfig.setFrameType(dai::ImgFrame::Type::RGB888p);
 
-    camRgb->video.link(manip->inputImage);
+    auto* rgbOut = camRgb->requestOutput({1920, 1080});
+    rgbOut->link(manip->inputImage);
     manip->out.link(display->input);
 
     pipeline.start();

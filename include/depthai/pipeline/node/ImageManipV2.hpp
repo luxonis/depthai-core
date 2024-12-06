@@ -128,6 +128,10 @@ void ImageManipV2::loop(N& node,
 
         if(needsImage) {
             inImage = node.inputImage.template get<ImgFrame>();
+            if(inImage == nullptr) {
+                logger->warn("No input image, skipping frame");
+                continue;
+            }
             inImageData = inImage->data;
             if(!hasConfig) {
                 auto _pConfig = node.inputConfig.template tryGet<ImageManipConfigV2>();
@@ -144,6 +148,9 @@ void ImageManipV2::loop(N& node,
         // if has new config, parse and check if any changes
         if(hasConfig) {
             config = *pConfig;
+        }
+        if(!node.inputConfig.getWaitForMessage() && config.getReusePreviousImage()) {
+            logger->warn("reusePreviousImage is only taken into account when inputConfig is synchronous");
         }
 
         auto startP = std::chrono::steady_clock::now();
