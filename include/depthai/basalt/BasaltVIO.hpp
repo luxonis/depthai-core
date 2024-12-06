@@ -1,7 +1,7 @@
 #pragma once
 #define SOPHUS_USE_BASIC_LOGGING
 
-#include <depthai/pipeline/Subnode.hpp>
+#include "depthai/pipeline/Subnode.hpp"
 
 #include "basalt/calibration/calibration.hpp"
 #include "basalt/serialization/headers_serialization.h"

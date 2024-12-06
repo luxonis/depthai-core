@@ -37,6 +37,27 @@ std::vector<Point3fRGB> PointCloudData::getPointsRGB() {
     return points;
 }
 
+void PointCloudData::setPoints(const std::vector<Point3f>& points) {
+    auto size = points.size();
+    std::vector<uint8_t> data(size * sizeof(Point3f));
+    auto* dataPtr = reinterpret_cast<Point3f*>(data.data());
+    for(unsigned int i = 0; i < size; i++) {
+        dataPtr[i] = points[i];
+    }
+    setData(data);
+}
+
+void PointCloudData::setPointsRGB(const std::vector<Point3fRGB>& points) {
+    auto size = points.size();
+    std::vector<uint8_t> data(size * sizeof(Point3fRGB));
+    auto* dataPtr = reinterpret_cast<Point3fRGB*>(data.data());
+    for(unsigned int i = 0; i < size; i++) {
+        dataPtr[i] = points[i];
+    }
+    setData(data);
+    color = true;
+}
+
 unsigned int PointCloudData::getInstanceNum() const {
     return instanceNum;
 }

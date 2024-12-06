@@ -309,6 +309,7 @@ if(DEPTHAI_RTABMAP_SUPPORT)
 
 endif()
 
+
 if(DEPTHAI_BASALT_SUPPORT)
     include(FetchContent)
     FetchContent_Declare(rerun_sdk URL  https://github.com/rerun-io/rerun/releases/download/0.16.1/rerun_cpp_sdk.zip)
@@ -316,6 +317,8 @@ if(DEPTHAI_BASALT_SUPPORT)
 
     dai_add_example(basalt_vio RVC2/VSLAM/basalt_vio.cpp OFF OFF)
     target_link_libraries(basalt_vio PRIVATE depthai::basalt rerun_sdk)
+dai_add_example(rgbd RVC2/VSLAM/rgbd.cpp OFF OFF)
+    target_link_libraries(rgbd PRIVATE  rerun_sdk)
 endif()
 
 
