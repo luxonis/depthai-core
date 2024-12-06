@@ -14,6 +14,7 @@ endif()
 if(NOT CONFIG_MODE OR (CONFIG_MODE AND NOT DEPTHAI_SHARED_LIBS))
 
     if(DEPTHAI_BUILD_PYTHON)
+        find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
         find_package(pybind11 CONFIG REQUIRED)
         # Print out the pybind11 version that was found
         message(STATUS "Found pybind11 v${pybind11_VERSION}")
