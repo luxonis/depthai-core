@@ -17,6 +17,7 @@ option(DEPTHAI_NEW_FIND_PYTHON "Use new FindPython module" ON)
 if(NOT DEPTHAI_OPENCV_SUPPORT)
     set(DEPTHAI_MERGED_TARGET OFF CACHE BOOL "Enable merged target build" FORCE)
 endif()
+option(DEPTHAI_ENABLE_EVENTS_MANAGER "Enable Events Manager" ON)
 
 set(DEPTHAI_HAS_APRIL_TAG ${DEPTHAI_ENABLE_APRIL_TAG})
 if(WIN32)
@@ -110,6 +111,13 @@ if(DEPTHAI_ENABLE_PROTOBUF)
 else()
     option(DEPTHAI_ENABLE_REMOTE_CONNECTION "Enable Remote Connection support" OFF)
     message(STATUS "Remote Connection support disabled because Protobuf support is disabled.")
+endif()
+
+if(DEPTHAI_ENABLE_EVENTS_MANAGER)
+    if(NOT DEPTHAI_ENABLE_PROTOBUF OR NOT DEPTHAI_CURL_SUPPORT)
+        message(STATUS "Events Manager disabled because Protobuf & curl support is disabled.")
+        set(DEPTHAI_ENABLE_EVENTS_MANAGER OFF)
+    endif()
 endif()
 
 if(DEPTHAI_BUILD_PYTHON)
@@ -443,6 +451,12 @@ set(TARGET_CORE_SOURCES
     src/modelzoo/NNModelDescription.cpp
     src/modelzoo/Zoo.cpp
 )
+
+if(DEPTHAI_ENABLE_EVENTS_MANAGER)
+    list(APPEND TARGET_CORE_SOURCES
+        src/utility/EventsManager.cpp
+    )
+endif()
 
 if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
     list(APPEND TARGET_CORE_SOURCES
