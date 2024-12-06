@@ -291,6 +291,9 @@ dai_add_example(image_align RVC2/ImageAlign/image_align.cpp OFF OFF)
 dai_add_example(visualizer_yolo Visualizer/visualizer_yolo.cpp ON OFF)
 dai_set_example_test_labels(visualizer_yolo ondevice rvc2_all rvc4)
 
+# VideoEncoder
+dai_add_example(video_encode VideoEncoder/video_encode.cpp ON OFF)
+dai_set_example_test_labels(video_encode ondevice rvc2_all rvc4)
 
 if(DEPTHAI_RTABMAP_SUPPORT)
     include(FetchContent)
