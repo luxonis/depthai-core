@@ -14,7 +14,11 @@ endif()
 if(NOT CONFIG_MODE OR (CONFIG_MODE AND NOT DEPTHAI_SHARED_LIBS))
 
     if(DEPTHAI_BUILD_PYTHON)
-        find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
+        if(POLICY CMP0094)
+            cmake_policy(SET CMP0094 NEW)
+        endif()
+        set(Python_FIND_UNVERSIONED_NAMES FIRST)
+        find_package(Python COMPONENTS Interpreter Development REQUIRED)
         find_package(pybind11 CONFIG REQUIRED)
         # Print out the pybind11 version that was found
         message(STATUS "Found pybind11 v${pybind11_VERSION}")
