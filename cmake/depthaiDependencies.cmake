@@ -20,7 +20,7 @@ if(NOT CONFIG_MODE OR (CONFIG_MODE AND NOT DEPTHAI_SHARED_LIBS))
             endif()
             set(Python_FIND_UNVERSIONED_NAMES FIRST)
         endif()
-        find_package(Python COMPONENTS Interpreter Development REQUIRED)
+        find_package(Python COMPONENTS Interpreter Development.Module REQUIRED)
         find_package(pybind11 CONFIG REQUIRED)
         # Print out the pybind11 version that was found
         message(STATUS "Found pybind11 v${pybind11_VERSION}")
