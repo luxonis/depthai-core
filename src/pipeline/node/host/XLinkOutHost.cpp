@@ -32,6 +32,10 @@ void XLinkOutHost::disconnect() {
     isWaitingForReconnect.notify_all();
 }
 
+void XLinkOutHost::allowStreamResize(bool allow) {
+    allowResize = allow;
+}
+
 void XLinkOutHost::run() {
     // // Create a stream for the connection
     // TODO(Morato) - automatically increase the buffer size lazily
@@ -40,6 +44,14 @@ void XLinkOutHost::run() {
         reconnect = false;
         auto currentMaxSize = device::XLINK_USB_BUFFER_MAX_SIZE + device::XLINK_MESSAGE_METADATA_MAX_SIZE;
         XLinkStream stream(conn, streamName, currentMaxSize);
+        auto increaseBufferSize = [&stream, &currentMaxSize, this](const std::size_t& maxSize) {
+            if(!this->allowResize) {
+                logger::error("Data size exceeds the maximum buffer size - please increase the buffer size");
+                throw std::runtime_error("Data size exceeds the maximum buffer size");
+            }
+            stream = XLinkStream(this->conn, this->streamName, maxSize);
+            currentMaxSize = maxSize;
+        };
         while(isRunning()) {
             try {
                 auto outgoing = in.get();
@@ -50,8 +62,7 @@ void XLinkOutHost::run() {
                 auto t1 = steady_clock::now();
                 auto outgoingDataSize = outgoing->data->getSize();
                 if(outgoingDataSize > currentMaxSize - metadata.size()) {
-                    logger::error("Data size {} exceeds the maximum buffer size {} - please increase the buffer size", outgoingDataSize, currentMaxSize);
-                    throw std::runtime_error("Data size exceeds the maximum buffer size");
+                    increaseBufferSize(outgoingDataSize + metadata.size());
                 }
                 if(outgoing->data->getSize() > 0) {
                     auto sharedMemory = std::dynamic_pointer_cast<SharedMemory>(outgoing->data);
@@ -79,6 +90,10 @@ void XLinkOutHost::run() {
                     for(auto& msg : msgGroupPtr->group) {
                         logger::trace("Sending part of a group message: {}", msg.first);
                         auto metadata = StreamMessageParser::serializeMetadata(msg.second);
+                        outgoingDataSize = msg.second->data->getSize();
+                        if(outgoingDataSize > currentMaxSize - metadata.size()) {
+                            increaseBufferSize(outgoingDataSize + metadata.size());
+                        }
                         if(msg.second->data->getSize() > 0) {
                             stream.write(msg.second->data->getData(), metadata);
                         } else {

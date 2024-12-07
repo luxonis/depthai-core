@@ -1,7 +1,9 @@
 #include "RemoteConnectionBindings.hpp"
 
+#include <pybind11/attr.h>
 #include <pybind11/cast.h>
 #include <pybind11/functional.h>
+#include <pybind11/gil.h>
 
 #include "depthai/remote_connection/RemoteConnection.hpp"
 #include "depthai/pipeline/InputQueue.hpp"
@@ -48,6 +50,7 @@ void RemoteConnectionBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("waitKey",
              &RemoteConnection::waitKey,
              py::arg("delay"),
+             py::call_guard<py::gil_scoped_release>(),
              DOC(dai, RemoteConnection, waitKey));
 #else
      // Define a placeholder class for RemoteConnection

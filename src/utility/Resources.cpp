@@ -463,8 +463,12 @@ Resources::Resources() {
 
 Resources::~Resources() {
     // join the lazy threads
+#ifdef DEPTHAI_ENABLE_DEVICE_FW
     if(lazyThreadDevice.joinable()) lazyThreadDevice.join();
+#endif
+#ifdef DEPTHAI_ENABLE_DEVICE_BOOTLOADER_FW
     if(lazyThreadBootloader.joinable()) lazyThreadBootloader.join();
+#endif
 }
 
 // Get device firmware
