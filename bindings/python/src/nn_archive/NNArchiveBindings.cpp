@@ -162,9 +162,10 @@ void NNArchiveBindings::bind(pybind11::module& m, void* pCallstack) {
     v1dataType.value("FLOAT64", v1::DataType::FLOAT64);
     v1dataType.value("INT4", v1::DataType::INT4);
     v1dataType.value("INT8", v1::DataType::INT8);
-    // v1dataType.value("INT16", v1::DataType::INT16); // Removed?
+    v1dataType.value("INT16", v1::DataType::INT16);
     v1dataType.value("INT32", v1::DataType::INT32);
     v1dataType.value("INT64", v1::DataType::INT64);
+    v1dataType.value("UINT4", v1::DataType::UINT4);
     v1dataType.value("UINT8", v1::DataType::UINT8);
     v1dataType.value("UINT16", v1::DataType::UINT16);
     v1dataType.value("UINT32", v1::DataType::UINT32);
@@ -212,6 +213,8 @@ void NNArchiveBindings::bind(pybind11::module& m, void* pCallstack) {
     v1output.def(py::init<>());
     v1output.def_readwrite("dtype", &v1::Output::dtype, DOC(dai, nn_archive, v1, Output, dtype));
     v1output.def_readwrite("name", &v1::Output::name, DOC(dai, nn_archive, v1, Output, name));
+    v1output.def_readwrite("layout", &v1::Output::layout, DOC(dai, nn_archive, v1, Output, layout));
+    v1output.def_readwrite("shape", &v1::Output::shape, DOC(dai, nn_archive, v1, Output, shape));
 
     v1preprocessingBlock.def(py::init<>());
     v1preprocessingBlock.def_readwrite(
