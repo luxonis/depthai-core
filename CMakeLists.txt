@@ -1,4 +1,93 @@
-cmake_minimum_required(VERSION 3.4) # For Hunter
+cmake_minimum_required(VERSION 3.16)
+# Early options
+option(DEPTHAI_ENABLE_LIBUSB "Enable usage of libusb and interaction with USB devices" ON)
+# Build AprilTag node code (note, that even if set to OFF, an AprilTagNode can be used with setRunOnHost(false))
+option(DEPTHAI_ENABLE_APRIL_TAG "Enable AprilTag node" ON)
+option(DEPTHAI_RTABMAP_SUPPORT "Enable optional RTABMap support" OFF)
+option(DEPTHAI_BASALT_SUPPORT "Enable optional Basalt support" OFF)
+option(DEPTHAI_ENABLE_PROTOBUF "Enable Protobuf support" ON)
+option(DEPTHAI_BUILD_PYTHON "Build python bindings" OFF)
+option(DEPTHAI_BUILD_TESTS "Build tests" OFF)
+option(DEPTHAI_OPENCV_SUPPORT "Enable optional OpenCV support" ON)
+option(DEPTHAI_PCL_SUPPORT "Enable optional PCL support" OFF)
+option(DEPTHAI_BOOTSTRAP_VCPKG "Automatically bootstrap VCPKG" ON)
+option(DEPTHAI_MERGED_TARGET "Enable merged target build" ON)
+option(DEPTHAI_NEW_FIND_PYTHON "Use new FindPython module" ON)
+
+if(NOT DEPTHAI_OPENCV_SUPPORT)
+    set(DEPTHAI_MERGED_TARGET OFF CACHE BOOL "Enable merged target build" FORCE)
+endif()
+option(DEPTHAI_ENABLE_EVENTS_MANAGER "Enable Events Manager" ON)
+
+set(DEPTHAI_HAS_APRIL_TAG ${DEPTHAI_ENABLE_APRIL_TAG})
+if(WIN32)
+    message(STATUS "AprilTag node is not supported on Windows")
+    set(DEPTHAI_HAS_APRIL_TAG OFF)
+
+    # Statically compile vcruntime library
+    add_compile_options(/MT)
+endif()
+
+find_program(CCACHE_PROGRAM ccache)
+
+if(CCACHE_PROGRAM)
+    message(STATUS "Using ccache: ${CCACHE_PROGRAM}")
+
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CCACHE_PROGRAM}")
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK "${CCACHE_PROGRAM}")
+endif()
+
+if(DEPTHAI_HAS_APRIL_TAG)
+list(APPEND VCPKG_MANIFEST_FEATURES "apriltag")
+endif()
+if(DEPTHAI_RTABMAP_SUPPORT)
+list(APPEND VCPKG_MANIFEST_FEATURES "rtabmap")
+endif()
+if(DEPTHAI_BASALT_SUPPORT)
+list(APPEND VCPKG_MANIFEST_FEATURES "basalt")
+endif()
+if(DEPTHAI_OPENCV_SUPPORT)
+list(APPEND VCPKG_MANIFEST_FEATURES "opencv-support")
+endif()
+if(DEPTHAI_PCL_SUPPORT)
+list(APPEND VCPKG_MANIFEST_FEATURES "pcl-support")
+endif()
+
+# Enable backward stack printing on crash
+if(ANDROID OR EMSCRIPTEN)
+    # Backward not supported currently on Android
+    set(DEPTHAI_ENABLE_BACKWARD OFF CACHE BOOL "" FORCE)
+else()
+    option(DEPTHAI_ENABLE_BACKWARD "Enable stacktrace printing on crash using Backward" ON)
+    # Additional function information for 'backward' stacktrace
+    if(DEPTHAI_ENABLE_BACKWARD)
+        set(CMAKE_ENABLE_EXPORTS ON)
+        list(APPEND VCPKG_MANIFEST_FEATURES "backward")
+    endif()
+endif()
+
+if(DEPTHAI_ENABLE_PROTOBUF)
+    list(APPEND VCPKG_MANIFEST_FEATURES "protobuf-support")
+endif()
+
+
+# Check if on 32 bit linux - default without CURL support
+if(CMAKE_SIZEOF_VOID_P EQUAL 4 AND UNIX)
+    set(DEPTHAI_DEFAULT_CURL_SUPPORT OFF)
+else()
+    set(DEPTHAI_DEFAULT_CURL_SUPPORT ON)
+endif()
+
+option(DEPTHAI_ENABLE_CURL "Enable CURL support" ${DEPTHAI_DEFAULT_CURL_SUPPORT})
+if(DEPTHAI_ENABLE_CURL)
+    list(APPEND VCPKG_MANIFEST_FEATURES "curl-support")
+endif()
+
+if(DEPTHAI_ENABLE_LIBUSB)
+	list(APPEND VCPKG_MANIFEST_FEATURES "xlink-usb")
+else()
+	list(APPEND VCPKG_MANIFEST_FEATURES "xlink")
+endif()
 
 # CMP0074 dictates that find_package searches environment variable "[packageName]_ROOT" along with regular variable [packageName]_ROOT
 if(POLICY CMP0074)
@@ -9,7 +98,6 @@ if(POLICY CMP0028)
   cmake_policy(SET CMP0028 NEW)
 endif()
 
-option(DEPTHAI_BOOTSTRAP_VCPKG "Automatically bootstrap VCPKG" ON)
 if(DEPTHAI_BOOTSTRAP_VCPKG)
     message(STATUS "Including vcpkg.cmake")
     include(cmake/vcpkg.cmake)
@@ -17,49 +105,27 @@ else()
     message(STATUS "DEPTHAI_BOOTSTRAP_VCPKG is OFF")
 endif()
 
-# MSVC variable isn't available before 'project' call
-# Generalize to Win32 platform for now
-if(NOT WIN32)
-    set(HUNTER_CONFIGURATION_TYPES "Release" CACHE STRING "Hunter dependencies list of build configurations")
-endif()
-
-# Early options
-option(DEPTHAI_ENABLE_LIBUSB "Enable usage of libusb and interaction with USB devices" ON)
-
-# Set to use native tls for windows before including Hunter (used for Curl)
-if(WIN32)
-    set(DEPTHAI_CURL_USE_SCHANNEL ON)
-    set(DEPTHAI_CURL_USE_OPENSSL OFF)
-    add_compile_definitions(NOMINMAX)
-else()
-    set(DEPTHAI_CURL_USE_SCHANNEL OFF)
-    set(DEPTHAI_CURL_USE_OPENSSL ON)
-endif()
-
-# Check if on 32 bit linux - default without CURL support
-if(CMAKE_SIZEOF_VOID_P EQUAL 4 AND UNIX)
-    set(DEPTHAI_DEFAULT_CURL_SUPPORT OFF)
-else()
-    set(DEPTHAI_DEFAULT_CURL_SUPPORT ON)
-endif()
-
-option(DEPTHAI_ENABLE_CURL "Enable CURL support" ${DEPTHAI_DEFAULT_CURL_SUPPORT})
-
-if(DEPTHAI_ENABLE_CURL)
-    list(APPEND VCPKG_MANIFEST_FEATURES "curl-support")
-endif()
-
-
-option(DEPTHAI_ENABLE_PROTOBUF "Enable Protobuf support" ON)
-if(DEPTHAI_ENABLE_PROTOBUF)
-    list(APPEND VCPKG_MANIFEST_FEATURES "protobuf-support")
-endif()
 
 if(DEPTHAI_ENABLE_PROTOBUF)
     option(DEPTHAI_ENABLE_REMOTE_CONNECTION "Enable Remote Connection support" ON)
 else()
     option(DEPTHAI_ENABLE_REMOTE_CONNECTION "Enable Remote Connection support" OFF)
     message(STATUS "Remote Connection support disabled because Protobuf support is disabled.")
+endif()
+
+if(DEPTHAI_ENABLE_EVENTS_MANAGER)
+    if(NOT DEPTHAI_ENABLE_PROTOBUF OR NOT DEPTHAI_CURL_SUPPORT)
+        message(STATUS "Events Manager disabled because Protobuf & curl support is disabled.")
+        set(DEPTHAI_ENABLE_EVENTS_MANAGER OFF)
+    endif()
+endif()
+
+if(DEPTHAI_BUILD_PYTHON)
+    list(APPEND VCPKG_MANIFEST_FEATURES "python-bindings")
+endif()
+
+if(DEPTHAI_BUILD_TESTS)
+    list(APPEND VCPKG_MANIFEST_FEATURES "tests")
 endif()
 
 if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
@@ -90,21 +156,6 @@ else()
     message(STATUS "Using toolchain file: ${CMAKE_TOOLCHAIN_FILE}")
 endif()
 
-# Build AprilTag node code (note, that even if set to OFF, an AprilTagNode can be used with setRunOnHost(false))
-option(DEPTHAI_ENABLE_APRIL_TAG "Enable AprilTag node" ON)
-set(DEPTHAI_HAS_APRIL_TAG ${DEPTHAI_ENABLE_APRIL_TAG})
-if(WIN32)
-    message(STATUS "AprilTag node is not supported on Windows")
-    set(DEPTHAI_HAS_APRIL_TAG OFF)
-endif()
-
-include("cmake/HunterGate.cmake")
-HunterGate(
-    URL "https://github.com/cpp-pm/hunter/archive/9d9242b60d5236269f894efd3ddd60a9ca83dd7f.tar.gz"
-    SHA1 "16cc954aa723bccd16ea45fc91a858d0c5246376"
-    LOCAL # Local config for dependencies
-)
-
 # Move binary dir if windows, to shorten the path
 if(WIN32)
     set(HUNTER_BINARY_DIR "${HUNTER_GATE_ROOT}/_bin" CACHE STRING "Hunter binary directory")
@@ -113,7 +164,7 @@ endif()
 # Create depthai project
 project(depthai VERSION "3.0.0" LANGUAGES CXX C)
 set(DEPTHAI_PRE_RELEASE_TYPE "alpha") # Valid options are "alpha", "beta", "rc", ""
-set(DEPTHAI_PRE_RELEASE_VERSION "6")
+set(DEPTHAI_PRE_RELEASE_VERSION "8")
 
 # Set DEPTHAI_VERSION universally, not conditionally
 set(DEPTHAI_VERSION ${PROJECT_VERSION}-${DEPTHAI_PRE_RELEASE_TYPE}.${DEPTHAI_PRE_RELEASE_VERSION})
@@ -160,17 +211,6 @@ option(DEPTHAI_INSTALL   "Enable install target for depthai-core targets" ON)
 set(DEPTHAI_XLINK_LOCAL "" CACHE STRING "Path to local XLink source to use instead of Hunter")
 set(DEPTHAI_BOOTLOADER_SHARED_LOCAL "" CACHE STRING "Path to local depthai-bootloader-shared source to use instead of submodule")
 
-# Enable backward stack printing on crash
-if(ANDROID OR EMSCRIPTEN)
-    # Backward not supported currently on Android
-    set(DEPTHAI_ENABLE_BACKWARD OFF CACHE BOOL "" FORCE)
-else()
-    option(DEPTHAI_ENABLE_BACKWARD "Enable stacktrace printing on crash using Backward" ON)
-    # Additional function information for 'backward' stacktrace
-    if(DEPTHAI_ENABLE_BACKWARD)
-        set(CMAKE_ENABLE_EXPORTS ON)
-    endif()
-endif()
 
 
 # Force Colored output when using Ninja
@@ -229,12 +269,6 @@ endif()
 
 # Specify optional dependencies
 option(DEPTHAI_XTENSOR_SUPPORT "Enable optional xtensor support" ON)
-option(DEPTHAI_OPENCV_SUPPORT "Enable optional OpenCV support" ON)
-option(DEPTHAI_PCL_SUPPORT "Enable optional PCL support" OFF)
-option(DEPTHAI_RTABMAP_SUPPORT "Enable optional RTABMap support" OFF)
-option(DEPTHAI_BASALT_SUPPORT "Enable optional Basalt support" OFF)
-
-option(DEPTHAI_MERGED_TARGET "Enable merged target build" ON)
 
 # Include project dependencies
 set(DEPTHAI_DEPENDENCY_INCLUDE "" CACHE FILEPATH "Optional cmake file to append to dependency processing, e.g. additional find_package()")
@@ -265,8 +299,7 @@ set(THIRDPARTY_OPENCV_LIBRARIES "" CACHE STRING "Optional libraries to link Open
 set(TARGET_OPENCV_NAME ${PROJECT_NAME}-opencv)
 set(TARGET_OPENCV_ALIAS opencv)
 if(DEPTHAI_OPENCV_SUPPORT)
-    # Check if required libraries are available
-    set(REQUIRED_OPENCV_LIBRARIES "opencv_core" "opencv_imgproc" "opencv_videoio")
+    set(REQUIRED_OPENCV_LIBRARIES "opencv_core" "opencv_imgproc" "opencv_videoio" "opencv_highgui")
     set(OPENCV_SUPPORT_AVAILABLE ${OpenCV_FOUND})
     foreach(lib ${REQUIRED_OPENCV_LIBRARIES})
         if(NOT (lib IN_LIST OpenCV_LIBS))
@@ -419,6 +452,12 @@ set(TARGET_CORE_SOURCES
     src/modelzoo/Zoo.cpp
 )
 
+if(DEPTHAI_ENABLE_EVENTS_MANAGER)
+    list(APPEND TARGET_CORE_SOURCES
+        src/utility/EventsManager.cpp
+    )
+endif()
+
 if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
     list(APPEND TARGET_CORE_SOURCES
         src/remote_connection/RemoteConnection.cpp
@@ -489,8 +528,8 @@ if(${CMAKE_VERSION} VERSION_LESS "3.8.0")
 else()
     target_compile_features(${TARGET_CORE_NAME} INTERFACE cxx_std_17)
 endif()
-# Minimal supported macOS SDK version for C++17 support with std::filesystem
-set(CMAKE_OSX_DEPLOYMENT_TARGET 10.15)
+# Minimal supported macOS SDK version for both arm64 and x86_64
+set(CMAKE_OSX_DEPLOYMENT_TARGET 11.0)
 
 # Link merged target libraries and add compile definitions
 if(DEPTHAI_HAVE_OPENCV_SUPPORT AND DEPTHAI_MERGED_TARGET)
@@ -509,9 +548,10 @@ if(DEPTHAI_HAVE_PCL_SUPPORT AND DEPTHAI_MERGED_TARGET)
     # Specify that we are building target pcl
     target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_TARGET_PCL)
     target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_HAVE_PCL_SUPPORT)
-
-    target_include_directories(${TARGET_CORE_NAME} PUBLIC ${PCL_INCLUDE_DIRS})
-    target_link_directories(${TARGET_CORE_NAME} PUBLIC ${PCL_LIBRARY_DIRS})
+    target_link_directories(${TARGET_CORE_NAME} PUBLIC 
+        $<BUILD_INTERFACE:${PCL_LIBRARY_DIRS}>
+        $<INSTALL_INTERFACE:include>
+    )
     target_compile_definitions(${TARGET_CORE_NAME} PUBLIC ${PCL_DEFINITIONS})
 endif()
 if(DEPTHAI_MERGED_TARGET)
@@ -519,9 +559,7 @@ if(DEPTHAI_MERGED_TARGET)
 endif()
 
 # First specify options
-option(DEPTHAI_BUILD_TESTS "Build tests" OFF)
 option(DEPTHAI_BUILD_EXAMPLES "Build examples - Requires OpenCV library to be installed" OFF)
-option(DEPTHAI_BUILD_PYTHON "Build python bindings" OFF)
 option(DEPTHAI_BUILD_DOCS "Build documentation - requires doxygen to be installed" OFF)
 
 # Specify support for FW
@@ -695,6 +733,7 @@ target_include_directories(${TARGET_CORE_NAME}
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/src>"
         "$<BUILD_INTERFACE:${DEPTHAI_SHARED_INCLUDE}>"
         "$<BUILD_INTERFACE:${DEPTHAI_BOOTLOADER_SHARED_INCLUDE}>"
+        "$<BUILD_INTERFACE:${FP16_INCLUDE_DIRS}>"
 )
 
 target_include_directories(${TARGET_CORE_NAME} SYSTEM
@@ -716,17 +755,17 @@ target_link_libraries(${TARGET_CORE_NAME}
         nlohmann_json::nlohmann_json
         libnop
         spdlog::spdlog
-        yaml-cpp
+        yaml-cpp::yaml-cpp
     INTERFACE
         XLinkPublic
     PRIVATE
         XLink
         Threads::Threads
-        BZip2::bz2
-        FP16::fp16
-        archive_static
-        ZLIB::zlib
-        LZ4::lz4
+        BZip2::BZip2
+        LibArchive::LibArchive
+        liblzma::liblzma
+        ZLIB::ZLIB
+        lz4::lz4
         httplib::httplib
         mp4v2::mp4v2
         semver::semver
@@ -830,7 +869,7 @@ macro(add_runtime_dependencies depending_target dependency)
                 set(dlls ${depthai_dll_libraries} $<$<CONFIG:${cfg}>:${dll}>)
             endforeach()
         endif()
-        file(GLOB depthai_dll_libraries "${HUNTER_INSTALL_PREFIX}/bin/*.dll")
+        set(depthai_dll_libraries "")
         # Create a list of required dll files
         set(required_dll_files ${dlls} ${depthai_dll_libraries})
         # Copy the required dlls
@@ -980,14 +1019,13 @@ endif()
 # Basalt Support
 ########################
 
-set(THIRDPARTY_BASALT_LIBRARIES "TBB::tbb;Eigen3::Eigen;basalt_sdk::basalt_sdk" CACHE STRING "Optional libraries to link Basalt support, e.g. TBB::tbb")
+set(THIRDPARTY_BASALT_LIBRARIES "basalt_sdk::basalt_sdk" CACHE STRING "Optional libraries to link Basalt support, e.g. TBB::tbb")
 set(TARGET_BASALT_NAME ${PROJECT_NAME}-basalt)
 set(TARGET_BASALT_ALIAS basalt)
 
 if(DEPTHAI_BASALT_SUPPORT)
     # Check if required libraries are available
     find_package(basalt_sdk CONFIG REQUIRED)
-    find_package(TBB CONFIG REQUIRED)
     set(BASALT_SUPPORT_AVAILABLE ${basalt_sdk_FOUND})
 
     if(BASALT_SUPPORT_AVAILABLE)
@@ -1081,6 +1119,44 @@ if(DEPTHAI_SANITIZE)
         endif()
     endif()
 endif()
+function(private_data)
+            set(one URL SHA1 CREDENTIALS LOCATION FILE)
+            set(multiple HTTPHEADER)
+
+            cmake_parse_arguments(x "" "${one}" "${multiple}" "${ARGN}")
+
+            if(x_HTTPHEADER)
+                message(FATAL_ERROR "HTTPHEADER argument of private_data not supported if HUNTER_ENABLED is OFF")
+            endif()
+            if(x_CREDENTIALS)
+                message(FATAL_ERROR "CREDENTIALS argument of private_data not supported if HUNTER_ENABLED is OFF")
+            endif()
+
+            if(NOT x_URL)
+                message(FATAL_ERROR "URL not provided to private_data")
+            endif()
+            if(NOT x_SHA1)
+                message(FATAL_ERROR "SHA1 not provided to private_data")
+            endif()
+            if(NOT x_FILE)
+                message(FATAL_ERROR "FILE not provided to private_data")
+            endif()
+            if(NOT x_LOCATION)
+                message(FATAL_ERROR "LOCATION not provided to private_data")
+            endif()
+
+            set(x_DOWNLOAD_LOCATION "${CMAKE_CURRENT_BINARY_DIR}/_private_data/${x_FILE}")
+
+            file(DOWNLOAD
+                ${x_URL}
+                ${x_DOWNLOAD_LOCATION}
+                EXPECTED_HASH SHA1=${x_SHA1}
+                TLS_VERIFY ON
+            )
+
+            # Set the output variable
+            set(${x_LOCATION} "${x_DOWNLOAD_LOCATION}" PARENT_SCOPE)
+endfunction()
 
 ########################
 # Testing infrastructure
@@ -1148,7 +1224,6 @@ configure_file("cmake/${PROJECT_NAME}Dependencies.cmake" ${PROJECT_NAME}Dependen
 write_basic_package_version_file(${PROJECT_NAME}ConfigVersion.cmake VERSION ${PROJECT_VERSION} COMPATIBILITY AnyNewerVersion)
 
 # Configure config file (one for exporting build directory, one for installation)
-file(RELATIVE_PATH DEPTHAI_DEPENDENCIES_INSTALLATION_PATH_REL "${CMAKE_CURRENT_BINARY_DIR}" "${HUNTER_INSTALL_PREFIX}")
 configure_file(cmake/${PROJECT_NAME}Config.cmake.in ${PROJECT_NAME}Config.cmake @ONLY)
 
 # Config for installation
@@ -1183,8 +1258,6 @@ if(DEPTHAI_INSTALL)
     install(DIRECTORY include/ DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
     # Install depthai-bootloader-shared public headers
     install(DIRECTORY "${DEPTHAI_BOOTLOADER_SHARED_PUBLIC_INCLUDE}/" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
-    # Install Hunter dependencies
-    install(DIRECTORY "${HUNTER_INSTALL_PREFIX}/" DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}/dependencies")
     # Install depthai-core dependencies
     install(DIRECTORY "${CMAKE_CURRENT_LIST_DIR}/3rdparty" DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake")
     # Install resources if not RC'd

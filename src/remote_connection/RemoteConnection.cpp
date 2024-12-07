@@ -9,12 +9,13 @@ RemoteConnection::RemoteConnection(const std::string& address, uint16_t webSocke
 
 RemoteConnection::~RemoteConnection() = default;
 
-void RemoteConnection::addTopic(const std::string& topicName, Node::Output& output, const std::string& group) {
-    impl->addTopic(topicName, output, group);
+void RemoteConnection::addTopic(const std::string& topicName, Node::Output& output, const std::string& group, bool useVisualizationIfAvailable) {
+    impl->addTopic(topicName, output, group, useVisualizationIfAvailable);
 }
 
-std::shared_ptr<MessageQueue> RemoteConnection::addTopic(const std::string& topicName, const std::string& group, unsigned int maxSize, bool blocking) {
-    return impl->addTopic(topicName, group, maxSize, blocking);
+std::shared_ptr<MessageQueue> RemoteConnection::addTopic(
+    const std::string& topicName, const std::string& group, unsigned int maxSize, bool blocking, bool useVisualizationIfAvailable) {
+    return impl->addTopic(topicName, group, maxSize, blocking, useVisualizationIfAvailable);
 }
 
 void RemoteConnection::registerPipeline(const Pipeline& pipeline) {
@@ -23,6 +24,10 @@ void RemoteConnection::registerPipeline(const Pipeline& pipeline) {
 
 int RemoteConnection::waitKey(int delayMs) {
     return impl->waitKey(delayMs);
+}
+
+void RemoteConnection::registerService(const std::string& serviceName, std::function<nlohmann::json(const nlohmann::json&)> callback) {
+    impl->registerService(serviceName, std::move(callback));
 }
 
 }  // namespace dai
