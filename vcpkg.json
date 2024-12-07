@@ -44,7 +44,7 @@
                     "features": [
                         "gtk"
                     ],
-                    "platform": "linux"
+                    "platform": "linux & !arm"
                 },
                 {
                     "name": "ffmpeg",
