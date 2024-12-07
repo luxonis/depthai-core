@@ -152,8 +152,9 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack){
         ;
 
     point2f
-        .def(py::init<>())
-        .def(py::init<float, float>())
+        .def(py::init<>(), DOC(dai, Point2f, Point2f))
+        .def(py::init<float, float>(), py::arg("x"), py::arg("y"), DOC(dai, Point2f, Point2f, 2))
+        .def(py::init<float, float, bool>(), py::arg("x"), py::arg("y"), py::arg("normalized"), DOC(dai, Point2f, Point2f, 3))
         .def_readwrite("x", &Point2f::x)
         .def_readwrite("y", &Point2f::y)
         .def("isNormalized", &Point2f::isNormalized)

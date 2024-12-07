@@ -62,7 +62,7 @@ TEST_CASE("Multi-Input NeuralNetwork API") {
     } else {
         FAIL("Unknown platform");
     }
-    auto description = dai::NNModelDescription{"DepthaiTestModels/simple-concatenate-model", platformStr};
+    auto description = dai::NNModelDescription{"depthai-test-models/simple-concatenate-model", platformStr};
     auto nn = p.create<dai::node::NeuralNetwork>();
     nn->setModelPath(dai::getModelFromZoo(description));
 
@@ -125,7 +125,7 @@ TEST_CASE("Combined Input NeuralNetwork API") {
     inputNNData->addTensor("image2", xt::xarray<uint8_t>({1, 256, 256, 3}, 100), nnTensorType);
 
     // Set up the neural network node
-    auto description = dai::NNModelDescription{"DepthaiTestModels/simple-concatenate-model", device->getPlatformAsString()};
+    auto description = dai::NNModelDescription{"depthai-test-models/simple-concatenate-model", device->getPlatformAsString()};
     auto nn = p.create<dai::node::NeuralNetwork>();
     nn->setModelPath(dai::getModelFromZoo(description));
 
