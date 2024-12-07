@@ -210,6 +210,7 @@ namespace v1 {
         else if (j == "float16") x = DataType::FLOAT16;
         else if (j == "float32") x = DataType::FLOAT32;
         else if (j == "float64") x = DataType::FLOAT64;
+        else if (j == "int16") x = DataType::INT16;
         else if (j == "int32") x = DataType::INT32;
         else if (j == "int4") x = DataType::INT4;
         else if (j == "int64") x = DataType::INT64;
@@ -217,6 +218,7 @@ namespace v1 {
         else if (j == "string") x = DataType::STRING;
         else if (j == "uint16") x = DataType::UINT16;
         else if (j == "uint32") x = DataType::UINT32;
+        else if (j == "uint4") x = DataType::UINT4;
         else if (j == "uint64") x = DataType::UINT64;
         else if (j == "uint8") x = DataType::UINT8;
         else { throw std::runtime_error("Input JSON does not conform to schema!"); }
@@ -228,6 +230,7 @@ namespace v1 {
             case DataType::FLOAT16: j = "float16"; break;
             case DataType::FLOAT32: j = "float32"; break;
             case DataType::FLOAT64: j = "float64"; break;
+            case DataType::INT16: j = "int16"; break;
             case DataType::INT32: j = "int32"; break;
             case DataType::INT4: j = "int4"; break;
             case DataType::INT64: j = "int64"; break;
@@ -235,6 +238,7 @@ namespace v1 {
             case DataType::STRING: j = "string"; break;
             case DataType::UINT16: j = "uint16"; break;
             case DataType::UINT32: j = "uint32"; break;
+            case DataType::UINT4: j = "uint4"; break;
             case DataType::UINT64: j = "uint64"; break;
             case DataType::UINT8: j = "uint8"; break;
             default: throw std::runtime_error("Unexpected value in enumeration \"[object Object]\": " + std::to_string(static_cast<int>(x)));
