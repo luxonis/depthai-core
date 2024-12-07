@@ -10,7 +10,11 @@
     "g2o",
     {
       "name": "opencv",
-      "default-features": false
+      "default-features": false,
+      "features": [
+        "calib3d",
+        "highgui"
+      ]
     },
     {
       "name": "pcl",
