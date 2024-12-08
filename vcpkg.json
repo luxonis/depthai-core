@@ -1,44 +1,172 @@
 {
-  "dependencies": [
-    "zlib"
-  ],
-  "features": {
-    "curl-support": {
-      "description": "Enable CURL support",
-      "dependencies": [
-        "cpr"
-      ]
+    "name": "depthai",
+    "dependencies": [
+        "cpp-httplib",
+        "libpng",
+        "tiff",
+        "yaml-cpp",
+        "nlohmann-json",
+        "spdlog",
+        "zlib",
+        "bzip2",
+        "lz4",
+        "liblzma",
+        "fp16",
+        "mp4v2",
+        "libnop",
+        "neargye-semver",
+        "magic-enum",
+        {
+            "name": "libarchive",
+            "default-features": false
+        }
+    ],
+    "features": {
+        "opencv-support": {
+            "description": "Enable OpenCV support",
+            "dependencies": [
+                {
+                    "name": "opencv4",
+                    "default-features": false,
+                    "features": [
+                        "calib3d",
+                        "highgui",
+                        "jpeg",
+                        "png",
+                        "quirc",
+                        "tiff",
+                        "webp",
+                        "ffmpeg"
+                    ]
+                },
+                {
+                    "name": "opencv4",
+                    "default-features": false,
+                    "features": [
+                        "gtk"
+                    ],
+                    "platform": "linux & !arm"
+                },
+                {
+                    "name": "ffmpeg",
+                    "features": [
+                        "openh264"
+                    ]
+                }
+            ]
+        },
+        "pcl-support": {
+            "description": "Enable PCL support",
+            "dependencies": [
+                {
+                    "name": "pcl",
+                    "default-features": false
+                }
+            ]
+        },
+        "curl-support": {
+            "description": "Enable CURL support",
+            "dependencies": [
+                "cpr"
+            ]
+        },
+        "protobuf-support": {
+            "description": "Enable Protobuf support",
+            "dependencies": [
+                "protobuf"
+            ]
+        },
+        "python-bindings": {
+            "description": "Enable Python bindings",
+            "dependencies": [
+                "pybind11"
+            ]
+        },
+        "remote-connection-support": {
+            "description": "Enable remote connection support",
+            "dependencies": [
+                "websocketpp"
+            ]
+        },
+        "rtabmap": {
+            "description": "Enable RTAB-Map support",
+            "dependencies": [
+                {
+                    "name": "pcl",
+                    "default-features": false
+                },
+                {
+                    "name": "opencv4",
+                    "default-features": false
+                },
+                {
+                    "name": "opencv",
+                    "default-features": false
+                },
+                {
+                    "name": "rtabmap",
+                    "default-features": false
+                }
+            ]
+        },
+        "apriltag": {
+            "description": "Enable AprilTag support",
+            "dependencies": [
+                {
+                    "name": "apriltag"
+                }
+            ]
+        },
+        "backward": {
+            "description": "Enable backward-cpp support",
+            "dependencies": [
+                {
+                    "name": "backward-cpp"
+                }
+            ]
+        },
+        "basalt": {
+            "description": "Enable Basalt support",
+            "dependencies": [
+                {
+                    "name": "opencv4",
+                    "default-features": false
+                },
+                {
+                    "name": "basalt"
+                }
+            ]
+        },
+        "xlink": {
+            "description": "Enable XLink support",
+            "dependencies": [
+                {
+                    "name": "xlink"
+                }
+            ]
+        },
+        "xlink-usb": {
+            "description": "Enable XLink support",
+            "dependencies": [
+                {
+                    "name": "xlink",
+                    "features": [
+                        "libusb"
+                    ]
+                },
+                {
+                    "name": "libusb"
+                }
+            ]
+        },
+        "tests": {
+            "description": "Enable tests",
+            "dependencies": [
+                {
+                    "name": "catch2"
+                }
+            ]
+        }
     },
-    "protobuf-support": {
-      "description": "Enable Protobuf support",
-      "dependencies": [
-        "protobuf"
-      ]
-    },
-    "remote-connection-support": {
-      "description": "Enable remote connection support",
-      "dependencies": [
-        "websocketpp"
-      ]
-    }
-  },
-  "overrides": [
-    {
-      "name": "websocketpp",
-      "version": "0.8.2"
-    },
-    {
-      "name": "protobuf",
-      "version": "3.21.12"
-    },
-    {
-      "name": "cpr",
-      "version": "1.11.0"
-    },
-    {
-      "name": "zlib",
-      "version": "1.3.1"
-    }
-  ],
-  "builtin-baseline": "f5ec6f30ff70f04f841436a0f36600bdbabfcfbf"
+    "builtin-baseline": "b2cb0da531c2f1f740045bfe7c4dac59f0b2b69c"
 }

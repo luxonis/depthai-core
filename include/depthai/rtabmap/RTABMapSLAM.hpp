@@ -49,49 +49,49 @@ class RTABMapSLAM : public dai::NodeCRTP<dai::node::ThreadedHostNode, RTABMapSLA
     /**
      * Input tracked features on which SLAM is performed (optional).
      */
-    Input features{*this, {.name = featuresInputName, .types = {{DatatypeEnum::TrackedFeatures, true}}}};
+    Input features{*this, {featuresInputName, DEFAULT_GROUP, DEFAULT_BLOCKING, 15, {{{DatatypeEnum::TrackedFeatures, true}}}}};
     /**
      * Input odometry pose.
      */
-    Input odom{*this, {.name = "odom", .types = {{dai::DatatypeEnum::TransformData, true}}}};
+    Input odom{*this, {"odom", DEFAULT_GROUP, DEFAULT_BLOCKING, 15, {{{dai::DatatypeEnum::TransformData, true}}}}};
 
     /**
      * Output transform.
      */
-    Output transform{*this, {.name = "transform", .types = {{dai::DatatypeEnum::TransformData, true}}}};
+    Output transform{*this, {"transform", DEFAULT_GROUP, {{{dai::DatatypeEnum::TransformData, true}}}}};
     /**
      * Output odometry correction (map to odom).
      */
-    Output odomCorrection{*this, {.name = "odomCorrection", .types = {{dai::DatatypeEnum::TransformData, true}}}};
+    Output odomCorrection{*this, {"odomCorrection", DEFAULT_GROUP, {{{dai::DatatypeEnum::TransformData, true}}}}};
     /**
      * Output obstacle point cloud.
      */
-    Output obstaclePCL{*this, {.name = "obstaclePCL", .types = {{dai::DatatypeEnum::PointCloudData, true}}}};
+    Output obstaclePCL{*this, {"obstaclePCL", DEFAULT_GROUP, {{{dai::DatatypeEnum::PointCloudData, true}}}}};
     /**
      * Output ground point cloud.
      */
-    Output groundPCL{*this, {.name = "groundPCL", .types = {{dai::DatatypeEnum::PointCloudData, true}}}};
+    Output groundPCL{*this, {"groundPCL", DEFAULT_GROUP, {{{dai::DatatypeEnum::PointCloudData, true}}}}};
     /**
      * Output occupancy grid map.
      */
-    Output occupancyGridMap{*this, {.name = "occupancyGridMap", .types = {{dai::DatatypeEnum::ImgFrame, true}}}};
+    Output occupancyGridMap{*this, {"occupancyGridMap", DEFAULT_GROUP, {{{dai::DatatypeEnum::ImgFrame, true}}}}};
 
     /**
      * Output passthrough rectified image.
      */
-    Output passthroughRect{*this, {.name = "passthroughRect", .types = {{dai::DatatypeEnum::ImgFrame, true}}}};
+    Output passthroughRect{*this, {"passthroughRect", DEFAULT_GROUP, {{{dai::DatatypeEnum::ImgFrame, true}}}}};
     /**
      * Output passthrough depth image.
      */
-    Output passthroughDepth{*this, {.name = "passthroughDepth", .types = {{dai::DatatypeEnum::ImgFrame, true}}}};
+    Output passthroughDepth{*this, {"passthroughDepth", DEFAULT_GROUP, {{{dai::DatatypeEnum::ImgFrame, true}}}}};
     /**
      * Output passthrough features.
      */
-    Output passthroughFeatures{*this, {.name = "passthroughFeatures", .types = {{dai::DatatypeEnum::TrackedFeatures, true}}}};
+    Output passthroughFeatures{*this, {"passthroughFeatures", DEFAULT_GROUP, {{{dai::DatatypeEnum::TrackedFeatures, true}}}}};
     /**
      * Output passthrough odometry pose.
      */
-    Output passthroughOdom{*this, {.name = "passthroughOdom", .types = {{dai::DatatypeEnum::TransformData, true}}}};
+    Output passthroughOdom{*this, {"passthroughOdom", DEFAULT_GROUP, {{{dai::DatatypeEnum::TransformData, true}}}}};
 
     /**
      * Set RTABMap parameters.
@@ -181,7 +181,7 @@ class RTABMapSLAM : public dai::NodeCRTP<dai::node::ThreadedHostNode, RTABMapSLA
 
    private:
     void run() override;
-    Input inSync{*this, {.name = "inSync", .types = {{dai::DatatypeEnum::MessageGroup, true}}}};
+    Input inSync{*this, {"inSync", DEFAULT_GROUP, DEFAULT_BLOCKING, 15, {{{dai::DatatypeEnum::MessageGroup, true}}}}};
     void syncCB(std::shared_ptr<dai::ADatatype> data);
     void odomPoseCB(std::shared_ptr<dai::ADatatype> data);
     void imuCB(std::shared_ptr<dai::ADatatype> msg);

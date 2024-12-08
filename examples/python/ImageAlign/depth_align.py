@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import numpy as np
 import cv2
 import depthai as dai
@@ -8,12 +10,6 @@ FPS = 30.0
 RGB_SOCKET = dai.CameraBoardSocket.CAM_A
 LEFT_SOCKET = dai.CameraBoardSocket.CAM_B
 RIGHT_SOCKET = dai.CameraBoardSocket.CAM_C
-ALIGN_SOCKET = LEFT_SOCKET
-
-COLOR_RESOLUTION = dai.ColorCameraProperties.SensorResolution.THE_1080_P
-LEFT_RIGHT_RESOLUTION = dai.MonoCameraProperties.SensorResolution.THE_400_P
-
-ISP_SCALE = 3
 
 class FPSCounter:
     def __init__(self):
@@ -32,7 +28,6 @@ class FPSCounter:
 device = dai.Device()
 
 calibrationHandler = device.readCalibration()
-rgbIntrinsics = calibrationHandler.getCameraIntrinsics(RGB_SOCKET, int(1920 / ISP_SCALE), int(1080 / ISP_SCALE))
 rgbDistortion = calibrationHandler.getDistortionCoefficients(RGB_SOCKET)
 distortionModel = calibrationHandler.getDistortionModel(RGB_SOCKET)
 if distortionModel != dai.CameraModel.Perspective:
@@ -41,40 +36,31 @@ if distortionModel != dai.CameraModel.Perspective:
 pipeline = dai.Pipeline(device)
 
 # Define sources and outputs
-camRgb = pipeline.create(dai.node.ColorCamera)
-left = pipeline.create(dai.node.MonoCamera)
-right = pipeline.create(dai.node.MonoCamera)
+camRgb = pipeline.create(dai.node.Camera).build(RGB_SOCKET)
+left = pipeline.create(dai.node.Camera).build(LEFT_SOCKET)
+right = pipeline.create(dai.node.Camera).build(RIGHT_SOCKET)
 stereo = pipeline.create(dai.node.StereoDepth)
 sync = pipeline.create(dai.node.Sync)
 align = pipeline.create(dai.node.ImageAlign)
 
-left.setResolution(LEFT_RIGHT_RESOLUTION)
-left.setBoardSocket(LEFT_SOCKET)
-left.setFps(FPS)
-
-right.setResolution(LEFT_RIGHT_RESOLUTION)
-right.setBoardSocket(RIGHT_SOCKET)
-right.setFps(FPS)
-
-camRgb.setBoardSocket(RGB_SOCKET)
-camRgb.setResolution(COLOR_RESOLUTION)
-camRgb.setFps(FPS)
-camRgb.setIspScale(1, ISP_SCALE)
-
-
 stereo.setDefaultProfilePreset(dai.node.StereoDepth.PresetMode.HIGH_DENSITY)
-stereo.setDepthAlign(dai.CameraBoardSocket.LEFT)
+stereo.setDepthAlign(LEFT_SOCKET)
 
+stereo.setExtendedDisparity(True)
 
-sync.setSyncThreshold(timedelta(seconds=0.5 / FPS))
+sync.setSyncThreshold(timedelta(seconds=1/(2*FPS)))
+
+rgbOut = camRgb.requestOutput(size = (1280, 960), fps = FPS)
+leftOut = left.requestOutput(size = (640, 400), fps = FPS)
+rightOut = right.requestOutput(size = (640, 400), fps = FPS)
 
 # Linking
-camRgb.isp.link(sync.inputs["rgb"])
-left.out.link(stereo.left)
-right.out.link(stereo.right)
+rgbOut.link(sync.inputs["rgb"])
+leftOut.link(stereo.left)
+rightOut.link(stereo.right)
 stereo.depth.link(align.input)
 align.outputAligned.link(sync.inputs["depth_aligned"])
-camRgb.isp.link(align.inputAlignTo)
+rgbOut.link(align.inputAlignTo)
 queue = sync.out.createOutputQueue()
 
 def colorizeDepth(frameDepth):
@@ -155,6 +141,8 @@ with pipeline:
             cvFrame = frameRgb.getCvFrame()
 
             # Undistort the rgb frame
+            rgbIntrinsics = calibrationHandler.getCameraIntrinsics(RGB_SOCKET, int(cvFrame.shape[1]), int(cvFrame.shape[0]))
+
             cvFrameUndistorted = cv2.undistort(
                 cvFrame,
                 np.array(rgbIntrinsics),
@@ -165,8 +153,10 @@ with pipeline:
             # Resize depth to match the rgb frame
             cv2.imshow("Depth aligned", alignedDepthColorized)
 
+            if len(cvFrameUndistorted.shape) == 2:
+                cvFrameUndistorted = cv2.cvtColor(cvFrameUndistorted, cv2.COLOR_GRAY2BGR)
             blended = cv2.addWeighted(
-                cvFrame, rgbWeight, alignedDepthColorized, depthWeight, 0
+                cvFrameUndistorted, rgbWeight, alignedDepthColorized, depthWeight, 0
             )
             cv2.putText(
                 blended,

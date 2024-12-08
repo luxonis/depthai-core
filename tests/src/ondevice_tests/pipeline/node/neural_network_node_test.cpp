@@ -62,7 +62,7 @@ TEST_CASE("Multi-Input NeuralNetwork API") {
     } else {
         FAIL("Unknown platform");
     }
-    auto description = dai::NNModelDescription{"DepthaiTestModels/simple-concatenate-model", platformStr};
+    auto description = dai::NNModelDescription{"depthai-test-models/simple-concatenate-model", platformStr};
     auto nn = p.create<dai::node::NeuralNetwork>();
     nn->setModelPath(dai::getModelFromZoo(description));
 
@@ -84,6 +84,7 @@ TEST_CASE("Multi-Input NeuralNetwork API") {
 
     // Reuse the second input image to avoid sending every time
     nn->inputs["image2"].setReusePreviousMessage(true);
+    auto passThroughQueue = nn->passthroughs["image2"].createOutputQueue();
 
     // Start the pipeline
     p.start();
@@ -94,12 +95,16 @@ TEST_CASE("Multi-Input NeuralNetwork API") {
     // Process output for 10 tensors and verify results
     for(int i = 0; i < 10; i++) {
         auto tensor = outputQueue->get<dai::NNData>();
+        auto passThroughTensor = passThroughQueue->get<dai::ImgFrame>();
 
         REQUIRE(tensor != nullptr);
         REQUIRE(tensor->getAllLayerNames().size() == 1);
         auto firstTensor = tensor->getFirstTensor<float>();
         REQUIRE(firstTensor.shape().size() == 4);
         REQUIRE(firstTensor.shape()[0] == 1);
+
+        // Verify the pass-through tensor came through
+        REQUIRE(passThroughTensor != nullptr);
     }
 }
 
@@ -125,7 +130,7 @@ TEST_CASE("Combined Input NeuralNetwork API") {
     inputNNData->addTensor("image2", xt::xarray<uint8_t>({1, 256, 256, 3}, 100), nnTensorType);
 
     // Set up the neural network node
-    auto description = dai::NNModelDescription{"DepthaiTestModels/simple-concatenate-model", device->getPlatformAsString()};
+    auto description = dai::NNModelDescription{"depthai-test-models/simple-concatenate-model", device->getPlatformAsString()};
     auto nn = p.create<dai::node::NeuralNetwork>();
     nn->setModelPath(dai::getModelFromZoo(description));
 
