@@ -84,6 +84,7 @@ TEST_CASE("Multi-Input NeuralNetwork API") {
 
     // Reuse the second input image to avoid sending every time
     nn->inputs["image2"].setReusePreviousMessage(true);
+    auto passThroughQueue = nn->passthroughs["image2"].createOutputQueue();
 
     // Start the pipeline
     p.start();
@@ -94,12 +95,16 @@ TEST_CASE("Multi-Input NeuralNetwork API") {
     // Process output for 10 tensors and verify results
     for(int i = 0; i < 10; i++) {
         auto tensor = outputQueue->get<dai::NNData>();
+        auto passThroughTensor = passThroughQueue->get<dai::ImgFrame>();
 
         REQUIRE(tensor != nullptr);
         REQUIRE(tensor->getAllLayerNames().size() == 1);
         auto firstTensor = tensor->getFirstTensor<float>();
         REQUIRE(firstTensor.shape().size() == 4);
         REQUIRE(firstTensor.shape()[0] == 1);
+
+        // Verify the pass-through tensor came through
+        REQUIRE(passThroughTensor != nullptr);
     }
 }
 

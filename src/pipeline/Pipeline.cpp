@@ -742,7 +742,7 @@ void PipelineImpl::build() {
                     create<node::XLinkInHost>(shared_from_this()),
                 };
                 auto& xLinkBridge = bridgesOut[connection.out];
-                auto streamName = fmt::format("__x_{}_{}", outNode->id, connection.outputName);
+                auto streamName = fmt::format("__x_{}_{}_{}", outNode->id, connection.outputGroup, connection.outputName);
 
                 // Check if the stream name is unique
                 if(uniqueStreamNames.count(streamName) > 0) {
@@ -766,7 +766,7 @@ void PipelineImpl::build() {
                     create<node::XLinkIn>(shared_from_this()),
                 };
                 auto& xLinkBridge = bridgesIn[connection.in];
-                auto streamName = fmt::format("__x_{}_{}", inNode->id, connection.inputName);
+                auto streamName = fmt::format("__x_{}_{}_{}", inNode->id, connection.inputGroup, connection.inputName);
 
                 // Check if the stream name is unique
                 if(uniqueStreamNames.count(streamName) > 0) {
