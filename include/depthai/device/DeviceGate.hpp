@@ -36,6 +36,10 @@ class DeviceGate {
 
     enum class SessionState { NOT_CREATED, CREATED, RUNNING, STOPPED, STOPPING, CRASHED, DESTROYED, ERROR_STATE };
 
+    struct CrashDump {
+        std::vector<uint8_t> data;
+        std::string filename;
+    };
     /**
      * Connects to DepthAI Gate
      * @param deviceInfo Device to connect to
@@ -50,9 +54,9 @@ class DeviceGate {
     bool destroySession();
     SessionState getState();
     // Waits for the gate session to end and tries to get the logs and crash dump out
-    std::optional<std::string> waitForSessionEnd();
+    std::optional<CrashDump> waitForSessionEnd();
 
-    std::optional<std::vector<uint8_t>> getCrashDump(std::string& filename);
+    std::optional<CrashDump> getCrashDump();
 
     struct VersionInfo {
         std::string gate, os;
@@ -69,8 +73,6 @@ class DeviceGate {
     std::thread stateMonitoringThread;
 
     std::optional<std::vector<uint8_t>> getFile(const std::string& fileUrl, std::string& filename);
-
-    std::optional<std::string> saveFileToTemporaryDirectory(std::vector<uint8_t> data, std::string filename, std::string direcotryPath = "");
 
     // state of the session
     std::atomic_bool sessionCreated{false};

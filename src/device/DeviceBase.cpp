@@ -600,7 +600,10 @@ void DeviceBase::closeImpl() {
 
     // If the device was operated through gate, wait for the session to end
     if(gate && waitForGate) {
-        gate->waitForSessionEnd();
+        auto crashDump = gate->waitForSessionEnd();
+        if(crashDump) {
+            logCollection::logCrashDump(pipelineSchema, crashDump.value(), deviceInfo);
+        }
     }
 
     // Close rpcStream
@@ -1136,10 +1139,9 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, Prev
             if(loggingThread.joinable()) loggingThread.join();
             if(profilingThread.joinable()) profilingThread.join();
             if(gate) {
-                auto crashDumpPath = gate->waitForSessionEnd();
-                if(crashDumpPath) {
-                    // logCollection::logCrashDump(pipelineSchema, crashDumpPath, deviceInfo);
-                    logger::error("Crash dump needs to get logged here - {}", *crashDumpPath);
+                auto crashDump = gate->waitForSessionEnd();
+                if(crashDump) {
+                    logCollection::logCrashDump(pipelineSchema, crashDump.value(), deviceInfo);
                 }
             }
 

@@ -5,6 +5,7 @@
 // std
 #include <fstream>
 #include <optional>
+#include <string>
 
 // project
 #include "build/version.hpp"
@@ -291,31 +292,6 @@ DeviceGate::SessionState DeviceGate::getState() {
     return SessionState::ERROR_STATE;
 }
 
-std::optional<std::string> DeviceGate::saveFileToTemporaryDirectory(std::vector<uint8_t> data, std::string filename, std::string directoryPath) {
-    std::string tmpdir;
-    if(directoryPath.empty()) {
-        tmpdir = platform::getTempPath();
-    } else {
-        tmpdir = directoryPath;
-    }
-    std::string path = std::string(tmpdir) + filename;
-
-    std::ofstream file(path, std::ios::binary);
-    if(!file.is_open()) {
-        spdlog::error("Couldn't open file {} for writing", path);
-        return std::nullopt;
-    }
-
-    file.write(reinterpret_cast<char*>(data.data()), data.size());
-    file.close();
-    if(!file.good()) {
-        spdlog::error("Couldn't write to file {}", path);
-        return std::nullopt;
-    }
-    spdlog::debug("Saved file {} to {}", filename, path);
-    return std::string(path);
-}
-
 std::optional<std::vector<uint8_t>> DeviceGate::getFile(const std::string& fileUrl, std::string& filename) {
     // Send a GET request to the server
     if(auto res = pimpl->cli->Get(fileUrl.c_str())) {
@@ -336,7 +312,7 @@ std::optional<std::vector<uint8_t>> DeviceGate::getFile(const std::string& fileU
     }
 }
 
-std::optional<std::string> DeviceGate::waitForSessionEnd() {
+std::optional<DeviceGate::CrashDump> DeviceGate::waitForSessionEnd() {
     while(true) {
         std::this_thread::sleep_for(std::chrono::seconds(1));
         auto sessionState = getState();
@@ -375,29 +351,19 @@ std::optional<std::string> DeviceGate::waitForSessionEnd() {
                 std::this_thread::sleep_for(std::chrono::seconds(3));  // Allow for the generation of the crash dump and the log file
                 std::string crashDumpName;
                 spdlog::warn("Getting the crash dump out - this can take up to a minute, because it first needs to be compressed.");
-                auto crashDump = getCrashDump(crashDumpName);
-                if(crashDump) {
-                    spdlog::warn("Crash dump found - trying to save it");
-                    if(crashDumpName.empty()) {
-                        crashDumpName = "depthai_gate_crash_dump.tar.gz";
-                    }
-                    std::string fullName = deviceInfo.getMxId() + "-" + crashDumpName;
-                    if(auto path = saveFileToTemporaryDirectory(*crashDump, fullName, crashDumpPathStr)) {
-                        spdlog::warn("Crash dump saved to {} - please report to developers", *path);
-                        return *path;
-                    }
-                    spdlog::error("Couldn't save crash dump");
-                } else {
-                    spdlog::warn("Crash dump not found");
-                }
-                return std::nullopt;
+                return getCrashDump();
         }
     }
 }
 
-std::optional<std::vector<uint8_t>> DeviceGate::getCrashDump(std::string& filename) {
+std::optional<DeviceGate::CrashDump> DeviceGate::getCrashDump() {
     std::string url = fmt::format("{}/{}/core_dump", sessionsEndpoint, sessionId);
-    return DeviceGate::getFile(url, filename);
+    std::string filename;
+    auto fileData = DeviceGate::getFile(url, filename);
+    if(fileData) {
+        return CrashDump{std::move(*fileData), filename};
+    }
+    return std::nullopt;
 }
 
 // TODO(themarpe) - get all sessions, check if only one and not protected
