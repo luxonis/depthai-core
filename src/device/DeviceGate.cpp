@@ -4,6 +4,7 @@
 
 // std
 #include <fstream>
+#include <optional>
 
 // project
 #include "build/version.hpp"
@@ -335,13 +336,13 @@ std::optional<std::vector<uint8_t>> DeviceGate::getFile(const std::string& fileU
     }
 }
 
-void DeviceGate::waitForSessionEnd() {
+std::optional<std::string> DeviceGate::waitForSessionEnd() {
     while(true) {
         std::this_thread::sleep_for(std::chrono::seconds(1));
         auto sessionState = getState();
         if(sessionState == SessionState::ERROR_STATE) {
             spdlog::error("DeviceGate session state is in error state - exiting");
-            return;
+            return std::nullopt;
         }
         switch(sessionState) {
             case SessionState::NOT_CREATED:
@@ -351,15 +352,15 @@ void DeviceGate::waitForSessionEnd() {
                 break;  // Nothing to do
             case SessionState::ERROR_STATE:
                 spdlog::error("DeviceGate session state is in error state - exiting");
-                return;
+                return std::nullopt;
             case SessionState::STOPPED:
-                return;  // Session stopped - stop the thread
+                return std::nullopt;
             case SessionState::CRASHED:
             case SessionState::DESTROYED:
                 auto crashDumpPathStr = utility::getEnv("DEPTHAI_CRASHDUMP");
-                if(crashDumpPathStr.empty()) {
-                    spdlog::warn("Firmware crashed but the environment variable DEPTHAI_CRASHDUMP is not set, the crash dump will not be saved.");
-                    return;
+                if(crashDumpPathStr == "0") {
+                    spdlog::warn("Firmware crashed but DEPTHAI_CRASHDUMP is set to 0, the crash dump will not be saved.");
+                    return std::nullopt;
                 }
 
                 auto currentVersion = getVersion();
@@ -368,7 +369,7 @@ void DeviceGate::waitForSessionEnd() {
                     spdlog::warn("FW crashed but the gate version does not support transfering over the crash dump. Current version {}, required is {}",
                                  currentVersion.toString(),
                                  requiredVersion.toString());
-                    return;
+                    return std::nullopt;
                 }
                 spdlog::warn("FW crashed - trying to get out the crash dump");
                 std::this_thread::sleep_for(std::chrono::seconds(3));  // Allow for the generation of the crash dump and the log file
@@ -383,13 +384,13 @@ void DeviceGate::waitForSessionEnd() {
                     std::string fullName = deviceInfo.getMxId() + "-" + crashDumpName;
                     if(auto path = saveFileToTemporaryDirectory(*crashDump, fullName, crashDumpPathStr)) {
                         spdlog::warn("Crash dump saved to {} - please report to developers", *path);
-                    } else {
-                        spdlog::error("Couldn't save crash dump");
+                        return *path;
                     }
+                    spdlog::error("Couldn't save crash dump");
                 } else {
                     spdlog::warn("Crash dump not found");
                 }
-                return;
+                return std::nullopt;
         }
     }
 }

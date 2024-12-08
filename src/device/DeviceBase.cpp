@@ -4,8 +4,10 @@
 #include <spdlog/fmt/ostr.h>
 
 #include <chrono>
+#include <cstdlib>
 #include <iostream>
 #include <optional>
+#include <system_error>
 #include <thread>
 
 // shared
@@ -596,7 +598,7 @@ void DeviceBase::closeImpl() {
     // At the end stop the monitor thread
     if(monitorThread.joinable()) monitorThread.join();
 
-    // If the device was operated throgh gate, wait for the session to end
+    // If the device was operated through gate, wait for the session to end
     if(gate && waitForGate) {
         gate->waitForSessionEnd();
     }
@@ -1056,8 +1058,9 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipelin
             });
         }
         auto crashdumpPathStr = utility::getEnv("DEPTHAI_CRASHDUMP");
-        if(!crashdumpPathStr.empty()) {
-            pimpl->logger.warn("Crash dump enabled");
+        if(crashdumpPathStr == "0") {
+            pimpl->rpcClient->call("enableCrashDump", false);
+        } else {
             pimpl->rpcClient->call("enableCrashDump", true);
         }
 
@@ -1095,7 +1098,13 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, Prev
                     connection->close();
                 }
             }
-            if(isClosing) return;
+            if(isClosing) {
+                auto shared = pipelinePtr.lock();
+                if(shared) {
+                    shared->disconnectXLinkHosts();
+                }
+                return;
+            }
             if(maxReconnectionAttempts == 0) {
                 if(reconnectionCallback) reconnectionCallback(ReconnectionStatus::RECONNECT_FAILED);
                 break;
@@ -1126,6 +1135,13 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, Prev
             if(timesyncThread.joinable()) timesyncThread.join();
             if(loggingThread.joinable()) loggingThread.join();
             if(profilingThread.joinable()) profilingThread.join();
+            if(gate) {
+                auto crashDumpPath = gate->waitForSessionEnd();
+                if(crashDumpPath) {
+                    // logCollection::logCrashDump(pipelineSchema, crashDumpPath, deviceInfo);
+                    logger::error("Crash dump needs to get logged here - {}", *crashDumpPath);
+                }
+            }
 
             // get timeout (in seconds)
             std::chrono::milliseconds reconnectTimeout(reconnectionTimeoutMs);
@@ -1275,7 +1291,11 @@ void DeviceBase::crashDevice() {
         pimpl->logger.error("Crashing the device is disabled. Set DEPTHAI_CRASH_DEVICE=1 to enable.");
         return;
     }
-    pimpl->rpcClient->call("crashDevice");
+    try {
+        pimpl->rpcClient->call("crashDevice");
+    } catch(const std::system_error& ex) {
+        pimpl->logger.debug("Crash device threw an exception: {} (expected)", ex.what());
+    }
 }
 
 dai::Version DeviceBase::getIMUFirmwareVersion() {

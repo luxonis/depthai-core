@@ -50,7 +50,7 @@ class DeviceGate {
     bool destroySession();
     SessionState getState();
     // Waits for the gate session to end and tries to get the logs and crash dump out
-    void waitForSessionEnd();
+    std::optional<std::string> waitForSessionEnd();
 
     std::optional<std::vector<uint8_t>> getCrashDump(std::string& filename);
 
