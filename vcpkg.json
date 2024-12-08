@@ -15,6 +15,7 @@
         "mp4v2",
         "libnop",
         "neargye-semver",
+        "magic-enum",
         {
             "name": "libarchive",
             "default-features": false

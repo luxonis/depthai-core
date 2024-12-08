@@ -69,6 +69,7 @@ if(NOT CONFIG_MODE OR (CONFIG_MODE AND NOT DEPTHAI_SHARED_LIBS))
     if(DEPTHAI_HAS_APRIL_TAG)
         find_package(apriltag ${_QUIET} CONFIG REQUIRED)
     endif()
+    find_package(magic_enum ${_QUIET} CONFIG REQUIRED)
 endif()
 
 # Xtensor
