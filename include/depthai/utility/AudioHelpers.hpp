@@ -67,8 +67,8 @@ class AudioFile {
     SF_INFO fileInfo;
 };
 
-std::vector<AudioDevice> GetAlsaDevices();
-std::vector<AudioPCM> GetAlsaPCMs();
+std::vector<AudioDevice> getAlsaDevices();
+std::vector<AudioPCM> getAlsaPCMs();
 
 }  // namespace audio
 }  // namespace dai
