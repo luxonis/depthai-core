@@ -1,40 +1,26 @@
 #include "depthai/depthai.hpp"
-#include "rerun.hpp"
 
-class RerunNode : public dai::NodeCRTP<dai::node::ThreadedHostNode, RerunNode> {
-   public:
-    constexpr static const char* NAME = "RerunNode";
+#include <depthai/remote_connection/RemoteConnection.hpp>
+#include <iostream>
+#include <csignal>
 
-   public:
-    void build() {}
+// Signal handling for clean shutdown
+static bool isRunning = true;
+void signalHandler(int signum) {
+    isRunning = false;
+}
 
-    Input inputPCL{*this, {.name = "inPCL", .types = {{dai::DatatypeEnum::PointCloudData, true}}}};
-
-    void run() override {
-        const auto rec = rerun::RecordingStream("rerun");
-        rec.spawn().exit_on_failure();
-        rec.log_static("world", rerun::ViewCoordinates::FLU);
-        rec.log("world/ground", rerun::Boxes3D::from_half_sizes({{3.f, 3.f, 0.00001f}}));
-        while(isRunning()) {
-            auto pclIn = inputPCL.tryGet<dai::PointCloudData>();
-            if(pclIn != nullptr) {
-                std::vector<rerun::Position3D> points;
-                std::vector<rerun::Color> colors;
-                const auto& size = pclIn->getWidth() * pclIn->getHeight();
-                points.reserve(size);
-                colors.reserve(size);
-                const auto& pclData = pclIn->getPointsRGB();
-                for(size_t i = 0; i < size; ++i) {
-                    points.emplace_back(pclData[i].x, pclData[i].y, pclData[i].z);
-                    colors.emplace_back(pclData[i].r, pclData[i].g, pclData[i].b);
-                }
-                rec.log("world/obstacle_pcl", rerun::Points3D(points).with_colors(colors).with_radii({0.01f}));
-            }
-        }
-    }
-};
 int main() {
     using namespace std;
+    // Default port values
+    int webSocketPort = 8765;
+    int httpPort = 8080;
+
+    // Register signal handler
+    std::signal(SIGINT, signalHandler);
+
+    // Create RemoteConnection
+    dai::RemoteConnection remoteConnector(dai::RemoteConnection::DEFAULT_ADDRESS, webSocketPort, true, httpPort);
     // Create pipeline
     dai::Pipeline pipeline;
     // Define sources and outputs
@@ -47,7 +33,6 @@ int main() {
     auto stereo = pipeline.create<dai::node::StereoDepth>();
     auto rgbd = pipeline.create<dai::node::RGBD>()->build();
     auto color = pipeline.create<dai::node::Camera>();
-    auto rerun = pipeline.create<RerunNode>();
     stereo->setExtendedDisparity(false);
     color->build();
 
@@ -73,10 +58,19 @@ int main() {
     stereo->depth.link(rgbd->inDepth);
     out->link(rgbd->inColor);
 
-    // Linking
-    rgbd->pointCloud.link(rerun->inputPCL);
+    remoteConnector.addTopic("pcl", rgbd->pcl);
     pipeline.start();
     auto device = pipeline.getDefaultDevice();
     device->setIrLaserDotProjectorIntensity(0.7);
-    pipeline.wait();
+    // Main loop
+    while(isRunning && pipeline.isRunning()) {
+        int key = remoteConnector.waitKey(1);
+        if(key == 'q') {
+            std::cout << "Got 'q' key from the remote connection!" << std::endl;
+            break;
+        }
+    }
+
+    std::cout << "Pipeline stopped." << std::endl;
+    return 0;
 }

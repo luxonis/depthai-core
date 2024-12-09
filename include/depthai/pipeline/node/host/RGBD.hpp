@@ -32,10 +32,9 @@ class RGBD : public NodeCRTP<ThreadedHostNode, RGBD> {
     /**
      * Output point cloud.
      */
-    Output pointCloud{*this, {"pointCloud", DEFAULT_GROUP, {{DatatypeEnum::PointCloudData, true}}}};
+    Output pcl{*this, {"pcl", DEFAULT_GROUP, {{DatatypeEnum::PointCloudData, true}}}};
 
     std::shared_ptr<RGBD> build();
-    std::shared_ptr<RGBD> build(bool autocreate);
 private:
     void run() override;
     void initialize(std::vector<std::shared_ptr<ImgFrame>> frames);
