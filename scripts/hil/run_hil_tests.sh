@@ -12,6 +12,17 @@ fi
 TEST_FLAVOR=$1
 TEST_ARGS=$2
 
+# Check for optional RVC arguments
+if [[ "$TEST_ARGS" == "--rvc4" ]]; then
+  echo "Running RVC4 configuration commands..."
+  adb shell mkdir -p /persist/factory/
+  adb shell touch /persist/factory/enabled
+  adb shell reboot
+  echo "Device reboot initiated for RVC4. Factory mode enabled."
+elif [[ "$TEST_ARGS" == "--rvc2" ]]; then
+  echo "RVC2 configuration specified. Continuing with test setup..."
+fi
+
 # Set up a Python virtual environment
 rm -rf venv
 python3 -m venv venv
