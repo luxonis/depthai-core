@@ -17,8 +17,8 @@ class RGBD : public NodeCRTP<ThreadedHostNode, RGBD> {
     Subnode<node::Sync> sync{*this, "sync"};
     InputMap& inputs = sync->inputs;
 
-    std::string colorInputName = "color";
-    std::string depthInputName = "depth";
+    std::string colorInputName = "inColor";
+    std::string depthInputName = "inDepth";
 
     /**
      * Input color frame.

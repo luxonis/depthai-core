@@ -24,7 +24,6 @@ class RerunNode(dai.node.ThreadedHostNode):
         while self.isRunning():
             pclObstData = self.inputPCL.tryGet()
             if pclObstData is not None:
-                print("runnnn")
                 points, colors = pclObstData.getPointsRGB()
                 rr.log("world/pcl", rr.Points3D(points, colors=colors, radii=[0.01]))
 
@@ -32,33 +31,28 @@ class RerunNode(dai.node.ThreadedHostNode):
 
 with dai.Pipeline() as p:
     fps = 30
-    width = 640
-    height = 400
     # Define sources and outputs
     left = p.create(dai.node.MonoCamera)
     right = p.create(dai.node.MonoCamera)
-    color = p.create(dai.node.ColorCamera)
+    color = p.create(dai.node.Camera)
     stereo = p.create(dai.node.StereoDepth)
     rgbd = p.create(dai.node.RGBD).build()
-
+    color.build()
     rerunViewer = RerunNode()
-    left.setBoardSocket(dai.CameraBoardSocket.CAM_B)
+    left.setCamera("left")
     left.setResolution(dai.MonoCameraProperties.SensorResolution.THE_720_P)
     left.setFps(fps)
-    right.setBoardSocket(dai.CameraBoardSocket.CAM_C)
+    right.setCamera("right")
     right.setResolution(dai.MonoCameraProperties.SensorResolution.THE_720_P)
     right.setFps(fps)
-    color.setBoardSocket(dai.CameraBoardSocket.CAM_A)
-    color.setResolution(dai.ColorCameraProperties.SensorResolution.THE_1080_P)
-    color.setInterleaved(False)
-    color.setIspScale(2, 3)
-    color.setFps(fps)
+    out = color.requestOutput((1280,720))
 
     stereo.setDepthAlign(dai.CameraBoardSocket.CAM_A)
     stereo.setOutputSize(left.getResolutionWidth(), left.getResolutionHeight())
 
     stereo.setExtendedDisparity(False)
     stereo.setLeftRightCheck(True)
+    stereo.setDefaultProfilePreset(dai.node.StereoDepth.PresetMode.HIGH_DENSITY)
     stereo.setRectifyEdgeFillColor(0)
     stereo.enableDistortionCorrection(True)
     stereo.initialConfig.setLeftRightCheckThreshold(10)
@@ -70,7 +64,7 @@ with dai.Pipeline() as p:
     left.out.link(stereo.left)
     right.out.link(stereo.right)
     stereo.depth.link(rgbd.inDepth)
-    color.preview.link(rgbd.inColor)
+    out.link(rgbd.inColor)
 
     rgbd.pcl.link(rerunViewer.inputPCL)
 

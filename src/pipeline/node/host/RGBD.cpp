@@ -103,7 +103,7 @@ void RGBD::run() {
             }
         }
         pc->setPointsRGB(points);
-        pointCloud.send(pc);
+        pcl.send(pc);
     }
 }
 }  // namespace node
