@@ -19,7 +19,6 @@ class Event;
 }  // namespace event
 }  // namespace proto
 namespace utility {
-#ifdef DEPTHAI_ENABLE_PROTOBUF
 enum class EventDataType { DATA, FILE_URL, IMG_FRAME, ENCODED_FRAME, NN_DATA };
 class EventData {
    public:
@@ -173,6 +172,5 @@ class EventsManager {
     bool uploadCachedOnStart;
     bool cacheIfCannotSend;
 };
-#endif
 }  // namespace utility
 }  // namespace dai

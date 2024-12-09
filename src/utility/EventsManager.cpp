@@ -10,6 +10,8 @@
 
 #include "Environment.hpp"
 #include "Logging.hpp"
+#include "cpr/cpr.h"
+#include "depthai/schemas/Event.pb.h"
 namespace dai {
 
 namespace utility {
@@ -109,6 +111,9 @@ EventsManager::EventsManager(std::string url, bool uploadCachedOnStart, float pu
     sourceAppId = utility::getEnv("AGENT_APP_ID");
     sourceAppIdentifier = utility::getEnv("AGENT_APP_IDENTIFIER");
     token = utility::getEnv("DEPTHAI_HUB_API_KEY");
+    if(token.empty()) {
+        throw std::runtime_error("DEPTHAI_HUB_API_KEY environment variable must be set");
+    }
     eventBufferThread = std::make_unique<std::thread>([this]() {
         while(true) {
             sendEventBuffer();
