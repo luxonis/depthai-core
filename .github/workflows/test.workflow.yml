@@ -71,7 +71,7 @@ jobs:
           os: ['linux']
           arch: ['x64']
           flavor: ['vanilla', 'asan-ubsan', 'tsan']
-          rvc4os: ['r851.0.23','r851.0.24']
+          rvc4os: ['r851.0.25','r851.0.26']
           exclude:
             - os: 'windows'
               arch: 'x64'
