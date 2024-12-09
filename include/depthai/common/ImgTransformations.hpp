@@ -205,6 +205,10 @@ struct ImgTransformation {
     ImgTransformation& addScale(float scaleX, float scaleY);
     ImgTransformation& addSrcCrops(const std::vector<dai::RotatedRect>& crops);
     ImgTransformation& setSize(size_t width, size_t height);
+    ImgTransformation& setSourceSize(size_t width, size_t height);
+    ImgTransformation& setIntrinsicMatrix(std::array<std::array<float, 3>, 3> intrinsicMatrix);
+    ImgTransformation& setDistortionModel(CameraModel model);
+    ImgTransformation& setDistortionCoefficients(std::vector<float> coefficients);
 
     /**
      * Remap a point from this transformation to another. If the intrinsics are different (e.g. different camera), the function will also use the intrinsics to

@@ -362,6 +362,24 @@ ImgTransformation& ImgTransformation::setSize(size_t width, size_t height) {
     this->height = height;
     return *this;
 }
+ImgTransformation& ImgTransformation::setSourceSize(size_t width, size_t height) {
+    this->srcWidth = width;
+    this->srcHeight = height;
+    return *this;
+}
+ImgTransformation& ImgTransformation::setIntrinsicMatrix(std::array<std::array<float, 3>, 3> intrinsicMatrix) {
+    sourceIntrinsicMatrix = intrinsicMatrix;
+    sourceIntrinsicMatrixInv = getMatrixInverse(intrinsicMatrix);
+    return *this;
+}
+ImgTransformation& ImgTransformation::setDistortionModel(CameraModel model) {
+    distortionModel = model;
+    return *this;
+}
+ImgTransformation& ImgTransformation::setDistortionCoefficients(std::vector<float> coefficients) {
+    distortionCoefficients = coefficients;
+    return *this;
+}
 
 bool ImgTransformation::isValid() const {
     return srcWidth > 0 && srcHeight > 0 && width > 0 && height > 0;
