@@ -273,6 +273,9 @@ dai_add_example(record_imu RVC2/Record/record_imu.cpp OFF OFF)
 dai_add_example(replay_video_meta RVC2/Replay/replay_video_meta.cpp OFF OFF)
 dai_add_example(replay_imu RVC2/Replay/replay_imu.cpp OFF OFF)
 
+# StereoDepth
+dai_add_example(depth_preview StereoDepth/depth_preview.cpp OFF OFF)
+
 # Thermal
 dai_add_example(thermal RVC2/Thermal/thermal.cpp OFF OFF)
 

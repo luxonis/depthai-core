@@ -57,7 +57,7 @@ std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build(const st
     neuralNetwork->build(camera, nnArchive, fps);
     detectionParser->setNNArchive(nnArchive);
     stereo->depth.link(inputDepth);
-    stereo->setDepthAlign(camera->getBoardSocket());
+    // stereo->setDepthAlign(camera->getBoardSocket());
     return std::static_pointer_cast<SpatialDetectionNetwork>(shared_from_this());
 }
 
