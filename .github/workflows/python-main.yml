@@ -405,7 +405,7 @@ jobs:
         PLAT: manylinux_2_28_x86_64
     strategy:
       matrix:
-        python-set: ["cp37-cp37m", "cp38-cp38", "cp39-cp39", "cp310-310", "cp311-311", "cp312-312", "cp313-313"]
+        python-set: ["cp37-cp37m", "cp38-cp38", "cp39-cp39", "cp310-cp310", "cp311-cp311", "cp312-cp312", "cp313-cp313"]
     env:
       DEPTHAI_BUILD_BASALT: ON
       DEPTHAI_BUILD_PCL: ON
@@ -485,7 +485,7 @@ jobs:
         - /.hunter:/github/home/.hunter
     strategy:
       matrix:
-        python-set: ["cp37-cp37m", "cp38-cp38", "cp39-cp39", "cp310-310", "cp311-311", "cp312-312", "cp313-313"]
+        python-set: ["cp37-cp37m", "cp38-cp38", "cp39-cp39", "cp310-cp310", "cp311-cp311", "cp312-cp312", "cp313-cp313"]
     env:
       # workaround required for cache@v3, https://github.com/actions/cache/issues/1428
       VCPKG_FORCE_SYSTEM_BINARIES: "1" # Needed so vpckg can bootstrap itself
