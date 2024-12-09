@@ -12,8 +12,6 @@
 
 #define UNUSED(x) (void)(x)
 
-constexpr float SIZE_ROUND_UP_THRESHOLD = 1.0f - 1e-3f;
-
 dai::impl::AEEResult dai::impl::manipGetSrcMask(const uint32_t width,
                                                 const uint32_t height,
                                                 const float* corners,
@@ -738,12 +736,31 @@ std::array<std::array<float, 3>, 3> dai::impl::getResizeMat(Resize o, float widt
     return {{{o.width, 0, 0}, {0, o.height, 0}, {0, 0, 1}}};
 }
 
-void dai::impl::getOutputSizeFromCorners(const std::array<std::array<float, 2>, 4>& corners, const bool center, uint32_t& outputWidth, uint32_t& outputHeight) {
-    auto [minx, maxx, miny, maxy] = dai::impl::getOuterRect(std::vector(corners.begin(), corners.end()));
-    float rminx = (minx - floorf(minx)) >= SIZE_ROUND_UP_THRESHOLD ? ceilf(minx) : floorf(minx);
-    float rmaxx = (maxx - floorf(maxx)) >= SIZE_ROUND_UP_THRESHOLD ? ceilf(maxx) : floorf(maxx);
-    float rminy = (miny - floorf(miny)) >= SIZE_ROUND_UP_THRESHOLD ? ceilf(miny) : floorf(miny);
-    float rmaxy = (maxy - floorf(maxy)) >= SIZE_ROUND_UP_THRESHOLD ? ceilf(maxy) : floorf(maxy);
+void dai::impl::getOutputSizeFromCorners(const std::array<std::array<float, 2>, 4>& corners, const bool center, const std::array<std::array<float, 3>, 3> transformInv, const uint32_t srcWidth, const uint32_t srcHeight, uint32_t& outputWidth, uint32_t& outputHeight) {
+    auto [dstMinx, dstMaxx, dstMiny, dstMaxy] = dai::impl::getOuterRect(std::vector(corners.begin(), corners.end()));
+
+    float innerMinx = ceilf(dstMinx);
+    float innerMiny = ceilf(dstMiny);
+    float innerMaxx = floorf(dstMaxx);
+    float innerMaxy = floorf(dstMaxy);
+    float outerMinx = roundf(dstMinx);
+    float outerMiny = roundf(dstMiny);
+    float outerMaxx = roundf(dstMaxx);
+    float outerMaxy = roundf(dstMaxy);
+
+    std::array<std::array<float, 2>, 4> innerCorners = {{{innerMinx, innerMiny}, {innerMaxx, innerMiny}, {innerMaxx, innerMaxy}, {innerMinx, innerMaxy}}};
+    std::array<std::array<float, 2>, 4> outerCorners = {{{outerMinx, outerMiny}, {outerMaxx, outerMiny}, {outerMaxx, outerMaxy}, {outerMinx, outerMaxy}}};
+    std::array<std::array<float, 2>, 4> srcInnerCorners = {{matvecmul(transformInv, innerCorners[0]), matvecmul(transformInv, innerCorners[1]), matvecmul(transformInv, innerCorners[2]), matvecmul(transformInv, innerCorners[3])}};
+    std::array<std::array<float, 2>, 4> srcOuterCorners = {{matvecmul(transformInv, outerCorners[0]), matvecmul(transformInv, outerCorners[1]), matvecmul(transformInv, outerCorners[2]), matvecmul(transformInv, outerCorners[3])}};
+
+    auto [srcInnerMinx, srcInnerMaxx, srcInnerMiny, srcInnerMaxy] = dai::impl::getOuterRect(std::vector(srcInnerCorners.begin(), srcInnerCorners.end()));
+    auto [srcOuterMinx, srcOuterMaxx, srcOuterMiny, srcOuterMaxy] = dai::impl::getOuterRect(std::vector(srcOuterCorners.begin(), srcOuterCorners.end()));
+
+    // If outer bb is outside of the image, but inner is inside, use inner bb, otherwise use outer bb
+    float rminx = srcOuterMinx < 0 && srcInnerMinx >= 0 ? innerMinx : outerMinx;
+    float rmaxx = srcOuterMaxx >= srcWidth && srcInnerMaxx < srcWidth ? innerMaxx : outerMaxx;
+    float rminy = srcOuterMiny < 0 && srcInnerMiny >= 0 ? innerMiny : outerMiny;
+    float rmaxy = srcOuterMaxy >= srcHeight && srcInnerMaxy < srcHeight ? innerMaxy : outerMaxy;
     if(!center) {
         if(outputWidth == 0) outputWidth = rmaxx;
         if(outputHeight == 0) outputHeight = rmaxy;

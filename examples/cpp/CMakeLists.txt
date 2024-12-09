@@ -7,7 +7,7 @@ find_package(Sanitizers)
 
 # Create utility library
 add_library(utility utility/utility.cpp)
-target_include_directories(utility PUBLIC "utility")
+target_include_directories(utility PUBLIC "utility" "$<BUILD_INTERFACE:${FP16_INCLUDE_DIR}>")
 add_default_flags(utility LEAN)
 target_link_libraries(utility ${OpenCV_LIBS})
 
@@ -287,6 +287,10 @@ dai_add_example(threaded_host_node HostNodes/threaded_host_node.cpp OFF OFF)
 # Model zoo
 dai_add_example(model_zoo RVC2/ModelZoo/model_zoo.cpp OFF OFF)
 
+# Events Manager
+if(DEPTHAI_ENABLE_EVENTS_MANAGER)
+    dai_add_example(events HostNodes/events.cpp ON OFF)
+endif()
 # Image Align
 dai_add_example(image_align RVC2/ImageAlign/image_align.cpp OFF OFF)
 

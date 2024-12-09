@@ -40,9 +40,6 @@ add_custom_target(
     WORKING_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}"
     USES_TERMINAL
 )
-if(UNIX AND NOT APPLE)
-    # Add -Bsymbolic for FFMPEG linking
-    target_link_options(${TARGET_TEST_MODULE} PRIVATE "LINKER:-Bsymbolic")
-endif()
+
 # Link to depthai
 target_link_libraries(${TARGET_TEST_MODULE} PRIVATE pybind11::pybind11 depthai::core)

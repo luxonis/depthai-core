@@ -3,9 +3,6 @@ import cv2
 import depthai as dai
 import numpy as np
 from pathlib import Path
-# API of the Hub team with test DAI models
-API_KEY = "tapi.RKIViXv_2poidTBST5CSAQ.fdj2dDGH6gADEIsowwAvjFIvgY2fa2Rj5bmhADXrdXpPOBS_eGdHGM2GcaEhhESFlYip_9mFb0BRqQ-fP3gy1A"
-
 
 # Get the absolute path of the current script's directory
 script_dir = Path(__file__).resolve().parent
@@ -32,10 +29,10 @@ daiLenaImage = dai.ImgFrame()
 daiLenaImage.setCvFrame(lenaImage, daiType)
 
 with dai.Pipeline(device) as pipeline:
-    model = dai.NNModelDescription("DepthaiTestModels/simple-concatenate-model")
+    model = dai.NNModelDescription("depthai-test-models/simple-concatenate-model")
     model.platform = platform.name
 
-    nnArchive = dai.NNArchive(dai.getModelFromZoo(model, apiKey=API_KEY))
+    nnArchive = dai.NNArchive(dai.getModelFromZoo(model))
     cam = pipeline.create(dai.node.Camera).build()
     camOut = cam.requestOutput((256,256), daiType)
 

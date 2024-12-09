@@ -2260,7 +2260,7 @@ std::tuple<std::array<std::array<float, 3>, 3>, std::array<std::array<float, 2>,
     return {transform, imageCorners, srcCorners};
 }
 
-void getOutputSizeFromCorners(const std::array<std::array<float, 2>, 4>& corners, const bool center, uint32_t& outputWidth, uint32_t& outputHeight);
+void getOutputSizeFromCorners(const std::array<std::array<float, 2>, 4>& corners, const bool center, const std::array<std::array<float, 3>, 3> transformInv, const uint32_t srcWidth, const uint32_t srcHeight, uint32_t& outputWidth, uint32_t& outputHeight);
 
 template <typename C>
 std::tuple<std::array<std::array<float, 3>, 3>, std::array<std::array<float, 2>, 4>, std::vector<std::array<std::array<float, 2>, 4>>> getFullTransform(
@@ -2274,7 +2274,7 @@ std::tuple<std::array<std::array<float, 3>, 3>, std::array<std::array<float, 2>,
 
     auto [matrix, imageCorners, srcCorners] = getTransform(operations, inputWidth, inputHeight, base.outputWidth, base.outputHeight);
 
-    getOutputSizeFromCorners(imageCorners, base.center, base.outputWidth, base.outputHeight);
+    getOutputSizeFromCorners(imageCorners, base.center, getInverse(matrix), inputWidth, inputHeight,  base.outputWidth, base.outputHeight);
 
     if(base.resizeMode != ImageManipOpsBase<C>::ResizeMode::NONE) {
         Resize res;
@@ -2363,7 +2363,11 @@ ImageManipOperations<ImageManipBuffer, ImageManipData>& ImageManipOperations<Ima
 
     assert(inFrameType != ImgFrame::Type::NONE);
     base = newBase;
-    outputFrameType = outType == ImgFrame::Type::NONE ? inFrameType : outType;
+    outputFrameType = outType;
+    if(outType == ImgFrame::Type::NONE) {
+        if(base.colormap != Colormap::NONE) outputFrameType = VALID_TYPE_COLOR;
+        else outputFrameType = inFrameType;
+    }
     inType = inFrameType;
     type = inType;
     srcSpecs = srcFrameSpecs;
