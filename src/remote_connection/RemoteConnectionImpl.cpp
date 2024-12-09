@@ -3,17 +3,33 @@
 #include <foxglove/websocket/base64.hpp>
 #include <foxglove/websocket/server_factory.hpp>
 #include <iostream>
+#include <variant>
 #include <websocketpp/common/connection_hdl.hpp>
 
 #include "depthai/pipeline/MessageQueue.hpp"
 #include "foxglove/websocket/common.hpp"
+#include "pipeline/datatype/Buffer.hpp"
+#include "pipeline/datatype/ImgAnnotations.hpp"
 #include "utility/Logging.hpp"
+#include "utility/ProtoSerializable.hpp"
 #include "utility/Resources.hpp"
 
 namespace dai {
 
 inline static uint64_t nanosecondsSinceEpoch() {
     return uint64_t(std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count());
+}
+
+static std::shared_ptr<Buffer> getVisualizableMessage(const std::shared_ptr<Buffer>& message) {
+    dai::VisualizeType visualizableMessage = message->getVisualizationMessage();
+    // Default behavior is to return a visualizable message, if available, otherwise return the message itself back
+    if(auto* imgFrame = std::get_if<std::shared_ptr<ImgFrame>>(&visualizableMessage)) {
+        return *imgFrame;
+    }
+    if(auto* imgAnnotations = std::get_if<std::shared_ptr<ImgAnnotations>>(&visualizableMessage)) {
+        return *imgAnnotations;
+    }
+    return message;
 }
 
 RemoteConnectionImpl::RemoteConnectionImpl(const std::string& address, uint16_t webSocketPort, bool serveFrontend, uint16_t httpPort) {
@@ -138,15 +154,24 @@ bool RemoteConnectionImpl::initWebsocketServer(const std::string& address, uint1
     }
 }
 
-void RemoteConnectionImpl::addPublishThread(const std::string& topicName, const std::shared_ptr<MessageQueue>& outputQueue, const std::string& group) {
-    auto thread = std::make_unique<std::thread>([this, topicName, outputQueue, group]() {
+void RemoteConnectionImpl::addPublishThread(const std::string& topicName,
+                                            const std::shared_ptr<MessageQueue>& outputQueue,
+                                            const std::string& group,
+                                            bool useVisualizationIfAvailable) {
+    auto thread = std::make_unique<std::thread>([this, topicName, outputQueue, group, useVisualizationIfAvailable]() {
         bool isRunning = true;
         auto firstMessage = outputQueue->get();
         if(!firstMessage) {
             logger::error("No message received from the output for topic: {}", topicName);
             return;
         }
-
+        if(!std::dynamic_pointer_cast<Buffer>(firstMessage)) {
+            logger::error("First message is not a Buffer message for topic: {}", topicName);
+            return;
+        }
+        if(useVisualizationIfAvailable) {
+            firstMessage = getVisualizableMessage(std::dynamic_pointer_cast<Buffer>(firstMessage));
+        }
         auto serializableMessage = std::dynamic_pointer_cast<ProtoSerializable>(firstMessage);
         if(!serializableMessage) {
             logger::error("First message is not a ProtoSerializable message for topic: {}", topicName);
@@ -175,7 +200,13 @@ void RemoteConnectionImpl::addPublishThread(const std::string& topicName, const 
                 continue;
             }
             if(!message) continue;
-
+            if(!std::dynamic_pointer_cast<Buffer>(message)) {
+                logger::error("First message is not a Buffer message for topic: {}", topicName);
+                return;
+            }
+            if(useVisualizationIfAvailable) {
+                message = getVisualizableMessage(std::dynamic_pointer_cast<Buffer>(message));
+            }
             auto serializableMessage = std::dynamic_pointer_cast<ProtoSerializable>(message);
             if(!serializableMessage) {
                 logger::error("Message is not a ProtoSerializable message for topic: {}", topicName);
@@ -189,14 +220,15 @@ void RemoteConnectionImpl::addPublishThread(const std::string& topicName, const 
     publishThreads.push_back(std::move(thread));
 }
 
-void RemoteConnectionImpl::addTopic(const std::string& topicName, Node::Output& output, const std::string& group) {
+void RemoteConnectionImpl::addTopic(const std::string& topicName, Node::Output& output, const std::string& group, bool useVisualizationIfAvailable) {
     auto outputQueue = output.createOutputQueue();
-    addPublishThread(topicName, outputQueue, group);
+    addPublishThread(topicName, outputQueue, group, useVisualizationIfAvailable);
 }
 
-std::shared_ptr<MessageQueue> RemoteConnectionImpl::addTopic(const std::string& topicName, const std::string& group, unsigned int maxSize, bool blocking) {
+std::shared_ptr<MessageQueue> RemoteConnectionImpl::addTopic(
+    const std::string& topicName, const std::string& group, unsigned int maxSize, bool blocking, bool useVisualizationIfAvailable) {
     auto outputQueue = std::make_shared<MessageQueue>(maxSize, blocking);
-    addPublishThread(topicName, outputQueue, group);
+    addPublishThread(topicName, outputQueue, group, useVisualizationIfAvailable);
     return outputQueue;
 }
 
