@@ -88,11 +88,39 @@ std::vector<AudioPCM> getAlsaPCMs() {
 
         int deviceNum = -1;
 
-        // Loop over all PCM devices on this card
+        // Loop over all playback PCM devices on this card
         while(snd_ctl_pcm_next_device(cardHandle, &deviceNum) >= 0 && deviceNum >= 0) {
             snd_pcm_info_set_device(pcmInfo, deviceNum);
             snd_pcm_info_set_subdevice(pcmInfo, 0);
             snd_pcm_info_set_stream(pcmInfo, SND_PCM_STREAM_PLAYBACK);
+
+            // Get PCM device info
+            if((err = snd_ctl_pcm_info(cardHandle, pcmInfo)) < 0) {
+                if(err != -ENOENT) {
+                    // logger->warn("AudioHelpers {}: Error getting PCM info: {}", __func__, snd_strerror(err));
+                }
+                continue;
+            }
+
+            AudioPCM pcm;
+            pcm.name = snd_pcm_info_get_name(pcmInfo);
+            pcm.id = snd_pcm_info_get_id(pcmInfo);
+            pcm.cardNumber = cardNum;
+            pcm.deviceNumber = deviceNum;
+
+            // logger->info("AudioHelpers {}: Device {}: {}", __func__, deviceNum, snd_pcm_info_get_name(pcmInfo));
+            // logger->info("AudioHelpers {}: ID: {}", __func__, snd_pcm_info_get_id(pcmInfo));
+
+            vec.push_back(pcm);
+        }
+
+	deviceNum = -1;
+
+	// Loop over all capture PCM devices on this card
+        while(snd_ctl_pcm_next_device(cardHandle, &deviceNum) >= 0 && deviceNum >= 0) {
+            snd_pcm_info_set_device(pcmInfo, deviceNum);
+            snd_pcm_info_set_subdevice(pcmInfo, 0);
+            snd_pcm_info_set_stream(pcmInfo, SND_PCM_STREAM_CAPTURE);
 
             // Get PCM device info
             if((err = snd_ctl_pcm_info(cardHandle, pcmInfo)) < 0) {
