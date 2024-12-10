@@ -243,7 +243,7 @@ void AprilTag::run() {
             stride = cvimgPtr->cols;
             imgbuf = cvimgPtr->data;
     #else
-            throw std::runtime_error("AprilTag node: Unsupported frame type " << static_cast<int>(frameType));
+            throw std::runtime_error("AprilTag node: Unsupported frame type without opencv support, only GRAY8 and NV12 supported");
     #endif
         }
 
