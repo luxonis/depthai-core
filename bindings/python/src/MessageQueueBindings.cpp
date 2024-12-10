@@ -110,10 +110,6 @@ void MessageQueueBindings::bind(pybind11::module& m, void* pCallstack) {
                     }
                     if(PyErr_CheckSignals() != 0) throw py::error_already_set();
                 }
-                if(timedout){
-                    py::gil_scoped_release release;
-                    d = obj.get(timeoutLeft, timedout);
-                }
                 if(PyErr_CheckSignals() != 0) throw py::error_already_set();
                 return d;
             },
@@ -162,10 +158,6 @@ void MessageQueueBindings::bind(pybind11::module& m, void* pCallstack) {
                         timeoutLeft -= toSleep;
                     }
                     if(PyErr_CheckSignals() != 0) throw py::error_already_set();
-                }
-                if(!sent){
-                    py::gil_scoped_release release;
-                    sent = obj.send(msg, timeoutLeft);
                 }
                 return sent;
             },
