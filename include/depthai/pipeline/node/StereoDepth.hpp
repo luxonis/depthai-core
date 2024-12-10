@@ -70,6 +70,12 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
         *this, {"inputConfig", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::StereoDepthConfig, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
+     * Input align to message.
+     * Default queue is non-blocking with size 1.
+     */
+    Input inputAlignTo{*this, {"inputAlignTo", DEFAULT_GROUP, false, 1, {{DatatypeEnum::ImgFrame, false}}, true}};
+
+    /**
      * Input for left ImgFrame of left-right pair
      */
     Input left{*this, {"left", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ImgFrame, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
