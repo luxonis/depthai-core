@@ -272,7 +272,7 @@ dai_set_test_labels(model_slug_test onhost ci)
 
 # DepthAI logging test
 dai_add_test(logging_test src/ondevice_tests/logging_test.cpp)
-dai_set_test_labels(logging_test ondevice rvc2_all ci)
+dai_set_test_labels(logging_test ondevice rvc2_all rvc4 ci)
 
 # OpenVINO blob test
 dai_add_test(openvino_blob_test src/ondevice_tests/openvino_blob_test.cpp)
@@ -389,3 +389,7 @@ dai_set_test_labels(bridge_large_messages ondevice rvc4 ci)
 # ImageAlign test
 dai_add_test(image_align_node_test src/ondevice_tests/image_align_node_test.cpp)
 dai_set_test_labels(image_align_node_test ondevice rvc2_all rvc4 ci)
+
+# Script node test
+dai_add_test(script_node_test src/ondevice_tests/script_node_test.cpp)
+dai_set_test_labels(script_node_test ondevice rvc2_all rvc4 ci)
