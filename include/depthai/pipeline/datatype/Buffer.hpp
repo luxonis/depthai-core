@@ -3,6 +3,7 @@
 #include <chrono>
 #include <unordered_map>
 #include <vector>
+#include <variant>
 
 #include "depthai/common/Timestamp.hpp"
 #include "depthai/pipeline/datatype/ADatatype.hpp"
@@ -11,6 +12,9 @@
 #include "depthai/utility/span.hpp"
 
 namespace dai {
+class ImgAnnotations;
+class ImgFrame;
+using VisualizeType = std::variant<std::shared_ptr<ImgAnnotations>, std::shared_ptr<ImgFrame>, std::monostate>;
 
 /// Base message - buffer of binary data
 class Buffer : public ADatatype {
@@ -76,6 +80,12 @@ class Buffer : public ADatatype {
     void setSequenceNum(int64_t sequenceNum);
 
     virtual span<const uint8_t> getRecordData() const;
+
+    /**
+     * Get visualizable message
+     @return Visualizable message, either ImgFrame, ImgAnnotations or std::monostate (None)
+    */
+    virtual dai::VisualizeType getVisualizationMessage() const;
 
     // TODO(Morato) // Make this private
     int64_t sequenceNum = 0;  // increments for each message

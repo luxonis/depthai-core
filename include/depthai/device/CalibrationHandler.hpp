@@ -597,6 +597,15 @@ class CalibrationHandler {
     std::vector<std::vector<float>> computeExtrinsicMatrix(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera, bool useSpecTranslation = false) const;
     bool checkExtrinsicsLink(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera) const;
     bool checkSrcLinks(CameraBoardSocket headSocket) const;
+
+    /**
+     * Get the Transformation matrix from the given camera to the coordinate system origin (one without extrinsics
+     * and linked to CameraBoardSocket.AUTO)
+     * @param cameraId Camera Id of the camera for which the origin matrix is being calculated
+     * @param useSpecTranslation Enabling this bool uses the translation information from the board design data
+     * @return a transformationMatrix which is 4x4 in homogeneous coordinate system
+     */
+    std::vector<std::vector<float>> getExtrinsicsToOrigin(CameraBoardSocket cameraId, bool useSpecTranslation, CameraBoardSocket& originSocket) const;
 };
 
 }  // namespace dai
