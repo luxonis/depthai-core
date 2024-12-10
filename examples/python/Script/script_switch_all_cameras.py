@@ -6,7 +6,10 @@ import cv2
 device = dai.Device()
 pipeline = dai.Pipeline(device)
 
-cameras = [pipeline.create(dai.node.Camera).build(socket) for socket in device.getConnectedCameras()]
+cameras = [
+    pipeline.create(dai.node.Camera).build(socket)
+    for socket in device.getConnectedCameras()
+]
 inputKeys = []
 script = pipeline.create(dai.node.Script)
 
@@ -21,7 +24,8 @@ controlQueue = script.inputs["control"].createInputQueue()
 preview = script.outputs["out"].createOutputQueue()
 
 inputKeysSize = len(inputKeys)
-script.setScript(f"""
+script.setScript(
+    f"""
     inputToStream = 0
     maxID = {inputKeysSize} - 1
     while True:
@@ -33,17 +37,18 @@ script.setScript(f"""
                 inputToStream = 0
         frame = node.inputs[str(inputToStream)].get()
         node.outputs["out"].send(frame)
-""")
+"""
+)
 
 pipeline.start()
 print("To switch between streams, press 's'")
 with pipeline:
     while pipeline.isRunning():
         previewMessage = preview.get()
-        assert(isinstance(previewMessage, dai.ImgFrame))
+        assert isinstance(previewMessage, dai.ImgFrame)
         cv2.imshow("preview", previewMessage.getCvFrame())
         key = cv2.waitKey(1)
-        if key == ord('s'):
+        if key == ord("s"):
             controlQueue.send(dai.Buffer())
-        if key == ord('q'):
+        if key == ord("q"):
             break

@@ -8,7 +8,8 @@ inputQueue = script.inputs["in"].createInputQueue()
 outputQueue = script.outputs["out"].createOutputQueue()
 
 
-script.setScript("""
+script.setScript(
+    """
     while True:
         message = node.inputs["in"].get()
         # Or alternatively:
@@ -17,7 +18,8 @@ script.setScript("""
         node.outputs["out"].send(message)
         # Or alternatively:
         # node.io["out"].send(message)
-""")
+"""
+)
 
 pipeline.start()
 with pipeline:
