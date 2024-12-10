@@ -103,7 +103,7 @@ EventsManager::EventsManager(std::string url, bool uploadCachedOnStart, float pu
       queueSize(10),
       publishInterval(publishInterval),
       logResponse(false),
-      verifySsl(false),
+      verifySsl(true),
       connected(false),
       cacheDir("/internal/private"),
       uploadCachedOnStart(uploadCachedOnStart),
