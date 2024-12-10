@@ -11,8 +11,12 @@ outputQueue = script.outputs["out"].createOutputQueue()
 script.setScript("""
     while True:
         message = node.inputs["in"].get()
+        # Or alternatively:
+        # message = node.io["in"].get()
         node.warn("I received a message!")
         node.outputs["out"].send(message)
+        # Or alternatively:
+        # node.io["out"].send(message)
 """)
 
 pipeline.start()

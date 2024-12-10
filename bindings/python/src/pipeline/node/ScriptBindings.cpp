@@ -47,6 +47,10 @@ void bind_script(pybind11::module& m, void* pCallstack){
                     dict[py::str(output->getName())] = output;
                 }
                 for(auto& input : n.getInputRefs()) {
+                    // Check if the key is already taken an throw an error
+                    if(dict.contains(py::str(input->getName()))) {
+                        throw std::runtime_error("Input with name '" + input->getName() + "' already exists in the node");
+                    }
                     dict[py::str(input->getName())] = input;
                 }
                 return dict;
