@@ -27,6 +27,7 @@ void ImgFrameCapabilityBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("fps", &ImgFrameCapability::fps)
         .def_readwrite("type", &ImgFrameCapability::type)
         .def_readwrite("resizeMode", &ImgFrameCapability::resizeMode)
+        .def_readwrite("enableUndistortion", &ImgFrameCapability::enableUndistortion)
 
         ;
 }
