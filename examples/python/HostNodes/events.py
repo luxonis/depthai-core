@@ -10,7 +10,7 @@ import time
 # Create pipeline
 with dai.Pipeline() as pipeline:
     # Define sources and outputs
-    camRgb = pipeline.create(dai.node.Camera)
+    camRgb = pipeline.create(dai.node.Camera).build()
     # Properties
 
     qRgb = camRgb.requestOutput((256,256)).createOutputQueue()
