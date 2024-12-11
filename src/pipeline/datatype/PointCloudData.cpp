@@ -55,7 +55,7 @@ void PointCloudData::setPointsRGB(const std::vector<Point3fRGB>& points) {
         dataPtr[i] = points[i];
     }
     setData(data);
-    color = true;
+    setColor(true);
 }
 
 unsigned int PointCloudData::getInstanceNum() const {
@@ -189,4 +189,5 @@ ProtoSerializable::SchemaPair PointCloudData::serializeSchema() const {
 
 #endif
 static_assert(sizeof(Point3f) == 12, "Point3f size must be 12 bytes");
+static_assert(sizeof(Point3fRGB) == 15, "Point3fRGB size must be 15 bytes");
 }  // namespace dai
