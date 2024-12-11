@@ -441,12 +441,6 @@ class ImageManipConfigV2 : public Buffer {
      */
     ImageManipConfigV2& addCropRotatedRect(dai::RotatedRect rotatedRect, bool normalizedCoords = false);
     /**
-     * Resizes the image to the specified width and height
-     * @param w Width of the output image
-     * @param h Height of the output image
-     */
-    ImageManipConfigV2& addResize(uint32_t w, uint32_t h);
-    /**
      * Rescales the image using the specified factors
      * @param scaleX Scale factor for the X axis
      * @param scaleY Scale factor for the Y axis. If not specified, scaleY is set to the same value as scaleX
