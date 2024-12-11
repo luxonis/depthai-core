@@ -64,8 +64,27 @@ void bind_stereodepth(pybind11::module& m, void* pCallstack){
         ;
 
     stereoDepthPresetMode
-        .value("HIGH_ACCURACY", StereoDepth::PresetMode::HIGH_ACCURACY, DOC(dai, node, StereoDepth, PresetMode, HIGH_ACCURACY))
-        .value("HIGH_DENSITY", StereoDepth::PresetMode::HIGH_DENSITY, DOC(dai, node, StereoDepth, PresetMode, HIGH_DENSITY))
+        .value("HIGH_ACCURACY", StereoDepth::PresetMode::HIGH_ACCURACY, "**Deprecated:** Will be removed in future releases and replaced with DEFAULT")
+        .value("HIGH_DENSITY", StereoDepth::PresetMode::HIGH_DENSITY, "**Deprecated:** Will be removed in future releases and replaced with DEFAULT")
+
+        .value("DEFAULT", StereoDepth::PresetMode::DEFAULT)
+        .value("FACE", StereoDepth::PresetMode::FACE)
+        .value("HIGH_DETAIL", StereoDepth::PresetMode::HIGH_DETAIL)
+        .value("HIGH_FPS", StereoDepth::PresetMode::HIGH_FPS)
+        .value("HIGH_ACCURACY2", StereoDepth::PresetMode::HIGH_ACCURACY2)
+        .value("ROBOTICS", StereoDepth::PresetMode::ROBOTICS)
+
+        // Deprecated overriden
+        .def_property_readonly_static("HIGH_ACCURACY", [](py::object){
+            PyErr_WarnEx(PyExc_DeprecationWarning, "HIGH_ACCURACY is deprecated, will be removed in future releases and replaced with DEFAULT.", 1);
+            return StereoDepth::PresetMode::HIGH_ACCURACY;
+        })
+
+        .def_property_readonly_static("HIGH_DENSITY", [](py::object){
+            PyErr_WarnEx(PyExc_DeprecationWarning, "HIGH_DENSITY is deprecated, will be removed in future releases and replaced with DEFAULT.", 1);
+            return StereoDepth::PresetMode::HIGH_DENSITY;
+        })
+
         ;
 
     // Node
@@ -99,6 +118,7 @@ void bind_stereodepth(pybind11::module& m, void* pCallstack){
              py::arg("presetMode") = StereoDepth::PresetMode::HIGH_DENSITY)
         .def_readonly("initialConfig", &StereoDepth::initialConfig, DOC(dai, node, StereoDepth, initialConfig))
         .def_readonly("inputConfig", &StereoDepth::inputConfig, DOC(dai, node, StereoDepth, inputConfig))
+        .def_readonly("inputAlignTo", &StereoDepth::inputAlignTo, DOC(dai, node, StereoDepth, inputAlignTo))
         .def_readonly("left", &StereoDepth::left, DOC(dai, node, StereoDepth, left))
         .def_readonly("right", &StereoDepth::right, DOC(dai, node, StereoDepth, right))
         .def_readonly("inputLeftPixelDescriptor", &StereoDepth::inputLeftPixelDescriptor, DOC(dai, node, StereoDepth, inputLeftPixelDescriptor))

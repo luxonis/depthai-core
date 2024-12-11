@@ -35,16 +35,18 @@ if distortionModel != dai.CameraModel.Perspective:
 
 pipeline = dai.Pipeline(device)
 
+platform = pipeline.getDefaultDevice().getPlatform()
+
 # Define sources and outputs
 camRgb = pipeline.create(dai.node.Camera).build(RGB_SOCKET)
 left = pipeline.create(dai.node.Camera).build(LEFT_SOCKET)
 right = pipeline.create(dai.node.Camera).build(RIGHT_SOCKET)
 stereo = pipeline.create(dai.node.StereoDepth)
 sync = pipeline.create(dai.node.Sync)
-align = pipeline.create(dai.node.ImageAlign)
+if platform == dai.Platform.RVC4:
+    align = pipeline.create(dai.node.ImageAlign)
 
 stereo.setDefaultProfilePreset(dai.node.StereoDepth.PresetMode.HIGH_DENSITY)
-stereo.setDepthAlign(LEFT_SOCKET)
 
 stereo.setExtendedDisparity(True)
 
@@ -58,9 +60,14 @@ rightOut = right.requestOutput(size = (640, 400), fps = FPS)
 rgbOut.link(sync.inputs["rgb"])
 leftOut.link(stereo.left)
 rightOut.link(stereo.right)
-stereo.depth.link(align.input)
-align.outputAligned.link(sync.inputs["depth_aligned"])
-rgbOut.link(align.inputAlignTo)
+if platform == dai.Platform.RVC4:
+    stereo.depth.link(align.input)
+    rgbOut.link(align.inputAlignTo)
+    align.outputAligned.link(sync.inputs["depth_aligned"])
+else:
+    stereo.depth.link(sync.inputs["depth_aligned"])
+    rgbOut.link(stereo.inputAlignTo)
+
 queue = sync.out.createOutputQueue()
 
 def colorizeDepth(frameDepth):
@@ -134,8 +141,6 @@ with pipeline:
         frameDepth = messageGroup["depth_aligned"]
         assert isinstance(frameDepth, dai.ImgFrame)
 
-        sizeRgb = frameRgb.getData().size
-        sizeDepth = frameDepth.getData().size
         # Blend when both received
         if frameDepth is not None:
             cvFrame = frameRgb.getCvFrame()
