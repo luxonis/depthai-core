@@ -10,6 +10,8 @@
 
 #include "Environment.hpp"
 #include "Logging.hpp"
+#include "cpr/cpr.h"
+#include "depthai/schemas/Event.pb.h"
 namespace dai {
 
 namespace utility {
@@ -101,7 +103,7 @@ EventsManager::EventsManager(std::string url, bool uploadCachedOnStart, float pu
       queueSize(10),
       publishInterval(publishInterval),
       logResponse(false),
-      verifySsl(false),
+      verifySsl(true),
       connected(false),
       cacheDir("/internal/private"),
       uploadCachedOnStart(uploadCachedOnStart),
@@ -109,6 +111,9 @@ EventsManager::EventsManager(std::string url, bool uploadCachedOnStart, float pu
     sourceAppId = utility::getEnv("AGENT_APP_ID");
     sourceAppIdentifier = utility::getEnv("AGENT_APP_IDENTIFIER");
     token = utility::getEnv("DEPTHAI_HUB_API_KEY");
+    if(token.empty()) {
+        throw std::runtime_error("Missing token, please set DEPTHAI_HUB_API_KEY environment variable or use setToken method");
+    }
     eventBufferThread = std::make_unique<std::thread>([this]() {
         while(true) {
             sendEventBuffer();
@@ -138,8 +143,6 @@ void EventsManager::sendEventBuffer() {
             }
             return;
         }
-        // Create request
-        cpr::Url url = static_cast<cpr::Url>(this->url + "/v1/events");
         for(auto& eventM : eventBuffer) {
             auto& event = eventM->event;
             batchEvent->add_events()->Swap(event.get());
@@ -147,7 +150,8 @@ void EventsManager::sendEventBuffer() {
     }
     std::string serializedEvent;
     batchEvent->SerializeToString(&serializedEvent);
-    cpr::Response r = cpr::Post(cpr::Url{url}, cpr::Body{serializedEvent}, cpr::Header{{"Authorization", "Bearer " + token}}, cpr::VerifySsl(verifySsl));
+    cpr::Url reqUrl = static_cast<cpr::Url>(this->url + "/v1/events");
+    cpr::Response r = cpr::Post(cpr::Url{reqUrl}, cpr::Body{serializedEvent}, cpr::Header{{"Authorization", "Bearer " + token}}, cpr::VerifySsl(verifySsl));
     if(r.status_code != cpr::status::HTTP_OK) {
         logger::error("Failed to send event: {} {}", r.text, r.status_code);
     } else {
