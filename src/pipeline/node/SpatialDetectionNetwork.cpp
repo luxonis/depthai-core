@@ -59,21 +59,21 @@ std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build(const st
     auto device = getDevice();
     if(device) {
         auto platform = device->getPlatform();
-        switch (platform)
-        {
-        case Platform::RVC4:
-            stereo->depth.link(depthAlign->input);
-            neuralNetwork->passthrough.link(depthAlign->inputAlignTo);
-            depthAlign->outputAligned.link(inputDepth);
-            break;
-        case Platform::RVC2:
-            stereo->depth.link(inputDepth);
-            neuralNetwork->passthrough.link(stereo->inputAlignTo);
-            break;
-        case Platform::RVC3:
-        default:
-            throw std::runtime_error("Unsupported platform");
-            break;
+        switch(platform) {
+            case Platform::RVC4: {
+                Subnode<ImageAlign>& _depthAlign = *depthAlign;
+                stereo->depth.link(_depthAlign->input);
+                neuralNetwork->passthrough.link(_depthAlign->inputAlignTo);
+                _depthAlign->outputAligned.link(inputDepth);
+            } break;
+            case Platform::RVC2:
+                stereo->depth.link(inputDepth);
+                neuralNetwork->passthrough.link(stereo->inputAlignTo);
+                break;
+            case Platform::RVC3:
+            default:
+                throw std::runtime_error("Unsupported platform");
+                break;
         }
 
     } else {

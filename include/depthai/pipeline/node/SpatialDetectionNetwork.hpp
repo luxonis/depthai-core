@@ -27,16 +27,46 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
         : DeviceNodeCRTP<DeviceNode, SpatialDetectionNetwork, SpatialDetectionNetworkProperties>(device),
           input{neuralNetwork->input},
           outNetwork{neuralNetwork->out},
-          passthrough{neuralNetwork->passthrough} {};
+          passthrough{neuralNetwork->passthrough} {
+        if(device) {
+            auto platform = device->getPlatform();
+            if(platform == Platform::RVC4) {
+                if(!depthAlign) depthAlign = std::make_unique<Subnode<ImageAlign>>(*this, "depthAlign");
+            }
+        }
+    };
     SpatialDetectionNetwork(std::unique_ptr<Properties> props)
-        : DeviceNodeCRTP(std::move(props)), input{neuralNetwork->input}, outNetwork{neuralNetwork->out}, passthrough{neuralNetwork->passthrough} {};
+        : DeviceNodeCRTP(std::move(props)), input{neuralNetwork->input}, outNetwork{neuralNetwork->out}, passthrough{neuralNetwork->passthrough} {
+        auto device = getDevice();
+        if(device) {
+            auto platform = device->getPlatform();
+            if(platform == Platform::RVC4) {
+                if(!depthAlign) depthAlign = std::make_unique<Subnode<ImageAlign>>(*this, "depthAlign");
+            }
+        }
+    };
     SpatialDetectionNetwork(std::unique_ptr<Properties> props, bool confMode)
-        : DeviceNodeCRTP(std::move(props), confMode), input{neuralNetwork->input}, outNetwork{neuralNetwork->out}, passthrough{neuralNetwork->passthrough} {};
+        : DeviceNodeCRTP(std::move(props), confMode), input{neuralNetwork->input}, outNetwork{neuralNetwork->out}, passthrough{neuralNetwork->passthrough} {
+        auto device = getDevice();
+        if(device) {
+            auto platform = device->getPlatform();
+            if(platform == Platform::RVC4) {
+                if(!depthAlign) depthAlign = std::make_unique<Subnode<ImageAlign>>(*this, "depthAlign");
+            }
+        }
+    };
     SpatialDetectionNetwork(const std::shared_ptr<Device>& device, std::unique_ptr<Properties> props, bool confMode)
         : DeviceNodeCRTP(device, std::move(props), confMode),
           input{neuralNetwork->input},
           outNetwork{neuralNetwork->out},
-          passthrough{neuralNetwork->passthrough} {};
+          passthrough{neuralNetwork->passthrough} {
+        if(device) {
+            auto platform = device->getPlatform();
+            if(platform == Platform::RVC4) {
+                if(!depthAlign) depthAlign = std::make_unique<Subnode<ImageAlign>>(*this, "depthAlign");
+            }
+        }
+    };
 
     constexpr static const char* NAME = "SpatialDetectionNetwork";
     std::shared_ptr<SpatialDetectionNetwork> build(const std::shared_ptr<Camera>& inputRgb,
@@ -51,7 +81,7 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
 
     Subnode<NeuralNetwork> neuralNetwork{*this, "neuralNetwork"};
     Subnode<DetectionParser> detectionParser{*this, "detectionParser"};
-    Subnode<ImageAlign> depthAlign{*this, "depthAlign"};
+    std::unique_ptr<Subnode<ImageAlign>> depthAlign;
 
     /**
      * Input message with data to be inferred upon
