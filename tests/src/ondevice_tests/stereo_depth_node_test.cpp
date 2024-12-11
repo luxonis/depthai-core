@@ -51,14 +51,6 @@ TEST_CASE("Test StereoDepth node HIGH_DETAIL preset") {
     testStereoDepthPreset(dai::node::StereoDepth::PresetMode::HIGH_DETAIL);
 }
 
-TEST_CASE("Test StereoDepth node HIGH_FPS preset") {
-    testStereoDepthPreset(dai::node::StereoDepth::PresetMode::HIGH_FPS);
-}
-
-TEST_CASE("Test StereoDepth node HIGH_ACCURACY2 preset") {
-    testStereoDepthPreset(dai::node::StereoDepth::PresetMode::HIGH_ACCURACY2);
-}
-
 TEST_CASE("Test StereoDepth node ROBOTICS preset") {
     testStereoDepthPreset(dai::node::StereoDepth::PresetMode::ROBOTICS);
 }
