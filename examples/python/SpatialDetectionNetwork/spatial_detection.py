@@ -80,7 +80,6 @@ with dai.Pipeline() as p:
     visualizer = p.create(SpatialVisualizer)
 
     # setting node configs
-    stereo.setDefaultProfilePreset(dai.node.StereoDepth.PresetMode.HIGH_DENSITY)
     stereo.setExtendedDisparity(True)
     platform = p.getDefaultDevice().getPlatform()
     if platform == dai.Platform.RVC2:

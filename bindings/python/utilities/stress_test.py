@@ -444,8 +444,6 @@ def build_pipeline(device: dai.Device, args) -> Tuple[dai.Pipeline, List[Tuple[s
         output = "out" if hasattr(left, "out") else "video"
         getattr(left, output).link(stereo.left)
         getattr(right, output).link(stereo.right)
-        stereo.setDefaultProfilePreset(
-            dai.node.StereoDepth.PresetMode.HIGH_DENSITY)
         stereo.setOutputSize(left.getResolutionWidth(),
                              left.getResolutionHeight())
         stereo.setLeftRightCheck(True)
