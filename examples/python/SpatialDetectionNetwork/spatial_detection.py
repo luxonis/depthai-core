@@ -82,7 +82,9 @@ with dai.Pipeline() as p:
     # setting node configs
     stereo.setDefaultProfilePreset(dai.node.StereoDepth.PresetMode.HIGH_DENSITY)
     stereo.setExtendedDisparity(True)
-    stereo.setOutputSize(640, 400)
+    platform = p.getDefaultDevice().getPlatform()
+    if platform == dai.Platform.RVC2:
+        stereo.setOutputSize(640, 400)
 
     spatialDetectionNetwork.input.setBlocking(False)
     spatialDetectionNetwork.setBoundingBoxScaleFactor(0.5)

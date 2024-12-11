@@ -4,6 +4,7 @@
 #include <depthai/pipeline/Subnode.hpp>
 #include <depthai/pipeline/node/Camera.hpp>
 #include <depthai/pipeline/node/DetectionNetwork.hpp>
+#include <depthai/pipeline/node/ImageAlign.hpp>
 #include <depthai/pipeline/node/StereoDepth.hpp>
 
 #include "depthai/openvino/OpenVINO.hpp"
@@ -50,6 +51,7 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
 
     Subnode<NeuralNetwork> neuralNetwork{*this, "neuralNetwork"};
     Subnode<DetectionParser> detectionParser{*this, "detectionParser"};
+    Subnode<ImageAlign> depthAlign{*this, "depthAlign"};
 
     /**
      * Input message with data to be inferred upon
