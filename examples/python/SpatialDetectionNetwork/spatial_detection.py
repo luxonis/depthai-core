@@ -84,6 +84,7 @@ with dai.Pipeline() as p:
     stereo.setExtendedDisparity(True)
     platform = p.getDefaultDevice().getPlatform()
     if platform == dai.Platform.RVC2:
+        # For RVC2, width must be divisible by 16
         stereo.setOutputSize(640, 400)
 
     spatialDetectionNetwork.input.setBlocking(False)
