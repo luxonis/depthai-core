@@ -14,27 +14,32 @@ namespace dai {
 namespace node {
 
 std::shared_ptr<RGBD> RGBD::build() {
-    // Link the inputs
+    align = getParentPipeline().create<node::ImageAlign>();
+    align->outputAligned.link(inDepthSync);
+    colorMux.link(inColorSync);
+    colorMux.link(align->inputAlignTo);
+    depthPT.link(align->input);
     sync->setRunOnHost(false);
     sync->out.link(inSync);
-    inColor.setBlocking(false);
-    inColor.setMaxSize(1);
-    inDepth.setBlocking(false);
-    inDepth.setMaxSize(1);
     inSync.setMaxSize(1);
     inSync.setBlocking(false);
+    inDepth.addCallback([this](const std::shared_ptr<ADatatype>& data) { depthPT.send(data); });
+    inColor.addCallback([this](const std::shared_ptr<ADatatype>& data) { colorMux.send(data); });
     return std::static_pointer_cast<RGBD>(shared_from_this());
 }
 
-// std::shared_ptr<RGBD> RGBD::build(bool autocreate) {
-// if(!autocreate) {
-//     return std::static_pointer_cast<RGBD>(shared_from_this());
-// }
-// auto pipeline = getParentPipeline();
-// auto colorCam = pipeline.create<node::Camera>();
-// auto depth = pipeline.create<node::StereoDepth>();
-// return build(, depth->depth);
-// }
+std::shared_ptr<RGBD> RGBD::build(bool autocreate, std::pair<int, int> size) {
+    if(!autocreate) {
+        return std::static_pointer_cast<RGBD>(shared_from_this());
+    }
+    auto pipeline = getParentPipeline();
+    auto colorCam = pipeline.create<node::Camera>()->build();
+    auto depth = pipeline.create<node::StereoDepth>()->build(true);
+    auto* out = colorCam->requestOutput(size);
+    out->link(inColor);
+    depth->depth.link(inDepth);
+    return build();
+}
 
 void RGBD::initialize(std::vector<std::shared_ptr<ImgFrame>> frames) {
     // Initialize the camera intrinsics
@@ -62,8 +67,8 @@ void RGBD::run() {
 
             initialize(imgFrames);
         }
-        auto colorFrame = std::dynamic_pointer_cast<ImgFrame>(group->group.at(inColor.getName()));
-        auto depthFrame = std::dynamic_pointer_cast<ImgFrame>(group->group.at(inDepth.getName()));
+        auto colorFrame = std::dynamic_pointer_cast<ImgFrame>(group->group.at(inColorSync.getName()));
+        auto depthFrame = std::dynamic_pointer_cast<ImgFrame>(group->group.at(inDepthSync.getName()));
 
         // Create the point cloud
         auto pc = std::make_shared<PointCloudData>();
@@ -86,12 +91,10 @@ void RGBD::run() {
                 // Get the depth value as UINT16
                 uint16_t depthValue = depthData.at<uint16_t>(i, j);
                 // Convert the depth value to meters
-                float z = depthValue / 1000.0f;
-                // limit the depth value to 10m
-                if(z > 10.0f) {
-                    z = 10.0f;
+                float z = depthValue;
+                if(outputMeters) {
+                    z /= 1000.0f;
                 }
-
                 // Calculate the 3D point
                 float x = (j - cy) * z / fy;
                 float y = (i - cx) * z / fx;
