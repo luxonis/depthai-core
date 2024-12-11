@@ -42,9 +42,22 @@ bool setupHolisticRecord(
                 if(std::dynamic_pointer_cast<node::Camera>(node) != nullptr) {
                     auto cam = std::dynamic_pointer_cast<dai::node::Camera>(node);
                     auto fps = cam->getMaxRequestedFps();
+                    size_t requestWidth = cam->getMaxRequestedWidth();
+                    size_t requestHeight = cam->getMaxRequestedHeight();
                     size_t width = cam->getMaxWidth();
                     size_t height = cam->getMaxHeight();
-                    // TODO(asahtik): RVC4 H264 video encoder only supports native resolutions. Get min larger native resolution (also removes upscaling).
+                    auto cams = pipeline.getDefaultDevice()->getConnectedCameraFeatures();
+                    for(const auto& cf : cams) {
+                        if(cf.socket == cam->getBoardSocket()) {
+                            for(const auto& cfg : cf.configs) {
+                                if(cfg.width > (int32_t)requestWidth && cfg.height > (int32_t)requestHeight) {
+                                    width = std::min((size_t)cfg.width, width);
+                                    height = std::min((size_t)cfg.height, height);
+                                }
+                            }
+                            break;
+                        }
+                    }
                     output = cam->requestOutput({width, height}, dai::ImgFrame::Type::NV12, dai::ImgResizeMode::CROP, fps);
                 } else {
                     output = &nodeS->getRecordOutput();

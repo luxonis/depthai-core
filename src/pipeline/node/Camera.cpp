@@ -200,6 +200,34 @@ float Camera::getMaxRequestedFps() const {
     }
     return maxFps == 0 ? 30 : maxFps;
 }
+uint32_t Camera::getMaxRequestedWidth() const {
+    uint32_t width = 0;
+    for(const auto& outputRequest : pimpl->outputRequests) {
+        auto& spec = outputRequest.capability;
+        if(spec.size.value) {
+            if(const auto* size = std::get_if<std::pair<uint32_t, uint32_t>>(&(*spec.size.value))) {
+                width = std::max(width, size->first);
+            } else {
+                DAI_CHECK_IN(false);
+            }
+        }
+    }
+    return width == 0 ? maxWidth : width;
+}
+uint32_t Camera::getMaxRequestedHeight() const {
+    uint32_t height = 0;
+    for(const auto& outputRequest : pimpl->outputRequests) {
+        auto& spec = outputRequest.capability;
+        if(spec.size.value) {
+            if(const auto* size = std::get_if<std::pair<uint32_t, uint32_t>>(&(*spec.size.value))) {
+                height = std::max(height, size->second);
+            } else {
+                DAI_CHECK_IN(false);
+            }
+        }
+    }
+    return height == 0 ? maxHeight : height;
+}
 
 /*
 Camera::Output& Camera::getRecordOutput() {

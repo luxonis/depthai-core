@@ -97,6 +97,8 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
     void buildStage1() override;
 
     float getMaxRequestedFps() const;
+    uint32_t getMaxRequestedWidth() const;
+    uint32_t getMaxRequestedHeight() const;
 
    protected:
     Properties& getProperties() override;
