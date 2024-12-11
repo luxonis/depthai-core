@@ -25,11 +25,18 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
         /**
          * Prefers accuracy over density. More invalid depth values, but less outliers.
          */
-        HIGH_ACCURACY,
+        HIGH_ACCURACY [[deprecated("Will be removed in future releases and replaced with DEFAULT")]],
         /**
          * Prefers density over accuracy. Less invalid depth values, but more outliers.
          */
-        HIGH_DENSITY
+        HIGH_DENSITY [[deprecated("Will be removed in future releases and replaced with DEFAULT")]],
+
+        DEFAULT,
+        FACE,
+        HIGH_DETAIL,
+        HIGH_FPS,
+        HIGH_ACCURACY2,
+        ROBOTICS
     };
     std::shared_ptr<StereoDepth> build(Node::Output& left, Node::Output& right, PresetMode presetMode = PresetMode::HIGH_ACCURACY) {
         this->presetMode = presetMode;
@@ -61,6 +68,12 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
      */
     Input inputConfig{
         *this, {"inputConfig", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::StereoDepthConfig, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+
+    /**
+     * Input align to message.
+     * Default queue is non-blocking with size 1.
+     */
+    Input inputAlignTo{*this, {"inputAlignTo", DEFAULT_GROUP, false, 1, {{DatatypeEnum::ImgFrame, false}}, true}};
 
     /**
      * Input for left ImgFrame of left-right pair
