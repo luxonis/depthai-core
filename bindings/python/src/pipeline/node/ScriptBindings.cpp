@@ -38,6 +38,25 @@ void bind_script(pybind11::module& m, void* pCallstack){
     script
         .def_readonly("inputs", &Script::inputs)
         .def_readonly("outputs", &Script::outputs)
+#ifdef DEPTHAI_SCRIPT_NODE_ADD_IO
+        .def_property_readonly(
+            "io",
+            [](Node& n) -> py::object {
+                auto dict = py::dict();
+                for(auto& output : n.getOutputRefs()) {
+                    dict[py::str(output->getName())] = output;
+                }
+                for(auto& input : n.getInputRefs()) {
+                    // Check if the key is already taken an throw an error
+                    if(dict.contains(py::str(input->getName()))) {
+                        throw std::runtime_error("Input with name '" + input->getName() + "' already exists in the node");
+                    }
+                    dict[py::str(input->getName())] = input;
+                }
+                return dict;
+            },
+            py::return_value_policy::reference_internal)
+#endif
         .def("setScriptPath", &Script::setScriptPath, DOC(dai, node, Script, setScriptPath))
         .def("setScript", py::overload_cast<const std::string&, const std::string&>(&Script::setScript), py::arg("script"), py::arg("name") = "", DOC(dai, node, Script, setScript))
         .def("setScript", py::overload_cast<const std::vector<std::uint8_t>&, const std::string&>(&Script::setScript), py::arg("data"), py::arg("name") = "", DOC(dai, node, Script, setScript, 2))
