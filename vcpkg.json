@@ -71,6 +71,12 @@
                 "cpr"
             ]
         },
+        "kompute-support": {
+            "description": "Enable Kompute support",
+            "dependencies": [
+                "kompute"
+            ]
+        },
         "protobuf-support": {
             "description": "Enable Protobuf support",
             "dependencies": [

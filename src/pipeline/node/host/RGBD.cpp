@@ -11,7 +11,7 @@
 #include "depthai/pipeline/node/Sync.hpp"
 
 #include "kompute/Kompute.hpp"
-#include "shaders/rgbd2pointcloud.hpp"
+#include "depthai/shaders/rgbd2pointcloud.hpp"
 
 #include <future>
 
@@ -30,7 +30,12 @@ std::shared_ptr<RGBD> RGBD::build() {
     inSync.setBlocking(false);
     inDepth.addCallback([this](const std::shared_ptr<ADatatype>& data) { depthPT.send(data); });
     inColor.addCallback([this](const std::shared_ptr<ADatatype>& data) { colorMux.send(data); });
-    mgr = std::make_shared<kp::Manager>(deviceIndex);
+    mgr = std::make_shared<kp::Manager>(1);
+    auto devices = mgr->listDevices();
+    for(auto& dev : devices) {
+        std::cout << "Device ID: " << dev.getProperties().deviceID << std::endl;
+        std::cout << "Device Name: " << dev.getProperties().deviceName << std::endl;
+    }
     return std::static_pointer_cast<RGBD>(shared_from_this());
 }
 
@@ -108,7 +113,6 @@ void RGBD::computePointCloudGPU(
     auto xyzTensor = mgr->tensor(xyzOut);
     // We'll store output RGB as float as well, then convert back
     auto outRgbTensor = mgr->tensorT<float>(std::vector<float>(rgbOut.size()));
-
     // Load shader
     const std::vector<uint32_t> shader = std::vector<uint32_t>(shaders::RGBD2POINTCLOUD_COMP_SPV.begin(), shaders::RGBD2POINTCLOUD_COMP_SPV.end());
     const std::vector<std::shared_ptr<kp::Memory>> tensors = {depthTensor, rgbTensor, intrinsicsTensor, xyzTensor, outRgbTensor};
@@ -222,7 +226,7 @@ void RGBD::run() {
         uint height = colorFrame->getHeight();
         pc->setSize(width, height);
 
-        std::vector<Point3fRGB> points(width * height);
+        std::vector<Point3fRGB> points;
         // Fill the point cloud
         auto depthData = depthFrame->getCvFrame();
         auto colorData = colorFrame->getCvFrame();
@@ -241,7 +245,7 @@ void RGBD::run() {
             p.r = rgbBuffer[i*3+0];
             p.g = rgbBuffer[i*3+1];
             p.b = rgbBuffer[i*3+2];
-            points.push_back(p);
+            points.emplace_back(p);
         }
         pc->setPointsRGB(points);
         pcl.send(pc);
