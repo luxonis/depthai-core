@@ -101,8 +101,10 @@ ImgTransformation deserializeImgTransformation(const proto::common::ImgTransform
                                        sourceIntrinsicMatrix,
                                        static_cast<CameraModel>(imgTransformation.distortionmodel()),
                                        distortionCoefficients);
-    transformation.addTransformation(transformationMatrix);
-    transformation.addCrop(0, 0, imgTransformation.width(), imgTransformation.height());
+    if(transformation.isValid()) {
+        transformation.addTransformation(transformationMatrix);
+        transformation.addCrop(0, 0, imgTransformation.width(), imgTransformation.height());
+    }
     return transformation;
 }
 

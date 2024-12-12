@@ -21,6 +21,13 @@
 namespace dai {
 namespace utility {
 
+inline size_t roundDown(size_t numToRound, size_t multiple) {
+    return numToRound - numToRound % multiple;
+}
+inline size_t roundUp(size_t numToRound, size_t multiple) {
+    return roundDown(numToRound + multiple - 1UL, multiple);
+}
+
 bool setupHolisticRecord(
     Pipeline& pipeline, const std::string& mxId, RecordConfig& recordConfig, std::unordered_map<std::string, std::string>& outFilenames, bool legacy) {
     auto sources = pipeline.getSourceNodes();
@@ -39,6 +46,7 @@ bool setupHolisticRecord(
             if(std::dynamic_pointer_cast<node::Camera>(node) != nullptr || std::dynamic_pointer_cast<node::ColorCamera>(node) != nullptr
                || std::dynamic_pointer_cast<node::MonoCamera>(node) != nullptr) {
                 Node::Output* output;
+                size_t camWidth = 1920, camHeight = 1080;
                 if(std::dynamic_pointer_cast<node::Camera>(node) != nullptr) {
                     auto cam = std::dynamic_pointer_cast<dai::node::Camera>(node);
                     auto fps = cam->getMaxRequestedFps();
@@ -58,6 +66,18 @@ bool setupHolisticRecord(
                             break;
                         }
                     }
+                    if(legacy) {
+                        if(width % 32 != 0UL) {
+                            auto down = roundDown(width, 32);
+                            width = down < requestWidth ? roundUp(width, 32) : down;
+                        }
+                        if(height % 8 != 0UL) {
+                            auto down = roundDown(height, 8);
+                            height = down < requestHeight ? roundUp(height, 8) : down;
+                        }
+                    }
+                    camWidth = width;
+                    camHeight = height;
                     output = cam->requestOutput({width, height}, dai::ImgFrame::Type::NV12, dai::ImgResizeMode::CROP, fps);
                     if(width * height > 9437184U) {
                         recordConfig.videoEncoding.enabled = true;
@@ -76,7 +96,7 @@ bool setupHolisticRecord(
                     videnc->setBitrate(recordConfig.videoEncoding.bitrate);
                     videnc->setQuality(recordConfig.videoEncoding.quality);
                     if((std::dynamic_pointer_cast<node::Camera>(node) != nullptr || std::dynamic_pointer_cast<node::ColorCamera>(node) != nullptr) && legacy) {
-                        int maxOutputFrameSize = 3110400;
+                        int maxOutputFrameSize = camWidth * camHeight * 3;
                         if(std::dynamic_pointer_cast<node::ColorCamera>(node) != nullptr) {
                             auto cam = std::dynamic_pointer_cast<dai::node::ColorCamera>(node);
                             maxOutputFrameSize = std::get<0>(cam->getIspSize()) * std::get<1>(cam->getIspSize()) * 3;
