@@ -26,11 +26,11 @@ struct ImgTransformation {
     size_t width = 0;
     size_t height = 0;
 
+    std::vector<dai::RotatedRect> srcCrops = {};
+
     dai::RotatedRect srcCrop;
     dai::RotatedRect dstCrop;
     bool cropsValid = false;
-
-    std::vector<dai::RotatedRect> srcCrops = {};
 
     void calcCrops();
 
@@ -151,6 +151,7 @@ struct ImgTransformation {
      * @return Vertical field of view in degrees
      */
     float getVFov(bool source = false) const;
+
     std::vector<dai::RotatedRect> getSrcCrops() const;
 
     /**
