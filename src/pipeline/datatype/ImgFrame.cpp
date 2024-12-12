@@ -260,22 +260,22 @@ float ImgFrame::getSourceVFov() const {
 }
 
 Point2f ImgFrame::remapPointBetweenFrames(const Point2f& originPoint, const ImgFrame& originFrame, const ImgFrame& destFrame) {
-    // if(originFrame.getInstanceNum() == destFrame.getInstanceNum()) {
-    //     if((originFrame.getSourceHeight() != destFrame.getSourceHeight()) || (originFrame.getSourceWidth() != destFrame.getSourceWidth())
-    //        || (originFrame.getSourceHFov() != destFrame.getSourceHFov()) || (originFrame.getSourceVFov() != destFrame.getSourceVFov())) {
-    //         throw std::runtime_error("Frames have the same instance numbers, but different source dimensions and/or FOVs.");
-    //     }
-    // }
+    if(originFrame.getInstanceNum() == destFrame.getInstanceNum()) {
+        if((originFrame.getSourceHeight() != destFrame.getSourceHeight()) || (originFrame.getSourceWidth() != destFrame.getSourceWidth())
+           || (originFrame.getSourceHFov() != destFrame.getSourceHFov()) || (originFrame.getSourceVFov() != destFrame.getSourceVFov())) {
+            throw std::runtime_error("Frames have the same instance numbers, but different source dimensions and/or FOVs.");
+        }
+    }
     return originFrame.transformation.remapPointTo(destFrame.transformation, originPoint);
 }
 
 Rect ImgFrame::remapRectBetweenFrames(const Rect& originRect, const ImgFrame& originFrame, const ImgFrame& destFrame) {
-    // if(originFrame.getInstanceNum() == destFrame.getInstanceNum()) {
-    //     if((originFrame.getSourceHeight() != destFrame.getSourceHeight()) || (originFrame.getSourceWidth() != destFrame.getSourceWidth())
-    //        || (originFrame.getSourceHFov() != destFrame.getSourceHFov()) || (originFrame.getSourceVFov() != destFrame.getSourceVFov())) {
-    //         throw std::runtime_error("Frames have the same instance numbers, but different source dimensions and/or FOVs.");
-    //     }
-    // }
+    if(originFrame.getInstanceNum() == destFrame.getInstanceNum()) {
+        if((originFrame.getSourceHeight() != destFrame.getSourceHeight()) || (originFrame.getSourceWidth() != destFrame.getSourceWidth())
+           || (originFrame.getSourceHFov() != destFrame.getSourceHFov()) || (originFrame.getSourceVFov() != destFrame.getSourceVFov())) {
+            throw std::runtime_error("Frames have the same instance numbers, but different source dimensions and/or FOVs.");
+        }
+    }
     bool normalized = originRect.isNormalized();
     auto srcRect = originRect;
     srcRect = srcRect.denormalize(originFrame.getWidth(), originFrame.getHeight());
