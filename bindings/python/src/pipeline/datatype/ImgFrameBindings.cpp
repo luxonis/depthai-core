@@ -201,6 +201,7 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
         .def("getSourceWidth", &ImgFrame::getSourceWidth, DOC(dai, ImgFrame, getSourceWidth))
         .def("getSourceHeight", &ImgFrame::getSourceHeight, DOC(dai, ImgFrame, getSourceHeight))
         .def("getTransformation", [](ImgFrame& msg) {return msg.transformation;})
+        .def("validateTransformations", &ImgFrame::validateTransformations, DOC(dai, ImgFrame, validateTransformations))
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
         // The cast function itself does a copy, so we can avoid two copies by always not copying
