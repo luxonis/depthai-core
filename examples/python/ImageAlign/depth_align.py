@@ -46,8 +46,6 @@ sync = pipeline.create(dai.node.Sync)
 if platform == dai.Platform.RVC4:
     align = pipeline.create(dai.node.ImageAlign)
 
-stereo.setDefaultProfilePreset(dai.node.StereoDepth.PresetMode.HIGH_DENSITY)
-
 stereo.setExtendedDisparity(True)
 
 sync.setSyncThreshold(timedelta(seconds=1/(2*FPS)))
