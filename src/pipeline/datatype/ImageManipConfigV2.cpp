@@ -28,10 +28,6 @@ ImageManipConfigV2& ImageManipConfigV2::addCropRotatedRect(dai::RotatedRect rota
               normalizedCoords);
     return *this;
 }
-ImageManipConfigV2& ImageManipConfigV2::addResize(uint32_t w, uint32_t h) {
-    base.resize(w, h);
-    return *this;
-}
 ImageManipConfigV2& ImageManipConfigV2::addScale(float scaleX, float scaleY) {
     base.resize(scaleX, scaleY, true);
     return *this;

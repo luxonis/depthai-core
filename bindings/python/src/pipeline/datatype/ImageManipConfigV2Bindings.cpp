@@ -53,7 +53,6 @@ void bind_imagemanipconfigv2(pybind11::module& m, void* pCallstack) {
              py::arg("rect"),
              py::arg("normalizedCoords"),
              DOC(dai, ImageManipConfigV2, addCropRotatedRect))
-        .def("addResize", &ImageManipConfigV2::addResize, py::arg("w"), py::arg("h"), DOC(dai, ImageManipConfigV2, addResize))
         .def(
             "addScale", [](ImageManipConfigV2& self, float scale) { return self.addScale(scale); }, py::arg("scale"), DOC(dai, ImageManipConfigV2, addScale))
         .def(
