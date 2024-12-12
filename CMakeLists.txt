@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.20)
 # Early options
 option(DEPTHAI_ENABLE_LIBUSB "Enable usage of libusb and interaction with USB devices" ON)
 # Build AprilTag node code (note, that even if set to OFF, an AprilTagNode can be used with setRunOnHost(false))
@@ -277,12 +277,27 @@ include(depthaiDependencies)
 # Add threads preference
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 
+
 # TODO Remove shared naming
 set(DEPTHAI_SHARED_3RDPARTY_INCLUDE
     ${CMAKE_CURRENT_LIST_DIR}/include/3rdparty/
 )
 # Add depthai-bootloader-shared
 include(${CMAKE_CURRENT_LIST_DIR}/shared/depthai-bootloader-shared.cmake)
+
+message(STATUS "################################################################################")
+message(STATUS "COMPILING SHADERS")
+#create shader directory in build
+file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/shaders")
+vulkan_compile_shader(
+        INFILE shaders/rgbd2pointcloud.comp
+        OUTFILE shaders/rgbd2pointcloud.hpp
+        NAMESPACE "shaders")
+add_library(shaders INTERFACE "shaders/rgbd2pointcloud.hpp")
+
+target_include_directories(shaders INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>)
+
+list(APPEND targets_to_export shaders)
 
 # Add flags helpers
 include(Flags)
@@ -504,6 +519,9 @@ set_target_properties(${TARGET_CORE_NAME} PROPERTIES EXPORT_NAME ${TARGET_CORE_A
 # Add to list of targets to export and install
 list(APPEND targets_to_export ${TARGET_CORE_NAME})
 
+    # target_include_directories(shader INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>)
+
+target_link_libraries(${TARGET_CORE_NAME} PRIVATE shaders kompute::kompute)
 # Add model_zoo helper binary
 add_executable(zoo_helper src/modelzoo/zoo_helper.cpp)
 target_compile_definitions(zoo_helper PRIVATE DEPTHAI_TARGET_CORE)
