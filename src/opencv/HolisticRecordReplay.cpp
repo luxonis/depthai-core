@@ -59,6 +59,9 @@ bool setupHolisticRecord(
                         }
                     }
                     output = cam->requestOutput({width, height}, dai::ImgFrame::Type::NV12, dai::ImgResizeMode::CROP, fps);
+                    if(width * height > 9437184U) {
+                        recordConfig.videoEncoding.enabled = true;
+                    }
                 } else {
                     output = &nodeS->getRecordOutput();
                 }
@@ -85,7 +88,6 @@ bool setupHolisticRecord(
                         output->link(imageManip->inputImage);
                         imageManip->out.link(videnc->input);
                     } else {
-                        // TODO(asahtik): RVC4 video encoder only supports native resolutions.
                         output->link(videnc->input);
                     }
                     videnc->out.link(recordNode->input);

@@ -30,7 +30,7 @@ struct RecordConfig {
     enum class CompressionLevel : uint8_t { NONE, FASTEST, FAST, DEFAULT, SLOW, SLOWEST };
 
     struct VideoEncoding {
-        bool enabled = false;
+        bool enabled = true;
         int bitrate = 0;
         Profile profile = Profile::MJPEG;
         bool lossless = false;
