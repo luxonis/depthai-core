@@ -454,8 +454,6 @@ with dai.Pipeline(dai.Device(*dai_device_args)) as pipeline:
                 print(
                     "Device is calibrated and has a stereo pair, creating StereoDepth node.")
                 stereo = pipeline.createStereoDepth()
-                stereo.setDefaultProfilePreset(
-                    dai.node.StereoDepth.PresetMode.HIGH_DENSITY)
                 stereo.initialConfig.setMedianFilter(dai.MedianFilter.KERNEL_7x7)
                 stereo.setLeftRightCheck(True)
                 stereo.setSubpixel(True)
