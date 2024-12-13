@@ -341,6 +341,21 @@ ImgTransformation& ImgTransformation::addRotation(float angle, dai::Point2f rota
     addTransformation(translateMatrixInv);
     return *this;
 }
+
+ImgTransformation& ImgTransformation::addRotation(std::array<std::array<float, 3>, 3> rotationMatrix) {
+    auto intrinsicMatrix = getIntrinsicMatrix();
+    auto homography = matmul(intrinsicMatrix, matmul(rotationMatrix, getMatrixInverse(intrinsicMatrix)));
+    addTransformation(homography);
+    return *this;
+}
+
+std::array<std::array<float, 3>, 3> ImgTransformation::getRotation() {
+    auto intrinsicMatrix = getIntrinsicMatrix();
+    auto homography = getMatrix();
+    auto rotation = matmul(getMatrixInverse(intrinsicMatrix), matmul(homography, intrinsicMatrix));
+    return rotation;
+}
+
 ImgTransformation& ImgTransformation::addScale(float scaleX, float scaleY) {
     width *= scaleX;
     height *= scaleY;
