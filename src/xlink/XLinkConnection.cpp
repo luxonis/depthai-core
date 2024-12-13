@@ -39,17 +39,17 @@ DeviceInfo::DeviceInfo(const deviceDesc_t& desc) {
 DeviceInfo::DeviceInfo(std::string name, std::string deviceId, XLinkDeviceState_t state, XLinkProtocol_t protocol, XLinkPlatform_t platform, XLinkError_t status)
     : name(std::move(name)), deviceId(std::move(deviceId)), state(state), protocol(protocol), platform(platform), status(status) {}
 
-DeviceInfo::DeviceInfo(std::string mxidOrName) {
+DeviceInfo::DeviceInfo(std::string deviceIdOrName) {
     // Parse parameter and set to ip if any dots found
     // mxid doesn't have a dot in the name
-    if(mxidOrName.find(".") != std::string::npos) {
+    if(deviceIdOrName.find(".") != std::string::npos) {
         // This is reasoned as an IP address or USB path (name). Set rest of info accordingly
-        name = std::move(mxidOrName);
+        name = std::move(deviceIdOrName);
         deviceId = "";
     } else {
         // This is reasoned as mxid
         name = "";
-        deviceId = std::move(mxidOrName);
+        deviceId = std::move(deviceIdOrName);
     }
 }
 

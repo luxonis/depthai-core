@@ -56,7 +56,7 @@ int main() {
             auto device = make_shared<dai::Device>(pipeline, dev, dai::UsbSpeed::SUPER);
             device->getOutputQueue("rgb", 4, false);
 
-            cout << "MXID: " << device->getDeviceId() << endl;
+            cout << "DeviceID: " << device->getDeviceId() << endl;
             // cout << "Connected cameras: ";
             // for(const auto& cam : device->getConnectedCameras()) {
             //     cout << cam << " ";
