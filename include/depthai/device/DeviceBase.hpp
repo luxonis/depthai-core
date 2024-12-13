@@ -473,7 +473,14 @@ class DeviceBase {
      *
      * @returns MxId of connected device
      */
-    std::string getMxId();
+    [[deprecated("Use getDeviceId() instead")]] std::string getMxId();
+
+    /**
+     * Get DeviceId of device
+     *
+     * @returns DeviceId of connected device
+     */
+    std::string getDeviceId();
 
     /**
      * Sets logging level which decides printing level to standard output.

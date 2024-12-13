@@ -34,11 +34,12 @@ struct DeviceInfo {
     explicit DeviceInfo(std::string mxidOrName);
     explicit DeviceInfo(const deviceDesc_t& desc);
     deviceDesc_t getXLinkDeviceDesc() const;
-    std::string getMxId() const;
+    [[deprecated("Use getDeviceId() instead")]] std::string getMxId() const;
+    std::string getDeviceId() const;
     std::string toString() const;
 
     std::string name = "";
-    std::string mxid = "";
+    std::string deviceId = "";
     XLinkDeviceState_t state = X_LINK_ANY_STATE;
     XLinkProtocol_t protocol = X_LINK_ANY_PROTOCOL;
     XLinkPlatform_t platform = X_LINK_ANY_PLATFORM;

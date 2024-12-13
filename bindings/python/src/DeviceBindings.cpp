@@ -513,7 +513,12 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack){
         .def("removeLogCallback", [](DeviceBase& d, int cbId) { py::gil_scoped_release release; return d.removeLogCallback(cbId); }, py::arg("callbackId"), DOC(dai, DeviceBase, removeLogCallback))
         .def("getUsbSpeed", [](DeviceBase& d) { py::gil_scoped_release release; return d.getUsbSpeed(); }, DOC(dai, DeviceBase, getUsbSpeed))
         .def("getDeviceInfo", [](DeviceBase& d) { py::gil_scoped_release release; return d.getDeviceInfo(); }, DOC(dai, DeviceBase, getDeviceInfo))
-        .def("getMxId", [](DeviceBase& d) { py::gil_scoped_release release; return d.getMxId(); }, DOC(dai, DeviceBase, getMxId))
+        .def("getMxId", [](DeviceBase& d) {
+            PyErr_WarnEx(PyExc_DeprecationWarning, "Use getDeviceId() instead.", 1);
+            py::gil_scoped_release release;
+            return d.getMxId(); }, DOC(dai, DeviceBase, getMxId))
+        .def("getDeviceId", [](DeviceBase& d) { py::gil_scoped_release release;
+            return d.getDeviceId(); }, DOC(dai, DeviceBase, getDeviceId))
         .def("getProfilingData", [](DeviceBase& d) { py::gil_scoped_release release; return d.getProfilingData(); }, DOC(dai, DeviceBase, getProfilingData))
         .def("readCalibration", [](DeviceBase& d) { py::gil_scoped_release release; return d.readCalibration(); }, DOC(dai, DeviceBase, readCalibration))
         .def("flashCalibration", [](DeviceBase& d, CalibrationHandler calibrationDataHandler) { py::gil_scoped_release release; return d.flashCalibration(calibrationDataHandler); }, py::arg("calibrationDataHandler"), DOC(dai, DeviceBase, flashCalibration))
