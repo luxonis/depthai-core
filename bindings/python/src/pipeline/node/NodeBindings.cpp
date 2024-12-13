@@ -404,21 +404,7 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
              static_cast<AssetManager& (Node::*)()>(&Node::getAssetManager),
              py::return_value_policy::reference_internal,
              DOC(dai, Node, getAssetManager));
-    // .def_property_readonly(  // TODO - This casting of the inputs/outputs might be illegal / cause bad behavior
-    //     "io",
-    //     [](Node& n) -> py::object {
-    //         auto dict = py::dict();
-    //         for(auto& output : n.getOutputRefs()) {
-    //             // TODO - Revisit, pybind might try to release the output when refcount goes to zero
-    //             dict[py::str(output->name)] = output;
-    //         }
-    //         for(auto& input : n.getInputRefs()) {
-    //             // TODO - Revisit, pybind might try to release the input when refcount goes to zero
-    //             dict[py::str(input->getName())] = input;
-    //         }
-    //         return dict;
-    //     },
-    //     py::return_value_policy::reference_internal);
+
 
     // TODO(themarpe) - refactor, threaded node could be separate from Node
     pyThreadedNode.def("trace", [](dai::ThreadedNode& node, const std::string& msg) { node.logger->trace(msg); })
