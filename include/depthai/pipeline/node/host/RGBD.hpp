@@ -4,7 +4,7 @@
 #include "depthai/pipeline/datatype/PointCloudData.hpp"
 #include "depthai/pipeline/node/ImageAlign.hpp"
 #include "depthai/pipeline/node/Sync.hpp"
-#include "kompute/Kompute.hpp"
+#include "depthai/utility/Pimpl.hpp"
 
 namespace dai {
 namespace node {
@@ -16,6 +16,7 @@ class RGBD : public NodeCRTP<ThreadedHostNode, RGBD> {
    public:
     constexpr static const char* NAME = "RGBD";
 
+    RGBD();
     Subnode<node::Sync> sync{*this, "sync"};
     std::shared_ptr<node::ImageAlign> align;
     InputMap& inputs = sync->inputs;
@@ -36,27 +37,15 @@ class RGBD : public NodeCRTP<ThreadedHostNode, RGBD> {
 
     std::shared_ptr<RGBD> build();
     std::shared_ptr<RGBD> build(bool autocreate, std::pair<int, int> size);
-    void setOutputMeters(bool outputMeters) {
-        this->outputMeters = outputMeters;
-    }
-    void useCPU() {
-        computeMethod = ComputeMethod::CPU;
-    }
-    void useCpuMt() {
-        computeMethod = ComputeMethod::CPU_MT;
-    }
-    void useGPU() {
-        computeMethod = ComputeMethod::GPU;
-    }
-    void setGPUDevice(uint32_t deviceIndex) {
-        this->deviceIndex = deviceIndex;
-    }
-
+    void setOutputMeters(bool outputMeters);
+    void useCPU();
+    void useCpuMt();
+    void useGPU();
+    void setGPUDevice(uint32_t deviceIndex);
+    void printDevices();
    private:
-    void computePointCloudGPU(const cv::Mat& depthMat, const cv::Mat& colorMat, std::vector<float>& xyzOut, std::vector<uint8_t>& rgbOut);
-    void computePointCloudCPU(const cv::Mat& depthMat, const cv::Mat& colorMat, std::vector<Point3fRGB>& points);
-    void computePointCloudCPUMT(const cv::Mat& depthMat, const cv::Mat& colorMat, std::vector<Point3fRGB>& points);
-    enum class ComputeMethod { CPU, CPU_MT, GPU };
+    class Impl;
+    Pimpl<Impl> pimpl;
     std::string colorInputName = "inColorSync";
     std::string depthInputName = "inDepthSync";
     Input& inColorSync = inputs[colorInputName];
@@ -67,11 +56,6 @@ class RGBD : public NodeCRTP<ThreadedHostNode, RGBD> {
     void initialize(std::vector<std::shared_ptr<ImgFrame>> frames);
     Input inSync{*this, {"inSync", DEFAULT_GROUP, false, 0, {{DatatypeEnum::MessageGroup, true}}}};
     bool initialized = false;
-    float fx, fy, cx, cy;
-    bool outputMeters = false;
-    std::shared_ptr<kp::Manager> mgr;
-    ComputeMethod computeMethod = ComputeMethod::CPU;
-    uint32_t deviceIndex = 0;
 };
 
 }  // namespace node
