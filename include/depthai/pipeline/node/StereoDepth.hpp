@@ -34,8 +34,6 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
         DEFAULT,
         FACE,
         HIGH_DETAIL,
-        HIGH_FPS,
-        HIGH_ACCURACY2,
         ROBOTICS
     };
     std::shared_ptr<StereoDepth> build(Node::Output& left, Node::Output& right, PresetMode presetMode = PresetMode::HIGH_ACCURACY) {
