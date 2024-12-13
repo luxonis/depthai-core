@@ -106,7 +106,6 @@ void ImageManipV2::loop(N& node,
 
     while(node.isRunning()) {
         std::shared_ptr<ImageManipConfigV2> pConfig;
-        std::shared_ptr<Memory> inImageData;
         bool hasConfig = false;
         bool needsImage = true;
         bool skipImage = false;
@@ -132,7 +131,6 @@ void ImageManipV2::loop(N& node,
                 logger->warn("No input image, skipping frame");
                 continue;
             }
-            inImageData = inImage->data;
             if(!hasConfig) {
                 auto _pConfig = node.inputConfig.template tryGet<ImageManipConfigV2>();
                 if(_pConfig != nullptr) {
@@ -169,7 +167,7 @@ void ImageManipV2::loop(N& node,
             bool success = true;
             {
                 auto t3 = steady_clock::now();
-                success = apply(inImageData, outImage->getData());
+                success = apply(inImage->getData(), outImage->getData());
                 auto t4 = steady_clock::now();
 
                 getFrame(config, *inImage, *outImage);
