@@ -167,7 +167,7 @@ void ImageManipV2::loop(N& node,
             bool success = true;
             {
                 auto t3 = steady_clock::now();
-                success = apply(inImage->getData(), outImage->getData());
+                success = apply(inImage->data, outImage->getData());
                 auto t4 = steady_clock::now();
 
                 getFrame(config, *inImage, *outImage);
