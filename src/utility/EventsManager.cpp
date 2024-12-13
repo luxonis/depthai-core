@@ -127,7 +127,9 @@ EventsManager::EventsManager(std::string url, bool uploadCachedOnStart, float pu
 }
 
 EventsManager::~EventsManager() {
-    eventBufferThread->join();
+    if(eventBufferThread->joinable()) {
+        eventBufferThread->join();
+    }
 }
 
 void EventsManager::sendEventBuffer() {
