@@ -59,7 +59,7 @@ void VideoRecorder::init(const std::string& filePath, unsigned int width, unsign
     switch(codec) {
         case VideoCodec::H264:
         case VideoCodec::MJPEG:
-            mp4Writer = MP4Create(filePath.c_str(), 0);
+            mp4Writer = MP4Create(filePath.c_str());
             if(mp4Writer == MP4_INVALID_FILE_HANDLE) {
                 throw std::runtime_error("Failed to create MP4 file");
             }
