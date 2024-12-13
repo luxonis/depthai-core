@@ -25,8 +25,6 @@ int main() {
     dai::Pipeline pipeline;
     // Define sources and outputs
     int fps = 30;
-    int width = 640;
-    int height = 400;
     // Define sources and outputs
     auto left = pipeline.create<dai::node::MonoCamera>();
     auto right = pipeline.create<dai::node::MonoCamera>();
@@ -50,7 +48,9 @@ int main() {
     stereo->enableDistortionCorrection(true);
     stereo->initialConfig.setLeftRightCheckThreshold(10);
 
-    auto *out = color->requestOutput(std::pair<int, int>(1280, 720));
+    rgbd->setGPUDevice(1);
+    rgbd->useGPU();
+    auto *out = color->requestOutput(std::pair<int, int>(1280, 720), dai::ImgFrame::Type::RGB888i);
     left->out.link(stereo->left);
     right->out.link(stereo->right);
 
@@ -59,6 +59,7 @@ int main() {
 
     remoteConnector.addTopic("pcl", rgbd->pcl);
     pipeline.start();
+    remoteConnector.registerPipeline(pipeline);
     auto device = pipeline.getDefaultDevice();
     device->setIrLaserDotProjectorIntensity(0.7);
     // Main loop

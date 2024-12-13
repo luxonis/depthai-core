@@ -2,7 +2,6 @@
 
 #include <future>
 
-#include "utility/PimplImpl.hpp"
 #include "common/Point3fRGB.hpp"
 #include "depthai/common/Point3fRGB.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
@@ -14,6 +13,7 @@
 #include "depthai/pipeline/node/Sync.hpp"
 #include "depthai/shaders/rgbd2pointcloud.hpp"
 #include "kompute/Kompute.hpp"
+#include "utility/PimplImpl.hpp"
 
 namespace dai {
 namespace node {
@@ -24,121 +24,107 @@ class RGBD::Impl {
     void initializeGPU() {
         // Initialize Kompute
         mgr = std::make_shared<kp::Manager>(deviceIndex);
+        shader = std::vector<uint32_t>(shaders::RGBD2POINTCLOUD_COMP_SPV.begin(), shaders::RGBD2POINTCLOUD_COMP_SPV.end());
     }
-    void computePointCloud(const cv::Mat& depthMat, const cv::Mat& colorMat, std::vector<Point3fRGB>& points) {
+    void computePointCloud(const uint8_t* depthData, const uint8_t* colorData, std::vector<Point3fRGB>& points) {
+        if(!intrinsicsSet) {
+            throw std::runtime_error("Intrinsics not set");
+        }
+        points.reserve(size);
         switch(computeMethod) {
             case ComputeMethod::CPU:
-                computePointCloudCPU(depthMat, colorMat, points);
+                computePointCloudCPU(depthData, colorData, points);
                 break;
             case ComputeMethod::CPU_MT:
-                computePointCloudCPUMT(depthMat, colorMat, points);
+                computePointCloudCPUMT(depthData, colorData, points);
                 break;
             case ComputeMethod::GPU:
-                computePointCloudGPU(depthMat, colorMat, points);
+                computePointCloudGPU(depthData, colorData, points);
                 break;
         }
     }
-    void computePointCloudGPU(const cv::Mat& depthMat, const cv::Mat& colorMat, std::vector<Point3fRGB>& points) {
+    void computePointCloudGPU(const uint8_t* depthData, const uint8_t* colorData, std::vector<Point3fRGB>& points) {
         std::vector<float> xyzOut;
-        std::vector<uint8_t> rgbOut;
-        int width = depthMat.cols;
-        int height = depthMat.rows;
-        size_t size = width * height;
 
         xyzOut.resize(size * 3);
-        rgbOut.resize(size * 3);
 
         // Convert depth to float
         // Depth is in mm by default, convert to meters if outputMeters == true
         // If outputMeters is true, scale = 1/1000.0 else scale = 1.0
         float scale = outputMeters ? (1.0f / 1000.0f) : 1.0f;
 
-        std::vector<float> depthData(size);
-        for(size_t i = 0; i < size; i++) {
-            uint16_t d = depthMat.at<uint16_t>(i / width, i % width);
-            depthData[i] = (float)d;  // will multiply by scale in shader
-        }
-
-        // Convert color to float (R,G,B)
-        std::vector<float> colorDataFloat(size * 3);
-        for(size_t i = 0; i < size; i++) {
-            auto c = colorMat.at<cv::Vec3b>(i / width, i % width);
-            // OpenCV: c = [B, G, R]
-            colorDataFloat[i * 3 + 0] = (float)c[2];  // R
-            colorDataFloat[i * 3 + 1] = (float)c[1];  // G
-            colorDataFloat[i * 3 + 2] = (float)c[0];  // B
+        std::vector<float> depthDataFloat(size);
+        for(int i = 0; i < size; i++) {
+            uint16_t depthValue = *(reinterpret_cast<const uint16_t*>(depthData + i * 2));
+            depthDataFloat[i] = static_cast<float>(depthValue);  // will multiply by scale in shader
         }
 
         // Intrinsics: [fx, fy, cx, cy, scale, width, height]
-        std::vector<float> intrinsics = {fx, fy, cx, cy, scale, (float)width, (float)height};
+        std::vector<float> intrinsics = {fx, fy, cx, cy, scale, static_cast<float>(width), static_cast<float>(height)};
 
         // Create Kompute tensors
-        auto depthTensor = mgr->tensor(depthData);
-        auto rgbTensor = mgr->tensor(colorDataFloat);
-        auto intrinsicsTensor = mgr->tensor(intrinsics);
-        auto xyzTensor = mgr->tensor(xyzOut);
-        // We'll store output RGB as float as well, then convert back
-        auto outRgbTensor = mgr->tensorT<float>(std::vector<float>(rgbOut.size()));
+        if(!tensorsInitialized) {
+            depthTensor = mgr->tensor(depthDataFloat);
+            intrinsicsTensor = mgr->tensor(intrinsics);
+            xyzTensor = mgr->tensor(xyzOut);
+            tensorsInitialized = true;
+        } else{
+            depthTensor->setData(depthDataFloat);
+        }
         // Load shader
-        const std::vector<uint32_t> shader = std::vector<uint32_t>(shaders::RGBD2POINTCLOUD_COMP_SPV.begin(), shaders::RGBD2POINTCLOUD_COMP_SPV.end());
-        const std::vector<std::shared_ptr<kp::Memory>> tensors = {depthTensor, rgbTensor, intrinsicsTensor, xyzTensor, outRgbTensor};
-        auto algo = mgr->algorithm(tensors, shader);
+        if(!algoInitialized) {
+            tensors.emplace_back(depthTensor);
+            tensors.emplace_back(intrinsicsTensor);
+            tensors.emplace_back(xyzTensor);
+            algo = mgr->algorithm(tensors, shader);
+            algoInitialized = true;
+        }
         mgr->sequence()->record<kp::OpSyncDevice>(tensors)->record<kp::OpAlgoDispatch>(algo)->record<kp::OpSyncLocal>(tensors)->eval();
         // Retrieve results
-        xyzOut = xyzTensor->vector();
-        std::vector<float> outRgbFloat = outRgbTensor->vector();
-        for(size_t i = 0; i < rgbOut.size(); i++) {
-            rgbOut[i] = static_cast<uint8_t>(std::round(outRgbFloat[i]));
-        }
-        for(int i = 0; i < width * height; i++) {
+        xyzOut = xyzTensor->vector<float>();
+        for(int i = 0; i < size; i++) {
             Point3fRGB p;
             p.x = xyzOut[i * 3 + 0];
             p.y = xyzOut[i * 3 + 1];
             p.z = xyzOut[i * 3 + 2];
-            p.r = rgbOut[i * 3 + 0];
-            p.g = rgbOut[i * 3 + 1];
-            p.b = rgbOut[i * 3 + 2];
+            p.r = colorData[i * 3 + 0];
+            p.g = colorData[i * 3 + 1];
+            p.b = colorData[i * 3 + 2];
             points.emplace_back(p);
         }
     }
-    void computePointCloudCPU(const cv::Mat& depthMat, const cv::Mat& colorMat, std::vector<Point3fRGB>& points) {
-        int width = depthMat.cols;
-        int height = depthMat.rows;
-        points.resize(width * height);
-
-        for(int i = 0; i < height; i++) {
-            for(int j = 0; j < width; j++) {
-                uint16_t depthValue = depthMat.at<uint16_t>(i, j);
-                float z = depthValue;
-                float x = (j - cx) * z / fx;
-                float y = (i - cy) * z / fy;
-
-                auto color = colorMat.at<cv::Vec3b>(i, j);
-                points[i * width + j] = Point3fRGB{x, y, z, static_cast<uint8_t>(color[2]), static_cast<uint8_t>(color[1]), static_cast<uint8_t>(color[0])};
-            }
+    void calcPoints(const uint8_t* depthData, const uint8_t* colorData, std::vector<Point3fRGB>& points, int startRow, int endRow) {
+        float scale = outputMeters ? (1.0f / 1000.0f) : 1.0f;
+        for(int i = startRow * width; i < endRow * width; i++) {
+            float x = i % width;
+            float y = i / width;
+            uint16_t depthValue = *(reinterpret_cast<const uint16_t*>(depthData + i * 2));
+            float z = static_cast<float>(depthValue) * scale;
+            x = (x - cx) * z / fx;
+            y = (y - cy) * z / fy;
+            uint8_t r = colorData[i * 3 + 0];
+            uint8_t b = colorData[i * 3 + 1];
+            uint8_t g = colorData[i * 3 + 2];
+            Point3fRGB p;
+            p.x = x;
+            p.y = y;
+            p.z = z;
+            p.r = r;
+            p.g = g;
+            p.b = b;
+            std::lock_guard<std::mutex> lock(pointsMtx);
+            points.emplace_back(p);
         }
     }
-    void computePointCloudCPUMT(const cv::Mat& depthMat, const cv::Mat& colorMat, std::vector<Point3fRGB>& points) {
-        int width = depthMat.cols;
-        int height = depthMat.rows;
-        points.resize(width * height);
+    void computePointCloudCPU(const uint8_t* depthData, const uint8_t* colorData, std::vector<Point3fRGB>& points) {
+        calcPoints(depthData, colorData, points, 0, height);
+    }
+    void computePointCloudCPUMT(const uint8_t* depthData, const uint8_t* colorData, std::vector<Point3fRGB>& points) {
         // Lambda function for processing a block of rows
-        auto processRows = [&](int startRow, int endRow) {
-            for(int i = startRow; i < endRow; i++) {
-                for(int j = 0; j < width; j++) {
-                    uint16_t depthValue = depthMat.at<uint16_t>(i, j);
-                    float z = depthValue;
-                    float x = (j - cx) * z / fx;
-                    float y = (i - cy) * z / fy;
-
-                    auto color = colorMat.at<cv::Vec3b>(i, j);
-                    points[i * width + j] = Point3fRGB{x, y, z, static_cast<uint8_t>(color[2]), static_cast<uint8_t>(color[1]), static_cast<uint8_t>(color[0])};
-                }
-            }
-        };
+        auto processRows = [&](int startRow, int endRow) { calcPoints(depthData, colorData, points, startRow, endRow); };
 
         // Divide rows into chunks and process in parallel
-        const int numThreads = std::thread::hardware_concurrency();
+        const int numThreads = threadNum;
         const int rowsPerThread = height / numThreads;
         std::vector<std::future<void>> futures;
 
@@ -167,6 +153,9 @@ class RGBD::Impl {
         this->deviceIndex = deviceIndex;
         mgr = std::make_shared<kp::Manager>(deviceIndex);
     }
+    void setCPUThreadNum(uint32_t numThreads) {
+        threadNum = numThreads;
+    }
     void useCPU() {
         computeMethod = ComputeMethod::CPU;
     }
@@ -177,21 +166,39 @@ class RGBD::Impl {
         initializeGPU();
         computeMethod = ComputeMethod::GPU;
     }
-    void setIntrinsics(float fx, float fy, float cx, float cy) {
+    void setIntrinsics(float fx, float fy, float cx, float cy, unsigned int width, unsigned int height) {
         this->fx = fx;
         this->fy = fy;
         this->cx = cx;
         this->cy = cy;
+        this->width = width;
+        this->height = height;
+        size = this->width * this->height;
+        intrinsicsSet = true;
     }
     enum class ComputeMethod { CPU, CPU_MT, GPU };
-    std::shared_ptr<kp::Manager> mgr;
     ComputeMethod computeMethod = ComputeMethod::CPU;
+    std::shared_ptr<kp::Manager> mgr;
     uint32_t deviceIndex = 0;
+    std::vector<uint32_t> shader; 
+    std::shared_ptr<kp::Algorithm> algo;
+    std::shared_ptr<kp::Tensor> depthTensor;
+    std::shared_ptr<kp::Tensor> intrinsicsTensor;
+    std::shared_ptr<kp::Tensor> xyzTensor;
+    std::vector<std::shared_ptr<kp::Memory>> tensors;
+    bool algoInitialized = false;
+    bool tensorsInitialized = false;
     bool outputMeters = false;
     float fx, fy, cx, cy;
+    int width, height;
+    int size;
+    bool intrinsicsSet = false;
+    std::mutex pointsMtx;
+    int threadNum = 2;
 };
 
-RGBD::RGBD()  = default;;
+RGBD::RGBD() = default;
+;
 std::shared_ptr<RGBD> RGBD::build() {
     align = getParentPipeline().create<node::ImageAlign>();
     align->outputAligned.link(inDepthSync);
@@ -202,6 +209,12 @@ std::shared_ptr<RGBD> RGBD::build() {
     sync->out.link(inSync);
     inSync.setMaxSize(1);
     inSync.setBlocking(false);
+    inDepth.setBlocking(false);
+    inColor.setBlocking(false);
+    inDepthSync.setBlocking(false);
+    inDepthSync.setMaxSize(1);
+    inColorSync.setBlocking(false);
+    inColorSync.setMaxSize(1);
     inDepth.addCallback([this](const std::shared_ptr<ADatatype>& data) { depthPT.send(data); });
     inColor.addCallback([this](const std::shared_ptr<ADatatype>& data) { colorMux.send(data); });
     return std::static_pointer_cast<RGBD>(shared_from_this());
@@ -214,7 +227,7 @@ std::shared_ptr<RGBD> RGBD::build(bool autocreate, std::pair<int, int> size) {
     auto pipeline = getParentPipeline();
     auto colorCam = pipeline.create<node::Camera>()->build();
     auto depth = pipeline.create<node::StereoDepth>()->build(true);
-    auto* out = colorCam->requestOutput(size);
+    auto* out = colorCam->requestOutput(size, dai::ImgFrame::Type::RGB888p);
     out->link(inColor);
     depth->depth.link(inDepth);
     return build();
@@ -225,19 +238,21 @@ void RGBD::initialize(std::vector<std::shared_ptr<ImgFrame>> frames) {
     auto frame = frames.at(1);
     auto calibHandler = getParentPipeline().getDefaultDevice()->readCalibration();
     auto camID = static_cast<CameraBoardSocket>(frame->getInstanceNum());
-    auto intrinsics = calibHandler.getCameraIntrinsics(camID, frame->getWidth(), frame->getHeight());
+    auto width = frame->getWidth();
+    auto height = frame->getHeight();
+    auto intrinsics = calibHandler.getCameraIntrinsics(camID, width, height);
     float fx = intrinsics[0][0];
     float fy = intrinsics[1][1];
     float cx = intrinsics[0][2];
     float cy = intrinsics[1][2];
-    pimpl->setIntrinsics(fx, fy, cx, cy);
+    pimpl->setIntrinsics(fx, fy, cx, cy, width, height);
     initialized = true;
 }
 
 void RGBD::run() {
     while(isRunning()) {
         // Get the color and depth frames
-        auto group = inSync.tryGet<MessageGroup>();
+        auto group = inSync.get<MessageGroup>();
         if(group == nullptr) continue;
         if(!initialized) {
             std::vector<std::shared_ptr<ImgFrame>> imgFrames;
@@ -262,13 +277,11 @@ void RGBD::run() {
 
         std::vector<Point3fRGB> points;
         // Fill the point cloud
-        auto depthData = depthFrame->getCvFrame();
-        auto colorData = colorFrame->getCvFrame();
+        auto* depthData = depthFrame->getData().data();
+        auto* colorData = colorFrame->getData().data();
         // Use GPU to compute point cloud
-        points.reserve(width * height);
         pimpl->computePointCloud(depthData, colorData, points);
 
-        // Convert xyzBuffer & rgbBuffer to Point3fRGB vector
         pc->setPointsRGB(points);
         pcl.send(pc);
     }
@@ -287,6 +300,9 @@ void RGBD::useGPU() {
 }
 void RGBD::setGPUDevice(uint32_t deviceIndex) {
     pimpl->setGPUDevice(deviceIndex);
+}
+void RGBD::setCPUThreadNum(uint32_t numThreads) {
+    pimpl->setCPUThreadNum(numThreads);
 }
 void RGBD::printDevices() {
     pimpl->printDevices();

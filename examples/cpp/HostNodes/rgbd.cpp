@@ -17,7 +17,7 @@ class RerunNode : public dai::NodeCRTP<dai::node::ThreadedHostNode, RerunNode> {
         rec.log_static("world", rerun::ViewCoordinates::FLU);
         rec.log("world/ground", rerun::Boxes3D::from_half_sizes({{3.f, 3.f, 0.00001f}}));
         while(isRunning()) {
-            auto pclIn = inputPCL.tryGet<dai::PointCloudData>();
+            auto pclIn = inputPCL.get<dai::PointCloudData>();
             if(pclIn != nullptr) {
                 std::vector<rerun::Position3D> points;
                 std::vector<rerun::Color> colors;
@@ -40,8 +40,6 @@ int main() {
     dai::Pipeline pipeline;
     // Define sources and outputs
     int fps = 30;
-    int width = 640;
-    int height = 400;
     // Define sources and outputs
     auto left = pipeline.create<dai::node::MonoCamera>();
     auto right = pipeline.create<dai::node::MonoCamera>();
@@ -65,9 +63,11 @@ int main() {
     stereo->setRectifyEdgeFillColor(0);  // black, to better see the cutout
     stereo->enableDistortionCorrection(true);
     stereo->initialConfig.setLeftRightCheckThreshold(10);
-    stereo->setDepthAlign(dai::StereoDepthProperties::DepthAlign::CENTER);
+    rgbd->setOutputMeters(true);
+    rgbd->setGPUDevice(1);
+    rgbd->useGPU();
 
-    auto *out = color->requestOutput(std::pair<int, int>(1280, 720));
+    auto *out = color->requestOutput(std::pair<int, int>(1280, 720), dai::ImgFrame::Type::RGB888i);
     left->out.link(stereo->left);
     right->out.link(stereo->right);
 

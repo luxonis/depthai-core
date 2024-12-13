@@ -42,6 +42,7 @@ class RGBD : public NodeCRTP<ThreadedHostNode, RGBD> {
     void useCpuMt();
     void useGPU();
     void setGPUDevice(uint32_t deviceIndex);
+    void setCPUThreadNum(uint32_t numThreads);
     void printDevices();
    private:
     class Impl;
