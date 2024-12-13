@@ -153,10 +153,9 @@ int main(int argc, char** argv) {
     ve2->setDefaultProfilePreset(ENCODER_FPS, dai::VideoEncoderProperties::Profile::H265_MAIN);
     ve3->setDefaultProfilePreset(ENCODER_FPS, dai::VideoEncoderProperties::Profile::H264_MAIN);
 
-    stereo->setDefaultProfilePreset(dai::node::StereoDepth::PresetMode::HIGH_DENSITY);
     // Align depth map to the perspective of RGB camera, on which inference is done
     stereo->setDepthAlign(dai::CameraBoardSocket::CAM_A);
-    stereo->setOutputSize(monoLeft->getResolutionWidth(), monoLeft->getResolutionHeight());
+    if(pipeline.getDefaultDevice()->getPlatform() == dai::Platform::RVC2) stereo->setOutputSize(monoLeft->getResolutionWidth(), monoLeft->getResolutionHeight());
 
     spatialDetectionNetwork->setBlobPath(nnPath);
     spatialDetectionNetwork->setConfidenceThreshold(0.5f);
