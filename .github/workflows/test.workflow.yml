@@ -53,13 +53,13 @@ jobs:
       if: matrix.os != 'linux'
       run: |
         export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/$GITHUB_RUN_ID-rvc2-${{ matrix.os }}-${{ matrix.flavor }}"
-        exec hil --capabilities depthai-core-hil --reservation-name $RESERVATION_NAME -w -s --commands 'cd /tmp/depthai-core|| exit' 'scripts/hil/run_hil_tests.sh ${{ matrix.flavor }} --rvc2'
+        exec hil --capabilities depthai-core-hil --reservation-name $RESERVATION_NAME --wait --sync-workspace --commands 'cd /tmp/depthai-core|| exit' 'scripts/hil/run_hil_tests.sh ${{ matrix.flavor }} --rvc2'
 
     - name: Configure, Build and Test
       if: matrix.os == 'linux'
       run: |
         export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/$GITHUB_RUN_ID-rvc2-${{ matrix.os }}-${{ matrix.flavor }}"
-        exec hil --capabilities depthai-core-hil --reservation-name $RESERVATION_NAME -w -s --commands 'cd /tmp/depthai-core|| exit' 'scripts/hil/run_hil_tests.sh ${{ matrix.flavor }} --rvc2'
+        exec hil --capabilities depthai-core-hil --reservation-name $RESERVATION_NAME --wait --sync-workspace --commands 'cd /tmp/depthai-core|| exit' 'scripts/hil/run_hil_tests.sh ${{ matrix.flavor }} --rvc2'
       
     # Testing
   rvc4_test:
