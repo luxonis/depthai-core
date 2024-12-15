@@ -15,7 +15,9 @@ TEST_ARGS=$2
 # Check for optional RVC arguments
 if [[ "$TEST_ARGS" == "--rvc4" ]]; then
   echo "Running RVC4 configuration commands..."
+  adb root
   adb shell systemctl stop agentconfd setup
+  adb shell systemctl disable agentconfd setup
   #adb shell touch /persist/factory/enabled
   #adb shell reboot
   echo "Device reboot initiated for RVC4. Factory mode enabled."
