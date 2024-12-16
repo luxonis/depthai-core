@@ -76,7 +76,8 @@ TEST_CASE("Usb config modes") {
     //     speed = dai::UsbSpeed::SUPER_PLUS;
     //     p.setBoardConfig(cfg.board);
     // }
-    // 
+    //
+
     dai::Device d(p);
     REQUIRE(d.getUsbSpeed() == speed);
 }

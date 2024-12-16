@@ -123,7 +123,7 @@ if __name__ == "__main__":
 
     # Filter configurations based on command-line arguments
     if args.rvc4==args.rvc2:
-        test_configs=all_configs 
+        test_configs=all_configs
     elif args.rvc4:
         test_configs = [config for config in all_configs if "rvc4" in config.get("labels", []) or "onhost" in config.get("labels", [])]
     elif args.rvc2:
