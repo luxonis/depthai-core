@@ -1,5 +1,6 @@
 #pragma once
 
+#include <condition_variable>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -171,6 +172,9 @@ class EventsManager {
     std::string cacheDir;
     bool uploadCachedOnStart;
     bool cacheIfCannotSend;
+    std::atomic<bool> stopEventBuffer;
+    std::condition_variable eventBufferCondition;
+    std::mutex eventBufferConditionMutex;
 };
 }  // namespace utility
 }  // namespace dai
