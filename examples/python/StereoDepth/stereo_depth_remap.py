@@ -19,7 +19,7 @@ def draw_rotated_rectangle(frame, center, size, angle, color, thickness=2):
 
     # Get the four vertices of the rotated rectangle
     box = cv2.boxPoints(rect)
-    box = np.int0(box)  # Convert to integer coordinates
+    box = np.intp(box)  # Convert to integer coordinates
 
     # Draw the rectangle on the frame
     cv2.polylines(frame, [box], isClosed=True, color=color, thickness=thickness)
@@ -35,12 +35,16 @@ def processDepthFrame(depthFrame):
     return cv2.applyColorMap(depthFrameColor, cv2.COLORMAP_HOT)
 
 with dai.Pipeline() as pipeline:
+    color = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
     monoLeft = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
     monoRight = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C)
     stereo = pipeline.create(dai.node.StereoDepth)
 
     stereo.setDefaultProfilePreset(dai.node.StereoDepth.PresetMode.HIGH_DENSITY)
-    stereo.setDepthAlign(dai.CameraBoardSocket.RGB)
+    # stereo.setDepthAlign(dai.CameraBoardSocket.CAM_A)
+    # stereo.setOutputSize(640, 400)
+
+    colorCamOut = color.requestOutput((640, 480))
 
     monoLeftOut = monoLeft.requestOutput((640, 480))
     monoRightOut = monoRight.requestOutput((640, 480))
@@ -48,27 +52,31 @@ with dai.Pipeline() as pipeline:
     monoLeftOut.link(stereo.left)
     monoRightOut.link(stereo.right)
 
+    colorOut = colorCamOut.createOutputQueue()
     rightOut = monoRightOut.createOutputQueue()
     stereoOut = stereo.depth.createOutputQueue()
 
     pipeline.start()
     while pipeline.isRunning():
-        rightFrame = rightOut.get()
+        colorFrame = colorOut.get()
         stereoFrame = stereoOut.get()
 
-        assert rightFrame.getTransformation().isValid()
-        assert stereoFrame.getTransformation().isValid()
+        assert colorFrame.validateTransformations()
+        assert stereoFrame.validateTransformations()
 
-        right = rightFrame.getCvFrame()
+        clr = colorFrame.getCvFrame()
         depth = processDepthFrame(stereoFrame.getCvFrame())
 
         rect = dai.RotatedRect(dai.Point2f(300, 200), dai.Size2f(200, 100), 10)
-        remappedRect = rightFrame.getTransformation().remapRectTo(stereoFrame.getTransformation(), rect)
+        remappedRect = colorFrame.getTransformation().remapRectTo(stereoFrame.getTransformation(), rect)
 
-        draw_rotated_rectangle(right, (rect.center.x, rect.center.y), (rect.size.width, rect.size.height), rect.angle, (255, 0, 0))
+        print(f"Original rect x: {rect.center.x} y: {rect.center.y} width: {rect.size.width} height: {rect.size.height} angle: {rect.angle}")
+        print(f"Remapped rect x: {remappedRect.center.x} y: {remappedRect.center.y} width: {remappedRect.size.width} height: {remappedRect.size.height} angle: {remappedRect.angle}")
+
+        draw_rotated_rectangle(clr, (rect.center.x, rect.center.y), (rect.size.width, rect.size.height), rect.angle, (255, 0, 0))
         draw_rotated_rectangle(depth, (remappedRect.center.x, remappedRect.center.y), (remappedRect.size.width, remappedRect.size.height), remappedRect.angle, (255, 0, 0))
 
-        cv2.imshow("right", right)
+        cv2.imshow("color", clr)
         cv2.imshow("depth", depth)
 
         if cv2.waitKey(1) == ord('q'):
