@@ -60,8 +60,8 @@ jobs:
       run: |
         export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/$GITHUB_RUN_ID-rvc2-${{ matrix.os }}-${{ matrix.flavor }}"
         exec hil --capabilities depthai-core-hil --reservation-name $RESERVATION_NAME --wait --sync-workspace --commands 'cd /tmp/depthai-core|| exit' 'scripts/hil/run_hil_tests.sh ${{ matrix.flavor }} --rvc2'
-      
-    # Testing
+
+  # Testing
   rvc4_test:
       env:
         VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
@@ -78,21 +78,21 @@ jobs:
               flavor: 'tsan'
         fail-fast: false
       runs-on: ['self-hosted', 'testbed-runner']
-  
+
       steps:
       - uses: actions/checkout@v3
         with:
           submodules: 'recursive'
-  
+
       - name: Prepare HIL Framework
         run: source scripts/hil/prepare_hil_framework.sh 
-  
+
       - name: Configure, Build and Test
         if: matrix.os != 'linux'
         run: |
           export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/$GITHUB_RUN_ID-rvc4-${{ matrix.os }}-${{ matrix.rvc4os }}-${{ matrix.flavor }}""
           exec hil --models oak4_pro --reservation-name $RESERVATION_NAME --wait --sync-workspace --commands 'cd /tmp/depthai-core|| exit' 'scripts/hil/run_hil_tests.sh ${{ matrix.flavor }} --rvc4 '
-  
+
       - name: Configure, Build and Test
         if: matrix.os == 'linux'
         run: |
