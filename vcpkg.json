@@ -17,6 +17,8 @@
         "libnop",
         "neargye-semver",
         "magic-enum",
+        "xtensor",
+        "xtl",
         {
             "name": "libarchive",
             "default-features": false
@@ -94,7 +96,8 @@
         "remote-connection-support": {
             "description": "Enable remote connection support",
             "dependencies": [
-                "websocketpp"
+                "websocketpp",
+                "ws-protocol"
             ]
         },
         "rtabmap": {

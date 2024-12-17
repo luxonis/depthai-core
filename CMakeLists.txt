@@ -1259,7 +1259,8 @@ if(DEPTHAI_INSTALL)
     )
 
     # Install depthai public headers
-    install(DIRECTORY include/ DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
+    install(DIRECTORY include/depthai DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
+    install(DIRECTORY include/3rdparty/ DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
     # Install depthai-bootloader-shared public headers
     install(DIRECTORY "${DEPTHAI_BOOTLOADER_SHARED_PUBLIC_INCLUDE}/" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
     # Install depthai-core dependencies
