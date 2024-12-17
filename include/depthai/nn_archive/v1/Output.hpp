@@ -2,6 +2,7 @@
 
 #include <optional>
 #include <string>
+#include <vector>
 
 namespace dai {
 namespace nn_archive {
@@ -37,9 +38,17 @@ struct Output {
      */
     DataType dtype;
     /**
+     * List of letters describing the output layout (e.g. 'NC').
+     */
+    std::optional<std::string> layout;
+    /**
      * Name of the output layer.
      */
     std::string name;
+    /**
+     * Shape of the output as a list of integers (e.g. [1, 1000]).
+     */
+    std::optional<std::vector<int64_t>> shape;
 };
 }  // namespace v1
 }  // namespace nn_archive

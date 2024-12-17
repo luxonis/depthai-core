@@ -1,0 +1,20 @@
+
+{
+  "name": "basalt-headers",
+  "version-string": "0.1.0",
+  "description": "Reusable components of Basalt project as header-only library",
+  "dependencies": [
+	    {
+      "name": "vcpkg-cmake",
+      "host": true
+    },
+    {
+      "name": "vcpkg-cmake-config",
+      "host": true
+    },
+		"eigen3",
+		"sophus",
+		"cereal",
+		"fmt"
+]
+}

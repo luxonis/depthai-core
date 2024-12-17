@@ -9,7 +9,7 @@ int main(int argc, char* argv[]) {
 
     // Download model from zoo
     dai::NNModelDescription modelDescription;
-    modelDescription.modelSlug = "ales-test";
+    modelDescription.model = "ales-test";
     modelDescription.platform = pipeline.getDefaultDevice()->getPlatformAsString();
     std::string modelPath = dai::getModelFromZoo(modelDescription, true);  // True means use cached model if available
     std::cout << "Model path: " << modelPath << std::endl;

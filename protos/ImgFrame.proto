@@ -1,0 +1,67 @@
+syntax = "proto3";
+
+package dai.proto.img_frame;
+
+import "common.proto";
+
+message ImgFrame {
+    common.Timestamp ts = 1;
+    common.Timestamp tsDevice = 2;
+    int64 sequenceNum = 3;
+    Specs fb = 4;
+    Specs sourceFb = 5;
+    common.CameraSettings cam = 6;
+    float HFovDegrees = 7;
+    uint32 instanceNum = 8;
+    common.ImgTransformation transformation = 9;
+    uint32 category = 10;
+    bytes data = 11;
+}
+
+message Specs {
+    Type type = 1;
+    uint32 width = 2;
+    uint32 height = 3;
+    uint32 stride = 4;
+    uint32 bytesPP = 5;
+    uint32 p1Offset = 6;
+    uint32 p2Offset = 7;
+    uint32 p3Offset = 8;
+}
+
+enum Type {
+    YUV422i = 0;    // interleaved 8 bit
+    YUV444p = 1;    // planar 4:4:4 format
+    YUV420p = 2;    // planar 4:2:0 format
+    YUV422p = 3;    // planar 8 bit
+    YUV400p = 4;    // 8-bit greyscale
+    RGBA8888 = 5;   // RGBA interleaved stored in 32 bit word
+    RGB161616 = 6;  // Planar 16 bit RGB data
+    RGB888p = 7;    // Planar 8 bit RGB data
+    BGR888p = 8;    // Planar 8 bit BGR data
+    RGB888i = 9;    // Interleaved 8 bit RGB data
+    BGR888i = 10;   // Interleaved 8 bit BGR data
+    LUT2 = 11;      // 1 bit  per pixel, Lookup table (used for graphics layers)
+    LUT4 = 12;      // 2 bits per pixel, Lookup table (used for graphics layers)
+    LUT16 = 13;     // 4 bits per pixel, Lookup table (used for graphics layers)
+    RAW16 = 14;     // save any raw type (8, 10, 12bit) on 16 bits
+    RAW14 = 15;     // 14bit value in 16bit storage
+    RAW12 = 16;     // 12bit value in 16bit storage
+    RAW10 = 17;     // 10bit value in 16bit storage
+    RAW8 = 18;
+    PACK10 = 19;  // SIPP 10bit packed format
+    PACK12 = 20;  // SIPP 12bit packed format
+    YUV444i = 21;
+    NV12 = 22;
+    NV21 = 23;
+    BITSTREAM = 24;  // used for video encoder bitstream
+    HDR = 25;
+    RGBF16F16F16p = 26;  // Planar FP16 RGB data
+    BGRF16F16F16p = 27;  // Planar FP16 BGR data
+    RGBF16F16F16i = 28;  // Interleaved FP16 RGB data
+    BGRF16F16F16i = 29;  // Interleaved FP16 BGR data
+    GRAY8 = 30;          // 8 bit grayscale (1 plane)
+    GRAYF16 = 31;        // FP16 grayscale (normalized)
+    RAW32 = 32;          // 32 bits raw
+    NONE = 33;
+}

@@ -94,13 +94,13 @@ namespace impl {
 //
 
 template <typename Base, typename F, typename Derived, typename std::enable_if<std::is_base_of<Base, typename std::decay<Derived>::type>::value, int>::type = 0>
-constexpr auto invoke_member_object_impl(F Base::* f, Derived&& ref) INVOKE_HPP_NOEXCEPT_DECLTYPE_RETURN(std::forward<Derived>(ref).*f)
+constexpr auto invoke_member_object_impl(F Base::*f, Derived&& ref) INVOKE_HPP_NOEXCEPT_DECLTYPE_RETURN(std::forward<Derived>(ref).*f)
 
     template <typename Base,
               typename F,
               typename RefWrap,
               typename std::enable_if<is_reference_wrapper<typename std::decay<RefWrap>::type>::value, int>::type = 0>
-    constexpr auto invoke_member_object_impl(F Base::* f, RefWrap&& ref) INVOKE_HPP_NOEXCEPT_DECLTYPE_RETURN(ref.get().*f)
+    constexpr auto invoke_member_object_impl(F Base::*f, RefWrap&& ref) INVOKE_HPP_NOEXCEPT_DECLTYPE_RETURN(ref.get().*f)
 
         template <typename Base,
                   typename F,
@@ -108,7 +108,7 @@ constexpr auto invoke_member_object_impl(F Base::* f, Derived&& ref) INVOKE_HPP_
                   typename std::enable_if<!std::is_base_of<Base, typename std::decay<Pointer>::type>::value
                                               && !is_reference_wrapper<typename std::decay<Pointer>::type>::value,
                                           int>::type = 0>
-        constexpr auto invoke_member_object_impl(F Base::* f, Pointer&& ptr) INVOKE_HPP_NOEXCEPT_DECLTYPE_RETURN((*std::forward<Pointer>(ptr)).*f)
+        constexpr auto invoke_member_object_impl(F Base::*f, Pointer&& ptr) INVOKE_HPP_NOEXCEPT_DECLTYPE_RETURN((*std::forward<Pointer>(ptr)).*f)
 
     //
     // invoke_member_function_impl
@@ -119,7 +119,7 @@ constexpr auto invoke_member_object_impl(F Base::* f, Derived&& ref) INVOKE_HPP_
               typename Derived,
               typename... Args,
               typename std::enable_if<std::is_base_of<Base, typename std::decay<Derived>::type>::value, int>::type = 0>
-    constexpr auto invoke_member_function_impl(F Base::* f, Derived&& ref, Args&&... args)
+    constexpr auto invoke_member_function_impl(F Base::*f, Derived&& ref, Args&&... args)
         INVOKE_HPP_NOEXCEPT_DECLTYPE_RETURN((std::forward<Derived>(ref).*f)(std::forward<Args>(args)...))
 
             template <typename Base,
@@ -127,7 +127,7 @@ constexpr auto invoke_member_object_impl(F Base::* f, Derived&& ref) INVOKE_HPP_
                       typename RefWrap,
                       typename... Args,
                       typename std::enable_if<is_reference_wrapper<typename std::decay<RefWrap>::type>::value, int>::type = 0>
-            constexpr auto invoke_member_function_impl(F Base::* f, RefWrap&& ref, Args&&... args)
+            constexpr auto invoke_member_function_impl(F Base::*f, RefWrap&& ref, Args&&... args)
                 INVOKE_HPP_NOEXCEPT_DECLTYPE_RETURN((ref.get().*f)(std::forward<Args>(args)...))
 
                     template <typename Base,
@@ -137,7 +137,7 @@ constexpr auto invoke_member_object_impl(F Base::* f, Derived&& ref) INVOKE_HPP_
                               typename std::enable_if<!std::is_base_of<Base, typename std::decay<Pointer>::type>::value
                                                           && !is_reference_wrapper<typename std::decay<Pointer>::type>::value,
                                                       int>::type = 0>
-                    constexpr auto invoke_member_function_impl(F Base::* f, Pointer&& ptr, Args&&... args)
+                    constexpr auto invoke_member_function_impl(F Base::*f, Pointer&& ptr, Args&&... args)
                         INVOKE_HPP_NOEXCEPT_DECLTYPE_RETURN(((*std::forward<Pointer>(ptr)).*f)(std::forward<Args>(args)...))
 }  // namespace impl
 

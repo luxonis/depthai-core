@@ -178,6 +178,13 @@ class StereoDepthConfig : public Buffer {
      * Post-processing filters, all the filters are applied in disparity domain.
      */
     struct PostProcessing {
+        enum class Filter : int32_t { NONE = 0, DECIMATION, SPECKLE, MEDIAN, SPATIAL, TEMPORAL, FILTER_COUNT = TEMPORAL };
+
+        /**
+         * Order of filters to be applied if filtering is enabled.
+         */
+        std::array<Filter, 5> filteringOrder = {Filter::MEDIAN, Filter::DECIMATION, Filter::SPECKLE, Filter::SPATIAL, Filter::TEMPORAL};
+
         /**
          * Set kernel size for disparity/depth median filtering, or disable
          */
@@ -358,7 +365,13 @@ class StereoDepthConfig : public Buffer {
              */
             std::uint32_t speckleRange = 50;
 
-            DEPTHAI_SERIALIZE(SpeckleFilter, enable, speckleRange);
+            /**
+             * Maximum difference between neighbor disparity pixels to put them into the same blob.
+             * Units in disparity integer levels.
+             */
+            std::uint32_t differenceThreshold = 2;
+
+            DEPTHAI_SERIALIZE(SpeckleFilter, enable, speckleRange, differenceThreshold);
         };
 
         /**
@@ -455,6 +468,7 @@ class StereoDepthConfig : public Buffer {
         AdaptiveMedianFilter adaptiveMedianFilter;
 
         DEPTHAI_SERIALIZE(PostProcessing,
+                          filteringOrder,
                           median,
                           bilateralSigmaValue,
                           spatialFilter,

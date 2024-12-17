@@ -3,7 +3,6 @@ include(CTest)
 enable_testing()
 
 # Add Catch2 for writing tests
-hunter_add_package(Catch2)
 find_package(Catch2 CONFIG REQUIRED)
 
 # Print details of the Catch2 package
@@ -17,6 +16,7 @@ set(test_env
     "UBSAN_OPTIONS=halt_on_error=1"
     # DepthAI
     "DEPTHAI_SEARCH_TIMEOUT=15000"
+    "DEPTHAI_RECONNECT_TIMEOUT=0"
     )
 
 include(CMakeParseArguments)
@@ -110,7 +110,7 @@ function(dai_test_compile_definitions)
 endfunction()
 
 # Mobilenet network
-hunter_private_data(
+private_data(
     URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/mobilenet-ssd_openvino_2021.2_8shave.blob"
     SHA1 "3329bb8f3a9c881ef9756d232055f9d6f38aa07b"
     FILE "mobilenet-ssd_openvino_2021.2_8shave.blob"
@@ -118,14 +118,14 @@ hunter_private_data(
 )
 
 # OpenVINO 2020.3 blob
-hunter_private_data(
+private_data(
     URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/text-image-super-resolution-0001_2020.3_4shave.blob"
     SHA1 "f0134c9b843fe414f6d98b17a70f069d1ab0f3d8"
     FILE "text-image-super-resolution-0001_2020.3_4shave.blob"
     LOCATION openvino_2020_3_blob
 )
 # OpenVINO 2020.4 blob
-hunter_private_data(
+private_data(
     URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/text-image-super-resolution-0001_2020.4_4shave.blob"
     SHA1 "25dcf0b146da8c85c9c4cba00ad5fdd4ed02a1b6"
     FILE "text-image-super-resolution-0001_2020.4_4shave.blob"
@@ -133,42 +133,42 @@ hunter_private_data(
 )
 
 # OpenVINO 2021.1 blob
-hunter_private_data(
+private_data(
     URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/text-image-super-resolution-0001_2021.1_4shave.blob"
     SHA1 "39c4f47f2a75627b7561e97dd7cdfcd0b1925a1e"
     FILE "text-image-super-resolution-0001_2021.1_4shave.blob"
     LOCATION openvino_2021_1_blob
 )
 # OpenVINO 2021.2 blob
-hunter_private_data(
+private_data(
     URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/text-image-super-resolution-0001_2021.2_4shave.blob"
     SHA1 "a204467f86aa4ad63d31782ada271bea6f57f789"
     FILE "text-image-super-resolution-0001_2021.2_4shave.blob"
     LOCATION openvino_2021_2_blob
 )
 # OpenVINO 2021.3 blob
-hunter_private_data(
+private_data(
     URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/text-image-super-resolution-0001_2021.3_4shave.blob"
     SHA1 "af19470feb59317e74d045bc31d93ca129c46674"
     FILE "text-image-super-resolution-0001_2021.3_4shave.blob"
     LOCATION openvino_2021_3_blob
 )
 # OpenVINO 2021.4.2 blob
-hunter_private_data(
+private_data(
     URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/text-image-super-resolution-0001_2021.4.2_4shave.blob"
     SHA1 "164b6b2ae48d38bc4f07cc8296b8bcb7644a1578"
     FILE "text-image-super-resolution-0001_2021.4.2_4shave.blob"
     LOCATION openvino_2021_4_2_blob
 )
 # OpenVINO 2022.1.0 blob
-hunter_private_data(
+private_data(
     URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/text-image-super-resolution-0001_2022.1.0_4shave.blob"
     SHA1 "98e94b865b9c48a92eaebd1ddc883712dfe7cfcb"
     FILE "text-image-super-resolution-0001_2022.1.0_4shave.blob"
     LOCATION openvino_2022_1_blob
 )
 # YoloV4 resource
-hunter_private_data(
+private_data(
     URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/yolo-v4-tiny-tf_openvino_2021.4_4shave.blob"
     SHA1 "7da2f96f7300e3828940557e6a86ac6f243eef7e"
     FILE "yolo-v4-tiny-tf_openvino_2021.4_4shave.blob"
@@ -176,7 +176,7 @@ hunter_private_data(
 )
 
 # Superblob
-hunter_private_data(
+private_data(
     URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/person-reidentification-retail-0277_openvino_2022.1_8shave.superblob"
     SHA1 "6f14e3a5388946d6de849ff4f6432702601b1003"
     FILE "person-reidentification-retail-0277_openvino_2022.1_8shave.superblob"
@@ -184,25 +184,32 @@ hunter_private_data(
 )
 
 # NNarchives of different types
-hunter_private_data(
+private_data(
     URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/nnarchive/yolo_blob_nnarchive.tar.xz"
     SHA1 "6b9697e5aaf1560efbdea7f8d7487bae51def619"
     FILE "yolo_blob_nnarchive.tar.xz"
     LOCATION yolo_blob_nnarchive_path
 )
 
-hunter_private_data(
+private_data(
     URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/nnarchive/yolo_superblob_nnarchive.tar.xz"
     SHA1 "2356fd7e5a203446211a891a74f0b23e0912eaf6"
     FILE "yolo_superblob_nnarchive.tar.xz"
     LOCATION yolo_superblob_nnarchive_path
 )
 
-hunter_private_data(
+private_data(
     URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/nnarchive/yolo_onnx_nnarchive.tar.xz"
     SHA1 "7abb6a8c05c5f66897cd2c5c6b4f0170620dff8b"
     FILE "yolo_onnx_nnarchive.tar.xz"
     LOCATION yolo_onnx_nnarchive_path
+)
+
+private_data(
+    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/images/lenna.png"
+    SHA1 "3ee0d360dc12003c0d43e3579295b52b64906e85"
+    FILE "lenna.png"
+    LOCATION lenna_png
 )
 
 ### On-host tests #############################################################
@@ -229,6 +236,10 @@ dai_set_test_labels(naming_test onhost ci)
 dai_add_test(image_transformations_test src/onhost_tests/image_transformations_test.cpp)
 dai_set_test_labels(image_transformations_test onhost ci)
 
+# Normalization tests
+dai_add_test(normalization_test src/onhost_tests/normalization_test.cpp)
+dai_set_test_labels(normalization_test onhost ci)
+
 # MessageQueue tests
 dai_add_test(message_queue_test src/onhost_tests/message_queue_test.cpp)
 dai_set_test_labels(message_queue_test onhost ci)
@@ -253,11 +264,15 @@ dai_set_test_labels(env_test onhost ci)
 dai_add_test(nndata_test src/onhost_tests/pipeline/datatype/nndata_test.cpp)
 dai_set_test_labels(nndata_test onhost ci)
 
+# Model description tests
+dai_add_test(model_slug_test src/onhost_tests/model_slug_test.cpp)
+dai_set_test_labels(model_slug_test onhost ci)
+
 ### On-device tests ###########################################################
 
 # DepthAI logging test
 dai_add_test(logging_test src/ondevice_tests/logging_test.cpp)
-dai_set_test_labels(logging_test ondevice rvc2_all ci)
+dai_set_test_labels(logging_test ondevice rvc2_all rvc4 ci)
 
 # OpenVINO blob test
 dai_add_test(openvino_blob_test src/ondevice_tests/openvino_blob_test.cpp)
@@ -314,7 +329,7 @@ dai_set_test_labels(filesystem_test_20 rvc2_all ci)
 
 # Encoded frame test
 dai_add_test(encoded_frame_test src/ondevice_tests/encoded_frame_test.cpp CXX_STANDARD 17)
-dai_set_test_labels(encoded_frame_test ondevice rvc2_all ci)
+dai_set_test_labels(encoded_frame_test ondevice rvc2_all rvc4 ci)
 
 # MessageGroup tests
 dai_add_test(message_group_frame_test src/ondevice_tests/message_group_test.cpp CXX_STANDARD 17)
@@ -351,4 +366,37 @@ dai_set_test_labels(spatial_detection_network_test ondevice rvc2_all rvc4 ci)
 
 # NeuralNetwork node test
 dai_add_test(neural_network_node_test src/ondevice_tests/pipeline/node/neural_network_node_test.cpp)
+target_compile_definitions(neural_network_node_test PRIVATE LENNA_PATH="${lenna_png}")
 dai_set_test_labels(neural_network_node_test ondevice rvc2_all rvc4 ci)
+
+# ImgTransformations tests
+dai_add_test(img_transformation_test src/ondevice_tests/img_transformation_test.cpp CXX_STANDARD 17)
+dai_set_test_labels(message_group_frame_test ondevice rvc4 ci)
+
+# Regression tests for encountered bugs
+dai_add_test(regression_camera_concurrency_test src/ondevice_tests/regression/camera_concurrency.cpp)
+dai_set_test_labels(regression_camera_concurrency_test ondevice rvc4 ci)
+
+# Sync test
+dai_add_test(sync_test src/ondevice_tests/pipeline/node/sync_test.cpp)
+dai_set_test_labels(sync_test ondevice rvc2_all rvc4 ci)
+
+## Large messages tests
+dai_add_test(bridge_large_messages src/ondevice_tests/bridge_large_messages.cpp)
+# Only test on RVC4, as RVC2 is not yet supported to auto-increase the max stream capacity
+dai_set_test_labels(bridge_large_messages ondevice rvc4 ci)
+# ImageAlign test
+dai_add_test(image_align_node_test src/ondevice_tests/image_align_node_test.cpp)
+dai_set_test_labels(image_align_node_test ondevice rvc2_all rvc4 ci)
+
+# Script node test
+dai_add_test(script_node_test src/ondevice_tests/script_node_test.cpp)
+dai_set_test_labels(script_node_test ondevice rvc2_all rvc4 ci)
+
+# StereoDepth test
+dai_add_test(stereo_depth_node_test src/ondevice_tests/stereo_depth_node_test.cpp)
+dai_set_test_labels(stereo_depth_node_test ondevice rvc2_all rvc4 ci)
+
+# ImageManipV2 test
+dai_add_test(image_manip_v2_node_test src/ondevice_tests/pipeline/node/image_manip_v2_test.cpp)
+dai_set_test_labels(image_manip_v2_node_test ondevice rvc2_all rvc4 ci)

@@ -1,5 +1,6 @@
 #include "depthai/pipeline/node/NeuralNetwork.hpp"
 
+#include <magic_enum.hpp>
 #include <stdexcept>
 
 #include "common/ModelType.hpp"
@@ -50,6 +51,8 @@ std::shared_ptr<NeuralNetwork> NeuralNetwork::build(const std::shared_ptr<Camera
     DAI_CHECK_V(platformSupported, "Platform not supported by the neural network model");
 
     const auto& configV1 = nnArchiveCfg.getConfig<dai::nn_archive::v1::Config>();
+    // Check if the model has multiple inputs
+    DAI_CHECK_V(configV1.model.inputs.size() == 1, "Model has multiple inputs, it has to be linked manually");
 
     auto inputHeight = nnArchive.getInputHeight();
     auto inputWidth = nnArchive.getInputWidth();
@@ -58,14 +61,22 @@ std::shared_ptr<NeuralNetwork> NeuralNetwork::build(const std::shared_ptr<Camera
     }
 
     auto type = dai::ImgFrame::Type::BGR888p;
-    if(platform == dai::Platform::RVC2 || platform == dai::Platform::RVC3) {
-        type = dai::ImgFrame::Type::BGR888p;
-    } else if(platform == dai::Platform::RVC4) {
-        type = dai::ImgFrame::Type::BGR888i;
+    auto inputType = configV1.model.inputs[0].preprocessing.daiType;
+    if(inputType.has_value()) {
+        auto convertedInputType = magic_enum::enum_cast<dai::ImgFrame::Type>(inputType.value());
+        if(!convertedInputType.has_value()) {
+            DAI_CHECK_V(false, "Unsupported input type: {}", inputType.value());
+        }
+        type = convertedInputType.value();
     } else {
-        DAI_CHECK_V(false, "Unsupported platform");
+        if(platform == dai::Platform::RVC2 || platform == dai::Platform::RVC3) {
+            type = dai::ImgFrame::Type::BGR888p;
+        } else if(platform == dai::Platform::RVC4) {
+            type = dai::ImgFrame::Type::BGR888i;
+        } else {
+            DAI_CHECK_V(false, "Unsupported platform");
+        }
     }
-
     auto cap = ImgFrameCapability();
     cap.size.value = std::pair(*inputWidth, *inputHeight);
     cap.type = type;

@@ -18,8 +18,7 @@ dai::Pipeline getPipeline(bool sparse) {
     monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
     monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
 
-    stereo->setDefaultProfilePreset(dai::node::StereoDepth::PresetMode::HIGH_DENSITY);
-    stereo->setOutputSize(1280, 720);
+    if(pipeline.getDefaultDevice()->getPlatform() == dai::Platform::RVC2) stereo->setOutputSize(1280, 720);
 
     xout->setStreamName("out");
 
@@ -46,8 +45,7 @@ TEST_CASE("dense pointcloud") {
     monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
     monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
 
-    stereo->setDefaultProfilePreset(dai::node::StereoDepth::PresetMode::HIGH_DENSITY);
-    stereo->setOutputSize(1280, 720);
+    if(pipeline.getDefaultDevice()->getPlatform() == dai::Platform::RVC2) stereo->setOutputSize(1280, 720);
 
     pointcloud->initialConfig.setSparse(false);
 
@@ -82,7 +80,6 @@ TEST_CASE("sparse pointcloud") {
     monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
     monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
 
-    stereo->setDefaultProfilePreset(dai::node::StereoDepth::PresetMode::HIGH_DENSITY);
     stereo->setOutputSize(1280, 720);
 
     pointcloud->initialConfig.setSparse(true);

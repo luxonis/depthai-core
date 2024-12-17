@@ -20,6 +20,8 @@ jobs:
 
   # Testing
   test:
+    env:
+      VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
     strategy:
       matrix:
         # os: ['windows', 'macos', 'linux']
@@ -42,6 +44,12 @@ jobs:
     - uses: actions/checkout@v3
       with:
         submodules: 'recursive'
+    - name: Export GitHub Actions cache environment variables
+      uses: actions/github-script@v7
+      with:
+        script: |
+          core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+          core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
 
     - name: Create virtual environment
       run: |
@@ -72,6 +80,7 @@ jobs:
         export DISPLAY=:99
         xdpyinfo -display $DISPLAY >/dev/null 2>&1 || (Xvfb $DISPLAY &)
         source venv/bin/activate  # Activate virtual environment
+        python3 -m pip install jinja2
         cmake -S . -B build -D CMAKE_BUILD_TYPE=Release -D HUNTER_ROOT=$HOME/.hun2_${{ matrix.flavor }} -D DEPTHAI_BUILD_EXAMPLES=ON -D DEPTHAI_BUILD_TESTS=ON -D DEPTHAI_TEST_EXAMPLES=ON -D DEPTHAI_BUILD_PYTHON=ON -D DEPTHAI_PYTHON_TEST_EXAMPLES=ON -D DEPTHAI_PYTHON_ENABLE_EXAMPLES=ON
         cmake --build build --parallel 4 --config Release
         cd tests

@@ -41,7 +41,6 @@ with dai.Pipeline() as pipeline:
     monoRight.setCamera("right")
 
     # setting node configs
-    stereo.setDefaultProfilePreset(dai.node.StereoDepth.PresetMode.HIGH_DENSITY)
     # Align depth map to the perspective of RGB camera, on which inference is done
     stereo.setDepthAlign(dai.CameraBoardSocket.CAM_A)
     stereo.setOutputSize(monoLeft.getResolutionWidth(), monoLeft.getResolutionHeight())

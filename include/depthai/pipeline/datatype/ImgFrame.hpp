@@ -1,5 +1,7 @@
 #pragma once
 
+#include <spdlog/async_logger.h>
+
 #include <chrono>
 #include <unordered_map>
 #include <vector>
@@ -13,7 +15,6 @@
 #include "depthai/common/FrameEvent.hpp"
 #include "depthai/common/ImgTransformations.hpp"
 #include "depthai/common/Rect.hpp"
-#include "depthai/schemas/ImgFrame.pb.h"
 #include "depthai/utility/ProtoSerializable.hpp"
 
 // optional
@@ -27,7 +28,7 @@ namespace dai {
 /**
  * ImgFrame message. Carries image data and metadata.
  */
-class ImgFrame : public Buffer, public utility::ProtoSerializable {
+class ImgFrame : public Buffer, public ProtoSerializable {
    public:
     using Buffer::getTimestamp;
     using Buffer::getTimestampDevice;
@@ -78,99 +79,26 @@ class ImgFrame : public Buffer, public utility::ProtoSerializable {
     ImgFrame(long fd, size_t size);
     virtual ~ImgFrame() = default;
 
-    ImgTransformations transformations;
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
         metadata = utility::serialize(*this);
         datatype = DatatypeEnum::ImgFrame;
     };
 
-    std::unique_ptr<google::protobuf::Message> getProtoMessage() const override {
-        // create and populate ImgFrame protobuf message
-        auto imgFrame = std::make_unique<proto::img_frame::ImgFrame>();
-        proto::common::Timestamp* ts = imgFrame->mutable_ts();
-        ts->set_sec(this->ts.sec);
-        ts->set_nsec(this->ts.nsec);
-        proto::common::Timestamp* tsDevice = imgFrame->mutable_tsdevice();
-        tsDevice->set_sec(this->tsDevice.sec);
-        tsDevice->set_nsec(this->tsDevice.nsec);
+#ifdef DEPTHAI_ENABLE_PROTOBUF
+    /**
+     * Serialize message to proto buffer
+     *
+     * @returns serialized message
+     */
+    std::vector<std::uint8_t> serializeProto() const override;
 
-        imgFrame->set_sequencenum(this->sequenceNum);
-
-        proto::img_frame::Specs* fb = imgFrame->mutable_fb();
-        fb->set_type(static_cast<proto::img_frame::Type>(this->fb.type));
-        fb->set_width(this->fb.width);
-        fb->set_height(this->fb.height);
-        fb->set_stride(this->fb.stride);
-        fb->set_bytespp(this->fb.bytesPP);
-        fb->set_p1offset(this->fb.p1Offset);
-        fb->set_p2offset(this->fb.p2Offset);
-        fb->set_p3offset(this->fb.p3Offset);
-
-        proto::img_frame::Specs* sourceFb = imgFrame->mutable_sourcefb();
-        sourceFb->set_type(static_cast<proto::img_frame::Type>(this->sourceFb.type));
-        sourceFb->set_width(this->sourceFb.width);
-        sourceFb->set_height(this->sourceFb.height);
-        sourceFb->set_stride(this->sourceFb.stride);
-        sourceFb->set_bytespp(this->sourceFb.bytesPP);
-        sourceFb->set_p1offset(this->sourceFb.p1Offset);
-        sourceFb->set_p2offset(this->sourceFb.p2Offset);
-        sourceFb->set_p3offset(this->sourceFb.p3Offset);
-
-        proto::common::CameraSettings* cam = imgFrame->mutable_cam();
-        cam->set_exposuretimeus(this->cam.exposureTimeUs);
-        cam->set_sensitivityiso(this->cam.sensitivityIso);
-        cam->set_lensposition(this->cam.lensPosition);
-        cam->set_wbcolortemp(this->cam.wbColorTemp);
-        cam->set_lenspositionraw(this->cam.lensPositionRaw);
-
-        imgFrame->set_hfovdegrees(this->HFovDegrees);
-
-        imgFrame->set_instancenum(this->instanceNum);
-
-        imgFrame->set_category(this->category);
-
-        proto::common::ImgTransformations* imgTransformations = imgFrame->mutable_transformations();
-        imgTransformations->set_invalidflag(this->transformations.invalidFlag);
-        for(const auto& transformation : this->transformations.transformations) {
-            proto::common::ImgTransformation* imgTransformation = imgTransformations->add_transformations();
-
-            imgTransformation->set_transformationtype(static_cast<proto::common::Transformation>(transformation.transformationType));
-            imgTransformation->set_topleftcropx(transformation.topLeftCropX);
-            imgTransformation->set_topleftcropy(transformation.topLeftCropY);
-            imgTransformation->set_bottomrightcropx(transformation.bottomRightCropX);
-            imgTransformation->set_bottomrightcropy(transformation.bottomRightCropY);
-            imgTransformation->set_toppadding(transformation.topPadding);
-            imgTransformation->set_bottompadding(transformation.bottomPadding);
-            imgTransformation->set_leftpadding(transformation.leftPadding);
-            imgTransformation->set_rightpadding(transformation.rightPadding);
-            imgTransformation->set_aftertransformwidth(transformation.afterTransformWidth);
-            imgTransformation->set_aftertransformheight(transformation.afterTransformHeight);
-            imgTransformation->set_beforetransformwidth(transformation.beforeTransformWidth);
-            imgTransformation->set_beforetransformheight(transformation.beforeTransformHeight);
-
-            proto::common::TransformationMatrix* transformationMatrix = imgTransformation->mutable_transformationmatrix();
-            for(const auto& array : transformation.transformationMatrix) {
-                proto::common::FloatArray* floatArray = transformationMatrix->add_arrays();
-
-                // or floatArray.mutable_values() = {array.values.begin(), array.values.end()}; ?
-                for(const auto& value : array) {
-                    floatArray->add_values(value);
-                }
-            }
-
-            proto::common::TransformationMatrix* invTransformationMatrix = imgTransformation->mutable_invtransformationmatrix();
-            for(const auto& array : transformation.invTransformationMatrix) {
-                proto::common::FloatArray* floatArray = invTransformationMatrix->add_arrays();
-
-                // or floatArray.mutable_values() = {array.values.begin(), array.values.end()}; ?
-                for(const auto& value : array) {
-                    floatArray->add_values(value);
-                }
-            }
-        }
-        imgFrame->set_data(this->data->getData().data(), this->data->getData().size());
-        return imgFrame;
-    }
+    /**
+     * Serialize schema to proto buffer
+     *
+     * @returns serialized schema
+     */
+    ProtoSerializable::SchemaPair serializeSchema() const override;
+#endif
 
     // getters
     /**
@@ -384,14 +312,6 @@ class ImgFrame : public Buffer, public utility::ProtoSerializable {
 
     /**
      * @note Fov API works correctly only on rectilinear frames
-     * Set the source horizontal field of view
-     *
-     * @param degrees field of view in degrees
-     */
-    ImgFrame& setSourceHFov(float degrees);
-
-    /**
-     * @note Fov API works correctly only on rectilinear frames
      * Get the source diagonal field of view in degrees
      *
      * @returns field of view in degrees
@@ -420,16 +340,6 @@ class ImgFrame : public Buffer, public utility::ProtoSerializable {
      * @returns true if the transformations are valid
      */
     bool validateTransformations() const;
-
-    /**
-     * Remap point between two source frames
-     * @param point point to remap
-     * @param sourceImage source image
-     * @param destImage destination image
-     *
-     * @returns remapped point
-     */
-    static Point2f remapPointBetweenSourceFrames(const Point2f& originPoint, const ImgFrame& sourceImage, const ImgFrame& destImage);
 
     /**
      * Remap point between two frames
@@ -789,13 +699,13 @@ class ImgFrame : public Buffer, public utility::ProtoSerializable {
     Specs fb = {};
     Specs sourceFb = {};
     CameraSettings cam;
-    float HFovDegrees = 0.0;   // Horizontal field of view in degrees
     uint32_t category = 0;     //
     uint32_t instanceNum = 0;  // Which source created this frame (color, mono, ...)
     dai::FrameEvent event = dai::FrameEvent::NONE;
+    ImgTransformation transformation;
 
    public:
-    DEPTHAI_SERIALIZE(ImgFrame, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum, fb, sourceFb, cam, HFovDegrees, category, instanceNum, transformations);
+    DEPTHAI_SERIALIZE(ImgFrame, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum, fb, sourceFb, cam, category, instanceNum, transformation);
 };
 
 }  // namespace dai

@@ -742,7 +742,7 @@ void PipelineImpl::build() {
                     create<node::XLinkInHost>(shared_from_this()),
                 };
                 auto& xLinkBridge = bridgesOut[connection.out];
-                auto streamName = fmt::format("__x_{}_{}", outNode->id, connection.outputName);
+                auto streamName = fmt::format("__x_{}_{}_{}", outNode->id, connection.outputGroup, connection.outputName);
 
                 // Check if the stream name is unique
                 if(uniqueStreamNames.count(streamName) > 0) {
@@ -766,7 +766,7 @@ void PipelineImpl::build() {
                     create<node::XLinkIn>(shared_from_this()),
                 };
                 auto& xLinkBridge = bridgesIn[connection.in];
-                auto streamName = fmt::format("__x_{}_{}", inNode->id, connection.inputName);
+                auto streamName = fmt::format("__x_{}_{}_{}", inNode->id, connection.inputGroup, connection.inputName);
 
                 // Check if the stream name is unique
                 if(uniqueStreamNames.count(streamName) > 0) {
@@ -777,6 +777,11 @@ void PipelineImpl::build() {
                 xLinkBridge.xLinkIn->setStreamName(streamName);
                 xLinkBridge.xLinkOutHost->setConnection(defaultDevice->getConnection());
                 xLinkBridge.xLinkIn->out.link(*connection.in);
+                if(defaultDevice->getPlatform() == Platform::RVC4 || defaultDevice->getPlatform() == Platform::RVC3) {
+                    xLinkBridge.xLinkOutHost->allowStreamResize(true);
+                } else {
+                    xLinkBridge.xLinkOutHost->allowStreamResize(false);
+                }
             }
             auto xLinkBridge = bridgesIn[connection.in];
             connection.out->unlink(*connection.in);  // Unlink the original connection

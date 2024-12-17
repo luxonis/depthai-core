@@ -90,6 +90,46 @@ float StereoDepthConfig::getMaxDisparity() const {
     maxDisp += algorithmControl.disparityShift;
     if(algorithmControl.enableExtended) maxDisp *= 2;
     if(algorithmControl.enableSubpixel) maxDisp *= (1 << algorithmControl.subpixelFractionalBits);
+
+    std::vector<dai::StereoDepthConfig::PostProcessing::Filter> filtersToExecute;
+    for(auto filter : postProcessing.filteringOrder) {
+        switch(filter) {
+            case StereoDepthConfig::PostProcessing::Filter::SPECKLE:
+                if(postProcessing.speckleFilter.enable) {
+                    filtersToExecute.push_back(filter);
+                }
+                break;
+            case StereoDepthConfig::PostProcessing::Filter::TEMPORAL:
+                if(postProcessing.temporalFilter.enable) {
+                    filtersToExecute.push_back(filter);
+                }
+                break;
+            case StereoDepthConfig::PostProcessing::Filter::SPATIAL:
+                if(postProcessing.spatialFilter.enable) {
+                    filtersToExecute.push_back(filter);
+                }
+                break;
+            case StereoDepthConfig::PostProcessing::Filter::DECIMATION:
+                if(postProcessing.decimationFilter.decimationFactor > 1) {
+                    filtersToExecute.push_back(filter);
+                }
+                break;
+            case StereoDepthConfig::PostProcessing::Filter::MEDIAN:
+                if(postProcessing.median != MedianFilter::MEDIAN_OFF) {
+                    filtersToExecute.push_back(filter);
+                }
+                break;
+            case StereoDepthConfig::PostProcessing::Filter::NONE:
+                break;
+            default:
+                break;
+        }
+    }
+
+    if(filtersToExecute.size() != 0) {
+        maxDisp = 1 << 13;
+    }
+
     return maxDisp;
 }
 }  // namespace dai

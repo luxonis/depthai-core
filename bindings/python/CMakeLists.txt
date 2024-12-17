@@ -43,16 +43,11 @@ option(DEPTHAI_PYTHON_EMBEDDED_MODULE "Create an embeddable module" OFF)
 
 # Add pybind11 dependency
 #add_subdirectory(pybind11-2.5.0)
-hunter_add_package(pybind11)
 
 # Disable LTO if MINGW compiler
 if(MINGW)
     set(PYBIND11_LTO_CXX_FLAGS "" CACHE STRING "" FORCE)
 endif()
-find_package(pybind11 CONFIG REQUIRED)
-
-# Print out the pybind11 version that was found
-message(STATUS "Found pybind11 v${pybind11_VERSION}")
 
 # Add external dependencies
 add_subdirectory(external)
@@ -143,7 +138,8 @@ set(SOURCE_LIST
     src/pipeline/datatype/PointCloudDataBindings.cpp
     src/pipeline/datatype/TransformDataBindings.cpp
     src/pipeline/datatype/ImageAlignConfigBindings.cpp
-    src/pipeline/datatype/ImageAnnotationsBindings.cpp
+    src/pipeline/datatype/ImgAnnotationsBindings.cpp
+    src/remote_connection/RemoteConnectionBindings.cpp
 
     src/capabilities/CapabilityBindings.cpp
     src/capabilities/CapabilityRangeBindings.cpp
@@ -153,6 +149,7 @@ set(SOURCE_LIST
     src/modelzoo/ZooBindings.cpp
 
     src/remote_connection/RemoteConnectionBindings.cpp
+    src/utility/EventsManagerBindings.cpp
 )
 if(DEPTHAI_MERGED_TARGET)
     list(APPEND SOURCE_LIST
@@ -196,6 +193,9 @@ if(WIN32)
 
     # Disable "d" postfix, so python can import the library as is
     set_target_properties(${TARGET_NAME} PROPERTIES DEBUG_POSTFIX "")
+
+    # Statically compile CRT
+    target_compile_options(${TARGET_NAME} PRIVATE "/MT")
 endif()
 
 # Add stubs (pyi) generation step after building bindings
@@ -305,6 +305,13 @@ target_link_libraries(${TARGET_NAME}
 # Add embedded module option, otherwise link to pybind11 as usual
 if(DEPTHAI_PYTHON_EMBEDDED_MODULE)
     target_compile_definitions(${TARGET_NAME} PRIVATE DEPTHAI_PYTHON_EMBEDDED_MODULE)
+endif()
+
+if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
+    target_compile_definitions(${TARGET_NAME} PRIVATE DEPTHAI_ENABLE_REMOTE_CONNECTION)
+endif()
+if(DEPTHAI_ENABLE_EVENTS_MANAGER)
+    target_compile_definitions(${TARGET_NAME} PRIVATE DEPTHAI_ENABLE_EVENTS_MANAGER)
 endif()
 
 # Find Git

@@ -69,7 +69,7 @@ void bind_buffer(pybind11::module& m, void* pCallstack){
     buffer
         .def(py::init<>(), DOC(dai, Buffer, Buffer))
         .def(py::init<size_t>(), DOC(dai, Buffer, Buffer, 2))
-
+        .def("__repr__", &Buffer::str)
         // obj is "Python" object, which we used then to bind the numpy arrays lifespan to
         .def("getData", [](py::object &obj){
             // creates numpy array (zero-copy) which holds correct information such as shape, ...
@@ -90,6 +90,7 @@ void bind_buffer(pybind11::module& m, void* pCallstack){
         .def("setTimestamp", &Buffer::setTimestamp, DOC(dai, Buffer, setTimestamp))
         .def("setTimestampDevice", &Buffer::setTimestampDevice, DOC(dai, Buffer, setTimestampDevice))
         .def("setSequenceNum", &Buffer::setSequenceNum, DOC(dai, Buffer, setSequenceNum))
+        .def("getVisualizationMessage", &Buffer::getVisualizationMessage, DOC(dai, Buffer, getVisualizationMessage))
         ;
 
 

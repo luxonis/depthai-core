@@ -35,18 +35,6 @@ NNData::NNData(size_t size) : NNData() {
 //     }
 // }
 
-static std::size_t getTensorDataSize(const TensorInfo& tensor) {
-    uint32_t i;
-
-    // Use the first non zero stride
-    for(i = 0; i < tensor.strides.size(); i++) {
-        if(tensor.strides[i] > 0) {
-            break;
-        }
-    }
-    return tensor.dims[i] * tensor.strides[i];
-}
-
 // NNData::Serialized NNData::serialize() const {
 //     // get data from u8Data and fp16Data and place properly into the underlying raw buffer
 //     std::shared_ptr<VectorMemory> mem;
@@ -147,7 +135,7 @@ float NNData::fp16_to_fp32(uint16_t value) {
 span<std::uint8_t> NNData::emplaceTensor(TensorInfo& tensor) {
     // TODO - look into returning an xtensor adaptor pre RVC3 merge
     size_t offset = data->getSize();
-    auto tensorSize = getTensorDataSize(tensor);
+    auto tensorSize = tensor.getTensorSize();
     size_t reminder = tensorSize % DATA_ALIGNMENT;
     auto tensorSizeAligned = tensorSize;
     if(reminder != 0) {

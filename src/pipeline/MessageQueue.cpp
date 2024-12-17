@@ -136,7 +136,7 @@ void MessageQueue::callCallbacks(std::shared_ptr<ADatatype> message) {
 
     // Call all callbacks
     for(auto& keyValue : callbacks) {
-        keyValue.second(name, std::move(message));
+        keyValue.second(name, message);
     }
 }
 

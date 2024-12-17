@@ -1,0 +1,14 @@
+diff --git a/cmake/compilers/GNU.cmake b/cmake/compilers/GNU.cmake
+index 871b72a..76e1900 100644
+--- a/cmake/compilers/GNU.cmake
++++ b/cmake/compilers/GNU.cmake
+@@ -26,7 +26,7 @@ else()
+     set(TBB_DEF_FILE_PREFIX lin${TBB_ARCH})
+ endif()
+ 
+-set(TBB_WARNING_LEVEL -Wall -Wextra $<$<BOOL:${TBB_STRICT}>:-Werror> -Wfatal-errors)
++set(TBB_WARNING_LEVEL -Wall -Wextra $<$<BOOL:${TBB_STRICT}>:-Werror> -Wfatal-errors -Wno-error=stringop-overflow)
+ set(TBB_TEST_WARNING_FLAGS -Wshadow -Wcast-qual -Woverloaded-virtual -Wnon-virtual-dtor)
+ 
+ # Depfile options (e.g. -MD) are inserted automatically in some cases.
+

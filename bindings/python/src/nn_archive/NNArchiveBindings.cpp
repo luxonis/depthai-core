@@ -10,7 +10,6 @@
 
 // v1 nn_archive bindings
 #include "depthai/nn_archive/v1/Config.hpp"
-#include "depthai/nn_archive/v1/ConfigVersion.hpp"
 #include "depthai/nn_archive/v1/DataType.hpp"
 #include "depthai/nn_archive/v1/Head.hpp"
 #include "depthai/nn_archive/v1/Input.hpp"
@@ -18,7 +17,6 @@
 #include "depthai/nn_archive/v1/Metadata.hpp"
 #include "depthai/nn_archive/v1/MetadataClass.hpp"
 #include "depthai/nn_archive/v1/Model.hpp"
-#include "depthai/nn_archive/v1/ObjectDetectionSubtypeYolo.hpp"
 #include "depthai/nn_archive/v1/Output.hpp"
 #include "depthai/nn_archive/v1/PreprocessingBlock.hpp"
 
@@ -44,10 +42,7 @@ void NNArchiveBindings::bind(pybind11::module& m, void* pCallstack) {
     // NNArchive v1
     auto v1m = m.def_submodule("nn_archive").def_submodule("v1");
     py::class_<v1::Config> v1config(v1m, "Config", DOC(dai, nn_archive, v1, Config));
-    py::enum_<v1::ConfigVersion> v1configVersion(v1m, "ConfigVersion", DOC(dai, nn_archive, v1, ConfigVersion));
     py::class_<v1::Model> v1model(v1m, "Model", DOC(dai, nn_archive, v1, Model));
-    py::enum_<v1::ObjectDetectionSubtypeYolo> v1objectDetectionSubtypeYolo(
-        v1m, "ObjectDetectionSubtypeYolo", DOC(dai, nn_archive, v1, ObjectDetectionSubtypeYolo));
     py::class_<v1::Head> v1head(v1m, "Head", DOC(dai, nn_archive, v1, Head));
     py::enum_<v1::DataType> v1dataType(v1m, "DataType", DOC(dai, nn_archive, v1, DataType));
     py::enum_<v1::InputType> v1inputType(v1m, "InputType", DOC(dai, nn_archive, v1, InputType));
@@ -142,11 +137,10 @@ void NNArchiveBindings::bind(pybind11::module& m, void* pCallstack) {
     archiveEntrySeek.value("CUR", NNArchiveEntry::Seek::CUR);
     archiveEntrySeek.value("END", NNArchiveEntry::Seek::END);
 
-    // Bind NNArchive v1
-    v1configVersion.value("THE_10", v1::ConfigVersion::THE_10);
+
 
     v1config.def(py::init<>());
-    v1config.def(py::init<v1::ConfigVersion, v1::Model>(), py::arg("configVersion"), py::arg("model"));
+    v1config.def(py::init<std::string, v1::Model>(), py::arg("configVersion"), py::arg("model"));
     v1config.def_readwrite("configVersion", &v1::Config::configVersion, DOC(dai, nn_archive, v1, Config, configVersion));
     v1config.def_readwrite("model", &v1::Config::model, DOC(dai, nn_archive, v1, Config, model));
 
@@ -156,22 +150,28 @@ void NNArchiveBindings::bind(pybind11::module& m, void* pCallstack) {
     v1model.def_readwrite("metadata", &v1::Model::metadata, DOC(dai, nn_archive, v1, Model, metadata));
     v1model.def_readwrite("outputs", &v1::Model::outputs, DOC(dai, nn_archive, v1, Model, outputs));
 
-    v1objectDetectionSubtypeYolo.value("YOLOV10", v1::ObjectDetectionSubtypeYolo::YOLOV10);
-    v1objectDetectionSubtypeYolo.value("YOLOV5", v1::ObjectDetectionSubtypeYolo::YOLOV5);
-    v1objectDetectionSubtypeYolo.value("YOLOV6", v1::ObjectDetectionSubtypeYolo::YOLOV6);
-    v1objectDetectionSubtypeYolo.value("YOLOV6_R2", v1::ObjectDetectionSubtypeYolo::YOLOV6_R2);
-    v1objectDetectionSubtypeYolo.value("YOLOV7", v1::ObjectDetectionSubtypeYolo::YOLOV7);
-    v1objectDetectionSubtypeYolo.value("YOLOV8", v1::ObjectDetectionSubtypeYolo::YOLOV8);
-
     v1head.def(py::init<>());
+    v1head.def_readwrite("name", &v1::Head::name, DOC(dai, nn_archive, v1, Head, name));
     v1head.def_readwrite("metadata", &v1::Head::metadata, DOC(dai, nn_archive, v1, Head, metadata));
     v1head.def_readwrite("outputs", &v1::Head::outputs, DOC(dai, nn_archive, v1, Head, outputs));
     v1head.def_readwrite("parser", &v1::Head::parser, DOC(dai, nn_archive, v1, Head, parser));
 
+    v1dataType.value("BOOLEAN", v1::DataType::BOOLEAN);
     v1dataType.value("FLOAT16", v1::DataType::FLOAT16);
     v1dataType.value("FLOAT32", v1::DataType::FLOAT32);
+    v1dataType.value("FLOAT64", v1::DataType::FLOAT64);
+    v1dataType.value("INT4", v1::DataType::INT4);
     v1dataType.value("INT8", v1::DataType::INT8);
+    v1dataType.value("INT16", v1::DataType::INT16);
+    v1dataType.value("INT32", v1::DataType::INT32);
+    v1dataType.value("INT64", v1::DataType::INT64);
+    v1dataType.value("UINT4", v1::DataType::UINT4);
     v1dataType.value("UINT8", v1::DataType::UINT8);
+    v1dataType.value("UINT16", v1::DataType::UINT16);
+    v1dataType.value("UINT32", v1::DataType::UINT32);
+    v1dataType.value("UINT64", v1::DataType::UINT64);
+    v1dataType.value("STRING", v1::DataType::STRING);
+
 
     v1inputType.value("IMAGE", v1::InputType::IMAGE);
     v1inputType.value("RAW", v1::InputType::RAW);
@@ -213,6 +213,8 @@ void NNArchiveBindings::bind(pybind11::module& m, void* pCallstack) {
     v1output.def(py::init<>());
     v1output.def_readwrite("dtype", &v1::Output::dtype, DOC(dai, nn_archive, v1, Output, dtype));
     v1output.def_readwrite("name", &v1::Output::name, DOC(dai, nn_archive, v1, Output, name));
+    v1output.def_readwrite("layout", &v1::Output::layout, DOC(dai, nn_archive, v1, Output, layout));
+    v1output.def_readwrite("shape", &v1::Output::shape, DOC(dai, nn_archive, v1, Output, shape));
 
     v1preprocessingBlock.def(py::init<>());
     v1preprocessingBlock.def_readwrite(
@@ -221,4 +223,5 @@ void NNArchiveBindings::bind(pybind11::module& m, void* pCallstack) {
     v1preprocessingBlock.def_readwrite(
         "reverseChannels", &v1::PreprocessingBlock::reverseChannels, DOC(dai, nn_archive, v1, PreprocessingBlock, reverseChannels));
     v1preprocessingBlock.def_readwrite("scale", &v1::PreprocessingBlock::scale, DOC(dai, nn_archive, v1, PreprocessingBlock, scale));
+    v1preprocessingBlock.def_readwrite("daiType", &v1::PreprocessingBlock::daiType, DOC(dai, nn_archive, v1, PreprocessingBlock, daiType));
 }

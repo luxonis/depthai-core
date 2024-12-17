@@ -2,8 +2,9 @@
 
 #include <vector>
 
+#include "depthai/common/ImgTransformations.hpp"
+#include "depthai/common/optional.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
-#include "depthai/schemas/ImgDetections.pb.h"
 #include "depthai/utility/ProtoSerializable.hpp"
 
 namespace dai {
@@ -22,7 +23,7 @@ DEPTHAI_SERIALIZE_EXT(ImgDetection, label, confidence, xmin, ymin, xmax, ymax);
 /**
  * ImgDetections message. Carries normalized detection results
  */
-class ImgDetections : public Buffer, public utility::ProtoSerializable {
+class ImgDetections : public Buffer, public ProtoSerializable {
    public:
     /**
      * Construct ImgDetections message.
@@ -32,36 +33,30 @@ class ImgDetections : public Buffer, public utility::ProtoSerializable {
 
     /// Detections
     std::vector<ImgDetection> detections;
+    std::optional<ImgTransformation> transformation;
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
         metadata = utility::serialize(*this);
         datatype = DatatypeEnum::ImgDetections;
     };
 
-    std::unique_ptr<google::protobuf::Message> getProtoMessage() const override {
-        auto imgDetections = std::make_unique<proto::img_detections::ImgDetections>();
+#ifdef DEPTHAI_ENABLE_PROTOBUF
+    /**
+     * Serialize message to proto buffer
+     *
+     * @returns serialized message
+     */
+    std::vector<std::uint8_t> serializeProto() const override;
 
-        imgDetections->set_sequencenum(this->sequenceNum);
-        proto::common::Timestamp* ts = imgDetections->mutable_ts();
-        ts->set_sec(this->ts.sec);
-        ts->set_nsec(this->ts.nsec);
-        proto::common::Timestamp* tsDevice = imgDetections->mutable_tsdevice();
-        tsDevice->set_sec(this->tsDevice.sec);
-        tsDevice->set_nsec(this->tsDevice.nsec);
+    /**
+     * Serialize schema to proto buffer
+     *
+     * @returns serialized schema
+     */
+    ProtoSerializable::SchemaPair serializeSchema() const override;
+#endif
 
-        for(const auto& detection : this->detections) {
-            proto::img_detections::ImgDetection* imgDetection = imgDetections->add_detections();
-            imgDetection->set_label(detection.label);
-            imgDetection->set_confidence(detection.confidence);
-            imgDetection->set_xmin(detection.xmin);
-            imgDetection->set_ymin(detection.ymin);
-            imgDetection->set_xmax(detection.xmax);
-            imgDetection->set_ymax(detection.ymax);
-        }
-        return imgDetections;
-    }
-
-    DEPTHAI_SERIALIZE(ImgDetections, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, detections);
+    DEPTHAI_SERIALIZE(ImgDetections, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, detections, transformation);
 };
 
 }  // namespace dai

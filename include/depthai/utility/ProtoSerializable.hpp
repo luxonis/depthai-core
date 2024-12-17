@@ -1,88 +1,59 @@
 #pragma once
 
-#include <google/protobuf/descriptor.pb.h>
-#include <google/protobuf/message.h>
-#include <google/protobuf/util/time_util.h>
-
-#include <memory>
-#include <queue>
+#include <cstdint>
+#include <string>
 #include <vector>
 namespace dai {
 
-namespace utility {
-
-// Writes the FileDescriptor of this descriptor and all transitive dependencies
-// to a string, for use as a channel schema.
-static std::string serializeFdSet(const google::protobuf::Descriptor* toplevelDescriptor) {
-    google::protobuf::FileDescriptorSet fdSet;
-    std::queue<const google::protobuf::FileDescriptor*> toAdd;
-    toAdd.push(toplevelDescriptor->file());
-    std::unordered_set<std::string> seenDependencies;
-    while(!toAdd.empty()) {
-        const google::protobuf::FileDescriptor* next = toAdd.front();
-        toAdd.pop();
-        next->CopyTo(fdSet.add_file());
-        for(int i = 0; i < next->dependency_count(); ++i) {
-            const auto& dep = next->dependency(i);
-            if(seenDependencies.find(dep->name()) == seenDependencies.end()) {
-                seenDependencies.insert(dep->name());
-                toAdd.push(dep);
-            }
-        }
-    }
-    return fdSet.SerializeAsString();
-}
-
 class ProtoSerializable {
    public:
-    struct schemaPair {
+    struct SchemaPair {
         std::string schemaName;
         std::string schema;
     };
 
     virtual ~ProtoSerializable() = default;
 
+#ifdef DEPTHAI_ENABLE_PROTOBUF
     /**
      * @brief Serialize the protobuf message of this object
      * @return serialized protobuf message
      */
-    virtual std::vector<std::uint8_t> serializeProto() const final {
-        auto protoMessage = getProtoMessage();
-        std::size_t nbytes = protoMessage->ByteSizeLong();
-        std::vector<std::uint8_t> buffer(nbytes);
-
-        // The test is necessary becaue v.data could be NULL if nbytes is 0
-        if(nbytes > 0) {
-            protoMessage->SerializeToArray(buffer.data(), nbytes);
-        }
-
-        return buffer;
-    }
+    virtual std::vector<std::uint8_t> serializeProto() const = 0;
 
     /**
      * @brief Serialize the schema of this object
      * @return schemaPair
      */
-    virtual schemaPair serializeSchema() const {
-        auto protoMessage = getProtoMessage();
-        const auto* descriptor = protoMessage->GetDescriptor();
-        if(descriptor == nullptr) {
-            throw std::runtime_error("Failed to get protobuf descriptor");
-        }
-        schemaPair returnPair;
-        returnPair.schemaName = descriptor->full_name();
-        returnPair.schema = serializeFdSet(descriptor);
-        return returnPair;
+    virtual SchemaPair serializeSchema() const = 0;
+
+#else
+    // Helper struct for compile-time check
+    template <typename... T>
+    struct dependent_false {
+        static constexpr bool value = false;
+    };
+
+    /**
+     * @brief Placeholder for serializeProto when Protobuf is disabled
+     * @return Throws compile-time error if used
+     */
+    template <typename... T>
+    std::vector<std::uint8_t> serializeProto(T...) const {
+        static_assert(dependent_false<T...>::value, "Protobuf support is not enabled in this build");
+        return {};
     }
 
-   protected:
     /**
-     * @brief Generate the corresponding protobuf message from this object
-     * @return std::unique_ptr<google::protobuf::Message>
+     * @brief Placeholder for serializeSchema when Protobuf is disabled
+     * @return Throws compile-time error if used
      */
-    virtual std::unique_ptr<google::protobuf::Message> getProtoMessage() const = 0;
+    template <typename... T>
+    SchemaPair serializeSchema(T...) const {
+        static_assert(dependent_false<T...>::value, "Protobuf support is not enabled in this build");
+        return {};
+    }
+#endif
 };
-
-}  // namespace utility
 
 }  // namespace dai

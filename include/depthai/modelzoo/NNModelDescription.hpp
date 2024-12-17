@@ -3,6 +3,18 @@
 #include <string>
 
 namespace dai {
+struct SlugComponents {
+    std::string teamName;
+    std::string modelSlug;
+    std::string modelVariantSlug;
+    std::string modelRef;
+
+    // Merges the fields into a single string
+    std::string merge() const;
+
+    // Splits a slug string into components
+    static SlugComponents split(const std::string& slug);
+};
 
 struct NNModelDescription {
     /**
@@ -28,25 +40,22 @@ struct NNModelDescription {
     std::string toString() const;
 
     /** Model slug = REQUIRED parameter */
-    std::string modelSlug;
+    std::string model;
 
     /** Hardware platform - RVC2, RVC3, RVC4, ... = REQUIRED parameter */
     std::string platform;
-
-    /** Model version slug = OPTIONAL parameter */
-    std::string modelVersionSlug;
-
-    /** Model instance slug = OPTIONAL parameter */
-    std::string modelInstanceSlug;
-
-    /** Model instance hash = OPTIONAL parameter */
-    std::string modelInstanceHash;
 
     /** Optimization level = OPTIONAL parameter */
     std::string optimizationLevel;
 
     /** Compression level = OPTIONAL parameter */
     std::string compressionLevel;
+
+    /** SNPE version = OPTIONAL parameter */
+    std::string snpeVersion;
+
+    /** modelPrecisionType */
+    std::string modelPrecisionType;
 };
 
 std::ostream& operator<<(std::ostream& os, const NNModelDescription& modelDescription);

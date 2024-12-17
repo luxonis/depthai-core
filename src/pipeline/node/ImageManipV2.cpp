@@ -32,7 +32,6 @@ void ImageManipV2::run() {
             dstFrame.sequenceNum = srcFrame.sequenceNum;
             dstFrame.tsDevice = srcFrame.tsDevice;
             dstFrame.ts = srcFrame.ts;
-            dstFrame.HFovDegrees = srcFrame.HFovDegrees;
             dstFrame.category = srcFrame.category;
             dstFrame.event = srcFrame.event;
             dstFrame.fb.height = dstSpecs.height;
@@ -42,6 +41,12 @@ void ImageManipV2::run() {
             dstFrame.fb.p2Offset = dstSpecs.p2Offset;
             dstFrame.fb.p3Offset = dstSpecs.p3Offset;
             dstFrame.setType(outType);
+
+            // Transformations
+            dstFrame.transformation = srcFrame.transformation;
+            auto srcCrops = manip.getSrcCrops();
+            dstFrame.transformation.addSrcCrops(srcCrops);
+            dstFrame.transformation.addTransformation(manip.getMatrix());
         });
 }
 

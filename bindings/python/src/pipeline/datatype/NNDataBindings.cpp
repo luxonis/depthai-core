@@ -75,6 +75,7 @@ void bind_nndata(pybind11::module& m, void* pCallstack){
 
     tensorInfo
         .def(py::init<>())
+        .def("getTensorSize", &TensorInfo::getTensorSize)
         .def_readwrite("order", &TensorInfo::order)
         .def_readwrite("dataType", &TensorInfo::dataType)
         .def_readwrite("numDimensions", &TensorInfo::numDimensions)
@@ -118,6 +119,7 @@ void bind_nndata(pybind11::module& m, void* pCallstack){
 
     nnData.def(py::init<>(), DOC(dai, NNData, NNData))
         .def(py::init<size_t>(), DOC(dai, NNData, NNData, 2))
+        .def("__repr__", &NNData::str)
         // // setters
         // .def("setLayer", [](NNData& obj, const std::string& name,
         // py::array_t<std::uint8_t, py::array::c_style | py::array::forcecast>
@@ -259,11 +261,23 @@ void bind_nndata(pybind11::module& m, void* pCallstack){
                 return py::cast(obj.getFirstTensor<float>(dequantize));
             }
         }, py::arg("dequantize") = false, DOC(dai, NNData, getFirstTensor))
+
+        .def("getFirstTensor", [](NNData& obj, TensorInfo::StorageOrder order, bool dequantize) -> py::object {
+            const auto datatype = obj.getFirstTensorDatatype();
+            if(datatype == dai::TensorInfo::DataType::U8F && !dequantize) {
+                // In case of dequantization, we should always return float
+                return py::cast(obj.getFirstTensor<int>(order));
+            } else {
+                return py::cast(obj.getFirstTensor<float>(order, dequantize));
+            }
+        }, py::arg("storageOrder"), py::arg("dequantize") = false, DOC(dai, NNData, getFirstTensor, 2))
         // .def("getTensor", static_cast<xt::xarray<double>(NNData::*)(const std::string&)>(&NNData::getTensor<double>), py::arg("name"), DOC(dai, NNData, getTensor))
         // .def("getTensor", static_cast<xt::xarray<float>(NNData::*)(const std::string&)>(&NNData::getTensor<float>), py::arg("name"), DOC(dai, NNData, getTensor, 2))
         // .def("getTensor", static_cast<xt::xarray<int>(NNData::*)(const std::string&)>(&NNData::getTensor<int>), py::arg("name"), DOC(dai, NNData, getTensor, 3))
         .def("getTensorDatatype", &NNData::getTensorDatatype, py::arg("name"), DOC(dai, NNData, getTensorDatatype))
         .def("getTensorInfo", &NNData::getTensorInfo, py::arg("name"), DOC(dai, NNData, getTensorInfo))
+        .def("getTransformation", [](NNData& msg) {return msg.transformation;})
+        .def("setTransformation", [](NNData& msg, const std::optional<ImgTransformation>& transformation) {msg.transformation = transformation;})
         ;
 
 

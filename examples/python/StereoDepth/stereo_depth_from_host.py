@@ -1070,7 +1070,6 @@ if args.dumpdisparitycostvalues:
     xoutDebugCostDump.setName("debugCostDump")
 
 # Properties
-stereo.setDefaultProfilePreset(dai.node.StereoDepth.PresetMode.HIGH_DENSITY)
 stereo.initialConfig.setMedianFilter(dai.MedianFilter.MEDIAN_OFF)  # KERNEL_7x7 default
 stereo.setLeftRightCheck(lrcheck)
 stereo.setExtendedDisparity(extended)

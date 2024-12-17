@@ -12,11 +12,18 @@
 
 // #include "spdlog/spdlog.h"
 
+namespace dai {
+class PyADataType : public ADatatype {
+   public:
+    using ADatatype::ADatatype;
+};
+} // namespace dai
+
 void bind_adatatype(pybind11::module& m, void* pCallstack){
 
     using namespace dai;
 
-    py::class_<ADatatype, Py<ADatatype>, std::shared_ptr<ADatatype>> adatatype(m, "ADatatype", DOC(dai, ADatatype));
+    py::class_<ADatatype, PyADataType, std::shared_ptr<ADatatype>> adatatype(m, "ADatatype", DOC(dai, ADatatype));
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////

@@ -54,7 +54,7 @@ class DeviceBase {
     // constants
 
     /// Default search time for constructors which discover devices
-    static constexpr std::chrono::seconds DEFAULT_SEARCH_TIME{3};
+    static constexpr std::chrono::seconds DEFAULT_SEARCH_TIME{10};
     /// Default rate at which system information is logged
     static constexpr float DEFAULT_SYSTEM_INFORMATION_LOGGING_RATE_HZ{1.0f};
     /// Default UsbSpeed for device connection
@@ -880,6 +880,12 @@ class DeviceBase {
      * exceptions when calling any DepthAI apis to handle hardware events and multithreaded use.
      */
     bool isClosed() const;
+
+    /**
+     * Crashes the device
+     * @warning ONLY FOR TESTING PURPOSES, it causes an unrecoverable crash on the device
+     */
+    void crashDevice();
 
     /**
      * Returns underlying XLinkConnection

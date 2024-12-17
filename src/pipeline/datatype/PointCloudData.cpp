@@ -1,7 +1,10 @@
 #include "depthai/pipeline/datatype/PointCloudData.hpp"
 
 #include "depthai/common/Point3f.hpp"
-
+#ifdef DEPTHAI_ENABLE_PROTOBUF
+    #include "../../utility/ProtoSerialize.hpp"
+    #include "depthai/schemas/PointCloudData.pb.h"
+#endif
 namespace dai {
 
 std::vector<Point3f> PointCloudData::getPoints() {
@@ -125,34 +128,44 @@ PointCloudData& PointCloudData::setColor(bool val) {
     return *this;
 }
 
-std::unique_ptr<google::protobuf::Message> dai::PointCloudData::getProtoMessage() const {
+#ifdef DEPTHAI_ENABLE_PROTOBUF
+std::unique_ptr<google::protobuf::Message> getProtoMessage(const PointCloudData* daiCloudData) {
     auto pointCloudData = std::make_unique<dai::proto::point_cloud_data::PointCloudData>();
 
     auto timestamp = pointCloudData->mutable_ts();
-    timestamp->set_sec(ts.sec);
-    timestamp->set_nsec(ts.nsec);
+    timestamp->set_sec(daiCloudData->ts.sec);
+    timestamp->set_nsec(daiCloudData->ts.nsec);
 
     auto timestampDevice = pointCloudData->mutable_tsdevice();
-    timestampDevice->set_sec(tsDevice.sec);
-    timestampDevice->set_nsec(tsDevice.nsec);
+    timestampDevice->set_sec(daiCloudData->tsDevice.sec);
+    timestampDevice->set_nsec(daiCloudData->tsDevice.nsec);
 
-    pointCloudData->set_sequencenum(sequenceNum);
-    pointCloudData->set_width(width);
-    pointCloudData->set_height(height);
-    pointCloudData->set_instancenum(instanceNum);
-    pointCloudData->set_minx(minx);
-    pointCloudData->set_miny(miny);
-    pointCloudData->set_minz(minz);
-    pointCloudData->set_maxx(maxx);
-    pointCloudData->set_maxy(maxy);
-    pointCloudData->set_maxz(maxz);
-    pointCloudData->set_sparse(sparse);
-    pointCloudData->set_color(color);
+    pointCloudData->set_sequencenum(daiCloudData->sequenceNum);
+    pointCloudData->set_width(daiCloudData->getWidth());
+    pointCloudData->set_height(daiCloudData->getHeight());
+    pointCloudData->set_instancenum(daiCloudData->getInstanceNum());
+    pointCloudData->set_minx(daiCloudData->getMinX());
+    pointCloudData->set_miny(daiCloudData->getMinY());
+    pointCloudData->set_minz(daiCloudData->getMinZ());
+    pointCloudData->set_maxx(daiCloudData->getMaxX());
+    pointCloudData->set_maxy(daiCloudData->getMaxY());
+    pointCloudData->set_maxz(daiCloudData->getMaxZ());
+    pointCloudData->set_sparse(daiCloudData->isSparse());
+    pointCloudData->set_color(daiCloudData->isColor());
 
-    pointCloudData->set_data(data->getData().data(), data->getSize());
+    pointCloudData->set_data(daiCloudData->data->getData().data(), daiCloudData->data->getSize());
 
     return pointCloudData;
 }
 
+std::vector<std::uint8_t> PointCloudData::serializeProto() const {
+    return utility::serializeProto(getProtoMessage(this));
+}
+
+ProtoSerializable::SchemaPair PointCloudData::serializeSchema() const {
+    return utility::serializeSchema(getProtoMessage(this));
+}
+
+#endif
 static_assert(sizeof(Point3f) == 12, "Point3f size must be 12 bytes");
 }  // namespace dai

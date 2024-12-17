@@ -19,6 +19,8 @@ out = manip.out.createOutputQueue()
 
 pipeline.start()
 
+print(manip.initialConfig)
+
 while True:
     inFrame = out.get()
     if inFrame is not None:

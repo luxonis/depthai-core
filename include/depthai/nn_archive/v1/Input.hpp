@@ -73,7 +73,7 @@ struct Input {
      */
     InputType inputType;
     /**
-     * Lettercode interpretation of the input layout (e.g., 'NCHW').
+     * Lettercode interpretation of the input data dimensions (e.g., 'NCHW')
      */
     std::optional<std::string> layout;
     /**

@@ -3,6 +3,7 @@
 #include <chrono>
 #include <depthai/pipeline/MessageQueue.hpp>
 #include <depthai/pipeline/datatype/ADatatype.hpp>
+#include <memory>
 #include <thread>
 
 using namespace dai;
@@ -370,4 +371,27 @@ TEST_CASE("Sending to a closed queue", "[MessageQueue]") {
     // Send a message
     auto msg = std::make_shared<ADatatype>();
     REQUIRE_THROWS_AS(queue.send(msg), MessageQueue::QueueException);
+}
+
+TEST_CASE("Multi callbacks", "[MessageQueue]") {
+    MessageQueue queue(10);
+    std::atomic<int> callbackCount1{0};
+    std::atomic<int> callbackCount2{0};
+
+    // Add first callback
+    queue.addCallback([&](std::shared_ptr<ADatatype> message) {
+        REQUIRE(message != nullptr);
+        callbackCount1++;
+    });
+    queue.addCallback([&](std::shared_ptr<ADatatype> message) {
+        REQUIRE(message != nullptr);
+        callbackCount2++;
+    });
+
+    // Send a message
+    auto msg = std::make_shared<ADatatype>();
+    queue.send(msg);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    REQUIRE(callbackCount1 == 1);
+    REQUIRE(callbackCount2 == 1);
 }
