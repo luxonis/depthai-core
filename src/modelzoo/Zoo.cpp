@@ -10,6 +10,13 @@
 
 #ifdef DEPTHAI_ENABLE_CURL
     #include <cpr/cpr.h>
+
+namespace {
+
+std::string combinePaths(const std::string& path1, const std::string& path2) {
+    return std::filesystem::path(path1).append(path2).string();
+}
+}
 namespace dai {
 class ZooManager {
    public:
@@ -34,6 +41,10 @@ class ZooManager {
         } else {
             logger::info("API key provided");
         }
+
+        // Create metadata file path
+        metadataFilePath = combinePaths(getModelCacheFolderPath(cacheDirectory), "metadata.yaml");
+        metadataFilePath = "/home/kuba/fun/luxonis/depthai-core/examples/python/RVC2/NNArchive/.depthai_cached_models/98fa008f114a052fc110a400b9f2526e541e7c72/metadata.yaml";
     }
 
     /**
@@ -81,6 +92,11 @@ class ZooManager {
     void downloadModel();
 
     /**
+     * @brief Store metadata in a yaml file
+     */
+    void storeMetadata();
+
+    /**
      * @brief Return path to model in cache
      *
      * @return std::string: Path to model
@@ -96,6 +112,10 @@ class ZooManager {
 
     // Path to directory where to store the cached models
     std::string cacheDirectory;
+
+    public:
+    // Path to the metadata file
+    std::filesystem::path metadataFilePath;
 };
 
 std::string generateErrorMessageHub(const cpr::Response& response) {
@@ -129,10 +149,6 @@ std::string generateErrorMessageModelDownload(const cpr::Response& response) {
     errorMessage += "HTTP status code: " + std::to_string(response.status_code) + "\n";
     errorMessage += "CPR error code: " + std::to_string(static_cast<int>(response.error.code)) + "\n";
     return errorMessage;
-}
-
-std::string combinePaths(const std::string& path1, const std::string& path2) {
-    return std::filesystem::path(path1).append(path2).string();
 }
 
 bool checkIsErrorHub(const cpr::Response& response) {
@@ -265,6 +281,19 @@ void ZooManager::downloadModel() {
     }
 }
 
+void ZooManager::storeMetadata() {
+    std::string hash = computeModelHash();
+
+    YAML::Node metadata;
+    metadata["hash"] = hash;
+
+    std::cout << "Storing metadata in a yaml file: " << metadataFilePath.string() << std::endl;
+
+    utility::saveYaml(metadata, metadataFilePath.string());
+
+    std::cout << "Metadata stored in a yaml file: " << metadataFilePath.string() << std::endl;
+}
+
 std::string ZooManager::loadModelFromCache() const {
     const std::string cacheFolder = getModelCacheFolderPath(cacheDirectory);
 
@@ -307,6 +336,10 @@ std::string getModelFromZoo(const NNModelDescription& modelDescription, bool use
     // Download model
     Logging::getInstance().logger.info("Downloading model from model zoo");
     zooManager.downloadModel();
+
+    // Store metadata in a yaml file
+    Logging::getInstance().logger.info("Storing metadata zoo in a yaml file" + zooManager.metadataFilePath.string());
+    zooManager.storeMetadata();
 
     // Find path to model in cache
     std::string modelPath = zooManager.loadModelFromCache();
