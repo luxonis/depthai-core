@@ -2,7 +2,6 @@
     "name": "depthai",
     "dependencies": [
         "cpp-httplib",
-        "kompute",
         "libpng",
         "tiff",
         "yaml-cpp",
