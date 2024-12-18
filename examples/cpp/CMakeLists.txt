@@ -299,7 +299,7 @@ include(FetchContent)
 FetchContent_Declare(rerun_sdk URL  https://github.com/rerun-io/rerun/releases/download/0.16.1/rerun_cpp_sdk.zip)
 FetchContent_MakeAvailable(rerun_sdk)
 dai_add_example(rgbd HostNodes/rgbd.cpp OFF OFF)
-target_link_libraries(rgbd PRIVATE  rerun_sdk)
+target_link_libraries(rgbd PRIVATE rerun_sdk)
 
 dai_add_example(visualizer_rgbd Visualizer/visualizer_rgbd.cpp OFF OFF)
 

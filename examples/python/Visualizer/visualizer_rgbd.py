@@ -9,7 +9,9 @@ parser.add_argument("--httpPort", type=int, default=8080)
 args = parser.parse_args()
 
 with dai.Pipeline() as p:
-    remoteConnector = dai.RemoteConnection(webSocketPort=args.webSocketPort, httpPort=args.httpPort)
+    remoteConnector = dai.RemoteConnection(
+        webSocketPort=args.webSocketPort, httpPort=args.httpPort
+    )
     fps = 30.0
     left = p.create(dai.node.MonoCamera)
     right = p.create(dai.node.MonoCamera)
@@ -23,7 +25,7 @@ with dai.Pipeline() as p:
     right.setCamera("right")
     right.setResolution(dai.MonoCameraProperties.SensorResolution.THE_720_P)
     right.setFps(fps)
-    out = color.requestOutput((1280,720))
+    out = color.requestOutput((1280, 720))
 
     stereo.setDepthAlign(dai.CameraBoardSocket.CAM_A)
     stereo.setOutputSize(left.getResolutionWidth(), left.getResolutionHeight())
@@ -36,9 +38,7 @@ with dai.Pipeline() as p:
     stereo.initialConfig.setLeftRightCheckThreshold(10)
     stereo.setSubpixel(True)
 
-
     # Linking
-
     left.out.link(stereo.left)
     right.out.link(stereo.right)
     stereo.depth.link(rgbd.inDepth)

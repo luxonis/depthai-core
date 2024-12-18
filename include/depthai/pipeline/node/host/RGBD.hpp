@@ -17,6 +17,7 @@ class RGBD : public NodeCRTP<ThreadedHostNode, RGBD> {
     constexpr static const char* NAME = "RGBD";
 
     RGBD();
+    ~RGBD();
     Subnode<node::Sync> sync{*this, "sync"};
     std::shared_ptr<node::ImageAlign> align;
     InputMap& inputs = sync->inputs;

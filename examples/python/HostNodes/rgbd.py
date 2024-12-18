@@ -45,11 +45,11 @@ with dai.Pipeline() as p:
     right.setCamera("right")
     right.setResolution(dai.MonoCameraProperties.SensorResolution.THE_720_P)
     right.setFps(fps)
-    out = color.requestOutput((1280,720))
+    out = color.requestOutput((1280,720), dai.ImgFrame.Type.BGR888i)
 
     stereo.setDepthAlign(dai.CameraBoardSocket.CAM_A)
-    stereo.setOutputSize(left.getResolutionWidth(), left.getResolutionHeight())
 
+    stereo.setOutputSize(left.getResolutionWidth(), left.getResolutionHeight())
     stereo.setExtendedDisparity(False)
     stereo.setLeftRightCheck(True)
     stereo.setDefaultProfilePreset(dai.node.StereoDepth.PresetMode.HIGH_DENSITY)
@@ -58,9 +58,7 @@ with dai.Pipeline() as p:
     stereo.initialConfig.setLeftRightCheckThreshold(10)
     stereo.setSubpixel(True)
 
-
     # Linking
-
     left.out.link(stereo.left)
     right.out.link(stereo.right)
     stereo.depth.link(rgbd.inDepth)

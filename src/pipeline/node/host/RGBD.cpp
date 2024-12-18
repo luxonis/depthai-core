@@ -11,8 +11,8 @@
 #include "depthai/pipeline/node/Camera.hpp"
 #include "depthai/pipeline/node/StereoDepth.hpp"
 #include "depthai/pipeline/node/Sync.hpp"
-#include "depthai/shaders/rgbd2pointcloud.hpp"
 #ifdef DEPTHAI_ENABLE_KOMPUTE
+    #include "depthai/shaders/rgbd2pointcloud.hpp"
     #include "kompute/Kompute.hpp"
 #endif
 #include "utility/PimplImpl.hpp"
@@ -44,13 +44,17 @@ class RGBD::Impl {
         this->outputMeters = outputMeters;
     }
     void printDevices() {
+#ifdef DEPTHAI_ENABLE_KOMPUTE
         auto devices = mgr->listDevices();
         for(auto& device : devices) {
             std::cout << "Device: " << device.getProperties().deviceName << std::endl;
         }
+#endif
     }
     void setGPUDevice(uint32_t deviceIndex) {
+#ifdef DEPTHAI_ENABLE_KOMPUTE
         this->deviceIndex = deviceIndex;
+#endif
     }
     void setCPUThreadNum(uint32_t numThreads) {
         threadNum = numThreads;
@@ -83,7 +87,7 @@ class RGBD::Impl {
         shader = std::vector<uint32_t>(shaders::RGBD2POINTCLOUD_COMP_SPV.begin(), shaders::RGBD2POINTCLOUD_COMP_SPV.end());
         computeMethod = ComputeMethod::GPU;
 #else
-        loggerr::log->error("Kompute not enabled. Please enable it in CMake.");
+        throw std::runtime_error("Kompute not enabled in this build");
 #endif
     }
     void computePointCloudGPU(const uint8_t* depthData, const uint8_t* colorData, std::vector<Point3fRGB>& points) {
@@ -209,7 +213,9 @@ class RGBD::Impl {
 };
 
 RGBD::RGBD() = default;
-;
+
+RGBD::~RGBD() = default;
+
 std::shared_ptr<RGBD> RGBD::build() {
     sync->out.link(inSync);
     sync->setRunOnHost(false);
