@@ -263,21 +263,24 @@ dai_add_example(image_manip_v2_mod ImageManip/image_manip_v2_mod.cpp OFF OFF)
 dai_add_example(image_manip_color_conversion ImageManip/image_manip_color_conversion.cpp OFF OFF)
 
 # Record
-dai_add_example(record_encoded_h264 RVC2/Record/record_encoded_h264.cpp OFF OFF)
-dai_add_example(record_encoded_mjpeg RVC2/Record/record_encoded_mjpeg.cpp OFF OFF)
-dai_add_example(record_raw_color RVC2/Record/record_raw_color.cpp OFF OFF)
-dai_add_example(record_raw_gray RVC2/Record/record_raw_gray.cpp OFF OFF)
-dai_add_example(record_imu RVC2/Record/record_imu.cpp OFF OFF)
+dai_add_example(record_encoded_h264 Record/record_encoded_h264.cpp OFF OFF)
+dai_add_example(record_encoded_mjpeg Record/record_encoded_mjpeg.cpp OFF OFF)
+dai_add_example(record_raw_color Record/record_raw_color.cpp OFF OFF)
+dai_add_example(record_raw_gray Record/record_raw_gray.cpp OFF OFF)
+dai_add_example(record_imu Record/record_imu.cpp OFF OFF)
+dai_add_example(holistic_record Record/holistic_record.cpp OFF OFF)
 
 # Replay
-dai_add_example(replay_video_meta RVC2/Replay/replay_video_meta.cpp OFF OFF)
-dai_add_example(replay_imu RVC2/Replay/replay_imu.cpp OFF OFF)
+dai_add_example(replay_video_meta Replay/replay_video_meta.cpp OFF OFF)
+dai_add_example(replay_imu Replay/replay_imu.cpp OFF OFF)
+dai_add_example(holistic_replay Replay/holistic_replay.cpp OFF OFF)
 
 # Thermal
 dai_add_example(thermal RVC2/Thermal/thermal.cpp OFF OFF)
 
 # Host nodes
 dai_add_example(rgb_video RVC2/ColorCamera/rgb_video.cpp OFF OFF)
+dai_add_example(rgb_video_camera RVC2/Camera/rgb_video_camera.cpp OFF OFF)
 dai_add_example(host_node HostNodes/host_node.cpp OFF OFF)
 dai_add_example(threaded_host_node HostNodes/threaded_host_node.cpp OFF OFF)
 

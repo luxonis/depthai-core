@@ -1,5 +1,7 @@
 #include <depthai/depthai.hpp>
 
+#include "depthai/capabilities/ImgFrameCapability.hpp"
+#include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/pipeline/node/host/Record.hpp"
 
 #ifndef DEPTHAI_HAVE_OPENCV_SUPPORT
@@ -8,7 +10,7 @@
 
 int main(int argc, char** argv) {
     dai::Pipeline pipeline(true);
-    auto cam = pipeline.create<dai::node::ColorCamera>();
+    auto cam = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A);
     auto display = pipeline.create<dai::node::Display>();
     auto videoEncoder = pipeline.create<dai::node::VideoEncoder>();
     auto record = pipeline.create<dai::node::RecordVideo>();
@@ -17,14 +19,12 @@ int main(int argc, char** argv) {
     record->setRecordVideoFile(path + std::string(".mp4"));
     record->setRecordMetadataFile(path + std::string(".mcap"));
 
-    cam->setBoardSocket(dai::CameraBoardSocket::CAM_A);
-    cam->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
-    cam->setFps(30);
+    auto* camOut = cam->requestOutput({1920, 1440}, dai::ImgFrame::Type::NV12, dai::ImgResizeMode::CROP, 30.f);
 
     videoEncoder->setProfile(dai::VideoEncoderProperties::Profile::H264_MAIN);
 
-    cam->video.link(videoEncoder->input);
-    cam->video.link(display->input);
+    camOut->link(videoEncoder->input);
+    camOut->link(display->input);
     videoEncoder->out.link(record->input);
 
     pipeline.run();  // Let the display node stop the pipeline

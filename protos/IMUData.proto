@@ -1,0 +1,57 @@
+syntax = "proto3";
+
+package dai.proto.imu_data;
+
+import "common.proto";
+
+message IMUVec {
+    float x = 1;
+    float y = 2;
+    float z = 3;
+}
+
+message IMUQuat {
+    float x = 1;
+    float y = 2;
+    float z = 3;
+    float w = 4;
+}
+
+enum Accuracy {
+    UNRELIABLE = 0;
+    LOW = 1;
+    MEDIUM = 2;
+    HIGH = 3;
+}
+
+message IMUReport {
+    int32 sequence = 1;
+    Accuracy accuracy = 2;
+    common.Timestamp ts = 3;
+    common.Timestamp tsDevice = 4;
+}
+
+message IMUReportVec {
+    IMUReport report = 1;
+    IMUVec vec = 2;
+}
+
+message IMUReportQuatWAcc {
+    IMUReport report = 1;
+    IMUQuat quat = 2;
+    float rotationVectorAccuracy = 3;
+}
+
+message IMUPacket {
+    IMUReportVec accelerometer = 1;
+    IMUReportVec gyroscope = 2;
+    IMUReportVec magnetometer = 3;
+    IMUReportQuatWAcc rotationVector = 4;
+}
+
+message IMUData {
+    repeated IMUPacket packets = 1;
+    int64 sequenceNum = 2;          // Sequence number
+    common.Timestamp ts = 3;        // Timestamp
+    common.Timestamp tsDevice = 4;  // Timestamp from device
+}
