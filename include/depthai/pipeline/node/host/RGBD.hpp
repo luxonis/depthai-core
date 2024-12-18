@@ -21,14 +21,10 @@ class RGBD : public NodeCRTP<ThreadedHostNode, RGBD> {
     std::shared_ptr<node::ImageAlign> align;
     InputMap& inputs = sync->inputs;
 
-    /**
-     * Input color frame.
-     */
-    Input inColor{*this, {"inColor", DEFAULT_GROUP, false, 0, {{DatatypeEnum::ImgFrame, true}}}};
-    /**
-     * Input depth frame.
-     */
-    Input inDepth{*this, {"inDepth", DEFAULT_GROUP, false, 0, {{DatatypeEnum::ImgFrame, true}}}};
+    std::string colorInputName = "inColorSync";
+    std::string depthInputName = "inDepthSync";
+    Input& inColor = inputs[colorInputName];
+    Input& inDepth = inputs[depthInputName];
 
     /**
      * Output point cloud.
@@ -39,7 +35,7 @@ class RGBD : public NodeCRTP<ThreadedHostNode, RGBD> {
     std::shared_ptr<RGBD> build(bool autocreate, std::pair<int, int> size);
     void setOutputMeters(bool outputMeters);
     void useCPU();
-    void useCpuMt();
+    void useCPUMT();
     void useGPU();
     void setGPUDevice(uint32_t deviceIndex);
     void setCPUThreadNum(uint32_t numThreads);
@@ -47,12 +43,6 @@ class RGBD : public NodeCRTP<ThreadedHostNode, RGBD> {
    private:
     class Impl;
     Pimpl<Impl> pimpl;
-    std::string colorInputName = "inColorSync";
-    std::string depthInputName = "inDepthSync";
-    Input& inColorSync = inputs[colorInputName];
-    Input& inDepthSync = inputs[depthInputName];
-    Output colorMux{*this, {"colorMux", DEFAULT_GROUP, {{DatatypeEnum::ImgFrame, true}}}};
-    Output depthPT{*this, {"depthPT", DEFAULT_GROUP, {{DatatypeEnum::ImgFrame, true}}}};
     void run() override;
     void initialize(std::vector<std::shared_ptr<ImgFrame>> frames);
     Input inSync{*this, {"inSync", DEFAULT_GROUP, false, 0, {{DatatypeEnum::MessageGroup, true}}}};

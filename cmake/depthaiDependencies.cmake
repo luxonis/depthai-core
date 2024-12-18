@@ -43,8 +43,9 @@ if(NOT CONFIG_MODE OR (CONFIG_MODE AND NOT DEPTHAI_SHARED_LIBS))
 
     find_package(PNG  REQUIRED)
 
-    find_package(kompute ${_QUIET} CONFIG REQUIRED)
-
+    if(DEPTHAI_ENABLE_KOMPUTE)
+        find_package(kompute ${_QUIET} CONFIG REQUIRED)
+    endif()
     # libarchive for firmware packages
     find_package(LibArchive ${_QUIET}  REQUIRED)
     find_package(liblzma ${_QUIET} CONFIG REQUIRED)

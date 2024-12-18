@@ -12,7 +12,9 @@
 #include "depthai/pipeline/node/StereoDepth.hpp"
 #include "depthai/pipeline/node/Sync.hpp"
 #include "depthai/shaders/rgbd2pointcloud.hpp"
-#include "kompute/Kompute.hpp"
+#ifdef DEPTHAI_ENABLE_KOMPUTE
+    #include "kompute/Kompute.hpp"
+#endif
 #include "utility/PimplImpl.hpp"
 
 namespace dai {
@@ -21,11 +23,6 @@ namespace node {
 class RGBD::Impl {
    public:
     Impl() = default;
-    void initializeGPU() {
-        // Initialize Kompute
-        mgr = std::make_shared<kp::Manager>(deviceIndex);
-        shader = std::vector<uint32_t>(shaders::RGBD2POINTCLOUD_COMP_SPV.begin(), shaders::RGBD2POINTCLOUD_COMP_SPV.end());
-    }
     void computePointCloud(const uint8_t* depthData, const uint8_t* colorData, std::vector<Point3fRGB>& points) {
         if(!intrinsicsSet) {
             throw std::runtime_error("Intrinsics not set");
@@ -43,7 +40,54 @@ class RGBD::Impl {
                 break;
         }
     }
+    void setOutputMeters(bool outputMeters) {
+        this->outputMeters = outputMeters;
+    }
+    void printDevices() {
+        auto devices = mgr->listDevices();
+        for(auto& device : devices) {
+            std::cout << "Device: " << device.getProperties().deviceName << std::endl;
+        }
+    }
+    void setGPUDevice(uint32_t deviceIndex) {
+        this->deviceIndex = deviceIndex;
+    }
+    void setCPUThreadNum(uint32_t numThreads) {
+        threadNum = numThreads;
+    }
+    void useCPU() {
+        computeMethod = ComputeMethod::CPU;
+    }
+    void useCPUMT() {
+        computeMethod = ComputeMethod::CPU_MT;
+    }
+    void useGPU() {
+        initializeGPU();
+    }
+    void setIntrinsics(float fx, float fy, float cx, float cy, unsigned int width, unsigned int height) {
+        this->fx = fx;
+        this->fy = fy;
+        this->cx = cx;
+        this->cy = cy;
+        this->width = width;
+        this->height = height;
+        size = this->width * this->height;
+        intrinsicsSet = true;
+    }
+
+   private:
+    void initializeGPU() {
+#ifdef DEPTHAI_ENABLE_KOMPUTE
+        // Initialize Kompute
+        mgr = std::make_shared<kp::Manager>(deviceIndex);
+        shader = std::vector<uint32_t>(shaders::RGBD2POINTCLOUD_COMP_SPV.begin(), shaders::RGBD2POINTCLOUD_COMP_SPV.end());
+        computeMethod = ComputeMethod::GPU;
+#else
+        loggerr::log->error("Kompute not enabled. Please enable it in CMake.");
+#endif
+    }
     void computePointCloudGPU(const uint8_t* depthData, const uint8_t* colorData, std::vector<Point3fRGB>& points) {
+#ifdef DEPTHAI_ENABLE_KOMPUTE
         std::vector<float> xyzOut;
 
         xyzOut.resize(size * 3);
@@ -68,7 +112,7 @@ class RGBD::Impl {
             intrinsicsTensor = mgr->tensor(intrinsics);
             xyzTensor = mgr->tensor(xyzOut);
             tensorsInitialized = true;
-        } else{
+        } else {
             depthTensor->setData(depthDataFloat);
         }
         // Load shader
@@ -92,6 +136,7 @@ class RGBD::Impl {
             p.b = colorData[i * 3 + 2];
             points.emplace_back(p);
         }
+#endif
     }
     void calcPoints(const uint8_t* depthData, const uint8_t* colorData, std::vector<Point3fRGB>& points, int startRow, int endRow) {
         float scale = outputMeters ? (1.0f / 1000.0f) : 1.0f;
@@ -140,47 +185,12 @@ class RGBD::Impl {
             future.get();
         }
     }
-    void setOutputMeters(bool outputMeters) {
-        this->outputMeters = outputMeters;
-    }
-    void printDevices() {
-        auto devices = mgr->listDevices();
-        for(auto& device : devices) {
-            std::cout << "Device: " << device.getProperties().deviceName << std::endl;
-        }
-    }
-    void setGPUDevice(uint32_t deviceIndex) {
-        this->deviceIndex = deviceIndex;
-        mgr = std::make_shared<kp::Manager>(deviceIndex);
-    }
-    void setCPUThreadNum(uint32_t numThreads) {
-        threadNum = numThreads;
-    }
-    void useCPU() {
-        computeMethod = ComputeMethod::CPU;
-    }
-    void useCpuMt() {
-        computeMethod = ComputeMethod::CPU_MT;
-    }
-    void useGPU() {
-        initializeGPU();
-        computeMethod = ComputeMethod::GPU;
-    }
-    void setIntrinsics(float fx, float fy, float cx, float cy, unsigned int width, unsigned int height) {
-        this->fx = fx;
-        this->fy = fy;
-        this->cx = cx;
-        this->cy = cy;
-        this->width = width;
-        this->height = height;
-        size = this->width * this->height;
-        intrinsicsSet = true;
-    }
     enum class ComputeMethod { CPU, CPU_MT, GPU };
     ComputeMethod computeMethod = ComputeMethod::CPU;
+#ifdef DEPTHAI_ENABLE_KOMPUTE
     std::shared_ptr<kp::Manager> mgr;
     uint32_t deviceIndex = 0;
-    std::vector<uint32_t> shader; 
+    std::vector<uint32_t> shader;
     std::shared_ptr<kp::Algorithm> algo;
     std::shared_ptr<kp::Tensor> depthTensor;
     std::shared_ptr<kp::Tensor> intrinsicsTensor;
@@ -188,6 +198,7 @@ class RGBD::Impl {
     std::vector<std::shared_ptr<kp::Memory>> tensors;
     bool algoInitialized = false;
     bool tensorsInitialized = false;
+#endif
     bool outputMeters = false;
     float fx, fy, cx, cy;
     int width, height;
@@ -200,23 +211,14 @@ class RGBD::Impl {
 RGBD::RGBD() = default;
 ;
 std::shared_ptr<RGBD> RGBD::build() {
-    align = getParentPipeline().create<node::ImageAlign>();
-    align->outputAligned.link(inDepthSync);
-    colorMux.link(inColorSync);
-    colorMux.link(align->inputAlignTo);
-    depthPT.link(align->input);
-    sync->setRunOnHost(false);
     sync->out.link(inSync);
-    inSync.setMaxSize(1);
-    inSync.setBlocking(false);
-    inDepth.setBlocking(false);
+    sync->setRunOnHost(false);
     inColor.setBlocking(false);
-    inDepthSync.setBlocking(false);
-    inDepthSync.setMaxSize(1);
-    inColorSync.setBlocking(false);
-    inColorSync.setMaxSize(1);
-    inDepth.addCallback([this](const std::shared_ptr<ADatatype>& data) { depthPT.send(data); });
-    inColor.addCallback([this](const std::shared_ptr<ADatatype>& data) { colorMux.send(data); });
+    inColor.setMaxSize(1);
+    inDepth.setBlocking(false);
+    inDepth.setMaxSize(1);
+    inSync.setBlocking(false);
+    inSync.setMaxSize(1);
     return std::static_pointer_cast<RGBD>(shared_from_this());
 }
 
@@ -227,7 +229,7 @@ std::shared_ptr<RGBD> RGBD::build(bool autocreate, std::pair<int, int> size) {
     auto pipeline = getParentPipeline();
     auto colorCam = pipeline.create<node::Camera>()->build();
     auto depth = pipeline.create<node::StereoDepth>()->build(true);
-    auto* out = colorCam->requestOutput(size, dai::ImgFrame::Type::RGB888p);
+    auto* out = colorCam->requestOutput(size, dai::ImgFrame::Type::RGB888i);
     out->link(inColor);
     depth->depth.link(inDepth);
     return build();
@@ -235,6 +237,10 @@ std::shared_ptr<RGBD> RGBD::build(bool autocreate, std::pair<int, int> size) {
 
 void RGBD::initialize(std::vector<std::shared_ptr<ImgFrame>> frames) {
     // Initialize the camera intrinsics
+    // Check if width and height match
+    if(frames.at(0)->getWidth() != frames.at(1)->getWidth() || frames.at(0)->getHeight() != frames.at(1)->getHeight()) {
+        throw std::runtime_error("Color and depth frame sizes do not match");
+    }
     auto frame = frames.at(1);
     auto calibHandler = getParentPipeline().getDefaultDevice()->readCalibration();
     auto camID = static_cast<CameraBoardSocket>(frame->getInstanceNum());
@@ -252,7 +258,7 @@ void RGBD::initialize(std::vector<std::shared_ptr<ImgFrame>> frames) {
 void RGBD::run() {
     while(isRunning()) {
         // Get the color and depth frames
-        auto group = inSync.get<MessageGroup>();
+        auto group = inSync.tryGet<MessageGroup>();
         if(group == nullptr) continue;
         if(!initialized) {
             std::vector<std::shared_ptr<ImgFrame>> imgFrames;
@@ -262,8 +268,8 @@ void RGBD::run() {
 
             initialize(imgFrames);
         }
-        auto colorFrame = std::dynamic_pointer_cast<ImgFrame>(group->group.at(inColorSync.getName()));
-        auto depthFrame = std::dynamic_pointer_cast<ImgFrame>(group->group.at(inDepthSync.getName()));
+        auto colorFrame = std::dynamic_pointer_cast<ImgFrame>(group->group.at(inColor.getName()));
+        auto depthFrame = std::dynamic_pointer_cast<ImgFrame>(group->group.at(inDepth.getName()));
 
         // Create the point cloud
         auto pc = std::make_shared<PointCloudData>();
@@ -292,8 +298,8 @@ void RGBD::setOutputMeters(bool outputMeters) {
 void RGBD::useCPU() {
     pimpl->useCPU();
 }
-void RGBD::useCpuMt() {
-    pimpl->useCpuMt();
+void RGBD::useCPUMT() {
+    pimpl->useCPUMT();
 }
 void RGBD::useGPU() {
     pimpl->useGPU();
