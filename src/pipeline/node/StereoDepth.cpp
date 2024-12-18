@@ -97,6 +97,13 @@ void StereoDepth::setInputResolution(std::tuple<int, int> resolution) {
     setInputResolution(std::get<0>(resolution), std::get<1>(resolution));
 }
 void StereoDepth::setOutputSize(int width, int height) {
+    auto device = getDevice();
+    if(device) {
+        auto platform = device->getPlatform();
+        if(platform == Platform::RVC4) {
+            throw std::runtime_error("StereoDepth | setOutputSize is not supported on RVC4 platform");
+        }
+    }
     properties.outWidth = width;
     properties.outHeight = height;
 }
@@ -260,6 +267,146 @@ void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
             initialConfig.costAggregation.p2Config.defaultValue = 95;
             initialConfig.costAggregation.p2Config.edgeValue = 90;
             initialConfig.costAggregation.p2Config.smoothValue = 99;
+        } break;
+        case PresetMode::DEFAULT: {
+            setDefaultProfilePreset(PresetMode::HIGH_DENSITY);
+            initialConfig.setLeftRightCheck(true);
+            initialConfig.setExtendedDisparity(false);
+            initialConfig.setSubpixel(true);
+            initialConfig.setSubpixelFractionalBits(3);
+            initialConfig.setMedianFilter(MedianFilter::KERNEL_7x7);
+
+            initialConfig.postProcessing.filteringOrder = {StereoDepthConfig::PostProcessing::Filter::DECIMATION,
+                                                    StereoDepthConfig::PostProcessing::Filter::MEDIAN,
+                                                    StereoDepthConfig::PostProcessing::Filter::SPECKLE,
+                                                    StereoDepthConfig::PostProcessing::Filter::SPATIAL,
+                                                    StereoDepthConfig::PostProcessing::Filter::TEMPORAL};
+            initialConfig.postProcessing.decimationFilter.decimationFactor = 2;
+            initialConfig.postProcessing.decimationFilter.decimationMode = StereoDepthConfig::PostProcessing::DecimationFilter::DecimationMode::PIXEL_SKIPPING;
+
+            initialConfig.postProcessing.spatialFilter.enable = true;
+            initialConfig.postProcessing.spatialFilter.holeFillingRadius = 1;
+            initialConfig.postProcessing.spatialFilter.numIterations = 1;
+            initialConfig.postProcessing.spatialFilter.alpha = 0.5;
+            initialConfig.postProcessing.spatialFilter.delta = 3;
+
+            initialConfig.postProcessing.temporalFilter.enable = true;
+            initialConfig.postProcessing.temporalFilter.alpha = 0.5;
+            initialConfig.postProcessing.temporalFilter.delta = 3;
+
+            initialConfig.postProcessing.speckleFilter.enable = true;
+            initialConfig.postProcessing.speckleFilter.speckleRange = 200;
+            initialConfig.postProcessing.speckleFilter.differenceThreshold = 2;
+
+            initialConfig.postProcessing.thresholdFilter.minRange = 0;
+            initialConfig.postProcessing.thresholdFilter.maxRange = 15000;
+
+            setPostProcessingHardwareResources(3, 3);
+        } break;
+        case PresetMode::FACE: {
+            setDefaultProfilePreset(PresetMode::HIGH_DENSITY);
+            initialConfig.setLeftRightCheck(true);
+            initialConfig.setExtendedDisparity(true);
+            initialConfig.setSubpixel(true);
+            initialConfig.setSubpixelFractionalBits(5);
+            initialConfig.setMedianFilter(MedianFilter::MEDIAN_OFF);
+
+            initialConfig.postProcessing.filteringOrder = {StereoDepthConfig::PostProcessing::Filter::DECIMATION,
+                                                    StereoDepthConfig::PostProcessing::Filter::MEDIAN,
+                                                    StereoDepthConfig::PostProcessing::Filter::SPECKLE,
+                                                    StereoDepthConfig::PostProcessing::Filter::SPATIAL,
+                                                    StereoDepthConfig::PostProcessing::Filter::TEMPORAL};
+            initialConfig.postProcessing.decimationFilter.decimationFactor = 2;
+            initialConfig.postProcessing.decimationFilter.decimationMode = StereoDepthConfig::PostProcessing::DecimationFilter::DecimationMode::PIXEL_SKIPPING;
+
+            initialConfig.postProcessing.spatialFilter.enable = true;
+            initialConfig.postProcessing.spatialFilter.holeFillingRadius = 1;
+            initialConfig.postProcessing.spatialFilter.numIterations = 1;
+            initialConfig.postProcessing.spatialFilter.alpha = 0.5;
+            initialConfig.postProcessing.spatialFilter.delta = 3;
+
+            initialConfig.postProcessing.temporalFilter.enable = true;
+            initialConfig.postProcessing.temporalFilter.alpha = 0.5;
+            initialConfig.postProcessing.temporalFilter.delta = 3;
+
+            initialConfig.postProcessing.speckleFilter.enable = true;
+            initialConfig.postProcessing.speckleFilter.speckleRange = 200;
+            initialConfig.postProcessing.speckleFilter.differenceThreshold = 2;
+
+            initialConfig.postProcessing.thresholdFilter.minRange = 30;
+            initialConfig.postProcessing.thresholdFilter.maxRange = 3000;
+
+            setPostProcessingHardwareResources(3, 3);
+        } break;
+        case PresetMode::HIGH_DETAIL: {
+            setDefaultProfilePreset(PresetMode::HIGH_ACCURACY);
+            initialConfig.setLeftRightCheck(true);
+            initialConfig.setExtendedDisparity(true);
+            initialConfig.setSubpixel(true);
+            initialConfig.setSubpixelFractionalBits(5);
+            initialConfig.setMedianFilter(MedianFilter::MEDIAN_OFF);
+
+            initialConfig.postProcessing.filteringOrder = {StereoDepthConfig::PostProcessing::Filter::DECIMATION,
+                                                    StereoDepthConfig::PostProcessing::Filter::MEDIAN,
+                                                    StereoDepthConfig::PostProcessing::Filter::SPECKLE,
+                                                    StereoDepthConfig::PostProcessing::Filter::SPATIAL,
+                                                    StereoDepthConfig::PostProcessing::Filter::TEMPORAL};
+            initialConfig.postProcessing.decimationFilter.decimationFactor = 2;
+            initialConfig.postProcessing.decimationFilter.decimationMode = StereoDepthConfig::PostProcessing::DecimationFilter::DecimationMode::PIXEL_SKIPPING;
+
+            initialConfig.postProcessing.spatialFilter.enable = true;
+            initialConfig.postProcessing.spatialFilter.holeFillingRadius = 1;
+            initialConfig.postProcessing.spatialFilter.numIterations = 1;
+            initialConfig.postProcessing.spatialFilter.alpha = 0.5;
+            initialConfig.postProcessing.spatialFilter.delta = 3;
+
+            initialConfig.postProcessing.temporalFilter.enable = true;
+            initialConfig.postProcessing.temporalFilter.alpha = 0.5;
+            initialConfig.postProcessing.temporalFilter.delta = 3;
+
+            initialConfig.postProcessing.speckleFilter.enable = true;
+            initialConfig.postProcessing.speckleFilter.speckleRange = 200;
+            initialConfig.postProcessing.speckleFilter.differenceThreshold = 2;
+
+            initialConfig.postProcessing.thresholdFilter.minRange = 0;
+            initialConfig.postProcessing.thresholdFilter.maxRange = 15000;
+
+            setPostProcessingHardwareResources(3, 3);
+        } break;
+        case PresetMode::ROBOTICS: {
+            setDefaultProfilePreset(PresetMode::HIGH_DENSITY);
+            initialConfig.setLeftRightCheck(true);
+            initialConfig.setExtendedDisparity(false);
+            initialConfig.setSubpixel(true);
+            initialConfig.setSubpixelFractionalBits(3);
+            initialConfig.setMedianFilter(MedianFilter::KERNEL_7x7);
+
+            initialConfig.postProcessing.filteringOrder = {StereoDepthConfig::PostProcessing::Filter::DECIMATION,
+                                                    StereoDepthConfig::PostProcessing::Filter::MEDIAN,
+                                                    StereoDepthConfig::PostProcessing::Filter::SPECKLE,
+                                                    StereoDepthConfig::PostProcessing::Filter::SPATIAL,
+                                                    StereoDepthConfig::PostProcessing::Filter::TEMPORAL};
+            initialConfig.postProcessing.decimationFilter.decimationFactor = 2;
+            initialConfig.postProcessing.decimationFilter.decimationMode = StereoDepthConfig::PostProcessing::DecimationFilter::DecimationMode::PIXEL_SKIPPING;
+
+            initialConfig.postProcessing.spatialFilter.enable = true;
+            initialConfig.postProcessing.spatialFilter.holeFillingRadius = 2;
+            initialConfig.postProcessing.spatialFilter.numIterations = 1;
+            initialConfig.postProcessing.spatialFilter.alpha = 0.5;
+            initialConfig.postProcessing.spatialFilter.delta = 20;
+
+            initialConfig.postProcessing.temporalFilter.enable = false;
+            initialConfig.postProcessing.temporalFilter.alpha = 0.5;
+            initialConfig.postProcessing.temporalFilter.delta = 3;
+
+            initialConfig.postProcessing.speckleFilter.enable = true;
+            initialConfig.postProcessing.speckleFilter.speckleRange = 200;
+            initialConfig.postProcessing.speckleFilter.differenceThreshold = 2;
+
+            initialConfig.postProcessing.thresholdFilter.minRange = 0;
+            initialConfig.postProcessing.thresholdFilter.maxRange = 10000;
+
+            setPostProcessingHardwareResources(3, 3);
         } break;
     }
 }

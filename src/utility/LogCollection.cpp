@@ -23,6 +23,7 @@ constexpr auto LOG_ENDPOINT = "https://logs.luxonis.com/logs";
 struct FileWithSHA1 {
     std::string content;
     std::string sha1Hash;
+    std::string name;
 };
 
 std::string platformToString(XLinkPlatform_t platform) {
@@ -95,13 +96,13 @@ bool sendLogsToServer(const std::optional<FileWithSHA1>& pipelineData, const std
     }
     cpr::Multipart multipart{};
     if(pipelineData) {
-        cpr::Buffer pipelineBuffer(pipelineData->content.begin(), pipelineData->content.end(), "pipeline.json");
+        cpr::Buffer pipelineBuffer(pipelineData->content.begin(), pipelineData->content.end(), pipelineData->name);
         multipart.parts.emplace_back("pipelineFile", pipelineBuffer);
         multipart.parts.emplace_back("pipelineId", pipelineData->sha1Hash);
     }
 
     if(crashDumpData) {
-        cpr::Buffer crashDumpBuffer(crashDumpData->content.begin(), crashDumpData->content.end(), "crash_dump.json");
+        cpr::Buffer crashDumpBuffer(crashDumpData->content.begin(), crashDumpData->content.end(), crashDumpData->name);
         multipart.parts.emplace_back("crashDumpFile", crashDumpBuffer);
         multipart.parts.emplace_back("crashDumpId", crashDumpData->sha1Hash);
     }
@@ -114,7 +115,7 @@ bool sendLogsToServer(const std::optional<FileWithSHA1>& pipelineData, const std
     multipart.parts.emplace_back("productId", deviceInfo.getMxId());
     auto response = cpr::Post(cpr::Url{LOG_ENDPOINT}, multipart);
     if(response.status_code != 200) {
-        logger::info("Failed to send logs, status code: {}", response.status_code);
+        logger::info("Failed to send logs, status code: {}, {}", response.status_code, response.text);
         return false;
     }
 
@@ -170,6 +171,7 @@ void logPipeline(const PipelineSchema& pipelineSchema, const dai::DeviceInfo& de
     FileWithSHA1 pipelineData;
     pipelineData.content = std::move(pipelineJsonStr);
     pipelineData.sha1Hash = std::move(pipelineSHA1);
+    pipelineData.name = "pipeline.json";
     auto success = sendLogsToServer(pipelineData, std::nullopt, deviceInfo);
     if(!success) {
         // Keep at info level to not spam in case of no internet connection
@@ -180,17 +182,47 @@ void logPipeline(const PipelineSchema& pipelineSchema, const dai::DeviceInfo& de
 #endif
 }
 
-void logCrashDump(const std::optional<PipelineSchema>& pipelineSchema, const CrashDump& crashDump, const dai::DeviceInfo& deviceInfo) {
+void logCrashDump(const std::optional<PipelineSchema>& pipelineSchema, const GenericCrashDump& crashDump, const dai::DeviceInfo& deviceInfo) {
+    auto crashDumpEnvVar = utility::getEnv("DEPTHAI_CRASHDUMP");
+    if(crashDumpEnvVar == "0") {
+        logger::warn("Crash dump logging disabled");
+        return;
+    }
     namespace fs = std::filesystem;
-    std::string crashDumpJson = crashDump.serializeToJson().dump();
-    std::string crashDumpHash = calculateSHA1(crashDumpJson);
-    fs::path logDir = fs::current_path() / ".cache" / "depthai" / "crashdumps";
-    auto crashDumpPath = utility::getEnv("DEPTHAI_CRASHDUMP");
-    fs::path crashDumpPathLocal;
-    if(crashDumpPath.empty()) {
-        crashDumpPathLocal = logDir / crashDumpHash / "crash_dump.json";
+    // Check if the varialbe points to a directory
+    std::string dirToStoreCrashDumps;
+    if(!crashDumpEnvVar.empty()) {
+        fs::path crashDumpPath(crashDumpEnvVar);
+        if(fs::is_directory(crashDumpPath)) {
+            dirToStoreCrashDumps = crashDumpEnvVar;
+        } else {
+            logger::error("DEPTHAI_CRASHDUMP is set to a non-directory path, ignoring");
+        }
+    }
+
+    // Create the crash dump object
+    FileWithSHA1 crashDumpData;
+    if(auto* crashDumpPtr = std::get_if<CrashDump>(&crashDump)) {
+        std::string crashDumpJson = crashDumpPtr->serializeToJson().dump();
+        crashDumpData.content = std::move(crashDumpJson);
+        crashDumpData.sha1Hash = calculateSHA1(crashDumpData.content);
+        crashDumpData.name = "crash_dump.json";
+    } else if(auto* crashDumpPtr = std::get_if<DeviceGate::CrashDump>(&crashDump)) {
+        crashDumpData.content = std::string((char*)(crashDumpPtr->data.data()), crashDumpPtr->data.size());
+        crashDumpData.sha1Hash = calculateSHA1(crashDumpData.content);
+        crashDumpData.name = crashDumpPtr->filename;
+
     } else {
-        crashDumpPathLocal = crashDumpPath;
+        logger::error("Unknown crash dump type");
+        return;
+    }
+
+    fs::path logDir = fs::current_path() / ".cache" / "depthai" / "crashdumps";
+    fs::path crashDumpPathLocal(dirToStoreCrashDumps);
+    if(crashDumpPathLocal.empty()) {
+        crashDumpPathLocal = logDir / crashDumpData.sha1Hash / crashDumpData.name;
+    } else {
+        crashDumpPathLocal /= crashDumpData.name;
     }
     auto errorString = fmt::format(
         "Device with id {} has crashed. Crash dump logs are stored in: {} - please report to developers.", deviceInfo.getMxId(), crashDumpPathLocal.string());
@@ -203,15 +235,11 @@ void logCrashDump(const std::optional<PipelineSchema>& pipelineSchema, const Cra
     }
 
     std::ofstream crashDumpFile(crashDumpPathLocal);
-    crashDumpFile << crashDumpJson;
+    crashDumpFile << crashDumpData.content;
     crashDumpFile.close();
     logger::error(errorString);
     // Send logs to the server if possible
 #ifdef DEPTHAI_ENABLE_CURL
-
-    FileWithSHA1 crashDumpData;
-    crashDumpData.content = std::move(crashDumpJson);
-    crashDumpData.sha1Hash = calculateSHA1(crashDumpJson);
 
     std::optional<FileWithSHA1> pipelineData;
     if(pipelineSchema) {
