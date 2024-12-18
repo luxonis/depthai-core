@@ -2,7 +2,6 @@
 #include "depthai/pipeline/Subnode.hpp"
 #include "depthai/pipeline/ThreadedHostNode.hpp"
 #include "depthai/pipeline/datatype/PointCloudData.hpp"
-#include "depthai/pipeline/node/ImageAlign.hpp"
 #include "depthai/pipeline/node/Sync.hpp"
 #include "depthai/utility/Pimpl.hpp"
 
@@ -19,7 +18,6 @@ class RGBD : public NodeCRTP<ThreadedHostNode, RGBD> {
     RGBD();
     ~RGBD();
     Subnode<node::Sync> sync{*this, "sync"};
-    std::shared_ptr<node::ImageAlign> align;
     InputMap& inputs = sync->inputs;
 
     std::string colorInputName = "inColorSync";
