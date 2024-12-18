@@ -47,9 +47,7 @@ int main() {
     stereo->setRectifyEdgeFillColor(0);  // black, to better see the cutout
     stereo->enableDistortionCorrection(true);
     stereo->initialConfig.setLeftRightCheckThreshold(10);
-
-    rgbd->setGPUDevice(1);
-    rgbd->useGPU();
+    stereo->setDepthAlign(dai::StereoDepthProperties::DepthAlign::CENTER);
     auto *out = color->requestOutput(std::pair<int, int>(1280, 720), dai::ImgFrame::Type::RGB888i);
     left->out.link(stereo->left);
     right->out.link(stereo->right);
