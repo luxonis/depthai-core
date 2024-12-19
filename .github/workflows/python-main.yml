@@ -474,6 +474,13 @@ jobs:
         run: cmake -S . -B build -DDEPTHAI_ENABLE_CURL=ON
       - name: Build target 'zoo_helper'
         run: cmake --build build --target zoo_helper --parallel 4
+      - name: Preserve build directory
+        uses: actions/upload-artifact@v3
+        with:
+          name: build-directory
+          path: build/
+      - name: List build directory contents
+        run: ls -la build/
       - name: List files
         run: find *
 
