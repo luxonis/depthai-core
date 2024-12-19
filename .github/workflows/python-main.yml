@@ -470,6 +470,8 @@ jobs:
           ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
           ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
           ARTIFACTORY_PASS: ${{ secrets.ARTIFACTORY_PASS }}
+      - name: List files
+        run: find *
 
   # This job builds wheels for ARM64 arch
   build-linux-arm64:
