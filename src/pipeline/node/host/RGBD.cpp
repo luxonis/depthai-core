@@ -258,7 +258,7 @@ void RGBD::initialize(std::vector<std::shared_ptr<ImgFrame>> frames) {
 void RGBD::run() {
     while(isRunning()) {
         // Get the color and depth frames
-        auto group = inSync.tryGet<MessageGroup>();
+        auto group = inSync.get<MessageGroup>();
         if(group == nullptr) continue;
         if(!initialized) {
             std::vector<std::shared_ptr<ImgFrame>> imgFrames;

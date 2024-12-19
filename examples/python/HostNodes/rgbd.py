@@ -22,7 +22,7 @@ class RerunNode(dai.node.ThreadedHostNode):
         rr.log("world", rr.ViewCoordinates.FLU)
         rr.log("world/ground", rr.Boxes3D(half_sizes=[3.0, 3.0, 0.00001])) 
         while self.isRunning():
-            pclObstData = self.inputPCL.tryGet()
+            pclObstData = self.inputPCL.get()
             if pclObstData is not None:
                 points, colors = pclObstData.getPointsRGB()
                 rr.log("world/pcl", rr.Points3D(points, colors=colors, radii=[0.01]))
