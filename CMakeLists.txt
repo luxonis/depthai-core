@@ -504,9 +504,9 @@ set_target_properties(${TARGET_CORE_NAME} PROPERTIES EXPORT_NAME ${TARGET_CORE_A
 list(APPEND targets_to_export ${TARGET_CORE_NAME})
 
 # Add model_zoo helper binary
-find_package(argparse REQUIRED)
-find_package(fmt REQUIRED)
-find_package(yaml-cpp REQUIRED)
+find_package(argparse)
+find_package(fmt)
+find_package(yaml-cpp)
 set(ZOO_HELPER_SOURCES
     src/modelzoo/zoo_helper.cpp
     src/modelzoo/Zoo.cpp
