@@ -31,13 +31,36 @@ class RGBD : public NodeCRTP<ThreadedHostNode, RGBD> {
     Output pcl{*this, {"pcl", DEFAULT_GROUP, {{DatatypeEnum::PointCloudData, true}}}};
 
     std::shared_ptr<RGBD> build();
+    /**
+     * @brief Build RGBD node with specified size
+     * @param autocreate If true, will create color and depth frames if they don't exist
+     * @param size Size of the frames
+     */
     std::shared_ptr<RGBD> build(bool autocreate, std::pair<int, int> size);
     void setOutputMeters(bool outputMeters);
+    /**
+    * @brief Use single-threaded CPU for processing
+    */
     void useCPU();
+    /**
+    * @brief Use multi-threaded CPU for processing
+    */
     void useCPUMT();
+    /**
+    * @brief Use GPU for processing (needs to be compiled with Kompute support)
+    */
     void useGPU();
+    /**
+    * @brief Set GPU device index
+    */
     void setGPUDevice(uint32_t deviceIndex);
+    /**
+    * @brief Set number of threads for CPU processing
+    */
     void setCPUThreadNum(uint32_t numThreads);
+    /**
+    * @brief Print available GPU devices
+    */
     void printDevices();
    private:
     class Impl;

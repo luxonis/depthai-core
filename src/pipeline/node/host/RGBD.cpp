@@ -237,6 +237,7 @@ std::shared_ptr<RGBD> RGBD::build(bool autocreate, std::pair<int, int> size) {
     auto depth = pipeline.create<node::StereoDepth>()->build(true);
     auto* out = colorCam->requestOutput(size, dai::ImgFrame::Type::RGB888i);
     out->link(inColor);
+    out->link(depth->inputAlignTo);
     depth->depth.link(inDepth);
     return build();
 }
