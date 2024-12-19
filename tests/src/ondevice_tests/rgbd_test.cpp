@@ -52,3 +52,22 @@ TEST_CASE("basic rgbd") {
         REQUIRE(pcl->getMinZ() <= pcl->getMaxZ());
     }
 }
+TEST_CASE("rgbd autocreate") {
+    // Create pipeline
+    dai::Pipeline pipeline;
+    auto rgbd = pipeline.create<dai::node::RGBD>()->build(true, {1280, 720});
+
+    auto outQ = rgbd->pcl.createOutputQueue();
+    pipeline.start();
+    for(int i = 0; i < 10; ++i) {
+        auto pcl = outQ->get<dai::PointCloudData>();
+        REQUIRE(pcl != nullptr);
+        REQUIRE(pcl->getWidth() == 1280);
+        REQUIRE(pcl->getHeight() == 720);
+        REQUIRE(pcl->getPoints().size() == 1280UL * 720UL);
+        REQUIRE(pcl->isColor() == true);
+        REQUIRE(pcl->getMinX() <= pcl->getMaxX());
+        REQUIRE(pcl->getMinY() <= pcl->getMaxY());
+        REQUIRE(pcl->getMinZ() <= pcl->getMaxZ());
+    }
+}
