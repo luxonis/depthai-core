@@ -25,15 +25,7 @@ class FPSCounter:
             return 0
         return (len(self.frameTimes) - 1) / (self.frameTimes[-1] - self.frameTimes[0])
 
-device = dai.Device()
-
-calibrationHandler = device.readCalibration()
-rgbDistortion = calibrationHandler.getDistortionCoefficients(RGB_SOCKET)
-distortionModel = calibrationHandler.getDistortionModel(RGB_SOCKET)
-if distortionModel != dai.CameraModel.Perspective:
-    raise RuntimeError("Unsupported distortion model for RGB camera. This example supports only Perspective model.")
-
-pipeline = dai.Pipeline(device)
+pipeline = dai.Pipeline()
 
 platform = pipeline.getDefaultDevice().getPlatform()
 
@@ -47,7 +39,6 @@ if platform == dai.Platform.RVC4:
     align = pipeline.create(dai.node.ImageAlign)
 
 stereo.setExtendedDisparity(True)
-
 sync.setSyncThreshold(timedelta(seconds=1/(2*FPS)))
 
 rgbOut = camRgb.requestOutput(size = (1280, 960), fps = FPS)
@@ -142,14 +133,10 @@ with pipeline:
         # Blend when both received
         if frameDepth is not None:
             cvFrame = frameRgb.getCvFrame()
-
-            # Undistort the rgb frame
-            rgbIntrinsics = calibrationHandler.getCameraIntrinsics(RGB_SOCKET, int(cvFrame.shape[1]), int(cvFrame.shape[0]))
-
             cvFrameUndistorted = cv2.undistort(
                 cvFrame,
-                np.array(rgbIntrinsics),
-                np.array(rgbDistortion),
+                np.array(frameRgb.getTransformation().getIntrinsicMatrix()),
+                np.array(frameRgb.getTransformation().getDistortionCoefficients()),
             )
             # Colorize the aligned depth
             alignedDepthColorized = colorizeDepth(frameDepth.getFrame())
