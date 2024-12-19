@@ -44,20 +44,14 @@ class RGBD : public NodeCRTP<ThreadedHostNode, RGBD> {
     void useCPU();
     /**
     * @brief Use multi-threaded CPU for processing
+    * @param numThreads Number of threads to use
     */
-    void useCPUMT();
+    void useCPUMT(uint32_t numThreads=2);
     /**
     * @brief Use GPU for processing (needs to be compiled with Kompute support)
+    * @param device GPU device index
     */
-    void useGPU();
-    /**
-    * @brief Set GPU device index
-    */
-    void setGPUDevice(uint32_t deviceIndex);
-    /**
-    * @brief Set number of threads for CPU processing
-    */
-    void setCPUThreadNum(uint32_t numThreads);
+    void useGPU(uint32_t device=0);
     /**
     * @brief Print available GPU devices
     */

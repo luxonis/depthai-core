@@ -35,7 +35,7 @@ void bind_rgbd(pybind11::module& m, void* pCallstack) {
         .def_property_readonly(
             "inDepth", [](RGBD& node) { return &node.inDepth; }, py::return_value_policy::reference_internal)
         .def_readonly("pcl", &RGBD::pcl, DOC(dai, node, RGBD, pcl))
-        .def("build", static_cast<std::shared_ptr<RGBD> (RGBD::*)()>(&RGBD::build), DOC(dai, node, RGBD, build, 1))
+        .def("build", static_cast<std::shared_ptr<RGBD> (RGBD::*)()>(&RGBD::build))
         .def("build",
              static_cast<std::shared_ptr<RGBD> (RGBD::*)(bool, std::pair<int, int>)>(&RGBD::build),
              py::arg("autocreate"),
@@ -43,9 +43,7 @@ void bind_rgbd(pybind11::module& m, void* pCallstack) {
              DOC(dai, node, RGBD, build, 2))
         .def("setOutputMeters", &RGBD::setOutputMeters, py::arg("outputMeters"), DOC(dai, node, RGBD, setOutputMeters))
         .def("useCPU", &RGBD::useCPU, DOC(dai, node, RGBD, useCPU))
-        .def("useCPUMT", &RGBD::useCPUMT, DOC(dai, node, RGBD, useCPUMT))
-        .def("useGPU", &RGBD::useGPU, DOC(dai, node, RGBD, useGPU))
-        .def("setGPUDevice", &RGBD::setGPUDevice, py::arg("deviceIndex"), DOC(dai, node, RGBD, setGPUDevice))
-        .def("setCPUThreadNum", &RGBD::setCPUThreadNum, py::arg("numThreads"), DOC(dai, node, RGBD, setCPUThreadNum))
+        .def("useCPUMT", &RGBD::useCPUMT, py::arg("numThreads") = 2, DOC(dai, node, RGBD, useCPUMT))
+        .def("useGPU", &RGBD::useGPU, py::arg("device") = 0, DOC(dai, node, RGBD, useGPU))
         .def("printDevices", &RGBD::printDevices, DOC(dai, node, RGBD, printDevices));
 }

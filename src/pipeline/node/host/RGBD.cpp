@@ -51,22 +51,16 @@ class RGBD::Impl {
         }
 #endif
     }
-    void setGPUDevice(uint32_t deviceIndex) {
-#ifdef DEPTHAI_ENABLE_KOMPUTE
-        this->deviceIndex = deviceIndex;
-#endif
-    }
-    void setCPUThreadNum(uint32_t numThreads) {
-        threadNum = numThreads;
-    }
     void useCPU() {
         computeMethod = ComputeMethod::CPU;
     }
-    void useCPUMT() {
+    void useCPUMT(uint32_t numThreads) {
+        threadNum = numThreads;
         computeMethod = ComputeMethod::CPU_MT;
     }
-    void useGPU() {
-        initializeGPU();
+    void useGPU(uint32_t device) {
+
+        initializeGPU(device);
     }
     void setIntrinsics(float fx, float fy, float cx, float cy, unsigned int width, unsigned int height) {
         this->fx = fx;
@@ -80,10 +74,10 @@ class RGBD::Impl {
     }
 
    private:
-    void initializeGPU() {
+    void initializeGPU(uint32_t device) {
 #ifdef DEPTHAI_ENABLE_KOMPUTE
         // Initialize Kompute
-        mgr = std::make_shared<kp::Manager>(deviceIndex);
+        mgr = std::make_shared<kp::Manager>(device);
         shader = std::vector<uint32_t>(shaders::RGBD2POINTCLOUD_COMP_SPV.begin(), shaders::RGBD2POINTCLOUD_COMP_SPV.end());
         computeMethod = ComputeMethod::GPU;
 #else
@@ -146,7 +140,7 @@ class RGBD::Impl {
         float scale = outputMeters ? (1.0f / 1000.0f) : 1.0f;
         for(int i = startRow * width; i < endRow * width; i++) {
             float x = i % width;
-            float y = i / width;
+            float y = static_cast<float>(i) / width;
             uint16_t depthValue = *(reinterpret_cast<const uint16_t*>(depthData + i * 2));
             float z = static_cast<float>(depthValue) * scale;
             x = (x - cx) * z / fx;
@@ -193,7 +187,6 @@ class RGBD::Impl {
     ComputeMethod computeMethod = ComputeMethod::CPU;
 #ifdef DEPTHAI_ENABLE_KOMPUTE
     std::shared_ptr<kp::Manager> mgr;
-    uint32_t deviceIndex = 0;
     std::vector<uint32_t> shader;
     std::shared_ptr<kp::Algorithm> algo;
     std::shared_ptr<kp::Tensor> depthTensor;
@@ -308,17 +301,11 @@ void RGBD::setOutputMeters(bool outputMeters) {
 void RGBD::useCPU() {
     pimpl->useCPU();
 }
-void RGBD::useCPUMT() {
-    pimpl->useCPUMT();
+void RGBD::useCPUMT(uint32_t numThreads) {
+    pimpl->useCPUMT(numThreads);
 }
-void RGBD::useGPU() {
-    pimpl->useGPU();
-}
-void RGBD::setGPUDevice(uint32_t deviceIndex) {
-    pimpl->setGPUDevice(deviceIndex);
-}
-void RGBD::setCPUThreadNum(uint32_t numThreads) {
-    pimpl->setCPUThreadNum(numThreads);
+void RGBD::useGPU(uint32_t device) {
+    pimpl->useGPU(device);
 }
 void RGBD::printDevices() {
     pimpl->printDevices();

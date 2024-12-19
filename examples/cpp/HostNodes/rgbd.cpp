@@ -61,7 +61,6 @@ int main() {
     stereo->setRectifyEdgeFillColor(0);  // black, to better see the cutout
     stereo->enableDistortionCorrection(true);
     stereo->initialConfig.setLeftRightCheckThreshold(10);
-    // stereo->initialConfig.postProcessing.thresholdFilter.maxRange = 10000;
     rgbd->setOutputMeters(true);
 
     auto *out = color->requestOutput(std::pair<int, int>(1280, 720), dai::ImgFrame::Type::RGB888i);
