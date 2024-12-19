@@ -470,6 +470,10 @@ jobs:
           ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
           ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
           ARTIFACTORY_PASS: ${{ secrets.ARTIFACTORY_PASS }}
+      - name: Configure project for `zoo_helper`
+        run: cmake -S . -B build -DEPTHAI_ENABLE_CURL=ON "
+      - name: Build target 'zoo_helper'
+        run: cmake --build build --target zoo_helper --parallel 4
       - name: List files
         run: find *
 
