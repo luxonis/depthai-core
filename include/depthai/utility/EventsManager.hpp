@@ -1,5 +1,6 @@
 #pragma once
 
+#include <condition_variable>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -19,7 +20,6 @@ class Event;
 }  // namespace event
 }  // namespace proto
 namespace utility {
-#ifdef DEPTHAI_ENABLE_PROTOBUF
 enum class EventDataType { DATA, FILE_URL, IMG_FRAME, ENCODED_FRAME, NN_DATA };
 class EventData {
    public:
@@ -172,7 +172,9 @@ class EventsManager {
     std::string cacheDir;
     bool uploadCachedOnStart;
     bool cacheIfCannotSend;
+    std::atomic<bool> stopEventBuffer;
+    std::condition_variable eventBufferCondition;
+    std::mutex eventBufferConditionMutex;
 };
-#endif
 }  // namespace utility
 }  // namespace dai
