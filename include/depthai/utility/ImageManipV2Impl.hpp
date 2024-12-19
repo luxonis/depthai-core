@@ -2811,15 +2811,12 @@ void Warp<ImageManipBuffer, ImageManipData>::build(const FrameSpecs srcFrameSpec
     sourceMaxY = inHeight;
     for(const auto& corners : srcCorners) {
         auto [minx, maxx, miny, maxy] = getOuterRect(std::vector<std::array<float, 2>>(corners.begin(), corners.end()));
-        minx = std::max(minx, 0.0f);
-        maxx = std::min(maxx, (float)inWidth);
-        miny = std::max(miny, 0.0f);
-        maxy = std::min(maxy, (float)inHeight);
         sourceMinX = std::max(sourceMinX, (size_t)std::floor(minx));
         sourceMinY = std::max(sourceMinY, (size_t)std::floor(miny));
         sourceMaxX = std::min(sourceMaxX, (size_t)std::ceil(maxx));
         sourceMaxY = std::min(sourceMaxY, (size_t)std::ceil(maxy));
     }
+    if(sourceMinX >= sourceMaxX || sourceMinY >= sourceMaxY) throw std::runtime_error("Initial crop is outside the source image");
 
 #if !DEPTHAI_IMAGEMANIPV2_OPENCV && !DEPTHAI_IMAGEMANIPV2_FASTCV || !defined(DEPTHAI_HAVE_OPENCV_SUPPORT) && !defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
     const uint32_t outWidth = dstFrameSpecs.width;
