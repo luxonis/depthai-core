@@ -27,9 +27,8 @@ with dai.Pipeline() as p:
     right.setFps(fps)
     out = color.requestOutput((1280, 720))
 
-    stereo.setDepthAlign(dai.CameraBoardSocket.CAM_A)
-    stereo.setOutputSize(left.getResolutionWidth(), left.getResolutionHeight())
 
+    out.link(stereo.inputAlignTo)
     stereo.setExtendedDisparity(False)
     stereo.setLeftRightCheck(True)
     stereo.setDefaultProfilePreset(dai.node.StereoDepth.PresetMode.HIGH_DENSITY)

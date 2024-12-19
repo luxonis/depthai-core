@@ -151,9 +151,9 @@ class RGBD::Impl {
             float z = static_cast<float>(depthValue) * scale;
             x = (x - cx) * z / fx;
             y = (y - cy) * z / fy;
-            uint8_t r = colorData[i * 3 + 0];
-            uint8_t b = colorData[i * 3 + 1];
-            uint8_t g = colorData[i * 3 + 2];
+            uint8_t r = static_cast<uint8_t>(colorData[i * 3 + 0]);
+            uint8_t g = static_cast<uint8_t>(colorData[i * 3 + 1]);
+            uint8_t b = static_cast<uint8_t>(colorData[i * 3 + 2]);
             Point3fRGB p;
             p.x = x;
             p.y = y;
@@ -275,6 +275,9 @@ void RGBD::run() {
             initialize(imgFrames);
         }
         auto colorFrame = std::dynamic_pointer_cast<ImgFrame>(group->group.at(inColor.getName()));
+        if(colorFrame->getType() != dai::ImgFrame::Type::RGB888i) {
+            throw std::runtime_error("RGBD node only supports RGB888i frames");
+        }
         auto depthFrame = std::dynamic_pointer_cast<ImgFrame>(group->group.at(inDepth.getName()));
 
         // Create the point cloud
