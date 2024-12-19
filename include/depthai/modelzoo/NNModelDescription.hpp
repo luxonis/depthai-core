@@ -54,7 +54,7 @@ struct NNModelDescription {
     /** SNPE version = OPTIONAL parameter */
     std::string snpeVersion;
 
-    /** modelPrecisionType */
+    /** modelPrecisionType = OPTIONAL parameter */
     std::string modelPrecisionType;
 };
 
