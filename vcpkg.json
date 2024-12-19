@@ -73,7 +73,14 @@
         "kompute-support": {
             "description": "Enable Kompute support",
             "dependencies": [
-                "kompute"
+                "kompute",
+                {
+                    "name": "glslang",
+                    "default-features": false,
+                    "features": [
+                        "tools"
+                    ]
+                }
             ]
         },
         "protobuf-support": {
