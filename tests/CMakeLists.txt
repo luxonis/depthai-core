@@ -400,3 +400,7 @@ dai_set_test_labels(script_node_test ondevice rvc2_all rvc4 ci)
 # StereoDepth test
 dai_add_test(stereo_depth_node_test src/ondevice_tests/stereo_depth_node_test.cpp)
 dai_set_test_labels(stereo_depth_node_test ondevice rvc2_all rvc4 ci)
+
+# ImageManipV2 test
+dai_add_test(image_manip_v2_node_test src/ondevice_tests/pipeline/node/image_manip_v2_test.cpp)
+dai_set_test_labels(image_manip_v2_node_test ondevice rvc2_all rvc4 ci)
