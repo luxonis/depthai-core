@@ -470,14 +470,6 @@ jobs:
           ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
           ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
           ARTIFACTORY_PASS: ${{ secrets.ARTIFACTORY_PASS }}
-      - name: Configure project for `zoo_helper`
-        run: cmake -S . -B build -DDEPTHAI_ENABLE_CURL=ON
-      - name: Build target 'zoo_helper'
-        run: cmake --build build --target zoo_helper --parallel 4
-      - name: List build directory contents
-        run: ls -la build/
-      - name: List files
-        run: find *
 
   # This job builds wheels for ARM64 arch
   build-linux-arm64:

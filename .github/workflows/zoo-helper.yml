@@ -1,0 +1,47 @@
+name: Zoo Helper Build
+
+on:
+  workflow_dispatch:
+
+env:
+  CMAKE_WINDOWS_SDK_VERSION: '10.0.18362.0'
+  VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+
+jobs:
+  build-zoo-helper:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cache .hunter folder
+        uses: actions/cache@v3
+        with:
+          path: ~/.hunter
+          key: hunter-ubuntu-latest-v3-develop
+
+      - name: Export GitHub Actions cache environment variables
+        uses: actions/github-script@v7
+        with:
+          script: |
+           core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+           core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
+      - uses: actions/checkout@v3
+        with:
+          submodules: 'recursive'
+
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y libusb-1.0-0-dev pkg-config
+
+      - name: Configure project
+        run: cmake -S . -B build -DDEPTHAI_ENABLE_CURL=ON
+
+      - name: Build zoo_helper
+        run: cmake --build build --target zoo_helper --parallel 4
+
+      - name: Upload zoo_helper artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: zoo_helper
+          path: build/zoo_helper
+          retention-days: 7
