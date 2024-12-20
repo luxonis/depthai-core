@@ -1,5 +1,6 @@
 #pragma once
-
+#pragma pack(push)
+#pragma pack(1)
 // std
 #include <cstdint>
 
@@ -23,3 +24,5 @@ struct Point3fRGB {
 DEPTHAI_SERIALIZE_EXT(Point3fRGB, x, y, z, r, g, b);
 
 }  // namespace dai
+#pragma pack(pop)
+

@@ -41,6 +41,8 @@ class PointCloudData : public Buffer, public ProtoSerializable {
 
     std::vector<Point3f> getPoints();
     std::vector<Point3fRGB> getPointsRGB();
+    void setPoints(const std::vector<Point3f>& points);
+    void setPointsRGB(const std::vector<Point3fRGB>& points);
 
     /**
      * Retrieves instance number
