@@ -136,53 +136,76 @@ class RGBD::Impl {
         }
 #endif
     }
-    void calcPoints(const uint8_t* depthData, const uint8_t* colorData, std::vector<Point3fRGB>& points, int startRow, int endRow) {
-        float scale = outputMeters ? (1.0f / 1000.0f) : 1.0f;
-        for(int i = startRow * width; i < endRow * width; i++) {
-            float x = i % width;
-            float y = static_cast<float>(i) / width;
+    void calcPointsChunk(
+    const uint8_t* depthData,
+    const uint8_t* colorData,
+    std::vector<Point3fRGB>& outChunk,
+    int startRow, int endRow
+) {
+    float scale = outputMeters ? (1.0f / 1000.0f) : 1.0f;
+    outChunk.reserve((endRow - startRow) * width);
+
+    for (int row = startRow; row < endRow; row++) {
+        int rowStart = row * width;
+        for (int col = 0; col < width; col++) {
+            size_t i = rowStart + col;
+
             uint16_t depthValue = *(reinterpret_cast<const uint16_t*>(depthData + i * 2));
             float z = static_cast<float>(depthValue) * scale;
-            x = (x - cx) * z / fx;
-            y = (y - cy) * z / fy;
-            uint8_t r = static_cast<uint8_t>(colorData[i * 3 + 0]);
-            uint8_t g = static_cast<uint8_t>(colorData[i * 3 + 1]);
-            uint8_t b = static_cast<uint8_t>(colorData[i * 3 + 2]);
-            Point3fRGB p;
-            p.x = x;
-            p.y = y;
-            p.z = z;
-            p.r = r;
-            p.g = g;
-            p.b = b;
-            std::lock_guard<std::mutex> lock(pointsMtx);
-            points.emplace_back(p);
+
+            float xCoord = (col - cx) * z / fx;
+            float yCoord = (row - cy) * z / fy;
+
+            // BGR order in colorData
+            uint8_t r = colorData[i * 3 + 0];
+            uint8_t g = colorData[i * 3 + 1];
+            uint8_t b = colorData[i * 3 + 2];
+
+            outChunk.push_back(Point3fRGB{xCoord, yCoord, z, r, g, b});
         }
     }
-    void computePointCloudCPU(const uint8_t* depthData, const uint8_t* colorData, std::vector<Point3fRGB>& points) {
-        calcPoints(depthData, colorData, points, 0, height);
+}
+
+void computePointCloudCPU(
+    const uint8_t* depthData,
+    const uint8_t* colorData,
+    std::vector<Point3fRGB>& points
+) {
+
+    // Single-threaded directly writes into points
+    calcPointsChunk(depthData, colorData, points, 0, height);
+}
+
+void computePointCloudCPUMT(
+    const uint8_t* depthData,
+    const uint8_t* colorData,
+    std::vector<Point3fRGB>& points
+) {
+
+    int rowsPerThread = height / threadNum;
+    std::vector<std::future<std::vector<Point3fRGB>>> futures;
+
+    // Each thread returns a local vector
+    auto processRows = [&](int startRow, int endRow) {
+        std::vector<Point3fRGB> localPoints;
+        calcPointsChunk(depthData, colorData, localPoints, startRow, endRow);
+        return localPoints;
+    };
+
+    for (int t = 0; t < threadNum; ++t) {
+        int startRow = t * rowsPerThread;
+        int endRow = (t == threadNum - 1) ? height : (startRow + rowsPerThread);
+        futures.emplace_back(std::async(std::launch::async, processRows, startRow, endRow));
     }
-    void computePointCloudCPUMT(const uint8_t* depthData, const uint8_t* colorData, std::vector<Point3fRGB>& points) {
-        // Lambda function for processing a block of rows
-        auto processRows = [&](int startRow, int endRow) { calcPoints(depthData, colorData, points, startRow, endRow); };
 
-        // Divide rows into chunks and process in parallel
-        const int numThreads = threadNum;
-        const int rowsPerThread = height / numThreads;
-        std::vector<std::future<void>> futures;
-
-        for(int t = 0; t < numThreads; ++t) {
-            int startRow = t * rowsPerThread;
-            int endRow = (t == numThreads - 1) ? height : startRow + rowsPerThread;
-
-            futures.emplace_back(std::async(std::launch::async, processRows, startRow, endRow));
-        }
-
-        // Wait for all threads to finish
-        for(auto& future : futures) {
-            future.get();
-        }
+    // Merge all results
+    for (auto& f : futures) {
+        auto localPoints = f.get();
+        // Now we do one lock per merge if needed
+        // If this is not called concurrently from multiple places, no lock needed
+        points.insert(points.end(), localPoints.begin(), localPoints.end());
     }
+}
     enum class ComputeMethod { CPU, CPU_MT, GPU };
     ComputeMethod computeMethod = ComputeMethod::CPU;
 #ifdef DEPTHAI_ENABLE_KOMPUTE
@@ -201,7 +224,6 @@ class RGBD::Impl {
     int width, height;
     int size;
     bool intrinsicsSet = false;
-    std::mutex pointsMtx;
     int threadNum = 2;
 };
 
