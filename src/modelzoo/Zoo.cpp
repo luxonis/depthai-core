@@ -344,7 +344,8 @@ std::string getModelFromZoo(const NNModelDescription& modelDescription, bool use
 
     // Check if model is cached
     bool modelIsCached = zooManager.isModelCached();
-    bool useCachedModel = useCached && modelIsCached;
+    bool isMetadataPresent = std::filesystem::exists(zooManager.getMetadataFilePath());
+    bool useCachedModel = useCached && modelIsCached && isMetadataPresent;
     bool internetIsAvailable = zooManager.internetIsAvailable();
     nlohmann::json responseJson;
 
