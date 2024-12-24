@@ -289,7 +289,7 @@ dai_add_example(model_zoo RVC2/ModelZoo/model_zoo.cpp OFF OFF)
 
 # Events Manager
 if(DEPTHAI_ENABLE_EVENTS_MANAGER)
-    dai_add_example(events HostNodes/events.cpp ON OFF)
+    dai_add_example(events Events/events.cpp ON OFF)
 endif()
 # Image Align
 dai_add_example(image_align RVC2/ImageAlign/image_align.cpp OFF OFF)
