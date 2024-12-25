@@ -52,13 +52,13 @@ jobs:
     - name: Configure, Build and Test
       if: matrix.os != 'linux'
       run: |
-        export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/$GITHUB_RUN_ID-rvc2-${{ matrix.os }}-${{ matrix.flavor }}"
+        export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc2-${{ matrix.os }}-${{ matrix.flavor }}"
         exec hil --capabilities depthai-core-hil --reservation-name $RESERVATION_NAME --wait --sync-workspace --commands 'cd /tmp/depthai-core|| exit' 'scripts/hil/run_hil_tests.sh ${{ matrix.flavor }} --rvc2'
 
     - name: Configure, Build and Test
       if: matrix.os == 'linux'
       run: |
-        export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/$GITHUB_RUN_ID-rvc2-${{ matrix.os }}-${{ matrix.flavor }}"
+        export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc2-${{ matrix.os }}-${{ matrix.flavor }}"
         exec hil --capabilities depthai-core-hil --reservation-name $RESERVATION_NAME --wait --sync-workspace --commands 'cd /tmp/depthai-core|| exit' 'scripts/hil/run_hil_tests.sh ${{ matrix.flavor }} --rvc2'
 
   # Testing
@@ -90,12 +90,12 @@ jobs:
       - name: Configure, Build and Test
         if: matrix.os != 'linux'
         run: |
-          export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/$GITHUB_RUN_ID-rvc4-${{ matrix.os }}-${{ matrix.rvc4os }}-${{ matrix.flavor }}""
-          exec hil --models oak4_pro --reservation-name $RESERVATION_NAME --wait --sync-workspace --commands 'cd /tmp/depthai-core|| exit' 'scripts/hil/run_hil_tests.sh ${{ matrix.flavor }} --rvc4 '
+          export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-${{ matrix.os }}-${{ matrix.rvc4os }}-${{ matrix.flavor }}""
+          exec hil --capabilities depthai-core-hil --models oak4_pro --reservation-name $RESERVATION_NAME --wait --sync-workspace --commands 'cd /tmp/depthai-core|| exit' 'scripts/hil/run_hil_tests.sh ${{ matrix.flavor }} --rvc4 '
 
       - name: Configure, Build and Test
         if: matrix.os == 'linux'
         run: |
-          export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/$GITHUB_RUN_ID-rvc4-${{ matrix.os }}-${{ matrix.rvc4os }}-${{ matrix.flavor }}"
-          exec hil --models oak4_pro --reservation-name $RESERVATION_NAME --wait --sync-workspace --rvc4-os-version ${{ matrix.rvc4os }} --commands 'cd /tmp/depthai-core|| exit' 'scripts/hil/run_hil_tests.sh ${{ matrix.flavor }} --rvc4'
+          export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-${{ matrix.os }}-${{ matrix.rvc4os }}-${{ matrix.flavor }}"
+          exec hil --capabilities depthai-core-hil --models oak4_pro --reservation-name $RESERVATION_NAME --wait --sync-workspace --rvc4-os-version ${{ matrix.rvc4os }} --commands 'cd /tmp/depthai-core|| exit' 'scripts/hil/run_hil_tests.sh ${{ matrix.flavor }} --rvc4'
 
