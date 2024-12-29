@@ -12,7 +12,7 @@ namespace dai {
  */
 struct BenchmarkInProperties : PropertiesSerializable<Properties, BenchmarkInProperties> {
     /**
-     * Specify how many messages to measure for each report 
+     * Specify how many messages to measure for each report
      */
     uint32_t reportEveryNMessages = 50;
 
@@ -27,6 +27,6 @@ struct BenchmarkInProperties : PropertiesSerializable<Properties, BenchmarkInPro
     bool logReportsAsWarnings = true;
 };
 
-DEPTHAI_SERIALIZE_EXT(BenchmarkInProperties, reportEveryNMessages);
+DEPTHAI_SERIALIZE_EXT(BenchmarkInProperties, reportEveryNMessages, attachLatencies, logReportsAsWarnings);
 
 }  // namespace dai
