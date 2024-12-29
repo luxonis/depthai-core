@@ -3,12 +3,12 @@
 #include <depthai/pipeline/DeviceNode.hpp>
 
 // shared
-#include <depthai/properties/BenchmarkPropertiesOut.hpp>
+#include <depthai/properties/BenchmarkOutProperties.hpp>
 
 namespace dai {
 namespace node {
 
-class BenchmarkOut : public DeviceNodeCRTP<DeviceNode, BenchmarkOut, BenchmarkPropertiesOut> {
+class BenchmarkOut : public DeviceNodeCRTP<DeviceNode, BenchmarkOut, BenchmarkOutProperties>, public HostRunnable{
    public:
     constexpr static const char* NAME = "BenchmarkOut";
     using DeviceNodeCRTP::DeviceNodeCRTP;
@@ -34,7 +34,21 @@ class BenchmarkOut : public DeviceNodeCRTP<DeviceNode, BenchmarkOut, BenchmarkPr
      */
     void setFps(float fps);
 
-    void buildInternal() override;
+    /**
+     * Specify whether to run on host or device
+     * By default, the node will run on device.
+     */
+    void setRunOnHost(bool runOnHost);
+
+    /**
+     * Check if the node is set to run on host
+     */
+    bool runOnHost() const override;
+
+    void run() override;
+    
+   private:
+    bool runOnHostVar = false;
 };
 
 }  // namespace node
