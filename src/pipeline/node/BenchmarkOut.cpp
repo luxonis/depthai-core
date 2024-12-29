@@ -40,7 +40,11 @@ void BenchmarkOut::run() {
             auto newMessage = std::make_shared<dai::ImgFrame>();
             newMessage->setMetadata(imgMessage);
             newMessage->data = imgMessage->data;
-            newMessage->setTimestampDevice(steady_clock::now());
+            if(runOnHostVar) {
+                newMessage->setTimestamp(steady_clock::now());
+            } else {
+                newMessage->setTimestampDevice(steady_clock::now());
+            }
             out.send(newMessage);
         } else {
             logger->trace("Sending message with id {}", i);

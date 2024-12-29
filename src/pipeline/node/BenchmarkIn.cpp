@@ -69,9 +69,12 @@ void BenchmarkIn::run() {
 
         if(messageCount < numMessages) {
             auto currentTs = steady_clock::now();
-            // If the message itself has a real timestamp, use that instead:
-            // auto messageTs = inMessage->getTimestamp();
-            auto messageTs = currentTs;  // In example, just use currentTs
+            auto messageTs = steady_clock::now();
+            if(runOnHostVar) {
+                messageTs = inMessage->getTimestamp();
+            } else {
+                messageTs = inMessage->getTimestampDevice();
+            }
 
             duration<float> diff = currentTs - messageTs;
             logger->trace("Frame latency: {} s", diff.count());
