@@ -223,3 +223,15 @@ set_tests_properties(py_script_simple PROPERTIES FAIL_REGULAR_EXPRESSION "\\[err
 
 add_python_example(script_all_cameras Script/script_switch_all_cameras.py)
 dai_set_example_test_labels(script_all_cameras ondevice rvc2_all rvc4 ci)
+
+## Benchmark node
+add_python_example(benchmark_node Benchmark/benchmark_simple.py)
+dai_set_example_test_labels(benchmark_node ondevice rvc2_all rvc4 ci)
+set_tests_properties(py_benchmark_node PROPERTIES FAIL_REGULAR_EXPRESSION "\\[error\\];\\[critical\\]")
+
+add_python_example(benchmark_cameras Benchmark/benchmark_camera.py)
+dai_set_example_test_labels(benchmark_cameras ondevice rvc2_all rvc4 ci)
+set_tests_properties(py_benchmark_cameras PROPERTIES FAIL_REGULAR_EXPRESSION "\\[error\\];\\[critical\\]")
+
+add_python_example(benchmark_nn Benchmark/benchmark_nn.py)
+dai_set_example_test_labels(benchmark_nn ondevice rvc2_all rvc4 ci)

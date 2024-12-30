@@ -27,7 +27,7 @@ TEST_CASE("camera_concurrency") {
     for(auto* output : cameraOutputs) {
         auto node = pipeline.create<dai::node::BenchmarkIn>();
         output->link(node->input);
-        node->setNumMessagesToGet(numMessagesToGet);
+        node->sendReportEveryNMessages(numMessagesToGet);
         queues.push_back(node->report.createOutputQueue());
         benchmarkNodes.push_back(node);
     }
