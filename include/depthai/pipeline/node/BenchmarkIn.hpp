@@ -3,13 +3,12 @@
 #include <depthai/pipeline/DeviceNode.hpp>
 
 // shared
-#include <depthai/properties/BenchmarkPropertiesIn.hpp>
+#include <depthai/properties/BenchmarkInProperties.hpp>
 
 namespace dai {
 namespace node {
 
-// TODO(before mainline) - API not supported on RVC2
-class BenchmarkIn : public DeviceNodeCRTP<DeviceNode, BenchmarkIn, BenchmarkPropertiesIn> {
+class BenchmarkIn : public DeviceNodeCRTP<DeviceNode, BenchmarkIn, BenchmarkInProperties>, public HostRunnable {
    public:
     constexpr static const char* NAME = "BenchmarkIn";
     using DeviceNodeCRTP::DeviceNodeCRTP;
@@ -30,11 +29,35 @@ class BenchmarkIn : public DeviceNodeCRTP<DeviceNode, BenchmarkIn, BenchmarkProp
     Output report{*this, {"report", DEFAULT_GROUP, {{{DatatypeEnum::BenchmarkReport, false}}}}};
 
     /**
-     * Set number of messages that the nodes retrieves before sending the report
-     * The passthrough keeps getting forwarded after the report is sent
-     * @param num of messages to get for report
+     * Specify how many messages to measure for each report
      */
-    void setNumMessagesToGet(int num);
+    void sendReportEveryNMessages(uint32_t n);
+
+    /**
+     * Specify whether to run on host or device
+     * By default, the node will run on device.
+     */
+    void setRunOnHost(bool runOnHost);
+
+    /**
+     * Check if the node is set to run on host
+     */
+    bool runOnHost() const override;
+
+    /**
+    * Log the reports as warnings
+    */
+    void logReportsAsWarnings(bool logReportsAsWarnings);
+
+    /**
+     * Attach latencies to the report
+     */
+    void measureIndividualLatencies(bool attachLatencies);
+
+    void run() override;
+
+   private:
+    bool runOnHostVar = false;
 };
 
 }  // namespace node
