@@ -3,7 +3,7 @@ Changelog for package depthai
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 2.29.0 (2024-11-26)
-*Features
+* Features
 * Add the ability to change the calibration on the device in runtime with the new `dai::Device.setCalibration()` method and to retrieve it with the `dai::Device.getCalibration()`.
 * New `StereoDepth` presets:
    * `DEFAULT`
