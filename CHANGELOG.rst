@@ -1,6 +1,30 @@
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Changelog for package depthai
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+2.29.0 (2024-11-26)
+*Features
+* Add the ability to change the calibration on the device in runtime with the new `dai::Device.setCalibration()` method and to retrieve it with the `dai::Device.getCalibration()`.
+* New `StereoDepth` presets:
+   * `DEFAULT`
+   * `FACE`
+   * `HIGH_DETAIL`
+   * `ROBOTICS`
+* Multiple camera improvements (more details in https://github.com/luxonis/depthai-core/pull/972):
+   * Expose more downsampling modes when picking a lower than native resolutions
+   * Expose more binning modes when binning is picked on IMX582/586 (`sum` and `avg`)
+   * HDR on IMX582/586
+   * Option to bypass 3A for having manual expose/ISO take effect faster
+   * Initial support for new Sony 4K Starvis sensors: IMX678 and IMX715
+   * Option to set the main camera to drive auto-exposure and auto-white-balance in multi-camera configurations
+* Improved StereoDepth filtering and an option to use a set a custom order of filters
+   * Disparity is first scaled to 13 bit before going through filtering, which results in filters being more effective.
+
+
+* Misc
+* Remove false reports on crashes that happened on device destruction
+* Add `getWidth()` and `getHeight()` API to `EncodedFrame`
+
 2.28.0 (2024-08-21)
 -----------
 Features
