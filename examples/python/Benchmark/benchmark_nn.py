@@ -1,7 +1,8 @@
 import depthai as dai
-import cv2
 import numpy as np
 
+
+# First prepare the model for benchmarking
 device = dai.Device()
 modelPath = dai.getModelFromZoo(dai.NNModelDescription("yolov6-nano", platform=device.getPlatformAsString()))
 modelArhive = dai.NNArchive(modelPath)
@@ -43,7 +44,7 @@ with dai.Pipeline(device) as p:
     inputQueue = benchmarkOut.input.createInputQueue()
 
     p.start()
-    inputQueue.send(inputFrame)
+    inputQueue.send(inputFrame) # Send the input image only once
     while p.isRunning():
         benchmarkReport = outputQueue.get()
         assert isinstance(benchmarkReport, dai.BenchmarkReport)

@@ -9,9 +9,9 @@ with dai.Pipeline(createImplicitDevice=False) as p:
     benchmarkOut.setFps(30)
 
     # Create a BenchmarkIn node
-    # Thisn node is receiving the messages on the input and measuring the FPS and latency.
+    # This node is receiving the messages on the input and measuring the FPS and latency.
     # In the case that the input is with BenchmarkOut, the latency measurement is not always possible, as the message is not deep copied,
-    # which means that the timestamps stay the same.
+    # which means that the timestamps stay the same and latency virtually increases over time.
     benchmarkIn = p.create(dai.node.BenchmarkIn)
     benchmarkIn.setRunOnHost(True) # The node can run on host or on device
     benchmarkIn.sendReportEveryNMessages(100)
