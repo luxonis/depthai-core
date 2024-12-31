@@ -207,11 +207,14 @@ struct ManipOp {
     DEPTHAI_SERIALIZE(ManipOp, op);
 };
 
-class ImageManipOpsBase {
+class ImageManipOpsEnums {
    public:
     enum class Background : uint8_t { COLOR /* , REPLICATE, MIRROR */ };  // TODO(asahtik): replicate impl
     enum class ResizeMode : uint8_t { NONE, STRETCH, LETTERBOX, CENTER_CROP };
+};
 
+template <typename C>
+class ImageManipOpsBase : public ImageManipOpsEnums {
    public:
     uint32_t outputWidth = 0;
     uint32_t outputHeight = 0;
@@ -223,10 +226,26 @@ class ImageManipOpsBase {
     uint8_t backgroundB = 0;
     Colormap colormap = Colormap::NONE;
 
-    std::vector<ManipOp> operations{};
+    C operations{};
 
     ImageManipOpsBase() = default;
     virtual ~ImageManipOpsBase() = default;
+
+    template <typename C2>
+    void cloneTo(ImageManipOpsBase<C2>& to) const {
+        to.outputWidth = outputWidth;
+        to.outputHeight = outputHeight;
+        to.center = center;
+        to.resizeMode = resizeMode;
+        to.background = background;
+        to.backgroundR = backgroundR;
+        to.backgroundG = backgroundG;
+        to.backgroundB = backgroundB;
+        to.colormap = colormap;
+
+        to.operations.clear();
+        to.operations.insert(to.operations.end(), operations.begin(), operations.end());
+    }
 
     bool hasWarp(const size_t inputWidth, const size_t inputHeight) const {
         return operations.size() > 0 || (outputWidth != 0 && outputWidth != inputWidth) || (outputHeight != 0 && outputHeight != inputHeight);
@@ -354,7 +373,7 @@ class ImageManipOpsBase {
         return *this;
     }
 
-    const std::vector<ManipOp>& getOperations() const {
+    const C& getOperations() const {
         return this->operations;
     }
 
@@ -379,14 +398,16 @@ class ImageManipOpsBase {
  *  - ...
  */
 class ImageManipConfigV2 : public Buffer {
+    using Container = std::vector<ManipOp>;
+
    public:
     ImageManipConfigV2() = default;
     virtual ~ImageManipConfigV2() = default;
 
-    using ResizeMode = ImageManipOpsBase::ResizeMode;
+    using ResizeMode = ImageManipOpsBase<Container>::ResizeMode;
 
     // New config
-    ImageManipOpsBase base;
+    ImageManipOpsBase<Container> base;
     ImgFrame::Type outputFrameType = ImgFrame::Type::NONE;
 
     // Usable with runtime config only,
@@ -419,12 +440,6 @@ class ImageManipConfigV2 : public Buffer {
      * @param normalizedCoords If true, the coordinates are normalized to range [0, 1] where 1 maps to the width/height of the image
      */
     ImageManipConfigV2& addCropRotatedRect(dai::RotatedRect rotatedRect, bool normalizedCoords = false);
-    /**
-     * Resizes the image to the specified width and height
-     * @param w Width of the output image
-     * @param h Height of the output image
-     */
-    ImageManipConfigV2& addResize(uint32_t w, uint32_t h);
     /**
      * Rescales the image using the specified factors
      * @param scaleX Scale factor for the X axis

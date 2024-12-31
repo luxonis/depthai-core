@@ -14,6 +14,10 @@ endif()
 if(NOT CONFIG_MODE OR (CONFIG_MODE AND NOT DEPTHAI_SHARED_LIBS))
 
     if(DEPTHAI_BUILD_PYTHON)
+        # Some dependencies (xtensor) still use the old FindPythonInterp and FindPythonLibs
+        if(PYTHON_EXECUTABLE AND NOT Python_EXECUTABLE)
+            set(Python_EXECUTABLE ${PYTHON_EXECUTABLE})
+        endif()
         if(DEPTHAI_NEW_FIND_PYTHON)
             if(POLICY CMP0094)
                 cmake_policy(SET CMP0094 NEW)
@@ -69,6 +73,7 @@ if(NOT CONFIG_MODE OR (CONFIG_MODE AND NOT DEPTHAI_SHARED_LIBS))
     if(DEPTHAI_HAS_APRIL_TAG)
         find_package(apriltag ${_QUIET} CONFIG REQUIRED)
     endif()
+    find_package(magic_enum ${_QUIET} CONFIG REQUIRED)
 endif()
 
 # Xtensor

@@ -9,7 +9,9 @@
 #include "utility/Logging.hpp"
 
 #ifdef DEPTHAI_ENABLE_CURL
-    #include <cpr/cpr.h>
+    #include <cpr/api.h>
+    #include <cpr/parameters.h>
+    #include <cpr/status_codes.h>
 namespace dai {
 class ZooManager {
    public:
@@ -139,10 +141,10 @@ bool checkIsErrorHub(const cpr::Response& response) {
     // Check if response is an HTTP error
     if(response.status_code != cpr::status::HTTP_OK) return true;
 
-    // If there was no HTTP error, check response content for errors
+    // If there was no HTTP error, check presence of required fields
     nlohmann::json responseJson = nlohmann::json::parse(response.text);
-    if(responseJson.contains("errors")) return true;
-    if(responseJson["data"]["ml"]["modelDownloads"].is_null()) return true;
+    if(!responseJson.contains("hash")) return true;
+    if(!responseJson.contains("download_links")) return true;
 
     // All checks passed - no errors yay
     return false;
@@ -206,30 +208,35 @@ bool ZooManager::isModelCached() const {
 }
 
 void ZooManager::downloadModel() {
-    // graphql query to send to Hub - always the same
-    constexpr std::string_view MODEL_ZOO_QUERY = "query MlDownloads($input: MlModelDownloadsInput!) {ml { modelDownloads(input : $input) { data }}}";
+    // Add request parameters
+    cpr::Parameters params;
 
-    // Setup request body
-    nlohmann::json requestBody;
-    requestBody["query"] = MODEL_ZOO_QUERY;
+    // Required parameters
+    // clang-format off
+    std::vector<std::pair<std::string, std::string>> requiredParams = {
+        {"slug", modelDescription.model},
+        {"platform", modelDescription.platform}
+    };
+    // clang-format on
+    for(const auto& param : requiredParams) {
+        params.Add({param.first, param.second});
+    }
 
-    // Add REQUIRED parameters
-    requestBody["variables"]["input"]["platform"] = modelDescription.platform;
-    requestBody["variables"]["input"]["slug"] = modelDescription.model;
+    // Optional parameters
+    // clang-format off
+    std::vector<std::pair<std::string, std::string>> optionalParams = {
+        {"optimizationLevel", modelDescription.optimizationLevel},
+        {"compressionLevel", modelDescription.compressionLevel},
+        {"snpeVersion", modelDescription.snpeVersion},
+        {"modelPrecisionType", modelDescription.modelPrecisionType}
+    };
+    // clang-format on
+    for(const auto& param : optionalParams) {
+        if(!param.second.empty()) {
+            params.Add({param.first, param.second});
+        }
+    }
 
-    // Add OPTIONAL parameters
-    if(!modelDescription.optimizationLevel.empty()) {
-        requestBody["variables"]["input"]["optimizationLevel"] = modelDescription.optimizationLevel;
-    }
-    if(!modelDescription.compressionLevel.empty()) {
-        requestBody["variables"]["input"]["compressionLevel"] = modelDescription.compressionLevel;
-    }
-    if(!modelDescription.snpeVersion.empty()) {
-        requestBody["variables"]["input"]["snpeVersion"] = modelDescription.snpeVersion;
-    }
-    if(!modelDescription.modelPrecisionType.empty()) {
-        requestBody["variables"]["input"]["modelPrecisionType"] = modelDescription.modelPrecisionType;
-    }
     // Set the Authorization headers
     cpr::Header headers = {
         {"Content-Type", "application/json"},
@@ -237,16 +244,17 @@ void ZooManager::downloadModel() {
     if(!apiKey.empty()) {
         headers["Authorization"] = "Bearer " + apiKey;
     }
-    // Send HTTP request to Hub
-    cpr::Response response = cpr::Post(cpr::Url{MODEL_ZOO_URL}, headers, cpr::Body{requestBody.dump()});
+
+    // Send HTTP GET request to REST endpoint
+    cpr::Response response = cpr::Get(cpr::Url{MODEL_ZOO_URL}, headers, params);
     if(checkIsErrorHub(response)) {
         removeModelCacheFolder();
         throw std::runtime_error(generateErrorMessageHub(response));
     }
 
-    // Extract download link from response
+    // Extract download links from response
     nlohmann::json responseJson = nlohmann::json::parse(response.text);
-    auto downloadLinks = responseJson["data"]["ml"]["modelDownloads"]["data"].get<std::vector<std::string>>();
+    auto downloadLinks = responseJson["download_links"].get<std::vector<std::string>>();
 
     // Download all files and store them in cache folder
     for(const auto& downloadLink : downloadLinks) {

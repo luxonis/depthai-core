@@ -40,15 +40,25 @@ void MessageQueueBindings::bind(pybind11::module& m, void* pCallstack) {
 
     // Bind DataOutputQueue
     auto addCallbackLambda = [](MessageQueue& q, py::function cb) -> int {
-        pybind11::module inspect_module = pybind11::module::import("inspect");
-        pybind11::object result = inspect_module.attr("signature")(cb).attr("parameters");
+        pybind11::module inspectModule = pybind11::module::import("inspect");
+        pybind11::object result = inspectModule.attr("signature")(cb).attr("parameters");
         auto numParams = pybind11::len(result);
-        if(numParams == 2) {
-            return q.addCallback(cb.cast<std::function<void(std::string, std::shared_ptr<ADatatype>)>>());
-        } else if(numParams == 1) {
-            return q.addCallback(cb.cast<std::function<void(std::shared_ptr<ADatatype>)>>());
-        } else if(numParams == 0) {
-            return q.addCallback(cb.cast<std::function<void()>>());
+
+        if (numParams == 2) {
+            return q.addCallback([cb](std::string msg, std::shared_ptr<ADatatype> data) {
+                pybind11::gil_scoped_acquire gil;
+                cb(msg, data);
+            });
+        } else if (numParams == 1) {
+            return q.addCallback([cb](std::shared_ptr<ADatatype> data) {
+                pybind11::gil_scoped_acquire gil;
+                cb(data);
+            });
+        } else if (numParams == 0) {
+            return q.addCallback([cb]() {
+                pybind11::gil_scoped_acquire gil;
+                cb();
+            });
         } else {
             throw py::value_error("Callback must take either zero, one or two arguments");
         }
@@ -109,10 +119,6 @@ void MessageQueueBindings::bind(pybind11::module& m, void* pCallstack) {
                         timeoutLeft -= toSleep;
                     }
                     if(PyErr_CheckSignals() != 0) throw py::error_already_set();
-                }
-                {
-                    py::gil_scoped_release release;
-                    d = obj.get(timeout, timedout);
                 }
                 if(PyErr_CheckSignals() != 0) throw py::error_already_set();
                 return d;
