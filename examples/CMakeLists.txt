@@ -134,6 +134,14 @@ hunter_private_data(
     LOCATION tiny_yolo_v4_blob
 )
 
+# YoloV8 resource
+hunter_private_data(
+    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/yolov8n_coco_640x352.blob"
+    SHA1 "6b88a80ffb4267e253a89cb2b3e4e186453431b0"
+    FILE "yolov8n_coco_640x352.blob"
+    LOCATION yolov8n_blob
+)
+
 # NeuralNetwork node, mobilenet example, 5 shaves
 hunter_private_data(
     URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/mobilenet-ssd_openvino_2021.4_5shave.blob"
@@ -219,6 +227,7 @@ hunter_private_data(
     FILE "normalize_openvino_2021.4_4shave.blob"
     LOCATION normalization_model
 )
+
 
 ## message(STATUS "Location of test1.data: ${test1_data}")
 
@@ -380,8 +389,10 @@ dai_add_example(mjpeg_encoding VideoEncoder/mjpeg_encoding_example.cpp ON OFF)
 # Yolo
 dai_add_example(tiny_yolo_v4_device_side_decoding Yolo/tiny_yolo.cpp ON OFF)
 dai_add_example(tiny_yolo_v3_device_side_decoding Yolo/tiny_yolo.cpp  ON OFF)
+dai_add_example(yolo_v8_nano_device_side_decoding Yolo/yolov8_nano.cpp ON OFF)
 target_compile_definitions(tiny_yolo_v4_device_side_decoding PRIVATE BLOB_PATH="${tiny_yolo_v4_blob}")
 target_compile_definitions(tiny_yolo_v3_device_side_decoding PRIVATE BLOB_PATH="${tiny_yolo_v3_blob}")
+target_compile_definitions(yolo_v8_nano_device_side_decoding PRIVATE BLOB_PATH="${yolov8n_blob}")
 dai_add_example(apriltag AprilTag/apriltag.cpp ON OFF)
 dai_add_example(apriltag_rgb AprilTag/apriltag_rgb.cpp ON OFF)
 
@@ -421,3 +432,4 @@ target_compile_definitions(cast_diff PRIVATE BLOB_PATH="${diff_model}")
 dai_add_example(spatial_tiny_yolo_tof_v3 SpatialDetection/spatial_tiny_yolo_tof.cpp OFF OFF)
 dai_add_example(spatial_tiny_yolo_tof_v4 SpatialDetection/spatial_tiny_yolo_tof.cpp OFF OFF)
 target_compile_definitions(spatial_tiny_yolo_tof_v3 PRIVATE BLOB_PATH="${tiny_yolo_v3_blob}")
+target_compile_definitions(spatial_tiny_yolo_tof_v4 PRIVATE BLOB_PATH="${tiny_yolo_v4_blob}")

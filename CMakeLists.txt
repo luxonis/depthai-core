@@ -13,9 +13,6 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 # Early options
 option(DEPTHAI_ENABLE_LIBUSB "Enable usage of libusb and interaction with USB devices" ON)
 
-# Early options
-option(DEPTHAI_ENABLE_LIBUSB "Enable usage of libusb and interaction with USB devices" ON)
-
 # Set to use native tls for windows before including Hunter (used for Curl)
 if(WIN32)
     set(DEPTHAI_CURL_USE_SCHANNEL ON)
@@ -62,7 +59,7 @@ if(WIN32)
 endif()
 
 # Create depthai project
-project(depthai VERSION "2.28.0" LANGUAGES CXX C)
+project(depthai VERSION "2.29.0" LANGUAGES CXX C)
 get_directory_property(has_parent PARENT_DIRECTORY)
 if(has_parent)
     set(DEPTHAI_VERSION ${PROJECT_VERSION} PARENT_SCOPE)
