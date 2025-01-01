@@ -426,7 +426,7 @@ void downloadModelsFromZoo(const std::string& path, const std::string& cacheDire
 }
 
 bool ZooManager::internetIsAvailable() const {
-    constexpr int timeout_ms = 5000;
+    constexpr int TIMEOUT_MS = 5000;
     constexpr std::string_view host = "http://example.com";
     try {
         cpr::Response r = cpr::Get(cpr::Url{host}, cpr::Timeout{timeout_ms});
