@@ -426,14 +426,23 @@ void downloadModelsFromZoo(const std::string& path, const std::string& cacheDire
 }
 
 bool ZooManager::internetIsAvailable() const {
-    constexpr int TIMEOUT_MS = 5000;
-    constexpr std::string_view host = "http://example.com";
+    constexpr int TIMEOUT_MS = 1000;
+    constexpr std::string_view host = MODEL_ZOO_URL;
+
+    // Check if internet is available
+    bool connected = false;
     try {
-        cpr::Response r = cpr::Get(cpr::Url{host}, cpr::Timeout{timeout_ms});
-        return r.status_code == cpr::status::HTTP_OK;
+        cpr::Response r = cpr::Get(cpr::Url{host}, cpr::Timeout{TIMEOUT_MS});
+        connected = r.status_code == cpr::status::HTTP_UNPROCESSABLE_ENTITY;
     } catch(const std::exception& e) {
-        return false;
+        // pass
     }
+
+    // Log if internet is not available
+    if(!connected) {
+        Logging::getInstance().logger.info("Internet connection not available. Could not connect to host: {}", host);
+    }
+    return connected;
 }
 
 std::string ZooManager::getMetadataFilePath() const {
