@@ -64,7 +64,7 @@ void bind_detectionnetwork(pybind11::module& m, void* pCallstack) {
              py::arg("fps") = 30.0f)
         .def("build",
              ([](DetectionNetwork& self, const std::shared_ptr<Camera>& input, std::string model, float fps) {
-                 return self.build(input, NNModelDescription{.model=model}, fps);
+                 return self.build(input, NNModelDescription{model}, fps);
              }),
              py::arg("input"),
              py::arg("model"),
