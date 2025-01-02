@@ -184,6 +184,14 @@ class Node : public std::enable_shared_from_this<Node> {
             return desc.types;
         }
 
+        void setPossibleDatatypes(std::vector<DatatypeHierarchy> types) {
+            desc.types = std::move(types);
+        }
+
+        void addPossibleDatatype(DatatypeEnum datatype, bool descendants = true) {
+            desc.types.push_back(DatatypeHierarchy{datatype, descendants});
+        }
+
         /**
          * Check if this output and given input are on the same pipeline.
          * @see canConnect for checking if connection is possible
@@ -377,6 +385,14 @@ class Node : public std::enable_shared_from_this<Node> {
          * @returns Whether to wait for message to arrive to this input or not
          */
         bool getWaitForMessage() const;
+
+        std::vector<DatatypeHierarchy> getPossibleDatatypes() const {
+            return possibleDatatypes;
+        }
+
+        void setPossibleDatatypes(std::vector<DatatypeHierarchy> types) {
+            possibleDatatypes = std::move(types);
+        }
 
         /**
          * Equivalent to setWaitForMessage but with inverted logic.

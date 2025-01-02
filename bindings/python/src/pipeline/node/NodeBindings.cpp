@@ -313,6 +313,8 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
              static_cast<Node& (Node::Input::*)()>(&Node::Input::getParent),
              py::return_value_policy::reference_internal,
              DOC(dai, Node, Input, getParent))
+        .def("getPossibleDatatypes", &Node::Input::getPossibleDatatypes, DOC(dai, Node, Input, getPossibleDatatypes))
+        .def("setPossibleDatatypes", &Node::Input::setPossibleDatatypes, py::arg("types"), DOC(dai, Node, Input, setPossibleDatatypes))
         .def("setWaitForMessage", &Node::Input::setWaitForMessage, py::arg("waitForMessage"), DOC(dai, Node, Input, setWaitForMessage))
         .def("getWaitForMessage", &Node::Input::getWaitForMessage, DOC(dai, Node, Input, getWaitForMessage))
         .def("setReusePreviousMessage", &Node::Input::setReusePreviousMessage, py::arg("reusePreviousMessage"), DOC(dai, Node, Input, setReusePreviousMessage))
@@ -336,6 +338,8 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("possibleDatatypes") = Node::OutputDescription{}.types,
              py::keep_alive<1, 0>())
         .def("getPossibleDatatypes", &Node::Output::getPossibleDatatypes, DOC(dai, Node, Output, getPossibleDatatypes))
+        .def("setPossibleDatatypes", &Node::Output::setPossibleDatatypes, py::arg("types"), DOC(dai, Node, Output, setPossibleDatatypes))
+        .def("addPossibleDatatype", &Node::Output::addPossibleDatatype, py::arg("datatype"), py::arg("descendants") = true, DOC(dai, Node, Output, addPossibleDatatype))
         .def("getParent",
              static_cast<const Node& (Node::Output::*)() const>(&Node::Output::getParent),
              py::return_value_policy::reference_internal,
