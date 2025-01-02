@@ -426,7 +426,7 @@ void downloadModelsFromZoo(const std::string& path, const std::string& cacheDire
 }
 
 bool ZooManager::internetIsAvailable() const {
-    constexpr int TIMEOUT_MS = 1000;
+    constexpr int TIMEOUT_MS = 2000;
     constexpr std::string_view host = MODEL_ZOO_URL;
 
     // Check if internet is available
