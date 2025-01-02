@@ -55,6 +55,9 @@ void bind_neuralnetwork(pybind11::module& m, void* pCallstack){
         .def("build", py::overload_cast<dai::Node::Output&, const NNArchive&>(&NeuralNetwork::build), py::arg("input"), py::arg("nnArchive"), DOC(dai, node, NeuralNetwork, build))
         .def("build", py::overload_cast<const std::shared_ptr<Camera>&, dai::NNModelDescription, float>(&NeuralNetwork::build), py::arg("input"), py::arg("modelDesc"), py::arg("fps")=30.0f, DOC(dai, node, NeuralNetwork, build,2))
         .def("build", py::overload_cast<const std::shared_ptr<Camera>&, dai::NNArchive, float>(&NeuralNetwork::build), py::arg("input"), py::arg("nnArchive"), py::arg("fps")=30.0f, DOC(dai, node, NeuralNetwork, build, 3))
+        .def("build", [](NeuralNetwork& self, const std::shared_ptr<Camera>& input, const std::string& model, float fps) {
+            return self.build(input, NNModelDescription{.model=model}, fps);
+        }, py::arg("input"), py::arg("model"), py::arg("fps")=30.0f, DOC(dai, node, NeuralNetwork, build))
         .def("setBlob", py::overload_cast<dai::OpenVINO::Blob>(&NeuralNetwork::setBlob), py::arg("blob"), DOC(dai, node, NeuralNetwork, setBlob))
         .def("setBlob", py::overload_cast<const dai::Path&>(&NeuralNetwork::setBlob), py::arg("path"), DOC(dai, node, NeuralNetwork, setBlob, 2))
         .def("setModelPath",
