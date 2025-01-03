@@ -6,6 +6,7 @@
 
 #include "../utility/YamlHelpers.hpp"
 #include "../utility/sha1.hpp"
+#include "../utility/Environment.hpp"
 #include "utility/Logging.hpp"
 
 #ifdef DEPTHAI_ENABLE_CURL
@@ -278,7 +279,7 @@ nlohmann::json ZooManager::fetchModelDownloadLinks() {
     }
 
     // Send HTTP GET request to REST endpoint
-    cpr::Response response = cpr::Get(cpr::Url{MODEL_ZOO_URL}, headers, params);
+    cpr::Response response = cpr::Get(cpr::Url{MODEL_ZOO_DOWNLOAD_ENDPOINT}, headers, params);
     if(checkIsErrorHub(response)) {
         removeModelCacheFolder();
         throw std::runtime_error(generateErrorMessageHub(response));
@@ -346,7 +347,11 @@ std::string getModelFromZoo(const NNModelDescription& modelDescription, bool use
     bool modelIsCached = zooManager.isModelCached();
     bool isMetadataPresent = std::filesystem::exists(zooManager.getMetadataFilePath());
     bool useCachedModel = useCached && modelIsCached && isMetadataPresent;
-    bool internetIsAvailable = zooManager.internetIsAvailable();
+
+    bool performInternetCheck = !(utility::getEnv("DEPTHAI_ZOO_INTERNET_CHECK") == "0");
+
+    // Check if internet is available
+    bool internetIsAvailable = performInternetCheck && zooManager.internetIsAvailable();
     nlohmann::json responseJson;
 
     if(internetIsAvailable) {
@@ -426,14 +431,19 @@ void downloadModelsFromZoo(const std::string& path, const std::string& cacheDire
 }
 
 bool ZooManager::internetIsAvailable() const {
-    constexpr int TIMEOUT_MS = 1000;
-    constexpr std::string_view host = MODEL_ZOO_URL;
+    int timeout_ms = 1000;
+    try {
+        timeout_ms = std::stoi(utility::getEnv("DEPTHAI_ZOO_INTERNET_CHECK_TIMEOUT"));
+    } catch(const std::invalid_argument& e) {
+        // pass
+    }
+    constexpr std::string_view host = MODEL_ZOO_HEALTH_ENDPOINT;
 
     // Check if internet is available
     bool connected = false;
     try {
-        cpr::Response r = cpr::Get(cpr::Url{host}, cpr::Timeout{TIMEOUT_MS});
-        connected = r.status_code == cpr::status::HTTP_UNPROCESSABLE_ENTITY;
+        cpr::Response r = cpr::Get(cpr::Url{host}, cpr::Timeout{timeout_ms});
+        connected = r.status_code == cpr::status::HTTP_OK;
     } catch(const std::exception& e) {
         // pass
     }
