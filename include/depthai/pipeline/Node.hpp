@@ -180,17 +180,12 @@ class Node : public std::enable_shared_from_this<Node> {
         /**
          * Get possible datatypes that can be sent
          */
-        std::vector<DatatypeHierarchy> getPossibleDatatypes() const {
-            return desc.types;
-        }
+        std::vector<DatatypeHierarchy> getPossibleDatatypes() const;
 
-        void setPossibleDatatypes(std::vector<DatatypeHierarchy> types) {
-            desc.types = std::move(types);
-        }
-
-        void addPossibleDatatype(DatatypeEnum datatype, bool descendants = true) {
-            desc.types.push_back(DatatypeHierarchy{datatype, descendants});
-        }
+        /**
+         * Set possible datatypes that can be sent
+         */
+        void setPossibleDatatypes(std::vector<DatatypeHierarchy> types);
 
         /**
          * Check if this output and given input are on the same pipeline.
@@ -386,13 +381,15 @@ class Node : public std::enable_shared_from_this<Node> {
          */
         bool getWaitForMessage() const;
 
-        std::vector<DatatypeHierarchy> getPossibleDatatypes() const {
-            return possibleDatatypes;
-        }
+        /**
+         * Get possible datatypes that can be received
+         */
+        std::vector<DatatypeHierarchy> getPossibleDatatypes() const;
 
-        void setPossibleDatatypes(std::vector<DatatypeHierarchy> types) {
-            possibleDatatypes = std::move(types);
-        }
+        /**
+         * Set possible datatypes that can be received
+         */
+        void setPossibleDatatypes(std::vector<DatatypeHierarchy> types);
 
         /**
          * Equivalent to setWaitForMessage but with inverted logic.
