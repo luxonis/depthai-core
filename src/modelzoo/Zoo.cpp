@@ -362,7 +362,7 @@ std::string getModelFromZoo(const NNModelDescription& modelDescription, bool use
     if(useCachedModel) {
         if(!internetIsAvailable) {
             std::string modelPath = zooManager.loadModelFromCache();
-            Logging::getInstance().logger.info("Using cached model located at {}", modelPath);
+            logger::info("Using cached model located at {}", modelPath);
             return modelPath;
         }
 
@@ -372,11 +372,11 @@ std::string getModelFromZoo(const NNModelDescription& modelDescription, bool use
 
         if(responseHash == metadataHash) {
             std::string modelPath = zooManager.loadModelFromCache();
-            Logging::getInstance().logger.info("Using cached model located at {}", modelPath);
+            logger::info("Using cached model located at {}", modelPath);
             return modelPath;
         }
 
-        Logging::getInstance().logger.warn("Cached model hash does not match response hash, downloading anew ...");
+        logger::warn("Cached model hash does not match response hash, downloading anew ...");
     }
 
     // Remove cached model if present
@@ -398,7 +398,7 @@ std::string getModelFromZoo(const NNModelDescription& modelDescription, bool use
     zooManager.createCacheFolder();
 
     // Download model
-    Logging::getInstance().logger.info("Downloading model from model zoo");
+    logger::info("Downloading model from model zoo");
     zooManager.downloadModel(responseJson);
 
     // Find path to model in cache
@@ -407,7 +407,7 @@ std::string getModelFromZoo(const NNModelDescription& modelDescription, bool use
 }
 
 void downloadModelsFromZoo(const std::string& path, const std::string& cacheDirectory, const std::string& apiKey) {
-    Logging::getInstance().logger.info("Downloading models from zoo");
+    logger::info("Downloading models from zoo");
     // Make sure 'path' exists
     if(!std::filesystem::exists(path)) throw std::runtime_error("Path does not exist: " + path);
 
@@ -429,9 +429,9 @@ void downloadModelsFromZoo(const std::string& path, const std::string& cacheDire
         try {
             auto modelDescription = NNModelDescription::fromYamlFile(yamlFile);
             getModelFromZoo(modelDescription, true, cacheDirectory, apiKey);
-            Logging::getInstance().logger.info("Downloaded model [{} / {}]: {}", i + 1, yamlFiles.size(), yamlFile);
+            logger::info("Downloaded model [{} / {}]: {}", i + 1, yamlFiles.size(), yamlFile);
         } catch(const std::exception& e) {
-            Logging::getInstance().logger.error("Failed to download model [{} / {}]: {}\n{}", i + 1, yamlFiles.size(), yamlFile, e.what());
+            logger::error("Failed to download model [{} / {}]: {}\n{}", i + 1, yamlFiles.size(), yamlFile, e.what());
         }
     }
 }
