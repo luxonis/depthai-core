@@ -2812,7 +2812,7 @@ void Warp<ImageManipBuffer, ImageManipData>::build(const FrameSpecs srcFrameSpec
     for(const auto& corners : srcCorners) {
         auto [minx, maxx, miny, maxy] = getOuterRect(std::vector<std::array<float, 2>>(corners.begin(), corners.end()));
         sourceMinX = std::max(sourceMinX, (size_t)std::floor(std::max(minx, 0.f)));
-        sourceMinY = std::max(sourceMinY, (size_t)std::floor(std::max(miny, 0.f));
+        sourceMinY = std::max(sourceMinY, (size_t)std::floor(std::max(miny, 0.f)));
         sourceMaxX = std::min(sourceMaxX, (size_t)std::ceil(maxx));
         sourceMaxY = std::min(sourceMaxY, (size_t)std::ceil(maxy));
     }
