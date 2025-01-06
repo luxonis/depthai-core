@@ -431,9 +431,9 @@ void downloadModelsFromZoo(const std::string& path, const std::string& cacheDire
 }
 
 bool ZooManager::internetIsAvailable() const {
-    int timeout_ms = 1000;
+    int timeoutMs = 1000;
     try {
-        timeout_ms = std::stoi(utility::getEnv("DEPTHAI_ZOO_INTERNET_CHECK_TIMEOUT"));
+        timeoutMs = std::stoi(utility::getEnv("DEPTHAI_ZOO_INTERNET_CHECK_TIMEOUT"));
     } catch(const std::invalid_argument& e) {
         // pass
     }
@@ -442,7 +442,7 @@ bool ZooManager::internetIsAvailable() const {
     // Check if internet is available
     bool connected = false;
     try {
-        cpr::Response r = cpr::Get(cpr::Url{host}, cpr::Timeout{timeout_ms});
+        cpr::Response r = cpr::Get(cpr::Url{host}, cpr::Timeout{timeoutMs});
         connected = r.status_code == cpr::status::HTTP_OK;
     } catch(const std::exception& e) {
         // pass
