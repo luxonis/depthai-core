@@ -30,9 +30,13 @@ void bind_benchmark(pybind11::module& m, void* pCallstack) {
     benchmarkOut.def_readonly("out", &BenchmarkOut::out, DOC(dai, node, BenchmarkOut, out))
         .def_readonly("input", &BenchmarkOut::input, DOC(dai, node, BenchmarkOut, input))
         .def("setNumMessagesToSend", &BenchmarkOut::setNumMessagesToSend, py::arg("num"), DOC(dai, node, BenchmarkOut, setNumMessagesToSend))
+        .def("setRunOnHost", &BenchmarkOut::setRunOnHost, py::arg("runOnHost"), DOC(dai, node, BenchmarkOut, setRunOnHost))
         .def("setFps", &BenchmarkOut::setFps, py::arg("fps"), DOC(dai, node, BenchmarkOut, setFps));
     benchmarkIn.def_readonly("input", &BenchmarkIn::input, DOC(dai, node, BenchmarkIn, input))
         .def_readonly("report", &BenchmarkIn::report, DOC(dai, node, BenchmarkIn, report))
         .def_readonly("passthrough", &BenchmarkIn::passthrough, DOC(dai, node, BenchmarkIn, passthrough))
-        .def("setNumMessagesToGet", &BenchmarkIn::setNumMessagesToGet, py::arg("num"), DOC(dai, node, BenchmarkIn, setNumMessagesToGet));
+        .def("setRunOnHost", &BenchmarkIn::setRunOnHost, py::arg("runOnHost"), DOC(dai, node, BenchmarkIn, setRunOnHost))
+        .def("logReportsAsWarnings", &BenchmarkIn::logReportsAsWarnings, py::arg("logReportsAsWarnings"), DOC(dai, node, BenchmarkIn, logReportsAsWarnings))
+        .def("measureIndividualLatencies", &BenchmarkIn::measureIndividualLatencies, py::arg("attachLatencies"), DOC(dai, node, BenchmarkIn, measureIndividualLatencies))
+        .def("sendReportEveryNMessages", &BenchmarkIn::sendReportEveryNMessages, py::arg("num"), DOC(dai, node, BenchmarkIn, sendReportEveryNMessages));
 }
