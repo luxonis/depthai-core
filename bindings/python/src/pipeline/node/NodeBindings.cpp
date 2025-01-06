@@ -404,7 +404,6 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
              DOC(dai, Node, getAssetManager));
 
 
-    // TODO(themarpe) - refactor, threaded node could be separate from Node
     pyThreadedNode.def("trace", [](dai::ThreadedNode& node, const std::string& msg) { node.logger->trace(msg); })
         .def("debug", [](dai::ThreadedNode& node, const std::string& msg) { node.logger->debug(msg); })
         .def("info", [](dai::ThreadedNode& node, const std::string& msg) { node.logger->info(msg); })
@@ -412,31 +411,6 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("error", [](dai::ThreadedNode& node, const std::string& msg) { node.logger->error(msg); })
         .def("critical", [](dai::ThreadedNode& node, const std::string& msg) { node.logger->critical(msg); })
         .def("isRunning", &ThreadedNode::isRunning, DOC(dai, ThreadedNode, isRunning))
-        .def(
-            "createInput",
-            [](ThreadedNode& node,
-               std::string name,
-               std::string group,
-               bool blocking,
-               int queueSize,
-               std::vector<Node::DatatypeHierarchy> types,
-               bool waitForMessage) {
-                return std::make_shared<Node::Input>(node, Node::InputDescription{name, group, blocking, queueSize, types, waitForMessage});
-            },
-            py::arg("name") = Node::InputDescription{}.name,
-            py::arg("group") = Node::InputDescription{}.group,
-            py::arg("blocking") = Node::InputDescription{}.blocking,
-            py::arg("queueSize") = Node::InputDescription{}.queueSize,
-            py::arg("types") = Node::InputDescription{}.types,
-            py::arg("waitForMessage") = Node::InputDescription{}.waitForMessage,
-            py::keep_alive<1, 0>())
-        .def(
-            "createOutput",
-            [](ThreadedNode& node, std::string name, std::string group, std::vector<Node::DatatypeHierarchy> types) {
-                return std::make_shared<Node::Output>(node, Node::OutputDescription{name, group, types});
-            },
-            py::arg("name") = Node::OutputDescription{}.name,
-            py::arg("group") = Node::OutputDescription{}.group,
-            py::arg("possibleDatatypes") = Node::OutputDescription{}.types,
-            py::keep_alive<1, 0>());
+        .def("setLogLevel", &ThreadedNode::setLogLevel, DOC(dai, ThreadedNode, setLogLevel))
+        .def("getLogLevel", &ThreadedNode::getLogLevel, DOC(dai, ThreadedNode, getLogLevel));
 }

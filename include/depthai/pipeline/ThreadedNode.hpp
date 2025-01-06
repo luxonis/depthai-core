@@ -8,6 +8,7 @@
 #include "depthai/pipeline/Node.hpp"
 #include "depthai/utility/AtomicBool.hpp"
 #include "depthai/utility/JoiningThread.hpp"
+#include "depthai/log/LogLevel.hpp"
 
 namespace dai {
 
@@ -50,6 +51,10 @@ class ThreadedNode : public Node {
     bool isRunning() const;
     std::shared_ptr<spdlog::async_logger> logger =
         std::make_shared<spdlog::async_logger>("ThreadedNode", std::make_shared<spdlog::sinks::stdout_color_sink_mt>(), threadPool);
+
+    void setLogLevel(dai::LogLevel level);
+
+    dai::LogLevel getLogLevel() const;
 };
 
 }  // namespace dai

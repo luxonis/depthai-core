@@ -20,10 +20,14 @@ with dai.Pipeline() as pipeline:
     replay.setOutFrameType(dai.ImgFrame.Type.NV12)
     replay.setLoop(False)
 
-    imageManip = pipeline.create(dai.node.ImageManip)
-    imageManip.initialConfig.setResize(300, 300)
-    imageManip.initialConfig.setFrameType(dai.ImgFrame.Type.BGR888p)
+    imageManip = pipeline.create(dai.node.ImageManipV2)
+    imageManip.initialConfig.setOutputSize(640, 400)
+    imageManip.initialConfig.setFrameType(dai.ImgFrame.Type.NV12)
     replay.out.link(imageManip.inputImage)
+    videoEncoder = pipeline.create(dai.node.VideoEncoder)
+    imageManip.out.link(videoEncoder.input)
+    videoEncoder.setDefaultProfilePreset(30, dai.VideoEncoderProperties.Profile.H264_MAIN)
+    outputEncoder = videoEncoder.out.createOutputQueue()
     manipOutQueue = imageManip.out.createOutputQueue()
 
     pipeline.start()
@@ -34,6 +38,9 @@ with dai.Pipeline() as pipeline:
             # Replay stopped the pipeline
             break
         outFrameCv = outFrame.getCvFrame()
+        print("Before trying to get frame")
+        encodedFrame = outputEncoder.get()
+        print("Got frame")
         cv2.imshow("video", outFrameCv)
         if cv2.waitKey(1) == ord('q'):
             print("Stopping pipeline")

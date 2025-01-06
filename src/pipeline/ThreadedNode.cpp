@@ -64,6 +64,14 @@ void ThreadedNode::stop() {
     // wait();
 }
 
+void ThreadedNode::setLogLevel(dai::LogLevel level) {
+    logger->set_level(logLevelToSpdlogLevel(level, spdlog::level::warn));
+}
+
+dai::LogLevel ThreadedNode::getLogLevel() const {
+    return spdlogLevelToLogLevel(logger->level(), LogLevel::WARN);
+}
+
 bool ThreadedNode::isRunning() const {
     return running;
 }

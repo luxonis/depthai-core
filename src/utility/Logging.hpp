@@ -23,6 +23,9 @@
 
 namespace dai {
 
+LogLevel spdlogLevelToLogLevel(spdlog::level::level_enum level, LogLevel defaultValue = LogLevel::OFF);
+spdlog::level::level_enum logLevelToSpdlogLevel(LogLevel level, spdlog::level::level_enum defaultValue = spdlog::level::off);
+
 class Logging {
     // private constructor
     Logging();
