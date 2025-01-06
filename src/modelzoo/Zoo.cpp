@@ -116,7 +116,7 @@ class ZooManager {
      *
      * @return bool: True if internet is available
      */
-    bool internetIsAvailable() const;
+    static bool connectionToZooAvailable(); 
 
    private:
     // Description of the model
@@ -351,7 +351,7 @@ std::string getModelFromZoo(const NNModelDescription& modelDescription, bool use
     bool performInternetCheck = !(utility::getEnv("DEPTHAI_ZOO_INTERNET_CHECK") == "0");
 
     // Check if internet is available
-    bool internetIsAvailable = performInternetCheck && zooManager.internetIsAvailable();
+    bool internetIsAvailable = performInternetCheck && ZooManager::connectionToZooAvailable();
     nlohmann::json responseJson;
 
     if(internetIsAvailable) {
@@ -384,8 +384,14 @@ std::string getModelFromZoo(const NNModelDescription& modelDescription, bool use
         zooManager.removeModelCacheFolder();
     }
 
-    if(!internetIsAvailable) {
-        throw std::runtime_error("No internet connection available. Please check your network settings and try again.");
+    // Model is not cached and internet check is disabled
+    if(!performInternetCheck) {
+        throw std::runtime_error("Model no available. Please set DEPTHAI_ZOO_INTERNET_CHECK to 1 to download models from the model zoo.");
+    }
+
+    // Model is not cached and internet check is enabled but no internet connection is available
+    if(performInternetCheck && !internetIsAvailable) {
+        throw std::runtime_error("Model not available. No internet connection available. Could not connect to host: " + std::string(MODEL_ZOO_HEALTH_ENDPOINT));
     }
 
     // Create cache folder
@@ -430,7 +436,7 @@ void downloadModelsFromZoo(const std::string& path, const std::string& cacheDire
     }
 }
 
-bool ZooManager::internetIsAvailable() const {
+bool ZooManager::connectionToZooAvailable() {
     int timeoutMs = 1000;
     try {
         timeoutMs = std::stoi(utility::getEnv("DEPTHAI_ZOO_INTERNET_CHECK_TIMEOUT"));
@@ -444,14 +450,10 @@ bool ZooManager::internetIsAvailable() const {
     try {
         cpr::Response r = cpr::Get(cpr::Url{host}, cpr::Timeout{timeoutMs});
         connected = r.status_code == cpr::status::HTTP_OK;
-    } catch(const std::exception& e) {
-        // pass
+    } catch(const cpr::Error& e) {
+        // pass, we don't care about the error
     }
 
-    // Log if internet is not available
-    if(!connected) {
-        Logging::getInstance().logger.info("Internet connection not available. Could not connect to host: {}", host);
-    }
     return connected;
 }
 
