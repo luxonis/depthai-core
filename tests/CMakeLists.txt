@@ -272,7 +272,7 @@ dai_set_test_labels(model_slug_test onhost ci)
 
 # DepthAI logging test
 dai_add_test(logging_test src/ondevice_tests/logging_test.cpp)
-dai_set_test_labels(logging_test ondevice rvc2_all ci)
+dai_set_test_labels(logging_test ondevice rvc2_all rvc4 ci)
 
 # OpenVINO blob test
 dai_add_test(openvino_blob_test src/ondevice_tests/openvino_blob_test.cpp)
@@ -385,7 +385,22 @@ dai_set_test_labels(sync_test ondevice rvc2_all rvc4 ci)
 dai_add_test(bridge_large_messages src/ondevice_tests/bridge_large_messages.cpp)
 # Only test on RVC4, as RVC2 is not yet supported to auto-increase the max stream capacity
 dai_set_test_labels(bridge_large_messages ondevice rvc4 ci)
-
 # ImageAlign test
 dai_add_test(image_align_node_test src/ondevice_tests/image_align_node_test.cpp)
 dai_set_test_labels(image_align_node_test ondevice rvc2_all rvc4 ci)
+
+# Script node test
+dai_add_test(script_node_test src/ondevice_tests/script_node_test.cpp)
+dai_set_test_labels(script_node_test ondevice rvc2_all rvc4 ci)
+
+# StereoDepth test
+dai_add_test(stereo_depth_node_test src/ondevice_tests/stereo_depth_node_test.cpp)
+dai_set_test_labels(stereo_depth_node_test ondevice rvc2_all rvc4 ci)
+
+# ImageManipV2 test
+dai_add_test(image_manip_v2_node_test src/ondevice_tests/pipeline/node/image_manip_v2_test.cpp)
+dai_set_test_labels(image_manip_v2_node_test ondevice rvc2_all rvc4 ci)
+
+# Benchmark tests
+dai_add_test(benchmark_test src/ondevice_tests/pipeline/node/benchmark_test.cpp)
+dai_set_test_labels(benchmark_test ondevice rvc2_all rvc4 ci)

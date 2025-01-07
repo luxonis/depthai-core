@@ -14,13 +14,28 @@ endif()
 if(NOT CONFIG_MODE OR (CONFIG_MODE AND NOT DEPTHAI_SHARED_LIBS))
 
     if(DEPTHAI_BUILD_PYTHON)
+        # Some dependencies (xtensor) still use the old FindPythonInterp and FindPythonLibs
+        if(PYTHON_EXECUTABLE AND NOT Python_EXECUTABLE)
+            set(Python_EXECUTABLE ${PYTHON_EXECUTABLE})
+        endif()
+        if(DEPTHAI_NEW_FIND_PYTHON)
+            if(POLICY CMP0094)
+                cmake_policy(SET CMP0094 NEW)
+            endif()
+            set(Python_FIND_UNVERSIONED_NAMES FIRST)
+        endif()
+
+        if(DEPTHAI_PYTHON_EMBEDDED_MODULE)
+            find_package(Python COMPONENTS Interpreter Development.Embed REQUIRED)
+        else()
+            find_package(Python COMPONENTS Interpreter Development.Module REQUIRED)
+        endif()
         find_package(pybind11 CONFIG REQUIRED)
         # Print out the pybind11 version that was found
         message(STATUS "Found pybind11 v${pybind11_VERSION}")
     endif()
     # BZip2 (for bspatch)
     find_package(BZip2 ${_QUIET}  REQUIRED)
-    find_package(FFMPEG REQUIRED)
 
     find_package(lz4 CONFIG REQUIRED)
     # FP16 for conversions
@@ -58,6 +73,7 @@ if(NOT CONFIG_MODE OR (CONFIG_MODE AND NOT DEPTHAI_SHARED_LIBS))
     if(DEPTHAI_HAS_APRIL_TAG)
         find_package(apriltag ${_QUIET} CONFIG REQUIRED)
     endif()
+    find_package(magic_enum ${_QUIET} CONFIG REQUIRED)
 endif()
 
 # Xtensor

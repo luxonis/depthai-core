@@ -8,7 +8,15 @@ option(DEPTHAI_BASALT_SUPPORT "Enable optional Basalt support" OFF)
 option(DEPTHAI_ENABLE_PROTOBUF "Enable Protobuf support" ON)
 option(DEPTHAI_BUILD_PYTHON "Build python bindings" OFF)
 option(DEPTHAI_BUILD_TESTS "Build tests" OFF)
+option(DEPTHAI_OPENCV_SUPPORT "Enable optional OpenCV support" ON)
+option(DEPTHAI_PCL_SUPPORT "Enable optional PCL support" OFF)
 option(DEPTHAI_BOOTSTRAP_VCPKG "Automatically bootstrap VCPKG" ON)
+option(DEPTHAI_MERGED_TARGET "Enable merged target build" ON)
+option(DEPTHAI_NEW_FIND_PYTHON "Use new FindPython module" ON)
+
+if(NOT DEPTHAI_OPENCV_SUPPORT)
+    set(DEPTHAI_MERGED_TARGET OFF CACHE BOOL "Enable merged target build" FORCE)
+endif()
 
 set(DEPTHAI_HAS_APRIL_TAG ${DEPTHAI_ENABLE_APRIL_TAG})
 if(WIN32)
@@ -17,8 +25,17 @@ if(WIN32)
 
     # Statically compile vcruntime library
     add_compile_options(/MT)
-
 endif()
+
+find_program(CCACHE_PROGRAM ccache)
+
+if(CCACHE_PROGRAM)
+    message(STATUS "Using ccache: ${CCACHE_PROGRAM}")
+
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CCACHE_PROGRAM}")
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK "${CCACHE_PROGRAM}")
+endif()
+
 if(DEPTHAI_HAS_APRIL_TAG)
 list(APPEND VCPKG_MANIFEST_FEATURES "apriltag")
 endif()
@@ -28,6 +45,13 @@ endif()
 if(DEPTHAI_BASALT_SUPPORT)
 list(APPEND VCPKG_MANIFEST_FEATURES "basalt")
 endif()
+if(DEPTHAI_OPENCV_SUPPORT)
+list(APPEND VCPKG_MANIFEST_FEATURES "opencv-support")
+endif()
+if(DEPTHAI_PCL_SUPPORT)
+list(APPEND VCPKG_MANIFEST_FEATURES "pcl-support")
+endif()
+
 # Enable backward stack printing on crash
 if(ANDROID OR EMSCRIPTEN)
     # Backward not supported currently on Android
@@ -83,6 +107,12 @@ endif()
 
 if(DEPTHAI_ENABLE_PROTOBUF)
     option(DEPTHAI_ENABLE_REMOTE_CONNECTION "Enable Remote Connection support" ON)
+    if(DEPTHAI_ENABLE_CURL)
+        option(DEPTHAI_ENABLE_EVENTS_MANAGER "Enable Events Manager" ON)
+    else()
+        message(STATUS "Events Manager disabled because Protobuf & curl support is disabled.")
+        option(DEPTHAI_ENABLE_EVENTS_MANAGER "Enable Events Manager" OFF)
+    endif()
 else()
     option(DEPTHAI_ENABLE_REMOTE_CONNECTION "Enable Remote Connection support" OFF)
     message(STATUS "Remote Connection support disabled because Protobuf support is disabled.")
@@ -132,7 +162,7 @@ endif()
 # Create depthai project
 project(depthai VERSION "3.0.0" LANGUAGES CXX C)
 set(DEPTHAI_PRE_RELEASE_TYPE "alpha") # Valid options are "alpha", "beta", "rc", ""
-set(DEPTHAI_PRE_RELEASE_VERSION "8")
+set(DEPTHAI_PRE_RELEASE_VERSION "11")
 
 # Set DEPTHAI_VERSION universally, not conditionally
 set(DEPTHAI_VERSION ${PROJECT_VERSION}-${DEPTHAI_PRE_RELEASE_TYPE}.${DEPTHAI_PRE_RELEASE_VERSION})
@@ -237,10 +267,6 @@ endif()
 
 # Specify optional dependencies
 option(DEPTHAI_XTENSOR_SUPPORT "Enable optional xtensor support" ON)
-option(DEPTHAI_OPENCV_SUPPORT "Enable optional OpenCV support" ON)
-option(DEPTHAI_PCL_SUPPORT "Enable optional PCL support" OFF)
-
-option(DEPTHAI_MERGED_TARGET "Enable merged target build" ON)
 
 # Include project dependencies
 set(DEPTHAI_DEPENDENCY_INCLUDE "" CACHE FILEPATH "Optional cmake file to append to dependency processing, e.g. additional find_package()")
@@ -271,10 +297,6 @@ set(THIRDPARTY_OPENCV_LIBRARIES "" CACHE STRING "Optional libraries to link Open
 set(TARGET_OPENCV_NAME ${PROJECT_NAME}-opencv)
 set(TARGET_OPENCV_ALIAS opencv)
 if(DEPTHAI_OPENCV_SUPPORT)
-    # Check if required libraries are available
-    if(UNIX AND NOT APPLE)
-        set(CMAKE_SHARED_LINKER_FLAGS "-Wl,-Bsymbolic") # for FFMPEG
-    endif()
     set(REQUIRED_OPENCV_LIBRARIES "opencv_core" "opencv_imgproc" "opencv_videoio" "opencv_highgui")
     set(OPENCV_SUPPORT_AVAILABLE ${OpenCV_FOUND})
     foreach(lib ${REQUIRED_OPENCV_LIBRARIES})
@@ -346,7 +368,8 @@ set(TARGET_CORE_SOURCES
     src/pipeline/node/DetectionNetwork.cpp
     src/pipeline/node/Script.cpp
     src/pipeline/node/Pool.cpp
-    src/pipeline/node/Benchmark.cpp
+    src/pipeline/node/BenchmarkIn.cpp
+    src/pipeline/node/BenchmarkOut.cpp
     src/pipeline/node/SpatialDetectionNetwork.cpp
     src/pipeline/node/SystemLogger.cpp
     src/pipeline/node/SpatialLocationCalculator.cpp
@@ -428,6 +451,12 @@ set(TARGET_CORE_SOURCES
     src/modelzoo/Zoo.cpp
 )
 
+if(DEPTHAI_ENABLE_EVENTS_MANAGER)
+    list(APPEND TARGET_CORE_SOURCES
+        src/utility/EventsManager.cpp
+    )
+endif()
+
 if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
     list(APPEND TARGET_CORE_SOURCES
         src/remote_connection/RemoteConnection.cpp
@@ -498,8 +527,8 @@ if(${CMAKE_VERSION} VERSION_LESS "3.8.0")
 else()
     target_compile_features(${TARGET_CORE_NAME} INTERFACE cxx_std_17)
 endif()
-# Minimal supported macOS SDK version for C++17 support with std::filesystem
-set(CMAKE_OSX_DEPLOYMENT_TARGET 10.15)
+# Minimal supported macOS SDK version for both arm64 and x86_64
+set(CMAKE_OSX_DEPLOYMENT_TARGET 11.0)
 
 # Link merged target libraries and add compile definitions
 if(DEPTHAI_HAVE_OPENCV_SUPPORT AND DEPTHAI_MERGED_TARGET)
@@ -739,6 +768,7 @@ target_link_libraries(${TARGET_CORE_NAME}
         httplib::httplib
         mp4v2::mp4v2
         semver::semver
+        magic_enum::magic_enum
 )
 
 if(DEPTHAI_ENABLE_PROTOBUF)

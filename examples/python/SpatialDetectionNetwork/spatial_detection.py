@@ -80,9 +80,11 @@ with dai.Pipeline() as p:
     visualizer = p.create(SpatialVisualizer)
 
     # setting node configs
-    stereo.setDefaultProfilePreset(dai.node.StereoDepth.PresetMode.HIGH_DENSITY)
     stereo.setExtendedDisparity(True)
-    stereo.setOutputSize(640, 400)
+    platform = p.getDefaultDevice().getPlatform()
+    if platform == dai.Platform.RVC2:
+        # For RVC2, width must be divisible by 16
+        stereo.setOutputSize(640, 400)
 
     spatialDetectionNetwork.input.setBlocking(False)
     spatialDetectionNetwork.setBoundingBoxScaleFactor(0.5)

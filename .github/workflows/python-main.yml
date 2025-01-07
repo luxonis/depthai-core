@@ -199,7 +199,7 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        python-version: [3.7, 3.8, 3.9, '3.10', '3.11', '3.12']
+        python-version: [3.7, 3.8, 3.9, '3.10', '3.11', '3.12', '3.13']
         # python-architecture: [x64, x86]
         python-architecture: [x64] # TODO(Morato) - re-enable x86 - it complains that OpenCV even though it's 32 bit is not compatible
       fail-fast: false
@@ -265,7 +265,7 @@ jobs:
     needs: build-docstrings
     strategy:
       matrix:
-        python-version: [3.8, 3.9, '3.10', '3.11', '3.12']
+        python-version: [3.8, 3.9, '3.10', '3.11', '3.12', '3.13']
         os: [macos-13, macos-14] # macos-13 is x64, macos-14 is arm64
       fail-fast: false
     runs-on: ${{ matrix.os }}
@@ -405,7 +405,7 @@ jobs:
         PLAT: manylinux_2_28_x86_64
     strategy:
       matrix:
-        python-set: ["7", "8", "9", "10", "11", "12"]
+        python-set: ["cp37-cp37m", "cp38-cp38", "cp39-cp39", "cp310-cp310", "cp311-cp311", "cp312-cp312", "cp313-cp313"]
     env:
       DEPTHAI_BUILD_BASALT: ON
       DEPTHAI_BUILD_PCL: ON
@@ -454,7 +454,7 @@ jobs:
           mv dist/* wheelhouse/audited/
       - name: Build wheels
         run: |
-          cd bindings/python && for PYBIN in /opt/python/cp3${{ matrix.python-set }}*/bin; do "${PYBIN}/pip" wheel . -w ./wheelhouse/ --verbose; done
+          cd bindings/python && for PYBIN in /opt/python/${{ matrix.python-set }}/bin; do "${PYBIN}/pip" wheel . -w ./wheelhouse/ --verbose; done
 
       - name: Audit wheels
         run: cd bindings/python && for whl in wheelhouse/*.whl; do auditwheel repair "$whl" --plat $PLAT -w wheelhouse/audited/; done
@@ -485,7 +485,7 @@ jobs:
         - /.hunter:/github/home/.hunter
     strategy:
       matrix:
-        python-set: ["7", "8", "9", "10", "11", "12"]
+        python-set: ["cp37-cp37m", "cp38-cp38", "cp39-cp39", "cp310-cp310", "cp311-cp311", "cp312-cp312", "cp313-cp313"]
     env:
       # workaround required for cache@v3, https://github.com/actions/cache/issues/1428
       VCPKG_FORCE_SYSTEM_BINARIES: "1" # Needed so vpckg can bootstrap itself
@@ -533,7 +533,7 @@ jobs:
         run: echo "BUILD_COMMIT_HASH=${{github.sha}}" >> $GITHUB_ENV
       - name: Building wheels
         run: |
-          cd bindings/python && for PYBIN in /opt/python/cp3${{ matrix.python-set }}*/bin; do "${PYBIN}/pip" wheel . -w ./wheelhouse/ --verbose; done
+          cd bindings/python && for PYBIN in /opt/python/${{ matrix.python-set }}/bin; do "${PYBIN}/pip" wheel . -w ./wheelhouse/ --verbose; done
       - name: Auditing wheels
         run: cd bindings/python && for whl in wheelhouse/*.whl; do auditwheel repair "$whl" --plat $PLAT -w wheelhouse/audited/; done
       - name: Archive wheel artifacts

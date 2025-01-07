@@ -147,6 +147,9 @@ set(SOURCE_LIST
 
     src/modelzoo/NNModelDescriptionBindings.cpp
     src/modelzoo/ZooBindings.cpp
+
+    src/remote_connection/RemoteConnectionBindings.cpp
+    src/utility/EventsManagerBindings.cpp
 )
 if(DEPTHAI_MERGED_TARGET)
     list(APPEND SOURCE_LIST
@@ -276,11 +279,6 @@ if(DEPTHAI_MERGED_TARGET)
     target_include_directories(${TARGET_NAME} PRIVATE external/pybind11_opencv_numpy)
 endif()
 
-if(UNIX AND NOT APPLE)
-    # Add -Bsymbolic for FFMPEG linking
-    target_link_options(${TARGET_NAME} PRIVATE "LINKER:-Bsymbolic")
-endif()
-
 set(DEPTHAI_LINK_TARGET depthai::core)
 if(NOT DEPTHAI_MERGED_TARGET)
     list(APPEND DEPTHAI_LINK_TARGET depthai::opencv)
@@ -311,6 +309,9 @@ endif()
 
 if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
     target_compile_definitions(${TARGET_NAME} PRIVATE DEPTHAI_ENABLE_REMOTE_CONNECTION)
+endif()
+if(DEPTHAI_ENABLE_EVENTS_MANAGER)
+    target_compile_definitions(${TARGET_NAME} PRIVATE DEPTHAI_ENABLE_EVENTS_MANAGER)
 endif()
 
 # Find Git
