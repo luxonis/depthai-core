@@ -8,5 +8,10 @@ if(PORT MATCHES "libusb|ffmpeg")
     set(VCPKG_LIBRARY_LINKAGE dynamic)
     set(VCPKG_FIXUP_ELF_RPATH ON)
 endif()
+if(PORT MATCHES "vulkan-loader")
+    # set env variable for pkg config
+    set(ENV{PKG_CONFIG_DEBUG_SPEW} 1)
+    set(CMAKE_FIND_DEBUG_MODE ON)
+endif()
 
 set(VCPKG_CMAKE_SYSTEM_NAME Linux)
