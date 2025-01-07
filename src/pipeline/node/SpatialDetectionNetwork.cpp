@@ -56,8 +56,30 @@ std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build(const st
                                                                         float fps) {
     neuralNetwork->build(camera, nnArchive, fps);
     detectionParser->setNNArchive(nnArchive);
-    stereo->depth.link(inputDepth);
-    stereo->setDepthAlign(camera->getBoardSocket());
+    auto device = getDevice();
+    if(device) {
+        auto platform = device->getPlatform();
+        switch(platform) {
+            case Platform::RVC4: {
+                Subnode<ImageAlign>& _depthAlign = *depthAlign;
+                stereo->depth.link(_depthAlign->input);
+                neuralNetwork->passthrough.link(_depthAlign->inputAlignTo);
+                _depthAlign->outputAligned.link(inputDepth);
+            } break;
+            case Platform::RVC2:
+                stereo->depth.link(inputDepth);
+                neuralNetwork->passthrough.link(stereo->inputAlignTo);
+                break;
+            case Platform::RVC3:
+            default:
+                throw std::runtime_error("Unsupported platform");
+                break;
+        }
+
+    } else {
+        stereo->depth.link(inputDepth);
+        stereo->setDepthAlign(camera->getBoardSocket());
+    }
     return std::static_pointer_cast<SpatialDetectionNetwork>(shared_from_this());
 }
 

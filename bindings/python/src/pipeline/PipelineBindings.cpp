@@ -123,11 +123,7 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack){
                  d.wait();
              })
         //.def(py::init<const Pipeline&>())
-        .def("getDefaultDevice", [](Pipeline& p) -> py::object {
-            auto device = p.getDefaultDevice();
-            if(!device) return py::none();
-            return py::cast(device);
-        }, DOC(dai, Pipeline, getDefaultDevice))
+        .def("getDefaultDevice", &Pipeline::getDefaultDevice, DOC(dai, Pipeline, getDefaultDevice))
         .def("getGlobalProperties", &Pipeline::getGlobalProperties, DOC(dai, Pipeline, getGlobalProperties))
         //.def("create", &Pipeline::create<node::XLinkIn>)
         .def("remove", &Pipeline::remove, py::arg("node"), DOC(dai, Pipeline, remove))
@@ -244,7 +240,7 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack){
                  py::gil_scoped_release release;
                  p.wait();
              })
-        .def("stop", &Pipeline::stop)
+        .def("stop", &Pipeline::stop, py::call_guard<py::gil_scoped_release>(), DOC(dai, Pipeline, stop))
         .def("run",
              [](Pipeline& p) {
                  {
@@ -262,6 +258,8 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack){
                  }
                  p.stop();
              })
+        .def("build", &Pipeline::build)
+        .def("isBuilt", &Pipeline::isBuilt)
         .def("isRunning", &Pipeline::isRunning)
         .def("processTasks", &Pipeline::processTasks, py::arg("waitForTasks") = false, py::arg("timeoutSeconds") = -1.0)
         .def("enableHolisticRecord", &Pipeline::enableHolisticRecord, py::arg("recordConfig"), DOC(dai, Pipeline, enableHolisticRecord))

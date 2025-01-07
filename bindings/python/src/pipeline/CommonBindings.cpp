@@ -192,9 +192,9 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack){
         .def_readwrite("qz", &Quaterniond::qz)
         .def_readwrite("qw", &Quaterniond::qw)
         ;
-    size2f
-        .def(py::init<>())
-        .def(py::init<float, float>())
+    size2f.def(py::init<>())
+        .def(py::init<float, float>(), py::arg("width"), py::arg("height"))
+        .def(py::init<float, float, bool>(), py::arg("width"), py::arg("height"), py::arg("normalized"))
         .def_readwrite("width", &Size2f::width)
         .def_readwrite("height", &Size2f::height)
         .def("isNormalized", &Size2f::isNormalized)
