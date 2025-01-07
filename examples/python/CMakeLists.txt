@@ -147,6 +147,8 @@ dai_set_example_test_labels(april_tags_replay ondevice rvc2_all rvc4 ci)
 ## Detection network
 add_python_example(detection_network DetectionNetwork/detection_network.py)
 dai_set_example_test_labels(detection_network ondevice rvc2_all rvc4 ci)
+add_python_example(detection_network_remap DetectionNetwork/detection_network_remap.py)
+dai_set_example_test_labels(detection_network ondevice rvc2_all rvc4 ci)
 
 ## Host nodes
 add_python_example(display HostNodes/display.py)
