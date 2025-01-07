@@ -10,6 +10,7 @@
 #include "foxglove/websocket/common.hpp"
 #include "pipeline/datatype/Buffer.hpp"
 #include "pipeline/datatype/ImgAnnotations.hpp"
+#include "utility/ErrorMacros.hpp"
 #include "utility/Logging.hpp"
 #include "utility/ProtoSerializable.hpp"
 #include "utility/Resources.hpp"
@@ -352,6 +353,10 @@ void RemoteConnectionImpl::exposeKeyPressedService() {
 }
 
 void RemoteConnectionImpl::exposePipelineService(const Pipeline& pipeline) {
+    // Make sure pipeline is built so that we can serialize it.
+    // If not built, an error is thrown is case there are host -> device or device -> host connections.
+    DAI_CHECK(pipeline.isBuilt(), "Pipeline is not built. Call Pipeline::build first!");
+
     std::vector<foxglove::ServiceWithoutId> services;
     auto pipelineService = foxglove::ServiceWithoutId();
     pipelineService.name = "pipelineSchema";

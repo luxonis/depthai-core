@@ -240,7 +240,7 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack){
                  py::gil_scoped_release release;
                  p.wait();
              })
-        .def("stop", &Pipeline::stop)
+        .def("stop", &Pipeline::stop, py::call_guard<py::gil_scoped_release>(), DOC(dai, Pipeline, stop))
         .def("run",
              [](Pipeline& p) {
                  {
@@ -258,6 +258,8 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack){
                  }
                  p.stop();
              })
+        .def("build", &Pipeline::build)
+        .def("isBuilt", &Pipeline::isBuilt)
         .def("isRunning", &Pipeline::isRunning)
         .def("processTasks", &Pipeline::processTasks, py::arg("waitForTasks") = false, py::arg("timeoutSeconds") = -1.0)
         .def("enableHolisticRecord", &Pipeline::enableHolisticRecord, py::arg("recordConfig"), DOC(dai, Pipeline, enableHolisticRecord))
