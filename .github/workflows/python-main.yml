@@ -534,6 +534,30 @@ jobs:
       - name: Building wheels
         run: |
           cd bindings/python && for PYBIN in /opt/python/${{ matrix.python-set }}/bin; do "${PYBIN}/pip" wheel . -w ./wheelhouse/ --verbose; done
+      - name: Print logs for the failed port(s) only
+        if: failure()    # Only run this if the build step fails
+        run: |
+          echo "Searching vcpkg-manifest-install.log for failing port logs..."
+          LOGFILE=$(find . -name "vcpkg-manifest-install.log" | head -n 1)
+          if [ -z "$LOGFILE" ]; then
+            echo "No vcpkg-manifest-install.log found!"
+            exit 1
+          fi
+
+          # 1) Grab lines following "See logs for more information:"
+          # 2) From those lines, extract only the file paths ending in ".log"
+          # 3) Remove any leading spaces
+          grep -A8 "See logs for more information:" $LOGFILE \
+            | grep "\.log" \
+            | sed 's/^[[:space:]]*//' \
+            > failed_logs.txt
+
+          # Now read each log path we found, and print it
+          while IFS= read -r log; do
+            echo "==== Showing log: $log ===="
+            cat "$log" || true
+            echo
+          done < failed_logs.txt
       - name: Auditing wheels
         run: cd bindings/python && for whl in wheelhouse/*.whl; do auditwheel repair "$whl" --plat $PLAT -w wheelhouse/audited/; done
       - name: Archive wheel artifacts
