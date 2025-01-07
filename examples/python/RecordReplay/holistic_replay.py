@@ -11,13 +11,8 @@ args = parser.parse_args()
 # Create pipeline
 with dai.Pipeline(True) as pipeline:
     # Define source and output
-    camRgb = pipeline.create(dai.node.ColorCamera)
-
-    # Properties
-    camRgb.setBoardSocket(dai.CameraBoardSocket.CAM_A)
-    camRgb.setResolution(dai.ColorCameraProperties.SensorResolution.THE_1080_P)
-    camRgb.setVideoSize(1920, 1080)
-    camRgb.setFps(30)
+    camRgb = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
+    camRgbOut = camRgb.requestOutput((1920, 1080), fps = 30)
 
     imu = pipeline.create(dai.node.IMU)
     imu.enableIMUSensor(dai.IMUSensor.ACCELEROMETER_RAW, 500);
@@ -25,7 +20,7 @@ with dai.Pipeline(True) as pipeline:
 
     pipeline.enableHolisticReplay(args.source)
 
-    videoQueue = camRgb.preview.createOutputQueue()
+    videoQueue = camRgbOut.createOutputQueue()
     imuQueue = imu.out.createOutputQueue()
 
     # Connect to device and start pipeline
