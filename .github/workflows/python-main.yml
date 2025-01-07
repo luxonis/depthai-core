@@ -505,7 +505,7 @@ jobs:
         with:
           submodules: 'recursive'
       - name: Installing libusb1-devel dependency
-        run: yum install -y libusb1-devel perl-core curl zip unzip tar  zlib-devel curl-devel xcb-util-renderutil-devel xcb-util-devel xcb-util-image-devel xcb-util-keysyms-devel xcb-util-wm-devel mesa-libGL-devel libxkbcommon-devel libxkbcommon-x11-devel libXi-devel libXrandr-devel libXtst-devel libudev-devel lapack-devel nasm libtool autoconf automake
+        run: yum install -y libusb1-devel perl-core curl zip unzip tar  zlib-devel curl-devel xcb-util-renderutil-devel xcb-util-devel xcb-util-image-devel xcb-util-keysyms-devel xcb-util-wm-devel mesa-libGL-devel libxkbcommon-devel libxkbcommon-x11-devel libXi-devel libXrandr-devel libXtst-devel libudev-devel lapack-devel nasm libtool autoconf automake libX11-devel pkgconfig xcb-proto xorg-x11-proto-devel wayland-devel wayland-protocols-devel
       - name: Installing cmake dependency
         run: |
           cd bindings/python
