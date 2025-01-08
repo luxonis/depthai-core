@@ -6,10 +6,11 @@ import numpy as np
 # Create pipeline
 pipeline = dai.Pipeline()
 
-camRgb = pipeline.create(dai.node.ColorCamera)
-camRgb.setPreviewSize(496, 496)
-camRgb.setInterleaved(False)
-maxFrameSize = camRgb.getPreviewWidth() * camRgb.getPreviewHeight() * 3
+width, height = 496, 496
+camRgb = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
+maxFrameSize = width * height * 3
+
+cameraOutput = camRgb.requestOutput((width,height),type=dai.ImgFrame.Type.BGR888p)
 
 # Warp preview frame 1
 warp1 = pipeline.create(dai.node.Warp)
@@ -27,7 +28,7 @@ warp1.setMaxOutputFrameSize(WARP1_OUTPUT_FRAME_SIZE[0] * WARP1_OUTPUT_FRAME_SIZE
 warp1.setHwIds([1])
 warp1.setInterpolation(dai.Interpolation.NEAREST_NEIGHBOR)
 
-camRgb.preview.link(warp1.inputImage)
+cameraOutput.link(warp1.inputImage)
 outQueue1 = warp1.out.createOutputQueue()
 
 # Warp preview frame 2
@@ -43,7 +44,7 @@ warp2.setMaxOutputFrameSize(maxFrameSize)
 warp1.setHwIds([2])
 warp2.setInterpolation(dai.Interpolation.BICUBIC)
 
-camRgb.preview.link(warp2.inputImage)
+cameraOutput.link(warp2.inputImage)
 outQueue2 = warp2.out.createOutputQueue()
 
 pipeline.start()
