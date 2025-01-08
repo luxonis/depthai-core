@@ -33,6 +33,14 @@ jobs:
           sudo apt update
           sudo apt install -y libusb-1.0-0-dev pkg-config
 
+      - name: Installing libusb1-devel dependency
+        run: yum install -y libusb1-devel perl-core curl zip unzip tar ninja-build  zlib-devel curl-devel xcb-util-renderutil-devel xcb-util-devel xcb-util-image-devel xcb-util-keysyms-devel xcb-util-wm-devel mesa-libGL-devel libxkbcommon-devel libxkbcommon-x11-devel libXi-devel libXrandr-devel libXtst-devel libudev-devel lapack-devel nasm libtool autoconf automake
+      
+      - name: Installing cmake dependency
+        run: |
+          /opt/python/cp38-cp38/bin/python3.8 -m pip install cmake
+          ln -s /opt/python/cp38-cp38/bin/cmake /bin/
+
       - name: Configure project
         run: cmake -S . -B build -DDEPTHAI_ENABLE_CURL=ON
 
