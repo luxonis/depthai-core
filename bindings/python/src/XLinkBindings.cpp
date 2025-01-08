@@ -147,7 +147,7 @@ void XLinkBindings::bind(pybind11::module &m, void *pCallstack)
         .def(py::init<const DeviceInfo &>())
         .def_static("getAllConnectedDevices", &XLinkConnection::getAllConnectedDevices, py::arg("state") = X_LINK_ANY_STATE, py::arg("skipInvalidDevices") = true)
         .def_static("getFirstDevice", &XLinkConnection::getFirstDevice, py::arg("state") = X_LINK_ANY_STATE, py::arg("skipInvalidDevice") = true)
-        .def_static("getDeviceByDeviceId", &XLinkConnection::getDeviceByDeviceId, py::arg("deviceId"), py::arg("state") = X_LINK_ANY_STATE, py::arg("skipInvalidDevice") = true)
+        .def_static("getDeviceById", &XLinkConnection::getDeviceById, py::arg("deviceId"), py::arg("state") = X_LINK_ANY_STATE, py::arg("skipInvalidDevice") = true)
         .def_static("bootBootloader", &XLinkConnection::bootBootloader, py::arg("devInfo"))
         .def_static("getGlobalProfilingData", &XLinkConnection::getGlobalProfilingData, DOC(dai, XLinkConnection, getGlobalProfilingData))
         ;

@@ -156,7 +156,7 @@ def stress_test(deviceId: str = ""):
     exp_time = 20000
 
     import time
-    success, device_info = dai.Device.getDeviceByDeviceId(deviceId)
+    success, device_info = dai.Device.getDeviceById(deviceId)
     cam_args = []  # Device info or no args at all
     if success:
         cam_args.append(device_info)

@@ -123,7 +123,7 @@ class DeviceBase {
      * @param deviceId Device ID which uniquely specifies a device
      * @returns Tuple of bool and DeviceInfo. Bool specifies if device was found. DeviceInfo specifies the found device
      */
-    static std::tuple<bool, DeviceInfo> getDeviceByDeviceId(std::string deviceId);
+    static std::tuple<bool, DeviceInfo> getDeviceById(std::string deviceId);
 
     /**
      * Returns all available devices

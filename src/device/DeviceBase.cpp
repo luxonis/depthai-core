@@ -247,13 +247,13 @@ std::vector<DeviceInfo> DeviceBase::getAllConnectedDevices() {
 }
 
 // First tries to find UNBOOTED device with deviceId, then BOOTLOADER device with deviceId
-std::tuple<bool, DeviceInfo> DeviceBase::getDeviceByDeviceId(std::string deviceId) {
+std::tuple<bool, DeviceInfo> DeviceBase::getDeviceById(std::string deviceId) {
     std::vector<DeviceInfo> availableDevices;
     auto states = {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_GATE};
     bool found;
     DeviceInfo dev;
     for(const auto& state : states) {
-        std::tie(found, dev) = XLinkConnection::getDeviceByDeviceId(deviceId, state);
+        std::tie(found, dev) = XLinkConnection::getDeviceById(deviceId, state);
         if(found) return {true, dev};
     }
     return {false, DeviceInfo()};
@@ -620,7 +620,7 @@ void DeviceBase::closeImpl() {
             bool found = false;
             do {
                 DeviceInfo rebootingDeviceInfo;
-                std::tie(found, rebootingDeviceInfo) = XLinkConnection::getDeviceByDeviceId(deviceInfo.getDeviceId(), X_LINK_ANY_STATE, false);
+                std::tie(found, rebootingDeviceInfo) = XLinkConnection::getDeviceById(deviceInfo.getDeviceId(), X_LINK_ANY_STATE, false);
                 if(found && (rebootingDeviceInfo.state == X_LINK_UNBOOTED || rebootingDeviceInfo.state == X_LINK_BOOTLOADER)) {
                     pimpl->logger.trace("Found rebooting device in {}ns", duration_cast<nanoseconds>(steady_clock::now() - t1).count());
                     DeviceBase rebootingDevice(config, rebootingDeviceInfo, firmwarePath, true);

@@ -273,7 +273,7 @@ std::tuple<bool, DeviceInfo> XLinkConnection::getFirstDevice(XLinkDeviceState_t 
     return {false, {}};
 }
 
-std::tuple<bool, DeviceInfo> XLinkConnection::getDeviceByDeviceId(std::string deviceId, XLinkDeviceState_t state, bool skipInvalidDevices) {
+std::tuple<bool, DeviceInfo> XLinkConnection::getDeviceById(std::string deviceId, XLinkDeviceState_t state, bool skipInvalidDevices) {
     initialize();
 
     DeviceInfo dev;
@@ -422,7 +422,7 @@ void XLinkConnection::close() {
             bool found = false;
             do {
                 DeviceInfo rebootingDeviceInfo;
-                std::tie(found, rebootingDeviceInfo) = XLinkConnection::getDeviceByDeviceId(deviceInfo.getDeviceId(), X_LINK_ANY_STATE, false);
+                std::tie(found, rebootingDeviceInfo) = XLinkConnection::getDeviceById(deviceInfo.getDeviceId(), X_LINK_ANY_STATE, false);
                 if(found) {
                     if(rebootingDeviceInfo.state == X_LINK_UNBOOTED || rebootingDeviceInfo.state == X_LINK_BOOTLOADER) {
                         break;
