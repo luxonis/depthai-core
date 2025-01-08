@@ -8,6 +8,22 @@ class TestPassthrough(dai.node.ThreadedHostNode):
         self.input = self.createInput()
         self.output = self.createOutput()
 
+        # Possible API 1:
+        self.input.setPossibleDatatypes([dai.Node.DatatypeHierarchy(dai.DatatypeEnum.ImgFrame, True)])
+        self.output.setPossibleDatatypes([dai.Node.DatatypeHierarchy(dai.DatatypeEnum.ImgFrame, True)])
+
+        # Possible API 2:
+        self.input.setPossibleDatatypes([
+            (dai.DatatypeEnum.ImgFrame, True),
+            (dai.DatatypeEnum.Buffer, True)
+        ])
+        self.output.setPossibleDatatypes([
+            (dai.DatatypeEnum.ImgFrame, True),
+            (dai.DatatypeEnum.Buffer, True)
+        ])
+
+
+
     def onStart(self):
         print("Hello, this is", self.name)
 
@@ -24,6 +40,7 @@ class TestSink(dai.node.ThreadedHostNode):
     def __init__(self, name: str):
         super().__init__()
         self.input = self.createInput()
+
         self.name = name
 
     def onStart(self):
