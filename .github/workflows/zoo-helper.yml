@@ -1,4 +1,4 @@
-name: Zoo Helper Build
+name: Zoo Helper
 
 on:
   workflow_dispatch:
@@ -38,10 +38,3 @@ jobs:
 
       - name: Build zoo_helper
         run: cmake --build build --target zoo_helper --parallel 4
-
-      - name: Upload zoo_helper artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: zoo_helper
-          path: build/zoo_helper
-          retention-days: 7
