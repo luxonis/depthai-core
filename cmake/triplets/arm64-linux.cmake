@@ -12,7 +12,8 @@ if(PORT MATCHES "vulkan-loader")
     # set env variable for pkg config
     set(ENV{PKG_CONFIG_DEBUG_SPEW} 1)
     set(CMAKE_FIND_DEBUG_MODE ON)
-    set(PKG_CONFIG_EXECUTABLE /usr/bin/pkg-config)
+    set(VCPKG_CMAKE_CONFIGURE_OPTIONS "-DPKG_CONFIG_EXECUTABLE=/usr/bin/pkg-config")
+
 endif()
 
 set(VCPKG_CMAKE_SYSTEM_NAME Linux)
