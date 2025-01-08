@@ -7,7 +7,7 @@ with dai.Pipeline() as pipeline:
     imu = pipeline.create(dai.node.IMU)
 
     # enable ACCELEROMETER_RAW at 500 hz rate
-    imu.enableIMUSensor(dai.IMUSensor.ACCELEROMETER_RAW, 500)
+    imu.enableIMUSensor(dai.IMUSensor.ACCELEROMETER_RAW, 480)
     # enable GYROSCOPE_RAW at 400 hz rate
     imu.enableIMUSensor(dai.IMUSensor.GYROSCOPE_RAW, 400)
     # it's recommended to set both setBatchReportThreshold and setMaxBatchReports to 20 when integrating in a pipeline with a lot of input/output connections
