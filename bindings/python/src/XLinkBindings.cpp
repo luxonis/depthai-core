@@ -60,7 +60,7 @@ void XLinkBindings::bind(pybind11::module &m, void *pCallstack)
              py::arg("platform"),
              py::arg("status"),
              DOC(dai, DeviceInfo, DeviceInfo, 2))
-        .def(py::init<std::string>(), py::arg("mxidOrName"), DOC(dai, DeviceInfo, DeviceInfo, 3))
+        .def(py::init<std::string>(), py::arg("deviceIdOrName"), DOC(dai, DeviceInfo, DeviceInfo, 3))
         .def(py::init<const deviceDesc_t&>(), DOC(dai, DeviceInfo, DeviceInfo, 4))
         .def("getMxId", [](DeviceInfo& info) { PyErr_WarnEx(PyExc_DeprecationWarning, "getMxId is deprecated, use getDeviceId instead.", 1); return info.getMxId(); }, DOC(dai, DeviceInfo, getMxId))
         .def("getDeviceId", &DeviceInfo::getDeviceId, DOC(dai, DeviceInfo, getDeviceId))
@@ -147,7 +147,7 @@ void XLinkBindings::bind(pybind11::module &m, void *pCallstack)
         .def(py::init<const DeviceInfo &>())
         .def_static("getAllConnectedDevices", &XLinkConnection::getAllConnectedDevices, py::arg("state") = X_LINK_ANY_STATE, py::arg("skipInvalidDevices") = true)
         .def_static("getFirstDevice", &XLinkConnection::getFirstDevice, py::arg("state") = X_LINK_ANY_STATE, py::arg("skipInvalidDevice") = true)
-        .def_static("getDeviceByMxId", &XLinkConnection::getDeviceByMxId, py::arg("mxId"), py::arg("state") = X_LINK_ANY_STATE, py::arg("skipInvalidDevice") = true)
+        .def_static("getDeviceByDeviceId", &XLinkConnection::getDeviceByDeviceId, py::arg("deviceId"), py::arg("state") = X_LINK_ANY_STATE, py::arg("skipInvalidDevice") = true)
         .def_static("bootBootloader", &XLinkConnection::bootBootloader, py::arg("devInfo"))
         .def_static("getGlobalProfilingData", &XLinkConnection::getGlobalProfilingData, DOC(dai, XLinkConnection, getGlobalProfilingData))
         ;

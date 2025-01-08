@@ -158,7 +158,7 @@ class SearchDevice:
         self.infos = []
         layout = [
             [sg.Text("Select an OAK camera you would like to connect to.", font=('Arial', 10, 'bold'))],
-            [sg.Table(values=[], headings=["MxId", "Name", "State"],
+            [sg.Table(values=[], headings=["DeviceId", "Name", "State"],
                 # col_widths=[25, 17, 17],
                 # def_col_width=25,
                 # max_col_width=200,

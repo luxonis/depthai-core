@@ -41,13 +41,13 @@ DeviceInfo::DeviceInfo(std::string name, std::string deviceId, XLinkDeviceState_
 
 DeviceInfo::DeviceInfo(std::string deviceIdOrName) {
     // Parse parameter and set to ip if any dots found
-    // mxid doesn't have a dot in the name
+    // deviceId doesn't have a dot in the name
     if(deviceIdOrName.find(".") != std::string::npos) {
         // This is reasoned as an IP address or USB path (name). Set rest of info accordingly
         name = std::move(deviceIdOrName);
         deviceId = "";
     } else {
-        // This is reasoned as mxid
+        // This is reasoned as deviceId
         name = "";
         deviceId = std::move(deviceIdOrName);
     }
@@ -273,11 +273,11 @@ std::tuple<bool, DeviceInfo> XLinkConnection::getFirstDevice(XLinkDeviceState_t 
     return {false, {}};
 }
 
-std::tuple<bool, DeviceInfo> XLinkConnection::getDeviceByMxId(std::string mxId, XLinkDeviceState_t state, bool skipInvalidDevices) {
+std::tuple<bool, DeviceInfo> XLinkConnection::getDeviceByDeviceId(std::string deviceId, XLinkDeviceState_t state, bool skipInvalidDevices) {
     initialize();
 
     DeviceInfo dev;
-    dev.deviceId = mxId;
+    dev.deviceId = deviceId;
     dev.state = state;
 
     deviceDesc_t desc = {};
@@ -422,7 +422,7 @@ void XLinkConnection::close() {
             bool found = false;
             do {
                 DeviceInfo rebootingDeviceInfo;
-                std::tie(found, rebootingDeviceInfo) = XLinkConnection::getDeviceByMxId(deviceInfo.getDeviceId(), X_LINK_ANY_STATE, false);
+                std::tie(found, rebootingDeviceInfo) = XLinkConnection::getDeviceByDeviceId(deviceInfo.getDeviceId(), X_LINK_ANY_STATE, false);
                 if(found) {
                     if(rebootingDeviceInfo.state == X_LINK_UNBOOTED || rebootingDeviceInfo.state == X_LINK_BOOTLOADER) {
                         break;

@@ -119,11 +119,11 @@ class DeviceBase {
     static std::tuple<bool, DeviceInfo> getFirstAvailableDevice(bool skipInvalidDevice = true);
 
     /**
-     * Finds a device by MX ID. Example: 14442C10D13EABCE00
-     * @param mxId MyraidX ID which uniquely specifies a device
+     * Finds a device by Device ID. Example: 14442C10D13EABCE00
+     * @param deviceId Device ID which uniquely specifies a device
      * @returns Tuple of bool and DeviceInfo. Bool specifies if device was found. DeviceInfo specifies the found device
      */
-    static std::tuple<bool, DeviceInfo> getDeviceByMxId(std::string mxId);
+    static std::tuple<bool, DeviceInfo> getDeviceByDeviceId(std::string deviceId);
 
     /**
      * Returns all available devices
