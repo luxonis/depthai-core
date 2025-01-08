@@ -33,17 +33,14 @@ with dai.Pipeline() as pipeline:
             acceleroValues = imuPacket.acceleroMeter
             gyroValues = imuPacket.gyroscope
 
-            acceleroTs = acceleroValues.getTimestampDevice()
-            gyroTs = gyroValues.getTimestampDevice()
-            if baseTs is None:
-                baseTs = acceleroTs if acceleroTs < gyroTs else gyroTs
-            acceleroTs = timeDeltaToMilliS(acceleroTs - baseTs)
-            gyroTs = timeDeltaToMilliS(gyroTs - baseTs)
+            acceleroTs = acceleroValues.getTimestamp()
+            gyroTs = gyroValues.getTimestamp()
 
             imuF = "{:.06f}"
             tsF  = "{:.03f}"
 
-            print(f"Accelerometer timestamp: {tsF.format(acceleroTs)} ms")
+            print(f"Accelerometer timestamp: {acceleroTs}")
+            print(f"Latency [ms]: {dai.Clock.now() - acceleroValues.getTimestamp()}")
             print(f"Accelerometer [m/s^2]: x: {imuF.format(acceleroValues.x)} y: {imuF.format(acceleroValues.y)} z: {imuF.format(acceleroValues.z)}")
-            print(f"Gyroscope timestamp: {tsF.format(gyroTs)} ms")
+            print(f"Gyroscope timestamp: {gyroTs}")
             print(f"Gyroscope [rad/s]: x: {imuF.format(gyroValues.x)} y: {imuF.format(gyroValues.y)} z: {imuF.format(gyroValues.z)} ")
