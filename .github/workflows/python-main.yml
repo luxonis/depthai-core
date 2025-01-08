@@ -494,6 +494,7 @@ jobs:
       DEPTHAI_BUILD_PCL: ON
       DEPTHAI_BUILD_RTABMAP: ON
       VCPKG_MAX_CONCURRENCY: "2"
+      PKG_CONFIG_PATH: /usr/local/lib/pkgconfig
     steps:
       - name: Export GitHub Actions cache environment variables
         uses: actions/github-script@v7
@@ -548,7 +549,7 @@ jobs:
           # 1) Grab lines following "See logs for more information:"
           # 2) From those lines, extract only the file paths ending in ".log"
           # 3) Remove any leading spaces
-          grep -A8 "See logs for more information:" $LOGFILE \
+          grep -A50 "See logs for more information:" $LOGFILE \
             | grep "\.log" \
             | sed 's/^[[:space:]]*//' \
             > failed_logs.txt
