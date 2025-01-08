@@ -1,0 +1,5 @@
+name: Zoo Helper
+
+# Only allow manual trigger
+on:
+  workflow_dispatch:
