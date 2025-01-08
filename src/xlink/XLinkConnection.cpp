@@ -89,7 +89,7 @@ std::string DeviceInfo::toString() const {
 static XLinkProtocol_t getDefaultProtocol() {
     XLinkProtocol_t defaultProtocol = X_LINK_ANY_PROTOCOL;
 
-    auto protocolStr = utility::getEnv("DEPTHAI_PROTOCOL");
+    auto protocolStr = utility::getEnvAs<std::string>("DEPTHAI_PROTOCOL", "");
 
     std::transform(protocolStr.begin(), protocolStr.end(), protocolStr.begin(), ::tolower);
     if(protocolStr.empty() || protocolStr == "any") {
@@ -112,7 +112,7 @@ static XLinkProtocol_t getDefaultProtocol() {
 static XLinkPlatform_t getDefaultPlatform() {
     XLinkPlatform_t defaultPlatform = X_LINK_ANY_PLATFORM;
 
-    auto protocolStr = utility::getEnv("DEPTHAI_PLATFORM");
+    auto protocolStr = utility::getEnvAs<std::string>("DEPTHAI_PLATFORM", "");
 
     std::transform(protocolStr.begin(), protocolStr.end(), protocolStr.begin(), ::tolower);
     if(protocolStr.empty() || protocolStr == "any") {
@@ -146,9 +146,9 @@ bool isInCommaSeparatedVar(std::string list, std::string value) {
 }
 
 std::vector<DeviceInfo> filterDevices(const std::vector<DeviceInfo>& deviceInfos) {
-    auto allowedDeviceMxIds = utility::getEnv("DEPTHAI_DEVICE_MXID_LIST");
-    auto allowedDeviceIds = utility::getEnv("DEPTHAI_DEVICE_ID_LIST");
-    auto allowedDeviceNames = utility::getEnv("DEPTHAI_DEVICE_NAME_LIST");
+    auto allowedDeviceMxIds = utility::getEnvAs<std::string>("DEPTHAI_DEVICE_MXID_LIST", "");
+    auto allowedDeviceIds = utility::getEnvAs<std::string>("DEPTHAI_DEVICE_ID_LIST", "");
+    auto allowedDeviceNames = utility::getEnvAs<std::string>("DEPTHAI_DEVICE_NAME_LIST", "");
     std::vector<DeviceInfo> filtered;
     for(auto& info : deviceInfos) {
         bool allowedMxId = isInCommaSeparatedVar(allowedDeviceMxIds, info.getMxId()) || allowedDeviceMxIds.empty();
@@ -191,7 +191,7 @@ std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices(XLinkDeviceState
     }
 
     // Now also try to find all devices in the DEPTHAI_DEVICE_NAME_LIST (they were not found earlier if they were not in the same subnet)
-    auto allowedDeviceNames = utility::getEnv("DEPTHAI_DEVICE_NAME_LIST");
+    auto allowedDeviceNames = utility::getEnvAs<std::string>("DEPTHAI_DEVICE_NAME_LIST", "");
     std::string delimiter = ",";
     for(auto& name : utility::splitList(allowedDeviceNames, delimiter)) {
         deviceDesc_t desc = suitableDevice;
@@ -334,7 +334,7 @@ DeviceInfo XLinkConnection::bootBootloader(const DeviceInfo& deviceInfo) {
 
     for(auto ev : evars) {
         auto name = ev.first;
-        auto valstr = utility::getEnv(name);
+        auto valstr = utility::getEnvAs<std::string>(name, "");
         if(!valstr.empty()) {
             try {
                 std::chrono::milliseconds value{std::stoi(valstr)};
@@ -480,7 +480,7 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit, XLinkDeviceStat
 
     for(auto ev : evars) {
         auto name = ev.first;
-        auto valstr = utility::getEnv(name);
+        auto valstr = utility::getEnvAs<std::string>(name, "");
         if(!valstr.empty()) {
             try {
                 std::chrono::milliseconds value{std::stoi(valstr)};
