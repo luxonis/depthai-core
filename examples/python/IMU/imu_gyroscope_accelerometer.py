@@ -27,7 +27,7 @@ with dai.Pipeline() as pipeline:
 
     while pipeline.isRunning():
         imuData = imuQueue.get()
-
+        assert isinstance(imuData, dai.IMUData)
         imuPackets = imuData.packets
         for imuPacket in imuPackets:
             acceleroValues = imuPacket.acceleroMeter
