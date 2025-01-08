@@ -513,6 +513,7 @@ jobs:
           ln -s /opt/python/cp38-cp38/bin/cmake /bin/
       - name: Check pkgconfig for XCB, X11 and Wayland
         run: |
+          pkg-config --variable pc_path pkg-config
           pkg-config --exists xcb && echo "xcb found" || echo "xcb missing"
           pkg-config --exists x11 && echo "x11 found" || echo "x11 missing"
           pkg-config --exists wayland-client && echo "wayland-client found" || echo "wayland-client missing"
