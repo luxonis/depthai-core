@@ -258,6 +258,8 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack){
                  }
                  p.stop();
              })
+        .def("build", &Pipeline::build)
+        .def("isBuilt", &Pipeline::isBuilt)
         .def("isRunning", &Pipeline::isRunning)
         .def("processTasks", &Pipeline::processTasks, py::arg("waitForTasks") = false, py::arg("timeoutSeconds") = -1.0)
         .def("enableHolisticRecord", &Pipeline::enableHolisticRecord, py::arg("recordConfig"), DOC(dai, Pipeline, enableHolisticRecord))

@@ -379,7 +379,8 @@ set(TARGET_CORE_SOURCES
     src/pipeline/node/DetectionNetwork.cpp
     src/pipeline/node/Script.cpp
     src/pipeline/node/Pool.cpp
-    src/pipeline/node/Benchmark.cpp
+    src/pipeline/node/BenchmarkIn.cpp
+    src/pipeline/node/BenchmarkOut.cpp
     src/pipeline/node/SpatialDetectionNetwork.cpp
     src/pipeline/node/SystemLogger.cpp
     src/pipeline/node/SpatialLocationCalculator.cpp
