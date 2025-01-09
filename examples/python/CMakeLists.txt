@@ -241,3 +241,5 @@ dai_set_example_test_labels(benchmark_nn ondevice rvc2_all rvc4 ci)
 # IMU node
 add_python_example(imu_gyroscope_accelerometer IMU/imu_gyroscope_accelerometer.py)
 dai_set_example_test_labels(imu_gyroscope_accelerometer rvc2_all rvc4 ci)
+# On slow hosts the examples warns that batch size is too small
+set_tests_properties(py_imu_gyroscope_accelerometer PROPERTIES FAIL_REGULAR_EXPRESSION "\\[error\\];\\[critical\\]")
