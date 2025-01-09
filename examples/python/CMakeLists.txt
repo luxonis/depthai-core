@@ -242,3 +242,7 @@ set_tests_properties(py_benchmark_cameras PROPERTIES FAIL_REGULAR_EXPRESSION "\\
 
 add_python_example(benchmark_nn Benchmark/benchmark_nn.py)
 dai_set_example_test_labels(benchmark_nn ondevice rvc2_all rvc4 ci)
+
+# IMU node
+add_python_example(imu_gyroscope_accelerometer IMU/imu_gyroscope_accelerometer.py)
+dai_set_example_test_labels(imu_gyroscope_accelerometer rvc2_all rvc4 ci)
