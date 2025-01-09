@@ -141,7 +141,7 @@ class PipelineContext:
     q_name_yolo_passthrough: Optional[str] = None
     """The name of the queue that the YOLO spatial detection network passthrough is connected to."""
 
-def stress_test(mxid: str = ""):
+def stress_test(deviceId: str = ""):
     # Parse args
     import argparse
     parser = argparse.ArgumentParser()
@@ -156,7 +156,7 @@ def stress_test(mxid: str = ""):
     exp_time = 20000
 
     import time
-    success, device_info = dai.Device.getDeviceByMxId(mxid)
+    success, device_info = dai.Device.getDeviceById(deviceId)
     cam_args = []  # Device info or no args at all
     if success:
         cam_args.append(device_info)
