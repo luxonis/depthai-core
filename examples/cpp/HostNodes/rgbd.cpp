@@ -56,7 +56,7 @@ int main() {
     right->setFps(fps);
     stereo->setSubpixel(true);
     stereo->setExtendedDisparity(false);
-    stereo->setDefaultProfilePreset(dai::node::StereoDepth::PresetMode::HIGH_DENSITY);
+    stereo->setDefaultProfilePreset(dai::node::StereoDepth::PresetMode::DEFAULT);
     stereo->setLeftRightCheck(true);
     stereo->setRectifyEdgeFillColor(0);  // black, to better see the cutout
     stereo->enableDistortionCorrection(true);

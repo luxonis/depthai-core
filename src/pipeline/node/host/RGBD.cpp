@@ -59,7 +59,6 @@ class RGBD::Impl {
         computeMethod = ComputeMethod::CPU_MT;
     }
     void useGPU(uint32_t device) {
-
         initializeGPU(device);
     }
     void setIntrinsics(float fx, float fy, float cx, float cy, unsigned int width, unsigned int height) {
@@ -136,76 +135,61 @@ class RGBD::Impl {
         }
 #endif
     }
-    void calcPointsChunk(
-    const uint8_t* depthData,
-    const uint8_t* colorData,
-    std::vector<Point3fRGB>& outChunk,
-    int startRow, int endRow
-) {
-    float scale = outputMeters ? (1.0f / 1000.0f) : 1.0f;
-    outChunk.reserve((endRow - startRow) * width);
+    void calcPointsChunk(const uint8_t* depthData, const uint8_t* colorData, std::vector<Point3fRGB>& outChunk, int startRow, int endRow) {
+        float scale = outputMeters ? (1.0f / 1000.0f) : 1.0f;
+        outChunk.reserve((endRow - startRow) * width);
 
-    for (int row = startRow; row < endRow; row++) {
-        int rowStart = row * width;
-        for (int col = 0; col < width; col++) {
-            size_t i = rowStart + col;
+        for(int row = startRow; row < endRow; row++) {
+            int rowStart = row * width;
+            for(int col = 0; col < width; col++) {
+                size_t i = rowStart + col;
 
-            uint16_t depthValue = *(reinterpret_cast<const uint16_t*>(depthData + i * 2));
-            float z = static_cast<float>(depthValue) * scale;
+                uint16_t depthValue = *(reinterpret_cast<const uint16_t*>(depthData + i * 2));
+                float z = static_cast<float>(depthValue) * scale;
 
-            float xCoord = (col - cx) * z / fx;
-            float yCoord = (row - cy) * z / fy;
+                float xCoord = (col - cx) * z / fx;
+                float yCoord = (row - cy) * z / fy;
 
-            // BGR order in colorData
-            uint8_t r = colorData[i * 3 + 0];
-            uint8_t g = colorData[i * 3 + 1];
-            uint8_t b = colorData[i * 3 + 2];
+                // BGR order in colorData
+                uint8_t r = colorData[i * 3 + 0];
+                uint8_t g = colorData[i * 3 + 1];
+                uint8_t b = colorData[i * 3 + 2];
 
-            outChunk.push_back(Point3fRGB{xCoord, yCoord, z, r, g, b});
+                outChunk.push_back(Point3fRGB{xCoord, yCoord, z, r, g, b});
+            }
         }
     }
-}
 
-void computePointCloudCPU(
-    const uint8_t* depthData,
-    const uint8_t* colorData,
-    std::vector<Point3fRGB>& points
-) {
-
-    // Single-threaded directly writes into points
-    calcPointsChunk(depthData, colorData, points, 0, height);
-}
-
-void computePointCloudCPUMT(
-    const uint8_t* depthData,
-    const uint8_t* colorData,
-    std::vector<Point3fRGB>& points
-) {
-
-    int rowsPerThread = height / threadNum;
-    std::vector<std::future<std::vector<Point3fRGB>>> futures;
-
-    // Each thread returns a local vector
-    auto processRows = [&](int startRow, int endRow) {
-        std::vector<Point3fRGB> localPoints;
-        calcPointsChunk(depthData, colorData, localPoints, startRow, endRow);
-        return localPoints;
-    };
-
-    for (int t = 0; t < threadNum; ++t) {
-        int startRow = t * rowsPerThread;
-        int endRow = (t == threadNum - 1) ? height : (startRow + rowsPerThread);
-        futures.emplace_back(std::async(std::launch::async, processRows, startRow, endRow));
+    void computePointCloudCPU(const uint8_t* depthData, const uint8_t* colorData, std::vector<Point3fRGB>& points) {
+        // Single-threaded directly writes into points
+        calcPointsChunk(depthData, colorData, points, 0, height);
     }
 
-    // Merge all results
-    for (auto& f : futures) {
-        auto localPoints = f.get();
-        // Now we do one lock per merge if needed
-        // If this is not called concurrently from multiple places, no lock needed
-        points.insert(points.end(), localPoints.begin(), localPoints.end());
+    void computePointCloudCPUMT(const uint8_t* depthData, const uint8_t* colorData, std::vector<Point3fRGB>& points) {
+        int rowsPerThread = height / threadNum;
+        std::vector<std::future<std::vector<Point3fRGB>>> futures;
+
+        // Each thread returns a local vector
+        auto processRows = [&](int startRow, int endRow) {
+            std::vector<Point3fRGB> localPoints;
+            calcPointsChunk(depthData, colorData, localPoints, startRow, endRow);
+            return localPoints;
+        };
+
+        for(int t = 0; t < threadNum; ++t) {
+            int startRow = t * rowsPerThread;
+            int endRow = (t == threadNum - 1) ? height : (startRow + rowsPerThread);
+            futures.emplace_back(std::async(std::launch::async, processRows, startRow, endRow));
+        }
+
+        // Merge all results
+        for(auto& f : futures) {
+            auto localPoints = f.get();
+            // Now we do one lock per merge if needed
+            // If this is not called concurrently from multiple places, no lock needed
+            points.insert(points.end(), localPoints.begin(), localPoints.end());
+        }
     }
-}
     enum class ComputeMethod { CPU, CPU_MT, GPU };
     ComputeMethod computeMethod = ComputeMethod::CPU;
 #ifdef DEPTHAI_ENABLE_KOMPUTE
@@ -257,17 +241,21 @@ std::shared_ptr<RGBD> RGBD::build(bool autocreate, std::pair<int, int> size) {
     return build();
 }
 
-void RGBD::initialize(std::vector<std::shared_ptr<ImgFrame>> frames) {
+void RGBD::initialize(std::shared_ptr<MessageGroup> frames) {
     // Initialize the camera intrinsics
     // Check if width and height match
-    if(frames.at(0)->getWidth() != frames.at(1)->getWidth() || frames.at(0)->getHeight() != frames.at(1)->getHeight()) {
+    auto colorFrame = std::dynamic_pointer_cast<ImgFrame>(frames->group.at(inColor.getName()));
+    if(colorFrame->getType() != dai::ImgFrame::Type::RGB888i) {
+        throw std::runtime_error("RGBD node only supports RGB888i frames");
+    }
+    auto depthFrame = std::dynamic_pointer_cast<ImgFrame>(frames->group.at(inDepth.getName()));
+    if(colorFrame->getWidth() != depthFrame->getWidth() || colorFrame->getHeight() != depthFrame->getHeight()) {
         throw std::runtime_error("Color and depth frame sizes do not match");
     }
-    auto frame = frames.at(1);
     auto calibHandler = getParentPipeline().getDefaultDevice()->readCalibration();
-    auto camID = static_cast<CameraBoardSocket>(frame->getInstanceNum());
-    auto width = frame->getWidth();
-    auto height = frame->getHeight();
+    auto camID = static_cast<CameraBoardSocket>(colorFrame->getInstanceNum());
+    auto width = colorFrame->getWidth();
+    auto height = colorFrame->getHeight();
     auto intrinsics = calibHandler.getCameraIntrinsics(camID, width, height);
     float fx = intrinsics[0][0];
     float fy = intrinsics[1][1];
@@ -283,12 +271,7 @@ void RGBD::run() {
         auto group = inSync.get<MessageGroup>();
         if(group == nullptr) continue;
         if(!initialized) {
-            std::vector<std::shared_ptr<ImgFrame>> imgFrames;
-            for(auto& msg : *group) {
-                imgFrames.emplace_back(std::dynamic_pointer_cast<ImgFrame>(msg.second));
-            }
-
-            initialize(imgFrames);
+            initialize(group);
         }
         auto colorFrame = std::dynamic_pointer_cast<ImgFrame>(group->group.at(inColor.getName()));
         if(colorFrame->getType() != dai::ImgFrame::Type::RGB888i) {

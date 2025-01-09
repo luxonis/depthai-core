@@ -3,6 +3,7 @@
 #include "depthai/pipeline/ThreadedHostNode.hpp"
 #include "depthai/pipeline/datatype/PointCloudData.hpp"
 #include "depthai/pipeline/node/Sync.hpp"
+#include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "depthai/utility/Pimpl.hpp"
 
 namespace dai {
@@ -60,7 +61,7 @@ class RGBD : public NodeCRTP<ThreadedHostNode, RGBD> {
     class Impl;
     Pimpl<Impl> pimpl;
     void run() override;
-    void initialize(std::vector<std::shared_ptr<ImgFrame>> frames);
+    void initialize(std::shared_ptr<MessageGroup> frames);
     Input inSync{*this, {"inSync", DEFAULT_GROUP, false, 0, {{DatatypeEnum::MessageGroup, true}}}};
     bool initialized = false;
 };

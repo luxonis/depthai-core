@@ -31,7 +31,7 @@ with dai.Pipeline() as p:
     out.link(stereo.inputAlignTo)
     stereo.setExtendedDisparity(False)
     stereo.setLeftRightCheck(True)
-    stereo.setDefaultProfilePreset(dai.node.StereoDepth.PresetMode.HIGH_DENSITY)
+    stereo.setDefaultProfilePreset(dai.node.StereoDepth.PresetMode.DEFAULT)
     stereo.setRectifyEdgeFillColor(0)
     stereo.enableDistortionCorrection(True)
     stereo.initialConfig.setLeftRightCheckThreshold(10)
