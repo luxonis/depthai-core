@@ -58,6 +58,10 @@ jobs:
         run: cmake -S . -B build -DDEPTHAI_BUILD_PYTHON=ON -DDEPTHAI_PYTHON_FORCE_DOCSTRINGS=ON -DDEPTHAI_BASALT_SUPPORT=ON -DDEPTHAI_PCL_SUPPORT=ON -DDEPTHAI_RTABMAP_SUPPORT=ON -DDEPTHAI_PYTHON_DOCSTRINGS_OUTPUT="$PWD/bindings/python/docstrings/depthai_python_docstring.hpp"
       - name: Build target 'pybind11_mkdoc'
         run: cmake --build build --target pybind11_mkdoc --parallel 4
+      - name: Print out vcpkg logs if building port fails
+        if: failure()    # Only run this if the build step fails
+        run: cd bindings/python && bash ./ci/show_vcpkg_logs.sh
+
       - name: Upload docstring artifacts
         uses: actions/upload-artifact@v3
         with:
@@ -140,6 +144,9 @@ jobs:
         run: |
           cmake -S . -B build -DDEPTHAI_BUILD_PYTHON=ON -D CMAKE_BUILD_TYPE=Release -D DEPTHAI_PYTHON_DOCSTRINGS_INPUT=$PWD/bindings/python/docstrings/depthai_python_docstring.hpp -D DEPTHAI_PYTHON_ENABLE_TESTS=ON
           cmake --build build --parallel 4
+      - name: Print out vcpkg logs if building port fails
+        if: failure()    # Only run this if the build step fails
+        run: cd bindings/python && bash ./ci/show_vcpkg_logs.sh
       - name: Test
         run: |
           cmake --build build --target pytest --config Release
@@ -247,6 +254,9 @@ jobs:
           python -m pip install --upgrade pip
       - name: Building wheels
         run: cd bindings/python && python -m pip wheel . -w ./wheelhouse/audited/ --verbose
+      - name: Print out vcpkg logs if building port fails
+        if: failure()    # Only run this if the build step fails
+        run: cd bindings/python && bash ./ci/show_vcpkg_logs.sh
       - name: Archive wheel artifacts
         uses: actions/upload-artifact@v3
         with:
@@ -317,6 +327,9 @@ jobs:
           python -m pip install delocate
       - name: Building wheels
         run: cd bindings/python && python -m pip wheel . -w ./wheelhouse/ --verbose
+      - name: Print out vcpkg logs if building port fails
+        if: failure()    # Only run this if the build step fails
+        run: cd bindings/python && bash ./ci/show_vcpkg_logs.sh
       - name: Auditing wheels
         run: cd bindings/python && ci/repair-whl-macos.sh `pwd`/wheelhouse/* `pwd`/wheelhouse/audited
       - name: Archive wheel artifacts
@@ -428,11 +441,6 @@ jobs:
           submodules: 'recursive'
       - name: Installing libusb1-devel dependency
         run: yum install -y libusb1-devel perl-core curl zip unzip tar ninja-build  zlib-devel curl-devel xcb-util-renderutil-devel xcb-util-devel xcb-util-image-devel xcb-util-keysyms-devel xcb-util-wm-devel mesa-libGL-devel libxkbcommon-devel libxkbcommon-x11-devel libXi-devel libXrandr-devel libXtst-devel libudev-devel lapack-devel nasm libtool autoconf automake
-      - name: Installing cmake dependency
-        run: |
-          cd bindings/python
-          /opt/python/cp38-cp38/bin/python3.8 -m pip install cmake
-          ln -s /opt/python/cp38-cp38/bin/cmake /bin/
       - name: Create folder structure
         run: cd bindings/python && mkdir -p wheelhouse/audited/
 
@@ -455,6 +463,9 @@ jobs:
       - name: Build wheels
         run: |
           cd bindings/python && for PYBIN in /opt/python/${{ matrix.python-set }}/bin; do "${PYBIN}/pip" wheel . -w ./wheelhouse/ --verbose; done
+      - name: Print out vcpkg logs if building port fails
+        if: failure()    # Only run this if the build step fails
+        run: cd bindings/python && bash ./ci/show_vcpkg_logs.sh
 
       - name: Audit wheels
         run: cd bindings/python && for whl in wheelhouse/*.whl; do auditwheel repair "$whl" --plat $PLAT -w wheelhouse/audited/; done
@@ -494,7 +505,6 @@ jobs:
       DEPTHAI_BUILD_PCL: ON
       DEPTHAI_BUILD_RTABMAP: ON
       VCPKG_MAX_CONCURRENCY: "2"
-      PKG_CONFIG_PATH: /usr/local/lib/pkgconfig
     steps:
       - name: Export GitHub Actions cache environment variables
         uses: actions/github-script@v7
@@ -507,12 +517,6 @@ jobs:
           submodules: 'recursive'
       - name: Installing libusb1-devel dependency
         run: yum install -y libusb1-devel perl-core curl zip unzip tar zlib-devel curl-devel libxcb-devel xcb-util-renderutil-devel xcb-util-devel xcb-util-image-devel xcb-util-keysyms-devel xcb-util-wm-devel mesa-libGL-devel libxkbcommon-devel libxkbcommon-x11-devel libXi-devel libXrandr-devel libXtst-devel libudev-devel lapack-devel nasm libtool autoconf automake libX11-devel pkgconfig 
-      - name: Check pkgconfig for XCB, X11 and Wayland
-        run: |
-          pkg-config --variable pc_path pkg-config
-          pkg-config --exists xcb && echo "xcb found" || echo "xcb missing"
-          pkg-config --exists x11 && echo "x11 found" || echo "x11 missing"
-          pkg-config --exists wayland-client && echo "wayland-client found" || echo "wayland-client missing"
       - name: Setup ninja required for arm64 builds
         run: |
           git clone https://github.com/ninja-build/ninja.git
@@ -536,47 +540,9 @@ jobs:
       - name: Building wheels
         run: |
           cd bindings/python && for PYBIN in /opt/python/${{ matrix.python-set }}/bin; do "${PYBIN}/pip" wheel . -w ./wheelhouse/ --verbose; done
-      - name: Print logs for the failed port(s) only
+      - name: Print out vcpkg logs if building port fails
         if: failure()    # Only run this if the build step fails
-        run: |
-          echo "Searching vcpkg-manifest-install.log for failing port logs..."
-          LOGFILE=$(find . -name "vcpkg-manifest-install.log" | head -n 1)
-          if [ -z "$LOGFILE" ]; then
-            echo "No vcpkg-manifest-install.log found!"
-            exit 1
-          fi
-
-          # 1) Grab lines following "See logs for more information:"
-          # 2) From those lines, extract only the file paths ending in ".log"
-          # 3) Remove any leading spaces
-          grep -A50 "See logs for more information:" $LOGFILE \
-            | grep "\.log" \
-            | sed 's/^[[:space:]]*//' \
-            > failed_logs.txt
-
-          # Now read each log path we found, and print it
-          while IFS= read -r log; do
-            echo "==== Showing log: $log ===="
-            cat "$log" || true
-            echo
-
-          # Also show CMakeOutput.log (and/or CMakeError.log) within the same port’s directory
-          # Often it’s in the same or neighboring folder (e.g. arm64-linux-rel/CMakeFiles/CMakeOutput.log).
-          # We'll "walk up" one directory and search for CMakeOutput.log in CMakeFiles/.
-          port_dir="$(dirname "$log")"
-          # In some cases (e.g. config-arm64-linux-out.log), you may need to go up another level:
-          # port_dir="$(dirname "$port_dir")"
-
-          # We'll now look for any CMakeOutput.log within this port’s subdirectories
-          found_outputs=$(find "$port_dir" -name "CMakeOutput.log" -o -name "CMakeError.log" -print 2>/dev/null)
-          if [ -n "$found_outputs" ]; then
-            for cof in $found_outputs; do
-              echo "==== Showing $cof ===="
-              cat "$cof" || true
-              echo
-            done
-          fi
-          done < failed_logs.txt
+        run: cd bindings/python && bash ./ci/show_vcpkg_logs.sh
 
       - name: Auditing wheels
         run: cd bindings/python && for whl in wheelhouse/*.whl; do auditwheel repair "$whl" --plat $PLAT -w wheelhouse/audited/; done
