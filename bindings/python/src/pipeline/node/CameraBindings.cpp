@@ -21,6 +21,7 @@ void bind_camera(pybind11::module& m, void* pCallstack) {
     // Actual bindings
     camera.def_readonly("inputControl", &Camera::inputControl, DOC(dai, node, Camera, inputControl))
         .def_readonly("initialControl", &Camera::initialControl, DOC(dai, node, Camera, initialControl))
+        .def_readonly("mockIsp", &Camera::mockIsp, DOC(dai, node, Camera, mockIsp))
         .def("build", &Camera::build, "boardSocket"_a = CameraBoardSocket::AUTO, DOC(dai, node, Camera, build))
         // .def("setBoardSocket", &Camera::setBoardSocket, "boardSocket"_a, DOC(dai, node, Camera, setBoardSocket))
         .def("getBoardSocket", &Camera::getBoardSocket, DOC(dai, node, Camera, getBoardSocket))

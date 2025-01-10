@@ -3,6 +3,7 @@
 #include <fstream>
 #include <memory>
 #include <stdexcept>
+#include <utility>
 
 // libraries
 #include <spimpl.h>
@@ -177,6 +178,55 @@ NodeRecordParams Camera::getNodeRecordParams() const {
     params.video = true;
     params.name = "Camera" + toString(properties.boardSocket);
     return params;
+}
+Camera::Input& Camera::getReplayInput() {
+    return mockIsp;
+}
+float Camera::getMaxRequestedFps() const {
+    float maxFps = 0;
+    for(const auto& outputRequest : pimpl->outputRequests) {
+        if(outputRequest.capability.fps.value) {
+            if(const auto* fps = std::get_if<float>(&(*outputRequest.capability.fps.value))) {
+                maxFps = std::max(maxFps, *fps);
+            } else if(const auto* fps = std::get_if<std::pair<float, float>>(&(*outputRequest.capability.fps.value))) {
+                maxFps = std::max(maxFps, std::get<1>(*fps));
+            } else if(const auto* fps = std::get_if<std::vector<float>>(&(*outputRequest.capability.fps.value))) {
+                DAI_CHECK(fps->size() > 0, "When passing a vector to ImgFrameCapability->fps, please pass a non empty vector!");
+                maxFps = std::max(maxFps, (*fps)[0]);
+            } else {
+                throw std::runtime_error("Unsupported fps value");
+            }
+        }
+    }
+    return maxFps == 0 ? 30 : maxFps;
+}
+uint32_t Camera::getMaxRequestedWidth() const {
+    uint32_t width = 0;
+    for(const auto& outputRequest : pimpl->outputRequests) {
+        auto& spec = outputRequest.capability;
+        if(spec.size.value) {
+            if(const auto* size = std::get_if<std::pair<uint32_t, uint32_t>>(&(*spec.size.value))) {
+                width = std::max(width, size->first);
+            } else {
+                DAI_CHECK_IN(false);
+            }
+        }
+    }
+    return width == 0 ? maxWidth : width;
+}
+uint32_t Camera::getMaxRequestedHeight() const {
+    uint32_t height = 0;
+    for(const auto& outputRequest : pimpl->outputRequests) {
+        auto& spec = outputRequest.capability;
+        if(spec.size.value) {
+            if(const auto* size = std::get_if<std::pair<uint32_t, uint32_t>>(&(*spec.size.value))) {
+                height = std::max(height, size->second);
+            } else {
+                DAI_CHECK_IN(false);
+            }
+        }
+    }
+    return height == 0 ? maxHeight : height;
 }
 
 /*

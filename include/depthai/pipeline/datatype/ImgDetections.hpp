@@ -46,7 +46,7 @@ class ImgDetections : public Buffer, public ProtoSerializable {
      *
      * @returns serialized message
      */
-    std::vector<std::uint8_t> serializeProto() const override;
+    std::vector<std::uint8_t> serializeProto(bool = false) const override;
 
     /**
      * Serialize schema to proto buffer
