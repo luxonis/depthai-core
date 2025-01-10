@@ -161,7 +161,7 @@ bool checkRecordConfig(std::string& recordPath, RecordConfig& config);
 
 bool allMatch(const std::vector<std::string>& v1, const std::vector<std::string>& v2);
 
-std::string matchTo(const std::vector<std::string>& mxIds, const std::vector<std::string>& filenames, const std::vector<std::string>& nodenames);
+std::string matchTo(const std::vector<std::string>& deviceIds, const std::vector<std::string>& filenames, const std::vector<std::string>& nodenames);
 
 }  // namespace utility
 }  // namespace dai

@@ -625,7 +625,7 @@ void PipelineImpl::build() {
                     }
                 }
 
-                defaultDeviceMxId = defaultDevice->getMxId();
+                defaultDeviceId = defaultDevice->getDeviceId();
 
                 if(!recordPath.empty() && !replayPath.empty()) {
                     Logging::getInstance().logger.warn("Both DEPTHAI_RECORD and DEPTHAI_REPLAY are set. Record and replay disabled.");
@@ -633,7 +633,7 @@ void PipelineImpl::build() {
                     if(enableHolisticRecordReplay || utility::checkRecordConfig(recordPath, recordConfig)) {
                         if(platform::checkWritePermissions(recordPath)) {
                             if(utility::setupHolisticRecord(parent,
-                                                            defaultDeviceMxId,
+                                                            defaultDeviceId,
                                                             recordConfig,
                                                             recordReplayFilenames,
                                                             defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_2
@@ -652,6 +652,7 @@ void PipelineImpl::build() {
                 } else if(!replayPath.empty()) {
                     if(platform::checkPathExists(replayPath)) {
                         if(platform::checkWritePermissions(replayPath)) {
+<<<<<<< HEAD
                             if(utility::setupHolisticReplay(parent,
                                                             replayPath,
                                                             defaultDeviceMxId,
@@ -659,6 +660,9 @@ void PipelineImpl::build() {
                                                             recordReplayFilenames,
                                                             defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_2
                                                                 || defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_X)) {
+=======
+                            if(utility::setupHolisticReplay(parent, replayPath, defaultDeviceId, recordConfig, recordReplayFilenames)) {
+>>>>>>> b4c8e8e0d0960dda978e7609abf7fbf0af69a22d
                                 recordConfig.state = RecordConfig::RecordReplayState::REPLAY;
                                 if(platform::checkPathExists(replayPath, true)) {
                                     removeRecordReplayFiles = false;
