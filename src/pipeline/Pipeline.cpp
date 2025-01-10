@@ -624,14 +624,14 @@ void PipelineImpl::build() {
                     }
                 }
 
-                defaultDeviceMxId = defaultDevice->getMxId();
+                defaultDeviceId = defaultDevice->getDeviceId();
 
                 if(!recordPath.empty() && !replayPath.empty()) {
                     Logging::getInstance().logger.warn("Both DEPTHAI_RECORD and DEPTHAI_REPLAY are set. Record and replay disabled.");
                 } else if(!recordPath.empty()) {
                     if(enableHolisticRecordReplay || utility::checkRecordConfig(recordPath, recordConfig)) {
                         if(platform::checkWritePermissions(recordPath)) {
-                            if(utility::setupHolisticRecord(parent, defaultDeviceMxId, recordConfig, recordReplayFilenames)) {
+                            if(utility::setupHolisticRecord(parent, defaultDeviceId, recordConfig, recordReplayFilenames)) {
                                 recordConfig.state = RecordConfig::RecordReplayState::RECORD;
                                 Logging::getInstance().logger.info("Record enabled.");
                             } else {
@@ -646,7 +646,7 @@ void PipelineImpl::build() {
                 } else if(!replayPath.empty()) {
                     if(platform::checkPathExists(replayPath)) {
                         if(platform::checkWritePermissions(replayPath)) {
-                            if(utility::setupHolisticReplay(parent, replayPath, defaultDeviceMxId, recordConfig, recordReplayFilenames)) {
+                            if(utility::setupHolisticReplay(parent, replayPath, defaultDeviceId, recordConfig, recordReplayFilenames)) {
                                 recordConfig.state = RecordConfig::RecordReplayState::REPLAY;
                                 if(platform::checkPathExists(replayPath, true)) {
                                     removeRecordReplayFiles = false;
