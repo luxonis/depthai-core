@@ -38,3 +38,7 @@ jobs:
 
       - name: Build zoo_helper
         run: cmake --build build --target zoo_helper --parallel 4
+
+      - name: Upload zoo_helper to artifactory
+        run: |
+          bash ./ci/upload-artifactory-zoo-helper.sh
