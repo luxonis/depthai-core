@@ -19,7 +19,7 @@ def draw_rotated_rectangle(frame, center, size, angle, color, thickness=2):
 
     # Get the four vertices of the rotated rectangle
     box = cv2.boxPoints(rect)
-    box = np.int0(box)  # Convert to integer coordinates
+    box = np.intp(box)  # Convert to integer coordinates
 
     # Draw the rectangle on the frame
     cv2.polylines(frame, [box], isClosed=True, color=color, thickness=thickness)
