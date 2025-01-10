@@ -652,17 +652,13 @@ void PipelineImpl::build() {
                 } else if(!replayPath.empty()) {
                     if(platform::checkPathExists(replayPath)) {
                         if(platform::checkWritePermissions(replayPath)) {
-<<<<<<< HEAD
                             if(utility::setupHolisticReplay(parent,
                                                             replayPath,
-                                                            defaultDeviceMxId,
+                                                            defaultDeviceId,
                                                             recordConfig,
                                                             recordReplayFilenames,
                                                             defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_2
                                                                 || defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_X)) {
-=======
-                            if(utility::setupHolisticReplay(parent, replayPath, defaultDeviceId, recordConfig, recordReplayFilenames)) {
->>>>>>> b4c8e8e0d0960dda978e7609abf7fbf0af69a22d
                                 recordConfig.state = RecordConfig::RecordReplayState::REPLAY;
                                 if(platform::checkPathExists(replayPath, true)) {
                                     removeRecordReplayFiles = false;

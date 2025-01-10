@@ -143,14 +143,9 @@ bool setupHolisticReplay(Pipeline& pipeline,
                          std::string replayPath,
                          const std::string& deviceId,
                          RecordConfig& recordConfig,
-<<<<<<< HEAD
                          std::unordered_map<std::string, std::string>& outFilenames,
                          bool legacy) {
-    UNUSED(mxId);
-=======
-                         std::unordered_map<std::string, std::string>& outFilenames) {
     UNUSED(deviceId);
->>>>>>> b4c8e8e0d0960dda978e7609abf7fbf0af69a22d
     const std::string rootPath = platform::getDirFromPath(replayPath);
     auto sources = pipeline.getSourceNodes();
     try {
