@@ -32,6 +32,7 @@ void bind_camera(pybind11::module& m, void* pCallstack) {
              "type"_a = std::nullopt,
              "resizeMode"_a = dai::ImgResizeMode::CROP,
              "fps"_a = 30,
+             "enableUndistortion"_a = std::nullopt,
              py::return_value_policy::reference_internal,
              DOC(dai, node, Camera, requestOutput))
         .def("requestOutput",
