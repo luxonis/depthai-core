@@ -60,7 +60,7 @@ jobs:
         run: cmake --build build --target pybind11_mkdoc --parallel 4
       - name: Print out vcpkg logs if building port fails
         if: failure()    # Only run this if the build step fails
-        run: cd bindings/python && bash ./ci/show_vcpkg_logs.sh
+        run: bash ./bindings/python/ci/show_vcpkg_logs.sh
 
       - name: Upload docstring artifacts
         uses: actions/upload-artifact@v3
