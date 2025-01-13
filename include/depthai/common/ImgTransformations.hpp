@@ -197,6 +197,19 @@ struct ImgTransformation {
      * @param rotationPoint Point around which to rotate
      */
     ImgTransformation& addRotation(float angle, dai::Point2f rotationPoint);
+
+    /**
+     * Add a rotation transformation around optical center.
+     * @param rotationMatrix Rotation matrix
+     */
+    ImgTransformation& addRotation(std::array<std::array<float, 3>, 3> rotationMatrix);
+
+    /**
+     * Get the rotation matrix around optical center from the transformation matrix.
+     * @return Rotation matrix
+     */
+    std::array<std::array<float, 3>, 3> getRotation();
+
     /**
      * Add a scale transformation.
      * @param scaleX Scale factor in the horizontal direction
