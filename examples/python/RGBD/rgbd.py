@@ -22,9 +22,9 @@ class RerunNode(dai.node.ThreadedHostNode):
         rr.log("world", rr.ViewCoordinates.FLU)
         rr.log("world/ground", rr.Boxes3D(half_sizes=[3.0, 3.0, 0.00001])) 
         while self.isRunning():
-            pclObstData = self.inputPCL.get()
-            if pclObstData is not None:
-                points, colors = pclObstData.getPointsRGB()
+            inPointCloud = self.inputPCL.get()
+            if inPointCloud is not None:
+                points, colors = inPointCloud.getPointsRGB()
                 rr.log("world/pcl", rr.Points3D(points, colors=colors, radii=[0.01]))
 
 # Create pipeline
@@ -32,34 +32,26 @@ class RerunNode(dai.node.ThreadedHostNode):
 with dai.Pipeline() as p:
     fps = 30
     # Define sources and outputs
-    left = p.create(dai.node.MonoCamera)
-    right = p.create(dai.node.MonoCamera)
+    left = p.create(dai.node.Camera)
+    right = p.create(dai.node.Camera)
     color = p.create(dai.node.Camera)
     stereo = p.create(dai.node.StereoDepth)
     rgbd = p.create(dai.node.RGBD).build()
     color.build()
     rerunViewer = RerunNode()
-    left.setCamera("left")
-    left.setResolution(dai.MonoCameraProperties.SensorResolution.THE_720_P)
-    left.setFps(fps)
-    right.setCamera("right")
-    right.setResolution(dai.MonoCameraProperties.SensorResolution.THE_720_P)
-    right.setFps(fps)
+    left.build(dai.CameraBoardSocket.LEFT)
+    right.build(dai.CameraBoardSocket.RIGHT)
     out = color.requestOutput((1280,720), dai.ImgFrame.Type.RGB888i)
 
 
     out.link(stereo.inputAlignTo)
-    stereo.setExtendedDisparity(False)
-    stereo.setLeftRightCheck(True)
     stereo.setDefaultProfilePreset(dai.node.StereoDepth.PresetMode.DEFAULT)
     stereo.setRectifyEdgeFillColor(0)
     stereo.enableDistortionCorrection(True)
-    stereo.initialConfig.setLeftRightCheckThreshold(10)
-    stereo.setSubpixel(True)
 
     # Linking
-    left.out.link(stereo.left)
-    right.out.link(stereo.right)
+    left.requestOutput((1280, 720)).link(stereo.left)
+    right.requestOutput((1280, 720)).link(stereo.right)
     stereo.depth.link(rgbd.inDepth)
     out.link(rgbd.inColor)
 

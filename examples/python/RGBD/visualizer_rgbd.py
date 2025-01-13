@@ -12,34 +12,26 @@ with dai.Pipeline() as p:
     remoteConnector = dai.RemoteConnection(
         webSocketPort=args.webSocketPort, httpPort=args.httpPort
     )
-    fps = 30.0
-    left = p.create(dai.node.MonoCamera)
-    right = p.create(dai.node.MonoCamera)
+    left = p.create(dai.node.Camera)
+    right = p.create(dai.node.Camera)
     color = p.create(dai.node.Camera)
     stereo = p.create(dai.node.StereoDepth)
     rgbd = p.create(dai.node.RGBD).build()
+
     color.build()
-    left.setCamera("left")
-    left.setResolution(dai.MonoCameraProperties.SensorResolution.THE_720_P)
-    left.setFps(fps)
-    right.setCamera("right")
-    right.setResolution(dai.MonoCameraProperties.SensorResolution.THE_720_P)
-    right.setFps(fps)
+    left.build(dai.CameraBoardSocket.LEFT)
+    right.build(dai.CameraBoardSocket.RIGHT)
     out = color.requestOutput((1280, 720))
 
 
     out.link(stereo.inputAlignTo)
-    stereo.setExtendedDisparity(False)
-    stereo.setLeftRightCheck(True)
     stereo.setDefaultProfilePreset(dai.node.StereoDepth.PresetMode.DEFAULT)
     stereo.setRectifyEdgeFillColor(0)
     stereo.enableDistortionCorrection(True)
-    stereo.initialConfig.setLeftRightCheckThreshold(10)
-    stereo.setSubpixel(True)
 
     # Linking
-    left.out.link(stereo.left)
-    right.out.link(stereo.right)
+    left.requestOutput((1280, 720)).link(stereo.left)
+    right.requestOutput((1280, 720)).link(stereo.right)
     stereo.depth.link(rgbd.inDepth)
     out.link(rgbd.inColor)
     remoteConnector.addTopic("pcl", rgbd.pcl, "common")

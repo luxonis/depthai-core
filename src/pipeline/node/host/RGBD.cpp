@@ -40,8 +40,28 @@ class RGBD::Impl {
                 break;
         }
     }
-    void setOutputMeters(bool outputMeters) {
-        this->outputMeters = outputMeters;
+    void setDepthUnit(StereoDepthConfig::AlgorithmControl::DepthUnit depthUnit){
+        // Default is millimeter
+        switch(depthUnit){
+            case StereoDepthConfig::AlgorithmControl::DepthUnit::MILLIMETER:
+                scaleFactor = 1.0f;
+                break;
+            case StereoDepthConfig::AlgorithmControl::DepthUnit::METER:
+                scaleFactor = 0.001f;
+                break;
+            case StereoDepthConfig::AlgorithmControl::DepthUnit::CENTIMETER:
+                scaleFactor = 0.01f;
+                break;
+            case StereoDepthConfig::AlgorithmControl::DepthUnit::FOOT:
+                scaleFactor = 0.3048f;
+                break;
+            case StereoDepthConfig::AlgorithmControl::DepthUnit::INCH:
+                scaleFactor = 0.0254f;
+                break;
+            case StereoDepthConfig::AlgorithmControl::DepthUnit::CUSTOM:
+                scaleFactor = 1.0f;
+                break;
+        }
     }
     void printDevices() {
 #ifdef DEPTHAI_ENABLE_KOMPUTE
@@ -92,7 +112,7 @@ class RGBD::Impl {
         // Convert depth to float
         // Depth is in mm by default, convert to meters if outputMeters == true
         // If outputMeters is true, scale = 1/1000.0 else scale = 1.0
-        float scale = outputMeters ? (1.0f / 1000.0f) : 1.0f;
+        float scale = scaleFactor;
 
         std::vector<float> depthDataFloat(size);
         for(int i = 0; i < size; i++) {
@@ -136,7 +156,7 @@ class RGBD::Impl {
 #endif
     }
     void calcPointsChunk(const uint8_t* depthData, const uint8_t* colorData, std::vector<Point3fRGB>& outChunk, int startRow, int endRow) {
-        float scale = outputMeters ? (1.0f / 1000.0f) : 1.0f;
+        float scale = scaleFactor;
         outChunk.reserve((endRow - startRow) * width);
 
         for(int row = startRow; row < endRow; row++) {
@@ -203,7 +223,7 @@ class RGBD::Impl {
     bool algoInitialized = false;
     bool tensorsInitialized = false;
 #endif
-    bool outputMeters = false;
+    float scaleFactor = 1.0f;
     float fx, fy, cx, cy;
     int width, height;
     int size;
@@ -243,7 +263,7 @@ std::shared_ptr<RGBD> RGBD::build(bool autocreate, std::pair<int, int> size) {
 
 void RGBD::initialize(std::shared_ptr<MessageGroup> frames) {
     // Initialize the camera intrinsics
-    // Check if width and height match
+    // Check if width, width and cameraID match
     auto colorFrame = std::dynamic_pointer_cast<ImgFrame>(frames->group.at(inColor.getName()));
     if(colorFrame->getType() != dai::ImgFrame::Type::RGB888i) {
         throw std::runtime_error("RGBD node only supports RGB888i frames");
@@ -251,6 +271,9 @@ void RGBD::initialize(std::shared_ptr<MessageGroup> frames) {
     auto depthFrame = std::dynamic_pointer_cast<ImgFrame>(frames->group.at(inDepth.getName()));
     if(colorFrame->getWidth() != depthFrame->getWidth() || colorFrame->getHeight() != depthFrame->getHeight()) {
         throw std::runtime_error("Color and depth frame sizes do not match");
+    }
+    if(colorFrame->getInstanceNum() != depthFrame->getInstanceNum()) {
+        throw std::runtime_error("Depth is not aligned to color");
     }
     auto calibHandler = getParentPipeline().getDefaultDevice()->readCalibration();
     auto camID = static_cast<CameraBoardSocket>(colorFrame->getInstanceNum());
@@ -298,10 +321,14 @@ void RGBD::run() {
 
         pc->setPointsRGB(points);
         pcl.send(pc);
+        auto rgbdData = std::make_shared<RGBDData>();
+        rgbdData->depthFrame = *depthFrame;
+        rgbdData->rgbFrame = *colorFrame;
+        rgbd.send(rgbdData);
     }
 }
-void RGBD::setOutputMeters(bool outputMeters) {
-    pimpl->setOutputMeters(outputMeters);
+void RGBD::setDepthUnit(StereoDepthConfig::AlgorithmControl::DepthUnit depthUnit){
+    pimpl->setDepthUnit(depthUnit);
 }
 void RGBD::useCPU() {
     pimpl->useCPU();

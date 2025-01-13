@@ -23,23 +23,15 @@ int main() {
     dai::RemoteConnection remoteConnector(dai::RemoteConnection::DEFAULT_ADDRESS, webSocketPort, true, httpPort);
     // Create pipeline
     dai::Pipeline pipeline;
-    // Define sources and outputs
-    int fps = 30;
-    // Define sources and outputs
-    auto left = pipeline.create<dai::node::MonoCamera>();
-    auto right = pipeline.create<dai::node::MonoCamera>();
+    auto left = pipeline.create<dai::node::Camera>();
+    auto right = pipeline.create<dai::node::Camera>();
     auto stereo = pipeline.create<dai::node::StereoDepth>();
     auto rgbd = pipeline.create<dai::node::RGBD>()->build();
     auto color = pipeline.create<dai::node::Camera>();
-    stereo->setExtendedDisparity(false);
     color->build();
 
-    left->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
-    left->setCamera("left");
-    left->setFps(fps);
-    right->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
-    right->setCamera("right");
-    right->setFps(fps);
+    left->build(dai::CameraBoardSocket::LEFT);
+    right->build(dai::CameraBoardSocket::RIGHT);
     stereo->setSubpixel(true);
     stereo->setExtendedDisparity(false);
     stereo->setDefaultProfilePreset(dai::node::StereoDepth::PresetMode::DEFAULT);
@@ -47,11 +39,14 @@ int main() {
     stereo->setRectifyEdgeFillColor(0);  // black, to better see the cutout
     stereo->enableDistortionCorrection(true);
     stereo->initialConfig.setLeftRightCheckThreshold(10);
-    auto *out = color->requestOutput(std::pair<int, int>(1280, 720), dai::ImgFrame::Type::RGB888i);
-    left->out.link(stereo->left);
-    right->out.link(stereo->right);
+
+    auto* out = color->requestOutput(std::pair<int, int>(1280, 720), dai::ImgFrame::Type::RGB888i);
 
     out->link(stereo->inputAlignTo);
+    left->requestOutput(std::pair<int, int>(1280, 729))->link(stereo->left);
+    right->requestOutput(std::pair<int, int>(1280, 729))->link(stereo->right);
+
+
     stereo->depth.link(rgbd->inDepth);
     out->link(rgbd->inColor);
 

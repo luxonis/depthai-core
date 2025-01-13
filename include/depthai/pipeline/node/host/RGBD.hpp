@@ -2,6 +2,8 @@
 #include "depthai/pipeline/Subnode.hpp"
 #include "depthai/pipeline/ThreadedHostNode.hpp"
 #include "depthai/pipeline/datatype/PointCloudData.hpp"
+#include "depthai/pipeline/datatype/RGBDData.hpp"
+#include "depthai/pipeline/datatype/StereoDepthConfig.hpp"
 #include "depthai/pipeline/node/Sync.hpp"
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "depthai/utility/Pimpl.hpp"
@@ -30,15 +32,19 @@ class RGBD : public NodeCRTP<ThreadedHostNode, RGBD> {
      * Output point cloud.
      */
     Output pcl{*this, {"pcl", DEFAULT_GROUP, {{DatatypeEnum::PointCloudData, true}}}};
+    /**
+     * Output RGBD frames.
+     */
+    Output rgbd{*this, {"rgbd", DEFAULT_GROUP, {{DatatypeEnum::RGBDData, true}}}};
 
     std::shared_ptr<RGBD> build();
     /**
-     * @brief Build RGBD node with specified size
-     * @param autocreate If true, will create color and depth frames if they don't exist
+     * @brief Build RGBD node with specified size. Note that this API is global and if used autocreated cameras can't be reused.
+     * @param autocreate If true, will create color and depth nodes if they don't exist. 
      * @param size Size of the frames
      */
     std::shared_ptr<RGBD> build(bool autocreate, std::pair<int, int> size);
-    void setOutputMeters(bool outputMeters);
+    void setDepthUnit(StereoDepthConfig::AlgorithmControl::DepthUnit depthUnit);
     /**
     * @brief Use single-threaded CPU for processing
     */

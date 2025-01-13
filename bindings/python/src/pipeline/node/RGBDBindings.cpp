@@ -41,7 +41,7 @@ void bind_rgbd(pybind11::module& m, void* pCallstack) {
              py::arg("autocreate"),
              py::arg("size"),
              DOC(dai, node, RGBD, build, 2))
-        .def("setOutputMeters", &RGBD::setOutputMeters, py::arg("outputMeters"), DOC(dai, node, RGBD, setOutputMeters))
+        .def("setDepthUnits", &RGBD::setDepthUnit, py::arg("units"), DOC(dai, node, RGBD, setDepthUnit))
         .def("useCPU", &RGBD::useCPU, DOC(dai, node, RGBD, useCPU))
         .def("useCPUMT", &RGBD::useCPUMT, py::arg("numThreads") = 2, DOC(dai, node, RGBD, useCPUMT))
         .def("useGPU", &RGBD::useGPU, py::arg("device") = 0, DOC(dai, node, RGBD, useGPU))

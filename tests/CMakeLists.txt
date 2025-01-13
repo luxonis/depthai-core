@@ -341,7 +341,7 @@ dai_set_test_labels(pointcloud_test ondevice rvc2_all ci)
 
 # RGBD test
 dai_add_test(rgbd_test src/ondevice_tests/rgbd_test.cpp)
-dai_set_test_labels(rgbd_test ondevice rvc2_all ci)
+dai_set_test_labels(rgbd_test ondevice rvc2_all rvc4 ci)
 
 # Resolutions test
 dai_add_test(resolutions_test src/ondevice_tests/resolutions_test.cpp)
