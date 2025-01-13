@@ -174,7 +174,7 @@ dai_set_example_test_labels(rgbd ondevice rvc2_all rvc4 ci)
 add_python_example(visualizer_rgbd RGBD/visualizer_rgbd.py)
 dai_set_example_test_labels(visualizer_rgbd ondevice rvc2_all rvc4 ci)
 
-add_python_example(rgbd_o3d.py RGBD/rgbd_o3d.py)
+add_python_example(rgbd_o3d RGBD/rgbd_o3d.py)
 dai_set_example_test_labels(rgbd_o3d ondevice rvc2_all rvc4 ci)
 
 ## NeuralNetwork
