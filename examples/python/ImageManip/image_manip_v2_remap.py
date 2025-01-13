@@ -38,6 +38,7 @@ with dai.Pipeline() as pipeline:
 
     manip2.initialConfig.addRotateDeg(90)
     manip2.initialConfig.setOutputSize(320, 200)
+    manip2.setRunOnHost(True)
 
     outQcam = camOut.createOutputQueue()
     outQ1 = manip1.out.createOutputQueue()
