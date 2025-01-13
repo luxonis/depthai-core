@@ -109,8 +109,8 @@ EventsManager::EventsManager(std::string url, bool uploadCachedOnStart, float pu
       uploadCachedOnStart(uploadCachedOnStart),
       cacheIfCannotSend(false),
       stopEventBuffer(false) {
-    sourceAppId = utility::getEnv("AGENT_APP_ID");
-    sourceAppIdentifier = utility::getEnv("AGENT_APP_IDENTIFIER");
+    sourceAppId = utility::getEnv("OAKAGENT_APP_VERSION");
+    sourceAppIdentifier = utility::getEnv("OAKAGENT_APP_IDENTIFIER");
     token = utility::getEnv("DEPTHAI_HUB_API_KEY");
     if(token.empty()) {
         throw std::runtime_error("Missing token, please set DEPTHAI_HUB_API_KEY environment variable or use setToken method");
