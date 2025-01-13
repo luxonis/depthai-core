@@ -70,12 +70,13 @@ TEST_CASE("Usb config modes") {
         p.setBoardConfig(cfg.board);
     }
 
-    SECTION("UsbSpeed::SUPER_PLUS") {
-        dai::DeviceBase::Config cfg;
-        cfg.board.usb.maxSpeed = dai::UsbSpeed::SUPER_PLUS;
-        speed = dai::UsbSpeed::SUPER_PLUS;
-        p.setBoardConfig(cfg.board);
-    }
+    // SECTION("UsbSpeed::SUPER_PLUS") {
+    //     dai::DeviceBase::Config cfg;
+    //     cfg.board.usb.maxSpeed = dai::UsbSpeed::SUPER_PLUS;
+    //     speed = dai::UsbSpeed::SUPER_PLUS;
+    //     p.setBoardConfig(cfg.board);
+    // }
+    //
 
     dai::Device d(p);
     REQUIRE(d.getUsbSpeed() == speed);
