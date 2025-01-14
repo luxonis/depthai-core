@@ -1,6 +1,10 @@
 {
     "name": "depthai",
     "dependencies": [
+        {
+            "name": "libxcrypt",
+            "version": "4.4.36"
+        },
         "cpp-httplib",
         "libpng",
         "tiff",
