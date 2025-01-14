@@ -58,9 +58,6 @@ jobs:
         run: cmake -S . -B build -DDEPTHAI_BUILD_PYTHON=ON -DDEPTHAI_PYTHON_FORCE_DOCSTRINGS=ON -DDEPTHAI_BASALT_SUPPORT=ON -DDEPTHAI_PCL_SUPPORT=ON -DDEPTHAI_RTABMAP_SUPPORT=ON -DDEPTHAI_PYTHON_DOCSTRINGS_OUTPUT="$PWD/bindings/python/docstrings/depthai_python_docstring.hpp"
       - name: Build target 'pybind11_mkdoc'
         run: cmake --build build --target pybind11_mkdoc --parallel 4
-      - name: Get vcpkg logs
-        if: always()
-        run: for f in $(ls build/vcpkg/buildtrees/libxcrypt/autoconf*); do echo "///////////////////// $f ///////////////////"; cat $f; done;
       - name: Upload docstring artifacts
         uses: actions/upload-artifact@v3
         with:
