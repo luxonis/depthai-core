@@ -59,6 +59,7 @@ jobs:
       - name: Build target 'pybind11_mkdoc'
         run: cmake --build build --target pybind11_mkdoc --parallel 4
       - name: Get vcpkg logs
+        if: always()
         run: for f in $(ls build/vcpkg/buildtrees/libxcrypt/autoconf*); do echo "///////////////////// $f ///////////////////"; cat $f; done;
       - name: Upload docstring artifacts
         uses: actions/upload-artifact@v3
