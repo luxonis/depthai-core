@@ -86,4 +86,8 @@ span<const uint8_t> Buffer::getRecordData() const {
     return data->getData();
 }
 
+dai::VisualizeType Buffer::getVisualizationMessage() const {
+    return std::monostate{};
+}
+
 }  // namespace dai

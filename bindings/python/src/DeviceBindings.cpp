@@ -462,7 +462,7 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack){
         .def_static("getAllAvailableDevices", &DeviceBase::getAllAvailableDevices, DOC(dai, DeviceBase, getAllAvailableDevices))
         .def_static("getEmbeddedDeviceBinary", py::overload_cast<bool, OpenVINO::Version>(&DeviceBase::getEmbeddedDeviceBinary), py::arg("usb2Mode"), py::arg("version") = OpenVINO::VERSION_UNIVERSAL, DOC(dai, DeviceBase, getEmbeddedDeviceBinary))
         .def_static("getEmbeddedDeviceBinary", py::overload_cast<DeviceBase::Config>(&DeviceBase::getEmbeddedDeviceBinary), py::arg("config"), DOC(dai, DeviceBase, getEmbeddedDeviceBinary, 2))
-        .def_static("getDeviceByMxId", &DeviceBase::getDeviceByMxId, py::arg("mxId"), DOC(dai, DeviceBase, getDeviceByMxId))
+        .def_static("getDeviceById", &DeviceBase::getDeviceById, py::arg("deviceId"), DOC(dai, DeviceBase, getDeviceById))
         .def_static("getAllConnectedDevices", &DeviceBase::getAllConnectedDevices, DOC(dai, DeviceBase, getAllConnectedDevices))
         .def_static("getGlobalProfilingData", &DeviceBase::getGlobalProfilingData, DOC(dai, DeviceBase, getGlobalProfilingData))
 
@@ -513,7 +513,12 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack){
         .def("removeLogCallback", [](DeviceBase& d, int cbId) { py::gil_scoped_release release; return d.removeLogCallback(cbId); }, py::arg("callbackId"), DOC(dai, DeviceBase, removeLogCallback))
         .def("getUsbSpeed", [](DeviceBase& d) { py::gil_scoped_release release; return d.getUsbSpeed(); }, DOC(dai, DeviceBase, getUsbSpeed))
         .def("getDeviceInfo", [](DeviceBase& d) { py::gil_scoped_release release; return d.getDeviceInfo(); }, DOC(dai, DeviceBase, getDeviceInfo))
-        .def("getMxId", [](DeviceBase& d) { py::gil_scoped_release release; return d.getMxId(); }, DOC(dai, DeviceBase, getMxId))
+        .def("getMxId", [](DeviceBase& d) {
+            PyErr_WarnEx(PyExc_DeprecationWarning, "Use getDeviceId() instead.", 1);
+            py::gil_scoped_release release;
+            return d.getMxId(); }, DOC(dai, DeviceBase, getMxId))
+        .def("getDeviceId", [](DeviceBase& d) { py::gil_scoped_release release;
+            return d.getDeviceId(); }, DOC(dai, DeviceBase, getDeviceId))
         .def("getProfilingData", [](DeviceBase& d) { py::gil_scoped_release release; return d.getProfilingData(); }, DOC(dai, DeviceBase, getProfilingData))
         .def("readCalibration", [](DeviceBase& d) { py::gil_scoped_release release; return d.readCalibration(); }, DOC(dai, DeviceBase, readCalibration))
         .def("flashCalibration", [](DeviceBase& d, CalibrationHandler calibrationDataHandler) { py::gil_scoped_release release; return d.flashCalibration(calibrationDataHandler); }, py::arg("calibrationDataHandler"), DOC(dai, DeviceBase, flashCalibration))
@@ -556,6 +561,7 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack){
         .def("setTimesync", [](DeviceBase& d, bool e) { py::gil_scoped_release release; return d.setTimesync(e); }, py::arg("enable"), DOC(dai, DeviceBase, setTimesync, 2))
         .def("getDeviceName", [](DeviceBase& d) { std::string name; { py::gil_scoped_release release; name = d.getDeviceName(); } return py::bytes(name).attr("decode")("utf-8", "replace"); }, DOC(dai, DeviceBase, getDeviceName))
         .def("getProductName", [](DeviceBase& d) { std::string name; { py::gil_scoped_release release; name = d.getProductName(); } return py::bytes(name).attr("decode")("utf-8", "replace"); }, DOC(dai, DeviceBase, getProductName))
+        .def("crashDevice", [](DeviceBase& d) { py::gil_scoped_release release; return d.crashDevice(); }, DOC(dai, DeviceBase, crashDevice))
     ;
 
 

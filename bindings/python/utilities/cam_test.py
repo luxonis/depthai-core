@@ -243,7 +243,7 @@ def socket_to_socket_opt(socket: dai.CameraBoardSocket) -> str:
 signal.signal(signal.SIGINT, exit_cleanly)
 
 # Connect to device, so that we can get connected cameras in case of no args
-success, device_info = dai.Device.getDeviceByMxId(args.device)
+success, device_info = dai.Device.getDeviceById(args.device)
 dai_device_args = []
 if success:
     dai_device_args.append(device_info)
@@ -454,8 +454,6 @@ with dai.Pipeline(dai.Device(*dai_device_args)) as pipeline:
                 print(
                     "Device is calibrated and has a stereo pair, creating StereoDepth node.")
                 stereo = pipeline.createStereoDepth()
-                stereo.setDefaultProfilePreset(
-                    dai.node.StereoDepth.PresetMode.HIGH_DENSITY)
                 stereo.initialConfig.setMedianFilter(dai.MedianFilter.KERNEL_7x7)
                 stereo.setLeftRightCheck(True)
                 stereo.setSubpixel(True)

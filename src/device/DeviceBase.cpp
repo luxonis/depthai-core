@@ -4,8 +4,10 @@
 #include <spdlog/fmt/ostr.h>
 
 #include <chrono>
+#include <cstdlib>
 #include <iostream>
 #include <optional>
+#include <system_error>
 #include <thread>
 
 // shared
@@ -197,7 +199,7 @@ std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice(std::chrono::mill
         } else {
             // Warn
             logger::warn(
-                "Skipping {} device with name \"{}\" ({})", XLinkDeviceStateToStr(invalidDeviceInfo.state), invalidDeviceInfo.name, invalidDeviceInfo.mxid);
+                "Skipping {} device with name \"{}\" ({})", XLinkDeviceStateToStr(invalidDeviceInfo.state), invalidDeviceInfo.name, invalidDeviceInfo.deviceId);
         }
     }
 
@@ -244,14 +246,14 @@ std::vector<DeviceInfo> DeviceBase::getAllConnectedDevices() {
     return XLinkConnection::getAllConnectedDevices();
 }
 
-// First tries to find UNBOOTED device with mxId, then BOOTLOADER device with mxId
-std::tuple<bool, DeviceInfo> DeviceBase::getDeviceByMxId(std::string mxId) {
+// First tries to find UNBOOTED device with deviceId, then BOOTLOADER device with deviceId
+std::tuple<bool, DeviceInfo> DeviceBase::getDeviceById(std::string deviceId) {
     std::vector<DeviceInfo> availableDevices;
     auto states = {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_GATE};
     bool found;
     DeviceInfo dev;
     for(const auto& state : states) {
-        std::tie(found, dev) = XLinkConnection::getDeviceByMxId(mxId, state);
+        std::tie(found, dev) = XLinkConnection::getDeviceById(deviceId, state);
         if(found) return {true, dev};
     }
     return {false, DeviceInfo()};
@@ -596,9 +598,12 @@ void DeviceBase::closeImpl() {
     // At the end stop the monitor thread
     if(monitorThread.joinable()) monitorThread.join();
 
-    // If the device was operated throgh gate, wait for the session to end
+    // If the device was operated through gate, wait for the session to end
     if(gate && waitForGate) {
-        gate->waitForSessionEnd();
+        auto crashDump = gate->waitForSessionEnd();
+        if(crashDump) {
+            logCollection::logCrashDump(pipelineSchema, crashDump.value(), deviceInfo);
+        }
     }
 
     // Close rpcStream
@@ -615,7 +620,7 @@ void DeviceBase::closeImpl() {
             bool found = false;
             do {
                 DeviceInfo rebootingDeviceInfo;
-                std::tie(found, rebootingDeviceInfo) = XLinkConnection::getDeviceByMxId(deviceInfo.getMxId(), X_LINK_ANY_STATE, false);
+                std::tie(found, rebootingDeviceInfo) = XLinkConnection::getDeviceById(deviceInfo.getDeviceId(), X_LINK_ANY_STATE, false);
                 if(found && (rebootingDeviceInfo.state == X_LINK_UNBOOTED || rebootingDeviceInfo.state == X_LINK_BOOTLOADER)) {
                     pimpl->logger.trace("Found rebooting device in {}ns", duration_cast<nanoseconds>(steady_clock::now() - t1).count());
                     DeviceBase rebootingDevice(config, rebootingDeviceInfo, firmwarePath, true);
@@ -741,7 +746,7 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipelin
     }
 
     // Set logging pattern of device (device id + shared pattern)
-    pimpl->setPattern(fmt::format("[{}] [{}] {}", deviceInfo.mxid, deviceInfo.name, LOG_DEFAULT_PATTERN));
+    pimpl->setPattern(fmt::format("[{}] [{}] {}", deviceInfo.deviceId, deviceInfo.name, LOG_DEFAULT_PATTERN));
 
     // Check if WD env var is set
     std::chrono::milliseconds watchdogTimeout = device::XLINK_USB_WATCHDOG_TIMEOUT;
@@ -1055,6 +1060,12 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipelin
                 profilingRunning = false;
             });
         }
+        auto crashdumpPathStr = utility::getEnv("DEPTHAI_CRASHDUMP");
+        if(crashdumpPathStr == "0") {
+            pimpl->rpcClient->call("enableCrashDump", false);
+        } else {
+            pimpl->rpcClient->call("enableCrashDump", true);
+        }
 
         // Below can throw - make sure to gracefully exit threads
         try {
@@ -1083,14 +1094,20 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, Prev
                 }
                 // Recheck if watchdogRunning wasn't already closed and close if more than twice of WD passed
                 if(watchdogRunning && std::chrono::steady_clock::now() - prevPingTime > watchdogTimeout * 2) {
-                    pimpl->logger.warn("Monitor thread (device: {} [{}]) - ping was missed, closing the device connection", deviceInfo.mxid, deviceInfo.name);
+                    pimpl->logger.warn("Monitor thread (device: {} [{}]) - ping was missed, closing the device connection", deviceInfo.deviceId, deviceInfo.name);
                     // ping was missed, reset the device
                     watchdogRunning = false;
                     // close the underlying connection
                     connection->close();
                 }
             }
-            if(isClosing) return;
+            if(isClosing) {
+                auto shared = pipelinePtr.lock();
+                if(shared) {
+                    shared->disconnectXLinkHosts();
+                }
+                return;
+            }
             if(maxReconnectionAttempts == 0) {
                 if(reconnectionCallback) reconnectionCallback(ReconnectionStatus::RECONNECT_FAILED);
                 break;
@@ -1121,6 +1138,12 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, Prev
             if(timesyncThread.joinable()) timesyncThread.join();
             if(loggingThread.joinable()) loggingThread.join();
             if(profilingThread.joinable()) profilingThread.join();
+            if(gate) {
+                auto crashDump = gate->waitForSessionEnd();
+                if(crashDump) {
+                    logCollection::logCrashDump(pipelineSchema, crashDump.value(), deviceInfo);
+                }
+            }
 
             // get timeout (in seconds)
             std::chrono::milliseconds reconnectTimeout(reconnectionTimeoutMs);
@@ -1170,6 +1193,10 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, Prev
 }
 
 std::string DeviceBase::getMxId() {
+    return pimpl->rpcClient->call("getMxId").as<std::string>();
+}
+
+std::string DeviceBase::getDeviceId() {
     return pimpl->rpcClient->call("getMxId").as<std::string>();
 }
 
@@ -1261,6 +1288,20 @@ std::unordered_map<CameraBoardSocket, std::string> DeviceBase::getCameraSensorNa
 std::string DeviceBase::getConnectedIMU() {
     isClosed();
     return pimpl->rpcClient->call("getConnectedIMU").as<std::string>();
+}
+
+void DeviceBase::crashDevice() {
+    isClosed();
+    // Check that the protective ENV variable is set
+    if(utility::getEnv("DEPTHAI_CRASH_DEVICE") != "1") {
+        pimpl->logger.error("Crashing the device is disabled. Set DEPTHAI_CRASH_DEVICE=1 to enable.");
+        return;
+    }
+    try {
+        pimpl->rpcClient->call("crashDevice");
+    } catch(const std::system_error& ex) {
+        pimpl->logger.debug("Crash device threw an exception: {} (expected)", ex.what());
+    }
 }
 
 dai::Version DeviceBase::getIMUFirmwareVersion() {

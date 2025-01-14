@@ -1,15 +1,262 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 4094b79..5735247 100644
+index 4094b79..99df803 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -104,6 +104,10 @@ endif()
+@@ -78,8 +78,9 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+ 
+ 
+ # Flags used for CHECK_CXX_SOURCE_COMPILES
++if(NOT WIN32)
+ set(CMAKE_REQUIRED_FLAGS "-Wno-error")
+-
++endif()
+ 
+ # save flags passed by user
+ set(BASALT_PASSED_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+@@ -103,7 +104,9 @@ endif()
+ 
  # base set of compile flags
  set (BASALT_CXX_FLAGS)
- 
+-
 +if(WIN32)
 +    set(BASALT_CXX_FLAGS "/bigobj")
-+    set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 +endif()
  # For avoiding libfmt >9 issues, see https://github.com/strasdat/Sophus/issues/366 #issuecomment-1229178088
  add_definitions(-DFMT_DEPRECATED_OSTREAM=1)
  
+@@ -269,7 +272,7 @@ set(CMAKE_CXX_FLAGS "${BASALT_CXX_FLAGS}${BASALT_PASSED_CXX_FLAGS}")
+ find_package(OpenCV REQUIRED COMPONENTS core imgproc calib3d highgui)
+ message(STATUS "Found OpenCV ${OpenCV_VERSION} headers in: ${OpenCV_INCLUDE_DIRS}")
+ message(STATUS "Found OpenCV_LIBS: ${OpenCV_LIBS}")
+-
++set(BASALT_SDK_ONLY ON)
+ 
+ 
+ if(BASALT_SDK_ONLY)
+@@ -290,6 +293,7 @@ if(BASALT_SDK_ONLY)
+ 				${PROJECT_BINARY_DIR}/include/basalt/utils/build_config.h
+ 				)
+ 	include_directories(include)
++
+ 	add_library(basalt_sdk
+ 				src/io/marg_data_io.cpp
+ 				src/linearization/landmark_block.cpp
+@@ -314,6 +318,9 @@ if(BASALT_SDK_ONLY)
+ 	set_property(TARGET basalt_sdk PROPERTY CXX_STANDARD 17)
+ 	set_property(TARGET basalt_sdk PROPERTY CXX_STANDARD_REQUIRED ON)
+ 	set_property(TARGET basalt_sdk PROPERTY CXX_EXTENSIONS OFF)
++	include(GenerateExportHeader)
++	generate_export_header(basalt_sdk
++		EXPORT_FILE_NAME ${CMAKE_CURRENT_BINARY_DIR}/include/basalt/exports/basalt_sdkExport.h)
+ 	# target_compile_definitions(basalt_sdk PUBLIC BASALT_SDK_ONLY)
+ 	target_include_directories(basalt_sdk PRIVATE
+ 				"$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>"
+@@ -321,7 +328,7 @@ if(BASALT_SDK_ONLY)
+ 		)
+ 	target_include_directories(basalt_sdk PRIVATE ${PROJECT_BINARY_DIR}/include)
+ 
+-	target_link_libraries(basalt_sdk PUBLIC ${OpenCV_LIBS} Threads::Threads TBB::tbb Eigen3::Eigen Sophus::Sophus magic_enum::magic_enum fmt::fmt)
++	target_link_libraries(basalt_sdk PRIVATE ${OpenCV_LIBS} Threads::Threads TBB::tbb Eigen3::Eigen Sophus::Sophus magic_enum::magic_enum fmt::fmt)
+ 
+ 	target_compile_definitions(basalt_sdk PUBLIC ${BASALT_COMPILE_DEFINITIONS})
+ 
+@@ -341,6 +348,12 @@ if(BASALT_SDK_ONLY)
+ 		DESTINATION include/basalt/utils
+ 		)
+ 
++	# Install generated export header
++	install(
++		FILES ${CMAKE_CURRENT_BINARY_DIR}/include/basalt/exports/basalt_sdkExport.h
++		DESTINATION include/basalt/exports
++	)
++
+ 	# install headers
+ 	install(DIRECTORY include/basalt
+ 				DESTINATION include
+@@ -360,6 +373,7 @@ if(BASALT_SDK_ONLY)
+ 		)
+ 
+ 
++
+ else()
+ 	# Add our own custom scoped opencv target since none is provided by OpenCV itself
+ 	add_library(basalt::opencv INTERFACE IMPORTED)
+diff --git a/CMakePresets.json b/CMakePresets.json
+index 70f8f23..0c82642 100644
+--- a/CMakePresets.json
++++ b/CMakePresets.json
+@@ -1,6 +1,6 @@
+ 
+ {
+-  "version": 2,
++  "version": 3,
+   "configurePresets": [
+     {
+       "name": "default",
+diff --git a/cmake/ports/basalt-headers/portfile.cmake b/cmake/ports/basalt-headers/portfile.cmake
+index 2b38d49..fe98885 100644
+--- a/cmake/ports/basalt-headers/portfile.cmake
++++ b/cmake/ports/basalt-headers/portfile.cmake
+@@ -1,10 +1,8 @@
+-
+-
+ vcpkg_from_github(
+     OUT_SOURCE_PATH SOURCE_PATH
+     REPO luxonis/basalt-headers
+-    REF 9172c4e6d8c8533d5ebae8289bba2a299f30eb50
+-    SHA512 39b4b88b147f4d8fb9b2423559c8f07b6e7e43a5136ff461058ab2fe33edfbd1790e6e8684abc2cbe647457752f4ff835c4ed0ed4a370141e345d1e529af2369
++    REF 5392967dc6825838a52fa6d6ed38188a55a6acf7
++    SHA512 7b22090aacf609e9b8417dd852607d09f0d0db144980852ec1cd73ae2e5fa0f095ef450011a8d7bf6b630f9af8a8ca5870d590de25b8c0783d843344aa48866b
+     HEAD_REF vcpkg_deps
+ )
+ vcpkg_cmake_configure(
+@@ -14,3 +12,7 @@ vcpkg_cmake_configure(
+ vcpkg_cmake_install()
+ 
+ vcpkg_cmake_config_fixup(CONFIG_PATH "lib/cmake/basalt-headers")
++file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
++file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/lib" "${CURRENT_PACKAGES_DIR}/lib")
++file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug")
++vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/LICENSE")
+\ No newline at end of file
+diff --git a/cmake/ports/basalt-headers/vcpkg.json b/cmake/ports/basalt-headers/vcpkg.json
+index 35912be..3a11ef7 100644
+--- a/cmake/ports/basalt-headers/vcpkg.json
++++ b/cmake/ports/basalt-headers/vcpkg.json
+@@ -1,17 +1,19 @@
+-
+-
+ {
+   "name": "basalt-headers",
+   "version-string": "0.1.0",
+   "description": "Reusable components of Basalt project as header-only library",
+   "dependencies": [
+-	    {
++    {
+       "name": "vcpkg-cmake",
+       "host": true
+     },
+     {
+       "name": "vcpkg-cmake-config",
+       "host": true
+-    }
+-]
++    },
++    "eigen3",
++    "sophus",
++    "cereal",
++    "fmt"
++  ]
+ }
+\ No newline at end of file
+diff --git a/include/basalt/optical_flow/optical_flow.h b/include/basalt/optical_flow/optical_flow.h
+index b20df49..450ad63 100644
+--- a/include/basalt/optical_flow/optical_flow.h
++++ b/include/basalt/optical_flow/optical_flow.h
+@@ -59,6 +59,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ #include <vit_implementation_helper.hpp>
+ #endif
+ #include <tbb/concurrent_queue.h>
++#include "basalt/exports/basalt_sdkExport.h"
+ 
+ namespace basalt {
+ 
+@@ -249,6 +250,6 @@ class OpticalFlowTyped : public OpticalFlowBase {
+ 
+ class OpticalFlowFactory {
+  public:
+-  static OpticalFlowBase::Ptr getOpticalFlow(const VioConfig& config, const Calibration<double>& cam);
++  BASALT_SDK_EXPORT static OpticalFlowBase::Ptr getOpticalFlow(const VioConfig& config, const Calibration<double>& cam);
+ };
+ }  // namespace basalt
+diff --git a/include/basalt/utils/vio_config.h b/include/basalt/utils/vio_config.h
+index 4d38532..ee96efa 100644
+--- a/include/basalt/utils/vio_config.h
++++ b/include/basalt/utils/vio_config.h
+@@ -36,7 +36,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ 
+ #include <string>
+ #include <vector>
+-
++#include "basalt/exports/basalt_sdkExport.h"
+ namespace basalt {
+ 
+ enum class LinearizationType { ABS_QR, ABS_SC, REL_SC };
+@@ -44,8 +44,8 @@ enum class MatchingGuessType { SAME_PIXEL, REPROJ_FIX_DEPTH, REPROJ_AVG_DEPTH };
+ enum class KeyframeMargCriteria { KF_MARG_DEFAULT, KF_MARG_FORWARD_VECTOR };
+ 
+ struct VioConfig {
+-  VioConfig();
+-  void load(const std::string& filename);
++  BASALT_SDK_EXPORT VioConfig();
++  BASALT_SDK_EXPORT void load(const std::string& filename);
+   void save(const std::string& filename);
+ 
+   std::string optical_flow_type;
+diff --git a/include/basalt/vi_estimator/vio_estimator.h b/include/basalt/vi_estimator/vio_estimator.h
+index 48222eb..d95ed19 100644
+--- a/include/basalt/vi_estimator/vio_estimator.h
++++ b/include/basalt/vi_estimator/vio_estimator.h
+@@ -40,6 +40,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ #include <basalt/utils/imu_types.h>
+ #include <basalt/utils/vis_matrices.h>
+ #include <basalt/linearization/landmark_block.hpp>
++#include "basalt/exports/basalt_sdkExport.h"
++
+ 
+ namespace basalt {
+ 
+@@ -157,7 +159,7 @@ class VioEstimatorBase {
+ 
+ class VioEstimatorFactory {
+  public:
+-  static VioEstimatorBase::Ptr getVioEstimator(const VioConfig& config, const Calibration<double>& cam,
++  BASALT_SDK_EXPORT static VioEstimatorBase::Ptr getVioEstimator(const VioConfig& config, const Calibration<double>& cam,
+                                                const Eigen::Vector3d& g, bool use_imu, bool use_double);
+ };
+ 
+diff --git a/thirdparty/CLI11 b/thirdparty/CLI11
+index 4af78be..c2ea58c 160000
+--- a/thirdparty/CLI11
++++ b/thirdparty/CLI11
+@@ -1 +1 @@
+-Subproject commit 4af78beef777e313814b4daff70e2da9171a385a
++Subproject commit c2ea58c7f9bb2a1da2d3d7f5b462121ac6a07f16
+diff --git a/thirdparty/magic_enum b/thirdparty/magic_enum
+index 3d1f6a5..43a9272 160000
+--- a/thirdparty/magic_enum
++++ b/thirdparty/magic_enum
+@@ -1 +1 @@
+-Subproject commit 3d1f6a5a2a3fbcba077e00ad0ccc2dd9fefc2ca7
++Subproject commit 43a9272f450fd07e85868ed277ebd793e40806df
+diff --git a/vcpkg-configuration.json b/vcpkg-configuration.json
+index 66747fb..2a03369 100644
+--- a/vcpkg-configuration.json
++++ b/vcpkg-configuration.json
+@@ -2,7 +2,7 @@
+ {
+   "default-registry": {
+     "kind": "git",
+-    "baseline": "509f71e53f45e46c13fa7935d2f6a45803580c07",
++    "baseline": "f56b56e01683ba9fde12b64de246ec0b3eb69b18",
+     "repository": "https://github.com/microsoft/vcpkg"
+   },
+   "registries": [
+diff --git a/vcpkg.json b/vcpkg.json
+index 64107c7..6889ff7 100644
+--- a/vcpkg.json
++++ b/vcpkg.json
+@@ -9,7 +9,11 @@
+ 		"cereal",
+ 		"fmt",
+ 		"tbb",
+-		"nlohmann-json"
++		"nlohmann-json",
++		{
++			"name": "opencv4",
++			"default-features": false
++		}
+ 	],
+ 	"builtin-baseline": "f5ec6f30ff70f04f841436a0f36600bdbabfcfbf"
+ }
+

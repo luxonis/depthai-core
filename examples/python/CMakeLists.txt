@@ -40,6 +40,7 @@ function(add_python_example example_name python_script_path)
         # Python path (to find compiled module)
         "PYTHONPATH=$<TARGET_FILE_DIR:${TARGET_NAME}>${SYS_PATH_SEPARATOR}$ENV{PYTHONPATH}"
         "DEPTHAI_SEARCH_TIMEOUT=15000"
+        "DEPTHAI_CONNECT_TIMEOUT=15000"
         "DEPTHAI_RECONNECT_TIMEOUT=0"
         # ASAN in case of sanitizers
         "${ASAN_ENVIRONMENT_VARS}"
@@ -60,6 +61,7 @@ function(add_python_example example_name python_script_path)
             # Python path (to find compiled module)
             "PYTHONPATH=$<TARGET_FILE_DIR:${TARGET_NAME}>${SYS_PATH_SEPARATOR}$ENV{PYTHONPATH}"
             "DEPTHAI_SEARCH_TIMEOUT=30000"
+            "DEPTHAI_CONNECT_TIMEOUT=30000"
             "DEPTHAI_RECONNECT_TIMEOUT=0"
             # ASAN in case of sanitizers
             ${ASAN_ENVIRONMENT_VARS}
@@ -193,6 +195,10 @@ dai_set_example_test_labels(video_encoder ondevice rvc2_all rvc4 ci)
 add_python_example(spatial_location_calculator SpatialLocationCalculator/spatial_location_calculator.py)
 dai_set_example_test_labels(spatial_location_calculator ondevice rvc2_all rvc4 ci)
 
+## ImageAlign
+add_python_example(depth_align ImageAlign/depth_align.py)
+dai_set_example_test_labels(depth_align ondevice rvc2_all rvc4 ci)
+
 ## Visualizer
 
 # Split into two examples for RVC2 and RVC4 since the tests are run concurrently, to avoid port conflicts
@@ -210,3 +216,30 @@ dai_set_example_test_labels(visualizer_encoded_rvc2 ondevice rvc2 usb ci)
 
 add_python_example(custom_services Visualizer/custom_services.py)
 dai_set_example_test_labels(custom_services onhost ci)
+
+
+## Script node
+add_python_example(script_simple Script/script_simple.py)
+dai_set_example_test_labels(script_simple ondevice rvc2_all rvc4 ci)
+set_tests_properties(py_script_simple PROPERTIES FAIL_REGULAR_EXPRESSION "\\[error\\];\\[critical\\]")
+
+add_python_example(script_all_cameras Script/script_switch_all_cameras.py)
+dai_set_example_test_labels(script_all_cameras ondevice rvc2_all rvc4 ci)
+
+## Benchmark node
+add_python_example(benchmark_node Benchmark/benchmark_simple.py)
+dai_set_example_test_labels(benchmark_node ondevice rvc2_all rvc4 ci)
+set_tests_properties(py_benchmark_node PROPERTIES FAIL_REGULAR_EXPRESSION "\\[error\\];\\[critical\\]")
+
+add_python_example(benchmark_cameras Benchmark/benchmark_camera.py)
+dai_set_example_test_labels(benchmark_cameras ondevice rvc2_all rvc4 ci)
+set_tests_properties(py_benchmark_cameras PROPERTIES FAIL_REGULAR_EXPRESSION "\\[error\\];\\[critical\\]")
+
+add_python_example(benchmark_nn Benchmark/benchmark_nn.py)
+dai_set_example_test_labels(benchmark_nn ondevice rvc2_all rvc4 ci)
+
+# IMU node
+add_python_example(imu_gyroscope_accelerometer IMU/imu_gyroscope_accelerometer.py)
+dai_set_example_test_labels(imu_gyroscope_accelerometer rvc2_all rvc4 ci)
+# On slow hosts the examples warns that batch size is too small
+set_tests_properties(py_imu_gyroscope_accelerometer PROPERTIES FAIL_REGULAR_EXPRESSION "\\[error\\];\\[critical\\]")

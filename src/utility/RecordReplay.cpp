@@ -216,9 +216,9 @@ bool allMatch(const std::vector<std::string>& v1, const std::vector<std::string>
     }
     return true;
 }
-std::string matchTo(const std::vector<std::string>& mxIds, const std::vector<std::string>& filenames, const std::vector<std::string>& nodenames) {
-    std::string mxId = "";
-    for(const auto& id : mxIds) {
+std::string matchTo(const std::vector<std::string>& deviceIds, const std::vector<std::string>& filenames, const std::vector<std::string>& nodenames) {
+    std::string deviceId = "";
+    for(const auto& id : deviceIds) {
         std::vector<std::string> matches;
         for(const auto& filename : filenames) {
             if(filename.size() >= 4 && filename.substr(filename.size() - 4, filename.size()) != "meta" && filename.find(id) != std::string::npos) {
@@ -227,15 +227,15 @@ std::string matchTo(const std::vector<std::string>& mxIds, const std::vector<std
         }
         if(matches.size() == nodenames.size()) {
             if(allMatch(matches, nodenames)) {
-                if(mxId.empty()) {
-                    mxId = id;
+                if(deviceId.empty()) {
+                    deviceId = id;
                 } else {
                     throw std::runtime_error("Multiple recordings match the pipeline configuration - unsupported.");
                 }
             }
         }
     }
-    return mxId;
+    return deviceId;
 }
 
 }  // namespace utility

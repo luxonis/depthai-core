@@ -7,7 +7,7 @@ with dai.Pipeline() as pipeline:
     imu = pipeline.create(dai.node.IMU)
 
     # enable ACCELEROMETER_RAW at 500 hz rate
-    imu.enableIMUSensor(dai.IMUSensor.ACCELEROMETER_RAW, 500)
+    imu.enableIMUSensor(dai.IMUSensor.ACCELEROMETER_RAW, 480)
     # enable GYROSCOPE_RAW at 400 hz rate
     imu.enableIMUSensor(dai.IMUSensor.GYROSCOPE_RAW, 400)
     # it's recommended to set both setBatchReportThreshold and setMaxBatchReports to 20 when integrating in a pipeline with a lot of input/output connections
@@ -27,23 +27,20 @@ with dai.Pipeline() as pipeline:
 
     while pipeline.isRunning():
         imuData = imuQueue.get()
-
+        assert isinstance(imuData, dai.IMUData)
         imuPackets = imuData.packets
         for imuPacket in imuPackets:
             acceleroValues = imuPacket.acceleroMeter
             gyroValues = imuPacket.gyroscope
 
-            acceleroTs = acceleroValues.getTimestampDevice()
-            gyroTs = gyroValues.getTimestampDevice()
-            if baseTs is None:
-                baseTs = acceleroTs if acceleroTs < gyroTs else gyroTs
-            acceleroTs = timeDeltaToMilliS(acceleroTs - baseTs)
-            gyroTs = timeDeltaToMilliS(gyroTs - baseTs)
+            acceleroTs = acceleroValues.getTimestamp()
+            gyroTs = gyroValues.getTimestamp()
 
             imuF = "{:.06f}"
             tsF  = "{:.03f}"
 
-            print(f"Accelerometer timestamp: {tsF.format(acceleroTs)} ms")
+            print(f"Accelerometer timestamp: {acceleroTs}")
+            print(f"Latency [ms]: {dai.Clock.now() - acceleroValues.getTimestamp()}")
             print(f"Accelerometer [m/s^2]: x: {imuF.format(acceleroValues.x)} y: {imuF.format(acceleroValues.y)} z: {imuF.format(acceleroValues.z)}")
-            print(f"Gyroscope timestamp: {tsF.format(gyroTs)} ms")
+            print(f"Gyroscope timestamp: {gyroTs}")
             print(f"Gyroscope [rad/s]: x: {imuF.format(gyroValues.x)} y: {imuF.format(gyroValues.y)} z: {imuF.format(gyroValues.z)} ")

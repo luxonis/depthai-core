@@ -2,8 +2,6 @@
 
 #include <optional>
 
-#include "ConfigVersion.hpp"
-#include "ObjectDetectionSubtypeYolo.hpp"
 #include "Metadata.hpp"
 #include "Head.hpp"
 #include "DataType.hpp"

@@ -21,8 +21,9 @@ class RemoteConnection {
                               uint16_t httpPort = DEFAULT_HTTP_PORT);
     ~RemoteConnection();
 
-    void addTopic(const std::string& topicName, Node::Output& output, const std::string& group = "");
-    std::shared_ptr<MessageQueue> addTopic(const std::string& topicName, const std::string& group = "", unsigned int maxSize = 16, bool blocking = false);
+    void addTopic(const std::string& topicName, Node::Output& output, const std::string& group = "", bool useVisualizationIfAvailable = true);
+    std::shared_ptr<MessageQueue> addTopic(
+        const std::string& topicName, const std::string& group = "", unsigned int maxSize = 16, bool blocking = false, bool useVisualizationIfAvailable = true);
     void registerPipeline(const Pipeline& pipeline);
     int waitKey(int delayMs);
     void registerService(const std::string& serviceName, std::function<nlohmann::json(const nlohmann::json&)> callback);

@@ -152,8 +152,9 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack){
         ;
 
     point2f
-        .def(py::init<>())
-        .def(py::init<float, float>())
+        .def(py::init<>(), DOC(dai, Point2f, Point2f))
+        .def(py::init<float, float>(), py::arg("x"), py::arg("y"), DOC(dai, Point2f, Point2f, 2))
+        .def(py::init<float, float, bool>(), py::arg("x"), py::arg("y"), py::arg("normalized"), DOC(dai, Point2f, Point2f, 3))
         .def_readwrite("x", &Point2f::x)
         .def_readwrite("y", &Point2f::y)
         .def("isNormalized", &Point2f::isNormalized)
@@ -191,9 +192,9 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack){
         .def_readwrite("qz", &Quaterniond::qz)
         .def_readwrite("qw", &Quaterniond::qw)
         ;
-    size2f
-        .def(py::init<>())
-        .def(py::init<float, float>())
+    size2f.def(py::init<>())
+        .def(py::init<float, float>(), py::arg("width"), py::arg("height"))
+        .def(py::init<float, float, bool>(), py::arg("width"), py::arg("height"), py::arg("normalized"))
         .def_readwrite("width", &Size2f::width)
         .def_readwrite("height", &Size2f::height)
         .def("isNormalized", &Size2f::isNormalized)
