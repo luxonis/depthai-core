@@ -2351,6 +2351,10 @@ template <template <typename T> typename ImageManipBuffer, typename ImageManipDa
 ImageManipOperations<ImageManipBuffer, ImageManipData>& ImageManipOperations<ImageManipBuffer, ImageManipData>::build(
     const ImageManipOpsBase<Container>& newBase, ImgFrame::Type outType, FrameSpecs srcFrameSpecs, ImgFrame::Type inFrameType) {
     const auto newCfgStr = getConfigString(newBase);
+    if(outType == ImgFrame::Type::NONE) {
+        if(base.colormap != Colormap::NONE) outType = VALID_TYPE_COLOR;
+        else outType = inFrameType;
+    }
     if(newCfgStr == prevConfig && outType == outputFrameType && srcFrameSpecs.width == srcSpecs.width && srcFrameSpecs.height == srcSpecs.height
        && inFrameType == inType)
         return *this;
@@ -2359,15 +2363,11 @@ ImageManipOperations<ImageManipBuffer, ImageManipData>& ImageManipOperations<Ima
 
     if(newBase.hasWarp(srcFrameSpecs.width, srcFrameSpecs.height)) mode = mode | MODE_WARP;
     if(newBase.colormap != Colormap::NONE && isSingleChannelu8(inFrameType)) mode = mode | MODE_COLORMAP;
-    if(outType != ImgFrame::Type::NONE && outType != inFrameType) mode = mode | MODE_CONVERT;
+    if(outType != inFrameType) mode = mode | MODE_CONVERT;
 
     assert(inFrameType != ImgFrame::Type::NONE);
     base = newBase;
     outputFrameType = outType;
-    if(outType == ImgFrame::Type::NONE) {
-        if(base.colormap != Colormap::NONE) outputFrameType = VALID_TYPE_COLOR;
-        else outputFrameType = inFrameType;
-    }
     inType = inFrameType;
     type = inType;
     srcSpecs = srcFrameSpecs;
@@ -2924,9 +2924,9 @@ void Warp<ImageManipBuffer, ImageManipData>::transform(const uint8_t* src,
                                                        const std::array<std::array<float, 3>, 3> matrix,
                                                        const std::vector<uint8_t>& background) {
 #if defined(DEPTHAI_HAVE_OPENCV_SUPPORT) && DEPTHAI_IMAGEMANIPV2_OPENCV
-    auto type = numChannels == 1 ? CV_8UC1 : (numChannels == 2 ? CV_8UC2 : CV_8UC3);
+    auto type = numChannels == 1 ? CV_8UC1 : (numChannels == 2 ? CV_16UC1 : CV_8UC3);
     auto bg = numChannels == 1 ? cv::Scalar(background[0])
-                               : (numChannels == 2 ? cv::Scalar(background[0], background[1]) : cv::Scalar(background[0], background[1], background[2]));
+                               : (numChannels == 2 ? cv::Scalar(background[0]) : cv::Scalar(background[0], background[1], background[2]));
     const cv::Mat cvSrc(srcHeight, srcWidth, type, const_cast<uint8_t*>(src), srcStride);
     cv::Mat cvDst(dstHeight, dstWidth, type, dst, dstStride);
 #elif defined(DEPTHAI_HAVE_FASTCV_SUPPORT) && DEPTHAI_IMAGEMANIPV2_FASTCV
