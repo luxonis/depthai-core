@@ -31,7 +31,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt update
-          sudo apt install libusb-1.0-0-dev pkg-config bison autoconf libtool libxi-dev libxtst-dev libxrandr-dev libx11-dev libxft-dev libxext-dev nasm flex libudev-dev build-essential
+          sudo apt install libusb-1.0-0-dev pkg-config bison autoconf libtool libxi-dev libxtst-dev libxrandr-dev libx11-dev libxft-dev libxext-dev nasm flex libudev-dev build-essential automake
 
       - name: Configure project
         run: cmake -S . -B build -DDEPTHAI_ENABLE_CURL=ON
