@@ -148,12 +148,13 @@ Node::Output* Camera::requestFullResolutionOutput(ImgFrame::Type type, float fps
     return pimpl->requestOutput(*this, cap, false);
 }
 
-Node::Output* Camera::requestOutput(std::pair<uint32_t, uint32_t> size, std::optional<ImgFrame::Type> type, ImgResizeMode resizeMode, float fps) {
+Node::Output* Camera::requestOutput(std::pair<uint32_t, uint32_t> size, std::optional<ImgFrame::Type> type, ImgResizeMode resizeMode, float fps, std::optional<bool> enableUndistortion) {
     ImgFrameCapability cap;
     cap.size.fixed(size);
     cap.fps.fixed(fps);
     cap.type = type;
     cap.resizeMode = resizeMode;
+    cap.enableUndistortion = enableUndistortion;
     return pimpl->requestOutput(*this, cap, false);
 }
 

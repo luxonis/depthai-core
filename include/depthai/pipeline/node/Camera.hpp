@@ -23,7 +23,8 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
     Node::Output* requestOutput(std::pair<uint32_t, uint32_t> size,
                                 std::optional<ImgFrame::Type> type = std::nullopt,
                                 ImgResizeMode resizeMode = ImgResizeMode::CROP,
-                                float fps = 30);
+                                float fps = 30,
+                                std::optional<bool> enableUndistortion = std::nullopt);
     /**
      * Request output with advanced controls. Mainly to be used by custom node writers.
      */

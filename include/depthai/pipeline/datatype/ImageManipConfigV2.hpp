@@ -225,6 +225,7 @@ class ImageManipOpsBase : public ImageManipOpsEnums {
     uint8_t backgroundG = 0;
     uint8_t backgroundB = 0;
     Colormap colormap = Colormap::NONE;
+    bool undistort = false;
 
     C operations{};
 
@@ -242,6 +243,7 @@ class ImageManipOpsBase : public ImageManipOpsEnums {
         to.backgroundG = backgroundG;
         to.backgroundB = backgroundB;
         to.colormap = colormap;
+        to.undistort = undistort;
 
         to.operations.clear();
         to.operations.insert(to.operations.end(), operations.begin(), operations.end());
@@ -383,7 +385,7 @@ class ImageManipOpsBase : public ImageManipOpsEnums {
     }
 
     DEPTHAI_SERIALIZE(
-        ImageManipOpsBase, operations, outputWidth, outputHeight, center, resizeMode, background, backgroundR, backgroundG, backgroundB, colormap);
+        ImageManipOpsBase, operations, outputWidth, outputHeight, center, resizeMode, background, backgroundR, backgroundG, backgroundB, colormap, undistort);
 };
 
 /**
