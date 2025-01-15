@@ -35,12 +35,22 @@ class DeviceNode : public ThreadedNode {
     // Get properties
     virtual Properties& getProperties();
 
+    void setLogLevel(dai::LogLevel level) override {
+        int64_t myid = id;
+        device->setNodeLogLevel(myid, level);
+    }
+
+    virtual dai::LogLevel getLogLevel() const override {
+        int64_t myid = id;
+        return device->getNodeLogLevel(myid);
+    }
+
    protected:
     DeviceNode(const std::shared_ptr<Device>& device, std::unique_ptr<Properties> props, bool conf);
     DeviceNode(std::unique_ptr<Properties> props, bool conf);
 
     template <typename T>
-    friend class Subnode;
+friend class Subnode;
 
     /**
      * @brief Set device for this node

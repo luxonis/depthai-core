@@ -269,9 +269,19 @@ void DeviceBase::Impl::setLogLevel(LogLevel level) {
     logger.set_level(spdlogLevel);
 }
 
+void DeviceBase::setNodeLogLevel(int64_t id, LogLevel level) {
+    pimpl->rpcClient->call("setLogLevelOneNode", id, level);
+}
+
 LogLevel DeviceBase::Impl::getLogLevel() {
     // Converts spdlog to LogLevel
     return spdlogLevelToLogLevel(logger.level(), LogLevel::WARN);
+}
+
+LogLevel DeviceBase::getNodeLogLevel(int64_t id) {
+    (void)id;
+    // TODO: Implement
+    return LogLevel::WARN;
 }
 
 ///////////////////////////////////////////////

@@ -52,9 +52,9 @@ class ThreadedNode : public Node {
     std::shared_ptr<spdlog::async_logger> logger =
         std::make_shared<spdlog::async_logger>("ThreadedNode", std::make_shared<spdlog::sinks::stdout_color_sink_mt>(), threadPool);
 
-    void setLogLevel(dai::LogLevel level);
+    virtual void setLogLevel(dai::LogLevel level);
 
-    dai::LogLevel getLogLevel() const;
+    virtual dai::LogLevel getLogLevel() const;
 };
 
 }  // namespace dai

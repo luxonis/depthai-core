@@ -426,6 +426,9 @@ class DeviceBase {
      */
     void setLogLevel(LogLevel level);
 
+    void setNodeLogLevel(int64_t id, LogLevel level);
+    LogLevel getNodeLogLevel(int64_t id);
+
     /**
      * Gets current logging severity level of the device.
      *
