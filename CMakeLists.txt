@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.20)
 # Early options
 option(DEPTHAI_ENABLE_LIBUSB "Enable usage of libusb and interaction with USB devices" ON)
 # Build AprilTag node code (note, that even if set to OFF, an AprilTagNode can be used with setRunOnHost(false))
@@ -9,6 +9,7 @@ option(DEPTHAI_ENABLE_PROTOBUF "Enable Protobuf support" ON)
 option(DEPTHAI_BUILD_PYTHON "Build python bindings" OFF)
 option(DEPTHAI_BUILD_TESTS "Build tests" OFF)
 option(DEPTHAI_OPENCV_SUPPORT "Enable optional OpenCV support" ON)
+OPTION(DEPTHAI_ENABLE_KOMPUTE "Enable Kompute support" OFF)
 option(DEPTHAI_PCL_SUPPORT "Enable optional PCL support" OFF)
 option(DEPTHAI_BOOTSTRAP_VCPKG "Automatically bootstrap VCPKG" ON)
 option(DEPTHAI_MERGED_TARGET "Enable merged target build" ON)
@@ -50,6 +51,9 @@ list(APPEND VCPKG_MANIFEST_FEATURES "opencv-support")
 endif()
 if(DEPTHAI_PCL_SUPPORT)
 list(APPEND VCPKG_MANIFEST_FEATURES "pcl-support")
+endif()
+if(DEPTHAI_ENABLE_KOMPUTE)
+list(APPEND VCPKG_MANIFEST_FEATURES "kompute-support")
 endif()
 
 # Enable backward stack printing on crash
@@ -275,12 +279,19 @@ include(depthaiDependencies)
 # Add threads preference
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 
+
 # TODO Remove shared naming
 set(DEPTHAI_SHARED_3RDPARTY_INCLUDE
     ${CMAKE_CURRENT_LIST_DIR}/include/3rdparty/
 )
 # Add depthai-bootloader-shared
 include(${CMAKE_CURRENT_LIST_DIR}/shared/depthai-bootloader-shared.cmake)
+
+if(DEPTHAI_ENABLE_KOMPUTE)
+    add_subdirectory(shaders)
+
+    list(APPEND targets_to_export shaders)
+endif()
 
 # Add flags helpers
 include(Flags)
@@ -388,6 +399,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/node/host/XLinkInHost.cpp
     src/pipeline/node/host/XLinkOutHost.cpp
     src/pipeline/node/host/HostNode.cpp
+    src/pipeline/node/host/RGBD.cpp
     src/pipeline/datatype/DatatypeEnum.cpp
     src/pipeline/node/PointCloud.cpp
     src/pipeline/datatype/Buffer.cpp
@@ -418,6 +430,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/BenchmarkReport.cpp
     src/pipeline/datatype/PointCloudConfig.cpp
     src/pipeline/datatype/PointCloudData.cpp
+    src/pipeline/datatype/RGBDData.cpp
     src/pipeline/datatype/MessageGroup.cpp
     src/pipeline/datatype/TransformData.cpp
     src/utility/H26xParsers.cpp
@@ -502,6 +515,10 @@ set_target_properties(${TARGET_CORE_NAME} PROPERTIES EXPORT_NAME ${TARGET_CORE_A
 # Add to list of targets to export and install
 list(APPEND targets_to_export ${TARGET_CORE_NAME})
 
+if(DEPTHAI_ENABLE_KOMPUTE)
+    target_link_libraries(${TARGET_CORE_NAME} PRIVATE shaders kompute::kompute)
+    target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_ENABLE_KOMPUTE)
+endif()
 # Add model_zoo helper binary
 add_executable(zoo_helper src/modelzoo/zoo_helper.cpp)
 target_compile_definitions(zoo_helper PRIVATE DEPTHAI_TARGET_CORE)

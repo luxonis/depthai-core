@@ -34,6 +34,7 @@ enum class DatatypeEnum : std::int32_t {
     TransformData,
     PointCloudConfig,
     PointCloudData,
+    RGBDData,
     ImageAlignConfig,
     ImgAnnotations
 };
