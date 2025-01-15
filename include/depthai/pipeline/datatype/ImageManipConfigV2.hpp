@@ -288,11 +288,6 @@ class ImageManipOpsBase : public ImageManipOpsEnums {
         return *this;
     }
 
-    ImageManipOpsBase& undistort(bool enable) {
-        operations.emplace_back(Undistort(enable));
-        return *this;
-    }
-
     ImageManipOpsBase& crop(float x, float y, float w, float h, bool normalized = false, bool center = false) {
         operations.emplace_back(Translate(-x, -y, normalized));
         operations.emplace_back(Crop(w, h, normalized, center));
