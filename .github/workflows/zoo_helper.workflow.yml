@@ -31,9 +31,9 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt update
-          sudo apt install libusb-1.0-0-dev pkg-config bison autoconf libtool libxi-dev libxtst-dev libxrandr-dev libx11-dev libxft-dev libxext-dev nasm flex libudev-dev build-essential automake
-          sudo apt install ninja-build
-          sudo apt install make automake libltdl-dev
+          sudo apt install libusb-1.0-0-dev pkg-config bison autoconf libtool libxi-dev libxtst-dev
+          sudo apt install libxrandr-dev libx11-dev libxft-dev libxext-dev nasm flex libudev-dev
+          sudo apt install build-essential automake libltdl-dev
 
       - name: Configure project
         run: cmake -S . -B build -DDEPTHAI_ENABLE_CURL=ON
