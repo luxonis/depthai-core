@@ -1,6 +1,6 @@
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_test_macros.hpp>
-#include <depthai/depthai.hpp>
+#include "depthai/depthai.hpp"
 
 TEST_CASE("basic rgbd") {
     // Create pipeline
@@ -11,18 +11,11 @@ TEST_CASE("basic rgbd") {
     auto stereo = pipeline.create<dai::node::StereoDepth>();
     auto rgbd = pipeline.create<dai::node::RGBD>()->build();
     auto color = pipeline.create<dai::node::Camera>();
-    stereo->setExtendedDisparity(false);
     color->build();
 
     left->build(dai::CameraBoardSocket::LEFT);
     right->build(dai::CameraBoardSocket::RIGHT);
-    stereo->setSubpixel(true);
-    stereo->setExtendedDisparity(false);
-    stereo->setDefaultProfilePreset(dai::node::StereoDepth::PresetMode::HIGH_DENSITY);
-    stereo->setLeftRightCheck(true);
-    stereo->setRectifyEdgeFillColor(0);  // black, to better see the cutout
-    stereo->enableDistortionCorrection(true);
-    stereo->initialConfig.setLeftRightCheckThreshold(10);
+    stereo->setDefaultProfilePreset(dai::node::StereoDepth::PresetMode::DEFAULT);
 
     auto *out = color->requestOutput(std::pair<int, int>(1280, 720), dai::ImgFrame::Type::RGB888i);
     out->link(stereo->inputAlignTo);
