@@ -191,28 +191,8 @@ struct Crop : OpBase {
     DEPTHAI_SERIALIZE(Crop, width, height, normalized, center);
 };
 
-struct Undistort : OpBase {
-    float enable;
-
-    Undistort() {}
-    Undistort(float enable) : enable(enable) {}
-
-    Undistort clone() const {
-        return *this;
-    }
-
-    std::string toStr() const override {
-        std::stringstream ss;
-        ss.imbue(std::locale(""));
-        ss << "U:e=" << enable;
-        return ss.str();
-    }
-
-    DEPTHAI_SERIALIZE(Undistort, enable);
-};
-
 struct ManipOp {
-    std::variant<Translate, Rotate, Resize, Flip, Affine, Perspective, FourPoints, Crop, Undistort> op;
+    std::variant<Translate, Rotate, Resize, Flip, Affine, Perspective, FourPoints, Crop> op;
 
     ManipOp() = default;
     ManipOp(Translate op) : op(op) {}    // NOLINT
@@ -223,7 +203,6 @@ struct ManipOp {
     ManipOp(Perspective op) : op(op) {}  // NOLINT
     ManipOp(FourPoints op) : op(op) {}   // NOLINT
     ManipOp(Crop op) : op(op) {}         // NOLINT
-    ManipOp(Undistort op) : op(op) {}    // NOLINT
 
     DEPTHAI_SERIALIZE(ManipOp, op);
 };
@@ -246,6 +225,7 @@ class ImageManipOpsBase : public ImageManipOpsEnums {
     uint8_t backgroundG = 0;
     uint8_t backgroundB = 0;
     Colormap colormap = Colormap::NONE;
+    bool undistort = false;
 
     C operations{};
 
@@ -263,6 +243,7 @@ class ImageManipOpsBase : public ImageManipOpsEnums {
         to.backgroundG = backgroundG;
         to.backgroundB = backgroundB;
         to.colormap = colormap;
+        to.undistort = undistort;
 
         to.operations.clear();
         to.operations.insert(to.operations.end(), operations.begin(), operations.end());
@@ -409,7 +390,7 @@ class ImageManipOpsBase : public ImageManipOpsEnums {
     }
 
     DEPTHAI_SERIALIZE(
-        ImageManipOpsBase, operations, outputWidth, outputHeight, center, resizeMode, background, backgroundR, backgroundG, backgroundB, colormap);
+        ImageManipOpsBase, operations, outputWidth, outputHeight, center, resizeMode, background, backgroundR, backgroundG, backgroundB, colormap, undistort);
 };
 
 /**
