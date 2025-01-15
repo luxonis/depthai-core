@@ -333,7 +333,7 @@ std::optional<DeviceGate::CrashDump> DeviceGate::waitForSessionEnd() {
                 return std::nullopt;
             case SessionState::CRASHED:
             case SessionState::DESTROYED:
-                auto crashDumpPathStr = utility::getEnv("DEPTHAI_CRASHDUMP");
+                auto crashDumpPathStr = utility::getEnvAs<std::string>("DEPTHAI_CRASHDUMP", "");
                 if(crashDumpPathStr == "0") {
                     spdlog::warn("Firmware crashed but DEPTHAI_CRASHDUMP is set to 0, the crash dump will not be saved.");
                     return std::nullopt;

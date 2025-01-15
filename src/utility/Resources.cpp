@@ -148,7 +148,7 @@ std::vector<std::uint8_t> Resources::getDeviceFirmware(Device::Config config, da
         finalFwBinaryPath = pathToMvcmd;
     }
     // Override if env variable DEPTHAI_DEVICE_BINARY is set
-    dai::Path fwBinaryPath = utility::getEnv("DEPTHAI_DEVICE_BINARY");
+    dai::Path fwBinaryPath = utility::getEnvAs<std::string>("DEPTHAI_DEVICE_BINARY", "");
     if(!fwBinaryPath.empty()) {
         finalFwBinaryPath = fwBinaryPath;
     }
@@ -282,7 +282,7 @@ std::vector<std::uint8_t> Resources::getBootloaderFirmware(dai::bootloader::Type
     } else if(type == dai::bootloader::Type::NETWORK) {
         blEnvVar = "DEPTHAI_BOOTLOADER_BINARY_ETH";
     }
-    dai::Path blBinaryPath = utility::getEnv(blEnvVar);
+    dai::Path blBinaryPath = utility::getEnvAs<std::string>(blEnvVar, "");
     if(!blBinaryPath.empty()) {
         // Load binary file at path
         std::ifstream stream(blBinaryPath, std::ios::binary);
@@ -351,7 +351,7 @@ std::vector<std::uint8_t> Resources::getDeviceFwp(const std::string& fwPath, con
     }
 
     // Override if env variable DEPTHAI_DEVICE_KB_FWP is set
-    dai::Path fwpPathEnv = utility::getEnv(envPath);
+    dai::Path fwpPathEnv = utility::getEnvAs<std::string>(envPath, "");
     if(!fwpPathEnv.empty()) {
         finalFwpPath = fwpPathEnv;
         spdlog::warn("Overriding device fwp: {}", finalFwpPath);
