@@ -19,8 +19,8 @@ with dai.Pipeline() as p:
     rgbd = p.create(dai.node.RGBD).build()
 
     color.build()
-    left.build(dai.CameraBoardSocket.LEFT)
-    right.build(dai.CameraBoardSocket.RIGHT)
+    left.build(dai.CameraBoardSocket.CAM_B)
+    right.build(dai.CameraBoardSocket.CAM_C)
     out = color.requestOutput((1280, 720))
 
 
