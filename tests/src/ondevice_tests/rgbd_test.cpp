@@ -1,28 +1,40 @@
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_test_macros.hpp>
+
 #include "depthai/depthai.hpp"
 
 TEST_CASE("basic rgbd") {
     // Create pipeline
     dai::Pipeline pipeline;
+    auto platform = pipeline.getDefaultDevice()->getPlatform();
     // Define sources and outputs
     auto left = pipeline.create<dai::node::Camera>();
     auto right = pipeline.create<dai::node::Camera>();
     auto stereo = pipeline.create<dai::node::StereoDepth>();
     auto rgbd = pipeline.create<dai::node::RGBD>()->build();
     auto color = pipeline.create<dai::node::Camera>();
+    std::shared_ptr<dai::node::ImageAlign> align = nullptr;
+    if(platform == dai::Platform::RVC4) {
+        align = pipeline.create<dai::node::ImageAlign>();
+    }
     color->build();
 
-    left->build(dai::CameraBoardSocket::LEFT);
-    right->build(dai::CameraBoardSocket::RIGHT);
+    left->build(dai::CameraBoardSocket::CAM_B);
+    right->build(dai::CameraBoardSocket::CAM_C);
     stereo->setDefaultProfilePreset(dai::node::StereoDepth::PresetMode::DEFAULT);
 
-    auto *out = color->requestOutput(std::pair<int, int>(1280, 720), dai::ImgFrame::Type::RGB888i);
-    out->link(stereo->inputAlignTo);
-    left->requestOutput(std::pair<int,int>(1280, 720))->link(stereo->left);
-    right->requestOutput(std::pair<int,int>(1280, 720))->link(stereo->right);
+    auto* out = color->requestOutput(std::pair<int, int>(1280, 720), dai::ImgFrame::Type::RGB888i);
+    left->requestOutput(std::pair<int, int>(1280, 720))->link(stereo->left);
+    right->requestOutput(std::pair<int, int>(1280, 720))->link(stereo->right);
 
-    stereo->depth.link(rgbd->inDepth);
+    if(platform == dai::Platform::RVC4) {
+        stereo->depth.link(align->input);
+        out->link(align->inputAlignTo);
+        align->outputAligned.link(rgbd->inDepth);
+    } else {
+        out->link(stereo->inputAlignTo);
+        stereo->depth.link(rgbd->inDepth);
+    }
     out->link(rgbd->inColor);
 
     auto outQ = rgbd->pcl.createOutputQueue();

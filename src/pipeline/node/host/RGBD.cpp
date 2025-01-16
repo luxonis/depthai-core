@@ -9,6 +9,7 @@
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "depthai/pipeline/datatype/PointCloudData.hpp"
 #include "depthai/pipeline/node/Camera.hpp"
+#include "depthai/pipeline/node/ImageAlign.hpp"
 #include "depthai/pipeline/node/StereoDepth.hpp"
 #include "depthai/pipeline/node/Sync.hpp"
 #ifdef DEPTHAI_ENABLE_KOMPUTE
@@ -40,9 +41,9 @@ class RGBD::Impl {
                 break;
         }
     }
-    void setDepthUnit(StereoDepthConfig::AlgorithmControl::DepthUnit depthUnit){
+    void setDepthUnit(StereoDepthConfig::AlgorithmControl::DepthUnit depthUnit) {
         // Default is millimeter
-        switch(depthUnit){
+        switch(depthUnit) {
             case StereoDepthConfig::AlgorithmControl::DepthUnit::MILLIMETER:
                 scaleFactor = 1.0f;
                 break;
@@ -253,11 +254,22 @@ std::shared_ptr<RGBD> RGBD::build(bool autocreate, std::pair<int, int> size) {
     }
     auto pipeline = getParentPipeline();
     auto colorCam = pipeline.create<node::Camera>()->build();
-    auto depth = pipeline.create<node::StereoDepth>()->build(true);
+    auto platform = pipeline.getDefaultDevice()->getPlatform();
+    auto stereo = pipeline.create<node::StereoDepth>()->build(true);
+    std::shared_ptr<node::ImageAlign> align = nullptr;
+    if(platform == Platform::RVC4) {
+        auto align = pipeline.create<node::ImageAlign>();
+    }
     auto* out = colorCam->requestOutput(size, dai::ImgFrame::Type::RGB888i);
     out->link(inColor);
-    out->link(depth->inputAlignTo);
-    depth->depth.link(inDepth);
+    if(platform == dai::Platform::RVC4) {
+        stereo->depth.link(align->input);
+        out->link(align->inputAlignTo);
+        align->outputAligned.link(inDepth);
+    } else {
+        out->link(stereo->inputAlignTo);
+        stereo->depth.link(inDepth);
+    }
     return build();
 }
 
@@ -327,7 +339,7 @@ void RGBD::run() {
         rgbd.send(rgbdData);
     }
 }
-void RGBD::setDepthUnit(StereoDepthConfig::AlgorithmControl::DepthUnit depthUnit){
+void RGBD::setDepthUnit(StereoDepthConfig::AlgorithmControl::DepthUnit depthUnit) {
     pimpl->setDepthUnit(depthUnit);
 }
 void RGBD::useCPU() {
