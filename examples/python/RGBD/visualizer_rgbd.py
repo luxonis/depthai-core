@@ -21,7 +21,7 @@ with dai.Pipeline() as p:
     color.build()
     left.build(dai.CameraBoardSocket.CAM_B)
     right.build(dai.CameraBoardSocket.CAM_C)
-    out = color.requestOutput((1280, 720))
+    out = color.requestOutput((1280, 720), dai.ImgFrame.Type.RGB888i)
 
 
     out.link(stereo.inputAlignTo)
