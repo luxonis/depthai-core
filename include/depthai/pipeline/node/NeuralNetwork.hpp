@@ -1,12 +1,12 @@
 #pragma once
 
-#include <depthai/modelzoo/NNModelDescription.hpp>
-#include <depthai/pipeline/DeviceNode.hpp>
-#include <depthai/pipeline/node/Camera.hpp>
-
+#include "depthai/modelzoo/NNModelDescription.hpp"
 #include "depthai/nn_archive/NNArchive.hpp"
 #include "depthai/nn_archive/NNArchiveVersionedConfig.hpp"
 #include "depthai/openvino/OpenVINO.hpp"
+#include "depthai/pipeline/DeviceNode.hpp"
+#include "depthai/pipeline/node/Camera.hpp"
+#include "depthai/pipeline/node/host/Replay.hpp"
 
 // standard
 #include <fstream>
@@ -38,8 +38,14 @@ class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNet
      * @returns Shared pointer to NeuralNetwork node
      */
     std::shared_ptr<NeuralNetwork> build(Node::Output& input, const NNArchive& nnArchive);
-    std::shared_ptr<NeuralNetwork> build(const std::shared_ptr<Camera>& input, dai::NNModelDescription modelDesc, float fps = 30.0f);
-    std::shared_ptr<NeuralNetwork> build(const std::shared_ptr<Camera>& input, dai::NNArchive nnArchive, float fps = 30.0f);
+    std::shared_ptr<NeuralNetwork> build(const std::shared_ptr<Camera>& input, NNModelDescription modelDesc, float fps = 30.0f);
+    std::shared_ptr<NeuralNetwork> build(const std::shared_ptr<Camera>& input, NNArchive nnArchive, float fps = 30.0f);
+    std::shared_ptr<NeuralNetwork> build(const std::shared_ptr<ReplayVideo>& input,
+                                         NNModelDescription modelDesc,
+                                         float fps = 30.0f);
+    std::shared_ptr<NeuralNetwork> build(const std::shared_ptr<ReplayVideo>& input,
+                                         NNArchive nnArchive,
+                                         float fps = 30.0f);
 
     /**
      * Input message with data to be inferred upon
@@ -169,6 +175,8 @@ class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNet
     void setNNArchiveBlob(const NNArchive& nnArchive);
     void setNNArchiveSuperblob(const NNArchive& nnArchive, int numShaves);
     void setNNArchiveOther(const NNArchive& nnArchive);
+    NNArchive createNNArchive(NNModelDescription modelDesc);
+    ImgFrameCapability getFrameCapability(NNArchive nnArchive, float fps);
     std::optional<NNArchive> nnArchive;
 };
 
