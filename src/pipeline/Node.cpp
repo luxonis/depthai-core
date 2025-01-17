@@ -731,4 +731,20 @@ std::vector<std::pair<Node::Input&, std::shared_ptr<Capability>>> Node::getRequi
     DAI_CHECK_V(false, "Node '{}' doesn't support node to node linking. Please link outputs <--> inputs manually.", getName());
 }
 
+void Node::Output::setPossibleDatatypes(std::vector<Node::DatatypeHierarchy> types) {
+    desc.types = std::move(types);
+}
+
+std::vector<Node::DatatypeHierarchy> Node::Output::getPossibleDatatypes() const {
+    return desc.types;
+}
+
+void Node::Input::setPossibleDatatypes(std::vector<Node::DatatypeHierarchy> types) {
+    possibleDatatypes = std::move(types);
+}
+
+std::vector<Node::DatatypeHierarchy> Node::Input::getPossibleDatatypes() const {
+    return possibleDatatypes;
+}
+
 }  // namespace dai

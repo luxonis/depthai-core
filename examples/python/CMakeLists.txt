@@ -147,6 +147,8 @@ dai_set_example_test_labels(april_tags_replay ondevice rvc2_all rvc4 ci)
 ## Detection network
 add_python_example(detection_network DetectionNetwork/detection_network.py)
 dai_set_example_test_labels(detection_network ondevice rvc2_all rvc4 ci)
+add_python_example(detection_network_remap DetectionNetwork/detection_network_remap.py)
+dai_set_example_test_labels(detection_network ondevice rvc2_all rvc4 ci)
 
 ## Host nodes
 add_python_example(display HostNodes/display.py)
@@ -161,6 +163,9 @@ dai_set_example_test_labels(image_manip_mod ondevice rvc2_all rvc4 ci)
 
 add_python_example(image_manip_resize ImageManip/image_manip_v2_resize.py)
 dai_set_example_test_labels(image_manip_resize ondevice rvc2_all rvc4 ci)
+
+add_python_example(image_manip_remap ImageManip/image_manip_v2_remap.py)
+dai_set_example_test_labels(image_manip_remap ondevice rvc2_all rvc4 ci)
 
 ## Misc
 add_python_example(reconnect_callback Misc/AutoReconnect/reconnect_callback.py)
@@ -237,3 +242,9 @@ set_tests_properties(py_benchmark_cameras PROPERTIES FAIL_REGULAR_EXPRESSION "\\
 
 add_python_example(benchmark_nn Benchmark/benchmark_nn.py)
 dai_set_example_test_labels(benchmark_nn ondevice rvc2_all rvc4 ci)
+
+# IMU node
+add_python_example(imu_gyroscope_accelerometer IMU/imu_gyroscope_accelerometer.py)
+dai_set_example_test_labels(imu_gyroscope_accelerometer rvc2_all rvc4 ci)
+# On slow hosts the examples warns that batch size is too small
+set_tests_properties(py_imu_gyroscope_accelerometer PROPERTIES FAIL_REGULAR_EXPRESSION "\\[error\\];\\[critical\\]")
