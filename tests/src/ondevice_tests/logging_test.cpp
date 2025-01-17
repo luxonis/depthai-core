@@ -59,13 +59,18 @@ class LoggingTestFixture {
                 FAIL();
             }
         };
-        pipeline.getDefaultDevice()->addLogCallback(callbackSink);
+
+        // Add callback function
+        int callbackId = pipeline.getDefaultDevice()->addLogCallback(callbackSink);
 
         in->send(std::make_shared<dai::Buffer>());
         out->get();
 
         using namespace std::chrono;
         std::this_thread::sleep_for(milliseconds(200));
+
+        // Remove callback function
+        pipeline.getDefaultDevice()->removeLogCallback(callbackId);
 
         for(int i = 0; i < arrivedLogs.size(); i++) {
             if(i < logLevelConverted) REQUIRE(!arrivedLogs[i]);
@@ -115,7 +120,7 @@ void testNodeLogLevel(dai::LogLevel logLevel, bool beforeStart) {
         fixture.pipeline.start();
     }
 
-    // Set log level to DEBUG for the whole device
+    // Set log level to CRITICAL for the whole device
     fixture.device->setLogLevel(dai::LogLevel::CRITICAL);
     REQUIRE(fixture.device->getLogLevel() == dai::LogLevel::CRITICAL);
     REQUIRE(fixture.script->getLogLevel() == dai::LogLevel::CRITICAL);
@@ -138,8 +143,13 @@ void testNodeLogLevel(dai::LogLevel logLevel, bool beforeStart) {
     REQUIRE(fixture.device->getNodeLogLevel(fixture.script->id) == logLevel);
     REQUIRE(fixture.device->getLogLevel() == dai::LogLevel::CRITICAL);
 
-    // Verify longs
+    // Verify logs
     fixture.verifyLogs(logLevel);
+
+    // Verify that we can set the log level dynamically = when the pipeline is running
+    fixture.script->setLogLevel(dai::LogLevel::WARN);
+    fixture.device->setLogOutputLevel(dai::LogLevel::WARN);
+    fixture.verifyLogs(dai::LogLevel::WARN);
 
     // Setting log back to ERROR should affect all nodes
     fixture.device->setLogLevel(dai::LogLevel::ERR);
