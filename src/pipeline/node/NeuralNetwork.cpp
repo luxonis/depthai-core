@@ -31,7 +31,7 @@ std::shared_ptr<NeuralNetwork> NeuralNetwork::build(const std::shared_ptr<Camera
     return build(input, nnArchive, fps);
 }
 
-NNArchive NeuralNetwork::createNNArchive(NNModelDescription modelDesc)  {
+NNArchive NeuralNetwork::createNNArchive(NNModelDescription& modelDesc)  {
     // Download model from zoo
     if(modelDesc.platform.empty()) {
         DAI_CHECK(getDevice() != nullptr, "Device is not set.");
@@ -46,9 +46,9 @@ NNArchive NeuralNetwork::createNNArchive(NNModelDescription modelDesc)  {
     return nnArchive;
 }
 
-ImgFrameCapability NeuralNetwork::getFrameCapability(NNArchive nnArchive, float fps){
+ImgFrameCapability NeuralNetwork::getFrameCapability(const NNArchive& nnArchive, float fps){
 
-    auto nnArchiveCfg = nnArchive.getVersionedConfig();
+    const auto& nnArchiveCfg = nnArchive.getVersionedConfig();
 
     DAI_CHECK_V(nnArchiveCfg.getVersion() == NNArchiveConfigVersion::V1, "Only V1 configs are supported for NeuralNetwork.build method");
     auto platform = getDevice()->getPlatform();
@@ -90,7 +90,7 @@ ImgFrameCapability NeuralNetwork::getFrameCapability(NNArchive nnArchive, float 
     return cap;
 
 }
-std::shared_ptr<NeuralNetwork> NeuralNetwork::build(const std::shared_ptr<Camera>& input, NNArchive nnArchive, float fps) {
+std::shared_ptr<NeuralNetwork> NeuralNetwork::build(const std::shared_ptr<Camera>& input, const NNArchive& nnArchive, float fps) {
     auto cap = getFrameCapability(nnArchive, fps);
     auto* camInput = input->requestOutput(cap, false);
     DAI_CHECK_V(camInput != nullptr, "Camera does not have output with requested capabilities");
@@ -107,16 +107,13 @@ std::shared_ptr<NeuralNetwork> NeuralNetwork::build(const std::shared_ptr<Replay
 }
 
 std::shared_ptr<NeuralNetwork> NeuralNetwork::build(const std::shared_ptr<ReplayVideo>& input,
-                                         NNArchive nnArchive,
+                                         const NNArchive& nnArchive,
                                          float fps){
-                                                    
     auto cap = getFrameCapability(nnArchive, fps);
     input->setOutFrameType(cap.type.value());
     input->setFps(std::get<float>(cap.fps.value.value()));
     input->setSize(std::get<std::pair<unsigned int, unsigned int>>(cap.size.value.value()));
-    auto* camInput = input->requestOutput(cap, false);
-    DAI_CHECK_V(camInput != nullptr, "Replay does not have output with requested capabilities");
-    camInput->link(this->input);
+    input->out.link(this->input);
     return std::static_pointer_cast<NeuralNetwork>(shared_from_this());
 }
 

@@ -1,25 +1,23 @@
-#include "NodeBindings.hpp"
 #include "Common.hpp"
-
-#include "depthai/pipeline/Pipeline.hpp"
+#include "NodeBindings.hpp"
 #include "depthai/pipeline/Node.hpp"
+#include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/node/NeuralNetwork.hpp"
 
-
-void bind_neuralnetwork(pybind11::module& m, void* pCallstack){
-
+void bind_neuralnetwork(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::node;
 
     // Node and Properties declare upfront
-    py::class_<NeuralNetworkProperties, std::shared_ptr<NeuralNetworkProperties>> neuralNetworkProperties(m, "NeuralNetworkProperties", DOC(dai, NeuralNetworkProperties));
+    py::class_<NeuralNetworkProperties, std::shared_ptr<NeuralNetworkProperties>> neuralNetworkProperties(
+        m, "NeuralNetworkProperties", DOC(dai, NeuralNetworkProperties));
     auto neuralNetwork = ADD_NODE(NeuralNetwork);
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
     // Call the rest of the type defines, then perform the actual bindings
-    Callstack* callstack = (Callstack*) pCallstack;
+    Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
@@ -29,13 +27,11 @@ void bind_neuralnetwork(pybind11::module& m, void* pCallstack){
     ///////////////////////////////////////////////////////////////////////
 
     // Properties
-    neuralNetworkProperties
-        .def_readwrite("blobSize", &NeuralNetworkProperties::blobSize)
+    neuralNetworkProperties.def_readwrite("blobSize", &NeuralNetworkProperties::blobSize)
         .def_readwrite("blobUri", &NeuralNetworkProperties::blobUri)
         .def_readwrite("numFrames", &NeuralNetworkProperties::numFrames)
         .def_readwrite("numThreads", &NeuralNetworkProperties::numThreads)
-        .def_readwrite("numNCEPerThread", &NeuralNetworkProperties::numNCEPerThread)
-        ;
+        .def_readwrite("numNCEPerThread", &NeuralNetworkProperties::numNCEPerThread);
 
     // Node
     neuralNetwork.def_readonly("input", &NeuralNetwork::input, DOC(dai, node, NeuralNetwork, input))
@@ -49,21 +45,67 @@ void bind_neuralnetwork(pybind11::module& m, void* pCallstack){
              py::arg("numNCEPerThread"),
              DOC(dai, node, NeuralNetwork, setNumNCEPerInferenceThread))
         .def("getNumInferenceThreads", &NeuralNetwork::getNumInferenceThreads, DOC(dai, node, NeuralNetwork, getNumInferenceThreads))
-        .def("setNNArchive", py::overload_cast<const NNArchive&>(&NeuralNetwork::setNNArchive), py::arg("nnArchive"), DOC(dai, node, NeuralNetwork, setNNArchive))
-        .def("setNNArchive", py::overload_cast<const NNArchive&, int>(&NeuralNetwork::setNNArchive), py::arg("nnArchive"), py::arg("numShaves"), DOC(dai, node, NeuralNetwork, setNNArchive, 2))
-        .def("setFromModelZoo", py::overload_cast<NNModelDescription, bool>(&NeuralNetwork::setFromModelZoo), py::arg("description"), py::arg("useCached"), DOC(dai, node, NeuralNetwork, setFromModelZoo))
-        .def("build", py::overload_cast<dai::Node::Output&, const NNArchive&>(&NeuralNetwork::build), py::arg("input"), py::arg("nnArchive"), DOC(dai, node, NeuralNetwork, build))
-        .def("build", py::overload_cast<const std::shared_ptr<Camera>&, dai::NNModelDescription, float>(&NeuralNetwork::build), py::arg("input"), py::arg("modelDesc"), py::arg("fps")=30.0f, DOC(dai, node, NeuralNetwork, build,2))
-        .def("build", py::overload_cast<const std::shared_ptr<Camera>&, dai::NNArchive, float>(&NeuralNetwork::build), py::arg("input"), py::arg("nnArchive"), py::arg("fps")=30.0f, DOC(dai, node, NeuralNetwork, build, 3))
-        .def("build", [](NeuralNetwork& self, const std::shared_ptr<Camera>& input, const std::string& model, float fps) {
-            return self.build(input, NNModelDescription{model}, fps);
-        }, py::arg("input"), py::arg("model"), py::arg("fps")=30.0f, DOC(dai, node, NeuralNetwork, build))
+        .def("setNNArchive",
+             py::overload_cast<const NNArchive&>(&NeuralNetwork::setNNArchive),
+             py::arg("nnArchive"),
+             DOC(dai, node, NeuralNetwork, setNNArchive))
+        .def("setNNArchive",
+             py::overload_cast<const NNArchive&, int>(&NeuralNetwork::setNNArchive),
+             py::arg("nnArchive"),
+             py::arg("numShaves"),
+             DOC(dai, node, NeuralNetwork, setNNArchive, 2))
+        .def("setFromModelZoo",
+             py::overload_cast<NNModelDescription, bool>(&NeuralNetwork::setFromModelZoo),
+             py::arg("description"),
+             py::arg("useCached"),
+             DOC(dai, node, NeuralNetwork, setFromModelZoo))
+        .def("build",
+             py::overload_cast<dai::Node::Output&, const NNArchive&>(&NeuralNetwork::build),
+             py::arg("input"),
+             py::arg("nnArchive"),
+             DOC(dai, node, NeuralNetwork, build))
+        .def("build",
+             py::overload_cast<const std::shared_ptr<Camera>&, dai::NNModelDescription, float>(&NeuralNetwork::build),
+             py::arg("input"),
+             py::arg("modelDesc"),
+             py::arg("fps") = 30.0f,
+             DOC(dai, node, NeuralNetwork, build, 2))
+        .def("build",
+             py::overload_cast<const std::shared_ptr<Camera>&, const dai::NNArchive&, float>(&NeuralNetwork::build),
+             py::arg("input"),
+             py::arg("nnArchive"),
+             py::arg("fps") = 30.0f,
+             DOC(dai, node, NeuralNetwork, build, 3))
+        .def(
+            "build",
+            [](NeuralNetwork& self, const std::shared_ptr<Camera>& input, const std::string& model, float fps) {
+                return self.build(input, NNModelDescription{model}, fps);
+            },
+            py::arg("input"),
+            py::arg("model"),
+            py::arg("fps") = 30.0f,
+            DOC(dai, node, NeuralNetwork, build))
+        .def(
+            "build",
+            [](NeuralNetwork& self, const std::shared_ptr<ReplayVideo>& input, const dai::NNArchive& nnArchive, float fps) {
+                return self.build(input, nnArchive, fps);
+            },
+            py::arg("input"),
+            py::arg("nnArchive"),
+            py::arg("fps") = 30.0f,
+            DOC(dai, node, NeuralNetwork, build, 4))
+        .def(
+            "build",
+            [](NeuralNetwork& self, const std::shared_ptr<ReplayVideo>& input, const std::string& model, float fps) {
+                return self.build(input, NNModelDescription{model}, fps);
+            },
+            py::arg("input"),
+            py::arg("model"),
+            py::arg("fps") = 30.0f,
+            DOC(dai, node, NeuralNetwork, build, 5))
         .def("setBlob", py::overload_cast<dai::OpenVINO::Blob>(&NeuralNetwork::setBlob), py::arg("blob"), DOC(dai, node, NeuralNetwork, setBlob))
         .def("setBlob", py::overload_cast<const dai::Path&>(&NeuralNetwork::setBlob), py::arg("path"), DOC(dai, node, NeuralNetwork, setBlob, 2))
-        .def("setModelPath",
-             &NeuralNetwork::setModelPath,
-             py::arg("modelPath"),
-             DOC(dai, node, NeuralNetwork, setModelPath))
+        .def("setModelPath", &NeuralNetwork::setModelPath, py::arg("modelPath"), DOC(dai, node, NeuralNetwork, setModelPath))
         .def("setNumShavesPerInferenceThread",
              &NeuralNetwork::setNumShavesPerInferenceThread,
              py::arg("numShavesPerInferenceThread"),
@@ -77,5 +119,4 @@ void bind_neuralnetwork(pybind11::module& m, void* pCallstack){
         ;
     // Properties alias
     daiNodeModule.attr("NeuralNetwork").attr("Properties") = neuralNetworkProperties;
-
 }
