@@ -269,20 +269,12 @@ void DeviceBase::Impl::setLogLevel(LogLevel level) {
     logger.set_level(spdlogLevel);
 }
 
-void DeviceBase::setNodeLogLevel(int64_t id, LogLevel level) {
-    pimpl->rpcClient->call("setLogLevelOneNode", id, level);
-}
 
 LogLevel DeviceBase::Impl::getLogLevel() {
     // Converts spdlog to LogLevel
     return spdlogLevelToLogLevel(logger.level(), LogLevel::WARN);
 }
 
-LogLevel DeviceBase::getNodeLogLevel(int64_t id) {
-    (void)id;
-    // TODO: Implement
-    return LogLevel::WARN;
-}
 
 ///////////////////////////////////////////////
 // END OF Impl section
@@ -1343,8 +1335,16 @@ void DeviceBase::setLogLevel(LogLevel level) {
     pimpl->rpcClient->call("setLogLevel", level);
 }
 
+void DeviceBase::setNodeLogLevel(int64_t id, LogLevel level) {
+    pimpl->rpcClient->call("setNodeLogLevel", id, level);
+}
+
 LogLevel DeviceBase::getLogLevel() {
     return pimpl->rpcClient->call("getLogLevel").as<LogLevel>();
+}
+
+LogLevel DeviceBase::getNodeLogLevel(int64_t id) {
+    return pimpl->rpcClient->call("getNodeLogLevel", id).as<LogLevel>();
 }
 
 void DeviceBase::setXLinkChunkSize(int sizeBytes) {

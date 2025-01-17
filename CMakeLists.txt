@@ -350,6 +350,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/InputQueue.cpp
     src/pipeline/ThreadedNode.cpp
     src/pipeline/DeviceNode.cpp
+    src/pipeline/DeviceNodeGroup.cpp
     src/pipeline/node/XLinkIn.cpp
     src/pipeline/node/XLinkOut.cpp
     src/pipeline/node/ColorCamera.cpp

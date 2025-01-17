@@ -426,8 +426,13 @@ class DeviceBase {
      */
     void setLogLevel(LogLevel level);
 
+    /**
+     * Sets the logging severity level for a specific node with a given ID.
+     *
+     * @param id Node ID
+     * @param level Logging severity
+     */
     void setNodeLogLevel(int64_t id, LogLevel level);
-    LogLevel getNodeLogLevel(int64_t id);
 
     /**
      * Gets current logging severity level of the device.
@@ -435,6 +440,14 @@ class DeviceBase {
      * @returns Logging severity level
      */
     LogLevel getLogLevel();
+
+    /**
+     * Gets the logging severity level for a specific node with a given ID.
+     *
+     * @param id Node ID
+     * @returns Logging severity level
+     */
+    LogLevel getNodeLogLevel(int64_t id);
 
     /**
      * Sets the chunk size for splitting device-sent XLink packets. A larger value could

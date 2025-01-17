@@ -35,15 +35,8 @@ class DeviceNode : public ThreadedNode {
     // Get properties
     virtual Properties& getProperties();
 
-    void setLogLevel(dai::LogLevel level) override {
-        int64_t myid = id;
-        device->setNodeLogLevel(myid, level);
-    }
-
-    virtual dai::LogLevel getLogLevel() const override {
-        int64_t myid = id;
-        return device->getNodeLogLevel(myid);
-    }
+    void setLogLevel(dai::LogLevel level) override;
+    virtual dai::LogLevel getLogLevel() const override;
 
    protected:
     DeviceNode(const std::shared_ptr<Device>& device, std::unique_ptr<Properties> props, bool conf);
