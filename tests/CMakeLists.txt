@@ -408,3 +408,7 @@ dai_set_test_labels(image_manip_v2_node_test ondevice rvc2_all rvc4 ci)
 # Benchmark tests
 dai_add_test(benchmark_test src/ondevice_tests/pipeline/node/benchmark_test.cpp)
 dai_set_test_labels(benchmark_test ondevice rvc2_all rvc4 ci)
+
+# IMU tests
+dai_add_test(imu_test src/ondevice_tests/pipeline/node/imu_test.cpp)
+dai_set_test_labels(imu_test ondevice rvc4 ci) # Many RVC2 devices do not have an IMU which supports the whole test suite
