@@ -375,6 +375,15 @@ class ImageManipOpsBase : public ImageManipOpsEnums {
         return *this;
     }
 
+    ImageManipOpsBase& setUndistort(bool undistort) {
+        this->undistort = undistort;
+        return *this;
+    }
+
+    bool getUndistort() const {
+        return undistort;
+    }
+
     const C& getOperations() const {
         return this->operations;
     }
@@ -519,6 +528,17 @@ class ImageManipConfigV2 : public Buffer {
      * @param frameType Frame type of the output image
      */
     ImageManipConfigV2& setFrameType(ImgFrame::Type frameType);
+
+    /**
+     * Sets the undistort flag
+     */
+    ImageManipConfigV2& setUndistort(bool undistort);
+
+    /**
+     * Gets the undistort flag
+     * @returns True if undistort is enabled, false otherwise
+     */
+    bool getUndistort() const;
 
     /**
      * Instruct ImageManip to not remove current image from its queue and use the same for next message.

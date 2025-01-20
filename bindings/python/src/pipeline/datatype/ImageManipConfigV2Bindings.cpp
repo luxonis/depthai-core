@@ -100,4 +100,6 @@ void bind_imagemanipconfigv2(pybind11::module& m, void* pCallstack) {
              static_cast<ImageManipConfigV2& (ImageManipConfigV2::*)(Colormap)>(&ImageManipConfigV2::setColormap),
              py::arg("colormap"),
              DOC(dai, ImageManipConfigV2, setColormap));
+          .def("setUndistort", &ImageManipConfigV2::setUndistort, py::arg("undistort"), DOC(dai, ImageManipConfigV2, setUndistort))
+          .def("getUndistort", &ImageManipConfigV2::getUndistort, DOC(dai, ImageManipConfigV2, getUndistort));
 }
