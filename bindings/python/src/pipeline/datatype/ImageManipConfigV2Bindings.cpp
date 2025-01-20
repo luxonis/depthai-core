@@ -96,10 +96,10 @@ void bind_imagemanipconfigv2(pybind11::module& m, void* pCallstack) {
         .def("setReusePreviousImage", &ImageManipConfigV2::setReusePreviousImage, py::arg("reuse"), DOC(dai, ImageManipConfigV2, setReusePreviousImage))
         .def("setSkipCurrentImage", &ImageManipConfigV2::setSkipCurrentImage, py::arg("skip"), DOC(dai, ImageManipConfigV2, setSkipCurrentImage))
         .def("setFrameType", &ImageManipConfigV2::setFrameType, py::arg("type"), DOC(dai, ImageManipConfigV2, setFrameType))
+        .def("setUndistort", &ImageManipConfigV2::setUndistort, py::arg("undistort"), DOC(dai, ImageManipConfigV2, setUndistort))
+        .def("getUndistort", &ImageManipConfigV2::getUndistort, DOC(dai, ImageManipConfigV2, getUndistort))
         .def("setColormap",
              static_cast<ImageManipConfigV2& (ImageManipConfigV2::*)(Colormap)>(&ImageManipConfigV2::setColormap),
              py::arg("colormap"),
              DOC(dai, ImageManipConfigV2, setColormap));
-          .def("setUndistort", &ImageManipConfigV2::setUndistort, py::arg("undistort"), DOC(dai, ImageManipConfigV2, setUndistort))
-          .def("getUndistort", &ImageManipConfigV2::getUndistort, DOC(dai, ImageManipConfigV2, getUndistort));
 }
