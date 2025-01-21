@@ -8,12 +8,15 @@ export PATH_PREFIX=luxonis-depthai-helper-binaries/zoo_helper/$ZOO_HELPER_PLATFO
 export ZOO_HELPER_BINARY_LOCAL_PATH=build/zoo_helper
 
 # Get git hash  
+git config --global --add safe.directory $(pwd)
 export ZOO_HELPER_GIT_HASH=$(git rev-parse HEAD)
 
+echo "----------------------------------------"
 echo "PATH_PREFIX: $PATH_PREFIX"
 echo "ZOO_HELPER_BINARY_LOCAL_PATH: $ZOO_HELPER_BINARY_LOCAL_PATH"
 echo "ZOO_HELPER_GIT_HASH: $ZOO_HELPER_GIT_HASH"
 echo "zoo_helper binary size: $(du -sh $ZOO_HELPER_BINARY_LOCAL_PATH)"
+echo "----------------------------------------"
 
 # Upload binary to artifactory
 ./jfrog config add --artifactory-url=$ARTIFACTORY_URL --user=$ARTIFACTORY_USER --password=$ARTIFACTORY_PASS
