@@ -2921,9 +2921,9 @@ void Warp<ImageManipBuffer, ImageManipData>::transform(const uint8_t* src,
                                                        const std::array<std::array<float, 3>, 3> matrix,
                                                        const std::vector<uint8_t>& background) {
 #if defined(DEPTHAI_HAVE_OPENCV_SUPPORT) && DEPTHAI_IMAGEMANIPV2_OPENCV
-    auto type = numChannels == 1 ? CV_8UC1 : (numChannels == 2 ? CV_16UC1 : CV_8UC3);
+    auto type = numChannels == 1 ? CV_8UC1 : (numChannels == 2 ? CV_8UC2 : CV_8UC3);
     auto bg = numChannels == 1 ? cv::Scalar(background[0])
-                               : (numChannels == 2 ? cv::Scalar(background[0]) : cv::Scalar(background[0], background[1], background[2]));
+                               : (numChannels == 2 ? cv::Scalar(background[0], background[1]) : cv::Scalar(background[0], background[1], background[2]));
     const cv::Mat cvSrc(srcHeight, srcWidth, type, const_cast<uint8_t*>(src), srcStride);
     cv::Mat cvDst(dstHeight, dstWidth, type, dst, dstStride);
 #elif defined(DEPTHAI_HAVE_FASTCV_SUPPORT) && DEPTHAI_IMAGEMANIPV2_FASTCV
