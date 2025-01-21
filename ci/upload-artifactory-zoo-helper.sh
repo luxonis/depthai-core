@@ -4,7 +4,7 @@
 curl -fL https://getcli.jfrog.io | sh
 
 # Set paths
-export PATH_PREFIX=luxonis-depthai-helper-binaries/zoo_helper/$ARCH
+export PATH_PREFIX=luxonis-depthai-helper-binaries/zoo_helper/$ZOO_HELPER_PLATFORM
 export ZOO_HELPER_BINARY_LOCAL_PATH=build/zoo_helper
 
 # Get git hash  

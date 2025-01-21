@@ -8,7 +8,7 @@ env:
   VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
 
 jobs:
-  build-zoo-helper-x86_64:
+  build-zoo-helper-linux-x86_64:
     runs-on: ubuntu-latest
     container:
       image: almalinux:8
@@ -58,9 +58,9 @@ jobs:
           ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
           ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
           ARTIFACTORY_PASS: ${{ secrets.ARTIFACTORY_PASS }}
-          ARCH: x86_64
+          ZOO_HELPER_PLATFORM: linux-x86_64
 
-  build-zoo-helper-arm64:
+  build-zoo-helper-linux-arm64:
     runs-on: [self-hosted, linux, ARM64]
     container:
       image: arm64v8/almalinux:8
@@ -113,4 +113,4 @@ jobs:
           ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
           ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
           ARTIFACTORY_PASS: ${{ secrets.ARTIFACTORY_PASS }}
-          ARCH: arm64
+          ZOO_HELPER_PLATFORM: linux-arm64
