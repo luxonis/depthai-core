@@ -30,8 +30,8 @@ int main() {
     auto color = pipeline.create<dai::node::Camera>();
     color->build();
 
-    left->build(dai::CameraBoardSocket::LEFT);
-    right->build(dai::CameraBoardSocket::RIGHT);
+    left->build(dai::CameraBoardSocket::CAM_B);
+    right->build(dai::CameraBoardSocket::CAM_C);
     stereo->setSubpixel(true);
     stereo->setExtendedDisparity(false);
     stereo->setDefaultProfilePreset(dai::node::StereoDepth::PresetMode::DEFAULT);
@@ -43,8 +43,8 @@ int main() {
     auto* out = color->requestOutput(std::pair<int, int>(1280, 720), dai::ImgFrame::Type::RGB888i);
 
     out->link(stereo->inputAlignTo);
-    left->requestOutput(std::pair<int, int>(1280, 729))->link(stereo->left);
-    right->requestOutput(std::pair<int, int>(1280, 729))->link(stereo->right);
+    left->requestOutput(std::pair<int, int>(1280, 720))->link(stereo->left);
+    right->requestOutput(std::pair<int, int>(1280, 720))->link(stereo->right);
 
 
     stereo->depth.link(rgbd->inDepth);
