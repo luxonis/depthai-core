@@ -31,17 +31,20 @@ jobs:
       - name: Install dependencies
         run: |
           dnf update -y
-          dnf install -y libusb-devel pkgconf-pkg-config bison autoconf libtool libXi-devel libXtst-devel cmake git zip perl-core python39
-          dnf install -y libXrandr-devel libX11-devel libXft-devel libXext-devel nasm flex systemd-devel
+          dnf install -y pkgconf-pkg-config bison autoconf libtool libXi-devel libXtst-devel cmake git zip perl-core python39
+          dnf install -y libXrandr-devel libX11-devel libXft-devel libXext-devel flex systemd-devel
           dnf install -y gcc-c++ automake libtool-ltdl-devel wget
-          wget https://www.nasm.us/pub/nasm/releasebuilds/2.16.01/nasm-2.16.01.tar.gz && tar -xzf nasm-2.16.01.tar.gz && cd nasm-2.16.01 && ./configure && make && make install # install nasm - build from source
+          wget https://www.nasm.us/pub/nasm/releasebuilds/2.16.01/nasm-2.16.01.tar.gz && tar -xzf nasm-2.16.01.tar.gz && cd nasm-2.16.01 && ./configure && make && make install && cd .. # install nasm - build from source
           pip3 install jinja2
-          
+
       - name: Configure project
-        run: cmake -S . -B build -DDEPTHAI_ENABLE_CURL=ON
+        run: cmake -S . -B build -DDEPTHAI_ENABLE_CURL=ON -DCMAKE_BUILD_TYPE=Release
 
       - name: Build zoo_helper
         run: cmake --build build --target zoo_helper --parallel 4
+
+      - name: Strip zoo_helper
+        run: strip ./build/zoo_helper # Shrinks the size of the binary a little bit by removing symbols: https://www.man7.org/linux/man-pages/man1/strip.1.html
 
       - name: Upload zoo_helper to artifactory
         run: |
