@@ -504,7 +504,6 @@ set_target_properties(${TARGET_CORE_NAME} PROPERTIES EXPORT_NAME ${TARGET_CORE_A
 list(APPEND targets_to_export ${TARGET_CORE_NAME})
 
 # Add model_zoo helper binary
-find_package(argparse REQUIRED)
 find_package(fmt REQUIRED)
 find_package(yaml-cpp REQUIRED)
 set(ZOO_HELPER_SOURCES
@@ -515,7 +514,6 @@ set(ZOO_HELPER_SOURCES
     src/utility/Logging.cpp
 )
 set(ZOO_HELPER_LINK_LIBRARIES
-    argparse::argparse
     nlohmann_json::nlohmann_json
     fmt::fmt
     yaml-cpp::yaml-cpp
