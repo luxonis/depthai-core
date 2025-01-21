@@ -96,6 +96,7 @@ jobs:
           dnf install -y gcc-c++ automake libtool-ltdl-devel wget
           wget https://www.nasm.us/pub/nasm/releasebuilds/2.16.01/nasm-2.16.01.tar.gz && tar -xzf nasm-2.16.01.tar.gz && cd nasm-2.16.01 && ./configure && make && make install && cd .. # install nasm - build from source
           pip3 install jinja2
+          pip3 install ninja # ninja is needed for cmake on arm64
 
       - name: Configure project
         run: cmake -S . -B build -DDEPTHAI_ENABLE_CURL=ON -DCMAKE_BUILD_TYPE=Release
