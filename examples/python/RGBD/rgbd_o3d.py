@@ -55,14 +55,13 @@ with dai.Pipeline() as p:
     color = p.create(dai.node.Camera)
     stereo = p.create(dai.node.StereoDepth)
     rgbd = p.create(dai.node.RGBD).build()
+    align = None
     color.build()
     o3dViewer = O3DNode()
     left.build(dai.CameraBoardSocket.CAM_B)
     right.build(dai.CameraBoardSocket.CAM_C)
     out = color.requestOutput((1280,720), dai.ImgFrame.Type.RGB888i)
 
-
-    out.link(stereo.inputAlignTo)
     stereo.setDefaultProfilePreset(dai.node.StereoDepth.PresetMode.DEFAULT)
     stereo.setRectifyEdgeFillColor(0)
     stereo.enableDistortionCorrection(True)
@@ -70,7 +69,15 @@ with dai.Pipeline() as p:
     # Linking
     left.requestOutput((1280, 720)).link(stereo.left)
     right.requestOutput((1280, 720)).link(stereo.right)
-    stereo.depth.link(rgbd.inDepth)
+    platform = p.getDefaultDevice().getPlatform()
+    if platform == dai.Platform.RVC4:
+        align = p.create(dai.node.ImageAlign)
+        stereo.depth.link(align.input)
+        out.link(align.inputAlignTo)
+        align.outputAligned.link(rgbd.inDepth)
+    else:
+        stereo.depth.link(rgbd.inDepth)
+        out.link(stereo.inputAlignTo)
     out.link(rgbd.inColor)
 
     rgbd.pcl.link(o3dViewer.inputPCL)

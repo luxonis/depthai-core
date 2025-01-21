@@ -28,6 +28,7 @@ int main() {
     auto stereo = pipeline.create<dai::node::StereoDepth>();
     auto rgbd = pipeline.create<dai::node::RGBD>()->build();
     auto color = pipeline.create<dai::node::Camera>();
+    std::shared_ptr<dai::node::ImageAlign> align;
     color->build();
 
     left->build(dai::CameraBoardSocket::CAM_B);
@@ -42,12 +43,20 @@ int main() {
 
     auto* out = color->requestOutput(std::pair<int, int>(1280, 720), dai::ImgFrame::Type::RGB888i);
 
-    out->link(stereo->inputAlignTo);
     left->requestOutput(std::pair<int, int>(1280, 720))->link(stereo->left);
     right->requestOutput(std::pair<int, int>(1280, 720))->link(stereo->right);
 
+    auto platform = pipeline.getDefaultDevice()->getPlatform();
+    if(platform == dai::Platform::RVC4) {
+        align = pipeline.create<dai::node::ImageAlign>();
+        stereo->depth.link(align->input);
+        out->link(align->inputAlignTo);
+        align->outputAligned.link(rgbd->inDepth);
+    } else {
+        out->link(stereo->inputAlignTo);
+        stereo->depth.link(rgbd->inDepth);
+    }
 
-    stereo->depth.link(rgbd->inDepth);
     out->link(rgbd->inColor);
 
     remoteConnector.addTopic("pcl", rgbd->pcl);

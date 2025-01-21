@@ -36,8 +36,7 @@ class RerunNode : public dai::NodeCRTP<dai::node::ThreadedHostNode, RerunNode> {
                 rec.log("world/obstacle_pcl", rerun::Points3D(points).with_colors(colors).with_radii({0.01f}));
                 auto colorFrame = rgbdIn->rgbFrame.getCvFrame();
                 cv::cvtColor(colorFrame, colorFrame, cv::COLOR_BGR2RGB);
-                rec.log("rgb",
-                        rerun::Image(tensorShape(colorFrame), reinterpret_cast<const uint8_t*>(colorFrame.data)));
+                rec.log("rgb", rerun::Image(tensorShape(colorFrame), reinterpret_cast<const uint8_t*>(colorFrame.data)));
             }
         }
     }
@@ -52,6 +51,7 @@ int main() {
     auto stereo = pipeline.create<dai::node::StereoDepth>();
     auto rgbd = pipeline.create<dai::node::RGBD>()->build();
     auto color = pipeline.create<dai::node::Camera>();
+    std::shared_ptr<dai::node::ImageAlign> align;
     auto rerun = pipeline.create<RerunNode>();
     color->build();
 
@@ -69,11 +69,19 @@ int main() {
 
     auto* out = color->requestOutput(std::pair<int, int>(1280, 720), dai::ImgFrame::Type::RGB888i);
 
-    out->link(stereo->inputAlignTo);
     left->requestOutput(std::pair<int, int>(1280, 720))->link(stereo->left);
     right->requestOutput(std::pair<int, int>(1280, 720))->link(stereo->right);
 
-    stereo->depth.link(rgbd->inDepth);
+    auto platform = pipeline.getDefaultDevice()->getPlatform();
+    if(platform == dai::Platform::RVC4) {
+        align = pipeline.create<dai::node::ImageAlign>();
+        stereo->depth.link(align->input);
+        out->link(align->inputAlignTo);
+        align->outputAligned.link(rgbd->inDepth);
+    } else {
+        out->link(stereo->inputAlignTo);
+        stereo->depth.link(rgbd->inDepth);
+    }
     out->link(rgbd->inColor);
 
     // Linking
