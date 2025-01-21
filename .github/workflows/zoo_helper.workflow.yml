@@ -19,6 +19,9 @@ jobs:
           path: ~/.hunter
           key: hunter-almalinux-8-v3-develop-x86_64
 
+      - name: Install git
+        run: dnf install -y git
+
       - name: Export GitHub Actions cache environment variables
         uses: actions/github-script@v7
         with:
@@ -33,7 +36,7 @@ jobs:
       - name: Install dependencies
         run: |
           dnf update -y
-          dnf install -y pkgconf-pkg-config bison autoconf libtool libXi-devel libXtst-devel cmake git zip perl-core python39
+          dnf install -y pkgconf-pkg-config bison autoconf libtool libXi-devel libXtst-devel cmake zip perl-core python39
           dnf install -y libXrandr-devel libX11-devel libXft-devel libXext-devel flex systemd-devel
           dnf install -y gcc-c++ automake libtool-ltdl-devel wget
           wget https://www.nasm.us/pub/nasm/releasebuilds/2.16.01/nasm-2.16.01.tar.gz && tar -xzf nasm-2.16.01.tar.gz && cd nasm-2.16.01 && ./configure && make && make install && cd .. # install nasm - build from source
@@ -70,6 +73,9 @@ jobs:
         with:
           path: ~/.hunter
           key: hunter-almalinux-8-v3-develop-arm64
+      
+      - name: Install git
+        run: dnf install -y git
 
       - name: Export GitHub Actions cache environment variables
         uses: actions/github-script@v7
