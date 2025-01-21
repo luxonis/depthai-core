@@ -10,6 +10,11 @@ export ZOO_HELPER_BINARY_LOCAL_PATH=build/zoo_helper
 # Get git hash  
 export ZOO_HELPER_GIT_HASH=$(git rev-parse HEAD)
 
+echo "PATH_PREFIX: $PATH_PREFIX"
+echo "ZOO_HELPER_BINARY_LOCAL_PATH: $ZOO_HELPER_BINARY_LOCAL_PATH"
+echo "ZOO_HELPER_GIT_HASH: $ZOO_HELPER_GIT_HASH"
+echo "zoo_helper binary size: $(du -sh $ZOO_HELPER_BINARY_LOCAL_PATH)"
+
 # Upload binary to artifactory
 ./jfrog config add --artifactory-url=$ARTIFACTORY_URL --user=$ARTIFACTORY_USER --password=$ARTIFACTORY_PASS
 ./jfrog rt u "$ZOO_HELPER_BINARY_LOCAL_PATH" "$PATH_PREFIX/$ZOO_HELPER_GIT_HASH/"
