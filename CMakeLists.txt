@@ -542,6 +542,17 @@ target_include_directories(zoo_helper SYSTEM
         "$<BUILD_INTERFACE:${DEPTHAI_SHARED_3RDPARTY_INCLUDE}>"
 )
 
+# Set compiler features (c++17), and disables extensions (g++17)
+set_property(TARGET zoo_helper PROPERTY CXX_STANDARD 17)
+set_property(TARGET zoo_helper PROPERTY CXX_STANDARD_REQUIRED ON)
+set_property(TARGET zoo_helper PROPERTY CXX_EXTENSIONS OFF)
+# Add interface transitive property (C++17)
+if(${CMAKE_VERSION} VERSION_LESS "3.8.0")
+    target_compile_features(zoo_helper INTERFACE cxx_generic_lambdas)
+else()
+    target_compile_features(zoo_helper INTERFACE cxx_std_17)
+endif()
+
 list(APPEND targets_to_export zoo_helper)
 
 # Add default flags to core
