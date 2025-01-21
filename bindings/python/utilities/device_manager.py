@@ -158,7 +158,7 @@ class SearchDevice:
         self.infos = []
         layout = [
             [sg.Text("Select an OAK camera you would like to connect to.", font=('Arial', 10, 'bold'))],
-            [sg.Table(values=[], headings=["MxId", "Name", "State"],
+            [sg.Table(values=[], headings=["DeviceId", "Name", "State"],
                 # col_widths=[25, 17, 17],
                 # def_col_width=25,
                 # max_col_width=200,
@@ -197,7 +197,7 @@ class SearchDevice:
         else:
             rows = []
             for info in self.infos:
-                rows.append([info.getMxId(), info.name, deviceStateTxt(info.state)])
+                rows.append([info.getDeviceId(), info.name, deviceStateTxt(info.state)])
             self.window['table'].update(values=rows)
 
     def wait(self) -> dai.DeviceInfo:
@@ -625,7 +625,7 @@ class DeviceManager:
                 if di is not None:
                     self.resetGui()
                     self.addDeviceInfo(di)  # Add device info to devices, if it's not there yet
-                    self.window.Element('devices').update(di.getMxId())
+                    self.window.Element('devices').update(di.getDeviceId())
                     _, self.values = self.window.read(1)
                     self.bl = connectToDevice(di)
                     print('after connecting to device,', self.bl)
@@ -773,9 +773,9 @@ class DeviceManager:
         return self.devices[self.values['devices']]
 
     def addDeviceInfo(self, deviceInfo: dai.DeviceInfo):
-        if deviceInfo.getMxId() not in self.devices:
+        if deviceInfo.getDeviceId() not in self.devices:
             # Add the new deviceInfo
-            self.devices[deviceInfo.getMxId()] = deviceInfo
+            self.devices[deviceInfo.getDeviceId()] = deviceInfo
 
     def getConfigs(self):
         device = self.device
@@ -828,7 +828,7 @@ class DeviceManager:
                 self.window.Element('usbSpeed').update(str(conf.getUsbMaxSpeed()).split('.')[1])
 
             self.window.Element('devName').update(device.name)
-            # self.window.Element('devNameConf').update(device.getMxId())
+            # self.window.Element('devNameConf').update(device.getDeviceId())
             self.window.Element('newBoot').update(dai.DeviceBootloader.getEmbeddedBootloaderVersion())
 
             # The "isEmbeddedVersion" tells you whether BL had to be booted,
@@ -926,7 +926,7 @@ class DeviceManager:
                 # sg.Popup("No devices found.")
             else:
                 for deviceInfo in deviceInfos:
-                    deviceTxt = deviceInfo.getMxId()
+                    deviceTxt = deviceInfo.getDeviceId()
                     listedDevices.append(deviceTxt)
                     self.devices[deviceTxt] = deviceInfo
 

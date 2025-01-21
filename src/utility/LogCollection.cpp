@@ -112,7 +112,7 @@ bool sendLogsToServer(const std::optional<FileWithSHA1>& pipelineData, const std
     multipart.parts.emplace_back("osPlatform", getOSPlatform());
     std::string daiVersion = fmt::format("{}-{}", build::VERSION, build::COMMIT);
     multipart.parts.emplace_back("depthAiVersion", std::move(daiVersion));
-    multipart.parts.emplace_back("productId", deviceInfo.getMxId());
+    multipart.parts.emplace_back("productId", deviceInfo.getDeviceId());
     auto response = cpr::Post(cpr::Url{LOG_ENDPOINT}, multipart);
     if(response.status_code != 200) {
         logger::info("Failed to send logs, status code: {}, {}", response.status_code, response.text);
@@ -225,7 +225,7 @@ void logCrashDump(const std::optional<PipelineSchema>& pipelineSchema, const Gen
         crashDumpPathLocal /= crashDumpData.name;
     }
     auto errorString = fmt::format(
-        "Device with id {} has crashed. Crash dump logs are stored in: {} - please report to developers.", deviceInfo.getMxId(), crashDumpPathLocal.string());
+        "Device with id {} has crashed. Crash dump logs are stored in: {} - please report to developers.", deviceInfo.getDeviceId(), crashDumpPathLocal.string());
 
     std::error_code ec;
     fs::create_directories(crashDumpPathLocal.parent_path(), ec);

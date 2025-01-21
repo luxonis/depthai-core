@@ -40,6 +40,7 @@ function(add_python_example example_name python_script_path)
         # Python path (to find compiled module)
         "PYTHONPATH=$<TARGET_FILE_DIR:${TARGET_NAME}>${SYS_PATH_SEPARATOR}$ENV{PYTHONPATH}"
         "DEPTHAI_SEARCH_TIMEOUT=15000"
+        "DEPTHAI_CONNECT_TIMEOUT=15000"
         "DEPTHAI_RECONNECT_TIMEOUT=0"
         # ASAN in case of sanitizers
         "${ASAN_ENVIRONMENT_VARS}"
@@ -60,6 +61,7 @@ function(add_python_example example_name python_script_path)
             # Python path (to find compiled module)
             "PYTHONPATH=$<TARGET_FILE_DIR:${TARGET_NAME}>${SYS_PATH_SEPARATOR}$ENV{PYTHONPATH}"
             "DEPTHAI_SEARCH_TIMEOUT=30000"
+            "DEPTHAI_CONNECT_TIMEOUT=30000"
             "DEPTHAI_RECONNECT_TIMEOUT=0"
             # ASAN in case of sanitizers
             ${ASAN_ENVIRONMENT_VARS}
@@ -145,6 +147,8 @@ dai_set_example_test_labels(april_tags_replay ondevice rvc2_all rvc4 ci)
 ## Detection network
 add_python_example(detection_network DetectionNetwork/detection_network.py)
 dai_set_example_test_labels(detection_network ondevice rvc2_all rvc4 ci)
+add_python_example(detection_network_remap DetectionNetwork/detection_network_remap.py)
+dai_set_example_test_labels(detection_network ondevice rvc2_all rvc4 ci)
 
 ## Host nodes
 add_python_example(display HostNodes/display.py)
@@ -159,6 +163,9 @@ dai_set_example_test_labels(image_manip_mod ondevice rvc2_all rvc4 ci)
 
 add_python_example(image_manip_resize ImageManip/image_manip_v2_resize.py)
 dai_set_example_test_labels(image_manip_resize ondevice rvc2_all rvc4 ci)
+
+add_python_example(image_manip_remap ImageManip/image_manip_v2_remap.py)
+dai_set_example_test_labels(image_manip_remap ondevice rvc2_all rvc4 ci)
 
 ## Misc
 add_python_example(reconnect_callback Misc/AutoReconnect/reconnect_callback.py)
@@ -223,3 +230,21 @@ set_tests_properties(py_script_simple PROPERTIES FAIL_REGULAR_EXPRESSION "\\[err
 
 add_python_example(script_all_cameras Script/script_switch_all_cameras.py)
 dai_set_example_test_labels(script_all_cameras ondevice rvc2_all rvc4 ci)
+
+## Benchmark node
+add_python_example(benchmark_node Benchmark/benchmark_simple.py)
+dai_set_example_test_labels(benchmark_node ondevice rvc2_all rvc4 ci)
+set_tests_properties(py_benchmark_node PROPERTIES FAIL_REGULAR_EXPRESSION "\\[error\\];\\[critical\\]")
+
+add_python_example(benchmark_cameras Benchmark/benchmark_camera.py)
+dai_set_example_test_labels(benchmark_cameras ondevice rvc2_all rvc4 ci)
+set_tests_properties(py_benchmark_cameras PROPERTIES FAIL_REGULAR_EXPRESSION "\\[error\\];\\[critical\\]")
+
+add_python_example(benchmark_nn Benchmark/benchmark_nn.py)
+dai_set_example_test_labels(benchmark_nn ondevice rvc2_all rvc4 ci)
+
+# IMU node
+add_python_example(imu_gyroscope_accelerometer IMU/imu_gyroscope_accelerometer.py)
+dai_set_example_test_labels(imu_gyroscope_accelerometer rvc2_all rvc4 ci)
+# On slow hosts the examples warns that batch size is too small
+set_tests_properties(py_imu_gyroscope_accelerometer PROPERTIES FAIL_REGULAR_EXPRESSION "\\[error\\];\\[critical\\]")

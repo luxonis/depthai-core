@@ -86,6 +86,15 @@ ImageManipConfigV2& ImageManipConfigV2::setFrameType(ImgFrame::Type frameType) {
     return *this;
 }
 
+ImageManipConfigV2& ImageManipConfigV2::setUndistort(bool undistort) {
+    base.setUndistort(undistort);
+    return *this;
+}
+
+bool ImageManipConfigV2::getUndistort() const {
+    return base.getUndistort();
+}
+
 ImageManipConfigV2& ImageManipConfigV2::setReusePreviousImage(bool reuse) {
     reusePreviousImage = reuse;
     return *this;

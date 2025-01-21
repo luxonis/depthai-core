@@ -56,7 +56,7 @@ int main() {
             auto device = make_shared<dai::Device>(pipeline, dev, dai::UsbSpeed::SUPER);
             device->getOutputQueue("rgb", 4, false);
 
-            cout << "MXID: " << device->getMxId() << endl;
+            cout << "DeviceID: " << device->getDeviceId() << endl;
             // cout << "Connected cameras: ";
             // for(const auto& cam : device->getConnectedCameras()) {
             //     cout << cam << " ";
@@ -86,7 +86,7 @@ int main() {
                 auto& dev = get<0>(devCounter);
                 auto& counter = get<1>(devCounter);
                 if(dev->getOutputQueue("rgb")->tryGet<dai::ImgFrame>()) {
-                    cout << "Device " << dev->getMxId() << " message arrived (" << counter + 1 << "/" << NUM_MESSAGES << ")\n";
+                    cout << "Device " << dev->getDeviceId() << " message arrived (" << counter + 1 << "/" << NUM_MESSAGES << ")\n";
                     counter++;
                 }
 
