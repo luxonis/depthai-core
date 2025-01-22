@@ -2361,6 +2361,10 @@ ImageManipOperations<ImageManipBuffer, ImageManipData>& ImageManipOperations<Ima
     prevConfig = newCfgStr;
     outputOps.clear();
 
+    if(srcFrameSpecs.width <= 1 || srcFrameSpecs.height <= 1) {
+        throw std::runtime_error("Input image is one dimensional");
+    }
+
     if(newBase.hasWarp(srcFrameSpecs.width, srcFrameSpecs.height)) mode = mode | MODE_WARP;
     if(newBase.colormap != Colormap::NONE && isSingleChannelu8(inFrameType)) mode = mode | MODE_COLORMAP;
     if(outType != inFrameType) mode = mode | MODE_CONVERT;
