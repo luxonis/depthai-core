@@ -988,6 +988,7 @@ size_t dai::impl::getAlignedOutputFrameSize(ImgFrame::Type type, size_t width, s
             return ALIGN_UP(ALIGN_UP(width, 8) * height, PLANE_ALIGNMENT) + ALIGN_UP(width, 8) * (height / 2);
         case ImgFrame::Type::RAW8:
         case ImgFrame::Type::GRAY8:
+            return ALIGN_UP(width, 8) * height;
         case ImgFrame::Type::YUV422i:
         case ImgFrame::Type::YUV444p:
         case ImgFrame::Type::YUV422p:
