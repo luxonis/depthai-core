@@ -135,6 +135,9 @@ ImgFrame EncodedFrame::getImgFrameMeta() const {
     frame.setType(ImgFrame::Type::BITSTREAM);
     frame.transformation = transformation;
     frame.setSourceSize(transformation.getSourceSize());
+    frame.setSequenceNum(getSequenceNum());
+    frame.setTimestamp(getTimestamp());
+    frame.setTimestampDevice(getTimestampDevice());
     return frame;
 }
 

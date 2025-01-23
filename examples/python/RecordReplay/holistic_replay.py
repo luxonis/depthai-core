@@ -17,6 +17,7 @@ with dai.Pipeline(True) as pipeline:
     imu = pipeline.create(dai.node.IMU)
     imu.enableIMUSensor(dai.IMUSensor.ACCELEROMETER_RAW, 500);
     imu.enableIMUSensor(dai.IMUSensor.GYROSCOPE_RAW, 400);
+    imu.setBatchReportThreshold(100)
 
     pipeline.enableHolisticReplay(args.source)
 
