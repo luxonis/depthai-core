@@ -13,21 +13,23 @@ manip.initialConfig.addFlipVertical()
 manip.initialConfig.setFrameType(dai.ImgFrame.Type.NV12)
 manip.setMaxOutputFrameSize(2709360)
 
-camOut = camRgb.requestOutput((1920, 1080))
-camOut.link(manip.inputImage)
+camRgb.requestOutput((1920, 1080)).link(manip.inputImage)
 
-manipQ = manip.out.createOutputQueue()
-camQ = camOut.createOutputQueue()
+out = manip.out.createOutputQueue()
+
+import json
+with open('pipeline.json', 'w') as f:
+    f.write(json.dumps(pipeline.serializeToJson()))
+
 
 pipeline.start()
 
 print(manip.initialConfig)
 
 while True:
-    if manipQ.has():
-        cv2.imshow("Manip frame", manipQ.get().getCvFrame())
-    if camQ.has():
-        cv2.imshow("Camera frame", camQ.get().getCvFrame())
-    key = cv2.waitKey(1)
-    if key == ord('q'):
-        break
+    inFrame = out.get()
+    if inFrame is not None:
+        cv2.imshow("Show frame", inFrame.getCvFrame())
+        key = cv2.waitKey(1)
+        if key == ord('q'):
+            break
