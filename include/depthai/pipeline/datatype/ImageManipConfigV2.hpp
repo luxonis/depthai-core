@@ -225,6 +225,7 @@ class ImageManipOpsBase : public ImageManipOpsEnums {
     uint8_t backgroundG = 0;
     uint8_t backgroundB = 0;
     Colormap colormap = Colormap::NONE;
+    bool undistort = false;
 
     C operations{};
 
@@ -242,6 +243,7 @@ class ImageManipOpsBase : public ImageManipOpsEnums {
         to.backgroundG = backgroundG;
         to.backgroundB = backgroundB;
         to.colormap = colormap;
+        to.undistort = undistort;
 
         to.operations.clear();
         to.operations.insert(to.operations.end(), operations.begin(), operations.end());
@@ -373,6 +375,15 @@ class ImageManipOpsBase : public ImageManipOpsEnums {
         return *this;
     }
 
+    ImageManipOpsBase& setUndistort(bool undistort) {
+        this->undistort = undistort;
+        return *this;
+    }
+
+    bool getUndistort() const {
+        return undistort;
+    }
+
     const C& getOperations() const {
         return this->operations;
     }
@@ -383,7 +394,7 @@ class ImageManipOpsBase : public ImageManipOpsEnums {
     }
 
     DEPTHAI_SERIALIZE(
-        ImageManipOpsBase, operations, outputWidth, outputHeight, center, resizeMode, background, backgroundR, backgroundG, backgroundB, colormap);
+        ImageManipOpsBase, operations, outputWidth, outputHeight, center, resizeMode, background, backgroundR, backgroundG, backgroundB, colormap, undistort);
 };
 
 /**
@@ -517,6 +528,17 @@ class ImageManipConfigV2 : public Buffer {
      * @param frameType Frame type of the output image
      */
     ImageManipConfigV2& setFrameType(ImgFrame::Type frameType);
+
+    /**
+     * Sets the undistort flag
+     */
+    ImageManipConfigV2& setUndistort(bool undistort);
+
+    /**
+     * Gets the undistort flag
+     * @returns True if undistort is enabled, false otherwise
+     */
+    bool getUndistort() const;
 
     /**
      * Instruct ImageManip to not remove current image from its queue and use the same for next message.

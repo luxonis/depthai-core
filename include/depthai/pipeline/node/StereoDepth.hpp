@@ -37,7 +37,7 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
         ROBOTICS
     };
     std::shared_ptr<StereoDepth> build(Node::Output& left, Node::Output& right, PresetMode presetMode = PresetMode::HIGH_ACCURACY) {
-        this->presetMode = presetMode;
+        setDefaultProfilePreset(presetMode);
         left.link(this->left);
         right.link(this->right);
         return std::static_pointer_cast<StereoDepth>(shared_from_this());

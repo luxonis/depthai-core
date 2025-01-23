@@ -2351,23 +2351,27 @@ template <template <typename T> typename ImageManipBuffer, typename ImageManipDa
 ImageManipOperations<ImageManipBuffer, ImageManipData>& ImageManipOperations<ImageManipBuffer, ImageManipData>::build(
     const ImageManipOpsBase<Container>& newBase, ImgFrame::Type outType, FrameSpecs srcFrameSpecs, ImgFrame::Type inFrameType) {
     const auto newCfgStr = getConfigString(newBase);
+    if(outType == ImgFrame::Type::NONE) {
+        if(base.colormap != Colormap::NONE) outType = VALID_TYPE_COLOR;
+        else outType = inFrameType;
+    }
     if(newCfgStr == prevConfig && outType == outputFrameType && srcFrameSpecs.width == srcSpecs.width && srcFrameSpecs.height == srcSpecs.height
        && inFrameType == inType)
         return *this;
     prevConfig = newCfgStr;
     outputOps.clear();
 
+    if(srcFrameSpecs.width <= 1 || srcFrameSpecs.height <= 1) {
+        throw std::runtime_error("Input image is one dimensional");
+    }
+
     if(newBase.hasWarp(srcFrameSpecs.width, srcFrameSpecs.height)) mode = mode | MODE_WARP;
     if(newBase.colormap != Colormap::NONE && isSingleChannelu8(inFrameType)) mode = mode | MODE_COLORMAP;
-    if(outType != ImgFrame::Type::NONE && outType != inFrameType) mode = mode | MODE_CONVERT;
+    if(outType != inFrameType) mode = mode | MODE_CONVERT;
 
     assert(inFrameType != ImgFrame::Type::NONE);
     base = newBase;
     outputFrameType = outType;
-    if(outType == ImgFrame::Type::NONE) {
-        if(base.colormap != Colormap::NONE) outputFrameType = VALID_TYPE_COLOR;
-        else outputFrameType = inFrameType;
-    }
     inType = inFrameType;
     type = inType;
     srcSpecs = srcFrameSpecs;
