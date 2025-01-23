@@ -59,7 +59,7 @@ jobs:
       - name: Build target 'pybind11_mkdoc'
         run: cmake --build build --target pybind11_mkdoc --parallel 4
       - name: Upload docstring artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: docstrings
           path: bindings/python/docstrings/
@@ -248,7 +248,7 @@ jobs:
       - name: Building wheels
         run: cd bindings/python && python -m pip wheel . -w ./wheelhouse/audited/ --verbose
       - name: Archive wheel artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: audited-wheels
           path: bindings/python/wheelhouse/audited/
@@ -320,7 +320,7 @@ jobs:
       - name: Auditing wheels
         run: cd bindings/python && ci/repair-whl-macos.sh `pwd`/wheelhouse/* `pwd`/wheelhouse/audited
       - name: Archive wheel artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: audited-wheels
           path: bindings/python/wheelhouse/audited/
@@ -459,7 +459,7 @@ jobs:
       - name: Audit wheels
         run: cd bindings/python && for whl in wheelhouse/*.whl; do auditwheel repair "$whl" --plat $PLAT -w wheelhouse/audited/; done
       - name: Archive wheel artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: audited-wheels
           path: bindings/python/wheelhouse/audited/
@@ -537,7 +537,7 @@ jobs:
       - name: Auditing wheels
         run: cd bindings/python && for whl in wheelhouse/*.whl; do auditwheel repair "$whl" --plat $PLAT -w wheelhouse/audited/; done
       - name: Archive wheel artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: audited-wheels
           path: bindings/python/wheelhouse/audited/
