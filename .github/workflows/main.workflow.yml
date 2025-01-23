@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-20.04
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: 'recursive'
 
@@ -42,7 +42,7 @@ jobs:
     runs-on: ubuntu-20.04
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: 'recursive'
 
@@ -73,18 +73,18 @@ jobs:
     steps:
     - name: Cache .hunter folder
       if: matrix.os != 'windows-latest'
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ~/.hunter/
         key: hunter-${{ matrix.os }}-${{ matrix.cmake }}
     - name: Cache .hunter folder
       if: matrix.os == 'windows-latest'
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: C:/.hunter/
         key: hunter-${{ matrix.os }}-${{ matrix.cmake }}
 
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: 'recursive'
 
@@ -149,18 +149,18 @@ jobs:
     steps:
     - name: Cache .hunter folder
       if: matrix.os != 'windows-latest'
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ~/.hunter/
         key: hunter-${{ matrix.os }}-shared_${{ matrix.shared }}
     - name: Cache .hunter folder
       if: matrix.os == 'windows-latest'
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: C:/.hunter/
         key: hunter-${{ matrix.os }}-shared_${{ matrix.shared }}
 
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: 'recursive'
 
@@ -200,14 +200,14 @@ jobs:
 
     - name: Upload Win64 shared library
       if: matrix.os == 'windows-latest' && matrix.shared && matrix.platform == 'x64'
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: windows-prebuilt-win64
         path: ${{ env.GITHUB_WORKSPACE }}/depthai_install/
 
     - name: Upload Win32 shared library
       if: matrix.os == 'windows-latest' && matrix.shared && matrix.platform == 'Win32'
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: windows-prebuilt-win32-no-opencv
         path: ${{ env.GITHUB_WORKSPACE }}/depthai_install/
@@ -241,7 +241,7 @@ jobs:
 
     # Clone repository
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: 'recursive'
 
@@ -255,20 +255,20 @@ jobs:
     #- name: Check if version matches
     #   run: |
 
-    - uses: actions/setup-python@v3
+    - uses: actions/setup-python@v4
       with:
         python-version: '3.8'
     - name: Install dependencies
       run: python3.8 -m pip install git-archive-all
 
     - name: Download Win64 artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: 'windows-prebuilt-win64'
         path: depthai-core-${{ steps.tag.outputs.version }}-win64
 
     - name: Download Win32 artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: 'windows-prebuilt-win32-no-opencv'
         path: depthai-core-${{ steps.tag.outputs.version }}-win32-no-opencv
