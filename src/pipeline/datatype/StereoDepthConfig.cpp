@@ -91,7 +91,7 @@ dai::StereoDepthConfig::AlgorithmControl::DepthUnit StereoDepthConfig::getDepthU
 }
 
 float StereoDepthConfig::getMaxDisparity() const {
-    float maxDisp = 95.0;
+    uint32_t maxDisp = 95;
     if(cfg.costMatching.disparityWidth == RawStereoDepthConfig::CostMatching::DisparityWidth::DISPARITY_64) {
         maxDisp = 63;
     }
@@ -137,7 +137,7 @@ float StereoDepthConfig::getMaxDisparity() const {
 
     if(filtersToExecute.size() != 0) {
         if(filtersToExecute.back() != RawStereoDepthConfig::PostProcessing::Filter::MEDIAN) {
-            maxDisp = 1 << 13;
+            maxDisp = maxDisp * ((1 << 13) / maxDisp);
         }
     }
 
