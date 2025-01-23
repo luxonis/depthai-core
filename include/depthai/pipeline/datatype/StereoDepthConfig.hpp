@@ -789,10 +789,20 @@ class StereoDepthConfig : public Buffer {
     StereoDepthConfig& setLeftRightCheck(bool enable);
 
     /**
+     * Get left-right check setting
+     */
+    bool getLeftRightCheck() const;
+
+    /**
      * Disparity range increased from 95 to 190, combined from full resolution and downscaled images.
      * Suitable for short range objects
      */
     StereoDepthConfig& setExtendedDisparity(bool enable);
+
+    /**
+     * Get extended disparity setting
+     */
+    bool getExtendedDisparity() const;
 
     /**
      * Computes disparity with sub-pixel interpolation (3 fractional bits by default).
@@ -800,6 +810,11 @@ class StereoDepthConfig : public Buffer {
      * Suitable for long range. Currently incompatible with extended disparity
      */
     StereoDepthConfig& setSubpixel(bool enable);
+
+    /**
+     * Get subpixel setting
+     */
+    bool getSubpixel() const;
 
     /**
      * Number of fractional bits for subpixel mode.
@@ -811,11 +826,21 @@ class StereoDepthConfig : public Buffer {
     StereoDepthConfig& setSubpixelFractionalBits(int subpixelFractionalBits);
 
     /**
+     * Get number of fractional bits for subpixel mode
+     */
+    int getSubpixelFractionalBits() const;
+
+    /**
      * Set depth unit of depth map.
      *
      * Meter, centimeter, millimeter, inch, foot or custom unit is available.
      */
     StereoDepthConfig& setDepthUnit(AlgorithmControl::DepthUnit depthUnit);
+
+    /**
+     * Get depth unit of depth map.
+     */
+    AlgorithmControl::DepthUnit getDepthUnit();
 
     /**
      * Shift input frame by a number of pixels to increase minimum depth.
@@ -834,11 +859,6 @@ class StereoDepthConfig : public Buffer {
      * for left alignment from the left edge.
      */
     StereoDepthConfig& setNumInvalidateEdgePixels(int32_t numInvalidateEdgePixels);
-
-    /**
-     * Get depth unit of depth map.
-     */
-    AlgorithmControl::DepthUnit getDepthUnit();
 
     /**
      * Useful for normalization of the disparity map.
