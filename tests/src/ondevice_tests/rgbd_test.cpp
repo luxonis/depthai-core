@@ -7,6 +7,9 @@ TEST_CASE("basic rgbd") {
     // Create pipeline
     dai::Pipeline pipeline;
     auto platform = pipeline.getDefaultDevice()->getPlatform();
+    auto boardName = pipeline.getDefaultDevice()->readCalibration().getEepromData().boardName;
+    auto stereoPairs = pipeline.getDefaultDevice()->getAvailableStereoPairs();
+    std::cout << "Detected board: " << boardName << std::endl;
     // Define sources and outputs
     auto left = pipeline.create<dai::node::Camera>();
     auto right = pipeline.create<dai::node::Camera>();
@@ -17,6 +20,7 @@ TEST_CASE("basic rgbd") {
     if(platform == dai::Platform::RVC4) {
         align = pipeline.create<dai::node::ImageAlign>();
     }
+    
     color->build();
 
     left->build(dai::CameraBoardSocket::CAM_B);
@@ -54,7 +58,7 @@ TEST_CASE("basic rgbd") {
 TEST_CASE("rgbd autocreate") {
     // Create pipeline
     dai::Pipeline pipeline;
-    auto rgbd = pipeline.create<dai::node::RGBD>()->build(true, {1280, 720});
+    auto rgbd = pipeline.create<dai::node::RGBD>()->build(true);
 
     auto outQ = rgbd->pcl.createOutputQueue();
     pipeline.start();

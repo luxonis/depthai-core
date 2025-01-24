@@ -4,6 +4,7 @@
 #include "depthai/pipeline/datatype/PointCloudData.hpp"
 #include "depthai/pipeline/datatype/RGBDData.hpp"
 #include "depthai/pipeline/datatype/StereoDepthConfig.hpp"
+#include "depthai/pipeline/node/StereoDepth.hpp"
 #include "depthai/pipeline/node/Sync.hpp"
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "depthai/utility/Pimpl.hpp"
@@ -43,7 +44,7 @@ class RGBD : public NodeCRTP<ThreadedHostNode, RGBD> {
      * @param autocreate If true, will create color and depth nodes if they don't exist. 
      * @param size Size of the frames
      */
-    std::shared_ptr<RGBD> build(bool autocreate, std::pair<int, int> size);
+    std::shared_ptr<RGBD> build(bool autocreate, StereoDepth::PresetMode mode = StereoDepth::PresetMode::HIGH_ACCURACY, std::pair<int, int> size = {1280, 720});
     void setDepthUnit(StereoDepthConfig::AlgorithmControl::DepthUnit depthUnit);
     /**
     * @brief Use single-threaded CPU for processing

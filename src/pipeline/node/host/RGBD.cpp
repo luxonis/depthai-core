@@ -248,21 +248,21 @@ std::shared_ptr<RGBD> RGBD::build() {
     return std::static_pointer_cast<RGBD>(shared_from_this());
 }
 
-std::shared_ptr<RGBD> RGBD::build(bool autocreate, std::pair<int, int> size) {
+std::shared_ptr<RGBD> RGBD::build(bool autocreate, StereoDepth::PresetMode mode, std::pair<int, int> size) {
     if(!autocreate) {
         return std::static_pointer_cast<RGBD>(shared_from_this());
     }
     auto pipeline = getParentPipeline();
     auto colorCam = pipeline.create<node::Camera>()->build();
     auto platform = pipeline.getDefaultDevice()->getPlatform();
-    auto stereo = pipeline.create<node::StereoDepth>()->build(true);
+    auto stereo = pipeline.create<node::StereoDepth>()->build(true, mode, size);
     std::shared_ptr<node::ImageAlign> align = nullptr;
     if(platform == Platform::RVC4) {
-        auto align = pipeline.create<node::ImageAlign>();
+        align = pipeline.create<node::ImageAlign>();
     }
-    auto* out = colorCam->requestOutput(size, dai::ImgFrame::Type::RGB888i);
+    auto* out = colorCam->requestOutput(size, ImgFrame::Type::RGB888i);
     out->link(inColor);
-    if(platform == dai::Platform::RVC4) {
+    if(platform == Platform::RVC4) {
         stereo->depth.link(align->input);
         out->link(align->inputAlignTo);
         align->outputAligned.link(inDepth);
@@ -277,7 +277,7 @@ void RGBD::initialize(std::shared_ptr<MessageGroup> frames) {
     // Initialize the camera intrinsics
     // Check if width, width and cameraID match
     auto colorFrame = std::dynamic_pointer_cast<ImgFrame>(frames->group.at(inColor.getName()));
-    if(colorFrame->getType() != dai::ImgFrame::Type::RGB888i) {
+    if(colorFrame->getType() != ImgFrame::Type::RGB888i) {
         throw std::runtime_error("RGBD node only supports RGB888i frames");
     }
     auto depthFrame = std::dynamic_pointer_cast<ImgFrame>(frames->group.at(inDepth.getName()));
@@ -309,7 +309,7 @@ void RGBD::run() {
             initialize(group);
         }
         auto colorFrame = std::dynamic_pointer_cast<ImgFrame>(group->group.at(inColor.getName()));
-        if(colorFrame->getType() != dai::ImgFrame::Type::RGB888i) {
+        if(colorFrame->getType() != ImgFrame::Type::RGB888i) {
             throw std::runtime_error("RGBD node only supports RGB888i frames");
         }
         auto depthFrame = std::dynamic_pointer_cast<ImgFrame>(group->group.at(inDepth.getName()));
