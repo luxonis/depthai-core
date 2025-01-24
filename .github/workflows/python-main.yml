@@ -322,7 +322,7 @@ jobs:
       - name: Archive wheel artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: audited-wheels-macos-${{ matrix.python-version }}
+          name: audited-wheels-macos-${{ matrix.os }}-${{ matrix.python-version }}
           path: bindings/python/wheelhouse/audited/*
       - name: Deploy wheels to artifactory (if not a release)
         if: startsWith(github.ref, 'refs/tags/v') != true
