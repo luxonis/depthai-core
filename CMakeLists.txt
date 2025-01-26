@@ -743,7 +743,7 @@ target_include_directories(${TARGET_CORE_NAME} SYSTEM
 # Add clang format after specifying include directories
 if(DEPTHAI_CLANG_FORMAT)
     # HEADER DIRECTORIES
-    set(header_dirs "${CMAKE_CURRENT_LIST_DIR}/include" "${DEPTHAI_SHARED_PUBLIC_INCLUDE}" "${DEPTHAI_SHARED_INCLUDE}")
+    set(header_dirs "${CMAKE_CURRENT_LIST_DIR}/include" "${CMAKE_CURRENT_LIST_DIR}/src" "${DEPTHAI_SHARED_PUBLIC_INCLUDE}" "${DEPTHAI_SHARED_INCLUDE}")
     include(ClangFormat)
     target_clangformat_setup(${TARGET_CORE_NAME} "${header_dirs}")
 endif()
