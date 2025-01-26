@@ -5,9 +5,9 @@
 
 #include <memory>
 
-#include "utility/ProtoSerializable.hpp"
 #include "depthai/common/ImgTransformations.hpp"
 #include "depthai/schemas/common.pb.h"
+#include "utility/ProtoSerializable.hpp"
 namespace dai {
 namespace utility {
 
@@ -16,7 +16,6 @@ ProtoSerializable::SchemaPair serializeSchema(std::unique_ptr<google::protobuf::
 
 // Common functions for serializing
 void serializeImgTransformation(proto::common::ImgTransformation* imgTransformation, const ImgTransformation& transformation);
-
 
 };  // namespace utility
 };  // namespace dai
