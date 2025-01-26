@@ -1,7 +1,8 @@
+#include <csignal>
 #include <depthai/depthai.hpp>
 #include <depthai/remote_connection/RemoteConnection.hpp>
 #include <iostream>
-#include <csignal>
+
 #include "depthai/modelzoo/NNModelDescription.hpp"
 
 // Signal handling for clean shutdown
@@ -9,7 +10,6 @@ static bool isRunning = true;
 void signalHandler(int signum) {
     isRunning = false;
 }
-
 
 int main(int argc, char** argv) {
     // Default port values

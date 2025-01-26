@@ -21,7 +21,10 @@
 namespace dai {
 namespace utility {
 
-bool setupHolisticRecord(Pipeline& pipeline, const std::string& deviceId, RecordConfig& recordConfig, std::unordered_map<std::string, std::string>& outFilenames) {
+bool setupHolisticRecord(Pipeline& pipeline,
+                         const std::string& deviceId,
+                         RecordConfig& recordConfig,
+                         std::unordered_map<std::string, std::string>& outFilenames) {
     auto sources = pipeline.getSourceNodes();
     const auto recordPath = recordConfig.outputDir;
     try {

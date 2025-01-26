@@ -1008,17 +1008,17 @@ std::vector<uint8_t> PipelineImpl::loadResourceCwd(dai::Path uri, dai::Path cwd,
                  }
                  return asset->data;
              }
-            for(auto& node : p.nodes) {
-                auto& assetManager = node->getAssetManager();
-                auto asset = assetManager.get(uri.u8string());
-                if(asset != nullptr) {
-                    if(moveAsset) {
-                        assetManager.remove(uri.u8string());
-                        return std::move(asset->data);
-                    }
-                    return asset->data;
-                }
-            }
+             for(auto& node : p.nodes) {
+                 auto& assetManager = node->getAssetManager();
+                 auto asset = assetManager.get(uri.u8string());
+                 if(asset != nullptr) {
+                     if(moveAsset) {
+                         assetManager.remove(uri.u8string());
+                         return std::move(asset->data);
+                     }
+                     return asset->data;
+                 }
+             }
              // Asset not found anywhere
              throw std::invalid_argument(fmt::format("No asset with key ({}) found", uri));
          }} /*, TODO (read from filesystem 'file://' or default scheme, ...) */
