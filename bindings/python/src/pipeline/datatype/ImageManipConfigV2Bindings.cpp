@@ -41,13 +41,22 @@ void bind_imagemanipconfigv2(pybind11::module& m, void* pCallstack) {
 
     // Message
 
-    imageManipConfig
-        .def(py::init<>())
+    imageManipConfig.def(py::init<>())
         .def("__repr__", &ImageManipConfigV2::str)
         // New API Setters
         .def("clearOps", &ImageManipConfigV2::clearOps, DOC(dai, ImageManipConfigV2, clearOps))
-        .def("addCrop", static_cast<ImageManipConfigV2& (ImageManipConfigV2::*)(uint32_t, uint32_t, uint32_t, uint32_t)>(&ImageManipConfigV2::addCrop), py::arg("x"), py::arg("y"), py::arg("w"), py::arg("h"), DOC(dai, ImageManipConfigV2, addCrop))
-        .def("addCrop", static_cast<ImageManipConfigV2& (ImageManipConfigV2::*)(dai::Rect, bool)>(&ImageManipConfigV2::addCrop), py::arg("rect"), py::arg("normalizedCoords"), DOC(dai, ImageManipConfigV2, addCrop))
+        .def("addCrop",
+             static_cast<ImageManipConfigV2& (ImageManipConfigV2::*)(uint32_t, uint32_t, uint32_t, uint32_t)>(&ImageManipConfigV2::addCrop),
+             py::arg("x"),
+             py::arg("y"),
+             py::arg("w"),
+             py::arg("h"),
+             DOC(dai, ImageManipConfigV2, addCrop))
+        .def("addCrop",
+             static_cast<ImageManipConfigV2& (ImageManipConfigV2::*)(dai::Rect, bool)>(&ImageManipConfigV2::addCrop),
+             py::arg("rect"),
+             py::arg("normalizedCoords"),
+             DOC(dai, ImageManipConfigV2, addCrop))
         .def("addCropRotatedRect",
              &ImageManipConfigV2::addCropRotatedRect,
              py::arg("rect"),
@@ -91,7 +100,12 @@ void bind_imagemanipconfigv2(pybind11::module& m, void* pCallstack) {
              static_cast<ImageManipConfigV2& (ImageManipConfigV2::*)(uint32_t)>(&ImageManipConfigV2::setBackgroundColor),
              py::arg("val"),
              DOC(dai, ImageManipConfigV2, setBackgroundColor))
-        .def("setOutputSize", &ImageManipConfigV2::setOutputSize, py::arg("w"), py::arg("h"), py::arg("mode") = ImageManipConfigV2::ResizeMode::STRETCH, DOC(dai, ImageManipConfigV2, setOutputSize))
+        .def("setOutputSize",
+             &ImageManipConfigV2::setOutputSize,
+             py::arg("w"),
+             py::arg("h"),
+             py::arg("mode") = ImageManipConfigV2::ResizeMode::STRETCH,
+             DOC(dai, ImageManipConfigV2, setOutputSize))
         .def("setOutputCenter", &ImageManipConfigV2::setOutputCenter, py::arg("c"), DOC(dai, ImageManipConfigV2, setOutputCenter))
         .def("setReusePreviousImage", &ImageManipConfigV2::setReusePreviousImage, py::arg("reuse"), DOC(dai, ImageManipConfigV2, setReusePreviousImage))
         .def("setSkipCurrentImage", &ImageManipConfigV2::setSkipCurrentImage, py::arg("skip"), DOC(dai, ImageManipConfigV2, setSkipCurrentImage))

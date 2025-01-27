@@ -2265,7 +2265,13 @@ std::tuple<std::array<std::array<float, 3>, 3>, std::array<std::array<float, 2>,
     return {transform, imageCorners, srcCorners};
 }
 
-void getOutputSizeFromCorners(const std::array<std::array<float, 2>, 4>& corners, const bool center, const std::array<std::array<float, 3>, 3> transformInv, const uint32_t srcWidth, const uint32_t srcHeight, uint32_t& outputWidth, uint32_t& outputHeight);
+void getOutputSizeFromCorners(const std::array<std::array<float, 2>, 4>& corners,
+                              const bool center,
+                              const std::array<std::array<float, 3>, 3> transformInv,
+                              const uint32_t srcWidth,
+                              const uint32_t srcHeight,
+                              uint32_t& outputWidth,
+                              uint32_t& outputHeight);
 
 template <typename C>
 std::tuple<std::array<std::array<float, 3>, 3>, std::array<std::array<float, 2>, 4>, std::vector<std::array<std::array<float, 2>, 4>>> getFullTransform(
@@ -2279,7 +2285,7 @@ std::tuple<std::array<std::array<float, 3>, 3>, std::array<std::array<float, 2>,
 
     auto [matrix, imageCorners, srcCorners] = getTransform(operations, inputWidth, inputHeight, base.outputWidth, base.outputHeight);
 
-    getOutputSizeFromCorners(imageCorners, base.center, getInverse(matrix), inputWidth, inputHeight,  base.outputWidth, base.outputHeight);
+    getOutputSizeFromCorners(imageCorners, base.center, getInverse(matrix), inputWidth, inputHeight, base.outputWidth, base.outputHeight);
 
     if(base.resizeMode != ImageManipOpsBase<C>::ResizeMode::NONE) {
         Resize res;
@@ -2357,8 +2363,10 @@ ImageManipOperations<ImageManipBuffer, ImageManipData>& ImageManipOperations<Ima
     const ImageManipOpsBase<Container>& newBase, ImgFrame::Type outType, FrameSpecs srcFrameSpecs, ImgFrame::Type inFrameType) {
     const auto newCfgStr = getConfigString(newBase);
     if(outType == ImgFrame::Type::NONE) {
-        if(base.colormap != Colormap::NONE) outType = VALID_TYPE_COLOR;
-        else outType = inFrameType;
+        if(base.colormap != Colormap::NONE)
+            outType = VALID_TYPE_COLOR;
+        else
+            outType = inFrameType;
     }
     if(newCfgStr == prevConfig && outType == outputFrameType && srcFrameSpecs.width == srcSpecs.width && srcFrameSpecs.height == srcSpecs.height
        && inFrameType == inType)

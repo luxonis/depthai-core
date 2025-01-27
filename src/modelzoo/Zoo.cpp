@@ -4,9 +4,9 @@
 #include <iostream>
 #include <nlohmann/json.hpp>
 
+#include "../utility/Environment.hpp"
 #include "../utility/YamlHelpers.hpp"
 #include "../utility/sha1.hpp"
-#include "../utility/Environment.hpp"
 #include "utility/Logging.hpp"
 
 #ifdef DEPTHAI_ENABLE_CURL
@@ -116,7 +116,7 @@ class ZooManager {
      *
      * @return bool: True if internet is available
      */
-    static bool connectionToZooAvailable(); 
+    static bool connectionToZooAvailable();
 
    private:
     // Description of the model
