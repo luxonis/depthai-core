@@ -10,6 +10,8 @@
 
 #include "Environment.hpp"
 #include "Logging.hpp"
+#include "cpr/cpr.h"
+#include "depthai/schemas/Event.pb.h"
 namespace dai {
 
 namespace utility {
@@ -101,18 +103,23 @@ EventsManager::EventsManager(std::string url, bool uploadCachedOnStart, float pu
       queueSize(10),
       publishInterval(publishInterval),
       logResponse(false),
-      verifySsl(false),
+      verifySsl(true),
       connected(false),
       cacheDir("/internal/private"),
       uploadCachedOnStart(uploadCachedOnStart),
-      cacheIfCannotSend(false) {
+      cacheIfCannotSend(false),
+      stopEventBuffer(false) {
     sourceAppId = utility::getEnv("AGENT_APP_ID");
     sourceAppIdentifier = utility::getEnv("AGENT_APP_IDENTIFIER");
     token = utility::getEnv("DEPTHAI_HUB_API_KEY");
+    if(token.empty()) {
+        throw std::runtime_error("Missing token, please set DEPTHAI_HUB_API_KEY environment variable or use setToken method");
+    }
     eventBufferThread = std::make_unique<std::thread>([this]() {
-        while(true) {
+        while(!stopEventBuffer) {
             sendEventBuffer();
-            std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(this->publishInterval * 1000)));
+            std::unique_lock<std::mutex> lock(eventBufferMutex);
+            eventBufferCondition.wait_for(lock, std::chrono::seconds(static_cast<int>(this->publishInterval)));
         }
     });
     checkConnection();
@@ -122,7 +129,14 @@ EventsManager::EventsManager(std::string url, bool uploadCachedOnStart, float pu
 }
 
 EventsManager::~EventsManager() {
-    eventBufferThread->join();
+    stopEventBuffer = true;
+    {
+        std::unique_lock<std::mutex> lock(eventBufferMutex);
+        eventBufferCondition.notify_one();
+    }
+    if(eventBufferThread->joinable()) {
+        eventBufferThread->join();
+    }
 }
 
 void EventsManager::sendEventBuffer() {
@@ -138,8 +152,6 @@ void EventsManager::sendEventBuffer() {
             }
             return;
         }
-        // Create request
-        cpr::Url url = static_cast<cpr::Url>(this->url + "/v1/events");
         for(auto& eventM : eventBuffer) {
             auto& event = eventM->event;
             batchEvent->add_events()->Swap(event.get());
@@ -147,7 +159,19 @@ void EventsManager::sendEventBuffer() {
     }
     std::string serializedEvent;
     batchEvent->SerializeToString(&serializedEvent);
-    cpr::Response r = cpr::Post(cpr::Url{url}, cpr::Body{serializedEvent}, cpr::Header{{"Authorization", "Bearer " + token}}, cpr::VerifySsl(verifySsl));
+    cpr::Url reqUrl = static_cast<cpr::Url>(this->url + "/v1/events");
+    cpr::Response r = cpr::Post(
+        cpr::Url{reqUrl},
+        cpr::Body{serializedEvent},
+        cpr::Header{{"Authorization", "Bearer " + token}},
+        cpr::VerifySsl(verifySsl),
+        cpr::ProgressCallback(
+            [&](cpr::cpr_off_t downloadTotal, cpr::cpr_off_t downloadNow, cpr::cpr_off_t uploadTotal, cpr::cpr_off_t uploadNow, intptr_t userdata) -> bool {
+                if(stopEventBuffer) {
+                    return false;
+                }
+                return true;
+            }));
     if(r.status_code != cpr::status::HTTP_OK) {
         logger::error("Failed to send event: {} {}", r.text, r.status_code);
     } else {
@@ -272,7 +296,19 @@ void EventsManager::sendFile(const std::shared_ptr<EventData>& file, const std::
         }};
         header["File-Size"] = std::to_string(std::filesystem::file_size(file->data));
     }
-    cpr::Response r = cpr::Post(cpr::Url{url}, cpr::Multipart{fileM}, cpr::Header{header}, cpr::VerifySsl(verifySsl));
+    cpr::Response r = cpr::Post(
+        cpr::Url{url},
+        cpr::Multipart{fileM},
+        cpr::Header{header},
+        cpr::VerifySsl(verifySsl),
+
+        cpr::ProgressCallback(
+            [&](cpr::cpr_off_t downloadTotal, cpr::cpr_off_t downloadNow, cpr::cpr_off_t uploadTotal, cpr::cpr_off_t uploadNow, intptr_t userdata) -> bool {
+                if(stopEventBuffer) {
+                    return false;
+                }
+                return true;
+            }));
     if(r.status_code != cpr::status::HTTP_OK) {
         logger::error("Failed to upload file: {} error code {}", r.text, r.status_code);
     }

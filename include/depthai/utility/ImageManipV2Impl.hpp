@@ -2260,7 +2260,13 @@ std::tuple<std::array<std::array<float, 3>, 3>, std::array<std::array<float, 2>,
     return {transform, imageCorners, srcCorners};
 }
 
-void getOutputSizeFromCorners(const std::array<std::array<float, 2>, 4>& corners, const bool center, const std::array<std::array<float, 3>, 3> transformInv, const uint32_t srcWidth, const uint32_t srcHeight, uint32_t& outputWidth, uint32_t& outputHeight);
+void getOutputSizeFromCorners(const std::array<std::array<float, 2>, 4>& corners,
+                              const bool center,
+                              const std::array<std::array<float, 3>, 3> transformInv,
+                              const uint32_t srcWidth,
+                              const uint32_t srcHeight,
+                              uint32_t& outputWidth,
+                              uint32_t& outputHeight);
 
 template <typename C>
 std::tuple<std::array<std::array<float, 3>, 3>, std::array<std::array<float, 2>, 4>, std::vector<std::array<std::array<float, 2>, 4>>> getFullTransform(
@@ -2274,7 +2280,7 @@ std::tuple<std::array<std::array<float, 3>, 3>, std::array<std::array<float, 2>,
 
     auto [matrix, imageCorners, srcCorners] = getTransform(operations, inputWidth, inputHeight, base.outputWidth, base.outputHeight);
 
-    getOutputSizeFromCorners(imageCorners, base.center, getInverse(matrix), inputWidth, inputHeight,  base.outputWidth, base.outputHeight);
+    getOutputSizeFromCorners(imageCorners, base.center, getInverse(matrix), inputWidth, inputHeight, base.outputWidth, base.outputHeight);
 
     if(base.resizeMode != ImageManipOpsBase<C>::ResizeMode::NONE) {
         Resize res;
@@ -2351,23 +2357,29 @@ template <template <typename T> typename ImageManipBuffer, typename ImageManipDa
 ImageManipOperations<ImageManipBuffer, ImageManipData>& ImageManipOperations<ImageManipBuffer, ImageManipData>::build(
     const ImageManipOpsBase<Container>& newBase, ImgFrame::Type outType, FrameSpecs srcFrameSpecs, ImgFrame::Type inFrameType) {
     const auto newCfgStr = getConfigString(newBase);
+    if(outType == ImgFrame::Type::NONE) {
+        if(base.colormap != Colormap::NONE)
+            outType = VALID_TYPE_COLOR;
+        else
+            outType = inFrameType;
+    }
     if(newCfgStr == prevConfig && outType == outputFrameType && srcFrameSpecs.width == srcSpecs.width && srcFrameSpecs.height == srcSpecs.height
        && inFrameType == inType)
         return *this;
     prevConfig = newCfgStr;
     outputOps.clear();
 
+    if(srcFrameSpecs.width <= 1 || srcFrameSpecs.height <= 1) {
+        throw std::runtime_error("Input image is one dimensional");
+    }
+
     if(newBase.hasWarp(srcFrameSpecs.width, srcFrameSpecs.height)) mode = mode | MODE_WARP;
     if(newBase.colormap != Colormap::NONE && isSingleChannelu8(inFrameType)) mode = mode | MODE_COLORMAP;
-    if(outType != ImgFrame::Type::NONE && outType != inFrameType) mode = mode | MODE_CONVERT;
+    if(outType != inFrameType) mode = mode | MODE_CONVERT;
 
     assert(inFrameType != ImgFrame::Type::NONE);
     base = newBase;
     outputFrameType = outType;
-    if(outType == ImgFrame::Type::NONE) {
-        if(base.colormap != Colormap::NONE) outputFrameType = VALID_TYPE_COLOR;
-        else outputFrameType = inFrameType;
-    }
     inType = inFrameType;
     type = inType;
     srcSpecs = srcFrameSpecs;
@@ -2811,15 +2823,12 @@ void Warp<ImageManipBuffer, ImageManipData>::build(const FrameSpecs srcFrameSpec
     sourceMaxY = inHeight;
     for(const auto& corners : srcCorners) {
         auto [minx, maxx, miny, maxy] = getOuterRect(std::vector<std::array<float, 2>>(corners.begin(), corners.end()));
-        minx = std::max(minx, 0.0f);
-        maxx = std::min(maxx, (float)inWidth);
-        miny = std::max(miny, 0.0f);
-        maxy = std::min(maxy, (float)inHeight);
-        sourceMinX = std::max(sourceMinX, (size_t)std::floor(minx));
-        sourceMinY = std::max(sourceMinY, (size_t)std::floor(miny));
+        sourceMinX = std::max(sourceMinX, (size_t)std::floor(std::max(minx, 0.f)));
+        sourceMinY = std::max(sourceMinY, (size_t)std::floor(std::max(miny, 0.f)));
         sourceMaxX = std::min(sourceMaxX, (size_t)std::ceil(maxx));
         sourceMaxY = std::min(sourceMaxY, (size_t)std::ceil(maxy));
     }
+    if(sourceMinX >= sourceMaxX || sourceMinY >= sourceMaxY) throw std::runtime_error("Initial crop is outside the source image");
 
 #if !DEPTHAI_IMAGEMANIPV2_OPENCV && !DEPTHAI_IMAGEMANIPV2_FASTCV || !defined(DEPTHAI_HAVE_OPENCV_SUPPORT) && !defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
     const uint32_t outWidth = dstFrameSpecs.width;

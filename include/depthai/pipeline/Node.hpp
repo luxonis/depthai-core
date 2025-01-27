@@ -180,9 +180,12 @@ class Node : public std::enable_shared_from_this<Node> {
         /**
          * Get possible datatypes that can be sent
          */
-        std::vector<DatatypeHierarchy> getPossibleDatatypes() const {
-            return desc.types;
-        }
+        std::vector<DatatypeHierarchy> getPossibleDatatypes() const;
+
+        /**
+         * Set possible datatypes that can be sent
+         */
+        void setPossibleDatatypes(std::vector<DatatypeHierarchy> types);
 
         /**
          * Check if this output and given input are on the same pipeline.
@@ -377,6 +380,16 @@ class Node : public std::enable_shared_from_this<Node> {
          * @returns Whether to wait for message to arrive to this input or not
          */
         bool getWaitForMessage() const;
+
+        /**
+         * Get possible datatypes that can be received
+         */
+        std::vector<DatatypeHierarchy> getPossibleDatatypes() const;
+
+        /**
+         * Set possible datatypes that can be received
+         */
+        void setPossibleDatatypes(std::vector<DatatypeHierarchy> types);
 
         /**
          * Equivalent to setWaitForMessage but with inverted logic.
@@ -602,6 +615,9 @@ class Node : public std::enable_shared_from_this<Node> {
 
     /// Loads resource specified by URI and returns its data
     std::vector<uint8_t> loadResource(dai::Path uri);
+
+    /// Moves the resource out
+    std::vector<uint8_t> moveResource(dai::Path uri);
 
     /// Create and place Node to this Node
     template <class N>

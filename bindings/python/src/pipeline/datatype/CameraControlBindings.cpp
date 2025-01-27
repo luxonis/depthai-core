@@ -1,26 +1,27 @@
+#include <memory>
+#include <unordered_map>
+
 #include "DatatypeBindings.hpp"
 #include "pipeline/CommonBindings.hpp"
-#include <unordered_map>
-#include <memory>
 
 // depthai
 #include "depthai/pipeline/datatype/CameraControl.hpp"
 
-//pybind
+// pybind
 #include <pybind11/chrono.h>
 #include <pybind11/numpy.h>
 
 // #include "spdlog/spdlog.h"
 
-void bind_cameracontrol(pybind11::module& m, void* pCallstack){
-
+void bind_cameracontrol(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
     // py::class_<RawCameraControl, RawBuffer, std::shared_ptr<RawCameraControl>> rawCameraControl(m, "RawCameraControl", DOC(dai, RawCameraControl));
     py::class_<CameraControl, Py<CameraControl>, Buffer, std::shared_ptr<CameraControl>> cameraControl(m, "CameraControl", DOC(dai, CameraControl));
     py::enum_<CameraControl::Command> cameraControlCommand(cameraControl, "Command", DOC(dai, CameraControl, Command));
     py::enum_<CameraControl::AutoFocusMode> cameraControlAutoFocusMode(cameraControl, "AutoFocusMode", DOC(dai, CameraControl, AutoFocusMode));
-    py::enum_<CameraControl::AutoWhiteBalanceMode> cameraControlAutoWhiteBalanceMode(cameraControl, "AutoWhiteBalanceMode", DOC(dai, CameraControl, AutoWhiteBalanceMode));
+    py::enum_<CameraControl::AutoWhiteBalanceMode> cameraControlAutoWhiteBalanceMode(
+        cameraControl, "AutoWhiteBalanceMode", DOC(dai, CameraControl, AutoWhiteBalanceMode));
     py::enum_<CameraControl::SceneMode> cameraControlSceneMode(cameraControl, "SceneMode", DOC(dai, CameraControl, SceneMode));
     py::enum_<CameraControl::ControlMode> cameraControlControlMode(cameraControl, "ControlMode", DOC(dai, CameraControl, ControlMode));
     py::enum_<CameraControl::CaptureIntent> cameraControlCaptureIntent(cameraControl, "CaptureIntent", DOC(dai, CameraControl, CaptureIntent));
@@ -32,7 +33,7 @@ void bind_cameracontrol(pybind11::module& m, void* pCallstack){
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
     // Call the rest of the type defines, then perform the actual bindings
-    Callstack* callstack = (Callstack*) pCallstack;
+    Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
@@ -42,10 +43,9 @@ void bind_cameracontrol(pybind11::module& m, void* pCallstack){
     ///////////////////////////////////////////////////////////////////////
 
     // Metadata / raw
-std::vector<const char *> camCtrlAttr;
+    std::vector<const char*> camCtrlAttr;
     camCtrlAttr.push_back("Command");
-    cameraControlCommand
-        .value("START_STREAM", CameraControl::Command::START_STREAM)
+    cameraControlCommand.value("START_STREAM", CameraControl::Command::START_STREAM)
         .value("STOP_STREAM", CameraControl::Command::STOP_STREAM)
         .value("STILL_CAPTURE", CameraControl::Command::STILL_CAPTURE)
         .value("MOVE_LENS", CameraControl::Command::MOVE_LENS)
@@ -80,22 +80,18 @@ std::vector<const char *> camCtrlAttr;
         .value("AF_REGION", CameraControl::Command::AF_REGION)
         .value("LUMA_DENOISE", CameraControl::Command::LUMA_DENOISE)
         .value("CHROMA_DENOISE", CameraControl::Command::CHROMA_DENOISE)
-        .value("WB_COLOR_TEMP", CameraControl::Command::WB_COLOR_TEMP)
-        ;
+        .value("WB_COLOR_TEMP", CameraControl::Command::WB_COLOR_TEMP);
 
     camCtrlAttr.push_back("AutoFocusMode");
-    cameraControlAutoFocusMode
-        .value("OFF", CameraControl::AutoFocusMode::OFF)
+    cameraControlAutoFocusMode.value("OFF", CameraControl::AutoFocusMode::OFF)
         .value("AUTO", CameraControl::AutoFocusMode::AUTO)
         .value("MACRO", CameraControl::AutoFocusMode::MACRO)
         .value("CONTINUOUS_VIDEO", CameraControl::AutoFocusMode::CONTINUOUS_VIDEO)
         .value("CONTINUOUS_PICTURE", CameraControl::AutoFocusMode::CONTINUOUS_PICTURE)
-        .value("EDOF", CameraControl::AutoFocusMode::EDOF)
-    ;
+        .value("EDOF", CameraControl::AutoFocusMode::EDOF);
 
     camCtrlAttr.push_back("AutoWhiteBalanceMode");
-    cameraControlAutoWhiteBalanceMode
-        .value("OFF", CameraControl::AutoWhiteBalanceMode::OFF)
+    cameraControlAutoWhiteBalanceMode.value("OFF", CameraControl::AutoWhiteBalanceMode::OFF)
         .value("AUTO", CameraControl::AutoWhiteBalanceMode::AUTO)
         .value("INCANDESCENT", CameraControl::AutoWhiteBalanceMode::INCANDESCENT)
         .value("FLUORESCENT", CameraControl::AutoWhiteBalanceMode::FLUORESCENT)
@@ -103,12 +99,10 @@ std::vector<const char *> camCtrlAttr;
         .value("DAYLIGHT", CameraControl::AutoWhiteBalanceMode::DAYLIGHT)
         .value("CLOUDY_DAYLIGHT", CameraControl::AutoWhiteBalanceMode::CLOUDY_DAYLIGHT)
         .value("TWILIGHT", CameraControl::AutoWhiteBalanceMode::TWILIGHT)
-        .value("SHADE", CameraControl::AutoWhiteBalanceMode::SHADE)
-    ;
+        .value("SHADE", CameraControl::AutoWhiteBalanceMode::SHADE);
 
     camCtrlAttr.push_back("SceneMode");
-    cameraControlSceneMode
-        .value("UNSUPPORTED", CameraControl::SceneMode::UNSUPPORTED)
+    cameraControlSceneMode.value("UNSUPPORTED", CameraControl::SceneMode::UNSUPPORTED)
         .value("FACE_PRIORITY", CameraControl::SceneMode::FACE_PRIORITY)
         .value("ACTION", CameraControl::SceneMode::ACTION)
         .value("PORTRAIT", CameraControl::SceneMode::PORTRAIT)
@@ -124,37 +118,29 @@ std::vector<const char *> camCtrlAttr;
         .value("SPORTS", CameraControl::SceneMode::SPORTS)
         .value("PARTY", CameraControl::SceneMode::PARTY)
         .value("CANDLELIGHT", CameraControl::SceneMode::CANDLELIGHT)
-        .value("BARCODE", CameraControl::SceneMode::BARCODE)
-    ;
+        .value("BARCODE", CameraControl::SceneMode::BARCODE);
 
     camCtrlAttr.push_back("ControlMode");
-    cameraControlControlMode
-        .value("OFF", CameraControl::ControlMode::OFF)
+    cameraControlControlMode.value("OFF", CameraControl::ControlMode::OFF)
         .value("AUTO", CameraControl::ControlMode::AUTO)
-        .value("USE_SCENE_MODE", CameraControl::ControlMode::USE_SCENE_MODE)
-    ;
+        .value("USE_SCENE_MODE", CameraControl::ControlMode::USE_SCENE_MODE);
 
     camCtrlAttr.push_back("CaptureIntent");
-    cameraControlCaptureIntent
-        .value("CUSTOM", CameraControl::CaptureIntent::CUSTOM)
+    cameraControlCaptureIntent.value("CUSTOM", CameraControl::CaptureIntent::CUSTOM)
         .value("PREVIEW", CameraControl::CaptureIntent::PREVIEW)
         .value("STILL_CAPTURE", CameraControl::CaptureIntent::STILL_CAPTURE)
         .value("VIDEO_RECORD", CameraControl::CaptureIntent::VIDEO_RECORD)
         .value("VIDEO_SNAPSHOT", CameraControl::CaptureIntent::VIDEO_SNAPSHOT)
-        .value("ZERO_SHUTTER_LAG", CameraControl::CaptureIntent::ZERO_SHUTTER_LAG)
-    ;
+        .value("ZERO_SHUTTER_LAG", CameraControl::CaptureIntent::ZERO_SHUTTER_LAG);
 
     camCtrlAttr.push_back("AntiBandingMode");
-    cameraControlAntiBandingMode
-        .value("OFF", CameraControl::AntiBandingMode::OFF)
+    cameraControlAntiBandingMode.value("OFF", CameraControl::AntiBandingMode::OFF)
         .value("MAINS_50_HZ", CameraControl::AntiBandingMode::MAINS_50_HZ)
         .value("MAINS_60_HZ", CameraControl::AntiBandingMode::MAINS_60_HZ)
-        .value("AUTO", CameraControl::AntiBandingMode::AUTO)
-    ;
+        .value("AUTO", CameraControl::AntiBandingMode::AUTO);
 
     camCtrlAttr.push_back("EffectMode");
-    cameraControlEffectMode
-        .value("OFF", CameraControl::EffectMode::OFF)
+    cameraControlEffectMode.value("OFF", CameraControl::EffectMode::OFF)
         .value("MONO", CameraControl::EffectMode::MONO)
         .value("NEGATIVE", CameraControl::EffectMode::NEGATIVE)
         .value("SOLARIZE", CameraControl::EffectMode::SOLARIZE)
@@ -162,18 +148,14 @@ std::vector<const char *> camCtrlAttr;
         .value("POSTERIZE", CameraControl::EffectMode::POSTERIZE)
         .value("WHITEBOARD", CameraControl::EffectMode::WHITEBOARD)
         .value("BLACKBOARD", CameraControl::EffectMode::BLACKBOARD)
-        .value("AQUA", CameraControl::EffectMode::AQUA)
-    ;
+        .value("AQUA", CameraControl::EffectMode::AQUA);
 
     camCtrlAttr.push_back("FrameSyncMode");
-    cameraControlFrameSyncMode
-        .value("OFF", CameraControl::FrameSyncMode::OFF)
+    cameraControlFrameSyncMode.value("OFF", CameraControl::FrameSyncMode::OFF)
         .value("OUTPUT", CameraControl::FrameSyncMode::OUTPUT)
-        .value("INPUT", CameraControl::FrameSyncMode::INPUT)
-    ;
+        .value("INPUT", CameraControl::FrameSyncMode::INPUT);
 
-    cameraControl
-        .def(py::init<>())
+    cameraControl.def(py::init<>())
         .def_readwrite("cmdMask", &CameraControl::cmdMask)
         .def_readwrite("autoFocusMode", &CameraControl::autoFocusMode)
         .def_readwrite("lensPosition", &CameraControl::lensPosition)
@@ -198,37 +180,72 @@ std::vector<const char *> camCtrlAttr;
         .def_readwrite("wbColorTemp", &CameraControl::wbColorTemp)
         .def("setCommand", &CameraControl::setCommand)
         .def("clearCommand", &CameraControl::clearCommand)
-        .def("getCommand", &CameraControl::getCommand)
-        ;
+        .def("getCommand", &CameraControl::getCommand);
 
     // Message
-    cameraControl
-        .def(py::init<>(), DOC(dai, CameraControl, CameraControl))
+    cameraControl.def(py::init<>(), DOC(dai, CameraControl, CameraControl))
         .def("__repr__", &CameraControl::str)
         // setters
         .def("setCaptureStill", &CameraControl::setCaptureStill, py::arg("capture"), DOC(dai, CameraControl, setCaptureStill))
         .def("setStartStreaming", &CameraControl::setStartStreaming, DOC(dai, CameraControl, setStartStreaming))
         .def("setStopStreaming", &CameraControl::setStopStreaming, DOC(dai, CameraControl, setStopStreaming))
-        .def("setExternalTrigger", &CameraControl::setExternalTrigger, py::arg("numFramesBurst"), py::arg("numFramesDiscard"), DOC(dai, CameraControl, setExternalTrigger))
+        .def("setExternalTrigger",
+             &CameraControl::setExternalTrigger,
+             py::arg("numFramesBurst"),
+             py::arg("numFramesDiscard"),
+             DOC(dai, CameraControl, setExternalTrigger))
         .def("setFrameSyncMode", &CameraControl::setFrameSyncMode, py::arg("mode"), DOC(dai, CameraControl, setFrameSyncMode))
         .def("setStrobeSensor", &CameraControl::setStrobeSensor, py::arg("activeLevel"), DOC(dai, CameraControl, setStrobeSensor))
         .def("setStrobeExternal", &CameraControl::setStrobeExternal, py::arg("gpioNumber"), py::arg("activeLevel"), DOC(dai, CameraControl, setStrobeExternal))
         .def("setStrobeDisable", &CameraControl::setStrobeDisable, DOC(dai, CameraControl, setStrobeDisable))
         .def("setAutoFocusMode", &CameraControl::setAutoFocusMode, py::arg("mode"), DOC(dai, CameraControl, setAutoFocusMode))
         .def("setAutoFocusTrigger", &CameraControl::setAutoFocusTrigger, DOC(dai, CameraControl, setAutoFocusTrigger))
-        .def("setAutoFocusLensRange", &CameraControl::setAutoFocusLensRange, py::arg("infinityPosition"), py::arg("macroPosition"), DOC(dai, CameraControl, setAutoFocusLensRange))
-        .def("setAutoFocusRegion", &CameraControl::setAutoFocusRegion, py::arg("startX"), py::arg("startY"), py::arg("width"), py::arg("height"), DOC(dai, CameraControl, setAutoFocusRegion))
+        .def("setAutoFocusLensRange",
+             &CameraControl::setAutoFocusLensRange,
+             py::arg("infinityPosition"),
+             py::arg("macroPosition"),
+             DOC(dai, CameraControl, setAutoFocusLensRange))
+        .def("setAutoFocusRegion",
+             &CameraControl::setAutoFocusRegion,
+             py::arg("startX"),
+             py::arg("startY"),
+             py::arg("width"),
+             py::arg("height"),
+             DOC(dai, CameraControl, setAutoFocusRegion))
         .def("setManualFocus", &CameraControl::setManualFocus, py::arg("lensPosition"), DOC(dai, CameraControl, setManualFocus))
         .def("setManualFocusRaw", &CameraControl::setManualFocusRaw, py::arg("lensPositionRaw"), DOC(dai, CameraControl, setManualFocusRaw))
         .def("setAutoExposureEnable", &CameraControl::setAutoExposureEnable, DOC(dai, CameraControl, setAutoExposureEnable))
         .def("setAutoExposureLock", &CameraControl::setAutoExposureLock, py::arg("lock"), DOC(dai, CameraControl, setAutoExposureLock))
-        .def("setAutoExposureRegion", &CameraControl::setAutoExposureRegion, py::arg("startX"), py::arg("startY"), py::arg("width"), py::arg("height"), DOC(dai, CameraControl, setAutoExposureRegion))
-        .def("setAutoExposureCompensation", &CameraControl::setAutoExposureCompensation, py::arg("compensation"), DOC(dai, CameraControl, setAutoExposureCompensation))
-        .def("setAutoExposureLimit", py::overload_cast<uint32_t>(&CameraControl::setAutoExposureLimit), py::arg("maxExposureTimeUs"), DOC(dai, CameraControl, setAutoExposureLimit))
-        .def("setAutoExposureLimit", py::overload_cast<std::chrono::microseconds>(&CameraControl::setAutoExposureLimit), py::arg("maxExposureTime"), DOC(dai, CameraControl, setAutoExposureLimit, 2))
+        .def("setAutoExposureRegion",
+             &CameraControl::setAutoExposureRegion,
+             py::arg("startX"),
+             py::arg("startY"),
+             py::arg("width"),
+             py::arg("height"),
+             DOC(dai, CameraControl, setAutoExposureRegion))
+        .def("setAutoExposureCompensation",
+             &CameraControl::setAutoExposureCompensation,
+             py::arg("compensation"),
+             DOC(dai, CameraControl, setAutoExposureCompensation))
+        .def("setAutoExposureLimit",
+             py::overload_cast<uint32_t>(&CameraControl::setAutoExposureLimit),
+             py::arg("maxExposureTimeUs"),
+             DOC(dai, CameraControl, setAutoExposureLimit))
+        .def("setAutoExposureLimit",
+             py::overload_cast<std::chrono::microseconds>(&CameraControl::setAutoExposureLimit),
+             py::arg("maxExposureTime"),
+             DOC(dai, CameraControl, setAutoExposureLimit, 2))
         .def("setAntiBandingMode", &CameraControl::setAntiBandingMode, py::arg("mode"), DOC(dai, CameraControl, setAntiBandingMode))
-        .def("setManualExposure", py::overload_cast<uint32_t, uint32_t>(&CameraControl::setManualExposure), py::arg("exposureTimeUs"), py::arg("sensitivityIso"), DOC(dai, CameraControl, setManualExposure))
-        .def("setManualExposure", py::overload_cast<std::chrono::microseconds, uint32_t>(&CameraControl::setManualExposure), py::arg("exposureTime"), py::arg("sensitivityIso"), DOC(dai, CameraControl, setManualExposure, 2))
+        .def("setManualExposure",
+             py::overload_cast<uint32_t, uint32_t>(&CameraControl::setManualExposure),
+             py::arg("exposureTimeUs"),
+             py::arg("sensitivityIso"),
+             DOC(dai, CameraControl, setManualExposure))
+        .def("setManualExposure",
+             py::overload_cast<std::chrono::microseconds, uint32_t>(&CameraControl::setManualExposure),
+             py::arg("exposureTime"),
+             py::arg("sensitivityIso"),
+             DOC(dai, CameraControl, setManualExposure, 2))
         .def("setAutoWhiteBalanceMode", &CameraControl::setAutoWhiteBalanceMode, py::arg("mode"), DOC(dai, CameraControl, setAutoWhiteBalanceMode))
         .def("setAutoWhiteBalanceLock", &CameraControl::setAutoWhiteBalanceLock, py::arg("lock"), DOC(dai, CameraControl, setAutoWhiteBalanceLock))
         .def("setManualWhiteBalance", &CameraControl::setManualWhiteBalance, py::arg("colorTemperatureK"), DOC(dai, CameraControl, setManualWhiteBalance))
@@ -240,9 +257,17 @@ std::vector<const char *> camCtrlAttr;
         .def("setChromaDenoise", &CameraControl::setChromaDenoise, py::arg("value"), DOC(dai, CameraControl, setChromaDenoise))
         .def("setSceneMode", &CameraControl::setSceneMode, py::arg("mode"), DOC(dai, CameraControl, setSceneMode))
         .def("setEffectMode", &CameraControl::setEffectMode, py::arg("mode"), DOC(dai, CameraControl, setEffectMode))
-        .def("setMisc", py::overload_cast<std::string, std::string>(&CameraControl::setMisc), py::arg("control"), py::arg("value"), DOC(dai, CameraControl, setMisc))
+        .def("setMisc",
+             py::overload_cast<std::string, std::string>(&CameraControl::setMisc),
+             py::arg("control"),
+             py::arg("value"),
+             DOC(dai, CameraControl, setMisc))
         .def("setMisc", py::overload_cast<std::string, int>(&CameraControl::setMisc), py::arg("control"), py::arg("value"), DOC(dai, CameraControl, setMisc, 2))
-        .def("setMisc", py::overload_cast<std::string, float>(&CameraControl::setMisc), py::arg("control"), py::arg("value"), DOC(dai, CameraControl, setMisc, 3))
+        .def("setMisc",
+             py::overload_cast<std::string, float>(&CameraControl::setMisc),
+             py::arg("control"),
+             py::arg("value"),
+             DOC(dai, CameraControl, setMisc, 3))
         .def("clearMiscControls", &CameraControl::clearMiscControls, DOC(dai, CameraControl, clearMiscControls))
         .def("setControlMode", &CameraControl::setControlMode, py::arg("mode"), DOC(dai, CameraControl, setControlMode))
         .def("setCaptureIntent", &CameraControl::setCaptureIntent, py::arg("mode"), DOC(dai, CameraControl, setCaptureIntent))
@@ -258,9 +283,7 @@ std::vector<const char *> camCtrlAttr;
         // .def("get",         &CameraControl::get, DOC(dai, CameraControl, get))
         ;
     // Add also enum attributes from CameraControl
-    for (const auto& a : camCtrlAttr) {
+    for(const auto& a : camCtrlAttr) {
         m.attr("CameraControl").attr(a) = m.attr("CameraControl").attr(a);
     }
-
-
 }

@@ -354,7 +354,7 @@ class Application(QtWidgets.QMainWindow):
         self.ui.available_devices_combo.clear()
         self.available_devices = result
         self.ui.available_devices_combo.addItems(
-            list(map(lambda d: f"{d.name} ({d.getMxId()})", self.available_devices)))
+            list(map(lambda d: f"{d.name} ({d.getDeviceId()})", self.available_devices)))
         self.query_devices_timer.start()
         if self.available_devices:
             if current_device:

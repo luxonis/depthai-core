@@ -1,12 +1,10 @@
-#include "NodeBindings.hpp"
 #include "Common.hpp"
-
-#include "depthai/pipeline/Pipeline.hpp"
+#include "NodeBindings.hpp"
 #include "depthai/pipeline/Node.hpp"
+#include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/node/ImageManipV2.hpp"
 
-void bind_imagemanipv2(pybind11::module& m, void* pCallstack){
-
+void bind_imagemanipv2(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::node;
 
@@ -17,7 +15,7 @@ void bind_imagemanipv2(pybind11::module& m, void* pCallstack){
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
     // Call the rest of the type defines, then perform the actual bindings
-    Callstack* callstack = (Callstack*) pCallstack;
+    Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
@@ -27,14 +25,11 @@ void bind_imagemanipv2(pybind11::module& m, void* pCallstack){
     ///////////////////////////////////////////////////////////////////////
 
     // ImageManip Node
-    imageManip
-        .def_readonly("inputConfig", &ImageManipV2::inputConfig, DOC(dai, node, ImageManipV2, inputConfig))
+    imageManip.def_readonly("inputConfig", &ImageManipV2::inputConfig, DOC(dai, node, ImageManipV2, inputConfig))
         .def_readonly("inputImage", &ImageManipV2::inputImage, DOC(dai, node, ImageManipV2, inputImage))
         .def_readonly("out", &ImageManipV2::out, DOC(dai, node, ImageManipV2, out))
         .def_readonly("initialConfig", &ImageManipV2::initialConfig, DOC(dai, node, ImageManipV2, initialConfig))
         .def("setRunOnHost", &ImageManipV2::setRunOnHost, DOC(dai, node, ImageManipV2, setRunOnHost))
         .def("setNumFramesPool", &ImageManipV2::setNumFramesPool, DOC(dai, node, ImageManipV2, setNumFramesPool))
-        .def("setMaxOutputFrameSize", &ImageManipV2::setMaxOutputFrameSize, DOC(dai, node, ImageManipV2, setMaxOutputFrameSize))
-        ;
-
+        .def("setMaxOutputFrameSize", &ImageManipV2::setMaxOutputFrameSize, DOC(dai, node, ImageManipV2, setMaxOutputFrameSize));
 }

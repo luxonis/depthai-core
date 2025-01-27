@@ -114,7 +114,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     bool enableHolisticRecordReplay = false;
     std::unordered_map<std::string, std::string> recordReplayFilenames;
     bool removeRecordReplayFiles = true;
-    std::string defaultDeviceMxId;
+    std::string defaultDeviceId;
 
     // Output queues
     std::vector<std::shared_ptr<MessageQueue>> outputQueues;
@@ -229,7 +229,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
    private:
     // Resource
     std::vector<uint8_t> loadResource(dai::Path uri);
-    std::vector<uint8_t> loadResourceCwd(dai::Path uri, dai::Path cwd);
+    std::vector<uint8_t> loadResourceCwd(dai::Path uri, dai::Path cwd, bool moveAsset = false);
 };
 
 /**

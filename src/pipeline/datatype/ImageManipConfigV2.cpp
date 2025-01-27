@@ -28,10 +28,6 @@ ImageManipConfigV2& ImageManipConfigV2::addCropRotatedRect(dai::RotatedRect rota
               normalizedCoords);
     return *this;
 }
-ImageManipConfigV2& ImageManipConfigV2::addResize(uint32_t w, uint32_t h) {
-    base.resize(w, h);
-    return *this;
-}
 ImageManipConfigV2& ImageManipConfigV2::addScale(float scaleX, float scaleY) {
     base.resize(scaleX, scaleY, true);
     return *this;
@@ -88,6 +84,15 @@ ImageManipConfigV2& ImageManipConfigV2::setBackgroundColor(uint8_t val) {
 ImageManipConfigV2& ImageManipConfigV2::setFrameType(ImgFrame::Type frameType) {
     outputFrameType = frameType;
     return *this;
+}
+
+ImageManipConfigV2& ImageManipConfigV2::setUndistort(bool undistort) {
+    base.setUndistort(undistort);
+    return *this;
+}
+
+bool ImageManipConfigV2::getUndistort() const {
+    return base.getUndistort();
 }
 
 ImageManipConfigV2& ImageManipConfigV2::setReusePreviousImage(bool reuse) {
