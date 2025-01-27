@@ -17,11 +17,6 @@ camRgb.requestOutput((1920, 1080)).link(manip.inputImage)
 
 out = manip.out.createOutputQueue()
 
-import json
-with open('pipeline.json', 'w') as f:
-    f.write(json.dumps(pipeline.serializeToJson()))
-
-
 pipeline.start()
 
 print(manip.initialConfig)

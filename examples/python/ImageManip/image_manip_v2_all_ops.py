@@ -1,7 +1,6 @@
 import depthai as dai
 import cv2
 
-# pipeline = dai.Pipeline(dai.Device(dai.DeviceInfo('10.12.103.165')))
 pipeline = dai.Pipeline()
 
 manip_input = pipeline.create(dai.node.ImageManipV2)
