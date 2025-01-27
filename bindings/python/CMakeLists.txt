@@ -315,6 +315,12 @@ if(DEPTHAI_ENABLE_EVENTS_MANAGER)
     target_compile_definitions(${TARGET_NAME} PRIVATE DEPTHAI_ENABLE_EVENTS_MANAGER)
 endif()
 
+# Add the clang-format target
+if(COMMAND target_clangformat_setup)
+    set(header_dirs "${CMAKE_CURRENT_LIST_DIR}/src")
+    target_clangformat_setup(${TARGET_NAME} "${header_dirs}")
+endif()
+
 # Find Git
 find_package(Git)
 

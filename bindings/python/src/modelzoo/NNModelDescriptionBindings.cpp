@@ -83,7 +83,7 @@ void NNModelDescriptionBindings::bind(pybind11::module& m, void* pCallstack) {
         .def(py::init<const std::string&, const std::string&, const std::string&, const std::string&>(),
              py::arg("teamName") = "",
              py::arg("modelSlug") = "",
-             py::arg("modelVariantSlug")= "",
+             py::arg("modelVariantSlug") = "",
              py::arg("modelRef") = "")
         .def("merge", &SlugComponents::merge, DOC(dai, SlugComponents, merge))
         .def_static("split", &SlugComponents::split, py::arg("slug"), DOC(dai, SlugComponents, split))

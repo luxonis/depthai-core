@@ -1,26 +1,25 @@
-#include "NodeBindings.hpp"
 #include "Common.hpp"
-
-#include "depthai/pipeline/Pipeline.hpp"
+#include "NodeBindings.hpp"
 #include "depthai/pipeline/Node.hpp"
+#include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/node/StereoDepth.hpp"
 
-void bind_stereodepth(pybind11::module& m, void* pCallstack){
-
+void bind_stereodepth(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::node;
 
     // Node and Properties declare upfront
     auto stereoDepth = ADD_NODE(StereoDepth);
     py::class_<StereoDepthProperties> stereoDepthProperties(m, "StereoDepthProperties", DOC(dai, StereoDepthProperties));
-    py::class_<StereoDepthProperties::RectificationMesh> rectificationMesh(stereoDepthProperties, "RectificationMesh", DOC(dai, StereoDepthProperties, RectificationMesh));
+    py::class_<StereoDepthProperties::RectificationMesh> rectificationMesh(
+        stereoDepthProperties, "RectificationMesh", DOC(dai, StereoDepthProperties, RectificationMesh));
     py::enum_<StereoDepth::PresetMode> stereoDepthPresetMode(stereoDepth, "PresetMode", DOC(dai, node, StereoDepth, PresetMode));
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
     // Call the rest of the type defines, then perform the actual bindings
-    Callstack* callstack = (Callstack*) pCallstack;
+    Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
@@ -32,14 +31,13 @@ void bind_stereodepth(pybind11::module& m, void* pCallstack){
     // Properties
     rectificationMesh
         .def_readwrite("meshLeftUri", &StereoDepthProperties::RectificationMesh::meshLeftUri, DOC(dai, StereoDepthProperties, RectificationMesh, meshLeftUri))
-        .def_readwrite("meshRightUri", &StereoDepthProperties::RectificationMesh::meshRightUri, DOC(dai, StereoDepthProperties, RectificationMesh, meshRightUri))
+        .def_readwrite(
+            "meshRightUri", &StereoDepthProperties::RectificationMesh::meshRightUri, DOC(dai, StereoDepthProperties, RectificationMesh, meshRightUri))
         .def_readwrite("meshSize", &StereoDepthProperties::RectificationMesh::meshSize, DOC(dai, StereoDepthProperties, RectificationMesh, meshSize))
         .def_readwrite("stepWidth", &StereoDepthProperties::RectificationMesh::stepWidth, DOC(dai, StereoDepthProperties, RectificationMesh, stepWidth))
-        .def_readwrite("stepHeight", &StereoDepthProperties::RectificationMesh::stepHeight, DOC(dai, StereoDepthProperties, RectificationMesh, stepHeight))
-        ;
+        .def_readwrite("stepHeight", &StereoDepthProperties::RectificationMesh::stepHeight, DOC(dai, StereoDepthProperties, RectificationMesh, stepHeight));
 
-    stereoDepthProperties
-        .def_readwrite("initialConfig", &StereoDepthProperties::initialConfig, DOC(dai, StereoDepthProperties, initialConfig))
+    stereoDepthProperties.def_readwrite("initialConfig", &StereoDepthProperties::initialConfig, DOC(dai, StereoDepthProperties, initialConfig))
         .def_readwrite("depthAlignCamera", &StereoDepthProperties::depthAlignCamera, DOC(dai, StereoDepthProperties, depthAlignCamera))
         .def_readwrite("enableRectification", &StereoDepthProperties::enableRectification, DOC(dai, StereoDepthProperties, enableRectification))
         .def_readwrite("rectifyEdgeFillColor", &StereoDepthProperties::rectifyEdgeFillColor, DOC(dai, StereoDepthProperties, rectifyEdgeFillColor))
@@ -49,19 +47,30 @@ void bind_stereodepth(pybind11::module& m, void* pCallstack){
         .def_readwrite("outHeight", &StereoDepthProperties::outHeight, DOC(dai, StereoDepthProperties, outHeight))
         .def_readwrite("outKeepAspectRatio", &StereoDepthProperties::outKeepAspectRatio, DOC(dai, StereoDepthProperties, outKeepAspectRatio))
         .def_readwrite("mesh", &StereoDepthProperties::mesh, DOC(dai, StereoDepthProperties, mesh))
-        .def_readwrite("enableRuntimeStereoModeSwitch", &StereoDepthProperties::enableRuntimeStereoModeSwitch, DOC(dai, StereoDepthProperties, enableRuntimeStereoModeSwitch))
+        .def_readwrite("enableRuntimeStereoModeSwitch",
+                       &StereoDepthProperties::enableRuntimeStereoModeSwitch,
+                       DOC(dai, StereoDepthProperties, enableRuntimeStereoModeSwitch))
         .def_readwrite("numFramesPool", &StereoDepthProperties::numFramesPool, DOC(dai, StereoDepthProperties, numFramesPool))
         .def_readwrite("numPostProcessingShaves", &StereoDepthProperties::numPostProcessingShaves, DOC(dai, StereoDepthProperties, numPostProcessingShaves))
-        .def_readwrite("numPostProcessingMemorySlices", &StereoDepthProperties::numPostProcessingMemorySlices, DOC(dai, StereoDepthProperties, numPostProcessingMemorySlices))
-        .def_readwrite("focalLengthFromCalibration", &StereoDepthProperties::focalLengthFromCalibration, DOC(dai, StereoDepthProperties, focalLengthFromCalibration))
-        .def_readwrite("useHomographyRectification", &StereoDepthProperties::useHomographyRectification, DOC(dai, StereoDepthProperties, useHomographyRectification))
+        .def_readwrite("numPostProcessingMemorySlices",
+                       &StereoDepthProperties::numPostProcessingMemorySlices,
+                       DOC(dai, StereoDepthProperties, numPostProcessingMemorySlices))
+        .def_readwrite(
+            "focalLengthFromCalibration", &StereoDepthProperties::focalLengthFromCalibration, DOC(dai, StereoDepthProperties, focalLengthFromCalibration))
+        .def_readwrite(
+            "useHomographyRectification", &StereoDepthProperties::useHomographyRectification, DOC(dai, StereoDepthProperties, useHomographyRectification))
         .def_readwrite("baseline", &StereoDepthProperties::baseline, DOC(dai, StereoDepthProperties, baseline))
         .def_readwrite("focalLength", &StereoDepthProperties::focalLength, DOC(dai, StereoDepthProperties, focalLength))
-        .def_readwrite("disparityToDepthUseSpecTranslation", &StereoDepthProperties::disparityToDepthUseSpecTranslation, DOC(dai, StereoDepthProperties, disparityToDepthUseSpecTranslation))
-        .def_readwrite("rectificationUseSpecTranslation", &StereoDepthProperties::rectificationUseSpecTranslation, DOC(dai, StereoDepthProperties, rectificationUseSpecTranslation))
-        .def_readwrite("depthAlignmentUseSpecTranslation", &StereoDepthProperties::depthAlignmentUseSpecTranslation, DOC(dai, StereoDepthProperties, depthAlignmentUseSpecTranslation))
-        .def_readwrite("alphaScaling", &StereoDepthProperties::alphaScaling, DOC(dai, StereoDepthProperties, alphaScaling))
-        ;
+        .def_readwrite("disparityToDepthUseSpecTranslation",
+                       &StereoDepthProperties::disparityToDepthUseSpecTranslation,
+                       DOC(dai, StereoDepthProperties, disparityToDepthUseSpecTranslation))
+        .def_readwrite("rectificationUseSpecTranslation",
+                       &StereoDepthProperties::rectificationUseSpecTranslation,
+                       DOC(dai, StereoDepthProperties, rectificationUseSpecTranslation))
+        .def_readwrite("depthAlignmentUseSpecTranslation",
+                       &StereoDepthProperties::depthAlignmentUseSpecTranslation,
+                       DOC(dai, StereoDepthProperties, depthAlignmentUseSpecTranslation))
+        .def_readwrite("alphaScaling", &StereoDepthProperties::alphaScaling, DOC(dai, StereoDepthProperties, alphaScaling));
 
     stereoDepthPresetMode
         .value("HIGH_ACCURACY", StereoDepth::PresetMode::HIGH_ACCURACY, "**Deprecated:** Will be removed in future releases and replaced with DEFAULT")
@@ -73,37 +82,39 @@ void bind_stereodepth(pybind11::module& m, void* pCallstack){
         .value("ROBOTICS", StereoDepth::PresetMode::ROBOTICS)
 
         // Deprecated overriden
-        .def_property_readonly_static("HIGH_ACCURACY", [](py::object){
-            PyErr_WarnEx(PyExc_DeprecationWarning, "HIGH_ACCURACY is deprecated, will be removed in future releases and replaced with DEFAULT.", 1);
-            return StereoDepth::PresetMode::HIGH_ACCURACY;
-        })
+        .def_property_readonly_static(
+            "HIGH_ACCURACY",
+            [](py::object) {
+                PyErr_WarnEx(PyExc_DeprecationWarning, "HIGH_ACCURACY is deprecated, will be removed in future releases and replaced with DEFAULT.", 1);
+                return StereoDepth::PresetMode::HIGH_ACCURACY;
+            })
 
-        .def_property_readonly_static("HIGH_DENSITY", [](py::object){
-            PyErr_WarnEx(PyExc_DeprecationWarning, "HIGH_DENSITY is deprecated, will be removed in future releases and replaced with DEFAULT.", 1);
-            return StereoDepth::PresetMode::HIGH_DENSITY;
-        })
+        .def_property_readonly_static(
+            "HIGH_DENSITY",
+            [](py::object) {
+                PyErr_WarnEx(PyExc_DeprecationWarning, "HIGH_DENSITY is deprecated, will be removed in future releases and replaced with DEFAULT.", 1);
+                return StereoDepth::PresetMode::HIGH_DENSITY;
+            })
 
         ;
 
     // Node
     stereoDepth
         .def(py::init([](Node::Output& left, Node::Output& right, StereoDepth::PresetMode presetMode) {
-            auto self = getImplicitPipeline()->create<StereoDepth>();
-            self->build(left, right, presetMode);
-            return self;
-                    }),
+                 auto self = getImplicitPipeline()->create<StereoDepth>();
+                 self->build(left, right, presetMode);
+                 return self;
+             }),
              py::arg("left"),
              py::arg("right"),
-             py::arg("presetMode") = StereoDepth::PresetMode::HIGH_DENSITY
-                    )
+             py::arg("presetMode") = StereoDepth::PresetMode::HIGH_DENSITY)
         .def(py::init([](bool autoCreateCameras, StereoDepth::PresetMode presetMode) {
-            auto self = getImplicitPipeline()->create<StereoDepth>();
-            self->build(autoCreateCameras, presetMode);
-            return self;
-                    }),
+                 auto self = getImplicitPipeline()->create<StereoDepth>();
+                 self->build(autoCreateCameras, presetMode);
+                 return self;
+             }),
              py::arg("autoCreateCameras"),
-             py::arg("presetMode") = StereoDepth::PresetMode::HIGH_DENSITY
-                    )
+             py::arg("presetMode") = StereoDepth::PresetMode::HIGH_DENSITY)
         .def("build",
              static_cast<std::shared_ptr<StereoDepth> (StereoDepth::*)(Node::Output&, Node::Output&, StereoDepth::PresetMode)>(&StereoDepth::build),
              py::arg("left"),
@@ -278,7 +289,4 @@ void bind_stereodepth(pybind11::module& m, void* pCallstack){
         .def("setAlphaScaling", &StereoDepth::setAlphaScaling, DOC(dai, node, StereoDepth, setAlphaScaling));
     // ALIAS
     daiNodeModule.attr("StereoDepth").attr("Properties") = stereoDepthProperties;
-
-
-
 }

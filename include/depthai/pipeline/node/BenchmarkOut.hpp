@@ -8,7 +8,7 @@
 namespace dai {
 namespace node {
 
-class BenchmarkOut : public DeviceNodeCRTP<DeviceNode, BenchmarkOut, BenchmarkOutProperties>, public HostRunnable{
+class BenchmarkOut : public DeviceNodeCRTP<DeviceNode, BenchmarkOut, BenchmarkOutProperties>, public HostRunnable {
    public:
     constexpr static const char* NAME = "BenchmarkOut";
     using DeviceNodeCRTP::DeviceNodeCRTP;
@@ -46,7 +46,7 @@ class BenchmarkOut : public DeviceNodeCRTP<DeviceNode, BenchmarkOut, BenchmarkOu
     bool runOnHost() const override;
 
     void run() override;
-    
+
    private:
     bool runOnHostVar = false;
 };

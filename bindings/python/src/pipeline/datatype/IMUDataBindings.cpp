@@ -1,27 +1,30 @@
+#include <memory>
+#include <unordered_map>
+
 #include "DatatypeBindings.hpp"
 #include "pipeline/CommonBindings.hpp"
-#include <unordered_map>
-#include <memory>
 
 // depthai
 #include "depthai/pipeline/datatype/IMUData.hpp"
 
-//pybind
+// pybind
 #include <pybind11/chrono.h>
 #include <pybind11/numpy.h>
 
 // #include "spdlog/spdlog.h"
 
-void bind_imudata(pybind11::module& m, void* pCallstack){
-
+void bind_imudata(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
     py::class_<IMUReport, std::shared_ptr<IMUReport>> imuReport(m, "IMUReport", DOC(dai, IMUReport));
     py::enum_<IMUReport::Accuracy> imuReportAccuracy(imuReport, "Accuracy");
-    py::class_<IMUReportAccelerometer, IMUReport, std::shared_ptr<IMUReportAccelerometer>> imuReportAccelerometer(m, "IMUReportAccelerometer", DOC(dai, IMUReportAccelerometer));
+    py::class_<IMUReportAccelerometer, IMUReport, std::shared_ptr<IMUReportAccelerometer>> imuReportAccelerometer(
+        m, "IMUReportAccelerometer", DOC(dai, IMUReportAccelerometer));
     py::class_<IMUReportGyroscope, IMUReport, std::shared_ptr<IMUReportGyroscope>> imuReportGyroscope(m, "IMUReportGyroscope", DOC(dai, IMUReportGyroscope));
-    py::class_<IMUReportMagneticField, IMUReport, std::shared_ptr<IMUReportMagneticField>> imuReportMagneticField(m, "IMUReportMagneticField", DOC(dai, IMUReportMagneticField));
-    py::class_<IMUReportRotationVectorWAcc, IMUReport, std::shared_ptr<IMUReportRotationVectorWAcc>> imuReportRotationVectorWAcc(m, "IMUReportRotationVectorWAcc", DOC(dai, IMUReportRotationVectorWAcc));
+    py::class_<IMUReportMagneticField, IMUReport, std::shared_ptr<IMUReportMagneticField>> imuReportMagneticField(
+        m, "IMUReportMagneticField", DOC(dai, IMUReportMagneticField));
+    py::class_<IMUReportRotationVectorWAcc, IMUReport, std::shared_ptr<IMUReportRotationVectorWAcc>> imuReportRotationVectorWAcc(
+        m, "IMUReportRotationVectorWAcc", DOC(dai, IMUReportRotationVectorWAcc));
     py::class_<IMUPacket> imuPacket(m, "IMUPacket", DOC(dai, IMUPacket));
     // py::class_<RawIMUData, RawBuffer, std::shared_ptr<RawIMUData>> rawIMUPackets(m, "RawIMUData", DOC(dai, RawIMUData));
     py::class_<IMUData, Py<IMUData>, Buffer, std::shared_ptr<IMUData>> imuData(m, "IMUData", DOC(dai, IMUData));
@@ -30,7 +33,7 @@ void bind_imudata(pybind11::module& m, void* pCallstack){
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
     // Call the rest of the type defines, then perform the actual bindings
-    Callstack* callstack = (Callstack*) pCallstack;
+    Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
@@ -40,53 +43,41 @@ void bind_imudata(pybind11::module& m, void* pCallstack){
     ///////////////////////////////////////////////////////////////////////
 
     // Metadata / raw
-    imuReport
-        .def(py::init<>())
+    imuReport.def(py::init<>())
         .def_readwrite("sequence", &IMUReport::sequence)
         .def_readwrite("accuracy", &IMUReport::accuracy)
         .def_readwrite("timestamp", &IMUReport::timestamp)
         .def_readwrite("tsDevice", &IMUReport::tsDevice)
         .def("getTimestamp", &IMUReport::getTimestamp, DOC(dai, IMUReport, getTimestamp))
         .def("getTimestampDevice", &IMUReport::getTimestampDevice, DOC(dai, IMUReport, getTimestampDevice))
-        .def("getSequenceNum", &IMUReport::getSequenceNum, DOC(dai, IMUReport, getSequenceNum))
-        ;
+        .def("getSequenceNum", &IMUReport::getSequenceNum, DOC(dai, IMUReport, getSequenceNum));
 
-    imuReportAccuracy
-        .value("UNRELIABLE", IMUReport::Accuracy::UNRELIABLE)
+    imuReportAccuracy.value("UNRELIABLE", IMUReport::Accuracy::UNRELIABLE)
         .value("LOW", IMUReport::Accuracy::LOW)
         .value("MEDIUM", IMUReport::Accuracy::MEDIUM)
-        .value("HIGH", IMUReport::Accuracy::HIGH)
-        ;
+        .value("HIGH", IMUReport::Accuracy::HIGH);
 
-    imuReportAccelerometer
-        .def(py::init<>())
+    imuReportAccelerometer.def(py::init<>())
         .def_readwrite("x", &IMUReportAccelerometer::x)
         .def_readwrite("y", &IMUReportAccelerometer::y)
-        .def_readwrite("z", &IMUReportAccelerometer::z)
-        ;
+        .def_readwrite("z", &IMUReportAccelerometer::z);
 
-    imuReportGyroscope
-        .def(py::init<>())
+    imuReportGyroscope.def(py::init<>())
         .def_readwrite("x", &IMUReportGyroscope::x)
         .def_readwrite("y", &IMUReportGyroscope::y)
-        .def_readwrite("z", &IMUReportGyroscope::z)
-        ;
+        .def_readwrite("z", &IMUReportGyroscope::z);
 
-    imuReportMagneticField
-        .def(py::init<>())
+    imuReportMagneticField.def(py::init<>())
         .def_readwrite("x", &IMUReportMagneticField::x)
         .def_readwrite("y", &IMUReportMagneticField::y)
-        .def_readwrite("z", &IMUReportMagneticField::z)
-        ;
+        .def_readwrite("z", &IMUReportMagneticField::z);
 
-    imuReportRotationVectorWAcc
-        .def(py::init<>())
+    imuReportRotationVectorWAcc.def(py::init<>())
         .def_readwrite("i", &IMUReportRotationVectorWAcc::i)
         .def_readwrite("j", &IMUReportRotationVectorWAcc::j)
         .def_readwrite("k", &IMUReportRotationVectorWAcc::k)
         .def_readwrite("real", &IMUReportRotationVectorWAcc::real)
-        .def_readwrite("rotationVectorAccuracy", &IMUReportRotationVectorWAcc::rotationVectorAccuracy)
-        ;
+        .def_readwrite("rotationVectorAccuracy", &IMUReportRotationVectorWAcc::rotationVectorAccuracy);
 
 #if 0
     py::class_<IMUReportRotationVector, IMUReport, std::shared_ptr<IMUReportRotationVector>>(m, "IMUReportRotationVector", DOC(dai, IMUReportRotationVector))
@@ -130,8 +121,7 @@ void bind_imudata(pybind11::module& m, void* pCallstack){
 
 #endif
 
-    imuPacket
-        .def(py::init<>())
+    imuPacket.def(py::init<>())
         .def_readwrite("acceleroMeter", &IMUPacket::acceleroMeter)
         .def_readwrite("gyroscope", &IMUPacket::gyroscope)
         .def_readwrite("magneticField", &IMUPacket::magneticField)
@@ -158,10 +148,11 @@ void bind_imudata(pybind11::module& m, void* pCallstack){
     //     ;
 
     // Message
-    imuData
-        .def(py::init<>())
+    imuData.def(py::init<>())
         .def("__repr__", &IMUData::str)
-        .def_property("packets", [](IMUData& imuDta) { return &imuDta.packets; }, [](IMUData& imuDta, std::vector<IMUPacket> val) { imuDta.packets = val; }, DOC(dai, IMUData, packets))
-        ;
-
+        .def_property(
+            "packets",
+            [](IMUData& imuDta) { return &imuDta.packets; },
+            [](IMUData& imuDta, std::vector<IMUPacket> val) { imuDta.packets = val; },
+            DOC(dai, IMUData, packets));
 }

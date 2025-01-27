@@ -736,7 +736,13 @@ std::array<std::array<float, 3>, 3> dai::impl::getResizeMat(Resize o, float widt
     return {{{o.width, 0, 0}, {0, o.height, 0}, {0, 0, 1}}};
 }
 
-void dai::impl::getOutputSizeFromCorners(const std::array<std::array<float, 2>, 4>& corners, const bool center, const std::array<std::array<float, 3>, 3> transformInv, const uint32_t srcWidth, const uint32_t srcHeight, uint32_t& outputWidth, uint32_t& outputHeight) {
+void dai::impl::getOutputSizeFromCorners(const std::array<std::array<float, 2>, 4>& corners,
+                                         const bool center,
+                                         const std::array<std::array<float, 3>, 3> transformInv,
+                                         const uint32_t srcWidth,
+                                         const uint32_t srcHeight,
+                                         uint32_t& outputWidth,
+                                         uint32_t& outputHeight) {
     auto [dstMinx, dstMaxx, dstMiny, dstMaxy] = dai::impl::getOuterRect(std::vector(corners.begin(), corners.end()));
 
     float innerMinx = ceilf(dstMinx);
@@ -750,8 +756,14 @@ void dai::impl::getOutputSizeFromCorners(const std::array<std::array<float, 2>, 
 
     std::array<std::array<float, 2>, 4> innerCorners = {{{innerMinx, innerMiny}, {innerMaxx, innerMiny}, {innerMaxx, innerMaxy}, {innerMinx, innerMaxy}}};
     std::array<std::array<float, 2>, 4> outerCorners = {{{outerMinx, outerMiny}, {outerMaxx, outerMiny}, {outerMaxx, outerMaxy}, {outerMinx, outerMaxy}}};
-    std::array<std::array<float, 2>, 4> srcInnerCorners = {{matvecmul(transformInv, innerCorners[0]), matvecmul(transformInv, innerCorners[1]), matvecmul(transformInv, innerCorners[2]), matvecmul(transformInv, innerCorners[3])}};
-    std::array<std::array<float, 2>, 4> srcOuterCorners = {{matvecmul(transformInv, outerCorners[0]), matvecmul(transformInv, outerCorners[1]), matvecmul(transformInv, outerCorners[2]), matvecmul(transformInv, outerCorners[3])}};
+    std::array<std::array<float, 2>, 4> srcInnerCorners = {{matvecmul(transformInv, innerCorners[0]),
+                                                            matvecmul(transformInv, innerCorners[1]),
+                                                            matvecmul(transformInv, innerCorners[2]),
+                                                            matvecmul(transformInv, innerCorners[3])}};
+    std::array<std::array<float, 2>, 4> srcOuterCorners = {{matvecmul(transformInv, outerCorners[0]),
+                                                            matvecmul(transformInv, outerCorners[1]),
+                                                            matvecmul(transformInv, outerCorners[2]),
+                                                            matvecmul(transformInv, outerCorners[3])}};
 
     auto [srcInnerMinx, srcInnerMaxx, srcInnerMiny, srcInnerMaxy] = dai::impl::getOuterRect(std::vector(srcInnerCorners.begin(), srcInnerCorners.end()));
     auto [srcOuterMinx, srcOuterMaxx, srcOuterMiny, srcOuterMaxy] = dai::impl::getOuterRect(std::vector(srcOuterCorners.begin(), srcOuterCorners.end()));
@@ -874,7 +886,9 @@ void dai::impl::getTransformImpl(const ManipOp& op,
 #endif
                        }
                    },
-                   [&](Affine o) { mat = {{{o.matrix[0], o.matrix[1], 0}, {o.matrix[2], o.matrix[3], 0}, {0, 0, 1}}}; },
+                   [&](Affine o) {
+                       mat = {{{o.matrix[0], o.matrix[1], 0}, {o.matrix[2], o.matrix[3], 0}, {0, 0, 1}}};
+                   },
                    [&](Perspective o) {
                        mat = {{{o.matrix[0], o.matrix[1], o.matrix[2]}, {o.matrix[3], o.matrix[4], o.matrix[5]}, {o.matrix[6], o.matrix[7], o.matrix[8]}}};
                    },

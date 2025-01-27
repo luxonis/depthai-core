@@ -166,7 +166,7 @@ endif()
 # Create depthai project
 project(depthai VERSION "3.0.0" LANGUAGES CXX C)
 set(DEPTHAI_PRE_RELEASE_TYPE "alpha") # Valid options are "alpha", "beta", "rc", ""
-set(DEPTHAI_PRE_RELEASE_VERSION "11")
+set(DEPTHAI_PRE_RELEASE_VERSION "12")
 
 # Set DEPTHAI_VERSION universally, not conditionally
 set(DEPTHAI_VERSION ${PROJECT_VERSION}-${DEPTHAI_PRE_RELEASE_TYPE}.${DEPTHAI_PRE_RELEASE_VERSION})
@@ -760,7 +760,7 @@ target_include_directories(${TARGET_CORE_NAME} SYSTEM
 # Add clang format after specifying include directories
 if(DEPTHAI_CLANG_FORMAT)
     # HEADER DIRECTORIES
-    set(header_dirs "${CMAKE_CURRENT_LIST_DIR}/include" "${DEPTHAI_SHARED_PUBLIC_INCLUDE}" "${DEPTHAI_SHARED_INCLUDE}")
+    set(header_dirs "${CMAKE_CURRENT_LIST_DIR}/include" "${CMAKE_CURRENT_LIST_DIR}/src" "${DEPTHAI_SHARED_PUBLIC_INCLUDE}" "${DEPTHAI_SHARED_INCLUDE}")
     include(ClangFormat)
     target_clangformat_setup(${TARGET_CORE_NAME} "${header_dirs}")
 endif()
