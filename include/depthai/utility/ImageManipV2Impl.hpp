@@ -102,7 +102,7 @@ class Warp {
 
     std::array<std::array<float, 3>, 3> matrix;
     ImageManipOpsBase<Container>::Background background = ImageManipOpsBase<Container>::Background::COLOR;
-    uint8_t backgroundColor[3] = {0, 0, 0};
+    uint32_t backgroundColor[3] = {0, 0, 0};
 
     std::shared_ptr<ImageManipBuffer<float>> mapX;
     std::shared_ptr<ImageManipBuffer<float>> mapY;
@@ -135,7 +135,7 @@ class Warp {
                    const uint16_t numChannels,
                    const uint16_t bpp,
                    const std::array<std::array<float, 3>, 3> matrix,
-                   const std::vector<uint8_t>& backgroundColor);
+                   const std::vector<uint32_t>& backgroundColor);
 
    public:
     Warp() = default;
@@ -153,7 +153,7 @@ class Warp {
 
     void apply(const span<const uint8_t> src, span<uint8_t> dst);
 
-    Warp& setBackgroundColor(uint8_t r, uint8_t g, uint8_t b);
+    Warp& setBackgroundColor(uint32_t r, uint32_t g, uint32_t b);
 };
 
 template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
@@ -2927,7 +2927,7 @@ void Warp<ImageManipBuffer, ImageManipData>::transform(const uint8_t* src,
                                                        const uint16_t numChannels,
                                                        const uint16_t bpp,
                                                        const std::array<std::array<float, 3>, 3> matrix,
-                                                       const std::vector<uint8_t>& background) {
+                                                       const std::vector<uint32_t>& background) {
 #if defined(DEPTHAI_HAVE_OPENCV_SUPPORT) && DEPTHAI_IMAGEMANIPV2_OPENCV
     auto type = CV_8UC1;
     switch(numChannels) {
@@ -3433,7 +3433,7 @@ void Warp<ImageManipBuffer, ImageManipData>::apply(const span<const uint8_t> src
 }
 
 template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
-Warp<ImageManipBuffer, ImageManipData>& Warp<ImageManipBuffer, ImageManipData>::setBackgroundColor(const uint8_t r, const uint8_t g, const uint8_t b) {
+Warp<ImageManipBuffer, ImageManipData>& Warp<ImageManipBuffer, ImageManipData>::setBackgroundColor(const uint32_t r, const uint32_t g, const uint32_t b) {
     background = ImageManipOpsBase<Container>::Background::COLOR;
     switch(type) {
         case ImgFrame::Type::YUV420p:
