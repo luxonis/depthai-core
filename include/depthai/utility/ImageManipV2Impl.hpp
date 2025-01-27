@@ -3472,7 +3472,6 @@ Warp<ImageManipBuffer, ImageManipData>& Warp<ImageManipBuffer, ImageManipData>::
             break;
         case ImgFrame::Type::RAW16:
             backgroundColor[0] = r;
-            backgroundColor[1] = g;
             break;
         case ImgFrame::Type::YUV422i:
         case ImgFrame::Type::YUV444p:
