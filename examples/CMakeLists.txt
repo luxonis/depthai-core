@@ -289,6 +289,8 @@ dai_add_example(warp_mesh Warp/warp_mesh.cpp ON OFF)
 # IMU
 dai_add_example(imu_gyroscope_accelerometer IMU/imu_gyroscope_accelerometer.cpp ON OFF)
 dai_add_example(imu_rotation_vector IMU/imu_rotation_vector.cpp ON OFF)
+dai_add_example(imu_extrinsics IMU/imu_extrinsics.cpp ON OFF)
+dai_add_example(imu_firmware_update IMU/imu_firmware_update.cpp ON OFF)
 
 # mixed
 dai_add_example(mono_depth_mobilenetssd mixed/mono_depth_mobilenetssd.cpp ON OFF)
