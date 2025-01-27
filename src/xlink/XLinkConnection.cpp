@@ -36,7 +36,8 @@ DeviceInfo::DeviceInfo(const deviceDesc_t& desc) {
     status = desc.status;
 }
 
-DeviceInfo::DeviceInfo(std::string name, std::string deviceId, XLinkDeviceState_t state, XLinkProtocol_t protocol, XLinkPlatform_t platform, XLinkError_t status)
+DeviceInfo::DeviceInfo(
+    std::string name, std::string deviceId, XLinkDeviceState_t state, XLinkProtocol_t protocol, XLinkPlatform_t platform, XLinkError_t status)
     : name(std::move(name)), deviceId(std::move(deviceId)), state(state), protocol(protocol), platform(platform), status(status) {}
 
 DeviceInfo::DeviceInfo(std::string deviceIdOrName) {

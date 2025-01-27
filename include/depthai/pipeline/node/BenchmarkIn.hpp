@@ -45,8 +45,8 @@ class BenchmarkIn : public DeviceNodeCRTP<DeviceNode, BenchmarkIn, BenchmarkInPr
     bool runOnHost() const override;
 
     /**
-    * Log the reports as warnings
-    */
+     * Log the reports as warnings
+     */
     void logReportsAsWarnings(bool logReportsAsWarnings);
 
     /**

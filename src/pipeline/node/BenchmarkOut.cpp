@@ -65,6 +65,5 @@ void BenchmarkOut::run() {
     logger->trace("Benchmark out sent all messages!");
 }
 
-
 }  // namespace node
 }  // namespace dai
