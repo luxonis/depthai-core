@@ -196,6 +196,7 @@ hunter_private_data(
 
 # Add tests
 dai_add_test(color_camera_node_test src/color_camera_node_test.cpp)
+dai_add_test(imu_extrinsics_test src/imu_extrinsics_test.cpp)
 dai_add_test(image_manip_node_test src/image_manip_node_test.cpp)
 dai_add_test(pipeline_test src/pipeline_test.cpp)
 dai_add_test(logging_test src/logging_test.cpp)
