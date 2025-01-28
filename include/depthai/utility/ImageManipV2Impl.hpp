@@ -2380,7 +2380,6 @@ ImageManipOperations<ImageManipBuffer, ImageManipData>& ImageManipOperations<Ima
 
     if(newBase.hasWarp(srcFrameSpecs.width, srcFrameSpecs.height)) mode = mode | MODE_WARP;
     if(newBase.colormap != Colormap::NONE && isSingleChannelu8(inFrameType)) mode = mode | MODE_COLORMAP;
-    else if(newBase.colormap != Colormap::NONE) logger->error("ImageManip | Colormap can only be applied to single channel u8 images, ignoring colormap");
     if(outType != inFrameType) mode = mode | MODE_CONVERT;
 
     assert(inFrameType != ImgFrame::Type::NONE);
