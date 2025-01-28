@@ -19,6 +19,8 @@ struct ImgTransformation {
     std::array<std::array<float, 3>, 3> transformationMatrixInv = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};  // Precomputed inverse matrix
     std::array<std::array<float, 3>, 3> sourceIntrinsicMatrix = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
     std::array<std::array<float, 3>, 3> sourceIntrinsicMatrixInv = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
+    std::array<std::array<float, 3>, 3> rotationMatrix = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
+    std::array<std::array<float, 3>, 3> rotationMatrixInverse = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
     CameraModel distortionModel = CameraModel::Perspective;
     std::vector<float> distortionCoefficients;
     size_t srcWidth = 0;
