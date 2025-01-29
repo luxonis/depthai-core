@@ -287,11 +287,9 @@ void RGBD::initialize(std::shared_ptr<MessageGroup> frames) {
     if(colorFrame->getInstanceNum() != depthFrame->getInstanceNum()) {
         throw std::runtime_error("Depth is not aligned to color");
     }
-    auto calibHandler = getParentPipeline().getDefaultDevice()->readCalibration();
-    auto camID = static_cast<CameraBoardSocket>(colorFrame->getInstanceNum());
     auto width = colorFrame->getWidth();
     auto height = colorFrame->getHeight();
-    auto intrinsics = calibHandler.getCameraIntrinsics(camID, width, height);
+    auto intrinsics = colorFrame->transformation.getIntrinsicMatrix();
     float fx = intrinsics[0][0];
     float fy = intrinsics[1][1];
     float cx = intrinsics[0][2];
