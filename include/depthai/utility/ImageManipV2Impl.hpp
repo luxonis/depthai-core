@@ -1554,6 +1554,12 @@ bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToNV12(
             done = true;
             break;
         }
+        case ImgFrame::Type::RAW8:
+        case ImgFrame::Type::GRAY8:
+            std::copy(src, src + inputSize, outputFrame.data());
+            memset(outputFrame.data() + dstSpecs.p2Offset, 128, dstSpecs.p2Stride * dstSpecs.height / 2);
+            done = true;
+            break;
         case ImgFrame::Type::YUV422i:
         case ImgFrame::Type::YUV444p:
         case ImgFrame::Type::YUV422p:
@@ -1567,7 +1573,6 @@ bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToNV12(
         case ImgFrame::Type::RAW14:
         case ImgFrame::Type::RAW12:
         case ImgFrame::Type::RAW10:
-        case ImgFrame::Type::RAW8:
         case ImgFrame::Type::PACK10:
         case ImgFrame::Type::PACK12:
         case ImgFrame::Type::YUV444i:
@@ -1578,7 +1583,6 @@ bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToNV12(
         case ImgFrame::Type::BGRF16F16F16p:
         case ImgFrame::Type::RGBF16F16F16i:
         case ImgFrame::Type::BGRF16F16F16i:
-        case ImgFrame::Type::GRAY8:
         case ImgFrame::Type::GRAYF16:
         case ImgFrame::Type::RAW32:
         case ImgFrame::Type::NONE:
