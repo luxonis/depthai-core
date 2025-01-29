@@ -158,8 +158,8 @@ add_python_example(threaded_host_nodes HostNodes/threaded_host_nodes.py)
 dai_set_example_test_labels(threaded_host_nodes ondevice rvc2_all rvc4 ci)
 
 ## ImageManip
-add_python_example(image_manip_mod ImageManip/image_manip_v2_mod.py)
-dai_set_example_test_labels(image_manip_mod ondevice rvc2_all rvc4 ci)
+add_python_example(image_manip_v2_multi_ops ImageManip/image_manip_v2_multi_ops.py)
+dai_set_example_test_labels(image_manip_v2_multi_ops ondevice rvc2_all rvc4 ci)
 
 add_python_example(image_manip_resize ImageManip/image_manip_v2_resize.py)
 dai_set_example_test_labels(image_manip_resize ondevice rvc2_all rvc4 ci)
