@@ -91,13 +91,13 @@ void bind_imagemanipconfigv2(pybind11::module& m, void* pCallstack) {
              DOC(dai, ImageManipConfigV2, addTransformFourPoints))
         .def("setColormap", &ImageManipConfigV2::setColormap, py::arg("colormap"), DOC(dai, ImageManipConfigV2, setColormap))
         .def("setBackgroundColor",
-             static_cast<ImageManipConfigV2& (ImageManipConfigV2::*)(uint8_t, uint8_t, uint8_t)>(&ImageManipConfigV2::setBackgroundColor),
+             static_cast<ImageManipConfigV2& (ImageManipConfigV2::*)(uint32_t, uint32_t, uint32_t)>(&ImageManipConfigV2::setBackgroundColor),
              py::arg("r"),
              py::arg("g"),
              py::arg("b"),
              DOC(dai, ImageManipConfigV2, setBackgroundColor))
         .def("setBackgroundColor",
-             static_cast<ImageManipConfigV2& (ImageManipConfigV2::*)(uint8_t)>(&ImageManipConfigV2::setBackgroundColor),
+             static_cast<ImageManipConfigV2& (ImageManipConfigV2::*)(uint32_t)>(&ImageManipConfigV2::setBackgroundColor),
              py::arg("val"),
              DOC(dai, ImageManipConfigV2, setBackgroundColor))
         .def("setOutputSize",
