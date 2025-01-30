@@ -11,6 +11,7 @@
 #include "depthai/pipeline/datatype/CameraControl.hpp"
 #include "depthai/properties/CameraProperties.hpp"
 #include "depthai/utility/span.hpp"
+#include "depthai/pipeline/node/host/Replay.hpp"
 
 namespace dai {
 namespace node {
@@ -39,6 +40,16 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
      * Build with a specific board socket
      */
     std::shared_ptr<Camera> build(dai::CameraBoardSocket boardSocket = dai::CameraBoardSocket::AUTO);
+
+    /**
+     * Build with a specific board socket and mock input
+     */
+    std::shared_ptr<Camera> build(dai::CameraBoardSocket boardSocket, ReplayVideo& replay);
+
+    /**
+     * Build with mock input
+     */
+    std::shared_ptr<Camera> build(ReplayVideo& replay);
 
     /**
      * Get max width of the camera (can only be called after build)
@@ -72,6 +83,12 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
      * @returns Board socket to use
      */
     CameraBoardSocket getBoardSocket() const;
+
+    /**
+     * Set mock ISP for Camera node. Automatically sets mockIsp size.
+     * @param replay ReplayVideo node to use as mock ISP
+     */
+    Camera& setMockIsp(ReplayVideo& replay);
 
    private:
     class Impl;

@@ -9,7 +9,9 @@
 #include <spimpl.h>
 
 // depthai internal
+#include "depthai/common/CameraBoardSocket.hpp"
 #include "utility/ErrorMacros.hpp"
+#include "utility/RecordReplayImpl.hpp"
 
 namespace dai {
 namespace node {
@@ -104,6 +106,18 @@ std::shared_ptr<Camera> Camera::build(CameraBoardSocket boardSocket) {
     return std::static_pointer_cast<Camera>(shared_from_this());
 }
 
+std::shared_ptr<Camera> Camera::build(CameraBoardSocket boardSocket, ReplayVideo& replay) {
+    auto cam = build(boardSocket);
+    cam->setMockIsp(replay);
+    return cam;
+}
+
+std::shared_ptr<Camera> Camera::build(ReplayVideo& replay) {
+    auto cam = build(CameraBoardSocket::AUTO);
+    cam->setMockIsp(replay);
+    return cam;
+}
+
 Camera::Properties& Camera::getProperties() {
     properties.initialControl = initialControl;
     return properties;
@@ -162,6 +176,18 @@ Node::Output* Camera::requestOutput(
 
 Node::Output* Camera::requestOutput(const Capability& capability, bool onHost) {
     return pimpl->requestOutput(*this, capability, onHost);
+}
+
+Camera& Camera::setMockIsp(ReplayVideo& replay) {
+    if(!replay.getReplayVideoFile().empty()) {
+        const auto& [width, height] = utility::getVideoSize(replay.getReplayVideoFile().string());
+        properties.mockIspWidth = width;
+        properties.mockIspHeight = height;
+        replay.out.link(mockIsp);
+    } else {
+        throw std::runtime_error("ReplayVideo video path not set");
+    }
+    return *this;
 }
 
 void Camera::buildStage1() {

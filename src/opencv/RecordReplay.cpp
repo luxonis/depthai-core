@@ -217,5 +217,17 @@ void VideoPlayer::close() {
     }
 }
 
+std::tuple<size_t, size_t> getVideoSize(const std::string& filePath) {
+    cv::VideoCapture cvReader;
+    cvReader.open(filePath);
+    if(!cvReader.isOpened()) {
+        throw std::runtime_error("Failed to open video file");
+    }
+    auto width = cvReader.get(cv::CAP_PROP_FRAME_WIDTH);
+    auto height = cvReader.get(cv::CAP_PROP_FRAME_HEIGHT);
+    cvReader.release();
+    return {width, height};
+}
+
 }  // namespace utility
 }  // namespace dai
