@@ -131,8 +131,8 @@ EventsManager::EventsManager(std::string url, bool uploadCachedOnStart, float pu
 EventsManager::~EventsManager() {
     stopEventBuffer = true;
     {
-    std::unique_lock<std::mutex> lock(eventBufferMutex);
-    eventBufferCondition.notify_one();
+        std::unique_lock<std::mutex> lock(eventBufferMutex);
+        eventBufferCondition.notify_one();
     }
     if(eventBufferThread->joinable()) {
         eventBufferThread->join();

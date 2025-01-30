@@ -315,14 +315,18 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
              DOC(dai, Node, Input, getParent))
         .def("getPossibleDatatypes", &Node::Input::getPossibleDatatypes, DOC(dai, Node, Input, getPossibleDatatypes))
         .def("setPossibleDatatypes", &Node::Input::setPossibleDatatypes, py::arg("types"), DOC(dai, Node, Input, setPossibleDatatypes))
-        .def("setPossibleDatatypes", [](Node::Input& input, const std::vector<std::tuple<DatatypeEnum, bool>>& types) {
-            std::vector<Node::DatatypeHierarchy> converted;
-            converted.reserve(types.size());
-            for(const auto& t : types) {
-                converted.emplace_back(std::get<0>(t), std::get<1>(t));
-            }
-            input.setPossibleDatatypes(converted);
-        }, py::arg("types"), DOC(dai, Node, Input, setPossibleDatatypes))
+        .def(
+            "setPossibleDatatypes",
+            [](Node::Input& input, const std::vector<std::tuple<DatatypeEnum, bool>>& types) {
+                std::vector<Node::DatatypeHierarchy> converted;
+                converted.reserve(types.size());
+                for(const auto& t : types) {
+                    converted.emplace_back(std::get<0>(t), std::get<1>(t));
+                }
+                input.setPossibleDatatypes(converted);
+            },
+            py::arg("types"),
+            DOC(dai, Node, Input, setPossibleDatatypes))
         .def("setWaitForMessage", &Node::Input::setWaitForMessage, py::arg("waitForMessage"), DOC(dai, Node, Input, setWaitForMessage))
         .def("getWaitForMessage", &Node::Input::getWaitForMessage, DOC(dai, Node, Input, getWaitForMessage))
         .def("setReusePreviousMessage", &Node::Input::setReusePreviousMessage, py::arg("reusePreviousMessage"), DOC(dai, Node, Input, setReusePreviousMessage))
@@ -347,14 +351,18 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
              py::keep_alive<1, 0>())
         .def("getPossibleDatatypes", &Node::Output::getPossibleDatatypes, DOC(dai, Node, Output, getPossibleDatatypes))
         .def("setPossibleDatatypes", &Node::Output::setPossibleDatatypes, py::arg("types"), DOC(dai, Node, Output, setPossibleDatatypes))
-        .def("setPossibleDatatypes", [](Node::Output& output, const std::vector<std::tuple<DatatypeEnum, bool>>& types) {
-            std::vector<Node::DatatypeHierarchy> converted;
-            converted.reserve(types.size());
-            for(const auto& t : types) {
-                converted.emplace_back(std::get<0>(t), std::get<1>(t));
-            }
-            output.setPossibleDatatypes(converted);
-        }, py::arg("types"), DOC(dai, Node, Output, setPossibleDatatypes))
+        .def(
+            "setPossibleDatatypes",
+            [](Node::Output& output, const std::vector<std::tuple<DatatypeEnum, bool>>& types) {
+                std::vector<Node::DatatypeHierarchy> converted;
+                converted.reserve(types.size());
+                for(const auto& t : types) {
+                    converted.emplace_back(std::get<0>(t), std::get<1>(t));
+                }
+                output.setPossibleDatatypes(converted);
+            },
+            py::arg("types"),
+            DOC(dai, Node, Output, setPossibleDatatypes))
         .def("getParent",
              static_cast<const Node& (Node::Output::*)() const>(&Node::Output::getParent),
              py::return_value_policy::reference_internal,
@@ -421,7 +429,6 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
              static_cast<AssetManager& (Node::*)()>(&Node::getAssetManager),
              py::return_value_policy::reference_internal,
              DOC(dai, Node, getAssetManager));
-
 
     // TODO(themarpe) - refactor, threaded node could be separate from Node
     pyThreadedNode.def("trace", [](dai::ThreadedNode& node, const std::string& msg) { node.logger->trace(msg); })

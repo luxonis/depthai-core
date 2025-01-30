@@ -28,8 +28,11 @@ inline size_t roundUp(size_t numToRound, size_t multiple) {
     return roundDown(numToRound + multiple - 1UL, multiple);
 }
 
-bool setupHolisticRecord(
-    Pipeline& pipeline, const std::string& deviceId, RecordConfig& recordConfig, std::unordered_map<std::string, std::string>& outFilenames, bool legacy) {
+bool setupHolisticRecord(Pipeline& pipeline,
+                         const std::string& deviceId,
+                         RecordConfig& recordConfig,
+                         std::unordered_map<std::string, std::string>& outFilenames,
+                         bool legacy) {
     auto sources = pipeline.getSourceNodes();
     const auto recordPath = recordConfig.outputDir;
     try {
