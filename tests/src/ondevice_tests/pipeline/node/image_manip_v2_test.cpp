@@ -82,3 +82,39 @@ TEST_CASE("Dynamic config sync node runs on device, no reuse") {
 TEST_CASE("Dynamic config sync node runs on host, no reuse") {
     testManipDynamic(true, false);
 }
+
+TEST_CASE("Test ImageManipV2 with u16 frames") {
+    using namespace std;
+    using namespace std::chrono;
+    using namespace std::chrono_literals;
+
+    constexpr int inputWidth = 640, inputHeight = 480;
+    constexpr int outputWidth = 320, outputHeight = 320;
+    constexpr size_t N = 20;
+
+    dai::Pipeline p;
+    auto manip = p.create<dai::node::ImageManipV2>();
+    manip->initialConfig.setOutputSize(outputWidth, outputHeight);
+
+    auto inputQueue = manip->inputImage.createInputQueue();
+    auto outputQueue = manip->out.createOutputQueue();
+
+    p.start();
+
+    for(size_t i = 0; i < N; ++i) {
+        auto inFrame = std::make_shared<dai::ImgFrame>();
+        inFrame->setData(std::vector<uint8_t>(inputWidth * inputHeight * 2));
+        inFrame->setWidth(inputWidth);
+        inFrame->setHeight(inputHeight);
+        inFrame->setStride(inputWidth * 2);
+        inFrame->setType(dai::ImgFrame::Type::RAW16);
+
+        inputQueue->send(inFrame);
+
+        // Retrieve the resized frame
+        auto outFrame = outputQueue->get<dai::ImgFrame>();
+
+        REQUIRE(outFrame->getWidth() == outputWidth);
+        REQUIRE(outFrame->getHeight() == outputHeight);
+    }
+}

@@ -10,6 +10,9 @@ TEST_CASE("Test manual focus") {
     auto outputQueue = output->createOutputQueue();
     auto controlQueue = camRgb->inputControl.createInputQueue();
     pipeline.start();
+    for(int idx = 0; idx < static_cast<int>(fps); ++idx) {
+        (void)outputQueue->get<dai::ImgFrame>();
+    }
     for(auto requestedLensPos : {0.5f, 0.8f, 1.0f, 0.733f, 0.444f, 0.2101f, 0.0f}) {
         auto ctrl = std::make_shared<dai::CameraControl>();
         ctrl->setManualFocusRaw(requestedLensPos);
