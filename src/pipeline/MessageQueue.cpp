@@ -2,6 +2,7 @@
 
 // std
 #include <chrono>
+#include <deque>
 #include <iostream>
 
 // project
@@ -70,6 +71,37 @@ unsigned int MessageQueue::isFull() const {
     return queue.isFull();
 }
 
+float MessageQueue::getFps() {
+    std::unique_lock<std::mutex> lock(callbacksMtx);
+
+    // Get current time
+    auto now = std::chrono::steady_clock::now();
+    auto threshold = now - std::chrono::seconds(2);
+
+    // Remove timestamps older than 2 seconds
+    while (!fpsQueue.empty() && fpsQueue.front() < threshold) {
+        fpsQueue.pop_front();
+    }
+
+    // If fewer than 2 timestamps are in queue, not enough data to compute FPS
+    if(fpsQueue.size() < 2) {
+        return 0.0;
+    }
+
+    auto oldest = fpsQueue.front();
+    auto newest = fpsQueue.back();
+    auto diff = std::chrono::duration<float>(newest - oldest).count();  // seconds
+
+    // If diff is extremely small, avoid dividing by zero
+    if(diff <= 0.0) {
+        return 0.0;
+    }
+    // Using (N - 1) frames over 'diff' seconds
+    // or (N) messages over 'diff' seconds—both approaches are common.
+    // This calculates how many frames we got over that time window.
+    return (fpsQueue.size() - 1) / diff;
+}
+
 int MessageQueue::addCallback(std::function<void(std::string, std::shared_ptr<ADatatype>)> callback) {
     // Lock first
     std::unique_lock<std::mutex> lock(callbacksMtx);
@@ -111,6 +143,15 @@ void MessageQueue::send(const std::shared_ptr<ADatatype>& msg) {
     callCallbacks(msg);
     auto queueNotClosed = queue.push(msg);
     if(!queueNotClosed) throw QueueException(CLOSED_QUEUE_MESSAGE);
+
+    // Record the timestamp for FPS calculation
+    {
+        auto now = std::chrono::steady_clock::now();
+        fpsQueue.push_back(now);
+        if(fpsQueue.size() > FPS_QUEUE_MAX_SIZE) {
+            fpsQueue.pop_front();
+        }
+    }
 }
 
 bool MessageQueue::send(const std::shared_ptr<ADatatype>& msg, std::chrono::milliseconds timeout) {
@@ -118,6 +159,13 @@ bool MessageQueue::send(const std::shared_ptr<ADatatype>& msg, std::chrono::mill
     callCallbacks(msg);
     if(queue.isDestroyed()) {
         throw QueueException(CLOSED_QUEUE_MESSAGE);
+    }
+    {
+        auto now = std::chrono::steady_clock::now();
+        fpsQueue.push_back(now);
+        if(fpsQueue.size() > FPS_QUEUE_MAX_SIZE) {
+            fpsQueue.pop_front();
+        }
     }
     return queue.tryWaitAndPush(msg, timeout);
 }

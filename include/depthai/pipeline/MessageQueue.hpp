@@ -3,6 +3,8 @@
 // std
 #include <memory>
 #include <vector>
+#include <deque>
+#include <chrono>
 
 // project
 #include "depthai/pipeline/datatype/ADatatype.hpp"
@@ -26,10 +28,12 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
 
    private:
     static constexpr auto CLOSED_QUEUE_MESSAGE = "MessageQueue was closed";
+    static constexpr size_t FPS_QUEUE_MAX_SIZE = 10;
     LockingQueue<std::shared_ptr<ADatatype>> queue;
     std::string name;
     std::mutex callbacksMtx;
     std::unordered_map<CallbackId, std::function<void(std::string, std::shared_ptr<ADatatype>)>> callbacks;
+    std::deque<std::chrono::steady_clock::time_point> fpsQueue;
     CallbackId uniqueCallbackId{0};
     void callCallbacks(std::shared_ptr<ADatatype> msg);
 
@@ -127,6 +131,13 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
      * @returns True if queue is full, false otherwise
      */
     unsigned int isFull() const;
+
+    /**
+     * Gets current FPS of the queue
+     *
+     * @returns Current FPS
+     */
+    float getFps();
 
     /**
      * Adds a callback on message received

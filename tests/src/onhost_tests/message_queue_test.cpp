@@ -395,3 +395,36 @@ TEST_CASE("Multi callbacks", "[MessageQueue]") {
     REQUIRE(callbackCount1 == 1);
     REQUIRE(callbackCount2 == 1);
 }
+
+TEST_CASE("MessageQueue - FPS Calculation", "[MessageQueue]") {
+    MessageQueue queue(10);
+
+    // Ensure FPS starts at 0
+    REQUIRE(queue.getFps() == 0.0);
+
+    // Send 10 messages with a small delay
+    constexpr int NUM_MESSAGES = 10;
+    constexpr int DELAY_MS = 50;  // 50ms delay between messages
+
+    for(int i = 0; i < NUM_MESSAGES; ++i) {
+        auto msg = std::make_shared<ADatatype>();
+        queue.send(msg);
+        std::this_thread::sleep_for(std::chrono::milliseconds(DELAY_MS));
+    }
+
+    // Compute expected FPS: 10 messages over ~450ms -> ~22.2 FPS
+    double fps = queue.getFps();
+    REQUIRE(fps > 15.0);  // Should be around 20 FPS
+    REQUIRE(fps < 30.0);  // Upper bound check
+
+    // Send one more message, verify FPS updates
+    auto msg = std::make_shared<ADatatype>();
+    queue.send(msg);
+    fps = queue.getFps();
+    REQUIRE(fps > 15.0);  // Should be consistent
+
+    // Ensure FPS decreases when there are gaps
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    fps = queue.getFps();
+    REQUIRE(fps < 10.0);  // Should drop after a pause
+}
