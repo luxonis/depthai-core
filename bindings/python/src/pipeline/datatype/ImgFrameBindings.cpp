@@ -172,6 +172,7 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
         .def("addRotation", py::overload_cast<float, dai::Point2f>(&ImgTransformation::addRotation), py::arg("angle"), py::arg("rotationPoint"), DOC(dai, ImgTransformation, addRotation))
         .def("addRotation", py::overload_cast<std::array<std::array<float, 3>, 3> >(&ImgTransformation::addRotation), py::arg("rotationMatrix"), DOC(dai, ImgTransformation, addRotation, 2))
         .def("getRotation", &ImgTransformation::getRotation, DOC(dai, ImgTransformation, getRotation))
+        .def("resetRotation", &ImgTransformation::resetRotation, DOC(dai, ImgTransformation, resetRotation))
         .def("addScale", &ImgTransformation::addScale, py::arg("scaleX"), py::arg("scaleY"), DOC(dai, ImgTransformation, addScale))
         .def("remapPointTo", &ImgTransformation::remapPointTo, py::arg("to"), py::arg("point"), DOC(dai, ImgTransformation, remapPointTo))
         .def("remapPointFrom", &ImgTransformation::remapPointFrom, py::arg("to"), py::arg("point"), DOC(dai, ImgTransformation, remapPointFrom))

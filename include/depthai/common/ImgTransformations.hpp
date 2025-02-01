@@ -207,6 +207,11 @@ struct ImgTransformation {
     ImgTransformation& addRotation(std::array<std::array<float, 3>, 3> rotationMatrix);
 
     /**
+     * Reset the rotation transformation to identity.
+     */
+    ImgTransformation& resetRotation();
+
+    /**
      * Get the rotation matrix around optical center from the transformation matrix.
      * @return Rotation matrix
      */

@@ -350,6 +350,11 @@ ImgTransformation& ImgTransformation::addRotation(std::array<std::array<float, 3
     return *this;
 }
 
+ImgTransformation& ImgTransformation::resetRotation() {
+    rotationMatrix = rotationMatrixInverse = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
+    return *this;
+}
+
 std::array<std::array<float, 3>, 3> ImgTransformation::getRotation() {
     return rotationMatrix;
 }
