@@ -393,6 +393,9 @@ dai::impl::FrameSpecs dai::impl::getSrcFrameSpecs(dai::ImgFrame::Specs srcSpecs)
         case dai::ImgFrame::Type::GRAY8:
             specs.p1Stride = srcSpecs.stride >= specs.width ? srcSpecs.stride : specs.width;
             break;
+        case ImgFrame::Type::RAW16:
+            specs.p1Stride = srcSpecs.stride >= specs.width * 2 ? srcSpecs.stride : specs.width * 2;
+            break;
         case ImgFrame::Type::YUV422i:
         case ImgFrame::Type::YUV444p:
         case ImgFrame::Type::YUV422p:
@@ -402,7 +405,6 @@ dai::impl::FrameSpecs dai::impl::getSrcFrameSpecs(dai::ImgFrame::Specs srcSpecs)
         case ImgFrame::Type::LUT2:
         case ImgFrame::Type::LUT4:
         case ImgFrame::Type::LUT16:
-        case ImgFrame::Type::RAW16:
         case ImgFrame::Type::RAW14:
         case ImgFrame::Type::RAW12:
         case ImgFrame::Type::RAW10:
@@ -466,6 +468,9 @@ dai::impl::FrameSpecs dai::impl::getCcDstFrameSpecs(FrameSpecs srcSpecs, dai::Im
         case dai::ImgFrame::Type::GRAY8:
             specs.p1Stride = ALIGN_UP(specs.width, 8);
             break;
+        case ImgFrame::Type::RAW16:
+            specs.p1Stride = ALIGN_UP(specs.width * 2, 8);
+            break;
         case ImgFrame::Type::YUV422i:
         case ImgFrame::Type::YUV444p:
         case ImgFrame::Type::YUV422p:
@@ -475,7 +480,6 @@ dai::impl::FrameSpecs dai::impl::getCcDstFrameSpecs(FrameSpecs srcSpecs, dai::Im
         case ImgFrame::Type::LUT2:
         case ImgFrame::Type::LUT4:
         case ImgFrame::Type::LUT16:
-        case ImgFrame::Type::RAW16:
         case ImgFrame::Type::RAW14:
         case ImgFrame::Type::RAW12:
         case ImgFrame::Type::RAW10:
@@ -498,15 +502,17 @@ dai::impl::FrameSpecs dai::impl::getCcDstFrameSpecs(FrameSpecs srcSpecs, dai::Im
     return specs;
 }
 
-bool dai::impl::isTypeSupportedL(dai::ImgFrame::Type type) {
+bool dai::impl::isTypeSupported(dai::ImgFrame::Type type) {
     using ImgType = dai::ImgFrame::Type;
+#if defined(DEPTHAI_HAVE_FASTCV_SUPPORT) && DEPTHAI_IMAGEMANIPV2_FASTCV
     return type == ImgType::GRAY8 || type == ImgType::RAW8 || type == ImgType::RGB888i || type == ImgType::BGR888i;
-}
-
-bool dai::impl::isTypeSupportedC(dai::ImgFrame::Type type) {
-    using ImgType = dai::ImgFrame::Type;
+#elif defined(DEPTHAI_HAVE_OPENCV_SUPPORT) && DEPTHAI_IMAGEMANIPV2_OPENCV
+    return type == ImgType::GRAY8 || type == ImgType::RAW8 || type == ImgType::RAW16 || type == ImgType::RGB888i || type == ImgType::BGR888i
+           || type == ImgType::RGB888p || type == ImgType::BGR888p || type == ImgType::YUV420p || type == ImgType::NV12;
+#else
     return type == ImgType::GRAY8 || type == ImgType::RAW8 || type == ImgType::RGB888i || type == ImgType::BGR888i || type == ImgType::RGB888p
            || type == ImgType::BGR888p || type == ImgType::YUV420p || type == ImgType::NV12;
+#endif
 }
 
 bool dai::impl::getFrameTypeInfo(dai::ImgFrame::Type outFrameType, int& outNumPlanes, float& outBpp) {
