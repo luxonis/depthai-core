@@ -126,6 +126,13 @@ if(DEPTHAI_PCL_SUPPORT AND NOT TARGET JsonCpp::JsonCpp)
     find_package(jsoncpp)
 endif()
 
+include(FetchContent)
+FetchContent_Declare(
+  mcap_builder
+  GIT_REPOSITORY https://github.com/olympus-robotics/mcap_builder.git
+  GIT_TAG main
+)
+FetchContent_MakeAvailable(mcap_builder)
 
 if(DEPTHAI_PCL_SUPPORT)
     find_package(PCL CONFIG COMPONENTS common)

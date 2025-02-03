@@ -427,7 +427,6 @@ set(TARGET_CORE_SOURCES
     src/utility/Path.cpp
     src/utility/Platform.cpp
     src/utility/RecordReplay.cpp
-    src/utility/McapImpl.cpp
     src/utility/Environment.cpp
     src/utility/Compression.cpp
     src/utility/XLinkGlobalProfilingLogger.cpp
@@ -755,6 +754,7 @@ target_link_libraries(${TARGET_CORE_NAME}
         libnop
         spdlog::spdlog
         yaml-cpp::yaml-cpp
+        mcap
     INTERFACE
         XLinkPublic
     PRIVATE
@@ -1212,6 +1212,8 @@ include(CMakePackageConfigHelpers)
 if(NOT BUILD_SHARED_LIBS)
     list(APPEND targets_to_export ${DEPTHAI_RESOURCE_LIBRARY_NAME} cmrc-base)
 endif()
+
+list(APPEND targets_to_export mcap)
 
 # Export targets (capability to import current build directory)
 export(TARGETS ${targets_to_export} NAMESPACE ${PROJECT_NAME}:: FILE "${PROJECT_NAME}Targets.cmake")
