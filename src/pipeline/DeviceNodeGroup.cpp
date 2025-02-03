@@ -4,10 +4,9 @@ namespace dai {
 
 void DeviceNodeGroup::setLogLevel(dai::LogLevel level) {
     for(auto& node : nodeRefs) {
-
         // Try converting to ThreadedNode
         auto threadedNode = std::dynamic_pointer_cast<ThreadedNode>(*node);
-        
+
         // Subnodes may not necessarily be ThreadedNodes
         if(threadedNode) {
             threadedNode->setLogLevel(level);
