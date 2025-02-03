@@ -229,7 +229,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
    private:
     // Resource
     std::vector<uint8_t> loadResource(dai::Path uri);
-    std::vector<uint8_t> loadResourceCwd(dai::Path uri, dai::Path cwd);
+    std::vector<uint8_t> loadResourceCwd(dai::Path uri, dai::Path cwd, bool moveAsset = false);
 };
 
 /**
@@ -255,8 +255,7 @@ class Pipeline {
 
     /**
      * Creates a pipeline
-     * @param hostOnly If true, pipeline will run only be able to run host nodes and no device nodes can be added, otherwise pipeline implicitly creates a
-     * device
+     * @param createImplicitDevice If true, creates a default device (default = true)
      */
     explicit Pipeline(bool createImplicitDevice = true);
 

@@ -1,11 +1,11 @@
 #pragma once
 
-#include <mutex>
-#include <vector>
-#include <unordered_map>
-#include <string>
 #include <cstdint>
+#include <mutex>
+#include <string>
 #include <thread>
+#include <unordered_map>
+#include <vector>
 
 // project
 #include <depthai/device/Device.hpp>
@@ -18,14 +18,14 @@
 namespace dai {
 
 class TarGzAccessor {
-public:
+   public:
     // Constructor takes a tar.gz file in memory (std::vector<std::uint8_t>)
     TarGzAccessor(const std::vector<std::uint8_t>& tarGzFile);
 
     // Function to get file data by path
     std::optional<std::vector<std::uint8_t>> getFile(const std::string& path) const;
 
-private:
+   private:
     std::map<std::string, std::vector<std::uint8_t>> resourceMap;  // Path to file data
 };
 
@@ -47,7 +47,7 @@ class Resources {
     std::unordered_map<std::string, std::vector<std::uint8_t>> resourceMapBootloader;
     std::vector<std::uint8_t> getDeviceFwp(const std::string& fwPath, const std::string& envPath) const;
 
-public:
+   public:
     static Resources& getInstance();
     Resources(Resources const&) = delete;
     void operator=(Resources const&) = delete;
@@ -59,7 +59,6 @@ public:
     std::vector<std::uint8_t> getDeviceRVC3Fwp() const;
     std::vector<std::uint8_t> getDeviceRVC4Fwp() const;
     TarGzAccessor getEmbeddedVisualizer() const;
-
 };
 
-} // namespace dai
+}  // namespace dai

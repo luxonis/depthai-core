@@ -1,19 +1,19 @@
+#include <memory>
+#include <unordered_map>
+
 #include "DatatypeBindings.hpp"
 #include "pipeline/CommonBindings.hpp"
-#include <unordered_map>
-#include <memory>
 
 // depthai
 #include "depthai/pipeline/datatype/ToFConfig.hpp"
 
-//pybind
+// pybind
 #include <pybind11/chrono.h>
 #include <pybind11/numpy.h>
 
 // #include "spdlog/spdlog.h"
 
-void bind_tofconfig(pybind11::module& m, void* pCallstack){
-
+void bind_tofconfig(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
     py::class_<ToFConfig, Py<ToFConfig>, Buffer, std::shared_ptr<ToFConfig>> toFConfig(m, "ToFConfig", DOC(dai, ToFConfig));
@@ -22,7 +22,7 @@ void bind_tofconfig(pybind11::module& m, void* pCallstack){
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
     // Call the rest of the type defines, then perform the actual bindings
-    Callstack* callstack = (Callstack*) pCallstack;
+    Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
@@ -32,8 +32,7 @@ void bind_tofconfig(pybind11::module& m, void* pCallstack){
     ///////////////////////////////////////////////////////////////////////
 
     // Message
-    toFConfig
-        .def(py::init<>())
+    toFConfig.def(py::init<>())
         .def("__repr__", &ToFConfig::str)
         // .def(py::init<std::shared_ptr<ToFConfig>>())
 
@@ -57,5 +56,4 @@ void bind_tofconfig(pybind11::module& m, void* pCallstack){
 
     // add aliases
     // m.attr("ToFConfig").attr("DepthParams") = m.attr("ToFConfig").attr("DepthParams");
-
 }

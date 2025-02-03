@@ -246,11 +246,14 @@ TEST_CASE("dai::Path with DeviceBootloader") {
     const std::wstring wstrBadfile(LPATH5);
     const dai::Path diaBadWide(LPATH5);
 #endif
-
+    std::this_thread::sleep_for(std::chrono::seconds(10));
     bool found = false;
     dai::DeviceInfo deviceInfo;
     std::tie(found, deviceInfo) = dai::DeviceBootloader::getFirstAvailableDevice();
     if(found) {
+         if(deviceInfo.state == X_LINK_BOOTLOADER) {
+        std::cout << "Device is already booted into bootloader mode. Booting tests will be skipped." << std::endl;
+        } else {
         REQUIRE_NOTHROW([&]() {
             dai::DeviceBootloader bl(deviceInfo);
             auto currentBlType = bl.getType();
@@ -310,7 +313,7 @@ TEST_CASE("dai::Path with DeviceBootloader") {
             }(),
             ContainsSubstring("doesn't exist"));
 #endif
-    } else {
+    }} else {
         std::cout << "No devices found" << std::endl;
     }
 }

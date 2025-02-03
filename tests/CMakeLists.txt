@@ -371,7 +371,7 @@ dai_set_test_labels(neural_network_node_test ondevice rvc2_all rvc4 ci)
 
 # ImgTransformations tests
 dai_add_test(img_transformation_test src/ondevice_tests/img_transformation_test.cpp CXX_STANDARD 17)
-dai_set_test_labels(message_group_frame_test ondevice rvc4 ci)
+dai_set_test_labels(img_transformation_test ondevice rvc2_all rvc4 ci)
 
 # Regression tests for encountered bugs
 dai_add_test(regression_camera_concurrency_test src/ondevice_tests/regression/camera_concurrency.cpp)
@@ -404,6 +404,10 @@ dai_set_test_labels(image_manip_v2_node_test ondevice rvc2_all rvc4 ci)
 # Benchmark tests
 dai_add_test(benchmark_test src/ondevice_tests/pipeline/node/benchmark_test.cpp)
 dai_set_test_labels(benchmark_test ondevice rvc2_all rvc4 ci)
+
+# Manual focus test
+dai_add_test(manual_focus_test src/ondevice_tests/manual_focus_test.cpp)
+dai_set_test_labels(manual_focus_test rvc2_all rvc4 ci)
 
 # IMU tests
 dai_add_test(imu_test src/ondevice_tests/pipeline/node/imu_test.cpp)
