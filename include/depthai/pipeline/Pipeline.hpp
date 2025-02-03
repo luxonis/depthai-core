@@ -255,8 +255,7 @@ class Pipeline {
 
     /**
      * Creates a pipeline
-     * @param hostOnly If true, pipeline will run only be able to run host nodes and no device nodes can be added, otherwise pipeline implicitly creates a
-     * device
+     * @param createImplicitDevice If true, creates a default device (default = true)
      */
     explicit Pipeline(bool createImplicitDevice = true);
 
