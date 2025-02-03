@@ -142,5 +142,7 @@ T getEnvAsChecked(const std::string& var, T defaultValue, const std::vector<T>& 
     return getEnvAsChecked<T>(var, defaultValue, possibleValues, Logging::getInstance().logger);
 }
 
+std::vector<std::string> splitList(const std::string& list, const std::string& delimiter);
+
 }  // namespace utility
 }  // namespace dai

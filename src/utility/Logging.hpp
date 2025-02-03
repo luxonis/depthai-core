@@ -19,11 +19,6 @@
 #include <depthai/device/DeviceBootloader.hpp>
 #include <depthai/openvino/OpenVINO.hpp>
 #include <depthai/utility/Path.hpp>
-<<<<<<< HEAD
-=======
-
-#include "Environment.hpp"
->>>>>>> v3_develop
 
 namespace dai {
 
