@@ -397,7 +397,8 @@ TEST_CASE("Multi callbacks", "[MessageQueue]") {
 }
 
 TEST_CASE("MessageQueue - FPS Calculation", "[MessageQueue]") {
-    MessageQueue queue(10);
+    // Create a non-blocking queue to avoid blocking when the underlying queue is full
+    MessageQueue queue(10, false);
 
     // Ensure FPS starts at 0
     REQUIRE(queue.getFps() == 0.0);
@@ -406,25 +407,27 @@ TEST_CASE("MessageQueue - FPS Calculation", "[MessageQueue]") {
     constexpr int NUM_MESSAGES = 10;
     constexpr int DELAY_MS = 50;  // 50ms delay between messages
 
-    for(int i = 0; i < NUM_MESSAGES; ++i) {
+    for (int i = 0; i < NUM_MESSAGES; ++i) {
         auto msg = std::make_shared<ADatatype>();
         queue.send(msg);
         std::this_thread::sleep_for(std::chrono::milliseconds(DELAY_MS));
     }
 
-    // Compute expected FPS: 10 messages over ~450ms -> ~22.2 FPS
+    // Compute expected FPS: 10 messages over roughly 450ms ~20 FPS
     double fps = queue.getFps();
     REQUIRE(fps > 15.0);  // Should be around 20 FPS
     REQUIRE(fps < 30.0);  // Upper bound check
 
-    // Send one more message, verify FPS updates
+    // Send one more message, verify FPS updates consistently
     auto msg = std::make_shared<ADatatype>();
     queue.send(msg);
     fps = queue.getFps();
-    REQUIRE(fps > 15.0);  // Should be consistent
+    REQUIRE(fps > 15.0);  // Still consistent with recent message rate
 
-    // Ensure FPS decreases when there are gaps
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    // Wait long enough (more than 2 seconds) so that old timestamps drop out,
+    // causing the FPS to be recalculated from fewer (or no) messages.
+    std::this_thread::sleep_for(std::chrono::milliseconds(2100));
     fps = queue.getFps();
-    REQUIRE(fps < 10.0);  // Should drop after a pause
+    // With fewer than 2 messages in the recent window, getFps() should return 0.0
+    REQUIRE(fps == 0.0);
 }

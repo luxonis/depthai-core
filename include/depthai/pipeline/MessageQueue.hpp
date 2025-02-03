@@ -32,6 +32,7 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
     LockingQueue<std::shared_ptr<ADatatype>> queue;
     std::string name;
     std::mutex callbacksMtx;
+    std::mutex fpsMtx;
     std::unordered_map<CallbackId, std::function<void(std::string, std::shared_ptr<ADatatype>)>> callbacks;
     std::deque<std::chrono::steady_clock::time_point> fpsQueue;
     CallbackId uniqueCallbackId{0};

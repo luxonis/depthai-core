@@ -72,7 +72,7 @@ unsigned int MessageQueue::isFull() const {
 }
 
 float MessageQueue::getFps() {
-    std::unique_lock<std::mutex> lock(callbacksMtx);
+    std::unique_lock<std::mutex> lock(fpsMtx);
 
     // Get current time
     auto now = std::chrono::steady_clock::now();
@@ -146,6 +146,7 @@ void MessageQueue::send(const std::shared_ptr<ADatatype>& msg) {
 
     // Record the timestamp for FPS calculation
     {
+        std::unique_lock<std::mutex> lock(fpsMtx);
         auto now = std::chrono::steady_clock::now();
         fpsQueue.push_back(now);
         if(fpsQueue.size() > FPS_QUEUE_MAX_SIZE) {
@@ -161,6 +162,7 @@ bool MessageQueue::send(const std::shared_ptr<ADatatype>& msg, std::chrono::mill
         throw QueueException(CLOSED_QUEUE_MESSAGE);
     }
     {
+        std::unique_lock<std::mutex> lock(fpsMtx);
         auto now = std::chrono::steady_clock::now();
         fpsQueue.push_back(now);
         if(fpsQueue.size() > FPS_QUEUE_MAX_SIZE) {
