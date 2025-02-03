@@ -77,17 +77,29 @@ if __name__ == "__main__":
         default=default_path,
     )
 
+    parser.add_argument(
+        "--rvc4",
+        action="store_true",
+        required=False,
+    )
+
+    parser.add_argument(
+        "--rvc2",
+        action="store_true",
+        required=False,
+    )
+
     args = parser.parse_args()
     test_dir = args.test_dir
     print("Going to run tests in directory:", test_dir)
     # cd to the test directory
     os.chdir(pathlib.Path(test_dir).resolve())
     # Example test configurations
-    test_configs = [
+    all_configs = [
         {
             "name": "Host",
             "env": {},
-            "label": ["onhost"],
+            "labels": ["onhost"],
         },
         {
             "name": "RVC4",
@@ -97,22 +109,31 @@ if __name__ == "__main__":
         {
             "name": "RVC2 - USB",
             "env": {"DEPTHAI_PLATFORM": "rvc2", "DEPTHAI_PROTOCOL": "usb"},
-            "label": ["rvc2", "usb"],
+            "labels": ["rvc2", "usb"],
         },
         {
             "name": "RVC2 - POE",
             "env": {"DEPTHAI_PLATFORM": "rvc2", "DEPTHAI_PROTOCOL": "tcpip"},
-            "label": ["rvc2", "poe"],
+            "labels": ["rvc2", "poe"],
         },
     ]
 
     # List to keep track of results
     resultThreads = []
 
+    # Filter configurations based on command-line arguments
+    if args.rvc4==args.rvc2:
+        test_configs=all_configs
+    elif args.rvc4:
+        test_configs = [config for config in all_configs if "rvc4" in config.get("labels", []) or "onhost" in config.get("labels", [])]
+    elif args.rvc2:
+        test_configs = [config for config in all_configs if "rvc2" in config.get("labels", []) or "onhost" in config.get("labels", [])]
+
+
     for config in test_configs:
         name = config["name"]
         env_vars = config["env"]
-        labels = config.get("labels") or config.get("label")
+        labels = config.get("labels")
 
         print(f"Running tests for configuration: {name}")
         resultThread = run_ctest(env_vars, labels, blocking=False, name=name)

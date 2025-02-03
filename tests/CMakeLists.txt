@@ -371,7 +371,7 @@ dai_set_test_labels(neural_network_node_test ondevice rvc2_all rvc4 ci)
 
 # ImgTransformations tests
 dai_add_test(img_transformation_test src/ondevice_tests/img_transformation_test.cpp CXX_STANDARD 17)
-dai_set_test_labels(message_group_frame_test ondevice rvc4 ci)
+dai_set_test_labels(img_transformation_test ondevice rvc2_all rvc4 ci)
 
 # Regression tests for encountered bugs
 dai_add_test(regression_camera_concurrency_test src/ondevice_tests/regression/camera_concurrency.cpp)
