@@ -4,10 +4,15 @@ import depthai as dai
 from pathlib import Path
 from argparse import ArgumentParser
 
+scriptDir = Path(__file__).resolve().parent
+examplesRoot = (scriptDir / Path('../')).resolve()  # This resolves the parent directory correctly
+models = examplesRoot / 'models'
+videoPath = models / 'construction_vest.mp4'
+
 parser = ArgumentParser()
 parser.add_argument("--webSocketPort", type=int, default=8765)
 parser.add_argument("--httpPort", type=int, default=8080)
-parser.add_argument("-i", "--inputVideo", default="test_video.mp4", help="Input video name")
+parser.add_argument("-i", "--inputVideo", default=videoPath, help="Input video name")
 args = parser.parse_args()
 
 remoteConnector = dai.RemoteConnection(webSocketPort=args.webSocketPort, httpPort=args.httpPort)
