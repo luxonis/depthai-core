@@ -20,7 +20,7 @@ class RerunNode(dai.node.ThreadedHostNode):
     def run(self):
         rr.init("", spawn=True)
         rr.log("world", rr.ViewCoordinates.FLU)
-        rr.log("world/ground", rr.Boxes3D(half_sizes=[3.0, 3.0, 0.00001])) 
+        rr.log("world/ground", rr.Boxes3D(half_sizes=[3.0, 3.0, 0.00001]))
         while self.isRunning():
             inPointCloud = self.inputPCL.get()
             if inPointCloud is not None:
@@ -42,14 +42,14 @@ with dai.Pipeline() as p:
     rerunViewer = RerunNode()
     left.build(dai.CameraBoardSocket.CAM_B)
     right.build(dai.CameraBoardSocket.CAM_C)
-    out = color.requestOutput((1280,720), dai.ImgFrame.Type.RGB888i)
+    out = color.requestOutput((640,400), dai.ImgFrame.Type.RGB888i)
 
     stereo.setRectifyEdgeFillColor(0)
     stereo.enableDistortionCorrection(True)
 
     # Linking
-    left.requestOutput((1280, 720)).link(stereo.left)
-    right.requestOutput((1280, 720)).link(stereo.right)
+    left.requestOutput((640, 400)).link(stereo.left)
+    right.requestOutput((640, 400)).link(stereo.right)
     platform = p.getDefaultDevice().getPlatform()
 
     if platform == dai.Platform.RVC4:

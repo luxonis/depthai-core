@@ -60,15 +60,15 @@ with dai.Pipeline() as p:
     o3dViewer = O3DNode()
     left.build(dai.CameraBoardSocket.CAM_B)
     right.build(dai.CameraBoardSocket.CAM_C)
-    out = color.requestOutput((1280,720), dai.ImgFrame.Type.RGB888i)
+    out = color.requestOutput((640, 400), dai.ImgFrame.Type.RGB888i)
 
     stereo.setDefaultProfilePreset(dai.node.StereoDepth.PresetMode.DEFAULT)
     stereo.setRectifyEdgeFillColor(0)
     stereo.enableDistortionCorrection(True)
 
     # Linking
-    left.requestOutput((1280, 720)).link(stereo.left)
-    right.requestOutput((1280, 720)).link(stereo.right)
+    left.requestOutput((640, 400)).link(stereo.left)
+    right.requestOutput((640, 400)).link(stereo.right)
     platform = p.getDefaultDevice().getPlatform()
     if platform == dai.Platform.RVC4:
         align = p.create(dai.node.ImageAlign)
