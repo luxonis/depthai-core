@@ -98,6 +98,9 @@ find_package(libnop ${_QUIET} CONFIG REQUIRED)
 # MP4V2 for video encoding
 find_package(mp4v2 ${_QUIET} CONFIG REQUIRED)
 
+# mcap for Record & Replay
+find_package(mcap ${_QUIET} CONFIG REQUIRED)
+
 if(DEPTHAI_ENABLE_PROTOBUF)
     find_package(Protobuf ${_QUIET} REQUIRED)
 endif()
@@ -125,14 +128,6 @@ endif()
 if(DEPTHAI_PCL_SUPPORT AND NOT TARGET JsonCpp::JsonCpp)
     find_package(jsoncpp)
 endif()
-
-include(FetchContent)
-FetchContent_Declare(
-  mcap_builder
-  GIT_REPOSITORY https://github.com/luxonis/mcap_builder.git
-  GIT_TAG main
-)
-FetchContent_MakeAvailable(mcap_builder)
 
 if(DEPTHAI_PCL_SUPPORT)
     find_package(PCL CONFIG COMPONENTS common)

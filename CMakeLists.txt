@@ -1213,8 +1213,6 @@ if(NOT BUILD_SHARED_LIBS)
     list(APPEND targets_to_export ${DEPTHAI_RESOURCE_LIBRARY_NAME} cmrc-base)
 endif()
 
-list(APPEND targets_to_export mcap)
-
 # Export targets (capability to import current build directory)
 export(TARGETS ${targets_to_export} NAMESPACE ${PROJECT_NAME}:: FILE "${PROJECT_NAME}Targets.cmake")
 

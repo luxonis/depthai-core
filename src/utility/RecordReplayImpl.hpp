@@ -1,5 +1,6 @@
 #include "depthai/utility/RecordReplay.hpp"
-#include "mcap/mcap.hpp"
+#include "mcap/reader.hpp"
+#include "mcap/writer.hpp"
 
 namespace dai {
 namespace utility {
