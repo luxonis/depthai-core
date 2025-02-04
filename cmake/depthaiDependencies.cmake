@@ -98,9 +98,6 @@ find_package(libnop ${_QUIET} CONFIG REQUIRED)
 # MP4V2 for video encoding
 find_package(mp4v2 ${_QUIET} CONFIG REQUIRED)
 
-# mcap for Record & Replay
-find_package(mcap ${_QUIET} CONFIG REQUIRED)
-
 if(DEPTHAI_ENABLE_PROTOBUF)
     find_package(Protobuf ${_QUIET} REQUIRED)
 endif()

@@ -19,7 +19,6 @@
         "libnop",
         "neargye-semver",
         "magic-enum",
-        "mcap",
         {
             "name": "libarchive",
             "default-features": false

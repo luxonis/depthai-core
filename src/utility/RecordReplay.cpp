@@ -2,7 +2,6 @@
 
 #include <spdlog/spdlog.h>
 
-#include <mcap/types.hpp>
 #include <optional>
 #include <stdexcept>
 
@@ -28,33 +27,6 @@ void ByteRecorder::init(const std::string& filePath, RecordConfig::CompressionLe
         throw std::runtime_error("ByteRecorder file path is empty");
     }
     {
-        auto options = mcap::McapWriterOptions("");
-        options.library = "depthai" + std::string(build::VERSION);
-        switch(compressionLevel) {
-            case RecordConfig::CompressionLevel::NONE:
-                options.compression = mcap::Compression::None;
-                break;
-            case RecordConfig::CompressionLevel::FASTEST:
-                options.compressionLevel = mcap::CompressionLevel::Fastest;
-                break;
-            case RecordConfig::CompressionLevel::FAST:
-                options.compressionLevel = mcap::CompressionLevel::Fast;
-                break;
-            case RecordConfig::CompressionLevel::DEFAULT:
-                options.compressionLevel = mcap::CompressionLevel::Default;
-                break;
-            case RecordConfig::CompressionLevel::SLOW:
-                options.compressionLevel = mcap::CompressionLevel::Slow;
-                break;
-            case RecordConfig::CompressionLevel::SLOWEST:
-                options.compressionLevel = mcap::CompressionLevel::Slowest;
-                break;
-        }
-        options.compression = mcap::Compression::Lz4;
-        const auto res = writer.open(filePath, options);
-        if(!res.ok()) {
-            throw std::runtime_error("Failed to open file for writing: " + res.message);
-        }
     }
     {
         const char* schemaText = DEFAULT_SHEMA;
@@ -73,11 +45,6 @@ void ByteRecorder::init(const std::string& filePath, RecordConfig::CompressionLe
                 schemaText = DEFAULT_SHEMA;
                 break;
         }
-        mcap::Schema schema(channelName, "jsonschema", schemaText);
-        writer.addSchema(schema);
-        mcap::Channel channel(channelName, "json", schema.id);
-        writer.addChannel(channel);
-        channelId = channel.id;
     }
 
     initialized = true;
@@ -85,7 +52,6 @@ void ByteRecorder::init(const std::string& filePath, RecordConfig::CompressionLe
 
 void ByteRecorder::close() {
     if(initialized) {
-        writer.close();
         initialized = false;
     }
 }
@@ -102,13 +68,7 @@ void BytePlayer::init(const std::string& filePath) {
         throw std::runtime_error("BytePlayer file path is empty");
     }
     {
-        const auto res = reader.open(filePath);
-        if(!res.ok()) {
-            throw std::runtime_error("Failed to open file for reading: " + res.message);
-        }
     }
-    messageView = std::make_unique<mcap::LinearMessageView>(reader.readMessages());
-    it = std::make_unique<mcap::LinearMessageView::Iterator>(messageView->begin());
     initialized = true;
 }
 
@@ -116,29 +76,18 @@ std::optional<nlohmann::json> BytePlayer::next() {
     if(!initialized) {
         throw std::runtime_error("BytePlayer not initialized");
     }
-    if(*it == messageView->end()) return std::nullopt;
-    if((*it)->channel->messageEncoding != "json") {
-        throw std::runtime_error("Unsupported message encoding: " + (*it)->channel->messageEncoding);
-    }
-    std::string_view asString(reinterpret_cast<const char*>((*it)->message.data), (*it)->message.dataSize);
 
-    nlohmann::json j = nlohmann::json::parse(asString);
-
-    ++(*it);
-
-    return j;
+    return nlohmann::json();
 }
 
 void BytePlayer::restart() {
     if(!initialized) {
         throw std::runtime_error("BytePlayer not initialized");
     }
-    it = std::make_unique<mcap::LinearMessageView::Iterator>(messageView->begin());
 }
 
 void BytePlayer::close() {
     if(initialized) {
-        reader.close();
         initialized = false;
     }
 }
@@ -147,30 +96,7 @@ std::optional<std::tuple<uint32_t, uint32_t>> BytePlayer::getVideoSize(const std
     if(filePath.empty()) {
         throw std::runtime_error("File path is empty in BytePlayer::getVideoSize");
     }
-    mcap::McapReader reader;
     {
-        const auto res = reader.open(filePath);
-        if(!res.ok()) {
-            throw std::runtime_error("Failed to open file for reading: " + res.message);
-        }
-    }
-    auto messageView = reader.readMessages();
-    if(messageView.begin() == messageView.end()) {
-        return std::nullopt;
-    } else {
-        auto msg = messageView.begin();
-        if(msg->channel->messageEncoding != "json") {
-            throw std::runtime_error("Unsupported message encoding: " + msg->channel->messageEncoding);
-        }
-        std::string_view asString(reinterpret_cast<const char*>(msg->message.data), msg->message.dataSize);
-        nlohmann::json j = nlohmann::json::parse(asString);
-
-        auto type = j["type"].get<utility::RecordType>();
-        if(type == utility::RecordType::Video) {
-            auto width = j["width"].get<uint32_t>();
-            auto height = j["height"].get<uint32_t>();
-            return std::make_tuple(width, height);
-        }
     }
     return std::nullopt;
 }

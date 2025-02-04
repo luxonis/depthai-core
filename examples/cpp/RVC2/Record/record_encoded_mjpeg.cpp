@@ -9,8 +9,6 @@
     #error This example needs OpenCV support, which is not available on your system
 #endif
 
-#include "mcap/reader.hpp"
-
 int main(int argc, char** argv) {
     std::string path = argc > 1 ? argv[1] : "recording_mjpeg";
     {
@@ -35,24 +33,5 @@ int main(int argc, char** argv) {
 
         pipeline.wait();
     }
-    mcap::McapReader reader;
-    {
-        const auto res = reader.open(path + ".mcap");
-        if(!res.ok()) {
-            std::cerr << "Failed to open " << path << " for reading: " << res.message << std::endl;
-            return 1;
-        }
-    }
-    auto messageView = reader.readMessages();
-    auto message = *messageView.begin();
-    assert(message.channel->messageEncoding == "json");
-    std::string_view asString(reinterpret_cast<const char*>(message.message.data), message.message.dataSize);
-    std::cout << "Message: " << asString << std::endl;
-    nlohmann::json j = nlohmann::json::parse(asString);
-    std::ofstream out(std::string(path) + ".json");
-    out << j.dump(4) << std::endl;
-
-    std::string_view asString2(reinterpret_cast<const char*>(message.schema->data.data()), message.schema->data.size());
-    std::cout << "Schema: " << asString2 << std::endl;
     return 0;
 }

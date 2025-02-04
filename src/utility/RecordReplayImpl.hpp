@@ -1,6 +1,4 @@
 #include "depthai/utility/RecordReplay.hpp"
-#include "mcap/reader.hpp"
-#include "mcap/writer.hpp"
 
 namespace dai {
 namespace utility {
@@ -38,21 +36,6 @@ class ByteRecorder {
     void init(const std::string& filePath, RecordConfig::CompressionLevel compressionLevel, RecordType recordingType);
     template <typename T>
     void write(const T& data) {
-        mcap::Timestamp writeTime = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-        nlohmann::json j = data;
-        std::string serialized = j.dump();
-        mcap::Message msg;
-        msg.channelId = channelId;
-        msg.logTime = writeTime;
-        msg.publishTime = writeTime;
-        msg.sequence = index++;
-        msg.data = reinterpret_cast<const std::byte*>(serialized.data());
-        msg.dataSize = serialized.size();
-        const auto res = writer.write(msg);
-        if(!res.ok()) {
-            writer.close();
-            throw std::runtime_error("Failed to write video frame metadata: " + res.message);
-        }
     }
     void close();
     bool isInitialized() const {
@@ -64,8 +47,6 @@ class ByteRecorder {
     std::ofstream file;
 
     uint64_t index = 0;
-    mcap::McapWriter writer;
-    mcap::ChannelId channelId;
 };
 
 class VideoPlayer {
@@ -105,9 +86,6 @@ class BytePlayer {
     }
 
    private:
-    mcap::McapReader reader;
-    std::unique_ptr<mcap::LinearMessageView> messageView;
-    std::unique_ptr<mcap::LinearMessageView::Iterator> it;
     bool initialized = false;
 };
 

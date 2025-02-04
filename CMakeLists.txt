@@ -754,7 +754,6 @@ target_link_libraries(${TARGET_CORE_NAME}
         libnop
         spdlog::spdlog
         yaml-cpp::yaml-cpp
-        mcap
     INTERFACE
         XLinkPublic
     PRIVATE
