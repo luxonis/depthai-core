@@ -7,7 +7,7 @@
 
 
 std::array<float, 3> transformIMUVector(
-    const std::array<float, 3>& vURB,
+    const std::array<float, 3>& vec,
     const std::vector<std::vector<float>>& extrinsics)
 {
     // Safety checks
@@ -17,18 +17,18 @@ std::array<float, 3> transformIMUVector(
 
     // Extract the top-left 3x3 rotation R (row-major)
     // R(i,j) = extrinsics[i][j] for i,j in [0..2].
-    std::array<float, 3> vFLU;
-    vFLU[0] = extrinsics[0][0] * vURB[0]
-            + extrinsics[0][1] * vURB[1]
-            + extrinsics[0][2] * vURB[2];
-    vFLU[1] = extrinsics[1][0] * vURB[0]
-            + extrinsics[1][1] * vURB[1]
-            + extrinsics[1][2] * vURB[2];
-    vFLU[2] = extrinsics[2][0] * vURB[0]
-            + extrinsics[2][1] * vURB[1]
-            + extrinsics[2][2] * vURB[2];
+    std::array<float, 3> out;
+    out[0] = extrinsics[0][0] * vec[0]
+            + extrinsics[0][1] * vec[1]
+            + extrinsics[0][2] * vec[2];
+    out[1] = extrinsics[1][0] * vec[0]
+            + extrinsics[1][1] * vec[1]
+            + extrinsics[1][2] * vec[2];
+    out[2] = extrinsics[2][0] * vec[0]
+            + extrinsics[2][1] * vec[1]
+            + extrinsics[2][2] * vec[2];
 
-    return vFLU;
+    return out;
 }
 
 int main() {
@@ -60,6 +60,13 @@ int main() {
 
     auto imuExtr = d.readCalibration().getImuToCameraExtrinsics(dai::CameraBoardSocket::CAM_B, true);
 
+    std::vector<std::vector<float>> extr ={
+        {0, -1, 0, 0},
+        {-1, 0, 0, 0},
+        {0, 0, 1, 0},
+        {0, 0, 0, 1}
+    };
+
 
     auto imuQueue = d.getOutputQueue("imu", 50, false);
     while(true) {
@@ -69,10 +76,10 @@ int main() {
         for(auto& imuPacket : imuPackets) {
             auto& acceleroValues = imuPacket.acceleroMeter;
 
-            std::array<float, 3> vURB = {acceleroValues.x, acceleroValues.y, acceleroValues.z};
-            std::array<float, 3> vRDF = transformIMUVector(vURB, imuExtr);
+            std::array<float, 3> vULF = {acceleroValues.x, acceleroValues.y, acceleroValues.z};
+            std::array<float, 3> vRDF = transformIMUVector(vULF, imuExtr);
             std::cout << "###############" << std::endl;
-            std::cout << "vURB = " << vURB[0] << ", " << vURB[1] << ", " << vURB[2] << " -> vRDF = {" << vRDF[0] << ", " << vRDF[1] << ", " << vRDF[2] << "}" << std::endl;
+            std::cout << "vULF = " << vULF[0] << ", " << vULF[1] << ", " << vULF[2] << " -> vRDF = {" << vRDF[0] << ", " << vRDF[1] << ", " << vRDF[2] << "}" << std::endl;
             std::cout << "###############" << std::endl;
         }
 
