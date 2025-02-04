@@ -2191,9 +2191,8 @@ inline bool isSingleChannelu8(const dai::ImgFrame::Type type) {
     return type == dai::ImgFrame::Type::GRAY8 || type == dai::ImgFrame::Type::RAW8;
 }
 inline bool isSingleChannel(const dai::ImgFrame::Type type) {
-    return type == dai::ImgFrame::Type::GRAY8 || type == dai::ImgFrame::Type::RAW8 ||
-        type == dai::ImgFrame::Type::RAW16 || type == dai::ImgFrame::Type::GRAYF16 ||
-        type == dai::ImgFrame::Type::RAW32;
+    return type == dai::ImgFrame::Type::GRAY8 || type == dai::ImgFrame::Type::RAW8 || type == dai::ImgFrame::Type::RAW16 || type == dai::ImgFrame::Type::GRAYF16
+           || type == dai::ImgFrame::Type::RAW32;
 }
 
 template <typename T>
@@ -2404,7 +2403,7 @@ ImageManipOperations<ImageManipBuffer, ImageManipData>& ImageManipOperations<Ima
         auto ccDstSpecs = getCcDstFrameSpecs(srcSpecs, inType, outputFrameType);
         preprocCc.build(srcSpecs, ccDstSpecs, inType, outputFrameType);
     } else {
-    if(!isTypeSupported(inType)) {
+        if(!isTypeSupported(inType)) {
             auto color = getValidType(inType);
             auto ccDstSpecs = getCcDstFrameSpecs(srcSpecs, inType, color);
             preprocCc.build(srcSpecs, ccDstSpecs, inType, color);

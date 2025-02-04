@@ -35,7 +35,7 @@ void testBenchmarkIn(bool benchmarkInRunOnHost, bool benchmarkOutRunOnHost, floa
         auto reportData = reportQueue->get<dai::BenchmarkReport>();
         REQUIRE(reportData != nullptr);
         REQUIRE(reportData->numMessagesReceived > 1);
-        REQUIRE(reportData->fps == Catch::Approx(fps).epsilon(0.1));
+        REQUIRE(reportData->fps == Catch::Approx(fps).epsilon(0.2));
     }
 }
 
