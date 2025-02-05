@@ -11,6 +11,7 @@ parser.add_argument('-sdai', "--skip_depthai", action="store_true", help="Skip i
 parser.add_argument('-dr', "--dry_run", action="store_true", help="Print commands without executing.")
 parser.add_argument("--convert", nargs="?", default=convert_default, help="Convert the NN blobs using BlobConverter. Can be used as --convert 2021.4 to convert using OpenVINO 2021.4 or just --convert to use latest OpenVINO release")
 parser.add_argument('-irr', "--install_rerun", action="store_true", help="Install rerun library.")
+parser.add_argument('-io3dcpu', "--install_open3d_cpu", action="store_true", help="Install open3d with CPU support.")
 
 def prettyPrint(command):
 
@@ -62,7 +63,8 @@ if requireOpenCv:
 
 if args.install_rerun:
     DEPENDENCIES.append('rerun-sdk')
-
+if args.install_open3d_cpu:
+    DEPENDENCIES.append('open3d-cpu')
 # Constants
 ARTIFACTORY_URL = 'https://artifacts.luxonis.com/artifactory/luxonis-python-snapshot-local'
 

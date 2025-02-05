@@ -16,7 +16,7 @@ set(TARGET_NAME "depthai")
 
 # Add a target to install_requirements (added to ALL)
 add_custom_target(install_requirements ALL
-    COMMAND ${PYTHON_EXECUTABLE} "${CMAKE_CURRENT_LIST_DIR}/install_requirements.py" "--skip_depthai"
+    COMMAND ${PYTHON_EXECUTABLE} "${CMAKE_CURRENT_LIST_DIR}/install_requirements.py" "--skip_depthai" "--install_rerun" "--install_open3d_cpu"
     DEPENDS ${TARGET_NAME}
     VERBATIM
     COMMAND_EXPAND_LISTS
