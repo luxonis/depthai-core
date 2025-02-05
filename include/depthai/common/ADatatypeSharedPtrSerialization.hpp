@@ -1,3 +1,4 @@
+#pragma once
 #include "depthai/pipeline/datatype/ADatatype.hpp"
 #include "depthai/utility/Serialization.hpp"
 namespace nlohmann {
