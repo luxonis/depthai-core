@@ -62,6 +62,13 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
         *this, {"inputControl", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::CameraControl, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
+     * Outputs ImgFrame message that carries RAW10-packed (MIPI CSI-2 format) frame data.
+     *
+     * Captured directly from the camera sensor, and the source for the 'isp' output.
+     */
+    Output raw{*this, {"raw", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
+
+    /**
      * Retrieves which board socket to use
      * @returns Board socket to use
      */
