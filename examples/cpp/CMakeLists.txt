@@ -272,8 +272,9 @@ dai_add_example(record_imu RVC2/Record/record_imu.cpp OFF OFF)
 # Replay
 dai_add_example(replay_video_meta RVC2/Replay/replay_video_meta.cpp OFF OFF)
 dai_add_example(replay_imu RVC2/Replay/replay_imu.cpp OFF OFF)
-dai_add_example(replay_yolo RVC2/Replay/replay_yolo.cpp ON OFF)
-target_compile_definitions(replay_yolo PRIVATE VIDEO_PATH="${construction_vest}")
+
+dai_add_example(detection_network_replay DetectionNetwork/detection_network_replay.cpp ON OFF)
+target_compile_definitions(detection_network_replay PRIVATE VIDEO_PATH="${construction_vest}")
 
 
 # StereoDepth
