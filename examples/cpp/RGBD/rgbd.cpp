@@ -34,7 +34,7 @@ class RerunNode : public dai::NodeCRTP<dai::node::ThreadedHostNode, RerunNode> {
                     colors.emplace_back(pclData[i].r, pclData[i].g, pclData[i].b);
                 }
                 rec.log("world/obstacle_pcl", rerun::Points3D(points).with_colors(colors).with_radii({0.01f}));
-                auto colorFrame = rgbdIn->rgbFrame.getCvFrame();
+                auto colorFrame = rgbdIn->getRGBFrame()->getCvFrame();
                 cv::cvtColor(colorFrame, colorFrame, cv::COLOR_BGR2RGB);
                 rec.log("rgb", rerun::Image(tensorShape(colorFrame), reinterpret_cast<const uint8_t*>(colorFrame.data)));
             }

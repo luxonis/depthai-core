@@ -300,41 +300,53 @@ void RGBD::initialize(std::shared_ptr<MessageGroup> frames) {
 
 void RGBD::run() {
     while(isRunning()) {
-        // Get the color and depth frames
-        auto group = inSync.get<MessageGroup>();
-        if(group == nullptr) continue;
-        if(!initialized) {
-            initialize(group);
+        if(!pcl.getQueueConnections().empty() || !pcl.getConnections().empty() || !rgbd.getQueueConnections().empty() || !rgbd.getConnections().empty()) {
+            // Get the color and depth frames
+            auto group = inSync.get<MessageGroup>();
+            if(group == nullptr) continue;
+            if(!initialized) {
+                initialize(group);
+            }
+            auto colorFrame = std::dynamic_pointer_cast<ImgFrame>(group->group.at(inColor.getName()));
+            if(colorFrame->getType() != ImgFrame::Type::RGB888i) {
+                throw std::runtime_error("RGBD node only supports RGB888i frames");
+            }
+            auto depthFrame = std::dynamic_pointer_cast<ImgFrame>(group->group.at(inDepth.getName()));
+
+            // Create the point cloud
+            auto pc = std::make_shared<PointCloudData>();
+            pc->setTimestamp(colorFrame->getTimestamp());
+            pc->setTimestampDevice(colorFrame->getTimestampDevice());
+            pc->setSequenceNum(colorFrame->getSequenceNum());
+            pc->setInstanceNum(colorFrame->getInstanceNum());
+            auto width = colorFrame->getWidth();
+            auto height = colorFrame->getHeight();
+            pc->setSize(width, height);
+
+            std::vector<Point3fRGB> points;
+            // Fill the point cloud
+            auto* depthData = depthFrame->getData().data();
+            auto* colorData = colorFrame->getData().data();
+            // Use GPU to compute point cloud
+            pimpl->computePointCloud(depthData, colorData, points);
+
+            pc->setPointsRGB(points);
+            pc->setTimestamp(colorFrame->getTimestamp());
+            pc->setTimestampDevice(colorFrame->getTimestampDevice());
+            pc->setSequenceNum(colorFrame->getSequenceNum());
+            if(!pcl.getQueueConnections().empty() || !pcl.getConnections().empty()) {
+                pcl.send(pc);
+            }
+            if(!rgbd.getQueueConnections().empty() || !rgbd.getConnections().empty()) {
+                auto rgbdData = std::make_shared<RGBDData>();
+                rgbdData->setTimestamp(colorFrame->getTimestamp());
+                rgbdData->setTimestampDevice(colorFrame->getTimestampDevice());
+                rgbdData->setSequenceNum(colorFrame->getSequenceNum());
+                rgbdData->setDepthFrame(depthFrame);
+                rgbdData->setRGBFrame(colorFrame);
+                rgbd.send(rgbdData);
+            }
         }
-        auto colorFrame = std::dynamic_pointer_cast<ImgFrame>(group->group.at(inColor.getName()));
-        if(colorFrame->getType() != ImgFrame::Type::RGB888i) {
-            throw std::runtime_error("RGBD node only supports RGB888i frames");
-        }
-        auto depthFrame = std::dynamic_pointer_cast<ImgFrame>(group->group.at(inDepth.getName()));
-
-        // Create the point cloud
-        auto pc = std::make_shared<PointCloudData>();
-        pc->setTimestamp(colorFrame->getTimestamp());
-        pc->setTimestampDevice(colorFrame->getTimestampDevice());
-        pc->setSequenceNum(colorFrame->getSequenceNum());
-        pc->setInstanceNum(colorFrame->getInstanceNum());
-        auto width = colorFrame->getWidth();
-        auto height = colorFrame->getHeight();
-        pc->setSize(width, height);
-
-        std::vector<Point3fRGB> points;
-        // Fill the point cloud
-        auto* depthData = depthFrame->getData().data();
-        auto* colorData = colorFrame->getData().data();
-        // Use GPU to compute point cloud
-        pimpl->computePointCloud(depthData, colorData, points);
-
-        pc->setPointsRGB(points);
-        pcl.send(pc);
-        auto rgbdData = std::make_shared<RGBDData>();
-        rgbdData->depthFrame = *depthFrame;
-        rgbdData->rgbFrame = *colorFrame;
-        rgbd.send(rgbdData);
     }
 }
 void RGBD::setDepthUnit(StereoDepthConfig::AlgorithmControl::DepthUnit depthUnit) {
