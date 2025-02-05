@@ -34,6 +34,8 @@ void bind_transformdata(pybind11::module& m, void* pCallstack){
     rgbdData
         .def(py::init<>())
         .def("__repr__", &RGBDData::str)
-        .def_readwrite("rgbFrame", &RGBDData::rgbFrame, DOC(dai, RGBDData, rgbFrame))
-        .def_readwrite("depthFrame", &RGBDData::depthFrame, DOC(dai, RGBDData, depthFrame));
+        .def("getRGBFrame", &RGBDData::getRGBFrame, DOC(dai, RGBDData, getRGBFrame))
+        .def("getDepthFrame", &RGBDData::getDepthFrame, DOC(dai, RGBDData, getDepthFrame))
+        .def("setRGBFrame", &RGBDData::setRGBFrame, py::arg("frame"), DOC(dai, RGBDData, setRGBFrame))
+        .def("setDepthFrame", &RGBDData::setDepthFrame, py::arg("frame"), DOC(dai, RGBDData, setDepthFrame));
 }
