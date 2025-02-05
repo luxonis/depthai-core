@@ -35,12 +35,13 @@ void bind_rgbd(pybind11::module& m, void* pCallstack) {
         .def_property_readonly(
             "inDepth", [](RGBD& node) { return &node.inDepth; }, py::return_value_policy::reference_internal)
         .def_readonly("pcl", &RGBD::pcl, DOC(dai, node, RGBD, pcl))
+        .def_readonly("rgbd", &RGBD::rgbd, DOC(dai, node, RGBD, rgbd))
         .def("build", static_cast<std::shared_ptr<RGBD> (RGBD::*)()>(&RGBD::build))
         .def("build",
              static_cast<std::shared_ptr<RGBD> (RGBD::*)(bool, StereoDepth::PresetMode, std::pair<int, int>)>(&RGBD::build),
              py::arg("autocreate"),
              py::arg("mode") = StereoDepth::PresetMode::HIGH_ACCURACY,
-             py::arg("size") = std::pair<int, int>(1280, 720),
+             py::arg("size") = std::pair<int, int>(1280, 800),
              DOC(dai, node, RGBD, build, 2))
         .def("setDepthUnits", &RGBD::setDepthUnit, py::arg("units"), DOC(dai, node, RGBD, setDepthUnit))
         .def("useCPU", &RGBD::useCPU, DOC(dai, node, RGBD, useCPU))
