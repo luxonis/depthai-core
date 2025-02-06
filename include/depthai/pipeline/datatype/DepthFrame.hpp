@@ -1,10 +1,13 @@
 #pragma once
 
+#include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/pipeline/datatype/StereoDepthConfig.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/datatype/PointCloudData.hpp"
 #include "depthai/pipeline/datatype/ToFConfig.hpp"
-#include "pipeline/node/ToF.hpp"
+#include "depthai/common/variant.hpp"
+#include "depthai/utility/Serialization.hpp"
+#include "depthai/pipeline/node/ToF.hpp"
 
 namespace dai {
 
@@ -22,27 +25,31 @@ class DepthFrame : public ImgFrame {
 
     virtual ~DepthFrame() = default;
 
-    void save();
-    uint16_t getMedian() const;
-    uint16_t getMin() const;
-    uint16_t getMax() const;
-    StereoDepthConfig::AlgorithmControl::DepthUnit getDepthUnit() const;
+    void save(const std::string& path);
+    float getMedian() ;
+    float getMin() ;
+    float getMax() ;
     DepthSource getSource() const;
-    uint16_t getMaxDisparity() const;
-    std::shared_ptr<ImgFrame> getLeft() const;
-    std::shared_ptr<ImgFrame> getRight() const;
-    std::shared_ptr<PointCloudData> getPointCloud() const;
+    float getMaxDisparity();
+    dai::CameraBoardSocket getLeftCamera() const;
+    dai::CameraBoardSocket getRightCamera() const;
+    std::shared_ptr<PointCloudData> getPointCloud();
 
-private:
-    uint16_t median = 0;
-    uint16_t min = 0;
-    uint16_t max = 0;
-    StereoDepthConfig::AlgorithmControl::DepthUnit depthUnit = StereoDepthConfig::AlgorithmControl::DepthUnit::MILLIMETER;
     DepthSource source = DepthSource::Stereo;
-    uint16_t maxDisparity = 0;
-    std::shared_ptr<ImgFrame> left;
-    std::shared_ptr<ImgFrame> right;
-
+    dai::CameraBoardSocket leftCamera = dai::CameraBoardSocket::CAM_B;
+    dai::CameraBoardSocket rightCamera = dai::CameraBoardSocket::CAM_C;
+    std::variant<StereoDepthConfig, ToFConfig> config;
+private:
+    float getScale();
+    float median = 0;
+    float min = 0;
+    float max = 0;
+    float scale = 0;
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
+        metadata = utility::serialize(*this);
+        datatype = DatatypeEnum::DepthFrame;
+    };
+    DEPTHAI_SERIALIZE(DepthFrame, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum, config, leftCamera, rightCamera, source);
 };
 
 }  // namespace dai
