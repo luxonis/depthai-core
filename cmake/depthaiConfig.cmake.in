@@ -18,5 +18,15 @@ include("${CMAKE_CURRENT_LIST_DIR}/@PROJECT_NAME@Dependencies.cmake")
 # Add the targets file
 include("${CMAKE_CURRENT_LIST_DIR}/@PROJECT_EXPORT_GROUP@.cmake")
 
+# Libraries & Include Dirs backward compatiblity
+set(@PROJECT_NAME@_LIBRARIES "depthai::core")
+include("${CMAKE_CURRENT_LIST_DIR}/@PROJECT_NAME@-core-include-dirs.cmake")
+set(@PROJECT_NAME@_INCLUDE_DIRS ${depthai_core_INCLUDE_DIRS})
+if(@DEPTHAI_HAVE_OPENCV_SUPPORT@)
+    list(APPEND @PROJECT_NAME@_LIBRARIES "depthai::opencv")
+    include("${CMAKE_CURRENT_LIST_DIR}/@PROJECT_NAME@-opencv-include-dirs.cmake")
+    list(APPEND @PROJECT_NAME@_INCLUDE_DIRS ${depthai_opencv_INCLUDE_DIRS})
+endif()
+
 # Cleanup
 set(_IMPORT_PREFIX)
