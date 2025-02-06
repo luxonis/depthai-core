@@ -57,7 +57,9 @@ Camera::Camera(std::unique_ptr<Properties> props)
 Camera::Camera(std::shared_ptr<Device>& defaultDevice)
     : DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>(defaultDevice), pimpl(spimpl::make_impl<Impl>()) {}
 
-std::shared_ptr<Camera> Camera::build(CameraBoardSocket boardSocket) {
+std::shared_ptr<Camera> Camera::build(CameraBoardSocket boardSocket,
+                                      std::optional<std::pair<uint32_t, uint32_t>> sensorResolution,
+                                      std::optional<float> sensorFps) {
     if(isBuilt) {
         throw std::runtime_error("Camera node is already built");
     }
@@ -66,6 +68,7 @@ std::shared_ptr<Camera> Camera::build(CameraBoardSocket boardSocket) {
     }
 
     auto cameraFeatures = device->getConnectedCameraFeatures();
+    CameraFeatures sensorFeatures;
     // First handle the case if the boardSocket is set to AUTO
     if(boardSocket == CameraBoardSocket::AUTO) {
         auto defaultSockets = {CameraBoardSocket::CAM_A, CameraBoardSocket::CAM_B, CameraBoardSocket::CAM_C};
@@ -89,11 +92,44 @@ std::shared_ptr<Camera> Camera::build(CameraBoardSocket boardSocket) {
     for(const auto& cf : cameraFeatures) {
         if(cf.socket == boardSocket) {
             found = true;
+            sensorFeatures = cf;
             maxWidth = cf.width;
             maxHeight = cf.height;
             break;
         }
     }
+    auto fps = sensorFps.value_or(-1.0f);
+    // Check if the sensor resolution is valid, if specified
+    if(sensorResolution.has_value()) {
+        if(sensorResolution->first > maxWidth || sensorResolution->second > maxHeight) {
+            throw std::runtime_error("Invalid sensor resolution specified, maximum supported resolution is " + std::to_string(maxWidth) + "x"
+                                     + std::to_string(maxHeight));
+        }
+        found = false;
+        for(const auto& config : sensorFeatures.configs) {
+            auto signedWidth = (int32_t)sensorResolution->first;
+            auto signedHeight = (int32_t)sensorResolution->second;
+            if(config.width == signedWidth && config.height == signedHeight) {
+                found = true;
+                properties.resolutionWidth = maxWidth = signedWidth;
+                properties.resolutionHeight = maxHeight = signedHeight;
+                if(fps > config.maxFps || (fps < config.minFps && fps != -1.0f)) {
+                    throw std::runtime_error("Invalid sensor FPS specified, supported range is " + std::to_string(config.minFps) + " - "
+                                             + std::to_string(config.maxFps));
+                }
+                break;
+            }
+        }
+        if(!found) {
+            throw std::runtime_error(
+                "Invalid sensor resolution specified - check the supported resolutions for the connected device with device.getConnectedCameraFeatures()");
+        }
+    }
+
+    if(fps != -1.0f) {
+        properties.fps = fps;
+    }
+
     if(!found) {
         throw std::runtime_error("Camera socket not found on the connected device");
     }
@@ -130,7 +166,7 @@ uint32_t Camera::getMaxHeight() const {
     return maxHeight;
 }
 
-Node::Output* Camera::requestFullResolutionOutput(ImgFrame::Type type, float fps) {
+Node::Output* Camera::requestFullResolutionOutput(ImgFrame::Type type, std::optional<float> fps) {
     if(!isBuilt) {
         throw std::runtime_error("Camera node must be built before requesting outputs from it");
     }
@@ -143,16 +179,25 @@ Node::Output* Camera::requestFullResolutionOutput(ImgFrame::Type type, float fps
     }
     ImgFrameCapability cap;
     cap.size.fixed({maxWidth, maxHeight});
-    cap.fps.fixed(fps);
+    if(fps.has_value()) {
+        cap.fps.fixed(fps.value());
+    }
     cap.type = type;
     return pimpl->requestOutput(*this, cap, false);
 }
 
-Node::Output* Camera::requestOutput(
-    std::pair<uint32_t, uint32_t> size, std::optional<ImgFrame::Type> type, ImgResizeMode resizeMode, float fps, std::optional<bool> enableUndistortion) {
+Node::Output* Camera::requestOutput(std::pair<uint32_t, uint32_t> size,
+                                    std::optional<ImgFrame::Type> type,
+                                    ImgResizeMode resizeMode,
+                                    std::optional<float> fps,
+                                    std::optional<bool> enableUndistortion) {
     ImgFrameCapability cap;
     cap.size.fixed(size);
-    cap.fps.fixed(fps);
+
+    if(fps.has_value()) {
+        cap.fps.fixed(fps.value());
+    }
+
     cap.type = type;
     cap.resizeMode = resizeMode;
     cap.enableUndistortion = enableUndistortion;

@@ -56,7 +56,7 @@ std::shared_ptr<DetectionNetwork> DetectionNetwork::build(Node::Output& input, c
     return std::static_pointer_cast<DetectionNetwork>(shared_from_this());
 }
 
-std::shared_ptr<DetectionNetwork> DetectionNetwork::build(const std::shared_ptr<Camera>& camera, dai::NNModelDescription modelDesc, float fps) {
+std::shared_ptr<DetectionNetwork> DetectionNetwork::build(const std::shared_ptr<Camera>& camera, dai::NNModelDescription modelDesc, std::optional<float> fps) {
     // Download model from zoo
     if(modelDesc.platform.empty()) {
         DAI_CHECK(getDevice() != nullptr, "Device is not set.");
@@ -71,7 +71,7 @@ std::shared_ptr<DetectionNetwork> DetectionNetwork::build(const std::shared_ptr<
     return build(camera, nnArchive, fps);
 }
 
-std::shared_ptr<DetectionNetwork> DetectionNetwork::build(const std::shared_ptr<Camera>& camera, dai::NNArchive nnArchive, float fps) {
+std::shared_ptr<DetectionNetwork> DetectionNetwork::build(const std::shared_ptr<Camera>& camera, dai::NNArchive nnArchive, std::optional<float> fps) {
     neuralNetwork->build(camera, nnArchive, fps);
     detectionParser->setNNArchive(nnArchive);
     return std::static_pointer_cast<DetectionNetwork>(shared_from_this());

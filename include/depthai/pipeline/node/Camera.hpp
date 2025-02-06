@@ -23,7 +23,7 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
     Node::Output* requestOutput(std::pair<uint32_t, uint32_t> size,
                                 std::optional<ImgFrame::Type> type = std::nullopt,
                                 ImgResizeMode resizeMode = ImgResizeMode::CROP,
-                                float fps = 30,
+                                std::optional<float> fps = std::nullopt,
                                 std::optional<bool> enableUndistortion = std::nullopt);
     /**
      * Request output with advanced controls. Mainly to be used by custom node writers.
@@ -33,12 +33,17 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
     /**
      * Get full resolution output
      */
-    Node::Output* requestFullResolutionOutput(ImgFrame::Type type = ImgFrame::Type::NV12, float fps = 30);
+    Node::Output* requestFullResolutionOutput(ImgFrame::Type type = ImgFrame::Type::NV12, std::optional<float> fps = std::nullopt);
 
     /**
      * Build with a specific board socket
+     * @param boardSocket Board socket to use
+     * @param sensorResolution Sensor resolution to use - by default it's auto-detected from the requested outputs
+     * @param sensorFps Sensor FPS to use - by default it's auto-detected from the requested outputs (maximum is used)
      */
-    std::shared_ptr<Camera> build(dai::CameraBoardSocket boardSocket = dai::CameraBoardSocket::AUTO);
+    std::shared_ptr<Camera> build(dai::CameraBoardSocket boardSocket = dai::CameraBoardSocket::AUTO,
+                                  std::optional<std::pair<uint32_t, uint32_t>> sensorResolution = std::nullopt,
+                                  std::optional<float> sensorFps = std::nullopt);
 
     /**
      * Get max width of the camera (can only be called after build)

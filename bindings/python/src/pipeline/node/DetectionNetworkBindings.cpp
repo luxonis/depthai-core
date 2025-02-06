@@ -53,22 +53,22 @@ void bind_detectionnetwork(pybind11::module& m, void* pCallstack) {
             DETECTION_NETWORK_BUILD_PYARGS,
             DETECTION_NETWORK_PYARGS)
         .def("build",
-             py::overload_cast<const std::shared_ptr<Camera>&, NNModelDescription, float>(&DetectionNetwork::build),
+             py::overload_cast<const std::shared_ptr<Camera>&, NNModelDescription, std::optional<float>>(&DetectionNetwork::build),
              py::arg("input"),
              py::arg("model"),
-             py::arg("fps") = 30.0f)
+             py::arg("fps") = std::nullopt)
         .def("build",
-             ([](DetectionNetwork& self, const std::shared_ptr<Camera>& input, std::string model, float fps) {
+             ([](DetectionNetwork& self, const std::shared_ptr<Camera>& input, std::string model, std::optional<float> fps) {
                  return self.build(input, NNModelDescription{model}, fps);
              }),
              py::arg("input"),
              py::arg("model"),
-             py::arg("fps") = 30.0f)
+             py::arg("fps") = std::nullopt)
         .def("build",
-             py::overload_cast<const std::shared_ptr<Camera>&, NNArchive, float>(&DetectionNetwork::build),
+             py::overload_cast<const std::shared_ptr<Camera>&, NNArchive, std::optional<float>>(&DetectionNetwork::build),
              py::arg("input"),
              py::arg("nnArchive"),
-             py::arg("fps") = 30.0f)
+             py::arg("fps") = std::nullopt)
         .def(py::init([](DETECTION_NETWORK_BUILD_ARGS, DETECTION_NETWORK_ARGS) {
                  auto self = getImplicitPipeline()->create<DetectionNetwork>();
                  self->build(input, nnArchive);

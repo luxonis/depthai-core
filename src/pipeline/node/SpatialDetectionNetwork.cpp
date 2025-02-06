@@ -36,7 +36,7 @@ void SpatialDetectionNetwork::buildInternal() {
 std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build(const std::shared_ptr<Camera>& camera,
                                                                         const std::shared_ptr<StereoDepth>& stereo,
                                                                         dai::NNModelDescription modelDesc,
-                                                                        float fps) {
+                                                                        std::optional<float> fps) {
     // Download model from zoo
     if(modelDesc.platform.empty()) {
         DAI_CHECK(getDevice() != nullptr, "Device is not set.");
@@ -53,7 +53,7 @@ std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build(const st
 std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build(const std::shared_ptr<Camera>& camera,
                                                                         const std::shared_ptr<StereoDepth>& stereo,
                                                                         dai::NNArchive nnArchive,
-                                                                        float fps) {
+                                                                        std::optional<float> fps) {
     neuralNetwork->build(camera, nnArchive, fps);
     detectionParser->setNNArchive(nnArchive);
     auto device = getDevice();

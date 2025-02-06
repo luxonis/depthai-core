@@ -22,17 +22,23 @@ void bind_camera(pybind11::module& m, void* pCallstack) {
     camera.def_readonly("inputControl", &Camera::inputControl, DOC(dai, node, Camera, inputControl))
         .def_readonly("initialControl", &Camera::initialControl, DOC(dai, node, Camera, initialControl))
         .def_readonly("raw", &Camera::raw, DOC(dai, node, Camera, raw))
-        .def("build", &Camera::build, "boardSocket"_a = CameraBoardSocket::AUTO, DOC(dai, node, Camera, build))
+        .def("build",
+             &Camera::build,
+             "boardSocket"_a = CameraBoardSocket::AUTO,
+             "sensorResolution"_a = std::nullopt,
+             "sensorFps"_a = std::nullopt,
+             DOC(dai, node, Camera, build))
         // .def("setBoardSocket", &Camera::setBoardSocket, "boardSocket"_a, DOC(dai, node, Camera, setBoardSocket))
         .def("getBoardSocket", &Camera::getBoardSocket, DOC(dai, node, Camera, getBoardSocket))
         // .def("setCamera", &Camera::setCamera, "name"_a, DOC(dai, node, Camera, setCamera))
         // .def("getCamera", &Camera::getCamera, DOC(dai, node, Camera, getCamera))
         .def("requestOutput",
-             py::overload_cast<std::pair<uint32_t, uint32_t>, std::optional<ImgFrame::Type>, ImgResizeMode, float, std::optional<bool>>(&Camera::requestOutput),
+             py::overload_cast<std::pair<uint32_t, uint32_t>, std::optional<ImgFrame::Type>, ImgResizeMode, std::optional<float>, std::optional<bool>>(
+                 &Camera::requestOutput),
              "size"_a,
              "type"_a = std::nullopt,
              "resizeMode"_a = dai::ImgResizeMode::CROP,
-             "fps"_a = 30,
+             "fps"_a = std::nullopt,
              "enableUndistortion"_a = std::nullopt,
              py::return_value_policy::reference_internal,
              DOC(dai, node, Camera, requestOutput))
@@ -45,7 +51,7 @@ void bind_camera(pybind11::module& m, void* pCallstack) {
         .def("requestFullResolutionOutput",
              &Camera::requestFullResolutionOutput,
              "type"_a = dai::ImgFrame::Type::NV12,
-             "fps"_a = 30,
+             "fps"_a = std::nullopt,
              py::return_value_policy::reference_internal,
              DOC(dai, node, Camera, requestFullResolutionOutput));
 }
