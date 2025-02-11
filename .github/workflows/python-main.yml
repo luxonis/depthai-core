@@ -118,6 +118,7 @@ jobs:
       - name: Install dependencies (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
         run: |
+          sudo apt update
           python -m pip install --upgrade pip
           sudo apt install libusb-1.0-0-dev pkg-config bison autoconf libtool libxi-dev libxtst-dev libxrandr-dev libx11-dev libxft-dev libxext-dev nasm flex libudev-dev automake libltdl-dev
 

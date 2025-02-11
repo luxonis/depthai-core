@@ -275,6 +275,10 @@ dai_add_example(replay_video_meta Replay/replay_video_meta.cpp OFF OFF)
 dai_add_example(replay_imu Replay/replay_imu.cpp OFF OFF)
 dai_add_example(holistic_replay Replay/holistic_replay.cpp OFF OFF)
 
+dai_add_example(detection_network_replay DetectionNetwork/detection_network_replay.cpp ON OFF)
+target_compile_definitions(detection_network_replay PRIVATE VIDEO_PATH="${construction_vest}")
+
+
 # StereoDepth
 dai_add_example(depth_preview StereoDepth/depth_preview.cpp OFF OFF)
 

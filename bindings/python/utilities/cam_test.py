@@ -54,6 +54,7 @@ from stress_test import stress_test, YOLO_LABELS, create_yolo
 
 
 ALL_SOCKETS = ['rgb', 'left', 'right', 'cama', 'camb', 'camc', 'camd', 'came']
+DEPTH_STREAM_NAME = "stereo_depth"
 
 def socket_type_pair(arg):
     socket, type = arg.split(',')
@@ -454,17 +455,13 @@ with dai.Pipeline(dai.Device(*dai_device_args)) as pipeline:
                 print(
                     "Device is calibrated and has a stereo pair, creating StereoDepth node.")
                 stereo = pipeline.createStereoDepth()
-                stereo.initialConfig.setMedianFilter(dai.MedianFilter.KERNEL_7x7)
                 stereo.setLeftRightCheck(True)
                 stereo.setSubpixel(True)
                 stereo.setLeftRightCheck(True)
-                getattr(left_cam, left_out).link(stereo.left)
-                getattr(right_cam, right_out).link(stereo.right)
-                xout_stereo = pipeline.createXLinkOut()
-                depth_stream = "stereo_depth"
-                xout_stereo.setStreamName(depth_stream)
-                stereo.disparity.link(xout_stereo.input)
-                streams.append(depth_stream)
+                left_cam.requestFullResolutionOutput(type=dai.ImgFrame.Type.NV12).link(stereo.left)
+                right_cam.requestFullResolutionOutput(type=dai.ImgFrame.Type.NV12).link(stereo.right)
+                xout[DEPTH_STREAM_NAME] = stereo.disparity
+                streams.append(DEPTH_STREAM_NAME)
             else:
                 print("Couldn't create stereo depth node. Device has invalid calibration.")
         except Exception as e:
@@ -597,14 +594,14 @@ with dai.Pipeline(dai.Device(*dai_device_args)) as pipeline:
                 frame = pkt.getCvFrame()
                 cam_skt = c.split('_')[-1]
 
-                if c == "stereo_depth" and stereo is not None:
+                if c == DEPTH_STREAM_NAME and stereo is not None:
                     maxDisp = stereo.initialConfig.getMaxDisparity()
                     disp = (pkt.getCvFrame() * (255.0 / maxDisp)).astype(np.uint8)
                     disp = cv2.applyColorMap(disp, cv2.COLORMAP_JET)
                     cv2.imshow(c, disp)
                     continue
-                
-                
+
+
                 if cam_type_tof.get(cam_skt, None) and not (c.startswith('raw_') or c.startswith('tof_amplitude_')):
                     if args.tof_cm:
                         # pixels represent `cm`, capped to 255. Value can be checked hovering the mouse
