@@ -68,7 +68,7 @@ T getEnvAs(const std::string& var, T defaultValue, spdlog::logger& logger) {
     // If unspecified, return the default value
     if(useDefault) {
         cache[var] = defaultValue;
-        logger.warn("Environment variable {} is not set. Using default value: '{}'", var, defaultValue);
+        logger.info("Environment variable {} is not set. Using default value: '{}'", var, defaultValue);
     }
 
     // If specified, convert to the corresponding data type
