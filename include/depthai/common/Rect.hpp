@@ -19,14 +19,21 @@ struct Rect {
     // default constructor
     Rect() = default;
     Rect(float x, float y, float width, float height) : x(x), y(y), width(width), height(height) {}
-    Rect(float x, float y, float width, float height, bool normalized) : x(x), y(y), width(width), height(height), normalized(normalized), hasNormalized(true) {}
+    Rect(float x, float y, float width, float height, bool normalized)
+        : x(x), y(y), width(width), height(height), normalized(normalized), hasNormalized(true) {}
     Rect(const Rect& r) : x(r.x), y(r.y), width(r.width), height(r.height), normalized(r.normalized), hasNormalized(r.hasNormalized) {}
     Rect(const Point2f& org, const Size2f& sz) : x(org.x), y(org.y), width(sz.width), height(sz.height) {}
-    Rect(const Point2f& org, const Size2f& sz, bool normalized) : x(org.x), y(org.y), width(sz.width), height(sz.height), normalized(normalized), hasNormalized(true) {}
+    Rect(const Point2f& org, const Size2f& sz, bool normalized)
+        : x(org.x), y(org.y), width(sz.width), height(sz.height), normalized(normalized), hasNormalized(true) {}
     Rect(const Point2f& pt1, const Point2f& pt2)
         : x(std::min(pt1.x, pt2.x)), y(std::min(pt1.y, pt2.y)), width(std::max(pt1.x, pt2.x) - x), height(std::max(pt1.y, pt2.y) - y) {}
     Rect(const Point2f& pt1, const Point2f& pt2, bool normalized)
-        : x(std::min(pt1.x, pt2.x)), y(std::min(pt1.y, pt2.y)), width(std::max(pt1.x, pt2.x) - x), height(std::max(pt1.y, pt2.y) - y), normalized(normalized), hasNormalized(true) {}
+        : x(std::min(pt1.x, pt2.x)),
+          y(std::min(pt1.y, pt2.y)),
+          width(std::max(pt1.x, pt2.x) - x),
+          height(std::max(pt1.y, pt2.y) - y),
+          normalized(normalized),
+          hasNormalized(true) {}
     Rect& operator=(const Rect& r) = default;
     Rect& operator=(Rect&& r) = default;
 

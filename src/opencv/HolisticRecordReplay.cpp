@@ -21,7 +21,10 @@
 namespace dai {
 namespace utility {
 
-bool setupHolisticRecord(Pipeline& pipeline, const std::string& mxId, RecordConfig& recordConfig, std::unordered_map<std::string, std::string>& outFilenames) {
+bool setupHolisticRecord(Pipeline& pipeline,
+                         const std::string& deviceId,
+                         RecordConfig& recordConfig,
+                         std::unordered_map<std::string, std::string>& outFilenames) {
     auto sources = pipeline.getSourceNodes();
     const auto recordPath = recordConfig.outputDir;
     try {
@@ -33,7 +36,7 @@ bool setupHolisticRecord(Pipeline& pipeline, const std::string& mxId, RecordConf
             }
             NodeRecordParams nodeParams = nodeS->getNodeRecordParams();
             std::string nodeName = (nodeParams.video ? "v_" : "b_") + nodeParams.name;
-            std::string filePath = platform::joinPaths(recordPath, (mxId + "_").append(nodeName));
+            std::string filePath = platform::joinPaths(recordPath, (deviceId + "_").append(nodeName));
             outFilenames[nodeName] = filePath;
             if(std::dynamic_pointer_cast<node::Camera>(node) != nullptr || std::dynamic_pointer_cast<node::ColorCamera>(node) != nullptr
                || std::dynamic_pointer_cast<node::MonoCamera>(node) != nullptr) {
@@ -77,7 +80,7 @@ bool setupHolisticRecord(Pipeline& pipeline, const std::string& mxId, RecordConf
                 nodeS->getRecordOutput().link(recordNode->input);
             }
         }
-        outFilenames["record_config"] = platform::joinPaths(recordPath, mxId + "_record_config.json");
+        outFilenames["record_config"] = platform::joinPaths(recordPath, deviceId + "_record_config.json");
     } catch(const std::runtime_error& e) {
         recordConfig.state = RecordConfig::RecordReplayState::NONE;
         spdlog::warn("Record disabled: {}", e.what());
@@ -85,7 +88,7 @@ bool setupHolisticRecord(Pipeline& pipeline, const std::string& mxId, RecordConf
     }
     // Write recordConfig to output dir
     try {
-        std::ofstream file(Path(platform::joinPaths(recordPath, mxId + "_record_config.json")));
+        std::ofstream file(Path(platform::joinPaths(recordPath, deviceId + "_record_config.json")));
         json j = recordConfig;
         file << j.dump(4);
     } catch(const std::exception& e) {
@@ -97,10 +100,10 @@ bool setupHolisticRecord(Pipeline& pipeline, const std::string& mxId, RecordConf
 
 bool setupHolisticReplay(Pipeline& pipeline,
                          std::string replayPath,
-                         const std::string& mxId,
+                         const std::string& deviceId,
                          RecordConfig& recordConfig,
                          std::unordered_map<std::string, std::string>& outFilenames) {
-    UNUSED(mxId);
+    UNUSED(deviceId);
     const std::string rootPath = platform::getDirFromPath(replayPath);
     auto sources = pipeline.getSourceNodes();
     try {
@@ -139,7 +142,7 @@ bool setupHolisticReplay(Pipeline& pipeline,
             }
             NodeRecordParams nodeParams = nodeS->getNodeRecordParams();
             // Needed for muti-device recordings, not yet supported
-            // std::string nodeName = (mxId + "_").append(nodeParams.name);
+            // std::string nodeName = (deviceId + "_").append(nodeParams.name);
             std::string nodeName = nodeParams.name;
             pipelineFilenames.push_back(nodeName);
             nodeNames.push_back(nodeParams.name);
@@ -151,7 +154,7 @@ bool setupHolisticReplay(Pipeline& pipeline,
         outFiles.reserve(sources.size() + 1);
         if(!useTar || allMatch(tarNodenames, pipelineFilenames)) {
             for(auto& nodeName : nodeNames) {
-                // auto filename = (mxId + "_").append(nodeName);
+                // auto filename = (deviceId + "_").append(nodeName);
                 auto filename = nodeName;
                 if(useTar) {
                     inFiles.push_back(tarRoot + filename + ".mp4");

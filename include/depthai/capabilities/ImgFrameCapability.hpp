@@ -46,9 +46,10 @@ class ImgFrameCapability : public CapabilityCRTP<Capability, ImgFrameCapability>
     CapabilityRange<float> fps;
     std::optional<ImgFrame::Type> type;
     ImgResizeMode resizeMode{ImgResizeMode::CROP};
+    std::optional<bool> enableUndistortion;
     // TODO(jakgra) add optional CapabilityRange fov / max-min horiz. / vertical crop;
 
-    DEPTHAI_SERIALIZE(ImgFrameCapability, size, fps, type, resizeMode);
+    DEPTHAI_SERIALIZE(ImgFrameCapability, size, fps, type, resizeMode, enableUndistortion);
 
    private:
     class Impl;

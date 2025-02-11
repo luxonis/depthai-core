@@ -6,6 +6,7 @@
 #include <depthai/pipeline/node/DetectionNetwork.hpp>
 #include <depthai/pipeline/node/ImageAlign.hpp>
 #include <depthai/pipeline/node/StereoDepth.hpp>
+#include <depthai/pipeline/node/host/Replay.hpp>
 
 #include "depthai/openvino/OpenVINO.hpp"
 
@@ -76,8 +77,19 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
 
     std::shared_ptr<SpatialDetectionNetwork> build(const std::shared_ptr<Camera>& inputRgb,
                                                    const std::shared_ptr<StereoDepth>& stereo,
-                                                   dai::NNArchive nnArchive,
+                                                   const NNArchive& nnArchive,
                                                    float fps = 30.0f);
+
+    std::shared_ptr<SpatialDetectionNetwork> build(const std::shared_ptr<ReplayVideo>& inputRgb,
+                                                   const std::shared_ptr<StereoDepth>& stereo,
+                                                   NNModelDescription modelDesc,
+                                                   float fps = 30.0f,
+                                                   CameraBoardSocket alignSocket = CameraBoardSocket::AUTO);
+    std::shared_ptr<SpatialDetectionNetwork> build(const std::shared_ptr<ReplayVideo>& inputRgb,
+                                                   const std::shared_ptr<StereoDepth>& stereo,
+                                                   const NNArchive& nnArchive,
+                                                   float fps = 30.0f,
+                                                   CameraBoardSocket alignSocket = CameraBoardSocket::AUTO);
 
     Subnode<NeuralNetwork> neuralNetwork{*this, "neuralNetwork"};
     Subnode<DetectionParser> detectionParser{*this, "detectionParser"};
@@ -291,6 +303,8 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
     void setNNArchiveBlob(const NNArchive& nnArchive);
     void setNNArchiveSuperblob(const NNArchive& nnArchive, int numShaves);
     void setNNArchiveOther(const NNArchive& nnArchive);
+    NNArchive createNNArchive(NNModelDescription& modelDesc);
+    void alignDepth(const std::shared_ptr<StereoDepth>& stereo, const std::shared_ptr<Camera>& camera);
 
    protected:
     using DeviceNodeCRTP::DeviceNodeCRTP;

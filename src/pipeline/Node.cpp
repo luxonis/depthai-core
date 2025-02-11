@@ -292,6 +292,11 @@ std::vector<uint8_t> Node::loadResource(dai::Path uri) {
     return parent.lock()->loadResourceCwd(uri, cwd);
 }
 
+std::vector<uint8_t> Node::moveResource(dai::Path uri) {
+    std::string cwd = fmt::format("/node/{}/", id);
+    return parent.lock()->loadResourceCwd(uri, cwd, true);
+}
+
 Node::OutputMap::OutputMap(Node& parent, std::string name, Node::OutputDescription defaultOutput, bool ref)
     : defaultOutput(defaultOutput), parent(parent), name(std::move(name)) {
     if(ref) {
@@ -729,6 +734,22 @@ Node::Output* Node::requestOutput(const Capability& capability, bool onHost) {
 
 std::vector<std::pair<Node::Input&, std::shared_ptr<Capability>>> Node::getRequiredInputs() {
     DAI_CHECK_V(false, "Node '{}' doesn't support node to node linking. Please link outputs <--> inputs manually.", getName());
+}
+
+void Node::Output::setPossibleDatatypes(std::vector<Node::DatatypeHierarchy> types) {
+    desc.types = std::move(types);
+}
+
+std::vector<Node::DatatypeHierarchy> Node::Output::getPossibleDatatypes() const {
+    return desc.types;
+}
+
+void Node::Input::setPossibleDatatypes(std::vector<Node::DatatypeHierarchy> types) {
+    possibleDatatypes = std::move(types);
+}
+
+std::vector<Node::DatatypeHierarchy> Node::Input::getPossibleDatatypes() const {
+    return possibleDatatypes;
 }
 
 }  // namespace dai

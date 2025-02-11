@@ -2,7 +2,7 @@
 
 // depthai
 #ifdef DEPTHAI_ENABLE_EVENTS_MANAGER
-#include "depthai/utility/EventsManager.hpp"
+    #include "depthai/utility/EventsManager.hpp"
 #endif
 
 void EventsManagerBindings::bind(pybind11::module& m, void* pCallstack) {
@@ -19,7 +19,7 @@ void EventsManagerBindings::bind(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
 
-    #ifdef DEPTHAI_ENABLE_EVENTS_MANAGER
+#ifdef DEPTHAI_ENABLE_EVENTS_MANAGER
     using namespace dai::utility;
     py::class_<EventData, std::shared_ptr<utility::EventData>>(m, "EventData")
         .def(py::init<const std::string&, const std::string&, const std::string&>(), py::arg("data"), py::arg("fileName"), py::arg("mimeType"))
@@ -70,5 +70,5 @@ void EventsManagerBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("extraData") = std::unordered_map<std::string, std::string>(),
              py::arg("deviceSerialNo") = "",
              DOC(dai, utility, EventsManager, sendSnap));
-    #endif
+#endif
 }

@@ -4,12 +4,15 @@
 #include <iostream>
 #include <nlohmann/json.hpp>
 
+#include "../utility/Environment.hpp"
 #include "../utility/YamlHelpers.hpp"
 #include "../utility/sha1.hpp"
 #include "utility/Logging.hpp"
 
 #ifdef DEPTHAI_ENABLE_CURL
-    #include <cpr/cpr.h>
+    #include <cpr/api.h>
+    #include <cpr/parameters.h>
+    #include <cpr/status_codes.h>
 namespace dai {
 class ZooManager {
    public:
@@ -78,7 +81,7 @@ class ZooManager {
     /**
      * @brief Download model from model zoo
      */
-    void downloadModel();
+    void downloadModel(const nlohmann::json& responseJson);
 
     /**
      * @brief Return path to model in cache
@@ -86,6 +89,34 @@ class ZooManager {
      * @return std::string: Path to model
      */
     std::string loadModelFromCache() const;
+
+    /**
+     * @brief Get path to metadata file
+     *
+     * @return std::string: Path to metadata file
+     */
+    std::string getMetadataFilePath() const;
+
+    /**
+     * @brief Fetch model download links from Hub
+     *
+     * @return nlohmann::json: JSON with download links
+     */
+    nlohmann::json fetchModelDownloadLinks();
+
+    /**
+     * @brief Get files in folder
+     *
+     * @return std::vector<std::string>: Files in folder
+     */
+    std::vector<std::string> getFilesInFolder(const std::string& folder) const;
+
+    /**
+     * @brief Check if internet is available
+     *
+     * @return bool: True if internet is available
+     */
+    static bool connectionToZooAvailable();
 
    private:
     // Description of the model
@@ -139,19 +170,23 @@ bool checkIsErrorHub(const cpr::Response& response) {
     // Check if response is an HTTP error
     if(response.status_code != cpr::status::HTTP_OK) return true;
 
-    // If there was no HTTP error, check response content for errors
+    // If there was no HTTP error, check presence of required fields
     nlohmann::json responseJson = nlohmann::json::parse(response.text);
-    if(responseJson.contains("errors")) return true;
-    if(responseJson["data"]["ml"]["modelDownloads"].is_null()) return true;
+    if(!responseJson.contains("hash")) return true;
+    if(!responseJson.contains("download_links")) return true;
 
     // All checks passed - no errors yay
     return false;
 }
 
-std::vector<std::string> getFilesInFolder(const std::string& folder) {
+std::vector<std::string> ZooManager::getFilesInFolder(const std::string& folder) const {
+    auto metadata = utility::loadYaml(getMetadataFilePath());
+    auto downloadedFiles = utility::yamlGet<std::vector<std::string>>(metadata, "downloaded_files");
     std::vector<std::string> files;
-    for(const auto& entry : std::filesystem::directory_iterator(folder)) {
-        files.push_back(entry.path().string());
+    for(const auto& downloadedFile : downloadedFiles) {
+        if(std::filesystem::exists(combinePaths(folder, downloadedFile))) {
+            files.push_back(combinePaths(folder, downloadedFile));
+        }
     }
     return files;
 }
@@ -205,31 +240,36 @@ bool ZooManager::isModelCached() const {
     return std::filesystem::exists(getModelCacheFolderPath(cacheDirectory));
 }
 
-void ZooManager::downloadModel() {
-    // graphql query to send to Hub - always the same
-    constexpr std::string_view MODEL_ZOO_QUERY = "query MlDownloads($input: MlModelDownloadsInput!) {ml { modelDownloads(input : $input) { data }}}";
+nlohmann::json ZooManager::fetchModelDownloadLinks() {
+    // Add request parameters
+    cpr::Parameters params;
 
-    // Setup request body
-    nlohmann::json requestBody;
-    requestBody["query"] = MODEL_ZOO_QUERY;
+    // Required parameters
+    // clang-format off
+    std::vector<std::pair<std::string, std::string>> requiredParams = {
+        {"slug", modelDescription.model},
+        {"platform", modelDescription.platform}
+    };
+    // clang-format on
+    for(const auto& param : requiredParams) {
+        params.Add({param.first, param.second});
+    }
 
-    // Add REQUIRED parameters
-    requestBody["variables"]["input"]["platform"] = modelDescription.platform;
-    requestBody["variables"]["input"]["slug"] = modelDescription.model;
+    // Optional parameters
+    // clang-format off
+    std::vector<std::pair<std::string, std::string>> optionalParams = {
+        {"optimizationLevel", modelDescription.optimizationLevel},
+        {"compressionLevel", modelDescription.compressionLevel},
+        {"snpeVersion", modelDescription.snpeVersion},
+        {"modelPrecisionType", modelDescription.modelPrecisionType}
+    };
+    // clang-format on
+    for(const auto& param : optionalParams) {
+        if(!param.second.empty()) {
+            params.Add({param.first, param.second});
+        }
+    }
 
-    // Add OPTIONAL parameters
-    if(!modelDescription.optimizationLevel.empty()) {
-        requestBody["variables"]["input"]["optimizationLevel"] = modelDescription.optimizationLevel;
-    }
-    if(!modelDescription.compressionLevel.empty()) {
-        requestBody["variables"]["input"]["compressionLevel"] = modelDescription.compressionLevel;
-    }
-    if(!modelDescription.snpeVersion.empty()) {
-        requestBody["variables"]["input"]["snpeVersion"] = modelDescription.snpeVersion;
-    }
-    if(!modelDescription.modelPrecisionType.empty()) {
-        requestBody["variables"]["input"]["modelPrecisionType"] = modelDescription.modelPrecisionType;
-    }
     // Set the Authorization headers
     cpr::Header headers = {
         {"Content-Type", "application/json"},
@@ -237,16 +277,28 @@ void ZooManager::downloadModel() {
     if(!apiKey.empty()) {
         headers["Authorization"] = "Bearer " + apiKey;
     }
-    // Send HTTP request to Hub
-    cpr::Response response = cpr::Post(cpr::Url{MODEL_ZOO_URL}, headers, cpr::Body{requestBody.dump()});
+
+    // Send HTTP GET request to REST endpoint
+    cpr::Response response = cpr::Get(cpr::Url{MODEL_ZOO_DOWNLOAD_ENDPOINT}, headers, params);
     if(checkIsErrorHub(response)) {
         removeModelCacheFolder();
         throw std::runtime_error(generateErrorMessageHub(response));
     }
 
-    // Extract download link from response
+    // Extract download links from response
     nlohmann::json responseJson = nlohmann::json::parse(response.text);
-    auto downloadLinks = responseJson["data"]["ml"]["modelDownloads"]["data"].get<std::vector<std::string>>();
+    return responseJson;
+}
+
+void ZooManager::downloadModel(const nlohmann::json& responseJson) {
+    // Extract download links from response
+    auto downloadLinks = responseJson["download_links"].get<std::vector<std::string>>();
+    auto downloadHash = responseJson["hash"].get<std::string>();
+
+    // Metadata
+    YAML::Node metadata;
+    metadata["hash"] = downloadHash;
+    metadata["downloaded_files"] = std::vector<std::string>();
 
     // Download all files and store them in cache folder
     for(const auto& downloadLink : downloadLinks) {
@@ -262,7 +314,13 @@ void ZooManager::downloadModel() {
         std::ofstream file(filepath, std::ios::binary);
         file.write(downloadResponse.text.c_str(), downloadResponse.text.size());
         file.close();
+
+        // Add filename to metadata
+        metadata["downloaded_files"].push_back(filename);
     }
+
+    // Save metadata to file
+    utility::saveYaml(metadata, getMetadataFilePath());
 }
 
 std::string ZooManager::loadModelFromCache() const {
@@ -287,13 +345,38 @@ std::string getModelFromZoo(const NNModelDescription& modelDescription, bool use
 
     // Check if model is cached
     bool modelIsCached = zooManager.isModelCached();
-    bool useCachedModel = useCached && modelIsCached;
+    bool isMetadataPresent = std::filesystem::exists(zooManager.getMetadataFilePath());
+    bool useCachedModel = useCached && modelIsCached && isMetadataPresent;
+
+    bool performInternetCheck = !(utility::getEnv("DEPTHAI_ZOO_INTERNET_CHECK") == "0");
+
+    // Check if internet is available
+    bool internetIsAvailable = performInternetCheck && ZooManager::connectionToZooAvailable();
+    nlohmann::json responseJson;
+
+    if(internetIsAvailable) {
+        responseJson = zooManager.fetchModelDownloadLinks();
+    }
 
     // Use cached model if present and useCached is true
     if(useCachedModel) {
-        std::string modelPath = zooManager.loadModelFromCache();
-        Logging::getInstance().logger.info("Using cached model located at {}", modelPath);
-        return modelPath;
+        if(!internetIsAvailable) {
+            std::string modelPath = zooManager.loadModelFromCache();
+            logger::info("Using cached model located at {}", modelPath);
+            return modelPath;
+        }
+
+        auto responseHash = responseJson["hash"].get<std::string>();
+        auto metadata = utility::loadYaml(zooManager.getMetadataFilePath());
+        auto metadataHash = utility::yamlGet<std::string>(metadata, "hash");
+
+        if(responseHash == metadataHash) {
+            std::string modelPath = zooManager.loadModelFromCache();
+            logger::info("Using cached model located at {}", modelPath);
+            return modelPath;
+        }
+
+        logger::warn("Cached model hash does not match response hash, downloading anew ...");
     }
 
     // Remove cached model if present
@@ -301,12 +384,22 @@ std::string getModelFromZoo(const NNModelDescription& modelDescription, bool use
         zooManager.removeModelCacheFolder();
     }
 
+    // Model is not cached and internet check is disabled
+    if(!performInternetCheck) {
+        throw std::runtime_error("Model no available. Please set DEPTHAI_ZOO_INTERNET_CHECK to 1 to download models from the model zoo.");
+    }
+
+    // Model is not cached and internet check is enabled but no internet connection is available
+    if(performInternetCheck && !internetIsAvailable) {
+        throw std::runtime_error("Model not available. No internet connection available. Could not connect to host: " + std::string(MODEL_ZOO_HEALTH_ENDPOINT));
+    }
+
     // Create cache folder
     zooManager.createCacheFolder();
 
     // Download model
-    Logging::getInstance().logger.info("Downloading model from model zoo");
-    zooManager.downloadModel();
+    logger::info("Downloading model from model zoo");
+    zooManager.downloadModel(responseJson);
 
     // Find path to model in cache
     std::string modelPath = zooManager.loadModelFromCache();
@@ -314,7 +407,7 @@ std::string getModelFromZoo(const NNModelDescription& modelDescription, bool use
 }
 
 void downloadModelsFromZoo(const std::string& path, const std::string& cacheDirectory, const std::string& apiKey) {
-    Logging::getInstance().logger.info("Downloading models from zoo");
+    logger::info("Downloading models from zoo");
     // Make sure 'path' exists
     if(!std::filesystem::exists(path)) throw std::runtime_error("Path does not exist: " + path);
 
@@ -336,11 +429,36 @@ void downloadModelsFromZoo(const std::string& path, const std::string& cacheDire
         try {
             auto modelDescription = NNModelDescription::fromYamlFile(yamlFile);
             getModelFromZoo(modelDescription, true, cacheDirectory, apiKey);
-            Logging::getInstance().logger.info("Downloaded model [{} / {}]: {}", i + 1, yamlFiles.size(), yamlFile);
+            logger::info("Downloaded model [{} / {}]: {}", i + 1, yamlFiles.size(), yamlFile);
         } catch(const std::exception& e) {
-            Logging::getInstance().logger.error("Failed to download model [{} / {}]: {}\n{}", i + 1, yamlFiles.size(), yamlFile, e.what());
+            logger::error("Failed to download model [{} / {}]: {}\n{}", i + 1, yamlFiles.size(), yamlFile, e.what());
         }
     }
+}
+
+bool ZooManager::connectionToZooAvailable() {
+    int timeoutMs = 1000;
+    try {
+        timeoutMs = std::stoi(utility::getEnv("DEPTHAI_ZOO_INTERNET_CHECK_TIMEOUT"));
+    } catch(const std::invalid_argument& e) {
+        // pass
+    }
+    constexpr std::string_view host = MODEL_ZOO_HEALTH_ENDPOINT;
+
+    // Check if internet is available
+    bool connected = false;
+    try {
+        cpr::Response r = cpr::Get(cpr::Url{host}, cpr::Timeout{timeoutMs});
+        connected = r.status_code == cpr::status::HTTP_OK;
+    } catch(const cpr::Error& e) {
+        // pass, we don't care about the error
+    }
+
+    return connected;
+}
+
+std::string ZooManager::getMetadataFilePath() const {
+    return combinePaths(getModelCacheFolderPath(cacheDirectory), "metadata.yaml");
 }
 
 }  // namespace dai

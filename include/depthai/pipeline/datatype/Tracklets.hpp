@@ -72,6 +72,11 @@ class Tracklets : public Buffer {
      */
     std::vector<Tracklet> tracklets;
 
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
+        metadata = utility::serialize(*this);
+        datatype = DatatypeEnum::Tracklets;
+    };
+
     DEPTHAI_SERIALIZE(Tracklets, tracklets, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum);
 };
 

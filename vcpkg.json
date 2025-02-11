@@ -1,7 +1,10 @@
 {
     "name": "depthai",
     "dependencies": [
-        "cpp-httplib",
+        {
+            "name": "cpp-httplib",
+            "default-features": false
+        },
         "libpng",
         "tiff",
         "yaml-cpp",

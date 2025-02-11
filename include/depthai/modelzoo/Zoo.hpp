@@ -3,7 +3,8 @@
 #include "depthai/modelzoo/NNModelDescription.hpp"
 
 namespace dai {
-constexpr const char* MODEL_ZOO_URL = "https://api.cloud.luxonis.com/graphql";
+constexpr const char* MODEL_ZOO_HEALTH_ENDPOINT = "https://easyml.cloud.luxonis.com/models/api/v1/health/";
+constexpr const char* MODEL_ZOO_DOWNLOAD_ENDPOINT = "https://easyml.cloud.luxonis.com/models/api/v1/models/download";
 constexpr const char* MODEL_ZOO_DEFAULT_CACHE_DIRECTORY = ".depthai_cached_models";
 
 /**
