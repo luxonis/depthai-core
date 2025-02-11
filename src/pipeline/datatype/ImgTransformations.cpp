@@ -343,6 +343,22 @@ ImgTransformation& ImgTransformation::addRotation(float angle, dai::Point2f rota
     addTransformation(translateMatrixInv);
     return *this;
 }
+
+ImgTransformation& ImgTransformation::addRotation(std::array<std::array<float, 3>, 3> newRotationMatrix) {
+    rotationMatrix = matmul(newRotationMatrix, rotationMatrix);
+    rotationMatrixInverse = getMatrixInverse(rotationMatrix);
+    return *this;
+}
+
+ImgTransformation& ImgTransformation::resetRotation() {
+    rotationMatrix = rotationMatrixInverse = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
+    return *this;
+}
+
+std::array<std::array<float, 3>, 3> ImgTransformation::getRotation() {
+    return rotationMatrix;
+}
+
 ImgTransformation& ImgTransformation::addScale(float scaleX, float scaleY) {
     width = width * scaleX + ROUND_UP_EPS;
     height = height * scaleY + ROUND_UP_EPS;
