@@ -11,6 +11,31 @@
 
 #include "Logging.hpp"
 
+namespace {
+template <typename T>
+std::mutex& getEnvTypeMutex() {
+    static std::mutex mtx;
+    return mtx;
+}
+
+template <typename T>
+std::unordered_map<std::string, T>& getEnvTypeCache() {
+    static std::unordered_map<std::string, T> cache;
+    return cache;
+}
+
+template <typename T>
+std::string vec2str(const std::vector<T>& vec) {
+    std::ostringstream oss;
+    oss << "[";
+    for(size_t i = 0; i < vec.size(); ++i) {
+        oss << "'" << vec[i] << "'";
+    }
+    oss << "]";
+    return oss.str();
+}
+}  // namespace
+
 namespace dai {
 namespace utility {
 
@@ -25,9 +50,9 @@ namespace utility {
 template <typename T>
 T getEnvAs(const std::string& var, T defaultValue, spdlog::logger& logger) {
     // Lock to make sure there is no collision between threads
-    static std::mutex mtx;
-    static std::unordered_map<std::string, T> cache;
-    std::unique_lock<std::mutex> lock(mtx);
+    std::mutex& mutex = getEnvTypeMutex<T>();
+    std::unordered_map<std::string, T>& cache = getEnvTypeCache<T>();
+    std::unique_lock<std::mutex> lock(mutex);
 
     // Return immediately if cached
     if(cache.count(var) > 0) {
@@ -43,6 +68,7 @@ T getEnvAs(const std::string& var, T defaultValue, spdlog::logger& logger) {
     // If unspecified, return the default value
     if(useDefault) {
         cache[var] = defaultValue;
+        logger.warn("Environment variable {} is not set. Using default value: '{}'", var, defaultValue);
     }
 
     // If specified, convert to the corresponding data type
@@ -56,7 +82,16 @@ T getEnvAs(const std::string& var, T defaultValue, spdlog::logger& logger) {
 
             // bool
             else if constexpr(std::is_same_v<T, bool>) {
-                cache[var] = value == "1" || value == "true" || value == "TRUE" || value == "True";
+                if(value == "1" || value == "true" || value == "TRUE" || value == "True") {
+                    cache[var] = true;
+                } else if(value == "0" || value == "false" || value == "FALSE" || value == "False") {
+                    cache[var] = false;
+                } else {
+                    std::ostringstream message;
+                    message << "Failed to convert environment variable " << var << " from '" << value << "' to type " << typeid(T).name();
+                    message << ". Possible values are '1', 'true', 'TRUE', 'True', '0', 'false', 'FALSE', 'False'";
+                    throw std::runtime_error(message.str());
+                }
             }
 
             // anything else
@@ -67,14 +102,14 @@ T getEnvAs(const std::string& var, T defaultValue, spdlog::logger& logger) {
 
                 // Check for failure
                 if(iss.fail()) {
-                    throw std::runtime_error("Failed to convert environment variable " + var);
+                    throw std::runtime_error("Failed to convert environment variable " + var + " from '" + value + "' to type " + typeid(T).name());
                 }
 
                 cache[var] = result;
             }
 
-        } catch(const std::exception& e) {
-            logger.error("Failed to convert environment variable {}: {}. Using default value: {}", var, e.what(), defaultValue);
+        } catch(const std::runtime_error& e) {
+            logger.error("{}. Using default value instead: '{}'", e.what(), defaultValue);
             cache[var] = defaultValue;
         }
     }
@@ -94,22 +129,29 @@ T getEnvAs(const std::string& var, T defaultValue, spdlog::logger& logger) {
  */
 template <typename T>
 T getEnvAsChecked(const std::string& var, T defaultValue, const std::vector<T>& possibleValues, spdlog::logger& logger) {
+    // Check that default value is part of possible values
+    bool isDefaultValueValid = std::find(possibleValues.begin(), possibleValues.end(), defaultValue) != possibleValues.end();
+    if(!isDefaultValueValid) {
+        std::ostringstream message;
+        message << "Default value '" << defaultValue << "' is not part of the possible values: " << vec2str(possibleValues);
+        throw std::runtime_error(message.str());
+    }
+
     T value = getEnvAs<T>(var, defaultValue, logger);
     bool isValid = std::find(possibleValues.begin(), possibleValues.end(), value) != possibleValues.end();
 
     if(!isValid) {
         std::ostringstream message;
-        message << "Given value '" << value << "' is not part of the possible values: [";
-        for(int i = 0; i < possibleValues.size(); ++i) {
-            message << possibleValues[i];
-            if(i != possibleValues.size() - 1) {
-                message << ", ";
-            }
-        }
-        message << "]";
+        message << "Given value '" << value << "' is not part of the possible values: " << vec2str(possibleValues);
+        message << ". Using default value instead: '" << defaultValue << "'";
 
         // Log the error
         logger.error(message.str());
+
+        // Override the value in the cache
+        std::unique_lock<std::mutex> lock(getEnvTypeMutex<T>());
+        std::unordered_map<std::string, T>& cache = getEnvTypeCache<T>();
+        cache[var] = defaultValue;
 
         // use default value
         value = defaultValue;
