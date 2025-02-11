@@ -82,7 +82,7 @@ std::string DeviceInfo::getDeviceId() const {
 }
 
 std::string DeviceInfo::toString() const {
-    return fmt::format("DeviceInfo(name={}, mxid={}, {}, {}, {}, {})",
+    return fmt::format("DeviceInfo(name={}, deviceId={}, {}, {}, {}, {})",
                        name,
                        deviceId,
                        XLinkDeviceStateToStr(state),
