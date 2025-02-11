@@ -7,10 +7,6 @@ namespace dai {
 namespace node {
 
 void Script::buildInternal() {
-    // Set some default properties
-    properties.scriptUri = "";
-    properties.scriptName = "<script>";
-    properties.processor = ProcessorType::LEON_MSS;
 }
 
 void Script::setScriptPath(const dai::Path& path, const std::string& name) {
