@@ -1,6 +1,8 @@
 #include "depthai/pipeline/node/BenchmarkIn.hpp"
-#include "depthai/pipeline/datatype/BenchmarkReport.hpp"
+
 #include <chrono>
+
+#include "depthai/pipeline/datatype/BenchmarkReport.hpp"
 
 namespace dai {
 namespace node {
@@ -88,8 +90,7 @@ void BenchmarkIn::run() {
             }
 
             messageCount++;
-        } 
-        else {
+        } else {
             // We reached our batch size, so time to compute and send the report
             auto stop = steady_clock::now();
             duration<float> durationS = stop - start;

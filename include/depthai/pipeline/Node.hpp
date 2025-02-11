@@ -616,6 +616,9 @@ class Node : public std::enable_shared_from_this<Node> {
     /// Loads resource specified by URI and returns its data
     std::vector<uint8_t> loadResource(dai::Path uri);
 
+    /// Moves the resource out
+    std::vector<uint8_t> moveResource(dai::Path uri);
+
     /// Create and place Node to this Node
     template <class N>
     std::shared_ptr<N> create() {

@@ -224,8 +224,9 @@ void logCrashDump(const std::optional<PipelineSchema>& pipelineSchema, const Gen
     } else {
         crashDumpPathLocal /= crashDumpData.name;
     }
-    auto errorString = fmt::format(
-        "Device with id {} has crashed. Crash dump logs are stored in: {} - please report to developers.", deviceInfo.getDeviceId(), crashDumpPathLocal.string());
+    auto errorString = fmt::format("Device with id {} has crashed. Crash dump logs are stored in: {} - please report to developers.",
+                                   deviceInfo.getDeviceId(),
+                                   crashDumpPathLocal.string());
 
     std::error_code ec;
     fs::create_directories(crashDumpPathLocal.parent_path(), ec);

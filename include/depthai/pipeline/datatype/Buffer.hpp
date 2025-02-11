@@ -2,8 +2,8 @@
 
 #include <chrono>
 #include <unordered_map>
-#include <vector>
 #include <variant>
+#include <vector>
 
 #include "depthai/common/Timestamp.hpp"
 #include "depthai/pipeline/datatype/ADatatype.hpp"

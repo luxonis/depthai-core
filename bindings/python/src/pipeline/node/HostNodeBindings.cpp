@@ -6,7 +6,7 @@
 #include "depthai/pipeline/node/host/HostNode.hpp"
 
 extern py::handle daiNodeModule;
-extern py::object messageQueueException; // Needed to be able to catch in C++ after it's raised on the Python side
+extern py::object messageQueueException;  // Needed to be able to catch in C++ after it's raised on the Python side
 
 using namespace dai;
 using namespace dai::node;
@@ -45,17 +45,17 @@ class PyHostNode : public NodeCRTP<HostNode, PyHostNode> {
     }
 };
 
-void bind_hostnode(pybind11::module& m, void* pCallstack){
+void bind_hostnode(pybind11::module& m, void* pCallstack) {
     // declare upfront
-    auto threadedHostNode =
-        py::class_<ThreadedHostNode, PyThreadedHostNode, ThreadedNode, std::shared_ptr<ThreadedHostNode>>(daiNodeModule, "ThreadedHostNode", DOC(dai, node, ThreadedHostNode));
+    auto threadedHostNode = py::class_<ThreadedHostNode, PyThreadedHostNode, ThreadedNode, std::shared_ptr<ThreadedHostNode>>(
+        daiNodeModule, "ThreadedHostNode", DOC(dai, node, ThreadedHostNode));
     auto hostNode = py::class_<HostNode, PyHostNode, ThreadedHostNode, std::shared_ptr<HostNode>>(daiNodeModule, "HostNode", DOC(dai, node, HostNode));
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
     // Call the rest of the type defines, then perform the actual bindings
-    Callstack* callstack = (Callstack*) pCallstack;
+    Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);

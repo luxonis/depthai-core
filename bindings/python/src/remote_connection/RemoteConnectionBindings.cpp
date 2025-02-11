@@ -5,8 +5,8 @@
 #include <pybind11/functional.h>
 #include <pybind11/gil.h>
 
-#include "depthai/remote_connection/RemoteConnection.hpp"
 #include "depthai/pipeline/InputQueue.hpp"
+#include "depthai/remote_connection/RemoteConnection.hpp"
 
 void RemoteConnectionBindings::bind(pybind11::module& m, void* pCallstack) {
     using namespace dai;
@@ -47,19 +47,19 @@ void RemoteConnectionBindings::bind(pybind11::module& m, void* pCallstack) {
              DOC(dai, RemoteConnection, addTopic))
         .def("registerPipeline", &RemoteConnection::registerPipeline, py::arg("pipeline"), DOC(dai, RemoteConnection, registerPipeline))
         .def("registerService", &RemoteConnection::registerService, py::arg("serviceName"), py::arg("callback"), DOC(dai, RemoteConnection, registerService))
-        .def("waitKey",
-             &RemoteConnection::waitKey,
-             py::arg("delay"),
-             py::call_guard<py::gil_scoped_release>(),
-             DOC(dai, RemoteConnection, waitKey));
+        .def("waitKey", &RemoteConnection::waitKey, py::arg("delay"), py::call_guard<py::gil_scoped_release>(), DOC(dai, RemoteConnection, waitKey));
 #else
-     // Define a placeholder class for RemoteConnection
+    // Define a placeholder class for RemoteConnection
     struct RemoteConnectionPlaceholder {
         RemoteConnectionPlaceholder(const std::string& /*address*/, uint16_t /*port*/, bool /*serveFrontend*/, uint16_t /*httpPort*/) {
             throw std::runtime_error("Remote connection is not enabled in this build.");
         }
     };
-     py::class_<RemoteConnectionPlaceholder>(m, "RemoteConnection")
-          .def(py::init<const std::string&, uint16_t, bool, uint16_t>(), py::arg("address") = "", py::arg("port") = 0, py::arg("serveFrontend") = true, py::arg("httpPort") = 0);
+    py::class_<RemoteConnectionPlaceholder>(m, "RemoteConnection")
+        .def(py::init<const std::string&, uint16_t, bool, uint16_t>(),
+             py::arg("address") = "",
+             py::arg("port") = 0,
+             py::arg("serveFrontend") = true,
+             py::arg("httpPort") = 0);
 #endif
 }

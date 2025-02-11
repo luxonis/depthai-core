@@ -1,13 +1,11 @@
-#include "NodeBindings.hpp"
 #include "Common.hpp"
-
-#include "depthai/properties/SyncProperties.hpp"
-#include "depthai/pipeline/Pipeline.hpp"
+#include "NodeBindings.hpp"
 #include "depthai/pipeline/Node.hpp"
+#include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/node/Sync.hpp"
+#include "depthai/properties/SyncProperties.hpp"
 
-void bind_sync(pybind11::module& m, void* pCallstack){
-
+void bind_sync(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::node;
 
@@ -19,7 +17,7 @@ void bind_sync(pybind11::module& m, void* pCallstack){
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
     // Call the rest of the type defines, then perform the actual bindings
-    Callstack* callstack = (Callstack*) pCallstack;
+    Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
@@ -29,10 +27,7 @@ void bind_sync(pybind11::module& m, void* pCallstack){
     ///////////////////////////////////////////////////////////////////////
 
     // Properties
-    syncProperties
-        .def_readwrite("syncThresholdNs", &SyncProperties::syncThresholdNs)
-        .def_readwrite("syncAttempts", &SyncProperties::syncAttempts)
-        ;
+    syncProperties.def_readwrite("syncThresholdNs", &SyncProperties::syncThresholdNs).def_readwrite("syncAttempts", &SyncProperties::syncAttempts);
 
     // Node
     sync.def_readonly("out", &Sync::out, DOC(dai, node, Sync, out))
@@ -42,8 +37,6 @@ void bind_sync(pybind11::module& m, void* pCallstack){
         .def("getSyncThreshold", &Sync::getSyncThreshold, DOC(dai, node, Sync, getSyncThreshold))
         .def("getSyncAttempts", &Sync::getSyncAttempts, DOC(dai, node, Sync, getSyncAttempts))
         .def("setRunOnHost", &Sync::setRunOnHost, py::arg("runOnHost"), DOC(dai, node, Sync, setRunOnHost))
-        .def("runOnHost", &Sync::runOnHost, DOC(dai, node, Sync, runOnHost))
-        ;
+        .def("runOnHost", &Sync::runOnHost, DOC(dai, node, Sync, runOnHost));
     daiNodeModule.attr("Sync").attr("Properties") = syncProperties;
-
 }
