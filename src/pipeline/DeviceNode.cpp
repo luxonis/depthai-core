@@ -58,13 +58,23 @@ void DeviceNode::run() {
 }
 
 void DeviceNode::setLogLevel(dai::LogLevel level) {
-    int64_t myid = id;
-    device->setNodeLogLevel(myid, level);
+    const bool isHostNode = runOnHost();
+    if(isHostNode) {
+        ThreadedNode::setLogLevel(level);
+    } else {
+        int64_t myid = id;
+        device->setNodeLogLevel(myid, level);
+    }
 }
 
 dai::LogLevel DeviceNode::getLogLevel() const {
-    int64_t myid = id;
-    return device->getNodeLogLevel(myid);
+    const bool isHostNode = runOnHost();
+    if (isHostNode) {
+        return ThreadedNode::getLogLevel();
+    } else {
+        int64_t myid = id;
+        return device->getNodeLogLevel(myid);
+    }
 }
 
 }  // namespace dai
