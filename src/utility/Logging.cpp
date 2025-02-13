@@ -8,10 +8,14 @@ Logging::Logging() : logger("depthai", {std::make_shared<spdlog::sinks::stdout_c
     // Taken from spdlog, to replace with DEPTHAI_LEVEL instead of SPDLOG_LEVEL
     // spdlog::cfg::load_env_levels();
     auto level = spdlog::level::warn;
+    // Set the logging level to warn by default, so it doesn't spam the consol with the env checks.
+    logger.set_level(level);
     auto envLevel = utility::getEnvAs<std::string>("DEPTHAI_LEVEL", "", logger);
     if(!envLevel.empty()) {
         level = parseLevel(envLevel);
     }
+
+    // Set the logging level to the parsed level
     logger.set_level(level);
 
     auto debugStr = utility::getEnvAs<std::string>("DEPTHAI_DEBUG","", logger);
