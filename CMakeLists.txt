@@ -25,6 +25,7 @@ if(WIN32)
 
     # Statically compile vcruntime library
     add_compile_options(/MT)
+    add_compile_options(/MP)
 endif()
 
 find_program(CCACHE_PROGRAM ccache)
