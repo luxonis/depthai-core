@@ -41,10 +41,10 @@ int main() {
     stereo->enableDistortionCorrection(true);
     stereo->initialConfig.setLeftRightCheckThreshold(10);
 
-    auto* out = color->requestOutput(std::pair<int, int>(1280, 720), dai::ImgFrame::Type::RGB888i);
+    auto* out = color->requestOutput(std::pair<int, int>(640, 400), dai::ImgFrame::Type::RGB888i);
 
-    left->requestOutput(std::pair<int, int>(1280, 720))->link(stereo->left);
-    right->requestOutput(std::pair<int, int>(1280, 720))->link(stereo->right);
+    left->requestOutput(std::pair<int, int>(640, 400))->link(stereo->left);
+    right->requestOutput(std::pair<int, int>(640, 400))->link(stereo->right);
 
     auto platform = pipeline.getDefaultDevice()->getPlatform();
     if(platform == dai::Platform::RVC4) {
