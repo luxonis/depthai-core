@@ -5,8 +5,8 @@
         #define MCAP_EXPORT __attribute__((dllexport))
         #define MCAP_IMPORT __attribute__((dllimport))
     #else
-        #define MCAP_EXPORT __declspec(dllexport)
-        #define MCAP_IMPORT __declspec(dllimport)
+        #define MCAP_EXPORT
+        #define MCAP_IMPORT
     #endif
     #ifdef MCAP_IMPLEMENTATION
         #define MCAP_PUBLIC MCAP_EXPORT

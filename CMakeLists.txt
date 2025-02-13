@@ -104,6 +104,8 @@ else()
     message(STATUS "DEPTHAI_BOOTSTRAP_VCPKG is OFF")
 endif()
 
+# Statically compile vcruntime library
+add_compile_options(/MT)
 
 if(DEPTHAI_ENABLE_PROTOBUF)
     option(DEPTHAI_ENABLE_REMOTE_CONNECTION "Enable Remote Connection support" ON)

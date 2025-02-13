@@ -34,6 +34,7 @@
                     "features": [
                         "calib3d",
                         "highgui",
+                        "win32ui",
                         "jpeg",
                         "png",
                         "quirc",

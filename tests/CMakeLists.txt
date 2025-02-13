@@ -3,6 +3,7 @@ include(CTest)
 enable_testing()
 
 # Add Catch2 for writing tests
+set(Catch2_DIR "${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows/share/Catch2/")
 find_package(Catch2 CONFIG REQUIRED)
 
 # Print details of the Catch2 package
