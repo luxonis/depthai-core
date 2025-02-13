@@ -557,6 +557,10 @@ if(DEPTHAI_MERGED_TARGET)
     target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_MERGED_TARGET)
 endif()
 
+if(NOT BUILD_SHARED_LIBS)
+    target_compile_definitions(${TARGET_CORE_NAME} PUBLIC MCAP_STATIC)
+endif()
+
 # First specify options
 option(DEPTHAI_BUILD_EXAMPLES "Build examples - Requires OpenCV library to be installed" OFF)
 option(DEPTHAI_BUILD_DOCS "Build documentation - requires doxygen to be installed" OFF)
