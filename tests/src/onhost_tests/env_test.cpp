@@ -1,22 +1,39 @@
 #define CATCH_CONFIG_MAIN  // This tells Catch to provide a main() - only do this in one cpp file
-#include <cassert>
 #include <catch2/catch_all.hpp>
 #include <cstdlib>
 #include <string>
 #include <vector>
 
 #include "../../../src/utility/Environment.hpp"
+
+#ifdef _WIN32
+    #include <windows.h>
+    #include <cstdlib>
+#endif
+
 using namespace dai::utility;
 
 // Test helper functions
 namespace {
 void setEnvironmentVariable(const std::string& key, const std::string& value) {
+#ifdef _WIN32
+    // Use Windows API to set environment variables
+    SetEnvironmentVariableA(key.c_str(), value.c_str());
+    _putenv_s(key.c_str(), value.c_str());
+#else
     constexpr int overwrite = 1;  // Overwrite if variable already exists
     setenv(key.c_str(), value.c_str(), overwrite);
+#endif
 }
 
 void unsetEnvironmentVariable(const std::string& key) {
+#ifdef _WIN32
+    // Use Windows API to remove environment variables
+    SetEnvironmentVariableA(key.c_str(), nullptr);
+    _putenv_s(key.c_str(), "");
+#else
     unsetenv(key.c_str());
+#endif
 }
 }  // namespace
 
