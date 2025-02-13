@@ -20,8 +20,6 @@
 #include <depthai/openvino/OpenVINO.hpp>
 #include <depthai/utility/Path.hpp>
 
-#include "Environment.hpp"
-
 namespace dai {
 
 class Logging {
