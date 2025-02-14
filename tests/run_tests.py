@@ -47,7 +47,7 @@ def run_ctest(env_vars, labels, blocking=True, name=""):
     env = os.environ.copy()
     env.update(env_vars)
 
-    cmd = ["ctest", "--no-tests=error", "-VV", "-L", "^ci$", "--timeout", "1000", "-C", "Release", "-N"]
+    cmd = ["ctest", "--no-tests=error", "-VV", "-L", "^ci$", "--timeout", "1000", "-C", "Release"]
 
     if os.name == "nt":
         cmd.extend(["-LE", "^nowindows$"])
