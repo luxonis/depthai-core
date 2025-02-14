@@ -1,5 +1,6 @@
 #include "Common.hpp"
 #include "NodeBindings.hpp"
+#include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/pipeline/Node.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/node/SpatialDetectionNetwork.hpp"
@@ -53,12 +54,30 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack) {
             py::arg("fps") = 30.0f,
             DOC(dai, node, SpatialDetectionNetwork, build, 2))
         .def("build",
-             py::overload_cast<const std::shared_ptr<Camera>&, const std::shared_ptr<StereoDepth>&, NNArchive, float>(&SpatialDetectionNetwork::build),
+             py::overload_cast<const std::shared_ptr<Camera>&, const std::shared_ptr<StereoDepth>&, const NNArchive&, float>(&SpatialDetectionNetwork::build),
              py::arg("input"),
              py::arg("stereo"),
              py::arg("nnArchive"),
              py::arg("fps") = 30.0f,
              DOC(dai, node, SpatialDetectionNetwork, build, 2))
+        .def("build",
+             py::overload_cast<const std::shared_ptr<ReplayVideo>&, const std::shared_ptr<StereoDepth>&, NNModelDescription, float, CameraBoardSocket>(
+                 &SpatialDetectionNetwork::build),
+             py::arg("input"),
+             py::arg("stereo"),
+             py::arg("model"),
+             py::arg("fps") = 30.0f,
+             py::arg("cameraSocket") = CameraBoardSocket::AUTO,
+             DOC(dai, node, SpatialDetectionNetwork, build, 3))
+        .def("build",
+             py::overload_cast<const std::shared_ptr<ReplayVideo>&, const std::shared_ptr<StereoDepth>&, const NNArchive&, float, CameraBoardSocket>(
+                 &SpatialDetectionNetwork::build),
+             py::arg("input"),
+             py::arg("stereo"),
+             py::arg("nnArchive"),
+             py::arg("fps") = 30.0f,
+             py::arg("cameraSocket") = CameraBoardSocket::AUTO,
+             DOC(dai, node, SpatialDetectionNetwork, build, 4))
         .def("setBlobPath", &SpatialDetectionNetwork::setBlobPath, py::arg("path"), DOC(dai, node, SpatialDetectionNetwork, setBlobPath))
         .def("setNumPoolFrames", &SpatialDetectionNetwork::setNumPoolFrames, py::arg("numFrames"), DOC(dai, node, SpatialDetectionNetwork, setNumPoolFrames))
         .def("setNumInferenceThreads",
