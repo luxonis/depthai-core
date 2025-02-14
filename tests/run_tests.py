@@ -47,7 +47,11 @@ def run_ctest(env_vars, labels, blocking=True, name=""):
     env = os.environ.copy()
     env.update(env_vars)
 
-    cmd = ["ctest", "--no-tests=error", "-VV", "-L", "^ci$", "--timeout", "1000", "-C", "Release"]
+    cmd = ["ctest", "--no-tests=error", "-VV", "-L", "^ci$", "--timeout", "1000", "-C", "Release", "-N"]
+
+    if os.name == "nt":
+        cmd.extend(["-LE", "^nowindows$"])
+
     for label in labels:
         # Encapsulate label in ^label$ to match exactly
         label = f"^{label}$"

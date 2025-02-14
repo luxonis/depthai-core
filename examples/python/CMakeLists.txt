@@ -136,13 +136,13 @@ dai_set_example_test_labels(camera_multiple_outputs ondevice rvc2_all rvc4 ci)
 
 ## AprilTags
 add_python_example(april_tags_12mp AprilTags/april_tags_12mp.py)
-dai_set_example_test_labels(april_tags_12mp ondevice rvc2_all rvc4 ci)
+dai_set_example_test_labels(april_tags_12mp ondevice rvc2_all rvc4 ci nowindows)
 
 add_python_example(april_tags AprilTags/april_tags.py)
-dai_set_example_test_labels(april_tags ondevice rvc2_all rvc4 ci)
+dai_set_example_test_labels(april_tags ondevice rvc2_all rvc4 ci nowindows)
 
 add_python_example(april_tags_replay AprilTags/april_tags_replay.py)
-dai_set_example_test_labels(april_tags_replay ondevice rvc2_all rvc4 ci)
+dai_set_example_test_labels(april_tags_replay ondevice rvc2_all rvc4 ci nowindows)
 
 ## Detection network
 add_python_example(detection_network DetectionNetwork/detection_network.py)
