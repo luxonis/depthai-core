@@ -20,8 +20,6 @@
 #include <depthai/openvino/OpenVINO.hpp>
 #include <depthai/utility/Path.hpp>
 
-#include "Environment.hpp"
-
 namespace dai {
 
 LogLevel spdlogLevelToLogLevel(spdlog::level::level_enum level, LogLevel defaultValue = LogLevel::OFF);

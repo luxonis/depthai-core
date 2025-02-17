@@ -59,7 +59,7 @@ const unsigned int DEFAULT_CRASHDUMP_TIMEOUT = 9000;
 
 // local static function
 static void getFlashingPermissions(bool& factoryPermissions, bool& protectedPermissions) {
-    auto permissionEnv = utility::getEnv("DEPTHAI_ALLOW_FACTORY_FLASHING");
+    auto permissionEnv = utility::getEnvAs<std::string>("DEPTHAI_ALLOW_FACTORY_FLASHING", "");
     if(permissionEnv == MAGIC_FACTORY_FLASHING_VALUE) {
         factoryPermissions = true;
         protectedPermissions = false;
@@ -84,7 +84,7 @@ constexpr int DeviceBase::DEFAULT_TIMESYNC_NUM_SAMPLES;
 
 std::chrono::milliseconds DeviceBase::getDefaultSearchTime() {
     std::chrono::milliseconds defaultSearchTime = DEFAULT_SEARCH_TIME;
-    auto searchTimeStr = utility::getEnv("DEPTHAI_SEARCH_TIMEOUT");
+    auto searchTimeStr = utility::getEnvAs<std::string>("DEPTHAI_SEARCH_TIMEOUT", "");
 
     if(!searchTimeStr.empty()) {
         // Try parsing the string as a number
@@ -481,15 +481,10 @@ void DeviceBase::close() {
 }
 
 unsigned int getCrashdumpTimeout(XLinkProtocol_t protocol) {
-    std::string timeoutStr = utility::getEnv("DEPTHAI_CRASHDUMP_TIMEOUT");
-    if(!timeoutStr.empty()) {
-        try {
-            return std::stoi(timeoutStr) * 1000;
-        } catch(const std::invalid_argument& e) {
-            logger::warn("DEPTHAI_CRASHDUMP_TIMEOUT value invalid: {}", e.what());
-        }
-    }
-    return DEFAULT_CRASHDUMP_TIMEOUT + (protocol == X_LINK_TCP_IP ? device::XLINK_TCP_WATCHDOG_TIMEOUT.count() : device::XLINK_USB_WATCHDOG_TIMEOUT.count());
+    int defaultTimeout = DEFAULT_CRASHDUMP_TIMEOUT + (protocol == X_LINK_TCP_IP ? device::XLINK_TCP_WATCHDOG_TIMEOUT.count() : device::XLINK_USB_WATCHDOG_TIMEOUT.count());
+    int timeoutSeconds = utility::getEnvAs<int>("DEPTHAI_CRASHDUMP_TIMEOUT", defaultTimeout);
+    int timeoutMs = timeoutSeconds * 1000;
+    return timeoutMs;
 }
 
 void DeviceBase::closeImpl() {
@@ -709,7 +704,7 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipelin
     if(deviceInfo.protocol == X_LINK_TCP_IP) {
         watchdogTimeout = device::XLINK_TCP_WATCHDOG_TIMEOUT;
     }
-    auto watchdogMsStr = utility::getEnv("DEPTHAI_WATCHDOG");
+    auto watchdogMsStr = utility::getEnvAs<std::string>("DEPTHAI_WATCHDOG", "");
     if(!watchdogMsStr.empty()) {
         // Try parsing the string as a number
         try {
@@ -726,7 +721,7 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipelin
         }
     }
 
-    auto watchdogInitMsStr = utility::getEnv("DEPTHAI_WATCHDOG_INITIAL_DELAY");
+    auto watchdogInitMsStr = utility::getEnvAs<std::string>("DEPTHAI_WATCHDOG_INITIAL_DELAY", "");
     if(!watchdogInitMsStr.empty()) {
         // Try parsing the string as a number
         try {
@@ -738,7 +733,7 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipelin
         }
     }
 
-    auto deviceDebugStr = utility::getEnv("DEPTHAI_DEBUG");
+    auto deviceDebugStr = utility::getEnvAs<std::string>("DEPTHAI_DEBUG", "");
     if(!deviceDebugStr.empty()) {
         // Try parsing the string as a number
         try {
@@ -983,7 +978,7 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipelin
             loggingRunning = false;
         });
 
-        if(utility::getEnv("DEPTHAI_PROFILING") == "1") {
+        if(utility::getEnvAs<std::string>("DEPTHAI_PROFILING", "") == "1") {
             // prepare profiling thread, which will log device messages
             profilingThread = std::thread([this]() {
                 using namespace std::chrono;
@@ -1016,7 +1011,7 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipelin
                 profilingRunning = false;
             });
         }
-        auto crashdumpPathStr = utility::getEnv("DEPTHAI_CRASHDUMP");
+        auto crashdumpPathStr = utility::getEnvAs<std::string>("DEPTHAI_CRASHDUMP", "");
         if(crashdumpPathStr == "0") {
             pimpl->rpcClient->call("enableCrashDump", false);
         } else {
@@ -1070,7 +1065,7 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, Prev
                 break;
             }
             auto reconnectionTimeoutMs = 10000;
-            auto timeoutStr = utility::getEnv("DEPTHAI_RECONNECT_TIMEOUT");
+            auto timeoutStr = utility::getEnvAs<std::string>("DEPTHAI_RECONNECT_TIMEOUT", "");
             if(!timeoutStr.empty()) {
                 try {
                     reconnectionTimeoutMs = std::stoi(timeoutStr);
@@ -1250,7 +1245,7 @@ std::string DeviceBase::getConnectedIMU() {
 void DeviceBase::crashDevice() {
     isClosed();
     // Check that the protective ENV variable is set
-    if(utility::getEnv("DEPTHAI_CRASH_DEVICE") != "1") {
+    if(utility::getEnvAs<std::string>("DEPTHAI_CRASH_DEVICE", "") != "1") {
         pimpl->logger.error("Crashing the device is disabled. Set DEPTHAI_CRASH_DEVICE=1 to enable.");
         return;
     }
