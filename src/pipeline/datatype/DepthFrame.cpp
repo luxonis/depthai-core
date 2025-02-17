@@ -115,16 +115,20 @@ float DepthFrame::getMax() {
     return z;
 }
 
-DepthSource DepthFrame::getSource() const {
+DepthFrame::DepthSource DepthFrame::getSource() const {
     return source;
 }
 
-CameraBoardSocket DepthFrame::getLeftCamera() const {
+std::optional<CameraBoardSocket> DepthFrame::getLeftBoardSocket(){
     return leftCamera;
 }
 
-CameraBoardSocket DepthFrame::getRightCamera() const {
-    return rightCamera;
+StereoDepthConfig::AlgorithmControl::DepthUnit DepthFrame::getDepthUnit() {
+    if(source == DepthSource::Stereo) {
+        return std::get<StereoDepthConfig>(config).algorithmControl.depthUnit;
+    } else {
+        return StereoDepthConfig::AlgorithmControl::DepthUnit::MILLIMETER;
+    }
 }
 
 float DepthFrame::getScale() {
