@@ -197,7 +197,7 @@ bool setupHolisticReplay(Pipeline& pipeline,
         std::vector<std::string> outFiles;
         inFiles.reserve(sources.size() + 1);
         outFiles.reserve(sources.size() + 1);
-        if(!useTar || allMatch(tarNodenames, pipelineFilenames)) {
+        if(!useTar || allMatch(pipelineFilenames, tarNodenames)) {
             for(auto& nodeName : nodeNames) {
                 // auto filename = (deviceId + "_").append(nodeName);
                 auto filename = nodeName;

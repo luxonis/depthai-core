@@ -12,7 +12,7 @@ int main(int argc, char** argv) {
     auto imu = pipeline.create<dai::node::IMU>();
     auto display = pipeline.create<dai::node::Display>();
 
-    auto camOut = cam->requestOutput({720, 1280}, dai::ImgFrame::Type::NV12);
+    auto camOut = cam->requestOutput({1280, 720}, dai::ImgFrame::Type::NV12);
 
     // enable ACCELEROMETER_RAW at 500 hz rate
     imu->enableIMUSensor(dai::IMUSensor::ACCELEROMETER_RAW, 500);
