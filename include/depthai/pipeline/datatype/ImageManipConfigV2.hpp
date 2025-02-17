@@ -227,10 +227,7 @@ class ImageManipOpsBase : public ImageManipOpsEnums {
     Colormap colormap = Colormap::NONE;
     bool undistort = false;
 
-    C operations{};
-
-    ImageManipOpsBase() = default;
-    virtual ~ImageManipOpsBase() = default;
+    C operations;
 
     template <typename C2>
     void cloneTo(ImageManipOpsBase<C2>& to) const {

@@ -1,0 +1,116 @@
+name: Zoo Helper
+
+on:
+  workflow_dispatch:
+
+env:
+  CMAKE_WINDOWS_SDK_VERSION: '10.0.18362.0'
+  VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+
+jobs:
+  build-zoo-helper-linux-x86_64:
+    runs-on: ubuntu-latest
+    container:
+      image: almalinux:8
+    steps:
+      - name: Cache .hunter folder
+        uses: actions/cache@v3
+        with:
+          path: ~/.hunter
+          key: hunter-almalinux-8-v3-develop-x86_64
+
+      - name: Install git
+        run: dnf install -y git
+
+      - name: Export GitHub Actions cache environment variables
+        uses: actions/github-script@v7
+        with:
+          script: |
+           core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+           core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
+      - uses: actions/checkout@v3
+        with:
+          submodules: 'recursive'
+
+      - name: Install dependencies
+        run: |
+          dnf update -y
+          dnf install -y pkgconf-pkg-config bison autoconf libtool libXi-devel libXtst-devel cmake zip perl-core python39
+          dnf install -y libXrandr-devel libX11-devel libXft-devel libXext-devel flex systemd-devel
+          dnf install -y gcc-c++ automake libtool-ltdl-devel wget
+          wget https://www.nasm.us/pub/nasm/releasebuilds/2.16.01/nasm-2.16.01.tar.gz && tar -xzf nasm-2.16.01.tar.gz && cd nasm-2.16.01 && ./configure && make && make install && cd .. # install nasm - build from source
+          pip3 install jinja2
+
+      - name: Configure project
+        run: cmake -S . -B build -DDEPTHAI_ENABLE_CURL=ON -DCMAKE_BUILD_TYPE=MinSizeRel
+
+      - name: Build zoo_helper
+        run: cmake --build build --target zoo_helper --parallel 4
+
+      - name: Strip zoo_helper
+        run: strip ./build/zoo_helper # Shrinks the size of the binary a little bit by removing symbols: https://www.man7.org/linux/man-pages/man1/strip.1.html
+
+      - name: Upload zoo_helper to artifactory
+        run: |
+          bash ./ci/upload-artifactory-zoo-helper.sh
+        env:
+          ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
+          ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
+          ARTIFACTORY_PASS: ${{ secrets.ARTIFACTORY_PASS }}
+          ZOO_HELPER_PLATFORM: linux-x86_64
+
+  build-zoo-helper-linux-arm64:
+    runs-on: [self-hosted, linux, ARM64]
+    container:
+      image: arm64v8/almalinux:8
+      # Mount local hunter cache directory, instead of transfering to Github and back
+      volumes:
+        - /.hunter:/github/home/.hunter
+    env:
+      # workaround required for cache@v3, https://github.com/actions/cache/issues/1428
+      VCPKG_FORCE_SYSTEM_BINARIES: "1" # Needed so vpckg can bootstrap itself
+      VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+      VCPKG_MAX_CONCURRENCY: "2"
+    steps:
+      - name: Install git
+        run: dnf install -y git
+
+      - name: Export GitHub Actions cache environment variables
+        uses: actions/github-script@v7
+        with:
+          script: |
+           core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+           core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
+      - uses: actions/checkout@v3
+        with:
+          submodules: 'recursive'
+
+      - name: Install dependencies
+        run: |
+          dnf update -y
+          dnf install -y pkgconf-pkg-config bison autoconf libtool libXi-devel libXtst-devel cmake git zip perl-core python39
+          dnf install -y libXrandr-devel libX11-devel libXft-devel libXext-devel flex systemd-devel
+          dnf install -y gcc-c++ automake libtool-ltdl-devel wget
+          wget https://www.nasm.us/pub/nasm/releasebuilds/2.16.01/nasm-2.16.01.tar.gz && tar -xzf nasm-2.16.01.tar.gz && cd nasm-2.16.01 && ./configure && make && make install && cd .. # install nasm - build from source
+          pip3 install jinja2
+          pip3 install ninja # ninja is needed for cmake on arm64
+
+      - name: Configure project
+        run: cmake -S . -B build -DDEPTHAI_ENABLE_CURL=ON -DCMAKE_BUILD_TYPE=MinSizeRel
+
+      - name: Build zoo_helper
+        run: cmake --build build --target zoo_helper --parallel 4
+
+      - name: Strip zoo_helper
+        run: strip ./build/zoo_helper # Shrinks the size of the binary a little bit by removing symbols: https://www.man7.org/linux/man-pages/man1/strip.1.html
+
+      - name: Upload zoo_helper to artifactory
+        run: |
+          bash ./ci/upload-artifactory-zoo-helper.sh
+        env:
+          ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
+          ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
+          ARTIFACTORY_PASS: ${{ secrets.ARTIFACTORY_PASS }}
+          ZOO_HELPER_PLATFORM: linux-arm64
