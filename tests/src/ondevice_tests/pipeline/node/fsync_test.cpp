@@ -25,9 +25,7 @@ void testFsync(float fps, Thresholds thresholds, std::shared_ptr<dai::Device> de
 
     auto sync = p.create<dai::node::Sync>();
     // Convert frame sync threshold to nanoseconds
-    auto thresholdNs = std::chrono::duration_cast<std::chrono::nanoseconds>(
-        std::chrono::duration<double>(0.5 / fps)
-    );
+    auto thresholdNs = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::duration<double>(0.5 / fps));
 
     sync->setSyncThreshold(thresholdNs);
     left->requestOutput(std::make_pair(640, 400), std::nullopt, dai::ImgResizeMode::CROP, fps)->link(sync->inputs["left"]);
@@ -38,7 +36,6 @@ void testFsync(float fps, Thresholds thresholds, std::shared_ptr<dai::Device> de
     benchmarkIn->sendReportEveryNMessages(25);
     sync->out.link(benchmarkIn->input);
     auto benchmarkQueue = benchmarkIn->report.createOutputQueue(10, false);
-
 
     auto syncQueue = sync->out.createOutputQueue(10, false);
     p.start();
@@ -54,15 +51,12 @@ void testFsync(float fps, Thresholds thresholds, std::shared_ptr<dai::Device> de
         auto rgbFrame = syncData->get<dai::ImgFrame>("rgb");
         REQUIRE(rgbFrame != nullptr);
 
-
         auto rgbTimestamp = rgbFrame->getTimestampDevice();
         auto leftTimestamp = leftFrame->getTimestampDevice();
         auto rightTimestamp = rightFrame->getTimestampDevice();
 
         // Compute the absolute difference between left and right timestamps.
-        auto diffLeftRight = (leftTimestamp > rightTimestamp)
-                                 ? (leftTimestamp - rightTimestamp)
-                                 : (rightTimestamp - leftTimestamp);
+        auto diffLeftRight = (leftTimestamp > rightTimestamp) ? (leftTimestamp - rightTimestamp) : (rightTimestamp - leftTimestamp);
 
         // Compute the difference between the maximum and minimum timestamps among all frames.
         auto maxTimestamp = std::max({leftTimestamp, rightTimestamp, rgbTimestamp});
@@ -89,7 +83,7 @@ void testFsyncIntegrated(float fps) {
     auto device = std::make_shared<dai::Device>();
     if(device->getPlatform() == dai::Platform::RVC4) {
         testFsync(fps, RVC4_THRESHOLDS, device);
-    } else if (device->getPlatform() == dai::Platform::RVC2) {
+    } else if(device->getPlatform() == dai::Platform::RVC2) {
         testFsync(fps, RVC2_THRESHOLDS, device);
     } else {
         throw std::runtime_error("Unsupported platform");
