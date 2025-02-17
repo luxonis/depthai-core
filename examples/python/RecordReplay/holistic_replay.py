@@ -5,7 +5,7 @@ import depthai as dai
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-s", "--source", default="recordings/recording.tar.gz", help="Recording path")
+parser.add_argument("-s", "--source", default="recordings/recording.tar", help="Recording path")
 args = parser.parse_args()
 
 # Create pipeline

@@ -22,7 +22,7 @@ int main(int argc, char** argv) {
     camOut->link(display->input);
     auto q = imu->out.createOutputQueue();
 
-    pipeline.enableHolisticReplay(argc > 1 ? std::string(argv[1]) : "recording.tar.gz");
+    pipeline.enableHolisticReplay(argc > 1 ? std::string(argv[1]) : "recording.tar");
 
     pipeline.start();
 
