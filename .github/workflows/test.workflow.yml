@@ -26,10 +26,6 @@ jobs:
       matrix:
         arch: ['x64']
         flavor: ['vanilla', 'asan-ubsan', 'tsan']
-        exclude:
-          - os: 'windows'
-            arch: 'x64'
-            flavor: 'tsan'
       fail-fast: false
     runs-on: ['self-hosted', 'testbed-runner']
 
@@ -69,10 +65,6 @@ jobs:
           arch: ['x64']
           flavor: ['vanilla', 'asan-ubsan', 'tsan']
           rvc4os: ['r851.1.2']
-          exclude:
-            - os: 'windows'
-              arch: 'x64'
-              flavor: 'tsan'
         fail-fast: false
       runs-on: ['self-hosted', 'testbed-runner']
 
@@ -98,7 +90,8 @@ jobs:
 
   windows_rvc2_rvc4_test:
     runs-on: ['self-hosted', 'windows']
-
+    env:
+      LOCALAPPDATA: "C:/actions-runner/vcpkg_cache"
     steps:
     - uses: actions/checkout@v3
       with:
