@@ -205,7 +205,7 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
                 throw std::invalid_argument(fmt::format("Node '{}' should subclass DeviceNode or have hostNode == true", info.name));
             }
             deviceNode->getProperties().serialize(info.properties, type);
-
+            info.logLevel = deviceNode->getLogLevel();
             // Create Io information
             auto inputs = node->getInputs();
             auto outputs = node->getOutputs();

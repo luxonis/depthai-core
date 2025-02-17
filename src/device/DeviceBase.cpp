@@ -75,52 +75,6 @@ static void getFlashingPermissions(bool& factoryPermissions, bool& protectedPerm
     }
 }
 
-static LogLevel spdlogLevelToLogLevel(spdlog::level::level_enum level, LogLevel defaultValue = LogLevel::OFF) {
-    switch(level) {
-        case spdlog::level::trace:
-            return LogLevel::TRACE;
-        case spdlog::level::debug:
-            return LogLevel::DEBUG;
-        case spdlog::level::info:
-            return LogLevel::INFO;
-        case spdlog::level::warn:
-            return LogLevel::WARN;
-        case spdlog::level::err:
-            return LogLevel::ERR;
-        case spdlog::level::critical:
-            return LogLevel::CRITICAL;
-        case spdlog::level::off:
-            return LogLevel::OFF;
-        // Default
-        case spdlog::level::n_levels:
-        default:
-            return defaultValue;
-            break;
-    }
-    // Default
-    return defaultValue;
-}
-static spdlog::level::level_enum logLevelToSpdlogLevel(LogLevel level, spdlog::level::level_enum defaultValue = spdlog::level::off) {
-    switch(level) {
-        case LogLevel::TRACE:
-            return spdlog::level::trace;
-        case LogLevel::DEBUG:
-            return spdlog::level::debug;
-        case LogLevel::INFO:
-            return spdlog::level::info;
-        case LogLevel::WARN:
-            return spdlog::level::warn;
-        case LogLevel::ERR:
-            return spdlog::level::err;
-        case LogLevel::CRITICAL:
-            return spdlog::level::critical;
-        case LogLevel::OFF:
-            return spdlog::level::off;
-    }
-    // Default
-    return defaultValue;
-}
-
 constexpr std::chrono::seconds DeviceBase::DEFAULT_SEARCH_TIME;
 constexpr float DeviceBase::DEFAULT_SYSTEM_INFORMATION_LOGGING_RATE_HZ;
 constexpr UsbSpeed DeviceBase::DEFAULT_USB_SPEED;
@@ -315,10 +269,12 @@ void DeviceBase::Impl::setLogLevel(LogLevel level) {
     logger.set_level(spdlogLevel);
 }
 
+
 LogLevel DeviceBase::Impl::getLogLevel() {
     // Converts spdlog to LogLevel
     return spdlogLevelToLogLevel(logger.level(), LogLevel::WARN);
 }
+
 
 ///////////////////////////////////////////////
 // END OF Impl section
@@ -1379,8 +1335,16 @@ void DeviceBase::setLogLevel(LogLevel level) {
     pimpl->rpcClient->call("setLogLevel", level);
 }
 
+void DeviceBase::setNodeLogLevel(int64_t id, LogLevel level) {
+    pimpl->rpcClient->call("setNodeLogLevel", id, level);
+}
+
 LogLevel DeviceBase::getLogLevel() {
     return pimpl->rpcClient->call("getLogLevel").as<LogLevel>();
+}
+
+LogLevel DeviceBase::getNodeLogLevel(int64_t id) {
+    return pimpl->rpcClient->call("getNodeLogLevel", id).as<LogLevel>();
 }
 
 void DeviceBase::setXLinkChunkSize(int sizeBytes) {
