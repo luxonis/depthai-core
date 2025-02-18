@@ -7,7 +7,6 @@ namespace node {
 
 void RTABMapVIO::buildInternal() {
     sync->out.link(inSync);
-    sync->setRunOnHost(false);
 
     localTransform = rtabmap::Transform::getIdentity();
 

@@ -13,7 +13,6 @@ namespace node {
 
 void RTABMapSLAM::buildInternal() {
     sync->out.link(inSync);
-    sync->setRunOnHost(false);
     alphaScaling = -1.0;
     localTransform = rtabmap::Transform::getIdentity();
     rtabmap::Transform opticalTransform(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);

@@ -238,7 +238,6 @@ RGBD::~RGBD() = default;
 
 std::shared_ptr<RGBD> RGBD::build() {
     sync->out.link(inSync);
-    sync->setRunOnHost(false);
     inColor.setBlocking(false);
     inColor.setMaxSize(1);
     inDepth.setBlocking(false);
