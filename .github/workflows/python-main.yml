@@ -401,7 +401,7 @@ jobs:
     needs: build-docstrings
     runs-on: ubuntu-latest
     container:
-      image: quay.io/pypa/manylinux_2_28_x86_64
+      image: quay.io/pypa/manylinux_2_28_x86_64:2024.12.05-1
       env:
         PLAT: manylinux_2_28_x86_64
     strategy:
