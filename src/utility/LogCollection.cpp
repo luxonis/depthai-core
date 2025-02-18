@@ -138,7 +138,7 @@ void logPipeline(const PipelineSchema& pipelineSchema, const dai::DeviceInfo& de
 #else
     namespace fs = std::filesystem;
     // Check if logging is explicistdy disabled
-    auto loggingEnabled = utility::getEnv("DEPTHAI_DISABLE_FEEDBACK");
+    auto loggingEnabled = utility::getEnvAs<std::string>("DEPTHAI_DISABLE_FEEDBACK", "");
     if(!loggingEnabled.empty()) {
         logger::info("Logging disabled");
         return;
@@ -183,7 +183,7 @@ void logPipeline(const PipelineSchema& pipelineSchema, const dai::DeviceInfo& de
 }
 
 void logCrashDump(const std::optional<PipelineSchema>& pipelineSchema, const GenericCrashDump& crashDump, const dai::DeviceInfo& deviceInfo) {
-    auto crashDumpEnvVar = utility::getEnv("DEPTHAI_CRASHDUMP");
+    auto crashDumpEnvVar = utility::getEnvAs<std::string>("DEPTHAI_CRASHDUMP", "");
     if(crashDumpEnvVar == "0") {
         logger::warn("Crash dump logging disabled");
         return;
@@ -252,7 +252,7 @@ void logCrashDump(const std::optional<PipelineSchema>& pipelineSchema, const Gen
     }
 
     // Check if logging is explicitly disabled
-    auto loggingEnabled = utility::getEnv("DEPTHAI_DISABLE_FEEDBACK");
+    auto loggingEnabled = utility::getEnvAs<std::string>("DEPTHAI_DISABLE_FEEDBACK", "");
     if(loggingEnabled.empty()) {
         logger::info("Logging enabled");
         auto success = sendLogsToServer(pipelineData, crashDumpData, deviceInfo);

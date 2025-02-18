@@ -19,19 +19,13 @@ concurrency:
 jobs:
 
   # Testing
-  rvc2_test:
+  linux_rvc2_test:
     env:
       VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
     strategy:
       matrix:
-        # os: ['windows', 'macos', 'linux']
-        os: ['linux']
         arch: ['x64']
         flavor: ['vanilla', 'asan-ubsan', 'tsan']
-        exclude:
-          - os: 'windows'
-            arch: 'x64'
-            flavor: 'tsan'
       fail-fast: false
     runs-on: ['self-hosted', 'testbed-runner']
 
@@ -47,7 +41,7 @@ jobs:
           core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
 
     - name: Prepare HIL Framework
-      run: source scripts/hil/prepare_hil_framework.sh 
+      run: source scripts/hil/prepare_hil_framework.sh
 
     - name: Configure, Build and Test
       if: matrix.os != 'linux'
@@ -62,20 +56,15 @@ jobs:
         exec hil --capabilities depthai-core-hil --reservation-name $RESERVATION_NAME --wait --sync-workspace --exclude-build --commands 'cd /tmp/depthai-core|| exit' 'scripts/hil/run_hil_tests.sh ${{ matrix.flavor }} --rvc2'
 
   # Testing
-  rvc4_test:
+  linux_rvc4_test:
       env:
         VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
       strategy:
         matrix:
-          # os: ['windows', 'macos', 'linux']
           os: ['linux']
           arch: ['x64']
           flavor: ['vanilla', 'asan-ubsan', 'tsan']
           rvc4os: ['r851.1.2']
-          exclude:
-            - os: 'windows'
-              arch: 'x64'
-              flavor: 'tsan'
         fail-fast: false
       runs-on: ['self-hosted', 'testbed-runner']
 
@@ -85,7 +74,7 @@ jobs:
           submodules: 'recursive'
 
       - name: Prepare HIL Framework
-        run: source scripts/hil/prepare_hil_framework.sh 
+        run: source scripts/hil/prepare_hil_framework.sh
 
       - name: Configure, Build and Test
         if: matrix.os != 'linux'
@@ -99,3 +88,18 @@ jobs:
           export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-${{ matrix.os }}-${{ matrix.rvc4os }}-${{ matrix.flavor }}"
           exec hil --capabilities depthai-core-hil --models oak4_pro --reservation-name $RESERVATION_NAME --wait --sync-workspace --exclude-build --rvc4-os-version ${{ matrix.rvc4os }} --commands 'cd /tmp/depthai-core|| exit' 'scripts/hil/run_hil_tests.sh ${{ matrix.flavor }} --rvc4'
 
+  windows_rvc2_rvc4_test:
+    runs-on: ['self-hosted', 'windows']
+    env:
+      LOCALAPPDATA: "C:/actions-runner/vcpkg_cache"
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: 'recursive'
+
+    - name: Configure, Build and Test
+      run: |
+        cmake -S . -B build -D CMAKE_BUILD_TYPE=Release -D'DEPTHAI_BUILD_EXAMPLES=ON' -D'DEPTHAI_BUILD_PYTHON=ON' -D'DEPTHAI_BUILD_TESTS=ON' -DDEPTHAI_PYTHON_ENABLE_TESTS=ON -DDEPTHAI_TEST_EXAMPLES=ON -DDEPTHAI_PYTHON_TEST_EXAMPLES=ON -DDEPTHAI_PYTHON_ENABLE_EXAMPLES=ON
+        cmake --build build --parallel 4 --config Release
+        cd tests
+        python run_tests.py

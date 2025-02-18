@@ -436,40 +436,40 @@ dai::impl::FrameSpecs dai::impl::getCcDstFrameSpecs(FrameSpecs srcSpecs, dai::Im
     switch(to) {
         case dai::ImgFrame::Type::RGB888p:
         case dai::ImgFrame::Type::BGR888p:
-            specs.p1Stride = ALIGN_UP(specs.width, 8);
+            specs.p1Stride = ALIGN_UP(specs.width, DEPTHAI_STRIDE_ALIGNMENT);
             specs.p2Stride = specs.p1Stride;
             specs.p3Stride = specs.p1Stride;
-            specs.p2Offset = specs.p1Offset + ALIGN_UP(specs.p1Stride * specs.height, PLANE_ALIGNMENT);
-            specs.p3Offset = specs.p2Offset + ALIGN_UP(specs.p1Stride * specs.height, PLANE_ALIGNMENT);
+            specs.p2Offset = specs.p1Offset + ALIGN_UP(specs.p1Stride * specs.height, DEPTHAI_PLANE_ALIGNMENT);
+            specs.p3Offset = specs.p2Offset + ALIGN_UP(specs.p1Stride * specs.height, DEPTHAI_PLANE_ALIGNMENT);
             break;
         case dai::ImgFrame::Type::RGB888i:
         case dai::ImgFrame::Type::BGR888i:
-            specs.p1Stride = ALIGN_UP(specs.width * 3, 8);
+            specs.p1Stride = ALIGN_UP(specs.width * 3, DEPTHAI_STRIDE_ALIGNMENT);
             specs.p2Stride = specs.p1Stride;
             specs.p3Stride = specs.p1Stride;
             specs.p2Offset = specs.p1Offset;
             specs.p3Offset = specs.p1Offset;
             break;
         case dai::ImgFrame::Type::NV12:
-            specs.p1Stride = ALIGN_UP(specs.width, 8);
+            specs.p1Stride = ALIGN_UP(specs.width, DEPTHAI_STRIDE_ALIGNMENT);
             specs.p2Stride = specs.p1Stride;
-            specs.p2Offset = specs.p1Offset + ALIGN_UP(specs.p1Stride * specs.height, PLANE_ALIGNMENT);
+            specs.p2Offset = specs.p1Offset + ALIGN_UP(specs.p1Stride * specs.height, DEPTHAI_PLANE_ALIGNMENT);
             specs.p3Offset = specs.p2Offset;
             specs.p3Stride = 0;
             break;
         case dai::ImgFrame::Type::YUV420p:
-            specs.p1Stride = ALIGN_UP(specs.width, 8);
-            specs.p2Stride = ALIGN_UP(specs.width / 2, 8);
-            specs.p3Stride = ALIGN_UP(specs.width / 2, 8);
-            specs.p2Offset = specs.p1Offset + ALIGN_UP(specs.p1Stride * specs.height, PLANE_ALIGNMENT);
-            specs.p3Offset = specs.p2Offset + ALIGN_UP(specs.p2Stride * (specs.height / 2), PLANE_ALIGNMENT);
+            specs.p1Stride = ALIGN_UP(specs.width, DEPTHAI_STRIDE_ALIGNMENT);
+            specs.p2Stride = ALIGN_UP(specs.width / 2, DEPTHAI_STRIDE_ALIGNMENT);
+            specs.p3Stride = ALIGN_UP(specs.width / 2, DEPTHAI_STRIDE_ALIGNMENT);
+            specs.p2Offset = specs.p1Offset + ALIGN_UP(specs.p1Stride * specs.height, DEPTHAI_PLANE_ALIGNMENT);
+            specs.p3Offset = specs.p2Offset + ALIGN_UP(specs.p2Stride * (specs.height / 2), DEPTHAI_PLANE_ALIGNMENT);
             break;
         case dai::ImgFrame::Type::RAW8:
         case dai::ImgFrame::Type::GRAY8:
-            specs.p1Stride = ALIGN_UP(specs.width, 8);
+            specs.p1Stride = ALIGN_UP(specs.width, DEPTHAI_STRIDE_ALIGNMENT);
             break;
         case ImgFrame::Type::RAW16:
-            specs.p1Stride = ALIGN_UP(specs.width * 2, 8);
+            specs.p1Stride = ALIGN_UP(specs.width * 2, DEPTHAI_STRIDE_ALIGNMENT);
             break;
         case ImgFrame::Type::YUV422i:
         case ImgFrame::Type::YUV444p:
@@ -996,19 +996,19 @@ void dai::impl::printSpecs(spdlog::async_logger& logger, FrameSpecs specs) {
 size_t dai::impl::getAlignedOutputFrameSize(ImgFrame::Type type, size_t width, size_t height) {
     switch(type) {
         case ImgFrame::Type::YUV420p:
-            return ALIGN_UP(ALIGN_UP(width, 8) * height, PLANE_ALIGNMENT) + ALIGN_UP(ALIGN_UP(width / 2, 8) * (height / 2), PLANE_ALIGNMENT)
-                   + ALIGN_UP(width / 2, 8) * (height / 2);
+            return ALIGN_UP(ALIGN_UP(width, DEPTHAI_STRIDE_ALIGNMENT) * height, DEPTHAI_PLANE_ALIGNMENT) + ALIGN_UP(ALIGN_UP(width / 2, DEPTHAI_STRIDE_ALIGNMENT) * (height / 2), DEPTHAI_PLANE_ALIGNMENT)
+                   + ALIGN_UP(width / 2, DEPTHAI_STRIDE_ALIGNMENT) * (height / 2);
         case ImgFrame::Type::RGB888p:
         case ImgFrame::Type::BGR888p:
-            return 2 * ALIGN_UP(ALIGN_UP(width, 8) * height, PLANE_ALIGNMENT) + ALIGN_UP(width, 8) * height;
+            return 2 * ALIGN_UP(ALIGN_UP(width, DEPTHAI_STRIDE_ALIGNMENT) * height, DEPTHAI_PLANE_ALIGNMENT) + ALIGN_UP(width, DEPTHAI_STRIDE_ALIGNMENT) * height;
         case ImgFrame::Type::RGB888i:
         case ImgFrame::Type::BGR888i:
-            return ALIGN_UP(3 * width, 8) * height;
+            return ALIGN_UP(3 * width, DEPTHAI_STRIDE_ALIGNMENT) * height;
         case ImgFrame::Type::NV12:
-            return ALIGN_UP(ALIGN_UP(width, 8) * height, PLANE_ALIGNMENT) + ALIGN_UP(width, 8) * (height / 2);
+            return ALIGN_UP(ALIGN_UP(width, DEPTHAI_STRIDE_ALIGNMENT) * height, DEPTHAI_PLANE_ALIGNMENT) + ALIGN_UP(width, DEPTHAI_STRIDE_ALIGNMENT) * (height / 2);
         case ImgFrame::Type::RAW8:
         case ImgFrame::Type::GRAY8:
-            return ALIGN_UP(width, 8) * height;
+            return ALIGN_UP(width, DEPTHAI_STRIDE_ALIGNMENT) * height;
         case ImgFrame::Type::YUV422i:
         case ImgFrame::Type::YUV444p:
         case ImgFrame::Type::YUV422p:

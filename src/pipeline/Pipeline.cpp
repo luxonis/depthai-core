@@ -205,7 +205,7 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
                 throw std::invalid_argument(fmt::format("Node '{}' should subclass DeviceNode or have hostNode == true", info.name));
             }
             deviceNode->getProperties().serialize(info.properties, type);
-
+            info.logLevel = deviceNode->getLogLevel();
             // Create Io information
             auto inputs = node->getInputs();
             auto outputs = node->getOutputs();
@@ -601,8 +601,8 @@ void PipelineImpl::build() {
     isBuild = true;
 
     if(defaultDevice) {
-        std::string recordPath = utility::getEnv("DEPTHAI_RECORD");
-        std::string replayPath = utility::getEnv("DEPTHAI_REPLAY");
+        std::string recordPath = utility::getEnvAs<std::string>("DEPTHAI_RECORD", "");
+        std::string replayPath = utility::getEnvAs<std::string>("DEPTHAI_REPLAY", "");
 
         if(defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_2
            || defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_X) {
