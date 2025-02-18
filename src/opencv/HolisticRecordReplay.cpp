@@ -186,7 +186,7 @@ bool setupHolisticReplay(Pipeline& pipeline,
                                               [](const std::string& path) {
                                                   auto pathDelim = path.find_last_of("/\\");
                                                   auto filename = pathDelim == std::string::npos ? path : path.substr(path.find_last_of("/\\") + 1);
-                                                  return filename.size() < 4 || filename.substr(filename.size() - 4, filename.size()) == "mcap"
+                                                  return filename.size() < 4 || filename.substr(filename.size() - 4, filename.size()) == "mp4"
                                                          || filename == "record_config.json";
                                               }),
                                tarNodenames.end());

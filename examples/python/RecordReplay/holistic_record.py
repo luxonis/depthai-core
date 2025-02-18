@@ -15,8 +15,12 @@ Path(args.output).mkdir(parents=True, exist_ok=True)
 # Create pipeline
 with dai.Pipeline(True) as pipeline:
     # Define source and output
-    camRgb = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
-    camRgbOut = camRgb.requestOutput((1920, 1080), fps = 30)
+    camA = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
+    camAOut = camA.requestOutput((1920, 1080), fps = 30)
+    camB = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
+    camBOut = camA.requestOutput((1920, 1080), fps = 30)
+    camC = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C)
+    camCOut = camA.requestOutput((1920, 1080), fps = 30)
 
     imu = pipeline.create(dai.node.IMU)
     imu.enableIMUSensor(dai.IMUSensor.ACCELEROMETER_RAW, 500);
@@ -31,18 +35,22 @@ with dai.Pipeline(True) as pipeline:
 
     pipeline.enableHolisticRecord(config)
 
-    videoQueue = camRgbOut.createOutputQueue()
+    videoQueueA = camAOut.createOutputQueue()
+    videoQueueB = camBOut.createOutputQueue()
+    videoQueueC = camCOut.createOutputQueue()
     imuQueue = imu.out.createOutputQueue()
 
     # Connect to device and start pipeline
     pipeline.start()
     while pipeline.isRunning():
-        videoIn : dai.ImgFrame = videoQueue.get()
+        videoInA : dai.ImgFrame = videoQueueA.get()
+        videoInB : dai.ImgFrame = videoQueueB.get()
+        videoInC : dai.ImgFrame = videoQueueC.get()
         imuData : dai.IMUData = imuQueue.get()
 
         # Get BGR frame from NV12 encoded video frame to show with opencv
         # Visualizing the frame on slower hosts might have overhead
-        cv2.imshow("video", videoIn.getCvFrame())
+        cv2.imshow("video", videoInA.getCvFrame())
 
         for packet in imuData.packets:
             print(f"IMU Accelerometer: {packet.acceleroMeter}")
