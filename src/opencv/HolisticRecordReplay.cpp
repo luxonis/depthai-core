@@ -21,6 +21,16 @@
 namespace dai {
 namespace utility {
 
+static std::map<std::string, std::vector<std::pair<uint32_t, uint32_t>>> bestResolutionsRVC4 = {
+    {"IMX582", {{320, 240}, {640, 480}, {960, 720}, {1280, 960}, {1440, 1080}, {1920, 1440}, {4000, 3000}}},
+    {"IMX586", {{320, 240}, {640, 480}, {960, 720}, {1280, 960}, {1440, 1080}, {1920, 1440}, {4000, 3000}}},
+    {"OV9282", {{640, 400}, {1280, 800}}},
+    {"OV9782", {{640, 400}, {1280, 800}}},
+    {"IMX766", {{320, 240}, {640, 480}, {960, 720}, {1280, 960}, {1440, 1080}, {1920, 1440}, {4000, 3000}}},   // HDK sensor
+    {"OV64B40", {{320, 240}, {640, 480}, {960, 720}, {1280, 960}, {1440, 1080}, {1920, 1440}, {4000, 3000}}},  // HDK sensor
+    {"AR0234", {{1920, 1080}}},
+};
+
 inline size_t roundDown(size_t numToRound, size_t multiple) {
     return numToRound - numToRound % multiple;
 }
@@ -60,10 +70,22 @@ bool setupHolisticRecord(Pipeline& pipeline,
                     auto cams = pipeline.getDefaultDevice()->getConnectedCameraFeatures();
                     for(const auto& cf : cams) {
                         if(cf.socket == cam->getBoardSocket()) {
-                            for(const auto& cfg : cf.configs) {
-                                if(cfg.width > (int32_t)requestWidth && cfg.height > (int32_t)requestHeight) {
-                                    width = std::min((size_t)cfg.width, width);
-                                    height = std::min((size_t)cfg.height, height);
+                            if(legacy) { // RVC2
+                                for(const auto& cfg : cf.configs) {
+                                    if(cfg.width > (int32_t)requestWidth && cfg.height > (int32_t)requestHeight) {
+                                        width = std::min((size_t)cfg.width, width);
+                                        height = std::min((size_t)cfg.height, height);
+                                    }
+                                }
+                            } else { // RVC4
+                                auto res = bestResolutionsRVC4.find(cf.sensorName);
+                                if(res != bestResolutionsRVC4.end()) {
+                                    for(auto& r : res->second) {
+                                        if(r.first >= requestWidth && r.second >= requestHeight) {
+                                            width = std::min((size_t)r.first, width);
+                                            height = std::min((size_t)r.second, height);
+                                        }
+                                    }
                                 }
                             }
                             break;
