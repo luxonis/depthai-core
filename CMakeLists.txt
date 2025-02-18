@@ -25,6 +25,7 @@ if(WIN32)
 
     # Statically compile vcruntime library
     add_compile_options(/MT)
+    add_compile_options(/MP)
 endif()
 
 find_program(CCACHE_PROGRAM ccache)
@@ -602,6 +603,10 @@ if(DEPTHAI_HAVE_PCL_SUPPORT AND DEPTHAI_MERGED_TARGET)
 endif()
 if(DEPTHAI_MERGED_TARGET)
     target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_MERGED_TARGET)
+endif()
+
+if(NOT BUILD_SHARED_LIBS)
+    target_compile_definitions(${TARGET_CORE_NAME} PUBLIC MCAP_STATIC)
 endif()
 
 # First specify options
