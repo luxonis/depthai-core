@@ -5,6 +5,7 @@
 #include "depthai/depthai.hpp"
 #include "depthai/pipeline/DeviceNode.hpp"
 #include "depthai/pipeline/Node.hpp"
+#include "depthai/pipeline/node/Sync.hpp"
 #include "depthai/properties/DeviceNodeGroupProperties.hpp"
 
 /**********************************************************************************************************************/
@@ -72,6 +73,14 @@ class CustomDeviceNode : public dai::DeviceNode {
     bool buildInternalCalled = false;
 };
 
+class CustomThreadedHostNode : public dai::node::CustomThreadedNode<CustomThreadedHostNode> {
+   public:
+    CustomThreadedHostNode() {}
+
+    void run() override {}
+
+    dai::Subnode<dai::node::Sync> syncSubnode{*this, "syncSubnode"};  // HostRunnable
+};
 /**********************************************************************************************************************/
 /**********************************************************************************************************************/
 /**********************************************************************************************************************/
@@ -90,4 +99,14 @@ TEST_CASE("Subnode inherits device from parent and buildInternal is called") {
     REQUIRE(customNode->buildInternalCalled);
     REQUIRE(customNode->deviceSubnode->buildInternalCalled);
     REQUIRE(customNode->hostSubnode->buildInternalCalled);
+}
+
+TEST_CASE("Host-runnable subnode has its device set if parent is not a device node") {
+    // Create pipeline
+    dai::Pipeline p;
+    auto customNode = p.create<CustomThreadedHostNode>();
+    auto device = p.getDefaultDevice();
+
+    // Device is properly set
+    REQUIRE(customNode->syncSubnode->getDevice() == device);
 }
