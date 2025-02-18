@@ -348,7 +348,7 @@ std::string getModelFromZoo(const NNModelDescription& modelDescription, bool use
     bool isMetadataPresent = std::filesystem::exists(zooManager.getMetadataFilePath());
     bool useCachedModel = useCached && modelIsCached && isMetadataPresent;
 
-    bool performInternetCheck = utility::getEnvAs<bool>("DEPTHAI_ZOO_INTERNET_CHECK", true); // default is true
+    bool performInternetCheck = utility::getEnvAs<bool>("DEPTHAI_ZOO_INTERNET_CHECK", true);  // default is true
 
     // Check if internet is available
     bool internetIsAvailable = performInternetCheck && ZooManager::connectionToZooAvailable();
@@ -437,8 +437,7 @@ void downloadModelsFromZoo(const std::string& path, const std::string& cacheDire
 }
 
 bool ZooManager::connectionToZooAvailable() {
-    
-    int timeoutMs = utility::getEnvAs<int>("DEPTHAI_ZOO_INTERNET_CHECK_TIMEOUT", 1000); // default is 1000ms
+    int timeoutMs = utility::getEnvAs<int>("DEPTHAI_ZOO_INTERNET_CHECK_TIMEOUT", 1000);  // default is 1000ms
     constexpr std::string_view host = MODEL_ZOO_HEALTH_ENDPOINT;
 
     // Check if internet is available

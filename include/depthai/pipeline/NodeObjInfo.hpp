@@ -3,8 +3,8 @@
 #include <tuple>
 
 #include "NodeIoInfo.hpp"
-#include "depthai/utility/Serialization.hpp"
 #include "depthai/log/LogLevel.hpp"
+#include "depthai/utility/Serialization.hpp"
 
 namespace dai {
 

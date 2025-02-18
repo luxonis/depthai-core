@@ -616,7 +616,13 @@ class StereoDepthConfig : public Buffer {
          */
         LinearEquationParameters linearEquationParameters;
 
-        DEPTHAI_SERIALIZE(CostMatching, disparityWidth, enableCompanding, invalidDisparityValue, confidenceThreshold, enableSwConfidenceThresholding, linearEquationParameters);
+        DEPTHAI_SERIALIZE(CostMatching,
+                          disparityWidth,
+                          enableCompanding,
+                          invalidDisparityValue,
+                          confidenceThreshold,
+                          enableSwConfidenceThresholding,
+                          linearEquationParameters);
     };
 
     /**

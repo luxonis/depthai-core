@@ -69,7 +69,7 @@ void DeviceNode::setLogLevel(dai::LogLevel level) {
 
 dai::LogLevel DeviceNode::getLogLevel() const {
     const bool isHostNode = runOnHost();
-    if (isHostNode) {
+    if(isHostNode) {
         return ThreadedNode::getLogLevel();
     } else {
         int64_t myid = id;

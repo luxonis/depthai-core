@@ -5,10 +5,10 @@
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
 
+#include "depthai/log/LogLevel.hpp"
 #include "depthai/pipeline/Node.hpp"
 #include "depthai/utility/AtomicBool.hpp"
 #include "depthai/utility/JoiningThread.hpp"
-#include "depthai/log/LogLevel.hpp"
 
 namespace dai {
 
