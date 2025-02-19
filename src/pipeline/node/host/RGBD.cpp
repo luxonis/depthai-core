@@ -238,6 +238,7 @@ RGBD::~RGBD() = default;
 
 void RGBD::buildInternal() {
     sync->out.link(inSync);
+    sync->setRunOnHost(false);
     inColor.setBlocking(false);
     inColor.setMaxSize(1);
     inDepth.setBlocking(false);
