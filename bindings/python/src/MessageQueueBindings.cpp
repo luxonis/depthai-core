@@ -10,7 +10,7 @@
 #include "depthai/pipeline/MessageQueue.hpp"
 #include "depthai/pipeline/datatype/ADatatype.hpp"
 
-py::object messageQueueException; // Needed to be able to catch in C++ after it's raised on the Python side
+py::object messageQueueException;  // Needed to be able to catch in C++ after it's raised on the Python side
 
 void MessageQueueBindings::bind(pybind11::module& m, void* pCallstack) {
     using namespace dai;
@@ -44,17 +44,17 @@ void MessageQueueBindings::bind(pybind11::module& m, void* pCallstack) {
         pybind11::object result = inspectModule.attr("signature")(cb).attr("parameters");
         auto numParams = pybind11::len(result);
 
-        if (numParams == 2) {
+        if(numParams == 2) {
             return q.addCallback([cb](std::string msg, std::shared_ptr<ADatatype> data) {
                 pybind11::gil_scoped_acquire gil;
                 cb(msg, data);
             });
-        } else if (numParams == 1) {
+        } else if(numParams == 1) {
             return q.addCallback([cb](std::shared_ptr<ADatatype> data) {
                 pybind11::gil_scoped_acquire gil;
                 cb(data);
             });
-        } else if (numParams == 0) {
+        } else if(numParams == 0) {
             return q.addCallback([cb]() {
                 pybind11::gil_scoped_acquire gil;
                 cb();

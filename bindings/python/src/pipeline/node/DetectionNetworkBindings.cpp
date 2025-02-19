@@ -1,4 +1,5 @@
 #include <pybind11/cast.h>
+
 #include <memory>
 
 #include "Common.hpp"
@@ -36,17 +37,11 @@ void bind_detectionnetwork(pybind11::module& m, void* pCallstack) {
 
     // DetectionNetwork Node
     detectionNetwork
-#define DETECTION_NETWORK_BUILD_ARGS \
-        Node::Output& input, \
-        NNArchive& nnArchive
-#define DETECTION_NETWORK_BUILD_PYARGS \
-        py::arg("input"), \
-        py::arg("nnArchive")
-#define DETECTION_NETWORK_ARGS \
-        float confidenceThreshold
-#define DETECTION_NETWORK_PYARGS \
-        py::arg("confidenceThreshold") = 0.5
-        // TODO (Zimamazim) Automatically fetch default arguments to avoid duplicity
+#define DETECTION_NETWORK_BUILD_ARGS Node::Output &input, NNArchive &nnArchive
+#define DETECTION_NETWORK_BUILD_PYARGS py::arg("input"), py::arg("nnArchive")
+#define DETECTION_NETWORK_ARGS float confidenceThreshold
+#define DETECTION_NETWORK_PYARGS py::arg("confidenceThreshold") = 0.5
+    // TODO (Zimamazim) Automatically fetch default arguments to avoid duplicity
 #define DETECTION_NETWORK_CODE(OP) self OP setConfidenceThreshold(confidenceThreshold);
         .def(
             "build",
@@ -70,7 +65,17 @@ void bind_detectionnetwork(pybind11::module& m, void* pCallstack) {
              py::arg("model"),
              py::arg("fps") = 30.0f)
         .def("build",
-             py::overload_cast<const std::shared_ptr<Camera>&, NNArchive, float>(&DetectionNetwork::build),
+             py::overload_cast<const std::shared_ptr<Camera>&, const NNArchive&, float>(&DetectionNetwork::build),
+             py::arg("input"),
+             py::arg("nnArchive"),
+             py::arg("fps") = 30.0f)
+        .def("build",
+             py::overload_cast<const std::shared_ptr<ReplayVideo>&, NNModelDescription, float>(&DetectionNetwork::build),
+             py::arg("input"),
+             py::arg("model"),
+             py::arg("fps") = 30.0f)
+        .def("build",
+             py::overload_cast<const std::shared_ptr<ReplayVideo>&, const NNArchive&, float>(&DetectionNetwork::build),
              py::arg("input"),
              py::arg("nnArchive"),
              py::arg("fps") = 30.0f)
@@ -94,15 +99,23 @@ void bind_detectionnetwork(pybind11::module& m, void* pCallstack) {
              py::arg("numNCEPerThread"),
              DOC(dai, node, DetectionNetwork, setNumNCEPerInferenceThread))
         .def("getNumInferenceThreads", &DetectionNetwork::getNumInferenceThreads, DOC(dai, node, DetectionNetwork, getNumInferenceThreads))
-        .def("setNNArchive", py::overload_cast<const NNArchive&>(&DetectionNetwork::setNNArchive), py::arg("archive"), DOC(dai, node, DetectionNetwork, setNNArchive))
-        .def("setNNArchive", py::overload_cast<const NNArchive&, int>(&DetectionNetwork::setNNArchive), py::arg("archive"), py::arg("numShaves"), DOC(dai, node, DetectionNetwork, setNNArchive))
-        .def("setFromModelZoo", py::overload_cast<NNModelDescription, bool>(&DetectionNetwork::setFromModelZoo), py::arg("description"), py::arg("useCached") = false, DOC(dai, node, DetectionNetwork, setFromModelZoo))
+        .def("setNNArchive",
+             py::overload_cast<const NNArchive&>(&DetectionNetwork::setNNArchive),
+             py::arg("archive"),
+             DOC(dai, node, DetectionNetwork, setNNArchive))
+        .def("setNNArchive",
+             py::overload_cast<const NNArchive&, int>(&DetectionNetwork::setNNArchive),
+             py::arg("archive"),
+             py::arg("numShaves"),
+             DOC(dai, node, DetectionNetwork, setNNArchive))
+        .def("setFromModelZoo",
+             py::overload_cast<NNModelDescription, bool>(&DetectionNetwork::setFromModelZoo),
+             py::arg("description"),
+             py::arg("useCached") = false,
+             DOC(dai, node, DetectionNetwork, setFromModelZoo))
         .def("setBlob", py::overload_cast<dai::OpenVINO::Blob>(&DetectionNetwork::setBlob), py::arg("blob"), DOC(dai, node, DetectionNetwork, setBlob))
         .def("setBlob", py::overload_cast<const dai::Path&>(&DetectionNetwork::setBlob), py::arg("path"), DOC(dai, node, DetectionNetwork, setBlob, 2))
-        .def("setModelPath",
-             &DetectionNetwork::setModelPath,
-             py::arg("modelPath"),
-             DOC(dai, node, DetectionNetwork, setModelPath))
+        .def("setModelPath", &DetectionNetwork::setModelPath, py::arg("modelPath"), DOC(dai, node, DetectionNetwork, setModelPath))
         .def("setNumShavesPerInferenceThread",
              &DetectionNetwork::setNumShavesPerInferenceThread,
              py::arg("numShavesPerInferenceThread"),
@@ -139,7 +152,7 @@ void bind_detectionnetwork(pybind11::module& m, void* pCallstack) {
         .def("getConfidenceThreshold", &DetectionNetwork::getConfidenceThreshold, DOC(dai, node, DetectionNetwork, getConfidenceThreshold));
     // ALIAS
     // daiNodeModule.attr("DetectionNetwork").attr("Properties") = detectionNetworkProperties;
-    
+
     // YoloDetectionNetwork node
     yoloDetectionNetwork.def("setNumClasses", &YoloDetectionNetwork::setNumClasses, py::arg("numClasses"), DOC(dai, node, YoloDetectionNetwork, setNumClasses))
         .def("setCoordinateSize", &YoloDetectionNetwork::setCoordinateSize, py::arg("coordinates"), DOC(dai, node, YoloDetectionNetwork, setCoordinateSize))

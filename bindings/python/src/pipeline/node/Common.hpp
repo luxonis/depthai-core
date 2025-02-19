@@ -7,27 +7,24 @@
 #include "hedley/hedley.h"
 
 // pybind11
-#include "pybind11/stl_bind.h"
-
-#include "depthai/pipeline/Pipeline.hpp"
-#include "depthai/pipeline/Node.hpp"
 #include "depthai/pipeline/DeviceNode.hpp"
+#include "depthai/pipeline/Node.hpp"
+#include "depthai/pipeline/Pipeline.hpp"
+#include "pybind11/stl_bind.h"
 
 // Map of python node classes and call to pipeline to create it
 extern std::vector<std::pair<py::handle, std::function<std::shared_ptr<dai::Node>(dai::Pipeline&, py::object class_)>>> pyNodeCreateMap;
 extern py::handle daiNodeModule;
 
-template<typename T, typename DERIVED = dai::DeviceNode>
-py::class_<T, DERIVED, std::shared_ptr<T>> addNode(const char* name, const char* docstring = nullptr){
+template <typename T, typename DERIVED = dai::DeviceNode>
+py::class_<T, DERIVED, std::shared_ptr<T>> addNode(const char* name, const char* docstring = nullptr) {
     auto node = py::class_<T, DERIVED, std::shared_ptr<T>>(daiNodeModule, name, docstring);
-    pyNodeCreateMap.push_back(std::make_pair(node, [](dai::Pipeline& p, py::object class_){
-        return p.create<T>();
-    }));
+    pyNodeCreateMap.push_back(std::make_pair(node, [](dai::Pipeline& p, py::object class_) { return p.create<T>(); }));
     return node;
 }
 
-template<typename T, typename DERIVED = dai::DeviceNode>
-py::class_<T, DERIVED, std::shared_ptr<T>> addNodeAbstract(const char* name, const char* docstring = nullptr){
+template <typename T, typename DERIVED = dai::DeviceNode>
+py::class_<T, DERIVED, std::shared_ptr<T>> addNodeAbstract(const char* name, const char* docstring = nullptr) {
     auto node = py::class_<T, DERIVED, std::shared_ptr<T>>(daiNodeModule, name, docstring);
     pyNodeCreateMap.push_back(std::make_pair(node, [](dai::Pipeline& p, py::object class_) -> std::shared_ptr<dai::Node> {
         throw std::invalid_argument(std::string(py::str(class_)) + " is an abstract node. Choose an appropriate derived node instead");

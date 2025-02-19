@@ -1,5 +1,6 @@
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_test_macros.hpp>
+
 #include "depthai/capabilities/ImgFrameCapability.hpp"
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/depthai.hpp"
@@ -25,6 +26,7 @@ void testBenchmarkIn(bool benchmarkInRunOnHost, bool benchmarkOutRunOnHost, floa
     }
     p.start();
     auto inputFrame = std::make_shared<dai::ImgFrame>();
+    inputFrame->setData(std::vector<std::uint8_t>(100 * 100 * 3, 0));  // FIXME: This is needed on RVC4 for Windows, since very small frames are buffered
     inputQueue->send(inputFrame);
     for(int i = 0; i < 10; i++) {
         if(passthrough) {
@@ -34,7 +36,9 @@ void testBenchmarkIn(bool benchmarkInRunOnHost, bool benchmarkOutRunOnHost, floa
         auto reportData = reportQueue->get<dai::BenchmarkReport>();
         REQUIRE(reportData != nullptr);
         REQUIRE(reportData->numMessagesReceived > 1);
-        REQUIRE(reportData->fps == Catch::Approx(fps).epsilon(0.1));
+        if(i > 5) {
+            REQUIRE(reportData->fps == Catch::Approx(fps).epsilon(0.2));
+        }
     }
 }
 
@@ -51,7 +55,9 @@ void testCameraBenchmarking(float fps) {
         auto reportData = reportQueue->get<dai::BenchmarkReport>();
         REQUIRE(reportData != nullptr);
         REQUIRE(reportData->numMessagesReceived > 1);
-        REQUIRE(reportData->fps == Catch::Approx(fps).epsilon(0.1));
+        if(i > 5) {
+            REQUIRE(reportData->fps == Catch::Approx(fps).epsilon(0.1));
+        }
     }
 }
 

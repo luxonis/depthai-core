@@ -13,6 +13,7 @@
 #include "depthai/depthai.hpp"
 #include "depthai/modelzoo/Zoo.hpp"
 #include "depthai/nn_archive/NNArchive.hpp"
+#include "modelzoo/NNModelDescription.hpp"
 #include "nn_archive/NNArchiveVersionedConfig.hpp"
 #include "pipeline/DeviceNodeGroup.hpp"
 #include "utility/ArchiveUtil.hpp"
@@ -56,7 +57,27 @@ std::shared_ptr<DetectionNetwork> DetectionNetwork::build(Node::Output& input, c
     return std::static_pointer_cast<DetectionNetwork>(shared_from_this());
 }
 
-std::shared_ptr<DetectionNetwork> DetectionNetwork::build(const std::shared_ptr<Camera>& camera, dai::NNModelDescription modelDesc, float fps) {
+std::shared_ptr<DetectionNetwork> DetectionNetwork::build(const std::shared_ptr<Camera>& camera, NNModelDescription modelDesc, float fps) {
+    auto nnArchive = createNNArchive(modelDesc);
+    return build(camera, nnArchive, fps);
+}
+
+std::shared_ptr<DetectionNetwork> DetectionNetwork::build(const std::shared_ptr<Camera>& camera, const NNArchive& nnArchive, float fps) {
+    neuralNetwork->build(camera, nnArchive, fps);
+    detectionParser->setNNArchive(nnArchive);
+    return std::static_pointer_cast<DetectionNetwork>(shared_from_this());
+}
+
+std::shared_ptr<DetectionNetwork> DetectionNetwork::build(const std::shared_ptr<ReplayVideo>& input, NNModelDescription modelDesc, float fps) {
+    auto nnArchive = createNNArchive(modelDesc);
+    return build(input, nnArchive, fps);
+}
+std::shared_ptr<DetectionNetwork> DetectionNetwork::build(const std::shared_ptr<ReplayVideo>& input, const NNArchive& nnArchive, float fps) {
+    neuralNetwork->build(input, nnArchive, fps);
+    detectionParser->setNNArchive(nnArchive);
+    return std::static_pointer_cast<DetectionNetwork>(shared_from_this());
+}
+NNArchive DetectionNetwork::createNNArchive(NNModelDescription& modelDesc) {
     // Download model from zoo
     if(modelDesc.platform.empty()) {
         DAI_CHECK(getDevice() != nullptr, "Device is not set.");
@@ -67,14 +88,7 @@ std::shared_ptr<DetectionNetwork> DetectionNetwork::build(const std::shared_ptr<
     DAI_CHECK(modelType == dai::model::ModelType::NNARCHIVE,
               "Model from zoo is not NNArchive - it needs to be a NNArchive to use build(Camera, NNModelDescription, float) method");
     auto nnArchive = dai::NNArchive(path);
-
-    return build(camera, nnArchive, fps);
-}
-
-std::shared_ptr<DetectionNetwork> DetectionNetwork::build(const std::shared_ptr<Camera>& camera, dai::NNArchive nnArchive, float fps) {
-    neuralNetwork->build(camera, nnArchive, fps);
-    detectionParser->setNNArchive(nnArchive);
-    return std::static_pointer_cast<DetectionNetwork>(shared_from_this());
+    return nnArchive;
 }
 
 void DetectionNetwork::setNNArchive(const NNArchive& nnArchive) {

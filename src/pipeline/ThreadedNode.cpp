@@ -9,7 +9,7 @@
 namespace dai {
 ThreadedNode::ThreadedNode() {
     auto level = spdlog::level::warn;
-    auto envLevel = utility::getEnv("DEPTHAI_LEVEL");
+    auto envLevel = utility::getEnvAs<std::string>("DEPTHAI_LEVEL", "");
     if(!envLevel.empty()) {
         level = Logging::parseLevel(envLevel);
     }
@@ -62,6 +62,14 @@ void ThreadedNode::stop() {
     // for(auto& rout : getOutputRefs()) {
     // }
     // wait();
+}
+
+void ThreadedNode::setLogLevel(dai::LogLevel level) {
+    logger->set_level(logLevelToSpdlogLevel(level, spdlog::level::warn));
+}
+
+dai::LogLevel ThreadedNode::getLogLevel() const {
+    return spdlogLevelToLogLevel(logger->level(), LogLevel::WARN);
 }
 
 bool ThreadedNode::isRunning() const {

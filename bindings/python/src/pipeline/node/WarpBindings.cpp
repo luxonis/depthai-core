@@ -1,12 +1,10 @@
-#include "NodeBindings.hpp"
 #include "Common.hpp"
-
-#include "depthai/pipeline/Pipeline.hpp"
+#include "NodeBindings.hpp"
 #include "depthai/pipeline/Node.hpp"
+#include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/node/Warp.hpp"
 
-void bind_warp(pybind11::module& m, void* pCallstack){
-
+void bind_warp(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::node;
 
@@ -18,7 +16,7 @@ void bind_warp(pybind11::module& m, void* pCallstack){
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
     // Call the rest of the type defines, then perform the actual bindings
-    Callstack* callstack = (Callstack*) pCallstack;
+    Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
@@ -37,8 +35,8 @@ void bind_warp(pybind11::module& m, void* pCallstack){
         // .def_readonly("initialConfig", &Warp::initialConfig, DOC(dai, node, Warp, initialConfig))
         // setters
 
-        .def("setOutputSize",  py::overload_cast<int, int>(&Warp::setOutputSize), DOC(dai, node, Warp, setOutputSize))
-        .def("setOutputSize",  py::overload_cast<std::tuple<int, int>>(&Warp::setOutputSize), DOC(dai, node, Warp, setOutputSize, 2))
+        .def("setOutputSize", py::overload_cast<int, int>(&Warp::setOutputSize), DOC(dai, node, Warp, setOutputSize))
+        .def("setOutputSize", py::overload_cast<std::tuple<int, int>>(&Warp::setOutputSize), DOC(dai, node, Warp, setOutputSize, 2))
         // .def("setOutputWidth", &Warp::setOutputWidth, DOC(dai, node, Warp, setOutputWidth))
         // .def("setOutputHeight", &Warp::setOutputHeight, DOC(dai, node, Warp, setOutputHeight))
 
@@ -46,14 +44,12 @@ void bind_warp(pybind11::module& m, void* pCallstack){
         .def("setMaxOutputFrameSize", &Warp::setMaxOutputFrameSize, DOC(dai, node, Warp, setMaxOutputFrameSize))
 
         .def("setWarpMesh", py::overload_cast<const std::vector<Point2f>&, int, int>(&Warp::setWarpMesh), DOC(dai, node, Warp, setWarpMesh))
-        .def("setWarpMesh", py::overload_cast<const std::vector<std::pair<float,float>>&, int, int>(&Warp::setWarpMesh), DOC(dai, node, Warp, setWarpMesh))
+        .def("setWarpMesh", py::overload_cast<const std::vector<std::pair<float, float>>&, int, int>(&Warp::setWarpMesh), DOC(dai, node, Warp, setWarpMesh))
 
         .def("setHwIds", &Warp::setHwIds, DOC(dai, node, Warp, setHwIds))
         .def("getHwIds", &Warp::getHwIds, DOC(dai, node, Warp, getHwIds))
         .def("setInterpolation", &Warp::setInterpolation, DOC(dai, node, Warp, setInterpolation))
-        .def("getInterpolation", &Warp::getInterpolation, DOC(dai, node, Warp, getInterpolation))
-        ;
+        .def("getInterpolation", &Warp::getInterpolation, DOC(dai, node, Warp, getInterpolation));
 
     daiNodeModule.attr("Warp").attr("Properties") = warpProperties;
-
 }

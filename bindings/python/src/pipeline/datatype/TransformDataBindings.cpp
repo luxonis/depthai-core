@@ -1,17 +1,17 @@
+#include <memory>
+#include <unordered_map>
+
 #include "DatatypeBindings.hpp"
 #include "pipeline/CommonBindings.hpp"
-#include <unordered_map>
-#include <memory>
 
 // depthai
 #include "depthai/pipeline/datatype/TransformData.hpp"
 
-//pybind
+// pybind
 #include <pybind11/chrono.h>
 #include <pybind11/numpy.h>
 
-void bind_transformdata(pybind11::module& m, void* pCallstack){
-
+void bind_transformdata(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
     py::class_<TransformData, Py<TransformData>, Buffer, std::shared_ptr<TransformData>> transformData(m, "TransformData", DOC(dai, TransformData));
@@ -20,7 +20,7 @@ void bind_transformdata(pybind11::module& m, void* pCallstack){
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
     // Call the rest of the type defines, then perform the actual bindings
-    Callstack* callstack = (Callstack*) pCallstack;
+    Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
@@ -30,8 +30,7 @@ void bind_transformdata(pybind11::module& m, void* pCallstack){
     ///////////////////////////////////////////////////////////////////////
 
     // Metadata / raw
-    transformData
-        .def(py::init<>())
+    transformData.def(py::init<>())
         .def("__repr__", &TransformData::str)
         .def("getTranslation", &TransformData::getTranslation, DOC(dai, TransformData, getTranslation))
         .def("getRotationEuler", &TransformData::getRotationEuler, DOC(dai, TransformData, getRotationEuler))

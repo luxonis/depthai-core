@@ -3,7 +3,7 @@
 #include "Common.hpp"
 #include "depthai/pipeline/node/host/Replay.hpp"
 
-void bind_replay(pybind11::module& m, void* pCallstack){
+void bind_replay(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace node;
 
@@ -14,7 +14,7 @@ void bind_replay(pybind11::module& m, void* pCallstack){
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
     // Call the rest of the type defines, then perform the actual bindings
-    Callstack* callstack = (Callstack*) pCallstack;
+    Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);

@@ -1,7 +1,10 @@
 {
     "name": "depthai",
     "dependencies": [
-        "cpp-httplib",
+        {
+            "name": "cpp-httplib",
+            "default-features": false
+        },
         "libpng",
         "tiff",
         "yaml-cpp",
@@ -14,6 +17,8 @@
         "fp16",
         "mp4v2",
         "libnop",
+        "argparse",
+        "fmt",
         "neargye-semver",
         "magic-enum",
         {
@@ -46,6 +51,14 @@
                         "gtk"
                     ],
                     "platform": "linux & !arm"
+                },
+                {
+                    "name": "opencv4",
+                    "default-features": false,
+                    "features": [
+                        "win32ui"
+                    ],
+                    "platform": "windows"
                 },
                 {
                     "name": "ffmpeg",

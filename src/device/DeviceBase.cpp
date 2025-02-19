@@ -59,7 +59,7 @@ const unsigned int DEFAULT_CRASHDUMP_TIMEOUT = 9000;
 
 // local static function
 static void getFlashingPermissions(bool& factoryPermissions, bool& protectedPermissions) {
-    auto permissionEnv = utility::getEnv("DEPTHAI_ALLOW_FACTORY_FLASHING");
+    auto permissionEnv = utility::getEnvAs<std::string>("DEPTHAI_ALLOW_FACTORY_FLASHING", "");
     if(permissionEnv == MAGIC_FACTORY_FLASHING_VALUE) {
         factoryPermissions = true;
         protectedPermissions = false;
@@ -75,52 +75,6 @@ static void getFlashingPermissions(bool& factoryPermissions, bool& protectedPerm
     }
 }
 
-static LogLevel spdlogLevelToLogLevel(spdlog::level::level_enum level, LogLevel defaultValue = LogLevel::OFF) {
-    switch(level) {
-        case spdlog::level::trace:
-            return LogLevel::TRACE;
-        case spdlog::level::debug:
-            return LogLevel::DEBUG;
-        case spdlog::level::info:
-            return LogLevel::INFO;
-        case spdlog::level::warn:
-            return LogLevel::WARN;
-        case spdlog::level::err:
-            return LogLevel::ERR;
-        case spdlog::level::critical:
-            return LogLevel::CRITICAL;
-        case spdlog::level::off:
-            return LogLevel::OFF;
-        // Default
-        case spdlog::level::n_levels:
-        default:
-            return defaultValue;
-            break;
-    }
-    // Default
-    return defaultValue;
-}
-static spdlog::level::level_enum logLevelToSpdlogLevel(LogLevel level, spdlog::level::level_enum defaultValue = spdlog::level::off) {
-    switch(level) {
-        case LogLevel::TRACE:
-            return spdlog::level::trace;
-        case LogLevel::DEBUG:
-            return spdlog::level::debug;
-        case LogLevel::INFO:
-            return spdlog::level::info;
-        case LogLevel::WARN:
-            return spdlog::level::warn;
-        case LogLevel::ERR:
-            return spdlog::level::err;
-        case LogLevel::CRITICAL:
-            return spdlog::level::critical;
-        case LogLevel::OFF:
-            return spdlog::level::off;
-    }
-    // Default
-    return defaultValue;
-}
-
 constexpr std::chrono::seconds DeviceBase::DEFAULT_SEARCH_TIME;
 constexpr float DeviceBase::DEFAULT_SYSTEM_INFORMATION_LOGGING_RATE_HZ;
 constexpr UsbSpeed DeviceBase::DEFAULT_USB_SPEED;
@@ -130,7 +84,7 @@ constexpr int DeviceBase::DEFAULT_TIMESYNC_NUM_SAMPLES;
 
 std::chrono::milliseconds DeviceBase::getDefaultSearchTime() {
     std::chrono::milliseconds defaultSearchTime = DEFAULT_SEARCH_TIME;
-    auto searchTimeStr = utility::getEnv("DEPTHAI_SEARCH_TIMEOUT");
+    auto searchTimeStr = utility::getEnvAs<std::string>("DEPTHAI_SEARCH_TIMEOUT", "");
 
     if(!searchTimeStr.empty()) {
         // Try parsing the string as a number
@@ -525,15 +479,11 @@ void DeviceBase::close() {
 }
 
 unsigned int getCrashdumpTimeout(XLinkProtocol_t protocol) {
-    std::string timeoutStr = utility::getEnv("DEPTHAI_CRASHDUMP_TIMEOUT");
-    if(!timeoutStr.empty()) {
-        try {
-            return std::stoi(timeoutStr) * 1000;
-        } catch(const std::invalid_argument& e) {
-            logger::warn("DEPTHAI_CRASHDUMP_TIMEOUT value invalid: {}", e.what());
-        }
-    }
-    return DEFAULT_CRASHDUMP_TIMEOUT + (protocol == X_LINK_TCP_IP ? device::XLINK_TCP_WATCHDOG_TIMEOUT.count() : device::XLINK_USB_WATCHDOG_TIMEOUT.count());
+    int defaultTimeout =
+        DEFAULT_CRASHDUMP_TIMEOUT + (protocol == X_LINK_TCP_IP ? device::XLINK_TCP_WATCHDOG_TIMEOUT.count() : device::XLINK_USB_WATCHDOG_TIMEOUT.count());
+    int timeoutSeconds = utility::getEnvAs<int>("DEPTHAI_CRASHDUMP_TIMEOUT", defaultTimeout);
+    int timeoutMs = timeoutSeconds * 1000;
+    return timeoutMs;
 }
 
 void DeviceBase::closeImpl() {
@@ -753,7 +703,7 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipelin
     if(deviceInfo.protocol == X_LINK_TCP_IP) {
         watchdogTimeout = device::XLINK_TCP_WATCHDOG_TIMEOUT;
     }
-    auto watchdogMsStr = utility::getEnv("DEPTHAI_WATCHDOG");
+    auto watchdogMsStr = utility::getEnvAs<std::string>("DEPTHAI_WATCHDOG", "");
     if(!watchdogMsStr.empty()) {
         // Try parsing the string as a number
         try {
@@ -770,7 +720,7 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipelin
         }
     }
 
-    auto watchdogInitMsStr = utility::getEnv("DEPTHAI_WATCHDOG_INITIAL_DELAY");
+    auto watchdogInitMsStr = utility::getEnvAs<std::string>("DEPTHAI_WATCHDOG_INITIAL_DELAY", "");
     if(!watchdogInitMsStr.empty()) {
         // Try parsing the string as a number
         try {
@@ -782,7 +732,7 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipelin
         }
     }
 
-    auto deviceDebugStr = utility::getEnv("DEPTHAI_DEBUG");
+    auto deviceDebugStr = utility::getEnvAs<std::string>("DEPTHAI_DEBUG", "");
     if(!deviceDebugStr.empty()) {
         // Try parsing the string as a number
         try {
@@ -1027,7 +977,7 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipelin
             loggingRunning = false;
         });
 
-        if(utility::getEnv("DEPTHAI_PROFILING") == "1") {
+        if(utility::getEnvAs<std::string>("DEPTHAI_PROFILING", "") == "1") {
             // prepare profiling thread, which will log device messages
             profilingThread = std::thread([this]() {
                 using namespace std::chrono;
@@ -1060,7 +1010,7 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipelin
                 profilingRunning = false;
             });
         }
-        auto crashdumpPathStr = utility::getEnv("DEPTHAI_CRASHDUMP");
+        auto crashdumpPathStr = utility::getEnvAs<std::string>("DEPTHAI_CRASHDUMP", "");
         if(crashdumpPathStr == "0") {
             pimpl->rpcClient->call("enableCrashDump", false);
         } else {
@@ -1094,7 +1044,8 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, Prev
                 }
                 // Recheck if watchdogRunning wasn't already closed and close if more than twice of WD passed
                 if(watchdogRunning && std::chrono::steady_clock::now() - prevPingTime > watchdogTimeout * 2) {
-                    pimpl->logger.warn("Monitor thread (device: {} [{}]) - ping was missed, closing the device connection", deviceInfo.deviceId, deviceInfo.name);
+                    pimpl->logger.warn(
+                        "Monitor thread (device: {} [{}]) - ping was missed, closing the device connection", deviceInfo.deviceId, deviceInfo.name);
                     // ping was missed, reset the device
                     watchdogRunning = false;
                     // close the underlying connection
@@ -1113,7 +1064,7 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, Prev
                 break;
             }
             auto reconnectionTimeoutMs = 10000;
-            auto timeoutStr = utility::getEnv("DEPTHAI_RECONNECT_TIMEOUT");
+            auto timeoutStr = utility::getEnvAs<std::string>("DEPTHAI_RECONNECT_TIMEOUT", "");
             if(!timeoutStr.empty()) {
                 try {
                     reconnectionTimeoutMs = std::stoi(timeoutStr);
@@ -1293,7 +1244,7 @@ std::string DeviceBase::getConnectedIMU() {
 void DeviceBase::crashDevice() {
     isClosed();
     // Check that the protective ENV variable is set
-    if(utility::getEnv("DEPTHAI_CRASH_DEVICE") != "1") {
+    if(utility::getEnvAs<std::string>("DEPTHAI_CRASH_DEVICE", "") != "1") {
         pimpl->logger.error("Crashing the device is disabled. Set DEPTHAI_CRASH_DEVICE=1 to enable.");
         return;
     }
@@ -1383,8 +1334,16 @@ void DeviceBase::setLogLevel(LogLevel level) {
     pimpl->rpcClient->call("setLogLevel", level);
 }
 
+void DeviceBase::setNodeLogLevel(int64_t id, LogLevel level) {
+    pimpl->rpcClient->call("setNodeLogLevel", id, level);
+}
+
 LogLevel DeviceBase::getLogLevel() {
     return pimpl->rpcClient->call("getLogLevel").as<LogLevel>();
+}
+
+LogLevel DeviceBase::getNodeLogLevel(int64_t id) {
+    return pimpl->rpcClient->call("getNodeLogLevel", id).as<LogLevel>();
 }
 
 void DeviceBase::setXLinkChunkSize(int sizeBytes) {

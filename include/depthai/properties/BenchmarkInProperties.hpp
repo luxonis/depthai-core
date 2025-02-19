@@ -17,8 +17,8 @@ struct BenchmarkInProperties : PropertiesSerializable<Properties, BenchmarkInPro
     uint32_t reportEveryNMessages = 50;
 
     /**
-    * Specify whether the latenices are attached to the report individually
-    */
+     * Specify whether the latenices are attached to the report individually
+     */
     bool attachLatencies = false;
 
     /**

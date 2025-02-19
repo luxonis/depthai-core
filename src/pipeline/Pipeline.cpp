@@ -205,7 +205,7 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
                 throw std::invalid_argument(fmt::format("Node '{}' should subclass DeviceNode or have hostNode == true", info.name));
             }
             deviceNode->getProperties().serialize(info.properties, type);
-
+            info.logLevel = deviceNode->getLogLevel();
             // Create Io information
             auto inputs = node->getInputs();
             auto outputs = node->getOutputs();
@@ -601,8 +601,8 @@ void PipelineImpl::build() {
     isBuild = true;
 
     if(defaultDevice) {
-        std::string recordPath = utility::getEnv("DEPTHAI_RECORD");
-        std::string replayPath = utility::getEnv("DEPTHAI_REPLAY");
+        std::string recordPath = utility::getEnvAs<std::string>("DEPTHAI_RECORD", "");
+        std::string replayPath = utility::getEnvAs<std::string>("DEPTHAI_REPLAY", "");
 
         if(defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_2
            || defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_X) {
@@ -990,7 +990,7 @@ static dai::Path getAbsUri(dai::Path& uri, dai::Path& cwd) {
     return absAssetUri;
 }
 
-std::vector<uint8_t> PipelineImpl::loadResourceCwd(dai::Path uri, dai::Path cwd) {
+std::vector<uint8_t> PipelineImpl::loadResourceCwd(dai::Path uri, dai::Path cwd, bool moveAsset) {
     struct ProtocolHandler {
         const char* protocol = nullptr;
         std::function<std::vector<uint8_t>(PipelineImpl&, const dai::Path&)> handle = nullptr;
@@ -998,20 +998,25 @@ std::vector<uint8_t> PipelineImpl::loadResourceCwd(dai::Path uri, dai::Path cwd)
 
     const std::vector<ProtocolHandler> protocolHandlers = {
         {"asset",
-         [](PipelineImpl& p, const dai::Path& uri) -> std::vector<uint8_t> {
+         [moveAsset](PipelineImpl& p, const dai::Path& uri) -> std::vector<uint8_t> {
              // First check the pipeline asset manager
              auto asset = p.assetManager.get(uri.u8string());
              if(asset != nullptr) {
+                 if(moveAsset) {
+                     p.assetManager.remove(uri.u8string());
+                     return std::move(asset->data);
+                 }
                  return asset->data;
              }
-             // If asset not found in the pipeline asset manager, check all nodes
-             else {
-                 for(auto& node : p.nodes) {
-                     auto& assetManager = node->getAssetManager();
-                     auto asset = assetManager.get(uri.u8string());
-                     if(asset != nullptr) {
-                         return asset->data;
+             for(auto& node : p.nodes) {
+                 auto& assetManager = node->getAssetManager();
+                 auto asset = assetManager.get(uri.u8string());
+                 if(asset != nullptr) {
+                     if(moveAsset) {
+                         assetManager.remove(uri.u8string());
+                         return std::move(asset->data);
                      }
+                     return asset->data;
                  }
              }
              // Asset not found anywhere
