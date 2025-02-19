@@ -996,16 +996,19 @@ void dai::impl::printSpecs(spdlog::async_logger& logger, FrameSpecs specs) {
 size_t dai::impl::getAlignedOutputFrameSize(ImgFrame::Type type, size_t width, size_t height) {
     switch(type) {
         case ImgFrame::Type::YUV420p:
-            return ALIGN_UP(ALIGN_UP(width, DEPTHAI_STRIDE_ALIGNMENT) * height, DEPTHAI_PLANE_ALIGNMENT) + ALIGN_UP(ALIGN_UP(width / 2, DEPTHAI_STRIDE_ALIGNMENT) * (height / 2), DEPTHAI_PLANE_ALIGNMENT)
+            return ALIGN_UP(ALIGN_UP(width, DEPTHAI_STRIDE_ALIGNMENT) * height, DEPTHAI_PLANE_ALIGNMENT)
+                   + ALIGN_UP(ALIGN_UP(width / 2, DEPTHAI_STRIDE_ALIGNMENT) * (height / 2), DEPTHAI_PLANE_ALIGNMENT)
                    + ALIGN_UP(width / 2, DEPTHAI_STRIDE_ALIGNMENT) * (height / 2);
         case ImgFrame::Type::RGB888p:
         case ImgFrame::Type::BGR888p:
-            return 2 * ALIGN_UP(ALIGN_UP(width, DEPTHAI_STRIDE_ALIGNMENT) * height, DEPTHAI_PLANE_ALIGNMENT) + ALIGN_UP(width, DEPTHAI_STRIDE_ALIGNMENT) * height;
+            return 2 * ALIGN_UP(ALIGN_UP(width, DEPTHAI_STRIDE_ALIGNMENT) * height, DEPTHAI_PLANE_ALIGNMENT)
+                   + ALIGN_UP(width, DEPTHAI_STRIDE_ALIGNMENT) * height;
         case ImgFrame::Type::RGB888i:
         case ImgFrame::Type::BGR888i:
             return ALIGN_UP(3 * width, DEPTHAI_STRIDE_ALIGNMENT) * height;
         case ImgFrame::Type::NV12:
-            return ALIGN_UP(ALIGN_UP(width, DEPTHAI_STRIDE_ALIGNMENT) * height, DEPTHAI_PLANE_ALIGNMENT) + ALIGN_UP(width, DEPTHAI_STRIDE_ALIGNMENT) * (height / 2);
+            return ALIGN_UP(ALIGN_UP(width, DEPTHAI_STRIDE_ALIGNMENT) * height, DEPTHAI_PLANE_ALIGNMENT)
+                   + ALIGN_UP(width, DEPTHAI_STRIDE_ALIGNMENT) * (height / 2);
         case ImgFrame::Type::RAW8:
         case ImgFrame::Type::GRAY8:
             return ALIGN_UP(width, DEPTHAI_STRIDE_ALIGNMENT) * height;

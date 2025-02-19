@@ -40,12 +40,8 @@ class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNet
     std::shared_ptr<NeuralNetwork> build(Node::Output& input, const NNArchive& nnArchive);
     std::shared_ptr<NeuralNetwork> build(const std::shared_ptr<Camera>& input, NNModelDescription modelDesc, float fps = 30.0f);
     std::shared_ptr<NeuralNetwork> build(const std::shared_ptr<Camera>& input, const NNArchive& nnArchive, float fps = 30.0f);
-    std::shared_ptr<NeuralNetwork> build(const std::shared_ptr<ReplayVideo>& input,
-                                         NNModelDescription modelDesc,
-                                         float fps = 30.0f);
-    std::shared_ptr<NeuralNetwork> build(const std::shared_ptr<ReplayVideo>& input,
-                                         const NNArchive& nnArchive,
-                                         float fps = 30.0f);
+    std::shared_ptr<NeuralNetwork> build(const std::shared_ptr<ReplayVideo>& input, NNModelDescription modelDesc, float fps = 30.0f);
+    std::shared_ptr<NeuralNetwork> build(const std::shared_ptr<ReplayVideo>& input, const NNArchive& nnArchive, float fps = 30.0f);
 
     /**
      * Input message with data to be inferred upon

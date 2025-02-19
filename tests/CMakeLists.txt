@@ -388,6 +388,10 @@ dai_set_test_labels(regression_camera_concurrency_test ondevice rvc4 ci)
 dai_add_test(sync_test src/ondevice_tests/pipeline/node/sync_test.cpp)
 dai_set_test_labels(sync_test ondevice rvc2_all rvc4 ci)
 
+# Fsync test
+dai_add_test(fsync_test src/ondevice_tests/pipeline/node/fsync_test.cpp)
+dai_set_test_labels(fsync_test ondevice rvc4 ci) # Add back RVC2 once it's stable (MessageGroup issues running the test)
+
 ## Large messages tests
 dai_add_test(bridge_large_messages src/ondevice_tests/bridge_large_messages.cpp)
 # Only test on RVC4, as RVC2 is not yet supported to auto-increase the max stream capacity

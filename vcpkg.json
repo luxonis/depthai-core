@@ -53,6 +53,14 @@
                     "platform": "linux & !arm"
                 },
                 {
+                    "name": "opencv4",
+                    "default-features": false,
+                    "features": [
+                        "win32ui"
+                    ],
+                    "platform": "windows"
+                },
+                {
                     "name": "ffmpeg",
                     "features": [
                         "openh264"

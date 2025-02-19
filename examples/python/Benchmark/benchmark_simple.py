@@ -15,6 +15,8 @@ with dai.Pipeline(createImplicitDevice=False) as p:
     benchmarkIn = p.create(dai.node.BenchmarkIn)
     benchmarkIn.setRunOnHost(True) # The node can run on host or on device
     benchmarkIn.sendReportEveryNMessages(100)
+    benchmarkIn.logReportsAsWarnings(False)
+    benchmarkIn.setLogLevel(dai.LogLevel.TRACE)
 
     benchmarkOut.out.link(benchmarkIn.input)
     outputQueue = benchmarkIn.report.createOutputQueue()

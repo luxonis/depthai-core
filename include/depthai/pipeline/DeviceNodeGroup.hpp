@@ -16,6 +16,9 @@ class DeviceNodeGroup : public DeviceNode {
     using DeviceNode::DeviceNode;
     DeviceNodeGroup(const std::shared_ptr<Device>& device) : DeviceNode(device, std::make_unique<DeviceNodeGroupProperties>(), false) {}
     friend class PipelineImpl;
+
+    void setLogLevel(dai::LogLevel level) override;
+    dai::LogLevel getLogLevel() const override;
 };
 
 }  // namespace dai

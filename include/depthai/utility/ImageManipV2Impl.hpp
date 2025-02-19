@@ -2596,11 +2596,12 @@ size_t ImageManipOperations<ImageManipBuffer, ImageManipData>::getOutputSize() c
             size = getOutputStride() * getOutputHeight();
             break;
         case ImgFrame::Type::NV12:
-            size = ALIGN_UP(getOutputStride(0) * getOutputHeight(), DEPTHAI_PLANE_ALIGNMENT) + ALIGN_UP(getOutputStride(1) * getOutputHeight() / 2, DEPTHAI_PLANE_ALIGNMENT);
+            size = ALIGN_UP(getOutputStride(0) * getOutputHeight(), DEPTHAI_PLANE_ALIGNMENT)
+                   + ALIGN_UP(getOutputStride(1) * getOutputHeight() / 2, DEPTHAI_PLANE_ALIGNMENT);
             break;
         case ImgFrame::Type::YUV420p:
-            size =
-                ALIGN_UP(getOutputStride(0) * getOutputHeight(), DEPTHAI_PLANE_ALIGNMENT) + ALIGN_UP(getOutputStride(1) * getOutputHeight() / 2, DEPTHAI_PLANE_ALIGNMENT) * 2;
+            size = ALIGN_UP(getOutputStride(0) * getOutputHeight(), DEPTHAI_PLANE_ALIGNMENT)
+                   + ALIGN_UP(getOutputStride(1) * getOutputHeight() / 2, DEPTHAI_PLANE_ALIGNMENT) * 2;
             break;
         case ImgFrame::Type::RAW16:
             size = getOutputStride() * getOutputHeight();
