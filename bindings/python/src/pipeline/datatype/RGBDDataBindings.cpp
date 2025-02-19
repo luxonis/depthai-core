@@ -1,7 +1,6 @@
 
 #include "DatatypeBindings.hpp"
 #include "pipeline/CommonBindings.hpp"
-#include <unordered_map>
 #include <memory>
 
 // depthai
@@ -11,7 +10,7 @@
 #include <pybind11/chrono.h>
 #include <pybind11/numpy.h>
 
-void bind_transformdata(pybind11::module& m, void* pCallstack){
+void bind_rgbddata(pybind11::module& m, void* pCallstack){
 
     using namespace dai;
 

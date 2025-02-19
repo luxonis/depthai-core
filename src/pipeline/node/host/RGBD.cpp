@@ -236,7 +236,7 @@ RGBD::RGBD() = default;
 
 RGBD::~RGBD() = default;
 
-std::shared_ptr<RGBD> RGBD::build() {
+void RGBD::buildInternal() {
     sync->out.link(inSync);
     inColor.setBlocking(false);
     inColor.setMaxSize(1);
@@ -244,9 +244,11 @@ std::shared_ptr<RGBD> RGBD::build() {
     inDepth.setMaxSize(1);
     inSync.setBlocking(false);
     inSync.setMaxSize(1);
-    return std::static_pointer_cast<RGBD>(shared_from_this());
 }
 
+std::shared_ptr<RGBD> RGBD::build() {
+    return std::static_pointer_cast<RGBD>(shared_from_this());
+}
 std::shared_ptr<RGBD> RGBD::build(bool autocreate, StereoDepth::PresetMode mode, std::pair<int, int> size) {
     if(!autocreate) {
         return std::static_pointer_cast<RGBD>(shared_from_this());

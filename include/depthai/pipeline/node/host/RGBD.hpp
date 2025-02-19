@@ -64,6 +64,7 @@ class RGBD : public NodeCRTP<ThreadedHostNode, RGBD> {
     * @brief Print available GPU devices
     */
     void printDevices();
+    void buildInternal() override;
    private:
     class Impl;
     Pimpl<Impl> pimpl;
