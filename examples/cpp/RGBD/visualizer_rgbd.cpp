@@ -11,6 +11,7 @@ void signalHandler(int signum) {
 }
 
 int main() {
+    // Currently visualizer doesn't display colors for PCL
     using namespace std;
     // Default port values
     int webSocketPort = 8765;
