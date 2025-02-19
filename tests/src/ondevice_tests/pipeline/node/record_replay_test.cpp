@@ -127,10 +127,8 @@ TEST_CASE("MockIn Camera") {
     replayNode->setReplayVideoFile(helper.testFolder + "/extracted/CameraCAM_A.mp4");
     replayNode->setLoop(false);
 
-    auto cam = p.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A);
+    auto cam = p.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A, *replayNode);
     auto camOut = cam->requestOutput({2016, 1520});
-
-    replayNode->out.link(cam->mockIsp);
 
     auto camQ = camOut->createOutputQueue();
     auto replayQ = replayNode->out.createOutputQueue();
@@ -145,7 +143,10 @@ TEST_CASE("MockIn Camera") {
         } else if(camData->getSequenceNum() < replayData->getSequenceNum()) {
             camData = camQ->get<dai::ImgFrame>();
         } else {
-            // REQUIRE(camData->str() == replayData->str());
+            REQUIRE(camData->getTimestamp() == replayData->getTimestamp());
+            REQUIRE(camData->getTimestampDevice() == replayData->getTimestampDevice());
+            REQUIRE(camData->getWidth() == replayData->getWidth());
+            REQUIRE(camData->getHeight() == replayData->getHeight());
             REQUIRE(camData->getData().size() == replayData->getData().size());
         }
     }
