@@ -1,15 +1,16 @@
-#include "depthai/depthai.hpp"
 #include <opencv2/opencv.hpp>
+
+#include "depthai/depthai.hpp"
 
 int main() {
     dai::Pipeline pipeline;
 
-    auto monoLeft  = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B);
+    auto monoLeft = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B);
     auto monoRight = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_C);
 
     auto stereo = pipeline.create<dai::node::StereoDepth>();
 
-    auto monoLeftOut  = monoLeft->requestFullResolutionOutput(dai::ImgFrame::Type::NV12);
+    auto monoLeftOut = monoLeft->requestFullResolutionOutput(dai::ImgFrame::Type::NV12);
     auto monoRightOut = monoRight->requestFullResolutionOutput(dai::ImgFrame::Type::NV12);
 
     monoLeftOut->link(stereo->left);
@@ -19,16 +20,16 @@ int main() {
     stereo->setExtendedDisparity(true);
     stereo->setLeftRightCheck(true);
 
-    auto syncedLeftQueue  = stereo->syncedLeft.createOutputQueue();
+    auto syncedLeftQueue = stereo->syncedLeft.createOutputQueue();
     auto syncedRightQueue = stereo->syncedRight.createOutputQueue();
-    auto disparityQueue   = stereo->disparity.createOutputQueue();
+    auto disparityQueue = stereo->disparity.createOutputQueue();
 
     double maxDisparity = 1.0;
     pipeline.start();
     while(true) {
-        auto leftSynced  = syncedLeftQueue->get<dai::ImgFrame>();
+        auto leftSynced = syncedLeftQueue->get<dai::ImgFrame>();
         auto rightSynced = syncedRightQueue->get<dai::ImgFrame>();
-        auto disparity   = disparityQueue->get<dai::ImgFrame>();
+        auto disparity = disparityQueue->get<dai::ImgFrame>();
 
         cv::imshow("left", leftSynced->getCvFrame());
         cv::imshow("right", rightSynced->getCvFrame());
