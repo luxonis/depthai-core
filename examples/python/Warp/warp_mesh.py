@@ -10,7 +10,9 @@ width, height = 496, 496
 camRgb = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
 maxFrameSize = width * height * 3
 
-cameraOutput = camRgb.requestOutput((width,height),type=dai.ImgFrame.Type.BGR888p)
+platform = pipeline.getDefaultDevice().getPlatform()
+type = dai.ImgFrame.Type.BGR888p if platform == dai.Platform.RVC2 else dai.ImgFrame.Type.NV12
+cameraOutput = camRgb.requestOutput((width,height),type=type)
 
 # Warp preview frame 1
 warp1 = pipeline.create(dai.node.Warp)
@@ -26,7 +28,6 @@ WARP1_OUTPUT_FRAME_SIZE = (992,500)
 warp1.setOutputSize(WARP1_OUTPUT_FRAME_SIZE)
 warp1.setMaxOutputFrameSize(WARP1_OUTPUT_FRAME_SIZE[0] * WARP1_OUTPUT_FRAME_SIZE[1] * 3)
 warp1.setHwIds([1])
-warp1.setInterpolation(dai.Interpolation.NEAREST_NEIGHBOR)
 
 cameraOutput.link(warp1.inputImage)
 outQueue1 = warp1.out.createOutputQueue()
@@ -42,7 +43,6 @@ mesh2 = [
 warp2.setWarpMesh(mesh2, 3, 3)
 warp2.setMaxOutputFrameSize(maxFrameSize)
 warp1.setHwIds([2])
-warp2.setInterpolation(dai.Interpolation.BICUBIC)
 
 cameraOutput.link(warp2.inputImage)
 outQueue2 = warp2.out.createOutputQueue()
