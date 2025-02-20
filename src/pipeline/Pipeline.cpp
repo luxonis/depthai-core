@@ -577,6 +577,11 @@ void PipelineImpl::add(std::shared_ptr<Node> node) {
             throw std::invalid_argument("Cannot add a node that is already part of another pipeline");
         }
 
+        // In case we have a device node without an assigned device (usually subnodes in non-DeviceNode nodes), use the default device
+        if(std::dynamic_pointer_cast<DeviceNode>(curNode) != nullptr && std::dynamic_pointer_cast<DeviceNode>(curNode)->getDevice() == nullptr) {
+            std::dynamic_pointer_cast<DeviceNode>(curNode)->setDevice(defaultDevice);
+        }
+
         for(auto& n : curNode->nodeMap) {
             n->parentId = curNode->id;  // Set node parent id
             search.push(n);

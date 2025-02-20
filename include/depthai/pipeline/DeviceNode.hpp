@@ -44,6 +44,8 @@ class DeviceNode : public ThreadedNode {
 
     template <typename T>
     friend class Subnode;
+    friend class Pipeline;
+    friend class PipelineImpl;
 
     /**
      * @brief Set device for this node
