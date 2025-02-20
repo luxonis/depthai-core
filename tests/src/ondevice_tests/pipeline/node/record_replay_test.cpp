@@ -9,6 +9,8 @@
 #include "depthai/pipeline/node/host/Record.hpp"
 #include "depthai/utility/Compression.hpp"
 
+constexpr unsigned int NUM_MSGS = 50;
+
 class TestHelper {
    public:
     TestHelper() {
@@ -106,15 +108,19 @@ TEST_CASE("MockIn IMU") {
     auto imuData = imuOut->get<dai::IMUData>();
     auto replayData = replayOut->get<dai::IMUData>();
 
+    unsigned int i = 0;
     while(p.isRunning()) {
+        if(i >= NUM_MSGS) break;
         if(imuData->getSequenceNum() > replayData->getSequenceNum()) {
             replayData = replayOut->get<dai::IMUData>();
         } else if(imuData->getSequenceNum() < replayData->getSequenceNum()) {
             imuData = imuOut->get<dai::IMUData>();
         } else {
             REQUIRE(imuData->str() == replayData->str());
+            i++;
         }
     }
+    p.stop();
 }
 
 TEST_CASE("MockIn Camera") {
@@ -137,7 +143,9 @@ TEST_CASE("MockIn Camera") {
     auto camData = camQ->get<dai::ImgFrame>();
     auto replayData = replayQ->get<dai::ImgFrame>();
 
+    unsigned int i = 0;
     while(p.isRunning()) {
+        if(i >= NUM_MSGS) break;
         if(camData->getSequenceNum() > replayData->getSequenceNum()) {
             replayData = replayQ->get<dai::ImgFrame>();
         } else if(camData->getSequenceNum() < replayData->getSequenceNum()) {
@@ -148,6 +156,7 @@ TEST_CASE("MockIn Camera") {
             REQUIRE(camData->getWidth() == replayData->getWidth());
             REQUIRE(camData->getHeight() == replayData->getHeight());
             REQUIRE(camData->getData().size() == replayData->getData().size());
+            i++;
         }
     }
 }

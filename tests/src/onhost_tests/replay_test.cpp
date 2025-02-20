@@ -9,6 +9,8 @@
 #include "depthai/pipeline/node/host/Record.hpp"
 #include "depthai/utility/Compression.hpp"
 
+constexpr unsigned int NUM_MSGS = 100;
+
 class TestHelper {
    public:
     TestHelper() {
@@ -42,9 +44,14 @@ TEST_CASE("ReplayMetadataOnly node") {
     replayNode->setReplayFile(helper.testFolder + "/extracted/IMU.mcap");
     replayNode->setLoop(false);
 
-    p.start();
+    auto q = replayNode->out.createOutputQueue();
 
-    p.wait();
+    p.start();
+    for(auto i = 0U; i < NUM_MSGS; i++) {
+        auto data = q->get<dai::IMUData>();
+        REQUIRE(data != nullptr);
+    }
+    p.stop();
 }
 
 TEST_CASE("ReplayVideo node") {
@@ -57,7 +64,12 @@ TEST_CASE("ReplayVideo node") {
     replayNode->setReplayVideoFile(helper.testFolder + "/extracted/CameraCAM_A.mp4");
     replayNode->setLoop(false);
 
-    p.start();
+    auto q = replayNode->out.createOutputQueue();
 
-    p.wait();
+    p.start();
+    for(auto i = 0U; i < NUM_MSGS; i++) {
+        auto data = q->get<dai::ImgFrame>();
+        REQUIRE(data != nullptr);
+    }
+    p.stop();
 }
