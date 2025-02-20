@@ -1,6 +1,7 @@
 name: DepthAI Core HIL Testing
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - v3_develop
@@ -10,7 +11,7 @@ on:
     branches:
       - v3_develop
 
-# Only allow latest run on same branch to be tested, treat dispatches separately. 
+# Only allow latest run on same branch to be tested
 concurrency:
   group: ci-tests-${{ github.ref }}-1
   cancel-in-progress: true
