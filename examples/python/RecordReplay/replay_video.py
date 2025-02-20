@@ -5,7 +5,8 @@ from pathlib import Path
 import cv2
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-i", "--inputVideo", default="test_video.mp4", help="Input video name")
+parser.add_argument("-v", "--inputVideo", default="test_video.mp4", help="Input video name")
+parser.add_argument("-m", "--inputMetadata", default="test_video.mcap", help="Input metadata name")
 
 args = parser.parse_args()
 
@@ -17,19 +18,17 @@ if not Path(args.inputVideo).exists():
 with dai.Pipeline() as pipeline:
     replay = pipeline.create(dai.node.ReplayVideo)
     replay.setReplayVideoFile(Path(args.inputVideo))
+    if Path(args.inputMetadata).exists():
+        replay.setReplayMetadataFile(Path(args.inputMetadata))
     replay.setOutFrameType(dai.ImgFrame.Type.NV12)
     replay.setLoop(False)
 
-    imageManip = pipeline.create(dai.node.ImageManip)
-    imageManip.initialConfig.setResize(300, 300)
-    imageManip.initialConfig.setFrameType(dai.ImgFrame.Type.BGR888p)
-    replay.out.link(imageManip.inputImage)
-    manipOutQueue = imageManip.out.createOutputQueue()
+    videoOut = replay.out.createOutputQueue()
 
     pipeline.start()
     while pipeline.isRunning() and replay.isRunning():
         try:
-            outFrame : dai.ImgFrame = manipOutQueue.get()
+            outFrame : dai.ImgFrame = videoOut.get()
         except dai.MessageQueue.QueueException:
             # Replay stopped the pipeline
             break
