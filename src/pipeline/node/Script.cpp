@@ -6,8 +6,7 @@
 namespace dai {
 namespace node {
 
-void Script::buildInternal() {
-}
+void Script::buildInternal() {}
 
 void Script::setScriptPath(const dai::Path& path, const std::string& name) {
     properties.scriptUri = assetManager.set("__script", path)->getRelativeUri();

@@ -269,12 +269,10 @@ void DeviceBase::Impl::setLogLevel(LogLevel level) {
     logger.set_level(spdlogLevel);
 }
 
-
 LogLevel DeviceBase::Impl::getLogLevel() {
     // Converts spdlog to LogLevel
     return spdlogLevelToLogLevel(logger.level(), LogLevel::WARN);
 }
-
 
 ///////////////////////////////////////////////
 // END OF Impl section
@@ -481,7 +479,8 @@ void DeviceBase::close() {
 }
 
 unsigned int getCrashdumpTimeout(XLinkProtocol_t protocol) {
-    int defaultTimeout = DEFAULT_CRASHDUMP_TIMEOUT + (protocol == X_LINK_TCP_IP ? device::XLINK_TCP_WATCHDOG_TIMEOUT.count() : device::XLINK_USB_WATCHDOG_TIMEOUT.count());
+    int defaultTimeout =
+        DEFAULT_CRASHDUMP_TIMEOUT + (protocol == X_LINK_TCP_IP ? device::XLINK_TCP_WATCHDOG_TIMEOUT.count() : device::XLINK_USB_WATCHDOG_TIMEOUT.count());
     int timeoutSeconds = utility::getEnvAs<int>("DEPTHAI_CRASHDUMP_TIMEOUT", defaultTimeout);
     int timeoutMs = timeoutSeconds * 1000;
     return timeoutMs;

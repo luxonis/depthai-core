@@ -43,7 +43,9 @@ class DeviceNode : public ThreadedNode {
     DeviceNode(std::unique_ptr<Properties> props, bool conf);
 
     template <typename T>
-friend class Subnode;
+    friend class Subnode;
+    friend class Pipeline;
+    friend class PipelineImpl;
 
     /**
      * @brief Set device for this node

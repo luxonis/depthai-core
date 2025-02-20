@@ -1,4 +1,5 @@
 #include "Logging.hpp"
+
 #include "Environment.hpp"
 
 namespace dai {
@@ -61,7 +62,7 @@ Logging::Logging() : logger("depthai", {std::make_shared<spdlog::sinks::stdout_c
     // Set the logging level to the parsed level
     logger.set_level(level);
 
-    auto debugStr = utility::getEnvAs<std::string>("DEPTHAI_DEBUG","", logger);
+    auto debugStr = utility::getEnvAs<std::string>("DEPTHAI_DEBUG", "", logger);
     if(!debugStr.empty()) {
         // Try parsing the string as a number
         try {

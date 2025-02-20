@@ -59,6 +59,11 @@ class StereoDepthConfig : public Buffer {
         bool enableLeftRightCheck = true;
 
         /**
+         * Enables software left right check. Applicable to RVC4 only.
+         */
+        bool enableSwLeftRightCheck = false;
+
+        /**
          * Disparity range increased from 95 to 190, combined from full resolution and downscaled images.
          * Suitable for short range objects
          */
@@ -124,6 +129,7 @@ class StereoDepthConfig : public Buffer {
                           depthUnit,
                           customDepthUnitMultiplier,
                           enableLeftRightCheck,
+                          enableSwLeftRightCheck,
                           enableExtended,
                           enableSubpixel,
                           leftRightCheckThreshold,
@@ -585,6 +591,11 @@ class StereoDepthConfig : public Buffer {
         uint8_t confidenceThreshold = 55;
 
         /**
+         * Enable software confidence thresholding. Applicable to RVC4 only.
+         */
+        bool enableSwConfidenceThresholding = false;
+
+        /**
          * The linear equation applied for computing the cost is:
          * COMB_COST = α*AD + β*(CTC<<3).
          * CLAMP(COMB_COST >> 5, threshold).
@@ -605,7 +616,13 @@ class StereoDepthConfig : public Buffer {
          */
         LinearEquationParameters linearEquationParameters;
 
-        DEPTHAI_SERIALIZE(CostMatching, disparityWidth, enableCompanding, invalidDisparityValue, confidenceThreshold, linearEquationParameters);
+        DEPTHAI_SERIALIZE(CostMatching,
+                          disparityWidth,
+                          enableCompanding,
+                          invalidDisparityValue,
+                          confidenceThreshold,
+                          enableSwConfidenceThresholding,
+                          linearEquationParameters);
     };
 
     /**
