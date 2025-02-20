@@ -45,7 +45,7 @@ void Warp::setWarpMesh(const float* meshData, int numMeshPoints, int width, int 
 
             // get output offset
             size_t outputMeshOffset = (meshStride * i) + (j * sizeof(float) * 2);
-            auto& point = reinterpret_cast<std::pair<float,float>&>(asset.data.data()[outputMeshOffset]);
+            auto& point = reinterpret_cast<std::pair<float, float>&>(asset.data.data()[outputMeshOffset]);
 
             // Asign reversed mesh coordinates (HW specified)
             point.first = meshData[inputMeshIndex + 1];
