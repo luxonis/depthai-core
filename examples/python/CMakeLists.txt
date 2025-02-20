@@ -255,3 +255,7 @@ add_python_example(imu_gyroscope_accelerometer IMU/imu_gyroscope_accelerometer.p
 dai_set_example_test_labels(imu_gyroscope_accelerometer rvc2_all rvc4 ci)
 # On slow hosts the examples warns that batch size is too small
 set_tests_properties(py_imu_gyroscope_accelerometer PROPERTIES FAIL_REGULAR_EXPRESSION "\\[error\\];\\[critical\\]")
+
+# Warp node
+add_python_example(warp_mesh Warp/warp_mesh.py)
+dai_set_example_test_labels(warp_mesh rvc2_all rvc4 ci)
