@@ -68,27 +68,26 @@ class FeatureTrackerDrawer:
 
 print("Press 'm' to enable/disable motion estimation!")
 
+inputConfigQueue = None
 def on_trackbar(val):
     cfg = dai.FeatureTrackerConfig()
     cornerDetector = dai.FeatureTrackerConfig.CornerDetector()
     cornerDetector.numMaxFeatures = cv2.getTrackbarPos('numMaxFeatures', 'Features')
-    # cornerDetector.robustness = cv2.getTrackbarPos('robustness', 'Features')
+    cornerDetector.numTargetFeatures = cornerDetector.numMaxFeatures
 
     thresholds = dai.FeatureTrackerConfig.CornerDetector.Thresholds()
-    thresholds.initialValue = cv2.getTrackbarPos('harris_score','Features')
+    thresholds.initialValue = cv2.getTrackbarPos('harrisScore','Features')
     cornerDetector.thresholds = thresholds
 
     cfg.setCornerDetector(cornerDetector)
-    # cfg.setMotionEstimator(motionEstimator)
-
-    # inputConfigQueue.send(cfg)
+    if inputConfigQueue:
+        inputConfigQueue.send(cfg)
 
 cv2.namedWindow('Features', cv2.WINDOW_NORMAL)
 cv2.resizeWindow('Features', 1080, 800)
 
-cv2.createTrackbar('harris_score','Features',20000,25000, on_trackbar)
+cv2.createTrackbar('harrisScore','Features',20000,25000, on_trackbar)
 cv2.createTrackbar('numMaxFeatures','Features',256,1024, on_trackbar)
-cv2.createTrackbar('robustness','Features',0, 127, on_trackbar)
 
 # Create pipeline
 with dai.Pipeline() as pipeline:
@@ -98,31 +97,35 @@ with dai.Pipeline() as pipeline:
     manip.initialConfig.setFrameType(dai.ImgFrame.Type.GRAY8)
     camOutput.link(manip.inputImage)
 
-    featureTrackerLeft = pipeline.create(dai.node.FeatureTracker)
+    featureTracker = pipeline.create(dai.node.FeatureTracker)
 
-    featureTrackerLeft.initialConfig.setCornerDetector(dai.FeatureTrackerConfig.CornerDetector.Type.HARRIS)
-    featureTrackerLeft.initialConfig.setMotionEstimator(False)
+    featureTracker.initialConfig.setCornerDetector(dai.FeatureTrackerConfig.CornerDetector.Type.HARRIS)
+    featureTracker.initialConfig.setMotionEstimator(False)
+    featureTracker.initialConfig.setNumTargetFeatures(256)
 
     motionEstimator = dai.FeatureTrackerConfig.MotionEstimator()
     motionEstimator.enable = True
-    featureTrackerLeft.initialConfig.setMotionEstimator(motionEstimator)
+    featureTracker.initialConfig.setMotionEstimator(motionEstimator)
 
     cornerDetector = dai.FeatureTrackerConfig.CornerDetector()
     cornerDetector.numMaxFeatures = 256
-    # cornerDetector.robustness = 0
+    cornerDetector.numTargetFeatures = cornerDetector.numMaxFeatures
+
+    # RVC2 specific setting to allow for more features
+    featureTracker.setHardwareResources(2,2)
 
     outputFeaturePassthroughQueue = camOutput.createOutputQueue()
-    outputFeatureQueue = featureTrackerLeft.outputFeatures.createOutputQueue()
+    outputFeatureQueue = featureTracker.outputFeatures.createOutputQueue()
 
-    manip.out.link(featureTrackerLeft.inputImage)
+    manip.out.link(featureTracker.inputImage)
 
-    inputConfigQueue = featureTrackerLeft.inputConfig.createInputQueue()
+    inputConfigQueue = featureTracker.inputConfig.createInputQueue()
 
     thresholds = dai.FeatureTrackerConfig.CornerDetector.Thresholds()
-    thresholds.initialValue = cv2.getTrackbarPos('harris_score','Features')
+    thresholds.initialValue = cv2.getTrackbarPos('harrisScore','Features')
 
     cornerDetector.thresholds = thresholds
-    featureTrackerLeft.initialConfig.setCornerDetector(cornerDetector)
+    featureTracker.initialConfig.setCornerDetector(cornerDetector)
 
     leftWindowName = "Features"
     leftFeatureDrawer = FeatureTrackerDrawer("Feature tracking duration (frames)", leftWindowName)
@@ -148,9 +151,10 @@ with dai.Pipeline() as pipeline:
             cfg = dai.FeatureTrackerConfig()
             cornerDetector = dai.FeatureTrackerConfig.CornerDetector()
             cornerDetector.numMaxFeatures = cv2.getTrackbarPos('numMaxFeatures', 'Features')
+            cornerDetector.numTargetFeatures = cornerDetector.numMaxFeatures
 
             thresholds = dai.FeatureTrackerConfig.CornerDetector.Thresholds()
-            thresholds.initialValue = cv2.getTrackbarPos('harris_score','Features')
+            thresholds.initialValue = cv2.getTrackbarPos('harrisScore','Features')
             cornerDetector.thresholds = thresholds
 
             cfg.setCornerDetector(cornerDetector)
