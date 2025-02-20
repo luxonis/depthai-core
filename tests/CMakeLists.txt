@@ -383,7 +383,7 @@ dai_set_test_labels(sync_test ondevice rvc2_all rvc4 ci)
 
 # Fsync test
 dai_add_test(fsync_test src/ondevice_tests/pipeline/node/fsync_test.cpp)
-dai_set_test_labels(fsync_test ondevice rvc2_all rvc4 ci)
+dai_set_test_labels(fsync_test ondevice rvc2 usb rvc4 ci)
 
 ## Large messages tests
 dai_add_test(bridge_large_messages src/ondevice_tests/bridge_large_messages.cpp)
