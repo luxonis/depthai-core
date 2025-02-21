@@ -13,6 +13,7 @@ namespace dai {
 struct DetectionParserOptions {
     /// Generic Neural Network properties
     DetectionNetworkType nnFamily;
+    std::string subtype;
     float confidenceThreshold;
 
     /// YOLO specific network properties
@@ -25,6 +26,6 @@ struct DetectionParserOptions {
     float iouThreshold;
 };
 
-DEPTHAI_SERIALIZE_EXT(DetectionParserOptions, nnFamily, confidenceThreshold, classes, coordinates, anchors, anchorMasks, anchorsV2, iouThreshold);
+DEPTHAI_SERIALIZE_EXT(DetectionParserOptions, nnFamily, subtype, confidenceThreshold, classes, coordinates, anchors, anchorMasks, anchorsV2, iouThreshold);
 
 }  // namespace dai
