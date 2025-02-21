@@ -25,6 +25,7 @@ if(WIN32)
 
     # Statically compile vcruntime library
     add_compile_options(/MT)
+    add_compile_options(/MP)
 endif()
 
 find_program(CCACHE_PROGRAM ccache)
@@ -162,7 +163,7 @@ endif()
 # Create depthai project
 project(depthai VERSION "3.0.0" LANGUAGES CXX C)
 set(DEPTHAI_PRE_RELEASE_TYPE "alpha") # Valid options are "alpha", "beta", "rc", ""
-set(DEPTHAI_PRE_RELEASE_VERSION "12")
+set(DEPTHAI_PRE_RELEASE_VERSION "13")
 
 # Set DEPTHAI_VERSION universally, not conditionally
 set(DEPTHAI_VERSION ${PROJECT_VERSION}-${DEPTHAI_PRE_RELEASE_TYPE}.${DEPTHAI_PRE_RELEASE_VERSION})
@@ -350,6 +351,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/InputQueue.cpp
     src/pipeline/ThreadedNode.cpp
     src/pipeline/DeviceNode.cpp
+    src/pipeline/DeviceNodeGroup.cpp
     src/pipeline/node/XLinkIn.cpp
     src/pipeline/node/XLinkOut.cpp
     src/pipeline/node/ColorCamera.cpp
@@ -601,6 +603,10 @@ if(DEPTHAI_HAVE_PCL_SUPPORT AND DEPTHAI_MERGED_TARGET)
 endif()
 if(DEPTHAI_MERGED_TARGET)
     target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_MERGED_TARGET)
+endif()
+
+if(NOT BUILD_SHARED_LIBS)
+    target_compile_definitions(${TARGET_CORE_NAME} PUBLIC MCAP_STATIC)
 endif()
 
 # First specify options

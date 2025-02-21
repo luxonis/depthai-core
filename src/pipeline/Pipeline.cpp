@@ -205,7 +205,7 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
                 throw std::invalid_argument(fmt::format("Node '{}' should subclass DeviceNode or have hostNode == true", info.name));
             }
             deviceNode->getProperties().serialize(info.properties, type);
-
+            info.logLevel = deviceNode->getLogLevel();
             // Create Io information
             auto inputs = node->getInputs();
             auto outputs = node->getOutputs();
@@ -575,6 +575,11 @@ void PipelineImpl::add(std::shared_ptr<Node> node) {
             curNode->parent = parent.pimpl;
         } else if(curNode->parent.lock() != parent.pimpl) {
             throw std::invalid_argument("Cannot add a node that is already part of another pipeline");
+        }
+
+        // In case we have a device node without an assigned device (usually subnodes in non-DeviceNode nodes), use the default device
+        if(std::dynamic_pointer_cast<DeviceNode>(curNode) != nullptr && std::dynamic_pointer_cast<DeviceNode>(curNode)->getDevice() == nullptr) {
+            std::dynamic_pointer_cast<DeviceNode>(curNode)->setDevice(defaultDevice);
         }
 
         for(auto& n : curNode->nodeMap) {

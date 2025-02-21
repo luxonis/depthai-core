@@ -1,7 +1,51 @@
 #include "Logging.hpp"
+
 #include "Environment.hpp"
 
 namespace dai {
+
+LogLevel spdlogLevelToLogLevel(spdlog::level::level_enum level, LogLevel defaultValue) {
+    switch(level) {
+        case spdlog::level::trace:
+            return LogLevel::TRACE;
+        case spdlog::level::debug:
+            return LogLevel::DEBUG;
+        case spdlog::level::info:
+            return LogLevel::INFO;
+        case spdlog::level::warn:
+            return LogLevel::WARN;
+        case spdlog::level::err:
+            return LogLevel::ERR;
+        case spdlog::level::critical:
+            return LogLevel::CRITICAL;
+        case spdlog::level::off:
+            return LogLevel::OFF;
+        case spdlog::level::n_levels:
+        default:
+            return defaultValue;
+    }
+}
+
+spdlog::level::level_enum logLevelToSpdlogLevel(LogLevel level, spdlog::level::level_enum defaultValue) {
+    switch(level) {
+        case LogLevel::TRACE:
+            return spdlog::level::trace;
+        case LogLevel::DEBUG:
+            return spdlog::level::debug;
+        case LogLevel::INFO:
+            return spdlog::level::info;
+        case LogLevel::WARN:
+            return spdlog::level::warn;
+        case LogLevel::ERR:
+            return spdlog::level::err;
+        case LogLevel::CRITICAL:
+            return spdlog::level::critical;
+        case LogLevel::OFF:
+            return spdlog::level::off;
+        default:
+            return defaultValue;
+    }
+}
 
 Logging::Logging() : logger("depthai", {std::make_shared<spdlog::sinks::stdout_color_sink_mt>()}) {
     // Default global logging level set to WARN; override with ENV variable 'DEPTHAI_LEVEL'
@@ -18,7 +62,7 @@ Logging::Logging() : logger("depthai", {std::make_shared<spdlog::sinks::stdout_c
     // Set the logging level to the parsed level
     logger.set_level(level);
 
-    auto debugStr = utility::getEnvAs<std::string>("DEPTHAI_DEBUG","", logger);
+    auto debugStr = utility::getEnvAs<std::string>("DEPTHAI_DEBUG", "", logger);
     if(!debugStr.empty()) {
         // Try parsing the string as a number
         try {

@@ -102,6 +102,10 @@ if(DEPTHAI_ENABLE_PROTOBUF)
     find_package(Protobuf ${_QUIET} REQUIRED)
 endif()
 
+if(DEPTHAI_BUILD_TESTS)
+    find_package(Catch2 CONFIG REQUIRED)
+endif()
+
 # XLink
 if(DEPTHAI_XLINK_LOCAL AND (NOT CONFIG_MODE))
     set(_BUILD_SHARED_LIBS_SAVED "${BUILD_SHARED_LIBS}")
