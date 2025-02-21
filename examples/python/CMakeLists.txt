@@ -115,7 +115,7 @@ if(DEPTHAI_PYTHON_TEST_EXAMPLES)
         ${CMAKE_COMMAND} -DFORCE_TIMEOUT_SECONDS=300 -P ${CMAKE_CURRENT_LIST_DIR}/../cpp/cmake/ExecuteTestTimeout.cmake
 
         # Actual script to run
-        ${PYTHON_EXECUTABLE} "${CMAKE_CURRENT_LIST_DIR}/install_requirements.py" "--skip_depthai"
+        ${PYTHON_EXECUTABLE} "${CMAKE_CURRENT_LIST_DIR}/install_requirements.py" "--skip_depthai" "--install_rerun" "--install_open3d_cpu"
     )
 
     # Sets a regex catching any logged warnings, errors or critical (coming either from device or host)
