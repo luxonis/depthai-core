@@ -279,6 +279,8 @@ target_compile_definitions(detection_network_replay PRIVATE VIDEO_PATH="${constr
 
 # StereoDepth
 dai_add_example(depth_preview StereoDepth/depth_preview.cpp OFF OFF)
+dai_add_example(stereo StereoDepth/stereo.cpp OFF OFF)
+dai_set_example_test_labels(stereo ondevice rvc2_all rvc4 ci)
 
 # Thermal
 dai_add_example(thermal RVC2/Thermal/thermal.cpp OFF OFF)
