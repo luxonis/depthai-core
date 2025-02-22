@@ -20,6 +20,7 @@
 #include "datatype/NNData.hpp"
 #include "datatype/PointCloudConfig.hpp"
 #include "datatype/PointCloudData.hpp"
+#include "datatype/RGBDData.hpp"
 #include "datatype/SpatialImgDetections.hpp"
 #include "datatype/SpatialLocationCalculatorConfig.hpp"
 #include "datatype/SpatialLocationCalculatorData.hpp"

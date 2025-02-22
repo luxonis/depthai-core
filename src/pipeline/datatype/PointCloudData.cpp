@@ -37,6 +37,22 @@ std::vector<Point3fRGB> PointCloudData::getPointsRGB() {
     return points;
 }
 
+void PointCloudData::setPoints(const std::vector<Point3f>& points) {
+    auto size = points.size();
+    std::vector<uint8_t> data(size * sizeof(Point3f));
+    std::memcpy(data.data(), points.data(), size * sizeof(Point3f));
+    setData(std::move(data));
+    setColor(false);
+}
+
+void PointCloudData::setPointsRGB(const std::vector<Point3fRGB>& points) {
+    auto size = points.size();
+    std::vector<uint8_t> data(size * sizeof(Point3fRGB));
+    std::memcpy(data.data(), points.data(), size * sizeof(Point3fRGB));
+    setData(std::move(data));
+    setColor(true);
+}
+
 unsigned int PointCloudData::getInstanceNum() const {
     return instanceNum;
 }
@@ -168,4 +184,5 @@ ProtoSerializable::SchemaPair PointCloudData::serializeSchema() const {
 
 #endif
 static_assert(sizeof(Point3f) == 12, "Point3f size must be 12 bytes");
+static_assert(sizeof(Point3fRGB) == 15, "Point3fRGB size must be 15 bytes");
 }  // namespace dai
