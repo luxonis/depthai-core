@@ -81,6 +81,7 @@ void MessageQueueBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("getMaxSize", &MessageQueue::getMaxSize, DOC(dai, MessageQueue, getMaxSize))
         .def("getSize", &MessageQueue::getSize, DOC(dai, MessageQueue, getSize))
         .def("isFull", &MessageQueue::isFull, DOC(dai, MessageQueue, isFull))
+        .def("getFps", &MessageQueue::getFps, DOC(dai, MessageQueue, getFps))
         .def("addCallback", addCallbackLambda, py::arg("callback"), DOC(dai, MessageQueue, addCallback))
         .def("removeCallback", &MessageQueue::removeCallback, py::arg("callbackId"), DOC(dai, MessageQueue, removeCallback))
         .def("has", static_cast<bool (MessageQueue::*)()>(&MessageQueue::has), DOC(dai, MessageQueue, has))
