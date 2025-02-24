@@ -6,6 +6,7 @@
 #include <chrono>
 #include <cstdlib>
 #include <iostream>
+#include <mutex>
 #include <optional>
 #include <system_error>
 #include <thread>
@@ -530,8 +531,15 @@ void DeviceBase::closeImpl() {
     // invalid memory, etc. which hard crashes main app
     connection->close();
 
-    watchdogRunning = false;
-    // Stop watchdog first (this resets and waits for link to fall down)
+    if(gate && !waitForGate) {
+        gate->destroySession();
+    }
+    {
+        std::lock_guard<std::mutex> lock(watchdogMtx);
+        watchdogRunning = false;
+        watchdogCondVar.notify_all();
+    }
+
     if(watchdogThread.joinable()) watchdogThread.join();
 
     // Stop various threads
@@ -868,14 +876,10 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipelin
                         std::unique_lock<std::mutex> lock(lastWatchdogPingTimeMtx);
                         lastWatchdogPingTime = std::chrono::steady_clock::now();
                     }
-
-                    if(deviceInfo.protocol == X_LINK_TCP_IP) {
-                        // Ping with a quarter period the watchdog timeout
-                        std::this_thread::sleep_for(watchdogTimeout / 4);
-                    } else {
-                        // Ping with a period half of that of the watchdog timeout
-                        std::this_thread::sleep_for(watchdogTimeout / 2);
-                    }
+                    std::unique_lock<std::mutex> lock(watchdogMtx);
+                    // Calculate the dynamic sleep time based on protocol
+                    auto sleepDuration = (deviceInfo.protocol == X_LINK_TCP_IP) ? watchdogTimeout / 4 : watchdogTimeout / 2;
+                    watchdogCondVar.wait_for(lock, sleepDuration, [this]() { return !watchdogRunning; });
                 }
             } catch(const std::exception& ex) {
                 // ignore
@@ -1035,7 +1039,8 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, Prev
         while(true) {
             while(watchdogRunning) {
                 // Ping with a period half of that of the watchdog timeout
-                std::this_thread::sleep_for(watchdogTimeout);
+                std::unique_lock<std::mutex> lock(watchdogMtx);
+                watchdogCondVar.wait_for(lock, watchdogTimeout, [this]() { return !watchdogRunning; });
                 // Check if wd was pinged in the specified watchdogTimeout time.
                 decltype(lastWatchdogPingTime) prevPingTime;
                 {
