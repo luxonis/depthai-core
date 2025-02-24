@@ -46,6 +46,9 @@ with dai.Pipeline() as p:
 
     stereo.setRectifyEdgeFillColor(0)
     stereo.enableDistortionCorrection(True)
+    stereo.setDefaultProfilePreset(dai.node.StereoDepth.PresetMode.DEFAULT)
+    stereo.initialConfig.postProcessing.thresholdFilter.maxRange = 10000
+    rgbd.setDepthUnits(dai.StereoDepthConfig.AlgorithmControl.DepthUnit.METER)
 
     # Linking
     left.requestOutput((640, 400)).link(stereo.left)
