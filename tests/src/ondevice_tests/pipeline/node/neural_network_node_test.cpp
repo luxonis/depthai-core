@@ -1,10 +1,13 @@
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <opencv2/videoio.hpp>
+#include <magic_enum.hpp>
 
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/depthai.hpp"
 #include "depthai/modelzoo/NNModelDescription.hpp"
+#include "depthai/modelzoo/Zoo.hpp"
+#include "depthai/pipeline/datatype/BenchmarkReport.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "xtensor/xtensor_forward.hpp"
 
@@ -190,4 +193,65 @@ TEST_CASE("Combined Input NeuralNetwork API") {
     }
 
     REQUIRE(rightSideOK);
+}
+
+TEST_CASE("Multi threaded test") {
+    // Create pipeline
+    dai::Pipeline p;
+    auto benchmarkOut = p.create<dai::node::BenchmarkOut>();
+    benchmarkOut->setFps(-1);  // As fast as possible
+    auto inputBenchmarkQueue = benchmarkOut->input.createInputQueue();
+    auto modelPath = dai::getModelFromZoo(dai::NNModelDescription{"yolov6-nano", p.getDefaultDevice()->getPlatformAsString()});
+    auto modelArchive = dai::NNArchive(modelPath);
+    auto inputSize = modelArchive.getInputSize();
+    auto type = modelArchive.getConfig<dai::nn_archive::v1::Config>().model.inputs[0].preprocessing.daiType;
+    auto daiType = dai::ImgFrame::Type::BGR888p;
+
+    if(type.has_value()) {
+        auto convertedInputType = magic_enum::enum_cast<dai::ImgFrame::Type>(type.value());
+        if(!convertedInputType.has_value()) {
+            FAIL(fmt::format("Unsupported input type: {}", type.value()));
+        } else {
+            daiType = convertedInputType.value();
+        }
+    } else {
+        if(p.getDefaultDevice()->getPlatform() == dai::Platform::RVC2 || p.getDefaultDevice()->getPlatform() == dai::Platform::RVC3) {
+            daiType = dai::ImgFrame::Type::BGR888p;
+        } else if(p.getDefaultDevice()->getPlatform() == dai::Platform::RVC4) {
+            daiType = dai::ImgFrame::Type::BGR888i;
+        } else {
+            FAIL("Unsupported platform");
+        }
+    }
+    auto nn = p.create<dai::node::NeuralNetwork>()->build(benchmarkOut->out, modelArchive);
+    nn->setNumInferenceThreads(2);
+    auto benchmarkIn = p.create<dai::node::BenchmarkIn>();
+    nn->out.link(benchmarkIn->input);
+    benchmarkIn->sendReportEveryNMessages(100);
+    benchmarkIn->logReportsAsWarnings(false);
+    auto outputQueue = benchmarkIn->report.createOutputQueue();
+    // Start pipeline
+    p.start();
+
+    auto platform = p.getDefaultDevice()->getPlatform();
+    auto reportsToGet = 0;
+    if(platform == dai::Platform::RVC2) {
+        reportsToGet = 100; // Run the test for ~3 minutes
+    } else if(platform == dai::Platform::RVC4) {
+        reportsToGet = 1000; // Run the test for ~3 minutes
+    } else {
+        FAIL("Unknown platform");
+    }
+
+    auto inputFrame = std::make_shared<dai::ImgFrame>();
+    if(!inputSize.has_value()) {
+        FAIL("Input size not available");
+    }
+    cv::Mat cvFrame = cv::Mat(inputSize->second, inputSize->first, CV_8UC3, cv::Scalar(0, 255, 0));
+    inputFrame->setCvFrame(cvFrame, daiType);
+    inputBenchmarkQueue->send(inputFrame);
+    for(int i = 0; i < reportsToGet; i++) {
+        auto report = outputQueue->get<dai::BenchmarkReport>();
+        REQUIRE(report != nullptr);
+    }
 }
