@@ -272,6 +272,7 @@ dai_add_example(holistic_record Record/holistic_record.cpp OFF OFF)
 
 # Replay
 dai_add_example(replay_video_meta Replay/replay_video_meta.cpp OFF OFF)
+dai_add_example(replay_video Replay/replay_video.cpp OFF OFF)
 dai_add_example(replay_imu Replay/replay_imu.cpp OFF OFF)
 dai_add_example(holistic_replay Replay/holistic_replay.cpp OFF OFF)
 
