@@ -131,13 +131,13 @@ TEST_CASE("ImageManipV2 rebuild on cfg change") {
     auto manipQueue = manip->out.createOutputQueue();
     auto icQueue = manip->inputConfig.createInputQueue();
     p.start();
-    auto imgFrame = manipQueue.get<dai::ImgFrame>();
+    auto imgFrame = manipQueue->get<dai::ImgFrame>();
     REQUIRE(imgFrame->getWidth() == 400);
     REQUIRE(imgFrame->getHeight() == 200);
-    dai::ImagemanipConfigV2 cfg;
+    dai::ImageManipConfigV2 cfg;
     cfg.setOutputSize(200, 400);
-    icQueue->send(cfg);
-    imgFrame = manipQueue.get<dai::ImgFrame>();
+    icQueue->send(std::make_shared<dai::ImageManipConfigV2>(cfg));
+    imgFrame = manipQueue->get<dai::ImgFrame>();
     REQUIRE(imgFrame->getWidth() == 200);
     REQUIRE(imgFrame->getHeight() == 400);
     p.stop();
