@@ -150,21 +150,38 @@ bool isInCommaSeparatedVar(std::string list, std::string value) {
     return false;
 }
 
-std::vector<DeviceInfo> filterDevices(const std::vector<DeviceInfo>& deviceInfos) {
+std::vector<DeviceInfo> filterDevices(const std::vector<DeviceInfo>& deviceInfos, bool skipInvalidDevices = true) {
     auto allowedDeviceMxIds = utility::getEnvAs<std::string>("DEPTHAI_DEVICE_MXID_LIST", "");
     auto allowedDeviceIds = utility::getEnvAs<std::string>("DEPTHAI_DEVICE_ID_LIST", "");
     auto allowedDeviceNames = utility::getEnvAs<std::string>("DEPTHAI_DEVICE_NAME_LIST", "");
-    std::vector<DeviceInfo> filtered;
+    std::vector<DeviceInfo> filteredEnvs;
     for(auto& info : deviceInfos) {
         bool allowedMxId = isInCommaSeparatedVar(allowedDeviceMxIds, info.getDeviceId()) || allowedDeviceMxIds.empty();
         bool allowedId = isInCommaSeparatedVar(allowedDeviceIds, info.getDeviceId()) || allowedDeviceIds.empty();
         bool allowedName = isInCommaSeparatedVar(allowedDeviceNames, info.name) || allowedDeviceNames.empty();
         if(allowedMxId && allowedId && allowedName) {
-            filtered.push_back(info);
+            filteredEnvs.push_back(info);
             logger::info("Adding device to the filtered list: {}", info.toString());
         } else {
             logger::info("Skipping device: {}", info.toString());
         }
+    }
+    std::vector<DeviceInfo> filtered;
+    for(auto& info : filteredEnvs) {
+        if(skipInvalidDevices) {
+            if(info.status == X_LINK_SUCCESS) {
+                // device is okay
+            } else if(info.status == X_LINK_INSUFFICIENT_PERMISSIONS) {
+                logger::warn("Insufficient permissions to communicate with {} device having name \"{}\". Make sure udev rules are set",
+                             XLinkDeviceStateToStr(info.state),
+                             info.name);
+                continue;
+            } else {
+                logger::warn("skipping {} device having name \"{}\"", XLinkDeviceStateToStr(info.state), info.name);
+                continue;
+            }
+        }
+        filtered.push_back(info);
     }
 
     return filtered;
@@ -195,10 +212,30 @@ std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices(XLinkDeviceState
         devices.push_back(info);
     }
 
-    // Now also try to find all devices in the DEPTHAI_DEVICE_NAME_LIST (they were not found earlier if they were not in the same subnet)
+    devicesFiltered = filterDevices(devices, skipInvalidDevices);
     auto allowedDeviceNames = utility::getEnvAs<std::string>("DEPTHAI_DEVICE_NAME_LIST", "");
-    std::string delimiter = ",";
-    for(auto& name : utility::splitList(allowedDeviceNames, delimiter)) {
+    auto splitList = utility::splitList(allowedDeviceNames, ",");
+    bool allDevicesInEnvVarsFound = true;
+    for(auto& name : splitList) {
+        bool found = false;
+        for(const auto& existingInfo : devices) {
+            if(existingInfo.name == name) {
+                found = true;
+                break;
+            }
+        }
+        if(!found) {
+            allDevicesInEnvVarsFound = false;
+            break;
+        }
+    }
+
+    if(!devicesFiltered.empty() && allDevicesInEnvVarsFound) { // If a device from the list is found, return it without further searching
+        return devicesFiltered;
+    }
+
+    // Now also try to find all devices in the DEPTHAI_DEVICE_NAME_LIST (they were not found earlier if they were not in the same subnet)
+    for(auto& name : splitList) {
         deviceDesc_t desc = suitableDevice;
         desc.name[sizeof(desc.name) - 1] = 0;
         strncpy(desc.name, name.c_str(), sizeof(desc.name) - 1);
@@ -221,24 +258,7 @@ std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices(XLinkDeviceState
         }
     }
 
-    for(auto& info : devices) {
-        if(skipInvalidDevices) {
-            if(info.status == X_LINK_SUCCESS) {
-                // device is okay
-            } else if(info.status == X_LINK_INSUFFICIENT_PERMISSIONS) {
-                logger::warn("Insufficient permissions to communicate with {} device having name \"{}\". Make sure udev rules are set",
-                             XLinkDeviceStateToStr(info.state),
-                             info.name);
-                continue;
-            } else {
-                logger::warn("skipping {} device having name \"{}\"", XLinkDeviceStateToStr(info.state), info.name);
-                continue;
-            }
-        }
-        devicesFiltered.push_back(info);
-    }
-
-    devicesFiltered = filterDevices(devicesFiltered);
+    devicesFiltered = filterDevices(devices, skipInvalidDevices);
     return devicesFiltered;
 }
 
