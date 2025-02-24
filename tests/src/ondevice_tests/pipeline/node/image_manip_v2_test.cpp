@@ -118,3 +118,27 @@ TEST_CASE("Test ImageManipV2 with u16 frames") {
         REQUIRE(outFrame->getHeight() == outputHeight);
     }
 }
+
+TEST_CASE("ImageManipV2 rebuild on cfg change") {
+    dai::Pipeline p;
+    auto cam = p.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A);
+    auto manip = p.create<dai::node::ImageManipV2>();
+    manip->setRunOnHost(true);
+    cam->requestFullResolutionOutput()->link(manip->inputImage);
+    manip->initialConfig.setOutputSize(400, 200);
+    manip->inputConfig.setWaitForMessage(true);
+
+    auto manipQueue = manip->out.createOutputQueue();
+    auto icQueue = manip->inputConfig.createInputQueue();
+    p.start();
+    auto imgFrame = manipQueue.get<dai::ImgFrame>();
+    REQUIRE(imgFrame->getWidth() == 400);
+    REQUIRE(imgFrame->getHeight() == 200);
+    dai::ImagemanipConfigV2 cfg;
+    cfg.setOutputSize(200, 400);
+    icQueue->send(cfg);
+    imgFrame = manipQueue.get<dai::ImgFrame>();
+    REQUIRE(imgFrame->getWidth() == 200);
+    REQUIRE(imgFrame->getHeight() == 400);
+    p.stop();
+}
