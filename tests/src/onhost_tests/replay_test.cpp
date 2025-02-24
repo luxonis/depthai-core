@@ -42,12 +42,13 @@ TEST_CASE("ReplayMetadataOnly node") {
 
     auto replayNode = p.create<dai::node::ReplayMetadataOnly>();
     replayNode->setReplayFile(helper.testFolder + "/extracted/IMU.mcap");
-    replayNode->setLoop(false);
+    replayNode->setLoop(true);
 
     auto q = replayNode->out.createOutputQueue();
 
     p.start();
     for(auto i = 0U; i < NUM_MSGS; i++) {
+        if(!p.isRunning()) break;
         auto data = q->get<dai::IMUData>();
         REQUIRE(data != nullptr);
     }
@@ -62,12 +63,13 @@ TEST_CASE("ReplayVideo node") {
     auto replayNode = p.create<dai::node::ReplayVideo>();
     replayNode->setReplayMetadataFile(helper.testFolder + "/extracted/CameraCAM_A.mcap");
     replayNode->setReplayVideoFile(helper.testFolder + "/extracted/CameraCAM_A.mp4");
-    replayNode->setLoop(false);
+    replayNode->setLoop(true);
 
     auto q = replayNode->out.createOutputQueue();
 
     p.start();
     for(auto i = 0U; i < NUM_MSGS; i++) {
+        if(!p.isRunning()) break;
         auto data = q->get<dai::ImgFrame>();
         REQUIRE(data != nullptr);
     }
