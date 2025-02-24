@@ -1,7 +1,7 @@
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_test_macros.hpp>
-#include <opencv2/videoio.hpp>
 #include <magic_enum.hpp>
+#include <opencv2/videoio.hpp>
 
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/depthai.hpp"
@@ -236,9 +236,9 @@ TEST_CASE("Multi threaded test") {
     auto platform = p.getDefaultDevice()->getPlatform();
     auto reportsToGet = 0;
     if(platform == dai::Platform::RVC2) {
-        reportsToGet = 100; // Run the test for ~3 minutes
+        reportsToGet = 100;  // Run the test for ~3 minutes
     } else if(platform == dai::Platform::RVC4) {
-        reportsToGet = 1000; // Run the test for ~3 minutes
+        reportsToGet = 1000;  // Run the test for ~3 minutes
     } else {
         FAIL("Unknown platform");
     }
