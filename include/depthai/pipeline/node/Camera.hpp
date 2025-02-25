@@ -11,6 +11,7 @@
 #include "depthai/pipeline/datatype/CameraControl.hpp"
 #include "depthai/properties/CameraProperties.hpp"
 #include "depthai/utility/span.hpp"
+#include "depthai/pipeline/node/host/Replay.hpp"
 
 namespace dai {
 namespace node {
@@ -41,6 +42,16 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
     std::shared_ptr<Camera> build(dai::CameraBoardSocket boardSocket = dai::CameraBoardSocket::AUTO);
 
     /**
+     * Build with a specific board socket and mock input
+     */
+    std::shared_ptr<Camera> build(dai::CameraBoardSocket boardSocket, ReplayVideo& replay);
+
+    /**
+     * Build with mock input
+     */
+    std::shared_ptr<Camera> build(ReplayVideo& replay);
+
+    /**
      * Get max width of the camera (can only be called after build)
      */
     uint32_t getMaxWidth() const;
@@ -62,10 +73,22 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
         *this, {"inputControl", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::CameraControl, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
+     * Input for mocking 'isp' functionality on RVC2.
+     * Default queue is blocking with size 8
+     */
+    Input mockIsp{*this, {"mockIsp", DEFAULT_GROUP, true, 8, {{{DatatypeEnum::ImgFrame, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+
+    /**
      * Retrieves which board socket to use
      * @returns Board socket to use
      */
     CameraBoardSocket getBoardSocket() const;
+
+    /**
+     * Set mock ISP for Camera node. Automatically sets mockIsp size.
+     * @param replay ReplayVideo node to use as mock ISP
+     */
+    Camera& setMockIsp(ReplayVideo& replay);
 
    private:
     class Impl;
@@ -91,10 +114,15 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
 
     void buildStage1() override;
 
+    float getMaxRequestedFps() const;
+    uint32_t getMaxRequestedWidth() const;
+    uint32_t getMaxRequestedHeight() const;
+
    protected:
     Properties& getProperties() override;
     bool isSourceNode() const override;
     NodeRecordParams getNodeRecordParams() const override;
+    Input& getReplayInput() override;
 
    private:
     bool isBuilt = false;

@@ -59,7 +59,7 @@ void VideoRecorder::init(const std::string& filePath, unsigned int width, unsign
     switch(codec) {
         case VideoCodec::H264:
         case VideoCodec::MJPEG:
-            mp4Writer = MP4Create(filePath.c_str(), 0);
+            mp4Writer = MP4Create(filePath.c_str());
             if(mp4Writer == MP4_INVALID_FILE_HANDLE) {
                 throw std::runtime_error("Failed to create MP4 file");
             }
@@ -215,6 +215,18 @@ void VideoPlayer::close() {
     if(cvReader && cvReader->isOpened()) {
         cvReader->release();
     }
+}
+
+std::tuple<size_t, size_t> getVideoSize(const std::string& filePath) {
+    cv::VideoCapture cvReader;
+    cvReader.open(filePath);
+    if(!cvReader.isOpened()) {
+        throw std::runtime_error("Failed to open video file");
+    }
+    auto width = cvReader.get(cv::CAP_PROP_FRAME_WIDTH);
+    auto height = cvReader.get(cv::CAP_PROP_FRAME_HEIGHT);
+    cvReader.release();
+    return {width, height};
 }
 
 }  // namespace utility
