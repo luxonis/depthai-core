@@ -55,6 +55,7 @@ namespace dai {
 const std::string MAGIC_PROTECTED_FLASHING_VALUE = "235539980";
 const std::string MAGIC_FACTORY_FLASHING_VALUE = "413424129";
 const std::string MAGIC_FACTORY_PROTECTED_FLASHING_VALUE = "868632271";
+constexpr int DEVICE_SEARCH_FIRST_TIMEOUT_MS = 30;
 
 const unsigned int DEFAULT_CRASHDUMP_TIMEOUT = 9000;
 
@@ -116,7 +117,7 @@ std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice(std::chrono::mill
     do {
         int timeoutMs = XLINK_DEVICE_DEFAULT_SEARCH_TIMEOUT_MS;
         if(first) {
-            timeoutMs = 30;  // for the first iteraton, have a shorter timeout
+            timeoutMs = DEVICE_SEARCH_FIRST_TIMEOUT_MS;  // for the first iteraton, have a shorter timeout
             first = false;
         }
         auto devices = XLinkConnection::getAllConnectedDevices(X_LINK_ANY_STATE, false, timeoutMs);
