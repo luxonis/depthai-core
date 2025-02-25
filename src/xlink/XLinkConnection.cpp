@@ -230,7 +230,7 @@ std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices(XLinkDeviceState
         }
     }
 
-    if(!devicesFiltered.empty() && allDevicesInEnvVarsFound) { // If a device from the list is found, return it without further searching
+    if(!devicesFiltered.empty() && allDevicesInEnvVarsFound) {  // If a device from the list is found, return it without further searching
         return devicesFiltered;
     }
 
