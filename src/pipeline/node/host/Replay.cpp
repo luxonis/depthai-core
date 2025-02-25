@@ -355,7 +355,14 @@ void ReplayMetadataOnly::run() {
 
         first = false;
     }
-    stopPipeline();
+    try {
+        stopPipeline();
+    } catch(const std::exception& e) {
+        // FIXME: This is a workaround for a bug in the pipeline
+        if(e.what() != std::string("Pipeline is null")) {
+            throw;
+        }
+    }
 #else
     throw std::runtime_error("ReplayMetadataOnly node requires protobuf support");
 #endif

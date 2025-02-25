@@ -3,6 +3,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <cstdlib>
 #include <ctime>
+#include <exception>
 #include <filesystem>
 
 #include "depthai/depthai.hpp"
@@ -29,49 +30,57 @@ class TestHelper {
     }
 
     ~TestHelper() {
-        std::filesystem::remove_all(testFolder);
+        try {
+            std::filesystem::remove_all(testFolder);
+        } catch(const std::exception& e) {
+            std::cerr << "Failed to remove test folder: " << e.what() << std::endl;
+        }
     }
 
     std::string testFolder;
 };
 
 TEST_CASE("ReplayMetadataOnly node") {
-    TestHelper helper;
+    {
+        TestHelper helper;
 
-    dai::Pipeline p(false);
+        dai::Pipeline p(false);
 
-    auto replayNode = p.create<dai::node::ReplayMetadataOnly>();
-    replayNode->setReplayFile(helper.testFolder + "/extracted/IMU.mcap");
-    replayNode->setLoop(true);
+        auto replayNode = p.create<dai::node::ReplayMetadataOnly>();
+        replayNode->setReplayFile(helper.testFolder + "/extracted/IMU.mcap");
+        replayNode->setLoop(true);
 
-    auto q = replayNode->out.createOutputQueue();
+        auto q = replayNode->out.createOutputQueue();
 
-    p.start();
-    for(auto i = 0U; i < NUM_MSGS; i++) {
-        if(!p.isRunning()) break;
-        auto data = q->get<dai::IMUData>();
-        REQUIRE(data != nullptr);
+        p.start();
+        for(auto i = 0U; i < NUM_MSGS; i++) {
+            if(!p.isRunning()) break;
+            auto data = q->get<dai::IMUData>();
+            REQUIRE(data != nullptr);
+        }
+        p.stop();
     }
-    p.stop();
 }
 
 TEST_CASE("ReplayVideo node") {
-    TestHelper helper;
+    {
+        TestHelper helper;
 
-    dai::Pipeline p(false);
+        dai::Pipeline p(false);
 
-    auto replayNode = p.create<dai::node::ReplayVideo>();
-    replayNode->setReplayMetadataFile(helper.testFolder + "/extracted/CameraCAM_A.mcap");
-    replayNode->setReplayVideoFile(helper.testFolder + "/extracted/CameraCAM_A.mp4");
-    replayNode->setLoop(true);
+        auto replayNode = p.create<dai::node::ReplayVideo>();
+        replayNode->setReplayMetadataFile(helper.testFolder + "/extracted/CameraCAM_A.mcap");
+        replayNode->setReplayVideoFile(helper.testFolder + "/extracted/CameraCAM_A.mp4");
+        replayNode->setLoop(true);
 
-    auto q = replayNode->out.createOutputQueue();
+        auto q = replayNode->out.createOutputQueue();
 
-    p.start();
-    for(auto i = 0U; i < NUM_MSGS; i++) {
-        if(!p.isRunning()) break;
-        auto data = q->get<dai::ImgFrame>();
-        REQUIRE(data != nullptr);
+        p.start();
+        for(auto i = 0U; i < NUM_MSGS; i++) {
+            if(!p.isRunning()) break;
+            auto data = q->get<dai::ImgFrame>();
+            REQUIRE(data != nullptr);
+        }
+        p.stop();
     }
-    p.stop();
 }
