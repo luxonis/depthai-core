@@ -2211,18 +2211,6 @@ std::string getConfigString(const dai::ImageManipOpsBase<C>& ops) {
     }
     return configSS.str();
 }
-template <typename C>
-std::string hash(const ImageManipOpsBase<C>& base) {
-    std::stringstream cStr;
-    cStr << getConfigString(base);
-    cStr << "; o=" << base.outputWidth << "x" << base.outputHeight;
-    cStr << " | rm=" << (int)base.resizeMode;
-    cStr << " | c=" << base.center;
-    cStr << " | cm=" << (int)base.colormap;
-    cStr << " | bg=" << (int)base.background << ":" << (int)base.backgroundR << ":" << (int)base.backgroundG << ":" << (int)base.backgroundB;
-    cStr << " | u=" << base.undistort;
-    return cStr.str();
-}
 
 inline std::array<std::array<float, 3>, 3> matmul(std::array<std::array<float, 3>, 3> A, std::array<std::array<float, 3>, 3> B) {
     return {{{A[0][0] * B[0][0] + A[0][1] * B[1][0] + A[0][2] * B[2][0],
@@ -2377,7 +2365,7 @@ void ImageManipOperations<ImageManipBuffer, ImageManipData>::init() {
 template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
 ImageManipOperations<ImageManipBuffer, ImageManipData>& ImageManipOperations<ImageManipBuffer, ImageManipData>::build(
     const ImageManipOpsBase<Container>& newBase, ImgFrame::Type outType, FrameSpecs srcFrameSpecs, ImgFrame::Type inFrameType) {
-    const auto newCfgStr = hash(newBase);
+    const auto newCfgStr = newBase.str();
     if(outType == ImgFrame::Type::NONE) {
         if(base.colormap != Colormap::NONE)
             outType = VALID_TYPE_COLOR;

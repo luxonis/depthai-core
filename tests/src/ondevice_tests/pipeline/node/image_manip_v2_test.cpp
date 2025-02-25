@@ -123,7 +123,6 @@ TEST_CASE("ImageManipV2 rebuild on cfg change") {
     dai::Pipeline p;
     auto cam = p.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A);
     auto manip = p.create<dai::node::ImageManipV2>();
-    manip->setRunOnHost(true);
     cam->requestFullResolutionOutput()->link(manip->inputImage);
     manip->inputConfig.setWaitForMessage(true);
 
