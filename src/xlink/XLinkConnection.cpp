@@ -187,7 +187,7 @@ std::vector<DeviceInfo> filterDevices(const std::vector<DeviceInfo>& deviceInfos
     return filtered;
 }
 
-std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices(XLinkDeviceState_t state, bool skipInvalidDevices) {
+std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices(XLinkDeviceState_t state, bool skipInvalidDevices, int timeoutMs) {
     initialize();
 
     std::vector<DeviceInfo> devices;
@@ -199,7 +199,7 @@ std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices(XLinkDeviceState
     suitableDevice.platform = getDefaultPlatform();
     suitableDevice.state = state;
 
-    auto status = XLinkFindAllSuitableDevices(suitableDevice, deviceDescAll.data(), static_cast<unsigned int>(deviceDescAll.size()), &numdev);
+    auto status = XLinkFindAllSuitableDevices(suitableDevice, deviceDescAll.data(), static_cast<unsigned int>(deviceDescAll.size()), &numdev, timeoutMs);
     if(status == X_LINK_DEVICE_NOT_FOUND) {
         return devices;
     }
@@ -239,7 +239,7 @@ std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices(XLinkDeviceState
         deviceDesc_t desc = suitableDevice;
         desc.name[sizeof(desc.name) - 1] = 0;
         strncpy(desc.name, name.c_str(), sizeof(desc.name) - 1);
-        auto status = XLinkFindAllSuitableDevices(desc, deviceDescAll.data(), static_cast<unsigned int>(deviceDescAll.size()), &numdev);
+        auto status = XLinkFindAllSuitableDevices(desc, deviceDescAll.data(), static_cast<unsigned int>(deviceDescAll.size()), &numdev, timeoutMs);
         if(status != X_LINK_SUCCESS) throw std::runtime_error("Couldn't retrieve all connected devices while searching by name");
         for(unsigned i = 0; i < numdev; i++) {
             DeviceInfo info(deviceDescAll.at(i));

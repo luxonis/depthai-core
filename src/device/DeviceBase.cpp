@@ -112,8 +112,14 @@ std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice(std::chrono::mill
     bool found = false;
     DeviceInfo deviceInfo;
     std::unordered_map<std::string, DeviceInfo> invalidDevices;
+    bool first = true;
     do {
-        auto devices = XLinkConnection::getAllConnectedDevices(X_LINK_ANY_STATE, false);
+        int timeoutMs = XLINK_DEVICE_DEFAULT_SEARCH_TIMEOUT_MS;
+        if(first) {
+            timeoutMs = 30;  // for the first iteraton, have a shorter timeout
+            first = false;
+        }
+        auto devices = XLinkConnection::getAllConnectedDevices(X_LINK_ANY_STATE, false, timeoutMs);
         for(auto searchState : {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_FLASH_BOOTED, X_LINK_GATE}) {
             for(const auto& device : devices) {
                 if(device.state == searchState) {

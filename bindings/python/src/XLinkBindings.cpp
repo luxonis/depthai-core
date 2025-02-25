@@ -139,7 +139,7 @@ void XLinkBindings::bind(pybind11::module& m, void* pCallstack) {
         .def(py::init<const DeviceInfo&, std::string>())
         .def(py::init<const DeviceInfo&>())
         .def_static(
-            "getAllConnectedDevices", &XLinkConnection::getAllConnectedDevices, py::arg("state") = X_LINK_ANY_STATE, py::arg("skipInvalidDevices") = true)
+            "getAllConnectedDevices", &XLinkConnection::getAllConnectedDevices, py::arg("state") = X_LINK_ANY_STATE, py::arg("skipInvalidDevices") = true, py::arg("timeoutMs") = XLINK_DEVICE_DEFAULT_SEARCH_TIMEOUT_MS)
         .def_static("getFirstDevice", &XLinkConnection::getFirstDevice, py::arg("state") = X_LINK_ANY_STATE, py::arg("skipInvalidDevice") = true)
         .def_static(
             "getDeviceById", &XLinkConnection::getDeviceById, py::arg("deviceId"), py::arg("state") = X_LINK_ANY_STATE, py::arg("skipInvalidDevice") = true)

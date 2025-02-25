@@ -60,7 +60,7 @@ class XLinkConnection {
      * @param skipInvalidDevices whether or not to skip over devices that cannot be successfully communicated with
      * @returns Vector of connected device information
      */
-    static std::vector<DeviceInfo> getAllConnectedDevices(XLinkDeviceState_t state = X_LINK_ANY_STATE, bool skipInvalidDevices = true);
+    static std::vector<DeviceInfo> getAllConnectedDevices(XLinkDeviceState_t state = X_LINK_ANY_STATE, bool skipInvalidDevices = true, int timeoutMs = XLINK_DEVICE_DEFAULT_SEARCH_TIMEOUT_MS);
 
     /**
      * Returns information of first device with given state
