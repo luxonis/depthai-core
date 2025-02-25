@@ -126,17 +126,19 @@ TEST_CASE("ImageManipV2 rebuild on cfg change") {
     cam->requestFullResolutionOutput()->link(manip->inputImage);
     manip->inputConfig.setWaitForMessage(true);
 
-    auto manipQueue = manip->out.createOutputQueue();
+    auto manipQueue = manip->out.createOutputQueue(1, false);
     auto icQueue = manip->inputConfig.createInputQueue();
     p.start();
     dai::ImageManipConfigV2 cfg;
     cfg.setOutputSize(400, 200);
     icQueue->send(std::make_shared<dai::ImageManipConfigV2>(cfg));
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
     auto imgFrame = manipQueue->get<dai::ImgFrame>();
     REQUIRE(imgFrame->getWidth() == 400);
     REQUIRE(imgFrame->getHeight() == 200);
     cfg.setOutputSize(200, 400);
     icQueue->send(std::make_shared<dai::ImageManipConfigV2>(cfg));
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
     imgFrame = manipQueue->get<dai::ImgFrame>();
     REQUIRE(imgFrame->getWidth() == 200);
     REQUIRE(imgFrame->getHeight() == 400);
