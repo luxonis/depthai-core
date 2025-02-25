@@ -2365,7 +2365,7 @@ void ImageManipOperations<ImageManipBuffer, ImageManipData>::init() {
 template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
 ImageManipOperations<ImageManipBuffer, ImageManipData>& ImageManipOperations<ImageManipBuffer, ImageManipData>::build(
     const ImageManipOpsBase<Container>& newBase, ImgFrame::Type outType, FrameSpecs srcFrameSpecs, ImgFrame::Type inFrameType) {
-    const auto newCfgStr = getConfigString(newBase);
+    const auto newCfgStr = newBase.str();
     if(outType == ImgFrame::Type::NONE) {
         if(base.colormap != Colormap::NONE)
             outType = VALID_TYPE_COLOR;

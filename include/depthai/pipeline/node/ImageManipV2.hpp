@@ -110,8 +110,6 @@ void ImageManipV2::loop(N& node,
         bool needsImage = true;
         bool skipImage = false;
         if(node.inputConfig.getWaitForMessage()) {
-            std::cout << "trying to receive config..." << std::endl;
-
             pConfig = node.inputConfig.template get<ImageManipConfigV2>();
             hasConfig = true;
             if(inImage != nullptr && hasConfig && pConfig->getReusePreviousImage()) {
