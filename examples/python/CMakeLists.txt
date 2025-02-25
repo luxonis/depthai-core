@@ -190,7 +190,7 @@ dai_set_example_test_labels(reconnect_callback ondevice rvc2_all rvc4 ci)
 
 ## RGBD
 add_python_example(rgbd RGBD/rgbd.py)
-dai_set_example_test_labels(rgbd ondevice rvc2_all rvc4 ci)
+dai_set_example_test_labels(rgbd ondevice rvc2_all rvc4 ci nowindows)
 
 add_python_example(visualizer_rgbd RGBD/visualizer_rgbd.py)
 dai_set_example_test_labels(visualizer_rgbd ondevice rvc2_all rvc4 ci)
