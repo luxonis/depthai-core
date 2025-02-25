@@ -210,7 +210,7 @@ bool DeviceGate::stopSession() {
 
 bool DeviceGate::destroySession() {
     if(getState() == SessionState::DESTROYED) {
-        spdlog::warn("DeviceGate trying to destroy already destroyed session");
+        spdlog::debug("DeviceGate trying to destroy already destroyed session");
         return true;
     }
 

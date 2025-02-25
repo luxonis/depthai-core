@@ -6,6 +6,7 @@
 #include <chrono>
 #include <cstdlib>
 #include <iostream>
+#include <mutex>
 #include <optional>
 #include <system_error>
 #include <thread>
@@ -54,6 +55,7 @@ namespace dai {
 const std::string MAGIC_PROTECTED_FLASHING_VALUE = "235539980";
 const std::string MAGIC_FACTORY_FLASHING_VALUE = "413424129";
 const std::string MAGIC_FACTORY_PROTECTED_FLASHING_VALUE = "868632271";
+constexpr int DEVICE_SEARCH_FIRST_TIMEOUT_MS = 30;
 
 const unsigned int DEFAULT_CRASHDUMP_TIMEOUT = 9000;
 
@@ -111,8 +113,14 @@ std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice(std::chrono::mill
     bool found = false;
     DeviceInfo deviceInfo;
     std::unordered_map<std::string, DeviceInfo> invalidDevices;
+    bool first = true;
     do {
-        auto devices = XLinkConnection::getAllConnectedDevices(X_LINK_ANY_STATE, false);
+        int timeoutMs = XLINK_DEVICE_DEFAULT_SEARCH_TIMEOUT_MS;
+        if(first) {
+            timeoutMs = DEVICE_SEARCH_FIRST_TIMEOUT_MS;  // for the first iteraton, have a shorter timeout
+            first = false;
+        }
+        auto devices = XLinkConnection::getAllConnectedDevices(X_LINK_ANY_STATE, false, timeoutMs);
         for(auto searchState : {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_FLASH_BOOTED, X_LINK_GATE}) {
             for(const auto& device : devices) {
                 if(device.state == searchState) {
@@ -530,8 +538,15 @@ void DeviceBase::closeImpl() {
     // invalid memory, etc. which hard crashes main app
     connection->close();
 
-    watchdogRunning = false;
-    // Stop watchdog first (this resets and waits for link to fall down)
+    if(gate && !waitForGate) {
+        gate->destroySession();
+    }
+    {
+        std::lock_guard<std::mutex> lock(watchdogMtx);
+        watchdogRunning = false;
+        watchdogCondVar.notify_all();
+    }
+
     if(watchdogThread.joinable()) watchdogThread.join();
 
     // Stop various threads
@@ -868,14 +883,10 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipelin
                         std::unique_lock<std::mutex> lock(lastWatchdogPingTimeMtx);
                         lastWatchdogPingTime = std::chrono::steady_clock::now();
                     }
-
-                    if(deviceInfo.protocol == X_LINK_TCP_IP) {
-                        // Ping with a quarter period the watchdog timeout
-                        std::this_thread::sleep_for(watchdogTimeout / 4);
-                    } else {
-                        // Ping with a period half of that of the watchdog timeout
-                        std::this_thread::sleep_for(watchdogTimeout / 2);
-                    }
+                    std::unique_lock<std::mutex> lock(watchdogMtx);
+                    // Calculate the dynamic sleep time based on protocol
+                    auto sleepDuration = (deviceInfo.protocol == X_LINK_TCP_IP) ? watchdogTimeout / 4 : watchdogTimeout / 2;
+                    watchdogCondVar.wait_for(lock, sleepDuration, [this]() { return !watchdogRunning; });
                 }
             } catch(const std::exception& ex) {
                 // ignore
@@ -1035,7 +1046,8 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, Prev
         while(true) {
             while(watchdogRunning) {
                 // Ping with a period half of that of the watchdog timeout
-                std::this_thread::sleep_for(watchdogTimeout);
+                std::unique_lock<std::mutex> lock(watchdogMtx);
+                watchdogCondVar.wait_for(lock, watchdogTimeout, [this]() { return !watchdogRunning; });
                 // Check if wd was pinged in the specified watchdogTimeout time.
                 decltype(lastWatchdogPingTime) prevPingTime;
                 {

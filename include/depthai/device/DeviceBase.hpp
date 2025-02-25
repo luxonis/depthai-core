@@ -999,6 +999,8 @@ class DeviceBase {
     // Watchdog thread
     std::thread watchdogThread;
     std::atomic<bool> watchdogRunning{true};
+    std::condition_variable watchdogCondVar;
+    std::mutex watchdogMtx;
 
     // Timesync thread
     std::thread timesyncThread;
