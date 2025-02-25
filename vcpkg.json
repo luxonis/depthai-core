@@ -83,6 +83,19 @@
                 "cpr"
             ]
         },
+        "kompute-support": {
+            "description": "Enable Kompute support",
+            "dependencies": [
+                "kompute",
+                {
+                    "name": "glslang",
+                    "default-features": false,
+                    "features": [
+                        "tools"
+                    ]
+                }
+            ]
+        },
         "protobuf-support": {
             "description": "Enable Protobuf support",
             "dependencies": [

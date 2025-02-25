@@ -8,7 +8,6 @@ namespace node {
 void RTABMapVIO::buildInternal() {
     sync->out.link(inSync);
     sync->setRunOnHost(false);
-
     localTransform = rtabmap::Transform::getIdentity();
 
     rtabmap::Transform opticalTransform(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
