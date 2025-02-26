@@ -27,7 +27,7 @@ class ZooManager {
         // If the API is empty override from environment variable, if it exists
         if(this->apiKey.empty()) {
             logger::info("Trying to get API key from environment variable DEPTHAI_HUB_API_KEY");
-            auto envApiKey = utility::getEnv("DEPTHAI_HUB_API_KEY");
+            auto envApiKey = utility::getEnvAs<std::string>("DEPTHAI_HUB_API_KEY", "");
             if(!envApiKey.empty()) {
                 this->apiKey = envApiKey;
                 logger::info("API key found in environment variable DEPTHAI_HUB_API_KEY");
@@ -348,7 +348,7 @@ std::string getModelFromZoo(const NNModelDescription& modelDescription, bool use
     bool isMetadataPresent = std::filesystem::exists(zooManager.getMetadataFilePath());
     bool useCachedModel = useCached && modelIsCached && isMetadataPresent;
 
-    bool performInternetCheck = !(utility::getEnv("DEPTHAI_ZOO_INTERNET_CHECK") == "0");
+    bool performInternetCheck = utility::getEnvAs<bool>("DEPTHAI_ZOO_INTERNET_CHECK", true);  // default is true
 
     // Check if internet is available
     bool internetIsAvailable = performInternetCheck && ZooManager::connectionToZooAvailable();
@@ -437,12 +437,7 @@ void downloadModelsFromZoo(const std::string& path, const std::string& cacheDire
 }
 
 bool ZooManager::connectionToZooAvailable() {
-    int timeoutMs = 1000;
-    try {
-        timeoutMs = std::stoi(utility::getEnv("DEPTHAI_ZOO_INTERNET_CHECK_TIMEOUT"));
-    } catch(const std::invalid_argument& e) {
-        // pass
-    }
+    int timeoutMs = utility::getEnvAs<int>("DEPTHAI_ZOO_INTERNET_CHECK_TIMEOUT", 1000);  // default is 1000ms
     constexpr std::string_view host = MODEL_ZOO_HEALTH_ENDPOINT;
 
     // Check if internet is available

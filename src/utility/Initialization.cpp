@@ -72,7 +72,7 @@ bool initialize(const char* additionalInfo, bool installSignalHandler, void* jav
 
 #ifdef DEPTHAI_ENABLE_BACKWARD
         // install backward if specified
-        auto envSignalHandler = utility::getEnv("DEPTHAI_INSTALL_SIGNAL_HANDLER");
+        auto envSignalHandler = utility::getEnvAs<std::string>("DEPTHAI_INSTALL_SIGNAL_HANDLER", "");
         if(installSignalHandler && envSignalHandler != "0") {
             signalHandler = std::make_unique<backward::SignalHandling>();
         }
@@ -82,7 +82,7 @@ bool initialize(const char* additionalInfo, bool installSignalHandler, void* jav
 
         // Read JavaVM pointer from env if present
         {
-            auto javavmEnvStr = utility::getEnv("DEPTHAI_LIBUSB_ANDROID_JAVAVM");
+            auto javavmEnvStr = utility::getEnvAs<std::string>("DEPTHAI_LIBUSB_ANDROID_JAVAVM", "");
             if(javavm == nullptr && !javavmEnvStr.empty()) {
                 // Read the uintptr_t value from the decimal string
                 sscanf(javavmEnvStr.c_str(), "%" SCNuPTR, reinterpret_cast<uintptr_t*>(&javavm));
@@ -130,13 +130,13 @@ bool initialize(const char* additionalInfo, bool installSignalHandler, void* jav
 
         // Enable Global XLink profiling
         XLinkProfStart();
-        auto profilingEnvLevel = utility::getEnv("DEPTHAI_PROFILING");
+        auto profilingEnvLevel = utility::getEnvAs<std::string>("DEPTHAI_PROFILING", "");
         if(profilingEnvLevel == "1") {
             XLinkGlobalProfilingLogger::getInstance().enable(true);
         }
 
         // TODO(themarpe), move into XLink library
-        auto xlinkEnvLevel = utility::getEnv("XLINK_LEVEL");
+        auto xlinkEnvLevel = utility::getEnvAs<std::string>("XLINK_LEVEL", "");
         if(xlinkEnvLevel == "debug") {
             mvLogDefaultLevelSet(MVLOG_DEBUG);
         } else if(xlinkEnvLevel == "info") {

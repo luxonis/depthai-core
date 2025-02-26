@@ -205,7 +205,7 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
                 throw std::invalid_argument(fmt::format("Node '{}' should subclass DeviceNode or have hostNode == true", info.name));
             }
             deviceNode->getProperties().serialize(info.properties, type);
-
+            info.logLevel = deviceNode->getLogLevel();
             // Create Io information
             auto inputs = node->getInputs();
             auto outputs = node->getOutputs();
@@ -577,6 +577,11 @@ void PipelineImpl::add(std::shared_ptr<Node> node) {
             throw std::invalid_argument("Cannot add a node that is already part of another pipeline");
         }
 
+        // In case we have a device node without an assigned device (usually subnodes in non-DeviceNode nodes), use the default device
+        if(std::dynamic_pointer_cast<DeviceNode>(curNode) != nullptr && std::dynamic_pointer_cast<DeviceNode>(curNode)->getDevice() == nullptr) {
+            std::dynamic_pointer_cast<DeviceNode>(curNode)->setDevice(defaultDevice);
+        }
+
         for(auto& n : curNode->nodeMap) {
             n->parentId = curNode->id;  // Set node parent id
             search.push(n);
@@ -601,8 +606,8 @@ void PipelineImpl::build() {
     isBuild = true;
 
     if(defaultDevice) {
-        std::string recordPath = utility::getEnv("DEPTHAI_RECORD");
-        std::string replayPath = utility::getEnv("DEPTHAI_REPLAY");
+        std::string recordPath = utility::getEnvAs<std::string>("DEPTHAI_RECORD", "");
+        std::string replayPath = utility::getEnvAs<std::string>("DEPTHAI_REPLAY", "");
 
         if(defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_2
            || defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_X) {

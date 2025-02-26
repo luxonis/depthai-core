@@ -82,7 +82,7 @@ std::string DeviceInfo::getDeviceId() const {
 }
 
 std::string DeviceInfo::toString() const {
-    return fmt::format("DeviceInfo(name={}, mxid={}, {}, {}, {}, {})",
+    return fmt::format("DeviceInfo(name={}, deviceId={}, {}, {}, {}, {})",
                        name,
                        deviceId,
                        XLinkDeviceStateToStr(state),
@@ -94,7 +94,7 @@ std::string DeviceInfo::toString() const {
 static XLinkProtocol_t getDefaultProtocol() {
     XLinkProtocol_t defaultProtocol = X_LINK_ANY_PROTOCOL;
 
-    auto protocolStr = utility::getEnv("DEPTHAI_PROTOCOL");
+    auto protocolStr = utility::getEnvAs<std::string>("DEPTHAI_PROTOCOL", "");
 
     std::transform(protocolStr.begin(), protocolStr.end(), protocolStr.begin(), ::tolower);
     if(protocolStr.empty() || protocolStr == "any") {
@@ -117,7 +117,7 @@ static XLinkProtocol_t getDefaultProtocol() {
 static XLinkPlatform_t getDefaultPlatform() {
     XLinkPlatform_t defaultPlatform = X_LINK_ANY_PLATFORM;
 
-    auto protocolStr = utility::getEnv("DEPTHAI_PLATFORM");
+    auto protocolStr = utility::getEnvAs<std::string>("DEPTHAI_PLATFORM", "");
 
     std::transform(protocolStr.begin(), protocolStr.end(), protocolStr.begin(), ::tolower);
     if(protocolStr.empty() || protocolStr == "any") {
@@ -150,27 +150,44 @@ bool isInCommaSeparatedVar(std::string list, std::string value) {
     return false;
 }
 
-std::vector<DeviceInfo> filterDevices(const std::vector<DeviceInfo>& deviceInfos) {
-    auto allowedDeviceMxIds = utility::getEnv("DEPTHAI_DEVICE_MXID_LIST");
-    auto allowedDeviceIds = utility::getEnv("DEPTHAI_DEVICE_ID_LIST");
-    auto allowedDeviceNames = utility::getEnv("DEPTHAI_DEVICE_NAME_LIST");
-    std::vector<DeviceInfo> filtered;
+std::vector<DeviceInfo> filterDevices(const std::vector<DeviceInfo>& deviceInfos, bool skipInvalidDevices = true) {
+    auto allowedDeviceMxIds = utility::getEnvAs<std::string>("DEPTHAI_DEVICE_MXID_LIST", "");
+    auto allowedDeviceIds = utility::getEnvAs<std::string>("DEPTHAI_DEVICE_ID_LIST", "");
+    auto allowedDeviceNames = utility::getEnvAs<std::string>("DEPTHAI_DEVICE_NAME_LIST", "");
+    std::vector<DeviceInfo> filteredEnvs;
     for(auto& info : deviceInfos) {
         bool allowedMxId = isInCommaSeparatedVar(allowedDeviceMxIds, info.getDeviceId()) || allowedDeviceMxIds.empty();
         bool allowedId = isInCommaSeparatedVar(allowedDeviceIds, info.getDeviceId()) || allowedDeviceIds.empty();
         bool allowedName = isInCommaSeparatedVar(allowedDeviceNames, info.name) || allowedDeviceNames.empty();
         if(allowedMxId && allowedId && allowedName) {
-            filtered.push_back(info);
+            filteredEnvs.push_back(info);
             logger::info("Adding device to the filtered list: {}", info.toString());
         } else {
             logger::info("Skipping device: {}", info.toString());
         }
     }
+    std::vector<DeviceInfo> filtered;
+    for(auto& info : filteredEnvs) {
+        if(skipInvalidDevices) {
+            if(info.status == X_LINK_SUCCESS) {
+                // device is okay
+            } else if(info.status == X_LINK_INSUFFICIENT_PERMISSIONS) {
+                logger::warn("Insufficient permissions to communicate with {} device having name \"{}\". Make sure udev rules are set",
+                             XLinkDeviceStateToStr(info.state),
+                             info.name);
+                continue;
+            } else {
+                logger::warn("skipping {} device having name \"{}\"", XLinkDeviceStateToStr(info.state), info.name);
+                continue;
+            }
+        }
+        filtered.push_back(info);
+    }
 
     return filtered;
 }
 
-std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices(XLinkDeviceState_t state, bool skipInvalidDevices) {
+std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices(XLinkDeviceState_t state, bool skipInvalidDevices, int timeoutMs) {
     initialize();
 
     std::vector<DeviceInfo> devices;
@@ -182,7 +199,7 @@ std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices(XLinkDeviceState
     suitableDevice.platform = getDefaultPlatform();
     suitableDevice.state = state;
 
-    auto status = XLinkFindAllSuitableDevices(suitableDevice, deviceDescAll.data(), static_cast<unsigned int>(deviceDescAll.size()), &numdev);
+    auto status = XLinkFindAllSuitableDevices(suitableDevice, deviceDescAll.data(), static_cast<unsigned int>(deviceDescAll.size()), &numdev, timeoutMs);
     if(status == X_LINK_DEVICE_NOT_FOUND) {
         return devices;
     }
@@ -195,14 +212,34 @@ std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices(XLinkDeviceState
         devices.push_back(info);
     }
 
+    devicesFiltered = filterDevices(devices, skipInvalidDevices);
+    auto allowedDeviceNames = utility::getEnvAs<std::string>("DEPTHAI_DEVICE_NAME_LIST", "");
+    auto splitList = utility::splitList(allowedDeviceNames, ",");
+    bool allDevicesInEnvVarsFound = true;
+    for(auto& name : splitList) {
+        bool found = false;
+        for(const auto& existingInfo : devices) {
+            if(existingInfo.name == name) {
+                found = true;
+                break;
+            }
+        }
+        if(!found) {
+            allDevicesInEnvVarsFound = false;
+            break;
+        }
+    }
+
+    if(!devicesFiltered.empty() && allDevicesInEnvVarsFound) {  // If a device from the list is found, return it without further searching
+        return devicesFiltered;
+    }
+
     // Now also try to find all devices in the DEPTHAI_DEVICE_NAME_LIST (they were not found earlier if they were not in the same subnet)
-    auto allowedDeviceNames = utility::getEnv("DEPTHAI_DEVICE_NAME_LIST");
-    std::string delimiter = ",";
-    for(auto& name : utility::splitList(allowedDeviceNames, delimiter)) {
+    for(auto& name : splitList) {
         deviceDesc_t desc = suitableDevice;
         desc.name[sizeof(desc.name) - 1] = 0;
         strncpy(desc.name, name.c_str(), sizeof(desc.name) - 1);
-        auto status = XLinkFindAllSuitableDevices(desc, deviceDescAll.data(), static_cast<unsigned int>(deviceDescAll.size()), &numdev);
+        auto status = XLinkFindAllSuitableDevices(desc, deviceDescAll.data(), static_cast<unsigned int>(deviceDescAll.size()), &numdev, timeoutMs);
         if(status != X_LINK_SUCCESS) throw std::runtime_error("Couldn't retrieve all connected devices while searching by name");
         for(unsigned i = 0; i < numdev; i++) {
             DeviceInfo info(deviceDescAll.at(i));
@@ -221,24 +258,7 @@ std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices(XLinkDeviceState
         }
     }
 
-    for(auto& info : devices) {
-        if(skipInvalidDevices) {
-            if(info.status == X_LINK_SUCCESS) {
-                // device is okay
-            } else if(info.status == X_LINK_INSUFFICIENT_PERMISSIONS) {
-                logger::warn("Insufficient permissions to communicate with {} device having name \"{}\". Make sure udev rules are set",
-                             XLinkDeviceStateToStr(info.state),
-                             info.name);
-                continue;
-            } else {
-                logger::warn("skipping {} device having name \"{}\"", XLinkDeviceStateToStr(info.state), info.name);
-                continue;
-            }
-        }
-        devicesFiltered.push_back(info);
-    }
-
-    devicesFiltered = filterDevices(devicesFiltered);
+    devicesFiltered = filterDevices(devices, skipInvalidDevices);
     return devicesFiltered;
 }
 
@@ -339,7 +359,7 @@ DeviceInfo XLinkConnection::bootBootloader(const DeviceInfo& deviceInfo) {
 
     for(auto ev : evars) {
         auto name = ev.first;
-        auto valstr = utility::getEnv(name);
+        auto valstr = utility::getEnvAs<std::string>(name, "");
         if(!valstr.empty()) {
             try {
                 std::chrono::milliseconds value{std::stoi(valstr)};
@@ -485,7 +505,7 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit, XLinkDeviceStat
 
     for(auto ev : evars) {
         auto name = ev.first;
-        auto valstr = utility::getEnv(name);
+        auto valstr = utility::getEnvAs<std::string>(name, "");
         if(!valstr.empty()) {
             try {
                 std::chrono::milliseconds value{std::stoi(valstr)};
