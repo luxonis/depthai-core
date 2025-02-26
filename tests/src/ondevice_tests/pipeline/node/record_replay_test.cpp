@@ -11,6 +11,29 @@
 
 constexpr unsigned int NUM_MSGS = 50;
 
+bool folderHasWritePermissions(const std::filesystem::path& folder) {
+    // Check that the folder exists and is a directory.
+    if(!std::filesystem::exists(folder) || !std::filesystem::is_directory(folder)) {
+        return false;
+    }
+
+    // Create a temporary file path inside the folder.
+    auto tempFile = folder / "temp_write_test_file.tmp";
+
+    // Try to open the file for writing.
+    std::ofstream ofs(tempFile, std::ios::out | std::ios::trunc);
+    if(!ofs) {
+        return false;
+    }
+    ofs.close();
+
+    // Remove the temporary file.
+    std::error_code ec;  // capture any error without throwing
+    std::filesystem::remove(tempFile, ec);
+
+    return true;
+}
+
 class TestHelper {
    public:
     TestHelper() {
@@ -20,6 +43,10 @@ class TestHelper {
         std::filesystem::create_directories(testFolder + "/recording_metadata");
         std::filesystem::create_directories(testFolder + "/recording_video");
         std::filesystem::create_directories(testFolder + "/extracted");
+
+        if(!folderHasWritePermissions(testFolder)) {
+            throw std::runtime_error("Test folder does not have write permissions: " + testFolder);
+        }
 
         auto recordingFilenames = dai::utility::filenamesInTar(RECORDING_PATH);
         std::vector<std::string> recordingExtFiles;
@@ -52,9 +79,13 @@ TEST_CASE("RecordMetadataOnly node") {
 
     imu->out.link(recordNode->input);
 
+    auto imuQ = imu->out.createOutputQueue();
+
     p.start();
 
-    std::this_thread::sleep_for(std::chrono::seconds(5));
+    for(int i = 0; i < NUM_MSGS; ++i) {
+        imuQ->get<dai::IMUData>();
+    }
 
     p.stop();
 
@@ -75,9 +106,13 @@ TEST_CASE("RecordVideo node") {
 
     camOut->link(recordNode->input);
 
+    auto camQ = camOut->createOutputQueue();
+
     p.start();
 
-    std::this_thread::sleep_for(std::chrono::seconds(5));
+    for(int i = 0; i < NUM_MSGS; ++i) {
+        camQ->get<dai::ImgFrame>();
+    }
 
     p.stop();
 

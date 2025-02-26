@@ -4,6 +4,7 @@
 #include <memory>
 #include <stdexcept>
 #include <utility>
+#include "depthai/depthai.hpp"
 
 // libraries
 #include <spimpl.h>
@@ -180,9 +181,24 @@ Node::Output* Camera::requestOutput(const Capability& capability, bool onHost) {
 
 Camera& Camera::setMockIsp(ReplayVideo& replay) {
     if(!replay.getReplayVideoFile().empty()) {
-        const auto& [width, height] = utility::getVideoSize(replay.getReplayVideoFile().string());
+        auto [width, height] = replay.getSize();
+        if(width <= 0 || height <= 0) {
+            const auto& [vidWidth, vidHeight] = utility::getVideoSize(replay.getReplayVideoFile().string());
+            width = vidWidth;
+            height = vidHeight;
+        }
         properties.mockIspWidth = width;
         properties.mockIspHeight = height;
+
+        auto device = getParentPipeline().getDefaultDevice();
+        if(device) {
+            if(device->getPlatform() == Platform::RVC2) {
+                replay.setOutFrameType(ImgFrame::Type::YUV420p);
+            } else {
+                replay.setOutFrameType(ImgFrame::Type::NV12);
+            }
+        }
+
         replay.out.link(mockIsp);
     } else {
         throw std::runtime_error("ReplayVideo video path not set");
