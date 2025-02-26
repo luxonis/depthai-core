@@ -35,9 +35,9 @@ int main(int argc, char** argv) {
     // Set up topics for remote connection
     remoteConnector.addTopic("detections", detectionNetwork->out);
     remoteConnector.addTopic("images", *cameraOutputVisualize);
-    remoteConnector.registerPipeline(pipeline);
     pipeline.start();
 
+    remoteConnector.registerPipeline(pipeline);
     // Main loop
     while(isRunning && pipeline.isRunning()) {
         int key = remoteConnector.waitKey(1);
