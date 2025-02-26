@@ -1,15 +1,16 @@
 #include <catch2/catch_test_macros.hpp>
+
 #include "depthai/pipeline/MessageQueue.hpp"
 #include "depthai/remote_connection/RemoteConnection.hpp"
 #define CATCH_CONFIG_MAIN
 #include <catch2/catch_all.hpp>
+
 #include "depthai/depthai.hpp"
 
 TEST_CASE("Basic remote connection test") {
     dai::RemoteConnection remoteConnection;
     auto inputQueue = remoteConnection.addTopic("input", "group");
 }
-
 
 TEST_CASE("Basic remote connection test with topic removal") {
     dai::RemoteConnection remoteConnection;
