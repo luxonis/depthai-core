@@ -504,8 +504,6 @@ with dai.Pipeline(dai.Device(*dai_device_args)) as pipeline:
 
     #controlQueue = device.getInputQueue('control')
     #tofCfgQueue = device.getInputQueue('tofConfig')
-    #controlQueue = control.createInput()
-    tofCfgQueue = xinTofConfig.createInput()
 
     # Manual exposure/focus set step
     EXP_STEP = 500  # us
