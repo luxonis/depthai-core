@@ -21,10 +21,28 @@
 namespace dai {
 namespace utility {
 
+static std::map<std::string, std::vector<std::pair<uint32_t, uint32_t>>> bestResolutionsRVC4 = {
+    {"IMX582", {{320, 240}, {640, 480}, {960, 720}, {1280, 960}, {1440, 1080}, {1920, 1440}, {4000, 3000}}},
+    {"IMX586", {{320, 240}, {640, 480}, {960, 720}, {1280, 960}, {1440, 1080}, {1920, 1440}, {4000, 3000}}},
+    {"OV9282", {{640, 400}, {1280, 800}}},
+    {"OV9782", {{640, 400}, {1280, 800}}},
+    {"IMX766", {{320, 240}, {640, 480}, {960, 720}, {1280, 960}, {1440, 1080}, {1920, 1440}, {4000, 3000}}},   // HDK sensor
+    {"OV64B40", {{320, 240}, {640, 480}, {960, 720}, {1280, 960}, {1440, 1080}, {1920, 1440}, {4000, 3000}}},  // HDK sensor
+    {"AR0234", {{1920, 1080}}},
+};
+
+inline size_t roundDown(size_t numToRound, size_t multiple) {
+    return numToRound - numToRound % multiple;
+}
+inline size_t roundUp(size_t numToRound, size_t multiple) {
+    return roundDown(numToRound + multiple - 1UL, multiple);
+}
+
 bool setupHolisticRecord(Pipeline& pipeline,
                          const std::string& deviceId,
                          RecordConfig& recordConfig,
-                         std::unordered_map<std::string, std::string>& outFilenames) {
+                         std::unordered_map<std::string, std::string>& outFilenames,
+                         bool legacy) {
     auto sources = pipeline.getSourceNodes();
     const auto recordPath = recordConfig.outputDir;
     try {
@@ -40,9 +58,57 @@ bool setupHolisticRecord(Pipeline& pipeline,
             outFilenames[nodeName] = filePath;
             if(std::dynamic_pointer_cast<node::Camera>(node) != nullptr || std::dynamic_pointer_cast<node::ColorCamera>(node) != nullptr
                || std::dynamic_pointer_cast<node::MonoCamera>(node) != nullptr) {
+                Node::Output* output;
+                size_t camWidth = 1920, camHeight = 1080;
                 if(std::dynamic_pointer_cast<node::Camera>(node) != nullptr) {
-                    // TODO(asahtik)
-                    throw std::runtime_error("Holistic record with Camera node is not yet supported.");
+                    auto cam = std::dynamic_pointer_cast<dai::node::Camera>(node);
+                    auto fps = cam->getMaxRequestedFps();
+                    size_t requestWidth = cam->getMaxRequestedWidth();
+                    size_t requestHeight = cam->getMaxRequestedHeight();
+                    size_t width = cam->getMaxWidth();
+                    size_t height = cam->getMaxHeight();
+                    auto cams = pipeline.getDefaultDevice()->getConnectedCameraFeatures();
+                    for(const auto& cf : cams) {
+                        if(cf.socket == cam->getBoardSocket()) {
+                            if(legacy) { // RVC2
+                                for(const auto& cfg : cf.configs) {
+                                    if(cfg.width > (int32_t)requestWidth && cfg.height > (int32_t)requestHeight) {
+                                        width = std::min((size_t)cfg.width, width);
+                                        height = std::min((size_t)cfg.height, height);
+                                    }
+                                }
+                            } else { // RVC4
+                                auto res = bestResolutionsRVC4.find(cf.sensorName);
+                                if(res != bestResolutionsRVC4.end()) {
+                                    for(auto& r : res->second) {
+                                        if(r.first >= requestWidth && r.second >= requestHeight) {
+                                            width = std::min((size_t)r.first, width);
+                                            height = std::min((size_t)r.second, height);
+                                        }
+                                    }
+                                }
+                            }
+                            break;
+                        }
+                    }
+                    if(legacy) {
+                        if(width % 32 != 0UL) {
+                            auto down = roundDown(width, 32);
+                            width = down < requestWidth ? roundUp(width, 32) : down;
+                        }
+                        if(height % 8 != 0UL) {
+                            auto down = roundDown(height, 8);
+                            height = down < requestHeight ? roundUp(height, 8) : down;
+                        }
+                    }
+                    camWidth = width;
+                    camHeight = height;
+                    output = cam->requestOutput({width, height}, dai::ImgFrame::Type::NV12, dai::ImgResizeMode::CROP, fps);
+                    if(width * height > 9437184U) {
+                        recordConfig.videoEncoding.enabled = true;
+                    }
+                } else {
+                    output = &nodeS->getRecordOutput();
                 }
                 auto recordNode = pipeline.create<dai::node::RecordVideo>();
                 recordNode->setRecordMetadataFile(filePath + ".mcap");
@@ -54,8 +120,8 @@ bool setupHolisticRecord(Pipeline& pipeline,
                     videnc->setLossless(recordConfig.videoEncoding.lossless);
                     videnc->setBitrate(recordConfig.videoEncoding.bitrate);
                     videnc->setQuality(recordConfig.videoEncoding.quality);
-                    int maxOutputFrameSize = 3110400;
-                    if(std::dynamic_pointer_cast<node::Camera>(node) != nullptr || std::dynamic_pointer_cast<node::ColorCamera>(node) != nullptr) {
+                    if((std::dynamic_pointer_cast<node::Camera>(node) != nullptr || std::dynamic_pointer_cast<node::ColorCamera>(node) != nullptr) && legacy) {
+                        int maxOutputFrameSize = camWidth * camHeight * 3;
                         if(std::dynamic_pointer_cast<node::ColorCamera>(node) != nullptr) {
                             auto cam = std::dynamic_pointer_cast<dai::node::ColorCamera>(node);
                             maxOutputFrameSize = std::get<0>(cam->getIspSize()) * std::get<1>(cam->getIspSize()) * 3;
@@ -64,14 +130,14 @@ bool setupHolisticRecord(Pipeline& pipeline,
                         imageManip->initialConfig.setFrameType(ImgFrame::Type::NV12);
                         imageManip->setMaxOutputFrameSize(maxOutputFrameSize);
 
-                        nodeS->getRecordOutput().link(imageManip->inputImage);
+                        output->link(imageManip->inputImage);
                         imageManip->out.link(videnc->input);
                     } else {
-                        nodeS->getRecordOutput().link(videnc->input);
+                        output->link(videnc->input);
                     }
                     videnc->out.link(recordNode->input);
                 } else {
-                    nodeS->getRecordOutput().link(recordNode->input);
+                    output->link(recordNode->input);
                 }
             } else {
                 auto recordNode = pipeline.create<dai::node::RecordMetadataOnly>();
@@ -102,7 +168,8 @@ bool setupHolisticReplay(Pipeline& pipeline,
                          std::string replayPath,
                          const std::string& deviceId,
                          RecordConfig& recordConfig,
-                         std::unordered_map<std::string, std::string>& outFilenames) {
+                         std::unordered_map<std::string, std::string>& outFilenames,
+                         bool legacy) {
     UNUSED(deviceId);
     const std::string rootPath = platform::getDirFromPath(replayPath);
     auto sources = pipeline.getSourceNodes();
@@ -119,7 +186,7 @@ bool setupHolisticReplay(Pipeline& pipeline,
                                               [](const std::string& path) {
                                                   auto pathDelim = path.find_last_of("/\\");
                                                   auto filename = pathDelim == std::string::npos ? path : path.substr(path.find_last_of("/\\") + 1);
-                                                  return filename.size() < 4 || filename.substr(filename.size() - 4, filename.size()) == "mcap"
+                                                  return filename.size() < 4 || filename.substr(filename.size() - 4, filename.size()) == "mp4"
                                                          || filename == "record_config.json";
                                               }),
                                tarNodenames.end());
@@ -152,7 +219,7 @@ bool setupHolisticReplay(Pipeline& pipeline,
         std::vector<std::string> outFiles;
         inFiles.reserve(sources.size() + 1);
         outFiles.reserve(sources.size() + 1);
-        if(!useTar || allMatch(tarNodenames, pipelineFilenames)) {
+        if(!useTar || allMatch(pipelineFilenames, tarNodenames)) {
             for(auto& nodeName : nodeNames) {
                 // auto filename = (deviceId + "_").append(nodeName);
                 auto filename = nodeName;
@@ -222,15 +289,15 @@ bool setupHolisticReplay(Pipeline& pipeline,
                 replay->setReplayMetadataFile(platform::joinPaths(rootPath, nodeName + ".mcap"));
                 // replay->setReplayVideo(platform::joinPaths(rootPath, (mxId + "_").append(nodeName).append(".mp4")));
                 replay->setReplayVideoFile(platform::joinPaths(rootPath, nodeName + ".mp4"));
-                replay->setOutFrameType(ImgFrame::Type::YUV420p);
+                replay->setOutFrameType(legacy ? ImgFrame::Type::YUV420p : ImgFrame::Type::NV12);
 
                 auto videoSize = BytePlayer::getVideoSize(replay->getReplayMetadataFile().string());
                 if(videoSize.has_value()) {
                     auto [width, height] = videoSize.value();
                     if(std::dynamic_pointer_cast<node::Camera>(node) != nullptr) {
-                        // TODO(asahtik)
-                        /*auto cam = std::dynamic_pointer_cast<dai::node::Camera>(node);*/
-                        /*cam->setMockIspSize(width, height);*/
+                        auto cam = std::dynamic_pointer_cast<dai::node::Camera>(node);
+                        cam->properties.mockIspWidth = width;
+                        cam->properties.mockIspHeight = height;
                     } else if(std::dynamic_pointer_cast<node::ColorCamera>(node) != nullptr) {
                         auto cam = std::dynamic_pointer_cast<dai::node::ColorCamera>(node);
                         cam->setMockIspSize(width, height);
