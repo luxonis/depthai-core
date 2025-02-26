@@ -105,7 +105,7 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
      *
      * Non-determined / invalid depth values are set to 0
      */
-    Output depth{*this, {"depth", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
+    Output depth{*this, {"depth", DEFAULT_GROUP, {{{DatatypeEnum::DepthFrame, true}}}}};
 
     /**
      * Outputs ImgFrame message that carries RAW8 / RAW16 encoded disparity data:

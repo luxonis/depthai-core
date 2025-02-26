@@ -12,9 +12,8 @@
 namespace dai {
 
 class DepthFrame : public ImgFrame {
-    enum class DepthSource { Stereo, ToF };
-
    public:
+    enum class DepthSource { Stereo, ToF };
     DepthFrame();
     DepthFrame(long fd);
     DepthFrame(size_t size);
