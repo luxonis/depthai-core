@@ -63,13 +63,17 @@ class RemoteConnectionImpl {
     std::condition_variable keyCv;
     int keyPressed = -1;
 
-    std::unordered_map<std::string, std::string> topicGroups;
-    std::unordered_map<std::string, unsigned int> topicIds;
-    std::vector<std::shared_ptr<InputQueue>> inputQueues;
+    struct TopicData {
+        std::string group;
+        std::shared_ptr<MessageQueue> outputQueue;
+        foxglove::ServiceId id;
+        std::unique_ptr<std::thread> thread;
+    };
+
+    std::unordered_map<std::string, TopicData> topics;
     std::unique_ptr<foxglove::ServerInterface<websocketpp::connection_hdl>> server;
     std::unique_ptr<httplib::Server> httpServer;
     std::unique_ptr<std::thread> httpServerThread;
-    std::vector<std::unique_ptr<std::thread>> publishThreads;
     std::map<foxglove::ServiceId, std::function<foxglove::ServiceResponse(foxglove::ServiceResponse)>> serviceMap;
 };
 

@@ -3,6 +3,8 @@
 #include <foxglove/websocket/base64.hpp>
 #include <foxglove/websocket/server_factory.hpp>
 #include <iostream>
+#include <string>
+#include <unordered_map>
 #include <variant>
 #include <websocketpp/common/connection_hdl.hpp>
 
@@ -51,9 +53,14 @@ RemoteConnectionImpl::RemoteConnectionImpl(const std::string& address, uint16_t 
 }
 
 RemoteConnectionImpl::~RemoteConnectionImpl() {
+    for(auto& topicInfo : topics) {
+        topicInfo.second.outputQueue->close();
+    }
+
     server->stop();
-    for(auto& thread : publishThreads) {
-        thread->join();
+
+    for(auto& topicInfo : topics) {
+        topicInfo.second.thread->join();
     }
     if(httpServer) {
         httpServer->stop();
@@ -159,9 +166,25 @@ void RemoteConnectionImpl::addPublishThread(const std::string& topicName,
                                             const std::shared_ptr<MessageQueue>& outputQueue,
                                             const std::string& group,
                                             bool useVisualizationIfAvailable) {
-    auto thread = std::make_unique<std::thread>([this, topicName, outputQueue, group, useVisualizationIfAvailable]() {
+    if(topics.find(topicName) != topics.end()) {
+        logger::error("Topic named {} is already present", topicName);
+        return;
+    }
+    topics[topicName].outputQueue = outputQueue;
+    topics[topicName].group = group;
+    topics[topicName].thread = std::make_unique<std::thread>([this, topicName, outputQueue, group, useVisualizationIfAvailable]() {
         bool isRunning = true;
-        auto firstMessage = outputQueue->get();
+        std::shared_ptr<dai::Buffer> firstMessage = nullptr;
+        try {
+            firstMessage = outputQueue->get<dai::Buffer>();
+        } catch(const dai::MessageQueue::QueueException& ex) {
+            isRunning = false;
+            return;
+        } catch(const std::exception& ex) {
+            isRunning = false;
+            logger::error("Error while getting message from output queue for topic: {} - exception {}", topicName, ex.what());
+        }
+
         if(!firstMessage) {
             logger::error("No message received from the output for topic: {}", topicName);
             return;
@@ -181,13 +204,7 @@ void RemoteConnectionImpl::addPublishThread(const std::string& topicName,
         const auto descriptor = serializableMessage->serializeSchema();
 
         auto channelId = server->addChannels({{topicName, "protobuf", descriptor.schemaName, foxglove::base64Encode(descriptor.schema), std::nullopt}})[0];
-
-        if(topicGroups.find(topicName) != topicGroups.end() || topicIds.find(topicName) != topicIds.end()) {
-            logger::error("Topic named {} is already present", topicName);
-            return;
-        }
-        topicGroups[topicName] = group;
-        topicIds[topicName] = channelId;
+        topics[topicName].id = channelId;
 
         while(isRunning) {
             std::shared_ptr<ADatatype> message;
@@ -219,7 +236,6 @@ void RemoteConnectionImpl::addPublishThread(const std::string& topicName,
             server->broadcastMessage(channelId, nanosecondsSinceEpoch(), static_cast<const uint8_t*>(serializedMsg.data()), serializedMsg.size());
         }
     });
-    publishThreads.push_back(std::move(thread));
 }
 
 void RemoteConnectionImpl::addTopic(const std::string& topicName, Node::Output& output, const std::string& group, bool useVisualizationIfAvailable) {
@@ -235,24 +251,20 @@ std::shared_ptr<MessageQueue> RemoteConnectionImpl::addTopic(
 }
 
 bool RemoteConnectionImpl::removeTopic(const std::string& topicName) {
-    auto topicGroupIterator = topicGroups.find(topicName);
-    if(topicGroupIterator == topicGroups.end()) {
+    auto topicGroupIterator = topics.find(topicName);
+    if(topicGroupIterator == topics.end()) {
         logger::error("Topic named {} not found", topicName);
         return false;
     }
-    topicGroups.erase(topicGroupIterator);
-
-    auto topicIdIterator = topicIds.find(topicName);
-    if(topicIdIterator == topicIds.end()) {
-        logger::error("Topic named {} not found", topicName);
-        return false;
+    // Move the topic out of the map
+    auto topicData = std::move(topicGroupIterator->second);
+    topicData.outputQueue->close();
+    if(topicData.thread->joinable()) {
+        topicData.thread->join();
     }
-    auto channelId = topicIdIterator->second;
-    topicIds.erase(topicIdIterator);
 
-    server->removeChannels({channelId});
-
-    // BEFORE_MERGE - stop the thread and join it
+    topics.erase(topicGroupIterator);
+    server->removeChannels({topicData.id});
     return true;
 }
 
@@ -331,7 +343,11 @@ void RemoteConnectionImpl::exposeTopicGroupsService() {
     serviceMap[id] = [this](foxglove::ServiceResponse request) {
         (void)request;
         auto response = foxglove::ServiceResponse();
-        nlohmann::json topicGroupsJson = this->topicGroups;
+        auto topicGroups = std::unordered_map<std::string, std::string>();
+        for(const auto& topic : topics) {
+            topicGroups[topic.first] = topic.second.group;
+        }
+        nlohmann::json topicGroupsJson = topicGroups;
         std::string serializedTopicGroups = topicGroupsJson.dump();
         response.data = std::vector<uint8_t>(serializedTopicGroups.begin(), serializedTopicGroups.end());
         return response;

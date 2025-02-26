@@ -268,6 +268,9 @@ dai_set_test_labels(nndata_test onhost ci)
 dai_add_test(model_slug_test src/onhost_tests/model_slug_test.cpp)
 dai_set_test_labels(model_slug_test onhost ci)
 
+# Remote connection tests
+dai_add_test(remote_connection_test src/onhost_tests/remote_connection_test.cpp)
+dai_set_test_labels(remote_connection_test onhost ci nowindows)
 ### On-device tests ###########################################################
 
 # DepthAI logging test
