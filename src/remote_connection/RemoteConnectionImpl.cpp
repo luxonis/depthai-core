@@ -182,11 +182,12 @@ void RemoteConnectionImpl::addPublishThread(const std::string& topicName,
 
         auto channelId = server->addChannels({{topicName, "protobuf", descriptor.schemaName, foxglove::base64Encode(descriptor.schema), std::nullopt}})[0];
 
-        if(topicGroups.find(topicName) != topicGroups.end()) {
+        if(topicGroups.find(topicName) != topicGroups.end() || topicIds.find(topicName) != topicIds.end()) {
             logger::error("Topic named {} is already present", topicName);
             return;
         }
         topicGroups[topicName] = group;
+        topicIds[topicName] = channelId;
 
         while(isRunning) {
             std::shared_ptr<ADatatype> message;
@@ -231,6 +232,28 @@ std::shared_ptr<MessageQueue> RemoteConnectionImpl::addTopic(
     auto outputQueue = std::make_shared<MessageQueue>(maxSize, blocking);
     addPublishThread(topicName, outputQueue, group, useVisualizationIfAvailable);
     return outputQueue;
+}
+
+bool RemoteConnectionImpl::removeTopic(const std::string& topicName) {
+    auto topicGroupIterator = topicGroups.find(topicName);
+    if(topicGroupIterator == topicGroups.end()) {
+        logger::error("Topic named {} not found", topicName);
+        return false;
+    }
+    topicGroups.erase(topicGroupIterator);
+
+    auto topicIdIterator = topicIds.find(topicName);
+    if(topicIdIterator == topicIds.end()) {
+        logger::error("Topic named {} not found", topicName);
+        return false;
+    }
+    auto channelId = topicIdIterator->second;
+    topicIds.erase(topicIdIterator);
+
+    server->removeChannels({channelId});
+
+    // BEFORE_MERGE - stop the thread and join it
+    return true;
 }
 
 void RemoteConnectionImpl::registerPipeline(const Pipeline& pipeline) {

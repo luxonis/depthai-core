@@ -45,6 +45,7 @@ void RemoteConnectionBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("blocking") = false,
              py::arg("useVisualizationIfAvailable") = true,
              DOC(dai, RemoteConnection, addTopic))
+        .def("removeTopic", &RemoteConnection::removeTopic, py::arg("topicName"), DOC(dai, RemoteConnection, removeTopic))
         .def("registerPipeline", &RemoteConnection::registerPipeline, py::arg("pipeline"), DOC(dai, RemoteConnection, registerPipeline))
         .def("registerService", &RemoteConnection::registerService, py::arg("serviceName"), py::arg("callback"), DOC(dai, RemoteConnection, registerService))
         .def("waitKey", &RemoteConnection::waitKey, py::arg("delay"), py::call_guard<py::gil_scoped_release>(), DOC(dai, RemoteConnection, waitKey));

@@ -27,6 +27,7 @@ class RemoteConnectionImpl {
     void addTopic(const std::string& topicName, Node::Output& output, const std::string& group, bool useVisualizationIfAvailable);
     std::shared_ptr<MessageQueue> addTopic(
         const std::string& topicName, const std::string& group, unsigned int maxSize, bool blocking, bool useVisualizationIfAvailable);
+    bool removeTopic(const std::string& topicName);
     void registerPipeline(const Pipeline& pipeline);
     void registerService(const std::string& serviceName, std::function<nlohmann::json(const nlohmann::json&)> callback);
     int waitKey(int delayMs);
@@ -63,6 +64,7 @@ class RemoteConnectionImpl {
     int keyPressed = -1;
 
     std::unordered_map<std::string, std::string> topicGroups;
+    std::unordered_map<std::string, unsigned int> topicIds;
     std::vector<std::shared_ptr<InputQueue>> inputQueues;
     std::unique_ptr<foxglove::ServerInterface<websocketpp::connection_hdl>> server;
     std::unique_ptr<httplib::Server> httpServer;
