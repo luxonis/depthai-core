@@ -18,7 +18,7 @@ set(TARGET_NAME "depthai")
 # For windows we don't install open3d-cpu
 if(WIN32)
     add_custom_target(install_requirements ALL
-        COMMAND ${PYTHON_EXECUTABLE} "${CMAKE_CURRENT_LIST_DIR}/install_requirements.py" "--skip_depthai" "--install_rerun"
+        COMMAND ${PYTHON_EXECUTABLE} "${CMAKE_CURRENT_LIST_DIR}/install_requirements.py" "--skip_depthai"
         DEPENDS ${TARGET_NAME}
         VERBATIM
         COMMAND_EXPAND_LISTS
@@ -125,7 +125,7 @@ if(DEPTHAI_PYTHON_TEST_EXAMPLES)
         ${CMAKE_COMMAND} -DFORCE_TIMEOUT_SECONDS=300 -P ${CMAKE_CURRENT_LIST_DIR}/../cpp/cmake/ExecuteTestTimeout.cmake
 
         # Actual script to run
-        ${PYTHON_EXECUTABLE} "${CMAKE_CURRENT_LIST_DIR}/install_requirements.py" "--skip_depthai" "--install_rerun" "--install_open3d_cpu"
+        ${PYTHON_EXECUTABLE} "${CMAKE_CURRENT_LIST_DIR}/install_requirements.py" "--skip_depthai"
     )
 
     # Sets a regex catching any logged warnings, errors or critical (coming either from device or host)
