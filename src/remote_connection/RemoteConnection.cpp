@@ -18,6 +18,10 @@ std::shared_ptr<MessageQueue> RemoteConnection::addTopic(
     return impl->addTopic(topicName, group, maxSize, blocking, useVisualizationIfAvailable);
 }
 
+bool RemoteConnection::removeTopic(const std::string& topicName) {
+    return impl->removeTopic(topicName);
+}
+
 void RemoteConnection::registerPipeline(const Pipeline& pipeline) {
     impl->registerPipeline(pipeline);
 }
