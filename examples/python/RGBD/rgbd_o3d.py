@@ -33,7 +33,6 @@ class O3DNode(dai.node.ThreadedHostNode):
             if inPointCloud is not None:
                 points, colors = inPointCloud.getPointsRGB()
                 pcd.points = o3d.utility.Vector3dVector(points.astype(np.float64))
-                print(colors.shape)
                 colors = (colors/ 255.0).astype(np.float64)
                 pcd.colors = o3d.utility.Vector3dVector(np.delete(colors, 3, 1))
                 if first:
@@ -60,7 +59,7 @@ with dai.Pipeline() as p:
     o3dViewer = O3DNode()
     left.build(dai.CameraBoardSocket.CAM_B)
     right.build(dai.CameraBoardSocket.CAM_C)
-    out = color.requestOutput((640, 400), dai.ImgFrame.Type.RGB888i)
+    out = None
 
     stereo.setDefaultProfilePreset(dai.node.StereoDepth.PresetMode.DEFAULT)
     stereo.setRectifyEdgeFillColor(0)
@@ -71,11 +70,13 @@ with dai.Pipeline() as p:
     right.requestOutput((640, 400)).link(stereo.right)
     platform = p.getDefaultDevice().getPlatform()
     if platform == dai.Platform.RVC4:
+        out = color.requestOutput((640,400), dai.ImgFrame.Type.RGB888i)
         align = p.create(dai.node.ImageAlign)
         stereo.depth.link(align.input)
         out.link(align.inputAlignTo)
         align.outputAligned.link(rgbd.inDepth)
     else:
+        out = color.requestOutput((640,400), dai.ImgFrame.Type.RGB888i, dai.ImgResizeMode.CROP, 30, True)
         stereo.depth.link(rgbd.inDepth)
         out.link(stereo.inputAlignTo)
     out.link(rgbd.inColor)

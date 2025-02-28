@@ -1,3 +1,4 @@
+#include "depthai/capabilities/ImgFrameCapability.hpp"
 #include "depthai/depthai.hpp"
 #include "rerun.hpp"
 #include "rerun/archetypes/depth_image.hpp"
@@ -10,7 +11,6 @@ class RerunNode : public dai::NodeCRTP<dai::node::ThreadedHostNode, RerunNode> {
     constexpr static const char* NAME = "RerunNode";
 
    public:
-
     Input inputPCL{*this, {.name = "inPCL", .types = {{dai::DatatypeEnum::PointCloudData, true}}}};
     Input inputRGBD{*this, {.name = "inRGBD", .types = {{dai::DatatypeEnum::RGBDData, true}}}};
 
@@ -66,22 +66,23 @@ int main() {
     stereo->initialConfig.postProcessing.thresholdFilter.maxRange = 10000;
     rgbd->setDepthUnit(dai::StereoDepthConfig::AlgorithmControl::DepthUnit::METER);
 
-    auto* out = color->requestOutput(std::pair<int, int>(640, 400), dai::ImgFrame::Type::RGB888i);
-
     left->requestOutput(std::pair<int, int>(640, 400))->link(stereo->left);
     right->requestOutput(std::pair<int, int>(640, 400))->link(stereo->right);
 
     auto platform = pipeline.getDefaultDevice()->getPlatform();
     if(platform == dai::Platform::RVC4) {
+        auto* out = color->requestOutput(std::pair<int, int>(640, 400), dai::ImgFrame::Type::RGB888i);
+        out->link(rgbd->inColor);
         align = pipeline.create<dai::node::ImageAlign>();
         stereo->depth.link(align->input);
         out->link(align->inputAlignTo);
         align->outputAligned.link(rgbd->inDepth);
     } else {
+        auto* out = color->requestOutput(std::pair<int, int>(640, 400), dai::ImgFrame::Type::RGB888i, dai::ImgResizeMode::CROP, 30, true);
+        out->link(rgbd->inColor);
         out->link(stereo->inputAlignTo);
         stereo->depth.link(rgbd->inDepth);
     }
-    out->link(rgbd->inColor);
 
     // Linking
     rgbd->pcl.link(rerun->inputPCL);

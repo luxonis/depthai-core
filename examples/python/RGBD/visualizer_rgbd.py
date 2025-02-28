@@ -23,7 +23,7 @@ with dai.Pipeline() as p:
     color.build()
     left.build(dai.CameraBoardSocket.CAM_B)
     right.build(dai.CameraBoardSocket.CAM_C)
-    out = color.requestOutput((640, 400), dai.ImgFrame.Type.RGB888i)
+    out = None
 
     stereo.setDefaultProfilePreset(dai.node.StereoDepth.PresetMode.DEFAULT)
     stereo.setRectifyEdgeFillColor(0)
@@ -34,11 +34,13 @@ with dai.Pipeline() as p:
     right.requestOutput((640, 400)).link(stereo.right)
     platform = p.getDefaultDevice().getPlatform()
     if platform == dai.Platform.RVC4:
+        out = color.requestOutput((640,400), dai.ImgFrame.Type.RGB888i)
         align = p.create(dai.node.ImageAlign)
         stereo.depth.link(align.input)
         out.link(align.inputAlignTo)
         align.outputAligned.link(rgbd.inDepth)
     else:
+        out = color.requestOutput((640,400), dai.ImgFrame.Type.RGB888i, dai.ImgResizeMode.CROP, 30, True)
         stereo.depth.link(rgbd.inDepth)
         out.link(stereo.inputAlignTo)
     out.link(rgbd.inColor)

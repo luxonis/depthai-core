@@ -262,13 +262,15 @@ std::shared_ptr<RGBD> RGBD::build(bool autocreate, StereoDepth::PresetMode mode,
     if(platform == Platform::RVC4) {
         align = pipeline.create<node::ImageAlign>();
     }
-    auto* out = colorCam->requestOutput(size, ImgFrame::Type::RGB888i);
-    out->link(inColor);
     if(platform == Platform::RVC4) {
+        auto* out = colorCam->requestOutput(size, ImgFrame::Type::RGB888i);
+        out->link(inColor);
         stereo->depth.link(align->input);
         out->link(align->inputAlignTo);
         align->outputAligned.link(inDepth);
     } else {
+        auto* out = colorCam->requestOutput(size, ImgFrame::Type::RGB888i, ImgResizeMode::CROP, 30, true);
+        out->link(inColor);
         out->link(stereo->inputAlignTo);
         stereo->depth.link(inDepth);
     }

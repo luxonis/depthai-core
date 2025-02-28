@@ -42,7 +42,7 @@ with dai.Pipeline() as p:
     rerunViewer = RerunNode()
     left.build(dai.CameraBoardSocket.CAM_B)
     right.build(dai.CameraBoardSocket.CAM_C)
-    out = color.requestOutput((640,400), dai.ImgFrame.Type.RGB888i)
+    out = None
 
     stereo.setRectifyEdgeFillColor(0)
     stereo.enableDistortionCorrection(True)
@@ -56,11 +56,13 @@ with dai.Pipeline() as p:
     platform = p.getDefaultDevice().getPlatform()
 
     if platform == dai.Platform.RVC4:
+        out = color.requestOutput((640,400), dai.ImgFrame.Type.RGB888i)
         align = p.create(dai.node.ImageAlign)
         stereo.depth.link(align.input)
         out.link(align.inputAlignTo)
         align.outputAligned.link(rgbd.inDepth)
     else:
+        out = color.requestOutput((640,400), dai.ImgFrame.Type.RGB888i, dai.ImgResizeMode.CROP, 30, True)
         stereo.depth.link(rgbd.inDepth)
         out.link(stereo.inputAlignTo)
     out.link(rgbd.inColor)

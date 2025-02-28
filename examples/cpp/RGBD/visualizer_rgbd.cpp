@@ -1,8 +1,8 @@
-#include "depthai/depthai.hpp"
-
+#include <csignal>
 #include <depthai/remote_connection/RemoteConnection.hpp>
 #include <iostream>
-#include <csignal>
+
+#include "depthai/depthai.hpp"
 
 // Signal handling for clean shutdown
 static bool isRunning = true;
@@ -42,23 +42,23 @@ int main() {
     stereo->enableDistortionCorrection(true);
     stereo->initialConfig.setLeftRightCheckThreshold(10);
 
-    auto* out = color->requestOutput(std::pair<int, int>(640, 400), dai::ImgFrame::Type::RGB888i);
-
     left->requestOutput(std::pair<int, int>(640, 400))->link(stereo->left);
     right->requestOutput(std::pair<int, int>(640, 400))->link(stereo->right);
 
     auto platform = pipeline.getDefaultDevice()->getPlatform();
     if(platform == dai::Platform::RVC4) {
+        auto* out = color->requestOutput(std::pair<int, int>(640, 400), dai::ImgFrame::Type::RGB888i);
+        out->link(rgbd->inColor);
         align = pipeline.create<dai::node::ImageAlign>();
         stereo->depth.link(align->input);
         out->link(align->inputAlignTo);
         align->outputAligned.link(rgbd->inDepth);
     } else {
+        auto* out = color->requestOutput(std::pair<int, int>(640, 400), dai::ImgFrame::Type::RGB888i, dai::ImgResizeMode::CROP, 30, true);
+        out->link(rgbd->inColor);
         out->link(stereo->inputAlignTo);
         stereo->depth.link(rgbd->inDepth);
     }
-
-    out->link(rgbd->inColor);
 
     remoteConnector.addTopic("pcl", rgbd->pcl);
     pipeline.start();
