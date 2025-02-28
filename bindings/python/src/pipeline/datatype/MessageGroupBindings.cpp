@@ -1,20 +1,20 @@
+#include <memory>
+#include <unordered_map>
+
 #include "DatatypeBindings.hpp"
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "pipeline/CommonBindings.hpp"
-#include <memory>
-#include <unordered_map>
 
 // depthai
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
 
-//pybind
+// pybind
 #include <pybind11/chrono.h>
 #include <pybind11/numpy.h>
 
 // #include "spdlog/spdlog.h"
 
-void bind_message_group(pybind11::module& m, void* pCallstack){
-
+void bind_message_group(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
     py::class_<MessageGroup, Py<MessageGroup>, Buffer, std::shared_ptr<MessageGroup>> messageGroup(m, "MessageGroup", DOC(dai, MessageGroup));
@@ -23,7 +23,7 @@ void bind_message_group(pybind11::module& m, void* pCallstack){
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
     // Call the rest of the type defines, then perform the actual bindings
-    Callstack* callstack = (Callstack*) pCallstack;
+    Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
@@ -39,17 +39,14 @@ void bind_message_group(pybind11::module& m, void* pCallstack){
     //     ;
 
     // Message
-    messageGroup
-        .def(py::init<>())
+    messageGroup.def(py::init<>())
         .def("__repr__", &MessageGroup::str)
-        .def("__getitem__", [](MessageGroup& msg, const std::string& name) {
-            return msg[name];
-        })
-        .def("__setitem__", [](MessageGroup& msg, const std::string& name, std::shared_ptr<ADatatype> data) {
-            return msg.add(name, data);
-        })
-        .def("__iter__", [](MessageGroup& msg) { return py::make_iterator(msg.begin(), msg.end()); },
-                         py::keep_alive<0, 1>() /* Essential: keep object alive while iterator exists */)
+        .def("__getitem__", [](MessageGroup& msg, const std::string& name) { return msg[name]; })
+        .def("__setitem__", [](MessageGroup& msg, const std::string& name, std::shared_ptr<ADatatype> data) { return msg.add(name, data); })
+        .def(
+            "__iter__",
+            [](MessageGroup& msg) { return py::make_iterator(msg.begin(), msg.end()); },
+            py::keep_alive<0, 1>() /* Essential: keep object alive while iterator exists */)
         .def("isSynced", &MessageGroup::isSynced, DOC(dai, MessageGroup, isSynced))
         .def("getIntervalNs", &MessageGroup::getIntervalNs, DOC(dai, MessageGroup, getIntervalNs))
         .def("getNumMessages", &MessageGroup::getNumMessages, DOC(dai, MessageGroup, getNumMessages))
@@ -61,5 +58,4 @@ void bind_message_group(pybind11::module& m, void* pCallstack){
         // .def("setTimestampDevice", &MessageGroup::setTimestampDevice, DOC(dai, MessageGroup, setTimestampDevice))
         // .def("setSequenceNum", &MessageGroup::setSequenceNum, DOC(dai, MessageGroup, setSequenceNum))
         ;
-
 }

@@ -7,15 +7,14 @@
 
 #pragma once
 
-#include <cstdint>
 #include <cstddef>
+#include <cstdint>
 
 #ifdef _MSC_VER
-#   define VPU_PACKED(body) __pragma(pack(push, 1)) struct body __pragma(pack(pop))
+    #define VPU_PACKED(body) __pragma(pack(push, 1)) struct body __pragma(pack(pop))
 #elif defined(__GNUC__)
-#   define VPU_PACKED(body) struct __attribute__((packed)) body
+    #define VPU_PACKED(body) struct __attribute__((packed)) body
 #endif
-
 
 namespace dai {
 
@@ -25,7 +24,7 @@ const uint32_t STAGE_BORDER_SYMBOL = 0x7f83ff19;
 const uint32_t EI_NIDENT = 16;
 
 VPU_PACKED(ElfN_Ehdr {
-    uint8_t  e_ident[EI_NIDENT];
+    uint8_t e_ident[EI_NIDENT];
     uint16_t e_type;
     uint16_t e_machine;
     uint32_t e_version;
@@ -70,4 +69,4 @@ VPU_PACKED(mv_stage_header {
     uint32_t numShaves;
 };)
 
-}  //  namespace vpu
+}  // namespace dai

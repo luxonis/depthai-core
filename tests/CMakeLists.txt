@@ -268,7 +268,14 @@ dai_set_test_labels(nndata_test onhost ci)
 dai_add_test(model_slug_test src/onhost_tests/model_slug_test.cpp)
 dai_set_test_labels(model_slug_test onhost ci)
 
+# Remote connection tests
+dai_add_test(remote_connection_test src/onhost_tests/remote_connection_test.cpp)
+dai_set_test_labels(remote_connection_test onhost ci nowindows)
 ### On-device tests ###########################################################
+
+# Camera stream restart test
+dai_add_test(camera_stream_restart_test src/ondevice_tests/camera_stream_restart_test.cpp)
+dai_set_test_labels(camera_stream_restart_test ondevice rvc2_all rvc4 ci)
 
 # DepthAI logging test
 dai_add_test(logging_test src/ondevice_tests/logging_test.cpp)
@@ -371,15 +378,22 @@ dai_set_test_labels(neural_network_node_test ondevice rvc2_all rvc4 ci)
 
 # ImgTransformations tests
 dai_add_test(img_transformation_test src/ondevice_tests/img_transformation_test.cpp CXX_STANDARD 17)
-dai_set_test_labels(message_group_frame_test ondevice rvc4 ci)
+dai_set_test_labels(img_transformation_test ondevice rvc2_all rvc4 ci)
 
 # Regression tests for encountered bugs
 dai_add_test(regression_camera_concurrency_test src/ondevice_tests/regression/camera_concurrency.cpp)
 dai_set_test_labels(regression_camera_concurrency_test ondevice rvc4 ci)
 
+dai_add_test(regression_message_group_test src/ondevice_tests/regression/message_group.cpp)
+dai_set_test_labels(regression_message_group_test ondevice rvc2_all rvc4 ci)
+
 # Sync test
 dai_add_test(sync_test src/ondevice_tests/pipeline/node/sync_test.cpp)
 dai_set_test_labels(sync_test ondevice rvc2_all rvc4 ci)
+
+# Fsync test
+dai_add_test(fsync_test src/ondevice_tests/pipeline/node/fsync_test.cpp)
+dai_set_test_labels(fsync_test ondevice rvc2 usb rvc4 ci)
 
 ## Large messages tests
 dai_add_test(bridge_large_messages src/ondevice_tests/bridge_large_messages.cpp)
@@ -400,3 +414,15 @@ dai_set_test_labels(stereo_depth_node_test ondevice rvc2_all rvc4 ci)
 # ImageManipV2 test
 dai_add_test(image_manip_v2_node_test src/ondevice_tests/pipeline/node/image_manip_v2_test.cpp)
 dai_set_test_labels(image_manip_v2_node_test ondevice rvc2_all rvc4 ci)
+
+# Benchmark tests
+dai_add_test(benchmark_test src/ondevice_tests/pipeline/node/benchmark_test.cpp)
+dai_set_test_labels(benchmark_test ondevice rvc2_all rvc4 ci)
+
+# Manual focus test
+dai_add_test(manual_focus_test src/ondevice_tests/manual_focus_test.cpp)
+dai_set_test_labels(manual_focus_test rvc2_all rvc4 ci)
+
+# IMU tests
+dai_add_test(imu_test src/ondevice_tests/pipeline/node/imu_test.cpp)
+dai_set_test_labels(imu_test ondevice rvc4 ci) # Many RVC2 devices do not have an IMU which supports the whole test suite

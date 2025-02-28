@@ -10,7 +10,7 @@ int main(){
     if(test) {
         auto devices = dai::XLinkConnection::getAllConnectedDevices();
         for(const auto& device : devices){
-            std::cout << "Device name: " << device.name << " id: " << device.mxid << std::endl;
+            std::cout << "Device name: " << device.name << " id: " << device.deviceId << std::endl;
         }
     }
 

@@ -259,7 +259,7 @@ dai_add_example(camera_multiple_outputs Camera/camera_multiple_outputs.cpp OFF O
 dai_add_example(image_manip_host HostNodes/image_manip_host.cpp OFF OFF)
 dai_add_example(image_manip_color_conversion_host HostNodes/image_manip_color_conversion.cpp OFF OFF)
 dai_add_example(image_manip_v2_resize ImageManip/image_manip_v2_resize.cpp OFF OFF)
-dai_add_example(image_manip_v2_mod ImageManip/image_manip_v2_mod.cpp OFF OFF)
+dai_add_example(image_manip_v2_multi_ops ImageManip/image_manip_v2_multi_ops.cpp OFF OFF)
 dai_add_example(image_manip_color_conversion ImageManip/image_manip_color_conversion.cpp OFF OFF)
 
 # Record
@@ -272,6 +272,15 @@ dai_add_example(record_imu RVC2/Record/record_imu.cpp OFF OFF)
 # Replay
 dai_add_example(replay_video_meta RVC2/Replay/replay_video_meta.cpp OFF OFF)
 dai_add_example(replay_imu RVC2/Replay/replay_imu.cpp OFF OFF)
+
+dai_add_example(detection_network_replay DetectionNetwork/detection_network_replay.cpp ON OFF)
+target_compile_definitions(detection_network_replay PRIVATE VIDEO_PATH="${construction_vest}")
+
+
+# StereoDepth
+dai_add_example(depth_preview StereoDepth/depth_preview.cpp OFF OFF)
+dai_add_example(stereo StereoDepth/stereo.cpp ON OFF)
+dai_set_example_test_labels(stereo ondevice rvc2_all rvc4 ci)
 
 # Thermal
 dai_add_example(thermal RVC2/Thermal/thermal.cpp OFF OFF)
@@ -286,7 +295,7 @@ dai_add_example(model_zoo RVC2/ModelZoo/model_zoo.cpp OFF OFF)
 
 # Events Manager
 if(DEPTHAI_ENABLE_EVENTS_MANAGER)
-    dai_add_example(events HostNodes/events.cpp ON OFF)
+    dai_add_example(events Events/events.cpp ON OFF)
 endif()
 # Image Align
 dai_add_example(image_align RVC2/ImageAlign/image_align.cpp OFF OFF)

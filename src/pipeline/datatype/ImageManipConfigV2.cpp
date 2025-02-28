@@ -73,17 +73,26 @@ ImageManipConfigV2& ImageManipConfigV2::setColormap(Colormap colormap) {
     base.setColormap(colormap);
     return *this;
 }
-ImageManipConfigV2& ImageManipConfigV2::setBackgroundColor(uint8_t red, uint8_t green, uint8_t blue) {
+ImageManipConfigV2& ImageManipConfigV2::setBackgroundColor(uint32_t red, uint32_t green, uint32_t blue) {
     base.setBackgroundColor(red, green, blue);
     return *this;
 }
-ImageManipConfigV2& ImageManipConfigV2::setBackgroundColor(uint8_t val) {
+ImageManipConfigV2& ImageManipConfigV2::setBackgroundColor(uint32_t val) {
     base.setBackgroundColor(val);
     return *this;
 }
 ImageManipConfigV2& ImageManipConfigV2::setFrameType(ImgFrame::Type frameType) {
     outputFrameType = frameType;
     return *this;
+}
+
+ImageManipConfigV2& ImageManipConfigV2::setUndistort(bool undistort) {
+    base.setUndistort(undistort);
+    return *this;
+}
+
+bool ImageManipConfigV2::getUndistort() const {
+    return base.getUndistort();
 }
 
 ImageManipConfigV2& ImageManipConfigV2::setReusePreviousImage(bool reuse) {

@@ -10,11 +10,11 @@ namespace dai {
 /**
  * Specify benchmark properties (number of messages to send/receive)
  */
-struct BenchmarkPropertiesOut : PropertiesSerializable<Properties, BenchmarkPropertiesOut> {
+struct BenchmarkOutProperties : PropertiesSerializable<Properties, BenchmarkOutProperties> {
     /**
      * Number of messages to send
      */
-    int numMessages = 50;
+    int numMessages = -1;
 
     /**
      * FPS for sending, 0 means as fast as possible
@@ -22,6 +22,6 @@ struct BenchmarkPropertiesOut : PropertiesSerializable<Properties, BenchmarkProp
     float fps = 0;
 };
 
-DEPTHAI_SERIALIZE_EXT(BenchmarkPropertiesOut, numMessages, fps);
+DEPTHAI_SERIALIZE_EXT(BenchmarkOutProperties, numMessages, fps);
 
 }  // namespace dai

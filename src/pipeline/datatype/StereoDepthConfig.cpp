@@ -47,9 +47,17 @@ StereoDepthConfig& StereoDepthConfig::setLeftRightCheck(bool enable) {
     return *this;
 }
 
+bool StereoDepthConfig::getLeftRightCheck() const {
+    return algorithmControl.enableLeftRightCheck;
+}
+
 StereoDepthConfig& StereoDepthConfig::setExtendedDisparity(bool enable) {
     algorithmControl.enableExtended = enable;
     return *this;
+}
+
+bool StereoDepthConfig::getExtendedDisparity() const {
+    return algorithmControl.enableExtended;
 }
 
 StereoDepthConfig& StereoDepthConfig::setSubpixel(bool enable) {
@@ -57,14 +65,26 @@ StereoDepthConfig& StereoDepthConfig::setSubpixel(bool enable) {
     return *this;
 }
 
+bool StereoDepthConfig::getSubpixel() const {
+    return algorithmControl.enableSubpixel;
+}
+
 StereoDepthConfig& StereoDepthConfig::setSubpixelFractionalBits(int subpixelFractionalBits) {
     algorithmControl.subpixelFractionalBits = subpixelFractionalBits;
     return *this;
 }
 
+int StereoDepthConfig::getSubpixelFractionalBits() const {
+    return algorithmControl.subpixelFractionalBits;
+}
+
 StereoDepthConfig& StereoDepthConfig::setDepthUnit(AlgorithmControl::DepthUnit depthUnit) {
     algorithmControl.depthUnit = depthUnit;
     return *this;
+}
+
+dai::StereoDepthConfig::AlgorithmControl::DepthUnit StereoDepthConfig::getDepthUnit() {
+    return algorithmControl.depthUnit;
 }
 
 StereoDepthConfig& StereoDepthConfig::setDisparityShift(int disparityShift) {
@@ -75,10 +95,6 @@ StereoDepthConfig& StereoDepthConfig::setDisparityShift(int disparityShift) {
 StereoDepthConfig& StereoDepthConfig::setNumInvalidateEdgePixels(int32_t numInvalidateEdgePixels) {
     algorithmControl.numInvalidateEdgePixels = numInvalidateEdgePixels;
     return *this;
-}
-
-dai::StereoDepthConfig::AlgorithmControl::DepthUnit StereoDepthConfig::getDepthUnit() {
-    return algorithmControl.depthUnit;
 }
 
 float StereoDepthConfig::getMaxDisparity() const {

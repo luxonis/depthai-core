@@ -16,7 +16,8 @@
     #include <opencv2/core/types.hpp>
 #endif
 
-#define PLANE_ALIGNMENT 128
+#define DEPTHAI_PLANE_ALIGNMENT 128
+#define DEPTHAI_STRIDE_ALIGNMENT 1
 
 #if defined(WIN32) || defined(_WIN32)
     #define _RESTRICT
@@ -102,7 +103,7 @@ class Warp {
 
     std::array<std::array<float, 3>, 3> matrix;
     ImageManipOpsBase<Container>::Background background = ImageManipOpsBase<Container>::Background::COLOR;
-    uint8_t backgroundColor[3] = {0, 0, 0};
+    uint32_t backgroundColor[3] = {0, 0, 0};
 
     std::shared_ptr<ImageManipBuffer<float>> mapX;
     std::shared_ptr<ImageManipBuffer<float>> mapY;
@@ -133,8 +134,9 @@ class Warp {
                    const size_t dstHeight,
                    const size_t dstStride,
                    const uint16_t numChannels,
+                   const uint16_t bpp,
                    const std::array<std::array<float, 3>, 3> matrix,
-                   const std::vector<uint8_t>& backgroundColor);
+                   const std::vector<uint32_t>& backgroundColor);
 
    public:
     Warp() = default;
@@ -152,7 +154,7 @@ class Warp {
 
     void apply(const span<const uint8_t> src, span<uint8_t> dst);
 
-    Warp& setBackgroundColor(uint8_t r, uint8_t g, uint8_t b);
+    Warp& setBackgroundColor(uint32_t r, uint32_t g, uint32_t b);
 };
 
 template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
@@ -280,8 +282,7 @@ static inline float clampf(float val, float minv, float maxv) {
     return std::clamp(val, minv, maxv);
 }
 
-bool isTypeSupportedL(dai::ImgFrame::Type type);
-bool isTypeSupportedC(dai::ImgFrame::Type type);
+bool isTypeSupported(dai::ImgFrame::Type type);
 
 bool getFrameTypeInfo(dai::ImgFrame::Type outFrameType, int& outNumPlanes, float& outBpp);
 
@@ -310,7 +311,7 @@ bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToRGB888p(
 
     auto src = inputFrame.data();
     auto inputSize = inputFrame.size();
-    uint32_t auxStride = ALIGN_UP(3 * srcSpecs.width, 8);
+    uint32_t auxStride = ALIGN_UP(3 * srcSpecs.width, DEPTHAI_STRIDE_ALIGNMENT);
 
     bool done = false;
     switch(from) {
@@ -625,7 +626,7 @@ bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToBGR888p(
 
     auto src = inputFrame.data();
     auto inputSize = inputFrame.size();
-    uint32_t auxStride = ALIGN_UP(3 * srcSpecs.width, 8);
+    uint32_t auxStride = ALIGN_UP(3 * srcSpecs.width, DEPTHAI_STRIDE_ALIGNMENT);
 
     bool done = false;
     switch(from) {
@@ -940,7 +941,7 @@ bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToRGB888i(
 
     auto src = inputFrame.data();
     auto inputSize = inputFrame.size();
-    uint32_t auxStride = ALIGN_UP(3 * srcSpecs.width, 8);
+    uint32_t auxStride = ALIGN_UP(3 * srcSpecs.width, DEPTHAI_STRIDE_ALIGNMENT);
 
     bool done = false;
     switch(from) {
@@ -1144,7 +1145,7 @@ bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToBGR888i(
     auto src = inputFrame.data();
     auto inputSize = inputFrame.size();
 #if defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
-    uint32_t auxStride = ALIGN_UP(3 * srcSpecs.width, 8);
+    uint32_t auxStride = ALIGN_UP(3 * srcSpecs.width, DEPTHAI_STRIDE_ALIGNMENT);
 #endif
 
     bool done = false;
@@ -1349,7 +1350,7 @@ bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToNV12(
     auto src = inputFrame.data();
     auto inputSize = inputFrame.size();
 #if defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
-    uint32_t auxStride = ALIGN_UP(3 * srcSpecs.width, 8);
+    uint32_t auxStride = ALIGN_UP(3 * srcSpecs.width, DEPTHAI_STRIDE_ALIGNMENT);
 #endif
 
     bool done = false;
@@ -1554,6 +1555,12 @@ bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToNV12(
             done = true;
             break;
         }
+        case ImgFrame::Type::RAW8:
+        case ImgFrame::Type::GRAY8:
+            std::copy(src, src + inputSize, outputFrame.data());
+            memset(outputFrame.data() + dstSpecs.p2Offset, 128, dstSpecs.p2Stride * dstSpecs.height / 2);
+            done = true;
+            break;
         case ImgFrame::Type::YUV422i:
         case ImgFrame::Type::YUV444p:
         case ImgFrame::Type::YUV422p:
@@ -1567,7 +1574,6 @@ bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToNV12(
         case ImgFrame::Type::RAW14:
         case ImgFrame::Type::RAW12:
         case ImgFrame::Type::RAW10:
-        case ImgFrame::Type::RAW8:
         case ImgFrame::Type::PACK10:
         case ImgFrame::Type::PACK12:
         case ImgFrame::Type::YUV444i:
@@ -1578,7 +1584,6 @@ bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToNV12(
         case ImgFrame::Type::BGRF16F16F16p:
         case ImgFrame::Type::RGBF16F16F16i:
         case ImgFrame::Type::BGRF16F16F16i:
-        case ImgFrame::Type::GRAY8:
         case ImgFrame::Type::GRAYF16:
         case ImgFrame::Type::RAW32:
         case ImgFrame::Type::NONE:
@@ -1596,7 +1601,7 @@ bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToYUV420p(
     auto src = inputFrame.data();
     auto inputSize = inputFrame.size();
 #if defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
-    uint32_t auxStride = ALIGN_UP(3 * srcSpecs.width, 8);
+    uint32_t auxStride = ALIGN_UP(3 * srcSpecs.width, DEPTHAI_STRIDE_ALIGNMENT);
 #endif
 
     bool done = false;
@@ -1866,7 +1871,7 @@ bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToGRAY8(
 
     auto src = inputFrame.data();
     auto inputSize = inputFrame.size();
-    uint32_t auxStride = ALIGN_UP(3 * srcSpecs.width, 8);
+    uint32_t auxStride = ALIGN_UP(3 * srcSpecs.width, DEPTHAI_STRIDE_ALIGNMENT);
 
     bool done = false;
     switch(from) {
@@ -2066,7 +2071,7 @@ void ColorChange<ImageManipBuffer, ImageManipData>::build(const FrameSpecs srcFr
     to = typeTo;
     srcSpecs = srcFrameSpecs;
     dstSpecs = dstFrameSpecs;
-    size_t newAuxFrameSize = srcSpecs.height * ALIGN_UP(3 * srcSpecs.width, 8);
+    size_t newAuxFrameSize = srcSpecs.height * ALIGN_UP(3 * srcSpecs.width, DEPTHAI_STRIDE_ALIGNMENT);
     if(!ccAuxFrame || ccAuxFrame->size() < newAuxFrameSize) ccAuxFrame = std::make_shared<ImageManipData>(newAuxFrameSize);
 }
 
@@ -2186,6 +2191,10 @@ inline bool isSingleChannelu8(const std::shared_ptr<dai::ImgFrame> img) {
 inline bool isSingleChannelu8(const dai::ImgFrame::Type type) {
     return type == dai::ImgFrame::Type::GRAY8 || type == dai::ImgFrame::Type::RAW8;
 }
+inline bool isSingleChannel(const dai::ImgFrame::Type type) {
+    return type == dai::ImgFrame::Type::GRAY8 || type == dai::ImgFrame::Type::RAW8 || type == dai::ImgFrame::Type::RAW16 || type == dai::ImgFrame::Type::GRAYF16
+           || type == dai::ImgFrame::Type::RAW32;
+}
 
 template <typename T>
 inline std::string getOpStr(const T& op) {
@@ -2260,7 +2269,13 @@ std::tuple<std::array<std::array<float, 3>, 3>, std::array<std::array<float, 2>,
     return {transform, imageCorners, srcCorners};
 }
 
-void getOutputSizeFromCorners(const std::array<std::array<float, 2>, 4>& corners, const bool center, const std::array<std::array<float, 3>, 3> transformInv, const uint32_t srcWidth, const uint32_t srcHeight, uint32_t& outputWidth, uint32_t& outputHeight);
+void getOutputSizeFromCorners(const std::array<std::array<float, 2>, 4>& corners,
+                              const bool center,
+                              const std::array<std::array<float, 3>, 3> transformInv,
+                              const uint32_t srcWidth,
+                              const uint32_t srcHeight,
+                              uint32_t& outputWidth,
+                              uint32_t& outputHeight);
 
 template <typename C>
 std::tuple<std::array<std::array<float, 3>, 3>, std::array<std::array<float, 2>, 4>, std::vector<std::array<std::array<float, 2>, 4>>> getFullTransform(
@@ -2274,7 +2289,7 @@ std::tuple<std::array<std::array<float, 3>, 3>, std::array<std::array<float, 2>,
 
     auto [matrix, imageCorners, srcCorners] = getTransform(operations, inputWidth, inputHeight, base.outputWidth, base.outputHeight);
 
-    getOutputSizeFromCorners(imageCorners, base.center, getInverse(matrix), inputWidth, inputHeight,  base.outputWidth, base.outputHeight);
+    getOutputSizeFromCorners(imageCorners, base.center, getInverse(matrix), inputWidth, inputHeight, base.outputWidth, base.outputHeight);
 
     if(base.resizeMode != ImageManipOpsBase<C>::ResizeMode::NONE) {
         Resize res;
@@ -2350,24 +2365,30 @@ void ImageManipOperations<ImageManipBuffer, ImageManipData>::init() {
 template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
 ImageManipOperations<ImageManipBuffer, ImageManipData>& ImageManipOperations<ImageManipBuffer, ImageManipData>::build(
     const ImageManipOpsBase<Container>& newBase, ImgFrame::Type outType, FrameSpecs srcFrameSpecs, ImgFrame::Type inFrameType) {
-    const auto newCfgStr = getConfigString(newBase);
+    const auto newCfgStr = newBase.str();
+    if(outType == ImgFrame::Type::NONE) {
+        if(base.colormap != Colormap::NONE)
+            outType = VALID_TYPE_COLOR;
+        else
+            outType = inFrameType;
+    }
     if(newCfgStr == prevConfig && outType == outputFrameType && srcFrameSpecs.width == srcSpecs.width && srcFrameSpecs.height == srcSpecs.height
        && inFrameType == inType)
         return *this;
     prevConfig = newCfgStr;
     outputOps.clear();
 
+    if(srcFrameSpecs.width <= 1 || srcFrameSpecs.height <= 1) {
+        throw std::runtime_error("Input image is one dimensional");
+    }
+
     if(newBase.hasWarp(srcFrameSpecs.width, srcFrameSpecs.height)) mode = mode | MODE_WARP;
     if(newBase.colormap != Colormap::NONE && isSingleChannelu8(inFrameType)) mode = mode | MODE_COLORMAP;
-    if(outType != ImgFrame::Type::NONE && outType != inFrameType) mode = mode | MODE_CONVERT;
+    if(outType != inFrameType) mode = mode | MODE_CONVERT;
 
     assert(inFrameType != ImgFrame::Type::NONE);
     base = newBase;
     outputFrameType = outType;
-    if(outType == ImgFrame::Type::NONE) {
-        if(base.colormap != Colormap::NONE) outputFrameType = VALID_TYPE_COLOR;
-        else outputFrameType = inFrameType;
-    }
     inType = inFrameType;
     type = inType;
     srcSpecs = srcFrameSpecs;
@@ -2383,11 +2404,7 @@ ImageManipOperations<ImageManipBuffer, ImageManipData>& ImageManipOperations<Ima
         auto ccDstSpecs = getCcDstFrameSpecs(srcSpecs, inType, outputFrameType);
         preprocCc.build(srcSpecs, ccDstSpecs, inType, outputFrameType);
     } else {
-#if defined(DEPTHAI_HAVE_FASTCV_SUPPORT) && DEPTHAI_IMAGEMANIPV2_FASTCV
-        if(!isTypeSupportedL(inType)) {
-#else
-        if(!isTypeSupportedC(inType)) {
-#endif
+        if(!isTypeSupported(inType)) {
             auto color = getValidType(inType);
             auto ccDstSpecs = getCcDstFrameSpecs(srcSpecs, inType, color);
             preprocCc.build(srcSpecs, ccDstSpecs, inType, color);
@@ -2439,10 +2456,6 @@ ImageManipOperations<ImageManipBuffer, ImageManipData>& ImageManipOperations<Ima
         base.outputWidth = inputWidth;
         base.outputHeight = inputHeight;
     }
-    float bppPre, bppPost;
-    int numPlanesPre, numPlanesPost;
-    getFrameTypeInfo(getValidType(type), numPlanesPre, bppPre);
-    getFrameTypeInfo(isSingleChannelu8(type) && base.colormap != Colormap::NONE ? VALID_TYPE_COLOR : type, numPlanesPost, bppPost);
     size_t newConvertedSize = getAlignedOutputFrameSize(type, inputWidth, inputHeight);
     size_t newColormapSize = getAlignedOutputFrameSize(type, base.outputWidth, base.outputHeight);
     size_t newWarpedSize =
@@ -2480,7 +2493,7 @@ bool ImageManipOperations<ImageManipBuffer, ImageManipData>::apply(const std::sh
                          base.outputHeight,
                          CV_8UC1,
                          mode & MODE_WARP ? colormapFrame->data() : (convertInput ? convertedFrame->data() : src->getData().data()),
-                         ALIGN_UP(base.outputWidth, 8));
+                         ALIGN_UP(base.outputWidth, DEPTHAI_STRIDE_ALIGNMENT));
             cv::Mat color(base.outputWidth, base.outputHeight, CV_8UC3, colormapDst);
             cv::ColormapTypes cvColormap = cv::COLORMAP_JET;
             switch(base.colormap) {  // TODO(asahtik): set correct stereo colormaps
@@ -2524,17 +2537,19 @@ size_t ImageManipOperations<ImageManipBuffer, ImageManipData>::getOutputStride(u
     switch(outputFrameType) {
         case ImgFrame::Type::RGB888p:
         case ImgFrame::Type::BGR888p:
-            return plane < 3 ? ALIGN_UP(base.outputWidth, 8) : 0;
+            return plane < 3 ? ALIGN_UP(base.outputWidth, DEPTHAI_STRIDE_ALIGNMENT) : 0;
         case ImgFrame::Type::RGB888i:
         case ImgFrame::Type::BGR888i:
-            return plane == 0 ? ALIGN_UP(base.outputWidth * 3, 8) : 0;
+            return plane == 0 ? ALIGN_UP(base.outputWidth * 3, DEPTHAI_STRIDE_ALIGNMENT) : 0;
         case ImgFrame::Type::NV12:
-            return plane < 2 ? ALIGN_UP(base.outputWidth, 8) : 0;
+            return plane < 2 ? ALIGN_UP(base.outputWidth, DEPTHAI_STRIDE_ALIGNMENT) : 0;
         case ImgFrame::Type::YUV420p:
-            return plane == 0 ? ALIGN_UP(base.outputWidth, 8) : (plane < 3 ? base.outputWidth / 2 : 0);
+            return plane == 0 ? ALIGN_UP(base.outputWidth, DEPTHAI_STRIDE_ALIGNMENT) : (plane < 3 ? base.outputWidth / 2 : 0);
         case ImgFrame::Type::GRAY8:
         case ImgFrame::Type::RAW8:
-            return plane == 0 ? ALIGN_UP(base.outputWidth, 8) : 0;
+            return plane == 0 ? ALIGN_UP(base.outputWidth, DEPTHAI_STRIDE_ALIGNMENT) : 0;
+        case ImgFrame::Type::RAW16:
+            return plane == 0 ? ALIGN_UP(base.outputWidth * 2, DEPTHAI_STRIDE_ALIGNMENT) : 0;
         case ImgFrame::Type::YUV422i:
         case ImgFrame::Type::YUV444p:
         case ImgFrame::Type::YUV422p:
@@ -2544,7 +2559,6 @@ size_t ImageManipOperations<ImageManipBuffer, ImageManipData>::getOutputStride(u
         case ImgFrame::Type::LUT2:
         case ImgFrame::Type::LUT4:
         case ImgFrame::Type::LUT16:
-        case ImgFrame::Type::RAW16:
         case ImgFrame::Type::RAW14:
         case ImgFrame::Type::RAW12:
         case ImgFrame::Type::RAW10:
@@ -2573,7 +2587,7 @@ size_t ImageManipOperations<ImageManipBuffer, ImageManipData>::getOutputSize() c
     switch(outputFrameType) {
         case ImgFrame::Type::RGB888p:
         case ImgFrame::Type::BGR888p:
-            size = ALIGN_UP(getOutputStride() * getOutputHeight(), PLANE_ALIGNMENT) * 3;
+            size = ALIGN_UP(getOutputStride() * getOutputHeight(), DEPTHAI_PLANE_ALIGNMENT) * 3;
             break;
         case ImgFrame::Type::RGB888i:
         case ImgFrame::Type::BGR888i:
@@ -2582,11 +2596,15 @@ size_t ImageManipOperations<ImageManipBuffer, ImageManipData>::getOutputSize() c
             size = getOutputStride() * getOutputHeight();
             break;
         case ImgFrame::Type::NV12:
-            size = ALIGN_UP(getOutputStride(0) * getOutputHeight(), PLANE_ALIGNMENT) + ALIGN_UP(getOutputStride(1) * getOutputHeight() / 2, PLANE_ALIGNMENT);
+            size = ALIGN_UP(getOutputStride(0) * getOutputHeight(), DEPTHAI_PLANE_ALIGNMENT)
+                   + ALIGN_UP(getOutputStride(1) * getOutputHeight() / 2, DEPTHAI_PLANE_ALIGNMENT);
             break;
         case ImgFrame::Type::YUV420p:
-            size =
-                ALIGN_UP(getOutputStride(0) * getOutputHeight(), PLANE_ALIGNMENT) + ALIGN_UP(getOutputStride(1) * getOutputHeight() / 2, PLANE_ALIGNMENT) * 2;
+            size = ALIGN_UP(getOutputStride(0) * getOutputHeight(), DEPTHAI_PLANE_ALIGNMENT)
+                   + ALIGN_UP(getOutputStride(1) * getOutputHeight() / 2, DEPTHAI_PLANE_ALIGNMENT) * 2;
+            break;
+        case ImgFrame::Type::RAW16:
+            size = getOutputStride() * getOutputHeight();
             break;
         case ImgFrame::Type::YUV422i:
         case ImgFrame::Type::YUV444p:
@@ -2597,7 +2615,6 @@ size_t ImageManipOperations<ImageManipBuffer, ImageManipData>::getOutputSize() c
         case ImgFrame::Type::LUT2:
         case ImgFrame::Type::LUT4:
         case ImgFrame::Type::LUT16:
-        case ImgFrame::Type::RAW16:
         case ImgFrame::Type::RAW14:
         case ImgFrame::Type::RAW12:
         case ImgFrame::Type::RAW10:
@@ -2630,37 +2647,40 @@ FrameSpecs ImageManipOperations<ImageManipBuffer, ImageManipData>::getOutputFram
     switch(type) {
         case dai::ImgFrame::Type::RGB888p:
         case dai::ImgFrame::Type::BGR888p:
-            specs.p1Stride = ALIGN_UP(specs.width, 8);
+            specs.p1Stride = ALIGN_UP(specs.width, DEPTHAI_STRIDE_ALIGNMENT);
             specs.p2Stride = specs.p1Stride;
             specs.p3Stride = specs.p1Stride;
-            specs.p2Offset = specs.p1Offset + ALIGN_UP(specs.p1Stride * specs.height, PLANE_ALIGNMENT);
-            specs.p3Offset = specs.p2Offset + ALIGN_UP(specs.p1Stride * specs.height, PLANE_ALIGNMENT);
+            specs.p2Offset = specs.p1Offset + ALIGN_UP(specs.p1Stride * specs.height, DEPTHAI_PLANE_ALIGNMENT);
+            specs.p3Offset = specs.p2Offset + ALIGN_UP(specs.p1Stride * specs.height, DEPTHAI_PLANE_ALIGNMENT);
             break;
         case dai::ImgFrame::Type::RGB888i:
         case dai::ImgFrame::Type::BGR888i:
-            specs.p1Stride = ALIGN_UP(specs.width * 3, 8);
+            specs.p1Stride = ALIGN_UP(specs.width * 3, DEPTHAI_STRIDE_ALIGNMENT);
             specs.p2Stride = specs.p1Stride;
             specs.p3Stride = specs.p1Stride;
             specs.p2Offset = specs.p1Offset;
             specs.p3Offset = specs.p1Offset;
             break;
         case dai::ImgFrame::Type::NV12:
-            specs.p1Stride = ALIGN_UP(specs.width, 8);
+            specs.p1Stride = ALIGN_UP(specs.width, DEPTHAI_STRIDE_ALIGNMENT);
             specs.p2Stride = specs.p1Stride;
-            specs.p2Offset = specs.p1Offset + ALIGN_UP(specs.p1Stride * specs.height, PLANE_ALIGNMENT);
+            specs.p2Offset = specs.p1Offset + ALIGN_UP(specs.p1Stride * specs.height, DEPTHAI_PLANE_ALIGNMENT);
             specs.p3Offset = specs.p2Offset;
             specs.p3Stride = 0;
             break;
         case dai::ImgFrame::Type::YUV420p:
-            specs.p1Stride = ALIGN_UP(specs.width, 8);
-            specs.p2Stride = ALIGN_UP(specs.width / 2, 8);
-            specs.p3Stride = ALIGN_UP(specs.width / 2, 8);
-            specs.p2Offset = specs.p1Offset + ALIGN_UP(specs.p1Stride * specs.height, PLANE_ALIGNMENT);
-            specs.p3Offset = specs.p2Offset + ALIGN_UP(specs.p2Stride * (specs.height / 2), PLANE_ALIGNMENT);
+            specs.p1Stride = ALIGN_UP(specs.width, DEPTHAI_STRIDE_ALIGNMENT);
+            specs.p2Stride = ALIGN_UP(specs.width / 2, DEPTHAI_STRIDE_ALIGNMENT);
+            specs.p3Stride = ALIGN_UP(specs.width / 2, DEPTHAI_STRIDE_ALIGNMENT);
+            specs.p2Offset = specs.p1Offset + ALIGN_UP(specs.p1Stride * specs.height, DEPTHAI_PLANE_ALIGNMENT);
+            specs.p3Offset = specs.p2Offset + ALIGN_UP(specs.p2Stride * (specs.height / 2), DEPTHAI_PLANE_ALIGNMENT);
             break;
         case dai::ImgFrame::Type::RAW8:
         case dai::ImgFrame::Type::GRAY8:
-            specs.p1Stride = ALIGN_UP(specs.width, 8);
+            specs.p1Stride = ALIGN_UP(specs.width, DEPTHAI_STRIDE_ALIGNMENT);
+            break;
+        case ImgFrame::Type::RAW16:
+            specs.p1Stride = ALIGN_UP(specs.width * 2, DEPTHAI_STRIDE_ALIGNMENT);
             break;
         case ImgFrame::Type::YUV422i:
         case ImgFrame::Type::YUV444p:
@@ -2671,7 +2691,6 @@ FrameSpecs ImageManipOperations<ImageManipBuffer, ImageManipData>::getOutputFram
         case ImgFrame::Type::LUT2:
         case ImgFrame::Type::LUT4:
         case ImgFrame::Type::LUT16:
-        case ImgFrame::Type::RAW16:
         case ImgFrame::Type::RAW14:
         case ImgFrame::Type::RAW12:
         case ImgFrame::Type::RAW10:
@@ -2811,15 +2830,12 @@ void Warp<ImageManipBuffer, ImageManipData>::build(const FrameSpecs srcFrameSpec
     sourceMaxY = inHeight;
     for(const auto& corners : srcCorners) {
         auto [minx, maxx, miny, maxy] = getOuterRect(std::vector<std::array<float, 2>>(corners.begin(), corners.end()));
-        minx = std::max(minx, 0.0f);
-        maxx = std::min(maxx, (float)inWidth);
-        miny = std::max(miny, 0.0f);
-        maxy = std::min(maxy, (float)inHeight);
-        sourceMinX = std::max(sourceMinX, (size_t)std::floor(minx));
-        sourceMinY = std::max(sourceMinY, (size_t)std::floor(miny));
+        sourceMinX = std::max(sourceMinX, (size_t)std::floor(std::max(minx, 0.f)));
+        sourceMinY = std::max(sourceMinY, (size_t)std::floor(std::max(miny, 0.f)));
         sourceMaxX = std::min(sourceMaxX, (size_t)std::ceil(maxx));
         sourceMaxY = std::min(sourceMaxY, (size_t)std::ceil(maxy));
     }
+    if(sourceMinX >= sourceMaxX || sourceMinY >= sourceMaxY) throw std::runtime_error("Initial crop is outside the source image");
 
 #if !DEPTHAI_IMAGEMANIPV2_OPENCV && !DEPTHAI_IMAGEMANIPV2_FASTCV || !defined(DEPTHAI_HAVE_OPENCV_SUPPORT) && !defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
     const uint32_t outWidth = dstFrameSpecs.width;
@@ -2921,16 +2937,42 @@ void Warp<ImageManipBuffer, ImageManipData>::transform(const uint8_t* src,
                                                        const size_t dstHeight,
                                                        const size_t dstStride,
                                                        const uint16_t numChannels,
+                                                       const uint16_t bpp,
                                                        const std::array<std::array<float, 3>, 3> matrix,
-                                                       const std::vector<uint8_t>& background) {
+                                                       const std::vector<uint32_t>& background) {
 #if defined(DEPTHAI_HAVE_OPENCV_SUPPORT) && DEPTHAI_IMAGEMANIPV2_OPENCV
-    auto type = numChannels == 1 ? CV_8UC1 : (numChannels == 2 ? CV_8UC2 : CV_8UC3);
+    auto type = CV_8UC1;
+    switch(numChannels) {
+        case 1:
+            switch(bpp) {
+                case 1:
+                    type = CV_8UC1;
+                    break;
+                case 2:
+                    type = CV_16UC1;
+                    break;
+                default:
+                    assert(false);
+            }
+            break;
+        case 2:
+            assert(bpp == 1);
+            type = CV_8UC2;
+            break;
+        case 3:
+            assert(bpp == 1);
+            type = CV_8UC3;
+            break;
+        default:
+            assert(false);
+    }
     auto bg = numChannels == 1 ? cv::Scalar(background[0])
                                : (numChannels == 2 ? cv::Scalar(background[0], background[1]) : cv::Scalar(background[0], background[1], background[2]));
     const cv::Mat cvSrc(srcHeight, srcWidth, type, const_cast<uint8_t*>(src), srcStride);
     cv::Mat cvDst(dstHeight, dstWidth, type, dst, dstStride);
 #elif defined(DEPTHAI_HAVE_FASTCV_SUPPORT) && DEPTHAI_IMAGEMANIPV2_FASTCV
     if(numChannels != 3 && numChannels != 1) throw std::runtime_error("Only 1 or 3 channels supported with FastCV");
+    if(bpp != 1) throw std::runtime_error("Only 8bpp supported with FastCV");
     if(!((ptrdiff_t)src % 128 == 0 && (ptrdiff_t)dst % 128 == 0 && (ptrdiff_t)fastCvBorder->data() % 128 == 0 && srcStride % 8 == 0 && srcStride > 0)) {
         throw std::runtime_error("Assumptions not taken into account");
     }
@@ -3035,6 +3077,7 @@ void Warp<ImageManipBuffer, ImageManipData>::apply(const span<const uint8_t> src
                       dstSpecs.height,
                       dstSpecs.p1Stride,
                       3,
+                      1,
                       matrix,
                       {backgroundColor[0], backgroundColor[1], backgroundColor[2]});
 #else
@@ -3072,6 +3115,7 @@ void Warp<ImageManipBuffer, ImageManipData>::apply(const span<const uint8_t> src
                       dstSpecs.height,
                       dstSpecs.p1Stride,
                       1,
+                      1,
                       matrix,
                       {backgroundColor[0]});
             transform(src.data() + srcSpecs.p2Offset,
@@ -3083,6 +3127,7 @@ void Warp<ImageManipBuffer, ImageManipData>::apply(const span<const uint8_t> src
                       dstSpecs.height,
                       dstSpecs.p2Stride,
                       1,
+                      1,
                       matrix,
                       {backgroundColor[1]});
             transform(src.data() + srcSpecs.p3Offset,
@@ -3093,6 +3138,7 @@ void Warp<ImageManipBuffer, ImageManipData>::apply(const span<const uint8_t> src
                       dstSpecs.width,
                       dstSpecs.height,
                       dstSpecs.p3Stride,
+                      1,
                       1,
                       matrix,
                       {backgroundColor[2]});
@@ -3163,6 +3209,7 @@ void Warp<ImageManipBuffer, ImageManipData>::apply(const span<const uint8_t> src
                       dstSpecs.height,
                       dstSpecs.p1Stride,
                       1,
+                      1,
                       matrix,
                       {backgroundColor[0]});
             transform(src.data() + srcSpecs.p2Offset,
@@ -3174,6 +3221,7 @@ void Warp<ImageManipBuffer, ImageManipData>::apply(const span<const uint8_t> src
                       dstSpecs.height / 2,
                       dstSpecs.p2Stride,
                       1,
+                      1,
                       matrix,
                       {backgroundColor[1]});
             transform(src.data() + srcSpecs.p3Offset,
@@ -3184,6 +3232,7 @@ void Warp<ImageManipBuffer, ImageManipData>::apply(const span<const uint8_t> src
                       dstSpecs.width / 2,
                       dstSpecs.height / 2,
                       dstSpecs.p3Stride,
+                      1,
                       1,
                       matrix,
                       {backgroundColor[2]});
@@ -3255,6 +3304,7 @@ void Warp<ImageManipBuffer, ImageManipData>::apply(const span<const uint8_t> src
                       dstSpecs.height,
                       dstSpecs.p1Stride,
                       1,
+                      1,
                       matrix,
                       {backgroundColor[0]});
             transform(src.data() + srcSpecs.p2Offset,
@@ -3266,6 +3316,7 @@ void Warp<ImageManipBuffer, ImageManipData>::apply(const span<const uint8_t> src
                       dstSpecs.height / 2,
                       dstSpecs.p2Stride,
                       2,
+                      1,
                       matrix,
                       {backgroundColor[1], backgroundColor[2]});
 #else
@@ -3320,6 +3371,7 @@ void Warp<ImageManipBuffer, ImageManipData>::apply(const span<const uint8_t> src
                       dstSpecs.height,
                       dstSpecs.p1Stride,
                       1,
+                      1,
                       matrix,
                       {backgroundColor[0]});
 #else
@@ -3344,6 +3396,24 @@ void Warp<ImageManipBuffer, ImageManipData>::apply(const span<const uint8_t> src
                        dst.size() - dstSpecs.p1Offset);
 #endif
             break;
+        case ImgFrame::Type::RAW16:
+#if DEPTHAI_IMAGEMANIPV2_OPENCV && defined(DEPTHAI_HAVE_OPENCV_SUPPORT) || DEPTHAI_IMAGEMANIPV2_FASTCV && defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
+            transform(src.data() + srcSpecs.p1Offset,
+                      dst.data() + dstSpecs.p1Offset,
+                      srcSpecs.width,
+                      srcSpecs.height,
+                      srcSpecs.p1Stride,
+                      dstSpecs.width,
+                      dstSpecs.height,
+                      dstSpecs.p1Stride,
+                      1,
+                      2,
+                      matrix,
+                      {backgroundColor[0]});
+#else
+            throw std::runtime_error("RAW16 not supported without OpenCV");
+#endif
+            break;
         case ImgFrame::Type::YUV422i:
         case ImgFrame::Type::YUV444p:
         case ImgFrame::Type::YUV422p:
@@ -3353,7 +3423,6 @@ void Warp<ImageManipBuffer, ImageManipData>::apply(const span<const uint8_t> src
         case ImgFrame::Type::LUT2:
         case ImgFrame::Type::LUT4:
         case ImgFrame::Type::LUT16:
-        case ImgFrame::Type::RAW16:
         case ImgFrame::Type::RAW14:
         case ImgFrame::Type::RAW12:
         case ImgFrame::Type::RAW10:
@@ -3376,7 +3445,7 @@ void Warp<ImageManipBuffer, ImageManipData>::apply(const span<const uint8_t> src
 }
 
 template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
-Warp<ImageManipBuffer, ImageManipData>& Warp<ImageManipBuffer, ImageManipData>::setBackgroundColor(const uint8_t r, const uint8_t g, const uint8_t b) {
+Warp<ImageManipBuffer, ImageManipData>& Warp<ImageManipBuffer, ImageManipData>::setBackgroundColor(const uint32_t r, const uint32_t g, const uint32_t b) {
     background = ImageManipOpsBase<Container>::Background::COLOR;
     switch(type) {
         case ImgFrame::Type::YUV420p:
@@ -3405,6 +3474,9 @@ Warp<ImageManipBuffer, ImageManipData>& Warp<ImageManipBuffer, ImageManipData>::
             // backgroundColor[0] = 0.299f * r + 0.587f * g + 0.114f * b;
             backgroundColor[0] = b;
             break;
+        case ImgFrame::Type::RAW16:
+            backgroundColor[0] = r;
+            break;
         case ImgFrame::Type::YUV422i:
         case ImgFrame::Type::YUV444p:
         case ImgFrame::Type::YUV422p:
@@ -3414,7 +3486,6 @@ Warp<ImageManipBuffer, ImageManipData>& Warp<ImageManipBuffer, ImageManipData>::
         case ImgFrame::Type::LUT2:
         case ImgFrame::Type::LUT4:
         case ImgFrame::Type::LUT16:
-        case ImgFrame::Type::RAW16:
         case ImgFrame::Type::RAW14:
         case ImgFrame::Type::RAW12:
         case ImgFrame::Type::RAW10:

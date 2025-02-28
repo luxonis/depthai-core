@@ -108,6 +108,9 @@ bool MessageQueue::removeCallback(int callbackId) {
 
 void MessageQueue::send(const std::shared_ptr<ADatatype>& msg) {
     if(!msg) throw std::invalid_argument("Message passed is not valid (nullptr)");
+    if(queue.isDestroyed()) {
+        throw QueueException(CLOSED_QUEUE_MESSAGE);
+    }
     callCallbacks(msg);
     auto queueNotClosed = queue.push(msg);
     if(!queueNotClosed) throw QueueException(CLOSED_QUEUE_MESSAGE);
