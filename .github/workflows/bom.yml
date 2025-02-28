@@ -44,8 +44,6 @@ jobs:
       if: github.event_name == 'workflow_dispatch'
       strategy:
         matrix:
-          # os: ['windows', 'macos', 'linux']
-          os: ['linux']
           arch: ['x64']
           flavor: ['vanilla']
         fail-fast: false
@@ -65,25 +63,28 @@ jobs:
         run: source scripts/hil/prepare_hil_framework.sh 
 
       - name: Configure, Build and Test
-        if: matrix.os == 'linux'
         run: |
           rm -rf depthai-core/scripts/hil/ && mkdir -p depthai-core/scripts/hil/ && cp -r scripts/hil/* depthai-core/scripts/hil/
           rm depthai-core/tests/run_tests.py && cp tests/run_tests.py depthai-core/tests/run_tests.py
           cd depthai-core
-          export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-${{ matrix.os }}-${{ matrix.flavor }}"
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            # Assign testbed and reservation name only if both are provided
-            if [[ -n "${{ github.event.inputs.testbed }}" && -n "${{ github.event.inputs.reservation_name }}" ]]; then
-              TESTBED_OPTION="--testbed ${{ github.event.inputs.testbed }}"
-              RESERVATION_OPTION="--reservation-name ${{ github.event.inputs.reservation_name }}"
-            else
-              TESTBED_OPTION="--capabilities depthai-core-hil --models oak4_pro"
-              RESERVATION_OPTION="--reservation-name $RESERVATION_NAME"
-            fi
+          
+          if [[ -n "${{ github.event.inputs.testbed }}" ]]; then
+            TESTBED_OPTION="--testbed ${{ github.event.inputs.testbed }}"
+          else
+            TESTBED_OPTION="--models oak4_pro"
           fi
+
+          if [[ -n "${{ github.event.inputs.reservation_name }}" ]]; then
+            RESERVATION_OPTION="--reservation-name ${{ github.event.inputs.reservation_name }}"
+          else
+            export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-${{ matrix.flavor }}"
+            RESERVATION_OPTION="--reservation-name $RESERVATION_NAME"
+          fi
+          
           if [[ "${{ github.event.inputs.hold_reservation }}" == 'true' ]]; then
             HOLD_RESERVATION="--hold-reservation"
           fi
+
           if [[ -n  "${{ github.event.inputs.luxonis_os }}" ]]; then
             UPDATE_LUXONIS_OS="--rvc4-os-version ${{ github.event.inputs.luxonis_os }}"
           fi
