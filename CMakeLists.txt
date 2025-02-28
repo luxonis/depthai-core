@@ -25,6 +25,7 @@ if(WIN32)
 
     # Statically compile vcruntime library
     add_compile_options(/MT)
+    add_compile_options(/MP)
 endif()
 
 find_program(CCACHE_PROGRAM ccache)
@@ -162,7 +163,7 @@ endif()
 # Create depthai project
 project(depthai VERSION "3.0.0" LANGUAGES CXX C)
 set(DEPTHAI_PRE_RELEASE_TYPE "alpha") # Valid options are "alpha", "beta", "rc", ""
-set(DEPTHAI_PRE_RELEASE_VERSION "12")
+set(DEPTHAI_PRE_RELEASE_VERSION "13")
 
 # Set DEPTHAI_VERSION universally, not conditionally
 set(DEPTHAI_VERSION ${PROJECT_VERSION}-${DEPTHAI_PRE_RELEASE_TYPE}.${DEPTHAI_PRE_RELEASE_VERSION})
@@ -350,6 +351,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/InputQueue.cpp
     src/pipeline/ThreadedNode.cpp
     src/pipeline/DeviceNode.cpp
+    src/pipeline/DeviceNodeGroup.cpp
     src/pipeline/node/XLinkIn.cpp
     src/pipeline/node/XLinkOut.cpp
     src/pipeline/node/ColorCamera.cpp
@@ -503,9 +505,55 @@ set_target_properties(${TARGET_CORE_NAME} PROPERTIES EXPORT_NAME ${TARGET_CORE_A
 list(APPEND targets_to_export ${TARGET_CORE_NAME})
 
 # Add model_zoo helper binary
-add_executable(zoo_helper src/modelzoo/zoo_helper.cpp)
+find_package(fmt REQUIRED)
+find_package(yaml-cpp REQUIRED)
+set(ZOO_HELPER_SOURCES
+    src/modelzoo/zoo_helper.cpp
+    src/modelzoo/Zoo.cpp
+    src/modelzoo/NNModelDescription.cpp
+    src/utility/Environment.cpp
+    src/utility/Logging.cpp
+)
+set(ZOO_HELPER_LINK_LIBRARIES
+    nlohmann_json::nlohmann_json
+    fmt::fmt
+    yaml-cpp::yaml-cpp
+)
+add_executable(zoo_helper ${ZOO_HELPER_SOURCES})
 target_compile_definitions(zoo_helper PRIVATE DEPTHAI_TARGET_CORE)
-target_link_libraries(zoo_helper PRIVATE ${TARGET_CORE_NAME})
+target_link_libraries(zoo_helper PRIVATE ${ZOO_HELPER_LINK_LIBRARIES})
+target_include_directories(zoo_helper
+    PRIVATE
+        # Relative path to include directories after installed
+        "$<INSTALL_INTERFACE:include>"
+        "$<INSTALL_INTERFACE:include/${DEPTHAI_SHARED_3RDPARTY_HEADERS_PATH}>"
+
+        # Build time path to include directories
+        "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>"
+        "$<BUILD_INTERFACE:${DEPTHAI_SHARED_PUBLIC_INCLUDE}>"
+        "$<BUILD_INTERFACE:${DEPTHAI_BOOTLOADER_SHARED_PUBLIC_INCLUDE}>"
+
+        "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include/depthai>"
+        "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/src>"
+        "$<BUILD_INTERFACE:${DEPTHAI_SHARED_INCLUDE}>"
+        "$<BUILD_INTERFACE:${DEPTHAI_BOOTLOADER_SHARED_INCLUDE}>"
+)
+target_include_directories(zoo_helper SYSTEM
+    PRIVATE
+        "$<BUILD_INTERFACE:${DEPTHAI_SHARED_3RDPARTY_INCLUDE}>"
+)
+
+# Set compiler features (c++17), and disables extensions (g++17)
+set_property(TARGET zoo_helper PROPERTY CXX_STANDARD 17)
+set_property(TARGET zoo_helper PROPERTY CXX_STANDARD_REQUIRED ON)
+set_property(TARGET zoo_helper PROPERTY CXX_EXTENSIONS OFF)
+# Add interface transitive property (C++17)
+if(${CMAKE_VERSION} VERSION_LESS "3.8.0")
+    target_compile_features(zoo_helper INTERFACE cxx_generic_lambdas)
+else()
+    target_compile_features(zoo_helper INTERFACE cxx_std_17)
+endif()
+
 list(APPEND targets_to_export zoo_helper)
 
 # Add default flags to core
@@ -555,6 +603,10 @@ if(DEPTHAI_HAVE_PCL_SUPPORT AND DEPTHAI_MERGED_TARGET)
 endif()
 if(DEPTHAI_MERGED_TARGET)
     target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_MERGED_TARGET)
+endif()
+
+if(NOT BUILD_SHARED_LIBS)
+    target_compile_definitions(${TARGET_CORE_NAME} PUBLIC MCAP_STATIC)
 endif()
 
 # First specify options
@@ -799,6 +851,11 @@ if(DEPTHAI_ENABLE_CURL)
         cpr::cpr
     )
     target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_ENABLE_CURL)
+    target_link_libraries(zoo_helper PRIVATE
+        CURL::libcurl
+        cpr::cpr
+    )
+    target_compile_definitions(zoo_helper PRIVATE DEPTHAI_ENABLE_CURL)
 endif()
 
 # Add compile & CMake definitions

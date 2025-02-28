@@ -273,8 +273,14 @@ dai_add_example(record_imu RVC2/Record/record_imu.cpp OFF OFF)
 dai_add_example(replay_video_meta RVC2/Replay/replay_video_meta.cpp OFF OFF)
 dai_add_example(replay_imu RVC2/Replay/replay_imu.cpp OFF OFF)
 
+dai_add_example(detection_network_replay DetectionNetwork/detection_network_replay.cpp ON OFF)
+target_compile_definitions(detection_network_replay PRIVATE VIDEO_PATH="${construction_vest}")
+
+
 # StereoDepth
 dai_add_example(depth_preview StereoDepth/depth_preview.cpp OFF OFF)
+dai_add_example(stereo StereoDepth/stereo.cpp ON OFF)
+dai_set_example_test_labels(stereo ondevice rvc2_all rvc4 ci)
 
 # Thermal
 dai_add_example(thermal RVC2/Thermal/thermal.cpp OFF OFF)

@@ -65,7 +65,17 @@ void bind_detectionnetwork(pybind11::module& m, void* pCallstack) {
              py::arg("model"),
              py::arg("fps") = std::nullopt)
         .def("build",
-             py::overload_cast<const std::shared_ptr<Camera>&, NNArchive, std::optional<float>>(&DetectionNetwork::build),
+             py::overload_cast<const std::shared_ptr<Camera>&, const NNArchive&, std::optional<float>>(&DetectionNetwork::build),
+             py::arg("input"),
+             py::arg("nnArchive"),
+             py::arg("fps") = std::nullopt)
+        .def("build",
+             py::overload_cast<const std::shared_ptr<ReplayVideo>&, NNModelDescription, std::optional<float>>(&DetectionNetwork::build),
+             py::arg("input"),
+             py::arg("model"),
+             py::arg("fps") = std::nullopt)
+        .def("build",
+             py::overload_cast<const std::shared_ptr<ReplayVideo>&, const NNArchive&, std::optional<float>>(&DetectionNetwork::build),
              py::arg("input"),
              py::arg("nnArchive"),
              py::arg("fps") = std::nullopt)

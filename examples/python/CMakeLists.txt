@@ -136,19 +136,25 @@ dai_set_example_test_labels(camera_multiple_outputs ondevice rvc2_all rvc4 ci)
 
 ## AprilTags
 add_python_example(april_tags_12mp AprilTags/april_tags_12mp.py)
-dai_set_example_test_labels(april_tags_12mp ondevice rvc2_all rvc4 ci)
+dai_set_example_test_labels(april_tags_12mp ondevice rvc2_all rvc4 ci nowindows)
 
 add_python_example(april_tags AprilTags/april_tags.py)
-dai_set_example_test_labels(april_tags ondevice rvc2_all rvc4 ci)
+dai_set_example_test_labels(april_tags ondevice rvc2_all rvc4 ci nowindows)
 
 add_python_example(april_tags_replay AprilTags/april_tags_replay.py)
-dai_set_example_test_labels(april_tags_replay ondevice rvc2_all rvc4 ci)
+dai_set_example_test_labels(april_tags_replay ondevice rvc2_all rvc4 ci nowindows)
 
 ## Detection network
 add_python_example(detection_network DetectionNetwork/detection_network.py)
 dai_set_example_test_labels(detection_network ondevice rvc2_all rvc4 ci)
 add_python_example(detection_network_remap DetectionNetwork/detection_network_remap.py)
 dai_set_example_test_labels(detection_network ondevice rvc2_all rvc4 ci)
+
+add_python_example(detection_network_replay_rvc4 DetectionNetwork/detection_network_replay.py --webSocketPort 8761 --httpPort 8071)
+dai_set_example_test_labels(detection_network_replay_rvc4 ondevice rvc4 ci)
+
+add_python_example(detection_network_replay_rvc2 DetectionNetwork/detection_network_replay.py --webSocketPort 8762 --httpPort 8072)
+dai_set_example_test_labels(detection_network_replay_rvc2 ondevice rvc2 usb ci)
 
 ## Host nodes
 add_python_example(display HostNodes/display.py)
@@ -207,20 +213,21 @@ dai_set_example_test_labels(depth_align ondevice rvc2_all rvc4 ci)
 ## Visualizer
 
 # Split into two examples for RVC2 and RVC4 since the tests are run concurrently, to avoid port conflicts
+# Skip windows, since it asks for user input for the firewall
 add_python_example(visualizer_rvc4 Visualizer/visualizer_yolo.py --webSocketPort 8765 --httpPort 8080)
-dai_set_example_test_labels(visualizer_rvc4 ondevice rvc4 ci)
+dai_set_example_test_labels(visualizer_rvc4 ondevice rvc4 ci nowindows)
 
 add_python_example(visualizer_encoded_rvc4 Visualizer/visualizer_encoded.py --webSocketPort 8765 --httpPort 8080)
-dai_set_example_test_labels(visualizer_encoded_rvc4 ondevice rvc4 ci)
+dai_set_example_test_labels(visualizer_encoded_rvc4 ondevice rvc4 ci nowindows)
 
 add_python_example(visualizer_rvc2 Visualizer/visualizer_yolo.py --webSocketPort 8766 --httpPort 8081)
-dai_set_example_test_labels(visualizer_rvc2 ondevice rvc2 usb ci)
+dai_set_example_test_labels(visualizer_rvc2 ondevice rvc2 usb ci nowindows)
 
 add_python_example(visualizer_encoded_rvc2 Visualizer/visualizer_encoded.py --webSocketPort 8766 --httpPort 8081)
-dai_set_example_test_labels(visualizer_encoded_rvc2 ondevice rvc2 usb ci)
+dai_set_example_test_labels(visualizer_encoded_rvc2 ondevice rvc2 usb ci nowindows)
 
 add_python_example(custom_services Visualizer/custom_services.py)
-dai_set_example_test_labels(custom_services onhost ci)
+dai_set_example_test_labels(custom_services onhost ci nowindows)
 
 
 ## Script node
@@ -248,3 +255,11 @@ add_python_example(imu_gyroscope_accelerometer IMU/imu_gyroscope_accelerometer.p
 dai_set_example_test_labels(imu_gyroscope_accelerometer rvc2_all rvc4 ci)
 # On slow hosts the examples warns that batch size is too small
 set_tests_properties(py_imu_gyroscope_accelerometer PROPERTIES FAIL_REGULAR_EXPRESSION "\\[error\\];\\[critical\\]")
+
+# Warp node
+add_python_example(warp_mesh Warp/warp_mesh.py)
+dai_set_example_test_labels(warp_mesh rvc2_all rvc4 ci)
+
+# Feature tracker
+add_python_example(feature_tracker FeatureTracker/feature_tracker.py)
+dai_set_example_test_labels(feature_tracker rvc2_all rvc4 ci)

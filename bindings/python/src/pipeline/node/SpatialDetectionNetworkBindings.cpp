@@ -1,5 +1,6 @@
 #include "Common.hpp"
 #include "NodeBindings.hpp"
+#include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/pipeline/Node.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/node/SpatialDetectionNetwork.hpp"
@@ -55,7 +56,7 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack) {
              py::arg("fps") = std::nullopt,
              DOC(dai, node, SpatialDetectionNetwork, build, 2))
         .def("build",
-             py::overload_cast<const std::shared_ptr<Camera>&, const std::shared_ptr<StereoDepth>&, NNArchive, std::optional<float>>(
+             py::overload_cast<const std::shared_ptr<Camera>&, const std::shared_ptr<StereoDepth>&, const NNArchive&, std::optional<float>>(
                  &SpatialDetectionNetwork::build),
              py::arg("input"),
              py::arg("stereo"),

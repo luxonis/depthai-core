@@ -16,7 +16,8 @@
     #include <opencv2/core/types.hpp>
 #endif
 
-#define PLANE_ALIGNMENT 128
+#define DEPTHAI_PLANE_ALIGNMENT 128
+#define DEPTHAI_STRIDE_ALIGNMENT 1
 
 #if defined(WIN32) || defined(_WIN32)
     #define _RESTRICT
@@ -310,7 +311,7 @@ bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToRGB888p(
 
     auto src = inputFrame.data();
     auto inputSize = inputFrame.size();
-    uint32_t auxStride = ALIGN_UP(3 * srcSpecs.width, 8);
+    uint32_t auxStride = ALIGN_UP(3 * srcSpecs.width, DEPTHAI_STRIDE_ALIGNMENT);
 
     bool done = false;
     switch(from) {
@@ -625,7 +626,7 @@ bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToBGR888p(
 
     auto src = inputFrame.data();
     auto inputSize = inputFrame.size();
-    uint32_t auxStride = ALIGN_UP(3 * srcSpecs.width, 8);
+    uint32_t auxStride = ALIGN_UP(3 * srcSpecs.width, DEPTHAI_STRIDE_ALIGNMENT);
 
     bool done = false;
     switch(from) {
@@ -940,7 +941,7 @@ bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToRGB888i(
 
     auto src = inputFrame.data();
     auto inputSize = inputFrame.size();
-    uint32_t auxStride = ALIGN_UP(3 * srcSpecs.width, 8);
+    uint32_t auxStride = ALIGN_UP(3 * srcSpecs.width, DEPTHAI_STRIDE_ALIGNMENT);
 
     bool done = false;
     switch(from) {
@@ -1144,7 +1145,7 @@ bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToBGR888i(
     auto src = inputFrame.data();
     auto inputSize = inputFrame.size();
 #if defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
-    uint32_t auxStride = ALIGN_UP(3 * srcSpecs.width, 8);
+    uint32_t auxStride = ALIGN_UP(3 * srcSpecs.width, DEPTHAI_STRIDE_ALIGNMENT);
 #endif
 
     bool done = false;
@@ -1349,7 +1350,7 @@ bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToNV12(
     auto src = inputFrame.data();
     auto inputSize = inputFrame.size();
 #if defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
-    uint32_t auxStride = ALIGN_UP(3 * srcSpecs.width, 8);
+    uint32_t auxStride = ALIGN_UP(3 * srcSpecs.width, DEPTHAI_STRIDE_ALIGNMENT);
 #endif
 
     bool done = false;
@@ -1600,7 +1601,7 @@ bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToYUV420p(
     auto src = inputFrame.data();
     auto inputSize = inputFrame.size();
 #if defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
-    uint32_t auxStride = ALIGN_UP(3 * srcSpecs.width, 8);
+    uint32_t auxStride = ALIGN_UP(3 * srcSpecs.width, DEPTHAI_STRIDE_ALIGNMENT);
 #endif
 
     bool done = false;
@@ -1870,7 +1871,7 @@ bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToGRAY8(
 
     auto src = inputFrame.data();
     auto inputSize = inputFrame.size();
-    uint32_t auxStride = ALIGN_UP(3 * srcSpecs.width, 8);
+    uint32_t auxStride = ALIGN_UP(3 * srcSpecs.width, DEPTHAI_STRIDE_ALIGNMENT);
 
     bool done = false;
     switch(from) {
@@ -2070,7 +2071,7 @@ void ColorChange<ImageManipBuffer, ImageManipData>::build(const FrameSpecs srcFr
     to = typeTo;
     srcSpecs = srcFrameSpecs;
     dstSpecs = dstFrameSpecs;
-    size_t newAuxFrameSize = srcSpecs.height * ALIGN_UP(3 * srcSpecs.width, 8);
+    size_t newAuxFrameSize = srcSpecs.height * ALIGN_UP(3 * srcSpecs.width, DEPTHAI_STRIDE_ALIGNMENT);
     if(!ccAuxFrame || ccAuxFrame->size() < newAuxFrameSize) ccAuxFrame = std::make_shared<ImageManipData>(newAuxFrameSize);
 }
 
@@ -2364,7 +2365,7 @@ void ImageManipOperations<ImageManipBuffer, ImageManipData>::init() {
 template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
 ImageManipOperations<ImageManipBuffer, ImageManipData>& ImageManipOperations<ImageManipBuffer, ImageManipData>::build(
     const ImageManipOpsBase<Container>& newBase, ImgFrame::Type outType, FrameSpecs srcFrameSpecs, ImgFrame::Type inFrameType) {
-    const auto newCfgStr = getConfigString(newBase);
+    const auto newCfgStr = newBase.str();
     if(outType == ImgFrame::Type::NONE) {
         if(base.colormap != Colormap::NONE)
             outType = VALID_TYPE_COLOR;
@@ -2492,7 +2493,7 @@ bool ImageManipOperations<ImageManipBuffer, ImageManipData>::apply(const std::sh
                          base.outputHeight,
                          CV_8UC1,
                          mode & MODE_WARP ? colormapFrame->data() : (convertInput ? convertedFrame->data() : src->getData().data()),
-                         ALIGN_UP(base.outputWidth, 8));
+                         ALIGN_UP(base.outputWidth, DEPTHAI_STRIDE_ALIGNMENT));
             cv::Mat color(base.outputWidth, base.outputHeight, CV_8UC3, colormapDst);
             cv::ColormapTypes cvColormap = cv::COLORMAP_JET;
             switch(base.colormap) {  // TODO(asahtik): set correct stereo colormaps
@@ -2536,19 +2537,19 @@ size_t ImageManipOperations<ImageManipBuffer, ImageManipData>::getOutputStride(u
     switch(outputFrameType) {
         case ImgFrame::Type::RGB888p:
         case ImgFrame::Type::BGR888p:
-            return plane < 3 ? ALIGN_UP(base.outputWidth, 8) : 0;
+            return plane < 3 ? ALIGN_UP(base.outputWidth, DEPTHAI_STRIDE_ALIGNMENT) : 0;
         case ImgFrame::Type::RGB888i:
         case ImgFrame::Type::BGR888i:
-            return plane == 0 ? ALIGN_UP(base.outputWidth * 3, 8) : 0;
+            return plane == 0 ? ALIGN_UP(base.outputWidth * 3, DEPTHAI_STRIDE_ALIGNMENT) : 0;
         case ImgFrame::Type::NV12:
-            return plane < 2 ? ALIGN_UP(base.outputWidth, 8) : 0;
+            return plane < 2 ? ALIGN_UP(base.outputWidth, DEPTHAI_STRIDE_ALIGNMENT) : 0;
         case ImgFrame::Type::YUV420p:
-            return plane == 0 ? ALIGN_UP(base.outputWidth, 8) : (plane < 3 ? base.outputWidth / 2 : 0);
+            return plane == 0 ? ALIGN_UP(base.outputWidth, DEPTHAI_STRIDE_ALIGNMENT) : (plane < 3 ? base.outputWidth / 2 : 0);
         case ImgFrame::Type::GRAY8:
         case ImgFrame::Type::RAW8:
-            return plane == 0 ? ALIGN_UP(base.outputWidth, 8) : 0;
+            return plane == 0 ? ALIGN_UP(base.outputWidth, DEPTHAI_STRIDE_ALIGNMENT) : 0;
         case ImgFrame::Type::RAW16:
-            return plane == 0 ? ALIGN_UP(base.outputWidth * 2, 8) : 0;
+            return plane == 0 ? ALIGN_UP(base.outputWidth * 2, DEPTHAI_STRIDE_ALIGNMENT) : 0;
         case ImgFrame::Type::YUV422i:
         case ImgFrame::Type::YUV444p:
         case ImgFrame::Type::YUV422p:
@@ -2586,7 +2587,7 @@ size_t ImageManipOperations<ImageManipBuffer, ImageManipData>::getOutputSize() c
     switch(outputFrameType) {
         case ImgFrame::Type::RGB888p:
         case ImgFrame::Type::BGR888p:
-            size = ALIGN_UP(getOutputStride() * getOutputHeight(), PLANE_ALIGNMENT) * 3;
+            size = ALIGN_UP(getOutputStride() * getOutputHeight(), DEPTHAI_PLANE_ALIGNMENT) * 3;
             break;
         case ImgFrame::Type::RGB888i:
         case ImgFrame::Type::BGR888i:
@@ -2595,11 +2596,12 @@ size_t ImageManipOperations<ImageManipBuffer, ImageManipData>::getOutputSize() c
             size = getOutputStride() * getOutputHeight();
             break;
         case ImgFrame::Type::NV12:
-            size = ALIGN_UP(getOutputStride(0) * getOutputHeight(), PLANE_ALIGNMENT) + ALIGN_UP(getOutputStride(1) * getOutputHeight() / 2, PLANE_ALIGNMENT);
+            size = ALIGN_UP(getOutputStride(0) * getOutputHeight(), DEPTHAI_PLANE_ALIGNMENT)
+                   + ALIGN_UP(getOutputStride(1) * getOutputHeight() / 2, DEPTHAI_PLANE_ALIGNMENT);
             break;
         case ImgFrame::Type::YUV420p:
-            size =
-                ALIGN_UP(getOutputStride(0) * getOutputHeight(), PLANE_ALIGNMENT) + ALIGN_UP(getOutputStride(1) * getOutputHeight() / 2, PLANE_ALIGNMENT) * 2;
+            size = ALIGN_UP(getOutputStride(0) * getOutputHeight(), DEPTHAI_PLANE_ALIGNMENT)
+                   + ALIGN_UP(getOutputStride(1) * getOutputHeight() / 2, DEPTHAI_PLANE_ALIGNMENT) * 2;
             break;
         case ImgFrame::Type::RAW16:
             size = getOutputStride() * getOutputHeight();
@@ -2645,40 +2647,40 @@ FrameSpecs ImageManipOperations<ImageManipBuffer, ImageManipData>::getOutputFram
     switch(type) {
         case dai::ImgFrame::Type::RGB888p:
         case dai::ImgFrame::Type::BGR888p:
-            specs.p1Stride = ALIGN_UP(specs.width, 8);
+            specs.p1Stride = ALIGN_UP(specs.width, DEPTHAI_STRIDE_ALIGNMENT);
             specs.p2Stride = specs.p1Stride;
             specs.p3Stride = specs.p1Stride;
-            specs.p2Offset = specs.p1Offset + ALIGN_UP(specs.p1Stride * specs.height, PLANE_ALIGNMENT);
-            specs.p3Offset = specs.p2Offset + ALIGN_UP(specs.p1Stride * specs.height, PLANE_ALIGNMENT);
+            specs.p2Offset = specs.p1Offset + ALIGN_UP(specs.p1Stride * specs.height, DEPTHAI_PLANE_ALIGNMENT);
+            specs.p3Offset = specs.p2Offset + ALIGN_UP(specs.p1Stride * specs.height, DEPTHAI_PLANE_ALIGNMENT);
             break;
         case dai::ImgFrame::Type::RGB888i:
         case dai::ImgFrame::Type::BGR888i:
-            specs.p1Stride = ALIGN_UP(specs.width * 3, 8);
+            specs.p1Stride = ALIGN_UP(specs.width * 3, DEPTHAI_STRIDE_ALIGNMENT);
             specs.p2Stride = specs.p1Stride;
             specs.p3Stride = specs.p1Stride;
             specs.p2Offset = specs.p1Offset;
             specs.p3Offset = specs.p1Offset;
             break;
         case dai::ImgFrame::Type::NV12:
-            specs.p1Stride = ALIGN_UP(specs.width, 8);
+            specs.p1Stride = ALIGN_UP(specs.width, DEPTHAI_STRIDE_ALIGNMENT);
             specs.p2Stride = specs.p1Stride;
-            specs.p2Offset = specs.p1Offset + ALIGN_UP(specs.p1Stride * specs.height, PLANE_ALIGNMENT);
+            specs.p2Offset = specs.p1Offset + ALIGN_UP(specs.p1Stride * specs.height, DEPTHAI_PLANE_ALIGNMENT);
             specs.p3Offset = specs.p2Offset;
             specs.p3Stride = 0;
             break;
         case dai::ImgFrame::Type::YUV420p:
-            specs.p1Stride = ALIGN_UP(specs.width, 8);
-            specs.p2Stride = ALIGN_UP(specs.width / 2, 8);
-            specs.p3Stride = ALIGN_UP(specs.width / 2, 8);
-            specs.p2Offset = specs.p1Offset + ALIGN_UP(specs.p1Stride * specs.height, PLANE_ALIGNMENT);
-            specs.p3Offset = specs.p2Offset + ALIGN_UP(specs.p2Stride * (specs.height / 2), PLANE_ALIGNMENT);
+            specs.p1Stride = ALIGN_UP(specs.width, DEPTHAI_STRIDE_ALIGNMENT);
+            specs.p2Stride = ALIGN_UP(specs.width / 2, DEPTHAI_STRIDE_ALIGNMENT);
+            specs.p3Stride = ALIGN_UP(specs.width / 2, DEPTHAI_STRIDE_ALIGNMENT);
+            specs.p2Offset = specs.p1Offset + ALIGN_UP(specs.p1Stride * specs.height, DEPTHAI_PLANE_ALIGNMENT);
+            specs.p3Offset = specs.p2Offset + ALIGN_UP(specs.p2Stride * (specs.height / 2), DEPTHAI_PLANE_ALIGNMENT);
             break;
         case dai::ImgFrame::Type::RAW8:
         case dai::ImgFrame::Type::GRAY8:
-            specs.p1Stride = ALIGN_UP(specs.width, 8);
+            specs.p1Stride = ALIGN_UP(specs.width, DEPTHAI_STRIDE_ALIGNMENT);
             break;
         case ImgFrame::Type::RAW16:
-            specs.p1Stride = ALIGN_UP(specs.width * 2, 8);
+            specs.p1Stride = ALIGN_UP(specs.width * 2, DEPTHAI_STRIDE_ALIGNMENT);
             break;
         case ImgFrame::Type::YUV422i:
         case ImgFrame::Type::YUV444p:
