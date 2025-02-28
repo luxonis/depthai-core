@@ -9,8 +9,8 @@ namespace dai {
 
 std::vector<Point3f> PointCloudData::getPoints() {
     if(isColor()) {
-        span<const Point3fRGB> pointData(reinterpret_cast<Point3fRGB*>(data->getData().data()), data->getData().size() / sizeof(Point3fRGB));
-        std::vector<Point3fRGB> points(pointData.begin(), pointData.end());
+        span<const Point3fRGBA> pointData(reinterpret_cast<Point3fRGBA*>(data->getData().data()), data->getData().size() / sizeof(Point3fRGBA));
+        std::vector<Point3fRGBA> points(pointData.begin(), pointData.end());
         std::vector<Point3f> points3f;
         for(const auto& p : points) {
             points3f.push_back({p.x, p.y, p.z});
@@ -25,12 +25,12 @@ std::vector<Point3f> PointCloudData::getPoints() {
     return points;
 }
 
-std::vector<Point3fRGB> PointCloudData::getPointsRGB() {
+std::vector<Point3fRGBA> PointCloudData::getPointsRGB() {
     if(!isColor()) {
         throw std::runtime_error("PointCloudData does not contain color data");
     }
-    span<const Point3fRGB> pointData(reinterpret_cast<Point3fRGB*>(data->getData().data()), data->getData().size() / sizeof(Point3fRGB));
-    std::vector<Point3fRGB> points(pointData.begin(), pointData.end());
+    span<const Point3fRGBA> pointData(reinterpret_cast<Point3fRGBA*>(data->getData().data()), data->getData().size() / sizeof(Point3fRGBA));
+    std::vector<Point3fRGBA> points(pointData.begin(), pointData.end());
     assert(isSparse() || points.size() == width * height);
     assert(!isSparse() || points.size() <= width * height);
 
@@ -45,10 +45,10 @@ void PointCloudData::setPoints(const std::vector<Point3f>& points) {
     setColor(false);
 }
 
-void PointCloudData::setPointsRGB(const std::vector<Point3fRGB>& points) {
+void PointCloudData::setPointsRGB(const std::vector<Point3fRGBA>& points) {
     auto size = points.size();
-    std::vector<uint8_t> data(size * sizeof(Point3fRGB));
-    std::memcpy(data.data(), points.data(), size * sizeof(Point3fRGB));
+    std::vector<uint8_t> data(size * sizeof(Point3fRGBA));
+    std::memcpy(data.data(), points.data(), size * sizeof(Point3fRGBA));
     setData(std::move(data));
     setColor(true);
 }
@@ -184,5 +184,5 @@ ProtoSerializable::SchemaPair PointCloudData::serializeSchema() const {
 
 #endif
 static_assert(sizeof(Point3f) == 12, "Point3f size must be 12 bytes");
-static_assert(sizeof(Point3fRGB) == 15, "Point3fRGB size must be 15 bytes");
+static_assert(sizeof(Point3fRGBA) == 16, "Point3fRGBA size must be 16 bytes");
 }  // namespace dai

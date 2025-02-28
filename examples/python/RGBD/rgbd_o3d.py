@@ -21,7 +21,6 @@ class O3DNode(dai.node.ThreadedHostNode):
             global isRunning
             if action == 0:
                 isRunning = False
-        pc = o3d.geometry.PointCloud()
         vis = o3d.visualization.VisualizerWithKeyCallback()
         vis.create_window()
         vis.register_key_action_callback(81, key_callback)
@@ -34,8 +33,9 @@ class O3DNode(dai.node.ThreadedHostNode):
             if inPointCloud is not None:
                 points, colors = inPointCloud.getPointsRGB()
                 pcd.points = o3d.utility.Vector3dVector(points.astype(np.float64))
-                colors = (colors.reshape(-1, 3) / 255.0).astype(np.float64)
-                pcd.colors = o3d.utility.Vector3dVector(colors)
+                print(colors.shape)
+                colors = (colors/ 255.0).astype(np.float64)
+                pcd.colors = o3d.utility.Vector3dVector(np.delete(colors, 3, 1))
                 if first:
                     vis.add_geometry(pcd)
                     first = False

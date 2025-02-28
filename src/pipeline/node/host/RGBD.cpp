@@ -2,8 +2,8 @@
 
 #include <future>
 
-#include "common/Point3fRGB.hpp"
-#include "depthai/common/Point3fRGB.hpp"
+#include "common/Point3fRGBA.hpp"
+#include "depthai/common/Point3fRGBA.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
@@ -24,7 +24,7 @@ namespace node {
 class RGBD::Impl {
    public:
     Impl() = default;
-    void computePointCloud(const uint8_t* depthData, const uint8_t* colorData, std::vector<Point3fRGB>& points) {
+    void computePointCloud(const uint8_t* depthData, const uint8_t* colorData, std::vector<Point3fRGBA>& points) {
         if(!intrinsicsSet) {
             throw std::runtime_error("Intrinsics not set");
         }
@@ -104,7 +104,7 @@ class RGBD::Impl {
         throw std::runtime_error("Kompute not enabled in this build");
 #endif
     }
-    void computePointCloudGPU(const uint8_t* depthData, const uint8_t* colorData, std::vector<Point3fRGB>& points) {
+    void computePointCloudGPU(const uint8_t* depthData, const uint8_t* colorData, std::vector<Point3fRGBA>& points) {
 #ifdef DEPTHAI_ENABLE_KOMPUTE
         std::vector<float> xyzOut;
 
@@ -145,7 +145,7 @@ class RGBD::Impl {
         // Retrieve results
         xyzOut = xyzTensor->vector<float>();
         for(int i = 0; i < size; i++) {
-            Point3fRGB p;
+            Point3fRGBA p;
             p.x = xyzOut[i * 3 + 0];
             p.y = xyzOut[i * 3 + 1];
             p.z = xyzOut[i * 3 + 2];
@@ -156,7 +156,7 @@ class RGBD::Impl {
         }
 #endif
     }
-    void calcPointsChunk(const uint8_t* depthData, const uint8_t* colorData, std::vector<Point3fRGB>& outChunk, int startRow, int endRow) {
+    void calcPointsChunk(const uint8_t* depthData, const uint8_t* colorData, std::vector<Point3fRGBA>& outChunk, int startRow, int endRow) {
         float scale = scaleFactor;
         outChunk.reserve((endRow - startRow) * width);
 
@@ -176,23 +176,23 @@ class RGBD::Impl {
                 uint8_t g = colorData[i * 3 + 1];
                 uint8_t b = colorData[i * 3 + 2];
 
-                outChunk.push_back(Point3fRGB{xCoord, yCoord, z, r, g, b});
+                outChunk.push_back(Point3fRGBA{xCoord, yCoord, z, r, g, b});
             }
         }
     }
 
-    void computePointCloudCPU(const uint8_t* depthData, const uint8_t* colorData, std::vector<Point3fRGB>& points) {
+    void computePointCloudCPU(const uint8_t* depthData, const uint8_t* colorData, std::vector<Point3fRGBA>& points) {
         // Single-threaded directly writes into points
         calcPointsChunk(depthData, colorData, points, 0, height);
     }
 
-    void computePointCloudCPUMT(const uint8_t* depthData, const uint8_t* colorData, std::vector<Point3fRGB>& points) {
+    void computePointCloudCPUMT(const uint8_t* depthData, const uint8_t* colorData, std::vector<Point3fRGBA>& points) {
         int rowsPerThread = height / threadNum;
-        std::vector<std::future<std::vector<Point3fRGB>>> futures;
+        std::vector<std::future<std::vector<Point3fRGBA>>> futures;
 
         // Each thread returns a local vector
         auto processRows = [&](int startRow, int endRow) {
-            std::vector<Point3fRGB> localPoints;
+            std::vector<Point3fRGBA> localPoints;
             calcPointsChunk(depthData, colorData, localPoints, startRow, endRow);
             return localPoints;
         };
@@ -325,17 +325,39 @@ void RGBD::run() {
             auto height = colorFrame->getHeight();
             pc->setSize(width, height);
 
-            std::vector<Point3fRGB> points;
+            std::vector<Point3fRGBA> points;
             // Fill the point cloud
             auto* depthData = depthFrame->getData().data();
             auto* colorData = colorFrame->getData().data();
             // Use GPU to compute point cloud
             pimpl->computePointCloud(depthData, colorData, points);
 
+            float minX = 0.0;
+            float minY = 0.0;
+            float minZ = 0.0;
+            float maxX = 0.0;
+            float maxY = 0.0;
+            float maxZ = 0.0;
+            for(const auto& p : points) {
+                minX = std::min(minX, p.x);
+                minY = std::min(minY, p.y);
+                minZ = std::min(minZ, p.z);
+                maxX = std::max(maxX, p.x);
+                maxY = std::max(maxY, p.y);
+                maxZ = std::max(maxZ, p.z);
+            }
+            pc->setMinX(minX);
+            pc->setMinY(minY);
+            pc->setMinZ(minZ);
+            pc->setMaxX(maxX);
+            pc->setMaxY(maxY);
+            pc->setMaxZ(maxZ);
+
             pc->setPointsRGB(points);
             pc->setTimestamp(colorFrame->getTimestamp());
             pc->setTimestampDevice(colorFrame->getTimestampDevice());
             pc->setSequenceNum(colorFrame->getSequenceNum());
+            pc->setInstanceNum(colorFrame->getInstanceNum());
             if(!pcl.getQueueConnections().empty() || !pcl.getConnections().empty()) {
                 pcl.send(pc);
             }
