@@ -908,6 +908,9 @@ class StereoDepthConfig : public Buffer {
      */
     CostAggregation costAggregation;
 
+    /**
+     * Confidence metrics settings.
+     */
     ConfidenceMetrics confidenceMetrics;
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
