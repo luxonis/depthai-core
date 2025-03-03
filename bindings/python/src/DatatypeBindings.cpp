@@ -32,6 +32,7 @@ void bind_benchmarkreport(pybind11::module& m, void* pCallstack);
 void bind_pointcloudconfig(pybind11::module& m, void* pCallstack);
 void bind_pointclouddata(pybind11::module& m, void* pCallstack);
 void bind_transformdata(pybind11::module& m, void* pCallstack);
+void bind_rgbddata(pybind11::module& m, void* pCallstack);
 void bind_imagealignconfig(pybind11::module& m, void* pCallstack);
 void bind_imageannotations(pybind11::module& m, void* pCallstack);
 
@@ -123,5 +124,6 @@ void DatatypeBindings::bind(pybind11::module& m, void* pCallstack) {
         .value("PointCloudConfig", DatatypeEnum::PointCloudConfig)
         .value("PointCloudData", DatatypeEnum::PointCloudData)
         .value("ImageAlignConfig", DatatypeEnum::ImageAlignConfig)
-        .value("ImgAnnotations", DatatypeEnum::ImgAnnotations);
+        .value("ImgAnnotations", DatatypeEnum::ImgAnnotations)
+        .value("RGBDData", DatatypeEnum::RGBDData);
 }
