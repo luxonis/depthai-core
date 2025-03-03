@@ -70,7 +70,7 @@ jobs:
       - name: Configure, Build and Test
         run: |
           export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-${{ matrix.rvc4os }}-${{ matrix.flavor }}"
-          exec hil --models oak4_pro oak4_d --reservation-name $RESERVATION_NAME --wait --sync-workspace --rvc4-os-version ${{ matrix.rvc4os }} --commands 'cd /tmp/depthai-core|| exit' 'scripts/hil/run_hil_tests.sh ${{ matrix.flavor }} --rvc4'
+          exec hil --models "oak4_pro or oak4_d" --reservation-name $RESERVATION_NAME --wait --sync-workspace --rvc4-os-version ${{ matrix.rvc4os }} --commands 'cd /tmp/depthai-core|| exit' 'scripts/hil/run_hil_tests.sh ${{ matrix.flavor }} --rvc4'
 
   windows_rvc2_rvc4_test:
     runs-on: ['self-hosted', 'windows']
