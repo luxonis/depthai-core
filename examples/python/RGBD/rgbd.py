@@ -19,7 +19,7 @@ class RerunNode(dai.node.ThreadedHostNode):
 
     def run(self):
         rr.init("", spawn=True)
-        rr.log("world", rr.ViewCoordinates.FLU)
+        rr.log("world", rr.ViewCoordinates.RDF)
         rr.log("world/ground", rr.Boxes3D(half_sizes=[3.0, 3.0, 0.00001]))
         while self.isRunning():
             inPointCloud = self.inputPCL.get()

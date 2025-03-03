@@ -1,4 +1,3 @@
-
 import time
 import depthai as dai
 import sys
@@ -7,7 +6,11 @@ import numpy as np
 try:
     import open3d as o3d
 except ImportError:
-    sys.exit("Critical dependency missing: Open3D. Please install it using the command: '{} -m pip install open3d' and then rerun the script.".format(sys.executable))
+    sys.exit(
+        "Critical dependency missing: Open3D. Please install it using the command: '{} -m pip install open3d' and then rerun the script.".format(
+            sys.executable
+        )
+    )
 
 
 class O3DNode(dai.node.ThreadedHostNode):
@@ -15,34 +18,62 @@ class O3DNode(dai.node.ThreadedHostNode):
         dai.node.ThreadedHostNode.__init__(self)
         self.inputPCL = self.createInput()
 
-
     def run(self):
         def key_callback(vis, action, mods):
             global isRunning
             if action == 0:
                 isRunning = False
+
         vis = o3d.visualization.VisualizerWithKeyCallback()
         vis.create_window()
         vis.register_key_action_callback(81, key_callback)
         pcd = o3d.geometry.PointCloud()
-        coordinateFrame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=1000, origin=[0,0,0])
+        coordinateFrame = o3d.geometry.TriangleMesh.create_coordinate_frame(
+            size=1000, origin=[0, 0, 0]
+        )
         vis.add_geometry(coordinateFrame)
+        ctr = vis.get_view_control()
+        camera_params = ctr.convert_to_pinhole_camera_parameters()
+        camera_params.extrinsic = np.array(
+            [
+                0.94610163126118774,
+                -0.12359212915800502,
+                0.29936046655346926,
+                0.0,
+                0.080146787990983182,
+                0.98491931997093096,
+                0.1533310977027407,
+                0.0,
+                -0.31379642397523938,
+                -0.12107402181388879,
+                0.94173928745813829,
+                0.0,
+                113.25895049807093,
+                57.432848193602524,
+                1690.8981017321228,
+                1.0,
+            ]
+        ).reshape(4, 4)
+        ctr.convert_from_pinhole_camera_parameters(camera_params)
         first = True
         while self.isRunning():
             inPointCloud = self.inputPCL.tryGet()
             if inPointCloud is not None:
                 points, colors = inPointCloud.getPointsRGB()
                 pcd.points = o3d.utility.Vector3dVector(points.astype(np.float64))
-                colors = (colors/ 255.0).astype(np.float64)
+                colors = (colors / 255.0).astype(np.float64)
                 pcd.colors = o3d.utility.Vector3dVector(np.delete(colors, 3, 1))
                 if first:
                     vis.add_geometry(pcd)
+                    ctr.convert_from_pinhole_camera_parameters(camera_params)
                     first = False
                 else:
                     vis.update_geometry(pcd)
             vis.poll_events()
             vis.update_renderer()
+
         vis.destroy_window()
+
 
 # Create pipeline
 
@@ -70,13 +101,15 @@ with dai.Pipeline() as p:
     right.requestOutput((640, 400)).link(stereo.right)
     platform = p.getDefaultDevice().getPlatform()
     if platform == dai.Platform.RVC4:
-        out = color.requestOutput((640,400), dai.ImgFrame.Type.RGB888i)
+        out = color.requestOutput((640, 400), dai.ImgFrame.Type.RGB888i)
         align = p.create(dai.node.ImageAlign)
         stereo.depth.link(align.input)
         out.link(align.inputAlignTo)
         align.outputAligned.link(rgbd.inDepth)
     else:
-        out = color.requestOutput((640,400), dai.ImgFrame.Type.RGB888i, dai.ImgResizeMode.CROP, 30, True)
+        out = color.requestOutput(
+            (640, 400), dai.ImgFrame.Type.RGB888i, dai.ImgResizeMode.CROP, 30, True
+        )
         stereo.depth.link(rgbd.inDepth)
         out.link(stereo.inputAlignTo)
     out.link(rgbd.inColor)
