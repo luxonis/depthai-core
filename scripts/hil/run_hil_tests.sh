@@ -51,7 +51,6 @@ python scripts/hil/powercycle.py
 sleep 10
 echo "Powercycling devices. Continuing with test setup..."
 
-
 cmake -S . -B build -D CMAKE_BUILD_TYPE=Release -D HUNTER_ROOT=$HOME/.hun2_$TEST_FLAVOR -D DEPTHAI_BUILD_EXAMPLES=ON -D DEPTHAI_BUILD_TESTS=ON -D DEPTHAI_TEST_EXAMPLES=ON -D DEPTHAI_BUILD_PYTHON=ON -D DEPTHAI_PYTHON_TEST_EXAMPLES=ON -D DEPTHAI_PYTHON_ENABLE_EXAMPLES=ON
 cmake --build build --parallel 2 --config Release
 
