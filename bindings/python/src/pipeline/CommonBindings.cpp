@@ -23,7 +23,7 @@
 #include "depthai/common/Point2f.hpp"
 #include "depthai/common/Point3d.hpp"
 #include "depthai/common/Point3f.hpp"
-#include "depthai/common/Point3fRGB.hpp"
+#include "depthai/common/Point3fRGBA.hpp"
 #include "depthai/common/ProcessorType.hpp"
 #include "depthai/common/Quaterniond.hpp"
 #include "depthai/common/Rect.hpp"
@@ -45,7 +45,7 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     py::class_<Timestamp> timestamp(m, "Timestamp", DOC(dai, Timestamp));
     py::class_<Point2f> point2f(m, "Point2f", DOC(dai, Point2f));
     py::class_<Point3f> point3f(m, "Point3f", DOC(dai, Point3f));
-    py::class_<Point3fRGB> point3fRGB(m, "Point3fRGB", DOC(dai, Point3fRGB));
+    py::class_<Point3fRGBA> point3fRGB(m, "Point3fRGBA", DOC(dai, Point3fRGBA));
     py::class_<Point3d> point3d(m, "Point3d", DOC(dai, Point3d));
     py::class_<Quaterniond> quaterniond(m, "Quaterniond", DOC(dai, Quaterniond));
     py::class_<Size2f> size2f(m, "Size2f", DOC(dai, Size2f));
@@ -153,12 +153,13 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("z", &Point3f::z);
     point3fRGB.def(py::init<>())
         .def(py::init<float, float, float, int, int, int>())
-        .def_readwrite("x", &Point3fRGB::x)
-        .def_readwrite("y", &Point3fRGB::y)
-        .def_readwrite("z", &Point3fRGB::z)
-        .def_readwrite("r", &Point3fRGB::r)
-        .def_readwrite("g", &Point3fRGB::g)
-        .def_readwrite("b", &Point3fRGB::b);
+        .def_readwrite("x", &Point3fRGBA::x)
+        .def_readwrite("y", &Point3fRGBA::y)
+        .def_readwrite("z", &Point3fRGBA::z)
+        .def_readwrite("r", &Point3fRGBA::r)
+        .def_readwrite("g", &Point3fRGBA::g)
+        .def_readwrite("b", &Point3fRGBA::b)
+        .def_readwrite("a", &Point3fRGBA::a);
     point3d.def(py::init<>())
         .def(py::init<double, double, double>())
         .def_readwrite("x", &Point3d::x)

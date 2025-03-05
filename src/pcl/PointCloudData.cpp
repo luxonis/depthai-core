@@ -9,8 +9,8 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr dai::PointCloudData::getPclData() const {
     cloud->height = getHeight();
     cloud->is_dense = isSparse();
     if(isColor()) {
-        auto* dataPtr = (Point3fRGB*)data.data();
-        auto size = data.size() / sizeof(Point3fRGB);
+        auto* dataPtr = (Point3fRGBA*)data.data();
+        auto size = data.size() / sizeof(Point3fRGBA);
 
         cloud->points.resize(size);
 
@@ -46,8 +46,8 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr dai::PointCloudData::getPclDataRGB() cons
     cloud->height = getHeight();
     cloud->is_dense = isSparse();
 
-    auto* dataPtr = (Point3fRGB*)data.data();
-    auto size = data.size() / sizeof(Point3fRGB);
+    auto* dataPtr = (Point3fRGBA*)data.data();
+    auto size = data.size() / sizeof(Point3fRGBA);
 
     cloud->points.resize(size);
 
@@ -110,15 +110,15 @@ void dai::PointCloudData::setPclDataRGB(const pcl::PointCloud<pcl::PointXYZRGB>:
     }
 
     auto size = cloud->points.size();
-    std::vector<uint8_t> data(size * sizeof(Point3fRGB));
-    auto* dataPtr = reinterpret_cast<Point3fRGB*>(data.data());
+    std::vector<uint8_t> data(size * sizeof(Point3fRGBA));
+    auto* dataPtr = reinterpret_cast<Point3fRGBA*>(data.data());
     setWidth(cloud->width);
     setHeight(cloud->height);
     setSparse(!cloud->is_dense);
 
     std::for_each(cloud->points.begin(), cloud->points.end(), [dataPtr, &cloud](const pcl::PointXYZRGB& point) mutable {
         size_t i = &point - &cloud->points[0];
-        dataPtr[i] = Point3fRGB{point.x, point.y, point.z, point.r, point.g, point.b};
+        dataPtr[i] = Point3fRGBA{point.x, point.y, point.z, point.r, point.g, point.b};
     });
     color = true;
     setData(data);

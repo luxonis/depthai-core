@@ -34,6 +34,7 @@
 #include "node/Warp.hpp"
 #include "node/XLinkIn.hpp"
 #include "node/XLinkOut.hpp"
+#include "node/host/RGBD.hpp"
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     #include "node/host/Display.hpp"
     #include "node/host/HostCamera.hpp"
