@@ -41,7 +41,7 @@ foreach(proto_file ${MESSAGES_PROTOS})
 endforeach()
 
 # Create a library target for the generated protobuf files
-add_library(messages ${MESSAGES_SRCS})
+add_library(messages STATIC ${MESSAGES_SRCS})
 
 # Link the protobuf library
 target_link_libraries(messages protobuf::libprotobuf)
