@@ -1144,8 +1144,10 @@ def convertToCv2Frame(name, image, config):
         dispScaleFactor = baseline * focal
         with np.errstate(divide="ignore"):
             frame = dispScaleFactor / frame
+            if np.isnan(frame).any() or np.isinf(frame).any():
+                frame = np.nan_to_num(frame, nan=0, posinf=0, neginf=0)
 
-        frame = (frame * 255. / dispIntegerLevels).astype(np.uint8)
+        frame = np.clip(frame * 255. / dispIntegerLevels, 0, 255).astype(np.uint8)
         frame = cv2.applyColorMap(frame, cv2.COLORMAP_HOT)
     elif "confidence_map" in name:
         pass
