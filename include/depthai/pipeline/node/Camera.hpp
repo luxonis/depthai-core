@@ -33,7 +33,7 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
     /**
      * Get full resolution output
      */
-    Node::Output* requestFullResolutionOutput(ImgFrame::Type type = ImgFrame::Type::NV12, std::optional<float> fps = std::nullopt);
+    Node::Output* requestFullResolutionOutput(std::optional<ImgFrame::Type> type = std::nullopt, std::optional<float> fps = std::nullopt);
 
     /**
      * Build with a specific board socket

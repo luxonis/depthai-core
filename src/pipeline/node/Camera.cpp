@@ -166,7 +166,7 @@ uint32_t Camera::getMaxHeight() const {
     return maxHeight;
 }
 
-Node::Output* Camera::requestFullResolutionOutput(ImgFrame::Type type, std::optional<float> fps) {
+Node::Output* Camera::requestFullResolutionOutput(std::optional<ImgFrame::Type> type, std::optional<float> fps) {
     if(!isBuilt) {
         throw std::runtime_error("Camera node must be built before requesting outputs from it");
     }

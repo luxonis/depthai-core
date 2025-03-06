@@ -50,7 +50,7 @@ void bind_camera(pybind11::module& m, void* pCallstack) {
              DOC(dai, node, Camera, requestOutput, 2))
         .def("requestFullResolutionOutput",
              &Camera::requestFullResolutionOutput,
-             "type"_a = dai::ImgFrame::Type::NV12,
+             "type"_a = std::nullopt,
              "fps"_a = std::nullopt,
              py::return_value_policy::reference_internal,
              DOC(dai, node, Camera, requestFullResolutionOutput));
