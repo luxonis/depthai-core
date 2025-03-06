@@ -66,12 +66,9 @@ jobs:
         run: |
           rm -rf depthai-core/scripts/hil/ && mkdir -p depthai-core/scripts/hil/ && cp -r scripts/hil/* depthai-core/scripts/hil/
           rm depthai-core/tests/run_tests.py && cp tests/run_tests.py depthai-core/tests/run_tests.py
-          cd depthai-core
           
           if [[ -n "${{ github.event.inputs.testbed }}" ]]; then
             TESTBED_OPTION="--testbed ${{ github.event.inputs.testbed }}"
-          else
-            TESTBED_OPTION="--models oak4_pro"
           fi
 
           if [[ -n "${{ github.event.inputs.reservation_name }}" ]]; then
@@ -88,4 +85,4 @@ jobs:
           if [[ -n  "${{ github.event.inputs.luxonis_os }}" ]]; then
             UPDATE_LUXONIS_OS="--rvc4-os-version ${{ github.event.inputs.luxonis_os }}"
           fi
-          exec hil $HOLD_RESERVATION $TESTBED_OPTION $RESERVATION_OPTION $UPDATE_LUXONIS_OS --wait --sync-workspace  --commands 'cd /tmp/depthai-core|| exit' 'scripts/hil/run_hil_tests.sh ${{ matrix.flavor }} --rvc4'
+          exec hil $HOLD_RESERVATION --models "oak4_pro or oak4_d" $TESTBED_OPTION $RESERVATION_OPTION $UPDATE_LUXONIS_OS --wait --sync-workspace  --commands 'cd /tmp/depthai-core|| exit' 'scripts/hil/run_hil_tests.sh ${{ matrix.flavor }} --rvc4'
