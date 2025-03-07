@@ -11,7 +11,7 @@ void testVideoEncoder(dai::VideoEncoderProperties::Profile profile) {
 
     dai::Pipeline p;
     auto camRgb = p.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A);
-    auto camRgbOutput = camRgb->requestOutput({1886, 510}, dai::ImgFrame::Type::NV12);
+    auto camRgbOutput = camRgb->requestOutput({1472, 672}, dai::ImgFrame::Type::NV12);
 
     auto encoder = p.create<dai::node::VideoEncoder>();
     camRgbOutput->link(encoder->input);
