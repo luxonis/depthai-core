@@ -67,14 +67,13 @@ std::shared_ptr<Camera> Camera::build(CameraBoardSocket boardSocket,
         throw std::runtime_error("Device pointer is not valid");
     }
 
-    auto cameraFeatures = device->getConnectedCameraFeatures();
-    CameraFeatures sensorFeatures;
+    auto cameraFeaturesVector = device->getConnectedCameraFeatures();
     // First handle the case if the boardSocket is set to AUTO
     if(boardSocket == CameraBoardSocket::AUTO) {
         auto defaultSockets = {CameraBoardSocket::CAM_A, CameraBoardSocket::CAM_B, CameraBoardSocket::CAM_C};
         for(auto socket : defaultSockets) {
             bool found = false;
-            for(const auto& cf : cameraFeatures) {
+            for(const auto& cf : cameraFeaturesVector) {
                 if(cf.socket == socket) {
                     found = true;
                     break;
@@ -89,30 +88,28 @@ std::shared_ptr<Camera> Camera::build(CameraBoardSocket boardSocket,
 
     // Check if the board socket is valid
     bool found = false;
-    for(const auto& cf : cameraFeatures) {
+    for(const auto& cf : cameraFeaturesVector) {
         if(cf.socket == boardSocket) {
             found = true;
-            sensorFeatures = cf;
-            maxWidth = cf.width;
-            maxHeight = cf.height;
+            cameraFeatures = cf;
             break;
         }
     }
     auto fps = sensorFps.value_or(-1.0f);
     // Check if the sensor resolution is valid, if specified
     if(sensorResolution.has_value()) {
-        if(sensorResolution->first > maxWidth || sensorResolution->second > maxHeight) {
-            throw std::runtime_error("Invalid sensor resolution specified, maximum supported resolution is " + std::to_string(maxWidth) + "x"
-                                     + std::to_string(maxHeight));
+        if(static_cast<int32_t>(sensorResolution->first) > cameraFeatures.width || static_cast<int32_t>(sensorResolution->second) > cameraFeatures.height) {
+            throw std::runtime_error("Invalid sensor resolution specified, maximum supported resolution is " + std::to_string(cameraFeatures.width) + "x"
+                                     + std::to_string(cameraFeatures.height));
         }
         found = false;
-        for(const auto& config : sensorFeatures.configs) {
-            auto signedWidth = (int32_t)sensorResolution->first;
-            auto signedHeight = (int32_t)sensorResolution->second;
+        for(const auto& config : cameraFeatures.configs) {
+            auto signedWidth = static_cast<int32_t>(sensorResolution->first);
+            auto signedHeight = static_cast<int32_t>(sensorResolution->second);
             if(config.width == signedWidth && config.height == signedHeight) {
                 found = true;
-                properties.resolutionWidth = maxWidth = signedWidth;
-                properties.resolutionHeight = maxHeight = signedHeight;
+                properties.resolutionWidth = signedWidth;
+                properties.resolutionHeight = signedHeight;
                 if(fps > config.maxFps || (fps < config.minFps && fps != -1.0f)) {
                     throw std::runtime_error("Invalid sensor FPS specified, supported range is " + std::to_string(config.minFps) + " - "
                                              + std::to_string(config.maxFps));
@@ -156,17 +153,17 @@ uint32_t Camera::getMaxWidth() const {
     if(!isBuilt) {
         throw std::runtime_error("Camera node must be built before calling getMaxWidth()");
     }
-    return maxWidth;
+    return properties.resolutionWidth > 0 ? properties.resolutionWidth : cameraFeatures.width;
 }
 
 uint32_t Camera::getMaxHeight() const {
     if(!isBuilt) {
         throw std::runtime_error("Camera node must be built before calling getMaxHeight()");
     }
-    return maxHeight;
+    return properties.resolutionHeight > 0 ? properties.resolutionHeight : cameraFeatures.height;
 }
 
-Node::Output* Camera::requestFullResolutionOutput(std::optional<ImgFrame::Type> type, std::optional<float> fps) {
+Node::Output* Camera::requestFullResolutionOutput(std::optional<ImgFrame::Type> type, std::optional<float> fps, bool useHighestResolution) {
     if(!isBuilt) {
         throw std::runtime_error("Camera node must be built before requesting outputs from it");
     }
@@ -174,11 +171,32 @@ Node::Output* Camera::requestFullResolutionOutput(std::optional<ImgFrame::Type> 
         throw std::runtime_error("Invalid device pointer");
     }
 
-    if(maxHeight == 0 || maxWidth == 0) {
-        throw std::runtime_error(fmt::format("Invalid max width or height - {}x{}", maxWidth, maxHeight));
-    }
     ImgFrameCapability cap;
-    cap.size.fixed({maxWidth, maxHeight});
+    if(useHighestResolution) {
+        cap.size.fixed({cameraFeatures.width, cameraFeatures.height});
+    } else {
+        int32_t maxWidth = 0;
+        int32_t maxHeight = 0;
+        // Loop over all the configs and find the highest resolution that is not higher than 5000x4000
+        for(const auto& config : cameraFeatures.configs) {
+            // Only consider the full FOV configurations
+            auto denormalizedFov = config.fov.denormalize(cameraFeatures.width, cameraFeatures.height);
+            if((static_cast<int>(denormalizedFov.width) != cameraFeatures.width) || (static_cast<int>(denormalizedFov.height) != cameraFeatures.height)
+               || denormalizedFov.x != 0 || denormalizedFov.y != 0) {
+                continue;
+            }
+            if(config.width <= 5000 && config.height <= 4000) {
+                if(config.width > maxWidth || config.height > maxHeight) {
+                    maxWidth = config.width;
+                    maxHeight = config.height;
+                }
+            }
+        }
+        if(maxWidth == 0 || maxHeight == 0) {
+            throw std::runtime_error("No valid full resolution configuration found for the connected camera");
+        }
+        cap.size.fixed({maxWidth, maxHeight});
+    }
     if(fps.has_value()) {
         cap.fps.fixed(fps.value());
     }

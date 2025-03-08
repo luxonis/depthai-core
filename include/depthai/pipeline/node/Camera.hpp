@@ -31,9 +31,14 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
     Node::Output* requestOutput(const Capability& capability, bool onHost) override;
 
     /**
-     * Get full resolution output
+     * Get a high resolution output with full FOV on the sensor.
+     * By default the function will not use the resolutions higher than 5000x4000, as those often need a lot of resources,
+     * making them hard to use in combination with other nodes.
+     * @param type Type of the output (NV12, BGR, ...) - by default it's auto-selected for best performance
+     * @param fps FPS of the output - by default it's auto-selected to highest possible that a sensor config support or 30, whichever is lower
+     * @param useHighestResolution If true, the function will use the highest resolution available on the sensor, even if it's higher than 5000x4000
      */
-    Node::Output* requestFullResolutionOutput(std::optional<ImgFrame::Type> type = std::nullopt, std::optional<float> fps = std::nullopt);
+    Node::Output* requestFullResolutionOutput(std::optional<ImgFrame::Type> type = std::nullopt, std::optional<float> fps = std::nullopt, bool useHighestResolution = false);
 
     /**
      * Build with a specific board socket
@@ -110,8 +115,8 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
 
    private:
     bool isBuilt = false;
-    uint32_t maxWidth = 0;
-    uint32_t maxHeight = 0;
+    CameraFeatures cameraFeatures;
+
     /*
     Output& getRecordOutput() override;
     Input& getReplayInput() override;

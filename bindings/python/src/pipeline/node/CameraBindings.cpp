@@ -52,6 +52,7 @@ void bind_camera(pybind11::module& m, void* pCallstack) {
              &Camera::requestFullResolutionOutput,
              "type"_a = std::nullopt,
              "fps"_a = std::nullopt,
+             "useHighestResolution"_a = false,
              py::return_value_policy::reference_internal,
              DOC(dai, node, Camera, requestFullResolutionOutput));
 }
