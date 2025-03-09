@@ -88,13 +88,13 @@ void bind_neuralnetwork(pybind11::module& m, void* pCallstack) {
             py::arg("fps") = std::nullopt,
             DOC(dai, node, NeuralNetwork, build))
         .def("build",
-             py::overload_cast<const std::shared_ptr<ReplayVideo>&, const dai::NNArchive&, std::optional<float>>(&NeuralNetwork::build),
+             py::overload_cast<const std::shared_ptr<ReplayVideo>&, const NNArchive&, std::optional<float>>(&NeuralNetwork::build),
              py::arg("input"),
              py::arg("model"),
              py::arg("fps") = std::nullopt,
              DOC(dai, node, NeuralNetwork, build, 4))
         .def("build",
-             py::overload_cast<const std::shared_ptr<ReplayVideo>&, const dai::NNArchive&, std::optional<float>>(&NeuralNetwork::build),
+             py::overload_cast<const std::shared_ptr<ReplayVideo>&, const NNArchive&, std::optional<float>>(&NeuralNetwork::build),
              py::arg("input"),
              py::arg("nnArchive"),
              py::arg("fps") = std::nullopt,

@@ -38,8 +38,8 @@ class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNet
      * @returns Shared pointer to NeuralNetwork node
      */
     std::shared_ptr<NeuralNetwork> build(Node::Output& input, const NNArchive& nnArchive);
-    std::shared_ptr<NeuralNetwork> build(const std::shared_ptr<Camera>& input, dai::NNModelDescription modelDesc, std::optional<float> fps = std::nullopt);
-    std::shared_ptr<NeuralNetwork> build(const std::shared_ptr<Camera>& input, dai::NNArchive nnArchive, std::optional<float> fps = std::nullopt);
+    std::shared_ptr<NeuralNetwork> build(const std::shared_ptr<Camera>& input, NNModelDescription modelDesc, std::optional<float> fps = std::nullopt);
+    std::shared_ptr<NeuralNetwork> build(const std::shared_ptr<Camera>& input, NNArchive nnArchive, std::optional<float> fps = std::nullopt);
     std::shared_ptr<NeuralNetwork> build(const std::shared_ptr<ReplayVideo>& input, NNModelDescription modelDesc, std::optional<float> fps = std::nullopt);
     std::shared_ptr<NeuralNetwork> build(const std::shared_ptr<ReplayVideo>& input, const NNArchive& nnArchive, std::optional<float> fps = std::nullopt);
 
