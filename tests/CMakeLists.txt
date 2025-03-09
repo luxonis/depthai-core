@@ -429,4 +429,13 @@ dai_set_test_labels(imu_test ondevice rvc4 ci) # Many RVC2 devices do not have a
 
 # Camera tests
 dai_add_test(camera_test src/ondevice_tests/pipeline/node/camera_test.cpp)
-dai_set_test_labels(camera_test ondevice rvc2_all rvc4 ci)
+dai_set_test_labels(camera_test ondevice rvc4 ci)
+
+# VideoEncoder test
+dai_add_test(video_encoder_test_rvc4 src/ondevice_tests/video_encoder_test.cpp)
+target_compile_definitions(video_encoder_test_rvc4 PRIVATE ENABLE_MJPEG=0)
+dai_set_test_labels(video_encoder_test_rvc4 ondevice rvc4 ci)
+
+dai_add_test(video_encoder_test_rvc2 src/ondevice_tests/video_encoder_test.cpp)
+target_compile_definitions(video_encoder_test_rvc2 PRIVATE ENABLE_MJPEG=1)
+dai_set_test_labels(video_encoder_test_rvc2 ondevice rvc2_all ci)
