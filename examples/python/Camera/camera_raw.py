@@ -64,7 +64,7 @@ def unpackRaw10(rawData, width, height, stride=None):
 # Create pipeline
 with dai.Pipeline() as pipeline:
     # Define source and output
-    cam = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
+    cam = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
     rawQueue = cam.raw.createOutputQueue()
     videoQueue = cam.requestFullResolutionOutput().createOutputQueue()
     # Connect to device and start pipeline
