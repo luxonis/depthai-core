@@ -78,3 +78,55 @@ TEST_CASE("Test camera with multiple outputs with different FPS") {
         }
     }
 }
+
+TEST_CASE("Test setting the center camera to a different FPS compared to left and right") {
+    // Create pipeline
+    dai::Pipeline p;
+    std::map<dai::CameraBoardSocket, float> socketToFps = {
+        {dai::CameraBoardSocket::CAM_A, 10.0},
+        {dai::CameraBoardSocket::CAM_B, 20.0},
+        {dai::CameraBoardSocket::CAM_C, 20.0},
+    };
+    std::map<dai::CameraBoardSocket, std::shared_ptr<dai::MessageQueue>> messageQueues;
+    for(auto& [socket, fps] : socketToFps) {
+        auto camera = p.create<dai::node::Camera>()->build(socket, std::nullopt, fps);
+        auto benchmarkIn = p.create<dai::node::BenchmarkIn>();
+        benchmarkIn->sendReportEveryNMessages(static_cast<uint32_t>(std::round(fps) * 2));
+        auto* output = camera->requestFullResolutionOutput();
+        REQUIRE(output != nullptr);
+        output->link(benchmarkIn->input);
+        messageQueues[socket] = benchmarkIn->report.createOutputQueue();
+    }
+
+    p.start();
+    for(int i = 0; i < 3; i++) {
+        for(auto& [socket, queue] : messageQueues) {
+            auto benchmarkReport = queue->get<dai::BenchmarkReport>();
+            // Allow +-10% difference
+            REQUIRE(benchmarkReport->fps == Catch::Approx(socketToFps[socket]).margin(socketToFps[socket] * 0.1));
+        }
+    }
+}
+
+TEST_CASE("Test how default FPS is generated for a specific output") {
+    constexpr float FPS_TO_SET = 20.0;
+    // Create pipeline
+    dai::Pipeline p;
+    auto camera = p.create<dai::node::Camera>()->build();
+    auto benchmarkIn = p.create<dai::node::BenchmarkIn>();
+    auto* output1 = camera->requestOutput(std::make_pair(640, 400), std::nullopt);
+    REQUIRE(output1 != nullptr);
+    auto* output2 = camera->requestOutput(std::make_pair(640, 400), std::nullopt, dai::ImgResizeMode::CROP, FPS_TO_SET);
+    REQUIRE(output2 != nullptr);
+    output2->createOutputQueue(); // "Sink it"
+    output1->link(benchmarkIn->input);
+    benchmarkIn->sendReportEveryNMessages(FPS_TO_SET * 2);
+    auto benchmarkQueue = benchmarkIn->report.createOutputQueue();
+
+    p.start();
+    for(int i = 0; i < 3; i++) {
+        auto benchmarkReport = benchmarkQueue->get<dai::BenchmarkReport>();
+        // Allow +-10% difference
+        REQUIRE(benchmarkReport->fps == Catch::Approx(FPS_TO_SET).margin(FPS_TO_SET * 0.1));
+    }
+}
