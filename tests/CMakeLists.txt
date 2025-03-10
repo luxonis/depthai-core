@@ -275,7 +275,14 @@ dai_set_test_labels(nndata_test onhost ci)
 dai_add_test(model_slug_test src/onhost_tests/model_slug_test.cpp)
 dai_set_test_labels(model_slug_test onhost ci)
 
+# Remote connection tests
+dai_add_test(remote_connection_test src/onhost_tests/remote_connection_test.cpp)
+dai_set_test_labels(remote_connection_test onhost ci nowindows)
 ### On-device tests ###########################################################
+
+# Camera stream restart test
+dai_add_test(camera_stream_restart_test src/ondevice_tests/camera_stream_restart_test.cpp)
+dai_set_test_labels(camera_stream_restart_test ondevice rvc2_all rvc4 ci)
 
 # DepthAI logging test
 dai_add_test(logging_test src/ondevice_tests/logging_test.cpp)
@@ -434,3 +441,12 @@ target_compile_definitions(record_replay_test PRIVATE RECORDING_PATH="${recordin
 dai_add_test(replay_test src/onhost_tests/replay_test.cpp)
 dai_set_test_labels(replay_test onhost ci)
 target_compile_definitions(replay_test PRIVATE RECORDING_PATH="${recording_path}")
+
+# VideoEncoder test
+dai_add_test(video_encoder_test_rvc4 src/ondevice_tests/video_encoder_test.cpp)
+target_compile_definitions(video_encoder_test_rvc4 PRIVATE ENABLE_MJPEG=0)
+dai_set_test_labels(video_encoder_test_rvc4 ondevice rvc4 ci)
+
+dai_add_test(video_encoder_test_rvc2 src/ondevice_tests/video_encoder_test.cpp)
+target_compile_definitions(video_encoder_test_rvc2 PRIVATE ENABLE_MJPEG=1)
+dai_set_test_labels(video_encoder_test_rvc2 ondevice rvc2_all ci)

@@ -55,7 +55,7 @@ jobs:
         matrix:
           arch: ['x64']
           flavor: ['vanilla']
-          rvc4os: ['r851.1.2', '1.4.1']
+          rvc4os: ['r851.1.2', '1.4.1', '1.5.0']
         fail-fast: false
       runs-on: ['self-hosted', 'testbed-runner']
 
@@ -70,7 +70,7 @@ jobs:
       - name: Configure, Build and Test
         run: |
           export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-${{ matrix.rvc4os }}-${{ matrix.flavor }}"
-          exec hil --models oak4_pro --reservation-name $RESERVATION_NAME --wait --sync-workspace --rvc4-os-version ${{ matrix.rvc4os }} --commands 'cd /tmp/depthai-core|| exit' 'scripts/hil/run_hil_tests.sh ${{ matrix.flavor }} --rvc4'
+          exec hil --models "oak4_pro or oak4_d" --reservation-name $RESERVATION_NAME --wait --sync-workspace --rvc4-os-version ${{ matrix.rvc4os }} --commands 'cd /tmp/depthai-core|| exit' 'scripts/hil/run_hil_tests.sh ${{ matrix.flavor }} --rvc4'
 
   windows_rvc2_rvc4_test:
     runs-on: ['self-hosted', 'windows']
