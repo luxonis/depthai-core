@@ -16,7 +16,7 @@
     #include <opencv2/core/types.hpp>
 #endif
 
-#define DEPTHAI_PLANE_ALIGNMENT 128
+#define DEPTHAI_PLANE_ALIGNMENT 1
 #define DEPTHAI_STRIDE_ALIGNMENT 1
 
 #if defined(WIN32) || defined(_WIN32)
