@@ -79,7 +79,7 @@ TEST_CASE("Test camera with multiple outputs with different FPS") {
     }
 }
 
-#ifndef WIN32 // TODO(Jakob) - fix this test on Windows
+#ifndef _WIN32 // TODO(Jakob) - fix this test on Windows
 TEST_CASE("Test setting the center camera to a different FPS compared to left and right") {
     // Create pipeline
     dai::Pipeline p;
