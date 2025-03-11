@@ -92,17 +92,17 @@ TEST_CASE("RecordMetadataOnly node") {
     REQUIRE(std::filesystem::exists(helper.testFolder + "/recording_metadata/metadata.mcap"));
 }
 
-TEST_CASE("RecordVideo node") {
+TEST_CASE("RecordVideo raw color") {
     TestHelper helper;
 
     dai::Pipeline p;
 
     auto cam = p.create<dai::node::Camera>()->build();
-    auto camOut = cam->requestOutput({1280, 720});
+    auto camOut = cam->requestOutput({1280, 960}, dai::ImgFrame::Type::BGR888i);
 
     auto recordNode = p.create<dai::node::RecordVideo>();
-    recordNode->setRecordMetadataFile(helper.testFolder + "/recording_video/metadata.mcap");
-    recordNode->setRecordVideoFile(helper.testFolder + "/recording_video/video.mp4");
+    recordNode->setRecordMetadataFile(helper.testFolder + "/recording_video/metadata_color.mcap");
+    recordNode->setRecordVideoFile(helper.testFolder + "/recording_video/video_color.mp4");
 
     camOut->link(recordNode->input);
 
@@ -116,8 +116,100 @@ TEST_CASE("RecordVideo node") {
 
     p.stop();
 
-    REQUIRE(std::filesystem::exists(helper.testFolder + "/recording_video/metadata.mcap"));
-    REQUIRE(std::filesystem::exists(helper.testFolder + "/recording_video/video.mp4"));
+    REQUIRE(std::filesystem::exists(helper.testFolder + "/recording_video/metadata_color.mcap"));
+    REQUIRE(std::filesystem::exists(helper.testFolder + "/recording_video/video_color.mp4"));
+}
+
+TEST_CASE("RecordVideo raw gray") {
+    TestHelper helper;
+
+    dai::Pipeline p;
+
+    auto cam = p.create<dai::node::Camera>()->build();
+    auto camOut = cam->requestOutput({1280, 960}, dai::ImgFrame::Type::GRAY8);
+
+    auto recordNode = p.create<dai::node::RecordVideo>();
+    recordNode->setRecordMetadataFile(helper.testFolder + "/recording_video/metadata_gray.mcap");
+    recordNode->setRecordVideoFile(helper.testFolder + "/recording_video/video_gray.mp4");
+
+    camOut->link(recordNode->input);
+
+    auto camQ = camOut->createOutputQueue();
+
+    p.start();
+
+    for(int i = 0; i < NUM_MSGS; ++i) {
+        camQ->get<dai::ImgFrame>();
+    }
+
+    p.stop();
+
+    REQUIRE(std::filesystem::exists(helper.testFolder + "/recording_video/metadata_gray.mcap"));
+    REQUIRE(std::filesystem::exists(helper.testFolder + "/recording_video/video_gray.mp4"));
+}
+
+TEST_CASE("RecordVideo encoded h264") {
+    TestHelper helper;
+
+    dai::Pipeline p;
+
+    auto cam = p.create<dai::node::Camera>()->build();
+    auto camOut = cam->requestOutput({1280, 960});
+    auto videoEncoder = p.create<dai::node::VideoEncoder>();
+
+    auto recordNode = p.create<dai::node::RecordVideo>();
+    recordNode->setRecordMetadataFile(helper.testFolder + "/recording_video/metadata_h264.mcap");
+    recordNode->setRecordVideoFile(helper.testFolder + "/recording_video/video_h264.mp4");
+
+    videoEncoder->setProfile(dai::VideoEncoderProperties::Profile::H264_MAIN);
+
+    camOut->link(videoEncoder->input);
+    videoEncoder->out.link(recordNode->input);
+
+    auto camQ = camOut->createOutputQueue();
+
+    p.start();
+
+    for(int i = 0; i < NUM_MSGS; ++i) {
+        camQ->get<dai::ImgFrame>();
+    }
+
+    p.stop();
+
+    REQUIRE(std::filesystem::exists(helper.testFolder + "/recording_video/metadata_h264.mcap"));
+    REQUIRE(std::filesystem::exists(helper.testFolder + "/recording_video/video_h264.mp4"));
+}
+
+TEST_CASE("RecordVideo encoded mjpeg") {
+    TestHelper helper;
+
+    dai::Pipeline p;
+
+    auto cam = p.create<dai::node::Camera>()->build();
+    auto camOut = cam->requestOutput({1280, 960});
+    auto videoEncoder = p.create<dai::node::VideoEncoder>();
+
+    auto recordNode = p.create<dai::node::RecordVideo>();
+    recordNode->setRecordMetadataFile(helper.testFolder + "/recording_video/metadata_mjpeg.mcap");
+    recordNode->setRecordVideoFile(helper.testFolder + "/recording_video/video_mjpeg.mp4");
+
+    videoEncoder->setProfile(dai::VideoEncoderProperties::Profile::MJPEG);
+
+    camOut->link(videoEncoder->input);
+    videoEncoder->out.link(recordNode->input);
+
+    auto camQ = camOut->createOutputQueue();
+
+    p.start();
+
+    for(int i = 0; i < NUM_MSGS; ++i) {
+        camQ->get<dai::ImgFrame>();
+    }
+
+    p.stop();
+
+    REQUIRE(std::filesystem::exists(helper.testFolder + "/recording_video/metadata_mjpeg.mcap"));
+    REQUIRE(std::filesystem::exists(helper.testFolder + "/recording_video/video_mjpeg.mp4"));
 }
 
 TEST_CASE("MockIn Camera") {

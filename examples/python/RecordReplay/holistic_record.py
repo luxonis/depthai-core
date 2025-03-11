@@ -16,11 +16,11 @@ Path(args.output).mkdir(parents=True, exist_ok=True)
 with dai.Pipeline(True) as pipeline:
     # Define source and output
     camA = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
-    camAOut = camA.requestOutput((1920, 1080), fps = 30)
+    camAOut = camA.requestOutput((600, 400), fps = 30)
     camB = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
-    camBOut = camA.requestOutput((1920, 1080), fps = 30)
+    camBOut = camB.requestOutput((600, 400), fps = 30)
     camC = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C)
-    camCOut = camA.requestOutput((1920, 1080), fps = 30)
+    camCOut = camC.requestOutput((600, 400), fps = 30)
 
     imu = pipeline.create(dai.node.IMU)
     imu.enableIMUSensor(dai.IMUSensor.ACCELEROMETER_RAW, 500);

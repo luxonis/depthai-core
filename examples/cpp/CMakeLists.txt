@@ -14,6 +14,7 @@ target_link_libraries(utility ${OpenCV_LIBS})
 set(test_env
     # Misc
     "UBSAN_OPTIONS=halt_on_error=1"
+    "RUNNING_AS_TEST=1"
     # DepthAI
     "DEPTHAI_SEARCH_TIMEOUT=15000"
     "DEPTHAI_RECONNECT_TIMEOUT=0"
@@ -249,6 +250,13 @@ private_data(
     LOCATION nn_archive_yolo_v6_tar_xz
 )
 
+private_data(
+    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/recording.tar"
+    SHA1 "b1e31a26c83dc1e315132c9226097da4b1a5cbb7"
+    FILE "recording.tar"
+    LOCATION recording_path
+)
+
 # Camera
 dai_add_example(camera Camera/camera_output.cpp ON OFF)
 dai_set_example_test_labels(camera ondevice rvc2_all rvc4 ci)
@@ -263,18 +271,17 @@ dai_add_example(image_manip_v2_multi_ops ImageManip/image_manip_v2_multi_ops.cpp
 dai_add_example(image_manip_color_conversion ImageManip/image_manip_color_conversion.cpp OFF OFF)
 
 # Record
-dai_add_example(record_encoded_h264 Record/record_encoded_h264.cpp OFF OFF)
-dai_add_example(record_encoded_mjpeg Record/record_encoded_mjpeg.cpp OFF OFF)
-dai_add_example(record_raw_color Record/record_raw_color.cpp OFF OFF)
-dai_add_example(record_raw_gray Record/record_raw_gray.cpp OFF OFF)
-dai_add_example(record_imu Record/record_imu.cpp OFF OFF)
-dai_add_example(holistic_record Record/holistic_record.cpp OFF OFF)
+dai_add_example(record_encoded Record/record_encoded.cpp ON OFF)
+dai_add_example(record_raw Record/record_raw.cpp ON OFF)
+dai_add_example(record_imu Record/record_imu.cpp ON OFF)
+dai_add_example(holistic_record Record/holistic_record.cpp ON OFF)
 
 # Replay
 dai_add_example(replay_video_meta Replay/replay_video_meta.cpp OFF OFF)
 dai_add_example(replay_video Replay/replay_video.cpp OFF OFF)
 dai_add_example(replay_imu Replay/replay_imu.cpp OFF OFF)
-dai_add_example(holistic_replay Replay/holistic_replay.cpp OFF OFF)
+dai_add_example(holistic_replay Replay/holistic_replay.cpp ON OFF)
+target_compile_definitions(holistic_replay PRIVATE RECORDING_PATH="${recording_path}")
 
 dai_add_example(detection_network_replay DetectionNetwork/detection_network_replay.cpp ON OFF)
 target_compile_definitions(detection_network_replay PRIVATE VIDEO_PATH="${construction_vest}")
