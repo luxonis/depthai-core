@@ -163,7 +163,7 @@ endif()
 # Create depthai project
 project(depthai VERSION "3.0.0" LANGUAGES CXX C)
 set(DEPTHAI_PRE_RELEASE_TYPE "alpha") # Valid options are "alpha", "beta", "rc", ""
-set(DEPTHAI_PRE_RELEASE_VERSION "13")
+set(DEPTHAI_PRE_RELEASE_VERSION "14")
 
 # Set DEPTHAI_VERSION universally, not conditionally
 set(DEPTHAI_VERSION ${PROJECT_VERSION}-${DEPTHAI_PRE_RELEASE_TYPE}.${DEPTHAI_PRE_RELEASE_VERSION})
