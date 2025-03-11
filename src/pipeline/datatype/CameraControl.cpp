@@ -203,6 +203,7 @@ CameraControl& CameraControl::setControlMode(ControlMode mode) {
     return *this;
 }
 CameraControl& CameraControl::setHdr(bool enable) {
+    setCommand(CameraControl::Command::HDR);
     enableHdr = enable;
     return *this;
 }

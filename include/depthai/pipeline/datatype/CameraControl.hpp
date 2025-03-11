@@ -122,6 +122,7 @@ class CameraControl : public Buffer {
         STROBE_CONFIG = 53,
         STROBE_TIMINGS = 54,
         MOVE_LENS_RAW = 55, /* lens position: 0.0 - 1.0 */
+        HDR = 56,
     };
 
     enum class AutoFocusMode : uint8_t {
