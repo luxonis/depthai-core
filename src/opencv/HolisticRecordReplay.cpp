@@ -38,6 +38,54 @@ inline size_t roundUp(size_t numToRound, size_t multiple) {
     return roundDown(numToRound + multiple - 1UL, multiple);
 }
 
+Node::Output* setupHolistiRecordCamera(std::shared_ptr<dai::node::Camera> cam, Pipeline& pipeline, bool legacy, size_t& camWidth, size_t& camHeight, RecordConfig& recordConfig) {
+    auto fps = cam->getMaxRequestedFps();
+    size_t requestWidth = cam->getMaxRequestedWidth();
+    size_t requestHeight = cam->getMaxRequestedHeight();
+    size_t width = cam->getMaxWidth();
+    size_t height = cam->getMaxHeight();
+    auto cams = pipeline.getDefaultDevice()->getConnectedCameraFeatures();
+    for(const auto& cf : cams) {
+        if(cf.socket == cam->getBoardSocket()) {
+            if(legacy) { // RVC2
+                for(const auto& cfg : cf.configs) {
+                    if(cfg.width > (int32_t)requestWidth && cfg.height > (int32_t)requestHeight) {
+                        width = std::min((size_t)cfg.width, width);
+                        height = std::min((size_t)cfg.height, height);
+                    }
+                }
+            } else { // RVC4
+                auto res = bestResolutionsRVC4.find(cf.sensorName);
+                if(res != bestResolutionsRVC4.end()) {
+                    for(auto& r : res->second) {
+                        if(r.first >= requestWidth && r.second >= requestHeight) {
+                            width = std::min((size_t)r.first, width);
+                            height = std::min((size_t)r.second, height);
+                        }
+                    }
+                }
+            }
+            break;
+        }
+    }
+    if(legacy) {
+        if(width % 32 != 0UL) {
+            auto down = roundDown(width, 32);
+            width = down < requestWidth ? roundUp(width, 32) : down;
+        }
+        if(height % 8 != 0UL) {
+            auto down = roundDown(height, 8);
+            height = down < requestHeight ? roundUp(height, 8) : down;
+        }
+    }
+    camWidth = width;
+    camHeight = height;
+    if(width * height > 9437184U) {
+        recordConfig.videoEncoding.enabled = true;
+    }
+    return cam->requestOutput({width, height}, dai::ImgFrame::Type::NV12, dai::ImgResizeMode::CROP, fps);
+}
+
 bool setupHolisticRecord(Pipeline& pipeline,
                          const std::string& deviceId,
                          RecordConfig& recordConfig,
@@ -61,52 +109,7 @@ bool setupHolisticRecord(Pipeline& pipeline,
                 Node::Output* output;
                 size_t camWidth = 1920, camHeight = 1080;
                 if(std::dynamic_pointer_cast<node::Camera>(node) != nullptr) {
-                    auto cam = std::dynamic_pointer_cast<dai::node::Camera>(node);
-                    auto fps = cam->getMaxRequestedFps();
-                    size_t requestWidth = cam->getMaxRequestedWidth();
-                    size_t requestHeight = cam->getMaxRequestedHeight();
-                    size_t width = cam->getMaxWidth();
-                    size_t height = cam->getMaxHeight();
-                    auto cams = pipeline.getDefaultDevice()->getConnectedCameraFeatures();
-                    for(const auto& cf : cams) {
-                        if(cf.socket == cam->getBoardSocket()) {
-                            if(legacy) { // RVC2
-                                for(const auto& cfg : cf.configs) {
-                                    if(cfg.width > (int32_t)requestWidth && cfg.height > (int32_t)requestHeight) {
-                                        width = std::min((size_t)cfg.width, width);
-                                        height = std::min((size_t)cfg.height, height);
-                                    }
-                                }
-                            } else { // RVC4
-                                auto res = bestResolutionsRVC4.find(cf.sensorName);
-                                if(res != bestResolutionsRVC4.end()) {
-                                    for(auto& r : res->second) {
-                                        if(r.first >= requestWidth && r.second >= requestHeight) {
-                                            width = std::min((size_t)r.first, width);
-                                            height = std::min((size_t)r.second, height);
-                                        }
-                                    }
-                                }
-                            }
-                            break;
-                        }
-                    }
-                    if(legacy) {
-                        if(width % 32 != 0UL) {
-                            auto down = roundDown(width, 32);
-                            width = down < requestWidth ? roundUp(width, 32) : down;
-                        }
-                        if(height % 8 != 0UL) {
-                            auto down = roundDown(height, 8);
-                            height = down < requestHeight ? roundUp(height, 8) : down;
-                        }
-                    }
-                    camWidth = width;
-                    camHeight = height;
-                    output = cam->requestOutput({width, height}, dai::ImgFrame::Type::NV12, dai::ImgResizeMode::CROP, fps);
-                    if(width * height > 9437184U) {
-                        recordConfig.videoEncoding.enabled = true;
-                    }
+                    output = setupHolistiRecordCamera(std::dynamic_pointer_cast<dai::node::Camera>(node), pipeline, legacy, camWidth, camHeight, recordConfig);
                 } else {
                     output = &nodeS->getRecordOutput();
                 }
@@ -269,7 +272,6 @@ bool setupHolisticReplay(Pipeline& pipeline,
             // untarFiles(replayPath, inFiles, outFiles);
         }
 
-        // FIXME(asahtik): If this fails, extracted files do not get removed
         std::ifstream file(configPath);
         json j = json::parse(file);
         recordConfig = j.get<RecordConfig>();
