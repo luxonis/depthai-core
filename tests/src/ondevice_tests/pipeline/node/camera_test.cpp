@@ -1,14 +1,14 @@
+#include "depthai/pipeline/node/Camera.hpp"
+
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
-#include "depthai/pipeline/node/Camera.hpp"
+
 #include "depthai/capabilities/ImgFrameCapability.hpp"
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/depthai.hpp"
 #include "depthai/pipeline/MessageQueue.hpp"
 #include "depthai/pipeline/datatype/BenchmarkReport.hpp"
-
-
 
 TEST_CASE("Test raw camera output") {
     // Create pipeline
@@ -16,7 +16,7 @@ TEST_CASE("Test raw camera output") {
     auto fpsToRun = GENERATE(10.5, 20.0, 30.0);
     auto camera = p.create<dai::node::Camera>()->build(dai::CameraBoardSocket::AUTO, std::nullopt, fpsToRun);
     auto benchmarkIn = p.create<dai::node::BenchmarkIn>();
-    SECTION("RAW"){
+    SECTION("RAW") {
         camera->raw.link(benchmarkIn->input);
     }
     SECTION("NORMAL") {
@@ -65,7 +65,7 @@ TEST_CASE("Test camera with multiple outputs with different FPS") {
     }
 
     p.start();
-    for (int i = 0; i < 3; i++) {
+    for(int i = 0; i < 3; i++) {
         for(auto& [fps, queue] : fpsToReportQueue) {
             auto benchmarkReport = queue->get<dai::BenchmarkReport>();
             // Allow +-10% difference
@@ -79,7 +79,7 @@ TEST_CASE("Test camera with multiple outputs with different FPS") {
     }
 }
 
-#ifndef _WIN32 // TODO(Jakob) - fix this test on Windows
+#ifndef _WIN32  // TODO(Jakob) - fix this test on Windows
 TEST_CASE("Test setting the center camera to a different FPS compared to left and right") {
     // Create pipeline
     dai::Pipeline p;
@@ -120,7 +120,7 @@ TEST_CASE("Test how default FPS is generated for a specific output") {
     REQUIRE(output1 != nullptr);
     auto* output2 = camera->requestOutput(std::make_pair(640, 400), std::nullopt, dai::ImgResizeMode::CROP, FPS_TO_SET);
     REQUIRE(output2 != nullptr);
-    output2->createOutputQueue(); // "Sink it"
+    output2->createOutputQueue();  // "Sink it"
     output1->link(benchmarkIn->input);
     benchmarkIn->sendReportEveryNMessages(FPS_TO_SET * 2);
     auto benchmarkQueue = benchmarkIn->report.createOutputQueue();

@@ -38,7 +38,9 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
      * @param fps FPS of the output - by default it's auto-selected to highest possible that a sensor config support or 30, whichever is lower
      * @param useHighestResolution If true, the function will use the highest resolution available on the sensor, even if it's higher than 5000x4000
      */
-    Node::Output* requestFullResolutionOutput(std::optional<ImgFrame::Type> type = std::nullopt, std::optional<float> fps = std::nullopt, bool useHighestResolution = false);
+    Node::Output* requestFullResolutionOutput(std::optional<ImgFrame::Type> type = std::nullopt,
+                                              std::optional<float> fps = std::nullopt,
+                                              bool useHighestResolution = false);
 
     /**
      * Build with a specific board socket

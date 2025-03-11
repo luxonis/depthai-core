@@ -30,8 +30,6 @@ void testVideoEncoder(dai::VideoEncoderProperties::Profile profile) {
     }
 }
 
-
-
 TEST_CASE("Test VideoEncoder node H264_BASELINE") {
     testVideoEncoder(dai::VideoEncoderProperties::Profile::H264_BASELINE);
 }
