@@ -202,6 +202,10 @@ CameraControl& CameraControl::setControlMode(ControlMode mode) {
     controlMode = mode;
     return *this;
 }
+CameraControl& CameraControl::setHdr(bool enable) {
+    enableHdr = enable;
+    return *this;
+}
 CameraControl& CameraControl::setCaptureIntent(CaptureIntent mode) {
     setCommand(CameraControl::Command::CAPTURE_INTENT);
     captureIntent = mode;
@@ -227,6 +231,10 @@ std::vector<std::pair<std::string, std::string>> CameraControl::getMiscControls(
 
 bool CameraControl::getCaptureStill() const {
     return getCommand(Command::STILL_CAPTURE);
+}
+
+bool CameraControl::getHdr() const {
+    return enableHdr;
 }
 
 std::chrono::microseconds CameraControl::getExposureTime() const {
