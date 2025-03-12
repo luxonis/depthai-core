@@ -73,23 +73,12 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
     std::shared_ptr<SpatialDetectionNetwork> build(const std::shared_ptr<Camera>& inputRgb,
                                                    const std::shared_ptr<StereoDepth>& stereo,
                                                    dai::NNModelDescription modelDesc,
-                                                   float fps = 30.0f);
+                                                   std::optional<float> fps = std::nullopt);
 
     std::shared_ptr<SpatialDetectionNetwork> build(const std::shared_ptr<Camera>& inputRgb,
                                                    const std::shared_ptr<StereoDepth>& stereo,
-                                                   const NNArchive& nnArchive,
-                                                   float fps = 30.0f);
-
-    std::shared_ptr<SpatialDetectionNetwork> build(const std::shared_ptr<ReplayVideo>& inputRgb,
-                                                   const std::shared_ptr<StereoDepth>& stereo,
-                                                   NNModelDescription modelDesc,
-                                                   float fps = 30.0f,
-                                                   CameraBoardSocket alignSocket = CameraBoardSocket::AUTO);
-    std::shared_ptr<SpatialDetectionNetwork> build(const std::shared_ptr<ReplayVideo>& inputRgb,
-                                                   const std::shared_ptr<StereoDepth>& stereo,
-                                                   const NNArchive& nnArchive,
-                                                   float fps = 30.0f,
-                                                   CameraBoardSocket alignSocket = CameraBoardSocket::AUTO);
+                                                   const dai::NNArchive& nnArchive,
+                                                   std::optional<float> fps = std::nullopt);
 
     Subnode<NeuralNetwork> neuralNetwork{*this, "neuralNetwork"};
     Subnode<DetectionParser> detectionParser{*this, "detectionParser"};
