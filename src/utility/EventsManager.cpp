@@ -109,8 +109,8 @@ EventsManager::EventsManager(std::string url, bool uploadCachedOnStart, float pu
       uploadCachedOnStart(uploadCachedOnStart),
       cacheIfCannotSend(false),
       stopEventBuffer(false) {
-    sourceAppId = utility::getEnvAs<std::string>("AGENT_APP_ID", "");
-    sourceAppIdentifier = utility::getEnvAs<std::string>("AGENT_APP_IDENTIFIER", "");
+    sourceAppId = utility::getEnvAs<std::string>("OAKAGENT_APP_VERSION", "");
+    sourceAppIdentifier = utility::getEnvAs<std::string>("OAKAGENT_APP_IDENTIFIER", "");
     token = utility::getEnvAs<std::string>("DEPTHAI_HUB_API_KEY", "");
     eventBufferThread = std::make_unique<std::thread>([this]() {
         while(!stopEventBuffer) {
