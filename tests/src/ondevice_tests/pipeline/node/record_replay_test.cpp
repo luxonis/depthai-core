@@ -9,7 +9,7 @@
 #include "depthai/pipeline/node/host/Record.hpp"
 #include "depthai/utility/Compression.hpp"
 
-constexpr unsigned int NUM_MSGS = 50;
+constexpr unsigned int NUM_MSGS = 200;
 
 bool folderHasWritePermissions(const std::filesystem::path& folder) {
     // Check that the folder exists and is a directory.
@@ -154,7 +154,7 @@ TEST_CASE("RecordVideo encoded h264") {
     dai::Pipeline p;
 
     auto cam = p.create<dai::node::Camera>()->build();
-    auto camOut = cam->requestOutput({1280, 960});
+    auto camOut = cam->requestOutput({1280, 960}, dai::ImgFrame::Type::NV12);
     auto videoEncoder = p.create<dai::node::VideoEncoder>();
 
     auto recordNode = p.create<dai::node::RecordVideo>();
@@ -186,7 +186,7 @@ TEST_CASE("RecordVideo encoded mjpeg") {
     dai::Pipeline p;
 
     auto cam = p.create<dai::node::Camera>()->build();
-    auto camOut = cam->requestOutput({1280, 960});
+    auto camOut = cam->requestOutput({1280, 960}, dai::ImgFrame::Type::NV12);
     auto videoEncoder = p.create<dai::node::VideoEncoder>();
 
     auto recordNode = p.create<dai::node::RecordVideo>();

@@ -67,7 +67,7 @@ void VideoRecorder::init(const std::string& filePath, unsigned int width, unsign
             break;
         case VideoCodec::RAW:
             cvWriter = std::make_unique<cv::VideoWriter>();
-            cvWriter->open(filePath, cv::VideoWriter::fourcc('H', '2', '6', '4'), fps, cv::Size(width, height));
+            cvWriter->open(filePath, cv::VideoWriter::fourcc('a', 'v', 'c', '1'), fps, cv::Size(width, height));
             assert(cvWriter->isOpened());
             break;
     }
