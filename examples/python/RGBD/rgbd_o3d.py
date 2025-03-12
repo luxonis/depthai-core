@@ -32,29 +32,6 @@ class O3DNode(dai.node.ThreadedHostNode):
             size=1000, origin=[0, 0, 0]
         )
         vis.add_geometry(coordinateFrame)
-        ctr = vis.get_view_control()
-        camera_params = ctr.convert_to_pinhole_camera_parameters()
-        camera_params.extrinsic = np.array(
-            [
-                0.94610163126118774,
-                -0.12359212915800502,
-                0.29936046655346926,
-                0.0,
-                0.080146787990983182,
-                0.98491931997093096,
-                0.1533310977027407,
-                0.0,
-                -0.31379642397523938,
-                -0.12107402181388879,
-                0.94173928745813829,
-                0.0,
-                113.25895049807093,
-                57.432848193602524,
-                1690.8981017321228,
-                1.0,
-            ]
-        ).reshape(4, 4)
-        ctr.convert_from_pinhole_camera_parameters(camera_params)
         first = True
         while self.isRunning():
             inPointCloud = self.inputPCL.tryGet()
@@ -65,7 +42,6 @@ class O3DNode(dai.node.ThreadedHostNode):
                 pcd.colors = o3d.utility.Vector3dVector(np.delete(colors, 3, 1))
                 if first:
                     vis.add_geometry(pcd)
-                    ctr.convert_from_pinhole_camera_parameters(camera_params)
                     first = False
                 else:
                     vis.update_geometry(pcd)
