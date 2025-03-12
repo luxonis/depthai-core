@@ -2,12 +2,16 @@
 #include <cstdlib>
 #include <ctime>
 #include <filesystem>
+#include <chrono>
+#include <thread>
 
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/depthai.hpp"
 #include "depthai/pipeline/node/Camera.hpp"
 #include "depthai/pipeline/node/host/Record.hpp"
 #include "depthai/utility/Compression.hpp"
+
+using namespace std::literals::chrono_literals;
 
 constexpr unsigned int NUM_MSGS = 200;
 
@@ -83,9 +87,7 @@ TEST_CASE("RecordMetadataOnly node") {
 
     p.start();
 
-    for(int i = 0; i < NUM_MSGS; ++i) {
-        imuQ->get<dai::IMUData>();
-    }
+    std::this_thread::sleep_for(5s);
 
     p.stop();
 
@@ -110,9 +112,7 @@ TEST_CASE("RecordVideo raw color") {
 
     p.start();
 
-    for(int i = 0; i < NUM_MSGS; ++i) {
-        camQ->get<dai::ImgFrame>();
-    }
+    std::this_thread::sleep_for(5s);
 
     p.stop();
 
@@ -138,9 +138,7 @@ TEST_CASE("RecordVideo raw gray") {
 
     p.start();
 
-    for(int i = 0; i < NUM_MSGS; ++i) {
-        camQ->get<dai::ImgFrame>();
-    }
+    std::this_thread::sleep_for(5s);
 
     p.stop();
 
@@ -170,9 +168,7 @@ TEST_CASE("RecordVideo encoded h264") {
 
     p.start();
 
-    for(int i = 0; i < NUM_MSGS; ++i) {
-        camQ->get<dai::ImgFrame>();
-    }
+    std::this_thread::sleep_for(5s);
 
     p.stop();
 
@@ -202,9 +198,7 @@ TEST_CASE("RecordVideo encoded mjpeg") {
 
     p.start();
 
-    for(int i = 0; i < NUM_MSGS; ++i) {
-        camQ->get<dai::ImgFrame>();
-    }
+    std::this_thread::sleep_for(5s);
 
     p.stop();
 

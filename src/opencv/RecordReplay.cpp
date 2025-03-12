@@ -148,6 +148,7 @@ void VideoRecorder::write(span<uint8_t>& data, const uint32_t stride) {
 
 void VideoRecorder::close() {
     if(mp4Writer != MP4_INVALID_FILE_HANDLE) {
+        // MP4Dump(mp4Writer);
         MP4Close(mp4Writer);
     }
     if(cvWriter && cvWriter->isOpened()) {
