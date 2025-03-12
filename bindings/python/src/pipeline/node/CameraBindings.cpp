@@ -24,17 +24,20 @@ void bind_camera(pybind11::module& m, void* pCallstack) {
         .def_readonly("initialControl", &Camera::initialControl, DOC(dai, node, Camera, initialControl))
         .def_readonly("mockIsp", &Camera::mockIsp, DOC(dai, node, Camera, mockIsp))
         .def_readonly("raw", &Camera::raw, DOC(dai, node, Camera, raw))
-        .def("build", py::overload_cast<dai::CameraBoardSocket>(&Camera::build), "boardSocket"_a = CameraBoardSocket::AUTO, DOC(dai, node, Camera, build))
-#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-        .def("build", py::overload_cast<dai::CameraBoardSocket, ReplayVideo&>(&Camera::build), py::arg("boardSocket"), py::arg("replayNode"), DOC(dai, node, Camera, build))
-        .def("build", py::overload_cast<ReplayVideo&>(&Camera::build), py::arg("replayNode"), DOC(dai, node, Camera, build))
-#endif
         .def("build",
-             &Camera::build,
+             py::overload_cast<dai::CameraBoardSocket, std::optional<std::pair<uint32_t, uint32_t>>, std::optional<float>>(&Camera::build),
              "boardSocket"_a = CameraBoardSocket::AUTO,
              "sensorResolution"_a = std::nullopt,
              "sensorFps"_a = std::nullopt,
              DOC(dai, node, Camera, build))
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+        .def("build",
+             py::overload_cast<dai::CameraBoardSocket, ReplayVideo&>(&Camera::build),
+             py::arg("boardSocket"),
+             py::arg("replayNode"),
+             DOC(dai, node, Camera, build))
+        .def("build", py::overload_cast<ReplayVideo&>(&Camera::build), py::arg("replayNode"), DOC(dai, node, Camera, build))
+#endif
         // .def("setBoardSocket", &Camera::setBoardSocket, "boardSocket"_a, DOC(dai, node, Camera, setBoardSocket))
         .def("getBoardSocket", &Camera::getBoardSocket, DOC(dai, node, Camera, getBoardSocket))
         .def("setMockIsp", &Camera::setMockIsp, "mockIsp"_a, DOC(dai, node, Camera, setMockIsp))

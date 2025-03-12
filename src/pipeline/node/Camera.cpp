@@ -319,7 +319,7 @@ uint32_t Camera::getMaxRequestedWidth() const {
             }
         }
     }
-    return width == 0 ? maxWidth : width;
+    return width == 0 ? getMaxWidth() : width;
 }
 uint32_t Camera::getMaxRequestedHeight() const {
     uint32_t height = 0;
@@ -333,7 +333,7 @@ uint32_t Camera::getMaxRequestedHeight() const {
             }
         }
     }
-    return height == 0 ? maxHeight : height;
+    return height == 0 ? getMaxHeight() : height;
 }
 
 /*
