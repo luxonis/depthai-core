@@ -442,6 +442,10 @@ dai_add_test(replay_test src/onhost_tests/replay_test.cpp)
 dai_set_test_labels(replay_test onhost ci)
 target_compile_definitions(replay_test PRIVATE RECORDING_PATH="${recording_path}")
 
+# Camera tests
+dai_add_test(camera_test src/ondevice_tests/pipeline/node/camera_test.cpp)
+dai_set_test_labels(camera_test ondevice rvc2_all rvc4 ci)
+
 # VideoEncoder test
 dai_add_test(video_encoder_test_rvc4 src/ondevice_tests/video_encoder_test.cpp)
 target_compile_definitions(video_encoder_test_rvc4 PRIVATE ENABLE_MJPEG=0)

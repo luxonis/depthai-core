@@ -75,7 +75,7 @@ void DetectionParser::setConfig(const dai::NNArchiveVersionedConfig& config) {
 
     if(head.parser == "YOLO") {
         properties.parser.nnFamily = DetectionNetworkType::YOLO;
-        if(head.metadata.subtype){
+        if(head.metadata.subtype) {
             properties.parser.subtype = *head.metadata.subtype;
         }
     } else if(head.parser == "SSD" || head.parser == "MOBILENET") {

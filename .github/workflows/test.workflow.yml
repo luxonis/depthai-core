@@ -55,7 +55,7 @@ jobs:
         matrix:
           arch: ['x64']
           flavor: ['vanilla']
-          rvc4os: ['r851.1.2', '1.4.1', '1.5.0']
+          rvc4os: ['r851.1.2', '1.4.1', '1.5.0', 'debug-1.6.0']
         fail-fast: false
       runs-on: ['self-hosted', 'testbed-runner']
 

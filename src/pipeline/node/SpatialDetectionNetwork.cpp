@@ -36,7 +36,7 @@ void SpatialDetectionNetwork::buildInternal() {
 std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build(const std::shared_ptr<Camera>& camera,
                                                                         const std::shared_ptr<StereoDepth>& stereo,
                                                                         NNModelDescription modelDesc,
-                                                                        float fps) {
+                                                                        std::optional<float> fps) {
     auto nnArchive = createNNArchive(modelDesc);
     return build(camera, stereo, nnArchive, fps);
 }
@@ -44,30 +44,10 @@ std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build(const st
 std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build(const std::shared_ptr<Camera>& camera,
                                                                         const std::shared_ptr<StereoDepth>& stereo,
                                                                         const NNArchive& nnArchive,
-                                                                        float fps) {
+                                                                        std::optional<float> fps) {
     neuralNetwork->build(camera, nnArchive, fps);
     detectionParser->setNNArchive(nnArchive);
     alignDepth(stereo, camera);
-    return std::static_pointer_cast<SpatialDetectionNetwork>(shared_from_this());
-}
-std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build(const std::shared_ptr<ReplayVideo>& inputRgb,
-                                                                        const std::shared_ptr<StereoDepth>& stereo,
-                                                                        NNModelDescription modelDesc,
-                                                                        float fps,
-                                                                        CameraBoardSocket alignSocket) {
-    auto nnArchive = createNNArchive(modelDesc);
-    return build(inputRgb, stereo, nnArchive, fps);
-}
-
-std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build(const std::shared_ptr<ReplayVideo>& inputRgb,
-                                                                        const std::shared_ptr<StereoDepth>& stereo,
-                                                                        const NNArchive& nnArchive,
-                                                                        float fps,
-                                                                        CameraBoardSocket alignSocket) {
-    neuralNetwork->build(inputRgb, nnArchive, fps);
-    detectionParser->setNNArchive(nnArchive);
-    stereo->depth.link(inputDepth);
-    stereo->setDepthAlign(alignSocket);
     return std::static_pointer_cast<SpatialDetectionNetwork>(shared_from_this());
 }
 

@@ -37,47 +37,32 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack) {
     spatialDetectionNetwork
         // Copied from NN node
         .def("build",
-             py::overload_cast<const std::shared_ptr<Camera>&, const std::shared_ptr<StereoDepth>&, NNModelDescription, float>(&SpatialDetectionNetwork::build),
+             py::overload_cast<const std::shared_ptr<Camera>&, const std::shared_ptr<StereoDepth>&, NNModelDescription, std::optional<float>>(
+                 &SpatialDetectionNetwork::build),
              py::arg("input"),
              py::arg("stereo"),
              py::arg("model"),
-             py::arg("fps") = 30.0f,
+             py::arg("fps") = std::nullopt,
              DOC(dai, node, SpatialDetectionNetwork, build))
-        .def(
-            "build",
-            ([](SpatialDetectionNetwork& self, const std::shared_ptr<Camera>& input, const std::shared_ptr<StereoDepth>& stereo, std::string model, float fps) {
-                return self.build(input, stereo, NNModelDescription{model}, fps);
-            }),
-            py::arg("input"),
-            py::arg("stereo"),
-            py::arg("model"),
-            py::arg("fps") = 30.0f,
-            DOC(dai, node, SpatialDetectionNetwork, build, 2))
         .def("build",
-             py::overload_cast<const std::shared_ptr<Camera>&, const std::shared_ptr<StereoDepth>&, const NNArchive&, float>(&SpatialDetectionNetwork::build),
+             ([](SpatialDetectionNetwork& self,
+                 const std::shared_ptr<Camera>& input,
+                 const std::shared_ptr<StereoDepth>& stereo,
+                 std::string model,
+                 std::optional<float> fps) { return self.build(input, stereo, NNModelDescription{model}, fps); }),
              py::arg("input"),
              py::arg("stereo"),
-             py::arg("nnArchive"),
-             py::arg("fps") = 30.0f,
+             py::arg("model"),
+             py::arg("fps") = std::nullopt,
              DOC(dai, node, SpatialDetectionNetwork, build, 2))
         .def("build",
-             py::overload_cast<const std::shared_ptr<ReplayVideo>&, const std::shared_ptr<StereoDepth>&, NNModelDescription, float, CameraBoardSocket>(
-                 &SpatialDetectionNetwork::build),
-             py::arg("input"),
-             py::arg("stereo"),
-             py::arg("model"),
-             py::arg("fps") = 30.0f,
-             py::arg("cameraSocket") = CameraBoardSocket::AUTO,
-             DOC(dai, node, SpatialDetectionNetwork, build, 3))
-        .def("build",
-             py::overload_cast<const std::shared_ptr<ReplayVideo>&, const std::shared_ptr<StereoDepth>&, const NNArchive&, float, CameraBoardSocket>(
+             py::overload_cast<const std::shared_ptr<Camera>&, const std::shared_ptr<StereoDepth>&, const NNArchive&, std::optional<float>>(
                  &SpatialDetectionNetwork::build),
              py::arg("input"),
              py::arg("stereo"),
              py::arg("nnArchive"),
-             py::arg("fps") = 30.0f,
-             py::arg("cameraSocket") = CameraBoardSocket::AUTO,
-             DOC(dai, node, SpatialDetectionNetwork, build, 4))
+             py::arg("fps") = std::nullopt,
+             DOC(dai, node, SpatialDetectionNetwork, build, 2))
         .def("setBlobPath", &SpatialDetectionNetwork::setBlobPath, py::arg("path"), DOC(dai, node, SpatialDetectionNetwork, setBlobPath))
         .def("setNumPoolFrames", &SpatialDetectionNetwork::setNumPoolFrames, py::arg("numFrames"), DOC(dai, node, SpatialDetectionNetwork, setNumPoolFrames))
         .def("setNumInferenceThreads",

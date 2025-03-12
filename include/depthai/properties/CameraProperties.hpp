@@ -126,7 +126,7 @@ struct CameraProperties : PropertiesSerializable<Properties, CameraProperties> {
     /**
      * Camera sensor FPS
      */
-    float fps = 30.0;
+    float fps = AUTO;
 
     /**
      * Isp 3A rate (auto focus, auto exposure, auto white balance, camera controls etc.).

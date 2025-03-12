@@ -26,12 +26,21 @@ std::shared_ptr<NeuralNetwork> NeuralNetwork::build(Node::Output& input, const N
     return std::static_pointer_cast<NeuralNetwork>(shared_from_this());
 }
 
-std::shared_ptr<NeuralNetwork> NeuralNetwork::build(const std::shared_ptr<Camera>& input, NNModelDescription modelDesc, float fps) {
-    auto nnArchive = createNNArchive(modelDesc);
+std::shared_ptr<NeuralNetwork> NeuralNetwork::build(const std::shared_ptr<Camera>& input, NNModelDescription modelDesc, std::optional<float> fps) {
+    // Download model from zoo
+    if(modelDesc.platform.empty()) {
+        DAI_CHECK(getDevice() != nullptr, "Device is not set.");
+        modelDesc.platform = getDevice()->getPlatformAsString();
+    }
+    auto path = getModelFromZoo(modelDesc);
+    auto modelType = dai::model::readModelType(path);
+    DAI_CHECK(modelType == dai::model::ModelType::NNARCHIVE,
+              "Model from zoo is not NNArchive - it needs to be a NNArchive to use build(Camera, NNModelDescription, float) method");
+    auto nnArchive = dai::NNArchive(path);
     return build(input, nnArchive, fps);
 }
 
-std::shared_ptr<NeuralNetwork> NeuralNetwork::build(const std::shared_ptr<Camera>& input, const NNArchive& nnArchive, float fps) {
+std::shared_ptr<NeuralNetwork> NeuralNetwork::build(const std::shared_ptr<Camera>& input, NNArchive nnArchive, std::optional<float> fps) {
     setNNArchive(nnArchive);
     auto cap = getFrameCapability(nnArchive, fps);
     auto* camInput = input->requestOutput(cap, false);
@@ -40,22 +49,24 @@ std::shared_ptr<NeuralNetwork> NeuralNetwork::build(const std::shared_ptr<Camera
     return std::static_pointer_cast<NeuralNetwork>(shared_from_this());
 }
 
-std::shared_ptr<NeuralNetwork> NeuralNetwork::build(const std::shared_ptr<ReplayVideo>& input, NNModelDescription modelDesc, float fps) {
+std::shared_ptr<NeuralNetwork> NeuralNetwork::build(const std::shared_ptr<ReplayVideo>& input, NNModelDescription modelDesc, std::optional<float> fps) {
     auto nnArchive = createNNArchive(modelDesc);
     return build(input, nnArchive, fps);
 }
 
-std::shared_ptr<NeuralNetwork> NeuralNetwork::build(const std::shared_ptr<ReplayVideo>& input, const NNArchive& nnArchive, float fps) {
+std::shared_ptr<NeuralNetwork> NeuralNetwork::build(const std::shared_ptr<ReplayVideo>& input, const NNArchive& nnArchive, std::optional<float> fps) {
     setNNArchive(nnArchive);
     auto cap = getFrameCapability(nnArchive, fps);
     input->setOutFrameType(cap.type.value());
-    input->setFps(std::get<float>(cap.fps.value.value()));
+    if(fps.has_value()) {
+        input->setFps(*fps);
+    }
     input->setSize(std::get<std::pair<unsigned int, unsigned int>>(cap.size.value.value()));
     input->out.link(this->input);
     return std::static_pointer_cast<NeuralNetwork>(shared_from_this());
 }
 
-ImgFrameCapability NeuralNetwork::getFrameCapability(const NNArchive& nnArchive, float fps) {
+ImgFrameCapability NeuralNetwork::getFrameCapability(const NNArchive& nnArchive, std::optional<float> fps) {
     const auto& nnArchiveCfg = nnArchive.getVersionedConfig();
 
     DAI_CHECK_V(nnArchiveCfg.getVersion() == NNArchiveConfigVersion::V1, "Only V1 configs are supported for NeuralNetwork.build method");
