@@ -66,7 +66,7 @@ jobs:
         run: |
           rm -rf depthai-core/scripts/hil/ && mkdir -p depthai-core/scripts/hil/ && cp -r scripts/hil/* depthai-core/scripts/hil/
           rm depthai-core/tests/run_tests.py && cp tests/run_tests.py depthai-core/tests/run_tests.py
-          
+          cd depthai-core
           if [[ -n "${{ github.event.inputs.testbed }}" ]]; then
             TESTBED_OPTION="--testbed ${{ github.event.inputs.testbed }}"
           fi
