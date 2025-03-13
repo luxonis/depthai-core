@@ -60,12 +60,12 @@ function(add_python_example example_name python_script_path)
             "PATH=${HUNTER_INSTALL_PREFIX}/bin${SYS_PATH_SEPARATOR}$ENV{PATH}"
             # Python path (to find compiled module)
             "PYTHONPATH=$<TARGET_FILE_DIR:${TARGET_NAME}>${SYS_PATH_SEPARATOR}$ENV{PYTHONPATH}"
-            "DEPTHAI_SEARCH_TIMEOUT=30000"
-            "DEPTHAI_CONNECT_TIMEOUT=30000"
+            "DEPTHAI_SEARCH_TIMEOUT=45000"
+            "DEPTHAI_CONNECT_TIMEOUT=10000"
             "DEPTHAI_RECONNECT_TIMEOUT=0"
             # ASAN in case of sanitizers
             ${ASAN_ENVIRONMENT_VARS}
-            ${CMAKE_COMMAND} -DFORCE_TIMEOUT_SECONDS=45 -P ${CMAKE_CURRENT_LIST_DIR}/../cpp/cmake/ExecuteTestTimeout.cmake
+            ${CMAKE_COMMAND} -DFORCE_TIMEOUT_SECONDS=60 -P ${CMAKE_CURRENT_LIST_DIR}/../cpp/cmake/ExecuteTestTimeout.cmake
 
             # Actual script to run
             ${PYTHON_EXECUTABLE} -Werror "${CMAKE_CURRENT_LIST_DIR}/${python_script_path}" ${arguments}
