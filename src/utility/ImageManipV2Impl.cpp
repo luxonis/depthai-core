@@ -12,6 +12,208 @@
 
 #define UNUSED(x) (void)(x)
 
+void dai::impl::transformOpenCV(const uint8_t* src,
+                                uint8_t* dst,
+                                const size_t srcWidth,
+                                const size_t srcHeight,
+                                const size_t srcStride,
+                                const size_t dstWidth,
+                                const size_t dstHeight,
+                                const size_t dstStride,
+                                const uint16_t numChannels,
+                                const uint16_t bpp,
+                                const std::array<std::array<float, 3>, 3> matrix,
+                                const std::vector<uint32_t>& background,
+                                const FrameSpecs& srcImgSpecs,
+                                const size_t sourceMinX,
+                                const size_t sourceMinY,
+                                const size_t sourceMaxX,
+                                const size_t sourceMaxY) {
+#if defined(DEPTHAI_HAVE_OPENCV_SUPPORT) && DEPTHAI_IMAGEMANIPV2_OPENCV
+    auto type = CV_8UC1;
+    switch(numChannels) {
+        case 1:
+            switch(bpp) {
+                case 1:
+                    type = CV_8UC1;
+                    break;
+                case 2:
+                    type = CV_16UC1;
+                    break;
+                default:
+                    assert(false);
+            }
+            break;
+        case 2:
+            assert(bpp == 1);
+            type = CV_8UC2;
+            break;
+        case 3:
+            assert(bpp == 1);
+            type = CV_8UC3;
+            break;
+        default:
+            assert(false);
+    }
+    auto bg = numChannels == 1 ? cv::Scalar(background[0])
+                               : (numChannels == 2 ? cv::Scalar(background[0], background[1]) : cv::Scalar(background[0], background[1], background[2]));
+    const cv::Mat cvSrc(srcHeight, srcWidth, type, const_cast<uint8_t*>(src), srcStride);
+    cv::Mat cvDst(dstHeight, dstWidth, type, dst, dstStride);
+    int ssF = srcImgSpecs.width / srcWidth;
+    assert(ssF == (int)(srcImgSpecs.height / srcHeight) && (ssF == 1 || ssF == 2));  // Sanity check
+    if(float_eq(matrix[2][0], 0) && float_eq(matrix[2][1], 0) && float_eq(matrix[2][2], 1)) {
+        // Affine transform
+        float affine[6] = {matrix[0][0], matrix[0][1], matrix[0][2] / ssF, matrix[1][0], matrix[1][1], matrix[1][2] / ssF};
+        cv::Rect roi(sourceMinX / ssF, sourceMinY / ssF, (sourceMaxX - sourceMinX) / ssF, (sourceMaxY - sourceMinY) / ssF);
+        if(sourceMinX != 0 || sourceMinY != 0) {
+            affine[2] = affine[0] * ((float)sourceMinX / ssF) + affine[1] * ((float)sourceMinY / ssF) + affine[2];
+            affine[5] = affine[3] * ((float)sourceMinX / ssF) + affine[4] * ((float)sourceMinY / ssF) + affine[5];
+        }
+        if(float_eq(affine[0], 1.f) && float_eq(affine[1], 0.f) && float_eq(affine[3], 0.f) && float_eq(affine[4], 1.f) && float_eq(affine[5], 0.f)) {
+            // Crop only
+            cvSrc(roi).copyTo(cvDst);
+        } else {
+            cv::Mat cvAffine(2, 3, CV_32F, affine);
+            cv::warpAffine(cvSrc(roi),
+                           cvDst,
+                           cvAffine,
+                           cv::Size(dstWidth, dstHeight),
+                           cv::INTER_LINEAR,
+                           cv::BORDER_CONSTANT,
+                           bg);  // TODO(asahtik): Add support for different border types
+        }
+    } else {
+        // Perspective transform
+        float projection[9] = {
+            matrix[0][0], matrix[0][1], matrix[0][2] / ssF, matrix[1][0], matrix[1][1], matrix[1][2] / ssF, matrix[2][0], matrix[2][1], matrix[2][2]};
+        cv::Rect roi(sourceMinX / ssF, sourceMinY / ssF, (sourceMaxX - sourceMinX) / ssF, (sourceMaxY - sourceMinY) / ssF);
+        if(sourceMinX != 0 || sourceMinY != 0) {
+            projection[2] = projection[0] * ((float)sourceMinX / ssF) + projection[1] * ((float)sourceMinY / ssF) + projection[2];
+            projection[5] = projection[3] * ((float)sourceMinX / ssF) + projection[4] * ((float)sourceMinY / ssF) + projection[5];
+            projection[8] = projection[6] * ((float)sourceMinX / ssF) + projection[7] * ((float)sourceMinY / ssF) + projection[8];
+        }
+        cv::Mat cvProjection(3, 3, CV_32F, projection);
+        cv::warpPerspective(cvSrc(roi),
+                            cvDst,
+                            cvProjection,
+                            cv::Size(dstWidth, dstHeight),
+                            cv::INTER_LINEAR,
+                            cv::BORDER_CONSTANT,
+                            bg);  // TODO(asahtik): Add support for different border types
+    }
+#else
+    UNUSED(src);
+    UNUSED(dst);
+    UNUSED(srcWidth);
+    UNUSED(srcHeight);
+    UNUSED(srcStride);
+    UNUSED(dstWidth);
+    UNUSED(dstHeight);
+    UNUSED(dstStride);
+    UNUSED(numChannels);
+    UNUSED(bpp);
+    UNUSED(matrix);
+    UNUSED(background);
+    UNUSED(srcImgSpecs);
+    UNUSED(sourceMinX);
+    UNUSED(sourceMinY);
+    UNUSED(sourceMaxX);
+    UNUSED(sourceMaxY);
+#endif
+}
+void dai::impl::transformFastCV(const uint8_t* src,
+                                uint8_t* dst,
+                                const size_t srcWidth,
+                                const size_t srcHeight,
+                                const size_t srcStride,
+                                const size_t dstWidth,
+                                const size_t dstHeight,
+                                const size_t dstStride,
+                                const uint16_t numChannels,
+                                const uint16_t bpp,
+                                const std::array<std::array<float, 3>, 3> matrix,
+                                const std::vector<uint32_t>& background,
+                                const FrameSpecs& srcImgSpecs,
+                                const size_t sourceMinX,
+                                const size_t sourceMinY,
+                                const size_t sourceMaxX,
+                                const size_t sourceMaxY,
+                                uint8_t* fastCvBorder) {
+#if defined(DEPTHAI_HAVE_FASTCV_SUPPORT) && DEPTHAI_IMAGEMANIPV2_FASTCV
+    if(numChannels != 3 && numChannels != 1) throw std::runtime_error("Only 1 or 3 channels supported with FastCV");
+    if(bpp != 1) throw std::runtime_error("Only 8bpp supported with FastCV");
+    if(!((ptrdiff_t)src % 128 == 0 && (ptrdiff_t)dst % 128 == 0 && (ptrdiff_t)fastCvBorder % 128 == 0 && srcStride % 8 == 0 && srcStride > 0)) {
+        throw std::runtime_error("Assumptions not taken into account");
+    }
+    int ssF = srcSpecs.width / srcWidth;
+    assert(ssF == (int)(srcSpecs.height / srcHeight) && (ssF == 1 || ssF == 2));  // Sanity check
+    if(float_eq(matrix[2][0], 0) && float_eq(matrix[2][1], 0) && float_eq(matrix[2][2], 1)) {
+        // Affine transform
+        float affine[6] = {matrix[0][0], matrix[0][1], matrix[0][2] / ssF, matrix[1][0], matrix[1][1], matrix[1][2] / ssF};
+        if(isSingleChannelu8(src)) {
+            fcvTransformAffineClippedu8_v3(src,
+                                           srcWidth,
+                                           srcHeight,
+                                           srcStride,
+                                           affine,
+                                           dst,
+                                           dstWidth,
+                                           dstHeight,
+                                           dstStride,
+                                           nullptr,
+                                           FASTCV_INTERPOLATION_TYPE_BILINEAR,
+                                           FASTCV_BORDER_CONSTANT,
+                                           0);
+        } else {
+            fcv3ChannelTransformAffineClippedBCu8(src, srcWidth, srcHeight, srcStride, affine, dst, dstWidth, dstHeight, dstStride, fastCvBorder);
+        }
+    } else {
+        // Perspective transform
+        float projection[9] = {
+            matrix[0][0], matrix[0][1], matrix[0][2] / ssF, matrix[1][0], matrix[1][1], matrix[1][2] / ssF, matrix[2][0], matrix[2][1], matrix[2][2]};
+        fcvStatus status = fcvStatus::FASTCV_SUCCESS;
+        if(isSingleChannelu8(src))
+            status = fcvWarpPerspectiveu8_v4(src,
+                                             srcWidth,
+                                             srcHeight,
+                                             srcStride,
+                                             dst,
+                                             dstWidth,
+                                             dstHeight,
+                                             dstStride,
+                                             projection,
+                                             FASTCV_INTERPOLATION_TYPE_BILINEAR,
+                                             FASTCV_BORDER_CONSTANT,
+                                             0);
+        else
+            fcv3ChannelWarpPerspectiveu8_v2(src, srcWidth, srcHeight, srcStride, dst, dstWidth, dstHeight, dstStride, projection);
+        if(status != fcvStatus::FASTCV_SUCCESS) {
+            if(logger) logger->error("FastCV operation failed with error code {}", status);
+            return false;
+        }
+    }
+#else
+    UNUSED(src);
+    UNUSED(dst);
+    UNUSED(srcWidth);
+    UNUSED(srcHeight);
+    UNUSED(srcStride);
+    UNUSED(dstWidth);
+    UNUSED(dstHeight);
+    UNUSED(dstStride);
+    UNUSED(numChannels);
+    UNUSED(bpp);
+    UNUSED(matrix);
+    UNUSED(background);
+    UNUSED(srcImgSpecs);
+    UNUSED(sourceMinX);
+    UNUSED(sourceMinY);
+    UNUSED(sourceMaxX);
+    UNUSED(sourceMaxY);
+    UNUSED(fastCvBorder);
+#endif
+}
+
 dai::impl::AEEResult dai::impl::manipGetSrcMask(const uint32_t width,
                                                 const uint32_t height,
                                                 const float* corners,
@@ -892,9 +1094,7 @@ void dai::impl::getTransformImpl(const ManipOp& op,
 #endif
                        }
                    },
-                   [&](Affine o) {
-                       mat = {{{o.matrix[0], o.matrix[1], 0}, {o.matrix[2], o.matrix[3], 0}, {0, 0, 1}}};
-                   },
+                   [&](Affine o) { mat = {{{o.matrix[0], o.matrix[1], 0}, {o.matrix[2], o.matrix[3], 0}, {0, 0, 1}}}; },
                    [&](Perspective o) {
                        mat = {{{o.matrix[0], o.matrix[1], o.matrix[2]}, {o.matrix[3], o.matrix[4], o.matrix[5]}, {o.matrix[6], o.matrix[7], o.matrix[8]}}};
                    },
