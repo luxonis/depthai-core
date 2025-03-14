@@ -53,7 +53,8 @@ DeviceGate::~DeviceGate() {}
 
 DeviceGate::DeviceGate(const DeviceInfo& deviceInfo) : deviceInfo(deviceInfo) {
     if(deviceInfo.state != X_LINK_GATE) {
-        throw std::invalid_argument("Device is not in Gate state");
+        throw std::invalid_argument(
+            "Device is already used by another application/process. Make sure to close all applications/processes using the device before starting a new one.");
     }
     if(deviceInfo.platform != X_LINK_RVC3 && deviceInfo.platform != X_LINK_RVC4) {
         throw std::invalid_argument("Gate only supports RVC3 and RVC4 platforms");
