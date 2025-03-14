@@ -23,21 +23,6 @@
 
 namespace dai {
 
-// First tries to find UNBOOTED device, then BOOTLOADER device
-std::tuple<bool, DeviceInfo> DeviceGate::getFirstAvailableDevice() {
-    return XLinkConnection::getFirstDevice(X_LINK_GATE);
-}
-
-// Returns all devices which aren't already booted
-std::vector<DeviceInfo> DeviceGate::getAllAvailableDevices() {
-    std::vector<DeviceInfo> availableDevices;
-    auto connectedDevices = XLinkConnection::getAllConnectedDevices(X_LINK_GATE);
-    for(const auto& d : connectedDevices) {
-        if(d.state != X_LINK_BOOTED) availableDevices.push_back(d);
-    }
-    return availableDevices;
-}
-
 const std::string API_ROOT{"/api/v1"};
 const auto sessionsEndpoint = API_ROOT + "/sessions";
 const int DEFAULT_PORT{11492};
@@ -52,7 +37,7 @@ class DeviceGate::Impl {
 DeviceGate::~DeviceGate() {}
 
 DeviceGate::DeviceGate(const DeviceInfo& deviceInfo) : deviceInfo(deviceInfo) {
-    if(deviceInfo.state != X_LINK_GATE) {
+    if((deviceInfo.state != X_LINK_GATE) && (deviceInfo.state != X_LINK_GATE_SETUP)) {
         throw std::invalid_argument(
             "Device is already used by another application/process. Make sure to close all applications/processes using the device before starting a new one.");
     }
