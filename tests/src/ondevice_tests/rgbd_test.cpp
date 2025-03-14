@@ -71,9 +71,9 @@ TEST_CASE("rgbd autocreate") {
     for(int i = 0; i < 10; ++i) {
         auto pcl = outQ->get<dai::PointCloudData>();
         REQUIRE(pcl != nullptr);
-        REQUIRE(pcl->getWidth() == 1280);
-        REQUIRE(pcl->getHeight() == 800);
-        REQUIRE(pcl->getPoints().size() == 1280UL * 800UL);
+        REQUIRE(pcl->getWidth() == 640);
+        REQUIRE(pcl->getHeight() == 400);
+        REQUIRE(pcl->getPoints().size() == 640UL * 400UL);
         REQUIRE(pcl->isColor() == true);
         REQUIRE(pcl->getMinX() <= pcl->getMaxX());
         REQUIRE(pcl->getMinY() <= pcl->getMaxY());
@@ -81,9 +81,9 @@ TEST_CASE("rgbd autocreate") {
         auto rgbdData = rgbdQ->get<dai::RGBDData>();
         auto rgbFrame = rgbdData->getRGBFrame();
         REQUIRE(rgbFrame != nullptr);
-        REQUIRE(rgbFrame->getData().size() == 1280UL * 800UL * 3UL);
+        REQUIRE(rgbFrame->getData().size() == 640UL * 400UL * 3UL);
         auto depthFrame = rgbdData->getDepthFrame();
         REQUIRE(depthFrame != nullptr);
-        REQUIRE(depthFrame->getData().size() == 1280UL * 800UL * 2UL);
+        REQUIRE(depthFrame->getData().size() == 640UL * 400UL * 2UL);
     }
 }
