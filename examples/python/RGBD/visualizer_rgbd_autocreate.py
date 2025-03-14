@@ -1,7 +1,8 @@
-import time
 import depthai as dai
-
 from argparse import ArgumentParser
+
+# NOTE: Using autocreate takes over the cameras cannot be used in complex pipelines,
+# where cameras would be used in other nodes as well yet.
 
 parser = ArgumentParser()
 parser.add_argument("--webSocketPort", type=int, default=8765)
@@ -9,7 +10,6 @@ parser.add_argument("--httpPort", type=int, default=8080)
 args = parser.parse_args()
 
 with dai.Pipeline() as p:
-    # Using autocreate takes over the cameras and might not be recommended for more complex pipelines
     remoteConnector = dai.RemoteConnection(
         webSocketPort=args.webSocketPort, httpPort=args.httpPort
     )

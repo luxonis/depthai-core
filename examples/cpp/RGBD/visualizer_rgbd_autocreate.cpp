@@ -5,6 +5,9 @@
 
 #include "depthai/depthai.hpp"
 
+// NOTE: Using autocreate takes over the cameras cannot be used in complex pipelines,
+// where cameras would be used in other nodes as well yet.
+
 // Signal handling for clean shutdown
 static bool isRunning = true;
 void signalHandler(int signum) {
@@ -12,7 +15,6 @@ void signalHandler(int signum) {
 }
 
 int main() {
-    // Using autocreate takes over the cameras and might not be recommended for more complex pipelines
     using namespace std;
     // Default port values
     int webSocketPort = 8765;
