@@ -9,7 +9,6 @@ parser.add_argument("--httpPort", type=int, default=8080)
 args = parser.parse_args()
 
 with dai.Pipeline() as p:
-    # Currently visualizer doesn't display colors for PCL
     remoteConnector = dai.RemoteConnection(
         webSocketPort=args.webSocketPort, httpPort=args.httpPort
     )
