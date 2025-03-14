@@ -322,14 +322,18 @@ void DeviceBase::tryGetDevice() {
     bool found = false;
     std::tie(found, deviceInfo) = getAnyAvailableDevice();
 
-    // If no device found, throw
     if(!found) {
         auto numConnected = getAllAvailableDevices().size();
         if(numConnected > 0) {
-            throw std::runtime_error(fmt::format("No available devices ({} connected, but in use)", numConnected));
-        } else {
-            throw std::runtime_error("No available devices");
+            throw std::runtime_error("No available devices (" + std::to_string(numConnected) + " connected, but in use)");
         }
+    }
+    auto numDevicesAnyPlatform = dai::XLinkConnection::getAllConnectedDevices(X_LINK_ANY_STATE, false, X_LINK_ANY_PLATFORM).size();
+    auto numDevicesRVC2 = dai::XLinkConnection::getAllConnectedDevices(X_LINK_ANY_STATE, false, X_LINK_MYRIAD_X).size();
+    auto nonRVC2Devices = numDevicesAnyPlatform - numDevicesRVC2;
+    if(nonRVC2Devices > 0) {
+        throw std::runtime_error("No available RVC2 devices found, but found " + std::to_string(nonRVC2Devices)
+                                 + " non RVC2 device[s]. To use RVC4 devices, please update DepthAI to version v3.x or newer.");
     }
 }
 

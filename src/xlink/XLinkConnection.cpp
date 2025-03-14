@@ -110,7 +110,7 @@ constexpr std::chrono::milliseconds XLinkConnection::WAIT_FOR_BOOTUP_TIMEOUT;
 constexpr std::chrono::milliseconds XLinkConnection::WAIT_FOR_CONNECT_TIMEOUT;
 constexpr std::chrono::milliseconds XLinkConnection::POLLING_DELAY_TIME;
 
-std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices(XLinkDeviceState_t state, bool skipInvalidDevices) {
+std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices(XLinkDeviceState_t state, bool skipInvalidDevices, XLinkPlatform_t platform) {
     initialize();
 
     std::vector<DeviceInfo> devices;
@@ -119,7 +119,7 @@ std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices(XLinkDeviceState
     std::array<deviceDesc_t, 64> deviceDescAll = {};
     deviceDesc_t suitableDevice = {};
     suitableDevice.protocol = getDefaultProtocol();
-    suitableDevice.platform = X_LINK_ANY_PLATFORM;
+    suitableDevice.platform = platform;
     suitableDevice.state = state;
 
     auto allowedDeviceMxIds = utility::getEnv("DEPTHAI_DEVICE_MXID_LIST");
@@ -162,7 +162,7 @@ std::tuple<bool, DeviceInfo> XLinkConnection::getFirstDevice(XLinkDeviceState_t 
 
     DeviceInfo devReq = {};
     devReq.protocol = X_LINK_ANY_PROTOCOL;
-    devReq.platform = X_LINK_ANY_PLATFORM;
+    devReq.platform = X_LINK_MYRIAD_X;
     devReq.name = "";
     devReq.mxid = "";
     devReq.state = state;
@@ -195,6 +195,7 @@ std::tuple<bool, DeviceInfo> XLinkConnection::getDeviceByMxId(std::string mxId, 
     DeviceInfo dev;
     dev.mxid = mxId;
     dev.state = state;
+    dev.platform = X_LINK_MYRIAD_X;
 
     deviceDesc_t desc = {};
     auto res = XLinkFindFirstSuitableDevice(dev.getXLinkDeviceDesc(), &desc);
