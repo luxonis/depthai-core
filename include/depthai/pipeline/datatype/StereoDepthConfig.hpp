@@ -1,6 +1,7 @@
 #pragma once
 
 #include <depthai/common/optional.hpp>
+#include <depthai/common/ProcessorType.hpp>
 #include <unordered_map>
 #include <vector>
 
@@ -878,6 +879,16 @@ class StereoDepthConfig : public Buffer {
     StereoDepthConfig& setNumInvalidateEdgePixels(int32_t numInvalidateEdgePixels);
 
     /**
+     * Set filters compute backend
+     */
+    StereoDepthConfig& setFiltersComputeBackend(dai::ProcessorType filtersBackend);
+
+    /**
+     * Get filters compute backend
+     */
+    dai::ProcessorType getFiltersComputeBackend() const;
+
+    /**
      * Useful for normalization of the disparity map.
      * @returns Maximum disparity value that the node can return
      */
@@ -913,11 +924,13 @@ class StereoDepthConfig : public Buffer {
      */
     ConfidenceMetrics confidenceMetrics;
 
+    dai::ProcessorType filtersBackend = dai::ProcessorType::CPU;
+
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
         metadata = utility::serialize(*this);
         datatype = DatatypeEnum::StereoDepthConfig;
     };
-    DEPTHAI_SERIALIZE(StereoDepthConfig, algorithmControl, postProcessing, censusTransform, costMatching, costAggregation, confidenceMetrics);
+    DEPTHAI_SERIALIZE(StereoDepthConfig, algorithmControl, postProcessing, censusTransform, costMatching, costAggregation, confidenceMetrics, filtersBackend);
 };
 
 }  // namespace dai

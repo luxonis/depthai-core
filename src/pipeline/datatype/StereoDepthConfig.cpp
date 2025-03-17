@@ -97,6 +97,15 @@ StereoDepthConfig& StereoDepthConfig::setNumInvalidateEdgePixels(int32_t numInva
     return *this;
 }
 
+StereoDepthConfig& StereoDepthConfig::setFiltersComputeBackend(dai::ProcessorType filtersBackend) {
+    this->filtersBackend = filtersBackend;
+    return *this;
+}
+
+dai::ProcessorType StereoDepthConfig::getFiltersComputeBackend() const {
+    return filtersBackend;
+}
+
 float StereoDepthConfig::getMaxDisparity() const {
     float maxDisp = 95.0;
     if(costMatching.disparityWidth == StereoDepthConfig::CostMatching::DisparityWidth::DISPARITY_64) {

@@ -9,6 +9,6 @@ namespace dai {
  *
  * Enum specifying processor
  */
-enum class ProcessorType : int32_t { LEON_CSS, LEON_MSS };
+enum class ProcessorType : int32_t { LEON_CSS, LEON_MSS, CPU, DSP };
 
 }  // namespace dai

@@ -352,7 +352,7 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .value("SUPER_PLUS", UsbSpeed::SUPER_PLUS);
 
     // ProcessorType
-    processorType.value("LEON_CSS", ProcessorType::LEON_CSS).value("LEON_MSS", ProcessorType::LEON_MSS);
+    processorType.value("LEON_CSS", ProcessorType::LEON_CSS).value("LEON_MSS", ProcessorType::LEON_MSS).value("CPU", ProcessorType::CPU).value("DSP", ProcessorType::DSP);
 
     detectionNetworkType.value("YOLO", DetectionNetworkType::YOLO).value("MOBILENET", DetectionNetworkType::MOBILENET);
 
