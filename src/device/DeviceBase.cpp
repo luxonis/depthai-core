@@ -1,6 +1,7 @@
 #include "depthai/device/DeviceBase.hpp"
 
 // std
+#include <XLink/XLinkPublicDefines.h>
 #include <spdlog/fmt/ostr.h>
 
 #include <chrono>
@@ -121,7 +122,7 @@ std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice(std::chrono::mill
             first = false;
         }
         auto devices = XLinkConnection::getAllConnectedDevices(X_LINK_ANY_STATE, false, timeoutMs);
-        for(auto searchState : {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_FLASH_BOOTED, X_LINK_GATE}) {
+        for(auto searchState : {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_FLASH_BOOTED, X_LINK_GATE, X_LINK_GATE_SETUP}) {
             for(const auto& device : devices) {
                 if(device.state == searchState) {
                     if(device.status == X_LINK_SUCCESS) {
@@ -183,7 +184,7 @@ std::tuple<bool, DeviceInfo> DeviceBase::getFirstAvailableDevice(bool skipInvali
     // Get all connected devices
     auto devices = XLinkConnection::getAllConnectedDevices(X_LINK_ANY_STATE, skipInvalidDevice);
     // Search order - first unbooted, then bootloader and last flash booted
-    for(auto searchState : {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_FLASH_BOOTED, X_LINK_GATE}) {
+    for(auto searchState : {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_FLASH_BOOTED, X_LINK_GATE, X_LINK_GATE_SETUP}) {
         for(const auto& device : devices) {
             if(device.state == searchState) {
                 return {true, device};
@@ -211,7 +212,7 @@ std::vector<DeviceInfo> DeviceBase::getAllConnectedDevices() {
 // First tries to find UNBOOTED device with deviceId, then BOOTLOADER device with deviceId
 std::tuple<bool, DeviceInfo> DeviceBase::getDeviceById(std::string deviceId) {
     std::vector<DeviceInfo> availableDevices;
-    auto states = {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_GATE};
+    auto states = {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_GATE, X_LINK_GATE_SETUP};
     bool found;
     DeviceInfo dev;
     for(const auto& state : states) {
@@ -807,7 +808,7 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipelin
         // Connect without booting
         std::vector<std::uint8_t> fwWithConfig = Resources::getInstance().getDeviceFirmware(config, pathToMvcmd);
         connection = std::make_shared<XLinkConnection>(deviceInfo, fwWithConfig);
-    } else if(deviceInfo.state == X_LINK_GATE || deviceInfo.state == X_LINK_GATE_BOOTED) {
+    } else if(deviceInfo.state == X_LINK_GATE || deviceInfo.state == X_LINK_GATE_BOOTED || deviceInfo.state == X_LINK_GATE_SETUP) {
         // Boot FW using DeviceGate then connect directly
         gate = std::make_unique<DeviceGate>(deviceInfo);
 

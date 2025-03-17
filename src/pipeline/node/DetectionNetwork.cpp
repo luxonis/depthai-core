@@ -57,22 +57,22 @@ std::shared_ptr<DetectionNetwork> DetectionNetwork::build(Node::Output& input, c
     return std::static_pointer_cast<DetectionNetwork>(shared_from_this());
 }
 
-std::shared_ptr<DetectionNetwork> DetectionNetwork::build(const std::shared_ptr<Camera>& camera, NNModelDescription modelDesc, float fps) {
+std::shared_ptr<DetectionNetwork> DetectionNetwork::build(const std::shared_ptr<Camera>& camera, NNModelDescription modelDesc, std::optional<float> fps) {
     auto nnArchive = createNNArchive(modelDesc);
     return build(camera, nnArchive, fps);
 }
 
-std::shared_ptr<DetectionNetwork> DetectionNetwork::build(const std::shared_ptr<Camera>& camera, const NNArchive& nnArchive, float fps) {
+std::shared_ptr<DetectionNetwork> DetectionNetwork::build(const std::shared_ptr<Camera>& camera, const NNArchive& nnArchive, std::optional<float> fps) {
     neuralNetwork->build(camera, nnArchive, fps);
     detectionParser->setNNArchive(nnArchive);
     return std::static_pointer_cast<DetectionNetwork>(shared_from_this());
 }
 
-std::shared_ptr<DetectionNetwork> DetectionNetwork::build(const std::shared_ptr<ReplayVideo>& input, NNModelDescription modelDesc, float fps) {
+std::shared_ptr<DetectionNetwork> DetectionNetwork::build(const std::shared_ptr<ReplayVideo>& input, NNModelDescription modelDesc, std::optional<float> fps) {
     auto nnArchive = createNNArchive(modelDesc);
     return build(input, nnArchive, fps);
 }
-std::shared_ptr<DetectionNetwork> DetectionNetwork::build(const std::shared_ptr<ReplayVideo>& input, const NNArchive& nnArchive, float fps) {
+std::shared_ptr<DetectionNetwork> DetectionNetwork::build(const std::shared_ptr<ReplayVideo>& input, const NNArchive& nnArchive, std::optional<float> fps) {
     neuralNetwork->build(input, nnArchive, fps);
     detectionParser->setNNArchive(nnArchive);
     return std::static_pointer_cast<DetectionNetwork>(shared_from_this());

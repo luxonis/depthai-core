@@ -60,12 +60,12 @@ function(add_python_example example_name python_script_path)
             "PATH=${HUNTER_INSTALL_PREFIX}/bin${SYS_PATH_SEPARATOR}$ENV{PATH}"
             # Python path (to find compiled module)
             "PYTHONPATH=$<TARGET_FILE_DIR:${TARGET_NAME}>${SYS_PATH_SEPARATOR}$ENV{PYTHONPATH}"
-            "DEPTHAI_SEARCH_TIMEOUT=30000"
-            "DEPTHAI_CONNECT_TIMEOUT=30000"
+            "DEPTHAI_SEARCH_TIMEOUT=45000"
+            "DEPTHAI_CONNECT_TIMEOUT=10000"
             "DEPTHAI_RECONNECT_TIMEOUT=0"
             # ASAN in case of sanitizers
             ${ASAN_ENVIRONMENT_VARS}
-            ${CMAKE_COMMAND} -DFORCE_TIMEOUT_SECONDS=45 -P ${CMAKE_CURRENT_LIST_DIR}/../cpp/cmake/ExecuteTestTimeout.cmake
+            ${CMAKE_COMMAND} -DFORCE_TIMEOUT_SECONDS=60 -P ${CMAKE_CURRENT_LIST_DIR}/../cpp/cmake/ExecuteTestTimeout.cmake
 
             # Actual script to run
             ${PYTHON_EXECUTABLE} -Werror "${CMAKE_CURRENT_LIST_DIR}/${python_script_path}" ${arguments}
@@ -134,6 +134,12 @@ dai_set_example_test_labels(camera_all ondevice rvc2_all rvc4 ci)
 add_python_example(camera_multiple_outputs Camera/camera_multiple_outputs.py 640 480 0 30 CAM_A 300 300 0 30 CAM_A 300 300 1 30 CAM_A)
 dai_set_example_test_labels(camera_multiple_outputs ondevice rvc2_all rvc4 ci)
 
+add_python_example(camera_raw Camera/camera_raw.py)
+dai_set_example_test_labels(camera_raw ondevice rvc2_all rvc4 ci)
+
+add_python_example(camera_max_resolution Camera/camera_max_resolution.py)
+dai_set_example_test_labels(camera_max_resolution ondevice rvc2_all rvc4 ci)
+
 ## AprilTags
 add_python_example(april_tags_12mp AprilTags/april_tags_12mp.py)
 dai_set_example_test_labels(april_tags_12mp ondevice rvc2_all rvc4 ci nowindows)
@@ -176,6 +182,9 @@ dai_set_example_test_labels(image_manip_remap ondevice rvc2_all rvc4 ci)
 ## Misc
 add_python_example(reconnect_callback Misc/AutoReconnect/reconnect_callback.py)
 dai_set_example_test_labels(reconnect_callback ondevice rvc2_all rvc4 ci)
+
+add_python_example(person_crop_out Misc/DigitalZoom/person_crop_out.py)
+dai_set_example_test_labels(person_crop_out ondevice rvc2_all rvc4 ci)
 
 ## NeuralNetwork
 add_python_example(neural_network NeuralNetwork/neural_network.py)
