@@ -1,12 +1,12 @@
 #pragma once
 #include "depthai/pipeline/Subnode.hpp"
 #include "depthai/pipeline/ThreadedHostNode.hpp"
+#include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "depthai/pipeline/datatype/PointCloudData.hpp"
 #include "depthai/pipeline/datatype/RGBDData.hpp"
 #include "depthai/pipeline/datatype/StereoDepthConfig.hpp"
 #include "depthai/pipeline/node/StereoDepth.hpp"
 #include "depthai/pipeline/node/Sync.hpp"
-#include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "depthai/utility/Pimpl.hpp"
 
 namespace dai {
@@ -41,30 +41,31 @@ class RGBD : public NodeCRTP<ThreadedHostNode, RGBD> {
     std::shared_ptr<RGBD> build();
     /**
      * @brief Build RGBD node with specified size. Note that this API is global and if used autocreated cameras can't be reused.
-     * @param autocreate If true, will create color and depth nodes if they don't exist. 
+     * @param autocreate If true, will create color and depth nodes if they don't exist.
      * @param size Size of the frames
      */
     std::shared_ptr<RGBD> build(bool autocreate, StereoDepth::PresetMode mode = StereoDepth::PresetMode::HIGH_ACCURACY, std::pair<int, int> size = {640, 400});
     void setDepthUnit(StereoDepthConfig::AlgorithmControl::DepthUnit depthUnit);
     /**
-    * @brief Use single-threaded CPU for processing
-    */
+     * @brief Use single-threaded CPU for processing
+     */
     void useCPU();
     /**
-    * @brief Use multi-threaded CPU for processing
-    * @param numThreads Number of threads to use
-    */
-    void useCPUMT(uint32_t numThreads=2);
+     * @brief Use multi-threaded CPU for processing
+     * @param numThreads Number of threads to use
+     */
+    void useCPUMT(uint32_t numThreads = 2);
     /**
-    * @brief Use GPU for processing (needs to be compiled with Kompute support)
-    * @param device GPU device index
-    */
-    void useGPU(uint32_t device=0);
+     * @brief Use GPU for processing (needs to be compiled with Kompute support)
+     * @param device GPU device index
+     */
+    void useGPU(uint32_t device = 0);
     /**
-    * @brief Print available GPU devices
-    */
+     * @brief Print available GPU devices
+     */
     void printDevices();
     void buildInternal() override;
+
    private:
     class Impl;
     Pimpl<Impl> pimpl;

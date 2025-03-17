@@ -1,13 +1,12 @@
 #pragma once
 #define SOPHUS_USE_BASIC_LOGGING
 
-#include "depthai/pipeline/Subnode.hpp"
-
 #include "basalt/calibration/calibration.hpp"
 #include "basalt/serialization/headers_serialization.h"
 #include "basalt/spline/se3_spline.h"
 #include "basalt/utils/vio_config.h"
 #include "basalt/vi_estimator/vio_estimator.h"
+#include "depthai/pipeline/Subnode.hpp"
 #include "depthai/pipeline/ThreadedHostNode.hpp"
 #include "depthai/pipeline/datatype/IMUData.hpp"
 #include "depthai/pipeline/datatype/TransformData.hpp"

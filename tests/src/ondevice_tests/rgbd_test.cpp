@@ -17,7 +17,7 @@ TEST_CASE("basic rgbd") {
     if(platform == dai::Platform::RVC4) {
         align = pipeline.create<dai::node::ImageAlign>();
     }
-    
+
     color->build();
 
     left->build(dai::CameraBoardSocket::CAM_B);

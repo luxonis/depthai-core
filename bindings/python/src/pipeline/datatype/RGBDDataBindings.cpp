@@ -1,17 +1,17 @@
 
+#include <memory>
+
 #include "DatatypeBindings.hpp"
 #include "pipeline/CommonBindings.hpp"
-#include <memory>
 
 // depthai
 #include "depthai/pipeline/datatype/RGBDData.hpp"
 
-//pybind
+// pybind
 #include <pybind11/chrono.h>
 #include <pybind11/numpy.h>
 
-void bind_rgbddata(pybind11::module& m, void* pCallstack){
-
+void bind_rgbddata(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
     py::class_<RGBDData, Py<RGBDData>, Buffer, std::shared_ptr<RGBDData>> rgbdData(m, "RGBDData", DOC(dai, RGBDData));
@@ -20,7 +20,7 @@ void bind_rgbddata(pybind11::module& m, void* pCallstack){
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
     // Call the rest of the type defines, then perform the actual bindings
-    Callstack* callstack = (Callstack*) pCallstack;
+    Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
@@ -30,8 +30,7 @@ void bind_rgbddata(pybind11::module& m, void* pCallstack){
     ///////////////////////////////////////////////////////////////////////
 
     // Metadata / raw
-    rgbdData
-        .def(py::init<>())
+    rgbdData.def(py::init<>())
         .def("__repr__", &RGBDData::str)
         .def("getRGBFrame", &RGBDData::getRGBFrame, DOC(dai, RGBDData, getRGBFrame))
         .def("getDepthFrame", &RGBDData::getDepthFrame, DOC(dai, RGBDData, getDepthFrame))
