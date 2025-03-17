@@ -264,13 +264,15 @@ jobs:
     - name: Download Win64 artifacts
       uses: actions/download-artifact@v4
       with:
-        name: 'windows-prebuilt-win64'
+        pattern: windows-prebuilt-win64*
+        merge-multiple: true
         path: depthai-core-${{ steps.tag.outputs.version }}-win64
 
     - name: Download Win32 artifacts
       uses: actions/download-artifact@v4
       with:
-        name: 'windows-prebuilt-win32-no-opencv'
+        pattern: windows-prebuilt-win32-no-opencv*
+        merge-multiple: true
         path: depthai-core-${{ steps.tag.outputs.version }}-win32-no-opencv
 
     - name: Create release assets
