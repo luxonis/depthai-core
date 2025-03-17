@@ -22,7 +22,9 @@ std::shared_ptr<StereoDepth> StereoDepth::build(bool autoCreateCameras, PresetMo
     // First get the default stereo pairs
     auto stereoPairs = device->getAvailableStereoPairs();
     if(stereoPairs.empty()) {
-        throw std::runtime_error("No stereo pairs available, can't auto-create StereoDepth node");
+        auto deviceName = device->getDeviceName();
+        auto boardName = device->readCalibration().getEepromData().boardName;
+        throw std::runtime_error(fmt::format("Device {} ({}) does not have stereo pair available", deviceName, boardName));
     }
     // Take the first stereo pair
     auto stereoPair = stereoPairs[0];
