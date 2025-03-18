@@ -21,8 +21,6 @@ with dai.Pipeline() as pipeline:
         """
         while True:
             message = node.inputs["in"].get()
-            # Or alternatively:
-            # message = node.io["in"].get()
             trigger = node.inputs["trigger"].tryGet()
             if trigger is not None:
                 node.warn("Trigger received!")
@@ -42,7 +40,7 @@ with dai.Pipeline() as pipeline:
     # Connect to device and start pipeline
     ctrl = dai.CameraControl()
     pipeline.start()
-
+    print("To capture an image, press 'c'")
     while pipeline.isRunning():
         img_hd: dai.ImgFrame = downscaled_res_q.get()
         frame = img_hd.getCvFrame()
