@@ -137,6 +137,12 @@ dai_set_example_test_labels(camera_multiple_outputs ondevice rvc2_all rvc4 ci)
 add_python_example(camera_raw Camera/camera_raw.py)
 dai_set_example_test_labels(camera_raw ondevice rvc2_all rvc4 ci)
 
+add_python_example(camera_roi_exposure_focus Camera/camera_roi_exposure_focus.py)
+dai_set_example_test_labels(camera_roi_exposure_focus ondevice rvc2_all rvc4 ci)
+
+add_python_example(camera_still_max_res Camera/camera_still_max_res.py)
+dai_set_example_test_labels(camera_still_max_res ondevice rvc2_all rvc4 ci)
+
 add_python_example(camera_max_resolution Camera/camera_max_resolution.py)
 dai_set_example_test_labels(camera_max_resolution ondevice rvc2_all rvc4 ci)
 
