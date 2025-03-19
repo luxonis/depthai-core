@@ -14,6 +14,7 @@ target_link_libraries(utility ${OpenCV_LIBS})
 set(test_env
     # Misc
     "UBSAN_OPTIONS=halt_on_error=1"
+    "RUNNING_AS_TEST=1"
     # DepthAI
     "DEPTHAI_SEARCH_TIMEOUT=15000"
     "DEPTHAI_RECONNECT_TIMEOUT=0"
@@ -249,6 +250,13 @@ private_data(
     LOCATION nn_archive_yolo_v6_tar_xz
 )
 
+private_data(
+    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/recording.tar"
+    SHA1 "b1e31a26c83dc1e315132c9226097da4b1a5cbb7"
+    FILE "recording.tar"
+    LOCATION recording_path
+)
+
 # Camera
 dai_add_example(camera Camera/camera_output.cpp ON OFF)
 dai_set_example_test_labels(camera ondevice rvc2_all rvc4 ci)
@@ -259,25 +267,37 @@ dai_add_example(camera_multiple_outputs Camera/camera_multiple_outputs.cpp OFF O
 dai_add_example(image_manip_host HostNodes/image_manip_host.cpp OFF OFF)
 dai_add_example(image_manip_color_conversion_host HostNodes/image_manip_color_conversion.cpp OFF OFF)
 dai_add_example(image_manip_v2_resize ImageManip/image_manip_v2_resize.cpp OFF OFF)
-dai_add_example(image_manip_v2_mod ImageManip/image_manip_v2_mod.cpp OFF OFF)
+dai_add_example(image_manip_v2_multi_ops ImageManip/image_manip_v2_multi_ops.cpp OFF OFF)
 dai_add_example(image_manip_color_conversion ImageManip/image_manip_color_conversion.cpp OFF OFF)
 
 # Record
-dai_add_example(record_encoded_h264 RVC2/Record/record_encoded_h264.cpp OFF OFF)
-dai_add_example(record_encoded_mjpeg RVC2/Record/record_encoded_mjpeg.cpp OFF OFF)
-dai_add_example(record_raw_color RVC2/Record/record_raw_color.cpp OFF OFF)
-dai_add_example(record_raw_gray RVC2/Record/record_raw_gray.cpp OFF OFF)
-dai_add_example(record_imu RVC2/Record/record_imu.cpp OFF OFF)
+dai_add_example(record_encoded Record/record_encoded.cpp ON OFF)
+dai_add_example(record_raw Record/record_raw.cpp ON OFF)
+dai_add_example(record_imu Record/record_imu.cpp ON OFF)
+dai_add_example(holistic_record Record/holistic_record.cpp ON OFF)
 
 # Replay
-dai_add_example(replay_video_meta RVC2/Replay/replay_video_meta.cpp OFF OFF)
-dai_add_example(replay_imu RVC2/Replay/replay_imu.cpp OFF OFF)
+dai_add_example(replay_video_meta Replay/replay_video_meta.cpp OFF OFF)
+dai_add_example(replay_video Replay/replay_video.cpp OFF OFF)
+dai_add_example(replay_imu Replay/replay_imu.cpp OFF OFF)
+dai_add_example(holistic_replay Replay/holistic_replay.cpp ON OFF)
+target_compile_definitions(holistic_replay PRIVATE RECORDING_PATH="${recording_path}")
+
+dai_add_example(detection_network_replay DetectionNetwork/detection_network_replay.cpp ON OFF)
+target_compile_definitions(detection_network_replay PRIVATE VIDEO_PATH="${construction_vest}")
+
+
+# StereoDepth
+dai_add_example(depth_preview StereoDepth/depth_preview.cpp OFF OFF)
+dai_add_example(stereo StereoDepth/stereo.cpp ON OFF)
+dai_set_example_test_labels(stereo ondevice rvc2_all rvc4 ci)
 
 # Thermal
 dai_add_example(thermal RVC2/Thermal/thermal.cpp OFF OFF)
 
 # Host nodes
 dai_add_example(rgb_video RVC2/ColorCamera/rgb_video.cpp OFF OFF)
+dai_add_example(rgb_video_camera RVC2/Camera/rgb_video_camera.cpp OFF OFF)
 dai_add_example(host_node HostNodes/host_node.cpp OFF OFF)
 dai_add_example(threaded_host_node HostNodes/threaded_host_node.cpp OFF OFF)
 
@@ -286,7 +306,7 @@ dai_add_example(model_zoo RVC2/ModelZoo/model_zoo.cpp OFF OFF)
 
 # Events Manager
 if(DEPTHAI_ENABLE_EVENTS_MANAGER)
-    dai_add_example(events HostNodes/events.cpp ON OFF)
+    dai_add_example(events Events/events.cpp ON OFF)
 endif()
 # Image Align
 dai_add_example(image_align RVC2/ImageAlign/image_align.cpp OFF OFF)

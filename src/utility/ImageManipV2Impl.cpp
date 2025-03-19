@@ -393,6 +393,9 @@ dai::impl::FrameSpecs dai::impl::getSrcFrameSpecs(dai::ImgFrame::Specs srcSpecs)
         case dai::ImgFrame::Type::GRAY8:
             specs.p1Stride = srcSpecs.stride >= specs.width ? srcSpecs.stride : specs.width;
             break;
+        case ImgFrame::Type::RAW16:
+            specs.p1Stride = srcSpecs.stride >= specs.width * 2 ? srcSpecs.stride : specs.width * 2;
+            break;
         case ImgFrame::Type::YUV422i:
         case ImgFrame::Type::YUV444p:
         case ImgFrame::Type::YUV422p:
@@ -402,7 +405,6 @@ dai::impl::FrameSpecs dai::impl::getSrcFrameSpecs(dai::ImgFrame::Specs srcSpecs)
         case ImgFrame::Type::LUT2:
         case ImgFrame::Type::LUT4:
         case ImgFrame::Type::LUT16:
-        case ImgFrame::Type::RAW16:
         case ImgFrame::Type::RAW14:
         case ImgFrame::Type::RAW12:
         case ImgFrame::Type::RAW10:
@@ -434,37 +436,40 @@ dai::impl::FrameSpecs dai::impl::getCcDstFrameSpecs(FrameSpecs srcSpecs, dai::Im
     switch(to) {
         case dai::ImgFrame::Type::RGB888p:
         case dai::ImgFrame::Type::BGR888p:
-            specs.p1Stride = ALIGN_UP(specs.width, 8);
+            specs.p1Stride = ALIGN_UP(specs.width, DEPTHAI_STRIDE_ALIGNMENT);
             specs.p2Stride = specs.p1Stride;
             specs.p3Stride = specs.p1Stride;
-            specs.p2Offset = specs.p1Offset + ALIGN_UP(specs.p1Stride * specs.height, PLANE_ALIGNMENT);
-            specs.p3Offset = specs.p2Offset + ALIGN_UP(specs.p1Stride * specs.height, PLANE_ALIGNMENT);
+            specs.p2Offset = specs.p1Offset + ALIGN_UP(specs.p1Stride * specs.height, DEPTHAI_PLANE_ALIGNMENT);
+            specs.p3Offset = specs.p2Offset + ALIGN_UP(specs.p1Stride * specs.height, DEPTHAI_PLANE_ALIGNMENT);
             break;
         case dai::ImgFrame::Type::RGB888i:
         case dai::ImgFrame::Type::BGR888i:
-            specs.p1Stride = ALIGN_UP(specs.width * 3, 8);
+            specs.p1Stride = ALIGN_UP(specs.width * 3, DEPTHAI_STRIDE_ALIGNMENT);
             specs.p2Stride = specs.p1Stride;
             specs.p3Stride = specs.p1Stride;
             specs.p2Offset = specs.p1Offset;
             specs.p3Offset = specs.p1Offset;
             break;
         case dai::ImgFrame::Type::NV12:
-            specs.p1Stride = ALIGN_UP(specs.width, 8);
+            specs.p1Stride = ALIGN_UP(specs.width, DEPTHAI_STRIDE_ALIGNMENT);
             specs.p2Stride = specs.p1Stride;
-            specs.p2Offset = specs.p1Offset + ALIGN_UP(specs.p1Stride * specs.height, PLANE_ALIGNMENT);
+            specs.p2Offset = specs.p1Offset + ALIGN_UP(specs.p1Stride * specs.height, DEPTHAI_PLANE_ALIGNMENT);
             specs.p3Offset = specs.p2Offset;
             specs.p3Stride = 0;
             break;
         case dai::ImgFrame::Type::YUV420p:
-            specs.p1Stride = ALIGN_UP(specs.width, 8);
-            specs.p2Stride = ALIGN_UP(specs.width / 2, 8);
-            specs.p3Stride = ALIGN_UP(specs.width / 2, 8);
-            specs.p2Offset = specs.p1Offset + ALIGN_UP(specs.p1Stride * specs.height, PLANE_ALIGNMENT);
-            specs.p3Offset = specs.p2Offset + ALIGN_UP(specs.p2Stride * (specs.height / 2), PLANE_ALIGNMENT);
+            specs.p1Stride = ALIGN_UP(specs.width, DEPTHAI_STRIDE_ALIGNMENT);
+            specs.p2Stride = ALIGN_UP(specs.width / 2, DEPTHAI_STRIDE_ALIGNMENT);
+            specs.p3Stride = ALIGN_UP(specs.width / 2, DEPTHAI_STRIDE_ALIGNMENT);
+            specs.p2Offset = specs.p1Offset + ALIGN_UP(specs.p1Stride * specs.height, DEPTHAI_PLANE_ALIGNMENT);
+            specs.p3Offset = specs.p2Offset + ALIGN_UP(specs.p2Stride * (specs.height / 2), DEPTHAI_PLANE_ALIGNMENT);
             break;
         case dai::ImgFrame::Type::RAW8:
         case dai::ImgFrame::Type::GRAY8:
-            specs.p1Stride = ALIGN_UP(specs.width, 8);
+            specs.p1Stride = ALIGN_UP(specs.width, DEPTHAI_STRIDE_ALIGNMENT);
+            break;
+        case ImgFrame::Type::RAW16:
+            specs.p1Stride = ALIGN_UP(specs.width * 2, DEPTHAI_STRIDE_ALIGNMENT);
             break;
         case ImgFrame::Type::YUV422i:
         case ImgFrame::Type::YUV444p:
@@ -475,7 +480,6 @@ dai::impl::FrameSpecs dai::impl::getCcDstFrameSpecs(FrameSpecs srcSpecs, dai::Im
         case ImgFrame::Type::LUT2:
         case ImgFrame::Type::LUT4:
         case ImgFrame::Type::LUT16:
-        case ImgFrame::Type::RAW16:
         case ImgFrame::Type::RAW14:
         case ImgFrame::Type::RAW12:
         case ImgFrame::Type::RAW10:
@@ -498,15 +502,17 @@ dai::impl::FrameSpecs dai::impl::getCcDstFrameSpecs(FrameSpecs srcSpecs, dai::Im
     return specs;
 }
 
-bool dai::impl::isTypeSupportedL(dai::ImgFrame::Type type) {
+bool dai::impl::isTypeSupported(dai::ImgFrame::Type type) {
     using ImgType = dai::ImgFrame::Type;
+#if defined(DEPTHAI_HAVE_FASTCV_SUPPORT) && DEPTHAI_IMAGEMANIPV2_FASTCV
     return type == ImgType::GRAY8 || type == ImgType::RAW8 || type == ImgType::RGB888i || type == ImgType::BGR888i;
-}
-
-bool dai::impl::isTypeSupportedC(dai::ImgFrame::Type type) {
-    using ImgType = dai::ImgFrame::Type;
+#elif defined(DEPTHAI_HAVE_OPENCV_SUPPORT) && DEPTHAI_IMAGEMANIPV2_OPENCV
+    return type == ImgType::GRAY8 || type == ImgType::RAW8 || type == ImgType::RAW16 || type == ImgType::RGB888i || type == ImgType::BGR888i
+           || type == ImgType::RGB888p || type == ImgType::BGR888p || type == ImgType::YUV420p || type == ImgType::NV12;
+#else
     return type == ImgType::GRAY8 || type == ImgType::RAW8 || type == ImgType::RGB888i || type == ImgType::BGR888i || type == ImgType::RGB888p
            || type == ImgType::BGR888p || type == ImgType::YUV420p || type == ImgType::NV12;
+#endif
 }
 
 bool dai::impl::getFrameTypeInfo(dai::ImgFrame::Type outFrameType, int& outNumPlanes, float& outBpp) {
@@ -736,7 +742,13 @@ std::array<std::array<float, 3>, 3> dai::impl::getResizeMat(Resize o, float widt
     return {{{o.width, 0, 0}, {0, o.height, 0}, {0, 0, 1}}};
 }
 
-void dai::impl::getOutputSizeFromCorners(const std::array<std::array<float, 2>, 4>& corners, const bool center, const std::array<std::array<float, 3>, 3> transformInv, const uint32_t srcWidth, const uint32_t srcHeight, uint32_t& outputWidth, uint32_t& outputHeight) {
+void dai::impl::getOutputSizeFromCorners(const std::array<std::array<float, 2>, 4>& corners,
+                                         const bool center,
+                                         const std::array<std::array<float, 3>, 3> transformInv,
+                                         const uint32_t srcWidth,
+                                         const uint32_t srcHeight,
+                                         uint32_t& outputWidth,
+                                         uint32_t& outputHeight) {
     auto [dstMinx, dstMaxx, dstMiny, dstMaxy] = dai::impl::getOuterRect(std::vector(corners.begin(), corners.end()));
 
     float innerMinx = ceilf(dstMinx);
@@ -750,8 +762,14 @@ void dai::impl::getOutputSizeFromCorners(const std::array<std::array<float, 2>, 
 
     std::array<std::array<float, 2>, 4> innerCorners = {{{innerMinx, innerMiny}, {innerMaxx, innerMiny}, {innerMaxx, innerMaxy}, {innerMinx, innerMaxy}}};
     std::array<std::array<float, 2>, 4> outerCorners = {{{outerMinx, outerMiny}, {outerMaxx, outerMiny}, {outerMaxx, outerMaxy}, {outerMinx, outerMaxy}}};
-    std::array<std::array<float, 2>, 4> srcInnerCorners = {{matvecmul(transformInv, innerCorners[0]), matvecmul(transformInv, innerCorners[1]), matvecmul(transformInv, innerCorners[2]), matvecmul(transformInv, innerCorners[3])}};
-    std::array<std::array<float, 2>, 4> srcOuterCorners = {{matvecmul(transformInv, outerCorners[0]), matvecmul(transformInv, outerCorners[1]), matvecmul(transformInv, outerCorners[2]), matvecmul(transformInv, outerCorners[3])}};
+    std::array<std::array<float, 2>, 4> srcInnerCorners = {{matvecmul(transformInv, innerCorners[0]),
+                                                            matvecmul(transformInv, innerCorners[1]),
+                                                            matvecmul(transformInv, innerCorners[2]),
+                                                            matvecmul(transformInv, innerCorners[3])}};
+    std::array<std::array<float, 2>, 4> srcOuterCorners = {{matvecmul(transformInv, outerCorners[0]),
+                                                            matvecmul(transformInv, outerCorners[1]),
+                                                            matvecmul(transformInv, outerCorners[2]),
+                                                            matvecmul(transformInv, outerCorners[3])}};
 
     auto [srcInnerMinx, srcInnerMaxx, srcInnerMiny, srcInnerMaxy] = dai::impl::getOuterRect(std::vector(srcInnerCorners.begin(), srcInnerCorners.end()));
     auto [srcOuterMinx, srcOuterMaxx, srcOuterMiny, srcOuterMaxy] = dai::impl::getOuterRect(std::vector(srcOuterCorners.begin(), srcOuterCorners.end()));
@@ -874,7 +892,9 @@ void dai::impl::getTransformImpl(const ManipOp& op,
 #endif
                        }
                    },
-                   [&](Affine o) { mat = {{{o.matrix[0], o.matrix[1], 0}, {o.matrix[2], o.matrix[3], 0}, {0, 0, 1}}}; },
+                   [&](Affine o) {
+                       mat = {{{o.matrix[0], o.matrix[1], 0}, {o.matrix[2], o.matrix[3], 0}, {0, 0, 1}}};
+                   },
                    [&](Perspective o) {
                        mat = {{{o.matrix[0], o.matrix[1], o.matrix[2]}, {o.matrix[3], o.matrix[4], o.matrix[5]}, {o.matrix[6], o.matrix[7], o.matrix[8]}}};
                    },
@@ -976,18 +996,22 @@ void dai::impl::printSpecs(spdlog::async_logger& logger, FrameSpecs specs) {
 size_t dai::impl::getAlignedOutputFrameSize(ImgFrame::Type type, size_t width, size_t height) {
     switch(type) {
         case ImgFrame::Type::YUV420p:
-            return ALIGN_UP(ALIGN_UP(width, 8) * height, PLANE_ALIGNMENT) + ALIGN_UP(ALIGN_UP(width / 2, 8) * (height / 2), PLANE_ALIGNMENT)
-                   + ALIGN_UP(width / 2, 8) * (height / 2);
+            return ALIGN_UP(ALIGN_UP(width, DEPTHAI_STRIDE_ALIGNMENT) * height, DEPTHAI_PLANE_ALIGNMENT)
+                   + ALIGN_UP(ALIGN_UP(width / 2, DEPTHAI_STRIDE_ALIGNMENT) * (height / 2), DEPTHAI_PLANE_ALIGNMENT)
+                   + ALIGN_UP(width / 2, DEPTHAI_STRIDE_ALIGNMENT) * (height / 2);
         case ImgFrame::Type::RGB888p:
         case ImgFrame::Type::BGR888p:
-            return 2 * ALIGN_UP(ALIGN_UP(width, 8) * height, PLANE_ALIGNMENT) + ALIGN_UP(width, 8) * height;
+            return 2 * ALIGN_UP(ALIGN_UP(width, DEPTHAI_STRIDE_ALIGNMENT) * height, DEPTHAI_PLANE_ALIGNMENT)
+                   + ALIGN_UP(width, DEPTHAI_STRIDE_ALIGNMENT) * height;
         case ImgFrame::Type::RGB888i:
         case ImgFrame::Type::BGR888i:
-            return ALIGN_UP(3 * width, 8) * height;
+            return ALIGN_UP(3 * width, DEPTHAI_STRIDE_ALIGNMENT) * height;
         case ImgFrame::Type::NV12:
-            return ALIGN_UP(ALIGN_UP(width, 8) * height, PLANE_ALIGNMENT) + ALIGN_UP(width, 8) * (height / 2);
+            return ALIGN_UP(ALIGN_UP(width, DEPTHAI_STRIDE_ALIGNMENT) * height, DEPTHAI_PLANE_ALIGNMENT)
+                   + ALIGN_UP(width, DEPTHAI_STRIDE_ALIGNMENT) * (height / 2);
         case ImgFrame::Type::RAW8:
         case ImgFrame::Type::GRAY8:
+            return ALIGN_UP(width, DEPTHAI_STRIDE_ALIGNMENT) * height;
         case ImgFrame::Type::YUV422i:
         case ImgFrame::Type::YUV444p:
         case ImgFrame::Type::YUV422p:

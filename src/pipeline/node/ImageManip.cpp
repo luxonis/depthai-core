@@ -74,7 +74,7 @@ void ImageManip::setWarpMesh(const float* meshData, int numMeshPoints, int width
 
     // Align stride to 16B
     constexpr auto ALIGNMENT = 16;
-    size_t meshStride = ((size_t)((sizeof(Point2f) * width)) + (ALIGNMENT - 1)) & ~(ALIGNMENT - 1);
+    size_t meshStride = ((size_t)((sizeof(float) * 2 * width)) + (ALIGNMENT - 1)) & ~(ALIGNMENT - 1);
     // Specify final mesh size
     size_t meshSize = meshStride * height;
 
@@ -88,12 +88,12 @@ void ImageManip::setWarpMesh(const float* meshData, int numMeshPoints, int width
             size_t inputMeshIndex = (i * width + j) * 2;  // 2 float values per point
 
             // get output offset
-            size_t outputMeshOffset = (meshStride * i) + (j * sizeof(Point2f));
-            auto& point = reinterpret_cast<Point2f&>(asset.data.data()[outputMeshOffset]);
+            size_t outputMeshOffset = (meshStride * i) + (j * sizeof(float) * 2);
+            auto& point = reinterpret_cast<std::pair<float, float>&>(asset.data.data()[outputMeshOffset]);
 
             // Asign reversed mesh coordinates (HW specified)
-            point.x = meshData[inputMeshIndex + 1];
-            point.y = meshData[inputMeshIndex + 0];
+            point.first = meshData[inputMeshIndex + 1];
+            point.second = meshData[inputMeshIndex + 0];
         }
     }
 
@@ -103,7 +103,13 @@ void ImageManip::setWarpMesh(const float* meshData, int numMeshPoints, int width
 }
 
 void ImageManip::setWarpMesh(const std::vector<Point2f>& meshData, int width, int height) {
-    setWarpMesh(reinterpret_cast<const float*>(meshData.data()), static_cast<int>(meshData.size()), width, height);
+    // Convert to float array
+    std::vector<float> meshDataFloat(meshData.size() * 2);
+    for(size_t i = 0; i < meshData.size(); i++) {
+        meshDataFloat[i * 2 + 0] = meshData[i].x;
+        meshDataFloat[i * 2 + 1] = meshData[i].y;
+    }
+    setWarpMesh(reinterpret_cast<const float*>(meshDataFloat.data()), static_cast<int>(meshData.size()), width, height);
 }
 
 void ImageManip::setWarpMesh(const std::vector<std::pair<float, float>>& meshData, int width, int height) {

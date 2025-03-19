@@ -29,8 +29,10 @@ class DetectionNetwork : public DeviceNodeGroup {
     }
 
     std::shared_ptr<DetectionNetwork> build(Node::Output& input, const NNArchive& nnArchive);
-    std::shared_ptr<DetectionNetwork> build(const std::shared_ptr<Camera>& input, dai::NNModelDescription modelDesc, float fps = 30.0f);
-    std::shared_ptr<DetectionNetwork> build(const std::shared_ptr<Camera>& input, dai::NNArchive nnArchive, float fps = 30.0f);
+    std::shared_ptr<DetectionNetwork> build(const std::shared_ptr<Camera>& input, NNModelDescription modelDesc, std::optional<float> fps = std::nullopt);
+    std::shared_ptr<DetectionNetwork> build(const std::shared_ptr<Camera>& input, const NNArchive& nnArchive, std::optional<float> fps = std::nullopt);
+    std::shared_ptr<DetectionNetwork> build(const std::shared_ptr<ReplayVideo>& input, NNModelDescription modelDesc, std::optional<float> fps = std::nullopt);
+    std::shared_ptr<DetectionNetwork> build(const std::shared_ptr<ReplayVideo>& input, const NNArchive& nnArchive, std::optional<float> fps = std::nullopt);
 
     Subnode<NeuralNetwork> neuralNetwork{*this, "neuralNetwork"};
     Subnode<DetectionParser> detectionParser{*this, "detectionParser"};
@@ -184,6 +186,7 @@ class DetectionNetwork : public DeviceNodeGroup {
     void setNNArchiveBlob(const NNArchive& nnArchive);
     void setNNArchiveSuperblob(const NNArchive& nnArchive, int numShaves);
     void setNNArchiveOther(const NNArchive& nnArchive);
+    NNArchive createNNArchive(NNModelDescription& modelDesc);
 };
 
 /**

@@ -35,8 +35,23 @@ void SpatialDetectionNetwork::buildInternal() {
 
 std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build(const std::shared_ptr<Camera>& camera,
                                                                         const std::shared_ptr<StereoDepth>& stereo,
-                                                                        dai::NNModelDescription modelDesc,
-                                                                        float fps) {
+                                                                        NNModelDescription modelDesc,
+                                                                        std::optional<float> fps) {
+    auto nnArchive = createNNArchive(modelDesc);
+    return build(camera, stereo, nnArchive, fps);
+}
+
+std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build(const std::shared_ptr<Camera>& camera,
+                                                                        const std::shared_ptr<StereoDepth>& stereo,
+                                                                        const NNArchive& nnArchive,
+                                                                        std::optional<float> fps) {
+    neuralNetwork->build(camera, nnArchive, fps);
+    detectionParser->setNNArchive(nnArchive);
+    alignDepth(stereo, camera);
+    return std::static_pointer_cast<SpatialDetectionNetwork>(shared_from_this());
+}
+
+NNArchive SpatialDetectionNetwork::createNNArchive(NNModelDescription& modelDesc) {
     // Download model from zoo
     if(modelDesc.platform.empty()) {
         DAI_CHECK(getDevice() != nullptr, "Device is not set.");
@@ -47,24 +62,19 @@ std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build(const st
     DAI_CHECK(modelType == dai::model::ModelType::NNARCHIVE,
               "Model from zoo is not NNArchive - it needs to be a NNArchive to use build(Camera, NNModelDescription, float) method");
     auto nnArchive = dai::NNArchive(path);
-    return build(camera, stereo, nnArchive, fps);
+    return nnArchive;
 }
 
-std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build(const std::shared_ptr<Camera>& camera,
-                                                                        const std::shared_ptr<StereoDepth>& stereo,
-                                                                        dai::NNArchive nnArchive,
-                                                                        float fps) {
-    neuralNetwork->build(camera, nnArchive, fps);
-    detectionParser->setNNArchive(nnArchive);
+void SpatialDetectionNetwork::alignDepth(const std::shared_ptr<StereoDepth>& stereo, const std::shared_ptr<Camera>& camera) {
     auto device = getDevice();
     if(device) {
         auto platform = device->getPlatform();
         switch(platform) {
             case Platform::RVC4: {
-                Subnode<ImageAlign>& _depthAlign = *depthAlign;
-                stereo->depth.link(_depthAlign->input);
-                neuralNetwork->passthrough.link(_depthAlign->inputAlignTo);
-                _depthAlign->outputAligned.link(inputDepth);
+                Subnode<ImageAlign>& align = *depthAlign;
+                stereo->depth.link(align->input);
+                neuralNetwork->passthrough.link(align->inputAlignTo);
+                align->outputAligned.link(inputDepth);
             } break;
             case Platform::RVC2:
                 stereo->depth.link(inputDepth);
@@ -80,9 +90,7 @@ std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build(const st
         stereo->depth.link(inputDepth);
         stereo->setDepthAlign(camera->getBoardSocket());
     }
-    return std::static_pointer_cast<SpatialDetectionNetwork>(shared_from_this());
 }
-
 // -------------------------------------------------------------------
 // Neural Network API
 // -------------------------------------------------------------------

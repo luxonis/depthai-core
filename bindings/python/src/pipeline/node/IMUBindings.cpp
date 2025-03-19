@@ -1,12 +1,10 @@
-#include "NodeBindings.hpp"
 #include "Common.hpp"
-
-#include "depthai/pipeline/Pipeline.hpp"
+#include "NodeBindings.hpp"
 #include "depthai/pipeline/Node.hpp"
+#include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/node/IMU.hpp"
 
-void bind_imu(pybind11::module& m, void* pCallstack){
-
+void bind_imu(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::node;
 
@@ -20,7 +18,7 @@ void bind_imu(pybind11::module& m, void* pCallstack){
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
     // Call the rest of the type defines, then perform the actual bindings
-    Callstack* callstack = (Callstack*) pCallstack;
+    Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
@@ -30,8 +28,7 @@ void bind_imu(pybind11::module& m, void* pCallstack){
     ///////////////////////////////////////////////////////////////////////
 
     // Properties
-    imuSensor
-        .value("ACCELEROMETER_RAW", IMUSensor::ACCELEROMETER_RAW, DOC(dai, IMUSensor, ACCELEROMETER_RAW))
+    imuSensor.value("ACCELEROMETER_RAW", IMUSensor::ACCELEROMETER_RAW, DOC(dai, IMUSensor, ACCELEROMETER_RAW))
         .value("ACCELEROMETER", IMUSensor::ACCELEROMETER, DOC(dai, IMUSensor, ACCELEROMETER))
         .value("LINEAR_ACCELERATION", IMUSensor::LINEAR_ACCELERATION, DOC(dai, IMUSensor, LINEAR_ACCELERATION))
         .value("GRAVITY", IMUSensor::GRAVITY, DOC(dai, IMUSensor, GRAVITY))
@@ -45,39 +42,49 @@ void bind_imu(pybind11::module& m, void* pCallstack){
         .value("GAME_ROTATION_VECTOR", IMUSensor::GAME_ROTATION_VECTOR, DOC(dai, IMUSensor, GAME_ROTATION_VECTOR))
         .value("GEOMAGNETIC_ROTATION_VECTOR", IMUSensor::GEOMAGNETIC_ROTATION_VECTOR, DOC(dai, IMUSensor, GEOMAGNETIC_ROTATION_VECTOR))
         .value("ARVR_STABILIZED_ROTATION_VECTOR", IMUSensor::ARVR_STABILIZED_ROTATION_VECTOR, DOC(dai, IMUSensor, ARVR_STABILIZED_ROTATION_VECTOR))
-        .value("ARVR_STABILIZED_GAME_ROTATION_VECTOR", IMUSensor::ARVR_STABILIZED_GAME_ROTATION_VECTOR, DOC(dai, IMUSensor, ARVR_STABILIZED_GAME_ROTATION_VECTOR))
+        .value(
+            "ARVR_STABILIZED_GAME_ROTATION_VECTOR", IMUSensor::ARVR_STABILIZED_GAME_ROTATION_VECTOR, DOC(dai, IMUSensor, ARVR_STABILIZED_GAME_ROTATION_VECTOR))
         // .value("GYRO_INTEGRATED_ROTATION_VECTOR", IMUSensor::GYRO_INTEGRATED_ROTATION_VECTOR)
-    ;
+        ;
 
-    imuSensorConfig
-        .def(py::init<>())
+    imuSensorConfig.def(py::init<>())
         .def_readwrite("sensitivityEnabled", &IMUSensorConfig::sensitivityEnabled)
         .def_readwrite("sensitivityRelative", &IMUSensorConfig::sensitivityRelative)
         .def_readwrite("changeSensitivity", &IMUSensorConfig::changeSensitivity)
         .def_readwrite("reportRate", &IMUSensorConfig::reportRate)
-        .def_readwrite("sensorId", &IMUSensorConfig::sensorId)
-        ;
+        .def_readwrite("sensorId", &IMUSensorConfig::sensorId);
 
-    imuProperties
-        .def_readwrite("imuSensors", &IMUProperties::imuSensors, DOC(dai, IMUProperties, imuSensors))
+    imuProperties.def_readwrite("imuSensors", &IMUProperties::imuSensors, DOC(dai, IMUProperties, imuSensors))
         .def_readwrite("batchReportThreshold", &IMUProperties::batchReportThreshold, DOC(dai, IMUProperties, batchReportThreshold))
         .def_readwrite("maxBatchReports", &IMUProperties::maxBatchReports, DOC(dai, IMUProperties, maxBatchReports))
-        .def_readwrite("enableFirmwareUpdate", &IMUProperties::enableFirmwareUpdate, DOC(dai, IMUProperties, enableFirmwareUpdate))
-    ;
+        .def_readwrite("enableFirmwareUpdate", &IMUProperties::enableFirmwareUpdate, DOC(dai, IMUProperties, enableFirmwareUpdate));
 
     // Node
     imu
         .def_readonly("out", &IMU::out, DOC(dai, node, IMU, out))
-        .def("enableIMUSensor", static_cast<void(IMU::*)(IMUSensorConfig imuSensor)>(&IMU::enableIMUSensor), py::arg("sensorConfig"), DOC(dai, node, IMU, enableIMUSensor))
-        .def("enableIMUSensor", static_cast<void(IMU::*)(const std::vector<IMUSensorConfig>& imuSensors)>(&IMU::enableIMUSensor), py::arg("sensorConfigs"), DOC(dai, node, IMU, enableIMUSensor, 2))
-        .def("enableIMUSensor", static_cast<void(IMU::*)(IMUSensor sensor, uint32_t reportRate)>(&IMU::enableIMUSensor), py::arg("sensor"), py::arg("reportRate"), DOC(dai, node, IMU, enableIMUSensor, 3))
-        .def("enableIMUSensor", static_cast<void(IMU::*)(const std::vector<IMUSensor>& sensors, uint32_t reportRate)>(&IMU::enableIMUSensor), py::arg("sensors"), py::arg("reportRate"), DOC(dai, node, IMU, enableIMUSensor, 4))
+        .def_readonly("mockIn", &IMU::mockIn, DOC(dai, node, IMU, mockIn))
+        .def("enableIMUSensor",
+             static_cast<void (IMU::*)(IMUSensorConfig imuSensor)>(&IMU::enableIMUSensor),
+             py::arg("sensorConfig"),
+             DOC(dai, node, IMU, enableIMUSensor))
+        .def("enableIMUSensor",
+             static_cast<void (IMU::*)(const std::vector<IMUSensorConfig>& imuSensors)>(&IMU::enableIMUSensor),
+             py::arg("sensorConfigs"),
+             DOC(dai, node, IMU, enableIMUSensor, 2))
+        .def("enableIMUSensor",
+             static_cast<void (IMU::*)(IMUSensor sensor, uint32_t reportRate)>(&IMU::enableIMUSensor),
+             py::arg("sensor"),
+             py::arg("reportRate"),
+             DOC(dai, node, IMU, enableIMUSensor, 3))
+        .def("enableIMUSensor",
+             static_cast<void (IMU::*)(const std::vector<IMUSensor>& sensors, uint32_t reportRate)>(&IMU::enableIMUSensor),
+             py::arg("sensors"),
+             py::arg("reportRate"),
+             DOC(dai, node, IMU, enableIMUSensor, 4))
         .def("setBatchReportThreshold", &IMU::setBatchReportThreshold, py::arg("batchReportThreshold"), DOC(dai, node, IMU, setBatchReportThreshold))
         .def("getBatchReportThreshold", &IMU::getBatchReportThreshold, DOC(dai, node, IMU, getBatchReportThreshold))
         .def("setMaxBatchReports", &IMU::setMaxBatchReports, py::arg("maxBatchReports"), DOC(dai, node, IMU, setMaxBatchReports))
         .def("getMaxBatchReports", &IMU::getMaxBatchReports, DOC(dai, node, IMU, getMaxBatchReports))
-        .def("enableFirmwareUpdate", &IMU::enableFirmwareUpdate, DOC(dai, node, IMU, enableFirmwareUpdate))
-        ;
+        .def("enableFirmwareUpdate", &IMU::enableFirmwareUpdate, DOC(dai, node, IMU, enableFirmwareUpdate));
     daiNodeModule.attr("IMU").attr("Properties") = imuProperties;
-
 }

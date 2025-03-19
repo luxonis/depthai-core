@@ -5,10 +5,10 @@
 #include "depthai/utility/Path.hpp"
 
 #if FMT_VERSION >= 100000
-#include <spdlog/fmt/ostr.h>
+    #include <spdlog/fmt/ostr.h>
 
-#include "depthai/common/CameraBoardSocket.hpp"
-#include "pipeline/datatype/DatatypeEnum.hpp"
+    #include "depthai/common/CameraBoardSocket.hpp"
+    #include "pipeline/datatype/DatatypeEnum.hpp"
 #endif
 
 namespace dai {
@@ -28,15 +28,15 @@ struct fmt::formatter<dai::Path> : formatter<std::string> {
     auto format(const dai::Path& p, FormatContext& ctx) -> decltype(ctx.out()) {
 #endif
         std::string output;
-        try {
-            output = p.string();
-        } catch(const std::exception&) {
-            output = dai::utility::path_convert_err;
-        }
-        return formatter<std::string>::format(output, ctx);
+    try {
+        output = p.string();
+    } catch(const std::exception&) {
+        output = dai::utility::path_convert_err;
     }
-};
-
+    return formatter<std::string>::format(output, ctx);
+}
+}
+;
 
 #if FMT_VERSION >= 100000
 template <>

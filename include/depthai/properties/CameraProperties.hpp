@@ -119,9 +119,14 @@ struct CameraProperties : PropertiesSerializable<Properties, CameraProperties> {
     int32_t mockIspHeight = AUTO;
 
     /**
+     * Select the mock isp fps. Overrides fps if mockIsp is connected.
+     */
+    float mockIspFps = AUTO;
+
+    /**
      * Camera sensor FPS
      */
-    float fps = 30.0;
+    float fps = AUTO;
 
     /**
      * Isp 3A rate (auto focus, auto exposure, auto white balance, camera controls etc.).

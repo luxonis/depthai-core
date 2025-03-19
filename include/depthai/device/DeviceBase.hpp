@@ -119,11 +119,11 @@ class DeviceBase {
     static std::tuple<bool, DeviceInfo> getFirstAvailableDevice(bool skipInvalidDevice = true);
 
     /**
-     * Finds a device by MX ID. Example: 14442C10D13EABCE00
-     * @param mxId MyraidX ID which uniquely specifies a device
+     * Finds a device by Device ID. Example: 14442C10D13EABCE00
+     * @param deviceId Device ID which uniquely specifies a device
      * @returns Tuple of bool and DeviceInfo. Bool specifies if device was found. DeviceInfo specifies the found device
      */
-    static std::tuple<bool, DeviceInfo> getDeviceByMxId(std::string mxId);
+    static std::tuple<bool, DeviceInfo> getDeviceById(std::string deviceId);
 
     /**
      * Returns all available devices
@@ -427,11 +427,27 @@ class DeviceBase {
     void setLogLevel(LogLevel level);
 
     /**
+     * Sets the logging severity level for a specific node with a given ID.
+     *
+     * @param id Node ID
+     * @param level Logging severity
+     */
+    void setNodeLogLevel(int64_t id, LogLevel level);
+
+    /**
      * Gets current logging severity level of the device.
      *
      * @returns Logging severity level
      */
     LogLevel getLogLevel();
+
+    /**
+     * Gets the logging severity level for a specific node with a given ID.
+     *
+     * @param id Node ID
+     * @returns Logging severity level
+     */
+    LogLevel getNodeLogLevel(int64_t id);
 
     /**
      * Sets the chunk size for splitting device-sent XLink packets. A larger value could
@@ -473,7 +489,14 @@ class DeviceBase {
      *
      * @returns MxId of connected device
      */
-    std::string getMxId();
+    [[deprecated("Use getDeviceId() instead")]] std::string getMxId();
+
+    /**
+     * Get DeviceId of device
+     *
+     * @returns DeviceId of connected device
+     */
+    std::string getDeviceId();
 
     /**
      * Sets logging level which decides printing level to standard output.
@@ -976,6 +999,8 @@ class DeviceBase {
     // Watchdog thread
     std::thread watchdogThread;
     std::atomic<bool> watchdogRunning{true};
+    std::condition_variable watchdogCondVar;
+    std::mutex watchdogMtx;
 
     // Timesync thread
     std::thread timesyncThread;

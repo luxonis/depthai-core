@@ -91,21 +91,20 @@ class RTABMapVIO : public NodeCRTP<ThreadedHostNode, RTABMapVIO> {
    private:
     void run() override;
     void syncCB(std::shared_ptr<dai::ADatatype> data);
-    Input inSync {
-        *this, {"inSync", DEFAULT_GROUP, DEFAULT_BLOCKING, 15, {{{DatatypeEnum::MessageGroup, true}}}}};
-        void imuCB(std::shared_ptr<ADatatype> msg);
-        void initialize(Pipeline & pipeline, int instanceNum, int width, int height);
-        rtabmap::StereoCameraModel model;
-        std::unique_ptr<rtabmap::Odometry> odom;
-        rtabmap::Transform localTransform;
-        rtabmap::Transform imuLocalTransform;
-        std::map<std::string, std::string> rtabParams;
-        std::map<double, cv::Vec3f> accBuffer;
-        std::map<double, cv::Vec3f> gyroBuffer;
-        std::mutex imuMtx;
-        float alphaScaling = -1.0;
-        bool initialized = false;
-        bool useFeatures = true;
-    };
+    Input inSync{*this, {"inSync", DEFAULT_GROUP, DEFAULT_BLOCKING, 15, {{{DatatypeEnum::MessageGroup, true}}}}};
+    void imuCB(std::shared_ptr<ADatatype> msg);
+    void initialize(Pipeline& pipeline, int instanceNum, int width, int height);
+    rtabmap::StereoCameraModel model;
+    std::unique_ptr<rtabmap::Odometry> odom;
+    rtabmap::Transform localTransform;
+    rtabmap::Transform imuLocalTransform;
+    std::map<std::string, std::string> rtabParams;
+    std::map<double, cv::Vec3f> accBuffer;
+    std::map<double, cv::Vec3f> gyroBuffer;
+    std::mutex imuMtx;
+    float alphaScaling = -1.0;
+    bool initialized = false;
+    bool useFeatures = true;
+};
 }  // namespace node
 }  // namespace dai

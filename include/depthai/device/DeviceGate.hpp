@@ -21,19 +21,6 @@ namespace dai {
  */
 class DeviceGate {
    public:
-    // Static API
-    /**
-     * Searches for connected devices in GATE state and returns first available.
-     * @returns Tuple of boolean and DeviceInfo. If found boolean is true and DeviceInfo describes the device. Otherwise false
-     */
-    std::tuple<bool, DeviceInfo> getFirstAvailableDevice();
-
-    /**
-     * Searches for connected devices in GATE state.
-     * @returns Vector of all found devices
-     */
-    std::vector<DeviceInfo> getAllAvailableDevices();
-
     enum class SessionState { NOT_CREATED, CREATED, RUNNING, STOPPED, STOPPING, CRASHED, DESTROYED, ERROR_STATE };
 
     struct CrashDump {

@@ -112,7 +112,7 @@ bool sendLogsToServer(const std::optional<FileWithSHA1>& pipelineData, const std
     multipart.parts.emplace_back("osPlatform", getOSPlatform());
     std::string daiVersion = fmt::format("{}-{}", build::VERSION, build::COMMIT);
     multipart.parts.emplace_back("depthAiVersion", std::move(daiVersion));
-    multipart.parts.emplace_back("productId", deviceInfo.getMxId());
+    multipart.parts.emplace_back("productId", deviceInfo.getDeviceId());
     auto response = cpr::Post(cpr::Url{LOG_ENDPOINT}, multipart);
     if(response.status_code != 200) {
         logger::info("Failed to send logs, status code: {}, {}", response.status_code, response.text);
@@ -138,7 +138,7 @@ void logPipeline(const PipelineSchema& pipelineSchema, const dai::DeviceInfo& de
 #else
     namespace fs = std::filesystem;
     // Check if logging is explicistdy disabled
-    auto loggingEnabled = utility::getEnv("DEPTHAI_DISABLE_FEEDBACK");
+    auto loggingEnabled = utility::getEnvAs<std::string>("DEPTHAI_DISABLE_FEEDBACK", "");
     if(!loggingEnabled.empty()) {
         logger::info("Logging disabled");
         return;
@@ -183,7 +183,7 @@ void logPipeline(const PipelineSchema& pipelineSchema, const dai::DeviceInfo& de
 }
 
 void logCrashDump(const std::optional<PipelineSchema>& pipelineSchema, const GenericCrashDump& crashDump, const dai::DeviceInfo& deviceInfo) {
-    auto crashDumpEnvVar = utility::getEnv("DEPTHAI_CRASHDUMP");
+    auto crashDumpEnvVar = utility::getEnvAs<std::string>("DEPTHAI_CRASHDUMP", "");
     if(crashDumpEnvVar == "0") {
         logger::warn("Crash dump logging disabled");
         return;
@@ -224,8 +224,9 @@ void logCrashDump(const std::optional<PipelineSchema>& pipelineSchema, const Gen
     } else {
         crashDumpPathLocal /= crashDumpData.name;
     }
-    auto errorString = fmt::format(
-        "Device with id {} has crashed. Crash dump logs are stored in: {} - please report to developers.", deviceInfo.getMxId(), crashDumpPathLocal.string());
+    auto errorString = fmt::format("Device with id {} has crashed. Crash dump logs are stored in: {} - please report to developers.",
+                                   deviceInfo.getDeviceId(),
+                                   crashDumpPathLocal.string());
 
     std::error_code ec;
     fs::create_directories(crashDumpPathLocal.parent_path(), ec);
@@ -251,7 +252,7 @@ void logCrashDump(const std::optional<PipelineSchema>& pipelineSchema, const Gen
     }
 
     // Check if logging is explicitly disabled
-    auto loggingEnabled = utility::getEnv("DEPTHAI_DISABLE_FEEDBACK");
+    auto loggingEnabled = utility::getEnvAs<std::string>("DEPTHAI_DISABLE_FEEDBACK", "");
     if(loggingEnabled.empty()) {
         logger::info("Logging enabled");
         auto success = sendLogsToServer(pipelineData, crashDumpData, deviceInfo);

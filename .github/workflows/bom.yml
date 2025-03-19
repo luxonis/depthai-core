@@ -1,0 +1,91 @@
+name: BOM Testing
+
+on:
+  workflow_dispatch:
+    inputs:
+      distinct_id:
+        description: 'run identifier'
+        required: false
+      testbed:
+          description: 'On what testbed will tests be run'
+          required: false
+          type: string
+      reservation_name:
+          description: 'Reservation name - usually usually unique identifier of root CI run'
+          required: false
+          type: string
+      luxonis_os:
+          description: 'Which RVC4 os version to install before starting tests'
+          required: false
+          type: string
+      hold_reservation:
+        description: 'If this is set to true testbed will stay reserved after process is done - reccomended for CI use'
+        required: false
+        type: boolean
+      depthai:
+        required: false
+        type: string
+        default: "v3_develop"
+        description: "Version for depthai"
+
+jobs:
+  id:
+    name: Workflow ID Provider
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    steps:
+      - name: echo distinct ID ${{ github.event.inputs.distinct_id }}
+        run: echo ${{ github.event.inputs.distinct_id }}
+
+  # Testing
+  rvc4_test_bom:
+      env:
+        VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+      if: github.event_name == 'workflow_dispatch'
+      strategy:
+        matrix:
+          arch: ['x64']
+          flavor: ['vanilla']
+        fail-fast: false
+      runs-on: ['self-hosted', 'testbed-runner']
+
+      steps:
+      - uses: actions/checkout@v3
+
+      - name: Checkout source code from tag
+        uses: actions/checkout@v3
+        with:
+            ref: ${{ github.event.inputs.depthai }}  # Use input tag or the tag that triggered the workflow
+            path: depthai-core
+            submodules: 'recursive'
+
+      - name: Prepare HIL Framework
+        run: source scripts/hil/prepare_hil_framework.sh 
+
+      - name: Configure, Build and Test
+        run: |
+          rm -rf depthai-core/scripts/hil/ && mkdir -p depthai-core/scripts/hil/ && cp -r scripts/hil/* depthai-core/scripts/hil/
+          rm depthai-core/tests/run_tests.py && cp tests/run_tests.py depthai-core/tests/run_tests.py
+          cd depthai-core
+          
+          if [[ -n "${{ github.event.inputs.testbed }}" ]]; then
+            TESTBED_OPTION="--testbed ${{ github.event.inputs.testbed }}"
+          else
+            TESTBED_OPTION="--models oak4_pro"
+          fi
+
+          if [[ -n "${{ github.event.inputs.reservation_name }}" ]]; then
+            RESERVATION_OPTION="--reservation-name ${{ github.event.inputs.reservation_name }}"
+          else
+            export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-${{ matrix.flavor }}"
+            RESERVATION_OPTION="--reservation-name $RESERVATION_NAME"
+          fi
+          
+          if [[ "${{ github.event.inputs.hold_reservation }}" == 'true' ]]; then
+            HOLD_RESERVATION="--hold-reservation"
+          fi
+
+          if [[ -n  "${{ github.event.inputs.luxonis_os }}" ]]; then
+            UPDATE_LUXONIS_OS="--rvc4-os-version ${{ github.event.inputs.luxonis_os }}"
+          fi
+          exec hil $HOLD_RESERVATION $TESTBED_OPTION $RESERVATION_OPTION $UPDATE_LUXONIS_OS --wait --sync-workspace  --commands 'cd /tmp/depthai-core|| exit' 'scripts/hil/run_hil_tests.sh ${{ matrix.flavor }} --rvc4'

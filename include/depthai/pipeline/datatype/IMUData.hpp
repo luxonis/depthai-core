@@ -5,6 +5,8 @@
 #include <vector>
 
 #include "depthai/pipeline/datatype/Buffer.hpp"
+#include "depthai/utility/ProtoSerializable.hpp"
+
 namespace dai {
 
 struct IMUReport {
@@ -211,7 +213,7 @@ DEPTHAI_SERIALIZE_EXT(IMUPacket, acceleroMeter, gyroscope, magneticField, rotati
 /**
  * IMUData message. Carries normalized detection results
  */
-class IMUData : public Buffer {
+class IMUData : public Buffer, public ProtoSerializable {
    public:
     // Construct IMUData message
     IMUData() = default;
@@ -224,7 +226,21 @@ class IMUData : public Buffer {
         datatype = DatatypeEnum::IMUData;
     };
 
-    span<const uint8_t> getRecordData() const override;
+#ifdef DEPTHAI_ENABLE_PROTOBUF
+    /**
+     * Serialize message to proto buffer
+     *
+     * @returns serialized message
+     */
+    std::vector<std::uint8_t> serializeProto(bool = false) const override;
+
+    /**
+     * Serialize schema to proto buffer
+     *
+     * @returns serialized schema
+     */
+    ProtoSerializable::SchemaPair serializeSchema() const override;
+#endif
 
     DEPTHAI_SERIALIZE(IMUData, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum, packets);
 };

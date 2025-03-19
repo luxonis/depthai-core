@@ -82,3 +82,68 @@ TEST_CASE("Dynamic config sync node runs on device, no reuse") {
 TEST_CASE("Dynamic config sync node runs on host, no reuse") {
     testManipDynamic(true, false);
 }
+
+TEST_CASE("Test ImageManipV2 with u16 frames") {
+    using namespace std;
+    using namespace std::chrono;
+    using namespace std::chrono_literals;
+
+    constexpr int inputWidth = 640, inputHeight = 480;
+    constexpr int outputWidth = 320, outputHeight = 320;
+    constexpr size_t N = 20;
+
+    dai::Pipeline p;
+    auto manip = p.create<dai::node::ImageManipV2>();
+    manip->initialConfig.setOutputSize(outputWidth, outputHeight);
+
+    auto inputQueue = manip->inputImage.createInputQueue();
+    auto outputQueue = manip->out.createOutputQueue();
+
+    p.start();
+
+    for(size_t i = 0; i < N; ++i) {
+        auto inFrame = std::make_shared<dai::ImgFrame>();
+        inFrame->setData(std::vector<uint8_t>(inputWidth * inputHeight * 2));
+        inFrame->setWidth(inputWidth);
+        inFrame->setHeight(inputHeight);
+        inFrame->setStride(inputWidth * 2);
+        inFrame->setType(dai::ImgFrame::Type::RAW16);
+
+        inputQueue->send(inFrame);
+
+        // Retrieve the resized frame
+        auto outFrame = outputQueue->get<dai::ImgFrame>();
+
+        REQUIRE(outFrame->getWidth() == outputWidth);
+        REQUIRE(outFrame->getHeight() == outputHeight);
+    }
+}
+
+TEST_CASE("ImageManipV2 rebuild on cfg change") {
+    dai::Pipeline p;
+    auto cam = p.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A);
+    auto camOut = cam->requestOutput({1280, 720});
+    auto manip = p.create<dai::node::ImageManipV2>();
+    manip->setRunOnHost(true);
+    manip->inputConfig.setWaitForMessage(true);
+
+    auto camQueue = camOut->createOutputQueue(1, false);
+    auto manipQueue = manip->out.createOutputQueue(1, false);
+    auto ifQueue = manip->inputImage.createInputQueue();
+    auto icQueue = manip->inputConfig.createInputQueue();
+    p.start();
+    dai::ImageManipConfigV2 cfg;
+    cfg.setOutputSize(400, 200);
+    ifQueue->send(camQueue->get<dai::ImgFrame>());
+    icQueue->send(std::make_shared<dai::ImageManipConfigV2>(cfg));
+    auto imgFrame = manipQueue->get<dai::ImgFrame>();
+    REQUIRE(imgFrame->getWidth() == 400);
+    REQUIRE(imgFrame->getHeight() == 200);
+    cfg.setOutputSize(200, 400);
+    ifQueue->send(camQueue->get<dai::ImgFrame>());
+    icQueue->send(std::make_shared<dai::ImageManipConfigV2>(cfg));
+    imgFrame = manipQueue->get<dai::ImgFrame>();
+    REQUIRE(imgFrame->getWidth() == 200);
+    REQUIRE(imgFrame->getHeight() == 400);
+    p.stop();
+}

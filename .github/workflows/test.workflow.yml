@@ -17,30 +17,18 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-
   # Testing
-  test:
+  linux_rvc2_test:
     env:
       VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
     strategy:
       matrix:
-        # os: ['windows', 'macos', 'linux']
-        os: ['linux']
         arch: ['x64']
         flavor: ['vanilla', 'asan-ubsan', 'tsan']
-        exclude:
-          - os: 'windows'
-            arch: 'x64'
-            flavor: 'tsan'
       fail-fast: false
-    runs-on: ['self-hosted', 'hil-test-v3', '${{ matrix.os }}', '${{ matrix.arch }}']
+    runs-on: ['self-hosted', 'testbed-runner']
 
     steps:
-    - name: Cache .hunter folder
-      uses: actions/cache@v3
-      with:
-        path: $HOME/.hun2_${{ matrix.flavor }}
-        key: hunter-${{ matrix.os }}-${{ matrix.cmake }}
     - uses: actions/checkout@v3
       with:
         submodules: 'recursive'
@@ -51,37 +39,51 @@ jobs:
           core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
           core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
 
-    - name: Create virtual environment
-      run: |
-        python -m venv venv
-        source venv/bin/activate
-        python -m pip install --upgrade pip
-        python -m pip install numpy
-
-    - name: Specify toolchain path
-      if: matrix.flavor == 'vanilla'
-      run: echo "CMAKE_TOOLCHAIN_PATH=" >> $GITHUB_ENV
-    - name: Specify toolchain path
-      if: matrix.flavor != 'vanilla'
-      run: echo "CMAKE_TOOLCHAIN_PATH=$PWD/cmake/toolchain/${{ matrix.flavor }}.cmake" >> $GITHUB_ENV
+    - name: Prepare HIL Framework
+      run: source scripts/hil/prepare_hil_framework.sh
 
     - name: Configure, Build and Test
-      if: matrix.os != 'linux'
       run: |
-        source venv/bin/activate  # Activate virtual environment
-        cmake -S . -B build -D CMAKE_BUILD_TYPE=Release -D HUNTER_ROOT=$HOME/.hun2_${{ matrix.flavor }} -D DEPTHAI_BUILD_EXAMPLES=ON -D DEPTHAI_BUILD_TESTS=ON -D DEPTHAI_TEST_EXAMPLES=ON -D DEPTHAI_BUILD_PYTHON=ON -D DEPTHAI_PYTHON_TEST_EXAMPLES=ON -D DEPTHAI_PYTHON_ENABLE_EXAMPLES=ON
-        cmake --build build --parallel 4 --config Release
-        cd tests
-        python3 run_tests.py
+        export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc2-${{ matrix.flavor }}"
+        exec hil --capabilities depthai-core-hil --platforms rvc2 --reservation-name $RESERVATION_NAME --wait --sync-workspace  --commands 'cd /tmp/depthai-core|| exit' 'scripts/hil/run_hil_tests.sh ${{ matrix.flavor }} --rvc2'
+
+  # Testing
+  linux_rvc4_test:
+      env:
+        VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+      strategy:
+        matrix:
+          arch: ['x64']
+          flavor: ['vanilla']
+          rvc4os: ['r851.1.2', 'debug-1.4.1', 'debug-1.6.0']
+        fail-fast: false
+      runs-on: ['self-hosted', 'testbed-runner']
+
+      steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: 'recursive'
+
+      - name: Prepare HIL Framework
+        run: source scripts/hil/prepare_hil_framework.sh
+
+      - name: Configure, Build and Test
+        run: |
+          export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-${{ matrix.rvc4os }}-${{ matrix.flavor }}"
+          exec hil --models "oak4_pro or oak4_d" --reservation-name $RESERVATION_NAME --wait --sync-workspace --rvc4-os-version ${{ matrix.rvc4os }} --commands 'cd /tmp/depthai-core|| exit' 'scripts/hil/run_hil_tests.sh ${{ matrix.flavor }} --rvc4'
+
+  windows_rvc2_rvc4_test:
+    runs-on: ['self-hosted', 'windows']
+    env:
+      LOCALAPPDATA: "C:/actions-runner/vcpkg_cache"
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: 'recursive'
 
     - name: Configure, Build and Test
-      if: matrix.os == 'linux'
       run: |
-        export DISPLAY=:99
-        xdpyinfo -display $DISPLAY >/dev/null 2>&1 || (Xvfb $DISPLAY &)
-        source venv/bin/activate  # Activate virtual environment
-        python3 -m pip install jinja2
-        cmake -S . -B build -D CMAKE_BUILD_TYPE=Release -D HUNTER_ROOT=$HOME/.hun2_${{ matrix.flavor }} -D DEPTHAI_BUILD_EXAMPLES=ON -D DEPTHAI_BUILD_TESTS=ON -D DEPTHAI_TEST_EXAMPLES=ON -D DEPTHAI_BUILD_PYTHON=ON -D DEPTHAI_PYTHON_TEST_EXAMPLES=ON -D DEPTHAI_PYTHON_ENABLE_EXAMPLES=ON
+        cmake -S . -B build -D CMAKE_BUILD_TYPE=Release -D'DEPTHAI_BUILD_EXAMPLES=ON' -D'DEPTHAI_BUILD_PYTHON=ON' -D'DEPTHAI_BUILD_TESTS=ON' -DDEPTHAI_PYTHON_ENABLE_TESTS=ON -DDEPTHAI_TEST_EXAMPLES=ON -DDEPTHAI_PYTHON_TEST_EXAMPLES=ON -DDEPTHAI_PYTHON_ENABLE_EXAMPLES=ON
         cmake --build build --parallel 4 --config Release
         cd tests
-        python3 run_tests.py
+        python run_tests.py
