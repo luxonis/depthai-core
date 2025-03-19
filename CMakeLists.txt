@@ -840,3 +840,6 @@ if(DEPTHAI_HAVE_PCL_SUPPORT)
         $<$<BOOL:${tmp_includes}>:\n-I\'$<JOIN:${tmp_includes},\'\n-I\'>\'>\n"
     )
 endif()
+if ( ament_cmake_FOUND )
+    ament_package()
+endif()
