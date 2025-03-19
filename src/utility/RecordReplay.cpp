@@ -9,78 +9,77 @@
 #include "Environment.hpp"
 #include "RecordReplayImpl.hpp"
 #include "build/version.hpp"
-#include "depthai/utility/RecordReplaySchema.hpp"
 #include "utility/Compression.hpp"
 #include "utility/Platform.hpp"
+#ifdef DEPTHAI_ENABLE_PROTOBUF
+    #include <google/protobuf/descriptor.pb.h>
+
+    #include "depthai/schemas/ImgFrame.pb.h"
+#endif
 
 namespace dai {
 namespace utility {
 
-ByteRecorder::~ByteRecorder() {
-    close();
+#ifdef DEPTHAI_ENABLE_PROTOBUF
+// Recursively adds all `fd` dependencies to `fd_set`.
+void fdSetInternal(google::protobuf::FileDescriptorSet& fd_set, std::unordered_set<std::string>& files, const google::protobuf::FileDescriptor* fd) {
+    for(int i = 0; i < fd->dependency_count(); ++i) {
+        const auto* dep = fd->dependency(i);
+        auto [_, inserted] = files.insert(dep->name());
+        if(!inserted) continue;
+        fdSetInternal(fd_set, files, fd->dependency(i));
+    }
+    fd->CopyTo(fd_set.add_file());
 }
 
-void ByteRecorder::init(const std::string& filePath, RecordConfig::CompressionLevel compressionLevel, RecordType recordingType) {
-    if(initialized) {
-        throw std::runtime_error("ByteRecorder already initialized");
-    }
-    if(filePath.empty()) {
-        throw std::runtime_error("ByteRecorder file path is empty");
-    }
-    {
-        auto options = mcap::McapWriterOptions("");
-        options.library = "depthai" + std::string(build::VERSION);
-        switch(compressionLevel) {
-            case RecordConfig::CompressionLevel::NONE:
-                options.compression = mcap::Compression::None;
-                break;
-            case RecordConfig::CompressionLevel::FASTEST:
-                options.compressionLevel = mcap::CompressionLevel::Fastest;
-                break;
-            case RecordConfig::CompressionLevel::FAST:
-                options.compressionLevel = mcap::CompressionLevel::Fast;
-                break;
-            case RecordConfig::CompressionLevel::DEFAULT:
-                options.compressionLevel = mcap::CompressionLevel::Default;
-                break;
-            case RecordConfig::CompressionLevel::SLOW:
-                options.compressionLevel = mcap::CompressionLevel::Slow;
-                break;
-            case RecordConfig::CompressionLevel::SLOWEST:
-                options.compressionLevel = mcap::CompressionLevel::Slowest;
-                break;
-        }
-        options.compression = mcap::Compression::Lz4;
-        const auto res = writer.open(filePath, options);
-        if(!res.ok()) {
-            throw std::runtime_error("Failed to open file for writing: " + res.message);
-        }
-    }
-    {
-        const char* schemaText = DEFAULT_SHEMA;
-        std::string channelName = "default";
-        switch(recordingType) {
-            case RecordType::Video:
-                channelName = "video";
-                schemaText = VIDEO_SHEMA;
-                break;
-            case RecordType::Imu:
-                channelName = "imu";
-                schemaText = IMU_SHEMA;
-                break;
-            case RecordType::Other:
-                channelName = "default";
-                schemaText = DEFAULT_SHEMA;
-                break;
-        }
-        mcap::Schema schema(channelName, "jsonschema", schemaText);
-        writer.addSchema(schema);
-        mcap::Channel channel(channelName, "json", schema.id);
-        writer.addChannel(channel);
-        channelId = channel.id;
-    }
+// Returns a serialized google::protobuf::FileDescriptorSet containing
+// the necessary google::protobuf::FileDescriptor's to describe d.
+std::string fdSet(const google::protobuf::Descriptor* d) {
+    std::string res;
+    std::unordered_set<std::string> files;
+    google::protobuf::FileDescriptorSet fd_set;
+    fdSetInternal(fd_set, files, d->file());
+    return fd_set.SerializeAsString();
+}
 
-    initialized = true;
+mcap::Schema createSchema(const google::protobuf::Descriptor* d) {
+    mcap::Schema schema(d->full_name(), "protobuf", fdSet(d));
+    return schema;
+}
+#endif
+
+void ByteRecorder::setWriter(const std::string& filePath, RecordConfig::CompressionLevel compressionLevel) {
+    auto options = mcap::McapWriterOptions("protobuf");
+    options.library = "depthai" + std::string(build::VERSION);
+    switch(compressionLevel) {
+        case RecordConfig::CompressionLevel::NONE:
+            options.compression = mcap::Compression::None;
+            break;
+        case RecordConfig::CompressionLevel::FASTEST:
+            options.compressionLevel = mcap::CompressionLevel::Fastest;
+            break;
+        case RecordConfig::CompressionLevel::FAST:
+            options.compressionLevel = mcap::CompressionLevel::Fast;
+            break;
+        case RecordConfig::CompressionLevel::DEFAULT:
+            options.compressionLevel = mcap::CompressionLevel::Default;
+            break;
+        case RecordConfig::CompressionLevel::SLOW:
+            options.compressionLevel = mcap::CompressionLevel::Slow;
+            break;
+        case RecordConfig::CompressionLevel::SLOWEST:
+            options.compressionLevel = mcap::CompressionLevel::Slowest;
+            break;
+    }
+    options.compression = mcap::Compression::Lz4;
+    const auto res = writer.open(filePath, options);
+    if(!res.ok()) {
+        throw std::runtime_error("Failed to open file for writing: " + res.message);
+    }
+}
+
+ByteRecorder::~ByteRecorder() {
+    close();
 }
 
 void ByteRecorder::close() {
@@ -94,7 +93,7 @@ BytePlayer::~BytePlayer() {
     close();
 }
 
-void BytePlayer::init(const std::string& filePath) {
+std::string BytePlayer::init(const std::string& filePath) {
     if(initialized) {
         throw std::runtime_error("BytePlayer already initialized");
     }
@@ -108,25 +107,12 @@ void BytePlayer::init(const std::string& filePath) {
         }
     }
     messageView = std::make_unique<mcap::LinearMessageView>(reader.readMessages());
+    if(messageView->begin() == messageView->end()) {
+        throw std::runtime_error("No messages in file");
+    }
     it = std::make_unique<mcap::LinearMessageView::Iterator>(messageView->begin());
     initialized = true;
-}
-
-std::optional<nlohmann::json> BytePlayer::next() {
-    if(!initialized) {
-        throw std::runtime_error("BytePlayer not initialized");
-    }
-    if(*it == messageView->end()) return std::nullopt;
-    if((*it)->channel->messageEncoding != "json") {
-        throw std::runtime_error("Unsupported message encoding: " + (*it)->channel->messageEncoding);
-    }
-    std::string_view asString(reinterpret_cast<const char*>((*it)->message.data), (*it)->message.dataSize);
-
-    nlohmann::json j = nlohmann::json::parse(asString);
-
-    ++(*it);
-
-    return j;
+    return (*it)->schema->name;
 }
 
 void BytePlayer::restart() {
@@ -144,6 +130,7 @@ void BytePlayer::close() {
 }
 
 std::optional<std::tuple<uint32_t, uint32_t>> BytePlayer::getVideoSize(const std::string& filePath) {
+#ifdef DEPTHAI_ENABLE_PROTOBUF
     if(filePath.empty()) {
         throw std::runtime_error("File path is empty in BytePlayer::getVideoSize");
     }
@@ -159,20 +146,20 @@ std::optional<std::tuple<uint32_t, uint32_t>> BytePlayer::getVideoSize(const std
         return std::nullopt;
     } else {
         auto msg = messageView.begin();
-        if(msg->channel->messageEncoding != "json") {
+        if(msg->channel->messageEncoding != "protobuf") {
             throw std::runtime_error("Unsupported message encoding: " + msg->channel->messageEncoding);
         }
-        std::string_view asString(reinterpret_cast<const char*>(msg->message.data), msg->message.dataSize);
-        nlohmann::json j = nlohmann::json::parse(asString);
-
-        auto type = j["type"].get<utility::RecordType>();
-        if(type == utility::RecordType::Video) {
-            auto width = j["width"].get<uint32_t>();
-            auto height = j["height"].get<uint32_t>();
-            return std::make_tuple(width, height);
+        proto::img_frame::ImgFrame adatatype;
+        if(!adatatype.ParseFromArray(reinterpret_cast<const char*>(msg->message.data), msg->message.dataSize)) {
+            throw std::runtime_error("Failed to parse protobuf message");
         }
+
+        return std::make_tuple(adatatype.fb().width(), adatatype.fb().height());
     }
     return std::nullopt;
+#else
+    throw std::runtime_error("BytePlayer::getVideoSize requires protobuf support");
+#endif
 }
 
 bool checkRecordConfig(std::string& recordPath, RecordConfig& config) {
@@ -237,6 +224,12 @@ std::string matchTo(const std::vector<std::string>& deviceIds, const std::vector
     }
     return deviceId;
 }
+
+#ifndef DEPTHAI_HAVE_OPENCV_SUPPORT
+std::tuple<size_t, size_t> getVideoSize(const std::string& filePath) {
+    throw std::runtime_error("OpenCV is required to get video size");
+}
+#endif
 
 }  // namespace utility
 }  // namespace dai
