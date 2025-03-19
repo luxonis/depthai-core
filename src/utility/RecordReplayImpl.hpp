@@ -1,8 +1,17 @@
 #include "depthai/utility/RecordReplay.hpp"
 #include "mcap/mcap.hpp"
 
+#ifdef DEPTHAI_ENABLE_PROTOBUF
+    #include <google/protobuf/descriptor.h>
+#endif
+
 namespace dai {
 namespace utility {
+
+#ifdef DEPTHAI_ENABLE_PROTOBUF
+mcap::Schema createSchema(const google::protobuf::Descriptor* d);
+#endif
+
 class VideoRecorder {
    public:
     enum class VideoCodec { H264, MJPEG, RAW };
@@ -32,21 +41,43 @@ class VideoRecorder {
 };
 
 class ByteRecorder {
+   private:
+    void setWriter(const std::string& filePath, RecordConfig::CompressionLevel compressionLevel);
+
    public:
     ~ByteRecorder();
-    void init(const std::string& filePath, RecordConfig::CompressionLevel compressionLevel, RecordType recordingType);
     template <typename T>
-    void write(const T& data) {
+    void init(const std::string& filePath, RecordConfig::CompressionLevel compressionLevel, const std::string& channelName) {
+#ifdef DEPTHAI_ENABLE_PROTOBUF
+        if(initialized) {
+            throw std::runtime_error("ByteRecorder already initialized");
+        }
+        if(filePath.empty()) {
+            throw std::runtime_error("ByteRecorder file path is empty");
+        }
+        setWriter(filePath, compressionLevel);
+        {
+            mcap::Schema schema = createSchema(T::descriptor());
+            writer.addSchema(schema);
+            mcap::Channel channel(channelName, "protobuf", schema.id);
+            writer.addChannel(channel);
+            channelId = channel.id;
+        }
+
+        initialized = true;
+#else
+        throw std::runtime_error("ByteRecorder not supported without protobuf support");
+#endif
+    }
+    void write(std::vector<uint8_t> data) {
         mcap::Timestamp writeTime = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-        nlohmann::json j = data;
-        std::string serialized = j.dump();
         mcap::Message msg;
         msg.channelId = channelId;
         msg.logTime = writeTime;
         msg.publishTime = writeTime;
         msg.sequence = index++;
-        msg.data = reinterpret_cast<const std::byte*>(serialized.data());
-        msg.dataSize = serialized.size();
+        msg.data = reinterpret_cast<const std::byte*>(data.data());
+        msg.dataSize = data.size();
         const auto res = writer.write(msg);
         if(!res.ok()) {
             writer.close();
@@ -60,8 +91,6 @@ class ByteRecorder {
 
    private:
     bool initialized = false;
-    std::ofstream file;
-
     uint64_t index = 0;
     mcap::McapWriter writer;
     mcap::ChannelId channelId;
@@ -94,8 +123,26 @@ class VideoPlayer {
 class BytePlayer {
    public:
     ~BytePlayer();
-    void init(const std::string& filePath);
-    std::optional<nlohmann::json> next();
+    std::string init(const std::string& filePath);
+    template <typename T>
+    std::optional<T> next() {
+        if(!initialized) {
+            throw std::runtime_error("BytePlayer not initialized");
+        }
+        if(*it == messageView->end()) return std::nullopt;
+        if((*it)->channel->messageEncoding != "protobuf") {
+            throw std::runtime_error("Unsupported message encoding: " + (*it)->channel->messageEncoding);
+        }
+
+        T data;
+        if(!data.ParseFromArray(reinterpret_cast<const char*>((*it)->message.data), (*it)->message.dataSize)) {
+            throw std::runtime_error("Failed to parse protobuf message");
+        }
+
+        ++(*it);
+
+        return data;
+    }
     void restart();
     void close();
     static std::optional<std::tuple<uint32_t, uint32_t>> getVideoSize(const std::string& filePath);
@@ -115,5 +162,8 @@ bool checkRecordConfig(std::string& recordPath, RecordConfig& config);
 bool allMatch(const std::vector<std::string>& v1, const std::vector<std::string>& v2);
 
 std::string matchTo(const std::vector<std::string>& deviceIds, const std::vector<std::string>& filenames, const std::vector<std::string>& nodenames);
+
+std::tuple<size_t, size_t> getVideoSize(const std::string& filePath);
+
 }  // namespace utility
 }  // namespace dai
