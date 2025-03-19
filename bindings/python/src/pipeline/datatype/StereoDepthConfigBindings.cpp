@@ -107,6 +107,9 @@ void bind_stereodepthconfig(pybind11::module& m, void* pCallstack) {
         .def_readwrite("enableLeftRightCheck",
                        &StereoDepthConfig::AlgorithmControl::enableLeftRightCheck,
                        DOC(dai, StereoDepthConfig, AlgorithmControl, enableLeftRightCheck))
+        .def_readwrite("enableSwLeftRightCheck",
+                       &StereoDepthConfig::AlgorithmControl::enableSwLeftRightCheck,
+                       DOC(dai, StereoDepthConfig, AlgorithmControl, enableSwLeftRightCheck))
         .def_readwrite("enableExtended", &StereoDepthConfig::AlgorithmControl::enableExtended, DOC(dai, StereoDepthConfig, AlgorithmControl, enableExtended))
         .def_readwrite("enableSubpixel", &StereoDepthConfig::AlgorithmControl::enableSubpixel, DOC(dai, StereoDepthConfig, AlgorithmControl, enableSubpixel))
         .def_readwrite("leftRightCheckThreshold",
@@ -315,6 +318,8 @@ void bind_stereodepthconfig(pybind11::module& m, void* pCallstack) {
             "invalidDisparityValue", &StereoDepthConfig::CostMatching::invalidDisparityValue, DOC(dai, StereoDepthConfig, CostMatching, invalidDisparityValue))
         .def_readwrite(
             "confidenceThreshold", &StereoDepthConfig::CostMatching::confidenceThreshold, DOC(dai, StereoDepthConfig, CostMatching, confidenceThreshold))
+        .def_readwrite(
+            "enableSwConfidenceThresholding", &StereoDepthConfig::CostMatching::enableSwConfidenceThresholding, DOC(dai, StereoDepthConfig, CostMatching, enableSwConfidenceThresholding))
         .def_readwrite("linearEquationParameters",
                        &StereoDepthConfig::CostMatching::linearEquationParameters,
                        DOC(dai, StereoDepthConfig, CostMatching, linearEquationParameters));
@@ -405,6 +410,8 @@ void bind_stereodepthconfig(pybind11::module& m, void* pCallstack) {
         .def("setNumInvalidateEdgePixels", &StereoDepthConfig::setNumInvalidateEdgePixels, DOC(dai, StereoDepthConfig, setNumInvalidateEdgePixels))
         // .def("set",                     &StereoDepthConfig::set, py::arg("config"), DOC(dai, StereoDepthConfig, set))
         // .def("get",                     &StereoDepthConfig::get, DOC(dai, StereoDepthConfig, get))
+        .def("setFiltersComputeBackend", &StereoDepthConfig::setFiltersComputeBackend, py::arg("filtersBackend"), DOC(dai, StereoDepthConfig, setFiltersComputeBackend))
+        .def("getFiltersComputeBackend", &StereoDepthConfig::getFiltersComputeBackend, DOC(dai, StereoDepthConfig, getFiltersComputeBackend))
         ;
     m.attr("StereoDepthConfig").attr("MedianFilter") = medianFilter;
     m.attr("StereoDepthConfig").attr("AlgorithmControl") = algorithmControl;
