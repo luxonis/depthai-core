@@ -60,12 +60,12 @@ function(add_python_example example_name python_script_path)
             "PATH=${HUNTER_INSTALL_PREFIX}/bin${SYS_PATH_SEPARATOR}$ENV{PATH}"
             # Python path (to find compiled module)
             "PYTHONPATH=$<TARGET_FILE_DIR:${TARGET_NAME}>${SYS_PATH_SEPARATOR}$ENV{PYTHONPATH}"
-            "DEPTHAI_SEARCH_TIMEOUT=30000"
-            "DEPTHAI_CONNECT_TIMEOUT=30000"
+            "DEPTHAI_SEARCH_TIMEOUT=45000"
+            "DEPTHAI_CONNECT_TIMEOUT=10000"
             "DEPTHAI_RECONNECT_TIMEOUT=0"
             # ASAN in case of sanitizers
             ${ASAN_ENVIRONMENT_VARS}
-            ${CMAKE_COMMAND} -DFORCE_TIMEOUT_SECONDS=45 -P ${CMAKE_CURRENT_LIST_DIR}/../cpp/cmake/ExecuteTestTimeout.cmake
+            ${CMAKE_COMMAND} -DFORCE_TIMEOUT_SECONDS=60 -P ${CMAKE_CURRENT_LIST_DIR}/../cpp/cmake/ExecuteTestTimeout.cmake
 
             # Actual script to run
             ${PYTHON_EXECUTABLE} -Werror "${CMAKE_CURRENT_LIST_DIR}/${python_script_path}" ${arguments}
@@ -136,6 +136,12 @@ dai_set_example_test_labels(camera_multiple_outputs ondevice rvc2_all rvc4 ci)
 
 add_python_example(camera_raw Camera/camera_raw.py)
 dai_set_example_test_labels(camera_raw ondevice rvc2_all rvc4 ci)
+
+add_python_example(camera_roi_exposure_focus Camera/camera_roi_exposure_focus.py)
+dai_set_example_test_labels(camera_roi_exposure_focus ondevice rvc2_all rvc4 ci)
+
+add_python_example(camera_still_max_res Camera/camera_still_max_res.py)
+dai_set_example_test_labels(camera_still_max_res ondevice rvc2_all rvc4 ci)
 
 add_python_example(camera_max_resolution Camera/camera_max_resolution.py)
 dai_set_example_test_labels(camera_max_resolution ondevice rvc2_all rvc4 ci)

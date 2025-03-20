@@ -1,8 +1,8 @@
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO luxonis/XLink
-    REF 33f7a294d4b02f22257f9876f3b704fe3b0f3cf4
-    SHA512 2ede385c77bd773c817e6b76554675c808a4c4fbbd8c8df4d8dc64bd57ced3775193e1c57a4badb988bd72651661960331b6652df077b4b768af58b3b992f797
+    REF 7f5633ab542df632acaf4ccaf5e98d30f984e6e4
+    SHA512 ab9a918caf8ab7c1c0328ca7eeef2fc61f81cd1d248bb23d90b7f0428c5b9a7c92e243851b8d99288eaecc8d665805527c28e309de20d79a4aba31d8fbde56b8
     HEAD_REF develop_server
     PATCHES
         no-hunter.patch

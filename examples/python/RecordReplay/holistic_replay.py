@@ -3,39 +3,25 @@
 import cv2
 import depthai as dai
 import argparse
-from pathlib import Path
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-o", "--output", default="recordings", help="Output path")
+parser.add_argument("-s", "--source", default="recordings/recording.tar", help="Recording path")
 args = parser.parse_args()
-
-# Create output directory if it doesn't exist
-Path(args.output).mkdir(parents=True, exist_ok=True)
 
 # Create pipeline
 with dai.Pipeline(True) as pipeline:
     # Define source and output
-    camRgb = pipeline.create(dai.node.ColorCamera)
-
-    # Properties
-    camRgb.setBoardSocket(dai.CameraBoardSocket.CAM_A)
-    camRgb.setResolution(dai.ColorCameraProperties.SensorResolution.THE_1080_P)
-    camRgb.setVideoSize(1920, 1080)
-    camRgb.setFps(30)
+    camRgb = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
+    camRgbOut = camRgb.requestOutput((1920, 1080), fps = 30)
 
     imu = pipeline.create(dai.node.IMU)
     imu.enableIMUSensor(dai.IMUSensor.ACCELEROMETER_RAW, 500);
     imu.enableIMUSensor(dai.IMUSensor.GYROSCOPE_RAW, 400);
+    imu.setBatchReportThreshold(100)
 
-    config = dai.RecordConfig()
-    config.outputDir = args.output;
-    config.videoEncoding.enabled = True
-    config.videoEncoding.bitrate = 0 # Automatic
-    config.videoEncoding.profile = dai.VideoEncoderProperties.Profile.H264_MAIN
+    pipeline.enableHolisticReplay(args.source)
 
-    pipeline.enableHolisticRecord(config)
-
-    videoQueue = camRgb.preview.createOutputQueue()
+    videoQueue = camRgbOut.createOutputQueue()
     imuQueue = imu.out.createOutputQueue()
 
     # Connect to device and start pipeline

@@ -6,31 +6,43 @@
     #error This example needs OpenCV support, which is not available on your system
 #endif
 
-int main(int argc, char** argv) {
-    dai::Pipeline pipeline(true);
-    auto cam = pipeline.create<dai::node::ColorCamera>();
-    auto imu = pipeline.create<dai::node::IMU>();
-    auto display = pipeline.create<dai::node::Display>();
+std::string getDefaultRecordingPath() {
+    auto isTest = std::getenv("RUNNING_AS_TEST");
+    if(isTest && std::string(isTest) == "1") {
+        // If running as test record from dowloaded recording
+        return RECORDING_PATH;
+    } else {
+        return "raw_recording";
+    }
+}
 
-    cam->setBoardSocket(dai::CameraBoardSocket::CAM_A);
-    cam->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
-    cam->setFps(30);
+int main(int argc, char** argv) {
+    dai::Pipeline pipeline;
+    auto camA = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A);
+    auto* camAOut = camA->requestOutput({600, 400});
+    auto camB = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B);
+    auto* camBOut = camB->requestOutput({600, 400});
+    auto camC = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_C);
+    auto* camCOut = camC->requestOutput({600, 400});
+
+    auto imu = pipeline.create<dai::node::IMU>();
+
+    auto display = pipeline.create<dai::node::Display>();
 
     // enable ACCELEROMETER_RAW at 500 hz rate
     imu->enableIMUSensor(dai::IMUSensor::ACCELEROMETER_RAW, 500);
     // enable GYROSCOPE_RAW at 400 hz rate
     imu->enableIMUSensor(dai::IMUSensor::GYROSCOPE_RAW, 400);
+    imu->setBatchReportThreshold(100);
 
-    cam->video.link(display->input);
+    camAOut->link(display->input);
     auto q = imu->out.createOutputQueue();
 
-    dai::RecordConfig config;
-    config.outputDir = argc > 1 ? std::string(argv[1]) : ".";
-    config.videoEncoding.enabled = true; // Use video encoding
-    config.videoEncoding.bitrate = 0; // Automatic
-    config.videoEncoding.profile = dai::VideoEncoderProperties::Profile::H264_MAIN;
+    auto camAqueue = camAOut->createOutputQueue();
+    auto camBqueue = camBOut->createOutputQueue();
+    auto camCqueue = camCOut->createOutputQueue();
 
-    pipeline.enableHolisticRecord(config);
+    pipeline.enableHolisticReplay(argc > 1 ? std::string(argv[1]) : "recording.tar");
 
     pipeline.start();
 
