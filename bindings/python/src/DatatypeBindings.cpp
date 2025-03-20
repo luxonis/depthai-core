@@ -72,6 +72,7 @@ void DatatypeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_transformdata);
     callstack.push_front(bind_imagealignconfig);
     callstack.push_front(bind_imageannotations);
+    callstack.push_front(bind_rgbddata);
 }
 
 void DatatypeBindings::bind(pybind11::module& m, void* pCallstack) {
