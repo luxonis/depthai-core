@@ -2,7 +2,9 @@
 import cv2
 import depthai as dai
 import numpy as np
-import time
+
+# NOTE: Using autocreate takes over the cameras cannot be used in complex pipelines,
+# where cameras would be used in other nodes as well yet.
 
 class StereoVisualizer(dai.node.HostNode):
     def process(self, inFrame: dai.ImgFrame):
@@ -21,8 +23,6 @@ class StereoVisualizer(dai.node.HostNode):
 
 # Create pipeline
 with dai.Pipeline() as pipeline:
-    # Allow stereo inputs to be created automatically
-    # NOTE: This is a naive implementation, it will not handle correctly the case where cameras have already been created
     stereo = pipeline.create(dai.node.StereoDepth).build(autoCreateCameras=True)
     visualizer = pipeline.create(StereoVisualizer)
     visualizer.link_args(stereo.disparity)
