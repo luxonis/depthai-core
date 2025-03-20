@@ -59,7 +59,7 @@ if(WIN32)
 endif()
 
 # Create depthai project
-project(depthai VERSION "2.29.0" LANGUAGES CXX C)
+project(depthai VERSION "2.30.0" LANGUAGES CXX C)
 get_directory_property(has_parent PARENT_DIRECTORY)
 if(has_parent)
     set(DEPTHAI_VERSION ${PROJECT_VERSION} PARENT_SCOPE)
@@ -839,4 +839,7 @@ if(DEPTHAI_HAVE_PCL_SUPPORT)
         "$<$<BOOL:${tmp_definitions}>:\n-D\'$<JOIN:${tmp_definitions},\'\n-D\'>\'>\n
         $<$<BOOL:${tmp_includes}>:\n-I\'$<JOIN:${tmp_includes},\'\n-I\'>\'>\n"
     )
+endif()
+if ( ament_cmake_FOUND )
+    ament_package()
 endif()
