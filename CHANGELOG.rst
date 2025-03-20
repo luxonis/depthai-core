@@ -2,7 +2,17 @@
 Changelog for package depthai
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+2.30.0 (2025-03-18)
+-------------------
+* Features
+* Add RVC4 discovery to point users to v3 version of the library for OAK4 devices
+* Add support for a new VCM enabling autofocus on new IMX378 CCMs
+* Bug fixes
+* Fix an edge case in ImageManip to make https://github.com/geaxgx/depthai_hand_tracker run in edge mode again
+* Fix an edge case when sending MessageGroup from host to device and using more than 4 messages
+
 2.29.0 (2024-11-26)
+-------------------
 * Features
 * Add the ability to change the calibration on the device in runtime with the new `dai::Device.setCalibration()` method and to retrieve it with the `dai::Device.getCalibration()`.
 * New `StereoDepth` presets:
@@ -26,7 +36,7 @@ Changelog for package depthai
 * Add `getWidth()` and `getHeight()` API to `EncodedFrame`
 
 2.28.0 (2024-08-21)
------------
+-------------------
 Features
 * Changed the automatic crashdump collection to always on unless DEPTHAI_DISABLE_CRASHDUMP_COLLECTION is set.
 * Added DEPTHAI_ENABLE_ANALYTICS_COLLECTION environment varialbe - when set, analytic data (pipeline schema) is sent to Luxonis which will be used to further improve the library.
@@ -45,11 +55,11 @@ Features
 * Increased watchdog priority on device side to improve stability during high load
 
 2.26.1 (2024-06-12)
------------
+-------------------
 * Fix building shared libs (ROS only)
 
 2.26.0 (2024-05-27)
------------
+-------------------
 * PointCloud node along with the PointCloudData message
 * On device pointcloud generation
 * Native conversion to PCL message type - similar to getCvFrame()
@@ -90,7 +100,7 @@ Features
 * Contributors: Alex Bougdan, Szabolcs Gergely, Martin Peterlin
 
 2.24.0 (2024-02-02)
------------
+-------------------
 * New nodes and messages:
 * Sync node - syncs multiple inputs based on the timestamp, outputs a message group message
 * Demux node - demultiplexes message group in multiple messages
@@ -117,7 +127,7 @@ Features
 * Contributors: Alex Bougdan, Szabolcs Gergely, Martin Peterlin
 
 2.23.0 (2023-11-14)
------------
+-------------------
 * ImageManip - configurable interpolation type
 * Script - added missing bindings for reading device releated data (on device calibration, etc...)
 * Added Device::getDeviceName and Device::getProductName that target a user name and a "SKU" name
@@ -140,7 +150,7 @@ Features
 * Contributors: Alex Bougdan, Szabolcs Gergely, Martin Peterlin
 
 2.22.0 (2023-06-15)
------------
+-------------------
 * UVC Node - Capability to create a pipeline that sends data over UVC (or flash it)
 * ToF Node - Capability to decode ToF data into a depth map
 * New devices: OAK-D-SR (fixes), OAK-D-LR R1, OAK-D SR PoE
@@ -161,12 +171,12 @@ Features
 * Contributors: Alex Bougdan, Szabolcs Gergely, Martin Peterlin
 
 2.21.2 (2023-04-05)
------------
+-------------------
 * UPDATE: Use v2.21.2 due to issues this version carries
 * Contributors: Alex Bougdan, Szabolcs Gergely, Martin Peterlin
 
 2.21.0 (2023-04-03)
------------
+-------------------
 * Improved x/y accuracy for SpatialLocationCalculator/SpatialDetectionNetwork 
 * Support for median and mode, default changed to median in SpatialLocationCalculator/SpatialDetectionNetwork
 * Multi stereo support, ability to run stereo between any 2 calibrated cameras
@@ -192,21 +202,21 @@ Features
 * Contributors: Alex Bougdan, Szabolcs Gergely, Martin Peterlin
 
 2.20.2 (2023-01-31)
------------
+-------------------
 * Fix for ColorCamera at high resolution while using isp scaling
 * Fix for OV9282 SW sync on devices with OV9782 RGB camera
 * Fix for IMX378/477/577 on sockets other than CAM_A (RGB)
 * Contributors: Alex Bougdan, Szabolcs Gergely, Martin Peterlin
 
 2.20.1 (2023-01-29)
------------
+-------------------
 * Modified OpenVINO::VERSION_UNIVERSAL API improvements / backward compatibility
 * Bootloader version 0.0.24 (fixes for standalone / flashed usecases)
 * [FW] Status LEDs on some additional devices
 * Contributors: Alex Bougdan, Szabolcs Gergely, Martin Peterlin
 
 2.19.1 (2022-11-28)
------------
+-------------------
 * Added Device getDeviceName API
 * OAK-FFC 4P (R5M1E5) IR/Dot support
 * Additional Stability bugfixes to go along with 2.19.0 for PoE devices
@@ -231,7 +241,7 @@ Features
 
 
 2.17.4 (2022-09-20)
------------
+-------------------
 * DEPTHAI_WATCHDOG=0 bugfix (245fb57)
 * V5 Calibration flashing fix
 * FW log level bugfix (#587)
@@ -247,7 +257,7 @@ Features
 
 
 2.17.3 (2022-08-05)
------------
+-------------------
 * Updated FW - BMI270 IMU improvements
 * Added seq & timestamps for more messages
 * New boards support
@@ -259,7 +269,7 @@ Features
 
 
 2.17.0 (2022-07-11)
------------
+-------------------
 * Support for new S2/Pro devices
 * FW: support for OAK-D-S2 / OAK-D-Pro using the latest board DM9098 R6M2E6
 * Handle new resolutions THE_720_P and THE_800_P for ColorCamera, applicable to OV9782 on RGB/center socket
@@ -280,7 +290,7 @@ Features
 
 
 2.16.0 (2022-06-15)
------------
+-------------------
 * OpenVINO 2022.1 support
 * XLink device search improvements
 * cross subnets for PoE devices
@@ -295,7 +305,7 @@ Features
 * Contributors: Sachin, Sachin Guruswamy
 
 2.15.5 (2022-06-02)
------------
+-------------------
 * EEPROM FIX
 * Json fix (`#478 <https://github.com/luxonis/depthai-core/issues/478>`_)
   * Fixed nlohmann json < v3.9.0 compat and toolchain generation
