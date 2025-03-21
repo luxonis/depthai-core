@@ -16,7 +16,6 @@
 // #include "spdlog/spdlog.h"
 
 PYBIND11_MAKE_OPAQUE(std::vector<dai::Color>);
-PYBIND11_MAKE_OPAQUE(std::vector<dai::Point2f>);
 PYBIND11_MAKE_OPAQUE(std::vector<dai::CircleAnnotation>);
 PYBIND11_MAKE_OPAQUE(std::vector<dai::PointsAnnotation>);
 PYBIND11_MAKE_OPAQUE(std::vector<dai::TextAnnotation>);
@@ -33,7 +32,6 @@ void bind_imageannotations(pybind11::module& m, void* pCallstack) {
     py::class_<ImgAnnotation> imageAnnotation(m, "ImgAnnotation", DOC(dai, ImgAnnotation));
 
     py::bind_vector<std::vector<dai::Color>>(m, "VectorColor");
-    py::bind_vector<std::vector<dai::Point2f>>(m, "VectorPoint2f");
     py::bind_vector<std::vector<dai::CircleAnnotation>>(m, "VectorCircleAnnotation");
     py::bind_vector<std::vector<dai::PointsAnnotation>>(m, "VectorPointsAnnotation");
     py::bind_vector<std::vector<dai::TextAnnotation>>(m, "VectorTextAnnotation");
