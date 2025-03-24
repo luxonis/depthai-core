@@ -273,7 +273,7 @@ DeviceBootloader::DeviceBootloader(std::string nameOrDeviceId, bool allowFlashin
     init(true, {}, tl::nullopt, allowFlashingBootloader);
 }
 
-void DeviceBootloader::createWatchdog() {
+void DeviceBootloader::createWatchdog(bool watchdogDisabled) {
     if(monitorThread.joinable() || watchdogThread.joinable()) {
         throw std::runtime_error("Watchdog already created. Destroy it first.");
     }
@@ -284,7 +284,7 @@ void DeviceBootloader::createWatchdog() {
         lastWatchdogPingTime = std::chrono::steady_clock::now() + std::chrono::seconds(5);
     }
     // Create monitor thread
-    monitorThread = std::thread([this]() {
+    monitorThread = std::thread([this, watchdogDisabled]() {
         while(watchdogRunning) {
             // Ping with a period half of that of the watchdog timeout
             std::this_thread::sleep_for(bootloader::XLINK_WATCHDOG_TIMEOUT);
@@ -298,11 +298,17 @@ void DeviceBootloader::createWatchdog() {
             // Bump checking thread to not cause spurious warnings/closes
             std::chrono::milliseconds watchdogTimeout = std::chrono::milliseconds(3000);
             if(watchdogRunning && std::chrono::steady_clock::now() - prevPingTime > watchdogTimeout * 2) {
-                logger::warn("Monitor thread (device: {} [{}]) - ping was missed, closing the device connection", deviceInfo.mxid, deviceInfo.name);
-                // ping was missed, reset the device
-                watchdogRunning = false;
-                // close the underlying connection
-                connection->close();
+                if(watchdogDisabled) {
+                    spdlog::warn("Monitor thread (device: {} [{}]) - ping was missed, but watchdog is disabled, connection maintained",
+                                 deviceInfo.mxid,
+                                 deviceInfo.name);
+                } else {
+                    spdlog::warn("Monitor thread (device: {} [{}]) - ping was missed, closing the device connection", deviceInfo.mxid, deviceInfo.name);
+                    // ping was missed, reset the device
+                    watchdogRunning = false;
+                    // close the underlying connection
+                    connection->close();
+                }
             }
         }
     });
@@ -355,6 +361,23 @@ void DeviceBootloader::destroyWatchdog() {
 }
 
 void DeviceBootloader::init(bool embeddedMvcmd, const dai::Path& pathToMvcmd, tl::optional<bootloader::Type> type, bool allowBlFlash) {
+    // Check if WD is disabled
+    std::chrono::milliseconds watchdogTimeout = bootloader::XLINK_WATCHDOG_TIMEOUT;
+    bool watchdogDisabled = false;
+    auto watchdogMsStr = utility::getEnv("DEPTHAI_WATCHDOG");
+    if(!watchdogMsStr.empty()) {
+        // Try parsing the string as a number
+        try {
+            std::chrono::milliseconds watchdog{std::stoi(watchdogMsStr)};
+            watchdogTimeout = watchdog;
+            if(watchdogTimeout.count() == 0) {
+                spdlog::warn("Watchdog disabled! In case of unclean exit, the device needs reset or power-cycle for next run", watchdogTimeout);
+                watchdogDisabled = true;
+            }
+        } catch(const std::invalid_argument& e) {
+            spdlog::warn("DEPTHAI_WATCHDOG value invalid: {}", e.what());
+        }
+    }
     stream = nullptr;
     allowFlashingBootloader = allowBlFlash;
 
@@ -387,7 +410,7 @@ void DeviceBootloader::init(bool embeddedMvcmd, const dai::Path& pathToMvcmd, tl
             stream = std::make_unique<XLinkStream>(connection, bootloader::XLINK_CHANNEL_BOOTLOADER, bootloader::XLINK_STREAM_MAX_SIZE);
 
             // Prepare monitor & wd threads in case things go down
-            createWatchdog();
+            createWatchdog(watchdogDisabled);
 
             // Retrieve bootloader version
             version = requestVersion();
@@ -409,7 +432,7 @@ void DeviceBootloader::init(bool embeddedMvcmd, const dai::Path& pathToMvcmd, tl
             connection = std::make_shared<XLinkConnection>(deviceInfo, X_LINK_BOOTLOADER);
 
             // Prepare monitor & wd threads in case things go down
-            createWatchdog();
+            createWatchdog(watchdogDisabled);
 
             // If type is specified, try to boot into that BL type
             stream = std::make_unique<XLinkStream>(connection, bootloader::XLINK_CHANNEL_BOOTLOADER, bootloader::XLINK_STREAM_MAX_SIZE);
@@ -470,7 +493,7 @@ void DeviceBootloader::init(bool embeddedMvcmd, const dai::Path& pathToMvcmd, tl
                     connection = std::make_shared<XLinkConnection>(deviceInfo, X_LINK_BOOTLOADER);
 
                     // Recreate watchdog - monitor & wd threads in case things go down
-                    createWatchdog();
+                    createWatchdog(watchdogDisabled);
 
                     // prepare new bootloader stream
                     stream = std::make_unique<XLinkStream>(connection, bootloader::XLINK_CHANNEL_BOOTLOADER, bootloader::XLINK_STREAM_MAX_SIZE);
@@ -513,7 +536,7 @@ void DeviceBootloader::init(bool embeddedMvcmd, const dai::Path& pathToMvcmd, tl
                     }
 
                     // Prepare monitor & wd threads in case things go down
-                    createWatchdog();
+                    createWatchdog(watchdogDisabled);
 
                     // prepare bootloader stream
                     stream = std::make_unique<XLinkStream>(connection, bootloader::XLINK_CHANNEL_BOOTLOADER, bootloader::XLINK_STREAM_MAX_SIZE);

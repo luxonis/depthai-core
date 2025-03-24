@@ -501,7 +501,7 @@ class DeviceBootloader {
     std::tuple<bool, std::string> readCustom(
         Memory memory, size_t offset, size_t size, uint8_t* data, std::string filename, std::function<void(float)> progressCb);
 
-    void createWatchdog();
+    void createWatchdog(bool watchdogDisabled);
     void destroyWatchdog();
 
     // private variables
