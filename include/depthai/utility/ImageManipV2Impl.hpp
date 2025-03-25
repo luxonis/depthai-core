@@ -1,4 +1,5 @@
 #pragma once
+#include <type_traits>
 #define _USE_MATH_DEFINES
 
 #include <spdlog/async_logger.h>
@@ -29,7 +30,10 @@
     #define DEPTHAI_IMAGEMANIPV2_OPENCV 1
     #include <opencv2/opencv.hpp>
 #endif
-
+#ifdef DEPTHAI_HAVE_FASTCV_SUPPORT
+    // #define DEPTHAI_IMAGEMANIPV2_FASTCV 1
+    #include <fastcv/fastcv.h>
+#endif
 #ifndef M_PI
     #define M_PI 3.14159265358979323846
 #endif
@@ -97,14 +101,46 @@ struct FrameSpecs {
 
 template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
 class Warp {
+   protected:
     using Container = std::vector<ManipOp>;
 
     std::shared_ptr<spdlog::async_logger> logger;
 
+   public:
     std::array<std::array<float, 3>, 3> matrix;
     ImageManipOpsBase<Container>::Background background = ImageManipOpsBase<Container>::Background::COLOR;
     uint32_t backgroundColor[3] = {0, 0, 0};
 
+    ImgFrame::Type type;
+    FrameSpecs srcSpecs;
+    FrameSpecs dstSpecs;
+
+    size_t sourceMinX;
+    size_t sourceMinY;
+    size_t sourceMaxX;
+    size_t sourceMaxY;
+
+    Warp() = default;
+    Warp(std::shared_ptr<spdlog::async_logger> logger) : logger(logger) {}
+    virtual ~Warp() = default;
+
+    virtual void build(const FrameSpecs srcFrameSpecs,
+                       const FrameSpecs dstFrameSpecs,
+                       const ImgFrame::Type type,
+                       const std::array<std::array<float, 3>, 3> matrix,
+                       std::vector<std::array<std::array<float, 2>, 4>> srcCorners) = 0;
+
+    virtual void apply(const span<const uint8_t> src, span<uint8_t> dst) = 0;
+
+    void setLogger(std::shared_ptr<spdlog::async_logger> logger) {
+        this->logger = logger;
+    }
+
+    Warp& setBackgroundColor(uint32_t r, uint32_t g, uint32_t b);
+};
+
+template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
+class WarpH : public Warp<ImageManipBuffer, ImageManipData> {
     std::shared_ptr<ImageManipBuffer<float>> mapX;
     std::shared_ptr<ImageManipBuffer<float>> mapY;
     std::shared_ptr<ImageManipBuffer<uint8_t>> srcMask;
@@ -115,15 +151,6 @@ class Warp {
     std::shared_ptr<ImageManipBuffer<uint8_t>> dstMaskss;
 
     std::shared_ptr<ImageManipBuffer<uint32_t>> fastCvBorder;
-
-    ImgFrame::Type type;
-    FrameSpecs srcSpecs;
-    FrameSpecs dstSpecs;
-
-    size_t sourceMinX;
-    size_t sourceMinY;
-    size_t sourceMaxX;
-    size_t sourceMaxY;
 
     void transform(const uint8_t* src,
                    uint8_t* dst,
@@ -139,22 +166,13 @@ class Warp {
                    const std::vector<uint32_t>& backgroundColor);
 
    public:
-    Warp() = default;
-    Warp(std::shared_ptr<spdlog::async_logger> logger) : logger(logger) {}
-
-    void setLogger(std::shared_ptr<spdlog::async_logger> logger) {
-        this->logger = logger;
-    }
-
     void build(const FrameSpecs srcFrameSpecs,
                const FrameSpecs dstFrameSpecs,
                const ImgFrame::Type type,
                const std::array<std::array<float, 3>, 3> matrix,
-               std::vector<std::array<std::array<float, 2>, 4>> srcCorners);
+               std::vector<std::array<std::array<float, 2>, 4>> srcCorners) override;
 
-    void apply(const span<const uint8_t> src, span<uint8_t> dst);
-
-    Warp& setBackgroundColor(uint32_t r, uint32_t g, uint32_t b);
+    void apply(const span<const uint8_t> src, span<uint8_t> dst) override;
 };
 
 template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
@@ -191,8 +209,12 @@ class ColorChange {
     void apply(const span<const uint8_t> src, span<uint8_t> dst);
 };
 
-template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
+template <template <typename T> typename ImageManipBuffer,
+          typename ImageManipData,
+          template <template <typename T> typename Buf, typename Dat> typename WarpBackend>
 class ImageManipOperations {
+    static_assert(std::is_base_of<Warp<ImageManipBuffer, ImageManipData>, WarpBackend<ImageManipBuffer, ImageManipData>>::value,
+                  "WarpBackend must be derived from Warp");
     using Container = std::vector<ManipOp>;
 
     static constexpr uint8_t MODE_CONVERT = 1;
@@ -224,7 +246,7 @@ class ImageManipOperations {
     FrameSpecs srcSpecs;
 
     ColorChange<ImageManipBuffer, ImageManipData> preprocCc;
-    Warp<ImageManipBuffer, ImageManipData> warpEngine;
+    WarpBackend<ImageManipBuffer, ImageManipData> warpEngine;
     ColorChange<ImageManipBuffer, ImageManipData> clrChange;
 
    public:
@@ -307,7 +329,7 @@ void transformFastCV(const uint8_t* src,
                      const size_t sourceMinY,
                      const size_t sourceMaxX,
                      const size_t sourceMaxY,
-                     uint8_t* fastCvBorder);
+                     uint32_t* fastCvBorder);
 
 static inline int clampi(int val, int minv, int maxv) {
     // return val < minv ? minv : (val > maxv ? maxv : val);
@@ -2383,23 +2405,27 @@ inline dai::ImgFrame::Type getValidType(dai::ImgFrame::Type type) {
     return isSingleChannelu8(type) ? VALID_TYPE_GRAY : VALID_TYPE_COLOR;
 }
 
-template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
-void ImageManipOperations<ImageManipBuffer, ImageManipData>::init() {
+template <template <typename T> typename ImageManipBuffer,
+          typename ImageManipData,
+          template <template <typename T> typename Buf, typename Dat> typename WarpBackend>
+void ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::init() {
 #ifdef DEPTHAI_HAVE_FASTCV_SUPPORT
     #ifndef FORCE_FASTCV_ON_SPECIFIC_CORE
     const fcvOperationMode operMode = FASTCV_OP_PERFORMANCE;  // FASTCV_OP_CPU_OFFLOAD;
     // DON'T CALL fcvSetOperationMode(operMode) BEFORE zdl::SNPE::SNPEBuilder::build() !!!
     // else zdl::SNPE::SNPEBuilder::build() will SIGSEGV !!!
     int setOperMode = fcvSetOperationMode(operMode);
-    FCV_IMG_DEBUG("Set operation mode to: %d with result: %d\n", operMode, setOperMode);
+    // FCV_IMG_DEBUG("Set operation mode to: %d with result: %d\n", operMode, setOperMode);
     #else
     ForceExecutionOnSpecificCore();
     #endif
 #endif
 }
 
-template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
-ImageManipOperations<ImageManipBuffer, ImageManipData>& ImageManipOperations<ImageManipBuffer, ImageManipData>::build(
+template <template <typename T> typename ImageManipBuffer,
+          typename ImageManipData,
+          template <template <typename T> typename Buf, typename Dat> typename WarpBackend>
+ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>& ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::build(
     const ImageManipOpsBase<Container>& newBase, ImgFrame::Type outType, FrameSpecs srcFrameSpecs, ImgFrame::Type inFrameType) {
     const auto newCfgStr = newBase.str();
     if(outType == ImgFrame::Type::NONE) {
@@ -2506,8 +2532,10 @@ ImageManipOperations<ImageManipBuffer, ImageManipData>& ImageManipOperations<Ima
 
 size_t getFrameSize(const ImgFrame::Type type, const FrameSpecs& specs);
 
-template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
-bool ImageManipOperations<ImageManipBuffer, ImageManipData>::apply(const std::shared_ptr<Memory> src, span<uint8_t> dst) {
+template <template <typename T> typename ImageManipBuffer,
+          typename ImageManipData,
+          template <template <typename T> typename Buf, typename Dat> typename WarpBackend>
+bool ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::apply(const std::shared_ptr<Memory> src, span<uint8_t> dst) {
     size_t requiredSize = getFrameSize(inType, srcSpecs);
     if(src->getSize() < requiredSize)
         throw std::runtime_error("ImageManip not built for the source image specs. Consider rebuilding with the new configuration.");
@@ -2557,18 +2585,24 @@ bool ImageManipOperations<ImageManipBuffer, ImageManipData>::apply(const std::sh
 #endif
 }
 
-template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
-size_t ImageManipOperations<ImageManipBuffer, ImageManipData>::getOutputWidth() const {
+template <template <typename T> typename ImageManipBuffer,
+          typename ImageManipData,
+          template <template <typename T> typename Buf, typename Dat> typename WarpBackend>
+size_t ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::getOutputWidth() const {
     return base.outputWidth;
 }
 
-template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
-size_t ImageManipOperations<ImageManipBuffer, ImageManipData>::getOutputHeight() const {
+template <template <typename T> typename ImageManipBuffer,
+          typename ImageManipData,
+          template <template <typename T> typename Buf, typename Dat> typename WarpBackend>
+size_t ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::getOutputHeight() const {
     return base.outputHeight;
 }
 
-template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
-size_t ImageManipOperations<ImageManipBuffer, ImageManipData>::getOutputStride(uint8_t plane) const {
+template <template <typename T> typename ImageManipBuffer,
+          typename ImageManipData,
+          template <template <typename T> typename Buf, typename Dat> typename WarpBackend>
+size_t ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::getOutputStride(uint8_t plane) const {
     if(mode == 0) return plane == 0 ? srcSpecs.p1Stride : (plane == 1 ? srcSpecs.p2Stride : (plane == 2 ? srcSpecs.p3Stride : 0));
     switch(outputFrameType) {
         case ImgFrame::Type::RGB888p:
@@ -2616,8 +2650,10 @@ size_t ImageManipOperations<ImageManipBuffer, ImageManipData>::getOutputStride(u
     return 0;
 }
 
-template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
-size_t ImageManipOperations<ImageManipBuffer, ImageManipData>::getOutputSize() const {
+template <template <typename T> typename ImageManipBuffer,
+          typename ImageManipData,
+          template <template <typename T> typename Buf, typename Dat> typename WarpBackend>
+size_t ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::getOutputSize() const {
     if(mode == 0) return 0;
     size_t size = 0;
     switch(outputFrameType) {
@@ -2673,8 +2709,10 @@ size_t ImageManipOperations<ImageManipBuffer, ImageManipData>::getOutputSize() c
     return size;
 }
 
-template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
-FrameSpecs ImageManipOperations<ImageManipBuffer, ImageManipData>::getOutputFrameSpecs(ImgFrame::Type type) const {
+template <template <typename T> typename ImageManipBuffer,
+          typename ImageManipData,
+          template <template <typename T> typename Buf, typename Dat> typename WarpBackend>
+FrameSpecs ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::getOutputFrameSpecs(ImgFrame::Type type) const {
     if(mode == 0) return srcSpecs;
     FrameSpecs specs;
     specs.width = base.outputWidth;
@@ -2749,8 +2787,10 @@ FrameSpecs ImageManipOperations<ImageManipBuffer, ImageManipData>::getOutputFram
     return specs;
 }
 
-template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
-std::vector<RotatedRect> ImageManipOperations<ImageManipBuffer, ImageManipData>::getSrcCrops() const {
+template <template <typename T> typename ImageManipBuffer,
+          typename ImageManipData,
+          template <template <typename T> typename Buf, typename Dat> typename WarpBackend>
+std::vector<RotatedRect> ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::getSrcCrops() const {
     std::vector<RotatedRect> crops;
     for(const auto& corners : srcCorners) {
         auto rect = getRotatedRectFromPoints({corners[0], corners[1], corners[2], corners[3]});
@@ -2759,13 +2799,17 @@ std::vector<RotatedRect> ImageManipOperations<ImageManipBuffer, ImageManipData>:
     return crops;
 }
 
-template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
-std::array<std::array<float, 3>, 3> ImageManipOperations<ImageManipBuffer, ImageManipData>::getMatrix() const {
+template <template <typename T> typename ImageManipBuffer,
+          typename ImageManipData,
+          template <template <typename T> typename Buf, typename Dat> typename WarpBackend>
+std::array<std::array<float, 3>, 3> ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::getMatrix() const {
     return matrix;
 }
 
-template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
-std::string ImageManipOperations<ImageManipBuffer, ImageManipData>::toString() const {
+template <template <typename T> typename ImageManipBuffer,
+          typename ImageManipData,
+          template <template <typename T> typename Buf, typename Dat> typename WarpBackend>
+std::string ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::toString() const {
     std::stringstream cStr;
     cStr << getConfigString(base);
     if(outputOps.size() > 0) {
@@ -2846,32 +2890,33 @@ AEEResult remapImage(const uint8_t* _RESTRICT inData,
                      const uint32_t outDataLen);
 
 template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
-void Warp<ImageManipBuffer, ImageManipData>::build(const FrameSpecs srcFrameSpecs,
-                                                   const FrameSpecs dstFrameSpecs,
-                                                   const ImgFrame::Type type,
-                                                   const std::array<std::array<float, 3>, 3> matrix,
-                                                   std::vector<std::array<std::array<float, 2>, 4>> srcCorners) {
+void WarpH<ImageManipBuffer, ImageManipData>::build(const FrameSpecs srcFrameSpecs,
+                                                    const FrameSpecs dstFrameSpecs,
+                                                    const ImgFrame::Type type,
+                                                    const std::array<std::array<float, 3>, 3> matrix,
+                                                    std::vector<std::array<std::array<float, 2>, 4>> srcCorners) {
     this->matrix = matrix;
     this->type = type;
-    srcSpecs = srcFrameSpecs;
-    dstSpecs = dstFrameSpecs;
+    this->srcSpecs = srcFrameSpecs;
+    this->dstSpecs = dstFrameSpecs;
 
-    if(!fastCvBorder || fastCvBorder->size() < dstSpecs.height * 2) fastCvBorder = std::make_shared<ImageManipBuffer<uint32_t>>(dstSpecs.height * 2);
+    if(!fastCvBorder || fastCvBorder->size() < this->dstSpecs.height * 2)
+        fastCvBorder = std::make_shared<ImageManipBuffer<uint32_t>>(this->dstSpecs.height * 2);
 
     const uint32_t inWidth = srcFrameSpecs.width;
     const uint32_t inHeight = srcFrameSpecs.height;
-    sourceMinX = 0;
-    sourceMaxX = inWidth;
-    sourceMinY = 0;
-    sourceMaxY = inHeight;
+    this->sourceMinX = 0;
+    this->sourceMaxX = inWidth;
+    this->sourceMinY = 0;
+    this->sourceMaxY = inHeight;
     for(const auto& corners : srcCorners) {
         auto [minx, maxx, miny, maxy] = getOuterRect(std::vector<std::array<float, 2>>(corners.begin(), corners.end()));
-        sourceMinX = std::max(sourceMinX, (size_t)std::floor(std::max(minx, 0.f)));
-        sourceMinY = std::max(sourceMinY, (size_t)std::floor(std::max(miny, 0.f)));
-        sourceMaxX = std::min(sourceMaxX, (size_t)std::ceil(maxx));
-        sourceMaxY = std::min(sourceMaxY, (size_t)std::ceil(maxy));
+        this->sourceMinX = std::max(this->sourceMinX, (size_t)std::floor(std::max(minx, 0.f)));
+        this->sourceMinY = std::max(this->sourceMinY, (size_t)std::floor(std::max(miny, 0.f)));
+        this->sourceMaxX = std::min(this->sourceMaxX, (size_t)std::ceil(maxx));
+        this->sourceMaxY = std::min(this->sourceMaxY, (size_t)std::ceil(maxy));
     }
-    if(sourceMinX >= sourceMaxX || sourceMinY >= sourceMaxY) throw std::runtime_error("Initial crop is outside the source image");
+    if(this->sourceMinX >= this->sourceMaxX || this->sourceMinY >= this->sourceMaxY) throw std::runtime_error("Initial crop is outside the source image");
 
 #if !DEPTHAI_IMAGEMANIPV2_OPENCV && !DEPTHAI_IMAGEMANIPV2_FASTCV || !defined(DEPTHAI_HAVE_OPENCV_SUPPORT) && !defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
     const uint32_t outWidth = dstFrameSpecs.width;
@@ -2964,27 +3009,60 @@ void Warp<ImageManipBuffer, ImageManipData>::build(const FrameSpecs srcFrameSpec
 }
 
 template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
-void Warp<ImageManipBuffer, ImageManipData>::transform(const uint8_t* src,
-                                                       uint8_t* dst,
-                                                       const size_t srcWidth,
-                                                       const size_t srcHeight,
-                                                       const size_t srcStride,
-                                                       const size_t dstWidth,
-                                                       const size_t dstHeight,
-                                                       const size_t dstStride,
-                                                       const uint16_t numChannels,
-                                                       const uint16_t bpp,
-                                                       const std::array<std::array<float, 3>, 3> matrix,
-                                                       const std::vector<uint32_t>& background) {
+void WarpH<ImageManipBuffer, ImageManipData>::transform(const uint8_t* src,
+                                                        uint8_t* dst,
+                                                        const size_t srcWidth,
+                                                        const size_t srcHeight,
+                                                        const size_t srcStride,
+                                                        const size_t dstWidth,
+                                                        const size_t dstHeight,
+                                                        const size_t dstStride,
+                                                        const uint16_t numChannels,
+                                                        const uint16_t bpp,
+                                                        const std::array<std::array<float, 3>, 3> matrix,
+                                                        const std::vector<uint32_t>& background) {
     if(1) {
 #ifdef DEPTHAI_IMAGEMANIPV2_OPENCV
-        transformOpenCV(src, dst, srcWidth, srcHeight, srcStride, dstWidth, dstHeight, dstStride, numChannels, bpp, matrix, background, srcSpecs, sourceMinX, sourceMinY, sourceMaxX, sourceMaxY);
+        transformOpenCV(src,
+                        dst,
+                        srcWidth,
+                        srcHeight,
+                        srcStride,
+                        dstWidth,
+                        dstHeight,
+                        dstStride,
+                        numChannels,
+                        bpp,
+                        matrix,
+                        background,
+                        this->srcSpecs,
+                        this->sourceMinX,
+                        this->sourceMinY,
+                        this->sourceMaxX,
+                        this->sourceMaxY);
 #else
         throw std::runtime_error("OpenCV backend not available");
 #endif
     } else {
 #ifdef DEPTHAI_IMAGEMANIPV2_FASTCV
-        transformFastCV(src, dst, srcWidth, srcHeight, srcStride, dstWidth, dstHeight, dstStride, numChannels, bpp, matrix, background, srcSpecs, sourceMinX, sourceMinY, sourceMaxX, sourceMaxY, fastCvBorder->data());
+        transformFastCV(src,
+                        dst,
+                        srcWidth,
+                        srcHeight,
+                        srcStride,
+                        dstWidth,
+                        dstHeight,
+                        dstStride,
+                        numChannels,
+                        bpp,
+                        matrix,
+                        background,
+                        this->srcSpecs,
+                        this->sourceMinX,
+                        this->sourceMinY,
+                        this->sourceMaxX,
+                        this->sourceMaxY,
+                        fastCvBorder->data());
 #else
         throw std::runtime_error("FastCV backend not available");
 #endif
@@ -2994,29 +3072,29 @@ void Warp<ImageManipBuffer, ImageManipData>::transform(const uint8_t* src,
 void printSpecs(spdlog::async_logger& logger, FrameSpecs specs);
 
 template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
-void Warp<ImageManipBuffer, ImageManipData>::apply(const span<const uint8_t> src, span<uint8_t> dst) {
+void WarpH<ImageManipBuffer, ImageManipData>::apply(const span<const uint8_t> src, span<uint8_t> dst) {
     // Apply transformation multiple times depending on the image format
-    switch(type) {
+    switch(this->type) {
         case ImgFrame::Type::RGB888i:
         case ImgFrame::Type::BGR888i:
 #if DEPTHAI_IMAGEMANIPV2_OPENCV && defined(DEPTHAI_HAVE_OPENCV_SUPPORT) || DEPTHAI_IMAGEMANIPV2_FASTCV && defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
-            transform(src.data() + srcSpecs.p1Offset,
-                      dst.data() + dstSpecs.p1Offset,
-                      srcSpecs.width,
-                      srcSpecs.height,
-                      srcSpecs.p1Stride,
-                      dstSpecs.width,
-                      dstSpecs.height,
-                      dstSpecs.p1Stride,
+            transform(src.data() + this->srcSpecs.p1Offset,
+                      dst.data() + this->dstSpecs.p1Offset,
+                      this->srcSpecs.width,
+                      this->srcSpecs.height,
+                      this->srcSpecs.p1Stride,
+                      this->dstSpecs.width,
+                      this->dstSpecs.height,
+                      this->dstSpecs.p1Stride,
                       3,
                       1,
-                      matrix,
-                      {backgroundColor[0], backgroundColor[1], backgroundColor[2]});
+                      this->matrix,
+                      {this->backgroundColor[0], this->backgroundColor[1], this->backgroundColor[2]});
 #else
             assert(mapX && mapY && dstMask && srcMask);
-            assert(dstSpecs.width * dstSpecs.height * 3 <= dst.size());
-            remapImage(src.data() + srcSpecs.p1Offset,
-                       src.size() - srcSpecs.p1Offset,
+            assert(this->dstSpecs.width * this->dstSpecs.height * 3 <= dst.size());
+            remapImage(src.data() + this->srcSpecs.p1Offset,
+                       src.size() - this->srcSpecs.p1Offset,
                        mapX->data(),
                        mapX->size(),
                        mapY->data(),
@@ -3024,61 +3102,61 @@ void Warp<ImageManipBuffer, ImageManipData>::apply(const span<const uint8_t> src
                        dstMask->data(),
                        dstMask->size(),
                        3,
-                       srcSpecs.width,
-                       srcSpecs.height,
-                       srcSpecs.p1Stride,
-                       dstSpecs.width,
-                       dstSpecs.height,
-                       dstSpecs.p1Stride,
-                       dst.data() + dstSpecs.p1Offset,
-                       dst.size() - dstSpecs.p1Offset);
+                       this->srcSpecs.width,
+                       this->srcSpecs.height,
+                       this->srcSpecs.p1Stride,
+                       this->dstSpecs.width,
+                       this->dstSpecs.height,
+                       this->dstSpecs.p1Stride,
+                       dst.data() + this->dstSpecs.p1Offset,
+                       dst.size() - this->dstSpecs.p1Offset);
 #endif
             break;
         case ImgFrame::Type::BGR888p:
         case ImgFrame::Type::RGB888p:
 #if DEPTHAI_IMAGEMANIPV2_OPENCV && defined(DEPTHAI_HAVE_OPENCV_SUPPORT) || DEPTHAI_IMAGEMANIPV2_FASTCV && defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
 
-            transform(src.data() + srcSpecs.p1Offset,
-                      dst.data() + dstSpecs.p1Offset,
-                      srcSpecs.width,
-                      srcSpecs.height,
-                      srcSpecs.p1Stride,
-                      dstSpecs.width,
-                      dstSpecs.height,
-                      dstSpecs.p1Stride,
+            transform(src.data() + this->srcSpecs.p1Offset,
+                      dst.data() + this->dstSpecs.p1Offset,
+                      this->srcSpecs.width,
+                      this->srcSpecs.height,
+                      this->srcSpecs.p1Stride,
+                      this->dstSpecs.width,
+                      this->dstSpecs.height,
+                      this->dstSpecs.p1Stride,
                       1,
                       1,
-                      matrix,
-                      {backgroundColor[0]});
-            transform(src.data() + srcSpecs.p2Offset,
-                      dst.data() + dstSpecs.p2Offset,
-                      srcSpecs.width,
-                      srcSpecs.height,
-                      srcSpecs.p2Stride,
-                      dstSpecs.width,
-                      dstSpecs.height,
-                      dstSpecs.p2Stride,
+                      this->matrix,
+                      {this->backgroundColor[0]});
+            transform(src.data() + this->srcSpecs.p2Offset,
+                      dst.data() + this->dstSpecs.p2Offset,
+                      this->srcSpecs.width,
+                      this->srcSpecs.height,
+                      this->srcSpecs.p2Stride,
+                      this->dstSpecs.width,
+                      this->dstSpecs.height,
+                      this->dstSpecs.p2Stride,
                       1,
                       1,
-                      matrix,
-                      {backgroundColor[1]});
-            transform(src.data() + srcSpecs.p3Offset,
-                      dst.data() + dstSpecs.p3Offset,
-                      srcSpecs.width,
-                      srcSpecs.height,
-                      srcSpecs.p3Stride,
-                      dstSpecs.width,
-                      dstSpecs.height,
-                      dstSpecs.p3Stride,
+                      this->matrix,
+                      {this->backgroundColor[1]});
+            transform(src.data() + this->srcSpecs.p3Offset,
+                      dst.data() + this->dstSpecs.p3Offset,
+                      this->srcSpecs.width,
+                      this->srcSpecs.height,
+                      this->srcSpecs.p3Stride,
+                      this->dstSpecs.width,
+                      this->dstSpecs.height,
+                      this->dstSpecs.p3Stride,
                       1,
                       1,
-                      matrix,
-                      {backgroundColor[2]});
+                      this->matrix,
+                      {this->backgroundColor[2]});
 #else
             assert(mapX && mapY && dstMask && srcMask);
-            assert(dstSpecs.width * dstSpecs.height * 3 <= dst.size());
-            remapImage(src.data() + srcSpecs.p1Offset,
-                       src.size() - srcSpecs.p1Offset,
+            assert(this->dstSpecs.width * this->dstSpecs.height * 3 <= dst.size());
+            remapImage(src.data() + this->srcSpecs.p1Offset,
+                       src.size() - this->srcSpecs.p1Offset,
                        mapX->data(),
                        mapX->size(),
                        mapY->data(),
@@ -3086,16 +3164,16 @@ void Warp<ImageManipBuffer, ImageManipData>::apply(const span<const uint8_t> src
                        dstMask->data(),
                        dstMask->size(),
                        1,
-                       srcSpecs.width,
-                       srcSpecs.height,
-                       srcSpecs.p1Stride,
-                       dstSpecs.width,
-                       dstSpecs.height,
-                       dstSpecs.p1Stride,
-                       dst.data() + dstSpecs.p1Offset,
-                       dst.size() - dstSpecs.p1Offset);
-            remapImage(src.data() + srcSpecs.p2Offset,
-                       src.size() - srcSpecs.p2Offset,
+                       this->srcSpecs.width,
+                       this->srcSpecs.height,
+                       this->srcSpecs.p1Stride,
+                       this->dstSpecs.width,
+                       this->dstSpecs.height,
+                       this->dstSpecs.p1Stride,
+                       dst.data() + this->dstSpecs.p1Offset,
+                       dst.size() - this->dstSpecs.p1Offset);
+            remapImage(src.data() + this->srcSpecs.p2Offset,
+                       src.size() - this->srcSpecs.p2Offset,
                        mapX->data(),
                        mapX->size(),
                        mapY->data(),
@@ -3103,16 +3181,16 @@ void Warp<ImageManipBuffer, ImageManipData>::apply(const span<const uint8_t> src
                        dstMask->data(),
                        dstMask->size(),
                        1,
-                       srcSpecs.width,
-                       srcSpecs.height,
-                       srcSpecs.p2Stride,
-                       dstSpecs.width,
-                       dstSpecs.height,
-                       dstSpecs.p2Stride,
-                       dst.data() + dstSpecs.p2Offset,
-                       dst.size() - dstSpecs.p2Offset);
-            remapImage(src.data() + srcSpecs.p3Offset,
-                       src.size() - srcSpecs.p3Offset,
+                       this->srcSpecs.width,
+                       this->srcSpecs.height,
+                       this->srcSpecs.p2Stride,
+                       this->dstSpecs.width,
+                       this->dstSpecs.height,
+                       this->dstSpecs.p2Stride,
+                       dst.data() + this->dstSpecs.p2Offset,
+                       dst.size() - this->dstSpecs.p2Offset);
+            remapImage(src.data() + this->srcSpecs.p3Offset,
+                       src.size() - this->srcSpecs.p3Offset,
                        mapX->data(),
                        mapX->size(),
                        mapY->data(),
@@ -3120,60 +3198,60 @@ void Warp<ImageManipBuffer, ImageManipData>::apply(const span<const uint8_t> src
                        dstMask->data(),
                        dstMask->size(),
                        1,
-                       srcSpecs.width,
-                       srcSpecs.height,
-                       srcSpecs.p3Stride,
-                       dstSpecs.width,
-                       dstSpecs.height,
-                       dstSpecs.p3Stride,
-                       dst.data() + dstSpecs.p3Offset,
-                       dst.size() - dstSpecs.p3Offset);
+                       this->srcSpecs.width,
+                       this->srcSpecs.height,
+                       this->srcSpecs.p3Stride,
+                       this->dstSpecs.width,
+                       this->dstSpecs.height,
+                       this->dstSpecs.p3Stride,
+                       dst.data() + this->dstSpecs.p3Offset,
+                       dst.size() - this->dstSpecs.p3Offset);
 #endif
             break;
         case ImgFrame::Type::YUV420p:
 #if DEPTHAI_IMAGEMANIPV2_OPENCV && defined(DEPTHAI_HAVE_OPENCV_SUPPORT) || DEPTHAI_IMAGEMANIPV2_FASTCV && defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
-            transform(src.data() + srcSpecs.p1Offset,
-                      dst.data() + dstSpecs.p1Offset,
-                      srcSpecs.width,
-                      srcSpecs.height,
-                      srcSpecs.p1Stride,
-                      dstSpecs.width,
-                      dstSpecs.height,
-                      dstSpecs.p1Stride,
+            transform(src.data() + this->srcSpecs.p1Offset,
+                      dst.data() + this->dstSpecs.p1Offset,
+                      this->srcSpecs.width,
+                      this->srcSpecs.height,
+                      this->srcSpecs.p1Stride,
+                      this->dstSpecs.width,
+                      this->dstSpecs.height,
+                      this->dstSpecs.p1Stride,
                       1,
                       1,
-                      matrix,
-                      {backgroundColor[0]});
-            transform(src.data() + srcSpecs.p2Offset,
-                      dst.data() + dstSpecs.p2Offset,
-                      srcSpecs.width / 2,
-                      srcSpecs.height / 2,
-                      srcSpecs.p2Stride,
-                      dstSpecs.width / 2,
-                      dstSpecs.height / 2,
-                      dstSpecs.p2Stride,
+                      this->matrix,
+                      {this->backgroundColor[0]});
+            transform(src.data() + this->srcSpecs.p2Offset,
+                      dst.data() + this->dstSpecs.p2Offset,
+                      this->srcSpecs.width / 2,
+                      this->srcSpecs.height / 2,
+                      this->srcSpecs.p2Stride,
+                      this->dstSpecs.width / 2,
+                      this->dstSpecs.height / 2,
+                      this->dstSpecs.p2Stride,
                       1,
                       1,
-                      matrix,
-                      {backgroundColor[1]});
-            transform(src.data() + srcSpecs.p3Offset,
-                      dst.data() + dstSpecs.p3Offset,
-                      srcSpecs.width / 2,
-                      srcSpecs.height / 2,
-                      srcSpecs.p3Stride,
-                      dstSpecs.width / 2,
-                      dstSpecs.height / 2,
-                      dstSpecs.p3Stride,
+                      this->matrix,
+                      {this->backgroundColor[1]});
+            transform(src.data() + this->srcSpecs.p3Offset,
+                      dst.data() + this->dstSpecs.p3Offset,
+                      this->srcSpecs.width / 2,
+                      this->srcSpecs.height / 2,
+                      this->srcSpecs.p3Stride,
+                      this->dstSpecs.width / 2,
+                      this->dstSpecs.height / 2,
+                      this->dstSpecs.p3Stride,
                       1,
                       1,
-                      matrix,
-                      {backgroundColor[2]});
+                      this->matrix,
+                      {this->backgroundColor[2]});
 #else
             assert(mapX && mapY && dstMask && srcMask);
-            assert(dstSpecs.width * dstSpecs.height * 3 / 2 <= dst.size());
-            assert(dstSpecs.width % 2 == 0 && dstSpecs.height % 2 == 0);
-            remapImage(src.data() + srcSpecs.p1Offset,
-                       src.size() - srcSpecs.p1Offset,
+            assert(this->dstSpecs.width * this->dstSpecs.height * 3 / 2 <= dst.size());
+            assert(this->dstSpecs.width % 2 == 0 && this->dstSpecs.height % 2 == 0);
+            remapImage(src.data() + this->srcSpecs.p1Offset,
+                       src.size() - this->srcSpecs.p1Offset,
                        mapX->data(),
                        mapX->size(),
                        mapY->data(),
@@ -3181,16 +3259,16 @@ void Warp<ImageManipBuffer, ImageManipData>::apply(const span<const uint8_t> src
                        dstMask->data(),
                        dstMask->size(),
                        1,
-                       srcSpecs.width,
-                       srcSpecs.height,
-                       srcSpecs.p1Stride,
-                       dstSpecs.width,
-                       dstSpecs.height,
-                       dstSpecs.p1Stride,
-                       dst.data() + dstSpecs.p1Offset,
-                       dst.size() - dstSpecs.p1Offset);
-            remapImage(src.data() + srcSpecs.p2Offset,
-                       src.size() - srcSpecs.p2Offset,
+                       this->srcSpecs.width,
+                       this->srcSpecs.height,
+                       this->srcSpecs.p1Stride,
+                       this->dstSpecs.width,
+                       this->dstSpecs.height,
+                       this->dstSpecs.p1Stride,
+                       dst.data() + this->dstSpecs.p1Offset,
+                       dst.size() - this->dstSpecs.p1Offset);
+            remapImage(src.data() + this->srcSpecs.p2Offset,
+                       src.size() - this->srcSpecs.p2Offset,
                        mapXss->data(),
                        mapXss->size(),
                        mapYss->data(),
@@ -3198,16 +3276,16 @@ void Warp<ImageManipBuffer, ImageManipData>::apply(const span<const uint8_t> src
                        dstMaskss->data(),
                        dstMaskss->size(),
                        1,
-                       srcSpecs.width / 2,
-                       srcSpecs.height / 2,
-                       srcSpecs.p2Stride,
-                       dstSpecs.width / 2,
-                       dstSpecs.height / 2,
-                       dstSpecs.p2Stride,
-                       dst.data() + dstSpecs.p2Offset,
-                       dst.size() - dstSpecs.p2Offset);
-            remapImage(src.data() + srcSpecs.p3Offset,
-                       src.size() - srcSpecs.p3Offset,
+                       this->srcSpecs.width / 2,
+                       this->srcSpecs.height / 2,
+                       this->srcSpecs.p2Stride,
+                       this->dstSpecs.width / 2,
+                       this->dstSpecs.height / 2,
+                       this->dstSpecs.p2Stride,
+                       dst.data() + this->dstSpecs.p2Offset,
+                       dst.size() - this->dstSpecs.p2Offset);
+            remapImage(src.data() + this->srcSpecs.p3Offset,
+                       src.size() - this->srcSpecs.p3Offset,
                        mapXss->data(),
                        mapXss->size(),
                        mapYss->data(),
@@ -3215,48 +3293,48 @@ void Warp<ImageManipBuffer, ImageManipData>::apply(const span<const uint8_t> src
                        dstMaskss->data(),
                        dstMaskss->size(),
                        1,
-                       srcSpecs.width / 2,
-                       srcSpecs.height / 2,
-                       srcSpecs.p3Stride,
-                       dstSpecs.width / 2,
-                       dstSpecs.height / 2,
-                       dstSpecs.p2Stride,
-                       dst.data() + dstSpecs.p3Offset,
-                       dst.size() - dstSpecs.p3Offset);
+                       this->srcSpecs.width / 2,
+                       this->srcSpecs.height / 2,
+                       this->srcSpecs.p3Stride,
+                       this->dstSpecs.width / 2,
+                       this->dstSpecs.height / 2,
+                       this->dstSpecs.p2Stride,
+                       dst.data() + this->dstSpecs.p3Offset,
+                       dst.size() - this->dstSpecs.p3Offset);
 #endif
             break;
         case ImgFrame::Type::NV12:
 #if DEPTHAI_IMAGEMANIPV2_OPENCV && defined(DEPTHAI_HAVE_OPENCV_SUPPORT) || DEPTHAI_IMAGEMANIPV2_FASTCV && defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
-            transform(src.data() + srcSpecs.p1Offset,
-                      dst.data() + dstSpecs.p1Offset,
-                      srcSpecs.width,
-                      srcSpecs.height,
-                      srcSpecs.p1Stride,
-                      dstSpecs.width,
-                      dstSpecs.height,
-                      dstSpecs.p1Stride,
+            transform(src.data() + this->srcSpecs.p1Offset,
+                      dst.data() + this->dstSpecs.p1Offset,
+                      this->srcSpecs.width,
+                      this->srcSpecs.height,
+                      this->srcSpecs.p1Stride,
+                      this->dstSpecs.width,
+                      this->dstSpecs.height,
+                      this->dstSpecs.p1Stride,
                       1,
                       1,
-                      matrix,
-                      {backgroundColor[0]});
-            transform(src.data() + srcSpecs.p2Offset,
-                      dst.data() + dstSpecs.p2Offset,
-                      srcSpecs.width / 2,
-                      srcSpecs.height / 2,
-                      srcSpecs.p2Stride,
-                      dstSpecs.width / 2,
-                      dstSpecs.height / 2,
-                      dstSpecs.p2Stride,
+                      this->matrix,
+                      {this->backgroundColor[0]});
+            transform(src.data() + this->srcSpecs.p2Offset,
+                      dst.data() + this->dstSpecs.p2Offset,
+                      this->srcSpecs.width / 2,
+                      this->srcSpecs.height / 2,
+                      this->srcSpecs.p2Stride,
+                      this->dstSpecs.width / 2,
+                      this->dstSpecs.height / 2,
+                      this->dstSpecs.p2Stride,
                       2,
                       1,
-                      matrix,
-                      {backgroundColor[1], backgroundColor[2]});
+                      this->matrix,
+                      {this->backgroundColor[1], this->backgroundColor[2]});
 #else
             assert(mapX && mapY && dstMask && srcMask);
-            assert(dstSpecs.p1Stride * dstSpecs.height * 3 / 2 <= dst.size());
-            assert(dstSpecs.width % 2 == 0 && dstSpecs.height % 2 == 0);
-            remapImage(src.data() + srcSpecs.p1Offset,
-                       src.size() - srcSpecs.p1Offset,
+            assert(this->dstSpecs.p1Stride * this->dstSpecs.height * 3 / 2 <= dst.size());
+            assert(this->dstSpecs.width % 2 == 0 && this->dstSpecs.height % 2 == 0);
+            remapImage(src.data() + this->srcSpecs.p1Offset,
+                       src.size() - this->srcSpecs.p1Offset,
                        mapX->data(),
                        mapX->size(),
                        mapY->data(),
@@ -3264,16 +3342,16 @@ void Warp<ImageManipBuffer, ImageManipData>::apply(const span<const uint8_t> src
                        dstMask->data(),
                        dstMask->size(),
                        1,
-                       srcSpecs.width,
-                       srcSpecs.height,
-                       srcSpecs.p1Stride,
-                       dstSpecs.width,
-                       dstSpecs.height,
-                       dstSpecs.p1Stride,
-                       dst.data() + dstSpecs.p1Offset,
-                       dst.size() - dstSpecs.p1Offset);
-            remapImage(src.data() + srcSpecs.p2Offset,
-                       src.size() - srcSpecs.p2Offset,
+                       this->srcSpecs.width,
+                       this->srcSpecs.height,
+                       this->srcSpecs.p1Stride,
+                       this->dstSpecs.width,
+                       this->dstSpecs.height,
+                       this->dstSpecs.p1Stride,
+                       dst.data() + this->dstSpecs.p1Offset,
+                       dst.size() - this->dstSpecs.p1Offset);
+            remapImage(src.data() + this->srcSpecs.p2Offset,
+                       src.size() - this->srcSpecs.p2Offset,
                        mapXss->data(),
                        mapXss->size(),
                        mapYss->data(),
@@ -3281,36 +3359,36 @@ void Warp<ImageManipBuffer, ImageManipData>::apply(const span<const uint8_t> src
                        dstMaskss->data(),
                        dstMaskss->size(),
                        2,
-                       srcSpecs.width / 2,
-                       srcSpecs.height / 2,
-                       srcSpecs.p2Stride,
-                       dstSpecs.width / 2,
-                       dstSpecs.height / 2,
-                       dstSpecs.p2Stride,
-                       dst.data() + dstSpecs.p2Offset,
-                       dst.size() - dstSpecs.p2Offset);
+                       this->srcSpecs.width / 2,
+                       this->srcSpecs.height / 2,
+                       this->srcSpecs.p2Stride,
+                       this->dstSpecs.width / 2,
+                       this->dstSpecs.height / 2,
+                       this->dstSpecs.p2Stride,
+                       dst.data() + this->dstSpecs.p2Offset,
+                       dst.size() - this->dstSpecs.p2Offset);
 #endif
             break;
         case ImgFrame::Type::RAW8:
         case ImgFrame::Type::GRAY8:
 #if DEPTHAI_IMAGEMANIPV2_OPENCV && defined(DEPTHAI_HAVE_OPENCV_SUPPORT) || DEPTHAI_IMAGEMANIPV2_FASTCV && defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
-            transform(src.data() + srcSpecs.p1Offset,
-                      dst.data() + dstSpecs.p1Offset,
-                      srcSpecs.width,
-                      srcSpecs.height,
-                      srcSpecs.p1Stride,
-                      dstSpecs.width,
-                      dstSpecs.height,
-                      dstSpecs.p1Stride,
+            transform(src.data() + this->srcSpecs.p1Offset,
+                      dst.data() + this->dstSpecs.p1Offset,
+                      this->srcSpecs.width,
+                      this->srcSpecs.height,
+                      this->srcSpecs.p1Stride,
+                      this->dstSpecs.width,
+                      this->dstSpecs.height,
+                      this->dstSpecs.p1Stride,
                       1,
                       1,
-                      matrix,
-                      {backgroundColor[0]});
+                      this->matrix,
+                      {this->backgroundColor[0]});
 #else
             assert(mapX && mapY && dstMask && srcMask);
-            assert(dstSpecs.width * dstSpecs.height <= dst.size());
-            remapImage(src.data() + srcSpecs.p1Offset,
-                       src.size() - srcSpecs.p1Offset,
+            assert(this->dstSpecs.width * this->dstSpecs.height <= dst.size());
+            remapImage(src.data() + this->srcSpecs.p1Offset,
+                       src.size() - this->srcSpecs.p1Offset,
                        mapX->data(),
                        mapX->size(),
                        mapY->data(),
@@ -3318,30 +3396,30 @@ void Warp<ImageManipBuffer, ImageManipData>::apply(const span<const uint8_t> src
                        dstMask->data(),
                        dstMask->size(),
                        1,
-                       srcSpecs.width,
-                       srcSpecs.height,
-                       srcSpecs.p1Stride,
-                       dstSpecs.width,
-                       dstSpecs.height,
-                       dstSpecs.p1Stride,
-                       dst.data() + dstSpecs.p1Offset,
-                       dst.size() - dstSpecs.p1Offset);
+                       this->srcSpecs.width,
+                       this->srcSpecs.height,
+                       this->srcSpecs.p1Stride,
+                       this->dstSpecs.width,
+                       this->dstSpecs.height,
+                       this->dstSpecs.p1Stride,
+                       dst.data() + this->dstSpecs.p1Offset,
+                       dst.size() - this->dstSpecs.p1Offset);
 #endif
             break;
         case ImgFrame::Type::RAW16:
 #if DEPTHAI_IMAGEMANIPV2_OPENCV && defined(DEPTHAI_HAVE_OPENCV_SUPPORT) || DEPTHAI_IMAGEMANIPV2_FASTCV && defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
-            transform(src.data() + srcSpecs.p1Offset,
-                      dst.data() + dstSpecs.p1Offset,
-                      srcSpecs.width,
-                      srcSpecs.height,
-                      srcSpecs.p1Stride,
-                      dstSpecs.width,
-                      dstSpecs.height,
-                      dstSpecs.p1Stride,
+            transform(src.data() + this->srcSpecs.p1Offset,
+                      dst.data() + this->dstSpecs.p1Offset,
+                      this->srcSpecs.width,
+                      this->srcSpecs.height,
+                      this->srcSpecs.p1Stride,
+                      this->dstSpecs.width,
+                      this->dstSpecs.height,
+                      this->dstSpecs.p1Stride,
                       1,
                       2,
-                      matrix,
-                      {backgroundColor[0]});
+                      this->matrix,
+                      {this->backgroundColor[0]});
 #else
             throw std::runtime_error("RAW16 not supported without OpenCV");
 #endif

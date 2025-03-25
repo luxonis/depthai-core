@@ -10,7 +10,7 @@ ImageManipV2::ImageManipV2(std::unique_ptr<Properties> props)
     : DeviceNodeCRTP<DeviceNode, ImageManipV2, ImageManipPropertiesV2>(std::move(props)), initialConfig(properties.initialConfig) {}
 
 void ImageManipV2::run() {
-    impl::ImageManipOperations<impl::_ImageManipBuffer, impl::_ImageManipMemory> manip(logger);
+    impl::ImageManipOperations<impl::_ImageManipBuffer, impl::_ImageManipMemory, impl::WarpH> manip(logger);
     manip.init();
     auto iConf = runOnHost() ? initialConfig : properties.initialConfig;
     loop<ImageManipV2, impl::_ImageManipBuffer, impl::_ImageManipMemory>(

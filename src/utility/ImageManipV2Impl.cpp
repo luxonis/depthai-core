@@ -138,7 +138,7 @@ void dai::impl::transformFastCV(const uint8_t* src,
                                 const size_t sourceMinY,
                                 const size_t sourceMaxX,
                                 const size_t sourceMaxY,
-                                uint8_t* fastCvBorder) {
+                                uint32_t* fastCvBorder) {
 #if defined(DEPTHAI_HAVE_FASTCV_SUPPORT) && DEPTHAI_IMAGEMANIPV2_FASTCV
     if(numChannels != 3 && numChannels != 1) throw std::runtime_error("Only 1 or 3 channels supported with FastCV");
     if(bpp != 1) throw std::runtime_error("Only 8bpp supported with FastCV");
