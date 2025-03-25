@@ -82,7 +82,7 @@ class ImageManipV2 : public DeviceNodeCRTP<DeviceNode, ImageManipV2, ImageManipP
                      const ImageManipConfigV2& initialConfig,
                      std::shared_ptr<spdlog::async_logger> logger,
                      std::function<size_t(const ImageManipConfigV2&, const ImgFrame&)> build,
-                     std::function<bool(std::shared_ptr<Memory>&, span<uint8_t>)> apply,
+                     std::function<bool(std::shared_ptr<Memory>&, std::shared_ptr<ImageManipData>)> apply,
                      std::function<void(const ImageManipConfigV2&, const ImgFrame&, ImgFrame&)> getFrame);
 };
 
@@ -97,7 +97,7 @@ void ImageManipV2::loop(N& node,
                         const ImageManipConfigV2& initialConfig,
                         std::shared_ptr<spdlog::async_logger> logger,
                         std::function<size_t(const ImageManipConfigV2&, const ImgFrame&)> build,
-                        std::function<bool(std::shared_ptr<Memory>&, span<uint8_t>)> apply,
+                        std::function<bool(std::shared_ptr<Memory>&, std::shared_ptr<ImageManipData>)> apply,
                         std::function<void(const ImageManipConfigV2&, const ImgFrame&, ImgFrame&)> getFrame) {
     using namespace std::chrono;
     auto config = initialConfig;
@@ -160,12 +160,13 @@ void ImageManipV2::loop(N& node,
             node.out.send(inImage);
         } else if((long)outputSize <= (long)node.properties.outputFrameSize) {
             auto outImage = std::make_shared<ImgFrame>();
-            outImage->setData(std::vector<uint8_t>(node.properties.outputFrameSize));
+            auto outData = std::make_shared<ImageManipData>(node.properties.outputFrameSize);
+            outImage->data = outData;
 
             bool success = true;
             {
                 auto t3 = steady_clock::now();
-                success = apply(inImage->data, outImage->getData());
+                success = apply(inImage->data, outData);
                 auto t4 = steady_clock::now();
 
                 getFrame(config, *inImage, *outImage);

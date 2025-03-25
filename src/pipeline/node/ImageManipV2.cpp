@@ -22,7 +22,10 @@ void ImageManipV2::run() {
             manip.build(config.base, config.outputFrameType, srcFrameSpecs, frame.getType());
             return manip.getOutputSize();
         },
-        [&](std::shared_ptr<Memory>& src, span<uint8_t> dst) { return manip.apply(src, dst); },
+        [&](std::shared_ptr<Memory>& src, std::shared_ptr<impl::_ImageManipMemory> dst) {
+            auto srcMem = std::make_shared<impl::_ImageManipMemory>(src->getData());
+            return manip.apply(srcMem, dst);
+        },
         [&](const ImageManipConfigV2& config, const ImgFrame& srcFrame, ImgFrame& dstFrame) {
             auto outType = config.outputFrameType == ImgFrame::Type::NONE ? srcFrame.getType() : config.outputFrameType;
             auto dstSpecs = manip.getOutputFrameSpecs(outType);
