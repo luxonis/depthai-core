@@ -14,6 +14,7 @@
 
 #include <cstdint>
 #include <depthai/utility/Path.hpp>
+#include <depthai/common/Point2f.hpp>
 #include <pybind11_json/pybind11_json.hpp>
 #include <stack>
 #include <utility/SpanBindings.hpp>
@@ -21,6 +22,8 @@
 // Include docstring file
 #include "docstring.hpp"
 
+PYBIND11_MAKE_OPAQUE(std::vector<uint8_t>);
+PYBIND11_MAKE_OPAQUE(std::vector<dai::Point2f>);
 namespace pybind11 {
 namespace detail {
 template <>

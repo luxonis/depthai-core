@@ -16,7 +16,6 @@
 // #include "spdlog/spdlog.h"
 
 PYBIND11_MAKE_OPAQUE(std::vector<dai::Color>);
-PYBIND11_MAKE_OPAQUE(std::vector<dai::Point2f>);
 PYBIND11_MAKE_OPAQUE(std::vector<dai::CircleAnnotation>);
 PYBIND11_MAKE_OPAQUE(std::vector<dai::PointsAnnotation>);
 PYBIND11_MAKE_OPAQUE(std::vector<dai::TextAnnotation>);
