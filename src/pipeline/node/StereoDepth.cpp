@@ -2,6 +2,7 @@
 #include "depthai/pipeline/node/MonoCamera.hpp"
 #include "pipeline/datatype/StereoDepthConfig.hpp"
 #include "utility/Logging.hpp"
+#include "utility/spdlog-fmt.hpp"
 #include "utility/CompilerWarnings.hpp"
 namespace dai {
 namespace node {
