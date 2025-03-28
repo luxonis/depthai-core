@@ -6,6 +6,7 @@
 #include <exception>
 #include <fstream>
 #include <iostream>
+#include <stdexcept>
 #include <thread>
 
 // libarchive
@@ -44,14 +45,17 @@ namespace dai {
 TarGzAccessor::TarGzAccessor(const std::vector<std::uint8_t>& tarGzFile) {
     // Load tar.gz archive from memory
     struct archive* archive = archive_read_new();
-    assert(archive != nullptr);
-
+    if(archive != nullptr) {
+        throw std::runtime_error("Could not create an archive reader");
+    }
     archive_read_support_filter_gzip(archive);  // Support for gzip compression
     archive_read_support_format_tar(archive);   // Support for tar format
 
     // Open the memory archive
     int r = archive_read_open_memory(archive, tarGzFile.data(), tarGzFile.size());
-    assert(r == ARCHIVE_OK);
+    if(r != ARCHIVE_OK) {
+        throw std::runtime_error("Could not open archive file");
+    }
 
     // Read through the archive and store all the file contents
     struct archive_entry* entry;
