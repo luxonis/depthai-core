@@ -1,15 +1,8 @@
 #include "depthai/pipeline/node/StereoDepth.hpp"
-
 #include "depthai/pipeline/node/MonoCamera.hpp"
-// standard
-#include <fstream>
-#include <memory>
-
 #include "pipeline/datatype/StereoDepthConfig.hpp"
-#include "spdlog/spdlog.h"
 #include "utility/Logging.hpp"
-#include "utility/spdlog-fmt.hpp"
-
+#include "utility/CompilerWarnings.hpp"
 namespace dai {
 namespace node {
 
@@ -224,6 +217,7 @@ void StereoDepth::setAlphaScaling(float alpha) {
 
 void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
     presetMode = mode;
+    DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
     switch(presetMode) {
         case PresetMode::HIGH_ACCURACY: {
             initialConfig.setConfidenceThreshold(55);
@@ -409,6 +403,7 @@ void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
             setPostProcessingHardwareResources(3, 3);
         } break;
     }
+    DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING
 }
 
 void StereoDepth::setFrameSync(bool enableFrameSync) {

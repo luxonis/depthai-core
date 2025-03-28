@@ -2181,8 +2181,8 @@ struct overloaded : Ts... {
 template <class... Ts>
 overloaded(Ts...) -> overloaded<Ts...>;
 
-inline bool float_eq(float a, float b) {
-    return fabs(a - b) <= 1e-6f;
+inline bool floatEq(float a, float b) {
+    return fabsf(a - b) <= 1e-6f;
 }
 
 inline bool isSingleChannelu8(const std::shared_ptr<dai::ImgFrame> img) {
@@ -2979,7 +2979,7 @@ void Warp<ImageManipBuffer, ImageManipData>::transform(const uint8_t* src,
 #endif
     int ssF = srcSpecs.width / srcWidth;
     assert(ssF == (int)(srcSpecs.height / srcHeight) && (ssF == 1 || ssF == 2));  // Sanity check
-    if(float_eq(matrix[2][0], 0) && float_eq(matrix[2][1], 0) && float_eq(matrix[2][2], 1)) {
+    if(floatEq(matrix[2][0], 0) && floatEq(matrix[2][1], 0) && floatEq(matrix[2][2], 1)) {
         // Affine transform
         float affine[6] = {matrix[0][0], matrix[0][1], matrix[0][2] / ssF, matrix[1][0], matrix[1][1], matrix[1][2] / ssF};
 #if defined(DEPTHAI_HAVE_OPENCV_SUPPORT) && DEPTHAI_IMAGEMANIPV2_OPENCV

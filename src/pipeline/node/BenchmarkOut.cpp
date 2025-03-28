@@ -27,7 +27,7 @@ void BenchmarkOut::run() {
 
     bool useTiming = (properties.fps > 0);
 
-    auto frameDurationDouble = std::chrono::duration<double>(1.0 / properties.fps);
+    auto frameDurationDouble = std::chrono::duration<double>(1.0 / static_cast<double>(properties.fps));
     auto frameDuration = std::chrono::duration_cast<std::chrono::steady_clock::duration>(frameDurationDouble);
 
     auto nextFrameTime = steady_clock::now();
