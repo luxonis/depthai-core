@@ -54,7 +54,7 @@ function(dai_add_example example_name example_src enable_test use_pcl)
     # If 'DEPTHAI_TEST_EXAMPLES' is ON, then examples will be part of the test suite
     if(${enable_test} AND DEPTHAI_TEST_EXAMPLES)
         add_test(NAME ${example_name} COMMAND 
-        ${CMAKE_COMMAND}
+            ${CMAKE_COMMAND}
             -DTIMEOUT_SECONDS=10
             -P ${CMAKE_CURRENT_LIST_DIR}/cmake/ExecuteTestTimeout.cmake 
             ${CMAKE_SOURCE_DIR}/build/tests/test_wrapper
@@ -357,6 +357,6 @@ if(DEPTHAI_BASALT_SUPPORT)
 endif()
 
 
-if(DEPTHAI_HAVE_PCL_SUPPORT)
-    dai_add_example(visualize_pointcloud PointCloud/visualize_pointcloud.cpp ON ON)
-endif()
+# if(DEPTHAI_HAVE_PCL_SUPPORT)
+#     dai_add_example(visualize_pointcloud PointCloud/visualize_pointcloud.cpp ON ON)
+# endif()

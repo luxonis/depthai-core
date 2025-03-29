@@ -13,7 +13,6 @@ if(UNIX)
 endif()
 
 set(TARGET_NAME "depthai")
-#message(FATAL_ERROR ${PYTHON_EXECUTABLE})
 
 # Add a target to install_requirements (added to ALL)
 # For windows we don't install open3d-cpu
@@ -35,22 +34,22 @@ endif()
 
 # Function for adding new python test
 function(add_python_example example_name python_script_path)
-# Modify example name to signify that its Python based
-set(example_name "py_${example_name}")
+    # Modify example name to signify that its Python based
+    set(example_name "py_${example_name}")
 
-# parse the rest of the arguments
-set(arguments ${ARGV})
-list(REMOVE_AT arguments 0 1)
+    # parse the rest of the arguments
+    set(arguments ${ARGV})
+    list(REMOVE_AT arguments 0 1)
 
-# Creates a target (python my_test [args])
-add_custom_target(${example_name}
-${CMAKE_COMMAND} -E env
-# Environment variables
-# PATH (dlls)
-"PATH=${HUNTER_INSTALL_PREFIX}/bin${SYS_PATH_SEPARATOR}$ENV{PATH}"
-# Python path (to find compiled module)
-"PYTHONPATH=$<TARGET_FILE_DIR:${TARGET_NAME}>${SYS_PATH_SEPARATOR}$ENV{PYTHONPATH}"
-"DEPTHAI_SEARCH_TIMEOUT=15000"
+    # Creates a target (python my_test [args])
+    add_custom_target(${example_name}
+        ${CMAKE_COMMAND} -E env
+        # Environment variables
+        # PATH (dlls)
+        "PATH=${HUNTER_INSTALL_PREFIX}/bin${SYS_PATH_SEPARATOR}$ENV{PATH}"
+        # Python path (to find compiled module)
+        "PYTHONPATH=$<TARGET_FILE_DIR:${TARGET_NAME}>${SYS_PATH_SEPARATOR}$ENV{PYTHONPATH}"
+        "DEPTHAI_SEARCH_TIMEOUT=15000"
         "DEPTHAI_CONNECT_TIMEOUT=15000"
         "DEPTHAI_RECONNECT_TIMEOUT=0"
         # ASAN in case of sanitizers
@@ -60,9 +59,9 @@ ${CMAKE_COMMAND} -E env
         DEPENDS ${TARGET_NAME} install_requirements
         VERBATIM
         COMMAND_EXPAND_LISTS
-        )
+    )
         
-        if(DEPTHAI_PYTHON_TEST_EXAMPLES)
+    if(DEPTHAI_PYTHON_TEST_EXAMPLES)
         
         # Adds test with 5 seconds timeout and bumps all python warnings to errors
         add_test(NAME ${example_name} COMMAND
@@ -73,15 +72,16 @@ ${CMAKE_COMMAND} -E env
             "DEPTHAI_CONNECT_TIMEOUT=10000"
             "DEPTHAI_RECONNECT_TIMEOUT=0"
             ${ASAN_ENVIRONMENT_VARS}
+            
             ${CMAKE_COMMAND}
-                -DFORCE_TIMEOUT_SECONDS=300
-                -P ${CMAKE_CURRENT_LIST_DIR}/../cpp/cmake/ExecuteTestTimeout.cmake
-                ${CMAKE_SOURCE_DIR}/build/tests/test_wrapper
-                60 # A timeout to terminate the test when sucessful 
-                ${PYTHON_EXECUTABLE}
-                -Werror
-                "${CMAKE_CURRENT_LIST_DIR}/${python_script_path}" 
-                ${arguments}
+            -DFORCE_TIMEOUT_SECONDS=300
+            -P ${CMAKE_CURRENT_LIST_DIR}/../cpp/cmake/ExecuteTestTimeout.cmake
+            ${CMAKE_SOURCE_DIR}/build/tests/test_wrapper
+            60 # A timeout to terminate the test when sucessful 
+            ${PYTHON_EXECUTABLE}
+            -Werror
+            "${CMAKE_CURRENT_LIST_DIR}/${python_script_path}" 
+            ${arguments}
         )
 
         # Sets a regex catching any logged warnings, errors or critical (coming either from device or host)
