@@ -72,7 +72,7 @@ function(add_python_example example_name python_script_path)
             "DEPTHAI_CONNECT_TIMEOUT=10000"
             "DEPTHAI_RECONNECT_TIMEOUT=0"
             ${ASAN_ENVIRONMENT_VARS}
-            
+
             ${CMAKE_COMMAND}
             -DFORCE_TIMEOUT_SECONDS=300
             -P ${CMAKE_CURRENT_LIST_DIR}/../cpp/cmake/ExecuteTestTimeout.cmake
@@ -146,9 +146,6 @@ dai_set_example_test_labels(camera_all ondevice rvc2_all rvc4 ci)
 
 add_python_example(camera_multiple_outputs Camera/camera_multiple_outputs.py 640 480 0 30 CAM_A 300 300 0 30 CAM_A 300 300 1 30 CAM_A)
 dai_set_example_test_labels(camera_multiple_outputs ondevice rvc2_all rvc4 ci)
-
-add_python_example(benchmark_nn Benchmark/benchmark_nn.py)
-dai_set_example_test_labels(benchmark_nn ondevice rvc2_all rvc4 ci)
 
 add_python_example(camera_raw Camera/camera_raw.py)
 dai_set_example_test_labels(camera_raw ondevice rvc2_all rvc4 ci)
@@ -291,6 +288,9 @@ set_tests_properties(py_benchmark_node PROPERTIES FAIL_REGULAR_EXPRESSION "\\[er
 add_python_example(benchmark_cameras Benchmark/benchmark_camera.py)
 dai_set_example_test_labels(benchmark_cameras ondevice rvc2_all rvc4 ci)
 set_tests_properties(py_benchmark_cameras PROPERTIES FAIL_REGULAR_EXPRESSION "\\[error\\];\\[critical\\]")
+
+add_python_example(benchmark_nn Benchmark/benchmark_nn.py)
+dai_set_example_test_labels(benchmark_nn ondevice rvc2_all rvc4 ci)
 
 # IMU node
 add_python_example(imu_gyroscope_accelerometer IMU/imu_gyroscope_accelerometer.py)
