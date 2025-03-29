@@ -219,6 +219,13 @@ private_data(
     LOCATION recording_path
 )
 
+### Helper script to wrap the tests with a timeout ############################
+
+add_executable(test_wrapper src/helpers/test_wrapper.cpp)
+target_include_directories(test_wrapper PRIVATE ${CMAKE_SOURCE_DIR}/include/3rdparty/subprocess)
+add_default_flags(test_wrapper LEAN)
+target_link_libraries(test_wrapper PRIVATE depthai::core Threads::Threads)
+
 ### On-host tests #############################################################
 
 # Superblob test

@@ -15,6 +15,7 @@ option(DEPTHAI_BOOTSTRAP_VCPKG "Automatically bootstrap VCPKG" ON)
 option(DEPTHAI_MERGED_TARGET "Enable merged target build" ON)
 option(DEPTHAI_NEW_FIND_PYTHON "Use new FindPython module" ON)
 
+
 if(NOT DEPTHAI_OPENCV_SUPPORT)
     set(DEPTHAI_MERGED_TARGET OFF CACHE BOOL "Enable merged target build" FORCE)
 endif()
