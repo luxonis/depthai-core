@@ -35,7 +35,7 @@ jobs:
 
   # Testing
   test:
-    runs-on: ['self-hosted', 'testbed-runner', 'linux']
+    runs-on: ['self-hosted', 'testbed-runner']
     timeout-minutes: 1450 # 24h & 10minutes
     steps:
     - uses: actions/checkout@v3
