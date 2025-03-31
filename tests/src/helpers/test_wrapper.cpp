@@ -57,12 +57,12 @@ int main(int argc, char* argv[]) {
         
         if(timed_out) {
             std::cerr << "=== Test exceeded timeout of " << timeout << " seconds, terminating ===" << std::endl;
-            proc.kill(SIGINT);  // Use the built-in kill method
+            proc.kill(SIGINT); // Use the built-in kill method
             std::this_thread::sleep_for(std::chrono::seconds(5));
             
             if(proc.poll() == -1) {
                 std::cerr << "Still running, killing..." << std::endl;
-                proc.kill(SIGKILL);  // Use SIGKILL if SIGTERM didn't work
+                proc.kill(SIGKILL); // Use SIGKILL if SIGTERM didn't work
             }
             
             // Device recovery wait
@@ -82,14 +82,12 @@ int main(int argc, char* argv[]) {
         // Now we can safely check the return code
         int retcode = proc.retcode();
         
-        if(retcode != 0) {
-            // Convert buffer to string - use the actual data from the Buffer objects
-            std::string stdoutStr(results.first.buf.data(), results.first.length);
-            std::string stderrStr(results.second.buf.data(), results.second.length);
-            
-            std::cout << "=== Subprocess STDOUT ===\n" << stdoutStr << std::endl;
-            std::cerr << "=== Subprocess STDERR ===\n" << stderrStr << std::endl;
-        }
+        // Always print the output regardless of return code
+        std::string stdoutStr(results.first.buf.data(), results.first.length);
+        std::string stderrStr(results.second.buf.data(), results.second.length);
+        
+        std::cout << "=== Subprocess STDOUT ===\n" << stdoutStr << std::endl;
+        std::cerr << "=== Subprocess STDERR ===\n" << stderrStr << std::endl;
         
         return retcode;
         

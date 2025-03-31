@@ -77,7 +77,7 @@ function(add_python_example example_name python_script_path)
             -DFORCE_TIMEOUT_SECONDS=300
             -P ${CMAKE_CURRENT_LIST_DIR}/../cpp/cmake/ExecuteTestTimeout.cmake
             ${CMAKE_SOURCE_DIR}/build/tests/test_wrapper
-            60 # A timeout to terminate the test when sucessful 
+            30 # A timeout to terminate the test when sucessful 
             ${PYTHON_EXECUTABLE}
             -Werror
             "${CMAKE_CURRENT_LIST_DIR}/${python_script_path}" 

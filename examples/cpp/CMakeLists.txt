@@ -55,10 +55,10 @@ function(dai_add_example example_name example_src enable_test use_pcl)
     if(${enable_test} AND DEPTHAI_TEST_EXAMPLES)
         add_test(NAME ${example_name} COMMAND 
             ${CMAKE_COMMAND}
-            -DTIMEOUT_SECONDS=10
+            -DTIMEOUT_SECONDS=60
             -P ${CMAKE_CURRENT_LIST_DIR}/cmake/ExecuteTestTimeout.cmake 
             ${CMAKE_SOURCE_DIR}/build/tests/test_wrapper
-            60 # Set test timeout
+            30 # Set test timeout
             $<TARGET_FILE:${example_name}> 
             ${arguments}
         )
