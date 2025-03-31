@@ -16,8 +16,15 @@
     #include <opencv2/core/types.hpp>
 #endif
 
-#define DEPTHAI_PLANE_ALIGNMENT 1
-#define DEPTHAI_STRIDE_ALIGNMENT 1
+#ifndef DEPTHAI_STRIDE_ALIGNMENT
+    #define DEPTHAI_STRIDE_ALIGNMENT 128
+#endif
+#ifndef DEPTHAI_HEIGHT_ALIGNMENT
+    #define DEPTHAI_HEIGHT_ALIGNMENT 32
+#endif
+#ifndef DEPTHAI_PLANE_ALIGNMENT
+    #define DEPTHAI_PLANE_ALIGNMENT 128 * 32
+#endif
 
 #if defined(WIN32) || defined(_WIN32)
     #define _RESTRICT
@@ -322,6 +329,7 @@ class ImageManipOperations {
 
     bool apply(const std::shared_ptr<ImageManipData> src, std::shared_ptr<ImageManipData> dst);
 
+    size_t getOutputPlaneSize(uint8_t plane = 0) const;
     size_t getOutputSize() const;
     size_t getOutputWidth() const;
     size_t getOutputHeight() const;
@@ -354,6 +362,7 @@ constexpr T ALIGN_UP(T value, std::size_t alignment) {
 
 FrameSpecs getSrcFrameSpecs(dai::ImgFrame::Specs srcSpecs);
 FrameSpecs getCcDstFrameSpecs(FrameSpecs srcSpecs, dai::ImgFrame::Type from, dai::ImgFrame::Type to);
+FrameSpecs getDstFrameSpecs(size_t width, size_t height, dai::ImgFrame::Type type);
 
 void transformOpenCV(const uint8_t* src,
                      uint8_t* dst,
@@ -2212,7 +2221,7 @@ void ColorChange<ImageManipBuffer, ImageManipData>::build(const FrameSpecs srcFr
     to = typeTo;
     srcSpecs = srcFrameSpecs;
     dstSpecs = dstFrameSpecs;
-    size_t newAuxFrameSize = srcSpecs.height * ALIGN_UP(3 * srcSpecs.width, DEPTHAI_STRIDE_ALIGNMENT);
+    size_t newAuxFrameSize = ALIGN_UP(srcSpecs.height, DEPTHAI_HEIGHT_ALIGNMENT) * ALIGN_UP(3 * srcSpecs.width, DEPTHAI_STRIDE_ALIGNMENT);
     if(!ccAuxFrame || ccAuxFrame->size() < newAuxFrameSize) ccAuxFrame = std::make_shared<ImageManipData>(newAuxFrameSize);
 }
 
@@ -2636,12 +2645,11 @@ bool ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::apply(
         }
         if(mode & MODE_COLORMAP) {
             uint8_t* colormapDst = outputFrameType == VALID_TYPE_COLOR ? dst->data() : warpedFrame->data();
-            cv::Mat gray(base.outputWidth,
-                         base.outputHeight,
-                         CV_8UC1,
-                         mode & MODE_WARP ? colormapFrame->data() : (convertInput ? convertedFrame->data() : src->getData().data()),
-                         ALIGN_UP(base.outputWidth, DEPTHAI_STRIDE_ALIGNMENT));
-            cv::Mat color(base.outputWidth, base.outputHeight, CV_8UC3, colormapDst);
+            size_t colormapDstStride = outputFrameType == VALID_TYPE_COLOR ? getOutputStride() : ALIGN_UP(base.outputWidth, DEPTHAI_STRIDE_ALIGNMENT);
+            uint8_t* colormapSrc = mode & MODE_WARP ? colormapFrame->data() : (convertInput ? convertedFrame->data() : src->getData().data());
+            size_t colormapSrcStride = !(mode & MODE_WARP) && !convertInput ? srcSpecs.p1Stride : ALIGN_UP(base.outputWidth, DEPTHAI_STRIDE_ALIGNMENT);
+            cv::Mat gray(base.outputWidth, base.outputHeight, CV_8UC1, colormapSrc, colormapSrcStride);
+            cv::Mat color(base.outputWidth, base.outputHeight, CV_8UC3, colormapDst, colormapDstStride);
             cv::ColormapTypes cvColormap = cv::COLORMAP_JET;
             switch(base.colormap) {  // TODO(asahtik): set correct stereo colormaps
                 case Colormap::TURBO:
@@ -2687,22 +2695,51 @@ template <template <typename T> typename ImageManipBuffer,
           template <template <typename T> typename Buf, typename Dat> typename WarpBackend>
 size_t ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::getOutputStride(uint8_t plane) const {
     if(mode == 0) return plane == 0 ? srcSpecs.p1Stride : (plane == 1 ? srcSpecs.p2Stride : (plane == 2 ? srcSpecs.p3Stride : 0));
+    auto specs = getOutputFrameSpecs(outputFrameType);
+    if(plane == 0)
+        return specs.p1Stride;
+    else if(plane == 1)
+        return specs.p2Stride;
+    else if(plane == 2)
+        return specs.p3Stride;
+    else
+        return 0;
+}
+
+template <template <typename T> typename ImageManipBuffer,
+          typename ImageManipData,
+          template <template <typename T> typename Buf, typename Dat> typename WarpBackend>
+size_t ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::getOutputPlaneSize(uint8_t plane) const {
+    if(mode == 0) return 0;
+    size_t size = 0;
     switch(outputFrameType) {
         case ImgFrame::Type::RGB888p:
         case ImgFrame::Type::BGR888p:
-            return plane < 3 ? ALIGN_UP(base.outputWidth, DEPTHAI_STRIDE_ALIGNMENT) : 0;
         case ImgFrame::Type::RGB888i:
         case ImgFrame::Type::BGR888i:
-            return plane == 0 ? ALIGN_UP(base.outputWidth * 3, DEPTHAI_STRIDE_ALIGNMENT) : 0;
-        case ImgFrame::Type::NV12:
-            return plane < 2 ? ALIGN_UP(base.outputWidth, DEPTHAI_STRIDE_ALIGNMENT) : 0;
-        case ImgFrame::Type::YUV420p:
-            return plane == 0 ? ALIGN_UP(base.outputWidth, DEPTHAI_STRIDE_ALIGNMENT) : (plane < 3 ? base.outputWidth / 2 : 0);
+            size = getOutputStride() * getOutputHeight();  // Do not do stride for RGB/BGRi/p
+            break;
         case ImgFrame::Type::GRAY8:
         case ImgFrame::Type::RAW8:
-            return plane == 0 ? ALIGN_UP(base.outputWidth, DEPTHAI_STRIDE_ALIGNMENT) : 0;
+            size = getOutputStride() * ALIGN_UP(getOutputHeight(), DEPTHAI_HEIGHT_ALIGNMENT);
+            break;
+        case ImgFrame::Type::NV12:
+            if(plane == 0) {
+                size = getOutputStride(0) * ALIGN_UP(getOutputHeight(), DEPTHAI_HEIGHT_ALIGNMENT);
+            } else if(plane == 1) {
+                size = ALIGN_UP(getOutputStride(1) * ALIGN_UP(getOutputHeight() / 2, DEPTHAI_HEIGHT_ALIGNMENT / 2), DEPTHAI_PLANE_ALIGNMENT);
+            }
+            break;
+        case ImgFrame::Type::YUV420p:
+            if(plane == 0) {
+                size = getOutputStride(0) * ALIGN_UP(getOutputHeight(), DEPTHAI_HEIGHT_ALIGNMENT);
+            } else if(plane == 1 || plane == 2) {
+                size = ALIGN_UP(getOutputStride(plane) * ALIGN_UP(getOutputHeight() / 2, DEPTHAI_HEIGHT_ALIGNMENT / 2), DEPTHAI_PLANE_ALIGNMENT);
+            }
+            break;
         case ImgFrame::Type::RAW16:
-            return plane == 0 ? ALIGN_UP(base.outputWidth * 2, DEPTHAI_STRIDE_ALIGNMENT) : 0;
+            size = getOutputStride() * getOutputHeight();  // Do not do stride for RGB/BGRi/p
+            break;
         case ImgFrame::Type::YUV422i:
         case ImgFrame::Type::YUV444p:
         case ImgFrame::Type::YUV422p:
@@ -2728,9 +2765,10 @@ size_t ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::getO
         case ImgFrame::Type::GRAYF16:
         case ImgFrame::Type::RAW32:
         case ImgFrame::Type::NONE:
-            return 0;
+            throw std::runtime_error("Output frame type not supported");
     }
-    return 0;
+    if(size == 0) throw std::runtime_error("Output size is 0");
+    return size;
 }
 
 template <template <typename T> typename ImageManipBuffer,
@@ -2742,24 +2780,19 @@ size_t ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::getO
     switch(outputFrameType) {
         case ImgFrame::Type::RGB888p:
         case ImgFrame::Type::BGR888p:
-            size = ALIGN_UP(getOutputStride() * getOutputHeight(), DEPTHAI_PLANE_ALIGNMENT) * 3;
+            size = getOutputPlaneSize(0) * 3;
             break;
         case ImgFrame::Type::RGB888i:
         case ImgFrame::Type::BGR888i:
         case ImgFrame::Type::GRAY8:
         case ImgFrame::Type::RAW8:
-            size = getOutputStride() * getOutputHeight();
+        case ImgFrame::Type::RAW16:
+            size = getOutputPlaneSize(0);
             break;
         case ImgFrame::Type::NV12:
-            size = ALIGN_UP(getOutputStride(0) * getOutputHeight(), DEPTHAI_PLANE_ALIGNMENT)
-                   + ALIGN_UP(getOutputStride(1) * getOutputHeight() / 2, DEPTHAI_PLANE_ALIGNMENT);
-            break;
+            size = getOutputPlaneSize(0) + getOutputPlaneSize(1);
         case ImgFrame::Type::YUV420p:
-            size = ALIGN_UP(getOutputStride(0) * getOutputHeight(), DEPTHAI_PLANE_ALIGNMENT)
-                   + ALIGN_UP(getOutputStride(1) * getOutputHeight() / 2, DEPTHAI_PLANE_ALIGNMENT) * 2;
-            break;
-        case ImgFrame::Type::RAW16:
-            size = getOutputStride() * getOutputHeight();
+            size += getOutputPlaneSize(2);
             break;
         case ImgFrame::Type::YUV422i:
         case ImgFrame::Type::YUV444p:
@@ -2796,78 +2829,10 @@ template <template <typename T> typename ImageManipBuffer,
           typename ImageManipData,
           template <template <typename T> typename Buf, typename Dat> typename WarpBackend>
 FrameSpecs ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::getOutputFrameSpecs(ImgFrame::Type type) const {
-    if(mode == 0) return srcSpecs;
-    FrameSpecs specs;
-    specs.width = base.outputWidth;
-    specs.height = base.outputHeight;
-    specs.p1Offset = 0;
-    switch(type) {
-        case dai::ImgFrame::Type::RGB888p:
-        case dai::ImgFrame::Type::BGR888p:
-            specs.p1Stride = ALIGN_UP(specs.width, DEPTHAI_STRIDE_ALIGNMENT);
-            specs.p2Stride = specs.p1Stride;
-            specs.p3Stride = specs.p1Stride;
-            specs.p2Offset = specs.p1Offset + ALIGN_UP(specs.p1Stride * specs.height, DEPTHAI_PLANE_ALIGNMENT);
-            specs.p3Offset = specs.p2Offset + ALIGN_UP(specs.p1Stride * specs.height, DEPTHAI_PLANE_ALIGNMENT);
-            break;
-        case dai::ImgFrame::Type::RGB888i:
-        case dai::ImgFrame::Type::BGR888i:
-            specs.p1Stride = ALIGN_UP(specs.width * 3, DEPTHAI_STRIDE_ALIGNMENT);
-            specs.p2Stride = specs.p1Stride;
-            specs.p3Stride = specs.p1Stride;
-            specs.p2Offset = specs.p1Offset;
-            specs.p3Offset = specs.p1Offset;
-            break;
-        case dai::ImgFrame::Type::NV12:
-            specs.p1Stride = ALIGN_UP(specs.width, DEPTHAI_STRIDE_ALIGNMENT);
-            specs.p2Stride = specs.p1Stride;
-            specs.p2Offset = specs.p1Offset + ALIGN_UP(specs.p1Stride * specs.height, DEPTHAI_PLANE_ALIGNMENT);
-            specs.p3Offset = specs.p2Offset;
-            specs.p3Stride = 0;
-            break;
-        case dai::ImgFrame::Type::YUV420p:
-            specs.p1Stride = ALIGN_UP(specs.width, DEPTHAI_STRIDE_ALIGNMENT);
-            specs.p2Stride = ALIGN_UP(specs.width / 2, DEPTHAI_STRIDE_ALIGNMENT);
-            specs.p3Stride = ALIGN_UP(specs.width / 2, DEPTHAI_STRIDE_ALIGNMENT);
-            specs.p2Offset = specs.p1Offset + ALIGN_UP(specs.p1Stride * specs.height, DEPTHAI_PLANE_ALIGNMENT);
-            specs.p3Offset = specs.p2Offset + ALIGN_UP(specs.p2Stride * (specs.height / 2), DEPTHAI_PLANE_ALIGNMENT);
-            break;
-        case dai::ImgFrame::Type::RAW8:
-        case dai::ImgFrame::Type::GRAY8:
-            specs.p1Stride = ALIGN_UP(specs.width, DEPTHAI_STRIDE_ALIGNMENT);
-            break;
-        case ImgFrame::Type::RAW16:
-            specs.p1Stride = ALIGN_UP(specs.width * 2, DEPTHAI_STRIDE_ALIGNMENT);
-            break;
-        case ImgFrame::Type::YUV422i:
-        case ImgFrame::Type::YUV444p:
-        case ImgFrame::Type::YUV422p:
-        case ImgFrame::Type::YUV400p:
-        case ImgFrame::Type::RGBA8888:
-        case ImgFrame::Type::RGB161616:
-        case ImgFrame::Type::LUT2:
-        case ImgFrame::Type::LUT4:
-        case ImgFrame::Type::LUT16:
-        case ImgFrame::Type::RAW14:
-        case ImgFrame::Type::RAW12:
-        case ImgFrame::Type::RAW10:
-        case ImgFrame::Type::PACK10:
-        case ImgFrame::Type::PACK12:
-        case ImgFrame::Type::YUV444i:
-        case ImgFrame::Type::NV21:
-        case ImgFrame::Type::BITSTREAM:
-        case ImgFrame::Type::HDR:
-        case ImgFrame::Type::RGBF16F16F16p:
-        case ImgFrame::Type::BGRF16F16F16p:
-        case ImgFrame::Type::RGBF16F16F16i:
-        case ImgFrame::Type::BGRF16F16F16i:
-        case ImgFrame::Type::GRAYF16:
-        case ImgFrame::Type::RAW32:
-        case ImgFrame::Type::NONE:
-            throw std::runtime_error("Frame type not supported");
-            break;
-    }
-    return specs;
+    if(mode == 0)
+        return srcSpecs;
+    else
+        return getDstFrameSpecs(base.outputWidth, base.outputHeight, type);
 }
 
 template <template <typename T> typename ImageManipBuffer,
