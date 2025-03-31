@@ -610,7 +610,8 @@ void PipelineImpl::build() {
         std::string replayPath = utility::getEnvAs<std::string>("DEPTHAI_REPLAY", "");
 
         if(defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_2
-           || defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_X) {
+           || defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_X
+           || defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_RVC4) {
             try {
 #ifdef DEPTHAI_MERGED_TARGET
                 if(enableHolisticRecordReplay) {
@@ -636,7 +637,12 @@ void PipelineImpl::build() {
                 } else if(!recordPath.empty()) {
                     if(enableHolisticRecordReplay || utility::checkRecordConfig(recordPath, recordConfig)) {
                         if(platform::checkWritePermissions(recordPath)) {
-                            if(utility::setupHolisticRecord(parent, defaultDeviceId, recordConfig, recordReplayFilenames)) {
+                            if(utility::setupHolisticRecord(parent,
+                                                            defaultDeviceId,
+                                                            recordConfig,
+                                                            recordReplayFilenames,
+                                                            defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_2
+                                                                || defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_X)) {
                                 recordConfig.state = RecordConfig::RecordReplayState::RECORD;
                                 Logging::getInstance().logger.info("Record enabled.");
                             } else {
@@ -651,7 +657,13 @@ void PipelineImpl::build() {
                 } else if(!replayPath.empty()) {
                     if(platform::checkPathExists(replayPath)) {
                         if(platform::checkWritePermissions(replayPath)) {
-                            if(utility::setupHolisticReplay(parent, replayPath, defaultDeviceId, recordConfig, recordReplayFilenames)) {
+                            if(utility::setupHolisticReplay(parent,
+                                                            replayPath,
+                                                            defaultDeviceId,
+                                                            recordConfig,
+                                                            recordReplayFilenames,
+                                                            defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_2
+                                                                || defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_X)) {
                                 recordConfig.state = RecordConfig::RecordReplayState::REPLAY;
                                 if(platform::checkPathExists(replayPath, true)) {
                                     removeRecordReplayFiles = false;
@@ -955,7 +967,11 @@ PipelineImpl::~PipelineImpl() {
             }
         }
         Logging::getInstance().logger.info("Record: Creating tar file with {} files", filenames.size());
-        utility::tarFiles(platform::joinPaths(recordConfig.outputDir, "recording.tar"), filenames, outFiles);
+        try {
+            utility::tarFiles(platform::joinPaths(recordConfig.outputDir, "recording.tar"), filenames, outFiles);
+        } catch(const std::exception& e) {
+            Logging::getInstance().logger.error("Record: Failed to create tar file: {}", e.what());
+        }
         std::remove(platform::joinPaths(recordConfig.outputDir, "record_config.json").c_str());
     }
 

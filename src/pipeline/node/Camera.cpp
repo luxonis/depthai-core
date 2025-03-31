@@ -3,12 +3,16 @@
 #include <fstream>
 #include <memory>
 #include <stdexcept>
+#include <utility>
+#include "depthai/depthai.hpp"
 
 // libraries
 #include <spimpl.h>
 
 // depthai internal
+#include "depthai/common/CameraBoardSocket.hpp"
 #include "utility/ErrorMacros.hpp"
+#include "utility/RecordReplayImpl.hpp"
 
 namespace dai {
 namespace node {
@@ -136,6 +140,18 @@ std::shared_ptr<Camera> Camera::build(CameraBoardSocket boardSocket,
     return std::static_pointer_cast<Camera>(shared_from_this());
 }
 
+std::shared_ptr<Camera> Camera::build(CameraBoardSocket boardSocket, ReplayVideo& replay) {
+    auto cam = build(boardSocket);
+    cam->setMockIsp(replay);
+    return cam;
+}
+
+std::shared_ptr<Camera> Camera::build(ReplayVideo& replay) {
+    auto cam = build(CameraBoardSocket::AUTO);
+    cam->setMockIsp(replay);
+    return cam;
+}
+
 Camera::Properties& Camera::getProperties() {
     properties.initialControl = initialControl;
     return properties;
@@ -226,6 +242,33 @@ Node::Output* Camera::requestOutput(const Capability& capability, bool onHost) {
     return pimpl->requestOutput(*this, capability, onHost);
 }
 
+Camera& Camera::setMockIsp(ReplayVideo& replay) {
+    if(!replay.getReplayVideoFile().empty()) {
+        auto [width, height] = replay.getSize();
+        if(width <= 0 || height <= 0) {
+            const auto& [vidWidth, vidHeight] = utility::getVideoSize(replay.getReplayVideoFile().string());
+            width = vidWidth;
+            height = vidHeight;
+        }
+        properties.mockIspWidth = width;
+        properties.mockIspHeight = height;
+
+        auto device = getParentPipeline().getDefaultDevice();
+        if(device) {
+            if(device->getPlatform() == Platform::RVC2) {
+                replay.setOutFrameType(ImgFrame::Type::YUV420p);
+            } else {
+                replay.setOutFrameType(ImgFrame::Type::NV12);
+            }
+        }
+
+        replay.out.link(mockIsp);
+    } else {
+        throw std::runtime_error("ReplayVideo video path not set");
+    }
+    return *this;
+}
+
 void Camera::buildStage1() {
     return pimpl->buildStage1(*this);
 }
@@ -242,6 +285,55 @@ NodeRecordParams Camera::getNodeRecordParams() const {
     params.video = true;
     params.name = "Camera" + toString(properties.boardSocket);
     return params;
+}
+Camera::Input& Camera::getReplayInput() {
+    return mockIsp;
+}
+float Camera::getMaxRequestedFps() const {
+    float maxFps = 0;
+    for(const auto& outputRequest : pimpl->outputRequests) {
+        if(outputRequest.capability.fps.value) {
+            if(const auto* fps = std::get_if<float>(&(*outputRequest.capability.fps.value))) {
+                maxFps = std::max(maxFps, *fps);
+            } else if(const auto* fps = std::get_if<std::pair<float, float>>(&(*outputRequest.capability.fps.value))) {
+                maxFps = std::max(maxFps, std::get<1>(*fps));
+            } else if(const auto* fps = std::get_if<std::vector<float>>(&(*outputRequest.capability.fps.value))) {
+                DAI_CHECK(fps->size() > 0, "When passing a vector to ImgFrameCapability->fps, please pass a non empty vector!");
+                maxFps = std::max(maxFps, (*fps)[0]);
+            } else {
+                throw std::runtime_error("Unsupported fps value");
+            }
+        }
+    }
+    return maxFps == 0 ? 30 : maxFps;
+}
+uint32_t Camera::getMaxRequestedWidth() const {
+    uint32_t width = 0;
+    for(const auto& outputRequest : pimpl->outputRequests) {
+        auto& spec = outputRequest.capability;
+        if(spec.size.value) {
+            if(const auto* size = std::get_if<std::pair<uint32_t, uint32_t>>(&(*spec.size.value))) {
+                width = std::max(width, size->first);
+            } else {
+                DAI_CHECK_IN(false);
+            }
+        }
+    }
+    return width == 0 ? getMaxWidth() : width;
+}
+uint32_t Camera::getMaxRequestedHeight() const {
+    uint32_t height = 0;
+    for(const auto& outputRequest : pimpl->outputRequests) {
+        auto& spec = outputRequest.capability;
+        if(spec.size.value) {
+            if(const auto* size = std::get_if<std::pair<uint32_t, uint32_t>>(&(*spec.size.value))) {
+                height = std::max(height, size->second);
+            } else {
+                DAI_CHECK_IN(false);
+            }
+        }
+    }
+    return height == 0 ? getMaxHeight() : height;
 }
 
 /*

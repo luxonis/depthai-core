@@ -58,6 +58,10 @@ jobs:
         run: cmake -S . -B build -DDEPTHAI_BUILD_PYTHON=ON -DDEPTHAI_PYTHON_FORCE_DOCSTRINGS=ON -DDEPTHAI_BASALT_SUPPORT=ON -DDEPTHAI_PCL_SUPPORT=ON -DDEPTHAI_RTABMAP_SUPPORT=ON -DDEPTHAI_PYTHON_DOCSTRINGS_OUTPUT="$PWD/bindings/python/docstrings/depthai_python_docstring.hpp"
       - name: Build target 'pybind11_mkdoc'
         run: cmake --build build --target pybind11_mkdoc --parallel 4
+      - name: Print out vcpkg logs if building port fails
+        if: failure()    # Only run this if the build step fails
+        run: bash ./bindings/python/ci/show_vcpkg_logs.sh
+
       - name: Upload docstring artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -141,6 +145,9 @@ jobs:
         run: |
           cmake -S . -B build -DDEPTHAI_BUILD_PYTHON=ON -D CMAKE_BUILD_TYPE=Release -D DEPTHAI_PYTHON_DOCSTRINGS_INPUT=$PWD/bindings/python/docstrings/depthai_python_docstring.hpp -D DEPTHAI_PYTHON_ENABLE_TESTS=ON
           cmake --build build --parallel 4
+      - name: Print out vcpkg logs if building port fails
+        if: failure()    # Only run this if the build step fails
+        run: cd bindings/python && bash ./ci/show_vcpkg_logs.sh
       - name: Test
         run: |
           cmake --build build --target pytest --config Release
@@ -208,6 +215,7 @@ jobs:
       DEPTHAI_BUILD_BASALT: OFF
       DEPTHAI_BUILD_PCL: ON
       DEPTHAI_BUILD_RTABMAP: ON
+      DEPTHAI_BUILD_KOMPUTE: ON
       VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
     steps:
       - name: Cache .hunter folder
@@ -248,6 +256,9 @@ jobs:
           python -m pip install --upgrade pip
       - name: Building wheels
         run: cd bindings/python && python -m pip wheel . -w ./wheelhouse/audited/ --verbose
+      - name: Print out vcpkg logs if building port fails
+        if: failure()    # Only run this if the build step fails
+        run: cd bindings/python && bash ./ci/show_vcpkg_logs.sh
       - name: Archive wheel artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -275,6 +286,7 @@ jobs:
       DEPTHAI_BUILD_BASALT: ON
       DEPTHAI_BUILD_PCL: ON
       DEPTHAI_BUILD_RTABMAP: ON
+      DEPTHAI_BUILD_KOMPUTE: ON
     steps:
       - name: Cache .hunter folder
         uses: actions/cache@v3
@@ -318,6 +330,9 @@ jobs:
           python -m pip install delocate
       - name: Building wheels
         run: cd bindings/python && python -m pip wheel . -w ./wheelhouse/ --verbose
+      - name: Print out vcpkg logs if building port fails
+        if: failure()    # Only run this if the build step fails
+        run: cd bindings/python && bash ./ci/show_vcpkg_logs.sh
       - name: Auditing wheels
         run: cd bindings/python && ci/repair-whl-macos.sh `pwd`/wheelhouse/* `pwd`/wheelhouse/audited
       - name: Archive wheel artifacts
@@ -411,6 +426,7 @@ jobs:
       DEPTHAI_BUILD_BASALT: ON
       DEPTHAI_BUILD_PCL: ON
       DEPTHAI_BUILD_RTABMAP: ON
+      DEPTHAI_BUILD_KOMPUTE: ON
       VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
     steps:
       - name: Cache .hunter folder
@@ -429,11 +445,6 @@ jobs:
           submodules: 'recursive'
       - name: Installing libusb1-devel dependency
         run: yum install -y libusb1-devel perl-core curl zip unzip tar ninja-build  zlib-devel curl-devel xcb-util-renderutil-devel xcb-util-devel xcb-util-image-devel xcb-util-keysyms-devel xcb-util-wm-devel mesa-libGL-devel libxkbcommon-devel libxkbcommon-x11-devel libXi-devel libXrandr-devel libXtst-devel libudev-devel lapack-devel nasm libtool autoconf automake
-      - name: Installing cmake dependency
-        run: |
-          cd bindings/python
-          /opt/python/cp38-cp38/bin/python3.8 -m pip install cmake
-          ln -s /opt/python/cp38-cp38/bin/cmake /bin/
       - name: Create folder structure
         run: cd bindings/python && mkdir -p wheelhouse/audited/
 
@@ -456,6 +467,9 @@ jobs:
       - name: Build wheels
         run: |
           cd bindings/python && for PYBIN in /opt/python/${{ matrix.python-set }}/bin; do "${PYBIN}/pip" wheel . -w ./wheelhouse/ --verbose; done
+      - name: Print out vcpkg logs if building port fails
+        if: failure()    # Only run this if the build step fails
+        run: cd bindings/python && bash ./ci/show_vcpkg_logs.sh
 
       - name: Audit wheels
         run: cd bindings/python && for whl in wheelhouse/*.whl; do auditwheel repair "$whl" --plat $PLAT -w wheelhouse/audited/; done
@@ -494,6 +508,7 @@ jobs:
       DEPTHAI_BUILD_BASALT: ON
       DEPTHAI_BUILD_PCL: ON
       DEPTHAI_BUILD_RTABMAP: ON
+      DEPTHAI_BUILD_KOMPUTE: ON
       VCPKG_MAX_CONCURRENCY: "2"
     steps:
       - name: Export GitHub Actions cache environment variables
@@ -506,12 +521,7 @@ jobs:
         with:
           submodules: 'recursive'
       - name: Installing libusb1-devel dependency
-        run: yum install -y libusb1-devel perl-core curl zip unzip tar  zlib-devel curl-devel xcb-util-renderutil-devel xcb-util-devel xcb-util-image-devel xcb-util-keysyms-devel xcb-util-wm-devel mesa-libGL-devel libxkbcommon-devel libxkbcommon-x11-devel libXi-devel libXrandr-devel libXtst-devel libudev-devel lapack-devel nasm libtool autoconf automake
-      - name: Installing cmake dependency
-        run: |
-          cd bindings/python
-          /opt/python/cp38-cp38/bin/python3.8 -m pip install cmake
-          ln -s /opt/python/cp38-cp38/bin/cmake /bin/
+        run: yum install -y libusb1-devel perl-core curl zip unzip tar zlib-devel curl-devel libxcb-devel xcb-util-renderutil-devel xcb-util-devel xcb-util-image-devel xcb-util-keysyms-devel xcb-util-wm-devel mesa-libGL-devel libxkbcommon-devel libxkbcommon-x11-devel libXi-devel libXrandr-devel libXtst-devel libudev-devel lapack-devel nasm libtool autoconf automake libX11-devel pkgconfig 
       - name: Setup ninja required for arm64 builds
         run: |
           git clone https://github.com/ninja-build/ninja.git
@@ -535,6 +545,10 @@ jobs:
       - name: Building wheels
         run: |
           cd bindings/python && for PYBIN in /opt/python/${{ matrix.python-set }}/bin; do "${PYBIN}/pip" wheel . -w ./wheelhouse/ --verbose; done
+      - name: Print out vcpkg logs if building port fails
+        if: failure()    # Only run this if the build step fails
+        run: cd bindings/python && bash ./ci/show_vcpkg_logs.sh
+
       - name: Auditing wheels
         run: cd bindings/python && for whl in wheelhouse/*.whl; do auditwheel repair "$whl" --plat $PLAT -w wheelhouse/audited/; done
       - name: Archive wheel artifacts

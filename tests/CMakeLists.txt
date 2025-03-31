@@ -212,6 +212,13 @@ private_data(
     LOCATION lenna_png
 )
 
+private_data(
+    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/recording.tar"
+    SHA1 "b1e31a26c83dc1e315132c9226097da4b1a5cbb7"
+    FILE "recording.tar"
+    LOCATION recording_path
+)
+
 ### On-host tests #############################################################
 
 # Superblob test
@@ -346,6 +353,10 @@ dai_set_test_labels(message_group_frame_test ondevice rvc2_all rvc4 ci)
 dai_add_test(pointcloud_test src/ondevice_tests/pointcloud_test.cpp)
 dai_set_test_labels(pointcloud_test ondevice rvc2_all ci)
 
+# RGBD test
+dai_add_test(rgbd_test src/ondevice_tests/rgbd_test.cpp)
+dai_set_test_labels(rgbd_test ondevice rvc2_all rvc4 ci)
+
 # Resolutions test
 dai_add_test(resolutions_test src/ondevice_tests/resolutions_test.cpp)
 dai_set_test_labels(resolutions_test ondevice) # TODO(jakob) Make the test runnable in CI
@@ -426,6 +437,14 @@ dai_set_test_labels(manual_focus_test rvc2_all rvc4 ci)
 # IMU tests
 dai_add_test(imu_test src/ondevice_tests/pipeline/node/imu_test.cpp)
 dai_set_test_labels(imu_test ondevice rvc4 ci) # Many RVC2 devices do not have an IMU which supports the whole test suite
+
+# Record & Replay tests
+dai_add_test(record_replay_test src/ondevice_tests/pipeline/node/record_replay_test.cpp)
+dai_set_test_labels(record_replay_test ondevice rvc2_all rvc4 ci)
+target_compile_definitions(record_replay_test PRIVATE RECORDING_PATH="${recording_path}")
+dai_add_test(replay_test src/onhost_tests/replay_test.cpp)
+dai_set_test_labels(replay_test onhost ci)
+target_compile_definitions(replay_test PRIVATE RECORDING_PATH="${recording_path}")
 
 # Camera tests
 dai_add_test(camera_test src/ondevice_tests/pipeline/node/camera_test.cpp)
