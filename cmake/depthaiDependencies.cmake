@@ -77,13 +77,11 @@ if(NOT CONFIG_MODE OR (CONFIG_MODE AND NOT DEPTHAI_SHARED_LIBS))
 endif()
 
 # Xtensor
-get_filename_component(PARENT_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/.. ABSOLUTE)
-# if(DEPTHAI_XTENSOR_SUPPORT)
-#     add_subdirectory("${PARENT_DIRECTORY}/3rdparty/xtl" xtl)
-#     add_subdirectory("${PARENT_DIRECTORY}/3rdparty/xtensor" xtensor)
-# endif()
-find_package(xtl ${_QUIET} CONFIG REQUIRED)
-find_package(xtensor ${_QUIET} CONFIG REQUIRED)
+if(DEPTHAI_XTENSOR_SUPPORT)
+    find_package(xtl ${_QUIET} CONFIG REQUIRED)
+    find_package(xtensor ${_QUIET} CONFIG REQUIRED)
+endif()
+
 if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
     # add_subdirectory("${PARENT_DIRECTORY}/3rdparty/foxglove/ws-protocol/cpp/foxglove-websocket" foxglove-websocket)
     find_package(foxglove-websocket ${_QUIET} CONFIG REQUIRED)
