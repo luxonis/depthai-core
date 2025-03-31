@@ -22,7 +22,7 @@ class ZooManager {
      * @param modelDescription: Model description
      * @param cacheDirectory: Cache directory, default is ".depthai_cached_models"
      */
-    explicit ZooManager(NNModelDescription modelDescription, std::string cacheDirectory = MODEL_ZOO_DEFAULT_CACHE_DIRECTORY, std::string apiKey = "")
+    explicit ZooManager(NNModelDescription modelDescription, std::string cacheDirectory = "", std::string apiKey = "")
         : modelDescription(std::move(modelDescription)), apiKey(std::move(apiKey)), cacheDirectory(std::move(cacheDirectory)) {
         // If the API is empty override from environment variable, if it exists
         if(this->apiKey.empty()) {
@@ -36,6 +36,12 @@ class ZooManager {
             }
         } else {
             logger::info("API key provided");
+        }
+
+        // If cache directory is not set, use the environment variable DEPTHAI_ZOO_CACHE_PATH with fallback to MODEL_ZOO_DEFAULT_CACHE_DIRECTORY
+        if(this->cacheDirectory.empty()) {
+            logger::info("Trying to get cache directory from environment variable DEPTHAI_ZOO_CACHE_PATH");
+            this->cacheDirectory = utility::getEnvAs<std::string>("DEPTHAI_ZOO_CACHE_PATH", MODEL_ZOO_DEFAULT_CACHE_DIRECTORY);
         }
     }
 

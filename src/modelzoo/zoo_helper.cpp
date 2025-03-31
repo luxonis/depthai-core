@@ -1,6 +1,7 @@
 #include <argparse/argparse.hpp>
 #include <iostream>
 
+#include "../utility/Environment.hpp"
 #include "depthai/modelzoo/Zoo.hpp"
 
 int main(int argc, char* argv[]) {
@@ -11,7 +12,7 @@ int main(int argc, char* argv[]) {
     const std::string DEFAULT_YAML_FOLDER = ".";
     program.add_argument("--yaml_folder").default_value(DEFAULT_YAML_FOLDER).help("Folder with YAML files describing models to download");
 
-    const std::string DEFAULT_CACHE_FOLDER = dai::MODEL_ZOO_DEFAULT_CACHE_DIRECTORY;
+    const std::string DEFAULT_CACHE_FOLDER = dai::utility::getEnvAs<std::string>("DEPTHAI_ZOO_CACHE_PATH", dai::MODEL_ZOO_DEFAULT_CACHE_DIRECTORY);
     program.add_argument("--cache_folder").default_value(DEFAULT_CACHE_FOLDER).help("Cache folder to download models into");
 
     const std::string DEFAULT_API_KEY = "";

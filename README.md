@@ -189,9 +189,10 @@ The following environment variables can be set to alter default behavior of the 
 | DEPTHAI_CRASHDUMP | Directory in which to save the crash dump. |
 | DEPTHAI_CRASHDUMP_TIMEOUT | Specifies the duration in seconds to wait for device reboot when obtaining a crash dump. Crash dump retrieval disabled if 0. |
 | DEPTHAI_DISABLE_FEEDBACK | Disables crash dump and pipeline schema collection used to improve the library |
-| DEPTHAI_HUB_API_KEY | (Default) API key for the Luxonis Hub |
+| DEPTHAI_HUB_API_KEY | API key for the Luxonis Hub |
 | DEPTHAI_ZOO_INTERNET_CHECK | (Default) 1 - perform internet check, 0 - skip internet check |
 | DEPTHAI_ZOO_INTERNET_CHECK_TIMEOUT | (Default) 1000 - timeout in milliseconds for the internet check |
+| DEPTHAI_ZOO_CACHE_FOLDER | (Default) .depthai_cached_models - Folder where model zoo models are stored |
 | DEPTHAI_RECORD | Enables holistic record to the specified directory. |
 | DEPTHAI_REPLAY | Replays holistic replay from the specified file or directory. |
 
