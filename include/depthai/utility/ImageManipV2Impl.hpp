@@ -37,7 +37,7 @@
 namespace dai {
 namespace impl {
 
-class _ImageManipMemory {
+class _ImageManipMemory : public Memory {
     std::vector<uint8_t> _data;
 
    public:
@@ -52,11 +52,20 @@ class _ImageManipMemory {
     size_t size() const {
         return _data.size();
     }
-    span<uint8_t> getData() {
+    span<uint8_t> getData() override {
         return span(data(), data() + size());
     }
-    span<const uint8_t> getData() const {
+    span<const uint8_t> getData() const override {
         return span(data(), data() + size());
+    }
+    size_t getMaxSize() const override {
+        return _data.size();
+    }
+    size_t getOffset() const override {
+        return 0;
+    }
+    void setSize(size_t size) override {
+        _data.resize(size);
     }
 };
 
