@@ -15,10 +15,7 @@ int main(int argc, char* argv[]) {
     std::cout << "Model path: " << modelPath << std::endl;
 
     // Color camera node
-    auto camRgb = pipeline.create<dai::node::ColorCamera>();
-    camRgb->setPreviewSize(256, 256);
-    camRgb->setColorOrder(dai::ColorCameraProperties::ColorOrder::RGB);
-    camRgb->setInterleaved(false);
+    auto camRgb = pipeline.create<dai::node::Camera>();
 
     // Neural network node
     auto neuralNetwork = pipeline.create<dai::node::NeuralNetwork>();
@@ -26,7 +23,7 @@ int main(int argc, char* argv[]) {
     neuralNetwork->setNumInferenceThreads(2);
 
     // Linking
-    camRgb->preview.link(neuralNetwork->input);
+    camRgb->requestOutput(std::make_pair(256,256), dai::ImgFrame::Type::BGR888p)->link(neuralNetwork->input);
 
     auto nnDetectionQueue = neuralNetwork->out.createOutputQueue();
     auto nnPassthroughQueue = neuralNetwork->passthrough.createOutputQueue();

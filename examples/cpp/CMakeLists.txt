@@ -283,8 +283,10 @@ dai_add_example(replay_imu Replay/replay_imu.cpp OFF OFF)
 dai_add_example(holistic_replay Replay/holistic_replay.cpp ON OFF)
 target_compile_definitions(holistic_replay PRIVATE RECORDING_PATH="${recording_path}")
 
-dai_add_example(detection_network_replay DetectionNetwork/detection_network_replay.cpp ON OFF)
-target_compile_definitions(detection_network_replay PRIVATE VIDEO_PATH="${construction_vest}")
+if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
+    dai_add_example(detection_network_replay DetectionNetwork/detection_network_replay.cpp ON OFF)
+    target_compile_definitions(detection_network_replay PRIVATE VIDEO_PATH="${construction_vest}")
+endif()
 
 
 # StereoDepth
@@ -311,9 +313,11 @@ endif()
 # Image Align
 dai_add_example(image_align RVC2/ImageAlign/image_align.cpp OFF OFF)
 
-# Visualizer
-dai_add_example(visualizer_yolo Visualizer/visualizer_yolo.cpp ON OFF)
-dai_set_example_test_labels(visualizer_yolo ondevice rvc2_all rvc4)
+if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
+    # Visualizer
+    dai_add_example(visualizer_yolo Visualizer/visualizer_yolo.cpp ON OFF)
+    dai_set_example_test_labels(visualizer_yolo ondevice rvc2_all rvc4)
+endif()
 
 
 if(DEPTHAI_RTABMAP_SUPPORT)
