@@ -403,7 +403,9 @@ std::function<void()> getLazyTarXzFunction(MTX& mtx, CV& cv, BOOL& ready, PATH c
         archive_read_support_filter_xz(archive.getA());
         archive_read_support_format_tar(archive.getA());
         int r = archive_read_open_memory(archive.getA(), tarXz.begin(), tarXz.size());
-        assert(r == ARCHIVE_OK);
+        if(r != ARCHIVE_OK) {
+            throw std::runtime_error(fmt::format("Could not open embedded tar.xz. Returned {}", r));
+        }
 
         auto t2 = steady_clock::now();
 
