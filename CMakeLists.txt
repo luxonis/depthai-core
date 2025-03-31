@@ -14,6 +14,7 @@ option(DEPTHAI_BOOTSTRAP_VCPKG "Automatically bootstrap VCPKG" ON)
 option(DEPTHAI_MERGED_TARGET "Enable merged target build" ON)
 option(DEPTHAI_NEW_FIND_PYTHON "Use new FindPython module" ON)
 option(DEPTHAI_SUBMODULE_BUILD "Enable if building depthai as a submodule" OFF)
+option(DEPTHAI_BUILD_ZOO_HELPER "Build the Zoo helper" OFF)
 
 if(NOT DEPTHAI_OPENCV_SUPPORT)
     set(DEPTHAI_MERGED_TARGET OFF CACHE BOOL "Enable merged target build" FORCE)
@@ -508,57 +509,59 @@ set_target_properties(${TARGET_CORE_NAME} PROPERTIES EXPORT_NAME ${TARGET_CORE_A
 # Add to list of targets to export and install
 list(APPEND targets_to_export ${TARGET_CORE_NAME})
 
-# Add model_zoo helper binary
-find_package(fmt REQUIRED)
-find_package(yaml-cpp REQUIRED)
-set(ZOO_HELPER_SOURCES
-    src/modelzoo/zoo_helper.cpp
-    src/modelzoo/Zoo.cpp
-    src/modelzoo/NNModelDescription.cpp
-    src/utility/Environment.cpp
-    src/utility/Logging.cpp
-)
-set(ZOO_HELPER_LINK_LIBRARIES
-    nlohmann_json::nlohmann_json
-    fmt::fmt
-    yaml-cpp::yaml-cpp
-)
-add_executable(zoo_helper ${ZOO_HELPER_SOURCES})
-target_compile_definitions(zoo_helper PRIVATE DEPTHAI_TARGET_CORE)
-target_link_libraries(zoo_helper PRIVATE ${ZOO_HELPER_LINK_LIBRARIES})
-target_include_directories(zoo_helper
-    PRIVATE
-        # Relative path to include directories after installed
-        "$<INSTALL_INTERFACE:include>"
-        "$<INSTALL_INTERFACE:include/${DEPTHAI_SHARED_3RDPARTY_HEADERS_PATH}>"
+if(DEPTHAI_BUILD_ZOO_HELPER)
+    # Add model_zoo helper binary
+    find_package(fmt REQUIRED)
+    find_package(yaml-cpp REQUIRED)
+    set(ZOO_HELPER_SOURCES
+        src/modelzoo/zoo_helper.cpp
+        src/modelzoo/Zoo.cpp
+        src/modelzoo/NNModelDescription.cpp
+        src/utility/Environment.cpp
+        src/utility/Logging.cpp
+    )
+    set(ZOO_HELPER_LINK_LIBRARIES
+        nlohmann_json::nlohmann_json
+        fmt::fmt
+        yaml-cpp::yaml-cpp
+    )
+    add_executable(zoo_helper ${ZOO_HELPER_SOURCES})
+    target_compile_definitions(zoo_helper PRIVATE DEPTHAI_TARGET_CORE)
+    target_link_libraries(zoo_helper PRIVATE ${ZOO_HELPER_LINK_LIBRARIES})
+    target_include_directories(zoo_helper
+        PRIVATE
+            # Relative path to include directories after installed
+            "$<INSTALL_INTERFACE:include>"
+            "$<INSTALL_INTERFACE:include/${DEPTHAI_SHARED_3RDPARTY_HEADERS_PATH}>"
 
-        # Build time path to include directories
-        "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>"
-        "$<BUILD_INTERFACE:${DEPTHAI_SHARED_PUBLIC_INCLUDE}>"
-        "$<BUILD_INTERFACE:${DEPTHAI_BOOTLOADER_SHARED_PUBLIC_INCLUDE}>"
+            # Build time path to include directories
+            "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>"
+            "$<BUILD_INTERFACE:${DEPTHAI_SHARED_PUBLIC_INCLUDE}>"
+            "$<BUILD_INTERFACE:${DEPTHAI_BOOTLOADER_SHARED_PUBLIC_INCLUDE}>"
 
-        "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include/depthai>"
-        "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/src>"
-        "$<BUILD_INTERFACE:${DEPTHAI_SHARED_INCLUDE}>"
-        "$<BUILD_INTERFACE:${DEPTHAI_BOOTLOADER_SHARED_INCLUDE}>"
-)
-target_include_directories(zoo_helper SYSTEM
-    PRIVATE
-        "$<BUILD_INTERFACE:${DEPTHAI_SHARED_3RDPARTY_INCLUDE}>"
-)
+            "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include/depthai>"
+            "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/src>"
+            "$<BUILD_INTERFACE:${DEPTHAI_SHARED_INCLUDE}>"
+            "$<BUILD_INTERFACE:${DEPTHAI_BOOTLOADER_SHARED_INCLUDE}>"
+    )
+    target_include_directories(zoo_helper SYSTEM
+        PRIVATE
+            "$<BUILD_INTERFACE:${DEPTHAI_SHARED_3RDPARTY_INCLUDE}>"
+    )
 
-# Set compiler features (c++17), and disables extensions (g++17)
-set_property(TARGET zoo_helper PROPERTY CXX_STANDARD 17)
-set_property(TARGET zoo_helper PROPERTY CXX_STANDARD_REQUIRED ON)
-set_property(TARGET zoo_helper PROPERTY CXX_EXTENSIONS OFF)
-# Add interface transitive property (C++17)
-if(${CMAKE_VERSION} VERSION_LESS "3.8.0")
-    target_compile_features(zoo_helper INTERFACE cxx_generic_lambdas)
-else()
-    target_compile_features(zoo_helper INTERFACE cxx_std_17)
+    # Set compiler features (c++17), and disables extensions (g++17)
+    set_property(TARGET zoo_helper PROPERTY CXX_STANDARD 17)
+    set_property(TARGET zoo_helper PROPERTY CXX_STANDARD_REQUIRED ON)
+    set_property(TARGET zoo_helper PROPERTY CXX_EXTENSIONS OFF)
+    # Add interface transitive property (C++17)
+    if(${CMAKE_VERSION} VERSION_LESS "3.8.0")
+        target_compile_features(zoo_helper INTERFACE cxx_generic_lambdas)
+    else()
+        target_compile_features(zoo_helper INTERFACE cxx_std_17)
+    endif()
+
+    list(APPEND targets_to_export zoo_helper)
 endif()
-
-list(APPEND targets_to_export zoo_helper)
 
 # Add default flags to core
 add_default_flags(${TARGET_CORE_NAME})
