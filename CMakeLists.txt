@@ -15,6 +15,7 @@ option(DEPTHAI_MERGED_TARGET "Enable merged target build" ON)
 option(DEPTHAI_NEW_FIND_PYTHON "Use new FindPython module" ON)
 option(DEPTHAI_SUBMODULE_BUILD "Enable if building depthai as a submodule" OFF)
 option(DEPTHAI_BUILD_ZOO_HELPER "Build the Zoo helper" OFF)
+option(DEPTHAI_ENABLE_MP4V2 "Enable video recording using the MP4V2 library" OFF)
 
 if(NOT DEPTHAI_OPENCV_SUPPORT)
     set(DEPTHAI_MERGED_TARGET OFF CACHE BOOL "Enable merged target build" FORCE)
@@ -825,10 +826,15 @@ target_link_libraries(${TARGET_CORE_NAME}
         ZLIB::ZLIB
         lz4::lz4
         httplib::httplib
-        mp4v2::mp4v2
         semver::semver
         magic_enum::magic_enum
 )
+
+if(DEPTHAI_ENABLE_MP4V2)
+    message(STATUS "DepthAI recording enabled, finding the mp4v2 library!")
+    target_link_libraries(${TARGET_CORE_NAME} PRIVATE mp4v2::mp4v2)
+    target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_ENABLE_MP4V2)
+endif()
 
 if(DEPTHAI_ENABLE_PROTOBUF)
     # Load protobuf support into library messages_proto

@@ -96,8 +96,10 @@ find_package(nlohmann_json 3.6.0 ${_QUIET} CONFIG REQUIRED)
 # libnop for serialization
 find_package(libnop ${_QUIET} CONFIG REQUIRED)
 
-# MP4V2 for video encoding
-find_package(mp4v2 ${_QUIET} CONFIG REQUIRED)
+if(DEPTHAI_ENABLE_MP4V2)
+    # MP4V2 for video encoding
+    find_package(mp4v2 ${_QUIET} CONFIG REQUIRED)
+endif()
 
 if(DEPTHAI_ENABLE_PROTOBUF)
     find_package(Protobuf ${_QUIET} REQUIRED)
