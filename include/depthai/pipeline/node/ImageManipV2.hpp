@@ -160,13 +160,13 @@ void ImageManipV2::loop(N& node,
             node.out.send(inImage);
         } else if((long)outputSize <= (long)node.properties.outputFrameSize) {
             auto outImage = std::make_shared<ImgFrame>();
-            auto outData = std::make_shared<ImageManipData>(node.properties.outputFrameSize);
-            outImage->data = outData;
+            auto outImageData = std::make_shared<ImageManipData>(node.properties.outputFrameSize);
+            outImage->data = outImageData;
 
             bool success = true;
             {
                 auto t3 = steady_clock::now();
-                success = apply(inImage->data, outData);
+                success = apply(inImage->data, outImageData);
                 auto t4 = steady_clock::now();
 
                 getFrame(config, *inImage, *outImage);
