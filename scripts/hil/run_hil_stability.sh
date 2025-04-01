@@ -8,6 +8,7 @@ export HIL_FRAMEWORK_PATH="/home/hil/hil_framework"
 # Get depthai version from input argument or print message
 if [ -z "$1" ] || [ "$1" == "latest" ]; then
     echo "Using latest depthai"
+    source /home/hil/.hil/bin/activate
 else
     DEPTHAI_VERSION="$1"
     rm -rf venv
