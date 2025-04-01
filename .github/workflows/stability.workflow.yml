@@ -23,10 +23,7 @@ on:
         type: string
         default: "latest"
         description: "Version for depthai"
-# Only allow latest run on same branch to be tested
-concurrency:
-  group: ci-stability-${{ github.ref }}-1
-  cancel-in-progress: true
+
 
 jobs:
 
