@@ -6,8 +6,6 @@
             "name": "cpp-httplib",
             "default-features": false
         },
-        "libpng",
-        "tiff",
         "yaml-cpp",
         "nlohmann-json",
         "spdlog",
@@ -17,7 +15,6 @@
         "liblzma",
         "fp16",
         "libnop",
-        "argparse",
         "fmt",
         "neargye-semver",
         "magic-enum",
