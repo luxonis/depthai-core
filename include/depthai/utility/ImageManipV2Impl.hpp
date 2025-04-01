@@ -1,4 +1,5 @@
 #pragma once
+#include <string>
 #define _USE_MATH_DEFINES
 
 #include <spdlog/async_logger.h>
@@ -2767,7 +2768,7 @@ size_t ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::getO
         case ImgFrame::Type::NONE:
             throw std::runtime_error("Output frame type not supported");
     }
-    if(size == 0) throw std::runtime_error("Output size is 0");
+    if(size == 0) throw std::runtime_error("Output size is 0 for plane " + std::to_string(plane));
     return size;
 }
 
@@ -2789,10 +2790,10 @@ size_t ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::getO
         case ImgFrame::Type::RAW16:
             size = getOutputPlaneSize(0);
             break;
-        case ImgFrame::Type::NV12:
-            size = getOutputPlaneSize(0) + getOutputPlaneSize(1);
         case ImgFrame::Type::YUV420p:
-            size += getOutputPlaneSize(2);
+            size = getOutputPlaneSize(2);
+        case ImgFrame::Type::NV12:
+            size += getOutputPlaneSize(0) + getOutputPlaneSize(1);
             break;
         case ImgFrame::Type::YUV422i:
         case ImgFrame::Type::YUV444p:
