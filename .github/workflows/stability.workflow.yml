@@ -1,9 +1,6 @@
 name: DepthAI Core HIL Stability
 
 on:
-  push:
-    branches:
-      - v3_stability
   workflow_dispatch:
     inputs:
       distinct_id:
