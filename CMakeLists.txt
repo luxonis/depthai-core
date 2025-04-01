@@ -16,6 +16,7 @@ option(DEPTHAI_NEW_FIND_PYTHON "Use new FindPython module" ON)
 option(DEPTHAI_SUBMODULE_BUILD "Enable if building depthai as a submodule" OFF)
 option(DEPTHAI_BUILD_ZOO_HELPER "Build the Zoo helper" OFF)
 option(DEPTHAI_ENABLE_MP4V2 "Enable video recording using the MP4V2 library" OFF)
+option(DEPTHAI_XTENSOR_SUPPORT "Enable optional xtensor support" ON)
 
 if(NOT DEPTHAI_OPENCV_SUPPORT)
     set(DEPTHAI_MERGED_TARGET OFF CACHE BOOL "Enable merged target build" FORCE)
@@ -55,7 +56,12 @@ endif()
 if(DEPTHAI_PCL_SUPPORT)
 list(APPEND VCPKG_MANIFEST_FEATURES "pcl-support")
 endif()
-
+if(DEPTHAI_XTENSOR_SUPPORT)
+list(APPEND VCPKG_MANIFEST_FEATURES "xtensor-support")
+endif()
+if(DEPTHAI_ENABLE_MP4V2)
+list(APPEND VCPKG_MANIFEST_FEATURES "recording")
+endif()
 # Enable backward stack printing on crash
 if(ANDROID OR EMSCRIPTEN)
     # Backward not supported currently on Android
@@ -269,8 +275,6 @@ endif()
 
 ### Get and find dependencies
 
-# Specify optional dependencies
-option(DEPTHAI_XTENSOR_SUPPORT "Enable optional xtensor support" ON)
 
 # Include project dependencies
 set(DEPTHAI_DEPENDENCY_INCLUDE "" CACHE FILEPATH "Optional cmake file to append to dependency processing, e.g. additional find_package()")
