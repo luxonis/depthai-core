@@ -18,8 +18,6 @@
         "fmt",
         "neargye-semver",
         "magic-enum",
-        "xtensor",
-        "xtl",
         {
             "name": "libarchive",
             "default-features": false
@@ -195,7 +193,18 @@
                     "name": "mp4v2"
                 }
             ]
-        }
+        },
+        "xtensor-support": {
+            "description": "Enable xtensor support",
+            "dependencies": [
+                {
+                    "name": "xtensor"
+                },
+                {
+                    "name": "xtl"
+                }
+            ]
+        },
     },
     "builtin-baseline": "b2cb0da531c2f1f740045bfe7c4dac59f0b2b69c"
 }
