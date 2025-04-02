@@ -87,8 +87,8 @@ if(DEPTHAI_XTENSOR_SUPPORT)
 endif()
 
 if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
-    # add_subdirectory("${PARENT_DIRECTORY}/3rdparty/foxglove/ws-protocol/cpp/foxglove-websocket" foxglove-websocket)
-    find_package(foxglove-websocket ${_QUIET} CONFIG REQUIRED)
+    get_filename_component(PARENT_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/.. ABSOLUTE)
+    add_subdirectory("${PARENT_DIRECTORY}/3rdparty/foxglove/ws-protocol/cpp/foxglove-websocket" foxglove-websocket)
 endif()
 
 # Add threads (c++)
