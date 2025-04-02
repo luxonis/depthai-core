@@ -153,18 +153,7 @@ std::string generateErrorMessageHub(const cpr::Response& response) {
     errorMessage += "There was an error while sending a request to the Hub\n";
     errorMessage += "HTTP status code: " + std::to_string(response.status_code) + "\n";
     errorMessage += "CPR error code: " + std::to_string(static_cast<int>(response.error.code)) + "\n";
-
-    if(response.status_code == cpr::status::HTTP_OK) {
-        nlohmann::json responseJson = nlohmann::json::parse(response.text);
-        if(responseJson.contains("errors")) {
-            errorMessage += "Errors: " + responseJson["errors"].dump() + "\n";
-        }
-
-        if(!responseJson["data"].is_null()) {
-            errorMessage += "No model found for the given model description\n";
-        }
-    }
-
+    errorMessage += "Response text: " + response.text + "\n";
     return errorMessage;
 }
 
@@ -178,6 +167,7 @@ std::string generateErrorMessageModelDownload(const cpr::Response& response) {
     errorMessage += "There was an error while downloading the model\n";
     errorMessage += "HTTP status code: " + std::to_string(response.status_code) + "\n";
     errorMessage += "CPR error code: " + std::to_string(static_cast<int>(response.error.code)) + "\n";
+    errorMessage += "Response text: " + response.text + "\n";
     return errorMessage;
 }
 
