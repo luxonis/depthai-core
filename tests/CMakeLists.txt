@@ -222,8 +222,7 @@ private_data(
 ### Helper script to wrap the tests with a timeout ############################
 
 add_executable(test_wrapper src/helpers/test_wrapper.cpp)
-target_include_directories(test_wrapper PRIVATE ${CMAKE_SOURCE_DIR}/include/3rdparty/subprocess)
-add_default_flags(test_wrapper LEAN)
+target_include_directories(test_wrapper PRIVATE ${CMAKE_CURRENT_LIST_DIR}/include/subprocess)
 target_link_libraries(test_wrapper PRIVATE depthai::core Threads::Threads)
 
 ### On-host tests #############################################################
