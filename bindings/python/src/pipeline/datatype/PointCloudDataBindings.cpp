@@ -56,8 +56,8 @@ void bind_pointclouddata(pybind11::module& m, void* pCallstack) {
              [](py::object& obj) {
                  dai::PointCloudData& data = obj.cast<dai::PointCloudData&>();
                  if(data.isColor()) {
-                     Point3fRGB* points = (Point3fRGB*)data.getData().data();
-                     unsigned long size = data.getData().size() / sizeof(Point3fRGB);
+                     Point3fRGBA* points = (Point3fRGBA*)data.getData().data();
+                     unsigned long size = data.getData().size() / sizeof(Point3fRGBA);
                      py::array_t<float> arr({size, 3UL});
                      auto ra = arr.mutable_unchecked();
                      for(int i = 0; i < size; i++) {
@@ -84,8 +84,8 @@ void bind_pointclouddata(pybind11::module& m, void* pCallstack) {
                  if(!data.isColor()) {
                      throw std::runtime_error("PointCloudData does not contain color data");
                  }
-                 Point3fRGB* points = (Point3fRGB*)data.getData().data();
-                 unsigned long size = data.getData().size() / sizeof(Point3fRGB);
+                 Point3fRGBA* points = (Point3fRGBA*)data.getData().data();
+                 unsigned long size = data.getData().size() / sizeof(Point3fRGBA);
                  py::array_t<float> arr({size, 3UL});
                  auto ra = arr.mutable_unchecked();
                  for(int i = 0; i < size; i++) {
@@ -93,12 +93,13 @@ void bind_pointclouddata(pybind11::module& m, void* pCallstack) {
                      ra(i, 1) = points[i].y;
                      ra(i, 2) = points[i].z;
                  }
-                 py::array_t<uint8_t> arr2({size, 3UL});
+                 py::array_t<uint8_t> arr2({size, 4UL});
                  auto ra2 = arr2.mutable_unchecked();
                  for(int i = 0; i < size; i++) {
                      ra2(i, 0) = points[i].r;
                      ra2(i, 1) = points[i].g;
                      ra2(i, 2) = points[i].b;
+                     ra2(i, 3) = points[i].a;
                  }
                  return py::make_tuple(arr, arr2);
              })

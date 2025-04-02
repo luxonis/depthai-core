@@ -319,6 +319,14 @@ if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
     dai_set_example_test_labels(visualizer_yolo ondevice rvc2_all rvc4)
 endif()
 
+include(FetchContent)
+FetchContent_Declare(rerun_sdk URL  https://github.com/rerun-io/rerun/releases/download/0.16.1/rerun_cpp_sdk.zip)
+FetchContent_MakeAvailable(rerun_sdk)
+dai_add_example(rgbd RGBD/rgbd.cpp ON OFF)
+target_link_libraries(rgbd PRIVATE rerun_sdk)
+
+dai_add_example(visualizer_rgbd RGBD/visualizer_rgbd.cpp ON OFF)
+dai_add_example(visualizer_rgbd_autocreate RGBD/visualizer_rgbd_autocreate.cpp ON OFF)
 
 if(DEPTHAI_RTABMAP_SUPPORT)
     include(FetchContent)
@@ -336,6 +344,7 @@ if(DEPTHAI_RTABMAP_SUPPORT)
     endif()
 
 endif()
+
 
 if(DEPTHAI_BASALT_SUPPORT)
     include(FetchContent)

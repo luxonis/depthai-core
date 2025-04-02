@@ -2,6 +2,8 @@ from lib_testbed.power.PowerFactory import PowerFactory
 from lib_testbed.config.Config import Config
 from lib_testbed.utils.ssh_util import *
 from time import sleep
+import os
+
 
 testbed_name=os.getenv("SET_HIL_TESTBED")
 config=Config(testbed_name)

@@ -43,7 +43,12 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
         return std::static_pointer_cast<StereoDepth>(shared_from_this());
     }
 
-    std::shared_ptr<StereoDepth> build(bool autoCreateCameras, PresetMode presetMode = PresetMode::DEFAULT);
+    /**
+     * Create StereoDepth node. Note that this API is global and if used autocreated cameras can't be reused.
+     * @param autoCreateCameras If true, will create left and right nodes if they don't exist
+     * @param presetMode Preset mode for stereo depth
+     */
+    std::shared_ptr<StereoDepth> build(bool autoCreateCameras, PresetMode presetMode = PresetMode::DEFAULT, std::pair<int, int> size = {640, 400});
 
    protected:
     Properties& getProperties();

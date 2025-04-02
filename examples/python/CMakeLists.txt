@@ -15,12 +15,22 @@ endif()
 set(TARGET_NAME "depthai")
 
 # Add a target to install_requirements (added to ALL)
-add_custom_target(install_requirements ALL
-    COMMAND ${PYTHON_EXECUTABLE} "${CMAKE_CURRENT_LIST_DIR}/install_requirements.py" "--skip_depthai"
-    DEPENDS ${TARGET_NAME}
-    VERBATIM
-    COMMAND_EXPAND_LISTS
-)
+# For windows we don't install open3d-cpu
+if(WIN32)
+    add_custom_target(install_requirements ALL
+        COMMAND ${PYTHON_EXECUTABLE} "${CMAKE_CURRENT_LIST_DIR}/install_requirements.py" "--skip_depthai"
+        DEPENDS ${TARGET_NAME}
+        VERBATIM
+        COMMAND_EXPAND_LISTS
+    )
+else()
+    add_custom_target(install_requirements ALL
+        COMMAND ${PYTHON_EXECUTABLE} "${CMAKE_CURRENT_LIST_DIR}/install_requirements.py" "--skip_depthai" "--install_rerun" "--install_open3d_cpu"
+        DEPENDS ${TARGET_NAME}
+        VERBATIM
+        COMMAND_EXPAND_LISTS
+    )
+endif()
 
 # Function for adding new python test
 function(add_python_example example_name python_script_path)
@@ -188,6 +198,20 @@ dai_set_example_test_labels(image_manip_remap ondevice rvc2_all rvc4 ci)
 ## Misc
 add_python_example(reconnect_callback Misc/AutoReconnect/reconnect_callback.py)
 dai_set_example_test_labels(reconnect_callback ondevice rvc2_all rvc4 ci)
+
+
+## RGBD
+add_python_example(rgbd RGBD/rgbd.py)
+dai_set_example_test_labels(rgbd ondevice rvc2_all rvc4 ci nowindows)
+
+add_python_example(visualizer_rgbd RGBD/visualizer_rgbd.py)
+dai_set_example_test_labels(visualizer_rgbd ondevice rvc2_all rvc4 ci)
+
+add_python_example(visualizer_rgbd_autocreate RGBD/visualizer_rgbd_autocreate.py)
+dai_set_example_test_labels(visualizer_rgbd_autocreate ondevice rvc2_all rvc4 ci)
+
+add_python_example(rgbd_o3d RGBD/rgbd_o3d.py)
+dai_set_example_test_labels(rgbd_o3d ondevice rvc2_all rvc4 ci nowindows)
 
 add_python_example(person_crop_out Misc/DigitalZoom/person_crop_out.py)
 dai_set_example_test_labels(person_crop_out ondevice rvc2_all rvc4 ci)

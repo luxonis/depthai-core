@@ -271,6 +271,7 @@ void bind_cameracontrol(pybind11::module& m, void* pCallstack) {
         .def("clearMiscControls", &CameraControl::clearMiscControls, DOC(dai, CameraControl, clearMiscControls))
         .def("setControlMode", &CameraControl::setControlMode, py::arg("mode"), DOC(dai, CameraControl, setControlMode))
         .def("setCaptureIntent", &CameraControl::setCaptureIntent, py::arg("mode"), DOC(dai, CameraControl, setCaptureIntent))
+        .def("setHdr", &CameraControl::setHdr, py::arg("enable"), DOC(dai, CameraControl, setHdr))
         // .def("set",         &CameraControl::set, py::arg("config"), DOC(dai, CameraControl, set))
         // getters
         .def("getMiscControls", &CameraControl::getMiscControls, DOC(dai, CameraControl, getMiscControls))
@@ -279,7 +280,7 @@ void bind_cameracontrol(pybind11::module& m, void* pCallstack) {
         .def("getSensitivity", &CameraControl::getSensitivity, DOC(dai, CameraControl, getSensitivity))
         .def("getLensPosition", &CameraControl::getLensPosition, DOC(dai, CameraControl, getLensPosition))
         .def("getLensPositionRaw", &CameraControl::getLensPositionRaw, DOC(dai, CameraControl, getLensPositionRaw))
-
+        .def("getHdr", &CameraControl::getHdr, DOC(dai, CameraControl, getHdr))
         // .def("get",         &CameraControl::get, DOC(dai, CameraControl, get))
         ;
     // Add also enum attributes from CameraControl
