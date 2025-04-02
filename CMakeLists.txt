@@ -529,7 +529,10 @@ if(DEPTHAI_BUILD_ZOO_HELPER)
         nlohmann_json::nlohmann_json
         fmt::fmt
         yaml-cpp::yaml-cpp
+        CURL::libcurl
+        cpr::cpr
     )
+    target_compile_definitions(zoo_helper PRIVATE DEPTHAI_ENABLE_CURL)
     add_executable(zoo_helper ${ZOO_HELPER_SOURCES})
     target_compile_definitions(zoo_helper PRIVATE DEPTHAI_TARGET_CORE)
     target_link_libraries(zoo_helper PRIVATE ${ZOO_HELPER_LINK_LIBRARIES})
@@ -868,11 +871,6 @@ if(DEPTHAI_ENABLE_CURL)
         cpr::cpr
     )
     target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_ENABLE_CURL)
-    target_link_libraries(zoo_helper PRIVATE
-        CURL::libcurl
-        cpr::cpr
-    )
-    target_compile_definitions(zoo_helper PRIVATE DEPTHAI_ENABLE_CURL)
 endif()
 
 # Add compile & CMake definitions
