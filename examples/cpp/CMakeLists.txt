@@ -53,9 +53,14 @@ function(dai_add_example example_name example_src enable_test use_pcl)
 
     # If 'DEPTHAI_TEST_EXAMPLES' is ON, then examples will be part of the test suite
     if(${enable_test} AND DEPTHAI_TEST_EXAMPLES)
-        add_test(NAME ${example_name} COMMAND ${CMAKE_COMMAND}
-            -DTIMEOUT_SECONDS=10
-            -P ${CMAKE_CURRENT_LIST_DIR}/cmake/ExecuteTestTimeout.cmake $<TARGET_FILE:${example_name}> ${arguments}
+        add_test(NAME ${example_name} COMMAND 
+            ${CMAKE_COMMAND}
+            -DTIMEOUT_SECONDS=300
+            -P ${CMAKE_CURRENT_LIST_DIR}/cmake/ExecuteTestTimeout.cmake 
+            ${CMAKE_SOURCE_DIR}/build/tests/test_wrapper
+            30 # Set test timeout
+            $<TARGET_FILE:${example_name}> 
+            ${arguments}
         )
 
         # Sets a regex catching any logged warnings, errors or critical (coming either from device or host)

@@ -60,25 +60,28 @@ function(add_python_example example_name python_script_path)
         VERBATIM
         COMMAND_EXPAND_LISTS
     )
-
+        
     if(DEPTHAI_PYTHON_TEST_EXAMPLES)
-
+        
         # Adds test with 5 seconds timeout and bumps all python warnings to errors
         add_test(NAME ${example_name} COMMAND
             ${CMAKE_COMMAND} -E env
-            # PATH (dlls)
             "PATH=${HUNTER_INSTALL_PREFIX}/bin${SYS_PATH_SEPARATOR}$ENV{PATH}"
-            # Python path (to find compiled module)
             "PYTHONPATH=$<TARGET_FILE_DIR:${TARGET_NAME}>${SYS_PATH_SEPARATOR}$ENV{PYTHONPATH}"
             "DEPTHAI_SEARCH_TIMEOUT=45000"
             "DEPTHAI_CONNECT_TIMEOUT=10000"
             "DEPTHAI_RECONNECT_TIMEOUT=0"
-            # ASAN in case of sanitizers
             ${ASAN_ENVIRONMENT_VARS}
-            ${CMAKE_COMMAND} -DFORCE_TIMEOUT_SECONDS=60 -P ${CMAKE_CURRENT_LIST_DIR}/../cpp/cmake/ExecuteTestTimeout.cmake
 
-            # Actual script to run
-            ${PYTHON_EXECUTABLE} -Werror "${CMAKE_CURRENT_LIST_DIR}/${python_script_path}" ${arguments}
+            ${CMAKE_COMMAND}
+            -DFORCE_TIMEOUT_SECONDS=300
+            -P ${CMAKE_CURRENT_LIST_DIR}/../cpp/cmake/ExecuteTestTimeout.cmake
+            ${CMAKE_SOURCE_DIR}/build/tests/test_wrapper
+            30 # A timeout to terminate the test when sucessful 
+            ${PYTHON_EXECUTABLE}
+            -Werror
+            "${CMAKE_CURRENT_LIST_DIR}/${python_script_path}" 
+            ${arguments}
         )
 
         # Sets a regex catching any logged warnings, errors or critical (coming either from device or host)
@@ -266,7 +269,7 @@ add_python_example(visualizer_encoded_rvc2 Visualizer/visualizer_encoded.py --we
 dai_set_example_test_labels(visualizer_encoded_rvc2 ondevice rvc2 usb ci nowindows)
 
 add_python_example(custom_services Visualizer/custom_services.py)
-dai_set_example_test_labels(custom_services onhost ci nowindows)
+dai_set_example_test_labels(custom_services ondevice rvc2_all rvc4 ci nowindows) # Host-only test
 
 
 ## Script node
