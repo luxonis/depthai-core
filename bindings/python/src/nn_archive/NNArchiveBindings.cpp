@@ -2,7 +2,6 @@
 
 #include <pybind11/functional.h>
 #include <pybind11/stl.h>
-#include <pybind11/stl_bind.h>
 
 #include "depthai/nn_archive/NNArchive.hpp"
 #include "depthai/nn_archive/NNArchiveEntry.hpp"
@@ -20,7 +19,6 @@
 #include "depthai/nn_archive/v1/Output.hpp"
 #include "depthai/nn_archive/v1/PreprocessingBlock.hpp"
 
-PYBIND11_MAKE_OPAQUE(std::vector<uint8_t>);
 
 void NNArchiveBindings::bind(pybind11::module& m, void* pCallstack) {
     using namespace dai;
