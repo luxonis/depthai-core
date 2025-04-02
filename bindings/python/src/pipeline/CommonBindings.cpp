@@ -45,7 +45,7 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     py::class_<Timestamp> timestamp(m, "Timestamp", DOC(dai, Timestamp));
     py::class_<Point2f> point2f(m, "Point2f", DOC(dai, Point2f));
     py::class_<Point3f> point3f(m, "Point3f", DOC(dai, Point3f));
-    py::class_<Point3fRGBA> point3fRGB(m, "Point3fRGBA", DOC(dai, Point3fRGBA));
+    py::class_<Point3fRGBA> point3fRGBA(m, "Point3fRGBA", DOC(dai, Point3fRGBA));
     py::class_<Point3d> point3d(m, "Point3d", DOC(dai, Point3d));
     py::class_<Quaterniond> quaterniond(m, "Quaterniond", DOC(dai, Quaterniond));
     py::class_<Size2f> size2f(m, "Size2f", DOC(dai, Size2f));
@@ -151,7 +151,7 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("x", &Point3f::x)
         .def_readwrite("y", &Point3f::y)
         .def_readwrite("z", &Point3f::z);
-    point3fRGB.def(py::init<>())
+    point3fRGBA.def(py::init<>())
         .def(py::init<float, float, float, int, int, int>())
         .def_readwrite("x", &Point3fRGBA::x)
         .def_readwrite("y", &Point3fRGBA::y)
