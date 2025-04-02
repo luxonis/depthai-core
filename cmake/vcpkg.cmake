@@ -6,7 +6,7 @@
 #
 
 # vcpkg examples use 3.0.0, assuming this as minimum version for vcpkg cmake toolchain
-cmake_minimum_required(VERSION 3.0.0)
+cmake_minimum_required(VERSION 3.20)
 
 # config:
 # - VCPKG_VERSION:
