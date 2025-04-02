@@ -103,8 +103,7 @@
         "remote-connection-support": {
             "description": "Enable remote connection support",
             "dependencies": [
-                "websocketpp",
-                "ws-protocol"
+                "websocketpp"
             ]
         },
         "rtabmap": {
