@@ -469,13 +469,14 @@ std::string getModelFromZoo(const NNModelDescription& modelDescription, bool use
     bool internetIsAvailable = performInternetCheck && ZooManager::connectionToZooAvailable();
     nlohmann::json responseJson;
 
-    logger::info(fmt::format("Model is cached: {} | Metadata present: {} | Use cached model: {} | Perform internet check: {} | Internet is available: {} | useCached: {}",
-                             modelIsCached,
-                             isMetadataPresent,
-                             useCachedModel,
-                             performInternetCheck,
-                             internetIsAvailable,
-                             useCached));
+    logger::info(fmt::format(
+        "Model is cached: {} | Metadata present: {} | Use cached model: {} | Perform internet check: {} | Internet is available: {} | useCached: {}",
+        modelIsCached,
+        isMetadataPresent,
+        useCachedModel,
+        performInternetCheck,
+        internetIsAvailable,
+        useCached));
 
     if(internetIsAvailable) {
         responseJson = zooManager.fetchModelDownloadLinks();
