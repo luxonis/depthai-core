@@ -4,10 +4,10 @@
 #include <iostream>
 #include <nlohmann/json.hpp>
 
-#include "../utility/Environment.hpp"
-#include "../utility/YamlHelpers.hpp"
-#include "../utility/sha1.hpp"
+#include "utility/Environment.hpp"
 #include "utility/Logging.hpp"
+#include "utility/YamlHelpers.hpp"
+#include "utility/sha1.hpp"
 
 #ifdef DEPTHAI_ENABLE_CURL
     #include <cpr/api.h>
@@ -38,10 +38,10 @@ class ZooManager {
             logger::info("API key provided");
         }
 
-        // If cache directory is not set, use the environment variable DEPTHAI_ZOO_CACHE_PATH with fallback to MODEL_ZOO_DEFAULT_CACHE_DIRECTORY
+        // If cache directory is not set, use the environment variable DEPTHAI_ZOO_CACHE_PATH with fallback to MODEL_ZOO_DEFAULT_CACHE_PATH
         if(this->cacheDirectory.empty()) {
             logger::info("Trying to get cache directory from environment variable DEPTHAI_ZOO_CACHE_PATH");
-            this->cacheDirectory = utility::getEnvAs<std::string>("DEPTHAI_ZOO_CACHE_PATH", MODEL_ZOO_DEFAULT_CACHE_DIRECTORY);
+            this->cacheDirectory = utility::getEnvAs<std::string>("DEPTHAI_ZOO_CACHE_PATH", MODEL_ZOO_DEFAULT_CACHE_PATH);
         }
     }
 
@@ -123,6 +123,19 @@ class ZooManager {
      * @return bool: True if internet is available
      */
     static bool connectionToZooAvailable();
+
+    /**
+     * @brief Get path to yaml file.
+     *        If name is a relative path (e.g. ./yolo.yaml), it is returned as is.
+     *        If name is a full path (e.g. /home/user/models/yolo.yaml), it is returned as is.
+     *        If name is a model name (e.g. yolo) or a model yaml file (e.g. yolo.yaml),
+     *        the function will use the DEPTHAI_ZOO_MODELS_PATH environment variable and return a path to the yaml file.
+     *        For instance, yolo -> ./depthai_models/yolo.yaml (if DEPTHAI_ZOO_MODELS_PATH is ./depthai_models)
+     *
+     * @param name: Name of the yaml file
+     * @return std::string: Path to yaml file
+     */
+    static std::string getYamlFilePath(const std::string& name);
 
    private:
     // Description of the model
@@ -329,6 +342,109 @@ void ZooManager::downloadModel(const nlohmann::json& responseJson) {
     utility::saveYaml(metadata, getMetadataFilePath());
 }
 
+std::string SlugComponents::merge() const {
+    std::ostringstream oss;
+    if(!teamName.empty()) {
+        oss << teamName << "/";
+    }
+    oss << modelSlug;
+    if(!modelVariantSlug.empty()) {
+        oss << ":" << modelVariantSlug;
+    }
+    if(!modelRef.empty()) {
+        oss << ":" << modelRef;
+    }
+    return oss.str();
+}
+
+SlugComponents SlugComponents::split(const std::string& slug) {
+    SlugComponents components;
+    std::istringstream iss(slug);
+    std::string part;
+    int partIndex = 0;
+
+    while(std::getline(iss, part, ':')) {
+        if(partIndex == 0) {
+            // Check if there's a teamId and modelSlug separated by a '/'
+            auto slashPos = part.find('/');
+            if(slashPos != std::string::npos) {
+                components.teamName = part.substr(0, slashPos);
+                components.modelSlug = part.substr(slashPos + 1);
+            } else {
+                components.modelSlug = part;
+            }
+        } else if(partIndex == 1) {
+            components.modelVariantSlug = part;
+        } else if(partIndex == 2) {
+            components.modelRef = part;
+        }
+        partIndex++;
+    }
+
+    return components;
+}
+
+NNModelDescription NNModelDescription::fromYamlFile(const std::string& modelName) {
+    std::string yamlPath = ZooManager::getYamlFilePath(modelName);
+    if(!std::filesystem::exists(yamlPath)) {
+        throw std::runtime_error("Model file not found: `" + yamlPath + "` | If you meant to use a relative path, prefix with ./ (e.g. `./" + modelName
+                                 + "`) | Also, make sure the file exists. Read the documentation for more information.");
+    }
+
+    // Parse yaml file
+    auto yamlNode = utility::loadYaml(yamlPath);
+
+    // Load REQUIRED parameters - throws if key not found
+    auto model = utility::yamlGet<std::string>(yamlNode, "model");
+
+    // Load OPTIONAL parameters - use default value if key not found
+    auto platform = utility::yamlGet<std::string>(yamlNode, "platform", "");
+    auto optimizationLevel = utility::yamlGet<std::string>(yamlNode, "optimization_level", "");
+    auto compressionLevel = utility::yamlGet<std::string>(yamlNode, "compression_level", "");
+    auto snpeVersion = utility::yamlGet<std::string>(yamlNode, "snpe_version", "");
+    auto modelPrecisionType = utility::yamlGet<std::string>(yamlNode, "model_precision_type", "");
+
+    return {model, platform, optimizationLevel, compressionLevel, snpeVersion, modelPrecisionType};
+}
+
+void NNModelDescription::saveToYamlFile(const std::string& yamlPath) const {
+    YAML::Node yamlNode;
+
+    // Write REQUIRED parameters
+    yamlNode["model"] = model;
+
+    // Write OPTIONAL parameters
+    if(!platform.empty()) yamlNode["platform"] = platform;
+    if(!optimizationLevel.empty()) yamlNode["optimization_level"] = optimizationLevel;
+    if(!compressionLevel.empty()) yamlNode["compression_level"] = compressionLevel;
+    if(!snpeVersion.empty()) yamlNode["snpe_version"] = snpeVersion;
+    if(!modelPrecisionType.empty()) yamlNode["model_precision_type"] = modelPrecisionType;
+
+    // Write yaml node to file
+    utility::saveYaml(yamlNode, yamlPath);
+}
+
+bool NNModelDescription::check() const {
+    return !model.empty() && !platform.empty();
+}
+
+std::string NNModelDescription::toString() const {
+    std::string out = "NNModelDescription [\n";
+    out += "  model: " + model + "\n";
+    out += "  platform: " + platform + "\n";
+    out += "  optimization_level: " + optimizationLevel + "\n";
+    out += "  compression_level: " + compressionLevel + "\n";
+    out += "  snpe_version: " + snpeVersion + "\n";
+    out += "  model_precision_type: " + modelPrecisionType + "\n";
+    out += "]";
+    return out;
+}
+
+std::ostream& operator<<(std::ostream& os, const NNModelDescription& modelDescription) {
+    os << modelDescription.toString();
+    return os;
+}
+
 std::string ZooManager::loadModelFromCache() const {
     const std::string cacheFolder = getModelCacheFolderPath(cacheDirectory);
 
@@ -346,6 +462,9 @@ std::string ZooManager::loadModelFromCache() const {
 }
 
 std::string getModelFromZoo(const NNModelDescription& modelDescription, bool useCached, const std::string& cacheDirectory, const std::string& apiKey) {
+    // Check if model description is valid
+    if(!modelDescription.check()) throw std::runtime_error("Invalid model description:\n" + modelDescription.toString());
+
     // Initialize ZooManager
     ZooManager zooManager(modelDescription, cacheDirectory, apiKey);
 
@@ -456,6 +575,32 @@ bool ZooManager::connectionToZooAvailable() {
     }
 
     return connected;
+}
+
+std::string ZooManager::getYamlFilePath(const std::string& name) {
+    // If the name does not start with any dot or slash, we treat it as the special
+    // case of where we prepend the DEPTHAI_ZOO_MODELS_PATH environment variable first.
+    // We check whether the first character is a letter or a number here (model.yaml, model, 3model, ...)
+    if(isalnum(name[0])) {
+        std::string modelsPath = utility::getEnvAs<std::string>("DEPTHAI_ZOO_MODELS_PATH", MODEL_ZOO_DEFAULT_MODELS_PATH);
+        std::string path = combinePaths(modelsPath, name);
+        // if path does not contain the yaml or yml extension, add it
+        if(!utility::isYamlFile(path)) {
+            if(std::filesystem::exists(path + ".yaml")) {
+                path += ".yaml";
+            } else if(std::filesystem::exists(path + ".yml")) {
+                path += ".yml";
+            } else {
+                throw std::runtime_error("Model file not found: (neither `" + path + ".yaml` nor `" + path
+                                         + ".yml` exists) | If you meant to use a relative path, prefix with ./ (e.g. `./" + name
+                                         + "`) | Also, make sure the file exists. Read the documentation for more information.");
+            }
+        }
+        return path;
+    }
+
+    // We treat the name either as a relative path or an absolute path
+    return name;
 }
 
 std::string ZooManager::getMetadataFilePath() const {

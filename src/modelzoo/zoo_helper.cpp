@@ -9,10 +9,10 @@ int main(int argc, char* argv[]) {
     argparse::ArgumentParser program("DepthAI Model Zoo Helper");
 
     // Add arguments
-    const std::string DEFAULT_YAML_FOLDER = ".";
+    const std::string DEFAULT_YAML_FOLDER = dai::utility::getEnvAs<std::string>("DEPTHAI_ZOO_MODELS_PATH", dai::MODEL_ZOO_DEFAULT_MODELS_PATH);
     program.add_argument("--yaml_folder").default_value(DEFAULT_YAML_FOLDER).help("Folder with YAML files describing models to download");
 
-    const std::string DEFAULT_CACHE_FOLDER = dai::utility::getEnvAs<std::string>("DEPTHAI_ZOO_CACHE_PATH", dai::MODEL_ZOO_DEFAULT_CACHE_DIRECTORY);
+    const std::string DEFAULT_CACHE_FOLDER = dai::utility::getEnvAs<std::string>("DEPTHAI_ZOO_CACHE_PATH", dai::MODEL_ZOO_DEFAULT_CACHE_PATH);
     program.add_argument("--cache_folder").default_value(DEFAULT_CACHE_FOLDER).help("Cache folder to download models into");
 
     const std::string DEFAULT_API_KEY = "";

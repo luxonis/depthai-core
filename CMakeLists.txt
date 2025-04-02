@@ -462,7 +462,6 @@ set(TARGET_CORE_SOURCES
     src/utility/ArchiveUtil.cpp
     src/nn_archive/NNArchive.cpp
     src/nn_archive/NNArchiveVersionedConfig.cpp
-    src/modelzoo/NNModelDescription.cpp
     src/modelzoo/Zoo.cpp
 )
 
@@ -527,7 +526,6 @@ find_package(yaml-cpp REQUIRED)
 set(ZOO_HELPER_SOURCES
     src/modelzoo/zoo_helper.cpp
     src/modelzoo/Zoo.cpp
-    src/modelzoo/NNModelDescription.cpp
     src/utility/Environment.cpp
     src/utility/Logging.cpp
 )
