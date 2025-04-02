@@ -578,6 +578,11 @@ bool ZooManager::connectionToZooAvailable() {
 }
 
 std::string ZooManager::getYamlFilePath(const std::string& name) {
+    // No empty names allowed
+    if(name.empty()) {
+        throw std::runtime_error("name cannot be empty!");
+    }
+
     // If the name does not start with any dot or slash, we treat it as the special
     // case of where we prepend the DEPTHAI_ZOO_MODELS_PATH environment variable first.
     // We check whether the first character is a letter or a number here (model.yaml, model, 3model, ...)
