@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <iostream>
+#include <cctype>
 #include <nlohmann/json.hpp>
 
 #include "utility/Environment.hpp"
