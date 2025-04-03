@@ -101,6 +101,7 @@ class RGBD::Impl {
         shader = std::vector<uint32_t>(shaders::RGBD2POINTCLOUD_COMP_SPV.begin(), shaders::RGBD2POINTCLOUD_COMP_SPV.end());
         computeMethod = ComputeMethod::GPU;
 #else
+        (void) device;
         throw std::runtime_error("Kompute not enabled in this build");
 #endif
     }
@@ -154,6 +155,11 @@ class RGBD::Impl {
             p.b = colorData[i * 3 + 2];
             points.emplace_back(p);
         }
+#else
+        (void)depthData;
+        (void)colorData;
+        (void)points;
+        throw std::runtime_error("Kompute not enabled in this build");
 #endif
     }
     void calcPointsChunk(const uint8_t* depthData, const uint8_t* colorData, std::vector<Point3fRGBA>& outChunk, int startRow, int endRow) {
