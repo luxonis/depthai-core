@@ -26,12 +26,19 @@ on:
 
 
 jobs:
-
+  id:
+    name: Workflow ID Provider
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    steps:
+      - name: echo distinct ID ${{ github.event.inputs.distinct_id }}
+        run: echo ${{ github.event.inputs.distinct_id }}
   # Testing
   test:
     runs-on: ['self-hosted', 'testbed-runner']
     timeout-minutes: 1450 # 24h & 10minutes
     steps:
+    
     - uses: actions/checkout@v3
 
     - name: Prepare HIL Framework
