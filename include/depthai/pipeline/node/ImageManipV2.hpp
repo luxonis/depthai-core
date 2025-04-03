@@ -83,7 +83,7 @@ class ImageManipV2 : public DeviceNodeCRTP<DeviceNode, ImageManipV2, ImageManipP
                      std::shared_ptr<spdlog::async_logger> logger,
                      std::function<size_t(const ImageManipConfigV2&, const ImgFrame&)> build,
                      std::function<bool(std::shared_ptr<Memory>&, std::shared_ptr<ImageManipData>)> apply,
-                     std::function<void(const ImageManipConfigV2&, const ImgFrame&, ImgFrame&)> getFrame);
+                     std::function<void(const ImgFrame&, ImgFrame&)> getFrame);
 };
 
 }  // namespace node
@@ -98,7 +98,7 @@ void ImageManipV2::loop(N& node,
                         std::shared_ptr<spdlog::async_logger> logger,
                         std::function<size_t(const ImageManipConfigV2&, const ImgFrame&)> build,
                         std::function<bool(std::shared_ptr<Memory>&, std::shared_ptr<ImageManipData>)> apply,
-                        std::function<void(const ImageManipConfigV2&, const ImgFrame&, ImgFrame&)> getFrame) {
+                        std::function<void(const ImgFrame&, ImgFrame&)> getFrame) {
     using namespace std::chrono;
     auto config = initialConfig;
 
@@ -169,7 +169,7 @@ void ImageManipV2::loop(N& node,
                 success = apply(inImage->data, outImageData);
                 auto t4 = steady_clock::now();
 
-                getFrame(config, *inImage, *outImage);
+                getFrame(*inImage, *outImage);
 
                 logger->trace("Build time: {}us, Process time: {}us, Total time: {}us, image manip id: {}",
                               duration_cast<microseconds>(t2 - t1).count(),

@@ -324,8 +324,6 @@ class ImageManipOperations {
         clrChange.setLogger(logger);
     }
 
-    void init();
-
     ImageManipOperations& build(const ImageManipOpsBase<Container>& base, ImgFrame::Type outputFrameType, FrameSpecs srcFrameSpecs, ImgFrame::Type type);
 
     bool apply(const std::shared_ptr<ImageManipData> src, std::shared_ptr<ImageManipData> dst);
@@ -336,6 +334,9 @@ class ImageManipOperations {
     size_t getOutputHeight() const;
     size_t getOutputStride(uint8_t plane = 0) const;
     FrameSpecs getOutputFrameSpecs(ImgFrame::Type type) const;
+    ImgFrame::Type getOutputFrameType() const {
+        return outputFrameType;
+    }
     std::vector<RotatedRect> getSrcCrops() const;
     std::array<std::array<float, 3>, 3> getMatrix() const;
 
@@ -2501,23 +2502,6 @@ inline dai::ImgFrame::Type getValidType(dai::ImgFrame::Type type) {
 template <template <typename T> typename ImageManipBuffer,
           typename ImageManipData,
           template <template <typename T> typename Buf, typename Dat> typename WarpBackend>
-void ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::init() {
-#ifdef DEPTHAI_HAVE_FASTCV_SUPPORT
-    #ifndef FORCE_FASTCV_ON_SPECIFIC_CORE
-    const fcvOperationMode operMode = FASTCV_OP_PERFORMANCE;  // FASTCV_OP_CPU_OFFLOAD;
-    // DON'T CALL fcvSetOperationMode(operMode) BEFORE zdl::SNPE::SNPEBuilder::build() !!!
-    // else zdl::SNPE::SNPEBuilder::build() will SIGSEGV !!!
-    int setOperMode = fcvSetOperationMode(operMode);
-    // FCV_IMG_DEBUG("Set operation mode to: %d with result: %d\n", operMode, setOperMode);
-    #else
-    ForceExecutionOnSpecificCore();
-    #endif
-#endif
-}
-
-template <template <typename T> typename ImageManipBuffer,
-          typename ImageManipData,
-          template <template <typename T> typename Buf, typename Dat> typename WarpBackend>
 ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>& ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::build(
     const ImageManipOpsBase<Container>& newBase, ImgFrame::Type outType, FrameSpecs srcFrameSpecs, ImgFrame::Type inFrameType) {
     const auto newCfgStr = newBase.str();
@@ -2792,6 +2776,7 @@ size_t ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::getO
             break;
         case ImgFrame::Type::YUV420p:
             size = getOutputPlaneSize(2);
+            // Fallthrough
         case ImgFrame::Type::NV12:
             size += getOutputPlaneSize(0) + getOutputPlaneSize(1);
             break;

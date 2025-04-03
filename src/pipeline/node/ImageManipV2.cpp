@@ -11,7 +11,6 @@ ImageManipV2::ImageManipV2(std::unique_ptr<Properties> props)
 
 void ImageManipV2::run() {
     impl::ImageManipOperations<impl::_ImageManipBuffer, impl::_ImageManipMemory, impl::WarpH> manip(logger);
-    manip.init();
     auto iConf = runOnHost() ? initialConfig : properties.initialConfig;
     loop<ImageManipV2, impl::_ImageManipBuffer, impl::_ImageManipMemory>(
         *this,
@@ -26,8 +25,8 @@ void ImageManipV2::run() {
             auto srcMem = std::make_shared<impl::_ImageManipMemory>(src->getData());
             return manip.apply(srcMem, dst);
         },
-        [&](const ImageManipConfigV2& config, const ImgFrame& srcFrame, ImgFrame& dstFrame) {
-            auto outType = config.outputFrameType == ImgFrame::Type::NONE ? srcFrame.getType() : config.outputFrameType;
+        [&](const ImgFrame& srcFrame, ImgFrame& dstFrame) {
+            auto outType = manip.getOutputFrameType();
             auto dstSpecs = manip.getOutputFrameSpecs(outType);
             dstFrame.sourceFb = srcFrame.sourceFb;
             dstFrame.cam = srcFrame.cam;

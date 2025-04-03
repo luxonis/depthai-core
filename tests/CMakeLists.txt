@@ -424,6 +424,7 @@ dai_set_test_labels(stereo_depth_node_test ondevice rvc2_all rvc4 ci)
 
 # ImageManipV2 test
 dai_add_test(image_manip_v2_node_test src/ondevice_tests/pipeline/node/image_manip_v2_test.cpp)
+target_compile_definitions(image_manip_v2_node_test PRIVATE LENNA_PATH="${lenna_png}")
 dai_set_test_labels(image_manip_v2_node_test ondevice rvc2_all rvc4 ci)
 
 # Benchmark tests
