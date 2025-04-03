@@ -222,6 +222,7 @@ std::tuple<int, int> ColorCamera::getVideoSize() const {
         if(properties.resolution == ColorCameraProperties::SensorResolution::THE_4_K
            || properties.resolution == ColorCameraProperties::SensorResolution::THE_12_MP
            || properties.resolution == ColorCameraProperties::SensorResolution::THE_4000X3000
+           || properties.resolution == ColorCameraProperties::SensorResolution::THE_4608X2592
            || properties.resolution == ColorCameraProperties::SensorResolution::THE_13_MP
            || properties.resolution == ColorCameraProperties::SensorResolution::THE_5312X6000
            || properties.resolution == ColorCameraProperties::SensorResolution::THE_48_MP) {
@@ -256,6 +257,9 @@ std::tuple<int, int> ColorCamera::getVideoSize() const {
         }
         if(properties.resolution == ColorCameraProperties::SensorResolution::THE_1352X1012) {
             maxVideoWidth = 1352;
+        }
+        if(properties.resolution == ColorCameraProperties::SensorResolution::THE_2304X1296) {
+            maxVideoWidth = 2304;
         }
 
         // Take into the account the ISP scaling
@@ -333,6 +337,14 @@ std::tuple<int, int> ColorCamera::getStillSize() const {
         if(properties.resolution == dai::ColorCameraProperties::SensorResolution::THE_1352X1012) {
             maxStillWidth = 1352;
             maxStillHeight = 1012;
+        }
+        if(properties.resolution == dai::ColorCameraProperties::SensorResolution::THE_2304X1296) {
+            maxStillWidth = 2304;
+            maxStillHeight = 1296;
+        }
+        if(properties.resolution == dai::ColorCameraProperties::SensorResolution::THE_4608X2592) {
+            maxStillWidth = 4608;
+            maxStillHeight = 2592;
         }
 
         // Take into the account the ISP scaling
@@ -420,6 +432,14 @@ std::tuple<int, int> ColorCamera::getResolutionSize() const {
 
         case ColorCameraProperties::SensorResolution::THE_1352X1012:
             return {1352, 1012};
+            break;
+
+        case ColorCameraProperties::SensorResolution::THE_2304X1296:
+            return {2304, 1296};
+            break;
+
+        case ColorCameraProperties::SensorResolution::THE_4608X2592:
+            return {4608, 2592};
             break;
     }
 
