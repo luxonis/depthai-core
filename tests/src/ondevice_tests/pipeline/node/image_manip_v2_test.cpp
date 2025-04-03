@@ -147,3 +147,144 @@ TEST_CASE("ImageManipV2 rebuild on cfg change") {
     REQUIRE(imgFrame->getHeight() == 400);
     p.stop();
 }
+
+// Function to calculate the normalized difference between two images
+double calculateImageDifference(const cv::Mat& img1, const cv::Mat& img2) {
+    // Ensure the images have the same size and type
+    if(img1.size() != img2.size() || img1.type() != img2.type()) {
+        std::cerr << "Error: Images must have the same size and type!" << std::endl;
+        return -1.0;
+    }
+
+    // Compute absolute difference between images
+    cv::Mat diff;
+    cv::absdiff(img1, img2, diff);
+
+    // Sum all pixel differences
+    double sumDiff = cv::sum(diff)[0];  // Sum of all pixels (for grayscale)
+
+    // If the image has multiple channels (e.g., RGB), sum across all channels
+    if(img1.channels() > 1) {
+        cv::Scalar sumValues = cv::sum(diff);
+        sumDiff = sumValues[0] + sumValues[1] + sumValues[2];  // Sum across all channels
+    }
+
+    // Normalize by the total number of pixels
+    double numPixels = img1.total() * img1.channels();
+    double normalizedDifference = sumDiff / numPixels;
+
+    return normalizedDifference;
+}
+
+TEST_CASE("Host and Device impl comparison") {
+    dai::Pipeline p;
+    auto manipDevice = p.create<dai::node::ImageManipV2>();
+    manipDevice->setRunOnHost(false);
+    manipDevice->inputConfig.setReusePreviousMessage(false);
+    manipDevice->inputConfig.setWaitForMessage(true);
+    manipDevice->setMaxOutputFrameSize(3000000);
+    auto manipHost = p.create<dai::node::ImageManipV2>();
+    manipHost->setRunOnHost(true);
+    manipHost->inputConfig.setReusePreviousMessage(false);
+    manipHost->inputConfig.setWaitForMessage(true);
+    manipHost->setMaxOutputFrameSize(3000000);
+
+    manipDevice->inputConfig.setWaitForMessage(true);
+    manipHost->inputConfig.setWaitForMessage(true);
+
+    auto inputImg = cv::imread(LENNA_PATH);
+    auto inputFrameGRAY8 = std::make_shared<dai::ImgFrame>();
+    inputFrameGRAY8->setCvFrame(inputImg, dai::ImgFrame::Type::GRAY8);
+    auto inputFrameNV12 = std::make_shared<dai::ImgFrame>();
+    inputFrameNV12->setCvFrame(inputImg, dai::ImgFrame::Type::NV12);
+    auto inputFrameRGB888i = std::make_shared<dai::ImgFrame>();
+    inputFrameRGB888i->setCvFrame(inputImg, dai::ImgFrame::Type::RGB888i);
+    auto inputFrameRGB888p = std::make_shared<dai::ImgFrame>();
+    inputFrameRGB888p->setCvFrame(inputImg, dai::ImgFrame::Type::RGB888p);
+
+    auto manipDeviceConfigQ = manipDevice->inputConfig.createInputQueue();
+    auto manipHostConfigQ = manipHost->inputConfig.createInputQueue();
+    auto manipDeviceImgQ = manipDevice->inputImage.createInputQueue();
+    auto manipHostImgQ = manipHost->inputImage.createInputQueue();
+    auto manipDeviceOutQ = manipDevice->out.createOutputQueue(1);
+    auto manipHostOutQ = manipHost->out.createOutputQueue(1);
+
+    auto doImgConfig = [&](std::shared_ptr<dai::ImgFrame> img, std::shared_ptr<dai::ImageManipConfigV2> cfg) {
+        manipDeviceConfigQ->send(cfg);
+        manipHostConfigQ->send(cfg);
+        manipDeviceImgQ->send(img);
+        manipHostImgQ->send(img);
+
+        auto hostFrame = manipHostOutQ->get<dai::ImgFrame>();
+        auto deviceFrame = manipDeviceOutQ->get<dai::ImgFrame>();
+
+        auto hostImg = hostFrame->getCvFrame();
+        auto deviceImg = deviceFrame->getCvFrame();
+
+        REQUIRE(hostImg.size() == deviceImg.size());
+        REQUIRE(hostImg.type() == deviceImg.type());
+        REQUIRE(hostImg.channels() == deviceImg.channels());
+        REQUIRE(hostImg.total() == deviceImg.total());
+        REQUIRE(hostImg.rows == deviceImg.rows);
+        REQUIRE(hostImg.cols == deviceImg.cols);
+        auto diff = calculateImageDifference(hostImg, deviceImg);
+        REQUIRE(diff < 2.);
+    };
+    auto doConfig = [&](std::shared_ptr<dai::ImageManipConfigV2> cfg) {
+        doImgConfig(inputFrameGRAY8, cfg);
+        doImgConfig(inputFrameNV12, cfg);
+        doImgConfig(inputFrameRGB888i, cfg);
+        doImgConfig(inputFrameRGB888p, cfg);
+    };
+
+    p.start();
+
+    // Check operations: crop, scale up, scale down, background
+    {
+        auto cfg = std::make_shared<dai::ImageManipConfigV2>();
+        // Lenna should be 512x512
+        cfg->addCrop(100, 50, 400, 400);
+        doConfig(cfg);
+    }
+    {
+        // Full scale up
+        auto cfg = std::make_shared<dai::ImageManipConfigV2>();
+        cfg->setOutputSize(1000, 1000, dai::ImageManipConfigV2::ResizeMode::STRETCH);
+        doConfig(cfg);
+    }
+    {
+        // Full scale down
+        auto cfg = std::make_shared<dai::ImageManipConfigV2>();
+        cfg->setOutputSize(300, 300, dai::ImageManipConfigV2::ResizeMode::STRETCH);
+        doConfig(cfg);
+    }
+    {
+        // Letterbox scale up
+        auto cfg = std::make_shared<dai::ImageManipConfigV2>();
+        cfg->setOutputSize(1600, 1000, dai::ImageManipConfigV2::ResizeMode::LETTERBOX);
+        doConfig(cfg);
+    }
+    {
+        // Letterbox scale down
+        auto cfg = std::make_shared<dai::ImageManipConfigV2>();
+        cfg->setOutputSize(400, 300, dai::ImageManipConfigV2::ResizeMode::LETTERBOX);
+        doConfig(cfg);
+    }
+    {
+        // Setting background
+        auto cfg = std::make_shared<dai::ImageManipConfigV2>();
+        cfg->setOutputSize(1000, 1000, dai::ImageManipConfigV2::ResizeMode::NONE);
+        cfg->setBackgroundColor(0, 0, 0);
+        doConfig(cfg);
+    }
+    {
+        // Setting background
+        auto cfg = std::make_shared<dai::ImageManipConfigV2>();
+        cfg->setOutputSize(1000, 1000, dai::ImageManipConfigV2::ResizeMode::NONE);
+        cfg->setBackgroundColor(200, 0, 0);
+        doConfig(cfg);
+    }
+
+
+    p.stop();
+}
