@@ -1,6 +1,6 @@
 #pragma once
 
-#include "depthai/modelzoo/NNModelDescription.hpp"
+#include "depthai/modelzoo/Zoo.hpp"
 #include "depthai/nn_archive/NNArchive.hpp"
 #include "depthai/nn_archive/NNArchiveVersionedConfig.hpp"
 #include "depthai/openvino/OpenVINO.hpp"

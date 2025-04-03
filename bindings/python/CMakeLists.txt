@@ -147,7 +147,6 @@ set(SOURCE_LIST
     src/capabilities/CapabilityRangeBindings.cpp
     src/capabilities/ImgFrameCapabilityBindings.cpp
 
-    src/modelzoo/NNModelDescriptionBindings.cpp
     src/modelzoo/ZooBindings.cpp
 
     src/remote_connection/RemoteConnectionBindings.cpp

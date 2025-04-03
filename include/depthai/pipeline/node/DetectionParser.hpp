@@ -1,6 +1,6 @@
 #pragma once
 
-#include <depthai/modelzoo/NNModelDescription.hpp>
+#include <depthai/modelzoo/Zoo.hpp>
 #include <depthai/pipeline/DeviceNode.hpp>
 
 // standard

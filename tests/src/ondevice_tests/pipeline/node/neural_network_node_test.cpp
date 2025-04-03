@@ -5,7 +5,6 @@
 
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/depthai.hpp"
-#include "depthai/modelzoo/NNModelDescription.hpp"
 #include "depthai/modelzoo/Zoo.hpp"
 #include "depthai/pipeline/datatype/BenchmarkReport.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
