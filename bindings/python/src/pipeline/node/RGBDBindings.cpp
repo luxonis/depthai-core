@@ -40,7 +40,7 @@ void bind_rgbd(pybind11::module& m, void* pCallstack) {
         .def("build",
              static_cast<std::shared_ptr<RGBD> (RGBD::*)(bool, StereoDepth::PresetMode, std::pair<int, int>)>(&RGBD::build),
              py::arg("autocreate"),
-             py::arg("mode") = StereoDepth::PresetMode::HIGH_ACCURACY,
+             py::arg("mode") = StereoDepth::PresetMode::DEFAULT,
              py::arg("size") = std::pair<int, int>(640, 400),
              DOC(dai, node, RGBD, build, 2))
         .def("setDepthUnits", &RGBD::setDepthUnit, py::arg("units"), DOC(dai, node, RGBD, setDepthUnit))
