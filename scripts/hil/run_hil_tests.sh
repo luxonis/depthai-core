@@ -28,7 +28,6 @@ fi
 export PATH="$PATH:/home/hil/hil_framework/lib_testbed/tools"
 export PYTHONPATH="$PYTHONPATH:/home/hil/hil_framework"
 export HIL_FRAMEWORK_PATH="/home/hil/hil_framework"
-source /home/hil/.SETUP_CONFIG_VARS
 
 # Install required Python packages
 pip install numpy pytest pytest-html  > /dev/null 2>&1
