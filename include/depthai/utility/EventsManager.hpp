@@ -13,10 +13,6 @@
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
 
-#ifdef DEPTHAI_ENABLE_PROTOBUF
-#include "depthai/schemas/Event.pb.h"
-#endif
-
 namespace dai {
 namespace proto {
 namespace event {
