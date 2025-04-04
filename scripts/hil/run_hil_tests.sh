@@ -35,22 +35,6 @@ pip install numpy pytest pytest-html  > /dev/null 2>&1
 pushd /home/$USER/hil_framework/ > /dev/null 2>&1 && git pull && git submodule update --init --recursive > /dev/null 2>&1 && popd > /dev/null 2>&1
 pushd /home/$USER/hil_framework/ > /dev/null 2>&1 && pip install -r requirements.txt  > /dev/null 2>&1 && popd > /dev/null 2>&1
 
-# Check for optional RVC arguments
-if [[ "$TEST_ARGS" == "--rvc4" ]]; then
-  echo "Running RVC4 configuration commands..."
-  adb root
-  adb shell systemctl stop agentconfd setup
-  adb shell systemctl disable agentconfd setup
-  adb shell mkdir -p /persist/factory
-  adb shell touch /persist/factory/enabled
-  adb shell reboot
-  echo "Device reboot initiated for RVC4. Factory mode enabled."
-fi
-
-python scripts/hil/powercycle.py
-sleep 10
-echo "Powercycling devices. Continuing with test setup..."
-
 cmake -S . -B build -D CMAKE_BUILD_TYPE=Release -D HUNTER_ROOT=$HOME/.hun2_$TEST_FLAVOR -D DEPTHAI_BUILD_EXAMPLES=ON -D DEPTHAI_BUILD_TESTS=ON -D DEPTHAI_TEST_EXAMPLES=ON -D DEPTHAI_BUILD_PYTHON=ON -D DEPTHAI_PYTHON_TEST_EXAMPLES=ON -D DEPTHAI_PYTHON_ENABLE_EXAMPLES=ON
 cmake --build build --parallel 2 --config Release
 
