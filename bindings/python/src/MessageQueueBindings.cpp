@@ -1,5 +1,6 @@
 #include <pybind11/chrono.h>
 #include <pybind11/functional.h>
+#include <pybind11/gil.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
@@ -82,7 +83,7 @@ void MessageQueueBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("getSize", &MessageQueue::getSize, DOC(dai, MessageQueue, getSize))
         .def("isFull", &MessageQueue::isFull, DOC(dai, MessageQueue, isFull))
         .def("addCallback", addCallbackLambda, py::arg("callback"), DOC(dai, MessageQueue, addCallback))
-        .def("removeCallback", &MessageQueue::removeCallback, py::arg("callbackId"), DOC(dai, MessageQueue, removeCallback))
+        .def("removeCallback", &MessageQueue::removeCallback, py::arg("callbackId"), py::call_guard<py::gil_scoped_release>(), DOC(dai, MessageQueue, removeCallback))
         .def("has", static_cast<bool (MessageQueue::*)()>(&MessageQueue::has), DOC(dai, MessageQueue, has))
         .def("tryGet", static_cast<std::shared_ptr<ADatatype> (MessageQueue::*)()>(&MessageQueue::tryGet), DOC(dai, MessageQueue, tryGet))
         .def(
