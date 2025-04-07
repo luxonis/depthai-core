@@ -83,7 +83,23 @@ void MessageQueueBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("getSize", &MessageQueue::getSize, DOC(dai, MessageQueue, getSize))
         .def("isFull", &MessageQueue::isFull, DOC(dai, MessageQueue, isFull))
         .def("addCallback", addCallbackLambda, py::arg("callback"), DOC(dai, MessageQueue, addCallback))
-        .def("removeCallback", &MessageQueue::removeCallback, py::arg("callbackId"), py::call_guard<py::gil_scoped_release>(), DOC(dai, MessageQueue, removeCallback))
+        .def(
+            "removeCallback",
+            [](MessageQueue& q, int id) {
+                // Unlock the GIL before acquiring the mutex to avoid deadlocks
+                py::gil_scoped_release release;
+
+                std::unique_lock<std::mutex> lock(q.callbacksMtx);
+                pybind11::gil_scoped_acquire
+                    gil;  // Order is important! Only acquire after the mutex is locked, to allow any callbacks to capture the GIL and finish the execution
+                // If callback with id 'callbackId' doesn't exists, return false
+                if(q.callbacks.count(id) == 0) return false;
+                // Otherwise erase and return true
+                q.callbacks.erase(id);
+                return true;
+            },
+            py::arg("callbackId"),
+            DOC(dai, MessageQueue, removeCallback))
         .def("has", static_cast<bool (MessageQueue::*)()>(&MessageQueue::has), DOC(dai, MessageQueue, has))
         .def("tryGet", static_cast<std::shared_ptr<ADatatype> (MessageQueue::*)()>(&MessageQueue::tryGet), DOC(dai, MessageQueue, tryGet))
         .def(
