@@ -28,6 +28,10 @@ jobs:
     env:
       VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
     steps:
+      - name: Setup cmake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version : '3.31.x'
       - name: Cache .hunter folder
         uses: actions/cache@v3
         with:
@@ -81,6 +85,10 @@ jobs:
         os: [ubuntu-latest] # TODO(Morato) - re-enable windows & macos
     runs-on: ${{ matrix.os }}
     steps:
+      - name: Setup cmake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version : '3.31.x'
       - name: Print home directory
         run: echo Home directory inside container $HOME
 
@@ -218,6 +226,10 @@ jobs:
       DEPTHAI_BUILD_KOMPUTE: ON
       VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
     steps:
+      - name: Setup cmake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version : '3.31.x'
       - name: Cache .hunter folder
         uses: actions/cache@v3
         with:
@@ -288,6 +300,10 @@ jobs:
       DEPTHAI_BUILD_RTABMAP: ON
       DEPTHAI_BUILD_KOMPUTE: ON
     steps:
+      - name: Setup cmake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version : '3.31.x'
       - name: Cache .hunter folder
         uses: actions/cache@v3
         with:
