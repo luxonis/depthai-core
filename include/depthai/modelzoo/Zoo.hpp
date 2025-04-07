@@ -74,6 +74,9 @@ struct NNModelDescription {
 
     /** modelPrecisionType = OPTIONAL parameter */
     std::string modelPrecisionType;
+
+    /** Name of the entry in the global metadata file */
+    std::string globalMetadataEntryName;
 };
 
 /**

@@ -1,8 +1,8 @@
 #include "depthai/modelzoo/Zoo.hpp"
 
+#include <cctype>
 #include <filesystem>
 #include <iostream>
-#include <cctype>
 #include <nlohmann/json.hpp>
 
 #include "utility/Environment.hpp"
@@ -103,6 +103,13 @@ class ZooManager {
      * @return std::string: Path to metadata file
      */
     std::string getMetadataFilePath() const;
+
+    /**
+     * @brief Get path to global metadata file
+     *
+     * @return std::string: Path to global metadata file
+     */
+    std::string getGlobalMetadataFilePath() const;
 
     /**
      * @brief Fetch model download links from Hub
@@ -244,6 +251,16 @@ void ZooManager::createCacheFolder() const {
 void ZooManager::removeModelCacheFolder() const {
     std::string cacheFolderName = getModelCacheFolderPath(cacheDirectory);
     std::filesystem::remove_all(cacheFolderName);
+
+    // Remove global metadata entry
+    if(!modelDescription.globalMetadataEntryName.empty()) {
+        std::string globalMetadataPath = getGlobalMetadataFilePath();
+        if(std::filesystem::exists(globalMetadataPath)) {
+            auto globalMetadata = utility::loadYaml(globalMetadataPath);
+            globalMetadata.remove(modelDescription.globalMetadataEntryName);
+            utility::saveYaml(globalMetadata, globalMetadataPath);
+        }
+    }
 }
 
 bool ZooManager::isModelCached() const {
@@ -304,10 +321,16 @@ void ZooManager::downloadModel(const nlohmann::json& responseJson) {
     // Extract download links from response
     auto downloadLinks = responseJson["download_links"].get<std::vector<std::string>>();
     auto downloadHash = responseJson["hash"].get<std::string>();
+    auto modelId = responseJson.value("model_id", "");
+    auto modelVersionId = responseJson.value("model_version_id", "");
+    auto modelInstanceId = responseJson.value("model_instance_id", "");
 
     // Metadata
     YAML::Node metadata;
     metadata["hash"] = downloadHash;
+    metadata["model_id"] = modelId;
+    metadata["model_version_id"] = modelVersionId;
+    metadata["model_instance_id"] = modelInstanceId;
     metadata["downloaded_files"] = std::vector<std::string>();
 
     // Download all files and store them in cache folder
@@ -331,6 +354,18 @@ void ZooManager::downloadModel(const nlohmann::json& responseJson) {
 
     // Save metadata to file
     utility::saveYaml(metadata, getMetadataFilePath());
+
+    // Save global metadata to file
+    if(!modelDescription.globalMetadataEntryName.empty()) {
+        YAML::Node globalMetadata;
+        std::string globalMetadataPath = getGlobalMetadataFilePath();
+        if(std::filesystem::exists(globalMetadataPath)) {
+            globalMetadata = utility::loadYaml(globalMetadataPath);
+        }
+        metadata["folder_name"] = getModelCacheFolderName();
+        globalMetadata[modelDescription.globalMetadataEntryName] = metadata;
+        utility::saveYaml(globalMetadata, globalMetadataPath);
+    }
 }
 
 std::string SlugComponents::merge() const {
@@ -395,7 +430,10 @@ NNModelDescription NNModelDescription::fromYamlFile(const std::string& modelName
     auto snpeVersion = utility::yamlGet<std::string>(yamlNode, "snpe_version", "");
     auto modelPrecisionType = utility::yamlGet<std::string>(yamlNode, "model_precision_type", "");
 
-    return {model, platform, optimizationLevel, compressionLevel, snpeVersion, modelPrecisionType};
+    // Get global metadata entry name
+    auto globalMetadataEntryName = modelName;
+
+    return {model, platform, optimizationLevel, compressionLevel, snpeVersion, modelPrecisionType, globalMetadataEntryName};
 }
 
 void NNModelDescription::saveToYamlFile(const std::string& yamlPath) const {
@@ -611,6 +649,10 @@ std::string ZooManager::getYamlFilePath(const std::string& name) {
 
 std::string ZooManager::getMetadataFilePath() const {
     return combinePaths(getModelCacheFolderPath(cacheDirectory), "metadata.yaml");
+}
+
+std::string ZooManager::getGlobalMetadataFilePath() const {
+    return combinePaths(cacheDirectory, "metadata.yaml");
 }
 
 }  // namespace dai
