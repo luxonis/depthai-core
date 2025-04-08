@@ -18,6 +18,12 @@ int main(int argc, char* argv[]) {
     const std::string DEFAULT_API_KEY = "";
     program.add_argument("--api_key").default_value(DEFAULT_API_KEY).help("API key to use for downloading models");
 
+    const std::string DEFAULT_HEALTH_ENDPOINT = dai::modelzoo::getHealthEndpoint();
+    program.add_argument("--health_endpoint").default_value(DEFAULT_HEALTH_ENDPOINT).help("Endpoint to use for internet connection check");
+
+    const std::string DEFAULT_DOWNLOAD_ENDPOINT = dai::modelzoo::getDownloadEndpoint();
+    program.add_argument("--download_endpoint").default_value(DEFAULT_DOWNLOAD_ENDPOINT).help("Endpoint to use for downloading models");
+
     // Parse arguments
     try {
         program.parse_args(argc, argv);
@@ -31,6 +37,12 @@ int main(int argc, char* argv[]) {
     auto yamlFolder = program.get<std::string>("--yaml_folder");
     auto cacheFolder = program.get<std::string>("--cache_folder");
     auto apiKey = program.get<std::string>("--api_key");
+    auto healthEndpoint = program.get<std::string>("--health_endpoint");
+    auto downloadEndpoint = program.get<std::string>("--download_endpoint");
+
+    // Set endpoints
+    dai::modelzoo::setHealthEndpoint(healthEndpoint);
+    dai::modelzoo::setDownloadEndpoint(downloadEndpoint);
 
     // Print arguments
     std::cout << "Downloading models defined in yaml files in folder: " << yamlFolder << std::endl;
