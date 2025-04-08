@@ -4,10 +4,6 @@
 #include <string>
 
 namespace dai {
-constexpr const char* MODEL_ZOO_HEALTH_ENDPOINT = "https://easyml.cloud.luxonis.com/models/api/v1/health/";
-constexpr const char* MODEL_ZOO_DOWNLOAD_ENDPOINT = "https://easyml.cloud.luxonis.com/models/api/v1/models/download";
-constexpr const char* MODEL_ZOO_DEFAULT_CACHE_PATH = ".depthai_cached_models";  // hidden cache folder
-constexpr const char* MODEL_ZOO_DEFAULT_MODELS_PATH = "depthai_models";         // folder
 
 struct SlugComponents {
     std::string teamName;
@@ -28,13 +24,15 @@ struct NNModelDescription {
      *        If modelName is a relative path (e.g. ./yolo.yaml), it is used as is.
      *        If modelName is a full path (e.g. /home/user/models/yolo.yaml), it is used as is.
      *        If modelName is a model name (e.g. yolo) or a model yaml file (e.g. yolo.yaml),
-     *        the function will use the DEPTHAI_ZOO_MODELS_PATH environment variable and use a path made by combining the DEPTHAI_ZOO_MODELS_PATH environment
-     *        variable and the model name to the yaml file. For instance, yolo -> ./depthai_models/yolo.yaml (if DEPTHAI_ZOO_MODELS_PATH is ./depthai_models)
+     *        the function will use modelsPath if provided or the DEPTHAI_ZOO_MODELS_PATH environment variable and use a path made by combining the modelsPath
+     *        and the model name to the yaml file. For instance, yolo -> ./depthai_models/yolo.yaml (if modelsPath or DEPTHAI_ZOO_MODELS_PATH are
+     * ./depthai_models)
      *
      * @param modelName: model name or yaml file path
+     * @param modelsPath: Path to the models folder, use environment variable DEPTHAI_ZOO_MODELS_PATH if not provided
      * @return NNModelDescription
      */
-    static NNModelDescription fromYamlFile(const std::string& modelName);
+    static NNModelDescription fromYamlFile(const std::string& modelName, const std::string& modelsPath = "");
 
     /**
      * @brief Save NNModelDescription to yaml file
@@ -85,7 +83,7 @@ struct NNModelDescription {
  * @param modelDescription: Model description
  * @param useCached: Use cached model if present, default is true
  * @param cacheDirectory: Cache directory where the cached models are stored, default is "". If cacheDirectory is set to "", this function checks the
- * DEPTHAI_ZOO_CACHE_PATH environment variable and uses that if set, otherwise the default value stored in MODEL_ZOO_DEFAULT_CACHE_PATH is used.
+ * DEPTHAI_ZOO_CACHE_PATH environment variable and uses that if set, otherwise the default value is used (see getDefaultCachePath).
  * @param apiKey: API key for the model zoo, default is "". If apiKey is set to "", this function checks the DEPTHAI_ZOO_API_KEY environment variable and uses
  * that if set. Otherwise, no API key is used.
  * @return std::string: Path to the model in cache
@@ -100,12 +98,64 @@ std::string getModelFromZoo(const NNModelDescription& modelDescription,
  *
  * @param path: Path to the directory containing yaml files
  * @param cacheDirectory: Cache directory where the cached models are stored, default is "". If cacheDirectory is set to "", this function checks the
- * DEPTHAI_ZOO_CACHE_PATH environment variable and uses that if set, otherwise the default value stored in MODEL_ZOO_DEFAULT_CACHE_PATH is used.
+ * DEPTHAI_ZOO_CACHE_PATH environment variable and uses that if set, otherwise the default is used (see getDefaultCachePath).
  * @param apiKey: API key for the model zoo, default is "". If apiKey is set to "", this function checks the DEPTHAI_ZOO_API_KEY environment variable and uses
  * that if set. Otherwise, no API key is used.
  */
 void downloadModelsFromZoo(const std::string& path, const std::string& cacheDirectory = "", const std::string& apiKey = "");
 
 std::ostream& operator<<(std::ostream& os, const NNModelDescription& modelDescription);
+
+namespace modelzoo {
+
+/**
+ * @brief Set the health endpoint (for internet check)
+ *
+ * @param endpoint
+ */
+void setHealthEndpoint(const std::string& endpoint);
+
+/**
+ * @brief Set the download endpoint (for model querying)
+ *
+ * @param endpoint
+ */
+void setDownloadEndpoint(const std::string& endpoint);
+
+/**
+ * @brief Set the default cache path (where models are cached)
+ *
+ * @param path
+ */
+void setDefaultCachePath(const std::string& path);
+
+/**
+ * @brief Set the default models path (where yaml files are stored)
+ *
+ * @param path
+ */
+void setDefaultModelsPath(const std::string& path);
+
+/**
+ * @brief Get the health endpoint (for internet check)
+ */
+std::string getHealthEndpoint();
+
+/**
+ * @brief Get the download endpoint (for model querying)
+ */
+std::string getDownloadEndpoint();
+
+/**
+ * @brief Get the default cache path (where models are cached)
+ */
+std::string getDefaultCachePath();
+
+/**
+ * @brief Get the default models path (where yaml files are stored)
+ */
+std::string getDefaultModelsPath();
+
+}  // namespace modelzoo
 
 }  // namespace dai

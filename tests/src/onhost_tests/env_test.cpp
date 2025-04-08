@@ -128,6 +128,9 @@ TEST_CASE("Test getEnvAs", "[getEnvAs]") {
         unsetEnvironmentVariable("stringVariable");
         REQUIRE(getEnvAs<std::string>("stringVariable", "DEFAULT") == "HELLO");
 
+        // Disable caching
+        REQUIRE(getEnvAs<std::string>("stringVariable", "DEFAULT", false) == "DEFAULT");
+
         // Test non-existing string variable
         unsetEnvironmentVariable("stringVariable2");
         REQUIRE(getEnvAs<std::string>("stringVariable2", "DEFAULT") == "DEFAULT");

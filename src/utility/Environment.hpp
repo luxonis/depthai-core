@@ -45,19 +45,22 @@ namespace utility {
  * @param var The name of the environment variable
  * @param defaultValue The default value to return if the environment variable is not set
  * @param logger The logger to use for logging
+ * @param cache Whether to cache the environment variable value
  * @return The environment variable value as the specified type
  */
 template <typename T>
-T getEnvAs(const std::string& var, T defaultValue, spdlog::logger& logger) {
+T getEnvAs(const std::string& var, T defaultValue, spdlog::logger& logger, bool cache = true) {
     // Lock to make sure there is no collision between threads
     std::mutex& mutex = getEnvTypeMutex<T>();
-    std::unordered_map<std::string, T>& cache = getEnvTypeCache<T>();
+    std::unordered_map<std::string, T>& varCache = getEnvTypeCache<T>();
     std::unique_lock<std::mutex> lock(mutex);
 
     // Return immediately if cached
-    if(cache.count(var) > 0) {
-        return cache[var];
+    if(cache && varCache.count(var) > 0) {
+        return varCache[var];
     }
+
+    T returnValue;
 
     // Get environment variable
     std::string value = spdlog::details::os::getenv(var.c_str());
@@ -67,7 +70,7 @@ T getEnvAs(const std::string& var, T defaultValue, spdlog::logger& logger) {
 
     // If unspecified, return the default value
     if(useDefault) {
-        cache[var] = defaultValue;
+        returnValue = defaultValue;
         logger.info("Environment variable {} is not set. Using default value: '{}'", var, defaultValue);
     }
 
@@ -77,15 +80,15 @@ T getEnvAs(const std::string& var, T defaultValue, spdlog::logger& logger) {
         try {
             // string
             if constexpr(std::is_same_v<T, std::string>) {
-                cache[var] = value;
+                returnValue = value;
             }
 
             // bool
             else if constexpr(std::is_same_v<T, bool>) {
                 if(value == "1" || value == "true" || value == "TRUE" || value == "True") {
-                    cache[var] = true;
+                    returnValue = true;
                 } else if(value == "0" || value == "false" || value == "FALSE" || value == "False") {
-                    cache[var] = false;
+                    returnValue = false;
                 } else {
                     std::ostringstream message;
                     message << "Failed to convert environment variable " << var << " from '" << value << "' to type " << typeid(T).name();
@@ -105,17 +108,19 @@ T getEnvAs(const std::string& var, T defaultValue, spdlog::logger& logger) {
                     throw std::runtime_error("Failed to convert environment variable " + var + " from '" + value + "' to type " + typeid(T).name());
                 }
 
-                cache[var] = result;
+                returnValue = result;
             }
 
         } catch(const std::runtime_error& e) {
             logger.error("{}. Using default value instead: '{}'", e.what(), defaultValue);
-            cache[var] = defaultValue;
+            returnValue = defaultValue;
         }
     }
 
-    // variable is guaranteed to be in cache by now
-    return cache[var];
+    if(cache) {
+        varCache[var] = returnValue;
+    }
+    return returnValue;
 }
 
 /**
@@ -125,10 +130,11 @@ T getEnvAs(const std::string& var, T defaultValue, spdlog::logger& logger) {
  * @param defaultValue The default value to return if the environment variable is not set
  * @param possibleValues The list of possible values for the environment variable
  * @param logger The logger to use for logging
+ * @param cache Whether to cache the environment variable value
  * @return The environment variable value as the specified type
  */
 template <typename T>
-T getEnvAsChecked(const std::string& var, T defaultValue, const std::vector<T>& possibleValues, spdlog::logger& logger) {
+T getEnvAsChecked(const std::string& var, T defaultValue, const std::vector<T>& possibleValues, spdlog::logger& logger, bool cache = true) {
     // Check that default value is part of possible values
     bool isDefaultValueValid = std::find(possibleValues.begin(), possibleValues.end(), defaultValue) != possibleValues.end();
     if(!isDefaultValueValid) {
@@ -148,10 +154,12 @@ T getEnvAsChecked(const std::string& var, T defaultValue, const std::vector<T>& 
         // Log the error
         logger.error(message.str());
 
-        // Override the value in the cache
-        std::unique_lock<std::mutex> lock(getEnvTypeMutex<T>());
-        std::unordered_map<std::string, T>& cache = getEnvTypeCache<T>();
-        cache[var] = defaultValue;
+        if(cache) {
+            // Override the value in the cache
+            std::unique_lock<std::mutex> lock(getEnvTypeMutex<T>());
+            std::unordered_map<std::string, T>& varCache = getEnvTypeCache<T>();
+            varCache[var] = defaultValue;
+        }
 
         // use default value
         value = defaultValue;
@@ -164,11 +172,12 @@ T getEnvAsChecked(const std::string& var, T defaultValue, const std::vector<T>& 
  * @tparam T The type to convert the environment variable to
  * @param var The name of the environment variable
  * @param defaultValue The default value to return if the environment variable is not set
+ * @param cache Whether to cache the environment variable value
  * @return The environment variable value as the specified type
  */
 template <typename T>
-T getEnvAs(const std::string& var, T defaultValue) {
-    return getEnvAs<T>(var, defaultValue, Logging::getInstance().logger);
+T getEnvAs(const std::string& var, T defaultValue, bool cache = true) {
+    return getEnvAs<T>(var, defaultValue, Logging::getInstance().logger, cache);
 }
 
 /**
@@ -177,11 +186,12 @@ T getEnvAs(const std::string& var, T defaultValue) {
  * @param var The name of the environment variable
  * @param defaultValue The default value to return if the environment variable is not set
  * @param possibleValues The list of possible values for the environment variable
+ * @param cache Whether to cache the environment variable value
  * @return The environment variable value as the specified type
  */
 template <typename T>
-T getEnvAsChecked(const std::string& var, T defaultValue, const std::vector<T>& possibleValues) {
-    return getEnvAsChecked<T>(var, defaultValue, possibleValues, Logging::getInstance().logger);
+T getEnvAsChecked(const std::string& var, T defaultValue, const std::vector<T>& possibleValues, bool cache = true) {
+    return getEnvAsChecked<T>(var, defaultValue, possibleValues, Logging::getInstance().logger, cache);
 }
 
 std::vector<std::string> splitList(const std::string& list, const std::string& delimiter);

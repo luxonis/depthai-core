@@ -6,6 +6,9 @@
 void ZooBindings::bind(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
+    // modelzoo namespace
+    py::module modelzoo = m.def_submodule("modelzoo", "Model Zoo");
+
     // Type definitions
     py::class_<NNModelDescription> modelDescription(m, "NNModelDescription", DOC(dai, NNModelDescription));
     py::class_<SlugComponents> slugComponents(m, "SlugComponents", DOC(dai, SlugComponents));
@@ -81,7 +84,7 @@ void ZooBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("modelPrecisionType") = "")
 
         .def(py::init<>([](const std::string& model) { return NNModelDescription{model}; }), py::arg("model"))
-        .def_static("fromYamlFile", &NNModelDescription::fromYamlFile, py::arg("yamlPath"), DOC(dai, NNModelDescription, fromYamlFile))
+        .def_static("fromYamlFile", &NNModelDescription::fromYamlFile, py::arg("yamlPath"), py::arg("modelsPath") = "", DOC(dai, NNModelDescription, fromYamlFile))
         .def("saveToYamlFile", &NNModelDescription::saveToYamlFile, py::arg("yamlPath"), DOC(dai, NNModelDescription, saveToYamlFile))
         .def("check", &NNModelDescription::check, DOC(dai, NNModelDescription, check))
         .def("toString", &NNModelDescription::toString, DOC(dai, NNModelDescription, toString))
@@ -106,4 +109,14 @@ void ZooBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("modelSlug", &SlugComponents::modelSlug, DOC(dai, SlugComponents, modelSlug))
         .def_readwrite("modelVariantSlug", &SlugComponents::modelVariantSlug, DOC(dai, SlugComponents, modelVariantSlug))
         .def_readwrite("modelRef", &SlugComponents::modelRef, DOC(dai, SlugComponents, modelRef));
+
+    // endpoints
+    modelzoo.def("setHealthEndpoint", &modelzoo::setHealthEndpoint, py::arg("endpoint"), DOC(dai, modelzoo, setHealthEndpoint));
+    modelzoo.def("setDownloadEndpoint", &modelzoo::setDownloadEndpoint, py::arg("endpoint"), DOC(dai, modelzoo, setDownloadEndpoint));
+    modelzoo.def("setDefaultCachePath", &modelzoo::setDefaultCachePath, py::arg("path"), DOC(dai, modelzoo, setDefaultCachePath));
+    modelzoo.def("setDefaultModelsPath", &modelzoo::setDefaultModelsPath, py::arg("path"), DOC(dai, modelzoo, setDefaultModelsPath));
+    modelzoo.def("getHealthEndpoint", &modelzoo::getHealthEndpoint, DOC(dai, modelzoo, getHealthEndpoint));
+    modelzoo.def("getDownloadEndpoint", &modelzoo::getDownloadEndpoint, DOC(dai, modelzoo, getDownloadEndpoint));
+    modelzoo.def("getDefaultCachePath", &modelzoo::getDefaultCachePath, DOC(dai, modelzoo, getDefaultCachePath));
+    modelzoo.def("getDefaultModelsPath", &modelzoo::getDefaultModelsPath, DOC(dai, modelzoo, getDefaultModelsPath));
 }
