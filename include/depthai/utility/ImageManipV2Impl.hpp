@@ -2366,6 +2366,8 @@ std::string getConfigString(const dai::ImageManipOpsBase<C>& ops) {
         configSS << std::visit([](auto&& op) { return getOpStr(op); }, operations[i].op);
         if(i != operations.size() - 1) configSS << " ";
     }
+    configSS << "| o=" << ops.outputWidth << "x" << ops.outputHeight << " c=" << ops.center << " rm=" << (int)ops.resizeMode << " b=" << (int)ops.background
+             << " bc=" << ops.backgroundR << "," << ops.backgroundG << "," << ops.backgroundB << " c=" << (int)ops.colormap << " u=" << (int)ops.undistort;
     return configSS.str();
 }
 
@@ -2858,7 +2860,6 @@ std::string ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>:
             if(i != outputOps.size() - 1) cStr << " ";
         }
     }
-    cStr << "; o=" << base.outputWidth << "x" << base.outputHeight;
     return cStr.str();
 }
 
