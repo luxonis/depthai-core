@@ -654,9 +654,6 @@ include(Depthai/DepthaiDeviceKbConfig)    # depthai-device-kb fwp commit/version
 include(Depthai/DepthaiDeviceRVC4Config)    # depthai-device-rvc4 fwp commit/version configuration
 include(Depthai/DepthaiVisualizerConfig)    # depthai-visualizer commit/version configuration
 
-# Modify RVC4 version if using sanitizers
-set(DEPTHAI_DEVICE_RVC4_VERSION "${DEPTHAI_DEVICE_RVC4_VERSION}-ASAN")
-
 # Include downloaders
 include(DepthaiDownloader)                  # Depthai device binary downloader
 include(DepthaiBootloaderDownloader)        # Depthai bootloader binary downloader
@@ -736,9 +733,15 @@ if(DEPTHAI_ENABLE_DEVICE_RVC3_FW)
 endif()
 
 if(DEPTHAI_ENABLE_DEVICE_RVC4_FW)
+    set(VARIANT "rvc4")
+    if(DEPTHAI_SANITIZE AND (SANITIZE_ADDRESS OR SANITIZE_UNDEFINED))
+        set(VARIANT "rvc4-asan-ubsan")
+    elseif(DEPTHAI_SANITIZE AND SANITIZE_THREAD)
+        set(VARIANT "rvc4-tsan")
+    endif()
     # Add device-RVC4 FW
     DepthaiDeviceDownloader(
-        "depthai-device-rvc4"
+        "depthai-device-${VARIANT}"
         "luxonis-rvc4-snapshot-local"
         "luxonis-rvc4-release-local"
         "${DEPTHAI_SHARED_COMMIT_HASH}" "${DEPTHAI_SHARED_COMMIT_HASH_ENFORCE}"
