@@ -1,6 +1,7 @@
 #include "depthai/basalt/BasaltVIO.hpp"
 
 #include "../utility/PimplImpl.hpp"
+#include "basalt/vi_estimator/vio_estimator.h"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/ThreadedHostNode.hpp"
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
@@ -208,6 +209,7 @@ void BasaltVIO::initialize(std::vector<std::shared_ptr<ImgFrame>> frames) {
     }
 
     optFlowPtr = basalt::OpticalFlowFactory::getOpticalFlow(vioConfig, *calib);
+    optFlowPtr->show_gui = false;
     optFlowPtr->start();
     pimpl->imageDataQueue = optFlowPtr->input_img_queue;
     vio = basalt::VioEstimatorFactory::getVioEstimator(vioConfig, *calib, basalt::constants::g, true, true);
@@ -218,6 +220,7 @@ void BasaltVIO::initialize(std::vector<std::shared_ptr<ImgFrame>> frames) {
     vio->out_state_queue = pimpl->outStateQueue;
     vio->opt_flow_depth_guess_queue = optFlowPtr->input_depth_queue;
     vio->opt_flow_state_queue = optFlowPtr->input_state_queue;
+    vio->opt_flow_lm_bundle_queue = optFlowPtr->input_lm_bundle_queue;
     initialized = true;
 }
 

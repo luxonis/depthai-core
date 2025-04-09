@@ -90,7 +90,7 @@ class ImgFrame : public Buffer, public ProtoSerializable {
      *
      * @returns serialized message
      */
-    std::vector<std::uint8_t> serializeProto() const override;
+    std::vector<std::uint8_t> serializeProto(bool metadataOnly = false) const override;
 
     /**
      * Serialize schema to proto buffer
@@ -460,10 +460,10 @@ class ImgFrame : public Buffer, public ProtoSerializable {
                 return 1;
                 break;
             case Type::RGB888i:
-                return 1;
+                return 3;
                 break;
             case Type::BGR888i:
-                return 1;
+                return 3;
                 break;
             case Type::RGBF16F16F16p:
                 return 2;

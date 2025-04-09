@@ -2,48 +2,61 @@ name: DepthAI Core HIL Stability
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-      - develop
-    tags:
-      - 'v2*'
-  pull_request:
-    branches:
-      - main
-      - develop
+    inputs:
+      distinct_id:
+        description: 'run identifier'
+        required: false
+      testbed:
+          description: 'On what testbed will tests be run'
+          required: false
+          type: string
+      reservation_name:
+          description: 'Reservation name - usually usually unique identifier of root CI run'
+          required: false
+          type: string
+      luxonis_os:
+          description: 'Which RVC4 os version to install before starting tests'
+          required: false
+          type: string
+      depthai:
+        required: false
+        type: string
+        default: "latest"
+        description: "Version for depthai"
 
-# Only allow latest run on same branch to be tested
-concurrency:
-  group: ci-stability-${{ github.ref }}-1
-  cancel-in-progress: true
 
 jobs:
-
+  id:
+    name: Workflow ID Provider
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    steps:
+      - name: echo distinct ID ${{ github.event.inputs.distinct_id }}
+        run: echo ${{ github.event.inputs.distinct_id }}
   # Testing
   test:
-    runs-on: ['self-hosted', 'testbed-runner', 'linux']
+    runs-on: ['self-hosted', 'testbed-runner']
     timeout-minutes: 1450 # 24h & 10minutes
     steps:
+    
     - uses: actions/checkout@v3
-      with:
-        submodules: 'recursive'
+
     - name: Prepare HIL Framework
       run: source scripts/hil/prepare_hil_framework.sh 
 
-    # TODO also modify above hunter key to 'asan'
-    # - name: Specify ASAN toolchain path
-    #   run: echo "CMAKE_TOOLCHAIN_PATH=$PWD/cmake/toolchain/asan.cmake" >> $GITHUB_ENV
-
-    # - name: Configure, Build and Test
-    #   run: |
-    #     cmake -S . -B build -D CMAKE_BUILD_TYPE=Release -D HUNTER_ROOT=$HOME/.hun_vanilla -D DEPTHAI_BUILD_TESTS=ON
-    #     cmake --build build --parallel 8 --config Release --target stability_stress_test
-    #     cd build
-    #     ../ci/stability_stress_test_combined.sh
-
-    # Release build
-    - name: Configure, Build and Test
+    - name: Test
       run: |
-        export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/$GITHUB_RUN_ID+stability"
-        exec hil --capabilities depthai-core-hil --reservation-name $RESERVATION_NAME -w -s --commands 'cd /tmp/depthai-core|| exit' 'scripts/hil/run_hil_stability.sh'
+          if [[ -n "${{ github.event.inputs.testbed }}" ]]; then
+            TESTBED_OPTION="--testbed ${{ github.event.inputs.testbed }}"
+          fi
+          if [[ -n "${{ github.event.inputs.reservation_name }}" ]]; then
+            RESERVATION_OPTION="--reservation-name ${{ github.event.inputs.reservation_name }}"
+          else
+            export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-depthai-stability"
+            RESERVATION_OPTION="--reservation-name $RESERVATION_NAME"
+          fi
+          if [[ -n  "${{ github.event.inputs.luxonis_os }}" ]]; then
+            UPDATE_LUXONIS_OS="--rvc4-os-version ${{ github.event.inputs.luxonis_os }}"
+          fi
+          
+          exec hil $HOLD_RESERVATION --models "oak4_pro or oak4_d" $TESTBED_OPTION $RESERVATION_OPTION $UPDATE_LUXONIS_OS --wait --sync-workspace --stability-test --stability-name depthai-stability --commands 'cd /tmp/depthai-core || exit' 'scripts/hil/run_hil_stability.sh ${{ github.event.inputs.depthai  }}'

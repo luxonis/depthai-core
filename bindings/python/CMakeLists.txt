@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.4) # For Hunter
+cmake_minimum_required(VERSION 3.20)
 
 # Set policies
 # CMP0074 dictates that find_package searches environment variable "[packageName]_ROOT" along with regular variable [packageName]_ROOT
@@ -108,6 +108,7 @@ set(SOURCE_LIST
     src/pipeline/node/RecordBindings.cpp
     src/pipeline/node/ReplayBindings.cpp
     src/pipeline/node/ImageAlignBindings.cpp
+    src/pipeline/node/RGBDBindings.cpp
 
     src/pipeline/datatype/ADatatypeBindings.cpp
     src/pipeline/datatype/AprilTagConfigBindings.cpp
@@ -126,6 +127,7 @@ set(SOURCE_LIST
     src/pipeline/datatype/IMUDataBindings.cpp
     src/pipeline/datatype/MessageGroupBindings.cpp
     src/pipeline/datatype/NNDataBindings.cpp
+    src/pipeline/datatype/RGBDDataBindings.cpp
     src/pipeline/datatype/SpatialImgDetectionsBindings.cpp
     src/pipeline/datatype/SpatialLocationCalculatorConfigBindings.cpp
     src/pipeline/datatype/SpatialLocationCalculatorDataBindings.cpp

@@ -1,0 +1,19 @@
+{
+  "name": "kompute",
+  "version": "0.9.0",
+  "homepage": "https://github.com/KomputeProject/kompute",
+  "description": "General purpose GPU compute framework built on Vulkan to support 1000s of cross vendor graphics cards (AMD, Qualcomm, NVIDIA & friends).",
+  "license": "Apache-2.0",
+  "dependencies": [
+    {
+      "name": "vcpkg-cmake",
+      "host": true
+    },
+    {
+      "name": "vcpkg-cmake-config",
+      "host": true
+    },
+    "vulkan",
+    "fmt"
+  ]
+}

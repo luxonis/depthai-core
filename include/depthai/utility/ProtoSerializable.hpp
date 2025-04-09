@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <string>
 #include <vector>
+
 namespace dai {
 
 class ProtoSerializable {
@@ -19,7 +20,7 @@ class ProtoSerializable {
      * @brief Serialize the protobuf message of this object
      * @return serialized protobuf message
      */
-    virtual std::vector<std::uint8_t> serializeProto() const = 0;
+    virtual std::vector<std::uint8_t> serializeProto(bool metadataOnly = false) const = 0;
 
     /**
      * @brief Serialize the schema of this object
