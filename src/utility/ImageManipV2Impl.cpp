@@ -815,6 +815,7 @@ size_t dai::impl::getFrameSize(const ImgFrame::Type type, const FrameSpecs& spec
             return specs.p2Offset + specs.p2Stride * specs.height / 2;
         case ImgFrame::Type::RAW8:
         case ImgFrame::Type::GRAY8:
+        case ImgFrame::Type::RAW16:
             return specs.p1Stride * specs.height;
         case ImgFrame::Type::YUV422i:
         case ImgFrame::Type::YUV444p:
@@ -825,7 +826,6 @@ size_t dai::impl::getFrameSize(const ImgFrame::Type type, const FrameSpecs& spec
         case ImgFrame::Type::LUT2:
         case ImgFrame::Type::LUT4:
         case ImgFrame::Type::LUT16:
-        case ImgFrame::Type::RAW16:
         case ImgFrame::Type::RAW14:
         case ImgFrame::Type::RAW12:
         case ImgFrame::Type::RAW10:
@@ -876,6 +876,8 @@ size_t dai::impl::getAlignedOutputFrameSize(ImgFrame::Type type, size_t width, s
         case ImgFrame::Type::RAW8:
         case ImgFrame::Type::GRAY8:
             return alignSize(alignWidth(width) * alignHeight(height));
+        case ImgFrame::Type::RAW16:
+            return alignSize(alignWidth(width) * alignHeight(height) * 2);
         case ImgFrame::Type::YUV422i:
         case ImgFrame::Type::YUV444p:
         case ImgFrame::Type::YUV422p:
@@ -885,7 +887,6 @@ size_t dai::impl::getAlignedOutputFrameSize(ImgFrame::Type type, size_t width, s
         case ImgFrame::Type::LUT2:
         case ImgFrame::Type::LUT4:
         case ImgFrame::Type::LUT16:
-        case ImgFrame::Type::RAW16:
         case ImgFrame::Type::RAW14:
         case ImgFrame::Type::RAW12:
         case ImgFrame::Type::RAW10:
