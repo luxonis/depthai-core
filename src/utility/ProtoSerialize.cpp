@@ -457,7 +457,7 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgFrame* messa
     fb->set_type(static_cast<proto::img_frame::Type>(message->fb.type));
     fb->set_width(message->fb.width);
     fb->set_height(message->fb.height);
-    fb->set_stride(message->fb.stride);
+    fb->set_stride(message->getStride());  // getStride() handles the case when fb.stride is set to 0
     fb->set_bytespp(message->fb.bytesPP);
     fb->set_p1offset(message->fb.p1Offset);
     fb->set_p2offset(message->fb.p2Offset);
