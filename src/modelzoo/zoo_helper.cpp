@@ -2,11 +2,20 @@
 #include <iostream>
 
 #include "../utility/Environment.hpp"
+#include "depthai/build/version.hpp"
 #include "depthai/modelzoo/Zoo.hpp"
 
 int main(int argc, char* argv[]) {
+    // version information
+    std::ostringstream versionInfo;
+    versionInfo << "DepthAI Model Zoo Helper v1.0.1" << std::endl;
+    versionInfo << "Commit: " << dai::build::COMMIT << std::endl;
+    versionInfo << "Commit datetime: " << dai::build::COMMIT_DATETIME << std::endl;
+    versionInfo << "DepthAI version: " << dai::build::VERSION << std::endl;
+    versionInfo << "Build date: " << dai::build::BUILD_DATETIME;
+
     // Initialize parser
-    argparse::ArgumentParser program("DepthAI Model Zoo Helper");
+    argparse::ArgumentParser program("DepthAI Model Zoo Helper", versionInfo.str());
 
     // Add arguments
     const std::string DEFAULT_YAML_FOLDER = dai::utility::getEnvAs<std::string>("DEPTHAI_ZOO_MODELS_PATH", dai::modelzoo::getDefaultModelsPath());
@@ -24,6 +33,8 @@ int main(int argc, char* argv[]) {
     const std::string DEFAULT_DOWNLOAD_ENDPOINT = dai::modelzoo::getDownloadEndpoint();
     program.add_argument("--download_endpoint").default_value(DEFAULT_DOWNLOAD_ENDPOINT).help("Endpoint to use for downloading models");
 
+    program.add_argument("--verbose").default_value(false).implicit_value(true).help("Verbose output");
+
     // Parse arguments
     try {
         program.parse_args(argc, argv);
@@ -40,6 +51,11 @@ int main(int argc, char* argv[]) {
     auto healthEndpoint = program.get<std::string>("--health_endpoint");
     auto downloadEndpoint = program.get<std::string>("--download_endpoint");
 
+    bool verbose = program.get<bool>("--verbose");
+    if(!dai::utility::isEnvSet("DEPTHAI_LEVEL") && verbose) {
+        dai::Logging::getInstance().logger.set_level(spdlog::level::info);
+    }
+
     // Set endpoints
     dai::modelzoo::setHealthEndpoint(healthEndpoint);
     dai::modelzoo::setDownloadEndpoint(downloadEndpoint);
@@ -52,7 +68,12 @@ int main(int argc, char* argv[]) {
     }
 
     // Download models
-    dai::downloadModelsFromZoo(yamlFolder, cacheFolder, apiKey);
+    bool success = dai::downloadModelsFromZoo(yamlFolder, cacheFolder, apiKey);
+    if(!success) {
+        std::cerr << "Failed to download all models from " << yamlFolder << std::endl;
+        return EXIT_FAILURE;
+    }
 
+    std::cout << "Successfully downloaded all models from " << yamlFolder << std::endl;
     return EXIT_SUCCESS;
 }

@@ -101,8 +101,9 @@ std::string getModelFromZoo(const NNModelDescription& modelDescription,
  * DEPTHAI_ZOO_CACHE_PATH environment variable and uses that if set, otherwise the default is used (see getDefaultCachePath).
  * @param apiKey: API key for the model zoo, default is "". If apiKey is set to "", this function checks the DEPTHAI_ZOO_API_KEY environment variable and uses
  * that if set. Otherwise, no API key is used.
+ * @return bool: True if all models were downloaded successfully, false otherwise
  */
-void downloadModelsFromZoo(const std::string& path, const std::string& cacheDirectory = "", const std::string& apiKey = "");
+bool downloadModelsFromZoo(const std::string& path, const std::string& cacheDirectory = "", const std::string& apiKey = "");
 
 std::ostream& operator<<(std::ostream& os, const NNModelDescription& modelDescription);
 

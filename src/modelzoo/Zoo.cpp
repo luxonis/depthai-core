@@ -478,7 +478,7 @@ std::string getModelFromZoo(const NNModelDescription& modelDescription, bool use
     return modelPath;
 }
 
-void downloadModelsFromZoo(const std::string& path, const std::string& cacheDirectory, const std::string& apiKey) {
+bool downloadModelsFromZoo(const std::string& path, const std::string& cacheDirectory, const std::string& apiKey) {
     logger::info("Downloading models from zoo");
     // Make sure 'path' exists
     if(!std::filesystem::exists(path)) throw std::runtime_error("Path does not exist: " + path);
@@ -515,7 +515,8 @@ void downloadModelsFromZoo(const std::string& path, const std::string& cacheDire
         }
     }
 
-    logger::info("Downloaded {} models from folder {}. {} failed.", numSuccess, path, numFail);
+    logger::info("Downloaded {} models from folder {} | {} failed.", numSuccess, path, numFail);
+    return numFail == 0;
 }
 
 bool ZooManager::connectionToZooAvailable() {

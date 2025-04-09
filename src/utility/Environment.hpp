@@ -4,10 +4,15 @@
 #include <spdlog/logger.h>
 #include <spdlog/spdlog.h>
 
+#include <cstdlib>
 #include <mutex>
 #include <sstream>
 #include <string>
 #include <unordered_map>
+
+#ifdef _WIN32
+    #include <windows.h>
+#endif
 
 #include "Logging.hpp"
 
@@ -192,6 +197,47 @@ T getEnvAs(const std::string& var, T defaultValue, bool cache = true) {
 template <typename T>
 T getEnvAsChecked(const std::string& var, T defaultValue, const std::vector<T>& possibleValues, bool cache = true) {
     return getEnvAsChecked<T>(var, defaultValue, possibleValues, Logging::getInstance().logger, cache);
+}
+
+/**
+ * @brief Check if an environment variable is set
+ * @param var The name of the environment variable
+ * @return True if the environment variable is set, false otherwise
+ */
+inline bool isEnvSet(const std::string& var) {
+    return !spdlog::details::os::getenv(var.c_str()).empty();
+}
+
+/**
+ * @brief Set an environment variable
+ * @param var The name of the environment variable
+ * @param value The value to set the environment variable to
+ * @param overwrite Whether to overwrite the environment variable if it already exists
+ */
+inline void setEnv(const std::string& var, const std::string& value, bool overwrite = true) {
+    if(isEnvSet(var) && !overwrite) {
+        return;
+    }
+
+#ifdef _WIN32
+    SetEnvironmentVariableA(var.c_str(), value.c_str());
+    _putenv_s(var.c_str(), value.c_str());
+#else
+    setenv(var.c_str(), value.c_str(), 1);
+#endif
+}
+
+/**
+ * @brief Unset an environment variable
+ * @param var The name of the environment variable
+ */
+inline void unsetEnv(const std::string& var) {
+#ifdef _WIN32
+    SetEnvironmentVariableA(var.c_str(), nullptr);
+    _putenv_s(var.c_str(), nullptr);
+#else
+    unsetenv(var.c_str());
+#endif
 }
 
 std::vector<std::string> splitList(const std::string& list, const std::string& delimiter);
