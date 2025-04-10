@@ -78,7 +78,7 @@ jobs:
       strategy:
         matrix:
           arch: ['x64']
-          flavor: ['vanilla', 'asan-ubsan', 'tsan']
+          flavor: ['asan-ubsan', 'tsan']
           rvc4os: ['debug-1.6.0']
         fail-fast: false
       runs-on: ['self-hosted', 'testbed-runner']
