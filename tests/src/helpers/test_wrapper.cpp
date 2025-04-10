@@ -37,7 +37,7 @@ int main(int argc, char* argv[]) {
 
         // Run the process with captured output and timeout
         auto start = std::chrono::steady_clock::now();
-        bool timed_out = false;
+        bool timedOut = false;
 
         subprocess::Popen proc(args, subprocess::output{subprocess::PIPE}, subprocess::error{subprocess::PIPE});
 
@@ -46,31 +46,42 @@ int main(int argc, char* argv[]) {
         while(proc.poll() == -1) {
             auto now = std::chrono::steady_clock::now();
             if(std::chrono::duration_cast<std::chrono::seconds>(now - start).count() > timeout) {
-                timed_out = true;
+                timedOut = true;
                 break;
             }
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
 
-        if(timed_out) {
+        if(timedOut) {
             std::cerr << "=== Test exceeded timeout of " << timeout << " seconds, terminating ===" << std::endl;
-            proc.kill(SIGINT);  // Use the built-in kill method
-            std::this_thread::sleep_for(std::chrono::seconds(5));
 
-            if(proc.poll() == -1) {
-                std::cerr << "Still running, killing..." << std::endl;
-                proc.kill(SIGKILL);  // Use SIGKILL if SIGTERM didn't work
+#if defined(_WIN32) || defined(__MINGW32__)
+
+            std::cerr << "Attempting termination via proc.kill() (TerminateProcess)..." << std::endl;
+            proc.kill(); // Call kill (uses TerminateProcess). Let library use its default exit code (9).
+                         // Or you could use proc.kill(1); for exit code 1.
+
+            // Wait a short time to allow the OS to terminate the process
+            // TerminateProcess is generally forceful, but cleanup might take a moment.
+            std::this_thread::sleep_for(std::chrono::milliseconds(1500)); // 1.5 seconds
+
+            if (proc.poll() == -1) {
+                std::cerr << "Process still reported as running after TerminateProcess attempt." << std::endl;
+                // No further escalation possible with this library's API on Windows.
             }
 
-            // Device recovery wait
-            std::cout << "Devices before: " << devicesBefore << std::endl;
-            while(devicesBefore > dai::Device::getAllAvailableDevices().size()) {
-                std::this_thread::sleep_for(std::chrono::seconds(5));
-                std::cout << "Devices now: " << dai::Device::getAllAvailableDevices().size() << std::endl;
-            }
+#else
+            std::cerr << "Sending SIGINT..." << std::endl;
+            proc.kill(SIGINT);  // Try graceful termination first
+            std::this_thread::sleep_for(std::chrono::seconds(5)); // Wait for it to exit
 
-            std::cout << "=== Device rebooted ===" << std::endl;
-            return 0;
+            if(proc.poll() == -1) { // Check if it's still running
+                std::cerr << "Process still running after SIGINT, sending SIGKILL..." << std::endl;
+                proc.kill(SIGKILL); // Force kill
+                std::this_thread::sleep_for(std::chrono::seconds(1)); // Short wait after SIGKILL
+            }
+#endif
+            std::cerr << "Process terminated." << std::endl;
         }
 
         // Only call communicate() once and save the results
