@@ -733,15 +733,15 @@ if(DEPTHAI_ENABLE_DEVICE_RVC3_FW)
 endif()
 
 if(DEPTHAI_ENABLE_DEVICE_RVC4_FW)
-    set(VARIANT "rvc4")
-    if(DEPTHAI_SANITIZE AND (SANITIZE_ADDRESS OR SANITIZE_UNDEFINED))
-        set(VARIANT "rvc4-asan-ubsan")
-    elseif(DEPTHAI_SANITIZE AND SANITIZE_THREAD)
-        set(VARIANT "rvc4-tsan")
+    if(DEPTHAI_SANITIZE AND SANITIZE_THREAD)
+        string(APPEND DEPTHAI_DEVICE_RVC4_VERSION "-tsan")
+    elseif(DEPTHAI_SANITIZE)
+        string(APPEND DEPTHAI_DEVICE_RVC4_VERSION "-asan-ubsan")
     endif()
+
     # Add device-RVC4 FW
     DepthaiDeviceDownloader(
-        "depthai-device-${VARIANT}"
+        "depthai-device-rvc4"
         "luxonis-rvc4-snapshot-local"
         "luxonis-rvc4-release-local"
         "${DEPTHAI_SHARED_COMMIT_HASH}" "${DEPTHAI_SHARED_COMMIT_HASH_ENFORCE}"
