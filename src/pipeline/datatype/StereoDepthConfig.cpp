@@ -152,7 +152,9 @@ float StereoDepthConfig::getMaxDisparity() const {
     }
 
     if(filtersToExecute.size() != 0) {
-        maxDisp = 1 << 13;
+        if(filtersToExecute.back() != StereoDepthConfig::PostProcessing::Filter::MEDIAN) {
+            maxDisp = maxDisp * ((1 << 13) / maxDisp);
+        }
     }
 
     return maxDisp;
