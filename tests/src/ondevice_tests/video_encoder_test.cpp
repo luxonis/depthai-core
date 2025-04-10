@@ -46,8 +46,6 @@ TEST_CASE("Test VideoEncoder node H265_MAIN") {
     testVideoEncoder(dai::VideoEncoderProperties::Profile::H265_MAIN);
 }
 
-#if ENABLE_MJPEG != 0
 TEST_CASE("Test VideoEncoder node MJPEG") {
     testVideoEncoder(dai::VideoEncoderProperties::Profile::MJPEG);
 }
-#endif
