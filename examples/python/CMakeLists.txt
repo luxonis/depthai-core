@@ -76,13 +76,15 @@ function(add_python_example example_name python_script_path)
             ${CMAKE_COMMAND}
             -DFORCE_TIMEOUT_SECONDS=300
             -P ${CMAKE_CURRENT_LIST_DIR}/../cpp/cmake/ExecuteTestTimeout.cmake
-            ${CMAKE_SOURCE_DIR}/build/tests/test_wrapper
+            $<TARGET_FILE:test_wrapper>
             30 # A timeout to terminate the test when sucessful
             ${PYTHON_EXECUTABLE}
             -Werror
             "${CMAKE_CURRENT_LIST_DIR}/${python_script_path}"
             ${arguments}
         )
+
+        add_dependencies(${example_name} test_wrapper)
 
         # Sets a regex catching any logged warnings, errors or critical (coming either from device or host)
         set_tests_properties (${example_name} PROPERTIES FAIL_REGULAR_EXPRESSION "\\[warning\\];\\[error\\];\\[critical\\];(?i)\\berror\\b")
