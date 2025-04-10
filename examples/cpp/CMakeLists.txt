@@ -16,7 +16,7 @@ set(test_env
     "UBSAN_OPTIONS=halt_on_error=1"
     "RUNNING_AS_TEST=1"
     # DepthAI
-    "DEPTHAI_SEARCH_TIMEOUT=15000"
+    "DEPTHAI_SEARCH_TIMEOUT=10000"
     "DEPTHAI_RECONNECT_TIMEOUT=0"
     )
 
@@ -53,18 +53,18 @@ function(dai_add_example example_name example_src enable_test use_pcl)
 
     # If 'DEPTHAI_TEST_EXAMPLES' is ON, then examples will be part of the test suite
     if(${enable_test} AND DEPTHAI_TEST_EXAMPLES)
-        add_test(NAME ${example_name} COMMAND 
+        add_test(NAME ${example_name} COMMAND
             ${CMAKE_COMMAND}
             -DTIMEOUT_SECONDS=300
-            -P ${CMAKE_CURRENT_LIST_DIR}/cmake/ExecuteTestTimeout.cmake 
+            -P ${CMAKE_CURRENT_LIST_DIR}/cmake/ExecuteTestTimeout.cmake
             ${CMAKE_SOURCE_DIR}/build/tests/test_wrapper
             30 # Set test timeout
-            $<TARGET_FILE:${example_name}> 
+            $<TARGET_FILE:${example_name}>
             ${arguments}
         )
 
         # Sets a regex catching any logged warnings, errors or critical (coming either from device or host)
-        set_tests_properties(${example_name} PROPERTIES FAIL_REGULAR_EXPRESSION "\\[warning\\];\\[error\\];\\[critical\\]")
+        set_tests_properties(${example_name} PROPERTIES FAIL_REGULAR_EXPRESSION "\\[warning\\];\\[error\\];\\[critical\\];(?i)\\berror\\b")
 
         # Add ubsan halt on error
         set_tests_properties(${example_name} PROPERTIES ENVIRONMENT "${test_env}")

@@ -49,8 +49,8 @@ function(add_python_example example_name python_script_path)
         "PATH=${HUNTER_INSTALL_PREFIX}/bin${SYS_PATH_SEPARATOR}$ENV{PATH}"
         # Python path (to find compiled module)
         "PYTHONPATH=$<TARGET_FILE_DIR:${TARGET_NAME}>${SYS_PATH_SEPARATOR}$ENV{PYTHONPATH}"
-        "DEPTHAI_SEARCH_TIMEOUT=15000"
-        "DEPTHAI_CONNECT_TIMEOUT=15000"
+        "DEPTHAI_SEARCH_TIMEOUT=10000"
+        "DEPTHAI_CONNECT_TIMEOUT=10000"
         "DEPTHAI_RECONNECT_TIMEOUT=0"
         # ASAN in case of sanitizers
         "${ASAN_ENVIRONMENT_VARS}"
@@ -60,15 +60,15 @@ function(add_python_example example_name python_script_path)
         VERBATIM
         COMMAND_EXPAND_LISTS
     )
-        
+
     if(DEPTHAI_PYTHON_TEST_EXAMPLES)
-        
+
         # Adds test with 5 seconds timeout and bumps all python warnings to errors
         add_test(NAME ${example_name} COMMAND
             ${CMAKE_COMMAND} -E env
             "PATH=${HUNTER_INSTALL_PREFIX}/bin${SYS_PATH_SEPARATOR}$ENV{PATH}"
             "PYTHONPATH=$<TARGET_FILE_DIR:${TARGET_NAME}>${SYS_PATH_SEPARATOR}$ENV{PYTHONPATH}"
-            "DEPTHAI_SEARCH_TIMEOUT=45000"
+            "DEPTHAI_SEARCH_TIMEOUT=10000"
             "DEPTHAI_CONNECT_TIMEOUT=10000"
             "DEPTHAI_RECONNECT_TIMEOUT=0"
             ${ASAN_ENVIRONMENT_VARS}
@@ -77,15 +77,15 @@ function(add_python_example example_name python_script_path)
             -DFORCE_TIMEOUT_SECONDS=300
             -P ${CMAKE_CURRENT_LIST_DIR}/../cpp/cmake/ExecuteTestTimeout.cmake
             ${CMAKE_SOURCE_DIR}/build/tests/test_wrapper
-            30 # A timeout to terminate the test when sucessful 
+            30 # A timeout to terminate the test when sucessful
             ${PYTHON_EXECUTABLE}
             -Werror
-            "${CMAKE_CURRENT_LIST_DIR}/${python_script_path}" 
+            "${CMAKE_CURRENT_LIST_DIR}/${python_script_path}"
             ${arguments}
         )
 
         # Sets a regex catching any logged warnings, errors or critical (coming either from device or host)
-        set_tests_properties (${example_name} PROPERTIES FAIL_REGULAR_EXPRESSION "\\[warning\\];\\[error\\];\\[critical\\]")
+        set_tests_properties (${example_name} PROPERTIES FAIL_REGULAR_EXPRESSION "\\[warning\\];\\[error\\];\\[critical\\];(?i)\\berror\\b")
 
     endif()
 
