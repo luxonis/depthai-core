@@ -15,9 +15,8 @@ with dai.Pipeline() as pipeline:
         cameraNode, dai.NNModelDescription("yolov6-nano")
     )
 
-    cameraOutputVisualize = cameraNode.requestOutput((512, 288), dai.ImgFrame.Type.NV12)
     remoteConnector.addTopic("detections", detectionNetwork.out, "img")
-    remoteConnector.addTopic("images", cameraOutputVisualize, "img")
+    remoteConnector.addTopic("images", detectionNetwork.passthrough, "img")
 
     pipeline.start()
     remoteConnector.registerPipeline(pipeline)
