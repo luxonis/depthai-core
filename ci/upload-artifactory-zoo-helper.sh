@@ -16,6 +16,7 @@ echo "PATH_PREFIX: $PATH_PREFIX"
 echo "ZOO_HELPER_BINARY_LOCAL_PATH: $ZOO_HELPER_BINARY_LOCAL_PATH"
 echo "ZOO_HELPER_GIT_HASH: $ZOO_HELPER_GIT_HASH"
 echo "zoo_helper binary size: $(du -sh $ZOO_HELPER_BINARY_LOCAL_PATH)"
+echo "zoo_helper download url: $ARTIFACTORY_URL/$PATH_PREFIX/$ZOO_HELPER_GIT_HASH/zoo_helper"
 echo "----------------------------------------"
 
 # Upload binary to artifactory

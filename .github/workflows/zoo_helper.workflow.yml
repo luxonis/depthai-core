@@ -101,7 +101,9 @@ jobs:
         run: cmake -S . -B build -DDEPTHAI_ENABLE_CURL=ON -DCMAKE_BUILD_TYPE=MinSizeRel
 
       - name: Build zoo_helper
-        run: cmake --build build --target zoo_helper --parallel 4
+        run: |
+          git config --global --add safe.directory $(pwd)
+          cmake --build build --target zoo_helper --parallel 4
 
       - name: Strip zoo_helper
         run: strip ./build/zoo_helper # Shrinks the size of the binary a little bit by removing symbols: https://www.man7.org/linux/man-pages/man1/strip.1.html
