@@ -49,7 +49,7 @@ function(add_python_example example_name python_script_path)
         "PATH=${HUNTER_INSTALL_PREFIX}/bin${SYS_PATH_SEPARATOR}$ENV{PATH}"
         # Python path (to find compiled module)
         "PYTHONPATH=$<TARGET_FILE_DIR:${TARGET_NAME}>${SYS_PATH_SEPARATOR}$ENV{PYTHONPATH}"
-        "DEPTHAI_SEARCH_TIMEOUT=10000"
+        "DEPTHAI_SEARCH_TIMEOUT=20000"
         "DEPTHAI_CONNECT_TIMEOUT=10000"
         "DEPTHAI_RECONNECT_TIMEOUT=0"
         # ASAN in case of sanitizers
@@ -68,7 +68,7 @@ function(add_python_example example_name python_script_path)
             ${CMAKE_COMMAND} -E env
             "PATH=${HUNTER_INSTALL_PREFIX}/bin${SYS_PATH_SEPARATOR}$ENV{PATH}"
             "PYTHONPATH=$<TARGET_FILE_DIR:${TARGET_NAME}>${SYS_PATH_SEPARATOR}$ENV{PYTHONPATH}"
-            "DEPTHAI_SEARCH_TIMEOUT=10000"
+            "DEPTHAI_SEARCH_TIMEOUT=20000"
             "DEPTHAI_CONNECT_TIMEOUT=10000"
             "DEPTHAI_RECONNECT_TIMEOUT=0"
             ${ASAN_ENVIRONMENT_VARS}
@@ -77,7 +77,7 @@ function(add_python_example example_name python_script_path)
             -DFORCE_TIMEOUT_SECONDS=300
             -P ${CMAKE_CURRENT_LIST_DIR}/../cpp/cmake/ExecuteTestTimeout.cmake
             $<TARGET_FILE:test_wrapper>
-            30 # A timeout to terminate the test when sucessful
+            40 # A timeout to terminate the test when sucessful
             ${PYTHON_EXECUTABLE}
             -Werror
             "${CMAKE_CURRENT_LIST_DIR}/${python_script_path}"

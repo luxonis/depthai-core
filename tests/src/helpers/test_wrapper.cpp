@@ -84,6 +84,13 @@ int main(int argc, char* argv[]) {
             std::cerr << "Process terminated." << std::endl;
         }
 
+        // Device recovery wait
+        std::cout << "Devices before: " << devicesBefore << std::endl;
+        while(devicesBefore > dai::Device::getAllAvailableDevices().size()) {
+            std::this_thread::sleep_for(std::chrono::seconds(5));
+            std::cout << "Devices now: " << dai::Device::getAllAvailableDevices().size() << std::endl;
+        }
+
         // Only call communicate() once and save the results
         auto results = proc.communicate();
 

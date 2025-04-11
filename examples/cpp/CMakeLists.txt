@@ -16,7 +16,8 @@ set(test_env
     "UBSAN_OPTIONS=halt_on_error=1"
     "RUNNING_AS_TEST=1"
     # DepthAI
-    "DEPTHAI_SEARCH_TIMEOUT=10000"
+    "DEPTHAI_SEARCH_TIMEOUT=20000"
+    "DEPTHAI_CONNECT_TIMEOUT=10000"
     "DEPTHAI_RECONNECT_TIMEOUT=0"
     )
 
@@ -58,7 +59,7 @@ function(dai_add_example example_name example_src enable_test use_pcl)
             -DTIMEOUT_SECONDS=300
             -P ${CMAKE_CURRENT_LIST_DIR}/cmake/ExecuteTestTimeout.cmake
             $<TARGET_FILE:test_wrapper>
-            30 # Set test timeout
+            40 # Set test timeout
             $<TARGET_FILE:${example_name}>
             ${arguments}
         )
