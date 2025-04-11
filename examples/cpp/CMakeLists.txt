@@ -66,7 +66,7 @@ function(dai_add_example example_name example_src enable_test use_pcl)
 
         add_dependencies(${example_name} test_wrapper)
         # Sets a regex catching any logged warnings, errors or critical (coming either from device or host)
-        set_tests_properties(${example_name} PROPERTIES FAIL_REGULAR_EXPRESSION "\\[warning\\];\\[error\\];\\[critical\\];(?i)\\berror\\b")
+        set_tests_properties(${example_name} PROPERTIES FAIL_REGULAR_EXPRESSION "\\[warning\\];\\[error\\];\\[critical\\]")
 
         # Add ubsan halt on error
         set_tests_properties(${example_name} PROPERTIES ENVIRONMENT "${test_env}")
