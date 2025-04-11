@@ -13,7 +13,6 @@
 #include "depthai/depthai.hpp"
 #include "depthai/modelzoo/Zoo.hpp"
 #include "depthai/nn_archive/NNArchive.hpp"
-#include "modelzoo/NNModelDescription.hpp"
 #include "nn_archive/NNArchiveVersionedConfig.hpp"
 #include "pipeline/DeviceNodeGroup.hpp"
 #include "utility/ArchiveUtil.hpp"

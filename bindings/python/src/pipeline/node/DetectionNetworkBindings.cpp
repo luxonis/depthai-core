@@ -4,7 +4,7 @@
 
 #include "Common.hpp"
 #include "NodeBindings.hpp"
-#include "depthai/modelzoo/NNModelDescription.hpp"
+#include "depthai/modelzoo/Zoo.hpp"
 #include "depthai/pipeline/DeviceNodeGroup.hpp"
 #include "depthai/pipeline/Node.hpp"
 #include "depthai/pipeline/NodeGroup.hpp"
