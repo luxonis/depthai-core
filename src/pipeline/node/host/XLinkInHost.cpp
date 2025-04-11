@@ -83,6 +83,9 @@ void XLinkInHost::run() {
                 //         }
                 //     }
                 // }
+            } catch(const dai::MessageQueue::QueueException& ex) {
+                logger::info("XLinkInHost node stopped - exception: {}", ex.what());
+                break;
             } catch(const std::exception& ex) {
                 if(isRunning()) {
                     auto exceptionMessage = fmt::format("Communication exception - possible device error/misconfiguration. Original message '{}'", ex.what());

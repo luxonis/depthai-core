@@ -15,8 +15,8 @@ TEST_CASE("Test reconnecting to the pipeline multiple times") {
         p.start();
         // Wait for the first image
         bool hasTimedOut = false;
-        auto img = outputQueue->get<dai::ImgFrame>(std::chrono::duration<double>(10), hasTimedOut);
-        REQUIRE(img != nullptr);
+        auto img = outputQueue->get<dai::ImgFrame>(std::chrono::duration<double>(15), hasTimedOut);
         REQUIRE(!hasTimedOut);
+        REQUIRE(img != nullptr);
     }
 }

@@ -22,7 +22,10 @@ class RerunNode(dai.node.ThreadedHostNode):
         rr.log("world", rr.ViewCoordinates.RDF)
         rr.log("world/ground", rr.Boxes3D(half_sizes=[3.0, 3.0, 0.00001]))
         while self.isRunning():
-            inPointCloud = self.inputPCL.get()
+            try:
+                inPointCloud = self.inputPCL.get()
+            except dai.MessageQueue.QueueException:
+                return # Pipeline closed
             if inPointCloud is not None:
                 points, colors = inPointCloud.getPointsRGB()
                 rr.log("world/pcl", rr.Points3D(points, colors=colors, radii=[0.01]))
