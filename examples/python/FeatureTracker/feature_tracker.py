@@ -70,14 +70,17 @@ print("Press 'm' to enable/disable motion estimation!")
 
 inputConfigQueue = None
 def on_trackbar(val):
-    cfg = dai.FeatureTrackerConfig()
-    cornerDetector = dai.FeatureTrackerConfig.CornerDetector()
-    cornerDetector.numMaxFeatures = cv2.getTrackbarPos('numMaxFeatures', 'Features')
-    cornerDetector.numTargetFeatures = cornerDetector.numMaxFeatures
+    try:
+        cfg = dai.FeatureTrackerConfig()
+        cornerDetector = dai.FeatureTrackerConfig.CornerDetector()
+        cornerDetector.numMaxFeatures = cv2.getTrackbarPos('numMaxFeatures', 'Features')
+        cornerDetector.numTargetFeatures = cornerDetector.numMaxFeatures
 
-    thresholds = dai.FeatureTrackerConfig.CornerDetector.Thresholds()
-    thresholds.initialValue = cv2.getTrackbarPos('harrisScore','Features')
-    cornerDetector.thresholds = thresholds
+        thresholds = dai.FeatureTrackerConfig.CornerDetector.Thresholds()
+        thresholds.initialValue = cv2.getTrackbarPos('harrisScore','Features')
+        cornerDetector.thresholds = thresholds
+    except cv2.error as e:
+        pass
 
     cfg.setCornerDetector(cornerDetector)
     if inputConfigQueue:
