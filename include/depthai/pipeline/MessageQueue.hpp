@@ -33,6 +33,7 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
     std::mutex callbacksMtx;                                                                                 // Only public for the Python bindings
     std::unordered_map<CallbackId, std::function<void(std::string, std::shared_ptr<ADatatype>)>> callbacks;  // Only public for the Python bindings
     CallbackId uniqueCallbackId{0};
+
    private:
     void callCallbacks(std::shared_ptr<ADatatype> msg);
 

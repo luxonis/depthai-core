@@ -1,9 +1,9 @@
 #include "depthai/pipeline/datatype/IMUData.hpp"
 
 #if DEPTHAI_ENABLE_PROTOBUF
-#include "depthai/schemas/IMUData.pb.h"
-#include "depthai/schemas/common.pb.h"
-#include "utility/ProtoSerialize.hpp"
+    #include "depthai/schemas/IMUData.pb.h"
+    #include "depthai/schemas/common.pb.h"
+    #include "utility/ProtoSerialize.hpp"
 #endif
 
 namespace dai {

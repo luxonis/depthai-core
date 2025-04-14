@@ -4,6 +4,7 @@
 #include <memory>
 #include <stdexcept>
 #include <utility>
+
 #include "depthai/depthai.hpp"
 
 // libraries

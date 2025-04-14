@@ -19,7 +19,6 @@
 #include "depthai/nn_archive/v1/Output.hpp"
 #include "depthai/nn_archive/v1/PreprocessingBlock.hpp"
 
-
 void NNArchiveBindings::bind(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::nn_archive;
