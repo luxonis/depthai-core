@@ -63,18 +63,21 @@ def stability_test(fps):
         IMUBenchmark.sendReportEveryNMessages(30)
         imu.out.link(IMUBenchmark.input)
         benchmarkReportQueues["IMU"] = IMUBenchmark.report.createOutputQueue(blocking=False)
+        print("Starting the stability test...")
+        tStart = time.time()
         p.start()
         while True:
             for name, queue in benchmarkReportQueues.items():
                 report = queue.get(timeout=datetime.timedelta(minutes=1)) # 1 minute timeout
                 assert(isinstance(report, dai.BenchmarkReport))
                 if report:
-                    print(f"{name} FPS: {report.fps}. Current date: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())}")
+                    print(f"{name} FPS: {report.fps}. Current time: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())}")
                     if report.fps < (fps / 10):
                         raise RuntimeError(f"FPS dropped below {fps / 10} (FPS is {report.fps}) for {name} benchmark report")
                 else:
                     raise RuntimeError(f"Timeout reached for {name} benchmark report")
                 queue.tryGetAll() # Clear the queue
+            print(f"Running for {datetime.timedelta(seconds=time.time() - tStart)}", flush=True)
 
 if __name__ == "__main__":
     stability_test(30)
