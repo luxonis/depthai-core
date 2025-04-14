@@ -49,8 +49,8 @@ function(add_python_example example_name python_script_path)
         "PATH=${HUNTER_INSTALL_PREFIX}/bin${SYS_PATH_SEPARATOR}$ENV{PATH}"
         # Python path (to find compiled module)
         "PYTHONPATH=$<TARGET_FILE_DIR:${TARGET_NAME}>${SYS_PATH_SEPARATOR}$ENV{PYTHONPATH}"
-        "DEPTHAI_SEARCH_TIMEOUT=15000"
-        "DEPTHAI_CONNECT_TIMEOUT=15000"
+        "DEPTHAI_SEARCH_TIMEOUT=20000"
+        "DEPTHAI_CONNECT_TIMEOUT=10000"
         "DEPTHAI_RECONNECT_TIMEOUT=0"
         # ASAN in case of sanitizers
         "${ASAN_ENVIRONMENT_VARS}"
@@ -66,20 +66,25 @@ function(add_python_example example_name python_script_path)
         # Adds test with 5 seconds timeout and bumps all python warnings to errors
         add_test(NAME ${example_name} COMMAND
             ${CMAKE_COMMAND} -E env
-            # PATH (dlls)
             "PATH=${HUNTER_INSTALL_PREFIX}/bin${SYS_PATH_SEPARATOR}$ENV{PATH}"
-            # Python path (to find compiled module)
             "PYTHONPATH=$<TARGET_FILE_DIR:${TARGET_NAME}>${SYS_PATH_SEPARATOR}$ENV{PYTHONPATH}"
-            "DEPTHAI_SEARCH_TIMEOUT=45000"
+            "DEPTHAI_SEARCH_TIMEOUT=20000"
             "DEPTHAI_CONNECT_TIMEOUT=10000"
             "DEPTHAI_RECONNECT_TIMEOUT=0"
-            # ASAN in case of sanitizers
             ${ASAN_ENVIRONMENT_VARS}
-            ${CMAKE_COMMAND} -DFORCE_TIMEOUT_SECONDS=60 -P ${CMAKE_CURRENT_LIST_DIR}/../cpp/cmake/ExecuteTestTimeout.cmake
 
-            # Actual script to run
-            ${PYTHON_EXECUTABLE} -Werror "${CMAKE_CURRENT_LIST_DIR}/${python_script_path}" ${arguments}
+            ${CMAKE_COMMAND}
+            -DFORCE_TIMEOUT_SECONDS=300
+            -P ${CMAKE_CURRENT_LIST_DIR}/../cpp/cmake/ExecuteTestTimeout.cmake
+            $<TARGET_FILE:test_wrapper>
+            40 # A timeout to terminate the test when sucessful
+            ${PYTHON_EXECUTABLE}
+            -Werror
+            "${CMAKE_CURRENT_LIST_DIR}/${python_script_path}"
+            ${arguments}
         )
+
+        add_dependencies(${example_name} test_wrapper)
 
         # Sets a regex catching any logged warnings, errors or critical (coming either from device or host)
         set_tests_properties (${example_name} PROPERTIES FAIL_REGULAR_EXPRESSION "\\[warning\\];\\[error\\];\\[critical\\]")
@@ -205,10 +210,10 @@ add_python_example(rgbd RGBD/rgbd.py)
 dai_set_example_test_labels(rgbd ondevice rvc2_all rvc4 ci nowindows)
 
 add_python_example(visualizer_rgbd RGBD/visualizer_rgbd.py)
-dai_set_example_test_labels(visualizer_rgbd ondevice rvc2_all rvc4 ci)
+dai_set_example_test_labels(visualizer_rgbd ondevice rvc2 usb rvc4 ci nowindows)
 
 add_python_example(visualizer_rgbd_autocreate RGBD/visualizer_rgbd_autocreate.py)
-dai_set_example_test_labels(visualizer_rgbd_autocreate ondevice rvc2_all rvc4 ci)
+dai_set_example_test_labels(visualizer_rgbd_autocreate ondevice rvc2 usb rvc4 ci nowindows)
 
 add_python_example(rgbd_o3d RGBD/rgbd_o3d.py)
 dai_set_example_test_labels(rgbd_o3d ondevice rvc2_all rvc4 ci nowindows)
@@ -266,7 +271,7 @@ add_python_example(visualizer_encoded_rvc2 Visualizer/visualizer_encoded.py --we
 dai_set_example_test_labels(visualizer_encoded_rvc2 ondevice rvc2 usb ci nowindows)
 
 add_python_example(custom_services Visualizer/custom_services.py)
-dai_set_example_test_labels(custom_services onhost ci nowindows)
+dai_set_example_test_labels(custom_services ondevice rvc2_all rvc4 ci nowindows) # Host-only test
 
 
 ## Script node
