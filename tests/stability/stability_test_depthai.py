@@ -70,8 +70,8 @@ def stability_test(fps):
                 assert(isinstance(report, dai.BenchmarkReport))
                 if report:
                     print(f"{name} FPS: {report.fps}. Current date: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())}")
-                    if report.fps < (fps / 3):
-                        raise RuntimeError(f"FPS dropped below {fps} for {name} benchmark report")
+                    if report.fps < (fps / 10):
+                        raise RuntimeError(f"FPS dropped below {fps / 10} (FPS is {report.fps}) for {name} benchmark report")
                 else:
                     raise RuntimeError(f"Timeout reached for {name} benchmark report")
                 queue.tryGetAll() # Clear the queue

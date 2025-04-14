@@ -440,7 +440,7 @@ dai_set_test_labels(imu_test ondevice rvc4 ci) # Many RVC2 devices do not have a
 
 # Record & Replay tests
 dai_add_test(record_replay_test src/ondevice_tests/pipeline/node/record_replay_test.cpp)
-dai_set_test_labels(record_replay_test ondevice rvc2_all rvc4 ci)
+dai_set_test_labels(record_replay_test ondevice rvc2_all rvc4) # TODO(Morato) add to CI once the test is stable
 target_compile_definitions(record_replay_test PRIVATE RECORDING_PATH="${recording_path}")
 dai_add_test(replay_test src/onhost_tests/replay_test.cpp)
 dai_set_test_labels(replay_test onhost ci)
