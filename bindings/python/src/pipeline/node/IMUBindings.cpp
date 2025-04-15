@@ -60,8 +60,7 @@ void bind_imu(pybind11::module& m, void* pCallstack) {
         .def_readwrite("enableFirmwareUpdate", &IMUProperties::enableFirmwareUpdate, DOC(dai, IMUProperties, enableFirmwareUpdate));
 
     // Node
-    imu
-        .def_readonly("out", &IMU::out, DOC(dai, node, IMU, out))
+    imu.def_readonly("out", &IMU::out, DOC(dai, node, IMU, out))
         .def_readonly("mockIn", &IMU::mockIn, DOC(dai, node, IMU, mockIn))
         .def("enableIMUSensor",
              static_cast<void (IMU::*)(IMUSensorConfig imuSensor)>(&IMU::enableIMUSensor),

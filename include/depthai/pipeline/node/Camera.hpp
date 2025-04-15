@@ -9,9 +9,9 @@
 #include "depthai/capabilities/ImgFrameCapability.hpp"
 #include "depthai/pipeline/DeviceNode.hpp"
 #include "depthai/pipeline/datatype/CameraControl.hpp"
+#include "depthai/pipeline/node/host/Replay.hpp"
 #include "depthai/properties/CameraProperties.hpp"
 #include "depthai/utility/span.hpp"
-#include "depthai/pipeline/node/host/Replay.hpp"
 
 namespace dai {
 namespace node {

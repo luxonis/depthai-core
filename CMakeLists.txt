@@ -167,7 +167,7 @@ endif()
 # Create depthai project
 project(depthai VERSION "3.0.0" LANGUAGES CXX C)
 set(DEPTHAI_PRE_RELEASE_TYPE "alpha") # Valid options are "alpha", "beta", "rc", ""
-set(DEPTHAI_PRE_RELEASE_VERSION "14")
+set(DEPTHAI_PRE_RELEASE_VERSION "15")
 
 # Set DEPTHAI_VERSION universally, not conditionally
 set(DEPTHAI_VERSION ${PROJECT_VERSION}-${DEPTHAI_PRE_RELEASE_TYPE}.${DEPTHAI_PRE_RELEASE_VERSION})
@@ -462,7 +462,6 @@ set(TARGET_CORE_SOURCES
     src/utility/ArchiveUtil.cpp
     src/nn_archive/NNArchive.cpp
     src/nn_archive/NNArchiveVersionedConfig.cpp
-    src/modelzoo/NNModelDescription.cpp
     src/modelzoo/Zoo.cpp
 )
 
@@ -527,7 +526,6 @@ find_package(yaml-cpp REQUIRED)
 set(ZOO_HELPER_SOURCES
     src/modelzoo/zoo_helper.cpp
     src/modelzoo/Zoo.cpp
-    src/modelzoo/NNModelDescription.cpp
     src/utility/Environment.cpp
     src/utility/Logging.cpp
 )

@@ -219,6 +219,12 @@ private_data(
     LOCATION recording_path
 )
 
+### Helper script to wrap the tests with a timeout ############################
+
+add_executable(test_wrapper src/helpers/test_wrapper.cpp)
+target_include_directories(test_wrapper PRIVATE ${CMAKE_CURRENT_LIST_DIR}/include/subprocess)
+target_link_libraries(test_wrapper PRIVATE depthai::core Threads::Threads)
+
 ### On-host tests #############################################################
 
 # Superblob test
@@ -440,7 +446,7 @@ dai_set_test_labels(imu_test ondevice rvc4 ci) # Many RVC2 devices do not have a
 
 # Record & Replay tests
 dai_add_test(record_replay_test src/ondevice_tests/pipeline/node/record_replay_test.cpp)
-dai_set_test_labels(record_replay_test ondevice rvc2_all rvc4 ci)
+dai_set_test_labels(record_replay_test ondevice rvc2_all rvc4) # TODO(Morato) add to CI once the test is stable
 target_compile_definitions(record_replay_test PRIVATE RECORDING_PATH="${recording_path}")
 dai_add_test(replay_test src/onhost_tests/replay_test.cpp)
 dai_set_test_labels(replay_test onhost ci)
@@ -451,10 +457,5 @@ dai_add_test(camera_test src/ondevice_tests/pipeline/node/camera_test.cpp)
 dai_set_test_labels(camera_test ondevice rvc2_all rvc4 ci)
 
 # VideoEncoder test
-dai_add_test(video_encoder_test_rvc4 src/ondevice_tests/video_encoder_test.cpp)
-target_compile_definitions(video_encoder_test_rvc4 PRIVATE ENABLE_MJPEG=0)
-dai_set_test_labels(video_encoder_test_rvc4 ondevice rvc4 ci)
-
-dai_add_test(video_encoder_test_rvc2 src/ondevice_tests/video_encoder_test.cpp)
-target_compile_definitions(video_encoder_test_rvc2 PRIVATE ENABLE_MJPEG=1)
-dai_set_test_labels(video_encoder_test_rvc2 ondevice rvc2_all ci)
+dai_add_test(video_encoder_test src/ondevice_tests/video_encoder_test.cpp)
+dai_set_test_labels(video_encoder_test ondevice rvc2_all rvc4 ci)

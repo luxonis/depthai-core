@@ -13,8 +13,8 @@
 #include <pybind11/stl.h>
 
 #include <cstdint>
-#include <depthai/utility/Path.hpp>
 #include <depthai/common/Point2f.hpp>
+#include <depthai/utility/Path.hpp>
 #include <pybind11_json/pybind11_json.hpp>
 #include <stack>
 #include <utility/SpanBindings.hpp>

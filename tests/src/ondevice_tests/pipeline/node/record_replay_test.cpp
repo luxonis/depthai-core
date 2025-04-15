@@ -1,8 +1,8 @@
 #include <catch2/catch_all.hpp>
+#include <chrono>
 #include <cstdlib>
 #include <ctime>
 #include <filesystem>
-#include <chrono>
 #include <thread>
 
 #include "depthai/common/CameraBoardSocket.hpp"

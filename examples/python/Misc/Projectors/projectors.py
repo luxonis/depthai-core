@@ -2,8 +2,6 @@
 
 import cv2
 import depthai as dai
-import numpy as np
-import argparse
 
 dot_intensity = 1
 DOT_STEP = 0.1
@@ -13,7 +11,6 @@ FLOOD_STEP = 0.1
 
 # Create pipeline
 device = dai.Device()
-print(device.getDeviceInfo())
 with dai.Pipeline(device) as pipeline:
     monoLeft = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
     monoRight = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C)
@@ -22,19 +19,19 @@ with dai.Pipeline(device) as pipeline:
     monoLeftOut = monoLeft.requestFullResolutionOutput(type=dai.ImgFrame.Type.NV12)
     monoRightOut = monoRight.requestFullResolutionOutput(type=dai.ImgFrame.Type.NV12)
 
-    monoLeftOut.createOutputQueue()
-    monoRightOut.createOutputQueue()
+    leftQueue = monoLeftOut.createOutputQueue()
+    rightQueue = monoRightOut.createOutputQueue()
 
     pipeline.start()
     pipeline.getDefaultDevice().setIrLaserDotProjectorIntensity(dot_intensity)
     pipeline.getDefaultDevice().setIrFloodLightIntensity(flood_intensity)
     while pipeline.isRunning():
-        leftSynced = monoLeftOut.get()
-        rightSynced = monoRightOut.get()
+        leftSynced = leftQueue.get()
+        rightSynced = rightQueue.get()
         assert isinstance(leftSynced, dai.ImgFrame)
         assert isinstance(rightSynced, dai.ImgFrame)
-        cv2.imshow(f"left {device_name}", leftSynced.getCvFrame())
-        cv2.imshow(f"right {device_name}", rightSynced.getCvFrame())
+        cv2.imshow(f"left", leftSynced.getCvFrame())
+        cv2.imshow(f"right", rightSynced.getCvFrame())
 
         key = cv2.waitKey(1)
         if key == ord('q'):

@@ -1,7 +1,7 @@
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
 #ifdef DEPTHAI_ENABLE_PROTOBUF
-    #include "utility/ProtoSerialize.hpp"
     #include "depthai/schemas/ImgDetections.pb.h"
+    #include "utility/ProtoSerialize.hpp"
 #endif
 
 namespace dai {
