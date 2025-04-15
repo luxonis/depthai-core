@@ -23,7 +23,6 @@ static std::string MODEL_ZOO_DOWNLOAD_ENDPOINT = "https://easyml.cloud.luxonis.c
 static std::string MODEL_ZOO_DEFAULT_CACHE_PATH = ".depthai_cached_models";  // hidden cache folder
 static std::string MODEL_ZOO_DEFAULT_MODELS_PATH = "depthai_models";         // folder
 
-#ifdef DEPTHAI_ENABLE_CURL
 class ZooManager {
    public:
     /**
@@ -166,6 +165,46 @@ class ZooManager {
     std::string cacheDirectory;
 };
 
+std::string combinePaths(const std::string& path1, const std::string& path2) {
+    return std::filesystem::path(path1).append(path2).string();
+}
+
+std::string ZooManager::getYamlFilePath(const std::string& name, const std::string& modelsPath) {
+    // No empty names allowed
+    if(name.empty()) {
+        throw std::runtime_error("name cannot be empty!");
+    }
+
+    // If the name does not start with any dot or slash, we treat it as the special
+    // case of where we prepend the DEPTHAI_ZOO_MODELS_PATH environment variable first.
+    // We check whether the first character is a letter or a number here (model.yaml, model, 3model, ...)
+    if(isalnum(name[0])) {
+        std::string useModelsPath = modelsPath;
+        if(useModelsPath.empty()) {
+            useModelsPath = utility::getEnvAs<std::string>("DEPTHAI_ZOO_MODELS_PATH", dai::modelzoo::getDefaultModelsPath(), false);
+        }
+        std::string path = combinePaths(useModelsPath, name);
+
+        // if path does not contain the yaml or yml extension, add it
+        if(!utility::isYamlFile(path)) {
+            if(std::filesystem::exists(path + ".yaml")) {
+                path += ".yaml";
+            } else if(std::filesystem::exists(path + ".yml")) {
+                path += ".yml";
+            } else {
+                throw std::runtime_error("Model file not found: (neither `" + path + ".yaml` nor `" + path
+                                         + ".yml` exists) | If you meant to use a relative path, prefix with ./ (e.g. `./" + name
+                                         + "`) | Also, make sure the file exists. Read the documentation for more information.");
+            }
+        }
+        return path;
+    }
+
+    // We treat the name either as a relative path or an absolute path
+    return name;
+}
+
+#ifdef DEPTHAI_ENABLE_CURL
 std::string generateErrorMessageHub(const cpr::Response& response) {
     std::string errorMessage;
     errorMessage += "There was an error while sending a request to the Hub\n";
@@ -187,10 +226,6 @@ std::string generateErrorMessageModelDownload(const cpr::Response& response) {
     errorMessage += "CPR error code: " + std::to_string(static_cast<int>(response.error.code)) + "\n";
     errorMessage += "Response text: " + response.text + "\n";
     return errorMessage;
-}
-
-std::string combinePaths(const std::string& path1, const std::string& path2) {
-    return std::filesystem::path(path1).append(path2).string();
 }
 
 bool checkIsErrorHub(const cpr::Response& response) {
@@ -535,41 +570,6 @@ bool ZooManager::connectionToZooAvailable() {
     return connected;
 }
 
-std::string ZooManager::getYamlFilePath(const std::string& name, const std::string& modelsPath) {
-    // No empty names allowed
-    if(name.empty()) {
-        throw std::runtime_error("name cannot be empty!");
-    }
-
-    // If the name does not start with any dot or slash, we treat it as the special
-    // case of where we prepend the DEPTHAI_ZOO_MODELS_PATH environment variable first.
-    // We check whether the first character is a letter or a number here (model.yaml, model, 3model, ...)
-    if(isalnum(name[0])) {
-        std::string useModelsPath = modelsPath;
-        if(useModelsPath.empty()) {
-            useModelsPath = utility::getEnvAs<std::string>("DEPTHAI_ZOO_MODELS_PATH", dai::modelzoo::getDefaultModelsPath(), false);
-        }
-        std::string path = combinePaths(useModelsPath, name);
-
-        // if path does not contain the yaml or yml extension, add it
-        if(!utility::isYamlFile(path)) {
-            if(std::filesystem::exists(path + ".yaml")) {
-                path += ".yaml";
-            } else if(std::filesystem::exists(path + ".yml")) {
-                path += ".yml";
-            } else {
-                throw std::runtime_error("Model file not found: (neither `" + path + ".yaml` nor `" + path
-                                         + ".yml` exists) | If you meant to use a relative path, prefix with ./ (e.g. `./" + name
-                                         + "`) | Also, make sure the file exists. Read the documentation for more information.");
-            }
-        }
-        return path;
-    }
-
-    // We treat the name either as a relative path or an absolute path
-    return name;
-}
-
 std::string ZooManager::getMetadataFilePath() const {
     return combinePaths(getModelCacheFolderPath(cacheDirectory), "metadata.yaml");
 }
@@ -588,7 +588,7 @@ std::string getModelFromZoo(const NNModelDescription& modelDescription, bool use
     throw std::runtime_error("getModelFromZoo requires libcurl to be enabled. Please recompile DepthAI with libcurl enabled.");
 }
 
-void downloadModelsFromZoo(const std::string& path, const std::string& cacheDirectory, const std::string& apiKey) {
+bool downloadModelsFromZoo(const std::string& path, const std::string& cacheDirectory, const std::string& apiKey) {
     (void)path;
     (void)cacheDirectory;
     (void)apiKey;
