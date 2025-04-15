@@ -1,4 +1,5 @@
 #include <filesystem>
+
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/depthai.hpp"
 #include "depthai/pipeline/node/host/Display.hpp"
@@ -50,8 +51,8 @@ int main(int argc, char** argv) {
 
     dai::RecordConfig config;
     config.outputDir = argc > 1 ? std::string(argv[1]) : getDefaultRecordingPath();
-    config.videoEncoding.enabled = true; // Use video encoding
-    config.videoEncoding.bitrate = 0; // Automatic
+    config.videoEncoding.enabled = true;  // Use video encoding
+    config.videoEncoding.bitrate = 0;     // Automatic
     config.videoEncoding.profile = dai::VideoEncoderProperties::Profile::H264_MAIN;
 
     pipeline.enableHolisticRecord(config);
@@ -74,7 +75,6 @@ int main(int argc, char** argv) {
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
     } catch(...) {
-
     }
 
     pipeline.stop();

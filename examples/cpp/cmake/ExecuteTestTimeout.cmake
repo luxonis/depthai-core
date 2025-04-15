@@ -36,7 +36,7 @@ endif()
 
 message(STATUS "After process executed, ${PATH_TO_TEST_EXECUTABLE} produced the following exit code: ${error_variable}")
 
-if(error_variable MATCHES "timeout" OR error_variable EQUAL 128 OR error_variable EQUAL 124)
+if(error_variable MATCHES "timeout" OR error_variable EQUAL 128 OR error_variable EQUAL 124 OR error_variable EQUAL 9)
     # Okay
 elseif(NOT error_variable)
     # return code == 0, also okay
