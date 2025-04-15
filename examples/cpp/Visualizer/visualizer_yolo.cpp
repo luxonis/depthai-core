@@ -3,7 +3,7 @@
 #include <depthai/remote_connection/RemoteConnection.hpp>
 #include <iostream>
 
-#include "depthai/modelzoo/NNModelDescription.hpp"
+#include "depthai/modelzoo/Zoo.hpp"
 
 // Signal handling for clean shutdown
 static bool isRunning = true;
