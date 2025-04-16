@@ -153,7 +153,8 @@ void bind_cameracontrol(pybind11::module& m, void* pCallstack) {
     camCtrlAttr.push_back("FrameSyncMode");
     cameraControlFrameSyncMode.value("OFF", CameraControl::FrameSyncMode::OFF)
         .value("OUTPUT", CameraControl::FrameSyncMode::OUTPUT)
-        .value("INPUT", CameraControl::FrameSyncMode::INPUT);
+        .value("INPUT", CameraControl::FrameSyncMode::INPUT)
+        .value("AUTO", CameraControl::FrameSyncMode::AUTO);
 
     cameraControl.def(py::init<>())
         .def_readwrite("cmdMask", &CameraControl::cmdMask)

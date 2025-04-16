@@ -378,6 +378,7 @@ class CameraControl : public Buffer {
         OFF = 0,
         OUTPUT,
         INPUT,
+        AUTO,
         // TODO soft sync modes?
     };
 
