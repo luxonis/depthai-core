@@ -3,7 +3,12 @@
 #include <cctype>
 #include <filesystem>
 #include <iostream>
+#include <memory>
+#include <thread>
+#include <atomic>
+#include <mutex>
 #include <nlohmann/json.hpp>
+#include <nlohmann/json_fwd.hpp>
 
 #include "utility/Environment.hpp"
 #include "utility/Logging.hpp"
@@ -12,6 +17,7 @@
 
 #ifdef DEPTHAI_ENABLE_CURL
     #include <cpr/api.h>
+    #include <cpr/cprtypes.h>
     #include <cpr/parameters.h>
     #include <cpr/status_codes.h>
 #endif
@@ -96,8 +102,11 @@ class ZooManager {
 
     /**
      * @brief Download model from model zoo
+     *
+     * @param responseJson: JSON with download links
+     * @param cprCallback: Progress callback
      */
-    void downloadModel(const nlohmann::json& responseJson);
+    void downloadModel(const nlohmann::json& responseJson, std::unique_ptr<cpr::ProgressCallback> cprCallback);
 
     /**
      * @brief Return path to model in cache
@@ -328,7 +337,7 @@ nlohmann::json ZooManager::fetchModelDownloadLinks() {
     return responseJson;
 }
 
-void ZooManager::downloadModel(const nlohmann::json& responseJson) {
+void ZooManager::downloadModel(const nlohmann::json& responseJson, std::unique_ptr<cpr::ProgressCallback> cprCallback) {
     // Extract download links from response
     auto downloadLinks = responseJson["download_links"].get<std::vector<std::string>>();
     auto downloadHash = responseJson["hash"].get<std::string>();
@@ -346,7 +355,7 @@ void ZooManager::downloadModel(const nlohmann::json& responseJson) {
 
     // Download all files and store them in cache folder
     for(const auto& downloadLink : downloadLinks) {
-        cpr::Response downloadResponse = cpr::Get(cpr::Url(downloadLink));
+        cpr::Response downloadResponse = cpr::Get(cpr::Url(downloadLink), *cprCallback);
         if(checkIsErrorModelDownload(downloadResponse)) {
             removeModelCacheFolder();
             throw std::runtime_error(generateErrorMessageModelDownload(downloadResponse));
@@ -395,7 +404,11 @@ std::string ZooManager::loadModelFromCache() const {
     return std::filesystem::absolute(folderFiles[0]).string();
 }
 
-std::string getModelFromZoo(const NNModelDescription& modelDescription, bool useCached, const std::string& cacheDirectory, const std::string& apiKey) {
+std::string getModelFromZoo(const NNModelDescription& modelDescription,
+                            bool useCached,
+                            const std::string& cacheDirectory,
+                            const std::string& apiKey,
+                            const std::function<void(cpr::cpr_off_t, cpr::cpr_off_t, cpr::cpr_off_t, cpr::cpr_off_t, intptr_t)>& progressCallback) {
     // Check if model description is valid
     if(!modelDescription.check()) throw std::runtime_error("Invalid model description:\n" + modelDescription.toString());
 
@@ -466,9 +479,21 @@ std::string getModelFromZoo(const NNModelDescription& modelDescription, bool use
     // Create cache folder
     zooManager.createCacheFolder();
 
+    // Create download progress callback
+    std::unique_ptr<cpr::ProgressCallback> cprCallback;
+    if(progressCallback) {
+        cprCallback = std::make_unique<cpr::ProgressCallback>(
+            [&](cpr::cpr_off_t downloadTotal, cpr::cpr_off_t downloadNow, cpr::cpr_off_t uploadTotal, cpr::cpr_off_t uploadNow, intptr_t userdata) {
+                progressCallback(downloadTotal, downloadNow, uploadTotal, uploadNow, userdata);
+                return true;
+            });
+    } else {
+        cprCallback = std::make_unique<cpr::ProgressCallback>([](cpr::cpr_off_t, cpr::cpr_off_t, cpr::cpr_off_t, cpr::cpr_off_t, intptr_t) { return true; });
+    }
+
     // Download model
     logger::info("Downloading model from model zoo");
-    zooManager.downloadModel(responseJson);
+    zooManager.downloadModel(responseJson, std::move(cprCallback));
 
     // Store model as yaml in the cache folder
     std::string yamlPath = combinePaths(zooManager.getModelCacheFolderPath(cacheDirectory), "model.yaml");
@@ -478,6 +503,84 @@ std::string getModelFromZoo(const NNModelDescription& modelDescription, bool use
     std::string modelPath = zooManager.loadModelFromCache();
     return modelPath;
 }
+
+std::string getModelFromZoo(const NNModelDescription& modelDescription, bool useCached, const std::string& cacheDirectory, const std::string& apiKey) {
+    return getModelFromZoo(modelDescription, useCached, cacheDirectory, apiKey, nullptr);
+}
+
+struct JsonDownloadProgressManager {
+    JsonDownloadProgressManager(size_t updateIntervalMs = 1000) : updateIntervalMs(updateIntervalMs) {
+        pause();
+    }
+
+    size_t updateIntervalMs;
+
+    std::string model;
+    size_t bytesDownloaded = 0;
+    size_t bytesTotal = 0;
+    std::mutex mutex;
+
+    std::thread thread;
+    std::atomic<bool> running;
+    std::atomic<bool> started;
+    std::atomic<bool> firstUpdate;
+
+    bool pause() {
+        std::lock_guard<std::mutex> lock(mutex);
+        started = false;
+        firstUpdate = true;
+        return true;
+    }
+
+    bool resume() {
+        std::lock_guard<std::mutex> lock(mutex);
+        started = true;
+        firstUpdate = true;
+        return true;
+    }
+
+    void update(cpr::cpr_off_t downloadTotal, cpr::cpr_off_t downloadNow, cpr::cpr_off_t uploadTotal, cpr::cpr_off_t uploadNow, intptr_t userdata) {
+        (void)uploadTotal;
+        (void)uploadNow;
+        (void)userdata;
+        std::lock_guard<std::mutex> lock(mutex);
+        this->bytesDownloaded = downloadNow;
+        this->bytesTotal = downloadTotal;
+        firstUpdate = false;
+    }
+
+    nlohmann::json getJson() {
+        std::lock_guard<std::mutex> lock(mutex);
+        nlohmann::json json;
+        json["model"] = model;
+        json["bytes_downloaded"] = bytesDownloaded;
+        json["bytes_total"] = bytesTotal;
+        return json;
+    }
+
+    void setModel(const std::string& model) {
+        std::lock_guard<std::mutex> lock(mutex);
+        this->model = model;
+    }
+
+    void startThread() {
+        running = true;
+        thread = std::thread([this]() {
+            while(running) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(updateIntervalMs));
+                if(!started || firstUpdate) continue;
+                auto json = getJson();
+                std::string jsonStr = json.dump();
+                std::cout << jsonStr << std::endl;
+            }
+        });
+    }
+
+    void stopThread() {
+        running = false;
+        thread.join();
+    }
+};
 
 bool downloadModelsFromZoo(const std::string& path, const std::string& cacheDirectory, const std::string& apiKey) {
     logger::info("Downloading models from zoo");
@@ -497,6 +600,9 @@ bool downloadModelsFromZoo(const std::string& path, const std::string& cacheDire
         }
     }
 
+    auto jsonDownloadProgressManager = std::make_unique<JsonDownloadProgressManager>(100);
+    jsonDownloadProgressManager->startThread();
+    auto callback = std::bind(&JsonDownloadProgressManager::update, jsonDownloadProgressManager.get(), std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5);
     // Download models from yaml files
     int numSuccess = 0, numFail = 0;
     for(size_t i = 0; i < models.size(); ++i) {
@@ -505,17 +611,21 @@ bool downloadModelsFromZoo(const std::string& path, const std::string& cacheDire
 
         // Download model - ignore the returned model path here == we are only interested in downloading the model
         try {
+            jsonDownloadProgressManager->setModel(modelName);
+            jsonDownloadProgressManager->resume();
             logger::info("Downloading model [{} / {}]: {}", i + 1, models.size(), modelName);
             auto modelDescription = NNModelDescription::fromYamlFile(modelName, path);
-            getModelFromZoo(modelDescription, true, cacheDirectory, apiKey);
+            getModelFromZoo(modelDescription, true, cacheDirectory, apiKey, callback);
             logger::info("Downloaded model [{} / {}]: {}", i + 1, models.size(), modelName);
             numSuccess++;
         } catch(const std::exception& e) {
             logger::error("Failed to download model [{} / {}]: {} in folder {}\n{}", i + 1, models.size(), modelName, path, e.what());
             numFail++;
         }
+        jsonDownloadProgressManager->pause();
     }
 
+    jsonDownloadProgressManager->stopThread();
     logger::info("Downloaded {} models from folder {} | {} failed.", numSuccess, path, numFail);
     return numFail == 0;
 }
