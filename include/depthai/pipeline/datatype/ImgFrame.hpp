@@ -460,10 +460,10 @@ class ImgFrame : public Buffer, public ProtoSerializable {
                 return 1;
                 break;
             case Type::RGB888i:
-                return 1;
+                return 3;
                 break;
             case Type::BGR888i:
-                return 1;
+                return 3;
                 break;
             case Type::RGBF16F16F16p:
                 return 2;

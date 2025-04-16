@@ -1,7 +1,7 @@
 #pragma once
 
-#include <depthai/common/optional.hpp>
 #include <depthai/common/ProcessorType.hpp>
+#include <depthai/common/optional.hpp>
 #include <unordered_map>
 #include <vector>
 

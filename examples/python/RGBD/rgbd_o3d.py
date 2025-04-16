@@ -34,7 +34,10 @@ class O3DNode(dai.node.ThreadedHostNode):
         vis.add_geometry(coordinateFrame)
         first = True
         while self.isRunning():
-            inPointCloud = self.inputPCL.tryGet()
+            try:
+                inPointCloud = self.inputPCL.tryGet()
+            except dai.MessageQueue.QueueException:
+                return # Pipeline closed
             if inPointCloud is not None:
                 points, colors = inPointCloud.getPointsRGB()
                 pcd.points = o3d.utility.Vector3dVector(points.astype(np.float64))

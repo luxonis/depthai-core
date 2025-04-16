@@ -12,7 +12,6 @@
 #include "depthai/depthai.hpp"
 #include "depthai/modelzoo/Zoo.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
-#include "modelzoo/Zoo.hpp"
 #include "nn_archive/NNArchive.hpp"
 #include "openvino/BlobReader.hpp"
 #include "openvino/OpenVINO.hpp"

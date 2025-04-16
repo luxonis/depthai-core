@@ -17,10 +17,10 @@
 
 namespace dai {
 
-class TarGzAccessor {
+class TarXzAccessor {
    public:
     // Constructor takes a tar.gz file in memory (std::vector<std::uint8_t>)
-    TarGzAccessor(const std::vector<std::uint8_t>& tarGzFile);
+    TarXzAccessor(const std::vector<std::uint8_t>& tarGzFile);
 
     // Function to get file data by path
     std::optional<std::vector<std::uint8_t>> getFile(const std::string& path) const;
@@ -58,7 +58,7 @@ class Resources {
     std::vector<std::uint8_t> getBootloaderFirmware(DeviceBootloader::Type type = DeviceBootloader::Type::USB) const;
     std::vector<std::uint8_t> getDeviceRVC3Fwp() const;
     std::vector<std::uint8_t> getDeviceRVC4Fwp() const;
-    TarGzAccessor getEmbeddedVisualizer() const;
+    TarXzAccessor getEmbeddedVisualizer() const;
 };
 
 }  // namespace dai

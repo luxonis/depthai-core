@@ -177,7 +177,7 @@ endif()
 # Create depthai project
 project(depthai VERSION "3.0.0" LANGUAGES CXX C)
 set(DEPTHAI_PRE_RELEASE_TYPE "alpha") # Valid options are "alpha", "beta", "rc", ""
-set(DEPTHAI_PRE_RELEASE_VERSION "14")
+set(DEPTHAI_PRE_RELEASE_VERSION "15")
 
 # Set DEPTHAI_VERSION universally, not conditionally
 set(DEPTHAI_VERSION ${PROJECT_VERSION}-${DEPTHAI_PRE_RELEASE_TYPE}.${DEPTHAI_PRE_RELEASE_VERSION})
@@ -470,7 +470,6 @@ set(TARGET_CORE_SOURCES
     src/utility/ArchiveUtil.cpp
     src/nn_archive/NNArchive.cpp
     src/nn_archive/NNArchiveVersionedConfig.cpp
-    src/modelzoo/NNModelDescription.cpp
     src/modelzoo/Zoo.cpp
 )
 
@@ -567,21 +566,7 @@ if(DEPTHAI_BUILD_ZOO_HELPER)
         PRIVATE
             "$<BUILD_INTERFACE:${DEPTHAI_SHARED_3RDPARTY_INCLUDE}>"
     )
-
-    # Set compiler features (c++17), and disables extensions (g++17)
-    set_property(TARGET zoo_helper PROPERTY CXX_STANDARD 17)
-    set_property(TARGET zoo_helper PROPERTY CXX_STANDARD_REQUIRED ON)
-    set_property(TARGET zoo_helper PROPERTY CXX_EXTENSIONS OFF)
-    # Add interface transitive property (C++17)
-    if(${CMAKE_VERSION} VERSION_LESS "3.8.0")
-        target_compile_features(zoo_helper INTERFACE cxx_generic_lambdas)
-    else()
-        target_compile_features(zoo_helper INTERFACE cxx_std_17)
-    endif()
-
-    list(APPEND targets_to_export zoo_helper)
 endif()
-
 if(DEPTHAI_ENABLE_KOMPUTE)
     target_link_libraries(${TARGET_CORE_NAME} PRIVATE shaders kompute::kompute)
     target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_ENABLE_KOMPUTE)
