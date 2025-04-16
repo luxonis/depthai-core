@@ -141,20 +141,6 @@ class ZooManager {
      */
     static bool connectionToZooAvailable();
 
-    /**
-     * @brief Get path to yaml file.
-     *        If name is a relative path (e.g. ./yolo.yaml), it is returned as is.
-     *        If name is a full path (e.g. /home/user/models/yolo.yaml), it is returned as is.
-     *        If name is a model name (e.g. yolo) or a model yaml file (e.g. yolo.yaml),
-     *        the function will use modelsPath if provided or the DEPTHAI_ZOO_MODELS_PATH environment variable and return a path to the yaml file.
-     *        For instance, yolo -> ./depthai_models/yolo.yaml (if modelsPath or DEPTHAI_ZOO_MODELS_PATH are ./depthai_models)
-     *
-     * @param name: Name of the yaml file
-     * @param modelsPath: Path to the models folder, use environment variable DEPTHAI_ZOO_MODELS_PATH if not provided
-     * @return std::string: Path to yaml file
-     */
-    static std::string getYamlFilePath(const std::string& name, const std::string& modelsPath = "");
-
    private:
     // Description of the model
     NNModelDescription modelDescription;
@@ -166,6 +152,25 @@ class ZooManager {
     std::string cacheDirectory;
 };
 
+#endif
+
+/**
+ * @brief Get path to yaml file.
+ *        If name is a relative path (e.g. ./yolo.yaml), it is returned as is.
+ *        If name is a full path (e.g. /home/user/models/yolo.yaml), it is returned as is.
+ *        If name is a model name (e.g. yolo) or a model yaml file (e.g. yolo.yaml),
+ *        the function will use modelsPath if provided or the DEPTHAI_ZOO_MODELS_PATH environment variable and return a path to the yaml file.
+ *        For instance, yolo -> ./depthai_models/yolo.yaml (if modelsPath or DEPTHAI_ZOO_MODELS_PATH are ./depthai_models)
+ *
+ * @param name: Name of the yaml file
+ * @param modelsPath: Path to the models folder, use environment variable DEPTHAI_ZOO_MODELS_PATH if not provided
+ * @return std::string: Path to yaml file
+ */
+std::string getYamlFilePath(const std::string& name, const std::string& modelsPath = "");
+
+std::string combinePaths(const std::string& path1, const std::string& path2);
+
+#ifdef DEPTHAI_ENABLE_CURL
 std::string generateErrorMessageHub(const cpr::Response& response) {
     std::string errorMessage;
     errorMessage += "There was an error while sending a request to the Hub\n";
@@ -187,10 +192,6 @@ std::string generateErrorMessageModelDownload(const cpr::Response& response) {
     errorMessage += "CPR error code: " + std::to_string(static_cast<int>(response.error.code)) + "\n";
     errorMessage += "Response text: " + response.text + "\n";
     return errorMessage;
-}
-
-std::string combinePaths(const std::string& path1, const std::string& path2) {
-    return std::filesystem::path(path1).append(path2).string();
 }
 
 bool checkIsErrorHub(const cpr::Response& response) {
@@ -535,7 +536,38 @@ bool ZooManager::connectionToZooAvailable() {
     return connected;
 }
 
-std::string ZooManager::getYamlFilePath(const std::string& name, const std::string& modelsPath) {
+std::string ZooManager::getMetadataFilePath() const {
+    return combinePaths(getModelCacheFolderPath(cacheDirectory), "metadata.yaml");
+}
+
+std::string ZooManager::getGlobalMetadataFilePath() const {
+    return combinePaths(cacheDirectory, "metadata.yaml");
+}
+
+#else
+
+std::string getModelFromZoo(const NNModelDescription& modelDescription, bool useCached, const std::string& cacheDirectory, const std::string& apiKey) {
+    (void)modelDescription;
+    (void)useCached;
+    (void)cacheDirectory;
+    (void)apiKey;
+    throw std::runtime_error("getModelFromZoo requires libcurl to be enabled. Please recompile DepthAI with libcurl enabled.");
+}
+
+bool downloadModelsFromZoo(const std::string& path, const std::string& cacheDirectory, const std::string& apiKey) {
+    (void)path;
+    (void)cacheDirectory;
+    (void)apiKey;
+    throw std::runtime_error("downloadModelsFromZoo requires libcurl to be enabled. Please recompile DepthAI with libcurl enabled.");
+}
+
+#endif
+
+std::string combinePaths(const std::string& path1, const std::string& path2) {
+    return std::filesystem::path(path1).append(path2).string();
+}
+
+std::string getYamlFilePath(const std::string& name, const std::string& modelsPath) {
     // No empty names allowed
     if(name.empty()) {
         throw std::runtime_error("name cannot be empty!");
@@ -569,33 +601,6 @@ std::string ZooManager::getYamlFilePath(const std::string& name, const std::stri
     // We treat the name either as a relative path or an absolute path
     return name;
 }
-
-std::string ZooManager::getMetadataFilePath() const {
-    return combinePaths(getModelCacheFolderPath(cacheDirectory), "metadata.yaml");
-}
-
-std::string ZooManager::getGlobalMetadataFilePath() const {
-    return combinePaths(cacheDirectory, "metadata.yaml");
-}
-
-#else
-
-std::string getModelFromZoo(const NNModelDescription& modelDescription, bool useCached, const std::string& cacheDirectory, const std::string& apiKey) {
-    (void)modelDescription;
-    (void)useCached;
-    (void)cacheDirectory;
-    (void)apiKey;
-    throw std::runtime_error("getModelFromZoo requires libcurl to be enabled. Please recompile DepthAI with libcurl enabled.");
-}
-
-void downloadModelsFromZoo(const std::string& path, const std::string& cacheDirectory, const std::string& apiKey) {
-    (void)path;
-    (void)cacheDirectory;
-    (void)apiKey;
-    throw std::runtime_error("downloadModelsFromZoo requires libcurl to be enabled. Please recompile DepthAI with libcurl enabled.");
-}
-
-#endif
 
 std::string SlugComponents::merge() const {
     std::ostringstream oss;
@@ -640,7 +645,7 @@ SlugComponents SlugComponents::split(const std::string& slug) {
 }
 
 NNModelDescription NNModelDescription::fromYamlFile(const std::string& modelName, const std::string& modelsPath) {
-    std::string yamlPath = ZooManager::getYamlFilePath(modelName, modelsPath);
+    std::string yamlPath = getYamlFilePath(modelName, modelsPath);
     if(!std::filesystem::exists(yamlPath)) {
         throw std::runtime_error("Model file not found: `" + yamlPath + "` | If you meant to use a relative path, prefix with ./ (e.g. `./" + modelName
                                  + "`) | Also, make sure the file exists. Read the documentation for more information.");
