@@ -41,13 +41,16 @@ CMRC_DECLARE(depthai);
 
 namespace dai {
 
-TarGzAccessor::TarGzAccessor(const std::vector<std::uint8_t>& tarGzFile) {
-    // Load tar.gz archive from memory
+TarXzAccessor::TarXzAccessor(const std::vector<std::uint8_t>& tarGzFile) {
+    // Load tar.xz archive from memory
     struct archive* archive = archive_read_new();
     assert(archive != nullptr);
 
-    archive_read_support_filter_gzip(archive);  // Support for gzip compression
-    archive_read_support_format_tar(archive);   // Support for tar format
+    auto err = archive_read_support_format_tar(archive);  // Support for tar format
+    assert(err == ARCHIVE_OK);
+
+    err = archive_read_support_filter_xz(archive);  // Support for xz compression
+    assert(err == ARCHIVE_OK);
 
     // Open the memory archive
     int r = archive_read_open_memory(archive, tarGzFile.data(), tarGzFile.size());
@@ -72,7 +75,7 @@ TarGzAccessor::TarGzAccessor(const std::vector<std::uint8_t>& tarGzFile) {
 }
 
 // Method to get file data by path
-std::optional<std::vector<std::uint8_t>> TarGzAccessor::getFile(const std::string& path) const {
+std::optional<std::vector<std::uint8_t>> TarXzAccessor::getFile(const std::string& path) const {
     auto it = resourceMap.find(path);
     if(it != resourceMap.end()) {
         return it->second;  // Return the file data
@@ -80,11 +83,11 @@ std::optional<std::vector<std::uint8_t>> TarGzAccessor::getFile(const std::strin
     return std::nullopt;  // Return empty optional if file not found
 }
 
-TarGzAccessor Resources::getEmbeddedVisualizer() const {
+TarXzAccessor Resources::getEmbeddedVisualizer() const {
 #ifdef DEPTHAI_EMBED_FRONTEND
     // Load visualizer tar.gz archive from memory
     auto fs = cmrc::depthai::get_filesystem();
-    constexpr static auto FILE_NAME = "depthai-visualizer-" DEPTHAI_VISUALIZER_VERSION ".tar.gz";
+    constexpr static auto FILE_NAME = "depthai-visualizer-" DEPTHAI_VISUALIZER_VERSION ".tar.xz";
     if(!fs.exists(FILE_NAME)) {
         throw std::runtime_error("Visualizer not found in embedded resources");
     }
@@ -92,7 +95,7 @@ TarGzAccessor Resources::getEmbeddedVisualizer() const {
     std::vector<std::uint8_t> visualizerTarGzData(visualizerTarGz.begin(), visualizerTarGz.end());
 
     // Create and return TarGzAccessor
-    return TarGzAccessor(visualizerTarGzData);
+    return TarXzAccessor(visualizerTarGzData);
 #else
     throw std::runtime_error("Visualizer not embedded in resources");
 #endif
