@@ -16,7 +16,7 @@ struct Thresholds {
 constexpr Thresholds RVC2_THRESHOLDS{std::chrono::microseconds(50), std::chrono::milliseconds(5)};
 constexpr Thresholds RVC4_THRESHOLDS{std::chrono::microseconds(5), std::chrono::milliseconds(1)};
 
-void testFsync(float fps, Thresholds thresholds, std::shared_ptr<dai::Device> device) {
+void testFsync(float fps_mono, float fps_rgb, Thresholds thresholds, std::shared_ptr<dai::Device> device) {
     // Create pipeline
     dai::Pipeline p(std::move(device));
     auto rgb = p.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A);
@@ -25,12 +25,12 @@ void testFsync(float fps, Thresholds thresholds, std::shared_ptr<dai::Device> de
 
     auto sync = p.create<dai::node::Sync>();
     // Convert frame sync threshold to nanoseconds
-    auto thresholdNs = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::duration<double>(0.5 / fps));
+    auto thresholdNs = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::duration<double>(0.5 / fps_mono));
 
     sync->setSyncThreshold(thresholdNs);
-    left->requestOutput(std::make_pair(640, 400), std::nullopt, dai::ImgResizeMode::CROP, fps)->link(sync->inputs["left"]);
-    right->requestOutput(std::make_pair(640, 400), std::nullopt, dai::ImgResizeMode::CROP, fps)->link(sync->inputs["right"]);
-    rgb->requestOutput(std::make_pair(1280, 800), std::nullopt, dai::ImgResizeMode::CROP, fps)->link(sync->inputs["rgb"]);
+    left->requestOutput(std::make_pair(320, 240), std::nullopt, dai::ImgResizeMode::CROP, fps_mono)->link(sync->inputs["left"]);
+    right->requestOutput(std::make_pair(320, 240), std::nullopt, dai::ImgResizeMode::CROP, fps_mono)->link(sync->inputs["right"]);
+    rgb->requestOutput(std::make_pair(320, 220), std::nullopt, dai::ImgResizeMode::CROP, fps_rgb)->link(sync->inputs["rgb"]);
 
     auto benchmarkIn = p.create<dai::node::BenchmarkIn>();
     benchmarkIn->sendReportEveryNMessages(25);
@@ -41,7 +41,14 @@ void testFsync(float fps, Thresholds thresholds, std::shared_ptr<dai::Device> de
     p.start();
 
     for(int i = 0; i < 100; i++) {
-        auto syncData = syncQueue->get<dai::MessageGroup>();
+        bool hasTimedout = false;
+        auto syncData = syncQueue->get<dai::MessageGroup>(std::chrono::milliseconds(static_cast<int>(30.0 * (1000.0 / fps_mono))), hasTimedout);
+        
+        // Test whether pipeline stalls or not 
+        if(hasTimedout) {
+            FAIL("Not receiving messages for too long");
+        }
+        
         REQUIRE(syncData != nullptr);
 
         auto leftFrame = syncData->get<dai::ImgFrame>("left");
@@ -67,7 +74,9 @@ void testFsync(float fps, Thresholds thresholds, std::shared_ptr<dai::Device> de
         // 'thresholds.leftRight' applies to the left/right pair, while
         // 'thresholds.all' applies to the overall synchronization among all frames.
         REQUIRE(diffLeftRight <= thresholds.leftRight);
-        REQUIRE(diffAll <= thresholds.all);
+        if(fps_mono == fps_rgb) {
+            REQUIRE(diffAll <= thresholds.all);
+        }
     }
 
     for(int i = 0; i < 4; i++) {
@@ -80,26 +89,62 @@ void testFsync(float fps, Thresholds thresholds, std::shared_ptr<dai::Device> de
         REQUIRE(reportData->numMessagesReceived > 1);
 #ifndef _WIN32
         // FIXME(Morato) - add back Windows once throughput is stabilized on RVC4
-        REQUIRE(reportData->fps == Catch::Approx(fps).epsilon(0.1));
+        REQUIRE(reportData->fps == Catch::Approx(fps_mono).epsilon(0.1));
 #endif
     }
 }
 
-void testFsyncIntegrated(float fps) {
+void testFsyncIntegrated(float fps_mono, float fps_rgb) {
     // Create device
     auto device = std::make_shared<dai::Device>();
     if(device->getPlatform() == dai::Platform::RVC4) {
-        testFsync(fps, RVC4_THRESHOLDS, device);
+        testFsync(fps_mono, fps_rgb, RVC4_THRESHOLDS, device);
     } else if(device->getPlatform() == dai::Platform::RVC2) {
-        testFsync(fps, RVC2_THRESHOLDS, device);
+        testFsync(fps_mono, fps_rgb, RVC2_THRESHOLDS, device);
     } else {
         throw std::runtime_error("Unsupported platform");
     }
 }
 
-TEST_CASE("Test Fsync with different FPS values", "[fsync]") {
-    // Specify a list of FPS values to test with.
-    auto fps = GENERATE(10.0f, 13.0f, 18.5f, 30.0f);
-    CAPTURE(fps);
-    testFsyncIntegrated(fps);
+TEST_CASE("Test Fsync, mono FPS == rgb FPS", "[fsync]") {
+    CAPTURE(fmt::format("== Testing with mono FPS: {}, rgb FPS: {}", 10.0f, 10.0f));
+    testFsyncIntegrated(10.0f, 10.0f);
+
+    CAPTURE(fmt::format("== Testing with mono FPS: {}, rgb FPS: {}", 13.0f, 13.0f));
+    testFsyncIntegrated(13.0f, 13.0f);
+
+    CAPTURE(fmt::format("== Testing with mono FPS: {}, rgb FPS: {}", 18.5f, 18.5f));
+    testFsyncIntegrated(18.5f, 18.5f);
+
+    CAPTURE(fmt::format("== Testing with mono FPS: {}, rgb FPS: {}", 30.0f, 30.0f));
+    testFsyncIntegrated(30.0f, 30.0f);
+}
+
+TEST_CASE("Test Fsync, mono FPS > rgb FPS", "[fsync]") {
+    CAPTURE(fmt::format("> Testing with mono FPS: {}, rgb FPS: {}", 11.0f, 10.0f));
+    testFsyncIntegrated(11.0f, 10.0f);
+
+    CAPTURE(fmt::format("> Testing with mono FPS: {}, rgb FPS: {}", 13.0f, 6.0f));
+    testFsyncIntegrated(13.0f, 6.0f);
+
+    CAPTURE(fmt::format("> Testing with mono FPS: {}, rgb FPS: {}", 23.0f, 8.0f));
+    testFsyncIntegrated(23.0f, 8.0f);
+
+    CAPTURE(fmt::format("> Testing with mono FPS: {}, rgb FPS: {}", 30.0f, 20.0f));
+    testFsyncIntegrated(30.0f, 20.0f);
+}
+
+TEST_CASE("Test Fsync, mono FPS < rgb FPS", "[fsync]") {
+
+    CAPTURE(fmt::format("< Testing with mono FPS: {}, rgb FPS: {}", 10.0f, 11.0f));
+    testFsyncIntegrated(10.0f, 11.0f);
+
+    CAPTURE(fmt::format("< Testing with mono FPS: {}, rgb FPS: {}", 6.0f, 13.0f));
+    testFsyncIntegrated(6.0f, 13.0f);
+
+    CAPTURE(fmt::format("< Testing with mono FPS: {}, rgb FPS: {}", 8.0f, 23.0f));
+    testFsyncIntegrated(8.0f, 23.0f);
+
+    CAPTURE(fmt::format("< Testing with mono FPS: {}, rgb FPS: {}", 20.0f, 30.0f));
+    testFsyncIntegrated(20.0f, 30.0f);
 }
