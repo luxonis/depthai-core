@@ -332,6 +332,8 @@ nlohmann::json ZooManager::fetchModelDownloadLinks() {
         throw std::runtime_error(generateErrorMessageHub(response));
     }
 
+    std::cout << "Response: " << response.text << std::endl;
+
     // Extract download links from response
     nlohmann::json responseJson = nlohmann::json::parse(response.text);
     return responseJson;
@@ -582,7 +584,7 @@ struct JsonDownloadProgressManager {
     }
 };
 
-bool downloadModelsFromZoo(const std::string& path, const std::string& cacheDirectory, const std::string& apiKey) {
+bool downloadModelsFromZoo(const std::string& path, const std::string& cacheDirectory, const std::string& apiKey, const std::string& format) {
     logger::info("Downloading models from zoo");
     // Make sure 'path' exists
     if(!std::filesystem::exists(path)) throw std::runtime_error("Path does not exist: " + path);
