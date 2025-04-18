@@ -9,4 +9,3 @@ if(PORT MATCHES "libusb|ffmpeg")
 endif()
 
 set(VCPKG_CMAKE_SYSTEM_NAME Linux)
-set(VCPKG_LINKER_FLAGS "-Wl,-z,noseparate-code")
