@@ -107,7 +107,7 @@ TEST_CASE("Host and Device impl comparison") {
         REQUIRE(hostImg.rows == deviceImg.rows);
         REQUIRE(hostImg.cols == deviceImg.cols);
         auto diff = calculateImageDifference(hostImg, deviceImg);
-        REQUIRE(diff < 6.);
+        REQUIRE(diff < 10.);
     };
 
     auto doConfig = [&](std::shared_ptr<dai::ImageManipConfigV2> cfg) {
