@@ -27,7 +27,6 @@
 #include "common/ModelTypeBindings.hpp"
 #include "depthai/depthai.hpp"
 #include "log/LogBindings.hpp"
-#include "modelzoo/NNModelDescriptionBindings.hpp"
 #include "modelzoo/ZooBindings.hpp"
 #include "nn_archive/NNArchiveBindings.hpp"
 #include "openvino/OpenVINOBindings.hpp"
@@ -85,7 +84,6 @@ PYBIND11_MODULE(depthai, m)
     callstack.push_front(&DeviceBindings::bind);
     callstack.push_front(&DeviceBootloaderBindings::bind);
     callstack.push_front(&CalibrationHandlerBindings::bind);
-    callstack.push_front(&NNModelDescriptionBindings::bind);
     callstack.push_front(&ZooBindings::bind);
     callstack.push_front(&EventsManagerBindings::bind);
     callstack.push_front(&RemoteConnectionBindings::bind);
