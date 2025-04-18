@@ -12,345 +12,206 @@
 
 #define UNUSED(x) (void)(x)
 
-dai::impl::AEEResult dai::impl::manipGetSrcMask(const uint32_t width,
-                                                const uint32_t height,
-                                                const float* corners,
-                                                const uint32_t cornersLen,
-                                                float minx,
-                                                float maxx,
-                                                float miny,
-                                                float maxy,
-                                                bool init0,
-                                                uint8_t* mask,
-                                                const uint32_t maskLen) {
-    if(maskLen < height * width) return AEE_EBADPARM;
-    const uint32_t numBoxes = cornersLen / (4 * 2);
-    const float p11x = corners[0];
-    const float p11y = corners[1];
-    const float p12x = corners[2];
-    const float p12y = corners[3];
-    /*const float p13x = corners[4];*/
-    /*const float p13y = corners[5];*/
-    const float p14x = corners[6];
-    const float p14y = corners[7];
-
-    {
-        const uint32_t iminx = std::max((uint32_t)floorf(minx), 0U);
-        const uint32_t imaxx = std::min((uint32_t)ceilf(maxx), width);
-        const uint32_t iminy = std::max((uint32_t)floorf(miny), 0U);
-        const uint32_t imaxy = std::min((uint32_t)ceilf(maxy), height);
-
-        if(init0) {
-            memset(mask, 0, height * width * sizeof(uint8_t));
-        }
-        for(uint32_t i = iminy; i < imaxy; ++i) {
-            const uint32_t lineStart = i * width;
-#ifdef __clang__
-    #pragma clang loop vectorize(enable) interleave(enable) unroll_count(4) distribute(enable)
-#else
-    #pragma GCC unroll 4
-    #pragma GCC ivdep
-#endif
-            for(uint32_t j = lineStart + iminx; j < lineStart + imaxx; ++j) {
-                const float x = j - lineStart;
-                const float y = i;
-                const float apx = x - p11x;
-                const float apy = y - p11y;
-                const float abx = p12x - p11x;
-                const float aby = p12y - p11y;
-                const float adx = p14x - p11x;
-                const float ady = p14y - p11y;
-                // (0 < AP . AB < AB . AB) and (0 < AP . AD < AD . AD)
-                mask[j] = 0 <= apx * abx + apy * aby && apx * abx + apy * aby < abx * abx + aby * aby && 0 <= apx * adx + apy * ady
-                          && apx * adx + apy * ady < adx * adx + ady * ady;
+void dai::impl::transformOpenCV(const uint8_t* src,
+                                uint8_t* dst,
+                                const size_t srcWidth,
+                                const size_t srcHeight,
+                                const size_t srcStride,
+                                const size_t dstWidth,
+                                const size_t dstHeight,
+                                const size_t dstStride,
+                                const uint16_t numChannels,
+                                const uint16_t bpp,
+                                const std::array<std::array<float, 3>, 3> matrix,
+                                const std::vector<uint32_t>& background,
+                                const FrameSpecs& srcImgSpecs,
+                                const size_t sourceMinX,
+                                const size_t sourceMinY,
+                                const size_t sourceMaxX,
+                                const size_t sourceMaxY) {
+#if defined(DEPTHAI_HAVE_OPENCV_SUPPORT) && DEPTHAI_IMAGEMANIPV2_OPENCV
+    auto type = CV_8UC1;
+    switch(numChannels) {
+        case 1:
+            switch(bpp) {
+                case 1:
+                    type = CV_8UC1;
+                    break;
+                case 2:
+                    type = CV_16UC1;
+                    break;
+                default:
+                    assert(false);
             }
+            break;
+        case 2:
+            assert(bpp == 1);
+            type = CV_8UC2;
+            break;
+        case 3:
+            assert(bpp == 1);
+            type = CV_8UC3;
+            break;
+        default:
+            assert(false);
+    }
+    auto bg = numChannels == 1 ? cv::Scalar(background[0])
+                               : (numChannels == 2 ? cv::Scalar(background[0], background[1]) : cv::Scalar(background[0], background[1], background[2]));
+    const cv::Mat cvSrc(srcHeight, srcWidth, type, const_cast<uint8_t*>(src), srcStride);
+    cv::Mat cvDst(dstHeight, dstWidth, type, dst, dstStride);
+    int ssF = srcImgSpecs.width / srcWidth;
+    assert(ssF == (int)(srcImgSpecs.height / srcHeight) && (ssF == 1 || ssF == 2));  // Sanity check
+    if(float_eq(matrix[2][0], 0) && float_eq(matrix[2][1], 0) && float_eq(matrix[2][2], 1)) {
+        // Affine transform
+        float affine[6] = {matrix[0][0], matrix[0][1], matrix[0][2] / ssF, matrix[1][0], matrix[1][1], matrix[1][2] / ssF};
+        cv::Rect roi(sourceMinX / ssF, sourceMinY / ssF, (sourceMaxX - sourceMinX) / ssF, (sourceMaxY - sourceMinY) / ssF);
+        if(sourceMinX != 0 || sourceMinY != 0) {
+            affine[2] = affine[0] * ((float)sourceMinX / ssF) + affine[1] * ((float)sourceMinY / ssF) + affine[2];
+            affine[5] = affine[3] * ((float)sourceMinX / ssF) + affine[4] * ((float)sourceMinY / ssF) + affine[5];
+        }
+        if(float_eq(affine[0], 1.f) && float_eq(affine[1], 0.f) && float_eq(affine[3], 0.f) && float_eq(affine[4], 1.f) && float_eq(affine[5], 0.f)) {
+            // Crop only
+            cvSrc(roi).copyTo(cvDst);
+        } else {
+            cv::Mat cvAffine(2, 3, CV_32F, affine);
+            cv::warpAffine(cvSrc(roi),
+                           cvDst,
+                           cvAffine,
+                           cv::Size(dstWidth, dstHeight),
+                           cv::INTER_LINEAR,
+                           cv::BORDER_CONSTANT,
+                           bg);  // TODO(asahtik): Add support for different border types
+        }
+    } else {
+        // Perspective transform
+        float projection[9] = {
+            matrix[0][0], matrix[0][1], matrix[0][2] / ssF, matrix[1][0], matrix[1][1], matrix[1][2] / ssF, matrix[2][0], matrix[2][1], matrix[2][2]};
+        cv::Rect roi(sourceMinX / ssF, sourceMinY / ssF, (sourceMaxX - sourceMinX) / ssF, (sourceMaxY - sourceMinY) / ssF);
+        if(sourceMinX != 0 || sourceMinY != 0) {
+            projection[2] = projection[0] * ((float)sourceMinX / ssF) + projection[1] * ((float)sourceMinY / ssF) + projection[2];
+            projection[5] = projection[3] * ((float)sourceMinX / ssF) + projection[4] * ((float)sourceMinY / ssF) + projection[5];
+            projection[8] = projection[6] * ((float)sourceMinX / ssF) + projection[7] * ((float)sourceMinY / ssF) + projection[8];
+        }
+        cv::Mat cvProjection(3, 3, CV_32F, projection);
+        cv::warpPerspective(cvSrc(roi),
+                            cvDst,
+                            cvProjection,
+                            cv::Size(dstWidth, dstHeight),
+                            cv::INTER_LINEAR,
+                            cv::BORDER_CONSTANT,
+                            bg);  // TODO(asahtik): Add support for different border types
+    }
+#else
+    UNUSED(src);
+    UNUSED(dst);
+    UNUSED(srcWidth);
+    UNUSED(srcHeight);
+    UNUSED(srcStride);
+    UNUSED(dstWidth);
+    UNUSED(dstHeight);
+    UNUSED(dstStride);
+    UNUSED(numChannels);
+    UNUSED(bpp);
+    UNUSED(matrix);
+    UNUSED(background);
+    UNUSED(srcImgSpecs);
+    UNUSED(sourceMinX);
+    UNUSED(sourceMinY);
+    UNUSED(sourceMaxX);
+    UNUSED(sourceMaxY);
+#endif
+}
+void dai::impl::transformFastCV(const uint8_t* src,
+                                uint8_t* dst,
+                                const size_t srcWidth,
+                                const size_t srcHeight,
+                                const size_t srcStride,
+                                const size_t dstWidth,
+                                const size_t dstHeight,
+                                const size_t dstStride,
+                                const uint16_t numChannels,
+                                const uint16_t bpp,
+                                const std::array<std::array<float, 3>, 3> matrix,
+                                const std::vector<uint32_t>& background,
+                                const FrameSpecs& srcImgSpecs,
+                                const size_t sourceMinX,
+                                const size_t sourceMinY,
+                                const size_t sourceMaxX,
+                                const size_t sourceMaxY,
+                                uint32_t* fastCvBorder) {
+#if defined(DEPTHAI_HAVE_FASTCV_SUPPORT) && DEPTHAI_IMAGEMANIPV2_FASTCV
+    if(numChannels != 3 && numChannels != 1) throw std::runtime_error("Only 1 or 3 channels supported with FastCV");
+    if(bpp != 1) throw std::runtime_error("Only 8bpp supported with FastCV");
+    if(!((ptrdiff_t)src % 128 == 0 && (ptrdiff_t)dst % 128 == 0 && (ptrdiff_t)fastCvBorder % 128 == 0 && srcStride % 8 == 0 && srcStride > 0)) {
+        throw std::runtime_error("Assumptions not taken into account");
+    }
+    int ssF = srcSpecs.width / srcWidth;
+    assert(ssF == (int)(srcSpecs.height / srcHeight) && (ssF == 1 || ssF == 2));  // Sanity check
+    if(float_eq(matrix[2][0], 0) && float_eq(matrix[2][1], 0) && float_eq(matrix[2][2], 1)) {
+        // Affine transform
+        float affine[6] = {matrix[0][0], matrix[0][1], matrix[0][2] / ssF, matrix[1][0], matrix[1][1], matrix[1][2] / ssF};
+        if(isSingleChannelu8(src)) {
+            fcvTransformAffineClippedu8_v3(src,
+                                           srcWidth,
+                                           srcHeight,
+                                           srcStride,
+                                           affine,
+                                           dst,
+                                           dstWidth,
+                                           dstHeight,
+                                           dstStride,
+                                           nullptr,
+                                           FASTCV_INTERPOLATION_TYPE_BILINEAR,
+                                           FASTCV_BORDER_CONSTANT,
+                                           0);
+        } else {
+            fcv3ChannelTransformAffineClippedBCu8(src, srcWidth, srcHeight, srcStride, affine, dst, dstWidth, dstHeight, dstStride, fastCvBorder);
+        }
+    } else {
+        // Perspective transform
+        float projection[9] = {
+            matrix[0][0], matrix[0][1], matrix[0][2] / ssF, matrix[1][0], matrix[1][1], matrix[1][2] / ssF, matrix[2][0], matrix[2][1], matrix[2][2]};
+        fcvStatus status = fcvStatus::FASTCV_SUCCESS;
+        if(isSingleChannelu8(src))
+            status = fcvWarpPerspectiveu8_v4(src,
+                                             srcWidth,
+                                             srcHeight,
+                                             srcStride,
+                                             dst,
+                                             dstWidth,
+                                             dstHeight,
+                                             dstStride,
+                                             projection,
+                                             FASTCV_INTERPOLATION_TYPE_BILINEAR,
+                                             FASTCV_BORDER_CONSTANT,
+                                             0);
+        else
+            fcv3ChannelWarpPerspectiveu8_v2(src, srcWidth, srcHeight, srcStride, dst, dstWidth, dstHeight, dstStride, projection);
+        if(status != fcvStatus::FASTCV_SUCCESS) {
+            if(logger) logger->error("FastCV operation failed with error code {}", status);
+            return false;
         }
     }
-    for(uint32_t b = 1; b < numBoxes; ++b) {
-        const float pi1x = corners[0];
-        const float pi1y = corners[1];
-        const float pi2x = corners[2];
-        const float pi2y = corners[3];
-        /*const float pi3x = corners[4];*/
-        /*const float pi3y = corners[5];*/
-        const float pi4x = corners[6];
-        const float pi4y = corners[7];
-
-        const uint32_t iminx = std::max((uint32_t)floorf(minx), 0U);
-        const uint32_t imaxx = std::min((uint32_t)ceilf(maxx), width);
-        const uint32_t iminy = std::max((uint32_t)floorf(miny), 0U);
-        const uint32_t imaxy = std::min((uint32_t)ceilf(maxy), height);
-
-        for(uint32_t i = iminy; i < imaxy; ++i) {
-            const uint32_t lineStart = i * width;
-#ifdef __clang__
-    #pragma clang loop vectorize(enable) interleave(enable) unroll_count(4) distribute(enable)
 #else
-    #pragma GCC unroll 4
-    #pragma GCC ivdep
+    UNUSED(src);
+    UNUSED(dst);
+    UNUSED(srcWidth);
+    UNUSED(srcHeight);
+    UNUSED(srcStride);
+    UNUSED(dstWidth);
+    UNUSED(dstHeight);
+    UNUSED(dstStride);
+    UNUSED(numChannels);
+    UNUSED(bpp);
+    UNUSED(matrix);
+    UNUSED(background);
+    UNUSED(srcImgSpecs);
+    UNUSED(sourceMinX);
+    UNUSED(sourceMinY);
+    UNUSED(sourceMaxX);
+    UNUSED(sourceMaxY);
+    UNUSED(fastCvBorder);
 #endif
-            for(uint32_t j = lineStart + iminx; j < lineStart + imaxx; ++j) {
-                const float x = j - lineStart;
-                const float y = i;
-                const float apx = x - pi1x;
-                const float apy = y - pi1y;
-                const float abx = pi2x - pi1x;
-                const float aby = pi2y - pi1y;
-                const float adx = pi4x - pi1x;
-                const float ady = pi4y - pi1y;
-                // (0 < AP . AB < AB . AB) and (0 < AP . AD < AD . AD)
-                mask[j] &= 0 < apx * abx + apy * aby && apx * abx + apy * aby < abx * abx + aby * aby && 0 < apx * adx + apy * ady
-                           && apx * adx + apy * ady < adx * adx + ady * ady;
-            }
-        }
-    }
-
-    return AEE_SUCCESS;
-}
-
-dai::impl::AEEResult dai::impl::manipGetRemap3x3(const uint32_t inWidth,
-                                                 const uint32_t inHeight,
-                                                 const uint32_t outWidth,
-                                                 const uint32_t outHeight,
-                                                 const float* matrix,
-                                                 const uint32_t matrixLen,
-                                                 const uint8_t* _RESTRICT srcMask,
-                                                 const uint32_t srcMaskLen,
-                                                 const uint32_t minx,
-                                                 const uint32_t maxx,
-                                                 const uint32_t miny,
-                                                 const uint32_t maxy,
-                                                 float* _RESTRICT mapX,
-                                                 const uint32_t mapXLen,
-                                                 float* _RESTRICT mapY,
-                                                 const uint32_t mapYLen,
-                                                 uint8_t* _RESTRICT dstMask,
-                                                 const uint32_t dstMaskLen) {
-    if(mapXLen != outWidth * outHeight || mapYLen != outWidth * outHeight || matrixLen != 9 || srcMaskLen != inWidth * inHeight
-       || dstMaskLen != outWidth * outHeight) {
-        return AEE_EBADPARM;
-    }
-/**
- * 0 1 2   0
- * 3 4 5 x 1
- * 6 7 8   2
- */
-#ifdef __clang__
-    #pragma clang loop vectorize(enable) interleave(enable) unroll_count(4) distribute(enable)
-#else
-    #pragma GCC unroll 4
-    #pragma GCC ivdep
-#endif
-    for(uint32_t i = 0; i < outWidth * outHeight; ++i) {
-        uint32_t x = i % outWidth;
-        uint32_t y = i / outWidth;
-
-        float tX = matrix[0] * x + matrix[1] * y + matrix[2];
-        float tY = matrix[3] * x + matrix[4] * y + matrix[5];
-        float q = matrix[6] * x + matrix[7] * y + matrix[8];
-
-        mapX[i] = tX / q;
-        mapY[i] = tY / q;
-
-        // Remap if outside of the mask
-        mapX[i] = mapX[i] < minx ? minx : mapX[i];
-        mapX[i] = mapX[i] >= maxx ? maxx - 1 : mapX[i];
-        mapY[i] = mapY[i] < miny ? miny : mapY[i];
-        mapY[i] = mapY[i] >= maxy ? maxy - 1 : mapY[i];
-
-        const uint32_t idx = (uint32_t)roundf(mapY[i]) * inWidth + (uint32_t)roundf(mapX[i]);
-        dstMask[i] = 0x1 & srcMask[idx];
-    }
-    return AEE_SUCCESS;
-}
-
-dai::impl::AEEResult dai::impl::subsampleMap2x2(const uint32_t width,
-                                                const uint32_t height,
-                                                const float* _RESTRICT mapX,
-                                                const uint32_t mapXLen,
-                                                const float* _RESTRICT mapY,
-                                                const uint32_t mapYLen,
-                                                const uint8_t* _RESTRICT dstMask,
-                                                const uint32_t dstMaskLen,
-                                                float* _RESTRICT mapXss,
-                                                const uint32_t mapXssLen,
-                                                float* _RESTRICT mapYss,
-                                                const uint32_t mapYssLen,
-                                                uint8_t* _RESTRICT dstMaskss,
-                                                const uint32_t dstMaskssLen) {
-    if(mapXLen != width * height || mapYLen != width * height || dstMaskLen != width * height || mapXssLen != width * height / 4
-       || mapYssLen != width * height / 4 || dstMaskssLen != width * height / 4 || width % 2 != 0 || height % 2 != 0) {
-        return AEE_EBADPARM;
-    }
-#ifdef __clang__
-    #pragma clang loop vectorize(enable) interleave(enable) unroll_count(4) distribute(enable)
-#else
-    #pragma GCC unroll 4
-    #pragma GCC ivdep
-#endif
-    for(uint32_t idx = 0; idx < width * height / 4; ++idx) {
-        const uint32_t i = idx / (width / 2);
-        const uint32_t j = idx % (width / 2);
-        const uint32_t idx1 = 2 * i + 2 * j;
-        const uint32_t idx2 = 2 * i + 2 * j + 1;
-        const uint32_t idx3 = 2 * i + 1 + 2 * j;
-        const uint32_t idx4 = 2 * i + 1 + 2 * j + 1;
-        mapXss[idx] = (mapX[idx1] + mapX[idx2] + mapX[idx3] + mapX[idx4]) / (4.0f * 2.0f);
-        mapYss[idx] = (mapY[idx1] + mapY[idx2] + mapY[idx3] + mapY[idx4]) / (4.0f * 2.0f);
-        dstMaskss[idx] = dstMask[idx1] | dstMask[idx2] | dstMask[idx3] | dstMask[idx4];
-    }
-    return AEE_SUCCESS;
-}
-
-dai::impl::AEEResult dai::impl::remapImage(const uint8_t* _RESTRICT inData,
-                                           const uint32_t inDataLen,
-                                           const float* _RESTRICT mapX,
-                                           const uint32_t mapXLen,
-                                           const float* _RESTRICT mapY,
-                                           const uint32_t mapYLen,
-                                           const uint8_t* _RESTRICT dstMask,
-                                           const uint32_t dstMaskLen,
-                                           const uint16_t numChannels,
-                                           const uint32_t inWidth,
-                                           const uint32_t inHeight,
-                                           const uint32_t inStride,
-                                           const uint32_t outWidth,
-                                           const uint32_t outHeight,
-                                           const uint32_t outStride,
-                                           uint8_t* _RESTRICT outData,
-                                           const uint32_t outDataLen) {
-    UNUSED(inDataLen);
-    UNUSED(outDataLen);
-    if(mapXLen != mapYLen || mapXLen != outWidth * outHeight || dstMaskLen != outWidth * outHeight || numChannels == 0 || numChannels > 3) return AEE_EBADPARM;
-
-    for(uint32_t i = 0; i < outHeight; ++i) {
-        const uint32_t lineStart = i * outStride;
-        switch(numChannels) {
-            case 1:
-#ifdef __clang__
-    #pragma clang loop vectorize(enable) interleave(enable) unroll_count(4) distribute(enable)
-#else
-    #pragma GCC unroll 4
-    #pragma GCC ivdep
-#endif
-                for(uint32_t j = 0; j < outWidth; ++j) {
-                    const uint32_t idx = lineStart + j * numChannels;
-                    const uint32_t mapIdx = i * outWidth + j;
-                    const float x = clampf(mapX[mapIdx], 0, inWidth - 1);
-                    const float y = clampf(mapY[mapIdx], 0, inHeight - 1);
-
-                    const int x1 = floorf(x);
-                    const int y1 = floorf(y);
-                    const int x2 = clampi(x1 + 1, 0, inWidth - 1);
-                    const int y2 = clampi(y1 + 1, 0, outHeight - 1);
-                    const float fx = x - x1;
-                    const float fy = y - y1;
-                    const uint32_t q11i = y1 * inStride + numChannels * x1;
-                    const uint32_t q21i = y1 * inStride + numChannels * x2;
-                    const uint32_t q12i = y2 * inStride + numChannels * x1;
-                    const uint32_t q22i = y2 * inStride + numChannels * x2;
-
-                    {
-                        const float r1 = inData[q11i + 0] * (1 - fx) + inData[q21i + 0] * fx;
-                        const float r2 = inData[q12i + 0] * (1 - fx) + inData[q22i + 0] * fx;
-                        const float p = r1 * (1 - fy) + r2 * fy;
-                        const uint8_t pi = clampi(roundf(p), 0, 255);
-                        outData[idx + 0] = dstMask[mapIdx] * pi;
-                    }
-                }
-                break;
-            case 2:
-#ifdef __clang__
-    #pragma clang loop vectorize(enable) interleave(enable) unroll_count(4) distribute(enable)
-#else
-    #pragma GCC unroll 4
-    #pragma GCC ivdep
-#endif
-                for(uint32_t j = 0; j < outWidth; ++j) {
-                    const uint32_t idx = lineStart + j * numChannels;
-                    const uint32_t mapIdx = i * outWidth + j;
-                    const float x = clampf(mapX[mapIdx], 0, inWidth - 1);
-                    const float y = clampf(mapY[mapIdx], 0, inHeight - 1);
-
-                    const int x1 = floorf(x);
-                    const int y1 = floorf(y);
-                    const int x2 = clampi(x1 + 1, 0, inWidth - 1);
-                    const int y2 = clampi(y1 + 1, 0, outHeight - 1);
-                    const float fx = x - x1;
-                    const float fy = y - y1;
-                    const uint32_t q11i = y1 * inStride + numChannels * x1;
-                    const uint32_t q21i = y1 * inStride + numChannels * x2;
-                    const uint32_t q12i = y2 * inStride + numChannels * x1;
-                    const uint32_t q22i = y2 * inStride + numChannels * x2;
-
-                    {
-                        const float r1 = inData[q11i + 0] * (1 - fx) + inData[q21i + 0] * fx;
-                        const float r2 = inData[q12i + 0] * (1 - fx) + inData[q22i + 0] * fx;
-                        const float p = r1 * (1 - fy) + r2 * fy;
-                        const uint8_t pi = clampi(roundf(p), 0, 255);
-                        outData[idx + 0] = dstMask[mapIdx] * pi;
-                    }
-                    {
-                        const float r1 = inData[q11i + 1] * (1 - fx) + inData[q21i + 1] * fx;
-                        const float r2 = inData[q12i + 1] * (1 - fx) + inData[q22i + 1] * fx;
-                        const float p = r1 * (1 - fy) + r2 * fy;
-                        const uint8_t pi = clampi(roundf(p), 0, 255);
-                        outData[idx + 1] = dstMask[mapIdx] * pi;
-                    }
-                }
-                break;
-            case 3:
-#ifdef __clang__
-    #pragma clang loop vectorize(enable) interleave(enable) unroll_count(4) distribute(enable)
-#else
-    #pragma GCC unroll 4
-    #pragma GCC ivdep
-#endif
-                for(uint32_t j = 0; j < outWidth; ++j) {
-                    const uint32_t idx = lineStart + j * numChannels;
-                    const uint32_t mapIdx = i * outWidth + j;
-                    const float x = clampf(mapX[mapIdx], 0, inWidth - 1);
-                    const float y = clampf(mapY[mapIdx], 0, inHeight - 1);
-
-                    const int x1 = floorf(x);
-                    const int y1 = floorf(y);
-                    const int x2 = clampi(x1 + 1, 0, inWidth - 1);
-                    const int y2 = clampi(y1 + 1, 0, outHeight - 1);
-                    const float fx = x - x1;
-                    const float fy = y - y1;
-                    const uint32_t q11i = y1 * inStride + numChannels * x1;
-                    const uint32_t q21i = y1 * inStride + numChannels * x2;
-                    const uint32_t q12i = y2 * inStride + numChannels * x1;
-                    const uint32_t q22i = y2 * inStride + numChannels * x2;
-
-                    {
-                        const float r1 = inData[q11i + 0] * (1 - fx) + inData[q21i + 0] * fx;
-                        const float r2 = inData[q12i + 0] * (1 - fx) + inData[q22i + 0] * fx;
-                        const float p = r1 * (1 - fy) + r2 * fy;
-                        const uint8_t pi = clampi(roundf(p), 0, 255);
-                        outData[idx + 0] = dstMask[mapIdx] * pi;
-                    }
-                    {
-                        const float r1 = inData[q11i + 1] * (1 - fx) + inData[q21i + 1] * fx;
-                        const float r2 = inData[q12i + 1] * (1 - fx) + inData[q22i + 1] * fx;
-                        const float p = r1 * (1 - fy) + r2 * fy;
-                        const uint8_t pi = clampi(roundf(p), 0, 255);
-                        outData[idx + 1] = dstMask[mapIdx] * pi;
-                    }
-                    {
-                        const float r1 = inData[q11i + 2] * (1 - fx) + inData[q21i + 2] * fx;
-                        const float r2 = inData[q12i + 2] * (1 - fx) + inData[q22i + 2] * fx;
-                        const float p = r1 * (1 - fy) + r2 * fy;
-                        const uint8_t pi = clampi(roundf(p), 0, 255);
-                        outData[idx + 2] = dstMask[mapIdx] * pi;
-                    }
-                }
-                break;
-            default:
-                return AEE_EBADPARM;
-        }
-    }
-    return AEE_SUCCESS;
 }
 
 dai::impl::FrameSpecs dai::impl::getSrcFrameSpecs(dai::ImgFrame::Specs srcSpecs) {
@@ -427,24 +288,23 @@ dai::impl::FrameSpecs dai::impl::getSrcFrameSpecs(dai::ImgFrame::Specs srcSpecs)
     return specs;
 }
 
-dai::impl::FrameSpecs dai::impl::getCcDstFrameSpecs(FrameSpecs srcSpecs, dai::ImgFrame::Type from, dai::ImgFrame::Type to) {
+dai::impl::FrameSpecs dai::impl::getDstFrameSpecs(size_t width, size_t height, dai::ImgFrame::Type type) {
     FrameSpecs specs;
-    if(from == to) return srcSpecs;
-    specs.width = srcSpecs.width;
-    specs.height = srcSpecs.height;
+    specs.width = width;
+    specs.height = height;
     specs.p1Offset = 0;
-    switch(to) {
-        case dai::ImgFrame::Type::RGB888p:
+    switch(type) {
+        case dai::ImgFrame::Type::RGB888p:  // Do not do striding for RGB/BGRi/p
         case dai::ImgFrame::Type::BGR888p:
-            specs.p1Stride = ALIGN_UP(specs.width, DEPTHAI_STRIDE_ALIGNMENT);
+            specs.p1Stride = specs.width;
             specs.p2Stride = specs.p1Stride;
             specs.p3Stride = specs.p1Stride;
-            specs.p2Offset = specs.p1Offset + ALIGN_UP(specs.p1Stride * specs.height, DEPTHAI_PLANE_ALIGNMENT);
-            specs.p3Offset = specs.p2Offset + ALIGN_UP(specs.p1Stride * specs.height, DEPTHAI_PLANE_ALIGNMENT);
+            specs.p2Offset = specs.p1Offset + specs.p1Stride * specs.height;
+            specs.p3Offset = specs.p2Offset + specs.p1Stride * specs.height;
             break;
         case dai::ImgFrame::Type::RGB888i:
         case dai::ImgFrame::Type::BGR888i:
-            specs.p1Stride = ALIGN_UP(specs.width * 3, DEPTHAI_STRIDE_ALIGNMENT);
+            specs.p1Stride = specs.width * 3;
             specs.p2Stride = specs.p1Stride;
             specs.p3Stride = specs.p1Stride;
             specs.p2Offset = specs.p1Offset;
@@ -453,7 +313,7 @@ dai::impl::FrameSpecs dai::impl::getCcDstFrameSpecs(FrameSpecs srcSpecs, dai::Im
         case dai::ImgFrame::Type::NV12:
             specs.p1Stride = ALIGN_UP(specs.width, DEPTHAI_STRIDE_ALIGNMENT);
             specs.p2Stride = specs.p1Stride;
-            specs.p2Offset = specs.p1Offset + ALIGN_UP(specs.p1Stride * specs.height, DEPTHAI_PLANE_ALIGNMENT);
+            specs.p2Offset = specs.p1Offset + ALIGN_UP(specs.p1Stride * ALIGN_UP(specs.height, DEPTHAI_HEIGHT_ALIGNMENT), DEPTHAI_PLANE_ALIGNMENT);
             specs.p3Offset = specs.p2Offset;
             specs.p3Stride = 0;
             break;
@@ -461,15 +321,15 @@ dai::impl::FrameSpecs dai::impl::getCcDstFrameSpecs(FrameSpecs srcSpecs, dai::Im
             specs.p1Stride = ALIGN_UP(specs.width, DEPTHAI_STRIDE_ALIGNMENT);
             specs.p2Stride = ALIGN_UP(specs.width / 2, DEPTHAI_STRIDE_ALIGNMENT);
             specs.p3Stride = ALIGN_UP(specs.width / 2, DEPTHAI_STRIDE_ALIGNMENT);
-            specs.p2Offset = specs.p1Offset + ALIGN_UP(specs.p1Stride * specs.height, DEPTHAI_PLANE_ALIGNMENT);
-            specs.p3Offset = specs.p2Offset + ALIGN_UP(specs.p2Stride * (specs.height / 2), DEPTHAI_PLANE_ALIGNMENT);
+            specs.p2Offset = specs.p1Offset + ALIGN_UP(specs.p1Stride * ALIGN_UP(specs.height, DEPTHAI_HEIGHT_ALIGNMENT), DEPTHAI_PLANE_ALIGNMENT);
+            specs.p3Offset = specs.p2Offset + ALIGN_UP(specs.p2Stride * ALIGN_UP(specs.height / 2, DEPTHAI_HEIGHT_ALIGNMENT / 2), DEPTHAI_PLANE_ALIGNMENT);
             break;
         case dai::ImgFrame::Type::RAW8:
         case dai::ImgFrame::Type::GRAY8:
             specs.p1Stride = ALIGN_UP(specs.width, DEPTHAI_STRIDE_ALIGNMENT);
             break;
-        case ImgFrame::Type::RAW16:
-            specs.p1Stride = ALIGN_UP(specs.width * 2, DEPTHAI_STRIDE_ALIGNMENT);
+        case ImgFrame::Type::RAW16: // Do not do alignment for RAW16
+            specs.p1Stride = specs.width * 2;
             break;
         case ImgFrame::Type::YUV422i:
         case ImgFrame::Type::YUV444p:
@@ -500,6 +360,13 @@ dai::impl::FrameSpecs dai::impl::getCcDstFrameSpecs(FrameSpecs srcSpecs, dai::Im
             break;
     }
     return specs;
+}
+
+dai::impl::FrameSpecs dai::impl::getCcDstFrameSpecs(FrameSpecs srcSpecs, dai::ImgFrame::Type from, dai::ImgFrame::Type to) {
+    if(from == to)
+        return srcSpecs;
+    else
+        return getDstFrameSpecs(srcSpecs.width, srcSpecs.height, to);
 }
 
 bool dai::impl::isTypeSupported(dai::ImgFrame::Type type) {
@@ -892,9 +759,7 @@ void dai::impl::getTransformImpl(const ManipOp& op,
 #endif
                        }
                    },
-                   [&](Affine o) {
-                       mat = {{{o.matrix[0], o.matrix[1], 0}, {o.matrix[2], o.matrix[3], 0}, {0, 0, 1}}};
-                   },
+                   [&](Affine o) { mat = {{{o.matrix[0], o.matrix[1], 0}, {o.matrix[2], o.matrix[3], 0}, {0, 0, 1}}}; },
                    [&](Perspective o) {
                        mat = {{{o.matrix[0], o.matrix[1], o.matrix[2]}, {o.matrix[3], o.matrix[4], o.matrix[5]}, {o.matrix[6], o.matrix[7], o.matrix[8]}}};
                    },
@@ -950,6 +815,7 @@ size_t dai::impl::getFrameSize(const ImgFrame::Type type, const FrameSpecs& spec
             return specs.p2Offset + specs.p2Stride * specs.height / 2;
         case ImgFrame::Type::RAW8:
         case ImgFrame::Type::GRAY8:
+        case ImgFrame::Type::RAW16:
             return specs.p1Stride * specs.height;
         case ImgFrame::Type::YUV422i:
         case ImgFrame::Type::YUV444p:
@@ -960,7 +826,6 @@ size_t dai::impl::getFrameSize(const ImgFrame::Type type, const FrameSpecs& spec
         case ImgFrame::Type::LUT2:
         case ImgFrame::Type::LUT4:
         case ImgFrame::Type::LUT16:
-        case ImgFrame::Type::RAW16:
         case ImgFrame::Type::RAW14:
         case ImgFrame::Type::RAW12:
         case ImgFrame::Type::RAW10:
@@ -994,24 +859,25 @@ void dai::impl::printSpecs(spdlog::async_logger& logger, FrameSpecs specs) {
 }
 
 size_t dai::impl::getAlignedOutputFrameSize(ImgFrame::Type type, size_t width, size_t height) {
+    auto alignWidth = [](size_t _width) -> size_t { return ALIGN_UP(_width, DEPTHAI_STRIDE_ALIGNMENT); };
+    auto alignHeight = [](size_t _height, int fx = 1) -> size_t { return ALIGN_UP(_height, DEPTHAI_HEIGHT_ALIGNMENT / fx); };
+    auto alignSize = [](size_t _size) -> size_t { return ALIGN_UP(_size, DEPTHAI_PLANE_ALIGNMENT); };
     switch(type) {
         case ImgFrame::Type::YUV420p:
-            return ALIGN_UP(ALIGN_UP(width, DEPTHAI_STRIDE_ALIGNMENT) * height, DEPTHAI_PLANE_ALIGNMENT)
-                   + ALIGN_UP(ALIGN_UP(width / 2, DEPTHAI_STRIDE_ALIGNMENT) * (height / 2), DEPTHAI_PLANE_ALIGNMENT)
-                   + ALIGN_UP(width / 2, DEPTHAI_STRIDE_ALIGNMENT) * (height / 2);
+            return alignSize(alignWidth(width) * alignHeight(height)) + 2 * alignSize(alignWidth(width / 2) * alignHeight(height / 2, 2));
         case ImgFrame::Type::RGB888p:
         case ImgFrame::Type::BGR888p:
-            return 2 * ALIGN_UP(ALIGN_UP(width, DEPTHAI_STRIDE_ALIGNMENT) * height, DEPTHAI_PLANE_ALIGNMENT)
-                   + ALIGN_UP(width, DEPTHAI_STRIDE_ALIGNMENT) * height;
+            return 3 * alignSize(alignWidth(width) * alignHeight(height));
         case ImgFrame::Type::RGB888i:
         case ImgFrame::Type::BGR888i:
-            return ALIGN_UP(3 * width, DEPTHAI_STRIDE_ALIGNMENT) * height;
+            return alignSize(alignWidth(3 * width) * alignHeight(height));
         case ImgFrame::Type::NV12:
-            return ALIGN_UP(ALIGN_UP(width, DEPTHAI_STRIDE_ALIGNMENT) * height, DEPTHAI_PLANE_ALIGNMENT)
-                   + ALIGN_UP(width, DEPTHAI_STRIDE_ALIGNMENT) * (height / 2);
+            return alignSize(alignWidth(width) * alignHeight(height)) + alignSize(alignWidth(width) * alignHeight(height / 2, 2));
         case ImgFrame::Type::RAW8:
         case ImgFrame::Type::GRAY8:
-            return ALIGN_UP(width, DEPTHAI_STRIDE_ALIGNMENT) * height;
+            return alignSize(alignWidth(width) * alignHeight(height));
+        case ImgFrame::Type::RAW16:
+            return alignSize(alignWidth(width) * alignHeight(height) * 2);
         case ImgFrame::Type::YUV422i:
         case ImgFrame::Type::YUV444p:
         case ImgFrame::Type::YUV422p:
@@ -1021,7 +887,6 @@ size_t dai::impl::getAlignedOutputFrameSize(ImgFrame::Type type, size_t width, s
         case ImgFrame::Type::LUT2:
         case ImgFrame::Type::LUT4:
         case ImgFrame::Type::LUT16:
-        case ImgFrame::Type::RAW16:
         case ImgFrame::Type::RAW14:
         case ImgFrame::Type::RAW12:
         case ImgFrame::Type::RAW10:
