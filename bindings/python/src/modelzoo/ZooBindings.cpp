@@ -32,6 +32,7 @@ void ZooBindings::bind(pybind11::module& m, void* pCallstack) {
           py::arg("useCached") = true,
           py::arg("cacheDirectory") = "",
           py::arg("apiKey") = "",
+          py::arg("progressFormat") = "none",
           DOC(dai, getModelFromZoo));
 
     m.def("downloadModelsFromZoo",
@@ -39,6 +40,7 @@ void ZooBindings::bind(pybind11::module& m, void* pCallstack) {
           py::arg("path"),
           py::arg("cacheDirectory") = "",
           py::arg("apiKey") = "",
+          py::arg("progressFormat") = "none",
           DOC(dai, downloadModelsFromZoo));
 
     // Bind NNModelDescription

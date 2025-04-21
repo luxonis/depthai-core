@@ -74,7 +74,7 @@ int main(int argc, char* argv[]) {
     }
 
     // Download models
-    bool success = dai::downloadModelsFromZoo(yamlFolder, cacheFolder, apiKey);
+    bool success = dai::downloadModelsFromZoo(yamlFolder, cacheFolder, apiKey, format);
     if(!success) {
         std::cerr << "Failed to download all models from " << yamlFolder << std::endl;
         return EXIT_FAILURE;
