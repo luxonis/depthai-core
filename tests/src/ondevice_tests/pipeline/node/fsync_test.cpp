@@ -25,7 +25,7 @@ void testFsync(float fps_mono, float fps_rgb, Thresholds thresholds, std::shared
 
     auto sync = p.create<dai::node::Sync>();
     // Convert frame sync threshold to nanoseconds
-    auto thresholdNs = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::duration<double>(0.5 / fps_mono));
+    auto thresholdNs = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::duration<double>(0.5 / std::min(fps_mono, fps_rgb)));
 
     sync->setSyncThreshold(thresholdNs);
     left->requestOutput(std::make_pair(320, 240), std::nullopt, dai::ImgResizeMode::CROP, fps_mono)->link(sync->inputs["left"]);
@@ -89,7 +89,7 @@ void testFsync(float fps_mono, float fps_rgb, Thresholds thresholds, std::shared
         REQUIRE(reportData->numMessagesReceived > 1);
 #ifndef _WIN32
         // FIXME(Morato) - add back Windows once throughput is stabilized on RVC4
-        REQUIRE(reportData->fps == Catch::Approx(fps_mono).epsilon(0.1));
+        REQUIRE(reportData->fps == Catch::Approx(std::min(fps_mono, fps_rgb)).epsilon(0.1));
 #endif
     }
 }
