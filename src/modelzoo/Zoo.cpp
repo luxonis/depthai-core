@@ -27,7 +27,40 @@ static std::string MODEL_ZOO_DOWNLOAD_ENDPOINT = "https://easyml.cloud.luxonis.c
 static std::string MODEL_ZOO_DEFAULT_CACHE_PATH = ".depthai_cached_models";  // hidden cache folder
 static std::string MODEL_ZOO_DEFAULT_MODELS_PATH = "depthai_models";         // folder
 
+std::string combinePaths(const std::string& path1, const std::string& path2);
+
 #ifdef DEPTHAI_ENABLE_CURL
+
+class FilesystemLock {
+   public:
+    FilesystemLock(const std::string& folderPath, const std::string& lockFileName = "folder.lock") : folderPath(folderPath) {
+        // Create folder if it doesn't exist
+        if(!std::filesystem::exists(folderPath)) {
+            throw std::runtime_error("Folder does not exist: " + folderPath);
+        }
+        lockFilePath = combinePaths(folderPath, lockFileName);
+
+        // Create lock file if it doesn't exist, if it exists, wait until it is removed
+        while(std::filesystem::exists(lockFilePath)) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            logger::debug(fmt::format("Lock file exists: {} Waiting for it to be removed ...", lockFilePath));
+        }
+
+        // Create lock file
+        logger::debug(fmt::format("Creating lock file: {}", lockFilePath));
+        std::ofstream lockFile(lockFilePath);
+        lockFile.close();
+    }
+
+    ~FilesystemLock() {
+        logger::debug(fmt::format("Removing lock file: {}", lockFilePath));
+        std::filesystem::remove(lockFilePath);
+    }
+
+   private:
+    std::string folderPath;
+    std::string lockFilePath;
+};
 class ZooManager {
    public:
     /**
@@ -57,6 +90,15 @@ class ZooManager {
             logger::info("Trying to get cache directory from environment variable DEPTHAI_ZOO_CACHE_PATH");
             this->cacheDirectory = utility::getEnvAs<std::string>("DEPTHAI_ZOO_CACHE_PATH", dai::modelzoo::getDefaultCachePath(), false);
         }
+
+        // Make sure the cache directory is set
+        if(this->cacheDirectory.empty()) {
+            throw std::runtime_error("Cache directory not set");
+        }
+
+        // Create cache folder lock
+        std::filesystem::create_directories(this->cacheDirectory);
+        cacheFolderLock = std::make_unique<FilesystemLock>(this->cacheDirectory, computeModelHash() + ".lock");
     }
 
     /**
@@ -157,6 +199,9 @@ class ZooManager {
 
     // Path to directory where to store the cached models
     std::string cacheDirectory;
+
+    // Lock for the cache folder
+    std::unique_ptr<FilesystemLock> cacheFolderLock;  // destructor is guaranteed to be called (even when exception is thrown)
 };
 
 #endif
@@ -174,8 +219,6 @@ class ZooManager {
  * @return std::string: Path to yaml file
  */
 std::string getYamlFilePath(const std::string& name, const std::string& modelsPath = "");
-
-std::string combinePaths(const std::string& path1, const std::string& path2);
 
 #ifdef DEPTHAI_ENABLE_CURL
 std::string generateErrorMessageHub(const cpr::Response& response) {
@@ -612,7 +655,8 @@ std::string getModelFromZoo(const NNModelDescription& modelDescription,
     zooManager.createCacheFolder();
 
     // Create download progress callback
-    std::unique_ptr<CprCallback> cprCallback = getCprCallback(progressFormat, modelDescription.globalMetadataEntryName.size() > 0 ? modelDescription.globalMetadataEntryName : modelDescription.model);
+    std::unique_ptr<CprCallback> cprCallback =
+        getCprCallback(progressFormat, modelDescription.globalMetadataEntryName.size() > 0 ? modelDescription.globalMetadataEntryName : modelDescription.model);
 
     // Download model
     logger::info("Downloading model from model zoo");
