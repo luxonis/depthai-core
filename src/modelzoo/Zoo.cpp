@@ -40,16 +40,19 @@ class FilesystemLock {
         }
         lockFilePath = combinePaths(folderPath, lockFileName);
 
+        // Sleep for a random amount of time to avoid race condition
+        std::this_thread::sleep_for(std::chrono::milliseconds(std::rand() % 100));
+
         // Create lock file if it doesn't exist, if it exists, wait until it is removed
         while(std::filesystem::exists(lockFilePath)) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            std::this_thread::sleep_for(std::chrono::milliseconds(100 + (std::rand() % 100)));
             logger::debug(fmt::format("Lock file exists: {} Waiting for it to be removed ...", lockFilePath));
         }
 
         // Create lock file
-        logger::debug(fmt::format("Creating lock file: {}", lockFilePath));
         std::ofstream lockFile(lockFilePath);
         lockFile.close();
+        logger::debug(fmt::format("Creating lock file: {}", lockFilePath));
     }
 
     ~FilesystemLock() {
