@@ -1,23 +1,23 @@
 cmake_minimum_required(VERSION 3.20)
 # Early options
-option(DEPTHAI_ENABLE_LIBUSB "Enable usage of libusb and interaction with USB devices" ON)
+option(DEPTHAI_ENABLE_LIBUSB "Enable usage of libusb and interaction with USB devices" OFF)
 # Build AprilTag node code (note, that even if set to OFF, an AprilTagNode can be used with setRunOnHost(false))
-option(DEPTHAI_ENABLE_APRIL_TAG "Enable AprilTag node" ON)
+option(DEPTHAI_ENABLE_APRIL_TAG "Enable AprilTag node" OFF)
 option(DEPTHAI_RTABMAP_SUPPORT "Enable optional RTABMap support" OFF)
 option(DEPTHAI_BASALT_SUPPORT "Enable optional Basalt support" OFF)
-option(DEPTHAI_ENABLE_PROTOBUF "Enable Protobuf support" ON)
+option(DEPTHAI_ENABLE_PROTOBUF "Enable Protobuf support" OFF)
 option(DEPTHAI_BUILD_PYTHON "Build python bindings" OFF)
 option(DEPTHAI_BUILD_TESTS "Build tests" OFF)
-option(DEPTHAI_OPENCV_SUPPORT "Enable optional OpenCV support" ON)
+option(DEPTHAI_OPENCV_SUPPORT "Enable optional OpenCV support" OFF)
 OPTION(DEPTHAI_ENABLE_KOMPUTE "Enable Kompute support" OFF)
 option(DEPTHAI_PCL_SUPPORT "Enable optional PCL support" OFF)
-option(DEPTHAI_BOOTSTRAP_VCPKG "Automatically bootstrap VCPKG" ON)
-option(DEPTHAI_MERGED_TARGET "Enable merged target build" ON)
+option(DEPTHAI_BOOTSTRAP_VCPKG "Automatically bootstrap VCPKG" OFF)
+option(DEPTHAI_MERGED_TARGET "Enable merged target build" OFF)
 option(DEPTHAI_NEW_FIND_PYTHON "Use new FindPython module" ON)
 option(DEPTHAI_SUBMODULE_BUILD "Enable if building depthai as a submodule" OFF)
 option(DEPTHAI_BUILD_ZOO_HELPER "Build the Zoo helper" OFF)
 option(DEPTHAI_ENABLE_MP4V2 "Enable video recording using the MP4V2 library" OFF)
-option(DEPTHAI_XTENSOR_SUPPORT "Enable optional xtensor support" ON)
+option(DEPTHAI_XTENSOR_SUPPORT "Enable optional xtensor support" OFF)
 
 if(NOT DEPTHAI_OPENCV_SUPPORT)
     set(DEPTHAI_MERGED_TARGET OFF CACHE BOOL "Enable merged target build" FORCE)
@@ -72,7 +72,7 @@ if(ANDROID OR EMSCRIPTEN)
     # Backward not supported currently on Android
     set(DEPTHAI_ENABLE_BACKWARD OFF CACHE BOOL "" FORCE)
 else()
-    option(DEPTHAI_ENABLE_BACKWARD "Enable stacktrace printing on crash using Backward" ON)
+    option(DEPTHAI_ENABLE_BACKWARD "Enable stacktrace printing on crash using Backward" OFF)
     # Additional function information for 'backward' stacktrace
     if(DEPTHAI_ENABLE_BACKWARD)
         set(CMAKE_ENABLE_EXPORTS ON)
@@ -89,7 +89,7 @@ endif()
 if(CMAKE_SIZEOF_VOID_P EQUAL 4 AND UNIX)
     set(DEPTHAI_DEFAULT_CURL_SUPPORT OFF)
 else()
-    set(DEPTHAI_DEFAULT_CURL_SUPPORT ON)
+    set(DEPTHAI_DEFAULT_CURL_SUPPORT OFF)
 endif()
 
 option(DEPTHAI_ENABLE_CURL "Enable CURL support" ${DEPTHAI_DEFAULT_CURL_SUPPORT})
@@ -800,7 +800,6 @@ target_include_directories(${TARGET_CORE_NAME}
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/src>"
         "$<BUILD_INTERFACE:${DEPTHAI_SHARED_INCLUDE}>"
         "$<BUILD_INTERFACE:${DEPTHAI_BOOTLOADER_SHARED_INCLUDE}>"
-        "$<BUILD_INTERFACE:${FP16_INCLUDE_DIRS}>"
 )
 
 target_include_directories(${TARGET_CORE_NAME} SYSTEM
@@ -830,9 +829,8 @@ target_link_libraries(${TARGET_CORE_NAME}
         Threads::Threads
         BZip2::BZip2
         LibArchive::LibArchive
-        liblzma::liblzma
+        fp16
         ZLIB::ZLIB
-        lz4::lz4
         httplib::httplib
         semver::semver
         magic_enum::magic_enum

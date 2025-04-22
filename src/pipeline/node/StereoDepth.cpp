@@ -6,6 +6,7 @@
 #include "utility/Logging.hpp"
 #include "utility/spdlog-fmt.hpp"
 #include "utility/CompilerWarnings.hpp"
+#include <fstream>
 namespace dai {
 namespace node {
 

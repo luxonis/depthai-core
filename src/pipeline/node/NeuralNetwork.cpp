@@ -1,10 +1,6 @@
 #include "depthai/pipeline/node/NeuralNetwork.hpp"
 
-#ifdef DEPTHAI_SUBMODULE_BUILD
 #include <magic_enum/magic_enum.hpp>
-#else
-#include <magic_enum.hpp>
-#endif
 
 #include <stdexcept>
 

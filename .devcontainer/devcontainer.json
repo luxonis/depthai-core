@@ -1,0 +1,10 @@
+{
+    "name": "DepthAI Ubuntu Dev",
+    "dockerComposeFile": [
+      "./docker-compose.yml"
+    ],
+    "initializeCommand": ".devcontainer/createEnv.sh",
+    "workspaceFolder": "/work",
+    "service": "depthai",
+    "shutdownAction": "stopCompose"
+}
