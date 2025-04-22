@@ -9,6 +9,7 @@ services:
       - /etc/shadow:/etc/shadow:ro
       - ${HOME}:${HOME}:rw
     command: bash
+    network_mode: "host"
     stdin_open: true
     tty: true
     env_file:
