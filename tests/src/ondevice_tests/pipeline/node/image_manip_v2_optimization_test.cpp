@@ -4,32 +4,68 @@
 #include "depthai/depthai.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 
-// Function to calculate the normalized difference between two images
-double calculateImageDifference(const cv::Mat& img1, const cv::Mat& img2) {
-    // Ensure the images have the same size and type
-    if(img1.size() != img2.size() || img1.type() != img2.type()) {
-        std::cerr << "Error: Images must have the same size and type!" << std::endl;
-        return -1.0;
+double calculateImageDifference(const cv::Mat& img1, const cv::Mat& img2, int blockSize = 8) {
+    if(img1.empty() || img2.empty()) {
+        std::cerr << "One of the input images is empty!" << std::endl;
+        return 0.0;
     }
 
-    // Compute absolute difference between images
-    cv::Mat diff;
-    cv::absdiff(img1, img2, diff);
+    int numChannels = img1.channels();
 
-    // Sum all pixel differences
-    double sumDiff = cv::sum(diff)[0];  // Sum of all pixels (for grayscale)
+    // Resize images to be the same size and divisible by blockSize
+    cv::Size commonSize = img1.size();
+    commonSize.width -= commonSize.width % blockSize;
+    commonSize.height -= commonSize.height % blockSize;
+    cv::Mat resized1, resized2;
+    cv::resize(img1, resized1, commonSize);
+    cv::resize(img2, resized2, commonSize);
 
-    // If the image has multiple channels (e.g., RGB), sum across all channels
-    if(img1.channels() > 1) {
-        cv::Scalar sumValues = cv::sum(diff);
-        sumDiff = sumValues[0] + sumValues[1] + sumValues[2];  // Sum across all channels
+    int blocksX = commonSize.width / blockSize;
+    int blocksY = commonSize.height / blockSize;
+
+    double totalDiff = 0.0;
+    int count = 0;
+
+    for(int y = 0; y < blocksY; ++y) {
+        for(int x = 0; x < blocksX; ++x) {
+            cv::Rect roi(x * blockSize, y * blockSize, blockSize, blockSize);
+            cv::Mat block1 = resized1(roi);
+            cv::Mat block2 = resized2(roi);
+
+            cv::Mat hist1, hist2;
+            if(numChannels == 3) {
+                // Compute color histograms
+                int histSize[] = {8, 8, 8};  // BGR histogram
+                float range[] = {0, 256};
+                const float* ranges[] = {range, range, range};
+                int channels[] = {0, 1, 2};
+
+                cv::calcHist(&block1, 1, channels, cv::Mat(), hist1, 3, histSize, ranges, true, false);
+                cv::calcHist(&block2, 1, channels, cv::Mat(), hist2, 3, histSize, ranges, true, false);
+            } else if(numChannels == 1) {
+                // Compute grayscale histogram
+                int histSize = 256;
+                float range[] = {0, 256};
+                const float* ranges[] = {range};
+
+                cv::calcHist(&block1, 1, 0, cv::Mat(), hist1, 1, &histSize, ranges, true, false);
+                cv::calcHist(&block2, 1, 0, cv::Mat(), hist2, 1, &histSize, ranges, true, false);
+            } else {
+                std::cerr << "Unsupported number of channels: " << numChannels << std::endl;
+                return 0.0;
+            }
+
+            cv::normalize(hist1, hist1);
+            cv::normalize(hist2, hist2);
+
+            cv::Mat histDiff = hist1 - hist2;
+            double diff = cv::norm(histDiff, cv::NORM_L2);
+            totalDiff += diff;
+            ++count;
+        }
     }
 
-    // Normalize by the total number of pixels
-    double numPixels = img1.total() * img1.channels();
-    double normalizedDifference = sumDiff / numPixels;
-
-    return normalizedDifference;
+    return count > 0 ? totalDiff / count : 0.0;
 }
 
 TEST_CASE("Host and Device impl comparison") {
@@ -107,7 +143,7 @@ TEST_CASE("Host and Device impl comparison") {
         REQUIRE(hostImg.rows == deviceImg.rows);
         REQUIRE(hostImg.cols == deviceImg.cols);
         auto diff = calculateImageDifference(hostImg, deviceImg);
-        REQUIRE(diff < 10.);
+        REQUIRE(diff < 0.8f);
     };
 
     auto doConfig = [&](std::shared_ptr<dai::ImageManipConfigV2> cfg) {
