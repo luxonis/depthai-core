@@ -49,6 +49,7 @@ std::shared_ptr<NeuralNetwork> NeuralNetwork::build(const std::shared_ptr<Camera
     return std::static_pointer_cast<NeuralNetwork>(shared_from_this());
 }
 
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
 std::shared_ptr<NeuralNetwork> NeuralNetwork::build(const std::shared_ptr<ReplayVideo>& input, NNModelDescription modelDesc, std::optional<float> fps) {
     auto nnArchive = createNNArchive(modelDesc);
     return build(input, nnArchive, fps);
@@ -65,6 +66,7 @@ std::shared_ptr<NeuralNetwork> NeuralNetwork::build(const std::shared_ptr<Replay
     input->out.link(this->input);
     return std::static_pointer_cast<NeuralNetwork>(shared_from_this());
 }
+#endif
 
 ImgFrameCapability NeuralNetwork::getFrameCapability(const NNArchive& nnArchive, std::optional<float> fps) {
     const auto& nnArchiveCfg = nnArchive.getVersionedConfig();

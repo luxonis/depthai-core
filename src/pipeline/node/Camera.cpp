@@ -140,7 +140,7 @@ std::shared_ptr<Camera> Camera::build(CameraBoardSocket boardSocket,
     isBuilt = true;
     return std::static_pointer_cast<Camera>(shared_from_this());
 }
-
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
 std::shared_ptr<Camera> Camera::build(CameraBoardSocket boardSocket, ReplayVideo& replay) {
     auto cam = build(boardSocket);
     cam->setMockIsp(replay);
@@ -152,6 +152,7 @@ std::shared_ptr<Camera> Camera::build(ReplayVideo& replay) {
     cam->setMockIsp(replay);
     return cam;
 }
+#endif
 
 Camera::Properties& Camera::getProperties() {
     properties.initialControl = initialControl;
@@ -242,7 +243,7 @@ Node::Output* Camera::requestOutput(std::pair<uint32_t, uint32_t> size,
 Node::Output* Camera::requestOutput(const Capability& capability, bool onHost) {
     return pimpl->requestOutput(*this, capability, onHost);
 }
-
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
 Camera& Camera::setMockIsp(ReplayVideo& replay) {
     if(!replay.getReplayVideoFile().empty()) {
         auto [width, height] = replay.getSize();
@@ -269,6 +270,7 @@ Camera& Camera::setMockIsp(ReplayVideo& replay) {
     }
     return *this;
 }
+#endif
 
 void Camera::buildStage1() {
     return pimpl->buildStage1(*this);
