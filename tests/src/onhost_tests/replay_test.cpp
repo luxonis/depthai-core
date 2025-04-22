@@ -85,3 +85,30 @@ TEST_CASE("ReplayVideo node") {
         p.stop();
     }
 }
+
+TEST_CASE("ReplayVideo no metadata") {
+    {
+        TestHelper helper;
+
+        dai::Pipeline p(false);
+
+        auto replayNode = p.create<dai::node::ReplayVideo>();
+        replayNode->setReplayVideoFile(helper.testFolder + "/extracted/CameraCAM_A.mp4");
+        replayNode->setOutFrameType(dai::ImgFrame::Type::NV12);
+        replayNode->setLoop(true);
+
+        auto q = replayNode->out.createOutputQueue();
+
+        p.start();
+        for(auto i = 0U; i < NUM_MSGS; i++) {
+            if(!p.isRunning()) break;
+            auto data = q->get<dai::ImgFrame>();
+            REQUIRE(data != nullptr);
+            REQUIRE(data->getWidth() > 0);
+            REQUIRE(data->getHeight() > 0);
+            REQUIRE(data->getType() == dai::ImgFrame::Type::NV12);
+            REQUIRE(data->validateTransformations());
+        }
+        p.stop();
+    }
+}
