@@ -25,7 +25,7 @@ void testFsync(float fps_mono, float fps_rgb, Thresholds thresholds, std::shared
 
     auto sync = p.create<dai::node::Sync>();
     // Convert frame sync threshold to nanoseconds
-    auto thresholdNs = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::duration<double>(0.5 / std::min(fps_mono, fps_rgb)));
+    auto thresholdNs = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::duration<double>(0.5 / std::max(fps_mono, fps_rgb)));
 
     sync->setSyncThreshold(thresholdNs);
     left->requestOutput(std::make_pair(320, 240), std::nullopt, dai::ImgResizeMode::CROP, fps_mono)->link(sync->inputs["left"]);
@@ -42,8 +42,7 @@ void testFsync(float fps_mono, float fps_rgb, Thresholds thresholds, std::shared
 
     for(int i = 0; i < 100; i++) {
         bool hasTimedout = false;
-        auto syncData = syncQueue->get<dai::MessageGroup>(std::chrono::milliseconds(static_cast<int>(30.0 * (1000.0 / fps_mono))), hasTimedout);
-        
+        auto syncData = syncQueue->get<dai::MessageGroup>(std::chrono::seconds(2), hasTimedout);
         // Test whether pipeline stalls or not 
         if(hasTimedout) {
             FAIL("Not receiving messages for too long");
@@ -89,7 +88,7 @@ void testFsync(float fps_mono, float fps_rgb, Thresholds thresholds, std::shared
         REQUIRE(reportData->numMessagesReceived > 1);
 #ifndef _WIN32
         // FIXME(Morato) - add back Windows once throughput is stabilized on RVC4
-        REQUIRE(reportData->fps == Catch::Approx(std::min(fps_mono, fps_rgb)).epsilon(0.1));
+        REQUIRE(reportData->fps == Catch::Approx(std::max(fps_mono, fps_rgb)).epsilon(0.1));
 #endif
     }
 }
@@ -128,7 +127,7 @@ TEST_CASE("Test Fsync, mono FPS > rgb FPS", "[fsync]") {
     testFsyncIntegrated(13.0f, 6.0f);
 
     CAPTURE(fmt::format("> Testing with mono FPS: {}, rgb FPS: {}", 23.0f, 8.0f));
-    testFsyncIntegrated(23.0f, 8.0f);
+    testFsyncIntegrated(23.8342f, 7.312f);
 
     CAPTURE(fmt::format("> Testing with mono FPS: {}, rgb FPS: {}", 30.0f, 20.0f));
     testFsyncIntegrated(30.0f, 20.0f);
@@ -143,7 +142,7 @@ TEST_CASE("Test Fsync, mono FPS < rgb FPS", "[fsync]") {
     testFsyncIntegrated(6.0f, 13.0f);
 
     CAPTURE(fmt::format("< Testing with mono FPS: {}, rgb FPS: {}", 8.0f, 23.0f));
-    testFsyncIntegrated(8.0f, 23.0f);
+    testFsyncIntegrated(7.312f, 23.432f);
 
     CAPTURE(fmt::format("< Testing with mono FPS: {}, rgb FPS: {}", 20.0f, 30.0f));
     testFsyncIntegrated(20.0f, 30.0f);
