@@ -39,9 +39,9 @@ function(DepthaiVisualizerDownloader)
     # Download firmware package
     message(STATUS "Downloading and checking ${device_type}-fwp.tar.xz")
     DownloadAndChecksum(
-        "${_download_directory_url}/${visualizer_hash}/depthai-visualizer-${visualizer_hash}.tar.gz" # File
-        "${_download_directory_url}/${visualizer_hash}/depthai-visualizer-${visualizer_hash}.tar.gz.sha256" # File checksum
-        "${folder}/depthai-visualizer-${visualizer_hash}.tar.gz"
+        "${_download_directory_url}/${visualizer_hash}/depthai-visualizer-${visualizer_hash}.tar.xz" # File
+        "${_download_directory_url}/${visualizer_hash}/depthai-visualizer-${visualizer_hash}.tar.xz.sha256" # File checksum
+        "${folder}/depthai-visualizer-${visualizer_hash}.tar.xz"
         status
     )
     if(${status})
@@ -50,7 +50,7 @@ function(DepthaiVisualizerDownloader)
         message(FATAL_ERROR "Aborting.\n")
     endif()
     # add depthai-device-kb-fwp.tar.xz to list
-    list(APPEND "${output_list_var}" "${folder}/depthai-visualizer-${visualizer_hash}.tar.gz")
+    list(APPEND "${output_list_var}" "${folder}/depthai-visualizer-${visualizer_hash}.tar.xz")
 
 
     # Set list of files as output

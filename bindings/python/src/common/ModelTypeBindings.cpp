@@ -5,7 +5,6 @@
 
 #include <depthai/common/ModelType.hpp>
 
-
 void ModelTypeBindings::bind(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 

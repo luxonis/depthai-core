@@ -97,7 +97,7 @@ jobs:
           exec hil --models "oak4_pro or oak4_d" --reservation-name $RESERVATION_NAME --wait --sync-workspace --rvc4-os-version ${{ matrix.rvc4os }} --commands 'cd /tmp/depthai-core|| exit' 'scripts/hil/run_hil_tests.sh ${{ matrix.flavor }} --rvc4'
 
   windows_rvc2_rvc4_test:
-    runs-on: ['self-hosted', 'windows']
+    runs-on: ['self-hosted', 'windows', 'hil-test']
     env:
       LOCALAPPDATA: "C:/actions-runner/vcpkg_cache"
     steps:

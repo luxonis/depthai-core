@@ -38,5 +38,5 @@ TEST_CASE("Test IMU, all sensors") {
 }
 
 TEST_CASE("Test IMU, gyroscope 480 Hz") {
-    basicIMUTest(480.0f, {dai::IMUSensor::GYROSCOPE_RAW}, 0.8f); // TODO(Morato) - debug why some devices need so much tolerance
+    basicIMUTest(480.0f, {dai::IMUSensor::GYROSCOPE_RAW}, 0.8f);  // TODO(Morato) - debug why some devices need so much tolerance
 }

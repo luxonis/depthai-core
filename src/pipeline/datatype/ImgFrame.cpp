@@ -5,8 +5,8 @@
 #include "depthai/common/RotatedRect.hpp"
 #include "depthai/utility/SharedMemory.hpp"
 #ifdef DEPTHAI_ENABLE_PROTOBUF
-    #include "utility/ProtoSerialize.hpp"
     #include "depthai/schemas/ImgFrame.pb.h"
+    #include "utility/ProtoSerialize.hpp"
 #endif
 namespace dai {
 

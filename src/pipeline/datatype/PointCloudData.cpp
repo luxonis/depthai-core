@@ -2,8 +2,8 @@
 
 #include "depthai/common/Point3f.hpp"
 #ifdef DEPTHAI_ENABLE_PROTOBUF
-    #include "utility/ProtoSerialize.hpp"
     #include "depthai/schemas/PointCloudData.pb.h"
+    #include "utility/ProtoSerialize.hpp"
 #endif
 namespace dai {
 

@@ -1,7 +1,7 @@
 #include "depthai/pipeline/datatype/EncodedFrame.hpp"
 #ifdef DEPTHAI_ENABLE_PROTOBUF
-    #include "utility/ProtoSerialize.hpp"
     #include "depthai/schemas/EncodedFrame.pb.h"
+    #include "utility/ProtoSerialize.hpp"
 #endif
 
 #include "utility/H26xParsers.hpp"
