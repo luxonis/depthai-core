@@ -26,6 +26,8 @@ class ImageManipV2 : public DeviceNodeCRTP<DeviceNode, ImageManipV2, ImageManipP
     constexpr static const char* NAME = "ImageManipV2";
     using DeviceNodeCRTP::DeviceNodeCRTP;
     using Backend = ImageManipPropertiesV2::Backend;
+    using PerformanceMode = ImageManipPropertiesV2::PerformanceMode;
+
     ImageManipV2() = default;
     ImageManipV2(std::unique_ptr<Properties> props);
 
@@ -80,6 +82,12 @@ class ImageManipV2 : public DeviceNodeCRTP<DeviceNode, ImageManipV2, ImageManipP
      * Set HW as backend preference
      */
     ImageManipV2& setBackendHW();
+    
+    /**
+     * Set performance mode
+     * @param performanceMode Performance mode
+     */
+    ImageManipV2& setPerformanceMode(PerformanceMode performanceMode);
 
     /**
      * Check if the node is set to run on host

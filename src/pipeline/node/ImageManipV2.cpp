@@ -77,6 +77,10 @@ ImageManipV2& ImageManipV2::setBackendHW() {
     properties.backend = Backend::HW;
     return *this;
 }
+ImageManipV2& ImageManipV2::setPerformanceMode(ImageManipV2::PerformanceMode performanceMode) {
+    properties.performanceMode = performanceMode;
+    return *this;
+}
 
 /**
  * Check if the node is set to run on host
