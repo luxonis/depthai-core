@@ -332,8 +332,10 @@ FetchContent_MakeAvailable(rerun_sdk)
 dai_add_example(rgbd RGBD/rgbd.cpp ON OFF)
 target_link_libraries(rgbd PRIVATE rerun_sdk)
 
-dai_add_example(visualizer_rgbd RGBD/visualizer_rgbd.cpp ON OFF)
-dai_add_example(visualizer_rgbd_autocreate RGBD/visualizer_rgbd_autocreate.cpp ON OFF)
+if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
+    dai_add_example(visualizer_rgbd RGBD/visualizer_rgbd.cpp ON OFF)
+    dai_add_example(visualizer_rgbd_autocreate RGBD/visualizer_rgbd_autocreate.cpp ON OFF)
+endif()
 
 if(DEPTHAI_RTABMAP_SUPPORT)
     include(FetchContent)

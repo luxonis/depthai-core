@@ -59,3 +59,7 @@ endif()
 if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
     list(APPEND VCPKG_MANIFEST_FEATURES "remote-connection-support")
 endif()
+
+if(DEPTHAI_XTENSOR_SUPPORT)
+    list(APPEND VCPKG_MANIFEST_FEATURES "xtensor-support")
+endif()

@@ -15,14 +15,14 @@ void checkBlob(dai::OpenVINO::Blob& blob) {
     for(const auto& in : blob.networkInputs) {
         std::string name = in.first;
         auto tensor = in.second;
-        printf("'%s - dims: %d - order: %04x - type: %d' ", name.c_str(), tensor.numDimensions, tensor.order, tensor.dataType);
+        // printf("'%s - dims: %d - order: %04x - type: %d' ", name.c_str(), tensor.numDimensions, tensor.order, tensor.dataType);
     }
     for(const auto& out : blob.networkOutputs) {
         std::string name = out.first;
         auto tensor = out.second;
-        printf("'%s - dims: %d - order: %04x - type: %d' ", name.c_str(), tensor.numDimensions, tensor.order, tensor.dataType);
+        // printf("'%s - dims: %d - order: %04x - type: %d' ", name.c_str(), tensor.numDimensions, tensor.order, tensor.dataType);
     }
-    printf("(%u %u %u %u)\n", blob.stageCount, blob.numShaves, blob.numSlices, blob.version);
+    // printf("(%u %u %u %u)\n", blob.stageCount, blob.numShaves, blob.numSlices, blob.version);
 
     REQUIRE(blob.networkInputs.size() == 1);
     REQUIRE(blob.networkInputs.at("0").numDimensions == 4);

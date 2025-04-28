@@ -282,8 +282,10 @@ dai_add_test(model_slug_test src/onhost_tests/model_slug_test.cpp)
 dai_set_test_labels(model_slug_test onhost ci)
 
 # Remote connection tests
-dai_add_test(remote_connection_test src/onhost_tests/remote_connection_test.cpp)
-dai_set_test_labels(remote_connection_test onhost ci nowindows)
+if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
+    dai_add_test(remote_connection_test src/onhost_tests/remote_connection_test.cpp)
+    dai_set_test_labels(remote_connection_test onhost ci nowindows)
+endif()
 ### On-device tests ###########################################################
 
 # Camera stream restart test
