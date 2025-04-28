@@ -311,6 +311,25 @@ class ImgFrame : public Buffer, public ProtoSerializable {
     ImgFrame& setMetadata(const std::shared_ptr<ImgFrame>& sourceFrame);
 
     /**
+     * Convience function to set the data of the ImgFrame
+     * @param data data to set
+     */
+    ImgFrame& setDataFrom(const ImgFrame& sourceFrame);
+
+    /**
+     * Convience function to set the data of the ImgFrame
+     * @param data data to set
+     */
+    ImgFrame& setDataFrom(const std::shared_ptr<ImgFrame>& sourceFrame);
+
+    /**
+     * Create a clone of the ImgFrame with metadata and data copied
+     * @returns cloned ImgFrame
+     */
+    std::shared_ptr<ImgFrame> clone() const;
+
+
+    /**
      * @note Fov API works correctly only on rectilinear frames
      * Get the source diagonal field of view in degrees
      *

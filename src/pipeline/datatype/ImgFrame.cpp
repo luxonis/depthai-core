@@ -187,6 +187,23 @@ ImgFrame& ImgFrame::setMetadata(const std::shared_ptr<ImgFrame>& sourceFrame) {
     return setMetadata(*sourceFrame);
 }
 
+ImgFrame& ImgFrame::setDataFrom(const ImgFrame& sourceFrame) {
+    std::vector<uint8_t> data(sourceFrame.data->getData().begin(), sourceFrame.data->getData().end());
+    setData(std::move(data));
+    return *this;
+}
+
+ImgFrame& ImgFrame::setDataFrom(const std::shared_ptr<ImgFrame>& sourceFrame) {
+    return setDataFrom(*sourceFrame);
+}
+
+std::shared_ptr<ImgFrame> ImgFrame::clone() const {
+    auto clone = std::make_shared<ImgFrame>();
+    clone->setMetadata(*this);
+    clone->setDataFrom(*this);
+    return clone;
+}
+
 bool ImgFrame::validateTransformations() const {
     const auto [width, height] = transformation.getSize();
     const auto [srcWidth, srcHeight] = transformation.getSourceSize();

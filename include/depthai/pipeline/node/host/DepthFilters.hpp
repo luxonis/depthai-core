@@ -1,0 +1,116 @@
+#pragma once
+#include <depthai/pipeline/DeviceNode.hpp>
+#include <depthai/pipeline/datatype/StereoDepthConfig.hpp>
+#include <depthai/properties/DepthFiltersProperties.hpp>
+#include <memory>
+#include <vector>
+
+namespace dai {
+namespace node {
+
+class SequentialDepthFilters : public DeviceNodeCRTP<DeviceNode, SequentialDepthFilters, SequentialDepthFiltersProperties>, public HostRunnable {
+   public:
+    constexpr static const char* NAME = "SequentialDepthFilters";
+    using DeviceNodeCRTP::DeviceNodeCRTP;
+
+    Node::Input input{
+        *this,
+        {"input", Node::DEFAULT_GROUP, Node::DEFAULT_BLOCKING, Node::DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ImgFrame, true}}}, Node::DEFAULT_WAIT_FOR_MESSAGE}};
+    Node::Output output{*this, {"output", Node::DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
+
+    void run() override;
+
+    class Filter {
+       public:
+        virtual void process(std::shared_ptr<dai::ImgFrame>& frame) = 0;
+        virtual ~Filter() = default;
+    };
+
+    /**
+     * Add a filter to the node pipeline. The type of filter is determined based on the type of the filter parameter.
+     * @param filter The filter to add
+     */
+    void addFilter(const FilterParams& filter);
+
+    /**
+     * Set whether to filter inplace
+     * @param inplace Whether to filter inplace
+     */
+    void setFilterInplace(bool inplace);
+
+    /**
+     * Get whether to filter inplace
+     * @return Whether to filter inplace
+     */
+    bool getFilterInplace() const;
+
+    /**
+     * Specify whether to run on host or device
+     * By default, the node will run on device.
+     */
+    void setRunOnHost(bool runOnHost);
+
+    /**
+     * Check if the node is set to run on host
+     */
+    bool runOnHost() const override;
+
+   private:
+    bool runOnHostVar = true;
+};
+
+class DepthConfidenceFilter : public DeviceNodeCRTP<DeviceNode, DepthConfidenceFilter, DepthConfidenceFilterProperties>, public HostRunnable {
+   public:
+    constexpr static const char* NAME = "DepthConfidenceFilter";
+    using DeviceNodeCRTP::DeviceNodeCRTP;
+
+    Node::Input depth{
+        *this,
+        {"depth", Node::DEFAULT_GROUP, Node::DEFAULT_BLOCKING, Node::DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ImgFrame, true}}}, Node::DEFAULT_WAIT_FOR_MESSAGE}};
+    Node::Input amplitude{*this,
+                          {"amplitude",
+                           Node::DEFAULT_GROUP,
+                           Node::DEFAULT_BLOCKING,
+                           Node::DEFAULT_QUEUE_SIZE,
+                           {{{DatatypeEnum::ImgFrame, true}}},
+                           Node::DEFAULT_WAIT_FOR_MESSAGE}};
+
+    Node::Output filtered_depth{*this, {"filtered_depth", Node::DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
+    Node::Output confidence{*this, {"confidence", Node::DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
+
+    void run() override;
+    void apply_depth_confidence_filter(std::shared_ptr<ImgFrame> depthFrame,
+                                       std::shared_ptr<ImgFrame> amplitudeFrame,
+                                       std::shared_ptr<ImgFrame> filteredDepthFrame,
+                                       std::shared_ptr<ImgFrame> confidenceFrame,
+                                       float threshold);
+
+    float getConfidenceThreshold() const {
+        return properties.confidenceThreshold;
+    }
+
+    void setConfidenceThreshold(float threshold) {
+        properties.confidenceThreshold = threshold;
+    }
+
+    /**
+     * Specify whether to run on host or device
+     * By default, the node will run on device.
+     */
+    void setRunOnHost(bool runOnHost) {
+        runOnHostVar = runOnHost;
+    }
+
+    /**
+     * Check if the node is set to run on host
+     */
+    bool runOnHost() const override {
+        return runOnHostVar;
+    }
+
+   private:
+    bool runOnHostVar = true;
+};
+
+}  // namespace node
+}  // namespace dai
