@@ -1,0 +1,61 @@
+if(DEPTHAI_HAS_APRIL_TAG)
+    list(APPEND VCPKG_MANIFEST_FEATURES "apriltag")
+endif()
+
+if(DEPTHAI_RTABMAP_SUPPORT)
+    list(APPEND VCPKG_MANIFEST_FEATURES "rtabmap")
+endif()
+
+if(DEPTHAI_BASALT_SUPPORT)
+    list(APPEND VCPKG_MANIFEST_FEATURES "basalt")
+endif()
+
+if(DEPTHAI_OPENCV_SUPPORT)
+    list(APPEND VCPKG_MANIFEST_FEATURES "opencv-support")
+endif()
+
+if(DEPTHAI_PCL_SUPPORT)
+    list(APPEND VCPKG_MANIFEST_FEATURES "pcl-support")
+endif()
+
+if(DEPTHAI_XTENSOR_SUPPORT)
+    list(APPEND VCPKG_MANIFEST_FEATURES "xtensor-support")
+endif()
+
+if(DEPTHAI_ENABLE_MP4V2)
+    list(APPEND VCPKG_MANIFEST_FEATURES "recording")
+endif()
+
+if(DEPTHAI_ENABLE_KOMPUTE)
+    list(APPEND VCPKG_MANIFEST_FEATURES "kompute-support")
+endif()
+
+if(DEPTHAI_ENABLE_BACKWARD)
+    list(APPEND VCPKG_MANIFEST_FEATURES "backward")
+endif()
+
+if(DEPTHAI_ENABLE_PROTOBUF)
+    list(APPEND VCPKG_MANIFEST_FEATURES "protobuf-support")
+endif()
+
+if(DEPTHAI_ENABLE_CURL)
+    list(APPEND VCPKG_MANIFEST_FEATURES "curl-support")
+endif()
+
+if(DEPTHAI_ENABLE_LIBUSB)
+	list(APPEND VCPKG_MANIFEST_FEATURES "xlink-usb")
+else()
+	list(APPEND VCPKG_MANIFEST_FEATURES "xlink")
+endif()
+
+if(DEPTHAI_BUILD_PYTHON)
+    list(APPEND VCPKG_MANIFEST_FEATURES "python-bindings")
+endif()
+
+if(DEPTHAI_BUILD_TESTS)
+    list(APPEND VCPKG_MANIFEST_FEATURES "tests")
+endif()
+
+if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
+    list(APPEND VCPKG_MANIFEST_FEATURES "remote-connection-support")
+endif()

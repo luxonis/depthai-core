@@ -1,33 +1,8 @@
 cmake_minimum_required(VERSION 3.20)
-# Early options
-option(DEPTHAI_ENABLE_LIBUSB "Enable usage of libusb and interaction with USB devices" OFF)
-# Build AprilTag node code (note, that even if set to OFF, an AprilTagNode can be used with setRunOnHost(false))
-option(DEPTHAI_ENABLE_APRIL_TAG "Enable AprilTag node" OFF)
-option(DEPTHAI_RTABMAP_SUPPORT "Enable optional RTABMap support" OFF)
-option(DEPTHAI_BASALT_SUPPORT "Enable optional Basalt support" OFF)
-option(DEPTHAI_ENABLE_PROTOBUF "Enable Protobuf support" OFF)
-option(DEPTHAI_BUILD_PYTHON "Build python bindings" OFF)
-option(DEPTHAI_BUILD_TESTS "Build tests" OFF)
-option(DEPTHAI_OPENCV_SUPPORT "Enable optional OpenCV support" OFF)
-OPTION(DEPTHAI_ENABLE_KOMPUTE "Enable Kompute support" OFF)
-option(DEPTHAI_PCL_SUPPORT "Enable optional PCL support" OFF)
-option(DEPTHAI_BOOTSTRAP_VCPKG "Automatically bootstrap VCPKG" OFF)
-option(DEPTHAI_MERGED_TARGET "Enable merged target build" OFF)
-option(DEPTHAI_NEW_FIND_PYTHON "Use new FindPython module" ON)
-option(DEPTHAI_SUBMODULE_BUILD "Enable if building depthai as a submodule" OFF)
-option(DEPTHAI_BUILD_ZOO_HELPER "Build the Zoo helper" OFF)
-option(DEPTHAI_ENABLE_MP4V2 "Enable video recording using the MP4V2 library" OFF)
-option(DEPTHAI_XTENSOR_SUPPORT "Enable optional xtensor support" OFF)
 
-if(NOT DEPTHAI_OPENCV_SUPPORT)
-    set(DEPTHAI_MERGED_TARGET OFF CACHE BOOL "Enable merged target build" FORCE)
-endif()
+include(cmake/depthaiOptions.cmake)
 
-set(DEPTHAI_HAS_APRIL_TAG ${DEPTHAI_ENABLE_APRIL_TAG})
 if(WIN32)
-    message(STATUS "AprilTag node is not supported on Windows")
-    set(DEPTHAI_HAS_APRIL_TAG OFF)
-
     # Statically compile vcruntime library
     add_compile_options(/MT)
     add_compile_options(/MP)
@@ -42,66 +17,6 @@ if(CCACHE_PROGRAM)
     set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK "${CCACHE_PROGRAM}")
 endif()
 
-if(DEPTHAI_HAS_APRIL_TAG)
-list(APPEND VCPKG_MANIFEST_FEATURES "apriltag")
-endif()
-if(DEPTHAI_RTABMAP_SUPPORT)
-list(APPEND VCPKG_MANIFEST_FEATURES "rtabmap")
-endif()
-if(DEPTHAI_BASALT_SUPPORT)
-list(APPEND VCPKG_MANIFEST_FEATURES "basalt")
-endif()
-if(DEPTHAI_OPENCV_SUPPORT)
-list(APPEND VCPKG_MANIFEST_FEATURES "opencv-support")
-endif()
-if(DEPTHAI_PCL_SUPPORT)
-list(APPEND VCPKG_MANIFEST_FEATURES "pcl-support")
-endif()
-if(DEPTHAI_XTENSOR_SUPPORT)
-list(APPEND VCPKG_MANIFEST_FEATURES "xtensor-support")
-endif()
-if(DEPTHAI_ENABLE_MP4V2)
-list(APPEND VCPKG_MANIFEST_FEATURES "recording")
-endif()
-if(DEPTHAI_ENABLE_KOMPUTE)
-list(APPEND VCPKG_MANIFEST_FEATURES "kompute-support")
-endif()
-
-# Enable backward stack printing on crash
-if(ANDROID OR EMSCRIPTEN)
-    # Backward not supported currently on Android
-    set(DEPTHAI_ENABLE_BACKWARD OFF CACHE BOOL "" FORCE)
-else()
-    option(DEPTHAI_ENABLE_BACKWARD "Enable stacktrace printing on crash using Backward" OFF)
-    # Additional function information for 'backward' stacktrace
-    if(DEPTHAI_ENABLE_BACKWARD)
-        set(CMAKE_ENABLE_EXPORTS ON)
-        list(APPEND VCPKG_MANIFEST_FEATURES "backward")
-    endif()
-endif()
-
-if(DEPTHAI_ENABLE_PROTOBUF)
-    list(APPEND VCPKG_MANIFEST_FEATURES "protobuf-support")
-endif()
-
-
-# Check if on 32 bit linux - default without CURL support
-if(CMAKE_SIZEOF_VOID_P EQUAL 4 AND UNIX)
-    set(DEPTHAI_DEFAULT_CURL_SUPPORT OFF)
-else()
-    set(DEPTHAI_DEFAULT_CURL_SUPPORT OFF)
-endif()
-
-option(DEPTHAI_ENABLE_CURL "Enable CURL support" ${DEPTHAI_DEFAULT_CURL_SUPPORT})
-if(DEPTHAI_ENABLE_CURL)
-    list(APPEND VCPKG_MANIFEST_FEATURES "curl-support")
-endif()
-
-if(DEPTHAI_ENABLE_LIBUSB)
-	list(APPEND VCPKG_MANIFEST_FEATURES "xlink-usb")
-else()
-	list(APPEND VCPKG_MANIFEST_FEATURES "xlink")
-endif()
 
 # CMP0074 dictates that find_package searches environment variable "[packageName]_ROOT" along with regular variable [packageName]_ROOT
 if(POLICY CMP0074)
@@ -115,35 +30,11 @@ endif()
 if(DEPTHAI_BOOTSTRAP_VCPKG)
     message(STATUS "Including vcpkg.cmake")
     include(cmake/vcpkg.cmake)
+    include(cmake/depthaiVcpkgFeatures.cmake)
 else()
     message(STATUS "DEPTHAI_BOOTSTRAP_VCPKG is OFF")
 endif()
 
-
-if(DEPTHAI_ENABLE_PROTOBUF)
-    option(DEPTHAI_ENABLE_REMOTE_CONNECTION "Enable Remote Connection support" ON)
-    if(DEPTHAI_ENABLE_CURL)
-        option(DEPTHAI_ENABLE_EVENTS_MANAGER "Enable Events Manager" ON)
-    else()
-        message(STATUS "Events Manager disabled because Protobuf & curl support is disabled.")
-        option(DEPTHAI_ENABLE_EVENTS_MANAGER "Enable Events Manager" OFF)
-    endif()
-else()
-    option(DEPTHAI_ENABLE_REMOTE_CONNECTION "Enable Remote Connection support" OFF)
-    message(STATUS "Remote Connection support disabled because Protobuf support is disabled.")
-endif()
-
-if(DEPTHAI_BUILD_PYTHON)
-    list(APPEND VCPKG_MANIFEST_FEATURES "python-bindings")
-endif()
-
-if(DEPTHAI_BUILD_TESTS)
-    list(APPEND VCPKG_MANIFEST_FEATURES "tests")
-endif()
-
-if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
-    list(APPEND VCPKG_MANIFEST_FEATURES "remote-connection-support")
-endif()
 
 # Set type to canonicalize relative paths for user-provided toolchain
 set(CMAKE_TOOLCHAIN_FILE "" CACHE FILEPATH "CMake toolchain path")
@@ -169,10 +60,6 @@ else()
     message(STATUS "Using toolchain file: ${CMAKE_TOOLCHAIN_FILE}")
 endif()
 
-# Move binary dir if windows, to shorten the path
-if(WIN32)
-    set(HUNTER_BINARY_DIR "${HUNTER_GATE_ROOT}/_bin" CACHE STRING "Hunter binary directory")
-endif()
 
 # Create depthai project
 project(depthai VERSION "3.0.0" LANGUAGES CXX C)
@@ -211,20 +98,6 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Add module path
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake/")
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake/sanitizers")
-
-# Additional options
-option(DEPTHAI_CLANG_FORMAT "Enable clang-format target"                  ON)
-option(DEPTHAI_CLANG_TIDY "Enable clang-tidy checks during compilation" OFF)
-option(DEPTHAI_SANITIZE "Enable Address and Undefined sanitizers for library, examples and tests" OFF)
-
-# Should install depthai core libraries
-option(DEPTHAI_INSTALL   "Enable install target for depthai-core targets" ON)
-
-# Debug option
-set(DEPTHAI_XLINK_LOCAL "" CACHE STRING "Path to local XLink source to use instead of Hunter")
-set(DEPTHAI_BOOTLOADER_SHARED_LOCAL "" CACHE STRING "Path to local depthai-bootloader-shared source to use instead of submodule")
-
-
 
 # Force Colored output when using Ninja
 # Global option - affects all targets
@@ -829,7 +702,6 @@ target_link_libraries(${TARGET_CORE_NAME}
         Threads::Threads
         BZip2::BZip2
         LibArchive::LibArchive
-        fp16
         ZLIB::ZLIB
         httplib::httplib
         semver::semver
