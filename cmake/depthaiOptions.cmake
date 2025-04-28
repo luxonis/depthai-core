@@ -70,3 +70,21 @@ option(DEPTHAI_INSTALL   "Enable install target for depthai-core targets" ON)
 set(DEPTHAI_XLINK_LOCAL "" CACHE STRING "Path to local XLink source to use instead of Hunter")
 set(DEPTHAI_BOOTLOADER_SHARED_LOCAL "" CACHE STRING "Path to local depthai-bootloader-shared source to use instead of submodule")
 
+
+# First specify options
+option(DEPTHAI_BUILD_EXAMPLES "Build examples - Requires OpenCV library to be installed" OFF)
+option(DEPTHAI_BUILD_DOCS "Build documentation - requires doxygen to be installed" OFF)
+
+# Specify support for FW
+option(DEPTHAI_ENABLE_DEVICE_FW "Enable MyriadX Device FW" ON)
+option(DEPTHAI_ENABLE_DEVICE_BOOTLOADER_FW "Enable MyriadX Device Bootloader FW" ON)
+option(DEPTHAI_ENABLE_DEVICE_RVC3_FW "Enable RVC3 Device FW" OFF)
+option(DEPTHAI_ENABLE_DEVICE_RVC4_FW "Enable RVC4 Device FW" ON)
+
+if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
+    option(DEPTHAI_EMBED_FRONTEND "Embed frontend resources into library" ON)
+else()
+    option(DEPTHAI_EMBED_FRONTEND "Embed frontend resources into library" OFF)
+endif()
+
+option(DEPTHAI_BINARIES_RESOURCE_COMPILE "Compile Depthai device side binaries into library" ON)

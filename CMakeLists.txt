@@ -498,31 +498,13 @@ if(NOT BUILD_SHARED_LIBS)
     target_compile_definitions(${TARGET_CORE_NAME} PUBLIC MCAP_STATIC)
 endif()
 
-# First specify options
-option(DEPTHAI_BUILD_EXAMPLES "Build examples - Requires OpenCV library to be installed" OFF)
-option(DEPTHAI_BUILD_DOCS "Build documentation - requires doxygen to be installed" OFF)
-
-# Specify support for FW
-option(DEPTHAI_ENABLE_DEVICE_FW "Enable MyriadX Device FW" ON)
-option(DEPTHAI_ENABLE_DEVICE_BOOTLOADER_FW "Enable MyriadX Device Bootloader FW" ON)
-option(DEPTHAI_ENABLE_DEVICE_RVC3_FW "Enable RVC3 Device FW" OFF)
-option(DEPTHAI_ENABLE_DEVICE_RVC4_FW "Enable RVC4 Device FW" ON)
-
-if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
-    option(DEPTHAI_EMBED_FRONTEND "Embed frontend resources into library" ON)
-else()
-    option(DEPTHAI_EMBED_FRONTEND "Embed frontend resources into library" OFF)
-endif()
-
-option(DEPTHAI_BINARIES_RESOURCE_COMPILE "Compile Depthai device side binaries into library" ON)
-
 # Set constant
 set(DEPTHAI_RESOURCES_OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/resources")
 
 # Include configuration
 include(Depthai/DepthaiDeviceSideConfig)    # Depthai device binary commit/version configuration
 include(Depthai/DepthaiBootloaderConfig)    # Depthai bootloader binary commit/version configuration
-include(Depthai/DepthaiDeviceKbConfig)    # depthai-device-kb fwp commit/version configuration
+include(Depthai/DepthaiDeviceKbConfig)      # depthai-device-kb fwp commit/version configuration
 include(Depthai/DepthaiDeviceRVC4Config)    # depthai-device-rvc4 fwp commit/version configuration
 include(Depthai/DepthaiVisualizerConfig)    # depthai-visualizer commit/version configuration
 
