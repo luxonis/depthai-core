@@ -2,6 +2,7 @@
 
 #include <cmath>
 #include <opencv2/opencv.hpp>
+
 #include "depthai/depthai.hpp"
 #include "pipeline/datatype/DepthFiltersConfig.hpp"
 
@@ -9,7 +10,6 @@ namespace dai {
 namespace node {
 
 namespace {
-
 
 // NOTE: This is a copy-pasted implementation from the FW codebase
 // with only minor changes to account for all possible edge cases
@@ -109,11 +109,10 @@ int MedianFilter::Init() {
 MedianFilter::~MedianFilter() {}
 
 void MedianFilter::process(std::shared_ptr<dai::ImgFrame>& disparityFrame, int medianSize) {
-
     int cvtype;
     if(disparityFrame->getType() == dai::ImgFrame::Type::RAW16) {
         cvtype = CV_16UC1;
-    } else if (disparityFrame->getType() == dai::ImgFrame::Type::RAW8) {
+    } else if(disparityFrame->getType() == dai::ImgFrame::Type::RAW8) {
         cvtype = CV_8UC1;
     } else {
         throw std::runtime_error("Unsupported disparity frame type. Supported types are RAW16 and RAW8.");
@@ -133,8 +132,6 @@ void MedianFilter::process(std::shared_ptr<dai::ImgFrame>& disparityFrame, int m
 
     std::memcpy(disparityFrame->data->getData().data(), cvDisparityFiltered.data, cvDisparityFiltered.total() * cvDisparityFiltered.elemSize());
 }
-
-
 
 /***********************************************************************************************************/
 /***********************************************************************************************************/
@@ -315,7 +312,7 @@ void SpatialFilter::process(std::shared_ptr<dai::ImgFrame>& disparityFrame) {
         if(disparityFrame->getType() == dai::ImgFrame::Type::RAW16) {
             recursive_filter_horizontal<uint16_t>(&params);
             recursive_filter_vertical<uint16_t>(&params);
-        } else if (disparityFrame->getType() == dai::ImgFrame::Type::RAW8) {
+        } else if(disparityFrame->getType() == dai::ImgFrame::Type::RAW8) {
             recursive_filter_horizontal<uint8_t>(&params);
             recursive_filter_vertical<uint8_t>(&params);
         } else {
@@ -323,7 +320,6 @@ void SpatialFilter::process(std::shared_ptr<dai::ImgFrame>& disparityFrame) {
         }
     }
 }
-
 
 /***********************************************************************************************************/
 /***********************************************************************************************************/
@@ -341,7 +337,7 @@ void SpeckleFilter::process(std::shared_ptr<dai::ImgFrame>& disparityFrame, int 
     int cvtype;
     if(disparityFrame->getType() == dai::ImgFrame::Type::RAW16) {
         cvtype = CV_16SC1;
-    } else if (disparityFrame->getType() == dai::ImgFrame::Type::RAW8) {
+    } else if(disparityFrame->getType() == dai::ImgFrame::Type::RAW8) {
         cvtype = CV_8UC1;
     } else {
         throw std::runtime_error("Unsupported disparity frame type. Supported types are RAW16 and RAW8.");
@@ -692,8 +688,8 @@ class TemporalFilterWrapper : public SequentialDepthFilters::Filter {
                 const int delta = params.delta;
                 const int persistencyMode = static_cast<int>(params.persistencyMode);
                 temporalFilter.Init(frameSize, alpha, delta, persistencyMode);
-            isInitialized = true;
-        }
+                isInitialized = true;
+            }
 
             temporalFilter.process(frame);
         }
@@ -745,7 +741,6 @@ void SequentialDepthFilters::run() {
 
     logger->debug("SequentialDepthFilters: Starting");
     while(isRunning()) {
-
         // Set config
         while(config.has()) {
             auto configMsg = config.get<SequentialDepthFiltersConfig>();
@@ -786,28 +781,41 @@ void SequentialDepthFilters::setRunOnHost(bool runOnHost) {
     runOnHostVar = runOnHost;
 }
 
-void DepthConfidenceFilter::apply_depth_confidence_filter(std::shared_ptr<ImgFrame> depthFrame,
-                                                          std::shared_ptr<ImgFrame> amplitudeFrame,
-                                                          std::shared_ptr<ImgFrame> filteredDepthFrame,
-                                                          std::shared_ptr<ImgFrame> confidenceFrame,
-                                                          float threshold) {
+void DepthConfidenceFilter::applyDepthConfidenceFilter(std::shared_ptr<ImgFrame> depthFrame,
+                                                       std::shared_ptr<ImgFrame> amplitudeFrame,
+                                                       std::shared_ptr<ImgFrame> filteredDepthFrame,
+                                                       std::shared_ptr<ImgFrame> confidenceFrame,
+                                                       float threshold) {
     const int height = depthFrame->getHeight();
     const int width = depthFrame->getWidth();
 
-    // Create an OpenCV wrapper for frames for easier processing
-    cv::Mat depth(height, width, CV_16UC1, depthFrame->getData().data());
-    cv::Mat amplitude(height, width, CV_16UC1, amplitudeFrame->getData().data());
-    cv::Mat filtered_depth(height, width, CV_16UC1, filteredDepthFrame->getData().data());
-    cv::Mat confidence(height, width, CV_32FC1, confidenceFrame->getData().data());
+    auto getCvType = [](ImgFrame::Type type) -> int {
+        if(type == ImgFrame::Type::RAW8) {
+            return CV_8UC1;
+        }
+        if(type == ImgFrame::Type::RAW16) {
+            return CV_16UC1;
+        }
+        if(type == ImgFrame::Type::RAW32) {
+            return CV_32FC1;
+        }
+        throw std::runtime_error("DepthConfidenceFilter: Unsupported frame type");
+    };
 
-    cv::Mat depth_float, amplitude_float;
-    depth.convertTo(depth_float, CV_32F);
-    amplitude.convertTo(amplitude_float, CV_32F);
+    // Create an OpenCV wrapper for frames for easier processing
+    cv::Mat depth(height, width, getCvType(depthFrame->getType()), depthFrame->getData().data());
+    cv::Mat amplitude(height, width, getCvType(amplitudeFrame->getType()), amplitudeFrame->getData().data());
+    cv::Mat filteredDepth(height, width, getCvType(filteredDepthFrame->getType()), filteredDepthFrame->getData().data());
+    cv::Mat confidence(height, width, getCvType(confidenceFrame->getType()), confidenceFrame->getData().data());
+
+    cv::Mat depthFloat, amplitudeFloat;
+    depth.convertTo(depthFloat, CV_32F);
+    amplitude.convertTo(amplitudeFloat, CV_32F);
 
     for(int i = 0; i < height; i++) {
         for(int j = 0; j < width; j++) {
-            float a = amplitude_float.at<float>(i, j);
-            float d = depth_float.at<float>(i, j);
+            float a = amplitudeFloat.at<float>(i, j);
+            float d = depthFloat.at<float>(i, j);
 
             // Avoid division by zero or very small depth values
             float conf;
@@ -824,9 +832,9 @@ void DepthConfidenceFilter::apply_depth_confidence_filter(std::shared_ptr<ImgFra
 
             // Invalidate pixel if confidence is below the threshold
             if(conf < threshold) {
-                filtered_depth.at<uint16_t>(i, j) = 0;  // Using 0 to represent invalid/NaN values
+                filteredDepth.at<float>(i, j) = 0; // np.nan
             } else {
-                filtered_depth.at<uint16_t>(i, j) = depth.at<uint16_t>(i, j);
+                filteredDepth.at<float>(i, j) = d;
             }
         }
     }
@@ -834,31 +842,39 @@ void DepthConfidenceFilter::apply_depth_confidence_filter(std::shared_ptr<ImgFra
 
 void DepthConfidenceFilter::run() {
     while(isRunning()) {
+
+        // Update threshold
+        while(config.has()) {
+            auto configMsg = config.get<DepthConfidenceFilterConfig>();
+            properties.confidenceThreshold = configMsg->confidenceThreshold;
+        }
+
+        // Get frames from input queue
         std::shared_ptr<dai::ImgFrame> depthFrame = depth.get<dai::ImgFrame>();
         std::shared_ptr<dai::ImgFrame> amplitudeFrame = amplitude.get<dai::ImgFrame>();
-
         if(depthFrame == nullptr || amplitudeFrame == nullptr) {
             logger->error("DepthConfidenceFilter: Input frame is nullptr");
             break;
         }
 
         // Create empty output frames
-        std::shared_ptr<dai::ImgFrame> filteredDepthFrame = depthFrame->clone();
-        std::shared_ptr<dai::ImgFrame> confidenceFrame = depthFrame->clone();
+        auto filteredDepthFrame = std::make_shared<dai::ImgFrame>();
+        auto confidenceFrame = std::make_shared<dai::ImgFrame>();
 
-        // Initialize output frames
-        filteredDepthFrame->setWidth(depthFrame->getWidth());
-        filteredDepthFrame->setHeight(depthFrame->getHeight());
-        filteredDepthFrame->setType(depthFrame->getType());
-        filteredDepthFrame->data->setSize(depthFrame->getData().size());
+        // Copy metadata from input frames
+        filteredDepthFrame->setMetadata(depthFrame);
+        confidenceFrame->setMetadata(depthFrame);
 
-        confidenceFrame->setWidth(depthFrame->getWidth());
-        confidenceFrame->setHeight(depthFrame->getHeight());
-        confidenceFrame->setType(ImgFrame::Type::GRAYF16);  // Using float16 for confidence values
-        confidenceFrame->data->setSize(depthFrame->getWidth() * depthFrame->getHeight() * sizeof(float));
+        // Allocate memory for output frames
+        filteredDepthFrame->data->setSize(depthFrame->getData().size() * sizeof(float));
+        confidenceFrame->data->setSize(depthFrame->getData().size() * sizeof(float));
+
+        // Set type to RAW32 = 4 bytes per pixel = float
+        filteredDepthFrame->setType(ImgFrame::Type::RAW32);
+        confidenceFrame->setType(ImgFrame::Type::RAW32);
 
         // Apply the filter
-        apply_depth_confidence_filter(depthFrame, amplitudeFrame, filteredDepthFrame, confidenceFrame, properties.confidenceThreshold);
+        applyDepthConfidenceFilter(depthFrame, amplitudeFrame, filteredDepthFrame, confidenceFrame, properties.confidenceThreshold);
 
         // Send the results
         filtered_depth.send(filteredDepthFrame);

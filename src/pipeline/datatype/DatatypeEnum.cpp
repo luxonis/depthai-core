@@ -40,7 +40,8 @@ const std::unordered_map<DatatypeEnum, std::vector<DatatypeEnum>> hierarchy = {
       DatatypeEnum::PointCloudData,
       DatatypeEnum::TransformData,
       DatatypeEnum::ImgAnnotations,
-      DatatypeEnum::SequentialDepthFiltersConfig}},
+      DatatypeEnum::SequentialDepthFiltersConfig,
+      DatatypeEnum::DepthConfidenceFilterConfig}},
     {DatatypeEnum::Buffer,
      {DatatypeEnum::ImgFrame,
       DatatypeEnum::EncodedFrame,
@@ -71,7 +72,8 @@ const std::unordered_map<DatatypeEnum, std::vector<DatatypeEnum>> hierarchy = {
       DatatypeEnum::PointCloudData,
       DatatypeEnum::TransformData,
       DatatypeEnum::ImgAnnotations,
-      DatatypeEnum::SequentialDepthFiltersConfig}},
+      DatatypeEnum::SequentialDepthFiltersConfig,
+      DatatypeEnum::DepthConfidenceFilterConfig}},
     {DatatypeEnum::ImgFrame, {}},
     {DatatypeEnum::EncodedFrame, {}},
     {DatatypeEnum::NNData, {}},
@@ -102,6 +104,7 @@ const std::unordered_map<DatatypeEnum, std::vector<DatatypeEnum>> hierarchy = {
     {DatatypeEnum::TransformData, {}},
     {DatatypeEnum::ImgAnnotations, {}},
     {DatatypeEnum::SequentialDepthFiltersConfig, {}},
+    {DatatypeEnum::DepthConfidenceFilterConfig, {}},
 };
 
 bool isDatatypeSubclassOf(DatatypeEnum parent, DatatypeEnum children) {

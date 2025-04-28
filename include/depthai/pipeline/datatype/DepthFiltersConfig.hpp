@@ -23,4 +23,17 @@ class SequentialDepthFiltersConfig : public Buffer {
     DEPTHAI_SERIALIZE(SequentialDepthFiltersConfig, filterIndex, filterParams);
 };
 
+class DepthConfidenceFilterConfig : public Buffer {
+   public:
+    DepthConfidenceFilterConfig() = default;
+    virtual ~DepthConfidenceFilterConfig() = default;
+
+    /**
+     * Threshold for the confidence filter
+     */
+    float confidenceThreshold;
+
+    DEPTHAI_SERIALIZE(DepthConfidenceFilterConfig, confidenceThreshold);
+};
+
 }  // namespace dai

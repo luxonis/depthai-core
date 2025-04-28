@@ -22,6 +22,11 @@ void bind_depthfilters(pybind11::module& m, void* pCallstack) {
     sequentialDepthFiltersConfig.def_readwrite(
         "filterParams", &SequentialDepthFiltersConfig::filterParams, DOC(dai, SequentialDepthFiltersConfig, filterParams));
 
+    py::class_<DepthConfidenceFilterConfig, Py<DepthConfidenceFilterConfig>, Buffer, std::shared_ptr<DepthConfidenceFilterConfig>>
+        depthConfidenceFilterConfig(m, "DepthConfidenceFilterConfig", DOC(dai, DepthConfidenceFilterConfig));
+    depthConfidenceFilterConfig.def(py::init<>());
+    depthConfidenceFilterConfig.def_readwrite("confidenceThreshold", &DepthConfidenceFilterConfig::confidenceThreshold, DOC(dai, DepthConfidenceFilterConfig, confidenceThreshold));
+
     // Add node bindings
     auto sequentialDepthFilters = ADD_NODE(SequentialDepthFilters);
     auto depthConfidenceFilter = ADD_NODE(DepthConfidenceFilter);
@@ -64,6 +69,7 @@ void bind_depthfilters(pybind11::module& m, void* pCallstack) {
         .def_readonly("amplitude", &DepthConfidenceFilter::amplitude, DOC(dai, node, DepthConfidenceFilter, amplitude))
         .def_readonly("filtered_depth", &DepthConfidenceFilter::filtered_depth, DOC(dai, node, DepthConfidenceFilter, filtered_depth))
         .def_readonly("confidence", &DepthConfidenceFilter::confidence, DOC(dai, node, DepthConfidenceFilter, confidence))
+        .def_readonly("config", &DepthConfidenceFilter::config, DOC(dai, node, DepthConfidenceFilter, config))
         .def("setConfidenceThreshold",
              &DepthConfidenceFilter::setConfidenceThreshold,
              py::arg("threshold"),

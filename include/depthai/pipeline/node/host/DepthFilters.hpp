@@ -78,12 +78,15 @@ class DepthConfidenceFilter : public DeviceNodeCRTP<DeviceNode, DepthConfidenceF
     Node::Output filtered_depth{*this, {"filtered_depth", Node::DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
     Node::Output confidence{*this, {"confidence", Node::DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
+    Node::Input config{*this,
+                       {"config",
+                        Node::DEFAULT_GROUP,
+                        Node::DEFAULT_BLOCKING,
+                        Node::DEFAULT_QUEUE_SIZE,
+                        {{{DatatypeEnum::DepthConfidenceFilterConfig, true}}},
+                        Node::DEFAULT_WAIT_FOR_MESSAGE}};
+
     void run() override;
-    void apply_depth_confidence_filter(std::shared_ptr<ImgFrame> depthFrame,
-                                       std::shared_ptr<ImgFrame> amplitudeFrame,
-                                       std::shared_ptr<ImgFrame> filteredDepthFrame,
-                                       std::shared_ptr<ImgFrame> confidenceFrame,
-                                       float threshold);
 
     float getConfidenceThreshold() const {
         return properties.confidenceThreshold;
@@ -109,6 +112,11 @@ class DepthConfidenceFilter : public DeviceNodeCRTP<DeviceNode, DepthConfidenceF
     }
 
    private:
+    void applyDepthConfidenceFilter(std::shared_ptr<ImgFrame> depthFrame,
+                                       std::shared_ptr<ImgFrame> amplitudeFrame,
+                                       std::shared_ptr<ImgFrame> filteredDepthFrame,
+                                       std::shared_ptr<ImgFrame> confidenceFrame,
+                                       float threshold);
     bool runOnHostVar = true;
 };
 
