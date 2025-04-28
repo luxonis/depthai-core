@@ -88,35 +88,17 @@ class DepthConfidenceFilter : public DeviceNodeCRTP<DeviceNode, DepthConfidenceF
 
     void run() override;
 
-    float getConfidenceThreshold() const {
-        return properties.confidenceThreshold;
-    }
-
-    void setConfidenceThreshold(float threshold) {
-        properties.confidenceThreshold = threshold;
-    }
-
-    /**
-     * Specify whether to run on host or device
-     * By default, the node will run on device.
-     */
-    void setRunOnHost(bool runOnHost) {
-        runOnHostVar = runOnHost;
-    }
-
-    /**
-     * Check if the node is set to run on host
-     */
-    bool runOnHost() const override {
-        return runOnHostVar;
-    }
+    float getConfidenceThreshold() const;
+    void setConfidenceThreshold(float threshold);
+    void setRunOnHost(bool runOnHost);
+    bool runOnHost() const override;
 
    private:
     void applyDepthConfidenceFilter(std::shared_ptr<ImgFrame> depthFrame,
-                                       std::shared_ptr<ImgFrame> amplitudeFrame,
-                                       std::shared_ptr<ImgFrame> filteredDepthFrame,
-                                       std::shared_ptr<ImgFrame> confidenceFrame,
-                                       float threshold);
+                                    std::shared_ptr<ImgFrame> amplitudeFrame,
+                                    std::shared_ptr<ImgFrame> filteredDepthFrame,
+                                    std::shared_ptr<ImgFrame> confidenceFrame,
+                                    float threshold);
     bool runOnHostVar = true;
 };
 

@@ -832,7 +832,7 @@ void DepthConfidenceFilter::applyDepthConfidenceFilter(std::shared_ptr<ImgFrame>
 
             // Invalidate pixel if confidence is below the threshold
             if(conf < threshold) {
-                filteredDepth.at<float>(i, j) = 0; // np.nan
+                filteredDepth.at<float>(i, j) = 0;  // np.nan
             } else {
                 filteredDepth.at<float>(i, j) = d;
             }
@@ -842,7 +842,6 @@ void DepthConfidenceFilter::applyDepthConfidenceFilter(std::shared_ptr<ImgFrame>
 
 void DepthConfidenceFilter::run() {
     while(isRunning()) {
-
         // Update threshold
         while(config.has()) {
             auto configMsg = config.get<DepthConfidenceFilterConfig>();
@@ -880,6 +879,25 @@ void DepthConfidenceFilter::run() {
         filtered_depth.send(filteredDepthFrame);
         confidence.send(confidenceFrame);
     }
+}
+
+float DepthConfidenceFilter::getConfidenceThreshold() const {
+    return properties.confidenceThreshold;
+}
+
+void DepthConfidenceFilter::setConfidenceThreshold(float threshold) {
+    properties.confidenceThreshold = threshold;
+}
+
+void DepthConfidenceFilter::setRunOnHost(bool runOnHost) {
+    if(device && device->getPlatform() == Platform::RVC2 && !runOnHost) {
+        throw std::runtime_error("DepthConfidenceFilter: Running on device is not supported on RVC2");
+    }
+    runOnHostVar = runOnHost;
+}
+
+bool DepthConfidenceFilter::runOnHost() const {
+    return runOnHostVar;
 }
 
 }  // namespace node
