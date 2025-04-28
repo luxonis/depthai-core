@@ -1,6 +1,6 @@
 #pragma once
 #include <depthai/pipeline/DeviceNode.hpp>
-#include <depthai/pipeline/datatype/StereoDepthConfig.hpp>
+#include <depthai/pipeline/datatype/DepthFiltersConfig.hpp>
 #include <depthai/properties/DepthFiltersProperties.hpp>
 #include <memory>
 #include <vector>
@@ -18,11 +18,23 @@ class SequentialDepthFilters : public DeviceNodeCRTP<DeviceNode, SequentialDepth
         {"input", Node::DEFAULT_GROUP, Node::DEFAULT_BLOCKING, Node::DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ImgFrame, true}}}, Node::DEFAULT_WAIT_FOR_MESSAGE}};
     Node::Output output{*this, {"output", Node::DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
+    /**
+     * Config to be set for a specific filter
+     */
+    Node::Input config{*this,
+                       {"config",
+                        Node::DEFAULT_GROUP,
+                        Node::DEFAULT_BLOCKING,
+                        Node::DEFAULT_QUEUE_SIZE,
+                        {{{DatatypeEnum::SequentialDepthFiltersConfig, true}}},
+                        Node::DEFAULT_WAIT_FOR_MESSAGE}};
+
     void run() override;
 
     class Filter {
        public:
         virtual void process(std::shared_ptr<dai::ImgFrame>& frame) = 0;
+        virtual void setParams(const FilterParams& params) = 0;
         virtual ~Filter() = default;
     };
 
@@ -31,18 +43,6 @@ class SequentialDepthFilters : public DeviceNodeCRTP<DeviceNode, SequentialDepth
      * @param filter The filter to add
      */
     void addFilter(const FilterParams& filter);
-
-    /**
-     * Set whether to filter inplace
-     * @param inplace Whether to filter inplace
-     */
-    void setFilterInplace(bool inplace);
-
-    /**
-     * Get whether to filter inplace
-     * @return Whether to filter inplace
-     */
-    bool getFilterInplace() const;
 
     /**
      * Specify whether to run on host or device

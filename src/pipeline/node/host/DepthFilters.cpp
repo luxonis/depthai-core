@@ -3,6 +3,7 @@
 #include <cmath>
 #include <opencv2/opencv.hpp>
 #include "depthai/depthai.hpp"
+#include "pipeline/datatype/DepthFiltersConfig.hpp"
 
 namespace dai {
 namespace node {
@@ -597,8 +598,18 @@ class MedianFilterWrapper : public SequentialDepthFilters::Filter {
     }
 
     void process(std::shared_ptr<dai::ImgFrame>& frame) override {
-        const int medianSize = static_cast<int>(params);
-        medianFilter.process(frame, medianSize);
+        if(params.enable) {
+            const int medianSize = static_cast<int>(params.median);
+            medianFilter.process(frame, medianSize);
+        }
+    }
+
+    void setParams(const FilterParams& params) override {
+        if(std::holds_alternative<MedianFilterParams>(params)) {
+            this->params = std::get<MedianFilterParams>(params);
+        } else {
+            throw std::runtime_error("Invalid filter params");
+        }
     }
 
    private:
@@ -617,7 +628,17 @@ class SpatialFilterWrapper : public SequentialDepthFilters::Filter {
     }
 
     void process(std::shared_ptr<dai::ImgFrame>& frame) override {
-        spatialFilter.process(frame);
+        if(params.enable) {
+            spatialFilter.process(frame);
+        }
+    }
+
+    void setParams(const FilterParams& params) override {
+        if(std::holds_alternative<SpatialFilterParams>(params)) {
+            this->params = std::get<SpatialFilterParams>(params);
+        } else {
+            throw std::runtime_error("Invalid filter params");
+        }
     }
 
    private:
@@ -632,9 +653,19 @@ class SpeckleFilterWrapper : public SequentialDepthFilters::Filter {
     }
 
     void process(std::shared_ptr<dai::ImgFrame>& frame) override {
-        const int speckleRange = params.speckleRange;
-        const int maxDiff = params.differenceThreshold;
-        speckleFilter.process(frame, speckleRange, maxDiff);
+        if(params.enable) {
+            const int speckleRange = params.speckleRange;
+            const int maxDiff = params.differenceThreshold;
+            speckleFilter.process(frame, speckleRange, maxDiff);
+        }
+    }
+
+    void setParams(const FilterParams& params) override {
+        if(std::holds_alternative<SpeckleFilterParams>(params)) {
+            this->params = std::get<SpeckleFilterParams>(params);
+        } else {
+            throw std::runtime_error("Invalid filter params");
+        }
     }
 
    private:
@@ -643,26 +674,39 @@ class SpeckleFilterWrapper : public SequentialDepthFilters::Filter {
 };
 
 class TemporalFilterWrapper : public SequentialDepthFilters::Filter {
-   public:
-    TemporalFilterWrapper(const TemporalFilterParams& params) : params(params), temporalFilter() {}
-
-    void process(std::shared_ptr<dai::ImgFrame>& frame) override {
-        if(!isInitialized) {
-            const size_t frameSize = frame->getHeight() * frame->getWidth() * sizeof(uint16_t);
-            const float alpha = params.alpha;
-            const int delta = params.delta;
-            const int persistencyMode = static_cast<int>(params.persistencyMode);
-            temporalFilter.Init(frameSize, alpha, delta, persistencyMode);
-            isInitialized = true;
-        }
-
-        temporalFilter.process(frame);
-    }
-
    private:
     bool isInitialized = false;
     TemporalFilterParams params;
     impl::TemporalFilter temporalFilter;
+
+   public:
+    TemporalFilterWrapper(const TemporalFilterParams& p) {
+        params = p;
+    }
+
+    void process(std::shared_ptr<dai::ImgFrame>& frame) override {
+        if(params.enable) {
+            if(!isInitialized) {
+                const size_t frameSize = frame->getHeight() * frame->getWidth() * sizeof(uint16_t);
+                const float alpha = params.alpha;
+                const int delta = params.delta;
+                const int persistencyMode = static_cast<int>(params.persistencyMode);
+                temporalFilter.Init(frameSize, alpha, delta, persistencyMode);
+            isInitialized = true;
+        }
+
+            temporalFilter.process(frame);
+        }
+    }
+
+    void setParams(const FilterParams& params) override {
+        if(std::holds_alternative<TemporalFilterParams>(params)) {
+            this->params = std::get<TemporalFilterParams>(params);
+            isInitialized = false;
+        } else {
+            throw std::runtime_error("Invalid filter params");
+        }
+    }
 };
 
 }  // namespace
@@ -701,6 +745,17 @@ void SequentialDepthFilters::run() {
 
     logger->debug("SequentialDepthFilters: Starting");
     while(isRunning()) {
+
+        // Set config
+        while(config.has()) {
+            auto configMsg = config.get<SequentialDepthFiltersConfig>();
+            auto index = configMsg->filterIndex;
+            if(index >= static_cast<int>(filters.size())) {
+                logger->error("SequentialDepthFilters: Invalid filter index: {}", index);
+                break;
+            }
+            filters[index]->setParams(configMsg->filterParams);
+        }
 
         // Get frame from input queue
         std::shared_ptr<dai::ImgFrame> frame = input.get<dai::ImgFrame>();

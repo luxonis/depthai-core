@@ -1,5 +1,7 @@
 #include <pybind11/stl.h>
+
 #include "Common.hpp"
+#include "DatatypeBindings.hpp"
 #include "depthai/pipeline/node/host/DepthFilters.hpp"
 
 void bind_depthfilters(pybind11::module& m, void* pCallstack) {
@@ -7,8 +9,18 @@ void bind_depthfilters(pybind11::module& m, void* pCallstack) {
     using namespace node;
 
     // bind properties
-    py::class_<SequentialDepthFiltersProperties> sequentialDepthFiltersProperties(m, "SequentialDepthFiltersProperties", DOC(dai, SequentialDepthFiltersProperties));
-    py::class_<DepthConfidenceFilterProperties> depthConfidenceFilterProperties(m, "DepthConfidenceFilterProperties", DOC(dai, DepthConfidenceFilterProperties));
+    py::class_<SequentialDepthFiltersProperties> sequentialDepthFiltersProperties(
+        m, "SequentialDepthFiltersProperties", DOC(dai, SequentialDepthFiltersProperties));
+    py::class_<DepthConfidenceFilterProperties> depthConfidenceFilterProperties(
+        m, "DepthConfidenceFilterProperties", DOC(dai, DepthConfidenceFilterProperties));
+
+    // bind config
+    py::class_<SequentialDepthFiltersConfig, Py<SequentialDepthFiltersConfig>, Buffer, std::shared_ptr<SequentialDepthFiltersConfig>>
+        sequentialDepthFiltersConfig(m, "SequentialDepthFiltersConfig", DOC(dai, SequentialDepthFiltersConfig));
+    sequentialDepthFiltersConfig.def(py::init<>());
+    sequentialDepthFiltersConfig.def_readwrite("filterIndex", &SequentialDepthFiltersConfig::filterIndex, DOC(dai, SequentialDepthFiltersConfig, filterIndex));
+    sequentialDepthFiltersConfig.def_readwrite(
+        "filterParams", &SequentialDepthFiltersConfig::filterParams, DOC(dai, SequentialDepthFiltersConfig, filterParams));
 
     // Add node bindings
     auto sequentialDepthFilters = ADD_NODE(SequentialDepthFilters);
@@ -28,25 +40,33 @@ void bind_depthfilters(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
 
     // StereoDepthFilterPipeline bindings
-    sequentialDepthFilters
-        .def_readonly("input", &SequentialDepthFilters::input, DOC(dai, node, SequentialDepthFilters, input))
+    sequentialDepthFilters.def_readonly("input", &SequentialDepthFilters::input, DOC(dai, node, SequentialDepthFilters, input))
         .def_readonly("output", &SequentialDepthFilters::output, DOC(dai, node, SequentialDepthFilters, output))
+        .def_readonly("config", &SequentialDepthFilters::config, DOC(dai, node, SequentialDepthFilters, config))
         .def("setRunOnHost", &SequentialDepthFilters::setRunOnHost, py::arg("runOnHost"), DOC(dai, node, SequentialDepthFilters, setRunOnHost))
         .def("runOnHost", &SequentialDepthFilters::runOnHost, DOC(dai, node, SequentialDepthFilters, runOnHost))
         .def("addFilter", &SequentialDepthFilters::addFilter, py::arg("filter"), DOC(dai, node, SequentialDepthFilters, addFilter));
 
+    // Add MedianFilterParams
+    py::class_<MedianFilterParams> medianFilterParams(m, "MedianFilterParams", DOC(dai, MedianFilterParams));
+    medianFilterParams.def(py::init<>());
+    medianFilterParams.def_readwrite("enable", &MedianFilterParams::enable, DOC(dai, MedianFilterParams, enable));
+    medianFilterParams.def_readwrite("median", &MedianFilterParams::median, DOC(dai, MedianFilterParams, median));
+
     // Just an alias for the filter stereo depth config parameters
-    sequentialDepthFilters.attr("MedianFilterParams") = m.attr("MedianFilter");
+    sequentialDepthFilters.attr("MedianFilterParams") = medianFilterParams;
     sequentialDepthFilters.attr("SpatialFilterParams") = m.attr("StereoDepthConfig").attr("PostProcessing").attr("SpatialFilter");
     sequentialDepthFilters.attr("SpeckleFilterParams") = m.attr("StereoDepthConfig").attr("PostProcessing").attr("SpeckleFilter");
     sequentialDepthFilters.attr("TemporalFilterParams") = m.attr("StereoDepthConfig").attr("PostProcessing").attr("TemporalFilter");
 
     // DepthConfidenceFilter bindings
-    depthConfidenceFilter
-        .def_readonly("depth", &DepthConfidenceFilter::depth, DOC(dai, node, DepthConfidenceFilter, depth))
+    depthConfidenceFilter.def_readonly("depth", &DepthConfidenceFilter::depth, DOC(dai, node, DepthConfidenceFilter, depth))
         .def_readonly("amplitude", &DepthConfidenceFilter::amplitude, DOC(dai, node, DepthConfidenceFilter, amplitude))
         .def_readonly("filtered_depth", &DepthConfidenceFilter::filtered_depth, DOC(dai, node, DepthConfidenceFilter, filtered_depth))
         .def_readonly("confidence", &DepthConfidenceFilter::confidence, DOC(dai, node, DepthConfidenceFilter, confidence))
-        .def("setConfidenceThreshold", &DepthConfidenceFilter::setConfidenceThreshold, py::arg("threshold"), DOC(dai, node, DepthConfidenceFilter, setConfidenceThreshold))
+        .def("setConfidenceThreshold",
+             &DepthConfidenceFilter::setConfidenceThreshold,
+             py::arg("threshold"),
+             DOC(dai, node, DepthConfidenceFilter, setConfidenceThreshold))
         .def("getConfidenceThreshold", &DepthConfidenceFilter::getConfidenceThreshold, DOC(dai, node, DepthConfidenceFilter, getConfidenceThreshold));
 }

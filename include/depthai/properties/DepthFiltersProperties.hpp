@@ -9,7 +9,13 @@
 
 namespace dai {
 
-typedef dai::StereoDepthConfig::MedianFilter MedianFilterParams;
+
+struct MedianFilterParams {
+    bool enable = false;
+    dai::StereoDepthConfig::MedianFilter median = dai::StereoDepthConfig::MedianFilter::KERNEL_3x3;
+};
+DEPTHAI_SERIALIZE_EXT(MedianFilterParams, enable, median);
+
 typedef dai::StereoDepthConfig::PostProcessing::SpatialFilter SpatialFilterParams;
 typedef dai::StereoDepthConfig::PostProcessing::SpeckleFilter SpeckleFilterParams;
 typedef dai::StereoDepthConfig::PostProcessing::TemporalFilter TemporalFilterParams;

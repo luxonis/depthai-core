@@ -77,7 +77,8 @@ EMSCRIPTEN_BINDINGS(depthai_js) {
         .value("ToFConfig", dai::DatatypeEnum::ToFConfig)
         .value("TrackedFeatures", dai::DatatypeEnum::TrackedFeatures)
         .value("BenchmarkReport", dai::DatatypeEnum::BenchmarkReport)
-        .value("MessageGroup", dai::DatatypeEnum::MessageGroup);
+        .value("MessageGroup", dai::DatatypeEnum::MessageGroup)
+        .value("SequentialDepthFiltersConfig", dai::DatatypeEnum::SequentialDepthFiltersConfig);
 
     // structs
     value_object<MessageHeader>("MessageHeader")
