@@ -98,6 +98,22 @@ class ObjectTracker : public NodeCRTP<Node, ObjectTracker, ObjectTrackerProperti
      * Whether tracker should take into consideration class label for tracking.
      */
     void setTrackingPerClass(bool trackingPerClass);
+
+    /**
+     * Specify occlusion ratio threshold.
+     * @param occlusionRatioThreshold Occlusion ratio threshold. Default 0.4.
+     */
+    void setOcclusionRatioThreshold(float occlusionRatioThreshold);
+    /**
+     * Specify tracklet lifespan.
+     * @param lifespan Tracklet lifespan. Default 120.
+     */
+    void setTrackletMaxLifespan(uint32_t lifespan);
+    /**
+     * Specify tracklet birth threshold.
+     * @param threshold Tracklet birth threshold. Default 3.
+     */
+    void setTrackletBirthThreshold(uint32_t birthThreshold);
 };
 
 }  // namespace node

@@ -36,5 +36,24 @@ void ObjectTracker::setTrackingPerClass(bool trackingPerClass) {
     properties.trackingPerClass = trackingPerClass;
 }
 
+void ObjectTracker::setOcclusionRatioThreshold(float occlusionRatioThreshold) {
+    properties.occlusionRatioThreshold = occlusionRatioThreshold;
+
+    if(occlusionRatioThreshold < 0.0f || occlusionRatioThreshold > 1.0f) {
+        throw std::runtime_error(fmt::format("Occlusion ratio threshold must be between 0 and 1, got {}", occlusionRatioThreshold));
+    }
+}
+
+void ObjectTracker::setTrackletMaxLifespan(uint32_t lifespan) {
+    properties.trackletMaxLifespan = lifespan;
+    if(lifespan < 1) {
+        throw std::runtime_error(fmt::format("Tracklet lifespan must be greater than 0, got {}", lifespan));
+    }
+}
+
+void ObjectTracker::setTrackletBirthThreshold(uint32_t birthThreshold) {
+    properties.trackletBirthThreshold = birthThreshold;
+}
+
 }  // namespace node
 }  // namespace dai
