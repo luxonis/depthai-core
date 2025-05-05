@@ -6,6 +6,7 @@
 
 #include "pipeline/datatype/AprilTagConfig.hpp"
 #include "properties/AprilTagProperties.hpp"
+#include "pipeline/ThreadedNodeImpl.hpp"
 
 #ifdef DEPTHAI_HAS_APRIL_TAG
 
@@ -72,7 +73,7 @@ void AprilTag::buildInternal() {
         // No device, default to host
         runOnHostVar = true;
     }
-    logger->info("AprilTag node running on host: {}", runOnHostVar);
+    pimpl->logger->info("AprilTag node running on host: {}", runOnHostVar);
 }
 
 #ifdef DEPTHAI_HAS_APRIL_TAG
@@ -178,6 +179,7 @@ void setDetectorProperties(apriltag_detector_t* td, const dai::AprilTagPropertie
 }
 
 void AprilTag::run() {
+    auto& logger = pimpl->logger;
     // Retrieve properties and initial config
     const dai::AprilTagProperties& properties = getProperties();
     dai::AprilTagConfig config = properties.initialConfig;

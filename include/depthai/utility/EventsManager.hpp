@@ -7,6 +7,7 @@
 #include <thread>
 #include <unordered_map>
 #include <vector>
+#include <atomic>
 
 #include "depthai/pipeline/datatype/ADatatype.hpp"
 #include "depthai/pipeline/datatype/EncodedFrame.hpp"

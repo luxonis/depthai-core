@@ -1,4 +1,5 @@
 #include "depthai/pipeline/node/BenchmarkOut.hpp"
+#include "pipeline/ThreadedNodeImpl.hpp"
 
 namespace dai {
 namespace node {
@@ -21,7 +22,7 @@ bool BenchmarkOut::runOnHost() const {
 
 void BenchmarkOut::run() {
     using namespace std::chrono;
-
+    auto& logger = pimpl->logger;
     logger->trace("Wait for the input message.");
     auto inMessage = input.get();
 

@@ -1,6 +1,5 @@
 #pragma once
 
-#include <spdlog/async_logger.h>
 
 #include <depthai/pipeline/DeviceNode.hpp>
 #include <depthai/pipeline/datatype/ImageManipConfigV2.hpp>
@@ -77,123 +76,7 @@ class ImageManipV2 : public DeviceNodeCRTP<DeviceNode, ImageManipV2, ImageManipP
 
     void run() override;
 
-    template <typename N, template <typename T> typename ImageManipBuffer, typename ImageManipData>
-    static void loop(N& node,
-                     const ImageManipConfigV2& initialConfig,
-                     std::shared_ptr<spdlog::async_logger> logger,
-                     std::function<size_t(const ImageManipConfigV2&, const ImgFrame&)> build,
-                     std::function<bool(std::shared_ptr<Memory>&, span<uint8_t>)> apply,
-                     std::function<void(const ImageManipConfigV2&, const ImgFrame&, ImgFrame&)> getFrame);
 };
-
-}  // namespace node
-}  // namespace dai
-
-namespace dai {
-namespace node {
-
-template <typename N, template <typename T> typename ImageManipBuffer, typename ImageManipData>
-void ImageManipV2::loop(N& node,
-                        const ImageManipConfigV2& initialConfig,
-                        std::shared_ptr<spdlog::async_logger> logger,
-                        std::function<size_t(const ImageManipConfigV2&, const ImgFrame&)> build,
-                        std::function<bool(std::shared_ptr<Memory>&, span<uint8_t>)> apply,
-                        std::function<void(const ImageManipConfigV2&, const ImgFrame&, ImgFrame&)> getFrame) {
-    using namespace std::chrono;
-    auto config = initialConfig;
-
-    std::shared_ptr<ImgFrame> inImage;
-
-    while(node.isRunning()) {
-        std::shared_ptr<ImageManipConfigV2> pConfig;
-        bool hasConfig = false;
-        bool needsImage = true;
-        bool skipImage = false;
-        if(node.inputConfig.getWaitForMessage()) {
-            pConfig = node.inputConfig.template get<ImageManipConfigV2>();
-            hasConfig = true;
-            if(inImage != nullptr && hasConfig && pConfig->getReusePreviousImage()) {
-                needsImage = false;
-            }
-            skipImage = pConfig->getSkipCurrentImage();
-        } else {
-            pConfig = node.inputConfig.template tryGet<ImageManipConfigV2>();
-            if(pConfig != nullptr) {
-                hasConfig = true;
-            }
-        }
-
-        if(needsImage) {
-            inImage = node.inputImage.template get<ImgFrame>();
-            if(inImage == nullptr) {
-                logger->warn("No input image, skipping frame");
-                continue;
-            }
-            if(!hasConfig) {
-                auto _pConfig = node.inputConfig.template tryGet<ImageManipConfigV2>();
-                if(_pConfig != nullptr) {
-                    pConfig = _pConfig;
-                    hasConfig = true;
-                }
-            }
-            if(skipImage) {
-                continue;
-            }
-        }
-
-        // if has new config, parse and check if any changes
-        if(hasConfig) {
-            config = *pConfig;
-        }
-        if(!node.inputConfig.getWaitForMessage() && config.getReusePreviousImage()) {
-            logger->warn("reusePreviousImage is only taken into account when inputConfig is synchronous");
-        }
-
-        auto startP = std::chrono::steady_clock::now();
-
-        auto t1 = steady_clock::now();
-        auto outputSize = build(config, *inImage);
-        auto t2 = steady_clock::now();
-
-        // Check the output image size requirements, and check whether pool has the size required
-        if(outputSize == 0) {
-            node.out.send(inImage);
-        } else if((long)outputSize <= (long)node.properties.outputFrameSize) {
-            auto outImage = std::make_shared<ImgFrame>();
-            auto outImageData = std::make_shared<ImageManipData>(node.properties.outputFrameSize);
-            outImage->data = outImageData;
-
-            bool success = true;
-            {
-                auto t3 = steady_clock::now();
-                success = apply(inImage->data, outImageData->getData());
-                auto t4 = steady_clock::now();
-
-                getFrame(config, *inImage, *outImage);
-
-                logger->trace("Build time: {}us, Process time: {}us, Total time: {}us, image manip id: {}",
-                              duration_cast<microseconds>(t2 - t1).count(),
-                              duration_cast<microseconds>(t4 - t3).count(),
-                              duration_cast<microseconds>(t4 - t1).count(),
-                              node.id);
-            }
-            if(!success) {
-                logger->error("Processing failed, potentially unsupported config");
-            }
-            node.out.send(outImage);
-        } else {
-            logger->error(
-                "Output image is bigger ({}B) than maximum frame size specified in properties ({}B) - skipping frame.\nPlease use the setMaxOutputFrameSize "
-                "API to explicitly config the [maximum] output size.",
-                outputSize,
-                node.properties.outputFrameSize);
-        }
-
-        // Update previousConfig of preprocessor, to be able to check if it needs to be updated
-        auto loopNanos = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - startP).count();
-        logger->trace("ImageManip | total process took {}ns ({}ms)", loopNanos, (double)loopNanos / 1e6);
-    }
-}
 
 }  // namespace node
 }  // namespace dai

@@ -1,9 +1,6 @@
 #pragma once
 
-#include <spdlog/async.h>
-#include <spdlog/async_logger.h>
-#include <spdlog/sinks/stdout_color_sinks.h>
-#include <spdlog/spdlog.h>
+#include <spimpl.h>
 
 #include "depthai/log/LogLevel.hpp"
 #include "depthai/pipeline/Node.hpp"
@@ -16,7 +13,6 @@ class ThreadedNode : public Node {
    private:
     JoiningThread thread;
     AtomicBool running{false};
-    static inline std::shared_ptr<spdlog::details::thread_pool> threadPool = std::make_shared<spdlog::details::thread_pool>(8192, 1);
 
    public:
     using Node::Node;
@@ -49,8 +45,6 @@ class ThreadedNode : public Node {
 
     // check if still running
     bool isRunning() const;
-    std::shared_ptr<spdlog::async_logger> logger =
-        std::make_shared<spdlog::async_logger>("ThreadedNode", std::make_shared<spdlog::sinks::stdout_color_sink_mt>(), threadPool);
 
     /**
      * @brief Sets the logging severity level for this node.
@@ -65,6 +59,10 @@ class ThreadedNode : public Node {
      * @returns Logging severity level
      */
     virtual dai::LogLevel getLogLevel() const;
+
+   protected:
+    class Impl;
+    spimpl::impl_ptr<Impl> pimpl;
 };
 
 }  // namespace dai

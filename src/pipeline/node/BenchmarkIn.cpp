@@ -1,9 +1,9 @@
 #include "depthai/pipeline/node/BenchmarkIn.hpp"
+#include "depthai/pipeline/datatype/BenchmarkReport.hpp"
+#include "pipeline/ThreadedNodeImpl.hpp"
+
 
 #include <chrono>
-
-#include "depthai/pipeline/datatype/BenchmarkReport.hpp"
-
 namespace dai {
 namespace node {
 
@@ -28,6 +28,7 @@ void BenchmarkIn::measureIndividualLatencies(bool attachLatencies) {
 }
 
 void BenchmarkIn::run() {
+    auto& logger = pimpl->logger;
     using namespace std::chrono;
 
     uint32_t numMessages = properties.reportEveryNMessages;

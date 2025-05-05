@@ -675,11 +675,12 @@ target_link_libraries(${TARGET_CORE_NAME}
     PUBLIC
         nlohmann_json::nlohmann_json
         libnop
-        spdlog::spdlog
-        yaml-cpp::yaml-cpp
     INTERFACE
         XLinkPublic
     PRIVATE
+        fmt::fmt
+        yaml-cpp::yaml-cpp
+        spdlog::spdlog
         XLink
         Threads::Threads
         BZip2::BZip2
@@ -688,6 +689,7 @@ target_link_libraries(${TARGET_CORE_NAME}
         httplib::httplib
         semver::semver
         magic_enum::magic_enum
+        liblzma::liblzma
 )
 
 if(DEPTHAI_ENABLE_MP4V2)
@@ -847,7 +849,7 @@ endif()
 ########################
 if(DEPTHAI_HAVE_PCL_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
         # Add depthai-core-pcl library and depthai::core::pcl alias
-        add_library(${TARGET_PCL_NAME} SHARED ${TARGET_PCL_SOURCES})
+        add_library(${TARGET_PCL_NAME} ${TARGET_PCL_SOURCES})
         add_library("${PROJECT_NAME}::${TARGET_PCL_ALIAS}" ALIAS ${TARGET_PCL_NAME})
         # Specifies name of generated IMPORTED target (set to alias)
         set_target_properties(${TARGET_PCL_NAME} PROPERTIES EXPORT_NAME ${TARGET_PCL_ALIAS})
@@ -896,7 +898,7 @@ if(DEPTHAI_RTABMAP_SUPPORT)
             SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
         endif()
         # Add depthai-rtabmap library and depthai::rtabmap alias
-        add_library(${TARGET_RTABMAP_NAME} SHARED
+        add_library(${TARGET_RTABMAP_NAME}
         src/rtabmap/CalibrationHandler.cpp
         src/rtabmap/TransformData.cpp
         src/rtabmap/RTABMapVIO.cpp src/rtabmap/RTABMapSLAM.cpp
@@ -955,7 +957,7 @@ if(DEPTHAI_BASALT_SUPPORT)
     if(BASALT_SUPPORT_AVAILABLE)
 
         # Add depthai-basalt library and depthai::basalt alias
-        add_library(${TARGET_BASALT_NAME} SHARED src/basalt/BasaltVIO.cpp )
+        add_library(${TARGET_BASALT_NAME} src/basalt/BasaltVIO.cpp )
         add_library("${PROJECT_NAME}::${TARGET_BASALT_ALIAS}" ALIAS ${TARGET_BASALT_NAME})
 
         # Specifies name of generated IMPORTED target (set to alias)

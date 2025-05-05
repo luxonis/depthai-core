@@ -4,6 +4,8 @@
 #include <cstdint>
 #include <memory>
 
+#include "pipeline/ThreadedNodeImpl.hpp"
+
 #include "depthai/config/config.hpp"
 #include "depthai/pipeline/datatype/DatatypeEnum.hpp"
 #include "depthai/pipeline/datatype/EncodedFrame.hpp"
@@ -29,6 +31,7 @@ using VideoCodec = dai::utility::VideoRecorder::VideoCodec;
 
 void RecordVideo::run() {
 #ifdef DEPTHAI_ENABLE_PROTOBUF
+    auto& logger = pimpl->logger;
     std::unique_ptr<utility::VideoRecorder> videoRecorder;
 
     #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT

@@ -1,7 +1,5 @@
 #pragma once
 
-#include <spdlog/async_logger.h>
-
 #include "depthai/pipeline/ThreadedNode.hpp"
 
 namespace dai {

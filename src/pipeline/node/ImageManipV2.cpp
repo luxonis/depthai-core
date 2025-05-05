@@ -1,6 +1,6 @@
 #include "depthai/pipeline/node/ImageManipV2.hpp"
-
 #include "depthai/utility/ImageManipV2Impl.hpp"
+#include "pipeline/ThreadedNodeImpl.hpp"
 
 namespace dai {
 
@@ -10,13 +10,13 @@ ImageManipV2::ImageManipV2(std::unique_ptr<Properties> props)
     : DeviceNodeCRTP<DeviceNode, ImageManipV2, ImageManipPropertiesV2>(std::move(props)), initialConfig(properties.initialConfig) {}
 
 void ImageManipV2::run() {
-    impl::ImageManipOperations<impl::_ImageManipBuffer, impl::_ImageManipMemory> manip(logger);
+    impl::ImageManipOperations<impl::_ImageManipBuffer, impl::_ImageManipMemory> manip{};
     manip.init();
     auto iConf = runOnHost() ? initialConfig : properties.initialConfig;
-    loop<ImageManipV2, impl::_ImageManipBuffer, impl::_ImageManipMemory>(
+    impl::loop<ImageManipV2, impl::_ImageManipBuffer, impl::_ImageManipMemory>(
         *this,
         iConf,
-        logger,
+        pimpl->logger,
         [&](const ImageManipConfigV2& config, const ImgFrame& frame) {
             auto srcFrameSpecs = impl::getSrcFrameSpecs(frame.fb);
             manip.build(config.base, config.outputFrameType, srcFrameSpecs, frame.getType());
