@@ -145,6 +145,7 @@ void RecordVideo::run() {
 
 void RecordMetadataOnly::run() {
 #ifdef DEPTHAI_ENABLE_PROTOBUF
+    auto& logger = pimpl->logger;
     utility::ByteRecorder byteRecorder;
 
     DatatypeEnum streamType = DatatypeEnum::ADatatype;

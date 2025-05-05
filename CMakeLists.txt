@@ -916,6 +916,8 @@ if(DEPTHAI_RTABMAP_SUPPORT)
         else()
             target_link_libraries(${TARGET_RTABMAP_NAME} PUBLIC rtabmap::core ${TARGET_OPENCV_NAME} ${TARGET_PCL_NAME} ${THIRDPARTY_RTABMAP_LIBRARIES})
         endif()
+
+        target_include_directories(${TARGET_RTABMAP_NAME} PRIVATE "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/src>")
         # Add public compile definition indicating that RTABMap support is available
         set(DEPTHAI_HAVE_RTABMAP_SUPPORT ON)
 

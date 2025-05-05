@@ -1,4 +1,5 @@
 #include "depthai/rtabmap/RTABMapSLAM.hpp"
+#include "pipeline/ThreadedNodeImpl.hpp"
 
 #include <pcl/filters/filter.h>
 #include <pcl/point_cloud.h>
@@ -36,7 +37,7 @@ RTABMapSLAM::~RTABMapSLAM() {
         if(databasePath.empty()) {
             databasePath = "/tmp/rtabmap.db";
         }
-        logger->info("Saving database at {}", databasePath);
+        pimpl->logger->info("Saving database at {}", databasePath);
         rtabmap.close(true, databasePath);
     }
 }
@@ -123,7 +124,7 @@ void RTABMapSLAM::run() {
                 if(success) {
                     stats = rtabmap.getStatistics();
                     if(rtabmap.getLoopClosureId() > 0) {
-                        logger->debug("Loop closure detected! last loop closure id = {}", rtabmap.getLoopClosureId());
+                        pimpl->logger->debug("Loop closure detected! last loop closure id = {}", rtabmap.getLoopClosureId());
                     }
                     odomCorr = stats.mapCorrection();
 
@@ -153,7 +154,7 @@ void RTABMapSLAM::run() {
         if(saveDatabasePeriodically && std::chrono::duration<double>(std::chrono::steady_clock::now() - startTime).count() > databaseSaveInterval) {
             rtabmap.close(true, databasePath);
             rtabmap.init(rtabParams, databasePath);
-            logger->info("Database saved at {}", databasePath);
+            pimpl->logger->info("Database saved at {}", databasePath);
             startTime = std::chrono::steady_clock::now();
         }
     }
