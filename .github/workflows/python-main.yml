@@ -628,9 +628,9 @@ jobs:
           ARTIFACTORY_PASS: ${{ secrets.ARTIFACTORY_PASS }}
   
   dispatch-bom-tests:
-    needs: [build-linux-x86_64]
+    needs: [build-linux-x86_64, deploy]
     runs-on: ubuntu-latest
-    if: github.event_name == 'push'
+    if: ${{ github.event_name == 'push' && !failure() && !cancelled() }}
     outputs:
       runner_conclusion: ${{ steps.get_runner.outputs.runner_conclusion }}
     steps:
@@ -644,7 +644,6 @@ jobs:
         id: get_version
         run: |
           if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
-            sleep 300 #allow 5 mins for deploy to finishes TODO: better solution
             VERSION=$(cd bindings/python && python3.8 -c "import find_version as v; print(v.get_package_version())")
           else
             VERSION=$(cd bindings/python && python3.8 -c "import find_version as v; print(v.get_package_dev_version('${{github.sha}}'))")
@@ -658,7 +657,7 @@ jobs:
         id: return_dispatch
         with:
           token: ${{ secrets.BOM_GITHUB_TOKEN }}
-          ref: "experiments"
+          ref: "main"
           repo: "luxonis-bom"
           owner: "luxonis"
           workflow: "dispatch_main.yml"
