@@ -1,7 +1,5 @@
 #pragma once
 
-#include <spdlog/logger.h>
-
 #include <cstdint>
 
 
