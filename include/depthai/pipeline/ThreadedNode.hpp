@@ -60,7 +60,6 @@ class ThreadedNode : public Node {
      */
     virtual dai::LogLevel getLogLevel() const;
 
-   protected:
     class Impl;
     spimpl::impl_ptr<Impl> pimpl;
 };

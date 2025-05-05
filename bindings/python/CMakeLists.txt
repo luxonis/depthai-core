@@ -275,7 +275,7 @@ else()
 endif()
 
 # Add include directory
-target_include_directories(${TARGET_NAME} PRIVATE src ${DOCSTRINGS_INCLUDE_PLACEHOLDER_DIR})
+target_include_directories(${TARGET_NAME} PRIVATE src ${DOCSTRINGS_INCLUDE_PLACEHOLDER_DIR} "${CMAKE_CURRENT_LIST_DIR}/../../src")
 if(DEPTHAI_MERGED_TARGET)
     target_include_directories(${TARGET_NAME} PRIVATE external/pybind11_opencv_numpy)
 endif()

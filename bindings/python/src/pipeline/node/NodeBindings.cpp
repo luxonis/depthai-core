@@ -10,6 +10,7 @@
 #include "depthai/pipeline/NodeGroup.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/ThreadedNode.hpp"
+#include "pipeline/ThreadedNodeImpl.hpp"
 
 // Libraries
 #include "hedley/hedley.h"
@@ -432,13 +433,12 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
              py::return_value_policy::reference_internal,
              DOC(dai, Node, getAssetManager));
 
-    // TODO(themarpe) - refactor, threaded node could be separate from Node
-    pyThreadedNode.def("trace", [](dai::ThreadedNode& node, const std::string& msg) { node.logger->trace(msg); })
-        .def("debug", [](dai::ThreadedNode& node, const std::string& msg) { node.logger->debug(msg); })
-        .def("info", [](dai::ThreadedNode& node, const std::string& msg) { node.logger->info(msg); })
-        .def("warn", [](dai::ThreadedNode& node, const std::string& msg) { node.logger->warn(msg); })
-        .def("error", [](dai::ThreadedNode& node, const std::string& msg) { node.logger->error(msg); })
-        .def("critical", [](dai::ThreadedNode& node, const std::string& msg) { node.logger->critical(msg); })
+    pyThreadedNode.def("trace", [](dai::ThreadedNode& node, const std::string& msg) { node.pimpl->logger->trace(msg); })
+        .def("debug", [](dai::ThreadedNode& node, const std::string& msg) { node.pimpl->logger->debug(msg); })
+        .def("info", [](dai::ThreadedNode& node, const std::string& msg) { node.pimpl->logger->info(msg); })
+        .def("warn", [](dai::ThreadedNode& node, const std::string& msg) { node.pimpl->logger->warn(msg); })
+        .def("error", [](dai::ThreadedNode& node, const std::string& msg) { node.pimpl->logger->error(msg); })
+        .def("critical", [](dai::ThreadedNode& node, const std::string& msg) { node.pimpl->logger->critical(msg); })
         .def("isRunning", &ThreadedNode::isRunning, DOC(dai, ThreadedNode, isRunning))
         .def("setLogLevel", &ThreadedNode::setLogLevel, DOC(dai, ThreadedNode, setLogLevel))
         .def("getLogLevel", &ThreadedNode::getLogLevel, DOC(dai, ThreadedNode, getLogLevel));
