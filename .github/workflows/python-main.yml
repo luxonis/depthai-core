@@ -657,7 +657,7 @@ jobs:
         id: return_dispatch
         with:
           token: ${{ secrets.BOM_GITHUB_TOKEN }}
-          ref: "main"
+          ref: "experiments"
           repo: "luxonis-bom"
           owner: "luxonis"
           workflow: "dispatch_main.yml"
