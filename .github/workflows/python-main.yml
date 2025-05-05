@@ -628,7 +628,7 @@ jobs:
           ARTIFACTORY_PASS: ${{ secrets.ARTIFACTORY_PASS }}
   
   dispatch-bom-tests:
-    needs: [build-linux-x86_64]
+    #needs: [build-linux-x86_64]
     runs-on: ubuntu-latest
     if: github.event_name == 'push'
     outputs:
@@ -648,6 +648,7 @@ jobs:
             VERSION=$(cd bindings/python && python3.8 -c "import find_version as v; print(v.get_package_version())")
           else
             VERSION=$(cd bindings/python && python3.8 -c "import find_version as v; print(v.get_package_dev_version('${{github.sha}}'))")
+          fi
           echo "VERSION=$VERSION"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
@@ -663,7 +664,7 @@ jobs:
           workflow: "dispatch_main.yml"
           workflow_timeout_seconds: 120
           workflow_job_steps_retry_seconds: 2
-          workflow_inputs: '{"depthai": "${{ github.ref_name }}", "depthai_version_dependencies": "${{ steps.get_version.outputs.version }}", "depthai_nodes": "latest", "luxonis_os": "latest", "test_experiments": "true" }'
+          workflow_inputs: '{"depthai": "${{ github.ref_name }}", "depthai_version_dependencies": "3.0.0a15.dev0+e9ff99575fa290bede26162354ff1fd2b3e002ee", "depthai_nodes": "latest", "luxonis_os": "latest", "test_experiments": "true" }'
 
       - name: Wait for the dispatched workflow to complete
         id: get_runner
