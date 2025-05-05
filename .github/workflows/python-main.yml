@@ -636,10 +636,18 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.8'
+
       - name: Get dev version from script
         id: get_version
         run: |
-          VERSION=$(cd bindings/python && python3.8 -c "import find_version as v; print(v.get_package_dev_version('${{github.sha}}'))")
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            sleep 300 #allow 5 mins for deploy to finishes TODO: better solution
+            VERSION=$(cd bindings/python && python3.8 -c "import find_version as v; print(v.get_package_version())")
+          else
+            VERSION=$(cd bindings/python && python3.8 -c "import find_version as v; print(v.get_package_dev_version('${{github.sha}}'))")
           echo "VERSION=$VERSION"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
