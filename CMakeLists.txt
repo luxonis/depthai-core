@@ -276,6 +276,7 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/datatype/PointCloudConfig.cpp
     src/pipeline/datatype/PointCloudData.cpp
     src/pipeline/datatype/MessageGroup.cpp
+    src/pipeline/datatype/ObjectTrackerConfig.cpp
     src/utility/H26xParsers.cpp
     src/utility/Initialization.cpp
     src/utility/Resources.cpp

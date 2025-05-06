@@ -9,7 +9,7 @@ ObjectTracker::ObjectTracker(const std::shared_ptr<PipelineImpl>& par, int64_t n
     : ObjectTracker(par, nodeId, std::make_unique<ObjectTracker::Properties>()) {}
 ObjectTracker::ObjectTracker(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
     : NodeCRTP<Node, ObjectTracker, ObjectTrackerProperties>(par, nodeId, std::move(props)) {
-    setInputRefs({&inputTrackerFrame, &inputDetectionFrame, &inputDetections});
+    setInputRefs({&inputTrackerFrame, &inputDetectionFrame, &inputDetections, &inputConfig});
     setOutputRefs({&out, &passthroughTrackerFrame, &passthroughDetectionFrame, &passthroughDetections});
 }
 
