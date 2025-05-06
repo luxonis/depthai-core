@@ -137,7 +137,7 @@ void MedianFilter::process(std::shared_ptr<dai::ImgFrame>& frame, int medianSize
 /***********************************************************************************************************/
 
 template <typename T>
-void recursive_filter_horizontal(SpatialFilterParams* params) {
+void recursiveFilterHorizontal(SpatialFilterParams* params) {
     void* image_data = (void*)params->currentFrame->data->getData().data();
     float alpha = params->alpha;
     int _width = params->currentFrame->getWidth();
@@ -220,7 +220,7 @@ void recursive_filter_horizontal(SpatialFilterParams* params) {
 }
 
 template <typename T>
-void recursive_filter_vertical(SpatialFilterParams* params) {
+void recursiveFilterVertical(SpatialFilterParams* params) {
     void* image_data = (void*)params->currentFrame->data->getData().data();
     float alpha = params->alpha;
     int _width = params->currentFrame->getWidth();
@@ -306,11 +306,11 @@ void SpatialFilter::process(std::shared_ptr<dai::ImgFrame>& frame) {
 
     for(int i = 0; i < params.iterationNr; i++) {
         if(frame->getType() == dai::ImgFrame::Type::RAW16) {
-            recursive_filter_horizontal<uint16_t>(&params);
-            recursive_filter_vertical<uint16_t>(&params);
+            recursiveFilterHorizontal<uint16_t>(&params);
+            recursiveFilterVertical<uint16_t>(&params);
         } else if(frame->getType() == dai::ImgFrame::Type::RAW8) {
-            recursive_filter_horizontal<uint8_t>(&params);
-            recursive_filter_vertical<uint8_t>(&params);
+            recursiveFilterHorizontal<uint8_t>(&params);
+            recursiveFilterVertical<uint8_t>(&params);
         } else {
             throw std::runtime_error("SpatialFilter: Unsupported frame type. Supported types are RAW8 and RAW16.");
         }
