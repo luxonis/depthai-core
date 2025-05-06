@@ -877,7 +877,7 @@ void DepthConfidenceFilter::run() {
         applyDepthConfidenceFilter(depthFrame, amplitudeFrame, filteredDepthFrame, confidenceFrame, properties.confidenceThreshold);
 
         // Send results
-        filtered_depth.send(filteredDepthFrame);
+        filteredDepth.send(filteredDepthFrame);
         confidence.send(confidenceFrame);
     }
 }

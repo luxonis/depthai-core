@@ -67,7 +67,7 @@ void bind_depthfilters(pybind11::module& m, void* pCallstack) {
     // DepthConfidenceFilter bindings
     depthConfidenceFilter.def_readonly("depth", &DepthConfidenceFilter::depth, DOC(dai, node, DepthConfidenceFilter, depth))
         .def_readonly("amplitude", &DepthConfidenceFilter::amplitude, DOC(dai, node, DepthConfidenceFilter, amplitude))
-        .def_readonly("filtered_depth", &DepthConfidenceFilter::filtered_depth, DOC(dai, node, DepthConfidenceFilter, filtered_depth))
+        .def_readonly("filteredDepth", &DepthConfidenceFilter::filteredDepth, DOC(dai, node, DepthConfidenceFilter, filteredDepth))
         .def_readonly("confidence", &DepthConfidenceFilter::confidence, DOC(dai, node, DepthConfidenceFilter, confidence))
         .def_readonly("config", &DepthConfidenceFilter::config, DOC(dai, node, DepthConfidenceFilter, config))
         .def("setConfidenceThreshold",

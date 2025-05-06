@@ -75,7 +75,7 @@ class DepthConfidenceFilter : public DeviceNodeCRTP<DeviceNode, DepthConfidenceF
                            {{{DatatypeEnum::ImgFrame, true}}},
                            Node::DEFAULT_WAIT_FOR_MESSAGE}};
 
-    Node::Output filtered_depth{*this, {"filtered_depth", Node::DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
+    Node::Output filteredDepth{*this, {"filteredDepth", Node::DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
     Node::Output confidence{*this, {"confidence", Node::DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     Node::Input config{*this,
