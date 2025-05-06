@@ -314,13 +314,13 @@ class ImgFrame : public Buffer, public ProtoSerializable {
      * Convience function to set the data of the ImgFrame
      * @param data data to set
      */
-    ImgFrame& setDataFrom(const ImgFrame& sourceFrame);
+    ImgFrame& copyDataFrom(const ImgFrame& sourceFrame);
 
     /**
      * Convience function to set the data of the ImgFrame
      * @param data data to set
      */
-    ImgFrame& setDataFrom(const std::shared_ptr<ImgFrame>& sourceFrame);
+    ImgFrame& copyDataFrom(const std::shared_ptr<ImgFrame>& sourceFrame);
 
     /**
      * Create a clone of the ImgFrame with metadata and data copied

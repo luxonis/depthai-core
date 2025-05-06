@@ -1,6 +1,7 @@
 #include "depthai/pipeline/node/host/DepthFilters.hpp"
 
 #include <cmath>
+#include <cstdint>
 #include <opencv2/opencv.hpp>
 
 #include "depthai/depthai.hpp"
@@ -786,9 +787,6 @@ void DepthConfidenceFilter::applyDepthConfidenceFilter(std::shared_ptr<ImgFrame>
                                                        std::shared_ptr<ImgFrame> filteredDepthFrame,
                                                        std::shared_ptr<ImgFrame> confidenceFrame,
                                                        float threshold) {
-    const int height = depthFrame->getHeight();
-    const int width = depthFrame->getWidth();
-
     auto getCvType = [](ImgFrame::Type type) -> int {
         if(type == ImgFrame::Type::RAW8) {
             return CV_8UC1;
@@ -802,20 +800,24 @@ void DepthConfidenceFilter::applyDepthConfidenceFilter(std::shared_ptr<ImgFrame>
         throw std::runtime_error("DepthConfidenceFilter: Unsupported frame type");
     };
 
-    // Create an OpenCV wrapper for frames for easier processing
+    const int height = depthFrame->getHeight();
+    const int width = depthFrame->getWidth();
+
+    // OpenCV wrappers for easier frame manipulation
     cv::Mat depth(height, width, getCvType(depthFrame->getType()), depthFrame->getData().data());
     cv::Mat amplitude(height, width, getCvType(amplitudeFrame->getType()), amplitudeFrame->getData().data());
     cv::Mat filteredDepth(height, width, getCvType(filteredDepthFrame->getType()), filteredDepthFrame->getData().data());
     cv::Mat confidence(height, width, getCvType(confidenceFrame->getType()), confidenceFrame->getData().data());
 
+    // Convert depth and amplitude values to float32 = common type
     cv::Mat depthFloat, amplitudeFloat;
     depth.convertTo(depthFloat, CV_32F);
     amplitude.convertTo(amplitudeFloat, CV_32F);
 
     for(int i = 0; i < height; i++) {
         for(int j = 0; j < width; j++) {
-            float a = amplitudeFloat.at<float>(i, j);
-            float d = depthFloat.at<float>(i, j);
+            const float a = amplitudeFloat.at<float>(i, j);
+            const float d = depthFloat.at<float>(i, j);
 
             // Avoid division by zero or very small depth values
             float conf;
@@ -823,18 +825,18 @@ void DepthConfidenceFilter::applyDepthConfidenceFilter(std::shared_ptr<ImgFrame>
                 conf = 0.0f;
             } else {
                 // Corrected formula: amplitude / sqrt(depth / 2.0)
-                // Higher amplitude → higher confidence
-                // Higher depth → slightly lower confidence
+                // Higher amplitude --> higher confidence
+                // Higher depth --> slightly lower confidence
                 conf = a / std::sqrt(d / 2.0f);
             }
 
-            confidence.at<float>(i, j) = conf;
+            confidence.at<std::uint16_t>(i, j) = static_cast<std::uint16_t>(conf);
 
-            // Invalidate pixel if confidence is below the threshold
+            // Invalidate pixel if confidence is below threshold
             if(conf < threshold) {
-                filteredDepth.at<float>(i, j) = 0;  // np.nan
+                filteredDepth.at<std::uint16_t>(i, j) = std::numeric_limits<std::uint16_t>::max();
             } else {
-                filteredDepth.at<float>(i, j) = d;
+                filteredDepth.at<std::uint16_t>(i, j) = static_cast<std::uint16_t>(d);
             }
         }
     }
@@ -842,7 +844,7 @@ void DepthConfidenceFilter::applyDepthConfidenceFilter(std::shared_ptr<ImgFrame>
 
 void DepthConfidenceFilter::run() {
     while(isRunning()) {
-        // Update threshold
+        // Update threshold dynamically
         while(config.has()) {
             auto configMsg = config.get<DepthConfidenceFilterConfig>();
             properties.confidenceThreshold = configMsg->confidenceThreshold;
@@ -865,17 +867,16 @@ void DepthConfidenceFilter::run() {
         confidenceFrame->setMetadata(depthFrame);
 
         // Allocate memory for output frames
-        filteredDepthFrame->data->setSize(depthFrame->getData().size() * sizeof(float));
-        confidenceFrame->data->setSize(depthFrame->getData().size() * sizeof(float));
+        filteredDepthFrame->data->setSize(depthFrame->getData().size() * sizeof(std::uint16_t));
+        confidenceFrame->data->setSize(depthFrame->getData().size() * sizeof(std::uint16_t));
 
-        // Set type to RAW32 = 4 bytes per pixel = float
-        filteredDepthFrame->setType(ImgFrame::Type::RAW32);
-        confidenceFrame->setType(ImgFrame::Type::RAW32);
+        filteredDepthFrame->setType(ImgFrame::Type::RAW16);
+        confidenceFrame->setType(ImgFrame::Type::RAW16);
 
-        // Apply the filter
+        // Apply filter
         applyDepthConfidenceFilter(depthFrame, amplitudeFrame, filteredDepthFrame, confidenceFrame, properties.confidenceThreshold);
 
-        // Send the results
+        // Send results
         filtered_depth.send(filteredDepthFrame);
         confidence.send(confidenceFrame);
     }
