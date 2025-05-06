@@ -140,10 +140,9 @@ template <typename T>
 void recursive_filter_horizontal(SpatialFilterParams* params) {
     void* image_data = (void*)params->currentFrame->data->getData().data();
     float alpha = params->alpha;
-    float deltaZ = params->delta;
     int _width = params->currentFrame->getWidth();
     int _height = params->currentFrame->getHeight();
-    size_t _holes_filling_radius = params->holesFillingRadius;
+    size_t _holesFillingRadius = params->holesFillingRadius;
 
     // Handle conversions for invalid input data
     bool fp = (std::is_floating_point<T>::value);
@@ -152,34 +151,34 @@ void recursive_filter_horizontal(SpatialFilterParams* params) {
     const float round = fp ? 0.f : 0.5f;
     // define invalid inputs
     const T valid_threshold = fp ? static_cast<T>(std::numeric_limits<T>::epsilon()) : static_cast<T>(1);
-    const T delta_z = static_cast<T>(deltaZ);
+    const T deltaZ = static_cast<T>(params->delta);
 
     auto image = reinterpret_cast<T*>(image_data);
-    size_t cur_fill = 0;
+    size_t currentFill = 0;
 
     for(int v = 0; v < _height; v++) {
         // left to right
         T* im = image + v * _width;
         T val0 = im[0];
-        cur_fill = 0;
+        currentFill = 0;
 
         for(int u = 1; u < _width - 1; u++) {
             T val1 = im[1];
 
             if(fabs(val0) >= valid_threshold) {
                 if(fabs(val1) >= valid_threshold) {
-                    cur_fill = 0;
+                    currentFill = 0;
                     T diff = static_cast<T>(fabs(val1 - val0));
 
-                    if(diff >= valid_threshold && diff <= delta_z) {
+                    if(diff >= valid_threshold && diff <= deltaZ) {
                         float filtered = val1 * alpha + val0 * (1.0f - alpha);
                         val1 = static_cast<T>(filtered + round);
                         im[1] = val1;
                     }
                 } else  // Only the old value is valid - appy holes filling
                 {
-                    if(_holes_filling_radius) {
-                        if(++cur_fill < _holes_filling_radius) im[1] = val1 = val0;
+                    if(_holesFillingRadius) {
+                        if(++currentFill < _holesFillingRadius) im[1] = val1 = val0;
                     }
                 }
             }
@@ -191,25 +190,25 @@ void recursive_filter_horizontal(SpatialFilterParams* params) {
         // right to left
         im = image + (v + 1) * _width - 2;  // end of row - two pixels
         T val1 = im[1];
-        cur_fill = 0;
+        currentFill = 0;
 
         for(int u = _width - 1; u > 0; u--) {
             T val0 = im[0];
 
             if(val1 >= valid_threshold) {
                 if(val0 > valid_threshold) {
-                    cur_fill = 0;
+                    currentFill = 0;
                     T diff = static_cast<T>(fabs(val1 - val0));
 
-                    if(diff <= delta_z) {
+                    if(diff <= deltaZ) {
                         float filtered = val0 * alpha + val1 * (1.0f - alpha);
                         val0 = static_cast<T>(filtered + round);
                         im[0] = val0;
                     }
                 } else  // 'inertial' hole filling
                 {
-                    if(_holes_filling_radius) {
-                        if(++cur_fill < _holes_filling_radius) im[0] = val0 = val1;
+                    if(_holesFillingRadius) {
+                        if(++currentFill < _holesFillingRadius) im[0] = val0 = val1;
                     }
                 }
             }
@@ -224,7 +223,6 @@ template <typename T>
 void recursive_filter_vertical(SpatialFilterParams* params) {
     void* image_data = (void*)params->currentFrame->data->getData().data();
     float alpha = params->alpha;
-    float deltaZ = params->delta;
     int _width = params->currentFrame->getWidth();
     int _height = params->currentFrame->getHeight();
 
@@ -235,7 +233,7 @@ void recursive_filter_vertical(SpatialFilterParams* params) {
     const float round = fp ? 0.f : 0.5f;
     // define invalid range
     const T valid_threshold = fp ? static_cast<T>(std::numeric_limits<T>::epsilon()) : static_cast<T>(1);
-    const T delta_z = static_cast<T>(deltaZ);
+    const T deltaZ = static_cast<T>(params->delta);
 
     auto image = reinterpret_cast<T*>(image_data);
 
@@ -254,7 +252,7 @@ void recursive_filter_vertical(SpatialFilterParams* params) {
             // if ((fabs(im0) >= valid_threshold) && (fabs(imw) >= valid_threshold))
             {
                 T diff = static_cast<T>(fabs(im0 - imw));
-                if(diff < delta_z) {
+                if(diff < deltaZ) {
                     float filtered = imw * alpha + im0 * (1.f - alpha);
                     im[_width] = static_cast<T>(filtered + round);
                 }
@@ -272,7 +270,7 @@ void recursive_filter_vertical(SpatialFilterParams* params) {
 
             if((fabs(im0) >= valid_threshold) && (fabs(imw) >= valid_threshold)) {
                 T diff = static_cast<T>(fabs(im0 - imw));
-                if(diff < delta_z) {
+                if(diff < deltaZ) {
                     float filtered = im0 * alpha + imw * (1.f - alpha);
                     im[0] = static_cast<T>(filtered + round);
                 }
@@ -359,12 +357,10 @@ void processImpl(TemporalFilterParams* params) {
     uint8_t* persistenceMap = params->persistenceMap;
     static_assert((std::is_arithmetic<T>::value), "temporal filter assumes numeric types");
 
-    const bool fp = (std::is_floating_point<T>::value);
-
-    T delta_z = static_cast<T>(delta);
+    T deltaZ = static_cast<T>(delta);
 
     auto frame = reinterpret_cast<T*>(currentFrame->data->getData().data());
-    auto _last_frame = reinterpret_cast<T*>(accumulatorFrame);
+    auto _lastFrame = reinterpret_cast<T*>(accumulatorFrame);
     unsigned char mask = 1 << currFrameIdx;
 
     size_t frameSize = currentFrame->getWidth() * currentFrame->getHeight();
@@ -373,33 +369,33 @@ void processImpl(TemporalFilterParams* params) {
 
     // pass one -- go through image and update all
     for(size_t i = 0; i < frameSize; i++) {
-        T cur_val = frame[i];
-        T prev_val = _last_frame[i];
+        T currentVal = frame[i];
+        T previousVal = _lastFrame[i];
 
-        if(cur_val) {
-            if(!prev_val) {
-                _last_frame[i] = cur_val;
+        if(currentVal) {
+            if(!previousVal) {
+                _lastFrame[i] = currentVal;
                 history[i] = mask;
             } else {  // old and new val
-                T diff = static_cast<T>(fabs(cur_val - prev_val));
+                T diff = static_cast<T>(fabs(currentVal - previousVal));
 
-                if(diff < delta_z) {  // old and new val agree
+                if(diff < deltaZ) {  // old and new val agree
                     history[i] |= mask;
-                    float filtered = alpha * cur_val + oneMinusAlpha * prev_val;
+                    float filtered = alpha * currentVal + oneMinusAlpha * previousVal;
                     T result = static_cast<T>(filtered);
                     frame[i] = result;
-                    _last_frame[i] = result;
+                    _lastFrame[i] = result;
                 } else {
-                    _last_frame[i] = cur_val;
+                    _lastFrame[i] = currentVal;
                     history[i] = mask;
                 }
             }
-        } else {            // no cur_val
-            if(prev_val) {  // only case we can help
+        } else {            // no currentVal
+            if(previousVal) {  // only case we can help
                 unsigned char hist = history[i];
                 unsigned char classification = persistenceMap[hist];
                 if(classification & mask) {  // we have had enough samples lately
-                    frame[i] = prev_val;
+                    frame[i] = previousVal;
                 }
             }
             history[i] &= ~mask;
