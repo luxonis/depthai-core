@@ -22,7 +22,7 @@ class MedianFilter {
     ~MedianFilter();
     int Init();
 
-    void process(std::shared_ptr<dai::ImgFrame>& disparityFrame, int medianSize);
+    void process(std::shared_ptr<dai::ImgFrame>& frame, int medianSize);
 };
 
 struct SpatialFilterParams {
@@ -40,7 +40,7 @@ class SpatialFilter {
     ~SpatialFilter();
     int Init(float alpha, int delta, int iterationNr, int holesFillingRadius);
 
-    void process(std::shared_ptr<dai::ImgFrame>& disparityFrame);
+    void process(std::shared_ptr<dai::ImgFrame>& frame);
 
    private:
     SpatialFilterParams params = {};
@@ -52,7 +52,7 @@ class SpeckleFilter {
     ~SpeckleFilter();
     int Init();
 
-    void process(std::shared_ptr<dai::ImgFrame>& disparityFrame, int speckleRange, int maxDiff);
+    void process(std::shared_ptr<dai::ImgFrame>& frame, int speckleRange, int maxDiff);
 };
 
 constexpr const size_t PERSISTENCY_LUT_SIZE = 256;
@@ -75,7 +75,7 @@ class TemporalFilter {
     ~TemporalFilter();
     int Init(size_t frameSize, float alpha, int delta, int persistenceMode);
 
-    void process(std::shared_ptr<dai::ImgFrame>& disparityFrame);
+    void process(std::shared_ptr<dai::ImgFrame>& frame);
 
    private:
     struct MemSections {
@@ -109,17 +109,17 @@ int MedianFilter::Init() {
 
 MedianFilter::~MedianFilter() {}
 
-void MedianFilter::process(std::shared_ptr<dai::ImgFrame>& disparityFrame, int medianSize) {
+void MedianFilter::process(std::shared_ptr<dai::ImgFrame>& frame, int medianSize) {
     int cvtype;
-    if(disparityFrame->getType() == dai::ImgFrame::Type::RAW16) {
+    if(frame->getType() == dai::ImgFrame::Type::RAW16) {
         cvtype = CV_16UC1;
-    } else if(disparityFrame->getType() == dai::ImgFrame::Type::RAW8) {
+    } else if(frame->getType() == dai::ImgFrame::Type::RAW8) {
         cvtype = CV_8UC1;
     } else {
-        throw std::runtime_error("Unsupported disparity frame type. Supported types are RAW16 and RAW8.");
+        throw std::runtime_error("Unsupported frame type. Supported types are RAW16 and RAW8.");
     }
 
-    cv::Mat cvDisparity = cv::Mat(disparityFrame->getHeight(), disparityFrame->getWidth(), cvtype, disparityFrame->data->getData().data());
+    cv::Mat cvFrame = cv::Mat(frame->getHeight(), frame->getWidth(), cvtype, frame->data->getData().data());
 
     if(medianSize % 2 == 0) {
         throw std::runtime_error("Median filter size must be odd");
@@ -128,10 +128,10 @@ void MedianFilter::process(std::shared_ptr<dai::ImgFrame>& disparityFrame, int m
         throw std::runtime_error("Median filter size must be <= 5");
     }
 
-    cv::Mat cvDisparityFiltered = cv::Mat(disparityFrame->getHeight(), disparityFrame->getWidth(), cvtype);
-    cv::medianBlur(cvDisparity, cvDisparityFiltered, medianSize);
+    cv::Mat cvFrameFiltered = cv::Mat(frame->getHeight(), frame->getWidth(), cvtype);
+    cv::medianBlur(cvFrame, cvFrameFiltered, medianSize);
 
-    std::memcpy(disparityFrame->data->getData().data(), cvDisparityFiltered.data, cvDisparityFiltered.total() * cvDisparityFiltered.elemSize());
+    std::memcpy(frame->data->getData().data(), cvFrameFiltered.data, cvFrameFiltered.total() * cvFrameFiltered.elemSize());
 }
 
 /***********************************************************************************************************/
@@ -306,18 +306,18 @@ int SpatialFilter::Init(float alpha, int delta, int iterationNr, int holesFillin
 
 SpatialFilter::~SpatialFilter() {}
 
-void SpatialFilter::process(std::shared_ptr<dai::ImgFrame>& disparityFrame) {
-    params.currentFrame = disparityFrame;
+void SpatialFilter::process(std::shared_ptr<dai::ImgFrame>& frame) {
+    params.currentFrame = frame;
 
     for(int i = 0; i < params.iterationNr; i++) {
-        if(disparityFrame->getType() == dai::ImgFrame::Type::RAW16) {
+        if(frame->getType() == dai::ImgFrame::Type::RAW16) {
             recursive_filter_horizontal<uint16_t>(&params);
             recursive_filter_vertical<uint16_t>(&params);
-        } else if(disparityFrame->getType() == dai::ImgFrame::Type::RAW8) {
+        } else if(frame->getType() == dai::ImgFrame::Type::RAW8) {
             recursive_filter_horizontal<uint8_t>(&params);
             recursive_filter_vertical<uint8_t>(&params);
         } else {
-            throw std::runtime_error("Unsupported disparity frame type");
+            throw std::runtime_error("SpatialFilter: Unsupported frame type. Supported types are RAW8 and RAW16.");
         }
     }
 }
@@ -334,17 +334,17 @@ int SpeckleFilter::Init() {
 
 SpeckleFilter::~SpeckleFilter() {}
 
-void SpeckleFilter::process(std::shared_ptr<dai::ImgFrame>& disparityFrame, int speckleRange, int maxDiff) {
+void SpeckleFilter::process(std::shared_ptr<dai::ImgFrame>& frame, int speckleRange, int maxDiff) {
     int cvtype;
-    if(disparityFrame->getType() == dai::ImgFrame::Type::RAW16) {
-        cvtype = CV_16SC1;
-    } else if(disparityFrame->getType() == dai::ImgFrame::Type::RAW8) {
+    if(frame->getType() == dai::ImgFrame::Type::RAW8) {
         cvtype = CV_8UC1;
+    } else if(frame->getType() == dai::ImgFrame::Type::RAW16) {
+        cvtype = CV_16SC1;
     } else {
-        throw std::runtime_error("Unsupported disparity frame type. Supported types are RAW16 and RAW8.");
+        throw std::runtime_error("SpeckleFilter: Unsupported frame type. Supported types are RAW8 and RAW16.");
     }
-    cv::Mat cvDisparity = cv::Mat(disparityFrame->getHeight(), disparityFrame->getWidth(), cvtype, disparityFrame->data->getData().data());
-    cv::filterSpeckles(cvDisparity, 0, speckleRange, maxDiff);
+    cv::Mat cvFrame = cv::Mat(frame->getHeight(), frame->getWidth(), cvtype, frame->data->getData().data());
+    cv::filterSpeckles(cvFrame, 0, speckleRange, maxDiff);
 }
 
 /***********************************************************************************************************/
@@ -460,8 +460,8 @@ TemporalFilter::~TemporalFilter() {
     }
 }
 
-void TemporalFilter::process(std::shared_ptr<dai::ImgFrame>& disparityFrame) {
-    params.currentFrame = disparityFrame;
+void TemporalFilter::process(std::shared_ptr<dai::ImgFrame>& frame) {
+    params.currentFrame = frame;
     params.currFrameIdx = currFrameIdx;
     params.accumulatorFrame = rawAccumulatorFrame.mem;
 
@@ -794,10 +794,7 @@ void DepthConfidenceFilter::applyDepthConfidenceFilter(std::shared_ptr<ImgFrame>
         if(type == ImgFrame::Type::RAW16) {
             return CV_16UC1;
         }
-        if(type == ImgFrame::Type::RAW32) {
-            return CV_32FC1;
-        }
-        throw std::runtime_error("DepthConfidenceFilter: Unsupported frame type");
+        throw std::runtime_error("DepthConfidenceFilter: Unsupported frame type. Supported types are RAW8 and RAW16.");
     };
 
     const int height = depthFrame->getHeight();
