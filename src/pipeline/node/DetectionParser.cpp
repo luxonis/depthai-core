@@ -217,6 +217,7 @@ std::optional<std::vector<std::string>> DetectionParser::getClasses() const {
 
 void DetectionParser::setClasses(const std::vector<std::string>& classes) {
     mClasses = classes;
+    properties.parser.classNames = classes;
 }
 
 /// Get coordianate size
