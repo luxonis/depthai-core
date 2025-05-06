@@ -159,7 +159,7 @@ void bind_sync(pybind11::module& m, void* pCallstack);
 void bind_messagedemux(pybind11::module& m, void* pCallstack);
 void bind_hostnode(pybind11::module& m, void* pCallstack);
 void bind_record(pybind11::module& m, void* pCallstack);
-void bind_depthfilters(pybind11::module& m, void* pCallstack);
+void bind_imagefilters(pybind11::module& m, void* pCallstack);
 void bind_replay(pybind11::module& m, void* pCallstack);
 void bind_imagealign(pybind11::module& m, void* pCallstack);
 void bind_rgbd(pybind11::module& m, void* pCallstack);
@@ -208,7 +208,7 @@ void NodeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_messagedemux);
     callstack.push_front(bind_hostnode);
     callstack.push_front(bind_record);
-    callstack.push_front(bind_depthfilters);
+    callstack.push_front(bind_imagefilters);
     callstack.push_front(bind_replay);
     callstack.push_front(bind_imagealign);
     callstack.push_front(bind_rgbd);
@@ -265,10 +265,10 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
     // Call the rest of the type defines, then perform the actual bindings
-    Callstack* callstack = (Callstack*)pCallstack;
-    auto cb = callstack->top();
-    callstack->pop();
-    cb(m, pCallstack);
+        Callstack* callstack = (Callstack*)pCallstack;
+        auto cb = callstack->top();
+        callstack->pop();
+        cb(m, pCallstack);
     // Actual bindings
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////

@@ -588,8 +588,8 @@ class MedianFilterWrapper : public ImageFilters::Filter {
     }
 
     void process(std::shared_ptr<dai::ImgFrame>& frame) override {
-        if(params.enable) {
-            const int medianSize = static_cast<int>(params.median);
+        if(params != MedianFilterParams::MEDIAN_OFF) {
+            const int medianSize = static_cast<int>(params);
             medianFilter.process(frame, medianSize);
         }
     }

@@ -4,7 +4,7 @@
 #include "DatatypeBindings.hpp"
 #include "depthai/pipeline/node/ImageFilters.hpp"
 
-void bind_depthfilters(pybind11::module& m, void* pCallstack) {
+void bind_imagefilters(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace node;
 
@@ -52,14 +52,8 @@ void bind_depthfilters(pybind11::module& m, void* pCallstack) {
         .def("runOnHost", &ImageFilters::runOnHost, DOC(dai, node, ImageFilters, runOnHost))
         .def("addFilter", &ImageFilters::addFilter, py::arg("filter"), DOC(dai, node, ImageFilters, addFilter));
 
-    // Add MedianFilterParams
-    py::class_<MedianFilterParams> medianFilterParams(m, "MedianFilterParams", DOC(dai, MedianFilterParams));
-    medianFilterParams.def(py::init<>());
-    medianFilterParams.def_readwrite("enable", &MedianFilterParams::enable, DOC(dai, MedianFilterParams, enable));
-    medianFilterParams.def_readwrite("median", &MedianFilterParams::median, DOC(dai, MedianFilterParams, median));
-
     // Just an alias for the filter stereo depth config parameters
-    imageFilters.attr("MedianFilterParams") = medianFilterParams;
+    imageFilters.attr("MedianFilterParams") = m.attr("StereoDepthConfig").attr("MedianFilter");
     imageFilters.attr("SpatialFilterParams") = m.attr("StereoDepthConfig").attr("PostProcessing").attr("SpatialFilter");
     imageFilters.attr("SpeckleFilterParams") = m.attr("StereoDepthConfig").attr("PostProcessing").attr("SpeckleFilter");
     imageFilters.attr("TemporalFilterParams") = m.attr("StereoDepthConfig").attr("PostProcessing").attr("TemporalFilter");

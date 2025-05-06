@@ -9,16 +9,12 @@
 
 namespace dai {
 
+using MedianFilterParams = dai::filters::params::MedianFilter;
+using SpatialFilterParams = dai::filters::params::SpatialFilter;
+using SpeckleFilterParams = dai::filters::params::SpeckleFilter;
+using TemporalFilterParams = dai::filters::params::TemporalFilter;
 
-struct MedianFilterParams {
-    bool enable = false;
-    dai::StereoDepthConfig::MedianFilter median = dai::StereoDepthConfig::MedianFilter::KERNEL_3x3;
-};
-DEPTHAI_SERIALIZE_EXT(MedianFilterParams, enable, median);
-
-typedef dai::StereoDepthConfig::PostProcessing::SpatialFilter SpatialFilterParams;
-typedef dai::StereoDepthConfig::PostProcessing::SpeckleFilter SpeckleFilterParams;
-typedef dai::StereoDepthConfig::PostProcessing::TemporalFilter TemporalFilterParams;
+// union of all filter params
 typedef std::variant<MedianFilterParams, SpatialFilterParams, SpeckleFilterParams, TemporalFilterParams> FilterParams;
 
 /**
