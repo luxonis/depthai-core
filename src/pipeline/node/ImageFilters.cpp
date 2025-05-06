@@ -458,7 +458,14 @@ void TemporalFilter::process(std::shared_ptr<dai::ImgFrame>& frame) {
     params.currFrameIdx = currFrameIdx;
     params.accumulatorFrame = rawAccumulatorFrame.mem;
 
-    processImpl<uint16_t>(&params);
+    auto frameType = frame->getType();
+    if(frameType == ImgFrame::Type::RAW16) {
+        processImpl<uint16_t>(&params);
+    } else if (frameType == ImgFrame::Type::RAW8) {
+        processImpl<uint8_t>(&params);
+    } else {
+        throw std::runtime_error("TemporalFilter: Unsupported frame type. Supported types are RAW8 and RAW16.");
+    }
 
     currFrameIdx = (currFrameIdx + 1) % 8;  // at end of cycle
 }
@@ -677,11 +684,24 @@ class TemporalFilterWrapper : public ImageFilters::Filter {
     void process(std::shared_ptr<dai::ImgFrame>& frame) override {
         if(params.enable) {
             if(!isInitialized) {
-                const size_t frameSize = frame->getHeight() * frame->getWidth() * sizeof(uint16_t);
+                size_t bytesPerPixel;
+                auto frameType = frame->getType();
+                if(frameType == ImgFrame::Type::RAW16) {
+                    bytesPerPixel = sizeof(uint16_t);
+                } else if (frameType == ImgFrame::Type::RAW8) {
+                    bytesPerPixel = sizeof(uint8_t);
+                } else {
+                    throw std::runtime_error("TemporalFilter: Unsupported frame type. Supported types are RAW8 and RAW16.");
+                }
+                const size_t frameSize = frame->getHeight() * frame->getWidth() * bytesPerPixel;
                 const float alpha = params.alpha;
                 const int delta = params.delta;
                 const int persistencyMode = static_cast<int>(params.persistencyMode);
-                temporalFilter.Init(frameSize, alpha, delta, persistencyMode);
+                std::cout << "Frame size: " << frameSize << " Alpha: " << alpha << " Delta: " << delta << " Persistency mode: " << persistencyMode << std::endl;
+                int ret = temporalFilter.Init(frameSize, alpha, delta, persistencyMode);
+                if(ret != 0) {
+                    throw std::runtime_error("TemporalFilter: Failed to initialize");
+                }
                 isInitialized = true;
             }
 
