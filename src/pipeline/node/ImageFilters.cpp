@@ -697,7 +697,6 @@ class TemporalFilterWrapper : public ImageFilters::Filter {
                 const float alpha = params.alpha;
                 const int delta = params.delta;
                 const int persistencyMode = static_cast<int>(params.persistencyMode);
-                std::cout << "Frame size: " << frameSize << " Alpha: " << alpha << " Delta: " << delta << " Persistency mode: " << persistencyMode << std::endl;
                 int ret = temporalFilter.Init(frameSize, alpha, delta, persistencyMode);
                 if(ret != 0) {
                     throw std::runtime_error("TemporalFilter: Failed to initialize");
