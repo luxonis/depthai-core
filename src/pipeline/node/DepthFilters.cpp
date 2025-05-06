@@ -94,8 +94,6 @@ class TemporalFilter {
     MemSections rawHistoryFrame = {};      // represents the history over the last 8 frames, 1 bit per frame
     // encodes whether a particular 8 bit history is good enough for all 8 phases of storage
     MemSections rawPersistenceMapLUT = {};  // Lookup table if persitency is enabled
-
-    bool measureTime = false;
 };
 
 /***********************************************************************************************************/
@@ -229,7 +227,6 @@ void recursive_filter_vertical(SpatialFilterParams* params) {
     float deltaZ = params->delta;
     int _width = params->currentFrame->getWidth();
     int _height = params->currentFrame->getHeight();
-    size_t _holes_filling_radius = params->holesFillingRadius;
 
     // Handle conversions for invalid input data
     bool fp = (std::is_floating_point<T>::value);
