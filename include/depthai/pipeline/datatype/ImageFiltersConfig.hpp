@@ -1,14 +1,14 @@
 #pragma once
 
-#include "depthai/properties/DepthFiltersProperties.hpp"
+#include "depthai/properties/ImageFiltersProperties.hpp"
 #include "depthai/common/variant.hpp"
 
 namespace dai {
 
-class SequentialDepthFiltersConfig : public Buffer {
+class ImageFiltersConfig : public Buffer {
    public:
-    SequentialDepthFiltersConfig() = default;
-    virtual ~SequentialDepthFiltersConfig() = default;
+    ImageFiltersConfig() = default;
+    virtual ~ImageFiltersConfig() = default;
 
     /**
      * Index of the filter to be applied
@@ -20,7 +20,7 @@ class SequentialDepthFiltersConfig : public Buffer {
      */
     FilterParams filterParams;
 
-    DEPTHAI_SERIALIZE(SequentialDepthFiltersConfig, filterIndex, filterParams);
+    DEPTHAI_SERIALIZE(ImageFiltersConfig, filterIndex, filterParams);
 };
 
 class DepthConfidenceFilterConfig : public Buffer {

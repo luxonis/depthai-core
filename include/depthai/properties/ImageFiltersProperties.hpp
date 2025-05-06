@@ -24,14 +24,14 @@ typedef std::variant<MedianFilterParams, SpatialFilterParams, SpeckleFilterParam
 /**
  * Properties for StereoDepthFilterPipeline node
  */
-struct SequentialDepthFiltersProperties : PropertiesSerializable<Properties, SequentialDepthFiltersProperties> {
+struct ImageFiltersProperties : PropertiesSerializable<Properties, ImageFiltersProperties> {
     /**
      * List of filters (the type of which is determined by the filter parameters) to apply to the input frame
      */
     std::vector<FilterParams> filters;
 };
 
-DEPTHAI_SERIALIZE_EXT(SequentialDepthFiltersProperties, filters);
+DEPTHAI_SERIALIZE_EXT(ImageFiltersProperties, filters);
 
 /**
  * Properties for DepthConfidenceFilter node

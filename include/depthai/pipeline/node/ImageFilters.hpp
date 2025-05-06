@@ -1,21 +1,24 @@
 #pragma once
 #include <depthai/pipeline/DeviceNode.hpp>
-#include <depthai/pipeline/datatype/DepthFiltersConfig.hpp>
-#include <depthai/properties/DepthFiltersProperties.hpp>
+#include <depthai/pipeline/datatype/ImageFiltersConfig.hpp>
+#include <depthai/properties/ImageFiltersProperties.hpp>
 #include <memory>
 #include <vector>
 
 namespace dai {
 namespace node {
 
-class SequentialDepthFilters : public DeviceNodeCRTP<DeviceNode, SequentialDepthFilters, SequentialDepthFiltersProperties>, public HostRunnable {
+class ImageFilters : public DeviceNodeCRTP<DeviceNode, ImageFilters, ImageFiltersProperties>, public HostRunnable {
    public:
-    constexpr static const char* NAME = "SequentialDepthFilters";
+    constexpr static const char* NAME = "ImageFilters";
     using DeviceNodeCRTP::DeviceNodeCRTP;
 
     Node::Input input{
         *this,
         {"input", Node::DEFAULT_GROUP, Node::DEFAULT_BLOCKING, Node::DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ImgFrame, true}}}, Node::DEFAULT_WAIT_FOR_MESSAGE}};
+    
+    
+    
     Node::Output output{*this, {"output", Node::DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     /**
@@ -26,7 +29,7 @@ class SequentialDepthFilters : public DeviceNodeCRTP<DeviceNode, SequentialDepth
                         Node::DEFAULT_GROUP,
                         Node::DEFAULT_BLOCKING,
                         Node::DEFAULT_QUEUE_SIZE,
-                        {{{DatatypeEnum::SequentialDepthFiltersConfig, true}}},
+                        {{{DatatypeEnum::ImageFiltersConfig, true}}},
                         Node::DEFAULT_WAIT_FOR_MESSAGE}};
 
     void run() override;

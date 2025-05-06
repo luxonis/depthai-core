@@ -1,11 +1,11 @@
-#include "depthai/pipeline/node/DepthFilters.hpp"
+#include "depthai/pipeline/node/ImageFilters.hpp"
 
 #include <cmath>
 #include <cstdint>
 #include <opencv2/opencv.hpp>
 
 #include "depthai/depthai.hpp"
-#include "pipeline/datatype/DepthFiltersConfig.hpp"
+#include "pipeline/datatype/ImageFiltersConfig.hpp"
 
 namespace dai {
 namespace node {
@@ -581,7 +581,7 @@ void TemporalFilter::buildPersistanceMap() {
 
 }  // namespace impl
 
-class MedianFilterWrapper : public SequentialDepthFilters::Filter {
+class MedianFilterWrapper : public ImageFilters::Filter {
    public:
     MedianFilterWrapper(const MedianFilterParams& params) : params(params), medianFilter() {
         medianFilter.Init();
@@ -607,7 +607,7 @@ class MedianFilterWrapper : public SequentialDepthFilters::Filter {
     impl::MedianFilter medianFilter;
 };
 
-class SpatialFilterWrapper : public SequentialDepthFilters::Filter {
+class SpatialFilterWrapper : public ImageFilters::Filter {
    public:
     SpatialFilterWrapper(const SpatialFilterParams& params) : params(params), spatialFilter() {
         const float alpha = params.alpha;
@@ -636,7 +636,7 @@ class SpatialFilterWrapper : public SequentialDepthFilters::Filter {
     impl::SpatialFilter spatialFilter;
 };
 
-class SpeckleFilterWrapper : public SequentialDepthFilters::Filter {
+class SpeckleFilterWrapper : public ImageFilters::Filter {
    public:
     SpeckleFilterWrapper(const SpeckleFilterParams& params) : params(params), speckleFilter() {
         speckleFilter.Init();
@@ -663,7 +663,7 @@ class SpeckleFilterWrapper : public SequentialDepthFilters::Filter {
     impl::SpeckleFilter speckleFilter;
 };
 
-class TemporalFilterWrapper : public SequentialDepthFilters::Filter {
+class TemporalFilterWrapper : public ImageFilters::Filter {
    private:
     bool isInitialized = false;
     TemporalFilterParams params;
@@ -701,46 +701,46 @@ class TemporalFilterWrapper : public SequentialDepthFilters::Filter {
 
 }  // namespace
 
-std::unique_ptr<SequentialDepthFilters::Filter> createFilter(const MedianFilterParams& params) {
+std::unique_ptr<ImageFilters::Filter> createFilter(const MedianFilterParams& params) {
     return std::make_unique<MedianFilterWrapper>(params);
 }
 
-std::unique_ptr<SequentialDepthFilters::Filter> createFilter(const SpatialFilterParams& params) {
+std::unique_ptr<ImageFilters::Filter> createFilter(const SpatialFilterParams& params) {
     return std::make_unique<SpatialFilterWrapper>(params);
 }
 
-std::unique_ptr<SequentialDepthFilters::Filter> createFilter(const SpeckleFilterParams& params) {
+std::unique_ptr<ImageFilters::Filter> createFilter(const SpeckleFilterParams& params) {
     return std::make_unique<SpeckleFilterWrapper>(params);
 }
 
-std::unique_ptr<SequentialDepthFilters::Filter> createFilter(const TemporalFilterParams& params) {
+std::unique_ptr<ImageFilters::Filter> createFilter(const TemporalFilterParams& params) {
     return std::make_unique<TemporalFilterWrapper>(params);
 }
 
-std::unique_ptr<SequentialDepthFilters::Filter> createFilter(const FilterParams& params) {
-    return std::visit([](auto&& arg) -> std::unique_ptr<SequentialDepthFilters::Filter> { return createFilter(arg); }, params);
+std::unique_ptr<ImageFilters::Filter> createFilter(const FilterParams& params) {
+    return std::visit([](auto&& arg) -> std::unique_ptr<ImageFilters::Filter> { return createFilter(arg); }, params);
 }
 
-void SequentialDepthFilters::addFilter(const FilterParams& filter) {
+void ImageFilters::addFilter(const FilterParams& filter) {
     properties.filters.push_back(filter);
 }
 
-void SequentialDepthFilters::run() {
+void ImageFilters::run() {
     // Create filters
-    logger->debug("SequentialDepthFilters: Creating filters");
+    logger->debug("ImageFilters: Creating filters");
     std::vector<std::unique_ptr<Filter>> filters;
     for(const auto& filter : properties.filters) {
         filters.push_back(createFilter(filter));
     }
 
-    logger->debug("SequentialDepthFilters: Starting");
+    logger->debug("ImageFilters: Starting");
     while(isRunning()) {
         // Set config
         while(config.has()) {
-            auto configMsg = config.get<SequentialDepthFiltersConfig>();
+            auto configMsg = config.get<ImageFiltersConfig>();
             auto index = configMsg->filterIndex;
             if(index >= static_cast<int>(filters.size())) {
-                logger->error("SequentialDepthFilters: Invalid filter index: {}", index);
+                logger->error("ImageFilters: Invalid filter index: {}", index);
                 break;
             }
             filters[index]->setParams(configMsg->filterParams);
@@ -749,7 +749,7 @@ void SequentialDepthFilters::run() {
         // Get frame from input queue
         std::shared_ptr<dai::ImgFrame> frame = input.get<dai::ImgFrame>();
         if(frame == nullptr) {
-            logger->error("SequentialDepthFilters: Input frame is nullptr");
+            logger->error("ImageFilters: Input frame is nullptr");
             break;
         }
 
@@ -764,13 +764,13 @@ void SequentialDepthFilters::run() {
     }
 }
 
-bool SequentialDepthFilters::runOnHost() const {
+bool ImageFilters::runOnHost() const {
     return runOnHostVar;
 }
 
-void SequentialDepthFilters::setRunOnHost(bool runOnHost) {
+void ImageFilters::setRunOnHost(bool runOnHost) {
     if(device && device->getPlatform() == Platform::RVC2 && !runOnHost) {
-        throw std::runtime_error("SequentialDepthFilters: Running on device is not supported on RVC2");
+        throw std::runtime_error("ImageFilters: Running on device is not supported on RVC2");
     }
     runOnHostVar = runOnHost;
 }

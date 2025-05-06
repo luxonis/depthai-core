@@ -2,25 +2,25 @@
 
 #include "Common.hpp"
 #include "DatatypeBindings.hpp"
-#include "depthai/pipeline/node/DepthFilters.hpp"
+#include "depthai/pipeline/node/ImageFilters.hpp"
 
 void bind_depthfilters(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace node;
 
     // bind properties
-    py::class_<SequentialDepthFiltersProperties> sequentialDepthFiltersProperties(
-        m, "SequentialDepthFiltersProperties", DOC(dai, SequentialDepthFiltersProperties));
+    py::class_<ImageFiltersProperties> imageFiltersProperties(
+        m, "ImageFiltersProperties", DOC(dai, ImageFiltersProperties));
     py::class_<DepthConfidenceFilterProperties> depthConfidenceFilterProperties(
         m, "DepthConfidenceFilterProperties", DOC(dai, DepthConfidenceFilterProperties));
 
     // bind config
-    py::class_<SequentialDepthFiltersConfig, Py<SequentialDepthFiltersConfig>, Buffer, std::shared_ptr<SequentialDepthFiltersConfig>>
-        sequentialDepthFiltersConfig(m, "SequentialDepthFiltersConfig", DOC(dai, SequentialDepthFiltersConfig));
-    sequentialDepthFiltersConfig.def(py::init<>());
-    sequentialDepthFiltersConfig.def_readwrite("filterIndex", &SequentialDepthFiltersConfig::filterIndex, DOC(dai, SequentialDepthFiltersConfig, filterIndex));
-    sequentialDepthFiltersConfig.def_readwrite(
-        "filterParams", &SequentialDepthFiltersConfig::filterParams, DOC(dai, SequentialDepthFiltersConfig, filterParams));
+    py::class_<ImageFiltersConfig, Py<ImageFiltersConfig>, Buffer, std::shared_ptr<ImageFiltersConfig>>
+        imageFiltersConfig(m, "ImageFiltersConfig", DOC(dai, ImageFiltersConfig));
+    imageFiltersConfig.def(py::init<>());
+    imageFiltersConfig.def_readwrite("filterIndex", &ImageFiltersConfig::filterIndex, DOC(dai, ImageFiltersConfig, filterIndex));
+    imageFiltersConfig.def_readwrite(
+        "filterParams", &ImageFiltersConfig::filterParams, DOC(dai, ImageFiltersConfig, filterParams));
 
     py::class_<DepthConfidenceFilterConfig, Py<DepthConfidenceFilterConfig>, Buffer, std::shared_ptr<DepthConfidenceFilterConfig>>
         depthConfidenceFilterConfig(m, "DepthConfidenceFilterConfig", DOC(dai, DepthConfidenceFilterConfig));
@@ -28,7 +28,7 @@ void bind_depthfilters(pybind11::module& m, void* pCallstack) {
     depthConfidenceFilterConfig.def_readwrite("confidenceThreshold", &DepthConfidenceFilterConfig::confidenceThreshold, DOC(dai, DepthConfidenceFilterConfig, confidenceThreshold));
 
     // Add node bindings
-    auto sequentialDepthFilters = ADD_NODE(SequentialDepthFilters);
+    auto imageFilters = ADD_NODE(ImageFilters);
     auto depthConfidenceFilter = ADD_NODE(DepthConfidenceFilter);
 
     ///////////////////////////////////////////////////////////////////////
@@ -45,12 +45,12 @@ void bind_depthfilters(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
 
     // StereoDepthFilterPipeline bindings
-    sequentialDepthFilters.def_readonly("input", &SequentialDepthFilters::input, DOC(dai, node, SequentialDepthFilters, input))
-        .def_readonly("output", &SequentialDepthFilters::output, DOC(dai, node, SequentialDepthFilters, output))
-        .def_readonly("config", &SequentialDepthFilters::config, DOC(dai, node, SequentialDepthFilters, config))
-        .def("setRunOnHost", &SequentialDepthFilters::setRunOnHost, py::arg("runOnHost"), DOC(dai, node, SequentialDepthFilters, setRunOnHost))
-        .def("runOnHost", &SequentialDepthFilters::runOnHost, DOC(dai, node, SequentialDepthFilters, runOnHost))
-        .def("addFilter", &SequentialDepthFilters::addFilter, py::arg("filter"), DOC(dai, node, SequentialDepthFilters, addFilter));
+    imageFilters.def_readonly("input", &ImageFilters::input, DOC(dai, node, ImageFilters, input))
+        .def_readonly("output", &ImageFilters::output, DOC(dai, node, ImageFilters, output))
+        .def_readonly("config", &ImageFilters::config, DOC(dai, node, ImageFilters, config))
+        .def("setRunOnHost", &ImageFilters::setRunOnHost, py::arg("runOnHost"), DOC(dai, node, ImageFilters, setRunOnHost))
+        .def("runOnHost", &ImageFilters::runOnHost, DOC(dai, node, ImageFilters, runOnHost))
+        .def("addFilter", &ImageFilters::addFilter, py::arg("filter"), DOC(dai, node, ImageFilters, addFilter));
 
     // Add MedianFilterParams
     py::class_<MedianFilterParams> medianFilterParams(m, "MedianFilterParams", DOC(dai, MedianFilterParams));
@@ -59,10 +59,10 @@ void bind_depthfilters(pybind11::module& m, void* pCallstack) {
     medianFilterParams.def_readwrite("median", &MedianFilterParams::median, DOC(dai, MedianFilterParams, median));
 
     // Just an alias for the filter stereo depth config parameters
-    sequentialDepthFilters.attr("MedianFilterParams") = medianFilterParams;
-    sequentialDepthFilters.attr("SpatialFilterParams") = m.attr("StereoDepthConfig").attr("PostProcessing").attr("SpatialFilter");
-    sequentialDepthFilters.attr("SpeckleFilterParams") = m.attr("StereoDepthConfig").attr("PostProcessing").attr("SpeckleFilter");
-    sequentialDepthFilters.attr("TemporalFilterParams") = m.attr("StereoDepthConfig").attr("PostProcessing").attr("TemporalFilter");
+    imageFilters.attr("MedianFilterParams") = medianFilterParams;
+    imageFilters.attr("SpatialFilterParams") = m.attr("StereoDepthConfig").attr("PostProcessing").attr("SpatialFilter");
+    imageFilters.attr("SpeckleFilterParams") = m.attr("StereoDepthConfig").attr("PostProcessing").attr("SpeckleFilter");
+    imageFilters.attr("TemporalFilterParams") = m.attr("StereoDepthConfig").attr("PostProcessing").attr("TemporalFilter");
 
     // DepthConfidenceFilter bindings
     depthConfidenceFilter.def_readonly("depth", &DepthConfidenceFilter::depth, DOC(dai, node, DepthConfidenceFilter, depth))

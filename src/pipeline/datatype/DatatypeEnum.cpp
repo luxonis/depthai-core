@@ -40,7 +40,7 @@ const std::unordered_map<DatatypeEnum, std::vector<DatatypeEnum>> hierarchy = {
       DatatypeEnum::PointCloudData,
       DatatypeEnum::TransformData,
       DatatypeEnum::ImgAnnotations,
-      DatatypeEnum::SequentialDepthFiltersConfig,
+      DatatypeEnum::ImageFiltersConfig,
       DatatypeEnum::DepthConfidenceFilterConfig}},
     {DatatypeEnum::Buffer,
      {DatatypeEnum::ImgFrame,
@@ -72,7 +72,7 @@ const std::unordered_map<DatatypeEnum, std::vector<DatatypeEnum>> hierarchy = {
       DatatypeEnum::PointCloudData,
       DatatypeEnum::TransformData,
       DatatypeEnum::ImgAnnotations,
-      DatatypeEnum::SequentialDepthFiltersConfig,
+      DatatypeEnum::ImageFiltersConfig,
       DatatypeEnum::DepthConfidenceFilterConfig}},
     {DatatypeEnum::ImgFrame, {}},
     {DatatypeEnum::EncodedFrame, {}},
@@ -103,7 +103,7 @@ const std::unordered_map<DatatypeEnum, std::vector<DatatypeEnum>> hierarchy = {
     {DatatypeEnum::PointCloudData, {}},
     {DatatypeEnum::TransformData, {}},
     {DatatypeEnum::ImgAnnotations, {}},
-    {DatatypeEnum::SequentialDepthFiltersConfig, {}},
+    {DatatypeEnum::ImageFiltersConfig, {}},
     {DatatypeEnum::DepthConfidenceFilterConfig, {}},
 };
 

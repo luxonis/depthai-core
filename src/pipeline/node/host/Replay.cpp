@@ -89,7 +89,7 @@ inline std::shared_ptr<Buffer> getMessage(const std::shared_ptr<google::protobuf
         case DatatypeEnum::PointCloudConfig:
         case DatatypeEnum::ImageAlignConfig:
         case DatatypeEnum::ImgAnnotations:
-        case DatatypeEnum::SequentialDepthFiltersConfig:
+        case DatatypeEnum::ImageFiltersConfig:
         case DatatypeEnum::DepthConfidenceFilterConfig:
             break;
     }
@@ -153,7 +153,7 @@ inline std::shared_ptr<google::protobuf::Message> getProtoMessage(utility::ByteP
         case DatatypeEnum::PointCloudConfig:
         case DatatypeEnum::ImageAlignConfig:
         case DatatypeEnum::ImgAnnotations:
-        case DatatypeEnum::SequentialDepthFiltersConfig:
+        case DatatypeEnum::ImageFiltersConfig:
         case DatatypeEnum::DepthConfidenceFilterConfig:
             throw std::runtime_error("Cannot replay message type: " + std::to_string((int)datatype));
     }
