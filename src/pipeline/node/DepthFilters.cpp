@@ -1,4 +1,4 @@
-#include "depthai/pipeline/node/host/DepthFilters.hpp"
+#include "depthai/pipeline/node/DepthFilters.hpp"
 
 #include <cmath>
 #include <cstdint>

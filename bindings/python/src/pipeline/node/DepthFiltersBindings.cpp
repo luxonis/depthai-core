@@ -2,7 +2,7 @@
 
 #include "Common.hpp"
 #include "DatatypeBindings.hpp"
-#include "depthai/pipeline/node/host/DepthFilters.hpp"
+#include "depthai/pipeline/node/DepthFilters.hpp"
 
 void bind_depthfilters(pybind11::module& m, void* pCallstack) {
     using namespace dai;

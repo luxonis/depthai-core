@@ -488,9 +488,9 @@ set(TARGET_OPENCV_SOURCES
     src/opencv/ImgFrame.cpp
     src/pipeline/node/host/Display.cpp
     src/pipeline/node/host/HostCamera.cpp
-    src/pipeline/node/host/DepthFilters.cpp
     src/pipeline/node/host/Record.cpp
     src/pipeline/node/host/Replay.cpp
+    src/pipeline/node/DepthFilters.cpp
     src/opencv/RecordReplay.cpp
     src/opencv/HolisticRecordReplay.cpp
 )
