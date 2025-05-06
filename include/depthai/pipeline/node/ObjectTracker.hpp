@@ -107,17 +107,17 @@ class ObjectTracker : public NodeCRTP<Node, ObjectTracker, ObjectTrackerProperti
 
     /**
      * Specify occlusion ratio threshold.
-     * @param occlusionRatioThreshold Occlusion ratio threshold. Default 0.4.
+     * @param occlusionRatioThreshold Occlusion ratio threshold. Used to filter out overlapping tracklets. Default 0.4.
      */
     void setOcclusionRatioThreshold(float occlusionRatioThreshold);
     /**
      * Specify tracklet lifespan.
-     * @param lifespan Tracklet lifespan. Default 120.
+     * @param lifespan Tracklet lifespan. Number of frames after which a LOST tracklet is removed. Default 120.
      */
     void setTrackletMaxLifespan(uint32_t lifespan);
     /**
      * Specify tracklet birth threshold.
-     * @param threshold Tracklet birth threshold. Default 3.
+     * @param threshold Tracklet birth threshold. Minimum consecutive tracked frames required to consider a tracklet as a new instance. Default 3.
      */
     void setTrackletBirthThreshold(uint32_t birthThreshold);
 };
