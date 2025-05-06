@@ -66,6 +66,9 @@ class ImageFilters : public DeviceNodeCRTP<DeviceNode, ImageFilters, ImageFilter
     bool runOnHostVar = true;
 };
 
+/**
+ * Node for depth confidence filter, designed to be used with the `ToF` node.
+ */
 class DepthConfidenceFilter : public DeviceNodeCRTP<DeviceNode, DepthConfidenceFilter, DepthConfidenceFilterProperties>, public HostRunnable {
    public:
     constexpr static const char* NAME = "DepthConfidenceFilter";
