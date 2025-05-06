@@ -1,3 +1,4 @@
+#pragma once
 #include "depthai/pipeline/ThreadedNode.hpp"
 
 #include <spdlog/spdlog.h>
