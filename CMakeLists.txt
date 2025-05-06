@@ -388,7 +388,7 @@ if(DEPTHAI_HAVE_PCL_SUPPORT AND DEPTHAI_MERGED_TARGET)
     )
 endif()
 
-add_library(${TARGET_CORE_NAME} SHARED ${TARGET_CORE_SOURCES})
+add_library(${TARGET_CORE_NAME} ${TARGET_CORE_SOURCES})
 add_library("${PROJECT_NAME}::${TARGET_CORE_ALIAS}" ALIAS ${TARGET_CORE_NAME})
 # Specify that we are building core
 target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_TARGET_CORE)
@@ -815,7 +815,7 @@ add_runtime_dependencies(${TARGET_CORE_NAME} usb-1.0)
 ########################
 if(DEPTHAI_HAVE_OPENCV_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
     # Add depthai-core-opencv library and depthai::core::opencv alias
-    add_library(${TARGET_OPENCV_NAME} SHARED
+    add_library(${TARGET_OPENCV_NAME}
         ${TARGET_OPENCV_SOURCES}
     )
     add_library("${PROJECT_NAME}::${TARGET_OPENCV_ALIAS}" ALIAS ${TARGET_OPENCV_NAME})
