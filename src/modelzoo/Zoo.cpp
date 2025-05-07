@@ -4,12 +4,12 @@
 #include <filesystem>
 #include <iostream>
 #include <memory>
-#include <mutex>
 #include <nlohmann/json.hpp>
 #include <nlohmann/json_fwd.hpp>
 
 #include "utility/Environment.hpp"
 #include "utility/Logging.hpp"
+#include "utility/Platform.hpp"
 #include "utility/YamlHelpers.hpp"
 #include "utility/sha1.hpp"
 
@@ -26,6 +26,14 @@ static std::string MODEL_ZOO_HEALTH_ENDPOINT = "https://easyml.cloud.luxonis.com
 static std::string MODEL_ZOO_DOWNLOAD_ENDPOINT = "https://easyml.cloud.luxonis.com/models/api/v1/models/download";
 static std::string MODEL_ZOO_DEFAULT_CACHE_PATH = ".depthai_cached_models";  // hidden cache folder
 static std::string MODEL_ZOO_DEFAULT_MODELS_PATH = "depthai_models";         // folder
+
+// Take paths and combine them: this function is OS-agnostic
+template <typename... Args>
+std::string combinePaths(const std::string& first, Args&&... args) {
+    std::string combinedPath = first;
+    ((combinedPath = std::filesystem::path(combinedPath) / std::filesystem::path(args).string()), ...);
+    return combinedPath;
+}
 
 #ifdef DEPTHAI_ENABLE_CURL
 class ZooManager {
@@ -57,6 +65,17 @@ class ZooManager {
             logger::info("Trying to get cache directory from environment variable DEPTHAI_ZOO_CACHE_PATH");
             this->cacheDirectory = utility::getEnvAs<std::string>("DEPTHAI_ZOO_CACHE_PATH", dai::modelzoo::getDefaultCachePath(), false);
         }
+
+        if(this->cacheDirectory.empty()) {
+            throw std::runtime_error("Cache directory is not set");
+        }
+
+        // Lock the cache directory
+        createFolder(".locks");
+        const std::string modelLockFilePath = combinePaths(this->cacheDirectory, ".locks", getModelCacheFolderName() + ".lock");
+        logger::info("Locking model cache directory: {}", modelLockFilePath);
+        cacheFolderLock = platform::FileLock::lock(modelLockFilePath, true);
+        logger::info("Model cache directory locked: {}", modelLockFilePath);
     }
 
     /**
@@ -82,9 +101,11 @@ class ZooManager {
     std::string getModelCacheFolderPath(const std::string& cacheDirectory) const;
 
     /**
-     * @brief Create cache folder
+     * @brief Create a folder in the cache directory
+     *
+     * @param folderName: Name of the folder to create
      */
-    void createCacheFolder() const;
+    void createFolder(const std::string& folderName) const;
 
     /**
      * @brief Remove cache folder where the model is cached
@@ -157,6 +178,9 @@ class ZooManager {
 
     // Path to directory where to store the cached models
     std::string cacheDirectory;
+
+    // Lock for the cache directory
+    std::unique_ptr<platform::FileLock> cacheFolderLock;
 };
 
 #endif
@@ -174,8 +198,6 @@ class ZooManager {
  * @return std::string: Path to yaml file
  */
 std::string getYamlFilePath(const std::string& name, const std::string& modelsPath = "");
-
-std::string combinePaths(const std::string& path1, const std::string& path2);
 
 #ifdef DEPTHAI_ENABLE_CURL
 std::string generateErrorMessageHub(const cpr::Response& response) {
@@ -261,9 +283,9 @@ std::string ZooManager::getModelCacheFolderPath(const std::string& cacheDirector
     return combinePaths(cacheDirectory, getModelCacheFolderName());
 }
 
-void ZooManager::createCacheFolder() const {
-    std::string cacheFolderName = getModelCacheFolderPath(cacheDirectory);
-    std::filesystem::create_directories(cacheFolderName);
+void ZooManager::createFolder(const std::string& folderName) const {
+    std::string folderPath = combinePaths(cacheDirectory, folderName);
+    std::filesystem::create_directories(folderPath);
 }
 
 void ZooManager::removeModelCacheFolder() const {
@@ -558,14 +580,13 @@ std::string getModelFromZoo(const NNModelDescription& modelDescription,
     bool internetIsAvailable = performInternetCheck && ZooManager::connectionToZooAvailable();
     nlohmann::json responseJson;
 
-    logger::info(fmt::format(
-        "Model is cached: {} | Metadata present: {} | Use cached model: {} | Perform internet check: {} | Internet is available: {} | useCached: {}",
-        modelIsCached,
-        isMetadataPresent,
-        useCachedModel,
-        performInternetCheck,
-        internetIsAvailable,
-        useCached));
+    logger::info("Model is cached: {} | Metadata present: {} | Use cached model: {} | Perform internet check: {} | Internet is available: {} | useCached: {}",
+                 modelIsCached,
+                 isMetadataPresent,
+                 useCachedModel,
+                 performInternetCheck,
+                 internetIsAvailable,
+                 useCached);
 
     if(internetIsAvailable) {
         responseJson = zooManager.fetchModelDownloadLinks();
@@ -609,10 +630,11 @@ std::string getModelFromZoo(const NNModelDescription& modelDescription,
     }
 
     // Create cache folder
-    zooManager.createCacheFolder();
+    zooManager.createFolder(zooManager.getModelCacheFolderName());
 
     // Create download progress callback
-    std::unique_ptr<CprCallback> cprCallback = getCprCallback(progressFormat, modelDescription.globalMetadataEntryName.size() > 0 ? modelDescription.globalMetadataEntryName : modelDescription.model);
+    std::unique_ptr<CprCallback> cprCallback =
+        getCprCallback(progressFormat, modelDescription.globalMetadataEntryName.size() > 0 ? modelDescription.globalMetadataEntryName : modelDescription.model);
 
     // Download model
     logger::info("Downloading model from model zoo");
@@ -716,10 +738,6 @@ bool downloadModelsFromZoo(const std::string& path, const std::string& cacheDire
 }
 
 #endif
-
-std::string combinePaths(const std::string& path1, const std::string& path2) {
-    return std::filesystem::path(path1).append(path2).string();
-}
 
 std::string getYamlFilePath(const std::string& name, const std::string& modelsPath) {
     // No empty names allowed
