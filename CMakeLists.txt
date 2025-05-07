@@ -14,14 +14,6 @@ option(DEPTHAI_PCL_SUPPORT "Enable optional PCL support" OFF)
 option(DEPTHAI_BOOTSTRAP_VCPKG "Automatically bootstrap VCPKG" ON)
 option(DEPTHAI_MERGED_TARGET "Enable merged target build" ON)
 option(DEPTHAI_NEW_FIND_PYTHON "Use new FindPython module" ON)
-option(DEPTHAI_SANITIZE "Enable Address and Undefined sanitizers for library, examples and tests" OFF)
-
-if(DEPTHAI_SANITIZE)
-    if(NOT SANITIZE_THREAD)
-        set(SANITIZE_ADDRESS ON CACHE BOOL "Enable AddressSanitizer for sanitized targets.")
-        set(SANITIZE_UNDEFINED ON CACHE BOOL "Enable UndefinedBehaviorSanitizer for sanitized targets.")
-    endif()
-endif()
 
 if(NOT DEPTHAI_OPENCV_SUPPORT)
     set(DEPTHAI_MERGED_TARGET OFF CACHE BOOL "Enable merged target build" FORCE)
@@ -108,55 +100,6 @@ endif()
 
 if(POLICY CMP0028)
   cmake_policy(SET CMP0028 NEW)
-endif()
-
-function(get_platform_string OUT_VAR)
-    # Get OS name
-    cmake_host_system_information(RESULT OS_NAME QUERY OS_NAME)
-    string(TOLOWER "${OS_NAME}" OS_NAME_LOWER)
-
-    # Get architecture
-    cmake_host_system_information(RESULT ARCH QUERY OS_PLATFORM)
-    string(TOLOWER "${ARCH}" ARCH_LOWER)
-
-    # Normalize architecture
-    if(ARCH_LOWER STREQUAL "x86_64" OR ARCH_LOWER STREQUAL "amd64")
-        set(NORMALIZED_ARCH "x64")
-    elseif(ARCH_LOWER MATCHES "^(aarch64|arm64)$")
-        set(NORMALIZED_ARCH "arm64")
-    else()
-        message(FATAL_ERROR "Unsupported architecture: ${ARCH_LOWER}")
-    endif()
-
-    # Normalize OS
-    if(OS_NAME_LOWER MATCHES "windows")
-        set(NORMALIZED_OS "windows")
-    elseif(OS_NAME_LOWER MATCHES "linux")
-        set(NORMALIZED_OS "linux")
-    elseif(OS_NAME_LOWER MATCHES "darwin")
-        set(NORMALIZED_OS "osx")
-    else()
-        message(FATAL_ERROR "Unsupported OS: ${OS_NAME_LOWER}")
-    endif()
-
-    # Construct the result
-    set(PLATFORM_STRING "${NORMALIZED_ARCH}-${NORMALIZED_OS}")
-
-    # Return via out var
-    set(${OUT_VAR} "${PLATFORM_STRING}" PARENT_SCOPE)
-endfunction()
-
-if(DEPTHAI_SANITIZE)
-    get_platform_string(PLATFORM_STRING)
-    set(SANITIZER_STR "")
-    if(SANITIZE_ADDRESS OR SANITIZE_UNDEFINED)
-        set(SANITIZER_STR "-asan-ubsan")
-    elseif(SANITIZE_THREAD)
-        set(SANITIZER_STR "-tsan")
-    endif()
-    string(APPEND PLATFORM_STRING "${SANITIZER_STR}")
-    message(STATUS "Using sanitized triplet: ${PLATFORM_STRING}")
-    set(VCPKG_TARGET_TRIPLET "${PLATFORM_STRING}" CACHE STRING "VCPKG target triplet")
 endif()
 
 if(DEPTHAI_BOOTSTRAP_VCPKG)
@@ -262,6 +205,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake/sanitizers")
 # Additional options
 option(DEPTHAI_CLANG_FORMAT "Enable clang-format target"                  ON)
 option(DEPTHAI_CLANG_TIDY "Enable clang-tidy checks during compilation" OFF)
+option(DEPTHAI_SANITIZE "Enable Address and Undefined sanitizers for library, examples and tests" OFF)
 
 # Should install depthai core libraries
 option(DEPTHAI_INSTALL   "Enable install target for depthai-core targets" ON)
@@ -1229,6 +1173,8 @@ endif()
 # Sanitizers
 ########################
 if(DEPTHAI_SANITIZE)
+    set(SANITIZE_ADDRESS ON CACHE BOOL "Enable AddressSanitizer for sanitized targets.")
+    set(SANITIZE_UNDEFINED ON CACHE BOOL "Enable UndefinedBehaviorSanitizer for sanitized targets.")
     find_package(Sanitizers)
     add_sanitizers(${TARGET_CORE_NAME})
     if(DEPTHAI_HAVE_OPENCV_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
