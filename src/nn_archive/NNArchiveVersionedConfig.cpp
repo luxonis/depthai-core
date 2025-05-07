@@ -6,7 +6,7 @@
 #include <variant>
 
 // libraries
-#include <spimpl.h>
+#include "depthai/utility/spimpl.h"
 
 #include <nlohmann/json.hpp>
 

@@ -1,7 +1,7 @@
 #pragma once
 
 // libraries
-#include <spimpl.h>
+#include "depthai/utility/spimpl.h"
 
 #include <optional>
 

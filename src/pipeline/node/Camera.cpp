@@ -8,7 +8,7 @@
 #include "depthai/depthai.hpp"
 
 // libraries
-#include <spimpl.h>
+#include "depthai/utility/spimpl.h"
 
 // depthai internal
 #include "depthai/common/CameraBoardSocket.hpp"

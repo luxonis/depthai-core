@@ -1,6 +1,6 @@
 #pragma once
 
-#include <spimpl.h>
+#include "depthai/utility/spimpl.h"
 
 #include "depthai/log/LogLevel.hpp"
 #include "depthai/pipeline/Node.hpp"
