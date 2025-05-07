@@ -31,6 +31,14 @@ void bind_transformdata(pybind11::module& m, void* pCallstack) {
 
     // Metadata / raw
     transformData.def(py::init<>())
+        .def(py::init<double, double, double, double, double, double, double>(),
+             py::arg("x"),
+             py::arg("y"),
+             py::arg("z"),
+             py::arg("qx"),
+             py::arg("qy"),
+             py::arg("qz"),
+             py::arg("qw"))
         .def("__repr__", &TransformData::str)
         .def("getTranslation", &TransformData::getTranslation, DOC(dai, TransformData, getTranslation))
         .def("getRotationEuler", &TransformData::getRotationEuler, DOC(dai, TransformData, getRotationEuler))
