@@ -28,11 +28,8 @@ static std::string MODEL_ZOO_DEFAULT_CACHE_PATH = ".depthai_cached_models";  // 
 static std::string MODEL_ZOO_DEFAULT_MODELS_PATH = "depthai_models";         // folder
 
 // Take paths and combine them: this function is OS-agnostic
-template <typename... Args>
-std::string combinePaths(const std::string& first, Args&&... args) {
-    std::string combinedPath = first;
-    ((combinedPath = std::filesystem::path(combinedPath) / std::filesystem::path(args).string()), ...);
-    return combinedPath;
+static std::string combinePaths(const std::string& first, const std::string& second) {
+    return (std::filesystem::path(first) / std::filesystem::path(second)).string();
 }
 
 #ifdef DEPTHAI_ENABLE_CURL
@@ -72,7 +69,7 @@ class ZooManager {
 
         // Lock the cache directory
         createFolder(".locks");
-        const std::string modelLockFilePath = combinePaths(this->cacheDirectory, ".locks", getModelCacheFolderName() + ".lock");
+        const std::string modelLockFilePath = combinePaths(combinePaths(this->cacheDirectory, ".locks"), getModelCacheFolderName() + ".lock");
         logger::info("Locking model cache directory: {}", modelLockFilePath);
         cacheFolderLock = platform::FileLock::lock(modelLockFilePath, true);
         logger::info("Model cache directory locked: {}", modelLockFilePath);
