@@ -11,7 +11,7 @@ namespace dai {
 
 struct ImgDetection {
     uint32_t label = 0;
-    std::string name = "";
+    std::string name;
     float confidence = 0.f;
     float xmin = 0.f;
     float ymin = 0.f;
