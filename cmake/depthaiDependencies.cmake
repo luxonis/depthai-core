@@ -95,10 +95,38 @@ endif()
 find_package(Threads ${_QUIET} REQUIRED)
 
 # Nlohmann JSON
-find_package(nlohmann_json 3.6.0 ${_QUIET} CONFIG REQUIRED)
+include(FetchContent)
+
+FetchContent_Declare(
+    nlohmann_json
+    GIT_REPOSITORY https://github.com/nlohmann/json.git
+    GIT_TAG        v3.11.3
+)
+
+# Adds the INTERFACE target nlohmann_json::nlohmann_json
+FetchContent_MakeAvailable(nlohmann_json)
+list(APPEND targets_to_export nlohmann_json)
 
 # libnop for serialization
-find_package(libnop ${_QUIET} CONFIG REQUIRED)
+FetchContent_Declare(
+    libnop
+    GIT_REPOSITORY https://github.com/luxonis/libnop.git
+    GIT_TAG        ab842f51dc2eb13916dc98417c2186b78320ed10
+    #FIND_PACKAGE_ARGS
+)
+
+
+FetchContent_MakeAvailable(libnop)
+
+# 1. Ask CMake what include dirs libnop exports
+get_target_property(_nop_inc libnop INTERFACE_INCLUDE_DIRECTORIES)
+
+# 2. Tell the compiler those dirs are "system" dirs
+set_target_properties(libnop PROPERTIES
+    INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${_nop_inc}"
+)
+
+list(APPEND targets_to_export libnop)
 
 if(DEPTHAI_ENABLE_MP4V2)
     # MP4V2 for video encoding
@@ -120,12 +148,22 @@ if(DEPTHAI_XLINK_LOCAL AND (NOT CONFIG_MODE))
     add_subdirectory("${DEPTHAI_XLINK_LOCAL}" ${CMAKE_CURRENT_BINARY_DIR}/XLink)
     set(BUILD_SHARED_LIBS "${_BUILD_SHARED_LIBS_SAVED}")
     unset(_BUILD_SHARED_LIBS_SAVED)
-    list(APPEND targets_to_export XLink XLinkPublic)
 else()
     # TODO(themarpe) - might be required
     # elseif(NOT DEPTHAI_XLINK_LOCAL)
-    find_package(XLink ${_QUIET} CONFIG REQUIRED HINTS "${CMAKE_CURRENT_LIST_DIR}/XLink" "${CMAKE_CURRENT_LIST_DIR}/../XLink")
+    FetchContent_Declare(
+        XLink
+        GIT_REPOSITORY https://github.com/luxonis/XLink.git
+        GIT_TAG        84d17d2d8586c894c77c0205388ebccf579d13cc
+    )
+
+    set(XLINK_ENABLE_LIBUSB OFF CACHE BOOL "Enable libusb" FORCE)
+
+    FetchContent_MakeAvailable(
+        XLink
+    )
 endif()
+list(APPEND targets_to_export XLink XLinkPublic)
 
 # OpenCV 4 - (optional)
 message("DEPTHAI_OPENCV_SUPPORT: ${DEPTHAI_OPENCV_SUPPORT}")
