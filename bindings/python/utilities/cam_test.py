@@ -58,7 +58,7 @@ DEPTH_STREAM_NAME = "stereo_depth"
 def unpackRaw10(rawData, width, height, stride=None):
     """
     Unpacks RAW10 data from DepthAI pipeline into a 16-bit grayscale array.
-    :param raw_data: List of raw bytes from DepthAI (1D numpy array)
+    :param rawData: List of raw bytes from DepthAI (1D numpy array)
     :param width: Image width
     :param height: Image height
     :param stride: Row stride in bytes (if None, calculated as width*10/8)
