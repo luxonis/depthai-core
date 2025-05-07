@@ -102,9 +102,11 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/nlohmann/json.git
     GIT_TAG        v3.11.3
 )
+# Json is a public dependancy, so it has to be installed
+set(JSON_Install ON CACHE BOOL "Install nlohmann_json" FORCE)
 
-# Adds the INTERFACE target nlohmann_json::nlohmann_json
 FetchContent_MakeAvailable(nlohmann_json)
+
 list(APPEND targets_to_export nlohmann_json)
 
 # libnop for serialization
