@@ -18,6 +18,7 @@
 #include "utility/Platform.hpp"
 #include "utility/RecordReplayImpl.hpp"
 #include "utility/spdlog-fmt.hpp"
+#include "utility/ErrorMacros.hpp"
 
 // shared
 #include "depthai/pipeline/NodeConnectionSchema.hpp"
@@ -438,6 +439,8 @@ BoardConfig PipelineImpl::getBoardConfig() const {
 
 // Remove node capability
 void PipelineImpl::remove(std::shared_ptr<Node> toRemove) {
+    DAI_CHECK_V(!isBuilt(), "Cannot remove node from pipeline once it is built.");
+
     if(toRemove->parent.lock() == nullptr) {
         throw std::invalid_argument("Cannot remove a node that is not a part of any pipeline");
     }
