@@ -142,12 +142,10 @@ if(DEPTHAI_BUILD_TESTS)
 endif()
 
 # XLink
+set(_BUILD_SHARED_LIBS_SAVED "${BUILD_SHARED_LIBS}")
+set(BUILD_SHARED_LIBS OFF)
 if(DEPTHAI_XLINK_LOCAL AND (NOT CONFIG_MODE))
-    set(_BUILD_SHARED_LIBS_SAVED "${BUILD_SHARED_LIBS}")
-    set(BUILD_SHARED_LIBS OFF)
     add_subdirectory("${DEPTHAI_XLINK_LOCAL}" ${CMAKE_CURRENT_BINARY_DIR}/XLink)
-    set(BUILD_SHARED_LIBS "${_BUILD_SHARED_LIBS_SAVED}")
-    unset(_BUILD_SHARED_LIBS_SAVED)
 else()
     # TODO(themarpe) - might be required
     # elseif(NOT DEPTHAI_XLINK_LOCAL)
@@ -163,6 +161,8 @@ else()
         XLink
     )
 endif()
+set(BUILD_SHARED_LIBS "${_BUILD_SHARED_LIBS_SAVED}")
+unset(_BUILD_SHARED_LIBS_SAVED)
 list(APPEND targets_to_export XLink XLinkPublic)
 
 # OpenCV 4 - (optional)
