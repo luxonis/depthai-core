@@ -10,6 +10,9 @@ namespace dai {
  * Specify properties for ImageManip
  */
 struct ImageManipPropertiesV2 : PropertiesSerializable<Properties, ImageManipPropertiesV2> {
+    enum class Backend : uint8_t { CPU, HW };
+    enum class PerformanceMode : uint8_t { PERFORMANCE, BALANCED, LOW_POWER };
+
     /// Initial configuration for ImageManip node
     ImageManipConfigV2 initialConfig;
 
@@ -18,8 +21,12 @@ struct ImageManipPropertiesV2 : PropertiesSerializable<Properties, ImageManipPro
 
     /// Num frames in output pool
     int numFramesPool = 4;
+
+    /// Using HW backend can cause some unexpected behavior when using multiple ImageManipV2 nodes in series
+    Backend backend = Backend::CPU;
+    PerformanceMode performanceMode = PerformanceMode::PERFORMANCE;
 };
 
-DEPTHAI_SERIALIZE_EXT(ImageManipPropertiesV2, initialConfig, outputFrameSize, numFramesPool);
+DEPTHAI_SERIALIZE_EXT(ImageManipPropertiesV2, initialConfig, outputFrameSize, numFramesPool, backend, performanceMode);
 
 }  // namespace dai

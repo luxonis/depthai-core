@@ -18,7 +18,7 @@ with dai.Pipeline() as pipeline:
     # ATM, AprilTags don't contain timestamps, so we can't sync them with frames
     manip = pipeline.create(dai.node.ImageManipV2)
     manip.initialConfig.setOutputSize(PREVIEW_SIZE[0], PREVIEW_SIZE[1], dai.ImageManipConfigV2.ResizeMode.STRETCH)
-    manip.setMaxOutputFrameSize(2004096)
+    manip.setMaxOutputFrameSize(2162688)
     outputCam.link(manip.inputImage)
     frameQ = manip.out.createOutputQueue()
 
