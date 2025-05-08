@@ -24,7 +24,7 @@ void bind_imagemanipv2(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
     py::enum_<ImageManipV2::PerformanceMode> perfMode(imageManip, "PerformanceMode");
-    perfMode.value("AUTO", ImageManipV2::PerformanceMode::AUTO)
+    perfMode.value("BALANCED", ImageManipV2::PerformanceMode::BALANCED)
         .value("PERFORMANCE", ImageManipV2::PerformanceMode::PERFORMANCE)
         .value("LOW_POWER", ImageManipV2::PerformanceMode::LOW_POWER);
 
