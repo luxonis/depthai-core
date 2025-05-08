@@ -157,7 +157,7 @@ else()
         GIT_TAG        84d17d2d8586c894c77c0205388ebccf579d13cc
     )
 
-    set(XLINK_ENABLE_LIBUSB OFF CACHE BOOL "Enable libusb" FORCE)
+    set(XLINK_ENABLE_LIBUSB ${DEPTHAI_ENABLE_LIBUSB} CACHE BOOL "Enable libusb" FORCE)
 
     FetchContent_MakeAvailable(
         XLink

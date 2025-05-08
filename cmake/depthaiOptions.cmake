@@ -1,19 +1,25 @@
 option(DEPTHAI_ENABLE_LIBUSB "Enable usage of libusb and interaction with USB devices" OFF)
-option(DEPTHAI_ENABLE_APRIL_TAG "Enable AprilTag node (only available for Windows)" OFF)
+option(DEPTHAI_ENABLE_APRIL_TAG "Enable AprilTag node (not available for Windows)" ON)
 option(DEPTHAI_RTABMAP_SUPPORT "Enable optional RTABMap support" OFF)
 option(DEPTHAI_BASALT_SUPPORT "Enable optional Basalt support" OFF)
-option(DEPTHAI_ENABLE_PROTOBUF "Enable Protobuf support" OFF)
+option(DEPTHAI_ENABLE_PROTOBUF "Enable Protobuf support" ON)
 option(DEPTHAI_BUILD_PYTHON "Build python bindings" OFF)
 option(DEPTHAI_BUILD_TESTS "Build tests" OFF)
-option(DEPTHAI_OPENCV_SUPPORT "Enable optional OpenCV support" OFF)
+option(DEPTHAI_OPENCV_SUPPORT "Enable optional OpenCV support" ON)
 OPTION(DEPTHAI_ENABLE_KOMPUTE "Enable Kompute support" OFF)
 option(DEPTHAI_PCL_SUPPORT "Enable optional PCL support" OFF)
-option(DEPTHAI_BOOTSTRAP_VCPKG "Automatically bootstrap VCPKG" ON)
 option(DEPTHAI_MERGED_TARGET "Enable merged target build" ON)
 option(DEPTHAI_NEW_FIND_PYTHON "Use new FindPython module" ON)
 option(DEPTHAI_BUILD_ZOO_HELPER "Build the Zoo helper" OFF)
-option(DEPTHAI_ENABLE_MP4V2 "Enable video recording using the MP4V2 library" OFF)
+option(DEPTHAI_ENABLE_MP4V2 "Enable video recording using the MP4V2 library" ON)
 option(DEPTHAI_XTENSOR_SUPPORT "Enable optional xtensor support" OFF)
+
+#VCPKG related options
+option(DEPTHAI_BOOTSTRAP_VCPKG "Automatically bootstrap VCPKG" ON)
+# DepthAI uses VCPKG internally, to fetch its private dependencies, but not for the public interface dependencies by default
+# (OpenCV, PCL, etc.)
+# This is to avoid conflicts with the system installed libraries when downstream libraries use DepthAI.
+option(DEPTHAI_VCPKG_INTERNAL_ONLY "Use VCPKG internally, but not for libraries on the interface" ON)
 
 if(NOT DEPTHAI_OPENCV_SUPPORT)
     set(DEPTHAI_MERGED_TARGET OFF CACHE BOOL "Enable merged target build" FORCE)
@@ -30,14 +36,14 @@ if(ANDROID OR EMSCRIPTEN)
     # Backward not supported currently on Android
     set(DEPTHAI_ENABLE_BACKWARD OFF CACHE BOOL "" FORCE)
 else()
-    option(DEPTHAI_ENABLE_BACKWARD "Enable stacktrace printing on crash using Backward" OFF)
+    option(DEPTHAI_ENABLE_BACKWARD "Enable stacktrace printing on crash using Backward" ON)
 endif()
 
 # Check if on 32 bit linux - default without CURL support
 if(CMAKE_SIZEOF_VOID_P EQUAL 4 AND UNIX)
     set(DEPTHAI_DEFAULT_CURL_SUPPORT OFF)
 else()
-    set(DEPTHAI_DEFAULT_CURL_SUPPORT OFF)
+    set(DEPTHAI_DEFAULT_CURL_SUPPORT ON)
 endif()
 
 option(DEPTHAI_ENABLE_CURL "Enable CURL support" ${DEPTHAI_DEFAULT_CURL_SUPPORT})
@@ -45,7 +51,7 @@ option(DEPTHAI_ENABLE_CURL "Enable CURL support" ${DEPTHAI_DEFAULT_CURL_SUPPORT}
 
 if(DEPTHAI_ENABLE_PROTOBUF)
     option(DEPTHAI_ENABLE_REMOTE_CONNECTION "Enable Remote Connection support" ON)
-    if(DEPTHAI_ENABLE_CURL)
+    if(DEPTHAI_ENABLE_CURL AND DEPTHAI_HAVE_OPENCV_SUPPORT)
         option(DEPTHAI_ENABLE_EVENTS_MANAGER "Enable Events Manager" ON)
     else()
         message(STATUS "Events Manager disabled because Protobuf & curl support is disabled.")

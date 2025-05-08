@@ -2,7 +2,29 @@ include(CMakeFindDependencyMacro)
 
 find_dependency(nlohmann_json CONFIG REQUIRED)
 find_dependency(libnop CONFIG REQUIRED)
-find_dependency(XLink CONFIG REQUIRED)
+find_dependency(XLink CONFIG REQUIRED COMPONENTS XLinkPublic)
+
+set(DEPTHAI_OPENCV_SUPPORT @DEPTHAI_OPENCV_SUPPORT@)
+set(DEPTHAI_BASALT_SUPPORT @DEPTHAI_BASALT_SUPPORT@)
+set(DEPTHAI_RTABMAP_SUPPORT @DEPTHAI_RTABMAP_SUPPORT@)
+set(DEPTHAI_PCL_SUPPORT @DEPTHAI_PCL_SUPPORT@)
+
+if(DEPTHAI_OPENCV_SUPPORT)
+    find_dependency(OpenCV 4 CONFIG REQUIRED)
+endif()
+
+if(DEPTHAI_RTABMAP_SUPPORT)
+    find_dependency(rtabmap CONFIG REQUIRED)
+endif()
+
+if(DEPTHAI_BASALT_SUPPORT)
+    find_dependency(Basalt CONFIG REQUIRED)
+endif()
+
+if(DEPTHAI_PCL_SUPPORT)
+    find_dependency(PCL CONFIG REQUIRED)
+endif()
+
 # Add the targets file
 include("${CMAKE_CURRENT_LIST_DIR}/@PROJECT_EXPORT_GROUP@.cmake")
 
