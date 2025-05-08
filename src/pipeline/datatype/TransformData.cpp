@@ -9,9 +9,13 @@
 namespace dai {
 
 TransformData::TransformData() {}
-TransformData::TransformData(const Transform& transform) : transform(transform) {}
-TransformData::TransformData(const std::array<std::array<double, 4>, 4>& data) : transform({data}) {}
-TransformData::TransformData(double x, double y, double z, double qx, double qy, double qz, double qw) {
+TransformData::TransformData(const Transform& transform, const std::string& frameID, const std::string& parentFrameID)
+    : transform(transform), frameID(frameID), parentFrameID(parentFrameID) {}
+TransformData::TransformData(const std::array<std::array<double, 4>, 4>& data, const std::string& frameID, const std::string& parentFrameID)
+    : transform({data}), frameID(frameID), parentFrameID(parentFrameID) {}
+TransformData::TransformData(
+    double x, double y, double z, double qx, double qy, double qz, double qw, const std::string& frameID, const std::string& parentFrameID)
+    : frameID(frameID), parentFrameID(parentFrameID) {
     // x,y,z,qx,qy,qz,qw to homography matrix
     double n = 1.0 / sqrt(qx * qx + qy * qy + qz * qz + qw * qw);
     qx *= n;
@@ -23,7 +27,8 @@ TransformData::TransformData(double x, double y, double z, double qx, double qy,
                          {2.0 * qx * qz - 2.0 * qy * qw, 2.0 * qy * qz + 2.0 * qx * qw, 1.0 - 2.0 * qx * qx - 2.0 * qy * qy, z},
                          {0.0, 0.0, 0.0, 1.0}}};
 }
-TransformData::TransformData(double x, double y, double z, double roll, double pitch, double yaw) {
+TransformData::TransformData(double x, double y, double z, double roll, double pitch, double yaw, const std::string& frameID, const std::string& parentFrameID)
+    : frameID(frameID), parentFrameID(parentFrameID) {
     // x,y,z,r,p,yw to homography matrix
     double cr = cos(roll), sr = sin(roll);
     double cp = cos(pitch), sp = sin(pitch);

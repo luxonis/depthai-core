@@ -31,15 +31,19 @@ void bind_transformdata(pybind11::module& m, void* pCallstack) {
 
     // Metadata / raw
     transformData.def(py::init<>())
-        .def(py::init<double, double, double, double, double, double, double>(),
+        .def(py::init<double, double, double, double, double, double, double, std::string, std::string>(),
              py::arg("x"),
              py::arg("y"),
              py::arg("z"),
              py::arg("qx"),
              py::arg("qy"),
              py::arg("qz"),
-             py::arg("qw"))
+             py::arg("qw"),
+             py::arg("frameID"),
+             py::arg("parentFrameID"))
         .def("__repr__", &TransformData::str)
+        .def_readwrite("frameID", &TransformData::frameID)
+        .def_readwrite("parentFrameID", &TransformData::parentFrameID)
         .def("getTranslation", &TransformData::getTranslation, DOC(dai, TransformData, getTranslation))
         .def("getRotationEuler", &TransformData::getRotationEuler, DOC(dai, TransformData, getRotationEuler))
         .def("getQuaternion", &TransformData::getQuaternion, DOC(dai, TransformData, getQuaternion));
