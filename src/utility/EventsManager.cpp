@@ -459,7 +459,7 @@ std::string EventsManager::createUUID() {
     };
     return ss.str();
 }
-void EventsManager::setQueueSize(uint64 queueSize) {
+void EventsManager::setQueueSize(uint64_t queueSize) {
     this->queueSize = queueSize;
 }
 void EventsManager::setLogResponse(bool logResponse) {
