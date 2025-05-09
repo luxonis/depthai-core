@@ -112,7 +112,7 @@ class ObjectTracker : public NodeCRTP<Node, ObjectTracker, ObjectTrackerProperti
     void setOcclusionRatioThreshold(float occlusionRatioThreshold);
     /**
      * Specify tracklet lifespan.
-     * @param lifespan Tracklet lifespan. Number of frames after which a LOST tracklet is removed. Default 120.
+     * @param lifespan Tracklet lifespan in number of frames. Number of frames after which a LOST tracklet is removed. Default 120.
      */
     void setTrackletMaxLifespan(uint32_t lifespan);
     /**
