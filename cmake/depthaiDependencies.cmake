@@ -98,6 +98,10 @@ if(DEPTHAI_XTENSOR_SUPPORT)
             GIT_SHALLOW    TRUE
         )
         FetchContent_MakeAvailable(xtl xtensor)
+        get_target_property(_xtensor_inc xtensor INTERFACE_INCLUDE_DIRECTORIES)
+        set_target_properties(xtensor PROPERTIES
+            INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${_xtensor_inc}"
+        )
         # list(APPEND targets_to_export xtl xtensor)
     else()
         find_package(xtensor ${_QUIET} CONFIG REQUIRED)
