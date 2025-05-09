@@ -25,3 +25,5 @@
 #include "datatype/ToFConfig.hpp"
 #include "datatype/TrackedFeatures.hpp"
 #include "datatype/Tracklets.hpp"
+#include "datatype/ObjectTrackerConfig.hpp"
+
