@@ -4,7 +4,6 @@
 
 #include "depthai/common/DetectionParserOptions.hpp"
 #include "depthai/common/TensorInfo.hpp"
-#include "depthai/common/optional.hpp"
 #include "depthai/properties/Properties.hpp"
 
 namespace dai {

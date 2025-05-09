@@ -260,6 +260,7 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const SpatialImgDetec
         // populate SpatialImgDetection.ImgDetection from struct inheritance
         proto::img_detections::ImgDetection* imgDetection = spatialImgDetection->mutable_detection();
         imgDetection->set_label(detection.label);
+        imgDetection->set_name(detection.name);
         imgDetection->set_confidence(detection.confidence);
         imgDetection->set_xmin(detection.xmin);
         imgDetection->set_ymin(detection.ymin);
@@ -381,6 +382,7 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgDetections* 
     for(const auto& detection : message->detections) {
         proto::img_detections::ImgDetection* imgDetection = imgDetections->add_detections();
         imgDetection->set_label(detection.label);
+        imgDetection->set_name(detection.name);
         imgDetection->set_confidence(detection.confidence);
         imgDetection->set_xmin(detection.xmin);
         imgDetection->set_ymin(detection.ymin);
