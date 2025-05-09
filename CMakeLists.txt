@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 # Early options
 option(DEPTHAI_ENABLE_LIBUSB "Enable usage of libusb and interaction with USB devices" ON)
+option(DEPTHAI_FETCH_ARTIFACTS "Enable fetching artifacts from remote repository" ON)
 # Build AprilTag node code (note, that even if set to OFF, an AprilTagNode can be used with setRunOnHost(false))
 option(DEPTHAI_ENABLE_APRIL_TAG "Enable AprilTag node" ON)
 option(DEPTHAI_RTABMAP_SUPPORT "Enable optional RTABMap support" OFF)
