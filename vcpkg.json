@@ -6,15 +6,14 @@
             "name": "cpp-httplib",
             "default-features": false
         },
-        "yaml-cpp",
         "nlohmann-json",
+        "yaml-cpp",
         "spdlog",
         "zlib",
         "bzip2",
         "lz4",
         "liblzma",
         "fp16",
-        "libnop",
         "fmt",
         "neargye-semver",
         "magic-enum",
@@ -168,28 +167,6 @@
                 }
             ]
         },
-        "xlink": {
-            "description": "Enable XLink support",
-            "dependencies": [
-                {
-                    "name": "xlink"
-                }
-            ]
-        },
-        "xlink-usb": {
-            "description": "Enable XLink support",
-            "dependencies": [
-                {
-                    "name": "xlink",
-                    "features": [
-                        "libusb"
-                    ]
-                },
-                {
-                    "name": "libusb"
-                }
-            ]
-        },
         "tests": {
             "description": "Enable tests",
             "dependencies": [
@@ -214,6 +191,17 @@
                 },
                 {
                     "name": "xtl"
+                }
+            ]
+        },
+        "public-deps": {
+            "description": "Enable public dependencies",
+            "dependencies": [
+                {
+                    "name": "nlohmann-json"
+                },
+                {
+                    "name": "libnop"
                 }
             ]
         }

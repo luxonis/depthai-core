@@ -702,7 +702,6 @@ if(DEPTHAI_ENABLE_PROTOBUF)
     # Load protobuf support into library messages_proto
     message(STATUS "Protobuf support enabled")
     add_subdirectory(protos)
-    list(APPEND targets_to_export messages)
     target_link_libraries(${TARGET_CORE_NAME} PRIVATE protobuf::libprotobuf messages)
     target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_ENABLE_PROTOBUF)
 endif()
@@ -1205,7 +1204,6 @@ if(DEPTHAI_INSTALL)
     install(FILES
         "${CMAKE_CURRENT_BINARY_DIR}/_install/${PROJECT_NAME}Config.cmake"
         "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
-        "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Dependencies.cmake"
         DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}"
     )
 
