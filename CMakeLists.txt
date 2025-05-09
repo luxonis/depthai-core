@@ -184,6 +184,37 @@ set(TARGET_CORE_NAME ${PROJECT_NAME}-core)
 set(TARGET_CORE_ALIAS core)
 
 ########################
+# Dynamic Calibration Support
+########################
+set(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT ON CACHE BOOL "Enable support for dynamic calibration")
+
+if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
+    set(DYNAMIC_CALIBRATION_DIR ${CMAKE_SOURCE_DIR}/external/dynamic_calibration)
+
+    # Try to find the dynamic_calibration shared lib
+    find_library(DCLIB dynamic_calibration
+        PATHS ${DYNAMIC_CALIBRATION_DIR}/lib
+        NO_DEFAULT_PATH
+    )
+
+    if(DCLIB)
+        message(STATUS "Found dynamic_calibration: ${DCLIB}")
+        set(DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT ON)
+
+        # Add both include directories
+        include_directories(
+            ${DYNAMIC_CALIBRATION_DIR}/include
+        )
+
+        # Link it to the target later (after target is defined)
+        set(DYNAMIC_CALIBRATION_LIB ${DCLIB})
+    else()
+        message(WARNING "dynamic_calibration library not found at ${DYNAMIC_CALIBRATION_DIR}/lib. Support disabled.")
+        set(DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT OFF)
+    endif()
+endif()
+
+########################
 # OpenCV Support 1
 ########################
 set(THIRDPARTY_OPENCV_LIBRARIES "" CACHE STRING "Optional libraries to link OpenCV support, e.g. TBB::tbb")
@@ -281,6 +312,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/node/internal/XLinkOutHost.cpp
     src/pipeline/node/host/HostNode.cpp
     src/pipeline/node/host/RGBD.cpp
+    src/pipeline/node/DynamicCalibration.cpp
     src/pipeline/datatype/DatatypeEnum.cpp
     src/pipeline/node/PointCloud.cpp
     src/pipeline/datatype/Buffer.cpp
@@ -699,6 +731,7 @@ target_link_libraries(${TARGET_CORE_NAME}
         magic_enum::magic_enum
         liblzma::liblzma
         lz4::lz4
+        ${DYNAMIC_CALIBRATION_DIR}/lib/libdynamic_calibration.so
 )
 
 if(DEPTHAI_ENABLE_MP4V2)
