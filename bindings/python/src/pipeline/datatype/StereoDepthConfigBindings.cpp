@@ -20,7 +20,6 @@ void bind_stereodepthconfig(pybind11::module& m, void* pCallstack) {
     // RawStereoDepthConfig));
     py::class_<StereoDepthConfig, Py<StereoDepthConfig>, Buffer, std::shared_ptr<StereoDepthConfig>> stereoDepthConfig(
         m, "StereoDepthConfig", DOC(dai, StereoDepthConfig));
-    py::enum_<StereoDepthConfig::MedianFilter> medianFilter(m, "MedianFilter", DOC(dai, MedianFilter));
     py::class_<StereoDepthConfig::ConfidenceMetrics> _ConfidenceMetrics(stereoDepthConfig, "ConfidenceMetrics", DOC(dai, StereoDepthConfig, ConfidenceMetrics));
     py::class_<StereoDepthConfig::AlgorithmControl> algorithmControl(stereoDepthConfig, "AlgorithmControl", DOC(dai, StereoDepthConfig, AlgorithmControl));
     py::enum_<StereoDepthConfig::AlgorithmControl::DepthAlign> depthAlign(
@@ -28,18 +27,10 @@ void bind_stereodepthconfig(pybind11::module& m, void* pCallstack) {
     py::enum_<StereoDepthConfig::AlgorithmControl::DepthUnit> depthUnit(
         algorithmControl, "DepthUnit", DOC(dai, StereoDepthConfig, AlgorithmControl, DepthUnit));
     py::class_<StereoDepthConfig::PostProcessing> postProcessing(stereoDepthConfig, "PostProcessing", DOC(dai, StereoDepthConfig, PostProcessing));
-    py::class_<StereoDepthConfig::PostProcessing::SpatialFilter> spatialFilter(
-        postProcessing, "SpatialFilter", DOC(dai, StereoDepthConfig, PostProcessing, SpatialFilter));
-    py::class_<StereoDepthConfig::PostProcessing::TemporalFilter> temporalFilter(
-        postProcessing, "TemporalFilter", DOC(dai, StereoDepthConfig, PostProcessing, TemporalFilter));
-    py::enum_<StereoDepthConfig::PostProcessing::TemporalFilter::PersistencyMode> persistencyMode(
-        temporalFilter, "PersistencyMode", DOC(dai, StereoDepthConfig, PostProcessing, TemporalFilter, PersistencyMode));
     py::class_<StereoDepthConfig::PostProcessing::ThresholdFilter> thresholdFilter(
         postProcessing, "ThresholdFilter", DOC(dai, StereoDepthConfig, PostProcessing, ThresholdFilter));
     py::class_<StereoDepthConfig::PostProcessing::BrightnessFilter> brightnessFilter(
         postProcessing, "BrightnessFilter", DOC(dai, StereoDepthConfig, PostProcessing, BrightnessFilter));
-    py::class_<StereoDepthConfig::PostProcessing::SpeckleFilter> speckleFilter(
-        postProcessing, "SpeckleFilter", DOC(dai, StereoDepthConfig, PostProcessing, SpeckleFilter));
     py::class_<StereoDepthConfig::PostProcessing::DecimationFilter> decimationFilter(
         postProcessing, "DecimationFilter", DOC(dai, StereoDepthConfig, PostProcessing, DecimationFilter));
     py::enum_<StereoDepthConfig::PostProcessing::DecimationFilter::DecimationMode> decimationMode(
@@ -72,13 +63,6 @@ void bind_stereodepthconfig(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
-
-    // Metadata / raw
-    medianFilter.value("MEDIAN_OFF", StereoDepthConfig::MedianFilter::MEDIAN_OFF)
-        .value("KERNEL_3x3", StereoDepthConfig::MedianFilter::KERNEL_3x3)
-        .value("KERNEL_5x5", StereoDepthConfig::MedianFilter::KERNEL_5x5)
-        .value("KERNEL_7x7", StereoDepthConfig::MedianFilter::KERNEL_7x7);
-    // m.attr("StereoDepthProperties").attr("MedianFilter") = medianFilter;
 
     depthAlign
         .value("RECTIFIED_RIGHT",
@@ -145,55 +129,6 @@ void bind_stereodepthconfig(pybind11::module& m, void* pCallstack) {
         .def_readwrite(
             "flatnessOverride", &StereoDepthConfig::ConfidenceMetrics::flatnessOverride, DOC(dai, StereoDepthConfig, ConfidenceMetrics, flatnessOverride));
 
-    spatialFilter.def(py::init<>())
-        .def_readwrite("enable", &StereoDepthConfig::PostProcessing::SpatialFilter::enable, DOC(dai, StereoDepthConfig, PostProcessing, SpatialFilter, enable))
-        .def_readwrite("holeFillingRadius",
-                       &StereoDepthConfig::PostProcessing::SpatialFilter::holeFillingRadius,
-                       DOC(dai, StereoDepthConfig, PostProcessing, SpatialFilter, holeFillingRadius))
-        .def_readwrite("alpha", &StereoDepthConfig::PostProcessing::SpatialFilter::alpha, DOC(dai, StereoDepthConfig, PostProcessing, SpatialFilter, alpha))
-        .def_readwrite("delta", &StereoDepthConfig::PostProcessing::SpatialFilter::delta, DOC(dai, StereoDepthConfig, PostProcessing, SpatialFilter, delta))
-        .def_readwrite("numIterations",
-                       &StereoDepthConfig::PostProcessing::SpatialFilter::numIterations,
-                       DOC(dai, StereoDepthConfig, PostProcessing, SpatialFilter, numIterations));
-
-    persistencyMode
-        .value("PERSISTENCY_OFF",
-               StereoDepthConfig::PostProcessing::TemporalFilter::PersistencyMode::PERSISTENCY_OFF,
-               DOC(dai, StereoDepthConfig, PostProcessing, TemporalFilter, PersistencyMode, PERSISTENCY_OFF))
-        .value("VALID_8_OUT_OF_8",
-               StereoDepthConfig::PostProcessing::TemporalFilter::PersistencyMode::VALID_8_OUT_OF_8,
-               DOC(dai, StereoDepthConfig, PostProcessing, TemporalFilter, PersistencyMode, VALID_8_OUT_OF_8))
-        .value("VALID_2_IN_LAST_3",
-               StereoDepthConfig::PostProcessing::TemporalFilter::PersistencyMode::VALID_2_IN_LAST_3,
-               DOC(dai, StereoDepthConfig, PostProcessing, TemporalFilter, PersistencyMode, VALID_2_IN_LAST_3))
-        .value("VALID_2_IN_LAST_4",
-               StereoDepthConfig::PostProcessing::TemporalFilter::PersistencyMode::VALID_2_IN_LAST_4,
-               DOC(dai, StereoDepthConfig, PostProcessing, TemporalFilter, PersistencyMode, VALID_2_IN_LAST_4))
-        .value("VALID_2_OUT_OF_8",
-               StereoDepthConfig::PostProcessing::TemporalFilter::PersistencyMode::VALID_2_OUT_OF_8,
-               DOC(dai, StereoDepthConfig, PostProcessing, TemporalFilter, PersistencyMode, VALID_2_OUT_OF_8))
-        .value("VALID_1_IN_LAST_2",
-               StereoDepthConfig::PostProcessing::TemporalFilter::PersistencyMode::VALID_1_IN_LAST_2,
-               DOC(dai, StereoDepthConfig, PostProcessing, TemporalFilter, PersistencyMode, VALID_1_IN_LAST_2))
-        .value("VALID_1_IN_LAST_5",
-               StereoDepthConfig::PostProcessing::TemporalFilter::PersistencyMode::VALID_1_IN_LAST_5,
-               DOC(dai, StereoDepthConfig, PostProcessing, TemporalFilter, PersistencyMode, VALID_1_IN_LAST_5))
-        .value("VALID_1_IN_LAST_8",
-               StereoDepthConfig::PostProcessing::TemporalFilter::PersistencyMode::VALID_1_IN_LAST_8,
-               DOC(dai, StereoDepthConfig, PostProcessing, TemporalFilter, PersistencyMode, VALID_1_IN_LAST_8))
-        .value("PERSISTENCY_INDEFINITELY",
-               StereoDepthConfig::PostProcessing::TemporalFilter::PersistencyMode::PERSISTENCY_INDEFINITELY,
-               DOC(dai, StereoDepthConfig, PostProcessing, TemporalFilter, PersistencyMode, PERSISTENCY_INDEFINITELY));
-
-    temporalFilter.def(py::init<>())
-        .def_readwrite(
-            "enable", &StereoDepthConfig::PostProcessing::TemporalFilter::enable, DOC(dai, StereoDepthConfig, PostProcessing, TemporalFilter, enable))
-        .def_readwrite("persistencyMode",
-                       &StereoDepthConfig::PostProcessing::TemporalFilter::persistencyMode,
-                       DOC(dai, StereoDepthConfig, PostProcessing, TemporalFilter, persistencyMode))
-        .def_readwrite("alpha", &StereoDepthConfig::PostProcessing::TemporalFilter::alpha, DOC(dai, StereoDepthConfig, PostProcessing, TemporalFilter, alpha))
-        .def_readwrite("delta", &StereoDepthConfig::PostProcessing::TemporalFilter::delta, DOC(dai, StereoDepthConfig, PostProcessing, TemporalFilter, delta));
-
     thresholdFilter.def(py::init<>())
         .def_readwrite(
             "minRange", &StereoDepthConfig::PostProcessing::ThresholdFilter::minRange, DOC(dai, StereoDepthConfig, PostProcessing, ThresholdFilter, minRange))
@@ -207,15 +142,6 @@ void bind_stereodepthconfig(pybind11::module& m, void* pCallstack) {
         .def_readwrite("maxBrightness",
                        &StereoDepthConfig::PostProcessing::BrightnessFilter::maxBrightness,
                        DOC(dai, StereoDepthConfig, PostProcessing, BrightnessFilter, maxBrightness));
-
-    speckleFilter.def(py::init<>())
-        .def_readwrite("enable", &StereoDepthConfig::PostProcessing::SpeckleFilter::enable, DOC(dai, StereoDepthConfig, PostProcessing, SpeckleFilter, enable))
-        .def_readwrite("speckleRange",
-                       &StereoDepthConfig::PostProcessing::SpeckleFilter::speckleRange,
-                       DOC(dai, StereoDepthConfig, PostProcessing, SpeckleFilter, speckleRange))
-        .def_readwrite("differenceThreshold",
-                       &StereoDepthConfig::PostProcessing::SpeckleFilter::differenceThreshold,
-                       DOC(dai, StereoDepthConfig, PostProcessing, SpeckleFilter, differenceThreshold));
 
     decimationMode
         .value("PIXEL_SKIPPING",
@@ -375,8 +301,6 @@ void bind_stereodepthconfig(pybind11::module& m, void* pCallstack) {
         .def_readwrite("costMatching", &StereoDepthConfig::costMatching, DOC(dai, StereoDepthConfig, costMatching))
         .def_readwrite("costAggregation", &StereoDepthConfig::costAggregation, DOC(dai, StereoDepthConfig, costAggregation))
         .def_readwrite("confidenceMetrics", &StereoDepthConfig::confidenceMetrics, DOC(dai, StereoDepthConfig, confidenceMetrics));
-    // legacy
-    m.attr("StereoDepthConfig").attr("MedianFilter") = medianFilter;
 
     // Message
     stereoDepthConfig.def(py::init<>())
@@ -416,7 +340,6 @@ void bind_stereodepthconfig(pybind11::module& m, void* pCallstack) {
              py::arg("filtersBackend"),
              DOC(dai, StereoDepthConfig, setFiltersComputeBackend))
         .def("getFiltersComputeBackend", &StereoDepthConfig::getFiltersComputeBackend, DOC(dai, StereoDepthConfig, getFiltersComputeBackend));
-    m.attr("StereoDepthConfig").attr("MedianFilter") = medianFilter;
     m.attr("StereoDepthConfig").attr("AlgorithmControl") = algorithmControl;
     m.attr("StereoDepthConfig").attr("PostProcessing") = postProcessing;
     m.attr("StereoDepthConfig").attr("CensusTransform") = censusTransform;
