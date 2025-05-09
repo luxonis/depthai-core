@@ -12,7 +12,7 @@ option(DEPTHAI_MERGED_TARGET "Enable merged target build" ON)
 option(DEPTHAI_NEW_FIND_PYTHON "Use new FindPython module" ON)
 option(DEPTHAI_BUILD_ZOO_HELPER "Build the Zoo helper" OFF)
 option(DEPTHAI_ENABLE_MP4V2 "Enable video recording using the MP4V2 library" ON)
-option(DEPTHAI_XTENSOR_SUPPORT "Enable optional xtensor support" OFF)
+option(DEPTHAI_XTENSOR_SUPPORT "Enable optional xtensor support" ON)
 
 #VCPKG related options
 option(DEPTHAI_BOOTSTRAP_VCPKG "Automatically bootstrap VCPKG" ON)
