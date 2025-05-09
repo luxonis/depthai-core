@@ -20,6 +20,14 @@ option(DEPTHAI_BOOTSTRAP_VCPKG "Automatically bootstrap VCPKG" ON)
 # (OpenCV, PCL, etc.)
 # This is to avoid conflicts with the system installed libraries when downstream libraries use DepthAI.
 option(DEPTHAI_VCPKG_INTERNAL_ONLY "Use VCPKG internally, but not for libraries on the interface" ON)
+set(USE_EXTERNAL_INTERFACE_LIBS_DEFAULT ON)
+if(DEPTHAI_VCPKG_INTERNAL_ONLY)
+    set(USE_EXTERNAL_INTERFACE_LIBS_DEFAULT OFF)
+endif()
+
+option(DEPTHAI_JSON_EXTERNAL "Use external nlohmann_json library" ${USE_EXTERNAL_INTERFACE_LIBS_DEFAULT})
+option(DEPTHAI_LIBNOP_EXTERNAL "Use external libnop library" ${USE_EXTERNAL_INTERFACE_LIBS_DEFAULT})
+option(DEPTHAI_XTENSOR_EXTERNAL "Use external xtensor library" ${USE_EXTERNAL_INTERFACE_LIBS_DEFAULT})
 
 if(NOT DEPTHAI_OPENCV_SUPPORT)
     set(DEPTHAI_MERGED_TARGET OFF CACHE BOOL "Enable merged target build" FORCE)

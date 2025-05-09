@@ -1,3 +1,4 @@
+include(FetchContent)
 if(CONFIG_MODE)
     set(_DEPTHAI_PREFIX_PATH_ORIGINAL ${CMAKE_PREFIX_PATH})
     set(_DEPTHAI_MODULE_PATH_ORIGINAL ${CMAKE_MODULE_PATH})
@@ -82,8 +83,25 @@ endif()
 
 # Xtensor
 if(DEPTHAI_XTENSOR_SUPPORT)
-    find_package(xtl ${_QUIET} CONFIG REQUIRED)
-    find_package(xtensor ${_QUIET} CONFIG REQUIRED)
+    if(NOT DEPTHAI_XTENSOR_EXTERNAL)
+        FetchContent_Declare(
+            xtl
+            GIT_REPOSITORY https://github.com/xtensor-stack/xtl.git
+            GIT_TAG        0.7.6
+            GIT_SHALLOW    TRUE
+        )
+
+        FetchContent_Declare(
+            xtensor
+            GIT_REPOSITORY https://github.com/xtensor-stack/xtensor.git
+            GIT_TAG        0.25.0
+            GIT_SHALLOW    TRUE
+        )
+        FetchContent_MakeAvailable(xtl xtensor)
+        # list(APPEND targets_to_export xtl xtensor)
+    else()
+        find_package(xtensor ${_QUIET} CONFIG REQUIRED)
+    endif()
 endif()
 
 if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
@@ -94,41 +112,40 @@ endif()
 # Add threads (c++)
 find_package(Threads ${_QUIET} REQUIRED)
 
-# Nlohmann JSON
-include(FetchContent)
+if(NOT DEPTHAI_JSON_EXTERNAL)
+    FetchContent_Declare(
+        nlohmann_json
+        GIT_REPOSITORY https://github.com/nlohmann/json.git
+        GIT_TAG        v3.11.3
+    )
+    # Json is a public dependancy, so it has to be installed
+    set(JSON_Install ON CACHE BOOL "Install nlohmann_json" FORCE)
 
-FetchContent_Declare(
-    nlohmann_json
-    GIT_REPOSITORY https://github.com/nlohmann/json.git
-    GIT_TAG        v3.11.3
-)
-# Json is a public dependancy, so it has to be installed
-set(JSON_Install ON CACHE BOOL "Install nlohmann_json" FORCE)
+    FetchContent_MakeAvailable(nlohmann_json)
+    list(APPEND targets_to_export nlohmann_json)
+else()
+    find_package(nlohmann_json CONFIG REQUIRED)
+endif()
 
-FetchContent_MakeAvailable(nlohmann_json)
+if(NOT DEPTHAI_LIBNOP_EXTERNAL)
+    FetchContent_Declare(
+        libnop
+        GIT_REPOSITORY https://github.com/luxonis/libnop.git
+        GIT_TAG        ab842f51dc2eb13916dc98417c2186b78320ed10
+    )
 
-list(APPEND targets_to_export nlohmann_json)
+    FetchContent_MakeAvailable(libnop)
 
-# libnop for serialization
-FetchContent_Declare(
-    libnop
-    GIT_REPOSITORY https://github.com/luxonis/libnop.git
-    GIT_TAG        ab842f51dc2eb13916dc98417c2186b78320ed10
-    #FIND_PACKAGE_ARGS
-)
+    # Thread libnop in all cases as a system include, to avoid many warnings from it
+    get_target_property(_nop_inc libnop INTERFACE_INCLUDE_DIRECTORIES)
+    set_target_properties(libnop PROPERTIES
+        INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${_nop_inc}"
+    )
 
-
-FetchContent_MakeAvailable(libnop)
-
-# 1. Ask CMake what include dirs libnop exports
-get_target_property(_nop_inc libnop INTERFACE_INCLUDE_DIRECTORIES)
-
-# 2. Tell the compiler those dirs are "system" dirs
-set_target_properties(libnop PROPERTIES
-    INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${_nop_inc}"
-)
-
-list(APPEND targets_to_export libnop)
+    list(APPEND targets_to_export libnop)
+else()
+    find_package(libnop CONFIG REQUIRED)
+endif()
 
 if(DEPTHAI_ENABLE_MP4V2)
     # MP4V2 for video encoding
