@@ -402,6 +402,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/node/host/XLinkOutHost.cpp
     src/pipeline/node/host/HostNode.cpp
     src/pipeline/node/host/RGBD.cpp
+    src/pipeline/node/DynamicCalibration.cpp
     src/pipeline/datatype/DatatypeEnum.cpp
     src/pipeline/node/PointCloud.cpp
     src/pipeline/datatype/Buffer.cpp

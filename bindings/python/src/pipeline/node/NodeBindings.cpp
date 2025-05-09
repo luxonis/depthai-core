@@ -169,6 +169,7 @@ void bind_basaltnode(pybind11::module& m, void* pCallstack);
 void bind_rtabmapvionode(pybind11::module& m, void* pCallstack);
 void bind_rtabmapslamnode(pybind11::module& m, void* pCallstack);
 #endif
+void bind_dynamic_calibration(pybind11::module& m, void* pCallstack);
 void NodeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     // Bind Node et al
     callstack.push_front(NodeBindings::bind);
@@ -217,6 +218,7 @@ void NodeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_rtabmapvionode);
     callstack.push_front(bind_rtabmapslamnode);
 #endif
+    callstack.push_front(bind_dynamic_calibration);
 }
 
 void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
