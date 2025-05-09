@@ -86,12 +86,14 @@ struct NNModelDescription {
  * DEPTHAI_ZOO_CACHE_PATH environment variable and uses that if set, otherwise the default value is used (see getDefaultCachePath).
  * @param apiKey: API key for the model zoo, default is "". If apiKey is set to "", this function checks the DEPTHAI_ZOO_API_KEY environment variable and uses
  * that if set. Otherwise, no API key is used.
+ * @param progressFormat: Format to use for progress output (possible values: pretty, json, none), default is "none"
  * @return std::string: Path to the model in cache
  */
 std::string getModelFromZoo(const NNModelDescription& modelDescription,
                             bool useCached = true,
                             const std::string& cacheDirectory = "",
-                            const std::string& apiKey = "");
+                            const std::string& apiKey = "",
+                            const std::string& progressFormat = "none");
 
 /**
  * @brief Helper function allowing one to download all models specified in yaml files in the given path and store them in the cache directory
@@ -101,9 +103,10 @@ std::string getModelFromZoo(const NNModelDescription& modelDescription,
  * DEPTHAI_ZOO_CACHE_PATH environment variable and uses that if set, otherwise the default is used (see getDefaultCachePath).
  * @param apiKey: API key for the model zoo, default is "". If apiKey is set to "", this function checks the DEPTHAI_ZOO_API_KEY environment variable and uses
  * that if set. Otherwise, no API key is used.
+ * @param progressFormat: Format to use for progress output (possible values: pretty, json, none), default is "none"
  * @return bool: True if all models were downloaded successfully, false otherwise
  */
-bool downloadModelsFromZoo(const std::string& path, const std::string& cacheDirectory = "", const std::string& apiKey = "");
+bool downloadModelsFromZoo(const std::string& path, const std::string& cacheDirectory = "", const std::string& apiKey = "", const std::string& progressFormat = "none");
 
 std::ostream& operator<<(std::ostream& os, const NNModelDescription& modelDescription);
 
