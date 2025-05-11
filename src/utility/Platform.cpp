@@ -146,7 +146,7 @@ void FSLock::lock() {
     }
 
     OVERLAPPED overlapped = {0};
-    if(!LockFileEx(handle, LOCKFILE_EXCLUSIVE_LOCK | LOCKFILE_FAIL_IMMEDIATELY, 0, MAXDWORD, MAXDWORD, &overlapped)) {
+    if(!LockFileEx(handle, LOCKFILE_EXCLUSIVE_LOCK, 0, MAXDWORD, MAXDWORD, &overlapped)) {
         throw std::runtime_error("Failed to acquire lock on file: " + lockPath);
     }
 
