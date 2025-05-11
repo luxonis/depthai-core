@@ -2,6 +2,7 @@
 
 #include <cmath>
 #include <cstdint>
+#include <cstdlib> // for aligned_malloc
 #include <opencv2/opencv.hpp>
 
 #include "depthai/depthai.hpp"
