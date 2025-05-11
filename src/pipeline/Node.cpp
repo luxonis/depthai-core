@@ -589,7 +589,7 @@ void Node::remove(std::shared_ptr<Node> node) {
     auto pipeline = parent.lock();
 
     DAI_CHECK_V(pipeline != nullptr, "Pipeline is null");
-    DAI_CHECK_V(!pipeline->isBuilt(), "Cannot remove a node from another node once pipeline is built.");
+    DAI_CHECK_V(!pipeline->isBuilt(), "Cannot remove node from pipeline once it is built.");
 
     for(auto& n : pipeline->nodes) {
         for(auto& childNode : node->nodeMap) {
