@@ -7,7 +7,7 @@
 
 // Lock specific headers
 #ifdef _WIN32
-    #include <windows.h>
+    #include <winsock2.h>
 #else
     #include <fcntl.h>
     #include <unistd.h>
