@@ -25,7 +25,7 @@ void FilterParamsBindings::bind(pybind11::module& m, void* pCallstack) {
 
     // -- Temporal Filter --
     py::class_<dai::filters::params::TemporalFilter> temporalFilter(
-        params, "TemporalFilter", DOC(dai, filters, params, PostProcessing, TemporalFilter));
+        params, "TemporalFilter", DOC(dai, filters, params, TemporalFilter));
     temporalFilter.def(py::init<>())
         .def_readwrite("enable", &dai::filters::params::TemporalFilter::enable, DOC(dai, filters, params, TemporalFilter, enable))
         .def_readwrite(
