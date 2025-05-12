@@ -127,3 +127,16 @@ elseif("${CMAKE_CXX_COMPILER_ID}" MATCHES "^(AppleClang|Clang|GNU)$")
         set(CMAKE_CXX23_EXTENSION_COMPILE_OPTION "-std=gnu++23")
     endif()
 endif()
+
+# Don't include symbols for the linked libraries
+function(exclude_archive_libs_symbols target)
+    if(WIN32)
+        # TODO: check if this has an equivalent flag for MSVC
+    elseif(UNIX)
+        get_property(TEMP_LINK_FLAGS TARGET ${target} PROPERTY LINK_FLAGS)
+        set(TEMP_LINK_FLAGS "${TEMP_LINK_FLAGS} -Wl,--exclude-libs=ALL")
+        set_property(TARGET ${target} PROPERTY LINK_FLAGS ${TEMP_LINK_FLAGS})
+    else()
+        message(FATAL_ERROR "Unexpeced host, stopping build")
+    endif()
+endfunction()

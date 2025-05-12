@@ -448,6 +448,10 @@ endif()
 # Add default flags to core
 add_default_flags(${TARGET_CORE_NAME})
 
+if(DEPTHAI_VCPKG_INTERNAL_ONLY)
+    exclude_archive_libs_symbols(${TARGET_CORE_NAME})
+endif()
+
 # And clang-tidy and format
 if(DEPTHAI_CLANG_TIDY)
     include(ClangTidy)
