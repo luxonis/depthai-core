@@ -102,7 +102,6 @@ if(DEPTHAI_XTENSOR_SUPPORT)
         set_target_properties(xtensor PROPERTIES
             INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${_xtensor_inc}"
         )
-        # list(APPEND targets_to_export xtl xtensor)
     else()
         find_package(xtensor ${_QUIET} CONFIG REQUIRED)
     endif()
@@ -167,18 +166,19 @@ endif()
 # XLink
 set(_BUILD_SHARED_LIBS_SAVED "${BUILD_SHARED_LIBS}")
 set(BUILD_SHARED_LIBS OFF)
+set(XLINK_ENABLE_LIBUSB ${DEPTHAI_ENABLE_LIBUSB} CACHE BOOL "Enable libusb" FORCE)
+set(XLINK_INSTALL_PUBLIC_ONLY ON CACHE BOOL "Install only public headers" FORCE)
+if(DEPTHAI_ENABLE_LIBUSB)
+    find_package(usb-1.0 ${_QUIET} CONFIG REQUIRED)
+endif()
 if(DEPTHAI_XLINK_LOCAL AND (NOT CONFIG_MODE))
     add_subdirectory("${DEPTHAI_XLINK_LOCAL}" ${CMAKE_CURRENT_BINARY_DIR}/XLink)
 else()
-    # TODO(themarpe) - might be required
-    # elseif(NOT DEPTHAI_XLINK_LOCAL)
     FetchContent_Declare(
         XLink
         GIT_REPOSITORY https://github.com/luxonis/XLink.git
-        GIT_TAG        84d17d2d8586c894c77c0205388ebccf579d13cc
+        GIT_TAG        87785828fabdb1718760bb0a044405d5bbfbb3a2
     )
-
-    set(XLINK_ENABLE_LIBUSB ${DEPTHAI_ENABLE_LIBUSB} CACHE BOOL "Enable libusb" FORCE)
 
     FetchContent_MakeAvailable(
         XLink
@@ -186,7 +186,7 @@ else()
 endif()
 set(BUILD_SHARED_LIBS "${_BUILD_SHARED_LIBS_SAVED}")
 unset(_BUILD_SHARED_LIBS_SAVED)
-list(APPEND targets_to_export XLink XLinkPublic)
+list(APPEND targets_to_export XLinkPublic)
 
 # OpenCV 4 - (optional)
 message("DEPTHAI_OPENCV_SUPPORT: ${DEPTHAI_OPENCV_SUPPORT}")

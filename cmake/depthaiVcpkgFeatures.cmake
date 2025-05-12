@@ -57,3 +57,7 @@ endif()
 if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
     list(APPEND VCPKG_MANIFEST_FEATURES "remote-connection-support")
 endif()
+
+if(DEPTHAI_ENABLE_LIBUSB)
+    list(APPEND VCPKG_MANIFEST_FEATURES "usb")
+endif()

@@ -785,19 +785,19 @@ endif()
 
 # Helper function
 macro(add_runtime_dependencies depending_target dependency)
+    if(TARGET ${dependency})
+        get_property(imported_configs TARGET ${dependency} PROPERTY IMPORTED_CONFIGURATIONS)
+        set(dlls "")
+        foreach(cfg ${imported_configs})
+            get_property(dll TARGET ${dependency} PROPERTY IMPORTED_LOCATION_${cfg})
+            set(dlls ${depthai_dll_libraries} $<$<CONFIG:${cfg}>:${dll}>)
+        endforeach()
+    endif()
+    set(depthai_dll_libraries "")
+    # Create a list of required dll files
+    set(required_dll_files ${dlls} ${depthai_dll_libraries})
+    # Copy the required dlls
     if(WIN32)
-        if(TARGET ${dependency})
-            get_property(imported_configs TARGET ${dependency} PROPERTY IMPORTED_CONFIGURATIONS)
-            set(dlls "")
-            foreach(cfg ${imported_configs})
-                get_property(dll TARGET ${dependency} PROPERTY IMPORTED_LOCATION_${cfg})
-                set(dlls ${depthai_dll_libraries} $<$<CONFIG:${cfg}>:${dll}>)
-            endforeach()
-        endif()
-        set(depthai_dll_libraries "")
-        # Create a list of required dll files
-        set(required_dll_files ${dlls} ${depthai_dll_libraries})
-        # Copy the required dlls
         add_custom_command(TARGET ${depending_target} POST_BUILD COMMAND
             "$<$<BOOL:${required_dll_files}>:${CMAKE_COMMAND};-E;copy_if_different;${required_dll_files};$<TARGET_FILE_DIR:${depending_target}>>"
             COMMAND_EXPAND_LISTS
@@ -1160,9 +1160,9 @@ configure_file(cmake/${PROJECT_NAME}Config.cmake.in _install/${PROJECT_NAME}Conf
 # Modify RPath to point to the cmake/depthai/dependencies/lib
 # note: macOS is APPLE and also UNIX!
 if(APPLE)
-  set_target_properties(${TARGET_CORE_NAME} PROPERTIES INSTALL_RPATH "@loader_path;@loader_path/cmake/${PROJECT_NAME}/dependencies/lib")
+  set_target_properties(${TARGET_CORE_NAME} PROPERTIES INSTALL_RPATH "@loader_path;@loader_path/")
 elseif(UNIX)
-  set_target_properties(${TARGET_CORE_NAME} PROPERTIES INSTALL_RPATH "$ORIGIN:$ORIGIN/cmake/${PROJECT_NAME}/dependencies/lib")
+  set_target_properties(${TARGET_CORE_NAME} PROPERTIES INSTALL_RPATH "$ORIGIN:$ORIGIN/")
 endif()
 
 # Export to CMake registry if specified
@@ -1191,7 +1191,8 @@ if(DEPTHAI_INSTALL)
     endif()
     # Install any required dll files
     if(DEFINED required_dll_files)
-        install(FILES ${required_dll_files} DESTINATION "${CMAKE_INSTALL_BINDIR}")
+        message(STATUS "Required dlls for core are: ${required_dll_files} and they will be installed to ${CMAKE_INSTALL_BINDIR}")
+        install(FILES ${required_dll_files} DESTINATION "${CMAKE_INSTALL_LIBDIR}")
     endif()
 
     # Install export group (information about targets)

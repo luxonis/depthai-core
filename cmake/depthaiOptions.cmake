@@ -1,4 +1,4 @@
-option(DEPTHAI_ENABLE_LIBUSB "Enable usage of libusb and interaction with USB devices" OFF)
+option(DEPTHAI_ENABLE_LIBUSB "Enable usage of libusb and interaction with USB devices" ON)
 option(DEPTHAI_ENABLE_APRIL_TAG "Enable AprilTag node (not available for Windows)" ON)
 option(DEPTHAI_RTABMAP_SUPPORT "Enable optional RTABMap support" OFF)
 option(DEPTHAI_BASALT_SUPPORT "Enable optional Basalt support" OFF)
