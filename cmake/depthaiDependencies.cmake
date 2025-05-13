@@ -42,8 +42,6 @@ if(NOT CONFIG_MODE OR (CONFIG_MODE AND NOT DEPTHAI_SHARED_LIBS))
     # FP16 for conversions
     find_path(FP16_INCLUDE_DIR NAMES fp16.h)
 
-    find_package(PNG  REQUIRED)
-
     if(DEPTHAI_ENABLE_KOMPUTE)
         find_package(kompute ${_QUIET} CONFIG REQUIRED)
     endif()
