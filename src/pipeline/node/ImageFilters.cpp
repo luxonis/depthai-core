@@ -2,7 +2,7 @@
 
 #include <cmath>
 #include <cstdint>
-#include <cstdlib> // for aligned_malloc
+#include <cstdlib> // for alloc
 #include <opencv2/opencv.hpp>
 
 #include "depthai/depthai.hpp"
@@ -480,7 +480,7 @@ int TemporalFilter::allocateBuffers(int frameSize) {
     }
     if(rawAccumulatorFrame.mem == nullptr) {
         rawAccumulatorFrame.size = frameSize;
-        rawAccumulatorFrame.mem = (uint8_t*)aligned_alloc(64, rawAccumulatorFrame.size);
+        rawAccumulatorFrame.mem = (uint8_t*)std::malloc(rawAccumulatorFrame.size);
         if(rawAccumulatorFrame.mem == nullptr) {
             return __LINE__;
         }
@@ -495,7 +495,7 @@ int TemporalFilter::allocateBuffers(int frameSize) {
     }
     if(rawHistoryFrame.mem == nullptr) {
         rawHistoryFrame.size = frameSize;
-        rawHistoryFrame.mem = (uint8_t*)aligned_alloc(64, rawHistoryFrame.size);
+        rawHistoryFrame.mem = (uint8_t*)std::malloc(rawHistoryFrame.size);
         if(rawHistoryFrame.mem == nullptr) {
             return __LINE__;
         }
@@ -504,7 +504,7 @@ int TemporalFilter::allocateBuffers(int frameSize) {
 
     if(rawPersistenceMapLUT.mem == nullptr) {
         rawPersistenceMapLUT.size = PERSISTENCY_LUT_SIZE;
-        rawPersistenceMapLUT.mem = (uint8_t*)aligned_alloc(64, rawPersistenceMapLUT.size);
+        rawPersistenceMapLUT.mem = (uint8_t*)std::malloc(rawPersistenceMapLUT.size);
         if(rawPersistenceMapLUT.mem == nullptr) {
             return __LINE__;
         }
