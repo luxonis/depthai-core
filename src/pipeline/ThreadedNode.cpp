@@ -5,6 +5,7 @@
 #include "utility/Environment.hpp"
 #include "utility/Logging.hpp"
 #include "utility/Platform.hpp"
+#include "utility/ErrorMacros.hpp"
 
 namespace dai {
 ThreadedNode::ThreadedNode() {
@@ -17,6 +18,11 @@ ThreadedNode::ThreadedNode() {
 }
 
 void ThreadedNode::start() {
+
+    // A node should not be started if it is already running
+    // We would be creating multiple threads for the same node
+    DAI_CHECK_V(!isRunning(), "Node with id {} is already running. Cannot start it again. Node name: {}", id, getName());
+
     onStart();
     // Start the thread
     running = true;

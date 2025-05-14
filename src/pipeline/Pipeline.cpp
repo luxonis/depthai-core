@@ -13,6 +13,7 @@
 #include "pipeline/node/DetectionNetwork.hpp"
 #include "utility/Compression.hpp"
 #include "utility/Environment.hpp"
+#include "utility/ErrorMacros.hpp"
 #include "utility/HolisticRecordReplay.hpp"
 #include "utility/Logging.hpp"
 #include "utility/Platform.hpp"
@@ -438,13 +439,9 @@ BoardConfig PipelineImpl::getBoardConfig() const {
 
 // Remove node capability
 void PipelineImpl::remove(std::shared_ptr<Node> toRemove) {
-    if(toRemove->parent.lock() == nullptr) {
-        throw std::invalid_argument("Cannot remove a node that is not a part of any pipeline");
-    }
-
-    if(toRemove->parent.lock() != parent.pimpl) {
-        throw std::invalid_argument("Cannot remove a node that is not a part of this pipeline");
-    }
+    DAI_CHECK_V(!isBuilt(), "Cannot remove node from pipeline once it is built.");
+    DAI_CHECK_V(toRemove->parent.lock() != nullptr, "Cannot remove a node that is not a part of any pipeline");
+    DAI_CHECK_V(toRemove->parent.lock() == parent.pimpl, "Cannot remove a node that is not a part of this pipeline");
 
     // First remove the node from the pipeline directly
     auto it = std::remove(nodes.begin(), nodes.end(), toRemove);

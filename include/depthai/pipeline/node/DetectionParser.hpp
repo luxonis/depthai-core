@@ -163,7 +163,6 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
     void setNNArchiveOther(const NNArchive& nnArchive);
     void setConfig(const dai::NNArchiveVersionedConfig& config);
 
-    std::optional<std::vector<std::string>> mClasses;
     std::optional<NNArchive> mArchive;
 
     std::optional<NNArchiveVersionedConfig> archiveConfig;
