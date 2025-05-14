@@ -4,7 +4,6 @@ set(VCPKG_LIBRARY_LINKAGE static)
 set(VCPKG_BUILD_TYPE release)
 
 if(PORT MATCHES "libusb|ffmpeg")
-    set(VCPKG_BUILD_TYPE)
     set(VCPKG_LIBRARY_LINKAGE dynamic)
     set(VCPKG_FIXUP_ELF_RPATH ON)
 endif()

@@ -1148,7 +1148,7 @@ include(CMakePackageConfigHelpers)
 
 # Add additional targets to export group
 if(NOT BUILD_SHARED_LIBS)
-    list(APPEND targets_to_export ${DEPTHAI_RESOURCE_LIBRARY_NAME} cmrc-base foxglove_websocket messages)
+    list(APPEND targets_to_export ${DEPTHAI_RESOURCE_LIBRARY_NAME} cmrc-base foxglove_websocket messages XLink)
 endif()
 
 # Export targets (capability to import current build directory)
