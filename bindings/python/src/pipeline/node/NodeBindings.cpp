@@ -431,7 +431,8 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("getAssetManager",
              static_cast<AssetManager& (Node::*)()>(&Node::getAssetManager),
              py::return_value_policy::reference_internal,
-             DOC(dai, Node, getAssetManager));
+             DOC(dai, Node, getAssetManager))
+        .def("add", &Node::add, py::arg("node"), DOC(dai, Node, add));
 
     pyThreadedNode.def("trace", [](dai::ThreadedNode& node, const std::string& msg) { node.pimpl->logger->trace(msg); })
         .def("debug", [](dai::ThreadedNode& node, const std::string& msg) { node.pimpl->logger->debug(msg); })

@@ -213,11 +213,11 @@ int DetectionParser::getNumClasses() const {
 }
 
 std::optional<std::vector<std::string>> DetectionParser::getClasses() const {
-    return mClasses;
+    return properties.parser.classNames;
 }
 
 void DetectionParser::setClasses(const std::vector<std::string>& classes) {
-    mClasses = classes;
+    properties.parser.classNames = classes;
 }
 
 /// Get coordianate size
