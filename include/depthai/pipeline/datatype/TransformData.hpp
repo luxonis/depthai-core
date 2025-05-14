@@ -22,10 +22,11 @@ class TransformData : public Buffer {
      * Construct TransformData message.
      */
     TransformData();
-    TransformData(const Transform& transform);
-    TransformData(const std::array<std::array<double, 4>, 4>& data);
-    TransformData(double x, double y, double z, double qx, double qy, double qz, double qw);
-    TransformData(double x, double y, double z, double roll, double pitch, double yaw);
+    TransformData(const Transform& transform, const std::string& frameId = "", const std::string& parentFrameID = "");
+    TransformData(const std::array<std::array<double, 4>, 4>& data, const std::string& frameId = "", const std::string& parentFrameID = "");
+    TransformData(
+        double x, double y, double z, double qx, double qy, double qz, double qw, const std::string& frameID = "", const std::string& parentFrameID = "");
+    TransformData(double x, double y, double z, double roll, double pitch, double yaw, const std::string& frameID = "", const std::string& parentFrameID = "");
 
 #ifdef DEPTHAI_HAVE_RTABMAP_SUPPORT
     TransformData(const rtabmap::Transform& transformRTABMap);
@@ -35,6 +36,8 @@ class TransformData : public Buffer {
 
     /// Transform
     Transform transform;
+    std::string frameID;
+    std::string parentFrameID;
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
         metadata = utility::serialize(*this);
@@ -45,7 +48,7 @@ class TransformData : public Buffer {
     Point3d getRotationEuler() const;
     Quaterniond getQuaternion() const;
 
-    DEPTHAI_SERIALIZE(TransformData, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, transform);
+    DEPTHAI_SERIALIZE(TransformData, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, transform, frameID, parentFrameID);
 };
 
 }  // namespace dai
