@@ -10,7 +10,9 @@ namespace dai {
  * Specify properties for ImageManip
  */
 struct ImageManipPropertiesV2 : PropertiesSerializable<Properties, ImageManipPropertiesV2> {
+    /// Enable hardware accelerated image manipulation if set to HW. Only applied on RVC4
     enum class Backend : uint8_t { CPU, HW };
+    /// Set performance mode for ImageManip with a tradeoff between performance and power consumption. Only applied on RVC4
     enum class PerformanceMode : uint8_t { PERFORMANCE, BALANCED, LOW_POWER };
 
     /// Initial configuration for ImageManip node

@@ -39,7 +39,6 @@
     #include <opencv2/opencv.hpp>
 #endif
 #ifdef DEPTHAI_HAVE_FASTCV_SUPPORT
-    // #define DEPTHAI_IMAGEMANIPV2_FASTCV 1
     #include <fastcv/fastcv.h>
 #endif
 #ifndef M_PI

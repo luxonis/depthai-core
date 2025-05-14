@@ -28,14 +28,17 @@ void bind_imagemanipv2(pybind11::module& m, void* pCallstack) {
         .value("PERFORMANCE", ImageManipV2::PerformanceMode::PERFORMANCE)
         .value("LOW_POWER", ImageManipV2::PerformanceMode::LOW_POWER);
 
+    py::enum_<ImageManipV2::Backend> backend(imageManip, "Backend");
+    backend.value("HW", ImageManipV2::Backend::HW)
+        .value("CPU", ImageManipV2::Backend::CPU);
+
     // ImageManip Node
     imageManip.def_readonly("inputConfig", &ImageManipV2::inputConfig, DOC(dai, node, ImageManipV2, inputConfig))
         .def_readonly("inputImage", &ImageManipV2::inputImage, DOC(dai, node, ImageManipV2, inputImage))
         .def_readonly("out", &ImageManipV2::out, DOC(dai, node, ImageManipV2, out))
         .def_readonly("initialConfig", &ImageManipV2::initialConfig, DOC(dai, node, ImageManipV2, initialConfig))
         .def("setRunOnHost", &ImageManipV2::setRunOnHost, DOC(dai, node, ImageManipV2, setRunOnHost))
-        .def("setBackendCPU", &ImageManipV2::setBackendCPU, DOC(dai, node, ImageManipV2, setBackendCPU))
-        .def("setBackendHW", &ImageManipV2::setBackendHW, DOC(dai, node, ImageManipV2, setBackendHW))
+        .def("setBackend", &ImageManipV2::setBackend, DOC(dai, node, ImageManipV2, setBackendCPU))
         .def("setPerformanceMode", &ImageManipV2::setPerformanceMode, DOC(dai, node, ImageManipV2, setPerformanceMode))
         .def("setNumFramesPool", &ImageManipV2::setNumFramesPool, DOC(dai, node, ImageManipV2, setNumFramesPool))
         .def("setMaxOutputFrameSize", &ImageManipV2::setMaxOutputFrameSize, DOC(dai, node, ImageManipV2, setMaxOutputFrameSize));
