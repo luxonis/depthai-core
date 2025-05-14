@@ -257,6 +257,7 @@ void ReplayVideo::run() {
             frame.setTimestampDevice(std::chrono::time_point<std::chrono::steady_clock>(time));
             frame.setSequenceNum(index++);
             frame.sourceFb = frame.fb;
+            frame.transformation = ImgTransformation(width, height);
             auto protoMsg = utility::getProtoMessage(&frame, true);
             std::shared_ptr<google::protobuf::Message> sharedProtoMsg = std::move(protoMsg);
             metadata = std::dynamic_pointer_cast<proto::img_frame::ImgFrame>(sharedProtoMsg);
