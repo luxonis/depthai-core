@@ -61,7 +61,7 @@ void dai::impl::transformOpenCV(const uint8_t* src,
     cv::Mat cvDst(dstHeight, dstWidth, type, dst, dstStride);
     int ssF = srcImgSpecs.width / srcWidth;
     assert(ssF == (int)(srcImgSpecs.height / srcHeight) && (ssF == 1 || ssF == 2));  // Sanity check
-    if(float_eq(matrix[2][0], 0) && float_eq(matrix[2][1], 0) && float_eq(matrix[2][2], 1)) {
+    if(floatEq(matrix[2][0], 0) && floatEq(matrix[2][1], 0) && floatEq(matrix[2][2], 1)) {
         // Affine transform
         float affine[6] = {matrix[0][0], matrix[0][1], matrix[0][2] / ssF, matrix[1][0], matrix[1][1], matrix[1][2] / ssF};
         cv::Rect roi(sourceMinX / ssF, sourceMinY / ssF, (sourceMaxX - sourceMinX) / ssF, (sourceMaxY - sourceMinY) / ssF);
@@ -69,7 +69,7 @@ void dai::impl::transformOpenCV(const uint8_t* src,
             affine[2] = affine[0] * ((float)sourceMinX / ssF) + affine[1] * ((float)sourceMinY / ssF) + affine[2];
             affine[5] = affine[3] * ((float)sourceMinX / ssF) + affine[4] * ((float)sourceMinY / ssF) + affine[5];
         }
-        if(float_eq(affine[0], 1.f) && float_eq(affine[1], 0.f) && float_eq(affine[3], 0.f) && float_eq(affine[4], 1.f) && float_eq(affine[5], 0.f)) {
+        if(floatEq(affine[0], 1.f) && floatEq(affine[1], 0.f) && floatEq(affine[3], 0.f) && floatEq(affine[4], 1.f) && floatEq(affine[5], 0.f)) {
             // Crop only
             cvSrc(roi).copyTo(cvDst);
         } else {
@@ -147,7 +147,7 @@ void dai::impl::transformFastCV(const uint8_t* src,
     }
     int ssF = srcSpecs.width / srcWidth;
     assert(ssF == (int)(srcSpecs.height / srcHeight) && (ssF == 1 || ssF == 2));  // Sanity check
-    if(float_eq(matrix[2][0], 0) && float_eq(matrix[2][1], 0) && float_eq(matrix[2][2], 1)) {
+    if(floatEq(matrix[2][0], 0) && floatEq(matrix[2][1], 0) && floatEq(matrix[2][2], 1)) {
         // Affine transform
         float affine[6] = {matrix[0][0], matrix[0][1], matrix[0][2] / ssF, matrix[1][0], matrix[1][1], matrix[1][2] / ssF};
         if(isSingleChannelu8(src)) {
