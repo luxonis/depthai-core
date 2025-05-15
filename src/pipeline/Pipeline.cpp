@@ -128,7 +128,7 @@ void PipelineImpl::serialize(PipelineSchema& schema, Assets& assets, std::vector
     assets = mutableAssets;
 }
 
-nlohmann::json PipelineImpl::serializeToJson() const {
+nlohmann::json PipelineImpl::serializeToJson(bool includeAssets) const {
     PipelineSchema schema;
     Assets assets;
     std::vector<uint8_t> assetStorage;
@@ -139,9 +139,10 @@ nlohmann::json PipelineImpl::serializeToJson() const {
     for(auto& node : j["pipeline"]["nodes"]) {
         node[1]["properties"] = nlohmann::json::parse(node[1]["properties"].get<std::vector<uint8_t>>());
     }
-
-    j["assets"] = assets;
-    j["assetStorage"] = assetStorage;
+    if(includeAssets) {
+        j["assets"] = assets;
+        j["assetStorage"] = assetStorage;
+    }
     return j;
 }
 
