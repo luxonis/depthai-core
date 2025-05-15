@@ -328,7 +328,7 @@ dai::impl::FrameSpecs dai::impl::getDstFrameSpecs(size_t width, size_t height, d
         case dai::ImgFrame::Type::GRAY8:
             specs.p1Stride = ALIGN_UP(specs.width, DEPTHAI_STRIDE_ALIGNMENT);
             break;
-        case ImgFrame::Type::RAW16: // Do not do alignment for RAW16
+        case ImgFrame::Type::RAW16:  // Do not do alignment for RAW16
             specs.p1Stride = specs.width * 2;
             break;
         case ImgFrame::Type::YUV422i:
@@ -759,7 +759,9 @@ void dai::impl::getTransformImpl(const ManipOp& op,
 #endif
                        }
                    },
-                   [&](Affine o) { mat = {{{o.matrix[0], o.matrix[1], 0}, {o.matrix[2], o.matrix[3], 0}, {0, 0, 1}}}; },
+                   [&](Affine o) {
+                       mat = {{{o.matrix[0], o.matrix[1], 0}, {o.matrix[2], o.matrix[3], 0}, {0, 0, 1}}};
+                   },
                    [&](Perspective o) {
                        mat = {{{o.matrix[0], o.matrix[1], o.matrix[2]}, {o.matrix[3], o.matrix[4], o.matrix[5]}, {o.matrix[6], o.matrix[7], o.matrix[8]}}};
                    },
