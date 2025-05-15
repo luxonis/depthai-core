@@ -75,14 +75,10 @@ class ImageManipV2 : public DeviceNodeCRTP<DeviceNode, ImageManipV2, ImageManipP
 
     /**
      * Set CPU as backend preference
+     * @param backend Backend preference
      */
-    ImageManipV2& setBackendCPU();
+    ImageManipV2& setBackend(Backend backend);
 
-    /**
-     * Set HW as backend preference
-     */
-    ImageManipV2& setBackendHW();
-    
     /**
      * Set performance mode
      * @param performanceMode Performance mode

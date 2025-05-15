@@ -69,12 +69,8 @@ ImageManipV2& ImageManipV2::setRunOnHost(bool _runOnHost) {
     runOnHostVar = _runOnHost;
     return *this;
 }
-ImageManipV2& ImageManipV2::setBackendCPU() {
-    properties.backend = Backend::CPU;
-    return *this;
-}
-ImageManipV2& ImageManipV2::setBackendHW() {
-    properties.backend = Backend::HW;
+ImageManipV2& ImageManipV2::setBackend(Backend backend) {
+    properties.backend = backend;
     return *this;
 }
 ImageManipV2& ImageManipV2::setPerformanceMode(ImageManipV2::PerformanceMode performanceMode) {
