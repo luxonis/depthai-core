@@ -10,8 +10,7 @@ ImageManipV2::ImageManipV2(std::unique_ptr<Properties> props)
     : DeviceNodeCRTP<DeviceNode, ImageManipV2, ImageManipPropertiesV2>(std::move(props)), initialConfig(properties.initialConfig) {}
 
 void ImageManipV2::run() {
-    impl::ImageManipOperations<impl::_ImageManipBuffer, impl::_ImageManipMemory> manip(logger);
-    manip.init();
+    impl::ImageManipOperations<impl::_ImageManipBuffer, impl::_ImageManipMemory, impl::WarpH> manip(properties, logger);
     auto iConf = runOnHost() ? initialConfig : properties.initialConfig;
     loop<ImageManipV2, impl::_ImageManipBuffer, impl::_ImageManipMemory>(
         *this,
@@ -22,9 +21,12 @@ void ImageManipV2::run() {
             manip.build(config.base, config.outputFrameType, srcFrameSpecs, frame.getType());
             return manip.getOutputSize();
         },
-        [&](std::shared_ptr<Memory>& src, span<uint8_t> dst) { return manip.apply(src, dst); },
-        [&](const ImageManipConfigV2& config, const ImgFrame& srcFrame, ImgFrame& dstFrame) {
-            auto outType = config.outputFrameType == ImgFrame::Type::NONE ? srcFrame.getType() : config.outputFrameType;
+        [&](std::shared_ptr<Memory>& src, std::shared_ptr<impl::_ImageManipMemory> dst) {
+            auto srcMem = std::make_shared<impl::_ImageManipMemory>(src->getData());
+            return manip.apply(srcMem, dst);
+        },
+        [&](const ImgFrame& srcFrame, ImgFrame& dstFrame) {
+            auto outType = manip.getOutputFrameType();
             auto dstSpecs = manip.getOutputFrameSpecs(outType);
             dstFrame.sourceFb = srcFrame.sourceFb;
             dstFrame.cam = srcFrame.cam;
@@ -65,6 +67,14 @@ ImageManipV2::Properties& ImageManipV2::getProperties() {
 }
 ImageManipV2& ImageManipV2::setRunOnHost(bool _runOnHost) {
     runOnHostVar = _runOnHost;
+    return *this;
+}
+ImageManipV2& ImageManipV2::setBackend(Backend backend) {
+    properties.backend = backend;
+    return *this;
+}
+ImageManipV2& ImageManipV2::setPerformanceMode(ImageManipV2::PerformanceMode performanceMode) {
+    properties.performanceMode = performanceMode;
     return *this;
 }
 
