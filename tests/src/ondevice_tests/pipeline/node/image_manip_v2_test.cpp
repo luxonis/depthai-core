@@ -124,7 +124,6 @@ TEST_CASE("ImageManipV2 rebuild on cfg change") {
     auto cam = p.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A);
     auto camOut = cam->requestOutput({1280, 720});
     auto manip = p.create<dai::node::ImageManipV2>();
-    manip->setRunOnHost(true);
     manip->inputConfig.setWaitForMessage(true);
 
     auto camQueue = camOut->createOutputQueue(1, false);
