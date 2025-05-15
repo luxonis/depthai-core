@@ -3,8 +3,6 @@ cmake_minimum_required(VERSION 3.20)
 include(cmake/depthaiOptions.cmake)
 
 if(WIN32)
-    # Statically compile vcruntime library
-    add_compile_options(/MT)
     add_compile_options(/MP)
 endif()
 
