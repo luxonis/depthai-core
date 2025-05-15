@@ -301,6 +301,7 @@ target_link_libraries(${TARGET_NAME}
         hedley
         pybind11_json
         xtensor-python
+        spdlog::spdlog
 )
 
 # Add embedded module option, otherwise link to pybind11 as usual
