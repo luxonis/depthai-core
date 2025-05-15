@@ -3078,6 +3078,8 @@ void WarpH<ImageManipBuffer, ImageManipData>::apply(const std::shared_ptr<ImageM
                       this->matrix,
                       {this->backgroundColor[0], this->backgroundColor[1], this->backgroundColor[2]});
 #else
+            (void)src;
+            (void)dst;
             throw std::runtime_error("OpenCV or FastCV backend not available");
 #endif
             break;
@@ -3121,6 +3123,8 @@ void WarpH<ImageManipBuffer, ImageManipData>::apply(const std::shared_ptr<ImageM
                       this->matrix,
                       {this->backgroundColor[2]});
 #else
+            (void)src;
+            (void)dst;
             throw std::runtime_error("OpenCV or FastCV backend not available");
 #endif
             break;
@@ -3163,6 +3167,8 @@ void WarpH<ImageManipBuffer, ImageManipData>::apply(const std::shared_ptr<ImageM
                       this->matrix,
                       {this->backgroundColor[2]});
 #else
+            (void)src;
+            (void)dst;
             throw std::runtime_error("OpenCV or FastCV backend not available");
 #endif
             break;
@@ -3193,6 +3199,8 @@ void WarpH<ImageManipBuffer, ImageManipData>::apply(const std::shared_ptr<ImageM
                       this->matrix,
                       {this->backgroundColor[1], this->backgroundColor[2]});
 #else
+            (void)src;
+            (void)dst;
             throw std::runtime_error("OpenCV or FastCV backend not available");
 #endif
             break;
@@ -3212,6 +3220,8 @@ void WarpH<ImageManipBuffer, ImageManipData>::apply(const std::shared_ptr<ImageM
                       this->matrix,
                       {this->backgroundColor[0]});
 #else
+            (void)src;
+            (void)dst;
             throw std::runtime_error("OpenCV or FastCV backend not available");
 #endif
             break;
@@ -3230,6 +3240,8 @@ void WarpH<ImageManipBuffer, ImageManipData>::apply(const std::shared_ptr<ImageM
                       this->matrix,
                       {this->backgroundColor[0]});
 #else
+            (void)src;
+            (void)dst;
             throw std::runtime_error("OpenCV or FastCV backend not available");
 #endif
             break;
