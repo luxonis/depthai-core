@@ -2,7 +2,6 @@
 
 #include <cstdint>
 
-
 #include "depthai/properties/VideoEncoderProperties.hpp"
 #include "nlohmann/json.hpp"
 

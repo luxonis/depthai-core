@@ -4,8 +4,6 @@
 #include <cstdint>
 #include <memory>
 
-#include "pipeline/ThreadedNodeImpl.hpp"
-
 #include "depthai/config/config.hpp"
 #include "depthai/pipeline/datatype/DatatypeEnum.hpp"
 #include "depthai/pipeline/datatype/EncodedFrame.hpp"
@@ -14,6 +12,7 @@
 #include "depthai/pipeline/datatype/PointCloudData.hpp"
 #include "depthai/properties/VideoEncoderProperties.hpp"
 #include "depthai/utility/span.hpp"
+#include "pipeline/ThreadedNodeImpl.hpp"
 #include "utility/RecordReplayImpl.hpp"
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF

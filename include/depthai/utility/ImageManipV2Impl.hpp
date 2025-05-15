@@ -49,11 +49,11 @@ namespace dai {
 namespace impl {
 template <typename N, template <typename T> typename ImageManipBuffer, typename ImageManipData>
 void loop(N& node,
-                        const ImageManipConfigV2& initialConfig,
-                        std::shared_ptr<spdlog::async_logger> logger,
-                        std::function<size_t(const ImageManipConfigV2&, const ImgFrame&)> build,
-                        std::function<bool(std::shared_ptr<Memory>&, std::shared_ptr<ImageManipData>)> apply,
-                        std::function<void(const ImgFrame&, ImgFrame&)> getFrame) {
+          const ImageManipConfigV2& initialConfig,
+          std::shared_ptr<spdlog::async_logger> logger,
+          std::function<size_t(const ImageManipConfigV2&, const ImgFrame&)> build,
+          std::function<bool(std::shared_ptr<Memory>&, std::shared_ptr<ImageManipData>)> apply,
+          std::function<void(const ImgFrame&, ImgFrame&)> getFrame) {
     using namespace std::chrono;
     auto config = initialConfig;
 
@@ -149,7 +149,6 @@ void loop(N& node,
         logger->trace("ImageManip | total process took {}ns ({}ms)", loopNanos, (double)loopNanos / 1e6);
     }
 }
-
 
 class _ImageManipMemory : public Memory {
     std::shared_ptr<std::vector<uint8_t>> _data;

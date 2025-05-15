@@ -4,9 +4,9 @@
 
 #include <stdexcept>
 
+#include "pipeline/ThreadedNodeImpl.hpp"
 #include "pipeline/datatype/AprilTagConfig.hpp"
 #include "properties/AprilTagProperties.hpp"
-#include "pipeline/ThreadedNodeImpl.hpp"
 
 #ifdef DEPTHAI_HAS_APRIL_TAG
 

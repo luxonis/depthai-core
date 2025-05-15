@@ -1,9 +1,9 @@
 #include "depthai/pipeline/node/BenchmarkIn.hpp"
-#include "depthai/pipeline/datatype/BenchmarkReport.hpp"
-#include "pipeline/ThreadedNodeImpl.hpp"
-
 
 #include <chrono>
+
+#include "depthai/pipeline/datatype/BenchmarkReport.hpp"
+#include "pipeline/ThreadedNodeImpl.hpp"
 namespace dai {
 namespace node {
 

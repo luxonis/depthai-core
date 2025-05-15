@@ -13,8 +13,8 @@
 #include "depthai/pipeline/datatype/IMUData.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/node/host/Replay.hpp"
-#include "utility/RecordReplayImpl.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
+#include "utility/RecordReplayImpl.hpp"
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF
     #include <google/protobuf/message.h>

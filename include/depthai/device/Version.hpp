@@ -1,9 +1,9 @@
 #pragma once
 
-#include "depthai/utility/spimpl.h"
-
 #include <optional>
 #include <string>
+
+#include "depthai/utility/spimpl.h"
 namespace dai {
 
 /// Version structure

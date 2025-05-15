@@ -6,9 +6,9 @@
 #include <variant>
 
 // libraries
-#include "depthai/utility/spimpl.h"
-
 #include <nlohmann/json.hpp>
+
+#include "depthai/utility/spimpl.h"
 
 // internal public
 #include "depthai/nn_archive/v1/Config.hpp"

@@ -1,12 +1,13 @@
 #include "depthai/pipeline/node/StereoDepth.hpp"
 
+#include <fstream>
+
 #include "depthai/pipeline/node/Camera.hpp"
 #include "depthai/pipeline/node/MonoCamera.hpp"
 #include "pipeline/datatype/StereoDepthConfig.hpp"
+#include "utility/CompilerWarnings.hpp"
 #include "utility/Logging.hpp"
 #include "utility/spdlog-fmt.hpp"
-#include "utility/CompilerWarnings.hpp"
-#include <fstream>
 namespace dai {
 namespace node {
 

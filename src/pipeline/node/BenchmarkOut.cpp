@@ -1,4 +1,5 @@
 #include "depthai/pipeline/node/BenchmarkOut.hpp"
+
 #include "pipeline/ThreadedNodeImpl.hpp"
 
 namespace dai {

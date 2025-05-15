@@ -3,8 +3,8 @@
 // c std
 #include <cstdio>
 #include <filesystem>
-#include <optional>
 #include <fstream>
+#include <optional>
 
 #include "utility/ErrorMacros.hpp"
 #include "utility/Logging.hpp"

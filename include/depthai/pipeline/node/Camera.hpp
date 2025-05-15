@@ -1,9 +1,9 @@
 #pragma once
 
 // libraries
-#include "depthai/utility/spimpl.h"
-
 #include <optional>
+
+#include "depthai/utility/spimpl.h"
 
 // depthai
 #include "depthai/capabilities/ImgFrameCapability.hpp"

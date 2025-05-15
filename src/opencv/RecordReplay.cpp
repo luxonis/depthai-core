@@ -137,7 +137,7 @@ void VideoRecorder::write(span<uint8_t>& data, const uint32_t stride) {
             break;
 #else
         case VideoCodec::H264:
-        case VideoCodec::MJPEG:{
+        case VideoCodec::MJPEG: {
             throw std::runtime_error("Encoded video not support. Please recompile with DEPTHAI_ENABLE_MP4V2=ON");
             break;
         }

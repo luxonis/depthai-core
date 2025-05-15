@@ -1,8 +1,9 @@
 #include "depthai/pipeline/node/host/Display.hpp"
 
+#include <spdlog/spdlog.h>
+
 #include <chrono>
 #include <opencv2/opencv.hpp>
-#include <spdlog/spdlog.h>
 
 #include "depthai/pipeline/Pipeline.hpp"
 namespace dai {

@@ -1,11 +1,10 @@
 #pragma once
 
-#include "depthai/utility/spimpl.h"
-
 #include "depthai/log/LogLevel.hpp"
 #include "depthai/pipeline/Node.hpp"
 #include "depthai/utility/AtomicBool.hpp"
 #include "depthai/utility/JoiningThread.hpp"
+#include "depthai/utility/spimpl.h"
 
 namespace dai {
 

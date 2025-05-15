@@ -159,7 +159,7 @@ std::optional<std::tuple<uint32_t, uint32_t>> BytePlayer::getVideoSize(const std
     return std::nullopt;
 #else
     // Avoid warning for an unused parameter
-    (void) filePath;
+    (void)filePath;
     throw std::runtime_error("BytePlayer::getVideoSize requires protobuf support");
 #endif
 }
@@ -229,7 +229,7 @@ std::string matchTo(const std::vector<std::string>& deviceIds, const std::vector
 
 #ifndef DEPTHAI_HAVE_OPENCV_SUPPORT
 std::tuple<size_t, size_t> getVideoSize(const std::string& filePath) {
-    (void) filePath;
+    (void)filePath;
     throw std::runtime_error("OpenCV is required to get video size");
 }
 #endif

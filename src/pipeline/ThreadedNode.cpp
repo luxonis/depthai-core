@@ -1,7 +1,8 @@
 #include "depthai/pipeline/ThreadedNode.hpp"
-#include "pipeline/ThreadedNodeImpl.hpp"
+
 #include <spdlog/spdlog.h>
 
+#include "pipeline/ThreadedNodeImpl.hpp"
 #include "utility/Environment.hpp"
 #include "utility/ErrorMacros.hpp"
 #include "utility/Logging.hpp"

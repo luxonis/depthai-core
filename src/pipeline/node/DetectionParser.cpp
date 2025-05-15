@@ -3,9 +3,9 @@
 #include <memory>
 
 #include "common/ModelType.hpp"
-#include "pipeline/ThreadedNodeImpl.hpp"
 #include "depthai/modelzoo/Zoo.hpp"
 #include "nn_archive/NNArchive.hpp"
+#include "pipeline/ThreadedNodeImpl.hpp"
 #include "spdlog/fmt/fmt.h"
 
 // internal headers

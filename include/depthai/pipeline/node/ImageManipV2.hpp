@@ -1,6 +1,5 @@
 #pragma once
 
-
 #include <depthai/pipeline/DeviceNode.hpp>
 #include <depthai/pipeline/datatype/ImageManipConfigV2.hpp>
 
@@ -90,7 +89,6 @@ class ImageManipV2 : public DeviceNodeCRTP<DeviceNode, ImageManipV2, ImageManipP
     bool runOnHost() const override;
 
     void run() override;
-
 };
 
 }  // namespace node

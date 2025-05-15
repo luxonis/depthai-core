@@ -1,7 +1,8 @@
 #include "../utility/HolisticRecordReplay.hpp"
 
-#include <memory>
 #include <spdlog/spdlog.h>
+
+#include <memory>
 
 #include "../utility/Platform.hpp"
 #include "../utility/RecordReplayImpl.hpp"

@@ -101,7 +101,7 @@ class RGBD::Impl {
         shader = std::vector<uint32_t>(shaders::RGBD2POINTCLOUD_COMP_SPV.begin(), shaders::RGBD2POINTCLOUD_COMP_SPV.end());
         computeMethod = ComputeMethod::GPU;
 #else
-        (void) device;
+        (void)device;
         throw std::runtime_error("Kompute not enabled in this build");
 #endif
     }

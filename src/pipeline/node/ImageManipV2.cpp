@@ -1,4 +1,5 @@
 #include "depthai/pipeline/node/ImageManipV2.hpp"
+
 #include "depthai/utility/ImageManipV2Impl.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
 
