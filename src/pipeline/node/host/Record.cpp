@@ -81,7 +81,9 @@ void RecordVideo::run() {
             }
             if(logger)
                 logger->trace("RecordVideo node detected stream type {}",
-                              streamType == DatatypeEnum::ImgFrame ? "RawVideo" : streamType == DatatypeEnum::EncodedFrame ? "EncodedVideo" : "Byte");
+                              streamType == DatatypeEnum::ImgFrame       ? "RawVideo"
+                              : streamType == DatatypeEnum::EncodedFrame ? "EncodedVideo"
+                                                                         : "Byte");
         }
         if(streamType == DatatypeEnum::ImgFrame || streamType == DatatypeEnum::EncodedFrame) {
             if(i == 0)
