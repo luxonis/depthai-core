@@ -1,8 +1,8 @@
 #pragma once
 
 #include "depthai/common/DetectionNetworkType.hpp"
-#include "depthai/utility/Serialization.hpp"
 #include "depthai/common/optional.hpp"
+#include "depthai/utility/Serialization.hpp"
 
 namespace dai {
 
@@ -28,6 +28,7 @@ struct DetectionParserOptions {
     float iouThreshold;
 };
 
-DEPTHAI_SERIALIZE_EXT(DetectionParserOptions, nnFamily, subtype, confidenceThreshold, classes, classNames, coordinates, anchors, anchorMasks, anchorsV2, iouThreshold);
+DEPTHAI_SERIALIZE_EXT(
+    DetectionParserOptions, nnFamily, subtype, confidenceThreshold, classes, classNames, coordinates, anchors, anchorMasks, anchorsV2, iouThreshold);
 
 }  // namespace dai

@@ -383,7 +383,8 @@ class ColorChange {
 
 template <template <typename T> typename ImageManipBuffer,
           typename ImageManipData,
-          template <template <typename T> typename Buf, typename Dat> typename WarpBackend>
+          template <template <typename T> typename Buf, typename Dat>
+          typename WarpBackend>
 class ImageManipOperations {
     static_assert(std::is_base_of<Warp<ImageManipBuffer, ImageManipData>, WarpBackend<ImageManipBuffer, ImageManipData>>::value,
                   "WarpBackend must be derived from Warp");
@@ -2610,7 +2611,8 @@ inline dai::ImgFrame::Type getValidType(dai::ImgFrame::Type type) {
 
 template <template <typename T> typename ImageManipBuffer,
           typename ImageManipData,
-          template <template <typename T> typename Buf, typename Dat> typename WarpBackend>
+          template <template <typename T> typename Buf, typename Dat>
+          typename WarpBackend>
 ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>& ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::build(
     const ImageManipOpsBase<Container>& newBase, ImgFrame::Type outType, FrameSpecs srcFrameSpecs, ImgFrame::Type inFrameType) {
     const auto newCfgStr = newBase.str();
@@ -2720,7 +2722,8 @@ size_t getFrameSize(const ImgFrame::Type type, const FrameSpecs& specs);
 
 template <template <typename T> typename ImageManipBuffer,
           typename ImageManipData,
-          template <template <typename T> typename Buf, typename Dat> typename WarpBackend>
+          template <template <typename T> typename Buf, typename Dat>
+          typename WarpBackend>
 bool ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::apply(const std::shared_ptr<ImageManipData> src,
                                                                                 std::shared_ptr<ImageManipData> dst) {
     size_t requiredSize = getFrameSize(inType, srcSpecs);
@@ -2772,21 +2775,24 @@ bool ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::apply(
 
 template <template <typename T> typename ImageManipBuffer,
           typename ImageManipData,
-          template <template <typename T> typename Buf, typename Dat> typename WarpBackend>
+          template <template <typename T> typename Buf, typename Dat>
+          typename WarpBackend>
 size_t ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::getOutputWidth() const {
     return base.outputWidth;
 }
 
 template <template <typename T> typename ImageManipBuffer,
           typename ImageManipData,
-          template <template <typename T> typename Buf, typename Dat> typename WarpBackend>
+          template <template <typename T> typename Buf, typename Dat>
+          typename WarpBackend>
 size_t ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::getOutputHeight() const {
     return base.outputHeight;
 }
 
 template <template <typename T> typename ImageManipBuffer,
           typename ImageManipData,
-          template <template <typename T> typename Buf, typename Dat> typename WarpBackend>
+          template <template <typename T> typename Buf, typename Dat>
+          typename WarpBackend>
 size_t ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::getOutputStride(uint8_t plane) const {
     if(mode == 0) return plane == 0 ? srcSpecs.p1Stride : (plane == 1 ? srcSpecs.p2Stride : (plane == 2 ? srcSpecs.p3Stride : 0));
     auto specs = getOutputFrameSpecs(outputFrameType);
@@ -2802,7 +2808,8 @@ size_t ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::getO
 
 template <template <typename T> typename ImageManipBuffer,
           typename ImageManipData,
-          template <template <typename T> typename Buf, typename Dat> typename WarpBackend>
+          template <template <typename T> typename Buf, typename Dat>
+          typename WarpBackend>
 size_t ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::getOutputPlaneSize(uint8_t plane) const {
     if(mode == 0) return 0;
     size_t size = 0;
@@ -2867,7 +2874,8 @@ size_t ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::getO
 
 template <template <typename T> typename ImageManipBuffer,
           typename ImageManipData,
-          template <template <typename T> typename Buf, typename Dat> typename WarpBackend>
+          template <template <typename T> typename Buf, typename Dat>
+          typename WarpBackend>
 size_t ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::getOutputSize() const {
     if(mode == 0) return 0;
     size_t size = 0;
@@ -2922,7 +2930,8 @@ size_t ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::getO
 
 template <template <typename T> typename ImageManipBuffer,
           typename ImageManipData,
-          template <template <typename T> typename Buf, typename Dat> typename WarpBackend>
+          template <template <typename T> typename Buf, typename Dat>
+          typename WarpBackend>
 FrameSpecs ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::getOutputFrameSpecs(ImgFrame::Type type) const {
     if(mode == 0)
         return srcSpecs;
@@ -2932,7 +2941,8 @@ FrameSpecs ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::
 
 template <template <typename T> typename ImageManipBuffer,
           typename ImageManipData,
-          template <template <typename T> typename Buf, typename Dat> typename WarpBackend>
+          template <template <typename T> typename Buf, typename Dat>
+          typename WarpBackend>
 std::vector<RotatedRect> ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::getSrcCrops() const {
     std::vector<RotatedRect> crops;
     for(const auto& corners : srcCorners) {
@@ -2944,14 +2954,16 @@ std::vector<RotatedRect> ImageManipOperations<ImageManipBuffer, ImageManipData, 
 
 template <template <typename T> typename ImageManipBuffer,
           typename ImageManipData,
-          template <template <typename T> typename Buf, typename Dat> typename WarpBackend>
+          template <template <typename T> typename Buf, typename Dat>
+          typename WarpBackend>
 std::array<std::array<float, 3>, 3> ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::getMatrix() const {
     return matrix;
 }
 
 template <template <typename T> typename ImageManipBuffer,
           typename ImageManipData,
-          template <template <typename T> typename Buf, typename Dat> typename WarpBackend>
+          template <template <typename T> typename Buf, typename Dat>
+          typename WarpBackend>
 std::string ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::toString() const {
     std::stringstream cStr;
     cStr << getConfigString(base);
