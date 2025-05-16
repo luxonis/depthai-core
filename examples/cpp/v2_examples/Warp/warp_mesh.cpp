@@ -31,7 +31,7 @@ int main() {
     warp1->setHwIds({1});
 
     camRgb->preview.link(warp1->inputImage);
-    auto xout1 = pipeline.create<dai::node::XLinkOut>();
+    auto xout1 = pipeline.create<dai::node::internal::XLinkOut>();
     xout1->setStreamName("out1");
     warp1->out.link(xout1->input);
 
@@ -51,7 +51,7 @@ int main() {
     warp2->setHwIds({2});
 
     camRgb->preview.link(warp2->inputImage);
-    auto xout2 = pipeline.create<dai::node::XLinkOut>();
+    auto xout2 = pipeline.create<dai::node::internal::XLinkOut>();
     xout2->setStreamName("out2");
     warp2->out.link(xout2->input);
 

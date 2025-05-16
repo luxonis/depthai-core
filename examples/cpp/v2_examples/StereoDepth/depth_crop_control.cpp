@@ -20,8 +20,8 @@ int main() {
     auto manip = pipeline.create<dai::node::ImageManip>();
     auto stereo = pipeline.create<dai::node::StereoDepth>();
 
-    auto configIn = pipeline.create<dai::node::XLinkIn>();
-    auto xout = pipeline.create<dai::node::XLinkOut>();
+    auto configIn = pipeline.create<dai::node::internal::XLinkIn>();
+    auto xout = pipeline.create<dai::node::internal::XLinkOut>();
 
     configIn->setStreamName("config");
     xout->setStreamName("depth");

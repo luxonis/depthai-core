@@ -93,11 +93,11 @@ int main() {
     auto featureTrackerLeft = pipeline.create<dai::node::FeatureTracker>();
     auto featureTrackerRight = pipeline.create<dai::node::FeatureTracker>();
 
-    auto xoutPassthroughFrameLeft = pipeline.create<dai::node::XLinkOut>();
-    auto xoutTrackedFeaturesLeft = pipeline.create<dai::node::XLinkOut>();
-    auto xoutPassthroughFrameRight = pipeline.create<dai::node::XLinkOut>();
-    auto xoutTrackedFeaturesRight = pipeline.create<dai::node::XLinkOut>();
-    auto xinTrackedFeaturesConfig = pipeline.create<dai::node::XLinkIn>();
+    auto xoutPassthroughFrameLeft = pipeline.create<dai::node::internal::XLinkOut>();
+    auto xoutTrackedFeaturesLeft = pipeline.create<dai::node::internal::XLinkOut>();
+    auto xoutPassthroughFrameRight = pipeline.create<dai::node::internal::XLinkOut>();
+    auto xoutTrackedFeaturesRight = pipeline.create<dai::node::internal::XLinkOut>();
+    auto xinTrackedFeaturesConfig = pipeline.create<dai::node::internal::XLinkIn>();
 
     xoutPassthroughFrameLeft->setStreamName("passthroughFrameLeft");
     xoutTrackedFeaturesLeft->setStreamName("trackedFeaturesLeft");

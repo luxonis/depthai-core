@@ -24,7 +24,7 @@ int main() {
     )");
 
     // XLinkOut
-    auto xout = pipeline.create<dai::node::XLinkOut>();
+    auto xout = pipeline.create<dai::node::internal::XLinkOut>();
     xout->setStreamName("still");
 
     // Connections

@@ -41,10 +41,10 @@ int main(int argc, char** argv) {
     auto monoRight = pipeline.create<dai::node::MonoCamera>();
     auto stereo = pipeline.create<dai::node::StereoDepth>();
 
-    auto xoutRgb = pipeline.create<dai::node::XLinkOut>();
-    auto xoutNN = pipeline.create<dai::node::XLinkOut>();
-    auto xoutDepth = pipeline.create<dai::node::XLinkOut>();
-    auto nnNetworkOut = pipeline.create<dai::node::XLinkOut>();
+    auto xoutRgb = pipeline.create<dai::node::internal::XLinkOut>();
+    auto xoutNN = pipeline.create<dai::node::internal::XLinkOut>();
+    auto xoutDepth = pipeline.create<dai::node::internal::XLinkOut>();
+    auto nnNetworkOut = pipeline.create<dai::node::internal::XLinkOut>();
 
     xoutRgb->setStreamName("rgb");
     xoutNN->setStreamName("detections");

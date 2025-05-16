@@ -29,8 +29,8 @@ int main(int argc, char** argv) {
 
     // Define sources and outputs
     auto nn = pipeline.create<dai::node::NeuralNetwork>();
-    auto xin = pipeline.create<dai::node::XLinkIn>();
-    auto xout = pipeline.create<dai::node::XLinkOut>();
+    auto xin = pipeline.create<dai::node::internal::XLinkIn>();
+    auto xout = pipeline.create<dai::node::internal::XLinkOut>();
 
     xin->setStreamName("nn_in");
     xout->setStreamName("nn_out");

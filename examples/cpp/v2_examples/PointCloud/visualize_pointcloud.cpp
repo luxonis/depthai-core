@@ -9,8 +9,8 @@ int main() {
     auto monoRight = pipeline.create<dai::node::MonoCamera>();
     auto depth = pipeline.create<dai::node::StereoDepth>();
     auto pointcloud = pipeline.create<dai::node::PointCloud>();
-    auto xout = pipeline.create<dai::node::XLinkOut>();
-    auto xoutDepth = pipeline.create<dai::node::XLinkOut>();
+    auto xout = pipeline.create<dai::node::internal::XLinkOut>();
+    auto xoutDepth = pipeline.create<dai::node::internal::XLinkOut>();
 
     monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
     monoLeft->setCamera("left");

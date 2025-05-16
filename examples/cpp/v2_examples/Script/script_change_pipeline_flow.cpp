@@ -13,13 +13,13 @@ int main() {
     cam->setVideoSize(720, 720);
     cam->setPreviewSize(300, 300);
 
-    auto xoutRgb = pipeline.create<dai::node::XLinkOut>();
+    auto xoutRgb = pipeline.create<dai::node::internal::XLinkOut>();
     xoutRgb->setStreamName("rgb");
     cam->video.link(xoutRgb->input);
 
     auto script = pipeline.create<dai::node::Script>();
 
-    auto xin = pipeline.create<dai::node::XLinkIn>();
+    auto xin = pipeline.create<dai::node::internal::XLinkIn>();
     xin->setStreamName("in");
     xin->out.link(script->inputs["toggle"]);
 
@@ -40,7 +40,7 @@ int main() {
     nn->setBlobPath(BLOB_PATH);
     script->outputs["nn"].link(nn->input);
 
-    auto xoutNn = pipeline.create<dai::node::XLinkOut>();
+    auto xoutNn = pipeline.create<dai::node::internal::XLinkOut>();
     xoutNn->setStreamName("nn");
     nn->out.link(xoutNn->input);
 

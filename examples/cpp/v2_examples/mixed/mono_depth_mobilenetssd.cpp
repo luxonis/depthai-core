@@ -32,9 +32,9 @@ int main(int argc, char** argv) {
     auto manip = pipeline.create<dai::node::ImageManip>();
     auto nn = pipeline.create<dai::node::MobileNetDetectionNetwork>();
 
-    auto disparityOut = pipeline.create<dai::node::XLinkOut>();
-    auto xoutRight = pipeline.create<dai::node::XLinkOut>();
-    auto nnOut = pipeline.create<dai::node::XLinkOut>();
+    auto disparityOut = pipeline.create<dai::node::internal::XLinkOut>();
+    auto xoutRight = pipeline.create<dai::node::internal::XLinkOut>();
+    auto nnOut = pipeline.create<dai::node::internal::XLinkOut>();
 
     disparityOut->setStreamName("disparity");
     xoutRight->setStreamName("rectifiedRight");

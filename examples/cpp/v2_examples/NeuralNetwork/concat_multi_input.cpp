@@ -56,7 +56,7 @@ int main(int argc, char** argv) {
     camRgb->preview.link(nn->inputs["img2"]);
     manipRight->out.link(nn->inputs["img3"]);
 
-    auto xout = pipeline.create<dai::node::XLinkOut>();
+    auto xout = pipeline.create<dai::node::internal::XLinkOut>();
     xout->setStreamName("nn");
     nn->out.link(xout->input);
 

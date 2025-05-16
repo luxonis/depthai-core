@@ -36,10 +36,10 @@ int main() {
     auto manipRight = pipeline.create<dai::node::ImageManip>();
     auto manipLeft = pipeline.create<dai::node::ImageManip>();
 
-    auto controlIn = pipeline.create<dai::node::XLinkIn>();
-    auto configIn = pipeline.create<dai::node::XLinkIn>();
-    auto manipOutRight = pipeline.create<dai::node::XLinkOut>();
-    auto manipOutLeft = pipeline.create<dai::node::XLinkOut>();
+    auto controlIn = pipeline.create<dai::node::internal::XLinkIn>();
+    auto configIn = pipeline.create<dai::node::internal::XLinkIn>();
+    auto manipOutRight = pipeline.create<dai::node::internal::XLinkOut>();
+    auto manipOutLeft = pipeline.create<dai::node::internal::XLinkOut>();
 
     controlIn->setStreamName("control");
     configIn->setStreamName("config");

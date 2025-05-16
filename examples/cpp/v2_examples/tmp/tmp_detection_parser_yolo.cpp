@@ -31,8 +31,8 @@ int main(int argc, char** argv) {
 
     // Define sources and outputs
     auto nn = pipeline.create<dai::node::YoloDetectionNetwork>();
-    auto xin = pipeline.create<dai::node::XLinkIn>();
-    auto xout = pipeline.create<dai::node::XLinkOut>();
+    auto xin = pipeline.create<dai::node::internal::XLinkIn>();
+    auto xout = pipeline.create<dai::node::internal::XLinkOut>();
 
     nn->setXmlModelPath(MODEL_XML_PATH, MODEL_BIN_PATH);
     nn->setNumInferenceThreads(10);

@@ -22,7 +22,7 @@ int main(int argc, char** argv) {
     auto monoLeft = pipeline.create<dai::node::MonoCamera>();
     auto monoRight = pipeline.create<dai::node::MonoCamera>();
     auto stereo = pipeline.create<dai::node::StereoDepth>();
-    auto xoutDepth = pipeline.create<dai::node::XLinkOut>();
+    auto xoutDepth = pipeline.create<dai::node::internal::XLinkOut>();
     xoutDepth->setStreamName("depth");
 
     // MonoCamera

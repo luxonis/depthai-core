@@ -32,10 +32,10 @@ int main(int argc, char** argv) {
     auto nn = pipeline.create<dai::node::MobileNetDetectionNetwork>();
     auto manip = pipeline.create<dai::node::ImageManip>();
 
-    auto videoOut = pipeline.create<dai::node::XLinkOut>();
-    auto xoutRight = pipeline.create<dai::node::XLinkOut>();
-    auto manipOut = pipeline.create<dai::node::XLinkOut>();
-    auto nnOut = pipeline.create<dai::node::XLinkOut>();
+    auto videoOut = pipeline.create<dai::node::internal::XLinkOut>();
+    auto xoutRight = pipeline.create<dai::node::internal::XLinkOut>();
+    auto manipOut = pipeline.create<dai::node::internal::XLinkOut>();
+    auto nnOut = pipeline.create<dai::node::internal::XLinkOut>();
 
     videoOut->setStreamName("h265");
     xoutRight->setStreamName("right");

@@ -1,8 +1,8 @@
-#include "depthai/pipeline/node/XLinkIn.hpp"
+#include "depthai/pipeline/node/internal/XLinkIn.hpp"
 
 namespace dai {
 namespace node {
-
+namespace internal {
 void XLinkIn::setStreamName(const std::string& name) {
     properties.streamName = name;
 }
@@ -27,5 +27,6 @@ std::uint32_t XLinkIn::getNumFrames() const {
     return properties.numFrames;
 }
 
+}  // namespace internal
 }  // namespace node
 }  // namespace dai

@@ -1,16 +1,19 @@
-#include "Common.hpp"
-#include "NodeBindings.hpp"
+#include "../Common.hpp"
+#include "../NodeBindings.hpp"
 #include "depthai/pipeline/Node.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
-#include "depthai/pipeline/node/XLinkIn.hpp"
+#include "depthai/pipeline/node/internal/XLinkIn.hpp"
+
+extern py::handle daiNodeInternalModule;
 
 void bind_xlinkin(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::node;
+    using namespace dai::node::internal;
 
     // Node and Properties declare upfront
     py::class_<XLinkInProperties> xlinkInProperties(m, "XLinkInProperties", DOC(dai, XLinkInProperties));
-    auto xlinkIn = ADD_NODE(XLinkIn);
+    auto xlinkIn = ADD_NODE_INTERNAL(XLinkIn);
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -38,5 +41,5 @@ void bind_xlinkin(pybind11::module& m, void* pCallstack) {
         .def("getStreamName", &XLinkIn::getStreamName, DOC(dai, node, XLinkIn, getStreamName))
         .def("getMaxDataSize", &XLinkIn::getMaxDataSize, DOC(dai, node, XLinkIn, getMaxDataSize))
         .def("getNumFrames", &XLinkIn::getNumFrames, DOC(dai, node, XLinkIn, getNumFrames));
-    daiNodeModule.attr("XLinkIn").attr("Properties") = xlinkInProperties;
+    daiNodeInternalModule.attr("XLinkIn").attr("Properties") = xlinkInProperties;
 }

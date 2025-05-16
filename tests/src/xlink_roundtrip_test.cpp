@@ -18,10 +18,10 @@ static void test_xlink_roundtrip(int w, int h) {
     std::vector<std::uint8_t> data(w * h * 3, 0xFF);
 
     dai::Pipeline p;
-    auto x_in = p.create<dai::node::XLinkIn>();
+    auto x_in = p.create<dai::node::internal::XLinkIn>();
     x_in->setStreamName("to_device");
     x_in->setMaxDataSize(data.size());
-    auto x_out = p.create<dai::node::XLinkOut>();
+    auto x_out = p.create<dai::node::internal::XLinkOut>();
     x_out->setStreamName("to_host");
     x_in->out.link(x_out->input);
 
@@ -60,9 +60,9 @@ static void test_xlink_roundtrip(int w, int h) {
 template <class T, typename = std::enable_if_t<std::is_base_of<dai::Buffer, T>::value>>
 static void test_xlink_message_type(T) {
     dai::Pipeline p;
-    auto x_in = p.create<dai::node::XLinkIn>();
+    auto x_in = p.create<dai::node::internal::XLinkIn>();
     x_in->setStreamName("to_device");
-    auto x_out = p.create<dai::node::XLinkOut>();
+    auto x_out = p.create<dai::node::internal::XLinkOut>();
     x_out->setStreamName("to_host");
     x_in->out.link(x_out->input);
 

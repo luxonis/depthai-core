@@ -22,7 +22,7 @@ int main() {
     manipRgb->initialConfig.setCropRotatedRect(rgbRr, false);
     camRgb->preview.link(manipRgb->inputImage);
 
-    auto manipRgbOut = pipeline.create<dai::node::XLinkOut>();
+    auto manipRgbOut = pipeline.create<dai::node::internal::XLinkOut>();
     manipRgbOut->setStreamName("manip_rgb");
     manipRgb->out.link(manipRgbOut->input);
 
@@ -38,7 +38,7 @@ int main() {
     manipLeft->initialConfig.setCropRotatedRect(rr, false);
     monoLeft->out.link(manipLeft->inputImage);
 
-    auto manipLeftOut = pipeline.create<dai::node::XLinkOut>();
+    auto manipLeftOut = pipeline.create<dai::node::internal::XLinkOut>();
     manipLeftOut->setStreamName("manip_left");
     manipLeft->out.link(manipLeftOut->input);
 

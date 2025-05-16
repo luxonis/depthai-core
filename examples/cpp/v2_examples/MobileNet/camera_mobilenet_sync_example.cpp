@@ -27,8 +27,8 @@ int main(int argc, char** argv) {
     // Define sources and outputs
     auto camRgb = pipeline.create<dai::node::ColorCamera>();
     auto nn = pipeline.create<dai::node::MobileNetDetectionNetwork>();
-    auto camOut = pipeline.create<dai::node::XLinkOut>();
-    auto resultOut = pipeline.create<dai::node::XLinkOut>();
+    auto camOut = pipeline.create<dai::node::internal::XLinkOut>();
+    auto resultOut = pipeline.create<dai::node::internal::XLinkOut>();
 
     camOut->setStreamName("preview");
     resultOut->setStreamName("resultOut");

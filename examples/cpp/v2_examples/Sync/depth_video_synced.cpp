@@ -14,7 +14,7 @@ int main() {
     auto stereo = pipeline.create<dai::node::StereoDepth>();
     auto sync = pipeline.create<dai::node::Sync>();
 
-    auto xoutGrp = pipeline.create<dai::node::XLinkOut>();
+    auto xoutGrp = pipeline.create<dai::node::internal::XLinkOut>();
 
     // XLinkOut
     xoutGrp->setStreamName("xout");

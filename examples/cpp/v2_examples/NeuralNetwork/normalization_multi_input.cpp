@@ -62,7 +62,7 @@ int main(int argc, char** argv) {
     // Always wait for the new frame before starting inference
     camRgb->preview.link(nn->inputs["frame"]);
 
-    auto xout = pipeline.create<dai::node::XLinkOut>();
+    auto xout = pipeline.create<dai::node::internal::XLinkOut>();
     xout->setStreamName("nn");
     nn->out.link(xout->input);
 

@@ -41,8 +41,8 @@ int main(int argc, char** argv) {
     // Define sources and outputs
     auto camRgb = pipeline.create<dai::node::ColorCamera>();
     auto detectionNetwork = pipeline.create<dai::node::YoloDetectionNetwork>();
-    auto xoutRgb = pipeline.create<dai::node::XLinkOut>();
-    auto nnOut = pipeline.create<dai::node::XLinkOut>();
+    auto xoutRgb = pipeline.create<dai::node::internal::XLinkOut>();
+    auto nnOut = pipeline.create<dai::node::internal::XLinkOut>();
 
     xoutRgb->setStreamName("rgb");
     nnOut->setStreamName("detections");

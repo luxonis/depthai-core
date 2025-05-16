@@ -18,10 +18,10 @@ int main() {
     auto edgeDetectorRight = pipeline.create<dai::node::EdgeDetector>();
     auto edgeDetectorRgb = pipeline.create<dai::node::EdgeDetector>();
 
-    auto xoutEdgeLeft = pipeline.create<dai::node::XLinkOut>();
-    auto xoutEdgeRight = pipeline.create<dai::node::XLinkOut>();
-    auto xoutEdgeRgb = pipeline.create<dai::node::XLinkOut>();
-    auto xinEdgeCfg = pipeline.create<dai::node::XLinkIn>();
+    auto xoutEdgeLeft = pipeline.create<dai::node::internal::XLinkOut>();
+    auto xoutEdgeRight = pipeline.create<dai::node::internal::XLinkOut>();
+    auto xoutEdgeRgb = pipeline.create<dai::node::internal::XLinkOut>();
+    auto xinEdgeCfg = pipeline.create<dai::node::internal::XLinkIn>();
 
     const auto edgeLeftStr = "edge left";
     const auto edgeRightStr = "edge right";

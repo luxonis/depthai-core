@@ -15,8 +15,8 @@ int main() {
     auto monoLeft = pipeline.create<dai::node::MonoCamera>();
     auto aprilTag = pipeline.create<dai::node::AprilTag>();
 
-    auto xoutMono = pipeline.create<dai::node::XLinkOut>();
-    auto xoutAprilTag = pipeline.create<dai::node::XLinkOut>();
+    auto xoutMono = pipeline.create<dai::node::internal::XLinkOut>();
+    auto xoutAprilTag = pipeline.create<dai::node::internal::XLinkOut>();
 
     xoutMono->setStreamName("mono");
     xoutAprilTag->setStreamName("aprilTagData");

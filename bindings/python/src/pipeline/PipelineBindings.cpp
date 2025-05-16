@@ -36,8 +36,8 @@
 #include "depthai/pipeline/node/UVC.hpp"
 #include "depthai/pipeline/node/VideoEncoder.hpp"
 #include "depthai/pipeline/node/Warp.hpp"
-#include "depthai/pipeline/node/XLinkIn.hpp"
-#include "depthai/pipeline/node/XLinkOut.hpp"
+#include "depthai/pipeline/node/internal/XLinkIn.hpp"
+#include "depthai/pipeline/node/internal/XLinkOut.hpp"
 
 // depthai/
 #include <memory>
@@ -206,8 +206,8 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
             py::keep_alive<1, 0>())
         // TODO(themarpe) DEPRECATE, use pipeline.create([class name])
         // templated create<NODE> function
-        .def("createXLinkIn", &Pipeline::create<node::XLinkIn>)
-        .def("createXLinkOut", &Pipeline::create<node::XLinkOut>)
+        .def("createXLinkIn", &Pipeline::create<node::internal::XLinkIn>)
+        .def("createXLinkOut", &Pipeline::create<node::internal::XLinkOut>)
         .def("createNeuralNetwork", &Pipeline::create<node::NeuralNetwork>)
         .def("createColorCamera", &Pipeline::create<node::ColorCamera>)
         .def("createVideoEncoder", &Pipeline::create<node::VideoEncoder>)

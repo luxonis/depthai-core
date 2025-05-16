@@ -10,8 +10,8 @@ int main() {
     // Define sources and outputs
     auto camRgb = pipeline.create<dai::node::ColorCamera>();
     auto camMono = pipeline.create<dai::node::MonoCamera>();
-    auto xoutRgb = pipeline.create<dai::node::XLinkOut>();
-    auto xoutMono = pipeline.create<dai::node::XLinkOut>();
+    auto xoutRgb = pipeline.create<dai::node::internal::XLinkOut>();
+    auto xoutMono = pipeline.create<dai::node::internal::XLinkOut>();
 
     xoutRgb->setStreamName("rgb");
     xoutMono->setStreamName("mono");

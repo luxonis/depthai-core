@@ -16,7 +16,7 @@ int main() {
 
     // Define sources and outputs
     auto imu = pipeline.create<dai::node::IMU>();
-    auto xlinkOut = pipeline.create<dai::node::XLinkOut>();
+    auto xlinkOut = pipeline.create<dai::node::internal::XLinkOut>();
 
     xlinkOut->setStreamName("imu");
 

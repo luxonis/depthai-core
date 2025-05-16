@@ -22,12 +22,12 @@ int main() {
     auto monoRight = pipeline.create<dai::node::MonoCamera>();
     auto stereo = withDepth ? pipeline.create<dai::node::StereoDepth>() : nullptr;
 
-    auto xoutLeft = pipeline.create<dai::node::XLinkOut>();
-    auto xoutRight = pipeline.create<dai::node::XLinkOut>();
-    auto xoutDisp = pipeline.create<dai::node::XLinkOut>();
-    auto xoutDepth = pipeline.create<dai::node::XLinkOut>();
-    auto xoutRectifL = pipeline.create<dai::node::XLinkOut>();
-    auto xoutRectifR = pipeline.create<dai::node::XLinkOut>();
+    auto xoutLeft = pipeline.create<dai::node::internal::XLinkOut>();
+    auto xoutRight = pipeline.create<dai::node::internal::XLinkOut>();
+    auto xoutDisp = pipeline.create<dai::node::internal::XLinkOut>();
+    auto xoutDepth = pipeline.create<dai::node::internal::XLinkOut>();
+    auto xoutRectifL = pipeline.create<dai::node::internal::XLinkOut>();
+    auto xoutRectifR = pipeline.create<dai::node::internal::XLinkOut>();
 
     // XLinkOut
     xoutLeft->setStreamName("left");

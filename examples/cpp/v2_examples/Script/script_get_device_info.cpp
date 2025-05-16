@@ -25,7 +25,7 @@ int main() {
     )");
 
     // XLinkOut
-    auto xout = pipeline.create<dai::node::XLinkOut>();
+    auto xout = pipeline.create<dai::node::internal::XLinkOut>();
     xout->setStreamName("info");
     script->outputs["info"].link(xout->input);
 

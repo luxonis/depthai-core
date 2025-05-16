@@ -41,11 +41,11 @@ int main() {
     auto videoEncoder = pipeline.create<dai::node::VideoEncoder>();
     auto stillEncoder = pipeline.create<dai::node::VideoEncoder>();
 
-    auto controlIn = pipeline.create<dai::node::XLinkIn>();
-    auto configIn = pipeline.create<dai::node::XLinkIn>();
-    auto videoMjpegOut = pipeline.create<dai::node::XLinkOut>();
-    auto stillMjpegOut = pipeline.create<dai::node::XLinkOut>();
-    auto previewOut = pipeline.create<dai::node::XLinkOut>();
+    auto controlIn = pipeline.create<dai::node::internal::XLinkIn>();
+    auto configIn = pipeline.create<dai::node::internal::XLinkIn>();
+    auto videoMjpegOut = pipeline.create<dai::node::internal::XLinkOut>();
+    auto stillMjpegOut = pipeline.create<dai::node::internal::XLinkOut>();
+    auto previewOut = pipeline.create<dai::node::internal::XLinkOut>();
 
     controlIn->setStreamName("control");
     configIn->setStreamName("config");

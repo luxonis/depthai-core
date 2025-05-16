@@ -1,4 +1,4 @@
-#include "depthai/pipeline/node/host/XLinkOutHost.hpp"
+#include "depthai/pipeline/node/internal/XLinkOutHost.hpp"
 
 #include "depthai/pipeline/datatype/StreamMessageParser.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
@@ -14,6 +14,7 @@
 
 namespace dai {
 namespace node {
+namespace internal {
 // XLinkInHost::XLinkInHost(std::shared_ptr<XLinkConnection> conn, std::string streamName) : conn(std::move(conn)), streamName(std::move(streamName)){};
 
 void XLinkOutHost::setStreamName(const std::string& name) {
@@ -121,5 +122,6 @@ void XLinkOutHost::run() {
     }
 }
 
+}  // namespace internal
 }  // namespace node
 }  // namespace dai

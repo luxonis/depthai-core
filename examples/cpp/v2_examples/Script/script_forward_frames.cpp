@@ -39,11 +39,11 @@ int main() {
     cam->still.link(script->inputs["frames"]);
 
     // XLinkOut
-    auto xout1 = pipeline.create<dai::node::XLinkOut>();
+    auto xout1 = pipeline.create<dai::node::internal::XLinkOut>();
     xout1->setStreamName("stream1");
     script->outputs["stream1"].link(xout1->input);
 
-    auto xout2 = pipeline.create<dai::node::XLinkOut>();
+    auto xout2 = pipeline.create<dai::node::internal::XLinkOut>();
     xout2->setStreamName("stream2");
     script->outputs["stream2"].link(xout2->input);
 

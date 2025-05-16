@@ -31,8 +31,8 @@ int main(int argc, char** argv) {
     auto monoRight = pipeline.create<dai::node::MonoCamera>();
     auto manip = pipeline.create<dai::node::ImageManip>();
     auto nn = pipeline.create<dai::node::MobileNetDetectionNetwork>();
-    auto manipOut = pipeline.create<dai::node::XLinkOut>();
-    auto nnOut = pipeline.create<dai::node::XLinkOut>();
+    auto manipOut = pipeline.create<dai::node::internal::XLinkOut>();
+    auto nnOut = pipeline.create<dai::node::internal::XLinkOut>();
 
     manipOut->setStreamName("right");
     nnOut->setStreamName("nn");

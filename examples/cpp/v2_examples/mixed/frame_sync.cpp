@@ -100,7 +100,7 @@ int main() {
     std::vector<std::string> scriptOut{"disp", "rgb"};
     // Create XLinkOut for disp/rgb streams
     for(auto& name : scriptOut) {
-        auto xout = pipeline.create<dai::node::XLinkOut>();
+        auto xout = pipeline.create<dai::node::internal::XLinkOut>();
         xout->setStreamName(name);
         script->outputs[name + "_out"].link(xout->input);
     }

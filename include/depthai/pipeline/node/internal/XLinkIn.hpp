@@ -7,6 +7,7 @@
 
 namespace dai {
 namespace node {
+namespace internal {
 
 /**
  * @brief XLinkIn node. Receives messages over XLink.
@@ -54,5 +55,6 @@ class XLinkIn : public DeviceNodeCRTP<DeviceNode, XLinkIn, XLinkInProperties> {
     std::uint32_t getNumFrames() const;
 };
 
+}  // namespace internal
 }  // namespace node
 }  // namespace dai

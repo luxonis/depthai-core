@@ -36,8 +36,8 @@ int main(int argc, char** argv) {
     auto camRgb = pipeline.create<dai::node::ColorCamera>();
     auto nn = pipeline.create<dai::node::NeuralNetwork>();
     auto det = pipeline.create<dai::node::DetectionParser>();
-    auto xoutRgb = pipeline.create<dai::node::XLinkOut>();
-    auto nnOut = pipeline.create<dai::node::XLinkOut>();
+    auto xoutRgb = pipeline.create<dai::node::internal::XLinkOut>();
+    auto nnOut = pipeline.create<dai::node::internal::XLinkOut>();
 
     xoutRgb->setStreamName("rgb");
     nnOut->setStreamName("nn");

@@ -19,7 +19,7 @@ int main() {
     auto right = pipeline.create<dai::node::MonoCamera>();
 
     // Create XLink output
-    auto xout = pipeline.create<dai::node::XLinkOut>();
+    auto xout = pipeline.create<dai::node::internal::XLinkOut>();
     xout->setStreamName("frames");
 
     // Properties

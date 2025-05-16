@@ -36,8 +36,8 @@ int main() {
         throw std::runtime_error("Thermal camera not found!");
     }
     thermal->setPreviewSize(width, height);
-    auto xlink = pipeline.create<dai::node::XLinkOut>();
-    auto xlinkRaw = pipeline.create<dai::node::XLinkOut>();
+    auto xlink = pipeline.create<dai::node::internal::XLinkOut>();
+    auto xlinkRaw = pipeline.create<dai::node::internal::XLinkOut>();
     // Output preview,video, isp: RGB or NV12 or YUV420 thermal image.
     thermal->preview.link(xlink->input);
     // Output raw: FP16 temperature data (degrees Celsius)

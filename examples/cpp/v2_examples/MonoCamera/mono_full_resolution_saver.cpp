@@ -12,7 +12,7 @@ int main() {
 
     // Define source and output
     auto monoRight = pipeline.create<dai::node::MonoCamera>();
-    auto xoutRight = pipeline.create<dai::node::XLinkOut>();
+    auto xoutRight = pipeline.create<dai::node::internal::XLinkOut>();
 
     xoutRight->setStreamName("right");
 

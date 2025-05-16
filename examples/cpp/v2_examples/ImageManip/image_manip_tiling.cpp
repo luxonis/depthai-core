@@ -30,11 +30,11 @@ int main() {
     manip2->setMaxOutputFrameSize(maxFrameSize);
     camRgb->preview.link(manip2->inputImage);
 
-    auto xout1 = pipeline.create<dai::node::XLinkOut>();
+    auto xout1 = pipeline.create<dai::node::internal::XLinkOut>();
     xout1->setStreamName("out1");
     manip1->out.link(xout1->input);
 
-    auto xout2 = pipeline.create<dai::node::XLinkOut>();
+    auto xout2 = pipeline.create<dai::node::internal::XLinkOut>();
     xout2->setStreamName("out2");
     manip2->out.link(xout2->input);
 

@@ -21,9 +21,9 @@ int main() {
     auto stereo = pipeline.create<dai::node::StereoDepth>();
     auto spatialLocationCalculator = pipeline.create<dai::node::SpatialLocationCalculator>();
 
-    auto xoutDepth = pipeline.create<dai::node::XLinkOut>();
-    auto xoutSpatialData = pipeline.create<dai::node::XLinkOut>();
-    auto xinSpatialCalcConfig = pipeline.create<dai::node::XLinkIn>();
+    auto xoutDepth = pipeline.create<dai::node::internal::XLinkOut>();
+    auto xoutSpatialData = pipeline.create<dai::node::internal::XLinkOut>();
+    auto xinSpatialCalcConfig = pipeline.create<dai::node::internal::XLinkIn>();
 
     xoutDepth->setStreamName("depth");
     xoutSpatialData->setStreamName("spatialData");
