@@ -49,7 +49,7 @@ add_runtime_dependencies(integration-test-core usb-1.0)
 add_test(integration-test-core integration-test-core)
 
 # Create target dependant on depthai::opencv (if available)
-if(TARGET depthai::opencv)
+if(TARGET depthai::opencv OR DEPTHAI_MERGED_TARGET)
     add_executable(integration-test-opencv src/main.cpp)
     target_link_libraries(integration-test-opencv PRIVATE depthai::opencv)
     add_runtime_dependencies(integration-test-opencv usb-1.0)
