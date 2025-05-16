@@ -58,5 +58,5 @@ elseif("${CMAKE_VS_PLATFORM_NAME}" STREQUAL "Win32")
     message(STATUS "Skipping DepthAI OpenCV integration test as its not readily available on Win32 architecture.")
 else()
     # Make sure that DepthAI OpenCV support is avaible with x64
-    # message(FATAL_ERROR "Integration test assumes DepthAI OpenCV support to be available, which seems to be missing.")
+    message(FATAL_ERROR "Integration test assumes DepthAI OpenCV support to be available, which seems to be missing.")
 endif()

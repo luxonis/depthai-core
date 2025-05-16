@@ -6,3 +6,4 @@ set(VCPKG_BUILD_TYPE release)
 if(PORT MATCHES "libusb|ffmpeg")
     set(VCPKG_LIBRARY_LINKAGE dynamic)
 endif()
+

@@ -10,6 +10,5 @@ set(VCPKG_BUILD_TYPE release)
 
 # Add ffmpeg after the shared libraries become relocatable
 if(PORT MATCHES "libusb")
-    set(VCPKG_BUILD_TYPE)
     set(VCPKG_LIBRARY_LINKAGE dynamic)
 endif()
