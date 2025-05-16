@@ -33,6 +33,9 @@ int main(int argc, char* argv[]) {
     const std::string DEFAULT_DOWNLOAD_ENDPOINT = dai::modelzoo::getDownloadEndpoint();
     program.add_argument("--download_endpoint").default_value(DEFAULT_DOWNLOAD_ENDPOINT).help("Endpoint to use for downloading models");
 
+    const std::string FORMAT_DEFAULT = "pretty";
+    program.add_argument("--format").default_value(FORMAT_DEFAULT).help("Format to use for output (possible values: pretty, json)");
+
     program.add_argument("--verbose").default_value(false).implicit_value(true).help("Verbose output");
 
     // Parse arguments
@@ -50,9 +53,10 @@ int main(int argc, char* argv[]) {
     auto apiKey = program.get<std::string>("--api_key");
     auto healthEndpoint = program.get<std::string>("--health_endpoint");
     auto downloadEndpoint = program.get<std::string>("--download_endpoint");
+    auto format = program.get<std::string>("--format");
 
     bool verbose = program.get<bool>("--verbose");
-    if(!dai::utility::isEnvSet("DEPTHAI_LEVEL") && verbose) {
+    if(!dai::utility::isEnvSet("DEPTHAI_LEVEL") && verbose && format == "pretty") {
         dai::Logging::getInstance().logger.set_level(spdlog::level::info);
     }
 
@@ -61,19 +65,23 @@ int main(int argc, char* argv[]) {
     dai::modelzoo::setDownloadEndpoint(downloadEndpoint);
 
     // Print arguments
-    std::cout << "Downloading models defined in yaml files in folder: " << yamlFolder << std::endl;
-    std::cout << "Downloading models into cache folder: " << cacheFolder << std::endl;
-    if(!apiKey.empty()) {
-        std::cout << "Using API key: " << apiKey << std::endl;
+    if(format == "pretty") {
+        std::cout << "Downloading models defined in yaml files in folder: " << yamlFolder << std::endl;
+        std::cout << "Downloading models into cache folder: " << cacheFolder << std::endl;
+        if(!apiKey.empty()) {
+            std::cout << "Using API key: " << apiKey << std::endl;
+        }
     }
 
     // Download models
-    bool success = dai::downloadModelsFromZoo(yamlFolder, cacheFolder, apiKey);
+    bool success = dai::downloadModelsFromZoo(yamlFolder, cacheFolder, apiKey, format);
     if(!success) {
         std::cerr << "Failed to download all models from " << yamlFolder << std::endl;
         return EXIT_FAILURE;
     }
 
-    std::cout << "Successfully downloaded all models from " << yamlFolder << std::endl;
+    if(format == "pretty") {
+        std::cout << "Successfully downloaded all models from " << yamlFolder << std::endl;
+    }
     return EXIT_SUCCESS;
 }
