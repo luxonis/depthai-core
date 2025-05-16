@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <memory>
 #include <string>
 
 #include "depthai/utility/JoiningThread.hpp"
@@ -90,11 +91,11 @@ class FSLock {
     FSLock& operator=(const FSLock&) = delete;
 
    protected:
-    #ifdef _WIN32
+#ifdef _WIN32
     HANDLE handle = INVALID_HANDLE_VALUE;
-    #else
+#else
     int fd = -1;
-    #endif
+#endif
 
     std::string filename;
     std::string lockPath;
