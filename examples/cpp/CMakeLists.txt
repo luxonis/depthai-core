@@ -251,6 +251,7 @@ private_data(
 )
 
 
+add_subdirectory(Benchmark)
 add_subdirectory(Camera)
 add_subdirectory(DetectionNetwork)
 add_subdirectory(Events)
