@@ -1,0 +1,133 @@
+#!/usr/bin/env python3
+
+import argparse
+import random
+import cv2
+import depthai as dai
+import numpy as np
+
+
+def get_random_median_filter_params():
+    return random.choice(
+        [
+            dai.node.ImageFilters.MedianFilterParams.MEDIAN_OFF,
+            dai.node.ImageFilters.MedianFilterParams.KERNEL_3x3,
+            dai.node.ImageFilters.MedianFilterParams.KERNEL_5x5,
+        ]
+    )
+
+
+def get_random_temporal_filter_params():
+    params = dai.node.ImageFilters.TemporalFilterParams()
+    params.enable = random.choice([True, False])
+    params.persistencyMode = random.choice(
+        [
+            dai.filters.params.TemporalFilter.PersistencyMode.PERSISTENCY_OFF,
+            dai.filters.params.TemporalFilter.PersistencyMode.VALID_2_IN_LAST_4,
+            dai.filters.params.TemporalFilter.PersistencyMode.VALID_1_IN_LAST_2,
+            dai.filters.params.TemporalFilter.PersistencyMode.VALID_1_IN_LAST_8,
+            dai.filters.params.TemporalFilter.PersistencyMode.PERSISTENCY_INDEFINITELY,
+        ]
+    )
+    print(params.persistencyMode)
+    params.alpha = random.uniform(0.3, 0.9)
+    return params
+
+
+def get_random_speckle_filter_params():
+    params = dai.node.ImageFilters.SpeckleFilterParams()
+    params.enable = random.choice([True, False])
+    return params
+
+
+def get_random_spatial_filter_params():
+    params = dai.node.ImageFilters.SpatialFilterParams()
+    params.enable = random.choice([True, False])
+    return params
+
+
+def main(args: argparse.Namespace):
+    # Create pipeline
+    with dai.Pipeline() as pipeline:
+        monoLeft = pipeline.create(dai.node.MonoCamera)
+        monoLeft.setBoardSocket(dai.CameraBoardSocket.CAM_B)
+        monoLeft.setResolution(dai.MonoCameraProperties.SensorResolution.THE_400_P)
+
+        monoRight = pipeline.create(dai.node.MonoCamera)
+        monoRight.setBoardSocket(dai.CameraBoardSocket.CAM_C)
+        monoRight.setResolution(dai.MonoCameraProperties.SensorResolution.THE_400_P)
+
+        depth = pipeline.create(dai.node.StereoDepth)
+
+        filterPipeline = pipeline.create(dai.node.ImageFilters)
+        filterFactories = [
+            get_random_median_filter_params,
+            get_random_speckle_filter_params,
+            get_random_temporal_filter_params,
+            get_random_spatial_filter_params,
+        ]
+        for filterFactory in filterFactories:
+            filterPipeline.addFilter(filterFactory())
+        filterPipeline.setRunOnHost(True)
+
+        depth.setLeftRightCheck(args.lr_check)
+        depth.setExtendedDisparity(args.extended_disparity)
+        depth.setSubpixel(args.subpixel)
+        depth.inputConfig.setBlocking(False)
+
+        # Linking
+        monoLeft.out.link(depth.left)
+        monoRight.out.link(depth.right)
+        depthQueue = depth.disparity.createOutputQueue()
+
+        depth.disparity.link(filterPipeline.input)
+
+        configInputQueue = filterPipeline.config.createInputQueue()
+        filterOutputQueue = filterPipeline.output.createOutputQueue()
+
+        pipeline.start()
+        import time
+
+        t_switch = time.time()
+        while pipeline.isRunning():
+            inDisparity: dai.ImgFrame = (
+                depthQueue.get()
+            )  # blocking call, will wait until a new data has arrived
+            frame = inDisparity.getFrame()
+            filterFrame = filterOutputQueue.get()
+            filterFrame = (
+                filterFrame.getFrame() * (255 / depth.initialConfig.getMaxDisparity())
+            ).astype(np.uint8)
+            frame = (frame * (255 / depth.initialConfig.getMaxDisparity())).astype(
+                np.uint8
+            )
+            cv2.imshow("disparity", frame)
+            frame = cv2.applyColorMap(frame, cv2.COLORMAP_JET)
+            cv2.imshow("disparity_color", frame)
+            cv2.imshow(
+                "filtered_disparity_color",
+                cv2.applyColorMap(filterFrame, cv2.COLORMAP_JET),
+            )
+
+            if time.time() - t_switch > 1.0:
+                config = dai.ImageFiltersConfig()
+                index = random.randint(0, len(filterFactories) - 1)
+                config.filterIndex = index
+                config.filterParams = filterFactories[index]()
+                configInputQueue.send(config)
+                t_switch = time.time()
+
+            key = cv2.waitKey(1)
+            if key == ord("q"):
+                break
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--extended_disparity", action="store_true", help="Use extended disparity"
+    )
+    parser.add_argument("--subpixel", action="store_true", help="Use subpixel")
+    parser.add_argument("--lr_check", action="store_true", help="Use left-right check")
+    args = parser.parse_args()
+    main(args)
