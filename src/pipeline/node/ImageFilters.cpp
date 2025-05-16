@@ -2,8 +2,9 @@
 
 #include <cmath>
 #include <cstdint>
-#include <cstdlib> // for alloc
+#include <memory>
 #include <opencv2/opencv.hpp>
+#include <utility/ErrorMacros.hpp>
 
 #include "depthai/depthai.hpp"
 #include "pipeline/datatype/ImageFiltersConfig.hpp"
@@ -60,10 +61,9 @@ constexpr const size_t PERSISTENCY_LUT_SIZE = 256;
 
 struct TemporalFilterParams {
     std::shared_ptr<dai::ImgFrame> currentFrame = {};
-    uint8_t* accumulatorFrame = nullptr;
-
-    uint8_t* history = nullptr;
-    uint8_t* persistenceMap = nullptr;
+    std::shared_ptr<std::vector<uint8_t>> accumulatorFrame = nullptr;
+    std::shared_ptr<std::vector<uint8_t>> history = nullptr;
+    std::shared_ptr<std::vector<uint8_t>> persistenceMap = nullptr;
 
     float alpha = 0.4f;  // The normalized weight of the current pixel
     uint8_t delta = 20;  // A threshold when a filter is invoked
@@ -80,7 +80,7 @@ class TemporalFilter {
 
    private:
     struct MemSections {
-        uint8_t* mem = nullptr;
+        std::shared_ptr<std::vector<uint8_t>> mem;
         size_t size = 0;
     };
 
@@ -109,27 +109,29 @@ int MedianFilter::Init() {
 MedianFilter::~MedianFilter() {}
 
 void MedianFilter::process(std::shared_ptr<dai::ImgFrame>& frame, int medianSize) {
-    int cvtype;
-    if(frame->getType() == dai::ImgFrame::Type::RAW16) {
-        cvtype = CV_16UC1;
-    } else if(frame->getType() == dai::ImgFrame::Type::RAW8) {
-        cvtype = CV_8UC1;
+    // Median filter only supports RAW16 and RAW8
+    int opencvType;
+    ImgFrame::Type frameType = frame->getType();
+    if(frameType == ImgFrame::Type::RAW8) {
+        opencvType = CV_8UC1;
+    } else if(frameType == ImgFrame::Type::RAW16) {
+        opencvType = CV_16UC1;
     } else {
-        throw std::runtime_error("Unsupported frame type. Supported types are RAW16 and RAW8.");
+        DAI_CHECK_V(false, "Unsupported frame type. Supported types are RAW16 and RAW8.");
     }
 
-    cv::Mat cvFrame = cv::Mat(frame->getHeight(), frame->getWidth(), cvtype, frame->data->getData().data());
+    // Parameter check
+    DAI_CHECK_V(medianSize % 2 == 1, "Median filter size must be odd, got %d", medianSize);
+    DAI_CHECK_V(medianSize <= 5, "Median filter size must be <= 5, got %d", medianSize);
 
-    if(medianSize % 2 == 0) {
-        throw std::runtime_error("Median filter size must be odd");
-    }
-    if(medianSize > 5) {
-        throw std::runtime_error("Median filter size must be <= 5");
-    }
+    // Convenience wrapper for the frame data - not a copy
+    cv::Mat cvFrame = cv::Mat(frame->getHeight(), frame->getWidth(), opencvType, frame->data->getData().data());
 
-    cv::Mat cvFrameFiltered = cv::Mat(frame->getHeight(), frame->getWidth(), cvtype);
+    // Apply filter
+    cv::Mat cvFrameFiltered = cv::Mat(frame->getHeight(), frame->getWidth(), opencvType);
     cv::medianBlur(cvFrame, cvFrameFiltered, medianSize);
 
+    // Copy data back to frame
     std::memcpy(frame->data->getData().data(), cvFrameFiltered.data, cvFrameFiltered.total() * cvFrameFiltered.elemSize());
 }
 
@@ -304,17 +306,19 @@ SpatialFilter::~SpatialFilter() {}
 
 void SpatialFilter::process(std::shared_ptr<dai::ImgFrame>& frame) {
     params.currentFrame = frame;
-
-    for(int i = 0; i < params.iterationNr; i++) {
-        if(frame->getType() == dai::ImgFrame::Type::RAW16) {
+    ImgFrame::Type frameType = frame->getType();
+    if(frameType == ImgFrame::Type::RAW16) {
+        for(int i = 0; i < params.iterationNr; i++) {
             recursiveFilterHorizontal<uint16_t>(&params);
             recursiveFilterVertical<uint16_t>(&params);
-        } else if(frame->getType() == dai::ImgFrame::Type::RAW8) {
+        }
+    } else if(frameType == ImgFrame::Type::RAW8) {
+        for(int i = 0; i < params.iterationNr; i++) {
             recursiveFilterHorizontal<uint8_t>(&params);
             recursiveFilterVertical<uint8_t>(&params);
-        } else {
-            throw std::runtime_error("SpatialFilter: Unsupported frame type. Supported types are RAW8 and RAW16.");
         }
+    } else {
+        DAI_CHECK_V(false, "Unsupported frame type. Supported types are RAW16 and RAW8.");
     }
 }
 
@@ -331,15 +335,16 @@ int SpeckleFilter::Init() {
 SpeckleFilter::~SpeckleFilter() {}
 
 void SpeckleFilter::process(std::shared_ptr<dai::ImgFrame>& frame, int speckleRange, int maxDiff) {
-    int cvtype;
-    if(frame->getType() == dai::ImgFrame::Type::RAW8) {
-        cvtype = CV_8UC1;
-    } else if(frame->getType() == dai::ImgFrame::Type::RAW16) {
-        cvtype = CV_16SC1;
+    int opencvType;
+    ImgFrame::Type frameType = frame->getType();
+    if(frameType == ImgFrame::Type::RAW8) {
+        opencvType = CV_8UC1;
+    } else if(frameType == ImgFrame::Type::RAW16) {
+        opencvType = CV_16SC1;
     } else {
-        throw std::runtime_error("SpeckleFilter: Unsupported frame type. Supported types are RAW8 and RAW16.");
+        DAI_CHECK_V(false, "Unsupported frame type. Supported types are RAW16 and RAW8.");
     }
-    cv::Mat cvFrame = cv::Mat(frame->getHeight(), frame->getWidth(), cvtype, frame->data->getData().data());
+    cv::Mat cvFrame = cv::Mat(frame->getHeight(), frame->getWidth(), opencvType, frame->data->getData().data());
     cv::filterSpeckles(cvFrame, 0, speckleRange, maxDiff);
 }
 
@@ -351,17 +356,17 @@ template <typename T>
 void processImpl(TemporalFilterParams* params) {
     auto& currentFrame = params->currentFrame;
     auto& accumulatorFrame = params->accumulatorFrame;
-    uint8_t* history = params->history;
+    auto& history = params->history;
     float alpha = params->alpha;
     uint8_t delta = params->delta;
     uint8_t currFrameIdx = params->currFrameIdx;
-    uint8_t* persistenceMap = params->persistenceMap;
+    auto& persistenceMap = params->persistenceMap;
     static_assert((std::is_arithmetic<T>::value), "temporal filter assumes numeric types");
 
     T deltaZ = static_cast<T>(delta);
 
     auto frame = reinterpret_cast<T*>(currentFrame->data->getData().data());
-    auto _lastFrame = reinterpret_cast<T*>(accumulatorFrame);
+    auto _lastFrame = reinterpret_cast<T*>(accumulatorFrame->data());
     unsigned char mask = 1 << currFrameIdx;
 
     size_t frameSize = currentFrame->getWidth() * currentFrame->getHeight();
@@ -376,30 +381,30 @@ void processImpl(TemporalFilterParams* params) {
         if(currentVal) {
             if(!previousVal) {
                 _lastFrame[i] = currentVal;
-                history[i] = mask;
+                (*history)[i] = mask;
             } else {  // old and new val
                 T diff = static_cast<T>(fabs(currentVal - previousVal));
 
                 if(diff < deltaZ) {  // old and new val agree
-                    history[i] |= mask;
+                    (*history)[i] |= mask;
                     float filtered = alpha * currentVal + oneMinusAlpha * previousVal;
                     T result = static_cast<T>(filtered);
                     frame[i] = result;
                     _lastFrame[i] = result;
                 } else {
                     _lastFrame[i] = currentVal;
-                    history[i] = mask;
+                    (*history)[i] = mask;
                 }
             }
-        } else {            // no currentVal
+        } else {               // no currentVal
             if(previousVal) {  // only case we can help
-                unsigned char hist = history[i];
-                unsigned char classification = persistenceMap[hist];
+                unsigned char hist = (*history)[i];
+                unsigned char classification = (*persistenceMap)[hist];
                 if(classification & mask) {  // we have had enough samples lately
                     frame[i] = previousVal;
                 }
             }
-            history[i] &= ~mask;
+            (*history)[i] &= ~mask;
         }
     }
 }
@@ -430,8 +435,8 @@ int TemporalFilter::Init(size_t frameSize, float alpha, int delta, int _persiste
 
     if(resetBuffers) {
         currFrameIdx = 0;
-        memset(rawAccumulatorFrame.mem, 0, rawAccumulatorFrame.size);
-        memset(rawHistoryFrame.mem, 0, rawHistoryFrame.size);
+        std::fill(rawAccumulatorFrame.mem->begin(), rawAccumulatorFrame.mem->end(), 0);
+        std::fill(rawHistoryFrame.mem->begin(), rawHistoryFrame.mem->end(), 0);
     }
 
     params.history = rawHistoryFrame.mem;
@@ -440,32 +445,20 @@ int TemporalFilter::Init(size_t frameSize, float alpha, int delta, int _persiste
     return 0;
 }
 
-TemporalFilter::~TemporalFilter() {
-    if(rawAccumulatorFrame.mem) {
-        free(rawAccumulatorFrame.mem);
-    }
-
-    if(rawHistoryFrame.mem) {
-        free(rawHistoryFrame.mem);
-    }
-
-    if(rawPersistenceMapLUT.mem) {
-        free(rawPersistenceMapLUT.mem);
-    }
-}
+TemporalFilter::~TemporalFilter() {}
 
 void TemporalFilter::process(std::shared_ptr<dai::ImgFrame>& frame) {
     params.currentFrame = frame;
     params.currFrameIdx = currFrameIdx;
     params.accumulatorFrame = rawAccumulatorFrame.mem;
 
-    auto frameType = frame->getType();
+    ImgFrame::Type frameType = frame->getType();
     if(frameType == ImgFrame::Type::RAW16) {
         processImpl<uint16_t>(&params);
-    } else if (frameType == ImgFrame::Type::RAW8) {
+    } else if(frameType == ImgFrame::Type::RAW8) {
         processImpl<uint8_t>(&params);
     } else {
-        throw std::runtime_error("TemporalFilter: Unsupported frame type. Supported types are RAW8 and RAW16.");
+        DAI_CHECK_V(false, "Unsupported frame type. Supported types are RAW16 and RAW8.");
     }
 
     currFrameIdx = (currFrameIdx + 1) % 8;  // at end of cycle
@@ -474,48 +467,52 @@ void TemporalFilter::process(std::shared_ptr<dai::ImgFrame>& frame) {
 int TemporalFilter::allocateBuffers(int frameSize) {
     if(rawAccumulatorFrame.mem) {
         if(rawAccumulatorFrame.size < static_cast<size_t>(frameSize)) {
-            free(rawAccumulatorFrame.mem);
-            rawAccumulatorFrame.mem = nullptr;
+            rawAccumulatorFrame.mem.reset();
         }
     }
-    if(rawAccumulatorFrame.mem == nullptr) {
+    if(!rawAccumulatorFrame.mem) {
         rawAccumulatorFrame.size = frameSize;
-        rawAccumulatorFrame.mem = (uint8_t*)std::malloc(rawAccumulatorFrame.size);
-        if(rawAccumulatorFrame.mem == nullptr) {
+        rawAccumulatorFrame.mem = std::make_shared<std::vector<uint8_t>>(rawAccumulatorFrame.size);
+        if(!rawAccumulatorFrame.mem) {
             return __LINE__;
         }
-        memset(rawAccumulatorFrame.mem, 0, rawAccumulatorFrame.size);
+        std::fill(rawAccumulatorFrame.mem->begin(), rawAccumulatorFrame.mem->end(), 0);
     }
 
     if(rawHistoryFrame.mem) {
         if(rawHistoryFrame.size < static_cast<size_t>(frameSize)) {
-            free(rawHistoryFrame.mem);
-            rawHistoryFrame.mem = nullptr;
+            rawHistoryFrame.mem.reset();
         }
     }
-    if(rawHistoryFrame.mem == nullptr) {
+    if(!rawHistoryFrame.mem) {
         rawHistoryFrame.size = frameSize;
-        rawHistoryFrame.mem = (uint8_t*)std::malloc(rawHistoryFrame.size);
-        if(rawHistoryFrame.mem == nullptr) {
+        rawHistoryFrame.mem = std::make_shared<std::vector<uint8_t>>(rawHistoryFrame.size);
+        if(!rawHistoryFrame.mem) {
             return __LINE__;
         }
-        memset(rawHistoryFrame.mem, 0, rawHistoryFrame.size);
+        std::fill(rawHistoryFrame.mem->begin(), rawHistoryFrame.mem->end(), 0);
     }
 
-    if(rawPersistenceMapLUT.mem == nullptr) {
+    if(rawPersistenceMapLUT.mem) {
+        if(rawPersistenceMapLUT.size < static_cast<size_t>(PERSISTENCY_LUT_SIZE)) {
+            rawPersistenceMapLUT.mem.reset();
+        }
+    }
+
+    if(!rawPersistenceMapLUT.mem) {
         rawPersistenceMapLUT.size = PERSISTENCY_LUT_SIZE;
-        rawPersistenceMapLUT.mem = (uint8_t*)std::malloc(rawPersistenceMapLUT.size);
-        if(rawPersistenceMapLUT.mem == nullptr) {
+        rawPersistenceMapLUT.mem = std::make_shared<std::vector<uint8_t>>(rawPersistenceMapLUT.size);
+        if(!rawPersistenceMapLUT.mem) {
             return __LINE__;
         }
-        memset(rawPersistenceMapLUT.mem, 0, rawPersistenceMapLUT.size);
+        std::fill(rawPersistenceMapLUT.mem->begin(), rawPersistenceMapLUT.mem->end(), 0);
     }
 
     return 0;
 }
 
 void TemporalFilter::buildPersistanceMap() {
-    uint8_t* persistenceMapLUT = rawPersistenceMapLUT.mem;
+    auto& persistenceMapLUT = *rawPersistenceMapLUT.mem;
 
     for(size_t i = 0; i < PERSISTENCY_LUT_SIZE; i++) {
         persistenceMapLUT[i] = 0;
@@ -584,7 +581,7 @@ void TemporalFilter::buildPersistanceMap() {
     }
     // Store results
     assert(rawPersistenceMapLUT.size == PERSISTENCY_LUT_SIZE);
-    std::memcpy(persistenceMapLUT, credible_threshold.data(), PERSISTENCY_LUT_SIZE);
+    std::copy(credible_threshold.begin(), credible_threshold.end(), rawPersistenceMapLUT.mem->begin());
 }
 
 }  // namespace impl
@@ -606,7 +603,7 @@ class MedianFilterWrapper : public ImageFilters::Filter {
         if(std::holds_alternative<MedianFilterParams>(params)) {
             this->params = std::get<MedianFilterParams>(params);
         } else {
-            throw std::runtime_error("Invalid filter params");
+            DAI_CHECK_V(false, "Invalid filter params");
         }
     }
 
@@ -635,7 +632,7 @@ class SpatialFilterWrapper : public ImageFilters::Filter {
         if(std::holds_alternative<SpatialFilterParams>(params)) {
             this->params = std::get<SpatialFilterParams>(params);
         } else {
-            throw std::runtime_error("Invalid filter params");
+            DAI_CHECK_V(false, "Invalid filter params");
         }
     }
 
@@ -662,7 +659,7 @@ class SpeckleFilterWrapper : public ImageFilters::Filter {
         if(std::holds_alternative<SpeckleFilterParams>(params)) {
             this->params = std::get<SpeckleFilterParams>(params);
         } else {
-            throw std::runtime_error("Invalid filter params");
+            DAI_CHECK_V(false, "Invalid filter params");
         }
     }
 
@@ -689,19 +686,17 @@ class TemporalFilterWrapper : public ImageFilters::Filter {
                 auto frameType = frame->getType();
                 if(frameType == ImgFrame::Type::RAW16) {
                     bytesPerPixel = sizeof(uint16_t);
-                } else if (frameType == ImgFrame::Type::RAW8) {
+                } else if(frameType == ImgFrame::Type::RAW8) {
                     bytesPerPixel = sizeof(uint8_t);
                 } else {
-                    throw std::runtime_error("TemporalFilter: Unsupported frame type. Supported types are RAW8 and RAW16.");
+                    DAI_CHECK_V(false, "Unsupported frame type. Supported types are RAW8 and RAW16.");
                 }
                 const size_t frameSize = frame->getHeight() * frame->getWidth() * bytesPerPixel;
                 const float alpha = params.alpha;
                 const int delta = params.delta;
                 const int persistencyMode = static_cast<int>(params.persistencyMode);
                 int ret = temporalFilter.Init(frameSize, alpha, delta, persistencyMode);
-                if(ret != 0) {
-                    throw std::runtime_error("TemporalFilter: Failed to initialize");
-                }
+                DAI_CHECK_V(ret == 0, "Failed to initialize");
                 isInitialized = true;
             }
 
@@ -714,7 +709,7 @@ class TemporalFilterWrapper : public ImageFilters::Filter {
             this->params = std::get<TemporalFilterParams>(params);
             isInitialized = false;
         } else {
-            throw std::runtime_error("Invalid filter params");
+            DAI_CHECK_V(false, "Invalid filter params");
         }
     }
 };
@@ -790,7 +785,7 @@ bool ImageFilters::runOnHost() const {
 
 void ImageFilters::setRunOnHost(bool runOnHost) {
     if(device && device->getPlatform() == Platform::RVC2 && !runOnHost) {
-        throw std::runtime_error("ImageFilters: Running on device is not supported on RVC2");
+        DAI_CHECK_V(false, "ImageFilters: Running on device is not supported on RVC2");
     }
     runOnHostVar = runOnHost;
 }
@@ -807,7 +802,7 @@ void DepthConfidenceFilter::applyDepthConfidenceFilter(std::shared_ptr<ImgFrame>
         if(type == ImgFrame::Type::RAW16) {
             return CV_16UC1;
         }
-        throw std::runtime_error("DepthConfidenceFilter: Unsupported frame type. Supported types are RAW8 and RAW16.");
+        DAI_CHECK_V(false, "DepthConfidenceFilter: Unsupported frame type. Supported types are RAW8 and RAW16.");
     };
 
     const int height = depthFrame->getHeight();
@@ -902,7 +897,7 @@ void DepthConfidenceFilter::setConfidenceThreshold(float threshold) {
 
 void DepthConfidenceFilter::setRunOnHost(bool runOnHost) {
     if(device && device->getPlatform() == Platform::RVC2 && !runOnHost) {
-        throw std::runtime_error("DepthConfidenceFilter: Running on device is not supported on RVC2");
+        DAI_CHECK_V(false, "DepthConfidenceFilter: Running on device is not supported on RVC2");
     }
     runOnHostVar = runOnHost;
 }
