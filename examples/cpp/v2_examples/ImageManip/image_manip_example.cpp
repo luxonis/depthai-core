@@ -13,10 +13,10 @@ int main() {
     auto camRgb = pipeline.create<dai::node::ColorCamera>();
     auto imageManip = pipeline.create<dai::node::ImageManip>();
     auto imageManip2 = pipeline.create<dai::node::ImageManip>();
-    auto camOut = pipeline.create<dai::node::XLinkOut>();
-    auto manipOut = pipeline.create<dai::node::XLinkOut>();
-    auto manipOut2 = pipeline.create<dai::node::XLinkOut>();
-    auto manip2In = pipeline.create<dai::node::XLinkIn>();
+    auto camOut = pipeline.create<dai::node::internal::XLinkOut>();
+    auto manipOut = pipeline.create<dai::node::internal::XLinkOut>();
+    auto manipOut2 = pipeline.create<dai::node::internal::XLinkOut>();
+    auto manip2In = pipeline.create<dai::node::internal::XLinkIn>();
 
     camOut->setStreamName("preview");
     manipOut->setStreamName("manip");

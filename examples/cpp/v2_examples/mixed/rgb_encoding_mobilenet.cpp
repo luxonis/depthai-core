@@ -30,9 +30,9 @@ int main(int argc, char** argv) {
     auto videoEncoder = pipeline.create<dai::node::VideoEncoder>();
     auto nn = pipeline.create<dai::node::MobileNetDetectionNetwork>();
 
-    auto xoutRgb = pipeline.create<dai::node::XLinkOut>();
-    auto videoOut = pipeline.create<dai::node::XLinkOut>();
-    auto nnOut = pipeline.create<dai::node::XLinkOut>();
+    auto xoutRgb = pipeline.create<dai::node::internal::XLinkOut>();
+    auto videoOut = pipeline.create<dai::node::internal::XLinkOut>();
+    auto nnOut = pipeline.create<dai::node::internal::XLinkOut>();
 
     xoutRgb->setStreamName("rgb");
     videoOut->setStreamName("h265");

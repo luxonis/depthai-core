@@ -34,11 +34,11 @@ int main(int argc, char** argv) {
     auto objectTracker = pipeline.create<dai::node::ObjectTracker>();
     auto detectionNetwork = pipeline.create<dai::node::MobileNetDetectionNetwork>();
 
-    auto manipOut = pipeline.create<dai::node::XLinkOut>();
-    auto xinFrame = pipeline.create<dai::node::XLinkIn>();
-    auto trackerOut = pipeline.create<dai::node::XLinkOut>();
-    auto xlinkOut = pipeline.create<dai::node::XLinkOut>();
-    auto nnOut = pipeline.create<dai::node::XLinkOut>();
+    auto manipOut = pipeline.create<dai::node::internal::XLinkOut>();
+    auto xinFrame = pipeline.create<dai::node::internal::XLinkIn>();
+    auto trackerOut = pipeline.create<dai::node::internal::XLinkOut>();
+    auto xlinkOut = pipeline.create<dai::node::internal::XLinkOut>();
+    auto nnOut = pipeline.create<dai::node::internal::XLinkOut>();
 
     manipOut->setStreamName("manip");
     xinFrame->setStreamName("inFrame");

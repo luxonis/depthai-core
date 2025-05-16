@@ -20,7 +20,7 @@ int main(int argc, char** argv) {
     // Define sources and outputs
     auto camRgb = pipeline.create<dai::node::ColorCamera>();
     auto videoEnc = pipeline.create<dai::node::VideoEncoder>();
-    auto xout = pipeline.create<dai::node::XLinkOut>();
+    auto xout = pipeline.create<dai::node::internal::XLinkOut>();
 
     xout->setStreamName("h265");
 

@@ -12,8 +12,8 @@ int main() {
 
     // Define source and outputs
     auto camRgb = pipeline.create<dai::node::ColorCamera>();
-    auto xoutVideo = pipeline.create<dai::node::XLinkOut>();
-    auto xoutPreview = pipeline.create<dai::node::XLinkOut>();
+    auto xoutVideo = pipeline.create<dai::node::internal::XLinkOut>();
+    auto xoutPreview = pipeline.create<dai::node::internal::XLinkOut>();
 
     xoutVideo->setStreamName("video");
     xoutPreview->setStreamName("preview");

@@ -35,8 +35,8 @@ int main(int argc, char** argv) {
     // Define source and outputs
     auto nn = pipeline.create<dai::node::MobileNetDetectionNetwork>();
 
-    auto xinFrame = pipeline.create<dai::node::XLinkIn>();
-    auto nnOut = pipeline.create<dai::node::XLinkOut>();
+    auto xinFrame = pipeline.create<dai::node::internal::XLinkIn>();
+    auto nnOut = pipeline.create<dai::node::internal::XLinkOut>();
 
     xinFrame->setStreamName("inFrame");
     nnOut->setStreamName("nn");

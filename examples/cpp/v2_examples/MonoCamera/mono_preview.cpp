@@ -10,8 +10,8 @@ int main() {
     // Define sources and outputs
     auto monoLeft = pipeline.create<dai::node::MonoCamera>();
     auto monoRight = pipeline.create<dai::node::MonoCamera>();
-    auto xoutLeft = pipeline.create<dai::node::XLinkOut>();
-    auto xoutRight = pipeline.create<dai::node::XLinkOut>();
+    auto xoutLeft = pipeline.create<dai::node::internal::XLinkOut>();
+    auto xoutRight = pipeline.create<dai::node::internal::XLinkOut>();
 
     xoutLeft->setStreamName("left");
     xoutRight->setStreamName("right");

@@ -24,7 +24,7 @@ int main() {
 
     // Define source and output
     auto sysLog = pipeline.create<dai::node::SystemLogger>();
-    auto xout = pipeline.create<dai::node::XLinkOut>();
+    auto xout = pipeline.create<dai::node::internal::XLinkOut>();
 
     xout->setStreamName("sysinfo");
 

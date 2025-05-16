@@ -20,7 +20,7 @@ int main() {
     auto colorCamera = pipeline.create<dai::node::ColorCamera>();
     auto imu = pipeline.create<dai::node::IMU>();
     auto sync = pipeline.create<dai::node::Sync>();
-    auto xoutGroup = pipeline.create<dai::node::XLinkOut>();
+    auto xoutGroup = pipeline.create<dai::node::internal::XLinkOut>();
 
     xoutGroup->setStreamName("xout");
 

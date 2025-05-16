@@ -35,7 +35,7 @@ while True:
     auto sync = pipeline.create<dai::node::Sync>();
     sync->setSyncThreshold(std::chrono::milliseconds(100));
 
-    auto xout = pipeline.create<dai::node::XLinkOut>();
+    auto xout = pipeline.create<dai::node::internal::XLinkOut>();
     xout->setStreamName("xout");
 
     sync->out.link(xout->input);

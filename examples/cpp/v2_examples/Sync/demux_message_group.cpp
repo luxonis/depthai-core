@@ -37,9 +37,9 @@ while True:
 
     auto demux = pipeline.create<dai::node::MessageDemux>();
 
-    auto xout1 = pipeline.create<dai::node::XLinkOut>();
+    auto xout1 = pipeline.create<dai::node::internal::XLinkOut>();
     xout1->setStreamName("xout1");
-    auto xout2 = pipeline.create<dai::node::XLinkOut>();
+    auto xout2 = pipeline.create<dai::node::internal::XLinkOut>();
     xout2->setStreamName("xout2");
 
     script1->outputs["out"].link(sync->inputs["s1"]);

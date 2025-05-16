@@ -8,7 +8,7 @@
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/node/Camera.hpp"
 #include "depthai/pipeline/node/VideoEncoder.hpp"
-#include "depthai/pipeline/node/XLinkOut.hpp"
+#include "depthai/pipeline/node/internal/XLinkOut.hpp"
 #include "depthai/properties/VideoEncoderProperties.hpp"
 
 dai::Pipeline getPipeline(dai::VideoEncoderProperties::Profile profile, unsigned int quality, bool lossless, unsigned int bitrate) {
@@ -16,7 +16,7 @@ dai::Pipeline getPipeline(dai::VideoEncoderProperties::Profile profile, unsigned
     auto camNode = pipeline.create<dai::node::Camera>()->build();
     auto camOut = camNode->requestOutput({640, 480}, dai::ImgFrame::Type::NV12);
     auto encNode = pipeline.create<dai::node::VideoEncoder>();
-    auto xlinkOut = pipeline.create<dai::node::XLinkOut>();
+    auto xlinkOut = pipeline.create<dai::node::internal::XLinkOut>();
     camOut->link(encNode->input);
     encNode->out.link(xlinkOut->input);
 

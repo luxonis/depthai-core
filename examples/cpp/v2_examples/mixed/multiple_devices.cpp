@@ -16,7 +16,7 @@ std::shared_ptr<dai::Pipeline> createPipeline() {
     camRgb->setInterleaved(false);
 
     // Create output
-    auto xoutRgb = pipeline->create<dai::node::XLinkOut>();
+    auto xoutRgb = pipeline->create<dai::node::internal::XLinkOut>();
     xoutRgb->setStreamName("rgb");
     camRgb->preview.link(xoutRgb->input);
 

@@ -11,7 +11,7 @@ constexpr unsigned int TIMESCALE = 90000;
 int main() {
     dai::Pipeline pipeline;
     auto cam = pipeline.create<dai::node::ColorCamera>();
-    auto xout = pipeline.create<dai::node::XLinkOut>();
+    auto xout = pipeline.create<dai::node::internal::XLinkOut>();
 
     cam->setBoardSocket(dai::CameraBoardSocket::CAM_A);
     cam->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);

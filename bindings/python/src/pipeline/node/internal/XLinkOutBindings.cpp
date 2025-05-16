@@ -1,16 +1,19 @@
-#include "Common.hpp"
-#include "NodeBindings.hpp"
+#include "../Common.hpp"
+#include "../NodeBindings.hpp"
 #include "depthai/pipeline/Node.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
-#include "depthai/pipeline/node/XLinkOut.hpp"
+#include "depthai/pipeline/node/internal/XLinkOut.hpp"
+
+extern py::handle daiNodeInternalModule;
 
 void bind_xlinkout(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::node;
+    using namespace dai::node::internal;
 
     // Node and Properties declare upfront
     py::class_<XLinkOutProperties> xlinkOutProperties(m, "XLinkOutProperties", DOC(dai, XLinkOutProperties));
-    auto xlinkOut = ADD_NODE(XLinkOut);
+    auto xlinkOut = ADD_NODE_INTERNAL(XLinkOut);
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -38,5 +41,5 @@ void bind_xlinkout(pybind11::module& m, void* pCallstack) {
         .def("getFpsLimit", &XLinkOut::getFpsLimit, DOC(dai, node, XLinkOut, getFpsLimit))
         .def("setMetadataOnly", &XLinkOut::setMetadataOnly, DOC(dai, node, XLinkOut, setMetadataOnly))
         .def("getMetadataOnly", &XLinkOut::getMetadataOnly, DOC(dai, node, XLinkOut, getMetadataOnly));
-    daiNodeModule.attr("XLinkOut").attr("Properties") = xlinkOutProperties;
+    daiNodeInternalModule.attr("XLinkOut").attr("Properties") = xlinkOutProperties;
 }

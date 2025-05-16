@@ -7,6 +7,7 @@
 
 namespace dai {
 namespace node {
+namespace internal {
 
 /**
  * @brief XLinkOut node. Sends messages over XLink.
@@ -56,5 +57,6 @@ class XLinkOut : public DeviceNodeCRTP<DeviceNode, XLinkOut, XLinkOutProperties>
     void buildInternal() override;
 };
 
+}  // namespace internal
 }  // namespace node
 }  // namespace dai

@@ -29,9 +29,9 @@ int main(int argc, char** argv) {
     auto camRgb = pipeline.create<dai::node::ColorCamera>();
     auto nn = pipeline.create<dai::node::MobileNetDetectionNetwork>();
 
-    auto xoutVideo = pipeline.create<dai::node::XLinkOut>();
-    auto xoutPreview = pipeline.create<dai::node::XLinkOut>();
-    auto nnOut = pipeline.create<dai::node::XLinkOut>();
+    auto xoutVideo = pipeline.create<dai::node::internal::XLinkOut>();
+    auto xoutPreview = pipeline.create<dai::node::internal::XLinkOut>();
+    auto nnOut = pipeline.create<dai::node::internal::XLinkOut>();
 
     xoutVideo->setStreamName("video");
     xoutPreview->setStreamName("preview");

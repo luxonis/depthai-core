@@ -14,8 +14,8 @@ int main() {
     // Define source and outputs
     auto camRgb = pipeline.create<dai::node::ColorCamera>();
     auto videoEnc = pipeline.create<dai::node::VideoEncoder>();
-    auto xoutJpeg = pipeline.create<dai::node::XLinkOut>();
-    auto xoutRgb = pipeline.create<dai::node::XLinkOut>();
+    auto xoutJpeg = pipeline.create<dai::node::internal::XLinkOut>();
+    auto xoutRgb = pipeline.create<dai::node::internal::XLinkOut>();
 
     xoutJpeg->setStreamName("jpeg");
     xoutRgb->setStreamName("rgb");

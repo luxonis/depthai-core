@@ -18,7 +18,7 @@ int main() {
     auto monoLeft = pipeline.create<dai::node::MonoCamera>();
     auto monoRight = pipeline.create<dai::node::MonoCamera>();
     auto depth = pipeline.create<dai::node::StereoDepth>();
-    auto xout = pipeline.create<dai::node::XLinkOut>();
+    auto xout = pipeline.create<dai::node::internal::XLinkOut>();
 
     xout->setStreamName("disparity");
 

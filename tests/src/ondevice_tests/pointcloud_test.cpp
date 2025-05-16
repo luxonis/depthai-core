@@ -10,7 +10,7 @@ dai::Pipeline getPipeline(bool sparse) {
     auto monoRight = pipeline.create<dai::node::MonoCamera>();
     auto stereo = pipeline.create<dai::node::StereoDepth>();
     auto pointcloud = pipeline.create<dai::node::PointCloud>();
-    auto xout = pipeline.create<dai::node::XLinkOut>();
+    auto xout = pipeline.create<dai::node::internal::XLinkOut>();
 
     monoLeft->setCamera("left");
     monoRight->setCamera("right");

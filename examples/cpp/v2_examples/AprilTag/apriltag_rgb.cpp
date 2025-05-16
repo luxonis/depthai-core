@@ -16,8 +16,8 @@ int main() {
     auto aprilTag = pipeline.create<dai::node::AprilTag>();
     auto manip = pipeline.create<dai::node::ImageManip>();
 
-    auto xoutAprilTag = pipeline.create<dai::node::XLinkOut>();
-    auto xoutAprilTagImage = pipeline.create<dai::node::XLinkOut>();
+    auto xoutAprilTag = pipeline.create<dai::node::internal::XLinkOut>();
+    auto xoutAprilTagImage = pipeline.create<dai::node::internal::XLinkOut>();
 
     xoutAprilTag->setStreamName("aprilTagData");
     xoutAprilTagImage->setStreamName("aprilTagImage");

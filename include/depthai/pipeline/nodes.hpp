@@ -32,8 +32,8 @@
 #include "node/UVC.hpp"
 #include "node/VideoEncoder.hpp"
 #include "node/Warp.hpp"
-#include "node/XLinkIn.hpp"
-#include "node/XLinkOut.hpp"
+#include "node/internal/XLinkIn.hpp"
+#include "node/internal/XLinkOut.hpp"
 #include "node/host/RGBD.hpp"
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     #include "node/host/Display.hpp"

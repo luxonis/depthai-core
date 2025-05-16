@@ -33,9 +33,9 @@ int main(int argc, char** argv) {
     auto spatialDetectionNetwork = pipeline.create<dai::node::MobileNetSpatialDetectionNetwork>();
     auto imageManip = pipeline.create<dai::node::ImageManip>();
 
-    auto xoutManip = pipeline.create<dai::node::XLinkOut>();
-    auto nnOut = pipeline.create<dai::node::XLinkOut>();
-    auto xoutDepth = pipeline.create<dai::node::XLinkOut>();
+    auto xoutManip = pipeline.create<dai::node::internal::XLinkOut>();
+    auto nnOut = pipeline.create<dai::node::internal::XLinkOut>();
+    auto xoutDepth = pipeline.create<dai::node::internal::XLinkOut>();
 
     xoutManip->setStreamName("right");
     nnOut->setStreamName("detections");

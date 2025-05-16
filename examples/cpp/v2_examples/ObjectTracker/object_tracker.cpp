@@ -31,8 +31,8 @@ int main(int argc, char** argv) {
     auto detectionNetwork = pipeline.create<dai::node::MobileNetDetectionNetwork>();
     auto objectTracker = pipeline.create<dai::node::ObjectTracker>();
 
-    auto xlinkOut = pipeline.create<dai::node::XLinkOut>();
-    auto trackerOut = pipeline.create<dai::node::XLinkOut>();
+    auto xlinkOut = pipeline.create<dai::node::internal::XLinkOut>();
+    auto trackerOut = pipeline.create<dai::node::internal::XLinkOut>();
 
     xlinkOut->setStreamName("preview");
     trackerOut->setStreamName("tracklets");

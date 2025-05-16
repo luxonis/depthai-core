@@ -13,7 +13,7 @@ int main() {
 
     dai::Pipeline pipeline;
 
-    auto xin = pipeline.create<dai::node::XLinkIn>();
+    auto xin = pipeline.create<dai::node::internal::XLinkIn>();
     xin->setStreamName("in");
 
     auto script = pipeline.create<dai::node::Script>();
@@ -35,7 +35,7 @@ int main() {
         node.io['out'].send(b)
     )");
 
-    auto xout = pipeline.create<dai::node::XLinkOut>();
+    auto xout = pipeline.create<dai::node::internal::XLinkOut>();
     xout->setStreamName("out");
     script->outputs["out"].link(xout->input);
 

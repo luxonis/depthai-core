@@ -35,8 +35,8 @@ int main(int argc, char** argv) {
     auto stereo = pipeline.create<dai::node::StereoDepth>();
     auto objectTracker = pipeline.create<dai::node::ObjectTracker>();
 
-    auto xoutRgb = pipeline.create<dai::node::XLinkOut>();
-    auto trackerOut = pipeline.create<dai::node::XLinkOut>();
+    auto xoutRgb = pipeline.create<dai::node::internal::XLinkOut>();
+    auto trackerOut = pipeline.create<dai::node::internal::XLinkOut>();
 
     xoutRgb->setStreamName("preview");
     trackerOut->setStreamName("tracklets");

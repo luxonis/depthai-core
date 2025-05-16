@@ -39,7 +39,7 @@ int main() {
     videoEnc->setDefaultProfilePreset(monoLeft->getFps(), dai::VideoEncoderProperties::Profile::MJPEG);
     stereo->disparity.link(videoEnc->input);
 
-    auto xout = pipeline.create<dai::node::XLinkOut>();
+    auto xout = pipeline.create<dai::node::internal::XLinkOut>();
     xout->setStreamName("disparity");
     videoEnc->bitstream.link(xout->input);
 

@@ -35,8 +35,8 @@ int main() {
     auto right = pipeline.create<dai::node::MonoCamera>();
     auto stereo = pipeline.create<dai::node::StereoDepth>();
 
-    auto rgbOut = pipeline.create<dai::node::XLinkOut>();
-    auto depthOut = pipeline.create<dai::node::XLinkOut>();
+    auto rgbOut = pipeline.create<dai::node::internal::XLinkOut>();
+    auto depthOut = pipeline.create<dai::node::internal::XLinkOut>();
 
     rgbOut->setStreamName("rgb");
     queueNames.push_back("rgb");

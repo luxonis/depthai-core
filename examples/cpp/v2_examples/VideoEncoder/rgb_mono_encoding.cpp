@@ -25,9 +25,9 @@ int main() {
     auto ve2 = pipeline.create<dai::node::VideoEncoder>();
     auto ve3 = pipeline.create<dai::node::VideoEncoder>();
 
-    auto ve1Out = pipeline.create<dai::node::XLinkOut>();
-    auto ve2Out = pipeline.create<dai::node::XLinkOut>();
-    auto ve3Out = pipeline.create<dai::node::XLinkOut>();
+    auto ve1Out = pipeline.create<dai::node::internal::XLinkOut>();
+    auto ve2Out = pipeline.create<dai::node::internal::XLinkOut>();
+    auto ve3Out = pipeline.create<dai::node::internal::XLinkOut>();
 
     ve1Out->setStreamName("ve1Out");
     ve2Out->setStreamName("ve2Out");

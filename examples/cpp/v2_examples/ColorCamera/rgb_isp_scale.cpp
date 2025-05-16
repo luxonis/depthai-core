@@ -9,7 +9,7 @@ int main() {
 
     // Define source and output
     auto camRgb = pipeline.create<dai::node::ColorCamera>();
-    auto xoutVideo = pipeline.create<dai::node::XLinkOut>();
+    auto xoutVideo = pipeline.create<dai::node::internal::XLinkOut>();
 
     xoutVideo->setStreamName("video");
 

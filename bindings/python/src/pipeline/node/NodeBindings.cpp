@@ -42,6 +42,7 @@ void delImplicitPipeline() {
 // Map of python node classes and call to pipeline to create it
 std::vector<std::pair<py::handle, std::function<std::shared_ptr<dai::Node>(dai::Pipeline&, py::object class_)>>> pyNodeCreateMap;
 py::handle daiNodeModule;
+py::handle daiNodeInternalModule;
 
 std::vector<std::pair<py::handle, std::function<std::shared_ptr<dai::Node>(dai::Pipeline&, py::object class_)>>> NodeBindings::getNodeCreateMap() {
     return pyNodeCreateMap;
@@ -227,6 +228,7 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
     //// Bindings for actual nodes
     // Move properties into nodes and nodes under 'node' submodule
     daiNodeModule = m.def_submodule("node");
+    daiNodeInternalModule = m.def_submodule("node").def_submodule("internal");
 
     // Properties
     py::class_<Node, std::shared_ptr<Node>> pyNode(m, "Node", DOC(dai, Node));

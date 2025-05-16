@@ -242,8 +242,8 @@ set(TARGET_CORE_SOURCES
     src/pipeline/ThreadedNode.cpp
     src/pipeline/DeviceNode.cpp
     src/pipeline/DeviceNodeGroup.cpp
-    src/pipeline/node/XLinkIn.cpp
-    src/pipeline/node/XLinkOut.cpp
+    src/pipeline/node/internal/XLinkIn.cpp
+    src/pipeline/node/internal/XLinkOut.cpp
     src/pipeline/node/ColorCamera.cpp
     src/pipeline/node/Camera.cpp
     src/pipeline/node/Thermal.cpp
@@ -277,8 +277,8 @@ set(TARGET_CORE_SOURCES
     src/pipeline/node/test/MyProducer.cpp
     src/pipeline/node/test/MyConsumer.cpp
     src/pipeline/node/UVC.cpp
-    src/pipeline/node/host/XLinkInHost.cpp
-    src/pipeline/node/host/XLinkOutHost.cpp
+    src/pipeline/node/internal/XLinkInHost.cpp
+    src/pipeline/node/internal/XLinkOutHost.cpp
     src/pipeline/node/host/HostNode.cpp
     src/pipeline/node/host/RGBD.cpp
     src/pipeline/datatype/DatatypeEnum.cpp
