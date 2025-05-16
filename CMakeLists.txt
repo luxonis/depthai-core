@@ -698,6 +698,7 @@ target_link_libraries(${TARGET_CORE_NAME}
         semver::semver
         magic_enum::magic_enum
         liblzma::liblzma
+        lz4::lz4
 )
 
 if(DEPTHAI_ENABLE_MP4V2)
