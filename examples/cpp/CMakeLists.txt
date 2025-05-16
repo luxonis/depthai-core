@@ -7,6 +7,7 @@ find_package(Sanitizers)
 
 # Create utility library
 add_library(utility utility/utility.cpp)
+target_compile_features(utility PUBLIC cxx_std_17)
 target_include_directories(utility PUBLIC "utility" "$<BUILD_INTERFACE:${FP16_INCLUDE_DIR}>")
 add_default_flags(utility LEAN)
 target_link_libraries(utility ${OpenCV_LIBS})
@@ -326,11 +327,14 @@ if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
     dai_set_example_test_labels(visualizer_yolo ondevice rvc2_all rvc4)
 endif()
 
-include(FetchContent)
-FetchContent_Declare(rerun_sdk URL  https://github.com/rerun-io/rerun/releases/download/0.16.1/rerun_cpp_sdk.zip)
-FetchContent_MakeAvailable(rerun_sdk)
-dai_add_example(rgbd RGBD/rgbd.cpp ON OFF)
-target_link_libraries(rgbd PRIVATE rerun_sdk)
+# Skip compiling rerun examples on Windows, since the used version of rerun doesn't compile on Windows
+if(NOT WIN32)
+    include(FetchContent)
+    FetchContent_Declare(rerun_sdk URL  https://github.com/rerun-io/rerun/releases/download/0.16.1/rerun_cpp_sdk.zip)
+    FetchContent_MakeAvailable(rerun_sdk)
+    dai_add_example(rgbd RGBD/rgbd.cpp ON OFF)
+    target_link_libraries(rgbd PRIVATE rerun_sdk)
+endif()
 
 if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
     dai_add_example(visualizer_rgbd RGBD/visualizer_rgbd.cpp ON OFF)

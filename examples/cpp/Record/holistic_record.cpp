@@ -4,24 +4,10 @@
 #include "depthai/depthai.hpp"
 #include "depthai/pipeline/node/host/Display.hpp"
 #include "depthai/utility/RecordReplay.hpp"
-
+#include "utility.hpp"
 #ifndef DEPTHAI_MERGED_TARGET
     #error This example needs OpenCV support, which is not available on your system
 #endif
-
-std::string getDefaultRecordingPath() {
-    auto isTest = std::getenv("RUNNING_AS_TEST");
-    if(isTest && std::string(isTest) == "1") {
-        // If running as test save to temporary directory
-        char tmpTemplate[] = "holistic_recording_XXXXXX";
-        char* tmpName = mkdtemp(tmpTemplate);
-        auto tmpDir = std::filesystem::temp_directory_path() / tmpName;
-        std::filesystem::create_directory(tmpDir);
-        return tmpDir.string();
-    } else {
-        return ".";
-    }
-}
 
 int main(int argc, char** argv) {
     dai::Pipeline pipeline;

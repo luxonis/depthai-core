@@ -54,7 +54,7 @@ function(dai_add_test test_name test_src)
     if(NOT DEPTHAI_MERGED_TARGET)
         set(DEPTHAI_TARGET depthai::opencv)
     endif()
-    target_link_libraries(${test_name} PRIVATE depthai::opencv ${OpenCV_LIBS} Catch2::Catch2WithMain Threads::Threads spdlog::spdlog)
+    target_link_libraries(${test_name} PRIVATE ${DEPTHAI_TARGET} ${OpenCV_LIBS} Catch2::Catch2WithMain Threads::Threads spdlog::spdlog)
 
     # Add sanitizers for tests as well
     if(COMMAND add_sanitizers)

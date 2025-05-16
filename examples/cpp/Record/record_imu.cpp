@@ -8,18 +8,6 @@
 // Includes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
-std::string getDefaultRecordingPath() {
-    auto isTest = std::getenv("RUNNING_AS_TEST");
-    if(isTest && std::string(isTest) == "1") {
-        // If running as test save to temporary directory
-        char tmpTemplate[] = "imu_recording_XXXXXX";
-        char* tmpName = mkdtemp(tmpTemplate);
-        auto tmpDir = std::filesystem::temp_directory_path();
-        return (tmpDir / tmpName).string();
-    } else {
-        return "imu_recording";
-    }
-}
 
 int main(int argc, char** argv) {
     // Create pipeline
