@@ -6,16 +6,14 @@ on:
     branches:
       - main
       - develop
-      - rvc3_support
-      - rvc3_develop
+      - v3_develop
     tags:
       - 'v2*'
   pull_request:
     branches:
       - main
       - develop
-      - rvc3_support
-      - rvc3_develop
+      - v3_develop
 
 jobs:
 
@@ -58,6 +56,24 @@ jobs:
     - name: Run clang-tidy
       run: cmake --build build --parallel 4
 
+  build_werror:
+    runs-on: ubuntu-24.04
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: 'recursive'
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install libopencv-dev libudev-dev
+
+    - name: Configure
+      run: cmake -S . -B build -DCMAKE_CXX_FLAGS="-Werror" -DDEPTHAI_BUILD_EXAMPLES=ON
+
+    - name: Run
+      run: cmake --build build --parallel 4
 
   build:
     runs-on: ${{ matrix.os }}
