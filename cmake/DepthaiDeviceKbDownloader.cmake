@@ -47,12 +47,15 @@ function(DepthaiDeviceDownloader)
     if("${maturity_lower}" STREQUAL "snapshot")
         set(_selected_repo "${DOWNLOADER_REPO_SNAPSHOT}")
         set(commit ${commit_version_arg})
+        string(REPLACE "-asan" "" commit "${commit}")
+        string(REPLACE "-ubsan" "" commit "${commit}")
+        string(REPLACE "-tsan" "" commit "${commit}")
 
         # Create download directory string
         string(CONFIGURE "@DOWNLOADER_BASE_URL@/@DOWNLOADER_REPO_SNAPSHOT@/@DOWNLOADER_ARTIFACT_PREFIX@/@commit@" _download_directory_url)
 
         # Create _version_commit_identifier
-        set(_version_commit_identifier "${commit}")
+        set(_version_commit_identifier "${commit_version_arg}")
 
     elseif("${maturity_lower}" STREQUAL "release")
         set(_selected_repo "${DOWNLOADER_REPO_RELEASE}")
@@ -124,6 +127,7 @@ function(DepthaiDeviceDownloader)
 
     # Download firmware package
     message(STATUS "Downloading and checking ${device_type}-fwp.tar.xz")
+    message(STATUS "Download URL: ${_download_directory_url}/${device_type}-fwp-${_version_commit_identifier}.tar.xz")
     DownloadAndChecksum(
         "${_download_directory_url}/${device_type}-fwp-${_version_commit_identifier}.tar.xz" # File
         "${_download_directory_url}/${device_type}-fwp-${_version_commit_identifier}.tar.xz.sha256" # File checksum

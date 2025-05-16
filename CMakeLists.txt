@@ -732,6 +732,12 @@ if(DEPTHAI_ENABLE_DEVICE_RVC3_FW)
 endif()
 
 if(DEPTHAI_ENABLE_DEVICE_RVC4_FW)
+    if(DEPTHAI_SANITIZE AND SANITIZE_THREAD)
+        string(APPEND DEPTHAI_DEVICE_RVC4_VERSION "-tsan")
+    elseif(DEPTHAI_SANITIZE)
+        string(APPEND DEPTHAI_DEVICE_RVC4_VERSION "-asan-ubsan")
+    endif()
+
     # Add device-RVC4 FW
     DepthaiDeviceDownloader(
         "depthai-device-rvc4"
@@ -1168,8 +1174,8 @@ endif()
 # Sanitizers
 ########################
 if(DEPTHAI_SANITIZE)
-    set(SANITIZE_ADDRESS ON CACHE BOOL "Enable AddressSanitizer for sanitized targets." FORCE)
-    set(SANITIZE_UNDEFINED ON CACHE BOOL "Enable UndefinedBehaviorSanitizer for sanitized targets." FORCE)
+    set(SANITIZE_ADDRESS ON CACHE BOOL "Enable AddressSanitizer for sanitized targets.")
+    set(SANITIZE_UNDEFINED ON CACHE BOOL "Enable UndefinedBehaviorSanitizer for sanitized targets.")
     find_package(Sanitizers)
     add_sanitizers(${TARGET_CORE_NAME})
     if(DEPTHAI_HAVE_OPENCV_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)

@@ -55,6 +55,62 @@ from stress_test import stress_test, YOLO_LABELS, create_yolo
 
 ALL_SOCKETS = ['rgb', 'left', 'right', 'cama', 'camb', 'camc', 'camd', 'came']
 DEPTH_STREAM_NAME = "stereo_depth"
+def unpackRaw10(rawData, width, height, stride=None):
+    """
+    Unpacks RAW10 data from DepthAI pipeline into a 16-bit grayscale array.
+    :param rawData: List of raw bytes from DepthAI (1D numpy array)
+    :param width: Image width
+    :param height: Image height
+    :param stride: Row stride in bytes (if None, calculated as width*10/8)
+    :return: Unpacked 16-bit grayscale image with dimensions width×height
+    """
+    if stride is None:
+        stride = width * 10 // 8
+    expectedSize = stride * height
+
+    if len(rawData) < expectedSize:
+        raise ValueError(f"Data too small: {len(rawData)} bytes, expected {expectedSize}")
+
+    # Convert raw_data to numpy array
+    packedData = np.frombuffer(rawData, dtype=np.uint8)
+
+    # Process image row by row to handle stride correctly
+    result = np.zeros((height, width), dtype=np.uint16)
+
+    for row in range(height):
+        # Get row data using stride
+        rowStart = row * stride
+        rowData = packedData[rowStart:rowStart + stride]
+        # Calculate how many complete 5-byte groups we need for width pixels
+        numGroups = (width + 3) // 4  # Ceiling division
+        rowBytes = numGroups * 5
+        # Ensure we don't go beyond available data
+        if len(rowData) < rowBytes:
+            break
+
+        # Process only the bytes we need for this row
+        rowPacked = rowData[:rowBytes].reshape(-1, 5)
+        rowUnpacked = np.zeros((rowPacked.shape[0], 4), dtype=np.uint16)
+
+        # Extract 8 most significant bits
+        rowUnpacked[:, 0] = rowPacked[:, 0].astype(np.uint16) << 2
+        rowUnpacked[:, 1] = rowPacked[:, 1].astype(np.uint16) << 2
+        rowUnpacked[:, 2] = rowPacked[:, 2].astype(np.uint16) << 2
+        rowUnpacked[:, 3] = rowPacked[:, 3].astype(np.uint16) << 2
+
+        # Extract least significant 2 bits from 5th byte
+        rowUnpacked[:, 0] |= (rowPacked[:, 4] & 0b00000011)
+        rowUnpacked[:, 1] |= (rowPacked[:, 4] & 0b00001100) >> 2
+        rowUnpacked[:, 2] |= (rowPacked[:, 4] & 0b00110000) >> 4
+        rowUnpacked[:, 3] |= (rowPacked[:, 4] & 0b11000000) >> 6
+
+        # Flatten and copy only the required width pixels to result
+        rowFlat = rowUnpacked.flatten()
+        result[row, :width] = rowFlat[:width]
+
+    # Scale from 10-bit (0-1023) to 16-bit (0-65535) for proper display
+    result16bit = (result * 64).astype(np.uint16)
+    return result16bit
 
 def socket_type_pair(arg):
     socket, type = arg.split(',')
@@ -355,6 +411,10 @@ with dai.Pipeline(dai.Device(*dai_device_args)) as pipeline:
             xout[c] = cam[c].requestOutput(cap, True)
             control_queues.append(cam[c].inputControl.createInputQueue())
             streams.append(c)
+            if args.enable_raw or tofEnableRaw:
+                streamName = 'raw_' + c
+                xout[streamName] = cam[c].raw
+                streams.append(streamName)
             #cam[c] = pipeline.createColorCamera()
             #cam[c].setResolution(color_res_opts[args.color_resolution])
             #cam[c].setIspScale(1, args.isp_downscale)
@@ -387,13 +447,6 @@ with dai.Pipeline(dai.Device(*dai_device_args)) as pipeline:
         #if args.isp3afps:
         #    cam[c].setIsp3aFps(args.isp3afps)
 
-        if args.enable_raw or tofEnableRaw:
-            raw_name = 'raw_' + c
-            xout_raw[c] = pipeline.create(dai.node.XLinkOut)
-            xout_raw[c].setStreamName(raw_name)
-            streams.append(raw_name)
-            cam[c].raw.link(xout_raw[c].input)
-            cam[c].setRawOutputPacked(False)
 
     if args.camera_tuning:
         pipeline.setCameraTuningBlobPath(str(args.camera_tuning))
@@ -589,7 +642,12 @@ with dai.Pipeline(dai.Device(*dai_device_args)) as pipeline:
                     cv2.imshow(c, frame)
                     continue
                 width, height = pkt.getWidth(), pkt.getHeight()
-                frame = pkt.getCvFrame()
+                capture = c in capture_list
+                if c.startswith('raw_') or c.startswith('tof_amplitude_'):
+                    dataRaw = pkt.getData()
+                    frame = unpackRaw10(dataRaw, pkt.getWidth(), pkt.getHeight(), pkt.getStride())
+                else:
+                    frame = pkt.getCvFrame()
                 cam_skt = c.split('_')[-1]
 
                 if c == DEPTH_STREAM_NAME and stereo is not None:
@@ -623,7 +681,6 @@ with dai.Pipeline(dai.Device(*dai_device_args)) as pipeline:
                         print()
                         needs_newline = False
                     print(txt)
-                capture = c in capture_list
                 if capture:
                     capture_file_info = ('capture_' + c + '_' + cam_name[cam_socket_opts[cam_skt].name]
                          + '_' + str(width) + 'x' + str(height)
@@ -641,20 +698,6 @@ with dai.Pipeline(dai.Device(*dai_device_args)) as pipeline:
                         filename = capture_file_info + '_10bit.bw'
                         print('Saving:', filename)
                         frame.tofile(filename)
-                    # Full range for display, use bits [15:6] of the 16-bit pixels
-                    type = pkt.getType()
-                    multiplier = 1
-                    if type == dai.ImgFrame.Type.RAW10:
-                        multiplier = (1 << (16-10))
-                    if type == dai.ImgFrame.Type.RAW12:
-                        multiplier = (1 << (16-4))
-                    frame = frame * multiplier
-                    # Debayer as color for preview/png
-                    if cam_type_color[cam_skt]:
-                        # See this for the ordering, at the end of page:
-                        # https://docs.opencv.org/4.5.1/de/d25/imgproc_color_conversions.html
-                        # TODO add bayer order to ImgFrame getType()
-                        frame = cv2.cvtColor(frame, cv2.COLOR_BayerGB2BGR)
                 else:
                     # Save YUV too, but only when RAW is also enabled (for tuning purposes)
                     if capture and args.enable_raw:
@@ -662,7 +705,7 @@ with dai.Pipeline(dai.Device(*dai_device_args)) as pipeline:
                         filename = capture_file_info + '_P420.yuv'
                         print('Saving:', filename)
                         payload.tofile(filename)
-                if capture:
+                if capture and not c.startswith('raw_') and not c.startswith('tof_amplitude_'):
                     filename = capture_file_info + '.png'
                     print('Saving:', filename)
                     cv2.imwrite(filename, frame)

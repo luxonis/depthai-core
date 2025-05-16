@@ -46,11 +46,19 @@ class Camera::Impl {
     }
 
     void buildStage1(Camera& parent) {
+        size_t numUnconnectedOutputs = 0;
         for(const auto& outputRequest : outputRequests) {
-            DAI_CHECK(!parent.dynamicOutputs[std::to_string(outputRequest.id)].getQueueConnections().empty()
-                          || !parent.dynamicOutputs[std::to_string(outputRequest.id)].getConnections().empty(),
-                      "Always call output->createOutputQueue() or output->link(*) after calling dai::node::Camera::requestOutput()");
+            bool hasQueue = !parent.dynamicOutputs[std::to_string(outputRequest.id)].getQueueConnections().empty();
+            bool hasConnections = !parent.dynamicOutputs[std::to_string(outputRequest.id)].getConnections().empty();
+            if(!hasQueue && !hasConnections) {
+                ++numUnconnectedOutputs;
+            }
         }
+
+        DAI_CHECK_V(numUnconnectedOutputs == 0,
+                    "Always call output->createOutputQueue() or output->link(*) after calling dai::node::Camera::requestOutput(). There is(are) {} requested "
+                    "Camera output(s) with no connected inputs or created output queues.",
+                    numUnconnectedOutputs);
     }
 };
 

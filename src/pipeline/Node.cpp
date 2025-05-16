@@ -587,9 +587,9 @@ void Node::add(std::shared_ptr<Node> node) {
 void Node::remove(std::shared_ptr<Node> node) {
     // Remove the connection to the removed node and all it's children from all the nodes in the pipeline
     auto pipeline = parent.lock();
-    if(pipeline == nullptr) {
-        throw std::runtime_error("Pipeline is null");
-    }
+
+    DAI_CHECK_V(pipeline != nullptr, "Pipeline is null");
+    DAI_CHECK_V(!pipeline->isBuilt(), "Cannot remove node from pipeline once it is built.");
 
     for(auto& n : pipeline->nodes) {
         for(auto& childNode : node->nodeMap) {
