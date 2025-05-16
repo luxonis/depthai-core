@@ -3,11 +3,13 @@
 #include <depthai/pipeline/DeviceNode.hpp>
 
 // shared
-#include <depthai/properties/XLinkInProperties.hpp>
+#include <depthai/properties/internal/XLinkInProperties.hpp>
 
 namespace dai {
 namespace node {
 namespace internal {
+
+using XLinkInProperties = ::dai::internal::XLinkInProperties;
 
 /**
  * @brief XLinkIn node. Receives messages over XLink.
