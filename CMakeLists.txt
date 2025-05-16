@@ -528,6 +528,7 @@ set(ZOO_HELPER_SOURCES
     src/modelzoo/Zoo.cpp
     src/utility/Environment.cpp
     src/utility/Logging.cpp
+    src/utility/Platform.cpp
 )
 set(ZOO_HELPER_LINK_LIBRARIES
     nlohmann_json::nlohmann_json
