@@ -71,7 +71,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     std::vector<std::shared_ptr<Node>> getSourceNodes();
 
     void serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage, SerializationType type = DEFAULT_SERIALIZATION_TYPE) const;
-    nlohmann::json serializeToJson() const;
+    nlohmann::json serializeToJson(bool includeAssets) const;
     void remove(std::shared_ptr<Node> node);
 
     std::vector<Node::Connection> getConnections() const;
@@ -294,8 +294,8 @@ class Pipeline {
     }
 
     /// Returns whole pipeline represented as JSON
-    nlohmann::json serializeToJson() const {
-        return impl()->serializeToJson();
+    nlohmann::json serializeToJson(bool includeAssests=true) const {
+        return impl()->serializeToJson(includeAssests);
     }
 
     /**
