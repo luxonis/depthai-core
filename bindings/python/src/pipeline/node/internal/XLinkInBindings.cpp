@@ -12,7 +12,7 @@ void bind_xlinkin(pybind11::module& m, void* pCallstack) {
     using namespace dai::node::internal;
 
     // Node and Properties declare upfront
-    py::class_<XLinkInProperties> xlinkInProperties(m, "XLinkInProperties", DOC(dai, XLinkInProperties));
+    py::class_<XLinkInProperties> xlinkInProperties(m, "XLinkInProperties", DOC(dai, internal, XLinkInProperties));
     auto xlinkIn = ADD_NODE_INTERNAL(XLinkIn);
 
     ///////////////////////////////////////////////////////////////////////
