@@ -34,12 +34,12 @@ void bind_xlinkin(pybind11::module& m, void* pCallstack) {
         .def_readwrite("numFrames", &XLinkInProperties::numFrames);
 
     // Node
-    xlinkIn.def_readonly("out", &XLinkIn::out, DOC(dai, node, XLinkIn, out))
-        .def("setStreamName", &XLinkIn::setStreamName, py::arg("streamName"), DOC(dai, node, XLinkIn, setStreamName))
-        .def("setMaxDataSize", &XLinkIn::setMaxDataSize, py::arg("maxDataSize"), DOC(dai, node, XLinkIn, setMaxDataSize))
-        .def("setNumFrames", &XLinkIn::setNumFrames, py::arg("numFrames"), DOC(dai, node, XLinkIn, setNumFrames))
-        .def("getStreamName", &XLinkIn::getStreamName, DOC(dai, node, XLinkIn, getStreamName))
-        .def("getMaxDataSize", &XLinkIn::getMaxDataSize, DOC(dai, node, XLinkIn, getMaxDataSize))
-        .def("getNumFrames", &XLinkIn::getNumFrames, DOC(dai, node, XLinkIn, getNumFrames));
+    xlinkIn.def_readonly("out", &XLinkIn::out, DOC(dai, node, internal, XLinkIn, out))
+        .def("setStreamName", &XLinkIn::setStreamName, py::arg("streamName"), DOC(dai, node, internal, XLinkIn, setStreamName))
+        .def("setMaxDataSize", &XLinkIn::setMaxDataSize, py::arg("maxDataSize"), DOC(dai, node, internal, XLinkIn, setMaxDataSize))
+        .def("setNumFrames", &XLinkIn::setNumFrames, py::arg("numFrames"), DOC(dai, node, internal, XLinkIn, setNumFrames))
+        .def("getStreamName", &XLinkIn::getStreamName, DOC(dai, node, internal, XLinkIn, getStreamName))
+        .def("getMaxDataSize", &XLinkIn::getMaxDataSize, DOC(dai, node, internal, XLinkIn, getMaxDataSize))
+        .def("getNumFrames", &XLinkIn::getNumFrames, DOC(dai, node, internal, XLinkIn, getNumFrames));
     daiNodeInternalModule.attr("XLinkIn").attr("Properties") = xlinkInProperties;
 }

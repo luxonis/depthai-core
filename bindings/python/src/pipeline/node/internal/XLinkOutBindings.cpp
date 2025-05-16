@@ -34,12 +34,12 @@ void bind_xlinkout(pybind11::module& m, void* pCallstack) {
         .def_readwrite("metadataOnly", &XLinkOutProperties::metadataOnly);
 
     // Node
-    xlinkOut.def_readonly("input", &XLinkOut::input, DOC(dai, node, XLinkOut, input))
-        .def("setStreamName", &XLinkOut::setStreamName, py::arg("streamName"), DOC(dai, node, XLinkOut, setStreamName))
-        .def("setFpsLimit", &XLinkOut::setFpsLimit, py::arg("fpsLimit"), DOC(dai, node, XLinkOut, setFpsLimit))
-        .def("getStreamName", &XLinkOut::getStreamName, DOC(dai, node, XLinkOut, getStreamName))
-        .def("getFpsLimit", &XLinkOut::getFpsLimit, DOC(dai, node, XLinkOut, getFpsLimit))
-        .def("setMetadataOnly", &XLinkOut::setMetadataOnly, DOC(dai, node, XLinkOut, setMetadataOnly))
-        .def("getMetadataOnly", &XLinkOut::getMetadataOnly, DOC(dai, node, XLinkOut, getMetadataOnly));
+    xlinkOut.def_readonly("input", &XLinkOut::input, DOC(dai, node, internal, XLinkOut, input))
+        .def("setStreamName", &XLinkOut::setStreamName, py::arg("streamName"), DOC(dai, node, internal, XLinkOut, setStreamName))
+        .def("setFpsLimit", &XLinkOut::setFpsLimit, py::arg("fpsLimit"), DOC(dai, node, internal, XLinkOut, setFpsLimit))
+        .def("getStreamName", &XLinkOut::getStreamName, DOC(dai, node, internal, XLinkOut, getStreamName))
+        .def("getFpsLimit", &XLinkOut::getFpsLimit, DOC(dai, node, internal, XLinkOut, getFpsLimit))
+        .def("setMetadataOnly", &XLinkOut::setMetadataOnly, DOC(dai, node, internal, XLinkOut, setMetadataOnly))
+        .def("getMetadataOnly", &XLinkOut::getMetadataOnly, DOC(dai, node, internal, XLinkOut, getMetadataOnly));
     daiNodeInternalModule.attr("XLinkOut").attr("Properties") = xlinkOutProperties;
 }

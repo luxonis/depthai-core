@@ -4,6 +4,7 @@
 #include "depthai/xlink/XLinkConstants.hpp"
 
 namespace dai {
+namespace internal {
 
 /**
  * Specify properties for XLinkIn such as stream name, ...
@@ -27,4 +28,5 @@ struct XLinkInProperties : PropertiesSerializable<Properties, XLinkInProperties>
 
 DEPTHAI_SERIALIZE_EXT(XLinkInProperties, streamName, maxDataSize, numFrames);
 
+}  // namespace internal
 }  // namespace dai
