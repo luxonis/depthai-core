@@ -12,7 +12,7 @@ void bind_xlinkout(pybind11::module& m, void* pCallstack) {
     using namespace dai::node::internal;
 
     // Node and Properties declare upfront
-    py::class_<XLinkOutProperties> xlinkOutProperties(m, "XLinkOutProperties", DOC(dai, XLinkOutProperties));
+    py::class_<XLinkOutProperties> xlinkOutProperties(m, "XLinkOutProperties", DOC(dai, internal, XLinkOutProperties));
     auto xlinkOut = ADD_NODE_INTERNAL(XLinkOut);
 
     ///////////////////////////////////////////////////////////////////////
