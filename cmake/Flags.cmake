@@ -131,12 +131,14 @@ endif()
 # Don't include symbols for the linked libraries
 function(exclude_archive_libs_symbols target)
     if(WIN32)
-        # TODO: check if this has an equivalent flag for MSVC
+        # No direct equivalent for MSVC
+    elseif(APPLE)
+        # No equivalent flag on macOS ld64
     elseif(UNIX)
         get_property(TEMP_LINK_FLAGS TARGET ${target} PROPERTY LINK_FLAGS)
         set(TEMP_LINK_FLAGS "${TEMP_LINK_FLAGS} -Wl,--exclude-libs=ALL")
         set_property(TARGET ${target} PROPERTY LINK_FLAGS ${TEMP_LINK_FLAGS})
     else()
-        message(FATAL_ERROR "Unexpeced host, stopping build")
+        message(FATAL_ERROR "Unexpected host, stopping build")
     endif()
 endfunction()
