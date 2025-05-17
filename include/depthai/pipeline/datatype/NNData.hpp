@@ -150,6 +150,18 @@ class NNData : public Buffer {
      */
     bool getLayerDatatype(const std::string& name, TensorInfo::DataType& datatype) const;
 
+    /**
+     * Get the datatype of a given tensor
+     * @returns TensorInfo::DataType tensor datatype
+     */
+    TensorInfo::DataType getTensorDatatype(const std::string& name);
+
+    /**
+     * Get the datatype of the first tensor
+     * @returns TensorInfo::DataType tensor datatype
+     */
+    TensorInfo::DataType getFirstTensorDatatype();
+
     // // uint8
     // /**
     //  * Convenience function to retrieve U8 data from layer
@@ -633,18 +645,6 @@ class NNData : public Buffer {
             array = xt::transpose(array, permute);
         }
     }
-
-    /**
-     * Get the datatype of a given tensor
-     * @returns TensorInfo::DataType tensor datatype
-     */
-    TensorInfo::DataType getTensorDatatype(const std::string& name);
-
-    /**
-     * Get the datatype of the first tensor
-     * @returns TensorInfo::DataType tensor datatype
-     */
-    TensorInfo::DataType getFirstTensorDatatype();
 
     /**
      * Convenience function to retrieve values from the first tensor

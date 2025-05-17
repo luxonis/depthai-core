@@ -3,6 +3,7 @@
 // std
 #include <cstdint>
 #include <cstring>
+#include <stdexcept>
 #if defined(__unix__) && !defined(__APPLE__)
     #include <fcntl.h>
     #include <sys/mman.h>
@@ -126,7 +127,9 @@ class SharedMemory : public Memory {
         }
 
 #if defined(__unix__) && !defined(__APPLE__)
-        ftruncate(fd, size);
+        if(ftruncate(fd, size) < 0) {
+            throw std::runtime_error("Failed to set shared memory size");
+        }
 #endif
         mapFd();
     }

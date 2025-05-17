@@ -1,3 +1,4 @@
+include(FetchContent)
 if(CONFIG_MODE)
     set(_DEPTHAI_PREFIX_PATH_ORIGINAL ${CMAKE_PREFIX_PATH})
     set(_DEPTHAI_MODULE_PATH_ORIGINAL ${CMAKE_MODULE_PATH})
@@ -41,8 +42,6 @@ if(NOT CONFIG_MODE OR (CONFIG_MODE AND NOT DEPTHAI_SHARED_LIBS))
     # FP16 for conversions
     find_path(FP16_INCLUDE_DIR NAMES fp16.h)
 
-    find_package(PNG  REQUIRED)
-
     if(DEPTHAI_ENABLE_KOMPUTE)
         find_package(kompute ${_QUIET} CONFIG REQUIRED)
     endif()
@@ -81,26 +80,78 @@ if(NOT CONFIG_MODE OR (CONFIG_MODE AND NOT DEPTHAI_SHARED_LIBS))
 endif()
 
 # Xtensor
-get_filename_component(PARENT_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/.. ABSOLUTE)
 if(DEPTHAI_XTENSOR_SUPPORT)
-    add_subdirectory("${PARENT_DIRECTORY}/3rdparty/xtl" xtl)
-    add_subdirectory("${PARENT_DIRECTORY}/3rdparty/xtensor" xtensor)
+    if(NOT DEPTHAI_XTENSOR_EXTERNAL)
+        FetchContent_Declare(
+            xtl
+            GIT_REPOSITORY https://github.com/xtensor-stack/xtl.git
+            GIT_TAG        0.7.6
+            GIT_SHALLOW    TRUE
+        )
+
+        FetchContent_Declare(
+            xtensor
+            GIT_REPOSITORY https://github.com/xtensor-stack/xtensor.git
+            GIT_TAG        0.25.0
+            GIT_SHALLOW    TRUE
+        )
+        FetchContent_MakeAvailable(xtl xtensor)
+        get_target_property(_xtensor_inc xtensor INTERFACE_INCLUDE_DIRECTORIES)
+        set_target_properties(xtensor PROPERTIES
+            INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${_xtensor_inc}"
+        )
+    else()
+        find_package(xtensor ${_QUIET} CONFIG REQUIRED)
+    endif()
 endif()
+
 if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
+    get_filename_component(PARENT_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/.. ABSOLUTE)
     add_subdirectory("${PARENT_DIRECTORY}/3rdparty/foxglove/ws-protocol/cpp/foxglove-websocket" foxglove-websocket)
 endif()
 
 # Add threads (c++)
 find_package(Threads ${_QUIET} REQUIRED)
 
-# Nlohmann JSON
-find_package(nlohmann_json 3.6.0 ${_QUIET} CONFIG REQUIRED)
+if(NOT DEPTHAI_JSON_EXTERNAL)
+    FetchContent_Declare(
+        nlohmann_json
+        GIT_REPOSITORY https://github.com/nlohmann/json.git
+        GIT_TAG        v3.11.3
+    )
+    # Json is a public dependancy, so it has to be installed
+    set(JSON_Install ON CACHE BOOL "Install nlohmann_json" FORCE)
 
-# libnop for serialization
-find_package(libnop ${_QUIET} CONFIG REQUIRED)
+    FetchContent_MakeAvailable(nlohmann_json)
+    list(APPEND targets_to_export nlohmann_json)
+else()
+    find_package(nlohmann_json CONFIG REQUIRED)
+endif()
 
-# MP4V2 for video encoding
-find_package(mp4v2 ${_QUIET} CONFIG REQUIRED)
+if(NOT DEPTHAI_LIBNOP_EXTERNAL)
+    FetchContent_Declare(
+        libnop
+        GIT_REPOSITORY https://github.com/luxonis/libnop.git
+        GIT_TAG        ab842f51dc2eb13916dc98417c2186b78320ed10
+    )
+
+    FetchContent_MakeAvailable(libnop)
+
+    # Thread libnop in all cases as a system include, to avoid many warnings from it
+    get_target_property(_nop_inc libnop INTERFACE_INCLUDE_DIRECTORIES)
+    set_target_properties(libnop PROPERTIES
+        INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${_nop_inc}"
+    )
+
+    list(APPEND targets_to_export libnop)
+else()
+    find_package(libnop CONFIG REQUIRED)
+endif()
+
+if(DEPTHAI_ENABLE_MP4V2)
+    # MP4V2 for video encoding
+    find_package(mp4v2 ${_QUIET} CONFIG REQUIRED)
+endif()
 
 if(DEPTHAI_ENABLE_PROTOBUF)
     find_package(Protobuf ${_QUIET} REQUIRED)
@@ -111,18 +162,30 @@ if(DEPTHAI_BUILD_TESTS)
 endif()
 
 # XLink
-if(DEPTHAI_XLINK_LOCAL AND (NOT CONFIG_MODE))
-    set(_BUILD_SHARED_LIBS_SAVED "${BUILD_SHARED_LIBS}")
-    set(BUILD_SHARED_LIBS OFF)
-    add_subdirectory("${DEPTHAI_XLINK_LOCAL}" ${CMAKE_CURRENT_BINARY_DIR}/XLink)
-    set(BUILD_SHARED_LIBS "${_BUILD_SHARED_LIBS_SAVED}")
-    unset(_BUILD_SHARED_LIBS_SAVED)
-    list(APPEND targets_to_export XLink XLinkPublic)
-else()
-    # TODO(themarpe) - might be required
-    # elseif(NOT DEPTHAI_XLINK_LOCAL)
-    find_package(XLink ${_QUIET} CONFIG REQUIRED HINTS "${CMAKE_CURRENT_LIST_DIR}/XLink" "${CMAKE_CURRENT_LIST_DIR}/../XLink")
+# Always compile XLink as static library, even when DepthAI is built as shared
+set(_BUILD_SHARED_LIBS_SAVED "${BUILD_SHARED_LIBS}")
+set(BUILD_SHARED_LIBS OFF)
+set(XLINK_ENABLE_LIBUSB ${DEPTHAI_ENABLE_LIBUSB} CACHE BOOL "Enable libusb" FORCE)
+set(XLINK_INSTALL_PUBLIC_ONLY ON CACHE BOOL "Install only public headers" FORCE)
+if(DEPTHAI_ENABLE_LIBUSB)
+    find_package(usb-1.0 ${_QUIET} CONFIG REQUIRED)
 endif()
+if(DEPTHAI_XLINK_LOCAL AND (NOT CONFIG_MODE))
+    add_subdirectory("${DEPTHAI_XLINK_LOCAL}" ${CMAKE_CURRENT_BINARY_DIR}/XLink)
+else()
+    FetchContent_Declare(
+        XLink
+        GIT_REPOSITORY https://github.com/luxonis/XLink.git
+        GIT_TAG        87785828fabdb1718760bb0a044405d5bbfbb3a2
+    )
+
+    FetchContent_MakeAvailable(
+        XLink
+    )
+endif()
+set(BUILD_SHARED_LIBS "${_BUILD_SHARED_LIBS_SAVED}")
+unset(_BUILD_SHARED_LIBS_SAVED)
+list(APPEND targets_to_export XLinkPublic)
 
 # OpenCV 4 - (optional)
 message("DEPTHAI_OPENCV_SUPPORT: ${DEPTHAI_OPENCV_SUPPORT}")
@@ -140,12 +203,12 @@ if(DEPTHAI_PCL_SUPPORT)
 endif()
 if(DEPTHAI_RTABMAP_SUPPORT)
     find_package(RTABMap ${_QUIET} CONFIG REQUIRED COMPONENTS core utilite)
-find_package(g2o ${_QUIET} CONFIG REQUIRED)
-	find_package(Ceres ${_QUIET} CONFIG REQUIRED)
+    find_package(g2o ${_QUIET} CONFIG REQUIRED)
+    find_package(Ceres ${_QUIET} CONFIG REQUIRED)
 endif()
 
 if(DEPTHAI_BASALT_SUPPORT)
-find_package(basalt-headers ${_QUIET} CONFIG REQUIRED)
+    find_package(basalt-headers ${_QUIET} CONFIG REQUIRED)
     find_package(basalt_sdk ${_QUIET} CONFIG REQUIRED)
 endif()
 

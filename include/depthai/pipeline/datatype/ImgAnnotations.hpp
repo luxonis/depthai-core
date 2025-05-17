@@ -1,4 +1,3 @@
-
 #pragma once
 #include "depthai/common/Color.hpp"
 #include "depthai/common/Point2f.hpp"
@@ -8,8 +7,8 @@
 namespace dai {
 struct CircleAnnotation {
     Point2f position;
-    float diameter;
-    float thickness;
+    float diameter = 0.0f;
+    float thickness = 1.0f;
     Color fillColor;
     Color outlineColor;
 };
@@ -19,12 +18,12 @@ DEPTHAI_SERIALIZE_EXT(CircleAnnotation, position, diameter, thickness, fillColor
 enum class PointsAnnotationType : std::uint8_t { UNKNOWN = 0, POINTS = 1, LINE_LOOP = 2, LINE_STRIP = 3, LINE_LIST = 4 };
 
 struct PointsAnnotation {
-    PointsAnnotationType type;
+    PointsAnnotationType type = PointsAnnotationType::POINTS;
     std::vector<Point2f> points;
     Color outlineColor;
     std::vector<Color> outlineColors;
     Color fillColor;
-    float thickness;
+    float thickness = 1.0f;
 };
 
 DEPTHAI_SERIALIZE_EXT(PointsAnnotation, type, points, outlineColor, outlineColors, fillColor, thickness);
@@ -32,7 +31,7 @@ DEPTHAI_SERIALIZE_EXT(PointsAnnotation, type, points, outlineColor, outlineColor
 struct TextAnnotation {
     Point2f position;
     std::string text;
-    float fontSize;
+    float fontSize = 12.0f;
     Color textColor;
     Color backgroundColor;
 };

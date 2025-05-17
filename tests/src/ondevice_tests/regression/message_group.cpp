@@ -35,7 +35,7 @@ TEST_CASE("MessageGroup") {
 
         auto messageGroup = std::make_shared<dai::MessageGroup>();
         for(int i = 0; i < COUNT; ++i) {
-            messageGroup->add(fmt::format("Message - {}", i), msgs[i]);
+            messageGroup->add("Message - " + std::to_string(i), msgs[i]);
         }
 
         inputQueue->send(messageGroup);

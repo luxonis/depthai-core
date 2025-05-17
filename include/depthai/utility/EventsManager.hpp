@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <condition_variable>
 #include <memory>
 #include <mutex>
@@ -105,7 +106,7 @@ class EventsManager {
      * @param queueSize Queue size
      * @return void
      */
-    void setQueueSize(uint64 queuSize);
+    void setQueueSize(uint64_t queuSize);
     /**
      * Set whether to log the responses from the server. By default, logResponse is set to false
      * @param logResponse bool
@@ -161,7 +162,7 @@ class EventsManager {
     std::string url;
     std::string sourceAppId;
     std::string sourceAppIdentifier;
-    uint64 queueSize;
+    uint64_t queueSize;
     std::unique_ptr<std::thread> eventBufferThread;
     std::vector<std::shared_ptr<EventMessage>> eventBuffer;
     std::mutex eventBufferMutex;

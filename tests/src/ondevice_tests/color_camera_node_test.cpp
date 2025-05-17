@@ -13,19 +13,20 @@ TEST_CASE("Test ColorCamera node") {
     dai::Pipeline p;
     auto colorCam = p.create<dai::node::ColorCamera>();
 
-    int previewWidth, previewHeight;
+    int previewWidth = 0;
+    int previewHeight = 0;
     SECTION("640x320") {
         previewWidth = 640, previewHeight = 320;
         colorCam->setPreviewSize(previewWidth, previewHeight);
         colorCam->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
-        colorCam->setInterleaved(true);
+        colorCam->setPreviewType(dai::ImgFrame::Type::BGR888i);
     }
 
     SECTION("1280x720") {
         previewWidth = 1280, previewHeight = 720;
         colorCam->setPreviewSize(previewWidth, previewHeight);
         colorCam->setResolution(dai::ColorCameraProperties::SensorResolution::THE_4_K);
-        colorCam->setInterleaved(false);
+        colorCam->setPreviewType(dai::ImgFrame::Type::BGR888p);
     }
 
     auto previewQueue = colorCam->preview.createOutputQueue();

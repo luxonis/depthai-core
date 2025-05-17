@@ -123,7 +123,7 @@ class CMakeBuild(build_ext):
             cmake_args += ['-DDEPTHAI_BASALT_SUPPORT=ON']
         if env.get('DEPTHAI_BUILD_PCL') == 'ON':
             cmake_args += ['-DDEPTHAI_PCL_SUPPORT=ON']
-        if env.get('DEPTHAI_BUILD_RTABMAP') == 'ON': 
+        if env.get('DEPTHAI_BUILD_RTABMAP') == 'ON':
             cmake_args += ['-DDEPTHAI_RTABMAP_SUPPORT=ON']
         if env.get('DEPTHAI_BUILD_KOMPUTE') == 'ON':
             cmake_args += ['-DDEPTHAI_KOMPUTE_SUPPORT=ON']
@@ -154,7 +154,7 @@ class CMakeBuild(build_ext):
         # Set build type (debug vs release for library as well as dependencies)
         cfg = 'Debug' if self.debug else 'Release'
         cmake_args += ['-DCMAKE_BUILD_TYPE=' + cfg]
-        cmake_args += ['-DHUNTER_CONFIGURATION_TYPES=' + cfg]
+        cmake_args += ['-DDEPTHAI_VCPKG_INTERNAL_ONLY=OFF']
         build_args += ['--config', cfg]
 
         # Memcheck (guard if it fails)
@@ -176,7 +176,9 @@ class CMakeBuild(build_ext):
         # Windows
         if platform.system() == "Windows":
             cmake_args += ['-DCMAKE_LIBRARY_OUTPUT_DIRECTORY_{}={}'.format(cfg.upper(), extdir)]
-            cmake_args += ['-DCMAKE_TOOLCHAIN_FILE={}'.format(os.path.dirname(os.path.abspath(__file__)) + '/cmake/toolchain/msvc.cmake')]
+            cmake_args += ['-DVCPKG_CHAINLOAD_TOOLCHAIN_FILE={}'.format(os.path.dirname(os.path.abspath(__file__)) + '/cmake/toolchain/msvc.cmake')]
+            cmake_args += ['-DVCPKG_TARGET_TRIPLET=x64-windows-static-crt']
+
 
             # Detect whether 32 / 64 bit Python is used and compile accordingly
             if sys.maxsize > 2**32:

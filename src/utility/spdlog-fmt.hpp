@@ -4,7 +4,7 @@
 
 #include "depthai/utility/Path.hpp"
 
-#if FMT_VERSION >= 100000
+#if FMT_VERSION >= 90000
     #include <spdlog/fmt/ostr.h>
 
     #include "depthai/common/CameraBoardSocket.hpp"
@@ -22,7 +22,7 @@ struct fmt::formatter<dai::Path> : formatter<std::string> {
     // https://fmt.dev/latest/api.html#formatting-user-defined-types
     // https://fmt.dev/latest/syntax.html#format-specification-mini-language
     template <typename FormatContext>
-#if FMT_VERSION >= 100000
+#if FMT_VERSION >= 90000
     auto format(const dai::Path& p, FormatContext& ctx) const {
 #else
     auto format(const dai::Path& p, FormatContext& ctx) -> decltype(ctx.out()) {
@@ -38,7 +38,7 @@ struct fmt::formatter<dai::Path> : formatter<std::string> {
 }
 ;
 
-#if FMT_VERSION >= 100000
+#if FMT_VERSION >= 90000
 template <>
 struct fmt::formatter<dai::CameraBoardSocket> : ostream_formatter {};
 

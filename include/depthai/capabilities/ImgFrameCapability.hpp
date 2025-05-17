@@ -5,7 +5,7 @@
 #include <optional>
 
 // libraries
-#include <spimpl.h>
+#include "depthai/utility/spimpl.h"
 
 // depthai public
 #include <depthai/capabilities/Capability.hpp>

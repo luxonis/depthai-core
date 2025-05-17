@@ -17,9 +17,6 @@
 #include <utility>
 #include <type_traits>
 
-// C++17 backwards compatibility
-#include <invoke_hpp/invoke.hpp>
-
 // NANORPC
 #include "nanorpc/core/detail/function_meta.h"
 #include "nanorpc/core/detail/pack_meta.h"
@@ -141,20 +138,20 @@ private:
 
     template <typename TFunc, typename TArgs>
     static
-    std::enable_if_t<!is_same_v<std::decay_t< decltype( invoke_hpp::apply(std::declval<TFunc>(), std::declval<TArgs>()) ) >, void>, void>
+    std::enable_if_t<!is_same_v<std::decay_t< decltype( std::apply(std::declval<TFunc>(), std::declval<TArgs>()) ) >, void>, void>
     apply(TFunc func, TArgs args, serializer_type &serializer)
     {
-        auto data = invoke_hpp::apply(std::move(func), std::move(args));
+        auto data = std::apply(std::move(func), std::move(args));
         serializer = serializer.pack(detail::pack::meta::status::good);
         serializer = serializer.pack(data);
     }
     
     template <typename TFunc, typename TArgs>
     static
-    std::enable_if_t<is_same_v< std::decay_t< decltype( invoke_hpp::apply(std::declval<TFunc>(), std::declval<TArgs>()) ) > , void>, void>
+    std::enable_if_t<is_same_v< std::decay_t< decltype( std::apply(std::declval<TFunc>(), std::declval<TArgs>()) ) > , void>, void>
     apply(TFunc func, TArgs args, serializer_type &serializer)
     {
-        invoke_hpp::apply(std::move(func), std::move(args));
+        std::apply(std::move(func), std::move(args));
         serializer = serializer.pack(detail::pack::meta::status::good);
     }
 

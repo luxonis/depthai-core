@@ -59,7 +59,16 @@ jobs:
           sudo apt install libusb-1.0-0-dev pkg-config bison autoconf libtool libxi-dev libxtst-dev libxrandr-dev libx11-dev libxft-dev libxext-dev nasm flex libudev-dev automake libltdl-dev
           python -m pip install -r bindings/python/docs/requirements_mkdoc.txt
       - name: Configure project
-        run: cmake -S . -B build -DDEPTHAI_BUILD_PYTHON=ON -DDEPTHAI_PYTHON_FORCE_DOCSTRINGS=ON -DDEPTHAI_BASALT_SUPPORT=ON -DDEPTHAI_PCL_SUPPORT=ON -DDEPTHAI_RTABMAP_SUPPORT=ON -DDEPTHAI_PYTHON_DOCSTRINGS_OUTPUT="$PWD/bindings/python/docstrings/depthai_python_docstring.hpp"
+        run: |
+          cmake -S . \
+            -B build \
+            -DDEPTHAI_VCPKG_INTERNAL_ONLY=OFF \
+            -DDEPTHAI_BUILD_PYTHON=ON \
+            -DDEPTHAI_PYTHON_FORCE_DOCSTRINGS=ON \
+            -DDEPTHAI_BASALT_SUPPORT=ON \
+            -DDEPTHAI_PCL_SUPPORT=ON \
+            -DDEPTHAI_RTABMAP_SUPPORT=ON \
+            -DDEPTHAI_PYTHON_DOCSTRINGS_OUTPUT="$PWD/bindings/python/docstrings/depthai_python_docstring.hpp"
       - name: Build target 'pybind11_mkdoc'
         run: cmake --build build --target pybind11_mkdoc --parallel 4
       - name: Print out vcpkg logs if building port fails
@@ -151,8 +160,14 @@ jobs:
 
       - name: Compile
         run: |
-          cmake -S . -B build -DDEPTHAI_BUILD_PYTHON=ON -D CMAKE_BUILD_TYPE=Release -D DEPTHAI_PYTHON_DOCSTRINGS_INPUT=$PWD/bindings/python/docstrings/depthai_python_docstring.hpp -D DEPTHAI_PYTHON_ENABLE_TESTS=ON
-          cmake --build build --parallel 4
+            cmake -S . \
+            -B build \
+            -DDEPTHAI_VCPKG_INTERNAL_ONLY=OFF \
+            -DDEPTHAI_BUILD_PYTHON=ON \
+            -D CMAKE_BUILD_TYPE=Release \
+            -D DEPTHAI_PYTHON_DOCSTRINGS_INPUT=$PWD/bindings/python/docstrings/depthai_python_docstring.hpp \
+            -D DEPTHAI_PYTHON_ENABLE_TESTS=ON
+            cmake --build build --parallel 4
       - name: Print out vcpkg logs if building port fails
         if: failure()    # Only run this if the build step fails
         run: cd bindings/python && bash ./ci/show_vcpkg_logs.sh
@@ -625,7 +640,7 @@ jobs:
           ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
           ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
           ARTIFACTORY_PASS: ${{ secrets.ARTIFACTORY_PASS }}
-  
+
   dispatch-bom-tests:
     needs: [build-linux-x86_64, deploy]
     runs-on: ubuntu-latest
@@ -671,11 +686,11 @@ jobs:
             TOKEN=${{ secrets.BOM_GITHUB_TOKEN }}
             OWNER="luxonis"
             REPO="luxonis-bom"
-  
+
             echo "STARTING TO WAIT FOR RUN https://github.com/$OWNER/$REPO/actions/runs/$RUN_ID"
-            
+
             STATUS=$(curl -s --header "Authorization: Bearer $TOKEN" "https://api.github.com/repos/$OWNER/$REPO/actions/runs/$RUN_ID" | jq -r .status)
-            
+
             while [ "$STATUS" != "completed" ]; do
               echo "Waiting for the workflow run to complete..."
               sleep 60
@@ -683,9 +698,9 @@ jobs:
               echo "Current status $STATUS"
             done
             CONCLUSION=$(curl -s -H "Authorization: Bearer $TOKEN" "https://api.github.com/repos/$OWNER/$REPO/actions/runs/$RUN_ID" | jq -r .conclusion)
-            
+
             echo "Run $RUN_ID is completed. Conclusion is $CONCLUSION"
-  
+
             # Set outputs for the job using GITHUB_OUTPUT file
             echo "runner_conclusion=$CONCLUSION" >> $GITHUB_OUTPUT
             if [ "$CONCLUSION" != "success" ] && [ "$CONCLUSION" != "skipped" ]; then

@@ -294,7 +294,7 @@ class Pipeline {
     }
 
     /// Returns whole pipeline represented as JSON
-    nlohmann::json serializeToJson(bool includeAssests=true) const {
+    nlohmann::json serializeToJson(bool includeAssests = true) const {
         return impl()->serializeToJson(includeAssests);
     }
 

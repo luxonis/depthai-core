@@ -28,9 +28,8 @@ void bind_rtabmapslamnode(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
 
     // RTABMapSLAM Node
-    rtabmapSLAMNode
-        .def_property_readonly(
-            "rect", [](RTABMapSLAM& node) { return &node.rect; }, py::return_value_policy::reference_internal)
+    rtabmapSLAMNode.def_property_readonly(
+                       "rect", [](RTABMapSLAM& node) { return &node.rect; }, py::return_value_policy::reference_internal)
         .def_property_readonly(
             "depth", [](RTABMapSLAM& node) { return &node.depth; }, py::return_value_policy::reference_internal)
         .def_readonly("features", &RTABMapSLAM::features, DOC(dai, node, RTABMapSLAM, features))

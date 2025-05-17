@@ -11,6 +11,7 @@
 #else
 #include <sys/stat.h>
 #endif
+#include <filesystem>
 
 int createDirectory(std::string directory)
 {
@@ -130,5 +131,17 @@ cv::Mat resizeKeepAspectRatio(const cv::Mat &input, const cv::Size &dstSize, con
     cv::copyMakeBorder(output, output, top, down, left, right, cv::BORDER_CONSTANT, bgcolor );
 
     return output;
+}
+
+std::string getDefaultRecordingPath() {
+    auto* isTest = std::getenv("RUNNING_AS_TEST");
+    if((isTest != nullptr) && std::string(isTest) == "1") {
+        auto path = std::filesystem::temp_directory_path() / "depthai_recordings/";
+        if(!std::filesystem::exists(path)) {
+            std::filesystem::create_directories(path);
+        }
+        return path.string();
+    }
+    return ".";
 }
 

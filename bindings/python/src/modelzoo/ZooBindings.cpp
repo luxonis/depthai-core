@@ -86,7 +86,8 @@ void ZooBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("modelPrecisionType") = "")
 
         .def(py::init<>([](const std::string& model) { return NNModelDescription{model}; }), py::arg("model"))
-        .def_static("fromYamlFile", &NNModelDescription::fromYamlFile, py::arg("yamlPath"), py::arg("modelsPath") = "", DOC(dai, NNModelDescription, fromYamlFile))
+        .def_static(
+            "fromYamlFile", &NNModelDescription::fromYamlFile, py::arg("yamlPath"), py::arg("modelsPath") = "", DOC(dai, NNModelDescription, fromYamlFile))
         .def("saveToYamlFile", &NNModelDescription::saveToYamlFile, py::arg("yamlPath"), DOC(dai, NNModelDescription, saveToYamlFile))
         .def("check", &NNModelDescription::check, DOC(dai, NNModelDescription, check))
         .def("toString", &NNModelDescription::toString, DOC(dai, NNModelDescription, toString))

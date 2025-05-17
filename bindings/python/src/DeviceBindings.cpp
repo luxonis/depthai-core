@@ -6,6 +6,7 @@
 #include "depthai/device/EepromError.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/utility/Clock.hpp"
+#include "depthai/utility/CompilerWarnings.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
 
 // std::chrono bindings
@@ -777,7 +778,9 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
             [](DeviceBase& d) {
                 PyErr_WarnEx(PyExc_DeprecationWarning, "Use getDeviceId() instead.", 1);
                 py::gil_scoped_release release;
+                DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
                 return d.getMxId();
+                DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING
             },
             DOC(dai, DeviceBase, getMxId))
         .def(

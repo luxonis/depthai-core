@@ -7,6 +7,7 @@
 #include <cstring>
 
 // depthai
+#include "depthai/utility/CompilerWarnings.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
 #include "depthai/xlink/XLinkStream.hpp"
 
@@ -62,8 +63,10 @@ void XLinkBindings::bind(pybind11::module& m, void* pCallstack) {
         .def(
             "getMxId",
             [](DeviceInfo& info) {
+                DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
                 PyErr_WarnEx(PyExc_DeprecationWarning, "getMxId is deprecated, use getDeviceId instead.", 1);
                 return info.getMxId();
+                DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING
             },
             DOC(dai, DeviceInfo, getMxId))
         .def("getDeviceId", &DeviceInfo::getDeviceId, DOC(dai, DeviceInfo, getDeviceId))

@@ -4,7 +4,7 @@
 #include <optional>
 
 // libraries
-#include <spimpl.h>
+#include "depthai/utility/spimpl.h"
 
 // internal private
 #include "nn_archive/NNArchiveVersionedConfigHelper.hpp"

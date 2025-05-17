@@ -10,7 +10,7 @@
 #include "depthai/pipeline/NodeGroup.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/node/DetectionNetwork.hpp"
-
+#include "depthai/utility/CompilerWarnings.hpp"
 void bind_detectionnetwork(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::node;
@@ -152,6 +152,7 @@ void bind_detectionnetwork(pybind11::module& m, void* pCallstack) {
         .def("getConfidenceThreshold", &DetectionNetwork::getConfidenceThreshold, DOC(dai, node, DetectionNetwork, getConfidenceThreshold));
     // ALIAS
     // daiNodeModule.attr("DetectionNetwork").attr("Properties") = detectionNetworkProperties;
+    DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
 
     // YoloDetectionNetwork node
     yoloDetectionNetwork.def("setNumClasses", &YoloDetectionNetwork::setNumClasses, py::arg("numClasses"), DOC(dai, node, YoloDetectionNetwork, setNumClasses))
@@ -171,4 +172,5 @@ void bind_detectionnetwork(pybind11::module& m, void* pCallstack) {
         .def("getAnchors", &YoloDetectionNetwork::getAnchors, DOC(dai, node, YoloDetectionNetwork, getAnchors))
         .def("getAnchorMasks", &YoloDetectionNetwork::getAnchorMasks, DOC(dai, node, YoloDetectionNetwork, getAnchorMasks))
         .def("getIouThreshold", &YoloDetectionNetwork::getIouThreshold, DOC(dai, node, YoloDetectionNetwork, getIouThreshold));
+    DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING
 }

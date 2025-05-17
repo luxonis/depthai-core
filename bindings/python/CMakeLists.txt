@@ -194,9 +194,6 @@ if(WIN32)
 
     # Disable "d" postfix, so python can import the library as is
     set_target_properties(${TARGET_NAME} PROPERTIES DEBUG_POSTFIX "")
-
-    # Statically compile CRT
-    target_compile_options(${TARGET_NAME} PRIVATE "/MT")
 endif()
 
 # Add stubs (pyi) generation step after building bindings
@@ -275,7 +272,7 @@ else()
 endif()
 
 # Add include directory
-target_include_directories(${TARGET_NAME} PRIVATE src ${DOCSTRINGS_INCLUDE_PLACEHOLDER_DIR})
+target_include_directories(${TARGET_NAME} PRIVATE src ${DOCSTRINGS_INCLUDE_PLACEHOLDER_DIR} "${CMAKE_CURRENT_LIST_DIR}/../../src")
 if(DEPTHAI_MERGED_TARGET)
     target_include_directories(${TARGET_NAME} PRIVATE external/pybind11_opencv_numpy)
 endif()
@@ -301,6 +298,7 @@ target_link_libraries(${TARGET_NAME}
         hedley
         pybind11_json
         xtensor-python
+        spdlog::spdlog
 )
 
 # Add embedded module option, otherwise link to pybind11 as usual

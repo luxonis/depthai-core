@@ -27,7 +27,7 @@ int main() {
     auto* rout = monoRight->requestOutput({640, 400});
 
     // Create a node that will produce the depth map (using disparity output as it's easier to visualize depth this way)
-    depth->build(*lout, *rout, dai::node::StereoDepth::PresetMode::HIGH_DENSITY);
+    depth->build(*lout, *rout, dai::node::StereoDepth::PresetMode::DEFAULT);
     // Options: MEDIAN_OFF, KERNEL_3x3, KERNEL_5x5, KERNEL_7x7 (default)
     depth->initialConfig.setMedianFilter(dai::StereoDepthConfig::MedianFilter::KERNEL_7x7);
     depth->setLeftRightCheck(lr_check);

@@ -1,8 +1,7 @@
 #include <catch2/catch_all.hpp>
-#include <chrono>
-#include <thread>
 
 #include "depthai/depthai.hpp"
+#include "depthai/utility/CompilerWarnings.hpp"
 
 void testStereoDepthPreset(dai::node::StereoDepth::PresetMode preset, dai::ProcessorType backend = dai::ProcessorType::CPU) {
     using namespace std;
@@ -33,11 +32,15 @@ void testStereoDepthPreset(dai::node::StereoDepth::PresetMode preset, dai::Proce
 }
 
 TEST_CASE("Test StereoDepth node HIGH_ACCURACY preset") {
+    DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
     testStereoDepthPreset(dai::node::StereoDepth::PresetMode::HIGH_ACCURACY);
+    DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING
 }
 
 TEST_CASE("Test StereoDepth node HIGH_DENSITY preset") {
+    DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
     testStereoDepthPreset(dai::node::StereoDepth::PresetMode::HIGH_DENSITY);
+    DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING
 }
 
 TEST_CASE("Test StereoDepth node DEFAULT preset") {

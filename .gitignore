@@ -46,3 +46,5 @@ _builds/
 
 .compile_commands.json
 .depthai_cached_models/
+install*
+build*

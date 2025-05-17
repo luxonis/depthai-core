@@ -3,6 +3,7 @@
 // c std
 #include <cstdio>
 #include <filesystem>
+#include <fstream>
 #include <optional>
 
 #include "utility/ErrorMacros.hpp"

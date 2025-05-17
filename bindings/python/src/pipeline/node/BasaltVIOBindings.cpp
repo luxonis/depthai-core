@@ -27,9 +27,8 @@ void bind_basaltnode(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
     // BasaltVIO Node
-    basaltNode
-        .def_property_readonly(
-            "left", [](BasaltVIO& node) { return &node.left; }, py::return_value_policy::reference_internal)
+    basaltNode.def_property_readonly(
+                  "left", [](BasaltVIO& node) { return &node.left; }, py::return_value_policy::reference_internal)
         .def_property_readonly(
             "right", [](BasaltVIO& node) { return &node.right; }, py::return_value_policy::reference_internal)
         .def_readonly("imu", &BasaltVIO::imu, DOC(dai, node, BasaltVIO, imu))

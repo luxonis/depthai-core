@@ -12,6 +12,7 @@
 #include "depthai/pipeline/datatype/PointCloudData.hpp"
 #include "depthai/properties/VideoEncoderProperties.hpp"
 #include "depthai/utility/span.hpp"
+#include "pipeline/ThreadedNodeImpl.hpp"
 #include "utility/RecordReplayImpl.hpp"
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF
@@ -29,6 +30,7 @@ using VideoCodec = dai::utility::VideoRecorder::VideoCodec;
 
 void RecordVideo::run() {
 #ifdef DEPTHAI_ENABLE_PROTOBUF
+    auto& logger = pimpl->logger;
     std::unique_ptr<utility::VideoRecorder> videoRecorder;
 
     #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
@@ -79,7 +81,9 @@ void RecordVideo::run() {
             }
             if(logger)
                 logger->trace("RecordVideo node detected stream type {}",
-                              streamType == DatatypeEnum::ImgFrame ? "RawVideo" : streamType == DatatypeEnum::EncodedFrame ? "EncodedVideo" : "Byte");
+                              streamType == DatatypeEnum::ImgFrame       ? "RawVideo"
+                              : streamType == DatatypeEnum::EncodedFrame ? "EncodedVideo"
+                                                                         : "Byte");
         }
         if(streamType == DatatypeEnum::ImgFrame || streamType == DatatypeEnum::EncodedFrame) {
             if(i == 0)
@@ -142,6 +146,7 @@ void RecordVideo::run() {
 
 void RecordMetadataOnly::run() {
 #ifdef DEPTHAI_ENABLE_PROTOBUF
+    auto& logger = pimpl->logger;
     utility::ByteRecorder byteRecorder;
 
     DatatypeEnum streamType = DatatypeEnum::ADatatype;
