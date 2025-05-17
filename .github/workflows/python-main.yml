@@ -59,7 +59,16 @@ jobs:
           sudo apt install libusb-1.0-0-dev pkg-config bison autoconf libtool libxi-dev libxtst-dev libxrandr-dev libx11-dev libxft-dev libxext-dev nasm flex libudev-dev automake libltdl-dev
           python -m pip install -r bindings/python/docs/requirements_mkdoc.txt
       - name: Configure project
-        run: cmake -S . -B build -DDEPTHAI_VCPKG_INTERNAL_ONLY=OFF -DDEPTHAI_BUILD_PYTHON=ON -DDEPTHAI_PYTHON_FORCE_DOCSTRINGS=ON -DDEPTHAI_BASALT_SUPPORT=ON -DDEPTHAI_PCL_SUPPORT=ON -DDEPTHAI_RTABMAP_SUPPORT=ON -DDEPTHAI_PYTHON_DOCSTRINGS_OUTPUT="$PWD/bindings/python/docstrings/depthai_python_docstring.hpp"
+        run: |
+          cmake -S . \
+            -B build \
+            -DDEPTHAI_VCPKG_INTERNAL_ONLY=OFF \
+            -DDEPTHAI_BUILD_PYTHON=ON \
+            -DDEPTHAI_PYTHON_FORCE_DOCSTRINGS=ON \
+            -DDEPTHAI_BASALT_SUPPORT=ON \
+            -DDEPTHAI_PCL_SUPPORT=ON \
+            -DDEPTHAI_RTABMAP_SUPPORT=ON \
+            -DDEPTHAI_PYTHON_DOCSTRINGS_OUTPUT="$PWD/bindings/python/docstrings/depthai_python_docstring.hpp"
       - name: Build target 'pybind11_mkdoc'
         run: cmake --build build --target pybind11_mkdoc --parallel 4
       - name: Print out vcpkg logs if building port fails
@@ -151,8 +160,14 @@ jobs:
 
       - name: Compile
         run: |
-          cmake -S . -B build -DDEPTHAI_VCPKG_INTERNAL_ONLY=OFF -DDEPTHAI_BUILD_PYTHON=ON -D CMAKE_BUILD_TYPE=Release -D DEPTHAI_PYTHON_DOCSTRINGS_INPUT=$PWD/bindings/python/docstrings/depthai_python_docstring.hpp -D DEPTHAI_PYTHON_ENABLE_TESTS=ON
-          cmake --build build --parallel 4
+            cmake -S . \
+            -B build \
+            -DDEPTHAI_VCPKG_INTERNAL_ONLY=OFF \
+            -DDEPTHAI_BUILD_PYTHON=ON \
+            -D CMAKE_BUILD_TYPE=Release \
+            -D DEPTHAI_PYTHON_DOCSTRINGS_INPUT=$PWD/bindings/python/docstrings/depthai_python_docstring.hpp \
+            -D DEPTHAI_PYTHON_ENABLE_TESTS=ON
+            cmake --build build --parallel 4
       - name: Print out vcpkg logs if building port fails
         if: failure()    # Only run this if the build step fails
         run: cd bindings/python && bash ./ci/show_vcpkg_logs.sh

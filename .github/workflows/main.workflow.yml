@@ -100,11 +100,13 @@ jobs:
     strategy:
       matrix:
         os: [macos-latest, windows-latest, ubuntu-latest]
+        # TODO(Morato) - add back Debug builds to CI
         # build-type: [Debug, Release]
         build-type: [Release]
         # shared: [true, false]
         shared: [true]
         platform: [x64]
+        # TODO(Morato) - add back Win32 and shared builds to CI
         # include:
         #   - platform: Win32
         #     os: windows-latest
@@ -159,7 +161,7 @@ jobs:
       with:
         name: windows-prebuilt-win64-${{ matrix.build-type }}
         path: ${{ env.GITHUB_WORKSPACE }}/depthai_install/
-
+    # TODO(Morato) - add back Win32 and shared builds to CI
     # - name: Upload Win32 shared library
     #   if: matrix.os == 'windows-latest' && matrix.shared && matrix.platform == 'Win32'
     #   uses: actions/upload-artifact@v4
