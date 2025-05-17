@@ -177,6 +177,19 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
                 // so we create in the same manner as device nodes.
                 auto isFromBindings = class_.attr("__module__").cast<std::string>() == "depthai.node";
                 // Create a copy from kwargs and add autoAddToPipeline to false
+
+                // Check if the node is a ColorCamera or a MonoCamera node and issue a deprecation warning
+                py::object colorCameraClass = py::module::import("depthai").attr("node").attr("ColorCamera");
+                py::object monoCameraClass = py::module::import("depthai").attr("node").attr("MonoCamera");
+                if(class_.is(colorCameraClass)){
+                    PyErr_WarnEx(PyExc_DeprecationWarning,
+                                 "ColorCamera node is deprecated. Use Camera node instead.", 1);
+                }
+
+                if(class_.is(monoCameraClass)){
+                    PyErr_WarnEx(PyExc_DeprecationWarning,
+                                 "MonoCamera node is deprecated. Use Camera node instead.", 1);
+                }
                 if(isSubclass && !isFromBindings) {
                     setImplicitPipeline(&p);
                     std::shared_ptr<Node> hostNode = py::cast<std::shared_ptr<node::ThreadedHostNode>>(class_(*args, **kwargs));
