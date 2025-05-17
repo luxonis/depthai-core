@@ -121,6 +121,9 @@ endfunction()
 ##     LOCATION mobilenet_blob
 ## )
 
+function(dai_install_file example_name file_name)
+    file(COPY ${CMAKE_CURRENT_LIST_DIR}/${file_name} DESTINATION ".")  # copy file to where the example is built
+endfunction()
 
 # Hunter test data download
 
@@ -257,6 +260,7 @@ add_subdirectory(DetectionNetwork)
 add_subdirectory(Events)
 add_subdirectory(HostNodes)
 add_subdirectory(ImageManip)
+add_subdirectory(ModelZoo)
 add_subdirectory(Record)
 add_subdirectory(Replay)
 add_subdirectory(RVC2)
