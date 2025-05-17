@@ -8,7 +8,6 @@
     #error This example needs OpenCV support, which is not available on your system
 #endif
 
-
 int main(int argc, char** argv) {
     dai::Pipeline pipeline(true);
     auto cam = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A);

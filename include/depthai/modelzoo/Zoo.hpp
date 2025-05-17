@@ -106,7 +106,10 @@ std::string getModelFromZoo(const NNModelDescription& modelDescription,
  * @param progressFormat: Format to use for progress output (possible values: pretty, json, none), default is "none"
  * @return bool: True if all models were downloaded successfully, false otherwise
  */
-bool downloadModelsFromZoo(const std::string& path, const std::string& cacheDirectory = "", const std::string& apiKey = "", const std::string& progressFormat = "none");
+bool downloadModelsFromZoo(const std::string& path,
+                           const std::string& cacheDirectory = "",
+                           const std::string& apiKey = "",
+                           const std::string& progressFormat = "none");
 
 std::ostream& operator<<(std::ostream& os, const NNModelDescription& modelDescription);
 

@@ -612,7 +612,8 @@ std::string getModelFromZoo(const NNModelDescription& modelDescription,
     zooManager.createCacheFolder();
 
     // Create download progress callback
-    std::unique_ptr<CprCallback> cprCallback = getCprCallback(progressFormat, modelDescription.globalMetadataEntryName.size() > 0 ? modelDescription.globalMetadataEntryName : modelDescription.model);
+    std::unique_ptr<CprCallback> cprCallback =
+        getCprCallback(progressFormat, modelDescription.globalMetadataEntryName.size() > 0 ? modelDescription.globalMetadataEntryName : modelDescription.model);
 
     // Download model
     logger::info("Downloading model from model zoo");

@@ -23,7 +23,7 @@ int main(int argc, char* argv[]) {
     neuralNetwork->setNumInferenceThreads(2);
 
     // Linking
-    camRgb->requestOutput(std::make_pair(256,256), dai::ImgFrame::Type::BGR888p)->link(neuralNetwork->input);
+    camRgb->requestOutput(std::make_pair(256, 256), dai::ImgFrame::Type::BGR888p)->link(neuralNetwork->input);
 
     auto nnDetectionQueue = neuralNetwork->out.createOutputQueue();
     auto nnPassthroughQueue = neuralNetwork->passthrough.createOutputQueue();
