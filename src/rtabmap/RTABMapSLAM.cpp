@@ -33,11 +33,13 @@ void RTABMapSLAM::buildInternal() {
 }
 
 RTABMapSLAM::~RTABMapSLAM() {
+    auto& logger = pimpl->logger;
+
     if(saveDatabaseOnClose) {
         if(databasePath.empty()) {
             databasePath = "/tmp/rtabmap.db";
         }
-        pimpl->logger->info("Saving database at {}", databasePath);
+        logger->info("Saving database at {}", databasePath);
         rtabmap.close(true, databasePath);
     }
 }
@@ -112,6 +114,7 @@ void RTABMapSLAM::odomPoseCB(std::shared_ptr<dai::ADatatype> data) {
 }
 
 void RTABMapSLAM::run() {
+    auto& logger = pimpl->logger;
     while(isRunning()) {
         if(!initialized) {
             continue;
@@ -124,7 +127,7 @@ void RTABMapSLAM::run() {
                 if(success) {
                     stats = rtabmap.getStatistics();
                     if(rtabmap.getLoopClosureId() > 0) {
-                        pimpl->logger->debug("Loop closure detected! last loop closure id = {}", rtabmap.getLoopClosureId());
+                        logger->debug("Loop closure detected! last loop closure id = {}", rtabmap.getLoopClosureId());
                     }
                     odomCorr = stats.mapCorrection();
 
@@ -154,7 +157,7 @@ void RTABMapSLAM::run() {
         if(saveDatabasePeriodically && std::chrono::duration<double>(std::chrono::steady_clock::now() - startTime).count() > databaseSaveInterval) {
             rtabmap.close(true, databasePath);
             rtabmap.init(rtabParams, databasePath);
-            pimpl->logger->info("Database saved at {}", databasePath);
+            logger->info("Database saved at {}", databasePath);
             startTime = std::chrono::steady_clock::now();
         }
     }

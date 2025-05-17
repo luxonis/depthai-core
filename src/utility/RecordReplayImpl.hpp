@@ -1,6 +1,4 @@
 #include "depthai/utility/RecordReplay.hpp"
-#define MCAP_COMPRESSION_NO_ZSTD
-#define MCAP_COMPRESSION_NO_LZ4
 #include "mcap/mcap.hpp"
 #ifdef DEPTHAI_ENABLE_MP4V2
     #include <mp4v2.h>
