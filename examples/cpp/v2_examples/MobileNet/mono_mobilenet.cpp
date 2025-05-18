@@ -42,9 +42,9 @@ int main(int argc, char** argv) {
     monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
 
     // Convert the grayscale frame into the nn-acceptable form
-    manip->initialConfig.setResize(300, 300);
+    manip->initialConfig->setResize(300, 300);
     // The NN model expects BGR input. By default ImageManip output type would be same as input (gray in this case)
-    manip->initialConfig.setFrameType(dai::ImgFrame::Type::BGR888p);
+    manip->initialConfig->setFrameType(dai::ImgFrame::Type::BGR888p);
 
     nn->setConfidenceThreshold(0.5);
     nn->setBlobPath(nnPath);

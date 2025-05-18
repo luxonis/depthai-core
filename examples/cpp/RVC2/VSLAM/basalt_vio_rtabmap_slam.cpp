@@ -33,7 +33,7 @@ int main() {
     stereo->setLeftRightCheck(true);
     stereo->setRectifyEdgeFillColor(0);  // black, to better see the cutout
     stereo->enableDistortionCorrection(true);
-    stereo->initialConfig.setLeftRightCheckThreshold(10);
+    stereo->initialConfig->setLeftRightCheckThreshold(10);
     stereo->setDepthAlign(dai::StereoDepthProperties::DepthAlign::RECTIFIED_LEFT);
 
     left->setCamera("left");

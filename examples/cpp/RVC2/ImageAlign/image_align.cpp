@@ -110,7 +110,7 @@ int main() {
 
         auto cfg = align->initialConfig;
         auto alignConfig = std::make_shared<dai::ImageAlignConfig>();
-        *alignConfig = cfg;
+        alignConfig = cfg;
         alignConfig->staticDepthPlane = staticDepthPlane;
         alignQ->send(alignConfig);
     }

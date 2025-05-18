@@ -26,10 +26,10 @@ int main() {
     camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
     camRgb->setBoardSocket(dai::CameraBoardSocket::CAM_A);
 
-    manip->initialConfig.setResize(480, 270);
-    manip->initialConfig.setFrameType(dai::ImgFrame::Type::GRAY8);
+    manip->initialConfig->setResize(480, 270);
+    manip->initialConfig->setFrameType(dai::ImgFrame::Type::GRAY8);
 
-    aprilTag->initialConfig.setFamily(dai::AprilTagConfig::Family::TAG_36H11);
+    aprilTag->initialConfig->setFamily(dai::AprilTagConfig::Family::TAG_36H11);
 
     // Linking
     aprilTag->passthroughInputImage.link(xoutAprilTagImage->input);

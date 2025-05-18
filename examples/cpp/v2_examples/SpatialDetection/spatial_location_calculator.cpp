@@ -54,7 +54,7 @@ int main() {
     config.roi = dai::Rect(topLeft, bottomRight);
 
     spatialDataCalculator->inputConfig.setWaitForMessage(false);
-    spatialDataCalculator->initialConfig.addROI(config);
+    spatialDataCalculator->initialConfig->addROI(config);
 
     // Linking
     monoLeft->out.link(stereo->left);

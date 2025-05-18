@@ -5,10 +5,10 @@
 namespace dai {
 namespace node {
 
-ToF::ToF(std::unique_ptr<Properties> props) : DeviceNodeCRTP<DeviceNode, ToF, ToFProperties>(std::move(props)), initialConfig(properties.initialConfig) {}
+ToF::ToF(std::unique_ptr<Properties> props) : DeviceNodeCRTP<DeviceNode, ToF, ToFProperties>(std::move(props)), initialConfig(std::make_shared<decltype(properties.initialConfig)>(properties.initialConfig)) {}
 
 ToF::Properties& ToF::getProperties() {
-    properties.initialConfig = initialConfig;
+    properties.initialConfig = *initialConfig;
     return properties;
 }
 

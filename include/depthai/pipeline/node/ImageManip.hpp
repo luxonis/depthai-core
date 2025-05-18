@@ -29,7 +29,7 @@ class ImageManip : public DeviceNodeCRTP<DeviceNode, ImageManip, ImageManipPrope
     /**
      * Initial config to use when manipulating frames
      */
-    ImageManipConfig initialConfig;
+    std::shared_ptr<ImageManipConfig> initialConfig = std::make_shared<ImageManipConfig>();
 
     /**
      * Input ImageManipConfig message with ability to modify parameters in runtime

@@ -15,7 +15,7 @@ void testStereoDepthPreset(dai::node::StereoDepth::PresetMode preset, dai::Proce
     auto stereo = p.create<dai::node::StereoDepth>()->build(*left->requestOutput(std::make_pair(640, 400)), *right->requestOutput(std::make_pair(640, 400)));
 
     stereo->setDefaultProfilePreset(preset);
-    stereo->initialConfig.setFiltersComputeBackend(backend);
+    stereo->initialConfig->setFiltersComputeBackend(backend);
 
     auto disparityQueue = stereo->disparity.createOutputQueue();
     auto depthQueue = stereo->depth.createOutputQueue();

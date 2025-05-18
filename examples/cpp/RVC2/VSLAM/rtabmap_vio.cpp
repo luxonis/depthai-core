@@ -27,10 +27,10 @@ int main() {
     imu->setMaxBatchReports(10);
 
     featureTracker->setHardwareResources(1, 2);
-    featureTracker->initialConfig.setCornerDetector(dai::FeatureTrackerConfig::CornerDetector::Type::SHI_THOMASI);
-    featureTracker->initialConfig.setNumTargetFeatures(1000);
-    featureTracker->initialConfig.setMotionEstimator(false);
-    featureTracker->initialConfig.featureMaintainer.minimumDistanceBetweenFeatures = 49.0;
+    featureTracker->initialConfig->setCornerDetector(dai::FeatureTrackerConfig::CornerDetector::Type::SHI_THOMASI);
+    featureTracker->initialConfig->setNumTargetFeatures(1000);
+    featureTracker->initialConfig->setMotionEstimator(false);
+    featureTracker->initialConfig->featureMaintainer.minimumDistanceBetweenFeatures = 49.0;
     // stereo->setAlphaScaling(0.0);
     left->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
     left->setCamera("left");
@@ -43,7 +43,7 @@ int main() {
     stereo->setLeftRightCheck(true);
     stereo->setRectifyEdgeFillColor(0);  // black, to better see the cutout
     stereo->enableDistortionCorrection(true);
-    stereo->initialConfig.setLeftRightCheckThreshold(10);
+    stereo->initialConfig->setLeftRightCheckThreshold(10);
     stereo->setDepthAlign(dai::StereoDepthProperties::DepthAlign::RECTIFIED_LEFT);
 
     // Linking

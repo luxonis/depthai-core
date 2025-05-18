@@ -31,7 +31,7 @@ int main() {
     // Create a node that will produce the depth map (using disparity output as it's easier to visualize depth this way)
     depth->setDefaultProfilePreset(dai::node::StereoDepth::PresetMode::HIGH_DENSITY);
     // Options: MEDIAN_OFF, KERNEL_3x3, KERNEL_5x5, KERNEL_7x7 (default)
-    depth->initialConfig.setMedianFilter(dai::StereoDepthConfig::MedianFilter::KERNEL_7x7);
+    depth->initialConfig->setMedianFilter(dai::StereoDepthConfig::MedianFilter::KERNEL_7x7);
     depth->setLeftRightCheck(lr_check);
     depth->setExtendedDisparity(extended_disparity);
     depth->setSubpixel(subpixel);
@@ -62,7 +62,7 @@ int main() {
         auto inDepth = q->get<dai::ImgFrame>();
         auto frame = inDepth->getFrame();
         // Normalization for better visualization
-        frame.convertTo(frame, CV_8UC1, 255 / depth->initialConfig.getMaxDisparity());
+        frame.convertTo(frame, CV_8UC1, 255 / depth->initialConfig->getMaxDisparity());
 
         cv::imshow("disparity", frame);
 

@@ -32,7 +32,7 @@ class FeatureTracker : public DeviceNodeCRTP<DeviceNode, FeatureTracker, Feature
     /**
      * Initial config to use for feature tracking.
      */
-    FeatureTrackerConfig initialConfig;
+    std::shared_ptr<FeatureTrackerConfig> initialConfig = std::make_shared<FeatureTrackerConfig>();
 
     /**
      * Input FeatureTrackerConfig message with ability to modify parameters in runtime.

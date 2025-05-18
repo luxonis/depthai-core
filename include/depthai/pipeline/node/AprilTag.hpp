@@ -31,7 +31,7 @@ class AprilTag : public DeviceNodeCRTP<DeviceNode, AprilTag, AprilTagProperties>
     /**
      * Initial config to use when calculating spatial location data.
      */
-    AprilTagConfig initialConfig;
+    std::shared_ptr<AprilTagConfig> initialConfig = std::make_shared<AprilTagConfig>();
 
     /**
      * Input AprilTagConfig message with ability to modify parameters in runtime.

@@ -9,7 +9,7 @@ SpatialLocationCalculator::SpatialLocationCalculator(std::unique_ptr<Properties>
     : DeviceNodeCRTP<DeviceNode, SpatialLocationCalculator, SpatialLocationCalculatorProperties>(std::move(props)) {}
 
 SpatialLocationCalculator::Properties& SpatialLocationCalculator::getProperties() {
-    properties.roiConfig = initialConfig;
+    properties.roiConfig = *initialConfig;
     return properties;
 }
 

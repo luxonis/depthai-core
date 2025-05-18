@@ -42,9 +42,9 @@ int main(int argc, char** argv) {
     xoutDepth->setStreamName("depth");
 
     // Properties
-    imageManip->initialConfig.setResize(300, 300);
+    imageManip->initialConfig->setResize(300, 300);
     // The NN model expects BGR input. By default ImageManip output type would be same as input (gray in this case)
-    imageManip->initialConfig.setFrameType(dai::ImgFrame::Type::BGR888p);
+    imageManip->initialConfig->setFrameType(dai::ImgFrame::Type::BGR888p);
 
     monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
     monoLeft->setCamera("left");

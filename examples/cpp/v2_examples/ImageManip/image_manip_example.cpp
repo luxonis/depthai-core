@@ -30,11 +30,11 @@ int main() {
     camRgb->setColorOrder(dai::ColorCameraProperties::ColorOrder::BGR);
 
     // Create a center crop image manipulation
-    imageManip->initialConfig.setCenterCrop(0.7f);
-    imageManip->initialConfig.setResizeThumbnail(300, 400);
+    imageManip->initialConfig->setCenterCrop(0.7f);
+    imageManip->initialConfig->setResizeThumbnail(300, 400);
 
     // Second image manipulator - Create a off center crop
-    imageManip2->initialConfig.setCropRect(0.1f, 0.1f, 0.3f, 0.3f);
+    imageManip2->initialConfig->setCropRect(0.1f, 0.1f, 0.3f, 0.3f);
     imageManip2->inputConfig.setWaitForMessage(true);
 
     // Linking
