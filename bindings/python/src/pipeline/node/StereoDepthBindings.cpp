@@ -72,8 +72,8 @@ void bind_stereodepth(pybind11::module& m, void* pCallstack) {
                        &StereoDepthProperties::depthAlignmentUseSpecTranslation,
                        DOC(dai, StereoDepthProperties, depthAlignmentUseSpecTranslation))
         .def_readwrite("alphaScaling", &StereoDepthProperties::alphaScaling, DOC(dai, StereoDepthProperties, alphaScaling));
-        DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
-        stereoDepthPresetMode
+    DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
+    stereoDepthPresetMode
         .value("HIGH_ACCURACY", StereoDepth::PresetMode::HIGH_ACCURACY, "**Deprecated:** Will be removed in future releases and replaced with DEFAULT")
         .value("HIGH_DENSITY", StereoDepth::PresetMode::HIGH_DENSITY, "**Deprecated:** Will be removed in future releases and replaced with DEFAULT")
         .value("DEFAULT", StereoDepth::PresetMode::DEFAULT)
@@ -88,14 +88,11 @@ void bind_stereodepth(pybind11::module& m, void* pCallstack) {
                 return StereoDepth::PresetMode::HIGH_ACCURACY;
             })
 
-        .def_property_readonly_static(
-            "HIGH_DENSITY",
-            [](py::object) {
-                PyErr_WarnEx(PyExc_DeprecationWarning, "HIGH_DENSITY is deprecated, will be removed in future releases and replaced with DEFAULT.", 1);
-                return StereoDepth::PresetMode::HIGH_DENSITY;
-            })
-            ;
-        DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING
+        .def_property_readonly_static("HIGH_DENSITY", [](py::object) {
+            PyErr_WarnEx(PyExc_DeprecationWarning, "HIGH_DENSITY is deprecated, will be removed in future releases and replaced with DEFAULT.", 1);
+            return StereoDepth::PresetMode::HIGH_DENSITY;
+        });
+    DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING
 
     // Node
     stereoDepth

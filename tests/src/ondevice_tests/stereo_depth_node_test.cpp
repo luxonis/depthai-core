@@ -1,6 +1,7 @@
 #include <catch2/catch_all.hpp>
-#include "depthai/utility/CompilerWarnings.hpp"
+
 #include "depthai/depthai.hpp"
+#include "depthai/utility/CompilerWarnings.hpp"
 
 void testStereoDepthPreset(dai::node::StereoDepth::PresetMode preset, dai::ProcessorType backend = dai::ProcessorType::CPU) {
     using namespace std;

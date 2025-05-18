@@ -7,9 +7,9 @@
 #include <cstring>
 
 // depthai
+#include "depthai/utility/CompilerWarnings.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
 #include "depthai/xlink/XLinkStream.hpp"
-#include "depthai/utility/CompilerWarnings.hpp"
 
 void XLinkBindings::bind(pybind11::module& m, void* pCallstack) {
     using namespace dai;
@@ -60,7 +60,9 @@ void XLinkBindings::bind(pybind11::module& m, void* pCallstack) {
              DOC(dai, DeviceInfo, DeviceInfo, 2))
         .def(py::init<std::string>(), py::arg("deviceIdOrName"), DOC(dai, DeviceInfo, DeviceInfo, 3))
         .def(py::init<const deviceDesc_t&>(), DOC(dai, DeviceInfo, DeviceInfo, 4))
-        .def("getMxId", [](DeviceInfo& info) {
+        .def(
+            "getMxId",
+            [](DeviceInfo& info) {
                 DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
                 PyErr_WarnEx(PyExc_DeprecationWarning, "getMxId is deprecated, use getDeviceId instead.", 1);
                 return info.getMxId();

@@ -1,11 +1,11 @@
 #include "depthai/rtabmap/RTABMapSLAM.hpp"
-#include "pipeline/ThreadedNodeImpl.hpp"
 
 #include <pcl/filters/filter.h>
 #include <pcl/point_cloud.h>
 #include <spdlog/spdlog.h>
 
 #include "depthai/pipeline/Pipeline.hpp"
+#include "pipeline/ThreadedNodeImpl.hpp"
 #include "rtabmap/core/util3d.h"
 #include "rtabmap/core/util3d_mapping.h"
 
