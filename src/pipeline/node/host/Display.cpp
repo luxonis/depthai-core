@@ -1,5 +1,7 @@
 #include "depthai/pipeline/node/host/Display.hpp"
 
+#include <spdlog/spdlog.h>
+
 #include <chrono>
 #include <opencv2/opencv.hpp>
 
@@ -49,13 +51,11 @@ void Display::run() {
             auto key = cv::waitKey(1);
             if(key == 'q') {
                 // Get the parent pipeline and stop it
-                // TODO(Morato) - add a convience stop method directly to the pipeline
-                auto parentPipeline = getParentPipeline();
-                parentPipeline.stop();
+                stopPipeline();
+                break;
             }
         }
     }
-    fmt::print("Display node stopped\n");
 }
 }  // namespace node
 }  // namespace dai

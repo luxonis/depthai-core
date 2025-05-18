@@ -26,7 +26,7 @@ class VideoEncoder : public DeviceNodeCRTP<DeviceNode, VideoEncoder, VideoEncode
      * Outputs ImgFrame message that carries BITSTREAM encoded (MJPEG, H264 or H265) frame data.
      * Mutually exclusive with out.
      */
-    [[deprecated("Use 'VideoEncoder::out' instead")]] Output bitstream{*this, {"bitstream", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
+    Output bitstream{*this, {"bitstream", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     /**
      * Outputs EncodedFrame message that carries encoded (MJPEG, H264 or H265) frame data.

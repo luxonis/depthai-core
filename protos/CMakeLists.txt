@@ -53,13 +53,3 @@ target_include_directories(messages PUBLIC
     $<INSTALL_INTERFACE:include/schemas>
 )
 
-# Optional: Install target for the generated protobuf files and headers
-install(TARGETS messages
-    EXPORT messagesTargets
-    ARCHIVE DESTINATION lib
-    LIBRARY DESTINATION lib
-    RUNTIME DESTINATION bin
-)
-
-# Optional: Install the generated header files
-install(FILES ${MESSAGES_HDRS} DESTINATION include/schemas)
