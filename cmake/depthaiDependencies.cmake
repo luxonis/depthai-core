@@ -162,6 +162,7 @@ if(DEPTHAI_BUILD_TESTS)
 endif()
 
 # XLink
+# Always compile XLink as static library, even when DepthAI is built as shared
 set(_BUILD_SHARED_LIBS_SAVED "${BUILD_SHARED_LIBS}")
 set(BUILD_SHARED_LIBS OFF)
 set(XLINK_ENABLE_LIBUSB ${DEPTHAI_ENABLE_LIBUSB} CACHE BOOL "Enable libusb" FORCE)
