@@ -70,8 +70,7 @@ py::class_<Map, holder_type> bindNodeMap(py::handle scope, const std::string& na
     // Register stream insertion operator (if possible)
     detail::map_if_insertion_operator<Map, Class_>(cl, name);
 
-    cl.def(
-        "__bool__", [](const Map& m) -> bool { return !m.empty(); }, "Check whether the map is nonempty");
+    cl.def("__bool__", [](const Map& m) -> bool { return !m.empty(); }, "Check whether the map is nonempty");
 
     cl.def(
         "__iter__", [](Map& m) { return make_key_iterator(m.begin(), m.end()); }, keep_alive<0, 1>() /* Essential: keep list alive while iterator exists */
