@@ -16,3 +16,5 @@ if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
     dai_add_example(detection_network_replay detection_network_replay.cpp ON OFF)
     target_compile_definitions(detection_network_replay PRIVATE VIDEO_PATH="${construction_vest}")
 endif()
+
+dai_add_example(detection_network detection_network.cpp OFF OFF)
