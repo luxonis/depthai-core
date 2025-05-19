@@ -62,8 +62,8 @@ int main() {
     stereo->setLeftRightCheck(true);
     stereo->setRectifyEdgeFillColor(0);  // black, to better see the cutout
     stereo->enableDistortionCorrection(true);
-    stereo->initialConfig.setLeftRightCheckThreshold(10);
-    stereo->initialConfig.postProcessing.thresholdFilter.maxRange = 10000;
+    stereo->initialConfig->setLeftRightCheckThreshold(10);
+    stereo->initialConfig->postProcessing.thresholdFilter.maxRange = 10000;
     rgbd->setDepthUnit(dai::StereoDepthConfig::AlgorithmControl::DepthUnit::METER);
 
     left->requestOutput(std::pair<int, int>(640, 400))->link(stereo->left);

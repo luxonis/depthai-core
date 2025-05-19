@@ -28,7 +28,7 @@ TEST_CASE("Test ImageManip node") {
         outputWidth = 200, outputHeight = 145;
     }
 
-    imageManipNode->initialConfig.setResize(outputWidth, outputHeight);
+    imageManipNode->initialConfig->setResize(outputWidth, outputHeight);
 
     p.start();
 

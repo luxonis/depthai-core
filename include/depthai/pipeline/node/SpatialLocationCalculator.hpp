@@ -28,7 +28,7 @@ class SpatialLocationCalculator : public DeviceNodeCRTP<DeviceNode, SpatialLocat
     /**
      * Initial config to use when calculating spatial location data.
      */
-    SpatialLocationCalculatorConfig initialConfig;
+    std::shared_ptr<SpatialLocationCalculatorConfig> initialConfig = std::make_shared<SpatialLocationCalculatorConfig>();
 
     /**
      * Input SpatialLocationCalculatorConfig message with ability to modify parameters in runtime.

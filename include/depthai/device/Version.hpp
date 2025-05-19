@@ -4,6 +4,7 @@
 
 #include <optional>
 #include <string>
+#include <cstdint>
 namespace dai {
 
 /// Version structure

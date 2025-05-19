@@ -19,7 +19,7 @@ int main() {
     dai::RotatedRect rgbRr = {{camRgb->getPreviewWidth() / 2.0f, camRgb->getPreviewHeight() / 2.0f},  // center
                               {camRgb->getPreviewHeight() * 1.0f, camRgb->getPreviewWidth() * 1.0f},  // size
                               90};                                                                    // angle
-    manipRgb->initialConfig.setCropRotatedRect(rgbRr, false);
+    manipRgb->initialConfig->setCropRotatedRect(rgbRr, false);
     camRgb->preview.link(manipRgb->inputImage);
 
     auto manipRgbOut = pipeline.create<dai::node::XLinkOut>();
@@ -35,7 +35,7 @@ int main() {
     dai::RotatedRect rr = {{monoLeft->getResolutionWidth() / 2.0f, monoLeft->getResolutionHeight() / 2.0f},  // center
                            {monoLeft->getResolutionHeight() * 1.0f, monoLeft->getResolutionWidth() * 1.0f},  // size
                            90};                                                                              // angle
-    manipLeft->initialConfig.setCropRotatedRect(rr, false);
+    manipLeft->initialConfig->setCropRotatedRect(rr, false);
     monoLeft->out.link(manipLeft->inputImage);
 
     auto manipLeftOut = pipeline.create<dai::node::XLinkOut>();

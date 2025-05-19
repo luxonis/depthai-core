@@ -8,7 +8,7 @@ namespace dai {
 namespace node {
 
 PointCloud::Properties& PointCloud::getProperties() {
-    properties.initialConfig = initialConfig;
+    properties.initialConfig = *initialConfig;
     return properties;
 }
 

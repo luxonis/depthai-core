@@ -46,7 +46,7 @@ int main() {
         config.depthThresholds.lowerThreshold = 200;
         config.depthThresholds.upperThreshold = 10000;
         config.roi = dai::Rect(dai::Point2f(i * 0.1, 0.45), dai::Point2f((i + 1) * 0.1, 0.55));
-        spatialLocationCalculator->initialConfig.addROI(config);
+        spatialLocationCalculator->initialConfig->addROI(config);
     }
 
     // Linking

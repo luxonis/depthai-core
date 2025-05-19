@@ -45,7 +45,7 @@ int main() {
 
     auto queue = device.getOutputQueue("xout", 10, true);
 
-    float disparityMultiplier = 255 / stereo->initialConfig.getMaxDisparity();
+    float disparityMultiplier = 255 / stereo->initialConfig->getMaxDisparity();
 
     while(true) {
         auto msgGrp = queue->get<dai::MessageGroup>();

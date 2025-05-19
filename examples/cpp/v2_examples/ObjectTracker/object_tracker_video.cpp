@@ -49,11 +49,11 @@ int main(int argc, char** argv) {
     // Properties
     xinFrame->setMaxDataSize(1920 * 1080 * 3);
 
-    manip->initialConfig.setResizeThumbnail(544, 320);
-    // manip->initialConfig.setResize(384, 384);
-    // manip->initialConfig.setKeepAspectRatio(false); //squash the image to not lose FOV
+    manip->initialConfig->setResizeThumbnail(544, 320);
+    // manip->initialConfig->setResize(384, 384);
+    // manip->initialConfig->setKeepAspectRatio(false); //squash the image to not lose FOV
     // The NN model expects BGR input. By default ImageManip output type would be same as input (gray in this case)
-    manip->initialConfig.setFrameType(dai::ImgFrame::Type::BGR888p);
+    manip->initialConfig->setFrameType(dai::ImgFrame::Type::BGR888p);
     manip->inputImage.setBlocking(true);
 
     // setting node configs

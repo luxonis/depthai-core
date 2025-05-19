@@ -49,9 +49,9 @@ int main(int argc, char** argv) {
     stereo->setDefaultProfilePreset(dai::node::StereoDepth::PresetMode::HIGH_DENSITY);
     stereo->setRectifyEdgeFillColor(0);  // Black, to better see the cutout from rectification (black stripe on the edges)
     // Convert the grayscale frame into the nn-acceptable form
-    manip->initialConfig.setResize(300, 300);
+    manip->initialConfig->setResize(300, 300);
     // The NN model expects BGR input. By default ImageManip output type would be same as input (gray in this case)
-    manip->initialConfig.setFrameType(dai::ImgFrame::Type::BGR888p);
+    manip->initialConfig->setFrameType(dai::ImgFrame::Type::BGR888p);
 
     // Define a neural network that will make predictions based on the source frames
     nn->setConfidenceThreshold(0.5);
@@ -105,7 +105,7 @@ int main(int argc, char** argv) {
         cv::imshow(name, frame);
     };
 
-    float disparityMultiplier = 255 / stereo->initialConfig.getMaxDisparity();
+    float disparityMultiplier = 255 / stereo->initialConfig->getMaxDisparity();
 
     while(true) {
         // Instead of get (blocking), we use tryGet (non-blocking) which will return the available data or None otherwise

@@ -45,8 +45,8 @@ int main() {
     monoRight->setCamera("right");
 
     // Disable optical flow
-    featureTrackerLeft->initialConfig.setMotionEstimator(false);
-    featureTrackerRight->initialConfig.setMotionEstimator(false);
+    featureTrackerLeft->initialConfig->setMotionEstimator(false);
+    featureTrackerRight->initialConfig->setMotionEstimator(false);
 
     // Linking
     monoLeft->out.link(featureTrackerLeft->inputImage);

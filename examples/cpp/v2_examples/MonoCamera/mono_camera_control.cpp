@@ -55,8 +55,8 @@ int main() {
     monoLeft->setCamera("left");
     monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
     monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
-    manipRight->initialConfig.setCropRect(topLeft.x, topLeft.y, bottomRight.x, bottomRight.y);
-    manipLeft->initialConfig.setCropRect(topLeft.x, topLeft.y, bottomRight.x, bottomRight.y);
+    manipRight->initialConfig->setCropRect(topLeft.x, topLeft.y, bottomRight.x, bottomRight.y);
+    manipLeft->initialConfig->setCropRect(topLeft.x, topLeft.y, bottomRight.x, bottomRight.y);
 
     // Linking
     monoRight->out.link(manipRight->inputImage);

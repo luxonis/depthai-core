@@ -43,17 +43,17 @@ int main() {
         width = (width % 2 == 1) ? width + 1 : width;
         std::cout << "Width was: " << width << "\n" << std::flush;
         imageManip->setMaxOutputFrameSize(2000 * 2000 * 3);
-        // imageManip->initialConfig.setCropRect(0.4f, 0.4f, 0.6f, 0.6f);
-        // imageManip->initialConfig.setResize(static_cast<int>(ratio * 1920.f), static_cast<int>(ratio * 1080.f));
-        imageManip->initialConfig.setResize(width, height);
-        // imageManip->initialConfig.setCropRect(0.4f, 0.4f, 0.6f, 0.6f);
+        // imageManip->initialConfig->setCropRect(0.4f, 0.4f, 0.6f, 0.6f);
+        // imageManip->initialConfig->setResize(static_cast<int>(ratio * 1920.f), static_cast<int>(ratio * 1080.f));
+        imageManip->initialConfig->setResize(width, height);
+        // imageManip->initialConfig->setCropRect(0.4f, 0.4f, 0.6f, 0.6f);
         camRgb->video.link(imageManip->inputImage);
         resizeNodes.push_back(imageManip);
     }
 
     auto imageManip = pipeline.create<dai::node::ImageManip>();
     imageManip->setMaxOutputFrameSize(2000 * 2000 * 3);
-    imageManip->initialConfig.setCropRect(0.4f, 0.4f, 0.6f, 0.6f);
+    imageManip->initialConfig->setCropRect(0.4f, 0.4f, 0.6f, 0.6f);
     camRgb->video.link(imageManip->inputImage);
     resizeNodes.push_back(imageManip);
 
@@ -62,7 +62,7 @@ int main() {
     imageManipCrop->setMaxOutputFrameSize(2000 * 2000 * 3);
     const double cutDiff = (1920.0 - 1080.0) / 2.0 * ratio / height;
     std::cout << cutDiff << " | " << 1.0 - cutDiff << "\n" << std::flush;
-    imageManipCrop->initialConfig.setCropRect(cutDiff, 0.0, 1.0 - cutDiff, 1.0);
+    imageManipCrop->initialConfig->setCropRect(cutDiff, 0.0, 1.0 - cutDiff, 1.0);
 
     imageManip->out.link(imageManipCrop->inputImage);
     */

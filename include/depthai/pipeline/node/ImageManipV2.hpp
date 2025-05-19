@@ -37,7 +37,7 @@ class ImageManipV2 : public DeviceNodeCRTP<DeviceNode, ImageManipV2, ImageManipP
     /**
      * Initial config to use when manipulating frames
      */
-    ImageManipConfigV2 initialConfig;
+    std::shared_ptr<ImageManipConfigV2> initialConfig = std::make_shared<ImageManipConfigV2>();
 
     /**
      * Input ImageManipConfigV2 message with ability to modify parameters in runtime

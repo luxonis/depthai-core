@@ -55,8 +55,8 @@ int main(int argc, char** argv) {
     nn->input.setBlocking(false);
 
     // The NN model expects BGR input. By default ImageManip output type would be same as input (gray in this case)
-    manip->initialConfig.setFrameType(dai::ImgFrame::Type::BGR888p);
-    manip->initialConfig.setResize(300, 300);
+    manip->initialConfig->setFrameType(dai::ImgFrame::Type::BGR888p);
+    manip->initialConfig->setResize(300, 300);
 
     // Linking
     camRgb->video.link(videoEncoder->input);

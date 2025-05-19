@@ -21,7 +21,7 @@ int main() {
     // it's easier to visualize depth this way)
     depth->setDefaultProfilePreset(dai::node::StereoDepth::PresetMode::HIGH_DENSITY);
     // Options: MEDIAN_OFF, KERNEL_3x3, KERNEL_5x5, KERNEL_7x7 (default)
-    depth->initialConfig.setMedianFilter(dai::StereoDepthConfig::MedianFilter::KERNEL_7x7);
+    depth->initialConfig->setMedianFilter(dai::StereoDepthConfig::MedianFilter::KERNEL_7x7);
     depth->setLeftRightCheck(true);
     depth->setExtendedDisparity(false);
     depth->setSubpixel(true);
@@ -34,7 +34,7 @@ int main() {
     depth->depth.link(pointcloud->inputDepth);
     depth->disparity.link(xoutDepth->input);
     pointcloud->outputPointCloud.link(xout->input);
-    pointcloud->initialConfig.setSparse(true);
+    pointcloud->initialConfig->setSparse(true);
 
     auto viewer = std::make_unique<pcl::visualization::PCLVisualizer>("Cloud Viewer");
     bool first = true;
@@ -55,7 +55,7 @@ int main() {
         }
 
         auto frame = depthImg->getCvFrame();
-        frame.convertTo(frame, CV_8UC1, 255 / depth->initialConfig.getMaxDisparity());
+        frame.convertTo(frame, CV_8UC1, 255 / depth->initialConfig->getMaxDisparity());
         cv::imshow("depth", frame);
         cv::waitKey(1);
 

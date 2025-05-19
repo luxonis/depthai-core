@@ -22,7 +22,7 @@ dai::Pipeline getPipeline(bool sparse) {
 
     xout->setStreamName("out");
 
-    pointcloud->initialConfig.setSparse(sparse);
+    pointcloud->initialConfig->setSparse(sparse);
 
     monoLeft->out.link(stereo->left);
     monoRight->out.link(stereo->right);
@@ -47,7 +47,7 @@ TEST_CASE("dense pointcloud") {
 
     if(pipeline.getDefaultDevice()->getPlatform() == dai::Platform::RVC2) stereo->setOutputSize(1280, 720);
 
-    pointcloud->initialConfig.setSparse(false);
+    pointcloud->initialConfig->setSparse(false);
 
     monoLeft->out.link(stereo->left);
     monoRight->out.link(stereo->right);
@@ -82,7 +82,7 @@ TEST_CASE("sparse pointcloud") {
 
     stereo->setOutputSize(1280, 720);
 
-    pointcloud->initialConfig.setSparse(true);
+    pointcloud->initialConfig->setSparse(true);
 
     monoLeft->out.link(stereo->left);
     monoRight->out.link(stereo->right);

@@ -129,7 +129,7 @@ bool setupHolisticRecord(
                             maxOutputFrameSize = std::get<0>(cam->getIspSize()) * std::get<1>(cam->getIspSize()) * 3;
                         }
                         auto imageManip = pipeline.create<dai::node::ImageManip>();
-                        imageManip->initialConfig.setFrameType(ImgFrame::Type::NV12);
+                        imageManip->initialConfig->setFrameType(ImgFrame::Type::NV12);
                         imageManip->setMaxOutputFrameSize(maxOutputFrameSize);
 
                         output->link(imageManip->inputImage);

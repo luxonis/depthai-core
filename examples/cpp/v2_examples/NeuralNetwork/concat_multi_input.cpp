@@ -35,8 +35,8 @@ int main(int argc, char** argv) {
     right->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
 
     auto manipRight = pipeline.create<dai::node::ImageManip>();
-    manipRight->initialConfig.setResize(300, 300);
-    manipRight->initialConfig.setFrameType(dai::ImgFrame::Type::BGR888p);
+    manipRight->initialConfig->setResize(300, 300);
+    manipRight->initialConfig->setFrameType(dai::ImgFrame::Type::BGR888p);
     right->out.link(manipRight->inputImage);
 
     auto left = pipeline.create<dai::node::MonoCamera>();
@@ -44,8 +44,8 @@ int main(int argc, char** argv) {
     left->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
 
     auto manipLeft = pipeline.create<dai::node::ImageManip>();
-    manipLeft->initialConfig.setResize(300, 300);
-    manipLeft->initialConfig.setFrameType(dai::ImgFrame::Type::BGR888p);
+    manipLeft->initialConfig->setResize(300, 300);
+    manipLeft->initialConfig->setFrameType(dai::ImgFrame::Type::BGR888p);
     left->out.link(manipLeft->inputImage);
 
     auto nn = pipeline.create<dai::node::NeuralNetwork>();

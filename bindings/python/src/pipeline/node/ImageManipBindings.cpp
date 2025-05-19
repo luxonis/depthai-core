@@ -34,7 +34,7 @@ void bind_imagemanip(pybind11::module& m, void* pCallstack) {
         .def("setCropRect",
              [](ImageManip& im, float xmin, float ymin, float xmax, float ymax) {
                  // Issue a deprecation warning
-                 PyErr_WarnEx(PyExc_DeprecationWarning, "setCropRect() is deprecated, use initialConfig.setCropRect() instead.", 1);
+                 PyErr_WarnEx(PyExc_DeprecationWarning, "setCropRect() is deprecated, use initialConfig->setCropRect() instead.", 1);
                  HEDLEY_DIAGNOSTIC_PUSH
                  HEDLEY_DIAGNOSTIC_DISABLE_DEPRECATED
                  im.setCropRect(xmin, ymin, xmax, ymax);
@@ -43,7 +43,7 @@ void bind_imagemanip(pybind11::module& m, void* pCallstack) {
         .def("setCenterCrop",
              [](ImageManip& im, float ratio, float whRatio = 1.0f) {
                  // Issue a deprecation warning
-                 PyErr_WarnEx(PyExc_DeprecationWarning, "setCenterCrop() is deprecated, use initialConfig.setCenterCrop() instead.", 1);
+                 PyErr_WarnEx(PyExc_DeprecationWarning, "setCenterCrop() is deprecated, use initialConfig->setCenterCrop() instead.", 1);
                  HEDLEY_DIAGNOSTIC_PUSH
                  HEDLEY_DIAGNOSTIC_DISABLE_DEPRECATED
                  im.setCenterCrop(ratio, whRatio);
@@ -53,7 +53,7 @@ void bind_imagemanip(pybind11::module& m, void* pCallstack) {
         .def("setResize",
              [](ImageManip& im, int w, int h) {
                  // Issue a deprecation warning
-                 PyErr_WarnEx(PyExc_DeprecationWarning, "setResize() is deprecated, use initialConfig.setResize() instead.", 1);
+                 PyErr_WarnEx(PyExc_DeprecationWarning, "setResize() is deprecated, use initialConfig->setResize() instead.", 1);
                  HEDLEY_DIAGNOSTIC_PUSH
                  HEDLEY_DIAGNOSTIC_DISABLE_DEPRECATED
                  im.setResize(w, h);
@@ -63,7 +63,7 @@ void bind_imagemanip(pybind11::module& m, void* pCallstack) {
         .def("setResizeThumbnail",
              [](ImageManip& im, int w, int h, int bgRed = 0, int bgGreen = 0, int bgBlue = 0) {
                  // Issue a deprecation warning
-                 PyErr_WarnEx(PyExc_DeprecationWarning, "setResizeThumbnail() is deprecated, use initialConfig.setResizeThumbnail() instead.", 1);
+                 PyErr_WarnEx(PyExc_DeprecationWarning, "setResizeThumbnail() is deprecated, use initialConfig->setResizeThumbnail() instead.", 1);
                  HEDLEY_DIAGNOSTIC_PUSH
                  HEDLEY_DIAGNOSTIC_DISABLE_DEPRECATED
                  im.setResizeThumbnail(w, h, bgRed, bgGreen, bgBlue);
@@ -73,7 +73,7 @@ void bind_imagemanip(pybind11::module& m, void* pCallstack) {
         .def("setFrameType",
              [](ImageManip& im, dai::ImgFrame::Type name) {
                  // Issue a deprecation warning
-                 PyErr_WarnEx(PyExc_DeprecationWarning, "setFrameType() is deprecated, use initialConfig.setFrameType() instead.", 1);
+                 PyErr_WarnEx(PyExc_DeprecationWarning, "setFrameType() is deprecated, use initialConfig->setFrameType() instead.", 1);
                  HEDLEY_DIAGNOSTIC_PUSH
                  HEDLEY_DIAGNOSTIC_DISABLE_DEPRECATED
                  im.setFrameType(name);
@@ -83,7 +83,7 @@ void bind_imagemanip(pybind11::module& m, void* pCallstack) {
         .def("setHorizontalFlip",
              [](ImageManip& im, bool flip) {
                  // Issue a deprecation warning
-                 PyErr_WarnEx(PyExc_DeprecationWarning, "setHorizontalFlip() is deprecated, use initialConfig.setHorizontalFlip() instead.", 1);
+                 PyErr_WarnEx(PyExc_DeprecationWarning, "setHorizontalFlip() is deprecated, use initialConfig->setHorizontalFlip() instead.", 1);
                  HEDLEY_DIAGNOSTIC_PUSH
                  HEDLEY_DIAGNOSTIC_DISABLE_DEPRECATED
                  im.setHorizontalFlip(flip);
