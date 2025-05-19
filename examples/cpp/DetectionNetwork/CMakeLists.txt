@@ -18,4 +18,3 @@ if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
 endif()
 
 dai_add_example(detection_network detection_network.cpp OFF OFF)
-dai_add_example(detection_network_remap detection_network_remap.cpp OFF OFF)
