@@ -12,8 +12,7 @@ int main() {
 
     // Create nodes
     auto cam = pipeline.create<dai::node::Camera>()->build();
-    // In some cases (IMX586), this requires an 8k screen to be able to see the full resolution at once
-    auto videoQueue = cam->requestFullResolutionOutput()->createOutputQueue();
+    auto videoQueue = cam->requestOutput(std::make_pair(640, 400))->createOutputQueue();
 
     // Start pipeline
     pipeline.start();
