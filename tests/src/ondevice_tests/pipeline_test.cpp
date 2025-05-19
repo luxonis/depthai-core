@@ -3,6 +3,10 @@
 // Include depthai library
 #include <depthai/depthai.hpp>
 
+// internal nodes
+#include <depthai/pipeline/node/internal/XLinkIn.hpp>
+#include <depthai/pipeline/node/internal/XLinkOut.hpp>
+
 TEST_CASE("Pipeline link and remove") {
     dai::Pipeline p;
     auto x_in = p.create<dai::node::internal::XLinkIn>();
