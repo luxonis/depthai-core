@@ -44,7 +44,6 @@ inline size_t roundUp(size_t numToRound, size_t multiple) {
 
 Node::Output* setupHolistiRecordCamera(
     std::shared_ptr<dai::node::Camera> cam, Pipeline& pipeline, bool legacy, size_t& camWidth, size_t& camHeight, RecordConfig& recordConfig) {
-    auto fps = cam->getMaxRequestedFps();
     size_t requestWidth = cam->getMaxRequestedWidth();
     size_t requestHeight = cam->getMaxRequestedHeight();
     size_t width = cam->getMaxWidth();
@@ -88,7 +87,7 @@ Node::Output* setupHolistiRecordCamera(
     if(width * height > 9437184U) {
         recordConfig.videoEncoding.enabled = true;
     }
-    return cam->requestOutput({width, height}, dai::ImgFrame::Type::NV12, dai::ImgResizeMode::CROP, fps);
+    return cam->requestOutput({width, height}, dai::ImgFrame::Type::NV12, dai::ImgResizeMode::CROP);
 }
 
 bool setupHolisticRecord(

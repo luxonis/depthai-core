@@ -5,7 +5,7 @@ import cv2
 import depthai as dai
 import time
 from datetime import timedelta
-FPS = 30.0
+FPS = 25.0
 
 RGB_SOCKET = dai.CameraBoardSocket.CAM_A
 LEFT_SOCKET = dai.CameraBoardSocket.CAM_B
