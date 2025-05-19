@@ -7,6 +7,7 @@
 #endif
 
 int main(int argc, char** argv) {
+
     dai::Pipeline pipeline;
     auto camA = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A);
     auto* camAOut = camA->requestOutput({600, 400});

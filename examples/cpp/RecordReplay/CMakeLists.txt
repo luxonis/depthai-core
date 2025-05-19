@@ -19,3 +19,13 @@ dai_add_example(replay_imu replay_imu.cpp OFF OFF)
 
 dai_add_example(holistic_replay holistic_replay.cpp ON OFF)
 target_compile_definitions(holistic_replay PRIVATE RECORDING_PATH="${recording_path}")
+
+dai_add_example(record_video record_video.cpp OFF OFF)
+
+dai_add_example(holistic_record holistic_record.cpp OFF OFF)
+
+dai_add_example(record_encoded record_encoded.cpp OFF OFF)
+
+dai_add_example(record_raw record_raw.cpp OFF OFF)
+
+dai_add_example(record_imu record_imu.cpp OFF OFF)
