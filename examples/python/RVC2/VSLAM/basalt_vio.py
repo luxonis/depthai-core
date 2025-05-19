@@ -9,8 +9,8 @@ with dai.Pipeline() as p:
     width = 640
     height = 400
     # Define sources and outputs
-    left = p.create(dai.node.MonoCamera)
-    right = p.create(dai.node.MonoCamera)
+    left = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B, sensorFps=fps)
+    right = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C, sensorFps=fps)
     imu = p.create(dai.node.IMU)
     odom = p.create(dai.node.BasaltVIO)
 
@@ -19,17 +19,9 @@ with dai.Pipeline() as p:
     imu.setBatchReportThreshold(1)
     imu.setMaxBatchReports(10)
 
-    left.setCamera("left")
-    left.setResolution(dai.MonoCameraProperties.SensorResolution.THE_400_P)
-    left.setFps(fps)
-    right.setCamera("right")
-    right.setResolution(dai.MonoCameraProperties.SensorResolution.THE_400_P)
-    right.setFps(fps)
-
     # Linking
-
-    left.out.link(odom.left)
-    right.out.link(odom.right)
+    left.requestOutput((width, height)).link(odom.left)
+    right.requestOutput((width, height)).link(odom.right)
     imu.out.link(odom.imu)
     odom.passthrough.link(rerunViewer.inputImg)
     odom.transform.link(rerunViewer.inputTrans)
