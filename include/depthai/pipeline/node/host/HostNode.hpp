@@ -29,6 +29,10 @@ class HostNode : public ThreadedHostNode {
     Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::Buffer, true}}}}};
     virtual std::shared_ptr<Buffer> processGroup(std::shared_ptr<dai::MessageGroup> in) = 0;
 
+    /**
+     * @brief Send processing to pipeline. If set to true, it's important to call `pipeline.run()` in the main thread or `pipeline.processTasks()` in the main thread.
+     * Otherwise, if set to false, such action is not needed.
+     */
     void sendProcessingToPipeline(bool send) {
         sendProcessToPipeline = send;
     }
