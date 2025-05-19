@@ -3,7 +3,9 @@
 #include "depthai/pipeline/Node.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/node/ColorCamera.hpp"
+#include "depthai/utility/CompilerWarnings.hpp"
 
+DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
 void bind_colorcamera(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::node;
@@ -88,7 +90,6 @@ void bind_colorcamera(pybind11::module& m, void* pCallstack) {
         .def_readwrite("warpMeshStepWidth", &ColorCameraProperties::warpMeshStepWidth)
         .def_readwrite("warpMeshStepHeight", &ColorCameraProperties::warpMeshStepHeight)
         .def_readwrite("eventFilter", &ColorCameraProperties::eventFilter);
-
     // ColorCamera node
     colorCamera
         .def(py::init([]() {
@@ -270,6 +271,7 @@ void bind_colorcamera(pybind11::module& m, void* pCallstack) {
         .def("getCalibrationAlpha", &ColorCamera::getCalibrationAlpha, DOC(dai, node, ColorCamera, getCalibrationAlpha))
 
         .def("setRawOutputPacked", &ColorCamera::setRawOutputPacked, py::arg("packed"), DOC(dai, node, ColorCamera, setRawOutputPacked));
+    DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING
     // ALIAS
     daiNodeModule.attr("ColorCamera").attr("Properties") = colorCameraProperties;
 }

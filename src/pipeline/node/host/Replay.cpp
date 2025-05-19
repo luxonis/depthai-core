@@ -13,6 +13,7 @@
 #include "depthai/pipeline/datatype/IMUData.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/node/host/Replay.hpp"
+#include "pipeline/ThreadedNodeImpl.hpp"
 #include "utility/RecordReplayImpl.hpp"
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF
@@ -89,6 +90,7 @@ inline std::shared_ptr<Buffer> getMessage(const std::shared_ptr<google::protobuf
         case DatatypeEnum::PointCloudConfig:
         case DatatypeEnum::ImageAlignConfig:
         case DatatypeEnum::ImgAnnotations:
+        case DatatypeEnum::RGBDData:
             break;
     }
     throw std::runtime_error("Cannot replay message type: " + std::to_string((int)datatype));
@@ -151,6 +153,7 @@ inline std::shared_ptr<google::protobuf::Message> getProtoMessage(utility::ByteP
         case DatatypeEnum::PointCloudConfig:
         case DatatypeEnum::ImageAlignConfig:
         case DatatypeEnum::ImgAnnotations:
+        case DatatypeEnum::RGBDData:
             throw std::runtime_error("Cannot replay message type: " + std::to_string((int)datatype));
     }
     return {};
@@ -159,6 +162,7 @@ inline std::shared_ptr<google::protobuf::Message> getProtoMessage(utility::ByteP
 
 void ReplayVideo::run() {
 #ifdef DEPTHAI_ENABLE_PROTOBUF
+    auto& logger = pimpl->logger;
     if(replayVideo.empty() && replayFile.empty()) {
         throw std::runtime_error("ReplayVideo node requires replayVideo or replayFile to be set");
     }
@@ -299,6 +303,7 @@ void ReplayVideo::run() {
 
 void ReplayMetadataOnly::run() {
 #ifdef DEPTHAI_ENABLE_PROTOBUF
+    auto& logger = pimpl->logger;
     if(replayFile.empty()) {
         throw std::runtime_error("ReplayMetadataOnly node requires replayFile to be set");
     }
@@ -310,7 +315,7 @@ void ReplayMetadataOnly::run() {
             datatype = utility::schemaNameToDatatype(schemaName);
         } catch(const std::exception& e) {
             hasMetadata = false;
-            if(logger) logger->warn("Metadata not replaying: {}", e.what());
+            logger->warn("Metadata not replaying: {}", e.what());
         }
     if(!hasMetadata) {
         throw std::runtime_error("Metadata file not found");
