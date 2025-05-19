@@ -1,17 +1,16 @@
 #include "../../../src/utility/Platform.hpp"
 
-#include <sys/wait.h>
-
-#include <array>
 #include <catch2/catch_test_macros.hpp>
 #include <chrono>
-#include <condition_variable>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <memory>
-#include <mutex>
 #include <thread>
+
+#ifndef _WIN32
+    #include <sys/wait.h>
+#endif
 
 using namespace dai;
 namespace fs = std::filesystem;
@@ -62,6 +61,7 @@ TEST_CASE("FolderLock basic functionality", "[platform]") {
     fs::remove_all(tempDir);
 }
 
+#ifndef _WIN32
 TEST_CASE("Concurrent locking", "[platform]") {
     auto tempFile = fs::path(dai::platform::getTempPath()) / "test_lock_file.txt";
     std::ofstream(tempFile).close();  // create file
@@ -100,3 +100,4 @@ TEST_CASE("Concurrent locking", "[platform]") {
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     REQUIRE(duration.count() >= 2000);  // Should be more than 2 seconds (1 second each process)
 }
+#endif
