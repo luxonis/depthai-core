@@ -10,8 +10,8 @@ int main() {
     int width = 640;
     int height = 400;
     // Define sources and outputs
-    auto left = pipeline.create<dai::node::MonoCamera>();
-    auto right = pipeline.create<dai::node::MonoCamera>();
+    auto left = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B, std::nullopt, fps);
+    auto right = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_C, std::nullopt, fps);
     auto imu = pipeline.create<dai::node::IMU>();
     auto odom = pipeline.create<dai::node::BasaltVIO>();
 
@@ -20,17 +20,9 @@ int main() {
     imu->setBatchReportThreshold(1);
     imu->setMaxBatchReports(10);
 
-    left->setCamera("left");
-    left->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
-    left->setFps(fps);
-    right->setCamera("right");
-    right->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
-    right->setFps(fps);
-
     // Linking
-
-    left->out.link(odom->left);
-    right->out.link(odom->right);
+    left->requestOutput(std::make_pair(width, height))->link(odom->left);
+    right->requestOutput(std::make_pair(width, height))->link(odom->right);
     imu->out.link(odom->imu);
     odom->transform.link(rerun->inputTrans);
     odom->passthrough.link(rerun->inputImg);

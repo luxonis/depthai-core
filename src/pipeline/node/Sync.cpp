@@ -1,6 +1,7 @@
 #include "depthai/pipeline/node/Sync.hpp"
 
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
+#include "pipeline/ThreadedNodeImpl.hpp"
 
 namespace dai {
 namespace node {
@@ -34,6 +35,7 @@ bool Sync::runOnHost() const {
 
 void Sync::run() {
     using namespace std::chrono;
+    auto& logger = pimpl->logger;
     const auto inputsName = inputs.name;
 
     if(inputs.empty()) {
@@ -98,7 +100,7 @@ void Sync::run() {
                 }
             }
             logger->debug("Diff: {} ms", duration_cast<milliseconds>(maxTs - minTs).count());
-            // TODO(Morato) - don't commit
+
             if(duration_cast<nanoseconds>(maxTs - minTs).count() < syncThresholdNs) {
                 break;
             }
