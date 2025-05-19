@@ -1,35 +1,71 @@
 #include <iostream>
 #include <memory>
-
+#include <csignal>
+#include <atomic>
+#include <opencv2/opencv.hpp>
 #include "depthai/depthai.hpp"
-#include "depthai/pipeline/datatype/ImgFrame.hpp"
-#include "depthai/pipeline/node/host/Display.hpp"
 
-int main(int argc, char** argv) {
-    std::shared_ptr<dai::Device> device = nullptr;
-    if(argc <= 1) {
-        device = std::make_shared<dai::Device>();
-    } else {
-        device = std::make_shared<dai::Device>(argv[1]);
+// Global flag for graceful shutdown
+std::atomic<bool> quitEvent(false);
+
+// Signal handler
+void signalHandler(int signum) {
+    quitEvent = true;
+}
+
+int main() {
+    // Set up signal handlers
+    signal(SIGTERM, signalHandler);
+    signal(SIGINT, signalHandler);
+
+    try {
+        // Create pipeline
+        dai::Pipeline pipeline;
+
+        // Create camera node
+        auto camRgb = pipeline.create<dai::node::Camera>();
+        camRgb->build(dai::CameraBoardSocket::CAM_A);
+
+        // Create image manipulator node
+        auto manip = pipeline.create<dai::node::ImageManipV2>();
+
+        // Configure image manipulator with multiple operations
+        manip->initialConfig.setOutputSize(1270, 710, dai::ImageManipConfigV2::ResizeMode::LETTERBOX);
+        manip->initialConfig.addCrop(50, 100, 500, 500);
+        manip->initialConfig.addFlipVertical();
+        manip->initialConfig.setFrameType(dai::ImgFrame::Type::NV12);
+        manip->setMaxOutputFrameSize(2709360);
+
+        // Link camera output to manipulator input
+        camRgb->requestOutput(std::make_pair(1920, 1080), dai::ImgFrame::Type::NV12, dai::ImgResizeMode::LETTERBOX, 20, 20)->link(manip->inputImage);
+
+        // Create output queue
+        auto out = manip->out.createOutputQueue();
+
+        // Start pipeline
+        pipeline.start();
+
+        // Main loop
+        while(!quitEvent) {
+            auto inFrame = out->get<dai::ImgFrame>();
+            if(inFrame != nullptr) {
+                cv::imshow("Show frame", inFrame->getCvFrame());
+                
+                // Check for quit key
+                if(cv::waitKey(1) == 'q') {
+                    break;
+                }
+            }
+        }
+
+        // Cleanup
+        pipeline.stop();
+        pipeline.wait();
+
+    } catch(const std::exception& e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+        return 1;
     }
-    dai::Pipeline pipeline(device);
 
-    auto camRgb = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A);
-    auto display = pipeline.create<dai::node::Display>();
-    auto manip = pipeline.create<dai::node::ImageManipV2>();
-
-    manip->setMaxOutputFrameSize(4000000);
-    manip->initialConfig.setOutputSize(1280, 720, dai::ImageManipConfigV2::ResizeMode::LETTERBOX);
-    manip->initialConfig.setBackgroundColor(100, 100, 100);
-    manip->initialConfig.addRotateDeg(45);
-    manip->initialConfig.addCrop(100, 100, 800, 600);
-    manip->initialConfig.addFlipVertical();
-    manip->initialConfig.setFrameType(dai::ImgFrame::Type::RGB888p);
-
-    auto* rgbOut = camRgb->requestOutput({1920, 1080});
-    rgbOut->link(manip->inputImage);
-    manip->out.link(display->input);
-
-    pipeline.start();
-    pipeline.wait();
+    return 0;
 }

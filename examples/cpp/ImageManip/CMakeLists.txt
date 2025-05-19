@@ -8,4 +8,7 @@ dai_add_example(image_manip_v2_resize image_manip_v2_resize.cpp OFF OFF)
 
 dai_add_example(image_manip_v2_multi_ops image_manip_v2_multi_ops.cpp OFF OFF)
 
-dai_add_example(image_manip_color_conversion image_manip_color_conversion.cpp OFF OFF)
+dai_add_example(image_manip_v2_all_ops image_manip_v2_all_ops.cpp OFF OFF)
+dai_install_file(image_manip_v2_all_ops lenna.png)
+
+dai_add_example(image_manip_v2_remap image_manip_v2_remap.cpp OFF OFF)
