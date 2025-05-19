@@ -59,6 +59,11 @@ std::string getIPv4AddressAsString(std::uint32_t binary);
 // TODO change this to std::thread
 void setThreadName(JoiningThread& thread, const std::string& name);
 
+/**
+ * @brief Filesystem process-level lock. Important note: This is a cross-process synchronization primitive. It is not thread-safe.
+ * If a file is locked by the same process, it will not be locked by another instance of the same process. Threads in the same process share all their file
+ * descriptors which this implementation uses. This is not a thread-safe primitive!! Use mutexes for thread-safe locking.
+ */
 class FSLock {
    public:
     explicit FSLock(const std::string& fname);
@@ -102,6 +107,11 @@ class FSLock {
     bool isLocked;
 };
 
+/**
+ * @brief Filesystem process-level lock for files. Important note: This is a cross-process synchronization primitive. It is not thread-safe.
+ * If a file is locked by the same process, it will not be locked by another instance of the same process. Threads in the same process share all their file
+ * descriptors which this implementation uses. This is not a thread-safe primitive!! Use mutexes for thread-safe locking.
+ */
 class FileLock : public FSLock {
    public:
     explicit FileLock(const std::string& path, bool createIfNotExists = false);
@@ -117,6 +127,11 @@ class FileLock : public FSLock {
     static std::unique_ptr<FileLock> lock(const std::string& path, bool createIfNotExists = false);
 };
 
+/**
+ * @brief Filesystem process-level lock for folders. Important note: This is a cross-process synchronization primitive. It is not thread-safe.
+ * If a folder is locked by the same process, it will not be locked by another instance of the same process. Threads in the same process share all their file
+ * descriptors which this implementation uses. This is not a thread-safe primitive!! Use mutexes for thread-safe locking.
+ */
 class FolderLock : public FSLock {
    public:
     explicit FolderLock(const std::string& path);
