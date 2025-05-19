@@ -41,12 +41,6 @@ class ColorCamera : public DeviceNodeCRTP<DeviceNode, ColorCamera, ColorCameraPr
     CameraControl initialControl;
 
     /**
-     * Input for ImageManipConfig message, which can modify crop parameters in runtime
-     */
-    Input inputConfig{
-        *this, {"inputConfig", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ImageManipConfig, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
-
-    /**
      * Input for CameraControl message, which can modify camera parameters in runtime
      */
     Input inputControl{

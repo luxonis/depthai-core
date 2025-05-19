@@ -1,10 +1,13 @@
 #pragma once
 
+#include <spdlog/async_logger.h>
+
 #include <depthai/pipeline/DeviceNode.hpp>
 #include <depthai/pipeline/datatype/ImageManipConfig.hpp>
 
 // shared
 #include <depthai/properties/ImageManipProperties.hpp>
+#include <functional>
 
 namespace dai {
 namespace node {
@@ -12,20 +15,25 @@ namespace node {
 /**
  * @brief ImageManip node. Capability to crop, resize, warp, ... incoming image frames
  */
-class ImageManip : public DeviceNodeCRTP<DeviceNode, ImageManip, ImageManipProperties> {
+class ImageManip : public DeviceNodeCRTP<DeviceNode, ImageManip, ImageManipProperties>, public HostRunnable {
+   private:
+    bool runOnHostVar = false;
+
+   protected:
+    Properties& getProperties() override;
+
    public:
     constexpr static const char* NAME = "ImageManip";
     using DeviceNodeCRTP::DeviceNodeCRTP;
+    using Backend = ImageManipProperties::Backend;
+    using PerformanceMode = ImageManipProperties::PerformanceMode;
 
-   protected:
-    Properties& getProperties();
-
-    void setWarpMesh(const float* meshData, int numMeshPoints, int width, int height);
-
-   public:
     ImageManip() = default;
     ImageManip(std::unique_ptr<Properties> props);
 
+    std::shared_ptr<ImageManip> build() {
+        return std::static_pointer_cast<ImageManip>(shared_from_this());
+    }
     /**
      * Initial config to use when manipulating frames
      */
@@ -33,16 +41,12 @@ class ImageManip : public DeviceNodeCRTP<DeviceNode, ImageManip, ImageManipPrope
 
     /**
      * Input ImageManipConfig message with ability to modify parameters in runtime
-     * Default queue is blocking with size 8
      */
-    // Input inputConfig{*this, "inputConfig", Input::Type::SReceiver, true, 8, {{DatatypeEnum::ImageManipConfig, true}}};
     Input inputConfig{*this, {"inputConfig", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ImageManipConfig, true}}}, false}};
 
     /**
      * Input image to be modified
-     * Default queue is blocking with size 8
      */
-    // Input inputImage{*this, "inputImage", Input::Type::SReceiver, true, 8, {{DatatypeEnum::ImgFrame, true}}, true};
     Input inputImage{*this, {"inputImage", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ImgFrame, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
@@ -50,28 +54,6 @@ class ImageManip : public DeviceNodeCRTP<DeviceNode, ImageManip, ImageManipPrope
      */
     // Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::ImgFrame, true}}};
     Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};
-
-    // Functions to set ImageManipConfig - deprecated
-    [[deprecated("Use 'initialConfig.setCropRect()' instead")]] void setCropRect(float xmin, float ymin, float xmax, float ymax);
-    [[deprecated("Use 'initialConfig.setCenterCrop()' instead")]] void setCenterCrop(float ratio, float whRatio = 1.0f);
-    [[deprecated("Use 'initialConfig.setResize()' instead")]] void setResize(int w, int h);
-    [[deprecated("Use 'initialConfig.setResizeThumbnail()' instead")]] void setResizeThumbnail(int w, int h, int bgRed = 0, int bgGreen = 0, int bgBlue = 0);
-    [[deprecated("Use 'initialConfig.setFrameType()' instead")]] void setFrameType(ImgFrame::Type name);
-    [[deprecated("Use 'initialConfig.setHorizontalFlip()' instead")]] void setHorizontalFlip(bool flip);
-    void setKeepAspectRatio(bool keep);
-
-    // Functions to set properties
-    /**
-     * Specify whether or not wait until configuration message arrives to inputConfig Input.
-     * @param wait True to wait for configuration message, false otherwise.
-     */
-    [[deprecated("Use 'inputConfig.setWaitForMessage()' instead")]] void setWaitForConfigInput(bool wait);
-
-    /**
-     * @see setWaitForConfigInput
-     * @returns True if wait for inputConfig message, false otherwise
-     */
-    [[deprecated("Use 'inputConfig.setWaitForMessage()' instead")]] bool getWaitForConfigInput() const;
 
     /**
      * Specify number of frames in pool.
@@ -86,14 +68,147 @@ class ImageManip : public DeviceNodeCRTP<DeviceNode, ImageManip, ImageManipPrope
     void setMaxOutputFrameSize(int maxFrameSize);
 
     /**
-     * Set a custom warp mesh
-     * @param meshData 2D plane of mesh points, starting from top left to bottom right
-     * @param width Width of mesh
-     * @param height Height of mesh
+     * Specify whether to run on host or device
+     * @param runOnHost Run node on host
      */
-    void setWarpMesh(const std::vector<Point2f>& meshData, int width, int height);
-    void setWarpMesh(const std::vector<std::pair<float, float>>& meshData, int width, int height);
+    ImageManip& setRunOnHost(bool runOnHost = true);
+
+    /**
+     * Set CPU as backend preference
+     * @param backend Backend preference
+     */
+    ImageManip& setBackend(Backend backend);
+
+    /**
+     * Set performance mode
+     * @param performanceMode Performance mode
+     */
+    ImageManip& setPerformanceMode(PerformanceMode performanceMode);
+
+    /**
+     * Check if the node is set to run on host
+     */
+    bool runOnHost() const override;
+
+    void run() override;
+
+    template <typename N, template <typename T> typename ImageManipBuffer, typename ImageManipData>
+    static void loop(N& node,
+                     const ImageManipConfig& initialConfig,
+                     std::shared_ptr<spdlog::async_logger> logger,
+                     std::function<size_t(const ImageManipConfig&, const ImgFrame&)> build,
+                     std::function<bool(std::shared_ptr<Memory>&, std::shared_ptr<ImageManipData>)> apply,
+                     std::function<void(const ImgFrame&, ImgFrame&)> getFrame);
 };
+
+}  // namespace node
+}  // namespace dai
+
+namespace dai {
+namespace node {
+
+template <typename N, template <typename T> typename ImageManipBuffer, typename ImageManipData>
+void ImageManip::loop(N& node,
+                        const ImageManipConfig& initialConfig,
+                        std::shared_ptr<spdlog::async_logger> logger,
+                        std::function<size_t(const ImageManipConfig&, const ImgFrame&)> build,
+                        std::function<bool(std::shared_ptr<Memory>&, std::shared_ptr<ImageManipData>)> apply,
+                        std::function<void(const ImgFrame&, ImgFrame&)> getFrame) {
+    using namespace std::chrono;
+    auto config = initialConfig;
+
+    std::shared_ptr<ImgFrame> inImage;
+
+    while(node.isRunning()) {
+        std::shared_ptr<ImageManipConfig> pConfig;
+        bool hasConfig = false;
+        bool needsImage = true;
+        bool skipImage = false;
+        if(node.inputConfig.getWaitForMessage()) {
+            pConfig = node.inputConfig.template get<ImageManipConfig>();
+            hasConfig = true;
+            if(inImage != nullptr && hasConfig && pConfig->getReusePreviousImage()) {
+                needsImage = false;
+            }
+            skipImage = pConfig->getSkipCurrentImage();
+        } else {
+            pConfig = node.inputConfig.template tryGet<ImageManipConfig>();
+            if(pConfig != nullptr) {
+                hasConfig = true;
+            }
+        }
+
+        if(needsImage) {
+            inImage = node.inputImage.template get<ImgFrame>();
+            if(inImage == nullptr) {
+                logger->warn("No input image, skipping frame");
+                continue;
+            }
+            if(!hasConfig) {
+                auto _pConfig = node.inputConfig.template tryGet<ImageManipConfig>();
+                if(_pConfig != nullptr) {
+                    pConfig = _pConfig;
+                    hasConfig = true;
+                }
+            }
+            if(skipImage) {
+                continue;
+            }
+        }
+
+        // if has new config, parse and check if any changes
+        if(hasConfig) {
+            config = *pConfig;
+        }
+        if(!node.inputConfig.getWaitForMessage() && config.getReusePreviousImage()) {
+            logger->warn("reusePreviousImage is only taken into account when inputConfig is synchronous");
+        }
+
+        auto startP = std::chrono::steady_clock::now();
+
+        auto t1 = steady_clock::now();
+        auto outputSize = build(config, *inImage);
+        auto t2 = steady_clock::now();
+
+        // Check the output image size requirements, and check whether pool has the size required
+        if(outputSize == 0) {
+            node.out.send(inImage);
+        } else if((long)outputSize <= (long)node.properties.outputFrameSize) {
+            auto outImage = std::make_shared<ImgFrame>();
+            auto outImageData = std::make_shared<ImageManipData>(node.properties.outputFrameSize);
+            outImage->data = outImageData;
+
+            bool success = true;
+            {
+                auto t3 = steady_clock::now();
+                success = apply(inImage->data, outImageData);
+                auto t4 = steady_clock::now();
+
+                getFrame(*inImage, *outImage);
+
+                logger->trace("Build time: {}us, Process time: {}us, Total time: {}us, image manip id: {}",
+                              duration_cast<microseconds>(t2 - t1).count(),
+                              duration_cast<microseconds>(t4 - t3).count(),
+                              duration_cast<microseconds>(t4 - t1).count(),
+                              node.id);
+            }
+            if(!success) {
+                logger->error("Processing failed, potentially unsupported config");
+            }
+            node.out.send(outImage);
+        } else {
+            logger->error(
+                "Output image is bigger ({}B) than maximum frame size specified in properties ({}B) - skipping frame.\nPlease use the setMaxOutputFrameSize "
+                "API to explicitly config the [maximum] output size.",
+                outputSize,
+                node.properties.outputFrameSize);
+        }
+
+        // Update previousConfig of preprocessor, to be able to check if it needs to be updated
+        auto loopNanos = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - startP).count();
+        logger->trace("ImageManip | total process took {}ns ({}ms)", loopNanos, (double)loopNanos / 1e6);
+    }
+}
 
 }  // namespace node
 }  // namespace dai

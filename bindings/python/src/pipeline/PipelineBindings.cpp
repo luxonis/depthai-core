@@ -22,7 +22,6 @@
 #include "depthai/pipeline/node/FeatureTracker.hpp"
 #include "depthai/pipeline/node/IMU.hpp"
 #include "depthai/pipeline/node/ImageManip.hpp"
-#include "depthai/pipeline/node/ImageManipV2.hpp"
 #include "depthai/pipeline/node/MonoCamera.hpp"
 #include "depthai/pipeline/node/NeuralNetwork.hpp"
 #include "depthai/pipeline/node/ObjectTracker.hpp"
@@ -214,7 +213,6 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("createScript", &Pipeline::create<node::Script>)
         .def("createSPIOut", &Pipeline::create<node::SPIOut>)
         .def("createSPIIn", &Pipeline::create<node::SPIIn>)
-        .def("createImageManip", &Pipeline::create<node::ImageManip>)
         .def("createMonoCamera", &Pipeline::create<node::MonoCamera>)
         .def("createStereoDepth", &Pipeline::create<node::StereoDepth>)
         .def("createMobileNetDetectionNetwork", &Pipeline::create<node::MobileNetDetectionNetwork>)

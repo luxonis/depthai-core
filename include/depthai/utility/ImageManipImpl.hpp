@@ -6,9 +6,9 @@
 #include <stdint.h>
 
 #include <cmath>
-#include <depthai/pipeline/datatype/ImageManipConfigV2.hpp>
+#include <depthai/pipeline/datatype/ImageManipConfig.hpp>
 #include <depthai/pipeline/datatype/ImgFrame.hpp>
-#include <depthai/properties/ImageManipPropertiesV2.hpp>
+#include <depthai/properties/ImageManipProperties.hpp>
 #include <sstream>
 
 #include "depthai/common/RotatedRect.hpp"
@@ -169,7 +169,7 @@ class Warp {
     Warp(std::shared_ptr<spdlog::async_logger> logger) : logger(logger) {}
     virtual ~Warp() = default;
 
-    virtual void init(ImageManipPropertiesV2& /* properties */) {}
+    virtual void init(ImageManipProperties& /* properties */) {}
     virtual void build(const FrameSpecs srcFrameSpecs,
                        const FrameSpecs dstFrameSpecs,
                        const ImgFrame::Type type,
@@ -290,7 +290,7 @@ class ImageManipOperations {
     static constexpr uint8_t MODE_COLORMAP = 1 << 1;
     static constexpr uint8_t MODE_WARP = 1 << 2;
 
-    ImageManipPropertiesV2 properties;
+    ImageManipProperties properties;
 
     uint8_t mode = 0;
     std::string prevConfig;
@@ -321,7 +321,7 @@ class ImageManipOperations {
     ColorChange<ImageManipBuffer, ImageManipData> clrChange;
 
    public:
-    ImageManipOperations(ImageManipPropertiesV2 props, std::shared_ptr<spdlog::async_logger> logger = nullptr) : properties(props), logger(logger) {
+    ImageManipOperations(ImageManipProperties props, std::shared_ptr<spdlog::async_logger> logger = nullptr) : properties(props), logger(logger) {
         preprocCc.setLogger(logger);
         warpEngine.setLogger(logger);
         clrChange.setLogger(logger);

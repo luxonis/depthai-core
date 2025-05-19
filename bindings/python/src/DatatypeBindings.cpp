@@ -101,7 +101,6 @@ void DatatypeBindings::bind(pybind11::module& m, void* pCallstack) {
         .value("EncodedFrame", DatatypeEnum::EncodedFrame)
         .value("NNData", DatatypeEnum::NNData)
         .value("ImageManipConfig", DatatypeEnum::ImageManipConfig)
-        .value("ImageManipConfigV2", DatatypeEnum::ImageManipConfigV2)
         .value("CameraControl", DatatypeEnum::CameraControl)
         .value("ImgDetections", DatatypeEnum::ImgDetections)
         .value("SpatialImgDetections", DatatypeEnum::SpatialImgDetections)

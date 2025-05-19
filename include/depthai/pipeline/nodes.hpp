@@ -12,7 +12,6 @@
 #include "node/FeatureTracker.hpp"
 #include "node/IMU.hpp"
 #include "node/ImageManip.hpp"
-#include "node/ImageManipV2.hpp"
 #include "node/MessageDemux.hpp"
 #include "node/MonoCamera.hpp"
 #include "node/NeuralNetwork.hpp"

@@ -1,7 +1,7 @@
 // Add test case for every transformation + edge cases
 
 #include "depthai/common/ImgTransformations.hpp"
-#include "depthai/utility/ImageManipV2Impl.hpp"
+#include "depthai/utility/ImageManipImpl.hpp"
 #define CATCH_CONFIG_MAIN
 
 #include <catch2/catch_all.hpp>

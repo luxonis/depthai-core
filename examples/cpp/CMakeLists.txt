@@ -273,8 +273,8 @@ dai_add_example(camera_multiple_outputs Camera/camera_multiple_outputs.cpp OFF O
 # ImageManip
 dai_add_example(image_manip_host HostNodes/image_manip_host.cpp OFF OFF)
 dai_add_example(image_manip_color_conversion_host HostNodes/image_manip_color_conversion.cpp OFF OFF)
-dai_add_example(image_manip_v2_resize ImageManip/image_manip_v2_resize.cpp OFF OFF)
-dai_add_example(image_manip_v2_multi_ops ImageManip/image_manip_v2_multi_ops.cpp OFF OFF)
+dai_add_example(image_manip_resize ImageManip/image_manip_resize.cpp OFF OFF)
+dai_add_example(image_manip_multi_ops ImageManip/image_manip_multi_ops.cpp OFF OFF)
 dai_add_example(image_manip_color_conversion ImageManip/image_manip_color_conversion.cpp OFF OFF)
 
 # Record
