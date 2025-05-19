@@ -17,6 +17,7 @@
 #include "depthai/utility/Compression.hpp"
 #include "depthai/utility/RecordReplay.hpp"
 #include "pipeline/Node.hpp"
+#include "utility/CompilerWarnings.hpp"
 
 #define UNUSED(x) (void)(x)
 
@@ -105,6 +106,7 @@ bool setupHolisticRecord(
             std::string nodeName = (nodeParams.video ? "v_" : "b_") + nodeParams.name;
             std::string filePath = platform::joinPaths(recordPath, (deviceId + "_").append(nodeName));
             outFilenames[nodeName] = filePath;
+DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
             if(std::dynamic_pointer_cast<node::Camera>(node) != nullptr || std::dynamic_pointer_cast<node::ColorCamera>(node) != nullptr
                || std::dynamic_pointer_cast<node::MonoCamera>(node) != nullptr) {
                 Node::Output* output;
@@ -130,6 +132,7 @@ bool setupHolisticRecord(
                             auto cam = std::dynamic_pointer_cast<dai::node::ColorCamera>(node);
                             maxOutputFrameSize = std::get<0>(cam->getIspSize()) * std::get<1>(cam->getIspSize()) * 3;
                         }
+DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING
                         auto imageManip = pipeline.create<dai::node::ImageManip>();
                         imageManip->initialConfig.setFrameType(ImgFrame::Type::NV12);
                         imageManip->setMaxOutputFrameSize(maxOutputFrameSize);
@@ -285,6 +288,7 @@ bool setupHolisticReplay(Pipeline& pipeline,
             }
             NodeRecordParams nodeParams = nodeS->getNodeRecordParams();
             std::string nodeName = nodeParams.name;
+DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
             if(std::dynamic_pointer_cast<node::Camera>(node) != nullptr || std::dynamic_pointer_cast<node::ColorCamera>(node) != nullptr
                || std::dynamic_pointer_cast<node::MonoCamera>(node) != nullptr) {
                 auto replay = pipeline.create<dai::node::ReplayVideo>();
@@ -309,6 +313,7 @@ bool setupHolisticReplay(Pipeline& pipeline,
                         cam->setMockIspSize(width, height);
                     }
                 }
+DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING
                 replay->out.link(nodeS->getReplayInput());
             } else {
                 auto replay = pipeline.create<dai::node::ReplayMetadataOnly>();
