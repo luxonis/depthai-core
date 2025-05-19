@@ -1,10 +1,10 @@
 #pragma once
 
-#include <spimpl.h>
-
 #include <optional>
 #include <string>
 #include <cstdint>
+
+#include "depthai/utility/spimpl.h"
 namespace dai {
 
 /// Version structure

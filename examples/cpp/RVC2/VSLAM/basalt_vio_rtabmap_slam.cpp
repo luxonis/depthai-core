@@ -11,8 +11,8 @@ int main() {
     int width = 640;
     int height = 400;
     // Define sources and outputs
-    auto left = pipeline.create<dai::node::MonoCamera>();
-    auto right = pipeline.create<dai::node::MonoCamera>();
+    auto left = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B, std::nullopt, fps);
+    auto right = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_C, std::nullopt, fps);
     auto stereo = pipeline.create<dai::node::StereoDepth>();
     auto imu = pipeline.create<dai::node::IMU>();
     auto odom = pipeline.create<dai::node::BasaltVIO>();
@@ -36,16 +36,9 @@ int main() {
     stereo->initialConfig->setLeftRightCheckThreshold(10);
     stereo->setDepthAlign(dai::StereoDepthProperties::DepthAlign::RECTIFIED_LEFT);
 
-    left->setCamera("left");
-    left->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
-    left->setFps(fps);
-    right->setCamera("right");
-    right->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
-    right->setFps(fps);
-
     // Linking
-    left->out.link(stereo->left);
-    right->out.link(stereo->right);
+    left->requestOutput(std::make_pair(width, height))->link(stereo->left);
+    right->requestOutput(std::make_pair(width, height))->link(stereo->right);
     stereo->syncedLeft.link(odom->left);
     stereo->syncedRight.link(odom->right);
     stereo->depth.link(slam->depth);

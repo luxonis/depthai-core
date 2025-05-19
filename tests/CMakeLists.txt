@@ -50,11 +50,11 @@ function(dai_add_test test_name test_src)
     endif()
 
     # Link to core and Catch2 testing framework
+    set(DEPTHAI_TARGET depthai::core)
     if(NOT DEPTHAI_MERGED_TARGET)
-        target_link_libraries(${test_name} PRIVATE depthai::opencv ${OpenCV_LIBS} Catch2::Catch2WithMain Threads::Threads)
-    else()
-        target_link_libraries(${test_name} PRIVATE depthai::core ${OpenCV_LIBS} Catch2::Catch2WithMain Threads::Threads)
+        set(DEPTHAI_TARGET depthai::opencv)
     endif()
+    target_link_libraries(${test_name} PRIVATE ${DEPTHAI_TARGET} ${OpenCV_LIBS} Catch2::Catch2WithMain Threads::Threads spdlog::spdlog)
 
     # Add sanitizers for tests as well
     if(COMMAND add_sanitizers)
@@ -282,8 +282,10 @@ dai_add_test(model_slug_test src/onhost_tests/model_slug_test.cpp)
 dai_set_test_labels(model_slug_test onhost ci)
 
 # Remote connection tests
-dai_add_test(remote_connection_test src/onhost_tests/remote_connection_test.cpp)
-dai_set_test_labels(remote_connection_test onhost ci nowindows)
+if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
+    dai_add_test(remote_connection_test src/onhost_tests/remote_connection_test.cpp)
+    dai_set_test_labels(remote_connection_test onhost ci nowindows)
+endif()
 ### On-device tests ###########################################################
 
 # Camera stream restart test

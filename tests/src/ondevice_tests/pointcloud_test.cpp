@@ -2,58 +2,27 @@
 #include <catch2/catch_test_macros.hpp>
 #include <depthai/depthai.hpp>
 
+#include "depthai/pipeline/MessageQueue.hpp"
 #include "depthai/pipeline/datatype/PointCloudData.hpp"
 
-dai::Pipeline getPipeline(bool sparse) {
-    dai::Pipeline pipeline;
-    auto monoLeft = pipeline.create<dai::node::MonoCamera>();
-    auto monoRight = pipeline.create<dai::node::MonoCamera>();
+std::shared_ptr<dai::MessageQueue> configurePipeline(bool sparse, dai::Pipeline& pipeline) {
+    auto monoLeft = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B);
+    auto monoRight = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_C);
     auto stereo = pipeline.create<dai::node::StereoDepth>();
     auto pointcloud = pipeline.create<dai::node::PointCloud>();
-    auto xout = pipeline.create<dai::node::XLinkOut>();
 
-    monoLeft->setCamera("left");
-    monoRight->setCamera("right");
-
-    monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
-    monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
-
-    if(pipeline.getDefaultDevice()->getPlatform() == dai::Platform::RVC2) stereo->setOutputSize(1280, 720);
-
-    xout->setStreamName("out");
 
     pointcloud->initialConfig->setSparse(sparse);
 
-    monoLeft->out.link(stereo->left);
-    monoRight->out.link(stereo->right);
+    monoLeft->requestFullResolutionOutput()->link(stereo->left);
+    monoRight->requestFullResolutionOutput()->link(stereo->right);
     stereo->depth.link(pointcloud->inputDepth);
-    pointcloud->outputPointCloud.link(xout->input);
-
-    return pipeline;
+    return pointcloud->outputPointCloud.createOutputQueue();
 }
 
 TEST_CASE("dense pointcloud") {
     dai::Pipeline pipeline;
-    auto monoLeft = pipeline.create<dai::node::MonoCamera>();
-    auto monoRight = pipeline.create<dai::node::MonoCamera>();
-    auto stereo = pipeline.create<dai::node::StereoDepth>();
-    auto pointcloud = pipeline.create<dai::node::PointCloud>();
-
-    monoLeft->setCamera("left");
-    monoRight->setCamera("right");
-
-    monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
-    monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
-
-    if(pipeline.getDefaultDevice()->getPlatform() == dai::Platform::RVC2) stereo->setOutputSize(1280, 720);
-
-    pointcloud->initialConfig->setSparse(false);
-
-    monoLeft->out.link(stereo->left);
-    monoRight->out.link(stereo->right);
-    stereo->depth.link(pointcloud->inputDepth);
-
-    auto outQ = pointcloud->outputPointCloud.createOutputQueue();
+    auto outQ = configurePipeline(false, pipeline);
     pipeline.start();
     for(int i = 0; i < 10; ++i) {
         auto pcl = outQ->get<dai::PointCloudData>();
@@ -69,26 +38,7 @@ TEST_CASE("dense pointcloud") {
 
 TEST_CASE("sparse pointcloud") {
     dai::Pipeline pipeline;
-    auto monoLeft = pipeline.create<dai::node::MonoCamera>();
-    auto monoRight = pipeline.create<dai::node::MonoCamera>();
-    auto stereo = pipeline.create<dai::node::StereoDepth>();
-    auto pointcloud = pipeline.create<dai::node::PointCloud>();
-
-    monoLeft->setCamera("left");
-    monoRight->setCamera("right");
-
-    monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
-    monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
-
-    stereo->setOutputSize(1280, 720);
-
-    pointcloud->initialConfig->setSparse(true);
-
-    monoLeft->out.link(stereo->left);
-    monoRight->out.link(stereo->right);
-    stereo->depth.link(pointcloud->inputDepth);
-
-    auto outQ = pointcloud->outputPointCloud.createOutputQueue();
+    auto outQ = configurePipeline(true, pipeline);
     pipeline.start();
     for(int i = 0; i < 10; ++i) {
         auto pcl = outQ->get<dai::PointCloudData>();

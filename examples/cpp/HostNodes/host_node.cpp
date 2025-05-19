@@ -59,16 +59,13 @@ class StreamMerger : public dai::NodeCRTP<dai::node::HostNode, StreamMerger> {
 
 int main() {
     // Create pipeline
-    dai::Pipeline pipeline(true);
+    dai::Pipeline pipeline;
 
-    auto camRgb = pipeline.create<dai::node::ColorCamera>();
-    camRgb->setBoardSocket(dai::CameraBoardSocket::CAM_A);
-    camRgb->setVideoSize(640, 480);
+    auto camRgb = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A);
+    auto camMono = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B);
 
-    auto camMono = pipeline.create<dai::node::MonoCamera>();
-    camMono->setBoardSocket(dai::CameraBoardSocket::CAM_B);
-
-    auto streamMerger = pipeline.create<StreamMerger>()->build(camRgb->video, camMono->out);
+    auto streamMerger = pipeline.create<StreamMerger>()->build(*camRgb->requestOutput(std::make_pair(640, 480)), 
+                                                                *camMono->requestOutput(std::make_pair(640, 480)));
     auto display = pipeline.create<Display>()->build(streamMerger->out);
 
     pipeline.start();

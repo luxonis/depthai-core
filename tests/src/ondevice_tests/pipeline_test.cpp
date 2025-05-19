@@ -13,13 +13,13 @@ TEST_CASE("Pipeline link and remove") {
 
 TEST_CASE("Pipeline node creation, link, unlink and removal") {
     dai::Pipeline p;
-    auto cam = p.create<dai::node::ColorCamera>();
+    auto cam = p.create<dai::node::ImageManip>();
     auto xlink = p.create<dai::node::XLinkOut>();
 
     REQUIRE(p.getConnections().size() == 0);
     REQUIRE(p.getAllNodes().size() == 2);
 
-    cam->preview.link(xlink->input);
+    cam->out.link(xlink->input);
 
     REQUIRE(p.getConnections().size() == 1);
 

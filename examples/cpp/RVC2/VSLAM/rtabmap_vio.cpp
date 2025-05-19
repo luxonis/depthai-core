@@ -7,12 +7,11 @@ int main() {
     // ULogger::setLevel(ULogger::kDebug);
     // Create pipeline
     dai::Pipeline pipeline;
-    int fps = 30;
     int width = 640;
     int height = 400;
     // Define sources and outputs
-    auto left = pipeline.create<dai::node::MonoCamera>();
-    auto right = pipeline.create<dai::node::MonoCamera>();
+    auto left = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B);
+    auto right = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_C);
     auto stereo = pipeline.create<dai::node::StereoDepth>();
     auto imu = pipeline.create<dai::node::IMU>();
     auto featureTracker = pipeline.create<dai::node::FeatureTracker>();
@@ -27,17 +26,12 @@ int main() {
     imu->setMaxBatchReports(10);
 
     featureTracker->setHardwareResources(1, 2);
+
     featureTracker->initialConfig->setCornerDetector(dai::FeatureTrackerConfig::CornerDetector::Type::SHI_THOMASI);
     featureTracker->initialConfig->setNumTargetFeatures(1000);
     featureTracker->initialConfig->setMotionEstimator(false);
     featureTracker->initialConfig->featureMaintainer.minimumDistanceBetweenFeatures = 49.0;
-    // stereo->setAlphaScaling(0.0);
-    left->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
-    left->setCamera("left");
-    left->setFps(fps);
-    right->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
-    right->setCamera("right");
-    right->setFps(fps);
+
     stereo->setExtendedDisparity(false);
 
     stereo->setLeftRightCheck(true);
@@ -47,8 +41,8 @@ int main() {
     stereo->setDepthAlign(dai::StereoDepthProperties::DepthAlign::RECTIFIED_LEFT);
 
     // Linking
-    left->out.link(stereo->left);
-    right->out.link(stereo->right);
+    left->requestOutput(std::make_pair(width, height))->link(stereo->left);
+    right->requestOutput(std::make_pair(width, height))->link(stereo->right);
     stereo->rectifiedLeft.link(featureTracker->inputImage);
     featureTracker->passthroughInputImage.link(odom->rect);
     stereo->depth.link(odom->depth);
