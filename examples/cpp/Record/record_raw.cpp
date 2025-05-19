@@ -3,23 +3,10 @@
 #include "depthai/capabilities/ImgFrameCapability.hpp"
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/pipeline/node/host/Record.hpp"
-
+#include "utility.hpp"
 #ifndef DEPTHAI_HAVE_OPENCV_SUPPORT
     #error This example needs OpenCV support, which is not available on your system
 #endif
-
-std::string getDefaultRecordingPath() {
-    auto isTest = std::getenv("RUNNING_AS_TEST");
-    if(isTest && std::string(isTest) == "1") {
-        // If running as test save to temporary directory
-        char tmpTemplate[] = "raw_recording_XXXXXX";
-        char* tmpName = mkdtemp(tmpTemplate);
-        auto tmpDir = std::filesystem::temp_directory_path();
-        return (tmpDir / tmpName).string();
-    } else {
-        return "raw_recording";
-    }
-}
 
 int main(int argc, char** argv) {
     dai::Pipeline pipeline(true);

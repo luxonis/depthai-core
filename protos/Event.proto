@@ -2,8 +2,6 @@ syntax = "proto3";
 
 package dai.proto.event;
 
-import "common.proto";
-
 message BatchUploadEvents {
   repeated Event events = 1;
 }

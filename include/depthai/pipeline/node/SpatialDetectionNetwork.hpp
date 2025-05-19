@@ -6,7 +6,6 @@
 #include <depthai/pipeline/node/DetectionNetwork.hpp>
 #include <depthai/pipeline/node/ImageAlign.hpp>
 #include <depthai/pipeline/node/StereoDepth.hpp>
-#include <depthai/pipeline/node/host/Replay.hpp>
 
 #include "depthai/openvino/OpenVINO.hpp"
 

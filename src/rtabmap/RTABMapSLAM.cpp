@@ -5,6 +5,7 @@
 #include <spdlog/spdlog.h>
 
 #include "depthai/pipeline/Pipeline.hpp"
+#include "pipeline/ThreadedNodeImpl.hpp"
 #include "rtabmap/core/util3d.h"
 #include "rtabmap/core/util3d_mapping.h"
 
@@ -32,6 +33,8 @@ void RTABMapSLAM::buildInternal() {
 }
 
 RTABMapSLAM::~RTABMapSLAM() {
+    auto& logger = pimpl->logger;
+
     if(saveDatabaseOnClose) {
         if(databasePath.empty()) {
             databasePath = "/tmp/rtabmap.db";
@@ -111,6 +114,7 @@ void RTABMapSLAM::odomPoseCB(std::shared_ptr<dai::ADatatype> data) {
 }
 
 void RTABMapSLAM::run() {
+    auto& logger = pimpl->logger;
     while(isRunning()) {
         if(!initialized) {
             continue;

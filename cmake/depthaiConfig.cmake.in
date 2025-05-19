@@ -1,20 +1,34 @@
-# Get whether library was build as shared or not
-set(DEPTHAI_SHARED_LIBS @BUILD_SHARED_LIBS@)
+include(CMakeFindDependencyMacro)
 
-# Get library options
-# Get whether library was build with Backward or not
-set(DEPTHAI_ENABLE_BACKWARD @DEPTHAI_ENABLE_BACKWARD@)
-set(DEPTHAI_ENABLE_CURL @DEPTHAI_ENABLE_CURL@)
-set(DEPTHAI_XLINK_LOCAL @DEPTHAI_XLINK_LOCAL@)
+find_dependency(nlohmann_json CONFIG REQUIRED)
+find_dependency(libnop CONFIG REQUIRED)
+find_dependency(XLink CONFIG REQUIRED COMPONENTS XLinkPublic)
 
-# Specify that this is config mode (Called by find_package)
-set(CONFIG_MODE TRUE)
+set(DEPTHAI_OPENCV_SUPPORT @DEPTHAI_OPENCV_SUPPORT@)
+set(DEPTHAI_BASALT_SUPPORT @DEPTHAI_BASALT_SUPPORT@)
+set(DEPTHAI_RTABMAP_SUPPORT @DEPTHAI_RTABMAP_SUPPORT@)
+set(DEPTHAI_PCL_SUPPORT @DEPTHAI_PCL_SUPPORT@)
+set(DEPTHAI_XTENSOR_SUPPORT @DEPTHAI_XTENSOR_SUPPORT@)
 
-# Compute the installation prefix relative to this file.
-set(_IMPORT_PREFIX "@DEPTHAI_DEPENDENCIES_INSTALLATION_PATH_REL@")
+if(DEPTHAI_OPENCV_SUPPORT)
+    find_dependency(OpenCV 4 CONFIG REQUIRED)
+endif()
 
-# Add dependencies file
-include("${CMAKE_CURRENT_LIST_DIR}/@PROJECT_NAME@Dependencies.cmake")
+if(DEPTHAI_RTABMAP_SUPPORT)
+    find_dependency(rtabmap CONFIG REQUIRED)
+endif()
+
+if(DEPTHAI_BASALT_SUPPORT)
+    find_dependency(Basalt CONFIG REQUIRED)
+endif()
+
+if(DEPTHAI_PCL_SUPPORT)
+    find_dependency(PCL CONFIG REQUIRED)
+endif()
+
+if(DEPTHAI_XTENSOR_SUPPORT)
+    find_dependency(xtensor CONFIG REQUIRED)
+endif()
 
 # Add the targets file
 include("${CMAKE_CURRENT_LIST_DIR}/@PROJECT_EXPORT_GROUP@.cmake")

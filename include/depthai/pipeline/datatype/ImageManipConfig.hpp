@@ -1,7 +1,6 @@
 #pragma once
 
 #include <nop/structure.h>
-#include <spdlog/async_logger.h>
 
 #include <array>
 #include <locale>

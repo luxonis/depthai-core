@@ -161,6 +161,7 @@ bool deserializationSupported(DatatypeEnum datatype) {
         case DatatypeEnum::PointCloudConfig:
         case DatatypeEnum::ImageAlignConfig:
         case DatatypeEnum::ImgAnnotations:
+        case DatatypeEnum::RGBDData:
             return false;
     }
     return false;

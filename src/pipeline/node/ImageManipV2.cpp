@@ -1,23 +1,23 @@
-#include "depthai/pipeline/node/ImageManip.hpp"
+#include "depthai/pipeline/node/ImageManipV2.hpp"
 
-#include "depthai/utility/ImageManipImpl.hpp"
+#include "depthai/utility/ImageManipV2Impl.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
 
 namespace dai {
 
 namespace node {
 
-ImageManip::ImageManip(std::unique_ptr<Properties> props)
-    : DeviceNodeCRTP<DeviceNode, ImageManip, ImageManipProperties>(std::move(props)), initialConfig(properties.initialConfig) {}
+ImageManipV2::ImageManipV2(std::unique_ptr<Properties> props)
+    : DeviceNodeCRTP<DeviceNode, ImageManipV2, ImageManipPropertiesV2>(std::move(props)), initialConfig(properties.initialConfig) {}
 
-void ImageManip::run() {
+void ImageManipV2::run() {
     impl::ImageManipOperations<impl::_ImageManipBuffer, impl::_ImageManipMemory, impl::WarpH> manip(properties, pimpl->logger);
     auto iConf = runOnHost() ? initialConfig : properties.initialConfig;
-    impl::loop<ImageManip, impl::_ImageManipBuffer, impl::_ImageManipMemory>(
+    impl::loop<ImageManipV2, impl::_ImageManipBuffer, impl::_ImageManipMemory>(
         *this,
         iConf,
         pimpl->logger,
-        [&](const ImageManipConfig& config, const ImgFrame& frame) {
+        [&](const ImageManipConfigV2& config, const ImgFrame& frame) {
             auto srcFrameSpecs = impl::getSrcFrameSpecs(frame.fb);
             manip.build(config.base, config.outputFrameType, srcFrameSpecs, frame.getType());
             return manip.getOutputSize();
@@ -54,27 +54,27 @@ void ImageManip::run() {
         });
 }
 
-void ImageManip::setNumFramesPool(int numFramesPool) {
+void ImageManipV2::setNumFramesPool(int numFramesPool) {
     properties.numFramesPool = numFramesPool;
 }
 
-void ImageManip::setMaxOutputFrameSize(int maxFrameSize) {
+void ImageManipV2::setMaxOutputFrameSize(int maxFrameSize) {
     properties.outputFrameSize = maxFrameSize;
 }
 
-ImageManip::Properties& ImageManip::getProperties() {
+ImageManipV2::Properties& ImageManipV2::getProperties() {
     properties.initialConfig = initialConfig;
     return properties;
 }
-ImageManip& ImageManip::setRunOnHost(bool _runOnHost) {
+ImageManipV2& ImageManipV2::setRunOnHost(bool _runOnHost) {
     runOnHostVar = _runOnHost;
     return *this;
 }
-ImageManip& ImageManip::setBackend(Backend backend) {
+ImageManipV2& ImageManipV2::setBackend(Backend backend) {
     properties.backend = backend;
     return *this;
 }
-ImageManip& ImageManip::setPerformanceMode(ImageManip::PerformanceMode performanceMode) {
+ImageManipV2& ImageManipV2::setPerformanceMode(ImageManipV2::PerformanceMode performanceMode) {
     properties.performanceMode = performanceMode;
     return *this;
 }
@@ -82,7 +82,7 @@ ImageManip& ImageManip::setPerformanceMode(ImageManip::PerformanceMode performan
 /**
  * Check if the node is set to run on host
  */
-bool ImageManip::runOnHost() const {
+bool ImageManipV2::runOnHost() const {
     return runOnHostVar;
 }
 

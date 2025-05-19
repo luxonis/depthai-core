@@ -2,23 +2,25 @@
 
 #include <spdlog/spdlog.h>
 
+#include "pipeline/ThreadedNodeImpl.hpp"
 #include "utility/Environment.hpp"
+#include "utility/ErrorMacros.hpp"
 #include "utility/Logging.hpp"
 #include "utility/Platform.hpp"
-#include "utility/ErrorMacros.hpp"
 
 namespace dai {
+
 ThreadedNode::ThreadedNode() {
+    pimpl = std::make_unique<Impl>();
     auto level = spdlog::level::warn;
     auto envLevel = utility::getEnvAs<std::string>("DEPTHAI_LEVEL", "");
     if(!envLevel.empty()) {
         level = Logging::parseLevel(envLevel);
     }
-    logger->set_level(level);
+    pimpl->logger->set_level(level);
 }
 
 void ThreadedNode::start() {
-
     // A node should not be started if it is already running
     // We would be creating multiple threads for the same node
     DAI_CHECK_V(!isRunning(), "Node with id {} is already running. Cannot start it again. Node name: {}", id, getName());
@@ -32,16 +34,16 @@ void ThreadedNode::start() {
         } catch(const MessageQueue::QueueException& ex) {
             // catch the exception and stop the node
             auto expStr = fmt::format("Node stopped with a queue exception: {}", ex.what());
-            if(logger) {
-                logger->trace(expStr);
+            if(pimpl->logger) {
+                pimpl->logger->trace(expStr);
             } else {
                 spdlog::trace(expStr);
             }
             running = false;
         } catch(const std::runtime_error& ex) {
             auto expStr = fmt::format("Node threw exception, stopping the node. Exception message: {}", ex.what());
-            if(logger) {
-                logger->error(expStr);
+            if(pimpl->logger) {
+                pimpl->logger->error(expStr);
             } else {
                 spdlog::error(expStr);
             }
@@ -71,11 +73,11 @@ void ThreadedNode::stop() {
 }
 
 void ThreadedNode::setLogLevel(dai::LogLevel level) {
-    logger->set_level(logLevelToSpdlogLevel(level, spdlog::level::warn));
+    pimpl->logger->set_level(logLevelToSpdlogLevel(level, spdlog::level::warn));
 }
 
 dai::LogLevel ThreadedNode::getLogLevel() const {
-    return spdlogLevelToLogLevel(logger->level(), LogLevel::WARN);
+    return spdlogLevelToLogLevel(pimpl->logger->level(), LogLevel::WARN);
 }
 
 bool ThreadedNode::isRunning() const {
