@@ -5,6 +5,7 @@
 #include "depthai/pipeline/node/ColorCamera.hpp"
 #include "depthai/utility/CompilerWarnings.hpp"
 
+DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
 void bind_colorcamera(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::node;
@@ -89,7 +90,6 @@ void bind_colorcamera(pybind11::module& m, void* pCallstack) {
         .def_readwrite("warpMeshStepWidth", &ColorCameraProperties::warpMeshStepWidth)
         .def_readwrite("warpMeshStepHeight", &ColorCameraProperties::warpMeshStepHeight)
         .def_readwrite("eventFilter", &ColorCameraProperties::eventFilter);
-    DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
     // ColorCamera node
     colorCamera
         .def(py::init([]() {

@@ -3,11 +3,13 @@
 #include "depthai/pipeline/Node.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/node/MonoCamera.hpp"
+#include "depthai/utility/CompilerWarnings.hpp"
 
 void bind_monocamera(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::node;
 
+    DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
     // Node and Properties declare upfront
     py::class_<MonoCameraProperties> monoCameraProperties(m, "MonoCameraProperties", DOC(dai, MonoCameraProperties));
     py::enum_<MonoCameraProperties::SensorResolution> monoCameraPropertiesSensorResolution(
@@ -93,4 +95,5 @@ void bind_monocamera(pybind11::module& m, void* pCallstack) {
         .def("setRawOutputPacked", &MonoCamera::setRawOutputPacked, py::arg("packed"), DOC(dai, node, MonoCamera, setRawOutputPacked));
     // ALIAS
     daiNodeModule.attr("MonoCamera").attr("Properties") = monoCameraProperties;
+    DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING
 }

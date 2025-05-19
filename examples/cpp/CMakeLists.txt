@@ -306,8 +306,6 @@ dai_set_example_test_labels(stereo ondevice rvc2_all rvc4 ci)
 dai_add_example(thermal RVC2/Thermal/thermal.cpp OFF OFF)
 
 # Host nodes
-dai_add_example(rgb_video RVC2/ColorCamera/rgb_video.cpp OFF OFF)
-dai_add_example(rgb_video_camera RVC2/Camera/rgb_video_camera.cpp OFF OFF)
 dai_add_example(host_node HostNodes/host_node.cpp OFF OFF)
 dai_add_example(threaded_host_node HostNodes/threaded_host_node.cpp OFF OFF)
 

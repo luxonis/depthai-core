@@ -176,6 +176,19 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
                 // so we create in the same manner as device nodes.
                 auto isFromBindings = class_.attr("__module__").cast<std::string>() == "depthai.node";
                 // Create a copy from kwargs and add autoAddToPipeline to false
+
+                // Check if the node is a ColorCamera or a MonoCamera node and issue a deprecation warning
+                py::object colorCameraClass = py::module::import("depthai").attr("node").attr("ColorCamera");
+                py::object monoCameraClass = py::module::import("depthai").attr("node").attr("MonoCamera");
+                if(class_.is(colorCameraClass)){
+                    PyErr_WarnEx(PyExc_DeprecationWarning,
+                                 "ColorCamera node is deprecated. Use Camera node instead.", 1);
+                }
+
+                if(class_.is(monoCameraClass)){
+                    PyErr_WarnEx(PyExc_DeprecationWarning,
+                                 "MonoCamera node is deprecated. Use Camera node instead.", 1);
+                }
                 if(isSubclass && !isFromBindings) {
                     setImplicitPipeline(&p);
                     std::shared_ptr<Node> hostNode = py::cast<std::shared_ptr<node::ThreadedHostNode>>(class_(*args, **kwargs));
@@ -203,33 +216,6 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
                 return node;
             },
             py::keep_alive<1, 0>())
-        // TODO(themarpe) DEPRECATE, use pipeline.create([class name])
-        // templated create<NODE> function
-        .def("createXLinkIn", &Pipeline::create<node::XLinkIn>)
-        .def("createXLinkOut", &Pipeline::create<node::XLinkOut>)
-        .def("createNeuralNetwork", &Pipeline::create<node::NeuralNetwork>)
-        .def("createColorCamera", &Pipeline::create<node::ColorCamera>)
-        .def("createVideoEncoder", &Pipeline::create<node::VideoEncoder>)
-        .def("createScript", &Pipeline::create<node::Script>)
-        .def("createSPIOut", &Pipeline::create<node::SPIOut>)
-        .def("createSPIIn", &Pipeline::create<node::SPIIn>)
-        .def("createMonoCamera", &Pipeline::create<node::MonoCamera>)
-        .def("createStereoDepth", &Pipeline::create<node::StereoDepth>)
-        .def("createMobileNetDetectionNetwork", &Pipeline::create<node::MobileNetDetectionNetwork>)
-        .def("createYoloDetectionNetwork", &Pipeline::create<node::YoloDetectionNetwork>)
-        .def("createSystemLogger", &Pipeline::create<node::SystemLogger>)
-        .def("createSpatialLocationCalculator", &Pipeline::create<node::SpatialLocationCalculator>)
-        .def("createMobileNetSpatialDetectionNetwork", &Pipeline::create<node::MobileNetSpatialDetectionNetwork>)
-        .def("createYoloSpatialDetectionNetwork", &Pipeline::create<node::YoloSpatialDetectionNetwork>)
-        .def("createObjectTracker", &Pipeline::create<node::ObjectTracker>)
-        .def("createIMU", &Pipeline::create<node::IMU>)
-        .def("createEdgeDetector", &Pipeline::create<node::EdgeDetector>)
-        .def("createFeatureTracker", &Pipeline::create<node::FeatureTracker>)
-        .def("createAprilTag", &Pipeline::create<node::AprilTag>)
-        .def("createDetectionParser", &Pipeline::create<node::DetectionParser>)
-        .def("createUVC", &Pipeline::create<node::UVC>)
-        .def("createCamera", &Pipeline::create<node::Camera>)
-        .def("createWarp", &Pipeline::create<node::Warp>)
         .def("start", &Pipeline::start)
         .def("wait",
              [](Pipeline& p) {

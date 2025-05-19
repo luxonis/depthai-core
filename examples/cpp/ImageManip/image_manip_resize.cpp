@@ -16,24 +16,18 @@ int main(int argc, char** argv) {
     }
     dai::Pipeline pipeline(device);
 
-    auto camRgb = pipeline.create<dai::node::ColorCamera>();
+    auto camRgb = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A);
     auto display = pipeline.create<dai::node::Display>();
     auto manip = pipeline.create<dai::node::ImageManip>();
 
-    camRgb->setBoardSocket(dai::CameraBoardSocket::CAM_A);
-    camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
 
     // Resize to 400x400 and avoid stretching by cropping from the center
     manip->initialConfig.setOutputSize(400, 400, dai::ImageManipConfig::ResizeMode::CENTER_CROP);
     // Set output frame type
     manip->initialConfig.setFrameType(dai::ImgFrame::Type::RGB888i);
 
-    camRgb->video.link(manip->inputImage);
+    camRgb->requestOutput((std::make_pair(1920, 1080)))->link(manip->inputImage);
     manip->out.link(display->input);
 
-    pipeline.start();
-
-    std::this_thread::sleep_for(std::chrono::seconds(30));
-
-    pipeline.stop();
+    pipeline.run();
 }
