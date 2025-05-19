@@ -181,14 +181,12 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
                 // Check if the node is a ColorCamera or a MonoCamera node and issue a deprecation warning
                 py::object colorCameraClass = py::module::import("depthai").attr("node").attr("ColorCamera");
                 py::object monoCameraClass = py::module::import("depthai").attr("node").attr("MonoCamera");
-                if(class_.is(colorCameraClass)){
-                    PyErr_WarnEx(PyExc_DeprecationWarning,
-                                 "ColorCamera node is deprecated. Use Camera node instead.", 1);
+                if(class_.is(colorCameraClass)) {
+                    PyErr_WarnEx(PyExc_DeprecationWarning, "ColorCamera node is deprecated. Use Camera node instead.", 1);
                 }
 
-                if(class_.is(monoCameraClass)){
-                    PyErr_WarnEx(PyExc_DeprecationWarning,
-                                 "MonoCamera node is deprecated. Use Camera node instead.", 1);
+                if(class_.is(monoCameraClass)) {
+                    PyErr_WarnEx(PyExc_DeprecationWarning, "MonoCamera node is deprecated. Use Camera node instead.", 1);
                 }
                 if(isSubclass && !isFromBindings) {
                     setImplicitPipeline(&p);
