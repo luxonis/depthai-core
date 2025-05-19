@@ -13,3 +13,5 @@ dai_add_example(image_manip_host image_manip_host.cpp OFF OFF)
 dai_add_example(image_manip_color_conversion_host image_manip_color_conversion.cpp OFF OFF)
 
 dai_add_example(display display.cpp OFF OFF)
+
+dai_add_example(host_camera host_camera.cpp OFF OFF)
