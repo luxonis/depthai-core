@@ -8,3 +8,5 @@ dai_add_example(depth_preview depth_preview.cpp OFF OFF)
 
 dai_add_example(stereo stereo.cpp ON OFF)
 dai_set_example_test_labels(stereo ondevice rvc2_all rvc4 ci)
+
+dai_add_example(stereo_depth_remap stereo_depth_remap.cpp OFF OFF)
