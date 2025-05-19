@@ -6,16 +6,15 @@
 #include "depthai/pipeline/InputQueue.hpp"
 #include "depthai/utility/CompilerWarnings.hpp"
 
-
 TEST_CASE("Test ColorCamera node") {
     using namespace std;
     using namespace std::chrono;
     using namespace std::chrono_literals;
 
     dai::Pipeline p;
-DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
+    DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
     auto colorCam = p.create<dai::node::ColorCamera>();
-DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING
+    DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING
 
     int previewWidth = 0;
     int previewHeight = 0;

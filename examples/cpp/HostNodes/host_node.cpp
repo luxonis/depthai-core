@@ -64,8 +64,8 @@ int main() {
     auto camRgb = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A);
     auto camMono = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B);
 
-    auto streamMerger = pipeline.create<StreamMerger>()->build(*camRgb->requestOutput(std::make_pair(640, 480)), 
-                                                                *camMono->requestOutput(std::make_pair(640, 480)));
+    auto streamMerger =
+        pipeline.create<StreamMerger>()->build(*camRgb->requestOutput(std::make_pair(640, 480)), *camMono->requestOutput(std::make_pair(640, 480)));
     auto display = pipeline.create<Display>()->build(streamMerger->out);
 
     pipeline.start();

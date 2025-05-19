@@ -8,8 +8,6 @@
 #include <sstream>
 #include <utility>
 
-#include "cpr/cpr.h"
-
 #include "Environment.hpp"
 #include "Logging.hpp"
 #include "cpr/cpr.h"
