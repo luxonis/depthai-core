@@ -9,5 +9,7 @@ if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
     dai_set_example_test_labels(visualizer_yolo ondevice rvc2_all rvc4)
 
     dai_add_example(custom_services custom_services.cpp OFF OFF)
+
+    dai_add_example(visualizer_encoded visualizer_encoded.cpp OFF OFF)
 endif()
 
