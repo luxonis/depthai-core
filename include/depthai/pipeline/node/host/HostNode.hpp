@@ -41,7 +41,24 @@ class HostNode : public ThreadedHostNode {
     }
 };
 
+/**
+ * @brief Custom node for host node. When creating a custom host node, inherit from this class!
+ * @tparam T Node type (same as the class you are creating)
+ * 
+ * Example:
+ * @code{.cpp}
+ * class MyNode : public CustomNode<MyNode> {
+ *     std::shared_ptr<Buffer> processGroup(std::shared_ptr<dai::MessageGroup> in) override {
+ *         auto frame = in->get<dai::ImgFrame>("data");
+ *         // process frame
+ *         // ...
+ *         return nullptr; // Don't return anything, just process
+ *     }
+ * };
+ * @endcode
+ */
 template <typename T>
 using CustomNode = NodeCRTP<HostNode, T>;
+
 }  // namespace node
 }  // namespace dai
