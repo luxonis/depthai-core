@@ -5,3 +5,5 @@ cmake_minimum_required(VERSION 3.10)
 ## function: dai_set_example_test_labels(example_name ...)
 
 dai_add_example(nn_archive nn_archive.cpp OFF OFF)
+
+dai_add_example(nn_archive_superblob nn_archive_superblob.cpp OFF OFF)
