@@ -11,3 +11,5 @@ dai_add_example(threaded_host_node threaded_host_node.cpp OFF OFF)
 dai_add_example(image_manip_host image_manip_host.cpp OFF OFF)
 
 dai_add_example(image_manip_color_conversion_host image_manip_color_conversion.cpp OFF OFF)
+
+dai_add_example(display display.cpp OFF OFF)
