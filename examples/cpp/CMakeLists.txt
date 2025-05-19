@@ -115,6 +115,7 @@ function(dai_install_file example_name file_name)
     file(COPY ${CMAKE_CURRENT_LIST_DIR}/${file_name} DESTINATION ".")  # copy file to where the example is built
 endfunction()
 
+add_subdirectory(AprilTags)
 add_subdirectory(Benchmark)
 add_subdirectory(Camera)
 add_subdirectory(DetectionNetwork)
