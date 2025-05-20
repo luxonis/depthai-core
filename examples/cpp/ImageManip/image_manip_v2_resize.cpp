@@ -20,7 +20,6 @@ int main(int argc, char** argv) {
     auto display = pipeline.create<dai::node::Display>();
     auto manip = pipeline.create<dai::node::ImageManipV2>();
 
-
     // Resize to 400x400 and avoid stretching by cropping from the center
     manip->initialConfig->setOutputSize(400, 400, dai::ImageManipConfigV2::ResizeMode::CENTER_CROP);
     // Set output frame type

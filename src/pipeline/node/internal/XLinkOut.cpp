@@ -1,8 +1,8 @@
-#include "depthai/pipeline/node/XLinkOut.hpp"
+#include "depthai/pipeline/node/internal/XLinkOut.hpp"
 
 namespace dai {
 namespace node {
-
+namespace internal {
 void XLinkOut::buildInternal() {
     // set some default properties
     properties.maxFpsLimit = -1;
@@ -32,5 +32,6 @@ bool XLinkOut::getMetadataOnly() const {
     return properties.metadataOnly;
 }
 
+}  // namespace internal
 }  // namespace node
 }  // namespace dai

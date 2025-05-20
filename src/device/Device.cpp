@@ -14,8 +14,8 @@
 // project
 #include "DeviceLogger.hpp"
 #include "depthai/device/DeviceBootloader.hpp"
-#include "depthai/pipeline/node/XLinkIn.hpp"
-#include "depthai/pipeline/node/XLinkOut.hpp"
+#include "depthai/pipeline/node/internal/XLinkIn.hpp"
+#include "depthai/pipeline/node/internal/XLinkOut.hpp"
 #include "pipeline/Pipeline.hpp"
 #include "utility/Environment.hpp"
 #include "utility/Initialization.hpp"
@@ -313,18 +313,18 @@ void Device::closeImpl() {
 // bool Device::startPipelineImpl(const Pipeline& pipeline) {
 //     // auto schema = pipeline.getPipelineSchema();
 //     // for(auto& kv : schema.nodes) {
-//     //     spdlog::trace("Inspecting node: {} for {} or {}", kv.second.name, std::string(node::XLinkIn::NAME), std::string(node::XLinkOut::NAME));
-//     //     if(kv.second.name == node::XLinkIn::NAME) {
+//     //     spdlog::trace("Inspecting node: {} for {} or {}", kv.second.name, std::string(node::internal::XLinkIn::NAME), std::string(node::internal::XLinkOut::NAME));
+//     //     if(kv.second.name == node::internal::XLinkIn::NAME) {
 //     //         // deserialize properties to check the stream name
-//     //         node::XLinkIn::Properties props;
+//     //         node::internal::XLinkIn::Properties props;
 //     //         utility::deserialize(kv.second.properties, props);
 //     //         auto streamName = props.streamName;
 //     //         if(inputQueueMap.count(streamName) != 0) throw std::invalid_argument(fmt::format("Streams have duplicate name '{}'", streamName));
 //     //         // Create DataInputQueue's
 //     //         inputQueueMap[streamName] = std::make_shared<DataInputQueue>(connection, streamName, 16, true, props.maxDataSize);
-//     //     } else if(kv.second.name == node::XLinkOut::NAME) {
+//     //     } else if(kv.second.name == node::internal::XLinkOut::NAME) {
 //     //         // deserialize properties to check the stream name
-//     //         node::XLinkOut::Properties props;
+//     //         node::internal::XLinkOut::Properties props;
 //     //         utility::deserialize(kv.second.properties, props);
 //     //         auto streamName = props.streamName;
 
