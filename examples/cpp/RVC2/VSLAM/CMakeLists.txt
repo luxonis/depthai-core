@@ -26,6 +26,6 @@ if(DEPTHAI_BASALT_SUPPORT)
     FetchContent_Declare(rerun_sdk URL  https://github.com/rerun-io/rerun/releases/download/0.16.1/rerun_cpp_sdk.zip)
     FetchContent_MakeAvailable(rerun_sdk)
 
-    dai_add_example(basalt_vio RVC2/VSLAM/basalt_vio.cpp OFF OFF)
+    dai_add_example(basalt_vio basalt_vio.cpp OFF OFF)
     target_link_libraries(basalt_vio PRIVATE depthai::basalt rerun_sdk)
 endif()
