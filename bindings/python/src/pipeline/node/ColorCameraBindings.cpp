@@ -184,31 +184,6 @@ void bind_colorcamera(pybind11::module& m, void* pCallstack) {
         .def("getSensorCropX", &ColorCamera::getSensorCropX, DOC(dai, node, ColorCamera, getSensorCropX))
         .def("getSensorCropY", &ColorCamera::getSensorCropY, DOC(dai, node, ColorCamera, getSensorCropY))
 
-        .def(
-            "setWaitForConfigInput",
-            [](ColorCamera& cam, bool wait) {
-                // Issue a deprecation warning
-                PyErr_WarnEx(PyExc_DeprecationWarning, "Use 'inputConfig.setWaitForMessage()' instead", 1);
-                HEDLEY_DIAGNOSTIC_PUSH
-                HEDLEY_DIAGNOSTIC_DISABLE_DEPRECATED
-                cam.setWaitForConfigInput(wait);
-                HEDLEY_DIAGNOSTIC_POP
-            },
-            py::arg("wait"),
-            DOC(dai, node, ColorCamera, setWaitForConfigInput))
-
-        .def(
-            "getWaitForConfigInput",
-            [](ColorCamera& cam) {
-                // Issue a deprecation warning
-                PyErr_WarnEx(PyExc_DeprecationWarning, "Use 'inputConfig.setWaitForMessage()' instead", 1);
-                HEDLEY_DIAGNOSTIC_PUSH
-                HEDLEY_DIAGNOSTIC_DISABLE_DEPRECATED
-                return cam.getWaitForConfigInput();
-                HEDLEY_DIAGNOSTIC_POP
-            },
-            DOC(dai, node, ColorCamera, getWaitForConfigInput))
-
         .def("setPreviewKeepAspectRatio", &ColorCamera::setPreviewKeepAspectRatio, py::arg("keep"), DOC(dai, node, ColorCamera, setPreviewKeepAspectRatio))
         .def("getPreviewKeepAspectRatio", &ColorCamera::getPreviewKeepAspectRatio, DOC(dai, node, ColorCamera, getPreviewKeepAspectRatio))
         .def("setIspScale",

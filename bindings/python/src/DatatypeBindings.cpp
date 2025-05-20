@@ -13,7 +13,6 @@ void bind_featuretrackerconfig(pybind11::module& m, void* pCallstack);
 void bind_thermalconfig(pybind11::module& m, void* pCallstack);
 void bind_tofconfig(pybind11::module& m, void* pCallstack);
 void bind_imagemanipconfig(pybind11::module& m, void* pCallstack);
-void bind_imagemanipconfigv2(pybind11::module& m, void* pCallstack);
 void bind_imgdetections(pybind11::module& m, void* pCallstack);
 void bind_imgframe(pybind11::module& m, void* pCallstack);
 void bind_encodedframe(pybind11::module& m, void* pCallstack);
@@ -51,7 +50,6 @@ void DatatypeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_thermalconfig);
     callstack.push_front(bind_tofconfig);
     callstack.push_front(bind_imagemanipconfig);
-    callstack.push_front(bind_imagemanipconfigv2);
     callstack.push_front(bind_imgdetections);
     callstack.push_front(bind_imgframe);
     callstack.push_front(bind_encodedframe);

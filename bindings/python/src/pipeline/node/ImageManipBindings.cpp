@@ -4,7 +4,7 @@
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/node/ImageManip.hpp"
 
-void bind_imagemanipv2(pybind11::module& m, void* pCallstack) {
+void bind_imagemanip(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::node;
 

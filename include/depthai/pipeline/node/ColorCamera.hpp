@@ -313,19 +313,6 @@ class [[deprecated("Use Camera node instead")]] ColorCamera : public DeviceNodeC
 
     // Node properties configuration
     /**
-     * Specify to wait until inputConfig receives a configuration message,
-     * before sending out a frame.
-     * @param wait True to wait for inputConfig message, false otherwise
-     */
-    [[deprecated("Use 'inputConfig.setWaitForMessage()' instead")]] void setWaitForConfigInput(bool wait);
-
-    /**
-     * @see setWaitForConfigInput
-     * @returns True if wait for inputConfig message, false otherwise
-     */
-    [[deprecated("Use 'inputConfig.setWaitForMessage()' instead")]] bool getWaitForConfigInput() const;
-
-    /**
      * Specifies whether preview output should preserve aspect ratio,
      * after downscaling from video size or not.
      *

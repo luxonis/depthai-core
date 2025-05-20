@@ -14,7 +14,7 @@
 
 // #include "spdlog/spdlog.h"
 
-void bind_imagemanipconfigv2(pybind11::module& m, void* pCallstack) {
+void bind_imagemanipconfig(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
     py::class_<ImageManipConfig, Py<ImageManipConfig>, Buffer, std::shared_ptr<ImageManipConfig>> imageManipConfig(
