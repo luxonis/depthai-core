@@ -96,6 +96,6 @@ with dai.Pipeline() as p:
     monoRight.requestOutput((640, 400)).link(stereo.right)
     visualizer.labelMap = spatialDetectionNetwork.getClasses()
 
-    visualizer.build(stereo.depth, spatialDetectionNetwork.out, spatialDetectionNetwork.passthrough)
+    visualizer.build(spatialDetectionNetwork.passthroughDepth, spatialDetectionNetwork.out, spatialDetectionNetwork.passthrough)
 
     p.run()
