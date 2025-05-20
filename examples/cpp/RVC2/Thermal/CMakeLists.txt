@@ -5,3 +5,4 @@ cmake_minimum_required(VERSION 3.10)
 ## function: dai_set_example_test_labels(example_name ...)
 
 dai_add_example(thermal thermal.cpp OFF OFF)
+dai_add_example(thermal_crosshair thermal_crosshair.cpp OFF OFF)
