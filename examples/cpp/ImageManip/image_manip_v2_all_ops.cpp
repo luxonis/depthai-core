@@ -97,7 +97,7 @@ int main() {
         }
 
         // Load and prepare input image
-        cv::Mat inputFrame = cv::imread("lenna.png"); // 512x512
+        cv::Mat inputFrame = cv::imread(LENNA_PATH); // 512x512
         if(inputFrame.empty()) {
             throw std::runtime_error("Could not read input image");
         }
