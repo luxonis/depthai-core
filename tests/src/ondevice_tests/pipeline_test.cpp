@@ -3,10 +3,14 @@
 // Include depthai library
 #include <depthai/depthai.hpp>
 
+// internal nodes
+#include <depthai/pipeline/node/internal/XLinkIn.hpp>
+#include <depthai/pipeline/node/internal/XLinkOut.hpp>
+
 TEST_CASE("Pipeline link and remove") {
     dai::Pipeline p;
-    auto x_in = p.create<dai::node::XLinkIn>();
-    auto x_out = p.create<dai::node::XLinkOut>();
+    auto x_in = p.create<dai::node::internal::XLinkIn>();
+    auto x_out = p.create<dai::node::internal::XLinkOut>();
     x_in->out.link(x_out->input);
     p.remove(x_in);
 }
@@ -14,7 +18,7 @@ TEST_CASE("Pipeline link and remove") {
 TEST_CASE("Pipeline node creation, link, unlink and removal") {
     dai::Pipeline p;
     auto cam = p.create<dai::node::ImageManip>();
-    auto xlink = p.create<dai::node::XLinkOut>();
+    auto xlink = p.create<dai::node::internal::XLinkOut>();
 
     REQUIRE(p.getConnections().size() == 0);
     REQUIRE(p.getAllNodes().size() == 2);
