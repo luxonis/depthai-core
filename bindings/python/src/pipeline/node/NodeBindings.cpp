@@ -42,6 +42,7 @@ void delImplicitPipeline() {
 // Map of python node classes and call to pipeline to create it
 std::vector<std::pair<py::handle, std::function<std::shared_ptr<dai::Node>(dai::Pipeline&, py::object class_)>>> pyNodeCreateMap;
 py::handle daiNodeModule;
+py::handle daiNodeInternalModule;
 
 std::vector<std::pair<py::handle, std::function<std::shared_ptr<dai::Node>(dai::Pipeline&, py::object class_)>>> NodeBindings::getNodeCreateMap() {
     return pyNodeCreateMap;
@@ -126,8 +127,6 @@ py::class_<Map, holder_type> bindNodeMap(py::handle scope, const std::string& na
     return cl;
 }
 
-void bind_xlinkin(pybind11::module& m, void* pCallstack);
-void bind_xlinkout(pybind11::module& m, void* pCallstack);
 void bind_benchmark(pybind11::module& m, void* pCallstack);
 void bind_colorcamera(pybind11::module& m, void* pCallstack);
 void bind_camera(pybind11::module& m, void* pCallstack);
@@ -173,8 +172,6 @@ void NodeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(NodeBindings::bind);
 
     // Bind all other nodes
-    callstack.push_front(bind_xlinkin);
-    callstack.push_front(bind_xlinkout);
     callstack.push_front(bind_benchmark);
     callstack.push_front(bind_colorcamera);
     callstack.push_front(bind_camera);
@@ -224,6 +221,7 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
     //// Bindings for actual nodes
     // Move properties into nodes and nodes under 'node' submodule
     daiNodeModule = m.def_submodule("node");
+    daiNodeInternalModule = m.def_submodule("node").def_submodule("internal");
 
     // Properties
     py::class_<Node, std::shared_ptr<Node>> pyNode(m, "Node", DOC(dai, Node));

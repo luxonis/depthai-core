@@ -71,8 +71,6 @@ set(SOURCE_LIST
 
     src/pipeline/node/NodeBindings.cpp
 
-    src/pipeline/node/XLinkInBindings.cpp
-    src/pipeline/node/XLinkOutBindings.cpp
     src/pipeline/node/ColorCameraBindings.cpp
     src/pipeline/node/CameraBindings.cpp
     src/pipeline/node/MonoCameraBindings.cpp
