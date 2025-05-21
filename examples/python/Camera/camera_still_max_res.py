@@ -28,7 +28,7 @@ with dai.Pipeline() as pipeline:
         """)
 
     # If 8k, we can only have 1 output stream, so we need to use ImageManip to downscale
-    imgManip = pipeline.create(dai.node.ImageManipV2)
+    imgManip = pipeline.create(dai.node.ImageManip)
     stream_highest_res.link(imgManip.inputImage)
     imgManip.initialConfig.setOutputSize(1333, 1000)
     imgManip.setMaxOutputFrameSize(1333*1000*3)

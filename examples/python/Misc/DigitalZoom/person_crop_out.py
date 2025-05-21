@@ -92,7 +92,7 @@ with dai.Pipeline(device) as pipeline:
     cameraControlQueue = cam.inputControl.createInputQueue()
     fullResStream = cam.requestFullResolutionOutput(useHighestResolution=True)
 
-    imageManip = pipeline.create(dai.node.ImageManipV2)
+    imageManip = pipeline.create(dai.node.ImageManip)
     imageManip.initialConfig.setOutputSize(inputSize[0], inputSize[1])
     imageManip.initialConfig.setFrameType(frameType)
 
@@ -101,7 +101,7 @@ with dai.Pipeline(device) as pipeline:
     detectionNetwork = pipeline.create(dai.node.DetectionNetwork).build(imageManip.out, modelArchive)
     labelMap = detectionNetwork.getClasses()
 
-    imageManipCropOut = pipeline.create(dai.node.ImageManipV2)
+    imageManipCropOut = pipeline.create(dai.node.ImageManip)
     imageManipCropOut.setMaxOutputFrameSize(round(1000*1000*1.5)+300)
     imageManipCropOut.initialConfig.setOutputSize(800, 800)
     imageManipCropOut.inputImage.setBlocking(False)
@@ -123,9 +123,9 @@ with dai.Pipeline(device) as pipeline:
         biggestDetection = getBiggestPerson(detections)
         if biggestDetection:
             sourceRect = transformDetectionToSource(detections, biggestDetection)
-            configQueue = dai.ImageManipConfigV2()
+            configQueue = dai.ImageManipConfig()
             configQueue.addCrop(sourceRect, False)
-            configQueue.setOutputSize(800, 800, dai.ImageManipConfigV2.ResizeMode.LETTERBOX)
+            configQueue.setOutputSize(800, 800, dai.ImageManipConfig.ResizeMode.LETTERBOX)
             imageManipConfigQueue.send(configQueue)
 
             configCamera = dai.CameraControl()

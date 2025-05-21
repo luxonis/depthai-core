@@ -4,7 +4,7 @@
 #include "depthai/depthai.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/node/ColorCamera.hpp"
-#include "depthai/pipeline/node/ImageManipV2.hpp"
+#include "depthai/pipeline/node/ImageManip.hpp"
 #include "depthai/pipeline/node/host/Display.hpp"
 
 int main(int argc, char** argv) {
@@ -18,10 +18,10 @@ int main(int argc, char** argv) {
 
     auto camRgb = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A);
     auto display = pipeline.create<dai::node::Display>();
-    auto manip = pipeline.create<dai::node::ImageManipV2>();
+    auto manip = pipeline.create<dai::node::ImageManip>();
 
     // Resize to 400x400 and avoid stretching by cropping from the center
-    manip->initialConfig->setOutputSize(400, 400, dai::ImageManipConfigV2::ResizeMode::CENTER_CROP);
+    manip->initialConfig->setOutputSize(400, 400, dai::ImageManipConfig::ResizeMode::CENTER_CROP);
     // Set output frame type
     manip->initialConfig->setFrameType(dai::ImgFrame::Type::RGB888i);
 

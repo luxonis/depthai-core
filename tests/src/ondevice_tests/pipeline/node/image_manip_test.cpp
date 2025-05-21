@@ -10,7 +10,7 @@ void testManipBasic(bool runSyncOnHost) {
     // Create pipeline
     dai::Pipeline p;
     auto cam = p.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A);
-    auto manip = p.create<dai::node::ImageManipV2>();
+    auto manip = p.create<dai::node::ImageManip>();
     cam->requestFullResolutionOutput()->link(manip->inputImage);
     manip->initialConfig->addCrop(100, 200, 400, 400);
     manip->initialConfig->setFrameType(dai::ImgFrame::Type::NV12);
@@ -31,7 +31,7 @@ void testManipDynamic(bool runSyncOnHost, bool reuiseImage) {
     // Create pipeline
     dai::Pipeline p;
     auto cam = p.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A);
-    auto manip = p.create<dai::node::ImageManipV2>();
+    auto manip = p.create<dai::node::ImageManip>();
     cam->requestFullResolutionOutput()->link(manip->inputImage);
     auto manipQueue = manip->out.createOutputQueue();
     manip->inputConfig.setReusePreviousMessage(false);  // Control the rate with the config input
@@ -46,7 +46,7 @@ void testManipDynamic(bool runSyncOnHost, bool reuiseImage) {
         cropY = cropY + 10;
         cropW = cropW + 10;
         cropH = cropH + 10;
-        auto manipConfig = std::make_shared<dai::ImageManipConfigV2>();
+        auto manipConfig = std::make_shared<dai::ImageManipConfig>();
         manipConfig->addCrop(cropX, cropY, cropW, cropH);
         manipConfig->setFrameType(dai::ImgFrame::Type::NV12);
         manipConfig->setReusePreviousImage(reuiseImage);
@@ -83,7 +83,7 @@ TEST_CASE("Dynamic config sync node runs on host, no reuse") {
     testManipDynamic(true, false);
 }
 
-TEST_CASE("Test ImageManipV2 with u16 frames") {
+TEST_CASE("Test ImageManip with u16 frames") {
     using namespace std;
     using namespace std::chrono;
     using namespace std::chrono_literals;
@@ -93,7 +93,7 @@ TEST_CASE("Test ImageManipV2 with u16 frames") {
     constexpr size_t N = 20;
 
     dai::Pipeline p;
-    auto manip = p.create<dai::node::ImageManipV2>();
+    auto manip = p.create<dai::node::ImageManip>();
     manip->initialConfig->setOutputSize(outputWidth, outputHeight);
 
     auto inputQueue = manip->inputImage.createInputQueue();
@@ -119,11 +119,11 @@ TEST_CASE("Test ImageManipV2 with u16 frames") {
     }
 }
 
-TEST_CASE("ImageManipV2 rebuild on cfg change") {
+TEST_CASE("ImageManip rebuild on cfg change") {
     dai::Pipeline p;
     auto cam = p.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A);
     auto camOut = cam->requestOutput({1280, 720});
-    auto manip = p.create<dai::node::ImageManipV2>();
+    auto manip = p.create<dai::node::ImageManip>();
     manip->inputConfig.setWaitForMessage(true);
 
     auto camQueue = camOut->createOutputQueue(1, false);
@@ -131,16 +131,16 @@ TEST_CASE("ImageManipV2 rebuild on cfg change") {
     auto ifQueue = manip->inputImage.createInputQueue();
     auto icQueue = manip->inputConfig.createInputQueue();
     p.start();
-    dai::ImageManipConfigV2 cfg;
+    dai::ImageManipConfig cfg;
     cfg.setOutputSize(400, 200);
     ifQueue->send(camQueue->get<dai::ImgFrame>());
-    icQueue->send(std::make_shared<dai::ImageManipConfigV2>(cfg));
+    icQueue->send(std::make_shared<dai::ImageManipConfig>(cfg));
     auto imgFrame = manipQueue->get<dai::ImgFrame>();
     REQUIRE(imgFrame->getWidth() == 400);
     REQUIRE(imgFrame->getHeight() == 200);
     cfg.setOutputSize(200, 400);
     ifQueue->send(camQueue->get<dai::ImgFrame>());
-    icQueue->send(std::make_shared<dai::ImageManipConfigV2>(cfg));
+    icQueue->send(std::make_shared<dai::ImageManipConfig>(cfg));
     imgFrame = manipQueue->get<dai::ImgFrame>();
     REQUIRE(imgFrame->getWidth() == 200);
     REQUIRE(imgFrame->getHeight() == 400);

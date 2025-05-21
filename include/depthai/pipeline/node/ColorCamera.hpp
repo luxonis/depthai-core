@@ -41,12 +41,6 @@ class [[deprecated("Use Camera node instead")]] ColorCamera : public DeviceNodeC
     CameraControl initialControl;
 
     /**
-     * Input for ImageManipConfig message, which can modify crop parameters in runtime
-     */
-    Input inputConfig{
-        *this, {"inputConfig", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ImageManipConfig, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
-
-    /**
      * Input for CameraControl message, which can modify camera parameters in runtime
      */
     Input inputControl{
@@ -318,19 +312,6 @@ class [[deprecated("Use Camera node instead")]] ColorCamera : public DeviceNodeC
     float getSensorCropY() const;
 
     // Node properties configuration
-    /**
-     * Specify to wait until inputConfig receives a configuration message,
-     * before sending out a frame.
-     * @param wait True to wait for inputConfig message, false otherwise
-     */
-    [[deprecated("Use 'inputConfig.setWaitForMessage()' instead")]] void setWaitForConfigInput(bool wait);
-
-    /**
-     * @see setWaitForConfigInput
-     * @returns True if wait for inputConfig message, false otherwise
-     */
-    [[deprecated("Use 'inputConfig.setWaitForMessage()' instead")]] bool getWaitForConfigInput() const;
-
     /**
      * Specifies whether preview output should preserve aspect ratio,
      * after downscaling from video size or not.

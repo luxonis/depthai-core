@@ -1,58 +1,57 @@
 #include "depthai/pipeline/node/ImageManip.hpp"
+
+#include "depthai/utility/ImageManipImpl.hpp"
+#include "pipeline/ThreadedNodeImpl.hpp"
+
 namespace dai {
+
 namespace node {
 
 ImageManip::ImageManip(std::unique_ptr<Properties> props)
     : DeviceNodeCRTP<DeviceNode, ImageManip, ImageManipProperties>(std::move(props)), initialConfig(std::make_shared<decltype(properties.initialConfig)>(properties.initialConfig)) {}
 
-ImageManip::Properties& ImageManip::getProperties() {
-    properties.initialConfig = *initialConfig;
-    return properties;
-}
+void ImageManip::run() {
+    impl::ImageManipOperations<impl::_ImageManipBuffer, impl::_ImageManipMemory, impl::WarpH> manip(properties, pimpl->logger);
+    auto iConf = runOnHost() ? *initialConfig : properties.initialConfig;
+    impl::loop<ImageManip, impl::_ImageManipBuffer, impl::_ImageManipMemory>(
+        *this,
+        iConf,
+        pimpl->logger,
+        [&](const ImageManipConfig& config, const ImgFrame& frame) {
+            auto srcFrameSpecs = impl::getSrcFrameSpecs(frame.fb);
+            manip.build(config.base, config.outputFrameType, srcFrameSpecs, frame.getType());
+            return manip.getOutputSize();
+        },
+        [&](std::shared_ptr<Memory>& src, std::shared_ptr<impl::_ImageManipMemory> dst) {
+            auto srcMem = std::make_shared<impl::_ImageManipMemory>(src->getData());
+            return manip.apply(srcMem, dst);
+        },
+        [&](const ImgFrame& srcFrame, ImgFrame& dstFrame) {
+            auto outType = manip.getOutputFrameType();
+            auto dstSpecs = manip.getOutputFrameSpecs(outType);
+            dstFrame.sourceFb = srcFrame.sourceFb;
+            dstFrame.cam = srcFrame.cam;
+            dstFrame.instanceNum = srcFrame.instanceNum;
+            dstFrame.sequenceNum = srcFrame.sequenceNum;
+            dstFrame.tsDevice = srcFrame.tsDevice;
+            dstFrame.ts = srcFrame.ts;
+            dstFrame.category = srcFrame.category;
+            dstFrame.event = srcFrame.event;
+            dstFrame.fb.height = dstSpecs.height;
+            dstFrame.fb.width = dstSpecs.width;
+            dstFrame.fb.stride = dstSpecs.p1Stride;
+            dstFrame.fb.p1Offset = dstSpecs.p1Offset;
+            dstFrame.fb.p2Offset = dstSpecs.p2Offset;
+            dstFrame.fb.p3Offset = dstSpecs.p3Offset;
+            dstFrame.setType(outType);
 
-// Initial ImageManipConfig
-void ImageManip::setCropRect(float xmin, float ymin, float xmax, float ymax) {
-    initialConfig->setCropRect(xmin, ymin, xmax, ymax);
-    properties.initialConfig = *initialConfig;
-}
-
-void ImageManip::setCenterCrop(float ratio, float whRatio) {
-    initialConfig->setCenterCrop(ratio, whRatio);
-    properties.initialConfig = *initialConfig;
-}
-
-void ImageManip::setResize(int w, int h) {
-    initialConfig->setResize(w, h);
-    properties.initialConfig = *initialConfig;
-}
-
-void ImageManip::setResizeThumbnail(int w, int h, int bgRed, int bgGreen, int bgBlue) {
-    initialConfig->setResizeThumbnail(w, h, bgRed, bgGreen, bgBlue);
-    properties.initialConfig = *initialConfig;
-}
-
-void ImageManip::setFrameType(dai::ImgFrame::Type type) {
-    initialConfig->setFrameType(type);
-    properties.initialConfig = *initialConfig;
-}
-
-void ImageManip::setHorizontalFlip(bool flip) {
-    initialConfig->setHorizontalFlip(flip);
-    properties.initialConfig = *initialConfig;
-}
-
-void ImageManip::setKeepAspectRatio(bool keep) {
-    initialConfig->setKeepAspectRatio(keep);
-    properties.initialConfig = *initialConfig;
-}
-
-// Node properties configuration
-void ImageManip::setWaitForConfigInput(bool wait) {
-    inputConfig.setWaitForMessage(wait);
-}
-
-bool ImageManip::getWaitForConfigInput() const {
-    return inputConfig.getWaitForMessage();
+            // Transformations
+            dstFrame.transformation = srcFrame.transformation;
+            auto srcCrops = manip.getSrcCrops();
+            dstFrame.transformation.addSrcCrops(srcCrops);
+            dstFrame.transformation.addTransformation(manip.getMatrix());
+            dstFrame.transformation.setSize(dstSpecs.width, dstSpecs.height);
+        });
 }
 
 void ImageManip::setNumFramesPool(int numFramesPool) {
@@ -63,57 +62,28 @@ void ImageManip::setMaxOutputFrameSize(int maxFrameSize) {
     properties.outputFrameSize = maxFrameSize;
 }
 
-void ImageManip::setWarpMesh(const float* meshData, int numMeshPoints, int width, int height) {
-    if(numMeshPoints < width * height) {
-        throw std::invalid_argument("Not enough points provided for specified width and height");
-    }
-
-    // TODO(themarpe) - optimize
-    Asset asset("mesh");
-    asset.alignment = 64;
-
-    // Align stride to 16B
-    constexpr auto ALIGNMENT = 16;
-    size_t meshStride = ((size_t)((sizeof(float) * 2 * width)) + (ALIGNMENT - 1)) & ~(ALIGNMENT - 1);
-    // Specify final mesh size
-    size_t meshSize = meshStride * height;
-
-    // Create mesh data
-    asset.data = std::vector<uint8_t>(meshSize);
-
-    // Fill out mesh points with stride
-    for(int i = 0; i < height; i++) {
-        for(int j = 0; j < width; j++) {
-            // get location in meshData
-            size_t inputMeshIndex = (i * width + j) * 2;  // 2 float values per point
-
-            // get output offset
-            size_t outputMeshOffset = (meshStride * i) + (j * sizeof(float) * 2);
-            auto& point = reinterpret_cast<std::pair<float, float>&>(asset.data.data()[outputMeshOffset]);
-
-            // Asign reversed mesh coordinates (HW specified)
-            point.first = meshData[inputMeshIndex + 1];
-            point.second = meshData[inputMeshIndex + 0];
-        }
-    }
-
-    properties.meshUri = assetManager.set(asset)->getRelativeUri();
-    properties.meshWidth = width;
-    properties.meshHeight = height;
+ImageManip::Properties& ImageManip::getProperties() {
+    properties.initialConfig = *initialConfig;
+    return properties;
+}
+ImageManip& ImageManip::setRunOnHost(bool _runOnHost) {
+    runOnHostVar = _runOnHost;
+    return *this;
+}
+ImageManip& ImageManip::setBackend(Backend backend) {
+    properties.backend = backend;
+    return *this;
+}
+ImageManip& ImageManip::setPerformanceMode(ImageManip::PerformanceMode performanceMode) {
+    properties.performanceMode = performanceMode;
+    return *this;
 }
 
-void ImageManip::setWarpMesh(const std::vector<Point2f>& meshData, int width, int height) {
-    // Convert to float array
-    std::vector<float> meshDataFloat(meshData.size() * 2);
-    for(size_t i = 0; i < meshData.size(); i++) {
-        meshDataFloat[i * 2 + 0] = meshData[i].x;
-        meshDataFloat[i * 2 + 1] = meshData[i].y;
-    }
-    setWarpMesh(reinterpret_cast<const float*>(meshDataFloat.data()), static_cast<int>(meshData.size()), width, height);
-}
-
-void ImageManip::setWarpMesh(const std::vector<std::pair<float, float>>& meshData, int width, int height) {
-    setWarpMesh(reinterpret_cast<const float*>(meshData.data()), static_cast<int>(meshData.size()), width, height);
+/**
+ * Check if the node is set to run on host
+ */
+bool ImageManip::runOnHost() const {
+    return runOnHostVar;
 }
 
 }  // namespace node

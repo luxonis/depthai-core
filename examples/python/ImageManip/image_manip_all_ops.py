@@ -3,16 +3,16 @@ import cv2
 
 pipeline = dai.Pipeline()
 
-manip_input = pipeline.create(dai.node.ImageManipV2)
+manip_input = pipeline.create(dai.node.ImageManip)
 manip_input.initialConfig.setFrameType(dai.ImgFrame.Type.BGR888p)
 inputQueue = manip_input.inputImage.createInputQueue()
 
 manip_ops = [
     # Resize operations. If aspect ratio isn't the same, the image will be stretched/cropped/letterboxed (depending on resize mode)
     # Docs here: https://docs.luxonis.com/software/depthai/resolution-techniques/
-    ('resize_stretch', lambda conf: conf.setOutputSize(256, 200, dai.ImageManipConfigV2.ResizeMode.STRETCH)),
-    ('resize_letterbox', lambda conf: conf.setOutputSize(256, 200, dai.ImageManipConfigV2.ResizeMode.LETTERBOX)),
-    ('resize_center_crop', lambda conf: conf.setOutputSize(256, 200, dai.ImageManipConfigV2.ResizeMode.CENTER_CROP)),
+    ('resize_stretch', lambda conf: conf.setOutputSize(256, 200, dai.ImageManipConfig.ResizeMode.STRETCH)),
+    ('resize_letterbox', lambda conf: conf.setOutputSize(256, 200, dai.ImageManipConfig.ResizeMode.LETTERBOX)),
+    ('resize_center_crop', lambda conf: conf.setOutputSize(256, 200, dai.ImageManipConfig.ResizeMode.CENTER_CROP)),
     # Crop the image topLeft (10,40) to bottomRight (310,110)
     ('crop', lambda conf: conf.addCrop(x=50, y=50, w=150, h=200)),
     # Flip the frame vertically/horizontally
@@ -33,11 +33,11 @@ manip_ops = [
     ('frame_type', lambda conf: conf.setFrameType(dai.ImgFrame.Type.RAW8)), # to Grayscale
 ]
 
-# Dynamically create ImageManipV2 nodes, apply configurations, and set up queues
+# Dynamically create ImageManip nodes, apply configurations, and set up queues
 queues = {}
 for name, config in manip_ops:
     print(name, config)
-    manip = pipeline.create(dai.node.ImageManipV2)
+    manip = pipeline.create(dai.node.ImageManip)
     config(manip.initialConfig)
     manip_input.out.link(manip.inputImage)
     queues[name] = manip.out.createOutputQueue(maxSize=4, blocking=False)
