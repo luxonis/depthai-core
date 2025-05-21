@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 import depthai as dai
+import matplotlib.pyplot as plt
+import numpy as np
+import time
+from collections import deque
 
 # Create pipeline
 with dai.Pipeline() as pipeline:
@@ -25,6 +29,17 @@ with dai.Pipeline() as pipeline:
     def timeDeltaToMilliS(delta) -> float:
         return delta.total_seconds()*1000
 
+    time_window = 100
+    time_vals = deque(maxlen=time_window)
+    accel_x_vals = deque(maxlen=time_window)
+    accel_y_vals = deque(maxlen=time_window)
+    accel_z_vals = deque(maxlen=time_window)
+    gyro_x_vals = deque(maxlen=time_window)
+    gyro_y_vals = deque(maxlen=time_window)
+    gyro_z_vals = deque(maxlen=time_window)
+    
+    plt.ion()
+    fig, ax = plt.subplots(2, 1, figsize=(10, 6))
     while pipeline.isRunning():
         imuData = imuQueue.get()
         assert isinstance(imuData, dai.IMUData)
@@ -32,15 +47,47 @@ with dai.Pipeline() as pipeline:
         for imuPacket in imuPackets:
             acceleroValues = imuPacket.acceleroMeter
             gyroValues = imuPacket.gyroscope
+            accel = imuPacket.acceleroMeter
+            gyro = imuPacket.gyroscope
+
+            acx =  accel.x
+            acy =  accel.y
+            acz =  accel.z
+            gx =  gyro.x
+            gy =  gyro.y
+            gz =  gyro.z
 
             acceleroTs = acceleroValues.getTimestamp()
             gyroTs = gyroValues.getTimestamp()
 
             imuF = "{:.06f}"
             tsF  = "{:.03f}"
+            timestamp = time.time()
+            time_vals.append(timestamp)
+            accel_x_vals.append(acx)
+            accel_y_vals.append(acy)
+            accel_z_vals.append(acz)
+            gyro_x_vals.append(gx)
+            gyro_y_vals.append(gy)
+            gyro_z_vals.append(gz)
 
-            print(f"Accelerometer timestamp: {acceleroTs}")
-            print(f"Latency [ms]: {dai.Clock.now() - acceleroValues.getTimestamp()}")
-            print(f"Accelerometer [m/s^2]: x: {imuF.format(acceleroValues.x)} y: {imuF.format(acceleroValues.y)} z: {imuF.format(acceleroValues.z)}")
-            print(f"Gyroscope timestamp: {gyroTs}")
-            print(f"Gyroscope [rad/s]: x: {imuF.format(gyroValues.x)} y: {imuF.format(gyroValues.y)} z: {imuF.format(gyroValues.z)} ")
+            ax[0].cla()
+            ax[0].plot(time_vals, accel_x_vals, label="Accel X", color='r')
+            ax[0].plot(time_vals, accel_y_vals, label="Accel Y", color='g')
+            ax[0].plot(time_vals, accel_z_vals, label="Accel Z", color='b')
+            ax[0].set_title("Accelerometer Data")
+            ax[0].legend()
+            ax[0].grid()
+            
+            ax[1].cla()
+            ax[1].plot(time_vals, gyro_x_vals, label="Gyro X", color='r')
+            ax[1].plot(time_vals, gyro_y_vals, label="Gyro Y", color='g')
+            ax[1].plot(time_vals, gyro_z_vals, label="Gyro Z", color='b')
+            ax[1].set_title("Gyroscope Data")
+            ax[1].legend()
+            ax[1].grid()
+            
+            plt.pause(0.01)
+
+    plt.ioff()
+    plt.show()
