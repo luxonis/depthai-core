@@ -82,11 +82,8 @@ int main() {
         // Create pipeline
         dai::Pipeline pipeline;
 
-        // Define sources and outputs
-        auto camRgb = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A, std::make_pair(1280, 720), 15);
-        
-        // Properties
-        auto outRgb = camRgb->requestOutput(std::make_pair(1280, 720));
+        auto camRgb = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A);
+        auto outRgb = camRgb->requestOutput(std::make_pair(416, 416), dai::ImgFrame::Type::BGR888p, dai::ImgResizeMode::CROP, 15);
 
         // Load NN archive
         dai::NNArchive nnArchive(archivePath);

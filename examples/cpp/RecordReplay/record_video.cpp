@@ -41,7 +41,7 @@ int main(int argc, char** argv) {
         // Create video encoder node
         auto videoEncoder = pipeline.create<dai::node::VideoEncoder>();
         videoEncoder->setProfile(dai::VideoEncoderProperties::Profile::H264_MAIN);
-        cam->requestOutput(std::make_pair(1280, 720))->link(videoEncoder->input);
+        cam->requestOutput(std::make_pair(1280, 720), dai::ImgFrame::Type::NV12)->link(videoEncoder->input);
 
         // Create record node
         auto record = pipeline.create<dai::node::RecordVideo>();

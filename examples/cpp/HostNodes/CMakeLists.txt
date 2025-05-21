@@ -15,3 +15,5 @@ dai_add_example(display display.cpp OFF OFF)
 dai_add_example(host_camera host_camera.cpp OFF OFF)
 
 dai_add_example(threaded_host_node threaded_host_node.cpp OFF OFF)
+
+dai_add_example(host_pipeline_synced_node host_pipeline_synced_node.cpp OFF OFF)
