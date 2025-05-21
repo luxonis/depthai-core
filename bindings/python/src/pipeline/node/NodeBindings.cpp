@@ -10,6 +10,7 @@
 #include "depthai/pipeline/NodeGroup.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/ThreadedNode.hpp"
+#include "pipeline/ThreadedNodeImpl.hpp"
 
 // Libraries
 #include "hedley/hedley.h"
@@ -41,6 +42,7 @@ void delImplicitPipeline() {
 // Map of python node classes and call to pipeline to create it
 std::vector<std::pair<py::handle, std::function<std::shared_ptr<dai::Node>(dai::Pipeline&, py::object class_)>>> pyNodeCreateMap;
 py::handle daiNodeModule;
+py::handle daiNodeInternalModule;
 
 std::vector<std::pair<py::handle, std::function<std::shared_ptr<dai::Node>(dai::Pipeline&, py::object class_)>>> NodeBindings::getNodeCreateMap() {
     return pyNodeCreateMap;
@@ -69,8 +71,7 @@ py::class_<Map, holder_type> bindNodeMap(py::handle scope, const std::string& na
     // Register stream insertion operator (if possible)
     detail::map_if_insertion_operator<Map, Class_>(cl, name);
 
-    cl.def(
-        "__bool__", [](const Map& m) -> bool { return !m.empty(); }, "Check whether the map is nonempty");
+    cl.def("__bool__", [](const Map& m) -> bool { return !m.empty(); }, "Check whether the map is nonempty");
 
     cl.def(
         "__iter__", [](Map& m) { return make_key_iterator(m.begin(), m.end()); }, keep_alive<0, 1>() /* Essential: keep list alive while iterator exists */
@@ -126,8 +127,6 @@ py::class_<Map, holder_type> bindNodeMap(py::handle scope, const std::string& na
     return cl;
 }
 
-void bind_xlinkin(pybind11::module& m, void* pCallstack);
-void bind_xlinkout(pybind11::module& m, void* pCallstack);
 void bind_benchmark(pybind11::module& m, void* pCallstack);
 void bind_colorcamera(pybind11::module& m, void* pCallstack);
 void bind_camera(pybind11::module& m, void* pCallstack);
@@ -136,7 +135,6 @@ void bind_stereodepth(pybind11::module& m, void* pCallstack);
 void bind_neuralnetwork(pybind11::module& m, void* pCallstack);
 void bind_videoencoder(pybind11::module& m, void* pCallstack);
 void bind_imagemanip(pybind11::module& m, void* pCallstack);
-void bind_imagemanipv2(pybind11::module& m, void* pCallstack);
 void bind_warp(pybind11::module& m, void* pCallstack);
 void bind_spiout(pybind11::module& m, void* pCallstack);
 void bind_spiin(pybind11::module& m, void* pCallstack);
@@ -174,8 +172,6 @@ void NodeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(NodeBindings::bind);
 
     // Bind all other nodes
-    callstack.push_front(bind_xlinkin);
-    callstack.push_front(bind_xlinkout);
     callstack.push_front(bind_benchmark);
     callstack.push_front(bind_colorcamera);
     callstack.push_front(bind_camera);
@@ -184,7 +180,6 @@ void NodeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_neuralnetwork);
     callstack.push_front(bind_videoencoder);
     callstack.push_front(bind_imagemanip);
-    callstack.push_front(bind_imagemanipv2);
     callstack.push_front(bind_warp);
     callstack.push_front(bind_spiout);
     callstack.push_front(bind_spiin);
@@ -226,6 +221,7 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
     //// Bindings for actual nodes
     // Move properties into nodes and nodes under 'node' submodule
     daiNodeModule = m.def_submodule("node");
+    daiNodeInternalModule = m.def_submodule("node").def_submodule("internal");
 
     // Properties
     py::class_<Node, std::shared_ptr<Node>> pyNode(m, "Node", DOC(dai, Node));
@@ -433,13 +429,12 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
              DOC(dai, Node, getAssetManager))
         .def("add", &Node::add, py::arg("node"), DOC(dai, Node, add));
 
-    // TODO(themarpe) - refactor, threaded node could be separate from Node
-    pyThreadedNode.def("trace", [](dai::ThreadedNode& node, const std::string& msg) { node.logger->trace(msg); })
-        .def("debug", [](dai::ThreadedNode& node, const std::string& msg) { node.logger->debug(msg); })
-        .def("info", [](dai::ThreadedNode& node, const std::string& msg) { node.logger->info(msg); })
-        .def("warn", [](dai::ThreadedNode& node, const std::string& msg) { node.logger->warn(msg); })
-        .def("error", [](dai::ThreadedNode& node, const std::string& msg) { node.logger->error(msg); })
-        .def("critical", [](dai::ThreadedNode& node, const std::string& msg) { node.logger->critical(msg); })
+    pyThreadedNode.def("trace", [](dai::ThreadedNode& node, const std::string& msg) { node.pimpl->logger->trace(msg); })
+        .def("debug", [](dai::ThreadedNode& node, const std::string& msg) { node.pimpl->logger->debug(msg); })
+        .def("info", [](dai::ThreadedNode& node, const std::string& msg) { node.pimpl->logger->info(msg); })
+        .def("warn", [](dai::ThreadedNode& node, const std::string& msg) { node.pimpl->logger->warn(msg); })
+        .def("error", [](dai::ThreadedNode& node, const std::string& msg) { node.pimpl->logger->error(msg); })
+        .def("critical", [](dai::ThreadedNode& node, const std::string& msg) { node.pimpl->logger->critical(msg); })
         .def("isRunning", &ThreadedNode::isRunning, DOC(dai, ThreadedNode, isRunning))
         .def("setLogLevel", &ThreadedNode::setLogLevel, DOC(dai, ThreadedNode, setLogLevel))
         .def("getLogLevel", &ThreadedNode::getLogLevel, DOC(dai, ThreadedNode, getLogLevel));

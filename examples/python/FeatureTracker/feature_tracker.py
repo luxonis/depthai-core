@@ -96,7 +96,7 @@ cv2.createTrackbar('numMaxFeatures','Features',256,1024, on_trackbar)
 with dai.Pipeline() as pipeline:
     camera = pipeline.create(dai.node.Camera).build()
     camOutput = camera.requestOutput((640, 640), dai.ImgFrame.Type.NV12)
-    manip = pipeline.create(dai.node.ImageManipV2)
+    manip = pipeline.create(dai.node.ImageManip)
     manip.initialConfig.setFrameType(dai.ImgFrame.Type.GRAY8)
     camOutput.link(manip.inputImage)
 

@@ -6,16 +6,6 @@
     #error This example needs OpenCV support, which is not available on your system
 #endif
 
-std::string getDefaultRecordingPath() {
-    auto isTest = std::getenv("RUNNING_AS_TEST");
-    if(isTest && std::string(isTest) == "1") {
-        // If running as test record from dowloaded recording
-        return RECORDING_PATH;
-    } else {
-        return "raw_recording";
-    }
-}
-
 int main(int argc, char** argv) {
     dai::Pipeline pipeline;
     auto camA = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A);

@@ -9,8 +9,8 @@ with dai.Pipeline() as p:
     width = 640
     height = 400
     # Define sources and outputs
-    left = p.create(dai.node.MonoCamera)
-    right = p.create(dai.node.MonoCamera)
+    left = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B, sensorFps=fps)
+    right = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C, sensorFps=fps)
     imu = p.create(dai.node.IMU)
     odom = p.create(dai.node.BasaltVIO)
     slam = p.create(dai.node.RTABMapSLAM)
@@ -25,13 +25,6 @@ with dai.Pipeline() as p:
     imu.setBatchReportThreshold(1)
     imu.setMaxBatchReports(10)
 
-    left.setCamera("left")
-    left.setResolution(dai.MonoCameraProperties.SensorResolution.THE_400_P)
-    left.setFps(fps)
-    right.setCamera("right")
-    right.setResolution(dai.MonoCameraProperties.SensorResolution.THE_400_P)
-    right.setFps(fps)
-
     stereo.setExtendedDisparity(False)
     stereo.setLeftRightCheck(True)
     stereo.setSubpixel(True)
@@ -41,8 +34,8 @@ with dai.Pipeline() as p:
     stereo.setDepthAlign(dai.CameraBoardSocket.CAM_B)
 
 
-    left.out.link(stereo.left)
-    right.out.link(stereo.right)
+    left.requestOutput((width, height)).link(stereo.left)
+    right.requestOutput((width, height)).link(stereo.right)
     stereo.syncedLeft.link(odom.left)
     stereo.syncedRight.link(odom.right)
     stereo.depth.link(slam.depth)

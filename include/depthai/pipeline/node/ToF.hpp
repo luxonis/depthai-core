@@ -32,7 +32,7 @@ class ToF : public DeviceNodeCRTP<DeviceNode, ToF, ToFProperties> {
     /**
      * Initial config to use for feature tracking.
      */
-    ToFConfig initialConfig;
+    std::shared_ptr<ToFConfig> initialConfig = std::make_shared<ToFConfig>();
 
     /**
      * Input ToFConfig message with ability to modify parameters in runtime.

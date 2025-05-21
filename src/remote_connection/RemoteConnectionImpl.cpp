@@ -411,7 +411,7 @@ void RemoteConnectionImpl::exposePipelineService(const Pipeline& pipeline) {
     assert(ids.size() == 1);
     auto id = ids[0];
 
-    auto serializedPipeline = pipeline.serializeToJson();
+    auto serializedPipeline = pipeline.serializeToJson(false);
     auto serializedPipelineStr = serializedPipeline.dump();
     serviceMap[id] = [serializedPipelineStr](foxglove::ServiceResponse request) {
         (void)request;

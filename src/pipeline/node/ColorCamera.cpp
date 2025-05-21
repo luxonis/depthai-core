@@ -606,14 +606,6 @@ float ColorCamera::getSensorCropY() const {
     return std::get<1>(getSensorCrop());
 }
 
-void ColorCamera::setWaitForConfigInput(bool wait) {
-    inputConfig.setWaitForMessage(wait);
-}
-
-bool ColorCamera::getWaitForConfigInput() const {
-    return inputConfig.getWaitForMessage();
-}
-
 void ColorCamera::setPreviewKeepAspectRatio(bool keep) {
     properties.previewKeepAspectRatio = keep;
 }

@@ -9,8 +9,8 @@ with dai.Pipeline() as p:
     width = 640
     height = 400
     # Define sources and outputs
-    left = p.create(dai.node.MonoCamera)
-    right = p.create(dai.node.MonoCamera)
+    left = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B, sensorFps=fps)
+    right = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C, sensorFps=fps)
     imu = p.create(dai.node.IMU)
     stereo = p.create(dai.node.StereoDepth)
     featureTracker = p.create(dai.node.FeatureTracker)
@@ -26,12 +26,6 @@ with dai.Pipeline() as p:
     featureTracker.initialConfig.setNumTargetFeatures(1000)
     featureTracker.initialConfig.setMotionEstimator(False)
     featureTracker.initialConfig.FeatureMaintainer.minimumDistanceBetweenFeatures = 49
-    left.setCamera("left")
-    left.setResolution(dai.MonoCameraProperties.SensorResolution.THE_400_P)
-    left.setFps(fps)
-    right.setCamera("right")
-    right.setResolution(dai.MonoCameraProperties.SensorResolution.THE_400_P)
-    right.setFps(fps)
 
     stereo.setExtendedDisparity(False)
     stereo.setLeftRightCheck(True)
@@ -43,8 +37,8 @@ with dai.Pipeline() as p:
 
     # Linking
 
-    left.out.link(stereo.left)
-    right.out.link(stereo.right)
+    left.requestOutput((width, height)).link(stereo.left)
+    right.requestOutput((width, height)).link(stereo.right)
     stereo.rectifiedLeft.link(featureTracker.inputImage)
     featureTracker.passthroughInputImage.link(odom.rect)
     stereo.depth.link(odom.depth)

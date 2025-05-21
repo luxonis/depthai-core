@@ -4,10 +4,10 @@
 
 #include "depthai/device/CalibrationHandler.hpp"
 #include "depthai/pipeline/ThreadedHostNode.hpp"
-#include "depthai/pipeline/node/XLinkIn.hpp"
-#include "depthai/pipeline/node/XLinkOut.hpp"
-#include "depthai/pipeline/node/host/XLinkInHost.hpp"
-#include "depthai/pipeline/node/host/XLinkOutHost.hpp"
+#include "depthai/pipeline/node/internal/XLinkIn.hpp"
+#include "depthai/pipeline/node/internal/XLinkInHost.hpp"
+#include "depthai/pipeline/node/internal/XLinkOut.hpp"
+#include "depthai/pipeline/node/internal/XLinkOutHost.hpp"
 #include "depthai/utility/Initialization.hpp"
 #include "pipeline/datatype/ImgFrame.hpp"
 #include "pipeline/node/DetectionNetwork.hpp"
@@ -128,7 +128,7 @@ void PipelineImpl::serialize(PipelineSchema& schema, Assets& assets, std::vector
     assets = mutableAssets;
 }
 
-nlohmann::json PipelineImpl::serializeToJson() const {
+nlohmann::json PipelineImpl::serializeToJson(bool includeAssets) const {
     PipelineSchema schema;
     Assets assets;
     std::vector<uint8_t> assetStorage;
@@ -139,9 +139,10 @@ nlohmann::json PipelineImpl::serializeToJson() const {
     for(auto& node : j["pipeline"]["nodes"]) {
         node[1]["properties"] = nlohmann::json::parse(node[1]["properties"].get<std::vector<uint8_t>>());
     }
-
-    j["assets"] = assets;
-    j["assetStorage"] = assetStorage;
+    if(includeAssets) {
+        j["assets"] = assets;
+        j["assetStorage"] = assetStorage;
+    }
     return j;
 }
 
@@ -728,13 +729,13 @@ void PipelineImpl::build() {
 
     // Create a map of already visited nodes to only create one xlink bridge
     struct XLinkOutBridge {
-        std::shared_ptr<node::XLinkOut> xLinkOut;
-        std::shared_ptr<node::XLinkInHost> xLinkInHost;
+        std::shared_ptr<node::internal::XLinkOut> xLinkOut;
+        std::shared_ptr<node::internal::XLinkInHost> xLinkInHost;
     };
 
     struct XLinkInBridge {
-        std::shared_ptr<node::XLinkOutHost> xLinkOutHost;
-        std::shared_ptr<node::XLinkIn> xLinkIn;
+        std::shared_ptr<node::internal::XLinkOutHost> xLinkOutHost;
+        std::shared_ptr<node::internal::XLinkIn> xLinkIn;
     };
 
     std::unordered_map<dai::Node::Output*, XLinkOutBridge> bridgesOut;
@@ -752,8 +753,8 @@ void PipelineImpl::build() {
             if(bridgesOut.count(connection.out) == 0) {  // If the bridge does not already exist, create one
                 // // Create a new bridge
                 bridgesOut[connection.out] = XLinkOutBridge{
-                    create<node::XLinkOut>(shared_from_this()),
-                    create<node::XLinkInHost>(shared_from_this()),
+                    create<node::internal::XLinkOut>(shared_from_this()),
+                    create<node::internal::XLinkInHost>(shared_from_this()),
                 };
                 auto& xLinkBridge = bridgesOut[connection.out];
                 auto streamName = fmt::format("__x_{}_{}_{}", outNode->id, connection.outputGroup, connection.outputName);
@@ -776,8 +777,8 @@ void PipelineImpl::build() {
             if(bridgesIn.count(connection.in) == 0) {  // If the bridge does not already exist, create one
                 // // Create a new bridge
                 bridgesIn[connection.in] = XLinkInBridge{
-                    create<node::XLinkOutHost>(shared_from_this()),
-                    create<node::XLinkIn>(shared_from_this()),
+                    create<node::internal::XLinkOutHost>(shared_from_this()),
+                    create<node::internal::XLinkIn>(shared_from_this()),
                 };
                 auto& xLinkBridge = bridgesIn[connection.in];
                 auto streamName = fmt::format("__x_{}_{}_{}", inNode->id, connection.inputGroup, connection.inputName);
@@ -816,8 +817,8 @@ void PipelineImpl::build() {
                 if(bridgesOut.count(queueConnection.output) == 0) {
                     // // Create a new bridge
                     bridgesOut[queueConnection.output] = XLinkOutBridge{
-                        create<node::XLinkOut>(shared_from_this()),
-                        create<node::XLinkInHost>(shared_from_this()),
+                        create<node::internal::XLinkOut>(shared_from_this()),
+                        create<node::internal::XLinkInHost>(shared_from_this()),
                     };
                     auto& xLinkBridge = bridgesOut[queueConnection.output];
                     auto streamName = fmt::format("__x_{}_{}", node->id, output->getName());
@@ -882,9 +883,9 @@ void PipelineImpl::resetConnections() {
     if(defaultDevice->getConnection() == nullptr) throw std::runtime_error("Connection lost");
     auto con = defaultDevice->getConnection();
     for(auto node : getAllNodes()) {
-        auto tmp = std::dynamic_pointer_cast<node::XLinkInHost>(node);
+        auto tmp = std::dynamic_pointer_cast<node::internal::XLinkInHost>(node);
         if(tmp) tmp->setConnection(con);
-        auto tmp2 = std::dynamic_pointer_cast<node::XLinkOutHost>(node);
+        auto tmp2 = std::dynamic_pointer_cast<node::internal::XLinkOutHost>(node);
         if(tmp2) tmp2->setConnection(con);
     }
 
@@ -897,9 +898,9 @@ void PipelineImpl::resetConnections() {
 void PipelineImpl::disconnectXLinkHosts() {
     // make connections throw instead of reconnecting
     for(auto node : getAllNodes()) {
-        auto tmp = std::dynamic_pointer_cast<node::XLinkInHost>(node);
+        auto tmp = std::dynamic_pointer_cast<node::internal::XLinkInHost>(node);
         if(tmp) tmp->disconnect();
-        auto tmp2 = std::dynamic_pointer_cast<node::XLinkOutHost>(node);
+        auto tmp2 = std::dynamic_pointer_cast<node::internal::XLinkOutHost>(node);
         if(tmp2) tmp2->disconnect();
     }
 }

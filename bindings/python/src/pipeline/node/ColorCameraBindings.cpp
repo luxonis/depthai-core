@@ -3,7 +3,9 @@
 #include "depthai/pipeline/Node.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/node/ColorCamera.hpp"
+#include "depthai/utility/CompilerWarnings.hpp"
 
+DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
 void bind_colorcamera(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::node;
@@ -88,14 +90,12 @@ void bind_colorcamera(pybind11::module& m, void* pCallstack) {
         .def_readwrite("warpMeshStepWidth", &ColorCameraProperties::warpMeshStepWidth)
         .def_readwrite("warpMeshStepHeight", &ColorCameraProperties::warpMeshStepHeight)
         .def_readwrite("eventFilter", &ColorCameraProperties::eventFilter);
-
     // ColorCamera node
     colorCamera
         .def(py::init([]() {
             auto camera = getImplicitPipeline()->create<ColorCamera>();
             return camera;
         }))
-        .def_readonly("inputConfig", &ColorCamera::inputConfig, DOC(dai, node, ColorCamera, inputConfig))
         .def_readonly("inputControl", &ColorCamera::inputControl, DOC(dai, node, ColorCamera, inputControl))
         .def_readonly("initialControl", &ColorCamera::initialControl, DOC(dai, node, ColorCamera, initialControl))
         .def_readonly("video", &ColorCamera::video, DOC(dai, node, ColorCamera, video))
@@ -184,31 +184,6 @@ void bind_colorcamera(pybind11::module& m, void* pCallstack) {
         .def("getSensorCropX", &ColorCamera::getSensorCropX, DOC(dai, node, ColorCamera, getSensorCropX))
         .def("getSensorCropY", &ColorCamera::getSensorCropY, DOC(dai, node, ColorCamera, getSensorCropY))
 
-        .def(
-            "setWaitForConfigInput",
-            [](ColorCamera& cam, bool wait) {
-                // Issue a deprecation warning
-                PyErr_WarnEx(PyExc_DeprecationWarning, "Use 'inputConfig.setWaitForMessage()' instead", 1);
-                HEDLEY_DIAGNOSTIC_PUSH
-                HEDLEY_DIAGNOSTIC_DISABLE_DEPRECATED
-                cam.setWaitForConfigInput(wait);
-                HEDLEY_DIAGNOSTIC_POP
-            },
-            py::arg("wait"),
-            DOC(dai, node, ColorCamera, setWaitForConfigInput))
-
-        .def(
-            "getWaitForConfigInput",
-            [](ColorCamera& cam) {
-                // Issue a deprecation warning
-                PyErr_WarnEx(PyExc_DeprecationWarning, "Use 'inputConfig.setWaitForMessage()' instead", 1);
-                HEDLEY_DIAGNOSTIC_PUSH
-                HEDLEY_DIAGNOSTIC_DISABLE_DEPRECATED
-                return cam.getWaitForConfigInput();
-                HEDLEY_DIAGNOSTIC_POP
-            },
-            DOC(dai, node, ColorCamera, getWaitForConfigInput))
-
         .def("setPreviewKeepAspectRatio", &ColorCamera::setPreviewKeepAspectRatio, py::arg("keep"), DOC(dai, node, ColorCamera, setPreviewKeepAspectRatio))
         .def("getPreviewKeepAspectRatio", &ColorCamera::getPreviewKeepAspectRatio, DOC(dai, node, ColorCamera, getPreviewKeepAspectRatio))
         .def("setIspScale",
@@ -270,6 +245,7 @@ void bind_colorcamera(pybind11::module& m, void* pCallstack) {
         .def("getCalibrationAlpha", &ColorCamera::getCalibrationAlpha, DOC(dai, node, ColorCamera, getCalibrationAlpha))
 
         .def("setRawOutputPacked", &ColorCamera::setRawOutputPacked, py::arg("packed"), DOC(dai, node, ColorCamera, setRawOutputPacked));
+    DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING
     // ALIAS
     daiNodeModule.attr("ColorCamera").attr("Properties") = colorCameraProperties;
 }

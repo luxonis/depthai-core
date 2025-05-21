@@ -36,7 +36,7 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
         HIGH_DETAIL,
         ROBOTICS
     };
-    std::shared_ptr<StereoDepth> build(Node::Output& left, Node::Output& right, PresetMode presetMode = PresetMode::HIGH_ACCURACY) {
+    std::shared_ptr<StereoDepth> build(Node::Output& left, Node::Output& right, PresetMode presetMode = PresetMode::DEFAULT) {
         setDefaultProfilePreset(presetMode);
         left.link(this->left);
         right.link(this->right);
@@ -48,7 +48,7 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
      * @param autoCreateCameras If true, will create left and right nodes if they don't exist
      * @param presetMode Preset mode for stereo depth
      */
-    std::shared_ptr<StereoDepth> build(bool autoCreateCameras, PresetMode presetMode = PresetMode::HIGH_ACCURACY, std::pair<int, int> size = {640, 400});
+    std::shared_ptr<StereoDepth> build(bool autoCreateCameras, PresetMode presetMode = PresetMode::DEFAULT, std::pair<int, int> size = {640, 400});
 
    protected:
     Properties& getProperties();
@@ -56,7 +56,7 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
     StereoDepth(std::unique_ptr<Properties> props);
 
    private:
-    PresetMode presetMode = PresetMode::HIGH_ACCURACY;
+    PresetMode presetMode = PresetMode::DEFAULT;
 
    public:
     using MedianFilter = dai::StereoDepthConfig::MedianFilter;
@@ -64,7 +64,7 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
     /**
      * Initial config to use for StereoDepth.
      */
-    StereoDepthConfig initialConfig;
+    std::shared_ptr<StereoDepthConfig> initialConfig = std::make_shared<StereoDepthConfig>();
 
     /**
      * Input StereoDepthConfig message with ability to modify parameters in runtime.

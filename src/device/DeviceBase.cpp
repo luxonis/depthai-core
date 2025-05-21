@@ -27,8 +27,8 @@
 // project
 #include "DeviceLogger.hpp"
 #include "depthai/device/EepromError.hpp"
-#include "depthai/pipeline/node/XLinkIn.hpp"
-#include "depthai/pipeline/node/XLinkOut.hpp"
+#include "depthai/pipeline/node/internal/XLinkIn.hpp"
+#include "depthai/pipeline/node/internal/XLinkOut.hpp"
 #include "pipeline/Pipeline.hpp"
 #include "utility/EepromDataParser.hpp"
 #include "utility/Environment.hpp"

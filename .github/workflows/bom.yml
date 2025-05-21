@@ -60,12 +60,12 @@ jobs:
       - name: Checkout source code from tag
         uses: actions/checkout@v3
         with:
-            ref: ${{ github.event.inputs.depthai }} 
+            ref: ${{ github.event.inputs.depthai }}
             path: depthai-core
             submodules: 'recursive'
 
       - name: Prepare HIL Framework
-        run: source scripts/hil/prepare_hil_framework.sh 
+        run: source scripts/hil/prepare_hil_framework.sh
 
       - name: Configure, Build and Test
         run: |
@@ -83,7 +83,7 @@ jobs:
             export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-depthai-bom"
             RESERVATION_OPTION="--reservation-name $RESERVATION_NAME"
           fi
-          
+
           if [[ "${{ github.event.inputs.hold_reservation }}" == 'true' ]]; then
             HOLD_RESERVATION="--hold-reservation"
           fi

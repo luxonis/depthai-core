@@ -15,13 +15,13 @@ namespace node {
 /**
  * @brief ColorCamera node. For use with color sensors.
  */
-class ColorCamera : public DeviceNodeCRTP<DeviceNode, ColorCamera, ColorCameraProperties>, public SourceNode {
+class [[deprecated("Use Camera node instead")]] ColorCamera : public DeviceNodeCRTP<DeviceNode, ColorCamera, ColorCameraProperties>, public SourceNode {
    public:
     constexpr static const char* NAME = "ColorCamera";
     using DeviceNodeCRTP::DeviceNodeCRTP;
 
    protected:
-    Properties& getProperties();
+    Properties& getProperties() override;
     bool isSourceNode() const override;
     NodeRecordParams getNodeRecordParams() const override;
     Output& getRecordOutput() override;
@@ -39,12 +39,6 @@ class ColorCamera : public DeviceNodeCRTP<DeviceNode, ColorCamera, ColorCameraPr
      * Initial control options to apply to sensor
      */
     CameraControl initialControl;
-
-    /**
-     * Input for ImageManipConfig message, which can modify crop parameters in runtime
-     */
-    Input inputConfig{
-        *this, {"inputConfig", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ImageManipConfig, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Input for CameraControl message, which can modify camera parameters in runtime
@@ -318,19 +312,6 @@ class ColorCamera : public DeviceNodeCRTP<DeviceNode, ColorCamera, ColorCameraPr
     float getSensorCropY() const;
 
     // Node properties configuration
-    /**
-     * Specify to wait until inputConfig receives a configuration message,
-     * before sending out a frame.
-     * @param wait True to wait for inputConfig message, false otherwise
-     */
-    [[deprecated("Use 'inputConfig.setWaitForMessage()' instead")]] void setWaitForConfigInput(bool wait);
-
-    /**
-     * @see setWaitForConfigInput
-     * @returns True if wait for inputConfig message, false otherwise
-     */
-    [[deprecated("Use 'inputConfig.setWaitForMessage()' instead")]] bool getWaitForConfigInput() const;
-
     /**
      * Specifies whether preview output should preserve aspect ratio,
      * after downscaling from video size or not.

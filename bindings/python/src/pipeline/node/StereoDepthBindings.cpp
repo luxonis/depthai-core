@@ -3,6 +3,7 @@
 #include "depthai/pipeline/Node.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/node/StereoDepth.hpp"
+#include "depthai/utility/CompilerWarnings.hpp"
 
 void bind_stereodepth(pybind11::module& m, void* pCallstack) {
     using namespace dai;
@@ -71,16 +72,14 @@ void bind_stereodepth(pybind11::module& m, void* pCallstack) {
                        &StereoDepthProperties::depthAlignmentUseSpecTranslation,
                        DOC(dai, StereoDepthProperties, depthAlignmentUseSpecTranslation))
         .def_readwrite("alphaScaling", &StereoDepthProperties::alphaScaling, DOC(dai, StereoDepthProperties, alphaScaling));
-
+    DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
     stereoDepthPresetMode
         .value("HIGH_ACCURACY", StereoDepth::PresetMode::HIGH_ACCURACY, "**Deprecated:** Will be removed in future releases and replaced with DEFAULT")
         .value("HIGH_DENSITY", StereoDepth::PresetMode::HIGH_DENSITY, "**Deprecated:** Will be removed in future releases and replaced with DEFAULT")
-
         .value("DEFAULT", StereoDepth::PresetMode::DEFAULT)
         .value("FACE", StereoDepth::PresetMode::FACE)
         .value("HIGH_DETAIL", StereoDepth::PresetMode::HIGH_DETAIL)
         .value("ROBOTICS", StereoDepth::PresetMode::ROBOTICS)
-
         // Deprecated overriden
         .def_property_readonly_static(
             "HIGH_ACCURACY",
@@ -89,14 +88,11 @@ void bind_stereodepth(pybind11::module& m, void* pCallstack) {
                 return StereoDepth::PresetMode::HIGH_ACCURACY;
             })
 
-        .def_property_readonly_static(
-            "HIGH_DENSITY",
-            [](py::object) {
-                PyErr_WarnEx(PyExc_DeprecationWarning, "HIGH_DENSITY is deprecated, will be removed in future releases and replaced with DEFAULT.", 1);
-                return StereoDepth::PresetMode::HIGH_DENSITY;
-            })
-
-        ;
+        .def_property_readonly_static("HIGH_DENSITY", [](py::object) {
+            PyErr_WarnEx(PyExc_DeprecationWarning, "HIGH_DENSITY is deprecated, will be removed in future releases and replaced with DEFAULT.", 1);
+            return StereoDepth::PresetMode::HIGH_DENSITY;
+        });
+    DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING
 
     // Node
     stereoDepth
@@ -107,25 +103,25 @@ void bind_stereodepth(pybind11::module& m, void* pCallstack) {
              }),
              py::arg("left"),
              py::arg("right"),
-             py::arg("presetMode") = StereoDepth::PresetMode::HIGH_DENSITY)
+             py::arg("presetMode") = StereoDepth::PresetMode::DEFAULT)
         .def(py::init([](bool autoCreateCameras, StereoDepth::PresetMode presetMode) {
                  auto self = getImplicitPipeline()->create<StereoDepth>();
                  self->build(autoCreateCameras, presetMode);
                  return self;
              }),
              py::arg("autoCreateCameras"),
-             py::arg("presetMode") = StereoDepth::PresetMode::HIGH_DENSITY)
+             py::arg("presetMode") = StereoDepth::PresetMode::DEFAULT)
         .def("build",
              static_cast<std::shared_ptr<StereoDepth> (StereoDepth::*)(Node::Output&, Node::Output&, StereoDepth::PresetMode)>(&StereoDepth::build),
              py::arg("left"),
              py::arg("right"),
-             py::arg("presetMode") = StereoDepth::PresetMode::HIGH_DENSITY,
+             py::arg("presetMode") = StereoDepth::PresetMode::DEFAULT,
              DOC(dai, node, StereoDepth, build))
         .def(
             "build",
             static_cast<std::shared_ptr<StereoDepth> (StereoDepth::*)(bool autoCreate, StereoDepth::PresetMode, std::pair<int, int> size)>(&StereoDepth::build),
             py::arg("autoCreateCameras"),
-            py::arg("presetMode") = StereoDepth::PresetMode::HIGH_DENSITY,
+            py::arg("presetMode") = StereoDepth::PresetMode::DEFAULT,
             py::arg("size") = std::pair<int, int>{640, 400})
         .def_readonly("initialConfig", &StereoDepth::initialConfig, DOC(dai, node, StereoDepth, initialConfig))
         .def_readonly("inputConfig", &StereoDepth::inputConfig, DOC(dai, node, StereoDepth, inputConfig))
@@ -200,7 +196,7 @@ void bind_stereodepth(pybind11::module& m, void* pCallstack) {
             "setConfidenceThreshold",
             [](StereoDepth& s, int confThr) {
                 // Issue an deprecation warning
-                PyErr_WarnEx(PyExc_DeprecationWarning, "setConfidenceThreshold() is deprecated, Use 'initialConfig.setConfidenceThreshold()' instead", 1);
+                PyErr_WarnEx(PyExc_DeprecationWarning, "setConfidenceThreshold() is deprecated, Use 'initialConfig->setConfidenceThreshold()' instead", 1);
                 HEDLEY_DIAGNOSTIC_PUSH
                 HEDLEY_DIAGNOSTIC_DISABLE_DEPRECATED
                 s.setConfidenceThreshold(confThr);
@@ -211,7 +207,7 @@ void bind_stereodepth(pybind11::module& m, void* pCallstack) {
             "setMedianFilter",
             [](StereoDepth& s, dai::StereoDepthConfig::MedianFilter median) {
                 // Issue an deprecation warning
-                PyErr_WarnEx(PyExc_DeprecationWarning, "setMedianFilter() is deprecated, Use 'initialConfig.setMedianFilter()' instead", 1);
+                PyErr_WarnEx(PyExc_DeprecationWarning, "setMedianFilter() is deprecated, Use 'initialConfig->setMedianFilter()' instead", 1);
                 HEDLEY_DIAGNOSTIC_PUSH
                 HEDLEY_DIAGNOSTIC_DISABLE_DEPRECATED
                 s.setMedianFilter(median);
@@ -251,7 +247,7 @@ void bind_stereodepth(pybind11::module& m, void* pCallstack) {
         .def(
             "getMaxDisparity",
             [](StereoDepth& s) {
-                PyErr_WarnEx(PyExc_DeprecationWarning, "getMaxDisparity() is deprecated, Use 'initialConfig.getMaxDisparity()' instead", 1);
+                PyErr_WarnEx(PyExc_DeprecationWarning, "getMaxDisparity() is deprecated, Use 'initialConfig->getMaxDisparity()' instead", 1);
                 HEDLEY_DIAGNOSTIC_PUSH
                 HEDLEY_DIAGNOSTIC_DISABLE_DEPRECATED
                 return s.getMaxDisparity();

@@ -166,7 +166,7 @@ The following environment variables can be set to alter default behavior of the 
 
 | Environment variable  | Description   |
 |--------------|-----------|
-| DEPTHAI_LEVEL | Sets logging verbosity, 'trace', 'debug', 'warn', 'error' and 'off' |
+| DEPTHAI_LEVEL | Sets logging verbosity, 'trace', 'debug', 'info', 'warn', 'error' and 'off' |
 | XLINK_LEVEL | Sets logging verbosity of XLink library, 'debug'. 'info', 'warn', 'error', 'fatal' and 'off' |
 | DEPTHAI_INSTALL_SIGNAL_HANDLER | Set to 0 to disable installing Backward signal handler for stack trace printing |
 | DEPTHAI_WATCHDOG | Sets device watchdog timeout. Useful for debugging (`DEPTHAI_WATCHDOG=0`), to prevent device reset while the process is paused. |
@@ -188,7 +188,8 @@ The following environment variables can be set to alter default behavior of the 
 | DEPTHAI_LIBUSB_ANDROID_JAVAVM | JavaVM pointer that is passed to libusb for rootless Android interaction with devices. Interpreted as decimal value of uintptr_t |
 | DEPTHAI_CRASHDUMP | Directory in which to save the crash dump. |
 | DEPTHAI_CRASHDUMP_TIMEOUT | Specifies the duration in seconds to wait for device reboot when obtaining a crash dump. Crash dump retrieval disabled if 0. |
-| DEPTHAI_DISABLE_FEEDBACK | Disables crash dump and pipeline schema collection used to improve the library |
+| DEPTHAI_ENABLE_ANALYTICS_COLLECTION | Enables automatic analytics collection (pipeline schemas) used to improve the library |
+| DEPTHAI_DISABLE_CRASHDUMP_COLLECTION | Disables automatic crash dump collection used to improve the library |
 | DEPTHAI_HUB_API_KEY | API key for the Luxonis Hub |
 | DEPTHAI_ZOO_INTERNET_CHECK | (Default) 1 - perform internet check, if available, download the newest model version 0 - skip internet check and use cached model |
 | DEPTHAI_ZOO_INTERNET_CHECK_TIMEOUT | (Default) 1000 - timeout in milliseconds for the internet check |

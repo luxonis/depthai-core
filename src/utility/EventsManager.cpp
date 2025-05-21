@@ -8,6 +8,8 @@
 #include <sstream>
 #include <utility>
 
+#include "cpr/cpr.h"
+
 #include "Environment.hpp"
 #include "Logging.hpp"
 #include "cpr/cpr.h"
@@ -168,6 +170,11 @@ void EventsManager::sendEventBuffer() {
         cpr::VerifySsl(verifySsl),
         cpr::ProgressCallback(
             [&](cpr::cpr_off_t downloadTotal, cpr::cpr_off_t downloadNow, cpr::cpr_off_t uploadTotal, cpr::cpr_off_t uploadNow, intptr_t userdata) -> bool {
+                (void)userdata;
+                (void)downloadTotal;
+                (void)downloadNow;
+                (void)uploadTotal;
+                (void)uploadNow;
                 if(stopEventBuffer) {
                     return false;
                 }
@@ -305,6 +312,11 @@ void EventsManager::sendFile(const std::shared_ptr<EventData>& file, const std::
 
         cpr::ProgressCallback(
             [&](cpr::cpr_off_t downloadTotal, cpr::cpr_off_t downloadNow, cpr::cpr_off_t uploadTotal, cpr::cpr_off_t uploadNow, intptr_t userdata) -> bool {
+                (void)userdata;
+                (void)downloadTotal;
+                (void)downloadNow;
+                (void)uploadTotal;
+                (void)uploadNow;
                 if(stopEventBuffer) {
                     return false;
                 }
@@ -447,7 +459,7 @@ std::string EventsManager::createUUID() {
     };
     return ss.str();
 }
-void EventsManager::setQueueSize(uint64 queueSize) {
+void EventsManager::setQueueSize(uint64_t queueSize) {
     this->queueSize = queueSize;
 }
 void EventsManager::setLogResponse(bool logResponse) {

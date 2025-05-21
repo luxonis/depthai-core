@@ -7,6 +7,7 @@ find_package(Sanitizers)
 
 # Create utility library
 add_library(utility utility/utility.cpp)
+target_compile_features(utility PUBLIC cxx_std_17)
 target_include_directories(utility PUBLIC "utility" "$<BUILD_INTERFACE:${FP16_INCLUDE_DIR}>")
 add_default_flags(utility LEAN)
 target_link_libraries(utility ${OpenCV_LIBS})
@@ -273,8 +274,8 @@ dai_add_example(camera_multiple_outputs Camera/camera_multiple_outputs.cpp OFF O
 # ImageManip
 dai_add_example(image_manip_host HostNodes/image_manip_host.cpp OFF OFF)
 dai_add_example(image_manip_color_conversion_host HostNodes/image_manip_color_conversion.cpp OFF OFF)
-dai_add_example(image_manip_v2_resize ImageManip/image_manip_v2_resize.cpp OFF OFF)
-dai_add_example(image_manip_v2_multi_ops ImageManip/image_manip_v2_multi_ops.cpp OFF OFF)
+dai_add_example(image_manip_resize ImageManip/image_manip_resize.cpp OFF OFF)
+dai_add_example(image_manip_multi_ops ImageManip/image_manip_multi_ops.cpp OFF OFF)
 dai_add_example(image_manip_color_conversion ImageManip/image_manip_color_conversion.cpp OFF OFF)
 
 # Record
@@ -290,8 +291,10 @@ dai_add_example(replay_imu Replay/replay_imu.cpp OFF OFF)
 dai_add_example(holistic_replay Replay/holistic_replay.cpp ON OFF)
 target_compile_definitions(holistic_replay PRIVATE RECORDING_PATH="${recording_path}")
 
-dai_add_example(detection_network_replay DetectionNetwork/detection_network_replay.cpp ON OFF)
-target_compile_definitions(detection_network_replay PRIVATE VIDEO_PATH="${construction_vest}")
+if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
+    dai_add_example(detection_network_replay DetectionNetwork/detection_network_replay.cpp ON OFF)
+    target_compile_definitions(detection_network_replay PRIVATE VIDEO_PATH="${construction_vest}")
+endif()
 
 
 # StereoDepth
@@ -303,8 +306,6 @@ dai_set_example_test_labels(stereo ondevice rvc2_all rvc4 ci)
 dai_add_example(thermal RVC2/Thermal/thermal.cpp OFF OFF)
 
 # Host nodes
-dai_add_example(rgb_video RVC2/ColorCamera/rgb_video.cpp OFF OFF)
-dai_add_example(rgb_video_camera RVC2/Camera/rgb_video_camera.cpp OFF OFF)
 dai_add_example(host_node HostNodes/host_node.cpp OFF OFF)
 dai_add_example(threaded_host_node HostNodes/threaded_host_node.cpp OFF OFF)
 
@@ -318,18 +319,25 @@ endif()
 # Image Align
 dai_add_example(image_align RVC2/ImageAlign/image_align.cpp OFF OFF)
 
-# Visualizer
-dai_add_example(visualizer_yolo Visualizer/visualizer_yolo.cpp ON OFF)
-dai_set_example_test_labels(visualizer_yolo ondevice rvc2_all rvc4)
+if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
+    # Visualizer
+    dai_add_example(visualizer_yolo Visualizer/visualizer_yolo.cpp ON OFF)
+    dai_set_example_test_labels(visualizer_yolo ondevice rvc2_all rvc4)
+endif()
 
-include(FetchContent)
-FetchContent_Declare(rerun_sdk URL  https://github.com/rerun-io/rerun/releases/download/0.16.1/rerun_cpp_sdk.zip)
-FetchContent_MakeAvailable(rerun_sdk)
-dai_add_example(rgbd RGBD/rgbd.cpp ON OFF)
-target_link_libraries(rgbd PRIVATE rerun_sdk)
+# Skip compiling rerun examples on Windows, since the used version of rerun doesn't compile on Windows
+if(NOT WIN32)
+    include(FetchContent)
+    FetchContent_Declare(rerun_sdk URL  https://github.com/rerun-io/rerun/releases/download/0.16.1/rerun_cpp_sdk.zip)
+    FetchContent_MakeAvailable(rerun_sdk)
+    dai_add_example(rgbd RGBD/rgbd.cpp ON OFF)
+    target_link_libraries(rgbd PRIVATE rerun_sdk)
+endif()
 
-dai_add_example(visualizer_rgbd RGBD/visualizer_rgbd.cpp ON OFF)
-dai_add_example(visualizer_rgbd_autocreate RGBD/visualizer_rgbd_autocreate.cpp ON OFF)
+if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
+    dai_add_example(visualizer_rgbd RGBD/visualizer_rgbd.cpp ON OFF)
+    dai_add_example(visualizer_rgbd_autocreate RGBD/visualizer_rgbd_autocreate.cpp ON OFF)
+endif()
 
 if(DEPTHAI_RTABMAP_SUPPORT)
     include(FetchContent)

@@ -150,6 +150,18 @@ class NNData : public Buffer {
      */
     bool getLayerDatatype(const std::string& name, TensorInfo::DataType& datatype) const;
 
+    /**
+     * Get the datatype of a given tensor
+     * @returns TensorInfo::DataType tensor datatype
+     */
+    TensorInfo::DataType getTensorDatatype(const std::string& name);
+
+    /**
+     * Get the datatype of the first tensor
+     * @returns TensorInfo::DataType tensor datatype
+     */
+    TensorInfo::DataType getFirstTensorDatatype();
+
     // // uint8
     // /**
     //  * Convenience function to retrieve U8 data from layer
@@ -421,11 +433,11 @@ class NNData : public Buffer {
             }
         } else if(dataType == dai::TensorInfo::DataType::FP32) {
             for(uint32_t i = 0; i < tensor.size(); i++) {
-                *(float*)(&vecData->data()[4 * i + offset]) = tensor.data()[i];
+                *(float*)(&vecData->data()[4 * i + offset]) = (float)tensor.data()[i];
             }
         } else if(dataType == dai::TensorInfo::DataType::INT) {
             for(uint32_t i = 0; i < tensor.size(); i++) {
-                *(int32_t*)(&vecData->data()[4 * i + offset]) = tensor.data()[i];
+                *(int32_t*)(&vecData->data()[4 * i + offset]) = (int32_t)tensor.data()[i];
             }
         } else if(dataType == dai::TensorInfo::DataType::U8F) {
             for(uint32_t i = 0; i < tensor.size(); i++) {
@@ -433,7 +445,7 @@ class NNData : public Buffer {
             }
         } else if(dataType == dai::TensorInfo::DataType::FP64) {
             for(uint32_t i = 0; i < tensor.size(); i++) {
-                *(double*)(&vecData->data()[8 * i + offset]) = tensor.data()[i];
+                *(double*)(&vecData->data()[8 * i + offset]) = (double)tensor.data()[i];
             }
         }
 
@@ -633,18 +645,6 @@ class NNData : public Buffer {
             array = xt::transpose(array, permute);
         }
     }
-
-    /**
-     * Get the datatype of a given tensor
-     * @returns TensorInfo::DataType tensor datatype
-     */
-    TensorInfo::DataType getTensorDatatype(const std::string& name);
-
-    /**
-     * Get the datatype of the first tensor
-     * @returns TensorInfo::DataType tensor datatype
-     */
-    TensorInfo::DataType getFirstTensorDatatype();
 
     /**
      * Convenience function to retrieve values from the first tensor

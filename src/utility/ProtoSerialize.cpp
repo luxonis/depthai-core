@@ -139,7 +139,6 @@ bool deserializationSupported(DatatypeEnum datatype) {
         case DatatypeEnum::Buffer:
         case DatatypeEnum::NNData:
         case DatatypeEnum::ImageManipConfig:
-        case DatatypeEnum::ImageManipConfigV2:
         case DatatypeEnum::CameraControl:
         case DatatypeEnum::ImgDetections:
         case DatatypeEnum::SpatialImgDetections:
@@ -162,6 +161,7 @@ bool deserializationSupported(DatatypeEnum datatype) {
         case DatatypeEnum::PointCloudConfig:
         case DatatypeEnum::ImageAlignConfig:
         case DatatypeEnum::ImgAnnotations:
+        case DatatypeEnum::RGBDData:
             return false;
     }
     return false;
