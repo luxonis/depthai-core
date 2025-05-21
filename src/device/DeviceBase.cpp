@@ -321,9 +321,7 @@ DeviceBase::DeviceBase() {
 
 DeviceBase::DeviceBase(std::string nameOrDeviceId) : DeviceBase(dai::DeviceInfo(std::move(nameOrDeviceId))) {}
 
-DeviceBase::DeviceBase(std::string nameOrDeviceId, UsbSpeed maxUsbSpeed)
-    : DeviceBase(dai::DeviceInfo(std::move(nameOrDeviceId)), maxUsbSpeed) {}
-
+DeviceBase::DeviceBase(std::string nameOrDeviceId, UsbSpeed maxUsbSpeed) : DeviceBase(dai::DeviceInfo(std::move(nameOrDeviceId)), maxUsbSpeed) {}
 
 DeviceBase::DeviceBase(const dai::Path& pathToCmd) {
     init(pathToCmd);

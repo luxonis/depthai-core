@@ -42,7 +42,6 @@ StereoDepth::Properties& StereoDepth::getProperties() {
     return properties;
 }
 
-
 void StereoDepth::loadMeshData(const std::vector<std::uint8_t>& dataLeft, const std::vector<std::uint8_t>& dataRight) {
     if(dataLeft.size() != dataRight.size()) {
         throw std::runtime_error("StereoDepth | left and right mesh sizes must match");

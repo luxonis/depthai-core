@@ -41,7 +41,6 @@ class VideoEncoder : public DeviceNodeCRTP<DeviceNode, VideoEncoder, VideoEncode
      */
     void setDefaultProfilePreset(float fps, Properties::Profile profile);
 
-
     // node properties
     /**
      * Set number of frames in pool

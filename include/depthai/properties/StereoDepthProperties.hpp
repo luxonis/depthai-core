@@ -141,7 +141,6 @@ struct StereoDepthProperties : PropertiesSerializable<Properties, StereoDepthPro
      */
     std::optional<bool> useHomographyRectification;
 
-
     /**
      * Whether to enable frame syncing inside stereo node or not. Suitable if inputs are known to be synced.
      */

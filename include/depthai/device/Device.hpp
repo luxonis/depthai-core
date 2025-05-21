@@ -71,7 +71,6 @@ class Device : public DeviceBase {
      */
     std::string getPlatformAsString() const;
 
-
    private:
     void closeImpl() override;
 };

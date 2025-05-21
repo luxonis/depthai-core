@@ -11,7 +11,6 @@
 namespace dai {
 namespace node {
 
-
 /**
  * @brief Sync node. Performs syncing between image frames
  */

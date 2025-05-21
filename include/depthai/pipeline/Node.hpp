@@ -512,7 +512,6 @@ class Node : public std::enable_shared_from_this<Node> {
    protected:
     AssetManager assetManager;
 
-
     // Optimized for adding, searching and removing connections
     // using NodeMap = std::unordered_map<Node::Id, std::shared_ptr<Node>>;
     using NodeMap = std::vector<std::shared_ptr<Node>>;

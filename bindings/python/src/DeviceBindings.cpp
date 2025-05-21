@@ -77,11 +77,11 @@ static void bindConstructors(ARG& arg) {
     using namespace dai;
 
     arg.def(py::init([]() {
-                 auto dev = deviceSearchHelper<D>();
-                 py::gil_scoped_release release;
-                 return std::make_unique<D>(dev);
-             }),
-             DOC(dai, DeviceBase, DeviceBase, 1))
+                auto dev = deviceSearchHelper<D>();
+                py::gil_scoped_release release;
+                return std::make_unique<D>(dev);
+            }),
+            DOC(dai, DeviceBase, DeviceBase, 1))
         .def(py::init([](UsbSpeed maxUsbSpeed) {
                  auto dev = deviceSearchHelper<D>();
                  py::gil_scoped_release release;

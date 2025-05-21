@@ -15,7 +15,6 @@ namespace dai {
 struct CameraProperties : PropertiesSerializable<Properties, CameraProperties> {
     static constexpr int AUTO = -1;
 
-
     std::vector<ImgFrameCapability> outputRequests;
 
     /**
@@ -76,7 +75,6 @@ struct CameraProperties : PropertiesSerializable<Properties, CameraProperties> {
 
      */
     int isp3aFps = 0;
-
 
     /**
      * Pool sizes
