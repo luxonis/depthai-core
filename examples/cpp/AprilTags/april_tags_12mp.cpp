@@ -18,14 +18,14 @@ int main() {
     // Create nodes
     auto hostCamera = pipeline.create<dai::node::Camera>()->build();
     auto aprilTagNode = pipeline.create<dai::node::AprilTag>();
-    auto manip = pipeline.create<dai::node::ImageManipV2>();
+    auto manip = pipeline.create<dai::node::ImageManip>();
 
     // Configure nodes
     auto outputCam = hostCamera->requestOutput(std::make_pair(FULL_RES.width, FULL_RES.height));
     outputCam->link(aprilTagNode->inputImage);
 
     // Configure ImageManip
-    manip->initialConfig.setOutputSize(PREVIEW_SIZE.width, PREVIEW_SIZE.height, dai::ImageManipConfigV2::ResizeMode::STRETCH);
+    manip->initialConfig.setOutputSize(PREVIEW_SIZE.width, PREVIEW_SIZE.height, dai::ImageManipConfig::ResizeMode::STRETCH);
     manip->setMaxOutputFrameSize(2162688);
     outputCam->link(manip->inputImage);
 

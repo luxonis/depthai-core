@@ -123,7 +123,7 @@ int main() {
     auto camera = pipeline.create<dai::node::Camera>()->build();
     auto camOutput = camera->requestOutput(std::make_pair(640, 640), dai::ImgFrame::Type::NV12);
     
-    auto manip = pipeline.create<dai::node::ImageManipV2>();
+    auto manip = pipeline.create<dai::node::ImageManip>();
     manip->initialConfig.setFrameType(dai::ImgFrame::Type::GRAY8);
     camOutput->link(manip->inputImage);
 

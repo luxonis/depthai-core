@@ -3,10 +3,13 @@
 #include <depthai/pipeline/DeviceNode.hpp>
 
 // shared
-#include <depthai/properties/XLinkInProperties.hpp>
+#include <depthai/properties/internal/XLinkInProperties.hpp>
 
 namespace dai {
 namespace node {
+namespace internal {
+
+using XLinkInProperties = ::dai::internal::XLinkInProperties;
 
 /**
  * @brief XLinkIn node. Receives messages over XLink.
@@ -54,5 +57,6 @@ class XLinkIn : public DeviceNodeCRTP<DeviceNode, XLinkIn, XLinkInProperties> {
     std::uint32_t getNumFrames() const;
 };
 
+}  // namespace internal
 }  // namespace node
 }  // namespace dai

@@ -3,6 +3,7 @@
 #include "depthai/properties/Properties.hpp"
 
 namespace dai {
+namespace internal {
 
 /**
  * Specify properties for XLinkOut such as stream name, ...
@@ -26,4 +27,5 @@ struct XLinkOutProperties : PropertiesSerializable<Properties, XLinkOutPropertie
 
 DEPTHAI_SERIALIZE_EXT(XLinkOutProperties, maxFpsLimit, streamName, metadataOnly);
 
+}  // namespace internal
 }  // namespace dai

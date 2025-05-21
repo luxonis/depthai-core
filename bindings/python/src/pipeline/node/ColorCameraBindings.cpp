@@ -96,7 +96,6 @@ void bind_colorcamera(pybind11::module& m, void* pCallstack) {
             auto camera = getImplicitPipeline()->create<ColorCamera>();
             return camera;
         }))
-        .def_readonly("inputConfig", &ColorCamera::inputConfig, DOC(dai, node, ColorCamera, inputConfig))
         .def_readonly("inputControl", &ColorCamera::inputControl, DOC(dai, node, ColorCamera, inputControl))
         .def_readonly("initialControl", &ColorCamera::initialControl, DOC(dai, node, ColorCamera, initialControl))
         .def_readonly("video", &ColorCamera::video, DOC(dai, node, ColorCamera, video))
@@ -184,31 +183,6 @@ void bind_colorcamera(pybind11::module& m, void* pCallstack) {
         .def("getSensorCrop", &ColorCamera::getSensorCrop, DOC(dai, node, ColorCamera, getSensorCrop))
         .def("getSensorCropX", &ColorCamera::getSensorCropX, DOC(dai, node, ColorCamera, getSensorCropX))
         .def("getSensorCropY", &ColorCamera::getSensorCropY, DOC(dai, node, ColorCamera, getSensorCropY))
-
-        .def(
-            "setWaitForConfigInput",
-            [](ColorCamera& cam, bool wait) {
-                // Issue a deprecation warning
-                PyErr_WarnEx(PyExc_DeprecationWarning, "Use 'inputConfig.setWaitForMessage()' instead", 1);
-                HEDLEY_DIAGNOSTIC_PUSH
-                HEDLEY_DIAGNOSTIC_DISABLE_DEPRECATED
-                cam.setWaitForConfigInput(wait);
-                HEDLEY_DIAGNOSTIC_POP
-            },
-            py::arg("wait"),
-            DOC(dai, node, ColorCamera, setWaitForConfigInput))
-
-        .def(
-            "getWaitForConfigInput",
-            [](ColorCamera& cam) {
-                // Issue a deprecation warning
-                PyErr_WarnEx(PyExc_DeprecationWarning, "Use 'inputConfig.setWaitForMessage()' instead", 1);
-                HEDLEY_DIAGNOSTIC_PUSH
-                HEDLEY_DIAGNOSTIC_DISABLE_DEPRECATED
-                return cam.getWaitForConfigInput();
-                HEDLEY_DIAGNOSTIC_POP
-            },
-            DOC(dai, node, ColorCamera, getWaitForConfigInput))
 
         .def("setPreviewKeepAspectRatio", &ColorCamera::setPreviewKeepAspectRatio, py::arg("keep"), DOC(dai, node, ColorCamera, setPreviewKeepAspectRatio))
         .def("getPreviewKeepAspectRatio", &ColorCamera::getPreviewKeepAspectRatio, DOC(dai, node, ColorCamera, getPreviewKeepAspectRatio))

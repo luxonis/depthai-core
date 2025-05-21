@@ -242,8 +242,8 @@ set(TARGET_CORE_SOURCES
     src/pipeline/ThreadedNode.cpp
     src/pipeline/DeviceNode.cpp
     src/pipeline/DeviceNodeGroup.cpp
-    src/pipeline/node/XLinkIn.cpp
-    src/pipeline/node/XLinkOut.cpp
+    src/pipeline/node/internal/XLinkIn.cpp
+    src/pipeline/node/internal/XLinkOut.cpp
     src/pipeline/node/ColorCamera.cpp
     src/pipeline/node/Camera.cpp
     src/pipeline/node/Thermal.cpp
@@ -254,7 +254,6 @@ set(TARGET_CORE_SOURCES
     src/pipeline/node/Sync.cpp
     src/pipeline/node/NeuralNetwork.cpp
     src/pipeline/node/ImageManip.cpp
-    src/pipeline/node/ImageManipV2.cpp
     src/pipeline/node/Warp.cpp
     src/pipeline/node/VideoEncoder.cpp
     src/pipeline/node/DetectionNetwork.cpp
@@ -277,8 +276,8 @@ set(TARGET_CORE_SOURCES
     src/pipeline/node/test/MyProducer.cpp
     src/pipeline/node/test/MyConsumer.cpp
     src/pipeline/node/UVC.cpp
-    src/pipeline/node/host/XLinkInHost.cpp
-    src/pipeline/node/host/XLinkOutHost.cpp
+    src/pipeline/node/internal/XLinkInHost.cpp
+    src/pipeline/node/internal/XLinkOutHost.cpp
     src/pipeline/node/host/HostNode.cpp
     src/pipeline/node/host/RGBD.cpp
     src/pipeline/datatype/DatatypeEnum.cpp
@@ -289,7 +288,6 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/EncodedFrame.cpp
     src/pipeline/datatype/ImgAnnotations.cpp
     src/pipeline/datatype/ImageManipConfig.cpp
-    src/pipeline/datatype/ImageManipConfigV2.cpp
     src/pipeline/datatype/CameraControl.cpp
     src/pipeline/datatype/NNData.cpp
     src/pipeline/datatype/ImgDetections.cpp
@@ -315,7 +313,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/MessageGroup.cpp
     src/pipeline/datatype/TransformData.cpp
     src/utility/H26xParsers.cpp
-    src/utility/ImageManipV2Impl.cpp
+    src/utility/ImageManipImpl.cpp
     src/utility/Initialization.cpp
     src/utility/Resources.cpp
     src/utility/Path.cpp

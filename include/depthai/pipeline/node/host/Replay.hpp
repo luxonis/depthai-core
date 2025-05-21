@@ -5,7 +5,7 @@
 #include <memory>
 
 // shared
-#include <depthai/properties/XLinkOutProperties.hpp>
+#include <depthai/properties/internal/XLinkOutProperties.hpp>
 
 // project
 #include <depthai/pipeline/datatype/Buffer.hpp>
@@ -16,6 +16,8 @@
 
 namespace dai {
 namespace node {
+
+using XLinkOutProperties = ::dai::internal::XLinkOutProperties;
 
 /**
  * @brief Replay node, used to replay a file to a source node

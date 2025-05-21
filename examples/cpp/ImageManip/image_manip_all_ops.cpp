@@ -25,54 +25,54 @@ int main() {
         dai::Pipeline pipeline;
 
         // Create input manipulator
-        auto manipInput = pipeline.create<dai::node::ImageManipV2>();
+        auto manipInput = pipeline.create<dai::node::ImageManip>();
         manipInput->initialConfig.setFrameType(dai::ImgFrame::Type::BGR888p);
         auto inputQueue = manipInput->inputImage.createInputQueue();
 
         // Define manipulation operations
-        std::vector<std::pair<std::string, std::function<void(dai::ImageManipConfigV2&)>>> manipOps = {
+        std::vector<std::pair<std::string, std::function<void(dai::ImageManipConfig&)>>> manipOps = {
             // Resize operations
-            {"resize_stretch", [](dai::ImageManipConfigV2& conf) {
-                conf.setOutputSize(256, 200, dai::ImageManipConfigV2::ResizeMode::STRETCH);
+            {"resize_stretch", [](dai::ImageManipConfig& conf) {
+                conf.setOutputSize(256, 200, dai::ImageManipConfig::ResizeMode::STRETCH);
             }},
-            {"resize_letterbox", [](dai::ImageManipConfigV2& conf) {
-                conf.setOutputSize(256, 200, dai::ImageManipConfigV2::ResizeMode::LETTERBOX);
+            {"resize_letterbox", [](dai::ImageManipConfig& conf) {
+                conf.setOutputSize(256, 200, dai::ImageManipConfig::ResizeMode::LETTERBOX);
             }},
-            {"resize_center_crop", [](dai::ImageManipConfigV2& conf) {
-                conf.setOutputSize(256, 200, dai::ImageManipConfigV2::ResizeMode::CENTER_CROP);
+            {"resize_center_crop", [](dai::ImageManipConfig& conf) {
+                conf.setOutputSize(256, 200, dai::ImageManipConfig::ResizeMode::CENTER_CROP);
             }},
             // Crop operation
-            {"crop", [](dai::ImageManipConfigV2& conf) {
+            {"crop", [](dai::ImageManipConfig& conf) {
                 conf.addCrop(50, 50, 150, 200);
             }},
             // Flip operations
-            {"flip_vertical", [](dai::ImageManipConfigV2& conf) {
+            {"flip_vertical", [](dai::ImageManipConfig& conf) {
                 conf.addFlipVertical();
             }},
-            {"flip_horizontal", [](dai::ImageManipConfigV2& conf) {
+            {"flip_horizontal", [](dai::ImageManipConfig& conf) {
                 conf.addFlipHorizontal();
             }},
             // Scale operation
-            {"scale", [](dai::ImageManipConfigV2& conf) {
+            {"scale", [](dai::ImageManipConfig& conf) {
                 conf.addScale(0.7f, 0.5f);
             }},
             // Rotate operations
-            {"rotate_90_deg", [](dai::ImageManipConfigV2& conf) {
+            {"rotate_90_deg", [](dai::ImageManipConfig& conf) {
                 conf.addRotateDeg(90);
             }},
-            {"rotate_90_deg_center", [](dai::ImageManipConfigV2& conf) {
+            {"rotate_90_deg_center", [](dai::ImageManipConfig& conf) {
                 conf.addRotateDeg(90, dai::Point2f(0.2f, 0.3f));
                 conf.setOutputCenter(false);
             }},
             // Transform operations
-            {"transform_affine", [](dai::ImageManipConfigV2& conf) {
+            {"transform_affine", [](dai::ImageManipConfig& conf) {
                 std::array<float, 4> matrix = {
                     1.0f, 0.5f,
                     0.2f, 1.0f
                 };
                 conf.addTransformAffine(matrix);
             }},
-            {"transform_perspective", [](dai::ImageManipConfigV2& conf) {
+            {"transform_perspective", [](dai::ImageManipConfig& conf) {
                 std::array<float, 9> matrix = {
                     1.0f, 0.2f, 0.0f,  // First row
                     0.1f, 1.0f, 0.0f,  // Second row
@@ -81,7 +81,7 @@ int main() {
                 conf.addTransformPerspective(matrix);
             }},
             // Frame type conversion
-            {"frame_type", [](dai::ImageManipConfigV2& conf) {
+            {"frame_type", [](dai::ImageManipConfig& conf) {
                 conf.setFrameType(dai::ImgFrame::Type::RAW8);
             }}
         };
@@ -90,7 +90,7 @@ int main() {
         std::map<std::string, std::shared_ptr<dai::MessageQueue>> queues;
         for(const auto& [name, config] : manipOps) {
             std::cout << "Creating manipulator: " << name << std::endl;
-            auto manip = pipeline.create<dai::node::ImageManipV2>();
+            auto manip = pipeline.create<dai::node::ImageManip>();
             config(manip->initialConfig);
             manipInput->out.link(manip->inputImage);
             queues[name] = manip->out.createOutputQueue(4, false);

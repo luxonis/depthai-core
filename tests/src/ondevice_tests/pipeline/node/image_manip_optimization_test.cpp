@@ -71,31 +71,31 @@ double calculateImageDifference(const cv::Mat& img1, const cv::Mat& img2, int bl
 TEST_CASE("Host and Device impl comparison") {
     dai::Pipeline p;
     // Use multiple manips to properly check DS for different types
-    auto manipDeviceGRAY8 = p.create<dai::node::ImageManipV2>();
+    auto manipDeviceGRAY8 = p.create<dai::node::ImageManip>();
     manipDeviceGRAY8->setRunOnHost(false);
     manipDeviceGRAY8->inputConfig.setReusePreviousMessage(false);
     manipDeviceGRAY8->inputConfig.setWaitForMessage(true);
     manipDeviceGRAY8->setMaxOutputFrameSize(3000000);
     manipDeviceGRAY8->setNumFramesPool(1);
-    auto manipDeviceNV12 = p.create<dai::node::ImageManipV2>();
+    auto manipDeviceNV12 = p.create<dai::node::ImageManip>();
     manipDeviceNV12->setRunOnHost(false);
     manipDeviceNV12->inputConfig.setReusePreviousMessage(false);
     manipDeviceNV12->inputConfig.setWaitForMessage(true);
     manipDeviceNV12->setMaxOutputFrameSize(3000000);
     manipDeviceNV12->setNumFramesPool(1);
-    auto manipDeviceRGB888i = p.create<dai::node::ImageManipV2>();
+    auto manipDeviceRGB888i = p.create<dai::node::ImageManip>();
     manipDeviceRGB888i->setRunOnHost(false);
     manipDeviceRGB888i->inputConfig.setReusePreviousMessage(false);
     manipDeviceRGB888i->inputConfig.setWaitForMessage(true);
     manipDeviceRGB888i->setMaxOutputFrameSize(3000000);
     manipDeviceRGB888i->setNumFramesPool(1);
-    auto manipDeviceRGB888p = p.create<dai::node::ImageManipV2>();
+    auto manipDeviceRGB888p = p.create<dai::node::ImageManip>();
     manipDeviceRGB888p->setRunOnHost(false);
     manipDeviceRGB888p->inputConfig.setReusePreviousMessage(false);
     manipDeviceRGB888p->inputConfig.setWaitForMessage(true);
     manipDeviceRGB888p->setMaxOutputFrameSize(3000000);
     manipDeviceRGB888p->setNumFramesPool(1);
-    auto manipHost = p.create<dai::node::ImageManipV2>();
+    auto manipHost = p.create<dai::node::ImageManip>();
     manipHost->setRunOnHost(true);
     manipHost->inputConfig.setReusePreviousMessage(false);
     manipHost->inputConfig.setWaitForMessage(true);
@@ -146,7 +146,7 @@ TEST_CASE("Host and Device impl comparison") {
         REQUIRE(diff < 0.8f);
     };
 
-    auto doConfig = [&](std::shared_ptr<dai::ImageManipConfigV2> cfg) {
+    auto doConfig = [&](std::shared_ptr<dai::ImageManipConfig> cfg) {
         {
             manipDeviceConfigGRAY8Q->send(cfg);
             manipHostConfigQ->send(cfg);
@@ -203,20 +203,20 @@ TEST_CASE("Host and Device impl comparison") {
     {
         // Full scale down
         std::cout << "FSD" << std::endl;
-        auto cfg = std::make_shared<dai::ImageManipConfigV2>();
-        cfg->setOutputSize(300, 300, dai::ImageManipConfigV2::ResizeMode::STRETCH);
+        auto cfg = std::make_shared<dai::ImageManipConfig>();
+        cfg->setOutputSize(300, 300, dai::ImageManipConfig::ResizeMode::STRETCH);
         doConfig(cfg);
     }
     {
         // Full scale up
         std::cout << "FSU" << std::endl;
-        auto cfg = std::make_shared<dai::ImageManipConfigV2>();
-        cfg->setOutputSize(1000, 1000, dai::ImageManipConfigV2::ResizeMode::STRETCH);
+        auto cfg = std::make_shared<dai::ImageManipConfig>();
+        cfg->setOutputSize(1000, 1000, dai::ImageManipConfig::ResizeMode::STRETCH);
         doConfig(cfg);
     }
     {
         std::cout << "C" << std::endl;
-        auto cfg = std::make_shared<dai::ImageManipConfigV2>();
+        auto cfg = std::make_shared<dai::ImageManipConfig>();
         // Lenna should be 512x512
         cfg->addCrop(100, 50, 400, 400);
         doConfig(cfg);
@@ -224,30 +224,30 @@ TEST_CASE("Host and Device impl comparison") {
     {
         // Letterbox scale up
         std::cout << "LSU" << std::endl;
-        auto cfg = std::make_shared<dai::ImageManipConfigV2>();
-        cfg->setOutputSize(1000, 800, dai::ImageManipConfigV2::ResizeMode::LETTERBOX);
+        auto cfg = std::make_shared<dai::ImageManipConfig>();
+        cfg->setOutputSize(1000, 800, dai::ImageManipConfig::ResizeMode::LETTERBOX);
         doConfig(cfg);
     }
     {
         // Letterbox scale down
         std::cout << "LSD" << std::endl;
-        auto cfg = std::make_shared<dai::ImageManipConfigV2>();
-        cfg->setOutputSize(400, 300, dai::ImageManipConfigV2::ResizeMode::LETTERBOX);
+        auto cfg = std::make_shared<dai::ImageManipConfig>();
+        cfg->setOutputSize(400, 300, dai::ImageManipConfig::ResizeMode::LETTERBOX);
         doConfig(cfg);
     }
     {
         // Setting background
         std::cout << "BS" << std::endl;
-        auto cfg = std::make_shared<dai::ImageManipConfigV2>();
-        cfg->setOutputSize(1000, 1000, dai::ImageManipConfigV2::ResizeMode::NONE);
+        auto cfg = std::make_shared<dai::ImageManipConfig>();
+        cfg->setOutputSize(1000, 1000, dai::ImageManipConfig::ResizeMode::NONE);
         cfg->setBackgroundColor(0, 0, 0);
         doConfig(cfg);
     }
     {
         // Setting background
         std::cout << "BM" << std::endl;
-        auto cfg = std::make_shared<dai::ImageManipConfigV2>();
-        cfg->setOutputSize(1000, 1000, dai::ImageManipConfigV2::ResizeMode::NONE);
+        auto cfg = std::make_shared<dai::ImageManipConfig>();
+        cfg->setOutputSize(1000, 1000, dai::ImageManipConfig::ResizeMode::NONE);
         cfg->setBackgroundColor(200, 0, 0);
         doConfig(cfg);
     }

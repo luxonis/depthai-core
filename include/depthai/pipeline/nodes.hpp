@@ -12,7 +12,6 @@
 #include "node/FeatureTracker.hpp"
 #include "node/IMU.hpp"
 #include "node/ImageManip.hpp"
-#include "node/ImageManipV2.hpp"
 #include "node/MessageDemux.hpp"
 #include "node/MonoCamera.hpp"
 #include "node/NeuralNetwork.hpp"
@@ -32,8 +31,6 @@
 #include "node/UVC.hpp"
 #include "node/VideoEncoder.hpp"
 #include "node/Warp.hpp"
-#include "node/XLinkIn.hpp"
-#include "node/XLinkOut.hpp"
 #include "node/host/RGBD.hpp"
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     #include "node/host/Display.hpp"

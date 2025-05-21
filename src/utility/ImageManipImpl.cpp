@@ -1,8 +1,8 @@
-#include "depthai/utility/ImageManipV2Impl.hpp"
+#include "depthai/utility/ImageManipImpl.hpp"
 
 #include <stdexcept>
 
-#include "depthai/pipeline/datatype/ImageManipConfigV2.hpp"
+#include "depthai/pipeline/datatype/ImageManipConfig.hpp"
 
 #if defined(WIN32) || defined(_WIN32)
     #define _RESTRICT

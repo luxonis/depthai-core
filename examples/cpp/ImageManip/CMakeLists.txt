@@ -13,11 +13,11 @@ private_data(
     LOCATION lenna
 )
 
-dai_add_example(image_manip_v2_resize image_manip_v2_resize.cpp OFF OFF)
+dai_add_example(image_manip_resize image_manip_resize.cpp OFF OFF)
 
-dai_add_example(image_manip_v2_multi_ops image_manip_v2_multi_ops.cpp OFF OFF)
+dai_add_example(image_manip_multi_ops image_manip_multi_ops.cpp OFF OFF)
 
-dai_add_example(image_manip_v2_all_ops image_manip_v2_all_ops.cpp OFF OFF)
-target_compile_definitions(image_manip_v2_all_ops PRIVATE LENNA_PATH="${lenna}")
+dai_add_example(image_manip_all_ops image_manip_all_ops.cpp OFF OFF)
+target_compile_definitions(image_manip_all_ops PRIVATE LENNA_PATH="${lenna}")
 
-dai_add_example(image_manip_v2_remap image_manip_v2_remap.cpp OFF OFF)
+dai_add_example(image_manip_remap image_manip_remap.cpp OFF OFF)

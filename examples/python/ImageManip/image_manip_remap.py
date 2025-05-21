@@ -27,8 +27,8 @@ def draw_rotated_rectangle(frame, center, size, angle, color, thickness=2):
 with dai.Pipeline() as pipeline:
     cam = pipeline.create(dai.node.Camera).build()
     camOut = cam.requestOutput((640, 400), dai.ImgFrame.Type.BGR888i, fps = 30.0)
-    manip1 = pipeline.create(dai.node.ImageManipV2)
-    manip2 = pipeline.create(dai.node.ImageManipV2)
+    manip1 = pipeline.create(dai.node.ImageManip)
+    manip2 = pipeline.create(dai.node.ImageManip)
 
     camOut.link(manip1.inputImage)
     manip1.out.link(manip2.inputImage)
