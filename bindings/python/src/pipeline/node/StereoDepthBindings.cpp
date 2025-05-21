@@ -128,8 +128,6 @@ void bind_stereodepth(pybind11::module& m, void* pCallstack) {
         .def_readonly("inputAlignTo", &StereoDepth::inputAlignTo, DOC(dai, node, StereoDepth, inputAlignTo))
         .def_readonly("left", &StereoDepth::left, DOC(dai, node, StereoDepth, left))
         .def_readonly("right", &StereoDepth::right, DOC(dai, node, StereoDepth, right))
-        .def_readonly("inputLeftPixelDescriptor", &StereoDepth::inputLeftPixelDescriptor, DOC(dai, node, StereoDepth, inputLeftPixelDescriptor))
-        .def_readonly("inputRightPixelDescriptor", &StereoDepth::inputRightPixelDescriptor, DOC(dai, node, StereoDepth, inputRightPixelDescriptor))
         .def_readonly("depth", &StereoDepth::depth, DOC(dai, node, StereoDepth, depth))
         .def_readonly("disparity", &StereoDepth::disparity, DOC(dai, node, StereoDepth, disparity))
         .def_readonly("syncedLeft", &StereoDepth::syncedLeft, DOC(dai, node, StereoDepth, syncedLeft))
@@ -143,8 +141,6 @@ void bind_stereodepth(pybind11::module& m, void* pCallstack) {
         .def_readonly("debugExtDispLrCheckIt2", &StereoDepth::debugExtDispLrCheckIt2, DOC(dai, node, StereoDepth, debugExtDispLrCheckIt2))
         .def_readonly("debugDispCostDump", &StereoDepth::debugDispCostDump, DOC(dai, node, StereoDepth, debugDispCostDump))
         .def_readonly("confidenceMap", &StereoDepth::confidenceMap, DOC(dai, node, StereoDepth, confidenceMap))
-        .def_readonly("pixelDescriptorsLeft", &StereoDepth::pixelDescriptorsLeft, DOC(dai, node, StereoDepth, pixelDescriptorsLeft))
-        .def_readonly("pixelDescriptorsRight", &StereoDepth::pixelDescriptorsRight, DOC(dai, node, StereoDepth, pixelDescriptorsRight))
 #if 0  // will be enabled when confidence map RGB alignment/LR-check support will be added
         .def_readonly("debugConfMapLrCheckIt1", &StereoDepth::debugConfMapLrCheckIt1, DOC(dai, node, StereoDepth, debugConfMapLrCheckIt1))
         .def_readonly("debugConfMapLrCheckIt2", &StereoDepth::debugConfMapLrCheckIt2, DOC(dai, node, StereoDepth, debugConfMapLrCheckIt2))
@@ -180,98 +176,14 @@ void bind_stereodepth(pybind11::module& m, void* pCallstack) {
              DOC(dai, node, StereoDepth, setSubpixelFractionalBits))
         .def("setExtendedDisparity", &StereoDepth::setExtendedDisparity, py::arg("enable"), DOC(dai, node, StereoDepth, setExtendedDisparity))
         .def("setRectifyEdgeFillColor", &StereoDepth::setRectifyEdgeFillColor, py::arg("color"), DOC(dai, node, StereoDepth, setRectifyEdgeFillColor))
-        .def(
-            "setRectifyMirrorFrame",
-            [](StereoDepth& s, bool enable) {
-                // Issue an deprecation warning
-                PyErr_WarnEx(PyExc_DeprecationWarning, "setRectifyMirrorFrame() is deprecated.", 1);
-                HEDLEY_DIAGNOSTIC_PUSH
-                HEDLEY_DIAGNOSTIC_DISABLE_DEPRECATED
-                s.setRectifyMirrorFrame(enable);
-                HEDLEY_DIAGNOSTIC_POP
-            },
-            DOC(dai, node, StereoDepth, setRectifyMirrorFrame))
-
-        .def(
-            "setConfidenceThreshold",
-            [](StereoDepth& s, int confThr) {
-                // Issue an deprecation warning
-                PyErr_WarnEx(PyExc_DeprecationWarning, "setConfidenceThreshold() is deprecated, Use 'initialConfig->setConfidenceThreshold()' instead", 1);
-                HEDLEY_DIAGNOSTIC_PUSH
-                HEDLEY_DIAGNOSTIC_DISABLE_DEPRECATED
-                s.setConfidenceThreshold(confThr);
-                HEDLEY_DIAGNOSTIC_POP
-            },
-            DOC(dai, node, StereoDepth, setConfidenceThreshold))
-        .def(
-            "setMedianFilter",
-            [](StereoDepth& s, dai::StereoDepthConfig::MedianFilter median) {
-                // Issue an deprecation warning
-                PyErr_WarnEx(PyExc_DeprecationWarning, "setMedianFilter() is deprecated, Use 'initialConfig->setMedianFilter()' instead", 1);
-                HEDLEY_DIAGNOSTIC_PUSH
-                HEDLEY_DIAGNOSTIC_DISABLE_DEPRECATED
-                s.setMedianFilter(median);
-                HEDLEY_DIAGNOSTIC_POP
-            },
-            DOC(dai, node, StereoDepth, setMedianFilter))
-        .def("setOutputRectified",
-             [](StereoDepth& s, bool enable) {
-                 // Issue an deprecation warning
-                 PyErr_WarnEx(PyExc_DeprecationWarning, "setOutputRectified() is deprecated, the output is auto-enabled if used.", 1);
-                 HEDLEY_DIAGNOSTIC_PUSH
-                 HEDLEY_DIAGNOSTIC_DISABLE_DEPRECATED
-                 s.setOutputRectified(enable);
-                 HEDLEY_DIAGNOSTIC_POP
-             })
-        .def("setOutputDepth",
-             [](StereoDepth& s, bool enable) {
-                 // Issue an deprecation warning
-                 PyErr_WarnEx(PyExc_DeprecationWarning, "setOutputDepth() is deprecated, the output is auto-enabled if used.", 1);
-                 HEDLEY_DIAGNOSTIC_PUSH
-                 HEDLEY_DIAGNOSTIC_DISABLE_DEPRECATED
-                 s.setOutputDepth(enable);
-                 HEDLEY_DIAGNOSTIC_POP
-             })
-        .def(
-            "setEmptyCalibration",
-            [](StereoDepth& s) {
-                PyErr_WarnEx(PyExc_DeprecationWarning, "setEmptyCalibration() is deprecated, Use 'setRectification(False)' instead", 1);
-                HEDLEY_DIAGNOSTIC_PUSH
-                HEDLEY_DIAGNOSTIC_DISABLE_DEPRECATED
-                s.setEmptyCalibration();
-                HEDLEY_DIAGNOSTIC_POP
-            },
-            DOC(dai, node, StereoDepth, setEmptyCalibration))
         .def("setRuntimeModeSwitch", &StereoDepth::setRuntimeModeSwitch, DOC(dai, node, StereoDepth, setRuntimeModeSwitch))
         .def("setNumFramesPool", &StereoDepth::setNumFramesPool, DOC(dai, node, StereoDepth, setNumFramesPool))
-        .def(
-            "getMaxDisparity",
-            [](StereoDepth& s) {
-                PyErr_WarnEx(PyExc_DeprecationWarning, "getMaxDisparity() is deprecated, Use 'initialConfig->getMaxDisparity()' instead", 1);
-                HEDLEY_DIAGNOSTIC_PUSH
-                HEDLEY_DIAGNOSTIC_DISABLE_DEPRECATED
-                return s.getMaxDisparity();
-                HEDLEY_DIAGNOSTIC_POP
-            },
-            DOC(dai, node, StereoDepth, getMaxDisparity))
         .def("setPostProcessingHardwareResources",
              &StereoDepth::setPostProcessingHardwareResources,
              DOC(dai, node, StereoDepth, setPostProcessingHardwareResources))
         .def("setDefaultProfilePreset", &StereoDepth::setDefaultProfilePreset, DOC(dai, node, StereoDepth, setDefaultProfilePreset))
-        .def(
-            "setFocalLengthFromCalibration",
-            [](StereoDepth& s, bool focalLengthFromCalibration) {
-                PyErr_WarnEx(PyExc_DeprecationWarning, "setFocalLengthFromCalibration is deprecated. Default value is true.", 1);
-                HEDLEY_DIAGNOSTIC_PUSH
-                HEDLEY_DIAGNOSTIC_DISABLE_DEPRECATED
-                return s.setFocalLengthFromCalibration(focalLengthFromCalibration);
-                HEDLEY_DIAGNOSTIC_POP
-            },
-            DOC(dai, node, StereoDepth, setFocalLengthFromCalibration))
         .def("useHomographyRectification", &StereoDepth::useHomographyRectification, DOC(dai, node, StereoDepth, useHomographyRectification))
         .def("enableDistortionCorrection", &StereoDepth::enableDistortionCorrection, DOC(dai, node, StereoDepth, enableDistortionCorrection))
-        .def("setVerticalStereo", &StereoDepth::setVerticalStereo, DOC(dai, node, StereoDepth, setVerticalStereo))
-        .def("setCustomPixelDescriptors", &StereoDepth::setCustomPixelDescriptors, DOC(dai, node, StereoDepth, setCustomPixelDescriptors))
         .def("setBaseline", &StereoDepth::setBaseline, DOC(dai, node, StereoDepth, setBaseline))
         .def("setFocalLength", &StereoDepth::setFocalLength, DOC(dai, node, StereoDepth, setFocalLength))
         .def("setDisparityToDepthUseSpecTranslation",

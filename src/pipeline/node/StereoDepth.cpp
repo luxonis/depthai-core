@@ -42,10 +42,6 @@ StereoDepth::Properties& StereoDepth::getProperties() {
     return properties;
 }
 
-void StereoDepth::setEmptyCalibration(void) {
-    setRectification(false);
-    logger::warn("{} is deprecated. This function call can be replaced by Stereo::setRectification(false). ", __func__);
-}
 
 void StereoDepth::loadMeshData(const std::vector<std::uint8_t>& dataLeft, const std::vector<std::uint8_t>& dataRight) {
     if(dataLeft.size() != dataRight.size()) {
@@ -109,10 +105,7 @@ void StereoDepth::setOutputSize(int width, int height) {
 void StereoDepth::setOutputKeepAspectRatio(bool keep) {
     properties.outKeepAspectRatio = keep;
 }
-void StereoDepth::setMedianFilter(dai::StereoDepthConfig::MedianFilter median) {
-    initialConfig->setMedianFilter(median);
-    properties.initialConfig = *initialConfig;
-}
+
 void StereoDepth::setDepthAlign(Properties::DepthAlign align) {
     initialConfig->setDepthAlign(align);
     // Unset 'depthAlignCamera', that would take precedence otherwise
@@ -121,10 +114,7 @@ void StereoDepth::setDepthAlign(Properties::DepthAlign align) {
 void StereoDepth::setDepthAlign(CameraBoardSocket camera) {
     properties.depthAlignCamera = camera;
 }
-void StereoDepth::setConfidenceThreshold(int confThr) {
-    initialConfig->setConfidenceThreshold(confThr);
-    properties.initialConfig = *initialConfig;
-}
+
 void StereoDepth::setRectification(bool enable) {
     properties.enableRectification = enable;
 }
@@ -147,18 +137,6 @@ void StereoDepth::setExtendedDisparity(bool enable) {
 void StereoDepth::setRectifyEdgeFillColor(int color) {
     properties.rectifyEdgeFillColor = color;
 }
-void StereoDepth::setRectifyMirrorFrame(bool enable) {
-    (void)enable;
-    logger::warn("{} is deprecated.", __func__);
-}
-void StereoDepth::setOutputRectified(bool enable) {
-    (void)enable;
-    logger::warn("{} is deprecated. The output is auto-enabled if used", __func__);
-}
-void StereoDepth::setOutputDepth(bool enable) {
-    (void)enable;
-    logger::warn("{} is deprecated. The output is auto-enabled if used", __func__);
-}
 
 void StereoDepth::setRuntimeModeSwitch(bool enable) {
     properties.enableRuntimeStereoModeSwitch = enable;
@@ -168,17 +146,9 @@ void StereoDepth::setNumFramesPool(int numFramesPool) {
     properties.numFramesPool = numFramesPool;
 }
 
-float StereoDepth::getMaxDisparity() const {
-    return initialConfig->getMaxDisparity();
-}
-
 void StereoDepth::setPostProcessingHardwareResources(int numShaves, int numMemorySlices) {
     properties.numPostProcessingShaves = numShaves;
     properties.numPostProcessingMemorySlices = numMemorySlices;
-}
-
-void StereoDepth::setFocalLengthFromCalibration(bool focalLengthFromCalibration) {
-    properties.focalLengthFromCalibration = focalLengthFromCalibration;
 }
 
 void StereoDepth::useHomographyRectification(bool useHomographyRectification) {
@@ -187,14 +157,6 @@ void StereoDepth::useHomographyRectification(bool useHomographyRectification) {
 
 void StereoDepth::enableDistortionCorrection(bool enableDistortionCorrection) {
     useHomographyRectification(!enableDistortionCorrection);
-}
-
-void StereoDepth::setVerticalStereo(bool verticalStereo) {
-    properties.verticalStereo = verticalStereo;
-}
-
-void StereoDepth::setCustomPixelDescriptors(bool customPixelDescriptors) {
-    properties.customPixelDescriptors = customPixelDescriptors;
 }
 
 void StereoDepth::setBaseline(float baseline) {

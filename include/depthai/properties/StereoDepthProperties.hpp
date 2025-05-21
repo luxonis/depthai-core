@@ -141,18 +141,6 @@ struct StereoDepthProperties : PropertiesSerializable<Properties, StereoDepthPro
      */
     std::optional<bool> useHomographyRectification;
 
-    /**
-     * Whether to perform vertical stereo matching or not.
-     * Default value is false.
-     * If set to true rectification process includes 90 degree clock wise rotation to perform vertical matching.
-     */
-    bool verticalStereo = false;
-
-    /**
-     * Whether to use custom pixel descriptors sent from host to device for debugging purposes.
-     * Default value is false.
-     */
-    bool customPixelDescriptors = false;
 
     /**
      * Whether to enable frame syncing inside stereo node or not. Suitable if inputs are known to be synced.
@@ -219,8 +207,6 @@ DEPTHAI_SERIALIZE_EXT(StereoDepthProperties,
                       numPostProcessingMemorySlices,
                       focalLengthFromCalibration,
                       useHomographyRectification,
-                      verticalStereo,
-                      customPixelDescriptors,
                       enableFrameSync,
                       baseline,
                       focalLength,
