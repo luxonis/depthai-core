@@ -26,11 +26,6 @@ class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNet
     constexpr static const char* NAME = "NeuralNetwork";
     using DeviceNodeCRTP::DeviceNodeCRTP;
 
-   protected:
-    std::optional<OpenVINO::Version> getRequiredOpenVINOVersion() override;
-    std::optional<OpenVINO::Version> networkOpenvinoVersion;
-
-   public:
     /**
      * @brief Build NeuralNetwork node. Connect output to this node's input. Also call setNNArchive() with provided NNArchive.
      *

@@ -1560,11 +1560,6 @@ bool DeviceBase::startPipeline(const Pipeline& pipeline) {
 }
 
 bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
-    // Check openvino version
-    if(!pipeline.isOpenVINOVersionCompatible(config.version)) {
-        throw std::runtime_error("Device booted with different OpenVINO version that pipeline requires");
-    }
-
     // Serialize the pipeline
     PipelineSchema schema;
     Assets assets;
