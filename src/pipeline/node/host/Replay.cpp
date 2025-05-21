@@ -67,7 +67,6 @@ inline std::shared_ptr<Buffer> getMessage(const std::shared_ptr<google::protobuf
         case DatatypeEnum::Buffer:
         case DatatypeEnum::NNData:
         case DatatypeEnum::ImageManipConfig:
-        case DatatypeEnum::ImageManipConfigV2:
         case DatatypeEnum::CameraControl:
         case DatatypeEnum::ImgDetections:
         case DatatypeEnum::SpatialImgDetections:
@@ -130,7 +129,6 @@ inline std::shared_ptr<google::protobuf::Message> getProtoMessage(utility::ByteP
         case DatatypeEnum::Buffer:
         case DatatypeEnum::NNData:
         case DatatypeEnum::ImageManipConfig:
-        case DatatypeEnum::ImageManipConfigV2:
         case DatatypeEnum::CameraControl:
         case DatatypeEnum::ImgDetections:
         case DatatypeEnum::SpatialImgDetections:

@@ -318,10 +318,6 @@ dai_set_test_labels(neural_network_test ondevice rvc2_all ci)
 dai_add_test(color_camera_node_test src/ondevice_tests/color_camera_node_test.cpp)
 dai_set_test_labels(color_camera_node_test ondevice rvc2_all ci)
 
-# Image manip test
-dai_add_test(image_manip_node_test src/ondevice_tests/image_manip_node_test.cpp)
-dai_set_test_labels(image_manip_node_test ondevice rvc2_all ci)
-
 # Pipeline test
 dai_add_test(pipeline_test src/ondevice_tests/pipeline_test.cpp)
 dai_set_test_labels(pipeline_test ondevice rvc2_all ci)
@@ -430,13 +426,13 @@ dai_set_test_labels(script_node_test ondevice rvc2_all rvc4 ci)
 dai_add_test(stereo_depth_node_test src/ondevice_tests/stereo_depth_node_test.cpp)
 dai_set_test_labels(stereo_depth_node_test ondevice rvc2_all rvc4 ci)
 
-# ImageManipV2 test
-dai_add_test(image_manip_v2_node_test src/ondevice_tests/pipeline/node/image_manip_v2_test.cpp)
-dai_set_test_labels(image_manip_v2_node_test ondevice rvc2_all rvc4 ci)
+# ImageManip test
+dai_add_test(image_manip_node_test src/ondevice_tests/pipeline/node/image_manip_test.cpp)
+dai_set_test_labels(image_manip_node_test ondevice rvc2_all rvc4 ci)
 
-dai_add_test(image_manip_v2_optimization_test src/ondevice_tests/pipeline/node/image_manip_v2_optimization_test.cpp)
-target_compile_definitions(image_manip_v2_optimization_test PRIVATE LENNA_PATH="${lenna_png}")
-dai_set_test_labels(image_manip_v2_optimization_test ondevice rvc4 ci)
+dai_add_test(image_manip_optimization_test src/ondevice_tests/pipeline/node/image_manip_optimization_test.cpp)
+target_compile_definitions(image_manip_optimization_test PRIVATE LENNA_PATH="${lenna_png}")
+dai_set_test_labels(image_manip_optimization_test ondevice rvc4 ci)
 
 # Benchmark tests
 dai_add_test(benchmark_test src/ondevice_tests/pipeline/node/benchmark_test.cpp)

@@ -135,7 +135,6 @@ void bind_stereodepth(pybind11::module& m, void* pCallstack);
 void bind_neuralnetwork(pybind11::module& m, void* pCallstack);
 void bind_videoencoder(pybind11::module& m, void* pCallstack);
 void bind_imagemanip(pybind11::module& m, void* pCallstack);
-void bind_imagemanipv2(pybind11::module& m, void* pCallstack);
 void bind_warp(pybind11::module& m, void* pCallstack);
 void bind_spiout(pybind11::module& m, void* pCallstack);
 void bind_spiin(pybind11::module& m, void* pCallstack);
@@ -181,7 +180,6 @@ void NodeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_neuralnetwork);
     callstack.push_front(bind_videoencoder);
     callstack.push_front(bind_imagemanip);
-    callstack.push_front(bind_imagemanipv2);
     callstack.push_front(bind_warp);
     callstack.push_front(bind_spiout);
     callstack.push_front(bind_spiin);

@@ -254,7 +254,6 @@ set(TARGET_CORE_SOURCES
     src/pipeline/node/Sync.cpp
     src/pipeline/node/NeuralNetwork.cpp
     src/pipeline/node/ImageManip.cpp
-    src/pipeline/node/ImageManipV2.cpp
     src/pipeline/node/Warp.cpp
     src/pipeline/node/VideoEncoder.cpp
     src/pipeline/node/DetectionNetwork.cpp
@@ -289,7 +288,6 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/EncodedFrame.cpp
     src/pipeline/datatype/ImgAnnotations.cpp
     src/pipeline/datatype/ImageManipConfig.cpp
-    src/pipeline/datatype/ImageManipConfigV2.cpp
     src/pipeline/datatype/CameraControl.cpp
     src/pipeline/datatype/NNData.cpp
     src/pipeline/datatype/ImgDetections.cpp
@@ -315,7 +313,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/MessageGroup.cpp
     src/pipeline/datatype/TransformData.cpp
     src/utility/H26xParsers.cpp
-    src/utility/ImageManipV2Impl.cpp
+    src/utility/ImageManipImpl.cpp
     src/utility/Initialization.cpp
     src/utility/Resources.cpp
     src/utility/Path.cpp

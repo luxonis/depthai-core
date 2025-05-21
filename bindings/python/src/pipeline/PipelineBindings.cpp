@@ -22,7 +22,6 @@
 #include "depthai/pipeline/node/FeatureTracker.hpp"
 #include "depthai/pipeline/node/IMU.hpp"
 #include "depthai/pipeline/node/ImageManip.hpp"
-#include "depthai/pipeline/node/ImageManipV2.hpp"
 #include "depthai/pipeline/node/MonoCamera.hpp"
 #include "depthai/pipeline/node/NeuralNetwork.hpp"
 #include "depthai/pipeline/node/ObjectTracker.hpp"

@@ -4,9 +4,9 @@ import cv2
 pipeline = dai.Pipeline()
 
 camRgb = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
-manip = pipeline.create(dai.node.ImageManipV2)
+manip = pipeline.create(dai.node.ImageManip)
 
-manip.initialConfig.setOutputSize(300, 300, dai.ImageManipConfigV2.ResizeMode.STRETCH)
+manip.initialConfig.setOutputSize(300, 300, dai.ImageManipConfig.ResizeMode.STRETCH)
 
 camOut = camRgb.requestOutput((1920, 1080))
 camOut.link(manip.inputImage)
