@@ -64,7 +64,7 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
     /**
      * Initial config to use for StereoDepth.
      */
-    StereoDepthConfig initialConfig;
+    std::shared_ptr<StereoDepthConfig> initialConfig = std::make_shared<StereoDepthConfig>();
 
     /**
      * Input StereoDepthConfig message with ability to modify parameters in runtime.

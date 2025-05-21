@@ -275,7 +275,7 @@ std::shared_ptr<RGBD> RGBD::build(bool autocreate, StereoDepth::PresetMode mode,
         out->link(align->inputAlignTo);
         align->outputAligned.link(inDepth);
     } else {
-        auto* out = colorCam->requestOutput(size, ImgFrame::Type::RGB888i, ImgResizeMode::CROP, 30, true);
+        auto* out = colorCam->requestOutput(size, ImgFrame::Type::RGB888i, ImgResizeMode::CROP, std::nullopt, true);
         out->link(inColor);
         out->link(stereo->inputAlignTo);
         stereo->depth.link(inDepth);

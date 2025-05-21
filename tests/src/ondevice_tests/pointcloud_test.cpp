@@ -11,7 +11,7 @@ std::shared_ptr<dai::MessageQueue> configurePipeline(bool sparse, dai::Pipeline&
     auto stereo = pipeline.create<dai::node::StereoDepth>();
     auto pointcloud = pipeline.create<dai::node::PointCloud>();
 
-    pointcloud->initialConfig.setSparse(sparse);
+    pointcloud->initialConfig->setSparse(sparse);
 
     monoLeft->requestFullResolutionOutput()->link(stereo->left);
     monoRight->requestFullResolutionOutput()->link(stereo->right);

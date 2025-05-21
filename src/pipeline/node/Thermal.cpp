@@ -8,7 +8,7 @@ namespace node {
 Thermal::Thermal(std::unique_ptr<Properties> props) : DeviceNodeCRTP<DeviceNode, Thermal, ThermalProperties>(std::move(props)) {}
 
 Thermal::Properties& Thermal::getProperties() {
-    properties.initialConfig = initialConfig;
+    properties.initialConfig = *initialConfig;
     return properties;
 }
 

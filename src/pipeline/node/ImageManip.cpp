@@ -8,11 +8,12 @@ namespace dai {
 namespace node {
 
 ImageManip::ImageManip(std::unique_ptr<Properties> props)
-    : DeviceNodeCRTP<DeviceNode, ImageManip, ImageManipProperties>(std::move(props)), initialConfig(properties.initialConfig) {}
+    : DeviceNodeCRTP<DeviceNode, ImageManip, ImageManipProperties>(std::move(props)),
+      initialConfig(std::make_shared<decltype(properties.initialConfig)>(properties.initialConfig)) {}
 
 void ImageManip::run() {
     impl::ImageManipOperations<impl::_ImageManipBuffer, impl::_ImageManipMemory, impl::WarpH> manip(properties, pimpl->logger);
-    auto iConf = runOnHost() ? initialConfig : properties.initialConfig;
+    auto iConf = runOnHost() ? *initialConfig : properties.initialConfig;
     impl::loop<ImageManip, impl::_ImageManipBuffer, impl::_ImageManipMemory>(
         *this,
         iConf,
@@ -63,7 +64,7 @@ void ImageManip::setMaxOutputFrameSize(int maxFrameSize) {
 }
 
 ImageManip::Properties& ImageManip::getProperties() {
-    properties.initialConfig = initialConfig;
+    properties.initialConfig = *initialConfig;
     return properties;
 }
 ImageManip& ImageManip::setRunOnHost(bool _runOnHost) {

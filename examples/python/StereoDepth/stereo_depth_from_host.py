@@ -1094,14 +1094,7 @@ stereo.setDepthAlign(dai.StereoDepthConfig.AlgorithmControl.DepthAlign.RECTIFIED
 # allowing runtime switch of stereo modes
 stereo.setRuntimeModeSwitch(True)
 
-#TODO change once initialConfig is shared ptr
-currentConfig = dai.StereoDepthConfig()
-
-currentConfig.algorithmControl = stereo.initialConfig.algorithmControl
-currentConfig.postProcessing = stereo.initialConfig.postProcessing
-currentConfig.costAggregation = stereo.initialConfig.costAggregation
-currentConfig.costMatching = stereo.initialConfig.costMatching
-currentConfig.censusTransform = stereo.initialConfig.censusTransform
+currentConfig = stereo.initialConfig
 
 platform = pipeline.getDefaultDevice().getPlatform()
 

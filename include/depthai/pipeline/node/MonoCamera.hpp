@@ -20,7 +20,7 @@ class [[deprecated("Use Camera node instead")]] MonoCamera : public DeviceNodeCR
     using DeviceNodeCRTP::DeviceNodeCRTP;
 
    protected:
-    Properties& getProperties();
+    Properties& getProperties() override;
     bool isSourceNode() const override;
     NodeRecordParams getNodeRecordParams() const override;
     Output& getRecordOutput() override;
