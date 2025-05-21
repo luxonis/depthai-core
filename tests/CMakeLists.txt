@@ -21,6 +21,8 @@ set(test_env
 
 include(CMakeParseArguments)
 
+include_directories(${CMAKE_SOURCE_DIR}/src)
+
 # Function for adding new tests
 function(dai_add_test test_name test_src)
     # Parse arguments
