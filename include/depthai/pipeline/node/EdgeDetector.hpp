@@ -55,19 +55,6 @@ class EdgeDetector : public DeviceNodeCRTP<DeviceNode, EdgeDetector, EdgeDetecto
      */
     Output passthroughInputImage{*this, {"passthroughInputImage", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
-    // Functions to set properties
-    /**
-     * Specify whether or not wait until configuration message arrives to inputConfig Input.
-     * @param wait True to wait for configuration message, false otherwise.
-     */
-    [[deprecated("Use 'inputConfig.setWaitForMessage()' instead")]] void setWaitForConfigInput(bool wait);
-
-    /**
-     * @see setWaitForConfigInput
-     * @returns True if wait for inputConfig message, false otherwise
-     */
-    [[deprecated("Use 'inputConfig.setWaitForMessage()' instead")]] bool getWaitForConfigInput() const;
-
     /**
      * Specify number of frames in pool.
      * @param numFramesPool How many frames should the pool have
