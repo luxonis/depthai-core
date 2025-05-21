@@ -6,7 +6,8 @@ namespace dai {
 namespace node {
 
 EdgeDetector::EdgeDetector(std::unique_ptr<Properties> props)
-    : DeviceNodeCRTP<DeviceNode, EdgeDetector, EdgeDetectorProperties>(std::move(props)), initialConfig(std::make_shared<decltype(properties.initialConfig)>(properties.initialConfig)) {}
+    : DeviceNodeCRTP<DeviceNode, EdgeDetector, EdgeDetectorProperties>(std::move(props)),
+      initialConfig(std::make_shared<decltype(properties.initialConfig)>(properties.initialConfig)) {}
 
 EdgeDetector::Properties& EdgeDetector::getProperties() {
     properties.initialConfig = *initialConfig;

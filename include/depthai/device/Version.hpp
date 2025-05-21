@@ -1,8 +1,8 @@
 #pragma once
 
+#include <cstdint>
 #include <optional>
 #include <string>
-#include <cstdint>
 
 #include "depthai/utility/spimpl.h"
 namespace dai {

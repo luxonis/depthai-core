@@ -34,7 +34,8 @@ std::shared_ptr<StereoDepth> StereoDepth::build(bool autoCreateCameras, PresetMo
 }
 
 StereoDepth::StereoDepth(std::unique_ptr<Properties> props)
-    : DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthProperties>(std::move(props)), initialConfig(std::make_shared<decltype(properties.initialConfig)>(properties.initialConfig)) {}
+    : DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthProperties>(std::move(props)),
+      initialConfig(std::make_shared<decltype(properties.initialConfig)>(properties.initialConfig)) {}
 
 StereoDepth::Properties& StereoDepth::getProperties() {
     properties.initialConfig = *initialConfig;
@@ -276,10 +277,10 @@ void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
             initialConfig->setMedianFilter(MedianFilter::KERNEL_7x7);
 
             initialConfig->postProcessing.filteringOrder = {StereoDepthConfig::PostProcessing::Filter::DECIMATION,
-                                                           StereoDepthConfig::PostProcessing::Filter::MEDIAN,
-                                                           StereoDepthConfig::PostProcessing::Filter::SPECKLE,
-                                                           StereoDepthConfig::PostProcessing::Filter::SPATIAL,
-                                                           StereoDepthConfig::PostProcessing::Filter::TEMPORAL};
+                                                            StereoDepthConfig::PostProcessing::Filter::MEDIAN,
+                                                            StereoDepthConfig::PostProcessing::Filter::SPECKLE,
+                                                            StereoDepthConfig::PostProcessing::Filter::SPATIAL,
+                                                            StereoDepthConfig::PostProcessing::Filter::TEMPORAL};
             initialConfig->postProcessing.decimationFilter.decimationFactor = 2;
             initialConfig->postProcessing.decimationFilter.decimationMode = StereoDepthConfig::PostProcessing::DecimationFilter::DecimationMode::PIXEL_SKIPPING;
 
@@ -311,10 +312,10 @@ void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
             initialConfig->setMedianFilter(MedianFilter::MEDIAN_OFF);
 
             initialConfig->postProcessing.filteringOrder = {StereoDepthConfig::PostProcessing::Filter::DECIMATION,
-                                                           StereoDepthConfig::PostProcessing::Filter::MEDIAN,
-                                                           StereoDepthConfig::PostProcessing::Filter::SPECKLE,
-                                                           StereoDepthConfig::PostProcessing::Filter::SPATIAL,
-                                                           StereoDepthConfig::PostProcessing::Filter::TEMPORAL};
+                                                            StereoDepthConfig::PostProcessing::Filter::MEDIAN,
+                                                            StereoDepthConfig::PostProcessing::Filter::SPECKLE,
+                                                            StereoDepthConfig::PostProcessing::Filter::SPATIAL,
+                                                            StereoDepthConfig::PostProcessing::Filter::TEMPORAL};
             initialConfig->postProcessing.decimationFilter.decimationFactor = 2;
             initialConfig->postProcessing.decimationFilter.decimationMode = StereoDepthConfig::PostProcessing::DecimationFilter::DecimationMode::PIXEL_SKIPPING;
 
@@ -346,10 +347,10 @@ void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
             initialConfig->setMedianFilter(MedianFilter::MEDIAN_OFF);
 
             initialConfig->postProcessing.filteringOrder = {StereoDepthConfig::PostProcessing::Filter::DECIMATION,
-                                                           StereoDepthConfig::PostProcessing::Filter::MEDIAN,
-                                                           StereoDepthConfig::PostProcessing::Filter::SPECKLE,
-                                                           StereoDepthConfig::PostProcessing::Filter::SPATIAL,
-                                                           StereoDepthConfig::PostProcessing::Filter::TEMPORAL};
+                                                            StereoDepthConfig::PostProcessing::Filter::MEDIAN,
+                                                            StereoDepthConfig::PostProcessing::Filter::SPECKLE,
+                                                            StereoDepthConfig::PostProcessing::Filter::SPATIAL,
+                                                            StereoDepthConfig::PostProcessing::Filter::TEMPORAL};
             initialConfig->postProcessing.decimationFilter.decimationFactor = 2;
             initialConfig->postProcessing.decimationFilter.decimationMode = StereoDepthConfig::PostProcessing::DecimationFilter::DecimationMode::PIXEL_SKIPPING;
 
@@ -381,10 +382,10 @@ void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
             initialConfig->setMedianFilter(MedianFilter::KERNEL_7x7);
 
             initialConfig->postProcessing.filteringOrder = {StereoDepthConfig::PostProcessing::Filter::DECIMATION,
-                                                           StereoDepthConfig::PostProcessing::Filter::MEDIAN,
-                                                           StereoDepthConfig::PostProcessing::Filter::SPECKLE,
-                                                           StereoDepthConfig::PostProcessing::Filter::SPATIAL,
-                                                           StereoDepthConfig::PostProcessing::Filter::TEMPORAL};
+                                                            StereoDepthConfig::PostProcessing::Filter::MEDIAN,
+                                                            StereoDepthConfig::PostProcessing::Filter::SPECKLE,
+                                                            StereoDepthConfig::PostProcessing::Filter::SPATIAL,
+                                                            StereoDepthConfig::PostProcessing::Filter::TEMPORAL};
             initialConfig->postProcessing.decimationFilter.decimationFactor = 2;
             initialConfig->postProcessing.decimationFilter.decimationMode = StereoDepthConfig::PostProcessing::DecimationFilter::DecimationMode::PIXEL_SKIPPING;
 

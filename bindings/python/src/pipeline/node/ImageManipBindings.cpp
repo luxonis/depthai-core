@@ -29,8 +29,7 @@ void bind_imagemanip(pybind11::module& m, void* pCallstack) {
         .value("LOW_POWER", ImageManip::PerformanceMode::LOW_POWER);
 
     py::enum_<ImageManip::Backend> backend(imageManip, "Backend");
-    backend.value("HW", ImageManip::Backend::HW)
-        .value("CPU", ImageManip::Backend::CPU);
+    backend.value("HW", ImageManip::Backend::HW).value("CPU", ImageManip::Backend::CPU);
 
     // ImageManip Node
     imageManip.def_readonly("inputConfig", &ImageManip::inputConfig, DOC(dai, node, ImageManip, inputConfig))

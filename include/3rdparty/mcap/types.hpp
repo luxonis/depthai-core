@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <functional>
 #include <limits>
 #include <memory>
@@ -8,7 +9,6 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include <cstdint>
 
 #include "errors.hpp"
 #include "visibility.hpp"

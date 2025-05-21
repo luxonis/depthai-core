@@ -313,7 +313,8 @@ void Device::closeImpl() {
 // bool Device::startPipelineImpl(const Pipeline& pipeline) {
 //     // auto schema = pipeline.getPipelineSchema();
 //     // for(auto& kv : schema.nodes) {
-//     //     spdlog::trace("Inspecting node: {} for {} or {}", kv.second.name, std::string(node::internal::XLinkIn::NAME), std::string(node::internal::XLinkOut::NAME));
+//     //     spdlog::trace("Inspecting node: {} for {} or {}", kv.second.name, std::string(node::internal::XLinkIn::NAME),
+//     std::string(node::internal::XLinkOut::NAME));
 //     //     if(kv.second.name == node::internal::XLinkIn::NAME) {
 //     //         // deserialize properties to check the stream name
 //     //         node::internal::XLinkIn::Properties props;
