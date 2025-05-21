@@ -13,14 +13,5 @@ SpatialLocationCalculator::Properties& SpatialLocationCalculator::getProperties(
     return properties;
 }
 
-// Node properties configuration
-void SpatialLocationCalculator::setWaitForConfigInput(bool wait) {
-    inputConfig.setWaitForMessage(wait);
-}
-
-bool SpatialLocationCalculator::getWaitForConfigInput() const {
-    return inputConfig.getWaitForMessage();
-}
-
 }  // namespace node
 }  // namespace dai

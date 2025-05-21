@@ -41,27 +41,6 @@ class VideoEncoder : public DeviceNodeCRTP<DeviceNode, VideoEncoder, VideoEncode
      */
     void setDefaultProfilePreset(float fps, Properties::Profile profile);
 
-    /**
-     * Sets a default preset based on specified input size, frame rate and profile
-     * @param width Input frame width
-     * @param height Input frame height
-     * @param fps Frame rate in frames per second
-     * @param profile Encoding profile
-     */
-    [[deprecated("Input width/height no longer needed, automatically determined from first frame")]] void setDefaultProfilePreset(int width,
-                                                                                                                                  int height,
-                                                                                                                                  float fps,
-                                                                                                                                  Properties::Profile profile);
-
-    /**
-     * Sets a default preset based on specified input size, frame rate and profile
-     * @param size Input frame size
-     * @param fps Frame rate in frames per second
-     * @param profile Encoding profile
-     */
-    [[deprecated("Input size no longer needed, automatically determined from first frame")]] void setDefaultProfilePreset(std::tuple<int, int> size,
-                                                                                                                          float fps,
-                                                                                                                          Properties::Profile profile);
 
     // node properties
     /**
@@ -81,13 +60,7 @@ class VideoEncoder : public DeviceNodeCRTP<DeviceNode, VideoEncoder, VideoEncode
     void setRateControlMode(Properties::RateControlMode mode);
     /// Set encoding profile
     void setProfile(Properties::Profile profile);
-    /// Set encoding profile
-    [[deprecated("Input size no longer needed, automatically determined from first frame")]] void setProfile(std::tuple<int, int> size,
-                                                                                                             Properties::Profile profile);
-    /// Set encoding profile
-    [[deprecated("Input width/height no longer needed, automatically determined from first frame")]] void setProfile(int width,
-                                                                                                                     int height,
-                                                                                                                     Properties::Profile profile);
+
     /// Set output bitrate in bps, for CBR rate control mode. 0 for auto (based on frame size and FPS)
     void setBitrate(int bitrate);
     /// Set output bitrate in kbps, for CBR rate control mode. 0 for auto (based on frame size and FPS)
@@ -148,12 +121,7 @@ class VideoEncoder : public DeviceNodeCRTP<DeviceNode, VideoEncoder, VideoEncode
     int getNumBFrames() const;
     /// Get quality
     int getQuality() const;
-    /// Get input size
-    [[deprecated("Input size no longer available, it's determined when first frame arrives")]] std::tuple<int, int> getSize() const;
-    /// Get input width
-    [[deprecated("Input size no longer available, it's determined when first frame arrives")]] int getWidth() const;
-    /// Get input height
-    [[deprecated("Input size no longer available, it's determined when first frame arrives")]] int getHeight() const;
+
     /// Get frame rate
     float getFrameRate() const;
     /// Get lossless mode. Applies only when using [M]JPEG profile.

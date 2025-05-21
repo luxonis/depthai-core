@@ -258,7 +258,6 @@ set(TARGET_CORE_SOURCES
     src/pipeline/node/VideoEncoder.cpp
     src/pipeline/node/DetectionNetwork.cpp
     src/pipeline/node/Script.cpp
-    src/pipeline/node/Pool.cpp
     src/pipeline/node/BenchmarkIn.cpp
     src/pipeline/node/BenchmarkOut.cpp
     src/pipeline/node/SpatialDetectionNetwork.cpp

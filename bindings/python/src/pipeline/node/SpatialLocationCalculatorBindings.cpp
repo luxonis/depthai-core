@@ -35,32 +35,6 @@ void bind_spatiallocationcalculator(pybind11::module& m, void* pCallstack) {
         .def_readonly("out", &SpatialLocationCalculator::out, DOC(dai, node, SpatialLocationCalculator, out))
         .def_readonly("passthroughDepth", &SpatialLocationCalculator::passthroughDepth, DOC(dai, node, SpatialLocationCalculator, passthroughDepth))
         .def_readonly("initialConfig", &SpatialLocationCalculator::initialConfig, DOC(dai, node, SpatialLocationCalculator, initialConfig))
-
-        .def(
-            "setWaitForConfigInput",
-            [](SpatialLocationCalculator& obj, bool wait) {
-                // Issue a deprecation warning
-                PyErr_WarnEx(PyExc_DeprecationWarning, "Use 'inputConfig.setWaitForMessage()' instead", 1);
-                HEDLEY_DIAGNOSTIC_PUSH
-                HEDLEY_DIAGNOSTIC_DISABLE_DEPRECATED
-                obj.setWaitForConfigInput(wait);
-                HEDLEY_DIAGNOSTIC_POP
-            },
-            py::arg("wait"),
-            DOC(dai, node, SpatialLocationCalculator, setWaitForConfigInput))
-
-        .def(
-            "getWaitForConfigInput",
-            [](SpatialLocationCalculator& obj) {
-                // Issue a deprecation warning
-                PyErr_WarnEx(PyExc_DeprecationWarning, "Use 'inputConfig.setWaitForMessage()' instead", 1);
-                HEDLEY_DIAGNOSTIC_PUSH
-                HEDLEY_DIAGNOSTIC_DISABLE_DEPRECATED
-                return obj.getWaitForConfigInput();
-                HEDLEY_DIAGNOSTIC_POP
-            },
-            DOC(dai, node, SpatialLocationCalculator, getWaitForConfigInput))
-
         ;
     // ALIAS
     daiNodeModule.attr("SpatialLocationCalculator").attr("Properties") = spatialLocationCalculatorProperties;
