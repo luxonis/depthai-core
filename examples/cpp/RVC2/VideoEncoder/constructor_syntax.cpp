@@ -54,13 +54,12 @@ int main() {
         dai::Pipeline pipeline;
 
         // Create camera node using constructor syntax
-        auto camRgb = std::make_shared<dai::node::ColorCamera>();
+        auto camRgb = std::make_shared<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A, std::make_pair(1920, 1080), 30);
         pipeline.add(camRgb);
 
         // Create video encoder node using constructor syntax
         auto encoder = std::make_shared<dai::node::VideoEncoder>();
-        encoder->setDefaultProfilePreset(30, dai::VideoEncoderProperties::Profile::H265_MAIN);
-        camRgb->video.link(encoder->input);
+        camRgb->requestOutput(std::make_pair(1920, 1080))->link(encoder->input);
         pipeline.add(encoder);
 
         // Create video saver node using constructor syntax

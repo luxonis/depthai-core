@@ -36,15 +36,12 @@ int main(int argc, char** argv) {
         dai::Pipeline pipeline;
 
         // Create color camera node
-        auto cam = pipeline.create<dai::node::ColorCamera>();
-        cam->setBoardSocket(dai::CameraBoardSocket::CAM_A);
-        cam->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
-        cam->setVideoSize(1280, 720);
+        auto cam = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A);
 
         // Create video encoder node
         auto videoEncoder = pipeline.create<dai::node::VideoEncoder>();
         videoEncoder->setProfile(dai::VideoEncoderProperties::Profile::H264_MAIN);
-        cam->video.link(videoEncoder->input);
+        cam->requestOutput(std::make_pair(1280, 720))->link(videoEncoder->input);
 
         // Create record node
         auto record = pipeline.create<dai::node::RecordVideo>();

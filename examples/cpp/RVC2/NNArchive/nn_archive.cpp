@@ -83,25 +83,21 @@ int main() {
         dai::Pipeline pipeline;
 
         // Define sources and outputs
-        auto camRgb = pipeline.create<dai::node::ColorCamera>();
+        auto camRgb = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A, std::make_pair(1280, 720), 15);
         
         // Properties
-        camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
-        camRgb->setInterleaved(false);
-        camRgb->setColorOrder(dai::ColorCameraProperties::ColorOrder::BGR);
-        camRgb->setFps(15);
+        auto outRgb = camRgb->requestOutput(std::make_pair(1280, 720));
 
         // Load NN archive
         dai::NNArchive nnArchive(archivePath);
         auto config = nnArchive.getConfig<dai::nn_archive::v1::Config>();
         int h = config.model.inputs[0].shape[2];
         int w = config.model.inputs[0].shape[3];
-        camRgb->setPreviewSize(w, h);
 
         // Create detection network
         auto detectionNetwork = pipeline.create<dai::node::DetectionNetwork>();
         detectionNetwork->setNumInferenceThreads(2);
-        camRgb->preview.link(detectionNetwork->input);
+        outRgb->link(detectionNetwork->input);
         detectionNetwork->setNNArchive(nnArchive);
 
         // Create output queues

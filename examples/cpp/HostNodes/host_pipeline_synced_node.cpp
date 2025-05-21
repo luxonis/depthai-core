@@ -6,8 +6,7 @@
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/pipeline/Node.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
-#include "depthai/pipeline/node/ColorCamera.hpp"
-#include "depthai/pipeline/node/MonoCamera.hpp"
+#include "depthai/pipeline/node/Camera.hpp"
 #include "depthai/pipeline/node/host/HostNode.hpp"
 
 class SyncedDisplay : public dai::NodeCRTP<dai::node::HostNode, SyncedDisplay> {
@@ -45,16 +44,12 @@ int main() {
     // Create pipeline
     dai::Pipeline pipeline(true);
 
-    auto camRgb = pipeline.create<dai::node::ColorCamera>();
-    camRgb->setBoardSocket(dai::CameraBoardSocket::CAM_A);
-    camRgb->setVideoSize(640, 480);
-
-    auto camMono = pipeline.create<dai::node::MonoCamera>();
-    camMono->setBoardSocket(dai::CameraBoardSocket::CAM_B);
+    auto camRgb = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A);
+    auto camMono = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B);
 
     auto syncedDisplay = pipeline.create<SyncedDisplay>();
-    camRgb->video.link(syncedDisplay->inputRgb);
-    camMono->out.link(syncedDisplay->inputMono);
+    camRgb->requestOutput(std::make_pair(640, 480))->link(syncedDisplay->inputRgb);
+    camMono->requestOutput(std::make_pair(640, 480))->link(syncedDisplay->inputMono);
 
     pipeline.start();
     pipeline.wait();

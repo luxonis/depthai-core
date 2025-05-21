@@ -55,16 +55,11 @@ int main() {
         dai::Pipeline pipeline;
 
         // Create camera node
-        auto camRgb = pipeline.create<dai::node::ColorCamera>();
-        camRgb->setBoardSocket(dai::CameraBoardSocket::CAM_A);
-        camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
-        camRgb->setVideoSize(1920, 1080);
-        camRgb->setFps(30);
+        auto camRgb = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A, std::make_pair(1920, 1080), 30);
 
         // Create video encoder node
         auto encoder = pipeline.create<dai::node::VideoEncoder>();
-        encoder->setDefaultProfilePreset(30, dai::VideoEncoderProperties::Profile::H265_MAIN);
-        camRgb->video.link(encoder->input);
+        camRgb->requestOutput(std::make_pair(1920, 1080))->link(encoder->input);
 
         // Create video saver node
         auto saver = pipeline.create<VideoSaver>();

@@ -73,15 +73,9 @@ int main() {
         dai::Pipeline pipeline;
 
         // Define sources and outputs
-        auto monoLeft = pipeline.create<dai::node::MonoCamera>();
-        auto monoRight = pipeline.create<dai::node::MonoCamera>();
+        auto monoLeft = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A, std::make_pair(400, 400), 30);
+        auto monoRight = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B, std::make_pair(400, 400), 30);
         auto depth = pipeline.create<dai::node::StereoDepth>();
-
-        // Properties
-        monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
-        monoRight->setBoardSocket(dai::CameraBoardSocket::CAM_B);
-        monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
-        monoRight->setBoardSocket(dai::CameraBoardSocket::CAM_C);
 
         // Configure depth node
         depth->setLeftRightCheck(true);
@@ -94,8 +88,8 @@ int main() {
         visualizer->build(depth->disparity);
 
         // Linking
-        monoLeft->out.link(depth->left);
-        monoRight->out.link(depth->right);
+        monoLeft->requestOutput(std::make_pair(400, 400))->link(depth->left);
+        monoRight->requestOutput(std::make_pair(400, 400))->link(depth->right);
 
         // Start pipeline
         pipeline.start();
