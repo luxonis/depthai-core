@@ -228,7 +228,6 @@ class [[deprecated("Use Camera node instead")]] ColorCamera : public DeviceNodeC
      */
     void setFps(float fps);
 
-    // TODO(before mainline) - API not supported on RVC3
     /**
      * Isp 3A rate (auto focus, auto exposure, auto white balance, camera controls etc.).
      * Default (0) matches the camera FPS, meaning that 3A is running on each frame.
@@ -239,7 +238,6 @@ class [[deprecated("Use Camera node instead")]] ColorCamera : public DeviceNodeC
      */
     void setIsp3aFps(int isp3aFps);
 
-    // TODO(before mainline) - API not supported on RVC3
     // Set events on which frames will be received
     void setFrameEventFilter(const std::vector<dai::FrameEvent>& events);
 
@@ -338,65 +336,6 @@ class [[deprecated("Use Camera node instead")]] ColorCamera : public DeviceNodeC
     /// Get number of frames in isp pool
     int getIspNumFramesPool();
 
-    // TODO(before mainline) - API not supported on RVC2
-    /// Set the source of the warp mesh or disable
-    void setMeshSource(Properties::WarpMeshSource source);
-
-    // TODO(before mainline) - API not supported on RVC2
-    /// Gets the source of the warp mesh
-    Properties::WarpMeshSource getMeshSource() const;
-
-    /**
-     * Specify local filesystem paths to the undistort mesh calibration files.
-     *
-     * When a mesh calibration is set, it overrides the camera intrinsics/extrinsics matrices.
-     * Overrides useHomographyRectification behavior.
-     * Mesh format: a sequence of (y,x) points as 'float' with coordinates from the input image
-     * to be mapped in the output. The mesh can be subsampled, configured by `setMeshStep`.
-     *
-     * With a 1280x800 resolution and the default (16,16) step, the required mesh size is:
-     *
-     * width: 1280 / 16 + 1 = 81
-     *
-     * height: 800 / 16 + 1 = 51
-     */
-    // void loadMeshFile(const dai::Path& warpMesh);
-
-    // TODO(before mainline) - API not supported on RVC2
-    /**
-     * Specify mesh calibration data for undistortion
-     * See `loadMeshFiles` for the expected data format
-     */
-    void loadMeshData(const std::vector<std::uint8_t> warpMesh);
-
-    // TODO(before mainline) - API not supported on RVC2
-    /**
-     * Set the distance between mesh points. Default: (32, 32)
-     */
-    void setMeshStep(int width, int height);
-
-    // TODO(before mainline) - API not supported on RVC2
-    /**
-     * Set mesh size
-     */
-    void setMeshSize(int width, int height);
-
-    // TODO(before mainline) - API not supported on RVC2
-    /// Gets the distance between mesh points
-    std::tuple<int, int> getMeshStep() const;
-
-    // TODO(before mainline) - API not supported on RVC2
-    /// Gets the mesh size
-    std::tuple<int, int> getMeshSize() const;
-
-    // TODO(before mainline) - API not supported on RVC2
-    /// Set calibration alpha parameter that determines FOV of undistorted frames
-    void setCalibrationAlpha(float alpha);
-
-    // TODO(before mainline) - API not supported on RVC2
-    /// Get calibration alpha parameter that determines FOV of undistorted frames
-    float getCalibrationAlpha() const;
-    // TODO(before mainline) - API not supported on RVC3
     /**
      * Configures whether the camera `raw` frames are saved as MIPI-packed to memory.
      * The packed format is more efficient, consuming less memory on device, and less data

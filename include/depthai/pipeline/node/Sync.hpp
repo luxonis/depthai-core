@@ -11,7 +11,7 @@
 namespace dai {
 namespace node {
 
-// TODO(before mainline) - API not supported on RVC3
+
 /**
  * @brief Sync node. Performs syncing between image frames
  */
