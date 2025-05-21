@@ -21,9 +21,9 @@ int main(int argc, char** argv) {
     auto manip = pipeline.create<dai::node::ImageManip>();
 
     // Resize to 400x400 and avoid stretching by cropping from the center
-    manip->initialConfig.setOutputSize(400, 400, dai::ImageManipConfig::ResizeMode::CENTER_CROP);
+    manip->initialConfig->setOutputSize(400, 400, dai::ImageManipConfig::ResizeMode::CENTER_CROP);
     // Set output frame type
-    manip->initialConfig.setFrameType(dai::ImgFrame::Type::RGB888i);
+    manip->initialConfig->setFrameType(dai::ImgFrame::Type::RGB888i);
 
     camRgb->requestOutput((std::make_pair(1920, 1080)))->link(manip->inputImage);
     manip->out.link(display->input);

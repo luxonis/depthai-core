@@ -12,8 +12,8 @@ void testManipBasic(bool runSyncOnHost) {
     auto cam = p.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A);
     auto manip = p.create<dai::node::ImageManip>();
     cam->requestFullResolutionOutput()->link(manip->inputImage);
-    manip->initialConfig.addCrop(100, 200, 400, 400);
-    manip->initialConfig.setFrameType(dai::ImgFrame::Type::NV12);
+    manip->initialConfig->addCrop(100, 200, 400, 400);
+    manip->initialConfig->setFrameType(dai::ImgFrame::Type::NV12);
 
     auto manipQueue = manip->out.createOutputQueue();
     p.start();
@@ -94,7 +94,7 @@ TEST_CASE("Test ImageManip with u16 frames") {
 
     dai::Pipeline p;
     auto manip = p.create<dai::node::ImageManip>();
-    manip->initialConfig.setOutputSize(outputWidth, outputHeight);
+    manip->initialConfig->setOutputSize(outputWidth, outputHeight);
 
     auto inputQueue = manip->inputImage.createInputQueue();
     auto outputQueue = manip->out.createOutputQueue();

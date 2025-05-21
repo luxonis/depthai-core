@@ -31,7 +31,7 @@ class EdgeDetector : public DeviceNodeCRTP<DeviceNode, EdgeDetector, EdgeDetecto
     /**
      * Initial config to use for edge detection.
      */
-    EdgeDetectorConfig initialConfig;
+    std::shared_ptr<EdgeDetectorConfig> initialConfig = std::make_shared<EdgeDetectorConfig>();
 
     /**
      * Input EdgeDetectorConfig message with ability to modify parameters in runtime.

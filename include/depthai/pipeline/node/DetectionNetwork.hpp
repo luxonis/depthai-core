@@ -181,7 +181,7 @@ class DetectionNetwork : public DeviceNodeGroup {
 
     std::optional<std::vector<std::string>> getClasses() const;
 
-    virtual void buildInternal();
+    virtual void buildInternal() override;
 
    private:
     void setNNArchiveBlob(const NNArchive& nnArchive);

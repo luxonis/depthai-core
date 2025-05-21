@@ -196,7 +196,7 @@ void bind_stereodepth(pybind11::module& m, void* pCallstack) {
             "setConfidenceThreshold",
             [](StereoDepth& s, int confThr) {
                 // Issue an deprecation warning
-                PyErr_WarnEx(PyExc_DeprecationWarning, "setConfidenceThreshold() is deprecated, Use 'initialConfig.setConfidenceThreshold()' instead", 1);
+                PyErr_WarnEx(PyExc_DeprecationWarning, "setConfidenceThreshold() is deprecated, Use 'initialConfig->setConfidenceThreshold()' instead", 1);
                 HEDLEY_DIAGNOSTIC_PUSH
                 HEDLEY_DIAGNOSTIC_DISABLE_DEPRECATED
                 s.setConfidenceThreshold(confThr);
@@ -207,7 +207,7 @@ void bind_stereodepth(pybind11::module& m, void* pCallstack) {
             "setMedianFilter",
             [](StereoDepth& s, dai::StereoDepthConfig::MedianFilter median) {
                 // Issue an deprecation warning
-                PyErr_WarnEx(PyExc_DeprecationWarning, "setMedianFilter() is deprecated, Use 'initialConfig.setMedianFilter()' instead", 1);
+                PyErr_WarnEx(PyExc_DeprecationWarning, "setMedianFilter() is deprecated, Use 'initialConfig->setMedianFilter()' instead", 1);
                 HEDLEY_DIAGNOSTIC_PUSH
                 HEDLEY_DIAGNOSTIC_DISABLE_DEPRECATED
                 s.setMedianFilter(median);
@@ -247,7 +247,7 @@ void bind_stereodepth(pybind11::module& m, void* pCallstack) {
         .def(
             "getMaxDisparity",
             [](StereoDepth& s) {
-                PyErr_WarnEx(PyExc_DeprecationWarning, "getMaxDisparity() is deprecated, Use 'initialConfig.getMaxDisparity()' instead", 1);
+                PyErr_WarnEx(PyExc_DeprecationWarning, "getMaxDisparity() is deprecated, Use 'initialConfig->getMaxDisparity()' instead", 1);
                 HEDLEY_DIAGNOSTIC_PUSH
                 HEDLEY_DIAGNOSTIC_DISABLE_DEPRECATED
                 return s.getMaxDisparity();
