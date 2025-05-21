@@ -24,12 +24,14 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
     enum class PresetMode : std::uint32_t {
         /**
          * Prefers accuracy over density. More invalid depth values, but less outliers.
+         * This mode does not turn on any post-processing and is light on resources.
          */
-        HIGH_ACCURACY [[deprecated("Will be removed in future releases and replaced with DEFAULT")]],
+        FAST_ACCURACY,
         /**
          * Prefers density over accuracy. Less invalid depth values, but more outliers.
+         * This mode does not turn on any post-processing and is light on resources.
          */
-        HIGH_DENSITY [[deprecated("Will be removed in future releases and replaced with DEFAULT")]],
+        FAST_DENSITY,
 
         DEFAULT,
         FACE,
@@ -167,7 +169,6 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
      * RGB alignment, left-right check or any postprocessing (e.g., median filter) is not performed on confidence map.
      */
     Output confidenceMap{*this, {"confidenceMap", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
-
 
     /**
      * Specify local filesystem paths to the mesh calibration files for 'left' and 'right' inputs.

@@ -185,9 +185,9 @@ void StereoDepth::setAlphaScaling(float alpha) {
 
 void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
     presetMode = mode;
-    DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
+
     switch(presetMode) {
-        case PresetMode::HIGH_ACCURACY: {
+        case PresetMode::FAST_ACCURACY: {
             initialConfig->setConfidenceThreshold(55);
             initialConfig->setLeftRightCheck(true);
             initialConfig->setLeftRightCheckThreshold(5);
@@ -205,7 +205,7 @@ void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
             initialConfig->costAggregation.p1Config.smoothValue = 22;
 
         } break;
-        case PresetMode::HIGH_DENSITY: {
+        case PresetMode::FAST_DENSITY: {
             initialConfig->setConfidenceThreshold(15);
             initialConfig->setLeftRightCheck(true);
             initialConfig->setLeftRightCheckThreshold(10);
@@ -231,7 +231,7 @@ void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
             initialConfig->costAggregation.p2Config.smoothValue = 99;
         } break;
         case PresetMode::DEFAULT: {
-            setDefaultProfilePreset(PresetMode::HIGH_DENSITY);
+            setDefaultProfilePreset(PresetMode::FAST_DENSITY);
             initialConfig->setLeftRightCheck(true);
             initialConfig->setExtendedDisparity(false);
             initialConfig->setSubpixel(true);
@@ -266,7 +266,7 @@ void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
             setPostProcessingHardwareResources(3, 3);
         } break;
         case PresetMode::FACE: {
-            setDefaultProfilePreset(PresetMode::HIGH_DENSITY);
+            setDefaultProfilePreset(PresetMode::FAST_DENSITY);
             initialConfig->setLeftRightCheck(true);
             initialConfig->setExtendedDisparity(true);
             initialConfig->setSubpixel(true);
@@ -301,7 +301,7 @@ void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
             setPostProcessingHardwareResources(3, 3);
         } break;
         case PresetMode::HIGH_DETAIL: {
-            setDefaultProfilePreset(PresetMode::HIGH_ACCURACY);
+            setDefaultProfilePreset(PresetMode::FAST_ACCURACY);
             initialConfig->setLeftRightCheck(true);
             initialConfig->setExtendedDisparity(true);
             initialConfig->setSubpixel(true);
@@ -336,7 +336,7 @@ void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
             setPostProcessingHardwareResources(3, 3);
         } break;
         case PresetMode::ROBOTICS: {
-            setDefaultProfilePreset(PresetMode::HIGH_DENSITY);
+            setDefaultProfilePreset(PresetMode::FAST_DENSITY);
             initialConfig->setLeftRightCheck(true);
             initialConfig->setExtendedDisparity(false);
             initialConfig->setSubpixel(true);
@@ -371,7 +371,6 @@ void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
             setPostProcessingHardwareResources(3, 3);
         } break;
     }
-    DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING
 }
 
 void StereoDepth::setFrameSync(bool enableFrameSync) {
