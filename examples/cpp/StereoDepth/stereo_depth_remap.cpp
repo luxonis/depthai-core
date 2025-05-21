@@ -84,7 +84,7 @@ int main() {
     auto stereo = pipeline.create<dai::node::StereoDepth>();
 
     // Configure stereo node
-    stereo->setDefaultProfilePreset(dai::node::StereoDepth::PresetMode::HIGH_DENSITY);
+    stereo->setDefaultProfilePreset(dai::node::StereoDepth::PresetMode::DEFAULT);
     // Uncomment to align depth to RGB
     // stereo->setDepthAlign(dai::CameraBoardSocket::CAM_A);
     // stereo->setOutputSize(640, 400);
