@@ -372,11 +372,11 @@ with dai.Pipeline(dai.Device(*dai_device_args)) as pipeline:
                 cam[c].raw.link(tof[c].input)
                 tof[c].depth.link(xout[c].input)
                 xinTofConfig.out.link(tof[c].inputConfig)
-                tofConfig = tof[c].initialConfig->get()
+                tofConfig = tof[c].initialConfig.get()
                 tofConfig.depthParams.freqModUsed = dai.RawToFConfig.DepthParams.TypeFMod.MIN
                 tofConfig.depthParams.avgPhaseShuffle = False
                 tofConfig.depthParams.minimumAmplitude = 3.0
-                tof[c].initialConfig->set(tofConfig)
+                tof[c].initialConfig.set(tofConfig)
 
                 if args.tof_median == 0:
                     tofConfig.depthParams.median = dai.MedianFilter.MEDIAN_OFF
@@ -386,7 +386,7 @@ with dai.Pipeline(dai.Device(*dai_device_args)) as pipeline:
                     tofConfig.depthParams.median = dai.MedianFilter.KERNEL_5x5
                 elif args.tof_median == 7:
                     tofConfig.depthParams.median = dai.MedianFilter.KERNEL_7x7
-                tof[c].initialConfig->set(tofConfig)
+                tof[c].initialConfig.set(tofConfig)
                 if args.tof_amplitude:
                     amp_name = 'tof_amplitude_' + c
                     xout_tof_amp[c] = pipeline.create(dai.node.XLinkOut)
@@ -651,7 +651,7 @@ with dai.Pipeline(dai.Device(*dai_device_args)) as pipeline:
                 cam_skt = c.split('_')[-1]
 
                 if c == DEPTH_STREAM_NAME and stereo is not None:
-                    maxDisp = stereo.initialConfig->getMaxDisparity()
+                    maxDisp = stereo.initialConfig.getMaxDisparity()
                     disp = (pkt.getCvFrame() * (255.0 / maxDisp)).astype(np.uint8)
                     disp = cv2.applyColorMap(disp, cv2.COLORMAP_JET)
                     cv2.imshow(c, disp)
