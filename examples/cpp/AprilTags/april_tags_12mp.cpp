@@ -25,7 +25,7 @@ int main() {
     outputCam->link(aprilTagNode->inputImage);
 
     // Configure ImageManip
-    manip->initialConfig.setOutputSize(PREVIEW_SIZE.width, PREVIEW_SIZE.height, dai::ImageManipConfig::ResizeMode::STRETCH);
+    manip->initialConfig->setOutputSize(PREVIEW_SIZE.width, PREVIEW_SIZE.height, dai::ImageManipConfig::ResizeMode::STRETCH);
     manip->setMaxOutputFrameSize(2162688);
     outputCam->link(manip->inputImage);
 

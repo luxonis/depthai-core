@@ -46,7 +46,7 @@ int main() {
     
     // Link nodes
     imageReplay->output.link(aprilTagNode->inputImage);
-    aprilTagNode->initialConfig.setFamily(dai::AprilTagConfig::Family::TAG_16H5);
+    aprilTagNode->initialConfig->setFamily(dai::AprilTagConfig::Family::TAG_16H5);
 
     // Create output queues
     auto passthroughOutputQueue = aprilTagNode->passthroughInputImage.createOutputQueue();

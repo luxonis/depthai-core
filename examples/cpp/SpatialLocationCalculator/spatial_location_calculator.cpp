@@ -49,7 +49,7 @@ int main() {
         config.roi = dai::Rect(topLeft, bottomRight);
 
         spatialLocationCalculator->inputConfig.setWaitForMessage(false);
-        spatialLocationCalculator->initialConfig.addROI(config);
+        spatialLocationCalculator->initialConfig->addROI(config);
 
         // Create output queues
         auto xoutSpatialQueue = spatialLocationCalculator->out.createOutputQueue();

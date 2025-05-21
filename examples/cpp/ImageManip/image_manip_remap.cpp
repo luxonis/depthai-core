@@ -53,11 +53,11 @@ int main() {
         auto camOut = cam->requestOutput(std::make_pair(640, 400), dai::ImgFrame::Type::BGR888i, dai::ImgResizeMode::LETTERBOX, 20, 20);
 
         // Configure image manipulators
-        manip1->initialConfig.addRotateDeg(90);
-        manip1->initialConfig.setOutputSize(200, 320);
+        manip1->initialConfig->addRotateDeg(90);
+        manip1->initialConfig->setOutputSize(200, 320);
 
-        manip2->initialConfig.addRotateDeg(90);
-        manip2->initialConfig.setOutputSize(320, 200);
+        manip2->initialConfig->addRotateDeg(90);
+        manip2->initialConfig->setOutputSize(320, 200);
         manip2->setRunOnHost(true);
 
         // Linking

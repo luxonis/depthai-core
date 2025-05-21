@@ -255,7 +255,7 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
     /**
      * @param median Set kernel size for disparity/depth median filtering, or disable
      */
-    [[deprecated("Use 'initialConfig.setMedianFilter()' instead")]] void setMedianFilter(MedianFilter median);
+    [[deprecated("Use 'initialConfig->setMedianFilter()' instead")]] void setMedianFilter(MedianFilter median);
 
     /**
      * @param align Set the disparity/depth alignment: centered (between the 'left' and 'right' inputs),
@@ -272,7 +272,7 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
      * Confidence threshold for disparity calculation
      * @param confThr Confidence threshold value 0..255
      */
-    [[deprecated("Use 'initialConfig.setConfidenceThreshold()' instead")]] void setConfidenceThreshold(int confThr);
+    [[deprecated("Use 'initialConfig->setConfidenceThreshold()' instead")]] void setConfidenceThreshold(int confThr);
 
     /**
      * Rectify input images or not.
@@ -358,7 +358,7 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
      * Useful for normalization of the disparity map.
      * @returns Maximum disparity value that the node can return
      */
-    [[deprecated("Use 'initialConfig.getMaxDisparity()' instead")]] float getMaxDisparity() const;
+    [[deprecated("Use 'initialConfig->getMaxDisparity()' instead")]] float getMaxDisparity() const;
 
     /**
      * Specify allocated hardware resources for stereo depth.

@@ -34,7 +34,7 @@ int main() {
     // If 8k, we can only have 1 output stream, so we need to use ImageManip to downscale
     auto imgManip = pipeline.create<dai::node::ImageManip>();
     streamHighestRes->link(imgManip->inputImage);
-    imgManip->initialConfig.setOutputSize(1333, 1000);
+    imgManip->initialConfig->setOutputSize(1333, 1000);
     imgManip->setMaxOutputFrameSize(1333 * 1000 * 3);
     auto downscaledResQ = imgManip->out.createOutputQueue();
 

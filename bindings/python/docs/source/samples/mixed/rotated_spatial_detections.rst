@@ -14,8 +14,8 @@ the :ref:`ImageManip` node to rotate ``depth`` (code below) and then send it to 
 
     manip = pipeline.createImageManip()
     # Vertical + Horizontal flip == rotate frame for 180°
-    manip.initialConfig.setVerticalFlip(True)
-    manip.initialConfig.setHorizontalFlip(True)
+    manip.initialConfig->setVerticalFlip(True)
+    manip.initialConfig->setHorizontalFlip(True)
     manip.setFrameType(dai.ImgFrame.Type.RAW16)
     stereo.depth.link(manip.inputImage)
 

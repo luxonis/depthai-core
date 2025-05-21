@@ -124,17 +124,17 @@ int main() {
     auto camOutput = camera->requestOutput(std::make_pair(640, 640), dai::ImgFrame::Type::NV12);
     
     auto manip = pipeline.create<dai::node::ImageManip>();
-    manip->initialConfig.setFrameType(dai::ImgFrame::Type::GRAY8);
+    manip->initialConfig->setFrameType(dai::ImgFrame::Type::GRAY8);
     camOutput->link(manip->inputImage);
 
     auto featureTracker = pipeline.create<dai::node::FeatureTracker>();
-    featureTracker->initialConfig.setCornerDetector(dai::FeatureTrackerConfig::CornerDetector::Type::HARRIS);
-    featureTracker->initialConfig.setMotionEstimator(false);
-    featureTracker->initialConfig.setNumTargetFeatures(256);
+    featureTracker->initialConfig->setCornerDetector(dai::FeatureTrackerConfig::CornerDetector::Type::HARRIS);
+    featureTracker->initialConfig->setMotionEstimator(false);
+    featureTracker->initialConfig->setNumTargetFeatures(256);
 
     auto motionEstimator = dai::FeatureTrackerConfig::MotionEstimator();
     motionEstimator.enable = true;
-    featureTracker->initialConfig.setMotionEstimator(motionEstimator);
+    featureTracker->initialConfig->setMotionEstimator(motionEstimator);
 
     auto cornerDetector = dai::FeatureTrackerConfig::CornerDetector();
     cornerDetector.numMaxFeatures = 256;
@@ -153,7 +153,7 @@ int main() {
     thresholds.initialValue = 20000;  // Default value
 
     cornerDetector.thresholds = thresholds;
-    featureTracker->initialConfig.setCornerDetector(cornerDetector);
+    featureTracker->initialConfig->setCornerDetector(cornerDetector);
 
     // Create window and trackbars
     cv::namedWindow("Features", cv::WINDOW_NORMAL);

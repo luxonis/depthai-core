@@ -26,7 +26,7 @@ int main() {
 
         // Create input manipulator
         auto manipInput = pipeline.create<dai::node::ImageManip>();
-        manipInput->initialConfig.setFrameType(dai::ImgFrame::Type::BGR888p);
+        manipInput->initialConfig->setFrameType(dai::ImgFrame::Type::BGR888p);
         auto inputQueue = manipInput->inputImage.createInputQueue();
 
         // Define manipulation operations
@@ -91,7 +91,7 @@ int main() {
         for(const auto& [name, config] : manipOps) {
             std::cout << "Creating manipulator: " << name << std::endl;
             auto manip = pipeline.create<dai::node::ImageManip>();
-            config(manip->initialConfig);
+            config(*manip->initialConfig);
             manipInput->out.link(manip->inputImage);
             queues[name] = manip->out.createOutputQueue(4, false);
         }
