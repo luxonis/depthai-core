@@ -8,7 +8,7 @@ class ImageReplay : public dai::NodeCRTP<dai::node::ThreadedHostNode, ImageRepla
 public:
     constexpr static const char* NAME = "ImageReplay";
 
-    Output output{*this, {.name = "out", .types = {{dai::DatatypeEnum::ImgFrame, true}}}};
+    Output output{*this, {"out", DEFAULT_GROUP, {{{dai::DatatypeEnum::ImgFrame, true}}}}};
 
     ImageReplay() {
         // Load and prepare the image
