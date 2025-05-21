@@ -22,7 +22,7 @@ class AprilTag : public DeviceNodeCRTP<DeviceNode, AprilTag, AprilTagProperties>
     using DeviceNodeCRTP::DeviceNodeCRTP;
 
    protected:
-    Properties& getProperties();
+    Properties& getProperties() override;
 
    public:
     AprilTag() = default;

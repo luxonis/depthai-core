@@ -28,7 +28,6 @@ class VideoRecorder {
 
    private:
     bool initialized = false;
-    bool mp4v2Initialized = false;
     unsigned int fps = 0;
     unsigned int width = 0;
     unsigned int height = 0;
