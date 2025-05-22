@@ -87,7 +87,7 @@ Usage
     dai::Point2f bottomRight(0.6f, 0.6f);
     config.roi = dai::Rect(topLeft, bottomRight);
 
-    spatialCalc->initialConfig.addROI(config);
+    spatialCalc->initialConfig->addROI(config);
 
     // You can later send configs from the host (XLinkIn) / scripting node to the InputConfig
 

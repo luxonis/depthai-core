@@ -3,7 +3,7 @@
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/depthai.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
-#include "depthai/pipeline/node/ColorCamera.hpp"
+#include "depthai/pipeline/node/Camera.hpp"
 #include "depthai/pipeline/node/ImageManip.hpp"
 #include "depthai/pipeline/node/host/Display.hpp"
 
