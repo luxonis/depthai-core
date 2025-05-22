@@ -29,14 +29,9 @@ void BasaltVIO::buildInternal() {
     sync->setRunOnHost(false);
     inSync.addCallback(std::bind(&BasaltVIO::stereoCB, this, std::placeholders::_1));
     imu.addCallback(std::bind(&BasaltVIO::imuCB, this, std::placeholders::_1));
-
     basalt::PoseState<double>::SE3 initTrans(Eigen::Quaterniond::Identity(), Eigen::Vector3d(0, 0, 0));
-    Eigen::Matrix<double, 3, 3> R180;
-    R180 << -1.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, 1.0;
-    Eigen::Quaterniond q180(R180);
-    basalt::PoseState<double>::SE3 opticalTransform180(q180, Eigen::Vector3d(0, 0, 0));
     // to output pose in FLU world coordinates
-    localTransform = std::make_shared<basalt::PoseState<double>::SE3>(initTrans * opticalTransform180);
+    localTransform = std::make_shared<basalt::PoseState<double>::SE3>(initTrans);
     setDefaultVIOConfig();
 }
 
@@ -58,7 +53,7 @@ void BasaltVIO::run() {
         pimpl->outStateQueue->pop(data);
 
         if(!data.get()) continue;
-        basalt::PoseState<double>::SE3 pose = (data->T_w_i * calib->T_i_c[0]);
+        basalt::PoseState<double>::SE3 pose = (*localTransform * data->T_w_i * calib->T_i_c[0]);
 
         // pose is in RDF orientation, convert to FLU
         auto finalPose = pose;
