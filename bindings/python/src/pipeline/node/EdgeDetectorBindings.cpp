@@ -35,32 +35,6 @@ void bind_edgedetector(pybind11::module& m, void* pCallstack) {
         .def_readonly("inputConfig", &EdgeDetector::inputConfig, DOC(dai, node, EdgeDetector, inputConfig))
         .def_readonly("inputImage", &EdgeDetector::inputImage, DOC(dai, node, EdgeDetector, inputImage))
         .def_readonly("outputImage", &EdgeDetector::outputImage, DOC(dai, node, EdgeDetector, outputImage))
-
-        .def(
-            "setWaitForConfigInput",
-            [](EdgeDetector& obj, bool wait) {
-                // Issue a deprecation warning
-                PyErr_WarnEx(PyExc_DeprecationWarning, "Use 'inputConfig.setWaitForMessage()' instead", 1);
-                HEDLEY_DIAGNOSTIC_PUSH
-                HEDLEY_DIAGNOSTIC_DISABLE_DEPRECATED
-                obj.setWaitForConfigInput(wait);
-                HEDLEY_DIAGNOSTIC_POP
-            },
-            py::arg("wait"),
-            DOC(dai, node, EdgeDetector, setWaitForConfigInput))
-
-        .def(
-            "getWaitForConfigInput",
-            [](EdgeDetector& obj) {
-                // Issue a deprecation warning
-                PyErr_WarnEx(PyExc_DeprecationWarning, "Use 'inputConfig.setWaitForMessage()' instead", 1);
-                HEDLEY_DIAGNOSTIC_PUSH
-                HEDLEY_DIAGNOSTIC_DISABLE_DEPRECATED
-                return obj.getWaitForConfigInput();
-                HEDLEY_DIAGNOSTIC_POP
-            },
-            DOC(dai, node, EdgeDetector, getWaitForConfigInput))
-
         .def("setNumFramesPool", &EdgeDetector::setNumFramesPool, DOC(dai, node, EdgeDetector, setNumFramesPool))
         .def("setMaxOutputFrameSize", &EdgeDetector::setMaxOutputFrameSize, DOC(dai, node, EdgeDetector, setMaxOutputFrameSize));
     daiNodeModule.attr("EdgeDetector").attr("Properties") = edgeDetectorProperties;
