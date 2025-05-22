@@ -1,14 +1,10 @@
 #include <iostream>
-#include "depthai/depthai.hpp"
 #include <opencv2/opencv.hpp>
 
+#include "depthai/depthai.hpp"
+
 // Helper function to draw rotated rectangle
-void drawRotatedRectangle(cv::Mat& frame, 
-                         const cv::Point2f& center,
-                         const cv::Size2f& size,
-                         float angle,
-                         const cv::Scalar& color,
-                         int thickness = 2) {
+void drawRotatedRectangle(cv::Mat& frame, const cv::Point2f& center, const cv::Size2f& size, float angle, const cv::Scalar& color, int thickness = 2) {
     // Create a rotated rectangle
     cv::RotatedRect rect(center, size, angle);
 
@@ -35,17 +31,17 @@ cv::Mat processDepthFrame(const cv::Mat& depthFrame) {
     if(!cv::countNonZero(depth_downscaled == 0)) {
         std::vector<float> nonZeroDepth;
         nonZeroDepth.reserve(depth_downscaled.rows * depth_downscaled.cols);
-        
+
         for(int i = 0; i < depth_downscaled.rows; i++) {
             for(int j = 0; j < depth_downscaled.cols; j++) {
                 float depth = depth_downscaled.at<float>(i, j);
                 if(depth > 0) nonZeroDepth.push_back(depth);
             }
         }
-        
+
         if(!nonZeroDepth.empty()) {
             std::sort(nonZeroDepth.begin(), nonZeroDepth.end());
-            min_depth = nonZeroDepth[static_cast<int>(nonZeroDepth.size() * 0.01)]; // 1st percentile
+            min_depth = nonZeroDepth[static_cast<int>(nonZeroDepth.size() * 0.01)];  // 1st percentile
         }
     }
 
@@ -57,7 +53,7 @@ cv::Mat processDepthFrame(const cv::Mat& depthFrame) {
         }
     }
     std::sort(allDepth.begin(), allDepth.end());
-    double max_depth = allDepth[static_cast<int>(allDepth.size() * 0.99)]; // 99th percentile
+    double max_depth = allDepth[static_cast<int>(allDepth.size() * 0.99)];  // 99th percentile
 
     // Normalize and colorize
     cv::Mat normalized;
@@ -126,25 +122,19 @@ int main() {
         auto remappedRect = colorFrame->transformation.remapRectTo(stereoFrame->transformation, rect);
 
         // Print rectangle information
-        std::cout << "Original rect x: " << rect.center.x << " y: " << rect.center.y 
-                  << " width: " << rect.size.width << " height: " << rect.size.height 
+        std::cout << "Original rect x: " << rect.center.x << " y: " << rect.center.y << " width: " << rect.size.width << " height: " << rect.size.height
                   << " angle: " << rect.angle << std::endl;
-        std::cout << "Remapped rect x: " << remappedRect.center.x << " y: " << remappedRect.center.y 
-                  << " width: " << remappedRect.size.width << " height: " << remappedRect.size.height 
-                  << " angle: " << remappedRect.angle << std::endl;
+        std::cout << "Remapped rect x: " << remappedRect.center.x << " y: " << remappedRect.center.y << " width: " << remappedRect.size.width
+                  << " height: " << remappedRect.size.height << " angle: " << remappedRect.angle << std::endl;
 
         // Draw rectangles
-        drawRotatedRectangle(clr, 
-                           cv::Point2f(rect.center.x, rect.center.y),
-                           cv::Size2f(rect.size.width, rect.size.height),
-                           rect.angle,
-                           cv::Scalar(255, 0, 0));
+        drawRotatedRectangle(clr, cv::Point2f(rect.center.x, rect.center.y), cv::Size2f(rect.size.width, rect.size.height), rect.angle, cv::Scalar(255, 0, 0));
 
         drawRotatedRectangle(depth,
-                           cv::Point2f(remappedRect.center.x, remappedRect.center.y),
-                           cv::Size2f(remappedRect.size.width, remappedRect.size.height),
-                           remappedRect.angle,
-                           cv::Scalar(255, 0, 0));
+                             cv::Point2f(remappedRect.center.x, remappedRect.center.y),
+                             cv::Size2f(remappedRect.size.width, remappedRect.size.height),
+                             remappedRect.angle,
+                             cv::Scalar(255, 0, 0));
 
         // Show frames
         cv::imshow("color", clr);
@@ -156,4 +146,4 @@ int main() {
     }
 
     return 0;
-} 
+}

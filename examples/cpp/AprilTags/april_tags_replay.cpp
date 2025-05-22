@@ -1,11 +1,12 @@
-#include "depthai/depthai.hpp"
+#include <chrono>
 #include <iostream>
 #include <opencv2/opencv.hpp>
-#include <chrono>
 #include <thread>
 
+#include "depthai/depthai.hpp"
+
 class ImageReplay : public dai::NodeCRTP<dai::node::ThreadedHostNode, ImageReplay> {
-public:
+   public:
     constexpr static const char* NAME = "ImageReplay";
 
     Output output{*this, {"out", DEFAULT_GROUP, {{{dai::DatatypeEnum::ImgFrame, true}}}}};
@@ -14,7 +15,7 @@ public:
         // Load and prepare the image
         cv::Mat frame = cv::imread(APRIL_TAGS_PATH);
         cv::cvtColor(frame, frame, cv::COLOR_BGR2GRAY);
-        
+
         // Create ImgFrame
         auto imgFrame = std::make_shared<dai::ImgFrame>();
         std::vector<uint8_t> data(frame.data, frame.data + frame.total() * frame.elemSize());
@@ -32,7 +33,7 @@ public:
         }
     }
 
-private:
+   private:
     std::shared_ptr<dai::ImgFrame> _imgFrame;
 };
 
@@ -43,7 +44,7 @@ int main() {
     // Create nodes
     auto imageReplay = pipeline.create<ImageReplay>();
     auto aprilTagNode = pipeline.create<dai::node::AprilTag>();
-    
+
     // Link nodes
     imageReplay->output.link(aprilTagNode->inputImage);
     aprilTagNode->initialConfig->setFamily(dai::AprilTagConfig::Family::TAG_16H5);
@@ -82,9 +83,7 @@ int main() {
         cv::cvtColor(frame, frame, cv::COLOR_GRAY2BGR);
 
         // Helper function to convert points to integers
-        auto to_int = [](const dai::Point2f& p) {
-            return cv::Point(static_cast<int>(p.x), static_cast<int>(p.y));
-        };
+        auto to_int = [](const dai::Point2f& p) { return cv::Point(static_cast<int>(p.x), static_cast<int>(p.y)); };
 
         // Draw detections
         for(const auto& tag : aprilTags) {
@@ -93,10 +92,7 @@ int main() {
             auto bottomRight = to_int(tag.bottomRight);
             auto bottomLeft = to_int(tag.bottomLeft);
 
-            auto center = cv::Point(
-                (topLeft.x + bottomRight.x) / 2,
-                (topLeft.y + bottomRight.y) / 2
-            );
+            auto center = cv::Point((topLeft.x + bottomRight.x) / 2, (topLeft.y + bottomRight.y) / 2);
 
             // Draw rectangle
             cv::line(frame, topLeft, topRight, color, 2, cv::LINE_AA, 0);
@@ -109,8 +105,7 @@ int main() {
             cv::putText(frame, idStr, center, cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
 
             // Draw FPS
-            cv::putText(frame, "fps: " + std::to_string(fps).substr(0, 4), cv::Point(200, 20), 
-                       cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
+            cv::putText(frame, "fps: " + std::to_string(fps).substr(0, 4), cv::Point(200, 20), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
         }
 
         cv::imshow("detections", frame);
@@ -120,4 +115,4 @@ int main() {
     }
 
     return 0;
-} 
+}

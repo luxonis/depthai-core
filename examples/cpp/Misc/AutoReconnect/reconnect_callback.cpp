@@ -1,9 +1,10 @@
+#include <atomic>
+#include <csignal>
 #include <iostream>
 #include <memory>
-#include <csignal>
-#include <atomic>
-#include "depthai/depthai.hpp"
 #include <opencv2/opencv.hpp>
+
+#include "depthai/depthai.hpp"
 
 // Global flag for graceful shutdown
 std::atomic<bool> quitEvent(false);
@@ -46,7 +47,7 @@ int main() {
             if(videoIn == nullptr) continue;
 
             cv::imshow("video", videoIn->getCvFrame());
-            
+
             int key = cv::waitKey(1);
             if(key == 'q') {
                 break;
@@ -63,4 +64,4 @@ int main() {
     }
 
     return 0;
-} 
+}

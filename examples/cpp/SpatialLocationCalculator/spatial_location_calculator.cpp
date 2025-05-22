@@ -1,8 +1,9 @@
+#include <atomic>
+#include <csignal>
 #include <iostream>
 #include <memory>
-#include <csignal>
-#include <atomic>
 #include <opencv2/opencv.hpp>
+
 #include "depthai/depthai.hpp"
 
 // Global flag for graceful shutdown
@@ -72,7 +73,7 @@ int main() {
 
             auto outputDepthImage = outputDepthQueue->get<dai::ImgFrame>();
             cv::Mat frameDepth = outputDepthImage->getCvFrame();
-            
+
             // Calculate median depth
             std::vector<float> depthValues;
             for(int i = 0; i < frameDepth.rows; i++) {
@@ -104,12 +105,24 @@ int main() {
                 float depthMax = depthData.depthMax;
 
                 cv::rectangle(depthFrameColor, cv::Point(xmin, ymin), cv::Point(xmax, ymax), color, 1);
-                cv::putText(depthFrameColor, "X: " + std::to_string(static_cast<int>(depthData.spatialCoordinates.x)) + " mm",
-                           cv::Point(xmin + 10, ymin + 20), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
-                cv::putText(depthFrameColor, "Y: " + std::to_string(static_cast<int>(depthData.spatialCoordinates.y)) + " mm",
-                           cv::Point(xmin + 10, ymin + 35), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
-                cv::putText(depthFrameColor, "Z: " + std::to_string(static_cast<int>(depthData.spatialCoordinates.z)) + " mm",
-                           cv::Point(xmin + 10, ymin + 50), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
+                cv::putText(depthFrameColor,
+                            "X: " + std::to_string(static_cast<int>(depthData.spatialCoordinates.x)) + " mm",
+                            cv::Point(xmin + 10, ymin + 20),
+                            cv::FONT_HERSHEY_TRIPLEX,
+                            0.5,
+                            color);
+                cv::putText(depthFrameColor,
+                            "Y: " + std::to_string(static_cast<int>(depthData.spatialCoordinates.y)) + " mm",
+                            cv::Point(xmin + 10, ymin + 35),
+                            cv::FONT_HERSHEY_TRIPLEX,
+                            0.5,
+                            color);
+                cv::putText(depthFrameColor,
+                            "Z: " + std::to_string(static_cast<int>(depthData.spatialCoordinates.z)) + " mm",
+                            cv::Point(xmin + 10, ymin + 50),
+                            cv::FONT_HERSHEY_TRIPLEX,
+                            0.5,
+                            color);
             }
 
             cv::imshow("depth", depthFrameColor);
@@ -184,4 +197,4 @@ int main() {
     }
 
     return 0;
-} 
+}

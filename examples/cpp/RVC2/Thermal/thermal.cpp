@@ -3,11 +3,12 @@
     Streams the temperature image from a thermal sensor and
     displays it with a crosshair with the temperature value at that point.
 */
+#include <iostream>
+#include <opencv2/opencv.hpp>
+
 #include "depthai/depthai.hpp"
 #include "depthai/pipeline/InputQueue.hpp"
 #include "depthai/pipeline/datatype/ThermalConfig.hpp"
-#include <iostream>
-#include <opencv2/opencv.hpp>
 
 volatile int mouseX, mouseY = 0;
 void mouseCallback(int event, int x, int y, int flags, void* userdata) {

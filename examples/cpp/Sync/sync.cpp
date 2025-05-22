@@ -1,4 +1,5 @@
 #include <iostream>
+
 #include "depthai/depthai.hpp"
 
 int main() {
@@ -14,7 +15,7 @@ int main() {
 
     // Create and configure sync node
     auto sync = pipeline.create<dai::node::Sync>();
-    sync->setRunOnHost(true); // Can also run on device
+    sync->setRunOnHost(true);  // Can also run on device
 
     // Link cameras to sync inputs
     left->requestFullResolutionOutput()->link(sync->inputs["left"]);
@@ -42,4 +43,4 @@ int main() {
     }
 
     return 0;
-} 
+}

@@ -1,8 +1,9 @@
 #include <iostream>
 #include <memory>
-#include <tuple>
-#include "depthai/depthai.hpp"
 #include <opencv2/opencv.hpp>
+#include <tuple>
+
+#include "depthai/depthai.hpp"
 
 // Global variables for ROI selection
 std::vector<cv::Point> startPoints;
@@ -17,32 +18,18 @@ void selectRoi(int event, int x, int y, int flags, void* userdata) {
         roiRect = cv::Rect();
         startPoints.clear();
         startPoints.push_back(cv::Point(x, y));
-    }
-    else if(event == cv::EVENT_MOUSEMOVE && !startPoints.empty()) {
+    } else if(event == cv::EVENT_MOUSEMOVE && !startPoints.empty()) {
         cv::Point start = startPoints[0];
-        roiRect = cv::Rect(
-            std::min(start.x, x),
-            std::min(start.y, y),
-            std::abs(x - start.x),
-            std::abs(y - start.y)
-        );
-    }
-    else if(event == cv::EVENT_LBUTTONUP && !startPoints.empty()) {
+        roiRect = cv::Rect(std::min(start.x, x), std::min(start.y, y), std::abs(x - start.x), std::abs(y - start.y));
+    } else if(event == cv::EVENT_LBUTTONUP && !startPoints.empty()) {
         cv::Point start = startPoints[0];
-        roiRect = cv::Rect(
-            std::min(start.x, x),
-            std::min(start.y, y),
-            std::abs(x - start.x),
-            std::abs(y - start.y)
-        );
+        roiRect = cv::Rect(std::min(start.x, x), std::min(start.y, y), std::abs(x - start.x), std::abs(y - start.y));
 
         // Scale ROI to original resolution
-        cv::Rect roiRectScaled(
-            static_cast<int>(roiRect.x * scaleFactors.first),
-            static_cast<int>(roiRect.y * scaleFactors.second),
-            static_cast<int>(roiRect.width * scaleFactors.first),
-            static_cast<int>(roiRect.height * scaleFactors.second)
-        );
+        cv::Rect roiRectScaled(static_cast<int>(roiRect.x * scaleFactors.first),
+                               static_cast<int>(roiRect.y * scaleFactors.second),
+                               static_cast<int>(roiRect.width * scaleFactors.first),
+                               static_cast<int>(roiRect.height * scaleFactors.second));
 
         std::cout << "ROI selected: " << roiRect << std::endl;
         std::cout << "Scaled ROI selected: " << roiRectScaled << ". Setting exposure and focus to this region." << std::endl;
@@ -84,10 +71,7 @@ int main() {
         if(scaleFactors.first == 0.0f) {
             auto sourceSize = imgHd->transformation.getSourceSize();
             auto targetSize = imgHd->transformation.getSize();
-            scaleFactors = std::make_pair(
-                static_cast<float>(sourceSize.first) / targetSize.first,
-                static_cast<float>(sourceSize.second) / targetSize.second
-            );
+            scaleFactors = std::make_pair(static_cast<float>(sourceSize.first) / targetSize.first, static_cast<float>(sourceSize.second) / targetSize.second);
             std::cout << "Source size: " << sourceSize.first << "x" << sourceSize.second << std::endl;
             std::cout << "Target size: " << targetSize.first << "x" << targetSize.second << std::endl;
         }
@@ -107,4 +91,4 @@ int main() {
     }
 
     return 0;
-} 
+}

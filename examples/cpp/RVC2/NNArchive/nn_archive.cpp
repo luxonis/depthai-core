@@ -1,12 +1,13 @@
-#include <iostream>
-#include <memory>
-#include <csignal>
 #include <atomic>
 #include <chrono>
+#include <csignal>
+#include <iostream>
+#include <memory>
+#include <opencv2/opencv.hpp>
 #include <vector>
+
 #include "depthai/depthai.hpp"
 #include "depthai/nn_archive/NNArchiveVersionedConfig.hpp"
-#include <opencv2/opencv.hpp>
 
 // Global flag for graceful shutdown
 std::atomic<bool> quitEvent(false);
@@ -22,7 +23,7 @@ std::vector<int> frameNorm(const cv::Mat& frame, const std::vector<float>& bbox)
     for(size_t i = 0; i < bbox.size(); i += 2) {
         normVals[i] = frame.cols;
     }
-    
+
     std::vector<int> result;
     for(size_t i = 0; i < bbox.size(); i++) {
         float val = std::max(0.0f, std::min(1.0f, bbox[i]));
@@ -41,27 +42,18 @@ void displayFrame(const std::string& name, cv::Mat& frame, const std::vector<dai
         auto normBbox = frameNorm(frame, bbox);
 
         // Draw label
-        cv::putText(frame, 
-                   labelMap[detection.label],
-                   cv::Point(normBbox[0] + 10, normBbox[1] + 20),
-                   cv::FONT_HERSHEY_TRIPLEX,
-                   0.5,
-                   textColor);
+        cv::putText(frame, labelMap[detection.label], cv::Point(normBbox[0] + 10, normBbox[1] + 20), cv::FONT_HERSHEY_TRIPLEX, 0.5, textColor);
 
         // Draw confidence
         cv::putText(frame,
-                   std::to_string(static_cast<int>(detection.confidence * 100)) + "%",
-                   cv::Point(normBbox[0] + 10, normBbox[1] + 40),
-                   cv::FONT_HERSHEY_TRIPLEX,
-                   0.5,
-                   textColor);
+                    std::to_string(static_cast<int>(detection.confidence * 100)) + "%",
+                    cv::Point(normBbox[0] + 10, normBbox[1] + 40),
+                    cv::FONT_HERSHEY_TRIPLEX,
+                    0.5,
+                    textColor);
 
         // Draw rectangle
-        cv::rectangle(frame,
-                     cv::Point(normBbox[0], normBbox[1]),
-                     cv::Point(normBbox[2], normBbox[3]),
-                     color,
-                     2);
+        cv::rectangle(frame, cv::Point(normBbox[0], normBbox[1]), cv::Point(normBbox[2], normBbox[3]), color, 2);
     }
 
     cv::imshow(name, frame);
@@ -118,16 +110,11 @@ int main() {
 
             if(inRgb != nullptr) {
                 frame = inRgb->getCvFrame();
-                
+
                 // Add FPS text
                 auto currentTime = std::chrono::steady_clock::now();
                 float fps = counter / std::chrono::duration<float>(currentTime - startTime).count();
-                cv::putText(frame,
-                           "NN fps: " + std::to_string(fps),
-                           cv::Point(2, frame.rows - 4),
-                           cv::FONT_HERSHEY_TRIPLEX,
-                           0.4,
-                           cv::Scalar(255, 255, 255));
+                cv::putText(frame, "NN fps: " + std::to_string(fps), cv::Point(2, frame.rows - 4), cv::FONT_HERSHEY_TRIPLEX, 0.4, cv::Scalar(255, 255, 255));
             }
 
             if(inDet != nullptr) {
@@ -155,4 +142,4 @@ int main() {
     }
 
     return 0;
-} 
+}

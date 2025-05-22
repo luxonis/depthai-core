@@ -1,6 +1,7 @@
+#include <chrono>
 #include <depthai/depthai.hpp>
 #include <opencv2/opencv.hpp>
-#include <chrono>
+
 #include "depthai/pipeline/datatype/Tracklets.hpp"
 
 int main() {
@@ -93,19 +94,35 @@ int main() {
 
             cv::putText(frame, label, cv::Point(x1 + 10, y1 + 20), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
             cv::putText(frame, "ID: " + std::to_string(t.id), cv::Point(x1 + 10, y1 + 35), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
-            cv::putText(frame, std::string(t.status == dai::Tracklet::TrackingStatus::LOST? "LOST" : "TRACKED"), cv::Point(x1 + 10, y1 + 50), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
+            cv::putText(frame,
+                        std::string(t.status == dai::Tracklet::TrackingStatus::LOST ? "LOST" : "TRACKED"),
+                        cv::Point(x1 + 10, y1 + 50),
+                        cv::FONT_HERSHEY_TRIPLEX,
+                        0.5,
+                        color);
             cv::rectangle(frame, cv::Point(x1, y1), cv::Point(x2, y2), color, cv::FONT_HERSHEY_SIMPLEX);
 
-            cv::putText(frame, "X: " + std::to_string(static_cast<int>(t.spatialCoordinates.x)) + " mm", 
-                       cv::Point(x1 + 10, y1 + 65), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
-            cv::putText(frame, "Y: " + std::to_string(static_cast<int>(t.spatialCoordinates.y)) + " mm", 
-                       cv::Point(x1 + 10, y1 + 80), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
-            cv::putText(frame, "Z: " + std::to_string(static_cast<int>(t.spatialCoordinates.z)) + " mm", 
-                       cv::Point(x1 + 10, y1 + 95), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
+            cv::putText(frame,
+                        "X: " + std::to_string(static_cast<int>(t.spatialCoordinates.x)) + " mm",
+                        cv::Point(x1 + 10, y1 + 65),
+                        cv::FONT_HERSHEY_TRIPLEX,
+                        0.5,
+                        color);
+            cv::putText(frame,
+                        "Y: " + std::to_string(static_cast<int>(t.spatialCoordinates.y)) + " mm",
+                        cv::Point(x1 + 10, y1 + 80),
+                        cv::FONT_HERSHEY_TRIPLEX,
+                        0.5,
+                        color);
+            cv::putText(frame,
+                        "Z: " + std::to_string(static_cast<int>(t.spatialCoordinates.z)) + " mm",
+                        cv::Point(x1 + 10, y1 + 95),
+                        cv::FONT_HERSHEY_TRIPLEX,
+                        0.5,
+                        color);
         }
 
-        cv::putText(frame, "NN fps: " + std::to_string(fps).substr(0, 4), 
-                   cv::Point(2, frame.rows - 4), cv::FONT_HERSHEY_TRIPLEX, 0.4, color);
+        cv::putText(frame, "NN fps: " + std::to_string(fps).substr(0, 4), cv::Point(2, frame.rows - 4), cv::FONT_HERSHEY_TRIPLEX, 0.4, color);
 
         cv::imshow("tracker", frame);
 
@@ -115,4 +132,4 @@ int main() {
     }
 
     return 0;
-} 
+}

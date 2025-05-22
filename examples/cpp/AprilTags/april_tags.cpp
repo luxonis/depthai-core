@@ -1,8 +1,9 @@
+#include <chrono>
 #include <iostream>
 #include <memory>
-#include <chrono>
-#include "depthai/depthai.hpp"
 #include <opencv2/opencv.hpp>
+
+#include "depthai/depthai.hpp"
 
 int main() {
     // Create device
@@ -52,9 +53,7 @@ int main() {
         cv::Mat cvFrame = frame->getCvFrame();
 
         // Helper function to convert points to integers
-        auto to_int = [](const dai::Point2f& p) {
-            return cv::Point(static_cast<int>(p.x), static_cast<int>(p.y));
-        };
+        auto to_int = [](const dai::Point2f& p) { return cv::Point(static_cast<int>(p.x), static_cast<int>(p.y)); };
 
         for(const auto& tag : aprilTagMessage->aprilTags) {
             auto topLeft = to_int(tag.topLeft);
@@ -62,10 +61,7 @@ int main() {
             auto bottomRight = to_int(tag.bottomRight);
             auto bottomLeft = to_int(tag.bottomLeft);
 
-            cv::Point center(
-                (topLeft.x + bottomRight.x) / 2,
-                (topLeft.y + bottomRight.y) / 2
-            );
+            cv::Point center((topLeft.x + bottomRight.x) / 2, (topLeft.y + bottomRight.y) / 2);
 
             // Draw tag boundaries
             cv::line(cvFrame, topLeft, topRight, color, 2, cv::LINE_AA, 0);
@@ -78,8 +74,7 @@ int main() {
             cv::putText(cvFrame, idStr, center, cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
 
             // Draw FPS
-            cv::putText(cvFrame, "fps: " + std::to_string(fps).substr(0, 4), 
-                       cv::Point(200, 20), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
+            cv::putText(cvFrame, "fps: " + std::to_string(fps).substr(0, 4), cv::Point(200, 20), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
         }
 
         cv::imshow("detections", cvFrame);
@@ -90,4 +85,4 @@ int main() {
     }
 
     return 0;
-} 
+}

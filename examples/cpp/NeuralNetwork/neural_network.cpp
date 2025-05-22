@@ -1,6 +1,7 @@
-#include "depthai/depthai.hpp"
 #include <iostream>
 #include <opencv2/opencv.hpp>
+
+#include "depthai/depthai.hpp"
 
 int main() {
     // Create pipeline
@@ -34,4 +35,4 @@ int main() {
         std::cout << "Received NN data: " << tensor.shape()[0] << "x" << tensor.shape()[1] << std::endl;
     }
     return 0;
-} 
+}

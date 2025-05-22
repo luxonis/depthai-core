@@ -1,7 +1,8 @@
 #include <iostream>
 #include <memory>
-#include "depthai/depthai.hpp"
 #include <opencv2/opencv.hpp>
+
+#include "depthai/depthai.hpp"
 
 int main() {
     // Create device
@@ -20,7 +21,7 @@ int main() {
     // Create script node for still capture
     auto script = pipeline.create<dai::node::Script>();
     streamHighestRes->link(script->inputs["in"]);
-    
+
     // Current workaround for OAK4 cameras, as Camera node doesn't yet support "still" frame capture
     script->setScript(R"(
         while True:
@@ -72,4 +73,4 @@ int main() {
     }
 
     return 0;
-} 
+}

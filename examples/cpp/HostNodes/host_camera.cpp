@@ -1,11 +1,12 @@
+#include <atomic>
+#include <chrono>
+#include <csignal>
 #include <iostream>
 #include <memory>
-#include <csignal>
-#include <atomic>
-#include <thread>
-#include <chrono>
-#include "depthai/depthai.hpp"
 #include <opencv2/opencv.hpp>
+#include <thread>
+
+#include "depthai/depthai.hpp"
 
 // Global flag for graceful shutdown
 std::atomic<bool> quitEvent(false);
@@ -17,8 +18,7 @@ void signalHandler(int signum) {
 
 // Custom threaded host node for camera capture
 class HostCamera : public dai::node::CustomThreadedNode<HostCamera> {
-public:
-
+   public:
     HostCamera() {
         output = std::shared_ptr<dai::Node::Output>(new dai::Node::Output(*this, {"output", DEFAULT_GROUP, {{{dai::DatatypeEnum::ImgFrame, false}}}}));
     }
@@ -83,7 +83,7 @@ int main() {
         if(image == nullptr) continue;
 
         cv::imshow("HostCamera", image->getCvFrame());
-        
+
         int key = cv::waitKey(1);
         if(key == 'q') {
             pipeline.stop();
@@ -96,4 +96,4 @@ int main() {
     pipeline.wait();
 
     return 0;
-} 
+}

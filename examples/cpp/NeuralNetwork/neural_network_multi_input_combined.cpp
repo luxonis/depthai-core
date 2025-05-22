@@ -1,9 +1,10 @@
-#include "depthai/depthai.hpp"
-#include "depthai/modelzoo/Zoo.hpp"
 #include <iostream>
 #include <opencv2/opencv.hpp>
-#include <xtensor/xarray.hpp>
 #include <xtensor/xadapt.hpp>
+#include <xtensor/xarray.hpp>
+
+#include "depthai/depthai.hpp"
+#include "depthai/modelzoo/Zoo.hpp"
 
 int main() {
     // Decode the image using OpenCV
@@ -30,7 +31,7 @@ int main() {
     // Prepare input data
     auto inputNNData = std::make_shared<dai::NNData>();
     auto platform = pipeline.getDefaultDevice()->getPlatform();
-    
+
     if(platform == dai::Platform::RVC2) {
         // Transpose to CHW format
         lenaImage = xt::transpose(lenaImage, {2, 0, 1});
@@ -52,7 +53,7 @@ int main() {
         auto inNNData = qNNData->get<dai::NNData>();
         auto tensor = inNNData->getFirstTensor<float>();
         auto tensor_uint8 = xt::eval(xt::squeeze(xt::cast<uint8_t>(tensor), 0));
-        
+
         cv::Mat output;
         if(tensor_uint8.shape()[0] == 3) {
             tensor_uint8 = xt::transpose(tensor_uint8, {1, 2, 0});
@@ -61,7 +62,7 @@ int main() {
         std::memcpy(output.data, tensor_uint8.data(), tensor_uint8.size());
 
         cv::imshow("Combined image", output);
-        
+
         char key = cv::waitKey(1);
         if(key == 'q') {
             break;
@@ -69,4 +70,4 @@ int main() {
     }
 
     return 0;
-} 
+}

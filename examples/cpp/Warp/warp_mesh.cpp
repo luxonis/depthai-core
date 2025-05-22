@@ -1,9 +1,10 @@
+#include <atomic>
+#include <csignal>
 #include <iostream>
 #include <memory>
-#include <csignal>
-#include <atomic>
-#include <vector>
 #include <opencv2/opencv.hpp>
+#include <vector>
+
 #include "depthai/depthai.hpp"
 
 // Global flag for graceful shutdown
@@ -33,9 +34,7 @@ int main() {
 
         // Get platform and set image type
         auto platform = pipeline.getDefaultDevice()->getPlatform();
-        auto imgType = (platform == dai::Platform::RVC2) ? 
-                      dai::ImgFrame::Type::BGR888p : 
-                      dai::ImgFrame::Type::NV12;
+        auto imgType = (platform == dai::Platform::RVC2) ? dai::ImgFrame::Type::BGR888p : dai::ImgFrame::Type::NV12;
 
         // Create camera output
         auto cameraOutput = camRgb->requestOutput(std::make_pair(width, height), imgType);
@@ -57,11 +56,7 @@ int main() {
 
         // Create and configure warp node
         auto warp = pipeline.create<dai::node::Warp>();
-        warp->setWarpMesh({
-            p0_3x3, p1_3x3, p2_3x3,
-            p3_3x3, p4_3x3, p5_3x3,
-            p6_3x3, p7_3x3, p8_3x3
-        }, 3, 3);
+        warp->setWarpMesh({p0_3x3, p1_3x3, p2_3x3, p3_3x3, p4_3x3, p5_3x3, p6_3x3, p7_3x3, p8_3x3}, 3, 3);
 
         // Set output size and frame limits
         std::pair<int, int> warpOutputSize(640, 480);
@@ -105,4 +100,4 @@ int main() {
     }
 
     return 0;
-} 
+}

@@ -1,24 +1,23 @@
-#include <iostream>
-#include <memory>
 #include <deque>
-#include <set>
+#include <iostream>
 #include <map>
-#include "depthai/depthai.hpp"
+#include <memory>
 #include <opencv2/opencv.hpp>
+#include <set>
+
+#include "depthai/depthai.hpp"
 
 class FeatureTrackerDrawer {
-public:
+   public:
     static const cv::Scalar lineColor;
     static const cv::Scalar pointColor;
     static const int circleRadius = 2;
     static const int maxTrackedFeaturesPathLength = 30;
     static int trackedFeaturesPathLength;
 
-    FeatureTrackerDrawer(const std::string& trackbarName, const std::string& windowName) 
-        : trackbarName(trackbarName), windowName(windowName) {
+    FeatureTrackerDrawer(const std::string& trackbarName, const std::string& windowName) : trackbarName(trackbarName), windowName(windowName) {
         cv::namedWindow(windowName);
-        cv::createTrackbar(trackbarName, windowName, &trackedFeaturesPathLength, 
-                          maxTrackedFeaturesPathLength, onTrackBar, this);
+        cv::createTrackbar(trackbarName, windowName, &trackedFeaturesPathLength, maxTrackedFeaturesPathLength, onTrackBar, this);
     }
 
     static void onTrackBar(int val, void* userdata) {
@@ -27,7 +26,7 @@ public:
 
     void trackFeaturePath(const std::vector<dai::TrackedFeature>& features) {
         std::set<int> newTrackedIDs;
-        
+
         for(const auto& currentFeature : features) {
             int currentID = currentFeature.id;
             newTrackedIDs.insert(currentID);
@@ -38,7 +37,7 @@ public:
 
             auto& path = trackedFeaturesPath[currentID];
             path.push_back(currentFeature.position);
-            
+
             while(path.size() > std::max(1, trackedFeaturesPathLength)) {
                 path.pop_front();
             }
@@ -68,7 +67,7 @@ public:
                 cv::Point dst(static_cast<int>(path[j + 1].x), static_cast<int>(path[j + 1].y));
                 cv::line(img, src, dst, lineColor, 1, cv::LINE_AA, 0);
             }
-            
+
             if(!path.empty()) {
                 size_t j = path.size() - 1;
                 cv::Point point(static_cast<int>(path[j].x), static_cast<int>(path[j].y));
@@ -77,7 +76,7 @@ public:
         }
     }
 
-private:
+   private:
     std::string trackbarName;
     std::string windowName;
     std::set<int> trackedIDs;
@@ -122,7 +121,7 @@ int main() {
     // Create nodes
     auto camera = pipeline.create<dai::node::Camera>()->build();
     auto camOutput = camera->requestOutput(std::make_pair(640, 640), dai::ImgFrame::Type::NV12);
-    
+
     auto manip = pipeline.create<dai::node::ImageManip>();
     manip->initialConfig->setFrameType(dai::ImgFrame::Type::GRAY8);
     camOutput->link(manip->inputImage);
@@ -185,8 +184,7 @@ int main() {
         int key = cv::waitKey(1);
         if(key == 'q') {
             break;
-        }
-        else if(key == 'm') {
+        } else if(key == 'm') {
             auto cfg = std::make_shared<dai::FeatureTrackerConfig>();
             auto cornerDetector = dai::FeatureTrackerConfig::CornerDetector();
             cornerDetector.numMaxFeatures = cv::getTrackbarPos("numMaxFeatures", "Features");
@@ -214,4 +212,4 @@ int main() {
     }
 
     return 0;
-} 
+}

@@ -30,8 +30,8 @@ class HostNode : public ThreadedHostNode {
     virtual std::shared_ptr<Buffer> processGroup(std::shared_ptr<dai::MessageGroup> in) = 0;
 
     /**
-     * @brief Send processing to pipeline. If set to true, it's important to call `pipeline.run()` in the main thread or `pipeline.processTasks()` in the main thread.
-     * Otherwise, if set to false, such action is not needed.
+     * @brief Send processing to pipeline. If set to true, it's important to call `pipeline.run()` in the main thread or `pipeline.processTasks()` in the main
+     * thread. Otherwise, if set to false, such action is not needed.
      */
     void sendProcessingToPipeline(bool send) {
         sendProcessToPipeline = send;
@@ -48,7 +48,7 @@ class HostNode : public ThreadedHostNode {
 /**
  * @brief Custom node for host node. When creating a custom host node, inherit from this class!
  * @tparam T Node type (same as the class you are creating)
- * 
+ *
  * Example:
  * @code{.cpp}
  * class MyNode : public CustomNode<MyNode> {

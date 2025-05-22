@@ -1,10 +1,11 @@
+#include <atomic>
+#include <chrono>
+#include <csignal>
+#include <filesystem>
 #include <iostream>
 #include <memory>
-#include <csignal>
-#include <atomic>
 #include <thread>
-#include <chrono>
-#include <filesystem>
+
 #include "depthai/depthai.hpp"
 
 // Global flag for graceful shutdown
@@ -67,4 +68,4 @@ int main(int argc, char** argv) {
     }
 
     return 0;
-} 
+}

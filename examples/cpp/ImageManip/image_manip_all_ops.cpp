@@ -1,10 +1,11 @@
-#include <iostream>
-#include <memory>
-#include <csignal>
 #include <atomic>
-#include <opencv2/opencv.hpp>
+#include <csignal>
 #include <functional>
+#include <iostream>
 #include <map>
+#include <memory>
+#include <opencv2/opencv.hpp>
+
 #include "depthai/depthai.hpp"
 
 // Global flag for graceful shutdown
@@ -32,59 +33,46 @@ int main() {
         // Define manipulation operations
         std::vector<std::pair<std::string, std::function<void(dai::ImageManipConfig&)>>> manipOps = {
             // Resize operations
-            {"resize_stretch", [](dai::ImageManipConfig& conf) {
-                conf.setOutputSize(256, 200, dai::ImageManipConfig::ResizeMode::STRETCH);
-            }},
-            {"resize_letterbox", [](dai::ImageManipConfig& conf) {
-                conf.setOutputSize(256, 200, dai::ImageManipConfig::ResizeMode::LETTERBOX);
-            }},
-            {"resize_center_crop", [](dai::ImageManipConfig& conf) {
-                conf.setOutputSize(256, 200, dai::ImageManipConfig::ResizeMode::CENTER_CROP);
-            }},
+            {"resize_stretch", [](dai::ImageManipConfig& conf) { conf.setOutputSize(256, 200, dai::ImageManipConfig::ResizeMode::STRETCH); }},
+            {"resize_letterbox", [](dai::ImageManipConfig& conf) { conf.setOutputSize(256, 200, dai::ImageManipConfig::ResizeMode::LETTERBOX); }},
+            {"resize_center_crop", [](dai::ImageManipConfig& conf) { conf.setOutputSize(256, 200, dai::ImageManipConfig::ResizeMode::CENTER_CROP); }},
             // Crop operation
-            {"crop", [](dai::ImageManipConfig& conf) {
-                conf.addCrop(50, 50, 150, 200);
-            }},
+            {"crop", [](dai::ImageManipConfig& conf) { conf.addCrop(50, 50, 150, 200); }},
             // Flip operations
-            {"flip_vertical", [](dai::ImageManipConfig& conf) {
-                conf.addFlipVertical();
-            }},
-            {"flip_horizontal", [](dai::ImageManipConfig& conf) {
-                conf.addFlipHorizontal();
-            }},
+            {"flip_vertical", [](dai::ImageManipConfig& conf) { conf.addFlipVertical(); }},
+            {"flip_horizontal", [](dai::ImageManipConfig& conf) { conf.addFlipHorizontal(); }},
             // Scale operation
-            {"scale", [](dai::ImageManipConfig& conf) {
-                conf.addScale(0.7f, 0.5f);
-            }},
+            {"scale", [](dai::ImageManipConfig& conf) { conf.addScale(0.7f, 0.5f); }},
             // Rotate operations
-            {"rotate_90_deg", [](dai::ImageManipConfig& conf) {
-                conf.addRotateDeg(90);
-            }},
-            {"rotate_90_deg_center", [](dai::ImageManipConfig& conf) {
-                conf.addRotateDeg(90, dai::Point2f(0.2f, 0.3f));
-                conf.setOutputCenter(false);
-            }},
+            {"rotate_90_deg", [](dai::ImageManipConfig& conf) { conf.addRotateDeg(90); }},
+            {"rotate_90_deg_center",
+             [](dai::ImageManipConfig& conf) {
+                 conf.addRotateDeg(90, dai::Point2f(0.2f, 0.3f));
+                 conf.setOutputCenter(false);
+             }},
             // Transform operations
-            {"transform_affine", [](dai::ImageManipConfig& conf) {
-                std::array<float, 4> matrix = {
-                    1.0f, 0.5f,
-                    0.2f, 1.0f
-                };
-                conf.addTransformAffine(matrix);
-            }},
-            {"transform_perspective", [](dai::ImageManipConfig& conf) {
-                std::array<float, 9> matrix = {
-                    1.0f, 0.2f, 0.0f,  // First row
-                    0.1f, 1.0f, 0.0f,  // Second row
-                    0.001f, 0.002f, 1.0f  // Third row
-                };
-                conf.addTransformPerspective(matrix);
-            }},
+            {"transform_affine",
+             [](dai::ImageManipConfig& conf) {
+                 std::array<float, 4> matrix = {1.0f, 0.5f, 0.2f, 1.0f};
+                 conf.addTransformAffine(matrix);
+             }},
+            {"transform_perspective",
+             [](dai::ImageManipConfig& conf) {
+                 std::array<float, 9> matrix = {
+                     1.0f,
+                     0.2f,
+                     0.0f,  // First row
+                     0.1f,
+                     1.0f,
+                     0.0f,  // Second row
+                     0.001f,
+                     0.002f,
+                     1.0f  // Third row
+                 };
+                 conf.addTransformPerspective(matrix);
+             }},
             // Frame type conversion
-            {"frame_type", [](dai::ImageManipConfig& conf) {
-                conf.setFrameType(dai::ImgFrame::Type::RAW8);
-            }}
-        };
+            {"frame_type", [](dai::ImageManipConfig& conf) { conf.setFrameType(dai::ImgFrame::Type::RAW8); }}};
 
         // Create manipulator nodes and queues
         std::map<std::string, std::shared_ptr<dai::MessageQueue>> queues;
@@ -97,7 +85,7 @@ int main() {
         }
 
         // Load and prepare input image
-        cv::Mat inputFrame = cv::imread(LENNA_PATH); // 512x512
+        cv::Mat inputFrame = cv::imread(LENNA_PATH);  // 512x512
         if(inputFrame.empty()) {
             throw std::runtime_error("Could not read input image");
         }
@@ -134,4 +122,4 @@ int main() {
     }
 
     return 0;
-} 
+}

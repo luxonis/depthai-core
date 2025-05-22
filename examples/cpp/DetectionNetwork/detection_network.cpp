@@ -1,13 +1,13 @@
-#include <iostream>
 #include <chrono>
-#include "depthai/depthai.hpp"
+#include <iostream>
 #include <opencv2/opencv.hpp>
+
+#include "depthai/depthai.hpp"
 
 // Helper function to normalize frame coordinates
 cv::Rect frameNorm(const cv::Mat& frame, const dai::Point2f& topLeft, const dai::Point2f& bottomRight) {
     float width = frame.cols, height = frame.rows;
-    return cv::Rect(cv::Point(topLeft.x * width, topLeft.y * height), 
-                    cv::Point(bottomRight.x * width, bottomRight.y * height));
+    return cv::Rect(cv::Point(topLeft.x * width, topLeft.y * height), cv::Point(bottomRight.x * width, bottomRight.y * height));
 }
 
 int main() {
@@ -43,16 +43,11 @@ int main() {
 
         if(inRgb != nullptr) {
             frame = inRgb->getCvFrame();
-            
+
             // Add FPS text
             auto currentTime = std::chrono::steady_clock::now();
             float fps = counter / std::chrono::duration<float>(currentTime - startTime).count();
-            cv::putText(frame, 
-                       "NN fps: " + std::to_string(fps), 
-                       cv::Point(2, frame.rows - 4),
-                       cv::FONT_HERSHEY_TRIPLEX, 
-                       0.4, 
-                       textColor);
+            cv::putText(frame, "NN fps: " + std::to_string(fps), cv::Point(2, frame.rows - 4), cv::FONT_HERSHEY_TRIPLEX, 0.4, textColor);
         }
 
         if(inDet != nullptr) {
@@ -62,33 +57,26 @@ int main() {
         if(!frame.empty()) {
             // Display detections
             for(const auto& detection : inDet->detections) {
-                auto bbox = frameNorm(frame, 
-                                    dai::Point2f(detection.xmin, detection.ymin),
-                                    dai::Point2f(detection.xmax, detection.ymax));
-                
+                auto bbox = frameNorm(frame, dai::Point2f(detection.xmin, detection.ymin), dai::Point2f(detection.xmax, detection.ymax));
+
                 // Draw label
-                cv::putText(frame,
-                           labelMap.value()[detection.label],
-                           cv::Point(bbox.x + 10, bbox.y + 20),
-                           cv::FONT_HERSHEY_TRIPLEX,
-                           0.5,
-                           textColor);
-                
+                cv::putText(frame, labelMap.value()[detection.label], cv::Point(bbox.x + 10, bbox.y + 20), cv::FONT_HERSHEY_TRIPLEX, 0.5, textColor);
+
                 // Draw confidence
                 cv::putText(frame,
-                           std::to_string(static_cast<int>(detection.confidence * 100)) + "%",
-                           cv::Point(bbox.x + 10, bbox.y + 40),
-                           cv::FONT_HERSHEY_TRIPLEX,
-                           0.5,
-                           textColor);
-                
+                            std::to_string(static_cast<int>(detection.confidence * 100)) + "%",
+                            cv::Point(bbox.x + 10, bbox.y + 40),
+                            cv::FONT_HERSHEY_TRIPLEX,
+                            0.5,
+                            textColor);
+
                 // Draw rectangle
                 cv::rectangle(frame, bbox, color, 2);
             }
 
             // Show the frame
             cv::imshow("rgb", frame);
-            
+
             auto currentTime = std::chrono::steady_clock::now();
             float fps = counter / std::chrono::duration<float>(currentTime - startTime).count();
             std::cout << "FPS: " << fps << std::endl;
@@ -100,4 +88,4 @@ int main() {
     }
 
     return 0;
-} 
+}

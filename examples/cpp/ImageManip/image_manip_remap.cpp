@@ -1,8 +1,9 @@
+#include <atomic>
+#include <csignal>
 #include <iostream>
 #include <memory>
-#include <csignal>
-#include <atomic>
 #include <opencv2/opencv.hpp>
+
 #include "depthai/depthai.hpp"
 
 // Global flag for graceful shutdown
@@ -14,8 +15,7 @@ void signalHandler(int signum) {
 }
 
 // Helper function to draw rotated rectangle
-void draw_rotated_rectangle(cv::Mat& frame, const cv::Point2f& center, const cv::Size2f& size, 
-                          float angle, const cv::Scalar& color, int thickness = 2) {
+void draw_rotated_rectangle(cv::Mat& frame, const cv::Point2f& center, const cv::Size2f& size, float angle, const cv::Scalar& color, int thickness = 2) {
     // Create a rotated rectangle
     cv::RotatedRect rect(center, size, angle);
 
@@ -90,20 +90,17 @@ int main() {
             auto rectcam = manip1Frame->transformation.remapRectTo(camFrame->transformation, rect1);
 
             // Draw rectangles
-            draw_rotated_rectangle(manip2Cv, 
-                cv::Point2f(rect2.center.x, rect2.center.y),
-                cv::Size2f(rect2.size.width, rect2.size.height),
-                rect2.angle, cv::Scalar(255, 0, 0));
+            draw_rotated_rectangle(
+                manip2Cv, cv::Point2f(rect2.center.x, rect2.center.y), cv::Size2f(rect2.size.width, rect2.size.height), rect2.angle, cv::Scalar(255, 0, 0));
 
-            draw_rotated_rectangle(manip1Cv,
-                cv::Point2f(rect1.center.x, rect1.center.y),
-                cv::Size2f(rect1.size.width, rect1.size.height),
-                rect1.angle, cv::Scalar(255, 0, 0));
+            draw_rotated_rectangle(
+                manip1Cv, cv::Point2f(rect1.center.x, rect1.center.y), cv::Size2f(rect1.size.width, rect1.size.height), rect1.angle, cv::Scalar(255, 0, 0));
 
             draw_rotated_rectangle(camCv,
-                cv::Point2f(rectcam.center.x, rectcam.center.y),
-                cv::Size2f(rectcam.size.width, rectcam.size.height),
-                rectcam.angle, cv::Scalar(255, 0, 0));
+                                   cv::Point2f(rectcam.center.x, rectcam.center.y),
+                                   cv::Size2f(rectcam.size.width, rectcam.size.height),
+                                   rectcam.angle,
+                                   cv::Scalar(255, 0, 0));
 
             // Display frames
             cv::imshow("cam", camCv);
@@ -126,4 +123,4 @@ int main() {
     }
 
     return 0;
-} 
+}

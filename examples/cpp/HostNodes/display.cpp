@@ -1,9 +1,10 @@
+#include <atomic>
+#include <csignal>
 #include <iostream>
 #include <memory>
-#include <csignal>
-#include <atomic>
-#include "depthai/depthai.hpp"
 #include <opencv2/opencv.hpp>
+
+#include "depthai/depthai.hpp"
 
 std::atomic<bool> quitEvent(false);
 
@@ -13,7 +14,7 @@ void signalHandler(int signum) {
 
 // Custom host node for display
 class HostDisplay : public dai::node::CustomNode<HostDisplay> {
-public:
+   public:
     HostDisplay() {
         sendProcessingToPipeline(false);
     }
@@ -30,7 +31,7 @@ public:
             std::cout << "Detected 'q' - stopping the pipeline..." << std::endl;
             stopPipeline();
         }
-        
+
         return nullptr;
     }
 };
@@ -49,7 +50,7 @@ int main() {
     // Create nodes
     auto camera = pipeline.create<dai::node::Camera>()->build();
     auto output = camera->requestOutput(std::make_pair(300, 300));
-    
+
     // Create display node
     auto display = pipeline.create<HostDisplay>();
     output->link(display->inputs["frame"]);
@@ -62,4 +63,4 @@ int main() {
     pipeline.wait();
 
     return 0;
-} 
+}

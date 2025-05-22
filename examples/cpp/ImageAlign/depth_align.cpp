@@ -1,12 +1,12 @@
-#include <iostream>
-#include <vector>
-#include <string>
 #include <chrono>
-#include <deque>
 #include <cmath>
+#include <deque>
+#include <iostream>
+#include <opencv2/opencv.hpp>
+#include <string>
+#include <vector>
 
 #include "depthai/depthai.hpp"
-#include <opencv2/opencv.hpp>
 
 constexpr float FPS = 25.0f;
 
@@ -16,24 +16,22 @@ const dai::CameraBoardSocket RIGHT_SOCKET = dai::CameraBoardSocket::CAM_C;
 
 // FPS Counter class
 class FPSCounter {
-public:
+   public:
     void tick() {
         auto now = std::chrono::steady_clock::now();
         frameTimes.push_back(now);
-        while (frameTimes.size() > 10) {
+        while(frameTimes.size() > 10) {
             frameTimes.pop_front();
         }
     }
 
     float getFps() {
-        if (frameTimes.size() <= 1) return 0.0f;
-        auto duration = std::chrono::duration_cast<std::chrono::duration<float>>(
-            frameTimes.back() - frameTimes.front()
-        ).count();
+        if(frameTimes.size() <= 1) return 0.0f;
+        auto duration = std::chrono::duration_cast<std::chrono::duration<float>>(frameTimes.back() - frameTimes.front()).count();
         return (frameTimes.size() - 1) / duration;
     }
 
-private:
+   private:
     std::deque<std::chrono::steady_clock::time_point> frameTimes;
 };
 
@@ -51,26 +49,26 @@ cv::Mat colorizeDepth(cv::Mat frameDepth) {
 
         double minVal, maxVal;
         cv::minMaxLoc(frameDepthFloat, &minVal, &maxVal, nullptr, nullptr, frameDepthFloat > 0);
-        
+
         // Take log in-place
         cv::log(frameDepthFloat, frameDepthFloat);
         float logMinDepth = std::log(minVal);
         float logMaxDepth = std::log(maxVal);
 
-        frameDepthFloat = (frameDepthFloat - logMinDepth) * (255.0f/(logMaxDepth - logMinDepth));
-        
+        frameDepthFloat = (frameDepthFloat - logMinDepth) * (255.0f / (logMaxDepth - logMinDepth));
+
         cv::Mat normalizedDepth;
         frameDepthFloat.convertTo(normalizedDepth, CV_8UC1);
 
         cv::Mat depthFrameColor;
         cv::applyColorMap(normalizedDepth, depthFrameColor, cv::COLORMAP_JET);
-        
+
         // Mask invalid pixels
         depthFrameColor.setTo(0, frameDepth == 0);
 
         return depthFrameColor;
 
-    } catch (const std::exception& e) {
+    } catch(const std::exception& e) {
         std::cerr << "Error in colorizeDepth: " << e.what() << std::endl;
         return cv::Mat::zeros(frameDepth.rows, frameDepth.cols, CV_8UC3);
     }
@@ -102,12 +100,12 @@ int main() {
     // Check if platform is RVC4 and create ImageAlign node if needed
     auto platform = pipeline.getDefaultDevice()->getPlatform();
     std::shared_ptr<dai::node::ImageAlign> align;
-    if (platform == dai::Platform::RVC4) {
+    if(platform == dai::Platform::RVC4) {
         align = pipeline.create<dai::node::ImageAlign>();
     }
 
     stereo->setExtendedDisparity(true);
-    sync->setSyncThreshold(std::chrono::duration<int64_t, std::nano>(static_cast<int64_t>(1e9/(2.0*FPS))));
+    sync->setSyncThreshold(std::chrono::duration<int64_t, std::nano>(static_cast<int64_t>(1e9 / (2.0 * FPS))));
 
     // Configure outputs
     auto rgbOut = camRgb->requestOutput(std::make_pair(1280, 960), dai::ImgFrame::Type::NV12, dai::ImgResizeMode::CROP, FPS);
@@ -119,7 +117,7 @@ int main() {
     leftOut->link(stereo->left);
     rightOut->link(stereo->right);
 
-    if (platform == dai::Platform::RVC4) {
+    if(platform == dai::Platform::RVC4) {
         stereo->depth.link(align->input);
         rgbOut->link(align->inputAlignTo);
         align->outputAligned.link(sync->inputs["depth_aligned"]);
@@ -143,14 +141,14 @@ int main() {
     // Start pipeline
     pipeline.start();
 
-    while (true) {
+    while(true) {
         auto messageGroup = queue->get<dai::MessageGroup>();
         fpsCounter.tick();
 
         auto frameRgb = messageGroup->get<dai::ImgFrame>("rgb");
         auto frameDepth = messageGroup->get<dai::ImgFrame>("depth_aligned");
 
-        if (frameDepth != nullptr) {
+        if(frameDepth != nullptr) {
             cv::Mat cvFrame = frameRgb->getCvFrame();
 
             auto intrinsic = frameRgb->transformation.getIntrinsicMatrix();
@@ -158,22 +156,17 @@ int main() {
 
             auto intrinsicMat = cv::Mat(3, 3, CV_32F, intrinsic.data());
             auto distortionMat = cv::Mat(1, distortion.size(), CV_32F, distortion.data());
-            
+
             // Undistort RGB frame
             cv::Mat cvFrameUndistorted;
-            cv::undistort(
-                cvFrame,
-                cvFrameUndistorted,
-                intrinsicMat,
-                distortionMat
-            );
+            cv::undistort(cvFrame, cvFrameUndistorted, intrinsicMat, distortionMat);
 
             // Colorize depth
             cv::Mat alignedDepthColorized = colorizeDepth(frameDepth->getFrame());
             cv::imshow("Depth aligned", alignedDepthColorized);
 
             // Convert grayscale to BGR if needed
-            if (cvFrameUndistorted.channels() == 1) {
+            if(cvFrameUndistorted.channels() == 1) {
                 cv::cvtColor(cvFrameUndistorted, cvFrameUndistorted, cv::COLOR_GRAY2BGR);
             }
 
@@ -182,20 +175,12 @@ int main() {
             cv::addWeighted(cvFrameUndistorted, rgbWeight, alignedDepthColorized, depthWeight, 0, blended);
 
             // Add FPS text
-            cv::putText(
-                blended,
-                "FPS: " + std::to_string(fpsCounter.getFps()),
-                cv::Point(10, 30),
-                cv::FONT_HERSHEY_SIMPLEX,
-                1,
-                cv::Scalar(255, 255, 255),
-                2
-            );
+            cv::putText(blended, "FPS: " + std::to_string(fpsCounter.getFps()), cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(255, 255, 255), 2);
 
             cv::imshow(windowName, blended);
         }
 
-        if (cv::waitKey(1) == 'q') {
+        if(cv::waitKey(1) == 'q') {
             break;
         }
     }

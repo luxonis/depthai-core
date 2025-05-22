@@ -1,8 +1,9 @@
+#include <chrono>
 #include <iostream>
 #include <memory>
-#include <chrono>
-#include "depthai/depthai.hpp"
 #include <opencv2/opencv.hpp>
+
+#include "depthai/depthai.hpp"
 
 int main() {
     // Create device
@@ -12,7 +13,7 @@ int main() {
     dai::Pipeline pipeline(device);
 
     // Constants
-    const cv::Size FULL_RES(4000, 3000);  // 12MP
+    const cv::Size FULL_RES(4000, 3000);      // 12MP
     const cv::Size PREVIEW_SIZE(1332, 1000);  // 1/3 of 12MP
 
     // Create nodes
@@ -58,10 +59,7 @@ int main() {
 
         // Helper function to rescale points
         auto rescale = [&FULL_RES, &PREVIEW_SIZE](const dai::Point2f& p) {
-            return cv::Point(
-                static_cast<int>(p.x / FULL_RES.width * PREVIEW_SIZE.width),
-                static_cast<int>(p.y / FULL_RES.height * PREVIEW_SIZE.height)
-            );
+            return cv::Point(static_cast<int>(p.x / FULL_RES.width * PREVIEW_SIZE.width), static_cast<int>(p.y / FULL_RES.height * PREVIEW_SIZE.height));
         };
 
         auto frame = frameQ->get<dai::ImgFrame>();
@@ -74,10 +72,7 @@ int main() {
             auto bottomRight = rescale(tag.bottomRight);
             auto bottomLeft = rescale(tag.bottomLeft);
 
-            cv::Point center(
-                (topLeft.x + bottomRight.x) / 2,
-                (topLeft.y + bottomRight.y) / 2
-            );
+            cv::Point center((topLeft.x + bottomRight.x) / 2, (topLeft.y + bottomRight.y) / 2);
 
             // Draw tag boundaries
             cv::line(cvFrame, topLeft, topRight, color, 2, cv::LINE_AA, 0);
@@ -90,8 +85,7 @@ int main() {
             cv::putText(cvFrame, idStr, center, cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
 
             // Draw FPS
-            cv::putText(cvFrame, "fps: " + std::to_string(fps).substr(0, 4), 
-                       cv::Point(200, 20), cv::FONT_HERSHEY_TRIPLEX, 1, color);
+            cv::putText(cvFrame, "fps: " + std::to_string(fps).substr(0, 4), cv::Point(200, 20), cv::FONT_HERSHEY_TRIPLEX, 1, color);
         }
 
         cv::imshow("detections", cvFrame);
@@ -102,4 +96,4 @@ int main() {
     }
 
     return 0;
-} 
+}

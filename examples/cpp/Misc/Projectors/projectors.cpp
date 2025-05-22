@@ -1,9 +1,10 @@
+#include <atomic>
+#include <csignal>
 #include <iostream>
 #include <memory>
-#include <csignal>
-#include <atomic>
-#include "depthai/depthai.hpp"
 #include <opencv2/opencv.hpp>
+
+#include "depthai/depthai.hpp"
 
 // Global flag for graceful shutdown
 std::atomic<bool> quitEvent(false);
@@ -60,7 +61,7 @@ int main() {
         while(pipeline.isRunning() && !quitEvent) {
             auto leftSynced = leftQueue->get<dai::ImgFrame>();
             auto rightSynced = rightQueue->get<dai::ImgFrame>();
-            
+
             if(leftSynced == nullptr || rightSynced == nullptr) continue;
 
             cv::imshow("left", leftSynced->getCvFrame());
@@ -69,26 +70,22 @@ int main() {
             int key = cv::waitKey(1);
             if(key == 'q') {
                 break;
-            }
-            else if(key == 'w') {
+            } else if(key == 'w') {
                 dot_intensity += DOT_STEP;
                 if(dot_intensity > 1.0f) dot_intensity = 1.0f;
                 device->setIrLaserDotProjectorIntensity(dot_intensity);
                 std::cout << "Dot intensity: " << dot_intensity << std::endl;
-            }
-            else if(key == 's') {
+            } else if(key == 's') {
                 dot_intensity -= DOT_STEP;
                 if(dot_intensity < 0.0f) dot_intensity = 0.0f;
                 device->setIrLaserDotProjectorIntensity(dot_intensity);
                 std::cout << "Dot intensity: " << dot_intensity << std::endl;
-            }
-            else if(key == 'a') {
+            } else if(key == 'a') {
                 flood_intensity += FLOOD_STEP;
                 if(flood_intensity > 1.0f) flood_intensity = 1.0f;
                 device->setIrFloodLightIntensity(flood_intensity);
                 std::cout << "Flood intensity: " << flood_intensity << std::endl;
-            }
-            else if(key == 'd') {
+            } else if(key == 'd') {
                 flood_intensity -= FLOOD_STEP;
                 if(flood_intensity < 0.0f) flood_intensity = 0.0f;
                 device->setIrFloodLightIntensity(flood_intensity);
@@ -106,4 +103,4 @@ int main() {
     }
 
     return 0;
-} 
+}

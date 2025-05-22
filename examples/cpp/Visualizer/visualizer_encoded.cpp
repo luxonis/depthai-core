@@ -1,9 +1,10 @@
+#include <atomic>
+#include <csignal>
 #include <iostream>
 #include <memory>
-#include <csignal>
-#include <atomic>
-#include <vector>
 #include <string>
+#include <vector>
+
 #include "depthai/depthai.hpp"
 #include "depthai/pipeline/datatype/ImgAnnotations.hpp"
 #include "depthai/remote_connection/RemoteConnection.hpp"
@@ -18,7 +19,7 @@ void signalHandler(int signum) {
 
 // Custom host node for image annotations
 class ImgAnnotationsGenerator : public dai::NodeCRTP<dai::node::HostNode, ImgAnnotationsGenerator> {
-public:
+   public:
     Input& inputDet = inputs["detections"];
     Output& output = out;
 
@@ -32,31 +33,29 @@ public:
     std::shared_ptr<dai::Buffer> processGroup(std::shared_ptr<dai::MessageGroup> in) override {
         auto nnData = in->get<dai::ImgDetections>("detections");
         auto detections = nnData->detections;
-        
+
         auto imgAnnt = std::make_shared<dai::ImgAnnotations>();
         imgAnnt->setTimestamp(nnData->getTimestamp());
-        
+
         dai::ImgAnnotation annotation;
         for(const auto& detection : detections) {
             // Create points annotation for bounding box
             auto pointsAnnotation = std::make_shared<dai::PointsAnnotation>();
             pointsAnnotation->type = dai::PointsAnnotationType::LINE_STRIP;
-            pointsAnnotation->points = {
-                dai::Point2f(detection.xmin, detection.ymin),
-                dai::Point2f(detection.xmax, detection.ymin),
-                dai::Point2f(detection.xmax, detection.ymax),
-                dai::Point2f(detection.xmin, detection.ymax)
-            };
-            
+            pointsAnnotation->points = {dai::Point2f(detection.xmin, detection.ymin),
+                                        dai::Point2f(detection.xmax, detection.ymin),
+                                        dai::Point2f(detection.xmax, detection.ymax),
+                                        dai::Point2f(detection.xmin, detection.ymax)};
+
             // Set colors and thickness
             pointsAnnotation->outlineColor = dai::Color(1.0f, 0.5f, 0.5f, 1.0f);
             pointsAnnotation->fillColor = dai::Color(0.5f, 1.0f, 0.5f, 0.5f);
             pointsAnnotation->thickness = 2.0f;
-            
+
             // Create text annotation
             auto text = std::make_shared<dai::TextAnnotation>();
             text->position = dai::Point2f(detection.xmin, detection.ymin);
-            
+
             // Get label text
             std::string labelText;
             try {
@@ -64,7 +63,7 @@ public:
             } catch(...) {
                 labelText = std::to_string(detection.label);
             }
-            
+
             text->text = labelText + " " + std::to_string(static_cast<int>(detection.confidence * 100)) + "%";
             text->fontSize = 50.5f;
             text->textColor = dai::Color(0.5f, 0.5f, 1.0f, 1.0f);
@@ -73,7 +72,7 @@ public:
             annotation.points.push_back(*pointsAnnotation);
             annotation.texts.push_back(*text);
         }
-        
+
         imgAnnt->annotations.push_back(annotation);
         return imgAnnt;
     }
@@ -142,4 +141,4 @@ int main(int argc, char** argv) {
     }
 
     return 0;
-} 
+}

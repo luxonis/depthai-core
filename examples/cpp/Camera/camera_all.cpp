@@ -1,9 +1,10 @@
 #include <iostream>
 #include <map>
 #include <memory>
-#include <string>
-#include "depthai/depthai.hpp"
 #include <opencv2/opencv.hpp>
+#include <string>
+
+#include "depthai/depthai.hpp"
 
 int main() {
     // Create device
@@ -40,4 +41,4 @@ int main() {
     }
 
     return 0;
-} 
+}

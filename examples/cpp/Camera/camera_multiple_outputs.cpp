@@ -1,13 +1,14 @@
-#include <iostream>
-#include <memory>
-#include <vector>
 #include <chrono>
+#include <iostream>
 #include <map>
-#include "depthai/depthai.hpp"
+#include <memory>
 #include <opencv2/opencv.hpp>
+#include <vector>
+
+#include "depthai/depthai.hpp"
 
 class FPSCounter {
-public:
+   public:
     void tick() {
         auto now = std::chrono::steady_clock::now();
         frameTimes.push_back(now);
@@ -18,13 +19,11 @@ public:
 
     float getFps() {
         if(frameTimes.size() <= 1) return 0.0f;
-        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
-            frameTimes.back() - frameTimes.front()
-        ).count();
+        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(frameTimes.back() - frameTimes.front()).count();
         return (frameTimes.size() - 1) * 1000.0f / duration;
     }
 
-private:
+   private:
     std::vector<std::chrono::steady_clock::time_point> frameTimes;
 };
 
@@ -62,24 +61,36 @@ int main(int argc, char* argv[]) {
         // Create capability
         auto cap = std::make_shared<dai::ImgFrameCapability>();
         cap->size.fixed(std::make_pair(width, height));
-        
+
         // Set resize mode
         switch(resizeMode) {
-            case 0: cap->resizeMode = dai::ImgResizeMode::CROP; break;
-            case 1: cap->resizeMode = dai::ImgResizeMode::STRETCH; break;
-            case 2: cap->resizeMode = dai::ImgResizeMode::LETTERBOX; break;
-            default: exitUsage();
+            case 0:
+                cap->resizeMode = dai::ImgResizeMode::CROP;
+                break;
+            case 1:
+                cap->resizeMode = dai::ImgResizeMode::STRETCH;
+                break;
+            case 2:
+                cap->resizeMode = dai::ImgResizeMode::LETTERBOX;
+                break;
+            default:
+                exitUsage();
         }
-        
+
         cap->fps.fixed(fps);
 
         // Parse camera socket
         dai::CameraBoardSocket socket;
-        if(camArg == "CAM_A") socket = dai::CameraBoardSocket::CAM_A;
-        else if(camArg == "CAM_B") socket = dai::CameraBoardSocket::CAM_B;
-        else if(camArg == "CAM_C") socket = dai::CameraBoardSocket::CAM_C;
-        else if(camArg == "CAM_D") socket = dai::CameraBoardSocket::CAM_D;
-        else exitUsage();
+        if(camArg == "CAM_A")
+            socket = dai::CameraBoardSocket::CAM_A;
+        else if(camArg == "CAM_B")
+            socket = dai::CameraBoardSocket::CAM_B;
+        else if(camArg == "CAM_C")
+            socket = dai::CameraBoardSocket::CAM_C;
+        else if(camArg == "CAM_D")
+            socket = dai::CameraBoardSocket::CAM_D;
+        else
+            exitUsage();
 
         // Create camera if not exists
         if(cams.find(socket) == cams.end()) {
@@ -99,20 +110,19 @@ int main(int argc, char* argv[]) {
             auto videoIn = queues[i]->tryGet<dai::ImgFrame>();
             if(videoIn != nullptr) {
                 fpsCounters[i].tick();
-                std::cout << "frame " << videoIn->getWidth() << "x" << videoIn->getHeight() 
-                         << " | " << videoIn->getSequenceNum() 
-                         << ": exposure=" << videoIn->getExposureTime().count() 
-                         << "us, timestamp: " << videoIn->getTimestampDevice().time_since_epoch().count() << std::endl;
+                std::cout << "frame " << videoIn->getWidth() << "x" << videoIn->getHeight() << " | " << videoIn->getSequenceNum()
+                          << ": exposure=" << videoIn->getExposureTime().count()
+                          << "us, timestamp: " << videoIn->getTimestampDevice().time_since_epoch().count() << std::endl;
 
                 cv::Mat cvFrame = videoIn->getCvFrame();
-                
+
                 // Draw FPS
-                cv::putText(cvFrame, 
-                           std::to_string(fpsCounters[i].getFps()).substr(0, 4) + " FPS",
-                           cv::Point(2, 20),
-                           cv::FONT_HERSHEY_SIMPLEX,
-                           0.5,
-                           cv::Scalar(0, 255, 0));
+                cv::putText(cvFrame,
+                            std::to_string(fpsCounters[i].getFps()).substr(0, 4) + " FPS",
+                            cv::Point(2, 20),
+                            cv::FONT_HERSHEY_SIMPLEX,
+                            0.5,
+                            cv::Scalar(0, 255, 0));
 
                 cv::imshow("video " + std::to_string(i), cvFrame);
             }
@@ -124,4 +134,4 @@ int main(int argc, char* argv[]) {
     }
 
     return 0;
-} 
+}

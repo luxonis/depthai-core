@@ -1,9 +1,10 @@
-#include <iostream>
-#include <memory>
-#include <csignal>
 #include <atomic>
 #include <chrono>
+#include <csignal>
+#include <iostream>
+#include <memory>
 #include <thread>
+
 #include "depthai/depthai.hpp"
 #include "depthai/openvino/OpenVINO.hpp"
 
@@ -25,7 +26,7 @@ int main() {
         dai::NNModelDescription modelDesc;
         modelDesc.model = "yolov6-nano";
         modelDesc.platform = "RVC2";
-        std::string archivePath = dai::getModelFromZoo(modelDesc, true); // true to used cached if available, otherwise re-download
+        std::string archivePath = dai::getModelFromZoo(modelDesc, true);  // true to used cached if available, otherwise re-download
 
         // Load NN archive
         dai::NNArchive archive(archivePath);
@@ -102,4 +103,4 @@ int main() {
     }
 
     return 0;
-} 
+}

@@ -1,8 +1,9 @@
+#include <atomic>
+#include <csignal>
+#include <iomanip>
 #include <iostream>
 #include <memory>
-#include <csignal>
-#include <atomic>
-#include <iomanip>
+
 #include "depthai/depthai.hpp"
 
 // Global flag for graceful shutdown
@@ -62,15 +63,11 @@ int main() {
             // Print accelerometer data
             std::cout << "Accelerometer timestamp: " << acceleroTs.time_since_epoch().count() << std::endl;
             std::cout << "Latency [ms]: " << timeDeltaToMilliS(std::chrono::steady_clock::now() - acceleroValues.getTimestamp()) << std::endl;
-            std::cout << "Accelerometer [m/s^2]: x: " << acceleroValues.x 
-                      << " y: " << acceleroValues.y 
-                      << " z: " << acceleroValues.z << std::endl;
+            std::cout << "Accelerometer [m/s^2]: x: " << acceleroValues.x << " y: " << acceleroValues.y << " z: " << acceleroValues.z << std::endl;
 
             // Print gyroscope data
             std::cout << "Gyroscope timestamp: " << gyroTs.time_since_epoch().count() << std::endl;
-            std::cout << "Gyroscope [rad/s]: x: " << gyroValues.x 
-                      << " y: " << gyroValues.y 
-                      << " z: " << gyroValues.z << std::endl;
+            std::cout << "Gyroscope [rad/s]: x: " << gyroValues.x << " y: " << gyroValues.y << " z: " << gyroValues.z << std::endl;
         }
     }
 
@@ -79,4 +76,4 @@ int main() {
     pipeline.wait();
 
     return 0;
-} 
+}

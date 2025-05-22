@@ -1,15 +1,13 @@
+#include <algorithm>  // Required for std::sort and std::unique
+#include <cmath>      // Required for std::log, std::isnan, std::isinf
 #include <iostream>
-#include <vector>
+#include <opencv2/opencv.hpp>
 #include <string>
-#include <algorithm> // Required for std::sort and std::unique
-#include <cmath> // Required for std::log, std::isnan, std::isinf
+#include <vector>
 
 #include "depthai/depthai.hpp"
-#include <opencv2/opencv.hpp>
-
 #include "xtensor/xadapt.hpp"
 #include "xtensor/xmath.hpp"
-
 
 cv::Mat colorizeDepth(cv::Mat frameDepth) {
     cv::Mat invalidMask = frameDepth == 0;
@@ -18,15 +16,14 @@ cv::Mat colorizeDepth(cv::Mat frameDepth) {
     try {
         cv::Mat frameDepthFloat;
         frameDepth.convertTo(frameDepthFloat, CV_32F);
-        xt::xtensor<float, 2> depth = xt::adapt((float*)frameDepthFloat.data, 
-            {static_cast<size_t>(frameDepthFloat.rows), static_cast<size_t>(frameDepthFloat.cols)});
-        
+        xt::xtensor<float, 2> depth =
+            xt::adapt((float*)frameDepthFloat.data, {static_cast<size_t>(frameDepthFloat.rows), static_cast<size_t>(frameDepthFloat.cols)});
+
         // Get valid depth values (non-zero)
         std::vector<float> validDepth;
         validDepth.reserve(depth.size());
-        std::copy_if(depth.begin(), depth.end(), std::back_inserter(validDepth), 
-                     [](float x) { return x != 0; });
-        
+        std::copy_if(depth.begin(), depth.end(), std::back_inserter(validDepth), [](float x) { return x != 0; });
+
         if(validDepth.size() == 0) {
             return cv::Mat::zeros(frameDepth.rows, frameDepth.cols, CV_8UC3);
         }
@@ -56,19 +53,18 @@ cv::Mat colorizeDepth(cv::Mat frameDepth) {
 
         // Normalize to 0-255 range
         auto normalizedDepth = (logDepth - logMinDepth) / (logMaxDepth - logMinDepth) * 255.0f;
-        
+
         // Convert to CV_8UC1
         cv::Mat depthMat(frameDepth.rows, frameDepth.cols, CV_8UC1);
-        std::transform(normalizedDepth.begin(), normalizedDepth.end(), 
-                      depthMat.data, [](float x) { return static_cast<uchar>(x); });
+        std::transform(normalizedDepth.begin(), normalizedDepth.end(), depthMat.data, [](float x) { return static_cast<uchar>(x); });
 
         // Apply colormap
         cv::applyColorMap(depthMat, depthFrameColor, cv::COLORMAP_JET);
-        
-        // Set invalid pixels to black
-        depthFrameColor.setTo(cv::Scalar(0,0,0), invalidMask);
 
-    } catch (const std::exception& e) {
+        // Set invalid pixels to black
+        depthFrameColor.setTo(cv::Scalar(0, 0, 0), invalidMask);
+
+    } catch(const std::exception& e) {
         std::cerr << "Error in colorizeDepth: " << e.what() << std::endl;
         return cv::Mat::zeros(frameDepth.rows, frameDepth.cols, CV_8UC3);
     }
@@ -76,20 +72,21 @@ cv::Mat colorizeDepth(cv::Mat frameDepth) {
     return depthFrameColor;
 }
 
-
 // Helper function to display frames with detections
-void displayFrame(const std::string& name, std::shared_ptr<dai::ImgFrame> frame, std::shared_ptr<dai::ImgDetections> imgDetections, const std::vector<std::string>& labelMap) {
+void displayFrame(const std::string& name,
+                  std::shared_ptr<dai::ImgFrame> frame,
+                  std::shared_ptr<dai::ImgDetections> imgDetections,
+                  const std::vector<std::string>& labelMap) {
     cv::Scalar color(0, 255, 0);
     cv::Mat cvFrame;
 
-    if(frame->getType() == dai::ImgFrame::Type::RAW16){
+    if(frame->getType() == dai::ImgFrame::Type::RAW16) {
         cvFrame = colorizeDepth(frame->getFrame());
     } else {
         cvFrame = frame->getCvFrame();
     }
 
-
-    if (!imgDetections || !imgDetections->transformation.has_value()) {
+    if(!imgDetections || !imgDetections->transformation.has_value()) {
         // std::cout << "No detections or transformation data for " << name << std::endl;
         cv::imshow(name, cvFrame);
         return;
@@ -98,17 +95,15 @@ void displayFrame(const std::string& name, std::shared_ptr<dai::ImgFrame> frame,
     const auto& sourceTransform = *(imgDetections->transformation);
     const auto& targetTransform = frame->transformation;
 
-    for (const auto& detection : imgDetections->detections) {
+    for(const auto& detection : imgDetections->detections) {
         auto normShape = sourceTransform.getSize();
 
         dai::Rect rect(dai::Point2f(detection.xmin, detection.ymin), dai::Point2f(detection.xmax, detection.ymax));
         rect = rect.denormalize(static_cast<float>(normShape.first), static_cast<float>(normShape.second));
         dai::RotatedRect rotRect(rect, 0);
 
-
         auto remapped = sourceTransform.remapRectTo(targetTransform, rotRect);
         auto bbox = remapped.getOuterRect();
-
 
         cv::putText(cvFrame,
                     labelMap[detection.label],
@@ -143,7 +138,6 @@ int main() {
     detectionNetwork->build(cameraNode, modelDescription);
     auto labelMap = detectionNetwork->getClasses().value_or(std::vector<std::string>{});
 
-
     auto monoLeft = pipeline.create<dai::node::Camera>();
     monoLeft->build(dai::CameraBoardSocket::CAM_B);
     auto monoRight = pipeline.create<dai::node::Camera>();
@@ -156,9 +150,8 @@ int main() {
     monoLeftOut->link(stereo->left);
     monoRightOut->link(stereo->right);
 
-
     stereo->setRectification(true);
-    stereo->setExtendedDisparity(true); 
+    stereo->setExtendedDisparity(true);
     stereo->setLeftRightCheck(true);
     stereo->setSubpixel(true);
 
@@ -168,7 +161,7 @@ int main() {
 
     pipeline.start();
 
-    while (pipeline.isRunning()) {
+    while(pipeline.isRunning()) {
         auto inRgb = qRgb->tryGet<dai::ImgFrame>();
         auto inDet = qDet->tryGet<dai::ImgDetections>();
         auto inDepth = qDepth->tryGet<dai::ImgFrame>();
@@ -177,19 +170,18 @@ int main() {
         bool hasDepth = inDepth != nullptr;
         bool hasDet = inDet != nullptr;
 
-
-        if (hasRgb && hasDet) {
+        if(hasRgb && hasDet) {
             displayFrame("rgb", inRgb, inDet, labelMap);
         }
-        if (hasDepth && hasDet) {
+        if(hasDepth && hasDet) {
             displayFrame("depth", inDepth, inDet, labelMap);
         }
 
-        if (cv::waitKey(1) == 'q') {
+        if(cv::waitKey(1) == 'q') {
             pipeline.stop();
             break;
         }
     }
 
     return 0;
-} 
+}

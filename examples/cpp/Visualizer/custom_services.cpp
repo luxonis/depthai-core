@@ -1,9 +1,10 @@
+#include <atomic>
+#include <chrono>
+#include <csignal>
 #include <iostream>
 #include <memory>
-#include <csignal>
-#include <atomic>
 #include <thread>
-#include <chrono>
+
 #include "depthai/depthai.hpp"
 #include "depthai/remote_connection/RemoteConnection.hpp"
 
@@ -45,4 +46,4 @@ int main() {
     }
 
     return 0;
-} 
+}

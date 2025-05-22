@@ -1,9 +1,10 @@
-#include <iostream>
-#include <memory>
-#include <csignal>
 #include <atomic>
 #include <chrono>
+#include <csignal>
+#include <iostream>
+#include <memory>
 #include <thread>
+
 #include "depthai/depthai.hpp"
 
 // Global flag for graceful shutdown
@@ -70,4 +71,4 @@ int main() {
     }
 
     return 0;
-} 
+}

@@ -1,8 +1,9 @@
 #include <iostream>
 #include <memory>
-#include <vector>
-#include "depthai/depthai.hpp"
 #include <opencv2/opencv.hpp>
+#include <vector>
+
+#include "depthai/depthai.hpp"
 
 cv::Mat unpackRaw10(const std::vector<uint8_t>& rawData, int width, int height, int stride = -1) {
     if(stride == -1) {
@@ -11,8 +12,7 @@ cv::Mat unpackRaw10(const std::vector<uint8_t>& rawData, int width, int height, 
     int expectedSize = stride * height;
 
     if(rawData.size() < expectedSize) {
-        throw std::runtime_error("Data too small: " + std::to_string(rawData.size()) + 
-                               " bytes, expected " + std::to_string(expectedSize));
+        throw std::runtime_error("Data too small: " + std::to_string(rawData.size()) + " bytes, expected " + std::to_string(expectedSize));
     }
 
     // Create output matrix
@@ -22,11 +22,11 @@ cv::Mat unpackRaw10(const std::vector<uint8_t>& rawData, int width, int height, 
     for(int row = 0; row < height; row++) {
         // Get row data using stride
         const uint8_t* rowStart = rawData.data() + row * stride;
-        
+
         // Calculate how many complete 5-byte groups we need for width pixels
         int numGroups = (width + 3) / 4;  // Ceiling division
         int rowBytes = numGroups * 5;
-        
+
         // Ensure we don't go beyond available data
         if(rowBytes > stride) break;
 
@@ -80,8 +80,7 @@ int main() {
             auto dataRaw = rawFrame->getData();
             std::vector<uint8_t> dataRawVec(dataRaw.begin(), dataRaw.end());
             try {
-                cv::Mat parsedImage = unpackRaw10(dataRawVec, rawFrame->getWidth(), 
-                                                rawFrame->getHeight(), rawFrame->getStride());
+                cv::Mat parsedImage = unpackRaw10(dataRawVec, rawFrame->getWidth(), rawFrame->getHeight(), rawFrame->getStride());
                 cv::imshow("raw", parsedImage);
             } catch(const std::exception& e) {
                 std::cerr << "Error processing raw frame: " << e.what() << std::endl;
@@ -98,4 +97,4 @@ int main() {
     }
 
     return 0;
-} 
+}

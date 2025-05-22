@@ -1,9 +1,10 @@
+#include <atomic>
+#include <csignal>
 #include <iostream>
 #include <memory>
-#include <csignal>
-#include <atomic>
 #include <opencv2/opencv.hpp>
 #include <optional>
+
 #include "depthai/depthai.hpp"
 
 // Global flag for graceful shutdown
@@ -28,14 +29,12 @@ int main() {
         cam->build(dai::CameraBoardSocket::CAM_B, std::nullopt, 30);
 
         // Create output queues with different resize modes
-        auto croppedQueue = cam->requestOutput(std::make_pair(300, 300), dai::ImgFrame::Type::NV12,
-            dai::ImgResizeMode::CROP, 20, 20)->createOutputQueue();
-        
-        auto stretchedQueue = cam->requestOutput(std::make_pair(300, 300), dai::ImgFrame::Type::NV12,
-            dai::ImgResizeMode::STRETCH, 20, 20)->createOutputQueue();
-        
-        auto letterBoxedQueue = cam->requestOutput(std::make_pair(300, 300), dai::ImgFrame::Type::NV12,
-            dai::ImgResizeMode::LETTERBOX, 20, 20)->createOutputQueue();
+        auto croppedQueue = cam->requestOutput(std::make_pair(300, 300), dai::ImgFrame::Type::NV12, dai::ImgResizeMode::CROP, 20, 20)->createOutputQueue();
+
+        auto stretchedQueue = cam->requestOutput(std::make_pair(300, 300), dai::ImgFrame::Type::NV12, dai::ImgResizeMode::STRETCH, 20, 20)->createOutputQueue();
+
+        auto letterBoxedQueue =
+            cam->requestOutput(std::make_pair(300, 300), dai::ImgFrame::Type::NV12, dai::ImgResizeMode::LETTERBOX, 20, 20)->createOutputQueue();
 
         // Start pipeline
         pipeline.start();
@@ -70,4 +69,4 @@ int main() {
     }
 
     return 0;
-} 
+}

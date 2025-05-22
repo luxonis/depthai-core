@@ -1,9 +1,10 @@
+#include <atomic>
+#include <csignal>
 #include <iostream>
 #include <memory>
-#include <csignal>
-#include <atomic>
-#include <vector>
 #include <opencv2/opencv.hpp>
+#include <vector>
+
 #include "depthai/depthai.hpp"
 
 // Global flag for graceful shutdown
@@ -16,7 +17,7 @@ void signalHandler(int signum) {
 
 // Custom host node for spatial visualization
 class SpatialVisualizer : public dai::NodeCRTP<dai::node::HostNode, SpatialVisualizer> {
-public:
+   public:
     Input& depthInput = inputs["depth"];
     Input& detectionsInput = inputs["detections"];
     Input& rgbInput = inputs["rgb"];
@@ -43,7 +44,7 @@ public:
         return nullptr;
     }
 
-private:
+   private:
     cv::Mat processDepthFrame(const cv::Mat& depthFrame) {
         // Downscale depth frame
         cv::Mat depth_downscaled;
@@ -59,7 +60,7 @@ private:
         // Normalize depth frame
         cv::Mat depthFrameColor;
         depthFrame.convertTo(depthFrameColor, CV_8UC1, 255.0 / (max_depth - min_depth), -min_depth * 255.0 / (max_depth - min_depth));
-        
+
         // Apply color map
         cv::Mat colorized;
         cv::applyColorMap(depthFrameColor, colorized, cv::COLORMAP_HOT);
@@ -88,10 +89,11 @@ private:
         roi = roi.denormalize(depthFrameColor.cols, depthFrameColor.rows);
         auto topLeft = roi.topLeft();
         auto bottomRight = roi.bottomRight();
-        cv::rectangle(depthFrameColor, 
-                     cv::Point(static_cast<int>(topLeft.x), static_cast<int>(topLeft.y)),
-                     cv::Point(static_cast<int>(bottomRight.x), static_cast<int>(bottomRight.y)),
-                     cv::Scalar(255, 255, 255), 1);
+        cv::rectangle(depthFrameColor,
+                      cv::Point(static_cast<int>(topLeft.x), static_cast<int>(topLeft.y)),
+                      cv::Point(static_cast<int>(bottomRight.x), static_cast<int>(bottomRight.y)),
+                      cv::Scalar(255, 255, 255),
+                      1);
     }
 
     void drawDetections(cv::Mat& frame, const dai::SpatialImgDetection& detection, int frameWidth, int frameHeight) {
@@ -110,12 +112,24 @@ private:
         cv::Scalar color(255, 255, 255);
         cv::putText(frame, label, cv::Point(x1 + 10, y1 + 20), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
         cv::putText(frame, std::to_string(detection.confidence * 100), cv::Point(x1 + 10, y1 + 35), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
-        cv::putText(frame, "X: " + std::to_string(static_cast<int>(detection.spatialCoordinates.x)) + " mm", 
-                   cv::Point(x1 + 10, y1 + 50), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
-        cv::putText(frame, "Y: " + std::to_string(static_cast<int>(detection.spatialCoordinates.y)) + " mm", 
-                   cv::Point(x1 + 10, y1 + 65), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
-        cv::putText(frame, "Z: " + std::to_string(static_cast<int>(detection.spatialCoordinates.z)) + " mm", 
-                   cv::Point(x1 + 10, y1 + 80), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
+        cv::putText(frame,
+                    "X: " + std::to_string(static_cast<int>(detection.spatialCoordinates.x)) + " mm",
+                    cv::Point(x1 + 10, y1 + 50),
+                    cv::FONT_HERSHEY_TRIPLEX,
+                    0.5,
+                    color);
+        cv::putText(frame,
+                    "Y: " + std::to_string(static_cast<int>(detection.spatialCoordinates.y)) + " mm",
+                    cv::Point(x1 + 10, y1 + 65),
+                    cv::FONT_HERSHEY_TRIPLEX,
+                    0.5,
+                    color);
+        cv::putText(frame,
+                    "Z: " + std::to_string(static_cast<int>(detection.spatialCoordinates.z)) + " mm",
+                    cv::Point(x1 + 10, y1 + 80),
+                    cv::FONT_HERSHEY_TRIPLEX,
+                    0.5,
+                    color);
         cv::rectangle(frame, cv::Point(x1, y1), cv::Point(x2, y2), color, 1);
     }
 };
@@ -159,7 +173,7 @@ int main() {
         // Set up model
         dai::NNModelDescription modelDesc;
         modelDesc.model = "yolov6-nano";
-        spatialDetectionNetwork->build(camRgb, stereo, modelDesc, 30); // 30 FPS
+        spatialDetectionNetwork->build(camRgb, stereo, modelDesc, 30);  // 30 FPS
 
         // Set label map
         visualizer->labelMap = spatialDetectionNetwork->getClasses().value();
@@ -179,4 +193,4 @@ int main() {
     }
 
     return 0;
-} 
+}

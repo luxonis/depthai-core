@@ -1,12 +1,13 @@
+#include <atomic>
+#include <csignal>
+#include <fstream>
 #include <iostream>
 #include <memory>
-#include <fstream>
-#include <csignal>
-#include <atomic>
+#include <opencv2/opencv.hpp>
 #include <thread>
+
 #include "depthai/depthai.hpp"
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
-#include <opencv2/opencv.hpp>
 
 // Global flag for graceful shutdown
 std::atomic<bool> quitEvent(false);
@@ -18,7 +19,7 @@ void signalHandler(int signum) {
 
 // Custom host node for saving video data
 class VideoSaver : public dai::node::CustomNode<VideoSaver> {
-public:
+   public:
     VideoSaver() : fileHandle("video.encoded", std::ios::binary) {
         if(!fileHandle.is_open()) {
             throw std::runtime_error("Could not open video.encoded for writing");
@@ -36,16 +37,16 @@ public:
 
         // Get raw data and write to file
         auto frame = message->get<dai::EncodedFrame>("data");
-        unsigned char *frameData = frame->getData().data();
+        unsigned char* frameData = frame->getData().data();
         size_t frameSize = frame->getData().size();
         std::cout << "Storing frame of size: " << frameSize << std::endl;
         fileHandle.write(reinterpret_cast<const char*>(frameData), frameSize);
-        
+
         // Don't send anything back
         return nullptr;
     }
 
-private:
+   private:
     std::ofstream fileHandle;
 };
 
@@ -86,7 +87,7 @@ int main() {
         if(frame == nullptr) continue;
 
         cv::imshow("video", frame->getCvFrame());
-        
+
         int key = cv::waitKey(1);
         if(key == 'q') {
             break;
@@ -101,4 +102,4 @@ int main() {
     std::cout << "ffmpeg -framerate 30 -i video.encoded -c copy video.mp4" << std::endl;
 
     return 0;
-} 
+}

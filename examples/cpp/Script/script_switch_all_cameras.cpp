@@ -1,9 +1,10 @@
+#include <atomic>
+#include <csignal>
 #include <iostream>
 #include <memory>
-#include <csignal>
-#include <atomic>
-#include <vector>
 #include <opencv2/opencv.hpp>
+#include <vector>
+
 #include "depthai/depthai.hpp"
 
 // Global flag for graceful shutdown
@@ -27,7 +28,7 @@ int main() {
         // Get connected cameras and create camera nodes
         std::vector<std::shared_ptr<dai::node::Camera>> cameras;
         std::vector<std::string> inputKeys;
-        
+
         for(const auto& socket : device->getConnectedCameras()) {
             auto camera = pipeline.create<dai::node::Camera>();
             camera->build(socket);
@@ -53,7 +54,8 @@ int main() {
         // Set the script content
         std::string scriptContent = R"(
             inputToStream = 0
-            maxID = )" + std::to_string(inputKeys.size() - 1) + R"(
+            maxID = )" + std::to_string(inputKeys.size() - 1)
+                                    + R"(
             while True:
                 controlMessage = node.inputs["control"].tryGet()
                 if controlMessage is not None:
@@ -95,4 +97,4 @@ int main() {
     }
 
     return 0;
-} 
+}
