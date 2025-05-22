@@ -47,15 +47,13 @@ with dai.Pipeline() as pipeline:
         for imuPacket in imuPackets:
             acceleroValues = imuPacket.acceleroMeter
             gyroValues = imuPacket.gyroscope
-            accel = imuPacket.acceleroMeter
-            gyro = imuPacket.gyroscope
 
-            acx =  accel.x
-            acy =  accel.y
-            acz =  accel.z
-            gx =  gyro.x
-            gy =  gyro.y
-            gz =  gyro.z
+            acx =  acceleroValues.x
+            acy =  acceleroValues.y
+            acz =  acceleroValues.z
+            gx =  gyroValues.x
+            gy =  gyroValues.y
+            gz =  gyroValues.z
 
             acceleroTs = acceleroValues.getTimestamp()
             gyroTs = gyroValues.getTimestamp()
