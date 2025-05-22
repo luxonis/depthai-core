@@ -232,18 +232,6 @@ void bind_colorcamera(pybind11::module& m, void* pCallstack) {
         .def("getIspNumFramesPool", &ColorCamera::getIspNumFramesPool, DOC(dai, node, ColorCamera, getIspNumFramesPool))
         .def("setCamera", &ColorCamera::setCamera, py::arg("name"), DOC(dai, node, ColorCamera, setCamera))
         .def("getCamera", &ColorCamera::getCamera, DOC(dai, node, ColorCamera, getCamera))
-
-        .def("setMeshSource", &ColorCamera::setMeshSource, py::arg("source"), DOC(dai, node, ColorCamera, setMeshSource))
-        .def("getMeshSource", &ColorCamera::getMeshSource, DOC(dai, node, ColorCamera, getMeshSource))
-        // .def("loadMeshFile", &ColorCamera::loadMeshFile, py::arg("warpMesh"), DOC(dai, node, ColorCamera, loadMeshFile))
-        .def("loadMeshData", &ColorCamera::loadMeshData, py::arg("warpMesh"), DOC(dai, node, ColorCamera, loadMeshData))
-        .def("setMeshStep", &ColorCamera::setMeshStep, py::arg("width"), py::arg("height"), DOC(dai, node, ColorCamera, setMeshStep))
-        .def("getMeshStep", &ColorCamera::getMeshStep, DOC(dai, node, ColorCamera, getMeshStep))
-        .def("setMeshSize", &ColorCamera::setMeshSize, py::arg("width"), py::arg("height"), DOC(dai, node, ColorCamera, setMeshSize))
-        .def("getMeshSize", &ColorCamera::getMeshSize, DOC(dai, node, ColorCamera, getMeshSize))
-        .def("setCalibrationAlpha", &ColorCamera::setCalibrationAlpha, py::arg("alpha"), DOC(dai, node, ColorCamera, setCalibrationAlpha))
-        .def("getCalibrationAlpha", &ColorCamera::getCalibrationAlpha, DOC(dai, node, ColorCamera, getCalibrationAlpha))
-
         .def("setRawOutputPacked", &ColorCamera::setRawOutputPacked, py::arg("packed"), DOC(dai, node, ColorCamera, setRawOutputPacked));
     DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING
     // ALIAS

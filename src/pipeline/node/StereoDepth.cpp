@@ -42,11 +42,6 @@ StereoDepth::Properties& StereoDepth::getProperties() {
     return properties;
 }
 
-void StereoDepth::setEmptyCalibration(void) {
-    setRectification(false);
-    logger::warn("{} is deprecated. This function call can be replaced by Stereo::setRectification(false). ", __func__);
-}
-
 void StereoDepth::loadMeshData(const std::vector<std::uint8_t>& dataLeft, const std::vector<std::uint8_t>& dataRight) {
     if(dataLeft.size() != dataRight.size()) {
         throw std::runtime_error("StereoDepth | left and right mesh sizes must match");
@@ -109,10 +104,7 @@ void StereoDepth::setOutputSize(int width, int height) {
 void StereoDepth::setOutputKeepAspectRatio(bool keep) {
     properties.outKeepAspectRatio = keep;
 }
-void StereoDepth::setMedianFilter(dai::StereoDepthConfig::MedianFilter median) {
-    initialConfig->setMedianFilter(median);
-    properties.initialConfig = *initialConfig;
-}
+
 void StereoDepth::setDepthAlign(Properties::DepthAlign align) {
     initialConfig->setDepthAlign(align);
     // Unset 'depthAlignCamera', that would take precedence otherwise
@@ -121,10 +113,7 @@ void StereoDepth::setDepthAlign(Properties::DepthAlign align) {
 void StereoDepth::setDepthAlign(CameraBoardSocket camera) {
     properties.depthAlignCamera = camera;
 }
-void StereoDepth::setConfidenceThreshold(int confThr) {
-    initialConfig->setConfidenceThreshold(confThr);
-    properties.initialConfig = *initialConfig;
-}
+
 void StereoDepth::setRectification(bool enable) {
     properties.enableRectification = enable;
 }
@@ -147,18 +136,6 @@ void StereoDepth::setExtendedDisparity(bool enable) {
 void StereoDepth::setRectifyEdgeFillColor(int color) {
     properties.rectifyEdgeFillColor = color;
 }
-void StereoDepth::setRectifyMirrorFrame(bool enable) {
-    (void)enable;
-    logger::warn("{} is deprecated.", __func__);
-}
-void StereoDepth::setOutputRectified(bool enable) {
-    (void)enable;
-    logger::warn("{} is deprecated. The output is auto-enabled if used", __func__);
-}
-void StereoDepth::setOutputDepth(bool enable) {
-    (void)enable;
-    logger::warn("{} is deprecated. The output is auto-enabled if used", __func__);
-}
 
 void StereoDepth::setRuntimeModeSwitch(bool enable) {
     properties.enableRuntimeStereoModeSwitch = enable;
@@ -168,17 +145,9 @@ void StereoDepth::setNumFramesPool(int numFramesPool) {
     properties.numFramesPool = numFramesPool;
 }
 
-float StereoDepth::getMaxDisparity() const {
-    return initialConfig->getMaxDisparity();
-}
-
 void StereoDepth::setPostProcessingHardwareResources(int numShaves, int numMemorySlices) {
     properties.numPostProcessingShaves = numShaves;
     properties.numPostProcessingMemorySlices = numMemorySlices;
-}
-
-void StereoDepth::setFocalLengthFromCalibration(bool focalLengthFromCalibration) {
-    properties.focalLengthFromCalibration = focalLengthFromCalibration;
 }
 
 void StereoDepth::useHomographyRectification(bool useHomographyRectification) {
@@ -187,14 +156,6 @@ void StereoDepth::useHomographyRectification(bool useHomographyRectification) {
 
 void StereoDepth::enableDistortionCorrection(bool enableDistortionCorrection) {
     useHomographyRectification(!enableDistortionCorrection);
-}
-
-void StereoDepth::setVerticalStereo(bool verticalStereo) {
-    properties.verticalStereo = verticalStereo;
-}
-
-void StereoDepth::setCustomPixelDescriptors(bool customPixelDescriptors) {
-    properties.customPixelDescriptors = customPixelDescriptors;
 }
 
 void StereoDepth::setBaseline(float baseline) {
@@ -223,9 +184,9 @@ void StereoDepth::setAlphaScaling(float alpha) {
 
 void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
     presetMode = mode;
-    DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
+
     switch(presetMode) {
-        case PresetMode::HIGH_ACCURACY: {
+        case PresetMode::FAST_ACCURACY: {
             initialConfig->setConfidenceThreshold(55);
             initialConfig->setLeftRightCheck(true);
             initialConfig->setLeftRightCheckThreshold(5);
@@ -243,7 +204,7 @@ void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
             initialConfig->costAggregation.p1Config.smoothValue = 22;
 
         } break;
-        case PresetMode::HIGH_DENSITY: {
+        case PresetMode::FAST_DENSITY: {
             initialConfig->setConfidenceThreshold(15);
             initialConfig->setLeftRightCheck(true);
             initialConfig->setLeftRightCheckThreshold(10);
@@ -269,7 +230,7 @@ void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
             initialConfig->costAggregation.p2Config.smoothValue = 99;
         } break;
         case PresetMode::DEFAULT: {
-            setDefaultProfilePreset(PresetMode::HIGH_DENSITY);
+            setDefaultProfilePreset(PresetMode::FAST_DENSITY);
             initialConfig->setLeftRightCheck(true);
             initialConfig->setExtendedDisparity(false);
             initialConfig->setSubpixel(true);
@@ -304,7 +265,7 @@ void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
             setPostProcessingHardwareResources(3, 3);
         } break;
         case PresetMode::FACE: {
-            setDefaultProfilePreset(PresetMode::HIGH_DENSITY);
+            setDefaultProfilePreset(PresetMode::FAST_DENSITY);
             initialConfig->setLeftRightCheck(true);
             initialConfig->setExtendedDisparity(true);
             initialConfig->setSubpixel(true);
@@ -339,7 +300,7 @@ void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
             setPostProcessingHardwareResources(3, 3);
         } break;
         case PresetMode::HIGH_DETAIL: {
-            setDefaultProfilePreset(PresetMode::HIGH_ACCURACY);
+            setDefaultProfilePreset(PresetMode::FAST_ACCURACY);
             initialConfig->setLeftRightCheck(true);
             initialConfig->setExtendedDisparity(true);
             initialConfig->setSubpixel(true);
@@ -374,7 +335,7 @@ void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
             setPostProcessingHardwareResources(3, 3);
         } break;
         case PresetMode::ROBOTICS: {
-            setDefaultProfilePreset(PresetMode::HIGH_DENSITY);
+            setDefaultProfilePreset(PresetMode::FAST_DENSITY);
             initialConfig->setLeftRightCheck(true);
             initialConfig->setExtendedDisparity(false);
             initialConfig->setSubpixel(true);
@@ -409,7 +370,6 @@ void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
             setPostProcessingHardwareResources(3, 3);
         } break;
     }
-    DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING
 }
 
 void StereoDepth::setFrameSync(bool enableFrameSync) {

@@ -53,21 +53,13 @@ TEST_CASE("Usb config modes") {
     using namespace std::chrono;
     using namespace std::chrono_literals;
 
-    dai::Pipeline p(false);
-
     dai::UsbSpeed speed;
     SECTION("UsbSpeed::HIGH") {
-        dai::DeviceBase::Config cfg;
-        cfg.board.usb.maxSpeed = dai::UsbSpeed::HIGH;
         speed = dai::UsbSpeed::HIGH;
-        p.setBoardConfig(cfg.board);
     }
 
     SECTION("UsbSpeed::SUPER") {
-        dai::DeviceBase::Config cfg;
-        cfg.board.usb.maxSpeed = dai::UsbSpeed::SUPER;
         speed = dai::UsbSpeed::SUPER;
-        p.setBoardConfig(cfg.board);
     }
 
     // SECTION("UsbSpeed::SUPER_PLUS") {
@@ -78,6 +70,6 @@ TEST_CASE("Usb config modes") {
     // }
     //
 
-    dai::Device d(p);
+    dai::Device d(speed);
     REQUIRE(d.getUsbSpeed() == speed);
 }

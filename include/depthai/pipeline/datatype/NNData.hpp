@@ -60,12 +60,6 @@ class NNData : public Buffer {
     static uint16_t fp32_to_fp16(float);
     static float fp16_to_fp32(uint16_t);
 
-    // store the data
-    // uint8_t
-    // std::unordered_map<std::string, std::vector<std::uint8_t>> u8Data;
-    // // FP16
-    // std::unordered_map<std::string, std::vector<std::uint16_t>> fp16Data;
-
    public:
     std::vector<TensorInfo> tensors;
     unsigned int batchSize;
@@ -76,37 +70,6 @@ class NNData : public Buffer {
     NNData() = default;
     NNData(size_t size);
     virtual ~NNData() = default;
-
-    // // Expose
-    // // uint8_t
-    // /**
-    //  * Set a layer with datatype U8.
-    //  * @param name Name of the layer
-    //  * @param data Data to store
-    //  */
-    // [[deprecated("Use 'addTensor()' instead")]] NNData& setLayer(const std::string& name, std::vector<std::uint8_t> data);
-
-    // /**
-    //  * Set a layer with datatype U8. Integers are cast to bytes.
-    //  * @param name Name of the layer
-    //  * @param data Data to store
-    //  */
-    // [[deprecated("Use 'addTensor()' instead")]] NNData& setLayer(const std::string& name, const std::vector<int>& data);
-
-    // // fp16
-    // /**
-    //  * Set a layer with datatype FP16. Float values are converted to FP16.
-    //  * @param name Name of the layer
-    //  * @param data Data to store
-    //  */
-    // [[deprecated("Use 'addTensor()' instead")]] NNData& setLayer(const std::string& name, std::vector<float> data);
-
-    // /**
-    //  * Set a layer with datatype FP16. Double values are converted to FP16.
-    //  * @param name Name of the layer
-    //  * @param data Data to store
-    //  */
-    // [[deprecated("Use 'addTensor()' instead")]] NNData& setLayer(const std::string& name, std::vector<double> data);
 
     // getters
     /**
@@ -161,49 +124,6 @@ class NNData : public Buffer {
      * @returns TensorInfo::DataType tensor datatype
      */
     TensorInfo::DataType getFirstTensorDatatype();
-
-    // // uint8
-    // /**
-    //  * Convenience function to retrieve U8 data from layer
-    //  * @param name Name of the layer
-    //  * @returns U8 binary data
-    //  */
-    // [[deprecated("Use 'getTensor()' instead")]] std::vector<std::uint8_t> getLayerUInt8(const std::string& name) const;
-
-    // // fp16
-    // /**
-    //  * Convenience function to retrieve float values from layers FP16 tensor
-    //  * @param name Name of the layer
-    //  * @returns Float data
-    //  */
-    // [[deprecated("Use 'getTensor()' instead")]] std::vector<float> getLayerFp16(const std::string& name) const;
-
-    // // int32
-    // /**
-    //  * Convenience function to retrieve INT32 values from layers tensor
-    //  * @param name Name of the layer
-    //  * @returns INT32 data
-    //  */
-    // [[deprecated("Use 'getTensor()' instead")]] std::vector<std::int32_t> getLayerInt32(const std::string& name) const;
-
-    // // first layer
-    // /**
-    //  * Convenience function to retrieve U8 data from first layer
-    //  * @returns U8 binary data
-    //  */
-    // [[deprecated("Use 'getTensor()' instead")]] std::vector<std::uint8_t> getFirstLayerUInt8() const;
-
-    // /**
-    //  * Convenience function to retrieve float values from first layers FP16 tensor
-    //  * @returns Float data
-    //  */
-    // [[deprecated("Use 'getTensor()' instead")]] std::vector<float> getFirstLayerFp16() const;
-
-    // /**
-    //  * Convenience function to retrieve INT32 values from first layers tensor
-    //  * @returns INT32 data
-    //  */
-    // [[deprecated("Use 'getTensor()' instead")]] std::vector<std::int32_t> getFirstLayerInt32() const;
 
     /**
      * Emplace a tensor

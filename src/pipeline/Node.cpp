@@ -8,10 +8,6 @@
 
 namespace dai {
 
-std::optional<OpenVINO::Version> Node::getRequiredOpenVINOVersion() {
-    return std::nullopt;
-}
-
 const Pipeline Node::getParentPipeline() const {
     auto impl = parent.lock();
     if(impl == nullptr) {

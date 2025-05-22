@@ -332,79 +332,8 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
     return schema;
 }
 
-bool PipelineImpl::isOpenVINOVersionCompatible(OpenVINO::Version version) const {
-    auto ver = getPipelineOpenVINOVersion();
-    if(ver) {
-        return OpenVINO::areVersionsBlobCompatible(version, *ver);
-    } else {
-        return true;
-    }
-}
-
-/// Get possible OpenVINO version to run this pipeline
-OpenVINO::Version PipelineImpl::getOpenVINOVersion() const {
-    return getPipelineOpenVINOVersion().value_or(OpenVINO::DEFAULT_VERSION);
-}
-
-/// Get required OpenVINO version to run this pipeline. Can be none
-std::optional<OpenVINO::Version> PipelineImpl::getRequiredOpenVINOVersion() const {
-    return getPipelineOpenVINOVersion();
-}
-
-std::optional<OpenVINO::Version> PipelineImpl::getPipelineOpenVINOVersion() const {
-    // Loop over nodes, and get the required information
-    std::optional<OpenVINO::Version> version;
-    std::string lastNodeNameWithRequiredVersion = "";
-    Node::Id lastNodeIdWithRequiredVersion = -1;
-
-    for(const auto& node : nodes) {
-        // Check the required openvino version
-        auto requiredVersion = node->getRequiredOpenVINOVersion();
-        if(requiredVersion) {
-            if(forceRequiredOpenVINOVersion) {
-                // Check that forced openvino version is compatible with this nodes required version
-                if(!OpenVINO::areVersionsBlobCompatible(*requiredVersion, *forceRequiredOpenVINOVersion)) {
-                    std::string err = fmt::format("Pipeline - '{}' node with id: {}, isn't compatible with forced OpenVINO version", node->getName(), node->id);
-                    throw std::logic_error(err.c_str());
-                }
-            } else {
-                // Keep track of required openvino versions, and make sure that they are all compatible
-                if(!version) {
-                    version = *requiredVersion;
-                    lastNodeIdWithRequiredVersion = node->id;
-                    lastNodeNameWithRequiredVersion = node->getName();
-                } else {
-                    // if some node already has an required version, then compare if they are compatible
-                    if(!OpenVINO::areVersionsBlobCompatible(*version, *requiredVersion)) {
-                        // if not compatible, then throw an error
-                        std::string err = fmt::format("Pipeline - OpenVINO version required by '{}' node (id: {}), isn't compatible with '{}' node (id: {})",
-                                                      lastNodeNameWithRequiredVersion,
-                                                      lastNodeIdWithRequiredVersion,
-                                                      node->getName(),
-                                                      node->id);
-                        throw std::logic_error(err.c_str());
-                    }
-                }
-            }
-        }
-    }
-
-    // After iterating over, return appropriate version
-    if(forceRequiredOpenVINOVersion) {
-        // Return forced version
-        return forceRequiredOpenVINOVersion;
-    } else if(version) {
-        // Return detected version
-        return version;
-    } else {
-        // Return null
-        return std::nullopt;
-    }
-}
-
 Device::Config PipelineImpl::getDeviceConfig() const {
     Device::Config config;
-    config.version = getPipelineOpenVINOVersion().value_or(OpenVINO::VERSION_UNIVERSAL);
     config.board = board;
     return config;
 }

@@ -14,15 +14,6 @@ EdgeDetector::Properties& EdgeDetector::getProperties() {
     return properties;
 }
 
-// Node properties configuration
-void EdgeDetector::setWaitForConfigInput(bool wait) {
-    inputConfig.setWaitForMessage(wait);
-}
-
-bool EdgeDetector::getWaitForConfigInput() const {
-    return inputConfig.getWaitForMessage();
-}
-
 void EdgeDetector::setNumFramesPool(int numFramesPool) {
     properties.numFramesPool = numFramesPool;
 }
