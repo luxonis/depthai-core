@@ -35,9 +35,9 @@ int main() {
         auto inTemperature = qTemperature->get<dai::ImgFrame>();
         auto inColor = qColor->get<dai::ImgFrame>();
         
-        // Convert temperature data to cv::Mat
-        cv::Mat thermalData(inTemperature->getHeight(), inTemperature->getWidth(), CV_32F, 
-                          (void*)inTemperature->getData().data());
+        // temperature data is float16: convert it to float32
+        cv::Mat thermalData(inTemperature->getHeight(), inTemperature->getWidth(), CV_32F);
+        inTemperature->getCvFrame().convertTo(thermalData, CV_32F);
         
         // Normalize thermal data
         cv::Mat normalizedThermalData;
