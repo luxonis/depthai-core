@@ -8,6 +8,7 @@ DepthAI library for interfacing with Luxonis DepthAI hardware.
 
 > ⚠️ This is a `v3.x.y` version of the library which is still in active development without a stable API yet.
 
+> ℹ️ For porting code from `v2` version of the library, we recommend using the [porting guide](./V2V3PortinGuide.md)
 
 ## Documentation
 Documentation is available over at [Luxonis DepthAI API](https://stg.docs.luxonis.com/software/v3/)
@@ -16,7 +17,7 @@ Documentation is available over at [Luxonis DepthAI API](https://stg.docs.luxoni
 DepthAI library doesn't yet provide API stability guarantees. While we take care to properly deprecate old functions, some changes might still be breaking.
 
 ## Examples
-Examples for both C++ and Python are available in the `examples` folder. To get started with them see [README.md](./examples/README.md) for more information.
+Examples for both C++ and Python are available in the `examples` folder. To see hwo to build and run them see [README.md](./examples/README.md) for more information.
 
 ## Dependencies
 - CMake >= 3.14 and <4.0
