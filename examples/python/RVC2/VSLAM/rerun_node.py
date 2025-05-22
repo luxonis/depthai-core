@@ -34,7 +34,7 @@ class RerunNode(dai.node.ThreadedHostNode):
 
     def run(self):
         rr.init("", spawn=True)
-        rr.log("world", rr.ViewCoordinates.FLU)
+        rr.log("world", rr.ViewCoordinates.RDF)
         rr.log("world/ground", rr.Boxes3D(half_sizes=[3.0, 3.0, 0.00001])) 
         while self.isRunning():
             transData = self.inputTrans.get()
@@ -52,7 +52,7 @@ class RerunNode(dai.node.ThreadedHostNode):
                 self.positions.append(position)
                 lineStrip = rr.components.LineStrip3D(self.positions)
                 rr.log("world/trajectory", rr.LineStrips3D(lineStrip))
-                rr.log("world/camera/image", rr.Pinhole(resolution=[imgFrame.getWidth(), imgFrame.getHeight()], focal_length=[self.fx, self.fy], camera_xyz=rr.ViewCoordinates.FLU))
+                rr.log("world/camera/image", rr.Pinhole(resolution=[imgFrame.getWidth(), imgFrame.getHeight()], focal_length=[self.fx, self.fy], camera_xyz=rr.ViewCoordinates.RDF))
                 img = imgFrame.getCvFrame()
                 img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
                 rr.log("world/camera/image/rgb", rr.Image(img))

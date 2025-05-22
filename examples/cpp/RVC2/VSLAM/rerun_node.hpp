@@ -41,7 +41,7 @@ class RerunNode : public dai::NodeCRTP<dai::node::ThreadedHostNode, RerunNode> {
     void run() override {
         const auto rec = rerun::RecordingStream("rerun");
         rec.spawn().exit_on_failure();
-        rec.log_static("world", rerun::ViewCoordinates::FLU);
+        rec.log_static("world", rerun::ViewCoordinates::RDF);
         rec.log("world/ground", rerun::Boxes3D::from_half_sizes({{3.f, 3.f, 0.00001f}}));
         while(isRunning()) {
             std::shared_ptr<dai::TransformData> transData = inputTrans.get<dai::TransformData>();
@@ -64,7 +64,7 @@ class RerunNode : public dai::NodeCRTP<dai::node::ThreadedHostNode, RerunNode> {
                 rec.log("world/trajectory", rerun::LineStrips3D(lineStrip));
                 rec.log("world/camera/image",
                         rerun::Pinhole::from_focal_length_and_resolution({fx, fy}, {float(imgFrame->getWidth()), float(imgFrame->getHeight())})
-                            .with_camera_xyz(rerun::components::ViewCoordinates::FLU));
+                            .with_camera_xyz(rerun::components::ViewCoordinates::RDF));
                 auto image = imgFrame->getCvFrame();
                 cv::cvtColor(image, image, cv::COLOR_BGR2RGB);
                 rec.log("world/camera/image/rgb",
