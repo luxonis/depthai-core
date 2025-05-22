@@ -101,14 +101,12 @@ bool EventData::toFile(const std::string& path) {
     return true;
 }
 EventsManager::EventsManager(std::string url, bool uploadCachedOnStart, float publishInterval)
-    : url(move(url)),
+    : url(std::move(url)),
       queueSize(10),
       publishInterval(publishInterval),
       logResponse(false),
       verifySsl(true),
-      connected(false),
       cacheDir("/internal/private"),
-      uploadCachedOnStart(uploadCachedOnStart),
       cacheIfCannotSend(false),
       stopEventBuffer(false) {
     sourceAppId = utility::getEnvAs<std::string>("OAKAGENT_APP_VERSION", "");
