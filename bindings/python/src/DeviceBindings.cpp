@@ -81,7 +81,7 @@ static void bindConstructors(ARG& arg) {
                 py::gil_scoped_release release;
                 return std::make_unique<D>(dev);
             }),
-            DOC(dai, DeviceBase, DeviceBase, 1))
+            DOC(dai, DeviceBase, DeviceBase))
         .def(py::init([](UsbSpeed maxUsbSpeed) {
                  auto dev = deviceSearchHelper<D>();
                  py::gil_scoped_release release;
@@ -89,41 +89,34 @@ static void bindConstructors(ARG& arg) {
              }),
              py::arg("maxUsbSpeed"),
              DOC(dai, DeviceBase, DeviceBase, 2))
-        .def(py::init([](const dai::Path& pathToCmd) {
-                 auto dev = deviceSearchHelper<D>();
-                 py::gil_scoped_release release;
-                 return std::make_unique<D>(dev, pathToCmd);
-             }),
-             py::arg("pathToCmd"),
-             DOC(dai, DeviceBase, DeviceBase, 3))
         .def(py::init([](const DeviceInfo& deviceInfo, UsbSpeed maxUsbSpeed) {
                  py::gil_scoped_release release;
                  return std::make_unique<D>(deviceInfo, maxUsbSpeed);
              }),
              py::arg("deviceInfo"),
              py::arg("maxUsbSpeed"),
-             DOC(dai, DeviceBase, DeviceBase, 4))
+             DOC(dai, DeviceBase, DeviceBase, 3))
         .def(py::init([](const DeviceInfo& deviceInfo, dai::Path pathToCmd) {
                  py::gil_scoped_release release;
                  return std::make_unique<D>(deviceInfo, pathToCmd);
              }),
              py::arg("deviceDesc"),
              py::arg("pathToCmd"),
-             DOC(dai, DeviceBase, DeviceBase, 5))
+             DOC(dai, DeviceBase, DeviceBase, 4))
         .def(py::init([](typename D::Config config) {
                  auto dev = deviceSearchHelper<D>();
                  py::gil_scoped_release release;
                  return std::make_unique<D>(config, dev);
              }),
              py::arg("config"),
-             DOC(dai, DeviceBase, DeviceBase, 6))
+             DOC(dai, DeviceBase, DeviceBase, 5))
         .def(py::init([](typename D::Config config, const DeviceInfo& deviceInfo) {
                  py::gil_scoped_release release;
                  return std::make_unique<D>(config, deviceInfo);
              }),
              py::arg("config"),
              py::arg("deviceInfo"),
-             DOC(dai, DeviceBase, DeviceBase, 7))
+             DOC(dai, DeviceBase, DeviceBase, 6))
 
         // DeviceInfo version
         .def(py::init([](const DeviceInfo& deviceInfo) {
@@ -131,14 +124,14 @@ static void bindConstructors(ARG& arg) {
                  return std::make_unique<D>(deviceInfo);
              }),
              py::arg("deviceInfo"),
-             DOC(dai, DeviceBase, DeviceBase, 8))
+             DOC(dai, DeviceBase, DeviceBase, 7))
         .def(py::init([](const DeviceInfo& deviceInfo, UsbSpeed maxUsbSpeed) {
                  py::gil_scoped_release release;
                  return std::make_unique<D>(deviceInfo, maxUsbSpeed);
              }),
              py::arg("deviceInfo"),
              py::arg("maxUsbSpeed"),
-             DOC(dai, DeviceBase, DeviceBase, 9))
+             DOC(dai, DeviceBase, DeviceBase, 8))
 
         // name or device id version
         .def(py::init([](std::string nameOrDeviceId) {
@@ -146,14 +139,14 @@ static void bindConstructors(ARG& arg) {
                  return std::make_unique<D>(std::move(nameOrDeviceId));
              }),
              py::arg("nameOrDeviceId"),
-             DOC(dai, DeviceBase, DeviceBase, 10))
+             DOC(dai, DeviceBase, DeviceBase, 9))
         .def(py::init([](std::string nameOrDeviceId, UsbSpeed maxUsbSpeed) {
                  py::gil_scoped_release release;
                  return std::make_unique<D>(std::move(nameOrDeviceId), maxUsbSpeed);
              }),
              py::arg("nameOrDeviceId"),
              py::arg("maxUsbSpeed"),
-             DOC(dai, DeviceBase, DeviceBase, 11));
+             DOC(dai, DeviceBase, DeviceBase, 10));
 }
 
 void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {

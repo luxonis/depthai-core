@@ -174,12 +174,6 @@ class DeviceBase {
     DeviceBase(UsbSpeed maxUsbSpeed);
 
     /**
-     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
-     * @param pathToCmd Path to custom device firmware
-     */
-    DeviceBase(const dai::Path& pathToCmd);
-
-    /**
      * Connects to device specified by devInfo.
      * @param devInfo DeviceInfo which specifies which device to connect to
      * @param maxUsbSpeed Maximum allowed USB speed
