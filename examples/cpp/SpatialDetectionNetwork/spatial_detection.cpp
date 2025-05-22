@@ -167,7 +167,7 @@ int main() {
         // Linking
         monoLeft->requestOutput(std::make_pair(640, 400))->link(stereo->left);
         monoRight->requestOutput(std::make_pair(640, 400))->link(stereo->right);
-        visualizer->build(stereo->depth, spatialDetectionNetwork->out, spatialDetectionNetwork->passthrough);
+        visualizer->build(spatialDetectionNetwork->passthroughDepth, spatialDetectionNetwork->out, spatialDetectionNetwork->passthrough);
 
         // Start pipeline
         pipeline.start();
