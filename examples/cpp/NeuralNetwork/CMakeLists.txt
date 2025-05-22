@@ -17,6 +17,5 @@ dai_add_example(neural_network neural_network.cpp OFF OFF)
 dai_add_example(neural_network_multi_input neural_network_multi_input.cpp OFF OFF)
 target_compile_definitions(neural_network_multi_input PRIVATE LENNA_PATH="${lenna}")
 
-# TODO(lnotspotl): Fix this example
-# dai_add_example(neural_network_multi_input_combined neural_network_multi_input_combined.cpp OFF OFF)
-# target_compile_definitions(neural_network_multi_input_combined PRIVATE LENNA_PATH="${lenna}")
+dai_add_example(neural_network_multi_input_combined neural_network_multi_input_combined.cpp OFF OFF)
+target_compile_definitions(neural_network_multi_input_combined PRIVATE LENNA_PATH="${lenna}")
