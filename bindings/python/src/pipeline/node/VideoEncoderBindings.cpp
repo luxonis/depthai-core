@@ -90,26 +90,6 @@ void bind_videoencoder(pybind11::module& m, void* pCallstack) {
              py::arg("fps"),
              py::arg("profile"),
              DOC(dai, node, VideoEncoder, setDefaultProfilePreset))
-        .def(
-            "setDefaultProfilePreset",
-            [](VideoEncoder& v, int width, int height, float fps, VideoEncoderProperties::Profile profile) {
-                PyErr_WarnEx(PyExc_DeprecationWarning, "Input width/height no longer needed, automatically determined from first frame", 1);
-                HEDLEY_DIAGNOSTIC_PUSH
-                HEDLEY_DIAGNOSTIC_DISABLE_DEPRECATED
-                v.setDefaultProfilePreset(width, height, fps, profile);
-                HEDLEY_DIAGNOSTIC_POP
-            },
-            DOC(dai, node, VideoEncoder, setDefaultProfilePreset, 2))
-        .def(
-            "setDefaultProfilePreset",
-            [](VideoEncoder& v, std::tuple<int, int> size, float fps, VideoEncoderProperties::Profile profile) {
-                PyErr_WarnEx(PyExc_DeprecationWarning, "Input size no longer needed, automatically determined from first frame", 1);
-                HEDLEY_DIAGNOSTIC_PUSH
-                HEDLEY_DIAGNOSTIC_DISABLE_DEPRECATED
-                v.setDefaultProfilePreset(size, fps, profile);
-                HEDLEY_DIAGNOSTIC_POP
-            },
-            DOC(dai, node, VideoEncoder, setDefaultProfilePreset, 3))
         .def("setNumFramesPool", &VideoEncoder::setNumFramesPool, py::arg("frames"), DOC(dai, node, VideoEncoder, setNumFramesPool))
         .def("getNumFramesPool", &VideoEncoder::getNumFramesPool, DOC(dai, node, VideoEncoder, getNumFramesPool))
         .def("setRateControlMode", &VideoEncoder::setRateControlMode, py::arg("mode"), DOC(dai, node, VideoEncoder, setRateControlMode))
@@ -117,26 +97,6 @@ void bind_videoencoder(pybind11::module& m, void* pCallstack) {
              static_cast<void (VideoEncoder::*)(VideoEncoder::Properties::Profile)>(&VideoEncoder::setProfile),
              py::arg("profile"),
              DOC(dai, node, VideoEncoder, setProfile))
-        .def(
-            "setProfile",
-            [](VideoEncoder& v, std::tuple<int, int> size, VideoEncoderProperties::Profile profile) {
-                PyErr_WarnEx(PyExc_DeprecationWarning, "Input width/height no longer needed, automatically determined from first frame", 1);
-                HEDLEY_DIAGNOSTIC_PUSH
-                HEDLEY_DIAGNOSTIC_DISABLE_DEPRECATED
-                v.setProfile(size, profile);
-                HEDLEY_DIAGNOSTIC_POP
-            },
-            DOC(dai, node, VideoEncoder, setProfile, 2))
-        .def(
-            "setProfile",
-            [](VideoEncoder& v, int width, int height, VideoEncoderProperties::Profile profile) {
-                PyErr_WarnEx(PyExc_DeprecationWarning, "Input width/height no longer needed, automatically determined from first frame", 1);
-                HEDLEY_DIAGNOSTIC_PUSH
-                HEDLEY_DIAGNOSTIC_DISABLE_DEPRECATED
-                v.setProfile(width, height, profile);
-                HEDLEY_DIAGNOSTIC_POP
-            },
-            DOC(dai, node, VideoEncoder, setProfile, 3))
         .def("setBitrate", &VideoEncoder::setBitrate, py::arg("bitrate"), DOC(dai, node, VideoEncoder, setBitrate))
         .def("setBitrateKbps", &VideoEncoder::setBitrateKbps, py::arg("bitrateKbps"), DOC(dai, node, VideoEncoder, setBitrateKbps))
         .def("setKeyframeFrequency", &VideoEncoder::setKeyframeFrequency, py::arg("freq"), DOC(dai, node, VideoEncoder, setKeyframeFrequency))
@@ -154,36 +114,6 @@ void bind_videoencoder(pybind11::module& m, void* pCallstack) {
         //.def("getMaxBitrate", &VideoEncoder::getMaxBitrate)
         .def("getNumBFrames", &VideoEncoder::getNumBFrames, DOC(dai, node, VideoEncoder, getNumBFrames))
         .def("getQuality", &VideoEncoder::getQuality, DOC(dai, node, VideoEncoder, getQuality))
-        .def(
-            "getWidth",
-            [](VideoEncoder& v) {
-                PyErr_WarnEx(PyExc_DeprecationWarning, "Input size no longer available, it's determined when first frame arrives", 1);
-                HEDLEY_DIAGNOSTIC_PUSH
-                HEDLEY_DIAGNOSTIC_DISABLE_DEPRECATED
-                return v.getWidth();
-                HEDLEY_DIAGNOSTIC_POP
-            },
-            DOC(dai, node, VideoEncoder, getWidth))
-        .def(
-            "getHeight",
-            [](VideoEncoder& v) {
-                PyErr_WarnEx(PyExc_DeprecationWarning, "Input size no longer available, it's determined when first frame arrives", 1);
-                HEDLEY_DIAGNOSTIC_PUSH
-                HEDLEY_DIAGNOSTIC_DISABLE_DEPRECATED
-                return v.getHeight();
-                HEDLEY_DIAGNOSTIC_POP
-            },
-            DOC(dai, node, VideoEncoder, getHeight))
-        .def(
-            "getSize",
-            [](VideoEncoder& v) {
-                PyErr_WarnEx(PyExc_DeprecationWarning, "Input size no longer available, it's determined when first frame arrives", 1);
-                HEDLEY_DIAGNOSTIC_PUSH
-                HEDLEY_DIAGNOSTIC_DISABLE_DEPRECATED
-                return v.getSize();
-                HEDLEY_DIAGNOSTIC_POP
-            },
-            DOC(dai, node, VideoEncoder, getSize))
         .def("getFrameRate", &VideoEncoder::getFrameRate, DOC(dai, node, VideoEncoder, getFrameRate))
         .def("getLossless", &VideoEncoder::getLossless, DOC(dai, node, VideoEncoder, getLossless))
         .def("getMaxOutputFrameSize", &VideoEncoder::getMaxOutputFrameSize, DOC(dai, node, VideoEncoder, getMaxOutputFrameSize));

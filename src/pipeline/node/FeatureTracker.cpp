@@ -14,15 +14,6 @@ FeatureTracker::Properties& FeatureTracker::getProperties() {
     return properties;
 }
 
-// Node properties configuration
-void FeatureTracker::setWaitForConfigInput(bool wait) {
-    inputConfig.setWaitForMessage(wait);
-}
-
-bool FeatureTracker::getWaitForConfigInput() const {
-    return inputConfig.getWaitForMessage();
-}
-
 void FeatureTracker::setHardwareResources(int numShaves, int numMemorySlices) {
     properties.numShaves = numShaves;
     properties.numMemorySlices = numMemorySlices;

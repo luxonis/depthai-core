@@ -51,10 +51,6 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     // Functions
     Node::Id getNextUniqueId();
     PipelineSchema getPipelineSchema(SerializationType type = DEFAULT_SERIALIZATION_TYPE) const;
-    std::optional<OpenVINO::Version> getPipelineOpenVINOVersion() const;
-    OpenVINO::Version getOpenVINOVersion() const;
-    std::optional<OpenVINO::Version> getRequiredOpenVINOVersion() const;
-    bool isOpenVINOVersionCompatible(OpenVINO::Version version) const;
     Device::Config getDeviceConfig() const;
     void setCameraTuningBlobPath(const dai::Path& path);
     void setXLinkChunkSize(int sizeBytes);
@@ -404,16 +400,6 @@ class Pipeline {
         impl()->setEepromData(eepromData);
     }
 
-    /// Get possible OpenVINO version to run this pipeline
-    OpenVINO::Version getOpenVINOVersion() const {
-        return impl()->getOpenVINOVersion();
-    }
-
-    /// Get required OpenVINO version to run this pipeline. Can be none
-    std::optional<OpenVINO::Version> getRequiredOpenVINOVersion() const {
-        return impl()->getRequiredOpenVINOVersion();
-    }
-
     /// Set a camera IQ (Image Quality) tuning blob, used for all cameras
     void setCameraTuningBlobPath(const dai::Path& path) {
         impl()->setCameraTuningBlobPath(path);
@@ -448,11 +434,6 @@ class Pipeline {
      */
     void setSippDmaBufferSize(int sizeBytes) {
         impl()->setSippDmaBufferSize(sizeBytes);
-    }
-
-    /// Checks whether a given OpenVINO version is compatible with the pipeline
-    bool isOpenVINOVersionCompatible(OpenVINO::Version version) const {
-        return impl()->isOpenVINOVersionCompatible(version);
     }
 
     /// Sets board configuration

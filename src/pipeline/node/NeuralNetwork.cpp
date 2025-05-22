@@ -15,10 +15,6 @@
 namespace dai {
 namespace node {
 
-std::optional<OpenVINO::Version> NeuralNetwork::getRequiredOpenVINOVersion() {
-    return networkOpenvinoVersion;
-}
-
 std::shared_ptr<NeuralNetwork> NeuralNetwork::build(Node::Output& input, const NNArchive& nnArchive) {
     setNNArchive(nnArchive);
     input.link(this->input);
@@ -205,7 +201,6 @@ void NeuralNetwork::setBlob(OpenVINO::Blob blob) {
             throw std::runtime_error(fmt::format("Loaded model is for RVC2, but the device is {}", device->getPlatformAsString()));
         }
     }
-    networkOpenvinoVersion = blob.version;
     auto asset = assetManager.set("__blob", std::move(blob.data));
     properties.blobUri = asset->getRelativeUri();
     properties.blobSize = static_cast<uint32_t>(asset->data.size());
