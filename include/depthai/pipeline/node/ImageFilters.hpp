@@ -115,9 +115,25 @@ class DepthConfidenceFilter : public DeviceNodeCRTP<DeviceNode, DepthConfidenceF
 
     void run() override;
 
+    /**
+     * Get the confidence threshold
+     */
     float getConfidenceThreshold() const;
+
+    /**
+     * Set the confidence threshold
+     */
     void setConfidenceThreshold(float threshold);
+
+    /**
+     * Specify whether to run on host or device
+     * By default, the node will run on device.
+     */
     void setRunOnHost(bool runOnHost);
+
+    /**
+     * Check if the node is set to run on host
+     */
     bool runOnHost() const override;
 
    private:

@@ -64,6 +64,8 @@ void bind_imagefilters(pybind11::module& m, void* pCallstack) {
         .def_readonly("filteredDepth", &DepthConfidenceFilter::filteredDepth, DOC(dai, node, DepthConfidenceFilter, filteredDepth))
         .def_readonly("confidence", &DepthConfidenceFilter::confidence, DOC(dai, node, DepthConfidenceFilter, confidence))
         .def_readonly("config", &DepthConfidenceFilter::config, DOC(dai, node, DepthConfidenceFilter, config))
+        .def("setRunOnHost", &DepthConfidenceFilter::setRunOnHost, py::arg("runOnHost"), DOC(dai, node, DepthConfidenceFilter, setRunOnHost))
+        .def("runOnHost", &DepthConfidenceFilter::runOnHost, DOC(dai, node, DepthConfidenceFilter, runOnHost))
         .def("setConfidenceThreshold",
              &DepthConfidenceFilter::setConfidenceThreshold,
              py::arg("threshold"),

@@ -827,7 +827,7 @@ void DepthConfidenceFilter::applyDepthConfidenceFilter(std::shared_ptr<ImgFrame>
             // Avoid division by zero or very small depth values
             float conf;
             if(a < 1e-12f || d < 1e-12f) {
-                conf = 0.0f;
+                conf = std::numeric_limits<float>::max();
             } else {
                 // Corrected formula: amplitude / sqrt(depth / 2.0)
                 // Higher amplitude --> higher confidence
