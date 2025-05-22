@@ -36,7 +36,7 @@ void BasaltVIO::buildInternal() {
     Eigen::Quaterniond q180(R180);
     basalt::PoseState<double>::SE3 opticalTransform180(q180, Eigen::Vector3d(0, 0, 0));
     // to output pose in FLU world coordinates
-    localTransform = std::make_shared<basalt::PoseState<double>::SE3>(initTrans * opticalTransform180.inverse());
+    localTransform = std::make_shared<basalt::PoseState<double>::SE3>(initTrans * opticalTransform180);
     setDefaultVIOConfig();
 }
 
@@ -58,10 +58,10 @@ void BasaltVIO::run() {
         pimpl->outStateQueue->pop(data);
 
         if(!data.get()) continue;
-        basalt::PoseState<double>::SE3 pose = (*localTransform * data->T_w_i * calib->T_i_c[0]);
+        basalt::PoseState<double>::SE3 pose = (data->T_w_i * calib->T_i_c[0]);
 
         // pose is in RDF orientation, convert to FLU
-        auto finalPose = pose * opticalTransform.inverse();
+        auto finalPose = pose;
         auto trans = finalPose.translation();
         auto rot = finalPose.unit_quaternion();
         auto out = std::make_shared<TransformData>(trans.x(), trans.y(), trans.z(), rot.x(), rot.y(), rot.z(), rot.w());
@@ -155,7 +155,7 @@ void BasaltVIO::initialize(std::vector<std::shared_ptr<ImgFrame>> frames) {
         std::vector<std::vector<float>> imuExtr = calibHandler.getImuToCameraExtrinsics(camID, useSpecTranslation);
 
         Eigen::Matrix<Scalar, 3, 3> R;
-        R << imuExtr[0][0], imuExtr[0][1], imuExtr[0][2], imuExtr[1][0], imuExtr[1][1], imuExtr[1][2], imuExtr[2][0], imuExtr[2][1], imuExtr[2][2];
+        R << 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0; // rotation the same
         Eigen::Quaterniond q(R);
 
         Eigen::Vector3d trans(double(imuExtr[0][3]) * 0.01, double(imuExtr[1][3]) * 0.01, double(imuExtr[2][3]) * 0.01);

@@ -10,9 +10,6 @@ void RTABMapVIO::buildInternal() {
     sync->setRunOnHost(false);
     localTransform = rtabmap::Transform::getIdentity();
 
-    rtabmap::Transform opticalTransform(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
-    localTransform = localTransform * opticalTransform.inverse();
-
     inSync.setBlocking(false);
     inSync.setMaxSize(0);
     imu.setMaxSize(1);
@@ -116,7 +113,11 @@ void RTABMapVIO::syncCB(std::shared_ptr<dai::ADatatype> data) {
             }
             rtabmap::OdometryInfo info;
             auto pose = odom->process(sensorData, &info);
-            pose = localTransform * pose * localTransform.inverse();
+            //rotate by -90 degrees in x axis
+            rtabmap::Transform rotation(1, 0, 0, 0,
+                                        0, 0, 1, 0,
+                                        0, -1, 0, 0);
+            pose =  localTransform * rotation * pose ;
             auto out = std::make_shared<dai::TransformData>(pose);
             transform.send(out);
             passthroughRect.send(imgFrame);

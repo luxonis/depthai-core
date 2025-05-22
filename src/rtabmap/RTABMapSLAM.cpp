@@ -17,8 +17,8 @@ void RTABMapSLAM::buildInternal() {
     sync->setRunOnHost(false);
     alphaScaling = -1.0;
     localTransform = rtabmap::Transform::getIdentity();
-    rtabmap::Transform opticalTransform(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
-    localTransform = localTransform * opticalTransform;
+    // rtabmap::Transform opticalTransform(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
+    // localTransform = localTransform * opticalTransform;
     rect.setBlocking(false);
     rect.setMaxSize(1);
     depth.setBlocking(false);
