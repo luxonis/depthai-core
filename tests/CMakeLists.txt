@@ -270,8 +270,12 @@ dai_add_test(bootloader_config_test src/onhost_tests/bootloader_config_test.cpp)
 dai_set_test_labels(bootloader_config_test onhost ci)
 
 # Environment test
-dai_add_test(env_test src/onhost_tests/env_test.cpp)
+dai_add_test(env_test src/onhost_tests/utility/env_test.cpp)
 dai_set_test_labels(env_test onhost ci)
+
+# Platform tests
+dai_add_test(platform_test src/onhost_tests/utility/platform_test.cpp)
+dai_set_test_labels(platform_test onhost ci)
 
 # Datatype tests
 dai_add_test(nndata_test src/onhost_tests/pipeline/datatype/nndata_test.cpp)
