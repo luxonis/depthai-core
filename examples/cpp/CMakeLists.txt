@@ -22,6 +22,8 @@ set(test_env
     "DEPTHAI_RECONNECT_TIMEOUT=0"
     )
 
+set(TOP_CPP_EXAMPLES_CMAKE_DIR ${CMAKE_CURRENT_LIST_DIR})
+
 # Helper for adding new examples
 function(dai_add_example example_name example_src enable_test use_pcl)
 
@@ -58,7 +60,7 @@ function(dai_add_example example_name example_src enable_test use_pcl)
         add_test(NAME ${example_name} COMMAND
             ${CMAKE_COMMAND}
             -DTIMEOUT_SECONDS=300
-            -P ${CMAKE_CURRENT_LIST_DIR}/cmake/ExecuteTestTimeout.cmake
+            -P ${TOP_CPP_EXAMPLES_CMAKE_DIR}/cmake/ExecuteTestTimeout.cmake
             $<TARGET_FILE:test_wrapper>
             40 # Set test timeout
             $<TARGET_FILE:${example_name}>
