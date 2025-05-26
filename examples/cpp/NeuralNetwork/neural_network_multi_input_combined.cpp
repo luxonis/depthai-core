@@ -11,7 +11,8 @@ int main() {
     cv::Mat lenaImageCv = cv::imread(LENNA_PATH);
     cv::resize(lenaImageCv, lenaImageCv, cv::Size(256, 256));
     cv::cvtColor(lenaImageCv, lenaImageCv, cv::COLOR_BGR2RGB);
-    xt::xarray<uint8_t> lenaImage = xt::adapt((uint8_t*)lenaImageCv.data, {lenaImageCv.rows, lenaImageCv.cols, 3});
+    xt::xarray<uint8_t> lenaImage =
+        xt::adapt((uint8_t*)lenaImageCv.data, {static_cast<size_t>(lenaImageCv.rows), static_cast<size_t>(lenaImageCv.cols), static_cast<size_t>(3)});
 
     // Create pipeline
     dai::Pipeline pipeline;
