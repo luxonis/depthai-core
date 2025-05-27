@@ -11,7 +11,7 @@
 #include <vector>
 
 // libraries
-#include <spimpl.h>
+#include "depthai/utility/spimpl.h"
 
 // internal
 #include "depthai/nn_archive/NNArchiveEntry.hpp"

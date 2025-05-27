@@ -20,7 +20,7 @@ TEST_CASE("Test ImageAlign node image to image alignment") {
     leftOut->link(align->input);
     rightOut->link(align->inputAlignTo);
 
-    align->initialConfig.staticDepthPlane = 0x5AB1;
+    align->initialConfig->staticDepthPlane = 0x5AB1;
 
     auto alignedQueue = align->outputAligned.createOutputQueue();
 

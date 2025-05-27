@@ -39,7 +39,7 @@ int main() {
     stereo->setLeftRightCheck(true);
     stereo->setRectifyEdgeFillColor(0);  // black, to better see the cutout
     stereo->enableDistortionCorrection(true);
-    stereo->initialConfig.setLeftRightCheckThreshold(10);
+    stereo->initialConfig->setLeftRightCheckThreshold(10);
 
     left->requestOutput(std::pair<int, int>(640, 400))->link(stereo->left);
     right->requestOutput(std::pair<int, int>(640, 400))->link(stereo->right);

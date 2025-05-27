@@ -133,7 +133,7 @@ This means that with the confidence threshold, users can prioritize **fill-rate 
 
             // Create the StereoDepth node
             auto stereo_depth = pipeline.create<dai::node::StereoDepth>();
-            stereo_depth->initialConfig.setConfidenceThreshold(threshold);
+            stereo_depth->initialConfig->setConfidenceThreshold(threshold);
 
             // Or, alternatively, set the Stereo Preset Mode:
             // Prioritize fill-rate, sets Confidence threshold to 245

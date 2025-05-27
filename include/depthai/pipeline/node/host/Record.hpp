@@ -3,7 +3,7 @@
 #include <depthai/pipeline/ThreadedNode.hpp>
 
 // shared
-#include <depthai/properties/XLinkOutProperties.hpp>
+#include <depthai/properties/internal/XLinkOutProperties.hpp>
 
 // project
 #include <depthai/pipeline/datatype/Buffer.hpp>
@@ -17,6 +17,8 @@
 
 namespace dai {
 namespace node {
+
+using XLinkOutProperties = ::dai::internal::XLinkOutProperties;
 
 /**
  * @brief RecordVideo node, used to record a video source stream to a file

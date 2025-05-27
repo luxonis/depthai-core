@@ -6,8 +6,9 @@
 #include "depthai/openvino/OpenVINO.hpp"
 #include "depthai/pipeline/DeviceNode.hpp"
 #include "depthai/pipeline/node/Camera.hpp"
-#include "depthai/pipeline/node/host/Replay.hpp"
-
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    #include "depthai/pipeline/node/host/Replay.hpp"
+#endif
 // standard
 #include <fstream>
 
@@ -25,11 +26,6 @@ class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNet
     constexpr static const char* NAME = "NeuralNetwork";
     using DeviceNodeCRTP::DeviceNodeCRTP;
 
-   protected:
-    std::optional<OpenVINO::Version> getRequiredOpenVINOVersion() override;
-    std::optional<OpenVINO::Version> networkOpenvinoVersion;
-
-   public:
     /**
      * @brief Build NeuralNetwork node. Connect output to this node's input. Also call setNNArchive() with provided NNArchive.
      *
@@ -40,8 +36,10 @@ class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNet
     std::shared_ptr<NeuralNetwork> build(Node::Output& input, const NNArchive& nnArchive);
     std::shared_ptr<NeuralNetwork> build(const std::shared_ptr<Camera>& input, NNModelDescription modelDesc, std::optional<float> fps = std::nullopt);
     std::shared_ptr<NeuralNetwork> build(const std::shared_ptr<Camera>& input, NNArchive nnArchive, std::optional<float> fps = std::nullopt);
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     std::shared_ptr<NeuralNetwork> build(const std::shared_ptr<ReplayVideo>& input, NNModelDescription modelDesc, std::optional<float> fps = std::nullopt);
     std::shared_ptr<NeuralNetwork> build(const std::shared_ptr<ReplayVideo>& input, const NNArchive& nnArchive, std::optional<float> fps = std::nullopt);
+#endif
 
     /**
      * Input message with data to be inferred upon

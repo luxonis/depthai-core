@@ -55,7 +55,7 @@ jobs:
         matrix:
           arch: ['x64']
           flavor: ['vanilla']
-          rvc4os: ['r851.1.2', 'debug-1.4.1', 'debug-1.6.0']
+          rvc4os: ['r851.1.2', 'debug-1.6.0', 'debug-1.11.0']
         fail-fast: false
       runs-on: ['self-hosted', 'testbed-runner']
 
@@ -107,7 +107,7 @@ jobs:
 
     - name: Configure, Build and Test
       run: |
-        cmake -S . -B build -D CMAKE_BUILD_TYPE=Release -D'DEPTHAI_BUILD_EXAMPLES=ON' -D'DEPTHAI_BUILD_PYTHON=ON' -D'DEPTHAI_BUILD_TESTS=ON' -DDEPTHAI_PYTHON_ENABLE_TESTS=ON -DDEPTHAI_TEST_EXAMPLES=ON -DDEPTHAI_PYTHON_TEST_EXAMPLES=ON -DDEPTHAI_PYTHON_ENABLE_EXAMPLES=ON
+        cmake -S . -B build -D CMAKE_BUILD_TYPE=Release -D'DEPTHAI_VCPKG_INTERNAL_ONLY=OFF' -D'DEPTHAI_BUILD_EXAMPLES=ON' -D'DEPTHAI_BUILD_PYTHON=ON' -D'DEPTHAI_BUILD_TESTS=ON' -DDEPTHAI_PYTHON_ENABLE_TESTS=ON -DDEPTHAI_TEST_EXAMPLES=ON -DDEPTHAI_PYTHON_TEST_EXAMPLES=ON -DDEPTHAI_PYTHON_ENABLE_EXAMPLES=ON
         cmake --build build --parallel 4 --config Release
         cd tests
         python run_tests.py

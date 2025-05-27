@@ -54,7 +54,7 @@ inline std::optional<T> get_stack_optional(const json& j, const char* property) 
     if(it != j.end() && !it->is_null()) {
         return j.at(property).get<std::optional<T>>();
     }
-    return std::optional<T>();
+    return std::nullopt;
 }
 
 template <typename T>

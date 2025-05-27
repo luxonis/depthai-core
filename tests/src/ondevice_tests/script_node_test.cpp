@@ -1,5 +1,3 @@
-#include <spdlog/spdlog.h>
-
 #include <catch2/catch_all.hpp>
 #include <chrono>
 #include <thread>

@@ -286,7 +286,7 @@ as:
 (this confidence score is kind-of inverted, if say comparing with NN)
 
 For the final disparity map, a filtering is applied based on the confidence threshold value: the pixels that have their confidence score larger than
-the threshold get invalidated, i.e. their disparity value is set to zero. You can set the confidence threshold with :code:`stereo.initialConfig.setConfidenceThreshold()`.
+the threshold get invalidated, i.e. their disparity value is set to zero. You can set the confidence threshold with :code:`stereo.initialConfig->setConfidenceThreshold()`.
 
 Calculate depth using disparity map
 ===================================

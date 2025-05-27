@@ -2,16 +2,10 @@
 #include <opencv2/opencv.hpp>
 #include <queue>
 
+#include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/depthai.hpp"
 
 constexpr auto FPS = 30.0;
-
-constexpr auto RGB_SOCKET = dai::CameraBoardSocket::CAM_A;
-constexpr auto LEFT_SOCKET = dai::CameraBoardSocket::CAM_B;
-constexpr auto ALIGN_SOCKET = LEFT_SOCKET;
-
-constexpr auto COLOR_RESOLUTION = dai::ColorCameraProperties::SensorResolution::THE_1080_P;
-constexpr auto LEFT_RIGHT_RESOLUTION = dai::MonoCameraProperties::SensorResolution::THE_720_P;
 
 class FPSCounter {
    public:
@@ -48,26 +42,18 @@ void updateDepthPlane(int depth, void*) {
 
 int main() {
     dai::Pipeline pipeline;
-    auto camRgb = pipeline.create<dai::node::ColorCamera>();
-    auto left = pipeline.create<dai::node::MonoCamera>();
+    auto camRgb = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A, std::nullopt, FPS);
+    auto left = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B, std::nullopt, FPS);
     auto sync = pipeline.create<dai::node::Sync>();
     auto align = pipeline.create<dai::node::ImageAlign>();
-
-    left->setResolution(LEFT_RIGHT_RESOLUTION);
-    left->setBoardSocket(LEFT_SOCKET);
-    left->setFps(FPS);
-
-    camRgb->setBoardSocket(RGB_SOCKET);
-    camRgb->setResolution(COLOR_RESOLUTION);
-    camRgb->setFps(FPS);
-    camRgb->setIspScale(1, 3);
 
     sync->setSyncThreshold(std::chrono::milliseconds(static_cast<int>((1 / FPS) * 1000.0 * 0.5)));
 
     align->outputAligned.link(sync->inputs["aligned"]);
-    camRgb->isp.link(sync->inputs["rgb"]);
-    camRgb->isp.link(align->inputAlignTo);
-    left->out.link(align->input);
+    auto* RGBOutput = camRgb->requestOutput(std::make_pair(640, 400));
+    RGBOutput->link(align->inputAlignTo);
+    RGBOutput->link(sync->inputs["rgb"]);
+    left->requestOutput(std::make_pair(640, 400))->link(align->input);
     auto queue = sync->out.createOutputQueue();
 
     auto alignQ = align->inputConfig.createInputQueue();
@@ -110,7 +96,7 @@ int main() {
 
         auto cfg = align->initialConfig;
         auto alignConfig = std::make_shared<dai::ImageAlignConfig>();
-        *alignConfig = cfg;
+        alignConfig = cfg;
         alignConfig->staticDepthPlane = staticDepthPlane;
         alignQ->send(alignConfig);
     }

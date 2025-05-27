@@ -7,6 +7,7 @@
 #include <cstring>
 
 // depthai
+#include "depthai/utility/CompilerWarnings.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
 #include "depthai/xlink/XLinkStream.hpp"
 
@@ -59,13 +60,6 @@ void XLinkBindings::bind(pybind11::module& m, void* pCallstack) {
              DOC(dai, DeviceInfo, DeviceInfo, 2))
         .def(py::init<std::string>(), py::arg("deviceIdOrName"), DOC(dai, DeviceInfo, DeviceInfo, 3))
         .def(py::init<const deviceDesc_t&>(), DOC(dai, DeviceInfo, DeviceInfo, 4))
-        .def(
-            "getMxId",
-            [](DeviceInfo& info) {
-                PyErr_WarnEx(PyExc_DeprecationWarning, "getMxId is deprecated, use getDeviceId instead.", 1);
-                return info.getMxId();
-            },
-            DOC(dai, DeviceInfo, getMxId))
         .def("getDeviceId", &DeviceInfo::getDeviceId, DOC(dai, DeviceInfo, getDeviceId))
         .def("getXLinkDeviceDesc", &DeviceInfo::getXLinkDeviceDesc)
         .def_readwrite("name", &DeviceInfo::name)
@@ -74,20 +68,7 @@ void XLinkBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("protocol", &DeviceInfo::protocol)
         .def_readwrite("platform", &DeviceInfo::platform)
         .def_readwrite("status", &DeviceInfo::status)
-        .def("__repr__", &DeviceInfo::toString)
-        // deprecated
-        .def_property(
-            "desc",
-            [](py::object& self) {
-                // Issue an deprecation warning
-                PyErr_WarnEx(PyExc_DeprecationWarning, "desc field is deprecated, use name/mxid and others instead.", 1);
-                return self;
-            },
-            [](DeviceInfo& i, DeviceInfo di) {
-                // Issue an deprecation warning
-                PyErr_WarnEx(PyExc_DeprecationWarning, "desc field is deprecated, use name/mxid and others instead.", 1);
-                i = di;
-            });
+        .def("__repr__", &DeviceInfo::toString);
 
     deviceDesc.def(py::init<>())
         .def_readwrite("protocol", &deviceDesc_t::protocol)

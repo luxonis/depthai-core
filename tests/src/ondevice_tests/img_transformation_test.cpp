@@ -41,6 +41,7 @@ TEST_CASE("ImgTransformation in SpatialDetectionNetwork") {
     auto left = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B);
     auto right = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_C);
     auto stereo = pipeline.create<dai::node::StereoDepth>()->build(*left->requestFullResolutionOutput(), *right->requestFullResolutionOutput());
+    stereo->setSubpixel(false);
     dai::NNModelDescription modelDesc{"yolov6-nano"};
     // Load NNArchive
     auto nn = pipeline.create<dai::node::SpatialDetectionNetwork>();

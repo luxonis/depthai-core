@@ -1,83 +1,54 @@
 #!/usr/bin/env python3
 
-from pathlib import Path
 import cv2
 import depthai as dai
-import numpy as np
 import time
-import argparse
 
-labelMap = ["background", "aeroplane", "bicycle", "bird", "boat", "bottle", "bus", "car", "cat", "chair", "cow",
-            "diningtable", "dog", "horse", "motorbike", "person", "pottedplant", "sheep", "sofa", "train", "tvmonitor"]
 
-nnPathDefault = str((Path(__file__).parent / Path('../../models/mobilenet-ssd_openvino_2021.4_5shave.blob')).resolve().absolute())
-parser = argparse.ArgumentParser()
-parser.add_argument('nnPath', nargs='?', help="Path to mobilenet detection network blob", default=nnPathDefault)
-parser.add_argument('-ff', '--full_frame', action="store_true", help="Perform tracking on full RGB frame", default=False)
-
-args = parser.parse_args()
-
-fullFrameTracking = args.full_frame
+fullFrameTracking = False
 
 # Create pipeline
 with dai.Pipeline() as pipeline:
     # Define sources and outputs
-    camRgb = pipeline.create(dai.node.ColorCamera)
-    spatialDetectionNetwork = pipeline.create(dai.node.MobileNetSpatialDetectionNetwork)
-    monoLeft = pipeline.create(dai.node.MonoCamera)
-    monoRight = pipeline.create(dai.node.MonoCamera)
+    camRgb = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
+    monoLeft = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
+    monoRight = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C)
+
     stereo = pipeline.create(dai.node.StereoDepth)
+    leftOutput = monoLeft.requestOutput((640, 400))
+    rightOutput = monoRight.requestOutput((640, 400))
+    leftOutput.link(stereo.left)
+    rightOutput.link(stereo.right)
+
+    spatialDetectionNetwork = pipeline.create(dai.node.SpatialDetectionNetwork).build(camRgb, stereo, "yolov6-nano")
     objectTracker = pipeline.create(dai.node.ObjectTracker)
 
-    # Properties
-    camRgb.setPreviewSize(300, 300)
-    camRgb.setResolution(dai.ColorCameraProperties.SensorResolution.THE_1080_P)
-    camRgb.setInterleaved(False)
-    camRgb.setColorOrder(dai.ColorCameraProperties.ColorOrder.BGR)
-
-    monoLeft.setResolution(dai.MonoCameraProperties.SensorResolution.THE_400_P)
-    monoLeft.setCamera("left")
-    monoRight.setResolution(dai.MonoCameraProperties.SensorResolution.THE_400_P)
-    monoRight.setCamera("right")
-
-    # setting node configs
-    # Align depth map to the perspective of RGB camera, on which inference is done
-    stereo.setDepthAlign(dai.CameraBoardSocket.CAM_A)
-    stereo.setOutputSize(monoLeft.getResolutionWidth(), monoLeft.getResolutionHeight())
-
-    spatialDetectionNetwork.setBlobPath(args.nnPath)
     spatialDetectionNetwork.setConfidenceThreshold(0.5)
     spatialDetectionNetwork.input.setBlocking(False)
     spatialDetectionNetwork.setBoundingBoxScaleFactor(0.5)
     spatialDetectionNetwork.setDepthLowerThreshold(100)
     spatialDetectionNetwork.setDepthUpperThreshold(5000)
+    labelMap = spatialDetectionNetwork.getClasses()
 
-    objectTracker.setDetectionLabelsToTrack([15])  # track only person
+    objectTracker.setDetectionLabelsToTrack([0])  # track only person
     # possible tracking types: ZERO_TERM_COLOR_HISTOGRAM, ZERO_TERM_IMAGELESS, SHORT_TERM_IMAGELESS, SHORT_TERM_KCF
     objectTracker.setTrackerType(dai.TrackerType.ZERO_TERM_COLOR_HISTOGRAM)
     # take the smallest ID when new object is tracked, possible options: SMALLEST_ID, UNIQUE_ID
     objectTracker.setTrackerIdAssignmentPolicy(dai.TrackerIdAssignmentPolicy.SMALLEST_ID)
 
-    # Linking
-    monoLeft.out.link(stereo.left)
-    monoRight.out.link(stereo.right)
-
-    camRgb.preview.link(spatialDetectionNetwork.input)
     preview = objectTracker.passthroughTrackerFrame.createOutputQueue()
     tracklets = objectTracker.out.createOutputQueue()
 
     if fullFrameTracking:
-        camRgb.setPreviewKeepAspectRatio(False)
-        camRgb.video.link(objectTracker.inputTrackerFrame)
-        objectTracker.inputTrackerFrame.setBlocking(False)
+        camRgb.requestFullResolutionOutput().link(objectTracker.inputTrackerFrame)
         # do not block the pipeline if it's too slow on full frame
-        objectTracker.inputTrackerFrame.setQueueSize(2)
+        objectTracker.inputTrackerFrame.setBlocking(False)
+        objectTracker.inputTrackerFrame.setMaxSize(1)
     else:
         spatialDetectionNetwork.passthrough.link(objectTracker.inputTrackerFrame)
 
     spatialDetectionNetwork.passthrough.link(objectTracker.inputDetectionFrame)
     spatialDetectionNetwork.out.link(objectTracker.inputDetections)
-    stereo.depth.link(spatialDetectionNetwork.inputDepth)
 
     startTime = time.monotonic()
     counter = 0
@@ -87,6 +58,8 @@ with dai.Pipeline() as pipeline:
     while(pipeline.isRunning()):
         imgFrame = preview.get()
         track = tracklets.get()
+        assert isinstance(imgFrame, dai.ImgFrame), "Expected ImgFrame"
+        assert isinstance(track, dai.Tracklets), "Expected Tracklets"
 
         counter+=1
         current_time = time.monotonic()

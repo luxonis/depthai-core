@@ -4,7 +4,7 @@
 
 #include "depthai/depthai.hpp"
 
-class TestPassthrough : public dai::NodeCRTP<dai::node::ThreadedHostNode, TestPassthrough> {
+class TestPassthrough : public dai::node::CustomThreadedNode<TestPassthrough> {
    public:
     Input input = dai::Node::Input{*this, {}};
     Output output = dai::Node::Output{*this, {}};
@@ -20,7 +20,7 @@ class TestPassthrough : public dai::NodeCRTP<dai::node::ThreadedHostNode, TestPa
     }
 };
 
-class TestSink : public dai::NodeCRTP<dai::node::ThreadedHostNode, TestSink> {
+class TestSink : public dai::node::CustomThreadedNode<TestSink> {
    public:
     Input input = dai::Node::Input{*this, {}};
 
@@ -34,7 +34,7 @@ class TestSink : public dai::NodeCRTP<dai::node::ThreadedHostNode, TestSink> {
     }
 };
 
-class TestSource : public dai::NodeCRTP<dai::node::ThreadedHostNode, TestSource> {
+class TestSource : public dai::node::CustomThreadedNode<TestSource> {
    public:
     Output output = dai::Node::Output{*this, {}};
 

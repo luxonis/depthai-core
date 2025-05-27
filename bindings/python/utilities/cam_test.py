@@ -342,12 +342,6 @@ with dai.Pipeline(dai.Device(*dai_device_args)) as pipeline:
     # Uncomment to get better throughput
     # pipeline.setXLinkChunkSize(0)
 
-    control = pipeline.createXLinkIn()
-    #control.setStreamName('control')
-
-    xinTofConfig = pipeline.createXLinkIn()
-    #xinTofConfig.setStreamName('tofConfig')
-
     cam = {}
     tof = {}
     xout = {}
@@ -360,9 +354,6 @@ with dai.Pipeline(dai.Device(*dai_device_args)) as pipeline:
     for c in cam_list:
         print("CAM: ", c)
         tofEnableRaw = False
-        #xout[c] = pipeline.createXLinkOut()
-        #xout[c].setStreamName(c)
-        #streams.append(c)
         if cam_type_tof[c]:
             cam[c] = pipeline.create(dai.node.Camera)  # .Camera
             if args.tof_raw:
@@ -439,7 +430,6 @@ with dai.Pipeline(dai.Device(*dai_device_args)) as pipeline:
         # cam[c].initialControl.setManualExposure(15000, 400) # exposure [us], iso
         # When set, takes effect after the first 2 frames
         # cam[c].initialControl.setManualWhiteBalance(4000)  # light temperature in K, 1000..12000
-        control.out.link(cam[c].inputControl)
         #if rotate[c]:
         #    cam[c].setImageOrientation(
         #        dai.CameraImageOrientation.ROTATE_180_DEG)
