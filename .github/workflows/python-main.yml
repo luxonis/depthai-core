@@ -175,6 +175,40 @@ jobs:
         run: |
           cmake --build build --target pytest --config Release
 
+# Build DepthAI using Nix
+jobs:
+  nix-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          submodules: true
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v24
+
+
+      - name: Build using custom nixpkgs with depthai-core
+        run: |
+          nix-build \
+            --argstr system x86_64-linux \
+            --arg pkgs 'import (fetchTarball "https://github.com/phodina/nixpkgs/archive/refs/heads/depthaiv3_alpha15_draft.zip") {}' \
+            -A depthai-core
+
+      - name: Run tests inside nix-shell
+        run: |
+          nix-shell -p depthai-core --run "pytest bindings/python/tests"
+
+      - name: Show build output
+        run: ls -l result
+
+
+#      - name: Optional: Setup Cachix
+#        uses: cachix/cachix-action@v14
+#        with:
+#          name: luxonis
+#          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'  # optional
 
   # # This job builds wheels for armhf arch (RPi)
   # build-linux-armhf:
