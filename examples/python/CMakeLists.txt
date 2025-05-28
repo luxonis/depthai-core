@@ -144,7 +144,9 @@ endif()
 
 function(dai_example_test_relax_fail_regex example_name)
     set(example_name "py_${example_name}")
-    set_tests_properties(${example_name} PROPERTIES FAIL_REGULAR_EXPRESSION "${RELAXED_EXAMPLE_TEST_FAIL_REGEX}")
+    if(DEPTHAI_PYTHON_TEST_EXAMPLES AND TEST ${example_name})
+        set_tests_properties(${example_name} PROPERTIES FAIL_REGULAR_EXPRESSION "${RELAXED_EXAMPLE_TEST_FAIL_REGEX}")
+    endif()
 endfunction()
 
 

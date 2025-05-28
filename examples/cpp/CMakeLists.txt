@@ -98,7 +98,9 @@ function(dai_add_example example_name example_src enable_test use_pcl)
 endfunction()
 
 function(dai_example_test_relax_fail_regex example_name)
-    set_tests_properties(${example_name} PROPERTIES FAIL_REGULAR_EXPRESSION "${RELAXED_EXAMPLE_TEST_FAIL_REGEX}")
+    if(DEPTHAI_TEST_EXAMPLES AND TEST ${example_name})
+        set_tests_properties(${example_name} PROPERTIES FAIL_REGULAR_EXPRESSION "${RELAXED_EXAMPLE_TEST_FAIL_REGEX}")
+    endif()
 endfunction()
 
 # Function for setting test labels, including label shortcuts
