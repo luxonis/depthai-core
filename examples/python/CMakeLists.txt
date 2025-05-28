@@ -138,13 +138,13 @@ if(DEPTHAI_PYTHON_TEST_EXAMPLES)
     )
 
     # Sets a regex catching any logged warnings, errors or critical (coming either from device or host)
-    set_tests_properties (install_requirements PROPERTIES FAIL_REGULAR_EXPRESSION ${STRICT_EXAMPLE_TEST_FAIL_REGEX})
+    set_tests_properties (install_requirements PROPERTIES FAIL_REGULAR_EXPRESSION "${STRICT_EXAMPLE_TEST_FAIL_REGEX}")
 
 endif()
 
 function(dai_example_test_relax_fail_regex example_name)
     set(example_name "py_${example_name}")
-    set_tests_properties(${example_name} PROPERTIES FAIL_REGULAR_EXPRESSION ${RELAXED_EXAMPLE_TEST_FAIL_REGEX})
+    set_tests_properties(${example_name} PROPERTIES FAIL_REGULAR_EXPRESSION "${RELAXED_EXAMPLE_TEST_FAIL_REGEX}")
 endfunction()
 
 
