@@ -1,6 +1,6 @@
 #include <catch2/catch_all.hpp>
 
-#include "../../src/utility/EepromDataParser.hpp"
+#include <utility/EepromDataParser.hpp>
 
 struct ProductDevice {
     std::string oldProductName, productName, deviceName;

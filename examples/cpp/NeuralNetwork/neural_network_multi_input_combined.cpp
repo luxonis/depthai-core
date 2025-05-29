@@ -11,7 +11,10 @@ int main() {
     cv::Mat lenaImageCv = cv::imread(LENNA_PATH);
     cv::resize(lenaImageCv, lenaImageCv, cv::Size(256, 256));
     cv::cvtColor(lenaImageCv, lenaImageCv, cv::COLOR_BGR2RGB);
-    xt::xarray<uint8_t> lenaImage = xt::adapt((uint8_t*)lenaImageCv.data, {lenaImageCv.rows, lenaImageCv.cols, 3});
+
+    // Create xt::xarray from cv::Mat
+    std::vector<uint8_t> lenaImageData(lenaImageCv.data, lenaImageCv.data + lenaImageCv.total() * lenaImageCv.channels());
+    xt::xarray<uint8_t> lenaImage = xt::adapt(lenaImageData);
 
     // Create pipeline
     dai::Pipeline pipeline;
