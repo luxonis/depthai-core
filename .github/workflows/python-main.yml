@@ -106,13 +106,13 @@ jobs:
         uses: actions/cache@v3
         with:
           path: /home/runner/.vcpkg/
-          key: vcpkg-pytest-${{ matrix.os }}
+          key: vcpkg-${{ matrix.os }}
       - name: Cache vcpkg folder
         if: matrix.os == 'windows-latest'
         uses: actions/cache@v3
         with:
           path: C:/.vcpkg/
-          key: vcpkg-pytest-${{ matrix.os }}
+          key: vcpkg-${{ matrix.os }}
       - name: Export GitHub Actions cache environment variables
         uses: actions/github-script@v7
         with:
@@ -200,7 +200,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: C:/.vcpkg
-          key: vcpkg-msvc
+          key: vcpkg-windows-latest
       - uses: actions/checkout@v3
         with:
           submodules: 'recursive'
@@ -274,7 +274,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: /Users/runner/.vcpkg
-          key: vcpkg-macos-latest
+          key: vcpkg-${{ matrix.os }}
       - name: List vcpkg cache directory
         run: |
           ls -a -l /Users/runner/.vcpkg || true
@@ -352,7 +352,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: /home/runner/.vcpkg
-          key: vcpkg-x86_64
+          key: vcpkg-manylinux-x86_64
       - name: Export GitHub Actions cache environment variables
         uses: actions/github-script@v7
         with:
@@ -425,8 +425,12 @@ jobs:
       DEPTHAI_BUILD_PCL: ON
       DEPTHAI_BUILD_RTABMAP: ON
       DEPTHAI_BUILD_KOMPUTE: ON
-      VCPKG_MAX_CONCURRENCY: "2"
     steps:
+      - name: Cache vcpkg folder
+        uses: actions/cache@v3
+        with:
+          path: /home/runner/.vcpkg
+          key: vcpkg-manylinux-arm64
       - name: Export GitHub Actions cache environment variables
         uses: actions/github-script@v7
         with:
