@@ -25,7 +25,8 @@ struct Color {
     Color(float r, float g, float b, float a) {
         // r,g,b,a values should be in range [0.0, 1.0]
         auto check = [](float val) -> float {
-            if(val < 0.0f || val > 1.0f) {
+        const float epsilon = 1e-6f;
+            if(val < (0.0f - epsilon) || val > (1.0f + epsilon)) {
                 throw std::invalid_argument("Color values should be in range [0.0, 1.0]");
             }
             return val;
