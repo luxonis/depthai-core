@@ -1,7 +1,7 @@
 #include <iostream>
 #include <opencv2/opencv.hpp>
-#include <xtensor/xadapt.hpp>
-#include <xtensor/xarray.hpp>
+#include <xtensor/containers/xadapt.hpp>
+#include <xtensor/containers/xarray.hpp>
 
 #include "depthai/depthai.hpp"
 
