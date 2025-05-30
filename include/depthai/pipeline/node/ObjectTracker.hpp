@@ -40,6 +40,12 @@ class ObjectTracker : public DeviceNodeCRTP<DeviceNode, ObjectTracker, ObjectTra
     Input inputDetections{*this, {"inputDetections", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::ImgDetections, true}}}, true}};
 
     /**
+     * Input ObjectTrackerConfig message with ability to modify parameters at runtime.
+     * Default queue is non-blocking with size 4.
+     */
+    Input inputConfig{*this, {"inputConfig", DEFAULT_GROUP, false, 4, {{DatatypeEnum::ObjectTrackerConfig, false}}}, true};
+
+    /**
      * Outputs Tracklets message that carries object tracking results.
      */
     Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::Tracklets, false}}}}};

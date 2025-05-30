@@ -307,6 +307,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/ToFConfig.cpp
     src/pipeline/datatype/BenchmarkReport.cpp
     src/pipeline/datatype/PointCloudConfig.cpp
+    src/pipeline/datatype/ObjectTrackerConfig.cpp
     src/pipeline/datatype/PointCloudData.cpp
     src/pipeline/datatype/RGBDData.cpp
     src/pipeline/datatype/MessageGroup.cpp
