@@ -117,7 +117,7 @@ if(NOT DEPTHAI_JSON_EXTERNAL)
     FetchContent_Declare(
         nlohmann_json
         GIT_REPOSITORY https://github.com/nlohmann/json.git
-        GIT_TAG        v3.11.3
+        GIT_TAG        v3.12.0
     )
     # Json is a public dependancy, so it has to be installed
     set(JSON_Install ON CACHE BOOL "Install nlohmann_json" FORCE)
