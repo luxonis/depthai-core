@@ -8,6 +8,8 @@ endif()
 
 find_program(CCACHE_PROGRAM ccache)
 
+set(CMAKE_POLICY_VERSION_MINIMUM 3.5) # Support for CMake 4
+
 if(CCACHE_PROGRAM)
     message(STATUS "Using ccache: ${CCACHE_PROGRAM}")
 

@@ -85,14 +85,14 @@ if(DEPTHAI_XTENSOR_SUPPORT)
         FetchContent_Declare(
             xtl
             GIT_REPOSITORY https://github.com/xtensor-stack/xtl.git
-            GIT_TAG        0.7.6
+            GIT_TAG        0.8.0
             GIT_SHALLOW    TRUE
         )
 
         FetchContent_Declare(
             xtensor
             GIT_REPOSITORY https://github.com/xtensor-stack/xtensor.git
-            GIT_TAG        0.24.3
+            GIT_TAG        0.26.0
             GIT_SHALLOW    TRUE
         )
         FetchContent_MakeAvailable(xtl xtensor)
