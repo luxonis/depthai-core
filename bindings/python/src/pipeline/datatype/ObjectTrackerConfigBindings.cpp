@@ -45,9 +45,8 @@ void bind_objecttrackerconfig(pybind11::module& m, void* pCallstack) {
 
         // .def("set", &ObjectTrackerConfig::set, py::arg("config"), DOC(dai, ObjectTrackerConfig, set))
         // .def("get", &ObjectTrackerConfig::get, DOC(dai, ObjectTrackerConfig, get))
-        .def("trackletIdsToRemove", &ObjectTrackerConfig::trackletIdsToRemove, DOC(dai, ObjectTrackerConfig, trackletIdsToRemove))
         .def("forceRemoveID", &ObjectTrackerConfig::forceRemoveID, DOC(dai, ObjectTrackerConfig, forceRemoveID))
         .def("forceRemoveIDs", &ObjectTrackerConfig::forceRemoveIDs, DOC(dai, ObjectTrackerConfig, forceRemoveIDs))
-
+    ;
     // add aliases
 }
