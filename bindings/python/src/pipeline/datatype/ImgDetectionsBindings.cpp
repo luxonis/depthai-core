@@ -36,7 +36,7 @@ void bind_imgdetections(pybind11::module& m, void* pCallstack) {
     // Metadata / raw
     imgDetection.def(py::init<>())
         .def_readwrite("label", &ImgDetection::label)
-        .def_readwrite("name", &ImgDetection::name)
+        .def_readwrite("labelName", &ImgDetection::labelName)
         .def_readwrite("confidence", &ImgDetection::confidence)
         .def_readwrite("xmin", &ImgDetection::xmin)
         .def_readwrite("ymin", &ImgDetection::ymin)
