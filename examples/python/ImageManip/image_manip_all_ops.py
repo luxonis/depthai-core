@@ -45,7 +45,7 @@ for name, config in manip_ops:
 
 imgFrame = dai.ImgFrame()
 
-input_frame = cv2.imread('./MRE/lenna.png') # 512x512
+input_frame = cv2.imread('../models/lenna.png') # 512x512
 # Send 256x256 image to the device
 imgFrame.setCvFrame(cv2.pyrDown(input_frame), dai.ImgFrame.Type.BGR888i)
 inputQueue.send(imgFrame)
