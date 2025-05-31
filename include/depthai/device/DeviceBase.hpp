@@ -618,7 +618,7 @@ class DeviceBase {
     /**
      * Sets the Calibration at runtime. This is not persistent and will be lost after device reset.
      *
-     * @throws std::runtime_exception if failed to set the calibration
+     * @throws std::runtime_error if failed to set the calibration
      * @param calibrationObj CalibrationHandler object which is loaded with calibration information.
      *
      */

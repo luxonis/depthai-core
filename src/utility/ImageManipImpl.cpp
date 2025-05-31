@@ -10,7 +10,10 @@
     #define _RESTRICT __restrict__
 #endif
 
+#ifdef UNUSED
+#undef UNUSED
 #define UNUSED(x) (void)(x)
+#endif
 
 void dai::impl::transformOpenCV(const uint8_t* src,
                                 uint8_t* dst,
