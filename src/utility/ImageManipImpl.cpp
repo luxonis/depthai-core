@@ -10,11 +10,6 @@
     #define _RESTRICT __restrict__
 #endif
 
-#ifdef UNUSED
-#undef UNUSED
-#define UNUSED(x) (void)(x)
-#endif
-
 void dai::impl::transformOpenCV(const uint8_t* src,
                                 uint8_t* dst,
                                 const size_t srcWidth,
@@ -105,23 +100,23 @@ void dai::impl::transformOpenCV(const uint8_t* src,
                             bg);  // TODO(asahtik): Add support for different border types
     }
 #else
-    UNUSED(src);
-    UNUSED(dst);
-    UNUSED(srcWidth);
-    UNUSED(srcHeight);
-    UNUSED(srcStride);
-    UNUSED(dstWidth);
-    UNUSED(dstHeight);
-    UNUSED(dstStride);
-    UNUSED(numChannels);
-    UNUSED(bpp);
-    UNUSED(matrix);
-    UNUSED(background);
-    UNUSED(srcImgSpecs);
-    UNUSED(sourceMinX);
-    UNUSED(sourceMinY);
-    UNUSED(sourceMaxX);
-    UNUSED(sourceMaxY);
+    (void)(src);
+    (void)(dst);
+    (void)(srcWidth);
+    (void)(srcHeight);
+    (void)(srcStride);
+    (void)(dstWidth);
+    (void)(dstHeight);
+    (void)(dstStride);
+    (void)(numChannels);
+    (void)(bpp);
+    (void)(matrix);
+    (void)(background);
+    (void)(srcImgSpecs);
+    (void)(sourceMinX);
+    (void)(sourceMinY);
+    (void)(sourceMaxX);
+    (void)(sourceMaxY);
 #endif
 }
 void dai::impl::transformFastCV(const uint8_t* src,
@@ -196,24 +191,24 @@ void dai::impl::transformFastCV(const uint8_t* src,
         }
     }
 #else
-    UNUSED(src);
-    UNUSED(dst);
-    UNUSED(srcWidth);
-    UNUSED(srcHeight);
-    UNUSED(srcStride);
-    UNUSED(dstWidth);
-    UNUSED(dstHeight);
-    UNUSED(dstStride);
-    UNUSED(numChannels);
-    UNUSED(bpp);
-    UNUSED(matrix);
-    UNUSED(background);
-    UNUSED(srcImgSpecs);
-    UNUSED(sourceMinX);
-    UNUSED(sourceMinY);
-    UNUSED(sourceMaxX);
-    UNUSED(sourceMaxY);
-    UNUSED(fastCvBorder);
+    (void)(src);
+    (void)(dst);
+    (void)(srcWidth);
+    (void)(srcHeight);
+    (void)(srcStride);
+    (void)(dstWidth);
+    (void)(dstHeight);
+    (void)(dstStride);
+    (void)(numChannels);
+    (void)(bpp);
+    (void)(matrix);
+    (void)(background);
+    (void)(srcImgSpecs);
+    (void)(sourceMinX);
+    (void)(sourceMinY);
+    (void)(sourceMaxX);
+    (void)(sourceMaxY);
+    (void)(fastCvBorder);
 #endif
 }
 
