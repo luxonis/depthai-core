@@ -162,6 +162,7 @@ bool deserializationSupported(DatatypeEnum datatype) {
         case DatatypeEnum::ImageAlignConfig:
         case DatatypeEnum::ImgAnnotations:
         case DatatypeEnum::RGBDData:
+        case DatatypeEnum::ObjectTrackerConfig:
             return false;
     }
     return false;
