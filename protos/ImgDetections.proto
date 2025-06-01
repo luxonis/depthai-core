@@ -18,5 +18,5 @@ message ImgDetection {
     float ymin = 4;
     float xmax = 5;
     float ymax = 6;
-    string name = 7;
+    string labelName = 7;
 }
