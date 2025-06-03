@@ -6,6 +6,9 @@ set(DEPTHAI_ENABLE_BACKWARD @DEPTHAI_ENABLE_BACKWARD@)
 
 set(DEPTHAI_ENABLE_CURL @DEPTHAI_ENABLE_CURL@)
 
+# Get if the library was built with Hunter or not
+set(DEPTHAI_HUNTER_ENABLED @HUNTER_ENABLED@)
+
 # Specify that this is config mode (Called by find_package)
 set(CONFIG_MODE TRUE)
 
