@@ -109,15 +109,14 @@ std::vector<std::string> filenamesInTar(const Path& path) {
 
     struct archive* a;
     struct archive_entry* entry;
-    int r;
 
     a = archive_read_new();
     archive_read_support_filter_all(a);
     archive_read_support_format_all(a);
 #if defined(_WIN32) && defined(_MSC_VER)
-    const auto res = archive_read_open_filename_w(a, std::filesystem::path(path.native()).c_str(), 10240);
+    int r = archive_read_open_filename_w(a, std::filesystem::path(path.native()).c_str(), 10240);
 #else
-    const auto res = archive_read_open_filename(a, std::filesystem::path(path.native()).c_str(), 10240);
+    int r = archive_read_open_filename(a, std::filesystem::path(path.native()).c_str(), 10240);
 #endif
     if(r != ARCHIVE_OK) {
         throw std::runtime_error("Could not open archive.");
@@ -137,16 +136,15 @@ std::vector<std::string> filenamesInTar(const Path& path) {
 void untarFiles(const Path& path, const std::vector<std::string>& files, const std::vector<std::string>& outFiles) {
     struct archive* a;
     struct archive_entry* entry;
-    int r;
     std::ofstream outFileStream;
 
     a = archive_read_new();
     archive_read_support_filter_all(a);
     archive_read_support_format_all(a);
 #if defined(_WIN32) && defined(_MSC_VER)
-    const auto res = archive_read_open_filename_w(a, std::filesystem::path(path.native()).c_str(), 10240);
+    int r = archive_read_open_filename_w(a, std::filesystem::path(path.native()).c_str(), 10240);
 #else
-    const auto res = archive_read_open_filename(a, std::filesystem::path(path.native()).c_str(), 10240);
+    int r = archive_read_open_filename(a, std::filesystem::path(path.native()).c_str(), 10240);
 #endif
     if(r != ARCHIVE_OK) {
         throw std::runtime_error("Could not open archive.");
