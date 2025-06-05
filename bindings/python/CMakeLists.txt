@@ -133,6 +133,7 @@ set(SOURCE_LIST
     src/pipeline/datatype/TrackletsBindings.cpp
     src/pipeline/datatype/BenchmarkReportBindings.cpp
     src/pipeline/datatype/PointCloudConfigBindings.cpp
+    src/pipeline/datatype/ObjectTrackerConfigBindings.cpp
     src/pipeline/datatype/PointCloudDataBindings.cpp
     src/pipeline/datatype/TransformDataBindings.cpp
     src/pipeline/datatype/ImageAlignConfigBindings.cpp

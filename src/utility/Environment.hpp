@@ -234,7 +234,7 @@ inline void setEnv(const std::string& var, const std::string& value, bool overwr
 inline void unsetEnv(const std::string& var) {
 #ifdef _WIN32
     SetEnvironmentVariableA(var.c_str(), nullptr);
-    _putenv_s(var.c_str(), nullptr);
+    _putenv_s(var.c_str(), "");
 #else
     unsetenv(var.c_str());
 #endif

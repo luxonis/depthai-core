@@ -616,6 +616,23 @@ class DeviceBase {
     void flashCalibration2(CalibrationHandler calibrationDataHandler);
 
     /**
+     * Sets the Calibration at runtime. This is not persistent and will be lost after device reset.
+     *
+     * @throws std::runtime_error if failed to set the calibration
+     * @param calibrationObj CalibrationHandler object which is loaded with calibration information.
+     *
+     */
+    void setCalibration(CalibrationHandler calibrationDataHandler);
+
+    /**
+     * Retrieves the CalibrationHandler object containing the non-persistent calibration
+     *
+     * @throws std::runtime_exception if failed to get the calibration
+     * @returns The CalibrationHandler object containing the non-persistent calibration
+     */
+    CalibrationHandler getCalibration();
+
+    /**
      * Fetches the EEPROM data from the device and loads it into CalibrationHandler object
      * If no calibration is flashed, it returns default
      *

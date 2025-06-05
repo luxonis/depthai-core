@@ -2,6 +2,8 @@
 
 This document describes the changes between the v2 and v3 APIs of DepthAI and how to migrate existing code.
 
+> ℹ️ **Tip**: Copy this documents raw Markdown (not the rendered HTML) and paste it into your preferred large-language-model (LLM) alongside the code you want to port. The model usually generates a solid starting point for porting your code.
+
 ## What's new in the v3 API
 
 * No more **explicit** XLink nodes – the XLink “bridges” are created automatically.
