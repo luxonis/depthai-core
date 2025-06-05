@@ -39,4 +39,5 @@ TEST_CASE("Test existence of directories with non-ascii characters") {
 
     // Remove it
     std::filesystem::remove(path2);
+    std::filesystem::remove(path);
 }
