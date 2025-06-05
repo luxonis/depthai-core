@@ -744,7 +744,6 @@ Path getYamlFilePath(const Path& name, const Path& modelsPath) {
 
         // if path does not contain the yaml or yml extension, add it
         if(!utility::isYamlFile(path)) {
-
             bool hasExtension = std::filesystem::path(path.native()).has_extension();
             if(hasExtension) {
                 throw std::runtime_error("Model file not found!!!: " + path.string());
@@ -761,8 +760,8 @@ Path getYamlFilePath(const Path& name, const Path& modelsPath) {
             }
 
             throw std::runtime_error("Model file not found: (neither `" + path.string() + ".yaml` nor `" + path.string()
-                                        + ".yml` exists) | If you meant to use a relative path, prefix with ./ (e.g. `./" + name.string()
-                                        + "`) | Also, make sure the file exists. Read the documentation for more information.");
+                                     + ".yml` exists) | If you meant to use a relative path, prefix with ./ (e.g. `./" + name.string()
+                                     + "`) | Also, make sure the file exists. Read the documentation for more information.");
         }
         return path;
     }

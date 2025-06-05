@@ -7,7 +7,6 @@
 
 #include "utility/Platform.hpp"
 
-
 namespace dai {
 
 std::optional<std::string> saveFileToTemporaryDirectory(std::vector<uint8_t> data, std::string filename, Path path = "") {

@@ -1,8 +1,7 @@
 #include <cstdint>
+#include <depthai/utility/Path.hpp>
 #include <string>
 #include <vector>
-
-#include <depthai/utility/Path.hpp>
 
 namespace dai {
 namespace utility {
