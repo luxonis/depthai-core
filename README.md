@@ -107,7 +107,7 @@ Then in your CMake project, add the following lines to your `CMakeLists.txt` fil
 
 find_package(depthai CONFIG REQUIRED)
 ...
-target_link_libraries([my-app] PRIVATE depthai::opencv)
+target_link_libraries([my-app] PRIVATE depthai::core)
 ```
 
 And point CMake to your install directory:
