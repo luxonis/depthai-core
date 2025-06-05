@@ -8,6 +8,7 @@
 #include "depthai/nn_archive/NNArchiveEntry.hpp"
 #include "depthai/nn_archive/NNArchiveVersionedConfig.hpp"
 #include "depthai/openvino/OpenVINO.hpp"
+#include "depthai/utility/Path.hpp"
 #include "depthai/utility/arg.hpp"
 
 namespace dai {
@@ -34,7 +35,7 @@ class NNArchive {
      * @param archivePath: Path to the archive file
      * @param options: Archive options such as compression, number of shaves, etc. See NNArchiveOptions.
      */
-    NNArchive(const std::string& archivePath, NNArchiveOptions options = {});
+    NNArchive(const Path& archivePath, NNArchiveOptions options = {});
 
     /**
      * @brief Return a SuperVINO::Blob from the archive if getModelType() returns BLOB, nothing otherwise
@@ -112,10 +113,10 @@ class NNArchive {
 
    private:
     // Read model from archive
-    std::vector<uint8_t> readModelFromArchive(const std::string& archivePath, const std::string& modelPathInArchive) const;
+    std::vector<uint8_t> readModelFromArchive(const Path& archivePath, const std::string& modelPathInArchive) const;
 
     // Unpack archive to tmp directory
-    void unpackArchiveInDirectory(const std::string& archivePath, const std::string& directory) const;
+    void unpackArchiveInDirectory(const Path& archivePath, const Path& directory) const;
 
     model::ModelType modelType;
     NNArchiveOptions archiveOptions;
@@ -130,7 +131,7 @@ class NNArchive {
     std::shared_ptr<OpenVINO::SuperBlob> superblobPtr;
 
     // Other formats - return path to the unpacked archive
-    std::string unpackedModelPath;
+    Path unpackedModelPath;
 };
 
 }  // namespace dai

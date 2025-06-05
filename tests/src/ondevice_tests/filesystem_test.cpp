@@ -163,7 +163,7 @@ TEST_CASE("dai::Path with NN blobs") {
 #endif
 
     // use blob at known test path
-    const std::string blobPath(BLOB_PATH);
+    const dai::Path blobPath(BLOB_PATH);
     const dai::Path diaPath2(BLOB_PATH);
     const dai::Path diaPath3(blobPath);
     const dai::Path diaPath4(diaPath2);

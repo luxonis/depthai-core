@@ -71,7 +71,7 @@ void setThreadName(JoiningThread& thread, const std::string& name) {
     return;
 }
 
-std::string getTempPath() {
+dai::Path getTempPath() {
     std::string tmpPath;
 #if defined(_WIN32) || defined(__USE_W32_SOCKETS)
     char tmpPathBuffer[MAX_PATH];
@@ -87,34 +87,20 @@ std::string getTempPath() {
         tmpPath += '/';
     }
 #endif
-    return tmpPath;
+    return dai::Path(tmpPath);
 }
 
-bool checkPathExists(const std::string& path, bool directory) {
-#if defined(_WIN32) || defined(__USE_W32_SOCKETS)
-    DWORD ftyp = GetFileAttributesA(path.c_str());
-    if(ftyp == INVALID_FILE_ATTRIBUTES) {
-        return false;  // Path does not exist
-    } else if(ftyp & FILE_ATTRIBUTE_DIRECTORY || !directory) {
-        return true;  // Path is a directory
+bool checkPathExists(const dai::Path& path, bool directory) {
+    if(directory) {
+        return std::filesystem::exists(path) && std::filesystem::is_directory(path);
     } else {
-        return false;  // Path is not a directory
+        return std::filesystem::exists(path);
     }
-#else
-    struct stat info;
-    if(stat(path.c_str(), &info) != 0) {
-        return false;  // Path does not exist
-    } else if(info.st_mode & S_IFDIR || !directory) {
-        return true;  // Path is a directory
-    } else {
-        return false;  // Path is not a directory
-    }
-#endif
 }
 
-bool checkWritePermissions(const std::string& path) {
+bool checkWritePermissions(const dai::Path& path) {
 #if defined(_WIN32) || defined(__USE_W32_SOCKETS)
-    DWORD ftyp = GetFileAttributesA(path.c_str());
+    DWORD ftyp = GetFileAttributesA(path.string().c_str());
     if(ftyp == INVALID_FILE_ATTRIBUTES) {
         return false;  // Path does not exist
     } else if(ftyp & FILE_ATTRIBUTE_READONLY) {
@@ -124,7 +110,7 @@ bool checkWritePermissions(const std::string& path) {
     }
 #else
     struct stat info;
-    if(stat(path.c_str(), &info) != 0) {
+    if(stat(path.string().c_str(), &info) != 0) {
         return false;  // Path does not exist
     } else if(info.st_mode & S_IWUSR) {
         return true;  // Path is writable
@@ -134,30 +120,12 @@ bool checkWritePermissions(const std::string& path) {
 #endif
 }
 
-std::string joinPaths(const std::string& p1, const std::string& p2) {
-    char sep = '/';
-    std::string tmp = p1;
-
-#ifdef _WIN32
-    sep = '\\';
-#endif
-
-    // Add separator if it is not included in the first path:
-    if(p1[p1.length() - 1] != sep) {
-        tmp += sep;
-        return tmp + p2;
-    } else {
-        return p1 + p2;
-    }
+dai::Path joinPaths(const dai::Path& p1, const dai::Path& p2) {
+    return dai::Path(std::filesystem::path(p1) / p2);
 }
 
-std::string getDirFromPath(const std::string& path) {
-    std::string absPath = std::filesystem::absolute(path).string();
-    if(checkPathExists(absPath, true)) {
-        return absPath;
-    }
-    size_t found = absPath.find_last_of("/\\");
-    return absPath.substr(0, found);
+dai::Path getDirFromPath(const dai::Path& path) {
+    return dai::Path(std::filesystem::absolute(path).parent_path());
 }
 
 }  // namespace platform

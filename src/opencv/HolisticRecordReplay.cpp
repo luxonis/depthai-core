@@ -177,13 +177,13 @@ bool setupHolisticReplay(Pipeline& pipeline,
                          std::unordered_map<std::string, std::string>& outFilenames,
                          bool legacy) {
     UNUSED(deviceId);
-    const std::string rootPath = platform::getDirFromPath(replayPath);
+    const dai::Path rootPath = platform::getDirFromPath(replayPath);
     auto sources = pipeline.getSourceNodes();
     try {
         bool useTar = !platform::checkPathExists(replayPath, true);
         std::vector<std::string> tarNodenames;
         std::string tarRoot;
-        std::string rootPath = replayPath;
+        dai::Path rootPath = replayPath;
         if(useTar) {
             rootPath = platform::getDirFromPath(replayPath);
             tarNodenames = filenamesInTar(replayPath);

@@ -1,20 +1,20 @@
 #pragma once
 
 #include <cstdint>
-#include <string>
 
 #include "depthai/utility/JoiningThread.hpp"
+#include "depthai/utility/Path.hpp"
 
 namespace dai {
 namespace platform {
 
 uint32_t getIPv4AddressAsBinary(std::string address);
 std::string getIPv4AddressAsString(std::uint32_t binary);
-std::string getTempPath();
-bool checkPathExists(const std::string& path, bool directory = false);
-bool checkWritePermissions(const std::string& path);
-std::string joinPaths(const std::string& path1, const std::string& path2);
-std::string getDirFromPath(const std::string& path);
+dai::Path getTempPath();
+bool checkPathExists(const dai::Path& path, bool directory = false);
+bool checkWritePermissions(const dai::Path& path);
+dai::Path joinPaths(const dai::Path& path1, const dai::Path& path2);
+dai::Path getDirFromPath(const dai::Path& path);
 
 // TODO change this to std::thread
 void setThreadName(JoiningThread& thread, const std::string& name);

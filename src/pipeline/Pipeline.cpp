@@ -899,17 +899,18 @@ PipelineImpl::~PipelineImpl() {
         } catch(const std::exception& e) {
             Logging::getInstance().logger.error("Record: Failed to create tar file: {}", e.what());
         }
-        std::remove(platform::joinPaths(recordConfig.outputDir, "record_config.json").c_str());
+        std::filesystem::remove(platform::joinPaths(recordConfig.outputDir, "record_config.json"));
     }
 
     if(removeRecordReplayFiles && recordConfig.state != RecordConfig::RecordReplayState::NONE) {
         Logging::getInstance().logger.info("Record and Replay: Removing temporary files");
         for(auto& kv : recordReplayFilenames) {
             if(kv.first != "record_config") {
-                std::remove((kv.second + ".mcap").c_str());
-                std::remove((kv.second + ".mp4").c_str());
-            } else
-                std::remove(kv.second.c_str());
+                std::filesystem::remove(kv.second + ".mcap");
+                std::filesystem::remove(kv.second + ".mp4");
+            } else {
+                std::filesystem::remove(kv.second);
+            }
         }
     }
 }

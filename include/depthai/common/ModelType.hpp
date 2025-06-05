@@ -1,6 +1,6 @@
 #pragma once
 
-#include <string>
+#include <depthai/utility/Path.hpp>
 
 namespace dai {
 namespace model {
@@ -16,7 +16,7 @@ enum class ModelType { BLOB, SUPERBLOB, DLC, NNARCHIVE, OTHER };
  * @param modelPath Path to model
  * @return ModelType
  */
-ModelType readModelType(const std::string& modelPath);
+ModelType readModelType(const Path& modelPath);
 
 }  // namespace model
 }  // namespace dai

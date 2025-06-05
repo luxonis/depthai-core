@@ -177,6 +177,15 @@ class Path {
     }
 
     /**
+     * @brief Implicitly convert to std::filesystem::path so that we can use the std::filesystem::path functions on Path objects
+     *
+     * @return std::filesystem::path
+     */
+    operator std::filesystem::path() const noexcept {
+        return std::filesystem::path(_nativePath);
+    }
+
+    /**
      * @brief Returns native-encoding string by const reference, suitable for use with OS APIs
      *
      * @return const std::string& of utf-8 on most OSs, const std::wstring& of utf-16 on Windows
@@ -193,6 +202,10 @@ class Path {
     // TODO add back DEPTHAI_NODISCARD once sphinx fixes are in place
     bool empty() const noexcept {
         return _nativePath.empty();
+    }
+
+    inline friend std::ostream& operator<<(std::ostream& os, const Path& path) {
+        return os << path.string();
     }
 
    private:

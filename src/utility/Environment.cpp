@@ -40,5 +40,10 @@ std::vector<std::string> splitList(const std::string& list, const std::string& d
     return result;
 }
 
+template <>
+dai::Path getEnvAs(const std::string& var, dai::Path defaultValue, spdlog::logger& logger, bool cache) {
+    return dai::Path(getEnvAs<std::string>(var, defaultValue.u8string(), logger, cache));
+}
+
 }  // namespace utility
 }  // namespace dai

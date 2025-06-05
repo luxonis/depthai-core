@@ -26,6 +26,23 @@ PYBIND11_MAKE_OPAQUE(std::vector<uint8_t>);
 PYBIND11_MAKE_OPAQUE(std::vector<dai::Point2f>);
 namespace pybind11 {
 namespace detail {
+
+// https://github.com/pybind/pybind11/blob/master/include/pybind11/stl/filesystem.h
+namespace {
+static PyObject* unicode_from_fs_native(const std::string& w) {
+#if !defined(PYPY_VERSION)
+    return PyUnicode_DecodeFSDefaultAndSize(w.c_str(), ssize_t(w.size()));
+#else
+    // PyPy mistakenly declares the first parameter as non-const.
+    return PyUnicode_DecodeFSDefaultAndSize(const_cast<char*>(w.c_str()), ssize_t(w.size()));
+#endif
+}
+
+static PyObject* unicode_from_fs_native(const std::wstring& w) {
+    return PyUnicode_FromWideChar(w.c_str(), ssize_t(w.size()));
+}
+}  // namespace
+
 template <>
 struct type_caster<dai::Path> {
    public:
@@ -63,8 +80,11 @@ struct type_caster<dai::Path> {
     // indicate the return value policy and parent object (for
     // ``return_value_policy::reference_internal``) and are generally
     // ignored by implicit casters.
-    static handle cast(dai::Path src, return_value_policy /* policy */, handle /* parent */) {
-        return str{src.u8string()};
+    static handle cast(const dai::Path& path, return_value_policy, handle) {
+        if(auto py_str = unicode_from_fs_native(path.native())) {
+            return py_str;
+        }
+        return nullptr;
     }
 };
 }  // namespace detail

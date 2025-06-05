@@ -13,9 +13,9 @@
 
 namespace dai {
 
-NNArchive::NNArchive(const std::string& archivePath, NNArchiveOptions options) : archiveOptions(options) {
+NNArchive::NNArchive(const Path& archivePath, NNArchiveOptions options) : archiveOptions(options) {
     // Make sure archive exits
-    if(!std::filesystem::exists(archivePath)) DAI_CHECK_V(false, "Archive file does not exist: {}", archivePath);
+    if(!std::filesystem::exists(archivePath)) DAI_CHECK_V(false, "Archive file does not exist: {}", archivePath.string());
 
     // Read config
     archiveVersionedConfigPtr.reset(new NNArchiveVersionedConfig(archivePath, archiveOptions.compression()));
@@ -113,7 +113,7 @@ const NNArchiveVersionedConfig& NNArchive::getVersionedConfig() const {
     return *archiveVersionedConfigPtr;
 }
 
-std::vector<uint8_t> NNArchive::readModelFromArchive(const std::string& archivePath, const std::string& modelPathInArchive) const {
+std::vector<uint8_t> NNArchive::readModelFromArchive(const Path& archivePath, const std::string& modelPathInArchive) const {
     utility::ArchiveUtil archive(archivePath, archiveOptions.compression());
     std::vector<uint8_t> modelBytes;
     const bool success = archive.readEntry(modelPathInArchive, modelBytes);
@@ -121,7 +121,7 @@ std::vector<uint8_t> NNArchive::readModelFromArchive(const std::string& archiveP
     return modelBytes;
 }
 
-void NNArchive::unpackArchiveInDirectory(const std::string& archivePath, const std::string& directory) const {
+void NNArchive::unpackArchiveInDirectory(const Path& archivePath, const Path& directory) const {
     utility::ArchiveUtil archive(archivePath, archiveOptions.compression());
     archive.unpackArchiveInDirectory(directory);
 }

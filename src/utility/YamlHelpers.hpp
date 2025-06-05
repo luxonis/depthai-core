@@ -2,6 +2,7 @@
 
 #include <yaml-cpp/yaml.h>
 
+#include <depthai/utility/Path.hpp>
 #include <fstream>
 
 namespace dai {
@@ -13,7 +14,7 @@ namespace utility {
  * @param path: Path to yaml file
  * @return YAML::Node: Parsed yaml file as node
  */
-inline YAML::Node loadYaml(const std::string& path) {
+inline YAML::Node loadYaml(const Path& path) {
     return YAML::LoadFile(path);
 }
 
@@ -23,7 +24,7 @@ inline YAML::Node loadYaml(const std::string& path) {
  * @param node: YAML node to save
  * @param path: Path to save yaml file
  */
-inline void saveYaml(const YAML::Node& node, const std::string& path) {
+inline void saveYaml(const YAML::Node& node, const Path& path) {
     std::ofstream fout(path);
     fout << node;
     fout.close();
@@ -35,8 +36,8 @@ inline void saveYaml(const YAML::Node& node, const std::string& path) {
  * @param path: Path to file
  * @return bool: True if file is yaml file
  */
-inline bool isYamlFile(const std::string& path) {
-    std::string extension = path.substr(path.find_last_of(".") + 1);
+inline bool isYamlFile(const Path& path) {
+    std::string extension = path.native().substr(path.native().find_last_of(".") + 1);
     return extension == "yaml" || extension == "yml";
 }
 

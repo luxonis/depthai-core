@@ -208,15 +208,15 @@ void NeuralNetwork::setBlob(OpenVINO::Blob blob) {
 }
 
 void NeuralNetwork::setModelPath(const Path& modelPath) {
-    switch(model::readModelType(modelPath.string())) {
+    switch(model::readModelType(modelPath)) {
         case model::ModelType::BLOB:
-            setBlob(OpenVINO::Blob(modelPath.string()));
+            setBlob(OpenVINO::Blob(modelPath));
             break;
         case model::ModelType::SUPERBLOB:
-            setBlob(OpenVINO::SuperBlob(modelPath.string()).getBlobWithNumShaves(8));
+            setBlob(OpenVINO::SuperBlob(modelPath).getBlobWithNumShaves(8));
             break;
         case model::ModelType::NNARCHIVE:
-            setNNArchive(NNArchive(modelPath.string()));
+            setNNArchive(NNArchive(modelPath));
             break;
         case model::ModelType::DLC:
         case model::ModelType::OTHER: {

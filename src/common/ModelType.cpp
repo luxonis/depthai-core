@@ -3,10 +3,11 @@
 namespace dai {
 namespace model {
 
-ModelType readModelType(const std::string& modelPath) {
-    auto endsWith = [](const std::string& path, const std::string& ending) {
-        if(ending.size() > path.size()) return false;
-        return std::equal(ending.rbegin(), ending.rend(), path.rbegin());
+ModelType readModelType(const Path& modelPath) {
+    auto endsWith = [](const Path& path, const Path::string_type& ending) {
+        auto native = path.native();
+        if(ending.length() > native.length()) return false;
+        return std::equal(ending.rbegin(), ending.rend(), native.rbegin());
     };
 
     // == Blob ==

@@ -74,7 +74,7 @@ class OpenVINO {
          *
          * @param pathToSuperBlobFile: Path to the superblob file (.superblob suffix)
          */
-        SuperBlob(const std::string& pathToSuperBlobFile);
+        SuperBlob(const Path& pathToSuperBlobFile);
 
         /**
          * @brief Generate a blob with a specific number of shaves
@@ -96,7 +96,7 @@ class OpenVINO {
         };
 
         // Read the SuperBlob file into memory
-        std::vector<uint8_t> readSuperBlobFile(const std::string& path);
+        std::vector<uint8_t> readSuperBlobFile(const Path& path);
 
         // Get a pointer to the first byte of the blob data
         const uint8_t* getBlobDataPointer();
