@@ -50,7 +50,7 @@ void invertSe3Matrix4x4InPlace(std::vector<std::vector<float>>& mat) {
 }  // namespace
 
 CalibrationHandler::CalibrationHandler(dai::Path eepromDataPath) {
-    std::ifstream jsonStream(eepromDataPath);
+    std::ifstream jsonStream(std::filesystem::path(eepromDataPath.native()));
     // TODO(sachin): Check if the file exists first.
     if(!jsonStream.is_open()) {
         throw std::runtime_error("Calibration data file doesn't exist at the provided path. Please provide a absolute path.");
