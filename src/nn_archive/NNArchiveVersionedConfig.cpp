@@ -40,7 +40,7 @@ NNArchiveVersionedConfig::NNArchiveVersionedConfig(const Path& path, NNArchiveEn
         compression == NNArchiveEntry::Compression::RAW_FS || (compression == NNArchiveEntry::Compression::AUTO && utility::ArchiveUtil::isJsonPath(path));
     std::optional<nlohmann::json> maybeJson;
     if(isJson) {
-        std::ifstream jsonStream(path);
+        std::ifstream jsonStream(std::filesystem::path(path.native()));
         maybeJson = nlohmann::json::parse(jsonStream);
     } else {
         utility::ArchiveUtil archive(path, compression);

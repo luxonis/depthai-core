@@ -165,7 +165,7 @@ std::vector<std::uint8_t> Resources::getDeviceFirmware(Device::Config config, da
     // Return binary from file if any of above paths are present
     if(!finalFwBinaryPath.empty()) {
         // Load binary file at path
-        std::ifstream stream(finalFwBinaryPath, std::ios::binary);
+        std::ifstream stream(std::filesystem::path(finalFwBinaryPath.native()), std::ios::binary);
         if(!stream.is_open()) {
             // Throw an error
             // TODO(themarpe) - Unify exceptions into meaningful groups
@@ -292,10 +292,10 @@ std::vector<std::uint8_t> Resources::getBootloaderFirmware(dai::bootloader::Type
     } else if(type == dai::bootloader::Type::NETWORK) {
         blEnvVar = "DEPTHAI_BOOTLOADER_BINARY_ETH";
     }
-    dai::Path blBinaryPath = utility::getEnvAs<std::string>(blEnvVar, "");
+    dai::Path blBinaryPath = utility::getEnvAs<dai::Path>(blEnvVar, "");
     if(!blBinaryPath.empty()) {
         // Load binary file at path
-        std::ifstream stream(blBinaryPath, std::ios::binary);
+        std::ifstream stream(std::filesystem::path(blBinaryPath.native()), std::ios::binary);
         if(!stream.is_open()) {
             // Throw an error
             // TODO(themarpe) - Unify exceptions into meaningful groups
@@ -370,7 +370,7 @@ std::vector<std::uint8_t> Resources::getDeviceFwp(const std::string& fwPath, con
     // Return binary from file if any of above paths are present
     if(!finalFwpPath.empty()) {
         // Load binary file at path
-        std::ifstream stream(finalFwpPath, std::ios::binary);
+        std::ifstream stream(std::filesystem::path(finalFwpPath.native()), std::ios::binary);
         if(!stream.is_open()) {
             // Throw an error
             // TODO(themarpe) - Unify exceptions into meaningful groups

@@ -84,11 +84,11 @@ TEST_CASE("dai::Path utf-8 and native char set handling") {
     REQUIRE(u8length(string4.c_str()) == NATIVELENGTH(path4));
 
     REQUIRE_NOTHROW([&]() {
-        std::ofstream file(path4);
+        std::ofstream file(std::filesystem::path(path4.native()));
         file.write(FILETEXT, sizeof(FILETEXT) - 1);
     }());
     CHECK_NOTHROW([&]() {
-        std::ifstream file(path4, std::ios::binary);
+        std::ifstream file(std::filesystem::path(path4.native()), std::ios::binary);
         if(!file.is_open() || !file.good() || file.bad()) {
             throw std::runtime_error("file not found or corrupted");
         }
@@ -227,7 +227,7 @@ TEST_CASE("dai::Path with CalibrationHandler") {
         dai::Device device;
         dai::CalibrationHandler deviceCalib = device.readCalibration();
         deviceCalib.eepromToJsonFile(strFilename);
-        std::ifstream file(daiFilename, std::ios::binary);
+        std::ifstream file(std::filesystem::path(daiFilename.native()), std::ios::binary);
         if(!file.is_open() || !file.good() || file.bad()) {
             throw std::runtime_error("calibration file not found or corrupted");
         }
@@ -326,7 +326,7 @@ TEST_CASE("dai::Path with AssetManager, StereoDepth") {
     string4 += PATH4;
     const dai::Path path4(string4);
     REQUIRE_NOTHROW([&]() {
-        std::ofstream file(path4);
+        std::ofstream file(std::filesystem::path(path4.native()));
         file.write(FILETEXT, sizeof(FILETEXT) - 1);
     }());
 
@@ -384,7 +384,7 @@ TEST_CASE("dai::Path with Script") {
     string4 += PATH4;
     const dai::Path path4(string4);
     REQUIRE_NOTHROW([&]() {
-        std::ofstream file(path4);
+        std::ofstream file(std::filesystem::path(path4.native()));
         file.write(FILETEXT, sizeof(FILETEXT) - 1);
     }());
 

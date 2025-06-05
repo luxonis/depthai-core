@@ -25,7 +25,7 @@ inline YAML::Node loadYaml(const Path& path) {
  * @param path: Path to save yaml file
  */
 inline void saveYaml(const YAML::Node& node, const Path& path) {
-    std::ofstream fout(path.native());
+    std::ofstream fout(std::filesystem::path(path.native()));
     fout << node;
     fout.close();
 }

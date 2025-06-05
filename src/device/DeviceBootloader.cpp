@@ -234,14 +234,14 @@ std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(const Pip
 void DeviceBootloader::saveDepthaiApplicationPackage(
     const dai::Path& path, const Pipeline& pipeline, const dai::Path& pathToCmd, bool compress, std::string applicationName, bool checkChecksum) {
     auto dap = createDepthaiApplicationPackage(pipeline, pathToCmd, compress, applicationName, checkChecksum);
-    std::ofstream outfile(path, std::ios::binary);
+    std::ofstream outfile(std::filesystem::path(path.native()), std::ios::binary);
     outfile.write(reinterpret_cast<const char*>(dap.data()), dap.size());
 }
 
 void DeviceBootloader::saveDepthaiApplicationPackage(
     const dai::Path& path, const Pipeline& pipeline, bool compress, std::string applicationName, bool checkChecksum) {
     auto dap = createDepthaiApplicationPackage(pipeline, compress, applicationName, checkChecksum);
-    std::ofstream outfile(path, std::ios::binary);
+    std::ofstream outfile(std::filesystem::path(path.native()), std::ios::binary);
     outfile.write(reinterpret_cast<const char*>(dap.data()), dap.size());
 }
 
@@ -844,7 +844,7 @@ std::tuple<bool, std::string> DeviceBootloader::flashBootloader(Memory memory, T
 
     std::vector<uint8_t> package;
     if(!path.empty()) {
-        std::ifstream fwStream(path, std::ios::binary);
+        std::ifstream fwStream(std::filesystem::path(path.native()), std::ios::binary);
         if(!fwStream.is_open()) throw std::runtime_error(fmt::format("Cannot flash bootloader, binary at path: {} doesn't exist", path));
         package = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(fwStream), {});
     } else {
@@ -925,7 +925,7 @@ std::tuple<bool, std::string> DeviceBootloader::flashUserBootloader(std::functio
     // Retrieve bootloader
     std::vector<uint8_t> package;
     if(!path.empty()) {
-        std::ifstream fwStream(path, std::ios::binary);
+        std::ifstream fwStream(std::filesystem::path(path.native()), std::ios::binary);
         if(!fwStream.is_open()) throw std::runtime_error(fmt::format("Cannot flash User Bootloader, binary at path: {} doesn't exist", path));
         package = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(fwStream), {});
     } else {
@@ -1306,7 +1306,7 @@ std::tuple<bool, std::string> DeviceBootloader::flashConfigData(nlohmann::json c
 
 std::tuple<bool, std::string> DeviceBootloader::flashConfigFile(const dai::Path& configPath, Memory memory, Type type) {
     // read a JSON file
-    std::ifstream configInputStream(configPath);
+    std::ifstream configInputStream(std::filesystem::path(configPath.native()));
     if(!configInputStream.is_open()) throw std::runtime_error(fmt::format("Cannot flash configuration, JSON at path: {} doesn't exist", configPath));
     nlohmann::json configJson;
     configInputStream >> configJson;

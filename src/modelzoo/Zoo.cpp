@@ -367,7 +367,7 @@ void ZooManager::downloadModel(const nlohmann::json& responseJson, std::unique_p
         // Save downloaded file to cache folder
         std::string filename = getFilenameFromUrl(downloadLink);
         Path filepath = combinePaths(getModelCacheFolderPath(cacheDirectory), filename);
-        std::ofstream file(filepath.native(), std::ios::binary);
+        std::ofstream file(std::filesystem::path(filepath.native()), std::ios::binary);
         file.write(downloadResponse.text.c_str(), downloadResponse.text.size());
         file.close();
 

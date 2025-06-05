@@ -16,7 +16,7 @@ std::optional<std::string> saveFileToTemporaryDirectory(std::vector<uint8_t> dat
     }
     path = dai::platform::joinPaths(path, filename);
 
-    std::ofstream file(path, std::ios::binary);
+    std::ofstream file(std::filesystem::path(path.native()), std::ios::binary);
     if(!file.is_open()) {
         spdlog::error("Couldn't open file {} for writing", path);
         return std::nullopt;

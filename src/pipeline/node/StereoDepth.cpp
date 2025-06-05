@@ -63,13 +63,13 @@ void StereoDepth::loadMeshData(const std::vector<std::uint8_t>& dataLeft, const 
 }
 
 void StereoDepth::loadMeshFiles(const dai::Path& pathLeft, const dai::Path& pathRight) {
-    std::ifstream streamLeft(pathLeft, std::ios::binary);
+    std::ifstream streamLeft(std::filesystem::path(pathLeft.native()), std::ios::binary);
     if(!streamLeft.is_open()) {
         throw std::runtime_error(fmt::format("StereoDepth | Cannot open mesh at path: {}", pathLeft));
     }
     std::vector<std::uint8_t> dataLeft = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(streamLeft), {});
 
-    std::ifstream streamRight(pathRight, std::ios::binary);
+    std::ifstream streamRight(std::filesystem::path(pathRight.native()), std::ios::binary);
     if(!streamRight.is_open()) {
         throw std::runtime_error(fmt::format("StereoDepth | Cannot open mesh at path: {}", pathRight));
     }

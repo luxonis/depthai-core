@@ -84,12 +84,12 @@ CalibrationHandler::CalibrationHandler(dai::Path calibrationDataPath, dai::Path 
     };
 
     unsigned versionSize = sizeof(float) * (9 * 7 + 3 * 2 + 14 * 3); /*R1,R2,M1,M2,R,T,M3,R_rgb,T_rgb,d1,d2,d3*/
-    std::ifstream file(calibrationDataPath, std::ios::binary);
+    std::ifstream file(std::filesystem::path(calibrationDataPath.native()), std::ios::binary);
     if(!file.is_open() || !file.good() || file.bad()) {
         throw std::runtime_error("Calibration data file not found or corrupted");
     }
 
-    std::ifstream boardConfigStream(boardConfigPath);
+    std::ifstream boardConfigStream(std::filesystem::path(boardConfigPath.native()));
     if(!boardConfigStream.is_open() || !boardConfigStream.good() || boardConfigStream.bad()) {
         throw std::runtime_error("BoardConfig file not found or corrupted");
     }
@@ -540,7 +540,7 @@ dai::CameraBoardSocket CalibrationHandler::getStereoRightCameraId() const {
 
 bool CalibrationHandler::eepromToJsonFile(dai::Path destPath) const {
     nlohmann::json j = eepromData;
-    std::ofstream ob(destPath);
+    std::ofstream ob(std::filesystem::path(destPath.native()));
     ob << std::setw(4) << j << std::endl;
     return true;
 }

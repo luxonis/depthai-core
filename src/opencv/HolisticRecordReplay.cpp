@@ -160,7 +160,8 @@ bool setupHolisticRecord(
     }
     // Write recordConfig to output dir
     try {
-        std::ofstream file(Path(platform::joinPaths(recordPath, deviceId + "_record_config.json")));
+        dai::Path path = platform::joinPaths(recordPath, deviceId + "_record_config.json");
+        std::ofstream file(std::filesystem::path(path.native()));
         json j = recordConfig;
         file << j.dump(4);
     } catch(const std::exception& e) {

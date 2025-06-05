@@ -60,7 +60,7 @@ std::shared_ptr<dai::Asset> AssetManager::set(const std::string& key, Asset asse
 
 std::shared_ptr<dai::Asset> AssetManager::set(const std::string& key, const dai::Path& path, int alignment) {
     // Load binary file at path
-    std::ifstream stream(path, std::ios::in | std::ios::binary);
+    std::ifstream stream(std::filesystem::path(path.native()), std::ios::in | std::ios::binary);
     if(!stream.is_open()) {
         // Throw an error
         // TODO(themarpe) - Unify exceptions into meaningful groups
