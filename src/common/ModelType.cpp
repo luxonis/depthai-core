@@ -4,10 +4,8 @@ namespace dai {
 namespace model {
 
 ModelType readModelType(const Path& modelPath) {
-    auto endsWith = [](const Path& path, const Path::string_type& ending) {
-        auto native = path.native();
-        if(ending.length() > native.length()) return false;
-        return std::equal(ending.rbegin(), ending.rend(), native.rbegin());
+    auto endsWith = [](const Path& path, const std::string& ending) {
+        return std::filesystem::path(path.native()).extension() == ending;
     };
 
     // == Blob ==

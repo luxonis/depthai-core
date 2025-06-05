@@ -15,7 +15,7 @@ namespace utility {
  * @return YAML::Node: Parsed yaml file as node
  */
 inline YAML::Node loadYaml(const Path& path) {
-    return YAML::LoadFile(path);
+    return YAML::LoadFile(path.string());
 }
 
 /**
@@ -25,7 +25,7 @@ inline YAML::Node loadYaml(const Path& path) {
  * @param path: Path to save yaml file
  */
 inline void saveYaml(const YAML::Node& node, const Path& path) {
-    std::ofstream fout(path);
+    std::ofstream fout(path.native());
     fout << node;
     fout.close();
 }
@@ -37,8 +37,8 @@ inline void saveYaml(const YAML::Node& node, const Path& path) {
  * @return bool: True if file is yaml file
  */
 inline bool isYamlFile(const Path& path) {
-    std::string extension = path.native().substr(path.native().find_last_of(".") + 1);
-    return extension == "yaml" || extension == "yml";
+    auto extension = std::filesystem::path(path.native()).extension();
+    return extension == ".yaml" || extension == ".yml";
 }
 
 /**

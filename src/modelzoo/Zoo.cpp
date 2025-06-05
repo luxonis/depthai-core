@@ -1,6 +1,11 @@
 #include "depthai/modelzoo/Zoo.hpp"
 
-#include <cctype>
+#if defined(_WIN32) && defined(_MSC_VER)
+    #include <cwctype>
+#else
+    #include <cctype>
+#endif
+
 #include <filesystem>
 #include <iostream>
 #include <memory>
@@ -36,7 +41,7 @@ class ZooManager {
      * @param modelDescription: Model description
      * @param cacheDirectory: Cache directory, if not provided, use default value (see getDefaultCachePath)
      */
-    explicit ZooManager(NNModelDescription modelDescription, std::string cacheDirectory = "", std::string apiKey = "")
+    explicit ZooManager(NNModelDescription modelDescription, Path cacheDirectory = "", const std::string& apiKey = "")
         : modelDescription(std::move(modelDescription)), apiKey(std::move(apiKey)), cacheDirectory(std::move(cacheDirectory)) {
         // If the API is empty override from environment variable, if it exists
         if(this->apiKey.empty()) {
@@ -55,7 +60,7 @@ class ZooManager {
         // If cache directory is not set, use the environment variable DEPTHAI_ZOO_CACHE_PATH with fallback to getDefaultCachePath()
         if(this->cacheDirectory.empty()) {
             logger::info("Trying to get cache directory from environment variable DEPTHAI_ZOO_CACHE_PATH");
-            this->cacheDirectory = utility::getEnvAs<std::string>("DEPTHAI_ZOO_CACHE_PATH", dai::modelzoo::getDefaultCachePath(), false);
+            this->cacheDirectory = utility::getEnvAs<Path>("DEPTHAI_ZOO_CACHE_PATH", dai::modelzoo::getDefaultCachePath(), false);
         }
     }
 
@@ -77,9 +82,9 @@ class ZooManager {
      * @brief Get path to the folder where model is cached
      *
      * @param cacheDirectory: Cache directory where the cached models are stores
-     * @return std::string: Cache folder name
+     * @return dai::Path: Cache folder name
      */
-    std::string getModelCacheFolderPath(const std::string& cacheDirectory) const;
+    Path getModelCacheFolderPath(const Path& cacheDirectory) const;
 
     /**
      * @brief Create cache folder
@@ -156,7 +161,7 @@ class ZooManager {
     std::string apiKey;
 
     // Path to directory where to store the cached models
-    std::string cacheDirectory;
+    Path cacheDirectory;
 };
 
 #endif
@@ -169,11 +174,11 @@ class ZooManager {
  *        the function will use modelsPath if provided or the DEPTHAI_ZOO_MODELS_PATH environment variable and return a path to the yaml file.
  *        For instance, yolo -> ./depthai_models/yolo.yaml (if modelsPath or DEPTHAI_ZOO_MODELS_PATH are ./depthai_models)
  *
- * @param name: Name of the yaml file
+ * @param name: Name of the yaml file (implicitly converted to Path)
  * @param modelsPath: Path to the models folder, use environment variable DEPTHAI_ZOO_MODELS_PATH if not provided
  * @return dai::Path: Path to yaml file
  */
-Path getYamlFilePath(const std::string& name, const Path& modelsPath = "");
+Path getYamlFilePath(const Path& name, const Path& modelsPath = "");
 
 Path combinePaths(const Path& path1, const Path& path2);
 
@@ -257,18 +262,18 @@ std::string ZooManager::getModelCacheFolderName() const {
     return computeModelHash();
 }
 
-std::string ZooManager::getModelCacheFolderPath(const std::string& cacheDirectory) const {
+Path ZooManager::getModelCacheFolderPath(const Path& cacheDirectory) const {
     return combinePaths(cacheDirectory, getModelCacheFolderName());
 }
 
 void ZooManager::createCacheFolder() const {
-    std::string cacheFolderName = getModelCacheFolderPath(cacheDirectory);
-    std::filesystem::create_directories(cacheFolderName);
+    Path cacheFolderPath = getModelCacheFolderPath(cacheDirectory);
+    std::filesystem::create_directories(cacheFolderPath.native());
 }
 
 void ZooManager::removeModelCacheFolder() const {
-    std::string cacheFolderName = getModelCacheFolderPath(cacheDirectory);
-    std::filesystem::remove_all(cacheFolderName);
+    Path cacheFolderPath = getModelCacheFolderPath(cacheDirectory);
+    std::filesystem::remove_all(cacheFolderPath.native());
 
     // Remove global metadata entry
     if(!modelDescription.globalMetadataEntryName.empty()) {
@@ -361,8 +366,8 @@ void ZooManager::downloadModel(const nlohmann::json& responseJson, std::unique_p
 
         // Save downloaded file to cache folder
         std::string filename = getFilenameFromUrl(downloadLink);
-        std::string filepath = combinePaths(getModelCacheFolderPath(cacheDirectory), filename);
-        std::ofstream file(filepath, std::ios::binary);
+        Path filepath = combinePaths(getModelCacheFolderPath(cacheDirectory), filename);
+        std::ofstream file(filepath.native(), std::ios::binary);
         file.write(downloadResponse.text.c_str(), downloadResponse.text.size());
         file.close();
 
@@ -387,16 +392,16 @@ void ZooManager::downloadModel(const nlohmann::json& responseJson, std::unique_p
 }
 
 Path ZooManager::loadModelFromCache() const {
-    const std::string cacheFolder = getModelCacheFolderPath(cacheDirectory);
+    const Path cacheFolder = getModelCacheFolderPath(cacheDirectory);
 
     // Make sure the cache folder exists
-    if(!std::filesystem::exists(cacheFolder)) throw std::runtime_error("Cache folder " + cacheFolder + " not found.");
+    if(!std::filesystem::exists(cacheFolder)) throw std::runtime_error("Cache folder " + cacheFolder.string() + " not found.");
 
     // Find all files in cache folder
     std::vector<Path> folderFiles = getFilesInFolder(cacheFolder);
 
     // Make sure there are files in the folder
-    if(folderFiles.empty()) throw std::runtime_error("No files found in cache folder " + cacheFolder);
+    if(folderFiles.empty()) throw std::runtime_error("No files found in cache folder " + cacheFolder.string());
 
     // Return absolute path to the first file found
     return Path(std::filesystem::absolute(folderFiles[0]));
@@ -571,8 +576,8 @@ Path getModelFromZoo(
     // Use cached model if present and useCached is true
     if(useCachedModel) {
         if(!internetIsAvailable) {
-            std::string modelPath = zooManager.loadModelFromCache();
-            logger::info("Using cached model located at {}", modelPath);
+            Path modelPath = zooManager.loadModelFromCache();
+            logger::info("Using cached model located at {}", modelPath.string());
             return modelPath;
         }
 
@@ -581,8 +586,8 @@ Path getModelFromZoo(
         auto metadataHash = utility::yamlGet<std::string>(metadata, "hash");
 
         if(responseHash == metadataHash) {
-            std::string modelPath = zooManager.loadModelFromCache();
-            logger::info("Using cached model located at {}", modelPath);
+            Path modelPath = zooManager.loadModelFromCache();
+            logger::info("Using cached model located at {}", modelPath.string());
             return modelPath;
         }
 
@@ -617,7 +622,7 @@ Path getModelFromZoo(
     zooManager.downloadModel(responseJson, cprCallback->getCprProgressCallback());
 
     // Store model as yaml in the cache folder
-    std::string yamlPath = combinePaths(zooManager.getModelCacheFolderPath(cacheDirectory), "model.yaml");
+    Path yamlPath = combinePaths(zooManager.getModelCacheFolderPath(cacheDirectory), "model.yaml");
     modelDescription.saveToYamlFile(yamlPath);
 
     // Find path to model in cache
@@ -647,17 +652,17 @@ bool downloadModelsFromZoo(const Path& path, const Path& cacheDirectory, const s
     int numSuccess = 0, numFail = 0;
     for(size_t i = 0; i < models.size(); ++i) {
         // Parse yaml file
-        const std::string& modelName = models[i];
+        const Path& modelName = models[i];
 
         // Download model - ignore the returned model path here == we are only interested in downloading the model
         try {
-            logger::info("Downloading model [{} / {}]: {}", i + 1, models.size(), modelName);
+            logger::info("Downloading model [{} / {}]: {}", i + 1, models.size(), modelName.string());
             auto modelDescription = NNModelDescription::fromYamlFile(modelName, path);
             getModelFromZoo(modelDescription, true, cacheDirectory, apiKey, progressFormat);
-            logger::info("Downloaded model [{} / {}]: {}", i + 1, models.size(), modelName);
+            logger::info("Downloaded model [{} / {}]: {}", i + 1, models.size(), modelName.string());
             numSuccess++;
         } catch(const std::exception& e) {
-            logger::error("Failed to download model [{} / {}]: {} in folder {}\n{}", i + 1, models.size(), modelName, path.string(), e.what());
+            logger::error("Failed to download model [{} / {}]: {} in folder {}\n{}", i + 1, models.size(), modelName.string(), path.string(), e.what());
             numFail++;
         }
     }
@@ -692,7 +697,7 @@ Path ZooManager::getGlobalMetadataFilePath() const {
 
 #else
 
-std::string getModelFromZoo(
+Path getModelFromZoo(
     const NNModelDescription& modelDescription, bool useCached, const Path& cacheDirectory, const std::string& apiKey, const std::string& progressFormat) {
     (void)modelDescription;
     (void)useCached;
@@ -716,32 +721,48 @@ Path combinePaths(const Path& path1, const Path& path2) {
     return Path(std::filesystem::path(path1.native()) / path2.native());
 }
 
-Path getYamlFilePath(const std::string& name, const Path& modelsPath) {
+Path getYamlFilePath(const Path& name, const Path& modelsPath) {
     // No empty names allowed
     if(name.empty()) throw std::runtime_error("name cannot be empty!");
+
+#if defined(_WIN32) && defined(_MSC_VER)
+    auto alphanum_check = [](wchar_t c) { return std::iswalnum(c); };
+#else
+    auto alphanum_check = [](char c) { return std::isalnum(c); };
+#endif
 
     // If the name does not start with any dot or slash, we treat it as the special
     // case of where we prepend the DEPTHAI_ZOO_MODELS_PATH environment variable first.
     // We check whether the first character is a letter or a number here (model.yaml, model, 3model, ...)
-    if(isalnum(name[0])) {
+    if(alphanum_check(name.native()[0])) {
         Path useModelsPath = modelsPath;
         if(useModelsPath.empty()) {
-            useModelsPath = Path(utility::getEnvAs<std::string>("DEPTHAI_ZOO_MODELS_PATH", dai::modelzoo::getDefaultModelsPath(), false));
+            useModelsPath = Path(utility::getEnvAs<Path>("DEPTHAI_ZOO_MODELS_PATH", dai::modelzoo::getDefaultModelsPath(), false));
         }
 
         Path path = combinePaths(useModelsPath, name);
 
         // if path does not contain the yaml or yml extension, add it
         if(!utility::isYamlFile(path)) {
-            if(std::filesystem::exists(path.native() + ".yaml")) {
-                path = Path(path.native() + ".yaml");
-            } else if(std::filesystem::exists(path.native() + ".yml")) {
-                path = Path(path.native() + ".yml");
-            } else {
-                throw std::runtime_error("Model file not found: (neither `" + path.string() + ".yaml` nor `" + path.string()
-                                         + ".yml` exists) | If you meant to use a relative path, prefix with ./ (e.g. `./" + name
-                                         + "`) | Also, make sure the file exists. Read the documentation for more information.");
+
+            bool hasExtension = std::filesystem::path(path.native()).has_extension();
+            if(hasExtension) {
+                throw std::runtime_error("Model file not found!!!: " + path.string());
             }
+
+            std::filesystem::path yamlPath = std::filesystem::path(path.native()).replace_extension(".yaml");
+            if(std::filesystem::exists(yamlPath)) {
+                path = Path(yamlPath);
+            }
+
+            std::filesystem::path ymlPath = std::filesystem::path(path.native()).replace_extension(".yml");
+            if(std::filesystem::exists(ymlPath)) {
+                return Path(ymlPath);
+            }
+
+            throw std::runtime_error("Model file not found: (neither `" + path.string() + ".yaml` nor `" + path.string()
+                                        + ".yml` exists) | If you meant to use a relative path, prefix with ./ (e.g. `./" + name.string()
+                                        + "`) | Also, make sure the file exists. Read the documentation for more information.");
         }
         return path;
     }
@@ -813,7 +834,7 @@ NNModelDescription NNModelDescription::fromYamlFile(const Path& modelName, const
     auto modelPrecisionType = utility::yamlGet<std::string>(yamlNode, "model_precision_type", "");
 
     // Get global metadata entry name
-    auto globalMetadataEntryName = modelName;
+    auto globalMetadataEntryName = modelName.string();
 
     return {model, platform, optimizationLevel, compressionLevel, snpeVersion, modelPrecisionType, globalMetadataEntryName};
 }

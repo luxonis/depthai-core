@@ -54,9 +54,9 @@ class NNArchive {
     /**
      * @brief Return a path to the model inside the archive if getModelType() returns OTHER or DLC, nothing otherwise
      *
-     * @return std::optional<std::string>: Model path
+     * @return std::optional<Path>: Model path
      */
-    std::optional<std::string> getModelPath() const;
+    std::optional<Path> getModelPath() const;
 
     /**
      * @brief Get NNArchive config wrapper

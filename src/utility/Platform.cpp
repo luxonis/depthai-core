@@ -121,7 +121,7 @@ bool checkWritePermissions(const dai::Path& path) {
 }
 
 dai::Path joinPaths(const dai::Path& p1, const dai::Path& p2) {
-    return dai::Path(std::filesystem::path(p1) / p2);
+    return dai::Path(std::filesystem::path(p1.native()) / std::filesystem::path(p2.native()));
 }
 
 dai::Path getDirFromPath(const dai::Path& path) {

@@ -128,6 +128,11 @@ T getEnvAs(const std::string& var, T defaultValue, spdlog::logger& logger, bool 
     return returnValue;
 }
 
+template <>
+inline dai::Path getEnvAs(const std::string& var, dai::Path defaultValue, spdlog::logger& logger, bool cache) {
+    return dai::Path(getEnvAs<std::string>(var, defaultValue.u8string(), logger, cache));
+}
+
 /**
  * @brief Get environment variable as a specific type and check if it is a valid value
  * @tparam T The type to convert the environment variable to

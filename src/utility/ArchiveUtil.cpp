@@ -69,7 +69,11 @@ ArchiveUtil::ArchiveUtil(const std::vector<uint8_t>& data, NNArchiveEntry::Compr
 
 ArchiveUtil::ArchiveUtil(const dai::Path& filepath, NNArchiveEntry::Compression format) {
     init(format);
-    const auto res = archive_read_open_filename(aPtr, filepath.string().c_str(), 10240);
+#if defined(_WIN32) && defined(_MSC_VER)
+    const auto res = archive_read_open_filename_w(aPtr, std::filesystem::path(filepath.native()).c_str(), 10240);
+#else
+    const auto res = archive_read_open_filename(aPtr, std::filesystem::path(filepath.native()).c_str(), 10240);
+#endif
     DAI_CHECK_V(res == ARCHIVE_OK, "Error when decompressing {}.", filepath);
 }
 

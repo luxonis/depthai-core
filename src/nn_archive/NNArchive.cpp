@@ -28,8 +28,8 @@ NNArchive::NNArchive(const Path& archivePath, NNArchiveOptions options) : archiv
     modelType = model::readModelType(modelPathInArchive);
 
     // Unpack model
-    unpackArchiveInDirectory(archivePath, (std::filesystem::path(archiveOptions.extractFolder()) / std::filesystem::path(archivePath).filename()).string());
-    unpackedModelPath = (std::filesystem::path(archiveOptions.extractFolder()) / std::filesystem::path(archivePath).filename() / modelPathInArchive).string();
+    unpackArchiveInDirectory(archivePath, (std::filesystem::path(archiveOptions.extractFolder()) / std::filesystem::path(archivePath.native()).filename()).string());
+    unpackedModelPath = (std::filesystem::path(archiveOptions.extractFolder()) / std::filesystem::path(archivePath.native()).filename() / modelPathInArchive).string();
 
     switch(modelType) {
         case model::ModelType::BLOB:
@@ -88,7 +88,7 @@ std::optional<OpenVINO::SuperBlob> NNArchive::getSuperBlob() const {
     }
 }
 
-std::optional<std::string> NNArchive::getModelPath() const {
+std::optional<Path> NNArchive::getModelPath() const {
     switch(modelType) {
         case model::ModelType::OTHER:
         case model::ModelType::DLC:
@@ -183,15 +183,16 @@ std::vector<dai::Platform> NNArchive::getSupportedPlatforms() const {
         return {};
     }
     auto pathToModelChecked = *pathToModel;
-    // Check if .dlc - in that case add RVC4 to supported platforms
-    if(pathToModelChecked.substr(pathToModelChecked.size() - 4) == ".dlc") {
+
+    auto endsWith = [](const Path& path, const std::string& suffix) { return std::filesystem::path(path.native()).extension() == suffix; };
+
+    if(endsWith(pathToModelChecked, ".dlc")) {
         return {Platform::RVC4};
     }
-    if(pathToModelChecked.substr(pathToModelChecked.size() - 10) == ".superblob") {
+    if(endsWith(pathToModelChecked, ".superblob")) {
         return {Platform::RVC2};
     }
-    if(pathToModelChecked.substr(pathToModelChecked.size() - 5) == ".blob") {
-        // Check if it's a blob for RVC3 or RVC2
+    if(endsWith(pathToModelChecked, ".blob")) {
         auto model = OpenVINO::Blob(pathToModelChecked);
         if(model.device == OpenVINO::Device::VPUX) {
             return {Platform::RVC3};
@@ -199,9 +200,11 @@ std::vector<dai::Platform> NNArchive::getSupportedPlatforms() const {
         if(model.device == OpenVINO::Device::VPU) {
             return {Platform::RVC2};
         }
+
         // Should never get here
         return {};
     }
+
     return {};
 }
 

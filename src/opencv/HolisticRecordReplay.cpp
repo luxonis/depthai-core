@@ -103,7 +103,7 @@ bool setupHolisticRecord(
             }
             NodeRecordParams nodeParams = nodeS->getNodeRecordParams();
             std::string nodeName = (nodeParams.video ? "v_" : "b_") + nodeParams.name;
-            std::string filePath = platform::joinPaths(recordPath, (deviceId + "_").append(nodeName));
+            std::string filePath = platform::joinPaths(recordPath, (deviceId + "_").append(nodeName)).string();
             outFilenames[nodeName] = filePath;
             DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
             if(std::dynamic_pointer_cast<node::Camera>(node) != nullptr || std::dynamic_pointer_cast<node::ColorCamera>(node) != nullptr
@@ -152,7 +152,7 @@ bool setupHolisticRecord(
                 nodeS->getRecordOutput().link(recordNode->input);
             }
         }
-        outFilenames["record_config"] = platform::joinPaths(recordPath, deviceId + "_record_config.json");
+        outFilenames["record_config"] = platform::joinPaths(recordPath, deviceId + "_record_config.json").string();
     } catch(const std::runtime_error& e) {
         recordConfig.state = RecordConfig::RecordReplayState::NONE;
         spdlog::warn("Record disabled: {}", e.what());
@@ -233,13 +233,13 @@ bool setupHolisticReplay(Pipeline& pipeline,
                     inFiles.push_back(tarRoot + filename + ".mp4");
                     inFiles.push_back(tarRoot + filename + ".mcap");
                 }
-                std::string filePath = platform::joinPaths(rootPath, filename);
+                std::string filePath = platform::joinPaths(rootPath, filename).string();
                 outFiles.push_back(filePath + ".mp4");
                 outFiles.push_back(filePath + ".mcap");
                 outFilenames[nodeName] = filePath;
             }
             if(useTar) inFiles.emplace_back(tarRoot + "record_config.json");
-            configPath = platform::joinPaths(rootPath, "record_config.json");
+            configPath = platform::joinPaths(rootPath, "record_config.json").string();
             outFiles.push_back(configPath);
             outFilenames["record_config"] = configPath;
             if(useTar) untarFiles(replayPath, inFiles, outFiles);
