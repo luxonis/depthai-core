@@ -115,9 +115,9 @@ std::vector<std::string> filenamesInTar(const Path& path) {
     archive_read_support_filter_all(a);
     archive_read_support_format_all(a);
 #if defined(_WIN32) && defined(_MSC_VER)
-    const auto res = archive_read_open_filename_w(aPtr, std::filesystem::path(filepath.native()).c_str(), 10240);
+    const auto res = archive_read_open_filename_w(aPtr, std::filesystem::path(path.native()).c_str(), 10240);
 #else
-    const auto res = archive_read_open_filename(aPtr, std::filesystem::path(filepath.native()).c_str(), 10240);
+    const auto res = archive_read_open_filename(aPtr, std::filesystem::path(path.native()).c_str(), 10240);
 #endif
     if(r != ARCHIVE_OK) {
         throw std::runtime_error("Could not open archive.");
@@ -144,9 +144,9 @@ void untarFiles(const Path& path, const std::vector<std::string>& files, const s
     archive_read_support_filter_all(a);
     archive_read_support_format_all(a);
 #if defined(_WIN32) && defined(_MSC_VER)
-    const auto res = archive_read_open_filename_w(aPtr, std::filesystem::path(filepath.native()).c_str(), 10240);
+    const auto res = archive_read_open_filename_w(aPtr, std::filesystem::path(path.native()).c_str(), 10240);
 #else
-    const auto res = archive_read_open_filename(aPtr, std::filesystem::path(filepath.native()).c_str(), 10240);
+    const auto res = archive_read_open_filename(aPtr, std::filesystem::path(path.native()).c_str(), 10240);
 #endif
     if(r != ARCHIVE_OK) {
         throw std::runtime_error("Could not open archive.");

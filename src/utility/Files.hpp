@@ -5,19 +5,16 @@
 #include <fstream>
 #include <optional>
 
-#include "Platform.hpp"
+#include "utility/Platform.hpp"
+
 
 namespace dai {
 
-std::optional<std::string> saveFileToTemporaryDirectory(std::vector<uint8_t> data, std::string filename, std::string fpath = "") {
-    if(fpath.empty()) {
-        fpath = platform::getTempPath();
+std::optional<std::string> saveFileToTemporaryDirectory(std::vector<uint8_t> data, std::string filename, Path path = "") {
+    if(path.empty()) {
+        path = platform::getTempPath();
     }
-    std::string path = std::string(fpath);
-    if(path.back() != '/' && path.back() != '\\') {
-        path += '/';
-    }
-    path += filename;
+    path = dai::platform::joinPaths(path, filename);
 
     std::ofstream file(path, std::ios::binary);
     if(!file.is_open()) {
@@ -28,11 +25,11 @@ std::optional<std::string> saveFileToTemporaryDirectory(std::vector<uint8_t> dat
     file.write(reinterpret_cast<char*>(data.data()), data.size());
     file.close();
     if(!file.good()) {
-        spdlog::error("Couldn't write to file {}", path);
+        spdlog::error("Couldn't write to file {}", path.string());
         return std::nullopt;
     }
-    spdlog::debug("Saved file {} to {}", filename, path);
-    return std::string(path);
+    spdlog::debug("Saved file {} to {}", filename, path.string());
+    return std::string(path.string());
 }
 
 }  // namespace dai
