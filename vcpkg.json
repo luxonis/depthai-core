@@ -212,6 +212,14 @@
                     "name": "libusb"
                 }
             ]
+        },
+        "rerun-sdk": {
+            "description": "Enable Rerun SDK support",
+            "dependencies": [
+                {
+                    "name": "rerun-sdk"
+                }
+            ]
         }
     },
     "builtin-baseline": "a9eee3b18df395dbb8be71a31bd78ea441056e42"
