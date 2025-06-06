@@ -1,11 +1,11 @@
 #pragma once
 
+#include <fmt/format.h>
+#include <fmt/std.h>
 #include <yaml-cpp/yaml.h>
 
 #include <filesystem>
 #include <fstream>
-#include <fmt/format.h>
-#include <fmt/std.h>
 
 namespace dai {
 namespace utility {
