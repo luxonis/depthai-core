@@ -4,6 +4,8 @@
 
 #include <filesystem>
 #include <fstream>
+#include <fmt/format.h>
+#include <fmt/std.h>
 
 namespace dai {
 namespace utility {
@@ -17,7 +19,11 @@ namespace fs = std::filesystem;
  * @return YAML::Node: Parsed yaml file as node
  */
 inline YAML::Node loadYaml(const fs::path& path) {
-    return YAML::LoadFile(path);
+    std::ifstream file(path);
+    if(!file) {
+        throw std::runtime_error(fmt::format("Failed to open yaml file: {}", path));
+    }
+    return YAML::Load(file);
 }
 
 /**
