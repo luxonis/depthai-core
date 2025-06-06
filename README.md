@@ -18,14 +18,17 @@ DepthAI library doesn't yet provide API stability guarantees. While we take care
 
 ## Examples
 Examples for both C++ and Python are available in the `examples` folder. To see hwo to build and run them see [README.md](./examples/README.md) for more information.
+To build the examples in C++ configure with the following option added:
+```
+cmake -S. -Bbuild -D'DEPTHAI_BUILD_EXAMPLES=ON'
+cmake --build build
+```
 
 ## Dependencies
-- CMake >= 3.14 and <4.0
+- CMake >= 3.20
 - C/C++17 compiler
 - [optional] OpenCV 4 (required if building examples and for record and replay)
 - [optional] PCL (required for point cloud example)
-
-> ℹ️ We'll be adding support for CMake 4 shortly.
 
 To install OpenCV:
 MacOS: `brew install opencv`
