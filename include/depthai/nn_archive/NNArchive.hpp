@@ -1,9 +1,9 @@
 #pragma once
 #include <cstdint>
 #include <depthai/common/ModelType.hpp>
+#include <filesystem>
 #include <memory>
 #include <optional>
-#include <filesystem>
 
 #include "depthai/device/Device.hpp"  // For platform enum
 #include "depthai/nn_archive/NNArchiveEntry.hpp"

@@ -1,8 +1,7 @@
 #include <cstdint>
+#include <filesystem>
 #include <string>
 #include <vector>
-
-#include <filesystem>
 
 namespace dai {
 namespace utility {

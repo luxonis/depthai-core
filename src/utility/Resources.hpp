@@ -1,12 +1,12 @@
 #pragma once
 
 #include <cstdint>
+#include <filesystem>
 #include <mutex>
 #include <string>
 #include <thread>
 #include <unordered_map>
 #include <vector>
-#include <filesystem>
 
 // project
 #include <depthai/device/Device.hpp>

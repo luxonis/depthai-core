@@ -4,6 +4,7 @@
 #include <atomic>
 #include <chrono>
 #include <cstdint>
+#include <filesystem>
 #include <list>
 #include <mutex>
 #include <string>
@@ -11,7 +12,6 @@
 #include <tuple>
 #include <unordered_map>
 #include <vector>
-#include <filesystem>
 
 // project
 #include "depthai/utility/ProfilingData.hpp"

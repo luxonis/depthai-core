@@ -108,7 +108,8 @@ void DeviceBootloaderBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_static("getFirstAvailableDevice", &DeviceBootloader::getFirstAvailableDevice, DOC(dai, DeviceBootloader, getFirstAvailableDevice))
         .def_static("getAllAvailableDevices", &DeviceBootloader::getAllAvailableDevices, DOC(dai, DeviceBootloader, getAllAvailableDevices))
         .def_static("saveDepthaiApplicationPackage",
-                    py::overload_cast<const std::filesystem::path&, const Pipeline&, const std::filesystem::path&, bool, std::string, bool>(&DeviceBootloader::saveDepthaiApplicationPackage),
+                    py::overload_cast<const std::filesystem::path&, const Pipeline&, const std::filesystem::path&, bool, std::string, bool>(
+                        &DeviceBootloader::saveDepthaiApplicationPackage),
                     py::arg("path"),
                     py::arg("pipeline"),
                     py::arg("pathToCmd") = std::filesystem::path(),
@@ -124,14 +125,15 @@ void DeviceBootloaderBindings::bind(pybind11::module& m, void* pCallstack) {
                     py::arg("applicationName") = "",
                     py::arg("checkChecksum") = false,
                     DOC(dai, DeviceBootloader, saveDepthaiApplicationPackage, 2))
-        .def_static("createDepthaiApplicationPackage",
-                    py::overload_cast<const Pipeline&, const std::filesystem::path&, bool, std::string, bool>(&DeviceBootloader::createDepthaiApplicationPackage),
-                    py::arg("pipeline"),
-                    py::arg("pathToCmd") = std::filesystem::path(),
-                    py::arg("compress") = false,
-                    py::arg("applicationName") = "",
-                    py::arg("checkChecksum") = false,
-                    DOC(dai, DeviceBootloader, createDepthaiApplicationPackage))
+        .def_static(
+            "createDepthaiApplicationPackage",
+            py::overload_cast<const Pipeline&, const std::filesystem::path&, bool, std::string, bool>(&DeviceBootloader::createDepthaiApplicationPackage),
+            py::arg("pipeline"),
+            py::arg("pathToCmd") = std::filesystem::path(),
+            py::arg("compress") = false,
+            py::arg("applicationName") = "",
+            py::arg("checkChecksum") = false,
+            DOC(dai, DeviceBootloader, createDepthaiApplicationPackage))
         .def_static("createDepthaiApplicationPackage",
                     py::overload_cast<const Pipeline&, bool, std::string, bool>(&DeviceBootloader::createDepthaiApplicationPackage),
                     py::arg("pipeline"),

@@ -1,8 +1,8 @@
 #pragma once
 
 #include <cstdint>
-
 #include <filesystem>
+
 #include "depthai/utility/JoiningThread.hpp"
 
 namespace dai {

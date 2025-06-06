@@ -1,7 +1,7 @@
 #pragma once
 
-#include <spdlog/spdlog.h>
 #include <fmt/std.h>
+#include <spdlog/spdlog.h>
 
 #include <fstream>
 #include <optional>

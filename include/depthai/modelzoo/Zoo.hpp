@@ -93,10 +93,10 @@ struct NNModelDescription {
  * @return std::filesystem::path: Path to the model in cache
  */
 fs::path getModelFromZoo(const NNModelDescription& modelDescription,
-                     bool useCached = true,
-                     const fs::path& cacheDirectory = "",
-                     const std::string& apiKey = "",
-                     const std::string& progressFormat = "none");
+                         bool useCached = true,
+                         const fs::path& cacheDirectory = "",
+                         const std::string& apiKey = "",
+                         const std::string& progressFormat = "none");
 
 /**
  * @brief Helper function allowing one to download all models specified in yaml files in the given path and store them in the cache directory
@@ -109,7 +109,10 @@ fs::path getModelFromZoo(const NNModelDescription& modelDescription,
  * @param progressFormat: Format to use for progress output (possible values: pretty, json, none), default is "pretty"
  * @return bool: True if all models were downloaded successfully, false otherwise
  */
-bool downloadModelsFromZoo(const fs::path& path, const fs::path& cacheDirectory = "", const std::string& apiKey = "", const std::string& progressFormat = "none");
+bool downloadModelsFromZoo(const fs::path& path,
+                           const fs::path& cacheDirectory = "",
+                           const std::string& apiKey = "",
+                           const std::string& progressFormat = "none");
 
 std::ostream& operator<<(std::ostream& os, const NNModelDescription& modelDescription);
 

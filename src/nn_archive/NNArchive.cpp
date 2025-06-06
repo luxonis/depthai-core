@@ -28,10 +28,8 @@ NNArchive::NNArchive(const std::filesystem::path& archivePath, NNArchiveOptions 
     modelType = model::readModelType(modelPathInArchive);
 
     // Unpack model
-    unpackArchiveInDirectory(archivePath,
-                             (std::filesystem::path(archiveOptions.extractFolder()) / archivePath.filename()).string());
-    unpackedModelPath =
-        (std::filesystem::path(archiveOptions.extractFolder()) / archivePath.filename() / modelPathInArchive).string();
+    unpackArchiveInDirectory(archivePath, (std::filesystem::path(archiveOptions.extractFolder()) / archivePath.filename()).string());
+    unpackedModelPath = (std::filesystem::path(archiveOptions.extractFolder()) / archivePath.filename() / modelPathInArchive).string();
 
     switch(modelType) {
         case model::ModelType::BLOB:

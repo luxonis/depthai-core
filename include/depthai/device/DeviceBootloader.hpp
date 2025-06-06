@@ -19,7 +19,6 @@
 #include "depthai-bootloader-shared/Section.hpp"
 #include "depthai-bootloader-shared/Type.hpp"
 
-
 namespace dai {
 
 namespace fs = std::filesystem;

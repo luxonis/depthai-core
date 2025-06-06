@@ -1,17 +1,16 @@
 #pragma once
 
+#include <fmt/std.h>
 #include <spdlog/details/os.h>
 #include <spdlog/logger.h>
 #include <spdlog/spdlog.h>
 
 #include <cstdlib>
+#include <filesystem>
 #include <mutex>
 #include <sstream>
 #include <string>
 #include <unordered_map>
-#include <filesystem>
-
-#include <fmt/std.h>
 
 #ifdef _WIN32
     #include <windows.h>
@@ -135,7 +134,6 @@ T getEnvAs(const std::string& var, T defaultValue, spdlog::logger& logger, bool 
     }
     return returnValue;
 }
-
 
 /**
  * @brief Get environment variable as a specific type and check if it is a valid value

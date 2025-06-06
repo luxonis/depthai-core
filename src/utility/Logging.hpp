@@ -8,10 +8,9 @@
 #include <vector>
 
 // libraries
+#include <spdlog/fmt/std.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
-#include <spdlog/fmt/std.h>
-
 
 // shared
 #include <depthai/log/LogConstants.hpp>

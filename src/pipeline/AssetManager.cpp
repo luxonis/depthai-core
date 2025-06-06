@@ -1,8 +1,9 @@
 #include "depthai/pipeline/AssetManager.hpp"
 
+#include <fmt/std.h>
+
 #include "spdlog/fmt/fmt.h"
 #include "utility/spdlog-fmt.hpp"
-#include <fmt/std.h>
 
 // std
 #include <fstream>

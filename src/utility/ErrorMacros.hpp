@@ -1,9 +1,10 @@
+#include <fmt/format.h>
+#include <fmt/std.h>
+
 #include <stdexcept>
 
 #include "build/version.hpp"
 #include "utility/spdlog-fmt.hpp"
-#include <fmt/format.h>
-#include <fmt/std.h>
 
 // clang-format off
 

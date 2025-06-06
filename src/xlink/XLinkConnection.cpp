@@ -393,7 +393,8 @@ XLinkConnection::XLinkConnection(const DeviceInfo& deviceDesc, std::vector<std::
     initDevice(deviceDesc, expectedState);
 }
 
-XLinkConnection::XLinkConnection(const DeviceInfo& deviceDesc, std::filesystem::path mvcmdPath, XLinkDeviceState_t expectedState) : pathToMvcmd(std::move(mvcmdPath)) {
+XLinkConnection::XLinkConnection(const DeviceInfo& deviceDesc, std::filesystem::path mvcmdPath, XLinkDeviceState_t expectedState)
+    : pathToMvcmd(std::move(mvcmdPath)) {
     initialize();
     if(!pathToMvcmd.empty()) {
         std::ifstream testStream(pathToMvcmd);

@@ -1,9 +1,9 @@
 #pragma once
 
+#include <filesystem>
 #include <map>
 #include <memory>
 #include <vector>
-#include <filesystem>
 
 #include "depthai/pipeline/Assets.hpp"
 

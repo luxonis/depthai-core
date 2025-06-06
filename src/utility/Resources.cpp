@@ -25,11 +25,12 @@
 #include "depthai/utility/Serialization.hpp"
 
 // project
+#include <fmt/std.h>
+
 #include "utility/ArchiveUtil.hpp"
 #include "utility/Environment.hpp"
 #include "utility/ErrorMacros.hpp"
 #include "utility/spdlog-fmt.hpp"
-#include <fmt/std.h>
 
 extern "C" {
 #include "bspatch/bspatch.h"

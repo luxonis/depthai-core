@@ -331,7 +331,8 @@ DeviceBase::DeviceBase(Config config, const DeviceInfo& devInfo, UsbSpeed maxUsb
     init(config, maxUsbSpeed, "");
 }
 
-DeviceBase::DeviceBase(Config config, const DeviceInfo& devInfo, const std::filesystem::path& pathToCmd, bool dumpOnly) : deviceInfo(devInfo), dumpOnly(dumpOnly) {
+DeviceBase::DeviceBase(Config config, const DeviceInfo& devInfo, const std::filesystem::path& pathToCmd, bool dumpOnly)
+    : deviceInfo(devInfo), dumpOnly(dumpOnly) {
     init2(config, pathToCmd, false);
 }
 

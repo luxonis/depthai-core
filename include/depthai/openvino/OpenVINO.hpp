@@ -2,12 +2,12 @@
 
 #include <algorithm>
 #include <exception>
+#include <filesystem>
 #include <map>
 #include <string>
 #include <unordered_map>
 #include <utility>
 #include <vector>
-#include <filesystem>
 
 #include "depthai/common/TensorInfo.hpp"
 
@@ -15,7 +15,7 @@ namespace dai {
 
 /// Support for basic OpenVINO related actions like version identification of neural network blobs,...
 class OpenVINO {
-public:
+   public:
     /// OpenVINO Version supported version information
     enum Version { VERSION_2020_3, VERSION_2020_4, VERSION_2021_1, VERSION_2021_2, VERSION_2021_3, VERSION_2021_4, VERSION_2022_1, VERSION_UNIVERSAL };
 

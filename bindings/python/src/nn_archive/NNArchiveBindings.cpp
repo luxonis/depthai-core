@@ -2,6 +2,7 @@
 
 #include <pybind11/functional.h>
 #include <pybind11/stl.h>
+
 #include <filesystem>
 
 #include "depthai/nn_archive/NNArchive.hpp"
@@ -74,8 +75,10 @@ void NNArchiveBindings::bind(pybind11::module& m, void* pCallstack) {
                   py::arg("compression") = NNArchiveEntry::Compression::AUTO,
                   py::arg("extractFolder") = "/tmp/",
                   DOC(dai, NNArchive, NNArchive));
-    nnArchive.def(
-        py::init<const std::filesystem::path&, NNArchiveOptions>(), py::arg("archivePath"), py::arg("options") = NNArchiveOptions(), DOC(dai, NNArchive, NNArchive));
+    nnArchive.def(py::init<const std::filesystem::path&, NNArchiveOptions>(),
+                  py::arg("archivePath"),
+                  py::arg("options") = NNArchiveOptions(),
+                  DOC(dai, NNArchive, NNArchive));
     nnArchive.def("getBlob", &NNArchive::getBlob, DOC(dai, NNArchive, getBlob));
     nnArchive.def("getSuperBlob", &NNArchive::getSuperBlob, DOC(dai, NNArchive, getBlob));
     nnArchive.def("getModelPath", &NNArchive::getModelPath, DOC(dai, NNArchive, getModelPath));
