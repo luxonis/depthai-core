@@ -1,6 +1,11 @@
 #include "depthai/modelzoo/Zoo.hpp"
 
-#include <cctype>
+#if defined(WIN32) || defined(_WIN32)
+    #include <cwctype>
+#else
+    #include <cctype>
+#endif
+
 #include <filesystem>
 #include <iostream>
 #include <memory>
@@ -710,14 +715,22 @@ bool downloadModelsFromZoo(const fs::path& path, const fs::path& cacheDirectory,
 
 #endif
 
-fs::path getYamlFilePath(const std::string& name, const fs::path& modelsPath) {
+fs::path getYamlFilePath(const fs::path& name, const fs::path& modelsPath) {
     // No empty names allowed
     if(name.empty()) throw std::runtime_error("name cannot be empty!");
+
+    auto _check = [](const fs::path::string_type& c) {
+#if defined(WIN32) || defined(_WIN32)
+        return std::iswalpha(c[0]) || std::iswdigit(c[0]);
+#else
+        return std::isalpha(c[0]) || std::isdigit(c[0]);
+#endif
+    };
 
     // If the name does not start with any dot or slash, we treat it as the special
     // case of where we prepend the DEPTHAI_ZOO_MODELS_PATH environment variable first.
     // We check whether the first character is a letter or a number here (model.yaml, model, 3model, ...)
-    if(std::isalnum(name[0])) {
+    if(_check(name.native())) {
         fs::path useModelsPath = modelsPath;
         if(useModelsPath.empty()) {
             useModelsPath = fs::path(utility::getEnvAs<fs::path>("DEPTHAI_ZOO_MODELS_PATH", dai::modelzoo::getDefaultModelsPath(), false));
@@ -729,7 +742,7 @@ fs::path getYamlFilePath(const std::string& name, const fs::path& modelsPath) {
         if(!utility::isYamlFile(path) && !path.has_extension()) {
             fs::path yamlPath = path.replace_extension(".yaml");
             if(std::filesystem::exists(yamlPath)) {
-                path = yamlPath;
+                return yamlPath;
             }
 
             fs::path ymlPath = path.replace_extension(".yml");
@@ -737,12 +750,12 @@ fs::path getYamlFilePath(const std::string& name, const fs::path& modelsPath) {
                 return ymlPath;
             }
 
-            throw std::runtime_error(
-                fmt::format("Model file not found: (neither `{}` nor `{}` exists) | If you meant to use a relative path, prefix with ./ (e.g. `./{}`) | Also, "
-                            "make sure the file exists. Read the documentation for more information.",
-                            path,
-                            path,
-                            name));
+            throw std::runtime_error(fmt::format(
+                "Model file not found: (neither `{}` nor `{}` exists) | If you meant to use a relative path, prefix it with ./ (e.g. `./{}`) | Also, "
+                "make sure the file exists. Read the documentation for more information.",
+                yamlPath,
+                ymlPath,
+                name));
         }
         return path;
     }
@@ -793,7 +806,7 @@ SlugComponents SlugComponents::split(const std::string& slug) {
     return components;
 }
 
-NNModelDescription NNModelDescription::fromYamlFile(const std::string& modelName, const fs::path& modelsPath) {
+NNModelDescription NNModelDescription::fromYamlFile(const fs::path& modelName, const fs::path& modelsPath) {
     fs::path yamlPath = getYamlFilePath(modelName, modelsPath);
     if(!std::filesystem::exists(yamlPath)) {
         throw std::runtime_error(

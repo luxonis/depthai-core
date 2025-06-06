@@ -35,7 +35,7 @@ struct NNModelDescription {
      * @param modelsPath: Path to the models folder, use environment variable DEPTHAI_ZOO_MODELS_PATH if not provided
      * @return NNModelDescription
      */
-    static NNModelDescription fromYamlFile(const std::string& modelName, const fs::path& modelsPath = "");
+    static NNModelDescription fromYamlFile(const fs::path& modelName, const fs::path& modelsPath = "");
 
     /**
      * @brief Save NNModelDescription to yaml file
