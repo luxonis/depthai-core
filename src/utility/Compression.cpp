@@ -67,7 +67,7 @@ std::vector<uint8_t> inflate(span<uint8_t>& data) {
     return result;
 }
 
-void tarFiles(const Path& path, const std::vector<std::string>& files, const std::vector<std::string>& outFiles) {
+void tarFiles(const std::filesystem::path& path, const std::vector<std::string>& files, const std::vector<std::string>& outFiles) {
     assert(files.size() == outFiles.size());
 
     struct archive* a;
@@ -77,7 +77,11 @@ void tarFiles(const Path& path, const std::vector<std::string>& files, const std
 
     a = archive_write_new();
     archive_write_set_format_pax_restricted(a);
-    archive_write_open_filename(a, path.string().c_str());
+#ifdef _WIN32
+    archive_write_open_filename_w(a, path.c_str());
+#else
+    archive_write_open_filename(a, path.c_str());
+#endif
     for(size_t i = 0; i < files.size(); i++) {
         const auto& file = files[i];
         const auto& outFile = outFiles[i];
@@ -104,7 +108,7 @@ void tarFiles(const Path& path, const std::vector<std::string>& files, const std
     archive_write_free(a);
 }
 
-std::vector<std::string> filenamesInTar(const Path& path) {
+std::vector<std::string> filenamesInTar(const std::filesystem::path& path) {
     std::vector<std::string> result;
 
     struct archive* a;
@@ -113,10 +117,10 @@ std::vector<std::string> filenamesInTar(const Path& path) {
     a = archive_read_new();
     archive_read_support_filter_all(a);
     archive_read_support_format_all(a);
-#if defined(_WIN32) && defined(_MSC_VER)
-    int r = archive_read_open_filename_w(a, std::filesystem::path(path.native()).c_str(), 10240);
+#if defined(_WIN32)
+    int r = archive_read_open_filename_w(a, path.c_str(), 10240);
 #else
-    int r = archive_read_open_filename(a, std::filesystem::path(path.native()).c_str(), 10240);
+    int r = archive_read_open_filename(a, path.c_str(), 10240);
 #endif
     if(r != ARCHIVE_OK) {
         throw std::runtime_error("Could not open archive.");
@@ -133,7 +137,7 @@ std::vector<std::string> filenamesInTar(const Path& path) {
     return result;
 }
 
-void untarFiles(const Path& path, const std::vector<std::string>& files, const std::vector<std::string>& outFiles) {
+void untarFiles(const std::filesystem::path& path, const std::vector<std::string>& files, const std::vector<std::string>& outFiles) {
     struct archive* a;
     struct archive_entry* entry;
     std::ofstream outFileStream;
@@ -142,9 +146,9 @@ void untarFiles(const Path& path, const std::vector<std::string>& files, const s
     archive_read_support_filter_all(a);
     archive_read_support_format_all(a);
 #if defined(_WIN32) && defined(_MSC_VER)
-    int r = archive_read_open_filename_w(a, std::filesystem::path(path.native()).c_str(), 10240);
+    int r = archive_read_open_filename_w(a, path.c_str(), 10240);
 #else
-    int r = archive_read_open_filename(a, std::filesystem::path(path.native()).c_str(), 10240);
+    int r = archive_read_open_filename(a, path.c_str(), 10240);
 #endif
     if(r != ARCHIVE_OK) {
         throw std::runtime_error("Could not open archive.");

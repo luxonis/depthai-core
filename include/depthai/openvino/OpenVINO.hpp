@@ -7,15 +7,15 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+#include <filesystem>
 
 #include "depthai/common/TensorInfo.hpp"
-#include "depthai/utility/Path.hpp"
 
 namespace dai {
 
 /// Support for basic OpenVINO related actions like version identification of neural network blobs,...
 class OpenVINO {
-   public:
+public:
     /// OpenVINO Version supported version information
     enum Version { VERSION_2020_3, VERSION_2020_4, VERSION_2021_1, VERSION_2021_2, VERSION_2021_3, VERSION_2021_4, VERSION_2022_1, VERSION_UNIVERSAL };
 
@@ -34,7 +34,7 @@ class OpenVINO {
          *
          * @param path Filesystem path to the blob
          */
-        Blob(const dai::Path& path);
+        Blob(const std::filesystem::path& path);
 
         /// OpenVINO version
         Version version;
@@ -74,7 +74,7 @@ class OpenVINO {
          *
          * @param pathToSuperBlobFile: Path to the superblob file (.superblob suffix)
          */
-        SuperBlob(const Path& pathToSuperBlobFile);
+        SuperBlob(const std::filesystem::path& pathToSuperBlobFile);
 
         /**
          * @brief Generate a blob with a specific number of shaves
@@ -96,7 +96,7 @@ class OpenVINO {
         };
 
         // Read the SuperBlob file into memory
-        std::vector<uint8_t> readSuperBlobFile(const Path& path);
+        std::vector<uint8_t> readSuperBlobFile(const std::filesystem::path& path);
 
         // Get a pointer to the first byte of the blob data
         const uint8_t* getBlobDataPointer();

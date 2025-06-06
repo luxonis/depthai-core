@@ -309,7 +309,7 @@ DeviceBase::DeviceBase(const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed) : device
     init(maxUsbSpeed, "");
 }
 
-DeviceBase::DeviceBase(const DeviceInfo& devInfo, const dai::Path& pathToCmd) : deviceInfo(devInfo) {
+DeviceBase::DeviceBase(const DeviceInfo& devInfo, const std::filesystem::path& pathToCmd) : deviceInfo(devInfo) {
     Config cfg;
 
     init2(cfg, pathToCmd, false);
@@ -331,11 +331,11 @@ DeviceBase::DeviceBase(Config config, const DeviceInfo& devInfo, UsbSpeed maxUsb
     init(config, maxUsbSpeed, "");
 }
 
-DeviceBase::DeviceBase(Config config, const DeviceInfo& devInfo, const dai::Path& pathToCmd, bool dumpOnly) : deviceInfo(devInfo), dumpOnly(dumpOnly) {
+DeviceBase::DeviceBase(Config config, const DeviceInfo& devInfo, const std::filesystem::path& pathToCmd, bool dumpOnly) : deviceInfo(devInfo), dumpOnly(dumpOnly) {
     init2(config, pathToCmd, false);
 }
 
-DeviceBase::DeviceBase(Config config, const dai::Path& pathToCmd) {
+DeviceBase::DeviceBase(Config config, const std::filesystem::path& pathToCmd) {
     init(config, pathToCmd);
 }
 
@@ -350,7 +350,7 @@ void DeviceBase::init() {
     init2(cfg, "", false);
 }
 
-void DeviceBase::init(const dai::Path& pathToCmd) {
+void DeviceBase::init(const std::filesystem::path& pathToCmd) {
     tryGetDevice();
 
     Config cfg;
@@ -367,7 +367,7 @@ void DeviceBase::init(Config config, UsbSpeed maxUsbSpeed) {
     init(config, maxUsbSpeed, "");
 }
 
-void DeviceBase::init(Config config, const dai::Path& pathToCmd) {
+void DeviceBase::init(Config config, const std::filesystem::path& pathToCmd) {
     tryGetDevice();
     init2(config, pathToCmd, false);
 }
@@ -377,7 +377,7 @@ void DeviceBase::init(Config config, const DeviceInfo& devInfo, UsbSpeed maxUsbS
     init(config, maxUsbSpeed, "");
 }
 
-void DeviceBase::init(Config config, const DeviceInfo& devInfo, const dai::Path& pathToCmd) {
+void DeviceBase::init(Config config, const DeviceInfo& devInfo, const std::filesystem::path& pathToCmd) {
     deviceInfo = devInfo;
     init2(config, pathToCmd, false);
 }
@@ -553,26 +553,26 @@ void DeviceBase::tryStartPipeline(const Pipeline& pipeline) {
     }
 }
 
-void DeviceBase::init(UsbSpeed maxUsbSpeed, const dai::Path& pathToMvcmd) {
+void DeviceBase::init(UsbSpeed maxUsbSpeed, const std::filesystem::path& pathToMvcmd) {
     Config cfg;
     // Specify usb speed
     cfg.board.usb.maxSpeed = maxUsbSpeed;
     init2(cfg, pathToMvcmd, false);
 }
-void DeviceBase::init(const Pipeline& pipeline, UsbSpeed maxUsbSpeed, const dai::Path& pathToMvcmd) {
+void DeviceBase::init(const Pipeline& pipeline, UsbSpeed maxUsbSpeed, const std::filesystem::path& pathToMvcmd) {
     Config cfg = pipeline.getDeviceConfig();
     // Modify usb speed
     cfg.board.usb.maxSpeed = maxUsbSpeed;
     init2(cfg, pathToMvcmd, true);
 }
-void DeviceBase::init(Config config, UsbSpeed maxUsbSpeed, const dai::Path& pathToMvcmd) {
+void DeviceBase::init(Config config, UsbSpeed maxUsbSpeed, const std::filesystem::path& pathToMvcmd) {
     Config cfg = config;
     // Modify usb speed
     cfg.board.usb.maxSpeed = maxUsbSpeed;
     init2(cfg, pathToMvcmd, {});
 }
 
-void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipeline, bool reconnect) {
+void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, bool hasPipeline, bool reconnect) {
     // Initalize depthai library if not already
     if(!dumpOnly) initialize();
 
@@ -580,7 +580,7 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipelin
     PrevInfo prev;
     prev.deviceInfo = deviceInfo;
     prev.cfg = cfg;
-    prev.pathToMvcmd = dai::Path(pathToMvcmd);
+    prev.pathToMvcmd = std::filesystem::path(pathToMvcmd);
     prev.hasPipeline = hasPipeline;
 
     // Specify cfg

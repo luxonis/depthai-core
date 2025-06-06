@@ -9,6 +9,9 @@
 #include <sstream>
 #include <string>
 #include <unordered_map>
+#include <filesystem>
+
+#include <fmt/std.h>
 
 #ifdef _WIN32
     #include <windows.h>
@@ -88,6 +91,11 @@ T getEnvAs(const std::string& var, T defaultValue, spdlog::logger& logger, bool 
                 returnValue = value;
             }
 
+            // filesystem::path
+            else if constexpr(std::is_same_v<T, std::filesystem::path>) {
+                returnValue = std::filesystem::path(value);
+            }
+
             // bool
             else if constexpr(std::is_same_v<T, bool>) {
                 if(value == "1" || value == "true" || value == "TRUE" || value == "True") {
@@ -128,10 +136,6 @@ T getEnvAs(const std::string& var, T defaultValue, spdlog::logger& logger, bool 
     return returnValue;
 }
 
-template <>
-inline dai::Path getEnvAs(const std::string& var, dai::Path defaultValue, spdlog::logger& logger, bool cache) {
-    return dai::Path(getEnvAs<std::string>(var, defaultValue.u8string(), logger, cache));
-}
 
 /**
  * @brief Get environment variable as a specific type and check if it is a valid value

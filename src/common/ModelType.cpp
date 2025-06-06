@@ -3,8 +3,8 @@
 namespace dai {
 namespace model {
 
-ModelType readModelType(const Path& modelPath) {
-    auto endsWith = [](const Path& path, const std::string& ending) { return std::filesystem::path(path.native()).extension() == ending; };
+ModelType readModelType(const std::filesystem::path& modelPath) {
+    auto endsWith = [](const std::filesystem::path& path, const std::string& ending) { return path.extension() == ending; };
 
     // == Blob ==
     if(endsWith(modelPath, ".blob")) return ModelType::BLOB;

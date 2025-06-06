@@ -34,7 +34,7 @@ void bind_detectionparser(pybind11::module& m, void* pCallstack) {
         .def("setNumFramesPool", &DetectionParser::setNumFramesPool, py::arg("numFramesPool"), DOC(dai, node, DetectionParser, setNumFramesPool))
         .def("getNumFramesPool", &DetectionParser::getNumFramesPool, DOC(dai, node, DetectionParser, getNumFramesPool))
         .def("setBlob", py::overload_cast<dai::OpenVINO::Blob>(&DetectionParser::setBlob), py::arg("blob"), DOC(dai, node, DetectionParser, setBlob))
-        .def("setBlob", py::overload_cast<const dai::Path&>(&DetectionParser::setBlob), py::arg("path"), DOC(dai, node, DetectionParser, setBlob, 2))
+        .def("setBlob", py::overload_cast<const std::filesystem::path&>(&DetectionParser::setBlob), py::arg("path"), DOC(dai, node, DetectionParser, setBlob, 2))
         .def("setNNArchive",
              py::overload_cast<const NNArchive&>(&DetectionParser::setNNArchive),
              py::arg("nnArchive"),

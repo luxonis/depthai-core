@@ -71,7 +71,7 @@ void setThreadName(JoiningThread& thread, const std::string& name) {
     return;
 }
 
-dai::Path getTempPath() {
+std::filesystem::path getTempPath() {
     std::string tmpPath;
 #if defined(_WIN32) || defined(__USE_W32_SOCKETS)
     char tmpPathBuffer[MAX_PATH];
@@ -87,10 +87,10 @@ dai::Path getTempPath() {
         tmpPath += '/';
     }
 #endif
-    return dai::Path(tmpPath);
+    return std::filesystem::path(tmpPath);
 }
 
-bool checkPathExists(const dai::Path& path, bool directory) {
+bool checkPathExists(const std::filesystem::path& path, bool directory) {
     if(directory) {
         return std::filesystem::exists(path) && std::filesystem::is_directory(path);
     } else {
@@ -98,7 +98,7 @@ bool checkPathExists(const dai::Path& path, bool directory) {
     }
 }
 
-bool checkWritePermissions(const dai::Path& path) {
+bool checkWritePermissions(const std::filesystem::path& path) {
 #if defined(_WIN32) || defined(__USE_W32_SOCKETS)
     DWORD ftyp = GetFileAttributesA(path.string().c_str());
     if(ftyp == INVALID_FILE_ATTRIBUTES) {
@@ -120,12 +120,12 @@ bool checkWritePermissions(const dai::Path& path) {
 #endif
 }
 
-dai::Path joinPaths(const dai::Path& p1, const dai::Path& p2) {
-    return dai::Path(std::filesystem::path(p1.native()) / std::filesystem::path(p2.native()));
+std::filesystem::path joinPaths(const std::filesystem::path& p1, const std::filesystem::path& p2) {
+    return p1 / p2;
 }
 
-dai::Path getDirFromPath(const dai::Path& path) {
-    return dai::Path(std::filesystem::absolute(path).parent_path());
+std::filesystem::path getDirFromPath(const std::filesystem::path& path) {
+    return std::filesystem::path(std::filesystem::absolute(path).parent_path());
 }
 
 }  // namespace platform

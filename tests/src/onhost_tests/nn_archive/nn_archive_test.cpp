@@ -35,9 +35,9 @@ TEST_CASE("NNArchive loads a BLOB properly") {
 
     // Returns path to blob
     REQUIRE(nnArchive.getModelPath().has_value());
-    dai::Path path = nnArchive.getModelPath().value();
+    std::filesystem::path path = nnArchive.getModelPath().value();
     REQUIRE(std::filesystem::exists(path));
-    REQUIRE(std::filesystem::path(path.native()).extension() == ".blob");
+    REQUIRE(path.extension() == ".blob");
 
     // Returns nothing for other types
     REQUIRE(!nnArchive.getSuperBlob().has_value());
@@ -57,9 +57,9 @@ TEST_CASE("NNArchive loads a SUPERBLOB properly") {
 
     // Returns path to superblob
     REQUIRE(nnArchive.getModelPath().has_value());
-    dai::Path path = nnArchive.getModelPath().value();
+    std::filesystem::path path = nnArchive.getModelPath().value();
     REQUIRE(std::filesystem::exists(path));
-    REQUIRE(std::filesystem::path(path.native()).extension() == ".superblob");
+    REQUIRE(path.extension() == ".superblob");
 
     // Returns nothing for other types
     REQUIRE(!nnArchive.getBlob().has_value());
@@ -81,11 +81,11 @@ TEST_CASE("NNArchive loads other formats properly") {
     REQUIRE(nnArchive.getModelPath().has_value());
 
     // Check that the returned path exists
-    dai::Path modelPath = nnArchive.getModelPath().value();
+    std::filesystem::path modelPath = nnArchive.getModelPath().value();
     REQUIRE(std::filesystem::exists(modelPath));
 
     // Check that it has the .onnx extension
-    REQUIRE(std::filesystem::path(modelPath.native()).extension() == ".onnx");
+    REQUIRE(modelPath.extension() == ".onnx");
 
     // Returns nothing for other types
     REQUIRE(!nnArchive.getBlob().has_value());

@@ -2,6 +2,7 @@
 
 // C++ std
 #include <optional>
+#include <filesystem>
 
 // libraries
 #include "depthai/utility/spimpl.h"
@@ -35,7 +36,7 @@ class NNArchiveBlob::Impl {
         init(config, data, compression);
     }
 
-    Impl(const NNArchiveVersionedConfig& config, const Path& path, NNArchiveEntry::Compression compression) {
+    Impl(const NNArchiveVersionedConfig& config, const std::filesystem::path& path, NNArchiveEntry::Compression compression) {
         init(config, path, compression);
     }
 
@@ -66,7 +67,7 @@ class NNArchiveBlob::Impl {
 NNArchiveBlob::NNArchiveBlob(const NNArchiveVersionedConfig& config, const std::vector<uint8_t>& data, NNArchiveEntry::Compression compression)
     : pimpl(spimpl::make_impl<Impl>(config, data, compression)) {};
 
-NNArchiveBlob::NNArchiveBlob(const NNArchiveVersionedConfig& config, const Path& path, NNArchiveEntry::Compression compression)
+NNArchiveBlob::NNArchiveBlob(const NNArchiveVersionedConfig& config, const std::filesystem::path& path, NNArchiveEntry::Compression compression)
     : pimpl(spimpl::make_impl<Impl>(config, path, compression)) {}
 
 NNArchiveBlob::NNArchiveBlob(const NNArchiveVersionedConfig& config,

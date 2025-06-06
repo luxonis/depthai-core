@@ -5,7 +5,7 @@
 #include "depthai/depthai.hpp"
 
 TEST_CASE("DetectionNetwork can load BLOB properly") {
-    const dai::Path archivePath = BLOB_ARCHIVE_PATH;
+    const std::filesystem::path archivePath = BLOB_ARCHIVE_PATH;
 
     // Create pipeline
     dai::Pipeline p;
@@ -36,7 +36,7 @@ TEST_CASE("DetectionNetwork can load BLOB properly") {
 }
 
 TEST_CASE("DetectionNetwork can load SUPERBLOB properly") {
-    const dai::Path archivePath = SUPERBLOB_ARCHIVE_PATH;
+    const std::filesystem::path archivePath = SUPERBLOB_ARCHIVE_PATH;
 
     // Create pipeline
     dai::Pipeline p;
@@ -55,7 +55,7 @@ TEST_CASE("DetectionNetwork can load SUPERBLOB properly") {
 }
 
 TEST_CASE("DetectionNetwork throws when passed the OTHER NNArchive type") {
-    const dai::Path archivePath = ONNX_ARCHIVE_PATH;
+    const std::filesystem::path archivePath = ONNX_ARCHIVE_PATH;
 
     // Create pipeline
     dai::Pipeline p;

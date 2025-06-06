@@ -56,6 +56,8 @@ struct hash<::dai::NodeConnectionSchema> {
 
 namespace dai {
 
+namespace fs = std::filesystem;
+
 Node::Id PipelineImpl::getNextUniqueId() {
     return latestId++;
 }
@@ -338,7 +340,7 @@ Device::Config PipelineImpl::getDeviceConfig() const {
     return config;
 }
 
-void PipelineImpl::setCameraTuningBlobPath(const dai::Path& path) {
+void PipelineImpl::setCameraTuningBlobPath(const fs::path& path) {
     std::string assetKey = "camTuning";
 
     auto asset = assetManager.set(assetKey, path);
@@ -923,31 +925,31 @@ void PipelineImpl::run() {
     wait();
 }
 
-std::vector<uint8_t> PipelineImpl::loadResource(dai::Path uri) {
+std::vector<uint8_t> PipelineImpl::loadResource(fs::path uri) {
     return loadResourceCwd(uri, "/pipeline");
 }
 
-static dai::Path getAbsUri(dai::Path& uri, dai::Path& cwd) {
+static fs::path getAbsUri(fs::path& uri, fs::path& cwd) {
     int colonLocation = uri.string().find(":");
     std::string resourceType = uri.string().substr(0, colonLocation + 1);
-    dai::Path absAssetUri;
+    fs::path absAssetUri;
     if(uri.string()[colonLocation + 1] == '/') {  // Absolute path
         absAssetUri = uri;
     } else {  // Relative path
-        absAssetUri = dai::Path{resourceType + cwd.string() + uri.string().substr(colonLocation + 1)};
+        absAssetUri = fs::path{resourceType + cwd.string() + uri.string().substr(colonLocation + 1)};
     }
     return absAssetUri;
 }
 
-std::vector<uint8_t> PipelineImpl::loadResourceCwd(dai::Path uri, dai::Path cwd, bool moveAsset) {
+std::vector<uint8_t> PipelineImpl::loadResourceCwd(fs::path uri, fs::path cwd, bool moveAsset) {
     struct ProtocolHandler {
         const char* protocol = nullptr;
-        std::function<std::vector<uint8_t>(PipelineImpl&, const dai::Path&)> handle = nullptr;
+        std::function<std::vector<uint8_t>(PipelineImpl&, const fs::path&)> handle = nullptr;
     };
 
     const std::vector<ProtocolHandler> protocolHandlers = {
         {"asset",
-         [moveAsset](PipelineImpl& p, const dai::Path& uri) -> std::vector<uint8_t> {
+         [moveAsset](PipelineImpl& p, const fs::path& uri) -> std::vector<uint8_t> {
              // First check the pipeline asset manager
              auto asset = p.assetManager.get(uri.u8string());
              if(asset != nullptr) {
@@ -986,14 +988,14 @@ std::vector<uint8_t> PipelineImpl::loadResourceCwd(dai::Path uri, dai::Path cwd,
             // return handler.handle(this, fullPath.string());
 
             // TODO(themarpe) - use above approach instead
-            dai::Path path;
+            fs::path path;
             if(protocolPrefix == "asset:") {
                 auto absUri = getAbsUri(uri, cwd);
-                path = static_cast<dai::Path>(absUri.u8string().substr(protocolPrefix.size()));
+                path = static_cast<fs::path>(absUri.u8string().substr(protocolPrefix.size()));
             } else {
-                path = static_cast<dai::Path>(uri.u8string().substr(protocolPrefix.size()));
+                path = static_cast<fs::path>(uri.u8string().substr(protocolPrefix.size()));
             }
-            return handler.handle(*this, path.u8string());
+            return handler.handle(*this, path);
         }
     }
 

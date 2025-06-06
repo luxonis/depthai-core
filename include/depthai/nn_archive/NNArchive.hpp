@@ -3,12 +3,12 @@
 #include <depthai/common/ModelType.hpp>
 #include <memory>
 #include <optional>
+#include <filesystem>
 
 #include "depthai/device/Device.hpp"  // For platform enum
 #include "depthai/nn_archive/NNArchiveEntry.hpp"
 #include "depthai/nn_archive/NNArchiveVersionedConfig.hpp"
 #include "depthai/openvino/OpenVINO.hpp"
-#include "depthai/utility/Path.hpp"
 #include "depthai/utility/arg.hpp"
 
 namespace dai {
@@ -35,7 +35,7 @@ class NNArchive {
      * @param archivePath: Path to the archive file
      * @param options: Archive options such as compression, number of shaves, etc. See NNArchiveOptions.
      */
-    NNArchive(const Path& archivePath, NNArchiveOptions options = {});
+    NNArchive(const std::filesystem::path& archivePath, NNArchiveOptions options = {});
 
     /**
      * @brief Return a SuperVINO::Blob from the archive if getModelType() returns BLOB, nothing otherwise
@@ -56,7 +56,7 @@ class NNArchive {
      *
      * @return std::optional<Path>: Model path
      */
-    std::optional<Path> getModelPath() const;
+    std::optional<std::filesystem::path> getModelPath() const;
 
     /**
      * @brief Get NNArchive config wrapper
@@ -113,10 +113,10 @@ class NNArchive {
 
    private:
     // Read model from archive
-    std::vector<uint8_t> readModelFromArchive(const Path& archivePath, const std::string& modelPathInArchive) const;
+    std::vector<uint8_t> readModelFromArchive(const std::filesystem::path& archivePath, const std::string& modelPathInArchive) const;
 
     // Unpack archive to tmp directory
-    void unpackArchiveInDirectory(const Path& archivePath, const Path& directory) const;
+    void unpackArchiveInDirectory(const std::filesystem::path& archivePath, const std::filesystem::path& directory) const;
 
     model::ModelType modelType;
     NNArchiveOptions archiveOptions;
@@ -131,7 +131,7 @@ class NNArchive {
     std::shared_ptr<OpenVINO::SuperBlob> superblobPtr;
 
     // Other formats - return path to the unpacked archive
-    Path unpackedModelPath;
+    std::filesystem::path unpackedModelPath;
 };
 
 }  // namespace dai

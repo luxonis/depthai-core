@@ -29,6 +29,7 @@
 #include "utility/Environment.hpp"
 #include "utility/ErrorMacros.hpp"
 #include "utility/spdlog-fmt.hpp"
+#include <fmt/std.h>
 
 extern "C" {
 #include "bspatch/bspatch.h"
@@ -41,6 +42,8 @@ CMRC_DECLARE(depthai);
 #endif
 
 namespace dai {
+
+namespace fs = std::filesystem;
 
 TarXzAccessor::TarXzAccessor(const std::vector<std::uint8_t>& tarGzFile) {
     // Load tar.xz archive from memory
@@ -135,7 +138,7 @@ constexpr static auto RESOURCE_LIST_DEVICE = array_of<const char*>(DEPTHAI_CMD_O
                                                                    DEPTHAI_CMD_OPENVINO_2021_2_PATCH_PATH,
                                                                    DEPTHAI_CMD_OPENVINO_2021_3_PATCH_PATH);
 
-std::vector<std::uint8_t> Resources::getDeviceFirmware(Device::Config config, dai::Path pathToMvcmd) const {
+std::vector<std::uint8_t> Resources::getDeviceFirmware(Device::Config config, fs::path pathToMvcmd) const {
 // First check if device fw is enabled
 #ifndef DEPTHAI_ENABLE_DEVICE_FW
     throw std::invalid_argument("DepthAI compiled without support for MyriadX Device FW");
@@ -153,19 +156,19 @@ std::vector<std::uint8_t> Resources::getDeviceFirmware(Device::Config config, da
     auto& version = config.version;
 
     // Check if pathToMvcmd variable is set
-    dai::Path finalFwBinaryPath;
+    fs::path finalFwBinaryPath;
     if(!pathToMvcmd.empty()) {
         finalFwBinaryPath = pathToMvcmd;
     }
     // Override if env variable DEPTHAI_DEVICE_BINARY is set
-    dai::Path fwBinaryPath = utility::getEnvAs<std::string>("DEPTHAI_DEVICE_BINARY", "");
+    fs::path fwBinaryPath = utility::getEnvAs<fs::path>("DEPTHAI_DEVICE_BINARY", "");
     if(!fwBinaryPath.empty()) {
         finalFwBinaryPath = fwBinaryPath;
     }
     // Return binary from file if any of above paths are present
     if(!finalFwBinaryPath.empty()) {
         // Load binary file at path
-        std::ifstream stream(std::filesystem::path(finalFwBinaryPath.native()), std::ios::binary);
+        std::ifstream stream(finalFwBinaryPath, std::ios::binary);
         if(!stream.is_open()) {
             // Throw an error
             // TODO(themarpe) - Unify exceptions into meaningful groups
@@ -292,10 +295,10 @@ std::vector<std::uint8_t> Resources::getBootloaderFirmware(dai::bootloader::Type
     } else if(type == dai::bootloader::Type::NETWORK) {
         blEnvVar = "DEPTHAI_BOOTLOADER_BINARY_ETH";
     }
-    dai::Path blBinaryPath = utility::getEnvAs<dai::Path>(blEnvVar, "");
+    fs::path blBinaryPath = utility::getEnvAs<fs::path>(blEnvVar, "");
     if(!blBinaryPath.empty()) {
         // Load binary file at path
-        std::ifstream stream(std::filesystem::path(blBinaryPath.native()), std::ios::binary);
+        std::ifstream stream(blBinaryPath, std::ios::binary);
         if(!stream.is_open()) {
             // Throw an error
             // TODO(themarpe) - Unify exceptions into meaningful groups
@@ -355,13 +358,13 @@ std::vector<std::uint8_t> Resources::getDeviceFwp(const std::string& fwPath, con
     std::string pathToFwp;
 
     // Check if pathToMvcmd variable is set
-    dai::Path finalFwpPath;
+    fs::path finalFwpPath;
     if(!pathToFwp.empty()) {
         finalFwpPath = pathToFwp;
     }
 
     // Override if env variable DEPTHAI_DEVICE_KB_FWP is set
-    dai::Path fwpPathEnv = utility::getEnvAs<std::string>(envPath, "");
+    fs::path fwpPathEnv = utility::getEnvAs<std::string>(envPath, "");
     if(!fwpPathEnv.empty()) {
         finalFwpPath = fwpPathEnv;
         spdlog::warn("Overriding device fwp: {}", finalFwpPath);
@@ -370,7 +373,7 @@ std::vector<std::uint8_t> Resources::getDeviceFwp(const std::string& fwPath, con
     // Return binary from file if any of above paths are present
     if(!finalFwpPath.empty()) {
         // Load binary file at path
-        std::ifstream stream(std::filesystem::path(finalFwpPath.native()), std::ios::binary);
+        std::ifstream stream(finalFwpPath, std::ios::binary);
         if(!stream.is_open()) {
             // Throw an error
             // TODO(themarpe) - Unify exceptions into meaningful groups

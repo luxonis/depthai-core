@@ -23,6 +23,7 @@
 #include "XLink/XLink.h"
 #include "spdlog/fmt/chrono.h"
 #include "spdlog/spdlog.h"
+#include "spdlog/fmt/std.h"
 #include "utility/Logging.hpp"
 #include "zlib.h"
 
@@ -63,7 +64,7 @@ std::vector<DeviceInfo> DeviceBootloader::getAllAvailableDevices() {
 }
 
 std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(
-    const Pipeline& pipeline, const dai::Path& pathToCmd, bool compress, std::string applicationName, bool checkChecksum) {
+    const Pipeline& pipeline, const fs::path& pathToCmd, bool compress, std::string applicationName, bool checkChecksum) {
     // Serialize the pipeline
     PipelineSchema schema;
     Assets assets;
@@ -232,16 +233,16 @@ std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(const Pip
 }
 
 void DeviceBootloader::saveDepthaiApplicationPackage(
-    const dai::Path& path, const Pipeline& pipeline, const dai::Path& pathToCmd, bool compress, std::string applicationName, bool checkChecksum) {
+    const fs::path& path, const Pipeline& pipeline, const fs::path& pathToCmd, bool compress, std::string applicationName, bool checkChecksum) {
     auto dap = createDepthaiApplicationPackage(pipeline, pathToCmd, compress, applicationName, checkChecksum);
-    std::ofstream outfile(std::filesystem::path(path.native()), std::ios::binary);
+    std::ofstream outfile(path, std::ios::binary);
     outfile.write(reinterpret_cast<const char*>(dap.data()), dap.size());
 }
 
 void DeviceBootloader::saveDepthaiApplicationPackage(
-    const dai::Path& path, const Pipeline& pipeline, bool compress, std::string applicationName, bool checkChecksum) {
+    const fs::path& path, const Pipeline& pipeline, bool compress, std::string applicationName, bool checkChecksum) {
     auto dap = createDepthaiApplicationPackage(pipeline, compress, applicationName, checkChecksum);
-    std::ofstream outfile(std::filesystem::path(path.native()), std::ios::binary);
+    std::ofstream outfile(path, std::ios::binary);
     outfile.write(reinterpret_cast<const char*>(dap.data()), dap.size());
 }
 
@@ -258,7 +259,7 @@ DeviceBootloader::DeviceBootloader(const DeviceInfo& devInfo, Type type, bool al
     init(true, {}, type, allowFlashingBootloader);
 }
 
-DeviceBootloader::DeviceBootloader(const DeviceInfo& devInfo, const dai::Path& pathToBootloader, bool allowFlashingBootloader) : deviceInfo(devInfo) {
+DeviceBootloader::DeviceBootloader(const DeviceInfo& devInfo, const fs::path& pathToBootloader, bool allowFlashingBootloader) : deviceInfo(devInfo) {
     init(false, pathToBootloader, std::nullopt, allowFlashingBootloader);
 }
 
@@ -347,7 +348,7 @@ void DeviceBootloader::destroyWatchdog() {
     if(monitorThread.joinable()) monitorThread.join();
 }
 
-void DeviceBootloader::init(bool embeddedMvcmd, const dai::Path& pathToMvcmd, std::optional<bootloader::Type> type, bool allowBlFlash) {
+void DeviceBootloader::init(bool embeddedMvcmd, const fs::path& pathToMvcmd, std::optional<bootloader::Type> type, bool allowBlFlash) {
     stream = nullptr;
     allowFlashingBootloader = allowBlFlash;
 
@@ -819,11 +820,11 @@ std::tuple<bool, std::string> DeviceBootloader::flashClear(Memory memory) {
     return flashCustom(memory, bootloader::getStructure(getType()).offset.at(Section::APPLICATION), clear);
 }
 
-std::tuple<bool, std::string> DeviceBootloader::flashBootloader(std::function<void(float)> progressCb, const dai::Path& path) {
+std::tuple<bool, std::string> DeviceBootloader::flashBootloader(std::function<void(float)> progressCb, const fs::path& path) {
     return flashBootloader(Memory::FLASH, bootloaderType, progressCb, path);
 }
 
-std::tuple<bool, std::string> DeviceBootloader::flashBootloader(Memory memory, Type type, std::function<void(float)> progressCb, const dai::Path& path) {
+std::tuple<bool, std::string> DeviceBootloader::flashBootloader(Memory memory, Type type, std::function<void(float)> progressCb, const fs::path& path) {
     // Check if 'allowFlashingBootloader' is set to true.
     if(!allowFlashingBootloader) {
         throw std::invalid_argument("DeviceBootloader wasn't initialized to allow flashing bootloader. Set 'allowFlashingBootloader' in constructor");
@@ -844,7 +845,7 @@ std::tuple<bool, std::string> DeviceBootloader::flashBootloader(Memory memory, T
 
     std::vector<uint8_t> package;
     if(!path.empty()) {
-        std::ifstream fwStream(std::filesystem::path(path.native()), std::ios::binary);
+        std::ifstream fwStream(path, std::ios::binary);
         if(!fwStream.is_open()) throw std::runtime_error(fmt::format("Cannot flash bootloader, binary at path: {} doesn't exist", path));
         package = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(fwStream), {});
     } else {
@@ -905,7 +906,7 @@ std::tuple<bool, std::string> DeviceBootloader::flashBootloader(Memory memory, T
     return {result.success, result.errorMsg};
 }
 
-std::tuple<bool, std::string> DeviceBootloader::flashUserBootloader(std::function<void(float)> progressCb, const dai::Path& path) {
+std::tuple<bool, std::string> DeviceBootloader::flashUserBootloader(std::function<void(float)> progressCb, const fs::path& path) {
     // Check that type is NETWORK
     const auto type = Type::NETWORK;
     if(getType() != Type::NETWORK) {
@@ -925,7 +926,7 @@ std::tuple<bool, std::string> DeviceBootloader::flashUserBootloader(std::functio
     // Retrieve bootloader
     std::vector<uint8_t> package;
     if(!path.empty()) {
-        std::ifstream fwStream(std::filesystem::path(path.native()), std::ios::binary);
+        std::ifstream fwStream(path, std::ios::binary);
         if(!fwStream.is_open()) throw std::runtime_error(fmt::format("Cannot flash User Bootloader, binary at path: {} doesn't exist", path));
         package = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(fwStream), {});
     } else {
@@ -1304,9 +1305,9 @@ std::tuple<bool, std::string> DeviceBootloader::flashConfigData(nlohmann::json c
     return {result.success, result.errorMsg};
 }
 
-std::tuple<bool, std::string> DeviceBootloader::flashConfigFile(const dai::Path& configPath, Memory memory, Type type) {
+std::tuple<bool, std::string> DeviceBootloader::flashConfigFile(const fs::path& configPath, Memory memory, Type type) {
     // read a JSON file
-    std::ifstream configInputStream(std::filesystem::path(configPath.native()));
+    std::ifstream configInputStream(configPath);
     if(!configInputStream.is_open()) throw std::runtime_error(fmt::format("Cannot flash configuration, JSON at path: {} doesn't exist", configPath));
     nlohmann::json configJson;
     configInputStream >> configJson;

@@ -35,12 +35,12 @@ NNArchiveVersionedConfig::NNArchiveVersionedConfig(const std::vector<uint8_t>& d
     initConfig(maybeJson);
 }
 
-NNArchiveVersionedConfig::NNArchiveVersionedConfig(const Path& path, NNArchiveEntry::Compression compression) {
+NNArchiveVersionedConfig::NNArchiveVersionedConfig(const std::filesystem::path& path, NNArchiveEntry::Compression compression) {
     bool isJson =
         compression == NNArchiveEntry::Compression::RAW_FS || (compression == NNArchiveEntry::Compression::AUTO && utility::ArchiveUtil::isJsonPath(path));
     std::optional<nlohmann::json> maybeJson;
     if(isJson) {
-        std::ifstream jsonStream(std::filesystem::path(path.native()));
+        std::ifstream jsonStream(path);
         maybeJson = nlohmann::json::parse(jsonStream);
     } else {
         utility::ArchiveUtil archive(path, compression);

@@ -11,9 +11,9 @@
 #include <tuple>
 #include <unordered_map>
 #include <vector>
+#include <filesystem>
 
 // project
-#include "depthai/utility/Path.hpp"
 #include "depthai/utility/ProfilingData.hpp"
 
 // Libraries
@@ -96,7 +96,7 @@ class XLinkConnection {
     static ProfilingData getGlobalProfilingData();
 
     XLinkConnection(const DeviceInfo& deviceDesc, std::vector<std::uint8_t> mvcmdBinary, XLinkDeviceState_t expectedState = X_LINK_BOOTED);
-    XLinkConnection(const DeviceInfo& deviceDesc, dai::Path pathToMvcmd, XLinkDeviceState_t expectedState = X_LINK_BOOTED);
+    XLinkConnection(const DeviceInfo& deviceDesc, std::filesystem::path pathToMvcmd, XLinkDeviceState_t expectedState = X_LINK_BOOTED);
     explicit XLinkConnection(const DeviceInfo& deviceDesc, XLinkDeviceState_t expectedState = X_LINK_BOOTED);
 
     ~XLinkConnection();
@@ -133,7 +133,7 @@ class XLinkConnection {
     friend struct XLinkReadError;
     friend struct XLinkWriteError;
     // static
-    static bool bootAvailableDevice(const deviceDesc_t& deviceToBoot, const dai::Path& pathToMvcmd);
+    static bool bootAvailableDevice(const deviceDesc_t& deviceToBoot, const std::filesystem::path& pathToMvcmd);
     static bool bootAvailableDevice(const deviceDesc_t& deviceToBoot, std::vector<std::uint8_t>& mvcmd);
     static std::string convertErrorCodeToString(XLinkError_t errorCode);
 
@@ -141,7 +141,7 @@ class XLinkConnection {
 
     bool bootDevice = true;
     bool bootWithPath = true;
-    dai::Path pathToMvcmd;
+    std::filesystem::path pathToMvcmd;
     std::vector<std::uint8_t> mvcmd;
 
     bool rebootOnDestruction{true};

@@ -1,10 +1,12 @@
 #pragma once
 
-#include <depthai/utility/Path.hpp>
+#include <filesystem>
 #include <ostream>
 #include <string>
 
 namespace dai {
+
+namespace fs = std::filesystem;
 
 struct SlugComponents {
     std::string teamName;
@@ -33,14 +35,14 @@ struct NNModelDescription {
      * @param modelsPath: Path to the models folder, use environment variable DEPTHAI_ZOO_MODELS_PATH if not provided
      * @return NNModelDescription
      */
-    static NNModelDescription fromYamlFile(const Path& modelName, const Path& modelsPath = "");
+    static NNModelDescription fromYamlFile(const std::string& modelName, const fs::path& modelsPath = "");
 
     /**
      * @brief Save NNModelDescription to yaml file
      *
      * @param yamlPath: Path to yaml file
      */
-    void saveToYamlFile(const Path& yamlPath) const;
+    void saveToYamlFile(const fs::path& yamlPath) const;
 
     /**
      * @brief Check if the model description is valid (contains all required fields)
@@ -88,11 +90,11 @@ struct NNModelDescription {
  * @param apiKey: API key for the model zoo, default is "". If apiKey is set to "", this function checks the DEPTHAI_ZOO_API_KEY environment variable and uses
  * that if set. Otherwise, no API key is used.
  * @param progressFormat: Format to use for progress output (possible values: pretty, json, none), default is "pretty"
- * @return dai::Path: Path to the model in cache
+ * @return std::filesystem::path: Path to the model in cache
  */
-Path getModelFromZoo(const NNModelDescription& modelDescription,
+fs::path getModelFromZoo(const NNModelDescription& modelDescription,
                      bool useCached = true,
-                     const Path& cacheDirectory = "",
+                     const fs::path& cacheDirectory = "",
                      const std::string& apiKey = "",
                      const std::string& progressFormat = "none");
 
@@ -107,7 +109,7 @@ Path getModelFromZoo(const NNModelDescription& modelDescription,
  * @param progressFormat: Format to use for progress output (possible values: pretty, json, none), default is "pretty"
  * @return bool: True if all models were downloaded successfully, false otherwise
  */
-bool downloadModelsFromZoo(const Path& path, const Path& cacheDirectory = "", const std::string& apiKey = "", const std::string& progressFormat = "none");
+bool downloadModelsFromZoo(const fs::path& path, const fs::path& cacheDirectory = "", const std::string& apiKey = "", const std::string& progressFormat = "none");
 
 std::ostream& operator<<(std::ostream& os, const NNModelDescription& modelDescription);
 
@@ -132,14 +134,14 @@ void setDownloadEndpoint(const std::string& endpoint);
  *
  * @param path
  */
-void setDefaultCachePath(const Path& path);
+void setDefaultCachePath(const fs::path& path);
 
 /**
  * @brief Set the default models path (where yaml files are stored)
  *
  * @param path
  */
-void setDefaultModelsPath(const Path& path);
+void setDefaultModelsPath(const fs::path& path);
 
 /**
  * @brief Get the health endpoint (for internet check)
@@ -154,12 +156,12 @@ std::string getDownloadEndpoint();
 /**
  * @brief Get the default cache path (where models are cached)
  */
-Path getDefaultCachePath();
+fs::path getDefaultCachePath();
 
 /**
  * @brief Get the default models path (where yaml files are stored)
  */
-Path getDefaultModelsPath();
+fs::path getDefaultModelsPath();
 
 }  // namespace modelzoo
 

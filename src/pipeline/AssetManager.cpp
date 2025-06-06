@@ -2,6 +2,7 @@
 
 #include "spdlog/fmt/fmt.h"
 #include "utility/spdlog-fmt.hpp"
+#include <fmt/std.h>
 
 // std
 #include <fstream>
@@ -58,9 +59,9 @@ std::shared_ptr<dai::Asset> AssetManager::set(const std::string& key, Asset asse
     return set(std::move(a));
 }
 
-std::shared_ptr<dai::Asset> AssetManager::set(const std::string& key, const dai::Path& path, int alignment) {
+std::shared_ptr<dai::Asset> AssetManager::set(const std::string& key, const std::filesystem::path& path, int alignment) {
     // Load binary file at path
-    std::ifstream stream(std::filesystem::path(path.native()), std::ios::in | std::ios::binary);
+    std::ifstream stream(path, std::ios::in | std::ios::binary);
     if(!stream.is_open()) {
         // Throw an error
         // TODO(themarpe) - Unify exceptions into meaningful groups

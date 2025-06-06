@@ -2,11 +2,13 @@
 
 #include <yaml-cpp/yaml.h>
 
-#include <depthai/utility/Path.hpp>
 #include <fstream>
+#include <filesystem>
 
 namespace dai {
 namespace utility {
+
+namespace fs = std::filesystem;
 
 /**
  * @brief Load yaml file
@@ -14,8 +16,8 @@ namespace utility {
  * @param path: Path to yaml file
  * @return YAML::Node: Parsed yaml file as node
  */
-inline YAML::Node loadYaml(const Path& path) {
-    return YAML::LoadFile(path.string());
+inline YAML::Node loadYaml(const fs::path& path) {
+    return YAML::LoadFile(path);
 }
 
 /**
@@ -24,8 +26,8 @@ inline YAML::Node loadYaml(const Path& path) {
  * @param node: YAML node to save
  * @param path: Path to save yaml file
  */
-inline void saveYaml(const YAML::Node& node, const Path& path) {
-    std::ofstream fout(std::filesystem::path(path.native()));
+inline void saveYaml(const YAML::Node& node, const fs::path& path) {
+    std::ofstream fout(path);
     fout << node;
     fout.close();
 }
@@ -36,8 +38,8 @@ inline void saveYaml(const YAML::Node& node, const Path& path) {
  * @param path: Path to file
  * @return bool: True if file is yaml file
  */
-inline bool isYamlFile(const Path& path) {
-    auto extension = std::filesystem::path(path.native()).extension();
+inline bool isYamlFile(const fs::path& path) {
+    auto extension = path.extension();
     return extension == ".yaml" || extension == ".yml";
 }
 

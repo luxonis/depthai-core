@@ -10,6 +10,8 @@
 // libraries
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
+#include <spdlog/fmt/std.h>
+
 
 // shared
 #include <depthai/log/LogConstants.hpp>
@@ -18,7 +20,6 @@
 #include <depthai/device/Device.hpp>
 #include <depthai/device/DeviceBootloader.hpp>
 #include <depthai/openvino/OpenVINO.hpp>
-#include <depthai/utility/Path.hpp>
 
 namespace dai {
 

@@ -96,7 +96,7 @@ static void bindConstructors(ARG& arg) {
              py::arg("deviceInfo"),
              py::arg("maxUsbSpeed"),
              DOC(dai, DeviceBase, DeviceBase, 3))
-        .def(py::init([](const DeviceInfo& deviceInfo, dai::Path pathToCmd) {
+        .def(py::init([](const DeviceInfo& deviceInfo, std::filesystem::path pathToCmd) {
                  py::gil_scoped_release release;
                  return std::make_unique<D>(deviceInfo, pathToCmd);
              }),

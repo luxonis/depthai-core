@@ -2,19 +2,19 @@
 
 #include <cstdint>
 
+#include <filesystem>
 #include "depthai/utility/JoiningThread.hpp"
-#include "depthai/utility/Path.hpp"
 
 namespace dai {
 namespace platform {
 
 uint32_t getIPv4AddressAsBinary(std::string address);
 std::string getIPv4AddressAsString(std::uint32_t binary);
-dai::Path getTempPath();
-bool checkPathExists(const dai::Path& path, bool directory = false);
-bool checkWritePermissions(const dai::Path& path);
-dai::Path joinPaths(const dai::Path& path1, const dai::Path& path2);
-dai::Path getDirFromPath(const dai::Path& path);
+std::filesystem::path getTempPath();
+bool checkPathExists(const std::filesystem::path& path, bool directory = false);
+bool checkWritePermissions(const std::filesystem::path& path);
+std::filesystem::path joinPaths(const std::filesystem::path& path1, const std::filesystem::path& path2);
+std::filesystem::path getDirFromPath(const std::filesystem::path& path);
 
 // TODO change this to std::thread
 void setThreadName(JoiningThread& thread, const std::string& name);

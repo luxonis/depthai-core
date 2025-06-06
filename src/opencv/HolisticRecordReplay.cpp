@@ -160,8 +160,8 @@ bool setupHolisticRecord(
     }
     // Write recordConfig to output dir
     try {
-        dai::Path path = platform::joinPaths(recordPath, deviceId + "_record_config.json");
-        std::ofstream file(std::filesystem::path(path.native()));
+        std::filesystem::path path = platform::joinPaths(recordPath, deviceId + "_record_config.json");
+        std::ofstream file(path);
         json j = recordConfig;
         file << j.dump(4);
     } catch(const std::exception& e) {
@@ -178,13 +178,13 @@ bool setupHolisticReplay(Pipeline& pipeline,
                          std::unordered_map<std::string, std::string>& outFilenames,
                          bool legacy) {
     UNUSED(deviceId);
-    const dai::Path rootPath = platform::getDirFromPath(replayPath);
+    const std::filesystem::path rootPath = platform::getDirFromPath(replayPath);
     auto sources = pipeline.getSourceNodes();
     try {
         bool useTar = !platform::checkPathExists(replayPath, true);
         std::vector<std::string> tarNodenames;
         std::string tarRoot;
-        dai::Path rootPath = replayPath;
+        std::filesystem::path rootPath = replayPath;
         if(useTar) {
             rootPath = platform::getDirFromPath(replayPath);
             tarNodenames = filenamesInTar(replayPath);

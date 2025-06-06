@@ -49,8 +49,8 @@ void invertSe3Matrix4x4InPlace(std::vector<std::vector<float>>& mat) {
 }
 }  // namespace
 
-CalibrationHandler::CalibrationHandler(dai::Path eepromDataPath) {
-    std::ifstream jsonStream(std::filesystem::path(eepromDataPath.native()));
+CalibrationHandler::CalibrationHandler(std::filesystem::path eepromDataPath) {
+    std::ifstream jsonStream(eepromDataPath);
     // TODO(sachin): Check if the file exists first.
     if(!jsonStream.is_open()) {
         throw std::runtime_error("Calibration data file doesn't exist at the provided path. Please provide a absolute path.");
@@ -68,7 +68,7 @@ CalibrationHandler CalibrationHandler::fromJson(nlohmann::json eepromDataJson) {
     return calib;
 }
 
-CalibrationHandler::CalibrationHandler(dai::Path calibrationDataPath, dai::Path boardConfigPath) {
+CalibrationHandler::CalibrationHandler(std::filesystem::path calibrationDataPath, std::filesystem::path boardConfigPath) {
     auto matrixConv = [](std::vector<float>& src, int startIdx) {
         std::vector<std::vector<float>> dest;
         int currIdx = startIdx;
@@ -84,12 +84,12 @@ CalibrationHandler::CalibrationHandler(dai::Path calibrationDataPath, dai::Path 
     };
 
     unsigned versionSize = sizeof(float) * (9 * 7 + 3 * 2 + 14 * 3); /*R1,R2,M1,M2,R,T,M3,R_rgb,T_rgb,d1,d2,d3*/
-    std::ifstream file(std::filesystem::path(calibrationDataPath.native()), std::ios::binary);
+    std::ifstream file(calibrationDataPath, std::ios::binary);
     if(!file.is_open() || !file.good() || file.bad()) {
         throw std::runtime_error("Calibration data file not found or corrupted");
     }
 
-    std::ifstream boardConfigStream(std::filesystem::path(boardConfigPath.native()));
+    std::ifstream boardConfigStream(boardConfigPath);
     if(!boardConfigStream.is_open() || !boardConfigStream.good() || boardConfigStream.bad()) {
         throw std::runtime_error("BoardConfig file not found or corrupted");
     }
@@ -538,9 +538,9 @@ dai::CameraBoardSocket CalibrationHandler::getStereoRightCameraId() const {
     return eepromData.stereoRectificationData.rightCameraSocket;
 }
 
-bool CalibrationHandler::eepromToJsonFile(dai::Path destPath) const {
+bool CalibrationHandler::eepromToJsonFile(std::filesystem::path destPath) const {
     nlohmann::json j = eepromData;
-    std::ofstream ob(std::filesystem::path(destPath.native()));
+    std::ofstream ob(destPath);
     ob << std::setw(4) << j << std::endl;
     return true;
 }
