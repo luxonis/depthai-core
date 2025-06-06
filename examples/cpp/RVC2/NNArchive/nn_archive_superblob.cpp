@@ -26,7 +26,7 @@ int main() {
         dai::NNModelDescription modelDesc;
         modelDesc.model = "yolov6-nano";
         modelDesc.platform = "RVC2";
-        std::string archivePath = dai::getModelFromZoo(modelDesc, true);  // true to used cached if available, otherwise re-download
+        auto archivePath = dai::getModelFromZoo(modelDesc, true);  // true to used cached if available, otherwise re-download
 
         // Load NN archive
         dai::NNArchive archive(archivePath);
