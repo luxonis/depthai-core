@@ -6,6 +6,9 @@
     #include <cctype>
 #endif
 
+#include <fmt/format.h>
+#include <fmt/std.h>
+
 #include <filesystem>
 #include <iostream>
 #include <memory>
@@ -830,7 +833,7 @@ NNModelDescription NNModelDescription::fromYamlFile(const fs::path& modelName, c
     auto modelPrecisionType = utility::yamlGet<std::string>(yamlNode, "model_precision_type", "");
 
     // Get global metadata entry name
-    auto globalMetadataEntryName = modelName;
+    auto globalMetadataEntryName = fmt::format("{}", modelName);
 
     return {model, platform, optimizationLevel, compressionLevel, snpeVersion, modelPrecisionType, globalMetadataEntryName};
 }
