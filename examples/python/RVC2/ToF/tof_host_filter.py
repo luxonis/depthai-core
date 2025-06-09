@@ -36,7 +36,7 @@ pipeline = dai.Pipeline()
 # Define source and output
 tof = pipeline.create(dai.node.ToF).build()
 
-confidenceFilter = pipeline.create(dai.node.DepthConfidenceFilter)
+confidenceFilter = pipeline.create(dai.node.ToFDepthConfidenceFilter)
 confidenceFilter.setConfidenceThreshold(0.1)
 confidenceFilter.setRunOnHost(True)
 

@@ -11,8 +11,8 @@ void bind_imagefilters(pybind11::module& m, void* pCallstack) {
     // bind properties
     py::class_<ImageFiltersProperties> imageFiltersProperties(
         m, "ImageFiltersProperties", DOC(dai, ImageFiltersProperties));
-    py::class_<DepthConfidenceFilterProperties> depthConfidenceFilterProperties(
-        m, "DepthConfidenceFilterProperties", DOC(dai, DepthConfidenceFilterProperties));
+    py::class_<ToFDepthConfidenceFilterProperties> depthConfidenceFilterProperties(
+        m, "ToFDepthConfidenceFilterProperties", DOC(dai, ToFDepthConfidenceFilterProperties));
 
     // bind config
     py::class_<ImageFiltersConfig, Py<ImageFiltersConfig>, Buffer, std::shared_ptr<ImageFiltersConfig>>
@@ -22,14 +22,14 @@ void bind_imagefilters(pybind11::module& m, void* pCallstack) {
     imageFiltersConfig.def_readwrite(
         "filterParams", &ImageFiltersConfig::filterParams, DOC(dai, ImageFiltersConfig, filterParams));
 
-    py::class_<DepthConfidenceFilterConfig, Py<DepthConfidenceFilterConfig>, Buffer, std::shared_ptr<DepthConfidenceFilterConfig>>
-        depthConfidenceFilterConfig(m, "DepthConfidenceFilterConfig", DOC(dai, DepthConfidenceFilterConfig));
+    py::class_<ToFDepthConfidenceFilterConfig, Py<ToFDepthConfidenceFilterConfig>, Buffer, std::shared_ptr<ToFDepthConfidenceFilterConfig>>
+        depthConfidenceFilterConfig(m, "ToFDepthConfidenceFilterConfig", DOC(dai, ToFDepthConfidenceFilterConfig));
     depthConfidenceFilterConfig.def(py::init<>());
-    depthConfidenceFilterConfig.def_readwrite("confidenceThreshold", &DepthConfidenceFilterConfig::confidenceThreshold, DOC(dai, DepthConfidenceFilterConfig, confidenceThreshold));
+    depthConfidenceFilterConfig.def_readwrite("confidenceThreshold", &ToFDepthConfidenceFilterConfig::confidenceThreshold, DOC(dai, ToFDepthConfidenceFilterConfig, confidenceThreshold));
 
     // Add node bindings
     auto imageFilters = ADD_NODE(ImageFilters);
-    auto depthConfidenceFilter = ADD_NODE(DepthConfidenceFilter);
+    auto depthConfidenceFilter = ADD_NODE(ToFDepthConfidenceFilter);
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -59,16 +59,16 @@ void bind_imagefilters(pybind11::module& m, void* pCallstack) {
     imageFilters.attr("TemporalFilterParams") = m.attr("StereoDepthConfig").attr("PostProcessing").attr("TemporalFilter");
 
     // DepthConfidenceFilter bindings
-    depthConfidenceFilter.def_readonly("depth", &DepthConfidenceFilter::depth, DOC(dai, node, DepthConfidenceFilter, depth))
-        .def_readonly("amplitude", &DepthConfidenceFilter::amplitude, DOC(dai, node, DepthConfidenceFilter, amplitude))
-        .def_readonly("filteredDepth", &DepthConfidenceFilter::filteredDepth, DOC(dai, node, DepthConfidenceFilter, filteredDepth))
-        .def_readonly("confidence", &DepthConfidenceFilter::confidence, DOC(dai, node, DepthConfidenceFilter, confidence))
-        .def_readonly("config", &DepthConfidenceFilter::config, DOC(dai, node, DepthConfidenceFilter, config))
-        .def("setRunOnHost", &DepthConfidenceFilter::setRunOnHost, py::arg("runOnHost"), DOC(dai, node, DepthConfidenceFilter, setRunOnHost))
-        .def("runOnHost", &DepthConfidenceFilter::runOnHost, DOC(dai, node, DepthConfidenceFilter, runOnHost))
+    depthConfidenceFilter.def_readonly("depth", &ToFDepthConfidenceFilter::depth, DOC(dai, node, ToFDepthConfidenceFilter, depth))
+        .def_readonly("amplitude", &ToFDepthConfidenceFilter::amplitude, DOC(dai, node, ToFDepthConfidenceFilter, amplitude))
+        .def_readonly("filteredDepth", &ToFDepthConfidenceFilter::filteredDepth, DOC(dai, node, ToFDepthConfidenceFilter, filteredDepth))
+        .def_readonly("confidence", &ToFDepthConfidenceFilter::confidence, DOC(dai, node, ToFDepthConfidenceFilter, confidence))
+        .def_readonly("config", &ToFDepthConfidenceFilter::config, DOC(dai, node, ToFDepthConfidenceFilter, config))
+        .def("setRunOnHost", &ToFDepthConfidenceFilter::setRunOnHost, py::arg("runOnHost"), DOC(dai, node, ToFDepthConfidenceFilter, setRunOnHost))
+        .def("runOnHost", &ToFDepthConfidenceFilter::runOnHost, DOC(dai, node, ToFDepthConfidenceFilter, runOnHost))
         .def("setConfidenceThreshold",
-             &DepthConfidenceFilter::setConfidenceThreshold,
+             &ToFDepthConfidenceFilter::setConfidenceThreshold,
              py::arg("threshold"),
-             DOC(dai, node, DepthConfidenceFilter, setConfidenceThreshold))
-        .def("getConfidenceThreshold", &DepthConfidenceFilter::getConfidenceThreshold, DOC(dai, node, DepthConfidenceFilter, getConfidenceThreshold));
+             DOC(dai, node, ToFDepthConfidenceFilter, setConfidenceThreshold))
+        .def("getConfidenceThreshold", &ToFDepthConfidenceFilter::getConfidenceThreshold, DOC(dai, node, ToFDepthConfidenceFilter, getConfidenceThreshold));
 }

@@ -23,17 +23,17 @@ class ImageFiltersConfig : public Buffer {
     DEPTHAI_SERIALIZE(ImageFiltersConfig, filterIndex, filterParams);
 };
 
-class DepthConfidenceFilterConfig : public Buffer {
+class ToFDepthConfidenceFilterConfig : public Buffer {
    public:
-    DepthConfidenceFilterConfig() = default;
-    virtual ~DepthConfidenceFilterConfig() = default;
+    ToFDepthConfidenceFilterConfig() = default;
+    virtual ~ToFDepthConfidenceFilterConfig() = default;
 
     /**
      * Threshold for the confidence filter
      */
     float confidenceThreshold;
 
-    DEPTHAI_SERIALIZE(DepthConfidenceFilterConfig, confidenceThreshold);
+    DEPTHAI_SERIALIZE(ToFDepthConfidenceFilterConfig, confidenceThreshold);
 };
 
 }  // namespace dai

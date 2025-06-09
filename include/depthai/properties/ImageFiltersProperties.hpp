@@ -32,13 +32,13 @@ DEPTHAI_SERIALIZE_EXT(ImageFiltersProperties, filters);
 /**
  * Properties for DepthConfidenceFilter node
  */
-struct DepthConfidenceFilterProperties : PropertiesSerializable<Properties, DepthConfidenceFilterProperties> {
+struct ToFDepthConfidenceFilterProperties : PropertiesSerializable<Properties, ToFDepthConfidenceFilterProperties> {
     /**
      * Threshold for the confidence filter
      */
     float confidenceThreshold = 0.0f;
 };
 
-DEPTHAI_SERIALIZE_EXT(DepthConfidenceFilterProperties, confidenceThreshold);
+DEPTHAI_SERIALIZE_EXT(ToFDepthConfidenceFilterProperties, confidenceThreshold);
 
 }  // namespace dai

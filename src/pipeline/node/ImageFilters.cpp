@@ -7,6 +7,7 @@
 #include <utility/ErrorMacros.hpp>
 
 #include "depthai/depthai.hpp"
+#include "pipeline/ThreadedNodeImpl.hpp"
 #include "pipeline/datatype/ImageFiltersConfig.hpp"
 
 namespace dai {
@@ -742,20 +743,20 @@ void ImageFilters::addFilter(const FilterParams& filter) {
 
 void ImageFilters::run() {
     // Create filters
-    logger->debug("ImageFilters: Creating filters");
+    pimpl->logger->debug("ImageFilters: Creating filters");
     std::vector<std::unique_ptr<Filter>> filters;
     for(const auto& filter : properties.filters) {
         filters.push_back(createFilter(filter));
     }
 
-    logger->debug("ImageFilters: Starting");
+    pimpl->logger->debug("ImageFilters: Starting");
     while(isRunning()) {
         // Set config
         while(config.has()) {
             auto configMsg = config.get<ImageFiltersConfig>();
             auto index = configMsg->filterIndex;
             if(index >= static_cast<int>(filters.size())) {
-                logger->error("ImageFilters: Invalid filter index: {}", index);
+                pimpl->logger->error("ImageFilters: Invalid filter index: {}", index);
                 break;
             }
             filters[index]->setParams(configMsg->filterParams);
@@ -764,7 +765,7 @@ void ImageFilters::run() {
         // Get frame from input queue
         std::shared_ptr<dai::ImgFrame> frame = input.get<dai::ImgFrame>();
         if(frame == nullptr) {
-            logger->error("ImageFilters: Input frame is nullptr");
+            pimpl->logger->error("ImageFilters: Input frame is nullptr");
             break;
         }
 
@@ -790,11 +791,11 @@ void ImageFilters::setRunOnHost(bool runOnHost) {
     runOnHostVar = runOnHost;
 }
 
-void DepthConfidenceFilter::applyDepthConfidenceFilter(std::shared_ptr<ImgFrame> depthFrame,
-                                                       std::shared_ptr<ImgFrame> amplitudeFrame,
-                                                       std::shared_ptr<ImgFrame> filteredDepthFrame,
-                                                       std::shared_ptr<ImgFrame> confidenceFrame,
-                                                       float threshold) {
+void ToFDepthConfidenceFilter::applyDepthConfidenceFilter(std::shared_ptr<ImgFrame> depthFrame,
+                                                          std::shared_ptr<ImgFrame> amplitudeFrame,
+                                                          std::shared_ptr<ImgFrame> filteredDepthFrame,
+                                                          std::shared_ptr<ImgFrame> confidenceFrame,
+                                                          float threshold) {
     auto getCvType = [](ImgFrame::Type type) -> int {
         if(type == ImgFrame::Type::RAW8) {
             return CV_8UC1;
@@ -847,11 +848,11 @@ void DepthConfidenceFilter::applyDepthConfidenceFilter(std::shared_ptr<ImgFrame>
     }
 }
 
-void DepthConfidenceFilter::run() {
+void ToFDepthConfidenceFilter::run() {
     while(isRunning()) {
         // Update threshold dynamically
         while(config.has()) {
-            auto configMsg = config.get<DepthConfidenceFilterConfig>();
+            auto configMsg = config.get<ToFDepthConfidenceFilterConfig>();
             properties.confidenceThreshold = configMsg->confidenceThreshold;
         }
 
@@ -859,7 +860,7 @@ void DepthConfidenceFilter::run() {
         std::shared_ptr<dai::ImgFrame> depthFrame = depth.get<dai::ImgFrame>();
         std::shared_ptr<dai::ImgFrame> amplitudeFrame = amplitude.get<dai::ImgFrame>();
         if(depthFrame == nullptr || amplitudeFrame == nullptr) {
-            logger->error("DepthConfidenceFilter: Input frame is nullptr");
+            pimpl->logger->error("DepthConfidenceFilter: Input frame is nullptr");
             break;
         }
 
@@ -887,22 +888,22 @@ void DepthConfidenceFilter::run() {
     }
 }
 
-float DepthConfidenceFilter::getConfidenceThreshold() const {
+float ToFDepthConfidenceFilter::getConfidenceThreshold() const {
     return properties.confidenceThreshold;
 }
 
-void DepthConfidenceFilter::setConfidenceThreshold(float threshold) {
+void ToFDepthConfidenceFilter::setConfidenceThreshold(float threshold) {
     properties.confidenceThreshold = threshold;
 }
 
-void DepthConfidenceFilter::setRunOnHost(bool runOnHost) {
+void ToFDepthConfidenceFilter::setRunOnHost(bool runOnHost) {
     if(device && device->getPlatform() == Platform::RVC2 && !runOnHost) {
         DAI_CHECK_V(false, "DepthConfidenceFilter: Running on device is not supported on RVC2");
     }
     runOnHostVar = runOnHost;
 }
 
-bool DepthConfidenceFilter::runOnHost() const {
+bool ToFDepthConfidenceFilter::runOnHost() const {
     return runOnHostVar;
 }
 

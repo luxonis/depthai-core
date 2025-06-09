@@ -69,7 +69,7 @@ class ImageFilters : public DeviceNodeCRTP<DeviceNode, ImageFilters, ImageFilter
 /**
  * Node for depth confidence filter, designed to be used with the `ToF` node.
  */
-class DepthConfidenceFilter : public DeviceNodeCRTP<DeviceNode, DepthConfidenceFilter, DepthConfidenceFilterProperties>, public HostRunnable {
+class ToFDepthConfidenceFilter : public DeviceNodeCRTP<DeviceNode, ToFDepthConfidenceFilter, ToFDepthConfidenceFilterProperties>, public HostRunnable {
    public:
     constexpr static const char* NAME = "DepthConfidenceFilter";
     using DeviceNodeCRTP::DeviceNodeCRTP;
@@ -110,7 +110,7 @@ class DepthConfidenceFilter : public DeviceNodeCRTP<DeviceNode, DepthConfidenceF
                         Node::DEFAULT_GROUP,
                         Node::DEFAULT_BLOCKING,
                         Node::DEFAULT_QUEUE_SIZE,
-                        {{{DatatypeEnum::DepthConfidenceFilterConfig, true}}},
+                        {{{DatatypeEnum::ToFDepthConfidenceFilterConfig, true}}},
                         Node::DEFAULT_WAIT_FOR_MESSAGE}};
 
     void run() override;
