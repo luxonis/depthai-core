@@ -29,7 +29,6 @@ def get_random_temporal_filter_params():
             dai.filters.params.TemporalFilter.PersistencyMode.PERSISTENCY_INDEFINITELY,
         ]
     )
-    print(params.persistencyMode)
     params.alpha = random.uniform(0.3, 0.9)
     return params
 
@@ -80,7 +79,7 @@ def main(args: argparse.Namespace):
         monoRight.out.link(depth.right)
         depthQueue = depth.disparity.createOutputQueue()
 
-        depth.disparity.link(filterPipeline.input)
+        filterPipeline.build(depth.disparity)
 
         configInputQueue = filterPipeline.config.createInputQueue()
         filterOutputQueue = filterPipeline.output.createOutputQueue()
@@ -116,6 +115,7 @@ def main(args: argparse.Namespace):
                 config.filterParams = filterFactories[index]()
                 configInputQueue.send(config)
                 t_switch = time.time()
+                print("Config changed!")
 
             key = cv2.waitKey(1)
             if key == ord("q"):

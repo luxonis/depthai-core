@@ -737,6 +737,12 @@ std::unique_ptr<ImageFilters::Filter> createFilter(const FilterParams& params) {
     return std::visit([](auto&& arg) -> std::unique_ptr<ImageFilters::Filter> { return createFilter(arg); }, params);
 }
 
+std::shared_ptr<ImageFilters> ImageFilters::build(Node::Output& input, PresetMode presetMode) {
+    (void)presetMode;  // not used for now
+    input.link(this->input);
+    return std::static_pointer_cast<ImageFilters>(shared_from_this());
+}
+
 void ImageFilters::addFilter(const FilterParams& filter) {
     properties.filters.push_back(filter);
 }
@@ -789,6 +795,13 @@ void ImageFilters::setRunOnHost(bool runOnHost) {
         DAI_CHECK_V(false, "ImageFilters: Running on device is not supported on RVC2");
     }
     runOnHostVar = runOnHost;
+}
+
+std::shared_ptr<ToFDepthConfidenceFilter> ToFDepthConfidenceFilter::build(Node::Output& depth, Node::Output& amplitude, PresetMode presetMode) {
+    (void)presetMode;  // not used for now
+    depth.link(this->depth);
+    amplitude.link(this->amplitude);
+    return std::static_pointer_cast<ToFDepthConfidenceFilter>(shared_from_this());
 }
 
 void ToFDepthConfidenceFilter::applyDepthConfidenceFilter(std::shared_ptr<ImgFrame> depthFrame,

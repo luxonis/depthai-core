@@ -14,6 +14,21 @@ class ImageFilters : public DeviceNodeCRTP<DeviceNode, ImageFilters, ImageFilter
     using DeviceNodeCRTP::DeviceNodeCRTP;
 
     /**
+     * Preset modes for image filters.
+     */
+    enum class PresetMode : std::uint32_t {
+        DUMMY,
+    };
+
+    /**
+     * Build the node.
+     * @param input Input for image frames to be filtered
+     * @param presetMode Preset mode for image filters
+     * @return Shared pointer to the node
+     */
+    std::shared_ptr<ImageFilters> build(Node::Output& input, PresetMode presetMode = PresetMode::DUMMY);
+
+    /**
      * Input for image frames to be filtered
      */
     Node::Input input{
@@ -73,6 +88,22 @@ class ToFDepthConfidenceFilter : public DeviceNodeCRTP<DeviceNode, ToFDepthConfi
    public:
     constexpr static const char* NAME = "DepthConfidenceFilter";
     using DeviceNodeCRTP::DeviceNodeCRTP;
+
+    /**
+     * Preset modes for ToF depth confidence filter.
+     */
+    enum class PresetMode : std::uint32_t {
+        DUMMY,
+    };
+
+    /**
+     * Build the node.
+     * @param depth Depth frame image, expected ImgFrame type is RAW8 or RAW16.
+     * @param amplitude Amplitude frame image, expected ImgFrame type is RAW8 or RAW16.
+     * @param presetMode Preset mode for ToF depth confidence filter
+     * @return Shared pointer to the node
+     */
+    std::shared_ptr<ToFDepthConfidenceFilter> build(Node::Output& depth, Node::Output& amplitude, PresetMode presetMode = PresetMode::DUMMY);
 
     /**
      * Depth frame image, expected ImgFrame type is RAW8 or RAW16.
