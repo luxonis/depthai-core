@@ -239,23 +239,23 @@ jobs:
         zip -r depthai-core-${{ steps.tag.outputs.version }}-win64.zip depthai-core-${{ steps.tag.outputs.version }}-win64
         # zip -r depthai-core-${{ steps.tag.outputs.version }}-win32-no-opencv.zip depthai-core-${{ steps.tag.outputs.version }}-win32-no-opencv
 
-    # # Create GitHub release
-    # - uses: actions/create-release@master
-    #   id: createRelease
-    #   name: Create ${{ steps.tag.outputs.version }} depthai-core release
-    #   env:
-    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    #   with:
-    #     tag_name: ${{ github.ref }}
-    #     release_name: Release ${{ github.ref }}
-    #     body: |
-    #       ## Features
+    # Create GitHub release
+    - uses: actions/create-release@master
+      id: createRelease
+      name: Create ${{ steps.tag.outputs.version }} depthai-core release
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ github.ref }}
+        body: |
+          ## Features
 
-    #       ## Bug fixes
+          ## Bug fixes
 
-    #       ## Misc
+          ## Misc
 
-    #     draft: true
+        draft: true
 
     # Upload release assets
     - name: Upload source package (zip)
