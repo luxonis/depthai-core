@@ -48,13 +48,12 @@ def get_random_spatial_filter_params():
 def main(args: argparse.Namespace):
     # Create pipeline
     with dai.Pipeline() as pipeline:
-        monoLeft = pipeline.create(dai.node.MonoCamera)
-        monoLeft.setBoardSocket(dai.CameraBoardSocket.CAM_B)
-        monoLeft.setResolution(dai.MonoCameraProperties.SensorResolution.THE_400_P)
+        monoLeft = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
+        monoRight = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C)
 
-        monoRight = pipeline.create(dai.node.MonoCamera)
-        monoRight.setBoardSocket(dai.CameraBoardSocket.CAM_C)
-        monoRight.setResolution(dai.MonoCameraProperties.SensorResolution.THE_400_P)
+        fps = 20
+        outLeft = monoLeft.requestOutput((640, 400), fps=fps)
+        outRight = monoRight.requestOutput((640, 400), fps=fps)
 
         depth = pipeline.create(dai.node.StereoDepth)
 
@@ -75,8 +74,8 @@ def main(args: argparse.Namespace):
         depth.inputConfig.setBlocking(False)
 
         # Linking
-        monoLeft.out.link(depth.left)
-        monoRight.out.link(depth.right)
+        outLeft.link(depth.left)
+        outRight.link(depth.right)
         depthQueue = depth.disparity.createOutputQueue()
 
         filterPipeline.build(depth.disparity)
