@@ -21,6 +21,8 @@ set(test_env
 
 include(CMakeParseArguments)
 
+include_directories(${CMAKE_SOURCE_DIR}/src)
+
 # Function for adding new tests
 function(dai_add_test test_name test_src)
     # Parse arguments
@@ -50,11 +52,11 @@ function(dai_add_test test_name test_src)
     endif()
 
     # Link to core and Catch2 testing framework
+    set(DEPTHAI_TARGET depthai::core)
     if(NOT DEPTHAI_MERGED_TARGET)
-        target_link_libraries(${test_name} PRIVATE depthai::opencv ${OpenCV_LIBS} Catch2::Catch2WithMain Threads::Threads)
-    else()
-        target_link_libraries(${test_name} PRIVATE depthai::core ${OpenCV_LIBS} Catch2::Catch2WithMain Threads::Threads)
+        set(DEPTHAI_TARGET depthai::opencv)
     endif()
+    target_link_libraries(${test_name} PRIVATE ${DEPTHAI_TARGET} ${OpenCV_LIBS} Catch2::Catch2WithMain Threads::Threads spdlog::spdlog)
 
     # Add sanitizers for tests as well
     if(COMMAND add_sanitizers)
@@ -282,8 +284,10 @@ dai_add_test(model_slug_test src/onhost_tests/model_slug_test.cpp)
 dai_set_test_labels(model_slug_test onhost ci)
 
 # Remote connection tests
-dai_add_test(remote_connection_test src/onhost_tests/remote_connection_test.cpp)
-dai_set_test_labels(remote_connection_test onhost ci nowindows)
+if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
+    dai_add_test(remote_connection_test src/onhost_tests/remote_connection_test.cpp)
+    dai_set_test_labels(remote_connection_test onhost ci nowindows)
+endif()
 ### On-device tests ###########################################################
 
 # Camera stream restart test
@@ -315,10 +319,6 @@ dai_set_test_labels(neural_network_test ondevice rvc2_all ci)
 # Color camera test
 dai_add_test(color_camera_node_test src/ondevice_tests/color_camera_node_test.cpp)
 dai_set_test_labels(color_camera_node_test ondevice rvc2_all ci)
-
-# Image manip test
-dai_add_test(image_manip_node_test src/ondevice_tests/image_manip_node_test.cpp)
-dai_set_test_labels(image_manip_node_test ondevice rvc2_all ci)
 
 # Pipeline test
 dai_add_test(pipeline_test src/ondevice_tests/pipeline_test.cpp)
@@ -428,9 +428,13 @@ dai_set_test_labels(script_node_test ondevice rvc2_all rvc4 ci)
 dai_add_test(stereo_depth_node_test src/ondevice_tests/stereo_depth_node_test.cpp)
 dai_set_test_labels(stereo_depth_node_test ondevice rvc2_all rvc4 ci)
 
-# ImageManipV2 test
-dai_add_test(image_manip_v2_node_test src/ondevice_tests/pipeline/node/image_manip_v2_test.cpp)
-dai_set_test_labels(image_manip_v2_node_test ondevice rvc2_all rvc4 ci)
+# ImageManip test
+dai_add_test(image_manip_node_test src/ondevice_tests/pipeline/node/image_manip_test.cpp)
+dai_set_test_labels(image_manip_node_test ondevice rvc2_all rvc4 ci)
+
+dai_add_test(image_manip_optimization_test src/ondevice_tests/pipeline/node/image_manip_optimization_test.cpp)
+target_compile_definitions(image_manip_optimization_test PRIVATE LENNA_PATH="${lenna_png}")
+dai_set_test_labels(image_manip_optimization_test ondevice rvc4 ci)
 
 # Benchmark tests
 dai_add_test(benchmark_test src/ondevice_tests/pipeline/node/benchmark_test.cpp)

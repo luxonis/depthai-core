@@ -64,8 +64,8 @@ Usage
       dai::Pipeline pipeline;
       auto manip = pipeline.create<dai::node::ImageManip>();
 
-      manip->initialConfig.setResize(300, 300);
-      manip->initialConfig.setFrameType(dai::ImgFrame::Type::BGR888p);
+      manip->initialConfig->setResize(300, 300);
+      manip->initialConfig->setFrameType(dai::ImgFrame::Type::BGR888p);
 
 Image formats supported
 #######################

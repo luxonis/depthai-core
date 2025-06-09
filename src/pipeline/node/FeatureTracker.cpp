@@ -6,20 +6,12 @@ namespace dai {
 namespace node {
 
 FeatureTracker::FeatureTracker(std::unique_ptr<Properties> props)
-    : DeviceNodeCRTP<DeviceNode, FeatureTracker, FeatureTrackerProperties>(std::move(props)), initialConfig(properties.initialConfig) {}
+    : DeviceNodeCRTP<DeviceNode, FeatureTracker, FeatureTrackerProperties>(std::move(props)),
+      initialConfig(std::make_shared<decltype(properties.initialConfig)>(properties.initialConfig)) {}
 
 FeatureTracker::Properties& FeatureTracker::getProperties() {
-    properties.initialConfig = initialConfig;
+    properties.initialConfig = *initialConfig;
     return properties;
-}
-
-// Node properties configuration
-void FeatureTracker::setWaitForConfigInput(bool wait) {
-    inputConfig.setWaitForMessage(wait);
-}
-
-bool FeatureTracker::getWaitForConfigInput() const {
-    return inputConfig.getWaitForMessage();
 }
 
 void FeatureTracker::setHardwareResources(int numShaves, int numMemorySlices) {

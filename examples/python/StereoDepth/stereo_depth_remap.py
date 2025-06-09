@@ -40,7 +40,7 @@ with dai.Pipeline() as pipeline:
     monoRight = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C)
     stereo = pipeline.create(dai.node.StereoDepth)
 
-    stereo.setDefaultProfilePreset(dai.node.StereoDepth.PresetMode.HIGH_DENSITY)
+    stereo.setDefaultProfilePreset(dai.node.StereoDepth.PresetMode.DEFAULT)
     # stereo.setDepthAlign(dai.CameraBoardSocket.CAM_A)
     # stereo.setOutputSize(640, 400)
 

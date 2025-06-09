@@ -16,7 +16,7 @@ parser.add_argument('-io3dcpu', "--install_open3d_cpu", action="store_true", hel
 def prettyPrint(command):
 
     def hasWhitespace(string):
-        return (len(string) != len(re.sub('[\s+]', '', string)))
+        return (len(string) != len(re.sub(r'\s+', '', string)))
 
     stringBuilder = str()
     for i, item in enumerate(command):

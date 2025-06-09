@@ -32,7 +32,7 @@ class ToF : public DeviceNodeCRTP<DeviceNode, ToF, ToFProperties> {
     /**
      * Initial config to use for feature tracking.
      */
-    ToFConfig initialConfig;
+    std::shared_ptr<ToFConfig> initialConfig = std::make_shared<ToFConfig>();
 
     /**
      * Input ToFConfig message with ability to modify parameters in runtime.
@@ -43,8 +43,6 @@ class ToF : public DeviceNodeCRTP<DeviceNode, ToF, ToFProperties> {
 
     Output depth{*this, {"depth", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
-    // Note on API limitation:
-    // TODO(before mainline) - API not supported on RVC3
     Output amplitude{*this, {"amplitude", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};
     Output intensity{*this, {"intensity", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};
     Output phase{*this, {"phase", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};

@@ -3,7 +3,7 @@ import depthai as dai
 import sys
 
 from pathlib import Path
-installExamplesStr = Path(__file__).absolute().parents[2] / 'install_requirements.py --install_rerun'
+installExamplesStr = Path(__file__).absolute().parents[1] / 'install_requirements.py --install_rerun'
 try:
     import rerun as rr
 except ImportError:

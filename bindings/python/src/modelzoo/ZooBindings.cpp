@@ -32,6 +32,7 @@ void ZooBindings::bind(pybind11::module& m, void* pCallstack) {
           py::arg("useCached") = true,
           py::arg("cacheDirectory") = "",
           py::arg("apiKey") = "",
+          py::arg("progressFormat") = "none",
           DOC(dai, getModelFromZoo));
 
     m.def("downloadModelsFromZoo",
@@ -39,6 +40,7 @@ void ZooBindings::bind(pybind11::module& m, void* pCallstack) {
           py::arg("path"),
           py::arg("cacheDirectory") = "",
           py::arg("apiKey") = "",
+          py::arg("progressFormat") = "none",
           DOC(dai, downloadModelsFromZoo));
 
     // Bind NNModelDescription
@@ -58,33 +60,9 @@ void ZooBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("snpeVersion") = "",
              py::arg("modelPrecisionType") = "")
 
-        .def(py::init([](const std::string& modelSlug,
-                         const std::string& platform,
-                         const std::string& modelVersionSlug,
-                         const std::string& modelInstanceHash,
-                         const std::string& optimizationLevel,
-                         const std::string& compressionLevel,
-                         const std::string& teamName,
-                         const std::string& snpeVersion,
-                         const std::string& modelPrecisionType) {
-                 PyErr_WarnEx(PyExc_DeprecationWarning,
-                              "Constructor with split out model slug is deprecated, use NNModelDescription(model, platform, optimizationLevel, ...) instead.",
-                              1);
-                 SlugComponents slugComponents = SlugComponents{teamName, modelSlug, modelVersionSlug, modelInstanceHash};
-                 return NNModelDescription{slugComponents.merge(), platform, optimizationLevel, compressionLevel, snpeVersion, modelPrecisionType};
-             }),
-             py::arg("modelSlug"),
-             py::arg("platform") = "",
-             py::arg("modelVersionSlug") = "",
-             py::arg("modelInstanceHash") = "",
-             py::arg("optimizationLevel") = "",
-             py::arg("compressionLevel") = "",
-             py::arg("teamName") = "",
-             py::arg("snpeVersion") = "",
-             py::arg("modelPrecisionType") = "")
-
         .def(py::init<>([](const std::string& model) { return NNModelDescription{model}; }), py::arg("model"))
-        .def_static("fromYamlFile", &NNModelDescription::fromYamlFile, py::arg("yamlPath"), py::arg("modelsPath") = "", DOC(dai, NNModelDescription, fromYamlFile))
+        .def_static(
+            "fromYamlFile", &NNModelDescription::fromYamlFile, py::arg("yamlPath"), py::arg("modelsPath") = "", DOC(dai, NNModelDescription, fromYamlFile))
         .def("saveToYamlFile", &NNModelDescription::saveToYamlFile, py::arg("yamlPath"), DOC(dai, NNModelDescription, saveToYamlFile))
         .def("check", &NNModelDescription::check, DOC(dai, NNModelDescription, check))
         .def("toString", &NNModelDescription::toString, DOC(dai, NNModelDescription, toString))

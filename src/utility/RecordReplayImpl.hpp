@@ -1,10 +1,12 @@
 #include "depthai/utility/RecordReplay.hpp"
 #include "mcap/mcap.hpp"
-
+#ifdef DEPTHAI_ENABLE_MP4V2
+    #include <mp4v2.h>
+#endif
 #ifdef DEPTHAI_ENABLE_PROTOBUF
     #include <google/protobuf/descriptor.h>
 #endif
-
+#include "utility/span.hpp"
 namespace dai {
 namespace utility {
 
@@ -26,17 +28,16 @@ class VideoRecorder {
 
    private:
     bool initialized = false;
-    bool mp4v2Initialized = false;
     unsigned int fps = 0;
     unsigned int width = 0;
     unsigned int height = 0;
     VideoCodec codec = VideoCodec::RAW;
+#ifdef DEPTHAI_ENABLE_MP4V2
     MP4FileHandle mp4Writer = MP4_INVALID_FILE_HANDLE;
     MP4TrackId mp4Track = MP4_INVALID_TRACK_ID;
+#endif
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     std::unique_ptr<cv::VideoWriter> cvWriter;
-#else
-    std::unique_ptr<int> cvWriter;
 #endif
 };
 

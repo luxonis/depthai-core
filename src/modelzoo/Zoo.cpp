@@ -3,7 +3,10 @@
 #include <cctype>
 #include <filesystem>
 #include <iostream>
+#include <memory>
+#include <mutex>
 #include <nlohmann/json.hpp>
+#include <nlohmann/json_fwd.hpp>
 
 #include "utility/Environment.hpp"
 #include "utility/Logging.hpp"
@@ -12,6 +15,7 @@
 
 #ifdef DEPTHAI_ENABLE_CURL
     #include <cpr/api.h>
+    #include <cpr/cprtypes.h>
     #include <cpr/parameters.h>
     #include <cpr/status_codes.h>
 #endif
@@ -96,8 +100,11 @@ class ZooManager {
 
     /**
      * @brief Download model from model zoo
+     *
+     * @param responseJson: JSON with download links
+     * @param cprCallback: Progress callback
      */
-    void downloadModel(const nlohmann::json& responseJson);
+    void downloadModel(const nlohmann::json& responseJson, std::unique_ptr<cpr::ProgressCallback> cprCallback);
 
     /**
      * @brief Return path to model in cache
@@ -328,7 +335,7 @@ nlohmann::json ZooManager::fetchModelDownloadLinks() {
     return responseJson;
 }
 
-void ZooManager::downloadModel(const nlohmann::json& responseJson) {
+void ZooManager::downloadModel(const nlohmann::json& responseJson, std::unique_ptr<cpr::ProgressCallback> cprCallback) {
     // Extract download links from response
     auto downloadLinks = responseJson["download_links"].get<std::vector<std::string>>();
     auto downloadHash = responseJson["hash"].get<std::string>();
@@ -346,7 +353,7 @@ void ZooManager::downloadModel(const nlohmann::json& responseJson) {
 
     // Download all files and store them in cache folder
     for(const auto& downloadLink : downloadLinks) {
-        cpr::Response downloadResponse = cpr::Get(cpr::Url(downloadLink));
+        cpr::Response downloadResponse = cpr::Get(cpr::Url(downloadLink), *cprCallback);
         if(checkIsErrorModelDownload(downloadResponse)) {
             removeModelCacheFolder();
             throw std::runtime_error(generateErrorMessageModelDownload(downloadResponse));
@@ -395,7 +402,145 @@ std::string ZooManager::loadModelFromCache() const {
     return std::filesystem::absolute(folderFiles[0]).string();
 }
 
-std::string getModelFromZoo(const NNModelDescription& modelDescription, bool useCached, const std::string& cacheDirectory, const std::string& apiKey) {
+class CprCallback {
+   public:
+    virtual ~CprCallback() = default;
+    CprCallback(const std::string& modelName) : modelName(modelName) {}
+
+    virtual void cprCallback(
+        cpr::cpr_off_t downloadTotal, cpr::cpr_off_t downloadNow, cpr::cpr_off_t uploadTotal, cpr::cpr_off_t uploadNow, intptr_t userdata) = 0;
+
+    virtual std::unique_ptr<cpr::ProgressCallback> getCprProgressCallback() {
+        return std::make_unique<cpr::ProgressCallback>(
+            [this](cpr::cpr_off_t downloadTotal, cpr::cpr_off_t downloadNow, cpr::cpr_off_t uploadTotal, cpr::cpr_off_t uploadNow, intptr_t userdata) {
+                this->cprCallback(downloadTotal, downloadNow, uploadTotal, uploadNow, userdata);
+                return true;
+            });
+    }
+
+   protected:
+    std::string modelName;
+};
+
+class JsonCprCallback : public CprCallback {
+    constexpr static long long PRINT_INTERVAL_MS = 100;
+
+   public:
+    JsonCprCallback(const std::string& modelName) : CprCallback(modelName) {
+        startTime = std::chrono::steady_clock::time_point::min();
+    }
+
+    void print(long downloadTotal, long downloadNow, const std::string& modelName) {
+        nlohmann::json json = {
+            {"download_total", downloadTotal},
+            {"download_now", downloadNow},
+            {"model_name", modelName},
+        };
+        std::cout << json.dump() << std::endl;
+    }
+
+    void cprCallback(
+        cpr::cpr_off_t downloadTotal, cpr::cpr_off_t downloadNow, cpr::cpr_off_t uploadTotal, cpr::cpr_off_t uploadNow, intptr_t userdata) override {
+        (void)uploadTotal;
+        (void)uploadNow;
+        (void)userdata;
+
+        bool firstCall = startTime == std::chrono::steady_clock::time_point::min();
+        if(firstCall || downloadTotal == 0) {
+            startTime = std::chrono::steady_clock::now();
+        }
+
+        bool shouldPrint = std::chrono::steady_clock::now() - startTime > std::chrono::milliseconds(PRINT_INTERVAL_MS) || this->downloadTotal != downloadTotal;
+
+        if(shouldPrint) {
+            print(downloadTotal, downloadNow, modelName);
+            startTime = std::chrono::steady_clock::now();
+        }
+
+        this->downloadTotal = downloadTotal;
+        this->downloadNow = downloadNow;
+    }
+
+    ~JsonCprCallback() override {
+        if(downloadTotal != 0) {
+            print(downloadTotal, downloadNow, modelName);
+        }
+    }
+
+   private:
+    long downloadTotal = 0;
+    long downloadNow = 0;
+    std::chrono::steady_clock::time_point startTime;
+};
+
+class PrettyCprCallback : public CprCallback {
+   public:
+    PrettyCprCallback(const std::string& modelName) : CprCallback(modelName), finalProgressPrinted(false) {}
+
+    void cprCallback(
+        cpr::cpr_off_t downloadTotal, cpr::cpr_off_t downloadNow, cpr::cpr_off_t uploadTotal, cpr::cpr_off_t uploadNow, intptr_t userdata) override {
+        (void)uploadTotal;
+        (void)uploadNow;
+        (void)userdata;
+
+        if(finalProgressPrinted) return;
+
+        if(downloadTotal > 0) {
+            float progress = static_cast<float>(downloadNow) / downloadTotal;
+            int barWidth = 50;
+            int pos = static_cast<int>(barWidth * progress);
+
+            std::cout << "\rDownloading " << modelName << " [";
+            for(int i = 0; i < barWidth; ++i) {
+                if(i < pos)
+                    std::cout << "=";
+                else if(i == pos)
+                    std::cout << ">";
+                else
+                    std::cout << " ";
+            }
+            std::cout << "] " << std::fixed << std::setprecision(3) << progress * 100.0f << "% " << downloadNow / 1024.0f / 1024.0f << "/"
+                      << downloadTotal / 1024.0f / 1024.0f << " MB";
+
+            if(downloadNow == downloadTotal) {
+                std::cout << std::endl;
+                finalProgressPrinted = true;
+            } else {
+                std::cout << "\r";
+                std::cout.flush();
+            }
+        }
+    }
+
+   private:
+    bool finalProgressPrinted;
+};
+
+class NoneCprCallback : public CprCallback {
+   public:
+    NoneCprCallback(const std::string& modelName) : CprCallback(modelName) {}
+
+    void cprCallback(cpr::cpr_off_t, cpr::cpr_off_t, cpr::cpr_off_t, cpr::cpr_off_t, intptr_t) override {
+        // Do nothing
+    }
+};
+
+std::unique_ptr<CprCallback> getCprCallback(const std::string& format, const std::string& name) {
+    if(format == "json") {
+        return std::make_unique<JsonCprCallback>(name);
+    } else if(format == "pretty") {
+        return std::make_unique<PrettyCprCallback>(name);
+    } else if(format == "none") {
+        return std::make_unique<NoneCprCallback>(name);
+    }
+    throw std::runtime_error("Invalid format: " + format);
+}
+
+std::string getModelFromZoo(const NNModelDescription& modelDescription,
+                            bool useCached,
+                            const std::string& cacheDirectory,
+                            const std::string& apiKey,
+                            const std::string& progressFormat) {
     // Check if model description is valid
     if(!modelDescription.check()) throw std::runtime_error("Invalid model description:\n" + modelDescription.toString());
 
@@ -466,9 +611,13 @@ std::string getModelFromZoo(const NNModelDescription& modelDescription, bool use
     // Create cache folder
     zooManager.createCacheFolder();
 
+    // Create download progress callback
+    std::unique_ptr<CprCallback> cprCallback =
+        getCprCallback(progressFormat, modelDescription.globalMetadataEntryName.size() > 0 ? modelDescription.globalMetadataEntryName : modelDescription.model);
+
     // Download model
     logger::info("Downloading model from model zoo");
-    zooManager.downloadModel(responseJson);
+    zooManager.downloadModel(responseJson, cprCallback->getCprProgressCallback());
 
     // Store model as yaml in the cache folder
     std::string yamlPath = combinePaths(zooManager.getModelCacheFolderPath(cacheDirectory), "model.yaml");
@@ -479,7 +628,7 @@ std::string getModelFromZoo(const NNModelDescription& modelDescription, bool use
     return modelPath;
 }
 
-bool downloadModelsFromZoo(const std::string& path, const std::string& cacheDirectory, const std::string& apiKey) {
+bool downloadModelsFromZoo(const std::string& path, const std::string& cacheDirectory, const std::string& apiKey, const std::string& progressFormat) {
     logger::info("Downloading models from zoo");
     // Make sure 'path' exists
     if(!std::filesystem::exists(path)) throw std::runtime_error("Path does not exist: " + path);
@@ -507,7 +656,7 @@ bool downloadModelsFromZoo(const std::string& path, const std::string& cacheDire
         try {
             logger::info("Downloading model [{} / {}]: {}", i + 1, models.size(), modelName);
             auto modelDescription = NNModelDescription::fromYamlFile(modelName, path);
-            getModelFromZoo(modelDescription, true, cacheDirectory, apiKey);
+            getModelFromZoo(modelDescription, true, cacheDirectory, apiKey, progressFormat);
             logger::info("Downloaded model [{} / {}]: {}", i + 1, models.size(), modelName);
             numSuccess++;
         } catch(const std::exception& e) {
@@ -546,18 +695,24 @@ std::string ZooManager::getGlobalMetadataFilePath() const {
 
 #else
 
-std::string getModelFromZoo(const NNModelDescription& modelDescription, bool useCached, const std::string& cacheDirectory, const std::string& apiKey) {
+std::string getModelFromZoo(const NNModelDescription& modelDescription,
+                            bool useCached,
+                            const std::string& cacheDirectory,
+                            const std::string& apiKey,
+                            const std::string& progressFormat) {
     (void)modelDescription;
     (void)useCached;
     (void)cacheDirectory;
     (void)apiKey;
+    (void)progressFormat;
     throw std::runtime_error("getModelFromZoo requires libcurl to be enabled. Please recompile DepthAI with libcurl enabled.");
 }
 
-bool downloadModelsFromZoo(const std::string& path, const std::string& cacheDirectory, const std::string& apiKey) {
+bool downloadModelsFromZoo(const std::string& path, const std::string& cacheDirectory, const std::string& apiKey, const std::string& progressFormat) {
     (void)path;
     (void)cacheDirectory;
     (void)apiKey;
+    (void)progressFormat;
     throw std::runtime_error("downloadModelsFromZoo requires libcurl to be enabled. Please recompile DepthAI with libcurl enabled.");
 }
 

@@ -24,19 +24,21 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
     enum class PresetMode : std::uint32_t {
         /**
          * Prefers accuracy over density. More invalid depth values, but less outliers.
+         * This mode does not turn on any post-processing and is light on resources.
          */
-        HIGH_ACCURACY [[deprecated("Will be removed in future releases and replaced with DEFAULT")]],
+        FAST_ACCURACY,
         /**
          * Prefers density over accuracy. Less invalid depth values, but more outliers.
+         * This mode does not turn on any post-processing and is light on resources.
          */
-        HIGH_DENSITY [[deprecated("Will be removed in future releases and replaced with DEFAULT")]],
+        FAST_DENSITY,
 
         DEFAULT,
         FACE,
         HIGH_DETAIL,
         ROBOTICS
     };
-    std::shared_ptr<StereoDepth> build(Node::Output& left, Node::Output& right, PresetMode presetMode = PresetMode::HIGH_ACCURACY) {
+    std::shared_ptr<StereoDepth> build(Node::Output& left, Node::Output& right, PresetMode presetMode = PresetMode::DEFAULT) {
         setDefaultProfilePreset(presetMode);
         left.link(this->left);
         right.link(this->right);
@@ -48,7 +50,7 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
      * @param autoCreateCameras If true, will create left and right nodes if they don't exist
      * @param presetMode Preset mode for stereo depth
      */
-    std::shared_ptr<StereoDepth> build(bool autoCreateCameras, PresetMode presetMode = PresetMode::HIGH_ACCURACY, std::pair<int, int> size = {640, 400});
+    std::shared_ptr<StereoDepth> build(bool autoCreateCameras, PresetMode presetMode = PresetMode::DEFAULT, std::pair<int, int> size = {640, 400});
 
    protected:
     Properties& getProperties();
@@ -56,7 +58,7 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
     StereoDepth(std::unique_ptr<Properties> props);
 
    private:
-    PresetMode presetMode = PresetMode::HIGH_ACCURACY;
+    PresetMode presetMode = PresetMode::DEFAULT;
 
    public:
     using MedianFilter = dai::StereoDepthConfig::MedianFilter;
@@ -64,7 +66,7 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
     /**
      * Initial config to use for StereoDepth.
      */
-    StereoDepthConfig initialConfig;
+    std::shared_ptr<StereoDepthConfig> initialConfig = std::make_shared<StereoDepthConfig>();
 
     /**
      * Input StereoDepthConfig message with ability to modify parameters in runtime.
@@ -87,23 +89,6 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
      * Input for right ImgFrame of left-right pair
      */
     Input right{*this, {"right", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ImgFrame, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
-
-    // TODO(before mainline) - API not supported on RVC2
-    /**
-     * Input pixel descriptor for left ImgFrame.
-     * Input type must be 4 bytes per pixel
-     */
-    Input inputLeftPixelDescriptor{
-        *this, {"inputLeftPixelDescriptor", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ImgFrame, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
-
-    // TODO(before mainline) - API not supported on RVC2
-    /**
-     * Input pixel descriptor for right ImgFrame.
-     * Input type must be 4 bytes per pixel
-     */
-    Input inputRightPixelDescriptor{
-        *this,
-        {"inputRightPixelDescriptor", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ImgFrame, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Outputs ImgFrame message that carries RAW16 encoded (0..65535) depth data in depth units (millimeter by default).
@@ -185,18 +170,6 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
      */
     Output confidenceMap{*this, {"confidenceMap", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
-    // TODO(before mainline) - API not supported on RVC2
-    Output pixelDescriptorsLeft{*this, {"pixelDescriptorsLeft", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
-
-    // TODO(before mainline) - API not supported on RVC2
-    Output pixelDescriptorsRight{*this, {"pixelDescriptorsRight", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
-
-    /**
-     * Specify that a passthrough/dummy calibration should be used,
-     * when input frames are already rectified (e.g. sourced from recordings on the host)
-     */
-    [[deprecated("Use 'Stereo::setRectification(false)' instead")]] void setEmptyCalibration();
-
     /**
      * Specify local filesystem paths to the mesh calibration files for 'left' and 'right' inputs.
      *
@@ -253,11 +226,6 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
     void setOutputKeepAspectRatio(bool keep);
 
     /**
-     * @param median Set kernel size for disparity/depth median filtering, or disable
-     */
-    [[deprecated("Use 'initialConfig.setMedianFilter()' instead")]] void setMedianFilter(MedianFilter median);
-
-    /**
      * @param align Set the disparity/depth alignment: centered (between the 'left' and 'right' inputs),
      * or from the perspective of a rectified output stream
      */
@@ -267,12 +235,6 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
      * @param camera Set the camera from whose perspective the disparity/depth will be aligned
      */
     void setDepthAlign(CameraBoardSocket camera);
-
-    /**
-     * Confidence threshold for disparity calculation
-     * @param confThr Confidence threshold value 0..255
-     */
-    [[deprecated("Use 'initialConfig.setConfidenceThreshold()' instead")]] void setConfidenceThreshold(int confThr);
 
     /**
      * Rectify input images or not.
@@ -316,33 +278,6 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
     void setRectifyEdgeFillColor(int color);
 
     /**
-     * DEPRECATED function. It was removed, since rectified images are not flipped anymore.
-     * Mirror rectified frames, only when LR-check mode is disabled. Default `true`.
-     * The mirroring is required to have a normal non-mirrored disparity/depth output.
-     *
-     * A side effect of this option is disparity alignment to the perspective of left or right input:
-     * `false`: mapped to left and mirrored, `true`: mapped to right.
-     * With LR-check enabled, this option is ignored, none of the outputs are mirrored,
-     * and disparity is mapped to right.
-     *
-     * @param enable True for normal disparity/depth, otherwise mirrored
-     */
-    [[deprecated("Function call should be removed")]] void setRectifyMirrorFrame(bool enable);
-
-    /**
-     * Enable outputting rectified frames. Optimizes computation on device side when disabled.
-     * DEPRECATED. The outputs are auto-enabled if used
-     */
-    [[deprecated("Function call should be removed")]] void setOutputRectified(bool enable);
-
-    /**
-     * Enable outputting 'depth' stream (converted from disparity).
-     * In certain configurations, this will disable 'disparity' stream.
-     * DEPRECATED. The output is auto-enabled if used
-     */
-    [[deprecated("Function call should be removed")]] void setOutputDepth(bool enable);
-
-    /**
      * Enable runtime stereo mode switch, e.g. from standard to LR-check.
      * Note: when enabled resources allocated for worst case to enable switching to any mode.
      */
@@ -353,12 +288,6 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
      * @param numFramesPool How many frames should the pool have
      */
     void setNumFramesPool(int numFramesPool);
-
-    /**
-     * Useful for normalization of the disparity map.
-     * @returns Maximum disparity value that the node can return
-     */
-    [[deprecated("Use 'initialConfig.getMaxDisparity()' instead")]] float getMaxDisparity() const;
 
     /**
      * Specify allocated hardware resources for stereo depth.
@@ -375,12 +304,6 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
     void setDefaultProfilePreset(PresetMode mode);
 
     /**
-     * Whether to use focal length from calibration intrinsics or calculate based on calibration FOV.
-     * Default value is true.
-     */
-    [[deprecated("setFocalLengthFromCalibration is deprecated. Default value is true.")]] void setFocalLengthFromCalibration(bool focalLengthFromCalibration);
-
-    /**
      * Use 3x3 homography matrix for stereo rectification instead of sparse mesh generated on device.
      * Default behaviour is AUTO, for lenses with FOV over 85 degrees sparse mesh is used, otherwise 3x3 homography.
      * If custom mesh data is provided through loadMeshData or loadMeshFiles this option is ignored.
@@ -392,21 +315,6 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
      */
     void useHomographyRectification(bool useHomographyRectification);
 
-    // TODO(before mainline) - API not supported on RVC2
-    /**
-     * Whether to perform vertical stereo matching or not.
-     * Default value is false.
-     * If set to true rectification process includes 90 degree clock wise rotation to perform vertical matching.
-     */
-    void setVerticalStereo(bool verticalStereo);
-
-    // TODO(before mainline) - API not supported on RVC2
-    /**
-     * Whether to use custom pixel descriptors sent from host to device for debugging purposes.
-     * Default value is false.
-     */
-    void setCustomPixelDescriptors(bool customPixelDescriptors);
-
     /**
      * Equivalent to useHomographyRectification(!enableDistortionCorrection)
      */
@@ -416,7 +324,7 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
      * Whether to enable frame syncing inside stereo node or not. Suitable if inputs are known to be synced.
      */
     void setFrameSync(bool enableFrameSync);
-    // TODO(before mainline) - API not supported on RVC3
+
     /**
      * Override baseline from calibration.
      * Used only in disparity to depth conversion.
@@ -424,7 +332,6 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
      */
     void setBaseline(float baseline);
 
-    // TODO(before mainline) - API not supported on RVC3
     /**
      * Override focal length from calibration.
      * Used only in disparity to depth conversion.
@@ -432,14 +339,12 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
      */
     void setFocalLength(float focalLength);
 
-    // TODO(before mainline) - API not supported on RVC3
     /**
      * Use baseline information for disparity to depth conversion from specs (design data) or from calibration.
      * Default: true
      */
     void setDisparityToDepthUseSpecTranslation(bool specTranslation);
 
-    // TODO(before mainline) - API not supported on RVC3
     /**
      * Obtain rectification matrices using spec translation (design data) or from calibration in calculations.
      * Should be used only for debugging.
@@ -447,14 +352,12 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
      */
     void setRectificationUseSpecTranslation(bool specTranslation);
 
-    // TODO(before mainline) - API not supported on RVC3
     /**
      * Use baseline information for depth alignment from specs (design data) or from calibration.
      * Default: true
      */
     void setDepthAlignmentUseSpecTranslation(bool specTranslation);
 
-    // TODO(before mainline) - API not supported on RVC3
     /**
      * Free scaling parameter between 0 (when all the pixels in the undistorted image are valid)
      * and 1 (when all the source image pixels are retained in the undistorted image).

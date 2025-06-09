@@ -11,7 +11,6 @@ enum class DatatypeEnum : std::int32_t {
     EncodedFrame,
     NNData,
     ImageManipConfig,
-    ImageManipConfigV2,
     CameraControl,
     ImgDetections,
     SpatialImgDetections,
@@ -38,7 +37,8 @@ enum class DatatypeEnum : std::int32_t {
     ImageAlignConfig,
     ImgAnnotations,
     ImageFiltersConfig,
-    DepthConfidenceFilterConfig
+    DepthConfidenceFilterConfig,
+    ObjectTrackerConfig
 };
 bool isDatatypeSubclassOf(DatatypeEnum parent, DatatypeEnum children);
 

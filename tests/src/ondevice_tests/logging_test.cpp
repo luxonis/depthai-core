@@ -1,5 +1,3 @@
-#include <spdlog/spdlog.h>
-
 #include <catch2/catch_all.hpp>
 #include <chrono>
 #include <thread>
@@ -15,7 +13,7 @@ class LoggingTestFixture {
     std::shared_ptr<dai::node::Script> script;
     std::shared_ptr<dai::InputQueue> in;
     std::shared_ptr<dai::MessageQueue> out;
-    std::array<bool, spdlog::level::n_levels - 1> arrivedLogs;
+    std::array<bool, static_cast<int>(dai::LogLevel::OFF)> arrivedLogs;
     std::shared_ptr<dai::Device> device;
 
     LoggingTestFixture() {

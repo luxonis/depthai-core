@@ -8,7 +8,7 @@
 #include "depthai/depthai.hpp"
 
 // libraries
-#include <spimpl.h>
+#include "depthai/utility/spimpl.h"
 
 // depthai internal
 #include "depthai/common/CameraBoardSocket.hpp"
@@ -46,11 +46,19 @@ class Camera::Impl {
     }
 
     void buildStage1(Camera& parent) {
+        size_t numUnconnectedOutputs = 0;
         for(const auto& outputRequest : outputRequests) {
-            DAI_CHECK(!parent.dynamicOutputs[std::to_string(outputRequest.id)].getQueueConnections().empty()
-                          || !parent.dynamicOutputs[std::to_string(outputRequest.id)].getConnections().empty(),
-                      "Always call output->createOutputQueue() or output->link(*) after calling dai::node::Camera::requestOutput()");
+            bool hasQueue = !parent.dynamicOutputs[std::to_string(outputRequest.id)].getQueueConnections().empty();
+            bool hasConnections = !parent.dynamicOutputs[std::to_string(outputRequest.id)].getConnections().empty();
+            if(!hasQueue && !hasConnections) {
+                ++numUnconnectedOutputs;
+            }
         }
+
+        DAI_CHECK_V(numUnconnectedOutputs == 0,
+                    "Always call output->createOutputQueue() or output->link(*) after calling dai::node::Camera::requestOutput(). There is(are) {} requested "
+                    "Camera output(s) with no connected inputs or created output queues.",
+                    numUnconnectedOutputs);
     }
 };
 
@@ -140,7 +148,7 @@ std::shared_ptr<Camera> Camera::build(CameraBoardSocket boardSocket,
     isBuilt = true;
     return std::static_pointer_cast<Camera>(shared_from_this());
 }
-
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
 std::shared_ptr<Camera> Camera::build(CameraBoardSocket boardSocket, ReplayVideo& replay) {
     auto cam = build(boardSocket);
     cam->setMockIsp(replay);
@@ -152,6 +160,7 @@ std::shared_ptr<Camera> Camera::build(ReplayVideo& replay) {
     cam->setMockIsp(replay);
     return cam;
 }
+#endif
 
 Camera::Properties& Camera::getProperties() {
     properties.initialControl = initialControl;
@@ -242,7 +251,7 @@ Node::Output* Camera::requestOutput(std::pair<uint32_t, uint32_t> size,
 Node::Output* Camera::requestOutput(const Capability& capability, bool onHost) {
     return pimpl->requestOutput(*this, capability, onHost);
 }
-
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
 Camera& Camera::setMockIsp(ReplayVideo& replay) {
     if(!replay.getReplayVideoFile().empty()) {
         auto [width, height] = replay.getSize();
@@ -269,6 +278,7 @@ Camera& Camera::setMockIsp(ReplayVideo& replay) {
     }
     return *this;
 }
+#endif
 
 void Camera::buildStage1() {
     return pimpl->buildStage1(*this);

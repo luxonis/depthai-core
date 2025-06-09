@@ -76,6 +76,13 @@ try:
                     ending = 'T: ...'
                 final_lines.append(f"    def create(self, arg0: Type[T], *args, **kwargs) -> {ending}")
                 continue
+
+            # Fix the issue where the stubs would have `import MessageQueue`
+            # at the top of the file. This caused `dai.MessageQueue` not to be 
+            # especially IDE friendly.
+            if line.strip() == 'import MessageQueue':
+                continue
+
             final_lines.append(line)
 
         final_stubs = '\n'.join(final_lines)
@@ -85,7 +92,7 @@ try:
         file.write(final_stubs)
 
     # node fixes
-    with open(f'{DIRECTORY}/depthai/node.pyi' ,'r+') as file:
+    with open(f'{DIRECTORY}/depthai/node/__init__.pyi' ,'r+') as file:
         # Read
         contents = file.read()
 

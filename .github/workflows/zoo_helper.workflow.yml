@@ -11,7 +11,7 @@ jobs:
   build-zoo-helper-linux-x86_64:
     runs-on: ubuntu-latest
     container:
-      image: almalinux:8
+      image: almalinux:8.10-20240528
     steps:
       - name: Cache .hunter folder
         uses: actions/cache@v3
@@ -39,7 +39,7 @@ jobs:
           dnf install -y pkgconf-pkg-config bison autoconf libtool libXi-devel libXtst-devel cmake zip perl-core python39
           dnf install -y libXrandr-devel libX11-devel libXft-devel libXext-devel flex systemd-devel
           dnf install -y gcc-c++ automake libtool-ltdl-devel wget
-          wget https://www.nasm.us/pub/nasm/releasebuilds/2.16.01/nasm-2.16.01.tar.gz && tar -xzf nasm-2.16.01.tar.gz && cd nasm-2.16.01 && ./configure && make && make install && cd .. # install nasm - build from source
+          wget https://github.com/netwide-assembler/nasm/archive/refs/tags/nasm-2.15.04.tar.gz && tar -xzf nasm-2.15.04.tar.gz && cd nasm-nasm-2.15.04 && ./autogen.sh && ./configure && make && make install && cd .. # install nasm - build from source
           pip3 install jinja2
 
       - name: Configure project
@@ -65,7 +65,7 @@ jobs:
   build-zoo-helper-linux-arm64:
     runs-on: [self-hosted, linux, ARM64]
     container:
-      image: arm64v8/almalinux:8
+      image: arm64v8/almalinux:8.10-20240528
       # Mount local hunter cache directory, instead of transfering to Github and back
       volumes:
         - /.hunter:/github/home/.hunter
@@ -95,7 +95,6 @@ jobs:
           dnf install -y pkgconf-pkg-config bison autoconf libtool libXi-devel libXtst-devel cmake git zip perl-core python39
           dnf install -y libXrandr-devel libX11-devel libXft-devel libXext-devel flex systemd-devel
           dnf install -y gcc-c++ automake libtool-ltdl-devel wget
-          wget https://www.nasm.us/pub/nasm/releasebuilds/2.16.01/nasm-2.16.01.tar.gz && tar -xzf nasm-2.16.01.tar.gz && cd nasm-2.16.01 && ./configure && make && make install && cd .. # install nasm - build from source
           pip3 install jinja2
           pip3 install ninja # ninja is needed for cmake on arm64
 

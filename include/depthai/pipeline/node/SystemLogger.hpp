@@ -1,7 +1,6 @@
 #pragma once
 
 #include <depthai/pipeline/DeviceNode.hpp>
-#include <depthai/pipeline/node/Pool.hpp>
 
 // shared
 #include <depthai/properties/SystemLoggerProperties.hpp>
@@ -24,20 +23,6 @@ class SystemLogger : public DeviceNodeCRTP<DeviceNode, SystemLogger, SystemLogge
      * for series 3 devices outputs SystemInformationS3 message
      */
     Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::SystemInformation, false}, {DatatypeEnum::SystemInformationS3, false}}}}};
-
-    /**
-     * Optional - consumes an SystemInformation message from pool to send outwards
-     * Otherwise uses dynamic allocation and/or default pool
-     */
-
-    // TODO(before mainline) - Clean up - add pools back in when ready
-    // Input inputPool{
-    //     true, *this, "inputPool", Input::Type::MReceiver, false, 4, {{DatatypeEnum::SystemInformation, false}, {DatatypeEnum::SystemInformationS3, false}}};
-
-    /**
-     * Default pool that is linked to inputPool input
-     */
-    // Subnode<Pool> pool{*this, "pool"};
 
     /**
      * Specify logging rate, at which messages will be sent out
