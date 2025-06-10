@@ -819,6 +819,9 @@ file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/depthai-core-integration.txt" 
     "$<$<BOOL:${tmp_definitions}>:\n-D\'$<JOIN:${tmp_definitions},\'\n-D\'>\'>\n
     $<$<BOOL:${tmp_includes}>:\n-I\'$<JOIN:${tmp_includes},\'\n-I\'>\'>\n"
 )
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/depthai-core-include-dirs.cmake" CONTENT
+    "set(depthai_core_INCLUDE_DIRS \"${tmp_includes}\")"
+)
 
 if(DEPTHAI_HAVE_OPENCV_SUPPORT)
     set(tmp_definitions "$<TARGET_PROPERTY:${TARGET_OPENCV_NAME},INTERFACE_COMPILE_DEFINITIONS>")
@@ -826,6 +829,9 @@ if(DEPTHAI_HAVE_OPENCV_SUPPORT)
     file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/depthai-opencv-integration.txt" CONTENT
         "$<$<BOOL:${tmp_definitions}>:\n-D\'$<JOIN:${tmp_definitions},\'\n-D\'>\'>\n
         $<$<BOOL:${tmp_includes}>:\n-I\'$<JOIN:${tmp_includes},\'\n-I\'>\'>\n"
+    )
+    file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/depthai-opencv-include-dirs.cmake" CONTENT
+        "set(depthai_core_INCLUDE_DIRS \"${tmp_includes}\")"
     )
 endif()
 if(DEPTHAI_HAVE_PCL_SUPPORT)
