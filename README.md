@@ -6,7 +6,7 @@
 
 DepthAI library for interfacing with Luxonis DepthAI hardware.
 
-> ⚠️ This is a `v3.x.y` version of the library which is still in active development without a stable API yet.
+> ℹ️ This is a `v3.x.y` version of the library which is in release candidate stage.
 
 > ℹ️ For porting code from `v2` version of the library, we recommend using the [porting guide](./V2V3PortinGuide.md)
 
@@ -33,6 +33,7 @@ cmake --build build
 To install OpenCV:
 MacOS: `brew install opencv`
 Linux: `sudo apt install libopencv-dev`
+Windows: `choco install opencv`
 
 To install PCL:
 MacOS: `brew install pcl`
@@ -63,10 +64,15 @@ Then configure and build
 
 ```
 cmake -S . -B build
-cmake --build build
+cmake --build build --parallel [num CPU cores]
 ```
+On Windows, we currently only build the dependencies in Release mode, so you may want to add `-DCMAKE_BUILD_TYPE=Release` to the configuration step and you'll need to specify the location of the OpenCV installation. In case you used chocolatey to install OpenCV, you can use the following command:
 
-> ℹ️ To speed up build times, use `cmake --build build --parallel [num CPU cores]` (CMake >= 3.12).
+```
+cmake -S . -B build -DOpenCV_DIR=C:/tools/opencv/build -DCMAKE_BUILD_TYPE=Release
+cmake --build build --config Release --parallel [num CPU cores]
+```
+> ℹ️ To speed up build times, use `cmake --build build --parallel [num CPU cores]`.
 
 ### Dynamic library
 
