@@ -1,5 +1,6 @@
 #include "depthai/nn_archive/NNArchive.hpp"
 
+#include <chrono>
 #include <cstdint>
 #include <optional>
 #include <stdexcept>
@@ -29,7 +30,9 @@ NNArchive::NNArchive(const std::string& archivePath, NNArchiveOptions options) :
 
     // Unpack model
     std::filesystem::path unpackedArchivePath = std::filesystem::path(archiveOptions.extractFolder()) / std::filesystem::path(archivePath).filename();
-    unpackedArchivePath += "_" + std::to_string(std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count());
+    unpackedArchivePath += "_"
+                           + std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count()
+                                            % 1000000000000ul);  // 12 digits, repeats every ~32 years
     unpackArchiveInDirectory(archivePath, unpackedArchivePath.string());
     unpackedModelPath = (unpackedArchivePath / modelPathInArchive).string();
 
