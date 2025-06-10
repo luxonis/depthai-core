@@ -3,7 +3,7 @@
 #include <depthai/pipeline/datatype/NNData.hpp>
 
 #include "depthai/common/TensorInfo.hpp"
-#include "xtensor/xmanipulation.hpp"
+#include "xtensor/misc/xmanipulation.hpp"
 
 TEST_CASE("a") {
     dai::NNData nndata;

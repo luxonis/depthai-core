@@ -6,8 +6,8 @@
 #include <vector>
 
 #include "depthai/depthai.hpp"
-#include "xtensor/xadapt.hpp"
-#include "xtensor/xmath.hpp"
+#include "xtensor/containers/xadapt.hpp"
+#include "xtensor/core/xmath.hpp"
 
 cv::Mat colorizeDepth(cv::Mat frameDepth) {
     cv::Mat invalidMask = frameDepth == 0;
