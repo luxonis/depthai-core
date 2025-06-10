@@ -6,7 +6,7 @@ build*/*
 # Auto-generated
 shared/version.hpp
 
-#pybind11
+# pybind11
 build/
 dist/
 _build/
@@ -15,14 +15,10 @@ _generate/
 *.py[cod]
 *.egg-info
 
-#depthai-cpp
-depthai-cpp/.vscode/
-depthai-cpp/build/
-
-#ci
+# ci
 wheelhouse/
 calib*.json
-#git
+# git
 *.orig
 *_REMOTE_*
 *_LOCAL_*
@@ -31,3 +27,10 @@ calib*.json
 
 # clangd cache
 .cache/
+
+# msvc template
+msvc/x64/
+msvc/x86/
+msvc/Debug/
+msvc/Release/
+msvc/*.filters
