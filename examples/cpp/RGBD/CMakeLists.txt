@@ -5,14 +5,8 @@ cmake_minimum_required(VERSION 3.10)
 ## function: dai_set_example_test_labels(example_name ...)
 
 # Skip compiling rerun examples on Windows, since the used version of rerun doesn't compile on Windows
-if(NOT WIN32)
-    include(FetchContent)
-    FetchContent_Declare(
-        rerun_sdk 
-        URL https://github.com/rerun-io/rerun/releases/download/0.16.1/rerun_cpp_sdk.zip
-        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-    )
-    FetchContent_MakeAvailable(rerun_sdk)
+if(NOT WIN32 AND DEPTHAI_PCL_SUPPORT)
+    find_package(rerun_sdk CONFIG REQUIRED)
     dai_add_example(rgbd rgbd.cpp ON OFF)
     target_link_libraries(rgbd PRIVATE rerun_sdk)
 endif()

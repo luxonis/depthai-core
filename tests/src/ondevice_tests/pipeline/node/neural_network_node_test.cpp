@@ -1,6 +1,6 @@
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_test_macros.hpp>
-#include <magic_enum.hpp>
+#include <magic_enum/magic_enum.hpp>
 #include <opencv2/videoio.hpp>
 
 #include "depthai/common/CameraBoardSocket.hpp"
@@ -8,7 +8,6 @@
 #include "depthai/modelzoo/Zoo.hpp"
 #include "depthai/pipeline/datatype/BenchmarkReport.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
-#include "xtensor/xtensor_forward.hpp"
 
 TEST_CASE("Cross platform NeuralNetwork API") {
     // Create pipeline

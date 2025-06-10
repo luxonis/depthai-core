@@ -1,6 +1,6 @@
 #include <iostream>
 #include <opencv2/opencv.hpp>
-#include <xtensor/xarray.hpp>
+#include <xtensor/containers/xarray.hpp>
 
 #include "depthai/depthai.hpp"
 #include "depthai/modelzoo/Zoo.hpp"
