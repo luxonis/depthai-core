@@ -2,6 +2,7 @@
 
 #include <depthai/pipeline/DeviceNode.hpp>
 #include <depthai/properties/DynamicCalibrationProperties.hpp>
+#include <DynamicCalibration.hpp>
 
 namespace dai {
 namespace node {
@@ -17,14 +18,15 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     constexpr static const char* NAME = "DynamicCalibration";
     using DeviceNodeCRTP::DeviceNodeCRTP;
 
+    float qualityCheck = 0.0f;
     // We could have a map here to perform the calibration on an arbitrary number of inputs for example: (left, right, rgb).
     // /**
     //  * A map of inputs
     //  */
     // InputMap inputs{*this, "inputs", {"", DEFAULT_GROUP, false, 10, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
-    Input left{*this, {"left"}};
-    Input right{*this, {"right"}};
+    Input left{*this, {"left", DEFAULT_GROUP, false, 1}};
+    Input right{*this, {"right", DEFAULT_GROUP, false, 1}};
 
     /**
      * Specify whether to run on host or device
@@ -41,9 +43,19 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
      * Get the calibration quality (epipolar error)
      * @return Epipolar error in pixels
      */
-    float getCalibrationQuality() const;
-
+    float getCalibQuality() const;
+    auto createDCLCameraCalibration(const std::vector<std::vector<float>> cameraMatrix, const std::vector<float> distortionCoefficients, const std::vector<std::vector<float>> rotationMatrix, const std::vector<float> translationVector);
+    void pipelineSetup(std::shared_ptr<Device> device, CameraBoardSocket leftSocket, CameraBoardSocket rightSocket, int widthDefault = 1280, int heightDefault = 800);
     void run() override;
+
+    private:
+        std::vector<float> rotationMatrixToVector(const std::vector<std::vector<float>>& R);
+        std::unique_ptr<dcl::DynamicCalibration> dynCalibImpl;
+        dcl::mxid_t deviceName;
+        dcl::socket_t socketA;
+        dcl::socket_t socketB;
+        const int initialSkipFrames = 500;
+        const int processEveryNFrames = 5;
 };
 
 }  // namespace node
