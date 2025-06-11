@@ -27,8 +27,8 @@
 // project
 #include "DeviceLogger.hpp"
 #include "depthai/device/EepromError.hpp"
-#include "depthai/pipeline/node/XLinkIn.hpp"
-#include "depthai/pipeline/node/XLinkOut.hpp"
+#include "depthai/pipeline/node/internal/XLinkIn.hpp"
+#include "depthai/pipeline/node/internal/XLinkOut.hpp"
 #include "pipeline/Pipeline.hpp"
 #include "utility/EepromDataParser.hpp"
 #include "utility/Environment.hpp"
@@ -303,70 +303,28 @@ void DeviceBase::tryGetDevice() {
     }
 }
 
-DeviceBase::DeviceBase(OpenVINO::Version version, const DeviceInfo& devInfo) : DeviceBase(version, devInfo, DeviceBase::DEFAULT_USB_SPEED) {}
+DeviceBase::DeviceBase(const DeviceInfo& devInfo) : DeviceBase(devInfo, DeviceBase::DEFAULT_USB_SPEED) {}
 
-DeviceBase::DeviceBase(OpenVINO::Version version, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed) : deviceInfo(devInfo) {
-    init(version, maxUsbSpeed, "");
+DeviceBase::DeviceBase(const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed) : deviceInfo(devInfo) {
+    init(maxUsbSpeed, "");
 }
 
-DeviceBase::DeviceBase(OpenVINO::Version version, const DeviceInfo& devInfo, const dai::Path& pathToCmd) : deviceInfo(devInfo) {
+DeviceBase::DeviceBase(const DeviceInfo& devInfo, const dai::Path& pathToCmd) : deviceInfo(devInfo) {
     Config cfg;
-    cfg.version = version;
 
     init2(cfg, pathToCmd, false);
 }
 
-DeviceBase::DeviceBase() : DeviceBase(OpenVINO::VERSION_UNIVERSAL) {}
-
-DeviceBase::DeviceBase(const DeviceInfo& devInfo) : DeviceBase(OpenVINO::VERSION_UNIVERSAL, devInfo) {}
-
-DeviceBase::DeviceBase(const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed) : DeviceBase(OpenVINO::VERSION_UNIVERSAL, devInfo, maxUsbSpeed) {}
-
-DeviceBase::DeviceBase(std::string nameOrDeviceId) : DeviceBase(OpenVINO::VERSION_UNIVERSAL, dai::DeviceInfo(std::move(nameOrDeviceId))) {}
-
-DeviceBase::DeviceBase(std::string nameOrDeviceId, UsbSpeed maxUsbSpeed)
-    : DeviceBase(OpenVINO::VERSION_UNIVERSAL, dai::DeviceInfo(std::move(nameOrDeviceId)), maxUsbSpeed) {}
-
-DeviceBase::DeviceBase(OpenVINO::Version version) {
-    init(version);
+DeviceBase::DeviceBase() {
+    init();
 }
 
-DeviceBase::DeviceBase(OpenVINO::Version version, const dai::Path& pathToCmd) {
-    init(version, pathToCmd);
-}
+DeviceBase::DeviceBase(std::string nameOrDeviceId) : DeviceBase(dai::DeviceInfo(std::move(nameOrDeviceId))) {}
 
-DeviceBase::DeviceBase(OpenVINO::Version version, UsbSpeed maxUsbSpeed) {
-    init(version, maxUsbSpeed);
-}
+DeviceBase::DeviceBase(std::string nameOrDeviceId, UsbSpeed maxUsbSpeed) : DeviceBase(dai::DeviceInfo(std::move(nameOrDeviceId)), maxUsbSpeed) {}
 
-DeviceBase::DeviceBase(const Pipeline& pipeline) {
-    init(pipeline);
-    tryStartPipeline(pipeline);
-}
-
-DeviceBase::DeviceBase(const Pipeline& pipeline, UsbSpeed maxUsbSpeed) {
-    init(pipeline, maxUsbSpeed);
-    tryStartPipeline(pipeline);
-}
-
-DeviceBase::DeviceBase(const Pipeline& pipeline, const dai::Path& pathToCmd) {
-    init(pipeline, pathToCmd);
-    tryStartPipeline(pipeline);
-}
-
-DeviceBase::DeviceBase(const Pipeline& pipeline, const DeviceInfo& devInfo) : deviceInfo(devInfo) {
-    init(pipeline, devInfo);
-    tryStartPipeline(pipeline);
-}
-
-DeviceBase::DeviceBase(const Pipeline& pipeline, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed) : deviceInfo(devInfo) {
-    init(pipeline, devInfo, maxUsbSpeed);
-    tryStartPipeline(pipeline);
-}
-
-DeviceBase::DeviceBase(const Pipeline& pipeline, const DeviceInfo& devInfo, const dai::Path& pathToCmd) : deviceInfo(devInfo) {
-    init(pipeline, devInfo, pathToCmd);
-    tryStartPipeline(pipeline);
+DeviceBase::DeviceBase(UsbSpeed maxUsbSpeed) {
+    init(maxUsbSpeed);
 }
 
 DeviceBase::DeviceBase(Config config, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed) : deviceInfo(devInfo) {
@@ -385,69 +343,23 @@ DeviceBase::DeviceBase(Config config, UsbSpeed maxUsbSpeed) {
     init(config, maxUsbSpeed);
 }
 
-void DeviceBase::init(OpenVINO::Version version) {
+void DeviceBase::init() {
     tryGetDevice();
 
     Config cfg;
-    cfg.version = version;
-
     init2(cfg, "", false);
 }
 
-void DeviceBase::init(OpenVINO::Version version, const dai::Path& pathToCmd) {
+void DeviceBase::init(const dai::Path& pathToCmd) {
     tryGetDevice();
 
     Config cfg;
-    cfg.version = version;
-
     init2(cfg, pathToCmd, false);
 }
 
-void DeviceBase::init(OpenVINO::Version version, UsbSpeed maxUsbSpeed) {
+void DeviceBase::init(UsbSpeed maxUsbSpeed) {
     tryGetDevice();
-    init(version, maxUsbSpeed, "");
-}
-
-void DeviceBase::init(const Pipeline& pipeline) {
-    tryGetDevice();
-
-    Config cfg = pipeline.getDeviceConfig();
-
-    init2(cfg, "", true);
-}
-
-void DeviceBase::init(const Pipeline& pipeline, UsbSpeed maxUsbSpeed) {
-    tryGetDevice();
-    init(pipeline, maxUsbSpeed, "");
-}
-
-void DeviceBase::init(const Pipeline& pipeline, const dai::Path& pathToCmd) {
-    tryGetDevice();
-
-    Config cfg = pipeline.getDeviceConfig();
-
-    init2(cfg, pathToCmd, true);
-}
-
-void DeviceBase::init(const Pipeline& pipeline, const DeviceInfo& devInfo) {
-    deviceInfo = devInfo;
-
-    Config cfg = pipeline.getDeviceConfig();
-
-    init2(cfg, "", true);
-}
-
-void DeviceBase::init(const Pipeline& pipeline, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed) {
-    deviceInfo = devInfo;
-    init(pipeline, maxUsbSpeed, "");
-}
-
-void DeviceBase::init(const Pipeline& pipeline, const DeviceInfo& devInfo, const dai::Path& pathToCmd) {
-    deviceInfo = devInfo;
-
-    Config cfg = pipeline.getDeviceConfig();
-
-    init2(cfg, pathToCmd, true);
+    init(maxUsbSpeed, "");
 }
 
 void DeviceBase::init(Config config, UsbSpeed maxUsbSpeed) {
@@ -641,12 +553,10 @@ void DeviceBase::tryStartPipeline(const Pipeline& pipeline) {
     }
 }
 
-void DeviceBase::init(OpenVINO::Version version, UsbSpeed maxUsbSpeed, const dai::Path& pathToMvcmd) {
+void DeviceBase::init(UsbSpeed maxUsbSpeed, const dai::Path& pathToMvcmd) {
     Config cfg;
     // Specify usb speed
     cfg.board.usb.maxSpeed = maxUsbSpeed;
-    // Specify the OpenVINO version
-    cfg.version = version;
     init2(cfg, pathToMvcmd, false);
 }
 void DeviceBase::init(const Pipeline& pipeline, UsbSpeed maxUsbSpeed, const dai::Path& pathToMvcmd) {
@@ -1391,16 +1301,8 @@ LogLevel DeviceBase::getLogOutputLevel() {
     return pimpl->getLogLevel();
 }
 
-bool DeviceBase::setIrLaserDotProjectorBrightness(float mA, int mask) {
-    return pimpl->rpcClient->call("setIrLaserDotProjectorBrightness", mA, mask, false);
-}
-
 bool DeviceBase::setIrLaserDotProjectorIntensity(float intensity, int mask) {
     return pimpl->rpcClient->call("setIrLaserDotProjectorBrightness", intensity, mask, true);
-}
-
-bool DeviceBase::setIrFloodLightBrightness(float mA, int mask) {
-    return pimpl->rpcClient->call("setIrFloodLightBrightness", mA, mask, false);
 }
 
 bool DeviceBase::setIrFloodLightIntensity(float intensity, int mask) {
@@ -1505,6 +1407,26 @@ void DeviceBase::flashCalibration2(CalibrationHandler calibrationDataHandler) {
     if(!success) {
         throw std::runtime_error(errorMsg);
     }
+}
+
+void DeviceBase::setCalibration(CalibrationHandler calibrationDataHandler) {
+    bool success;
+    std::string errorMsg;
+    std::tie(success, errorMsg) = pimpl->rpcClient->call("setCalibration", calibrationDataHandler.getEepromData()).as<std::tuple<bool, std::string>>();
+    if(!success) {
+        throw std::runtime_error(errorMsg);
+    }
+}
+
+CalibrationHandler DeviceBase::getCalibration() {
+    bool success;
+    std::string errorMsg;
+    dai::EepromData eepromData;
+    std::tie(success, errorMsg, eepromData) = pimpl->rpcClient->call("getCalibration").as<std::tuple<bool, std::string, dai::EepromData>>();
+    if(!success) {
+        throw EepromError(errorMsg);
+    }
+    return CalibrationHandler(eepromData);
 }
 
 CalibrationHandler DeviceBase::readCalibration() {
@@ -1642,11 +1564,6 @@ void DeviceBase::flashFactoryEepromClear() {
     }
 }
 
-bool DeviceBase::startPipeline() {
-    // Deprecated
-    return true;
-}
-
 bool DeviceBase::startPipeline(const Pipeline& pipeline) {
     // first check if pipeline is not already running
     if(isPipelineRunning()) {
@@ -1657,11 +1574,6 @@ bool DeviceBase::startPipeline(const Pipeline& pipeline) {
 }
 
 bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
-    // Check openvino version
-    if(!pipeline.isOpenVINOVersionCompatible(config.version)) {
-        throw std::runtime_error("Device booted with different OpenVINO version that pipeline requires");
-    }
-
     // Serialize the pipeline
     PipelineSchema schema;
     Assets assets;

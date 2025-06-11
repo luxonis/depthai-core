@@ -11,7 +11,6 @@ message ImgDetections {
     common.ImgTransformation transformation = 5;
 }
 
-
 message ImgDetection {
     uint32 label = 1;
     float confidence = 2;
@@ -19,4 +18,5 @@ message ImgDetection {
     float ymin = 4;
     float xmax = 5;
     float ymax = 6;
+    string labelName = 7;
 }

@@ -29,7 +29,7 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
     /**
      * Initial config to use when computing the point cloud.
      */
-    PointCloudConfig initialConfig;
+    std::shared_ptr<PointCloudConfig> initialConfig = std::make_shared<PointCloudConfig>();
 
     /**
      * Input PointCloudConfig message with ability to modify parameters in runtime.

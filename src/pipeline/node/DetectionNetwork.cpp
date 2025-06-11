@@ -67,6 +67,7 @@ std::shared_ptr<DetectionNetwork> DetectionNetwork::build(const std::shared_ptr<
     return std::static_pointer_cast<DetectionNetwork>(shared_from_this());
 }
 
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
 std::shared_ptr<DetectionNetwork> DetectionNetwork::build(const std::shared_ptr<ReplayVideo>& input, NNModelDescription modelDesc, std::optional<float> fps) {
     auto nnArchive = createNNArchive(modelDesc);
     return build(input, nnArchive, fps);
@@ -76,6 +77,8 @@ std::shared_ptr<DetectionNetwork> DetectionNetwork::build(const std::shared_ptr<
     detectionParser->setNNArchive(nnArchive);
     return std::static_pointer_cast<DetectionNetwork>(shared_from_this());
 }
+#endif
+
 NNArchive DetectionNetwork::createNNArchive(NNModelDescription& modelDesc) {
     // Download model from zoo
     if(modelDesc.platform.empty()) {
@@ -235,72 +238,6 @@ std::vector<std::pair<Node::Input&, std::shared_ptr<Capability>>> DetectionNetwo
 
 std::optional<std::vector<std::string>> DetectionNetwork::getClasses() const {
     return detectionParser->getClasses();
-}
-
-//--------------------------------------------------------------------
-// MobileNet
-//--------------------------------------------------------------------
-void MobileNetDetectionNetwork::buildInternal() {
-    DetectionNetwork::buildInternal();
-    detectionParser->properties.parser.nnFamily = DetectionNetworkType::MOBILENET;
-}
-
-//--------------------------------------------------------------------
-// YOLO
-//--------------------------------------------------------------------
-void YoloDetectionNetwork::buildInternal() {
-    DetectionNetwork::buildInternal();
-    detectionParser->properties.parser.nnFamily = DetectionNetworkType::YOLO;
-    detectionParser->properties.parser.iouThreshold = 0.5f;
-}
-
-void YoloDetectionNetwork::setNumClasses(const int numClasses) {
-    detectionParser->setNumClasses(numClasses);
-}
-
-void YoloDetectionNetwork::setCoordinateSize(const int coordinates) {
-    detectionParser->setCoordinateSize(coordinates);
-}
-
-void YoloDetectionNetwork::setAnchors(std::vector<float> anchors) {
-    detectionParser->setAnchors(anchors);
-}
-
-void YoloDetectionNetwork::setAnchorMasks(std::map<std::string, std::vector<int>> anchorMasks) {
-    detectionParser->setAnchorMasks(anchorMasks);
-}
-
-void YoloDetectionNetwork::setAnchors(const std::vector<std::vector<std::vector<float>>>& anchors) {
-    detectionParser->setAnchors(anchors);
-}
-
-void YoloDetectionNetwork::setIouThreshold(float thresh) {
-    detectionParser->setIouThreshold(thresh);
-}
-
-/// Get num classes
-int YoloDetectionNetwork::getNumClasses() const {
-    return detectionParser->getNumClasses();
-}
-
-/// Get coordianate size
-int YoloDetectionNetwork::getCoordinateSize() const {
-    return detectionParser->getCoordinateSize();
-}
-
-/// Get anchors
-std::vector<float> YoloDetectionNetwork::getAnchors() const {
-    return detectionParser->getAnchors();
-}
-
-/// Get anchor masks
-std::map<std::string, std::vector<int>> YoloDetectionNetwork::getAnchorMasks() const {
-    return detectionParser->getAnchorMasks();
-}
-
-/// Get Iou threshold
-float YoloDetectionNetwork::getIouThreshold() const {
-    return detectionParser->getIouThreshold();
 }
 
 }  // namespace node

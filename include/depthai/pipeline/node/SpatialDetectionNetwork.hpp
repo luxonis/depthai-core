@@ -6,7 +6,6 @@
 #include <depthai/pipeline/node/DetectionNetwork.hpp>
 #include <depthai/pipeline/node/ImageAlign.hpp>
 #include <depthai/pipeline/node/StereoDepth.hpp>
-#include <depthai/pipeline/node/host/Replay.hpp>
 
 #include "depthai/openvino/OpenVINO.hpp"
 
@@ -294,51 +293,6 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
     void setNNArchiveOther(const NNArchive& nnArchive);
     NNArchive createNNArchive(NNModelDescription& modelDesc);
     void alignDepth(const std::shared_ptr<StereoDepth>& stereo, const std::shared_ptr<Camera>& camera);
-
-   protected:
-    using DeviceNodeCRTP::DeviceNodeCRTP;
-};
-
-/**
- * MobileNetSpatialDetectionNetwork node. Mobilenet-SSD based network with spatial location data.
- */
-class MobileNetSpatialDetectionNetwork : public DeviceNodeCRTP<SpatialDetectionNetwork, MobileNetSpatialDetectionNetwork, SpatialDetectionNetworkProperties> {
-   public:
-    void buildInternal() override;
-
-   protected:
-    using DeviceNodeCRTP::DeviceNodeCRTP;
-};
-
-/**
- * YoloSpatialDetectionNetwork node. Yolo-based network with spatial location data.
- */
-class YoloSpatialDetectionNetwork : public DeviceNodeCRTP<SpatialDetectionNetwork, YoloSpatialDetectionNetwork, SpatialDetectionNetworkProperties> {
-   public:
-    /// Set num classes
-    void setNumClasses(const int numClasses);
-    /// Set coordianate size
-    void setCoordinateSize(const int coordinates);
-    /// Set anchors
-    void setAnchors(std::vector<float> anchors);
-    /// Set anchor masks
-    void setAnchorMasks(std::map<std::string, std::vector<int>> anchorMasks);
-    /// Set Iou threshold
-    void setIouThreshold(float thresh);
-
-    /// Get num classes
-    int getNumClasses() const;
-
-    /// Get coordianate size
-    int getCoordinateSize() const;
-    /// Get anchors
-    std::vector<float> getAnchors() const;
-    /// Get anchor masks
-    std::map<std::string, std::vector<int>> getAnchorMasks() const;
-    /// Get Iou threshold
-    float getIouThreshold() const;
-
-    void buildInternal() override;
 
    protected:
     using DeviceNodeCRTP::DeviceNodeCRTP;

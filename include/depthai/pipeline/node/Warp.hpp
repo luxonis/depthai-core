@@ -22,17 +22,6 @@ class Warp : public DeviceNodeCRTP<DeviceNode, Warp, WarpProperties> {
     void setWarpMesh(const float* meshData, int numMeshPoints, int width, int height);
 
    public:
-    // /**
-    //  * Initial config to use when manipulating frames
-    //  */
-    // WarpConfig initialConfig;
-
-    // /**
-    //  * Input WarpConfig message with ability to modify parameters in runtime
-    //  * Default queue is blocking with size 8
-    //  */
-    // Input inputConfig{true, *this, "inputConfig", Input::Type::SReceiver, true, 8, {{DatatypeEnum::WarpConfig, true}}};
-
     /**
      * Input image to be modified
      * Default queue is blocking with size 8

@@ -1,29 +1,33 @@
 {
     "name": "depthai",
+    "version": "3.0.0",
     "dependencies": [
         {
             "name": "cpp-httplib",
             "default-features": false
         },
-        "libpng",
-        "tiff",
-        "yaml-cpp",
         "nlohmann-json",
+        "yaml-cpp",
         "spdlog",
         "zlib",
         "bzip2",
         "lz4",
         "liblzma",
         "fp16",
-        "mp4v2",
-        "libnop",
-        "argparse",
         "fmt",
         "neargye-semver",
         "magic-enum",
         {
             "name": "libarchive",
             "default-features": false
+        },
+        {
+          "name": "vcpkg-cmake",
+          "host": true
+        },
+        {
+          "name": "vcpkg-cmake-config",
+          "host": true
         }
     ],
     "features": {
@@ -45,6 +49,17 @@
                     ]
                 },
                 {
+                    "name": "ffmpeg",
+                    "features": [
+                        "openh264"
+                    ]
+                }
+            ]
+        },
+        "opencv-gui": {
+            "description": "Enable OpenCV GUI support",
+            "dependencies": [
+                {
                     "name": "opencv4",
                     "default-features": false,
                     "features": [
@@ -52,19 +67,13 @@
                     ],
                     "platform": "linux & !arm"
                 },
-                {
+                                {
                     "name": "opencv4",
                     "default-features": false,
                     "features": [
                         "win32ui"
                     ],
                     "platform": "windows"
-                },
-                {
-                    "name": "ffmpeg",
-                    "features": [
-                        "openh264"
-                    ]
                 }
             ]
         },
@@ -163,28 +172,6 @@
                 }
             ]
         },
-        "xlink": {
-            "description": "Enable XLink support",
-            "dependencies": [
-                {
-                    "name": "xlink"
-                }
-            ]
-        },
-        "xlink-usb": {
-            "description": "Enable XLink support",
-            "dependencies": [
-                {
-                    "name": "xlink",
-                    "features": [
-                        "libusb"
-                    ]
-                },
-                {
-                    "name": "libusb"
-                }
-            ]
-        },
         "tests": {
             "description": "Enable tests",
             "dependencies": [
@@ -192,7 +179,53 @@
                     "name": "catch2"
                 }
             ]
+        },
+        "recording": {
+            "description": "Enable recording support",
+            "dependencies": [
+                {
+                    "name": "mp4v2"
+                }
+            ]
+        },
+        "xtensor-support": {
+            "description": "Enable xtensor support",
+            "dependencies": [
+                {
+                    "name": "xtensor"
+                },
+                {
+                    "name": "xtl"
+                }
+            ]
+        },
+        "public-deps": {
+            "description": "Enable public dependencies",
+            "dependencies": [
+                {
+                    "name": "nlohmann-json"
+                },
+                {
+                    "name": "libnop"
+                }
+            ]
+        },
+        "usb": {
+            "description": "Enable USB support",
+            "dependencies": [
+                {
+                    "name": "libusb"
+                }
+            ]
+        },
+        "rerun-sdk": {
+            "description": "Enable Rerun SDK support",
+            "dependencies": [
+                {
+                    "name": "rerun-sdk"
+                }
+            ]
         }
     },
-    "builtin-baseline": "b2cb0da531c2f1f740045bfe7c4dac59f0b2b69c"
+    "builtin-baseline": "a9eee3b18df395dbb8be71a31bd78ea441056e42"
 }

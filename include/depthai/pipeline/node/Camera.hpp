@@ -1,15 +1,17 @@
 #pragma once
 
 // libraries
-#include <spimpl.h>
-
 #include <optional>
+
+#include "depthai/utility/spimpl.h"
 
 // depthai
 #include "depthai/capabilities/ImgFrameCapability.hpp"
 #include "depthai/pipeline/DeviceNode.hpp"
 #include "depthai/pipeline/datatype/CameraControl.hpp"
-#include "depthai/pipeline/node/host/Replay.hpp"
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    #include "depthai/pipeline/node/host/Replay.hpp"
+#endif
 #include "depthai/properties/CameraProperties.hpp"
 #include "depthai/utility/span.hpp"
 
@@ -53,6 +55,7 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
                                   std::optional<std::pair<uint32_t, uint32_t>> sensorResolution = std::nullopt,
                                   std::optional<float> sensorFps = std::nullopt);
 
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     /**
      * Build with a specific board socket and mock input
      */
@@ -62,6 +65,7 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
      * Build with mock input
      */
     std::shared_ptr<Camera> build(ReplayVideo& replay);
+#endif
 
     /**
      * Get max width of the camera (can only be called after build)
@@ -103,11 +107,13 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
      */
     CameraBoardSocket getBoardSocket() const;
 
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     /**
      * Set mock ISP for Camera node. Automatically sets mockIsp size.
      * @param replay ReplayVideo node to use as mock ISP
      */
     Camera& setMockIsp(ReplayVideo& replay);
+#endif
 
    private:
     class Impl;

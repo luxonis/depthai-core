@@ -3,7 +3,7 @@ name: BOM Testing
 on:
   push:
     branches:
-      - v3_develop
+      - develop
     tags:
       - 'v*'
   workflow_dispatch:
@@ -30,7 +30,7 @@ on:
       depthai:
         required: false
         type: string
-        default: "v3_develop"
+        default: "develop"
         description: "Version for depthai"
 
 jobs:
@@ -60,12 +60,12 @@ jobs:
       - name: Checkout source code from tag
         uses: actions/checkout@v3
         with:
-            ref: ${{ github.event.inputs.depthai }} 
+            ref: ${{ github.event.inputs.depthai }}
             path: depthai-core
             submodules: 'recursive'
 
       - name: Prepare HIL Framework
-        run: source scripts/hil/prepare_hil_framework.sh 
+        run: source scripts/hil/prepare_hil_framework.sh
 
       - name: Configure, Build and Test
         run: |
@@ -83,7 +83,7 @@ jobs:
             export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-depthai-bom"
             RESERVATION_OPTION="--reservation-name $RESERVATION_NAME"
           fi
-          
+
           if [[ "${{ github.event.inputs.hold_reservation }}" == 'true' ]]; then
             HOLD_RESERVATION="--hold-reservation"
           fi
@@ -92,52 +92,3 @@ jobs:
             UPDATE_LUXONIS_OS="--rvc4-os-version ${{ github.event.inputs.luxonis_os }}"
           fi
           exec hil $HOLD_RESERVATION --models "oak4_pro or oak4_d" $TESTBED_OPTION $RESERVATION_OPTION $UPDATE_LUXONIS_OS --wait --sync-workspace  --commands 'cd /tmp/depthai-core|| exit' 'scripts/hil/run_hil_tests.sh ${{ matrix.flavor }} --rvc4'
-  
-
-  dispatch-bom-tests:
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push'
-    outputs:
-      runner_conclusion: ${{ steps.get_runner.outputs.runner_conclusion }}
-    steps:
-      - name: Dispatch action and get run ID
-        uses: codex-/return-dispatch@v2
-        id: return_dispatch
-        with:
-          token: ${{ secrets.BOM_GITHUB_TOKEN }}
-          ref: "main"
-          repo: "luxonis-bom"
-          owner: "luxonis"
-          workflow: "dispatch_main.yml"
-          workflow_timeout_seconds: 120
-          workflow_job_steps_retry_seconds: 2
-          workflow_inputs: '{"depthai": "${{ github.ref_name }}", "depthai_version_dependencies": "experimental", "depthai_nodes": "latest", "luxonis_os": "latest" }'
-
-      - name: Wait for the dispatched workflow to complete
-        id: get_runner
-        run: |
-            RUN_ID=${{ steps.return_dispatch.outputs.run_id }}
-            TOKEN=${{ secrets.BOM_GITHUB_TOKEN }}
-            OWNER="luxonis"
-            REPO="luxonis-bom"
-  
-            echo "STARTING TO WAIT FOR RUN https://github.com/$OWNER/$REPO/actions/runs/$RUN_ID"
-            
-            STATUS=$(curl -s --header "Authorization: Bearer $TOKEN" "https://api.github.com/repos/$OWNER/$REPO/actions/runs/$RUN_ID" | jq -r .status)
-            
-            while [ "$STATUS" != "completed" ]; do
-              echo "Waiting for the workflow run to complete..."
-              sleep 60
-              STATUS=$(curl -s -H "Authorization: Bearer $TOKEN" "https://api.github.com/repos/$OWNER/$REPO/actions/runs/$RUN_ID" | jq -r .status)
-              echo "Current status $STATUS"
-            done
-            CONCLUSION=$(curl -s -H "Authorization: Bearer $TOKEN" "https://api.github.com/repos/$OWNER/$REPO/actions/runs/$RUN_ID" | jq -r .conclusion)
-            
-            echo "Run $RUN_ID is completed. Conclusion is $CONCLUSION"
-  
-            # Set outputs for the job using GITHUB_OUTPUT file
-            echo "runner_conclusion=$CONCLUSION" >> $GITHUB_OUTPUT
-            if [ "$CONCLUSION" != "success" ] && [ "$CONCLUSION" != "skipped" ]; then
-                echo "Failed job"
-                exit 1
-            fi

@@ -6,12 +6,12 @@ on:
   workflow_dispatch:
   pull_request:
     branches:
-    - v3_develop
+    - develop
   push:
     branches:
-    - v3_develop*
+    - develop*
     tags:
-    - 'v3*'
+    - 'v*'
 
 ###################################
 ###################################
@@ -26,19 +26,19 @@ jobs:
   build-docstrings:
     runs-on: ubuntu-latest
     env:
-      VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+      VCPKG_BINARY_SOURCES: "clear;files,/home/runner/.vcpkg,readwrite"
     steps:
       - name: Setup cmake
         uses: jwlawson/actions-setup-cmake@v2
         with:
           cmake-version : '3.31.x'
-      - name: Cache .hunter folder
+      - name: Cache vcpkg folder
         uses: actions/cache@v3
         with:
-          path: ~/.hunter
-          key: hunter-ubuntu-latest-v3-develop
-      - name: List .hunter cache directory
-        run: ls -a -l ~/.hunter/_Base/ || true
+          path: /home/runner/.vcpkg
+          key: vcpkg-ubuntu-latest
+      - name: List vcpkg cache directory
+        run: ls -a -l /home/runner/.vcpkg || true
       - name: Export GitHub Actions cache environment variables
         uses: actions/github-script@v7
         with:
@@ -59,7 +59,16 @@ jobs:
           sudo apt install libusb-1.0-0-dev pkg-config bison autoconf libtool libxi-dev libxtst-dev libxrandr-dev libx11-dev libxft-dev libxext-dev nasm flex libudev-dev automake libltdl-dev
           python -m pip install -r bindings/python/docs/requirements_mkdoc.txt
       - name: Configure project
-        run: cmake -S . -B build -DDEPTHAI_BUILD_PYTHON=ON -DDEPTHAI_PYTHON_FORCE_DOCSTRINGS=ON -DDEPTHAI_BASALT_SUPPORT=ON -DDEPTHAI_PCL_SUPPORT=ON -DDEPTHAI_RTABMAP_SUPPORT=ON -DDEPTHAI_PYTHON_DOCSTRINGS_OUTPUT="$PWD/bindings/python/docstrings/depthai_python_docstring.hpp"
+        run: |
+          cmake -S . \
+            -B build \
+            -DDEPTHAI_VCPKG_INTERNAL_ONLY=OFF \
+            -DDEPTHAI_BUILD_PYTHON=ON \
+            -DDEPTHAI_PYTHON_FORCE_DOCSTRINGS=ON \
+            -DDEPTHAI_BASALT_SUPPORT=ON \
+            -DDEPTHAI_PCL_SUPPORT=ON \
+            -DDEPTHAI_RTABMAP_SUPPORT=ON \
+            -DDEPTHAI_PYTHON_DOCSTRINGS_OUTPUT="$PWD/bindings/python/docstrings/depthai_python_docstring.hpp"
       - name: Build target 'pybind11_mkdoc'
         run: cmake --build build --target pybind11_mkdoc --parallel 4
       - name: Print out vcpkg logs if building port fails
@@ -78,7 +87,7 @@ jobs:
   pytest:
     needs: build-docstrings
     env:
-      VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+      VCPKG_BINARY_SOURCES: "clear;files,/home/runner/.vcpkg,readwrite"
     strategy:
       matrix:
         # os: [ubuntu-latest, windows-latest, macos-latest]
@@ -92,18 +101,18 @@ jobs:
       - name: Print home directory
         run: echo Home directory inside container $HOME
 
-      - name: Cache .hunter folder
+      - name: Cache vcpkg folder
         if: matrix.os != 'windows-latest'
         uses: actions/cache@v3
         with:
-          path: ~/.hunter/
-          key: hunter-pytest-${{ matrix.os }}-v3-develop
-      - name: Cache .hunter folder
+          path: /home/runner/.vcpkg/
+          key: vcpkg-${{ matrix.os }}
+      - name: Cache vcpkg folder
         if: matrix.os == 'windows-latest'
         uses: actions/cache@v3
         with:
-          path: C:/.hunter/
-          key: hunter-pytest-${{ matrix.os }}-v3-develop
+          path: C:/.vcpkg/
+          key: vcpkg-${{ matrix.os }}
       - name: Export GitHub Actions cache environment variables
         uses: actions/github-script@v7
         with:
@@ -151,62 +160,20 @@ jobs:
 
       - name: Compile
         run: |
-          cmake -S . -B build -DDEPTHAI_BUILD_PYTHON=ON -D CMAKE_BUILD_TYPE=Release -D DEPTHAI_PYTHON_DOCSTRINGS_INPUT=$PWD/bindings/python/docstrings/depthai_python_docstring.hpp -D DEPTHAI_PYTHON_ENABLE_TESTS=ON
-          cmake --build build --parallel 4
+            cmake -S . \
+            -B build \
+            -DDEPTHAI_VCPKG_INTERNAL_ONLY=OFF \
+            -DDEPTHAI_BUILD_PYTHON=ON \
+            -D CMAKE_BUILD_TYPE=Release \
+            -D DEPTHAI_PYTHON_DOCSTRINGS_INPUT=$PWD/bindings/python/docstrings/depthai_python_docstring.hpp \
+            -D DEPTHAI_PYTHON_ENABLE_TESTS=ON
+            cmake --build build --parallel 4
       - name: Print out vcpkg logs if building port fails
         if: failure()    # Only run this if the build step fails
         run: cd bindings/python && bash ./ci/show_vcpkg_logs.sh
       - name: Test
         run: |
           cmake --build build --target pytest --config Release
-
-
-  # # This job builds wheels for armhf arch (RPi)
-  # build-linux-armhf:
-  #   needs: build-docstrings
-  #   strategy:
-  #     matrix:
-  #       rpi-os: [rpi-buster, rpi-bullseye, rpi-bookworm]
-  #   runs-on: ${{ matrix.rpi-os }}
-  #   steps:
-  #     - name: Print home directory
-  #       run: echo Home directory inside container $HOME
-  #     - uses: actions/checkout@v3
-  #       with:
-  #         submodules: 'recursive'
-
-  #     - uses: actions/download-artifact@v4
-  #       with:
-  #         name: 'docstrings'
-  #         path: bindings/python/docstrings
-  #     - name: Specify docstring to use while building the wheel
-  #       run: echo "DEPTHAI_PYTHON_DOCSTRINGS_INPUT=$PWD/bindings/python/docstrings/depthai_python_docstring.hpp" >> $GITHUB_ENV
-
-  #     - name: Append build hash if not a tagged commit
-  #       if: startsWith(github.ref, 'refs/tags/v') != true
-  #       run: echo "BUILD_COMMIT_HASH=${{github.sha}}" >> $GITHUB_ENV
-  #     - name: Building wheel
-  #       run: cd bindings/python && python3 -m pip wheel . -w ./wheelhouse/ --verbose
-  #     - name: Auditing wheels and adding armv6l tag (Running on RPi, binaries compiled as armv6l)
-  #       run: |
-  #         cd bindings/python
-  #         python3 -m pip install -U wheel auditwheel
-  #         for whl in wheelhouse/*.whl; do auditwheel repair "$whl" --plat linux_armv7l -w wheelhouse/preaudited/; done
-  #         for whl in wheelhouse/preaudited/*.whl; do python3 -m wheel tags --platform-tag +linux_armv6l "$whl"; done
-  #         mkdir -p wheelhouse/audited/
-  #         for whl in wheelhouse/preaudited/*linux_armv6l*.whl; do cp "$whl" wheelhouse/audited/$(basename $whl); done
-  #     - name: Archive wheel artifacts
-  #       uses: actions/upload-artifact@v3
-  #       with:
-  #         name: audited-wheels
-  #         path: bindings/python/wheelhouse/audited/
-  #     - name: Deploy wheels to artifactory (if not a release)
-  #       if: startsWith(github.ref, 'refs/tags/v') != true
-  #       run: cd bindings/python && bash ./ci/upload-artifactory.sh
-  #       env:
-  #         ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
-  #         ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
-  #         ARTIFACTORY_PASS: ${{ secrets.ARTIFACTORY_PASS }}
 
 
   # This job builds wheels for Windows x86_64 arch
@@ -216,25 +183,24 @@ jobs:
     strategy:
       matrix:
         python-version: [3.7, 3.8, 3.9, '3.10', '3.11', '3.12', '3.13']
-        # python-architecture: [x64, x86]
-        python-architecture: [x64] # TODO(Morato) - re-enable x86 - it complains that OpenCV even though it's 32 bit is not compatible
+        python-architecture: [x64] # TODO(Morato) - re-enable x86
       fail-fast: false
     env:
       DEPTHAI_BUILD_BASALT: OFF
       DEPTHAI_BUILD_PCL: ON
       DEPTHAI_BUILD_RTABMAP: ON
       DEPTHAI_BUILD_KOMPUTE: ON
-      VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+      VCPKG_BINARY_SOURCES: "clear;files,C:\\.vcpkg,readwrite"
     steps:
       - name: Setup cmake
         uses: jwlawson/actions-setup-cmake@v2
         with:
           cmake-version : '3.31.x'
-      - name: Cache .hunter folder
+      - name: Cache vcpkg folder
         uses: actions/cache@v3
         with:
-          path: C:/.hunter
-          key: hunter-msvc-v3-develop
+          path: C:/.vcpkg
+          key: vcpkg-windows-latest
       - uses: actions/checkout@v3
         with:
           submodules: 'recursive'
@@ -294,7 +260,7 @@ jobs:
       fail-fast: false
     runs-on: ${{ matrix.os }}
     env:
-      VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+      VCPKG_BINARY_SOURCES: "clear;files,/Users/runner/.vcpkg,readwrite"
       DEPTHAI_BUILD_BASALT: ON
       DEPTHAI_BUILD_PCL: ON
       DEPTHAI_BUILD_RTABMAP: ON
@@ -304,14 +270,14 @@ jobs:
         uses: jwlawson/actions-setup-cmake@v2
         with:
           cmake-version : '3.31.x'
-      - name: Cache .hunter folder
+      - name: Cache vcpkg folder
         uses: actions/cache@v3
         with:
-          path: ~/.hunter
-          key: hunter-macos-latest-v3-develop
-      - name: List .hunter cache directory
+          path: /Users/runner/.vcpkg
+          key: vcpkg-${{ matrix.os }}
+      - name: List vcpkg cache directory
         run: |
-          ls -a -l ~/.hunter/_Base/ || true
+          ls -a -l /Users/runner/.vcpkg || true
           echo "PATH=$PATH"
       - name: Export GitHub Actions cache environment variables
         uses: actions/github-script@v7
@@ -364,69 +330,6 @@ jobs:
           ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
           ARTIFACTORY_PASS: ${{ secrets.ARTIFACTORY_PASS }}
 
-  # # This job builds wheels for macOS arm64 arch
-  # build-macos-arm64:
-  #   needs: build-docstrings
-  #   runs-on: [self-hosted, macOS, ARM64]
-  #   steps:
-  #     # Cached locally on runner
-  #     # - name: Cache .hunter folder
-  #     #   uses: actions/cache@v3
-  #     #   with:
-  #     #     path: ~/.hunter
-  #     #     key: hunter-macos-latest
-  #     - name: List .hunter cache directory
-  #       run: |
-  #         ls -a -l ~/.hunter/_Base/ || true
-  #         echo "PATH=$PATH"
-
-  #     - uses: actions/checkout@v3
-  #       with:
-  #         submodules: 'recursive'
-
-  #     - name: Install dependencies
-  #       run: |
-  #          brew install opencv
-
-  #     - uses: actions/download-artifact@v4
-  #       with:
-  #         name: 'docstrings'
-  #         path: bindings/python/docstrings
-  #     - name: Specify docstring to use while building the wheel
-  #       run: echo "DEPTHAI_PYTHON_DOCSTRINGS_INPUT=$PWD/bindings/python/docstrings/depthai_python_docstring.hpp" >> $GITHUB_ENV
-
-  #     - name: Append build hash if not a tagged commit
-  #       if: startsWith(github.ref, 'refs/tags/v') != true
-  #       run: echo "BUILD_COMMIT_HASH=${{github.sha}}" >> $GITHUB_ENV
-
-  #     # - name: Build and install depthai-core
-  #     #   run: |
-  #     #     echo "MACOSX_DEPLOYMENT_TARGET=11.0" >> $GITHUB_ENV
-  #     #     cmake -S depthai-core/ -B build_core -D CMAKE_BUILD_TYPE=Release -D CMAKE_TOOLCHAIN_FILE=$PWD/cmake/toolchain/pic.cmake
-  #     #     cmake --build build_core --target install --parallel 4
-  #     #     echo "DEPTHAI_INSTALLATION_DIR=$PWD/build_core/install/" >> $GITHUB_ENV
-
-  #     - name: Build wheels
-  #       run: cd bindings/python && for PYBIN in {9..12}; do "python3.${PYBIN}" -m pip wheel . -w wheelhouse/ --verbose; done
-
-  #     - name: Auditing wheels
-  #       run: |
-  #         cd bindings/python
-  #         delocate-wheel -v -w wheelhouse/audited wheelhouse/*.whl
-
-  #     - name: Archive wheel artifacts
-  #       uses: actions/upload-artifact@v3
-  #       with:
-  #         name: audited-wheels
-  #         path: bindings/python/wheelhouse/audited/
-  #     - name: Deploy wheels to artifactory (if not a release)
-  #       if: startsWith(github.ref, 'refs/tags/v') != true
-  #       run: cd bindings/python && bash ./ci/upload-artifactory.sh
-  #       env:
-  #         ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
-  #         ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
-  #         ARTIFACTORY_PASS: ${{ secrets.ARTIFACTORY_PASS }}
-
   # This job builds wheels for x86_64 arch
   build-linux-x86_64:
     needs: build-docstrings
@@ -443,13 +346,13 @@ jobs:
       DEPTHAI_BUILD_PCL: ON
       DEPTHAI_BUILD_RTABMAP: ON
       DEPTHAI_BUILD_KOMPUTE: ON
-      VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+      VCPKG_BINARY_SOURCES: "clear;files,/home/runner/.vcpkg,readwrite"
     steps:
-      - name: Cache .hunter folder
+      - name: Cache vcpkg folder
         uses: actions/cache@v3
         with:
-          path: ~/.hunter
-          key: hunter-x86_64-v3-develop
+          path: /home/runner/.vcpkg
+          key: vcpkg-manylinux-x86_64
       - name: Export GitHub Actions cache environment variables
         uses: actions/github-script@v7
         with:
@@ -505,28 +408,29 @@ jobs:
   # This job builds wheels for ARM64 arch
   build-linux-arm64:
     needs: build-docstrings
-    runs-on: [self-hosted, linux, ARM64]
+    runs-on: ubuntu-24.04-arm
     timeout-minutes: 1440  # Set timeout to 24 hours
     container:
       image: quay.io/pypa/manylinux_2_28_aarch64:2024.12.05-1
       env:
         PLAT: manylinux_2_28_aarch64
-      # Mount local hunter cache directory, instead of transfering to Github and back
-      volumes:
-        - /.hunter:/github/home/.hunter
     strategy:
       matrix:
         python-set: ["cp37-cp37m", "cp38-cp38", "cp39-cp39", "cp310-cp310", "cp311-cp311", "cp312-cp312", "cp313-cp313"]
     env:
       # workaround required for cache@v3, https://github.com/actions/cache/issues/1428
       VCPKG_FORCE_SYSTEM_BINARIES: "1" # Needed so vpckg can bootstrap itself
-      VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+      VCPKG_BINARY_SOURCES: "clear;files,/home/runner/.vcpkg,readwrite"
       DEPTHAI_BUILD_BASALT: ON
       DEPTHAI_BUILD_PCL: ON
       DEPTHAI_BUILD_RTABMAP: ON
       DEPTHAI_BUILD_KOMPUTE: ON
-      VCPKG_MAX_CONCURRENCY: "2"
     steps:
+      - name: Cache vcpkg folder
+        uses: actions/cache@v3
+        with:
+          path: /home/runner/.vcpkg
+          key: vcpkg-manylinux-arm64
       - name: Export GitHub Actions cache environment variables
         uses: actions/github-script@v7
         with:
@@ -617,7 +521,7 @@ jobs:
         run: ls -lah
       - name: Run deploy to PyPi
         run: cd bindings/python && bash ./ci/upload-pypi.sh
-        if: ${{!contains(github.ref, '-') && !contains(github.ref, 'alpha') && !contains(github.ref, 'beta') && !contains(github.ref, 'rc')}}
+        if: ${{!contains(github.ref, 'alpha') && !contains(github.ref, 'beta')}}
         env:
           PYPI_SERVER: ${{ secrets.PYPI_SERVER }}
           PYPI_USER: ${{ secrets.PYPI_USER }}
@@ -629,21 +533,69 @@ jobs:
           ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
           ARTIFACTORY_PASS: ${{ secrets.ARTIFACTORY_PASS }}
 
-  # notify_hil_workflow_linux_x86_64:
-  #   needs: [build-linux-x86_64]
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Dispatch an action and get the run ID
-  #       uses: codex-/return-dispatch@v1
-  #       id: return_dispatch
-  #       with:
-  #         token: ${{ secrets.HIL_CORE_DISPATCH_TOKEN }} # Note this is NOT GITHUB_TOKEN but a PAT
-  #         ref: main # or refs/heads/target_branch
-  #         repo: depthai-core-hil-tests
-  #         owner: luxonis
-  #         workflow: regression_test.yml
-  #         workflow_inputs: '{"commit": "${{ github.ref }}", "parent_url": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"}'
-  #         workflow_timeout_seconds: 300 # was 120  Default: 300
+  dispatch-bom-tests:
+    needs: [build-linux-x86_64, deploy]
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'push' && !failure() && !cancelled() }}
+    outputs:
+      runner_conclusion: ${{ steps.get_runner.outputs.runner_conclusion }}
+    steps:
+      - uses: actions/checkout@v3
 
-  #     - name: Release
-  #       run: echo "https://github.com/luxonis/depthai-core-hil-tests/actions/runs/${{steps.return_dispatch.outputs.run_id}}" >> $GITHUB_STEP_SUMMARY
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.8'
+
+      - name: Get dev version from script
+        id: get_version
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            VERSION=$(cd bindings/python && python3.8 -c "import find_version as v; print(v.get_package_version())")
+          else
+            VERSION=$(cd bindings/python && python3.8 -c "import find_version as v; print(v.get_package_dev_version('${{github.sha}}'))")
+          fi
+          echo "VERSION=$VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+
+      - name: Dispatch action and get run ID
+        uses: codex-/return-dispatch@v2
+        id: return_dispatch
+        with:
+          token: ${{ secrets.BOM_GITHUB_TOKEN }}
+          ref: "main"
+          repo: "luxonis-bom"
+          owner: "luxonis"
+          workflow: "dispatch_main.yml"
+          workflow_timeout_seconds: 120
+          workflow_job_steps_retry_seconds: 2
+          workflow_inputs: '{"depthai": "${{ github.ref_name }}", "depthai_version_dependencies": "${{ steps.get_version.outputs.version }}", "depthai_nodes": "latest", "luxonis_os": "latest", "test_experiments": "true" }'
+
+      - name: Wait for the dispatched workflow to complete
+        id: get_runner
+        run: |
+            RUN_ID=${{ steps.return_dispatch.outputs.run_id }}
+            TOKEN=${{ secrets.BOM_GITHUB_TOKEN }}
+            OWNER="luxonis"
+            REPO="luxonis-bom"
+
+            echo "STARTING TO WAIT FOR RUN https://github.com/$OWNER/$REPO/actions/runs/$RUN_ID"
+
+            STATUS=$(curl -s --header "Authorization: Bearer $TOKEN" "https://api.github.com/repos/$OWNER/$REPO/actions/runs/$RUN_ID" | jq -r .status)
+
+            while [ "$STATUS" != "completed" ]; do
+              echo "Waiting for the workflow run to complete..."
+              sleep 60
+              STATUS=$(curl -s -H "Authorization: Bearer $TOKEN" "https://api.github.com/repos/$OWNER/$REPO/actions/runs/$RUN_ID" | jq -r .status)
+              echo "Current status $STATUS"
+            done
+            CONCLUSION=$(curl -s -H "Authorization: Bearer $TOKEN" "https://api.github.com/repos/$OWNER/$REPO/actions/runs/$RUN_ID" | jq -r .conclusion)
+
+            echo "Run $RUN_ID is completed. Conclusion is $CONCLUSION"
+
+            # Set outputs for the job using GITHUB_OUTPUT file
+            echo "runner_conclusion=$CONCLUSION" >> $GITHUB_OUTPUT
+            if [ "$CONCLUSION" != "success" ] && [ "$CONCLUSION" != "skipped" ]; then
+                echo "Failed job"
+                exit 1
+            fi

@@ -27,9 +27,9 @@ int main() {
     auto* rout = monoRight->requestOutput({640, 400});
 
     // Create a node that will produce the depth map (using disparity output as it's easier to visualize depth this way)
-    depth->build(*lout, *rout, dai::node::StereoDepth::PresetMode::HIGH_DENSITY);
+    depth->build(*lout, *rout, dai::node::StereoDepth::PresetMode::DEFAULT);
     // Options: MEDIAN_OFF, KERNEL_3x3, KERNEL_5x5, KERNEL_7x7 (default)
-    depth->initialConfig.setMedianFilter(dai::StereoDepthConfig::MedianFilter::KERNEL_7x7);
+    depth->initialConfig->setMedianFilter(dai::StereoDepthConfig::MedianFilter::KERNEL_7x7);
     depth->setLeftRightCheck(lr_check);
     depth->setExtendedDisparity(extended_disparity);
     depth->setSubpixel(subpixel);
@@ -45,7 +45,7 @@ int main() {
         auto inLeft = qleft->get<dai::ImgFrame>();
         auto frame = inDepth->getFrame();
         // Normalization for better visualization
-        frame.convertTo(frame, CV_8UC1, 255 / depth->initialConfig.getMaxDisparity());
+        frame.convertTo(frame, CV_8UC1, 255 / depth->initialConfig->getMaxDisparity());
 
         std::cout << "Left type: " << inLeft->fb.str() << std::endl;
 

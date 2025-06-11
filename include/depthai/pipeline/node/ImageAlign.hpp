@@ -25,7 +25,7 @@ class ImageAlign : public DeviceNodeCRTP<DeviceNode, ImageAlign, ImageAlignPrope
     /**
      * Initial config to use when calculating spatial location data.
      */
-    ImageAlignConfig initialConfig;
+    std::shared_ptr<ImageAlignConfig> initialConfig = std::make_shared<ImageAlignConfig>();
 
     /**
      * Input message with ability to modify parameters in runtime.

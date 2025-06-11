@@ -31,9 +31,10 @@ class DetectionNetwork : public DeviceNodeGroup {
     std::shared_ptr<DetectionNetwork> build(Node::Output& input, const NNArchive& nnArchive);
     std::shared_ptr<DetectionNetwork> build(const std::shared_ptr<Camera>& input, NNModelDescription modelDesc, std::optional<float> fps = std::nullopt);
     std::shared_ptr<DetectionNetwork> build(const std::shared_ptr<Camera>& input, const NNArchive& nnArchive, std::optional<float> fps = std::nullopt);
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     std::shared_ptr<DetectionNetwork> build(const std::shared_ptr<ReplayVideo>& input, NNModelDescription modelDesc, std::optional<float> fps = std::nullopt);
     std::shared_ptr<DetectionNetwork> build(const std::shared_ptr<ReplayVideo>& input, const NNArchive& nnArchive, std::optional<float> fps = std::nullopt);
-
+#endif
     Subnode<NeuralNetwork> neuralNetwork{*this, "neuralNetwork"};
     Subnode<DetectionParser> detectionParser{*this, "detectionParser"};
     /**
@@ -180,124 +181,13 @@ class DetectionNetwork : public DeviceNodeGroup {
 
     std::optional<std::vector<std::string>> getClasses() const;
 
-    virtual void buildInternal();
+    virtual void buildInternal() override;
 
    private:
     void setNNArchiveBlob(const NNArchive& nnArchive);
     void setNNArchiveSuperblob(const NNArchive& nnArchive, int numShaves);
     void setNNArchiveOther(const NNArchive& nnArchive);
     NNArchive createNNArchive(NNModelDescription& modelDesc);
-};
-
-/**
- * @brief MobileNetDetectionNetwork node. Parses MobileNet results
- */
-class MobileNetDetectionNetwork : public DetectionNetwork {
-   public:
-    MobileNetDetectionNetwork(const std::shared_ptr<Device>& device) : DetectionNetwork(device) {
-        static bool warned = false;
-        if(!warned) {
-            std::cerr << "MobileNetDetectionNetwork is deprecated, use DetectionNetwork instead" << std::endl;
-            warned = true;
-        }
-    }
-
-    [[nodiscard]] static std::shared_ptr<MobileNetDetectionNetwork> create(const std::shared_ptr<Device>& device) {
-        auto networkPtr = std::make_shared<MobileNetDetectionNetwork>(device);
-        networkPtr->buildInternal();
-        return networkPtr;
-    }
-
-    void buildInternal() override;
-};
-
-/**
- * @brief YoloDetectionNetwork node. Parses Yolo results
- */
-class YoloDetectionNetwork : public DetectionNetwork {
-   public:
-    YoloDetectionNetwork(const std::shared_ptr<Device>& device) : DetectionNetwork(device) {
-        static bool warned = false;
-        if(!warned) {
-            std::cerr << "YoloDetectionNetwork is deprecated, use DetectionNetwork instead" << std::endl;
-            warned = true;
-        }
-    }
-
-    [[nodiscard]] static std::shared_ptr<YoloDetectionNetwork> create(const std::shared_ptr<Device>& device) {
-        auto networkPtr = std::make_shared<YoloDetectionNetwork>(device);
-        networkPtr->buildInternal();
-        return networkPtr;
-    }
-
-    /// Set num classes
-    void setNumClasses(int numClasses);
-    /// Set coordianate size
-    void setCoordinateSize(int coordinates);
-    /// Set anchors
-    [[deprecated("Use setAnchors(const std::vector<std::vector<std::vector<float>>>& anchors) instead")]] void setAnchors(std::vector<float> anchors);
-    /// Set anchor masks
-    [[deprecated("Use setAnchors(const std::vector<std::vector<std::vector<float>>>& anchors) instead")]] void setAnchorMasks(
-        std::map<std::string, std::vector<int>> anchorMasks);
-
-    /**
-     * Sets anchors with masks included.
-     *
-     * @param anchors Anchors grouped by masks from biggest mask(ex.: side26) to smallest(ex.: side13)
-     *
-     * Ordering should be from biggest to smallest (example: { side26Anchors, side13Anchors, side7Anchors }).
-     * Format is:
-     * {
-     *   { // side26Anchors
-     *     {
-     *       10, // width
-     *       14 // height
-     *     },
-     *     {
-     *       23, // width
-     *       27 // height
-     *     },
-     *     {
-     *       37, // width
-     *       58 // height
-     *     }
-     *   },
-     *   { // side13Anchors
-     *     {
-     *       81, // width
-     *       82 // height
-     *     },
-     *     {
-     *       135, // width
-     *       169 // height
-     *     },
-     *     {
-     *       344, // width
-     *       319 // height
-     *     },
-     *     ... other anchors for side13
-     *   },
-     *   ... other sides (ordered from biggest to smallest) anchors
-     * }
-     */
-    void setAnchors(const std::vector<std::vector<std::vector<float>>>& anchors);
-
-    /// Set Iou threshold
-    void setIouThreshold(float thresh);
-
-    /// Get num classes
-    int getNumClasses() const;
-
-    /// Get coordianate size
-    int getCoordinateSize() const;
-    /// Get anchors
-    std::vector<float> getAnchors() const;
-    /// Get anchor masks
-    std::map<std::string, std::vector<int>> getAnchorMasks() const;
-    /// Get Iou threshold
-    float getIouThreshold() const;
-
-    void buildInternal() override;
 };
 
 }  // namespace node

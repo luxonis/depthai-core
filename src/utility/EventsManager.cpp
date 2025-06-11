@@ -99,14 +99,12 @@ bool EventData::toFile(const std::string& path) {
     return true;
 }
 EventsManager::EventsManager(std::string url, bool uploadCachedOnStart, float publishInterval)
-    : url(move(url)),
+    : url(std::move(url)),
       queueSize(10),
       publishInterval(publishInterval),
       logResponse(false),
       verifySsl(true),
-      connected(false),
       cacheDir("/internal/private"),
-      uploadCachedOnStart(uploadCachedOnStart),
       cacheIfCannotSend(false),
       stopEventBuffer(false) {
     sourceAppId = utility::getEnvAs<std::string>("OAKAGENT_APP_VERSION", "");
@@ -168,6 +166,11 @@ void EventsManager::sendEventBuffer() {
         cpr::VerifySsl(verifySsl),
         cpr::ProgressCallback(
             [&](cpr::cpr_off_t downloadTotal, cpr::cpr_off_t downloadNow, cpr::cpr_off_t uploadTotal, cpr::cpr_off_t uploadNow, intptr_t userdata) -> bool {
+                (void)userdata;
+                (void)downloadTotal;
+                (void)downloadNow;
+                (void)uploadTotal;
+                (void)uploadNow;
                 if(stopEventBuffer) {
                     return false;
                 }
@@ -305,6 +308,11 @@ void EventsManager::sendFile(const std::shared_ptr<EventData>& file, const std::
 
         cpr::ProgressCallback(
             [&](cpr::cpr_off_t downloadTotal, cpr::cpr_off_t downloadNow, cpr::cpr_off_t uploadTotal, cpr::cpr_off_t uploadNow, intptr_t userdata) -> bool {
+                (void)userdata;
+                (void)downloadTotal;
+                (void)downloadNow;
+                (void)uploadTotal;
+                (void)uploadNow;
                 if(stopEventBuffer) {
                     return false;
                 }
@@ -447,7 +455,7 @@ std::string EventsManager::createUUID() {
     };
     return ss.str();
 }
-void EventsManager::setQueueSize(uint64 queueSize) {
+void EventsManager::setQueueSize(uint64_t queueSize) {
     this->queueSize = queueSize;
 }
 void EventsManager::setLogResponse(bool logResponse) {

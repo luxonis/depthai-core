@@ -1,7 +1,5 @@
 #pragma once
 
-#include <spdlog/async_logger.h>
-
 #include <chrono>
 #include <unordered_map>
 #include <vector>
@@ -242,7 +240,6 @@ class ImgFrame : public Buffer, public ProtoSerializable {
      */
     ImgFrame& setSize(std::tuple<unsigned int, unsigned int> size);
 
-    // TODO(before mainline) - API not supported on RVC2
     /**
      * Specifies source frame size
      *
@@ -251,7 +248,6 @@ class ImgFrame : public Buffer, public ProtoSerializable {
      */
     ImgFrame& setSourceSize(unsigned int width, unsigned int height);
 
-    // TODO(before mainline) - API not supported on RVC2
     /**
      * Specifies source frame size
      *

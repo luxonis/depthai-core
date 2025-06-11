@@ -4,6 +4,7 @@
 #include "NodeBindings.hpp"
 #include "depthai/pipeline/ThreadedHostNode.hpp"
 #include "depthai/pipeline/node/host/HostNode.hpp"
+#include "pipeline/ThreadedNodeImpl.hpp"
 
 extern py::handle daiNodeModule;
 extern py::object messageQueueException;  // Needed to be able to catch in C++ after it's raised on the Python side
@@ -18,7 +19,7 @@ class PyThreadedHostNode : public NodeCRTP<ThreadedHostNode, PyThreadedHostNode>
             PYBIND11_OVERRIDE_PURE(void, ThreadedHostNode, run);
         } catch(py::error_already_set& e) {
             if(e.matches(messageQueueException)) {
-                logger->trace("Caught MessageQueue exception in ThreadedHostNode::run");
+                pimpl->logger->trace("Caught MessageQueue exception in ThreadedHostNode::run");
             } else {
                 throw;
             }
@@ -172,7 +173,11 @@ void bind_hostnode(pybind11::module& m, void* pCallstack) {
 
         # Create a subnode as part of this user node
         def createSubnode(self, class_, *args, **kwargs):
-            return self.getParentPipeline().create(class_, *args, **kwargs)
+            pipeline = self.getParentPipeline()
+            child_node = pipeline.create(class_, *args, **kwargs)
+            pipeline.remove(child_node) # necessary so that the node is only registered once
+            self.add(child_node)
+            return child_node
 
         node.HostNode.createSubnode = createSubnode
         node.ThreadedHostNode.createSubnode = createSubnode

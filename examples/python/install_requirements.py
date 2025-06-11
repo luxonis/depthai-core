@@ -16,7 +16,7 @@ parser.add_argument('-io3dcpu', "--install_open3d_cpu", action="store_true", hel
 def prettyPrint(command):
 
     def hasWhitespace(string):
-        return (len(string) != len(re.sub('[\s+]', '', string)))
+        return (len(string) != len(re.sub(r'\s+', '', string)))
 
     stringBuilder = str()
     for i, item in enumerate(command):
@@ -123,7 +123,7 @@ if not args.skip_depthai:
     # Install depthai depending on context
     if not git_context or git_branch == 'main':
         # Install latest pypi depthai release
-        depthai_install_cmd = [*pip_package_install, '-U', '--force-reinstall', 'depthai']
+        depthai_install_cmd = [*pip_package_install, '-U', '--force-reinstall', '--pre', 'depthai']
         if args.dry_run:
             prettyPrint(depthai_install_cmd)
         else:

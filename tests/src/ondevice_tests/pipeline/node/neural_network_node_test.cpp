@@ -1,6 +1,6 @@
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_test_macros.hpp>
-#include <magic_enum.hpp>
+#include <magic_enum/magic_enum.hpp>
 #include <opencv2/videoio.hpp>
 
 #include "depthai/common/CameraBoardSocket.hpp"
@@ -8,7 +8,6 @@
 #include "depthai/modelzoo/Zoo.hpp"
 #include "depthai/pipeline/datatype/BenchmarkReport.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
-#include "xtensor/xtensor_forward.hpp"
 
 TEST_CASE("Cross platform NeuralNetwork API") {
     // Create pipeline
@@ -168,7 +167,7 @@ TEST_CASE("Combined Input NeuralNetwork API") {
                 float val = firstTensor(0, i, j, k);
                 if(val > 0.1) {
                     leftSideOK = false;
-                    FAIL(fmt::format("Left side is not OK {}", val));
+                    FAIL(std::string("Left side is not OK") + std::to_string(val));
                     break;
                 }
             }
@@ -184,7 +183,7 @@ TEST_CASE("Combined Input NeuralNetwork API") {
                 float val = firstTensor(0, i, j, k);
                 if(val < 99.9) {
                     rightSideOK = false;
-                    FAIL(fmt::format("Right side is not OK {}", val));
+                    FAIL(std::string("Right side is not OK") + std::to_string(val));
                     break;
                 }
             }
@@ -209,7 +208,7 @@ TEST_CASE("Multi threaded test") {
     if(type.has_value()) {
         auto convertedInputType = magic_enum::enum_cast<dai::ImgFrame::Type>(type.value());
         if(!convertedInputType.has_value()) {
-            FAIL(fmt::format("Unsupported input type: {}", type.value()));
+            FAIL("Unsupported type");
         } else {
             daiType = convertedInputType.value();
         }

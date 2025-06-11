@@ -31,7 +31,7 @@ class Thermal : public DeviceNodeCRTP<DeviceNode, Thermal, ThermalProperties> {
     /**
      * Initial config to use for thermal sensor.
      */
-    ThermalConfig initialConfig;
+    std::shared_ptr<ThermalConfig> initialConfig = std::make_shared<ThermalConfig>();
 
     /**
      * Input ThermalConfig message with ability to modify parameters in runtime.

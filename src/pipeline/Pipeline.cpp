@@ -4,15 +4,16 @@
 
 #include "depthai/device/CalibrationHandler.hpp"
 #include "depthai/pipeline/ThreadedHostNode.hpp"
-#include "depthai/pipeline/node/XLinkIn.hpp"
-#include "depthai/pipeline/node/XLinkOut.hpp"
-#include "depthai/pipeline/node/host/XLinkInHost.hpp"
-#include "depthai/pipeline/node/host/XLinkOutHost.hpp"
+#include "depthai/pipeline/node/internal/XLinkIn.hpp"
+#include "depthai/pipeline/node/internal/XLinkInHost.hpp"
+#include "depthai/pipeline/node/internal/XLinkOut.hpp"
+#include "depthai/pipeline/node/internal/XLinkOutHost.hpp"
 #include "depthai/utility/Initialization.hpp"
 #include "pipeline/datatype/ImgFrame.hpp"
 #include "pipeline/node/DetectionNetwork.hpp"
 #include "utility/Compression.hpp"
 #include "utility/Environment.hpp"
+#include "utility/ErrorMacros.hpp"
 #include "utility/HolisticRecordReplay.hpp"
 #include "utility/Logging.hpp"
 #include "utility/Platform.hpp"
@@ -127,7 +128,7 @@ void PipelineImpl::serialize(PipelineSchema& schema, Assets& assets, std::vector
     assets = mutableAssets;
 }
 
-nlohmann::json PipelineImpl::serializeToJson() const {
+nlohmann::json PipelineImpl::serializeToJson(bool includeAssets) const {
     PipelineSchema schema;
     Assets assets;
     std::vector<uint8_t> assetStorage;
@@ -138,9 +139,10 @@ nlohmann::json PipelineImpl::serializeToJson() const {
     for(auto& node : j["pipeline"]["nodes"]) {
         node[1]["properties"] = nlohmann::json::parse(node[1]["properties"].get<std::vector<uint8_t>>());
     }
-
-    j["assets"] = assets;
-    j["assetStorage"] = assetStorage;
+    if(includeAssets) {
+        j["assets"] = assets;
+        j["assetStorage"] = assetStorage;
+    }
     return j;
 }
 
@@ -330,79 +332,8 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
     return schema;
 }
 
-bool PipelineImpl::isOpenVINOVersionCompatible(OpenVINO::Version version) const {
-    auto ver = getPipelineOpenVINOVersion();
-    if(ver) {
-        return OpenVINO::areVersionsBlobCompatible(version, *ver);
-    } else {
-        return true;
-    }
-}
-
-/// Get possible OpenVINO version to run this pipeline
-OpenVINO::Version PipelineImpl::getOpenVINOVersion() const {
-    return getPipelineOpenVINOVersion().value_or(OpenVINO::DEFAULT_VERSION);
-}
-
-/// Get required OpenVINO version to run this pipeline. Can be none
-std::optional<OpenVINO::Version> PipelineImpl::getRequiredOpenVINOVersion() const {
-    return getPipelineOpenVINOVersion();
-}
-
-std::optional<OpenVINO::Version> PipelineImpl::getPipelineOpenVINOVersion() const {
-    // Loop over nodes, and get the required information
-    std::optional<OpenVINO::Version> version;
-    std::string lastNodeNameWithRequiredVersion = "";
-    Node::Id lastNodeIdWithRequiredVersion = -1;
-
-    for(const auto& node : nodes) {
-        // Check the required openvino version
-        auto requiredVersion = node->getRequiredOpenVINOVersion();
-        if(requiredVersion) {
-            if(forceRequiredOpenVINOVersion) {
-                // Check that forced openvino version is compatible with this nodes required version
-                if(!OpenVINO::areVersionsBlobCompatible(*requiredVersion, *forceRequiredOpenVINOVersion)) {
-                    std::string err = fmt::format("Pipeline - '{}' node with id: {}, isn't compatible with forced OpenVINO version", node->getName(), node->id);
-                    throw std::logic_error(err.c_str());
-                }
-            } else {
-                // Keep track of required openvino versions, and make sure that they are all compatible
-                if(!version) {
-                    version = *requiredVersion;
-                    lastNodeIdWithRequiredVersion = node->id;
-                    lastNodeNameWithRequiredVersion = node->getName();
-                } else {
-                    // if some node already has an required version, then compare if they are compatible
-                    if(!OpenVINO::areVersionsBlobCompatible(*version, *requiredVersion)) {
-                        // if not compatible, then throw an error
-                        std::string err = fmt::format("Pipeline - OpenVINO version required by '{}' node (id: {}), isn't compatible with '{}' node (id: {})",
-                                                      lastNodeNameWithRequiredVersion,
-                                                      lastNodeIdWithRequiredVersion,
-                                                      node->getName(),
-                                                      node->id);
-                        throw std::logic_error(err.c_str());
-                    }
-                }
-            }
-        }
-    }
-
-    // After iterating over, return appropriate version
-    if(forceRequiredOpenVINOVersion) {
-        // Return forced version
-        return forceRequiredOpenVINOVersion;
-    } else if(version) {
-        // Return detected version
-        return version;
-    } else {
-        // Return null
-        return std::nullopt;
-    }
-}
-
 Device::Config PipelineImpl::getDeviceConfig() const {
     Device::Config config;
-    config.version = getPipelineOpenVINOVersion().value_or(OpenVINO::VERSION_UNIVERSAL);
     config.board = board;
     return config;
 }
@@ -438,13 +369,9 @@ BoardConfig PipelineImpl::getBoardConfig() const {
 
 // Remove node capability
 void PipelineImpl::remove(std::shared_ptr<Node> toRemove) {
-    if(toRemove->parent.lock() == nullptr) {
-        throw std::invalid_argument("Cannot remove a node that is not a part of any pipeline");
-    }
-
-    if(toRemove->parent.lock() != parent.pimpl) {
-        throw std::invalid_argument("Cannot remove a node that is not a part of this pipeline");
-    }
+    DAI_CHECK_V(!isBuilt(), "Cannot remove node from pipeline once it is built.");
+    DAI_CHECK_V(toRemove->parent.lock() != nullptr, "Cannot remove a node that is not a part of any pipeline");
+    DAI_CHECK_V(toRemove->parent.lock() == parent.pimpl, "Cannot remove a node that is not a part of this pipeline");
 
     // First remove the node from the pipeline directly
     auto it = std::remove(nodes.begin(), nodes.end(), toRemove);
@@ -731,13 +658,13 @@ void PipelineImpl::build() {
 
     // Create a map of already visited nodes to only create one xlink bridge
     struct XLinkOutBridge {
-        std::shared_ptr<node::XLinkOut> xLinkOut;
-        std::shared_ptr<node::XLinkInHost> xLinkInHost;
+        std::shared_ptr<node::internal::XLinkOut> xLinkOut;
+        std::shared_ptr<node::internal::XLinkInHost> xLinkInHost;
     };
 
     struct XLinkInBridge {
-        std::shared_ptr<node::XLinkOutHost> xLinkOutHost;
-        std::shared_ptr<node::XLinkIn> xLinkIn;
+        std::shared_ptr<node::internal::XLinkOutHost> xLinkOutHost;
+        std::shared_ptr<node::internal::XLinkIn> xLinkIn;
     };
 
     std::unordered_map<dai::Node::Output*, XLinkOutBridge> bridgesOut;
@@ -755,8 +682,8 @@ void PipelineImpl::build() {
             if(bridgesOut.count(connection.out) == 0) {  // If the bridge does not already exist, create one
                 // // Create a new bridge
                 bridgesOut[connection.out] = XLinkOutBridge{
-                    create<node::XLinkOut>(shared_from_this()),
-                    create<node::XLinkInHost>(shared_from_this()),
+                    create<node::internal::XLinkOut>(shared_from_this()),
+                    create<node::internal::XLinkInHost>(shared_from_this()),
                 };
                 auto& xLinkBridge = bridgesOut[connection.out];
                 auto streamName = fmt::format("__x_{}_{}_{}", outNode->id, connection.outputGroup, connection.outputName);
@@ -779,8 +706,8 @@ void PipelineImpl::build() {
             if(bridgesIn.count(connection.in) == 0) {  // If the bridge does not already exist, create one
                 // // Create a new bridge
                 bridgesIn[connection.in] = XLinkInBridge{
-                    create<node::XLinkOutHost>(shared_from_this()),
-                    create<node::XLinkIn>(shared_from_this()),
+                    create<node::internal::XLinkOutHost>(shared_from_this()),
+                    create<node::internal::XLinkIn>(shared_from_this()),
                 };
                 auto& xLinkBridge = bridgesIn[connection.in];
                 auto streamName = fmt::format("__x_{}_{}_{}", inNode->id, connection.inputGroup, connection.inputName);
@@ -819,8 +746,8 @@ void PipelineImpl::build() {
                 if(bridgesOut.count(queueConnection.output) == 0) {
                     // // Create a new bridge
                     bridgesOut[queueConnection.output] = XLinkOutBridge{
-                        create<node::XLinkOut>(shared_from_this()),
-                        create<node::XLinkInHost>(shared_from_this()),
+                        create<node::internal::XLinkOut>(shared_from_this()),
+                        create<node::internal::XLinkInHost>(shared_from_this()),
                     };
                     auto& xLinkBridge = bridgesOut[queueConnection.output];
                     auto streamName = fmt::format("__x_{}_{}", node->id, output->getName());
@@ -885,9 +812,9 @@ void PipelineImpl::resetConnections() {
     if(defaultDevice->getConnection() == nullptr) throw std::runtime_error("Connection lost");
     auto con = defaultDevice->getConnection();
     for(auto node : getAllNodes()) {
-        auto tmp = std::dynamic_pointer_cast<node::XLinkInHost>(node);
+        auto tmp = std::dynamic_pointer_cast<node::internal::XLinkInHost>(node);
         if(tmp) tmp->setConnection(con);
-        auto tmp2 = std::dynamic_pointer_cast<node::XLinkOutHost>(node);
+        auto tmp2 = std::dynamic_pointer_cast<node::internal::XLinkOutHost>(node);
         if(tmp2) tmp2->setConnection(con);
     }
 
@@ -900,9 +827,9 @@ void PipelineImpl::resetConnections() {
 void PipelineImpl::disconnectXLinkHosts() {
     // make connections throw instead of reconnecting
     for(auto node : getAllNodes()) {
-        auto tmp = std::dynamic_pointer_cast<node::XLinkInHost>(node);
+        auto tmp = std::dynamic_pointer_cast<node::internal::XLinkInHost>(node);
         if(tmp) tmp->disconnect();
-        auto tmp2 = std::dynamic_pointer_cast<node::XLinkOutHost>(node);
+        auto tmp2 = std::dynamic_pointer_cast<node::internal::XLinkOutHost>(node);
         if(tmp2) tmp2->disconnect();
     }
 }
