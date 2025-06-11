@@ -13,7 +13,7 @@ DepthAI library for interfacing with Luxonis DepthAI hardware. It's written in C
 > * Need to migrate? Follow the step-by-step [v2 → v3 Porting Guide](./V2V3PortinGuide.md).
 
 ## Documentation
-Documentation is available over at [Luxonis DepthAI API](https://stg.docs.luxonis.com/software/v3/)
+Documentation is available over at [Luxonis DepthAI API](https://docs.luxonis.com/software-v3/depthai/)
 
 ## Disclaimer
 DepthAI library doesn't yet provide API stability guarantees. While we take care to properly deprecate old functions, some changes might still be breaking.
