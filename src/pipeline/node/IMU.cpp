@@ -5,12 +5,6 @@
 namespace dai {
 namespace node {
 
-IMU::IMU(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : IMU(par, nodeId, std::make_unique<IMU::Properties>()) {}
-IMU::IMU(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
-    : NodeCRTP<Node, IMU, IMUProperties>(par, nodeId, std::move(props)) {
-    setOutputRefs({&out});
-}
-
 void IMU::enableIMUSensor(IMUSensorConfig sensorConfig) {
     properties.imuSensors.push_back(sensorConfig);
 }
@@ -55,6 +49,24 @@ std::int32_t IMU::getMaxBatchReports() const {
 
 void IMU::enableFirmwareUpdate(bool enable) {
     properties.enableFirmwareUpdate = enable;
+}
+
+bool IMU::isSourceNode() const {
+    return true;
+}
+
+NodeRecordParams IMU::getNodeRecordParams() const {
+    NodeRecordParams params;
+    params.video = false;
+    params.name = "IMU";
+    return params;
+}
+
+IMU::Output& IMU::getRecordOutput() {
+    return out;
+}
+IMU::Input& IMU::getReplayInput() {
+    return mockIn;
 }
 
 }  // namespace node

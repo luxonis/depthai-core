@@ -4,11 +4,11 @@
 
 #include "depthai/utility/Path.hpp"
 
-#if FMT_VERSION >= 100000
-#include <spdlog/fmt/ostr.h>
+#if FMT_VERSION >= 90000
+    #include <spdlog/fmt/ostr.h>
 
-#include "depthai/common/CameraBoardSocket.hpp"
-#include "depthai-shared/datatype/DatatypeEnum.hpp"
+    #include "depthai/common/CameraBoardSocket.hpp"
+    #include "pipeline/datatype/DatatypeEnum.hpp"
 #endif
 
 namespace dai {
@@ -22,18 +22,23 @@ struct fmt::formatter<dai::Path> : formatter<std::string> {
     // https://fmt.dev/latest/api.html#formatting-user-defined-types
     // https://fmt.dev/latest/syntax.html#format-specification-mini-language
     template <typename FormatContext>
-    auto format(const dai::Path& p, FormatContext& ctx) {
+#if FMT_VERSION >= 90000
+    auto format(const dai::Path& p, FormatContext& ctx) const {
+#else
+    auto format(const dai::Path& p, FormatContext& ctx) -> decltype(ctx.out()) {
+#endif
         std::string output;
-        try {
-            output = p.string();
-        } catch(const std::exception&) {
-            output = dai::utility::path_convert_err;
-        }
-        return formatter<std::string>::format(output, ctx);
+    try {
+        output = p.string();
+    } catch(const std::exception&) {
+        output = dai::utility::path_convert_err;
     }
-};
+    return formatter<std::string>::format(output, ctx);
+}
+}
+;
 
-#if FMT_VERSION >= 100000
+#if FMT_VERSION >= 90000
 template <>
 struct fmt::formatter<dai::CameraBoardSocket> : ostream_formatter {};
 

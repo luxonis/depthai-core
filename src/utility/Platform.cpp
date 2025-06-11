@@ -1,5 +1,7 @@
 #include "Platform.hpp"
 
+#include <filesystem>
+
 // Platform specific
 #if defined(_WIN32) || defined(__USE_W32_SOCKETS)
     #include <ws2tcpip.h>
@@ -13,11 +15,16 @@
     #include <arpa/inet.h>
 #endif
 
+#ifdef __linux__
+    #include <pthread.h>
+#endif
+
 #if defined(_WIN32) || defined(__USE_W32_SOCKETS)
     #include <windows.h>
 #endif
 
 #ifndef _WIN32
+    #include <sys/stat.h>
     #include <unistd.h>
 #endif
 
@@ -56,6 +63,14 @@ std::string getIPv4AddressAsString(std::uint32_t binary) {
     return {address};
 }
 
+void setThreadName(JoiningThread& thread, const std::string& name) {
+#ifdef __linux__
+    auto handle = thread.native_handle();
+    pthread_setname_np(handle, name.c_str());
+#endif
+    return;
+}
+
 std::string getTempPath() {
     std::string tmpPath;
 #if defined(_WIN32) || defined(__USE_W32_SOCKETS)
@@ -73,6 +88,76 @@ std::string getTempPath() {
     }
 #endif
     return tmpPath;
+}
+
+bool checkPathExists(const std::string& path, bool directory) {
+#if defined(_WIN32) || defined(__USE_W32_SOCKETS)
+    DWORD ftyp = GetFileAttributesA(path.c_str());
+    if(ftyp == INVALID_FILE_ATTRIBUTES) {
+        return false;  // Path does not exist
+    } else if(ftyp & FILE_ATTRIBUTE_DIRECTORY || !directory) {
+        return true;  // Path is a directory
+    } else {
+        return false;  // Path is not a directory
+    }
+#else
+    struct stat info;
+    if(stat(path.c_str(), &info) != 0) {
+        return false;  // Path does not exist
+    } else if(info.st_mode & S_IFDIR || !directory) {
+        return true;  // Path is a directory
+    } else {
+        return false;  // Path is not a directory
+    }
+#endif
+}
+
+bool checkWritePermissions(const std::string& path) {
+#if defined(_WIN32) || defined(__USE_W32_SOCKETS)
+    DWORD ftyp = GetFileAttributesA(path.c_str());
+    if(ftyp == INVALID_FILE_ATTRIBUTES) {
+        return false;  // Path does not exist
+    } else if(ftyp & FILE_ATTRIBUTE_READONLY) {
+        return false;  // Path is read-only
+    } else {
+        return true;  // Path is writable
+    }
+#else
+    struct stat info;
+    if(stat(path.c_str(), &info) != 0) {
+        return false;  // Path does not exist
+    } else if(info.st_mode & S_IWUSR) {
+        return true;  // Path is writable
+    } else {
+        return false;  // Path is read-only
+    }
+#endif
+}
+
+std::string joinPaths(const std::string& p1, const std::string& p2) {
+    char sep = '/';
+    std::string tmp = p1;
+
+#ifdef _WIN32
+    sep = '\\';
+#endif
+
+    // Add separator if it is not included in the first path:
+    if(p1[p1.length() - 1] != sep) {
+        tmp += sep;
+        return tmp + p2;
+    } else {
+        return p1 + p2;
+    }
+}
+
+std::string getDirFromPath(const std::string& path) {
+    std::string absPath = std::filesystem::absolute(path).string();
+    if(checkPathExists(absPath, true)) {
+        return absPath;
+    }
+    size_t found = absPath.find_last_of("/\\");
+    return absPath.substr(0, found);
 }
 
 }  // namespace platform

@@ -1,3 +1,4 @@
+// IWYU pragma: private, include "depthai/depthai.hpp"
 #pragma once
 
 // std
@@ -7,7 +8,6 @@
 
 // project
 #include "CallbackHandler.hpp"
-#include "DataQueue.hpp"
 #include "depthai/common/UsbSpeed.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
@@ -442,12 +442,6 @@ class DeviceBootloader {
     Version getVersion() const;
 
     /**
-     * @return Version of the bootloader that is flashed on the device.
-     * Nullopt when the version could not be retrieved because the device was in X_LINK_UNBOOTED state before booting the bootloader.
-     */
-    tl::optional<Version> getFlashedVersion() const;
-
-    /**
      * @returns True when bootloader was booted using latest bootloader integrated in the library.
      * False when bootloader is already running on the device and just connected to.
      */
@@ -483,7 +477,7 @@ class DeviceBootloader {
     // private static
 
     // private methods
-    void init(bool embeddedMvcmd, const dai::Path& pathToMvcmd, tl::optional<bootloader::Type> type, bool allowBlFlash);
+    void init(bool embeddedMvcmd, const dai::Path& pathToMvcmd, std::optional<bootloader::Type> type, bool allowBlFlash);
     template <typename T>
     bool sendRequest(const T& request);
     template <typename T>
@@ -510,7 +504,6 @@ class DeviceBootloader {
 
     bool isEmbedded = false;
     Type bootloaderType;
-    tl::optional<Version> flashedVersion;
 
     // closed
     std::atomic<bool> closed{false};

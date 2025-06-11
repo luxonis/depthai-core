@@ -1,9 +1,12 @@
 #pragma once
 
-#include "depthai/pipeline/Node.hpp"
+#include <depthai/pipeline/DeviceNode.hpp>
+
+// standard
+#include <fstream>
 
 // shared
-#include <depthai-shared/properties/ToFProperties.hpp>
+#include <depthai/properties/ToFProperties.hpp>
 
 #include "depthai/pipeline/datatype/ToFConfig.hpp"
 
@@ -11,69 +14,54 @@ namespace dai {
 namespace node {
 
 /**
- * @brief ToF node
+ * @brief ToF node.
+ * Performs feature tracking and reidentification using motion estimation between 2 consecutive frames.
  */
-class ToF : public NodeCRTP<Node, ToF, ToFProperties> {
+class ToF : public DeviceNodeCRTP<DeviceNode, ToF, ToFProperties> {
    public:
     constexpr static const char* NAME = "ToF";
+    using DeviceNodeCRTP::DeviceNodeCRTP;
 
    protected:
     Properties& getProperties();
 
-   private:
-    std::shared_ptr<RawToFConfig> rawConfig;
-
-    /**
-     * Constructs ToF node.
-     */
    public:
-    ToF(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
-    ToF(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
+    ToF() = default;
+    ToF(std::unique_ptr<Properties> props);
 
     /**
-     * Initial config to use for depth calculation.
+     * Initial config to use for feature tracking.
      */
-    ToFConfig initialConfig;
+    std::shared_ptr<ToFConfig> initialConfig = std::make_shared<ToFConfig>();
 
     /**
-     * Input ToF message with ability to modify parameters in runtime.
+     * Input ToFConfig message with ability to modify parameters in runtime.
      * Default queue is non-blocking with size 4.
      */
-    Input inputConfig{*this, "inputConfig", Input::Type::SReceiver, false, 4, {{DatatypeEnum::ToFConfig, false}}};
+    Input inputConfig{*this,
+                      {"inputConfig", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ToFConfig, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+
+    Output depth{*this, {"depth", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
+
+    Output amplitude{*this, {"amplitude", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};
+    Output intensity{*this, {"intensity", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};
+    Output phase{*this, {"phase", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};
 
     /**
-     * Input raw ToF data.
-     * Default queue is blocking with size 8.
+     * Build with a specific board socket
      */
-    Input input{*this, "input", Input::Type::SReceiver, true, 8, {{DatatypeEnum::ImgFrame, true}}};
+    std::shared_ptr<ToF> build(dai::CameraBoardSocket boardSocket = dai::CameraBoardSocket::AUTO, float fps = 30);
 
     /**
-     * Outputs ImgFrame message that carries decoded depth image.
+     * Retrieves which board socket to use
+     * @returns Board socket to use
      */
-    Output depth{*this, "depth", Output::Type::MSender, {{DatatypeEnum::ImgFrame, true}}};
-    /**
-     * Outputs ImgFrame message that carries amplitude image.
-     */
-    Output amplitude{*this, "amplitude", Output::Type::MSender, {{DatatypeEnum::ImgFrame, true}}};
-    /**
-     * Outputs ImgFrame message that carries intensity image.
-     */
-    Output intensity{*this, "intensity", Output::Type::MSender, {{DatatypeEnum::ImgFrame, true}}};
-    /**
-     * Outputs ImgFrame message that carries phase image, useful for debugging. float32 type.
-     */
-    Output phase{*this, "phase", Output::Type::MSender, {{DatatypeEnum::ImgFrame, true}}};
+    CameraBoardSocket getBoardSocket() const;
 
-    /**
-     * Specify number of shaves reserved for ToF decoding.
-     */
-    ToF& setNumShaves(int numShaves);
-
-    /**
-     * Specify number of frames in output pool
-     * @param numFramesPool Number of frames in output pool
-     */
-    ToF& setNumFramesPool(int numFramesPool);
+   private:
+    bool isBuilt = false;
+    uint32_t maxWidth = 0;
+    uint32_t maxHeight = 0;
 };
 
 }  // namespace node

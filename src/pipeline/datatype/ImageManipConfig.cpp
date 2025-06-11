@@ -6,296 +6,111 @@
 
 namespace dai {
 
-std::shared_ptr<RawBuffer> ImageManipConfig::serialize() const {
-    return raw;
+// New API
+ImageManipConfig& ImageManipConfig::clearOps() {
+    base.clear();
+    return *this;
 }
-
-ImageManipConfig::ImageManipConfig() : Buffer(std::make_shared<RawImageManipConfig>()), cfg(*dynamic_cast<RawImageManipConfig*>(raw.get())) {}
-ImageManipConfig::ImageManipConfig(std::shared_ptr<RawImageManipConfig> ptr) : Buffer(std::move(ptr)), cfg(*dynamic_cast<RawImageManipConfig*>(raw.get())) {}
-
-// helpers
-// Functions to set properties
-ImageManipConfig& ImageManipConfig::setCropRect(float xmin, float ymin, float xmax, float ymax) {
-    // Enable crop stage
-    cfg.enableCrop = true;
-
-    // Disable center crop
-    cfg.cropConfig.enableCenterCropRectangle = false;
-
-    // Set crop rect - limit to bounds beforehand
-    cfg.cropConfig.cropRect.xmin = std::max(xmin, 0.0f);
-    cfg.cropConfig.cropRect.ymin = std::max(ymin, 0.0f);
-    cfg.cropConfig.cropRect.xmax = std::min(xmax, 1.0f);
-    cfg.cropConfig.cropRect.ymax = std::min(ymax, 1.0f);
+ImageManipConfig& ImageManipConfig::addCrop(uint32_t x, uint32_t y, uint32_t w, uint32_t h) {
+    base.crop(x, y, w, h);
+    return *this;
+}
+ImageManipConfig& ImageManipConfig::addCrop(dai::Rect rect, bool normalizedCoords) {
+    base.crop(rect.x, rect.y, rect.width, rect.height, normalizedCoords);
+    return *this;
+}
+ImageManipConfig& ImageManipConfig::addCropRotatedRect(dai::RotatedRect rotatedRect, bool normalizedCoords) {
+    base.rotateDegrees(-rotatedRect.angle);
+    base.crop(rotatedRect.center.x - rotatedRect.size.width / 2,
+              rotatedRect.center.y - rotatedRect.size.height / 2,
+              rotatedRect.size.width,
+              rotatedRect.size.height,
+              normalizedCoords);
+    return *this;
+}
+ImageManipConfig& ImageManipConfig::addScale(float scaleX, float scaleY) {
+    base.resize(scaleX, scaleY, true);
+    return *this;
+}
+ImageManipConfig& ImageManipConfig::addRotateDeg(float angle) {
+    base.rotateDegrees(angle);
+    return *this;
+}
+ImageManipConfig& ImageManipConfig::addRotateDeg(float angle, Point2f centerOffset) {
+    base.rotateDegrees(angle, true, centerOffset.x, centerOffset.y, true);
+    return *this;
+}
+ImageManipConfig& ImageManipConfig::addFlipHorizontal() {
+    base.flipHorizontal(true);
+    return *this;
+}
+ImageManipConfig& ImageManipConfig::addFlipVertical() {
+    base.flipVertical(true);
+    return *this;
+}
+ImageManipConfig& ImageManipConfig::addTransformAffine(std::array<float, 4> matrix) {
+    base.transformAffine(matrix);
+    return *this;
+}
+ImageManipConfig& ImageManipConfig::addTransformPerspective(std::array<float, 9> matrix) {
+    base.transformPerspective(matrix);
+    return *this;
+}
+ImageManipConfig& ImageManipConfig::addTransformFourPoints(std::array<dai::Point2f, 4> src, std::array<dai::Point2f, 4> dst, bool normalizedCoords) {
+    base.transformFourPoints(src, dst, normalizedCoords);
+    return *this;
+}
+ImageManipConfig& ImageManipConfig::setOutputSize(uint32_t w, uint32_t h, ResizeMode mode) {
+    base.setOutputResize(w, h, mode);
+    return *this;
+}
+ImageManipConfig& ImageManipConfig::setOutputCenter(bool c) {
+    base.setOutputResize(0, 0, ResizeMode::NONE);
+    base.setOutputCenter(c);
+    return *this;
+}
+ImageManipConfig& ImageManipConfig::setColormap(Colormap colormap) {
+    base.setColormap(colormap);
+    return *this;
+}
+ImageManipConfig& ImageManipConfig::setBackgroundColor(uint32_t red, uint32_t green, uint32_t blue) {
+    base.setBackgroundColor(red, green, blue);
+    return *this;
+}
+ImageManipConfig& ImageManipConfig::setBackgroundColor(uint32_t val) {
+    base.setBackgroundColor(val);
+    return *this;
+}
+ImageManipConfig& ImageManipConfig::setFrameType(ImgFrame::Type frameType) {
+    outputFrameType = frameType;
     return *this;
 }
 
-ImageManipConfig& ImageManipConfig::setCropRect(std::tuple<float, float, float, float> coordinates) {
-    setCropRect(std::get<0>(coordinates), std::get<1>(coordinates), std::get<2>(coordinates), std::get<3>(coordinates));
+ImageManipConfig& ImageManipConfig::setUndistort(bool undistort) {
+    base.setUndistort(undistort);
     return *this;
 }
 
-ImageManipConfig& ImageManipConfig::setCropRotatedRect(RotatedRect rr, bool normalizedCoords) {
-    // Enable crop stage and extended flags
-    cfg.enableCrop = true;
-    cfg.cropConfig.enableRotatedRect = true;
-
-    cfg.cropConfig.cropRotatedRect = rr;
-    cfg.cropConfig.normalizedCoords = normalizedCoords;
-    return *this;
-}
-
-ImageManipConfig& ImageManipConfig::setWarpTransformFourPoints(std::vector<Point2f> pt, bool normalizedCoords) {
-    // Enable resize stage and extended flags
-    cfg.enableResize = true;
-    cfg.resizeConfig.keepAspectRatio = false;
-    cfg.resizeConfig.enableWarp4pt = true;
-    cfg.resizeConfig.warpFourPoints = pt;
-    cfg.resizeConfig.normalizedCoords = normalizedCoords;
-    return *this;
-}
-
-ImageManipConfig& ImageManipConfig::setWarpTransformMatrix3x3(std::vector<float> mat) {
-    // Enable resize stage and extended flags
-    cfg.enableResize = true;
-    cfg.resizeConfig.enableWarpMatrix = true;
-    cfg.resizeConfig.warpMatrix3x3 = mat;
-    return *this;
-}
-
-ImageManipConfig& ImageManipConfig::setWarpBorderReplicatePixels() {
-    // Enable resize stage and extended flags
-    cfg.enableResize = true;
-    cfg.resizeConfig.warpBorderReplicate = true;
-    return *this;
-}
-
-ImageManipConfig& ImageManipConfig::setWarpBorderFillColor(int red, int green, int blue) {
-    // Enable resize stage and extended flags
-    cfg.enableResize = true;
-    cfg.resizeConfig.warpBorderReplicate = false;
-    cfg.resizeConfig.bgRed = red;
-    cfg.resizeConfig.bgGreen = green;
-    cfg.resizeConfig.bgBlue = blue;
-    return *this;
-}
-
-ImageManipConfig& ImageManipConfig::setCenterCrop(float ratio, float whRatio) {
-    // Enable crop stage
-    cfg.enableCrop = true;
-
-    // Enable center center crop
-    cfg.cropConfig.enableCenterCropRectangle = true;
-
-    // Set crop center crop config
-    cfg.cropConfig.cropRatio = ratio;
-    // Limit to max 1.0f and disallow setting zero ratio
-    if(ratio > 1.0f || ratio < 0.0f) {
-        cfg.cropConfig.cropRatio = 1.0f;
-    }
-
-    cfg.cropConfig.widthHeightAspectRatio = whRatio;
-    return *this;
-}
-
-ImageManipConfig& ImageManipConfig::setRotationDegrees(float deg) {
-    cfg.enableResize = true;
-    cfg.resizeConfig.rotationAngleDeg = deg;
-    cfg.resizeConfig.enableRotation = true;
-    return *this;
-}
-
-ImageManipConfig& ImageManipConfig::setRotationRadians(float rad) {
-    static constexpr float rad2degFactor = static_cast<float>(180 / M_PI);
-    setRotationDegrees(rad * rad2degFactor);
-    return *this;
-}
-
-ImageManipConfig& ImageManipConfig::setResize(int w, int h) {
-    // Enable resize stage
-    cfg.enableResize = true;
-
-    // Disable lock aspect ratio
-    cfg.resizeConfig.lockAspectRatioFill = false;
-
-    // Set resize config
-    cfg.resizeConfig.width = w;
-    cfg.resizeConfig.height = h;
-    return *this;
-}
-
-ImageManipConfig& ImageManipConfig::setResize(std::tuple<int, int> size) {
-    setResize(std::get<0>(size), std::get<1>(size));
-    return *this;
-}
-
-ImageManipConfig& ImageManipConfig::setResizeThumbnail(int w, int h, int bgRed, int bgGreen, int bgBlue) {
-    // Enable resize stage
-    cfg.enableResize = true;
-
-    // Set resize config
-    cfg.resizeConfig.width = w;
-    cfg.resizeConfig.height = h;
-
-    // Set lock aspect ratio
-    cfg.resizeConfig.lockAspectRatioFill = true;
-
-    // Set background colors
-    cfg.resizeConfig.bgRed = bgRed;
-    cfg.resizeConfig.bgGreen = bgGreen;
-    cfg.resizeConfig.bgBlue = bgBlue;
-    return *this;
-}
-
-ImageManipConfig& ImageManipConfig::setResizeThumbnail(std::tuple<int, int> size, int bgRed, int bgGreen, int bgBlue) {
-    setResizeThumbnail(std::get<0>(size), std::get<1>(size), bgRed, bgGreen, bgBlue);
-    return *this;
-}
-
-ImageManipConfig& ImageManipConfig::setFrameType(dai::RawImgFrame::Type type) {
-    // Enable format stage
-    cfg.enableFormat = true;
-
-    // Set type format
-    cfg.formatConfig.type = type;
-    return *this;
-}
-
-ImageManipConfig& ImageManipConfig::setColormap(dai::Colormap colormap, float maxf) {
-    int max = maxf;
-    if(max < 0 || max >= 256) throw std::invalid_argument("Colormap max argument must be between 0 and 255");
-
-    // Enable format stage
-    cfg.enableFormat = true;
-
-    // Set type format
-    cfg.formatConfig.colormap = colormap;
-    cfg.formatConfig.colormapMin = 0;
-    cfg.formatConfig.colormapMax = max;
-    return *this;
-}
-
-ImageManipConfig& ImageManipConfig::setColormap(dai::Colormap colormap, int max) {
-    if(max < 0 || max >= 256) throw std::invalid_argument("Colormap max argument must be between 0 and 255");
-
-    // Enable format stage
-    cfg.enableFormat = true;
-
-    // Set type format
-    cfg.formatConfig.colormap = colormap;
-    cfg.formatConfig.colormapMin = 0;
-    cfg.formatConfig.colormapMax = max;
-    return *this;
-}
-
-ImageManipConfig& ImageManipConfig::setColormap(dai::Colormap colormap, int min, int max) {
-    if(max < 0 || max >= 256) throw std::invalid_argument("Colormap max argument must be between 0 and 255");
-    if(min < 0 || min >= 256) throw std::invalid_argument("Colormap min argument must be between 0 and 255");
-
-    // Enable format stage
-    cfg.enableFormat = true;
-
-    // Set type format
-    cfg.formatConfig.colormap = colormap;
-    cfg.formatConfig.colormapMin = min;
-    cfg.formatConfig.colormapMax = max;
-    return *this;
-}
-
-ImageManipConfig& ImageManipConfig::setHorizontalFlip(bool flip) {
-    // Enable format stage
-    cfg.enableFormat = true;
-
-    // Set pixel format
-    cfg.formatConfig.flipHorizontal = flip;
-    return *this;
-}
-
-void ImageManipConfig::setVerticalFlip(bool flip) {
-    // Enable format stage
-    cfg.enableFormat = true;
-
-    // Set pixel format
-    cfg.formatConfig.flipVertical = flip;
+bool ImageManipConfig::getUndistort() const {
+    return base.getUndistort();
 }
 
 ImageManipConfig& ImageManipConfig::setReusePreviousImage(bool reuse) {
-    cfg.reusePreviousImage = reuse;
+    reusePreviousImage = reuse;
     return *this;
 }
 
 ImageManipConfig& ImageManipConfig::setSkipCurrentImage(bool skip) {
-    cfg.skipCurrentImage = skip;
+    skipCurrentImage = skip;
     return *this;
 }
 
-ImageManipConfig& ImageManipConfig::setKeepAspectRatio(bool keep) {
-    // Set whether to keep aspect ratio or not
-    cfg.resizeConfig.keepAspectRatio = keep;
-    return *this;
+bool ImageManipConfig::getReusePreviousImage() const {
+    return reusePreviousImage;
 }
 
-ImageManipConfig& ImageManipConfig::setInterpolation(dai::Interpolation interpolation) {
-    cfg.interpolation = interpolation;
-    return *this;
-}
-
-// Functions to retrieve properties
-float ImageManipConfig::getCropXMin() const {
-    return cfg.cropConfig.cropRect.xmin;
-}
-
-float ImageManipConfig::getCropYMin() const {
-    return cfg.cropConfig.cropRect.ymin;
-}
-
-float ImageManipConfig::getCropXMax() const {
-    return cfg.cropConfig.cropRect.xmax;
-}
-
-float ImageManipConfig::getCropYMax() const {
-    return cfg.cropConfig.cropRect.ymax;
-}
-
-int ImageManipConfig::getResizeWidth() const {
-    return cfg.resizeConfig.width;
-}
-
-int ImageManipConfig::getResizeHeight() const {
-    return cfg.resizeConfig.height;
-}
-
-ImageManipConfig::CropConfig ImageManipConfig::getCropConfig() const {
-    return cfg.cropConfig;
-}
-
-ImageManipConfig::ResizeConfig ImageManipConfig::getResizeConfig() const {
-    return cfg.resizeConfig;
-}
-
-ImageManipConfig::FormatConfig ImageManipConfig::getFormatConfig() const {
-    return cfg.formatConfig;
-}
-
-bool ImageManipConfig::isResizeThumbnail() const {
-    return cfg.resizeConfig.lockAspectRatioFill;
-}
-
-dai::Colormap ImageManipConfig::getColormap() const {
-    return cfg.formatConfig.colormap;
-}
-
-dai::RawImageManipConfig ImageManipConfig::get() const {
-    return cfg;
-}
-
-ImageManipConfig& ImageManipConfig::set(dai::RawImageManipConfig config) {
-    cfg = config;
-    return *this;
-}
-
-dai::Interpolation ImageManipConfig::getInterpolation() const {
-    return cfg.interpolation;
+bool ImageManipConfig::getSkipCurrentImage() const {
+    return skipCurrentImage;
 }
 
 }  // namespace dai

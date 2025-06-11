@@ -1,5 +1,601 @@
 name: Depthai Python CI/CD
 
-# Added to main to allow workflow_dispath on v3 branches
+# Controls when the action will run. Triggers the workflow on push
+
 on:
   workflow_dispatch:
+  pull_request:
+    branches:
+    - v3_develop
+  push:
+    branches:
+    - v3_develop*
+    tags:
+    - 'v3*'
+
+###################################
+###################################
+
+env:
+  CMAKE_WINDOWS_SDK_VERSION: '10.0.18362.0'
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+
+  # Job which builds docstrings for the rest of the wheel builds
+  build-docstrings:
+    runs-on: ubuntu-latest
+    env:
+      VCPKG_BINARY_SOURCES: "clear;files,/home/runner/.vcpkg,readwrite"
+    steps:
+      - name: Setup cmake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version : '3.31.x'
+      - name: Cache vcpkg folder
+        uses: actions/cache@v3
+        with:
+          path: /home/runner/.vcpkg
+          key: vcpkg-ubuntu-latest
+      - name: List vcpkg cache directory
+        run: ls -a -l /home/runner/.vcpkg || true
+      - name: Export GitHub Actions cache environment variables
+        uses: actions/github-script@v7
+        with:
+          script: |
+           core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+           core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+      - uses: actions/checkout@v3
+        with:
+          submodules: 'recursive'
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.8
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          python -m pip install --upgrade pip
+          sudo apt install libusb-1.0-0-dev pkg-config bison autoconf libtool libxi-dev libxtst-dev libxrandr-dev libx11-dev libxft-dev libxext-dev nasm flex libudev-dev automake libltdl-dev
+          python -m pip install -r bindings/python/docs/requirements_mkdoc.txt
+      - name: Configure project
+        run: |
+          cmake -S . \
+            -B build \
+            -DDEPTHAI_VCPKG_INTERNAL_ONLY=OFF \
+            -DDEPTHAI_BUILD_PYTHON=ON \
+            -DDEPTHAI_PYTHON_FORCE_DOCSTRINGS=ON \
+            -DDEPTHAI_BASALT_SUPPORT=ON \
+            -DDEPTHAI_PCL_SUPPORT=ON \
+            -DDEPTHAI_RTABMAP_SUPPORT=ON \
+            -DDEPTHAI_PYTHON_DOCSTRINGS_OUTPUT="$PWD/bindings/python/docstrings/depthai_python_docstring.hpp"
+      - name: Build target 'pybind11_mkdoc'
+        run: cmake --build build --target pybind11_mkdoc --parallel 4
+      - name: Print out vcpkg logs if building port fails
+        if: failure()    # Only run this if the build step fails
+        run: bash ./bindings/python/ci/show_vcpkg_logs.sh
+
+      - name: Upload docstring artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: docstrings
+          path: bindings/python/docstrings/
+          retention-days: 1
+
+
+  # Build and test bindings
+  pytest:
+    needs: build-docstrings
+    env:
+      VCPKG_BINARY_SOURCES: "clear;files,/home/runner/.vcpkg,readwrite"
+    strategy:
+      matrix:
+        # os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest] # TODO(Morato) - re-enable windows & macos
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Setup cmake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version : '3.31.x'
+      - name: Print home directory
+        run: echo Home directory inside container $HOME
+
+      - name: Cache vcpkg folder
+        if: matrix.os != 'windows-latest'
+        uses: actions/cache@v3
+        with:
+          path: /home/runner/.vcpkg/
+          key: vcpkg-${{ matrix.os }}
+      - name: Cache vcpkg folder
+        if: matrix.os == 'windows-latest'
+        uses: actions/cache@v3
+        with:
+          path: C:/.vcpkg/
+          key: vcpkg-${{ matrix.os }}
+      - name: Export GitHub Actions cache environment variables
+        uses: actions/github-script@v7
+        with:
+          script: |
+           core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+           core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
+      - uses: actions/checkout@v3
+        with:
+          submodules: 'recursive'
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: 'docstrings'
+          path: bindings/python/docstrings
+      - name: Specify docstring to use while building the wheel
+        run: echo "DEPTHAI_PYTHON_DOCSTRINGS_INPUT=$PWD/bindings/python/docstrings/depthai_python_docstring.hpp" >> $GITHUB_ENV
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt update
+          python -m pip install --upgrade pip
+          sudo apt install libusb-1.0-0-dev pkg-config bison autoconf libtool libxi-dev libxtst-dev libxrandr-dev libx11-dev libxft-dev libxext-dev nasm flex libudev-dev automake libltdl-dev
+
+      - name: Install dependencies (MacOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          python -m pip install --upgrade pip
+          brew install libusb
+
+      - name: Setup cmake
+        if: matrix.os == 'macos-latest'
+        uses: jwlawson/actions-setup-cmake@v1.13
+
+
+      - name: Install pytest
+        run: |
+          python -m pip install pytest numpy opencv-python jinja2
+
+      - name: Compile
+        run: |
+            cmake -S . \
+            -B build \
+            -DDEPTHAI_VCPKG_INTERNAL_ONLY=OFF \
+            -DDEPTHAI_BUILD_PYTHON=ON \
+            -D CMAKE_BUILD_TYPE=Release \
+            -D DEPTHAI_PYTHON_DOCSTRINGS_INPUT=$PWD/bindings/python/docstrings/depthai_python_docstring.hpp \
+            -D DEPTHAI_PYTHON_ENABLE_TESTS=ON
+            cmake --build build --parallel 4
+      - name: Print out vcpkg logs if building port fails
+        if: failure()    # Only run this if the build step fails
+        run: cd bindings/python && bash ./ci/show_vcpkg_logs.sh
+      - name: Test
+        run: |
+          cmake --build build --target pytest --config Release
+
+
+  # This job builds wheels for Windows x86_64 arch
+  build-windows-x86_64:
+    needs: build-docstrings
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        python-version: [3.7, 3.8, 3.9, '3.10', '3.11', '3.12', '3.13']
+        python-architecture: [x64] # TODO(Morato) - re-enable x86
+      fail-fast: false
+    env:
+      DEPTHAI_BUILD_BASALT: OFF
+      DEPTHAI_BUILD_PCL: ON
+      DEPTHAI_BUILD_RTABMAP: ON
+      DEPTHAI_BUILD_KOMPUTE: ON
+      VCPKG_BINARY_SOURCES: "clear;files,C:\\.vcpkg,readwrite"
+    steps:
+      - name: Setup cmake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version : '3.31.x'
+      - name: Cache vcpkg folder
+        uses: actions/cache@v3
+        with:
+          path: C:/.vcpkg
+          key: vcpkg-windows-latest
+      - uses: actions/checkout@v3
+        with:
+          submodules: 'recursive'
+      - name: Export GitHub Actions cache environment variables
+        uses: actions/github-script@v7
+        with:
+          script: |
+           core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+           core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: 'docstrings'
+          path: bindings/python/docstrings
+      - name: Specify docstring to use while building the wheel
+        run: echo "DEPTHAI_PYTHON_DOCSTRINGS_INPUT=$PWD/bindings/python/docstrings/depthai_python_docstring.hpp" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Select Windows SDK
+        run: echo "CMAKE_ARGS=-DCMAKE_SYSTEM_VERSION=${{ env.CMAKE_WINDOWS_SDK_VERSION }}" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+          architecture: ${{ matrix.python-architecture }}
+      - name: Append build hash if not a tagged commit
+        if: startsWith(github.ref, 'refs/tags/v') != true
+        run: echo "BUILD_COMMIT_HASH=${{github.sha}}" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+      - name: Building wheels
+        run: cd bindings/python && python -m pip wheel . -w ./wheelhouse/audited/ --verbose
+      - name: Print out vcpkg logs if building port fails
+        if: failure()    # Only run this if the build step fails
+        run: cd bindings/python && bash ./ci/show_vcpkg_logs.sh
+      - name: Archive wheel artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: audited-wheels-windows-${{ matrix.python-version }}
+          path: bindings/python/wheelhouse/audited/*
+      - name: Deploy wheels to artifactory (if not a release)
+        if: startsWith(github.ref, 'refs/tags/v') != true
+        run: cd bindings/python && bash ./ci/upload-artifactory.sh
+        env:
+          ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
+          ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
+          ARTIFACTORY_PASS: ${{ secrets.ARTIFACTORY_PASS }}
+
+  # This job builds wheels for macOS arch
+  build-macos:
+    needs: build-docstrings
+    strategy:
+      matrix:
+        python-version: [3.8, 3.9, '3.10', '3.11', '3.12', '3.13']
+        os: [macos-13, macos-14] # macos-13 is x64, macos-14 is arm64
+      fail-fast: false
+    runs-on: ${{ matrix.os }}
+    env:
+      VCPKG_BINARY_SOURCES: "clear;files,/Users/runner/.vcpkg,readwrite"
+      DEPTHAI_BUILD_BASALT: ON
+      DEPTHAI_BUILD_PCL: ON
+      DEPTHAI_BUILD_RTABMAP: ON
+      DEPTHAI_BUILD_KOMPUTE: ON
+    steps:
+      - name: Setup cmake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version : '3.31.x'
+      - name: Cache vcpkg folder
+        uses: actions/cache@v3
+        with:
+          path: /Users/runner/.vcpkg
+          key: vcpkg-${{ matrix.os }}
+      - name: List vcpkg cache directory
+        run: |
+          ls -a -l /Users/runner/.vcpkg || true
+          echo "PATH=$PATH"
+      - name: Export GitHub Actions cache environment variables
+        uses: actions/github-script@v7
+        with:
+          script: |
+           core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+           core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
+      - uses: actions/checkout@v3
+        with:
+          submodules: 'recursive'
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: 'docstrings'
+          path: bindings/python/docstrings
+      - name: Specify docstring to use while building the wheel
+        run: echo "DEPTHAI_PYTHON_DOCSTRINGS_INPUT=$PWD/bindings/python/docstrings/depthai_python_docstring.hpp" >> $GITHUB_ENV
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Append build hash if not a tagged commit
+        if: startsWith(github.ref, 'refs/tags/v') != true
+        run: echo "BUILD_COMMIT_HASH=${{github.sha}}" >> $GITHUB_ENV
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          brew install libusb
+          brew install nasm
+          python -m pip install delocate
+      - name: Building wheels
+        run: cd bindings/python && python -m pip wheel . -w ./wheelhouse/ --verbose
+      - name: Print out vcpkg logs if building port fails
+        if: failure()    # Only run this if the build step fails
+        run: cd bindings/python && bash ./ci/show_vcpkg_logs.sh
+      - name: Auditing wheels
+        run: cd bindings/python && ci/repair-whl-macos.sh `pwd`/wheelhouse/* `pwd`/wheelhouse/audited
+      - name: Archive wheel artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: audited-wheels-macos-${{ matrix.os }}-${{ matrix.python-version }}
+          path: bindings/python/wheelhouse/audited/*
+      - name: Deploy wheels to artifactory (if not a release)
+        if: startsWith(github.ref, 'refs/tags/v') != true
+        run: cd bindings/python && bash ./ci/upload-artifactory.sh
+        env:
+          ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
+          ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
+          ARTIFACTORY_PASS: ${{ secrets.ARTIFACTORY_PASS }}
+
+  # This job builds wheels for x86_64 arch
+  build-linux-x86_64:
+    needs: build-docstrings
+    runs-on: ubuntu-latest
+    container:
+      image: quay.io/pypa/manylinux_2_28_x86_64:2024.12.05-1
+      env:
+        PLAT: manylinux_2_28_x86_64
+    strategy:
+      matrix:
+        python-set: ["cp37-cp37m", "cp38-cp38", "cp39-cp39", "cp310-cp310", "cp311-cp311", "cp312-cp312", "cp313-cp313"]
+    env:
+      DEPTHAI_BUILD_BASALT: ON
+      DEPTHAI_BUILD_PCL: ON
+      DEPTHAI_BUILD_RTABMAP: ON
+      DEPTHAI_BUILD_KOMPUTE: ON
+      VCPKG_BINARY_SOURCES: "clear;files,/home/runner/.vcpkg,readwrite"
+    steps:
+      - name: Cache vcpkg folder
+        uses: actions/cache@v3
+        with:
+          path: /home/runner/.vcpkg
+          key: vcpkg-manylinux-x86_64
+      - name: Export GitHub Actions cache environment variables
+        uses: actions/github-script@v7
+        with:
+          script: |
+           core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+           core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+      - uses: actions/checkout@v3
+        with:
+          submodules: 'recursive'
+      - name: Installing libusb1-devel dependency
+        run: yum install -y libusb1-devel perl-core curl zip unzip tar ninja-build  zlib-devel curl-devel xcb-util-renderutil-devel xcb-util-devel xcb-util-image-devel xcb-util-keysyms-devel xcb-util-wm-devel mesa-libGL-devel libxkbcommon-devel libxkbcommon-x11-devel libXi-devel libXrandr-devel libXtst-devel libudev-devel lapack-devel nasm libtool autoconf automake
+      - name: Create folder structure
+        run: cd bindings/python && mkdir -p wheelhouse/audited/
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: 'docstrings'
+          path: bindings/python/docstrings
+      - name: Specify docstring to use while building the wheel
+        run: echo "DEPTHAI_PYTHON_DOCSTRINGS_INPUT=$PWD/bindings/python/docstrings/depthai_python_docstring.hpp" >> $GITHUB_ENV
+
+      - name: Append build hash if not a tagged commit
+        if: startsWith(github.ref, 'refs/tags/v') != true
+        run: echo "BUILD_COMMIT_HASH=${{github.sha}}" >> $GITHUB_ENV
+
+      - name: Building source distribution
+        run: |
+          cd bindings/python
+          /opt/python/cp38-cp38/bin/python3.8 setup.py sdist --formats=gztar
+          mv dist/* wheelhouse/audited/
+      - name: Build wheels
+        run: |
+          cd bindings/python && for PYBIN in /opt/python/${{ matrix.python-set }}/bin; do "${PYBIN}/pip" wheel . -w ./wheelhouse/ --verbose; done
+      - name: Print out vcpkg logs if building port fails
+        if: failure()    # Only run this if the build step fails
+        run: cd bindings/python && bash ./ci/show_vcpkg_logs.sh
+
+      - name: Audit wheels
+        run: cd bindings/python && for whl in wheelhouse/*.whl; do auditwheel repair "$whl" --plat $PLAT -w wheelhouse/audited/; done
+      - name: Archive wheel artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: audited-wheels-linux-x86_64-${{ matrix.python-set }}
+          path: bindings/python/wheelhouse/audited/*
+      - name: Deploy wheels to artifactory (if not a release)
+        if: startsWith(github.ref, 'refs/tags/v') != true
+        run: cd bindings/python && bash ./ci/upload-artifactory.sh
+        env:
+          ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
+          ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
+          ARTIFACTORY_PASS: ${{ secrets.ARTIFACTORY_PASS }}
+
+  # This job builds wheels for ARM64 arch
+  build-linux-arm64:
+    needs: build-docstrings
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 1440  # Set timeout to 24 hours
+    container:
+      image: quay.io/pypa/manylinux_2_28_aarch64:2024.12.05-1
+      env:
+        PLAT: manylinux_2_28_aarch64
+    strategy:
+      matrix:
+        python-set: ["cp37-cp37m", "cp38-cp38", "cp39-cp39", "cp310-cp310", "cp311-cp311", "cp312-cp312", "cp313-cp313"]
+    env:
+      # workaround required for cache@v3, https://github.com/actions/cache/issues/1428
+      VCPKG_FORCE_SYSTEM_BINARIES: "1" # Needed so vpckg can bootstrap itself
+      VCPKG_BINARY_SOURCES: "clear;files,/home/runner/.vcpkg,readwrite"
+      DEPTHAI_BUILD_BASALT: ON
+      DEPTHAI_BUILD_PCL: ON
+      DEPTHAI_BUILD_RTABMAP: ON
+      DEPTHAI_BUILD_KOMPUTE: ON
+    steps:
+      - name: Cache vcpkg folder
+        uses: actions/cache@v3
+        with:
+          path: /home/runner/.vcpkg
+          key: vcpkg-manylinux-arm64
+      - name: Export GitHub Actions cache environment variables
+        uses: actions/github-script@v7
+        with:
+          script: |
+           core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+           core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+      - uses: actions/checkout@v3
+        with:
+          submodules: 'recursive'
+      - name: Installing libusb1-devel dependency
+        run: yum install -y libusb1-devel perl-core curl zip unzip tar zlib-devel curl-devel libxcb-devel xcb-util-renderutil-devel xcb-util-devel xcb-util-image-devel xcb-util-keysyms-devel xcb-util-wm-devel mesa-libGL-devel libxkbcommon-devel libxkbcommon-x11-devel libXi-devel libXrandr-devel libXtst-devel libudev-devel lapack-devel nasm libtool autoconf automake libX11-devel pkgconfig 
+      - name: Setup ninja required for arm64 builds
+        run: |
+          git clone https://github.com/ninja-build/ninja.git
+          cd ninja
+          git checkout v1.10.2
+          cmake -Bbuild-cmake
+          cmake --build build-cmake --target install
+      - name: Create folder structure
+        run: cd bindings/python && mkdir -p wheelhouse/audited/
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: 'docstrings'
+          path: bindings/python/docstrings
+      - name: Specify docstring to use while building the wheel
+        run: echo "DEPTHAI_PYTHON_DOCSTRINGS_INPUT=$PWD/bindings/python/docstrings/depthai_python_docstring.hpp" >> $GITHUB_ENV
+
+      - name: Append build hash if not a tagged commit
+        if: startsWith(github.ref, 'refs/tags/v') != true
+        run: echo "BUILD_COMMIT_HASH=${{github.sha}}" >> $GITHUB_ENV
+      - name: Building wheels
+        run: |
+          cd bindings/python && for PYBIN in /opt/python/${{ matrix.python-set }}/bin; do "${PYBIN}/pip" wheel . -w ./wheelhouse/ --verbose; done
+      - name: Print out vcpkg logs if building port fails
+        if: failure()    # Only run this if the build step fails
+        run: cd bindings/python && bash ./ci/show_vcpkg_logs.sh
+
+      - name: Auditing wheels
+        run: cd bindings/python && for whl in wheelhouse/*.whl; do auditwheel repair "$whl" --plat $PLAT -w wheelhouse/audited/; done
+      - name: Archive wheel artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: audited-wheels-linux-arm64-${{ matrix.python-set }}
+          path: bindings/python/wheelhouse/audited/*
+      - name: Deploy wheels to artifactory (if not a release)
+        if: startsWith(github.ref, 'refs/tags/v') != true
+        run: cd bindings/python && bash ./ci/upload-artifactory.sh
+        env:
+          ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
+          ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
+          ARTIFACTORY_PASS: ${{ secrets.ARTIFACTORY_PASS }}
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    # needs: [pytest, build-linux-armhf, build-windows-x86_64, build-macos-x86_64, build-macos-arm64, build-linux-x86_64, build-linux-arm64]
+    # needs: [pytest, build-windows-x86_64, build-macos, build-linux-x86_64, build-linux-arm64]
+    needs: [build-windows-x86_64, build-macos, build-linux-x86_64, build-linux-arm64]
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: 'recursive'
+
+    - uses: actions/setup-python@v4
+      with:
+        python-version: '3.8'
+
+    - name: Check if version matches
+      run: cd bindings/python && python3.8 -c 'import find_version as v; exit(0) if "${{ github.ref_name }}" == f"v{v.get_package_version()}" else exit(1)'
+
+  # Deploy to PyPi and Artifactory. Only when a commit is tagged
+  deploy:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [release]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: 'recursive'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: audited-wheels*
+          merge-multiple: true
+          path: bindings/python/wheelhouse/audited/
+      - name: List files
+        run: ls -lah
+      - name: Run deploy to PyPi
+        run: cd bindings/python && bash ./ci/upload-pypi.sh
+        if: ${{!contains(github.ref, 'alpha') && !contains(github.ref, 'beta')}}
+        env:
+          PYPI_SERVER: ${{ secrets.PYPI_SERVER }}
+          PYPI_USER: ${{ secrets.PYPI_USER }}
+          PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+      - name: Run deploy to Artifactory
+        run: cd bindings/python && bash ./ci/upload-artifactory-release.sh
+        env:
+          ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
+          ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
+          ARTIFACTORY_PASS: ${{ secrets.ARTIFACTORY_PASS }}
+
+  dispatch-bom-tests:
+    needs: [build-linux-x86_64, deploy]
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'push' && !failure() && !cancelled() }}
+    outputs:
+      runner_conclusion: ${{ steps.get_runner.outputs.runner_conclusion }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.8'
+
+      - name: Get dev version from script
+        id: get_version
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            VERSION=$(cd bindings/python && python3.8 -c "import find_version as v; print(v.get_package_version())")
+          else
+            VERSION=$(cd bindings/python && python3.8 -c "import find_version as v; print(v.get_package_dev_version('${{github.sha}}'))")
+          fi
+          echo "VERSION=$VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+
+      - name: Dispatch action and get run ID
+        uses: codex-/return-dispatch@v2
+        id: return_dispatch
+        with:
+          token: ${{ secrets.BOM_GITHUB_TOKEN }}
+          ref: "main"
+          repo: "luxonis-bom"
+          owner: "luxonis"
+          workflow: "dispatch_main.yml"
+          workflow_timeout_seconds: 120
+          workflow_job_steps_retry_seconds: 2
+          workflow_inputs: '{"depthai": "${{ github.ref_name }}", "depthai_version_dependencies": "${{ steps.get_version.outputs.version }}", "depthai_nodes": "latest", "luxonis_os": "latest", "test_experiments": "true" }'
+
+      - name: Wait for the dispatched workflow to complete
+        id: get_runner
+        run: |
+            RUN_ID=${{ steps.return_dispatch.outputs.run_id }}
+            TOKEN=${{ secrets.BOM_GITHUB_TOKEN }}
+            OWNER="luxonis"
+            REPO="luxonis-bom"
+
+            echo "STARTING TO WAIT FOR RUN https://github.com/$OWNER/$REPO/actions/runs/$RUN_ID"
+
+            STATUS=$(curl -s --header "Authorization: Bearer $TOKEN" "https://api.github.com/repos/$OWNER/$REPO/actions/runs/$RUN_ID" | jq -r .status)
+
+            while [ "$STATUS" != "completed" ]; do
+              echo "Waiting for the workflow run to complete..."
+              sleep 60
+              STATUS=$(curl -s -H "Authorization: Bearer $TOKEN" "https://api.github.com/repos/$OWNER/$REPO/actions/runs/$RUN_ID" | jq -r .status)
+              echo "Current status $STATUS"
+            done
+            CONCLUSION=$(curl -s -H "Authorization: Bearer $TOKEN" "https://api.github.com/repos/$OWNER/$REPO/actions/runs/$RUN_ID" | jq -r .conclusion)
+
+            echo "Run $RUN_ID is completed. Conclusion is $CONCLUSION"
+
+            # Set outputs for the job using GITHUB_OUTPUT file
+            echo "runner_conclusion=$CONCLUSION" >> $GITHUB_OUTPUT
+            if [ "$CONCLUSION" != "success" ] && [ "$CONCLUSION" != "skipped" ]; then
+                echo "Failed job"
+                exit 1
+            fi

@@ -26,19 +26,20 @@ namespace dai {
  */
 struct DeviceInfo {
     DeviceInfo() = default;
-    DeviceInfo(std::string name, std::string mxid, XLinkDeviceState_t state, XLinkProtocol_t protocol, XLinkPlatform_t platform, XLinkError_t status);
+    DeviceInfo(std::string name, std::string deviceId, XLinkDeviceState_t state, XLinkProtocol_t protocol, XLinkPlatform_t platform, XLinkError_t status);
     /**
-     * Creates a DeviceInfo by checking whether supplied parameter is a MXID or IP/USB name
-     * @param mxidOrName Either MXID, IP Address or USB port name
+     * Creates a DeviceInfo by checking whether supplied parameter is a DeviceID or IP/USB name
+     * @param deviceIdOrName Either DeviceId, IP Address or USB port name
      */
-    explicit DeviceInfo(std::string mxidOrName);
+    explicit DeviceInfo(std::string deviceIdOrName);
     explicit DeviceInfo(const deviceDesc_t& desc);
     deviceDesc_t getXLinkDeviceDesc() const;
-    std::string getMxId() const;
+    [[deprecated("Use getDeviceId() instead")]] std::string getMxId() const;
+    std::string getDeviceId() const;
     std::string toString() const;
 
     std::string name = "";
-    std::string mxid = "";
+    std::string deviceId = "";
     XLinkDeviceState_t state = X_LINK_ANY_STATE;
     XLinkProtocol_t protocol = X_LINK_ANY_PROTOCOL;
     XLinkPlatform_t platform = X_LINK_ANY_PLATFORM;
@@ -57,12 +58,11 @@ class XLinkConnection {
      *
      * @param state State which the devices should be in
      * @param skipInvalidDevices whether or not to skip over devices that cannot be successfully communicated with
-     * @param platform Which platforms to search for
      * @returns Vector of connected device information
      */
     static std::vector<DeviceInfo> getAllConnectedDevices(XLinkDeviceState_t state = X_LINK_ANY_STATE,
                                                           bool skipInvalidDevices = true,
-                                                          XLinkPlatform_t platform = X_LINK_MYRIAD_X);
+                                                          int timeoutMs = XLINK_DEVICE_DEFAULT_SEARCH_TIMEOUT_MS);
 
     /**
      * Returns information of first device with given state
@@ -72,13 +72,13 @@ class XLinkConnection {
     static std::tuple<bool, DeviceInfo> getFirstDevice(XLinkDeviceState_t state = X_LINK_ANY_STATE, bool skipInvalidDevices = true);
 
     /**
-     * Finds a device by MX ID. Example: 14442C10D13EABCE00
-     * @param mxId MyraidX ID which uniquely specifies a device
+     * Finds a device by Device ID. Example: 14442C10D13EABCE00
+     * @param deviceId Device ID which uniquely specifies a device
      * @param state Which state should the device be in
      * @param skipInvalidDevices Whether or not to skip devices that cannot be fully detected
      * @returns Tuple of bool and DeviceInfo. Bool specifies if device was found. DeviceInfo specifies the found device
      */
-    static std::tuple<bool, DeviceInfo> getDeviceByMxId(std::string mxId, XLinkDeviceState_t state = X_LINK_ANY_STATE, bool skipInvalidDevice = true);
+    static std::tuple<bool, DeviceInfo> getDeviceById(std::string deviceId, XLinkDeviceState_t state = X_LINK_ANY_STATE, bool skipInvalidDevice = true);
 
     /**
      * Tries booting the given device into bootloader state

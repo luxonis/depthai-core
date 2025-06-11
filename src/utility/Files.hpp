@@ -3,13 +3,13 @@
 #include <spdlog/spdlog.h>
 
 #include <fstream>
-#include <tl/optional.hpp>
+#include <optional>
 
 #include "Platform.hpp"
 
 namespace dai {
 
-tl::optional<std::string> saveFileToTemporaryDirectory(std::vector<uint8_t> data, std::string filename, std::string fpath = "") {
+std::optional<std::string> saveFileToTemporaryDirectory(std::vector<uint8_t> data, std::string filename, std::string fpath = "") {
     if(fpath.empty()) {
         fpath = platform::getTempPath();
     }
@@ -22,14 +22,14 @@ tl::optional<std::string> saveFileToTemporaryDirectory(std::vector<uint8_t> data
     std::ofstream file(path, std::ios::binary);
     if(!file.is_open()) {
         spdlog::error("Couldn't open file {} for writing", path);
-        return tl::nullopt;
+        return std::nullopt;
     }
 
     file.write(reinterpret_cast<char*>(data.data()), data.size());
     file.close();
     if(!file.good()) {
         spdlog::error("Couldn't write to file {}", path);
-        return tl::nullopt;
+        return std::nullopt;
     }
     spdlog::debug("Saved file {} to {}", filename, path);
     return std::string(path);

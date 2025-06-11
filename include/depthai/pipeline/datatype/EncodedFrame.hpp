@@ -2,33 +2,37 @@
 
 #include <chrono>
 
+#include "depthai/common/ImgTransformations.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
-
-// shared
-#include "depthai-shared/datatype/RawEncodedFrame.hpp"
-
-// optional
-#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-    #include <opencv2/opencv.hpp>
-#endif
+#include "depthai/pipeline/datatype/ImgFrame.hpp"
+#include "depthai/utility/ProtoSerializable.hpp"
 
 namespace dai {
 
-class EncodedFrame : public Buffer {
-    std::shared_ptr<RawBuffer> serialize() const override;
-    RawEncodedFrame& frame;
-
+class EncodedFrame : public Buffer, public ProtoSerializable {
    public:
-    // Raw* mirror
-    using Profile = RawEncodedFrame::Profile;
-    using FrameType = RawEncodedFrame::FrameType;
+    enum class Profile : std::uint8_t { JPEG, AVC, HEVC };
+    enum class FrameType : std::uint8_t { I, P, B, Unknown };
+    using CameraSettings = ImgFrame::CameraSettings;
 
-    /**
-     * Construct EncodedFrame message.
-     * Timestamp is set to now
-     */
-    EncodedFrame();
-    explicit EncodedFrame(std::shared_ptr<RawEncodedFrame> ptr);
+    CameraSettings cam;
+    uint32_t instanceNum = 0;  // Which source created this frame (color, mono, ...)
+
+    unsigned int width;   // width in pixels
+    unsigned int height;  // height in pixels
+
+    uint32_t quality;
+    uint32_t bitrate;
+    Profile profile;
+
+    bool lossless;   // jpeg
+    FrameType type;  // h264
+
+    uint32_t frameOffset = 0;
+    uint32_t frameSize = 0;
+
+    ImgTransformation transformation;
+
     virtual ~EncodedFrame() = default;
 
     // getters
@@ -36,6 +40,7 @@ class EncodedFrame : public Buffer {
      * Retrieves instance number
      */
     unsigned int getInstanceNum() const;
+
     /**
      * Retrieves image width in pixels
      */
@@ -45,6 +50,7 @@ class EncodedFrame : public Buffer {
      * Retrieves image height in pixels
      */
     unsigned int getHeight() const;
+
     /**
      * Retrieves exposure time
      */
@@ -88,30 +94,12 @@ class EncodedFrame : public Buffer {
     /**
      * Retrieves frame type (H26x only)
      */
-    FrameType getFrameType() const;
+    FrameType getFrameType();
 
     /**
      * Retrieves the encoding profile (JPEG, AVC or HEVC)
      */
     Profile getProfile() const;
-
-    // setters
-    /**
-     * Retrieves image timestamp related to dai::Clock::now()
-     */
-    EncodedFrame& setTimestamp(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> tp);
-
-    /**
-     * Sets image timestamp related to dai::Clock::now()
-     */
-    EncodedFrame& setTimestampDevice(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> tp);
-
-    /**
-     * Specifies sequence number
-     *
-     * @param seq Sequence number
-     */
-    EncodedFrame& setSequenceNum(int64_t seq);
 
     /**
      * Instance number relates to the origin of the frame (which camera)
@@ -133,6 +121,21 @@ class EncodedFrame : public Buffer {
      * @param height frame height
      */
     EncodedFrame& setHeight(unsigned int height);
+
+    /**
+     * Specifies frame size
+     *
+     * @param height frame height
+     * @param width frame width
+     */
+    EncodedFrame& setSize(unsigned int width, unsigned int height);
+
+    /**
+     * Specifies frame size
+     *
+     * @param size frame size
+     */
+    EncodedFrame& setSize(std::tuple<unsigned int, unsigned int> size);
 
     /**
      * Specifies the encoding quality
@@ -168,6 +171,46 @@ class EncodedFrame : public Buffer {
      * @param profile Encoding profile
      */
     EncodedFrame& setProfile(Profile profile);
+
+    ImgFrame getImgFrameMeta() const;
+
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
+        metadata = utility::serialize(*this);
+        datatype = DatatypeEnum::EncodedFrame;
+    };
+
+#ifdef DEPTHAI_ENABLE_PROTOBUF
+    /**
+     * Serialize message to proto buffer
+     *
+     * @returns serialized message
+     */
+    std::vector<std::uint8_t> serializeProto(bool metadataOnly = false) const override;
+
+    /**
+     * Serialize schema to proto buffer
+     *
+     * @returns serialized schema
+     */
+    ProtoSerializable::SchemaPair serializeSchema() const override;
+#endif
+
+    DEPTHAI_SERIALIZE(EncodedFrame,
+                      cam,
+                      instanceNum,
+                      width,
+                      height,
+                      quality,
+                      bitrate,
+                      profile,
+                      lossless,
+                      type,
+                      frameOffset,
+                      frameSize,
+                      transformation,
+                      Buffer::sequenceNum,
+                      Buffer::ts,
+                      Buffer::tsDevice);
 };
 
 }  // namespace dai

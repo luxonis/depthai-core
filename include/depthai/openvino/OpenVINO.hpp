@@ -8,7 +8,7 @@
 #include <utility>
 #include <vector>
 
-#include "depthai-shared/common/TensorInfo.hpp"
+#include "depthai/common/TensorInfo.hpp"
 #include "depthai/utility/Path.hpp"
 
 namespace dai {
@@ -19,6 +19,8 @@ class OpenVINO {
     /// OpenVINO Version supported version information
     enum Version { VERSION_2020_3, VERSION_2020_4, VERSION_2021_1, VERSION_2021_2, VERSION_2021_3, VERSION_2021_4, VERSION_2022_1, VERSION_UNIVERSAL };
 
+    // Device for which the blob is compiled
+    enum class Device { VPU, VPUX };
     /// OpenVINO Blob
     struct Blob {
         /**
@@ -36,6 +38,8 @@ class OpenVINO {
 
         /// OpenVINO version
         Version version;
+        /// Device for which the blob is compiled for
+        Device device;
         /// Map of input names to additional information
         std::unordered_map<std::string, TensorInfo> networkInputs;
         /// Map of output names to additional information
@@ -47,6 +51,72 @@ class OpenVINO {
         /// Number of CMX slices the blob was compiled for
         uint32_t numSlices = 0;
         /// Blob data
+        std::vector<uint8_t> data;
+    };
+
+    /**
+     * @brief A superblob is an efficient way of storing generated blobs for all different number of shaves.
+     */
+    class SuperBlob {
+       public:
+        /** Number of patches in a superblob*/
+        static constexpr size_t NUMBER_OF_PATCHES = 16;
+
+        /**
+         * @brief Construct a new SuperBlob object
+         *
+         * @param data: In memory superblob data
+         */
+        SuperBlob(std::vector<uint8_t> data);
+
+        /**
+         * @brief Construct a new SuperBlob object
+         *
+         * @param pathToSuperBlobFile: Path to the superblob file (.superblob suffix)
+         */
+        SuperBlob(const std::string& pathToSuperBlobFile);
+
+        /**
+         * @brief Generate a blob with a specific number of shaves
+         *
+         * @param numShaves: Number of shaves to generate the blob for. Must be between 1 and NUMBER_OF_PATCHES.
+         * @return dai::OpenVINO::Blob: Blob compiled for the specified number of shaves
+         */
+        dai::OpenVINO::Blob getBlobWithNumShaves(int numShaves);
+
+       private:
+        // A header in the superblob containing metadata about the blob and patches
+        struct SuperBlobHeader {
+            static constexpr size_t HEADER_SIZE = 1 * sizeof(uint64_t) + NUMBER_OF_PATCHES * sizeof(uint64_t);
+
+            static SuperBlobHeader fromData(const std::vector<uint8_t>& data);
+
+            int64_t blobSize;
+            std::vector<int64_t> patchSizes;
+        };
+
+        // Read the SuperBlob file into memory
+        std::vector<uint8_t> readSuperBlobFile(const std::string& path);
+
+        // Get a pointer to the first byte of the blob data
+        const uint8_t* getBlobDataPointer();
+
+        // Get the size in bytes of the blob data
+        int64_t getBlobDataSize();
+
+        // Get a pointer to the first byte of the patch data for a specific number of shaves
+        const uint8_t* getPatchDataPointer(int numShaves);
+
+        // Get the size in bytes of the patch data for a specific number of shaves
+        int64_t getPatchDataSize(int numShaves);
+
+        // Load header - throw if an error occurs
+        void loadAndCheckHeader();
+
+        // Validate superblob - throw if an error occurs
+        void validateSuperblob();
+
+        SuperBlobHeader header;
         std::vector<uint8_t> data;
     };
 

@@ -1,8 +1,13 @@
 #pragma once
 
-#include <ostream>
+#include <nlohmann/json.hpp>
 
-#include "depthai-shared/common/CameraSensorType.hpp"
+namespace dai {
+
+/// Camera sensor type
+enum class CameraSensorType : int32_t { AUTO = -1, COLOR = 0, MONO = 1, TOF = 2, THERMAL = 3 };
+
+}  // namespace dai
 
 // Global namespace
 inline std::ostream& operator<<(std::ostream& out, const dai::CameraSensorType& type) {

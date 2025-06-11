@@ -17,6 +17,8 @@ static constexpr int RGB_FPS = 20;
 static constexpr int MONO_FPS = 20;
 static constexpr int ENCODER_FPS = 10;
 
+// TODO(lnotspotl): Port this to v3
+
 void printSystemInformation(dai::SystemInformation info) {
     printf("Ddr used / total - %.2f / %.2f MiB\n", info.ddrMemoryUsage.used / (1024.0f * 1024.0f), info.ddrMemoryUsage.total / (1024.0f * 1024.0f));
     printf("Cmx used / total - %.2f / %.2f MiB\n", info.cmxMemoryUsage.used / (1024.0f * 1024.0f), info.cmxMemoryUsage.total / (1024.0f * 1024.0f));
@@ -94,22 +96,22 @@ int main(int argc, char** argv) {
     // auto featureTrackerLeft = pipeline.create<dai::node::FeatureTracker>();
     // auto featureTrackerRight = pipeline.create<dai::node::FeatureTracker>();
 
-    auto ve1Out = pipeline.create<dai::node::XLinkOut>();
-    auto ve2Out = pipeline.create<dai::node::XLinkOut>();
-    auto ve3Out = pipeline.create<dai::node::XLinkOut>();
-    auto xoutDepth = pipeline.create<dai::node::XLinkOut>();
-    auto xoutNN = pipeline.create<dai::node::XLinkOut>();
-    auto xoutRgb = pipeline.create<dai::node::XLinkOut>();
-    auto xoutEdgeLeft = pipeline.create<dai::node::XLinkOut>();
-    auto xoutEdgeRight = pipeline.create<dai::node::XLinkOut>();
-    auto xoutEdgeRgb = pipeline.create<dai::node::XLinkOut>();
-    auto xoutSysLog = pipeline.create<dai::node::XLinkOut>();
+    auto ve1Out = pipeline.create<dai::node::internal::XLinkOut>();
+    auto ve2Out = pipeline.create<dai::node::internal::XLinkOut>();
+    auto ve3Out = pipeline.create<dai::node::internal::XLinkOut>();
+    auto xoutDepth = pipeline.create<dai::node::internal::XLinkOut>();
+    auto xoutNN = pipeline.create<dai::node::internal::XLinkOut>();
+    auto xoutRgb = pipeline.create<dai::node::internal::XLinkOut>();
+    auto xoutEdgeLeft = pipeline.create<dai::node::internal::XLinkOut>();
+    auto xoutEdgeRight = pipeline.create<dai::node::internal::XLinkOut>();
+    auto xoutEdgeRgb = pipeline.create<dai::node::internal::XLinkOut>();
+    auto xoutSysLog = pipeline.create<dai::node::internal::XLinkOut>();
 #ifdef DEPTHAI_STABILITY_TEST_SCRIPT
-    auto scriptOut = pipeline.create<dai::node::XLinkOut>();
-    auto scriptOut2 = pipeline.create<dai::node::XLinkOut>();
+    auto scriptOut = pipeline.create<dai::node::internal::XLinkOut>();
+    auto scriptOut2 = pipeline.create<dai::node::internal::XLinkOut>();
 #endif
-    // auto xoutTrackedFeaturesLeft = pipeline.create<dai::node::XLinkOut>();
-    // auto xoutTrackedFeaturesRight = pipeline.create<dai::node::XLinkOut>();
+    // auto xoutTrackedFeaturesLeft = pipeline.create<dai::node::internal::XLinkOut>();
+    // auto xoutTrackedFeaturesRight = pipeline.create<dai::node::internal::XLinkOut>();
 
     ve1Out->setStreamName("ve1Out");
     ve2Out->setStreamName("ve2Out");
@@ -153,10 +155,9 @@ int main(int argc, char** argv) {
     ve2->setDefaultProfilePreset(ENCODER_FPS, dai::VideoEncoderProperties::Profile::H265_MAIN);
     ve3->setDefaultProfilePreset(ENCODER_FPS, dai::VideoEncoderProperties::Profile::H264_MAIN);
 
-    stereo->setDefaultProfilePreset(dai::node::StereoDepth::PresetMode::HIGH_DENSITY);
     // Align depth map to the perspective of RGB camera, on which inference is done
     stereo->setDepthAlign(dai::CameraBoardSocket::CAM_A);
-    stereo->setOutputSize(monoLeft->getResolutionWidth(), monoLeft->getResolutionHeight());
+    if(pipeline.getDefaultDevice()->getPlatform() == dai::Platform::RVC2) stereo->setOutputSize(monoLeft->getResolutionWidth(), monoLeft->getResolutionHeight());
 
     spatialDetectionNetwork->setBlobPath(nnPath);
     spatialDetectionNetwork->setConfidenceThreshold(0.5f);
@@ -340,7 +341,9 @@ int main(int argc, char** argv) {
                 unique_lock<mutex> l(countersMtx);
 
                 bool failed = counters.size() == 0;
-                cout << "[" << duration_cast<seconds>(steady_clock::now() - timeoutStopwatch).count() << "s] " << "Usb speed " << usb_speed << " " << "FPS: ";
+                cout << "[" << duration_cast<seconds>(steady_clock::now() - timeoutStopwatch).count() << "s] "
+                     << "Usb speed " << usb_speed << " "
+                     << "FPS: ";
                 for(const auto& kv : counters) {
                     if(kv.second == 0) {
                         failed = true;

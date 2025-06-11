@@ -8,10 +8,9 @@
 #include "depthai-bootloader-shared/SBR.h"
 #include "depthai-bootloader-shared/Structure.hpp"
 #include "depthai-bootloader-shared/XLinkConstants.hpp"
-#include "depthai-shared/datatype/RawImgFrame.hpp"
-#include "depthai-shared/pipeline/Assets.hpp"
-#include "depthai-shared/utility/Serialization.hpp"
-#include "depthai-shared/xlink/XLinkConstants.hpp"
+#include "depthai/pipeline/Assets.hpp"
+#include "depthai/utility/Serialization.hpp"
+#include "depthai/xlink/XLinkConstants.hpp"
 
 // project
 #include "device/Device.hpp"
@@ -26,12 +25,6 @@
 #include "spdlog/spdlog.h"
 #include "utility/Logging.hpp"
 #include "zlib.h"
-
-// Resource compiled assets (cmds)
-#ifdef DEPTHAI_RESOURCE_COMPILED_BINARIES
-    #include "cmrc/cmrc.hpp"
-CMRC_DECLARE(depthai);
-#endif
 
 namespace dai {
 
@@ -253,12 +246,12 @@ void DeviceBootloader::saveDepthaiApplicationPackage(
 }
 
 DeviceBootloader::DeviceBootloader(const DeviceInfo& devInfo) : deviceInfo(devInfo) {
-    init(true, {}, tl::nullopt, false);
+    init(true, {}, std::nullopt, false);
 }
 
 template <>
 DeviceBootloader::DeviceBootloader(const DeviceInfo& devInfo, bool allowFlashingBootloader) : deviceInfo(devInfo) {
-    init(true, {}, tl::nullopt, allowFlashingBootloader);
+    init(true, {}, std::nullopt, allowFlashingBootloader);
 }
 
 DeviceBootloader::DeviceBootloader(const DeviceInfo& devInfo, Type type, bool allowFlashingBootloader) : deviceInfo(devInfo) {
@@ -266,11 +259,11 @@ DeviceBootloader::DeviceBootloader(const DeviceInfo& devInfo, Type type, bool al
 }
 
 DeviceBootloader::DeviceBootloader(const DeviceInfo& devInfo, const dai::Path& pathToBootloader, bool allowFlashingBootloader) : deviceInfo(devInfo) {
-    init(false, pathToBootloader, tl::nullopt, allowFlashingBootloader);
+    init(false, pathToBootloader, std::nullopt, allowFlashingBootloader);
 }
 
 DeviceBootloader::DeviceBootloader(std::string nameOrDeviceId, bool allowFlashingBootloader) : deviceInfo(std::move(nameOrDeviceId)) {
-    init(true, {}, tl::nullopt, allowFlashingBootloader);
+    init(true, {}, std::nullopt, allowFlashingBootloader);
 }
 
 void DeviceBootloader::createWatchdog() {
@@ -298,7 +291,7 @@ void DeviceBootloader::createWatchdog() {
             // Bump checking thread to not cause spurious warnings/closes
             std::chrono::milliseconds watchdogTimeout = std::chrono::milliseconds(3000);
             if(watchdogRunning && std::chrono::steady_clock::now() - prevPingTime > watchdogTimeout * 2) {
-                logger::warn("Monitor thread (device: {} [{}]) - ping was missed, closing the device connection", deviceInfo.mxid, deviceInfo.name);
+                logger::warn("Monitor thread (device: {} [{}]) - ping was missed, closing the device connection", deviceInfo.deviceId, deviceInfo.name);
                 // ping was missed, reset the device
                 watchdogRunning = false;
                 // close the underlying connection
@@ -354,14 +347,14 @@ void DeviceBootloader::destroyWatchdog() {
     if(monitorThread.joinable()) monitorThread.join();
 }
 
-void DeviceBootloader::init(bool embeddedMvcmd, const dai::Path& pathToMvcmd, tl::optional<bootloader::Type> type, bool allowBlFlash) {
+void DeviceBootloader::init(bool embeddedMvcmd, const dai::Path& pathToMvcmd, std::optional<bootloader::Type> type, bool allowBlFlash) {
     stream = nullptr;
     allowFlashingBootloader = allowBlFlash;
 
     bootloaderType = type.value_or(DEFAULT_TYPE);
 
     // If deviceInfo isn't fully specified (eg ANY_STATE, etc...), but id or name is - try finding it first
-    if((deviceInfo.state == X_LINK_ANY_STATE || deviceInfo.protocol == X_LINK_ANY_PROTOCOL) && (!deviceInfo.mxid.empty() || !deviceInfo.name.empty())) {
+    if((deviceInfo.state == X_LINK_ANY_STATE || deviceInfo.protocol == X_LINK_ANY_PROTOCOL) && (!deviceInfo.deviceId.empty() || !deviceInfo.name.empty())) {
         deviceDesc_t foundDesc;
         auto ret = XLinkFindFirstSuitableDevice(deviceInfo.getXLinkDeviceDesc(), &foundDesc);
         if(ret == X_LINK_SUCCESS) {
@@ -416,20 +409,6 @@ void DeviceBootloader::init(bool embeddedMvcmd, const dai::Path& pathToMvcmd, tl
 
             // Retrieve bootloader version
             version = requestVersion();
-            flashedVersion = version;
-
-            auto recommendedMinVersion = DeviceBootloader::Version(0, 0, 28);
-            if(version < recommendedMinVersion) {
-                logger::warn(
-                    "[{}] [{}] Flashed bootloader version {}, less than {} is susceptible to bootup/restart failure. Upgrading is advised, flashing "
-                    "main/factory (not user) bootloader. Available: {}",
-                    deviceInfo.mxid,
-                    deviceInfo.name,
-                    version.toString(),
-                    recommendedMinVersion.toString(),
-                    getEmbeddedBootloaderVersion().toString());
-            }
-
             if(version >= Version(0, 0, 12)) {
                 // If version is adequate, do an in memory boot.
 
@@ -600,10 +579,6 @@ DeviceBootloader::Version DeviceBootloader::getVersion() const {
     return version;
 }
 
-tl::optional<DeviceBootloader::Version> DeviceBootloader::getFlashedVersion() const {
-    return flashedVersion;
-}
-
 DeviceBootloader::Version DeviceBootloader::requestVersion() {
     // Send request to retrieve bootloader version
     if(!sendRequest(Request::GetBootloaderVersion{})) {
@@ -621,7 +596,7 @@ DeviceBootloader::Version DeviceBootloader::requestVersion() {
     if(blVersion >= Version(Request::GetBootloaderCommit::VERSION)) {
         // Send request to retrieve bootloader commit (skip version check)
         Request::GetBootloaderCommit request{};
-        stream->write((uint8_t*)&request, sizeof(request));
+        stream->write({(uint8_t*)&request, sizeof(request)});
 
         // Receive response
         Response::BootloaderCommit commit;
@@ -714,12 +689,8 @@ bool DeviceBootloader::isUserBootloaderSupported() {
         return false;
     }
 
-    if(!getFlashedVersion()) {
-        return false;
-    }
-
     // Check if bootloader version is adequate
-    if(getFlashedVersion().value().getSemver() < Version(Request::IsUserBootloader::VERSION)) {
+    if(getVersion() < Version(Request::IsUserBootloader::VERSION)) {
         return false;
     }
 
@@ -728,7 +699,7 @@ bool DeviceBootloader::isUserBootloaderSupported() {
 
 bool DeviceBootloader::isUserBootloader() {
     // Check if bootloader version is adequate
-    if(getVersion().getSemver() < Version(Request::IsUserBootloader::VERSION)) {
+    if(getVersion() < Version(Request::IsUserBootloader::VERSION)) {
         return false;
     }
 
@@ -747,10 +718,7 @@ std::tuple<bool, std::string> DeviceBootloader::flashDepthaiApplicationPackage(s
                                                                                std::vector<uint8_t> package,
                                                                                Memory memory) {
     // Bug in NETWORK bootloader in version 0.0.12 < 0.0.14 - flashing can cause a soft brick
-    if(!getFlashedVersion()) {
-        return {false, "Can't flash DepthAI application package without knowing flashed bootloader version."};
-    }
-    auto bootloaderVersion = *getFlashedVersion();
+    auto bootloaderVersion = getVersion();
     if(bootloaderType == Type::NETWORK && bootloaderVersion < Version(0, 0, 14)) {
         throw std::invalid_argument("Network bootloader requires version 0.0.14 or higher to flash applications. Current version: "
                                     + bootloaderVersion.toString());
@@ -950,14 +918,8 @@ std::tuple<bool, std::string> DeviceBootloader::flashUserBootloader(std::functio
     // }
 
     // Check if bootloader version is adequate
-    if(!getFlashedVersion()) {
-        throw std::runtime_error(
-            "Couldn't retrieve version of the flashed bootloader. Make sure you have a factory bootloader flashed and the device is booted to bootloader.");
-    }
-    if(getFlashedVersion().value().getSemver() < Version(Request::IsUserBootloader::VERSION)) {
-        throw std::runtime_error(fmt::format("Current bootloader version doesn't support User Bootloader. Current version: {}, minimum required version: {}",
-                                             getFlashedVersion().value().toStringSemver(),
-                                             Version(Request::IsUserBootloader::VERSION).toStringSemver()));
+    if(getVersion() < Version(Request::IsUserBootloader::VERSION)) {
+        throw std::runtime_error("Current bootloader version doesn't support User Bootloader");
     }
 
     // Retrieve bootloader
@@ -1408,13 +1370,13 @@ bool DeviceBootloader::sendRequest(const T& request) {
     if(stream == nullptr) return false;
 
     // Do a version check beforehand (compare just the semver)
-    if(getVersion().getSemver() < Version(T::VERSION)) {
+    if(getVersion() < Version(T::VERSION)) {
         throw std::runtime_error(
             fmt::format("Bootloader version {} required to send request '{}'. Current version {}", T::VERSION, T::NAME, getVersion().toString()));
     }
 
     try {
-        stream->write((uint8_t*)&request, sizeof(T));
+        stream->write({(uint8_t*)&request, sizeof(T)});
     } catch(const std::exception&) {
         return false;
     }
@@ -1427,13 +1389,13 @@ void DeviceBootloader::sendRequestThrow(const T& request) {
     if(stream == nullptr) throw std::runtime_error("Couldn't send request. Stream is null");
 
     // Do a version check beforehand (compare just the semver)
-    if(getVersion().getSemver() < Version(T::VERSION)) {
+    if(getVersion() < Version(T::VERSION)) {
         throw std::runtime_error(
             fmt::format("Bootloader version {} required to send request '{}'. Current version {}", T::VERSION, T::NAME, getVersion().toString()));
     }
 
     try {
-        stream->write((uint8_t*)&request, sizeof(T));
+        stream->write({(uint8_t*)&request, sizeof(T)});
     } catch(const std::exception&) {
         throw std::runtime_error("Couldn't send " + std::string(T::NAME) + " request");
     }

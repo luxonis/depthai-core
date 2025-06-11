@@ -2,104 +2,75 @@
 include(CTest)
 enable_testing()
 
-# Add catch2 for writing tests
-hunter_add_package(Catch2)
+# Add Catch2 for writing tests
 find_package(Catch2 CONFIG REQUIRED)
 
-# Create environments for usb & poe labels
-set(test_usb_env
+# Print details of the Catch2 package
+message(STATUS "Catch2_FOUND: ${Catch2_FOUND}")
+message(STATUS "Catch2_VERSION: ${Catch2_VERSION}")
+message(STATUS "Catch2_INCLUDE_DIRS: ${Catch2_INCLUDE_DIRS}")
+message(STATUS "Catch2_LIBRARIES: ${Catch2_LIBRARIES}")
+
+set(test_env
     # Misc
     "UBSAN_OPTIONS=halt_on_error=1"
     # DepthAI
-    "DEPTHAI_PROTOCOL=usb"
-)
-set(test_poe_env
-    # Misc
-    "UBSAN_OPTIONS=halt_on_error=1"
-    # DepthAI
-    "DEPTHAI_PROTOCOL=tcpip;DEPTHAI_SEARCH_TIMEOUT=15000"
-)
+    "DEPTHAI_SEARCH_TIMEOUT=15000"
+    "DEPTHAI_RECONNECT_TIMEOUT=0"
+    )
+
+include(CMakeParseArguments)
+
+include_directories(${CMAKE_SOURCE_DIR}/src)
 
 # Function for adding new tests
-# Creates separate tests for USB and PoE devices
-include(CMakeParseArguments)
 function(dai_add_test test_name test_src)
-    # parse arguments
+    # Parse arguments
     cmake_parse_arguments(DAT "CONFORMING" "CXX_STANDARD" "" ${ARGN})
-
-    # check compiler for C++ standard
-    if(NOT DAT_CXX_STANDARD)
-        set(DAT_CXX_STANDARD 14)
-    endif()
-    if(NOT COMPILER_SUPPORTS_CXX${DAT_CXX_STANDARD})
-        message(STATUS "Skipping test ${test_name} with c++${DAT_CXX_STANDARD}; no compiler support")
-        return()
-    endif()
 
     # Create test executable
     add_executable(${test_name} ${test_src})
     add_default_flags(${test_name} LEAN)
 
-    # Add to clangformat target
+    # Set compiler C++ standard if specified
+    if(DAT_CXX_STANDARD)
+        target_compile_features(${test_name} PRIVATE cxx_std_${DAT_CXX_STANDARD})
+    endif()
+
+    # Add conforming preprocessor flags for MSVC if requested
+    if(MSVC AND DAT_CONFORMING)
+        if(MSVC_VERSION LESS 1925)
+            target_compile_options(${test_name} PRIVATE "/experimental:preprocessor")
+        else()
+            target_compile_options(${test_name} PRIVATE "/Zc:preprocessor")
+        endif()
+    endif()
+
+    # Add to clang-format target
     if(COMMAND target_clangformat_setup)
         target_clangformat_setup(${test_name} "")
     endif()
 
     # Link to core and Catch2 testing framework
-    target_link_libraries(${test_name} PRIVATE depthai-core Catch2::Catch2WithMain Threads::Threads)
+    set(DEPTHAI_TARGET depthai::core)
+    if(NOT DEPTHAI_MERGED_TARGET)
+        set(DEPTHAI_TARGET depthai::opencv)
+    endif()
+    target_link_libraries(${test_name} PRIVATE ${DEPTHAI_TARGET} ${OpenCV_LIBS} Catch2::Catch2WithMain Threads::Threads spdlog::spdlog)
 
     # Add sanitizers for tests as well
     if(COMMAND add_sanitizers)
         add_sanitizers(${test_name})
     endif()
 
-    # Set compiler c++ standard
-    target_compile_options(${test_name} PRIVATE "${CMAKE_CXX${DAT_CXX_STANDARD}_STANDARD_COMPILE_OPTION}")
+    # Add test
+    add_test(NAME ${test_name} COMMAND ${test_name})
+    set_tests_properties(${test_name} PROPERTIES ENVIRONMENT "${test_env}")
 
-    # Add to list of tests
-    add_test(${test_name} ${test_name})
-    # Add ubsan halt on error
-    set_tests_properties(${test_name} PROPERTIES ENVIRONMENT "${test_usb_env}" LABELS usb)
-
-    # add a conforming preprocessor test (serialization macros) if MSVC and CONFORMING option set on function call
-    if(MSVC AND DAT_CONFORMING)
-        # Create test executable with MSVC conforming preprocessor
-        add_executable(${test_name}_conforming ${test_src})
-        add_default_flags(${test_name}_conforming LEAN)
-
-        # Link to core and Catch2 testing framework
-        target_link_libraries(${test_name}_conforming PRIVATE depthai-core Catch2::Catch2WithMain Threads::Threads)
-
-        # Set compiler c++ standard
-        target_compile_options(${test_name}_conforming PRIVATE "${CMAKE_CXX${DAT_CXX_STANDARD}_STANDARD_COMPILE_OPTION}")
-
-        if(MSVC_VERSION LESS 1925)
-            target_compile_options(${test_name}_conforming PRIVATE "/experimental:preprocessor")
-        else()
-            target_compile_options(${test_name}_conforming PRIVATE "/Zc:preprocessor")
-        endif()
-
-        # Add to list of tests
-        add_test(${test_name}_conforming ${test_name}_conforming)
-
-        # Add ubsan halt on error
-        set_tests_properties(${test_name}_conforming PROPERTIES ENVIRONMENT "${test_usb_env}" LABELS usb)
-    endif()
-
-    # Add PoE test variants
-    add_test(${test_name}_poe ${test_name})
-    # Add ubsan halt on error
-    set_tests_properties(${test_name}_poe PROPERTIES ENVIRONMENT "${test_poe_env}" LABELS poe)
-    if(MSVC AND DAT_CONFORMING)
-        # Add to list of tests
-        add_test(${test_name}_conforming_poe ${test_name}_conforming)
-        # Add ubsan halt on error
-        set_tests_properties(${test_name}_conforming_poe PROPERTIES ENVIRONMENT "${test_poe_env}" LABELS poe)
-    endif()
 
     # Copy over required DLLs (Windows)
     if(WIN32)
-        # Copy dlls to target directory - Windows only
+        # Copy DLLs to target directory - Windows only
         # TARGET_RUNTIME_DLLS generator expression available since CMake 3.21
         if(CMAKE_VERSION VERSION_LESS "3.21")
             file(GLOB depthai_dll_libraries "${HUNTER_INSTALL_PREFIX}/bin/*.dll")
@@ -112,6 +83,19 @@ function(dai_add_test test_name test_src)
             VERBATIM
         )
     endif()
+endfunction()
+
+# Function for setting test labels, including label shortcuts
+function(dai_set_test_labels test_name)
+    set(expanded_labels "")
+    foreach(label IN LISTS ARGN)
+        if(label STREQUAL "rvc2_all")
+            list(APPEND expanded_labels "rvc2" "poe" "usb")
+        else()
+            list(APPEND expanded_labels ${label})
+        endif()
+    endforeach()
+    set_tests_properties(${test_name} PROPERTIES LABELS "${expanded_labels}")
 endfunction()
 
 # Function for adding compile definitions to tests
@@ -128,7 +112,7 @@ function(dai_test_compile_definitions)
 endfunction()
 
 # Mobilenet network
-hunter_private_data(
+private_data(
     URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/mobilenet-ssd_openvino_2021.2_8shave.blob"
     SHA1 "3329bb8f3a9c881ef9756d232055f9d6f38aa07b"
     FILE "mobilenet-ssd_openvino_2021.2_8shave.blob"
@@ -136,14 +120,14 @@ hunter_private_data(
 )
 
 # OpenVINO 2020.3 blob
-hunter_private_data(
+private_data(
     URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/text-image-super-resolution-0001_2020.3_4shave.blob"
     SHA1 "f0134c9b843fe414f6d98b17a70f069d1ab0f3d8"
     FILE "text-image-super-resolution-0001_2020.3_4shave.blob"
     LOCATION openvino_2020_3_blob
 )
 # OpenVINO 2020.4 blob
-hunter_private_data(
+private_data(
     URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/text-image-super-resolution-0001_2020.4_4shave.blob"
     SHA1 "25dcf0b146da8c85c9c4cba00ad5fdd4ed02a1b6"
     FILE "text-image-super-resolution-0001_2020.4_4shave.blob"
@@ -151,60 +135,172 @@ hunter_private_data(
 )
 
 # OpenVINO 2021.1 blob
-hunter_private_data(
+private_data(
     URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/text-image-super-resolution-0001_2021.1_4shave.blob"
     SHA1 "39c4f47f2a75627b7561e97dd7cdfcd0b1925a1e"
     FILE "text-image-super-resolution-0001_2021.1_4shave.blob"
     LOCATION openvino_2021_1_blob
 )
 # OpenVINO 2021.2 blob
-hunter_private_data(
+private_data(
     URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/text-image-super-resolution-0001_2021.2_4shave.blob"
     SHA1 "a204467f86aa4ad63d31782ada271bea6f57f789"
     FILE "text-image-super-resolution-0001_2021.2_4shave.blob"
     LOCATION openvino_2021_2_blob
 )
 # OpenVINO 2021.3 blob
-hunter_private_data(
+private_data(
     URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/text-image-super-resolution-0001_2021.3_4shave.blob"
     SHA1 "af19470feb59317e74d045bc31d93ca129c46674"
     FILE "text-image-super-resolution-0001_2021.3_4shave.blob"
     LOCATION openvino_2021_3_blob
 )
 # OpenVINO 2021.4.2 blob
-hunter_private_data(
+private_data(
     URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/text-image-super-resolution-0001_2021.4.2_4shave.blob"
     SHA1 "164b6b2ae48d38bc4f07cc8296b8bcb7644a1578"
     FILE "text-image-super-resolution-0001_2021.4.2_4shave.blob"
     LOCATION openvino_2021_4_2_blob
 )
 # OpenVINO 2022.1.0 blob
-hunter_private_data(
+private_data(
     URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/text-image-super-resolution-0001_2022.1.0_4shave.blob"
     SHA1 "98e94b865b9c48a92eaebd1ddc883712dfe7cfcb"
     FILE "text-image-super-resolution-0001_2022.1.0_4shave.blob"
     LOCATION openvino_2022_1_blob
 )
 # YoloV4 resource
-hunter_private_data(
+private_data(
     URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/yolo-v4-tiny-tf_openvino_2021.4_4shave.blob"
     SHA1 "7da2f96f7300e3828940557e6a86ac6f243eef7e"
     FILE "yolo-v4-tiny-tf_openvino_2021.4_4shave.blob"
     LOCATION tiny_yolo_v4_2021-4_4shave_blob
 )
 
+# Superblob
+private_data(
+    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/person-reidentification-retail-0277_openvino_2022.1_8shave.superblob"
+    SHA1 "6f14e3a5388946d6de849ff4f6432702601b1003"
+    FILE "person-reidentification-retail-0277_openvino_2022.1_8shave.superblob"
+    LOCATION superblob_path
+)
 
-# Add tests
-dai_add_test(color_camera_node_test src/color_camera_node_test.cpp)
-dai_add_test(image_manip_node_test src/image_manip_node_test.cpp)
-dai_add_test(pipeline_test src/pipeline_test.cpp)
-dai_add_test(logging_test src/logging_test.cpp)
+# NNarchives of different types
+private_data(
+    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/nnarchive/yolo_blob_nnarchive.tar.xz"
+    SHA1 "6b9697e5aaf1560efbdea7f8d7487bae51def619"
+    FILE "yolo_blob_nnarchive.tar.xz"
+    LOCATION yolo_blob_nnarchive_path
+)
 
-dai_add_test(neural_network_test src/neural_network_test.cpp)
-dai_test_compile_definitions(neural_network_test PRIVATE BLOB_PATH="${mobilenet_blob}")
+private_data(
+    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/nnarchive/yolo_superblob_nnarchive.tar.xz"
+    SHA1 "2356fd7e5a203446211a891a74f0b23e0912eaf6"
+    FILE "yolo_superblob_nnarchive.tar.xz"
+    LOCATION yolo_superblob_nnarchive_path
+)
 
-dai_add_test(openvino_blob_test src/openvino_blob_test.cpp)
-dai_test_compile_definitions(openvino_blob_test PRIVATE
+private_data(
+    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/nnarchive/yolo_onnx_nnarchive.tar.xz"
+    SHA1 "7abb6a8c05c5f66897cd2c5c6b4f0170620dff8b"
+    FILE "yolo_onnx_nnarchive.tar.xz"
+    LOCATION yolo_onnx_nnarchive_path
+)
+
+private_data(
+    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/images/lenna.png"
+    SHA1 "3ee0d360dc12003c0d43e3579295b52b64906e85"
+    FILE "lenna.png"
+    LOCATION lenna_png
+)
+
+private_data(
+    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/recording.tar"
+    SHA1 "b1e31a26c83dc1e315132c9226097da4b1a5cbb7"
+    FILE "recording.tar"
+    LOCATION recording_path
+)
+
+### Helper script to wrap the tests with a timeout ############################
+
+add_executable(test_wrapper src/helpers/test_wrapper.cpp)
+target_include_directories(test_wrapper PRIVATE ${CMAKE_CURRENT_LIST_DIR}/include/subprocess)
+target_link_libraries(test_wrapper PRIVATE depthai::core Threads::Threads)
+
+### On-host tests #############################################################
+
+# Superblob test
+dai_add_test(openvino_test src/onhost_tests/openvino/openvino_test.cpp)
+target_compile_definitions(openvino_test PRIVATE SUPERBLOB_PATH="${superblob_path}")
+dai_set_test_labels(openvino_test onhost ci)
+
+# NNArchive test
+dai_add_test(nn_archive_test src/onhost_tests/nn_archive/nn_archive_test.cpp)
+target_compile_definitions(nn_archive_test PRIVATE
+    BLOB_ARCHIVE_PATH="${yolo_blob_nnarchive_path}"
+    SUPERBLOB_ARCHIVE_PATH="${yolo_superblob_nnarchive_path}"
+    ONNX_ARCHIVE_PATH="${yolo_onnx_nnarchive_path}"
+)
+dai_set_test_labels(nn_archive_test onhost ci)
+
+# Eeprom naming parsing tests
+dai_add_test(naming_test src/onhost_tests/naming_test.cpp)
+dai_set_test_labels(naming_test onhost ci)
+
+# Image transformations test
+dai_add_test(image_transformations_test src/onhost_tests/image_transformations_test.cpp)
+dai_set_test_labels(image_transformations_test onhost ci)
+
+# Normalization tests
+dai_add_test(normalization_test src/onhost_tests/normalization_test.cpp)
+dai_set_test_labels(normalization_test onhost ci)
+
+# MessageQueue tests
+dai_add_test(message_queue_test src/onhost_tests/message_queue_test.cpp)
+dai_set_test_labels(message_queue_test onhost ci)
+
+# StreamMessageParser tests
+dai_add_test(stream_message_parser_test src/onhost_tests/stream_message_parser_test.cpp)
+dai_set_test_labels(stream_message_parser_test onhost ci)
+
+# Bootloader version tests
+dai_add_test(bootloader_version_test src/onhost_tests/bootloader_version_test.cpp)
+dai_set_test_labels(bootloader_version_test onhost ci)
+
+# Bootloader configuration tests
+dai_add_test(bootloader_config_test src/onhost_tests/bootloader_config_test.cpp)
+dai_set_test_labels(bootloader_config_test onhost ci)
+
+# Environment test
+dai_add_test(env_test src/onhost_tests/env_test.cpp)
+dai_set_test_labels(env_test onhost ci)
+
+# Datatype tests
+dai_add_test(nndata_test src/onhost_tests/pipeline/datatype/nndata_test.cpp)
+dai_set_test_labels(nndata_test onhost ci)
+
+# Model description tests
+dai_add_test(model_slug_test src/onhost_tests/model_slug_test.cpp)
+dai_set_test_labels(model_slug_test onhost ci)
+
+# Remote connection tests
+if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
+    dai_add_test(remote_connection_test src/onhost_tests/remote_connection_test.cpp)
+    dai_set_test_labels(remote_connection_test onhost ci nowindows)
+endif()
+### On-device tests ###########################################################
+
+# Camera stream restart test
+dai_add_test(camera_stream_restart_test src/ondevice_tests/camera_stream_restart_test.cpp)
+dai_set_test_labels(camera_stream_restart_test ondevice rvc2_all rvc4 ci)
+
+# DepthAI logging test
+dai_add_test(logging_test src/ondevice_tests/logging_test.cpp)
+dai_set_test_labels(logging_test ondevice rvc2_all rvc4 ci)
+
+# OpenVINO blob test
+dai_add_test(openvino_blob_test src/ondevice_tests/openvino_blob_test.cpp)
+target_compile_definitions(openvino_blob_test PRIVATE
     OPENVINO_2020_3_BLOB_PATH="${openvino_2020_3_blob}"
     OPENVINO_2020_4_BLOB_PATH="${openvino_2020_4_blob}"
     OPENVINO_2021_1_BLOB_PATH="${openvino_2021_1_blob}"
@@ -213,72 +309,157 @@ dai_test_compile_definitions(openvino_blob_test PRIVATE
     OPENVINO_2021_4_BLOB_PATH="${openvino_2021_4_2_blob}"
     OPENVINO_2022_1_BLOB_PATH="${openvino_2022_1_blob}"
 )
+dai_set_test_labels(openvino_blob_test ondevice rvc2_all ci)
 
-# Bootloader configuration tests
-dai_add_test(bootloader_config_test src/bootloader_config_test.cpp)
+# Neural network test
+dai_add_test(neural_network_test src/ondevice_tests/neural_network_test.cpp)
+target_compile_definitions(neural_network_test PRIVATE BLOB_PATH="${mobilenet_blob}")
+dai_set_test_labels(neural_network_test ondevice rvc2_all ci)
 
-# Eeprom naming parsing tests
-dai_add_test(naming_test src/naming_test.cpp)
+# Color camera test
+dai_add_test(color_camera_node_test src/ondevice_tests/color_camera_node_test.cpp)
+dai_set_test_labels(color_camera_node_test ondevice rvc2_all ci)
+
+# Pipeline test
+dai_add_test(pipeline_test src/ondevice_tests/pipeline_test.cpp)
+dai_set_test_labels(pipeline_test ondevice rvc2_all ci)
 
 # Device USB Speed and serialization macros test
-dai_add_test(device_usbspeed_test    src/device_usbspeed_test.cpp CONFORMING)
-dai_add_test(device_usbspeed_test_17 src/device_usbspeed_test.cpp CONFORMING CXX_STANDARD 17)
-dai_add_test(device_usbspeed_test_20 src/device_usbspeed_test.cpp CONFORMING CXX_STANDARD 20)
+dai_add_test(device_usbspeed_test src/ondevice_tests/device_usbspeed_test.cpp)
+dai_set_test_labels(device_usbspeed_test ondevice rvc2 usb ci)
 
-dai_add_test(encoded_frame_test src/encoded_frame_test.cpp CXX_STANDARD 17)
+dai_add_test(device_usbspeed_test_17 src/ondevice_tests/device_usbspeed_test.cpp CXX_STANDARD 17)
+dai_set_test_labels(device_usbspeed_test_17 ondevice rvc2 usb ci)
 
-dai_add_test(message_group_frame_test src/message_group_test.cpp CXX_STANDARD 17)
-
-dai_add_test(pointcloud_test src/pointcloud_test.cpp CXX_STANDARD 17)
-
-# Unlimited io connections test
-dai_add_test(unlimited_io_connection_test src/unlimited_io_connection_test.cpp)
-
-# Serialization test
-dai_add_test(serialization_test src/serialization_test.cpp)
-
-# Multiple devices test
-dai_add_test(multiple_devices_test src/multiple_devices_test.cpp)
+dai_add_test(device_usbspeed_test_20 src/ondevice_tests/device_usbspeed_test.cpp CXX_STANDARD 20)
+dai_set_test_labels(device_usbspeed_test_20 ondevice rvc2 usb ci)
 
 # Filesystem test
-dai_add_test(filesystem_test src/filesystem_test.cpp)
-dai_test_compile_definitions(filesystem_test PRIVATE BLOB_PATH="${mobilenet_blob}")
-dai_add_test(filesystem_test_17 src/filesystem_test.cpp CXX_STANDARD 17)
-dai_test_compile_definitions(filesystem_test_17 PRIVATE BLOB_PATH="${mobilenet_blob}")
-dai_add_test(filesystem_test_20 src/filesystem_test.cpp CXX_STANDARD 20)
-dai_test_compile_definitions(filesystem_test_20 PRIVATE BLOB_PATH="${mobilenet_blob}")
+dai_add_test(filesystem_test src/ondevice_tests/filesystem_test.cpp)
+target_compile_definitions(filesystem_test PRIVATE BLOB_PATH="${mobilenet_blob}")
+dai_set_test_labels(filesystem_test rvc2_all ci)
 
-# Bootloader version tests
-dai_add_test(bootloader_version_test src/bootloader_version_test.cpp)
+dai_add_test(filesystem_test_17 src/ondevice_tests/filesystem_test.cpp CXX_STANDARD 17)
+target_compile_definitions(filesystem_test_17 PRIVATE BLOB_PATH="${mobilenet_blob}")
+dai_set_test_labels(filesystem_test_17 rvc2_all ci)
 
-# XLinkIn -> XLinkOut passthrough with large frames
-dai_add_test(xlink_roundtrip_test src/xlink_roundtrip_test.cpp)
+dai_add_test(filesystem_test_20 src/ondevice_tests/filesystem_test.cpp CXX_STANDARD 20)
+target_compile_definitions(filesystem_test_20 PRIVATE BLOB_PATH="${mobilenet_blob}")
+dai_set_test_labels(filesystem_test_20 rvc2_all ci)
 
-# Stability stress test (OAK-D oriented USB/PoE)
-# TODO
-# # dai_add_test(stability_stress_test src/stability_stress_test.cpp)
-option(DEPTHAI_STABILITY_STRESS_TEST_DEBUG "Enable visualization for stability stress test" OFF)
-add_executable(stability_stress_test src/stability_stress_test.cpp)
-# Set compiler features (c++14), and disables extensions (g++14)
-set_property(TARGET stability_stress_test PROPERTY CXX_STANDARD 14)
-set_property(TARGET stability_stress_test PROPERTY CXX_STANDARD_REQUIRED ON)
-set_property(TARGET stability_stress_test PROPERTY CXX_EXTENSIONS OFF)
+# Encoded frame test
+dai_add_test(encoded_frame_test src/ondevice_tests/encoded_frame_test.cpp CXX_STANDARD 17)
+dai_set_test_labels(encoded_frame_test ondevice rvc2_all rvc4 ci)
 
-add_default_flags(stability_stress_test LEAN)
-if(COMMAND target_clangformat_setup)
-    target_clangformat_setup(stability_stress_test "")
-endif()
-if(DEPTHAI_STABILITY_TEST_DEBUG)
-    target_link_libraries(stability_stress_test PRIVATE depthai::opencv opencv_highgui Threads::Threads)
-    target_compile_definitions(stability_stress_test PRIVATE DEPTHAI_STABILITY_TEST_DEBUG)
-else()
-    target_link_libraries(stability_stress_test PRIVATE depthai::core Threads::Threads)
-endif()
-target_compile_definitions(stability_stress_test PRIVATE BLOB_PATH="${tiny_yolo_v4_2021-4_4shave_blob}")
-# add_test(stability_stress_test stability_stress_test)
-# add_test(stability_stress_test_poe stability_stress_test)
-# set_tests_properties(stability_stress_test PROPERTIES ENVIRONMENT "UBSAN_OPTIONS=halt_on_error=1;DEPTHAI_PROTOCOL=usb" LABELS stability_usb)
-# set_tests_properties(stability_stress_test_poe PROPERTIES ENVIRONMENT "UBSAN_OPTIONS=halt_on_error=1;DEPTHAI_PROTOCOL=poe" LABELS stability_poe)
+# MessageGroup tests
+dai_add_test(message_group_frame_test src/ondevice_tests/message_group_test.cpp CXX_STANDARD 17)
+dai_set_test_labels(message_group_frame_test ondevice rvc2_all rvc4 ci)
 
-# StreamMessageParser tests
-dai_add_test(stream_message_parser_test src/stream_message_parser_test.cpp)
+# Pointcloud test
+dai_add_test(pointcloud_test src/ondevice_tests/pointcloud_test.cpp)
+dai_set_test_labels(pointcloud_test ondevice rvc2_all ci)
+
+# RGBD test
+dai_add_test(rgbd_test src/ondevice_tests/rgbd_test.cpp)
+dai_set_test_labels(rgbd_test ondevice rvc2_all rvc4 ci)
+
+# Resolutions test
+dai_add_test(resolutions_test src/ondevice_tests/resolutions_test.cpp)
+dai_set_test_labels(resolutions_test ondevice) # TODO(jakob) Make the test runnable in CI
+
+# Serialization test
+dai_add_test(serialization_test src/onhost_tests/serialization_test.cpp)
+dai_set_test_labels(serialization_test ondevice rvc2_all ci)
+
+# Subnode test
+dai_add_test(subnode_test src/ondevice_tests/pipeline/subnode_test.cpp)
+dai_set_test_labels(subnode_test ondevice rvc2_all rvc4 ci)
+
+# Detection network test
+dai_add_test(detection_network_test src/ondevice_tests/pipeline/node/detection_network_test.cpp)
+target_compile_definitions(detection_network_test PRIVATE
+    BLOB_ARCHIVE_PATH="${yolo_blob_nnarchive_path}"
+    SUPERBLOB_ARCHIVE_PATH="${yolo_superblob_nnarchive_path}"
+    ONNX_ARCHIVE_PATH="${yolo_onnx_nnarchive_path}"
+)
+dai_set_test_labels(detection_network_test ondevice rvc2_all ci)
+
+# Spatial detection network test
+dai_add_test(spatial_detection_network_test src/ondevice_tests/pipeline/node/spatial_detection_network_test.cpp)
+dai_set_test_labels(spatial_detection_network_test ondevice rvc2_all rvc4 ci)
+
+# NeuralNetwork node test
+dai_add_test(neural_network_node_test src/ondevice_tests/pipeline/node/neural_network_node_test.cpp)
+target_compile_definitions(neural_network_node_test PRIVATE LENNA_PATH="${lenna_png}")
+dai_set_test_labels(neural_network_node_test ondevice rvc2_all rvc4 ci)
+
+# ImgTransformations tests
+dai_add_test(img_transformation_test src/ondevice_tests/img_transformation_test.cpp CXX_STANDARD 17)
+dai_set_test_labels(img_transformation_test ondevice rvc2_all rvc4 ci)
+
+# Regression tests for encountered bugs
+dai_add_test(regression_camera_concurrency_test src/ondevice_tests/regression/camera_concurrency.cpp)
+dai_set_test_labels(regression_camera_concurrency_test ondevice rvc4 ci)
+
+dai_add_test(regression_message_group_test src/ondevice_tests/regression/message_group.cpp)
+dai_set_test_labels(regression_message_group_test ondevice rvc2_all rvc4 ci)
+
+# Sync test
+dai_add_test(sync_test src/ondevice_tests/pipeline/node/sync_test.cpp)
+dai_set_test_labels(sync_test ondevice rvc2_all rvc4 ci)
+
+# Fsync test
+dai_add_test(fsync_test src/ondevice_tests/pipeline/node/fsync_test.cpp)
+dai_set_test_labels(fsync_test ondevice rvc2 usb rvc4 ci)
+
+## Large messages tests
+dai_add_test(bridge_large_messages src/ondevice_tests/bridge_large_messages.cpp)
+# Only test on RVC4, as RVC2 is not yet supported to auto-increase the max stream capacity
+dai_set_test_labels(bridge_large_messages ondevice rvc4 ci)
+# ImageAlign test
+dai_add_test(image_align_node_test src/ondevice_tests/image_align_node_test.cpp)
+dai_set_test_labels(image_align_node_test ondevice rvc2_all rvc4 ci)
+
+# Script node test
+dai_add_test(script_node_test src/ondevice_tests/script_node_test.cpp)
+dai_set_test_labels(script_node_test ondevice rvc2_all rvc4 ci)
+
+# StereoDepth test
+dai_add_test(stereo_depth_node_test src/ondevice_tests/stereo_depth_node_test.cpp)
+dai_set_test_labels(stereo_depth_node_test ondevice rvc2_all rvc4 ci)
+
+# ImageManip test
+dai_add_test(image_manip_node_test src/ondevice_tests/pipeline/node/image_manip_test.cpp)
+dai_set_test_labels(image_manip_node_test ondevice rvc2_all rvc4 ci)
+
+dai_add_test(image_manip_optimization_test src/ondevice_tests/pipeline/node/image_manip_optimization_test.cpp)
+target_compile_definitions(image_manip_optimization_test PRIVATE LENNA_PATH="${lenna_png}")
+dai_set_test_labels(image_manip_optimization_test ondevice rvc4 ci)
+
+# Benchmark tests
+dai_add_test(benchmark_test src/ondevice_tests/pipeline/node/benchmark_test.cpp)
+dai_set_test_labels(benchmark_test ondevice rvc2_all rvc4 ci)
+
+# Manual focus test
+dai_add_test(manual_focus_test src/ondevice_tests/manual_focus_test.cpp)
+dai_set_test_labels(manual_focus_test rvc2_all rvc4 ci)
+
+# IMU tests
+dai_add_test(imu_test src/ondevice_tests/pipeline/node/imu_test.cpp)
+dai_set_test_labels(imu_test ondevice rvc4 ci) # Many RVC2 devices do not have an IMU which supports the whole test suite
+
+# Record & Replay tests
+dai_add_test(record_replay_test src/ondevice_tests/pipeline/node/record_replay_test.cpp)
+dai_set_test_labels(record_replay_test ondevice rvc2_all rvc4) # TODO(Morato) add to CI once the test is stable
+target_compile_definitions(record_replay_test PRIVATE RECORDING_PATH="${recording_path}")
+dai_add_test(replay_test src/onhost_tests/replay_test.cpp)
+dai_set_test_labels(replay_test onhost ci)
+target_compile_definitions(replay_test PRIVATE RECORDING_PATH="${recording_path}")
+
+# Camera tests
+dai_add_test(camera_test src/ondevice_tests/pipeline/node/camera_test.cpp)
+dai_set_test_labels(camera_test ondevice rvc2_all rvc4 ci)
+
+# VideoEncoder test
+dai_add_test(video_encoder_test src/ondevice_tests/video_encoder_test.cpp)
+dai_set_test_labels(video_encoder_test ondevice rvc2_all rvc4 ci)

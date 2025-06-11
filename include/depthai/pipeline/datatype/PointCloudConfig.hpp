@@ -3,7 +3,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include "depthai-shared/datatype/RawPointCloudConfig.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 
 namespace dai {
@@ -12,28 +11,16 @@ namespace dai {
  * PointCloudConfig message. Carries ROI (region of interest) and threshold for depth calculation
  */
 class PointCloudConfig : public Buffer {
-    std::shared_ptr<RawBuffer> serialize() const override;
-    RawPointCloudConfig& cfg;
+    bool sparse = false;
+
+    std::array<std::array<float, 4>, 4> transformationMatrix = {{{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}}};
 
    public:
     /**
      * Construct PointCloudConfig message.
      */
-    PointCloudConfig();
-    explicit PointCloudConfig(std::shared_ptr<RawPointCloudConfig> ptr);
+    PointCloudConfig() = default;
     virtual ~PointCloudConfig() = default;
-
-    /**
-     * Set explicit configuration.
-     * @param config Explicit configuration
-     */
-    PointCloudConfig& set(dai::RawPointCloudConfig config);
-
-    /**
-     * Retrieve configuration data for SpatialLocationCalculator.
-     * @returns config for SpatialLocationCalculator
-     */
-    dai::RawPointCloudConfig get() const;
 
     /**
      * Retrieve sparse point cloud calculation status.
@@ -64,6 +51,13 @@ class PointCloudConfig : public Buffer {
      * @param transformationMatrix
      */
     PointCloudConfig& setTransformationMatrix(const std::array<std::array<float, 3>, 3>& transformationMatrix);
+
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
+        metadata = utility::serialize(*this);
+        datatype = DatatypeEnum::PointCloudConfig;
+    };
+
+    DEPTHAI_SERIALIZE(PointCloudConfig, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, sparse, transformationMatrix);
 };
 
 }  // namespace dai

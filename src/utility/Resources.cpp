@@ -3,8 +3,10 @@
 #include <array>
 #include <cassert>
 #include <condition_variable>
+#include <exception>
 #include <fstream>
 #include <iostream>
+#include <stdexcept>
 #include <thread>
 
 // libarchive
@@ -18,12 +20,14 @@
 #include "utility/Logging.hpp"
 
 // shared
-#include "depthai-shared/device/BoardConfig.hpp"
-#include "depthai-shared/utility/Checksum.hpp"
-#include "depthai-shared/utility/Serialization.hpp"
+#include "depthai/device/BoardConfig.hpp"
+#include "depthai/utility/Checksum.hpp"
+#include "depthai/utility/Serialization.hpp"
 
 // project
+#include "utility/ArchiveUtil.hpp"
 #include "utility/Environment.hpp"
+#include "utility/ErrorMacros.hpp"
 #include "utility/spdlog-fmt.hpp"
 
 extern "C" {
@@ -37,6 +41,72 @@ CMRC_DECLARE(depthai);
 #endif
 
 namespace dai {
+
+TarXzAccessor::TarXzAccessor(const std::vector<std::uint8_t>& tarGzFile) {
+    // Load tar.xz archive from memory
+    struct archive* archive = archive_read_new();
+    assert(archive != nullptr);
+
+    auto err = archive_read_support_format_tar(archive);  // Support for tar format
+    if(err != ARCHIVE_OK) {
+        throw std::runtime_error(fmt::format("Could not open tar format: {}", archive_error_string(archive)));
+    }
+
+    err = archive_read_support_filter_xz(archive);  // Support for xz compression
+    if(err != ARCHIVE_OK) {
+        throw std::runtime_error(fmt::format("Could not open xz filter: {}", archive_error_string(archive)));
+    }
+
+    // Open the memory archive
+    int r = archive_read_open_memory(archive, tarGzFile.data(), tarGzFile.size());
+    if(r != ARCHIVE_OK) {
+        throw std::runtime_error("Could not open archive file");
+    }
+
+    // Read through the archive and store all the file contents
+    struct archive_entry* entry;
+    while(archive_read_next_header(archive, &entry) == ARCHIVE_OK) {
+        std::string path = archive_entry_pathname(entry);
+        std::vector<std::uint8_t> fileData;
+
+        // Read entry data
+        const size_t entrySize = archive_entry_size(entry);
+        fileData.resize(entrySize);
+        archive_read_data(archive, fileData.data(), fileData.size());
+
+        // Store the data in a map
+        resourceMap[path] = std::move(fileData);
+    }
+
+    archive_read_free(archive);
+}
+
+// Method to get file data by path
+std::optional<std::vector<std::uint8_t>> TarXzAccessor::getFile(const std::string& path) const {
+    auto it = resourceMap.find(path);
+    if(it != resourceMap.end()) {
+        return it->second;  // Return the file data
+    }
+    return std::nullopt;  // Return empty optional if file not found
+}
+
+TarXzAccessor Resources::getEmbeddedVisualizer() const {
+#ifdef DEPTHAI_EMBED_FRONTEND
+    // Load visualizer tar.gz archive from memory
+    auto fs = cmrc::depthai::get_filesystem();
+    constexpr static auto FILE_NAME = "depthai-visualizer-" DEPTHAI_VISUALIZER_VERSION ".tar.xz";
+    if(!fs.exists(FILE_NAME)) {
+        throw std::runtime_error("Visualizer not found in embedded resources");
+    }
+    auto visualizerTarGz = fs.open(FILE_NAME);
+    std::vector<std::uint8_t> visualizerTarGzData(visualizerTarGz.begin(), visualizerTarGz.end());
+
+    // Create and return TarGzAccessor
+    return TarXzAccessor(visualizerTarGzData);
+#else
+    throw std::runtime_error("Visualizer not embedded in resources");
+#endif
+}
 
 static std::vector<std::uint8_t> createPrebootHeader(const std::vector<uint8_t>& payload, uint32_t magic1, uint32_t magic2);
 
@@ -66,6 +136,11 @@ constexpr static auto RESOURCE_LIST_DEVICE = array_of<const char*>(DEPTHAI_CMD_O
                                                                    DEPTHAI_CMD_OPENVINO_2021_3_PATCH_PATH);
 
 std::vector<std::uint8_t> Resources::getDeviceFirmware(Device::Config config, dai::Path pathToMvcmd) const {
+// First check if device fw is enabled
+#ifndef DEPTHAI_ENABLE_DEVICE_FW
+    throw std::invalid_argument("DepthAI compiled without support for MyriadX Device FW");
+#endif
+
     // Wait until lazy load is complete
     {
         std::unique_lock<std::mutex> lock(mtxDevice);
@@ -83,7 +158,7 @@ std::vector<std::uint8_t> Resources::getDeviceFirmware(Device::Config config, da
         finalFwBinaryPath = pathToMvcmd;
     }
     // Override if env variable DEPTHAI_DEVICE_BINARY is set
-    dai::Path fwBinaryPath = utility::getEnv("DEPTHAI_DEVICE_BINARY");
+    dai::Path fwBinaryPath = utility::getEnvAs<std::string>("DEPTHAI_DEVICE_BINARY", "");
     if(!fwBinaryPath.empty()) {
         finalFwBinaryPath = fwBinaryPath;
     }
@@ -199,6 +274,11 @@ constexpr static std::array<const char*, 2> RESOURCE_LIST_BOOTLOADER = {
 };
 
 std::vector<std::uint8_t> Resources::getBootloaderFirmware(dai::bootloader::Type type) const {
+// First check if device bootloader fw is enabled
+#ifndef DEPTHAI_ENABLE_DEVICE_BOOTLOADER_FW
+    throw std::invalid_argument("DepthAI compiled without support for MyriadX Device Bootloader FW");
+#endif
+
     // Wait until lazy load is complete
     {
         std::unique_lock<std::mutex> lock(mtxBootloader);
@@ -212,7 +292,7 @@ std::vector<std::uint8_t> Resources::getBootloaderFirmware(dai::bootloader::Type
     } else if(type == dai::bootloader::Type::NETWORK) {
         blEnvVar = "DEPTHAI_BOOTLOADER_BINARY_ETH";
     }
-    dai::Path blBinaryPath = utility::getEnv(blEnvVar);
+    dai::Path blBinaryPath = utility::getEnvAs<std::string>(blEnvVar, "");
     if(!blBinaryPath.empty()) {
         // Load binary file at path
         std::ifstream stream(blBinaryPath, std::ios::binary);
@@ -245,6 +325,67 @@ std::vector<std::uint8_t> Resources::getBootloaderFirmware(dai::bootloader::Type
     }
 }
 
+#ifdef DEPTHAI_ENABLE_DEVICE_RVC3_FW
+constexpr static auto CMRC_DEPTHAI_DEVICE_KB_FWP_TAR_XZ = "depthai-device-kb-fwp-" DEPTHAI_DEVICE_RVC3_VERSION ".tar.xz";
+#endif
+
+#ifdef DEPTHAI_ENABLE_DEVICE_RVC4_FW
+constexpr static auto CMRC_DEPTHAI_DEVICE_RVC4_FWP_TAR_XZ = "depthai-device-rvc4-fwp-" DEPTHAI_DEVICE_RVC4_VERSION ".tar.xz";
+#endif
+
+std::vector<std::uint8_t> Resources::getDeviceRVC3Fwp() const {
+// First check if device bootloader fw is enabled
+#ifndef DEPTHAI_ENABLE_DEVICE_RVC3_FW
+    throw std::invalid_argument("DepthAI compiled without support for RVC3 Device FW");
+#else
+    return getDeviceFwp(CMRC_DEPTHAI_DEVICE_KB_FWP_TAR_XZ, "DEPTHAI_DEVICE_KB_FWP");
+#endif
+}
+
+std::vector<std::uint8_t> Resources::getDeviceRVC4Fwp() const {
+// First check if device bootloader fw is enabled
+#ifndef DEPTHAI_ENABLE_DEVICE_RVC4_FW
+    throw std::invalid_argument("DepthAI compiled without support for RVC3 Device FW");
+#else
+    return getDeviceFwp(CMRC_DEPTHAI_DEVICE_RVC4_FWP_TAR_XZ, "DEPTHAI_DEVICE_RVC4_FWP");
+#endif
+}
+
+std::vector<std::uint8_t> Resources::getDeviceFwp(const std::string& fwPath, const std::string& envPath) const {
+    std::string pathToFwp;
+
+    // Check if pathToMvcmd variable is set
+    dai::Path finalFwpPath;
+    if(!pathToFwp.empty()) {
+        finalFwpPath = pathToFwp;
+    }
+
+    // Override if env variable DEPTHAI_DEVICE_KB_FWP is set
+    dai::Path fwpPathEnv = utility::getEnvAs<std::string>(envPath, "");
+    if(!fwpPathEnv.empty()) {
+        finalFwpPath = fwpPathEnv;
+        spdlog::warn("Overriding device fwp: {}", finalFwpPath);
+    }
+
+    // Return binary from file if any of above paths are present
+    if(!finalFwpPath.empty()) {
+        // Load binary file at path
+        std::ifstream stream(finalFwpPath, std::ios::binary);
+        if(!stream.is_open()) {
+            // Throw an error
+            // TODO(themarpe) - Unify exceptions into meaningful groups
+            throw std::runtime_error(fmt::format("File at path {}{} doesn't exist.", finalFwpPath));
+        }
+        // Read the file and return its contents
+        return std::vector<std::uint8_t>(std::istreambuf_iterator<char>(stream), {});
+    } else {
+        // Load from resources
+        auto fs = cmrc::depthai::get_filesystem();
+        auto tarXz = fs.open(fwPath);
+        return {tarXz.begin(), tarXz.end()};
+    }
+}
+
 Resources& Resources::getInstance() {
     static Resources instance;  // Guaranteed to be destroyed, instantiated on first use.
     return instance;
@@ -262,65 +403,30 @@ std::function<void()> getLazyTarXzFunction(MTX& mtx, CV& cv, BOOL& ready, PATH c
         auto t1 = steady_clock::now();
 
         // Load tar.xz archive from memory
-        struct archive* a = archive_read_new();
-        archive_read_support_filter_xz(a);
-        archive_read_support_format_tar(a);
-        int r = archive_read_open_memory(a, tarXz.begin(), tarXz.size());
-        assert(r == ARCHIVE_OK);
+        struct archive* aPtr = archive_read_new();
+        DAI_CHECK_IN(aPtr);
+        dai::utility::ArchiveUtil archive(aPtr);
+        archive_read_support_filter_xz(archive.getA());
+        archive_read_support_format_tar(archive.getA());
+        int r = archive_read_open_memory(archive.getA(), tarXz.begin(), tarXz.size());
+        if(r != ARCHIVE_OK) {
+            throw std::runtime_error(fmt::format("Could not open embedded tar.xz. Returned {}", r));
+        }
 
         auto t2 = steady_clock::now();
 
         struct archive_entry* entry;
-        while(archive_read_next_header(a, &entry) == ARCHIVE_OK) {
+        while(archive_read_next_header(archive.getA(), &entry) == ARCHIVE_OK) {
             // Check whether filename matches to one of required resources
             for(const auto& cpath : resourceList) {
                 std::string resPath(cpath);
                 if(resPath == std::string(archive_entry_pathname(entry))) {
-                    // Create an emtpy entry
-                    resourceMap[resPath] = std::vector<std::uint8_t>();
-
-                    // Read size, 16KiB
-                    std::size_t readSize = 16 * 1024;
-                    if(archive_entry_size_is_set(entry)) {
-                        // if size is specified, use that for read size
-                        readSize = archive_entry_size(entry);
-                    }
-
-                    // Record number of bytes actually read
-                    long long finalSize = 0;
-
-                    while(true) {
-                        // Current size, as a offset to write next data to
-                        auto currentSize = resourceMap[resPath].size();
-
-                        // Resize to accomodate for extra data
-                        resourceMap[resPath].resize(currentSize + readSize);
-                        long long size = archive_read_data(a, &resourceMap[resPath][currentSize], readSize);
-
-                        // Assert that no errors occurred
-                        assert(size >= 0);
-
-                        // Append number of bytes actually read to finalSize
-                        finalSize += size;
-
-                        // All bytes were read
-                        if(size == 0) {
-                            break;
-                        }
-                    }
-
-                    // Resize vector to actual read size
-                    resourceMap[resPath].resize(finalSize);
-
+                    archive.readEntry(entry, resourceMap[resPath]);
                     // Entry found - go to next required resource
                     break;
                 }
             }
         }
-        r = archive_read_free(a);  // Note 3
-        assert(r == ARCHIVE_OK);
-        // Ignore 'r' variable when in Release build
-        (void)r;
 
         // Check that all resources were read
         for(const auto& cpath : resourceList) {
@@ -351,20 +457,30 @@ Resources::Resources() {
     // Ignore 'r' variable when in Release build
     (void)r;
 
+// First check if device kb fw is enabled
+#ifdef DEPTHAI_ENABLE_DEVICE_FW
     // Device resources
     // Create a thread which lazy-loads firmware resources package
     lazyThreadDevice = std::thread(getLazyTarXzFunction(mtxDevice, cvDevice, readyDevice, CMRC_DEPTHAI_DEVICE_TAR_XZ, RESOURCE_LIST_DEVICE, resourceMapDevice));
+#endif
 
+// First check if device bootloader fw is enabled
+#ifdef DEPTHAI_ENABLE_DEVICE_BOOTLOADER_FW
     // Bootloader resources
     // Create a thread which lazy-loads firmware resources package
     lazyThreadBootloader = std::thread(
         getLazyTarXzFunction(mtxBootloader, cvBootloader, readyBootloader, CMRC_DEPTHAI_BOOTLOADER_TAR_XZ, RESOURCE_LIST_BOOTLOADER, resourceMapBootloader));
+#endif
 }
 
 Resources::~Resources() {
     // join the lazy threads
+#ifdef DEPTHAI_ENABLE_DEVICE_FW
     if(lazyThreadDevice.joinable()) lazyThreadDevice.join();
+#endif
+#ifdef DEPTHAI_ENABLE_DEVICE_BOOTLOADER_FW
     if(lazyThreadBootloader.joinable()) lazyThreadBootloader.join();
+#endif
 }
 
 // Get device firmware

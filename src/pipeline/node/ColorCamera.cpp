@@ -2,32 +2,17 @@
 
 #include <cmath>
 
+#include "depthai/common/CameraBoardSocket.hpp"
 #include "spdlog/fmt/fmt.h"
 
 namespace dai {
 namespace node {
 
-ColorCamera::ColorCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : ColorCamera(par, nodeId, std::make_unique<ColorCamera::Properties>()) {}
-ColorCamera::ColorCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
-    : NodeCRTP<Node, ColorCamera, ColorCameraProperties>(par, nodeId, std::move(props)),
-      rawControl(std::make_shared<RawCameraControl>()),
-      initialControl(rawControl) {
-    properties.boardSocket = CameraBoardSocket::AUTO;
-    properties.imageOrientation = CameraImageOrientation::AUTO;
-    properties.colorOrder = ColorCameraProperties::ColorOrder::BGR;
-    properties.interleaved = true;
-    properties.previewHeight = 300;
-    properties.previewWidth = 300;
-    properties.resolution = ColorCameraProperties::SensorResolution::THE_1080_P;
-    properties.fps = 30.0;
-    properties.previewKeepAspectRatio = true;
-
-    setInputRefs({&inputConfig, &inputControl});
-    setOutputRefs({&video, &preview, &still, &isp, &raw, &frameEvent});
-}
+ColorCamera::ColorCamera(std::unique_ptr<Properties> props)
+    : DeviceNodeCRTP<DeviceNode, ColorCamera, ColorCameraProperties>(std::move(props)), initialControl(properties.initialControl) {}
 
 ColorCamera::Properties& ColorCamera::getProperties() {
-    properties.initialControl = *rawControl;
+    properties.initialControl = initialControl;
     return properties;
 }
 
@@ -89,32 +74,132 @@ CameraImageOrientation ColorCamera::getImageOrientation() const {
 
 // setColorOrder - RGB or BGR
 void ColorCamera::setColorOrder(ColorCameraProperties::ColorOrder colorOrder) {
-    properties.colorOrder = colorOrder;
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+    bool isInterleaved = ImgFrame::isInterleaved(properties.previewType);
+    bool isFp16 = getFp16();
+#pragma GCC diagnostic pop
+    switch(colorOrder) {
+        case ColorCameraProperties::ColorOrder::BGR:
+            if(isInterleaved) {
+                if(isFp16) {
+                    properties.previewType = ImgFrame::Type::BGRF16F16F16i;
+                } else {
+                    properties.previewType = ImgFrame::Type::BGR888i;
+                }
+            } else {
+                if(isFp16) {
+                    properties.previewType = ImgFrame::Type::BGRF16F16F16p;
+                } else {
+                    properties.previewType = ImgFrame::Type::BGR888p;
+                }
+            }
+            break;
+        case ColorCameraProperties::ColorOrder::RGB:
+            if(isInterleaved) {
+                if(isFp16) {
+                    properties.previewType = ImgFrame::Type::RGBF16F16F16i;
+                } else {
+                    properties.previewType = ImgFrame::Type::RGB888i;
+                }
+            } else {
+                if(isFp16) {
+                    properties.previewType = ImgFrame::Type::RGBF16F16F16p;
+                } else {
+                    properties.previewType = ImgFrame::Type::RGB888p;
+                }
+            }
+            break;
+    }
 }
 
 // getColorOrder - returns color order
 ColorCameraProperties::ColorOrder ColorCamera::getColorOrder() const {
-    return properties.colorOrder;
+    if(properties.previewType == ImgFrame::Type::RGB888i || properties.previewType == ImgFrame::Type::RGB888p
+       || properties.previewType == ImgFrame::Type::RGBF16F16F16i || properties.previewType == ImgFrame::Type::RGBF16F16F16p) {
+        return ColorCameraProperties::ColorOrder::RGB;
+    } else if(properties.previewType == ImgFrame::Type::BGR888i || properties.previewType == ImgFrame::Type::BGR888p
+              || properties.previewType == ImgFrame::Type::BGRF16F16F16i || properties.previewType == ImgFrame::Type::BGRF16F16F16p) {
+        return ColorCameraProperties::ColorOrder::BGR;
+    } else {
+        throw std::runtime_error("Don't call getColorOrder() for wrong previewType");
+    }
 }
 
 // setInterleaved
 void ColorCamera::setInterleaved(bool interleaved) {
-    properties.interleaved = interleaved;
+    if(ImgFrame::isInterleaved(properties.previewType)) {
+        if(!interleaved) {
+            properties.previewType = ImgFrame::toPlanar(properties.previewType);
+        }
+    } else {
+        if(interleaved) {
+            properties.previewType = ImgFrame::toInterleaved(properties.previewType);
+        }
+    }
 }
 
 // getInterleaved
 bool ColorCamera::getInterleaved() const {
-    return properties.interleaved;
+    return ImgFrame::isInterleaved(properties.previewType);
+}
+
+/// Set type of preview output image
+void ColorCamera::setPreviewType(ImgFrame::Type type) {
+    properties.previewType = type;
+}
+
+/// Get the preview type
+ImgFrame::Type ColorCamera::getPreviewType() const {
+    return properties.previewType;
 }
 
 // setFp16
 void ColorCamera::setFp16(bool fp16) {
-    properties.fp16 = fp16;
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+    auto order = getColorOrder();
+    auto interleaved = getInterleaved();
+#pragma GCC diagnostic pop
+    if(fp16) {
+        if(order == ColorCameraProperties::ColorOrder::BGR) {
+            if(interleaved) {
+                properties.previewType = ImgFrame::Type::BGRF16F16F16i;
+            } else {
+                properties.previewType = ImgFrame::Type::BGRF16F16F16p;
+            }
+        } else {
+            if(interleaved) {
+                properties.previewType = ImgFrame::Type::RGBF16F16F16i;
+            } else {
+                properties.previewType = ImgFrame::Type::RGBF16F16F16p;
+            }
+        }
+    } else {
+        if(order == ColorCameraProperties::ColorOrder::BGR) {
+            if(interleaved) {
+                properties.previewType = ImgFrame::Type::BGR888i;
+            } else {
+                properties.previewType = ImgFrame::Type::BGR888p;
+            }
+        } else {
+            if(interleaved) {
+                properties.previewType = ImgFrame::Type::RGB888i;
+            } else {
+                properties.previewType = ImgFrame::Type::RGB888p;
+            }
+        }
+    }
 }
 
 // getFp16
 bool ColorCamera::getFp16() const {
-    return properties.fp16;
+    if(properties.previewType == ImgFrame::Type::BGRF16F16F16i || properties.previewType == ImgFrame::Type::BGRF16F16F16p
+       || properties.previewType == ImgFrame::Type::RGBF16F16F16i || properties.previewType == ImgFrame::Type::RGBF16F16F16p) {
+        return true;
+    } else {
+        return false;
+    }
 }
 
 // set preview output size
@@ -145,6 +230,11 @@ void ColorCamera::setStillSize(int width, int height) {
 
 void ColorCamera::setStillSize(std::tuple<int, int> size) {
     setStillSize(std::get<0>(size), std::get<1>(size));
+}
+
+void ColorCamera::setMockIspSize(int width, int height) {
+    properties.mockIspWidth = width;
+    properties.mockIspHeight = height;
 }
 
 void ColorCamera::setIspScale(int horizNum, int horizDenom, int vertNum, int vertDenom) {
@@ -410,6 +500,26 @@ std::tuple<int, int> ColorCamera::getResolutionSize() const {
             return {8000, 6000};
             break;
 
+        case ColorCameraProperties::SensorResolution::THE_240X180:
+            return {240, 180};
+            break;
+
+        case ColorCameraProperties::SensorResolution::THE_1280X962:
+            return {1280, 962};
+            break;
+
+        case ColorCameraProperties::SensorResolution::THE_2000X1500:
+            return {2000, 1500};
+            break;
+
+        case ColorCameraProperties::SensorResolution::THE_2028X1520:
+            return {2028, 1520};
+            break;
+
+        case ColorCameraProperties::SensorResolution::THE_2104X1560:
+            return {2104, 1560};
+            break;
+
         case ColorCameraProperties::SensorResolution::THE_1440X1080:
             return {1440, 1080};
             break;
@@ -496,14 +606,6 @@ float ColorCamera::getSensorCropY() const {
     return std::get<1>(getSensorCrop());
 }
 
-void ColorCamera::setWaitForConfigInput(bool wait) {
-    inputConfig.setWaitForMessage(wait);
-}
-
-bool ColorCamera::getWaitForConfigInput() const {
-    return inputConfig.getWaitForMessage();
-}
-
 void ColorCamera::setPreviewKeepAspectRatio(bool keep) {
     properties.previewKeepAspectRatio = keep;
 }
@@ -554,6 +656,27 @@ int ColorCamera::getIspNumFramesPool() {
 
 void ColorCamera::setRawOutputPacked(bool packed) {
     properties.rawPacked = packed;
+}
+
+bool ColorCamera::isSourceNode() const {
+    return true;
+}
+
+NodeRecordParams ColorCamera::getNodeRecordParams() const {
+    if(properties.boardSocket == CameraBoardSocket::AUTO) {
+        throw std::runtime_error("For record and replay functionality, board socket must be specified (Camera).");
+    }
+    NodeRecordParams params;
+    params.video = true;
+    params.name = "Camera" + toString(properties.boardSocket);
+    return params;
+}
+
+ColorCamera::Output& ColorCamera::getRecordOutput() {
+    return isp;
+}
+ColorCamera::Input& ColorCamera::getReplayInput() {
+    return mockIsp;
 }
 
 }  // namespace node

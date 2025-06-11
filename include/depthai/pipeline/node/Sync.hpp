@@ -1,29 +1,37 @@
 #pragma once
 
-#include <chrono>
+#include <depthai/pipeline/DeviceNode.hpp>
 
-#include "depthai-shared/properties/SyncProperties.hpp"
-#include "depthai/pipeline/Node.hpp"
+// standard
+#include <fstream>
+
+// shared
+#include <depthai/properties/SyncProperties.hpp>
 
 namespace dai {
 namespace node {
 
-class Sync : public NodeCRTP<Node, Sync, SyncProperties> {
+/**
+ * @brief Sync node. Performs syncing between image frames
+ */
+class Sync : public DeviceNodeCRTP<DeviceNode, Sync, SyncProperties>, public HostRunnable {
+   private:
+    bool runOnHostVar = false;
+
    public:
     constexpr static const char* NAME = "Sync";
-    Sync(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
-
-    Sync(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
+    using DeviceNodeCRTP::DeviceNodeCRTP;
 
     /**
      * A map of inputs
      */
-    InputMap inputs;
+    InputMap inputs{*this, "inputs", {"", DEFAULT_GROUP, false, 10, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Output message of type MessageGroup
      */
-    Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::MessageGroup, false}}};
+    // Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::MessageGroup, false}}};
+    Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::MessageGroup, false}}}}};
 
     /**
      * Set the maximal interval between messages in the group
@@ -49,6 +57,19 @@ class Sync : public NodeCRTP<Node, Sync, SyncProperties> {
      * Gets the number of sync attempts
      */
     int getSyncAttempts() const;
+
+    /**
+     * Specify whether to run on host or device
+     * By default, the node will run on device.
+     */
+    void setRunOnHost(bool runOnHost);
+
+    /**
+     * Check if the node is set to run on host
+     */
+    bool runOnHost() const override;
+
+    void run() override;
 };
 
 }  // namespace node

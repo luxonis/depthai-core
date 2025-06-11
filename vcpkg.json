@@ -1,0 +1,231 @@
+{
+    "name": "depthai",
+    "version": "3.0.0",
+    "dependencies": [
+        {
+            "name": "cpp-httplib",
+            "default-features": false
+        },
+        "nlohmann-json",
+        "yaml-cpp",
+        "spdlog",
+        "zlib",
+        "bzip2",
+        "lz4",
+        "liblzma",
+        "fp16",
+        "fmt",
+        "neargye-semver",
+        "magic-enum",
+        {
+            "name": "libarchive",
+            "default-features": false
+        },
+        {
+          "name": "vcpkg-cmake",
+          "host": true
+        },
+        {
+          "name": "vcpkg-cmake-config",
+          "host": true
+        }
+    ],
+    "features": {
+        "opencv-support": {
+            "description": "Enable OpenCV support",
+            "dependencies": [
+                {
+                    "name": "opencv4",
+                    "default-features": false,
+                    "features": [
+                        "calib3d",
+                        "highgui",
+                        "jpeg",
+                        "png",
+                        "quirc",
+                        "tiff",
+                        "webp",
+                        "ffmpeg"
+                    ]
+                },
+                {
+                    "name": "ffmpeg",
+                    "features": [
+                        "openh264"
+                    ]
+                }
+            ]
+        },
+        "opencv-gui": {
+            "description": "Enable OpenCV GUI support",
+            "dependencies": [
+                {
+                    "name": "opencv4",
+                    "default-features": false,
+                    "features": [
+                        "gtk"
+                    ],
+                    "platform": "linux & !arm"
+                },
+                                {
+                    "name": "opencv4",
+                    "default-features": false,
+                    "features": [
+                        "win32ui"
+                    ],
+                    "platform": "windows"
+                }
+            ]
+        },
+        "pcl-support": {
+            "description": "Enable PCL support",
+            "dependencies": [
+                {
+                    "name": "pcl",
+                    "default-features": false
+                }
+            ]
+        },
+        "curl-support": {
+            "description": "Enable CURL support",
+            "dependencies": [
+                "cpr"
+            ]
+        },
+        "kompute-support": {
+            "description": "Enable Kompute support",
+            "dependencies": [
+                "kompute",
+                {
+                    "name": "glslang",
+                    "default-features": false,
+                    "features": [
+                        "tools"
+                    ]
+                }
+            ]
+        },
+        "protobuf-support": {
+            "description": "Enable Protobuf support",
+            "dependencies": [
+                "protobuf"
+            ]
+        },
+        "python-bindings": {
+            "description": "Enable Python bindings",
+            "dependencies": [
+                "pybind11"
+            ]
+        },
+        "remote-connection-support": {
+            "description": "Enable remote connection support",
+            "dependencies": [
+                "websocketpp"
+            ]
+        },
+        "rtabmap": {
+            "description": "Enable RTAB-Map support",
+            "dependencies": [
+                {
+                    "name": "pcl",
+                    "default-features": false
+                },
+                {
+                    "name": "opencv4",
+                    "default-features": false
+                },
+                {
+                    "name": "opencv",
+                    "default-features": false
+                },
+                {
+                    "name": "rtabmap",
+                    "default-features": false
+                }
+            ]
+        },
+        "apriltag": {
+            "description": "Enable AprilTag support",
+            "dependencies": [
+                {
+                    "name": "apriltag"
+                }
+            ]
+        },
+        "backward": {
+            "description": "Enable backward-cpp support",
+            "dependencies": [
+                {
+                    "name": "backward-cpp"
+                }
+            ]
+        },
+        "basalt": {
+            "description": "Enable Basalt support",
+            "dependencies": [
+                {
+                    "name": "opencv4",
+                    "default-features": false
+                },
+                {
+                    "name": "basalt"
+                }
+            ]
+        },
+        "tests": {
+            "description": "Enable tests",
+            "dependencies": [
+                {
+                    "name": "catch2"
+                }
+            ]
+        },
+        "recording": {
+            "description": "Enable recording support",
+            "dependencies": [
+                {
+                    "name": "mp4v2"
+                }
+            ]
+        },
+        "xtensor-support": {
+            "description": "Enable xtensor support",
+            "dependencies": [
+                {
+                    "name": "xtensor"
+                },
+                {
+                    "name": "xtl"
+                }
+            ]
+        },
+        "public-deps": {
+            "description": "Enable public dependencies",
+            "dependencies": [
+                {
+                    "name": "nlohmann-json"
+                },
+                {
+                    "name": "libnop"
+                }
+            ]
+        },
+        "usb": {
+            "description": "Enable USB support",
+            "dependencies": [
+                {
+                    "name": "libusb"
+                }
+            ]
+        },
+        "rerun-sdk": {
+            "description": "Enable Rerun SDK support",
+            "dependencies": [
+                {
+                    "name": "rerun-sdk"
+                }
+            ]
+        }
+    },
+    "builtin-baseline": "a9eee3b18df395dbb8be71a31bd78ea441056e42"
+}

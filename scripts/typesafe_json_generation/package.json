@@ -1,0 +1,15 @@
+{
+  "name": "typesafe_json_generation",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "jsonschema": "^1.4.1",
+    "quicktype": "^23.0.105"
+  }
+}

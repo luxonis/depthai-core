@@ -1,41 +1,58 @@
 # DepthAI C++ Library
 
 [![Forum](https://img.shields.io/badge/Forum-discuss-orange)](https://discuss.luxonis.com/)
-[![Docs](https://img.shields.io/badge/Docs-DepthAI_API-yellow)](https://docs.luxonis.com/projects/api)
+[![Docs](https://img.shields.io/badge/Docs-DepthAI_API-yellow)](https://stg.docs.luxonis.com/software/v3/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
-Core C++ library
+DepthAI library for interfacing with Luxonis DepthAI hardware.
+
+> ℹ️ This is a `v3.x.y` version of the library which is in release candidate stage.
+
+> ℹ️ For porting code from `v2` version of the library, we recommend using the [porting guide](./V2V3PortinGuide.md)
 
 ## Documentation
-
-Documentation is available over at [Luxonis DepthAI API](https://docs.luxonis.com/projects/api/en/latest/)
+Documentation is available over at [Luxonis DepthAI API](https://stg.docs.luxonis.com/software/v3/)
 
 ## Disclaimer
-DepthAI library doesn't yet provide API stability guarantees. While we take care to properly deprecate old functions, some changes might still be breaking. We expect to provide API stability from version 3.0.0 onwards.
+DepthAI library doesn't yet provide API stability guarantees. While we take care to properly deprecate old functions, some changes might still be breaking.
+
+## Examples
+Examples for both C++ and Python are available in the `examples` folder. To see hwo to build and run them see [README.md](./examples/README.md) for more information.
+To build the examples in C++ configure with the following option added:
+```
+cmake -S. -Bbuild -D'DEPTHAI_BUILD_EXAMPLES=ON'
+cmake --build build
+```
 
 ## Dependencies
-- CMake >= 3.10
-- C/C++14 compiler
-- [optional] OpenCV 4 (required if building examples)
+- CMake >= 3.20
+- C/C++17 compiler
+- [optional] OpenCV 4 (required if building examples and for record and replay)
 - [optional] PCL (required for point cloud example)
 
 To install OpenCV:
 MacOS: `brew install opencv`
 Linux: `sudo apt install libopencv-dev`
+Windows: `choco install opencv`
 
 To install PCL:
 MacOS: `brew install pcl`
 Linux: `sudo apt install libpcl-dev`
 
-> ℹ️ On Linux distributions based on RPMs, you need to install `perl-core` required by OpenSSL dependency.
->```
->sudo yum install perl-core
->```
->
-> Another option is to disable CURL support by setting `DEPTHAI_ENABLE_CURL=OFF` when configuring CMake.
-> ```
-> cmake -S. -Bbuild -D'DEPTHAI_ENABLE_CURL=OFF'
-> ```
+## Using Python bindings
+Installing the latest pre-released version of the library can be done with:
+```
+python3 -m pip install --extra-index-url https://artifacts.luxonis.com/artifactory/luxonis-python-release-local/ --pre -U depthai
+```
+
+or by running:
+```
+python3 examples/python/install_requirements.py on the branch you want to install
+```
+
+For more specific information about Python bindings, see [Python README](./bindings/python/README.md).
+
+
 ## Building
 
 Make sure submodules are updated
@@ -46,29 +63,80 @@ git submodule update --init --recursive
 Then configure and build
 
 ```
-cmake -S. -Bbuild
-cmake --build build
+cmake -S . -B build
+cmake --build build --parallel [num CPU cores]
 ```
+On Windows, we currently only build the dependencies in Release mode, so you may want to add `-DCMAKE_BUILD_TYPE=Release` to the configuration step and you'll need to specify the location of the OpenCV installation. In case you used chocolatey to install OpenCV, you can use the following command:
 
-> ℹ️ To speed up build times, use `cmake --build build --parallel [num CPU cores]` (CMake >= 3.12).
-For older versions use: Linux/macOS: `cmake --build build -- -j[num CPU cores]`, MSVC: `cmake --build build -- /MP[num CPU cores]`
-
-> ⚠️ If any CMake commands error with `CMake Error: The source directory "" does not exist.` replace argument `-S` with `-H`
+```
+cmake -S . -B build -DOpenCV_DIR=C:/tools/opencv/build -DCMAKE_BUILD_TYPE=Release
+cmake --build build --config Release --parallel [num CPU cores]
+```
+> ℹ️ To speed up build times, use `cmake --build build --parallel [num CPU cores]`.
 
 ### Dynamic library
 
-To build dynamic version of library configure with following option added
+To build a dynamic version of the library configure with the following option added
 ```
-cmake -S. -Bbuild -D'BUILD_SHARED_LIBS=ON'
-cmake --build build
+cmake -S . -B build -D'BUILD_SHARED_LIBS=ON'
+cmake --build build --parallel [num CPU cores]
 ```
+
+## Installation and Integration
+Installation of the DepthAI library is currently only available as a dynamic library. To install the library, use the following command:
+
+```
+cmake -S . -B build -D'BUILD_SHARED_LIBS=ON' -D'CMAKE_INSTALL_PREFIX=[path/to/install/dir]'
+cmake --build build --target install --parallel [num CPU cores]
+```
+
+### Verifying installation
+To verify the installation works as expected, you can test if the integration project compiles and runs.
+This is done by running the following command:
+
+```
+cmake -S tests/integration . -B build_integration -D'CMAKE_PREFIX_PATH=[path/to/install/dir]'
+cmake --build build_integration --target test --parallel [num CPU cores]
+```
+
+### Prebuilt library on Windows
+Under releases you may find prebuilt library for Windows, for use in either integration method. See [Releases](https://github.com/luxonis/depthai-core/releases)
+
+### Using find_package for integration
+
+> ℹ️ Due to a non-trivial dependency tree, the integration with `add_subdirectory` is not supported. Use `find_package` instead.
+
+First install the library as described in [Installation and Integration](#installation-and-integration) section.
+
+Then in your CMake project, add the following lines to your `CMakeLists.txt` file:
+
+```cmake
+
+# Add `find_package` and `target_link_libraries` to your project
+
+find_package(depthai CONFIG REQUIRED)
+...
+target_link_libraries([my-app] PRIVATE depthai::core)
+```
+
+And point CMake to your install directory:
+```
+-D'CMAKE_PREFIX_PATH=[path/to/install/dir]'
+```
+
+
+If library was installed to default search path like `/usr/local` on Linux, specifying `CMAKE_PREFIX_PATH` isn't necessary as CMake will find it automatically.
+
+
+### Vcpkg integration
+For VCPKG integration, check out the example [here](https://github.com/luxonis/depthai_vcpkg_example).
+Note that the VCPKG integration is using a custom branch of DepthAI and we plan to integrate the support for it into the main branch in the future and add it to the official VCPKG repository.
 
 
 ### Android
+Android is not yet supported on the v3.x.y version of DepthAI. You can still use the v2.x.y version of DepthAI for RVC2 devices or open an issue on this repository to request Android support for v3.x.y.
 
-Android is supported to some extent but not actively pursued nor tested. PRs with any improvements are welcome.
-
-Steps:
+<!-- Steps:
 
  - Install Android NDK (for example via Android Studio).
  - Set the NDK path:
@@ -83,71 +151,11 @@ export NDK=$ANDROID_HOME/ndk/23.1.7779620/ # Check version
 ```
 cmake -S. -Bbuild -DCMAKE_TOOLCHAIN_FILE=$NDK/build/cmake/android.toolchain.cmake -DANDROID_ABI=armeabi-v7a -DANDROID_PLATFORM=android-25
 cmake --build build
-```
+``` -->
 
 
-## Running examples
 
-To build the examples configure with following option added
-```
-cmake -S. -Bbuild -D'DEPTHAI_BUILD_EXAMPLES=ON'
-cmake --build build
-```
-
-Then navigate to `build/examples` folder and run a preferred example
-```
-cd build/examples
-./MobileNet/rgb_mobilenet
-```
-
-> ℹ️ Multi-Config generators (like Visual Studio on Windows) will have the examples built in `build/examples/MobileNet/[Debug/Release/...]/rgb_mobilenet`
-
-## Integration
-
-Under releases you may find prebuilt library for Windows, for use in either integration method. See [Releases](https://github.com/luxonis/depthai-core/releases)
-
-### CMake
-
-Targets available to link to are:
- - depthai::core - Core library, without using opencv internally
- - depthai::opencv - Core + support for opencv related helper functions (requires OpenCV4)
-
-#### Using find_package
-
-Build static or dynamic version of library (See: [Building](#building) and optionally [Installing](#installing))
-
-Add `find_package` and `target_link_libraries` to your project
-```
-find_package(depthai CONFIG REQUIRED)
-...
-target_link_libraries([my-app] PRIVATE depthai::opencv)
-```
-
-And point CMake to either build directory or install directory:
-```
--D'depthai_DIR=depthai-core/build'
-```
-or
-```
--D'depthai_DIR=depthai-core/build/install/lib/cmake/depthai'
-```
-
-If library was installed to default search path like `/usr/local` on Linux, specifying `depthai_DIR` isn't necessary as CMake will find it automatically.
-
-#### Using add_subdirectory
-
-This method is more intrusive but simpler as it doesn't require building the library separately.
-
-Add `add_subdirectory` which points to `depthai-core` folder **before** project command. Then link to any required targets.
-```
-add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/depthai-core EXCLUDE_FROM_ALL)
-...
-project(my-app)
-...
-target_link_libraries([my-app] PRIVATE depthai::opencv)
-```
-
-### Non-CMake integration (Visual Studio, Xcode, CodeBlocks, ...)
+<!-- ### Non-CMake integration (Visual Studio, Xcode, CodeBlocks, ...)
 
 To integrate into a different build system than CMake, prefered way is compiling as dynamic library and setting correct build options.
 1. First build as dynamic library: [Building Dynamic library](#dynamic-library)
@@ -165,18 +173,15 @@ In your non-CMake project (new Visual Studio project, ...)
 > ℹ️ Threading library might need to be linked to explicitly.
 
 > ℹ️ Check `build/depthai-core-integration.txt` or `build/depthai-opencv-integration.txt` for up to date define options.
-The generated integration file also specifies include paths without requiring installation.
+The generated integration file also specifies include paths without requiring installation. -->
 
-## Installing
+## CMake options
+Many features of the library can be disabled or enabled using CMake options.
+One common option when building the library tests and examples is `DEPTHAI_VCPKG_INTERNAL_ONLY=OFF` which installs a predictable version of OpenCV, PCL and other optional dependencies we also use on the libraries interface.
 
-To install specify optional prefix and build target install
-```
-cmake -S. -Bbuild -D'CMAKE_INSTALL_PREFIX=[path/to/install/dir]'
-cmake --build build --target install
-```
+> ℹ️ When `DEPTHAI_VCPKG_INTERNAL_ONLY=OFF` is used, the library cannot be installed (apart from being installed in the scope of the vcpkg package manager).
 
-If `CMAKE_INSTALL_PREFIX` isn't specified, the library is installed under build folder `install`.
-
+For a full list of options, see `cmake/depthaiOptions.cmake` file.
 
 ## Environment variables
 
@@ -184,7 +189,7 @@ The following environment variables can be set to alter default behavior of the 
 
 | Environment variable  | Description   |
 |--------------|-----------|
-| DEPTHAI_LEVEL | Sets logging verbosity, 'trace', 'debug', 'warn', 'error' and 'off' |
+| DEPTHAI_LEVEL | Sets logging verbosity, 'trace', 'debug', 'info', 'warn', 'error' and 'off' |
 | XLINK_LEVEL | Sets logging verbosity of XLink library, 'debug'. 'info', 'warn', 'error', 'fatal' and 'off' |
 | DEPTHAI_INSTALL_SIGNAL_HANDLER | Set to 0 to disable installing Backward signal handler for stack trace printing |
 | DEPTHAI_WATCHDOG | Sets device watchdog timeout. Useful for debugging (`DEPTHAI_WATCHDOG=0`), to prevent device reset while the process is paused. |
@@ -192,11 +197,14 @@ The following environment variables can be set to alter default behavior of the 
 | DEPTHAI_SEARCH_TIMEOUT | Specifies timeout in milliseconds for device searching in blocking functions. |
 | DEPTHAI_CONNECT_TIMEOUT | Specifies timeout in milliseconds for establishing a connection to a given device. |
 | DEPTHAI_BOOTUP_TIMEOUT | Specifies timeout in milliseconds for waiting the device to boot after sending the binary. |
-| DEPTHAI_PROTOCOL | Restricts default search to the specified protocol. Options: any, usb, tcpip. |
+| DEPTHAI_RECONNECT_TIMEOUT | Specifies timeout in milliseconds for reconnecting to a device after a connection loss. If set to 0, reconnect is disabled. |
+| DEPTHAI_PROTOCOL | Restricts default search to the specified protocol. Options: `any`, `usb`, `tcpip`, `tcpshd`. |
+| DEPTHAI_PLATFORM | Restricts default search to the specified platform. Options: `any`, `rvc2`, `rvc3`, `rvc4`. |
 | DEPTHAI_DEVICE_MXID_LIST | Restricts default search to the specified MXIDs. Accepts comma separated list of MXIDs. Lists filter results in an "AND" manner and not "OR" |
 | DEPTHAI_DEVICE_ID_LIST | Alias to MXID list. Lists filter results in an "AND" manner and not "OR" |
-| DEPTHAI_DEVICE_NAME_LIST | Restricts default search to the specified NAMEs. Accepts comma separated list of NAMEs. Lists filter results in an "AND" manner and not "OR" |
+| DEPTHAI_DEVICE_NAME_LIST | Restricts default search to the specified NAMEs. Accepts comma separated list of NAMEs. Lists filter results in an "AND" manner and not "OR". It also looks for NAMEs outside of the host's subnet in case of tcpip. |
 | DEPTHAI_DEVICE_BINARY | Overrides device Firmware binary. Mostly for internal debugging purposes. |
+| DEPTHAI_DEVICE_RVC4_FWP | Overrides device RVC4 Firmware binary. Mostly for internal debugging purposes. |
 | DEPTHAI_BOOTLOADER_BINARY_USB | Overrides device USB Bootloader binary. Mostly for internal debugging purposes. |
 | DEPTHAI_BOOTLOADER_BINARY_ETH | Overrides device Network Bootloader binary. Mostly for internal debugging purposes. |
 | DEPTHAI_ALLOW_FACTORY_FLASHING | Internal use only |
@@ -205,7 +213,14 @@ The following environment variables can be set to alter default behavior of the 
 | DEPTHAI_CRASHDUMP_TIMEOUT | Specifies the duration in seconds to wait for device reboot when obtaining a crash dump. Crash dump retrieval disabled if 0. |
 | DEPTHAI_ENABLE_ANALYTICS_COLLECTION | Enables automatic analytics collection (pipeline schemas) used to improve the library |
 | DEPTHAI_DISABLE_CRASHDUMP_COLLECTION | Disables automatic crash dump collection used to improve the library |
-| DEPTHAI_PROFILING | Enables runtime profiling of data transfer between the host and connected devices. Set to 1 to enable. Requires DEPTHAI_LEVEL=debug or lower to print. |
+| DEPTHAI_HUB_API_KEY | API key for the Luxonis Hub |
+| DEPTHAI_ZOO_INTERNET_CHECK | (Default) 1 - perform internet check, if available, download the newest model version 0 - skip internet check and use cached model |
+| DEPTHAI_ZOO_INTERNET_CHECK_TIMEOUT | (Default) 1000 - timeout in milliseconds for the internet check |
+| DEPTHAI_ZOO_CACHE_PATH | (Default) .depthai_cached_models - Folder where cached zoo models are stored |
+| DEPTHAI_ZOO_MODELS_PATH | (Default) depthai_models - Folder where zoo model description files are stored |
+| DEPTHAI_RECORD | Enables holistic record to the specified directory. |
+| DEPTHAI_REPLAY | Replays holistic replay from the specified file or directory. |
+
 
 ## Running tests
 
@@ -219,13 +234,15 @@ Then navigate to `build` folder and run `ctest` with specified labels that denot
 Currently available labels:
  - usb
  - poe
+ - rvc2
+ - rvc4
 
 ```
 cd build
-# Run tests on USB devices
-ctest -L usb
-# Run tests on PoE devices
-ctest -L poe
+# Run tests on RVC2 devices
+ctest -L rvc2
+# Run tests on RVC4 devices
+ctest -L rvc4
 ```
 
 ## Style check
@@ -233,9 +250,9 @@ ctest -L poe
 The library uses clang format to enforce a certain coding style.
 If a style check is failing, run the `clangformat` target, check the output and push changes.
 
-To use this target clang format must be installed, preferably clang-format-10
+To use this target clang format must be installed, preferably clang-format-18
 ```
-sudo apt install clang-format-10
+sudo apt install clang-format-18
 ```
 
 And to apply formatting
@@ -247,7 +264,7 @@ cmake --build build --target clangformat
 
 Doxygen is used to generate documentation. Follow [doxygen download](https://www.doxygen.nl/download.html#srcbin) and install the required binaries for your platform.
 
-After that specify CMake define `-D'DEPTHAI_BUILD_DOCS=ON`' and build the target `doxygen`
+After that specify CMake define `-D'DEPTHAI_BUILD_DOCS=ON'` and build the target `doxygen`
 
 ## Debugging tips
 
@@ -255,51 +272,15 @@ Debugging can be done using **Visual Studio Code** and either **GDB** or **LLDB*
 LLDB in some cases was much faster to step with and resolved more `incomplete_type` variables than GDB. Your mileage may vary though.
 
 
-If there is a need to step into **Hunter** libraries, that can be achieved by removing previous built artifacts
-```
-rm -r ~/.hunter
-```
-
-And configuring the project with the following CMake option set to `ON`
-```
-cmake . -D'HUNTER_KEEP_PACKAGE_SOURCES=ON'
-```
-
-This retains the libraries source code, so that debugger can step through it (the paths are already set up correctly)
-
-
 ## Troubleshooting
 
 ### Build fails with missing OpenCV dependency
 
 If your build process happen to fail due to OpenCV library not being found, but you have the OpenCV installed, please
-run build with additional `-D'OpenCV_DIR=...`' flag (replacing default Ubuntu path `/usr/lib/x86_64-linux-gnu/cmake/opencv4` with yours)
+run build with additional `-D'OpenCV_DIR=...` flag (replacing default Ubuntu path `/usr/lib/x86_64-linux-gnu/cmake/opencv4` with yours)
 
 ```
 cmake -S. -Bbuild -D'OpenCV_DIR=/usr/lib/x86_64-linux-gnu/cmake/opencv4'
 ```
 
 Now the build process should correctly discover your OpenCV installation
-
-### Hunter
-Hunter is a CMake-only dependency manager for C/C++ projects.
-
-If you are stuck with error message which mentions external libraries (subdirectory of `.hunter`) like the following:
-```
-/usr/bin/ld: /home/[user]/.hunter/_Base/062a19a/ccfed35/a84a713/Install/lib/liblzma.a(stream_flags_decoder.c.o): warning: relocation against `lzma_footer_magic' in read-only section `.text'
-```
-
-Try erasing the **Hunter** cache folder.
-
-Linux/MacOS:
-```
-rm -r ~/.hunter
-```
-Windows:
-```
-del C:/.hunter
-```
-or
-```
-del C:/[user]/.hunter
-```

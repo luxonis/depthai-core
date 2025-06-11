@@ -10,13 +10,13 @@
 #include <tuple>
 #include <unordered_set>
 
-#include "depthai-shared/common/CameraInfo.hpp"
-#include "depthai-shared/common/Extrinsics.hpp"
-#include "depthai-shared/common/Point3f.hpp"
+#include "depthai/common/CameraInfo.hpp"
+#include "depthai/common/Extrinsics.hpp"
+#include "depthai/common/Point3f.hpp"
+#include "depthai/utility/matrixOps.hpp"
 #include "nlohmann/json.hpp"
 #include "spdlog/spdlog.h"
 #include "utility/Logging.hpp"
-#include "utility/matrixOps.hpp"
 
 namespace dai {
 
@@ -359,13 +359,11 @@ std::vector<std::vector<float>> CalibrationHandler::getCameraExtrinsics(CameraBo
                                                                         bool useSpecTranslation) const {
     /**
      * 1. Check if both camera ID exists.
-     * 2. Check if the forward link exists from source to dest camera. if No go to step 5
-     * 3. Call computeExtrinsicMatrix to get the projection matrix from source -> destination camera.
-     * 4. Jump to end and return the projection matrix
-     * 5. if no check if there is forward link from dest to source. if No return an error that link doesn't exist.
-     * 6. Call computeExtrinsicMatrix to get the projection matrix from destination -> source camera.
-     * 7. Carry Transpose on the rotation matrix and get neg of Final translation
-     * 8. Return the Final TransformationMatrix containing both rotation matrix and Translation
+     * 2. Check if the forward link exists from source and destination camera to origin camera.
+     * 3. Call computeExtrinsicMatrix to get the projection matrix from source -> origin camera.
+     * 4. Invert the matrix from destination -> origin camera.
+     * 5. Multiply the two matrices to get the projection matrix from source -> destination camera.
+     * 6. Return the projection matrix.
      */
     if(eepromData.cameraData.find(srcCamera) == eepromData.cameraData.end()) {
         throw std::runtime_error("There is no Camera data available corresponding to the the requested source cameraId");
@@ -375,15 +373,77 @@ std::vector<std::vector<float>> CalibrationHandler::getCameraExtrinsics(CameraBo
     }
 
     std::vector<std::vector<float>> extrinsics;
-    if(checkExtrinsicsLink(srcCamera, dstCamera)) {
-        return computeExtrinsicMatrix(srcCamera, dstCamera, useSpecTranslation);
-    } else if(checkExtrinsicsLink(dstCamera, srcCamera)) {
-        extrinsics = computeExtrinsicMatrix(dstCamera, srcCamera, useSpecTranslation);
-        invertSe3Matrix4x4InPlace(extrinsics);
-        return extrinsics;
-    } else {
-        throw std::runtime_error("Extrinsic connection between the requested cameraId's doesn't exist. Please recalibrate or modify your calibration data");
+    CameraBoardSocket originCamera1;
+    CameraBoardSocket originCamera2;
+
+    // Get matrix from src to -1 camera and dst to -1 camera and set originCamera1 and originCamera2
+    std::vector<std::vector<float>> srcOriginMatrix = getExtrinsicsToOrigin(srcCamera, useSpecTranslation, originCamera1);
+    std::vector<std::vector<float>> dstOriginMatrix = getExtrinsicsToOrigin(dstCamera, useSpecTranslation, originCamera2);
+
+    if(originCamera1 != originCamera2) {
+        throw std::runtime_error("Missing extrinsic link from source camera to to destination camera.");
     }
+
+    // Invert the matrix dstOriginMatrix
+    invertSe3Matrix4x4InPlace(dstOriginMatrix);
+
+    // Get the matrix from src to dst camera
+    extrinsics = matMul(srcOriginMatrix, dstOriginMatrix);
+    return extrinsics;
+}
+
+std::vector<std::vector<float>> CalibrationHandler::getExtrinsicsToOrigin(CameraBoardSocket cameraId,
+                                                                          bool useSpecTranslation,
+                                                                          CameraBoardSocket& originSocket) const {
+    std::vector<std::vector<float>> extrinsics;
+
+    // Check if the cameraId exists in the data
+    auto cameraIt = eepromData.cameraData.find(cameraId);
+    if(cameraIt == eepromData.cameraData.end()) {
+        logger::error("Camera ID {} does not exist in the calibration data.", static_cast<int>(cameraId));
+        throw std::runtime_error("Camera ID does not exist in the calibration data.");
+    }
+
+    // Traverse to find the origin camera (the one that has toCameraSocket == AUTO/-1)
+    CameraBoardSocket currentCameraId = cameraId;
+    std::vector<CameraBoardSocket> path;  // To store the path of sockets
+    path.push_back(currentCameraId);
+
+    while(true) {
+        auto currentIt = eepromData.cameraData.find(currentCameraId);
+        if(currentIt == eepromData.cameraData.end()) {
+            logger::error("Invalid camera link detected at camera ID {}.", static_cast<int>(currentCameraId));
+            throw std::runtime_error("Invalid camera link detected.");
+        }
+
+        CameraBoardSocket nextCameraSocket = currentIt->second.extrinsics.toCameraSocket;
+
+        // Prevent infinite loop in case of cyclic connections
+        if(std::find(path.begin(), path.end(), nextCameraSocket) != path.end()) {
+            throw std::runtime_error("Cyclic extrinsics detected in device calibration data.");
+        }
+
+        if(nextCameraSocket == CameraBoardSocket::AUTO) {
+            break;
+        }
+
+        // Move to the next camera in the chain
+        currentCameraId = nextCameraSocket;
+        path.push_back(currentCameraId);
+    }
+
+    // Set the origin camera
+    originSocket = currentCameraId;
+
+    // Now compute the extrinsic matrix from cameraId to the origin
+
+    // If the cameraId is the origin (no actual transformation needed), return identity matrix
+    if(cameraId == currentCameraId) {
+        extrinsics = {{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}};
+    } else {
+        extrinsics = computeExtrinsicMatrix(cameraId, currentCameraId, useSpecTranslation);
+    }
+
     return extrinsics;
 }
 
@@ -395,6 +455,18 @@ std::vector<float> CalibrationHandler::getCameraTranslationVector(CameraBoardSoc
         translationVector[i] = extrinsics[i][3];
     }
     return translationVector;
+}
+
+std::vector<std::vector<float>> CalibrationHandler::getCameraRotationMatrix(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera) const {
+    std::vector<std::vector<float>> extrinsics = getCameraExtrinsics(srcCamera, dstCamera, false);
+
+    std::vector<std::vector<float>> rotationMatrix = {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}};
+    for(auto i = 0; i < 3; i++) {
+        for(auto j = 0; j < 3; j++) {
+            rotationMatrix[i][j] = extrinsics[i][j];
+        }
+    }
+    return rotationMatrix;
 }
 
 float CalibrationHandler::getBaselineDistance(CameraBoardSocket cam1, CameraBoardSocket cam2, bool useSpecTranslation) const {
@@ -620,7 +692,7 @@ void CalibrationHandler::setCameraIntrinsics(CameraBoardSocket cameraId, std::ve
         throw std::runtime_error("Intrinsic Matrix size should always be 3x3 ");
     }
 
-    if(intrinsics[0][1] != 0 || intrinsics[1][0] != 0 || intrinsics[2][0] != 0 || intrinsics[2][1] != 0) {
+    if(intrinsics[1][0] != 0 || intrinsics[2][0] != 0 || intrinsics[2][1] != 0) {
         throw std::runtime_error("Invalid Intrinsic Matrix entered!!");
     }
 

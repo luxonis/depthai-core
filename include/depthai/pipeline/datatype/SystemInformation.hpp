@@ -4,32 +4,40 @@
 #include <unordered_map>
 #include <vector>
 
-#include "depthai-shared/datatype/RawSystemInformation.hpp"
+#include "depthai/common/ChipTemperature.hpp"
+#include "depthai/common/CpuUsage.hpp"
+#include "depthai/common/MemoryInfo.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
+#include "depthai/pipeline/datatype/DatatypeEnum.hpp"
+#include "depthai/utility/Serialization.hpp"
 namespace dai {
 
 /**
  * SystemInformation message. Carries memory usage, cpu usage and chip temperatures.
  */
 class SystemInformation : public Buffer {
-    std::shared_ptr<RawBuffer> serialize() const override;
-    RawSystemInformation& systemInformation;
-
    public:
     /**
      * Construct SystemInformation message.
      */
-    SystemInformation();
-    explicit SystemInformation(std::shared_ptr<RawSystemInformation> ptr);
+    SystemInformation() = default;
     virtual ~SystemInformation() = default;
 
-    MemoryInfo& ddrMemoryUsage;
-    MemoryInfo& cmxMemoryUsage;
-    MemoryInfo& leonCssMemoryUsage;
-    MemoryInfo& leonMssMemoryUsage;
-    CpuUsage& leonCssCpuUsage;
-    CpuUsage& leonMssCpuUsage;
-    ChipTemperature& chipTemperature;
+    MemoryInfo ddrMemoryUsage;
+    MemoryInfo cmxMemoryUsage;
+    MemoryInfo leonCssMemoryUsage;
+    MemoryInfo leonMssMemoryUsage;
+    CpuUsage leonCssCpuUsage;
+    CpuUsage leonMssCpuUsage;
+    ChipTemperature chipTemperature;
+
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
+        metadata = utility::serialize(*this);
+        datatype = DatatypeEnum::SystemInformation;
+    };
+
+    DEPTHAI_SERIALIZE(
+        SystemInformation, ddrMemoryUsage, cmxMemoryUsage, leonCssMemoryUsage, leonMssMemoryUsage, leonCssCpuUsage, leonMssCpuUsage, chipTemperature);
 };
 
 }  // namespace dai

@@ -35,7 +35,7 @@ int main() {
 
             // Define source and output
             auto camRgb = pipeline.create<dai::node::ColorCamera>();
-            auto xoutRgb = pipeline.create<dai::node::XLinkOut>();
+            auto xoutRgb = pipeline.create<dai::node::internal::XLinkOut>();
 
             xoutRgb->setStreamName("rgb");
 
@@ -56,12 +56,12 @@ int main() {
             auto device = make_shared<dai::Device>(pipeline, dev, dai::UsbSpeed::SUPER);
             device->getOutputQueue("rgb", 4, false);
 
-            cout << "MXID: " << device->getMxId() << endl;
-            cout << "Connected cameras: ";
-            for(const auto& cam : device->getConnectedCameras()) {
-                cout << cam << " ";
-            }
-            cout << endl;
+            cout << "DeviceID: " << device->getDeviceId() << endl;
+            // cout << "Connected cameras: ";
+            // for(const auto& cam : device->getConnectedCameras()) {
+            //     cout << cam << " ";
+            // }
+            // cout << endl;
 
             unique_lock<std::mutex> l(mtx);
             devices.push_back({device, 0});
@@ -86,7 +86,7 @@ int main() {
                 auto& dev = get<0>(devCounter);
                 auto& counter = get<1>(devCounter);
                 if(dev->getOutputQueue("rgb")->tryGet<dai::ImgFrame>()) {
-                    cout << "Device " << dev->getMxId() << " message arrived (" << counter + 1 << "/" << NUM_MESSAGES << ")\n";
+                    cout << "Device " << dev->getDeviceId() << " message arrived (" << counter + 1 << "/" << NUM_MESSAGES << ")\n";
                     counter++;
                 }
 
