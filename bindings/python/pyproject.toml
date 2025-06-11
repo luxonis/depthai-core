@@ -1,4 +1,2 @@
 [build-system]
 requires = ["setuptools", "wheel", "mypy", "numpy", "jinja2", "cmake==3.30"]
-[tool.setuptools]
-license-files = []
