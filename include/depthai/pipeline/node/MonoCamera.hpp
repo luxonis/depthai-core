@@ -30,10 +30,7 @@ class [[deprecated("Use Camera node instead")]] MonoCamera : public DeviceNodeCR
     MonoCamera() = default;
     MonoCamera(std::unique_ptr<Properties> props);
 
-    /**
-     * Initial control options to apply to sensor
-     */
-    CameraControl initialControl;
+    // Initial control options are now part of the properties
 
     /**
      * Input for CameraControl message, which can modify camera parameters in runtime

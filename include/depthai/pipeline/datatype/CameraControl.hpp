@@ -40,6 +40,12 @@ class CameraControl : public Buffer {
     CameraControl();
     virtual ~CameraControl();
 
+    CameraControl(const CameraControl&) = delete;
+    CameraControl& operator=(const CameraControl&) = delete;
+
+    CameraControl(CameraControl&&) = default;
+    CameraControl& operator=(CameraControl&&) = default;
+
     enum class Command : uint8_t {
         START_STREAM = 1,
         STOP_STREAM = 2,

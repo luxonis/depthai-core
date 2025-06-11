@@ -35,10 +35,7 @@ class [[deprecated("Use Camera node instead")]] ColorCamera : public DeviceNodeC
      */
     int getScaledSize(int input, int num, int denom) const;
 
-    /**
-     * Initial control options to apply to sensor
-     */
-    CameraControl initialControl;
+    // Initial control options are now part of the properties
 
     /**
      * Input for CameraControl message, which can modify camera parameters in runtime

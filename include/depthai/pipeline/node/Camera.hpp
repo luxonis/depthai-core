@@ -77,10 +77,7 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
      */
     uint32_t getMaxHeight() const;
 
-    /**
-     * Initial control options to apply to sensor
-     */
-    CameraControl initialControl;
+    // Initial control options are now part of the properties
 
     /**
      * Input for CameraControl message, which can modify camera parameters in runtime

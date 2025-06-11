@@ -15,6 +15,16 @@ namespace dai {
  * Specify properties for MonoCamera such as camera ID, ...
  */
 struct MonoCameraProperties : PropertiesSerializable<Properties, MonoCameraProperties> {
+    // Delete copy constructor and assignment operator
+    MonoCameraProperties(const MonoCameraProperties&) = delete;
+    MonoCameraProperties& operator=(const MonoCameraProperties&) = delete;
+
+    // Add move constructor and assignment operator
+    MonoCameraProperties(MonoCameraProperties&&) = default;
+    MonoCameraProperties& operator=(MonoCameraProperties&&) = default;
+
+    // Default constructor
+    MonoCameraProperties() = default;
     static constexpr int AUTO = -1;
 
     /**

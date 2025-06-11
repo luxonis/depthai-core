@@ -13,6 +13,13 @@ namespace dai {
  *  Specify properties for ColorCamera such as camera ID, ...
  */
 struct CameraProperties : PropertiesSerializable<Properties, CameraProperties> {
+    CameraProperties(const CameraProperties&) = delete;
+    CameraProperties& operator=(const CameraProperties&) = delete;
+
+    CameraProperties(CameraProperties&&) = default;
+    CameraProperties& operator=(CameraProperties&&) = default;
+
+    CameraProperties() = default;
     static constexpr int AUTO = -1;
 
     std::vector<ImgFrameCapability> outputRequests;

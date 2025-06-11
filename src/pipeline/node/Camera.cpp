@@ -65,7 +65,7 @@ class Camera::Impl {
 Camera::Camera() : pimpl(spimpl::make_impl<Impl>()) {}
 
 Camera::Camera(std::unique_ptr<Properties> props)
-    : DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>(std::move(props)), initialControl(properties.initialControl), pimpl(spimpl::make_impl<Impl>()) {}
+    : DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>(std::move(props)), pimpl(spimpl::make_impl<Impl>()) {}
 
 Camera::Camera(std::shared_ptr<Device>& defaultDevice)
     : DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>(defaultDevice), pimpl(spimpl::make_impl<Impl>()) {}
@@ -163,7 +163,6 @@ std::shared_ptr<Camera> Camera::build(ReplayVideo& replay) {
 #endif
 
 Camera::Properties& Camera::getProperties() {
-    properties.initialControl = initialControl;
     return properties;
 }
 

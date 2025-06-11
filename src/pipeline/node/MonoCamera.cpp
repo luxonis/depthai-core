@@ -8,7 +8,6 @@ namespace node {
 MonoCamera::MonoCamera(std::unique_ptr<Properties> props) : DeviceNodeCRTP<DeviceNode, MonoCamera, MonoCameraProperties>(std::move(props)) {}
 
 MonoCamera::Properties& MonoCamera::getProperties() {
-    properties.initialControl = initialControl;
     return properties;
 }
 

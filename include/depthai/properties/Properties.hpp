@@ -19,7 +19,13 @@ struct PropertiesSerializable : Base {
     }
 
     virtual std::unique_ptr<Properties> clone() const override {
-        return std::make_unique<Derived>(static_cast<const Derived&>(*this));
+        // Create a default-constructed Derived object
+        auto cloned = std::make_unique<Derived>();
+        // Copy all serializable fields using serialization/deserialization
+        std::vector<std::uint8_t> data;
+        utility::serialize(static_cast<const Derived&>(*this), data);
+        utility::deserialize(data, *cloned);
+        return cloned;
     }
 };
 

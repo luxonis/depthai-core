@@ -17,6 +17,16 @@ namespace dai {
  *  Specify properties for ColorCamera such as camera ID, ...
  */
 struct ColorCameraProperties : PropertiesSerializable<Properties, ColorCameraProperties> {
+    // Delete copy constructor and assignment operator
+    ColorCameraProperties(const ColorCameraProperties&) = delete;
+    ColorCameraProperties& operator=(const ColorCameraProperties&) = delete;
+
+    // Add move constructor and assignment operator
+    ColorCameraProperties(ColorCameraProperties&&) = default;
+    ColorCameraProperties& operator=(ColorCameraProperties&&) = default;
+
+    // Default constructor
+    ColorCameraProperties() = default;
     static constexpr int AUTO = -1;
 
     struct IspScale {
