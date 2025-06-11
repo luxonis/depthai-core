@@ -33,7 +33,8 @@ else
     echo "🔨 Building image ${IMAGE_NAME}..."
     docker build -t "${IMAGE_NAME}" -f tests/Dockerfile . \
   --build-arg FLAVOR="${FLAVOR}" \
-  --build-arg BRANCH="${BRANCH}"
+  --build-arg BRANCH="${BRANCH}" \
+  --build-arg GIT_COMMIT="${COMMIT_ID}"
 fi
 
 # Push the image

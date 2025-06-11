@@ -55,6 +55,8 @@ jobs:
       run: source scripts/hil/prepare_hil_framework.sh
 
     - name: Configure, Build and Test
+      env:
+        CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
       run: |
         export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc2-${{ matrix.flavor }}"
         exec hil --capabilities depthai-core-hil --platforms 'rvc2 and rvc2' --reservation-name $RESERVATION_NAME --wait --docker-image $CONTAINER_REGISTRY/depthai-core-hil:vanilla-${{ github.sha }} --commands "./tests/run_tests_entrypoint.sh rvc2"
@@ -81,6 +83,8 @@ jobs:
         run: source scripts/hil/prepare_hil_framework.sh
 
       - name: Configure, Build and Test
+        env:
+          CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
         run: |
           export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-${{ matrix.rvc4os }}-${{ matrix.flavor }}"
           exec hil --models "oak4_pro or oak4_d" --reservation-name $RESERVATION_NAME --wait --sync-workspace --rvc4-os-version ${{ matrix.rvc4os }} --docker-image $CONTAINER_REGISTRY/depthai-core-hil:vanilla-${{ github.sha }} --commands "./tests/run_tests_entrypoint.sh rvc4"
