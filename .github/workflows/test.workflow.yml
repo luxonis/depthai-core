@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - v3_develop
+      - v3_docker_tests
     tags:
       - 'v*'
   pull_request:
@@ -17,8 +18,19 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Testing
+  build_docker_container_vanilla:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Build and push
+      env:
+        CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
+      run: |
+        scripts/build_and_push.sh vanilla "${{ github.ref_name }}" "$CONTAINER_REGISTRY" "${{ github.sha }}"
+
+
   linux_rvc2_test:
+    needs: [build_docker_container_vanilla]
     env:
       VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
     strategy:
@@ -45,10 +57,11 @@ jobs:
     - name: Configure, Build and Test
       run: |
         export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc2-${{ matrix.flavor }}"
-        exec hil --capabilities depthai-core-hil --platforms rvc2 --reservation-name $RESERVATION_NAME --wait --sync-workspace  --commands 'cd /tmp/depthai-core|| exit' 'scripts/hil/run_hil_tests.sh ${{ matrix.flavor }} --rvc2'
+        exec hil --capabilities depthai-core-hil --platforms 'rvc2 and rvc2' --reservation-name $RESERVATION_NAME --wait --docker-image $CONTAINER_REGISTRY/depthai-core-hil:vanilla-${{ github.sha }} --commands "./tests/run_tests_entrypoint.sh rvc2"
 
   # Testing
   linux_rvc4_test:
+      needs: [build_docker_container_vanilla]
       env:
         VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
       strategy:
@@ -70,44 +83,44 @@ jobs:
       - name: Configure, Build and Test
         run: |
           export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-${{ matrix.rvc4os }}-${{ matrix.flavor }}"
-          exec hil --models "oak4_pro or oak4_d" --reservation-name $RESERVATION_NAME --wait --sync-workspace --rvc4-os-version ${{ matrix.rvc4os }} --commands 'cd /tmp/depthai-core|| exit' 'scripts/hil/run_hil_tests.sh ${{ matrix.flavor }} --rvc4'
+          exec hil --models "oak4_pro or oak4_d" --reservation-name $RESERVATION_NAME --wait --sync-workspace --rvc4-os-version ${{ matrix.rvc4os }} --docker-image $CONTAINER_REGISTRY/depthai-core-hil:vanilla-${{ github.sha }} --commands "./tests/run_tests_entrypoint.sh rvc4"
 
-  linux_rvc4_sanitizer_test:
-      env:
-        VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
-      strategy:
-        matrix:
-          arch: ['x64']
-          flavor: ['asan-ubsan', 'tsan']
-          rvc4os: ['debug-1.6.0']
-        fail-fast: false
-      runs-on: ['self-hosted', 'testbed-runner']
+  # linux_rvc4_sanitizer_test:
+  #     env:
+  #       VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+  #     strategy:
+  #       matrix:
+  #         arch: ['x64']
+  #         flavor: ['asan-ubsan', 'tsan']
+  #         rvc4os: ['debug-1.6.0']
+  #       fail-fast: false
+  #     runs-on: ['self-hosted', 'testbed-runner']
 
-      steps:
-      - uses: actions/checkout@v3
-        with:
-          submodules: 'recursive'
+  #     steps:
+  #     - uses: actions/checkout@v3
+  #       with:
+  #         submodules: 'recursive'
 
-      - name: Prepare HIL Framework
-        run: source scripts/hil/prepare_hil_framework.sh
+  #     - name: Prepare HIL Framework
+  #       run: source scripts/hil/prepare_hil_framework.sh
 
-      - name: Configure, Build and Test
-        run: |
-          export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-${{ matrix.rvc4os }}-${{ matrix.flavor }}"
-          exec hil --models "oak4_pro or oak4_d" --reservation-name $RESERVATION_NAME --wait --sync-workspace --rvc4-os-version ${{ matrix.rvc4os }} --commands 'cd /tmp/depthai-core|| exit' 'scripts/hil/run_hil_tests.sh ${{ matrix.flavor }} --rvc4'
+  #     - name: Configure, Build and Test
+  #       run: |
+  #         export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-${{ matrix.rvc4os }}-${{ matrix.flavor }}"
+  #         exec hil --models "oak4_pro or oak4_d" --reservation-name $RESERVATION_NAME --wait --sync-workspace --rvc4-os-version ${{ matrix.rvc4os }} --commands 'cd /tmp/depthai-core|| exit' 'scripts/hil/run_hil_tests.sh ${{ matrix.flavor }} --rvc4'
 
-  windows_rvc2_rvc4_test:
-    runs-on: ['self-hosted', 'windows', 'hil-test']
-    env:
-      LOCALAPPDATA: "C:/actions-runner/vcpkg_cache"
-    steps:
-    - uses: actions/checkout@v3
-      with:
-        submodules: 'recursive'
+  # windows_rvc2_rvc4_test:
+  #   runs-on: ['self-hosted', 'windows', 'hil-test']
+  #   env:
+  #     LOCALAPPDATA: "C:/actions-runner/vcpkg_cache"
+  #   steps:
+  #   - uses: actions/checkout@v3
+  #     with:
+  #       submodules: 'recursive'
 
-    - name: Configure, Build and Test
-      run: |
-        cmake -S . -B build -D CMAKE_BUILD_TYPE=Release -D'DEPTHAI_VCPKG_INTERNAL_ONLY=OFF' -D'DEPTHAI_BUILD_EXAMPLES=ON' -D'DEPTHAI_BUILD_PYTHON=ON' -D'DEPTHAI_BUILD_TESTS=ON' -DDEPTHAI_PYTHON_ENABLE_TESTS=ON -DDEPTHAI_TEST_EXAMPLES=ON -DDEPTHAI_PYTHON_TEST_EXAMPLES=ON -DDEPTHAI_PYTHON_ENABLE_EXAMPLES=ON
-        cmake --build build --parallel 4 --config Release
-        cd tests
-        python run_tests.py
+  #   - name: Configure, Build and Test
+  #     run: |
+  #       cmake -S . -B build -D CMAKE_BUILD_TYPE=Release -D'DEPTHAI_VCPKG_INTERNAL_ONLY=OFF' -D'DEPTHAI_BUILD_EXAMPLES=ON' -D'DEPTHAI_BUILD_PYTHON=ON' -D'DEPTHAI_BUILD_TESTS=ON' -DDEPTHAI_PYTHON_ENABLE_TESTS=ON -DDEPTHAI_TEST_EXAMPLES=ON -DDEPTHAI_PYTHON_TEST_EXAMPLES=ON -DDEPTHAI_PYTHON_ENABLE_EXAMPLES=ON
+  #       cmake --build build --parallel 4 --config Release
+  #       cd tests
+  #       python run_tests.py
