@@ -6,9 +6,11 @@
 
 DepthAI library for interfacing with Luxonis DepthAI hardware.
 
-> ℹ️ This is a `v3.x.y` version of the library which is in release candidate stage.
-
-> ℹ️ For porting code from `v2` version of the library, we recommend using the [porting guide](./V2V3PortinGuide.md)
+>  **Important — You’re viewing the `v3.x.y` _release-candidate_ branch.**
+>
+> * For production projects that still rely on **v2**, check out the
+>   [`v2_stable` branch](https://github.com/luxonis/depthai-core/tree/v2_stable).
+> * Need to migrate? Follow the step-by-step [v2 → v3 Porting Guide](./V2V3PortinGuide.md).
 
 ## Documentation
 Documentation is available over at [Luxonis DepthAI API](https://stg.docs.luxonis.com/software/v3/)
