@@ -4,7 +4,7 @@
 [![Docs](https://img.shields.io/badge/Docs-DepthAI_API-yellow)](https://stg.docs.luxonis.com/software/v3/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
-DepthAI library for interfacing with Luxonis DepthAI hardware. Its written in C++ and offers Python bindings out of the box.
+DepthAI library for interfacing with Luxonis DepthAI hardware. It's written in C++ and offers Python bindings out of the box.
 
 >  **Important — You’re viewing the `v3.x.y` _release-candidate_ branch.**
 >
