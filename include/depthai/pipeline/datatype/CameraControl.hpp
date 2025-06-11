@@ -1,9 +1,11 @@
 #pragma once
 
 #include <chrono>
+#include <memory>
 #include <unordered_map>
 #include <vector>
 
+#include "depthai/device/FsyncController.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 
 namespace dai {
@@ -29,10 +31,14 @@ namespace dai {
  *  50Hz mains frequency.
  *
  */
+
 class CameraControl : public Buffer {
+   private:
+    std::unique_ptr<FsyncController> fsync;
+
    public:
-    CameraControl() = default;
-    virtual ~CameraControl() = default;
+    CameraControl();
+    virtual ~CameraControl();
 
     enum class Command : uint8_t {
         START_STREAM = 1,
