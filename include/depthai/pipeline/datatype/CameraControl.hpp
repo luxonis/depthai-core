@@ -378,6 +378,7 @@ class CameraControl : public Buffer {
         OFF = 0,
         OUTPUT,
         INPUT,
+        AUTO,
         // TODO soft sync modes?
     };
 
@@ -759,7 +760,7 @@ class CameraControl : public Buffer {
     CaptureIntent captureIntent;
     ControlMode controlMode;
     EffectMode effectMode;
-    FrameSyncMode frameSyncMode;
+    FrameSyncMode frameSyncMode = FrameSyncMode::AUTO;
     StrobeConfig strobeConfig;
     StrobeTimings strobeTimings;
     uint32_t aeMaxExposureTimeUs;
