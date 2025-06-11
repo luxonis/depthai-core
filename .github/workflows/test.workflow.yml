@@ -19,7 +19,7 @@ concurrency:
 
 jobs:
   build_docker_container_vanilla:
-    runs-on: ubuntu-latest
+    runs-on: ['self-hosted', 'hil-test-v3']
     steps:
     - uses: actions/checkout@v3
     - name: Build and push
