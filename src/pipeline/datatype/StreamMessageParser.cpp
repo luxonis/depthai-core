@@ -27,6 +27,7 @@
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
+#include "depthai/pipeline/datatype/ObjectTrackerConfig.hpp"
 #include "depthai/pipeline/datatype/PointCloudConfig.hpp"
 #include "depthai/pipeline/datatype/PointCloudData.hpp"
 #include "depthai/pipeline/datatype/SpatialImgDetections.hpp"
@@ -54,6 +55,7 @@
 #include "depthai-shared/datatype/RawImgFrame.hpp"
 #include "depthai-shared/datatype/RawMessageGroup.hpp"
 #include "depthai-shared/datatype/RawNNData.hpp"
+#include "depthai-shared/datatype/RawObjectTrackerConfig.hpp"
 #include "depthai-shared/datatype/RawPointCloudConfig.hpp"
 #include "depthai-shared/datatype/RawPointCloudData.hpp"
 #include "depthai-shared/datatype/RawSpatialImgDetections.hpp"
@@ -232,6 +234,9 @@ std::shared_ptr<RawBuffer> StreamMessageParser::parseMessage(streamPacketDesc_t*
         case DatatypeEnum::ImageAlignConfig:
             return parseDatatype<RawImageAlignConfig>(metadataStart, serializedObjectSize, data);
             break;
+        case DatatypeEnum::ObjectTrackerConfig:
+            return parseDatatype<RawObjectTrackerConfig>(metadataStart, serializedObjectSize, data);
+            break;
     }
 
     throw std::runtime_error(
@@ -339,6 +344,9 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessageToADatatype(streamPa
             break;
         case DatatypeEnum::ImageAlignConfig:
             return std::make_shared<ImageAlignConfig>(parseDatatype<RawImageAlignConfig>(metadataStart, serializedObjectSize, data));
+            break;
+        case DatatypeEnum::ObjectTrackerConfig:
+            return std::make_shared<ObjectTrackerConfig>(parseDatatype<RawObjectTrackerConfig>(metadataStart, serializedObjectSize, data));
             break;
     }
 

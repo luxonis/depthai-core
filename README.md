@@ -6,6 +6,11 @@
 
 Core C++ library
 
+>  **Important — You’re viewing the `v2.x.y` branch.**
+>
+> * For the latest version with support for RVC4 devices, please switch to the
+>   [`main` branch](https://github.com/luxonis/depthai-core/tree/main).
+
 ## Documentation
 
 Documentation is available over at [Luxonis DepthAI API](https://docs.luxonis.com/projects/api/en/latest/)
