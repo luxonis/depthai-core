@@ -59,7 +59,7 @@ jobs:
         CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
       run: |
         export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc2-${{ matrix.flavor }}"
-        exec hil --capabilities depthai-core-hil --platforms 'rvc2 and rvc2' --reservation-name $RESERVATION_NAME --wait --docker-image $CONTAINER_REGISTRY/depthai-core-hil:vanilla-${{ github.sha }} --commands "./tests/run_tests_entrypoint.sh rvc2"
+        exec hil --capabilities depthai-core-hil --platforms 'rvc2 and rvc2' --reservation-name $RESERVATION_NAME --wait --docker-image $CONTAINER_REGISTRY/depthai-core-hil:vanilla_${{ github.sha }} --commands "./tests/run_tests_entrypoint.sh rvc2"
 
   # Testing
   linux_rvc4_test:

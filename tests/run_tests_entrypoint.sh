@@ -1,10 +1,6 @@
 #!/bin/bash
 set -e
 
-# Start virtual display for OpenCV GUI support
-echo "Starting Xvfb on $DISPLAY..."
-Xvfb $DISPLAY -screen 0 1024x768x24 &
-
 # Give Xvfb a moment to initialize
 sleep 2
 
