@@ -1,5 +1,7 @@
 #include "depthai/pipeline/datatype/CameraControl.hpp"
 #include <chrono>
+#include <fstream>
+#include <string>
 
 namespace dai {
 
@@ -280,6 +282,29 @@ int CameraControl::getLensPosition() const {
 
 float CameraControl::getLensPositionRaw() const {
     return lensPositionRaw;
+}
+
+bool CameraControl::isM8Connected(bool& connected) const {
+    std::ifstream stateFile("/run/agentconfd/m8_connector_state");
+    if (!stateFile.is_open()) {
+        connected = false;
+        return false;
+    }
+
+    std::string content;
+    stateFile >> content;
+    stateFile.close();
+
+    if (content == "1") {
+        connected = true;
+        return true;
+    } else if (content == "0") {
+        connected = false;
+        return true;
+    } else {
+        connected = false;
+        return false;
+    }
 }
 
 }  // namespace dai

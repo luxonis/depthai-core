@@ -842,6 +842,13 @@ class CameraControl : public Buffer {
      * Retrieves lens position, range 0.0f..1.0f.
      */
     float getLensPositionRaw() const;
+
+    /**
+     * Checks if M8 is connected by reading the state file
+     * @param connected Reference to a boolean that will be set to true if M8 is connected, false if disconnected
+     * @returns True if the operation was successful, false if an error occurred (file missing or invalid content)
+     */
+    bool isM8Connected(bool& connected) const;
 };
 
 }  // namespace dai
