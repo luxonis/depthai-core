@@ -3,9 +3,6 @@
 #include "rerun.hpp"
 #include "rerun/archetypes/depth_image.hpp"
 
-rerun::Collection<rerun::TensorDimension> tensorShape(const cv::Mat& img) {
-    return {size_t(img.rows), size_t(img.cols), size_t(img.channels())};
-};
 class RerunNode : public dai::NodeCRTP<dai::node::ThreadedHostNode, RerunNode> {
    public:
     constexpr static const char* NAME = "RerunNode";
@@ -35,7 +32,10 @@ class RerunNode : public dai::NodeCRTP<dai::node::ThreadedHostNode, RerunNode> {
                 rec.log("world/obstacle_pcl", rerun::Points3D(points).with_colors(colors).with_radii({0.01f}));
                 auto colorFrame = rgbdIn->getRGBFrame()->getCvFrame();
                 cv::cvtColor(colorFrame, colorFrame, cv::COLOR_BGR2RGB);
-                rec.log("rgb", rerun::Image(tensorShape(colorFrame), reinterpret_cast<const uint8_t*>(colorFrame.data)));
+                rec.log("rgb",
+                        rerun::Image(reinterpret_cast<const uint8_t*>(colorFrame.data),
+                                     {static_cast<uint32_t>(colorFrame.cols), static_cast<uint32_t>(colorFrame.rows)},
+                                     rerun::datatypes::ColorModel::RGB));
             }
         }
     }

@@ -130,10 +130,10 @@ struct BoardConfig {
         std::string name;
         // TODO(themarpe) - add later when applicable
         // std::vector<std::string> sensorName;
-        std::optional<CameraSensorType> sensorType;
+        std::optional<CameraSensorType> sensorType = std::nullopt;
         // std::vector<vector> vcm;
         // std::optional<CameraBoardSocket> syncTo;
-        std::optional<CameraImageOrientation> orientation;
+        std::optional<CameraImageOrientation> orientation = std::nullopt;
     };
     std::unordered_map<CameraBoardSocket, Camera> camera;
 

@@ -6,7 +6,7 @@
 
 DepthAI library for interfacing with Luxonis DepthAI hardware.
 
-> ⚠️ This is a `v3.x.y` version of the library which is still in active development without a stable API yet.
+> ℹ️ This is a `v3.x.y` version of the library which is in release candidate stage.
 
 > ℹ️ For porting code from `v2` version of the library, we recommend using the [porting guide](./V2V3PortinGuide.md)
 
@@ -18,18 +18,22 @@ DepthAI library doesn't yet provide API stability guarantees. While we take care
 
 ## Examples
 Examples for both C++ and Python are available in the `examples` folder. To see hwo to build and run them see [README.md](./examples/README.md) for more information.
+To build the examples in C++ configure with the following option added:
+```
+cmake -S. -Bbuild -D'DEPTHAI_BUILD_EXAMPLES=ON'
+cmake --build build
+```
 
 ## Dependencies
-- CMake >= 3.14 and <4.0
+- CMake >= 3.20
 - C/C++17 compiler
 - [optional] OpenCV 4 (required if building examples and for record and replay)
 - [optional] PCL (required for point cloud example)
 
-> ℹ️ We'll be adding support for CMake 4 shortly.
-
 To install OpenCV:
 MacOS: `brew install opencv`
 Linux: `sudo apt install libopencv-dev`
+Windows: `choco install opencv`
 
 To install PCL:
 MacOS: `brew install pcl`
@@ -60,10 +64,15 @@ Then configure and build
 
 ```
 cmake -S . -B build
-cmake --build build
+cmake --build build --parallel [num CPU cores]
 ```
+On Windows, we currently only build the dependencies in Release mode, so you may want to add `-DCMAKE_BUILD_TYPE=Release` to the configuration step and you'll need to specify the location of the OpenCV installation. In case you used chocolatey to install OpenCV, you can use the following command:
 
-> ℹ️ To speed up build times, use `cmake --build build --parallel [num CPU cores]` (CMake >= 3.12).
+```
+cmake -S . -B build -DOpenCV_DIR=C:/tools/opencv/build -DCMAKE_BUILD_TYPE=Release
+cmake --build build --config Release --parallel [num CPU cores]
+```
+> ℹ️ To speed up build times, use `cmake --build build --parallel [num CPU cores]`.
 
 ### Dynamic library
 
@@ -107,7 +116,7 @@ Then in your CMake project, add the following lines to your `CMakeLists.txt` fil
 
 find_package(depthai CONFIG REQUIRED)
 ...
-target_link_libraries([my-app] PRIVATE depthai::opencv)
+target_link_libraries([my-app] PRIVATE depthai::core)
 ```
 
 And point CMake to your install directory:

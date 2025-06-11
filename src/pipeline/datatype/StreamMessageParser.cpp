@@ -26,6 +26,7 @@
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
+#include "depthai/pipeline/datatype/ObjectTrackerConfig.hpp"
 #include "depthai/pipeline/datatype/PointCloudConfig.hpp"
 #include "depthai/pipeline/datatype/PointCloudData.hpp"
 #include "depthai/pipeline/datatype/RGBDData.hpp"
@@ -245,6 +246,9 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
         case DatatypeEnum::RGBDData:
             return parseDatatype<RGBDData>(metadataStart, serializedObjectSize, data, fd);
             break;
+        case DatatypeEnum::ObjectTrackerConfig: {
+            return parseDatatype<ObjectTrackerConfig>(metadataStart, serializedObjectSize, data, fd);
+        }
     }
 
     throw std::runtime_error("Bad packet, couldn't parse");

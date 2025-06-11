@@ -22,6 +22,12 @@ set(test_env
     "DEPTHAI_RECONNECT_TIMEOUT=0"
     )
 
+set(TOP_CPP_EXAMPLES_CMAKE_DIR ${CMAKE_CURRENT_LIST_DIR})
+
+# Regexes for example test failure
+set(STRICT_EXAMPLE_TEST_FAIL_REGEX "\\[warning\\];\\[error\\];\\[critical\\]")
+set(RELAXED_EXAMPLE_TEST_FAIL_REGEX "\\[error\\];\\[critical\\]")
+
 # Helper for adding new examples
 function(dai_add_example example_name example_src enable_test use_pcl)
 
@@ -58,7 +64,7 @@ function(dai_add_example example_name example_src enable_test use_pcl)
         add_test(NAME ${example_name} COMMAND
             ${CMAKE_COMMAND}
             -DTIMEOUT_SECONDS=300
-            -P ${CMAKE_CURRENT_LIST_DIR}/cmake/ExecuteTestTimeout.cmake
+            -P ${TOP_CPP_EXAMPLES_CMAKE_DIR}/cmake/ExecuteTestTimeout.cmake
             $<TARGET_FILE:test_wrapper>
             40 # Set test timeout
             $<TARGET_FILE:${example_name}>
@@ -67,7 +73,7 @@ function(dai_add_example example_name example_src enable_test use_pcl)
 
         add_dependencies(${example_name} test_wrapper)
         # Sets a regex catching any logged warnings, errors or critical (coming either from device or host)
-        set_tests_properties(${example_name} PROPERTIES FAIL_REGULAR_EXPRESSION "\\[warning\\];\\[error\\];\\[critical\\]")
+        set_tests_properties(${example_name} PROPERTIES FAIL_REGULAR_EXPRESSION "${STRICT_EXAMPLE_TEST_FAIL_REGEX}")
 
         # Add ubsan halt on error
         set_tests_properties(${example_name} PROPERTIES ENVIRONMENT "${test_env}")
@@ -91,6 +97,11 @@ function(dai_add_example example_name example_src enable_test use_pcl)
     endif()
 endfunction()
 
+function(dai_example_test_relax_fail_regex example_name)
+    if(DEPTHAI_TEST_EXAMPLES AND TEST ${example_name})
+        set_tests_properties(${example_name} PROPERTIES FAIL_REGULAR_EXPRESSION "${RELAXED_EXAMPLE_TEST_FAIL_REGEX}")
+    endif()
+endfunction()
 
 # Function for setting test labels, including label shortcuts
 function(dai_set_example_test_labels example_name)

@@ -8,6 +8,8 @@ endif()
 
 find_program(CCACHE_PROGRAM ccache)
 
+set(CMAKE_POLICY_VERSION_MINIMUM 3.5) # Support for CMake 4
+
 if(CCACHE_PROGRAM)
     message(STATUS "Using ccache: ${CCACHE_PROGRAM}")
 
@@ -61,8 +63,8 @@ endif()
 
 # Create depthai project
 project(depthai VERSION "3.0.0" LANGUAGES CXX C)
-set(DEPTHAI_PRE_RELEASE_TYPE "beta") # Valid options are "alpha", "beta", "rc", ""
-set(DEPTHAI_PRE_RELEASE_VERSION "1")
+set(DEPTHAI_PRE_RELEASE_TYPE "rc") # Valid options are "alpha", "beta", "rc", ""
+set(DEPTHAI_PRE_RELEASE_VERSION "2")
 
 # Set DEPTHAI_VERSION universally, not conditionally
 set(DEPTHAI_VERSION ${PROJECT_VERSION}-${DEPTHAI_PRE_RELEASE_TYPE}.${DEPTHAI_PRE_RELEASE_VERSION})
@@ -308,6 +310,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/ToFConfig.cpp
     src/pipeline/datatype/BenchmarkReport.cpp
     src/pipeline/datatype/PointCloudConfig.cpp
+    src/pipeline/datatype/ObjectTrackerConfig.cpp
     src/pipeline/datatype/PointCloudData.cpp
     src/pipeline/datatype/RGBDData.cpp
     src/pipeline/datatype/MessageGroup.cpp

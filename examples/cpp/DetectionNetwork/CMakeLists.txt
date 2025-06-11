@@ -13,10 +13,12 @@ private_data(
 )
 
 if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
-    dai_add_example(detection_network_replay detection_network_replay.cpp ON OFF)
+    dai_add_example(detection_network_replay detection_network_replay.cpp OFF OFF)
     target_compile_definitions(detection_network_replay PRIVATE VIDEO_PATH="${construction_vest}")
 endif()
 
-dai_add_example(detection_network detection_network.cpp OFF OFF)
+dai_add_example(detection_network detection_network.cpp ON OFF)
+dai_set_example_test_labels(detection_network ondevice rvc2_all rvc4 ci)
 
-dai_add_example(detection_network_remap detection_network_remap.cpp OFF OFF)
+dai_add_example(detection_network_remap detection_network_remap.cpp ON OFF)
+dai_set_example_test_labels(detection_network_remap ondevice rvc2_all rvc4 ci)
