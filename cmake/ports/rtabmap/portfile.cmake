@@ -1,8 +1,8 @@
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO introlab/rtabmap
-    REF 623d056436946c35beb12199831f178a84eaad73
-    SHA512 e06bf06066f9f567fa5d1c7d09765e0e76c1f920a1087bda32589260e4406042554347f6eb09abb2b225f57ae85ed645d7645f0974dcee06871040d61eb05ac4
+    REF 08f031e11c45589fc2b68440383a3e40982dc06f
+    SHA512 3a0c97ac2061a38c01c2b9fb95057061f38e79ce8500b73010fdf6ba3547196960da749ea5829571c227f8379a4c8482be3b7d8df68984e429df14a8020a24a3
     HEAD_REF master
     PATCHES
         apple.patch
@@ -12,6 +12,7 @@ vcpkg_from_github(
         rtabmap-res-tool.patch
         gklib.patch
         lz4.patch
+        ceres_typo.patch
 )
 
 vcpkg_check_features(OUT_FEATURE_OPTIONS FEATURE_OPTIONS
