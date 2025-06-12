@@ -7,6 +7,8 @@ REGISTRY=$3
 COMMIT_ID=$4
 PARALLEL_JOBS=$5
 
+: "${PARALLEL_JOBS:=8}"  # Fallback to 8 if not set or passed
+
 if [ -z "$FLAVOR" ] || [ -z "$BRANCH" ] || [ -z "$REGISTRY" ] || [ -z "$COMMIT_ID" ] || [ -z "$PARALLEL_JOBS" ]; then
   echo "Usage: $0 <flavor> <branch> <registry> <commit_id> <number_of_cores>"
   exit 1
