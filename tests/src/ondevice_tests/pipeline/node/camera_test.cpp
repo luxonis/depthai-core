@@ -108,30 +108,6 @@ TEST_CASE("Test setting the center camera to a different FPS compared to left an
         }
     }
 }
-#endif
-
-TEST_CASE("Test how default FPS is generated for a specific output") {
-    constexpr float FPS_TO_SET = 20.0;
-    // Create pipeline
-    dai::Pipeline p;
-    auto camera = p.create<dai::node::Camera>()->build();
-    auto benchmarkIn = p.create<dai::node::BenchmarkIn>();
-    auto* output1 = camera->requestOutput(std::make_pair(640, 400), std::nullopt);
-    REQUIRE(output1 != nullptr);
-    auto* output2 = camera->requestOutput(std::make_pair(640, 400), std::nullopt, dai::ImgResizeMode::CROP, FPS_TO_SET);
-    REQUIRE(output2 != nullptr);
-    output2->createOutputQueue();  // "Sink it"
-    output1->link(benchmarkIn->input);
-    benchmarkIn->sendReportEveryNMessages(FPS_TO_SET * 2);
-    auto benchmarkQueue = benchmarkIn->report.createOutputQueue();
-
-    p.start();
-    for(int i = 0; i < 3; i++) {
-        auto benchmarkReport = benchmarkQueue->get<dai::BenchmarkReport>();
-        // Allow +-10% difference
-        REQUIRE(benchmarkReport->fps == Catch::Approx(FPS_TO_SET).margin(FPS_TO_SET * 0.1));
-    }
-}
 
 TEST_CASE("Multiple outputs") {
     dai::Pipeline p;
@@ -160,5 +136,29 @@ TEST_CASE("Multiple outputs") {
         REQUIRE(frame3->getWidth() == 900);
         REQUIRE(frame3->getHeight() == 700);
         REQUIRE(frame3->getType() == dai::ImgFrame::Type::GRAY8);
+    }
+}
+#endif
+
+TEST_CASE("Test how default FPS is generated for a specific output") {
+    constexpr float FPS_TO_SET = 20.0;
+    // Create pipeline
+    dai::Pipeline p;
+    auto camera = p.create<dai::node::Camera>()->build();
+    auto benchmarkIn = p.create<dai::node::BenchmarkIn>();
+    auto* output1 = camera->requestOutput(std::make_pair(640, 400), std::nullopt);
+    REQUIRE(output1 != nullptr);
+    auto* output2 = camera->requestOutput(std::make_pair(640, 400), std::nullopt, dai::ImgResizeMode::CROP, FPS_TO_SET);
+    REQUIRE(output2 != nullptr);
+    output2->createOutputQueue();  // "Sink it"
+    output1->link(benchmarkIn->input);
+    benchmarkIn->sendReportEveryNMessages(FPS_TO_SET * 2);
+    auto benchmarkQueue = benchmarkIn->report.createOutputQueue();
+
+    p.start();
+    for(int i = 0; i < 3; i++) {
+        auto benchmarkReport = benchmarkQueue->get<dai::BenchmarkReport>();
+        // Allow +-10% difference
+        REQUIRE(benchmarkReport->fps == Catch::Approx(FPS_TO_SET).margin(FPS_TO_SET * 0.1));
     }
 }
