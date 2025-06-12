@@ -20,7 +20,7 @@ concurrency:
 jobs:
   
   run_vanilla_tests:
-    uses: ./.github/workkflows/test_child.yml
+    uses: ./.github/workflows/test_child.yml
     with:
       flavor: "vanilla"
       luxonis_os_versions_to_test: "['r851.1.2', 'debug-1.6.0', 'debug-1.11.0']"
@@ -28,7 +28,7 @@ jobs:
       CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
   
   run_vanilla_tsan:
-    uses: ./.github/workkflows/test_child.yml
+    uses: ./.github/workflows/test_child.yml
     with:
       flavor: "tsan"
       luxonis_os_versions_to_test: "['debug-1.11.0']"
@@ -36,7 +36,7 @@ jobs:
       CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
 
   run_vanilla_asan-ubsan:
-    uses: ./.github/workkflows/test_child.yml
+    uses: ./.github/workflows/test_child.yml
     with:
       flavor: "asan-ubsan"
       luxonis_os_versions_to_test: "['debug-1.11.0']"
