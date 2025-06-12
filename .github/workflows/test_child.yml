@@ -36,7 +36,7 @@ jobs:
         fi
         echo "tag=$TAG" >> $GITHUB_OUTPUT
         echo "Using branch: $BRANCH_NAME"
-        scripts/hil/build_and_push.sh "${{ inputs.flavor }}" "$BRANCH_NAME" "$CONTAINER_REGISTRY" "${{ github.sha }}" "$PARALLEL_JOBS" "$TAG"
+        scripts/hil/build_and_push.sh "${{ inputs.flavor }}" "$BRANCH_NAME" "$CONTAINER_REGISTRY" "${{ github.sha }}" "$PARALLEL_JOBS" "$PULL_REQUEST" "$TAG"
 
 
  linux_rvc2_test:
