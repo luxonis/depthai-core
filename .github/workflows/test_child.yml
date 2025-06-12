@@ -21,7 +21,7 @@ jobs:
       env:
         CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
       run: |
-        scripts/hil/build_and_push.sh "${{ inputs.flavor }}"" "${{ github.ref_name }}" "$CONTAINER_REGISTRY" "${{ github.sha }}"
+        scripts/hil/build_and_push.sh "${{ inputs.flavor }}" "${{ github.ref_name }}" "$CONTAINER_REGISTRY" "${{ github.sha }}"
 
 
  linux_rvc2_test:
