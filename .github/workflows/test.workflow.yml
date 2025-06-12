@@ -4,12 +4,13 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - v3_develop
+      - develop
+      - main
     tags:
       - 'v*'
   pull_request:
     branches:
-      - v3_develop
+      - develop
 
 # Only allow latest run on same branch to be tested
 concurrency:

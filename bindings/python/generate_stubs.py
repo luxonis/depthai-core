@@ -61,7 +61,7 @@ try:
         ''') + contents
 
         # Create 'create' overloads
-        nodes = re.findall('def \S*\(self\) -> node.(\S*):', stubs_import)
+        nodes = re.findall('def \\S*\\(self\\) -> node.\\(\\S*\\):', stubs_import)
         overloads = ''
         for node in nodes:
             overloads = overloads + f'\\1@overload\\1def create(self, arg0: typing.Type[node.{node}]) -> node.{node}: ...'
