@@ -99,7 +99,7 @@ RUN if [ "$FLAVOR" != "vanilla" ]; then \
         -D CMAKE_BUILD_TYPE=Release \
         -D DEPTHAI_VCPKG_INTERNAL_ONLY=OFF \
         -D DEPTHAI_BUILD_TESTS=ON \
-        $(if [ "$PULL_REQUEST" = "false" ]; then echo "-D DEPTHAI_BUILD_EXAMPLES=ON=ON  \
+        $(if [ "$PULL_REQUEST" = "false" ]; then echo "-D DEPTHAI_BUILD_EXAMPLES=ON \
         -D DEPTHAI_TEST_EXAMPLES=ON \
         -D DEPTHAI_BUILD_PYTHON=ON \
         -D DEPTHAI_PYTHON_TEST_EXAMPLES=ON \
