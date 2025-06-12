@@ -15,9 +15,12 @@ on:
 jobs:
  build_docker_container:
     runs-on: ['self-hosted', 'hil-test-v3']
+    outputs:
+        tag: ${{ steps.build_and_push.outputs.tag }}
     steps:
     - uses: actions/checkout@v3
     - name: Build and push
+      id: build_and_push
       env:
         CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
       run: |
@@ -26,8 +29,14 @@ jobs:
          BRANCH_NAME="${{ github.head_ref }}"
          PULL_REQUEST="true"
         fi
+        if [ "$PULL_REQUEST" = "true" ]; then
+          TAG="${{ inputs.flavor }}_short_${{ github.sha }}"
+        else
+          TAG="${{ inputs.flavor }}_${{ github.sha }}"
+        fi
+        echo "tag=$TAG" >> $GITHUB_OUTPUT
         echo "Using branch: $BRANCH_NAME"
-        scripts/hil/build_and_push.sh "${{ inputs.flavor }}" "$BRANCH_NAME" "$CONTAINER_REGISTRY" "${{ github.sha }}" "$PARALLEL_JOBS" "$PULL_REQUEST"
+        scripts/hil/build_and_push.sh "${{ inputs.flavor }}" "$BRANCH_NAME" "$CONTAINER_REGISTRY" "${{ github.sha }}" "$PARALLEL_JOBS" "$TAG"
 
 
  linux_rvc2_test:
@@ -50,7 +59,7 @@ jobs:
         CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
       run: |
         export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc2-${{ inputs.flavor }}"
-        exec hil --capabilities depthai-core-hil --platforms 'rvc2 and rvc2' --reservation-name $RESERVATION_NAME --wait --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ inputs.flavor }}_${{ github.sha }} --commands "./tests/run_tests_entrypoint.sh rvc2"
+        exec hil --capabilities depthai-core-hil --platforms 'rvc2 and rvc2' --reservation-name $RESERVATION_NAME --wait --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "./tests/run_tests_entrypoint.sh rvc2"
 
   # Testing
  linux_rvc4_test:
@@ -70,4 +79,4 @@ jobs:
       - name: Run RVC4 tests
         run: |
           export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-${{ matrix.rvc4os }}-${{ inputs.flavor }}"
-          exec hil --models "oak4_pro or oak4_d" --reservation-name $RESERVATION_NAME --wait --sync-workspace --rvc4-os-version ${{ matrix.rvc4os }} --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ inputs.flavor }}_${{ github.sha }} --commands "./tests/run_tests_entrypoint.sh rvc4"
+          exec hil --models "oak4_pro or oak4_d" --reservation-name $RESERVATION_NAME --wait --sync-workspace --rvc4-os-version ${{ matrix.rvc4os }} --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "./tests/run_tests_entrypoint.sh rvc4"
