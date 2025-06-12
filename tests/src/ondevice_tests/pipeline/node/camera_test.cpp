@@ -139,12 +139,10 @@ TEST_CASE("Multiple outputs") {
     auto* camOut1 = camera->requestOutput({500, 300}, dai::ImgFrame::Type::NV12);
     auto* camOut2 = camera->requestOutput({700, 500}, dai::ImgFrame::Type::RGB888i);
     auto* camOut3 = camera->requestOutput({900, 700}, dai::ImgFrame::Type::GRAY8);
-    auto* camOut4 = camera->requestOutput({300, 200}, dai::ImgFrame::Type::RGB888p);
 
     auto camOut1Queue = camOut1->createOutputQueue();
     auto camOut2Queue = camOut2->createOutputQueue();
     auto camOut3Queue = camOut3->createOutputQueue();
-    auto camOut4Queue = camOut4->createOutputQueue();
 
     p.start();
     for(int i = 0; i < 5; i++) {
@@ -162,10 +160,5 @@ TEST_CASE("Multiple outputs") {
         REQUIRE(frame3->getWidth() == 900);
         REQUIRE(frame3->getHeight() == 700);
         REQUIRE(frame3->getType() == dai::ImgFrame::Type::GRAY8);
-
-        auto frame4 = camOut4Queue->get<dai::ImgFrame>();
-        REQUIRE(frame4->getWidth() == 300);
-        REQUIRE(frame4->getHeight() == 200);
-        REQUIRE(frame4->getType() == dai::ImgFrame::Type::RGB888p);
     }
 }

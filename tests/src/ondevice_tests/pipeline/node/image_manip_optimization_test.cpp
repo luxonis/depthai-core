@@ -262,6 +262,7 @@ void runManipTests(dai::ImageManipProperties::Backend backend, dai::ImageManipPr
     auto manip = p.create<dai::node::ImageManip>()->build();
     manip->setBackend(backend);
     manip->setPerformanceMode(perfMode);
+    manip->setMaxOutputFrameSize(6750208);
     manip->inputConfig.setWaitForMessage(true);
 
     auto inputImg = cv::imread(LENNA_PATH);
