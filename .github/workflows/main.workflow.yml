@@ -6,14 +6,12 @@ on:
     branches:
       - main
       - develop
-      - v3_develop
     tags:
       - 'v*'
   pull_request:
     branches:
       - main
       - develop
-      - v3_develop
 
 jobs:
 

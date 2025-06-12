@@ -3,7 +3,7 @@ name: BOM Testing
 on:
   push:
     branches:
-      - v3_develop
+      - develop
     tags:
       - 'v*'
   workflow_dispatch:
@@ -30,7 +30,7 @@ on:
       depthai:
         required: false
         type: string
-        default: "v3_develop"
+        default: "develop"
         description: "Version for depthai"
 
 jobs:
