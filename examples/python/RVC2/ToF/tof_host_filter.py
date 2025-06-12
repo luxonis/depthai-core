@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 
+import time
 import cv2
 import depthai as dai
 import numpy as np
+
 
 def colorizeDepth(frameDepth):
     invalidMask = frameDepth == 0
@@ -26,10 +28,13 @@ def colorizeDepth(frameDepth):
         depthFrameColor[invalidMask] = 0
     except IndexError:
         # Frame is likely empty
-        depthFrameColor = np.zeros((frameDepth.shape[0], frameDepth.shape[1], 3), dtype=np.uint8)
+        depthFrameColor = np.zeros(
+            (frameDepth.shape[0], frameDepth.shape[1], 3), dtype=np.uint8
+        )
     except Exception as e:
         raise e
     return depthFrameColor
+
 
 # Create pipeline
 pipeline = dai.Pipeline()
@@ -47,8 +52,13 @@ tof.amplitude.link(confidenceFilter.amplitude)
 # queues
 confidenceQueue = confidenceFilter.confidence.createOutputQueue()
 filteredDepthQueue = confidenceFilter.filteredDepth.createOutputQueue()
+configQueue = confidenceFilter.config.createInputQueue()
+
 
 with pipeline:
+
+    # Last config change time
+    t_last = time.time()
 
     # Connect to device and start pipeline
     pipeline.start()
@@ -62,6 +72,14 @@ with pipeline:
         assert isinstance(filteredDepth, dai.ImgFrame)
         visualizedFilteredDepth = colorizeDepth(filteredDepth.getFrame())
         cv2.imshow("filteredDepth", visualizedFilteredDepth)
+
+        # Change the config every second
+        if time.time() - t_last > 1:
+            print("Changing config")
+            config = dai.ToFDepthConfidenceFilterConfig()
+            config.confidenceThreshold = np.random.choice([0.1, 0.2, 0.3, 0.4, 0.5])
+            configQueue.send(config)
+            t_last = time.time()
 
         if cv2.waitKey(1) == ord("q"):
             break
