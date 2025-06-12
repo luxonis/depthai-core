@@ -5,9 +5,10 @@ FLAVOR=$1
 BRANCH=$2
 REGISTRY=$3
 COMMIT_ID=$4
+PARALLEL_JOBS=$5
 
-if [ -z "$FLAVOR" ] || [ -z "$BRANCH" ] || [ -z "$REGISTRY" ] || [ -z "$COMMIT_ID" ]; then
-  echo "Usage: $0 <flavor> <branch> <registry> <commit_id>"
+if [ -z "$FLAVOR" ] || [ -z "$BRANCH" ] || [ -z "$REGISTRY" ] || [ -z "$COMMIT_ID" ] || [ -z "$PARALLEL_JOBS" ]; then
+  echo "Usage: $0 <flavor> <branch> <registry> <commit_id> <number_of_cores>"
   exit 1
 fi
 
@@ -34,7 +35,8 @@ else
     docker build -t "${IMAGE_NAME}" -f tests/Dockerfile . \
   --build-arg FLAVOR="${FLAVOR}" \
   --build-arg BRANCH="${BRANCH}" \
-  --build-arg GIT_COMMIT="${COMMIT_ID}"
+  --build-arg GIT_COMMIT="${COMMIT_ID}" \
+  --build-arg PARALLEL_JOBS="${PARALLEL_JOBS}"
 fi
 
 # Push the image

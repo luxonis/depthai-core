@@ -6,6 +6,7 @@ ENV LC_ALL=en_US.UTF-8
 ENV DISPLAY=:99
 ARG FLAVOR=vanilla
 ENV FLAVOR=${FLAVOR}
+ARG PARALLEL_JOBS=8
 
 # Update and install all required packages in one go
 RUN apt-get update && \
@@ -103,5 +104,5 @@ RUN if [ "$FLAVOR" != "vanilla" ]; then \
         -D DEPTHAI_PYTHON_TEST_EXAMPLES=ON \
         -D DEPTHAI_PYTHON_ENABLE_EXAMPLES=ON
 
-RUN cmake --build build --parallel 16 --config Release
+RUN cmake --build build --parallel $PARALLEL_JOBS --config Release
 RUN chmod +x ./tests/run_tests_entrypoint.sh

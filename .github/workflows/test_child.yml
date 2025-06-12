@@ -20,8 +20,9 @@ jobs:
     - name: Build and push
       env:
         CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
+        PARALLEL_JOBS: ${{ env.PARALLEL_JOBS }}
       run: |
-        scripts/hil/build_and_push.sh "${{ inputs.flavor }}" "${{ github.ref_name }}" "$CONTAINER_REGISTRY" "${{ github.sha }}"
+        scripts/hil/build_and_push.sh "${{ inputs.flavor }}" "${{ github.ref_name }}" "$CONTAINER_REGISTRY" "${{ github.sha }}" "$PARALLEL_JOBS"
 
 
  linux_rvc2_test:
