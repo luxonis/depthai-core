@@ -7,6 +7,7 @@ ENV DISPLAY=:99
 ARG FLAVOR=vanilla
 ENV FLAVOR=${FLAVOR}
 ARG PARALLEL_JOBS=8
+ARG PULL_REQUEST="false"
 
 # Update and install all required packages in one go
 RUN apt-get update && \
@@ -98,11 +99,11 @@ RUN if [ "$FLAVOR" != "vanilla" ]; then \
         -D CMAKE_BUILD_TYPE=Release \
         -D DEPTHAI_VCPKG_INTERNAL_ONLY=OFF \
         -D DEPTHAI_BUILD_EXAMPLES=ON \
-        -D DEPTHAI_BUILD_TESTS=ON \
-        -D DEPTHAI_TEST_EXAMPLES=ON \
+        $(if [ "$PULL_REQUEST" = "false" ]; then echo "-D DEPTHAI_TEST_EXAMPLES=ON \
         -D DEPTHAI_BUILD_PYTHON=ON \
         -D DEPTHAI_PYTHON_TEST_EXAMPLES=ON \
-        -D DEPTHAI_PYTHON_ENABLE_EXAMPLES=ON
+        -D DEPTHAI_PYTHON_ENABLE_EXAMPLES=ON"; fi)
+
 
 RUN cmake --build build --parallel $PARALLEL_JOBS --config Release
 RUN chmod +x ./tests/run_tests_entrypoint.sh

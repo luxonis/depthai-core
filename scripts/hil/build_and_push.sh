@@ -6,16 +6,26 @@ BRANCH=$2
 REGISTRY=$3
 COMMIT_ID=$4
 PARALLEL_JOBS=$5
+PULL_REQUEST=$6
 
 : "${PARALLEL_JOBS:=8}"  # Fallback to 8 if not set or passed
+: "${PULL_REQUEST:="false"}"  # Fallback to 8 if not set or passed
 
-if [ -z "$FLAVOR" ] || [ -z "$BRANCH" ] || [ -z "$REGISTRY" ] || [ -z "$COMMIT_ID" ] || [ -z "$PARALLEL_JOBS" ]; then
-  echo "Usage: $0 <flavor> <branch> <registry> <commit_id> <number_of_cores>"
+
+if [ -z "$FLAVOR" ] || [ -z "$BRANCH" ] || [ -z "$REGISTRY" ] || [ -z "$COMMIT_ID" ] || [ -z "$PARALLEL_JOBS" ] || [ -z "$PULL_REQUEST" ]; then
+  echo "Usage: $0 <flavor> <branch> <registry> <commit_id> <number_of_cores> <is_pipeline_pull_request>"
   exit 1
 fi
 
 REPO_NAME="depthai-core-hil"
-TAG="${FLAVOR}_${COMMIT_ID}"
+REPO_NAME="depthai-core-hil"
+
+if [ "$PULL_REQUEST" = "true" ]; then
+    TAG="${FLAVOR}_short_${COMMIT_ID}"
+else
+    TAG="${FLAVOR}_${COMMIT_ID}"
+fi
+
 IMAGE_NAME="${REPO_NAME}:${TAG}"
 FULL_IMAGE_NAME="${REGISTRY}/${IMAGE_NAME}"
 
@@ -38,7 +48,8 @@ else
   --build-arg FLAVOR="${FLAVOR}" \
   --build-arg BRANCH="${BRANCH}" \
   --build-arg GIT_COMMIT="${COMMIT_ID}" \
-  --build-arg PARALLEL_JOBS="${PARALLEL_JOBS}"
+  --build-arg PARALLEL_JOBS="${PARALLEL_JOBS}" \
+  --build-arg PULL_REQUEST="${PULL_REQUEST}"
 fi
 
 # Push the image

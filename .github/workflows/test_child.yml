@@ -24,9 +24,10 @@ jobs:
         BRANCH_NAME="${{ github.ref_name }}"
         if [[ -n "${{ github.head_ref }}" ]]; then
          BRANCH_NAME="${{ github.head_ref }}"
+         PULL_REQUEST="true"
         fi
         echo "Using branch: $BRANCH_NAME"
-        scripts/hil/build_and_push.sh "${{ inputs.flavor }}" "$BRANCH_NAME" "$CONTAINER_REGISTRY" "${{ github.sha }}" "$PARALLEL_JOBS"
+        scripts/hil/build_and_push.sh "${{ inputs.flavor }}" "$BRANCH_NAME" "$CONTAINER_REGISTRY" "${{ github.sha }}" "$PARALLEL_JOBS" "$PULL_REQUEST"
 
 
  linux_rvc2_test:
