@@ -1,11 +1,6 @@
 name: BOM Testing
 
 on:
-  push:
-    branches:
-      - develop
-    tags:
-      - 'v*'
   workflow_dispatch:
     inputs:
       distinct_id:

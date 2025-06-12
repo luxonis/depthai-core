@@ -27,7 +27,7 @@ jobs:
     secrets:
       CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
   
-  run_vanilla_tsan:
+  run_tsan_tests:
     uses: ./.github/workflows/test_child.yml
     with:
       flavor: "tsan"
@@ -35,7 +35,7 @@ jobs:
     secrets:
       CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
 
-  run_vanilla_asan-ubsan:
+  run_asan-ubsan_tests:
     uses: ./.github/workflows/test_child.yml
     with:
       flavor: "asan-ubsan"
