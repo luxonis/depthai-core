@@ -51,7 +51,7 @@ jobs:
       run: |
         export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc2-${{ inputs.flavor }}"
         exec hil --capabilities depthai-core-hil --platforms 'rvc2 and rvc2' --reservation-name $RESERVATION_NAME --wait --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ inputs.flavor }}_${{ github.sha }} --commands "./tests/run_tests_entrypoint.sh rvc2"
-  
+
   # Testing
  linux_rvc4_test:
       needs: [build_docker_container]

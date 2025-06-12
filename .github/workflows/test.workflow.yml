@@ -18,7 +18,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  
+
   run_vanilla_tests:
     uses: ./.github/workflows/test_child.yml
     with:
@@ -26,7 +26,7 @@ jobs:
       luxonis_os_versions_to_test: "['r851.1.2', 'debug-1.6.0', 'debug-1.11.0']"
     secrets:
       CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
-  
+
   run_tsan_tests:
     uses: ./.github/workflows/test_child.yml
     with:
