@@ -33,9 +33,9 @@
     #undef ON
 #endif
 #ifdef DEPTHAI_XTENSOR_SUPPORT
-    #include "xtensor/xadapt.hpp"
-    #include "xtensor/xarray.hpp"
-    #include "xtensor/xmanipulation.hpp"
+    #include "xtensor/containers/xadapt.hpp"
+    #include "xtensor/containers/xarray.hpp"
+    #include "xtensor/misc/xmanipulation.hpp"
 #endif
 #if defined(_ON_DEF)
     #define ON _ON_DEF

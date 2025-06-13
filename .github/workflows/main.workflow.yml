@@ -6,14 +6,12 @@ on:
     branches:
       - main
       - develop
-      - v3_develop
     tags:
-      - 'v2*'
+      - 'v*'
   pull_request:
     branches:
       - main
       - develop
-      - v3_develop
 
 jobs:
 
@@ -61,7 +59,7 @@ jobs:
     strategy:
       matrix:
         os: [macos-latest, windows-latest, ubuntu-latest]
-        cmake: ['3.29.x']
+        cmake: ['3.22.x', '4.0.x']
 
     steps:
     - uses: actions/checkout@v4
@@ -225,19 +223,19 @@ jobs:
         merge-multiple: true
         path: depthai-core-${{ steps.tag.outputs.version }}-win64
 
-    - name: Download Win32 artifacts
-      uses: actions/download-artifact@v4
-      with:
-        pattern: windows-prebuilt-win32-no-opencv*
-        merge-multiple: true
-        path: depthai-core-${{ steps.tag.outputs.version }}-win32-no-opencv
+    # - name: Download Win32 artifacts
+    #   uses: actions/download-artifact@v4
+    #   with:
+    #     pattern: windows-prebuilt-win32-no-opencv*
+    #     merge-multiple: true
+    #     path: depthai-core-${{ steps.tag.outputs.version }}-win32-no-opencv
 
     - name: Create release assets
       run: |
         git-archive-all depthai-core-${{ steps.tag.outputs.version }}.tar.gz
         git-archive-all depthai-core-${{ steps.tag.outputs.version }}.zip
         zip -r depthai-core-${{ steps.tag.outputs.version }}-win64.zip depthai-core-${{ steps.tag.outputs.version }}-win64
-        zip -r depthai-core-${{ steps.tag.outputs.version }}-win32-no-opencv.zip depthai-core-${{ steps.tag.outputs.version }}-win32-no-opencv
+        # zip -r depthai-core-${{ steps.tag.outputs.version }}-win32-no-opencv.zip depthai-core-${{ steps.tag.outputs.version }}-win32-no-opencv
 
     # Create GitHub release
     - uses: actions/create-release@master
@@ -288,12 +286,12 @@ jobs:
         asset_name: depthai-core-${{ steps.tag.outputs.version }}-win64.zip
         asset_content_type: application/octet-stream
 
-    - name: Upload Win32 package (zip)
-      uses: actions/upload-release-asset@v1.0.1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.createRelease.outputs.upload_url }}
-        asset_path: ${{ github.workspace }}/depthai-core-${{ steps.tag.outputs.version }}-win32-no-opencv.zip
-        asset_name: depthai-core-${{ steps.tag.outputs.version }}-win32-no-opencv.zip
-        asset_content_type: application/octet-stream
+    # - name: Upload Win32 package (zip)
+    #   uses: actions/upload-release-asset@v1.0.1
+    #   env:
+    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    #   with:
+    #     upload_url: ${{ steps.createRelease.outputs.upload_url }}
+    #     asset_path: ${{ github.workspace }}/depthai-core-${{ steps.tag.outputs.version }}-win32-no-opencv.zip
+    #     asset_name: depthai-core-${{ steps.tag.outputs.version }}-win32-no-opencv.zip
+    #     asset_content_type: application/octet-stream
