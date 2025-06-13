@@ -1,23 +1,25 @@
-# DepthAI C++ Library
+# DepthAI Library
 
 [![Forum](https://img.shields.io/badge/Forum-discuss-orange)](https://discuss.luxonis.com/)
 [![Docs](https://img.shields.io/badge/Docs-DepthAI_API-yellow)](https://stg.docs.luxonis.com/software/v3/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
-DepthAI library for interfacing with Luxonis DepthAI hardware.
+DepthAI library for interfacing with Luxonis DepthAI hardware. It's written in C++ and offers Python bindings out of the box.
 
-> ⚠️ This is a `v3.x.y` version of the library which is still in active development without a stable API yet.
-
-> ℹ️ For porting code from `v2` version of the library, we recommend using the [porting guide](./V2V3PortinGuide.md)
+>  **Important — You’re viewing the `v3.x.y` _release-candidate_ branch.**
+>
+> * For production projects that still rely on **v2**, check out the
+>   [`v2_stable` branch](https://github.com/luxonis/depthai-core/tree/v2_stable).
+> * Need to migrate? Follow the step-by-step [v2 → v3 Porting Guide](./V2V3PortinGuide.md).
 
 ## Documentation
-Documentation is available over at [Luxonis DepthAI API](https://stg.docs.luxonis.com/software/v3/)
+Documentation is available over at [Luxonis DepthAI API](https://docs.luxonis.com/software-v3/depthai/)
 
 ## Disclaimer
 DepthAI library doesn't yet provide API stability guarantees. While we take care to properly deprecate old functions, some changes might still be breaking.
 
 ## Examples
-Examples for both C++ and Python are available in the `examples` folder. To see hwo to build and run them see [README.md](./examples/README.md) for more information.
+Examples for both C++ and Python are available in the `examples` folder. To see how to build and run them see [README.md](./examples/README.md) for more information.
 To build the examples in C++ configure with the following option added:
 ```
 cmake -S. -Bbuild -D'DEPTHAI_BUILD_EXAMPLES=ON'
@@ -33,6 +35,7 @@ cmake --build build
 To install OpenCV:
 MacOS: `brew install opencv`
 Linux: `sudo apt install libopencv-dev`
+Windows: `choco install opencv`
 
 To install PCL:
 MacOS: `brew install pcl`
@@ -63,10 +66,15 @@ Then configure and build
 
 ```
 cmake -S . -B build
-cmake --build build
+cmake --build build --parallel [num CPU cores]
 ```
+On Windows, we currently only build the dependencies in Release mode, so you may want to add `-DCMAKE_BUILD_TYPE=Release` to the configuration step and you'll need to specify the location of the OpenCV installation. In case you used chocolatey to install OpenCV, you can use the following command:
 
-> ℹ️ To speed up build times, use `cmake --build build --parallel [num CPU cores]` (CMake >= 3.12).
+```
+cmake -S . -B build -DOpenCV_DIR=C:/tools/opencv/build -DCMAKE_BUILD_TYPE=Release
+cmake --build build --config Release --parallel [num CPU cores]
+```
+> ℹ️ To speed up build times, use `cmake --build build --parallel [num CPU cores]`.
 
 ### Dynamic library
 
