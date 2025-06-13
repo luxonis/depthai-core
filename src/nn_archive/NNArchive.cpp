@@ -11,8 +11,14 @@
 #include "common/ModelType.hpp"
 #include "utility/ArchiveUtil.hpp"
 #include "utility/ErrorMacros.hpp"
+#include "utility/Platform.hpp"
 
 namespace dai {
+
+NNArchiveOptions::NNArchiveOptions() {
+    // Default options
+    extractFolder(platform::getTempPath());
+}
 
 NNArchive::NNArchive(const std::string& archivePath, NNArchiveOptions options) : archiveOptions(options) {
     // Make sure archive exits
