@@ -36,18 +36,6 @@ int main() {
         cv::imshow("right", rightFrameQueue->getCvFrame());
         auto key = cv::waitKey(1);
         auto qualityResult = dynCalib->getCalibQuality();
-        if(qualityResult.valid) {
-            std::cout << "Quality = " << qualityResult.value << ", Info: " << qualityResult.info << "\n";
-        } else {
-        std::cout << "Invalid quality result. Info: " << qualityResult.info << "\n";
-        }
-
-        auto calibrationResult = dynCalib->getNewCalibration();
-        if(calibrationResult.valid) {
-            std::cout << "Calibration Info: " << calibrationResult.info << "\n";
-        } else {
-        std::cout << "Invalid calibration result. Info: " << calibrationResult.info << "\n";
-        }
 
         if(key == 'q') {
             break;

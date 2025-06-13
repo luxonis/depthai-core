@@ -158,7 +158,6 @@ void DynamicCalibration::pipelineSetup(std::shared_ptr<Device> device, CameraBoa
         {0.0f, 1.0f, 0.0f},
         {0.0f, 0.0f, 1.0f}
     };
-
     auto translationVectorB = currentCalibration.getCameraTranslationVector(static_cast<dai::CameraBoardSocket>(socketA),
                                                                              static_cast<dai::CameraBoardSocket>(socketB));
     
@@ -189,23 +188,14 @@ void DynamicCalibration::run() {
 
     std::cout << "DynamicCalibration node is running" << std::endl;
     while(isRunning()) {
-        auto leftFrame = left.get<dai::ImgFrame>();
-        auto rightFrame = right.get<dai::ImgFrame>();
+        std::shared_ptr<dai::ImgFrame> leftFrame = left.get<dai::ImgFrame>();
+        std::shared_ptr<dai::ImgFrame> rightFrame = right.get<dai::ImgFrame>();
 
         if(!leftFrame || !rightFrame) continue;
 
         // Get and convert frames
-        auto imageA = leftFrame->getCvFrame();
-        auto imageB = rightFrame->getCvFrame();
-        cv::Mat imgColorA, imgColorB;
-
-        if(imageA.channels() != 3) { // REMOVE DEPENDENCY OF THE 3 CHANNEL IMAGE
-            cv::cvtColor(imageA, imgColorA, cv::COLOR_GRAY2BGR);
-            cv::cvtColor(imageB, imgColorB, cv::COLOR_GRAY2BGR);
-        } else {
-            imgColorA = imageA;
-            imgColorB = imageB;
-        }
+        cv::Mat imageA = leftFrame->getCvFrame();
+        cv::Mat imageB = rightFrame->getCvFrame();
 
         // === STATE MACHINE ===
         switch(calibrationSM.state) {
@@ -231,8 +221,8 @@ void DynamicCalibration::run() {
             case CalibrationState::CollectingFeatures: { // TODO, BETTER HANDLING OF HOW MANY FPS WE DANNA COLLECT FRAMES
                 dcl::timestamp_t timestamp = leftFrame->getTimestamp().time_since_epoch().count();
                 dynCalibImpl->loadStereoImagePair(
-                    cvMatToImageData(imgColorA),
-                    cvMatToImageData(imgColorB),
+                    cvMatToImageData(imageA),
+                    cvMatToImageData(imageB),
                     deviceName, socketA, socketB, timestamp
                 );
 
@@ -252,7 +242,7 @@ void DynamicCalibration::run() {
 
                 results.quality.value = result.value;
                 results.quality.valid = result.errorCode == 0 ? true : false;
-                results.quality.info = result.errorCode == 0 ? "Calib Quality check complete" // TODO, REPLACE WITH ACTUAL REPORTS ON ERRORS, WHAT CAUSED IT
+                results.quality.info = result.errorCode == 0 ? "Calib Quality check complete." // TODO, REPLACE WITH ACTUAL REPORTS ON ERRORS, WHAT CAUSED IT
                                                 : "Calib Quality check failed with error code " + std::to_string(result.errorCode);
 
                 std::cout << "[DynamicCalibration] Quality result = " << result.value  << "\n";
@@ -262,9 +252,8 @@ void DynamicCalibration::run() {
 
             case CalibrationState::Recalibrating: {
                 std::cout << "[DynamicCalibration] Running full recalibration...\n";
-                dcl::Result<std::pair<std::shared_ptr<dcl::CameraCalibration>, std::shared_ptr<dcl::CameraCalibration>>> calib = dynCalibImpl->recalibrateDevice(dcDevice, socketA, socketB);
+                dcl::Result<std::pair<std::shared_ptr<dcl::CameraCalibration>, std::shared_ptr<dcl::CameraCalibration>>> calib = dynCalibImpl->recalibrateDevice(dcDevice, socketA, socketB); // TODO SWITCH FROM CAMERACALIBRATION TO CALIBRATIONHANDLE
                 CalibrationHandler calib12 = device->readCalibration(); // TODO, REPLACE WITH FUNCTION WHICH DOES THE SWITCH BETWEEN CALIB and HANDLER
-
                 results.calibration.valid = calib.errorCode == 0 ? true : false; // TODO, REPLACE WITH ACTUAL REPORTS ON ERRORS, WHAT CAUSED IT
                 results.calibration.info = calib.errorCode == 0 ? "Recalibration successful"
                                                 : "Recalibration failed with error code " + std::to_string(calib.errorCode);

@@ -23,7 +23,6 @@ enum class CalibrationMode {
     Recalibration
 };
 
-// Then stringifier
 inline const char* toString(CalibrationState state) {
     switch(state) {
         case CalibrationState::Idle: return "Idle";
@@ -56,7 +55,6 @@ struct QualityResult {
     }
 };
 
-// Then dependent structs
 struct CalibrationResults {
     QualityResult quality;
     CalibrationResult calibration;
