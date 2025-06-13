@@ -1,5 +1,6 @@
 #include "../../../src/utility/Platform.hpp"
 
+#include <atomic>
 #include <catch2/catch_test_macros.hpp>
 #include <chrono>
 #include <filesystem>
@@ -7,6 +8,7 @@
 #include <iostream>
 #include <memory>
 #include <thread>
+#include <vector>
 
 #ifndef _WIN32
     #include <sys/wait.h>
@@ -62,7 +64,7 @@ TEST_CASE("FolderLock basic functionality", "[platform]") {
 }
 
 #ifndef _WIN32
-TEST_CASE("Concurrent locking", "[platform]") {
+TEST_CASE("Process-level locking", "[platform]") {
     auto tempFile = fs::path(dai::platform::getTempPath()) / "test_lock_file.txt";
     std::ofstream(tempFile).close();  // create file
     std::cout << "tempFile: " << tempFile.string() << std::endl;
@@ -99,5 +101,87 @@ TEST_CASE("Concurrent locking", "[platform]") {
     auto end = std::chrono::steady_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     REQUIRE(duration.count() >= 2000);  // Should be more than 2 seconds (1 second each process)
+    REQUIRE(duration.count() < 2300);   // thread3 can start immediately, it's a different file
 }
 #endif
+
+TEST_CASE("Thread-level locking", "[platform]") {
+    auto tempFile = fs::path(dai::platform::getTempPath()) / "test_thread_lock.txt";
+    std::ofstream(tempFile).close();  // create file
+
+    SECTION("Multiple threads with same lock") {
+        auto start = std::chrono::steady_clock::now();
+
+        std::thread t1([&tempFile]() {
+            auto lock = FileLock::lock(tempFile.string());
+            REQUIRE(lock->holding());
+            std::cout << "Thread 1" << std::endl;
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+        });
+
+        std::thread t2([&tempFile]() {
+            auto lock = FileLock::lock(tempFile.string());
+            REQUIRE(lock->holding());
+            std::cout << "Thread 2" << std::endl;
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+        });
+
+        std::thread t3([&tempFile]() {
+            auto lock = FileLock::lock(tempFile.string());
+            REQUIRE(lock->holding());
+            std::cout << "Thread 3" << std::endl;
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+        });
+
+        t1.join();
+        t2.join();
+        t3.join();
+
+        auto end = std::chrono::steady_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+        REQUIRE(duration.count() >= 3000);  // Should be more than 3 seconds (1 second each thread)
+    }
+
+    SECTION("Multiple threads with different locks") {
+        auto tempFile2 = fs::path(dai::platform::getTempPath()) / "test_thread_lock2.txt";
+        std::ofstream(tempFile2).close();  // create second file
+
+        auto start = std::chrono::steady_clock::now();
+
+        std::thread t1([&tempFile]() {
+            auto lock = FileLock::lock(tempFile.string());
+            REQUIRE(lock->holding());
+            std::cout << "Thread 1" << std::endl;
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+        });
+
+        std::thread t2([&tempFile]() {
+            auto lock = FileLock::lock(tempFile.string());
+            REQUIRE(lock->holding());
+            std::cout << "Thread 2" << std::endl;
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+        });
+
+        std::thread t3([&tempFile2]() {
+            auto lock = FileLock::lock(tempFile2.string());
+            REQUIRE(lock->holding());
+            std::cout << "Thread 3" << std::endl;
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+        });
+
+        t1.join();
+        t2.join();
+        t3.join();
+
+        // Cleanup second file
+        fs::remove(tempFile2);
+
+        auto end = std::chrono::steady_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+        REQUIRE(duration.count() >= 2000);
+        REQUIRE(duration.count() < 2300);  // thread3 can start immediately, it's a different file
+    }
+
+    // Cleanup
+    fs::remove(tempFile);
+}

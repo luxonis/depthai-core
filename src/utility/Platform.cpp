@@ -40,7 +40,7 @@ uint32_t getIPv4AddressAsBinary(std::string address) {
     }
 
 #if defined(_WIN32) || defined(__USE_W32_SOCKETS)
-    #if (_WIN32_WINNT <= 0x0501)
+    #if(_WIN32_WINNT <= 0x0501)
     binary = inet_addr(address.c_str());  // for XP
     #else
     inet_pton(AF_INET, address.c_str(), &binary);  // for Vista or higher
@@ -133,7 +133,7 @@ std::string getDirFromPath(const std::string& path) {
     return fsPath.parent_path().string();
 }
 
-FSLock::FSLock(const std::string& fname) : filename(fname), isLocked(false) {}
+FSLock::FSLock(const std::string& fname) : filename(fname), isLocked(false), threadLock(getThreadLock(fname)) {}
 
 FSLock::~FSLock() {
     if(holding()) {
@@ -152,31 +152,38 @@ FSLock::~FSLock() {
 }
 
 void FSLock::lock() {
+    // First acquire the thread lock
+    threadLock.lock();
+
     lockPath = getLockPath(filename);
 
 #ifdef _WIN32
     handle = CreateFileA(filename.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
     if(handle == INVALID_HANDLE_VALUE) {
+        threadLock.unlock();  // Release thread lock if file lock fails
         throw std::runtime_error("Failed to open file: " + filename);
     }
 
     OVERLAPPED overlapped = {0};
     if(!LockFileEx(handle, LOCKFILE_EXCLUSIVE_LOCK, 0, MAXDWORD, MAXDWORD, &overlapped)) {
+        threadLock.unlock();  // Release thread lock if file lock fails
         throw std::runtime_error("Failed to acquire lock on file: " + lockPath);
     }
 
 #else
     fd = open(lockPath.c_str(), O_RDWR | O_CREAT, 0666);
     if(fd == -1) {
+        threadLock.unlock();  // Release thread lock if file lock fails
         throw std::runtime_error("Failed to open file: " + lockPath);
     }
 
-    struct flock fl{};
+    struct flock fl {};
     fl.l_type = F_WRLCK;
     fl.l_whence = SEEK_SET;
     fl.l_start = 0;
     fl.l_len = 0;
     if(fcntl(fd, F_SETLKW, &fl) == -1) {
+        threadLock.unlock();  // Release thread lock if file lock fails
         throw std::runtime_error("Failed to acquire lock on file: " + lockPath);
     }
 #endif
@@ -191,7 +198,7 @@ void FSLock::unlock() {
         throw std::runtime_error("Failed to release lock on file: " + lockPath);
     }
 #else
-    struct flock fl{};
+    struct flock fl {};
     fl.l_type = F_UNLCK;
     fl.l_whence = SEEK_SET;
     fl.l_start = 0;
@@ -202,6 +209,7 @@ void FSLock::unlock() {
 #endif
 
     isLocked = false;
+    threadLock.unlock();  // Release the thread lock after file lock is released
 }
 
 bool FSLock::holding() const {

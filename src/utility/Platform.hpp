@@ -2,7 +2,9 @@
 
 #include <cstdint>
 #include <memory>
+#include <mutex>
 #include <string>
+#include <unordered_map>
 
 #include "depthai/utility/JoiningThread.hpp"
 
@@ -60,9 +62,8 @@ std::string getIPv4AddressAsString(std::uint32_t binary);
 void setThreadName(JoiningThread& thread, const std::string& name);
 
 /**
- * @brief Filesystem process-level lock. Important note: This is a cross-process synchronization primitive. It is not thread-safe.
- * If a file is locked by the same process, it will not be locked by another instance of the same process. Threads in the same process share all their file
- * descriptors which this implementation uses. This is not a thread-safe primitive!! Use mutexes for thread-safe locking.
+ * @brief Filesystem process-level lock with thread safety. This is both a cross-process and cross-thread synchronization primitive.
+ * Uses both file-based locking for process synchronization and mutex-based locking for thread synchronization.
  */
 class FSLock {
    public:
@@ -105,12 +106,20 @@ class FSLock {
     std::string filename;
     std::string lockPath;
     bool isLocked;
+
+    // Thread synchronization
+    static std::mutex& getThreadLock(const std::string& key) {
+        static std::mutex map_mutex;
+        std::lock_guard<std::mutex> map_lock(map_mutex);  // prevents race condition when accessing thread_locks
+
+        static std::unordered_map<std::string, std::mutex> thread_locks;
+        return thread_locks[key];
+    }
+    std::mutex& threadLock;
 };
 
 /**
- * @brief Filesystem process-level lock for files. Important note: This is a cross-process synchronization primitive. It is not thread-safe.
- * If a file is locked by the same process, it will not be locked by another instance of the same process. Threads in the same process share all their file
- * descriptors which this implementation uses. This is not a thread-safe primitive!! Use mutexes for thread-safe locking.
+ * @brief Filesystem cross-process and cross-thread lock for files.
  */
 class FileLock : public FSLock {
    public:
@@ -128,9 +137,8 @@ class FileLock : public FSLock {
 };
 
 /**
- * @brief Filesystem process-level lock for folders. Important note: This is a cross-process synchronization primitive. It is not thread-safe.
- * If a folder is locked by the same process, it will not be locked by another instance of the same process. Threads in the same process share all their file
- * descriptors which this implementation uses. This is not a thread-safe primitive!! Use mutexes for thread-safe locking.
+ * @brief Filesystem process-level lock for folders. This is both a cross-process synchronization primitive and thread-safe.
+ * Uses both file-based locking for process synchronization and mutex-based locking for thread synchronization.
  */
 class FolderLock : public FSLock {
    public:
