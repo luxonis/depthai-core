@@ -108,6 +108,36 @@ TEST_CASE("Test setting the center camera to a different FPS compared to left an
         }
     }
 }
+
+TEST_CASE("Multiple outputs") {
+    dai::Pipeline p;
+    auto camera = p.create<dai::node::Camera>()->build();
+    auto* camOut1 = camera->requestOutput({500, 300}, dai::ImgFrame::Type::NV12);
+    auto* camOut2 = camera->requestOutput({700, 500}, dai::ImgFrame::Type::RGB888i);
+    auto* camOut3 = camera->requestOutput({900, 700}, dai::ImgFrame::Type::GRAY8);
+
+    auto camOut1Queue = camOut1->createOutputQueue();
+    auto camOut2Queue = camOut2->createOutputQueue();
+    auto camOut3Queue = camOut3->createOutputQueue();
+
+    p.start();
+    for(int i = 0; i < 5; i++) {
+        auto frame1 = camOut1Queue->get<dai::ImgFrame>();
+        REQUIRE(frame1->getWidth() == 500);
+        REQUIRE(frame1->getHeight() == 300);
+        REQUIRE(frame1->getType() == dai::ImgFrame::Type::NV12);
+
+        auto frame2 = camOut2Queue->get<dai::ImgFrame>();
+        REQUIRE(frame2->getWidth() == 700);
+        REQUIRE(frame2->getHeight() == 500);
+        REQUIRE(frame2->getType() == dai::ImgFrame::Type::RGB888i);
+
+        auto frame3 = camOut3Queue->get<dai::ImgFrame>();
+        REQUIRE(frame3->getWidth() == 900);
+        REQUIRE(frame3->getHeight() == 700);
+        REQUIRE(frame3->getType() == dai::ImgFrame::Type::GRAY8);
+    }
+}
 #endif
 
 TEST_CASE("Test how default FPS is generated for a specific output") {
