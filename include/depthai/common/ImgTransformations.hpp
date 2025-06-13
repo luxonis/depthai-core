@@ -1,6 +1,7 @@
 #pragma once
 
 #include "depthai/common/CameraModel.hpp"
+#include "depthai/common/Extrinsics.hpp"
 #include "depthai/common/Point2f.hpp"
 #include "depthai/common/RotatedRect.hpp"
 #include "depthai/utility/Serialization.hpp"
@@ -19,6 +20,7 @@ struct ImgTransformation {
     std::array<std::array<float, 3>, 3> transformationMatrixInv = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};  // Precomputed inverse matrix
     std::array<std::array<float, 3>, 3> sourceIntrinsicMatrix = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
     std::array<std::array<float, 3>, 3> sourceIntrinsicMatrixInv = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
+    Extrinsics extrinsics = {};
     CameraModel distortionModel = CameraModel::Perspective;
     std::vector<float> distortionCoefficients;
     size_t srcWidth = 0;
@@ -124,6 +126,11 @@ struct ImgTransformation {
      */
     std::vector<float> getDistortionCoefficients() const;
     /**
+     * Retrieve the extrinsics of the source sensor.
+     * @return Extrinsics
+     */
+    Extrinsics getExtrinsics() const;
+    /**
      * Retrieve the total intrinsic matrix calculated from intrinsic * transform.
      * @return total intrinsic matrix
      */
@@ -207,6 +214,7 @@ struct ImgTransformation {
     ImgTransformation& addSrcCrops(const std::vector<dai::RotatedRect>& crops);
     ImgTransformation& setSize(size_t width, size_t height);
     ImgTransformation& setSourceSize(size_t width, size_t height);
+    ImgTransformation& setExtrinsics(Extrinsics extrinsics);
     ImgTransformation& setIntrinsicMatrix(std::array<std::array<float, 3>, 3> intrinsicMatrix);
     ImgTransformation& setDistortionModel(CameraModel model);
     ImgTransformation& setDistortionCoefficients(std::vector<float> coefficients);
@@ -246,6 +254,7 @@ struct ImgTransformation {
     bool isValid() const;
 
     DEPTHAI_SERIALIZE(ImgTransformation,
+                      extrinsics,
                       transformationMatrix,
                       transformationMatrixInv,
                       sourceIntrinsicMatrix,
