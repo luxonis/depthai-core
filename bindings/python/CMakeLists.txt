@@ -37,7 +37,6 @@ set(DEFAULT_DOCSTRINGS_OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/generated/depthai_pyth
 # option(DEPTHAI_PYTHON_USE_FIND_PACKAGE "Use find_package for depthai-core" OFF)
 option(DEPTHAI_PYTHON_ENABLE_TESTS "Enable tests" OFF)
 option(DEPTHAI_PYTHON_ENABLE_EXAMPLES "Enable examples" OFF)
-option(DEPTHAI_PYTHON_BUILD_DOCS "Build documentation - see docs/requirements.txt for needed dependencies" OFF)
 option(DEPTHAI_PYTHON_BUILD_DOCSTRINGS "Generate docstrings from header files if module 'pybind11_mkdoc' available" ON)
 option(DEPTHAI_PYTHON_EMBEDDED_MODULE "Create an embeddable module" OFF)
 
@@ -71,8 +70,6 @@ set(SOURCE_LIST
 
     src/pipeline/node/NodeBindings.cpp
 
-    src/pipeline/node/XLinkInBindings.cpp
-    src/pipeline/node/XLinkOutBindings.cpp
     src/pipeline/node/ColorCameraBindings.cpp
     src/pipeline/node/CameraBindings.cpp
     src/pipeline/node/MonoCameraBindings.cpp
@@ -80,7 +77,6 @@ set(SOURCE_LIST
     src/pipeline/node/NeuralNetworkBindings.cpp
     src/pipeline/node/VideoEncoderBindings.cpp
     src/pipeline/node/ImageManipBindings.cpp
-    src/pipeline/node/ImageManipV2Bindings.cpp
     src/pipeline/node/SPIOutBindings.cpp
     src/pipeline/node/SPIInBindings.cpp
     src/pipeline/node/DetectionNetworkBindings.cpp
@@ -120,7 +116,6 @@ set(SOURCE_LIST
     src/pipeline/datatype/ThermalConfigBindings.cpp
     src/pipeline/datatype/ToFConfigBindings.cpp
     src/pipeline/datatype/ImageManipConfigBindings.cpp
-    src/pipeline/datatype/ImageManipConfigV2Bindings.cpp
     src/pipeline/datatype/ImgDetectionsBindings.cpp
     src/pipeline/datatype/ImgFrameBindings.cpp
     src/pipeline/datatype/EncodedFrameBindings.cpp
@@ -137,6 +132,7 @@ set(SOURCE_LIST
     src/pipeline/datatype/TrackletsBindings.cpp
     src/pipeline/datatype/BenchmarkReportBindings.cpp
     src/pipeline/datatype/PointCloudConfigBindings.cpp
+    src/pipeline/datatype/ObjectTrackerConfigBindings.cpp
     src/pipeline/datatype/PointCloudDataBindings.cpp
     src/pipeline/datatype/TransformDataBindings.cpp
     src/pipeline/datatype/ImageAlignConfigBindings.cpp
@@ -404,11 +400,4 @@ endif()
 ########################
 if (DEPTHAI_PYTHON_ENABLE_EXAMPLES)
     add_subdirectory(../../examples/python ${CMAKE_BINARY_DIR}/examples/python)
-endif()
-
-########################
-# Documentation
-########################
-if(DEPTHAI_PYTHON_BUILD_DOCS)
-    add_subdirectory(docs)
 endif()

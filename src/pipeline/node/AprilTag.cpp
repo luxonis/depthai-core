@@ -33,10 +33,11 @@ namespace dai {
 namespace node {
 
 AprilTag::AprilTag(std::unique_ptr<Properties> props)
-    : DeviceNodeCRTP<DeviceNode, AprilTag, AprilTagProperties>(std::move(props)), initialConfig(properties.initialConfig) {}
+    : DeviceNodeCRTP<DeviceNode, AprilTag, AprilTagProperties>(std::move(props)),
+      initialConfig(std::make_shared<decltype(properties.initialConfig)>(properties.initialConfig)) {}
 
 AprilTag::Properties& AprilTag::getProperties() {
-    properties.initialConfig = initialConfig;
+    properties.initialConfig = *initialConfig;
     return properties;
 }
 

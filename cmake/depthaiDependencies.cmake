@@ -84,15 +84,15 @@ if(DEPTHAI_XTENSOR_SUPPORT)
     if(NOT DEPTHAI_XTENSOR_EXTERNAL)
         FetchContent_Declare(
             xtl
-            GIT_REPOSITORY https://github.com/xtensor-stack/xtl.git
-            GIT_TAG        0.7.6
+            GIT_REPOSITORY https://github.com/luxonis/xtl.git
+            GIT_TAG        2da8e13ef3d7d9d6ccae3fd68f07892160e8b6c6
             GIT_SHALLOW    TRUE
         )
 
         FetchContent_Declare(
             xtensor
-            GIT_REPOSITORY https://github.com/xtensor-stack/xtensor.git
-            GIT_TAG        0.25.0
+            GIT_REPOSITORY https://github.com/luxonis/xtensor.git
+            GIT_TAG        d070cfcba9418ec45e5399708100eee1181a9573
             GIT_SHALLOW    TRUE
         )
         FetchContent_MakeAvailable(xtl xtensor)
@@ -117,7 +117,7 @@ if(NOT DEPTHAI_JSON_EXTERNAL)
     FetchContent_Declare(
         nlohmann_json
         GIT_REPOSITORY https://github.com/nlohmann/json.git
-        GIT_TAG        v3.11.3
+        GIT_TAG        v3.12.0
     )
     # Json is a public dependancy, so it has to be installed
     set(JSON_Install ON CACHE BOOL "Install nlohmann_json" FORCE)

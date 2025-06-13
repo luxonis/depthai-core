@@ -169,9 +169,7 @@ class EventsManager {
     float publishInterval;
     bool logResponse;
     bool verifySsl;
-    bool connected;
     std::string cacheDir;
-    bool uploadCachedOnStart;
     bool cacheIfCannotSend;
     std::atomic<bool> stopEventBuffer;
     std::condition_variable eventBufferCondition;

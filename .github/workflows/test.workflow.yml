@@ -4,12 +4,13 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - v3_develop
+      - develop
+      - main
     tags:
       - 'v*'
   pull_request:
     branches:
-      - v3_develop
+      - develop
 
 # Only allow latest run on same branch to be tested
 concurrency:
@@ -45,7 +46,7 @@ jobs:
     - name: Configure, Build and Test
       run: |
         export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc2-${{ matrix.flavor }}"
-        exec hil --capabilities depthai-core-hil --platforms rvc2 --reservation-name $RESERVATION_NAME --wait --sync-workspace  --commands 'cd /tmp/depthai-core|| exit' 'scripts/hil/run_hil_tests.sh ${{ matrix.flavor }} --rvc2'
+        exec hil --capabilities depthai-core-hil --platforms 'rvc2 and rvc2' --reservation-name $RESERVATION_NAME --wait --sync-workspace  --commands 'cd /tmp/depthai-core|| exit' 'scripts/hil/run_hil_tests.sh ${{ matrix.flavor }} --rvc2'
 
   # Testing
   linux_rvc4_test:
@@ -55,7 +56,7 @@ jobs:
         matrix:
           arch: ['x64']
           flavor: ['vanilla']
-          rvc4os: ['r851.1.2', 'debug-1.4.1', 'debug-1.6.0']
+          rvc4os: ['r851.1.2', 'debug-1.6.0', 'debug-1.11.0']
         fail-fast: false
       runs-on: ['self-hosted', 'testbed-runner']
 

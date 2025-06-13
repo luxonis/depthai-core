@@ -14,6 +14,20 @@ class ThreadedHostNode : public ThreadedNode {
     }
 };
 
+/**
+ * @brief Custom node for host node. When creating a custom host node, inherit from this class!
+ * @tparam T Node type (same as the class you are creating)
+ *
+ * Example:
+ * @code{.cpp}
+ * class MyNode : public CustomThreadedNode<MyNode> {
+ *    public:
+ *        void run() override {
+ *            // ...
+ *        }
+ * };
+ * @endcode
+ */
 template <typename T>
 using CustomThreadedNode = NodeCRTP<ThreadedHostNode, T>;
 }  // namespace node

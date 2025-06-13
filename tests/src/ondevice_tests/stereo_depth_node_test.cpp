@@ -14,7 +14,7 @@ void testStereoDepthPreset(dai::node::StereoDepth::PresetMode preset, dai::Proce
     auto stereo = p.create<dai::node::StereoDepth>()->build(*left->requestOutput(std::make_pair(640, 400)), *right->requestOutput(std::make_pair(640, 400)));
 
     stereo->setDefaultProfilePreset(preset);
-    stereo->initialConfig.setFiltersComputeBackend(backend);
+    stereo->initialConfig->setFiltersComputeBackend(backend);
 
     auto disparityQueue = stereo->disparity.createOutputQueue();
     auto depthQueue = stereo->depth.createOutputQueue();
@@ -31,16 +31,12 @@ void testStereoDepthPreset(dai::node::StereoDepth::PresetMode preset, dai::Proce
     }
 }
 
-TEST_CASE("Test StereoDepth node HIGH_ACCURACY preset") {
-    DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
-    testStereoDepthPreset(dai::node::StereoDepth::PresetMode::HIGH_ACCURACY);
-    DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING
+TEST_CASE("Test StereoDepth node FAST_ACCURACY preset") {
+    testStereoDepthPreset(dai::node::StereoDepth::PresetMode::FAST_ACCURACY);
 }
 
-TEST_CASE("Test StereoDepth node HIGH_DENSITY preset") {
-    DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
-    testStereoDepthPreset(dai::node::StereoDepth::PresetMode::HIGH_DENSITY);
-    DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING
+TEST_CASE("Test StereoDepth node FAST_DENSITY preset") {
+    testStereoDepthPreset(dai::node::StereoDepth::PresetMode::FAST_DENSITY);
 }
 
 TEST_CASE("Test StereoDepth node DEFAULT preset") {

@@ -31,7 +31,7 @@ class EdgeDetector : public DeviceNodeCRTP<DeviceNode, EdgeDetector, EdgeDetecto
     /**
      * Initial config to use for edge detection.
      */
-    EdgeDetectorConfig initialConfig;
+    std::shared_ptr<EdgeDetectorConfig> initialConfig = std::make_shared<EdgeDetectorConfig>();
 
     /**
      * Input EdgeDetectorConfig message with ability to modify parameters in runtime.
@@ -54,19 +54,6 @@ class EdgeDetector : public DeviceNodeCRTP<DeviceNode, EdgeDetector, EdgeDetecto
      * Passthrough message on which the calculation was performed.
      */
     Output passthroughInputImage{*this, {"passthroughInputImage", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
-
-    // Functions to set properties
-    /**
-     * Specify whether or not wait until configuration message arrives to inputConfig Input.
-     * @param wait True to wait for configuration message, false otherwise.
-     */
-    [[deprecated("Use 'inputConfig.setWaitForMessage()' instead")]] void setWaitForConfigInput(bool wait);
-
-    /**
-     * @see setWaitForConfigInput
-     * @returns True if wait for inputConfig message, false otherwise
-     */
-    [[deprecated("Use 'inputConfig.setWaitForMessage()' instead")]] bool getWaitForConfigInput() const;
 
     /**
      * Specify number of frames in pool.

@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 
-#include "../../../src/utility/Environment.hpp"
+#include <utility/Environment.hpp>
 
 using namespace dai::utility;
 

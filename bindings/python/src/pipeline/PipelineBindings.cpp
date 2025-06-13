@@ -22,7 +22,6 @@
 #include "depthai/pipeline/node/FeatureTracker.hpp"
 #include "depthai/pipeline/node/IMU.hpp"
 #include "depthai/pipeline/node/ImageManip.hpp"
-#include "depthai/pipeline/node/ImageManipV2.hpp"
 #include "depthai/pipeline/node/MonoCamera.hpp"
 #include "depthai/pipeline/node/NeuralNetwork.hpp"
 #include "depthai/pipeline/node/ObjectTracker.hpp"
@@ -36,8 +35,8 @@
 #include "depthai/pipeline/node/UVC.hpp"
 #include "depthai/pipeline/node/VideoEncoder.hpp"
 #include "depthai/pipeline/node/Warp.hpp"
-#include "depthai/pipeline/node/XLinkIn.hpp"
-#include "depthai/pipeline/node/XLinkOut.hpp"
+#include "depthai/pipeline/node/internal/XLinkIn.hpp"
+#include "depthai/pipeline/node/internal/XLinkOut.hpp"
 
 // depthai/
 #include <memory>
@@ -142,9 +141,6 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
              static_cast<AssetManager& (Pipeline::*)()>(&Pipeline::getAssetManager),
              py::return_value_policy::reference_internal,
              DOC(dai, Pipeline, getAssetManager))
-        .def("setOpenVINOVersion", &Pipeline::setOpenVINOVersion, py::arg("version"), DOC(dai, Pipeline, setOpenVINOVersion))
-        .def("getOpenVINOVersion", &Pipeline::getOpenVINOVersion, DOC(dai, Pipeline, getOpenVINOVersion))
-        .def("getRequiredOpenVINOVersion", &Pipeline::getRequiredOpenVINOVersion, DOC(dai, Pipeline, getRequiredOpenVINOVersion))
         .def("setCameraTuningBlobPath", &Pipeline::setCameraTuningBlobPath, py::arg("path"), DOC(dai, Pipeline, setCameraTuningBlobPath))
         .def("setXLinkChunkSize", &Pipeline::setXLinkChunkSize, py::arg("sizeBytes"), DOC(dai, Pipeline, setXLinkChunkSize))
         .def("setSippBufferSize", &Pipeline::setSippBufferSize, py::arg("sizeBytes"), DOC(dai, Pipeline, setSippBufferSize))
@@ -181,14 +177,12 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
                 // Check if the node is a ColorCamera or a MonoCamera node and issue a deprecation warning
                 py::object colorCameraClass = py::module::import("depthai").attr("node").attr("ColorCamera");
                 py::object monoCameraClass = py::module::import("depthai").attr("node").attr("MonoCamera");
-                if(class_.is(colorCameraClass)){
-                    PyErr_WarnEx(PyExc_DeprecationWarning,
-                                 "ColorCamera node is deprecated. Use Camera node instead.", 1);
+                if(class_.is(colorCameraClass)) {
+                    PyErr_WarnEx(PyExc_DeprecationWarning, "ColorCamera node is deprecated. Use Camera node instead.", 1);
                 }
 
-                if(class_.is(monoCameraClass)){
-                    PyErr_WarnEx(PyExc_DeprecationWarning,
-                                 "MonoCamera node is deprecated. Use Camera node instead.", 1);
+                if(class_.is(monoCameraClass)) {
+                    PyErr_WarnEx(PyExc_DeprecationWarning, "MonoCamera node is deprecated. Use Camera node instead.", 1);
                 }
                 if(isSubclass && !isFromBindings) {
                     setImplicitPipeline(&p);

@@ -44,7 +44,6 @@ inline size_t roundUp(size_t numToRound, size_t multiple) {
 
 Node::Output* setupHolistiRecordCamera(
     std::shared_ptr<dai::node::Camera> cam, Pipeline& pipeline, bool legacy, size_t& camWidth, size_t& camHeight, RecordConfig& recordConfig) {
-    auto fps = cam->getMaxRequestedFps();
     size_t requestWidth = cam->getMaxRequestedWidth();
     size_t requestHeight = cam->getMaxRequestedHeight();
     size_t width = cam->getMaxWidth();
@@ -88,7 +87,7 @@ Node::Output* setupHolistiRecordCamera(
     if(width * height > 9437184U) {
         recordConfig.videoEncoding.enabled = true;
     }
-    return cam->requestOutput({width, height}, dai::ImgFrame::Type::NV12, dai::ImgResizeMode::CROP, fps);
+    return cam->requestOutput({width, height}, dai::ImgFrame::Type::NV12, dai::ImgResizeMode::CROP);
 }
 
 bool setupHolisticRecord(
@@ -106,7 +105,7 @@ bool setupHolisticRecord(
             std::string nodeName = (nodeParams.video ? "v_" : "b_") + nodeParams.name;
             std::string filePath = platform::joinPaths(recordPath, (deviceId + "_").append(nodeName));
             outFilenames[nodeName] = filePath;
-DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
+            DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
             if(std::dynamic_pointer_cast<node::Camera>(node) != nullptr || std::dynamic_pointer_cast<node::ColorCamera>(node) != nullptr
                || std::dynamic_pointer_cast<node::MonoCamera>(node) != nullptr) {
                 Node::Output* output;
@@ -132,9 +131,9 @@ DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
                             auto cam = std::dynamic_pointer_cast<dai::node::ColorCamera>(node);
                             maxOutputFrameSize = std::get<0>(cam->getIspSize()) * std::get<1>(cam->getIspSize()) * 3;
                         }
-DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING
+                        DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING
                         auto imageManip = pipeline.create<dai::node::ImageManip>();
-                        imageManip->initialConfig.setFrameType(ImgFrame::Type::NV12);
+                        imageManip->initialConfig->setFrameType(ImgFrame::Type::NV12);
                         imageManip->setMaxOutputFrameSize(maxOutputFrameSize);
 
                         output->link(imageManip->inputImage);
@@ -288,7 +287,7 @@ bool setupHolisticReplay(Pipeline& pipeline,
             }
             NodeRecordParams nodeParams = nodeS->getNodeRecordParams();
             std::string nodeName = nodeParams.name;
-DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
+            DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
             if(std::dynamic_pointer_cast<node::Camera>(node) != nullptr || std::dynamic_pointer_cast<node::ColorCamera>(node) != nullptr
                || std::dynamic_pointer_cast<node::MonoCamera>(node) != nullptr) {
                 auto replay = pipeline.create<dai::node::ReplayVideo>();
@@ -313,7 +312,7 @@ DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
                         cam->setMockIspSize(width, height);
                     }
                 }
-DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING
+                DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING
                 replay->out.link(nodeS->getReplayInput());
             } else {
                 auto replay = pipeline.create<dai::node::ReplayMetadataOnly>();
