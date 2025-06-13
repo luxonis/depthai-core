@@ -1,5 +1,6 @@
 #include "depthai/nn_archive/NNArchive.hpp"
 
+#include <chrono>
 #include <cstdint>
 #include <optional>
 #include <stdexcept>
@@ -10,8 +11,14 @@
 #include "common/ModelType.hpp"
 #include "utility/ArchiveUtil.hpp"
 #include "utility/ErrorMacros.hpp"
+#include "utility/Platform.hpp"
 
 namespace dai {
+
+NNArchiveOptions::NNArchiveOptions() {
+    // Default options
+    extractFolder(platform::getTempPath());
+}
 
 NNArchive::NNArchive(const std::string& archivePath, NNArchiveOptions options) : archiveOptions(options) {
     // Make sure archive exits
@@ -28,8 +35,9 @@ NNArchive::NNArchive(const std::string& archivePath, NNArchiveOptions options) :
     modelType = model::readModelType(modelPathInArchive);
 
     // Unpack model
-    unpackArchiveInDirectory(archivePath, (std::filesystem::path(archiveOptions.extractFolder()) / std::filesystem::path(archivePath).filename()).string());
-    unpackedModelPath = (std::filesystem::path(archiveOptions.extractFolder()) / std::filesystem::path(archivePath).filename() / modelPathInArchive).string();
+    std::filesystem::path unpackedArchivePath = std::filesystem::path(archiveOptions.extractFolder()) / std::filesystem::path(archivePath).filename();
+    unpackArchiveInDirectory(archivePath, unpackedArchivePath.string());
+    unpackedModelPath = (unpackedArchivePath / modelPathInArchive).string();
 
     switch(modelType) {
         case model::ModelType::BLOB:
