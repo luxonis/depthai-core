@@ -6,12 +6,18 @@ vcpkg_from_github(
     SHA512 b0fd00fe623a6fe527046002d94201cfe2dffe589bd77aa88473f25960e3ce7206a90290ee4fe66fa2e91766c5f6585379ba2b008e9fc7b33da43763127a4ef2
     HEAD_REF main
 )
+
+if(VCPKG_TARGET_IS_WINDOWS)
+  set(CMAKE_CONFIGURE_OPTIONS_DEBUG "-DCMAKE_DEBUG_POSTFIX=d")
+endif()
+
 vcpkg_cmake_configure(
     SOURCE_PATH "${SOURCE_PATH}"
     OPTIONS
         WITH_UDEV=OFF
         # Build shared libs by default to not cause licensing issues
         BUILD_SHARED_LIBS=ON
+        ${CMAKE_CONFIGURE_OPTIONS_DEBUG}
 )
 
 vcpkg_cmake_install()
