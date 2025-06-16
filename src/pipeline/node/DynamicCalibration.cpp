@@ -125,8 +125,6 @@ std::shared_ptr<dcl::CameraCalibrationHandle> DynamicCalibration::createDCLCamer
 
     std::unique_ptr<dcl::CameraSensorHandle> handler;
     return std::make_shared<dcl::CameraCalibrationHandle>(rvec, tvec, cameraMatrixArr, distortion);
-    // handler = std::make_unique<dcl::CameraSensorHandle>(calibrationHandle, resolution);
-    // return handler;
 }
 
 void DynamicCalibration::startCalibQualityCheck() {
@@ -171,9 +169,11 @@ void DynamicCalibration::setCalibration(std::shared_ptr<Device> device,
 
     dcl::scalar_t cameraMatrix[9];
     daiCalibration->getCameraMatrix(cameraMatrix);
-    std::vector<std::vector<float>> mat = {{cameraMatrix[0], cameraMatrix[1], cameraMatrix[2]},
-                                           {cameraMatrix[3], cameraMatrix[4], cameraMatrix[5]},
-                                           {cameraMatrix[6], cameraMatrix[7], cameraMatrix[8]}};
+    std::vector<std::vector<float>> mat = {
+        {static_cast<float>(cameraMatrix[0]), static_cast<float>(cameraMatrix[1]), static_cast<float>(cameraMatrix[2])},  //
+        {static_cast<float>(cameraMatrix[3]), static_cast<float>(cameraMatrix[4]), static_cast<float>(cameraMatrix[5])},  //
+        {static_cast<float>(cameraMatrix[6]), static_cast<float>(cameraMatrix[7]), static_cast<float>(cameraMatrix[8])}   //
+    };
     calibHandler.setCameraIntrinsics(socketDest, mat, width, height);
 
     // tvec
@@ -286,26 +286,27 @@ void DynamicCalibration::run() {
                 dcl::Result<double> result = dynCalibImpl->checkCalibration(dcDevice, socketA, socketB);
 
                 results.quality.value = result.value;
-                results.quality.valid = result.errorCode == 0 ? true : false;
-                results.quality.info = result.errorCode == 0 ? "Calib Quality check complete."  // TODO, REPLACE WITH ACTUAL REPORTS ON ERRORS, WHAT CAUSED IT
-                                                             : "Calib Quality check failed with error code " + std::to_string(result.errorCode);
-
-                std::cout << "[DynamicCalibration] Quality result = " << result.value << "\n";
+                results.quality.valid = result.passed();
+                if(result.passed()) {
+                    results.quality.info = "Calib Quality check complete.";
+                    std::cout << "[DynamicCalibration] Quality result = " << result.value << "\n";
+                } else {
+                    results.quality.info = "Calib Quality check failed with error code: " + dcl::getStringFromErrCode(result.errorCode);
+                    std::cout << "[DynamicCalibration] Not enought data \n";
+                }
                 calibrationSM.finish();
                 break;
             }
 
             case CalibrationState::Recalibrating: {
                 std::cout << "[DynamicCalibration] Running full recalibration...\n";
-                dcl::Result<std::pair<std::shared_ptr<dcl::CameraCalibration>, std::shared_ptr<dcl::CameraCalibration>>> resultCalib =
-                    dynCalibImpl->recalibrateDevice(dcDevice, socketA, socketB);  // TODO SWITCH FROM CAMERACALIBRATION TO CALIBRATIONHANDLE
+                auto resultCalib = dynCalibImpl->recalibrateDevice(dcDevice, socketA, socketB);
                 auto calibrationHandle = std::make_shared<dcl::CameraCalibrationHandle>(resultCalib.value.second);
                 int width = leftFrame->getWidth();
                 int height = rightFrame->getHeight();
 
                 CameraBoardSocket leftSocket = static_cast<CameraBoardSocket>(leftFrame->instanceNum);
                 CameraBoardSocket rightSocket = static_cast<CameraBoardSocket>(rightFrame->instanceNum);
-                // std::cout << "CBS left = " << leftSocket << " right = " << rightSocket << "\n";
 
                 if(resultCalib.passed()) {
                     results.calibration.info = "Recalibration successful";
