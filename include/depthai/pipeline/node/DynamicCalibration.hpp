@@ -1,39 +1,34 @@
 #pragma once
 
+#include <CalibrationHandle.hpp>
+#include <DynamicCalibration.hpp>
+#include <SensorHandle.hpp>
 #include <depthai/pipeline/DeviceNode.hpp>
 #include <depthai/properties/DynamicCalibrationProperties.hpp>
-#include <DynamicCalibration.hpp>
-#include <CalibrationHandle.hpp>
-#include <SensorHandle.hpp>
 
 namespace dai {
 namespace node {
 
-enum class CalibrationState {
-    Idle,
-    InitializingPipeline,
-    CollectingFeatures,
-    ProcessingQuality,
-    Recalibrating
-};
+enum class CalibrationState { Idle, InitializingPipeline, CollectingFeatures, ProcessingQuality, Recalibrating };
 
-enum class CalibrationMode {
-    None,
-    QualityCheck,
-    Recalibration
-};
+enum class CalibrationMode { None, QualityCheck, Recalibration };
 
 inline const char* toString(CalibrationState state) {
     switch(state) {
-        case CalibrationState::Idle: return "Idle";
-        case CalibrationState::InitializingPipeline: return "InitializingPipeline";
-        case CalibrationState::CollectingFeatures: return "CollectingFeatures";
-        case CalibrationState::ProcessingQuality: return "ProcessingQuality";
-        case CalibrationState::Recalibrating: return "Recalibrating";
-        default: return "Unknown";
+        case CalibrationState::Idle:
+            return "Idle";
+        case CalibrationState::InitializingPipeline:
+            return "InitializingPipeline";
+        case CalibrationState::CollectingFeatures:
+            return "CollectingFeatures";
+        case CalibrationState::ProcessingQuality:
+            return "ProcessingQuality";
+        case CalibrationState::Recalibrating:
+            return "Recalibrating";
+        default:
+            return "Unknown";
     }
 }
-
 
 struct CalibrationResult {
     std::optional<CalibrationHandler> calibration;
@@ -99,7 +94,7 @@ struct CalibrationStateMachine {
     }
 
     void maybeAdvanceAfterCollection() {  // TODO, REPLACE WITH ANYTHING MEANINGFUL FROM THE DCL ITSELF
-        if(mode == CalibrationMode::QualityCheck && collectedFrames >= 3) { 
+        if(mode == CalibrationMode::QualityCheck && collectedFrames >= 3) {
             state = CalibrationState::ProcessingQuality;
         } else if(mode == CalibrationMode::Recalibration && collectedFrames >= 10) {
             state = CalibrationState::Recalibrating;
@@ -155,31 +150,41 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
      * Get the calibration quality (epipolar error)
      * @return Epipolar error in pixels
      */
+    void setCalibration(std::shared_ptr<Device> device,
+                        const std::shared_ptr<const dcl::CameraCalibrationHandle> daiCalibration,
+                        const CameraBoardSocket socketSrc,
+                        const CameraBoardSocket socketDest,
+                        const int width,
+                        const int height);
+    /**
+     * Set calibration to the dai.Device
+     */
 
-    std::unique_ptr<dcl::CameraSensorHandle> createDCLCameraCalibration(const std::vector<std::vector<float>> cameraMatrix, 
-        const std::vector<float> distortionCoefficients, 
-        const std::vector<std::vector<float>> rotationMatrix,   
-        const std::vector<float> translationVector,
-        int widthDefault, 
-        int heightDefault);
+    std::shared_ptr<dcl::CameraCalibrationHandle> createDCLCameraCalibration(const std::vector<std::vector<float>> cameraMatrix,
+                                                                             const std::vector<float> distortionCoefficients,
+                                                                             const std::vector<std::vector<float>> rotationMatrix,
+                                                                             const std::vector<float> translationVector);
 
     void startCalibQualityCheck();
     void startRecalibration();
     QualityResult getCalibQuality() const;
     CalibrationResult getNewCalibration() const;
 
-    void pipelineSetup(std::shared_ptr<Device> device, CameraBoardSocket leftSocket, CameraBoardSocket rightSocket, int widthDefault = 1280, int heightDefault = 800);
+    void pipelineSetup(
+        std::shared_ptr<Device> device, CameraBoardSocket leftSocket, CameraBoardSocket rightSocket, int widthDefault = 1280, int heightDefault = 800);
     void run() override;
 
-    private:
-        std::vector<float> rotationMatrixToVector(const std::vector<std::vector<float>>& R);
-        std::unique_ptr<dcl::DynamicCalibration> dynCalibImpl;
-        std::shared_ptr<dcl::Device> dcDevice;
-        dcl::mxid_t deviceName;
-        dcl::socket_t socketA;
-        dcl::socket_t socketB;
+   private:
+    std::vector<float> rotationMatrixToVector(const std::vector<std::vector<float>>& R);
+    std::unique_ptr<dcl::DynamicCalibration> dynCalibImpl;
+    std::shared_ptr<dcl::Device> dcDevice;
+    dcl::mxid_t deviceName;
+    std::shared_ptr<dcl::CameraSensorHandle> sensorA;
+    std::shared_ptr<dcl::CameraSensorHandle> sensorB;
+    dcl::socket_t socketA;
+    dcl::socket_t socketB;
 
-        CalibrationStateMachine calibrationSM;
+    CalibrationStateMachine calibrationSM;
 };
 
 }  // namespace node
