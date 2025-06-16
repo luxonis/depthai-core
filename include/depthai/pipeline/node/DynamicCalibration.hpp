@@ -176,7 +176,7 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     void setContinuousMode();
 
     void pipelineSetup(
-        std::shared_ptr<Device> device, CameraBoardSocket leftSocket, CameraBoardSocket rightSocket, int widthDefault = 1280, int heightDefault = 800);
+        std::shared_ptr<Device> device, CameraBoardSocket boardSocketA, CameraBoardSocket boardSocketB, int widthDefault = 1280, int heightDefault = 800);
     void run() override;
 
    private:

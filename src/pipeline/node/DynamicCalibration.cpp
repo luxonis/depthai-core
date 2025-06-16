@@ -201,7 +201,7 @@ void DynamicCalibration::setCalibration(std::shared_ptr<Device> device,
 }
 
 void DynamicCalibration::pipelineSetup(
-    std::shared_ptr<Device> device, CameraBoardSocket socketA, CameraBoardSocket socketB, int widthDefault, int heightDefault) {
+    std::shared_ptr<Device> device, CameraBoardSocket boardSocketA, CameraBoardSocket boardSocketB, int widthDefault, int heightDefault) {
     CalibrationHandler currentCalibration = device->readCalibration();
     deviceName = device->getDeviceId();
 
@@ -211,22 +211,36 @@ void DynamicCalibration::pipelineSetup(
     const std::vector<float> translationVectorA = {0.0f, 0.0f, 0.0f};
     const std::vector<std::vector<float>> rotationMatrixA = {{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}};
 
-    auto translationVectorB = currentCalibration.getCameraTranslationVector(socketA, socketB);
+    auto translationVectorB = currentCalibration.getCameraTranslationVector(boardSocketA, boardSocketB);
 
-    auto rotationMatrixB = currentCalibration.getCameraRotationMatrix(socketA, socketB);
+    auto rotationMatrixB = currentCalibration.getCameraRotationMatrix(boardSocketA, boardSocketB);
 
-    auto leftCameraMatrix = currentCalibration.getCameraIntrinsics(socketA, widthDefault, heightDefault);
-    auto rightCameraMatrix = currentCalibration.getCameraIntrinsics(socketB, widthDefault, heightDefault);
+    auto leftCameraMatrix = currentCalibration.getCameraIntrinsics(boardSocketA, widthDefault, heightDefault);
+    auto rightCameraMatrix = currentCalibration.getCameraIntrinsics(boardSocketB, widthDefault, heightDefault);
 
-    auto leftDistortionCoefficients = currentCalibration.getDistortionCoefficients(socketA);
-    auto rightDistortionCoefficients = currentCalibration.getDistortionCoefficients(socketB);
+    auto leftDistortionCoefficients = currentCalibration.getDistortionCoefficients(boardSocketA);
+    auto rightDistortionCoefficients = currentCalibration.getDistortionCoefficients(boardSocketB);
 
-    std::shared_ptr<dcl::CameraSensorHandle> handleA = createDCLCameraCalibration(leftCameraMatrix, leftDistortionCoefficients, rotationMatrixA, translationVectorA, widthDefault, heightDefault);
-    std::shared_ptr<dcl::CameraSensorHandle> handleB = createDCLCameraCalibration(rightCameraMatrix, rightDistortionCoefficients, rotationMatrixB, translationVectorB, widthDefault, heightDefault);
+    std::shared_ptr<dcl::CameraCalibrationHandle> calibA =
+        createDCLCameraCalibration(leftCameraMatrix, leftDistortionCoefficients, rotationMatrixA, translationVectorA);
+    std::shared_ptr<dcl::CameraCalibrationHandle> calibB =
+        createDCLCameraCalibration(rightCameraMatrix, rightDistortionCoefficients, rotationMatrixB, translationVectorB);
 
-    dynCalibImpl->addSensor(deviceName, handleA, socketA);
-    dynCalibImpl->addSensor(deviceName, handleB, socketB);
+    const dcl::resolution_t resolution = {
+        .width = static_cast<unsigned int>(widthDefault),   //
+        .height = static_cast<unsigned int>(heightDefault)  //
+    };
+
+    sensorA = std::make_shared<dcl::CameraSensorHandle>(calibA, resolution);
+    sensorB = std::make_shared<dcl::CameraSensorHandle>(calibB, resolution);
+
+    socketA = static_cast<dcl::socket_t>(boardSocketA);
+    socketB = static_cast<dcl::socket_t>(boardSocketB);
+
+    dynCalibImpl->addSensor(deviceName, sensorA, socketA);
+    dynCalibImpl->addSensor(deviceName, sensorB, socketB);
 }
+
 
 void DynamicCalibration::run() {
     if(!device) {
@@ -307,19 +321,21 @@ void DynamicCalibration::run() {
                 dcl::Result<double> result = dynCalibImpl->checkCalibration(dcDevice, socketA, socketB);
 
                 results.quality.value = result.value;
-                results.quality.valid = result.errorCode == 0 ? true : false;
-                results.quality.info = result.errorCode == 0 ? "Calib Quality check complete."  // TODO, REPLACE WITH ACTUAL REPORTS ON ERRORS, WHAT CAUSED IT
-                                                             : "Calib Quality check failed with error code " + std::to_string(result.errorCode);
-
-                std::cout << "[DynamicCalibration] Quality result = " << result.value << "\n";
+                results.quality.valid = result.passed();
+                if(result.passed()) {
+                    results.quality.info = "Calib Quality check complete.";
+                    std::cout << "[DynamicCalibration] Quality result = " << result.value << "\n";
+                } else {
+                    results.quality.info = "Calib Quality check failed with error code: " + dcl::getStringFromErrCode(result.errorCode);
+                    std::cout << "[DynamicCalibration] Not enought data \n";
+                }
                 calibrationSM.finish();
                 break;
             }
 
             case CalibrationState::Recalibrating: {
                 std::cout << "[DynamicCalibration] Running full recalibration...\n";
-                dcl::Result<std::pair<std::shared_ptr<dcl::CameraCalibration>, std::shared_ptr<dcl::CameraCalibration>>> resultCalib =
-                    dynCalibImpl->recalibrateDevice(dcDevice, socketA, socketB);  // TODO SWITCH FROM CAMERACALIBRATION TO CALIBRATIONHANDLE
+                auto resultCalib = dynCalibImpl->recalibrateDevice(dcDevice, socketA, socketB);
                 auto calibrationHandle = std::make_shared<dcl::CameraCalibrationHandle>(resultCalib.value.second);
                 int width = leftFrame->getWidth();
                 int height = rightFrame->getHeight();
@@ -332,6 +348,8 @@ void DynamicCalibration::run() {
                     setCalibration(device, calibrationHandle, leftSocket, rightSocket, width, height);
                     sensorB->setCalibration(resultCalib.value.second);
 
+                } else {
+                    results.calibration.info = dcl::getStringFromErrCode(resultCalib.errorCode);
                 }
 
                 std::cout << "[DynamicCalibration] Recalibration complete.\n";
