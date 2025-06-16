@@ -2,6 +2,8 @@
 #include <catch2/catch_test_macros.hpp>
 #include <chrono>
 
+#include <fmt/format.h>
+
 #include "depthai/capabilities/ImgFrameCapability.hpp"
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/depthai.hpp"
