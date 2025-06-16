@@ -406,7 +406,7 @@ fs::path ZooManager::loadModelFromCache() const {
     if(folderFiles.empty()) throw std::runtime_error(fmt::format("No files found in cache folder {}", cacheFolder));
 
     // Return absolute path to the first file found
-    return fs::path(std::filesystem::absolute(folderFiles[0]));
+    return std::filesystem::absolute(folderFiles[0]);
 }
 
 class CprCallback {
