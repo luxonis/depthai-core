@@ -23,7 +23,11 @@ using FolderLock = dai::platform::FolderLock;
 
 TEST_CASE("FileLock basic functionality", "[platform]") {
     auto tempFile = fs::path(dai::platform::getTempPath()) / "test_lock_file.txt";
-    std::ofstream(tempFile).close();  // create file
+    std::ofstream ofs(tempFile);
+    if(!ofs.is_open()) {
+        throw std::runtime_error("Could not create test file");
+    }
+    ofs.close();
 
     SECTION("Lock and unlock") {
         auto lock = FileLock::lock(tempFile.string());
@@ -67,7 +71,11 @@ TEST_CASE("FolderLock basic functionality", "[platform]") {
 
 TEST_CASE("Process-level locking with dummy", "[platform]") {
     auto tempFile = fs::path(dai::platform::getTempPath()) / "test_lock_file.txt";
-    std::ofstream(tempFile).close();
+    std::ofstream ofs(tempFile);
+    if(!ofs.is_open()) {
+        throw std::runtime_error("Could not create test file");
+    }
+    ofs.close();
 
     auto start = std::chrono::steady_clock::now();
 
@@ -92,7 +100,11 @@ TEST_CASE("Process-level locking with dummy", "[platform]") {
 
 TEST_CASE("Thread-level locking", "[platform]") {
     auto tempFile = fs::path(dai::platform::getTempPath()) / "test_thread_lock.txt";
-    std::ofstream(tempFile).close();  // create file
+    std::ofstream ofs(tempFile);
+    if(!ofs.is_open()) {
+        throw std::runtime_error("Could not create test file");
+    }
+    ofs.close();
 
     SECTION("Multiple threads with same lock") {
         auto start = std::chrono::steady_clock::now();
@@ -129,7 +141,11 @@ TEST_CASE("Thread-level locking", "[platform]") {
 
     SECTION("Multiple threads with different locks") {
         auto tempFile2 = fs::path(dai::platform::getTempPath()) / "test_thread_lock2.txt";
-        std::ofstream(tempFile2).close();  // create second file
+        std::ofstream ofs(tempFile2);
+        if(!ofs.is_open()) {
+            throw std::runtime_error("Could not create test file");
+        }
+        ofs.close();
 
         auto start = std::chrono::steady_clock::now();
 
