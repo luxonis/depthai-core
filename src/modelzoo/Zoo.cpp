@@ -764,7 +764,7 @@ fs::path getYamlFilePath(const fs::path& name, const fs::path& modelsPath) {
     }
 
     // We treat the name either as a relative path or an absolute path
-    return fs::path(name);
+    return name;
 }
 
 std::string SlugComponents::merge() const {
