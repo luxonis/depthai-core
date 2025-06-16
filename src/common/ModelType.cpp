@@ -1,6 +1,3 @@
-#include <fmt/format.h>
-#include <fmt/std.h>
-
 #include <depthai/common/ModelType.hpp>
 
 namespace dai {
@@ -13,7 +10,7 @@ ModelType readModelType(const std::filesystem::path& modelPath) {
     };
 
     // Safely turn path into a string
-    std::string path = fmt::format("{}", modelPath);
+    std::string path = modelPath.string();
 
     // == Blob ==
     if(endsWith(path, ".blob")) return ModelType::BLOB;

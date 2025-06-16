@@ -833,7 +833,7 @@ NNModelDescription NNModelDescription::fromYamlFile(const fs::path& modelName, c
     auto modelPrecisionType = utility::yamlGet<std::string>(yamlNode, "model_precision_type", "");
 
     // Get global metadata entry name
-    auto globalMetadataEntryName = fmt::format("{}", modelName);
+    auto globalMetadataEntryName = modelName.string();
 
     return {model, platform, optimizationLevel, compressionLevel, snpeVersion, modelPrecisionType, globalMetadataEntryName};
 }
