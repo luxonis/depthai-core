@@ -206,7 +206,7 @@ std::array<std::array<float, 3>, 3> ImgTransformation::getIntrinsicMatrix() cons
 std::array<std::array<float, 3>, 3> ImgTransformation::getIntrinsicMatrixInv() const {
     return matmul(sourceIntrinsicMatrixInv, transformationMatrixInv);
 }
-Extrinsics ImgTransformation::getExtrinsics() const{
+Extrinsics ImgTransformation::getExtrinsics()  const{
     return extrinsics;
 }
 float ImgTransformation::getDFov(bool source) const {

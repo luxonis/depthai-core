@@ -123,12 +123,13 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
              py::arg("height"),
              py::arg("sourceIntrinsicMatrix"),
              DOC(dai, ImgTransformation, ImgTransformation, 4))
-        .def(py::init<size_t, size_t, std::array<std::array<float, 3>, 3>, CameraModel, std::vector<float>>(),
+        .def(py::init<size_t, size_t, std::array<std::array<float, 3>, 3>, CameraModel, std::vector<float>, Extrinsics>(),
              py::arg("width"),
              py::arg("height"),
              py::arg("sourceIntrinsicMatrix"),
              py::arg("distortionModel"),
              py::arg("distortionCoefficients"),
+             py::arg("extrinsics"),
              DOC(dai, ImgTransformation, ImgTransformation, 5))
         .def("__repr__", &ImgTransformation::str)
         .def("transformPoint", &ImgTransformation::transformPoint, py::arg("point"), DOC(dai, ImgTransformation, transformPoint))

@@ -96,11 +96,27 @@ ImgTransformation deserializeImgTransformation(const proto::common::ImgTransform
     for(auto i = 0; i < imgTransformation.distortioncoefficients().values_size(); ++i)
         distortionCoefficients.push_back(imgTransformation.distortioncoefficients().values(i));
     ImgTransformation transformation;
+    Extrinsics extrinsics;
+    extrinsics.toCameraSocket = static_cast<dai::CameraBoardSocket>(imgTransformation.extrinsics().tocamerasocket());
+    extrinsics.rotationMatrix.resize(3, std::vector<float>(3));
+    for(auto i = 0U; i < 3; ++i) {
+        for(auto j = 0U; j < 3; ++j) {
+            extrinsics.rotationMatrix[i][j] = imgTransformation.extrinsics().rotationmatrix().arrays(i).values(j);
+        }
+    }
+    extrinsics.translation.x = imgTransformation.extrinsics().translation().x();
+    extrinsics.translation.y = imgTransformation.extrinsics().translation().y();
+    extrinsics.translation.z = imgTransformation.extrinsics().translation().z();
+    extrinsics.specTranslation.x = imgTransformation.extrinsics().spectranslation().x();
+    extrinsics.specTranslation.y = imgTransformation.extrinsics().spectranslation().y();
+    extrinsics.specTranslation.z = imgTransformation.extrinsics().spectranslation().z();
+
     transformation = ImgTransformation(imgTransformation.srcwidth(),
                                        imgTransformation.srcheight(),
                                        sourceIntrinsicMatrix,
                                        static_cast<CameraModel>(imgTransformation.distortionmodel()),
-                                       distortionCoefficients);
+                                       distortionCoefficients,
+                                       extrinsics);
     if(transformation.isValid()) {
         transformation.addTransformation(transformationMatrix);
         transformation.addCrop(0, 0, imgTransformation.width(), imgTransformation.height());
