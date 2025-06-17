@@ -33,7 +33,7 @@ struct RecordConfig {
 
     RecordReplayState state = RecordReplayState::NONE;
 
-    std::string outputDir;
+    std::filesystem::path outputDir;
     VideoEncoding videoEncoding;
     CompressionLevel compressionLevel = CompressionLevel::DEFAULT;
 };

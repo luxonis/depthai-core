@@ -879,18 +879,18 @@ PipelineImpl::~PipelineImpl() {
     wait();
 
     if(recordConfig.state == RecordConfig::RecordReplayState::RECORD) {
-        std::vector<std::string> filenames = {recordReplayFilenames["record_config"]};
+        std::vector<std::filesystem::path> filenames = {recordReplayFilenames["record_config"]};
         std::vector<std::string> outFiles = {"record_config.json"};
         filenames.reserve(recordReplayFilenames.size() * 2 + 1);
         outFiles.reserve(recordReplayFilenames.size() * 2 + 1);
         for(auto& rstr : recordReplayFilenames) {
             if(rstr.first != "record_config") {
                 std::string nodeName = rstr.first.substr(2);
-                std::string filePath = rstr.second;
-                filenames.push_back(filePath + ".mcap");
+                std::filesystem::path filePath = rstr.second;
+                filenames.push_back(std::filesystem::path(filePath).concat(".mcap"));
                 outFiles.push_back(nodeName + ".mcap");
                 if(rstr.first[0] == 'v') {
-                    filenames.push_back(filePath + ".mp4");
+                    filenames.push_back(std::filesystem::path(filePath).concat(".mp4"));
                     outFiles.push_back(nodeName + ".mp4");
                 }
             }
@@ -908,8 +908,8 @@ PipelineImpl::~PipelineImpl() {
         Logging::getInstance().logger.info("Record and Replay: Removing temporary files");
         for(auto& kv : recordReplayFilenames) {
             if(kv.first != "record_config") {
-                std::filesystem::remove(kv.second + ".mcap");
-                std::filesystem::remove(kv.second + ".mp4");
+                std::filesystem::remove(std::filesystem::path(kv.second).concat(".mcap"));
+                std::filesystem::remove(std::filesystem::path(kv.second).concat(".mp4"));
             } else {
                 std::filesystem::remove(kv.second);
             }

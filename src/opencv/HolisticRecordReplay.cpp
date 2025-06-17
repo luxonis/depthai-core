@@ -2,6 +2,8 @@
 
 #include <spdlog/spdlog.h>
 
+#include <filesystem>
+
 #include <memory>
 
 #include "../utility/Platform.hpp"
@@ -91,9 +93,9 @@ Node::Output* setupHolistiRecordCamera(
 }
 
 bool setupHolisticRecord(
-    Pipeline& pipeline, const std::string& deviceId, RecordConfig& recordConfig, std::unordered_map<std::string, std::string>& outFilenames, bool legacy) {
+    Pipeline& pipeline, const std::string& deviceId, RecordConfig& recordConfig, std::unordered_map<std::string, std::filesystem::path>& outFilenames, bool legacy) {
     auto sources = pipeline.getSourceNodes();
-    const auto recordPath = recordConfig.outputDir;
+    const std::filesystem::path recordPath = recordConfig.outputDir;
     try {
         for(auto& node : sources) {
             auto nodeS = std::dynamic_pointer_cast<SourceNode>(node);
@@ -103,7 +105,7 @@ bool setupHolisticRecord(
             }
             NodeRecordParams nodeParams = nodeS->getNodeRecordParams();
             std::string nodeName = (nodeParams.video ? "v_" : "b_") + nodeParams.name;
-            std::string filePath = platform::joinPaths(recordPath, (deviceId + "_").append(nodeName)).string();
+            std::filesystem::path filePath = platform::joinPaths(recordPath, deviceId + "_" + nodeName);
             outFilenames[nodeName] = filePath;
             DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
             if(std::dynamic_pointer_cast<node::Camera>(node) != nullptr || std::dynamic_pointer_cast<node::ColorCamera>(node) != nullptr
@@ -116,8 +118,8 @@ bool setupHolisticRecord(
                     output = &nodeS->getRecordOutput();
                 }
                 auto recordNode = pipeline.create<dai::node::RecordVideo>();
-                recordNode->setRecordMetadataFile(filePath + ".mcap");
-                recordNode->setRecordVideoFile(filePath + ".mp4");
+                recordNode->setRecordMetadataFile(std::filesystem::path(filePath).concat(".mcap"));
+                recordNode->setRecordVideoFile(std::filesystem::path(filePath).concat(".mp4"));
                 recordNode->setCompressionLevel((dai::RecordConfig::CompressionLevel)recordConfig.compressionLevel);
                 if(recordConfig.videoEncoding.enabled) {
                     auto videnc = pipeline.create<dai::node::VideoEncoder>();
@@ -147,12 +149,12 @@ bool setupHolisticRecord(
                 }
             } else {
                 auto recordNode = pipeline.create<dai::node::RecordMetadataOnly>();
-                recordNode->setRecordFile(filePath + ".mcap");
+                recordNode->setRecordFile(std::filesystem::path(filePath).concat(".mcap"));
                 recordNode->setCompressionLevel((dai::RecordConfig::CompressionLevel)recordConfig.compressionLevel);
                 nodeS->getRecordOutput().link(recordNode->input);
             }
         }
-        outFilenames["record_config"] = platform::joinPaths(recordPath, deviceId + "_record_config.json").string();
+        outFilenames["record_config"] = platform::joinPaths(recordPath, deviceId + "_record_config.json");
     } catch(const std::runtime_error& e) {
         recordConfig.state = RecordConfig::RecordReplayState::NONE;
         spdlog::warn("Record disabled: {}", e.what());
@@ -175,7 +177,7 @@ bool setupHolisticReplay(Pipeline& pipeline,
                          std::string replayPath,
                          const std::string& deviceId,
                          RecordConfig& recordConfig,
-                         std::unordered_map<std::string, std::string>& outFilenames,
+                         std::unordered_map<std::string, std::filesystem::path>& outFilenames,
                          bool legacy) {
     UNUSED(deviceId);
     const std::filesystem::path rootPath = platform::getDirFromPath(replayPath);
@@ -223,7 +225,7 @@ bool setupHolisticReplay(Pipeline& pipeline,
         }
         std::string configPath;
         std::vector<std::string> inFiles;
-        std::vector<std::string> outFiles;
+        std::vector<std::filesystem::path> outFiles;
         inFiles.reserve(sources.size() + 1);
         outFiles.reserve(sources.size() + 1);
         if(!useTar || allMatch(pipelineFilenames, tarNodenames)) {
@@ -234,13 +236,13 @@ bool setupHolisticReplay(Pipeline& pipeline,
                     inFiles.push_back(tarRoot + filename + ".mp4");
                     inFiles.push_back(tarRoot + filename + ".mcap");
                 }
-                std::string filePath = platform::joinPaths(rootPath, filename).string();
-                outFiles.push_back(filePath + ".mp4");
-                outFiles.push_back(filePath + ".mcap");
+                std::filesystem::path filePath = platform::joinPaths(rootPath, filename);
+                outFiles.push_back(std::filesystem::path(filePath).concat(".mp4"));
+                outFiles.push_back(std::filesystem::path(filePath).concat(".mcap"));
                 outFilenames[nodeName] = filePath;
             }
             if(useTar) inFiles.emplace_back(tarRoot + "record_config.json");
-            configPath = platform::joinPaths(rootPath, "record_config.json").string();
+            configPath = platform::joinPaths(rootPath, "record_config.json");
             outFiles.push_back(configPath);
             outFilenames["record_config"] = configPath;
             if(useTar) untarFiles(replayPath, inFiles, outFiles);
