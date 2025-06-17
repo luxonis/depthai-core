@@ -2,4 +2,4 @@
 ## function: dai_set_example_test_labels(example_name ...)
 
 dai_add_example(system_logger system_logger.cpp ON OFF)
-dai_set_example_test_labels(system_logger ondevice rvc2_all rvc4 ci)
+dai_set_example_test_labels(system_logger ondevice rvc2_all ci)
