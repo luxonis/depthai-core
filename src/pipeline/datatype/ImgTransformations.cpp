@@ -4,7 +4,7 @@
 
 #include <cstring>
 
-#include "common/Extrinsics.hpp"
+#include "depthai/common/Extrinsics.hpp"
 #include "depthai/utility/ImageManipImpl.hpp"
 
 namespace dai {
