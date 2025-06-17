@@ -165,6 +165,9 @@ class CalibrationHandler {
      */
     std::tuple<std::vector<std::vector<float>>, int, int> getDefaultIntrinsics(CameraBoardSocket cameraId) const;
 
+
+    dai::Extrinsics getCameraExtrinsics(CameraBoardSocket srcCamera) const;
+
     /**
      * Get the Distortion Coefficients object
      *

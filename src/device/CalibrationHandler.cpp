@@ -354,6 +354,13 @@ CameraModel CalibrationHandler::getDistortionModel(CameraBoardSocket cameraId) c
     return eepromData.cameraData.at(cameraId).cameraType;
 }
 
+dai::Extrinsics CalibrationHandler::getCameraExtrinsics(CameraBoardSocket cameraId) const {
+    if(eepromData.cameraData.find(cameraId) == eepromData.cameraData.end()) {
+        throw std::runtime_error("There is no Camera data available corresponding to the the requested cameraId");
+    }
+    return eepromData.cameraData.at(cameraId).extrinsics;
+}
+
 std::vector<std::vector<float>> CalibrationHandler::getCameraExtrinsics(CameraBoardSocket srcCamera,
                                                                         CameraBoardSocket dstCamera,
                                                                         bool useSpecTranslation) const {
