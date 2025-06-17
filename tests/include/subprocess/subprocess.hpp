@@ -1119,7 +1119,7 @@ public:
   {
     if (write_to_child_ != -1)  file_close(write_to_child_);
     if (read_from_child_ != -1) file_close(read_from_child_);
-    if (err_write_ != -1)        file_close(err_write_);
+    if (err_read_ != -1)        file_close(err_read_);
   }
 
   void close_child_fds()
