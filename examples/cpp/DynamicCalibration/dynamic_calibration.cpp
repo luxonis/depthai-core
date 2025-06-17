@@ -31,7 +31,9 @@ int main() {
     // Feed the frames into the dynamic-calibration block
     leftOut->link(dynCalib->left);
     rightOut->link(dynCalib->right);
-
+    auto device = pipeline.getDefaultDevice();
+    auto calibOld = device->readCalibration();
+    auto calibNew = device->readCalibration();
     pipeline.start();
     while(pipeline.isRunning()) {
         auto inDepth = q->get<dai::ImgFrame>();
@@ -49,8 +51,12 @@ int main() {
         auto key = cv::waitKey(1);
         auto qualityResult = dynCalib->getCalibQuality();
         auto qualityCalibration = dynCalib->getNewCalibration();
-        auto calibration = qualityCalibration.calibration; 
+        // std::cout << qualityResult.info << " " << qualityResult.valid << " " << qualityResult.value << std::endl;
 
+        if (qualityCalibration.valid == 1 && qualityCalibration.calibration.has_value()) {
+            calibNew = qualityCalibration.calibration.value();
+            std::cout << "Got new calibration. " << std::endl;
+        }
         if(key == 'q') {
             break;
         }
@@ -59,6 +65,14 @@ int main() {
         }
         else if(key == 'r') {
             dynCalib->startRecalibration();
+        }
+        else if(key == 'o'){
+            dynCalib->setNewCalibration(calibOld);
+            std::cout << "Applying old calibration " << std::endl;
+        }
+        else if(key == 'n'){
+            dynCalib->setNewCalibration(calibNew);
+            std::cout << "Applying new calibration " << std::endl;
         }
     }
     return 0;

@@ -154,12 +154,6 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
      * Get the calibration quality (epipolar error)
      * @return Epipolar error in pixels
      */
-    void setCalibration(std::shared_ptr<Device> device,
-                        const std::shared_ptr<const dcl::CameraCalibrationHandle> daiCalibration,
-                        const CameraBoardSocket socketSrc,
-                        const CameraBoardSocket socketDest,
-                        const int width,
-                        const int height);
     /**
      * Set calibration to the dai.Device
      */
@@ -168,18 +162,31 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
                                                                              const std::vector<float> distortionCoefficients,
                                                                              const std::vector<std::vector<float>> rotationMatrix,
                                                                              const std::vector<float> translationVector);
-
+    void setNewCalibration(CalibrationHandler);
     void startCalibQualityCheck();
     void startRecalibration();
     QualityResult getCalibQuality() const;
     CalibrationResult getNewCalibration() const;
     void setContinuousMode();
 
-    void pipelineSetup(
-        std::shared_ptr<Device> device, CameraBoardSocket boardSocketA, CameraBoardSocket boardSocketB, int widthDefault = 1280, int heightDefault = 800);
     void run() override;
 
    private:
+    void pipelineSetup(std::shared_ptr<Device> device, CameraBoardSocket boardSocketA, CameraBoardSocket boardSocketB, int width = 1280, int height = 800);
+    void setInternalCalibration(std::shared_ptr<Device> device,
+                        const std::shared_ptr<const dcl::CameraCalibrationHandle> daiCalibrationA,
+                        const std::shared_ptr<const dcl::CameraCalibrationHandle> daiCalibrationB,
+                        const CameraBoardSocket socketSrc,
+                        const CameraBoardSocket socketDest,
+                        const int width,
+                        const int height);
+    CalibrationHandler convertDCLtoDAI(CalibrationHandler calibHandler ,
+                                        const std::shared_ptr<const dcl::CameraCalibrationHandle> daiCalibration,
+                                        const CameraBoardSocket socketSrc,
+                                        const CameraBoardSocket socketDest,
+                                        const int width,
+                                        const int height);
+
     std::vector<float> rotationMatrixToVector(const std::vector<std::vector<float>>& R);
     std::unique_ptr<dcl::DynamicCalibration> dynCalibImpl;
     std::shared_ptr<dcl::Device> dcDevice;
@@ -188,6 +195,8 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     std::shared_ptr<dcl::CameraSensorHandle> sensorB;
     dcl::socket_t socketA;
     dcl::socket_t socketB;
+    int widthDefault;
+    int heightDefault;
 
     CalibrationStateMachine calibrationSM;
 };
