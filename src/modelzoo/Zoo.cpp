@@ -31,10 +31,10 @@ namespace dai {
 
 namespace fs = std::filesystem;
 
-static std::string MODEL_ZOO_HEALTH_ENDPOINT = "https://easyml.cloud.luxonis.com/models/api/v1/health/";
-static std::string MODEL_ZOO_DOWNLOAD_ENDPOINT = "https://easyml.cloud.luxonis.com/models/api/v1/models/download";
-static fs::path MODEL_ZOO_DEFAULT_CACHE_PATH = ".depthai_cached_models";  // hidden cache folder
-static fs::path MODEL_ZOO_DEFAULT_MODELS_PATH = "depthai_models";         // folder
+static std::string modelZooHealthEndpoint = "https://easyml.cloud.luxonis.com/models/api/v1/health/";
+static std::string modelZooDownloadEndpoint = "https://easyml.cloud.luxonis.com/models/api/v1/models/download";
+static fs::path modelZooDefaultCachePath = ".depthai_cached_models";  // hidden cache folder
+static fs::path modelZooDefaultModelsPath = "depthai_models";         // folder
 
 #ifdef DEPTHAI_ENABLE_CURL
 class ZooManager {
@@ -879,35 +879,35 @@ std::ostream& operator<<(std::ostream& os, const NNModelDescription& modelDescri
 namespace modelzoo {
 
 void setHealthEndpoint(const std::string& endpoint) {
-    MODEL_ZOO_HEALTH_ENDPOINT = endpoint;
+    modelZooHealthEndpoint = endpoint;
 }
 
 void setDownloadEndpoint(const std::string& endpoint) {
-    MODEL_ZOO_DOWNLOAD_ENDPOINT = endpoint;
+    modelZooDownloadEndpoint = endpoint;
 }
 
 void setDefaultCachePath(const fs::path& path) {
-    MODEL_ZOO_DEFAULT_CACHE_PATH = path;
+    modelZooDefaultCachePath = path;
 }
 
 void setDefaultModelsPath(const fs::path& path) {
-    MODEL_ZOO_DEFAULT_MODELS_PATH = path;
+    modelZooDefaultModelsPath = path;
 }
 
 std::string getHealthEndpoint() {
-    return MODEL_ZOO_HEALTH_ENDPOINT;
+    return modelZooHealthEndpoint;
 }
 
 std::string getDownloadEndpoint() {
-    return MODEL_ZOO_DOWNLOAD_ENDPOINT;
+    return modelZooDownloadEndpoint;
 }
 
 fs::path getDefaultCachePath() {
-    return MODEL_ZOO_DEFAULT_CACHE_PATH;
+    return modelZooDefaultCachePath;
 }
 
 fs::path getDefaultModelsPath() {
-    return MODEL_ZOO_DEFAULT_MODELS_PATH;
+    return modelZooDefaultModelsPath;
 }
 
 }  // namespace modelzoo
