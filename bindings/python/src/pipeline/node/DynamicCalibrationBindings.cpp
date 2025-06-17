@@ -22,9 +22,28 @@ void bind_dynamic_calibration(pybind11::module& m, void* pCallstack) {
     cb(m, pCallstack);
     // Actual bindings
     ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
+    // ---------- CalibrationResult ----------
+    py::class_<CalibrationResult>(m, "CalibrationResult")
+        .def(py::init<>())
+        .def_readwrite("calibration", &CalibrationResult::calibration, DOC(dai, CalibrationResult, calibration))
+        .def_readwrite("valid", &CalibrationResult::valid, DOC(dai, CalibrationResult, valid))
+        .def_readwrite("info", &CalibrationResult::info, DOC(dai, CalibrationResult, info))
+        .def_static("invalid", &CalibrationResult::Invalid, py::arg("reason") = "No result", DOC(dai, CalibrationResult, invalid));
 
+    // ---------- QualityResult ----------
+    py::class_<QualityResult>(m, "QualityResult")
+        .def(py::init<>())
+        .def_readwrite("value", &QualityResult::value, DOC(dai, QualityResult, value))
+        .def_readwrite("valid", &QualityResult::valid, DOC(dai, QualityResult, valid))
+        .def_readwrite("info", &QualityResult::info, DOC(dai, QualityResult, info))
+        .def_static("invalid", &QualityResult::Invalid, py::arg("reason") = "No result", DOC(dai, QualityResult, invalid));
+
+    // ---------- CalibrationResults ----------
+    py::class_<CalibrationResults>(m, "CalibrationResults")
+        .def(py::init<>())
+        .def_readwrite("quality", &CalibrationResults::quality, DOC(dai, CalibrationResults, quality))
+        .def_readwrite("calibration", &CalibrationResults::calibration, DOC(dai, CalibrationResults, calibration))
+        .def("reset", &CalibrationResults::reset, DOC(dai, CalibrationResults, reset));
     // Node
     dynamicCalibration
         // .def_readonly("inputs", &DynamicCalibration::inputs, DOC(dai, node, DynamicCalibration, inputs))
