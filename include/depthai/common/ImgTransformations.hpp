@@ -49,8 +49,10 @@ struct ImgTransformation {
                       size_t height,
                       std::array<std::array<float, 3>, 3> sourceIntrinsicMatrix,
                       CameraModel distortionModel,
-                      std::vector<float> distortionCoefficients)
+                      std::vector<float> distortionCoefficients,
+                      Extrinsics extrinsics)
         : sourceIntrinsicMatrix(sourceIntrinsicMatrix),
+          extrinsics(extrinsics),
           distortionModel(distortionModel),
           distortionCoefficients(distortionCoefficients),
           srcWidth(width),
