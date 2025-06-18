@@ -56,5 +56,6 @@ void bind_dynamic_calibration(pybind11::module& m, void* pCallstack) {
         .def("setContinuousMode", &DynamicCalibration::setContinuousMode, DOC(dai, node, DynamicCalibration, setContinuousMode))
         .def("getCalibQuality", &DynamicCalibration::getCalibQuality, DOC(dai, node, DynamicCalibration, getCalibQuality))
         .def("getNewCalibration", &DynamicCalibration::getNewCalibration, DOC(dai, node, DynamicCalibration, getNewCalibration));
+        .def("setNewCalibration", &DynamicCalibration::setNewCalibration, DOC(dai, node, DynamicCalibration, setNewCalibration));
     daiNodeModule.attr("DynamicCalibration").attr("Properties") = DynamicCalibrationProperties;
 }

@@ -32,6 +32,9 @@ disp_xout = stereo.disparity.createOutputQueue()
 
 # ---------- Device and runtime loop ----------
 pipeline.start()
+device  = pipeline.getDefaultDevice()
+calibNew = device.readCalibration()
+calibOld = device.readCalibration()
 with pipeline:
     max_disp = stereo.initialConfig.getMaxDisparity()
 
@@ -62,6 +65,10 @@ with pipeline:
             dyn_calib.startCalibQualityCheck()
         elif key == ord('r'):
             dyn_calib.startRecalibration()
+        elif key == ord("n"):
+            dyn_calib.setNewCalibration(calibNew)
+        elif key == ord("o"):
+            dyn_calib.setNewCalibration(calibOld)
 
         # Print quality + calibration status
         qual_result = dyn_calib.getCalibQuality()
@@ -70,4 +77,5 @@ with pipeline:
         if qual_result.valid:
             print(f"[QUALITY] Score: {qual_result.value:.2f} | Info: {qual_result.info}")
         if calib_result.valid:
+            calibNew = calib_result.calibration
             print(f"[CALIB] Info: {calib_result.info}")
