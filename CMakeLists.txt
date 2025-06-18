@@ -69,6 +69,15 @@ set(DEPTHAI_PRE_RELEASE_VERSION "2")
 # Set DEPTHAI_VERSION universally, not conditionally
 set(DEPTHAI_VERSION ${PROJECT_VERSION}-${DEPTHAI_PRE_RELEASE_TYPE}.${DEPTHAI_PRE_RELEASE_VERSION})
 
+# Default for dynamic calibration support (turn on x64 Liunux, but off for others)
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64" AND UNIX)
+    message(STATUS "Dynamic Calibration support enabled by default for x64 Linux")
+    option(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT "Enable Dynamic Calibration support" ON)
+else()
+    message(STATUS "Dynamic Calibration support disabled by default")
+    option(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT "Enable Dynamic Calibration support" OFF)
+endif()
+
 get_directory_property(has_parent PARENT_DIRECTORY)
 if(has_parent)
     set(DEPTHAI_VERSION ${DEPTHAI_VERSION} PARENT_SCOPE)  # Set in parent scope if there's a parent
@@ -184,44 +193,13 @@ set(TARGET_CORE_NAME ${PROJECT_NAME}-core)
 set(TARGET_CORE_ALIAS core)
 
 ########################
-# Dynamic Calibration Support
-########################
-set(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT ON CACHE BOOL "Enable support for dynamic calibration")
-
-if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
-    set(DYNAMIC_CALIBRATION_DIR ${CMAKE_SOURCE_DIR}/external/dynamic_calibration)
-
-    # Try to find the dynamic_calibration shared lib
-    find_library(DCLIB dynamic_calibration
-        PATHS ${DYNAMIC_CALIBRATION_DIR}/lib
-        NO_DEFAULT_PATH
-    )
-
-    if(DCLIB)
-        message(STATUS "Found dynamic_calibration: ${DCLIB}")
-        set(DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT ON)
-
-        # Add both include directories
-        include_directories(
-            ${DYNAMIC_CALIBRATION_DIR}/include
-        )
-
-        # Link it to the target later (after target is defined)
-        set(DYNAMIC_CALIBRATION_LIB ${DCLIB})
-    else()
-        message(WARNING "dynamic_calibration library not found at ${DYNAMIC_CALIBRATION_DIR}/lib. Support disabled.")
-        set(DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT OFF)
-    endif()
-endif()
-
-########################
 # OpenCV Support 1
 ########################
 set(THIRDPARTY_OPENCV_LIBRARIES "" CACHE STRING "Optional libraries to link OpenCV support, e.g. TBB::tbb")
 set(TARGET_OPENCV_NAME ${PROJECT_NAME}-opencv)
 set(TARGET_OPENCV_ALIAS opencv)
 if(DEPTHAI_OPENCV_SUPPORT)
-    set(REQUIRED_OPENCV_LIBRARIES "opencv_core" "opencv_imgproc" "opencv_videoio" "opencv_highgui")
+    set(REQUIRED_OPENCV_LIBRARIES "opencv_core" "opencv_imgproc" "opencv_videoio" "opencv_highgui" "opencv_calib3d")
     set(OPENCV_SUPPORT_AVAILABLE ${OpenCV_FOUND})
     foreach(lib ${REQUIRED_OPENCV_LIBRARIES})
         if(NOT (lib IN_LIST OpenCV_LIBS))
@@ -312,7 +290,6 @@ set(TARGET_CORE_SOURCES
     src/pipeline/node/internal/XLinkOutHost.cpp
     src/pipeline/node/host/HostNode.cpp
     src/pipeline/node/host/RGBD.cpp
-    src/pipeline/node/DynamicCalibration.cpp
     src/pipeline/datatype/DatatypeEnum.cpp
     src/pipeline/node/PointCloud.cpp
     src/pipeline/datatype/Buffer.cpp
@@ -392,6 +369,12 @@ endif()
 if(DEPTHAI_ENABLE_PROTOBUF)
     list(APPEND TARGET_CORE_SOURCES
         src/utility/ProtoSerialize.cpp
+    )
+endif()
+
+if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
+    list(APPEND TARGET_CORE_SOURCES
+        src/pipeline/node/DynamicCalibration.cpp
     )
 endif()
 
@@ -530,6 +513,34 @@ endif()
 
 if(NOT BUILD_SHARED_LIBS)
     target_compile_definitions(${TARGET_CORE_NAME} PUBLIC MCAP_STATIC)
+endif()
+
+if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
+    include(FetchContent)
+    FetchContent_Declare(
+        dynamic_calibration
+        URL https://artifacts.luxonis.com/artifactory/list/luxonis-depthai-helper-binaries/dynamic_calibration/0.2alpha/dynamic_calibration_manylinux.zip
+        URL_HASH MD5=bfd57f84ad9cf35e33e482101762f1f3
+    )
+    FetchContent_MakeAvailable(dynamic_calibration)
+    message(STATUS "Dynamic calibration extracted to ${dynamic_calibration_SOURCE_DIR}")
+    set(DYNAMIC_CALIBRATION_DIR ${dynamic_calibration_SOURCE_DIR})
+    target_include_directories(
+        ${TARGET_CORE_NAME} PUBLIC
+        $<BUILD_INTERFACE:${DYNAMIC_CALIBRATION_DIR}/include>
+    )
+
+    find_library(DYNAMIC_CALIBRATION dynamic_calibration
+        PATHS ${DYNAMIC_CALIBRATION_DIR}/lib
+        NO_DEFAULT_PATH
+    )
+    target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT)
+    if(DYNAMIC_CALIBRATION)
+        message(STATUS "Dynamic Calibration library found: ${DYNAMIC_CALIBRATION}")
+        target_link_libraries(${TARGET_CORE_NAME} PUBLIC ${DYNAMIC_CALIBRATION})
+    else()
+        message(FATAL_ERROR "Dynamic Calibration library not found, disable support by setting DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT to OFF")
+    endif()
 endif()
 
 # Set constant
@@ -731,7 +742,6 @@ target_link_libraries(${TARGET_CORE_NAME}
         magic_enum::magic_enum
         liblzma::liblzma
         lz4::lz4
-        ${DYNAMIC_CALIBRATION_DIR}/lib/libdynamic_calibration.so
 )
 
 if(DEPTHAI_ENABLE_MP4V2)

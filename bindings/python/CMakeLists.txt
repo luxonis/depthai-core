@@ -105,7 +105,6 @@ set(SOURCE_LIST
     src/pipeline/node/ReplayBindings.cpp
     src/pipeline/node/ImageAlignBindings.cpp
     src/pipeline/node/RGBDBindings.cpp
-    src/pipeline/node/DynamicCalibrationBindings.cpp
 
     src/pipeline/datatype/ADatatypeBindings.cpp
     src/pipeline/datatype/AprilTagConfigBindings.cpp
@@ -165,6 +164,12 @@ if(DEPTHAI_RTABMAP_SUPPORT)
     list(APPEND SOURCE_LIST
         src/pipeline/node/RTABMapVIOBindings.cpp
         src/pipeline/node/RTABMapSLAMBindings.cpp
+    )
+endif()
+
+if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
+    list(APPEND SOURCE_LIST
+        src/pipeline/node/DynamicCalibrationBindings.cpp
     )
 endif()
 
