@@ -1,5 +1,6 @@
 #include "depthai/utility/ImageManipImpl.hpp"
 
+#include <opencv2/calib3d.hpp>
 #include <stdexcept>
 
 #include "depthai/pipeline/datatype/ImageManipConfig.hpp"
@@ -915,3 +916,19 @@ dai::RotatedRect dai::impl::getRotatedRectFromPoints(const std::vector<std::arra
     rect.angle = std::atan2(rrCorners[1][1] - rrCorners[0][1], rrCorners[1][0] - rrCorners[0][0]) * 180.0f / (float)M_PI;
     return rect;
 }
+
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+void dai::impl::UndistortOpenCvImpl::undistort(cv::Mat& src, cv::Mat& dst) {
+    if(dst.size().width == (int)width && dst.size().height == (int)height) {
+        cv::remap(src, dst, undistortMap1, undistortMap2, cv::INTER_LINEAR, cv::BORDER_CONSTANT);
+    } else if (dst.size().width / 2 == (int)width && dst.size().height / 2 == (int)height) {
+        if(undistortMap1Half.empty() || undistortMap2Half.empty()) {
+            cv::Mat cameraMatrix = cv::Mat::eye(3, 3, CV_32F);
+            cv::initUndistortRectifyMap(cameraMatrix, distCoeffs, cv::Mat(), cameraMatrix, cv::Size(width / 2, height / 2), CV_16SC2, undistortMap1Half, undistortMap2Half);
+        }
+        cv::remap(src, dst, undistortMap1Half, undistortMap2Half, cv::INTER_LINEAR, cv::BORDER_CONSTANT);
+    } else {
+        throw std::runtime_error("UndistortImpl: Output size does not match the expected size");
+    }
+}
+#endif

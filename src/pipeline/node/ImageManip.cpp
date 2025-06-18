@@ -21,6 +21,7 @@ void ImageManip::run() {
         [&](const ImageManipConfig& config, const ImgFrame& frame) {
             auto srcFrameSpecs = impl::getSrcFrameSpecs(frame.fb);
             manip.build(config.base, config.outputFrameType, srcFrameSpecs, frame.getType());
+            manip.buildUndistort(config.base.undistort, frame.transformation.getDistortionCoefficients(), frame.getWidth(), frame.getHeight());
             return manip.getOutputSize();
         },
         [&](std::shared_ptr<Memory>& src, std::shared_ptr<impl::_ImageManipMemory> dst) {
