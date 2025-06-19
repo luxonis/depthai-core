@@ -70,7 +70,7 @@ set(DEPTHAI_PRE_RELEASE_VERSION "2")
 set(DEPTHAI_VERSION ${PROJECT_VERSION}-${DEPTHAI_PRE_RELEASE_TYPE}.${DEPTHAI_PRE_RELEASE_VERSION})
 
 # Default for dynamic calibration support (turn on x64 Liunux, but off for others)
-if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64" AND UNIX)
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64" AND UNIX AND NOT APPLE)
     message(STATUS "Dynamic Calibration support enabled by default for x64 Linux")
     option(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT "Enable Dynamic Calibration support" ON)
 else()
