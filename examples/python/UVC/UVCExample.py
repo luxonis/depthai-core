@@ -28,7 +28,7 @@ class VideoSaver(dai.node.HostNode):
         frame.getData().tofile(self.file_handle)
 
 
-def load_v4l2loopback(device: str = "/dev/video0"):
+def load_v4l2loopback(device: str = "/dev/video10"):
     """
     Load the v4l2loopback kernel module and create a loopback device.
     """
@@ -39,7 +39,7 @@ def load_v4l2loopback(device: str = "/dev/video0"):
         "card_label=LoopbackCam",
         "exclusive_caps=1"
     ]
-    cmd = ["sudo", "modprobe", "v4l2loopback"] + module_args
+    cmd = ["modprobe", "v4l2-loopback"] + module_args
     try:
         subprocess.run(cmd, check=True)
         print(f"Loaded v4l2loopback with device {device}")
@@ -47,12 +47,38 @@ def load_v4l2loopback(device: str = "/dev/video0"):
         print(f"Error loading v4l2loopback module: {e}", file=sys.stderr)
         sys.exit(1)
 
+def unload_v4l2loopback(device: str = "/dev/video10"):
+    """
+    Unload the v4l2loopback kernel module.
+    """
+    cmd = ["modprobe", "-r", "v4l2-loopback"]
+    try:
+        subprocess.run(cmd, check=True)
+        print(f"Unloaded v4l2loopback from device {device}")
+    except subprocess.CalledProcessError as e:
+        print(f"Error unloading v4l2loopback module: {e}", file=sys.stderr)
+        sys.exit(1)
 
-def init_pyfakewebcam(device: str, width: int, height: int, fps: float = 30.0):
+
+def mjpeg_to_loopback(mjpeg_path: str, device: str):
+    """
+    Read frames from an MJPEG file and stream them to the v4l2loopback device.
+    """
+    # Open the MJPEG file as a VideoCapture stream
+    cap = cv2.VideoCapture(mjpeg_path)
+    if not cap.isOpened():
+        print(f"Cannot open MJPEG file: {mjpeg_path}", file=sys.stderr)
+        sys.exit(1)
+
+    # Query frame dimensions
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
     interval = 1.0 / fps
 
     # Initialize fake webcam
     fake = pyfakewebcam.FakeWebcam(device, width, height)
+
     print(f"Streaming {mjpeg_path} ({width}x{height}@{fps:.2f}fps) to {device}")
 
     try:
@@ -78,9 +104,14 @@ def parse_args():
         description="Stream an MJPEG file into a v4l2loopback device"
     )
     parser.add_argument(
+        "--mjpeg",
+        required=True,
+        help="Path to input .mjpeg file"
+    )
+    parser.add_argument(
         "--device",
-        default="/dev/video0",
-        help="v4l2loopback device (e.g., /dev/video0)"
+        default="/dev/video10",
+        help="v4l2loopback device (e.g., /dev/video10)"
     )
     return parser.parse_args()
 
@@ -88,35 +119,36 @@ def parse_args():
 def main():
     args = parse_args()
     load_v4l2loopback(args.device)
-    # mjpeg_to_loopback(args.mjpeg, args.device)
-    fake = pyfakewebcam.FakeWebcam(args.device, 1920, 1080)
+    mjpeg_to_loopback(args.mjpeg, args.device)
+
+
+    fake = pyfakewebcam.FakeWebcam(args.device, 1280, 800)
 
     with dai.Pipeline() as pipeline:
-        camRgb = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
-        output = camRgb.requestOutput((1920, 1080), type=dai.ImgFrame.Type.NV12)
+        camRgb = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
+        output = camRgb.requestOutput((1280, 800), type=dai.ImgFrame.Type.NV12)
         outputQueue = output.createOutputQueue()
         encoded = pipeline.create(dai.node.VideoEncoder).build(output,
                 frameRate = 30,
                 profile = PROFILE)
-        saver = pipeline.create(VideoSaver).build(encoded.out)
+        # saver = pipeline.create(VideoSaver).build(encoded.out)
 
         pipeline.start()
         print("Started to save video to video.encoded")
         print("Press Ctrl+C to stop")
-        timeStart = time.monotonic()
+
         while pipeline.isRunning() and not quitEvent.is_set():
             frame = outputQueue.get()
             assert isinstance(frame, dai.ImgFrame)
-            cv2.imshow("video", frame.getCvFrame())
-            frame_rgb = cv2.cvtColor(frame.getCvFrame(), cv2.COLOR_BGR2RGB)
-            fake.schedule_frame(frame_rgb)
+            # cv2.imshow("video", frame.getCvFrame())
+            fake.schedule_frame(frame.getCvFrame())
 
-            key = cv2.waitKey(1)
-            if key == ord('q'):
-                break
         pipeline.stop()
         pipeline.wait()
-        saver.file_handle.close()
+        # saver.file_handle.close()
+
+    time.sleep(1) # Give some time for the module to not be in use before unloading
+    unload_v4l2loopback()
 
 
 
