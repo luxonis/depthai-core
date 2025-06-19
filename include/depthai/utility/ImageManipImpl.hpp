@@ -254,11 +254,14 @@ class UndistortOpenCvImpl {
     cv::Mat undistortMap1Half;
     cv::Mat undistortMap2Half;
 
+    std::shared_ptr<spdlog::async_logger> logger;
+
     std::vector<float> distCoeffs;
     uint32_t width;
     uint32_t height;
 
    public:
+    UndistortOpenCvImpl(std::shared_ptr<spdlog::async_logger> logger) : logger(std::move(logger)) {}
     void build(std::vector<float> distCoeffs, uint32_t width, uint32_t height) {
         if(width != this->width || height != this->height || distCoeffs != this->distCoeffs) {
             this->distCoeffs = std::move(distCoeffs);
@@ -283,6 +286,8 @@ class Warp {
 
     std::shared_ptr<spdlog::async_logger> logger;
 
+    bool isIdentityWarp() const;
+
    public:
     std::array<std::array<float, 3>, 3> matrix;
     ImageManipOpsBase<Container>::Background background = ImageManipOpsBase<Container>::Background::COLOR;
@@ -297,12 +302,6 @@ class Warp {
     size_t sourceMaxX;
     size_t sourceMaxY;
 
-#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-    std::unique_ptr<UndistortOpenCvImpl> undistortImpl;
-#else
-    std::unique_ptr<void> dummyUndistortImpl;
-#endif
-
     Warp() = default;
     Warp(std::shared_ptr<spdlog::async_logger> logger) : logger(logger) {}
     virtual ~Warp() = default;
@@ -313,7 +312,7 @@ class Warp {
                        const ImgFrame::Type type,
                        const std::array<std::array<float, 3>, 3> matrix,
                        std::vector<std::array<std::array<float, 2>, 4>> srcCorners) = 0;
-    void buildUndistort(bool enable, const std::vector<float>& distCoeffs, const uint32_t width, const uint32_t height);
+    virtual void buildUndistort(bool enable, const std::vector<float>& distCoeffs, const ImgFrame::Type type, const uint32_t width, const uint32_t height) = 0;
 
     virtual void apply(const std::shared_ptr<ImageManipData> src, std::shared_ptr<ImageManipData> dst) = 0;
 
@@ -327,6 +326,13 @@ class Warp {
 template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
 class WarpH : public Warp<ImageManipBuffer, ImageManipData> {
     std::shared_ptr<ImageManipBuffer<uint32_t>> fastCvBorder;
+    std::shared_ptr<ImageManipData> auxFrame;
+
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    std::unique_ptr<UndistortOpenCvImpl> undistortImpl;
+#else
+    std::unique_ptr<void> dummyUndistortImpl;
+#endif
 
     void transform(const std::shared_ptr<ImageManipData> srcData,
                    std::shared_ptr<ImageManipData> dstData,
@@ -347,6 +353,7 @@ class WarpH : public Warp<ImageManipBuffer, ImageManipData> {
                const ImgFrame::Type type,
                const std::array<std::array<float, 3>, 3> matrix,
                std::vector<std::array<std::array<float, 2>, 4>> srcCorners) override;
+    void buildUndistort(bool enable, const std::vector<float>& distCoeffs, const ImgFrame::Type type, const uint32_t width, const uint32_t height) override;
 
     void apply(const std::shared_ptr<ImageManipData> src, std::shared_ptr<ImageManipData> dst) override;
 };
@@ -469,7 +476,8 @@ class ImageManipOperations {
     }
 
     ImageManipOperations& build(const ImageManipOpsBase<Container>& base, ImgFrame::Type outputFrameType, FrameSpecs srcFrameSpecs, ImgFrame::Type type);
-    ImageManipOperations& buildUndistort(bool enable, const std::vector<float>& distCoeffs, const uint32_t width, const uint32_t height);
+    ImageManipOperations& buildUndistort(
+        bool enable, const std::vector<float>& distCoeffs, const ImgFrame::Type type, const uint32_t width, const uint32_t height);
 
     bool apply(const std::shared_ptr<ImageManipData> src, std::shared_ptr<ImageManipData> dst);
 
@@ -2760,8 +2768,8 @@ template <template <typename T> typename ImageManipBuffer,
           template <template <typename T> typename Buf, typename Dat>
           typename WarpBackend>
 ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>& ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::buildUndistort(
-    bool enable, const std::vector<float>& distCoeffs, const uint32_t width, const uint32_t height) {
-    warpEngine.buildUndistort(enable, distCoeffs, width, height);
+    bool enable, const std::vector<float>& distCoeffs, const ImgFrame::Type type, const uint32_t width, const uint32_t height) {
+    warpEngine.buildUndistort(enable, distCoeffs, type, width, height);
     return *this;
 }
 
@@ -3025,20 +3033,6 @@ std::string ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>:
 }
 
 template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
-void Warp<ImageManipBuffer, ImageManipData>::buildUndistort(bool enable, const std::vector<float>& distCoeffs, const uint32_t width, const uint32_t height) {
-    if(enable) {
-#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-        if(!undistortImpl) undistortImpl = std::make_unique<UndistortOpenCvImpl>();
-        undistortImpl->build(distCoeffs, width, height);
-#else
-        throw std::runtime_error("Undistort requires OpenCV support");
-#endif
-    } else {
-        undistortImpl = nullptr;
-    }
-}
-
-template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
 void WarpH<ImageManipBuffer, ImageManipData>::build(const FrameSpecs srcFrameSpecs,
                                                     const FrameSpecs dstFrameSpecs,
                                                     const ImgFrame::Type type,
@@ -3066,6 +3060,25 @@ void WarpH<ImageManipBuffer, ImageManipData>::build(const FrameSpecs srcFrameSpe
         this->sourceMaxY = std::min(this->sourceMaxY, (size_t)std::ceil(maxy));
     }
     if(this->sourceMinX >= this->sourceMaxX || this->sourceMinY >= this->sourceMaxY) throw std::runtime_error("Initial crop is outside the source image");
+}
+
+template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
+void WarpH<ImageManipBuffer, ImageManipData>::buildUndistort(
+    bool enable, const std::vector<float>& distCoeffs, const ImgFrame::Type type, const uint32_t width, const uint32_t height) {
+    if(enable) {
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+        auto frameSize = getAlignedOutputFrameSize(type, width, height);
+        if(!auxFrame || auxFrame->size() < frameSize) {
+            auxFrame = std::make_shared<ImageManipData>(frameSize);
+        }
+        if(!undistortImpl) undistortImpl = std::make_unique<UndistortOpenCvImpl>(this->logger);
+        undistortImpl->build(distCoeffs, width, height);
+#else
+        throw std::runtime_error("Undistort requires OpenCV support");
+#endif
+    } else {
+        undistortImpl = nullptr;
+    }
 }
 
 template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
@@ -3133,6 +3146,10 @@ void printSpecs(spdlog::async_logger& logger, FrameSpecs specs);
 
 template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
 void WarpH<ImageManipBuffer, ImageManipData>::apply(const std::shared_ptr<ImageManipData> src, std::shared_ptr<ImageManipData> dst) {
+    auto undistortDst = this->isIdentityWarp() ? dst : auxFrame;
+    auto warpSrc = this->undistortImpl ? auxFrame : src;
+    auto undistortSpecs = this->isIdentityWarp() ? this->dstSpecs : getDstFrameSpecs(this->srcSpecs.width, this->srcSpecs.height, this->type);
+    auto warpSrcSpecs = this->undistortImpl ? undistortSpecs : this->srcSpecs;
     // Apply transformation multiple times depending on the image format
     switch(this->type) {
         case ImgFrame::Type::RGB888i:
@@ -3141,15 +3158,15 @@ void WarpH<ImageManipBuffer, ImageManipData>::apply(const std::shared_ptr<ImageM
     #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
             if(this->undistortImpl) {
                 cv::Mat srcCv(this->srcSpecs.height, this->srcSpecs.width, CV_8UC3, src->offset(this->srcSpecs.p1Offset)->data(), this->srcSpecs.p1Stride);
-                cv::Mat dstCv(this->dstSpecs.height, this->dstSpecs.width, CV_8UC3, dst->offset(this->dstSpecs.p1Offset)->data(), this->dstSpecs.p1Stride);
+                cv::Mat dstCv(undistortSpecs.height, undistortSpecs.width, CV_8UC3, undistortDst->offset(undistortSpecs.p1Offset)->data(), undistortSpecs.p1Stride);
                 this->undistortImpl->undistort(srcCv, dstCv);
             }
     #endif
-            transform(src->offset(this->srcSpecs.p1Offset),
+            transform(warpSrc->offset(warpSrcSpecs.p1Offset),
                       dst->offset(this->dstSpecs.p1Offset),
-                      this->srcSpecs.width,
-                      this->srcSpecs.height,
-                      this->srcSpecs.p1Stride,
+                      warpSrcSpecs.width,
+                      warpSrcSpecs.height,
+                      warpSrcSpecs.p1Stride,
                       this->dstSpecs.width,
                       this->dstSpecs.height,
                       this->dstSpecs.p1Stride,
@@ -3170,26 +3187,26 @@ void WarpH<ImageManipBuffer, ImageManipData>::apply(const std::shared_ptr<ImageM
             if(this->undistortImpl) {
                 {
                     cv::Mat srcCv(this->srcSpecs.height, this->srcSpecs.width, CV_8UC1, src->offset(this->srcSpecs.p1Offset)->data(), this->srcSpecs.p1Stride);
-                    cv::Mat dstCv(this->dstSpecs.height, this->dstSpecs.width, CV_8UC1, dst->offset(this->dstSpecs.p1Offset)->data(), this->dstSpecs.p1Stride);
+                    cv::Mat dstCv(undistortSpecs.height, undistortSpecs.width, CV_8UC1, undistortDst->offset(undistortSpecs.p1Offset)->data(), undistortSpecs.p1Stride);
                     this->undistortImpl->undistort(srcCv, dstCv);
                 }
                 {
                     cv::Mat srcCv(this->srcSpecs.height, this->srcSpecs.width, CV_8UC1, src->offset(this->srcSpecs.p2Offset)->data(), this->srcSpecs.p2Stride);
-                    cv::Mat dstCv(this->dstSpecs.height, this->dstSpecs.width, CV_8UC1, dst->offset(this->dstSpecs.p2Offset)->data(), this->dstSpecs.p2Stride);
+                    cv::Mat dstCv(undistortSpecs.height, undistortSpecs.width, CV_8UC1, undistortDst->offset(undistortSpecs.p2Offset)->data(), undistortSpecs.p2Stride);
                     this->undistortImpl->undistort(srcCv, dstCv);
                 }
                 {
                     cv::Mat srcCv(this->srcSpecs.height, this->srcSpecs.width, CV_8UC1, src->offset(this->srcSpecs.p3Offset)->data(), this->srcSpecs.p3Stride);
-                    cv::Mat dstCv(this->dstSpecs.height, this->dstSpecs.width, CV_8UC1, dst->offset(this->dstSpecs.p3Offset)->data(), this->dstSpecs.p3Stride);
+                    cv::Mat dstCv(undistortSpecs.height, undistortSpecs.width, CV_8UC1, undistortDst->offset(undistortSpecs.p3Offset)->data(), undistortSpecs.p3Stride);
                     this->undistortImpl->undistort(srcCv, dstCv);
                 }
             }
     #endif
-            transform(src->offset(this->srcSpecs.p1Offset),
+            transform(warpSrc->offset(warpSrcSpecs.p1Offset),
                       dst->offset(this->dstSpecs.p1Offset),
-                      this->srcSpecs.width,
-                      this->srcSpecs.height,
-                      this->srcSpecs.p1Stride,
+                      warpSrcSpecs.width,
+                      warpSrcSpecs.height,
+                      warpSrcSpecs.p1Stride,
                       this->dstSpecs.width,
                       this->dstSpecs.height,
                       this->dstSpecs.p1Stride,
@@ -3197,11 +3214,11 @@ void WarpH<ImageManipBuffer, ImageManipData>::apply(const std::shared_ptr<ImageM
                       1,
                       this->matrix,
                       {this->backgroundColor[0]});
-            transform(src->offset(this->srcSpecs.p2Offset),
+            transform(warpSrc->offset(warpSrcSpecs.p2Offset),
                       dst->offset(this->dstSpecs.p2Offset),
-                      this->srcSpecs.width,
-                      this->srcSpecs.height,
-                      this->srcSpecs.p2Stride,
+                      warpSrcSpecs.width,
+                      warpSrcSpecs.height,
+                      warpSrcSpecs.p2Stride,
                       this->dstSpecs.width,
                       this->dstSpecs.height,
                       this->dstSpecs.p2Stride,
@@ -3209,11 +3226,11 @@ void WarpH<ImageManipBuffer, ImageManipData>::apply(const std::shared_ptr<ImageM
                       1,
                       this->matrix,
                       {this->backgroundColor[1]});
-            transform(src->offset(this->srcSpecs.p3Offset),
+            transform(warpSrc->offset(warpSrcSpecs.p3Offset),
                       dst->offset(this->dstSpecs.p3Offset),
-                      this->srcSpecs.width,
-                      this->srcSpecs.height,
-                      this->srcSpecs.p3Stride,
+                      warpSrcSpecs.width,
+                      warpSrcSpecs.height,
+                      warpSrcSpecs.p3Stride,
                       this->dstSpecs.width,
                       this->dstSpecs.height,
                       this->dstSpecs.p3Stride,
@@ -3233,30 +3250,30 @@ void WarpH<ImageManipBuffer, ImageManipData>::apply(const std::shared_ptr<ImageM
             if(this->undistortImpl) {
                 {
                     cv::Mat srcCv(this->srcSpecs.height, this->srcSpecs.width, CV_8UC1, src->offset(this->srcSpecs.p1Offset)->data(), this->srcSpecs.p1Stride);
-                    cv::Mat dstCv(this->dstSpecs.height, this->dstSpecs.width, CV_8UC1, dst->offset(this->dstSpecs.p1Offset)->data(), this->dstSpecs.p1Stride);
+                    cv::Mat dstCv(undistortSpecs.height, undistortSpecs.width, CV_8UC1, undistortDst->offset(undistortSpecs.p1Offset)->data(), undistortSpecs.p1Stride);
                     this->undistortImpl->undistort(srcCv, dstCv);
                 }
                 {
                     cv::Mat srcCv(
                         this->srcSpecs.height / 2, this->srcSpecs.width / 2, CV_8UC1, src->offset(this->srcSpecs.p2Offset)->data(), this->srcSpecs.p2Stride);
                     cv::Mat dstCv(
-                        this->dstSpecs.height / 2, this->dstSpecs.width / 2, CV_8UC1, dst->offset(this->dstSpecs.p2Offset)->data(), this->dstSpecs.p2Stride);
+                        undistortSpecs.height / 2, undistortSpecs.width / 2, CV_8UC1, undistortDst->offset(undistortSpecs.p2Offset)->data(), undistortSpecs.p2Stride);
                     this->undistortImpl->undistort(srcCv, dstCv);
                 }
                 {
                     cv::Mat srcCv(
                         this->srcSpecs.height / 2, this->srcSpecs.width / 2, CV_8UC1, src->offset(this->srcSpecs.p3Offset)->data(), this->srcSpecs.p3Stride);
                     cv::Mat dstCv(
-                        this->dstSpecs.height / 2, this->dstSpecs.width / 2, CV_8UC1, dst->offset(this->dstSpecs.p3Offset)->data(), this->dstSpecs.p3Stride);
+                        undistortSpecs.height / 2, undistortSpecs.width / 2, CV_8UC1, undistortDst->offset(undistortSpecs.p3Offset)->data(), undistortSpecs.p3Stride);
                     this->undistortImpl->undistort(srcCv, dstCv);
                 }
             }
     #endif
-            transform(src->offset(this->srcSpecs.p1Offset),
+            transform(warpSrc->offset(warpSrcSpecs.p1Offset),
                       dst->offset(this->dstSpecs.p1Offset),
-                      this->srcSpecs.width,
-                      this->srcSpecs.height,
-                      this->srcSpecs.p1Stride,
+                      warpSrcSpecs.width,
+                      warpSrcSpecs.height,
+                      warpSrcSpecs.p1Stride,
                       this->dstSpecs.width,
                       this->dstSpecs.height,
                       this->dstSpecs.p1Stride,
@@ -3264,11 +3281,11 @@ void WarpH<ImageManipBuffer, ImageManipData>::apply(const std::shared_ptr<ImageM
                       1,
                       this->matrix,
                       {this->backgroundColor[0]});
-            transform(src->offset(this->srcSpecs.p2Offset),
+            transform(warpSrc->offset(warpSrcSpecs.p2Offset),
                       dst->offset(this->dstSpecs.p2Offset),
-                      this->srcSpecs.width / 2,
-                      this->srcSpecs.height / 2,
-                      this->srcSpecs.p2Stride,
+                      warpSrcSpecs.width / 2,
+                      warpSrcSpecs.height / 2,
+                      warpSrcSpecs.p2Stride,
                       this->dstSpecs.width / 2,
                       this->dstSpecs.height / 2,
                       this->dstSpecs.p2Stride,
@@ -3276,11 +3293,11 @@ void WarpH<ImageManipBuffer, ImageManipData>::apply(const std::shared_ptr<ImageM
                       1,
                       this->matrix,
                       {this->backgroundColor[1]});
-            transform(src->offset(this->srcSpecs.p3Offset),
+            transform(warpSrc->offset(warpSrcSpecs.p3Offset),
                       dst->offset(this->dstSpecs.p3Offset),
-                      this->srcSpecs.width / 2,
-                      this->srcSpecs.height / 2,
-                      this->srcSpecs.p3Stride,
+                      warpSrcSpecs.width / 2,
+                      warpSrcSpecs.height / 2,
+                      warpSrcSpecs.p3Stride,
                       this->dstSpecs.width / 2,
                       this->dstSpecs.height / 2,
                       this->dstSpecs.p3Stride,
@@ -3300,23 +3317,23 @@ void WarpH<ImageManipBuffer, ImageManipData>::apply(const std::shared_ptr<ImageM
             if(this->undistortImpl) {
                 {
                     cv::Mat srcCv(this->srcSpecs.height, this->srcSpecs.width, CV_8UC1, src->offset(this->srcSpecs.p1Offset)->data(), this->srcSpecs.p1Stride);
-                    cv::Mat dstCv(this->dstSpecs.height, this->dstSpecs.width, CV_8UC1, dst->offset(this->dstSpecs.p1Offset)->data(), this->dstSpecs.p1Stride);
+                    cv::Mat dstCv(undistortSpecs.height, undistortSpecs.width, CV_8UC1, undistortDst->offset(undistortSpecs.p1Offset)->data(), undistortSpecs.p1Stride);
                     this->undistortImpl->undistort(srcCv, dstCv);
                 }
                 {
                     cv::Mat srcCv(
                         this->srcSpecs.height / 2, this->srcSpecs.width / 2, CV_8UC2, src->offset(this->srcSpecs.p2Offset)->data(), this->srcSpecs.p2Stride);
                     cv::Mat dstCv(
-                        this->dstSpecs.height / 2, this->dstSpecs.width / 2, CV_8UC2, dst->offset(this->dstSpecs.p2Offset)->data(), this->dstSpecs.p2Stride);
+                        undistortSpecs.height / 2, undistortSpecs.width / 2, CV_8UC2, undistortDst->offset(undistortSpecs.p2Offset)->data(), undistortSpecs.p2Stride);
                     this->undistortImpl->undistort(srcCv, dstCv);
                 }
             }
     #endif
-            transform(src->offset(this->srcSpecs.p1Offset),
+            transform(warpSrc->offset(warpSrcSpecs.p1Offset),
                       dst->offset(this->dstSpecs.p1Offset),
-                      this->srcSpecs.width,
-                      this->srcSpecs.height,
-                      this->srcSpecs.p1Stride,
+                      warpSrcSpecs.width,
+                      warpSrcSpecs.height,
+                      warpSrcSpecs.p1Stride,
                       this->dstSpecs.width,
                       this->dstSpecs.height,
                       this->dstSpecs.p1Stride,
@@ -3324,11 +3341,11 @@ void WarpH<ImageManipBuffer, ImageManipData>::apply(const std::shared_ptr<ImageM
                       1,
                       this->matrix,
                       {this->backgroundColor[0]});
-            transform(src->offset(this->srcSpecs.p2Offset),
+            transform(warpSrc->offset(warpSrcSpecs.p2Offset),
                       dst->offset(this->dstSpecs.p2Offset),
-                      this->srcSpecs.width / 2,
-                      this->srcSpecs.height / 2,
-                      this->srcSpecs.p2Stride,
+                      warpSrcSpecs.width / 2,
+                      warpSrcSpecs.height / 2,
+                      warpSrcSpecs.p2Stride,
                       this->dstSpecs.width / 2,
                       this->dstSpecs.height / 2,
                       this->dstSpecs.p2Stride,
@@ -3349,16 +3366,16 @@ void WarpH<ImageManipBuffer, ImageManipData>::apply(const std::shared_ptr<ImageM
             if(this->undistortImpl) {
                 {
                     cv::Mat srcCv(this->srcSpecs.height, this->srcSpecs.width, CV_8UC1, src->offset(this->srcSpecs.p1Offset)->data(), this->srcSpecs.p1Stride);
-                    cv::Mat dstCv(this->dstSpecs.height, this->dstSpecs.width, CV_8UC1, dst->offset(this->dstSpecs.p1Offset)->data(), this->dstSpecs.p1Stride);
+                    cv::Mat dstCv(undistortSpecs.height, undistortSpecs.width, CV_8UC1, undistortDst->offset(undistortSpecs.p1Offset)->data(), undistortSpecs.p1Stride);
                     this->undistortImpl->undistort(srcCv, dstCv);
                 }
             }
     #endif
-            transform(src->offset(this->srcSpecs.p1Offset),
+            transform(warpSrc->offset(warpSrcSpecs.p1Offset),
                       dst->offset(this->dstSpecs.p1Offset),
-                      this->srcSpecs.width,
-                      this->srcSpecs.height,
-                      this->srcSpecs.p1Stride,
+                      warpSrcSpecs.width,
+                      warpSrcSpecs.height,
+                      warpSrcSpecs.p1Stride,
                       this->dstSpecs.width,
                       this->dstSpecs.height,
                       this->dstSpecs.p1Stride,
@@ -3378,16 +3395,16 @@ void WarpH<ImageManipBuffer, ImageManipData>::apply(const std::shared_ptr<ImageM
             if(this->undistortImpl) {
                 {
                     cv::Mat srcCv(this->srcSpecs.height, this->srcSpecs.width, CV_16UC1, src->offset(this->srcSpecs.p1Offset)->data(), this->srcSpecs.p1Stride);
-                    cv::Mat dstCv(this->dstSpecs.height, this->dstSpecs.width, CV_16UC1, dst->offset(this->dstSpecs.p1Offset)->data(), this->dstSpecs.p1Stride);
+                    cv::Mat dstCv(undistortSpecs.height, undistortSpecs.width, CV_16UC1, undistortDst->offset(undistortSpecs.p1Offset)->data(), undistortSpecs.p1Stride);
                     this->undistortImpl->undistort(srcCv, dstCv);
                 }
             }
     #endif
-            transform(src->offset(this->srcSpecs.p1Offset),
+            transform(warpSrc->offset(warpSrcSpecs.p1Offset),
                       dst->offset(this->dstSpecs.p1Offset),
-                      this->srcSpecs.width,
-                      this->srcSpecs.height,
-                      this->srcSpecs.p1Stride,
+                      warpSrcSpecs.width,
+                      warpSrcSpecs.height,
+                      warpSrcSpecs.p1Stride,
                       this->dstSpecs.width,
                       this->dstSpecs.height,
                       this->dstSpecs.p1Stride,
@@ -3429,6 +3446,13 @@ void WarpH<ImageManipBuffer, ImageManipData>::apply(const std::shared_ptr<ImageM
             throw std::runtime_error("Unsupported image format. Only YUV420p, RGB888p, BGR888p, RGB888i, BGR888i, RAW8, NV12, GRAY8 are supported");
             break;
     }
+}
+
+template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
+bool Warp<ImageManipBuffer, ImageManipData>::isIdentityWarp() const {
+    return (matrix[0][0] == 1.0f && matrix[0][1] == 0.0f && matrix[0][2] == 0.0f && matrix[1][0] == 0.0f && matrix[1][1] == 1.0f && matrix[1][2] == 0.0f
+            && matrix[2][0] == 0.0f && matrix[2][1] == 0.0f && matrix[2][2] == 1.0f)
+           && (srcSpecs.width == dstSpecs.width && srcSpecs.height == dstSpecs.height);
 }
 
 template <template <typename T> typename ImageManipBuffer, typename ImageManipData>

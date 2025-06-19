@@ -246,7 +246,7 @@ class ImageManipOpsBase : public ImageManipOpsEnums {
     }
 
     bool hasWarp(const size_t inputWidth, const size_t inputHeight) const {
-        return operations.size() > 0 || (outputWidth != 0 && outputWidth != inputWidth) || (outputHeight != 0 && outputHeight != inputHeight);
+        return operations.size() > 0 || (outputWidth != 0 && outputWidth != inputWidth) || (outputHeight != 0 && outputHeight != inputHeight) || undistort;
     }
 
     ImageManipOpsBase& addOp(ManipOp op) {
