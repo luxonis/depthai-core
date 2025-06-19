@@ -95,7 +95,7 @@ class TemporalFilter {
     MemSections rawAccumulatorFrame = {};  // Hold the last frame received for the current profile
     MemSections rawHistoryFrame = {};      // represents the history over the last 8 frames, 1 bit per frame
     // encodes whether a particular 8 bit history is good enough for all 8 phases of storage
-    MemSections rawPersistenceMapLUT = {};  // Lookup table if persitency is enabled
+    MemSections rawPersistenceMapLUT = {};  // Lookup table if persistency is enabled
 };
 
 /***********************************************************************************************************/
