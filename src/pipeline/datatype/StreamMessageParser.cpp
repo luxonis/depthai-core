@@ -34,6 +34,7 @@
 #include "depthai/pipeline/datatype/SpatialLocationCalculatorConfig.hpp"
 #include "depthai/pipeline/datatype/SpatialLocationCalculatorData.hpp"
 #include "depthai/pipeline/datatype/StereoDepthConfig.hpp"
+#include "depthai/pipeline/datatype/DynamicCalibrationConfig.hpp"
 #include "depthai/pipeline/datatype/SystemInformation.hpp"
 #include "depthai/pipeline/datatype/SystemInformationS3.hpp"
 #include "depthai/pipeline/datatype/ThermalConfig.hpp"
@@ -206,6 +207,10 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
 
         case DatatypeEnum::StereoDepthConfig:
             return parseDatatype<StereoDepthConfig>(metadataStart, serializedObjectSize, data, fd);
+            break;
+
+        case DatatypeEnum::DynamicCalibrationConfig:
+            return parseDatatype<DynamicCalibrationConfig>(metadataStart, serializedObjectSize, data, fd);
             break;
 
         case DatatypeEnum::EdgeDetectorConfig:

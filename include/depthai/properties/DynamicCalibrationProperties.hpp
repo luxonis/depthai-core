@@ -1,5 +1,6 @@
 #pragma once
 #include "depthai/properties/Properties.hpp"
+#include "depthai/pipeline/datatype/DynamicCalibrationConfig.hpp"
 
 namespace dai {
 
@@ -7,9 +8,10 @@ namespace dai {
  * Specify properties for Dynamic calibration.
  */
 struct DynamicCalibrationProperties : PropertiesSerializable<Properties, DynamicCalibrationProperties> {
-    float placeholder = 0.0f;  // Properties not used yet
+
+    DynamicCalibrationConfig initialConfig;
 };
 
-DEPTHAI_SERIALIZE_EXT(DynamicCalibrationProperties, placeholder);
+DEPTHAI_SERIALIZE_EXT(DynamicCalibrationProperties, initialConfig);
 
 }  // namespace dai

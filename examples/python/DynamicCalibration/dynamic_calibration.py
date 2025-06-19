@@ -22,8 +22,8 @@ right_out.link(stereo.right)
 
 # Dynamic calibration node
 dyn_calib = pipeline.create(dai.node.DynamicCalibration)
-left_out.link(dyn_calib.left)
-right_out.link(dyn_calib.right)
+stereo.syncedLeft.link(dyn_calib.left)
+stereo.syncedRight.link(dyn_calib.right)
 
 # Output queues
 left_xout = left_out.createOutputQueue()

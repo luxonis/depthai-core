@@ -33,6 +33,7 @@ dcl::ImageData cvMatToImageData(const cv::Mat& mat) {
 namespace dai {
 namespace node {
 
+DynamicCalibration::~DynamicCalibration() = default;
 void DynamicCalibration::setRunOnHost(bool runOnHost) {
     runOnHostVar = runOnHost;
 }
@@ -155,8 +156,8 @@ CalibrationResult DynamicCalibration::getNewCalibration() const {
     return results.calibration;
 }
 
-void DynamicCalibration::setContinuousMode() {
-    continuousMode = true;  // Assuming `continuousMode` is a class member variable
+void DynamicCalibration::setContinuousMode(dai::DynamicCalibrationConfig::AlgorithmControl::RecalibrationMode mode) {
+    properties.initialConfig.algorithmControl.recalibrationMode = mode;
 }
 
 void DynamicCalibration::setNewCalibration(CalibrationHandler currentCalibration){
@@ -299,7 +300,7 @@ void DynamicCalibration::run() {
 
         // === STATE MACHINE ===
         auto now = std::chrono::steady_clock::now();
-        if(continuousMode && calibrationSM.isIdle() &&
+        if(properties.initialConfig.algorithmControl.recalibrationMode == dai::DynamicCalibrationConfig::AlgorithmControl::RecalibrationMode::CONTINIOUS && calibrationSM.isIdle() &&
             std::chrono::duration_cast<std::chrono::seconds>(now - lastAutoTrigger).count() > 5) {
 
             lastAutoTrigger = now;

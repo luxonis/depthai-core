@@ -29,8 +29,9 @@ int main() {
     auto q = stereo->disparity.createOutputQueue();
 
     // Feed the frames into the dynamic-calibration block
-    leftOut->link(dynCalib->left);
-    rightOut->link(dynCalib->right);
+    stereo->syncedLeft->link(dynCalib->left);
+    stereo->syncedRight->link(dynCalib->right);
+
     auto device = pipeline.getDefaultDevice();
     auto calibOld = device->readCalibration();
     auto calibNew = device->readCalibration();

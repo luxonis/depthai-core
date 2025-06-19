@@ -5,6 +5,7 @@
 #include <SensorHandle.hpp>
 #include <depthai/pipeline/DeviceNode.hpp>
 #include <depthai/properties/DynamicCalibrationProperties.hpp>
+#include "depthai/pipeline/datatype/DynamicCalibrationConfig.hpp"
 #include <DynamicCalibration.hpp>
 #include <CalibrationHandle.hpp>
 #include <SensorHandle.hpp>
@@ -126,9 +127,16 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
    public:
     constexpr static const char* NAME = "DynamicCalibration";
     using DeviceNodeCRTP::DeviceNodeCRTP;
+    virtual ~DynamicCalibration(); 
 
+
+   protected:
+    Properties& getProperties();
+
+   public:
     CalibrationResults results;
-    bool continuousMode = false;
+
+    std::shared_ptr<DynamicCalibrationConfig> initialConfig = std::make_shared<DynamicCalibrationConfig>();
 
     // We could have a map here to perform the calibration on an arbitrary number of inputs for example: (left, right, rgb).
     // /**
@@ -136,8 +144,21 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     //  */
     // InputMap inputs{*this, "inputs", {"", DEFAULT_GROUP, false, 10, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
-    Input left{*this, {"left", DEFAULT_GROUP, false, 1}};
-    Input right{*this, {"right", DEFAULT_GROUP, false, 1}};
+    /**
+     * Input StereoDepthConfig message with ability to modify parameters in runtime.
+     */
+    Input inputConfig{
+        *this, {"inputConfig", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::DynamicCalibrationConfig, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+
+    /**
+     * Input for left ImgFrame of left-right pair
+     */
+    Input left{*this, {"left", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ImgFrame, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+
+    /**
+     * Input for right ImgFrame of left-right pair
+     */
+    Input right{*this, {"right", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ImgFrame, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Specify whether to run on host or device
@@ -167,7 +188,7 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     void startRecalibration();
     QualityResult getCalibQuality() const;
     CalibrationResult getNewCalibration() const;
-    void setContinuousMode();
+    void setContinuousMode(dai::DynamicCalibrationConfig::AlgorithmControl::RecalibrationMode mode);
 
     void run() override;
 
