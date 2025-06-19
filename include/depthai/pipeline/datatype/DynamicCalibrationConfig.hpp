@@ -62,19 +62,19 @@ class DynamicCalibrationConfig : public Buffer {
                           maximumCalibCheckFrames);
     };
 
-    struct CoverageCheckMetrics {
+    struct CoverageCheckThresholds {
         /**
          * Set the threshold for validation of coverage check, how much of the percentage of the image must be covered
          * Valid range is [0,100]
          */
         uint8_t coverageCheckThreshold = 50;
         
-        DEPTHAI_SERIALIZE(CoverageCheckMetrics,
+        DEPTHAI_SERIALIZE(CoverageCheckThresholds,
                           coverageCheckThreshold);
     };
 
 
-    struct CalibCheckMetrics {
+    struct CalibCheckThresholds {
         /**
          * Set threshold for maximum difference in epipolar error before and after the recalibration.
          * Value is set as float, with significant change being marked at around 0.1px
@@ -95,21 +95,21 @@ class DynamicCalibrationConfig : public Buffer {
 
         RotationChangeThresholds rotationChangeThresholds;
 
-        DEPTHAI_SERIALIZE(CalibCheckMetrics,
+        DEPTHAI_SERIALIZE(CalibCheckThresholds,
                           epipolarErrorChangeThresholds,
                           rotationChangeThresholds
                           );
     };
 
 
-    struct RecalibrationMetrics {
+    struct RecalibrationThresholds {
         /**
          * Set the pipeline so that device automatically reflash the user calibration 
          * after the new calibration is set as device->setCalibration()
          */
         bool flashNewCalibration = false;
 
-        DEPTHAI_SERIALIZE(RecalibrationMetrics,
+        DEPTHAI_SERIALIZE(RecalibrationThresholds,
                           flashNewCalibration
                           );
     };
@@ -156,7 +156,7 @@ class DynamicCalibrationConfig : public Buffer {
 
     float getEpipolarErrorChangeThresholds() const;
 
-    CalibCheckMetrics::RotationChangeThresholds getRotationChangeThresholds() const;
+    CalibCheckThresholds::RotationChangeThresholds getRotationChangeThresholds() const;
 
     DynamicCalibrationConfig& setFlashNewCalibration(bool enable);
 
@@ -164,19 +164,19 @@ class DynamicCalibrationConfig : public Buffer {
     AlgorithmControl algorithmControl;
 
 
-    CoverageCheckMetrics coverageCheckMetrics;
+    CoverageCheckThresholds coverageCheckThresholds;
 
 
-    CalibCheckMetrics calibCheckMetrics;
+    CalibCheckThresholds calibCheckThresholds;
 
 
-    RecalibrationMetrics recalibrationMetrics;
+    RecalibrationThresholds recalibrationThresholds;
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
         metadata = utility::serialize(*this);
         datatype = DatatypeEnum::DynamicCalibrationConfig;
     };
-    DEPTHAI_SERIALIZE(DynamicCalibrationConfig, algorithmControl, coverageCheckMetrics, calibCheckMetrics, recalibrationMetrics);
+    DEPTHAI_SERIALIZE(DynamicCalibrationConfig, algorithmControl, coverageCheckThresholds, calibCheckThresholds, recalibrationThresholds);
 };
 
 }  // namespace dai

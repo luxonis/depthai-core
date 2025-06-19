@@ -46,30 +46,30 @@ uint8_t DynamicCalibrationConfig::getMaximumRecalibrationFrames() const {
 
 
 DynamicCalibrationConfig& DynamicCalibrationConfig::setCoverageCheckThreshold(uint8_t coverageThreshold) {
-    coverageCheckMetrics.coverageCheckThreshold = coverageThreshold;
+    coverageCheckThresholds.coverageCheckThreshold = coverageThreshold;
     return *this;
 }
 
 uint8_t DynamicCalibrationConfig::getCoverageCheckThreshold() const {
-    return coverageCheckMetrics.coverageCheckThreshold;
+    return coverageCheckThresholds.coverageCheckThreshold;
 }
 
 
 DynamicCalibrationConfig& DynamicCalibrationConfig::setEpipolarErrorChangeThresholds(float value) {
-    calibCheckMetrics.epipolarErrorChangeThresholds = value;
+    calibCheckThresholds.epipolarErrorChangeThresholds = value;
     return *this;
 }
 
 float DynamicCalibrationConfig::getEpipolarErrorChangeThresholds() const {
-    return calibCheckMetrics.epipolarErrorChangeThresholds;
+    return calibCheckThresholds.epipolarErrorChangeThresholds;
 }
 
-DynamicCalibrationConfig::CalibCheckMetrics::RotationChangeThresholds DynamicCalibrationConfig::getRotationChangeThresholds() const {
-    return calibCheckMetrics.rotationChangeThresholds;
+DynamicCalibrationConfig::CalibCheckThresholds::RotationChangeThresholds DynamicCalibrationConfig::getRotationChangeThresholds() const {
+    return calibCheckThresholds.rotationChangeThresholds;
 }
 
 DynamicCalibrationConfig& DynamicCalibrationConfig::setFlashNewCalibration(bool enable) {
-    recalibrationMetrics.flashNewCalibration = enable;
+    recalibrationThresholds.flashNewCalibration = enable;
     return *this;
 }
 }  // namespace dai
