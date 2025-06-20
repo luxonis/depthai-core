@@ -5,4 +5,10 @@ extern "C" {
 #include "uvcgadget/depthai-source.h"
 }
 
-int depthai_uvc_get_buffer(struct video_source *s, struct video_buffer *buf);
+// #ifdef __cplusplus
+// extern "C" {
+// #endif
+// int depthai_uvc_get_buffer(struct video_source *s, struct video_buffer *buf);
+// #ifdef __cplusplus
+// }
+// #endif

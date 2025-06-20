@@ -76,17 +76,19 @@ class VideoSaver : public dai::node::CustomNode<VideoSaver> {
     std::ofstream fileHandle;
 };
 
-int depthai_uvc_get_buffer(struct video_source *s, struct video_buffer *buf) {
+extern "C" void depthai_uvc_get_buffer(struct video_source *s, struct video_buffer *buf) {
 	unsigned int size;
     uint8_t *f;
 
     if(quitEvent) {
-        return -1;
+        std::cout << "depthai_uvc_get_buffer(): Stopping capture due to quit event." << std::endl;
+        return;
     }      
 
     auto frame = outputQueue->get<dai::ImgFrame>();
     if(frame == nullptr) {
-        return -1;
+        std::cerr << "depthai_uvc_get_buffer(): No frame available." << std::endl;
+        return;
     }
 
     f = frame->getData().data();
@@ -99,7 +101,7 @@ int depthai_uvc_get_buffer(struct video_source *s, struct video_buffer *buf) {
 	memcpy(buf->mem, f, size);
 	buf->bytesused = size;
 
-    std::cout << "depthai_uvc_get_buffer(): Filled a buffer" << std::endl;
+    // std::cout << "depthai_uvc_get_buffer(): Filled a buffer" << std::endl;
 }
 
 int main() {
@@ -107,6 +109,8 @@ int main() {
     struct uvc_function_config *fc;
     struct video_source* src;
     struct uvc_stream* stream;
+
+    depthai_uvc_register_get_buffer(depthai_uvc_get_buffer);
 
     fc = configfs_parse_uvc_function("uvc.0");
     if (!fc) {
@@ -143,11 +147,13 @@ int main() {
 
     // Create nodes
     auto camRgb = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A);
-    auto output = camRgb->requestOutput(std::make_pair(1920, 1440), dai::ImgFrame::Type::NV12);
+    auto output = camRgb->requestOutput(std::make_pair(1920, 1080), dai::ImgFrame::Type::NV12);
 
     // Create video encoder node
     auto encoded = pipeline.create<dai::node::VideoEncoder>();
     encoded->setDefaultProfilePreset(30, dai::VideoEncoderProperties::Profile::MJPEG);
+    encoded->input.setMaxSize(1);
+    encoded->input.setBlocking(false);
     output->link(encoded->input);
     outputQueue = encoded->bitstream.createOutputQueue();
 
