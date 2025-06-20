@@ -517,11 +517,22 @@ endif()
 
 if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
     include(FetchContent)
-    FetchContent_Declare(
-        dynamic_calibration
-        URL https://artifacts.luxonis.com/artifactory/list/luxonis-depthai-helper-binaries/dynamic_calibration/0.2alpha/dynamic_calibration_manylinux.zip
-        URL_HASH MD5=bfd57f84ad9cf35e33e482101762f1f3
-    )
+    set(DEPTHAI_DYNAMIC_CALIBRATION_PATH "" CACHE FILEPATH "Override path to local dynamic_calibration .zip file")
+
+    if(DEPTHAI_DYNAMIC_CALIBRATION_PATH AND EXISTS "${DEPTHAI_DYNAMIC_CALIBRATION_PATH}")
+        message(STATUS "Using local dynamic_calibration zip: ${DEPTHAI_DYNAMIC_CALIBRATION_PATH}")
+        FetchContent_Declare(
+            dynamic_calibration
+            URL "file://${DEPTHAI_DYNAMIC_CALIBRATION_PATH}"
+        )
+    else()
+        message(STATUS "Using remote dynamic_calibration zip")
+        FetchContent_Declare(
+            dynamic_calibration
+            URL https://artifacts.luxonis.com/artifactory/list/luxonis-depthai-helper-binaries/dynamic_calibration/0.2alpha/dynamic_calibration_manylinux.zip
+            URL_HASH MD5=bfd57f84ad9cf35e33e482101762f1f3
+        )
+    endif()
     FetchContent_MakeAvailable(dynamic_calibration)
     message(STATUS "Dynamic calibration extracted to ${dynamic_calibration_SOURCE_DIR}")
     set(DYNAMIC_CALIBRATION_DIR ${dynamic_calibration_SOURCE_DIR})
