@@ -15,21 +15,25 @@
 #include "uvc_example.hpp"
 
 extern "C" {
-#include "config.h"
-#include "configfs.h"
-#include "events.h"
-#include "stream.h"
-#include "libcamera-source.h"
-#include "v4l2-source.h"
-#include "test-source.h"
-#include "jpg-source.h"
-#include "slideshow-source.h"
+#include "uvc-gadget/lib/video-buffers.h"
+#include "uvcgadget/configfs.h"
+#include "uvcgadget/events.h"
+#include "uvcgadget/stream.h"
+#include "uvcgadget/libcamera-source.h"
+#include "uvcgadget/v4l2-source.h"
+#include "uvcgadget/test-source.h"
+#include "uvcgadget/jpg-source.h"
+#include "uvcgadget/slideshow-source.h"
+#include "uvcgadget/depthai-source.h"
 }
 
 // Global flag for graceful shutdown
 std::atomic<bool> quitEvent(false);
 
 std::shared_ptr<dai::MessageQueue> outputQueue;
+
+/* Necessary for and only used by signal handler. */
+static struct events *sigint_events;
 
 // Signal handler
 void signalHandler(int signum) {
@@ -73,10 +77,10 @@ class VideoSaver : public dai::node::CustomNode<VideoSaver> {
 };
 
 int depthai_uvc_get_buffer(struct video_source *s, struct video_buffer *buf) {
-    struct depthai_source *src = to_depthai_source(s);
 	unsigned int size;
+    uint8_t *f;
 
-    if(!pipeline.isRunning() || quitEvent) {
+    if(quitEvent) {
         return -1;
     }      
 
@@ -85,14 +89,14 @@ int depthai_uvc_get_buffer(struct video_source *s, struct video_buffer *buf) {
         return -1;
     }
 
-    uint8_t* d = frame->getData().data();
+    f = frame->getData().data();
     size = frame->getData().size();
 
     std::cout << "buffer size: " << size << std::endl;
     std::cout << "dest size: " << buf->size << std::endl;
 
 	// size = min(src->imgsize, buf->size);
-	memcpy(buf->mem, d, size);
+	memcpy(buf->mem, f, size);
 	buf->bytesused = size;
 
     std::cout << "depthai_uvc_get_buffer(): Filled a buffer" << std::endl;
@@ -114,7 +118,7 @@ int main() {
     signal(SIGTERM, signalHandler);
     signal(SIGINT, signalHandler);
 
-    src = depthai_video_source_create(fc->video->img_path);
+    src = depthai_video_source_create();
     if (!src) {
         std::cerr << "Failed to create video source." << std::endl;
         return 1;

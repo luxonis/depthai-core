@@ -2,7 +2,7 @@
 option(DEPTHAI_TEST_EXAMPLES "Test examples - examples will be ran as a part of test suite" OFF)
 
 # Dependencies
-find_package(OpenCV REQUIRED)
+# find_package(OpenCV REQUIRED)
 find_package(Sanitizers)
 
 # Create utility library
@@ -38,9 +38,9 @@ function(dai_add_example example_name example_src enable_test use_pcl)
     if(use_pcl AND NOT DEPTHAI_MERGED_TARGET)
         set(DEPTHAI_TARGET depthai::all)
     elseif(NOT DEPTHAI_MERGED_TARGET)
-        set(DEPTHAI_TARGET depthai::opencv)
+        set(DEPTHAI_TARGET depthai::core)
     endif()
-    target_link_libraries(${example_name} PRIVATE utility ${DEPTHAI_TARGET} ${OpenCV_LIBS} Threads::Threads)
+    target_link_libraries(${example_name} PRIVATE ${DEPTHAI_TARGET} Threads::Threads)
     # Set compiler features (c++17), and disables extensions (g++17)
     set_property(TARGET ${example_name} PROPERTY CXX_STANDARD 17)
     set_property(TARGET ${example_name} PROPERTY CXX_STANDARD_REQUIRED ON)
@@ -146,6 +146,7 @@ add_subdirectory(SpatialDetectionNetwork)
 add_subdirectory(SpatialLocationCalculator)
 add_subdirectory(Sync)
 add_subdirectory(VideoEncoder)
+add_subdirectory(UVC)
 add_subdirectory(Visualizer)
 add_subdirectory(RGBD)
 add_subdirectory(Warp)
