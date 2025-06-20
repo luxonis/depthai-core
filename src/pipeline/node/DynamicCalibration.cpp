@@ -415,7 +415,8 @@ void DynamicCalibration::run() {
                     results.calibration.info = "Recalibration successful";
                     results.calibration.valid = resultCalib.passed();
                     CalibrationHandler calibHandler = device->readCalibration();
-                    results.calibration.setCalibration(convertDCLtoDAI(calibHandler, calibrationHandle, leftSocket, rightSocket, width, height));
+                    // TODO DCL: weird this should be just results.calibration
+                    results.calibration.calibration = convertDCLtoDAI(calibHandler, calibrationHandle, leftSocket, rightSocket, width, height);
                 } else {
                     results.calibration.valid = false;
                     results.calibration.info = dcl::getStringFromErrCode(resultCalib.errorCode);

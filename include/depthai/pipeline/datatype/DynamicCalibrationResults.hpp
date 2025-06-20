@@ -21,30 +21,24 @@ struct DynamicCalibrationResults : public Buffer {
     DynamicCalibrationResults() = default;
     virtual ~DynamicCalibrationResults() = default;
 
+    //TODO DCL: This is not needed as a separate struct
     struct CalibrationResult {
-        std::optional<dai::EepromData> eepromData;  ///< Eeprom data containing calibration results
+        std::optional<dai::CalibrationHandler> calibration;
+        // TODO DCL:: don't use valid and info, use the optional functionality
+        // IF valid: set it
+        // if invalid: don't set it. From python side, it will be None
         bool valid = false;
         std::string info;
-
-        dai::CalibrationHandler getCalibration() const {
-            if(eepromData) {
-                return dai::CalibrationHandler(*eepromData);
-            } else {
-                throw std::runtime_error("No calibration data available");
-            }
-        }
-        void setCalibration(const dai::CalibrationHandler& calibration) {
-            eepromData = calibration.getEepromData();
-        }
 
         static CalibrationResult Invalid(std::string reason = "No result") {
             return CalibrationResult{std::nullopt, false, std::move(reason)};
         }
-        DEPTHAI_SERIALIZE(CalibrationResult, eepromData, valid, info);
+        DEPTHAI_SERIALIZE(CalibrationResult, calibration, valid, info);
     };
 
     struct QualityResult {
         float value = -1.0f;
+        // TODO: don't use valid and info, use the optional functionality
         bool valid = false;
         std::string info;
 
@@ -55,6 +49,7 @@ struct DynamicCalibrationResults : public Buffer {
     };
 
     QualityResult quality;
+    // TODO DCL: This should be std::optional<dai::CalibrationHandler>
     CalibrationResult calibration;
 
     void reset() {

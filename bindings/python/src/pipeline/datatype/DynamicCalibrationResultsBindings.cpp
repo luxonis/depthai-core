@@ -35,22 +35,15 @@ void bind_dynamic_calibration_results(pybind11::module& m, void* pCallstack) {
 
     // Metadata / raw
     _CalibrationResult.def(py::init<>())
-        .def_readwrite("eepromData",
-                       &DynamicCalibrationResults::CalibrationResult::eepromData,
-                       DOC(dai, DynamicCalibrationResults, CalibrationResult, eepromData))
+        .def_readwrite("calibration",
+                       &DynamicCalibrationResults::CalibrationResult::calibration,
+                       DOC(dai, DynamicCalibrationResults, CalibrationResult, calibration))
         .def_readwrite("valid",
                        &DynamicCalibrationResults::CalibrationResult::valid,
                        DOC(dai, DynamicCalibrationResults, CalibrationResult, valid))
         .def_readwrite("info",
                        &DynamicCalibrationResults::CalibrationResult::info,
                        DOC(dai, DynamicCalibrationResults, CalibrationResult, info))
-        .def("getCalibration",
-             &DynamicCalibrationResults::CalibrationResult::getCalibration,
-             DOC(dai, DynamicCalibrationResults, CalibrationResult, getCalibration))
-        .def("setCalibration",
-                &DynamicCalibrationResults::CalibrationResult::setCalibration,
-                py::arg("calibration"),
-                DOC(dai, DynamicCalibrationResults, CalibrationResult, setCalibration))
         ;
 
     _QualityResult.def(py::init<>())

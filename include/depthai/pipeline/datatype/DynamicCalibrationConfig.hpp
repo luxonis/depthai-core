@@ -50,6 +50,7 @@ struct DynamicCalibrationConfig : public Buffer {
         DEPTHAI_SERIALIZE(AlgorithmControl, recalibrationMode, enableCoverageCheck, maximumRecalibrationFrames, maximumCalibCheckFrames);
     };
 
+    //TODO DCL: Move all thresholds into a single struct
     struct CoverageCheckThresholds {
         /**
          * Set the threshold for validation of coverage check, how much of the percentage of the image must be covered
@@ -93,7 +94,6 @@ struct DynamicCalibrationConfig : public Buffer {
 
         DEPTHAI_SERIALIZE(RecalibrationThresholds, flashNewCalibration);
     };
-
 
     std::optional<AlgorithmControl> algorithmControl;
 

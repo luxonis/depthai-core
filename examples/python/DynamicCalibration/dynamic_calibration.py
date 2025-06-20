@@ -72,9 +72,9 @@ with pipeline:
             configMessage.calibrationCommand = dai.DynamicCalibrationConfig.CalibrationCommand.START_RECALIBRATION
             input_config.send(configMessage)
         elif key == ord("n"):
-            dyn_calib.setNewCalibration(calibNew)
+            dyn_calib.setNewCalibration(calibNew) # TODO DCL: implement this
         elif key == ord("o"):
-            dyn_calib.setNewCalibration(calibOld)
+            dyn_calib.setNewCalibration(calibOld) # TODO DCL: implement this, or rather remove this and expose only setNewCalibration w/o parameter
 
         calibration_result = dyncal_out.tryGet()
         if calibration_result is None:
@@ -87,5 +87,5 @@ with pipeline:
         if qual_result.valid:
             print(f"[QUALITY] Score: {qual_result.value:.2f} | Info: {qual_result.info}")
         if calib_result.valid:
-            calibNew = calib_result.getCalibration()
+            calibNew = calib_result.calibration
             print(f"[CALIB] Info: {calib_result.info}")
