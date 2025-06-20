@@ -1,0 +1,141 @@
+#!/usr/bin/env python3
+
+"""
+Minimal changes to original script:
+  * Adds simple timestamp-based synchronisation across multiple devices.
+  * Presents frames side‑by‑side when they are within 1 / FPS seconds.
+  * Keeps v3 API usage and overall code structure intact.
+"""
+
+import contextlib
+import datetime
+
+import cv2
+import depthai as dai
+import time
+# ---------------------------------------------------------------------------
+# Configuration
+# ---------------------------------------------------------------------------
+TARGET_FPS = 8  # Must match sensorFps in createPipeline()
+SYNC_THRESHOLD_SEC = 1.0 / TARGET_FPS  # Max drift to accept as "in sync"
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+class FPSCounter:
+    def __init__(self):
+        self.frameTimes = []
+
+    def tick(self):
+        now = time.time()
+        self.frameTimes.append(now)
+        self.frameTimes = self.frameTimes[-100:]
+
+    def getFps(self):
+        if len(self.frameTimes) <= 1:
+            return 0
+        # Calculate the FPS
+        return (len(self.frameTimes) - 1) / (self.frameTimes[-1] - self.frameTimes[0])
+
+
+def format_time(td: datetime.timedelta) -> str:
+    hours, remainder_seconds = divmod(td.seconds, 3600)
+    minutes, seconds = divmod(remainder_seconds, 60)
+    milliseconds, microseconds_remainder = divmod(td.microseconds, 1000)
+    days_prefix = f"{td.days} day{'s' if td.days != 1 else ''}, " if td.days else ""
+    return (
+        f"{days_prefix}{hours:02d}:{minutes:02d}:{seconds:02d}."
+        f"{milliseconds:03d}.{microseconds_remainder:03d}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Pipeline creation (unchanged API – only uses TARGET_FPS constant)
+# ---------------------------------------------------------------------------
+def createPipeline(pipeline: dai.Pipeline):
+    camRgb = (
+        pipeline.create(dai.node.Camera)
+        .build(dai.CameraBoardSocket.CAM_A, sensorFps=TARGET_FPS)
+    )
+    output = (
+        camRgb.requestOutput(
+            (1200, 800), dai.ImgFrame.Type.NV12, dai.ImgResizeMode.STRETCH
+        )
+        .createOutputQueue()
+    )
+    return pipeline, output
+
+
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
+with contextlib.ExitStack() as stack:
+    deviceInfos = dai.Device.getAllAvailableDevices()
+    print("=== Found devices: ", deviceInfos)
+
+    queues = []  # One XLinkOut queue per device
+    pipelines = []
+    device_ids = []
+
+    for deviceInfo in deviceInfos:
+        pipeline = stack.enter_context(dai.Pipeline())
+        device = pipeline.getDefaultDevice()
+
+        print("=== Connected to", deviceInfo.getDeviceId())
+        print("    Device ID:", device.getDeviceId())
+        print("    Num of cameras:", len(device.getConnectedCameras()))
+
+        pipeline, out_q = createPipeline(pipeline)
+        pipeline.start()
+
+        pipelines.append(pipeline)
+        queues.append(out_q)
+        device_ids.append(deviceInfo.getXLinkDeviceDesc().name)
+
+    # Buffer for latest frames; key = queue index
+    latest_frames = {}
+    fpsCounters = [FPSCounter() for _ in queues]
+    receivedFrames = [False for _ in queues]
+    while True:
+        # -------------------------------------------------------------------
+        # Collect the newest frame from each queue (non‑blocking)
+        # -------------------------------------------------------------------
+        for idx, q in enumerate(queues):
+            while q.has():
+                latest_frames[idx] = q.get()
+                if not receivedFrames[idx]:
+                    print("=== Received frame from", device_ids[idx])
+                    receivedFrames[idx] = True
+                fpsCounters[idx].tick()
+
+        # -------------------------------------------------------------------
+        # Synchronise: we need at least one frame from every camera and their
+        # timestamps must align within SYNC_THRESHOLD_SEC.
+        # -------------------------------------------------------------------
+        if len(latest_frames) == len(queues):
+            ts_values = [f.getTimestamp().total_seconds() for f in latest_frames.values()]
+            if max(ts_values) - min(ts_values) <= SYNC_THRESHOLD_SEC:
+                # Build composite image side‑by‑side
+                imgs = []
+                for i in range(len(queues)):
+                    msg = latest_frames[i]
+                    frame = msg.getCvFrame()
+                    fps = fpsCounters[i].getFps()
+                    cv2.putText(
+                        frame,
+                        f"{device_ids[i]} | {format_time(msg.getTimestamp())} FPS:{fps:.2f}",
+                        (20, 40),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.6,
+                        (255, 255, 255),
+                        2,
+                        cv2.LINE_AA,
+                    )
+                    imgs.append(frame)
+                cv2.imshow("synced_view", cv2.hconcat(imgs))
+                latest_frames.clear()  # Wait for next batch
+
+        if cv2.waitKey(1) & 0xFF == ord("q"):
+            break
+
+cv2.destroyAllWindows()
