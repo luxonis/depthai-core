@@ -9,7 +9,10 @@
 #include <vector>
 
 #include "depthai/depthai.hpp"
+#include "depthai/pipeline/MessageQueue.hpp"
+#include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
+#include "uvc_example.hpp"
 
 extern "C" {
 #include "config.h"
@@ -26,9 +29,14 @@ extern "C" {
 // Global flag for graceful shutdown
 std::atomic<bool> quitEvent(false);
 
+std::shared_ptr<dai::MessageQueue> outputQueue;
+
 // Signal handler
 void signalHandler(int signum) {
     quitEvent = true;
+
+	/* Stop the main loop when the user presses CTRL-C */
+	events_stop(sigint_events);
 }
 
 // Custom host node for saving video data
@@ -77,11 +85,17 @@ int depthai_uvc_get_buffer(struct video_source *s, struct video_buffer *buf) {
         return -1;
     }
 
-	size = min(src->imgsize, buf->size);
-	memcpy(buf->mem, src->imgdata, size);
+    uint8_t* d = frame->getData().data();
+    size = frame->getData().size();
+
+    std::cout << "buffer size: " << size << std::endl;
+    std::cout << "dest size: " << buf->size << std::endl;
+
+	// size = min(src->imgsize, buf->size);
+	memcpy(buf->mem, d, size);
 	buf->bytesused = size;
 
-    std::cout << "Filled a buffer" << std::endl;
+    std::cout << "depthai_uvc_get_buffer(): Filled a buffer" << std::endl;
 }
 
 int main() {
@@ -126,38 +140,32 @@ int main() {
     // Create nodes
     auto camRgb = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A);
     auto output = camRgb->requestOutput(std::make_pair(1920, 1440), dai::ImgFrame::Type::NV12);
-    auto outputQueue = output->createOutputQueue();
 
     // Create video encoder node
     auto encoded = pipeline.create<dai::node::VideoEncoder>();
     encoded->setDefaultProfilePreset(30, dai::VideoEncoderProperties::Profile::MJPEG);
     output->link(encoded->input);
-
-    // Create video saver node
-    auto saver = pipeline.create<VideoSaver>();
-    encoded->out.link(saver->inputs["data"]);
+    outputQueue = encoded->bitstream.createOutputQueue();
 
     // Start pipeline
     pipeline.start();
-    std::cout << "Started to save video to video.encoded" << std::endl;
+    std::cout << "Started the pipeline" << std::endl;
     std::cout << "Press Ctrl+C to stop" << std::endl;
 
     auto timeStart = std::chrono::steady_clock::now();
 
-    while(pipeline.isRunning() && !quitEvent) {
-        auto frame = outputQueue->get<dai::ImgFrame>();
-        if(frame == nullptr) continue;
-        
-        depthai_source_fill_buffer(src, frame->getData().data(), frame->getData().size());
-
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));  // Simulate processing delay
-        std::cout << "I'm running yo!" << std::endl;
-    }
+	/* Main capture loop */
+	events_loop(&events);
 
     // Cleanup
     pipeline.stop();
     pipeline.wait();
 
-    std::cout << "To view the encoded data, convert the stream file (.encoded) into a video file (.mp4) using a command below:" << std::endl;
-    std::cout << "ffmpeg -framerate 30 -i video.encoded -c copy video.mp4" << std::endl;
+	uvc_stream_delete(stream);
+	video_source_destroy(src);
+	events_cleanup(&events);
+	configfs_free_uvc_function(fc);
+    
+    std::cout << "Video capture stopped." << std::endl;
+    return 0;
 }
