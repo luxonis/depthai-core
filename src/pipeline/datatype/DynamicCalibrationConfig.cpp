@@ -7,16 +7,6 @@ DynamicCalibrationConfig& DynamicCalibrationConfig::setCalibrationMode(Algorithm
     return *this;
 }
 
-DynamicCalibrationConfig& DynamicCalibrationConfig::setTimePeriod(uint8_t time, AlgorithmControl::TimeUnit timeUnit) {
-    algorithmControl.timeUnit = timeUnit;
-    algorithmControl.periodTime = time;
-    return *this;
-}
-
-uint8_t DynamicCalibrationConfig::getTimePeriod() const {
-    return algorithmControl.periodTime;
-}
-
 DynamicCalibrationConfig& DynamicCalibrationConfig::setEnableCoverageCheck(bool enable) {
     algorithmControl.enableCoverageCheck = enable;
     return *this;

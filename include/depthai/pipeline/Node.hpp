@@ -65,11 +65,15 @@ class Node : public std::enable_shared_from_this<Node> {
     static constexpr auto DEFAULT_NAME = "";
 #define DEFAULT_TYPES                  \
     {                                  \
-        { DatatypeEnum::Buffer, true } \
+        {                              \
+            DatatypeEnum::Buffer, true \
+        }                              \
     }
     static constexpr auto DEFAULT_BLOCKING = true;
     static constexpr auto DEFAULT_QUEUE_SIZE = 3;
     static constexpr auto DEFAULT_WAIT_FOR_MESSAGE = false;
+    static constexpr auto BLOCKING_QUEUE = true;
+    static constexpr auto NON_BLOCKING_QUEUE = false;
 
    protected:
     std::vector<Output*> outputRefs;

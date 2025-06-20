@@ -29,12 +29,15 @@ right_out.link(dyn_calib.right)
 left_xout = left_out.createOutputQueue()
 right_xout = right_out.createOutputQueue()
 disp_xout = stereo.disparity.createOutputQueue()
+dyncal_out = dyn_calib.outputCalibrationResults.createOutputQueue()
+input_config = dyn_calib.inputConfig.createInputQueue()
 
 # ---------- Device and runtime loop ----------
 pipeline.start()
 device  = pipeline.getDefaultDevice()
 calibNew = device.readCalibration()
 calibOld = device.readCalibration()
+
 with pipeline:
     max_disp = stereo.initialConfig.getMaxDisparity()
 
@@ -61,21 +64,28 @@ with pipeline:
         key = cv2.waitKey(1)
         if key == ord('q'):
             break
-        elif key == ord('c'):
-            dyn_calib.startCalibQualityCheck()
+        configMessage = dai.DynamicCalibrationConfig()
+        if key == ord('c'):
+            configMessage.calibrationCommand = dai.DynamicCalibrationConfig.CalibrationCommand.START_CALIBRATION_QUALITY_CHECK
+            input_config.send(configMessage)
         elif key == ord('r'):
-            dyn_calib.startRecalibration()
+            configMessage.calibrationCommand = dai.DynamicCalibrationConfig.CalibrationCommand.START_RECALIBRATION
+            input_config.send(configMessage)
         elif key == ord("n"):
             dyn_calib.setNewCalibration(calibNew)
         elif key == ord("o"):
             dyn_calib.setNewCalibration(calibOld)
 
+        calibration_result = dyncal_out.tryGet()
+        if calibration_result is None:
+            continue
+
         # Print quality + calibration status
-        qual_result = dyn_calib.getCalibQuality()
-        calib_result = dyn_calib.getNewCalibration()
+        qual_result = calibration_result.quality
+        calib_result = calibration_result.calibration
 
         if qual_result.valid:
             print(f"[QUALITY] Score: {qual_result.value:.2f} | Info: {qual_result.info}")
         if calib_result.valid:
-            calibNew = calib_result.calibration
+            calibNew = calib_result.getCalibration()
             print(f"[CALIB] Info: {calib_result.info}")

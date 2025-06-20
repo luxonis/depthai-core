@@ -22,40 +22,15 @@ void bind_dynamic_calibration(pybind11::module& m, void* pCallstack) {
     cb(m, pCallstack);
     // Actual bindings
     ///////////////////////////////////////////////////////////////////////
-    // ---------- CalibrationResult ----------
-    py::class_<CalibrationResult>(m, "CalibrationResult")
-        .def(py::init<>())
-        .def_readwrite("calibration", &CalibrationResult::calibration, DOC(dai, node, CalibrationResult, calibration))
-        .def_readwrite("valid", &CalibrationResult::valid, DOC(dai, node, CalibrationResult, valid))
-        .def_readwrite("info", &CalibrationResult::info, DOC(dai, node,  CalibrationResult, info))
-        .def_static("invalid", &CalibrationResult::Invalid, py::arg("reason") = "No result", DOC(dai, node, CalibrationResult, Invalid));
-
-    // ---------- QualityResult ----------
-    py::class_<QualityResult>(m, "QualityResult")
-        .def(py::init<>())
-        .def_readwrite("value", &QualityResult::value, DOC(dai, node, QualityResult, value))
-        .def_readwrite("valid", &QualityResult::valid, DOC(dai, node, QualityResult, valid))
-        .def_readwrite("info", &QualityResult::info, DOC(dai, node, QualityResult, info))
-        .def_static("invalid", &QualityResult::Invalid, py::arg("reason") = "No result", DOC(dai, node, QualityResult, Invalid));
-
-    // ---------- CalibrationResults ----------
-    py::class_<CalibrationResults>(m, "CalibrationResults")
-        .def(py::init<>())
-        .def_readwrite("quality", &CalibrationResults::quality, DOC(dai, node, CalibrationResults, quality))
-        .def_readwrite("calibration", &CalibrationResults::calibration, DOC(dai, node, CalibrationResults, calibration))
-        .def("reset", &CalibrationResults::reset, DOC(dai, node, CalibrationResults, reset));
     // Node
     dynamicCalibration
         // .def_readonly("inputs", &DynamicCalibration::inputs, DOC(dai, node, DynamicCalibration, inputs))
         .def_readonly("left", &DynamicCalibration::left, DOC(dai, node, DynamicCalibration, left))
         .def_readonly("right", &DynamicCalibration::right, DOC(dai, node, DynamicCalibration, right))
+        .def_readonly("inputConfig", &DynamicCalibration::inputConfig, DOC(dai, node, DynamicCalibration, inputConfig))
+        .def_readonly("outputCalibrationResults", &DynamicCalibration::outputCalibrationResults, DOC(dai, node, DynamicCalibration, outputCalibrationResults))
         .def("setRunOnHost", &DynamicCalibration::setRunOnHost, py::arg("runOnHost"), DOC(dai, node, DynamicCalibration, setRunOnHost))
         .def("runOnHost", &DynamicCalibration::runOnHost, DOC(dai, node, DynamicCalibration, runOnHost))
-        .def("startCalibQualityCheck", &DynamicCalibration::startCalibQualityCheck, DOC(dai, node, DynamicCalibration, startCalibQualityCheck))
-        .def("startRecalibration", &DynamicCalibration::startRecalibration, DOC(dai, node, DynamicCalibration, startRecalibration))
-        .def("setContinuousMode", &DynamicCalibration::setContinuousMode, DOC(dai, node, DynamicCalibration, setContinuousMode))
-        .def("getCalibQuality", &DynamicCalibration::getCalibQuality, DOC(dai, node, DynamicCalibration, getCalibQuality))
-        .def("getNewCalibration", &DynamicCalibration::getNewCalibration, DOC(dai, node, DynamicCalibration, getNewCalibration))
-        .def("setNewCalibration", &DynamicCalibration::setNewCalibration, DOC(dai, node, DynamicCalibration, setNewCalibration));
+    ;
     daiNodeModule.attr("DynamicCalibration").attr("Properties") = DynamicCalibrationProperties;
 }

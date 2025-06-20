@@ -9,13 +9,20 @@
 
 namespace dai {
 
+
 /**
- * StereoDepthConfig message.
+ * DynamicCalibrationConfig message.
  */
-class DynamicCalibrationConfig : public Buffer {
-   public:
+struct DynamicCalibrationConfig : public Buffer {
+
+    enum class CalibrationCommand : int32_t {
+        START_CALIBRATION_QUALITY_CHECK = 0,  ///< Start calibration quality check
+        START_RECALIBRATION = 1,              ///< Start recalibration
+        // Add other datatypes as needed
+    };
+
     /**
-     * Construct StereoDepthConfig message.
+     * Construct DynamicCalibrationConfig message.
      */
     DynamicCalibrationConfig() = default;
     virtual ~DynamicCalibrationConfig() = default;
@@ -24,25 +31,12 @@ class DynamicCalibrationConfig : public Buffer {
         /**
          * Define a mode in which recalibration will be running
          */
-        enum class RecalibrationMode : int32_t { DEFAULT, CONTINIOUS };
-
-        /**
-         * Measurement unit for time period before next calibration
-         */
-        enum class TimeUnit : int32_t { SECONDS, MINUTES, HOURS };
+        enum class RecalibrationMode : int32_t { DEFAULT, CONTINUOUS };
 
         /**
          * Set the running mode of recalibration
          */
         RecalibrationMode recalibrationMode = RecalibrationMode::DEFAULT;
-
-        /**
-         * Control over the DCL with usage of FPS and time
-         * All values are int
-         */
-        TimeUnit timeUnit = TimeUnit::SECONDS;
-
-        uint8_t periodTime = 5; 
 
         uint8_t maximumCalibCheckFrames = 5;
 
@@ -53,13 +47,7 @@ class DynamicCalibrationConfig : public Buffer {
          */
         bool enableCoverageCheck = true;
 
-        DEPTHAI_SERIALIZE(AlgorithmControl,
-                          recalibrationMode,
-                          periodTime,
-                          timeUnit,
-                          enableCoverageCheck,
-                          maximumRecalibrationFrames,
-                          maximumCalibCheckFrames);
+        DEPTHAI_SERIALIZE(AlgorithmControl, recalibrationMode, enableCoverageCheck, maximumRecalibrationFrames, maximumCalibCheckFrames);
     };
 
     struct CoverageCheckThresholds {
@@ -68,11 +56,9 @@ class DynamicCalibrationConfig : public Buffer {
          * Valid range is [0,100]
          */
         uint8_t coverageCheckThreshold = 50;
-        
-        DEPTHAI_SERIALIZE(CoverageCheckThresholds,
-                          coverageCheckThreshold);
-    };
 
+        DEPTHAI_SERIALIZE(CoverageCheckThresholds, coverageCheckThreshold);
+    };
 
     struct CalibCheckThresholds {
         /**
@@ -95,88 +81,35 @@ class DynamicCalibrationConfig : public Buffer {
 
         RotationChangeThresholds rotationChangeThresholds;
 
-        DEPTHAI_SERIALIZE(CalibCheckThresholds,
-                          epipolarErrorChangeThresholds,
-                          rotationChangeThresholds
-                          );
+        DEPTHAI_SERIALIZE(CalibCheckThresholds, epipolarErrorChangeThresholds, rotationChangeThresholds);
     };
-
 
     struct RecalibrationThresholds {
         /**
-         * Set the pipeline so that device automatically reflash the user calibration 
+         * Set the pipeline so that device automatically reflash the user calibration
          * after the new calibration is set as device->setCalibration()
          */
         bool flashNewCalibration = false;
 
-        DEPTHAI_SERIALIZE(RecalibrationThresholds,
-                          flashNewCalibration
-                          );
+        DEPTHAI_SERIALIZE(RecalibrationThresholds, flashNewCalibration);
     };
 
-    /**
-     * @param mode Set operating mode, CONTINIOUS OR DEFAULT
-     */
-    DynamicCalibrationConfig& setCalibrationMode(AlgorithmControl::RecalibrationMode mode);
 
-    /**
-     * Set the initial time, when should the recalibration proceed
-     * @param time INT
-     * @param timeUnit SEC, MIN, H
-     */
-    DynamicCalibrationConfig& setTimePeriod(uint8_t time, AlgorithmControl::TimeUnit timeUnit);
-    /**
-     * Get time period between processes.
-     */
-    uint8_t getTimePeriod() const;
+    std::optional<AlgorithmControl> algorithmControl;
 
-    /**
-     * @param enable Enable or disable the coverage Check based on the scenery you are using. For example, if we have a static scenery
-     * it would be better to set it as False.
-     */
-    DynamicCalibrationConfig& setEnableCoverageCheck(bool enable);
-    /**
-     * Get bool for enabled or disabled CoverageCheck
-     */
-    bool getEnableCoverageCheck() const;
+    std::optional<CoverageCheckThresholds> coverageCheckThresholds;
 
-    DynamicCalibrationConfig& setMaximumCalibCheckFrames(uint8_t maxFramesPerCheck);
+    std::optional<CalibCheckThresholds> calibCheckThresholds;
 
-    uint8_t getMaximumCalibCheckFrames() const;
+    std::optional<RecalibrationThresholds> recalibrationThresholds;
 
-    DynamicCalibrationConfig& setMaximumRecalibrationFrames(uint8_t maxFramesPerRecalib);
-
-    uint8_t getMaximumRecalibrationFrames() const;
-
-    DynamicCalibrationConfig& setCoverageCheckThreshold(uint8_t coverageThreshold);
-
-    uint8_t getCoverageCheckThreshold() const;
-
-    DynamicCalibrationConfig& setEpipolarErrorChangeThresholds(float value);
-
-    float getEpipolarErrorChangeThresholds() const;
-
-    CalibCheckThresholds::RotationChangeThresholds getRotationChangeThresholds() const;
-
-    DynamicCalibrationConfig& setFlashNewCalibration(bool enable);
-
-
-    AlgorithmControl algorithmControl;
-
-
-    CoverageCheckThresholds coverageCheckThresholds;
-
-
-    CalibCheckThresholds calibCheckThresholds;
-
-
-    RecalibrationThresholds recalibrationThresholds;
+    std::optional<CalibrationCommand> calibrationCommand;
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
         metadata = utility::serialize(*this);
         datatype = DatatypeEnum::DynamicCalibrationConfig;
     };
-    DEPTHAI_SERIALIZE(DynamicCalibrationConfig, algorithmControl, coverageCheckThresholds, calibCheckThresholds, recalibrationThresholds);
+    DEPTHAI_SERIALIZE(DynamicCalibrationConfig, algorithmControl, coverageCheckThresholds, calibCheckThresholds, recalibrationThresholds, calibrationCommand);
 };
 
 }  // namespace dai
