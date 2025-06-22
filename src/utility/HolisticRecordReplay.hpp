@@ -18,7 +18,7 @@ bool setupHolisticRecord(Pipeline& pipeline,
                          std::unordered_map<std::string, std::filesystem::path>& outFilenames,
                          bool legacy = false);
 bool setupHolisticReplay(Pipeline& pipeline,
-                         std::string replayPath,
+                         std::filesystem::path replayPath,
                          const std::string& deviceId,
                          RecordConfig& recordConfig,
                          std::unordered_map<std::string, std::filesystem::path>& outFilenames,

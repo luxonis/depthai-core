@@ -174,7 +174,7 @@ bool setupHolisticRecord(
 }
 
 bool setupHolisticReplay(Pipeline& pipeline,
-                         std::string replayPath,
+                         std::filesystem::path replayPath,
                          const std::string& deviceId,
                          RecordConfig& recordConfig,
                          std::unordered_map<std::string, std::filesystem::path>& outFilenames,
@@ -223,7 +223,7 @@ bool setupHolisticReplay(Pipeline& pipeline,
             pipelineFilenames.push_back(nodeName);
             nodeNames.push_back(nodeParams.name);
         }
-        std::string configPath;
+        std::filesystem::path configPath;
         std::vector<std::string> inFiles;
         std::vector<std::filesystem::path> outFiles;
         inFiles.reserve(sources.size() + 1);

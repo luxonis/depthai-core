@@ -535,8 +535,8 @@ void PipelineImpl::build() {
     isBuild = true;
 
     if(defaultDevice) {
-        std::string recordPath = utility::getEnvAs<std::string>("DEPTHAI_RECORD", "");
-        std::string replayPath = utility::getEnvAs<std::string>("DEPTHAI_REPLAY", "");
+        auto recordPath = std::filesystem::path(utility::getEnvAs<std::string>("DEPTHAI_RECORD", ""));
+        auto replayPath = std::filesystem::path(utility::getEnvAs<std::string>("DEPTHAI_REPLAY", ""));
 
         if(defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_2
            || defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_X
