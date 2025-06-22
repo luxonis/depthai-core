@@ -41,12 +41,12 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     /**
      * Input for left ImgFrame of left-right pair
      */
-    Input left{*this, {"left", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ImgFrame, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+    Input left{*this, {"left", DEFAULT_GROUP, NON_BLOCKING_QUEUE, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ImgFrame, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Input for right ImgFrame of left-right pair
      */
-    Input right{*this, {"right", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ImgFrame, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+    Input right{*this, {"right", DEFAULT_GROUP, NON_BLOCKING_QUEUE, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ImgFrame, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Output calibration quality result
@@ -64,6 +64,8 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
      */
     bool runOnHost() const override;
 
+    void setNewCalibration(CalibrationHandler);
+
     private:
 
     /**
@@ -77,7 +79,6 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
                                                                              const std::vector<float> distortionCoefficients,
                                                                              const std::vector<std::vector<float>> rotationMatrix,
                                                                              const std::vector<float> translationVector);
-    void setNewCalibration(CalibrationHandler);
     void startCalibQualityCheck();
     void startRecalibration();
 
@@ -108,8 +109,9 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     dcl::socket_t socketB;
     int widthDefault;
     int heightDefault;
+    bool forceTrigger = false;
 
-    DynamicCalibrationResults results;
+    DynamicCalibrationResults dynResult;
 
     struct CalibrationStateMachine {
         enum class CalibrationState { Idle, InitializingPipeline, CollectingFeatures, ProcessingQuality, Recalibrating };
@@ -118,30 +120,25 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
 
         CalibrationState state = CalibrationState::Idle;
         CalibrationMode mode = CalibrationMode::None;
-        int collectedFrames = 0;
         bool pipelineReady = false;
 
         void startQualityCheck() {
             if(isIdle()) {
-                state = CalibrationState::InitializingPipeline;
+                state = CalibrationState::CollectingFeatures;
                 mode = CalibrationMode::QualityCheck;
-                collectedFrames = 0;
-                pipelineReady = false;
             }
         }
 
         void startRecalibration() {
             if(isIdle()) {
-                state = CalibrationState::InitializingPipeline;
+                state = CalibrationState::CollectingFeatures;
                 mode = CalibrationMode::Recalibration;
-                collectedFrames = 0;
-                pipelineReady = false;
             }
         }
 
         void markPipelineReady() {
             pipelineReady = true;
-            state = CalibrationState::CollectingFeatures;
+            state = CalibrationState::Idle;
         }
 
         bool isIdle() const {
@@ -149,9 +146,9 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
         }
 
         void maybeAdvanceAfterCollection() {  // TODO, REPLACE WITH ANYTHING MEANINGFUL FROM THE DCL ITSELF
-            if(mode == CalibrationMode::QualityCheck && collectedFrames >= 1) {
+            if(mode == CalibrationMode::QualityCheck) {
                 state = CalibrationState::ProcessingQuality;
-            } else if(mode == CalibrationMode::Recalibration && collectedFrames >= 3) {
+            } else if(mode == CalibrationMode::Recalibration) {
                 state = CalibrationState::Recalibrating;
             }
         }
@@ -159,8 +156,6 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
         void finish() {
             state = CalibrationState::Idle;
             mode = CalibrationMode::None;
-            collectedFrames = 0;
-            pipelineReady = false;
         }
 
         std::string stateToString() const {

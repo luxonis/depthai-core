@@ -7,7 +7,7 @@
 
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/device/CalibrationHandler.hpp"
-
+#include <DynamicCalibration.hpp>
 namespace dai {
 
 
@@ -23,45 +23,92 @@ struct DynamicCalibrationResults : public Buffer {
 
     //TODO DCL: This is not needed as a separate struct
     struct CalibrationResult {
-        std::optional<dai::CalibrationHandler> calibration;
+        std::optional<dai::CalibrationHandler> calibHandler;
         // TODO DCL:: don't use valid and info, use the optional functionality
         // IF valid: set it
         // if invalid: don't set it. From python side, it will be None
-        bool valid = false;
-        std::string info;
 
-        static CalibrationResult Invalid(std::string reason = "No result") {
-            return CalibrationResult{std::nullopt, false, std::move(reason)};
+        static CalibrationResult Invalid() {
+            return CalibrationResult{std::nullopt};
         }
-        DEPTHAI_SERIALIZE(CalibrationResult, calibration, valid, info);
+
+        DEPTHAI_SERIALIZE(CalibrationResult, calibHandler);
+    };
+    struct CalibrationData
+    {
+        std::vector<double> rotationChange;
+        float epipolarErrorChange;
+        std::vector<float> depthAccuracy;
+        DEPTHAI_SERIALIZE(CalibrationData, rotationChange, epipolarErrorChange, depthAccuracy);
     };
 
-    struct QualityResult {
-        float value = -1.0f;
-        // TODO: don't use valid and info, use the optional functionality
-        bool valid = false;
-        std::string info;
-
-        static QualityResult Invalid(std::string reason = "No result") {
-            return QualityResult{-1.0f, false, std::move(reason)};
-        }
-        DEPTHAI_SERIALIZE(QualityResult, value, valid, info);
+    struct CoverageData
+    {
+        std::vector<std::vector<float>> coveragePerCellA;
+        std::vector<std::vector<float>> coveragePerCellB;
+        double meanCoverage;
+        DEPTHAI_SERIALIZE(CoverageData, coveragePerCellA, coveragePerCellB, meanCoverage);
     };
 
-    QualityResult quality;
+    struct CalibrationQuality
+    {
+        std::optional<CoverageData> coverageQuality;
+        std::optional<CalibrationData> calibrationQuality; // <--- optional
+
+
+        static CalibrationQuality fromDCL(const dcl::CalibrationQuality& src) {
+            CalibrationQuality out;
+
+            if(src.coverageQuality.has_value()) {
+                CoverageData cov;
+                cov.coveragePerCellA = src.coverageQuality->coveragePerCellA;
+                cov.coveragePerCellB = src.coverageQuality->coveragePerCellB;
+                cov.meanCoverage = src.coverageQuality->meanCoverage;
+                out.coverageQuality = cov;
+            }
+
+            if(src.calibrationQuality.has_value()) {
+                CalibrationData cal;
+                cal.rotationChange = src.calibrationQuality->rotationChange;
+                cal.epipolarErrorChange = src.calibrationQuality->epipolarErrorChange;
+                   cal.depthAccuracy = src.calibrationQuality->depthAccuracy;
+                out.calibrationQuality = cal;
+            }
+            return out;
+        };
+
+        DEPTHAI_SERIALIZE(CalibrationQuality, coverageQuality, calibrationQuality);
+    };
+    struct CalibrationQualityResult {
+
+        std::optional<CalibrationQuality> report;
+
+        static CalibrationQualityResult fromDCL(const dcl::CalibrationQuality& src) {
+            CalibrationQualityResult out;
+            out.report = CalibrationQuality::fromDCL(src);
+            return out;
+        }
+        static CalibrationQualityResult Invalid() {
+            return CalibrationQualityResult{std::nullopt};
+        }
+
+        DEPTHAI_SERIALIZE(CalibrationQualityResult, report);
+    };
+
     // TODO DCL: This should be std::optional<dai::CalibrationHandler>
-    CalibrationResult calibration;
+    std::optional<CalibrationResult> newCalibration;
+    std::optional<CalibrationQualityResult> calibOverallQuality;
 
     void reset() {
-        quality = QualityResult::Invalid();
-        calibration = CalibrationResult::Invalid();
+        calibOverallQuality = CalibrationQualityResult::Invalid();
+        newCalibration = CalibrationResult::Invalid();
     }
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
         metadata = utility::serialize(*this);
         datatype = DatatypeEnum::DynamicCalibrationResults;
     };
-    DEPTHAI_SERIALIZE(DynamicCalibrationResults, quality, calibration);
+    DEPTHAI_SERIALIZE(DynamicCalibrationResults, calibOverallQuality, newCalibration);
 };
 
 }  // namespace dai

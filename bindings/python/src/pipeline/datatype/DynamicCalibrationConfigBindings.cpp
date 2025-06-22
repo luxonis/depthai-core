@@ -16,15 +16,6 @@ void bind_dynamic_calibration_config(pybind11::module& m, void* pCallstack) {
     py::class_<DynamicCalibrationConfig::AlgorithmControl> _AlgorithmControl(
         _DynamicCalibrationResults, "AlgorithmControl", DOC(dai, DynamicCalibrationConfig, AlgorithmControl));
 
-    py::class_<DynamicCalibrationConfig::CoverageCheckThresholds> _CoverageCheckThresholds(
-        _DynamicCalibrationResults, "CoverageCheckThresholds", DOC(dai, DynamicCalibrationConfig, CoverageCheckThresholds));
-
-    py::class_<DynamicCalibrationConfig::CalibCheckThresholds> _CalibCheckThresholds(
-        _DynamicCalibrationResults, "CalibCheckThresholds", DOC(dai, DynamicCalibrationConfig, CalibCheckThresholds));
-
-    py::class_<DynamicCalibrationConfig::RecalibrationThresholds> _RecalibrationThresholds(
-        _DynamicCalibrationResults, "RecalibrationThresholds", DOC(dai, DynamicCalibrationConfig, RecalibrationThresholds));
-
     py::enum_<DynamicCalibrationConfig::CalibrationCommand> _CalibrationCommand(_DynamicCalibrationResults, "CalibrationCommand", DOC(dai, DynamicCalibrationConfig, CalibrationCommand));
 
 
@@ -52,32 +43,8 @@ void bind_dynamic_calibration_config(pybind11::module& m, void* pCallstack) {
         .def_readwrite("maximumRecalibrationFrames",
                        &DynamicCalibrationConfig::AlgorithmControl::maximumRecalibrationFrames,
                        DOC(dai, DynamicCalibrationConfig, AlgorithmControl, maximumRecalibrationFrames))
-        .def_readwrite("enableCoverageCheck",
-                       &DynamicCalibrationConfig::AlgorithmControl::enableCoverageCheck,
-                       DOC(dai, DynamicCalibrationConfig, AlgorithmControl, enableCoverageCheck))
     ;
 
-    _CoverageCheckThresholds.def(py::init<>())
-        .def_readwrite("coverageCheckThreshold",
-                       &DynamicCalibrationConfig::CoverageCheckThresholds::coverageCheckThreshold,
-                       DOC(dai, DynamicCalibrationConfig, CoverageCheckThresholds, coverageCheckThreshold))
-    ;
-
-
-    _CalibCheckThresholds.def(py::init<>())
-        .def_readwrite("epipolarErrorChangeThresholds",
-                       &DynamicCalibrationConfig::CalibCheckThresholds::epipolarErrorChangeThresholds,
-                       DOC(dai, DynamicCalibrationConfig, CalibCheckThresholds, epipolarErrorChangeThresholds))
-        .def_readwrite("rotationChangeThresholds",
-                       &DynamicCalibrationConfig::CalibCheckThresholds::rotationChangeThresholds,
-                       DOC(dai, DynamicCalibrationConfig, CalibCheckThresholds, rotationChangeThresholds))
-    ;
-
-    _RecalibrationThresholds.def(py::init<>())
-        .def_readwrite("flashNewCalibration",
-                       &DynamicCalibrationConfig::RecalibrationThresholds::flashNewCalibration,
-                       DOC(dai, DynamicCalibrationConfig, RecalibrationThresholds, flashNewCalibration))
-    ;
 
     _CalibrationCommand
         .value("START_CALIBRATION_QUALITY_CHECK", DynamicCalibrationConfig::CalibrationCommand::START_CALIBRATION_QUALITY_CHECK)
@@ -91,15 +58,6 @@ void bind_dynamic_calibration_config(pybind11::module& m, void* pCallstack) {
         .def_readwrite("algorithmControl",
                        &DynamicCalibrationConfig::algorithmControl,
                        DOC(dai, DynamicCalibrationConfig, algorithmControl))
-        .def_readwrite("coverageCheckThresholds",
-                       &DynamicCalibrationConfig::coverageCheckThresholds,
-                       DOC(dai, DynamicCalibrationConfig, coverageCheckThresholds))
-        .def_readwrite("calibCheckThresholds",
-                       &DynamicCalibrationConfig::calibCheckThresholds,
-                       DOC(dai, DynamicCalibrationConfig, calibCheckThresholds))
-        .def_readwrite("recalibrationThresholds",
-                       &DynamicCalibrationConfig::recalibrationThresholds,
-                       DOC(dai, DynamicCalibrationConfig, recalibrationThresholds))
         .def_readwrite("calibrationCommand",
                        &DynamicCalibrationConfig::calibrationCommand,
                        DOC(dai, DynamicCalibrationConfig, calibrationCommand))

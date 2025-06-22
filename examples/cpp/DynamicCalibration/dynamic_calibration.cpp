@@ -27,7 +27,8 @@ int main() {
     auto rightQueue = rightOut->createOutputQueue();
 
     auto q = stereo->disparity.createOutputQueue();
-
+    auto dyncal_out = dynCalib->outputCalibrationResults.createOutputQueue();
+    auto input_config = dynCalib->inputConfig.createInputQueue();
     // Feed the frames into the dynamic-calibration block
     leftOut->link(dynCalib->left);
     rightOut->link(dynCalib->right);
@@ -49,22 +50,9 @@ int main() {
         cv::imshow("right", rightFrameQueue->getCvFrame());
         cv::imshow("disparity_color", frame);
         auto key = cv::waitKey(1);
-        auto qualityResult = dynCalib->getCalibQuality();
-        auto qualityCalibration = dynCalib->getNewCalibration();
-        // std::cout << qualityResult.info << " " << qualityResult.valid << " " << qualityResult.value << std::endl;
 
-        if (qualityCalibration.valid == 1 && qualityCalibration.calibration.has_value()) {
-            calibNew = qualityCalibration.calibration.value();
-            std::cout << "Got new calibration. " << std::endl;
-        }
         if(key == 'q') {
             break;
-        }
-        else if(key == 'c') {
-            dynCalib->startCalibQualityCheck();
-        }
-        else if(key == 'r') {
-            dynCalib->startRecalibration();
         }
         else if(key == 'o'){
             dynCalib->setNewCalibration(calibOld);
@@ -73,6 +61,55 @@ int main() {
         else if(key == 'n'){
             dynCalib->setNewCalibration(calibNew);
             std::cout << "Applying new calibration " << std::endl;
+        }
+        else if(key == 'c') {
+            auto configMessage = std::make_shared<dai::DynamicCalibrationConfig>();
+            configMessage->calibrationCommand =  dai::DynamicCalibrationConfig::CalibrationCommand::START_CALIBRATION_QUALITY_CHECK;
+            input_config->send(configMessage);
+            std::cout << "Start calib check"  << std::endl;
+        }
+        else if(key == 'r') {
+            auto configMessage = std::make_shared<dai::DynamicCalibrationConfig>();
+            configMessage->calibrationCommand = dai::DynamicCalibrationConfig::CalibrationCommand::START_RECALIBRATION;
+            input_config->send(configMessage);
+            std::cout << "Start new calibration" << std::endl;
+        }
+
+        else if(key == 'C') {
+            auto configMessage = std::make_shared<dai::DynamicCalibrationConfig>();
+            configMessage->calibrationCommand =  dai::DynamicCalibrationConfig::CalibrationCommand::START_FORCE_CALIBRATION_QUALITY_CHECK;
+            input_config->send(configMessage);
+            std::cout << "Start forced calib check" << std::endl;
+        }
+        else if(key == 'R') {
+            auto configMessage = std::make_shared<dai::DynamicCalibrationConfig>();
+            configMessage->calibrationCommand = dai::DynamicCalibrationConfig::CalibrationCommand::START_FORCE_RECALIBRATION;
+            input_config->send(configMessage);
+            std::cout << "Start forced new calibration" << std::endl;
+        }
+
+        // std::cout << qualityResult.info << " " << qualityResult.valid << " " << qualityResult.value << std::endl;
+        auto calibration_result = dyncal_out->tryGet();
+        auto dynResult = std::dynamic_pointer_cast<dai::DynamicCalibrationResults>(calibration_result);
+        if(dynResult && dynResult->newCalibration->calibHandler.has_value()) {
+            calibNew = *dynResult->newCalibration->calibHandler;
+            std::cout << "Got new calibration. " << std::endl;
+        }
+        if(dynResult && dynResult->calibOverallQuality.has_value()) {
+            double meanCoverage = dynResult->calibOverallQuality->report->coverageQuality->meanCoverage;
+            auto& report = dynResult->calibOverallQuality->report;
+            if(report.has_value() && report->calibrationQuality.has_value()) {
+                auto& rotationChange = report->calibrationQuality->rotationChange;
+
+                std::cout << "Rotation change (as float): ";
+                for(const auto& val : rotationChange) {
+                    std::cout << static_cast<float>(val) << " ";
+                }
+                std::cout << std::endl;
+            } else {
+                std::cout << "No calibrationQuality present." << std::endl;
+            }
+            std::cout << "Got calibCheck. Coverage quality = " << meanCoverage << std::endl;
         }
     }
     return 0;
