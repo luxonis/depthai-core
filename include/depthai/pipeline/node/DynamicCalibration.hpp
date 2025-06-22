@@ -8,7 +8,6 @@
 
 #include "depthai/pipeline/datatype/DynamicCalibrationConfig.hpp"
 #include "depthai/pipeline/datatype/DynamicCalibrationResults.hpp"
-
 namespace dai {
 namespace node {
 
@@ -41,12 +40,12 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     /**
      * Input for left ImgFrame of left-right pair
      */
-    Input left{*this, {"left", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ImgFrame, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+    Input left{*this, {"left", DEFAULT_GROUP, NON_BLOCKING_QUEUE, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ImgFrame, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Input for right ImgFrame of left-right pair
      */
-    Input right{*this, {"right", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ImgFrame, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+    Input right{*this, {"right", DEFAULT_GROUP, NON_BLOCKING_QUEUE, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ImgFrame, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Output calibration quality result
@@ -64,103 +63,154 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
      */
     bool runOnHost() const override;
 
-    private:
+    /**
+     * Set Dynamic recalibration performance mode based on user input
+     */
+    void setPerformanceMode(dai::DynamicCalibrationConfig::AlgorithmControl::PerformanceMode mode);
 
     /**
-     * Get the calibration quality (epipolar error)
-     * @return Epipolar error in pixels
+     * Set Dynamic recalibration as Continious mode, no user interaction needed
      */
+    void setContiniousMode();
+
     /**
-     * Set calibration to the dai.Device
+     * Set time frequency, when new recalibration will be performed in Continious mode
+     */
+    void setTimeFrequency(int time);
+
+    private:
+
+    void run() override;
+    /**
+     * From dai::CalibrationHandler data convert to DCL dcl::CameraCalibrationHandle, which includes all necesarry data for recalibration
+     * @return dcl::CameraCalibrationHanlder
      */
     std::shared_ptr<dcl::CameraCalibrationHandle> createDCLCameraCalibration(const std::vector<std::vector<float>> cameraMatrix,
                                                                              const std::vector<float> distortionCoefficients,
                                                                              const std::vector<std::vector<float>> rotationMatrix,
                                                                              const std::vector<float> translationVector);
-    void setNewCalibration(CalibrationHandler);
-    void startCalibQualityCheck();
-    void startRecalibration();
-
-    void run() override;
-
+    /**
+     * Set initial pipeline of DCL
+     */
     void pipelineSetup(std::shared_ptr<Device> device, CameraBoardSocket boardSocketA, CameraBoardSocket boardSocketB, int width = 1280, int height = 800);
+
+    /**
+     * Overwrites the internal calibration of DCL with new Calibration data provided by node.
+     */
     void setInternalCalibration(std::shared_ptr<Device> device,
-                                const std::shared_ptr<const dcl::CameraCalibrationHandle> daiCalibrationA,
-                                const std::shared_ptr<const dcl::CameraCalibrationHandle> daiCalibrationB,
                                 const CameraBoardSocket socketSrc,
                                 const CameraBoardSocket socketDest,
                                 const int width,
                                 const int height);
+     /**
+     * From  DCL dcl::CameraCalibrationHandle convert to dai::CalibrationHandler, so device can setCalibration
+     * @return dai::CalibrationHandlerr
+     */                               
     CalibrationHandler convertDCLtoDAI(CalibrationHandler calibHandler,
                                        const std::shared_ptr<const dcl::CameraCalibrationHandle> daiCalibration,
                                        const CameraBoardSocket socketSrc,
                                        const CameraBoardSocket socketDest,
                                        const int width,
                                        const int height);
-
-    std::vector<float> rotationMatrixToVector(const std::vector<std::vector<float>>& R);
+     /**
+     * DCL held properties
+     */       
+    std::shared_ptr<DynamicCalibrationConfig> calibrationConfig;
     std::unique_ptr<dcl::DynamicCalibration> dynCalibImpl;
-    std::shared_ptr<dcl::Device> dcDevice;
-    dcl::mxid_t deviceName;
     std::shared_ptr<dcl::CameraSensorHandle> sensorA;
     std::shared_ptr<dcl::CameraSensorHandle> sensorB;
+    std::shared_ptr<dcl::Device> dcDevice;
+    DynamicCalibrationResults dynResult;
+    dcl::mxid_t deviceName;
     dcl::socket_t socketA;
     dcl::socket_t socketB;
+
+    /**
+     * DAI held properties
+    */ 
+    CameraBoardSocket daiSocketA;
+    CameraBoardSocket daiSocketB;
     int widthDefault;
     int heightDefault;
+    bool forceTrigger = false;
 
-    DynamicCalibrationResults results;
 
+    struct CalibData {
+        std::vector<float> translationVectorA;
+        std::vector<std::vector<float>> rotationMatrixA;
+        std::vector<float> translationVectorB;
+        std::vector<std::vector<float>> rotationMatrixB;
+        std::vector<std::vector<float>> leftCameraMatrix;
+        std::vector<std::vector<float>> rightCameraMatrix;
+        std::vector<float> leftDistortionCoefficients;
+        std::vector<float> rightDistortionCoefficients;
+    };
+
+     /**
+     * From  dai::CalibrationHandler to all necesarry information which needs to be provided to DCL
+     * @return dcl::CameraCalibrationHanlder
+     */  
+    CalibData getDataFromDAIHandler(CalibrationHandler currentCalibration,
+                                    const CameraBoardSocket boardSocketA,
+                                    const CameraBoardSocket boardSocketB,
+                                    const int width,
+                                    const int height);
+
+     /**
+     * Calibration state machine, which holds the state of Node and provide stabile enviroment;  
+     * - Initialization of pipeline, 
+     * - Loading images in DCL, 
+     * - Starting Calibration Check, 
+     * - Starting of Recalibration
+     * - Reseting of data
+     */ 
     struct CalibrationStateMachine {
-        enum class CalibrationState { Idle, InitializingPipeline, CollectingFeatures, ProcessingQuality, Recalibrating };
+        enum class CalibrationState { Idle, InitializingPipeline, LoadingImages, ProcessingQuality, Recalibrating, ResetDynamicRecalibration };
 
         enum class CalibrationMode { None, QualityCheck, Recalibration };
 
         CalibrationState state = CalibrationState::Idle;
         CalibrationMode mode = CalibrationMode::None;
-        int collectedFrames = 0;
         bool pipelineReady = false;
 
         void startQualityCheck() {
             if(isIdle()) {
-                state = CalibrationState::InitializingPipeline;
+                state = CalibrationState::LoadingImages;
                 mode = CalibrationMode::QualityCheck;
-                collectedFrames = 0;
-                pipelineReady = false;
             }
         }
 
         void startRecalibration() {
             if(isIdle()) {
-                state = CalibrationState::InitializingPipeline;
+                state = CalibrationState::LoadingImages;
                 mode = CalibrationMode::Recalibration;
-                collectedFrames = 0;
-                pipelineReady = false;
             }
         }
 
         void markPipelineReady() {
             pipelineReady = true;
-            state = CalibrationState::CollectingFeatures;
+            state = CalibrationState::Idle;
         }
 
         bool isIdle() const {
             return state == CalibrationState::Idle;
         }
 
-        void maybeAdvanceAfterCollection() {  // TODO, REPLACE WITH ANYTHING MEANINGFUL FROM THE DCL ITSELF
-            if(mode == CalibrationMode::QualityCheck && collectedFrames >= 1) {
+        void AdvanceAfterLoading() {
+            if(mode == CalibrationMode::QualityCheck) {
                 state = CalibrationState::ProcessingQuality;
-            } else if(mode == CalibrationMode::Recalibration && collectedFrames >= 3) {
+            } else if(mode == CalibrationMode::Recalibration) {
                 state = CalibrationState::Recalibrating;
             }
+        }
+        
+        void deleteAllData() {
+            state = CalibrationState::ResetDynamicRecalibration;
         }
 
         void finish() {
             state = CalibrationState::Idle;
             mode = CalibrationMode::None;
-            collectedFrames = 0;
-            pipelineReady = false;
         }
 
         std::string stateToString() const {
@@ -169,12 +219,14 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
                     return "Idle";
                 case CalibrationState::InitializingPipeline:
                     return "InitializingPipeline";
-                case CalibrationState::CollectingFeatures:
-                    return "CollectingFeatures";
+                case CalibrationState::LoadingImages:
+                    return "LoadingImages";
                 case CalibrationState::ProcessingQuality:
                     return "ProcessingQuality";
                 case CalibrationState::Recalibrating:
                     return "Recalibrating";
+                case CalibrationState::ResetDynamicRecalibration:
+                    return "ResetingCalibration";
                 default:
                     return "Unknown";
             }

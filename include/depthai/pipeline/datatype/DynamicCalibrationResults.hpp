@@ -7,7 +7,7 @@
 
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/device/CalibrationHandler.hpp"
-
+#include <DynamicCalibration.hpp>
 namespace dai {
 
 
@@ -23,45 +23,115 @@ struct DynamicCalibrationResults : public Buffer {
 
     //TODO DCL: This is not needed as a separate struct
     struct CalibrationResult {
-        std::optional<dai::CalibrationHandler> calibration;
-        // TODO DCL:: don't use valid and info, use the optional functionality
-        // IF valid: set it
-        // if invalid: don't set it. From python side, it will be None
-        bool valid = false;
-        std::string info;
+        std::optional<dai::CalibrationHandler> calibHandler;
 
-        static CalibrationResult Invalid(std::string reason = "No result") {
-            return CalibrationResult{std::nullopt, false, std::move(reason)};
+        static CalibrationResult Invalid() {
+            return CalibrationResult{std::nullopt};
         }
-        DEPTHAI_SERIALIZE(CalibrationResult, calibration, valid, info);
+
+        DEPTHAI_SERIALIZE(CalibrationResult, calibHandler);
     };
 
-    struct QualityResult {
-        float value = -1.0f;
-        // TODO: don't use valid and info, use the optional functionality
-        bool valid = false;
-        std::string info;
-
-        static QualityResult Invalid(std::string reason = "No result") {
-            return QualityResult{-1.0f, false, std::move(reason)};
-        }
-        DEPTHAI_SERIALIZE(QualityResult, value, valid, info);
+    /**
+     *
+     * It contains information about how would new calibration will affect current state of device. It is created after succesful START_CALIBRATION_QUALITY_CHECK:
+     * - rotationChange: difference in rotation angles in extrinsics matrix with old and new calibration. In case angle difference is constantly over some threshold
+     *   it would mean, device calibration has been afected and should be good to recalibrate the device.
+     *   UNITS [deg].
+     * - depthErrorDifference: tehoretical prediction of relative depth difference between the old and new calibration. It includes the values from [1m, 2m, 5m, 10m].
+     *   in case that difference is very high for all presented distances, it would mean, that recalibration is required.
+     *   UNITS [%]
+     */
+    struct CalibrationData
+    {
+        std::vector<float> rotationChange;
+        float epipolarErrorChange;
+        std::vector<float> depthErrorDifference;
+        DEPTHAI_SERIALIZE(CalibrationData, rotationChange, epipolarErrorChange, depthErrorDifference);
     };
 
-    QualityResult quality;
+    /**
+     *
+     * It contains information about 2D distribution of data over image. It is created per frame:
+     * - coveragePerCell; tells the 2D spatial distribution, set by the DCL itself
+     *    It is a matrix, which presents how data is distributed on the 2D image
+     *    Values in matrix presents overall fullness of the bin; [0, 1], with 0 being worst, 1 best.
+     * - meanCoverage; tells overall Quality of 2D distribution, combined from both images.
+     */
+    struct CoverageData
+    {
+        std::vector<std::vector<float>> coveragePerCellA;
+        std::vector<std::vector<float>> coveragePerCellB;
+        float meanCoverage;
+        DEPTHAI_SERIALIZE(CoverageData, coveragePerCellA, coveragePerCellB, meanCoverage);
+    };
+
+    /**
+     * CalibrationQuality is result which is returned after dai::DynamicCalibrationConfig::CalibrationCommand::START_CALIBRATION_QUALITY_CHECK
+     * It contains information about:
+     * - CoverageData: 2D distribution of data over image
+     * - CalibrationData: information about theoretical predictions how would the new recalibrated calibration look like.
+     */
+    struct CalibrationQuality
+    {
+        std::optional<CoverageData> coverageQuality;
+        std::optional<CalibrationData> calibrationQuality; // <--- optional
+
+
+        static CalibrationQuality fromDCL(const dcl::CalibrationQuality& src) {
+            CalibrationQuality out;
+
+            if(src.coverageQuality.has_value()) {
+                CoverageData cov;
+                cov.coveragePerCellA = src.coverageQuality->coveragePerCellA;
+                cov.coveragePerCellB = src.coverageQuality->coveragePerCellB;
+                cov.meanCoverage = src.coverageQuality->meanCoverage;
+                out.coverageQuality = cov;
+            }
+
+            if(src.calibrationQuality.has_value()) {
+                CalibrationData cal;
+                cal.rotationChange = src.calibrationQuality->rotationChange;
+                cal.epipolarErrorChange = src.calibrationQuality->epipolarErrorChange;
+                   cal.depthErrorDifference = src.calibrationQuality->depthAccuracy;
+                out.calibrationQuality = cal;
+            }
+            return out;
+        };
+
+        DEPTHAI_SERIALIZE(CalibrationQuality, coverageQuality, calibrationQuality);
+    };
+
+    struct CalibrationQualityResult {
+
+        std::optional<CalibrationQuality> report;
+
+        static CalibrationQualityResult fromDCL(const dcl::CalibrationQuality& src) {
+            CalibrationQualityResult out;
+            out.report = CalibrationQuality::fromDCL(src);
+            return out;
+        }
+        static CalibrationQualityResult Invalid() {
+            return CalibrationQualityResult{std::nullopt};
+        }
+
+        DEPTHAI_SERIALIZE(CalibrationQualityResult, report);
+    };
+
     // TODO DCL: This should be std::optional<dai::CalibrationHandler>
-    CalibrationResult calibration;
+    std::optional<CalibrationResult> newCalibration;
+    std::optional<CalibrationQualityResult> calibOverallQuality;
 
     void reset() {
-        quality = QualityResult::Invalid();
-        calibration = CalibrationResult::Invalid();
+        calibOverallQuality = CalibrationQualityResult::Invalid();
+        newCalibration = CalibrationResult::Invalid();
     }
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
         metadata = utility::serialize(*this);
         datatype = DatatypeEnum::DynamicCalibrationResults;
     };
-    DEPTHAI_SERIALIZE(DynamicCalibrationResults, quality, calibration);
+    DEPTHAI_SERIALIZE(DynamicCalibrationResults, calibOverallQuality, newCalibration);
 };
 
 }  // namespace dai

@@ -22,6 +22,12 @@ right_out.link(stereo.right)
 
 # Dynamic calibration node
 dyn_calib = pipeline.create(dai.node.DynamicCalibration)
+continious = True
+if continious:
+    dyn_calib.setContiniousMode()
+    dyn_calib.setDynamicCalibrationMode(dai.DynamicCalibrationConfig.AlgorithmControl.PerformanceMode.OPTIMIZE_PEFRORMACE)
+    dyn_calib.setTimeFrequency(2)
+dyn_calib.setDynamicCalibrationMode(dai.DynamicCalibrationConfig.AlgorithmControl.PerformanceMode.OPTIMIZE_SPEED)
 left_out.link(dyn_calib.left)
 right_out.link(dyn_calib.right)
 
@@ -31,13 +37,14 @@ right_xout = right_out.createOutputQueue()
 disp_xout = stereo.disparity.createOutputQueue()
 dyncal_out = dyn_calib.outputCalibrationResults.createOutputQueue()
 input_config = dyn_calib.inputConfig.createInputQueue()
-
-# ---------- Device and runtime loop ----------
-pipeline.start()
 device  = pipeline.getDefaultDevice()
 calibNew = device.readCalibration()
 calibOld = device.readCalibration()
-
+device.setCalibration(calibOld)
+# ---------- Device and runtime loop ----------
+pipeline.start()
+import time
+start = time.time()
 with pipeline:
     max_disp = stereo.initialConfig.getMaxDisparity()
 
@@ -64,28 +71,57 @@ with pipeline:
         key = cv2.waitKey(1)
         if key == ord('q'):
             break
-        configMessage = dai.DynamicCalibrationConfig()
         if key == ord('c'):
+            configMessage = dai.DynamicCalibrationConfig()
             configMessage.calibrationCommand = dai.DynamicCalibrationConfig.CalibrationCommand.START_CALIBRATION_QUALITY_CHECK
             input_config.send(configMessage)
+            print("Sending command for calibQualityCheck")
         elif key == ord('r'):
+            configMessage = dai.DynamicCalibrationConfig()
             configMessage.calibrationCommand = dai.DynamicCalibrationConfig.CalibrationCommand.START_RECALIBRATION
             input_config.send(configMessage)
+            print("Sending command for recalibration")
+        elif key == ord('f'):
+            configMessage = dai.DynamicCalibrationConfig()
+            configMessage.calibrationCommand = dai.DynamicCalibrationConfig.CalibrationCommand.START_FORCE_CALIBRATION_QUALITY_CHECK
+            input_config.send(configMessage)
+            print("Sending command for forced calibQualityCheck")
+        elif key == ord('p'):
+            configMessage = dai.DynamicCalibrationConfig()
+            configMessage.calibrationCommand = dai.DynamicCalibrationConfig.CalibrationCommand.START_FORCE_RECALIBRATION
+            input_config.send(configMessage)
+            print("Sending command for forced recalibration")
+
         elif key == ord("n"):
-            dyn_calib.setNewCalibration(calibNew) # TODO DCL: implement this
+            device.setCalibration(calibNew) # TODO DCL: implement this
+
         elif key == ord("o"):
-            dyn_calib.setNewCalibration(calibOld) # TODO DCL: implement this, or rather remove this and expose only setNewCalibration w/o parameter
-
+            device.setCalibration(calibOld)
+        
         calibration_result = dyncal_out.tryGet()
-        if calibration_result is None:
-            continue
+        if calibration_result is not None:
+            dyn_result = calibration_result
+            calib_result = dyn_result.newCalibration
 
-        # Print quality + calibration status
-        qual_result = calibration_result.quality
-        calib_result = calibration_result.calibration
+            if calib_result is not None and getattr(calib_result, 'calibHandler', None) is not None and not continious:
+                calibNew = calib_result.calibHandler
+                device.setCalibration(calibNew)
+                print("Applying new calibration.")
 
-        if qual_result.valid:
-            print(f"[QUALITY] Score: {qual_result.value:.2f} | Info: {qual_result.info}")
-        if calib_result.valid:
-            calibNew = calib_result.calibration
-            print(f"[CALIB] Info: {calib_result.info}")
+            if dyn_result.calibOverallQuality is not None:
+                overall_quality = dyn_result.calibOverallQuality
+                report = getattr(overall_quality, 'report', None)
+
+                mean_coverage = report.coverageQuality.meanCoverage if report and report.coverageQuality else None
+                if mean_coverage is not None:
+                    print(f"Got calibCheck. Coverage quality = {mean_coverage}")
+
+                if report is not None and getattr(report, 'calibrationQuality', None) is not None:
+                    calib_quality = report.calibrationQuality
+
+                    rotation_change = getattr(calib_quality, 'rotationChange', [])
+                    depth_accuracy = getattr(calib_quality, 'depthAccuracy', [])
+
+                    print("Rotation change (as float):", ' '.join(f"{float(val):.3f}" for val in rotation_change))
+                    print("Depth accuracy changes (as float):", ' '.join(f"{float(val):.3f}" for val in depth_accuracy))
+
