@@ -48,7 +48,9 @@ void bind_dynamic_calibration_config(pybind11::module& m, void* pCallstack) {
 
     _CalibrationCommand
         .value("START_CALIBRATION_QUALITY_CHECK", DynamicCalibrationConfig::CalibrationCommand::START_CALIBRATION_QUALITY_CHECK)
+        .value("START_FORCE_CALIBRATION_QUALITY_CHECK", DynamicCalibrationConfig::CalibrationCommand::START_FORCE_CALIBRATION_QUALITY_CHECK)
         .value("START_RECALIBRATION", DynamicCalibrationConfig::CalibrationCommand::START_RECALIBRATION)
+        .value("START_FORCE_RECALIBRATION", DynamicCalibrationConfig::CalibrationCommand::START_FORCE_RECALIBRATION)
     ;
 
     // Message

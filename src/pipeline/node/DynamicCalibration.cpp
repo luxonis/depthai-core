@@ -189,8 +189,7 @@ void DynamicCalibration::setNewCalibration(CalibrationHandler currentCalibration
     std::shared_ptr<dcl::CameraCalibrationHandle> calibB =
         createDCLCameraCalibration(rightCameraMatrix, rightDistortionCoefficients, rotationMatrixB, translationVectorB);
 
-    setInternalCalibration(device, calibA, calibB, boardSocketA, boardSocketB, widthDefault, heightDefault);
-
+    dynCalibImpl->setNewCalibration(deviceName, socketA, calibA->getCalibration());
     dynCalibImpl->setNewCalibration(deviceName, socketB, calibB->getCalibration());
     dynResult.newCalibration = DynamicCalibrationResults::CalibrationResult::Invalid();
     dynResult.calibOverallQuality = DynamicCalibrationResults::CalibrationQualityResult::Invalid();
@@ -233,17 +232,29 @@ CalibrationHandler DynamicCalibration::convertDCLtoDAI(CalibrationHandler calibH
 }
 
 void DynamicCalibration::setInternalCalibration(std::shared_ptr<Device> device,
-                                                const std::shared_ptr<const dcl::CameraCalibrationHandle> daiCalibrationA,
-                                                const std::shared_ptr<const dcl::CameraCalibrationHandle> daiCalibrationB,
-                                                const CameraBoardSocket socketSrc,
-                                                const CameraBoardSocket socketDest,
+                                                const CameraBoardSocket boardSocketA,
+                                                const CameraBoardSocket boardSocketB,
                                                 const int width,
                                                 const int height) {
-    CalibrationHandler calibHandler = device->readCalibration();
-    CalibrationHandler calibHandlerNew = convertDCLtoDAI(calibHandler, daiCalibrationB, socketSrc, socketDest, width, height);
-    dynCalibImpl->setNewCalibration(deviceName, socketA, daiCalibrationA->getCalibration());
-    dynCalibImpl->setNewCalibration(deviceName, socketB, daiCalibrationB->getCalibration());
-    device->setCalibration(calibHandlerNew);
+    CalibrationHandler currentCalibration = device->getCalibration();
+    const std::vector<float> translationVectorA = {0.0f, 0.0f, 0.0f};
+    const std::vector<std::vector<float>> rotationMatrixA = {{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}};
+
+    auto translationVectorB = currentCalibration.getCameraTranslationVector(boardSocketA, boardSocketB);
+    auto rotationMatrixB = currentCalibration.getCameraRotationMatrix(boardSocketA, boardSocketB);
+
+    auto leftCameraMatrix = currentCalibration.getCameraIntrinsics(boardSocketA, width, height);
+    auto rightCameraMatrix = currentCalibration.getCameraIntrinsics(boardSocketB, width, height);
+
+    auto leftDistortionCoefficients = currentCalibration.getDistortionCoefficients(boardSocketA);
+    auto rightDistortionCoefficients = currentCalibration.getDistortionCoefficients(boardSocketB);
+
+    std::shared_ptr<dcl::CameraCalibrationHandle> calibA =
+        createDCLCameraCalibration(leftCameraMatrix, leftDistortionCoefficients, rotationMatrixA, translationVectorA);
+    std::shared_ptr<dcl::CameraCalibrationHandle> calibB =
+        createDCLCameraCalibration(rightCameraMatrix, rightDistortionCoefficients, rotationMatrixB, translationVectorB);
+    dynCalibImpl->setNewCalibration(deviceName, socketA, calibA->getCalibration());
+    dynCalibImpl->setNewCalibration(deviceName, socketB, calibB->getCalibration());
 }
 
 void DynamicCalibration::pipelineSetup(std::shared_ptr<Device> device, CameraBoardSocket boardSocketA, CameraBoardSocket boardSocketB, int width, int height) {
@@ -296,13 +307,13 @@ void DynamicCalibration::run() {
     auto recalibrationMode = DynamicCalibrationConfig::AlgorithmControl::RecalibrationMode::DEFAULT;
     dynResult.newCalibration = DynamicCalibrationResults::CalibrationResult::Invalid();
     dynResult.calibOverallQuality = DynamicCalibrationResults::CalibrationQualityResult::Invalid();
+    std::shared_ptr<DynamicCalibrationConfig> calibrationConfig;
     while(isRunning()) {
-        auto leftFrame = left.tryGet<dai::ImgFrame>();
-        auto rightFrame = right.tryGet<dai::ImgFrame>();
+        auto leftFrame = left.get<dai::ImgFrame>();
+        auto rightFrame = right.get<dai::ImgFrame>();
 
         if(!leftFrame || !rightFrame) continue; //todo calib team sync should be checked?
 
-        std::shared_ptr<DynamicCalibrationConfig> calibrationConfig;
 
         if(inputConfig.getWaitForMessage()) { //blocking
             calibrationConfig = inputConfig.get<DynamicCalibrationConfig>();
@@ -316,9 +327,11 @@ void DynamicCalibration::run() {
                 switch(*calibrationCommand) {
                     case DynamicCalibrationConfig::CalibrationCommand::START_CALIBRATION_QUALITY_CHECK:
                         startCalibQualityCheck();
+                        logger::info("[DynamicCalibration] StartCalibrationQualityMessageRecieved.");
                         break;
                     case DynamicCalibrationConfig::CalibrationCommand::START_RECALIBRATION:
                         startRecalibration();
+                        logger::info("[DynamicCalibration] RecalibratioQualityMessageRecieved.");
                         break;
                     case DynamicCalibrationConfig::CalibrationCommand::START_FORCE_RECALIBRATION:
                         startRecalibration();
@@ -364,12 +377,27 @@ void DynamicCalibration::run() {
                 break;
             }
 
+            case CalibrationStateMachine::CalibrationState::ResetDynamicRecalibration: {
+                logger::info("[DynamicCalibration] Resseting dynamic recalibration values");
+                dynResult.newCalibration = DynamicCalibrationResults::CalibrationResult::Invalid();
+                dynResult.calibOverallQuality = DynamicCalibrationResults::CalibrationQualityResult::Invalid();
+                dynCalibImpl->resetDeviceMeasurements(dcDevice);
+                calibrationSM.finish();
+                break;
+            }
+
             case CalibrationStateMachine::CalibrationState::Idle:
-                // Do nothing
+                if(calibrationSM.pipelineReady) {
+                    widthDefault = leftFrame->getWidth();
+                    heightDefault = rightFrame->getHeight();
+                    CameraBoardSocket leftSocket = static_cast<CameraBoardSocket>(leftFrame->instanceNum);
+                    CameraBoardSocket rightSocket = static_cast<CameraBoardSocket>(rightFrame->instanceNum);
+                    setInternalCalibration(device, leftSocket, rightSocket, widthDefault, heightDefault);
+                }
                 break;
 
             case CalibrationStateMachine::CalibrationState::CollectingFeatures: {
-                if (std::chrono::duration_cast<std::chrono::seconds>(now - lastAutoTrigger).count() > 0.5) {
+                if (std::chrono::duration_cast<std::chrono::seconds>(now - lastAutoTrigger).count() > 0.01) {
                     dcl::timestamp_t timestamp = leftFrame->getTimestamp().time_since_epoch().count();
                     auto imageA = leftFrame->getCvFrame();
                     auto imageB = rightFrame->getCvFrame();
@@ -392,7 +420,13 @@ void DynamicCalibration::run() {
                 auto calibQuality = result.value;
                 dynResult.calibOverallQuality = dai::DynamicCalibrationResults::CalibrationQualityResult::fromDCL(calibQuality);
                 forceTrigger = false;
-                calibrationSM.finish();
+                auto& report = dynResult.calibOverallQuality->report;
+                if (report.has_value() && report->calibrationQuality.has_value()) {
+                    calibrationSM.deleteAllData();
+                }
+                else {
+                    calibrationSM.finish();
+                }
                 break;
             }
 
@@ -409,9 +443,12 @@ void DynamicCalibration::run() {
                 if(calibrationHandle) {
                     CalibrationHandler calibHandler = device->readCalibration();
                     dynResult.newCalibration->calibHandler = convertDCLtoDAI(calibHandler, calibrationHandle, leftSocket, rightSocket, width, height);
+                    calibrationSM.deleteAllData();
+                }
+                else {
+                    calibrationSM.finish();
                 }
                 logger::info("[DynamicCalibration] Recalibration complete.");
-                calibrationSM.finish();
                 break;
             }
                 // TODO, ADD A METHOD, WHICH SETS NEW CALIBRATION ON DEVICE, DCL AND AS WELL RESETS THE RESULTS IN CALIBRATION STATE

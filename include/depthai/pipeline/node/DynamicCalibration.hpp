@@ -86,8 +86,6 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
 
     void pipelineSetup(std::shared_ptr<Device> device, CameraBoardSocket boardSocketA, CameraBoardSocket boardSocketB, int width = 1280, int height = 800);
     void setInternalCalibration(std::shared_ptr<Device> device,
-                                const std::shared_ptr<const dcl::CameraCalibrationHandle> daiCalibrationA,
-                                const std::shared_ptr<const dcl::CameraCalibrationHandle> daiCalibrationB,
                                 const CameraBoardSocket socketSrc,
                                 const CameraBoardSocket socketDest,
                                 const int width,
@@ -114,7 +112,7 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     DynamicCalibrationResults dynResult;
 
     struct CalibrationStateMachine {
-        enum class CalibrationState { Idle, InitializingPipeline, CollectingFeatures, ProcessingQuality, Recalibrating };
+        enum class CalibrationState { Idle, InitializingPipeline, CollectingFeatures, ProcessingQuality, Recalibrating, ResetDynamicRecalibration };
 
         enum class CalibrationMode { None, QualityCheck, Recalibration };
 
@@ -152,6 +150,10 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
                 state = CalibrationState::Recalibrating;
             }
         }
+        
+        void deleteAllData() {
+            state = CalibrationState::ResetDynamicRecalibration;
+        }
 
         void finish() {
             state = CalibrationState::Idle;
@@ -170,6 +172,8 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
                     return "ProcessingQuality";
                 case CalibrationState::Recalibrating:
                     return "Recalibrating";
+                case CalibrationState::ResetDynamicRecalibration:
+                    return "ResetingCalibration";
                 default:
                     return "Unknown";
             }

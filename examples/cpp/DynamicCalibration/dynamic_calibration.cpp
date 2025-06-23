@@ -55,11 +55,11 @@ int main() {
             break;
         }
         else if(key == 'o'){
-            dynCalib->setNewCalibration(calibOld);
+            device->setCalibration(calibOld);
             std::cout << "Applying old calibration " << std::endl;
         }
         else if(key == 'n'){
-            dynCalib->setNewCalibration(calibNew);
+            device->setCalibration(calibNew);
             std::cout << "Applying new calibration " << std::endl;
         }
         else if(key == 'c') {
@@ -100,9 +100,16 @@ int main() {
             auto& report = dynResult->calibOverallQuality->report;
             if(report.has_value() && report->calibrationQuality.has_value()) {
                 auto& rotationChange = report->calibrationQuality->rotationChange;
+                auto& depthAccuracy = report->calibrationQuality->depthAccuracy;
 
                 std::cout << "Rotation change (as float): ";
                 for(const auto& val : rotationChange) {
+                    std::cout << static_cast<float>(val) << " ";
+                }
+                std::cout << std::endl;
+
+                std::cout << "Depth accuracy changes (as float): ";
+                for(const auto& val : depthAccuracy) {
                     std::cout << static_cast<float>(val) << " ";
                 }
                 std::cout << std::endl;
