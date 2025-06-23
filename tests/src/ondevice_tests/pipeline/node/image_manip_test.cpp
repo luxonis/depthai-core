@@ -199,3 +199,176 @@ TEST_CASE("Multiple image manips") {
 
     p.stop();
 }
+
+void runManipTests(dai::ImgFrame::Type type, bool undistort) {
+    dai::Pipeline p;
+    auto manip = p.create<dai::node::ImageManip>()->build();
+    manip->setMaxOutputFrameSize(6750208);
+    manip->inputConfig.setWaitForMessage(true);
+
+    auto inputImg = cv::imread(LENNA_PATH);
+    cv::resize(inputImg, inputImg, cv::Size(1024, 512));
+    auto inputFrame = std::make_shared<dai::ImgFrame>();
+    inputFrame->setCvFrame(inputImg, type);
+
+    auto config = std::make_shared<dai::ImageManipConfig>();
+    config->setReusePreviousImage(true);
+    config->setUndistort(undistort);
+
+    auto inputQueue = manip->inputImage.createInputQueue();
+    auto configQueue = manip->inputConfig.createInputQueue();
+    auto outputQueue = manip->out.createOutputQueue();
+
+    p.start();
+    inputQueue->send(inputFrame);
+
+    // Scale up
+    {
+        auto cfg = std::make_shared<dai::ImageManipConfig>(*config);
+        cfg->setOutputSize(2048, 1024);
+        configQueue->send(cfg);
+        auto outFrame = outputQueue->get<dai::ImgFrame>();
+        REQUIRE(outFrame != nullptr);
+        REQUIRE(outFrame->getWidth() == 2048);
+        REQUIRE(outFrame->getHeight() == 1024);
+    }
+
+    // Scale up crop
+    {
+        auto cfg = std::make_shared<dai::ImageManipConfig>(*config);
+        cfg->setOutputSize(1500, 1500, dai::ImageManipConfig::ResizeMode::CENTER_CROP);
+        configQueue->send(cfg);
+        auto outFrame = outputQueue->get<dai::ImgFrame>();
+        REQUIRE(outFrame != nullptr);
+        REQUIRE(outFrame->getWidth() == 1500);
+        REQUIRE(outFrame->getHeight() == 1500);
+    }
+
+    // Scale up letterbox
+    {
+        auto cfg = std::make_shared<dai::ImageManipConfig>(*config);
+        cfg->setOutputSize(1500, 1500, dai::ImageManipConfig::ResizeMode::LETTERBOX);
+        configQueue->send(cfg);
+        auto outFrame = outputQueue->get<dai::ImgFrame>();
+        REQUIRE(outFrame != nullptr);
+        REQUIRE(outFrame->getWidth() == 1500);
+        REQUIRE(outFrame->getHeight() == 1500);
+    }
+
+    // Scale up letterbox bg
+    {
+        auto cfg = std::make_shared<dai::ImageManipConfig>(*config);
+        cfg->setOutputSize(1500, 1500, dai::ImageManipConfig::ResizeMode::LETTERBOX);
+        cfg->setBackgroundColor(100, 0, 0);
+        configQueue->send(cfg);
+        auto outFrame = outputQueue->get<dai::ImgFrame>();
+        REQUIRE(outFrame != nullptr);
+        REQUIRE(outFrame->getWidth() == 1500);
+        REQUIRE(outFrame->getHeight() == 1500);
+    }
+
+    // Scale down
+    {
+        auto cfg = std::make_shared<dai::ImageManipConfig>(*config);
+        cfg->setOutputSize(600, 400);
+        configQueue->send(cfg);
+        auto outFrame = outputQueue->get<dai::ImgFrame>();
+        REQUIRE(outFrame != nullptr);
+        REQUIRE(outFrame->getWidth() == 600);
+        REQUIRE(outFrame->getHeight() == 400);
+    }
+
+    // Scale down crop
+    {
+        auto cfg = std::make_shared<dai::ImageManipConfig>(*config);
+        cfg->setOutputSize(600, 400, dai::ImageManipConfig::ResizeMode::CENTER_CROP);
+        configQueue->send(cfg);
+        auto outFrame = outputQueue->get<dai::ImgFrame>();
+        REQUIRE(outFrame != nullptr);
+        REQUIRE(outFrame->getWidth() == 600);
+        REQUIRE(outFrame->getHeight() == 400);
+    }
+
+    // Scale down letterbox
+    {
+        auto cfg = std::make_shared<dai::ImageManipConfig>(*config);
+        cfg->setOutputSize(600, 400, dai::ImageManipConfig::ResizeMode::LETTERBOX);
+        configQueue->send(cfg);
+        auto outFrame = outputQueue->get<dai::ImgFrame>();
+        REQUIRE(outFrame != nullptr);
+        REQUIRE(outFrame->getWidth() == 600);
+        REQUIRE(outFrame->getHeight() == 400);
+    }
+
+    // Scale down letterbox bg
+    {
+        auto cfg = std::make_shared<dai::ImageManipConfig>(*config);
+        cfg->setOutputSize(600, 400, dai::ImageManipConfig::ResizeMode::LETTERBOX);
+        cfg->setBackgroundColor(100, 0, 0);
+        configQueue->send(cfg);
+        auto outFrame = outputQueue->get<dai::ImgFrame>();
+        REQUIRE(outFrame != nullptr);
+        REQUIRE(outFrame->getWidth() == 600);
+        REQUIRE(outFrame->getHeight() == 400);
+    }
+
+    // Crop
+    {
+        auto cfg = std::make_shared<dai::ImageManipConfig>(*config);
+        cfg->addCrop(100, 200, 600, 400);
+        configQueue->send(cfg);
+        auto outFrame = outputQueue->get<dai::ImgFrame>();
+        REQUIRE(outFrame != nullptr);
+        REQUIRE(outFrame->getWidth() == 600);
+        REQUIRE(outFrame->getHeight() == 400);
+    }
+
+    // Affine
+    {
+        auto cfg = std::make_shared<dai::ImageManipConfig>(*config);
+        cfg->addCropRotatedRect(dai::RotatedRect(dai::Point2f(350, 250), dai::Size2f(600, 400), 20));
+        configQueue->send(cfg);
+        auto outFrame = outputQueue->get<dai::ImgFrame>();
+        REQUIRE(outFrame != nullptr);
+        REQUIRE(outFrame->getWidth() == 600);
+        REQUIRE(outFrame->getHeight() == 400);
+    }
+
+    // Scale down small
+    {
+        auto cfg = std::make_shared<dai::ImageManipConfig>(*config);
+        cfg->addCrop(100, 100, 199, 199);
+        cfg->setOutputSize(100, 100);
+        configQueue->send(cfg);
+        auto outFrame = outputQueue->get<dai::ImgFrame>();
+        REQUIRE(outFrame != nullptr);
+        REQUIRE(outFrame->getWidth() == 100);
+        REQUIRE(outFrame->getHeight() == 100);
+    }
+
+    p.stop();
+} 
+
+TEST_CASE("ImageManip NV12") {
+    runManipTests(dai::ImgFrame::Type::NV12, false);
+}
+
+TEST_CASE("ImageManip GRAY8") {
+    runManipTests(dai::ImgFrame::Type::GRAY8, false);
+}
+
+TEST_CASE("ImageManip RGB888i") {
+    runManipTests(dai::ImgFrame::Type::RGB888i, false);
+}
+
+TEST_CASE("ImageManip NV12 undistort") {
+    runManipTests(dai::ImgFrame::Type::NV12, true);
+}
+
+TEST_CASE("ImageManip GRAY8 undistort") {
+    runManipTests(dai::ImgFrame::Type::GRAY8, true);
+}
+
+TEST_CASE("ImageManip RGB888i undistort") {
+    runManipTests(dai::ImgFrame::Type::RGB888i, true);
+}
