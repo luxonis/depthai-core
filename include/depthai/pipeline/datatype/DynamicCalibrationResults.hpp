@@ -36,7 +36,7 @@ struct DynamicCalibrationResults : public Buffer {
     };
     struct CalibrationData
     {
-        std::vector<double> rotationChange;
+        std::vector<float> rotationChange;
         float epipolarErrorChange;
         std::vector<float> depthAccuracy;
         DEPTHAI_SERIALIZE(CalibrationData, rotationChange, epipolarErrorChange, depthAccuracy);
@@ -46,7 +46,7 @@ struct DynamicCalibrationResults : public Buffer {
     {
         std::vector<std::vector<float>> coveragePerCellA;
         std::vector<std::vector<float>> coveragePerCellB;
-        double meanCoverage;
+        float meanCoverage;
         DEPTHAI_SERIALIZE(CoverageData, coveragePerCellA, coveragePerCellB, meanCoverage);
     };
 

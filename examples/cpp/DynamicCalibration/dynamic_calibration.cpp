@@ -35,6 +35,7 @@ int main() {
     auto device = pipeline.getDefaultDevice();
     auto calibOld = device->readCalibration();
     auto calibNew = device->readCalibration();
+    device->setCalibration(calibOld);
     pipeline.start();
     while(pipeline.isRunning()) {
         auto inDepth = q->get<dai::ImgFrame>();

@@ -31,12 +31,12 @@ right_xout = right_out.createOutputQueue()
 disp_xout = stereo.disparity.createOutputQueue()
 dyncal_out = dyn_calib.outputCalibrationResults.createOutputQueue()
 input_config = dyn_calib.inputConfig.createInputQueue()
-
-# ---------- Device and runtime loop ----------
-pipeline.start()
 device  = pipeline.getDefaultDevice()
 calibNew = device.readCalibration()
 calibOld = device.readCalibration()
+device.setCalibration(calibOld)
+# ---------- Device and runtime loop ----------
+pipeline.start()
 
 with pipeline:
     max_disp = stereo.initialConfig.getMaxDisparity()
