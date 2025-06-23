@@ -432,7 +432,7 @@ void DynamicCalibration::run() {
 
             case CalibrationStateMachine::CalibrationState::Recalibrating: {
                 logger::info("[DynamicCalibration] Running full recalibration...");
-                auto resultCalib = dynCalibImpl->recalibrateDevice(dcDevice, socketA, socketB);
+                auto resultCalib = dynCalibImpl->findNewCalibration(dcDevice, socketA, socketB);
                 auto calibrationHandle = std::make_shared<dcl::CameraCalibrationHandle>(resultCalib.value.second);
                 int width = leftFrame->getWidth();
                 int height = rightFrame->getHeight();

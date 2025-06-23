@@ -37,7 +37,8 @@ calibOld = device.readCalibration()
 device.setCalibration(calibOld)
 # ---------- Device and runtime loop ----------
 pipeline.start()
-
+import time
+start = time.time()
 with pipeline:
     max_disp = stereo.initialConfig.getMaxDisparity()
 
@@ -90,15 +91,22 @@ with pipeline:
 
         elif key == ord("o"):
             device.setCalibration(calibOld)
-
+        if np.abs(time.time()- start) > 5:
+            configMessage = dai.DynamicCalibrationConfig()
+            configMessage.calibrationCommand = dai.DynamicCalibrationConfig.CalibrationCommand.START_RECALIBRATION
+            input_config.send(configMessage)
+            start = time.time()
+            print("Appyling continious mode.")
+        
         calibration_result = dyncal_out.tryGet()
-
         if calibration_result is not None:
             dyn_result = calibration_result
             calib_result = dyn_result.newCalibration
 
             if calib_result is not None and getattr(calib_result, 'calibHandler', None) is not None:
                 calibNew = calib_result.calibHandler
+                device.setCalibration(calibNew)
+                print("Applying new calibration.")
 
             if dyn_result.calibOverallQuality is not None:
                 overall_quality = dyn_result.calibOverallQuality
@@ -116,6 +124,4 @@ with pipeline:
 
                     print("Rotation change (as float):", ' '.join(f"{float(val):.3f}" for val in rotation_change))
                     print("Depth accuracy changes (as float):", ' '.join(f"{float(val):.3f}" for val in depth_accuracy))
-                else:
-                    print("No calibrationQuality present.")
 
