@@ -146,6 +146,7 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
         .def("getIntrinsicMatrix", &ImgTransformation::getIntrinsicMatrix)
         .def("getIntrinsicMatrixInv", &ImgTransformation::getIntrinsicMatrixInv)
         .def("getDistortionModel", &ImgTransformation::getDistortionModel, DOC(dai, ImgTransformation, getDistortionModel))
+        .def("getExtrinsics", &ImgTransformation::getExtrinsics, DOC(dai, ImgTransformation, getExtrinsics))
         .def("getDistortionCoefficients", &ImgTransformation::getDistortionCoefficients, DOC(dai, ImgTransformation, getDistortionCoefficients))
         .def("getSrcCrops", &ImgTransformation::getSrcCrops, DOC(dai, ImgTransformation, getSrcCrops))
         .def("getSrcMaskPt", &ImgTransformation::getSrcMaskPt, py::arg("x"), py::arg("y"), DOC(dai, ImgTransformation, getSrcMaskPt))
@@ -159,6 +160,7 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
              &ImgTransformation::setDistortionCoefficients,
              py::arg("coefficients"),
              DOC(dai, ImgTransformation, setDistortionCoefficients))
+        .def("setExtrinsics", &ImgTransformation::setExtrinsics, py::arg("extrinsics"), DOC(dai, ImgTransformation, setExtrinsics))
         .def("addTransformation", &ImgTransformation::addTransformation, py::arg("matrix"), DOC(dai, ImgTransformation, addTransformation))
         .def("addCrop", &ImgTransformation::addCrop, py::arg("x"), py::arg("y"), py::arg("width"), py::arg("height"), DOC(dai, ImgTransformation, addCrop))
         .def("addPadding",
