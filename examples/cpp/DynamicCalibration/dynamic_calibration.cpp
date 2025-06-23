@@ -37,6 +37,10 @@ int main() {
     auto calibNew = device->readCalibration();
     device->setCalibration(calibOld);
     pipeline.start();
+    bool continuousMode = false;
+
+    auto lastCalibrationTime = std::chrono::steady_clock::now();
+    const auto calibrationInterval = std::chrono::seconds(1); // 1 second interval
     while(pipeline.isRunning()) {
         auto inDepth = q->get<dai::ImgFrame>();
         auto leftFrameQueue = leftQueue->get<dai::ImgFrame>();
@@ -88,13 +92,32 @@ int main() {
             input_config->send(configMessage);
             std::cout << "Start forced new calibration" << std::endl;
         }
+        else if(key == 's') {
+            continuousMode = !continuousMode;
+            std::cout << "Continuous calibration mode " << (continuousMode ? "enabled" : "disabled") << std::endl;
+        }
+        if(continuousMode) {
+            auto currentTime = std::chrono::steady_clock::now();
+            if(currentTime - lastCalibrationTime >= calibrationInterval) {
+                // Start forced recalibration
+                auto configMessage = std::make_shared<dai::DynamicCalibrationConfig>();
+                configMessage->calibrationCommand = dai::DynamicCalibrationConfig::CalibrationCommand::START_RECALIBRATION;
+                input_config->send(configMessage);
+                std::cout << "Starting continuous forced recalibration" << std::endl;
 
+
+                lastCalibrationTime = currentTime;
+            }
+        }
         // std::cout << qualityResult.info << " " << qualityResult.valid << " " << qualityResult.value << std::endl;
         auto calibration_result = dyncal_out->tryGet();
         auto dynResult = std::dynamic_pointer_cast<dai::DynamicCalibrationResults>(calibration_result);
         if(dynResult && dynResult->newCalibration->calibHandler.has_value()) {
             calibNew = *dynResult->newCalibration->calibHandler;
-            std::cout << "Got new calibration. " << std::endl;
+            if (continuousMode){
+                device->setCalibration(calibNew);
+                std::cout << "Setting new calibration." << std::endl;
+            }
         }
         if(dynResult && dynResult->calibOverallQuality.has_value()) {
             double meanCoverage = dynResult->calibOverallQuality->report->coverageQuality->meanCoverage;
@@ -114,10 +137,8 @@ int main() {
                     std::cout << static_cast<float>(val) << " ";
                 }
                 std::cout << std::endl;
-            } else {
-                std::cout << "No calibrationQuality present." << std::endl;
             }
-            std::cout << "Got calibCheck. Coverage quality = " << meanCoverage << std::endl;
+            // std::cout << "Got calibCheck. Coverage quality = " << meanCoverage << std::endl;
         }
     }
     return 0;
