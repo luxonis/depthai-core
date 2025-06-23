@@ -1,0 +1,24 @@
+[binaries]
+c = 'clang'
+cpp = 'clang++'
+ar = '/usr/local/oe-sdk-hardcoded-buildpath/sysroots/x86_64-qtisdk-linux/usr/bin/aarch64-oe-linux/aarch64-linux-gnu-ar'
+strip = '/usr/local/oe-sdk-hardcoded-buildpath/sysroots/x86_64-qtisdk-linux/usr/bin/aarch64-oe-linux/aarch64-linux-gnu-strip'
+# Optional but useful
+ld = '/usr/local/oe-sdk-hardcoded-buildpath/sysroots/x86_64-qtisdk-linux/usr/bin/aarch64-oe-linux/aarch64-linux-gnu-ld'
+nm = '/usr/local/oe-sdk-hardcoded-buildpath/sysroots/x86_64-qtisdk-linux/usr/bin/aarch64-oe-linux/aarch64-linux-gnu-nm'
+ranlib = '/usr/local/oe-sdk-hardcoded-buildpath/sysroots/x86_64-qtisdk-linux/usr/bin/aarch64-oe-linux/aarch64-linux-gnu-ranlib'
+
+[host_machine]
+system = 'linux'
+cpu_family = 'aarch64'
+cpu = 'cortex-a78'  # Kalama uses ARMv8.4-A cores (Kryo 780 based on Cortex-X2/A78)
+endian = 'little'
+
+[built-in-options]
+pkg-config = 'aarch64-linux-gnu-pkg-config'
+
+
+[properties]
+needs_exe_wrapper = true
+c_args = []
+cpp_args = []

@@ -1,0 +1,9 @@
+/* SPDX-License-Identifier: LGPL-2.1-or-later */
+
+#ifndef __UVC_GADGET_CONFIG_H__
+#define __UVC_GADGET_CONFIG_H__
+
+#cmakedefine HAVE_DIRENT_H	@HAVE_DIRENT_H@
+#cmakedefine HAVE_GLOB		@HAVE_GLOB@
+
+#endif
