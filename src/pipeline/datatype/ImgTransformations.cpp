@@ -385,6 +385,11 @@ ImgTransformation& ImgTransformation::setDistortionCoefficients(std::vector<floa
     return *this;
 }
 
+ImgTransformation& ImgTransformation::setExtrinsics(Extrinsics extrinsics) {
+    this->extrinsics = extrinsics;
+    return *this;
+}
+
 bool ImgTransformation::isValid() const {
     return srcWidth > 0 && srcHeight > 0 && width > 0 && height > 0;
 }
