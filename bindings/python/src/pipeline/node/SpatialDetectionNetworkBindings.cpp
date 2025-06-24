@@ -1,12 +1,11 @@
-#include "NodeBindings.hpp"
 #include "Common.hpp"
-
-#include "depthai/pipeline/Pipeline.hpp"
+#include "NodeBindings.hpp"
+#include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/pipeline/Node.hpp"
+#include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/node/SpatialDetectionNetwork.hpp"
 
-void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack){
-
+void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::node;
 
@@ -14,14 +13,12 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack){
     py::class_<SpatialDetectionNetworkProperties, std::shared_ptr<SpatialDetectionNetworkProperties>> spatialDetectionNetworkProperties(
         m, "SpatialDetectionNetworkProperties", DOC(dai, SpatialDetectionNetworkProperties));
     auto spatialDetectionNetwork = ADD_NODE_DERIVED(SpatialDetectionNetwork, DeviceNode);
-    auto mobileNetSpatialDetectionNetwork = ADD_NODE_DERIVED(MobileNetSpatialDetectionNetwork, SpatialDetectionNetwork);
-    auto yoloSpatialDetectionNetwork = ADD_NODE_DERIVED(YoloSpatialDetectionNetwork, SpatialDetectionNetwork);
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
     // Call the rest of the type defines, then perform the actual bindings
-    Callstack* callstack = (Callstack*) pCallstack;
+    Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
@@ -31,20 +28,39 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack){
     ///////////////////////////////////////////////////////////////////////
 
     // Properties
-    spatialDetectionNetworkProperties
-        .def_readwrite("detectedBBScaleFactor", &SpatialDetectionNetworkProperties::detectedBBScaleFactor)
-        .def_readwrite("depthThresholds", &SpatialDetectionNetworkProperties::depthThresholds)
-        ;
-
+    spatialDetectionNetworkProperties.def_readwrite("detectedBBScaleFactor", &SpatialDetectionNetworkProperties::detectedBBScaleFactor)
+        .def_readwrite("depthThresholds", &SpatialDetectionNetworkProperties::depthThresholds);
 
     // Node
     spatialDetectionNetwork
         // Copied from NN node
-        .def("build", py::overload_cast<const std::shared_ptr<Camera>&, const std::shared_ptr<StereoDepth>&, NNModelDescription, float>(&SpatialDetectionNetwork::build), py::arg("input"), py::arg("stereo"), py::arg("model"), py::arg("fps") = 30.0f, DOC(dai, node, SpatialDetectionNetwork, build))
-        .def("build", ([](SpatialDetectionNetwork& self, const std::shared_ptr<Camera>& input, const std::shared_ptr<StereoDepth>& stereo, std::string model, float fps) {
-            return self.build(input, stereo, NNModelDescription{model}, fps);
-        }), py::arg("input"), py::arg("stereo"), py::arg("model"), py::arg("fps") = 30.0f, DOC(dai, node, SpatialDetectionNetwork, build, 2))
-        .def("build", py::overload_cast<const std::shared_ptr<Camera>&, const std::shared_ptr<StereoDepth>&, NNArchive, float>(&SpatialDetectionNetwork::build), py::arg("input"), py::arg("stereo"), py::arg("nnArchive"), py::arg("fps") = 30.0f, DOC(dai, node, SpatialDetectionNetwork, build, 2))
+        .def("build",
+             py::overload_cast<const std::shared_ptr<Camera>&, const std::shared_ptr<StereoDepth>&, NNModelDescription, std::optional<float>>(
+                 &SpatialDetectionNetwork::build),
+             py::arg("input"),
+             py::arg("stereo"),
+             py::arg("model"),
+             py::arg("fps") = std::nullopt,
+             DOC(dai, node, SpatialDetectionNetwork, build))
+        .def("build",
+             ([](SpatialDetectionNetwork& self,
+                 const std::shared_ptr<Camera>& input,
+                 const std::shared_ptr<StereoDepth>& stereo,
+                 std::string model,
+                 std::optional<float> fps) { return self.build(input, stereo, NNModelDescription{model}, fps); }),
+             py::arg("input"),
+             py::arg("stereo"),
+             py::arg("model"),
+             py::arg("fps") = std::nullopt,
+             DOC(dai, node, SpatialDetectionNetwork, build, 2))
+        .def("build",
+             py::overload_cast<const std::shared_ptr<Camera>&, const std::shared_ptr<StereoDepth>&, const NNArchive&, std::optional<float>>(
+                 &SpatialDetectionNetwork::build),
+             py::arg("input"),
+             py::arg("stereo"),
+             py::arg("nnArchive"),
+             py::arg("fps") = std::nullopt,
+             DOC(dai, node, SpatialDetectionNetwork, build, 2))
         .def("setBlobPath", &SpatialDetectionNetwork::setBlobPath, py::arg("path"), DOC(dai, node, SpatialDetectionNetwork, setBlobPath))
         .def("setNumPoolFrames", &SpatialDetectionNetwork::setNumPoolFrames, py::arg("numFrames"), DOC(dai, node, SpatialDetectionNetwork, setNumPoolFrames))
         .def("setNumInferenceThreads",
@@ -56,9 +72,20 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack){
              py::arg("numNCEPerThread"),
              DOC(dai, node, SpatialDetectionNetwork, setNumNCEPerInferenceThread))
         .def("getNumInferenceThreads", &SpatialDetectionNetwork::getNumInferenceThreads, DOC(dai, node, SpatialDetectionNetwork, getNumInferenceThreads))
-        .def("setNNArchive", py::overload_cast<const NNArchive&>(&SpatialDetectionNetwork::setNNArchive), py::arg("archive"), DOC(dai, node, SpatialDetectionNetwork, setNNArchive))
-        .def("setNNArchive", py::overload_cast<const NNArchive&, int>(&SpatialDetectionNetwork::setNNArchive), py::arg("archive"), py::arg("numShaves"), DOC(dai, node, SpatialDetectionNetwork, setNNArchive))
-        .def("setFromModelZoo", py::overload_cast<NNModelDescription, bool>(&SpatialDetectionNetwork::setFromModelZoo), py::arg("description"), py::arg("useCached"), DOC(dai, node, SpatialDetectionNetwork, setFromModelZoo))
+        .def("setNNArchive",
+             py::overload_cast<const NNArchive&>(&SpatialDetectionNetwork::setNNArchive),
+             py::arg("archive"),
+             DOC(dai, node, SpatialDetectionNetwork, setNNArchive))
+        .def("setNNArchive",
+             py::overload_cast<const NNArchive&, int>(&SpatialDetectionNetwork::setNNArchive),
+             py::arg("archive"),
+             py::arg("numShaves"),
+             DOC(dai, node, SpatialDetectionNetwork, setNNArchive))
+        .def("setFromModelZoo",
+             py::overload_cast<NNModelDescription, bool>(&SpatialDetectionNetwork::setFromModelZoo),
+             py::arg("description"),
+             py::arg("useCached"),
+             DOC(dai, node, SpatialDetectionNetwork, setFromModelZoo))
         .def("setBlob",
              py::overload_cast<dai::OpenVINO::Blob>(&SpatialDetectionNetwork::setBlob),
              py::arg("blob"),
@@ -67,10 +94,7 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack){
              py::overload_cast<const dai::Path&>(&SpatialDetectionNetwork::setBlob),
              py::arg("path"),
              DOC(dai, node, SpatialDetectionNetwork, setBlob, 2))
-        .def("setModelPath",
-             &SpatialDetectionNetwork::setModelPath,
-             py::arg("modelPath"),
-             DOC(dai, node, SpatialDetectionNetwork, setModelPath))
+        .def("setModelPath", &SpatialDetectionNetwork::setModelPath, py::arg("modelPath"), DOC(dai, node, SpatialDetectionNetwork, setModelPath))
         .def("setNumShavesPerInferenceThread",
              &SpatialDetectionNetwork::setNumShavesPerInferenceThread,
              py::arg("numShavesPerInferenceThread"),
@@ -135,22 +159,4 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack){
              DOC(dai, node, SpatialDetectionNetwork, setSpatialCalculationAlgorithm));
     // ALIAS
     daiNodeModule.attr("SpatialDetectionNetwork").attr("Properties") = spatialDetectionNetworkProperties;
-
-    // // MobileNetSpatialDetectionNetwork
-
-    // YoloSpatialDetectionNetwork
-    yoloSpatialDetectionNetwork.def("setNumClasses", &YoloSpatialDetectionNetwork::setNumClasses, py::arg("numClasses"), DOC(dai, node, YoloSpatialDetectionNetwork, setNumClasses))
-        .def("setCoordinateSize",
-             &YoloSpatialDetectionNetwork::setCoordinateSize,
-             py::arg("coordinates"),
-             DOC(dai, node, YoloSpatialDetectionNetwork, setCoordinateSize))
-        .def("setAnchors", &YoloSpatialDetectionNetwork::setAnchors, py::arg("anchors"), DOC(dai, node, YoloSpatialDetectionNetwork, setAnchors))
-        .def(
-            "setAnchorMasks", &YoloSpatialDetectionNetwork::setAnchorMasks, py::arg("anchorMasks"), DOC(dai, node, YoloSpatialDetectionNetwork, setAnchorMasks))
-        .def("setIouThreshold", &YoloSpatialDetectionNetwork::setIouThreshold, py::arg("thresh"), DOC(dai, node, YoloSpatialDetectionNetwork, setIouThreshold))
-        .def("getNumClasses", &YoloSpatialDetectionNetwork::getNumClasses, DOC(dai, node, YoloSpatialDetectionNetwork, getNumClasses))
-        .def("getCoordinateSize", &YoloSpatialDetectionNetwork::getCoordinateSize, DOC(dai, node, YoloSpatialDetectionNetwork, getCoordinateSize))
-        .def("getAnchors", &YoloSpatialDetectionNetwork::getAnchors, DOC(dai, node, YoloSpatialDetectionNetwork, getAnchors))
-        .def("getAnchorMasks", &YoloSpatialDetectionNetwork::getAnchorMasks, DOC(dai, node, YoloSpatialDetectionNetwork, getAnchorMasks))
-        .def("getIouThreshold", &YoloSpatialDetectionNetwork::getIouThreshold, DOC(dai, node, YoloSpatialDetectionNetwork, getIouThreshold));
 }

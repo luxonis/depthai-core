@@ -25,18 +25,20 @@ class RemoteConnectionImpl {
     ~RemoteConnectionImpl();
 
     void addTopic(const std::string& topicName, Node::Output& output, const std::string& group, bool useVisualizationIfAvailable);
-    std::shared_ptr<MessageQueue> addTopic(const std::string& topicName, const std::string& group, unsigned int maxSize, bool blocking, bool useVisualizationIfAvailable);
+    std::shared_ptr<MessageQueue> addTopic(
+        const std::string& topicName, const std::string& group, unsigned int maxSize, bool blocking, bool useVisualizationIfAvailable);
+    bool removeTopic(const std::string& topicName);
     void registerPipeline(const Pipeline& pipeline);
     void registerService(const std::string& serviceName, std::function<nlohmann::json(const nlohmann::json&)> callback);
     int waitKey(int delayMs);
 
    private:
-     /**
-      * @brief Initialize websocket server
-      * @param address Address to bind to
-      * @param port Port to bind to
-      * @return True if successful, false otherwise
-      *
+    /**
+     * @brief Initialize websocket server
+     * @param address Address to bind to
+     * @param port Port to bind to
+     * @return True if successful, false otherwise
+     *
      */
     bool initWebsocketServer(const std::string& address, uint16_t port);
 
@@ -48,7 +50,10 @@ class RemoteConnectionImpl {
      */
     bool initHttpServer(const std::string& address, uint16_t port);
 
-    void addPublishThread(const std::string& topicName, const std::shared_ptr<MessageQueue>& outputQueue, const std::string& group, bool useVisualizationIfAvailable);
+    void addPublishThread(const std::string& topicName,
+                          const std::shared_ptr<MessageQueue>& outputQueue,
+                          const std::string& group,
+                          bool useVisualizationIfAvailable);
     void exposeTopicGroupsService();
     void exposeKeyPressedService();
     void exposePipelineService(const Pipeline& pipeline);
@@ -58,12 +63,17 @@ class RemoteConnectionImpl {
     std::condition_variable keyCv;
     int keyPressed = -1;
 
-    std::unordered_map<std::string, std::string> topicGroups;
-    std::vector<std::shared_ptr<InputQueue>> inputQueues;
+    struct TopicData {
+        std::string group;
+        std::shared_ptr<MessageQueue> outputQueue;
+        foxglove::ServiceId id;
+        std::unique_ptr<std::thread> thread;
+    };
+
+    std::unordered_map<std::string, TopicData> topics;
     std::unique_ptr<foxglove::ServerInterface<websocketpp::connection_hdl>> server;
     std::unique_ptr<httplib::Server> httpServer;
     std::unique_ptr<std::thread> httpServerThread;
-    std::vector<std::unique_ptr<std::thread>> publishThreads;
     std::map<foxglove::ServiceId, std::function<foxglove::ServiceResponse(foxglove::ServiceResponse)>> serviceMap;
 };
 

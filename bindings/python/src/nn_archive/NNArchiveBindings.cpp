@@ -2,11 +2,10 @@
 
 #include <pybind11/functional.h>
 #include <pybind11/stl.h>
-#include <pybind11/stl_bind.h>
 
 #include "depthai/nn_archive/NNArchive.hpp"
-#include "depthai/nn_archive/NNArchiveVersionedConfig.hpp"
 #include "depthai/nn_archive/NNArchiveEntry.hpp"
+#include "depthai/nn_archive/NNArchiveVersionedConfig.hpp"
 
 // v1 nn_archive bindings
 #include "depthai/nn_archive/v1/Config.hpp"
@@ -19,8 +18,6 @@
 #include "depthai/nn_archive/v1/Model.hpp"
 #include "depthai/nn_archive/v1/Output.hpp"
 #include "depthai/nn_archive/v1/PreprocessingBlock.hpp"
-
-PYBIND11_MAKE_OPAQUE(std::vector<uint8_t>);
 
 void NNArchiveBindings::bind(pybind11::module& m, void* pCallstack) {
     using namespace dai;
@@ -102,19 +99,19 @@ void NNArchiveBindings::bind(pybind11::module& m, void* pCallstack) {
 
     // Bind NNArchiveVersionedConfig
     nnArchiveVersionedConfig.def(py::init<const dai::Path&, NNArchiveEntry::Compression>(),
-                        py::arg("path"),
-                        py::arg("compression") = NNArchiveEntry::Compression::AUTO,
-                        DOC(dai, NNArchiveVersionedConfig, NNArchiveVersionedConfig));
+                                 py::arg("path"),
+                                 py::arg("compression") = NNArchiveEntry::Compression::AUTO,
+                                 DOC(dai, NNArchiveVersionedConfig, NNArchiveVersionedConfig));
     nnArchiveVersionedConfig.def(py::init<const std::vector<uint8_t>&, NNArchiveEntry::Compression>(),
-                        py::arg("data"),
-                        py::arg("compression") = NNArchiveEntry::Compression::AUTO,
-                        DOC(dai, NNArchiveVersionedConfig, NNArchiveVersionedConfig));
+                                 py::arg("data"),
+                                 py::arg("compression") = NNArchiveEntry::Compression::AUTO,
+                                 DOC(dai, NNArchiveVersionedConfig, NNArchiveVersionedConfig));
     nnArchiveVersionedConfig.def(py::init([](const std::function<int()>& openCallback,
-                                    const std::function<std::vector<uint8_t>()>& readCallback,
-                                    const std::function<int64_t(int64_t, NNArchiveEntry::Seek)>& seekCallback,
-                                    const std::function<int64_t(int64_t)>& skipCallback,
-                                    const std::function<int()>& closeCallback,
-                                    NNArchiveEntry::Compression compression) {
+                                             const std::function<std::vector<uint8_t>()>& readCallback,
+                                             const std::function<int64_t(int64_t, NNArchiveEntry::Seek)>& seekCallback,
+                                             const std::function<int64_t(int64_t)>& skipCallback,
+                                             const std::function<int()>& closeCallback,
+                                             NNArchiveEntry::Compression compression) {
         auto readCallbackWrapper = [readCallback]() { return std::make_shared<std::vector<uint8_t>>(readCallback()); };
         return NNArchiveVersionedConfig(openCallback, readCallbackWrapper, seekCallback, skipCallback, closeCallback, compression);
     }));
@@ -136,8 +133,6 @@ void NNArchiveBindings::bind(pybind11::module& m, void* pCallstack) {
     archiveEntrySeek.value("SET", NNArchiveEntry::Seek::SET);
     archiveEntrySeek.value("CUR", NNArchiveEntry::Seek::CUR);
     archiveEntrySeek.value("END", NNArchiveEntry::Seek::END);
-
-
 
     v1config.def(py::init<>());
     v1config.def(py::init<std::string, v1::Model>(), py::arg("configVersion"), py::arg("model"));
@@ -171,7 +166,6 @@ void NNArchiveBindings::bind(pybind11::module& m, void* pCallstack) {
     v1dataType.value("UINT32", v1::DataType::UINT32);
     v1dataType.value("UINT64", v1::DataType::UINT64);
     v1dataType.value("STRING", v1::DataType::STRING);
-
 
     v1inputType.value("IMAGE", v1::InputType::IMAGE);
     v1inputType.value("RAW", v1::InputType::RAW);

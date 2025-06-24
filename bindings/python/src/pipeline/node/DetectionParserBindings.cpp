@@ -1,13 +1,10 @@
-#include "NodeBindings.hpp"
 #include "Common.hpp"
-
-#include "depthai/pipeline/Pipeline.hpp"
+#include "NodeBindings.hpp"
 #include "depthai/pipeline/Node.hpp"
+#include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/node/DetectionParser.hpp"
 
-
-void bind_detectionparser(pybind11::module& m, void* pCallstack){
-
+void bind_detectionparser(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::node;
 
@@ -19,7 +16,7 @@ void bind_detectionparser(pybind11::module& m, void* pCallstack){
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
     // Call the rest of the type defines, then perform the actual bindings
-    Callstack* callstack = (Callstack*) pCallstack;
+    Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
@@ -29,9 +26,7 @@ void bind_detectionparser(pybind11::module& m, void* pCallstack){
     ///////////////////////////////////////////////////////////////////////
 
     // Properties
-    detectionParserProperties
-        .def_readwrite("parser", &DetectionParserProperties::parser, DOC(dai, DetectionParserProperties, parser))
-    ;
+    detectionParserProperties.def_readwrite("parser", &DetectionParserProperties::parser, DOC(dai, DetectionParserProperties, parser));
     // Node
     detectionParser.def_readonly("input", &DetectionParser::input, DOC(dai, node, DetectionParser, input))
         .def_readonly("out", &DetectionParser::out, DOC(dai, node, DetectionParser, out))
@@ -76,5 +71,4 @@ void bind_detectionparser(pybind11::module& m, void* pCallstack){
         .def("getIouThreshold", &DetectionParser::getIouThreshold, DOC(dai, node, DetectionParser, getIouThreshold))
         .def("build", &DetectionParser::build, DOC(dai, node, DetectionParser, build));
     daiNodeModule.attr("DetectionParser").attr("Properties") = detectionParserProperties;
-
 }

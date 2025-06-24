@@ -4,9 +4,10 @@
 #include "NodeBindings.hpp"
 #include "depthai/pipeline/ThreadedHostNode.hpp"
 #include "depthai/pipeline/node/host/HostNode.hpp"
+#include "pipeline/ThreadedNodeImpl.hpp"
 
 extern py::handle daiNodeModule;
-extern py::object messageQueueException; // Needed to be able to catch in C++ after it's raised on the Python side
+extern py::object messageQueueException;  // Needed to be able to catch in C++ after it's raised on the Python side
 
 using namespace dai;
 using namespace dai::node;
@@ -18,7 +19,7 @@ class PyThreadedHostNode : public NodeCRTP<ThreadedHostNode, PyThreadedHostNode>
             PYBIND11_OVERRIDE_PURE(void, ThreadedHostNode, run);
         } catch(py::error_already_set& e) {
             if(e.matches(messageQueueException)) {
-                logger->trace("Caught MessageQueue exception in ThreadedHostNode::run");
+                pimpl->logger->trace("Caught MessageQueue exception in ThreadedHostNode::run");
             } else {
                 throw;
             }
@@ -45,17 +46,17 @@ class PyHostNode : public NodeCRTP<HostNode, PyHostNode> {
     }
 };
 
-void bind_hostnode(pybind11::module& m, void* pCallstack){
+void bind_hostnode(pybind11::module& m, void* pCallstack) {
     // declare upfront
-    auto threadedHostNode =
-        py::class_<ThreadedHostNode, PyThreadedHostNode, ThreadedNode, std::shared_ptr<ThreadedHostNode>>(daiNodeModule, "ThreadedHostNode", DOC(dai, node, ThreadedHostNode));
+    auto threadedHostNode = py::class_<ThreadedHostNode, PyThreadedHostNode, ThreadedNode, std::shared_ptr<ThreadedHostNode>>(
+        daiNodeModule, "ThreadedHostNode", DOC(dai, node, ThreadedHostNode));
     auto hostNode = py::class_<HostNode, PyHostNode, ThreadedHostNode, std::shared_ptr<HostNode>>(daiNodeModule, "HostNode", DOC(dai, node, HostNode));
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
     // Call the rest of the type defines, then perform the actual bindings
-    Callstack* callstack = (Callstack*) pCallstack;
+    Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
@@ -72,7 +73,34 @@ void bind_hostnode(pybind11::module& m, void* pCallstack){
         }))
         .def("run", &ThreadedHostNode::run)
         .def("onStart", &ThreadedHostNode::onStart)
-        .def("onStop", &ThreadedHostNode::onStop);
+        .def("onStop", &ThreadedHostNode::onStop)
+        .def(
+            "createInput",
+            [](ThreadedHostNode& node,
+               std::string name,
+               std::string group,
+               bool blocking,
+               int queueSize,
+               std::vector<Node::DatatypeHierarchy> types,
+               bool waitForMessage) {
+                return std::make_shared<Node::Input>(node, Node::InputDescription{name, group, blocking, queueSize, types, waitForMessage});
+            },
+            py::arg("name") = Node::InputDescription{}.name,
+            py::arg("group") = Node::InputDescription{}.group,
+            py::arg("blocking") = Node::InputDescription{}.blocking,
+            py::arg("queueSize") = Node::InputDescription{}.queueSize,
+            py::arg("types") = Node::InputDescription{}.types,
+            py::arg("waitForMessage") = Node::InputDescription{}.waitForMessage,
+            py::keep_alive<1, 0>())
+        .def(
+            "createOutput",
+            [](ThreadedHostNode& node, std::string name, std::string group, std::vector<Node::DatatypeHierarchy> types) {
+                return std::make_shared<Node::Output>(node, Node::OutputDescription{name, group, types});
+            },
+            py::arg("name") = Node::OutputDescription{}.name,
+            py::arg("group") = Node::OutputDescription{}.group,
+            py::arg("possibleDatatypes") = Node::OutputDescription{}.types,
+            py::keep_alive<1, 0>());
 
     hostNode
         .def(py::init([]() {
@@ -145,7 +173,11 @@ void bind_hostnode(pybind11::module& m, void* pCallstack){
 
         # Create a subnode as part of this user node
         def createSubnode(self, class_, *args, **kwargs):
-            return self.getParentPipeline().create(class_, *args, **kwargs)
+            pipeline = self.getParentPipeline()
+            child_node = pipeline.create(class_, *args, **kwargs)
+            pipeline.remove(child_node) # necessary so that the node is only registered once
+            self.add(child_node)
+            return child_node
 
         node.HostNode.createSubnode = createSubnode
         node.ThreadedHostNode.createSubnode = createSubnode

@@ -187,16 +187,12 @@ cv::Mat ImgFrame::getCvFrame(cv::MatAllocator* allocator) {
         case Type::NV12:
         case Type::NV21: {
             int code = (getType() == Type::NV12) ? cv::ColorConversionCodes::COLOR_YUV2BGR_NV12 : cv::ColorConversionCodes::COLOR_YUV2BGR_NV21;
-            if(getPlaneHeight() <= getHeight() && getStride() <= getWidth()) {
-                cv::cvtColor(frame, output, code);
-            } else {
-                cv::Size s(getWidth(), getHeight());
-                int type = CV_8UC1;
-                int step = getStride();
-                cv::Mat frameY(s, type, getData().data(), step);
-                cv::Mat frameUV(s / 2, type, getData().data() + getPlaneStride(), step);
-                cv::cvtColorTwoPlane(frameY, frameUV, output, code);
-            }
+            cv::Size s(getWidth(), getHeight());
+            int type = CV_8UC1;
+            int step = getStride();
+            cv::Mat frameY(s, type, getData().data(), step);
+            cv::Mat frameUV(s / 2, type, getData().data() + getPlaneStride(), step);
+            cv::cvtColorTwoPlane(frameY, frameUV, output, code);
         } break;
 
         case Type::RAW8:

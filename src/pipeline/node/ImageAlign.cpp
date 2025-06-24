@@ -4,7 +4,7 @@ namespace dai {
 namespace node {
 
 ImageAlignProperties& ImageAlign::getProperties() {
-    properties.initialConfig = initialConfig;
+    properties.initialConfig = *initialConfig;
     return properties;
 }
 

@@ -99,22 +99,17 @@ bool EventData::toFile(const std::string& path) {
     return true;
 }
 EventsManager::EventsManager(std::string url, bool uploadCachedOnStart, float publishInterval)
-    : url(move(url)),
+    : url(std::move(url)),
       queueSize(10),
       publishInterval(publishInterval),
       logResponse(false),
       verifySsl(true),
-      connected(false),
       cacheDir("/internal/private"),
-      uploadCachedOnStart(uploadCachedOnStart),
       cacheIfCannotSend(false),
       stopEventBuffer(false) {
-    sourceAppId = utility::getEnv("AGENT_APP_ID");
-    sourceAppIdentifier = utility::getEnv("AGENT_APP_IDENTIFIER");
-    token = utility::getEnv("DEPTHAI_HUB_API_KEY");
-    if(token.empty()) {
-        throw std::runtime_error("Missing token, please set DEPTHAI_HUB_API_KEY environment variable or use setToken method");
-    }
+    sourceAppId = utility::getEnvAs<std::string>("OAKAGENT_APP_VERSION", "");
+    sourceAppIdentifier = utility::getEnvAs<std::string>("OAKAGENT_APP_IDENTIFIER", "");
+    token = utility::getEnvAs<std::string>("DEPTHAI_HUB_API_KEY", "");
     eventBufferThread = std::make_unique<std::thread>([this]() {
         while(!stopEventBuffer) {
             sendEventBuffer();
@@ -131,8 +126,8 @@ EventsManager::EventsManager(std::string url, bool uploadCachedOnStart, float pu
 EventsManager::~EventsManager() {
     stopEventBuffer = true;
     {
-    std::unique_lock<std::mutex> lock(eventBufferMutex);
-    eventBufferCondition.notify_one();
+        std::unique_lock<std::mutex> lock(eventBufferMutex);
+        eventBufferCondition.notify_one();
     }
     if(eventBufferThread->joinable()) {
         eventBufferThread->join();
@@ -144,6 +139,10 @@ void EventsManager::sendEventBuffer() {
     {
         std::lock_guard<std::mutex> lock(eventBufferMutex);
         if(eventBuffer.empty()) {
+            return;
+        }
+        if(token.empty()) {
+            logger::warn("Missing token, please set DEPTHAI_HUB_API_KEY environment variable or use setToken method");
             return;
         }
         if(!checkConnection()) {
@@ -167,6 +166,11 @@ void EventsManager::sendEventBuffer() {
         cpr::VerifySsl(verifySsl),
         cpr::ProgressCallback(
             [&](cpr::cpr_off_t downloadTotal, cpr::cpr_off_t downloadNow, cpr::cpr_off_t uploadTotal, cpr::cpr_off_t uploadNow, intptr_t userdata) -> bool {
+                (void)userdata;
+                (void)downloadTotal;
+                (void)downloadNow;
+                (void)uploadTotal;
+                (void)uploadNow;
                 if(stopEventBuffer) {
                     return false;
                 }
@@ -304,6 +308,11 @@ void EventsManager::sendFile(const std::shared_ptr<EventData>& file, const std::
 
         cpr::ProgressCallback(
             [&](cpr::cpr_off_t downloadTotal, cpr::cpr_off_t downloadNow, cpr::cpr_off_t uploadTotal, cpr::cpr_off_t uploadNow, intptr_t userdata) -> bool {
+                (void)userdata;
+                (void)downloadTotal;
+                (void)downloadNow;
+                (void)uploadTotal;
+                (void)uploadNow;
                 if(stopEventBuffer) {
                     return false;
                 }
@@ -446,7 +455,7 @@ std::string EventsManager::createUUID() {
     };
     return ss.str();
 }
-void EventsManager::setQueueSize(uint64 queueSize) {
+void EventsManager::setQueueSize(uint64_t queueSize) {
     this->queueSize = queueSize;
 }
 void EventsManager::setLogResponse(bool logResponse) {

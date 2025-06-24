@@ -47,9 +47,17 @@ StereoDepthConfig& StereoDepthConfig::setLeftRightCheck(bool enable) {
     return *this;
 }
 
+bool StereoDepthConfig::getLeftRightCheck() const {
+    return algorithmControl.enableLeftRightCheck;
+}
+
 StereoDepthConfig& StereoDepthConfig::setExtendedDisparity(bool enable) {
     algorithmControl.enableExtended = enable;
     return *this;
+}
+
+bool StereoDepthConfig::getExtendedDisparity() const {
+    return algorithmControl.enableExtended;
 }
 
 StereoDepthConfig& StereoDepthConfig::setSubpixel(bool enable) {
@@ -57,14 +65,26 @@ StereoDepthConfig& StereoDepthConfig::setSubpixel(bool enable) {
     return *this;
 }
 
+bool StereoDepthConfig::getSubpixel() const {
+    return algorithmControl.enableSubpixel;
+}
+
 StereoDepthConfig& StereoDepthConfig::setSubpixelFractionalBits(int subpixelFractionalBits) {
     algorithmControl.subpixelFractionalBits = subpixelFractionalBits;
     return *this;
 }
 
+int StereoDepthConfig::getSubpixelFractionalBits() const {
+    return algorithmControl.subpixelFractionalBits;
+}
+
 StereoDepthConfig& StereoDepthConfig::setDepthUnit(AlgorithmControl::DepthUnit depthUnit) {
     algorithmControl.depthUnit = depthUnit;
     return *this;
+}
+
+dai::StereoDepthConfig::AlgorithmControl::DepthUnit StereoDepthConfig::getDepthUnit() {
+    return algorithmControl.depthUnit;
 }
 
 StereoDepthConfig& StereoDepthConfig::setDisparityShift(int disparityShift) {
@@ -77,8 +97,13 @@ StereoDepthConfig& StereoDepthConfig::setNumInvalidateEdgePixels(int32_t numInva
     return *this;
 }
 
-dai::StereoDepthConfig::AlgorithmControl::DepthUnit StereoDepthConfig::getDepthUnit() {
-    return algorithmControl.depthUnit;
+StereoDepthConfig& StereoDepthConfig::setFiltersComputeBackend(dai::ProcessorType filtersBackend) {
+    this->filtersBackend = filtersBackend;
+    return *this;
+}
+
+dai::ProcessorType StereoDepthConfig::getFiltersComputeBackend() const {
+    return filtersBackend;
 }
 
 float StereoDepthConfig::getMaxDisparity() const {
@@ -127,7 +152,9 @@ float StereoDepthConfig::getMaxDisparity() const {
     }
 
     if(filtersToExecute.size() != 0) {
-        maxDisp = 1 << 13;
+        if(filtersToExecute.back() != StereoDepthConfig::PostProcessing::Filter::MEDIAN) {
+            maxDisp = maxDisp * ((1 << 13) / maxDisp);
+        }
     }
 
     return maxDisp;

@@ -4,9 +4,11 @@
 
 #include <cstring>
 
-#include "depthai/utility/ImageManipV2Impl.hpp"
+#include "depthai/utility/ImageManipImpl.hpp"
 
 namespace dai {
+
+constexpr float ROUND_UP_EPS = 1e-3f;
 
 // Function to check if a point is inside a rotated rectangle
 inline bool isPointInRotatedRectangle(const dai::Point2f& p, const dai::RotatedRect& rect) {
@@ -342,8 +344,8 @@ ImgTransformation& ImgTransformation::addRotation(float angle, dai::Point2f rota
     return *this;
 }
 ImgTransformation& ImgTransformation::addScale(float scaleX, float scaleY) {
-    width *= scaleX;
-    height *= scaleY;
+    width = width * scaleX + ROUND_UP_EPS;
+    height = height * scaleY + ROUND_UP_EPS;
     std::array<std::array<float, 3>, 3> scaleMatrix = {{{scaleX, 0, 0}, {0, scaleY, 0}, {0, 0, 1}}};
     addTransformation(scaleMatrix);
     return *this;
@@ -352,6 +354,30 @@ ImgTransformation& ImgTransformation::addScale(float scaleX, float scaleY) {
 ImgTransformation& ImgTransformation::addSrcCrops(const std::vector<dai::RotatedRect>& crops) {
     srcCrops.insert(srcCrops.end(), crops.begin(), crops.end());
     cropsValid = false;
+    return *this;
+}
+
+ImgTransformation& ImgTransformation::setSize(size_t width, size_t height) {
+    this->width = width;
+    this->height = height;
+    return *this;
+}
+ImgTransformation& ImgTransformation::setSourceSize(size_t width, size_t height) {
+    this->srcWidth = width;
+    this->srcHeight = height;
+    return *this;
+}
+ImgTransformation& ImgTransformation::setIntrinsicMatrix(std::array<std::array<float, 3>, 3> intrinsicMatrix) {
+    sourceIntrinsicMatrix = intrinsicMatrix;
+    sourceIntrinsicMatrixInv = getMatrixInverse(intrinsicMatrix);
+    return *this;
+}
+ImgTransformation& ImgTransformation::setDistortionModel(CameraModel model) {
+    distortionModel = model;
+    return *this;
+}
+ImgTransformation& ImgTransformation::setDistortionCoefficients(std::vector<float> coefficients) {
+    distortionCoefficients = coefficients;
     return *this;
 }
 

@@ -1,15 +1,15 @@
+#include <csignal>
 #include <depthai/depthai.hpp>
 #include <depthai/remote_connection/RemoteConnection.hpp>
 #include <iostream>
-#include <csignal>
-#include "depthai/modelzoo/NNModelDescription.hpp"
+
+#include "depthai/modelzoo/Zoo.hpp"
 
 // Signal handling for clean shutdown
 static bool isRunning = true;
 void signalHandler(int signum) {
     isRunning = false;
 }
-
 
 int main(int argc, char** argv) {
     // Default port values
@@ -35,9 +35,9 @@ int main(int argc, char** argv) {
     // Set up topics for remote connection
     remoteConnector.addTopic("detections", detectionNetwork->out);
     remoteConnector.addTopic("images", *cameraOutputVisualize);
-    remoteConnector.registerPipeline(pipeline);
     pipeline.start();
 
+    remoteConnector.registerPipeline(pipeline);
     // Main loop
     while(isRunning && pipeline.isRunning()) {
         int key = remoteConnector.waitKey(1);

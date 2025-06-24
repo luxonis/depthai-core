@@ -1,5 +1,6 @@
 #pragma once
 
+#include <depthai/common/ProcessorType.hpp>
 #include <depthai/common/optional.hpp>
 #include <unordered_map>
 #include <vector>
@@ -57,6 +58,11 @@ class StereoDepthConfig : public Buffer {
          * For better occlusion handling
          */
         bool enableLeftRightCheck = true;
+
+        /**
+         * Enables software left right check. Applicable to RVC4 only.
+         */
+        bool enableSwLeftRightCheck = false;
 
         /**
          * Disparity range increased from 95 to 190, combined from full resolution and downscaled images.
@@ -124,6 +130,7 @@ class StereoDepthConfig : public Buffer {
                           depthUnit,
                           customDepthUnitMultiplier,
                           enableLeftRightCheck,
+                          enableSwLeftRightCheck,
                           enableExtended,
                           enableSubpixel,
                           leftRightCheckThreshold,
@@ -585,6 +592,11 @@ class StereoDepthConfig : public Buffer {
         uint8_t confidenceThreshold = 55;
 
         /**
+         * Enable software confidence thresholding. Applicable to RVC4 only.
+         */
+        bool enableSwConfidenceThresholding = false;
+
+        /**
          * The linear equation applied for computing the cost is:
          * COMB_COST = α*AD + β*(CTC<<3).
          * CLAMP(COMB_COST >> 5, threshold).
@@ -605,7 +617,13 @@ class StereoDepthConfig : public Buffer {
          */
         LinearEquationParameters linearEquationParameters;
 
-        DEPTHAI_SERIALIZE(CostMatching, disparityWidth, enableCompanding, invalidDisparityValue, confidenceThreshold, linearEquationParameters);
+        DEPTHAI_SERIALIZE(CostMatching,
+                          disparityWidth,
+                          enableCompanding,
+                          invalidDisparityValue,
+                          confidenceThreshold,
+                          enableSwConfidenceThresholding,
+                          linearEquationParameters);
     };
 
     /**
@@ -789,10 +807,20 @@ class StereoDepthConfig : public Buffer {
     StereoDepthConfig& setLeftRightCheck(bool enable);
 
     /**
+     * Get left-right check setting
+     */
+    bool getLeftRightCheck() const;
+
+    /**
      * Disparity range increased from 95 to 190, combined from full resolution and downscaled images.
      * Suitable for short range objects
      */
     StereoDepthConfig& setExtendedDisparity(bool enable);
+
+    /**
+     * Get extended disparity setting
+     */
+    bool getExtendedDisparity() const;
 
     /**
      * Computes disparity with sub-pixel interpolation (3 fractional bits by default).
@@ -800,6 +828,11 @@ class StereoDepthConfig : public Buffer {
      * Suitable for long range. Currently incompatible with extended disparity
      */
     StereoDepthConfig& setSubpixel(bool enable);
+
+    /**
+     * Get subpixel setting
+     */
+    bool getSubpixel() const;
 
     /**
      * Number of fractional bits for subpixel mode.
@@ -811,11 +844,21 @@ class StereoDepthConfig : public Buffer {
     StereoDepthConfig& setSubpixelFractionalBits(int subpixelFractionalBits);
 
     /**
+     * Get number of fractional bits for subpixel mode
+     */
+    int getSubpixelFractionalBits() const;
+
+    /**
      * Set depth unit of depth map.
      *
      * Meter, centimeter, millimeter, inch, foot or custom unit is available.
      */
     StereoDepthConfig& setDepthUnit(AlgorithmControl::DepthUnit depthUnit);
+
+    /**
+     * Get depth unit of depth map.
+     */
+    AlgorithmControl::DepthUnit getDepthUnit();
 
     /**
      * Shift input frame by a number of pixels to increase minimum depth.
@@ -827,7 +870,6 @@ class StereoDepthConfig : public Buffer {
      */
     StereoDepthConfig& setDisparityShift(int disparityShift);
 
-    // TODO(before mainline) - API not supported on RVC3
     /**
      * Invalidate X amount of pixels at the edge of disparity frame.
      * For right and center alignment X pixels will be invalidated from the right edge,
@@ -836,9 +878,14 @@ class StereoDepthConfig : public Buffer {
     StereoDepthConfig& setNumInvalidateEdgePixels(int32_t numInvalidateEdgePixels);
 
     /**
-     * Get depth unit of depth map.
+     * Set filters compute backend
      */
-    AlgorithmControl::DepthUnit getDepthUnit();
+    StereoDepthConfig& setFiltersComputeBackend(dai::ProcessorType filtersBackend);
+
+    /**
+     * Get filters compute backend
+     */
+    dai::ProcessorType getFiltersComputeBackend() const;
 
     /**
      * Useful for normalization of the disparity map.
@@ -871,13 +918,18 @@ class StereoDepthConfig : public Buffer {
      */
     CostAggregation costAggregation;
 
+    /**
+     * Confidence metrics settings.
+     */
     ConfidenceMetrics confidenceMetrics;
+
+    dai::ProcessorType filtersBackend = dai::ProcessorType::CPU;
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
         metadata = utility::serialize(*this);
         datatype = DatatypeEnum::StereoDepthConfig;
     };
-    DEPTHAI_SERIALIZE(StereoDepthConfig, algorithmControl, postProcessing, censusTransform, costMatching, costAggregation, confidenceMetrics);
+    DEPTHAI_SERIALIZE(StereoDepthConfig, algorithmControl, postProcessing, censusTransform, costMatching, costAggregation, confidenceMetrics, filtersBackend);
 };
 
 }  // namespace dai

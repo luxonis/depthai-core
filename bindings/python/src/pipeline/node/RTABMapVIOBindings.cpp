@@ -1,13 +1,13 @@
+#include <pybind11/eval.h>
+
 #include "Common.hpp"
 #include "NodeBindings.hpp"
 #include "depthai/pipeline/ThreadedHostNode.hpp"
 #include "depthai/rtabmap/RTABMapVIO.hpp"
 
-#include <pybind11/eval.h>
-
 extern py::handle daiNodeModule;
 
-void bind_rtabmapvionode(pybind11::module& m, void* pCallstack){
+void bind_rtabmapvionode(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::node;
 
@@ -18,7 +18,7 @@ void bind_rtabmapvionode(pybind11::module& m, void* pCallstack){
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
     // Call the rest of the type defines, then perform the actual bindings
-    Callstack* callstack = (Callstack*) pCallstack;
+    Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
@@ -28,9 +28,10 @@ void bind_rtabmapvionode(pybind11::module& m, void* pCallstack){
     ///////////////////////////////////////////////////////////////////////
 
     // RTABMapVIO Node
-    rtabmapVIONode
-        .def_property_readonly("rect", [](RTABMapVIO& node){ return &node.rect; }, py::return_value_policy::reference_internal)
-        .def_property_readonly("depth", [](RTABMapVIO& node){ return &node.depth; }, py::return_value_policy::reference_internal)
+    rtabmapVIONode.def_property_readonly(
+                      "rect", [](RTABMapVIO& node) { return &node.rect; }, py::return_value_policy::reference_internal)
+        .def_property_readonly(
+            "depth", [](RTABMapVIO& node) { return &node.depth; }, py::return_value_policy::reference_internal)
         .def_readonly("imu", &RTABMapVIO::imu, DOC(dai, node, RTABMapVIO, imu))
         .def_readonly("features", &RTABMapVIO::features, DOC(dai, node, RTABMapVIO, features))
         .def_readonly("transform", &RTABMapVIO::transform, DOC(dai, node, RTABMapVIO, transform))

@@ -25,7 +25,7 @@ struct SpatialImgDetection : public ImgDetection {
     SpatialLocationCalculatorConfigData boundingBoxMapping;
 };
 
-DEPTHAI_SERIALIZE_EXT(SpatialImgDetection, label, confidence, xmin, ymin, xmax, ymax, spatialCoordinates, boundingBoxMapping);
+DEPTHAI_SERIALIZE_EXT(SpatialImgDetection, label, labelName, confidence, xmin, ymin, xmax, ymax, spatialCoordinates, boundingBoxMapping);
 
 /**
  * SpatialImgDetections message. Carries detection results together with spatial location data
@@ -54,7 +54,7 @@ class SpatialImgDetections : public Buffer, public ProtoSerializable {
      *
      * @returns serialized message
      */
-    std::vector<std::uint8_t> serializeProto() const override;
+    std::vector<std::uint8_t> serializeProto(bool = false) const override;
 
     /**
      * Serialize schema to proto buffer

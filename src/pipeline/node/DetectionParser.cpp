@@ -5,6 +5,7 @@
 #include "common/ModelType.hpp"
 #include "depthai/modelzoo/Zoo.hpp"
 #include "nn_archive/NNArchive.hpp"
+#include "pipeline/ThreadedNodeImpl.hpp"
 #include "spdlog/fmt/fmt.h"
 
 // internal headers
@@ -75,6 +76,9 @@ void DetectionParser::setConfig(const dai::NNArchiveVersionedConfig& config) {
 
     if(head.parser == "YOLO") {
         properties.parser.nnFamily = DetectionNetworkType::YOLO;
+        if(head.metadata.subtype) {
+            properties.parser.subtype = *head.metadata.subtype;
+        }
     } else if(head.parser == "SSD" || head.parser == "MOBILENET") {
         properties.parser.nnFamily = DetectionNetworkType::MOBILENET;
     } else {
@@ -149,7 +153,7 @@ void DetectionParser::setInputImageSize(int width, int height) {
     tensorInfo.dims = std::vector<unsigned int>{static_cast<unsigned int>(width), static_cast<unsigned int>(height)};
     tensorInfo.numDimensions = 2;
     if(properties.networkInputs.size() != 0) {
-        logger->error("setInputImageSize(...) can only be used if setBlob(...) is not in use. Otherwise input sizes are parsed from the blob.");
+        pimpl->logger->error("setInputImageSize(...) can only be used if setBlob(...) is not in use. Otherwise input sizes are parsed from the blob.");
         return;
     }
     properties.networkInputs.emplace("input", tensorInfo);
@@ -209,11 +213,11 @@ int DetectionParser::getNumClasses() const {
 }
 
 std::optional<std::vector<std::string>> DetectionParser::getClasses() const {
-    return mClasses;
+    return properties.parser.classNames;
 }
 
 void DetectionParser::setClasses(const std::vector<std::string>& classes) {
-    mClasses = classes;
+    properties.parser.classNames = classes;
 }
 
 /// Get coordianate size

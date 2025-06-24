@@ -1,5 +1,6 @@
 #include <pybind11/chrono.h>
 #include <pybind11/functional.h>
+#include <pybind11/gil.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
@@ -10,7 +11,30 @@
 #include "depthai/pipeline/MessageQueue.hpp"
 #include "depthai/pipeline/datatype/ADatatype.hpp"
 
-py::object messageQueueException; // Needed to be able to catch in C++ after it's raised on the Python side
+py::object messageQueueException;  // Needed to be able to catch in C++ after it's raised on the Python side
+namespace dai {
+namespace mq_utils {
+
+inline int addCallbackUnlocked(MessageQueue& queue, std::function<void(std::string, std::shared_ptr<ADatatype>)> callback) {
+    // Get unique id
+    int uniqueId = queue.uniqueCallbackId++;
+
+    // Assign callback directly without lock
+    queue.callbacks[uniqueId] = std::move(callback);
+
+    return uniqueId;
+}
+
+inline int addCallbackUnlocked(MessageQueue& queue, const std::function<void(std::shared_ptr<ADatatype>)>& callback) {
+    return addCallbackUnlocked(queue, [callback](const std::string&, std::shared_ptr<ADatatype> message) { callback(std::move(message)); });
+}
+
+inline int addCallbackUnlocked(MessageQueue& queue, const std::function<void()>& callback) {
+    return addCallbackUnlocked(queue, [callback](const std::string&, std::shared_ptr<ADatatype>) { callback(); });
+}
+
+}  // namespace mq_utils
+}  // namespace dai
 
 void MessageQueueBindings::bind(pybind11::module& m, void* pCallstack) {
     using namespace dai;
@@ -43,19 +67,24 @@ void MessageQueueBindings::bind(pybind11::module& m, void* pCallstack) {
         pybind11::module inspectModule = pybind11::module::import("inspect");
         pybind11::object result = inspectModule.attr("signature")(cb).attr("parameters");
         auto numParams = pybind11::len(result);
+        // Unlock the GIL before acquiring the mutex to avoid deadlocks
+        py::gil_scoped_release release;
+        std::unique_lock<std::mutex> lock(q.callbacksMtx);
+        pybind11::gil_scoped_acquire
+            gil;  // Order is important! Only acquire after the mutex is locked, to allow any callbacks to capture the GIL and finish the execution
 
-        if (numParams == 2) {
-            return q.addCallback([cb](std::string msg, std::shared_ptr<ADatatype> data) {
+        if(numParams == 2) {
+            return dai::mq_utils::addCallbackUnlocked(q, [cb](std::string msg, std::shared_ptr<ADatatype> data) {
                 pybind11::gil_scoped_acquire gil;
                 cb(msg, data);
             });
-        } else if (numParams == 1) {
-            return q.addCallback([cb](std::shared_ptr<ADatatype> data) {
+        } else if(numParams == 1) {
+            return dai::mq_utils::addCallbackUnlocked(q, [cb](std::shared_ptr<ADatatype> data) {
                 pybind11::gil_scoped_acquire gil;
                 cb(data);
             });
-        } else if (numParams == 0) {
-            return q.addCallback([cb]() {
+        } else if(numParams == 0) {
+            return dai::mq_utils::addCallbackUnlocked(q, [cb]() {
                 pybind11::gil_scoped_acquire gil;
                 cb();
             });
@@ -82,7 +111,23 @@ void MessageQueueBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("getSize", &MessageQueue::getSize, DOC(dai, MessageQueue, getSize))
         .def("isFull", &MessageQueue::isFull, DOC(dai, MessageQueue, isFull))
         .def("addCallback", addCallbackLambda, py::arg("callback"), DOC(dai, MessageQueue, addCallback))
-        .def("removeCallback", &MessageQueue::removeCallback, py::arg("callbackId"), DOC(dai, MessageQueue, removeCallback))
+        .def(
+            "removeCallback",
+            [](MessageQueue& q, int id) {
+                // Unlock the GIL before acquiring the mutex to avoid deadlocks
+                py::gil_scoped_release release;
+
+                std::unique_lock<std::mutex> lock(q.callbacksMtx);
+                pybind11::gil_scoped_acquire
+                    gil;  // Order is important! Only acquire after the mutex is locked, to allow any callbacks to capture the GIL and finish the execution
+                // If callback with id 'callbackId' doesn't exists, return false
+                if(q.callbacks.count(id) == 0) return false;
+                // Otherwise erase and return true
+                q.callbacks.erase(id);
+                return true;
+            },
+            py::arg("callbackId"),
+            DOC(dai, MessageQueue, removeCallback))
         .def("has", static_cast<bool (MessageQueue::*)()>(&MessageQueue::has), DOC(dai, MessageQueue, has))
         .def("tryGet", static_cast<std::shared_ptr<ADatatype> (MessageQueue::*)()>(&MessageQueue::tryGet), DOC(dai, MessageQueue, tryGet))
         .def(

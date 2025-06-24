@@ -2,12 +2,8 @@
 
 #include <pybind11/functional.h>
 #include <pybind11/stl.h>
-#include <pybind11/stl_bind.h>
 
 #include <depthai/common/ModelType.hpp>
-
-
-PYBIND11_MAKE_OPAQUE(std::vector<uint8_t>);
 
 void ModelTypeBindings::bind(pybind11::module& m, void* pCallstack) {
     using namespace dai;

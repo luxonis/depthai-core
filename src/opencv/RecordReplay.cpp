@@ -59,15 +59,19 @@ void VideoRecorder::init(const std::string& filePath, unsigned int width, unsign
     switch(codec) {
         case VideoCodec::H264:
         case VideoCodec::MJPEG:
-            mp4Writer = MP4Create(filePath.c_str(), 0);
+#ifdef DEPTHAI_ENABLE_MP4V2
+            mp4Writer = MP4Create(filePath.c_str());
             if(mp4Writer == MP4_INVALID_FILE_HANDLE) {
                 throw std::runtime_error("Failed to create MP4 file");
             }
             MP4SetTimeScale(mp4Writer, MP4V2_TIMESCALE);
+#else
+            throw std::runtime_error("Encoded video not support. Please recompile with DEPTHAI_ENABLE_MP4V2=ON");
+#endif
             break;
         case VideoCodec::RAW:
             cvWriter = std::make_unique<cv::VideoWriter>();
-            cvWriter->open(filePath, cv::VideoWriter::fourcc('H', '2', '6', '4'), fps, cv::Size(width, height));
+            cvWriter->open(filePath, cv::VideoWriter::fourcc('a', 'v', 'c', '1'), fps, cv::Size(width, height));
             assert(cvWriter->isOpened());
             break;
     }
@@ -79,6 +83,7 @@ void VideoRecorder::write(span<uint8_t>& data, const uint32_t stride) {
         throw std::runtime_error("VideoRecorder not initialized");
     }
     switch(this->codec) {
+#ifdef DEPTHAI_ENABLE_MP4V2
         case VideoCodec::H264: {
             H26xNals nals(data);
             auto nal = nals.next();
@@ -130,6 +135,13 @@ void VideoRecorder::write(span<uint8_t>& data, const uint32_t stride) {
                 }
             }
             break;
+#else
+        case VideoCodec::H264:
+        case VideoCodec::MJPEG: {
+            throw std::runtime_error("Encoded video not support. Please recompile with DEPTHAI_ENABLE_MP4V2=ON");
+            break;
+        }
+#endif
         case VideoCodec::RAW: {
             if(!cvWriter->isOpened()) {
                 throw std::runtime_error("VideoRecorder OpenCV writer is not initialized");
@@ -147,9 +159,12 @@ void VideoRecorder::write(span<uint8_t>& data, const uint32_t stride) {
 }
 
 void VideoRecorder::close() {
+#ifdef DEPTHAI_ENABLE_MP4V2
     if(mp4Writer != MP4_INVALID_FILE_HANDLE) {
+        // MP4Dump(mp4Writer);
         MP4Close(mp4Writer);
     }
+#endif
     if(cvWriter && cvWriter->isOpened()) {
         cvWriter->release();
     }
@@ -215,6 +230,18 @@ void VideoPlayer::close() {
     if(cvReader && cvReader->isOpened()) {
         cvReader->release();
     }
+}
+
+std::tuple<size_t, size_t> getVideoSize(const std::string& filePath) {
+    cv::VideoCapture cvReader;
+    cvReader.open(filePath);
+    if(!cvReader.isOpened()) {
+        throw std::runtime_error("Failed to open video file");
+    }
+    auto width = cvReader.get(cv::CAP_PROP_FRAME_WIDTH);
+    auto height = cvReader.get(cv::CAP_PROP_FRAME_HEIGHT);
+    cvReader.release();
+    return {width, height};
 }
 
 }  // namespace utility

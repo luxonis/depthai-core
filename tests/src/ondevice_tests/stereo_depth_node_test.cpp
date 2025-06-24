@@ -1,10 +1,9 @@
 #include <catch2/catch_all.hpp>
-#include <chrono>
-#include <thread>
 
 #include "depthai/depthai.hpp"
+#include "depthai/utility/CompilerWarnings.hpp"
 
-void testStereoDepthPreset(dai::node::StereoDepth::PresetMode preset) {
+void testStereoDepthPreset(dai::node::StereoDepth::PresetMode preset, dai::ProcessorType backend = dai::ProcessorType::CPU) {
     using namespace std;
     using namespace std::chrono;
     using namespace std::chrono_literals;
@@ -15,6 +14,7 @@ void testStereoDepthPreset(dai::node::StereoDepth::PresetMode preset) {
     auto stereo = p.create<dai::node::StereoDepth>()->build(*left->requestOutput(std::make_pair(640, 400)), *right->requestOutput(std::make_pair(640, 400)));
 
     stereo->setDefaultProfilePreset(preset);
+    stereo->initialConfig->setFiltersComputeBackend(backend);
 
     auto disparityQueue = stereo->disparity.createOutputQueue();
     auto depthQueue = stereo->depth.createOutputQueue();
@@ -31,12 +31,12 @@ void testStereoDepthPreset(dai::node::StereoDepth::PresetMode preset) {
     }
 }
 
-TEST_CASE("Test StereoDepth node HIGH_ACCURACY preset") {
-    testStereoDepthPreset(dai::node::StereoDepth::PresetMode::HIGH_ACCURACY);
+TEST_CASE("Test StereoDepth node FAST_ACCURACY preset") {
+    testStereoDepthPreset(dai::node::StereoDepth::PresetMode::FAST_ACCURACY);
 }
 
-TEST_CASE("Test StereoDepth node HIGH_DENSITY preset") {
-    testStereoDepthPreset(dai::node::StereoDepth::PresetMode::HIGH_DENSITY);
+TEST_CASE("Test StereoDepth node FAST_DENSITY preset") {
+    testStereoDepthPreset(dai::node::StereoDepth::PresetMode::FAST_DENSITY);
 }
 
 TEST_CASE("Test StereoDepth node DEFAULT preset") {
@@ -53,4 +53,12 @@ TEST_CASE("Test StereoDepth node HIGH_DETAIL preset") {
 
 TEST_CASE("Test StereoDepth node ROBOTICS preset") {
     testStereoDepthPreset(dai::node::StereoDepth::PresetMode::ROBOTICS);
+}
+
+TEST_CASE("Test StereoDepth node CPU backend") {
+    testStereoDepthPreset(dai::node::StereoDepth::PresetMode::DEFAULT, dai::ProcessorType::CPU);
+}
+
+TEST_CASE("Test StereoDepth node DSP backend") {
+    testStereoDepthPreset(dai::node::StereoDepth::PresetMode::DEFAULT, dai::ProcessorType::DSP);
 }

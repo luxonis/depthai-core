@@ -122,6 +122,7 @@ class CameraControl : public Buffer {
         STROBE_CONFIG = 53,
         STROBE_TIMINGS = 54,
         MOVE_LENS_RAW = 55, /* lens position: 0.0 - 1.0 */
+        HDR = 56,
     };
 
     enum class AutoFocusMode : uint8_t {
@@ -653,7 +654,6 @@ class CameraControl : public Buffer {
      */
     CameraControl& setEffectMode(EffectMode mode);
 
-    // TODO(before mainline) - API not supported on RVC2
     /**
      * Set a miscellaneous control. The controls set by this function get appended
      * to a list, processed after the standard controls
@@ -662,7 +662,6 @@ class CameraControl : public Buffer {
      */
     CameraControl& setMisc(std::string control, std::string value);
 
-    // TODO(before mainline) - API not supported on RVC2
     /**
      * Set a miscellaneous control. The controls set by this function get appended
      * to a list, processed after the standard controls
@@ -671,7 +670,6 @@ class CameraControl : public Buffer {
      */
     CameraControl& setMisc(std::string control, int value);
 
-    // TODO(before mainline) - API not supported on RVC2
     /**
      * Set a miscellaneous control. The controls set by this function get appended
      * to a list, processed after the standard controls
@@ -680,23 +678,28 @@ class CameraControl : public Buffer {
      */
     CameraControl& setMisc(std::string control, float value);
 
-    // TODO(before mainline) - API not supported on RVC2
     /**
      * Clear the list of miscellaneous controls set by `setControl`
      */
     void clearMiscControls();
 
-    // TODO(before mainline) - API not supported on RVC2
     /**
      * Get the list of miscellaneous controls set by `setControl`
      * @returns A list of <key, value> pairs as strings
      */
     std::vector<std::pair<std::string, std::string>> getMiscControls();
+
     /**
      * Set a command to specify control mode
      * @param mode Control mode
      */
     CameraControl& setControlMode(ControlMode mode);
+
+    /**
+     * Whether or not to enable HDR (High Dynamic Range) mode
+     * @param enable True to enable HDR mode, false to disable
+     */
+    CameraControl& setHdr(bool enable);
 
     /**
      * Set a command to specify capture intent mode
@@ -725,6 +728,12 @@ class CameraControl : public Buffer {
      * Retrieves lens position, range 0..255. Returns -1 if not available
      */
     int getLensPosition() const;
+
+    /**
+     * Whether or not HDR (High Dynamic Range) mode is enabled
+     * @returns True if HDR mode is enabled, false otherwise
+     */
+    bool getHdr() const;
 
     uint64_t cmdMask = 0;
 
@@ -766,6 +775,7 @@ class CameraControl : public Buffer {
     uint16_t wbColorTemp;    // 1000 .. 12000
     uint8_t lowPowerNumFramesBurst;
     uint8_t lowPowerNumFramesDiscard;
+    bool enableHdr{false};
     std::vector<std::pair<std::string, std::string>> miscControls;
 
     void setCommand(Command cmd, bool value = true) {
@@ -820,6 +830,7 @@ class CameraControl : public Buffer {
                       wbColorTemp,
                       lowPowerNumFramesBurst,
                       lowPowerNumFramesDiscard,
+                      enableHdr,
                       miscControls);
     /**
      * Retrieves lens position, range 0.0f..1.0f.

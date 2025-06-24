@@ -72,12 +72,12 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
     std::shared_ptr<SpatialDetectionNetwork> build(const std::shared_ptr<Camera>& inputRgb,
                                                    const std::shared_ptr<StereoDepth>& stereo,
                                                    dai::NNModelDescription modelDesc,
-                                                   float fps = 30.0f);
+                                                   std::optional<float> fps = std::nullopt);
 
     std::shared_ptr<SpatialDetectionNetwork> build(const std::shared_ptr<Camera>& inputRgb,
                                                    const std::shared_ptr<StereoDepth>& stereo,
-                                                   dai::NNArchive nnArchive,
-                                                   float fps = 30.0f);
+                                                   const dai::NNArchive& nnArchive,
+                                                   std::optional<float> fps = std::nullopt);
 
     Subnode<NeuralNetwork> neuralNetwork{*this, "neuralNetwork"};
     Subnode<DetectionParser> detectionParser{*this, "detectionParser"};
@@ -291,51 +291,8 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
     void setNNArchiveBlob(const NNArchive& nnArchive);
     void setNNArchiveSuperblob(const NNArchive& nnArchive, int numShaves);
     void setNNArchiveOther(const NNArchive& nnArchive);
-
-   protected:
-    using DeviceNodeCRTP::DeviceNodeCRTP;
-};
-
-/**
- * MobileNetSpatialDetectionNetwork node. Mobilenet-SSD based network with spatial location data.
- */
-class MobileNetSpatialDetectionNetwork : public DeviceNodeCRTP<SpatialDetectionNetwork, MobileNetSpatialDetectionNetwork, SpatialDetectionNetworkProperties> {
-   public:
-    void buildInternal() override;
-
-   protected:
-    using DeviceNodeCRTP::DeviceNodeCRTP;
-};
-
-/**
- * YoloSpatialDetectionNetwork node. Yolo-based network with spatial location data.
- */
-class YoloSpatialDetectionNetwork : public DeviceNodeCRTP<SpatialDetectionNetwork, YoloSpatialDetectionNetwork, SpatialDetectionNetworkProperties> {
-   public:
-    /// Set num classes
-    void setNumClasses(const int numClasses);
-    /// Set coordianate size
-    void setCoordinateSize(const int coordinates);
-    /// Set anchors
-    void setAnchors(std::vector<float> anchors);
-    /// Set anchor masks
-    void setAnchorMasks(std::map<std::string, std::vector<int>> anchorMasks);
-    /// Set Iou threshold
-    void setIouThreshold(float thresh);
-
-    /// Get num classes
-    int getNumClasses() const;
-
-    /// Get coordianate size
-    int getCoordinateSize() const;
-    /// Get anchors
-    std::vector<float> getAnchors() const;
-    /// Get anchor masks
-    std::map<std::string, std::vector<int>> getAnchorMasks() const;
-    /// Get Iou threshold
-    float getIouThreshold() const;
-
-    void buildInternal() override;
+    NNArchive createNNArchive(NNModelDescription& modelDesc);
+    void alignDepth(const std::shared_ptr<StereoDepth>& stereo, const std::shared_ptr<Camera>& camera);
 
    protected:
     using DeviceNodeCRTP::DeviceNodeCRTP;

@@ -6,20 +6,12 @@ namespace dai {
 namespace node {
 
 EdgeDetector::EdgeDetector(std::unique_ptr<Properties> props)
-    : DeviceNodeCRTP<DeviceNode, EdgeDetector, EdgeDetectorProperties>(std::move(props)), initialConfig(properties.initialConfig) {}
+    : DeviceNodeCRTP<DeviceNode, EdgeDetector, EdgeDetectorProperties>(std::move(props)),
+      initialConfig(std::make_shared<decltype(properties.initialConfig)>(properties.initialConfig)) {}
 
 EdgeDetector::Properties& EdgeDetector::getProperties() {
-    properties.initialConfig = initialConfig;
+    properties.initialConfig = *initialConfig;
     return properties;
-}
-
-// Node properties configuration
-void EdgeDetector::setWaitForConfigInput(bool wait) {
-    inputConfig.setWaitForMessage(wait);
-}
-
-bool EdgeDetector::getWaitForConfigInput() const {
-    return inputConfig.getWaitForMessage();
 }
 
 void EdgeDetector::setNumFramesPool(int numFramesPool) {

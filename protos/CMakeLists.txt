@@ -41,7 +41,7 @@ foreach(proto_file ${MESSAGES_PROTOS})
 endforeach()
 
 # Create a library target for the generated protobuf files
-add_library(messages ${MESSAGES_SRCS})
+add_library(messages STATIC ${MESSAGES_SRCS})
 
 # Link the protobuf library
 target_link_libraries(messages protobuf::libprotobuf)
@@ -53,13 +53,3 @@ target_include_directories(messages PUBLIC
     $<INSTALL_INTERFACE:include/schemas>
 )
 
-# Optional: Install target for the generated protobuf files and headers
-install(TARGETS messages
-    EXPORT messagesTargets
-    ARCHIVE DESTINATION lib
-    LIBRARY DESTINATION lib
-    RUNTIME DESTINATION bin
-)
-
-# Optional: Install the generated header files
-install(FILES ${MESSAGES_HDRS} DESTINATION include/schemas)

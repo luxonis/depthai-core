@@ -926,9 +926,14 @@ class StereoConfigHandlerRVC4:
             StereoConfigHandlerRVC4.config.algorithmControl.depthAlign = nextAlignment
         elif key == ord("1"):
             StereoConfigHandlerRVC4.newConfig = True
-            StereoConfigHandlerRVC4.config.algorithmControl.enableLeftRightCheck = not StereoConfigHandlerRVC4.config.algorithmControl.enableLeftRightCheck
-            state = "on" if StereoConfigHandlerRVC4.config.algorithmControl.enableLeftRightCheck else "off"
+            StereoConfigHandlerRVC4.config.algorithmControl.enableSwLeftRightCheck = not StereoConfigHandlerRVC4.config.algorithmControl.enableSwLeftRightCheck
+            state = "on" if StereoConfigHandlerRVC4.config.algorithmControl.enableSwLeftRightCheck else "off"
             print(f"LR-check {state}")
+        elif key == ord("4"):
+            StereoConfigHandlerRVC4.newConfig = True
+            StereoConfigHandlerRVC4.config.costMatching.enableSwConfidenceThresholding = not StereoConfigHandlerRVC4.config.costMatching.enableSwConfidenceThresholding
+            state = "on" if StereoConfigHandlerRVC4.config.costMatching.enableSwConfidenceThresholding else "off"
+            print(f"SW confidence thresholding {state}")
         elif key == ord("3"):
             StereoConfigHandlerRVC4.newConfig = True
             StereoConfigHandlerRVC4.config.algorithmControl.enableExtended = not StereoConfigHandlerRVC4.config.algorithmControl.enableExtended
@@ -1005,6 +1010,7 @@ class StereoConfigHandlerRVC4:
         print("Control speckle filter using the 's' key.")
         print("Control left-right check mode using the '1' key.")
         print("Control extended mode using the '3' key.")
+        print("Control SW confidence thresholding using the '4' key.")
         if evaluation_mode:
             print("Switch between images using '[' and ']' keys.")
 
@@ -1012,7 +1018,7 @@ class StereoConfigHandlerRVC4:
 
 
 # StereoDepth initial config options.
-outDepth = False  # Disparity by default
+outDepth = True  # Disparity by default
 outConfidenceMap = False  # Output disparity confidence map
 outRectified = True   # Output and display rectified streams
 lrcheck = True   # Better handling for occlusions
@@ -1088,14 +1094,7 @@ stereo.setDepthAlign(dai.StereoDepthConfig.AlgorithmControl.DepthAlign.RECTIFIED
 # allowing runtime switch of stereo modes
 stereo.setRuntimeModeSwitch(True)
 
-#TODO change once initialConfig is shared ptr
-currentConfig = dai.StereoDepthConfig()
-
-currentConfig.algorithmControl = stereo.initialConfig.algorithmControl
-currentConfig.postProcessing = stereo.initialConfig.postProcessing
-currentConfig.costAggregation = stereo.initialConfig.costAggregation
-currentConfig.costMatching = stereo.initialConfig.costMatching
-currentConfig.censusTransform = stereo.initialConfig.censusTransform
+currentConfig = stereo.initialConfig
 
 platform = pipeline.getDefaultDevice().getPlatform()
 
@@ -1138,8 +1137,10 @@ def convertToCv2Frame(name, image, config):
         dispScaleFactor = baseline * focal
         with np.errstate(divide="ignore"):
             frame = dispScaleFactor / frame
+            if np.isnan(frame).any() or np.isinf(frame).any():
+                frame = np.nan_to_num(frame, nan=0, posinf=0, neginf=0)
 
-        frame = (frame * 255. / dispIntegerLevels).astype(np.uint8)
+        frame = np.clip(frame * 255. / dispIntegerLevels, 0, 255).astype(np.uint8)
         frame = cv2.applyColorMap(frame, cv2.COLORMAP_HOT)
     elif "confidence_map" in name:
         pass

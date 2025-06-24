@@ -144,9 +144,20 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
         .def("getSourceIntrinsicMatrixInv", &ImgTransformation::getSourceIntrinsicMatrixInv)
         .def("getIntrinsicMatrix", &ImgTransformation::getIntrinsicMatrix)
         .def("getIntrinsicMatrixInv", &ImgTransformation::getIntrinsicMatrixInv)
+        .def("getDistortionModel", &ImgTransformation::getDistortionModel, DOC(dai, ImgTransformation, getDistortionModel))
+        .def("getDistortionCoefficients", &ImgTransformation::getDistortionCoefficients, DOC(dai, ImgTransformation, getDistortionCoefficients))
+        .def("getSrcCrops", &ImgTransformation::getSrcCrops, DOC(dai, ImgTransformation, getSrcCrops))
+        .def("getSrcMaskPt", &ImgTransformation::getSrcMaskPt, py::arg("x"), py::arg("y"), DOC(dai, ImgTransformation, getSrcMaskPt))
+        .def("getDstMaskPt", &ImgTransformation::getDstMaskPt, py::arg("x"), py::arg("y"), DOC(dai, ImgTransformation, getDstMaskPt))
         .def("getDFov", &ImgTransformation::getDFov, py::arg("source") = false)
         .def("getHFov", &ImgTransformation::getHFov, py::arg("source") = false)
         .def("getVFov", &ImgTransformation::getVFov, py::arg("source") = false)
+        .def("setIntrinsicMatrix", &ImgTransformation::setIntrinsicMatrix, py::arg("intrinsicMatrix"), DOC(dai, ImgTransformation, setIntrinsicMatrix))
+        .def("setDistortionModel", &ImgTransformation::setDistortionModel, py::arg("model"), DOC(dai, ImgTransformation, setDistortionModel))
+        .def("setDistortionCoefficients",
+             &ImgTransformation::setDistortionCoefficients,
+             py::arg("coefficients"),
+             DOC(dai, ImgTransformation, setDistortionCoefficients))
         .def("addTransformation", &ImgTransformation::addTransformation, py::arg("matrix"), DOC(dai, ImgTransformation, addTransformation))
         .def("addCrop", &ImgTransformation::addCrop, py::arg("x"), py::arg("y"), py::arg("width"), py::arg("height"), DOC(dai, ImgTransformation, addCrop))
         .def("addPadding",
@@ -200,7 +211,8 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
         .def("getSourceDFov", &ImgFrame::getSourceDFov, DOC(dai, ImgFrame, getSourceDFov))
         .def("getSourceWidth", &ImgFrame::getSourceWidth, DOC(dai, ImgFrame, getSourceWidth))
         .def("getSourceHeight", &ImgFrame::getSourceHeight, DOC(dai, ImgFrame, getSourceHeight))
-        .def("getTransformation", [](ImgFrame& msg) {return msg.transformation;})
+        .def("getTransformation", [](ImgFrame& msg) { return msg.transformation; })
+        .def("validateTransformations", &ImgFrame::validateTransformations, DOC(dai, ImgFrame, validateTransformations))
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
         // The cast function itself does a copy, so we can avoid two copies by always not copying
@@ -252,7 +264,7 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
              py::arg("sizer"),
              DOC(dai, ImgFrame, setSize, 2))
         .def("setType", &ImgFrame::setType, py::arg("type"), DOC(dai, ImgFrame, setType))
-        .def("setTransformation", [](ImgFrame& msg, const ImgTransformation& transformation) {msg.transformation = transformation;})
+        .def("setTransformation", [](ImgFrame& msg, const ImgTransformation& transformation) { msg.transformation = transformation; })
         // .def("set", &ImgFrame::set, py::arg("type"), DOC(dai, ImgFrame, set))
         ;
     // add aliases dai.ImgFrame.Type and dai.ImgFrame.Specs

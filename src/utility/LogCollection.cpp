@@ -138,8 +138,8 @@ void logPipeline(const PipelineSchema& pipelineSchema, const dai::DeviceInfo& de
 #else
     namespace fs = std::filesystem;
     // Check if logging is explicistdy disabled
-    auto loggingEnabled = utility::getEnv("DEPTHAI_DISABLE_FEEDBACK");
-    if(!loggingEnabled.empty()) {
+    auto loggingEnabled = utility::getEnvAs<std::string>("DEPTHAI_ENABLE_ANALYTICS_COLLECTION", "");
+    if(loggingEnabled.empty()) {
         logger::info("Logging disabled");
         return;
     }
@@ -183,7 +183,7 @@ void logPipeline(const PipelineSchema& pipelineSchema, const dai::DeviceInfo& de
 }
 
 void logCrashDump(const std::optional<PipelineSchema>& pipelineSchema, const GenericCrashDump& crashDump, const dai::DeviceInfo& deviceInfo) {
-    auto crashDumpEnvVar = utility::getEnv("DEPTHAI_CRASHDUMP");
+    auto crashDumpEnvVar = utility::getEnvAs<std::string>("DEPTHAI_CRASHDUMP", "");
     if(crashDumpEnvVar == "0") {
         logger::warn("Crash dump logging disabled");
         return;
@@ -224,8 +224,9 @@ void logCrashDump(const std::optional<PipelineSchema>& pipelineSchema, const Gen
     } else {
         crashDumpPathLocal /= crashDumpData.name;
     }
-    auto errorString = fmt::format(
-        "Device with id {} has crashed. Crash dump logs are stored in: {} - please report to developers.", deviceInfo.getDeviceId(), crashDumpPathLocal.string());
+    auto errorString = fmt::format("Device with id {} has crashed. Crash dump logs are stored in: {} - please report to developers.",
+                                   deviceInfo.getDeviceId(),
+                                   crashDumpPathLocal.string());
 
     std::error_code ec;
     fs::create_directories(crashDumpPathLocal.parent_path(), ec);
@@ -251,8 +252,8 @@ void logCrashDump(const std::optional<PipelineSchema>& pipelineSchema, const Gen
     }
 
     // Check if logging is explicitly disabled
-    auto loggingEnabled = utility::getEnv("DEPTHAI_DISABLE_FEEDBACK");
-    if(loggingEnabled.empty()) {
+    auto loggingDisabled = utility::getEnvAs<std::string>("DEPTHAI_DISABLE_FEEDBACK", "");
+    if(loggingDisabled.empty()) {
         logger::info("Logging enabled");
         auto success = sendLogsToServer(pipelineData, crashDumpData, deviceInfo);
         if(!success) {

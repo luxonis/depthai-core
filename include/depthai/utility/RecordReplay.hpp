@@ -1,15 +1,9 @@
 #pragma once
 
-#include <mp4v2/mp4v2.h>
-// #include "spdlog/logger.h"
-
 #include <cstdint>
-#include <fstream>
-#include <functional>
 
 #include "depthai/properties/VideoEncoderProperties.hpp"
 #include "nlohmann/json.hpp"
-#include "span.hpp"
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     #include <opencv2/opencv.hpp>
@@ -18,7 +12,6 @@
 #ifndef MCAP_COMPRESSION_NO_ZSTD
     #define MCAP_COMPRESSION_NO_ZSTD
 #endif
-#include "RecordReplaySchema.hpp"
 
 namespace dai {
 
@@ -33,7 +26,7 @@ struct RecordConfig {
     struct VideoEncoding {
         bool enabled = true;
         int bitrate = 0;
-        Profile profile = Profile::H264_MAIN;
+        Profile profile = Profile::MJPEG;
         bool lossless = false;
         int quality = 80;
     };

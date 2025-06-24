@@ -28,9 +28,13 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
     static constexpr auto CLOSED_QUEUE_MESSAGE = "MessageQueue was closed";
     LockingQueue<std::shared_ptr<ADatatype>> queue;
     std::string name;
-    std::mutex callbacksMtx;
-    std::unordered_map<CallbackId, std::function<void(std::string, std::shared_ptr<ADatatype>)>> callbacks;
+
+   public:
+    std::mutex callbacksMtx;                                                                                 // Only public for the Python bindings
+    std::unordered_map<CallbackId, std::function<void(std::string, std::shared_ptr<ADatatype>)>> callbacks;  // Only public for the Python bindings
     CallbackId uniqueCallbackId{0};
+
+   private:
     void callCallbacks(std::shared_ptr<ADatatype> msg);
 
    public:

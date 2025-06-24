@@ -3,6 +3,9 @@
     Streams the temperature image from a thermal sensor and
     displays it with a crosshair with the temperature value at that point.
 */
+#include <iostream>
+#include <opencv2/opencv.hpp>
+
 #include "depthai/depthai.hpp"
 #include "depthai/pipeline/InputQueue.hpp"
 #include "depthai/pipeline/datatype/ThermalConfig.hpp"
@@ -14,6 +17,8 @@ void mouseCallback(int event, int x, int y, int flags, void* userdata) {
 }
 
 const cv::Scalar WHITE(255, 255, 255);
+
+constexpr int THERMAL_IMAGE_BRIGHTNESS_STEP = 10;
 
 int main(int argc, char** args) {
     dai::Pipeline pipeline(true);
@@ -119,6 +124,13 @@ int main(int argc, char** args) {
             } else {
                 *thermalConfig->imageParams.timeNoiseFilterLevel += 1;
             }
+            confUpdated = true;
+        } else if(key == 's') {
+            if(!thermalConfig->ffcParams.closeManualShutter.has_value()) {
+                thermalConfig->ffcParams.closeManualShutter = false;
+            }
+            *thermalConfig->ffcParams.closeManualShutter = !*thermalConfig->ffcParams.closeManualShutter;
+            std::cout << (*thermalConfig->ffcParams.closeManualShutter ? "Closing" : "Opening") << " manual shutter." << std::endl;
             confUpdated = true;
         }
         if(confUpdated) {

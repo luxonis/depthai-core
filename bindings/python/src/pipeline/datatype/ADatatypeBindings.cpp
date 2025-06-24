@@ -1,12 +1,13 @@
+#include <memory>
+#include <unordered_map>
+
 #include "DatatypeBindings.hpp"
 #include "pipeline/CommonBindings.hpp"
-#include <unordered_map>
-#include <memory>
 
 // depthai
 #include "depthai/pipeline/datatype/ADatatype.hpp"
 
-//pybind
+// pybind
 #include <pybind11/chrono.h>
 #include <pybind11/numpy.h>
 
@@ -17,10 +18,9 @@ class PyADataType : public ADatatype {
    public:
     using ADatatype::ADatatype;
 };
-} // namespace dai
+}  // namespace dai
 
-void bind_adatatype(pybind11::module& m, void* pCallstack){
-
+void bind_adatatype(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
     py::class_<ADatatype, PyADataType, std::shared_ptr<ADatatype>> adatatype(m, "ADatatype", DOC(dai, ADatatype));
@@ -29,7 +29,7 @@ void bind_adatatype(pybind11::module& m, void* pCallstack){
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
     // Call the rest of the type defines, then perform the actual bindings
-    Callstack* callstack = (Callstack*) pCallstack;
+    Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
@@ -41,6 +41,5 @@ void bind_adatatype(pybind11::module& m, void* pCallstack){
     adatatype.def(py::init<>(), DOC(dai, ADatatype, ADatatype));
     // Message
     // adatatype
-        // .def("getRaw", &ADatatype::getRaw);
-
+    // .def("getRaw", &ADatatype::getRaw);
 }

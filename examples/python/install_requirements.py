@@ -11,11 +11,12 @@ parser.add_argument('-sdai', "--skip_depthai", action="store_true", help="Skip i
 parser.add_argument('-dr', "--dry_run", action="store_true", help="Print commands without executing.")
 parser.add_argument("--convert", nargs="?", default=convert_default, help="Convert the NN blobs using BlobConverter. Can be used as --convert 2021.4 to convert using OpenVINO 2021.4 or just --convert to use latest OpenVINO release")
 parser.add_argument('-irr', "--install_rerun", action="store_true", help="Install rerun library.")
+parser.add_argument('-io3dcpu', "--install_open3d_cpu", action="store_true", help="Install open3d with CPU support.")
 
 def prettyPrint(command):
 
     def hasWhitespace(string):
-        return (len(string) != len(re.sub('[\s+]', '', string)))
+        return (len(string) != len(re.sub(r'\s+', '', string)))
 
     stringBuilder = str()
     for i, item in enumerate(command):
@@ -53,7 +54,7 @@ if thisPlatform == "aarch64":
         requireOpenCv = True
 
 if requireOpenCv:
-    DEPENDENCIES.append('numpy<2.0') # rerun doesn't work with numpy>=2 for now
+    DEPENDENCIES.append('numpy<3.0')
     # 4.5.4.58 package is broken for python 3.9
     if sys.version_info[0] == 3 and sys.version_info[1] == 9:
         DEPENDENCIES.append('opencv-python!=4.5.4.58')
@@ -61,8 +62,9 @@ if requireOpenCv:
         DEPENDENCIES.append('opencv-python')
 
 if args.install_rerun:
-    DEPENDENCIES.append('rerun-sdk')
-
+    DEPENDENCIES.append('rerun-sdk==0.16.0')
+if args.install_open3d_cpu:
+    DEPENDENCIES.append('open3d-cpu')
 # Constants
 ARTIFACTORY_URL = 'https://artifacts.luxonis.com/artifactory/luxonis-python-snapshot-local'
 

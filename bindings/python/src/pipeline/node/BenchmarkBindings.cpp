@@ -37,6 +37,9 @@ void bind_benchmark(pybind11::module& m, void* pCallstack) {
         .def_readonly("passthrough", &BenchmarkIn::passthrough, DOC(dai, node, BenchmarkIn, passthrough))
         .def("setRunOnHost", &BenchmarkIn::setRunOnHost, py::arg("runOnHost"), DOC(dai, node, BenchmarkIn, setRunOnHost))
         .def("logReportsAsWarnings", &BenchmarkIn::logReportsAsWarnings, py::arg("logReportsAsWarnings"), DOC(dai, node, BenchmarkIn, logReportsAsWarnings))
-        .def("measureIndividualLatencies", &BenchmarkIn::measureIndividualLatencies, py::arg("attachLatencies"), DOC(dai, node, BenchmarkIn, measureIndividualLatencies))
+        .def("measureIndividualLatencies",
+             &BenchmarkIn::measureIndividualLatencies,
+             py::arg("attachLatencies"),
+             DOC(dai, node, BenchmarkIn, measureIndividualLatencies))
         .def("sendReportEveryNMessages", &BenchmarkIn::sendReportEveryNMessages, py::arg("num"), DOC(dai, node, BenchmarkIn, sendReportEveryNMessages));
 }

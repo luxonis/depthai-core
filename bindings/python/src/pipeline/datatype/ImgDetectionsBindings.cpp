@@ -1,19 +1,19 @@
+#include <memory>
+#include <unordered_map>
+
 #include "DatatypeBindings.hpp"
 #include "pipeline/CommonBindings.hpp"
-#include <unordered_map>
-#include <memory>
 
 // depthai
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
 
-//pybind
+// pybind
 #include <pybind11/chrono.h>
 #include <pybind11/numpy.h>
 
 // #include "spdlog/spdlog.h"
 
-void bind_imgdetections(pybind11::module& m, void* pCallstack){
-
+void bind_imgdetections(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
     // py::class_<RawImgDetections, RawBuffer, std::shared_ptr<RawImgDetections>> rawImgDetections(m, "RawImgDetections", DOC(dai, RawImgDetections));
@@ -24,7 +24,7 @@ void bind_imgdetections(pybind11::module& m, void* pCallstack){
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
     // Call the rest of the type defines, then perform the actual bindings
-    Callstack* callstack = (Callstack*) pCallstack;
+    Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
@@ -34,15 +34,14 @@ void bind_imgdetections(pybind11::module& m, void* pCallstack){
     ///////////////////////////////////////////////////////////////////////
 
     // Metadata / raw
-    imgDetection
-        .def(py::init<>())
+    imgDetection.def(py::init<>())
         .def_readwrite("label", &ImgDetection::label)
+        .def_readwrite("labelName", &ImgDetection::labelName)
         .def_readwrite("confidence", &ImgDetection::confidence)
         .def_readwrite("xmin", &ImgDetection::xmin)
         .def_readwrite("ymin", &ImgDetection::ymin)
         .def_readwrite("xmax", &ImgDetection::xmax)
-        .def_readwrite("ymax", &ImgDetection::ymax)
-        ;
+        .def_readwrite("ymax", &ImgDetection::ymax);
 
     // rawImgDetections
     //     .def(py::init<>())
@@ -71,19 +70,20 @@ void bind_imgdetections(pybind11::module& m, void* pCallstack){
     //     ;
 
     // Message
-    imgDetections
-        .def(py::init<>(), DOC(dai, ImgDetections, ImgDetections))
+    imgDetections.def(py::init<>(), DOC(dai, ImgDetections, ImgDetections))
         .def("__repr__", &ImgDetections::str)
-        .def_property("detections", [](ImgDetections& det) { return &det.detections; }, [](ImgDetections& det, std::vector<ImgDetection> val) { det.detections = val; }, DOC(dai, ImgDetections, detections))
+        .def_property(
+            "detections",
+            [](ImgDetections& det) { return &det.detections; },
+            [](ImgDetections& det, std::vector<ImgDetection> val) { det.detections = val; },
+            DOC(dai, ImgDetections, detections))
         .def("getTimestamp", &ImgDetections::Buffer::getTimestamp, DOC(dai, Buffer, getTimestamp))
         .def("getTimestampDevice", &ImgDetections::Buffer::getTimestampDevice, DOC(dai, Buffer, getTimestampDevice))
         .def("getSequenceNum", &ImgDetections::Buffer::getSequenceNum, DOC(dai, Buffer, getSequenceNum))
-        .def("getTransformation", [](ImgDetections& msg) {return msg.transformation;})
-        .def("setTransformation", [](ImgDetections& msg, const std::optional<ImgTransformation>& transformation) {msg.transformation = transformation;})
+        .def("getTransformation", [](ImgDetections& msg) { return msg.transformation; })
+        .def("setTransformation", [](ImgDetections& msg, const std::optional<ImgTransformation>& transformation) { msg.transformation = transformation; })
         // .def("setTimestamp", &ImgDetections::setTimestamp, DOC(dai, Buffer, setTimestamp))
         // .def("setTimestampDevice", &ImgDetections::setTimestampDevice, DOC(dai, Buffer, setTimestampDevice))
         // .def("setSequenceNum", &ImgDetections::setSequenceNum, DOC(dai, ImgDetections, setSequenceNum))
         ;
-
-
 }

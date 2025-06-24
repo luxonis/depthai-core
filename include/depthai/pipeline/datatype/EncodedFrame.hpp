@@ -172,13 +172,20 @@ class EncodedFrame : public Buffer, public ProtoSerializable {
      */
     EncodedFrame& setProfile(Profile profile);
 
+    ImgFrame getImgFrameMeta() const;
+
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
+        metadata = utility::serialize(*this);
+        datatype = DatatypeEnum::EncodedFrame;
+    };
+
 #ifdef DEPTHAI_ENABLE_PROTOBUF
     /**
      * Serialize message to proto buffer
      *
      * @returns serialized message
      */
-    std::vector<std::uint8_t> serializeProto() const override;
+    std::vector<std::uint8_t> serializeProto(bool metadataOnly = false) const override;
 
     /**
      * Serialize schema to proto buffer
@@ -204,11 +211,6 @@ class EncodedFrame : public Buffer, public ProtoSerializable {
                       Buffer::sequenceNum,
                       Buffer::ts,
                       Buffer::tsDevice);
-
-    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
-        metadata = utility::serialize(*this);
-        datatype = DatatypeEnum::EncodedFrame;
-    };
 };
 
 }  // namespace dai

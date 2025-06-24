@@ -1,7 +1,5 @@
 #pragma once
 
-#include <spdlog/async_logger.h>
-
 #include <chrono>
 #include <unordered_map>
 #include <vector>
@@ -90,7 +88,7 @@ class ImgFrame : public Buffer, public ProtoSerializable {
      *
      * @returns serialized message
      */
-    std::vector<std::uint8_t> serializeProto() const override;
+    std::vector<std::uint8_t> serializeProto(bool metadataOnly = false) const override;
 
     /**
      * Serialize schema to proto buffer
@@ -242,7 +240,6 @@ class ImgFrame : public Buffer, public ProtoSerializable {
      */
     ImgFrame& setSize(std::tuple<unsigned int, unsigned int> size);
 
-    // TODO(before mainline) - API not supported on RVC2
     /**
      * Specifies source frame size
      *
@@ -251,7 +248,6 @@ class ImgFrame : public Buffer, public ProtoSerializable {
      */
     ImgFrame& setSourceSize(unsigned int width, unsigned int height);
 
-    // TODO(before mainline) - API not supported on RVC2
     /**
      * Specifies source frame size
      *
@@ -460,10 +456,10 @@ class ImgFrame : public Buffer, public ProtoSerializable {
                 return 1;
                 break;
             case Type::RGB888i:
-                return 1;
+                return 3;
                 break;
             case Type::BGR888i:
-                return 1;
+                return 3;
                 break;
             case Type::RGBF16F16F16p:
                 return 2;

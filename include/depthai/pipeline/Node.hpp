@@ -512,8 +512,6 @@ class Node : public std::enable_shared_from_this<Node> {
    protected:
     AssetManager assetManager;
 
-    virtual std::optional<OpenVINO::Version> getRequiredOpenVINOVersion();
-
     // Optimized for adding, searching and removing connections
     // using NodeMap = std::unordered_map<Node::Id, std::shared_ptr<Node>>;
     using NodeMap = std::vector<std::shared_ptr<Node>>;
@@ -543,13 +541,13 @@ class Node : public std::enable_shared_from_this<Node> {
     virtual const char* getName() const = 0;
 
     /// Start node execution
-    virtual void start(){};
+    virtual void start() {};
 
     /// Wait for node to finish execution
-    virtual void wait(){};
+    virtual void wait() {};
 
     /// Stop node execution
-    virtual void stop(){};
+    virtual void stop() {};
 
     void stopPipeline();
 
@@ -616,6 +614,9 @@ class Node : public std::enable_shared_from_this<Node> {
     /// Loads resource specified by URI and returns its data
     std::vector<uint8_t> loadResource(dai::Path uri);
 
+    /// Moves the resource out
+    std::vector<uint8_t> moveResource(dai::Path uri);
+
     /// Create and place Node to this Node
     template <class N>
     std::shared_ptr<N> create() {
@@ -660,7 +661,7 @@ class Node : public std::enable_shared_from_this<Node> {
      * This function is useful for initialization, setting up inputs and outputs =
      * stuff that cannot be perform in the constuctor.
      */
-    virtual void buildInternal(){};
+    virtual void buildInternal() {};
 };
 
 class SourceNode {

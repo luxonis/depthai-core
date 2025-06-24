@@ -11,52 +11,52 @@
 #include "depthai/pipeline/ThreadedHostNode.hpp"
 
 // depthai - nodes
-#include "depthai/pipeline/node/XLinkIn.hpp"
-#include "depthai/pipeline/node/XLinkOut.hpp"
-#include "depthai/pipeline/node/BenchmarkOut.hpp"
+#include "depthai/pipeline/node/AprilTag.hpp"
 #include "depthai/pipeline/node/BenchmarkIn.hpp"
-#include "depthai/pipeline/node/NeuralNetwork.hpp"
-#include "depthai/pipeline/node/ColorCamera.hpp"
+#include "depthai/pipeline/node/BenchmarkOut.hpp"
 #include "depthai/pipeline/node/Camera.hpp"
-#include "depthai/pipeline/node/VideoEncoder.hpp"
-#include "depthai/pipeline/node/SPIOut.hpp"
-#include "depthai/pipeline/node/SPIIn.hpp"
-#include "depthai/pipeline/node/ImageManip.hpp"
-#include "depthai/pipeline/node/ImageManipV2.hpp"
-#include "depthai/pipeline/node/MonoCamera.hpp"
-#include "depthai/pipeline/node/StereoDepth.hpp"
+#include "depthai/pipeline/node/ColorCamera.hpp"
 #include "depthai/pipeline/node/DetectionNetwork.hpp"
-#include "depthai/pipeline/node/Script.hpp"
-#include "depthai/pipeline/node/SystemLogger.hpp"
-#include "depthai/pipeline/node/SpatialLocationCalculator.hpp"
-#include "depthai/pipeline/node/SpatialDetectionNetwork.hpp"
-#include "depthai/pipeline/node/ObjectTracker.hpp"
-#include "depthai/pipeline/node/IMU.hpp"
+#include "depthai/pipeline/node/DetectionParser.hpp"
 #include "depthai/pipeline/node/EdgeDetector.hpp"
 #include "depthai/pipeline/node/FeatureTracker.hpp"
-#include "depthai/pipeline/node/AprilTag.hpp"
-#include "depthai/pipeline/node/DetectionParser.hpp"
+#include "depthai/pipeline/node/IMU.hpp"
+#include "depthai/pipeline/node/ImageManip.hpp"
+#include "depthai/pipeline/node/MonoCamera.hpp"
+#include "depthai/pipeline/node/NeuralNetwork.hpp"
+#include "depthai/pipeline/node/ObjectTracker.hpp"
+#include "depthai/pipeline/node/SPIIn.hpp"
+#include "depthai/pipeline/node/SPIOut.hpp"
+#include "depthai/pipeline/node/Script.hpp"
+#include "depthai/pipeline/node/SpatialDetectionNetwork.hpp"
+#include "depthai/pipeline/node/SpatialLocationCalculator.hpp"
+#include "depthai/pipeline/node/StereoDepth.hpp"
+#include "depthai/pipeline/node/SystemLogger.hpp"
 #include "depthai/pipeline/node/UVC.hpp"
+#include "depthai/pipeline/node/VideoEncoder.hpp"
 #include "depthai/pipeline/node/Warp.hpp"
+#include "depthai/pipeline/node/internal/XLinkIn.hpp"
+#include "depthai/pipeline/node/internal/XLinkOut.hpp"
 
 // depthai/
-#include "depthai/properties/GlobalProperties.hpp"
-#include "depthai/utility/RecordReplay.hpp"
 #include <memory>
 
-std::shared_ptr<dai::Node> createNode(dai::Pipeline& p, py::object class_){
+#include "depthai/properties/GlobalProperties.hpp"
+#include "depthai/utility/RecordReplay.hpp"
+
+std::shared_ptr<dai::Node> createNode(dai::Pipeline& p, py::object class_) {
     auto nodeCreateMap = NodeBindings::getNodeCreateMap();
-    for(auto& kv : nodeCreateMap){
+    for(auto& kv : nodeCreateMap) {
         auto& node = kv.first;
         auto& create = kv.second;
-        if(node.is(class_)){
+        if(node.is(class_)) {
             return create(p, class_);
         }
     }
     return nullptr;
 }
 
-void PipelineBindings::bind(pybind11::module& m, void* pCallstack){
+void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
     // Type definitions
@@ -69,7 +69,7 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack){
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
     // Call the rest of the type defines, then perform the actual bindings
-    Callstack* callstack = (Callstack*) pCallstack;
+    Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
@@ -78,10 +78,8 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack){
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
 
-
     // Bind global properties
-    globalProperties
-        .def_readwrite("leonOsFrequencyHz", &GlobalProperties::leonCssFrequencyHz)
+    globalProperties.def_readwrite("leonOsFrequencyHz", &GlobalProperties::leonCssFrequencyHz)
         .def_readwrite("leonRtFrequencyHz", &GlobalProperties::leonMssFrequencyHz)
         .def_readwrite("pipelineName", &GlobalProperties::pipelineName)
         .def_readwrite("pipelineVersion", &GlobalProperties::pipelineVersion)
@@ -89,19 +87,16 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack){
         .def_readwrite("cameraTuningBlobUri", &GlobalProperties::cameraTuningBlobUri, DOC(dai, GlobalProperties, cameraTuningBlobUri))
         .def_readwrite("xlinkChunkSize", &GlobalProperties::xlinkChunkSize, DOC(dai, GlobalProperties, xlinkChunkSize))
         .def_readwrite("sippBufferSize", &GlobalProperties::sippBufferSize, DOC(dai, GlobalProperties, sippBufferSize))
-        .def_readwrite("sippDmaBufferSize", &GlobalProperties::sippDmaBufferSize, DOC(dai, GlobalProperties, sippDmaBufferSize))
-        ;
+        .def_readwrite("sippDmaBufferSize", &GlobalProperties::sippDmaBufferSize, DOC(dai, GlobalProperties, sippDmaBufferSize));
 
-    recordVideoConfig
-        .def(py::init<>())
+    recordVideoConfig.def(py::init<>())
         .def_readwrite("enabled", &RecordConfig::VideoEncoding::enabled, DOC(dai, RecordConfig, VideoEncoding, enabled))
         .def_readwrite("bitrate", &RecordConfig::VideoEncoding::bitrate, DOC(dai, RecordConfig, VideoEncoding, bitrate))
         .def_readwrite("profile", &RecordConfig::VideoEncoding::profile, DOC(dai, RecordConfig, VideoEncoding, profile))
         .def_readwrite("lossless", &RecordConfig::VideoEncoding::lossless, DOC(dai, RecordConfig, VideoEncoding, lossless))
         .def_readwrite("quality", &RecordConfig::VideoEncoding::quality, DOC(dai, RecordConfig, VideoEncoding, quality));
 
-    recordConfig
-        .def(py::init<>())
+    recordConfig.def(py::init<>())
         .def_readwrite("outputDir", &RecordConfig::outputDir, DOC(dai, RecordConfig, outputDir))
         .def_readwrite("videoEncoding", &RecordConfig::videoEncoding, DOC(dai, RecordConfig, videoEncoding))
         .def_readwrite("compressionLevel", &RecordConfig::compressionLevel, DOC(dai, RecordConfig, compressionLevel));
@@ -146,9 +141,6 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack){
              static_cast<AssetManager& (Pipeline::*)()>(&Pipeline::getAssetManager),
              py::return_value_policy::reference_internal,
              DOC(dai, Pipeline, getAssetManager))
-        .def("setOpenVINOVersion", &Pipeline::setOpenVINOVersion, py::arg("version"), DOC(dai, Pipeline, setOpenVINOVersion))
-        .def("getOpenVINOVersion", &Pipeline::getOpenVINOVersion, DOC(dai, Pipeline, getOpenVINOVersion))
-        .def("getRequiredOpenVINOVersion", &Pipeline::getRequiredOpenVINOVersion, DOC(dai, Pipeline, getRequiredOpenVINOVersion))
         .def("setCameraTuningBlobPath", &Pipeline::setCameraTuningBlobPath, py::arg("path"), DOC(dai, Pipeline, setCameraTuningBlobPath))
         .def("setXLinkChunkSize", &Pipeline::setXLinkChunkSize, py::arg("sizeBytes"), DOC(dai, Pipeline, setXLinkChunkSize))
         .def("setSippBufferSize", &Pipeline::setSippBufferSize, py::arg("sizeBytes"), DOC(dai, Pipeline, setSippBufferSize))
@@ -169,71 +161,56 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack){
             },
             py::keep_alive<1, 2>())
         // 'Template' create function
-        .def("create",
-             [](dai::Pipeline& p, py::object class_, const py::args& args, const py::kwargs& kwargs) {
-                 // Check if class_ is a subclass of HostNode
-                 py::object issubclass = py::module::import("builtins").attr("issubclass");
-                 py::object nodeClass = py::module::import("depthai").attr("node").attr("ThreadedHostNode");
-                 auto isSubclass = issubclass(class_, nodeClass).cast<bool>();
+        .def(
+            "create",
+            [](dai::Pipeline& p, py::object class_, const py::args& args, const py::kwargs& kwargs) {
+                // Check if class_ is a subclass of HostNode
+                py::object issubclass = py::module::import("builtins").attr("issubclass");
+                py::object nodeClass = py::module::import("depthai").attr("node").attr("ThreadedHostNode");
+                auto isSubclass = issubclass(class_, nodeClass).cast<bool>();
 
-                 // Check if the class is directly from bindings (__module__ == "depthai.node"). If so, the node comes from bindings,
-                 // so we create in the same manner as device nodes.
-                 auto isFromBindings = class_.attr("__module__").cast<std::string>() == "depthai.node";
-                 // Create a copy from kwargs and add autoAddToPipeline to false
-                 if(isSubclass && !isFromBindings) {
-                     setImplicitPipeline(&p);
-                     std::shared_ptr<Node> hostNode = py::cast<std::shared_ptr<node::ThreadedHostNode>>(class_(*args, **kwargs));
-                     delImplicitPipeline();
-                     // Node already adds itself to the pipeline in the constructor
-                     // To be sure - check if it is already added
-                     auto allNodes = p.getAllNodes();
-                     auto found = false;
-                     for(auto& n : allNodes) {
-                         if(n == hostNode) {
-                             found = true;
-                             break;
-                         }
-                     }
-                     if(!found) {
-                         throw std::invalid_argument("Internal error: Node wasn't added to the pipeline");
-                     }
-                     return hostNode;
-                 }
-                 // Otherwise create the node with `pipeline.create()` method
-                 auto node = createNode(p, class_);
-                 if(node == nullptr) {
-                     throw std::invalid_argument(std::string(py::str(class_)) + " is not a subclass of depthai.node");
-                 }
-                 return node;
-             }, py::keep_alive<1,0>())
-        // TODO(themarpe) DEPRECATE, use pipeline.create([class name])
-        // templated create<NODE> function
-        .def("createXLinkIn", &Pipeline::create<node::XLinkIn>)
-        .def("createXLinkOut", &Pipeline::create<node::XLinkOut>)
-        .def("createNeuralNetwork", &Pipeline::create<node::NeuralNetwork>)
-        .def("createColorCamera", &Pipeline::create<node::ColorCamera>)
-        .def("createVideoEncoder", &Pipeline::create<node::VideoEncoder>)
-        .def("createScript", &Pipeline::create<node::Script>)
-        .def("createSPIOut", &Pipeline::create<node::SPIOut>)
-        .def("createSPIIn", &Pipeline::create<node::SPIIn>)
-        .def("createImageManip", &Pipeline::create<node::ImageManip>)
-        .def("createMonoCamera", &Pipeline::create<node::MonoCamera>)
-        .def("createStereoDepth", &Pipeline::create<node::StereoDepth>)
-        .def("createMobileNetDetectionNetwork", &Pipeline::create<node::MobileNetDetectionNetwork>)
-        .def("createYoloDetectionNetwork", &Pipeline::create<node::YoloDetectionNetwork>)
-        .def("createSystemLogger", &Pipeline::create<node::SystemLogger>)
-        .def("createSpatialLocationCalculator", &Pipeline::create<node::SpatialLocationCalculator>)
-        .def("createMobileNetSpatialDetectionNetwork", &Pipeline::create<node::MobileNetSpatialDetectionNetwork>)
-        .def("createYoloSpatialDetectionNetwork", &Pipeline::create<node::YoloSpatialDetectionNetwork>)
-        .def("createObjectTracker", &Pipeline::create<node::ObjectTracker>)
-        .def("createIMU", &Pipeline::create<node::IMU>)
-        .def("createEdgeDetector", &Pipeline::create<node::EdgeDetector>)
-        .def("createFeatureTracker", &Pipeline::create<node::FeatureTracker>)
-        .def("createAprilTag", &Pipeline::create<node::AprilTag>)
-        .def("createDetectionParser", &Pipeline::create<node::DetectionParser>)
-        .def("createUVC", &Pipeline::create<node::UVC>)
-        .def("createCamera", &Pipeline::create<node::Camera>)
-        .def("createWarp", &Pipeline::create<node::Warp>)
+                // Check if the class is directly from bindings (__module__ == "depthai.node"). If so, the node comes from bindings,
+                // so we create in the same manner as device nodes.
+                auto isFromBindings = class_.attr("__module__").cast<std::string>() == "depthai.node";
+                // Create a copy from kwargs and add autoAddToPipeline to false
+
+                // Check if the node is a ColorCamera or a MonoCamera node and issue a deprecation warning
+                py::object colorCameraClass = py::module::import("depthai").attr("node").attr("ColorCamera");
+                py::object monoCameraClass = py::module::import("depthai").attr("node").attr("MonoCamera");
+                if(class_.is(colorCameraClass)) {
+                    PyErr_WarnEx(PyExc_DeprecationWarning, "ColorCamera node is deprecated. Use Camera node instead.", 1);
+                }
+
+                if(class_.is(monoCameraClass)) {
+                    PyErr_WarnEx(PyExc_DeprecationWarning, "MonoCamera node is deprecated. Use Camera node instead.", 1);
+                }
+                if(isSubclass && !isFromBindings) {
+                    setImplicitPipeline(&p);
+                    std::shared_ptr<Node> hostNode = py::cast<std::shared_ptr<node::ThreadedHostNode>>(class_(*args, **kwargs));
+                    delImplicitPipeline();
+                    // Node already adds itself to the pipeline in the constructor
+                    // To be sure - check if it is already added
+                    auto allNodes = p.getAllNodes();
+                    auto found = false;
+                    for(auto& n : allNodes) {
+                        if(n == hostNode) {
+                            found = true;
+                            break;
+                        }
+                    }
+                    if(!found) {
+                        throw std::invalid_argument("Internal error: Node wasn't added to the pipeline");
+                    }
+                    return hostNode;
+                }
+                // Otherwise create the node with `pipeline.create()` method
+                auto node = createNode(p, class_);
+                if(node == nullptr) {
+                    throw std::invalid_argument(std::string(py::str(class_)) + " is not a subclass of depthai.node");
+                }
+                return node;
+            },
+            py::keep_alive<1, 0>())
         .def("start", &Pipeline::start)
         .def("wait",
              [](Pipeline& p) {
@@ -265,6 +242,4 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack){
         .def("enableHolisticRecord", &Pipeline::enableHolisticRecord, py::arg("recordConfig"), DOC(dai, Pipeline, enableHolisticRecord))
         .def("enableHolisticReplay", &Pipeline::enableHolisticReplay, py::arg("recordingPath"), DOC(dai, Pipeline, enableHolisticReplay));
     ;
-
-
 }

@@ -4,7 +4,7 @@
 #include <vector>
 
 #include "depthai/common/Point3f.hpp"
-#include "depthai/common/Point3fRGB.hpp"
+#include "depthai/common/Point3fRGBA.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/utility/ProtoSerializable.hpp"
 
@@ -40,7 +40,9 @@ class PointCloudData : public Buffer, public ProtoSerializable {
     virtual ~PointCloudData() = default;
 
     std::vector<Point3f> getPoints();
-    std::vector<Point3fRGB> getPointsRGB();
+    std::vector<Point3fRGBA> getPointsRGB();
+    void setPoints(const std::vector<Point3f>& points);
+    void setPointsRGB(const std::vector<Point3fRGBA>& points);
 
     /**
      * Retrieves instance number
@@ -195,7 +197,7 @@ class PointCloudData : public Buffer, public ProtoSerializable {
      *
      * @returns serialized message
      */
-    std::vector<std::uint8_t> serializeProto() const override;
+    std::vector<std::uint8_t> serializeProto(bool metadataOnly = false) const override;
 
     /**
      * Serialize schema to proto buffer

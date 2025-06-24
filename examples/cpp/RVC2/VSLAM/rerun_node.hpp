@@ -1,4 +1,5 @@
 #pragma once
+#include <rerun/datatypes/color_model.hpp>
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/ThreadedHostNode.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
@@ -12,9 +13,6 @@
 #include "rerun.hpp"
 
 
-rerun::Collection<rerun::TensorDimension> tensorShape(const cv::Mat& img) {
-    return {size_t(img.rows), size_t(img.cols), size_t(img.channels())};
-};
 class RerunNode : public dai::NodeCRTP<dai::node::ThreadedHostNode, RerunNode> {
    public:
     constexpr static const char* NAME = "RerunNode";
@@ -68,7 +66,7 @@ class RerunNode : public dai::NodeCRTP<dai::node::ThreadedHostNode, RerunNode> {
                 auto image = imgFrame->getCvFrame();
                 cv::cvtColor(image, image, cv::COLOR_BGR2RGB);
                 rec.log("world/camera/image/rgb",
-                        rerun::Image(tensorShape(image), reinterpret_cast<const uint8_t*>(image.data)));
+                        rerun::Image(reinterpret_cast<const uint8_t*>(image.data), {imgFrame->getWidth(), imgFrame->getHeight()}, rerun::datatypes::ColorModel::RGB));
 #ifdef DEPTHAI_HAVE_PCL_SUPPORT
                 if(pclObstData != nullptr) {
                     std::vector<rerun::Position3D> points;
@@ -98,7 +96,9 @@ class RerunNode : public dai::NodeCRTP<dai::node::ThreadedHostNode, RerunNode> {
                 }
 #endif
                 if(mapData != nullptr) {
-                    rec.log("map", rerun::Image(tensorShape(mapData->getCvFrame()), reinterpret_cast<const uint8_t*>(mapData->getCvFrame().data)));
+                    auto image = mapData->getCvFrame();
+                    rec.log("map", rerun::Image(reinterpret_cast<const uint8_t*>(image.data),
+                        {static_cast<uint32_t>(mapData->getWidth()), static_cast<uint32_t>(mapData->getHeight())}, rerun::datatypes::ColorModel::L));
                 }
             }
         }

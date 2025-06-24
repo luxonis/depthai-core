@@ -6,6 +6,7 @@
 #include <exception>
 #include <fstream>
 #include <iostream>
+#include <stdexcept>
 #include <thread>
 
 // libarchive
@@ -41,17 +42,26 @@ CMRC_DECLARE(depthai);
 
 namespace dai {
 
-TarGzAccessor::TarGzAccessor(const std::vector<std::uint8_t>& tarGzFile) {
-    // Load tar.gz archive from memory
+TarXzAccessor::TarXzAccessor(const std::vector<std::uint8_t>& tarGzFile) {
+    // Load tar.xz archive from memory
     struct archive* archive = archive_read_new();
     assert(archive != nullptr);
 
-    archive_read_support_filter_gzip(archive);  // Support for gzip compression
-    archive_read_support_format_tar(archive);   // Support for tar format
+    auto err = archive_read_support_format_tar(archive);  // Support for tar format
+    if(err != ARCHIVE_OK) {
+        throw std::runtime_error(fmt::format("Could not open tar format: {}", archive_error_string(archive)));
+    }
+
+    err = archive_read_support_filter_xz(archive);  // Support for xz compression
+    if(err != ARCHIVE_OK) {
+        throw std::runtime_error(fmt::format("Could not open xz filter: {}", archive_error_string(archive)));
+    }
 
     // Open the memory archive
     int r = archive_read_open_memory(archive, tarGzFile.data(), tarGzFile.size());
-    assert(r == ARCHIVE_OK);
+    if(r != ARCHIVE_OK) {
+        throw std::runtime_error("Could not open archive file");
+    }
 
     // Read through the archive and store all the file contents
     struct archive_entry* entry;
@@ -72,7 +82,7 @@ TarGzAccessor::TarGzAccessor(const std::vector<std::uint8_t>& tarGzFile) {
 }
 
 // Method to get file data by path
-std::optional<std::vector<std::uint8_t>> TarGzAccessor::getFile(const std::string& path) const {
+std::optional<std::vector<std::uint8_t>> TarXzAccessor::getFile(const std::string& path) const {
     auto it = resourceMap.find(path);
     if(it != resourceMap.end()) {
         return it->second;  // Return the file data
@@ -80,11 +90,11 @@ std::optional<std::vector<std::uint8_t>> TarGzAccessor::getFile(const std::strin
     return std::nullopt;  // Return empty optional if file not found
 }
 
-TarGzAccessor Resources::getEmbeddedVisualizer() const {
+TarXzAccessor Resources::getEmbeddedVisualizer() const {
 #ifdef DEPTHAI_EMBED_FRONTEND
     // Load visualizer tar.gz archive from memory
     auto fs = cmrc::depthai::get_filesystem();
-    constexpr static auto FILE_NAME = "depthai-visualizer-" DEPTHAI_VISUALIZER_VERSION ".tar.gz";
+    constexpr static auto FILE_NAME = "depthai-visualizer-" DEPTHAI_VISUALIZER_VERSION ".tar.xz";
     if(!fs.exists(FILE_NAME)) {
         throw std::runtime_error("Visualizer not found in embedded resources");
     }
@@ -92,7 +102,7 @@ TarGzAccessor Resources::getEmbeddedVisualizer() const {
     std::vector<std::uint8_t> visualizerTarGzData(visualizerTarGz.begin(), visualizerTarGz.end());
 
     // Create and return TarGzAccessor
-    return TarGzAccessor(visualizerTarGzData);
+    return TarXzAccessor(visualizerTarGzData);
 #else
     throw std::runtime_error("Visualizer not embedded in resources");
 #endif
@@ -148,7 +158,7 @@ std::vector<std::uint8_t> Resources::getDeviceFirmware(Device::Config config, da
         finalFwBinaryPath = pathToMvcmd;
     }
     // Override if env variable DEPTHAI_DEVICE_BINARY is set
-    dai::Path fwBinaryPath = utility::getEnv("DEPTHAI_DEVICE_BINARY");
+    dai::Path fwBinaryPath = utility::getEnvAs<std::string>("DEPTHAI_DEVICE_BINARY", "");
     if(!fwBinaryPath.empty()) {
         finalFwBinaryPath = fwBinaryPath;
     }
@@ -282,7 +292,7 @@ std::vector<std::uint8_t> Resources::getBootloaderFirmware(dai::bootloader::Type
     } else if(type == dai::bootloader::Type::NETWORK) {
         blEnvVar = "DEPTHAI_BOOTLOADER_BINARY_ETH";
     }
-    dai::Path blBinaryPath = utility::getEnv(blEnvVar);
+    dai::Path blBinaryPath = utility::getEnvAs<std::string>(blEnvVar, "");
     if(!blBinaryPath.empty()) {
         // Load binary file at path
         std::ifstream stream(blBinaryPath, std::ios::binary);
@@ -351,7 +361,7 @@ std::vector<std::uint8_t> Resources::getDeviceFwp(const std::string& fwPath, con
     }
 
     // Override if env variable DEPTHAI_DEVICE_KB_FWP is set
-    dai::Path fwpPathEnv = utility::getEnv(envPath);
+    dai::Path fwpPathEnv = utility::getEnvAs<std::string>(envPath, "");
     if(!fwpPathEnv.empty()) {
         finalFwpPath = fwpPathEnv;
         spdlog::warn("Overriding device fwp: {}", finalFwpPath);
@@ -399,7 +409,9 @@ std::function<void()> getLazyTarXzFunction(MTX& mtx, CV& cv, BOOL& ready, PATH c
         archive_read_support_filter_xz(archive.getA());
         archive_read_support_format_tar(archive.getA());
         int r = archive_read_open_memory(archive.getA(), tarXz.begin(), tarXz.size());
-        assert(r == ARCHIVE_OK);
+        if(r != ARCHIVE_OK) {
+            throw std::runtime_error(fmt::format("Could not open embedded tar.xz. Returned {}", r));
+        }
 
         auto t2 = steady_clock::now();
 

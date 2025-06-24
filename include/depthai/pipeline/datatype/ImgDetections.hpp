@@ -11,6 +11,7 @@ namespace dai {
 
 struct ImgDetection {
     uint32_t label = 0;
+    std::string labelName;
     float confidence = 0.f;
     float xmin = 0.f;
     float ymin = 0.f;
@@ -18,7 +19,7 @@ struct ImgDetection {
     float ymax = 0.f;
 };
 
-DEPTHAI_SERIALIZE_EXT(ImgDetection, label, confidence, xmin, ymin, xmax, ymax);
+DEPTHAI_SERIALIZE_EXT(ImgDetection, label, labelName, confidence, xmin, ymin, xmax, ymax);
 
 /**
  * ImgDetections message. Carries normalized detection results
@@ -46,7 +47,7 @@ class ImgDetections : public Buffer, public ProtoSerializable {
      *
      * @returns serialized message
      */
-    std::vector<std::uint8_t> serializeProto() const override;
+    std::vector<std::uint8_t> serializeProto(bool = false) const override;
 
     /**
      * Serialize schema to proto buffer

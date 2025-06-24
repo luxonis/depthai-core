@@ -28,7 +28,7 @@ class SpatialLocationCalculator : public DeviceNodeCRTP<DeviceNode, SpatialLocat
     /**
      * Initial config to use when calculating spatial location data.
      */
-    SpatialLocationCalculatorConfig initialConfig;
+    std::shared_ptr<SpatialLocationCalculatorConfig> initialConfig = std::make_shared<SpatialLocationCalculatorConfig>();
 
     /**
      * Input SpatialLocationCalculatorConfig message with ability to modify parameters in runtime.
@@ -52,18 +52,6 @@ class SpatialLocationCalculator : public DeviceNodeCRTP<DeviceNode, SpatialLocat
      * Suitable for when input queue is set to non-blocking behavior.
      */
     Output passthroughDepth{*this, {"passthroughDepth", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
-    // Functions to set properties
-    /**
-     * Specify whether or not wait until configuration message arrives to inputConfig Input.
-     * @param wait True to wait for configuration message, false otherwise.
-     */
-    [[deprecated("Use 'inputConfig.setWaitForMessage()' instead")]] void setWaitForConfigInput(bool wait);
-
-    /**
-     * @see setWaitForConfigInput
-     * @returns True if wait for inputConfig message, false otherwise
-     */
-    [[deprecated("Use 'inputConfig.setWaitForMessage()' instead")]] bool getWaitForConfigInput() const;
 };
 
 }  // namespace node

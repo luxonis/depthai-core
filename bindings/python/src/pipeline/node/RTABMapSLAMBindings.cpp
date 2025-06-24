@@ -1,13 +1,13 @@
+#include <pybind11/eval.h>
+
 #include "Common.hpp"
 #include "NodeBindings.hpp"
 #include "depthai/pipeline/ThreadedHostNode.hpp"
 #include "depthai/rtabmap/RTABMapSLAM.hpp"
 
-#include <pybind11/eval.h>
-
 extern py::handle daiNodeModule;
 
-void bind_rtabmapslamnode(pybind11::module& m, void* pCallstack){
+void bind_rtabmapslamnode(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::node;
 
@@ -18,7 +18,7 @@ void bind_rtabmapslamnode(pybind11::module& m, void* pCallstack){
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
     // Call the rest of the type defines, then perform the actual bindings
-    Callstack* callstack = (Callstack*) pCallstack;
+    Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
@@ -28,9 +28,10 @@ void bind_rtabmapslamnode(pybind11::module& m, void* pCallstack){
     ///////////////////////////////////////////////////////////////////////
 
     // RTABMapSLAM Node
-    rtabmapSLAMNode
-        .def_property_readonly("rect", [](RTABMapSLAM& node){ return &node.rect; }, py::return_value_policy::reference_internal)
-        .def_property_readonly("depth", [](RTABMapSLAM& node){ return &node.depth; }, py::return_value_policy::reference_internal)
+    rtabmapSLAMNode.def_property_readonly(
+                       "rect", [](RTABMapSLAM& node) { return &node.rect; }, py::return_value_policy::reference_internal)
+        .def_property_readonly(
+            "depth", [](RTABMapSLAM& node) { return &node.depth; }, py::return_value_policy::reference_internal)
         .def_readonly("features", &RTABMapSLAM::features, DOC(dai, node, RTABMapSLAM, features))
         .def_readonly("odom", &RTABMapSLAM::odom, DOC(dai, node, RTABMapSLAM, odom))
         .def_readonly("transform", &RTABMapSLAM::transform, DOC(dai, node, RTABMapSLAM, transform))
@@ -47,7 +48,8 @@ void bind_rtabmapslamnode(pybind11::module& m, void* pCallstack){
         .def("setLoadDatabaseOnStart", &RTABMapSLAM::setLoadDatabaseOnStart, py::arg("load"), DOC(dai, node, RTABMapSLAM, setLoadDatabaseOnStart))
         .def("setSaveDatabaseOnClose", &RTABMapSLAM::setSaveDatabaseOnClose, py::arg("save"), DOC(dai, node, RTABMapSLAM, setSaveDatabaseOnClose))
         .def("saveDatabase", &RTABMapSLAM::saveDatabase, DOC(dai, node, RTABMapSLAM, saveDatabase))
-        .def("setSaveDatabasePeriodically", &RTABMapSLAM::setSaveDatabasePeriodically, py::arg("save"), DOC(dai, node, RTABMapSLAM, setSaveDatabasePeriodically))
+        .def(
+            "setSaveDatabasePeriodically", &RTABMapSLAM::setSaveDatabasePeriodically, py::arg("save"), DOC(dai, node, RTABMapSLAM, setSaveDatabasePeriodically))
         .def("setSaveDatabasePeriod", &RTABMapSLAM::setSaveDatabasePeriod, py::arg("period"), DOC(dai, node, RTABMapSLAM, setSaveDatabasePeriod))
         .def("setPublishObstacleCloud", &RTABMapSLAM::setPublishObstacleCloud, py::arg("publish"), DOC(dai, node, RTABMapSLAM, setPublishObstacleCloud))
         .def("setPublishGroundCloud", &RTABMapSLAM::setPublishGroundCloud, py::arg("publish"), DOC(dai, node, RTABMapSLAM, setPublishGroundCloud))

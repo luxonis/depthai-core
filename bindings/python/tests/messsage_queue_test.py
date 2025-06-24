@@ -2,6 +2,7 @@ import pytest
 import threading
 import time
 from depthai import MessageQueue, Buffer
+import depthai as dai
 
 
 def test_basic_operations():
@@ -376,3 +377,57 @@ def test_callbacks_on_empty_unblocking_queue_then_send_message():
     assert queue.getSize() == 0
     # Check if the callback was called
     assert callback_count == 1
+
+def test_regression_gil_locks():
+    class TestPassthrough(dai.node.ThreadedHostNode):
+        def __init__(self, name: str):
+            super().__init__()
+            self.name = name
+            self.input = self.createInput()
+            self.output = self.createOutput()
+
+        def run(self):
+            while self.isRunning():
+                buffer = self.input.get()
+                self.output.send(buffer)
+
+
+    class TestSource(dai.node.ThreadedHostNode):
+        def __init__(self, name: str):
+            super().__init__()
+            self.name = name
+            self.output = self.createOutput()
+
+        def run(self):
+            while self.isRunning():
+                buffer = dai.Buffer()
+                self.output.send(buffer)
+                time.sleep(0.001)
+
+    with dai.Pipeline(False) as p:
+        # Create nodes
+        source = TestSource("source")
+        passthrough = TestPassthrough("passthrough")
+
+        # Link nodes
+        source.output.link(passthrough.input)
+
+        def sourceCallback(x):
+            for i in range(10):
+                time.sleep(0.01)
+
+        queue = passthrough.output.createOutputQueue()
+        p.start()
+        for i in range(10):
+            print(f"[{i}] before adding a callback")
+            id = queue.addCallback(sourceCallback)
+            time.sleep(0.01)
+            print(f"[{i}] before adding another callback")
+            id2 = queue.addCallback(sourceCallback)
+            time.sleep(0.01)
+            print(f"[{i}] before removing a callback")
+            queue.removeCallback(id)
+            print(f"[{i}] before removing another callback")
+            time.sleep(0.01)
+            queue.removeCallback(id2)
+            print(f"[{i}] after removing all callbacks")

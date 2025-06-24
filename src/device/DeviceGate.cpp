@@ -23,21 +23,6 @@
 
 namespace dai {
 
-// First tries to find UNBOOTED device, then BOOTLOADER device
-std::tuple<bool, DeviceInfo> DeviceGate::getFirstAvailableDevice() {
-    return XLinkConnection::getFirstDevice(X_LINK_GATE);
-}
-
-// Returns all devices which aren't already booted
-std::vector<DeviceInfo> DeviceGate::getAllAvailableDevices() {
-    std::vector<DeviceInfo> availableDevices;
-    auto connectedDevices = XLinkConnection::getAllConnectedDevices(X_LINK_GATE);
-    for(const auto& d : connectedDevices) {
-        if(d.state != X_LINK_BOOTED) availableDevices.push_back(d);
-    }
-    return availableDevices;
-}
-
 const std::string API_ROOT{"/api/v1"};
 const auto sessionsEndpoint = API_ROOT + "/sessions";
 const int DEFAULT_PORT{11492};
@@ -52,8 +37,9 @@ class DeviceGate::Impl {
 DeviceGate::~DeviceGate() {}
 
 DeviceGate::DeviceGate(const DeviceInfo& deviceInfo) : deviceInfo(deviceInfo) {
-    if(deviceInfo.state != X_LINK_GATE) {
-        throw std::invalid_argument("Device is not in Gate state");
+    if((deviceInfo.state != X_LINK_GATE) && (deviceInfo.state != X_LINK_GATE_SETUP)) {
+        throw std::invalid_argument(
+            "Device is already used by another application/process. Make sure to close all applications/processes using the device before starting a new one.");
     }
     if(deviceInfo.platform != X_LINK_RVC3 && deviceInfo.platform != X_LINK_RVC4) {
         throw std::invalid_argument("Gate only supports RVC3 and RVC4 platforms");
@@ -210,7 +196,7 @@ bool DeviceGate::stopSession() {
 
 bool DeviceGate::destroySession() {
     if(getState() == SessionState::DESTROYED) {
-        spdlog::warn("DeviceGate trying to destroy already destroyed session");
+        spdlog::debug("DeviceGate trying to destroy already destroyed session");
         return true;
     }
 
@@ -333,7 +319,7 @@ std::optional<DeviceGate::CrashDump> DeviceGate::waitForSessionEnd() {
                 return std::nullopt;
             case SessionState::CRASHED:
             case SessionState::DESTROYED:
-                auto crashDumpPathStr = utility::getEnv("DEPTHAI_CRASHDUMP");
+                auto crashDumpPathStr = utility::getEnvAs<std::string>("DEPTHAI_CRASHDUMP", "");
                 if(crashDumpPathStr == "0") {
                     spdlog::warn("Firmware crashed but DEPTHAI_CRASHDUMP is set to 0, the crash dump will not be saved.");
                     return std::nullopt;

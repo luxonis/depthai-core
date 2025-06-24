@@ -2,11 +2,9 @@
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO luxonis/basalt
-    REF ac3cd0fbef91e889db27a1a779a5105ba715fef7
-    SHA512 1e7694168f92af5f48f462a793fff528c46a4bd01d3417daf2031b651acba70ee9d61d38a33a1be217cc6e97baa67425e1a8fcc4e57a46033954757112326206
-    HEAD_REF deps_test
-    PATCHES
-        win.patch
+    REF ef61684ca32d0f827981270f780830c5f84c8e85
+    SHA512 be82d5f8971265178b8ab1f784fecb498963d3d8b641a47c541416dcea34f49e4138b2b191c930a5e1d9ca5b2ebcd1c1872cc0a2bb6bced683e9d44240f6eed3
+    HEAD_REF depthai
 )
 vcpkg_cmake_configure(
     SOURCE_PATH "${SOURCE_PATH}"

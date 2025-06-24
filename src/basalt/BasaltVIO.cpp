@@ -1,6 +1,7 @@
 #include "depthai/basalt/BasaltVIO.hpp"
 
 #include "../utility/PimplImpl.hpp"
+#include "basalt/vi_estimator/vio_estimator.h"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/ThreadedHostNode.hpp"
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
@@ -30,12 +31,12 @@ void BasaltVIO::buildInternal() {
     imu.addCallback(std::bind(&BasaltVIO::imuCB, this, std::placeholders::_1));
 
     basalt::PoseState<double>::SE3 initTrans(Eigen::Quaterniond::Identity(), Eigen::Vector3d(0, 0, 0));
-    Eigen::Matrix<double, 3, 3> R180;
-    R180 << -1.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, 1.0;
-    Eigen::Quaterniond q180(R180);
-    basalt::PoseState<double>::SE3 opticalTransform180(q180, Eigen::Vector3d(0, 0, 0));
+    Eigen::Matrix<double, 3, 3> R;
+    R << 0.0, -1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0;
+    Eigen::Quaterniond q(R);
+    basalt::PoseState<double>::SE3 initialRotation(q, Eigen::Vector3d(0, 0, 0));
     // to output pose in FLU world coordinates
-    localTransform = std::make_shared<basalt::PoseState<double>::SE3>(initTrans * opticalTransform180.inverse());
+    localTransform = std::make_shared<basalt::PoseState<double>::SE3>(initTrans * initialRotation.inverse());
     setDefaultVIOConfig();
 }
 
@@ -208,6 +209,7 @@ void BasaltVIO::initialize(std::vector<std::shared_ptr<ImgFrame>> frames) {
     }
 
     optFlowPtr = basalt::OpticalFlowFactory::getOpticalFlow(vioConfig, *calib);
+    optFlowPtr->show_gui = false;
     optFlowPtr->start();
     pimpl->imageDataQueue = optFlowPtr->input_img_queue;
     vio = basalt::VioEstimatorFactory::getVioEstimator(vioConfig, *calib, basalt::constants::g, true, true);
@@ -218,6 +220,7 @@ void BasaltVIO::initialize(std::vector<std::shared_ptr<ImgFrame>> frames) {
     vio->out_state_queue = pimpl->outStateQueue;
     vio->opt_flow_depth_guess_queue = optFlowPtr->input_depth_queue;
     vio->opt_flow_state_queue = optFlowPtr->input_state_queue;
+    vio->opt_flow_lm_bundle_queue = optFlowPtr->input_lm_bundle_queue;
     initialized = true;
 }
 

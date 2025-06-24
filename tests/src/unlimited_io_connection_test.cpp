@@ -19,7 +19,7 @@ TEST_CASE("Test many IO connections after crossing Leon processors") {
 
     for(int i = 0; i < NUM_CONN; i++) {
         string out = "out" + to_string(i);
-        auto xout = pipeline.create<node::XLinkOut>();
+        auto xout = pipeline.create<node::internal::XLinkOut>();
         xout->setStreamName(out);
         camRgb->preview.link(xout->input);
     }
@@ -82,7 +82,7 @@ TEST_CASE("Test many IO connections before crossing Leon processors") {
         string out = "out" + to_string(i);
         auto manip = pipeline.create<node::ImageManip>();
         camRgb->preview.link(manip->inputImage);
-        auto xout = pipeline.create<node::XLinkOut>();
+        auto xout = pipeline.create<node::internal::XLinkOut>();
         xout->setStreamName(out);
         manip->out.link(xout->input);
     }

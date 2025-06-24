@@ -13,7 +13,6 @@ void bind_featuretrackerconfig(pybind11::module& m, void* pCallstack);
 void bind_thermalconfig(pybind11::module& m, void* pCallstack);
 void bind_tofconfig(pybind11::module& m, void* pCallstack);
 void bind_imagemanipconfig(pybind11::module& m, void* pCallstack);
-void bind_imagemanipconfigv2(pybind11::module& m, void* pCallstack);
 void bind_imgdetections(pybind11::module& m, void* pCallstack);
 void bind_imgframe(pybind11::module& m, void* pCallstack);
 void bind_encodedframe(pybind11::module& m, void* pCallstack);
@@ -32,11 +31,12 @@ void bind_benchmarkreport(pybind11::module& m, void* pCallstack);
 void bind_pointcloudconfig(pybind11::module& m, void* pCallstack);
 void bind_pointclouddata(pybind11::module& m, void* pCallstack);
 void bind_transformdata(pybind11::module& m, void* pCallstack);
+void bind_rgbddata(pybind11::module& m, void* pCallstack);
 void bind_imagealignconfig(pybind11::module& m, void* pCallstack);
 void bind_imageannotations(pybind11::module& m, void* pCallstack);
 
 void DatatypeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
-     // Bind common datatypebindings
+    // Bind common datatypebindings
     callstack.push_front(DatatypeBindings::bind);
 
     // Bind all datatypes (order matters)
@@ -50,7 +50,6 @@ void DatatypeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_thermalconfig);
     callstack.push_front(bind_tofconfig);
     callstack.push_front(bind_imagemanipconfig);
-    callstack.push_front(bind_imagemanipconfigv2);
     callstack.push_front(bind_imgdetections);
     callstack.push_front(bind_imgframe);
     callstack.push_front(bind_encodedframe);
@@ -70,10 +69,11 @@ void DatatypeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_pointclouddata);
     callstack.push_front(bind_transformdata);
     callstack.push_front(bind_imagealignconfig);
-	callstack.push_front(bind_imageannotations);
+    callstack.push_front(bind_imageannotations);
+    callstack.push_front(bind_rgbddata);
 }
 
-void DatatypeBindings::bind(pybind11::module& m, void* pCallstack){
+void DatatypeBindings::bind(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
     py::enum_<DatatypeEnum> datatypeEnum(m, "DatatypeEnum", DOC(dai, DatatypeEnum));
@@ -82,7 +82,7 @@ void DatatypeBindings::bind(pybind11::module& m, void* pCallstack){
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
     // Call the rest of the type defines, then perform the actual bindings
-    Callstack* callstack = (Callstack*) pCallstack;
+    Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
@@ -99,7 +99,6 @@ void DatatypeBindings::bind(pybind11::module& m, void* pCallstack){
         .value("EncodedFrame", DatatypeEnum::EncodedFrame)
         .value("NNData", DatatypeEnum::NNData)
         .value("ImageManipConfig", DatatypeEnum::ImageManipConfig)
-        .value("ImageManipConfigV2", DatatypeEnum::ImageManipConfigV2)
         .value("CameraControl", DatatypeEnum::CameraControl)
         .value("ImgDetections", DatatypeEnum::ImgDetections)
         .value("SpatialImgDetections", DatatypeEnum::SpatialImgDetections)
@@ -123,7 +122,6 @@ void DatatypeBindings::bind(pybind11::module& m, void* pCallstack){
         .value("PointCloudConfig", DatatypeEnum::PointCloudConfig)
         .value("PointCloudData", DatatypeEnum::PointCloudData)
         .value("ImageAlignConfig", DatatypeEnum::ImageAlignConfig)
-		.value("ImgAnnotations", DatatypeEnum::ImgAnnotations)
-    ;
-
+        .value("ImgAnnotations", DatatypeEnum::ImgAnnotations)
+        .value("RGBDData", DatatypeEnum::RGBDData);
 }

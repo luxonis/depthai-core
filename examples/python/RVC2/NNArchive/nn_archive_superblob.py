@@ -40,19 +40,17 @@ print("-" * 10)
 
 with dai.Pipeline() as pipeline:
     # Color camera node
-    camRgb = pipeline.createColorCamera()
-    camRgb.setPreviewSize(512, 288)
-    camRgb.setColorOrder(dai.ColorCameraProperties.ColorOrder.BGR)
-    camRgb.setInterleaved(False)
+    camRgb = pipeline.create(dai.node.Camera).build()
+    outCam = camRgb.requestOutput((416, 416), dai.ImgFrame.Type.BGR888p)
 
     # Neural network node
     blob = archive.getSuperBlob().getBlobWithNumShaves(6)
-    neuralNetwork = pipeline.createNeuralNetwork()
+    neuralNetwork = pipeline.create(dai.node.NeuralNetwork)
     neuralNetwork.setBlob(blob)
     neuralNetwork.setNumInferenceThreads(2)
 
     # Linking
-    camRgb.preview.link(neuralNetwork.input)
+    outCam.link(neuralNetwork.input)
 
     nnDetectionQueue = neuralNetwork.out.createOutputQueue()
     nnPassthroughQueue = neuralNetwork.passthrough.createOutputQueue()
@@ -62,8 +60,5 @@ with dai.Pipeline() as pipeline:
     while pipeline.isRunning():
         in_nn = nnDetectionQueue.get()
         in_nnPassthrough = nnPassthroughQueue.get()
-
-        print(in_nn)
-        print(in_nnPassthrough)
-
+        print("Data received")
         time.sleep(0.1)

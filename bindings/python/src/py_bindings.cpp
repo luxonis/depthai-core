@@ -14,36 +14,35 @@
 #include "depthai/build/version.hpp"
 
 // project
-#include "depthai/depthai.hpp"
-#include "common/ModelTypeBindings.hpp"
-#include "pipeline/AssetManagerBindings.hpp"
-#include "pipeline/PipelineBindings.hpp"
-#include "pipeline/CommonBindings.hpp"
-#include "pipeline/node/NodeBindings.hpp"
-#include "XLinkBindings.hpp"
-#include "DeviceBindings.hpp"
 #include "CalibrationHandlerBindings.hpp"
-#include "DeviceBootloaderBindings.hpp"
 #include "DatatypeBindings.hpp"
+#include "DeviceBindings.hpp"
+#include "DeviceBootloaderBindings.hpp"
 #include "MessageQueueBindings.hpp"
-#include "openvino/OpenVINOBindings.hpp"
-#include "nn_archive/NNArchiveBindings.hpp"
-#include "log/LogBindings.hpp"
 #include "VersionBindings.hpp"
+#include "XLinkBindings.hpp"
 #include "capabilities/CapabilityBindings.hpp"
 #include "capabilities/CapabilityRangeBindings.hpp"
 #include "capabilities/ImgFrameCapabilityBindings.hpp"
-#include "modelzoo/NNModelDescriptionBindings.hpp"
+#include "common/ModelTypeBindings.hpp"
+#include "depthai/depthai.hpp"
+#include "log/LogBindings.hpp"
 #include "modelzoo/ZooBindings.hpp"
-#include "utility/EventsManagerBindings.hpp"
+#include "nn_archive/NNArchiveBindings.hpp"
+#include "openvino/OpenVINOBindings.hpp"
+#include "pipeline/AssetManagerBindings.hpp"
+#include "pipeline/CommonBindings.hpp"
+#include "pipeline/PipelineBindings.hpp"
+#include "pipeline/node/NodeBindings.hpp"
 #include "remote_connection/RemoteConnectionBindings.hpp"
+#include "utility/EventsManagerBindings.hpp"
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     #include <ndarray_converter.h>
 #endif
 
 #ifdef DEPTHAI_PYTHON_EMBEDDED_MODULE
-#include <pybind11/embed.h>
-extern "C" void depthai_bindings_init() {} // to force inclusion
+    #include <pybind11/embed.h>
+extern "C" void depthai_bindings_init() {}  // to force inclusion
 #endif
 
 // Specify module
@@ -85,12 +84,11 @@ PYBIND11_MODULE(depthai, m)
     callstack.push_front(&DeviceBindings::bind);
     callstack.push_front(&DeviceBootloaderBindings::bind);
     callstack.push_front(&CalibrationHandlerBindings::bind);
-    callstack.push_front(&NNModelDescriptionBindings::bind);
     callstack.push_front(&ZooBindings::bind);
     callstack.push_front(&EventsManagerBindings::bind);
     callstack.push_front(&RemoteConnectionBindings::bind);
     // end of the callstack
-    callstack.push_front([](py::module &, void *) {});
+    callstack.push_front([](py::module&, void*) {});
 
     Callstack callstackAdapter(callstack);
 
@@ -102,18 +100,18 @@ PYBIND11_MODULE(depthai, m)
     constexpr static const char* signalHandlerKey = "DEPTHAI_INSTALL_SIGNAL_HANDLER";
     try {
         auto sysModule = py::module_::import("sys");
-        if(py::hasattr(sysModule, signalHandlerKey)){
+        if(py::hasattr(sysModule, signalHandlerKey)) {
             installSignalHandler = installSignalHandler && sysModule.attr(signalHandlerKey).cast<bool>();
         }
-    } catch (...) {
+    } catch(...) {
         // ignore
     }
     try {
         auto builtinsModule = py::module_::import("builtins");
-        if(py::hasattr(builtinsModule, signalHandlerKey)){
+        if(py::hasattr(builtinsModule, signalHandlerKey)) {
             installSignalHandler = installSignalHandler && builtinsModule.attr(signalHandlerKey).cast<bool>();
         }
-    } catch (...){
+    } catch(...) {
         // ignore
     }
 
@@ -122,18 +120,18 @@ PYBIND11_MODULE(depthai, m)
     constexpr static const char* javavmEnvKey = "DEPTHAI_LIBUSB_ANDROID_JAVAVM";
     try {
         auto sysModule = py::module_::import("sys");
-        if(py::hasattr(sysModule, javavmEnvKey)){
+        if(py::hasattr(sysModule, javavmEnvKey)) {
             javavmEnvStr = sysModule.attr(javavmEnvKey).cast<std::string>();
         }
-    } catch (...) {
+    } catch(...) {
         // ignore
     }
     try {
         auto builtinsModule = py::module_::import("builtins");
-        if(py::hasattr(builtinsModule, javavmEnvKey)){
+        if(py::hasattr(builtinsModule, javavmEnvKey)) {
             javavmEnvStr = builtinsModule.attr(javavmEnvKey).cast<std::string>();
         }
-    } catch (...){
+    } catch(...) {
         // ignore
     }
     // JNIEnv handling
@@ -148,9 +146,11 @@ PYBIND11_MODULE(depthai, m)
 
     // Call dai::initialize on 'import depthai' to initialize asap with additional information to print
     try {
-        dai::initialize(std::string("Python bindings - version: ") + DEPTHAI_PYTHON_VERSION + " from " + DEPTHAI_PYTHON_COMMIT_DATETIME + " build: " + DEPTHAI_PYTHON_BUILD_DATETIME, installSignalHandler, javavm);
-    } catch (const std::exception&) {
+        dai::initialize(std::string("Python bindings - version: ") + DEPTHAI_PYTHON_VERSION + " from " + DEPTHAI_PYTHON_COMMIT_DATETIME
+                            + " build: " + DEPTHAI_PYTHON_BUILD_DATETIME,
+                        installSignalHandler,
+                        javavm);
+    } catch(const std::exception&) {
         // ignore, will be initialized later on if possible
     }
-
 }
