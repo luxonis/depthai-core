@@ -200,7 +200,7 @@ TEST_CASE("Multiple image manips") {
     p.stop();
 }
 
-void runManipTests(dai::ImgFrame::Type type, bool undistort) {
+void runManipTests(dai::ImgFrame::Type type, bool undistort, std::vector<float> coeffs = {}) {
     dai::Pipeline p;
     auto manip = p.create<dai::node::ImageManip>()->build();
     manip->setMaxOutputFrameSize(6750208);
@@ -210,6 +210,7 @@ void runManipTests(dai::ImgFrame::Type type, bool undistort) {
     cv::resize(inputImg, inputImg, cv::Size(1024, 512));
     auto inputFrame = std::make_shared<dai::ImgFrame>();
     inputFrame->setCvFrame(inputImg, type);
+    inputFrame->transformation.setDistortionCoefficients(coeffs);
 
     auto config = std::make_shared<dai::ImageManipConfig>();
     config->setReusePreviousImage(true);
@@ -361,14 +362,18 @@ TEST_CASE("ImageManip RGB888i") {
     runManipTests(dai::ImgFrame::Type::RGB888i, false);
 }
 
-TEST_CASE("ImageManip NV12 undistort") {
+TEST_CASE("ImageManip NV12 undistort no coefficients") {
     runManipTests(dai::ImgFrame::Type::NV12, true);
 }
 
+TEST_CASE("ImageManip NV12 undistort") {
+    runManipTests(dai::ImgFrame::Type::NV12, true, {-7.56764030456543, 18.97133445739746, 0.0006435539107769728, -5.642612813971937e-05, 6.156050682067871, -7.587080001831055, 19.094820022583008, 5.732314109802246, 0.0, 0.0, 0.0, 0.0, -0.0009434317471459508, 0.002672438742592931});
+}
+
 TEST_CASE("ImageManip GRAY8 undistort") {
-    runManipTests(dai::ImgFrame::Type::GRAY8, true);
+    runManipTests(dai::ImgFrame::Type::GRAY8, true, {-7.56764030456543, 18.97133445739746, 0.0006435539107769728, -5.642612813971937e-05, 6.156050682067871, -7.587080001831055, 19.094820022583008, 5.732314109802246, 0.0, 0.0, 0.0, 0.0, -0.0009434317471459508, 0.002672438742592931});
 }
 
 TEST_CASE("ImageManip RGB888i undistort") {
-    runManipTests(dai::ImgFrame::Type::RGB888i, true);
+    runManipTests(dai::ImgFrame::Type::RGB888i, true, {-7.56764030456543, 18.97133445739746, 0.0006435539107769728, -5.642612813971937e-05, 6.156050682067871, -7.587080001831055, 19.094820022583008, 5.732314109802246, 0.0, 0.0, 0.0, 0.0, -0.0009434317471459508, 0.002672438742592931});
 }

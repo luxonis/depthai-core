@@ -263,7 +263,7 @@ class UndistortOpenCvImpl {
 
    public:
     UndistortOpenCvImpl(std::shared_ptr<spdlog::async_logger> logger) : logger(std::move(logger)) {}
-    void build(std::array<float, 9> cameraMatrix, std::vector<float> distCoeffs, uint32_t width, uint32_t height) {
+    bool build(std::array<float, 9> cameraMatrix, std::vector<float> distCoeffs, uint32_t width, uint32_t height) {
         if(width != this->width || height != this->height || distCoeffs != this->distCoeffs || cameraMatrix != this->cameraMatrix) {
             this->cameraMatrix = std::move(cameraMatrix);
             this->distCoeffs = std::move(distCoeffs);
@@ -279,9 +279,11 @@ class UndistortOpenCvImpl {
                 cv::Mat newCameraMatrix = cv::getOptimalNewCameraMatrix(cvCameraMatrix, this->distCoeffs, cv::Size(width, height), 1);
                 cv::initUndistortRectifyMap(
                     cvCameraMatrix, this->distCoeffs, cv::Mat(), newCameraMatrix, cv::Size(width, height), CV_16SC2, undistortMap1, undistortMap2);
+                return true;
             } else
                 std::runtime_error("UndistortImpl initialized with empty distortion coefficients");
         }
+        return false;
     }
     void undistort(cv::Mat& src, cv::Mat& dst);
 };
@@ -300,6 +302,7 @@ class Warp {
     std::array<std::array<float, 3>, 3> matrix;
     ImageManipOpsBase<Container>::Background background = ImageManipOpsBase<Container>::Background::COLOR;
     uint32_t backgroundColor[3] = {0, 0, 0};
+    bool enableUndistort = false;
 
     ImgFrame::Type type;
     FrameSpecs srcSpecs;
@@ -3103,12 +3106,13 @@ void WarpH<ImageManipBuffer, ImageManipData>::buildUndistort(bool enable,
             auxFrame = std::make_shared<ImageManipData>(frameSize);
         }
         if(!undistortImpl) undistortImpl = std::make_unique<UndistortOpenCvImpl>(this->logger);
-        undistortImpl->build(cameraMatrix, distCoeffs, width, height);
+        this->enableUndistort = undistortImpl->build(cameraMatrix, distCoeffs, width, height);
 #else
         throw std::runtime_error("Undistort requires OpenCV support");
 #endif
     } else {
         undistortImpl = nullptr;
+        this->enableUndistort = false;
     }
 }
 
@@ -3178,16 +3182,16 @@ void printSpecs(spdlog::async_logger& logger, FrameSpecs specs);
 template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
 void WarpH<ImageManipBuffer, ImageManipData>::apply(const std::shared_ptr<ImageManipData> src, std::shared_ptr<ImageManipData> dst) {
     auto undistortDst = this->isIdentityWarp() ? dst : auxFrame;
-    auto warpSrc = this->undistortImpl ? auxFrame : src;
+    auto warpSrc = this->enableUndistort ? auxFrame : src;
     auto undistortSpecs = this->isIdentityWarp() ? this->dstSpecs : getDstFrameSpecs(this->srcSpecs.width, this->srcSpecs.height, this->type);
-    auto warpSrcSpecs = this->undistortImpl ? undistortSpecs : this->srcSpecs;
+    auto warpSrcSpecs = this->enableUndistort ? undistortSpecs : this->srcSpecs;
     // Apply transformation multiple times depending on the image format
     switch(this->type) {
         case ImgFrame::Type::RGB888i:
         case ImgFrame::Type::BGR888i:
 #if DEPTHAI_IMAGEMANIPV2_OPENCV && defined(DEPTHAI_HAVE_OPENCV_SUPPORT) || DEPTHAI_IMAGEMANIPV2_FASTCV && defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
     #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-            if(this->undistortImpl) {
+            if(this->enableUndistort) {
                 cv::Mat srcCv(this->srcSpecs.height, this->srcSpecs.width, CV_8UC3, src->offset(this->srcSpecs.p1Offset)->data(), this->srcSpecs.p1Stride);
                 cv::Mat dstCv(
                     undistortSpecs.height, undistortSpecs.width, CV_8UC3, undistortDst->offset(undistortSpecs.p1Offset)->data(), undistortSpecs.p1Stride);
@@ -3216,7 +3220,7 @@ void WarpH<ImageManipBuffer, ImageManipData>::apply(const std::shared_ptr<ImageM
         case ImgFrame::Type::RGB888p:
 #if DEPTHAI_IMAGEMANIPV2_OPENCV && defined(DEPTHAI_HAVE_OPENCV_SUPPORT) || DEPTHAI_IMAGEMANIPV2_FASTCV && defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
     #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-            if(this->undistortImpl) {
+            if(this->enableUndistort) {
                 {
                     cv::Mat srcCv(this->srcSpecs.height, this->srcSpecs.width, CV_8UC1, src->offset(this->srcSpecs.p1Offset)->data(), this->srcSpecs.p1Stride);
                     cv::Mat dstCv(
@@ -3282,7 +3286,7 @@ void WarpH<ImageManipBuffer, ImageManipData>::apply(const std::shared_ptr<ImageM
         case ImgFrame::Type::YUV420p:
 #if DEPTHAI_IMAGEMANIPV2_OPENCV && defined(DEPTHAI_HAVE_OPENCV_SUPPORT) || DEPTHAI_IMAGEMANIPV2_FASTCV && defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
     #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-            if(this->undistortImpl) {
+            if(this->enableUndistort) {
                 {
                     cv::Mat srcCv(this->srcSpecs.height, this->srcSpecs.width, CV_8UC1, src->offset(this->srcSpecs.p1Offset)->data(), this->srcSpecs.p1Stride);
                     cv::Mat dstCv(
@@ -3356,7 +3360,7 @@ void WarpH<ImageManipBuffer, ImageManipData>::apply(const std::shared_ptr<ImageM
         case ImgFrame::Type::NV12:
 #if DEPTHAI_IMAGEMANIPV2_OPENCV && defined(DEPTHAI_HAVE_OPENCV_SUPPORT) || DEPTHAI_IMAGEMANIPV2_FASTCV && defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
     #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-            if(this->undistortImpl) {
+            if(this->enableUndistort) {
                 {
                     cv::Mat srcCv(this->srcSpecs.height, this->srcSpecs.width, CV_8UC1, src->offset(this->srcSpecs.p1Offset)->data(), this->srcSpecs.p1Stride);
                     cv::Mat dstCv(
@@ -3409,7 +3413,7 @@ void WarpH<ImageManipBuffer, ImageManipData>::apply(const std::shared_ptr<ImageM
         case ImgFrame::Type::GRAY8:
 #if DEPTHAI_IMAGEMANIPV2_OPENCV && defined(DEPTHAI_HAVE_OPENCV_SUPPORT) || DEPTHAI_IMAGEMANIPV2_FASTCV && defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
     #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-            if(this->undistortImpl) {
+            if(this->enableUndistort) {
                 {
                     cv::Mat srcCv(this->srcSpecs.height, this->srcSpecs.width, CV_8UC1, src->offset(this->srcSpecs.p1Offset)->data(), this->srcSpecs.p1Stride);
                     cv::Mat dstCv(
@@ -3439,7 +3443,7 @@ void WarpH<ImageManipBuffer, ImageManipData>::apply(const std::shared_ptr<ImageM
         case ImgFrame::Type::RAW16:
 #if DEPTHAI_IMAGEMANIPV2_OPENCV && defined(DEPTHAI_HAVE_OPENCV_SUPPORT) || DEPTHAI_IMAGEMANIPV2_FASTCV && defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
     #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-            if(this->undistortImpl) {
+            if(this->enableUndistort) {
                 {
                     cv::Mat srcCv(this->srcSpecs.height, this->srcSpecs.width, CV_16UC1, src->offset(this->srcSpecs.p1Offset)->data(), this->srcSpecs.p1Stride);
                     cv::Mat dstCv(
