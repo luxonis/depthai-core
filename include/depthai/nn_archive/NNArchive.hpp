@@ -14,6 +14,8 @@
 namespace dai {
 
 struct NNArchiveOptions {
+    NNArchiveOptions();
+
     // General parameters
     DEPTAHI_ARG_DEFAULT(NNArchiveEntry::Compression, compression, NNArchiveEntry::Compression::AUTO);
 
@@ -24,7 +26,7 @@ struct NNArchiveOptions {
     // ...
 
     // Parameters for other formats, ONNX, PT, etc..
-    DEPTAHI_ARG_DEFAULT(std::string, extractFolder, "/tmp/");
+    DEPTAHI_ARG_DEFAULT(std::filesystem::path, extractFolder, std::filesystem::path());
 };
 
 class NNArchive {

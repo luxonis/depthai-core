@@ -1,10 +1,10 @@
-# DepthAI C++ Library
+# DepthAI Library
 
 [![Forum](https://img.shields.io/badge/Forum-discuss-orange)](https://discuss.luxonis.com/)
 [![Docs](https://img.shields.io/badge/Docs-DepthAI_API-yellow)](https://stg.docs.luxonis.com/software/v3/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
-DepthAI library for interfacing with Luxonis DepthAI hardware.
+DepthAI library for interfacing with Luxonis DepthAI hardware. It's written in C++ and offers Python bindings out of the box.
 
 >  **Important — You’re viewing the `v3.x.y` _release-candidate_ branch.**
 >
@@ -19,7 +19,7 @@ Documentation is available over at [Luxonis DepthAI API](https://docs.luxonis.co
 DepthAI library doesn't yet provide API stability guarantees. While we take care to properly deprecate old functions, some changes might still be breaking.
 
 ## Examples
-Examples for both C++ and Python are available in the `examples` folder. To see hwo to build and run them see [README.md](./examples/README.md) for more information.
+Examples for both C++ and Python are available in the `examples` folder. To see how to build and run them see [README.md](./examples/README.md) for more information.
 To build the examples in C++ configure with the following option added:
 ```
 cmake -S. -Bbuild -D'DEPTHAI_BUILD_EXAMPLES=ON'
