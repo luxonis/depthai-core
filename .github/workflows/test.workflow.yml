@@ -67,7 +67,7 @@ jobs:
             '-DDEPTHAI_PYTHON_ENABLE_EXAMPLES=ON'
           ) -join ' '
         }
-        
+
         $cmakeConfigureCommand = "cmake -S . -B build -D CMAKE_BUILD_TYPE=Release -DDEPTHAI_VCPKG_INTERNAL_ONLY=OFF -DDEPTHAI_BUILD_TESTS=ON $extraFlags"
         Write-Host "Running: $cmakeConfigureCommand"
         Invoke-Expression $cmakeConfigureCommand

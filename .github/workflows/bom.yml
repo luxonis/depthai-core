@@ -36,7 +36,7 @@ jobs:
         tag: ${{ steps.build_and_push.outputs.tag }}
     steps:
     - uses: actions/checkout@v3
-    
+
     - name: Checkout source code from tag
       uses: actions/checkout@v3
       with:
@@ -54,7 +54,7 @@ jobs:
         COMMIT_SHA=$(git rev-parse HEAD)
 
         TAG="vanilla_$COMMIT_SHA"
-        
+
         echo "tag=$TAG" >> $GITHUB_OUTPUT
         echo "Using branch: $BRANCH_NAME"
         scripts/hil/build_and_push.sh "vanilla" "${{ github.event.inputs.depthai }}" "${{ secrets.CONTAINER_REGISTRY }}" "$COMMIT_SHA" "$PARALLEL_JOBS" "false" "$TAG"
@@ -71,7 +71,7 @@ jobs:
           flavor: ['vanilla']
         fail-fast: false
       runs-on: ['self-hosted', 'testbed-runner']
-      
+
       steps:
       - uses: actions/checkout@v3
 
