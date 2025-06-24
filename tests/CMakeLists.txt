@@ -464,3 +464,7 @@ dai_set_test_labels(camera_test ondevice rvc2_all rvc4 ci)
 # VideoEncoder test
 dai_add_test(video_encoder_test src/ondevice_tests/video_encoder_test.cpp)
 dai_set_test_labels(video_encoder_test ondevice rvc2_all rvc4 ci)
+
+# XLinkIn test
+dai_add_test(xlink_test src/ondevice_tests/xlink_tests.cpp)
+dai_set_test_labels(xlink_test ondevice rvc2_all ci)
