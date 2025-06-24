@@ -120,7 +120,7 @@ with pipeline:
                     calib_quality = report.calibrationQuality
 
                     rotation_change = getattr(calib_quality, 'rotationChange', [])
-                    depth_accuracy = getattr(calib_quality, 'depthAccuracy', [])
+                    depth_accuracy = getattr(calib_quality, 'depthErrorDifference', [])
 
                     print("Rotation change (as float):", ' '.join(f"{float(val):.3f}" for val in rotation_change))
                     print("Depth accuracy changes (as float):", ' '.join(f"{float(val):.3f}" for val in depth_accuracy))
