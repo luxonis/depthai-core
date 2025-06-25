@@ -222,7 +222,7 @@ The following environment variables can be set to alter default behavior of the 
 | DEPTHAI_ZOO_MODELS_PATH | (Default) depthai_models - Folder where zoo model description files are stored |
 | DEPTHAI_RECORD | Enables holistic record to the specified directory. |
 | DEPTHAI_REPLAY | Replays holistic replay from the specified file or directory. |
-
+| DEPTHAI_PROFILING | Enables runtime profiling of data transfer between the host and connected devices. Set to 1 to enable. Requires DEPTHAI_LEVEL=debug or lower to print. |
 
 ## Running tests
 
