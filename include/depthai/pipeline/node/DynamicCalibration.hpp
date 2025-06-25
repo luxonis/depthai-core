@@ -4,6 +4,8 @@
 #include <DynamicCalibration.hpp>
 #include <SensorHandle.hpp>
 #include <depthai/pipeline/DeviceNode.hpp>
+#include <depthai/pipeline/Subnode.hpp>
+#include <depthai/pipeline/node/Sync.hpp>
 #include <depthai/properties/DynamicCalibrationProperties.hpp>
 
 #include "depthai/pipeline/datatype/DynamicCalibrationConfig.hpp"
@@ -37,15 +39,23 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
         *this,
         {"inputConfig", DEFAULT_GROUP, NON_BLOCKING_QUEUE, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::DynamicCalibrationConfig, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
-    /**
-     * Input for left ImgFrame of left-right pair
-     */
-    Input left{*this, {"left", DEFAULT_GROUP, NON_BLOCKING_QUEUE, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ImgFrame, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+    Subnode<node::Sync> sync{*this, "sync"};
+    InputMap& inputs = sync->inputs;
+
+    std::string leftInputName = "left";
+    std::string rightInputName = "right";
+
+    void buildInternal() override;
 
     /**
-     * Input for right ImgFrame of left-right pair
+     * Input left image
      */
-    Input right{*this, {"right", DEFAULT_GROUP, NON_BLOCKING_QUEUE, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ImgFrame, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+    Input& left = inputs[leftInputName];
+
+    /**
+     * Input right image
+     */
+    Input& right = inputs[rightInputName];
 
     /**
      * Output calibration quality result
@@ -234,6 +244,8 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     };
 
     CalibrationStateMachine calibrationSM;
+    Input inSync{*this, {"inSync", DEFAULT_GROUP, false, 0, {{DatatypeEnum::MessageGroup, true}}}};
+
 };
 
 }  // namespace node

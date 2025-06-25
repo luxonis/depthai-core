@@ -24,9 +24,10 @@ void bind_dynamic_calibration(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
     // Node
     dynamicCalibration
-        // .def_readonly("inputs", &DynamicCalibration::inputs, DOC(dai, node, DynamicCalibration, inputs))
-        .def_readonly("left", &DynamicCalibration::left, DOC(dai, node, DynamicCalibration, left))
-        .def_readonly("right", &DynamicCalibration::right, DOC(dai, node, DynamicCalibration, right))
+        .def_property_readonly(
+                  "left", [](DynamicCalibration& node) { return &node.left; }, py::return_value_policy::reference_internal)
+        .def_property_readonly(
+            "right", [](DynamicCalibration& node) { return &node.right; }, py::return_value_policy::reference_internal)
         .def_readonly("inputConfig", &DynamicCalibration::inputConfig, DOC(dai, node, DynamicCalibration, inputConfig))
         .def_readonly("outputCalibrationResults", &DynamicCalibration::outputCalibrationResults, DOC(dai, node, DynamicCalibration, outputCalibrationResults))
         .def("setRunOnHost", &DynamicCalibration::setRunOnHost, py::arg("runOnHost"), DOC(dai, node, DynamicCalibration, setRunOnHost))

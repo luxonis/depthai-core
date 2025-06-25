@@ -5,6 +5,7 @@
 #include <opencv2/opencv.hpp>
 
 #include "common/CameraBoardSocket.hpp"
+#include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "spdlog/spdlog.h"
 #include "utility/Logging.hpp"
 
@@ -72,6 +73,10 @@ bool DynamicCalibration::runOnHost() const {
     return runOnHostVar;
 }
 
+void DynamicCalibration::buildInternal() {
+    sync->out.link(inSync);
+    sync->setRunOnHost(true);
+}
 
 std::vector<float> rotationMatrixToVector(const std::vector<std::vector<float>>& R) {
     if(R.size() != 3 || R[0].size() != 3 || R[1].size() != 3 || R[2].size() != 3) {
@@ -278,9 +283,11 @@ void DynamicCalibration::run() {
     dynResult.calibOverallQuality = DynamicCalibrationResults::CalibrationQualityResult::Invalid();
 
     while(isRunning()) {
-        auto leftFrame = left.get<dai::ImgFrame>();
-        auto rightFrame = right.get<dai::ImgFrame>();
-
+        // auto leftFrame = left.get<dai::ImgFrame>();
+        // auto rightFrame = right.get<dai::ImgFrame>();
+        auto inSyncGroup = inSync.get<dai::MessageGroup>();
+        auto leftFrame = inSyncGroup->get<dai::ImgFrame>(leftInputName);
+        auto rightFrame = inSyncGroup->get<dai::ImgFrame>(rightInputName);
         if(!leftFrame || !rightFrame) continue; //todo calib team sync should be checked?
 
 
