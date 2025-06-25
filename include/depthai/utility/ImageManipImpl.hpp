@@ -517,6 +517,9 @@ class ImageManipOperations {
     }
     std::vector<RotatedRect> getSrcCrops() const;
     std::array<std::array<float, 3>, 3> getMatrix() const;
+    bool undistortEnabled() const {
+        return warpEngine.enableUndistort;
+    }
 
     std::string toString() const;
 };

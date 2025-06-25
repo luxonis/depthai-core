@@ -58,6 +58,9 @@ void ImageManip::run() {
 
             // Transformations
             dstFrame.transformation = srcFrame.transformation;
+            if(manip.undistortEnabled()) {
+                dstFrame.transformation.setDistortionCoefficients({});
+            }
             auto srcCrops = manip.getSrcCrops();
             dstFrame.transformation.addSrcCrops(srcCrops);
             dstFrame.transformation.addTransformation(manip.getMatrix());
