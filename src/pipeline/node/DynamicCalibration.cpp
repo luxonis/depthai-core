@@ -273,6 +273,7 @@ void DynamicCalibration::run() {
 
     logger::info("DynamicCalibration node is running");
     auto lastAutoTrigger = std::chrono::steady_clock::now() - std::chrono::seconds(10);
+    auto continiousTrigger = std::chrono::steady_clock::now() - std::chrono::seconds(10);
     dynResult.newCalibration = DynamicCalibrationResults::CalibrationResult::Invalid();
     dynResult.calibOverallQuality = DynamicCalibrationResults::CalibrationQualityResult::Invalid();
 
@@ -324,7 +325,7 @@ void DynamicCalibration::run() {
         auto now = std::chrono::steady_clock::now();
 
         if(properties.initialConfig.algorithmControl.recalibrationMode == dai::DynamicCalibrationConfig::AlgorithmControl::RecalibrationMode::CONTINUOUS
-           && calibrationSM.isIdle() && calibrationSM.pipelineReady && std::chrono::duration_cast<std::chrono::seconds>(now - lastAutoTrigger).count() > properties.initialConfig.algorithmControl.timeFrequency) {
+           && calibrationSM.isIdle() && calibrationSM.pipelineReady && std::chrono::duration_cast<std::chrono::seconds>(now - continiousTrigger).count() > properties.initialConfig.algorithmControl.timeFrequency) {
             lastAutoTrigger = now;
             calibrationSM.startRecalibration();
         }
@@ -368,7 +369,7 @@ void DynamicCalibration::run() {
                 break;
 
             case CalibrationStateMachine::CalibrationState::LoadingImages: {
-                if (std::chrono::duration_cast<std::chrono::seconds>(now - lastAutoTrigger).count() > 0.01) {
+                if (std::chrono::duration_cast<std::chrono::seconds>(now - lastAutoTrigger).count() > 0.5) {
                     dcl::timestamp_t timestamp = leftFrame->getTimestamp().time_since_epoch().count();
                     auto imageA = leftFrame->getCvFrame();
                     auto imageB = rightFrame->getCvFrame();
@@ -376,13 +377,15 @@ void DynamicCalibration::run() {
                     dcl::ImageData imgB = cvMatToImageData(imageB);
                     dynCalibImpl->loadStereoImagePair(imgA, imgB, deviceName, socketA, socketB, timestamp);
 
-                    logger::info("[DynamicCalibration] Loaded {}{}",
-                             (calibrationSM.mode == CalibrationStateMachine::CalibrationMode::QualityCheck ? " (QC)" : " (Recalibration)"));
+                logger::info("[DynamicCalibration] Loaded image in DCL");
 
-                    calibrationSM.AdvanceAfterLoading();
-                    lastAutoTrigger = now;
-                }
+                calibrationSM.AdvanceAfterLoading();
+                lastAutoTrigger = now;
                 break;
+                }
+                else {
+                    break;
+                }
             }
 
             case CalibrationStateMachine::CalibrationState::ProcessingQuality: {
@@ -410,7 +413,8 @@ void DynamicCalibration::run() {
                     : dynCalibImpl->findNewCalibration(dcDevice, socketA, socketB, static_cast<dcl::DynamicCalibrationMode>(properties.initialConfig.algorithmControl.performanceMode));
 
                 if(!resultCalib.value.second) {
-                        logger::info("[DynamicCalibration] resultCalib returned null CalibrationHandler!");
+                    logger::info("[DynamicCalibration] resultCalib returned null CalibrationHandler!");
+                    calibrationSM.finish();
                     break; 
                 }
                 auto calibrationHandle = std::make_shared<dcl::CameraCalibrationHandle>(resultCalib.value.second);
