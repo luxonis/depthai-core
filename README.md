@@ -286,3 +286,17 @@ cmake -S. -Bbuild -D'OpenCV_DIR=/usr/lib/x86_64-linux-gnu/cmake/opencv4'
 ```
 
 Now the build process should correctly discover your OpenCV installation
+
+### Build fails due to out of memory killer
+If your build process is killed by the out of memory killer, you can try to reduce the number of parallel jobs used during the build process.
+
+The error usually looks something like this:
+```
+c++: fatal error: Killed signal terminated program cc1plus
+```
+
+You can do this by passing the `--parallel` flag with a lower number of jobs to the `cmake --build` command, for example:
+```
+cmake --build build --parallel 2
+```
+
