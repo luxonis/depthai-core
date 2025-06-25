@@ -921,13 +921,14 @@ dai::RotatedRect dai::impl::getRotatedRectFromPoints(const std::vector<std::arra
 void dai::impl::UndistortOpenCvImpl::undistort(cv::Mat& src, cv::Mat& dst) {
     if(dst.size().width == (int)width && dst.size().height == (int)height) {
         cv::remap(src, dst, undistortMap1, undistortMap2, cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(0, 0, 0));
-    } else if (dst.size().width == (int)width / 2 && dst.size().height == (int)height / 2) {
+    } else if(dst.size().width == (int)width / 2 && dst.size().height == (int)height / 2) {
         if(undistortMap1Half.empty() || undistortMap2Half.empty()) {
             cv::Mat cvCameraMatrix(3, 3, CV_32F, this->cameraMatrix.data());
             cvCameraMatrix.at<float>(0, 2) /= 2;
             cvCameraMatrix.at<float>(1, 2) /= 2;
             cv::Mat newCameraMatrix = cv::getOptimalNewCameraMatrix(cvCameraMatrix, distCoeffs, cv::Size(width / 2, height / 2), 1);
-            cv::initUndistortRectifyMap(cvCameraMatrix, distCoeffs, cv::Mat(), newCameraMatrix, cv::Size(width / 2, height / 2), CV_16SC2, undistortMap1Half, undistortMap2Half);
+            cv::initUndistortRectifyMap(
+                cvCameraMatrix, distCoeffs, cv::Mat(), newCameraMatrix, cv::Size(width / 2, height / 2), CV_16SC2, undistortMap1Half, undistortMap2Half);
         }
         cv::remap(src, dst, undistortMap1Half, undistortMap2Half, cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(127, 127));
     } else {
