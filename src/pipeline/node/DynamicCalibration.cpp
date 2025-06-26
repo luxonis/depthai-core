@@ -415,6 +415,13 @@ void DynamicCalibration::run() {
 
             case CalibrationStateMachine::CalibrationState::Recalibrating: {
                 logger::info("[DynamicCalibration] Running full recalibration...");
+                auto result = dynCalibImpl->checkCalibrationQuality(dcDevice, socketA, socketB, forceTrigger);
+                auto calibQuality = result.value;
+                dynResult.calibOverallQuality = dai::DynamicCalibrationResults::CalibrationQualityResult::fromDCL(calibQuality);
+                auto& report = dynResult.calibOverallQuality->report;
+                if (!report.has_value()) {
+                    break;
+                }
                 auto resultCalib = forceTrigger
                     ? dynCalibImpl->findNewCalibration(dcDevice, socketA, socketB, static_cast<dcl::DynamicCalibrationMode>(DynamicCalibrationConfig::AlgorithmControl::PerformanceMode::SKIP_CHECKS))
                     : dynCalibImpl->findNewCalibration(dcDevice, socketA, socketB, static_cast<dcl::DynamicCalibrationMode>(properties.initialConfig.algorithmControl.performanceMode));
