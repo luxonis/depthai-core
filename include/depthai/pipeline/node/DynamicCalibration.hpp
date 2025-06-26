@@ -244,7 +244,7 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     };
 
     CalibrationStateMachine calibrationSM;
-    Input inSync{*this, {"inSync", DEFAULT_GROUP, false, 0, {{DatatypeEnum::MessageGroup, true}}}};
+    Input inSync{*this, {"inSync", DEFAULT_GROUP, false, 1, {{DatatypeEnum::MessageGroup, true}}}};
 
 };
 
