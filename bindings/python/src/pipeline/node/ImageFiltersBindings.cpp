@@ -1,10 +1,8 @@
-#include <pybind11/stl.h>
-
 #include "Common.hpp"
 #include "DatatypeBindings.hpp"
 #include "depthai/pipeline/node/ImageFilters.hpp"
 
-void bind_imagefilters(pybind11::module& m, void* pCallstack) {
+void bind_imagefilters(py::module& m, void* pCallstack) {
     using namespace dai;
     using namespace node;
 
@@ -17,8 +15,14 @@ void bind_imagefilters(pybind11::module& m, void* pCallstack) {
     py::class_<ImageFiltersConfig, Py<ImageFiltersConfig>, Buffer, std::shared_ptr<ImageFiltersConfig>> imageFiltersConfig(
         m, "ImageFiltersConfig", DOC(dai, ImageFiltersConfig));
     imageFiltersConfig.def(py::init<>());
-    imageFiltersConfig.def_readwrite("filterIndex", &ImageFiltersConfig::filterIndex, DOC(dai, ImageFiltersConfig, filterIndex));
+    imageFiltersConfig.def_readwrite("filterIndices", &ImageFiltersConfig::filterIndices, DOC(dai, ImageFiltersConfig, filterIndices));
     imageFiltersConfig.def_readwrite("filterParams", &ImageFiltersConfig::filterParams, DOC(dai, ImageFiltersConfig, filterParams));
+    imageFiltersConfig.def("insertFilter", &ImageFiltersConfig::insertFilter, py::arg("filterParams"), DOC(dai, ImageFiltersConfig, insertFilter));
+    imageFiltersConfig.def("updateFilterAtIndex",
+                           &ImageFiltersConfig::updateFilterAtIndex,
+                           py::arg("filterIndex"),
+                           py::arg("filterParams"),
+                           DOC(dai, ImageFiltersConfig, updateFilterAtIndex));
 
     py::class_<ToFDepthConfidenceFilterConfig, Py<ToFDepthConfidenceFilterConfig>, Buffer, std::shared_ptr<ToFDepthConfidenceFilterConfig>>
         depthConfidenceFilterConfig(m, "ToFDepthConfidenceFilterConfig", DOC(dai, ToFDepthConfidenceFilterConfig));
@@ -50,9 +54,9 @@ void bind_imagefilters(pybind11::module& m, void* pCallstack) {
     imageFilters.def_readonly("input", &ImageFilters::input, DOC(dai, node, ImageFilters, input))
         .def_readonly("output", &ImageFilters::output, DOC(dai, node, ImageFilters, output))
         .def_readonly("config", &ImageFilters::config, DOC(dai, node, ImageFilters, config))
+        .def_readonly("initialConfig", &ImageFilters::initialConfig, DOC(dai, node, ImageFilters, initialConfig))
         .def("setRunOnHost", &ImageFilters::setRunOnHost, py::arg("runOnHost"), DOC(dai, node, ImageFilters, setRunOnHost))
         .def("runOnHost", &ImageFilters::runOnHost, DOC(dai, node, ImageFilters, runOnHost))
-        .def("addFilter", &ImageFilters::addFilter, py::arg("filter"), DOC(dai, node, ImageFilters, addFilter))
         .def("build", &ImageFilters::build, py::arg("input"), py::arg("presetMode") = ImageFilters::PresetMode::DUMMY, DOC(dai, node, ImageFilters, build));
 
     // Just an alias for the filter stereo depth config parameters
@@ -70,6 +74,7 @@ void bind_imagefilters(pybind11::module& m, void* pCallstack) {
         .def_readonly("filteredDepth", &ToFDepthConfidenceFilter::filteredDepth, DOC(dai, node, ToFDepthConfidenceFilter, filteredDepth))
         .def_readonly("confidence", &ToFDepthConfidenceFilter::confidence, DOC(dai, node, ToFDepthConfidenceFilter, confidence))
         .def_readonly("config", &ToFDepthConfidenceFilter::config, DOC(dai, node, ToFDepthConfidenceFilter, config))
+        .def_readonly("initialConfig", &ToFDepthConfidenceFilter::initialConfig, DOC(dai, node, ToFDepthConfidenceFilter, initialConfig))
         .def("setRunOnHost", &ToFDepthConfidenceFilter::setRunOnHost, py::arg("runOnHost"), DOC(dai, node, ToFDepthConfidenceFilter, setRunOnHost))
         .def("runOnHost", &ToFDepthConfidenceFilter::runOnHost, DOC(dai, node, ToFDepthConfidenceFilter, runOnHost))
         .def("setConfidenceThreshold",

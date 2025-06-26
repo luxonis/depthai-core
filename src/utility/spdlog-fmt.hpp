@@ -8,7 +8,7 @@
     #include <spdlog/fmt/ostr.h>
 
     #include "depthai/common/CameraBoardSocket.hpp"
-    #include "pipeline/datatype/DatatypeEnum.hpp"
+    #include "depthai/pipeline/datatype/DatatypeEnum.hpp"
 #endif
 
 namespace dai {

@@ -9,6 +9,12 @@ namespace dai {
 namespace node {
 
 class ImageFilters : public DeviceNodeCRTP<DeviceNode, ImageFilters, ImageFiltersProperties>, public HostRunnable {
+   protected:
+    Properties& getProperties() override {
+        properties.initialConfig = *initialConfig;
+        return properties;
+    }
+
    public:
     constexpr static const char* NAME = "ImageFilters";
     using DeviceNodeCRTP::DeviceNodeCRTP;
@@ -19,6 +25,11 @@ class ImageFilters : public DeviceNodeCRTP<DeviceNode, ImageFilters, ImageFilter
     enum class PresetMode : std::uint32_t {
         DUMMY,
     };
+
+    /**
+     * Initial config for image filters.
+     */
+    std::shared_ptr<ImageFiltersConfig> initialConfig = std::make_shared<ImageFiltersConfig>();
 
     /**
      * Build the node.
@@ -85,6 +96,12 @@ class ImageFilters : public DeviceNodeCRTP<DeviceNode, ImageFilters, ImageFilter
  * Node for depth confidence filter, designed to be used with the `ToF` node.
  */
 class ToFDepthConfidenceFilter : public DeviceNodeCRTP<DeviceNode, ToFDepthConfidenceFilter, ToFDepthConfidenceFilterProperties>, public HostRunnable {
+   protected:
+    Properties& getProperties() override {
+        properties.initialConfig = *initialConfig;
+        return properties;
+    }
+
    public:
     constexpr static const char* NAME = "DepthConfidenceFilter";
     using DeviceNodeCRTP::DeviceNodeCRTP;
@@ -95,6 +112,11 @@ class ToFDepthConfidenceFilter : public DeviceNodeCRTP<DeviceNode, ToFDepthConfi
     enum class PresetMode : std::uint32_t {
         DUMMY,
     };
+
+    /**
+     * Initial config for ToF depth confidence filter.
+     */
+    std::shared_ptr<ToFDepthConfidenceFilterConfig> initialConfig = std::make_shared<ToFDepthConfidenceFilterConfig>();
 
     /**
      * Build the node.

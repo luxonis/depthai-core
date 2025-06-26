@@ -59,13 +59,15 @@ def main(args: argparse.Namespace):
 
         filterPipeline = pipeline.create(dai.node.ImageFilters)
         filterFactories = [
-            get_random_median_filter_params,
             get_random_speckle_filter_params,
             get_random_temporal_filter_params,
             get_random_spatial_filter_params,
+            get_random_median_filter_params,
         ]
+
         for filterFactory in filterFactories:
-            filterPipeline.addFilter(filterFactory())
+            filterPipeline.initialConfig.insertFilter(filterFactory())
+
         filterPipeline.setRunOnHost(True)
 
         depth.setLeftRightCheck(args.lr_check)
@@ -108,10 +110,10 @@ def main(args: argparse.Namespace):
             )
 
             if time.time() - t_switch > 1.0:
-                config = dai.ImageFiltersConfig()
                 index = random.randint(0, len(filterFactories) - 1)
-                config.filterIndex = index
-                config.filterParams = filterFactories[index]()
+                config = dai.ImageFiltersConfig().updateFilterAtIndex(
+                    index, filterFactories[index]()
+                )
                 configInputQueue.send(config)
                 t_switch = time.time()
                 print("Config changed!")

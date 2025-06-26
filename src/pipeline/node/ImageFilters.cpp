@@ -28,7 +28,7 @@ class MedianFilter {
     void process(std::shared_ptr<dai::ImgFrame>& frame, int medianSize);
 };
 
-struct SpatialFilterParams {
+struct SpatialFilterParamsImpl {
     std::shared_ptr<dai::ImgFrame> currentFrame = {};
 
     float alpha = 0.5f;
@@ -46,7 +46,7 @@ class SpatialFilter {
     void process(std::shared_ptr<dai::ImgFrame>& frame);
 
    private:
-    SpatialFilterParams params = {};
+    SpatialFilterParamsImpl params = {};
 };
 
 class SpeckleFilter {
@@ -60,7 +60,7 @@ class SpeckleFilter {
 
 constexpr const size_t PERSISTENCY_LUT_SIZE = 256;
 
-struct TemporalFilterParams {
+struct TemporalFilterParamsImpl {
     std::shared_ptr<dai::ImgFrame> currentFrame = {};
     std::shared_ptr<std::vector<uint8_t>> accumulatorFrame = nullptr;
     std::shared_ptr<std::vector<uint8_t>> history = nullptr;
@@ -90,7 +90,7 @@ class TemporalFilter {
     uint8_t persistenceMode = 255;  // default value: "invalid"
     uint8_t currFrameIdx = 0;
 
-    TemporalFilterParams params = {};
+    TemporalFilterParamsImpl params = {};
 
     MemSections rawAccumulatorFrame = {};  // Hold the last frame received for the current profile
     MemSections rawHistoryFrame = {};      // represents the history over the last 8 frames, 1 bit per frame
@@ -141,7 +141,7 @@ void MedianFilter::process(std::shared_ptr<dai::ImgFrame>& frame, int medianSize
 /***********************************************************************************************************/
 
 template <typename T>
-void recursiveFilterHorizontal(SpatialFilterParams* params) {
+void recursiveFilterHorizontal(SpatialFilterParamsImpl* params) {
     void* image_data = (void*)params->currentFrame->data->getData().data();
     float alpha = params->alpha;
     int _width = params->currentFrame->getWidth();
@@ -224,7 +224,7 @@ void recursiveFilterHorizontal(SpatialFilterParams* params) {
 }
 
 template <typename T>
-void recursiveFilterVertical(SpatialFilterParams* params) {
+void recursiveFilterVertical(SpatialFilterParamsImpl* params) {
     void* image_data = (void*)params->currentFrame->data->getData().data();
     float alpha = params->alpha;
     int _width = params->currentFrame->getWidth();
@@ -354,7 +354,7 @@ void SpeckleFilter::process(std::shared_ptr<dai::ImgFrame>& frame, int speckleRa
 /***********************************************************************************************************/
 
 template <typename T>
-void processImpl(TemporalFilterParams* params) {
+void processImpl(TemporalFilterParamsImpl* params) {
     auto& currentFrame = params->currentFrame;
     auto& accumulatorFrame = params->accumulatorFrame;
     auto& history = params->history;
@@ -604,7 +604,7 @@ class MedianFilterWrapper : public ImageFilters::Filter {
         if(std::holds_alternative<MedianFilterParams>(params)) {
             this->params = std::get<MedianFilterParams>(params);
         } else {
-            DAI_CHECK_V(false, "Invalid filter params");
+            DAI_CHECK_V(false, "Invalid filter params. Expected MedianFilterParams, got {}", params.index());
         }
     }
 
@@ -633,7 +633,7 @@ class SpatialFilterWrapper : public ImageFilters::Filter {
         if(std::holds_alternative<SpatialFilterParams>(params)) {
             this->params = std::get<SpatialFilterParams>(params);
         } else {
-            DAI_CHECK_V(false, "Invalid filter params");
+            DAI_CHECK_V(false, "Invalid filter params. Expected SpatialFilterParams, got {}", params.index());
         }
     }
 
@@ -660,7 +660,7 @@ class SpeckleFilterWrapper : public ImageFilters::Filter {
         if(std::holds_alternative<SpeckleFilterParams>(params)) {
             this->params = std::get<SpeckleFilterParams>(params);
         } else {
-            DAI_CHECK_V(false, "Invalid filter params");
+            DAI_CHECK_V(false, "Invalid filter params. Expected SpeckleFilterParams, got {}", params.index());
         }
     }
 
@@ -710,7 +710,7 @@ class TemporalFilterWrapper : public ImageFilters::Filter {
             this->params = std::get<TemporalFilterParams>(params);
             isInitialized = false;
         } else {
-            DAI_CHECK_V(false, "Invalid filter params");
+            DAI_CHECK_V(false, "Invalid filter params. Expected TemporalFilterParams, got {}", params.index());
         }
     }
 };
@@ -743,35 +743,59 @@ std::shared_ptr<ImageFilters> ImageFilters::build(Node::Output& input, PresetMod
     return std::static_pointer_cast<ImageFilters>(shared_from_this());
 }
 
-void ImageFilters::addFilter(const FilterParams& filter) {
-    properties.filters.push_back(filter);
-}
-
 void ImageFilters::run() {
-    // Create filters
-    pimpl->logger->debug("ImageFilters: Creating filters");
+    // A vector of filters
     std::vector<std::unique_ptr<Filter>> filters;
-    for(const auto& filter : properties.filters) {
-        filters.push_back(createFilter(filter));
-    }
 
-    pimpl->logger->debug("ImageFilters: Starting");
+    // A helper function to create a new pipeline
+    auto createNewFilterPipeline = [&filters](const ImageFiltersConfig& config) {
+        filters.clear();
+        for(const auto& params : config.filterParams) {
+            filters.push_back(createFilter(params));
+        }
+    };
+
+    // A helper function to update an existing pipeline
+    auto& logger = pimpl->logger;
+    auto updateExistingFilterPipeline = [&filters, &logger](const ImageFiltersConfig& config) {
+        for(size_t i = 0; i < config.filterIndices.size(); i++) {
+            const auto& index = config.filterIndices[i];
+            const auto& params = config.filterParams[i];
+
+            if(index >= 0 && index < static_cast<int>(filters.size())) {
+                filters[index]->setParams(params);
+            } else {
+                logger->warn("ImageFilters: Invalid filter index: {}. Should be in range [0, {})", index, filters.size());
+            }
+        }
+    };
+
+    // Create new filter pipeline
+    auto& properties = getProperties();
+    auto& initialConfig = properties.initialConfig;
+    DAI_CHECK_V(initialConfig.filterIndices.size() == 0, "Initial config must describe a new filter pipeline, not an update to it.");
+    createNewFilterPipeline(initialConfig);
+
+    logger->debug("ImageFilters: Created a new filter pipeline with {} filters. Is passthrough: {}", filters.size(), filters.size() == 0);
+
     while(isRunning()) {
         // Set config
         while(config.has()) {
             auto configMsg = config.get<ImageFiltersConfig>();
-            auto index = configMsg->filterIndex;
-            if(index >= static_cast<int>(filters.size())) {
-                pimpl->logger->error("ImageFilters: Invalid filter index: {}", index);
-                break;
+            bool isUpdate = configMsg->filterIndices.size() > 0;
+            if(isUpdate) {
+                logger->debug("ImageFilters: Updating existing filter pipeline");
+                updateExistingFilterPipeline(*configMsg);
+            } else {
+                logger->debug("ImageFilters: Creating a new filter pipeline");
+                createNewFilterPipeline(*configMsg);
             }
-            filters[index]->setParams(configMsg->filterParams);
         }
 
         // Get frame from input queue
         std::shared_ptr<dai::ImgFrame> frame = input.get<dai::ImgFrame>();
         if(frame == nullptr) {
-            pimpl->logger->error("ImageFilters: Input frame is nullptr");
+            logger->error("ImageFilters: Input frame is nullptr");
             break;
         }
 
@@ -862,11 +886,12 @@ void ToFDepthConfidenceFilter::applyDepthConfidenceFilter(std::shared_ptr<ImgFra
 }
 
 void ToFDepthConfidenceFilter::run() {
+    auto confidenceThreshold = getProperties().initialConfig.confidenceThreshold;
     while(isRunning()) {
         // Update threshold dynamically
         while(config.has()) {
             auto configMsg = config.get<ToFDepthConfidenceFilterConfig>();
-            properties.confidenceThreshold = configMsg->confidenceThreshold;
+            confidenceThreshold = configMsg->confidenceThreshold;
         }
 
         // Get frames from input queue
@@ -893,7 +918,7 @@ void ToFDepthConfidenceFilter::run() {
         confidenceFrame->setType(ImgFrame::Type::RAW16);
 
         // Apply filter
-        applyDepthConfidenceFilter(depthFrame, amplitudeFrame, filteredDepthFrame, confidenceFrame, properties.confidenceThreshold);
+        applyDepthConfidenceFilter(depthFrame, amplitudeFrame, filteredDepthFrame, confidenceFrame, confidenceThreshold);
 
         // Send results
         filteredDepth.send(filteredDepthFrame);
@@ -902,11 +927,12 @@ void ToFDepthConfidenceFilter::run() {
 }
 
 float ToFDepthConfidenceFilter::getConfidenceThreshold() const {
-    return properties.confidenceThreshold;
+    return initialConfig->confidenceThreshold;
 }
 
 void ToFDepthConfidenceFilter::setConfidenceThreshold(float threshold) {
-    properties.confidenceThreshold = threshold;
+    initialConfig->confidenceThreshold = threshold;
+    properties.initialConfig = *initialConfig;
 }
 
 void ToFDepthConfidenceFilter::setRunOnHost(bool runOnHost) {

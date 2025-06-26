@@ -1,44 +1,29 @@
 #pragma once
 
 #include <depthai/pipeline/DeviceNode.hpp>
-#include <depthai/pipeline/datatype/StereoDepthConfig.hpp>
-#include <vector>
 
 #include "depthai/common/variant.hpp"
+#include "depthai/pipeline/datatype/ImageFiltersConfig.hpp"
 #include "depthai/properties/Properties.hpp"
 
 namespace dai {
 
-using MedianFilterParams = dai::filters::params::MedianFilter;
-using SpatialFilterParams = dai::filters::params::SpatialFilter;
-using SpeckleFilterParams = dai::filters::params::SpeckleFilter;
-using TemporalFilterParams = dai::filters::params::TemporalFilter;
-
-// union of all filter params
-typedef std::variant<MedianFilterParams, SpatialFilterParams, SpeckleFilterParams, TemporalFilterParams> FilterParams;
-
-/**
- * Properties for StereoDepthFilterPipeline node
- */
 struct ImageFiltersProperties : PropertiesSerializable<Properties, ImageFiltersProperties> {
     /**
-     * List of filters (the type of which is determined by the filter parameters) to apply to the input frame
+     * Initial config for the filter pipeline
      */
-    std::vector<FilterParams> filters;
+    ImageFiltersConfig initialConfig;
 };
 
-DEPTHAI_SERIALIZE_EXT(ImageFiltersProperties, filters);
+DEPTHAI_SERIALIZE_EXT(ImageFiltersProperties, initialConfig);
 
-/**
- * Properties for DepthConfidenceFilter node
- */
 struct ToFDepthConfidenceFilterProperties : PropertiesSerializable<Properties, ToFDepthConfidenceFilterProperties> {
     /**
-     * Threshold for the confidence filter
+     * Initial config for the ToF depth confidence filter
      */
-    float confidenceThreshold = 0.0f;
+    ToFDepthConfidenceFilterConfig initialConfig;
 };
 
-DEPTHAI_SERIALIZE_EXT(ToFDepthConfidenceFilterProperties, confidenceThreshold);
+DEPTHAI_SERIALIZE_EXT(ToFDepthConfidenceFilterProperties, initialConfig);
 
 }  // namespace dai
