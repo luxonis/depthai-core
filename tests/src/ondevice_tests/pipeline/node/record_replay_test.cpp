@@ -49,7 +49,7 @@ class TestHelper {
         std::filesystem::create_directories(std::filesystem::path(testFolder).append("extracted"));
 
         if(!folderHasWritePermissions(testFolder)) {
-            throw std::runtime_error("Test folder does not have write permissions: " + testFolder);
+            throw std::runtime_error("Test folder does not have write permissions: " + testFolder.string());
         }
 
         auto recordingFilenames = dai::utility::filenamesInTar(RECORDING_PATH);
