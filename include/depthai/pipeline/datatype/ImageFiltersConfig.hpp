@@ -16,10 +16,8 @@ using TemporalFilterParams = dai::filters::params::TemporalFilter;
 // union of all filter params
 typedef std::variant<MedianFilterParams, SpatialFilterParams, SpeckleFilterParams, TemporalFilterParams> FilterParams;
 
-
 class ImageFiltersConfig : public Buffer {
    public:
-    ImageFiltersConfig() = default;
     virtual ~ImageFiltersConfig() = default;
 
     /**
@@ -60,7 +58,6 @@ class ImageFiltersConfig : public Buffer {
 
 class ToFDepthConfidenceFilterConfig : public Buffer {
    public:
-    ToFDepthConfidenceFilterConfig() = default;
     virtual ~ToFDepthConfidenceFilterConfig() = default;
 
     /**

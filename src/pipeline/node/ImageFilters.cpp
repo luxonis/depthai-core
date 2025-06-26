@@ -738,8 +738,8 @@ std::unique_ptr<ImageFilters::Filter> createFilter(const FilterParams& params) {
 }
 
 std::shared_ptr<ImageFilters> ImageFilters::build(Node::Output& input, PresetMode presetMode) {
-    (void)presetMode;  // not used for now
     input.link(this->input);
+    setDefaultProfilePreset(presetMode);
     return std::static_pointer_cast<ImageFilters>(shared_from_this());
 }
 
@@ -821,10 +821,51 @@ void ImageFilters::setRunOnHost(bool runOnHost) {
     runOnHostVar = runOnHost;
 }
 
+void ImageFilters::setDefaultProfilePreset(PresetMode mode) {
+    switch(mode) {
+        case PresetMode::DEFAULT: {
+            // Empty
+        } break;
+        case PresetMode::BIN_PICKING: {
+            std::vector<FilterParams> params;
+
+            TemporalFilterParams temporalFilterParams;
+            temporalFilterParams.enable = true;
+            temporalFilterParams.persistencyMode = TemporalFilterParams::PersistencyMode::PERSISTENCY_INDEFINITELY;
+            temporalFilterParams.alpha = 0.2f;
+            temporalFilterParams.delta = 60;
+
+            SpeckleFilterParams speckleFilterParams;
+            speckleFilterParams.enable = true;
+            speckleFilterParams.speckleRange = 14;
+            speckleFilterParams.differenceThreshold = 11;
+
+            SpatialFilterParams spatialFilterParams;
+            spatialFilterParams.enable = true;
+            spatialFilterParams.alpha = 0.5f;
+            spatialFilterParams.delta = 20;
+            spatialFilterParams.numIterations = 2;
+            spatialFilterParams.holeFillingRadius = 0;
+
+            params.push_back(temporalFilterParams);
+            params.push_back(speckleFilterParams);
+            params.push_back(spatialFilterParams);
+
+            initialConfig->filterParams = params;
+        } break;
+        case PresetMode::LONG_RANGE: {
+        } break;
+        case PresetMode::NORM: {
+        } break;
+    }
+
+    properties.initialConfig = *initialConfig;
+}
+
 std::shared_ptr<ToFDepthConfidenceFilter> ToFDepthConfidenceFilter::build(Node::Output& depth, Node::Output& amplitude, PresetMode presetMode) {
-    (void)presetMode;  // not used for now
     depth.link(this->depth);
     amplitude.link(this->amplitude);
+    setDefaultProfilePreset(presetMode);
     return std::static_pointer_cast<ToFDepthConfidenceFilter>(shared_from_this());
 }
 
@@ -944,6 +985,23 @@ void ToFDepthConfidenceFilter::setRunOnHost(bool runOnHost) {
 
 bool ToFDepthConfidenceFilter::runOnHost() const {
     return runOnHostVar;
+}
+
+void ToFDepthConfidenceFilter::setDefaultProfilePreset(PresetMode mode) {
+    switch(mode) {
+        case PresetMode::DEFAULT: {
+            // Empty
+        } break;
+        case PresetMode::BIN_PICKING: {
+            initialConfig->confidenceThreshold = 0.5f;
+        } break;
+        case PresetMode::LONG_RANGE: {
+        } break;
+        case PresetMode::NORM: {
+        } break;
+    }
+
+    properties.initialConfig = *initialConfig;
 }
 
 }  // namespace node

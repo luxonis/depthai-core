@@ -23,7 +23,10 @@ class ImageFilters : public DeviceNodeCRTP<DeviceNode, ImageFilters, ImageFilter
      * Preset modes for image filters.
      */
     enum class PresetMode : std::uint32_t {
-        DUMMY,
+        DEFAULT,
+        BIN_PICKING,
+        LONG_RANGE,
+        NORM,
     };
 
     /**
@@ -37,7 +40,7 @@ class ImageFilters : public DeviceNodeCRTP<DeviceNode, ImageFilters, ImageFilter
      * @param presetMode Preset mode for image filters
      * @return Shared pointer to the node
      */
-    std::shared_ptr<ImageFilters> build(Node::Output& input, PresetMode presetMode = PresetMode::DUMMY);
+    std::shared_ptr<ImageFilters> build(Node::Output& input, PresetMode presetMode = PresetMode::DEFAULT);
 
     /**
      * Input for image frames to be filtered
@@ -89,6 +92,8 @@ class ImageFilters : public DeviceNodeCRTP<DeviceNode, ImageFilters, ImageFilter
     bool runOnHost() const override;
 
    private:
+    void setDefaultProfilePreset(PresetMode mode);
+
     bool runOnHostVar = true;
 };
 
@@ -110,7 +115,10 @@ class ToFDepthConfidenceFilter : public DeviceNodeCRTP<DeviceNode, ToFDepthConfi
      * Preset modes for ToF depth confidence filter.
      */
     enum class PresetMode : std::uint32_t {
-        DUMMY,
+        DEFAULT,
+        BIN_PICKING,
+        LONG_RANGE,
+        NORM,
     };
 
     /**
@@ -125,7 +133,7 @@ class ToFDepthConfidenceFilter : public DeviceNodeCRTP<DeviceNode, ToFDepthConfi
      * @param presetMode Preset mode for ToF depth confidence filter
      * @return Shared pointer to the node
      */
-    std::shared_ptr<ToFDepthConfidenceFilter> build(Node::Output& depth, Node::Output& amplitude, PresetMode presetMode = PresetMode::DUMMY);
+    std::shared_ptr<ToFDepthConfidenceFilter> build(Node::Output& depth, Node::Output& amplitude, PresetMode presetMode = PresetMode::DEFAULT);
 
     /**
      * Depth frame image, expected ImgFrame type is RAW8 or RAW16.
@@ -195,6 +203,9 @@ class ToFDepthConfidenceFilter : public DeviceNodeCRTP<DeviceNode, ToFDepthConfi
                                     std::shared_ptr<ImgFrame> filteredDepthFrame,
                                     std::shared_ptr<ImgFrame> confidenceFrame,
                                     float threshold);
+
+    void setDefaultProfilePreset(PresetMode mode);
+
     bool runOnHostVar = true;
 };
 

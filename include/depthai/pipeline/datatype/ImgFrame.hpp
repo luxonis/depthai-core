@@ -324,7 +324,6 @@ class ImgFrame : public Buffer, public ProtoSerializable {
      */
     std::shared_ptr<ImgFrame> clone() const;
 
-
     /**
      * @note Fov API works correctly only on rectilinear frames
      * Get the source diagonal field of view in degrees

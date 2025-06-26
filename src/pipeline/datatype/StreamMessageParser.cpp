@@ -20,6 +20,7 @@
 #include "depthai/pipeline/datatype/FeatureTrackerConfig.hpp"
 #include "depthai/pipeline/datatype/IMUData.hpp"
 #include "depthai/pipeline/datatype/ImageAlignConfig.hpp"
+#include "depthai/pipeline/datatype/ImageFiltersConfig.hpp"
 #include "depthai/pipeline/datatype/ImageManipConfig.hpp"
 #include "depthai/pipeline/datatype/ImgAnnotations.hpp"
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
@@ -41,7 +42,6 @@
 #include "depthai/pipeline/datatype/TrackedFeatures.hpp"
 #include "depthai/pipeline/datatype/Tracklets.hpp"
 #include "depthai/pipeline/datatype/TransformData.hpp"
-#include "depthai/pipeline/datatype/ImageFiltersConfig.hpp"
 // shared
 #include "depthai/pipeline/datatype/DatatypeEnum.hpp"
 #include "depthai/utility/Serialization.hpp"

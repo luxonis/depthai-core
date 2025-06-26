@@ -1,4 +1,5 @@
 #include "FilterParamsBindings.hpp"
+
 #include "depthai/pipeline/FilterParams.hpp"
 
 void FilterParamsBindings::bind(pybind11::module& m, void* pCallstack) {
@@ -24,12 +25,10 @@ void FilterParamsBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("numIterations", &dai::filters::params::SpatialFilter::numIterations, DOC(dai, filters, params, SpatialFilter, numIterations));
 
     // -- Temporal Filter --
-    py::class_<dai::filters::params::TemporalFilter> temporalFilter(
-        params, "TemporalFilter", DOC(dai, filters, params, TemporalFilter));
+    py::class_<dai::filters::params::TemporalFilter> temporalFilter(params, "TemporalFilter", DOC(dai, filters, params, TemporalFilter));
     temporalFilter.def(py::init<>())
         .def_readwrite("enable", &dai::filters::params::TemporalFilter::enable, DOC(dai, filters, params, TemporalFilter, enable))
-        .def_readwrite(
-            "persistencyMode", &dai::filters::params::TemporalFilter::persistencyMode, DOC(dai, filters, params, TemporalFilter, persistencyMode))
+        .def_readwrite("persistencyMode", &dai::filters::params::TemporalFilter::persistencyMode, DOC(dai, filters, params, TemporalFilter, persistencyMode))
         .def_readwrite("alpha", &dai::filters::params::TemporalFilter::alpha, DOC(dai, filters, params, TemporalFilter, alpha))
         .def_readwrite("delta", &dai::filters::params::TemporalFilter::delta, DOC(dai, filters, params, TemporalFilter, delta));
 
@@ -69,9 +68,8 @@ void FilterParamsBindings::bind(pybind11::module& m, void* pCallstack) {
     speckleFilter.def(py::init<>())
         .def_readwrite("enable", &dai::filters::params::SpeckleFilter::enable, DOC(dai, filters, params, SpeckleFilter, enable))
         .def_readwrite("speckleRange", &dai::filters::params::SpeckleFilter::speckleRange, DOC(dai, filters, params, SpeckleFilter, speckleRange))
-        .def_readwrite("differenceThreshold",
-                       &dai::filters::params::SpeckleFilter::differenceThreshold,
-                       DOC(dai, filters, params, SpeckleFilter, differenceThreshold));
+        .def_readwrite(
+            "differenceThreshold", &dai::filters::params::SpeckleFilter::differenceThreshold, DOC(dai, filters, params, SpeckleFilter, differenceThreshold));
 
     // Aliases for backward compatibility
     m.attr("MedianFilter") = medianFilter;

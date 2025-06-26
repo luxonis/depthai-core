@@ -48,7 +48,11 @@ void bind_imagefilters(py::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
 
     // Add enum for preset mode
-    py::enum_<ImageFilters::PresetMode>(imageFilters, "PresetMode").value("DUMMY", ImageFilters::PresetMode::DUMMY);
+    py::enum_<ImageFilters::PresetMode>(imageFilters, "PresetMode")
+        .value("DEFAULT", ImageFilters::PresetMode::DEFAULT)
+        .value("BIN_PICKING", ImageFilters::PresetMode::BIN_PICKING)
+        .value("LONG_RANGE", ImageFilters::PresetMode::LONG_RANGE)
+        .value("NORM", ImageFilters::PresetMode::NORM);
 
     // StereoDepthFilterPipeline bindings
     imageFilters.def_readonly("input", &ImageFilters::input, DOC(dai, node, ImageFilters, input))
@@ -57,7 +61,7 @@ void bind_imagefilters(py::module& m, void* pCallstack) {
         .def_readonly("initialConfig", &ImageFilters::initialConfig, DOC(dai, node, ImageFilters, initialConfig))
         .def("setRunOnHost", &ImageFilters::setRunOnHost, py::arg("runOnHost"), DOC(dai, node, ImageFilters, setRunOnHost))
         .def("runOnHost", &ImageFilters::runOnHost, DOC(dai, node, ImageFilters, runOnHost))
-        .def("build", &ImageFilters::build, py::arg("input"), py::arg("presetMode") = ImageFilters::PresetMode::DUMMY, DOC(dai, node, ImageFilters, build));
+        .def("build", &ImageFilters::build, py::arg("input"), py::arg("presetMode") = ImageFilters::PresetMode::DEFAULT, DOC(dai, node, ImageFilters, build));
 
     // Just an alias for the filter stereo depth config parameters
     imageFilters.attr("MedianFilterParams") = m.attr("StereoDepthConfig").attr("MedianFilter");
@@ -66,7 +70,11 @@ void bind_imagefilters(py::module& m, void* pCallstack) {
     imageFilters.attr("TemporalFilterParams") = m.attr("StereoDepthConfig").attr("PostProcessing").attr("TemporalFilter");
 
     // Add enum for preset mode
-    py::enum_<ToFDepthConfidenceFilter::PresetMode>(depthConfidenceFilter, "PresetMode").value("DUMMY", ToFDepthConfidenceFilter::PresetMode::DUMMY);
+    py::enum_<ToFDepthConfidenceFilter::PresetMode>(depthConfidenceFilter, "PresetMode")
+        .value("DEFAULT", ToFDepthConfidenceFilter::PresetMode::DEFAULT)
+        .value("BIN_PICKING", ToFDepthConfidenceFilter::PresetMode::BIN_PICKING)
+        .value("LONG_RANGE", ToFDepthConfidenceFilter::PresetMode::LONG_RANGE)
+        .value("NORM", ToFDepthConfidenceFilter::PresetMode::NORM);
 
     // DepthConfidenceFilter bindings
     depthConfidenceFilter.def_readonly("depth", &ToFDepthConfidenceFilter::depth, DOC(dai, node, ToFDepthConfidenceFilter, depth))
@@ -86,6 +94,6 @@ void bind_imagefilters(py::module& m, void* pCallstack) {
              &ToFDepthConfidenceFilter::build,
              py::arg("depth"),
              py::arg("amplitude"),
-             py::arg("presetMode") = ToFDepthConfidenceFilter::PresetMode::DUMMY,
+             py::arg("presetMode") = ToFDepthConfidenceFilter::PresetMode::DEFAULT,
              DOC(dai, node, ToFDepthConfidenceFilter, build));
 }

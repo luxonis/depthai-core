@@ -2,7 +2,6 @@
 
 #include <cstdint>
 
-
 #include "depthai/utility/Serialization.hpp"
 
 namespace dai {
@@ -53,19 +52,19 @@ struct SpatialFilter {
 };
 
 /**
-* Temporal filtering with optional persistence.
-*/
+ * Temporal filtering with optional persistence.
+ */
 struct TemporalFilter {
     static constexpr const std::int32_t DEFAULT_DELTA_VALUE = 3;
 
     /**
-        * Whether to enable or disable the filter.
-        */
+     * Whether to enable or disable the filter.
+     */
     bool enable = false;
 
     /**
-        * Persistency algorithm type.
-        */
+     * Persistency algorithm type.
+     */
     enum class PersistencyMode : int32_t {
         PERSISTENCY_OFF = 0,
         VALID_8_OUT_OF_8 = 1,
@@ -79,47 +78,47 @@ struct TemporalFilter {
     };
 
     /**
-        * Persistency mode.
-        * If the current disparity/depth value is invalid, it will be replaced by an older value, based on persistency mode.
-        */
+     * Persistency mode.
+     * If the current disparity/depth value is invalid, it will be replaced by an older value, based on persistency mode.
+     */
     PersistencyMode persistencyMode = PersistencyMode::VALID_2_IN_LAST_4;
 
     /**
-        * The Alpha factor in an exponential moving average with Alpha=1 - no filter. Alpha = 0 - infinite filter.
-        * Determines the extent of the temporal history that should be averaged.
-        */
+     * The Alpha factor in an exponential moving average with Alpha=1 - no filter. Alpha = 0 - infinite filter.
+     * Determines the extent of the temporal history that should be averaged.
+     */
     float alpha = 0.4f;
 
     /**
-        * Step-size boundary. Establishes the threshold used to preserve surfaces (edges).
-        * If the disparity value between neighboring pixels exceed the disparity threshold set by this delta parameter,
-        * then filtering will be temporarily disabled.
-        * Default value 0 means auto: 3 disparity integer levels.
-        * In case of subpixel mode it's 3*number of subpixel levels.
-        */
+     * Step-size boundary. Establishes the threshold used to preserve surfaces (edges).
+     * If the disparity value between neighboring pixels exceed the disparity threshold set by this delta parameter,
+     * then filtering will be temporarily disabled.
+     * Default value 0 means auto: 3 disparity integer levels.
+     * In case of subpixel mode it's 3*number of subpixel levels.
+     */
     std::int32_t delta = DEFAULT_DELTA_VALUE;
 
     DEPTHAI_SERIALIZE(TemporalFilter, enable, persistencyMode, alpha, delta);
 };
 
 /**
-* Speckle filtering.
-* Removes speckle noise.
-*/
+ * Speckle filtering.
+ * Removes speckle noise.
+ */
 struct SpeckleFilter {
     /**
-        * Whether to enable or disable the filter.
-        */
+     * Whether to enable or disable the filter.
+     */
     bool enable = false;
     /**
-        * Speckle search range.
-        */
+     * Speckle search range.
+     */
     std::uint32_t speckleRange = 50;
 
     /**
-        * Maximum difference between neighbor disparity pixels to put them into the same blob.
-        * Units in disparity integer levels.
-        */
+     * Maximum difference between neighbor disparity pixels to put them into the same blob.
+     * Units in disparity integer levels.
+     */
     std::uint32_t differenceThreshold = 2;
 
     DEPTHAI_SERIALIZE(SpeckleFilter, enable, speckleRange, differenceThreshold);
