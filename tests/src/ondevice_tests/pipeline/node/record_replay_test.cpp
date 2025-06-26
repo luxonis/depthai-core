@@ -5,12 +5,12 @@
 #include <filesystem>
 #include <thread>
 
+#include "../../src/utility/Platform.hpp"
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/depthai.hpp"
 #include "depthai/pipeline/node/Camera.hpp"
 #include "depthai/pipeline/node/host/Record.hpp"
 #include "depthai/utility/Compression.hpp"
-#include "../../src/utility/Platform.hpp"
 
 using namespace std::literals::chrono_literals;
 
@@ -65,7 +65,7 @@ class TestHelper {
         std::filesystem::remove_all(testFolder);
     }
 
-    std::string testFolder;
+    std::filesystem::path testFolder;
 };
 
 TEST_CASE("RecordMetadataOnly node") {

@@ -38,7 +38,7 @@ class TestHelper {
         }
     }
 
-    std::string testFolder;
+    std::filesystem::path testFolder;
 };
 
 TEST_CASE("ReplayMetadataOnly node") {
