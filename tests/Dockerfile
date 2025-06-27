@@ -77,7 +77,7 @@ ARG GIT_COMMIT=unspecified  # commit SHA busts cache
 
 RUN echo "Cloning depthai-core at commit ${GIT_COMMIT}"
 
-RUN if [ "$PULL_REQUEST" != "false" ]; then \
+RUN if [ "$PULL_REQUEST" == "false" ]; then \
         git clone --recursive -b ${BRANCH} ${REPO_URL} . \
     else \
         git clone --recursive ${REPO_URL} . \
