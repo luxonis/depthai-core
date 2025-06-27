@@ -71,6 +71,7 @@ class Node : public std::enable_shared_from_this<Node> {
     static constexpr auto DEFAULT_QUEUE_SIZE = 3;
     static constexpr auto DEFAULT_WAIT_FOR_MESSAGE = false;
 
+    std::string createUniqueName(const std::string& prefix="");
    protected:
     std::vector<Output*> outputRefs;
     std::vector<Input*> inputRefs;
@@ -90,6 +91,9 @@ class Node : public std::enable_shared_from_this<Node> {
     void setNodeRefs(std::initializer_list<std::pair<std::string, std::shared_ptr<Node>*>> l);
     void setNodeRefs(std::pair<std::string, std::shared_ptr<Node>*> nodeRef);
     void setNodeRefs(std::string alias, std::shared_ptr<Node>* nodeRef);
+    
+private:
+    std::vector<std::string> uniqueNames;
 
    public:
     struct OutputDescription {

@@ -83,7 +83,13 @@ void bind_hostnode(pybind11::module& m, void* pCallstack) {
                int queueSize,
                std::vector<Node::DatatypeHierarchy> types,
                bool waitForMessage) {
-                return std::make_shared<Node::Input>(node, Node::InputDescription{name, group, blocking, queueSize, types, waitForMessage});
+                std::string uName;
+                if(name.empty()){
+                 uName = node.createUniqueName("input");
+                } else{
+                    uName = name;
+                }
+                return std::make_shared<Node::Input>(node, Node::InputDescription{uName, group, blocking, queueSize, types, waitForMessage});
             },
             py::arg("name") = Node::InputDescription{}.name,
             py::arg("group") = Node::InputDescription{}.group,
@@ -95,7 +101,13 @@ void bind_hostnode(pybind11::module& m, void* pCallstack) {
         .def(
             "createOutput",
             [](ThreadedHostNode& node, std::string name, std::string group, std::vector<Node::DatatypeHierarchy> types) {
-                return std::make_shared<Node::Output>(node, Node::OutputDescription{name, group, types});
+                std::string uName;
+                if(name.empty()){
+                 uName = node.createUniqueName("output");
+                } else{
+                    uName = name;
+                }
+                return std::make_shared<Node::Output>(node, Node::OutputDescription{uName, group, types});
             },
             py::arg("name") = Node::OutputDescription{}.name,
             py::arg("group") = Node::OutputDescription{}.group,

@@ -52,6 +52,11 @@ bool Node::Connection::operator==(const Node::Connection& rhs) const {
             && inputGroup == rhs.inputGroup);
 }
 
+std::string Node::createUniqueName(const std::string& prefix){
+    std::string name = fmt::format("{}_{}_{}", getName(), prefix, id++);
+    return name;
+}
+
 std::string Node::Output::toString() const {
     if(getGroup() == "") {
         return fmt::format("{}", getName());
@@ -162,7 +167,8 @@ std::shared_ptr<dai::MessageQueue> Node::Output::createOutputQueue(unsigned int 
     if(pipelinePtr.isBuilt()) {
         throw std::runtime_error("Cannot create queue after pipeline is built");
     }
-    auto queue = std::make_shared<MessageQueue>(maxSize, blocking);
+    auto name = getParent().createUniqueName("output_queue");
+    auto queue = std::make_shared<MessageQueue>(name, maxSize, blocking);
     link(queue);
 
     // No need to expose this on the public pipeline interface
@@ -178,7 +184,8 @@ std::shared_ptr<InputQueue> Node::Input::createInputQueue(unsigned int maxSize, 
 
     // Construct a new InputQueue interface
     // Cannot use make_shared as the InputQueue's constructor is private - only send method is exposed
-    auto inputQueuePtr = std::shared_ptr<InputQueue>(new InputQueue(maxSize, blocking));
+    auto name = getParent().createUniqueName("input_queue");
+    auto inputQueuePtr = std::shared_ptr<InputQueue>(new InputQueue(name, maxSize, blocking));
 
     // Add the underlying input queue node to the pipeline
     pipelinePtr.add(inputQueuePtr->getNode());
