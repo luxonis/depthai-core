@@ -78,15 +78,16 @@ ARG GIT_COMMIT=unspecified  # commit SHA busts cache
 RUN echo "Cloning depthai-core at commit ${GIT_COMMIT}"
 
 RUN if [ "$PULL_REQUEST" = "false" ]; then \
-        git clone --recursive -b ${BRANCH} ${REPO_URL} . \
+        git clone --recursive -b ${BRANCH} ${REPO_URL} depthai-core\
     else \
-        git clone --recursive ${REPO_URL} . \
-        git fetch --depth 1 origin ${BRANCH}:pr-merge \
-        git switch pr-merge \
+        git clone ${REPO_URL} depthai-core &&\
+        cd depthai-core && \
+        git fetch --depth 1 origin ${BRANCH}:pr-merge && \
+        git switch pr-merge && \
         git submodule update --init --recursive; \
     fi
 
-
+WORKDIR /workspace/depthai-core
 
 # Create venv and install Python dependencies
 RUN python3 -m venv venv && \
