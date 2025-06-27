@@ -86,8 +86,6 @@ RUN if [ "$PULL_REQUEST" = "false" ]; then \
         git submodule update --init --recursive; \
     fi
 
-WORKDIR /workspace/depthai-core
-
 # Create venv and install Python dependencies
 RUN python3 -m venv venv && \
     . venv/bin/activate && \
