@@ -77,7 +77,7 @@ class VideoSaver : public dai::node::CustomNode<VideoSaver> {
 };
 
 extern "C" void depthai_uvc_get_buffer(struct video_source *s, struct video_buffer *buf) {
-	unsigned int size;
+	unsigned int frame_size, size;
     uint8_t *f;
 
     if(quitEvent) {
@@ -92,16 +92,11 @@ extern "C" void depthai_uvc_get_buffer(struct video_source *s, struct video_buff
     }
 
     f = frame->getData().data();
-    size = frame->getData().size();
+    frame_size = frame->getData().size();
 
-    std::cout << "buffer size: " << size << std::endl;
-    std::cout << "dest size: " << buf->size << std::endl;
-
-	// size = min(src->imgsize, buf->size);
+	size = std::min(frame_size, buf->size);
 	memcpy(buf->mem, f, size);
 	buf->bytesused = size;
-
-    // std::cout << "depthai_uvc_get_buffer(): Filled a buffer" << std::endl;
 }
 
 int main() {

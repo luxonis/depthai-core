@@ -104,9 +104,10 @@ static void depthai_source_fill_buffer(struct video_source *s,
 	
 	if (!s_get_buffer_cb) {
 		fprintf(stderr, "depthai_source_fill_buffer: No buffer getter registered\n");
-	} else {
-		s_get_buffer_cb(s, buf);
+		return;
 	}
+	
+	s_get_buffer_cb(s, buf);
 	
 	/*
 	 * Wait for the timer to elapse to ensure that our configured frame rate
@@ -119,7 +120,7 @@ static void depthai_source_fill_buffer(struct video_source *s,
 
 void depthai_uvc_register_get_buffer(depthai_uvc_get_buffer_cb_t cb)
 {
-	printf("depthai_uvc_register_get_buffer(): Registering buffer getter callback\n");
+	printf("%s:%d: Registering buffer getter callback\n", __func__, __LINE__);
 	s_get_buffer_cb = cb;
 }
 
