@@ -1380,7 +1380,7 @@ bool DeviceBase::isEepromAvailable() {
     return pimpl->rpcClient->call("isEepromAvailable").as<bool>();
 }
 
-bool DeviceBase::flashCalibration(CalibrationHandler calibrationDataHandler) {
+bool DeviceBase::tryFlashCalibration(CalibrationHandler calibrationDataHandler) {
     try {
         flashCalibration2(calibrationDataHandler);
     } catch(const EepromError&) {
@@ -1389,7 +1389,7 @@ bool DeviceBase::flashCalibration(CalibrationHandler calibrationDataHandler) {
     return true;
 }
 
-void DeviceBase::flashCalibration2(CalibrationHandler calibrationDataHandler) {
+void DeviceBase::flashCalibration(CalibrationHandler calibrationDataHandler) {
     bool factoryPermissions = false;
     bool protectedPermissions = false;
     getFlashingPermissions(factoryPermissions, protectedPermissions);
