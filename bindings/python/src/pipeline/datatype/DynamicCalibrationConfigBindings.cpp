@@ -22,7 +22,7 @@ void bind_dynamic_calibration_config(pybind11::module& m, void* pCallstack) {
         .value("SKIP_CHECKS", DynamicCalibrationConfig::AlgorithmControl::PerformanceMode::SKIP_CHECKS)
         .value("STATIC_SCENERY", DynamicCalibrationConfig::AlgorithmControl::PerformanceMode::STATIC_SCENERY)
         .value("OPTIMIZE_SPEED", DynamicCalibrationConfig::AlgorithmControl::PerformanceMode::OPTIMIZE_SPEED)
-        .value("OPTIMIZE_PEFRORMACE", DynamicCalibrationConfig::AlgorithmControl::PerformanceMode::OPTIMIZE_PEFRORMACE)
+        .value("OPTIMIZE_PERFORMANCE", DynamicCalibrationConfig::AlgorithmControl::PerformanceMode::OPTIMIZE_PERFORMANCE)
         .value("DEFAULT", DynamicCalibrationConfig::AlgorithmControl::PerformanceMode::DEFAULT)
         .export_values();
     ///////////////////////////////////////////////////////////////////////

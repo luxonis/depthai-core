@@ -44,7 +44,7 @@ struct DynamicCalibrationResults : public Buffer {
      */
     struct CalibrationData
     {
-        std::vector<float> rotationChange;
+        float rotationChange[3];
         float epipolarErrorChange;
         std::vector<float> depthErrorDifference;
         DEPTHAI_SERIALIZE(CalibrationData, rotationChange, epipolarErrorChange, depthErrorDifference);
@@ -91,9 +91,11 @@ struct DynamicCalibrationResults : public Buffer {
 
             if(src.calibrationQuality.has_value()) {
                 CalibrationData cal;
-                cal.rotationChange = src.calibrationQuality->rotationChange;
+                for(int i = 0; i < 3; ++i) {
+                    cal.rotationChange[i] = src.calibrationQuality->rotationChange[i];
+                }
                 cal.epipolarErrorChange = src.calibrationQuality->epipolarErrorChange;
-                   cal.depthErrorDifference = src.calibrationQuality->depthAccuracy;
+                   cal.depthErrorDifference = src.calibrationQuality->depthDistanceDifference;
                 out.calibrationQuality = cal;
             }
             return out;

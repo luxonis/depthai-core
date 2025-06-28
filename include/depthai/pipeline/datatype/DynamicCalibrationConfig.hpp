@@ -39,7 +39,7 @@ struct DynamicCalibrationConfig : public Buffer {
         /**
          * Define a peformance mode on which the dynamic recalibration will be working
          */
-        enum class PerformanceMode: int32_t { SKIP_CHECKS = 4, STATIC_SCENERY = 1, OPTIMIZE_SPEED = 2, OPTIMIZE_PEFRORMACE = 3, DEFAULT = 0};
+        enum class PerformanceMode: int32_t { SKIP_CHECKS = 4, STATIC_SCENERY = 1, OPTIMIZE_SPEED = 2, OPTIMIZE_PERFORMANCE = 3, DEFAULT = 0};
         
         PerformanceMode performanceMode =  PerformanceMode::DEFAULT;
         /**
