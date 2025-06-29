@@ -3,7 +3,13 @@
 import depthai as dai
 import cv2
 import numpy as np
-from utils import draw_health_bar, draw_progress_bar_with_percentage, overlay_coverage_on_gray, print_final_calibration_results
+from utils import *
+
+mouse_coords = (-1, -1)
+def on_mouse_disparity(event, x, y, flags, param):
+    global mouse_coords
+    if event == cv2.EVENT_MOUSEMOVE:
+        mouse_coords = (x, y)
 
 # ---------- Pipeline definition ----------
 pipeline = dai.Pipeline()
@@ -31,6 +37,7 @@ right_out.link(dyn_calib.right)
 left_xout = left_out.createOutputQueue()
 right_xout = right_out.createOutputQueue()
 disp_xout = stereo.disparity.createOutputQueue()
+depth_xout = stereo.depth.createOutputQueue()
 dyncal_out = dyn_calib.outputCalibrationResults.createOutputQueue()
 input_config = dyn_calib.inputConfig.createInputQueue()
 device  = pipeline.getDefaultDevice()
@@ -61,6 +68,8 @@ print("[l] → Flash new calibration")
 print("[k] → Flash old calibration")
 print("[q] → Quit")
 print("<<< -----------------------------|Start the pipeline!|------------------------->>>")
+cv2.namedWindow("Disparity")
+cv2.setMouseCallback("Disparity", on_mouse_disparity)
 with pipeline:
     max_disp = stereo.initialConfig.getMaxDisparity()
 
@@ -68,12 +77,23 @@ with pipeline:
         in_left = left_xout.get()
         in_right = right_xout.get()
         in_disp = disp_xout.get()
+        in_depth = depth_xout.get()
         if in_disp:
             assert isinstance(in_disp, dai.ImgFrame)
             disp_frame = in_disp.getFrame()
             disp_vis = (disp_frame * (255.0 / max_disp)).astype(np.uint8)
             disp_vis = cv2.applyColorMap(disp_vis, cv2.COLORMAP_JET)
+            if 'depth_frame' in locals() and 0 <= mouse_coords[0] < depth_frame.shape[1] and 0 <= mouse_coords[1] < depth_frame.shape[0]:
+                depth_val = depth_frame[mouse_coords[1], mouse_coords[0]] / 1000
+                display_text = f"Depth: {depth_val:.2f}m"
+                cv2.putText(disp_vis, display_text, (mouse_coords[0] + 10, mouse_coords[1] + 10),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,255), 1, cv2.LINE_AA)
             cv2.imshow("Disparity", disp_vis)
+
+
+        if in_depth:
+            assert isinstance(in_depth, dai.ImgFrame)
+            depth_frame = in_depth.getFrame()
 
         if in_left:
             assert isinstance(in_left, dai.ImgFrame)
@@ -93,6 +113,10 @@ with pipeline:
             depthDiff = []
         if coverage_matrix is not None and depthDiff == []:
             leftFrame = overlay_coverage_on_gray(leftFrame, coverage_matrix, progress)
+            rightFrame = overlay_coverage_on_gray(rightFrame, coverage_matrix, progress)
+        else:
+            draw_key_commands(leftFrame)
+            draw_key_commands(rightFrame)
 
         calibration_result = dyncal_out.tryGet()
 

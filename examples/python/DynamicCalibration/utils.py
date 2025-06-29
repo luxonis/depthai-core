@@ -264,3 +264,35 @@ def print_final_calibration_results(calib_quality, state: str):
         print("To continue with recalibration, press 'r'.")
 
     print("<<< -----------------------------|Finished|------------------------------------>>>\n")
+
+def draw_key_commands(image, top_left=(10, 20), font_scale=0.5, color=(255, 255, 255), thickness=1, line_spacing=20):
+    """Draws key command info at the top-left corner of the image with a semi-transparent background."""
+    commands = [
+        "DynamicCalibration mode, Key commands:",
+        "[c] Calibration quality check",
+        "[r] Recalibrate",
+        "[a] Force calibration check",
+        "[d] Force recalibrate",
+        "[n] Apply new calibration",
+        "[o] Apply old calibration",
+        "[l] Flash new calibration",
+        "[k] Flash old calibration",
+        "[q] Quit",
+    ]
+
+    x, y = top_left
+    width = 400
+    height = line_spacing * len(commands) + 10
+
+    # Make a transparent overlay
+    overlay = image.copy()
+    cv2.rectangle(overlay, (x - 5, y - 15), (x + width, y + height), (0, 0, 0), -1)
+    # Blend it with original
+    alpha = 0.5
+    cv2.addWeighted(overlay, alpha, image, 1 - alpha, 0, image)
+
+    # Draw text
+    for i, line in enumerate(commands):
+        y_offset = y + i * line_spacing
+        cv2.putText(image, line, (x, y_offset), cv2.FONT_HERSHEY_SIMPLEX,
+                    font_scale, color, thickness, lineType=cv2.LINE_AA)
