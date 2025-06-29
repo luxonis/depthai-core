@@ -66,6 +66,7 @@ void bind_dynamic_calibration_results(pybind11::module& m, void* pCallstack) {
     // Bind CalibrationQuality
     _CalibrationQuality
         .def(py::init<>())
+        .def_readwrite("dataAquired", &DynamicCalibrationResults::CalibrationQuality::dataAquired)
         .def_readwrite("coverageQuality", &DynamicCalibrationResults::CalibrationQuality::coverageQuality)
         .def_readwrite("calibrationQuality", &DynamicCalibrationResults::CalibrationQuality::calibrationQuality);
 
@@ -82,6 +83,8 @@ void bind_dynamic_calibration_results(pybind11::module& m, void* pCallstack) {
         .def_readwrite("newCalibration", &DynamicCalibrationResults::newCalibration,
                        DOC(dai, DynamicCalibrationResults, newCalibration))
         .def_readwrite("calibOverallQuality", &DynamicCalibrationResults::calibOverallQuality,
-                       DOC(dai, DynamicCalibrationResults, calibOverallQuality));
+                       DOC(dai, DynamicCalibrationResults, calibOverallQuality))
+        .def_readwrite("info", &DynamicCalibrationResults::info,
+                       DOC(dai, DynamicCalibrationResults, info));
         ;
 }

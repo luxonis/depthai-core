@@ -163,7 +163,7 @@ std::shared_ptr<dcl::CameraCalibrationHandle> DynamicCalibration::createDCLCamer
     }
 
     for(int i = 0; i < 3; ++i) {
-        tvec[i] = static_cast<dcl::scalar_t>(translationVector[i] * 10.0f);  // Convert to mm
+        tvec[i] = static_cast<dcl::scalar_t>(translationVector[i]);  // Convert to mm
     }
 
     return std::make_shared<dcl::CameraCalibrationHandle>(rvec, tvec, cameraMatrixArr, distortion);
@@ -189,9 +189,6 @@ CalibrationHandler DynamicCalibration::convertDCLtoDAI(CalibrationHandler calibH
     dcl::scalar_t tvec[3];
     daiCalibration->getTvec(tvec);
     auto translation = std::vector<float>(tvec, tvec + 3);
-    for (auto& val : translation) {
-        val /= 10.0f;
-    }
 
     dcl::scalar_t rvec[3];
     daiCalibration->getRvec(rvec);
@@ -270,6 +267,17 @@ void DynamicCalibration::pipelineSetup(std::shared_ptr<Device> device, CameraBoa
     dynCalibImpl->addSensor(deviceName, sensorB, socketB);
 }
 
+void DynamicCalibration::resetResults(){
+    calibQuality.calibrationQuality = dcl::CalibrationData{};
+    calibQuality.coverageQuality = dcl::CoverageData{};
+    calibQuality.dataAquired = 0.f;
+    dynResult.calibOverallQuality = dai::DynamicCalibrationResults::CalibrationQualityResult::fromDCL(calibQuality);
+    dynResult.newCalibration = DynamicCalibrationResults::CalibrationResult::Invalid();
+    dynResult.calibOverallQuality = DynamicCalibrationResults::CalibrationQualityResult::Invalid();
+    dynResult.newCalibration = DynamicCalibrationResults::CalibrationResult::Invalid();
+    dynResult.info = "";
+};
+
 void DynamicCalibration::run() {
     if(!device) {
         logger::error("Dynamic calibration node has to have access to a device!");
@@ -279,9 +287,7 @@ void DynamicCalibration::run() {
     logger::info("DynamicCalibration node is running");
     auto lastAutoTrigger = std::chrono::steady_clock::now() - std::chrono::seconds(10);
     auto continiousTrigger = std::chrono::steady_clock::now() - std::chrono::seconds(10);
-    dynResult.newCalibration = DynamicCalibrationResults::CalibrationResult::Invalid();
-    dynResult.calibOverallQuality = DynamicCalibrationResults::CalibrationQualityResult::Invalid();
-    dcl::CalibrationQuality calibQuality;
+    resetResults();
     while(isRunning()) {
         // auto leftFrame = left.get<dai::ImgFrame>();
         // auto rightFrame = right.get<dai::ImgFrame>();
@@ -304,22 +310,26 @@ void DynamicCalibration::run() {
                     case DynamicCalibrationConfig::CalibrationCommand::START_CALIBRATION_QUALITY_CHECK:
                         logger::info("[DynamicCalibration] StartCalibrationQualityMessageRecieved.");
                         calibrationSM.startQualityCheck();
+                        dynResult.info = "Start Calibration Quality Check";
                         break;
                     case DynamicCalibrationConfig::CalibrationCommand::START_RECALIBRATION:
                         logger::info("[DynamicCalibration] RecalibratioQualityMessageRecieved.");
                         calibrationSM.startRecalibration();
+                        dynResult.info = "Start Recalibration";
                         break;
                     case DynamicCalibrationConfig::CalibrationCommand::START_FORCE_RECALIBRATION:
                         logger::info("[DynamicCalibration] RecalibratioQualityMessageRecieved.");
                         calibrationSM.startRecalibration();
                         forceTrigger = true;
                         properties.initialConfig.algorithmControl.performanceMode = DynamicCalibrationConfig::AlgorithmControl::PerformanceMode::SKIP_CHECKS;
+                        dynResult.info = "Start Recalibration";
                         break;
                     case DynamicCalibrationConfig::CalibrationCommand::START_FORCE_CALIBRATION_QUALITY_CHECK:
                         logger::info("[DynamicCalibration] StartCalibrationQualityMessageRecieved.");
                         calibrationSM.startQualityCheck();
                         forceTrigger = true;
                         properties.initialConfig.algorithmControl.performanceMode = DynamicCalibrationConfig::AlgorithmControl::PerformanceMode::SKIP_CHECKS;
+                        dynResult.info = "Start Calibration Quality Check";
                         break;
                     default:
                         logger::warn("[DynamicCalibration] Unknown calibrationCommand: {}", static_cast<int>(*calibrationCommand));
@@ -358,10 +368,8 @@ void DynamicCalibration::run() {
 
             case CalibrationStateMachine::CalibrationState::ResetDynamicRecalibration: {
                 logger::info("[DynamicCalibration] Resseting dynamic recalibration values");
-                dynResult.newCalibration = DynamicCalibrationResults::CalibrationResult::Invalid();
-                dynResult.calibOverallQuality = DynamicCalibrationResults::CalibrationQualityResult::Invalid();
+                resetResults();
                 dynCalibImpl->removeDeviceMeasurements(dcDevice);
-                calibQuality.reset();
                 calibrationSM.finish();
                 break;
             }
@@ -402,16 +410,22 @@ void DynamicCalibration::run() {
                     ? dynCalibImpl->checkCalibration(dcDevice, socketA, socketB, static_cast<dcl::PerformanceMode>(DynamicCalibrationConfig::AlgorithmControl::PerformanceMode::SKIP_CHECKS))
                     :dynCalibImpl->checkCalibration(dcDevice, socketA, socketB, static_cast<dcl::PerformanceMode>(properties.initialConfig.algorithmControl.performanceMode));
                 calibQuality = result.value;
+                dynResult.info = result.errorMessage();
                 dynResult.calibOverallQuality = dai::DynamicCalibrationResults::CalibrationQualityResult::fromDCL(calibQuality);
                 if (forceTrigger) {
                     forceTrigger = false;
                 }
-                auto& report = dynResult.calibOverallQuality->report;
-                if (report.has_value() && report->calibrationQuality.has_value()) {
-                    calibrationSM.deleteAllData();
+                const auto& rot = dynResult.calibOverallQuality->report->calibrationQuality->rotationChange;
+                bool isMissing = std::any_of(rot.begin(), rot.end(), [](float v) {
+                    return std::abs(v) > 1000.0f || std::abs(v) < 1e-14f || std::isnan(v) || std::isinf(v);});
+                if (isMissing) {
+                    logger::info("[DynamicCalibration] results does not have value!");
+                    calibrationSM.finish();
+                    calibrationSM.startQualityCheck();
+                    break;
                 }
                 else {
-                    calibrationSM.finish();
+                    calibrationSM.deleteAllData();
                 }
                 break;
             }
@@ -423,14 +437,20 @@ void DynamicCalibration::run() {
                     :dynCalibImpl->checkCalibration(dcDevice, socketA, socketB, static_cast<dcl::PerformanceMode>(properties.initialConfig.algorithmControl.performanceMode));
                 calibQuality = result.value;
                 dynResult.calibOverallQuality = dai::DynamicCalibrationResults::CalibrationQualityResult::fromDCL(calibQuality);
-                auto& report = dynResult.calibOverallQuality->report;
-                if (!report.has_value()) {
+                dynResult.info = result.errorMessage();
+                const auto& rot = dynResult.calibOverallQuality->report->calibrationQuality->rotationChange;
+                bool isMissing = std::any_of(rot.begin(), rot.end(), [](float v) {
+                    return std::abs(v) > 1000.0f || std::abs(v) < 1e-14f || std::isnan(v) || std::isinf(v);});
+                if (isMissing) {
+                    logger::info("[DynamicCalibration] results does not have value!");
+                    calibrationSM.finish();
+                    calibrationSM.startRecalibration();
                     break;
                 }
                 auto resultCalib = forceTrigger
                     ? dynCalibImpl->findNewCalibration(dcDevice, socketA, socketB, static_cast<dcl::PerformanceMode>(DynamicCalibrationConfig::AlgorithmControl::PerformanceMode::SKIP_CHECKS))
                     : dynCalibImpl->findNewCalibration(dcDevice, socketA, socketB, static_cast<dcl::PerformanceMode>(properties.initialConfig.algorithmControl.performanceMode));
-
+                dynResult.info = resultCalib.errorMessage();
                 if(!resultCalib.value.second) {
                     logger::info("[DynamicCalibration] resultCalib returned null CalibrationHandler!");
                     calibrationSM.finish();
@@ -438,14 +458,19 @@ void DynamicCalibration::run() {
                 }
                 auto calibrationHandle = resultCalib.value.second;
 
-                if(calibrationHandle) {
+                if(calibrationHandle->getCameraCalibration()) {
                     CalibrationHandler calibHandler = device->readCalibration();
                     dynResult.newCalibration->calibHandler = convertDCLtoDAI(calibHandler, calibrationHandle, daiSocketA, daiSocketB, widthDefault, heightDefault);
                     calibrationSM.deleteAllData();
+                    logger::info("[DynamicCalibration] Got new calibrationHandler.");
                     if (properties.initialConfig.algorithmControl.recalibrationMode == dai::DynamicCalibrationConfig::AlgorithmControl::RecalibrationMode::CONTINUOUS){
                         device->setCalibration(dynResult.newCalibration->calibHandler.value());
                         logger::info("[DynamicCalibration] Applied new calibration in continious mode.");
                     }
+                }
+                else if (resultCalib.errorCode == FINDNEWCALIBRATION_NOT_SIGNIFICANT_CHANGE){
+                    calibrationSM.deleteAllData();
+                    logger::info("[DynamicCalibration] Find new calibration with no difference");
                 }
                 else {
                     calibrationSM.finish();

@@ -44,7 +44,7 @@ struct DynamicCalibrationResults : public Buffer {
      */
     struct CalibrationData
     {
-        float rotationChange[3];
+        std::array<float, 3> rotationChange  = {0.0f, 0.0f, 0.0f};;
         float epipolarErrorChange;
         std::vector<float> depthErrorDifference;
         DEPTHAI_SERIALIZE(CalibrationData, rotationChange, epipolarErrorChange, depthErrorDifference);
@@ -74,13 +74,14 @@ struct DynamicCalibrationResults : public Buffer {
      */
     struct CalibrationQuality
     {
+        float dataAquired = 0.0f;
         std::optional<CoverageData> coverageQuality;
         std::optional<CalibrationData> calibrationQuality; // <--- optional
 
 
         static CalibrationQuality fromDCL(const dcl::CalibrationQuality& src) {
             CalibrationQuality out;
-
+            out.dataAquired = src.dataAquired;
             if(src.coverageQuality.has_value()) {
                 CoverageData cov;
                 cov.coveragePerCellA = src.coverageQuality->coveragePerCellA;
@@ -123,17 +124,19 @@ struct DynamicCalibrationResults : public Buffer {
     // TODO DCL: This should be std::optional<dai::CalibrationHandler>
     std::optional<CalibrationResult> newCalibration;
     std::optional<CalibrationQualityResult> calibOverallQuality;
+    std::string info = "";
 
     void reset() {
         calibOverallQuality = CalibrationQualityResult::Invalid();
         newCalibration = CalibrationResult::Invalid();
+        info.clear();
     }
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
         metadata = utility::serialize(*this);
         datatype = DatatypeEnum::DynamicCalibrationResults;
     };
-    DEPTHAI_SERIALIZE(DynamicCalibrationResults, calibOverallQuality, newCalibration);
+    DEPTHAI_SERIALIZE(DynamicCalibrationResults, calibOverallQuality, newCalibration, info);
 };
 
 }  // namespace dai

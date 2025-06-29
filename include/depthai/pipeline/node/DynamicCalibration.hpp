@@ -242,8 +242,10 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
             }
         }
     };
-
+    dcl::CalibrationQuality calibQuality;
     CalibrationStateMachine calibrationSM;
+
+    void resetResults();
     Input inSync{*this, {"inSync", DEFAULT_GROUP, false, 1, {{DatatypeEnum::MessageGroup, true}}}};
 
 };

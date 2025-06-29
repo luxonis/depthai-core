@@ -25,7 +25,7 @@ dyn_calib = pipeline.create(dai.node.DynamicCalibration)
 continious = True
 if continious:
     dyn_calib.setContiniousMode()
-    dyn_calib.setPerformanceMode(dai.DynamicCalibrationConfig.AlgorithmControl.PerformanceMode.OPTIMIZE_PEFRORMACE)
+    dyn_calib.setPerformanceMode(dai.DynamicCalibrationConfig.AlgorithmControl.PerformanceMode.OPTIMIZE_SPEED)
     dyn_calib.setTimeFrequency(2)
 dyn_calib.setPerformanceMode(dai.DynamicCalibrationConfig.AlgorithmControl.PerformanceMode.OPTIMIZE_SPEED)
 left_out.link(dyn_calib.left)
@@ -114,7 +114,7 @@ with pipeline:
 
                 mean_coverage = report.coverageQuality.meanCoverage if report and report.coverageQuality else None
                 if mean_coverage is not None:
-                    print(f"Got calibCheck. Coverage quality = {mean_coverage}")
+                    print(f"Got calibCheck. Coverage quality = {mean_coverage}, dataAquired: {report.dataAquired}%")
 
                 if report is not None and getattr(report, 'calibrationQuality', None) is not None:
                     calib_quality = report.calibrationQuality
@@ -122,6 +122,7 @@ with pipeline:
                     rotation_change = getattr(calib_quality, 'rotationChange', [])
                     depth_accuracy = getattr(calib_quality, 'depthErrorDifference', [])
 
-                    print("Rotation change (as float):", ' '.join(f"{float(val):.3f}" for val in rotation_change))
-                    print("Depth accuracy changes (as float):", ' '.join(f"{float(val):.3f}" for val in depth_accuracy))
+                    print("Rotation change[°]:", ' '.join(f"{float(val):.3f}" for val in rotation_change))
+                    print("Improvements if new calibration is applied (as float):")
+                    print(f"1m->{depth_accuracy[0]:.2f}%, \n2m->{depth_accuracy[1]:.2f}%, \n5m->{depth_accuracy[2]:.2f}%, \n10m->{depth_accuracy[3]:.2f}%")
 
