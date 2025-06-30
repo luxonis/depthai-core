@@ -163,7 +163,7 @@ std::shared_ptr<dcl::CameraCalibrationHandle> DynamicCalibration::createDCLCamer
     }
 
     for(int i = 0; i < 3; ++i) {
-        tvec[i] = static_cast<dcl::scalar_t>(translationVector[i]);  // Convert to mm
+        tvec[i] = static_cast<dcl::scalar_t>(translationVector[i] / 100);  // Convert to m
     }
 
     return std::make_shared<dcl::CameraCalibrationHandle>(rvec, tvec, cameraMatrixArr, distortion);
@@ -189,7 +189,9 @@ CalibrationHandler DynamicCalibration::convertDCLtoDAI(CalibrationHandler calibH
     dcl::scalar_t tvec[3];
     daiCalibration->getTvec(tvec);
     auto translation = std::vector<float>(tvec, tvec + 3);
-
+    for (auto& val : translation) {
+        val *= 100.0f;
+    }
     dcl::scalar_t rvec[3];
     daiCalibration->getRvec(rvec);
     auto rotationMatrix = rvecToRotationMatrix(rvec);
