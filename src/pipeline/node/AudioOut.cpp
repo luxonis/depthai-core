@@ -131,6 +131,8 @@ void AudioOut::run() {
 	return;
     }
 
+    logger->info("AudioOutHost {}: Started device", __func__);
+
     std::vector<uint8_t> data;
     data.resize(bufferSize);
     while(isRunning()) {

@@ -38,6 +38,8 @@
 #include "depthai/pipeline/node/DetectionParser.hpp"
 #include "depthai/pipeline/node/UVC.hpp"
 #include "depthai/pipeline/node/Warp.hpp"
+#include "depthai/pipeline/node/AudioIn.hpp"
+#include "depthai/pipeline/node/AudioOut.hpp"
 
 // depthai/
 #include "depthai/properties/GlobalProperties.hpp"

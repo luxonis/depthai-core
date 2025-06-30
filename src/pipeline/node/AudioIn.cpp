@@ -86,22 +86,34 @@ void AudioIn::run() {
 
     // Set period time based on desired packets per second
     unsigned int periodTime = 1000000 / properties.framesPerSecond;  // period time in microseconds
-    err = snd_pcm_hw_params_set_period_time_near(captureHandle, hwParams, &periodTime, 0);
+    err = snd_pcm_hw_params_set_period_time(captureHandle, hwParams, periodTime, 0);
     if (err < 0) {
-        logger->warn("AudioInHost {}: Broken period configuration: {}", __func__, snd_strerror(err));
+        logger->warn("AudioInHost {}: Broken period time near configuration: {}", __func__, snd_strerror(err));
 	return;
     }
 
     err = snd_pcm_hw_params_get_period_time(hwParams, &periodTime, 0);
     if (err < 0) {
-        logger->warn("AudioInHost {}: Broken period configuration: {}", __func__, snd_strerror(err));
+        logger->warn("AudioInHost {}: Broken period time configuration: {}", __func__, snd_strerror(err));
+	return;
+    }
+
+    err = snd_pcm_hw_params_test_period_time(captureHandle, hwParams, periodTime, 0);   
+    if (err < 0) {
+        logger->warn("AudioInHost {}: Broken period time configuration: {}", __func__, snd_strerror(err));
 	return;
     }
 
     long unsigned int bufferFrames;
     err = snd_pcm_hw_params_get_period_size(hwParams, &bufferFrames, 0);
     if (err < 0) {
-        logger->warn("AudioInHost {}: Broken period configuration: {}", __func__, snd_strerror(err));
+        logger->warn("AudioInHost {}: Broken period size configuration: {}", __func__, snd_strerror(err));
+	return;
+    }
+
+    err = snd_pcm_hw_params_test_period_size(captureHandle, hwParams, bufferFrames, 0);
+    if (err < 0) {
+        logger->warn("AudioInHost {}: Broken period size configuration: {}", __func__, snd_strerror(err));
 	return;
     }
 
@@ -131,6 +143,8 @@ void AudioIn::run() {
         logger->warn("AudioInHost {}: Invalid start: {}", __func__, snd_strerror(err));
 	return;
     }
+    
+    logger->info("AudioInHost {}: Started device", __func__);
 
     std::vector<uint8_t> data;
     data.resize(bufferSize);

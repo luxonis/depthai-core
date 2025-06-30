@@ -40,7 +40,7 @@ int main() {
     encoder->setChannels(2);
 
     auto mixer = pipeline.create<dai::node::AudioMixer>();
-    mixer->setRunOnHost(false);
+    mixer->setRunOnHost(true);
     mixer->registerSource("source1", 0.2);
     mixer->registerSource("source2", 0.8);
     mixer->registerSink("sink1", 48000, 2, SF_FORMAT_PCM_32);

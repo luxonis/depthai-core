@@ -1,0 +1,7 @@
+prefix=/home/jessica/src/luxonis/depthai-core/install
+includedir=${prefix}/include
+
+Name: xtl
+Description: Basic tools (containers, algorithms) used by other quantstack packages.
+Version: 0.7.4
+Cflags: -I${includedir}
