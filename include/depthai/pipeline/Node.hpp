@@ -135,6 +135,9 @@ private:
             if(ref) {
                 par.setOutputRefs(this);
             }
+            if(getName().empty()){
+                setName(par.createUniqueOutputName("output"));
+            }
         }
 
         Node& getParent() {
@@ -344,6 +347,9 @@ private:
               possibleDatatypes(std::move(desc.types)) {
             if(ref) {
                 par.setInputRefs(this);
+            }
+            if(getName().empty()){
+                setName(par.createUniqueInputName("input"));
             }
         }
 
