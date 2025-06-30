@@ -1382,8 +1382,9 @@ bool DeviceBase::isEepromAvailable() {
 
 bool DeviceBase::tryFlashCalibration(CalibrationHandler calibrationDataHandler) {
     try {
-        flashCalibration2(calibrationDataHandler);
-    } catch(const EepromError&) {
+        flashCalibration(calibrationDataHandler);
+    } catch(const EepromError& e) {
+        pimpl->logger.error("Failed to flash calibration: {}", e.what());
         return false;
     }
     return true;
@@ -1405,7 +1406,7 @@ void DeviceBase::flashCalibration(CalibrationHandler calibrationDataHandler) {
                                       .as<std::tuple<bool, std::string>>();
 
     if(!success) {
-        throw std::runtime_error(errorMsg);
+        throw EepromError(errorMsg);
     }
 }
 
