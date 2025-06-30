@@ -25,7 +25,7 @@ dyn_calib = pipeline.create(dai.node.DynamicCalibration)
 continious = True
 if continious:
     dyn_calib.setContiniousMode()
-    dyn_calib.setPerformanceMode(dai.DynamicCalibrationConfig.AlgorithmControl.PerformanceMode.OPTIMIZE_SPEED)
+    dyn_calib.setPerformanceMode(dai.DynamicCalibrationConfig.AlgorithmControl.PerformanceMode.DEFAULT)
     dyn_calib.setTimeFrequency(2)
 dyn_calib.setPerformanceMode(dai.DynamicCalibrationConfig.AlgorithmControl.PerformanceMode.OPTIMIZE_SPEED)
 left_out.link(dyn_calib.left)

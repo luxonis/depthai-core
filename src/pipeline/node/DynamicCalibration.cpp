@@ -210,7 +210,7 @@ DynamicCalibration::CalibData DynamicCalibration::getDataFromDAIHandler(Calibrat
     data.translationVectorA = {0.0f, 0.0f, 0.0f};
     data.rotationMatrixA = {{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}};
 
-    data.translationVectorB = currentCalibration.getCameraTranslationVector(boardSocketA, boardSocketB);
+    data.translationVectorB = currentCalibration.getCameraTranslationVector(boardSocketA, boardSocketB, false);
     data.rotationMatrixB = currentCalibration.getCameraRotationMatrix(boardSocketA, boardSocketB);
 
     data.leftCameraMatrix = currentCalibration.getCameraIntrinsics(boardSocketA, width, height);
@@ -291,7 +291,8 @@ void DynamicCalibration::run() {
     while(isRunning()) {
         // auto leftFrame = left.get<dai::ImgFrame>();
         // auto rightFrame = right.get<dai::ImgFrame>();
-        auto inSyncGroup = inSync.get<dai::MessageGroup>();
+        auto inSyncGroup = inSync.tryGet<dai::MessageGroup>();
+        if (!inSyncGroup) continue;
         auto leftFrame = inSyncGroup->get<dai::ImgFrame>(leftInputName);
         auto rightFrame = inSyncGroup->get<dai::ImgFrame>(rightInputName);
         if(!leftFrame || !rightFrame) continue; //todo calib team sync should be checked?
