@@ -794,6 +794,13 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
             },
             DOC(dai, DeviceBase, readFactoryCalibration))
         .def(
+            "setCalibration",
+            [](DeviceBase& d, CalibrationHandler ch) {
+                py::gil_scoped_release release;
+                return d.setCalibration(ch);
+            },
+            DOC(dai, DeviceBase, setCalibration))
+        .def(
             "readFactoryCalibrationOrDefault",
             [](DeviceBase& d) {
                 py::gil_scoped_release release;
