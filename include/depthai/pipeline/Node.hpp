@@ -71,7 +71,8 @@ class Node : public std::enable_shared_from_this<Node> {
     static constexpr auto DEFAULT_QUEUE_SIZE = 3;
     static constexpr auto DEFAULT_WAIT_FOR_MESSAGE = false;
 
-    std::string createUniqueName(const std::string& prefix="");
+    std::string createUniqueInputName(const std::string& suffix="");
+    std::string createUniqueOutputName(const std::string& suffix="");
    protected:
     std::vector<Output*> outputRefs;
     std::vector<Input*> inputRefs;
@@ -509,6 +510,9 @@ private:
     // TODO(themarpe) - restrict access
     /// Id of node. Assigned after being placed on the pipeline
     Id id{-1};
+    // used for naming inputs/outputs
+    Id inputId{0};
+    Id outputId{0};
 
     /// alias or name
     std::string alias;

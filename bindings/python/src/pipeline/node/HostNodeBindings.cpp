@@ -85,7 +85,7 @@ void bind_hostnode(pybind11::module& m, void* pCallstack) {
                bool waitForMessage) {
                 std::string uName;
                 if(name.empty()){
-                 uName = node.createUniqueName("input");
+                 uName = node.createUniqueInputName("input");
                 } else{
                     uName = name;
                 }
@@ -103,7 +103,7 @@ void bind_hostnode(pybind11::module& m, void* pCallstack) {
             [](ThreadedHostNode& node, std::string name, std::string group, std::vector<Node::DatatypeHierarchy> types) {
                 std::string uName;
                 if(name.empty()){
-                 uName = node.createUniqueName("output");
+                 uName = node.createUniqueOutputName("output");
                 } else{
                     uName = name;
                 }
