@@ -141,7 +141,7 @@ int main() {
     dai::Pipeline pipeline(device);
 
     // Create nodes
-    auto camRgb = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A);
+    auto camRgb = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_E);
     auto output = camRgb->requestOutput(std::make_pair(1920, 1080), dai::ImgFrame::Type::NV12);
 
     // Create video encoder node
