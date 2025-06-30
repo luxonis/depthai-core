@@ -56,6 +56,6 @@ class InputQueue {
     std::string name;
 
     std::string getName();
-    void setName(const std::string&name);
+    void setName(const std::string& name);
 };
 }  // namespace dai

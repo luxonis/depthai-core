@@ -65,14 +65,17 @@ class Node : public std::enable_shared_from_this<Node> {
     static constexpr auto DEFAULT_NAME = "";
 #define DEFAULT_TYPES                  \
     {                                  \
-        { DatatypeEnum::Buffer, true } \
+        {                              \
+            DatatypeEnum::Buffer, true \
+        }                              \
     }
     static constexpr auto DEFAULT_BLOCKING = true;
     static constexpr auto DEFAULT_QUEUE_SIZE = 3;
     static constexpr auto DEFAULT_WAIT_FOR_MESSAGE = false;
 
-    std::string createUniqueInputName(const std::string& suffix="");
-    std::string createUniqueOutputName(const std::string& suffix="");
+    std::string createUniqueInputName(const std::string& suffix = "");
+    std::string createUniqueOutputName(const std::string& suffix = "");
+
    protected:
     std::vector<Output*> outputRefs;
     std::vector<Input*> inputRefs;
@@ -92,8 +95,8 @@ class Node : public std::enable_shared_from_this<Node> {
     void setNodeRefs(std::initializer_list<std::pair<std::string, std::shared_ptr<Node>*>> l);
     void setNodeRefs(std::pair<std::string, std::shared_ptr<Node>*> nodeRef);
     void setNodeRefs(std::string alias, std::shared_ptr<Node>* nodeRef);
-    
-private:
+
+   private:
     std::vector<std::string> uniqueNames;
 
    public:
@@ -135,7 +138,7 @@ private:
             if(ref) {
                 par.setOutputRefs(this);
             }
-            if(getName().empty()){
+            if(getName().empty()) {
                 setName(par.createUniqueOutputName("output"));
             }
         }
@@ -348,7 +351,7 @@ private:
             if(ref) {
                 par.setInputRefs(this);
             }
-            if(getName().empty()){
+            if(getName().empty()) {
                 setName(par.createUniqueInputName("input"));
             }
         }
