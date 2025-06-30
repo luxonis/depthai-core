@@ -1,9 +1,69 @@
 import time
 import cv2
 import numpy as np
-def draw_health_bar(image, values, display_text = ""):
+
+def draw_recalibration_message(image, values, angles):
+    width, height = image.shape[1], image.shape[0]
+
+    # --- Determine message content ---
+    threshold = 0.075  # degrees
+    axis_names = ["Roll", "Pitch", "Yaw"]
+    over_threshold = [i for i, angle in enumerate(np.abs(angles)) if angle > threshold]
+
+    lines = []
+    lines.append("Recalibration complete")
+
+    if over_threshold:
+        axes = ", ".join([axis_names[i] for i in over_threshold])
+        lines.append(f"Significant change in rotation! {axes}")
+        lines.append("To permanently apply new calibration, press 'l'!")
+    else:
+        lines.append("No significant change detected")
+
+    lines.append(f"Euler angles (deg): Roll={angles[0]:.2f}, Pitch={angles[1]:.2f}, Yaw={angles[2]:.2f}")
+    lines.append(f"Depth error @1m:{values[0]:.2f}%, 2m:{values[1]:.2f}%, 5m:{values[2]:.2f}%, 10m:{values[3]:.2f}%")
+
+    # --- Text layout parameters ---
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    font_scale = 0.7
+    thickness = 2
+    line_spacing = 12
+    line_height = int(cv2.getTextSize("Test", font, font_scale, thickness)[0][1] + line_spacing)
+
+    # Calculate full box height and max width
+    text_sizes = [cv2.getTextSize(line, font, font_scale, thickness)[0] for line in lines]
+    box_width = max([size[0] for size in text_sizes]) + 40
+    box_height = line_height * len(lines) + 20
+
+    # Box position (centered)
+    box_x = (width - box_width) // 2
+    box_y = (height - box_height) // 2
+
+    # Draw semi-transparent background box
+    overlay = image.copy()
+    cv2.rectangle(overlay, (box_x, box_y), (box_x + box_width, box_y + box_height), (0, 0, 0), -1)
+    alpha = 0.5
+    cv2.addWeighted(overlay, alpha, image, 1 - alpha, 0, image)
+
+    # --- Draw text lines ---
+    current_y = box_y + 30
+    for i, line in enumerate(lines):
+        color = (255, 255, 255)
+        if "Significant change" in line:
+            color = (0, 0, 255)
+        elif "Recalibration complete" in line:
+            color = (0, 255, 0)
+
+        text_size = cv2.getTextSize(line, font, font_scale, thickness)[0]
+        text_x = box_x + (box_width - text_size[0]) // 2
+        cv2.putText(image, line, (text_x, current_y), font, font_scale, color, thickness)
+        current_y += line_height
+
+    return image
+
+def draw_health_bar(image, values, rotation, display_text = ""):
         # Normalize the value for display (clamp between 0 and 40)
-        normalized_value = min(max(values), 40)
+        normalized_value = min(max(rotation), 0.2)
 
         # Bar parameters
         width, height = image.shape[1], image.shape[0]
@@ -36,12 +96,12 @@ def draw_health_bar(image, values, display_text = ""):
             cv2.putText(image, labels[i], (text_x, text_y), cv2.FONT_HERSHEY_SIMPLEX, font_scale, (0, 0, 0), thickness)
 
         # Map the value to the position within the bar
-        if normalized_value <= 1.5:
-            pointer_x = int(bar_x + (normalized_value / 1.5) * section_width)
-        elif normalized_value <= 3.5:
-            pointer_x = int(bar_x + section_width + ((normalized_value - 1.5) / 1.5) * section_width)
+        if normalized_value <= 0.07:
+            pointer_x = int(bar_x + (normalized_value / 0.07) * section_width)
+        elif normalized_value <= 0.15:
+            pointer_x = int(bar_x + section_width + ((normalized_value - 0.07) / 0.07) * section_width)
         else:
-            pointer_x = int(bar_x + 2 * section_width + ((normalized_value - 3.5) / 3.5) * section_width)
+            pointer_x = int(bar_x + 2 * section_width + ((normalized_value - 0.15) / 0.15) * section_width)
         pointer_y_top = bar_y - 10
         pointer_y_bottom = bar_y + bar_height + 10
         cv2.line(image, (pointer_x, pointer_y_top), (pointer_x, pointer_y_bottom), (0, 0, 0), 2)
@@ -169,7 +229,7 @@ def draw_progress_bar_with_percentage(image, progress, coverage_check, bar_color
         if not coverage_check:
             coverage_text = "Insufficient coverage - move the camera slowly..."
         else:
-            coverage_text = "Full coverage achieved."
+            coverage_text = "Waiting for enough data ..."
         coverage_text_size = cv2.getTextSize(coverage_text, cv2.FONT_HERSHEY_SIMPLEX, font_scale, 2)[0]
         coverage_text_x = (img_width - coverage_text_size[0]) // 2
         coverage_text_y = bar_y + thickness + 20 + coverage_text_size[1]

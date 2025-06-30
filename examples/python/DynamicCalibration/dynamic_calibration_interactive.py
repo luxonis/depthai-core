@@ -104,8 +104,12 @@ with pipeline:
             rightFrame = in_right.getCvFrame()
 
         if depthDiff != [] and np.abs(displayTimer - time.time()) < 5:
-            leftFrame = draw_health_bar(leftFrame, depthDiff, display_text = f"{text} Health Bad of Depth Difference Error")
-            rightFrame = draw_health_bar(rightFrame, depthDiff, display_text = f"{text} Health Bar of Depth Difference Error")
+            if state == "Recalibration":
+               leftFrame = draw_recalibration_message(leftFrame, depthDiff,rotationDiff)
+               rightFrame = draw_recalibration_message(rightFrame, depthDiff,rotationDiff)
+            else:
+                leftFrame = draw_health_bar(leftFrame, depthDiff,rotationDiff, display_text = f"{text} Health Bad of Depth Difference Error")
+                rightFrame = draw_health_bar(rightFrame, depthDiff, rotationDiff, display_text = f"{text} Health Bar of Depth Difference Error")
             cv2.imshow("Left", leftFrame)
             cv2.imshow("Right", rightFrame)
             key = cv2.waitKey(1)
@@ -148,6 +152,7 @@ with pipeline:
             dataAquired = 0.0
             displayTimer = time.time()
             depthDiff = getattr(calib_quality, 'depthErrorDifference', []).copy()
+            rotationDiff = getattr(calib_quality, 'rotationChange', []).copy()
             print_final_calibration_results(calib_quality, state)
 
         if leftFrame is not None:
