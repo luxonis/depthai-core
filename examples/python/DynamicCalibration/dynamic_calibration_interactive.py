@@ -64,7 +64,7 @@ print("[a] → Force calibration check")
 print("[d] → Force recalibrate")
 print("[n] → Apply new calibration")
 print("[o] → Apply old calibration")
-print("[l] → Flash new calibration")
+print("[s] → Flash new calibration")
 print("[k] → Flash old calibration")
 print("[q] → Quit")
 print("<<< -----------------------------|Start the pipeline!|------------------------->>>")
@@ -201,7 +201,7 @@ with pipeline:
             print("Device setting old calibration")
             device.setCalibration(calibOld)
 
-        elif key == ord("l"):
+        elif key == ord("s"):
             print("Device flasing new calibration")
             device.flashCalibration(calibNew)
 

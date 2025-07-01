@@ -335,7 +335,7 @@ def draw_key_commands(image, top_left=(10, 20), font_scale=0.5, color=(255, 255,
         "[d] Force recalibrate",
         "[n] Apply new calibration",
         "[o] Apply old calibration",
-        "[l] Flash new calibration",
+        "[s] Flash new calibration",
         "[k] Flash old calibration",
         "[q] Quit",
     ]
