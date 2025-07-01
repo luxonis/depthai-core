@@ -529,8 +529,8 @@ if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
         message(STATUS "Using remote dynamic_calibration zip")
         FetchContent_Declare(
             dynamic_calibration
-            URL https://artifacts.luxonis.com/artifactory/list/luxonis-depthai-helper-binaries/dynamic_calibration/510f107f671bbba2e353c5d5a4ac9a03f1715dea/dynamic_calibration_manylinux.zip
-            URL_HASH MD5=8d179385a633b979fe81a3ca91c6cca6
+            URL https://artifacts.luxonis.com/artifactory/luxonis-depthai-helper-binaries/dynamic_calibration/2c73fe8717c2925476cc7f45880726c94371f971/dynamic_calibration_2c73fe8717c2925476cc7f45880726c94371f971.zip
+            URL_HASH MD5=14df99bc5dd22798526aeefd477f972c
         )
     endif()
     FetchContent_MakeAvailable(dynamic_calibration)
