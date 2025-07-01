@@ -1,6 +1,6 @@
-#include <utility>
-
 #include "depthai/pipeline/InputQueue.hpp"
+
+#include <utility>
 
 namespace dai {
 
