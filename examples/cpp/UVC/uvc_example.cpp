@@ -147,10 +147,8 @@ int main() {
     // Create video encoder node
     auto encoded = pipeline.create<dai::node::VideoEncoder>();
     encoded->setDefaultProfilePreset(30, dai::VideoEncoderProperties::Profile::MJPEG);
-    encoded->input.setMaxSize(1);
-    encoded->input.setBlocking(false);
     output->link(encoded->input);
-    outputQueue = encoded->bitstream.createOutputQueue();
+    outputQueue = encoded->bitstream.createOutputQueue(1, false);
 
     // Start pipeline
     pipeline.start();

@@ -108,13 +108,6 @@ static void depthai_source_fill_buffer(struct video_source *s,
 	}
 	
 	s_get_buffer_cb(s, buf);
-	
-	/*
-	 * Wait for the timer to elapse to ensure that our configured frame rate
-	 * is adhered to.
-	 */
-	if (src->streaming)
-		timer_wait(src->timer);
 }
 
 
