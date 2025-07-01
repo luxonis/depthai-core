@@ -29,8 +29,11 @@ cmake --build build
 ## Dependencies
 - CMake >= 3.20
 - C/C++17 compiler
+- [Linux] libudev >= 1.0.0
 - [optional] OpenCV 4 (required if building examples and for record and replay)
 - [optional] PCL (required for point cloud example)
+
+To install libudev on Debian based systems (Ubuntu, etc.): `sudo apt install libudev-dev`
 
 To install OpenCV:
 MacOS: `brew install opencv`
@@ -222,7 +225,7 @@ The following environment variables can be set to alter default behavior of the 
 | DEPTHAI_ZOO_MODELS_PATH | (Default) depthai_models - Folder where zoo model description files are stored |
 | DEPTHAI_RECORD | Enables holistic record to the specified directory. |
 | DEPTHAI_REPLAY | Replays holistic replay from the specified file or directory. |
-
+| DEPTHAI_PROFILING | Enables runtime profiling of data transfer between the host and connected devices. Set to 1 to enable. Requires DEPTHAI_LEVEL=debug or lower to print. |
 
 ## Running tests
 
@@ -286,3 +289,17 @@ cmake -S. -Bbuild -D'OpenCV_DIR=/usr/lib/x86_64-linux-gnu/cmake/opencv4'
 ```
 
 Now the build process should correctly discover your OpenCV installation
+
+### Build fails due to out of memory killer
+If your build process is killed by the out of memory killer, you can try to reduce the number of parallel jobs used during the build process.
+
+The error usually looks something like this:
+```
+c++: fatal error: Killed signal terminated program cc1plus
+```
+
+You can do this by passing the `--parallel` flag with a lower number of jobs to the `cmake --build` command, for example:
+```
+cmake --build build --parallel 2
+```
+
