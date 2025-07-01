@@ -4,7 +4,6 @@
 
 #include "depthai/common/variant.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
-#include "utility/ErrorMacros.hpp"
 
 namespace dai {
 
@@ -25,23 +24,13 @@ class ImageFiltersConfig : public Buffer {
      * @param filterIndex Index of the filter to be inserted
      * @param filterParams Parameters of the filter to be inserted
      */
-    ImageFiltersConfig& updateFilterAtIndex(std::int32_t filterIndex, FilterParams filterParams) {
-        DAI_CHECK_V(this->filterIndices.size() == this->filterParams.size(),
-                    "ImageFiltersConfig can either be used to create a new filter pipeline or update an existing one, not both");
-        this->filterIndices.push_back(filterIndex);
-        this->filterParams.push_back(filterParams);
-        return *this;
-    }
+    ImageFiltersConfig& updateFilterAtIndex(std::int32_t filterIndex, FilterParams filterParams);
 
     /**
      * Insert filter parameters describing how a new filter should be inserted
      * @param filterParams Parameters of the filter to be inserted
      */
-    ImageFiltersConfig& insertFilter(FilterParams filterParams) {
-        DAI_CHECK_V(filterIndices.size() == 0, "ImageFiltersConfig can either be used to create a new filter pipeline or update an existing one, not both");
-        this->filterParams.push_back(filterParams);
-        return *this;
-    }
+    ImageFiltersConfig& insertFilter(FilterParams filterParams);
 
     /**
      * Index of the filter to be applied

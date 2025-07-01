@@ -8,6 +8,13 @@
 namespace dai {
 namespace node {
 
+enum class ImageFiltersPresetMode : std::uint32_t {
+    DEFAULT,
+    LOW_RANGE,
+    MID_RANGE,
+    HIGH_RANGE,
+};
+
 class ImageFilters : public DeviceNodeCRTP<DeviceNode, ImageFilters, ImageFiltersProperties>, public HostRunnable {
    protected:
     Properties& getProperties() override {
@@ -20,16 +27,6 @@ class ImageFilters : public DeviceNodeCRTP<DeviceNode, ImageFilters, ImageFilter
     using DeviceNodeCRTP::DeviceNodeCRTP;
 
     /**
-     * Preset modes for image filters.
-     */
-    enum class PresetMode : std::uint32_t {
-        DEFAULT,
-        BIN_PICKING,
-        LONG_RANGE,
-        NORM,
-    };
-
-    /**
      * Initial config for image filters.
      */
     std::shared_ptr<ImageFiltersConfig> initialConfig = std::make_shared<ImageFiltersConfig>();
@@ -40,7 +37,14 @@ class ImageFilters : public DeviceNodeCRTP<DeviceNode, ImageFilters, ImageFilter
      * @param presetMode Preset mode for image filters
      * @return Shared pointer to the node
      */
-    std::shared_ptr<ImageFilters> build(Node::Output& input, PresetMode presetMode = PresetMode::DEFAULT);
+    std::shared_ptr<ImageFilters> build(Node::Output& input, ImageFiltersPresetMode presetMode = ImageFiltersPresetMode::DEFAULT);
+
+    /**
+     * Build the node.
+     * @param presetMode Preset mode for image filters
+     * @return Shared pointer to the node
+     */
+    std::shared_ptr<ImageFilters> build(ImageFiltersPresetMode presetMode = ImageFiltersPresetMode::DEFAULT);
 
     /**
      * Input for image frames to be filtered
@@ -92,7 +96,7 @@ class ImageFilters : public DeviceNodeCRTP<DeviceNode, ImageFilters, ImageFilter
     bool runOnHost() const override;
 
    private:
-    void setDefaultProfilePreset(PresetMode mode);
+    void setDefaultProfilePreset(ImageFiltersPresetMode mode);
 
     bool runOnHostVar = true;
 };
@@ -112,16 +116,6 @@ class ToFDepthConfidenceFilter : public DeviceNodeCRTP<DeviceNode, ToFDepthConfi
     using DeviceNodeCRTP::DeviceNodeCRTP;
 
     /**
-     * Preset modes for ToF depth confidence filter.
-     */
-    enum class PresetMode : std::uint32_t {
-        DEFAULT,
-        BIN_PICKING,
-        LONG_RANGE,
-        NORM,
-    };
-
-    /**
      * Initial config for ToF depth confidence filter.
      */
     std::shared_ptr<ToFDepthConfidenceFilterConfig> initialConfig = std::make_shared<ToFDepthConfidenceFilterConfig>();
@@ -133,7 +127,16 @@ class ToFDepthConfidenceFilter : public DeviceNodeCRTP<DeviceNode, ToFDepthConfi
      * @param presetMode Preset mode for ToF depth confidence filter
      * @return Shared pointer to the node
      */
-    std::shared_ptr<ToFDepthConfidenceFilter> build(Node::Output& depth, Node::Output& amplitude, PresetMode presetMode = PresetMode::DEFAULT);
+    std::shared_ptr<ToFDepthConfidenceFilter> build(Node::Output& depth,
+                                                    Node::Output& amplitude,
+                                                    ImageFiltersPresetMode presetMode = ImageFiltersPresetMode::DEFAULT);
+
+    /**
+     * Build the node.
+     * @param presetMode Preset mode for ToF depth confidence filter
+     * @return Shared pointer to the node
+     */
+    std::shared_ptr<ToFDepthConfidenceFilter> build(ImageFiltersPresetMode presetMode = ImageFiltersPresetMode::DEFAULT);
 
     /**
      * Depth frame image, expected ImgFrame type is RAW8 or RAW16.
@@ -204,7 +207,7 @@ class ToFDepthConfidenceFilter : public DeviceNodeCRTP<DeviceNode, ToFDepthConfi
                                     std::shared_ptr<ImgFrame> confidenceFrame,
                                     float threshold);
 
-    void setDefaultProfilePreset(PresetMode mode);
+    void setDefaultProfilePreset(ImageFiltersPresetMode mode);
 
     bool runOnHostVar = true;
 };

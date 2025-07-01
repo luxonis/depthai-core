@@ -737,8 +737,13 @@ std::unique_ptr<ImageFilters::Filter> createFilter(const FilterParams& params) {
     return std::visit([](auto&& arg) -> std::unique_ptr<ImageFilters::Filter> { return createFilter(arg); }, params);
 }
 
-std::shared_ptr<ImageFilters> ImageFilters::build(Node::Output& input, PresetMode presetMode) {
+std::shared_ptr<ImageFilters> ImageFilters::build(Node::Output& input, ImageFiltersPresetMode presetMode) {
     input.link(this->input);
+    setDefaultProfilePreset(presetMode);
+    return std::static_pointer_cast<ImageFilters>(shared_from_this());
+}
+
+std::shared_ptr<ImageFilters> ImageFilters::build(ImageFiltersPresetMode presetMode) {
     setDefaultProfilePreset(presetMode);
     return std::static_pointer_cast<ImageFilters>(shared_from_this());
 }
@@ -821,12 +826,12 @@ void ImageFilters::setRunOnHost(bool runOnHost) {
     runOnHostVar = runOnHost;
 }
 
-void ImageFilters::setDefaultProfilePreset(PresetMode mode) {
+void ImageFilters::setDefaultProfilePreset(ImageFiltersPresetMode mode) {
     switch(mode) {
-        case PresetMode::DEFAULT: {
+        case ImageFiltersPresetMode::DEFAULT: {
             // Empty
         } break;
-        case PresetMode::BIN_PICKING: {
+        case ImageFiltersPresetMode::LOW_RANGE: {
             std::vector<FilterParams> params;
 
             TemporalFilterParams temporalFilterParams;
@@ -853,18 +858,23 @@ void ImageFilters::setDefaultProfilePreset(PresetMode mode) {
 
             initialConfig->filterParams = params;
         } break;
-        case PresetMode::LONG_RANGE: {
+        case ImageFiltersPresetMode::MID_RANGE: {
         } break;
-        case PresetMode::NORM: {
+        case ImageFiltersPresetMode::HIGH_RANGE: {
         } break;
     }
 
     properties.initialConfig = *initialConfig;
 }
 
-std::shared_ptr<ToFDepthConfidenceFilter> ToFDepthConfidenceFilter::build(Node::Output& depth, Node::Output& amplitude, PresetMode presetMode) {
+std::shared_ptr<ToFDepthConfidenceFilter> ToFDepthConfidenceFilter::build(Node::Output& depth, Node::Output& amplitude, ImageFiltersPresetMode presetMode) {
     depth.link(this->depth);
     amplitude.link(this->amplitude);
+    setDefaultProfilePreset(presetMode);
+    return std::static_pointer_cast<ToFDepthConfidenceFilter>(shared_from_this());
+}
+
+std::shared_ptr<ToFDepthConfidenceFilter> ToFDepthConfidenceFilter::build(ImageFiltersPresetMode presetMode) {
     setDefaultProfilePreset(presetMode);
     return std::static_pointer_cast<ToFDepthConfidenceFilter>(shared_from_this());
 }
@@ -987,17 +997,17 @@ bool ToFDepthConfidenceFilter::runOnHost() const {
     return runOnHostVar;
 }
 
-void ToFDepthConfidenceFilter::setDefaultProfilePreset(PresetMode mode) {
+void ToFDepthConfidenceFilter::setDefaultProfilePreset(ImageFiltersPresetMode mode) {
     switch(mode) {
-        case PresetMode::DEFAULT: {
+        case ImageFiltersPresetMode::DEFAULT: {
             // Empty
         } break;
-        case PresetMode::BIN_PICKING: {
+        case ImageFiltersPresetMode::LOW_RANGE: {
             initialConfig->confidenceThreshold = 0.5f;
         } break;
-        case PresetMode::LONG_RANGE: {
+        case ImageFiltersPresetMode::MID_RANGE: {
         } break;
-        case PresetMode::NORM: {
+        case ImageFiltersPresetMode::HIGH_RANGE: {
         } break;
     }
 

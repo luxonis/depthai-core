@@ -289,6 +289,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/EncodedFrame.cpp
     src/pipeline/datatype/ImgAnnotations.cpp
     src/pipeline/datatype/ImageManipConfig.cpp
+    src/pipeline/datatype/ImageFiltersConfig.cpp
     src/pipeline/datatype/CameraControl.cpp
     src/pipeline/datatype/NNData.cpp
     src/pipeline/datatype/ImgDetections.cpp
