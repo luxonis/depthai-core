@@ -696,13 +696,13 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
             },
             DOC(dai, DeviceBase, readCalibration))
         .def(
-            "flashCalibration",
+            "tryFlashCalibration",
             [](DeviceBase& d, CalibrationHandler calibrationDataHandler) {
                 py::gil_scoped_release release;
-                return d.flashCalibration(calibrationDataHandler);
+                return d.tryFlashCalibration(calibrationDataHandler);
             },
             py::arg("calibrationDataHandler"),
-            DOC(dai, DeviceBase, flashCalibration))
+            DOC(dai, DeviceBase, tryFlashCalibration))
         .def(
             "setXLinkChunkSize",
             [](DeviceBase& d, int s) {
@@ -752,12 +752,12 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
             },
             DOC(dai, DeviceBase, isEepromAvailable))
         .def(
-            "flashCalibration2",
+            "flashCalibration",
             [](DeviceBase& d, CalibrationHandler ch) {
                 py::gil_scoped_release release;
-                return d.flashCalibration2(ch);
+                return d.flashCalibration(ch);
             },
-            DOC(dai, DeviceBase, flashCalibration2))
+            DOC(dai, DeviceBase, flashCalibration))
         .def(
             "readCalibration2",
             [](DeviceBase& d) {
