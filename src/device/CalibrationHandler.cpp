@@ -388,7 +388,7 @@ std::vector<std::vector<float>> CalibrationHandler::getCameraExtrinsics(CameraBo
     invertSe3Matrix4x4InPlace(dstOriginMatrix);
 
     // Get the matrix from src to dst camera
-    extrinsics = matMul(srcOriginMatrix, dstOriginMatrix);
+    extrinsics = matMul(dstOriginMatrix, srcOriginMatrix);
     return extrinsics;
 }
 
