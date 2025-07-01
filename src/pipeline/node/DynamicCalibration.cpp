@@ -241,7 +241,7 @@ void DynamicCalibration::setInternalCalibration(std::shared_ptr<Device> device,
 }
 
 void DynamicCalibration::pipelineSetup(std::shared_ptr<Device> device, CameraBoardSocket boardSocketA, CameraBoardSocket boardSocketB, int width, int height) {
-    CalibrationHandler currentCalibration = device->readCalibration();
+    CalibrationHandler currentCalibration = device->getCalibration();
     deviceName = device->getDeviceId();
 
     dynCalibImpl = std::make_unique<dcl::DynamicCalibration>();
@@ -462,7 +462,7 @@ void DynamicCalibration::run() {
                 auto calibrationHandle = resultCalib.value.second;
 
                 if(calibrationHandle->getCameraCalibration()) {
-                    CalibrationHandler calibHandler = device->readCalibration();
+                    CalibrationHandler calibHandler = device->getCalibration();
                     dynResult.newCalibration->calibHandler = convertDCLtoDAI(calibHandler, calibrationHandle, daiSocketA, daiSocketB, widthDefault, heightDefault);
                     calibrationSM.deleteAllData();
                     logger::info("[DynamicCalibration] Got new calibrationHandler.");
