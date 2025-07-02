@@ -159,7 +159,7 @@ void SpatialDetectionNetwork::setNNArchiveOther(const NNArchive& nnArchive) {
     neuralNetwork->setNNArchive(nnArchive);
 }
 
-void SpatialDetectionNetwork::setBlobPath(const dai::Path& path) {
+void SpatialDetectionNetwork::setBlobPath(const std::filesystem::path& path) {
     neuralNetwork->setBlobPath(path);
     detectionParser->setBlobPath(path);
 }
@@ -169,12 +169,12 @@ void SpatialDetectionNetwork::setBlob(OpenVINO::Blob blob) {
     detectionParser->setBlob(blob);
 }
 
-void SpatialDetectionNetwork::setBlob(const dai::Path& path) {
+void SpatialDetectionNetwork::setBlob(const std::filesystem::path& path) {
     neuralNetwork->setBlob(path);
     detectionParser->setBlob(path);
 }
 
-void SpatialDetectionNetwork::setModelPath(const dai::Path& modelPath) {
+void SpatialDetectionNetwork::setModelPath(const std::filesystem::path& modelPath) {
     neuralNetwork->setModelPath(modelPath);
     detectionParser->setModelPath(modelPath);
 }
