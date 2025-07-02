@@ -73,8 +73,8 @@ class Node : public std::enable_shared_from_this<Node> {
     static constexpr auto DEFAULT_QUEUE_SIZE = 3;
     static constexpr auto DEFAULT_WAIT_FOR_MESSAGE = false;
 
-    std::string createUniqueInputName(const std::string& suffix = "");
-    std::string createUniqueOutputName(const std::string& suffix = "");
+    std::string createUniqueInputName();
+    std::string createUniqueOutputName();
 
    protected:
     std::vector<Output*> outputRefs;
@@ -139,7 +139,7 @@ class Node : public std::enable_shared_from_this<Node> {
                 par.setOutputRefs(this);
             }
             if(getName().empty()) {
-                setName(par.createUniqueOutputName("output"));
+                setName(par.createUniqueOutputName());
             }
         }
 
@@ -352,7 +352,7 @@ class Node : public std::enable_shared_from_this<Node> {
                 par.setInputRefs(this);
             }
             if(getName().empty()) {
-                setName(par.createUniqueInputName("input"));
+                setName(par.createUniqueInputName());
             }
         }
 
