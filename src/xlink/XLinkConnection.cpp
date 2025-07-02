@@ -393,7 +393,8 @@ XLinkConnection::XLinkConnection(const DeviceInfo& deviceDesc, std::vector<std::
     initDevice(deviceDesc, expectedState);
 }
 
-XLinkConnection::XLinkConnection(const DeviceInfo& deviceDesc, dai::Path mvcmdPath, XLinkDeviceState_t expectedState) : pathToMvcmd(std::move(mvcmdPath)) {
+XLinkConnection::XLinkConnection(const DeviceInfo& deviceDesc, std::filesystem::path mvcmdPath, XLinkDeviceState_t expectedState)
+    : pathToMvcmd(std::move(mvcmdPath)) {
     initialize();
     if(!pathToMvcmd.empty()) {
         std::ifstream testStream(pathToMvcmd);
@@ -470,7 +471,7 @@ bool XLinkConnection::getRebootOnDestruction() const {
     return rebootOnDestruction;
 }
 
-bool XLinkConnection::bootAvailableDevice(const deviceDesc_t& deviceToBoot, const dai::Path& pathToMvcmd) {
+bool XLinkConnection::bootAvailableDevice(const deviceDesc_t& deviceToBoot, const std::filesystem::path& pathToMvcmd) {
     std::ifstream fwStream(pathToMvcmd, std::ios::binary);
     if(!fwStream.is_open()) throw std::runtime_error(fmt::format("Cannot boot firmware, binary at path: {} doesn't exist", pathToMvcmd));
     std::vector<uint8_t> package = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(fwStream), {});

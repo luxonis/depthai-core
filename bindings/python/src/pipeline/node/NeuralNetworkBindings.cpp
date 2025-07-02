@@ -100,7 +100,7 @@ void bind_neuralnetwork(pybind11::module& m, void* pCallstack) {
              py::arg("fps") = std::nullopt,
              DOC(dai, node, NeuralNetwork, build, 5))
         .def("setBlob", py::overload_cast<dai::OpenVINO::Blob>(&NeuralNetwork::setBlob), py::arg("blob"), DOC(dai, node, NeuralNetwork, setBlob))
-        .def("setBlob", py::overload_cast<const dai::Path&>(&NeuralNetwork::setBlob), py::arg("path"), DOC(dai, node, NeuralNetwork, setBlob, 2))
+        .def("setBlob", py::overload_cast<const std::filesystem::path&>(&NeuralNetwork::setBlob), py::arg("path"), DOC(dai, node, NeuralNetwork, setBlob, 2))
         .def("setModelPath", &NeuralNetwork::setModelPath, py::arg("modelPath"), DOC(dai, node, NeuralNetwork, setModelPath))
         .def("setNumShavesPerInferenceThread",
              &NeuralNetwork::setNumShavesPerInferenceThread,
