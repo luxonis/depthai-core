@@ -113,8 +113,8 @@ class FSLock {
         static std::mutex map_mutex;
         std::lock_guard<std::mutex> map_lock(map_mutex);  // prevents race condition when accessing thread_locks
 
-        static std::unordered_map<std::filesystem::path, std::mutex> thread_locks;
-        return thread_locks[key];
+        static std::unordered_map<std::string, std::mutex> thread_locks;
+        return thread_locks[key.string()];
     }
     std::mutex& threadLock;
 };
