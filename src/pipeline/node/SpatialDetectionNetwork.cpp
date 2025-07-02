@@ -20,15 +20,12 @@ void SpatialDetectionNetwork::buildInternal() {
     // Default confidence threshold
     detectionParser->properties.parser.confidenceThreshold = 0.5;
     neuralNetwork->out.link(detectionParser->input);
-    neuralNetwork->passthrough.link(detectionParser->imageIn);
     neuralNetwork->passthrough.link(inputImg);
     detectionParser->out.link(inputDetections);
 
     // No "internal" buffering to keep interface similar to monolithic nodes
     detectionParser->input.setBlocking(true);
     detectionParser->input.setMaxSize(1);
-    detectionParser->imageIn.setBlocking(false);
-    detectionParser->imageIn.setMaxSize(1);
     inputDetections.setMaxSize(1);
     inputDetections.setBlocking(true);
 }
