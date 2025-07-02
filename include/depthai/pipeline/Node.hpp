@@ -612,10 +612,10 @@ class Node : public std::enable_shared_from_this<Node> {
     AssetManager& getAssetManager();
 
     /// Loads resource specified by URI and returns its data
-    std::vector<uint8_t> loadResource(dai::Path uri);
+    std::vector<uint8_t> loadResource(std::filesystem::path uri);
 
     /// Moves the resource out
-    std::vector<uint8_t> moveResource(dai::Path uri);
+    std::vector<uint8_t> moveResource(std::filesystem::path uri);
 
     /// Create and place Node to this Node
     template <class N>

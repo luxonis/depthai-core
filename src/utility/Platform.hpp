@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <filesystem>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -19,44 +20,44 @@
 namespace dai {
 namespace platform {
 
+uint32_t getIPv4AddressAsBinary(std::string address);
+std::string getIPv4AddressAsString(std::uint32_t binary);
+
+/**
+ * @brief Get the temporary path
+ * @return Temporary path
+ */
+std::filesystem::path getTempPath();
+
 /**
  * @brief Check if a path exists
  * @param path Path to check
  * @param directory If true, check if path is a directory
  * @return True if path exists, false otherwise
  */
-bool checkPathExists(const std::string& path, bool directory = false);
-
-/**
- * @brief Get the temporary path
- * @return Temporary path
- */
-std::string getTempPath();
-
-/**
- * @brief Join two paths, OS-agnostic. For instance, if the paths are "/home/user" and "test.txt", the joined path is "/home/user/test.txt".
- * @param path1 First path
- * @param path2 Second path
- * @return Joined path
- */
-std::string joinPaths(const std::string& path1, const std::string& path2);
+bool checkPathExists(const std::filesystem::path& path, bool directory = false);
 
 /**
  * @brief Check if a path has write permissions
  * @param path Path to check
  * @return True if path has write permissions, false otherwise
  */
-bool checkWritePermissions(const std::string& path);
+bool checkWritePermissions(const std::filesystem::path& path);
+
+/**
+ * @brief Join two paths, OS-agnostic. This is a wrapper around std::filesystem::path::operator/
+ * @param path1 First path
+ * @param path2 Second path
+ * @return Joined path
+ */
+std::filesystem::path joinPaths(const std::filesystem::path& path1, const std::filesystem::path& path2);
 
 /**
  * @brief Get the directory from a path, OS-agnostic. For instance, if the path is "/home/user/test.txt", the directory is "/home/user".
  * @param path Path to get the directory from
  * @return directory path
  */
-std::string getDirFromPath(const std::string& path);
-
-uint32_t getIPv4AddressAsBinary(std::string address);
-std::string getIPv4AddressAsString(std::uint32_t binary);
+std::filesystem::path getDirFromPath(const std::filesystem::path& path);
 
 // TODO change this to std::thread
 void setThreadName(JoiningThread& thread, const std::string& name);
@@ -67,7 +68,7 @@ void setThreadName(JoiningThread& thread, const std::string& name);
  */
 class FSLock {
    public:
-    explicit FSLock(const std::string& fname);
+    explicit FSLock(const std::filesystem::path& fname);
     virtual ~FSLock();
 
     /**
@@ -91,7 +92,7 @@ class FSLock {
      * @param path Path to the file
      * @return Path to the lock file
      */
-    virtual std::string getLockPath(const std::string& path) = 0;
+    virtual std::filesystem::path getLockPath(const std::filesystem::path& path) = 0;
 
     FSLock(const FSLock&) = delete;
     FSLock& operator=(const FSLock&) = delete;
@@ -103,16 +104,16 @@ class FSLock {
     int fd = -1;
 #endif
 
-    std::string filename;
-    std::string lockPath;
+    std::filesystem::path filename;
+    std::filesystem::path lockPath;
     bool isLocked;
 
     // Thread synchronization
-    static std::mutex& getThreadLock(const std::string& key) {
+    static std::mutex& getThreadLock(const std::filesystem::path& key) {
         static std::mutex map_mutex;
         std::lock_guard<std::mutex> map_lock(map_mutex);  // prevents race condition when accessing thread_locks
 
-        static std::unordered_map<std::string, std::mutex> thread_locks;
+        static std::unordered_map<std::filesystem::path, std::mutex> thread_locks;
         return thread_locks[key];
     }
     std::mutex& threadLock;
@@ -123,8 +124,8 @@ class FSLock {
  */
 class FileLock : public FSLock {
    public:
-    explicit FileLock(const std::string& path, bool createIfNotExists = false);
-    std::string getLockPath(const std::string& path) override;
+    explicit FileLock(const std::filesystem::path& path, bool createIfNotExists = false);
+    std::filesystem::path getLockPath(const std::filesystem::path& path) override;
     using FSLock::lock;
 
     /**
@@ -133,7 +134,7 @@ class FileLock : public FSLock {
      * @param createIfNotExists If true, do not throw an error if the file does not exist, create it instead
      * @return FSLock instance
      */
-    static std::unique_ptr<FileLock> lock(const std::string& path, bool createIfNotExists = false);
+    static std::unique_ptr<FileLock> lock(const std::filesystem::path& path, bool createIfNotExists = false);
 };
 
 /**
@@ -142,8 +143,8 @@ class FileLock : public FSLock {
  */
 class FolderLock : public FSLock {
    public:
-    explicit FolderLock(const std::string& path);
-    std::string getLockPath(const std::string& path) override;
+    explicit FolderLock(const std::filesystem::path& path);
+    std::filesystem::path getLockPath(const std::filesystem::path& path) override;
     using FSLock::lock;
 
     /**
@@ -151,7 +152,7 @@ class FolderLock : public FSLock {
      * @param path Path to the folder
      * @return FSLock instance
      */
-    static std::unique_ptr<FolderLock> lock(const std::string& path);
+    static std::unique_ptr<FolderLock> lock(const std::filesystem::path& path);
 };
 }  // namespace platform
 }  // namespace dai
