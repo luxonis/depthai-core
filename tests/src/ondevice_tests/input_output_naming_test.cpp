@@ -24,7 +24,15 @@ TEST_CASE("input output auto naming test") {
     auto input = std::make_shared<dai::Node::Input>(*node, desc);
 
     REQUIRE(input->getName() == "_HostNode_input_0");
+
+    auto input2 = std::make_shared<dai::Node::Input>(*node, desc);
+
+    REQUIRE(input2->getName() == "_HostNode_input_1");
+
     dai::Node::OutputDescription outputDesc;
     auto output = std::make_shared<dai::Node::Output>(*node, outputDesc);
     REQUIRE(output->getName() == "_HostNode_output_0");
+
+    auto output2 = std::make_shared<dai::Node::Output>(*node, outputDesc);
+    REQUIRE(output2->getName() == "_HostNode_output_1");
 }
