@@ -280,6 +280,29 @@ void DynamicCalibration::resetResults(){
     dynResult.info = "";
 };
 
+bool isAlmostBlackOrWhite(const cv::Mat& frame, double tolerance = 25.5, double maxStdDev = 10.0)
+{
+    if (frame.empty()) return true;
+
+    cv::Mat gray;
+    if (frame.channels() == 3) {
+        cv::cvtColor(frame, gray, cv::COLOR_BGR2GRAY);
+    } else {
+        gray = frame;
+    }
+
+    cv::Scalar mean, stddev;
+    cv::meanStdDev(gray, mean, stddev);
+
+    double meanVal = mean[0];
+    double stdVal = stddev[0];
+    std::cout << meanVal << " " << stdVal << std::endl;
+    bool isAlmostBlack = (meanVal < tolerance && stdVal < maxStdDev);
+    bool isAlmostWhite = (meanVal > (255 - tolerance) && stdVal < maxStdDev);
+
+    return isAlmostBlack || isAlmostWhite;
+}
+
 void DynamicCalibration::run() {
     if(!device) {
         logger::error("Dynamic calibration node has to have access to a device!");
@@ -392,6 +415,11 @@ void DynamicCalibration::run() {
                     dcl::timestamp_t timestamp = leftFrame->getTimestamp().time_since_epoch().count();
                     auto imageA = leftFrame->getCvFrame();
                     auto imageB = rightFrame->getCvFrame();
+                    if (imageA.empty() || imageB.empty()) continue;
+                    if (isAlmostBlackOrWhite(leftFrame->getCvFrame())) {
+                        dynResult.info = "Frame is nearly black or white — skipping data loading.";
+                        continue;
+                    }
                     dcl::ImageData imgA = cvMatToImageData(imageA);
                     dcl::ImageData imgB = cvMatToImageData(imageB);
                     dynCalibImpl->loadStereoImagePair(imgA, imgB, deviceName, socketA, socketB, timestamp);
@@ -413,7 +441,7 @@ void DynamicCalibration::run() {
                     ? dynCalibImpl->checkCalibration(dcDevice, socketA, socketB, static_cast<dcl::PerformanceMode>(DynamicCalibrationConfig::AlgorithmControl::PerformanceMode::SKIP_CHECKS))
                     :dynCalibImpl->checkCalibration(dcDevice, socketA, socketB, static_cast<dcl::PerformanceMode>(properties.initialConfig.algorithmControl.performanceMode));
                 calibQuality = result.value;
-                dynResult.info = result.errorMessage();
+                dynResult.info = result.errorMessage()
                 dynResult.calibOverallQuality = dai::DynamicCalibrationResults::CalibrationQualityResult::fromDCL(calibQuality);
                 if (forceTrigger) {
                     forceTrigger = false;
@@ -425,11 +453,13 @@ void DynamicCalibration::run() {
                     logger::info("[DynamicCalibration] results does not have value!");
                     calibrationSM.finish();
                     calibrationSM.startQualityCheck();
+                    outputCalibrationResults.send(std::make_shared<DynamicCalibrationResults>(dynResult));
                     break;
                 }
                 else {
                     calibrationSM.deleteAllData();
                 }
+                outputCalibrationResults.send(std::make_shared<DynamicCalibrationResults>(dynResult));
                 break;
             }
 
@@ -438,6 +468,9 @@ void DynamicCalibration::run() {
                 auto result = forceTrigger
                     ? dynCalibImpl->checkCalibration(dcDevice, socketA, socketB, static_cast<dcl::PerformanceMode>(DynamicCalibrationConfig::AlgorithmControl::PerformanceMode::SKIP_CHECKS))
                     :dynCalibImpl->checkCalibration(dcDevice, socketA, socketB, static_cast<dcl::PerformanceMode>(properties.initialConfig.algorithmControl.performanceMode));
+                if (forceTrigger) {
+                    forceTrigger = false;
+                }
                 calibQuality = result.value;
                 dynResult.calibOverallQuality = dai::DynamicCalibrationResults::CalibrationQualityResult::fromDCL(calibQuality);
                 dynResult.info = result.errorMessage();
@@ -448,6 +481,7 @@ void DynamicCalibration::run() {
                     logger::info("[DynamicCalibration] results does not have value!");
                     calibrationSM.finish();
                     calibrationSM.startRecalibration();
+                    outputCalibrationResults.send(std::make_shared<DynamicCalibrationResults>(dynResult));
                     break;
                 }
                 auto resultCalib = forceTrigger
@@ -456,6 +490,7 @@ void DynamicCalibration::run() {
                 dynResult.info = resultCalib.errorMessage();
                 if(!resultCalib.value.second) {
                     logger::info("[DynamicCalibration] resultCalib returned null CalibrationHandler!");
+                    outputCalibrationResults.send(std::make_shared<DynamicCalibrationResults>(dynResult));
                     calibrationSM.finish();
                     break; 
                 }
@@ -479,6 +514,7 @@ void DynamicCalibration::run() {
                     calibrationSM.finish();
                 }
                 logger::info("[DynamicCalibration] Recalibration complete.");
+                outputCalibrationResults.send(std::make_shared<DynamicCalibrationResults>(dynResult));
                 break;
             }
                 // TODO, ADD A METHOD, WHICH SETS NEW CALIBRATION ON DEVICE, DCL AND AS WELL RESETS THE RESULTS IN CALIBRATION STATE
@@ -486,7 +522,6 @@ void DynamicCalibration::run() {
         // === STATE MACHINE END ===
 
         //send results
-        outputCalibrationResults.send(std::make_shared<DynamicCalibrationResults>(dynResult));
 
     }
 }
