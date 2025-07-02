@@ -128,16 +128,6 @@ FSLock::~FSLock() {
     if(holding()) {
         unlock();
     }
-
-#ifdef _WIN32
-    if(handle != INVALID_HANDLE_VALUE) {
-        CloseHandle(handle);
-    }
-#else
-    if(fd != -1) {
-        close(fd);
-    }
-#endif
 }
 
 void FSLock::lock() {
@@ -147,14 +137,16 @@ void FSLock::lock() {
     lockPath = getLockPath(filename);
 
 #ifdef _WIN32
-    handle = CreateFileA(filename.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    handle = CreateFileW(lockPath.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
     if(handle == INVALID_HANDLE_VALUE) {
         threadLock.unlock();  // Release thread lock if file lock fails
-        throw std::runtime_error("Failed to open file: " + filename.string());
+        throw std::runtime_error("Failed to open file: " + lockPath.string());
     }
 
     OVERLAPPED overlapped = {0};
     if(!LockFileEx(handle, LOCKFILE_EXCLUSIVE_LOCK, 0, MAXDWORD, MAXDWORD, &overlapped)) {
+        CloseHandle(handle);
+        handle = INVALID_HANDLE_VALUE;
         threadLock.unlock();  // Release thread lock if file lock fails
         throw std::runtime_error("Failed to acquire lock on file: " + lockPath.string());
     }
@@ -172,6 +164,8 @@ void FSLock::lock() {
     fl.l_start = 0;
     fl.l_len = 0;
     if(fcntl(fd, F_SETLKW, &fl) == -1) {
+        close(fd);
+        fd = -1;
         threadLock.unlock();  // Release thread lock if file lock fails
         throw std::runtime_error("Failed to acquire lock on file: " + lockPath.string());
     }
@@ -186,6 +180,8 @@ void FSLock::unlock() {
     if(!UnlockFileEx(handle, 0, MAXDWORD, MAXDWORD, &overlapped)) {
         throw std::runtime_error("Failed to release lock on file: " + lockPath.string());
     }
+    CloseHandle(handle);
+    handle = INVALID_HANDLE_VALUE;
 #else
     struct flock fl{};
     fl.l_type = F_UNLCK;
@@ -195,6 +191,8 @@ void FSLock::unlock() {
     if(fcntl(fd, F_SETLK, &fl) == -1) {
         throw std::runtime_error("Failed to release lock on file: " + lockPath.string());
     }
+    close(fd);
+    fd = -1;
 #endif
 
     isLocked = false;
