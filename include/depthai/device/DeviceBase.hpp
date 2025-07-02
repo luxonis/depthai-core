@@ -605,7 +605,7 @@ class DeviceBase {
      *
      * @return true on successful flash, false on failure
      */
-    bool flashCalibration(CalibrationHandler calibrationDataHandler);
+    bool tryFlashCalibration(CalibrationHandler calibrationDataHandler);
 
     /**
      * Stores the Calibration and Device information to the Device EEPROM
@@ -613,7 +613,7 @@ class DeviceBase {
      * @throws std::runtime_exception if failed to flash the calibration
      * @param calibrationObj CalibrationHandler object which is loaded with calibration information.
      */
-    void flashCalibration2(CalibrationHandler calibrationDataHandler);
+    void flashCalibration(CalibrationHandler calibrationDataHandler);
 
     /**
      * Sets the Calibration at runtime. This is not persistent and will be lost after device reset.
