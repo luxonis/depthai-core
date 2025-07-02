@@ -8,7 +8,7 @@ void testVideoEncoder(dai::VideoEncoderProperties::Profile profile) {
     using namespace std;
     using namespace std::chrono;
     using namespace std::chrono_literals;
-    std::this_thread::sleep_for(1000ms); // TODO(camera restart issue) remove this sleep once camera restart issue on RVC4 is fixed
+    std::this_thread::sleep_for(1000ms);  // TODO(camera restart issue) remove this sleep once camera restart issue on RVC4 is fixed
 
     dai::Pipeline p;
     auto camRgb = p.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A);

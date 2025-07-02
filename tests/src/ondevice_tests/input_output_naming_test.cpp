@@ -1,7 +1,6 @@
 
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_test_macros.hpp>
-
 #include <iostream>
 
 #include "depthai/depthai.hpp"
@@ -11,8 +10,8 @@ class TestNode : public dai::node::CustomThreadedNode<TestNode> {
     void run() override {
         while(isRunning()) {
             // do nothing
-            }
         }
+    }
 };
 
 TEST_CASE("input output auto naming test") {

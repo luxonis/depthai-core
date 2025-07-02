@@ -50,6 +50,5 @@ class InputQueue {
 
     /** Pointer to InputQueueNode that does the actual communication between host and device */
     std::shared_ptr<InputQueueNode> inputQueueNode;
-
 };
 }  // namespace dai
