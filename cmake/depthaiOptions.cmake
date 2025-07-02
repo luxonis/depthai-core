@@ -55,7 +55,7 @@ option(DEPTHAI_XTENSOR_EXTERNAL "Use external xtensor library" ${USE_EXTERNAL_IN
 # If Mac, copy recursively opencv4 directory from .platform_specific_ports/osx to .ports/
 if(APPLE)
   message(STATUS "Copying OpenCV 4 port for macOS")
-  file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/cmake/platform_specific_ports/osx/opencv4" DESTINATION "${CMAKE_CURRENT_SOURCE_DIR}/.ports/")
+  file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/cmake/platform_specific_ports/osx/opencv4" DESTINATION "${CMAKE_CURRENT_SOURCE_DIR}/cmake/ports/")
 endif()
 
 # AprilTag node support
