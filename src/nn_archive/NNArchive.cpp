@@ -20,7 +20,7 @@ NNArchiveOptions::NNArchiveOptions() {
     extractFolder(platform::getTempPath());
 }
 
-NNArchive::NNArchive(const std::string& archivePath, NNArchiveOptions options) : archiveOptions(options) {
+NNArchive::NNArchive(const std::filesystem::path& archivePath, NNArchiveOptions options) : archiveOptions(options) {
     // Make sure archive exits
     if(!std::filesystem::exists(archivePath)) DAI_CHECK_V(false, "Archive file does not exist: {}", archivePath);
 
@@ -36,8 +36,8 @@ NNArchive::NNArchive(const std::string& archivePath, NNArchiveOptions options) :
 
     // Unpack model
     std::filesystem::path unpackedArchivePath = std::filesystem::path(archiveOptions.extractFolder()) / std::filesystem::path(archivePath).filename();
-    unpackArchiveInDirectory(archivePath, unpackedArchivePath.string());
-    unpackedModelPath = (unpackedArchivePath / modelPathInArchive).string();
+    unpackArchiveInDirectory(archivePath, unpackedArchivePath);
+    unpackedModelPath = (unpackedArchivePath / modelPathInArchive);
 
     switch(modelType) {
         case model::ModelType::BLOB:
@@ -96,7 +96,7 @@ std::optional<OpenVINO::SuperBlob> NNArchive::getSuperBlob() const {
     }
 }
 
-std::optional<std::string> NNArchive::getModelPath() const {
+std::optional<std::filesystem::path> NNArchive::getModelPath() const {
     switch(modelType) {
         case model::ModelType::OTHER:
         case model::ModelType::DLC:
@@ -121,7 +121,7 @@ const NNArchiveVersionedConfig& NNArchive::getVersionedConfig() const {
     return *archiveVersionedConfigPtr;
 }
 
-std::vector<uint8_t> NNArchive::readModelFromArchive(const std::string& archivePath, const std::string& modelPathInArchive) const {
+std::vector<uint8_t> NNArchive::readModelFromArchive(const std::filesystem::path& archivePath, const std::string& modelPathInArchive) const {
     utility::ArchiveUtil archive(archivePath, archiveOptions.compression());
     std::vector<uint8_t> modelBytes;
     const bool success = archive.readEntry(modelPathInArchive, modelBytes);
@@ -129,7 +129,7 @@ std::vector<uint8_t> NNArchive::readModelFromArchive(const std::string& archiveP
     return modelBytes;
 }
 
-void NNArchive::unpackArchiveInDirectory(const std::string& archivePath, const std::string& directory) const {
+void NNArchive::unpackArchiveInDirectory(const std::filesystem::path& archivePath, const std::filesystem::path& directory) const {
     utility::ArchiveUtil archive(archivePath, archiveOptions.compression());
     archive.unpackArchiveInDirectory(directory);
 }
@@ -191,15 +191,16 @@ std::vector<dai::Platform> NNArchive::getSupportedPlatforms() const {
         return {};
     }
     auto pathToModelChecked = *pathToModel;
-    // Check if .dlc - in that case add RVC4 to supported platforms
-    if(pathToModelChecked.substr(pathToModelChecked.size() - 4) == ".dlc") {
+
+    auto endsWith = [](const std::filesystem::path& path, const std::string& suffix) { return path.extension() == suffix; };
+
+    if(endsWith(pathToModelChecked, ".dlc")) {
         return {Platform::RVC4};
     }
-    if(pathToModelChecked.substr(pathToModelChecked.size() - 10) == ".superblob") {
+    if(endsWith(pathToModelChecked, ".superblob")) {
         return {Platform::RVC2};
     }
-    if(pathToModelChecked.substr(pathToModelChecked.size() - 5) == ".blob") {
-        // Check if it's a blob for RVC3 or RVC2
+    if(endsWith(pathToModelChecked, ".blob")) {
         auto model = OpenVINO::Blob(pathToModelChecked);
         if(model.device == OpenVINO::Device::VPUX) {
             return {Platform::RVC3};
@@ -207,9 +208,11 @@ std::vector<dai::Platform> NNArchive::getSupportedPlatforms() const {
         if(model.device == OpenVINO::Device::VPU) {
             return {Platform::RVC2};
         }
+
         // Should never get here
         return {};
     }
+
     return {};
 }
 
