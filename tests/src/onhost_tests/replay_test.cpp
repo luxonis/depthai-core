@@ -6,8 +6,8 @@
 #include <ctime>
 #include <exception>
 #include <filesystem>
-#include "../../src/utility/Platform.hpp"
 
+#include "../../src/utility/Platform.hpp"
 #include "depthai/depthai.hpp"
 #include "depthai/pipeline/node/host/Record.hpp"
 #include "depthai/utility/Compression.hpp"

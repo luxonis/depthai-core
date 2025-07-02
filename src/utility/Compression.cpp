@@ -1,12 +1,12 @@
 #include "depthai/utility/Compression.hpp"
 
+#include <fmt/format.h>
+#include <fmt/std.h>
+
 #include <cassert>
 #include <filesystem>
 #include <fstream>
 #include <stdexcept>
-
-#include <fmt/format.h>
-#include <fmt/std.h>
 
 #include "archive.h"
 #include "archive_entry.h"

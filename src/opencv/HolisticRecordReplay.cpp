@@ -3,7 +3,6 @@
 #include <spdlog/spdlog.h>
 
 #include <filesystem>
-
 #include <memory>
 
 #include "../utility/Platform.hpp"
@@ -92,8 +91,11 @@ Node::Output* setupHolistiRecordCamera(
     return cam->requestOutput({width, height}, dai::ImgFrame::Type::NV12, dai::ImgResizeMode::CROP);
 }
 
-bool setupHolisticRecord(
-    Pipeline& pipeline, const std::string& deviceId, RecordConfig& recordConfig, std::unordered_map<std::string, std::filesystem::path>& outFilenames, bool legacy) {
+bool setupHolisticRecord(Pipeline& pipeline,
+                         const std::string& deviceId,
+                         RecordConfig& recordConfig,
+                         std::unordered_map<std::string, std::filesystem::path>& outFilenames,
+                         bool legacy) {
     auto sources = pipeline.getSourceNodes();
     const std::filesystem::path recordPath = recordConfig.outputDir;
     try {
