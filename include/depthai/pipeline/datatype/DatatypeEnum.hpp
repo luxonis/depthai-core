@@ -44,6 +44,7 @@ enum class DatatypeEnum : std::int32_t {
     DynamicCalibrationResult,
     CalibrationQuality,
     CoverageData,
+    VppConfig
 };
 bool isDatatypeSubclassOf(DatatypeEnum parent, DatatypeEnum children);
 
