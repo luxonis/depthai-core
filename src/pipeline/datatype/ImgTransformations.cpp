@@ -4,6 +4,7 @@
 
 #include <cstring>
 
+#include "depthai/common/Extrinsics.hpp"
 #include "depthai/utility/ImageManipImpl.hpp"
 
 namespace dai {
@@ -205,6 +206,9 @@ std::array<std::array<float, 3>, 3> ImgTransformation::getIntrinsicMatrix() cons
 std::array<std::array<float, 3>, 3> ImgTransformation::getIntrinsicMatrixInv() const {
     return matmul(sourceIntrinsicMatrixInv, transformationMatrixInv);
 }
+Extrinsics ImgTransformation::getExtrinsics()  const{
+    return extrinsics;
+}
 float ImgTransformation::getDFov(bool source) const {
     float fovWidth = source ? srcWidth : width;
     float fovHeight = source ? srcHeight : height;
@@ -378,6 +382,11 @@ ImgTransformation& ImgTransformation::setDistortionModel(CameraModel model) {
 }
 ImgTransformation& ImgTransformation::setDistortionCoefficients(std::vector<float> coefficients) {
     distortionCoefficients = coefficients;
+    return *this;
+}
+
+ImgTransformation& ImgTransformation::setExtrinsics(Extrinsics extrinsics) {
+    this->extrinsics = extrinsics;
     return *this;
 }
 
