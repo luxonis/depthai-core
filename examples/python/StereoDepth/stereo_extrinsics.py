@@ -61,7 +61,7 @@ with pipeline:
         print("Extrinsics")
         print("Left Synced:")
         printExtrinsics(leftSynced.getTransformation().getExtrinsics())
-        print("Left rRectified:")
+        print("Left Rectified:")
         printExtrinsics(leftRectified.getTransformation().getExtrinsics())
         print("Right Synced:")
         printExtrinsics(rightSynced.getTransformation().getExtrinsics())
