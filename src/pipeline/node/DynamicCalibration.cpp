@@ -441,7 +441,7 @@ void DynamicCalibration::run() {
                     ? dynCalibImpl->checkCalibration(dcDevice, socketA, socketB, static_cast<dcl::PerformanceMode>(DynamicCalibrationConfig::AlgorithmControl::PerformanceMode::SKIP_CHECKS))
                     :dynCalibImpl->checkCalibration(dcDevice, socketA, socketB, static_cast<dcl::PerformanceMode>(properties.initialConfig.algorithmControl.performanceMode));
                 calibQuality = result.value;
-                dynResult.info = result.errorMessage()
+                dynResult.info = result.errorMessage();
                 dynResult.calibOverallQuality = dai::DynamicCalibrationResults::CalibrationQualityResult::fromDCL(calibQuality);
                 if (forceTrigger) {
                     forceTrigger = false;
