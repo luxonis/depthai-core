@@ -2,6 +2,7 @@
 
 #include <cstdint>
 
+
 namespace dai {
 
 enum class DatatypeEnum : std::int32_t {
@@ -36,7 +37,8 @@ enum class DatatypeEnum : std::int32_t {
     RGBDData,
     ImageAlignConfig,
     ImgAnnotations,
-    ObjectTrackerConfig
+    ObjectTrackerConfig,
+    VppConfig
 };
 bool isDatatypeSubclassOf(DatatypeEnum parent, DatatypeEnum children);
 

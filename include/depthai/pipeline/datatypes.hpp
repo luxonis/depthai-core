@@ -31,3 +31,4 @@
 #include "datatype/TrackedFeatures.hpp"
 #include "datatype/Tracklets.hpp"
 #include "datatype/TransformData.hpp"
+#include "datatype/VppConfig.hpp"
