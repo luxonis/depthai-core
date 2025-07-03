@@ -17,6 +17,7 @@
 
 #include "utility/Environment.hpp"
 #include "utility/Logging.hpp"
+#include "utility/Platform.hpp"
 #include "utility/YamlHelpers.hpp"
 #include "utility/sha1.hpp"
 
@@ -66,6 +67,17 @@ class ZooManager {
             logger::info("Trying to get cache directory from environment variable DEPTHAI_ZOO_CACHE_PATH");
             this->cacheDirectory = utility::getEnvAs<fs::path>("DEPTHAI_ZOO_CACHE_PATH", dai::modelzoo::getDefaultCachePath(), false);
         }
+
+        if(this->cacheDirectory.empty()) {
+            throw std::runtime_error("Cache directory is not set");
+        }
+
+        // Lock the cache directory
+        createFolder(".locks");
+        const fs::path modelLockFilePath = platform::joinPaths(platform::joinPaths(this->cacheDirectory, ".locks"), getModelCacheFolderName() + ".lock");
+        logger::info("Locking model cache directory: {}", modelLockFilePath);
+        cacheFolderLock = platform::FileLock::lock(modelLockFilePath, true);
+        logger::info("Model cache directory locked: {}", modelLockFilePath);
     }
 
     /**
@@ -91,9 +103,11 @@ class ZooManager {
     fs::path getModelCacheFolderPath(const fs::path& cacheDirectory) const;
 
     /**
-     * @brief Create cache folder
+     * @brief Create a folder in the cache directory
+     *
+     * @param folderName: Name of the folder to create
      */
-    void createCacheFolder() const;
+    void createFolder(const std::string& folderName) const;
 
     /**
      * @brief Remove cache folder where the model is cached
@@ -166,6 +180,9 @@ class ZooManager {
 
     // Path to directory where to store the cached models
     fs::path cacheDirectory;
+
+    // Lock for the cache directory
+    std::unique_ptr<platform::FileLock> cacheFolderLock;
 };
 
 #endif
@@ -266,11 +283,6 @@ std::string ZooManager::getModelCacheFolderName() const {
 
 fs::path ZooManager::getModelCacheFolderPath(const fs::path& cacheDirectory) const {
     return cacheDirectory / getModelCacheFolderName();
-}
-
-void ZooManager::createCacheFolder() const {
-    fs::path cacheFolderPath = getModelCacheFolderPath(cacheDirectory);
-    std::filesystem::create_directories(cacheFolderPath);
 }
 
 void ZooManager::removeModelCacheFolder() const {
@@ -612,7 +624,7 @@ fs::path getModelFromZoo(
     }
 
     // Create cache folder
-    zooManager.createCacheFolder();
+    zooManager.createFolder(zooManager.getModelCacheFolderName());
 
     // Create download progress callback
     std::unique_ptr<CprCallback> cprCallback =
@@ -694,6 +706,11 @@ fs::path ZooManager::getMetadataFilePath() const {
 
 fs::path ZooManager::getGlobalMetadataFilePath() const {
     return cacheDirectory / "metadata.yaml";
+}
+
+void ZooManager::createFolder(const std::string& folderName) const {
+    auto folderPath = platform::joinPaths(cacheDirectory, folderName);
+    std::filesystem::create_directories(folderPath);
 }
 
 #else
