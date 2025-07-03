@@ -292,12 +292,12 @@ AssetManager& Node::getAssetManager() {
     return assetManager;
 }
 
-std::vector<uint8_t> Node::loadResource(dai::Path uri) {
+std::vector<uint8_t> Node::loadResource(std::filesystem::path uri) {
     std::string cwd = fmt::format("/node/{}/", id);
     return parent.lock()->loadResourceCwd(uri, cwd);
 }
 
-std::vector<uint8_t> Node::moveResource(dai::Path uri) {
+std::vector<uint8_t> Node::moveResource(std::filesystem::path uri) {
     std::string cwd = fmt::format("/node/{}/", id);
     return parent.lock()->loadResourceCwd(uri, cwd, true);
 }

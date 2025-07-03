@@ -1,5 +1,6 @@
 // IWYU pragma: private, include "depthai/depthai.hpp"
 #pragma once
+#include <filesystem>
 #include <string>
 #include <tuple>
 
@@ -7,7 +8,6 @@
 #include "depthai/common/EepromData.hpp"
 #include "depthai/common/Point2f.hpp"
 #include "depthai/common/Size2f.hpp"
-#include "depthai/utility/Path.hpp"
 #ifdef DEPTHAI_HAVE_RTABMAP_SUPPORT
     #include "rtabmap/core/StereoCameraModel.h"
 #endif
@@ -34,7 +34,7 @@ class CalibrationHandler {
      *
      * @param eepromDataPath takes the full path to the json file containing the calibration and device info.
      */
-    explicit CalibrationHandler(dai::Path eepromDataPath);
+    explicit CalibrationHandler(std::filesystem::path eepromDataPath);
 
     /**
      * Construct a new Calibration Handler object using the board
@@ -43,7 +43,7 @@ class CalibrationHandler {
      * @param calibrationDataPath Full Path to the .calib binary file from the gen1 calibration. (Supports only Version 5)
      * @param boardConfigPath Full Path to the board config json file containing device information.
      */
-    CalibrationHandler(dai::Path calibrationDataPath, dai::Path boardConfigPath);
+    CalibrationHandler(std::filesystem::path calibrationDataPath, std::filesystem::path boardConfigPath);
 
     /**
      * Construct a new Calibration Handler object from EepromData object.
@@ -334,7 +334,7 @@ class CalibrationHandler {
      * @param destPath  Full path to the json file in which raw calibration data will be stored
      * @return True on success, false otherwise
      */
-    bool eepromToJsonFile(dai::Path destPath) const;
+    bool eepromToJsonFile(std::filesystem::path destPath) const;
 
     /**
      * Get JSON representation of calibration data
