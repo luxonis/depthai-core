@@ -6,6 +6,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include "spdlog/spdlog.h"
+
 namespace dai {
 
 const std::unordered_map<DatatypeEnum, std::vector<DatatypeEnum>> hierarchy = {
@@ -41,6 +43,7 @@ const std::unordered_map<DatatypeEnum, std::vector<DatatypeEnum>> hierarchy = {
          DatatypeEnum::RGBDData,
          DatatypeEnum::TransformData,
          DatatypeEnum::ImgAnnotations,
+         DatatypeEnum::VppConfig,
          DatatypeEnum::ImageFiltersConfig,
          DatatypeEnum::ToFDepthConfidenceFilterConfig,
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
@@ -79,6 +82,7 @@ const std::unordered_map<DatatypeEnum, std::vector<DatatypeEnum>> hierarchy = {
          DatatypeEnum::TransformData,
          DatatypeEnum::ImgAnnotations,
          DatatypeEnum::ImageFiltersConfig,
+         DatatypeEnum::VppConfig,
          DatatypeEnum::ToFDepthConfidenceFilterConfig,
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
          DatatypeEnum::DynamicCalibrationControl,
@@ -113,6 +117,7 @@ const std::unordered_map<DatatypeEnum, std::vector<DatatypeEnum>> hierarchy = {
     {DatatypeEnum::RGBDData, {}},
     {DatatypeEnum::TransformData, {}},
     {DatatypeEnum::ImgAnnotations, {}},
+    {DatatypeEnum::VppConfig, {}},
     {DatatypeEnum::ImageFiltersConfig, {}},
     {DatatypeEnum::ToFDepthConfidenceFilterConfig, {}},
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT

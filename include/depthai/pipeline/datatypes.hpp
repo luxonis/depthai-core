@@ -35,3 +35,4 @@
     #include "datatype/DynamicCalibrationControl.hpp"
     #include "datatype/DynamicCalibrationResults.hpp"
 #endif
+#include "datatype/VppConfig.hpp"
