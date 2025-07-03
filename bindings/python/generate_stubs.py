@@ -60,7 +60,7 @@ try:
     open(f'{DIRECTORY}/depthai/py.typed', 'a').close()
 
     # imports and overloads
-    with open(f'{DIRECTORY}/depthai/__init__.pyi' ,'r+') as file:
+    with open(f'{DIRECTORY}/depthai/__init__.pyi' ,'r+', encoding='utf-8') as file:
         # Read
         contents = file.read()
 
@@ -106,7 +106,7 @@ try:
         file.write(final_stubs)
 
     # node fixes
-    with open(f'{DIRECTORY}/depthai/node/__init__.pyi' ,'r+') as file:
+    with open(f'{DIRECTORY}/depthai/node/__init__.pyi', 'r+', encoding='utf-8') as file:
         # Read
         contents = file.read()
 
@@ -138,7 +138,7 @@ try:
     # Windows limitation - another process cannot normally read temporary file that is opened by this process
     # Close first and delete manually afterwards
     try:
-        config = tempfile.NamedTemporaryFile(mode='w', delete=False)
+        config = tempfile.NamedTemporaryFile(mode='w', delete=False, encoding='utf-8')
         config.write('[mypy]\nignore_errors = True\n')
         config.close()
         print(f'Mypy config file: {config.name}')
@@ -151,7 +151,7 @@ try:
 
     def process_init_pyi(file_path, is_depthai_root=False):
         # Read old __init__.pyi
-        with open(file_path, 'r+') as file:
+        with open(file_path, 'r+', encoding='utf-8') as file:
             contents = file.read()
 
         # Prepare imports
@@ -172,7 +172,7 @@ try:
         new_contents = imports + '\n' + contents
 
         # Writeout changes
-        with open(file_path, 'w') as file:
+        with open(file_path, 'w', encoding='utf-8') as file:
             file.write(new_contents)
 
     # Process all __init__.pyi files
