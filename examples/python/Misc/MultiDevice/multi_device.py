@@ -113,7 +113,7 @@ with contextlib.ExitStack() as stack:
         # timestamps must align within SYNC_THRESHOLD_SEC.
         # -------------------------------------------------------------------
         if len(latest_frames) == len(queues):
-            ts_values = [f.getTimestamp().total_seconds() for f in latest_frames.values()]
+            ts_values = [f.getTimestamp(dai.CameraExposureOffset.START).total_seconds() for f in latest_frames.values()]
             if max(ts_values) - min(ts_values) <= SYNC_THRESHOLD_SEC:
                 # Build composite image side‑by‑side
                 imgs = []
@@ -123,7 +123,7 @@ with contextlib.ExitStack() as stack:
                     fps = fpsCounters[i].getFps()
                     cv2.putText(
                         frame,
-                        f"{device_ids[i]} | {format_time(msg.getTimestamp())} FPS:{fps:.2f}",
+                        f"{device_ids[i]} | {format_time(msg.getTimestamp(dai.CameraExposureOffset.START))} FPS:{fps:.2f}",
                         (20, 40),
                         cv2.FONT_HERSHEY_SIMPLEX,
                         0.6,
