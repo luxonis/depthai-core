@@ -16,7 +16,7 @@ def draw_recalibration_message(image, values, angles):
     if over_threshold:
         axes = ", ".join([axis_names[i] for i in over_threshold])
         lines.append(f"Significant change in rotation! {axes}")
-        lines.append("To permanently apply new calibration, press 'l'!")
+        lines.append("To permanently apply new calibration, press 's'!")
     else:
         lines.append("No significant change detected")
 
@@ -319,7 +319,7 @@ def print_final_calibration_results(calib_quality, state: str):
 
     # Instructions
     if state == "Recalibration":
-        print("To apply it, press 'n', to revert, press 'o', to flash new calibration press 'l'.")
+        print("To apply it, press 'n', to revert, press 'o', to flash new calibration press 's'.")
     else:
         print("To continue with recalibration, press 'r'.")
 
