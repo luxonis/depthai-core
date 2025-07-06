@@ -65,7 +65,7 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
      * Load network xml and bin files into assets.
      * @param xmlModelPath Path to the neural network model file.
      */
-    void setModelPath(const dai::Path& modelPath);
+    void setModelPath(const std::filesystem::path& modelPath);
 
     /**
      * Load network blob into assets and use once pipeline is started.
@@ -73,7 +73,7 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
      * @throws Error if file doesn't exist or isn't a valid network blob.
      * @param path Path to network blob
      */
-    void setBlobPath(const dai::Path& path);
+    void setBlobPath(const std::filesystem::path& path);
 
     /**
      * Retrieves some input tensor information from the blob
@@ -88,7 +88,7 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
      * @throws Error if file doesn't exist or isn't a valid network blob.
      * @param path Path to network blob
      */
-    void setBlob(const dai::Path& path);
+    void setBlob(const std::filesystem::path& path);
 
     /**
      * Set input image size
