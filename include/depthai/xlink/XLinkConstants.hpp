@@ -14,8 +14,7 @@ constexpr static const char* XLINK_CHANNEL_LOG = "__log";
 constexpr static const char* XLINK_CHANNEL_WATCHDOG = "__watchdog";
 
 // usb buffer maximum size
-// maximum size of a frame, NV12 --> 1.5 = (3/2) bytes per pixel, roughly 17.6MB
-constexpr static std::uint32_t XLINK_USB_BUFFER_MAX_SIZE = ((4032 * 3056) * 3) / 2;
+constexpr static std::uint32_t XLINK_USB_BUFFER_MAX_SIZE = 5 * 1024 * 1024;
 
 // Watchdog timeout
 constexpr static const std::chrono::milliseconds XLINK_USB_WATCHDOG_TIMEOUT{1500};
