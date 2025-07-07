@@ -165,6 +165,7 @@ jobs:
             -DDEPTHAI_VCPKG_INTERNAL_ONLY=OFF \
             -DDEPTHAI_BUILD_PYTHON=ON \
             -D CMAKE_BUILD_TYPE=Release \
+            -D VCPKG_OVERLAY_TRIPLETS="$PWD/cmake/triplets/release" \
             -D DEPTHAI_PYTHON_DOCSTRINGS_INPUT=$PWD/bindings/python/docstrings/depthai_python_docstring.hpp \
             -D DEPTHAI_PYTHON_ENABLE_TESTS=ON
             cmake --build build --parallel 4

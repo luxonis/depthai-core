@@ -98,7 +98,6 @@ jobs:
     strategy:
       matrix:
         os: [macos-latest, windows-latest, ubuntu-latest]
-        # TODO(Morato) - add back Debug builds to CI
         build-type: [Debug, Release]
         # shared: [true, false]
         shared: [true]
