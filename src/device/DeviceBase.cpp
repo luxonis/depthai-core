@@ -59,6 +59,7 @@ const std::string MAGIC_FACTORY_PROTECTED_FLASHING_VALUE = "868632271";
 constexpr int DEVICE_SEARCH_FIRST_TIMEOUT_MS = 30;
 
 const unsigned int DEFAULT_CRASHDUMP_TIMEOUT = 9000;
+const unsigned int RPC_READ_TIMEOUT_SECONDS = 10;
 
 // local static function
 static void getFlashingPermissions(bool& factoryPermissions, bool& protectedPermissions) {
@@ -766,7 +767,7 @@ void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, boo
 
             // Receive response back
             // Send to nanorpc to parse
-            return rpcStream->read();
+            return rpcStream->read(std::chrono::seconds(RPC_READ_TIMEOUT_SECONDS));
         } catch(const std::exception& e) {
             // If any exception is thrown, log it and rethrow
             pimpl->logger.debug("RPC error: {}", e.what());
