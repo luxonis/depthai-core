@@ -9,9 +9,7 @@ TEST_CASE("Test manual focus") {
     auto features = device->getConnectedCameraFeatures();
     std::cout << "Connected Camera Features:\n" << features << "\n" << std::flush;
     // Find CAM_A and check if it has autofocus
-    auto it = std::find_if(features.begin(), features.end(), [](const dai::CameraFeatures& f) {
-        return f.socket == dai::CameraBoardSocket::CAM_A;
-    });
+    auto it = std::find_if(features.begin(), features.end(), [](const dai::CameraFeatures& f) { return f.socket == dai::CameraBoardSocket::CAM_A; });
 
     if(it == features.end()) {
         std::cout << "CAM_A not found. Skipping test.\n";
@@ -53,12 +51,10 @@ TEST_CASE("Test manual focus initial config") {
     auto fps = 30.0f;
     const auto device = pipeline.getDefaultDevice();
     auto features = device->getConnectedCameraFeatures();
-    std::cout<< features << "Connected Camera Features:\n";
+    std::cout << features << "Connected Camera Features:\n";
 
     // Find CAM_A and check if it has autofocus
-    auto it = std::find_if(features.begin(), features.end(), [](const dai::CameraFeatures& f) {
-        return f.socket == dai::CameraBoardSocket::CAM_A;
-    });
+    auto it = std::find_if(features.begin(), features.end(), [](const dai::CameraFeatures& f) { return f.socket == dai::CameraBoardSocket::CAM_A; });
 
     if(it == features.end()) {
         std::cout << "CAM_A not found. Skipping test.\n";

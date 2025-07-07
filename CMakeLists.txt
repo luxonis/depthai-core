@@ -318,7 +318,6 @@ set(TARGET_CORE_SOURCES
     src/utility/ImageManipImpl.cpp
     src/utility/Initialization.cpp
     src/utility/Resources.cpp
-    src/utility/Path.cpp
     src/utility/Platform.cpp
     src/utility/RecordReplay.cpp
     src/utility/McapImpl.cpp

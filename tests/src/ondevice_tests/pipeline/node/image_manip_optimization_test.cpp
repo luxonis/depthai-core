@@ -405,7 +405,7 @@ void runManipTests(dai::ImageManipProperties::Backend backend, dai::ImageManipPr
     }
 
     p.stop();
-} 
+}
 
 TEST_CASE("ImageManip NV12 Low Power") {
     runManipTests(dai::ImageManipProperties::Backend::CPU, dai::ImageManipProperties::PerformanceMode::LOW_POWER, dai::ImgFrame::Type::NV12);

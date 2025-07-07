@@ -91,7 +91,7 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack) {
              py::arg("blob"),
              DOC(dai, node, SpatialDetectionNetwork, setBlob))
         .def("setBlob",
-             py::overload_cast<const dai::Path&>(&SpatialDetectionNetwork::setBlob),
+             py::overload_cast<const std::filesystem::path&>(&SpatialDetectionNetwork::setBlob),
              py::arg("path"),
              DOC(dai, node, SpatialDetectionNetwork, setBlob, 2))
         .def("setModelPath", &SpatialDetectionNetwork::setModelPath, py::arg("modelPath"), DOC(dai, node, SpatialDetectionNetwork, setModelPath))

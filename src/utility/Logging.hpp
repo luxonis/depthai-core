@@ -8,6 +8,7 @@
 #include <vector>
 
 // libraries
+#include <spdlog/fmt/std.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
 
@@ -18,7 +19,6 @@
 #include <depthai/device/Device.hpp>
 #include <depthai/device/DeviceBootloader.hpp>
 #include <depthai/openvino/OpenVINO.hpp>
-#include <depthai/utility/Path.hpp>
 
 namespace dai {
 
