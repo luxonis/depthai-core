@@ -67,9 +67,13 @@ ArchiveUtil::ArchiveUtil(const std::vector<uint8_t>& data, NNArchiveEntry::Compr
     DAI_CHECK(res == ARCHIVE_OK, "Error when decompressing archive from memory.");
 }
 
-ArchiveUtil::ArchiveUtil(const dai::Path& filepath, NNArchiveEntry::Compression format) {
+ArchiveUtil::ArchiveUtil(const std::filesystem::path& filepath, NNArchiveEntry::Compression format) {
     init(format);
-    const auto res = archive_read_open_filename(aPtr, filepath.string().c_str(), 10240);
+#if defined(_WIN32) && defined(_MSC_VER)
+    const auto res = archive_read_open_filename_w(aPtr, filepath.c_str(), 10240);
+#else
+    const auto res = archive_read_open_filename(aPtr, filepath.c_str(), 10240);
+#endif
     DAI_CHECK_V(res == ARCHIVE_OK, "Error when decompressing {}.", filepath);
 }
 
@@ -253,13 +257,8 @@ ArchiveUtil::~ArchiveUtil() {
     }
 }
 
-bool ArchiveUtil::isJsonPath(const Path& path) {
-    const auto filepath = path.string();
-    const auto pointIndex = filepath.find_last_of('.');
-    if(pointIndex != std::string::npos) {
-        return filepath.substr(filepath.find_last_of('.') + 1) == "json";
-    }
-    return false;
+bool ArchiveUtil::isJsonPath(const std::filesystem::path& path) {
+    return path.extension() == ".json";
 }
 
 }  // namespace utility

@@ -1,0 +1,128 @@
+diff --git a/modules/videoio/src/cap_avfoundation.mm b/modules/videoio/src/cap_avfoundation.mm
+index 2bad9cc..8bd852f 100644
+--- a/modules/videoio/src/cap_avfoundation.mm
++++ b/modules/videoio/src/cap_avfoundation.mm
+@@ -50,9 +50,9 @@
+ 
+ /*****************************************************************************
+  *
+- * CaptureDelegate Declaration.
++ * CaptureDelegateDai Declaration.
+  *
+- * CaptureDelegate is notified on a separate thread by the OS whenever there
++ * CaptureDelegateDai is notified on a separate thread by the OS whenever there
+  *   is a new frame. When "updateImage" is called from the main thread, it
+  *   copies this new frame into an IplImage, but only if this frame has not
+  *   been copied before. When "getImage" is called from the main thread,
+@@ -64,7 +64,7 @@
+ 
+ #if !TARGET_OS_VISION
+ 
+-@interface CaptureDelegate : NSObject <AVCaptureVideoDataOutputSampleBufferDelegate>
++@interface CaptureDelegateDai : NSObject <AVCaptureVideoDataOutputSampleBufferDelegate>
+ {
+     int newFrame;
+     CVImageBufferRef  mCurrentImageBuffer;
+@@ -107,7 +107,7 @@ class CvCaptureCAM : public cv::IVideoCapture {
+         AVCaptureDeviceInput        *mCaptureDeviceInput;
+         AVCaptureVideoDataOutput    *mCaptureDecompressedVideoOutput;
+         AVCaptureDevice 						*mCaptureDevice;
+-        CaptureDelegate							*capture;
++        CaptureDelegateDai							*capture;
+ 
+         int startCaptureDevice(int cameraNum);
+         void stopCaptureDevice();
+@@ -323,7 +323,7 @@ void CvCaptureCAM::stopCaptureDevice() {
+ int CvCaptureCAM::startCaptureDevice(int cameraNum) {
+     NSAutoreleasePool* localpool = [[NSAutoreleasePool alloc] init];
+ 
+-    capture = [[CaptureDelegate alloc] init];
++    capture = [[CaptureDelegateDai alloc] init];
+ 
+     AVCaptureDevice *device;
+     NSArray* devices = [[AVCaptureDevice devicesWithMediaType:AVMediaTypeVideo]
+@@ -625,9 +625,9 @@ bool CvCaptureCAM::setProperty(int property_id, double value) {
+ 
+ /*****************************************************************************
+  *
+- * CaptureDelegate Implementation.
++ * CaptureDelegateDai Implementation.
+  *
+- * CaptureDelegate is notified on a separate thread by the OS whenever there
++ * CaptureDelegateDai is notified on a separate thread by the OS whenever there
+  *   is a new frame. When "updateImage" is called from the main thread, it
+  *   copies this new frame into an IplImage, but only if this frame has not
+  *   been copied before. When "getImage" is called from the main thread,
+@@ -636,7 +636,7 @@ bool CvCaptureCAM::setProperty(int property_id, double value) {
+  *****************************************************************************/
+ 
+ 
+-@implementation CaptureDelegate
++@implementation CaptureDelegateDai
+ 
+ - (id)init {
+     [super init];
+diff --git a/modules/videoio/src/cap_avfoundation_mac.mm b/modules/videoio/src/cap_avfoundation_mac.mm
+index 5ba1c01..c4d1b6f 100644
+--- a/modules/videoio/src/cap_avfoundation_mac.mm
++++ b/modules/videoio/src/cap_avfoundation_mac.mm
+@@ -58,9 +58,9 @@
+ 
+ /*****************************************************************************
+  *
+- * CaptureDelegate Declaration.
++ * CaptureDelegateDai Declaration.
+  *
+- * CaptureDelegate is notified on a separate thread by the OS whenever there
++ * CaptureDelegateDai is notified on a separate thread by the OS whenever there
+  *   is a new frame. When "updateImage" is called from the main thread, it
+  *   copies this new frame into an IplImage, but only if this frame has not
+  *   been copied before.
+@@ -68,7 +68,7 @@
+  *****************************************************************************/
+ 
+ 
+-@interface CaptureDelegate : NSObject <AVCaptureVideoDataOutputSampleBufferDelegate>
++@interface CaptureDelegateDai : NSObject <AVCaptureVideoDataOutputSampleBufferDelegate>
+ {
+     NSCondition *mHasNewFrame;
+     CVPixelBufferRef mGrabbedPixels;
+@@ -111,7 +111,7 @@ private:
+     AVCaptureDeviceInput        *mCaptureDeviceInput;
+     AVCaptureVideoDataOutput    *mCaptureVideoDataOutput;
+     AVCaptureDevice             *mCaptureDevice;
+-    CaptureDelegate             *mCapture;
++    CaptureDelegateDai             *mCapture;
+ 
+     int startCaptureDevice(int cameraNum);
+     void stopCaptureDevice();
+@@ -403,7 +403,7 @@ int CvCaptureCAM::startCaptureDevice(int cameraNum) {
+     }
+ 
+     // create output
+-    mCapture = [[CaptureDelegate alloc] init];
++    mCapture = [[CaptureDelegateDai alloc] init];
+     mCaptureVideoDataOutput = [[AVCaptureVideoDataOutput alloc] init];
+     dispatch_queue_t queue = dispatch_queue_create("cameraQueue", DISPATCH_QUEUE_SERIAL);
+     [mCaptureVideoDataOutput setSampleBufferDelegate: mCapture queue: queue];
+@@ -557,9 +557,9 @@ bool CvCaptureCAM::setProperty(int property_id, double value) {
+ 
+ /*****************************************************************************
+  *
+- * CaptureDelegate Implementation.
++ * CaptureDelegateDai Implementation.
+  *
+- * CaptureDelegate is notified on a separate thread by the OS whenever there
++ * CaptureDelegateDai is notified on a separate thread by the OS whenever there
+  *   is a new frame. When "updateImage" is called from the main thread, it
+  *   copies this new frame into an IplImage, but only if this frame has not
+  *   been copied before.
+@@ -567,7 +567,7 @@ bool CvCaptureCAM::setProperty(int property_id, double value) {
+  *****************************************************************************/
+ 
+ 
+-@implementation CaptureDelegate
++@implementation CaptureDelegateDai
+ 
+ - (id)init {
+     [super init];

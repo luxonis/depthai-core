@@ -3,8 +3,10 @@
 
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/depthai.hpp"
+#include "depthai/pipeline/MessageQueue.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/node/Camera.hpp"
+#include "depthai/properties/ImageManipProperties.hpp"
 
 void testManipBasic(bool runSyncOnHost) {
     // Create pipeline
@@ -144,5 +146,56 @@ TEST_CASE("ImageManip rebuild on cfg change") {
     imgFrame = manipQueue->get<dai::ImgFrame>();
     REQUIRE(imgFrame->getWidth() == 200);
     REQUIRE(imgFrame->getHeight() == 400);
+    p.stop();
+}
+
+TEST_CASE("Multiple image manips") {
+    dai::Pipeline p;
+    auto inputImg = cv::imread(LENNA_PATH);
+    cv::resize(inputImg, inputImg, cv::Size(1024, 512));
+    auto inputFrame = std::make_shared<dai::ImgFrame>();
+    inputFrame->setCvFrame(inputImg, dai::ImgFrame::Type::NV12);
+
+    uint32_t resizeWidth = 256;
+    uint32_t resizeHeight = 256;
+    int numNodes = 10;
+
+    auto config = std::make_shared<dai::ImageManipConfig>();
+    config->setOutputSize(resizeWidth, resizeHeight);
+
+    std::vector<std::shared_ptr<dai::node::ImageManip>> manipNodes;
+    std::vector<std::shared_ptr<dai::InputQueue>> manipQins;
+    std::vector<std::shared_ptr<dai::MessageQueue>> manipQouts;
+
+    for(int i = 0; i < numNodes; ++i) {
+        auto manip = p.create<dai::node::ImageManip>();
+        manip->setBackend(dai::ImageManipProperties::Backend::CPU);
+        manip->setPerformanceMode(dai::ImageManipProperties::PerformanceMode::BALANCED);
+        manip->setMaxOutputFrameSize(2097152);
+        manip->initialConfig = config;
+        auto manipQin = manip->inputImage.createInputQueue();
+        auto manipQout = manip->out.createOutputQueue();
+
+        manipNodes.push_back(manip);
+        manipQins.push_back(manipQin);
+        manipQouts.push_back(manipQout);
+    }
+
+    p.start();
+
+    for(int i = 0; i < 100; i++) {
+        for(int j = 0; j < numNodes; ++j) {
+            manipQins[j]->send(inputFrame);
+        }
+
+        std::vector<std::shared_ptr<dai::ImgFrame>> frames;
+        for(int j = 0; j < numNodes; ++j) {
+            auto frame = manipQouts[j]->get<dai::ImgFrame>();
+            frames.push_back(frame);
+            REQUIRE(frame->getWidth() == resizeWidth);
+            REQUIRE(frame->getHeight() == resizeHeight);
+        }
+    }
+
     p.stop();
 }

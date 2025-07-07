@@ -34,7 +34,7 @@ jobs:
       - name: echo distinct ID ${{ github.event.inputs.distinct_id }}
         run: echo ${{ github.event.inputs.distinct_id }}
   # Testing
-  test:
+  stability_test:
     runs-on: ['self-hosted', 'testbed-runner']
     timeout-minutes: 1450 # 24h & 10minutes
     steps:

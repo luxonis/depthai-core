@@ -272,8 +272,19 @@ dai_add_test(bootloader_config_test src/onhost_tests/bootloader_config_test.cpp)
 dai_set_test_labels(bootloader_config_test onhost ci)
 
 # Environment test
-dai_add_test(env_test src/onhost_tests/env_test.cpp)
+dai_add_test(env_test src/onhost_tests/utility/env_test.cpp)
 dai_set_test_labels(env_test onhost ci)
+
+## Dummy filesystem lock process for `platform_test`
+add_executable(fslock_dummy src/onhost_tests/utility/fslock_dummy.cpp)
+add_default_flags(fslock_dummy LEAN)
+target_link_libraries(fslock_dummy PRIVATE depthai::core)
+
+# Platform tests
+dai_add_test(platform_test src/onhost_tests/utility/platform_test.cpp)
+dai_set_test_labels(platform_test onhost ci)
+target_compile_definitions(platform_test PRIVATE FSLOCK_DUMMY_PATH="$<TARGET_FILE:fslock_dummy>")
+add_dependencies(platform_test fslock_dummy)
 
 # Datatype tests
 dai_add_test(nndata_test src/onhost_tests/pipeline/datatype/nndata_test.cpp)
@@ -363,6 +374,10 @@ dai_set_test_labels(pointcloud_test ondevice rvc2_all ci)
 dai_add_test(rgbd_test src/ondevice_tests/rgbd_test.cpp)
 dai_set_test_labels(rgbd_test ondevice rvc2_all rvc4 ci)
 
+# Input/Output naming test
+dai_add_test(input_output_naming_test src/ondevice_tests/input_output_naming_test.cpp)
+dai_set_test_labels(input_output_naming_test ondevice rvc2_all rvc4 ci)
+
 # Resolutions test
 dai_add_test(resolutions_test src/ondevice_tests/resolutions_test.cpp)
 dai_set_test_labels(resolutions_test ondevice) # TODO(jakob) Make the test runnable in CI
@@ -430,6 +445,7 @@ dai_set_test_labels(stereo_depth_node_test ondevice rvc2_all rvc4 ci)
 
 # ImageManip test
 dai_add_test(image_manip_node_test src/ondevice_tests/pipeline/node/image_manip_test.cpp)
+target_compile_definitions(image_manip_node_test PRIVATE LENNA_PATH="${lenna_png}")
 dai_set_test_labels(image_manip_node_test ondevice rvc2_all rvc4 ci)
 
 dai_add_test(image_manip_optimization_test src/ondevice_tests/pipeline/node/image_manip_optimization_test.cpp)

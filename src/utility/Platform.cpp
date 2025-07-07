@@ -1,6 +1,7 @@
 #include "Platform.hpp"
 
 #include <filesystem>
+#include <memory>
 
 // Platform specific
 #if defined(_WIN32) || defined(__USE_W32_SOCKETS)
@@ -71,7 +72,7 @@ void setThreadName(JoiningThread& thread, const std::string& name) {
     return;
 }
 
-std::string getTempPath() {
+std::filesystem::path getTempPath() {
     std::string tmpPath;
 #if defined(_WIN32) || defined(__USE_W32_SOCKETS)
     char tmpPathBuffer[MAX_PATH];
@@ -87,34 +88,20 @@ std::string getTempPath() {
         tmpPath += '/';
     }
 #endif
-    return tmpPath;
+    return std::filesystem::path(tmpPath);
 }
 
-bool checkPathExists(const std::string& path, bool directory) {
-#if defined(_WIN32) || defined(__USE_W32_SOCKETS)
-    DWORD ftyp = GetFileAttributesA(path.c_str());
-    if(ftyp == INVALID_FILE_ATTRIBUTES) {
-        return false;  // Path does not exist
-    } else if(ftyp & FILE_ATTRIBUTE_DIRECTORY || !directory) {
-        return true;  // Path is a directory
+bool checkPathExists(const std::filesystem::path& path, bool directory) {
+    if(directory) {
+        return std::filesystem::exists(path) && std::filesystem::is_directory(path);
     } else {
-        return false;  // Path is not a directory
+        return std::filesystem::exists(path);
     }
-#else
-    struct stat info;
-    if(stat(path.c_str(), &info) != 0) {
-        return false;  // Path does not exist
-    } else if(info.st_mode & S_IFDIR || !directory) {
-        return true;  // Path is a directory
-    } else {
-        return false;  // Path is not a directory
-    }
-#endif
 }
 
-bool checkWritePermissions(const std::string& path) {
+bool checkWritePermissions(const std::filesystem::path& path) {
 #if defined(_WIN32) || defined(__USE_W32_SOCKETS)
-    DWORD ftyp = GetFileAttributesA(path.c_str());
+    DWORD ftyp = GetFileAttributesA(path.string().c_str());
     if(ftyp == INVALID_FILE_ATTRIBUTES) {
         return false;  // Path does not exist
     } else if(ftyp & FILE_ATTRIBUTE_READONLY) {
@@ -124,7 +111,7 @@ bool checkWritePermissions(const std::string& path) {
     }
 #else
     struct stat info;
-    if(stat(path.c_str(), &info) != 0) {
+    if(stat(path.string().c_str(), &info) != 0) {
         return false;  // Path does not exist
     } else if(info.st_mode & S_IWUSR) {
         return true;  // Path is writable
@@ -134,30 +121,128 @@ bool checkWritePermissions(const std::string& path) {
 #endif
 }
 
-std::string joinPaths(const std::string& p1, const std::string& p2) {
-    char sep = '/';
-    std::string tmp = p1;
+FSLock::FSLock(const std::filesystem::path& fname) : filename(fname), isLocked(false), threadLock(getThreadLock(fname)) {}
 
-#ifdef _WIN32
-    sep = '\\';
-#endif
-
-    // Add separator if it is not included in the first path:
-    if(p1[p1.length() - 1] != sep) {
-        tmp += sep;
-        return tmp + p2;
-    } else {
-        return p1 + p2;
+FSLock::~FSLock() {
+    if(holding()) {
+        unlock();
     }
 }
 
-std::string getDirFromPath(const std::string& path) {
-    std::string absPath = std::filesystem::absolute(path).string();
-    if(checkPathExists(absPath, true)) {
-        return absPath;
+void FSLock::lock() {
+    // First acquire the thread lock
+    threadLock.lock();
+
+    lockPath = getLockPath(filename);
+
+#ifdef _WIN32
+    handle = CreateFileW(lockPath.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    if(handle == INVALID_HANDLE_VALUE) {
+        threadLock.unlock();  // Release thread lock if file lock fails
+        throw std::runtime_error("Failed to open file: " + lockPath.string());
     }
-    size_t found = absPath.find_last_of("/\\");
-    return absPath.substr(0, found);
+
+    OVERLAPPED overlapped = {0};
+    if(!LockFileEx(handle, LOCKFILE_EXCLUSIVE_LOCK, 0, MAXDWORD, MAXDWORD, &overlapped)) {
+        CloseHandle(handle);
+        handle = INVALID_HANDLE_VALUE;
+        threadLock.unlock();  // Release thread lock if file lock fails
+        throw std::runtime_error("Failed to acquire lock on file: " + lockPath.string());
+    }
+
+#else
+    fd = open(lockPath.c_str(), O_RDWR | O_CREAT, 0666);
+    if(fd == -1) {
+        threadLock.unlock();  // Release thread lock if file lock fails
+        throw std::runtime_error("Failed to open file: " + lockPath.string());
+    }
+
+    struct flock fl {};
+    fl.l_type = F_WRLCK;
+    fl.l_whence = SEEK_SET;
+    fl.l_start = 0;
+    fl.l_len = 0;
+    if(fcntl(fd, F_SETLKW, &fl) == -1) {
+        close(fd);
+        fd = -1;
+        threadLock.unlock();  // Release thread lock if file lock fails
+        throw std::runtime_error("Failed to acquire lock on file: " + lockPath.string());
+    }
+#endif
+
+    isLocked = true;
+}
+
+void FSLock::unlock() {
+#ifdef _WIN32
+    OVERLAPPED overlapped = {0};
+    if(!UnlockFileEx(handle, 0, MAXDWORD, MAXDWORD, &overlapped)) {
+        throw std::runtime_error("Failed to release lock on file: " + lockPath.string());
+    }
+    CloseHandle(handle);
+    handle = INVALID_HANDLE_VALUE;
+#else
+    struct flock fl {};
+    fl.l_type = F_UNLCK;
+    fl.l_whence = SEEK_SET;
+    fl.l_start = 0;
+    fl.l_len = 0;
+    if(fcntl(fd, F_SETLK, &fl) == -1) {
+        throw std::runtime_error("Failed to release lock on file: " + lockPath.string());
+    }
+    close(fd);
+    fd = -1;
+#endif
+
+    isLocked = false;
+    threadLock.unlock();  // Release the thread lock after file lock is released
+}
+
+bool FSLock::holding() const {
+    return isLocked;
+}
+
+FileLock::FileLock(const std::filesystem::path& path, bool createIfNotExists) : FSLock(path) {
+    if(!createIfNotExists && !std::filesystem::exists(path)) {
+        throw std::runtime_error("File does not exist: " + path.string());
+    }
+}
+
+std::filesystem::path FileLock::getLockPath(const std::filesystem::path& path) {
+    return path;
+}
+
+FolderLock::FolderLock(const std::filesystem::path& path) : FSLock(path) {
+    if(!std::filesystem::exists(path)) {
+        throw std::runtime_error("Folder does not exist: " + path.string());
+    }
+    if(!std::filesystem::is_directory(path)) {
+        throw std::runtime_error("Path is not a folder: " + path.string());
+    }
+}
+
+std::filesystem::path FolderLock::getLockPath(const std::filesystem::path& path) {
+    return joinPaths(path, ".folder_lock");
+}
+
+std::unique_ptr<FileLock> FileLock::lock(const std::filesystem::path& path, bool createIfNotExists) {
+    auto fileLock = std::make_unique<FileLock>(path, createIfNotExists);
+    fileLock->lock();
+    return fileLock;
+}
+
+std::unique_ptr<FolderLock> FolderLock::lock(const std::filesystem::path& path) {
+    auto folderLock = std::make_unique<FolderLock>(path);
+    folderLock->lock();
+    return folderLock;
+}
+
+std::filesystem::path joinPaths(const std::filesystem::path& p1, const std::filesystem::path& p2) {
+    return p1 / p2;
+}
+
+std::filesystem::path getDirFromPath(const std::filesystem::path& path) {
+    return std::filesystem::path(std::filesystem::absolute(path).parent_path());
 }
 
 }  // namespace platform

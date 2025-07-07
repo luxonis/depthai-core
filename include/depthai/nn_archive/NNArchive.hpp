@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <depthai/common/ModelType.hpp>
+#include <filesystem>
 #include <memory>
 #include <optional>
 
@@ -13,6 +14,8 @@
 namespace dai {
 
 struct NNArchiveOptions {
+    NNArchiveOptions();
+
     // General parameters
     DEPTAHI_ARG_DEFAULT(NNArchiveEntry::Compression, compression, NNArchiveEntry::Compression::AUTO);
 
@@ -23,7 +26,7 @@ struct NNArchiveOptions {
     // ...
 
     // Parameters for other formats, ONNX, PT, etc..
-    DEPTAHI_ARG_DEFAULT(std::string, extractFolder, "/tmp/");
+    DEPTAHI_ARG_DEFAULT(std::filesystem::path, extractFolder, std::filesystem::path());
 };
 
 class NNArchive {
@@ -34,7 +37,7 @@ class NNArchive {
      * @param archivePath: Path to the archive file
      * @param options: Archive options such as compression, number of shaves, etc. See NNArchiveOptions.
      */
-    NNArchive(const std::string& archivePath, NNArchiveOptions options = {});
+    NNArchive(const std::filesystem::path& archivePath, NNArchiveOptions options = {});
 
     /**
      * @brief Return a SuperVINO::Blob from the archive if getModelType() returns BLOB, nothing otherwise
@@ -53,9 +56,9 @@ class NNArchive {
     /**
      * @brief Return a path to the model inside the archive if getModelType() returns OTHER or DLC, nothing otherwise
      *
-     * @return std::optional<std::string>: Model path
+     * @return std::optional<Path>: Model path
      */
-    std::optional<std::string> getModelPath() const;
+    std::optional<std::filesystem::path> getModelPath() const;
 
     /**
      * @brief Get NNArchive config wrapper
@@ -112,10 +115,10 @@ class NNArchive {
 
    private:
     // Read model from archive
-    std::vector<uint8_t> readModelFromArchive(const std::string& archivePath, const std::string& modelPathInArchive) const;
+    std::vector<uint8_t> readModelFromArchive(const std::filesystem::path& archivePath, const std::string& modelPathInArchive) const;
 
     // Unpack archive to tmp directory
-    void unpackArchiveInDirectory(const std::string& archivePath, const std::string& directory) const;
+    void unpackArchiveInDirectory(const std::filesystem::path& archivePath, const std::filesystem::path& directory) const;
 
     model::ModelType modelType;
     NNArchiveOptions archiveOptions;
@@ -130,7 +133,7 @@ class NNArchive {
     std::shared_ptr<OpenVINO::SuperBlob> superblobPtr;
 
     // Other formats - return path to the unpacked archive
-    std::string unpackedModelPath;
+    std::filesystem::path unpackedModelPath;
 };
 
 }  // namespace dai
