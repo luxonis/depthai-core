@@ -3,6 +3,7 @@ set(VCPKG_CRT_LINKAGE dynamic)
 set(VCPKG_LIBRARY_LINKAGE static)
 
 if(PORT MATCHES "libusb|ffmpeg")
+    set(VCPKG_BUILD_TYPE release)
     set(VCPKG_LIBRARY_LINKAGE dynamic)
     set(VCPKG_FIXUP_ELF_RPATH ON)
 endif()
