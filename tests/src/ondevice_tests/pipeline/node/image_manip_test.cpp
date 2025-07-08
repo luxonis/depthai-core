@@ -4,6 +4,7 @@
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/depthai.hpp"
 #include "depthai/pipeline/MessageQueue.hpp"
+#include "depthai/pipeline/datatype/ImageManipConfig.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/node/Camera.hpp"
 #include "depthai/properties/ImageManipProperties.hpp"
@@ -200,6 +201,15 @@ TEST_CASE("Multiple image manips") {
     p.stop();
 }
 
+bool equal(const cv::Mat& a, const cv::Mat& b) {
+    if((a.rows != b.rows) || (a.cols != b.cols)) return false;
+    cv::Scalar s = cv::sum(a - b);
+    for(int i = 0; i < a.dims; i++) {
+        if(a.size[i] != b.size[i]) return false;
+    }
+    return true;
+}
+
 void runManipTests(dai::ImgFrame::Type type, bool undistort, std::vector<float> coeffs = {}) {
     dai::Pipeline p;
     auto manip = p.create<dai::node::ImageManip>()->build();
@@ -214,7 +224,6 @@ void runManipTests(dai::ImgFrame::Type type, bool undistort, std::vector<float> 
 
     auto config = std::make_shared<dai::ImageManipConfig>();
     config->setReusePreviousImage(true);
-    config->setUndistort(undistort);
 
     auto inputQueue = manip->inputImage.createInputQueue();
     auto configQueue = manip->inputConfig.createInputQueue();
@@ -223,37 +232,49 @@ void runManipTests(dai::ImgFrame::Type type, bool undistort, std::vector<float> 
     p.start();
     inputQueue->send(inputFrame);
 
+    auto getFrame = [&](std::shared_ptr<dai::ImageManipConfig> _cfg) {
+        configQueue->send(_cfg);
+        auto outFrame = outputQueue->get<dai::ImgFrame>();
+        REQUIRE(outFrame != nullptr);
+        REQUIRE(outFrame->getWidth() == _cfg->base.outputWidth);
+        REQUIRE(outFrame->getHeight() == _cfg->base.outputHeight);
+        return outFrame;
+    };
+
     // Scale up
     {
         auto cfg = std::make_shared<dai::ImageManipConfig>(*config);
         cfg->setOutputSize(2048, 1024);
-        configQueue->send(cfg);
-        auto outFrame = outputQueue->get<dai::ImgFrame>();
-        REQUIRE(outFrame != nullptr);
-        REQUIRE(outFrame->getWidth() == 2048);
-        REQUIRE(outFrame->getHeight() == 1024);
+        auto outFrame1 = getFrame(cfg);
+        if(undistort) {
+            cfg->setUndistort(true);
+            auto outFrame2 = getFrame(cfg);
+            REQUIRE(!equal(outFrame1->getCvFrame(), outFrame2->getCvFrame()));
+        }
     }
 
     // Scale up crop
     {
         auto cfg = std::make_shared<dai::ImageManipConfig>(*config);
         cfg->setOutputSize(1500, 1500, dai::ImageManipConfig::ResizeMode::CENTER_CROP);
-        configQueue->send(cfg);
-        auto outFrame = outputQueue->get<dai::ImgFrame>();
-        REQUIRE(outFrame != nullptr);
-        REQUIRE(outFrame->getWidth() == 1500);
-        REQUIRE(outFrame->getHeight() == 1500);
+        auto outFrame1 = getFrame(cfg);
+        if(undistort) {
+            cfg->setUndistort(true);
+            auto outFrame2 = getFrame(cfg);
+            REQUIRE(!equal(outFrame1->getCvFrame(), outFrame2->getCvFrame()));
+        }
     }
 
     // Scale up letterbox
     {
         auto cfg = std::make_shared<dai::ImageManipConfig>(*config);
         cfg->setOutputSize(1500, 1500, dai::ImageManipConfig::ResizeMode::LETTERBOX);
-        configQueue->send(cfg);
-        auto outFrame = outputQueue->get<dai::ImgFrame>();
-        REQUIRE(outFrame != nullptr);
-        REQUIRE(outFrame->getWidth() == 1500);
-        REQUIRE(outFrame->getHeight() == 1500);
+        auto outFrame1 = getFrame(cfg);
+        if(undistort) {
+            cfg->setUndistort(true);
+            auto outFrame2 = getFrame(cfg);
+            REQUIRE(!equal(outFrame1->getCvFrame(), outFrame2->getCvFrame()));
+        }
     }
 
     // Scale up letterbox bg
@@ -261,44 +282,48 @@ void runManipTests(dai::ImgFrame::Type type, bool undistort, std::vector<float> 
         auto cfg = std::make_shared<dai::ImageManipConfig>(*config);
         cfg->setOutputSize(1500, 1500, dai::ImageManipConfig::ResizeMode::LETTERBOX);
         cfg->setBackgroundColor(100, 0, 0);
-        configQueue->send(cfg);
-        auto outFrame = outputQueue->get<dai::ImgFrame>();
-        REQUIRE(outFrame != nullptr);
-        REQUIRE(outFrame->getWidth() == 1500);
-        REQUIRE(outFrame->getHeight() == 1500);
+        auto outFrame1 = getFrame(cfg);
+        if(undistort) {
+            cfg->setUndistort(true);
+            auto outFrame2 = getFrame(cfg);
+            REQUIRE(!equal(outFrame1->getCvFrame(), outFrame2->getCvFrame()));
+        }
     }
 
     // Scale down
     {
         auto cfg = std::make_shared<dai::ImageManipConfig>(*config);
         cfg->setOutputSize(600, 400);
-        configQueue->send(cfg);
-        auto outFrame = outputQueue->get<dai::ImgFrame>();
-        REQUIRE(outFrame != nullptr);
-        REQUIRE(outFrame->getWidth() == 600);
-        REQUIRE(outFrame->getHeight() == 400);
+        auto outFrame1 = getFrame(cfg);
+        if(undistort) {
+            cfg->setUndistort(true);
+            auto outFrame2 = getFrame(cfg);
+            REQUIRE(!equal(outFrame1->getCvFrame(), outFrame2->getCvFrame()));
+        }
     }
 
     // Scale down crop
     {
         auto cfg = std::make_shared<dai::ImageManipConfig>(*config);
         cfg->setOutputSize(600, 400, dai::ImageManipConfig::ResizeMode::CENTER_CROP);
-        configQueue->send(cfg);
-        auto outFrame = outputQueue->get<dai::ImgFrame>();
-        REQUIRE(outFrame != nullptr);
-        REQUIRE(outFrame->getWidth() == 600);
-        REQUIRE(outFrame->getHeight() == 400);
+        auto outFrame1 = getFrame(cfg);
+        if(undistort) {
+            cfg->setUndistort(true);
+            auto outFrame2 = getFrame(cfg);
+            REQUIRE(!equal(outFrame1->getCvFrame(), outFrame2->getCvFrame()));
+        }
     }
 
     // Scale down letterbox
     {
         auto cfg = std::make_shared<dai::ImageManipConfig>(*config);
         cfg->setOutputSize(600, 400, dai::ImageManipConfig::ResizeMode::LETTERBOX);
-        configQueue->send(cfg);
-        auto outFrame = outputQueue->get<dai::ImgFrame>();
-        REQUIRE(outFrame != nullptr);
-        REQUIRE(outFrame->getWidth() == 600);
-        REQUIRE(outFrame->getHeight() == 400);
+        auto outFrame1 = getFrame(cfg);
+        if(undistort) {
+            cfg->setUndistort(true);
+            auto outFrame2 = getFrame(cfg);
+            REQUIRE(!equal(outFrame1->getCvFrame(), outFrame2->getCvFrame()));
+        }
     }
 
     // Scale down letterbox bg
@@ -306,33 +331,36 @@ void runManipTests(dai::ImgFrame::Type type, bool undistort, std::vector<float> 
         auto cfg = std::make_shared<dai::ImageManipConfig>(*config);
         cfg->setOutputSize(600, 400, dai::ImageManipConfig::ResizeMode::LETTERBOX);
         cfg->setBackgroundColor(100, 0, 0);
-        configQueue->send(cfg);
-        auto outFrame = outputQueue->get<dai::ImgFrame>();
-        REQUIRE(outFrame != nullptr);
-        REQUIRE(outFrame->getWidth() == 600);
-        REQUIRE(outFrame->getHeight() == 400);
+        auto outFrame1 = getFrame(cfg);
+        if(undistort) {
+            cfg->setUndistort(true);
+            auto outFrame2 = getFrame(cfg);
+            REQUIRE(!equal(outFrame1->getCvFrame(), outFrame2->getCvFrame()));
+        }
     }
 
     // Crop
     {
         auto cfg = std::make_shared<dai::ImageManipConfig>(*config);
         cfg->addCrop(100, 200, 600, 400);
-        configQueue->send(cfg);
-        auto outFrame = outputQueue->get<dai::ImgFrame>();
-        REQUIRE(outFrame != nullptr);
-        REQUIRE(outFrame->getWidth() == 600);
-        REQUIRE(outFrame->getHeight() == 400);
+        auto outFrame1 = getFrame(cfg);
+        if(undistort) {
+            cfg->setUndistort(true);
+            auto outFrame2 = getFrame(cfg);
+            REQUIRE(!equal(outFrame1->getCvFrame(), outFrame2->getCvFrame()));
+        }
     }
 
     // Affine
     {
         auto cfg = std::make_shared<dai::ImageManipConfig>(*config);
         cfg->addCropRotatedRect(dai::RotatedRect(dai::Point2f(350, 250), dai::Size2f(600, 400), 20));
-        configQueue->send(cfg);
-        auto outFrame = outputQueue->get<dai::ImgFrame>();
-        REQUIRE(outFrame != nullptr);
-        REQUIRE(outFrame->getWidth() == 600);
-        REQUIRE(outFrame->getHeight() == 400);
+        auto outFrame1 = getFrame(cfg);
+        if(undistort) {
+            cfg->setUndistort(true);
+            auto outFrame2 = getFrame(cfg);
+            REQUIRE(!equal(outFrame1->getCvFrame(), outFrame2->getCvFrame()));
+        }
     }
 
     // Scale down small
@@ -340,15 +368,16 @@ void runManipTests(dai::ImgFrame::Type type, bool undistort, std::vector<float> 
         auto cfg = std::make_shared<dai::ImageManipConfig>(*config);
         cfg->addCrop(100, 100, 199, 199);
         cfg->setOutputSize(100, 100);
-        configQueue->send(cfg);
-        auto outFrame = outputQueue->get<dai::ImgFrame>();
-        REQUIRE(outFrame != nullptr);
-        REQUIRE(outFrame->getWidth() == 100);
-        REQUIRE(outFrame->getHeight() == 100);
+        auto outFrame1 = getFrame(cfg);
+        if(undistort) {
+            cfg->setUndistort(true);
+            auto outFrame2 = getFrame(cfg);
+            REQUIRE(!equal(outFrame1->getCvFrame(), outFrame2->getCvFrame()));
+        }
     }
 
     p.stop();
-} 
+}
 
 TEST_CASE("ImageManip NV12") {
     runManipTests(dai::ImgFrame::Type::NV12, false);
@@ -367,13 +396,58 @@ TEST_CASE("ImageManip NV12 undistort no coefficients") {
 }
 
 TEST_CASE("ImageManip NV12 undistort") {
-    runManipTests(dai::ImgFrame::Type::NV12, true, {-7.56764030456543, 18.97133445739746, 0.0006435539107769728, -5.642612813971937e-05, 6.156050682067871, -7.587080001831055, 19.094820022583008, 5.732314109802246, 0.0, 0.0, 0.0, 0.0, -0.0009434317471459508, 0.002672438742592931});
+    runManipTests(dai::ImgFrame::Type::NV12,
+                  true,
+                  {-7.56764030456543,
+                   18.97133445739746,
+                   0.0006435539107769728,
+                   -5.642612813971937e-05,
+                   6.156050682067871,
+                   -7.587080001831055,
+                   19.094820022583008,
+                   5.732314109802246,
+                   0.0,
+                   0.0,
+                   0.0,
+                   0.0,
+                   -0.0009434317471459508,
+                   0.002672438742592931});
 }
 
 TEST_CASE("ImageManip GRAY8 undistort") {
-    runManipTests(dai::ImgFrame::Type::GRAY8, true, {-7.56764030456543, 18.97133445739746, 0.0006435539107769728, -5.642612813971937e-05, 6.156050682067871, -7.587080001831055, 19.094820022583008, 5.732314109802246, 0.0, 0.0, 0.0, 0.0, -0.0009434317471459508, 0.002672438742592931});
+    runManipTests(dai::ImgFrame::Type::GRAY8,
+                  true,
+                  {-7.56764030456543,
+                   18.97133445739746,
+                   0.0006435539107769728,
+                   -5.642612813971937e-05,
+                   6.156050682067871,
+                   -7.587080001831055,
+                   19.094820022583008,
+                   5.732314109802246,
+                   0.0,
+                   0.0,
+                   0.0,
+                   0.0,
+                   -0.0009434317471459508,
+                   0.002672438742592931});
 }
 
 TEST_CASE("ImageManip RGB888i undistort") {
-    runManipTests(dai::ImgFrame::Type::RGB888i, true, {-7.56764030456543, 18.97133445739746, 0.0006435539107769728, -5.642612813971937e-05, 6.156050682067871, -7.587080001831055, 19.094820022583008, 5.732314109802246, 0.0, 0.0, 0.0, 0.0, -0.0009434317471459508, 0.002672438742592931});
+    runManipTests(dai::ImgFrame::Type::RGB888i,
+                  true,
+                  {-7.56764030456543,
+                   18.97133445739746,
+                   0.0006435539107769728,
+                   -5.642612813971937e-05,
+                   6.156050682067871,
+                   -7.587080001831055,
+                   19.094820022583008,
+                   5.732314109802246,
+                   0.0,
+                   0.0,
+                   0.0,
+                   0.0,
+                   -0.0009434317471459508,
+                   0.002672438742592931});
 }
