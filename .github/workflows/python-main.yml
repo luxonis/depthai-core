@@ -63,6 +63,7 @@ jobs:
           cmake -S . \
             -B build \
             -DDEPTHAI_VCPKG_INTERNAL_ONLY=OFF \
+            -DVCPKG_OVERLAY_TRIPLETS="$PWD/cmake/triplets/release" \
             -DDEPTHAI_BUILD_PYTHON=ON \
             -DDEPTHAI_PYTHON_FORCE_DOCSTRINGS=ON \
             -DDEPTHAI_BASALT_SUPPORT=ON \
