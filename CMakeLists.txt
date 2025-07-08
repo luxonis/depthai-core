@@ -528,7 +528,7 @@ if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
         message(STATUS "Using remote dynamic_calibration zip")
         FetchContent_Declare(
             dynamic_calibration
-            URL https://artifacts.luxonis.com/artifactory/luxonis-depthai-helper-binaries/dynamic_calibration/2c73fe8717c2925476cc7f45880726c94371f971/dynamic_calibration_2c73fe8717c2925476cc7f45880726c94371f971.zip
+            URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-helper-binaries/dynamic_calibration/${DEPTHAI_DYNAMIC_CALIBRATION_VERSION}/dynamic_calibration_${DEPTHAI_DYNAMIC_CALIBRATION_VERSION}.zip"
             URL_HASH MD5=14df99bc5dd22798526aeefd477f972c
         )
     endif()
@@ -562,6 +562,7 @@ include(Depthai/DepthaiBootloaderConfig)    # Depthai bootloader binary commit/v
 include(Depthai/DepthaiDeviceKbConfig)      # depthai-device-kb fwp commit/version configuration
 include(Depthai/DepthaiDeviceRVC4Config)    # depthai-device-rvc4 fwp commit/version configuration
 include(Depthai/DepthaiVisualizerConfig)    # depthai-visualizer commit/version configuration
+include(Depthai/DepthaiDynamicCalibrationConfig)    # depthai-dynamic-calibration commit/version configuration
 
 # Include downloaders
 include(DepthaiDownloader)                  # Depthai device binary downloader

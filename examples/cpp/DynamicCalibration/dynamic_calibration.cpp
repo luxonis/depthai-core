@@ -8,54 +8,51 @@
 #include <getopt.h>
 
 
-void overlayCoverageOnGray(cv::Mat& grayImage, const std::vector<std::vector<float>>& coveragePerCellB) {
-    // Convert grayscale to BGR so we can overlay color
+namespace {
+cv::Mat overlayCoverageOnGray(const cv::Mat& grayImage, const std::vector<std::vector<float>>& coveragePerCellB) {
     cv::Mat colorImage;
-    cv::cvtColor(grayImage, colorImage, cv::COLOR_GRAY2BGR);
 
-    int rows = coveragePerCellB.size();
-    int cols = coveragePerCellB[0].size();
+    // Convert to BGR if image is grayscale
+    if(grayImage.channels() == 1) {
+        cv::cvtColor(grayImage, colorImage, cv::COLOR_GRAY2BGR);
+    } else {
+        colorImage = grayImage.clone();  // Already BGR, just clone
+    }
+
+    int rows = static_cast<int>(coveragePerCellB.size());
+    if(rows == 0) return colorImage;
+
+    int cols = static_cast<int>(coveragePerCellB[0].size());
+    if(cols == 0) return colorImage;
+
     int cellWidth = colorImage.cols / cols;
     int cellHeight = colorImage.rows / rows;
 
-    for (int y = 0; y < rows; ++y) {
-        for (int x = 0; x < cols; ++x) {
+    for(int y = 0; y < rows; ++y) {
+        for(int x = 0; x < cols; ++x) {
             float coverage = coveragePerCellB[y][x];
-            if (coverage <= 0.0f) continue;
+            if(coverage <= 0.0f) continue;
 
             cv::Rect cellRect(x * cellWidth, y * cellHeight, cellWidth, cellHeight);
             cv::Mat roi = colorImage(cellRect);
 
-            float alpha = 0.5f * std::min(1.0f, std::max(0.0f, coverage));  // Clamp [0,1]
+            float alpha = 0.5f * std::clamp(coverage, 0.0f, 1.0f);
             cv::Scalar green(0, 255, 0);  // BGR
 
-            cv::Mat coloredOverlay(cellRect.height, cellRect.width, roi.type(), green);
-            cv::addWeighted(coloredOverlay, alpha, roi, 1.0 - alpha, 0.0, roi);
+            cv::Mat overlay(cellRect.height, cellRect.width, roi.type(), green);
+            cv::addWeighted(overlay, alpha, roi, 1.0 - alpha, 0.0, roi);
         }
     }
 
-    // Replace original with colored image
-    grayImage = colorImage;
+    return colorImage;
+}
 }
 
-int main(int argc, char** argv) {
-    std::string ip_address;
-    int opt;
-    while((opt = getopt(argc, argv, "i:")) != -1) {
-        switch(opt) {
-            case 'i':
-                ip_address = optarg;
-                break;
-        }
-    }
+int main() {
 
     // Initialize Device with optional IP address
     std::shared_ptr<dai::Device> device;
-    if(!ip_address.empty()) {
-        device = std::make_shared<dai::Device>(ip_address);
-    } else {
-        device = std::make_shared<dai::Device>();
-    }
+    device = std::make_shared<dai::Device>();
 
     // ---------- Pipeline definition ----------
     dai::Pipeline pipeline(device);
@@ -83,7 +80,7 @@ int main(int argc, char** argv) {
     bool continious = false;
     if (continious) {
         dynCalib->setPerformanceMode(dai::DynamicCalibrationConfig::AlgorithmControl::PerformanceMode::DEFAULT);
-        dynCalib->setContiniousMode();
+        dynCalib->setContinousMode();
         dynCalib->setTimeFrequency(4);
     }
     // Feed the frames into the dynamic-calibration block
@@ -120,7 +117,7 @@ int main(int argc, char** argv) {
         if(dynResult && dynResult->calibOverallQuality.has_value() && dynResult->calibOverallQuality->report) {
             double meanCoverage = dynResult->calibOverallQuality->report->coverageQuality->meanCoverage;
             auto coveragePerCellB = dynResult->calibOverallQuality->report->coverageQuality->coveragePerCellB;
-            overlayCoverageOnGray(left_frame, coveragePerCellB);
+            left_frame = overlayCoverageOnGray(left_frame, coveragePerCellB);
             auto& report = dynResult->calibOverallQuality->report;
             if(report.has_value() && report->calibrationQuality.has_value()) {
                 auto& rotationChange = report->calibrationQuality->rotationChange;

@@ -23,13 +23,12 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
    public:
     constexpr static const char* NAME = "DynamicCalibration";
     using DeviceNodeCRTP::DeviceNodeCRTP;
-    virtual ~DynamicCalibration();
+    ~DynamicCalibration() override = default;
 
    protected:
     Properties& getProperties() override;
 
    public:
-
     std::shared_ptr<DynamicCalibrationConfig> initialConfig = std::make_shared<DynamicCalibrationConfig>();
 
     /**
@@ -74,14 +73,14 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     bool runOnHost() const override;
 
     /**
-     * Set Dynamic recalibration performance mode based on user input
+     * Set Dynamic recalibration performance mode
      */
     void setPerformanceMode(dai::DynamicCalibrationConfig::AlgorithmControl::PerformanceMode mode);
 
     /**
      * Set Dynamic recalibration as Continious mode, no user interaction needed
      */
-    void setContiniousMode();
+    void setContinousMode();
 
     /**
      * Set time frequency, when new recalibration will be performed in Continious mode
@@ -122,6 +121,8 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
                                        const CameraBoardSocket socketDest,
                                        const int width,
                                        const int height);
+
+    dai::DynamicCalibrationResults::CalibrationQualityResult calibQualityfromDCL(const dcl::CalibrationQuality& src);
      /**
      * DCL held properties
      */       

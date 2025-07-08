@@ -1,5 +1,5 @@
 #include "depthai/pipeline/node/DynamicCalibration.hpp"
-
+#include "depthai/utility/matrixOps.hpp"
 #include <DynamicCalibration.hpp>
 #include <common_world_types.hpp>
 #include <opencv2/opencv.hpp>
@@ -41,8 +41,6 @@ dcl::ImageData cvMatToImageData(const cv::Mat& mat) {
 namespace dai {
 namespace node {
 
-DynamicCalibration::~DynamicCalibration() = default;
-
 
 DynamicCalibration::Properties& DynamicCalibration::getProperties() {
     properties.initialConfig = *initialConfig;
@@ -53,7 +51,7 @@ void DynamicCalibration::setPerformanceMode(dai::DynamicCalibrationConfig::Algor
     properties.initialConfig.algorithmControl.performanceMode = mode;
 }
 
-void DynamicCalibration::setContiniousMode() {
+void DynamicCalibration::setContinousMode() {
     properties.initialConfig.algorithmControl.recalibrationMode = dai::DynamicCalibrationConfig::AlgorithmControl::RecalibrationMode::CONTINUOUS;
 }
 
@@ -78,62 +76,31 @@ void DynamicCalibration::buildInternal() {
     sync->setRunOnHost(true);
 }
 
-std::vector<float> rotationMatrixToVector(const std::vector<std::vector<float>>& R) {
-    if(R.size() != 3 || R[0].size() != 3 || R[1].size() != 3 || R[2].size() != 3) {
-        throw std::invalid_argument("Expected a 3x3 rotation matrix.");
+dai::DynamicCalibrationResults::CalibrationQualityResult DynamicCalibration::calibQualityfromDCL(const dcl::CalibrationQuality& src) {
+    dai::DynamicCalibrationResults::CalibrationQualityResult out_report;
+    dai::DynamicCalibrationResults::CalibrationQuality out;
+    out.dataAcquired  = src.dataAquired ;
+    if(src.coverageQuality.has_value()) {
+        dai::DynamicCalibrationResults::CalibrationQuality::CoverageData cov;
+        cov.coveragePerCellA = src.coverageQuality->coveragePerCellA;
+        cov.coveragePerCellB = src.coverageQuality->coveragePerCellB;
+        cov.meanCoverage = src.coverageQuality->meanCoverage;
+        out.coverageQuality = cov;
     }
 
-    float angle, x, y, z;
-
-    float trace = R[0][0] + R[1][1] + R[2][2];
-    float cos_angle = (trace - 1.0f) * 0.5f;
-
-    // Clamp cos_angle to [-1, 1] to avoid NaN due to float precision
-    cos_angle = std::fmax(-1.0f, std::fmin(1.0f, cos_angle));
-    angle = std::acos(cos_angle);
-
-    if(std::fabs(angle) < 1e-6f) {
-        // Angle is ~0 → zero rotation vector
-        return {0.0f, 0.0f, 0.0f};
-    }
-
-    float rx = R[2][1] - R[1][2];
-    float ry = R[0][2] - R[2][0];
-    float rz = R[1][0] - R[0][1];
-
-    float sin_angle = std::sqrt(rx * rx + ry * ry + rz * rz) * 0.5f;
-
-    // Normalize axis
-    float k = 1.0f / (2.0f * sin_angle);
-    x = k * rx;
-    y = k * ry;
-    z = k * rz;
-
-    // Rotation vector = axis * angle
-    return {x * angle, y * angle, z * angle};
-}
-
-std::vector<std::vector<float>> rvecToRotationMatrix(const double rvec[3]) {
-    // Convert input array to cv::Mat
-    cv::Mat rvecMat(3, 1, CV_64F);
-    for(int i = 0; i < 3; ++i) {
-        rvecMat.at<double>(i, 0) = rvec[i];
-    }
-
-    // Convert Rodrigues vector to rotation matrix
-    cv::Mat R;
-    cv::Rodrigues(rvecMat, R);
-
-    // Convert cv::Mat (CV_64F) to std::vector<std::vector<float>>
-    std::vector<std::vector<float>> rotMatrix(3, std::vector<float>(3));
-    for(int i = 0; i < 3; ++i) {
-        for(int j = 0; j < 3; ++j) {
-            rotMatrix[i][j] = static_cast<float>(R.at<double>(i, j));
+    if(src.calibrationQuality.has_value()) {
+        dai::DynamicCalibrationResults::CalibrationQuality ::CalibrationData cal;
+        for(int i = 0; i < 3; ++i) {
+            cal.rotationChange[i] = src.calibrationQuality->rotationChange[i];
         }
+        cal.epipolarErrorChange = src.calibrationQuality->epipolarErrorChange;
+           cal.depthErrorDifference = src.calibrationQuality->depthDistanceDifference;
+        out.calibrationQuality = cal;
     }
-
-    return rotMatrix;
+    out_report.report = out;
+    return out_report;
 }
+
 
 std::shared_ptr<dcl::CameraCalibrationHandle> DynamicCalibration::createDCLCameraCalibration(const std::vector<std::vector<float>> cameraMatrix,
                                                                                              const std::vector<float> distortionCoefficients,
@@ -157,7 +124,7 @@ std::shared_ptr<dcl::CameraCalibrationHandle> DynamicCalibration::createDCLCamer
     }
 
     // Convert rotation to vector
-    std::vector<float> rvecVec = rotationMatrixToVector(rotationMatrix);
+    std::vector<float> rvecVec = matrix::rotationMatrixToVector(rotationMatrix);
     for(int i = 0; i < 3; ++i) {
         rvec[i] = static_cast<dcl::scalar_t>(rvecVec[i]);
     }
@@ -194,7 +161,7 @@ CalibrationHandler DynamicCalibration::convertDCLtoDAI(CalibrationHandler calibH
     }
     dcl::scalar_t rvec[3];
     daiCalibration->getRvec(rvec);
-    auto rotationMatrix = rvecToRotationMatrix(rvec);
+    auto rotationMatrix = matrix::rvecToRotationMatrix(rvec);
     auto specTranslation = calibHandler.getCameraTranslationVector(socketSrc, socketDest, true);
 
     calibHandler.setCameraExtrinsics(socketSrc, socketDest, rotationMatrix, translation, specTranslation);
@@ -273,7 +240,7 @@ void DynamicCalibration::resetResults(){
     calibQuality.calibrationQuality = dcl::CalibrationData{};
     calibQuality.coverageQuality = dcl::CoverageData{};
     calibQuality.dataAquired = 0.f;
-    dynResult.calibOverallQuality = dai::DynamicCalibrationResults::CalibrationQualityResult::fromDCL(calibQuality);
+    dynResult.calibOverallQuality = calibQualityfromDCL(calibQuality);
     dynResult.newCalibration = DynamicCalibrationResults::CalibrationResult::Invalid();
     dynResult.calibOverallQuality = DynamicCalibrationResults::CalibrationQualityResult::Invalid();
     dynResult.newCalibration = DynamicCalibrationResults::CalibrationResult::Invalid();
@@ -296,7 +263,6 @@ bool isAlmostBlackOrWhite(const cv::Mat& frame, double tolerance = 25.5, double 
 
     double meanVal = mean[0];
     double stdVal = stddev[0];
-    std::cout << meanVal << " " << stdVal << std::endl;
     bool isAlmostBlack = (meanVal < tolerance && stdVal < maxStdDev);
     bool isAlmostWhite = (meanVal > (255 - tolerance) && stdVal < maxStdDev);
 
@@ -305,13 +271,13 @@ bool isAlmostBlackOrWhite(const cv::Mat& frame, double tolerance = 25.5, double 
 
 void DynamicCalibration::run() {
     if(!device) {
-        logger::error("Dynamic calibration node has to have access to a device!");
+        logger::error("Dynamic calibration node does not have access to any device.");
         return;
     }
 
     logger::info("DynamicCalibration node is running");
     auto lastAutoTrigger = std::chrono::steady_clock::now() - std::chrono::seconds(10);
-    auto continiousTrigger = std::chrono::steady_clock::now() - std::chrono::seconds(10);
+    auto continousTrigger = std::chrono::steady_clock::now() - std::chrono::seconds(10);
     resetResults();
     while(isRunning()) {
         // auto leftFrame = left.get<dai::ImgFrame>();
@@ -339,12 +305,12 @@ void DynamicCalibration::run() {
                         dynResult.info = "Start Calibration Quality Check";
                         break;
                     case DynamicCalibrationConfig::CalibrationCommand::START_RECALIBRATION:
-                        logger::info("[DynamicCalibration] RecalibratioQualityMessageRecieved.");
+                        logger::info("[DynamicCalibration] RecalibrationQualityMessageReceived.");
                         calibrationSM.startRecalibration();
                         dynResult.info = "Start Recalibration";
                         break;
                     case DynamicCalibrationConfig::CalibrationCommand::START_FORCE_RECALIBRATION:
-                        logger::info("[DynamicCalibration] RecalibratioQualityMessageRecieved.");
+                        logger::info("[DynamicCalibration] RecalibrationQualityMessageReceived.");
                         calibrationSM.startRecalibration();
                         forceTrigger = true;
                         properties.initialConfig.algorithmControl.performanceMode = DynamicCalibrationConfig::AlgorithmControl::PerformanceMode::SKIP_CHECKS;
@@ -368,7 +334,7 @@ void DynamicCalibration::run() {
         auto now = std::chrono::steady_clock::now();
 
         if(properties.initialConfig.algorithmControl.recalibrationMode == dai::DynamicCalibrationConfig::AlgorithmControl::RecalibrationMode::CONTINUOUS
-           && calibrationSM.isIdle() && calibrationSM.pipelineReady && std::chrono::duration_cast<std::chrono::seconds>(now - continiousTrigger).count() > properties.initialConfig.algorithmControl.timeFrequency) {
+           && calibrationSM.isIdle() && calibrationSM.pipelineReady && std::chrono::duration_cast<std::chrono::seconds>(now - continousTrigger).count() > properties.initialConfig.algorithmControl.timeFrequency) {
             lastAutoTrigger = now;
             calibrationSM.startRecalibration();
         }
@@ -418,7 +384,7 @@ void DynamicCalibration::run() {
                     if (imageA.empty() || imageB.empty()) continue;
                     if (isAlmostBlackOrWhite(leftFrame->getCvFrame())) {
                         dynResult.info = "Frame is nearly black or white — skipping data loading.";
-                        continue;
+                        break;
                     }
                     dcl::ImageData imgA = cvMatToImageData(imageA);
                     dcl::ImageData imgB = cvMatToImageData(imageB);
@@ -442,7 +408,7 @@ void DynamicCalibration::run() {
                     :dynCalibImpl->checkCalibration(dcDevice, socketA, socketB, static_cast<dcl::PerformanceMode>(properties.initialConfig.algorithmControl.performanceMode));
                 calibQuality = result.value;
                 dynResult.info = result.errorMessage();
-                dynResult.calibOverallQuality = dai::DynamicCalibrationResults::CalibrationQualityResult::fromDCL(calibQuality);
+                dynResult.calibOverallQuality = calibQualityfromDCL(calibQuality);
                 if (forceTrigger) {
                     forceTrigger = false;
                 }
@@ -472,7 +438,7 @@ void DynamicCalibration::run() {
                     forceTrigger = false;
                 }
                 calibQuality = result.value;
-                dynResult.calibOverallQuality = dai::DynamicCalibrationResults::CalibrationQualityResult::fromDCL(calibQuality);
+                dynResult.calibOverallQuality = calibQualityfromDCL(calibQuality);
                 dynResult.info = result.errorMessage();
                 const auto& rot = dynResult.calibOverallQuality->report->calibrationQuality->rotationChange;
                 bool isMissing = std::any_of(rot.begin(), rot.end(), [](float v) {

@@ -17,10 +17,10 @@ void bind_dynamic_calibration_results(pybind11::module& m, void* pCallstack) {
     py::class_<DynamicCalibrationResults::CalibrationResult> _CalibrationResult(
         _DynamicCalibrationResults, "CalibrationResult", DOC(dai, DynamicCalibrationResults, CalibrationResult));
 
-    py::class_<DynamicCalibrationResults::CalibrationData> _CalibrationData(
+    py::class_<DynamicCalibrationResults::CalibrationQuality::CalibrationData> _CalibrationData(
         _DynamicCalibrationResults, "CalibrationData", DOC(dai, DynamicCalibrationResults, CalibrationData));
 
-    py::class_<DynamicCalibrationResults::CoverageData> _CoverageData(
+    py::class_<DynamicCalibrationResults::CalibrationQuality::CoverageData> _CoverageData(
         _DynamicCalibrationResults, "CoverageData", DOC(dai, DynamicCalibrationResults, CoverageData));
 
     py::class_<DynamicCalibrationResults::CalibrationQuality> _CalibrationQuality(
@@ -52,21 +52,21 @@ void bind_dynamic_calibration_results(pybind11::module& m, void* pCallstack) {
     // Bind CalibrationData
     _CalibrationData
         .def(py::init<>())
-        .def_readwrite("rotationChange", &DynamicCalibrationResults::CalibrationData::rotationChange)
-        .def_readwrite("epipolarErrorChange", &DynamicCalibrationResults::CalibrationData::epipolarErrorChange)
-        .def_readwrite("depthErrorDifference", &DynamicCalibrationResults::CalibrationData::depthErrorDifference);
+        .def_readwrite("rotationChange", &DynamicCalibrationResults::CalibrationQuality::CalibrationData::rotationChange)
+        .def_readwrite("epipolarErrorChange", &DynamicCalibrationResults::CalibrationQuality::CalibrationData::epipolarErrorChange)
+        .def_readwrite("depthErrorDifference", &DynamicCalibrationResults::CalibrationQuality::CalibrationData::depthErrorDifference);
 
     // Bind CoverageData
     _CoverageData
         .def(py::init<>())
-        .def_readwrite("coveragePerCellA", &DynamicCalibrationResults::CoverageData::coveragePerCellA)
-        .def_readwrite("coveragePerCellB", &DynamicCalibrationResults::CoverageData::coveragePerCellB)
-        .def_readwrite("meanCoverage", &DynamicCalibrationResults::CoverageData::meanCoverage);
+        .def_readwrite("coveragePerCellA", &DynamicCalibrationResults::CalibrationQuality::CoverageData::coveragePerCellA)
+        .def_readwrite("coveragePerCellB", &DynamicCalibrationResults::CalibrationQuality::CoverageData::coveragePerCellB)
+        .def_readwrite("meanCoverage", &DynamicCalibrationResults::CalibrationQuality::CoverageData::meanCoverage);
 
     // Bind CalibrationQuality
     _CalibrationQuality
         .def(py::init<>())
-        .def_readwrite("dataAquired", &DynamicCalibrationResults::CalibrationQuality::dataAquired)
+        .def_readwrite("dataAquired", &DynamicCalibrationResults::CalibrationQuality::dataAcquired)
         .def_readwrite("coverageQuality", &DynamicCalibrationResults::CalibrationQuality::coverageQuality)
         .def_readwrite("calibrationQuality", &DynamicCalibrationResults::CalibrationQuality::calibrationQuality);
 
@@ -79,7 +79,6 @@ void bind_dynamic_calibration_results(pybind11::module& m, void* pCallstack) {
     // Message
     _DynamicCalibrationResults
         .def(py::init<>())
-        .def("reset", &DynamicCalibrationResults::reset)
         .def_readwrite("newCalibration", &DynamicCalibrationResults::newCalibration,
                        DOC(dai, DynamicCalibrationResults, newCalibration))
         .def_readwrite("calibOverallQuality", &DynamicCalibrationResults::calibOverallQuality,
