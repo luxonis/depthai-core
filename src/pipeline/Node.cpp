@@ -52,6 +52,15 @@ bool Node::Connection::operator==(const Node::Connection& rhs) const {
             && inputGroup == rhs.inputGroup);
 }
 
+std::string Node::createUniqueInputName() {
+    std::string name = fmt::format("_{}_input_{}", getName(), inputId++);
+    return name;
+}
+std::string Node::createUniqueOutputName() {
+    std::string name = fmt::format("_{}_output_{}", getName(), outputId++);
+    return name;
+}
+
 std::string Node::Output::toString() const {
     if(getGroup() == "") {
         return fmt::format("{}", getName());
@@ -283,12 +292,12 @@ AssetManager& Node::getAssetManager() {
     return assetManager;
 }
 
-std::vector<uint8_t> Node::loadResource(dai::Path uri) {
+std::vector<uint8_t> Node::loadResource(std::filesystem::path uri) {
     std::string cwd = fmt::format("/node/{}/", id);
     return parent.lock()->loadResourceCwd(uri, cwd);
 }
 
-std::vector<uint8_t> Node::moveResource(dai::Path uri) {
+std::vector<uint8_t> Node::moveResource(std::filesystem::path uri) {
     std::string cwd = fmt::format("/node/{}/", id);
     return parent.lock()->loadResourceCwd(uri, cwd, true);
 }

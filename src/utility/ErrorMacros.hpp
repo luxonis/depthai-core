@@ -1,3 +1,6 @@
+#include <fmt/format.h>
+#include <fmt/std.h>
+
 #include <stdexcept>
 
 #include "depthai/build/version.hpp"
