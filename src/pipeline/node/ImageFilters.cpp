@@ -3,6 +3,7 @@
 #include <cmath>
 #include <cstdint>
 #include <memory>
+#include <nlohmann/json.hpp>
 #include <opencv2/opencv.hpp>
 #include <utility/ErrorMacros.hpp>
 
@@ -608,6 +609,10 @@ class MedianFilterWrapper : public ImageFilters::Filter {
         }
     }
 
+    std::string getName() const override {
+        return "MedianFilter(" + nlohmann::json(params).dump() + ")";
+    }
+
    private:
     MedianFilterParams params;
     impl::MedianFilter medianFilter;
@@ -637,6 +642,10 @@ class SpatialFilterWrapper : public ImageFilters::Filter {
         }
     }
 
+    std::string getName() const override {
+        return "SpatialFilter(" + nlohmann::json(params).dump() + ")";
+    }
+
    private:
     SpatialFilterParams params;
     impl::SpatialFilter spatialFilter;
@@ -662,6 +671,10 @@ class SpeckleFilterWrapper : public ImageFilters::Filter {
         } else {
             DAI_CHECK_V(false, "Invalid filter params. Expected SpeckleFilterParams, got {}", params.index());
         }
+    }
+
+    std::string getName() const override {
+        return "SpeckleFilter(" + nlohmann::json(params).dump() + ")";
     }
 
    private:
@@ -712,6 +725,10 @@ class TemporalFilterWrapper : public ImageFilters::Filter {
         } else {
             DAI_CHECK_V(false, "Invalid filter params. Expected TemporalFilterParams, got {}", params.index());
         }
+    }
+
+    std::string getName() const override {
+        return "TemporalFilter(" + nlohmann::json(params).dump() + ")";
     }
 };
 
@@ -775,13 +792,25 @@ void ImageFilters::run() {
         }
     };
 
+    // A helper function to get the string representation of the filter pipeline
+    auto getFilterPipelineString = [&filters]() {
+        std::stringstream ss;
+        for(const auto& filter : filters) {
+            ss << filter->getName() << " | ";
+        }
+        return ss.str();
+    };
+
     // Create new filter pipeline
     auto& properties = getProperties();
     auto& initialConfig = properties.initialConfig;
     DAI_CHECK_V(initialConfig.filterIndices.size() == 0, "Initial config must describe a new filter pipeline, not an update to it.");
     createNewFilterPipeline(initialConfig);
 
-    logger->debug("ImageFilters: Created a new filter pipeline with {} filters. Is passthrough: {}", filters.size(), filters.size() == 0);
+    logger->debug("ImageFilters: Created a new filter pipeline with {} filters. Is passthrough: {}. Current filter pipeline: {}",
+                  filters.size(),
+                  filters.size() == 0,
+                  getFilterPipelineString());
 
     while(isRunning()) {
         // Set config
@@ -789,10 +818,10 @@ void ImageFilters::run() {
             auto configMsg = config.get<ImageFiltersConfig>();
             bool isUpdate = configMsg->filterIndices.size() > 0;
             if(isUpdate) {
-                logger->debug("ImageFilters: Updating existing filter pipeline");
+                logger->debug("ImageFilters: Updating existing filter pipeline. New pipeline is {}", getFilterPipelineString());
                 updateExistingFilterPipeline(*configMsg);
             } else {
-                logger->debug("ImageFilters: Creating a new filter pipeline");
+                logger->debug("ImageFilters: Creating a new filter pipeline. New pipeline is {}", getFilterPipelineString());
                 createNewFilterPipeline(*configMsg);
             }
         }
@@ -804,8 +833,10 @@ void ImageFilters::run() {
             break;
         }
 
-        // Create a clone and run filters inplace on the clone
-        std::shared_ptr<dai::ImgFrame> filteredFrame = frame->clone();
+        // If there are no filters, serve as a passthrough
+        // Otherwise, create a copy and run filters inplace on the copy
+        std::shared_ptr<dai::ImgFrame> filteredFrame = filters.size() == 0 ? frame : frame->clone();
+
         for(const auto& filter : filters) {
             filter->process(filteredFrame);  // inplace filter
         }

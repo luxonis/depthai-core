@@ -34,7 +34,7 @@ def colorizeDepth(frameDepth):
 # Create pipeline
 pipeline = dai.Pipeline()
 # Define source and output
-tof = pipeline.create(dai.node.ToF).build()
+tof = pipeline.create(dai.node.ToF).build(dai.CameraBoardSocket.AUTO, dai.ImageFiltersPresetMode.LOW_RANGE)
 depthQueue = tof.depth.createOutputQueue()
 
 with pipeline:

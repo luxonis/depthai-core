@@ -75,6 +75,7 @@ class ImageFilters : public DeviceNodeCRTP<DeviceNode, ImageFilters, ImageFilter
        public:
         virtual void process(std::shared_ptr<dai::ImgFrame>& frame) = 0;
         virtual void setParams(const FilterParams& params) = 0;
+        virtual std::string getName() const = 0;
         virtual ~Filter() = default;
     };
 
