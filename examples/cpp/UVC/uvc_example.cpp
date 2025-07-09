@@ -140,8 +140,12 @@ int main() {
     // Create pipeline
     dai::Pipeline pipeline(device);
 
+    // Detect connected cameras
+    auto socket = device->getConnectedCameras()[0];
+    std::cout << "Detected camera: " << dai::toString(socket) << std::endl;
+
     // Create nodes
-    auto camRgb = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_E);
+    auto camRgb = pipeline.create<dai::node::Camera>()->build(socket);
     auto output = camRgb->requestOutput(std::make_pair(1920, 1080), dai::ImgFrame::Type::NV12);
 
     // Create video encoder node
