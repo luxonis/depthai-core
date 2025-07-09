@@ -1,12 +1,9 @@
 #include <depthai/depthai.hpp>
-#include <iostream>
-#include <thread>
-#include <chrono>
-#include <atomic>
 #include <opencv2/opencv.hpp>
 #include <string>
 #include <getopt.h>
 
+static constexpr const bool kEnableContinuousRecalibration = false;
 
 namespace {
 cv::Mat overlayCoverageOnGray(const cv::Mat& grayImage, const std::vector<std::vector<float>>& coveragePerCellB) {
@@ -75,10 +72,9 @@ int main() {
     auto rightQueue = rightOut->createOutputQueue();
 
     auto q = stereo->disparity.createOutputQueue();
-    auto dyncal_out = dynCalib->outputCalibrationResults.createOutputQueue();
-    auto input_config = dynCalib->inputConfig.createInputQueue();
-    bool continious = false;
-    if (continious) {
+    auto dyncalOut = dynCalib->outputCalibrationResults.createOutputQueue();
+    auto inputConfig = dynCalib->inputConfig.createInputQueue();
+    if (kEnableContinuousRecalibration) {
         dynCalib->setPerformanceMode(dai::DynamicCalibrationConfig::AlgorithmControl::PerformanceMode::DEFAULT);
         dynCalib->setContinousMode();
         dynCalib->setTimeFrequency(4);
@@ -87,9 +83,10 @@ int main() {
     leftOut->link(dynCalib->left);
     rightOut->link(dynCalib->right);
     // Get calibration data from device
-    auto calibOld = device->readCalibration();
-    auto calibNew = device->readCalibration();
-    device->setCalibration(calibOld);
+    auto calib = device->readCalibration();
+    auto initialCalibration = calib;
+    auto calibrationNew = calib;
+    device->setCalibration(initialCalibration);
 
     pipeline.start();
 
@@ -99,25 +96,24 @@ int main() {
         auto inDepth = q->get<dai::ImgFrame>();
         auto leftFrameQueue = leftQueue->get<dai::ImgFrame>();
         auto rightFrameQueue = rightQueue->get<dai::ImgFrame>();
-        auto frame = inDepth->getFrame();
-        frame.convertTo(frame, CV_8UC1, 255 / stereo->initialConfig->getMaxDisparity());
-        cv::applyColorMap(frame, frame, cv::COLORMAP_JET);
-
         if(leftFrameQueue == nullptr || rightFrameQueue == nullptr ) continue;
-        auto left_frame = leftFrameQueue->getCvFrame();
-        auto right_frame = rightFrameQueue->getCvFrame();
+        auto depthFrame = inDepth->getFrame();
+        depthFrame.convertTo(depthFrame, CV_8UC1, 255 / stereo->initialConfig->getMaxDisparity());
+        cv::applyColorMap(depthFrame, depthFrame, cv::COLORMAP_JET);
 
-        // std::cout << qualityResult.info << " " << qualityResult.valid << " " << qualityResult.value << std::endl;
-        auto calibration_result = dyncal_out->tryGet();
-        auto dynResult = std::dynamic_pointer_cast<dai::DynamicCalibrationResults>(calibration_result);
+        auto leftFrame = leftFrameQueue->getCvFrame();
+        auto rightFrame = rightFrameQueue->getCvFrame();
+
+        auto calibrationResult = dyncalOut->tryGet();
+        auto dynResult = std::dynamic_pointer_cast<dai::DynamicCalibrationResults>(calibrationResult);
         if(dynResult && dynResult->newCalibration->calibHandler.has_value()) {
-            calibNew = *dynResult->newCalibration->calibHandler;
+            calibrationNew = *dynResult->newCalibration->calibHandler;
             std::cout << "Got new calibration. " << std::endl;
         }
         if(dynResult && dynResult->calibOverallQuality.has_value() && dynResult->calibOverallQuality->report) {
             double meanCoverage = dynResult->calibOverallQuality->report->coverageQuality->meanCoverage;
             auto coveragePerCellB = dynResult->calibOverallQuality->report->coverageQuality->coveragePerCellB;
-            left_frame = overlayCoverageOnGray(left_frame, coveragePerCellB);
+            leftFrame = overlayCoverageOnGray(leftFrame, coveragePerCellB);
             auto& report = dynResult->calibOverallQuality->report;
             if(report.has_value() && report->calibrationQuality.has_value()) {
                 auto& rotationChange = report->calibrationQuality->rotationChange;
@@ -130,48 +126,48 @@ int main() {
             } else {
                 std::cout << "No calibrationQuality present." << std::endl;
             }
-            std::cout << "Got calibCheck. Coverage quality = " << meanCoverage << std::endl;
+            std::cout << "Got calibration Check. Coverage quality = " << meanCoverage << std::endl;
         }
 
-        cv::imshow("left", left_frame);
-        cv::imshow("right", right_frame);
-        cv::imshow("disparity_color", frame);
+        cv::imshow("left", leftFrame);
+        cv::imshow("right", rightFrame);
+        cv::imshow("disparity_color", depthFrame);
         auto key = cv::waitKey(1);
 
         if(key == 'q') {
             break;
         }
         else if(key == 'o'){
-            device->setCalibration(calibOld);
+            device->setCalibration(initialCalibration);
             std::cout << "Applying old calibration " << std::endl;
         }
         else if(key == 'n'){
-            device->setCalibration(calibNew);
+            device->setCalibration(calibrationNew);
             std::cout << "Applying new calibration " << std::endl;
         }
         else if(key == 'c') {
             auto configMessage = std::make_shared<dai::DynamicCalibrationConfig>();
-            configMessage->calibrationCommand =  dai::DynamicCalibrationConfig::CalibrationCommand::START_CALIBRATION_QUALITY_CHECK;
-            input_config->send(configMessage);
-            std::cout << "Start calib check"  << std::endl;
+            configMessage->calibrationCommand = dai::DynamicCalibrationConfig::CalibrationCommand::START_CALIBRATION_QUALITY_CHECK;
+            inputConfig->send(configMessage);
+            std::cout << "Starting calibration check"  << std::endl;
         }
         else if(key == 'r') {
             auto configMessage = std::make_shared<dai::DynamicCalibrationConfig>();
             configMessage->calibrationCommand = dai::DynamicCalibrationConfig::CalibrationCommand::START_RECALIBRATION;
-            input_config->send(configMessage);
-            std::cout << "Start new calibration" << std::endl;
+            inputConfig->send(configMessage);
+            std::cout << "Starting new calibration" << std::endl;
         }
         else if(key == 'C') {
             auto configMessage = std::make_shared<dai::DynamicCalibrationConfig>();
-            configMessage->calibrationCommand =  dai::DynamicCalibrationConfig::CalibrationCommand::START_FORCE_CALIBRATION_QUALITY_CHECK;
-            input_config->send(configMessage);
-            std::cout << "Start forced calib check" << std::endl;
+            configMessage->calibrationCommand = dai::DynamicCalibrationConfig::CalibrationCommand::START_FORCE_CALIBRATION_QUALITY_CHECK;
+            inputConfig->send(configMessage);
+            std::cout << "Starting forced calibration check" << std::endl;
         }
         else if(key == 'R') {
             auto configMessage = std::make_shared<dai::DynamicCalibrationConfig>();
             configMessage->calibrationCommand = dai::DynamicCalibrationConfig::CalibrationCommand::START_FORCE_RECALIBRATION;
-            input_config->send(configMessage);
-            std::cout << "Start forced new calibration" << std::endl;
+            inputConfig->send(configMessage);
+            std::cout << "Starting forced recalibration" << std::endl;
         }
     }
     return 0;
