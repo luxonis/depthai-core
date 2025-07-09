@@ -71,7 +71,7 @@ Then configure and build
 cmake -S . -B build
 cmake --build build --parallel [num CPU cores]
 ```
-On Windows, we currently only build the dependencies in Release mode, so you may want to add `-DCMAKE_BUILD_TYPE=Release` to the configuration step and you'll need to specify the location of the OpenCV installation. In case you used chocolatey to install OpenCV, you can use the following command:
+On Windows it's often required to specify the location of the OpenCV installation. In case you used chocolatey to install OpenCV, you can use the following command:
 
 ```
 cmake -S . -B build -DOpenCV_DIR=C:/tools/opencv/build -DCMAKE_BUILD_TYPE=Release
