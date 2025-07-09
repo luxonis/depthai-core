@@ -108,30 +108,32 @@ void DeviceBootloaderBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_static("getFirstAvailableDevice", &DeviceBootloader::getFirstAvailableDevice, DOC(dai, DeviceBootloader, getFirstAvailableDevice))
         .def_static("getAllAvailableDevices", &DeviceBootloader::getAllAvailableDevices, DOC(dai, DeviceBootloader, getAllAvailableDevices))
         .def_static("saveDepthaiApplicationPackage",
-                    py::overload_cast<const Path&, const Pipeline&, const Path&, bool, std::string, bool>(&DeviceBootloader::saveDepthaiApplicationPackage),
+                    py::overload_cast<const std::filesystem::path&, const Pipeline&, const std::filesystem::path&, bool, std::string, bool>(
+                        &DeviceBootloader::saveDepthaiApplicationPackage),
                     py::arg("path"),
                     py::arg("pipeline"),
-                    py::arg("pathToCmd") = Path{},
+                    py::arg("pathToCmd") = std::filesystem::path(),
                     py::arg("compress") = false,
                     py::arg("applicationName") = "",
                     py::arg("checkChecksum") = false,
                     DOC(dai, DeviceBootloader, saveDepthaiApplicationPackage))
         .def_static("saveDepthaiApplicationPackage",
-                    py::overload_cast<const Path&, const Pipeline&, bool, std::string, bool>(&DeviceBootloader::saveDepthaiApplicationPackage),
+                    py::overload_cast<const std::filesystem::path&, const Pipeline&, bool, std::string, bool>(&DeviceBootloader::saveDepthaiApplicationPackage),
                     py::arg("path"),
                     py::arg("pipeline"),
                     py::arg("compress"),
                     py::arg("applicationName") = "",
                     py::arg("checkChecksum") = false,
                     DOC(dai, DeviceBootloader, saveDepthaiApplicationPackage, 2))
-        .def_static("createDepthaiApplicationPackage",
-                    py::overload_cast<const Pipeline&, const Path&, bool, std::string, bool>(&DeviceBootloader::createDepthaiApplicationPackage),
-                    py::arg("pipeline"),
-                    py::arg("pathToCmd") = Path{},
-                    py::arg("compress") = false,
-                    py::arg("applicationName") = "",
-                    py::arg("checkChecksum") = false,
-                    DOC(dai, DeviceBootloader, createDepthaiApplicationPackage))
+        .def_static(
+            "createDepthaiApplicationPackage",
+            py::overload_cast<const Pipeline&, const std::filesystem::path&, bool, std::string, bool>(&DeviceBootloader::createDepthaiApplicationPackage),
+            py::arg("pipeline"),
+            py::arg("pathToCmd") = std::filesystem::path(),
+            py::arg("compress") = false,
+            py::arg("applicationName") = "",
+            py::arg("checkChecksum") = false,
+            DOC(dai, DeviceBootloader, createDepthaiApplicationPackage))
         .def_static("createDepthaiApplicationPackage",
                     py::overload_cast<const Pipeline&, bool, std::string, bool>(&DeviceBootloader::createDepthaiApplicationPackage),
                     py::arg("pipeline"),
@@ -146,7 +148,7 @@ void DeviceBootloaderBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("devInfo"),
              py::arg("allowFlashingBootloader") = false,
              DOC(dai, DeviceBootloader, DeviceBootloader, 4))
-        .def(py::init<const DeviceInfo&, const Path&, bool>(),
+        .def(py::init<const DeviceInfo&, const std::filesystem::path&, bool>(),
              py::arg("devInfo"),
              py::arg("pathToCmd"),
              py::arg("allowFlashingBootloader") = false,
@@ -244,7 +246,7 @@ void DeviceBootloaderBindings::bind(pybind11::module& m, void* pCallstack) {
             DOC(dai, DeviceBootloader, flashDepthaiApplicationPackage, 2))
         .def(
             "flashBootloader",
-            [](DeviceBootloader& db, std::function<void(float)> progressCallback, const Path& path) {
+            [](DeviceBootloader& db, std::function<void(float)> progressCallback, const std::filesystem::path& path) {
                 py::gil_scoped_release release;
                 return db.flashBootloader(progressCallback, path);
             },
@@ -257,7 +259,7 @@ void DeviceBootloaderBindings::bind(pybind11::module& m, void* pCallstack) {
                DeviceBootloader::Memory memory,
                DeviceBootloader::Type type,
                std::function<void(float)> progressCallback,
-               dai::Path path) {
+               std::filesystem::path path) {
                 py::gil_scoped_release release;
                 return db.flashBootloader(memory, type, progressCallback, path);
             },
@@ -268,7 +270,7 @@ void DeviceBootloaderBindings::bind(pybind11::module& m, void* pCallstack) {
             DOC(dai, DeviceBootloader, flashBootloader, 2))
         .def(
             "flashUserBootloader",
-            [](DeviceBootloader& db, std::function<void(float)> progressCallback, const Path& path) {
+            [](DeviceBootloader& db, std::function<void(float)> progressCallback, const std::filesystem::path& path) {
                 py::gil_scoped_release release;
                 return db.flashUserBootloader(progressCallback, path);
             },
@@ -297,7 +299,7 @@ void DeviceBootloaderBindings::bind(pybind11::module& m, void* pCallstack) {
             DOC(dai, DeviceBootloader, flashConfigData))
         .def(
             "flashConfigFile",
-            [](DeviceBootloader& db, dai::Path configPath, DeviceBootloader::Memory memory, DeviceBootloader::Type type) {
+            [](DeviceBootloader& db, std::filesystem::path configPath, DeviceBootloader::Memory memory, DeviceBootloader::Type type) {
                 py::gil_scoped_release release;
                 return db.flashConfigFile(configPath, memory, type);
             },

@@ -156,7 +156,13 @@ class CMakeBuild(build_ext):
         cmake_args += ['-DCMAKE_BUILD_TYPE=' + cfg]
         cmake_args += ['-DDEPTHAI_VCPKG_INTERNAL_ONLY=OFF']
         build_args += ['--config', cfg]
-
+        if not self.debug:
+            rootDirectory = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+            cmake_args += [
+                '-DVCPKG_OVERLAY_TRIPLETS={}'.format(
+                    os.path.join(rootDirectory, 'cmake', 'triplets', 'release')
+                )
+            ]
         # Memcheck (guard if it fails)
         freeMemory = 4000
         if platform.system() == "Linux":

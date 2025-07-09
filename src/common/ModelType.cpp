@@ -3,25 +3,28 @@
 namespace dai {
 namespace model {
 
-ModelType readModelType(const std::string& modelPath) {
+ModelType readModelType(const std::filesystem::path& modelPath) {
     auto endsWith = [](const std::string& path, const std::string& ending) {
         if(ending.size() > path.size()) return false;
         return std::equal(ending.rbegin(), ending.rend(), path.rbegin());
     };
 
+    // Safely turn path into a string
+    std::string path = modelPath.string();
+
     // == Blob ==
-    if(endsWith(modelPath, ".blob")) return ModelType::BLOB;
+    if(endsWith(path, ".blob")) return ModelType::BLOB;
 
     // == Superblob ==
-    if(endsWith(modelPath, ".superblob")) return ModelType::SUPERBLOB;
+    if(endsWith(path, ".superblob")) return ModelType::SUPERBLOB;
 
     // == DLC ==
-    if(endsWith(modelPath, ".dlc")) return ModelType::DLC;
+    if(endsWith(path, ".dlc")) return ModelType::DLC;
 
     // == NNArchive ==
-    if(endsWith(modelPath, ".tar")) return ModelType::NNARCHIVE;
-    if(endsWith(modelPath, ".tar.gz")) return ModelType::NNARCHIVE;
-    if(endsWith(modelPath, ".tar.xz")) return ModelType::NNARCHIVE;
+    if(endsWith(path, ".tar")) return ModelType::NNARCHIVE;
+    if(endsWith(path, ".tar.gz")) return ModelType::NNARCHIVE;
+    if(endsWith(path, ".tar.xz")) return ModelType::NNARCHIVE;
 
     // == Other ==
     return ModelType::OTHER;

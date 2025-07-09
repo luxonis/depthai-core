@@ -87,7 +87,7 @@ static uint64_t readInt64(const uint8_t* data) {
     return bigEndianToHost(value);
 }
 
-OpenVINO::SuperBlob::SuperBlob(const std::string& pathToSuperBlobFile) {
+OpenVINO::SuperBlob::SuperBlob(const std::filesystem::path& pathToSuperBlobFile) {
     data = readSuperBlobFile(pathToSuperBlobFile);
     loadAndCheckHeader();
     validateSuperblob();
@@ -136,14 +136,14 @@ dai::OpenVINO::Blob OpenVINO::SuperBlob::getBlobWithNumShaves(int numShaves) {
     return patchedBlob;
 }
 
-std::vector<uint8_t> OpenVINO::SuperBlob::readSuperBlobFile(const std::string& path) {
+std::vector<uint8_t> OpenVINO::SuperBlob::readSuperBlobFile(const std::filesystem::path& path) {
     // Make sure file exists before opening it
-    if(!std::filesystem::exists(path)) throw std::runtime_error("File does not exist: " + path);
+    if(!std::filesystem::exists(path)) throw std::runtime_error("File does not exist: " + path.string());
 
     // Open file and read bytes
     std::ifstream file(path, std::ios::binary);
     if(!file.is_open()) {
-        throw std::runtime_error("Cannot open file: " + path);
+        throw std::runtime_error("Cannot open file: " + path.string());
     }
     return std::vector<uint8_t>(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
 }
@@ -338,7 +338,7 @@ OpenVINO::Blob::Blob(std::vector<uint8_t> data) {
     blobInit(*this, std::move(data));
 }
 
-OpenVINO::Blob::Blob(const dai::Path& path) {
+OpenVINO::Blob::Blob(const std::filesystem::path& path) {
     // Load binary file at path
     std::ifstream stream(path, std::ios::in | std::ios::binary);
     if(!stream.is_open()) {
