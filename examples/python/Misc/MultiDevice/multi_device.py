@@ -17,8 +17,11 @@ import time
 # Configuration
 # ---------------------------------------------------------------------------
 TARGET_FPS = 8  # Must match sensorFps in createPipeline()
-SYNC_THRESHOLD_SEC = 1.0 / TARGET_FPS  # Max drift to accept as "in sync"
-
+SYNC_THRESHOLD_SEC = 1.0 / (2 * TARGET_FPS)  # Max drift to accept as "in sync"
+SET_MANUAL_EXPOSURE = True  # Set to True to use manual exposure settings
+DEVICE_INFOS: list[dai.DeviceInfo] = [] # Insert the device IPs here, e.g.:
+# DEVICE_INFOS = [dai.DeviceInfo(ip) for ip in ["[IP_MASTER]", "[IP_SLAVE_1]"]] # The master camera needs to be first here
+assert len(DEVICE_INFOS) > 1, "At least two devices are required for this example."
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -60,9 +63,10 @@ def createPipeline(pipeline: dai.Pipeline):
     output = (
         camRgb.requestOutput(
             (1200, 800), dai.ImgFrame.Type.NV12, dai.ImgResizeMode.STRETCH
-        )
-        .createOutputQueue()
+        ).createOutputQueue()
     )
+    if SET_MANUAL_EXPOSURE:
+        camRgb.initialControl.setManualExposure(1000, 100)
     return pipeline, output
 
 
@@ -70,15 +74,15 @@ def createPipeline(pipeline: dai.Pipeline):
 # Main
 # ---------------------------------------------------------------------------
 with contextlib.ExitStack() as stack:
-    deviceInfos = dai.Device.getAllAvailableDevices()
-    print("=== Found devices: ", deviceInfos)
+    # deviceInfos = dai.Device.getAllAvailableDevices()
+    # print("=== Found devices: ", deviceInfos)
 
-    queues = []  # One XLinkOut queue per device
+    queues = []
     pipelines = []
     device_ids = []
 
-    for deviceInfo in deviceInfos:
-        pipeline = stack.enter_context(dai.Pipeline())
+    for deviceInfo in DEVICE_INFOS:
+        pipeline = stack.enter_context(dai.Pipeline(dai.Device(deviceInfo)))
         device = pipeline.getDefaultDevice()
 
         print("=== Connected to", deviceInfo.getDeviceId())
@@ -113,7 +117,7 @@ with contextlib.ExitStack() as stack:
         # timestamps must align within SYNC_THRESHOLD_SEC.
         # -------------------------------------------------------------------
         if len(latest_frames) == len(queues):
-            ts_values = [f.getTimestamp(dai.CameraExposureOffset.START).total_seconds() for f in latest_frames.values()]
+            ts_values = [f.getTimestamp(dai.CameraExposureOffset.END).total_seconds() for f in latest_frames.values()]
             if max(ts_values) - min(ts_values) <= SYNC_THRESHOLD_SEC:
                 # Build composite image side‑by‑side
                 imgs = []
@@ -123,7 +127,7 @@ with contextlib.ExitStack() as stack:
                     fps = fpsCounters[i].getFps()
                     cv2.putText(
                         frame,
-                        f"{device_ids[i]} | {format_time(msg.getTimestamp(dai.CameraExposureOffset.START))} FPS:{fps:.2f}",
+                        f"{device_ids[i]} | {format_time(msg.getTimestamp(dai.CameraExposureOffset.END))} FPS:{fps:.2f}",
                         (20, 40),
                         cv2.FONT_HERSHEY_SIMPLEX,
                         0.6,
