@@ -52,7 +52,7 @@ class ToFDepthConfidenceFilterConfig : public Buffer {
     /**
      * Threshold for the confidence filter
      */
-    float confidenceThreshold = 1.0f;
+    float confidenceThreshold = 0.1f;
 
     DEPTHAI_SERIALIZE(ToFDepthConfidenceFilterConfig, confidenceThreshold);
 };

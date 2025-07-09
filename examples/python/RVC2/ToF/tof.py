@@ -4,6 +4,7 @@ import cv2
 import depthai as dai
 import numpy as np
 
+
 def colorizeDepth(frameDepth):
     invalidMask = frameDepth == 0
     # Log the depth, minDepth and maxDepth
@@ -26,19 +27,24 @@ def colorizeDepth(frameDepth):
         depthFrameColor[invalidMask] = 0
     except IndexError:
         # Frame is likely empty
-        depthFrameColor = np.zeros((frameDepth.shape[0], frameDepth.shape[1], 3), dtype=np.uint8)
+        depthFrameColor = np.zeros(
+            (frameDepth.shape[0], frameDepth.shape[1], 3), dtype=np.uint8
+        )
     except Exception as e:
         raise e
     return depthFrameColor
 
+
 # Create pipeline
 pipeline = dai.Pipeline()
 # Define source and output
-tof = pipeline.create(dai.node.ToF).build(dai.CameraBoardSocket.AUTO, dai.ImageFiltersPresetMode.LOW_RANGE)
+tof = pipeline.create(dai.node.ToF).build(
+    dai.CameraBoardSocket.AUTO, dai.ImageFiltersPresetMode.DEFAULT
+)
 depthQueue = tof.depth.createOutputQueue()
+depthRawQueue = tof.rawDepth.createOutputQueue()
 
 with pipeline:
-
     # Connect to device and start pipeline
     pipeline.start()
     while pipeline.isRunning():
@@ -46,6 +52,11 @@ with pipeline:
         assert isinstance(depth, dai.ImgFrame)
         visualizedDepth = colorizeDepth(depth.getFrame())
         cv2.imshow("depth", visualizedDepth)
+
+        depthRaw = depthRawQueue.get()
+        assert isinstance(depthRaw, dai.ImgFrame)
+        visualizedDepthRaw = colorizeDepth(depthRaw.getFrame())
+        cv2.imshow("depthRaw", visualizedDepthRaw)
 
         if cv2.waitKey(1) == ord("q"):
             break

@@ -74,6 +74,14 @@ void bind_tof(pybind11::module& m, void* pCallstack) {
             "imageFiltersInputConfig",
             [](const ToF& self) -> const dai::DeviceNode::Input& { return self.imageFiltersInputConfig; },
             DOC(dai, node, ToF, imageFiltersInputConfig))
+        .def_property_readonly(
+            "tofBaseNode", [](const ToF& self) -> const dai::node::ToFBase& { return self.tofBaseNode; }, DOC(dai, node, ToF, tofBaseNode))
+        .def_property_readonly(
+            "tofDepthConfidenceFilterNode",
+            [](const ToF& self) -> const dai::node::ToFDepthConfidenceFilter& { return self.tofDepthConfidenceFilterNode; },
+            DOC(dai, node, ToF, tofDepthConfidenceFilterNode))
+        .def_property_readonly(
+            "imageFiltersNodes", [](const ToF& self) -> const dai::node::ImageFilters& { return self.imageFiltersNode; }, DOC(dai, node, ToF, imageFiltersNode))
         .def_static("create", &ToF::create, "device"_a, DOC(dai, node, ToF, create))
         .def("build",
              &ToF::build,

@@ -72,14 +72,17 @@ class ToF : public DeviceNodeGroup {
     ToF(const std::shared_ptr<Device>& device)
         : DeviceNodeGroup(device),
           rawDepth{tofBase->depth},
-          depth{tofDepthConfidenceFilter->filteredDepth},
+          depth{imageFilters->output},
           confidence{tofDepthConfidenceFilter->confidence},
           amplitude{tofBase->amplitude},
           intensity{tofBase->intensity},
           phase{tofBase->phase},
           tofBaseInputConfig{tofBase->inputConfig},
           tofDepthConfidenceFilterInputConfig{tofDepthConfidenceFilter->config},
-          imageFiltersInputConfig{imageFilters->config} {}
+          imageFiltersInputConfig{imageFilters->config},
+          tofBaseNode{*tofBase},
+          tofDepthConfidenceFilterNode{*tofDepthConfidenceFilter},
+          imageFiltersNode{*imageFilters} {}
 
     [[nodiscard]] static std::shared_ptr<ToF> create(const std::shared_ptr<Device>& device) {
         auto tofPtr = std::make_shared<ToF>(device);
@@ -162,6 +165,21 @@ class ToF : public DeviceNodeGroup {
      * Input config for image filters
      */
     Input& imageFiltersInputConfig;
+
+    /**
+     * ToF base node
+     */
+    ToFBase& tofBaseNode;
+
+    /**
+     * ToF depth confidence filter node
+     */
+    ToFDepthConfidenceFilter& tofDepthConfidenceFilterNode;
+
+    /**
+     * Image filters node
+     */
+    ImageFilters& imageFiltersNode;
 };
 
 }  // namespace node

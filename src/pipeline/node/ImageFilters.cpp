@@ -837,8 +837,15 @@ void ImageFilters::run() {
         // Otherwise, create a copy and run filters inplace on the copy
         std::shared_ptr<dai::ImgFrame> filteredFrame = filters.size() == 0 ? frame : frame->clone();
 
+        auto t1 = std::chrono::high_resolution_clock::now();
         for(const auto& filter : filters) {
             filter->process(filteredFrame);  // inplace filter
+        }
+        auto t2 = std::chrono::high_resolution_clock::now();
+        static auto tlast = t2;
+        if(t2 - tlast > std::chrono::milliseconds(5000)) {
+            pimpl->logger->debug("ImageFilters: Time taken: {}ms", std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count() / 1000);
+            tlast = t2;
         }
 
         // Send filtered frame to the output queue
@@ -860,7 +867,21 @@ void ImageFilters::setRunOnHost(bool runOnHost) {
 void ImageFilters::setDefaultProfilePreset(ImageFiltersPresetMode mode) {
     switch(mode) {
         case ImageFiltersPresetMode::DEFAULT: {
-            // Empty
+            std::vector<FilterParams> params;
+
+            SpatialFilterParams spatialFilterParams;
+            spatialFilterParams.enable = true;
+            spatialFilterParams.alpha = 0.5f;
+            spatialFilterParams.delta = 20;
+            spatialFilterParams.numIterations = 2;
+            spatialFilterParams.holeFillingRadius = 5;
+
+            MedianFilterParams medianFilterParams = MedianFilterParams::KERNEL_5x5;
+
+            params.push_back(spatialFilterParams);
+            params.push_back(medianFilterParams);
+
+            initialConfig->filterParams = params;
         } break;
         case ImageFiltersPresetMode::LOW_RANGE: {
             std::vector<FilterParams> params;
@@ -883,9 +904,12 @@ void ImageFilters::setDefaultProfilePreset(ImageFiltersPresetMode mode) {
             spatialFilterParams.numIterations = 2;
             spatialFilterParams.holeFillingRadius = 0;
 
+            MedianFilterParams medianFilterParams = MedianFilterParams::KERNEL_5x5;
+
             params.push_back(temporalFilterParams);
             params.push_back(speckleFilterParams);
             params.push_back(spatialFilterParams);
+            params.push_back(medianFilterParams);
 
             initialConfig->filterParams = params;
         } break;
@@ -984,6 +1008,13 @@ void ToFDepthConfidenceFilter::run() {
             break;
         }
 
+        // In case the confidence threshold is 0, serve as a passthrough
+        if(confidenceThreshold == 0.0f) {
+            filteredDepth.send(depthFrame);
+            confidence.send(amplitudeFrame);
+            continue;
+        }
+
         // Create empty output frames
         auto filteredDepthFrame = std::make_shared<dai::ImgFrame>();
         auto confidenceFrame = std::make_shared<dai::ImgFrame>();
@@ -992,15 +1023,22 @@ void ToFDepthConfidenceFilter::run() {
         filteredDepthFrame->setMetadata(depthFrame);
         confidenceFrame->setMetadata(depthFrame);
 
-        // Allocate memory for output frames
-        filteredDepthFrame->data->setSize(depthFrame->getData().size() * sizeof(std::uint16_t));
-        confidenceFrame->data->setSize(depthFrame->getData().size() * sizeof(std::uint16_t));
-
         filteredDepthFrame->setType(ImgFrame::Type::RAW16);
         confidenceFrame->setType(ImgFrame::Type::RAW16);
 
+        filteredDepthFrame->data->setSize(depthFrame->getData().size() * depthFrame->getBytesPerPixel());
+        confidenceFrame->data->setSize(depthFrame->getData().size() * depthFrame->getBytesPerPixel());
+
         // Apply filter
+        auto t1 = std::chrono::high_resolution_clock::now();
         applyDepthConfidenceFilter(depthFrame, amplitudeFrame, filteredDepthFrame, confidenceFrame, confidenceThreshold);
+        auto t2 = std::chrono::high_resolution_clock::now();
+
+        static auto tlast = t2;
+        if(t2 - tlast > std::chrono::milliseconds(5000)) {
+            pimpl->logger->debug("DepthConfidenceFilter: Time taken: {}ms", std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count() / 1000);
+            tlast = t2;
+        }
 
         // Send results
         filteredDepth.send(filteredDepthFrame);
@@ -1031,14 +1069,20 @@ bool ToFDepthConfidenceFilter::runOnHost() const {
 void ToFDepthConfidenceFilter::setDefaultProfilePreset(ImageFiltersPresetMode mode) {
     switch(mode) {
         case ImageFiltersPresetMode::DEFAULT: {
-            // Empty
+            // TODO: Add a sensible value here
+            initialConfig->confidenceThreshold = 0.0f;
         } break;
         case ImageFiltersPresetMode::LOW_RANGE: {
-            initialConfig->confidenceThreshold = 0.5f;
+            // TODO: Add a sensible value here
+            initialConfig->confidenceThreshold = 0.0f;
         } break;
         case ImageFiltersPresetMode::MID_RANGE: {
+            // TODO: Add a sensible value here
+            initialConfig->confidenceThreshold = 0.0f;
         } break;
         case ImageFiltersPresetMode::HIGH_RANGE: {
+            // TODO: Add a sensible value here
+            initialConfig->confidenceThreshold = 0.0f;
         } break;
     }
 
