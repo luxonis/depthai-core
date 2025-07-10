@@ -53,6 +53,7 @@ else()
     )
 endif()
 
+
 set(CMAKE_TOOLCHAIN_FILE "${gen_toolchain}" CACHE STRING "" FORCE)
 if(DEFINED _INTERNAL_DEPTHAI_ORIGINAL_CMAKE_TOOLCHAIN_FILE)
     message(STATUS "Using specified toolchain file: ${_INTERNAL_DEPTHAI_ORIGINAL_CMAKE_TOOLCHAIN_FILE} combined into: ${CMAKE_TOOLCHAIN_FILE}")
@@ -1159,6 +1160,13 @@ enable_testing()
 ########################
 if (DEPTHAI_BUILD_TESTS)
     add_subdirectory(tests)
+endif()
+
+########################
+# Unit Tests
+########################
+if (DEPTHAI_BUILD_TESTS)
+    add_subdirectory(tests/unit)
 endif()
 
 ########################
