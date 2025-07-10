@@ -29,7 +29,7 @@ right_out.link(stereo.right)
 
 # Dynamic calibration node
 dyn_calib = pipeline.create(dai.node.DynamicCalibration)
-dyn_calib.setPerformanceMode(dai.DynamicCalibrationConfig.AlgorithmControl.PerformanceMode.OPTIMIZE_PERFORMANCE)
+dyn_calib.setPerformanceMode(dai.DynamicCalibrationPerformance.PerformanceMode.OPTIMIZE_PERFORMANCE)
 left_out.link(dyn_calib.left)
 right_out.link(dyn_calib.right)
 
@@ -167,28 +167,28 @@ with pipeline:
         if key == ord('c'):
             depthDiff = []
             configMessage = dai.DynamicCalibrationConfig()
-            configMessage.calibrationCommand = dai.DynamicCalibrationConfig.CalibrationCommand.START_CALIBRATION_QUALITY_CHECK
+            configMessage.calibrationCommand = dai.DynamicCalibrationProperties.CalibrationCommand.START_CALIBRATION_QUALITY_CHECK
             input_config.send(configMessage)
             state = "Calibration check"
             print("Sending command for calibQualityCheck")
         elif key == ord('r'):
             depthDiff = []
             configMessage = dai.DynamicCalibrationConfig()
-            configMessage.calibrationCommand = dai.DynamicCalibrationConfig.CalibrationCommand.START_RECALIBRATION
+            configMessage.calibrationCommand = dai.DynamicCalibrationProperties.CalibrationCommand.START_RECALIBRATION
             input_config.send(configMessage)
             state = "Recalibration"
             print("Sending command for recalibration")
         elif key == ord('a'):
             depthDiff = []
             configMessage = dai.DynamicCalibrationConfig()
-            configMessage.calibrationCommand = dai.DynamicCalibrationConfig.CalibrationCommand.START_FORCE_CALIBRATION_QUALITY_CHECK
+            configMessage.calibrationCommand = dai.DynamicCalibrationProperties.CalibrationCommand.START_FORCE_CALIBRATION_QUALITY_CHECK
             input_config.send(configMessage)
             state = "Calibration check"
             print("Sending command for forced calibQualityCheck")
         elif key == ord('d'):
             depthDiff = []
             configMessage = dai.DynamicCalibrationConfig()
-            configMessage.calibrationCommand = dai.DynamicCalibrationConfig.CalibrationCommand.START_FORCE_RECALIBRATION
+            configMessage.calibrationCommand = dai.DynamicCalibrationProperties.CalibrationCommand.START_FORCE_RECALIBRATION
             input_config.send(configMessage)
             state = "Recalibration"
             print("Sending command for forced recalibration")

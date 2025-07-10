@@ -25,9 +25,9 @@ dyn_calib = pipeline.create(dai.node.DynamicCalibration)
 continious = True
 if continious:
     dyn_calib.setContinousMode()
-    dyn_calib.setPerformanceMode(dai.DynamicCalibrationConfig.AlgorithmControl.PerformanceMode.DEFAULT)
+    dyn_calib.setPerformanceMode(dai.DynamicCalibrationProperties.PerformanceMode.DEFAULT)
     dyn_calib.setTimeFrequency(2)
-dyn_calib.setPerformanceMode(dai.DynamicCalibrationConfig.AlgorithmControl.PerformanceMode.OPTIMIZE_SPEED)
+dyn_calib.setPerformanceMode(dai.DynamicCalibrationProperties.PerformanceMode.OPTIMIZE_SPEED)
 left_out.link(dyn_calib.left)
 right_out.link(dyn_calib.right)
 
@@ -73,22 +73,22 @@ with pipeline:
             break
         if key == ord('c'):
             configMessage = dai.DynamicCalibrationConfig()
-            configMessage.calibrationCommand = dai.DynamicCalibrationConfig.CalibrationCommand.START_CALIBRATION_QUALITY_CHECK
+            configMessage.calibrationCommand = dai.DynamicCalibrationProperties.CalibrationCommand.START_CALIBRATION_QUALITY_CHECK
             input_config.send(configMessage)
             print("Sending command for calibQualityCheck")
         elif key == ord('r'):
             configMessage = dai.DynamicCalibrationConfig()
-            configMessage.calibrationCommand = dai.DynamicCalibrationConfig.CalibrationCommand.START_RECALIBRATION
+            configMessage.calibrationCommand = dai.DynamicCalibrationProperties.CalibrationCommand.START_RECALIBRATION
             input_config.send(configMessage)
             print("Sending command for recalibration")
         elif key == ord('f'):
             configMessage = dai.DynamicCalibrationConfig()
-            configMessage.calibrationCommand = dai.DynamicCalibrationConfig.CalibrationCommand.START_FORCE_CALIBRATION_QUALITY_CHECK
+            configMessage.calibrationCommand = dai.DynamicCalibrationProperties.CalibrationCommand.START_FORCE_CALIBRATION_QUALITY_CHECK
             input_config.send(configMessage)
             print("Sending command for forced calibQualityCheck")
         elif key == ord('p'):
             configMessage = dai.DynamicCalibrationConfig()
-            configMessage.calibrationCommand = dai.DynamicCalibrationConfig.CalibrationCommand.START_FORCE_RECALIBRATION
+            configMessage.calibrationCommand = dai.DynamicCalibrationProperties.CalibrationCommand.START_FORCE_RECALIBRATION
             input_config.send(configMessage)
             print("Sending command for forced recalibration")
 

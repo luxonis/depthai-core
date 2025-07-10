@@ -75,7 +75,7 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     /**
      * Set Dynamic recalibration performance mode
      */
-    void setPerformanceMode(dai::DynamicCalibrationConfig::AlgorithmControl::PerformanceMode mode);
+    void setPerformanceMode(dai::DynamicCalibrationProperties::PerformanceMode mode);
 
     /**
      * Set Dynamic recalibration as Continious mode, no user interaction needed
@@ -87,8 +87,7 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
      */
     void setTimeFrequency(int time);
 
-    private:
-
+   private:
     void run() override;
     /**
      * From dai::CalibrationHandler data convert to DCL dcl::CameraCalibrationHandle, which includes all necesarry data for recalibration
@@ -106,15 +105,12 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     /**
      * Overwrites the internal calibration of DCL with new Calibration data provided by node.
      */
-    void setInternalCalibration(std::shared_ptr<Device> device,
-                                const CameraBoardSocket socketSrc,
-                                const CameraBoardSocket socketDest,
-                                const int width,
-                                const int height);
-     /**
+    void setInternalCalibration(
+        std::shared_ptr<Device> device, const CameraBoardSocket socketSrc, const CameraBoardSocket socketDest, const int width, const int height);
+    /**
      * From  DCL dcl::CameraCalibrationHandle convert to dai::CalibrationHandler, so device can setCalibration
      * @return dai::CalibrationHandlerr
-     */                               
+     */
     CalibrationHandler convertDCLtoDAI(CalibrationHandler calibHandler,
                                        const std::shared_ptr<const dcl::CameraCalibrationHandle> daiCalibration,
                                        const CameraBoardSocket socketSrc,
@@ -123,9 +119,9 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
                                        const int height);
 
     dai::DynamicCalibrationResults::CalibrationQualityResult calibQualityfromDCL(const dcl::CalibrationQuality& src);
-     /**
+    /**
      * DCL held properties
-     */       
+     */
     std::shared_ptr<DynamicCalibrationConfig> calibrationConfig;
     std::unique_ptr<dcl::DynamicCalibration> dynCalibImpl;
     std::shared_ptr<dcl::CameraSensorHandle> sensorA;
@@ -138,13 +134,12 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
 
     /**
      * DAI held properties
-    */ 
+     */
     CameraBoardSocket daiSocketA;
     CameraBoardSocket daiSocketB;
     int widthDefault;
     int heightDefault;
     bool forceTrigger = false;
-
 
     struct CalibData {
         std::vector<float> translationVectorA;
@@ -157,24 +152,21 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
         std::vector<float> rightDistortionCoefficients;
     };
 
-     /**
+    /**
      * From  dai::CalibrationHandler to all necesarry information which needs to be provided to DCL
      * @return dcl::CameraCalibrationHanlder
-     */  
-    CalibData getDataFromDAIHandler(CalibrationHandler currentCalibration,
-                                    const CameraBoardSocket boardSocketA,
-                                    const CameraBoardSocket boardSocketB,
-                                    const int width,
-                                    const int height);
+     */
+    CalibData getDataFromDAIHandler(
+        CalibrationHandler currentCalibration, const CameraBoardSocket boardSocketA, const CameraBoardSocket boardSocketB, const int width, const int height);
 
-     /**
-     * Calibration state machine, which holds the state of Node and provide stabile enviroment;  
-     * - Initialization of pipeline, 
-     * - Loading images in DCL, 
-     * - Starting Calibration Check, 
+    /**
+     * Calibration state machine, which holds the state of Node and provide stabile enviroment;
+     * - Initialization of pipeline,
+     * - Loading images in DCL,
+     * - Starting Calibration Check,
      * - Starting of Recalibration
      * - Reseting of data
-     */ 
+     */
     struct CalibrationStateMachine {
         enum class CalibrationState { Idle, InitializingPipeline, LoadingImages, ProcessingQuality, Recalibrating, ResetDynamicRecalibration };
 
@@ -214,7 +206,7 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
                 state = CalibrationState::Recalibrating;
             }
         }
-        
+
         void deleteAllData() {
             state = CalibrationState::ResetDynamicRecalibration;
         }
@@ -225,7 +217,7 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
         }
 
         std::string stateToString() const {
-           switch(state) {
+            switch(state) {
                 case CalibrationState::Idle:
                     return "Idle";
                 case CalibrationState::InitializingPipeline:
@@ -248,7 +240,6 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
 
     void resetResults();
     Input inSync{*this, {"inSync", DEFAULT_GROUP, false, 1, {{DatatypeEnum::MessageGroup, true}}}};
-
 };
 
 }  // namespace node
