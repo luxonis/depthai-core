@@ -8,7 +8,7 @@
 #include "pipeline/ThreadedNodeImpl.hpp"
 #include "rtabmap/core/util3d.h"
 #include "rtabmap/core/util3d_mapping.h"
-#include "rtabmap/core/Markers/Landmark.h"
+// #include "rtabmap/core/Markers/Landmark.h"
 
 namespace dai {
 namespace node {
@@ -72,7 +72,7 @@ void RTABMapSLAM::syncCB(std::shared_ptr<dai::ADatatype> data) {
     std::shared_ptr<dai::ImgFrame> imgFrame = nullptr;
     std::shared_ptr<dai::ImgFrame> depthFrame = nullptr;
     std::shared_ptr<dai::TrackedFeatures> featuresFrame = nullptr;
-    std::shared_ptr<dai::TODO> markersFrame = nullptr;
+    // std::shared_ptr<dai::TODO> markersFrame = nullptr;
     imgFrame = group->get<dai::ImgFrame>(rectInputName);
     depthFrame = group->get<dai::ImgFrame>(depthInputName);
     if(useFeatures) {
@@ -93,14 +93,14 @@ void RTABMapSLAM::syncCB(std::shared_ptr<dai::ADatatype> data) {
                 }
                 sensorData.setFeatures(keypoints, std::vector<cv::Point3f>(), cv::Mat());
             }
-            std::vector<rtabmap::Marker> markers;
-            if(markersFrame != nullptr) {
-                for(auto& marker : markerFrame) {
-                    //TODO
-                   // markers.emplace_back(rtabmap::Marker()) 
-                }
-                sensorData.setMarkers()
-            }
+            // std::vector<rtabmap::Marker> markers;
+            // if(markersFrame != nullptr) {
+            //     for(auto& marker : markerFrame) {
+            //         //TODO
+            //        // markers.emplace_back(rtabmap::Marker()) 
+            //     }
+            //     sensorData.setMarkers()
+            // }
         }
         passthroughRect.send(imgFrame);
         passthroughDepth.send(depthFrame);
