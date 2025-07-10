@@ -1,6 +1,14 @@
+#include "DatatypeBindings.hpp"
+#include "pipeline/CommonBindings.hpp"
+
+// depthai
 #include "depthai/pipeline/datatype/Landmarks.hpp"
 
-#include <pybind11/pybind11.h>
+//pybind
+#include <pybind11/chrono.h>
+#include <pybind11/numpy.h>
+
+
 
 void bind_landmarks(pybind11::module& m, void* pCallstack) {
    using namespace dai;
