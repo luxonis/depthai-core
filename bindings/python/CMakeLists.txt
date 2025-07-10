@@ -109,6 +109,7 @@ set(SOURCE_LIST
     src/pipeline/datatype/ADatatypeBindings.cpp
     src/pipeline/datatype/AprilTagConfigBindings.cpp
     src/pipeline/datatype/AprilTagsBindings.cpp
+    src/pipeline/datatype/LandmarksBindings.cpp
     src/pipeline/datatype/BufferBindings.cpp
     src/pipeline/datatype/CameraControlBindings.cpp
     src/pipeline/datatype/EdgeDetectorConfigBindings.cpp
