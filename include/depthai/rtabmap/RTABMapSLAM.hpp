@@ -37,6 +37,7 @@ class RTABMapSLAM : public dai::NodeCRTP<dai::node::ThreadedHostNode, RTABMapSLA
     std::string rectInputName = "rect";
     std::string depthInputName = "depth";
     std::string featuresInputName = "features";
+    std::string landmarksInputName = "landmarks";
 
     /**
      * Input rectified image on which SLAM is performed.
@@ -54,6 +55,10 @@ class RTABMapSLAM : public dai::NodeCRTP<dai::node::ThreadedHostNode, RTABMapSLA
      * Input odometry pose.
      */
     Input odom{*this, {"odom", DEFAULT_GROUP, DEFAULT_BLOCKING, 15, {{{dai::DatatypeEnum::TransformData, true}}}}};
+    /**
+     * Input Landmark poses (optional).
+     */
+    Input landmarks{*this, {landmarksInputName, DEFAULT_GROUP, DEFAULT_BLOCKING, 15, {{{dai::DatatypeEnum::Landmarks, true}}}}};
 
     /**
      * Output transform.
