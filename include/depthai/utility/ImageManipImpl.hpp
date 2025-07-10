@@ -264,24 +264,23 @@ class UndistortOpenCvImpl {
    public:
     UndistortOpenCvImpl(std::shared_ptr<spdlog::async_logger> logger) : logger(std::move(logger)) {}
     bool build(std::array<float, 9> cameraMatrix, std::vector<float> distCoeffs, uint32_t width, uint32_t height) {
-        if(width != this->width || height != this->height || distCoeffs != this->distCoeffs || cameraMatrix != this->cameraMatrix) {
-            this->cameraMatrix = std::move(cameraMatrix);
-            this->distCoeffs = std::move(distCoeffs);
-            this->width = width;
-            this->height = height;
-            undistortMap1 = cv::Mat();
-            undistortMap2 = cv::Mat();
-            undistortMap1Half = cv::Mat();
-            undistortMap2Half = cv::Mat();
+        if(!distCoeffs.empty()) {
+            if(width != this->width || height != this->height || distCoeffs != this->distCoeffs || cameraMatrix != this->cameraMatrix) {
+                this->cameraMatrix = std::move(cameraMatrix);
+                this->distCoeffs = std::move(distCoeffs);
+                this->width = width;
+                this->height = height;
+                undistortMap1 = cv::Mat();
+                undistortMap2 = cv::Mat();
+                undistortMap1Half = cv::Mat();
+                undistortMap2Half = cv::Mat();
 
-            if(!this->distCoeffs.empty()) {
                 cv::Mat cvCameraMatrix(3, 3, CV_32F, this->cameraMatrix.data());
                 cv::Mat newCameraMatrix = cv::getOptimalNewCameraMatrix(cvCameraMatrix, this->distCoeffs, cv::Size(width, height), 1);
                 cv::initUndistortRectifyMap(
                     cvCameraMatrix, this->distCoeffs, cv::Mat(), newCameraMatrix, cv::Size(width, height), CV_16SC2, undistortMap1, undistortMap2);
-                return true;
-            } else
-                std::runtime_error("UndistortImpl initialized with empty distortion coefficients");
+            }
+            return true;
         }
         return false;
     }
@@ -3201,18 +3200,20 @@ void WarpH<ImageManipBuffer, ImageManipData>::apply(const std::shared_ptr<ImageM
                 this->undistortImpl->undistort(srcCv, dstCv);
             }
     #endif
-            transform(warpSrc->offset(warpSrcSpecs.p1Offset),
-                      dst->offset(this->dstSpecs.p1Offset),
-                      warpSrcSpecs.width,
-                      warpSrcSpecs.height,
-                      warpSrcSpecs.p1Stride,
-                      this->dstSpecs.width,
-                      this->dstSpecs.height,
-                      this->dstSpecs.p1Stride,
-                      3,
-                      1,
-                      this->matrix,
-                      {this->backgroundColor[0], this->backgroundColor[1], this->backgroundColor[2]});
+            if(!this->isIdentityWarp()) {
+                transform(warpSrc->offset(warpSrcSpecs.p1Offset),
+                          dst->offset(this->dstSpecs.p1Offset),
+                          warpSrcSpecs.width,
+                          warpSrcSpecs.height,
+                          warpSrcSpecs.p1Stride,
+                          this->dstSpecs.width,
+                          this->dstSpecs.height,
+                          this->dstSpecs.p1Stride,
+                          3,
+                          1,
+                          this->matrix,
+                          {this->backgroundColor[0], this->backgroundColor[1], this->backgroundColor[2]});
+            }
 #else
             (void)src;
             (void)dst;
@@ -3244,42 +3245,44 @@ void WarpH<ImageManipBuffer, ImageManipData>::apply(const std::shared_ptr<ImageM
                 }
             }
     #endif
-            transform(warpSrc->offset(warpSrcSpecs.p1Offset),
-                      dst->offset(this->dstSpecs.p1Offset),
-                      warpSrcSpecs.width,
-                      warpSrcSpecs.height,
-                      warpSrcSpecs.p1Stride,
-                      this->dstSpecs.width,
-                      this->dstSpecs.height,
-                      this->dstSpecs.p1Stride,
-                      1,
-                      1,
-                      this->matrix,
-                      {this->backgroundColor[0]});
-            transform(warpSrc->offset(warpSrcSpecs.p2Offset),
-                      dst->offset(this->dstSpecs.p2Offset),
-                      warpSrcSpecs.width,
-                      warpSrcSpecs.height,
-                      warpSrcSpecs.p2Stride,
-                      this->dstSpecs.width,
-                      this->dstSpecs.height,
-                      this->dstSpecs.p2Stride,
-                      1,
-                      1,
-                      this->matrix,
-                      {this->backgroundColor[1]});
-            transform(warpSrc->offset(warpSrcSpecs.p3Offset),
-                      dst->offset(this->dstSpecs.p3Offset),
-                      warpSrcSpecs.width,
-                      warpSrcSpecs.height,
-                      warpSrcSpecs.p3Stride,
-                      this->dstSpecs.width,
-                      this->dstSpecs.height,
-                      this->dstSpecs.p3Stride,
-                      1,
-                      1,
-                      this->matrix,
-                      {this->backgroundColor[2]});
+            if(!this->isIdentityWarp()) {
+                transform(warpSrc->offset(warpSrcSpecs.p1Offset),
+                          dst->offset(this->dstSpecs.p1Offset),
+                          warpSrcSpecs.width,
+                          warpSrcSpecs.height,
+                          warpSrcSpecs.p1Stride,
+                          this->dstSpecs.width,
+                          this->dstSpecs.height,
+                          this->dstSpecs.p1Stride,
+                          1,
+                          1,
+                          this->matrix,
+                          {this->backgroundColor[0]});
+                transform(warpSrc->offset(warpSrcSpecs.p2Offset),
+                          dst->offset(this->dstSpecs.p2Offset),
+                          warpSrcSpecs.width,
+                          warpSrcSpecs.height,
+                          warpSrcSpecs.p2Stride,
+                          this->dstSpecs.width,
+                          this->dstSpecs.height,
+                          this->dstSpecs.p2Stride,
+                          1,
+                          1,
+                          this->matrix,
+                          {this->backgroundColor[1]});
+                transform(warpSrc->offset(warpSrcSpecs.p3Offset),
+                          dst->offset(this->dstSpecs.p3Offset),
+                          warpSrcSpecs.width,
+                          warpSrcSpecs.height,
+                          warpSrcSpecs.p3Stride,
+                          this->dstSpecs.width,
+                          this->dstSpecs.height,
+                          this->dstSpecs.p3Stride,
+                          1,
+                          1,
+                          this->matrix,
+                          {this->backgroundColor[2]});
+            }
 #else
             (void)src;
             (void)dst;
@@ -3318,42 +3321,44 @@ void WarpH<ImageManipBuffer, ImageManipData>::apply(const std::shared_ptr<ImageM
                 }
             }
     #endif
-            transform(warpSrc->offset(warpSrcSpecs.p1Offset),
-                      dst->offset(this->dstSpecs.p1Offset),
-                      warpSrcSpecs.width,
-                      warpSrcSpecs.height,
-                      warpSrcSpecs.p1Stride,
-                      this->dstSpecs.width,
-                      this->dstSpecs.height,
-                      this->dstSpecs.p1Stride,
-                      1,
-                      1,
-                      this->matrix,
-                      {this->backgroundColor[0]});
-            transform(warpSrc->offset(warpSrcSpecs.p2Offset),
-                      dst->offset(this->dstSpecs.p2Offset),
-                      warpSrcSpecs.width / 2,
-                      warpSrcSpecs.height / 2,
-                      warpSrcSpecs.p2Stride,
-                      this->dstSpecs.width / 2,
-                      this->dstSpecs.height / 2,
-                      this->dstSpecs.p2Stride,
-                      1,
-                      1,
-                      this->matrix,
-                      {this->backgroundColor[1]});
-            transform(warpSrc->offset(warpSrcSpecs.p3Offset),
-                      dst->offset(this->dstSpecs.p3Offset),
-                      warpSrcSpecs.width / 2,
-                      warpSrcSpecs.height / 2,
-                      warpSrcSpecs.p3Stride,
-                      this->dstSpecs.width / 2,
-                      this->dstSpecs.height / 2,
-                      this->dstSpecs.p3Stride,
-                      1,
-                      1,
-                      this->matrix,
-                      {this->backgroundColor[2]});
+            if(!this->isIdentityWarp()) {
+                transform(warpSrc->offset(warpSrcSpecs.p1Offset),
+                          dst->offset(this->dstSpecs.p1Offset),
+                          warpSrcSpecs.width,
+                          warpSrcSpecs.height,
+                          warpSrcSpecs.p1Stride,
+                          this->dstSpecs.width,
+                          this->dstSpecs.height,
+                          this->dstSpecs.p1Stride,
+                          1,
+                          1,
+                          this->matrix,
+                          {this->backgroundColor[0]});
+                transform(warpSrc->offset(warpSrcSpecs.p2Offset),
+                          dst->offset(this->dstSpecs.p2Offset),
+                          warpSrcSpecs.width / 2,
+                          warpSrcSpecs.height / 2,
+                          warpSrcSpecs.p2Stride,
+                          this->dstSpecs.width / 2,
+                          this->dstSpecs.height / 2,
+                          this->dstSpecs.p2Stride,
+                          1,
+                          1,
+                          this->matrix,
+                          {this->backgroundColor[1]});
+                transform(warpSrc->offset(warpSrcSpecs.p3Offset),
+                          dst->offset(this->dstSpecs.p3Offset),
+                          warpSrcSpecs.width / 2,
+                          warpSrcSpecs.height / 2,
+                          warpSrcSpecs.p3Stride,
+                          this->dstSpecs.width / 2,
+                          this->dstSpecs.height / 2,
+                          this->dstSpecs.p3Stride,
+                          1,
+                          1,
+                          this->matrix,
+                          {this->backgroundColor[2]});
+            }
 #else
             (void)src;
             (void)dst;
@@ -3382,30 +3387,32 @@ void WarpH<ImageManipBuffer, ImageManipData>::apply(const std::shared_ptr<ImageM
                 }
             }
     #endif
-            transform(warpSrc->offset(warpSrcSpecs.p1Offset),
-                      dst->offset(this->dstSpecs.p1Offset),
-                      warpSrcSpecs.width,
-                      warpSrcSpecs.height,
-                      warpSrcSpecs.p1Stride,
-                      this->dstSpecs.width,
-                      this->dstSpecs.height,
-                      this->dstSpecs.p1Stride,
-                      1,
-                      1,
-                      this->matrix,
-                      {this->backgroundColor[0]});
-            transform(warpSrc->offset(warpSrcSpecs.p2Offset),
-                      dst->offset(this->dstSpecs.p2Offset),
-                      warpSrcSpecs.width / 2,
-                      warpSrcSpecs.height / 2,
-                      warpSrcSpecs.p2Stride,
-                      this->dstSpecs.width / 2,
-                      this->dstSpecs.height / 2,
-                      this->dstSpecs.p2Stride,
-                      2,
-                      1,
-                      this->matrix,
-                      {this->backgroundColor[1], this->backgroundColor[2]});
+            if(!this->isIdentityWarp()) {
+                transform(warpSrc->offset(warpSrcSpecs.p1Offset),
+                          dst->offset(this->dstSpecs.p1Offset),
+                          warpSrcSpecs.width,
+                          warpSrcSpecs.height,
+                          warpSrcSpecs.p1Stride,
+                          this->dstSpecs.width,
+                          this->dstSpecs.height,
+                          this->dstSpecs.p1Stride,
+                          1,
+                          1,
+                          this->matrix,
+                          {this->backgroundColor[0]});
+                transform(warpSrc->offset(warpSrcSpecs.p2Offset),
+                          dst->offset(this->dstSpecs.p2Offset),
+                          warpSrcSpecs.width / 2,
+                          warpSrcSpecs.height / 2,
+                          warpSrcSpecs.p2Stride,
+                          this->dstSpecs.width / 2,
+                          this->dstSpecs.height / 2,
+                          this->dstSpecs.p2Stride,
+                          2,
+                          1,
+                          this->matrix,
+                          {this->backgroundColor[1], this->backgroundColor[2]});
+            }
 #else
             (void)src;
             (void)dst;
@@ -3425,18 +3432,20 @@ void WarpH<ImageManipBuffer, ImageManipData>::apply(const std::shared_ptr<ImageM
                 }
             }
     #endif
-            transform(warpSrc->offset(warpSrcSpecs.p1Offset),
-                      dst->offset(this->dstSpecs.p1Offset),
-                      warpSrcSpecs.width,
-                      warpSrcSpecs.height,
-                      warpSrcSpecs.p1Stride,
-                      this->dstSpecs.width,
-                      this->dstSpecs.height,
-                      this->dstSpecs.p1Stride,
-                      1,
-                      1,
-                      this->matrix,
-                      {this->backgroundColor[0]});
+            if(!this->isIdentityWarp()) {
+                transform(warpSrc->offset(warpSrcSpecs.p1Offset),
+                          dst->offset(this->dstSpecs.p1Offset),
+                          warpSrcSpecs.width,
+                          warpSrcSpecs.height,
+                          warpSrcSpecs.p1Stride,
+                          this->dstSpecs.width,
+                          this->dstSpecs.height,
+                          this->dstSpecs.p1Stride,
+                          1,
+                          1,
+                          this->matrix,
+                          {this->backgroundColor[0]});
+            }
 #else
             (void)src;
             (void)dst;
@@ -3455,18 +3464,20 @@ void WarpH<ImageManipBuffer, ImageManipData>::apply(const std::shared_ptr<ImageM
                 }
             }
     #endif
-            transform(warpSrc->offset(warpSrcSpecs.p1Offset),
-                      dst->offset(this->dstSpecs.p1Offset),
-                      warpSrcSpecs.width,
-                      warpSrcSpecs.height,
-                      warpSrcSpecs.p1Stride,
-                      this->dstSpecs.width,
-                      this->dstSpecs.height,
-                      this->dstSpecs.p1Stride,
-                      1,
-                      2,
-                      this->matrix,
-                      {this->backgroundColor[0]});
+            if(!this->isIdentityWarp()) {
+                transform(warpSrc->offset(warpSrcSpecs.p1Offset),
+                          dst->offset(this->dstSpecs.p1Offset),
+                          warpSrcSpecs.width,
+                          warpSrcSpecs.height,
+                          warpSrcSpecs.p1Stride,
+                          this->dstSpecs.width,
+                          this->dstSpecs.height,
+                          this->dstSpecs.p1Stride,
+                          1,
+                          2,
+                          this->matrix,
+                          {this->backgroundColor[0]});
+            }
 #else
             (void)src;
             (void)dst;
