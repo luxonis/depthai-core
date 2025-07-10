@@ -300,6 +300,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/SpatialLocationCalculatorConfig.cpp
     src/pipeline/datatype/AprilTags.cpp
     src/pipeline/datatype/AprilTagConfig.cpp
+    src/pipeline/datatype/Landmarks.cpp
     src/pipeline/datatype/Tracklets.cpp
     src/pipeline/datatype/IMUData.cpp
     src/pipeline/datatype/StereoDepthConfig.cpp
