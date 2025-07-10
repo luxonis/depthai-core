@@ -276,9 +276,8 @@ class UndistortOpenCvImpl {
                 undistortMap2Half = cv::Mat();
 
                 cv::Mat cvCameraMatrix(3, 3, CV_32F, this->cameraMatrix.data());
-                cv::Mat newCameraMatrix = cv::getOptimalNewCameraMatrix(cvCameraMatrix, this->distCoeffs, cv::Size(width, height), 1);
                 cv::initUndistortRectifyMap(
-                    cvCameraMatrix, this->distCoeffs, cv::Mat(), newCameraMatrix, cv::Size(width, height), CV_16SC2, undistortMap1, undistortMap2);
+                    cvCameraMatrix, this->distCoeffs, cv::Mat(), cvCameraMatrix, cv::Size(width, height), CV_16SC2, undistortMap1, undistortMap2);
             }
             return true;
         }
