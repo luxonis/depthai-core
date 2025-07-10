@@ -4,6 +4,7 @@ include(cmake/depthaiOptions.cmake)
 
 if(WIN32)
     add_compile_options(/MP)
+    set(CMAKE_DEBUG_POSTFIX "d" CACHE STRING "Postfix for debug libraries" FORCE)
 endif()
 
 find_program(CCACHE_PROGRAM ccache)
@@ -35,6 +36,8 @@ else()
     message(STATUS "DEPTHAI_BOOTSTRAP_VCPKG is OFF")
 endif()
 
+# Minimal supported macOS SDK version for both arm64 and x86_64
+set(CMAKE_OSX_DEPLOYMENT_TARGET 11.0)
 
 # Set type to canonicalize relative paths for user-provided toolchain
 set(CMAKE_TOOLCHAIN_FILE "" CACHE FILEPATH "CMake toolchain path")
@@ -64,7 +67,7 @@ endif()
 # Create depthai project
 project(depthai VERSION "3.0.0" LANGUAGES CXX C)
 set(DEPTHAI_PRE_RELEASE_TYPE "rc") # Valid options are "alpha", "beta", "rc", ""
-set(DEPTHAI_PRE_RELEASE_VERSION "2")
+set(DEPTHAI_PRE_RELEASE_VERSION "3")
 
 # Set DEPTHAI_VERSION universally, not conditionally
 set(DEPTHAI_VERSION ${PROJECT_VERSION}-${DEPTHAI_PRE_RELEASE_TYPE}.${DEPTHAI_PRE_RELEASE_VERSION})
@@ -465,8 +468,6 @@ if(${CMAKE_VERSION} VERSION_LESS "3.8.0")
 else()
     target_compile_features(${TARGET_CORE_NAME} INTERFACE cxx_std_17)
 endif()
-# Minimal supported macOS SDK version for both arm64 and x86_64
-set(CMAKE_OSX_DEPLOYMENT_TARGET 11.0)
 
 # Link merged target libraries and add compile definitions
 if(DEPTHAI_HAVE_OPENCV_SUPPORT AND DEPTHAI_MERGED_TARGET)
@@ -796,14 +797,16 @@ macro(add_runtime_dependencies depending_target dependency)
     if(TARGET ${dependency})
         get_property(imported_configs TARGET ${dependency} PROPERTY IMPORTED_CONFIGURATIONS)
         set(dlls "")
+        message(STATUS "Adding runtime dependencies for ${depending_target} on ${dependency}. Imported configurations: ${imported_configs}")
         foreach(cfg ${imported_configs})
+            message(STATUS "Adding runtime dependencies for ${depending_target} on ${dependency} (${cfg})")
             get_property(dll TARGET ${dependency} PROPERTY IMPORTED_LOCATION_${cfg})
-            set(dlls ${depthai_dll_libraries} $<$<CONFIG:${cfg}>:${dll}>)
+            list(APPEND dlls $<$<CONFIG:${cfg}>:${dll}>)
         endforeach()
+        message(STATUS "Required dlls for ${depending_target} on ${dependency} are: ${dlls}")
     endif()
-    set(depthai_dll_libraries "")
     # Create a list of required dll files
-    set(required_dll_files ${dlls} ${depthai_dll_libraries})
+    set(required_dll_files ${dlls})
     # Copy the required dlls
     if(WIN32)
         add_custom_command(TARGET ${depending_target} POST_BUILD COMMAND

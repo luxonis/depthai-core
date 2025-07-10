@@ -68,7 +68,7 @@ jobs:
           ) -join ' '
         }
 
-        $cmakeConfigureCommand = "cmake -S . -B build -D CMAKE_BUILD_TYPE=Release -DDEPTHAI_VCPKG_INTERNAL_ONLY=OFF -DDEPTHAI_BUILD_TESTS=ON $extraFlags"
+        $cmakeConfigureCommand = "cmake -S . -B build -D CMAKE_BUILD_TYPE=Release -DDEPTHAI_VCPKG_INTERNAL_ONLY=OFF -DVCPKG_OVERLAY_TRIPLETS=./cmake/triplets/release -DDEPTHAI_BUILD_TESTS=ON $extraFlags"
         Write-Host "Running: $cmakeConfigureCommand"
         Invoke-Expression $cmakeConfigureCommand
 
