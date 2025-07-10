@@ -24,7 +24,7 @@ right_out.link(stereo.right)
 dyn_calib = pipeline.create(dai.node.DynamicCalibration)
 continious = True
 if continious:
-    dyn_calib.setContinousMode()
+    dyn_calib.setContiniousMode()
     dyn_calib.setPerformanceMode(dai.DynamicCalibrationConfig.AlgorithmControl.PerformanceMode.DEFAULT)
     dyn_calib.setTimeFrequency(2)
 dyn_calib.setPerformanceMode(dai.DynamicCalibrationConfig.AlgorithmControl.PerformanceMode.OPTIMIZE_SPEED)

@@ -76,7 +76,7 @@ int main() {
     auto inputConfig = dynCalib->inputConfig.createInputQueue();
     if (kEnableContinuousRecalibration) {
         dynCalib->setPerformanceMode(dai::DynamicCalibrationConfig::AlgorithmControl::PerformanceMode::DEFAULT);
-        dynCalib->setContinousMode();
+        dynCalib->setContiniousMode();
         dynCalib->setTimeFrequency(4);
     }
     // Feed the frames into the dynamic-calibration block
@@ -107,16 +107,16 @@ int main() {
         auto calibrationResult = dyncalOut->tryGet();
         auto dynResult = std::dynamic_pointer_cast<dai::DynamicCalibrationResults>(calibrationResult);
         if(dynResult && dynResult->newCalibration->calibHandler.has_value()) {
-            calibrationNew = *dynResult->newCalibration->calibHandler;
+            calibrationNew = *dynResult->newCalibration->calibHandler.value();
             std::cout << "Got new calibration. " << std::endl;
         }
         if(dynResult && dynResult->calibOverallQuality.has_value() && dynResult->calibOverallQuality->report) {
-            double meanCoverage = dynResult->calibOverallQuality->report->coverageQuality->meanCoverage;
-            auto coveragePerCellB = dynResult->calibOverallQuality->report->coverageQuality->coveragePerCellB;
+            double meanCoverage = dynResult->calibOverallQuality.value()->report->coverageQuality->meanCoverage;
+            auto coveragePerCellB = dynResult->calibOverallQuality.value()->report->coverageQuality->coveragePerCellB;
             leftFrame = overlayCoverageOnGray(leftFrame, coveragePerCellB);
-            auto& report = dynResult->calibOverallQuality->report;
+            auto& report = dynResult->calibOverallQuality.value()->report;
             if(report.has_value() && report->calibrationQuality.has_value()) {
-                auto& rotationChange = report->calibrationQuality->rotationChange;
+                auto& rotationChange = report->calibrationQuality.value()->rotationChange;
 
                 std::cout << "Rotation change (as float): ";
                 for(const auto& val : rotationChange) {

@@ -241,9 +241,9 @@ void DynamicCalibration::resetResults(){
     calibQuality.coverageQuality = dcl::CoverageData{};
     calibQuality.dataAquired = 0.f;
     dynResult.calibOverallQuality = calibQualityfromDCL(calibQuality);
-    dynResult.newCalibration = DynamicCalibrationResults::CalibrationResult::Invalid();
-    dynResult.calibOverallQuality = DynamicCalibrationResults::CalibrationQualityResult::Invalid();
-    dynResult.newCalibration = DynamicCalibrationResults::CalibrationResult::Invalid();
+    dynResult.newCalibration = std::nullopt;
+    dynResult.calibOverallQuality = std::nullopt;
+    dynResult.newCalibration = std::nullopt;
     dynResult.info = "";
 };
 
@@ -282,12 +282,10 @@ void DynamicCalibration::run() {
     while(isRunning()) {
         // auto leftFrame = left.get<dai::ImgFrame>();
         // auto rightFrame = right.get<dai::ImgFrame>();
-        auto inSyncGroup = inSync.tryGet<dai::MessageGroup>();
-        if (!inSyncGroup) continue;
+        auto inSyncGroup = inSync.get<dai::MessageGroup>();
         auto leftFrame = inSyncGroup->get<dai::ImgFrame>(leftInputName);
         auto rightFrame = inSyncGroup->get<dai::ImgFrame>(rightInputName);
-        if(!leftFrame || !rightFrame) continue; //todo calib team sync should be checked?
-
+        if(!leftFrame || !rightFrame) continue;
 
         if(inputConfig.getWaitForMessage()) { //blocking
             calibrationConfig = inputConfig.get<DynamicCalibrationConfig>();
@@ -470,6 +468,7 @@ void DynamicCalibration::run() {
                     if (properties.initialConfig.algorithmControl.recalibrationMode == dai::DynamicCalibrationConfig::AlgorithmControl::RecalibrationMode::CONTINUOUS){
                         device->setCalibration(dynResult.newCalibration->calibHandler.value());
                         logger::info("[DynamicCalibration] Applied new calibration in continious mode.");
+                        continousTrigger = std::chrono::steady_clock::now();
                     }
                 }
                 else if (resultCalib.errorCode == FINDNEWCALIBRATION_NOT_SIGNIFICANT_CHANGE){

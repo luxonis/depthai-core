@@ -23,11 +23,12 @@ struct DynamicCalibrationResults : public Buffer {
 
     //TODO DCL: This is not needed as a separate struct
     struct CalibrationResult {
+        /**
+         * CalibrationResult is result which is returned after dai::DynamicCalibrationConfig::CalibrationCommand::START_CALIBRATION
+         * It contains information about:
+         * - calibHandler: the new calibration handler which can be used to set the new calibration on device.
+         */
         std::optional<dai::CalibrationHandler> calibHandler;
-
-        static CalibrationResult Invalid() {
-            return CalibrationResult{std::nullopt};
-        }
 
         DEPTHAI_SERIALIZE(CalibrationResult, calibHandler);
     };
@@ -86,10 +87,6 @@ struct DynamicCalibrationResults : public Buffer {
     struct CalibrationQualityResult {
 
         std::optional<CalibrationQuality> report;
-
-        static CalibrationQualityResult Invalid() {
-            return CalibrationQualityResult{std::nullopt};
-        }
 
         DEPTHAI_SERIALIZE(CalibrationQualityResult, report);
     };
