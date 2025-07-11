@@ -77,12 +77,45 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
         std::string stateToString() const;
     };
 
+    // clang-format off
     /**
      * Input DynamicCalibrationConfig message with ability to modify parameters in runtime.
      */
     Input inputConfig{
         *this,
-        {"inputConfig", DEFAULT_GROUP, NON_BLOCKING_QUEUE, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::DynamicCalibrationConfig, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+        {
+	  "inputConfig",
+	  DEFAULT_GROUP,
+	  NON_BLOCKING_QUEUE,
+	  DEFAULT_QUEUE_SIZE,
+	  {{{DatatypeEnum::DynamicCalibrationConfig, false}}},
+	  DEFAULT_WAIT_FOR_MESSAGE
+	}
+    };
+
+    /**
+     * Output calibration quality result
+     */
+    Output outputCalibrationResults{
+        *this,
+	{
+	    "outputCalibrationResults",
+	    DEFAULT_GROUP,
+	    {{{DatatypeEnum::DynamicCalibrationResults, false}}}
+	}
+    };
+
+    Input inSync{
+        *this,
+	{
+	    "inSync",
+	    DEFAULT_GROUP,
+	    false,
+	    1,
+	    {{DatatypeEnum::MessageGroup, true}}
+	}
+    };
+    // clang-format on
 
     Subnode<node::Sync> sync{*this, "sync"};
     InputMap& inputs = sync->inputs;
@@ -101,11 +134,6 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
      * Input right image
      */
     Input& right = inputs[rightInputName];
-
-    /**
-     * Output calibration quality result
-     */
-    Output outputCalibrationResults{*this, {"outputCalibrationResults", DEFAULT_GROUP, {{{DatatypeEnum::DynamicCalibrationResults, false}}}}};
 
     /**
      * Specify whether to run on host or device
@@ -139,16 +167,24 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
      * From dai::CalibrationHandler data convert to DCL dcl::CameraCalibrationHandle, which includes all necesarry data for recalibration
      * @return dcl::CameraCalibrationHanlder
      */
-    /**
-     * Set initial pipeline of DCL
-     */
-    void pipelineSetup(std::shared_ptr<Device> device, CameraBoardSocket boardSocketA, CameraBoardSocket boardSocketB, int width = 1280, int height = 800);
+    void pipelineSetup(const std::shared_ptr<Device> device,
+                       const CameraBoardSocket boardSocketA,
+                       const CameraBoardSocket boardSocketB,
+                       const unsigned int width = 1280,
+                       const unsigned int height = 800);
 
     /**
      * Overwrites the internal calibration of DCL with new Calibration data provided by node.
      */
-    void setInternalCalibration(
-        std::shared_ptr<Device> device, const CameraBoardSocket socketSrc, const CameraBoardSocket socketDest, const int width, const int height);
+    // clang-format off
+    void setDclCalibration(
+        std::shared_ptr<Device> device,
+	const CameraBoardSocket socketSrc,
+	const CameraBoardSocket socketDest,
+	const int width, const int height);
+    // clang-format on
+
+    void resetResults();
     /**
      * From  DCL dcl::CameraCalibrationHandle convert to dai::CalibrationHandler, so device can setCalibration
      * @return dai::CalibrationHandlerr
@@ -157,7 +193,6 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     /**
      * DCL held properties
      */
-    std::shared_ptr<DynamicCalibrationConfig> calibrationConfig;
     std::unique_ptr<dcl::DynamicCalibration> dynCalibImpl;
     std::shared_ptr<dcl::CameraSensorHandle> sensorA;
     std::shared_ptr<dcl::CameraSensorHandle> sensorB;
@@ -177,10 +212,6 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     bool forceTrigger = false;
 
     /**
-     * From  dai::CalibrationHandler to all necesarry information which needs to be provided to DCL
-     * @return dcl::CameraCalibrationHanlder
-     */
-    /**
      * Calibration state machine, which holds the state of Node and provide stabile enviroment;
      * - Initialization of pipeline,
      * - Loading images in DCL,
@@ -190,10 +221,6 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
      */
     dcl::CalibrationQuality calibQuality;
     CalibrationStateMachine calibrationSM;
-
-    void resetResults();
-
-    Input inSync{*this, {"inSync", DEFAULT_GROUP, false, 1, {{DatatypeEnum::MessageGroup, true}}}};
 };
 
 }  // namespace node

@@ -7,6 +7,7 @@ namespace dai {
 /**
  * Specify properties for Dynamic calibration.
  */
+
 struct DynamicCalibrationProperties : PropertiesSerializable<Properties, DynamicCalibrationProperties> {
     enum class CalibrationCommand : int32_t {
         START_CALIBRATION_QUALITY_CHECK = 0,        ///< Start calibration quality check
@@ -24,7 +25,10 @@ struct DynamicCalibrationProperties : PropertiesSerializable<Properties, Dynamic
     /**
      * Set the time frequency of recalibration being triggered in Continious mode
      */
-    dcl::PerformanceMode performanceMode = dcl::PerformanceMode::DEFAULT;
+
+    using PerformanceMode = dcl::PerformanceMode;
+
+    PerformanceMode performanceMode = PerformanceMode::DEFAULT;
     /**
      * Define a peformance mode on which the dynamic recalibration will be working
      */

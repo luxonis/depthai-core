@@ -1,7 +1,6 @@
 #include "depthai/pipeline/node/DynamicCalibration.hpp"
 
 #include <DynamicCalibration.hpp>
-#include <common_world_types.hpp>
 #include <opencv2/opencv.hpp>
 
 #include "depthai/common/CameraBoardSocket.hpp"
@@ -227,27 +226,6 @@ void DynamicCalibration::resetResults() {
     dynResult.info = "";
 };
 
-bool isAlmostBlackOrWhite(const cv::Mat& frame, double tolerance = 25.5, double maxStdDev = 10.0) {
-    if(frame.empty()) return true;
-
-    cv::Mat gray;
-    if(frame.channels() == 3) {
-        cv::cvtColor(frame, gray, cv::COLOR_BGR2GRAY);
-    } else {
-        gray = frame;
-    }
-
-    cv::Scalar mean, stddev;
-    cv::meanStdDev(gray, mean, stddev);
-
-    double meanVal = mean[0];
-    double stdVal = stddev[0];
-    bool isAlmostBlack = (meanVal < tolerance && stdVal < maxStdDev);
-    bool isAlmostWhite = (meanVal > (255 - tolerance) && stdVal < maxStdDev);
-
-    return isAlmostBlack || isAlmostWhite;
-}
-
 void DynamicCalibration::run() {
     if(!device) {
         logger::error("Dynamic calibration node does not have access to any device.");
@@ -256,54 +234,44 @@ void DynamicCalibration::run() {
 
     logger::info("DynamicCalibration node is running");
     auto lastAutoTrigger = std::chrono::steady_clock::now() - std::chrono::seconds(10);
-    auto continousTrigger = std::chrono::steady_clock::now() - std::chrono::seconds(10);
+    auto continousTrigger = std::chrono::steady_clock::now() - std::chrono::seconds(10);  // fixed already
     resetResults();
     while(isRunning()) {
-        // auto leftFrame = left.get<dai::ImgFrame>();
-        // auto rightFrame = right.get<dai::ImgFrame>();
         auto inSyncGroup = inSync.tryGet<dai::MessageGroup>();
         if(!inSyncGroup) continue;
         auto leftFrame = inSyncGroup->get<dai::ImgFrame>(leftInputName);
         auto rightFrame = inSyncGroup->get<dai::ImgFrame>(rightInputName);
         if(!leftFrame || !rightFrame) continue;  // todo calib team sync should be checked?
 
-        if(inputConfig.getWaitForMessage()) {  // blocking
-            calibrationConfig = inputConfig.get<DynamicCalibrationConfig>();
-        } else {  // non-blocking
-            calibrationConfig = inputConfig.tryGet<DynamicCalibrationConfig>();
-        }
-
-        if(calibrationConfig) {
-            auto calibrationCommand = properties.calibrationCommand;
-            if(calibrationCommand) {
-                switch(*calibrationCommand) {
-                    case DynamicCalibrationProperties::CalibrationCommand::START_CALIBRATION_QUALITY_CHECK:
-                        logger::info("[DynamicCalibration] StartCalibrationQualityMessageRecieved.");
-                        calibrationSM.startQualityCheck();
-                        dynResult.info = "Start Calibration Quality Check";
-                        break;
-                    case DynamicCalibrationProperties::CalibrationCommand::START_RECALIBRATION:
-                        logger::info("[DynamicCalibration] RecalibrationQualityMessageReceived.");
-                        calibrationSM.startRecalibration();
-                        dynResult.info = "Start Recalibration";
-                        break;
-                    case DynamicCalibrationProperties::CalibrationCommand::START_FORCE_RECALIBRATION:
-                        logger::info("[DynamicCalibration] RecalibrationQualityMessageReceived.");
-                        calibrationSM.startRecalibration();
-                        forceTrigger = true;
-                        properties.performanceMode = dcl::PerformanceMode::SKIP_CHECKS;
-                        dynResult.info = "Start Recalibration";
-                        break;
-                    case DynamicCalibrationProperties::CalibrationCommand::START_FORCE_CALIBRATION_QUALITY_CHECK:
-                        logger::info("[DynamicCalibration] StartCalibrationQualityMessageRecieved.");
-                        calibrationSM.startQualityCheck();
-                        forceTrigger = true;
-                        properties.performanceMode = dcl::PerformanceMode::SKIP_CHECKS;
-                        dynResult.info = "Start Calibration Quality Check";
-                        break;
-                    default:
-                        logger::warn("[DynamicCalibration] Unknown calibrationCommand: {}", static_cast<int>(*calibrationCommand));
-                }
+        auto calibrationCommand = properties.calibrationCommand;
+        if(calibrationCommand) {
+            switch(*calibrationCommand) {
+                case DynamicCalibrationProperties::CalibrationCommand::START_CALIBRATION_QUALITY_CHECK:
+                    logger::info("[DynamicCalibration] StartCalibrationQualityMessageRecieved.");
+                    calibrationSM.startQualityCheck();
+                    dynResult.info = "Start Calibration Quality Check";
+                    break;
+                case DynamicCalibrationProperties::CalibrationCommand::START_RECALIBRATION:
+                    logger::info("[DynamicCalibration] RecalibrationQualityMessageReceived.");
+                    calibrationSM.startRecalibration();
+                    dynResult.info = "Start Recalibration";
+                    break;
+                case DynamicCalibrationProperties::CalibrationCommand::START_FORCE_RECALIBRATION:
+                    logger::info("[DynamicCalibration] RecalibrationQualityMessageReceived.");
+                    calibrationSM.startRecalibration();
+                    forceTrigger = true;
+                    // properties.performanceMode = dcl::PerformanceMode::SKIP_CHECKS;
+                    dynResult.info = "Start Recalibration";
+                    break;
+                case DynamicCalibrationProperties::CalibrationCommand::START_FORCE_CALIBRATION_QUALITY_CHECK:
+                    logger::info("[DynamicCalibration] StartCalibrationQualityMessageRecieved.");
+                    calibrationSM.startQualityCheck();
+                    forceTrigger = true;
+                    // properties.performanceMode = dcl::PerformanceMode::SKIP_CHECKS;
+                    dynResult.info = "Start Calibration Quality Check";
+                    break;
+                default:
+                    logger::warn("[DynamicCalibration] Unknown calibrationCommand: {}", static_cast<int>(*calibrationCommand));
             }
         }
 
@@ -349,7 +317,7 @@ void DynamicCalibration::run() {
                     heightDefault = rightFrame->getHeight();
                     daiSocketA = static_cast<CameraBoardSocket>(leftFrame->instanceNum);
                     daiSocketB = static_cast<CameraBoardSocket>(rightFrame->instanceNum);
-                    setInternalCalibration(device, daiSocketA, daiSocketB, widthDefault, heightDefault);
+                    setDclCalibration(device, daiSocketA, daiSocketB, widthDefault, heightDefault);
                 }
                 break;
 
@@ -359,10 +327,6 @@ void DynamicCalibration::run() {
                     auto imageA = leftFrame->getCvFrame();
                     auto imageB = rightFrame->getCvFrame();
                     if(imageA.empty() || imageB.empty()) continue;
-                    if(isAlmostBlackOrWhite(leftFrame->getCvFrame())) {
-                        dynResult.info = "Frame is nearly black or white — skipping data loading.";
-                        break;
-                    }
                     dcl::ImageData imgA = DclUtils::cvMatToImageData(imageA);
                     dcl::ImageData imgB = DclUtils::cvMatToImageData(imageB);
                     dynCalibImpl->loadStereoImagePair(imgA, imgB, deviceName, socketA, socketB, timestamp);
@@ -371,65 +335,45 @@ void DynamicCalibration::run() {
 
                     calibrationSM.AdvanceAfterLoading();
                     lastAutoTrigger = now;
-                    break;
-                } else {
-                    break;
                 }
+                break;
             }
 
             case CalibrationStateMachine::CalibrationState::ProcessingQuality: {
                 logger::info("[DynamicCalibration] Running quality check...");
                 auto result = forceTrigger ? dynCalibImpl->checkCalibration(dcDevice, socketA, socketB, dcl::PerformanceMode::SKIP_CHECKS)
                                            : dynCalibImpl->checkCalibration(dcDevice, socketA, socketB, properties.performanceMode);
+                if(!result.passed()) {
+                    // TODO
+                }
                 calibQuality = result.value;
                 dynResult.info = result.errorMessage();
                 dynResult.calibOverallQuality = calibQualityfromDCL(calibQuality);
-                if(forceTrigger) {
-                    forceTrigger = false;
-                }
-                const auto& rot = dynResult.calibOverallQuality->report->calibrationQuality->rotationChange;
-                bool isMissing = std::any_of(
-                    rot.begin(), rot.end(), [](float v) { return std::abs(v) > 1000.0f || std::abs(v) < 1e-14f || std::isnan(v) || std::isinf(v); });
-                if(isMissing) {
-                    logger::info("[DynamicCalibration] results does not have value!");
-                    calibrationSM.finish();
-                    calibrationSM.startQualityCheck();
-                    outputCalibrationResults.send(std::make_shared<DynamicCalibrationResults>(dynResult));
-                    break;
-                } else {
-                    calibrationSM.deleteAllData();
-                }
+                forceTrigger = false;
+                calibrationSM.deleteAllData();
                 outputCalibrationResults.send(std::make_shared<DynamicCalibrationResults>(dynResult));
                 break;
             }
 
             case CalibrationStateMachine::CalibrationState::Recalibrating: {
+                /// =========replace by checkcoverage
                 logger::info("[DynamicCalibration] Running full recalibration...");
                 auto result = forceTrigger ? dynCalibImpl->checkCalibration(dcDevice, socketA, socketB, dcl::PerformanceMode::SKIP_CHECKS)
                                            : dynCalibImpl->checkCalibration(dcDevice, socketA, socketB, properties.performanceMode);
-                forceTrigger = false;
-                calibQuality = result.value;
-
-                dynResult.calibOverallQuality = calibQualityfromDCL(calibQuality);
-                dynResult.info = result.errorMessage();
-
-                const auto& rot = dynResult.calibOverallQuality->report->calibrationQuality->rotationChange;
-
-                bool isMissing = std::any_of(
-                    rot.begin(), rot.end(), [](float v) { return std::abs(v) > 1000.0f || std::abs(v) < 1e-14f || std::isnan(v) || std::isinf(v); });
-                if(isMissing) {
-                    logger::info("[DynamicCalibration] results does not have value!");
-                    calibrationSM.finish();
-                    calibrationSM.startRecalibration();
-                    outputCalibrationResults.send(std::make_shared<DynamicCalibrationResults>(dynResult));
-                    break;
+                if(result.passed()) {
+                    calibQuality = result.value;
+                    dynResult.calibOverallQuality = calibQualityfromDCL(calibQuality);
+                } else {
+                    // TODO
                 }
-                auto resultCalib =
-                    forceTrigger
-                        ? dynCalibImpl->findNewCalibration(dcDevice, socketA, socketB, static_cast<dcl::PerformanceMode>(dcl::PerformanceMode::SKIP_CHECKS))
-                        : dynCalibImpl->findNewCalibration(dcDevice, socketA, socketB, static_cast<dcl::PerformanceMode>(properties.performanceMode));
+                /// =========
+
+                auto resultCalib = forceTrigger ? dynCalibImpl->findNewCalibration(dcDevice, socketA, socketB, dcl::PerformanceMode::SKIP_CHECKS)
+                                                : dynCalibImpl->findNewCalibration(dcDevice, socketA, socketB, properties.performanceMode);
+
+                forceTrigger = false;
                 dynResult.info = resultCalib.errorMessage();
-                if(!resultCalib.value.second) {
+                if(!resultCalib.passed()) {
                     logger::info("[DynamicCalibration] resultCalib returned null CalibrationHandler!");
                     outputCalibrationResults.send(std::make_shared<DynamicCalibrationResults>(dynResult));
                     calibrationSM.finish();
