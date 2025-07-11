@@ -2,9 +2,11 @@
 
 #include <pcl/filters/filter.h>
 #include <pcl/point_cloud.h>
+#include <rtabmap/core/Transform.h>
 #include <spdlog/spdlog.h>
 
 #include "depthai/pipeline/Pipeline.hpp"
+#include "depthai/pipeline/datatype/Landmarks.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
 #include "rtabmap/core/util3d.h"
 #include "rtabmap/core/util3d_mapping.h"
@@ -72,11 +74,14 @@ void RTABMapSLAM::syncCB(std::shared_ptr<dai::ADatatype> data) {
     std::shared_ptr<dai::ImgFrame> imgFrame = nullptr;
     std::shared_ptr<dai::ImgFrame> depthFrame = nullptr;
     std::shared_ptr<dai::TrackedFeatures> featuresFrame = nullptr;
-    // std::shared_ptr<dai::TODO> markersFrame = nullptr;
+    std::shared_ptr<dai::Landmarks> markersFrame = nullptr;
     imgFrame = group->get<dai::ImgFrame>(rectInputName);
     depthFrame = group->get<dai::ImgFrame>(depthInputName);
     if(useFeatures) {
         featuresFrame = group->get<dai::TrackedFeatures>(featuresInputName);
+    }
+    if(true) {
+        markersFrame = group->get<dai::Landmarks>(landmarksInputName);
     }
     if(imgFrame != nullptr && depthFrame != nullptr) {
         if(!initialized) {
@@ -93,14 +98,20 @@ void RTABMapSLAM::syncCB(std::shared_ptr<dai::ADatatype> data) {
                 }
                 sensorData.setFeatures(keypoints, std::vector<cv::Point3f>(), cv::Mat());
             }
-            // std::vector<rtabmap::Marker> markers;
-            // if(markersFrame != nullptr) {
-            //     for(auto& marker : markerFrame) {
-            //         //TODO
-            //        // markers.emplace_back(rtabmap::Marker()) 
-            //     }
-            //     sensorData.setMarkers()
-            // }
+            rtabmap::Landmarks markers;
+            if(markersFrame != nullptr) {
+                for(auto& marker : markersFrame->landmarks) {
+                    auto trans = marker.pose.getTranslation();
+                    auto rot = marker.pose.getRotationEuler();
+
+                    rtabmap::Transform pose = rtabmap::Transform(trans.x, trans.y, trans.z, rot.x, rot.y, rot.z);
+
+                    cv::Mat covarience = cv::Mat::zeros(6, 6, CV_8UC1);
+
+                    markers.emplace(std::make_pair(marker.id, rtabmap::Landmark(marker.id, marker.size, pose, covarience)));
+                }
+                sensorData.setLandmarks(markers);
+            }
         }
         passthroughRect.send(imgFrame);
         passthroughDepth.send(depthFrame);
