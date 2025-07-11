@@ -29,7 +29,31 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     Properties& getProperties() override;
 
    public:
-    std::shared_ptr<DynamicCalibrationConfig> initialConfig = std::make_shared<DynamicCalibrationConfig>();
+    struct CalibrationStateMachine {
+        enum class CalibrationState { Idle, InitializingPipeline, LoadingImages, ProcessingQuality, Recalibrating, ResetDynamicRecalibration };
+
+        enum class CalibrationMode { None, QualityCheck, Recalibration };
+
+        CalibrationState state = CalibrationState::Idle;
+        CalibrationMode mode = CalibrationMode::None;
+        bool pipelineReady = false;
+
+        void startQualityCheck();
+
+        void startRecalibration();
+
+        void markPipelineReady();
+
+        bool isIdle() const;
+
+        void AdvanceAfterLoading();
+
+        void deleteAllData();
+
+        void finish();
+
+        std::string stateToString() const;
+    };
 
     /**
      * Input DynamicCalibrationConfig message with ability to modify parameters in runtime.
@@ -167,74 +191,6 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
      * - Starting of Recalibration
      * - Reseting of data
      */
-    struct CalibrationStateMachine {
-        enum class CalibrationState { Idle, InitializingPipeline, LoadingImages, ProcessingQuality, Recalibrating, ResetDynamicRecalibration };
-
-        enum class CalibrationMode { None, QualityCheck, Recalibration };
-
-        CalibrationState state = CalibrationState::Idle;
-        CalibrationMode mode = CalibrationMode::None;
-        bool pipelineReady = false;
-
-        void startQualityCheck() {
-            if(isIdle()) {
-                state = CalibrationState::LoadingImages;
-                mode = CalibrationMode::QualityCheck;
-            }
-        }
-
-        void startRecalibration() {
-            if(isIdle()) {
-                state = CalibrationState::LoadingImages;
-                mode = CalibrationMode::Recalibration;
-            }
-        }
-
-        void markPipelineReady() {
-            pipelineReady = true;
-            state = CalibrationState::Idle;
-        }
-
-        bool isIdle() const {
-            return state == CalibrationState::Idle;
-        }
-
-        void AdvanceAfterLoading() {
-            if(mode == CalibrationMode::QualityCheck) {
-                state = CalibrationState::ProcessingQuality;
-            } else if(mode == CalibrationMode::Recalibration) {
-                state = CalibrationState::Recalibrating;
-            }
-        }
-
-        void deleteAllData() {
-            state = CalibrationState::ResetDynamicRecalibration;
-        }
-
-        void finish() {
-            state = CalibrationState::Idle;
-            mode = CalibrationMode::None;
-        }
-
-        std::string stateToString() const {
-            switch(state) {
-                case CalibrationState::Idle:
-                    return "Idle";
-                case CalibrationState::InitializingPipeline:
-                    return "InitializingPipeline";
-                case CalibrationState::LoadingImages:
-                    return "LoadingImages";
-                case CalibrationState::ProcessingQuality:
-                    return "ProcessingQuality";
-                case CalibrationState::Recalibrating:
-                    return "Recalibrating";
-                case CalibrationState::ResetDynamicRecalibration:
-                    return "ResetingCalibration";
-                default:
-                    return "Unknown";
-            }
-        }
-    };
     dcl::CalibrationQuality calibQuality;
     CalibrationStateMachine calibrationSM;
 

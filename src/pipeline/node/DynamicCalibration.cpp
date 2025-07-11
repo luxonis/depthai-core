@@ -474,5 +474,65 @@ void DynamicCalibration::run() {
         // send results
     }
 }
+
+void DynamicCalibration::CalibrationStateMachine::startQualityCheck() {
+    if(isIdle()) {
+        state = CalibrationState::LoadingImages;
+        mode = CalibrationMode::QualityCheck;
+    }
+}
+
+void DynamicCalibration::CalibrationStateMachine::startRecalibration() {
+    if(isIdle()) {
+        state = CalibrationState::LoadingImages;
+        mode = CalibrationMode::Recalibration;
+    }
+}
+
+void DynamicCalibration::CalibrationStateMachine::markPipelineReady() {
+    pipelineReady = true;
+    state = CalibrationState::Idle;
+}
+
+bool DynamicCalibration::CalibrationStateMachine::isIdle() const {
+    return state == CalibrationState::Idle;
+}
+
+void DynamicCalibration::CalibrationStateMachine::AdvanceAfterLoading() {
+    if(mode == CalibrationMode::QualityCheck) {
+        state = CalibrationState::ProcessingQuality;
+    } else if(mode == CalibrationMode::Recalibration) {
+        state = CalibrationState::Recalibrating;
+    }
+}
+
+void DynamicCalibration::CalibrationStateMachine::deleteAllData() {
+    state = CalibrationState::ResetDynamicRecalibration;
+}
+
+void DynamicCalibration::CalibrationStateMachine::finish() {
+    state = CalibrationState::Idle;
+    mode = CalibrationMode::None;
+}
+
+std::string DynamicCalibration::CalibrationStateMachine::stateToString() const {
+    switch(state) {
+        case CalibrationState::Idle:
+            return "Idle";
+        case CalibrationState::InitializingPipeline:
+            return "InitializingPipeline";
+        case CalibrationState::LoadingImages:
+            return "LoadingImages";
+        case CalibrationState::ProcessingQuality:
+            return "ProcessingQuality";
+        case CalibrationState::Recalibrating:
+            return "Recalibrating";
+        case CalibrationState::ResetDynamicRecalibration:
+            return "ResetingCalibration";
+        default:
+            return "Unknown";
+    }
+}
+
 }  // namespace node
 }  // namespace dai

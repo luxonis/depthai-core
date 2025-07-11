@@ -36,3 +36,20 @@ TEST(DynamicCalibration, SetTimeFrequency) {
     dynCalib.setTimeFrequency(42);
     EXPECT_EQ(dynCalib.getPropertiesPublic().timeFrequency, 42);
 }
+
+TEST(DynamicCalibration, CalibrationStateMachineTransitions) {
+    dai::node::DynamicCalibration::CalibrationStateMachine sm;
+    EXPECT_TRUE(sm.isIdle());
+
+    sm.startQualityCheck();
+    EXPECT_EQ(sm.stateToString(), "LoadingImages");
+
+    sm.AdvanceAfterLoading();
+    EXPECT_EQ(sm.stateToString(), "ProcessingQuality");
+
+    sm.deleteAllData();
+    EXPECT_EQ(sm.stateToString(), "ResetingCalibration");
+
+    sm.finish();
+    EXPECT_EQ(sm.stateToString(), "Idle");
+}
