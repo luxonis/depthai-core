@@ -6,6 +6,7 @@ find_package(GTest CONFIG REQUIRED)
 # Add a test executable
 add_executable(unit_tests
     DynamicCalibration/DynamicCalibrationTest.cpp
+    DynamicCalibration/UtilsTest.cpp
 )
 
 # Link test dependencies

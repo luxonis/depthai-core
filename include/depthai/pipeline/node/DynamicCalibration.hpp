@@ -13,6 +13,29 @@
 namespace dai {
 namespace node {
 
+struct DclUtils {
+    static void convertDclCalibrationToDai(CalibrationHandler& calibHandler,
+                                           const std::shared_ptr<const dcl::CameraCalibrationHandle> daiCalibration,
+                                           const CameraBoardSocket socketSrc,
+                                           const CameraBoardSocket socketDest,
+                                           const int width,
+                                           const int height);
+
+    static std::shared_ptr<dcl::CameraCalibrationHandle> createDclCalibration(const std::vector<std::vector<float>> cameraMatrix,
+                                                                              const std::vector<float> distortionCoefficients,
+                                                                              const std::vector<std::vector<float>> rotationMatrix,
+                                                                              const std::vector<float> translationVector);
+
+    static std::pair<std::shared_ptr<dcl::CameraCalibrationHandle>, std::shared_ptr<dcl::CameraCalibrationHandle>> convertDaiCalibrationToDcl(
+        const CalibrationHandler currentCalibration,
+        const CameraBoardSocket boardSocketA,
+        const CameraBoardSocket boardSocketB,
+        const int width,
+        const int height);
+
+    static dcl::ImageData cvMatToImageData(const cv::Mat& mat);
+};
+
 /**
  * @brief Dynamic calibration node. Performs calibration check and dynamically calibrates the device
  */
@@ -116,10 +139,6 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
      * From dai::CalibrationHandler data convert to DCL dcl::CameraCalibrationHandle, which includes all necesarry data for recalibration
      * @return dcl::CameraCalibrationHanlder
      */
-    std::shared_ptr<dcl::CameraCalibrationHandle> createDCLCameraCalibration(const std::vector<std::vector<float>> cameraMatrix,
-                                                                             const std::vector<float> distortionCoefficients,
-                                                                             const std::vector<std::vector<float>> rotationMatrix,
-                                                                             const std::vector<float> translationVector);
     /**
      * Set initial pipeline of DCL
      */
@@ -134,13 +153,6 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
      * From  DCL dcl::CameraCalibrationHandle convert to dai::CalibrationHandler, so device can setCalibration
      * @return dai::CalibrationHandlerr
      */
-    CalibrationHandler convertDCLtoDAI(CalibrationHandler calibHandler,
-                                       const std::shared_ptr<const dcl::CameraCalibrationHandle> daiCalibration,
-                                       const CameraBoardSocket socketSrc,
-                                       const CameraBoardSocket socketDest,
-                                       const int width,
-                                       const int height);
-
     dai::DynamicCalibrationResults::CalibrationQualityResult calibQualityfromDCL(const dcl::CalibrationQuality& src);
     /**
      * DCL held properties
@@ -164,24 +176,10 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     int heightDefault;
     bool forceTrigger = false;
 
-    struct CalibData {
-        std::vector<float> translationVectorA;
-        std::vector<std::vector<float>> rotationMatrixA;
-        std::vector<float> translationVectorB;
-        std::vector<std::vector<float>> rotationMatrixB;
-        std::vector<std::vector<float>> leftCameraMatrix;
-        std::vector<std::vector<float>> rightCameraMatrix;
-        std::vector<float> leftDistortionCoefficients;
-        std::vector<float> rightDistortionCoefficients;
-    };
-
     /**
      * From  dai::CalibrationHandler to all necesarry information which needs to be provided to DCL
      * @return dcl::CameraCalibrationHanlder
      */
-    CalibData getDataFromDAIHandler(
-        CalibrationHandler currentCalibration, const CameraBoardSocket boardSocketA, const CameraBoardSocket boardSocketB, const int width, const int height);
-
     /**
      * Calibration state machine, which holds the state of Node and provide stabile enviroment;
      * - Initialization of pipeline,
