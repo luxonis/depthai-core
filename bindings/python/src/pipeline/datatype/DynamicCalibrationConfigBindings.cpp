@@ -1,3 +1,4 @@
+#include <DynamicCalibration.hpp>
 #include <memory>
 #include <unordered_map>
 
@@ -20,12 +21,12 @@ void bind_dynamic_calibration_config(pybind11::module& m, void* pCallstack) {
     py::enum_<DynamicCalibrationProperties::CalibrationCommand> _CalibrationCommand(
         _DynamicCalibrationResults, "CalibrationCommand", DOC(dai, DynamicCalibrationConfig, CalibrationCommand));
 
-    py::enum_<DynamicCalibrationProperties::PerformanceMode>(_AlgorithmControl, "PerformanceMode")
-        .value("SKIP_CHECKS", DynamicCalibrationProperties::PerformanceMode::SKIP_CHECKS)
-        .value("STATIC_SCENERY", DynamicCalibrationProperties::PerformanceMode::STATIC_SCENERY)
-        .value("OPTIMIZE_SPEED", DynamicCalibrationProperties::PerformanceMode::OPTIMIZE_SPEED)
-        .value("OPTIMIZE_PERFORMANCE", DynamicCalibrationProperties::PerformanceMode::OPTIMIZE_PERFORMANCE)
-        .value("DEFAULT", DynamicCalibrationProperties::PerformanceMode::DEFAULT)
+    py::enum_<dcl::PerformanceMode>(_AlgorithmControl, "PerformanceMode")
+        .value("SKIP_CHECKS", dcl::PerformanceMode::SKIP_CHECKS)
+        .value("STATIC_SCENERY", dcl::PerformanceMode::STATIC_SCENERY)
+        .value("OPTIMIZE_SPEED", dcl::PerformanceMode::OPTIMIZE_SPEED)
+        .value("OPTIMIZE_PERFORMANCE", dcl::PerformanceMode::OPTIMIZE_PERFORMANCE)
+        .value("DEFAULT", dcl::PerformanceMode::DEFAULT)
         .export_values();
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////

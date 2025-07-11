@@ -20,15 +20,14 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
    private:
     bool runOnHostVar = true;
 
+   protected:
+    Properties& getProperties() override;
+
    public:
     constexpr static const char* NAME = "DynamicCalibration";
     using DeviceNodeCRTP::DeviceNodeCRTP;
     ~DynamicCalibration() override = default;
 
-   protected:
-    Properties& getProperties() override;
-
-   public:
     struct CalibrationStateMachine {
         enum class CalibrationState { Idle, InitializingPipeline, LoadingImages, ProcessingQuality, Recalibrating, ResetDynamicRecalibration };
 
@@ -99,7 +98,7 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     /**
      * Set Dynamic recalibration performance mode
      */
-    void setPerformanceMode(dai::DynamicCalibrationProperties::PerformanceMode mode);
+    void setPerformanceMode(dcl::PerformanceMode mode);
 
     /**
      * Set Dynamic recalibration as Continious mode, no user interaction needed
@@ -195,6 +194,7 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     CalibrationStateMachine calibrationSM;
 
     void resetResults();
+
     Input inSync{*this, {"inSync", DEFAULT_GROUP, false, 1, {{DatatypeEnum::MessageGroup, true}}}};
 };
 

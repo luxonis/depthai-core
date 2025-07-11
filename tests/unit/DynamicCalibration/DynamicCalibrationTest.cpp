@@ -21,8 +21,8 @@ TEST(DynamicCalibration, SetAndGetRunOnHost) {
 
 TEST(DynamicCalibration, SetPerformanceMode) {
     MockDynamicCalibration dynCalib;
-    dynCalib.setPerformanceMode(dai::DynamicCalibrationProperties::PerformanceMode::SKIP_CHECKS);
-    EXPECT_EQ(dynCalib.getPropertiesPublic().performanceMode, dai::DynamicCalibrationProperties::PerformanceMode::SKIP_CHECKS);
+    dynCalib.setPerformanceMode(dcl::PerformanceMode::SKIP_CHECKS);
+    EXPECT_EQ(dynCalib.getPropertiesPublic().performanceMode, dcl::PerformanceMode::SKIP_CHECKS);
 }
 
 TEST(DynamicCalibration, SetContinousMode) {

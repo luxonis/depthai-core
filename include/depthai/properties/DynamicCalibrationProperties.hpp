@@ -16,7 +16,7 @@ struct DynamicCalibrationProperties : PropertiesSerializable<Properties, Dynamic
         // Add other datatypes as needed
     };
 
-    enum class PerformanceMode : int32_t { SKIP_CHECKS = 4, STATIC_SCENERY = 1, OPTIMIZE_SPEED = 2, OPTIMIZE_PERFORMANCE = 3, DEFAULT = 0 };
+    // enum class PerformanceMode : int32_t { SKIP_CHECKS = 4, STATIC_SCENERY = 1, OPTIMIZE_SPEED = 2, OPTIMIZE_PERFORMANCE = 3, DEFAULT = 0 };
 
     enum class RecalibrationMode : int32_t { DEFAULT, CONTINUOUS };
 
@@ -24,7 +24,7 @@ struct DynamicCalibrationProperties : PropertiesSerializable<Properties, Dynamic
     /**
      * Set the time frequency of recalibration being triggered in Continious mode
      */
-    PerformanceMode performanceMode = PerformanceMode::DEFAULT;
+    dcl::PerformanceMode performanceMode = dcl::PerformanceMode::DEFAULT;
     /**
      * Define a peformance mode on which the dynamic recalibration will be working
      */
