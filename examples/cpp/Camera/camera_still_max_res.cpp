@@ -51,27 +51,25 @@ int main() {
         if(imgHd == nullptr) continue;
 
         cv::Mat frame = imgHd->getCvFrame();
+        cv::imshow("video", frame);
 
-	std::cout << "Got frame" << std::endl;
-//        cv::imshow("video", frame);
+        int key = cv::waitKey(1);
+        if(key == 'q') {
+            break;
+        }
+        if(key == 'c') {
+            // Send a trigger message to the Script node
+            qTrigger->send(std::make_shared<dai::Buffer>());
+        }
 
-//        int key = cv::waitKey(1);
-//        if(key == 'q') {
-//            break;
-//        }
-//        if(key == 'c') {
-//            // Send a trigger message to the Script node
-//            qTrigger->send(std::make_shared<dai::Buffer>());
-//        }
-
-//        if(highestResQ->has()) {
-//            auto highresImg = highestResQ->get<dai::ImgFrame>();
-//            if(highresImg != nullptr) {
-//                cv::Mat frame = highresImg->getCvFrame();
-//                // Save the full image
-//                cv::imwrite("full_image.png", frame);
-//            }
-//        }
+        if(highestResQ->has()) {
+            auto highresImg = highestResQ->get<dai::ImgFrame>();
+            if(highresImg != nullptr) {
+                cv::Mat frame = highresImg->getCvFrame();
+                // Save the full image
+                cv::imwrite("full_image.png", frame);
+            }
+        }
     }
 
     return 0;
