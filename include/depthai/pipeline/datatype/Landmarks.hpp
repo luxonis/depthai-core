@@ -33,13 +33,13 @@ class Landmarks : public Buffer {
         virtual ~Landmarks() = default;
 
     public:
-    std::vector<Landmark> landmarks;
-    DEPTHAI_SERIALIZE(Landmarks, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, landmarks);
+        std::vector<Landmark> landmarks;
+        DEPTHAI_SERIALIZE(Landmarks, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, landmarks);
 
-    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
-        metadata = utility::serialize(*this);
-        datatype = DatatypeEnum::Landmarks;
-    }
+        void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
+            metadata = utility::serialize(*this);
+            datatype = DatatypeEnum::Landmarks;
+        }
 
 };
 
