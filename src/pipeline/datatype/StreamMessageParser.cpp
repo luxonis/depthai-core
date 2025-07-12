@@ -22,6 +22,7 @@
 #include "depthai/pipeline/datatype/ImageAlignConfig.hpp"
 #include "depthai/pipeline/datatype/ImageManipConfig.hpp"
 #include "depthai/pipeline/datatype/ImgAnnotations.hpp"
+#include "depthai/pipeline/datatype/Landmarks.hpp"
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
@@ -194,6 +195,10 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
 
         case DatatypeEnum::AprilTagConfig:
             return parseDatatype<AprilTagConfig>(metadataStart, serializedObjectSize, data, fd);
+            break;
+
+        case DatatypeEnum::Landmarks:
+            return parseDatatype<Landmarks>(metadataStart, serializedObjectSize, data, fd);
             break;
 
         case DatatypeEnum::Tracklets:
