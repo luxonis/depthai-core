@@ -101,14 +101,12 @@ void RTABMapSLAM::syncCB(std::shared_ptr<dai::ADatatype> data) {
             rtabmap::Landmarks markers;
             if(markersFrame != nullptr) {
                 for(auto& marker : markersFrame->landmarks) {
-                    auto trans = marker.pose.getTranslation();
-                    auto rot = marker.pose.getRotationEuler();
+                    auto transform = TransformData(marker.translation.x, marker.translation.y, marker.translation.z,
+                        marker.quaternion.qx, marker.quaternion.qy, marker.quaternion.qz, marker.quaternion.qw);
 
-                    rtabmap::Transform pose = rtabmap::Transform(trans.x, trans.y, trans.z, rot.x, rot.y, rot.z);
+                    cv::Mat covariance = cv::Mat::zeros(6, 6, CV_8UC1);
 
-                    cv::Mat covarience = cv::Mat::zeros(6, 6, CV_8UC1);
-
-                    markers.emplace(std::make_pair(marker.id, rtabmap::Landmark(marker.id, marker.size, pose, covarience)));
+                    markers.emplace(std::make_pair(marker.id, rtabmap::Landmark(marker.id, marker.size, transform.getRTABMapTransform(), covariance)));
                 }
                 sensorData.setLandmarks(markers);
             }

@@ -28,18 +28,19 @@ void bind_landmarks(pybind11::module& m, void* pCallstack) {
    ///////////////////////////////////////////////////////////////////////
    ///////////////////////////////////////////////////////////////////////
    ///////////////////////////////////////////////////////////////////////
-   
+
    landmark.def(py::init<>())
       .def_readwrite("id", &Landmark::id, DOC(dai, Landmark, id))
-      .def_readwrite("id", &Landmark::size, DOC(dai, Landmark, size))
-      .def_readwrite("id", &Landmark::pose, DOC(dai, Landmark, pose));
+      .def_readwrite("size", &Landmark::size, DOC(dai, Landmark, size))
+      .def_readwrite("translation", &Landmark::translation, DOC(dai, Landmark, translation))
+      .def_readwrite("quaternion", &Landmark::quaternion, DOC(dai, Landmark, quaternion));
 
 
    // Message
    landmarks.def(py::init<>())
        .def("__repr__", &Landmarks::str)
        .def_property(
-           "aprilTags", [](Landmarks& det) { return &det.landmarks; }, [](Landmarks& det, std::vector<Landmark> val) { det.landmarks = val; })
+           "landmarks", [](Landmarks& det) { return &det.landmarks; }, [](Landmarks& det, std::vector<Landmark> val) { det.landmarks = val; })
        .def("getTimestamp", &Landmarks::Buffer::getTimestamp, DOC(dai, Buffer, getTimestamp))
        .def("getTimestampDevice", &Landmarks::Buffer::getTimestampDevice, DOC(dai, Buffer, getTimestampDevice))
        .def("getSequenceNum", &Landmarks::Buffer::getSequenceNum, DOC(dai, Buffer, getSequenceNum))

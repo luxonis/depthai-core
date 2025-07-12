@@ -20,11 +20,17 @@ struct Landmark {
     double size;
 
     /**
-     * The pose of the landmark reletive to base_frame (the camera)
+     * The translation of the landmark reletive to base_frame (the camera)
      */
-    dai::TransformData pose;
+    dai::Point3d translation;
+
+    /**
+     * The orientation of the landmark relative to base_frame (the camera)
+     */
+    dai::Quaterniond quaternion;
 };
-DEPTHAI_SERIALIZE_EXT(Landmark, id, size, pose);
+
+DEPTHAI_SERIALIZE_EXT(Landmark, id, size, translation, quaternion);
 
 
 class Landmarks : public Buffer {
