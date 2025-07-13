@@ -111,6 +111,7 @@ void DatatypeBindings::bind(pybind11::module& m, void* pCallstack) {
         .value("EdgeDetectorConfig", DatatypeEnum::EdgeDetectorConfig)
         .value("AprilTagConfig", DatatypeEnum::AprilTagConfig)
         .value("AprilTags", DatatypeEnum::AprilTags)
+        .value("Landmarks", DatatypeEnum::Landmarks)
         .value("Tracklets", DatatypeEnum::Tracklets)
         .value("IMUData", DatatypeEnum::IMUData)
         .value("StereoDepthConfig", DatatypeEnum::StereoDepthConfig)
