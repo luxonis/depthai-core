@@ -297,7 +297,7 @@ void runManipTests(dai::ImgFrame::Type type, bool undistort, std::vector<float> 
         if(undistort) {
             cfg->setUndistort(true);
             auto outFrame2 = getFrame(cfg, 1400, 700);
-            // if(!coeffs.empty()) REQUIRE(!equal(outFrame1->getCvFrame(), outFrame2->getCvFrame()));
+            if(!coeffs.empty()) REQUIRE(!equal(outFrame1->getCvFrame(), outFrame2->getCvFrame()));
         }
     }
 
