@@ -127,7 +127,6 @@ with pipeline:
         disp_x_end, disp_y_end = 640, 800
         scale_x = 1280 / 1920
         scale_y = 800 / 1280
-        print(masterFrame.shape[0])
 
         scaled_mouse_x = int(mouse_coords[0] * scale_x)
         scaled_mouse_y = int(mouse_coords[1] * scale_y)
