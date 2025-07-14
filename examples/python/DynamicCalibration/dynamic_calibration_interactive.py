@@ -125,14 +125,20 @@ with pipeline:
 
         disp_x_start, disp_y_start = 0, 400
         disp_x_end, disp_y_end = 640, 800
-        if (disp_x_start <= mouse_coords[0] < disp_x_end and
-            disp_y_start <= mouse_coords[1] < disp_y_end and in_disp):
-            local_x = mouse_coords[0] # disp_vis x offset
-            local_y = mouse_coords[1] - 400  # disp_vis y offset
+        scale_x = 1280 / 1920
+        scale_y = 800 / 1280
+        print(masterFrame.shape[0])
+
+        scaled_mouse_x = int(mouse_coords[0] * scale_x)
+        scaled_mouse_y = int(mouse_coords[1] * scale_y)
+        if (disp_x_start <= scaled_mouse_x < disp_x_end and
+            disp_y_start <= scaled_mouse_y  < disp_y_end and in_disp):
+            local_x = scaled_mouse_x # disp_vis x offset
+            local_y = scaled_mouse_y - 400  # disp_vis y offset
             if 0 <= local_x < depth_frame.shape[1] and 0 <= local_y < depth_frame.shape[0]:
                 depth_val = depth_frame[int(local_y * 2), int(local_x * 2)] / 1000.0  # mm → meters
                 display_text = f"Depth: {depth_val:.2f}m"
-                text_pos = (mouse_coords[0] + 10, mouse_coords[1] + 10)
+                text_pos = (scaled_mouse_x + 10, scaled_mouse_y + 10)
 
                 cv2.putText(masterFrame, display_text, text_pos,
                             cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2, cv2.LINE_AA)
@@ -171,7 +177,7 @@ with pipeline:
             display = True
 
         if leftFrame is not None and rightFrame is not None:
-            cv2.imshow("MasterFrame", masterFrame)
+            cv2.imshow("MasterFrame", cv2.resize(masterFrame, (1920, 1200)))
 
         key = cv2.waitKey(1)
 
