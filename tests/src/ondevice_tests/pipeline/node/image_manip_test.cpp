@@ -202,10 +202,9 @@ TEST_CASE("Multiple image manips") {
 }
 
 bool equal(const cv::Mat& a, const cv::Mat& b) {
-    if((a.rows != b.rows) || (a.cols != b.cols)) return false;
-    cv::Scalar s = cv::sum(a - b);
+    cv::Scalar s = cv::sum(a != b);
     for(int i = 0; i < a.dims; i++) {
-        if(a.size[i] != b.size[i]) return false;
+        if(a.size[i] != b.size[i] || s[i] > 0) return false;
     }
     return true;
 }
