@@ -106,27 +106,34 @@ int main() {
 
         auto calibrationResult = dyncalOut->tryGet();
         auto dynResult = std::dynamic_pointer_cast<dai::DynamicCalibrationResults>(calibrationResult);
-        if(dynResult && dynResult->newCalibration->calibHandler.has_value()) {
-            calibrationNew = *dynResult->newCalibration->calibHandler.value();
-            std::cout << "Got new calibration. " << std::endl;
+        if(dynResult && dynResult->newCalibration.has_value() && dynResult->newCalibration->calibHandler.has_value()) {
+            calibrationNew = dynResult->newCalibration->calibHandler.value();
+            std::cout << "Got new calibration." << std::endl;
         }
-        if(dynResult && dynResult->calibOverallQuality.has_value() && dynResult->calibOverallQuality->report) {
-            double meanCoverage = dynResult->calibOverallQuality.value()->report->coverageQuality->meanCoverage;
-            auto coveragePerCellB = dynResult->calibOverallQuality.value()->report->coverageQuality->coveragePerCellB;
-            leftFrame = overlayCoverageOnGray(leftFrame, coveragePerCellB);
-            auto& report = dynResult->calibOverallQuality.value()->report;
-            if(report.has_value() && report->calibrationQuality.has_value()) {
-                auto& rotationChange = report->calibrationQuality.value()->rotationChange;
 
-                std::cout << "Rotation change (as float): ";
-                for(const auto& val : rotationChange) {
-                    std::cout << static_cast<float>(val) << " ";
+        if(dynResult && dynResult->calibOverallQuality.has_value()) {
+            auto& quality = dynResult->calibOverallQuality.value();
+            if(quality.report.has_value()) {
+                auto& report = quality.report.value();
+
+                if(report.coverageQuality.has_value()) {
+                    double meanCoverage = report.coverageQuality.value().meanCoverage;
+                    auto coveragePerCellB = report.coverageQuality.value().coveragePerCellB;
+                    leftFrame = overlayCoverageOnGray(leftFrame, coveragePerCellB);
+                    std::cout << "Got calibration Check. Coverage quality = " << meanCoverage << std::endl;
                 }
-                std::cout << std::endl;
-            } else {
-                std::cout << "No calibrationQuality present." << std::endl;
+
+                if(report.calibrationQuality.has_value()) {
+                    auto& rotationChange = report.calibrationQuality.value().rotationChange;
+                    std::cout << "Rotation change (as float): ";
+                    for(const auto& val : rotationChange) {
+                        std::cout << static_cast<float>(val) << " ";
+                    }
+                    std::cout << std::endl;
+                } else {
+                    std::cout << "No calibrationQuality present." << std::endl;
+                }
             }
-            std::cout << "Got calibration Check. Coverage quality = " << meanCoverage << std::endl;
         }
 
         cv::imshow("left", leftFrame);

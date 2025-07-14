@@ -68,8 +68,10 @@ print("[s] → Flash new calibration")
 print("[k] → Flash old calibration")
 print("[q] → Quit")
 print("<<< -----------------------------|Start the pipeline!|------------------------->>>")
-cv2.namedWindow("Disparity")
-cv2.setMouseCallback("Disparity", on_mouse_disparity)
+cv2.namedWindow("MasterFrame")
+cv2.setMouseCallback("MasterFrame", on_mouse_disparity)
+
+display = False
 with pipeline:
     max_disp = stereo.initialConfig.getMaxDisparity()
 
@@ -78,18 +80,12 @@ with pipeline:
         in_right = right_xout.get()
         in_disp = disp_xout.get()
         in_depth = depth_xout.get()
+        fourthFrame = np.zeros((800, 1280, 3), dtype=np.uint8)
         if in_disp:
             assert isinstance(in_disp, dai.ImgFrame)
             disp_frame = in_disp.getFrame()
             disp_vis = (disp_frame * (255.0 / max_disp)).astype(np.uint8)
             disp_vis = cv2.applyColorMap(disp_vis, cv2.COLORMAP_JET)
-            if 'depth_frame' in locals() and 0 <= mouse_coords[0] < depth_frame.shape[1] and 0 <= mouse_coords[1] < depth_frame.shape[0]:
-                depth_val = depth_frame[mouse_coords[1], mouse_coords[0]] / 1000
-                display_text = f"Depth: {depth_val:.2f}m"
-                cv2.putText(disp_vis, display_text, (mouse_coords[0] + 10, mouse_coords[1] + 10),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,255), 1, cv2.LINE_AA)
-            cv2.imshow("Disparity", disp_vis)
-
 
         if in_depth:
             assert isinstance(in_depth, dai.ImgFrame)
@@ -102,26 +98,44 @@ with pipeline:
         if in_right:
             assert isinstance(in_right, dai.ImgFrame)
             rightFrame = in_right.getCvFrame()
+        
+        masterFrame = update_master_frame(leftFrame, rightFrame, disp_vis, fourthFrame)
 
-        if depthDiff != [] and np.abs(displayTimer - time.time()) < 5:
+        if depthDiff != [] and display:
             if state == "Recalibration":
                leftFrame = draw_recalibration_message(leftFrame, depthDiff,rotationDiff)
                rightFrame = draw_recalibration_message(rightFrame, depthDiff,rotationDiff)
+               fourthFrame = draw_recalibration_message(fourthFrame, depthDiff,rotationDiff)
+               masterFrame = update_master_frame(leftFrame, rightFrame, disp_vis, fourthFrame)
             else:
-                leftFrame = draw_health_bar(leftFrame, depthDiff,rotationDiff, display_text = f"{text} Health Bad of Depth Difference Error")
-                rightFrame = draw_health_bar(rightFrame, depthDiff, rotationDiff, display_text = f"{text} Health Bar of Depth Difference Error")
-            cv2.imshow("Left", leftFrame)
-            cv2.imshow("Right", rightFrame)
-            key = cv2.waitKey(1)
+                fourthFrame = draw_health_bar(fourthFrame, depthDiff,rotationDiff, display_text = f"{text} Health Bad of Depth Difference Error")
+                masterFrame = update_master_frame(leftFrame, rightFrame, disp_vis, fourthFrame)
+            key_end = cv2.waitKey(1)
+            if key_end != -1:  # -1 means no key was pressed
+                display = False
         else:
             depthDiff = []
         if coverage_matrix is not None and depthDiff == []:
             leftFrame = overlay_coverage_on_gray(leftFrame, coverage_matrix, progress)
             rightFrame = overlay_coverage_on_gray(rightFrame, coverage_matrix, progress)
-        else:
-            draw_key_commands(leftFrame)
-            draw_key_commands(rightFrame)
+            masterFrame = update_master_frame(leftFrame, rightFrame, disp_vis, fourthFrame)
+        elif not display:
+            draw_key_commands(fourthFrame)
+            masterFrame = update_master_frame(leftFrame, rightFrame, disp_vis, fourthFrame)
 
+        disp_x_start, disp_y_start = 0, 400
+        disp_x_end, disp_y_end = 640, 800
+        if (disp_x_start <= mouse_coords[0] < disp_x_end and
+            disp_y_start <= mouse_coords[1] < disp_y_end and in_disp):
+            local_x = mouse_coords[0] # disp_vis x offset
+            local_y = mouse_coords[1] - 400  # disp_vis y offset
+            if 0 <= local_x < depth_frame.shape[1] and 0 <= local_y < depth_frame.shape[0]:
+                depth_val = depth_frame[int(local_y * 2), int(local_x * 2)] / 1000.0  # mm → meters
+                display_text = f"Depth: {depth_val:.2f}m"
+                text_pos = (mouse_coords[0] + 10, mouse_coords[1] + 10)
+
+                cv2.putText(masterFrame, display_text, text_pos,
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2, cv2.LINE_AA)
         calibration_result = dyncal_out.tryGet()
 
         # Optional info
@@ -154,11 +168,10 @@ with pipeline:
             depthDiff = getattr(calib_quality, 'depthErrorDifference', []).copy()
             rotationDiff = getattr(calib_quality, 'rotationChange', []).copy()
             print_final_calibration_results(calib_quality, state)
+            display = True
 
-        if leftFrame is not None:
-            cv2.imshow("Left", leftFrame)
-        if rightFrame is not None:
-            cv2.imshow("Right", rightFrame)
+        if leftFrame is not None and rightFrame is not None:
+            cv2.imshow("MasterFrame", masterFrame)
 
         key = cv2.waitKey(1)
 
@@ -194,17 +207,26 @@ with pipeline:
             print("Sending command for forced recalibration")
 
         elif key == ord("n"):
-            print("Device setting new calibration")
+            print("Device applying new calibration")
             device.setCalibration(calibNew)
+            print("New calibration applied successfully")
 
         elif key == ord("o"):
-            print("Device setting old calibration")
+            print("Device applying old calibration")
             device.setCalibration(calibOld)
+            print("Old calibration applied successfully")
 
         elif key == ord("s"):
             print("Device flasing new calibration")
             device.flashCalibration(calibNew)
+            print("New calibration flashed successfully")
 
         elif key == ord("k"):
             print("Device flasing old calibration")
             device.flashCalibration(calibOld)
+            print("Old calibration flashed successfully")
+        
+        elif key == ord("f"):
+            print("Device flashing factory calibration")
+            device.flashCalibration(device.readFactoryCalibration())
+            print("Factory calibration flashed successfully.")

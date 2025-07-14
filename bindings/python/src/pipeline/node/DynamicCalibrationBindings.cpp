@@ -33,7 +33,7 @@ void bind_dynamic_calibration(pybind11::module& m, void* pCallstack) {
         .def("setRunOnHost", &DynamicCalibration::setRunOnHost, py::arg("runOnHost"), DOC(dai, node, DynamicCalibration, setRunOnHost))
         .def("runOnHost", &DynamicCalibration::runOnHost, DOC(dai, node, DynamicCalibration, runOnHost))
         .def("setPerformanceMode", &DynamicCalibration::setPerformanceMode, py::arg("mode"), DOC(dai, node, DynamicCalibration, setPerformanceMode))
-        .def("setContinousMode", &DynamicCalibration::setContinousMode, DOC(dai, node, DynamicCalibration, setContinousMode))
+        .def("setContinousMode", &DynamicCalibration::setContiniousMode, DOC(dai, node, DynamicCalibration, setContiniousMode))
         .def("setTimeFrequency", &DynamicCalibration::setTimeFrequency, py::arg("int"), DOC(dai, node, DynamicCalibration, setTimeFrequency))
     ;
     daiNodeModule.attr("DynamicCalibration").attr("Properties") = DynamicCalibrationProperties;

@@ -51,7 +51,7 @@ void DynamicCalibration::setPerformanceMode(dai::DynamicCalibrationConfig::Algor
     properties.initialConfig.algorithmControl.performanceMode = mode;
 }
 
-void DynamicCalibration::setContinousMode() {
+void DynamicCalibration::setContiniousMode() {
     properties.initialConfig.algorithmControl.recalibrationMode = dai::DynamicCalibrationConfig::AlgorithmControl::RecalibrationMode::CONTINUOUS;
 }
 
@@ -462,6 +462,7 @@ void DynamicCalibration::run() {
 
                 if(calibrationHandle->getCameraCalibration()) {
                     CalibrationHandler calibHandler = device->getCalibration();
+                    dynResult.newCalibration.emplace();
                     dynResult.newCalibration->calibHandler = convertDCLtoDAI(calibHandler, calibrationHandle, daiSocketA, daiSocketB, widthDefault, heightDefault);
                     calibrationSM.deleteAllData();
                     logger::info("[DynamicCalibration] Got new calibrationHandler.");

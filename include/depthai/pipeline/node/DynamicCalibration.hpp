@@ -80,7 +80,7 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     /**
      * Set Dynamic recalibration as Continious mode, no user interaction needed
      */
-    void setContinousMode();
+    void setContiniousMode();
 
     /**
      * Set time frequency, when new recalibration will be performed in Continious mode

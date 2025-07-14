@@ -22,12 +22,13 @@ def draw_recalibration_message(image, values, angles):
 
     lines.append(f"Euler angles (deg): Roll={angles[0]:.2f}, Pitch={angles[1]:.2f}, Yaw={angles[2]:.2f}")
     lines.append(f"Depth error @1m:{values[0]:.2f}%, 2m:{values[1]:.2f}%, 5m:{values[2]:.2f}%, 10m:{values[3]:.2f}%")
+    lines.append("Press any key to continue ...")
 
     # --- Text layout parameters ---
     font = cv2.FONT_HERSHEY_SIMPLEX
-    font_scale = 0.7
+    font_scale = 1.2
     thickness = 2
-    line_spacing = 12
+    line_spacing = 25
     line_height = int(cv2.getTextSize("Test", font, font_scale, thickness)[0][1] + line_spacing)
 
     # Calculate full box height and max width
@@ -88,8 +89,8 @@ def draw_health_bar(image, values, rotation, display_text = ""):
             cv2.rectangle(image, (start_x, bar_y), (end_x, bar_y + bar_height), color, -1)
 
             # Add the label inside the section
-            font_scale = 0.4
-            thickness = 2
+            font_scale = 0.8
+            thickness = 3
             text_size = cv2.getTextSize(labels[i], cv2.FONT_HERSHEY_SIMPLEX, font_scale, thickness)[0]
             text_x = start_x + (section_width - text_size[0]) // 2
             text_y = bar_y + (bar_height + text_size[1]) // 2
@@ -108,7 +109,7 @@ def draw_health_bar(image, values, rotation, display_text = ""):
 
         # Add the numerical value above the pointer
         text = f"Depth error changes at 1m->{values[0]:.2f}%, 2m->{values[1]:.2f}%, 5m->{values[2]:.2f}%, 10m->{values[3]:.2f}%"
-        font_scale = 0.6
+        font_scale = 0.9
         text_size = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, font_scale, 2)[0]
         text_width, text_height = text_size
 
@@ -130,12 +131,12 @@ def draw_health_bar(image, values, rotation, display_text = ""):
         # Draw text at the center of the box
         text_x = box_x + (box_width - text_width) // 2
         text_y = box_y + (box_height + text_height) // 2
-        cv2.putText(image, text, (text_x, text_y - 100), cv2.FONT_HERSHEY_SIMPLEX, font_scale, (255, 255, 255), 2)
-        font_scale = 0.4
+        cv2.putText(image, text, (text_x, text_y - 100), cv2.FONT_HERSHEY_SIMPLEX, font_scale, (255, 255, 255), 3)
+        font_scale = 1.0
         # Draw the pointer
         if display_text != "":
-            text =display_text
-            text_size = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, font_scale, 2)[0]
+            text = display_text
+            text_size = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, font_scale, 5)[0]
             text_width, text_height = text_size
 
             # Define box dimensions
@@ -156,11 +157,11 @@ def draw_health_bar(image, values, rotation, display_text = ""):
             # Draw text at the center of the box
             text_x = box_x + (box_width - text_width) // 2
             text_y = box_y + (box_height + text_height) // 2
-            font_scale=0.4
+            font_scale=1.0
             cv2.putText(image, text, (text_x, text_y - 50), cv2.FONT_HERSHEY_SIMPLEX, font_scale, (255, 255, 255), 2)
 
         text = "Press any key to continue ..."
-        text_size = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, font_scale, 2)[0]
+        text_size = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, font_scale, 5)[0]
         text_width, text_height = text_size
 
         # Define box dimensions
@@ -181,7 +182,7 @@ def draw_health_bar(image, values, rotation, display_text = ""):
         # Draw text at the center of the box
         text_x = box_x + (box_width - text_width) // 2
         text_y = box_y + (box_height + text_height) // 2
-        font_scale=0.4
+        font_scale=1.0
         cv2.putText(image, text, (text_x, text_y + 50), cv2.FONT_HERSHEY_SIMPLEX, font_scale, (255, 255, 255), 2)
         return image
 
@@ -227,7 +228,7 @@ def draw_progress_bar_with_percentage(image, progress, coverage_check, bar_color
 
         # Draw "Coverage check" text below the progress bar
         if not coverage_check:
-            coverage_text = "Insufficient coverage - move the camera slowly..."
+            coverage_text = "Insufficient coverage ..."
         else:
             coverage_text = "Waiting for enough data ..."
         coverage_text_size = cv2.getTextSize(coverage_text, cv2.FONT_HERSHEY_SIMPLEX, font_scale, 2)[0]
@@ -319,14 +320,14 @@ def print_final_calibration_results(calib_quality, state: str):
 
     # Instructions
     if state == "Recalibration":
-        print("To apply it, press 'n', to revert, press 'o', to flash new calibration press 's'.")
+        print("New calibration has been applied, to apply the old one, press 'o'. To flash the new calibration, press 's'.")
     else:
         print("To continue with recalibration, press 'r'.")
 
     print("<<< -----------------------------|Finished|------------------------------------>>>\n")
 
-def draw_key_commands(image, top_left=(10, 20), font_scale=0.5, color=(255, 255, 255), thickness=1, line_spacing=20):
-    """Draws key command info at the top-left corner of the image with a semi-transparent background."""
+def draw_key_commands(image, font_scale=1.2, color=(255, 255, 255), thickness=2, line_spacing=60):
+    """Draws key command info centered on the image with a semi-transparent full-frame background."""
     commands = [
         "DynamicCalibration mode, Key commands:",
         "[c] Calibration quality check",
@@ -337,22 +338,35 @@ def draw_key_commands(image, top_left=(10, 20), font_scale=0.5, color=(255, 255,
         "[o] Apply old calibration",
         "[s] Flash new calibration",
         "[k] Flash old calibration",
+        "[f] Flash factory calibration",
         "[q] Quit",
     ]
 
-    x, y = top_left
-    width = 400
-    height = line_spacing * len(commands) + 10
-
-    # Make a transparent overlay
+    height, width = image.shape[:2]
     overlay = image.copy()
-    cv2.rectangle(overlay, (x - 5, y - 15), (x + width, y + height), (0, 0, 0), -1)
-    # Blend it with original
+
+    # Draw semi-transparent black background over the entire frame
+    cv2.rectangle(overlay, (0, 0), (width, height), (0, 0, 0), -1)
     alpha = 0.5
     cv2.addWeighted(overlay, alpha, image, 1 - alpha, 0, image)
 
-    # Draw text
+    # Calculate vertical centering
+    text_block_height = line_spacing * len(commands)
+    y_start = (height - text_block_height) // 2
+
     for i, line in enumerate(commands):
-        y_offset = y + i * line_spacing
-        cv2.putText(image, line, (x, y_offset), cv2.FONT_HERSHEY_SIMPLEX,
+        text_size = cv2.getTextSize(line, cv2.FONT_HERSHEY_SIMPLEX, font_scale, thickness)[0]
+        x = (width - text_size[0]) // 2
+        y = y_start + i * line_spacing
+        cv2.putText(image, line, (x, y), cv2.FONT_HERSHEY_SIMPLEX,
                     font_scale, color, thickness, lineType=cv2.LINE_AA)
+        
+def update_master_frame(leftFrame, rightFrame, disp_vis, fourthFrame, width = 1280, height = 800):
+    master_frame = np.zeros((height, width, 3), dtype=np.uint8)
+
+    # Place subframes into master
+    master_frame[0:400, 0:640] = cv2.resize(leftFrame, (width // 2, height // 2))           # Top-left
+    master_frame[0:400, 640:1280] = cv2.resize(rightFrame, (width // 2, height // 2))       # Top-right
+    master_frame[400:800, 0:640] = cv2.resize(disp_vis, (width // 2, height // 2))          # Bottom-left
+    master_frame[400:800, 640:1280] = cv2.resize(fourthFrame, (width // 2, height // 2))
+    return master_frame
