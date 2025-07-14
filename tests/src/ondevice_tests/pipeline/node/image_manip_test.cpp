@@ -1,5 +1,6 @@
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_test_macros.hpp>
+#include <utility>
 
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/depthai.hpp"
@@ -257,35 +258,35 @@ double compareHistograms(const cv::Mat& img1, const cv::Mat& img2) {
     return similarity;
 }
 
-void runManipTests(dai::ImgFrame::Type type, bool undistort, std::vector<float> coeffs = {}) {
+void runManipTests(dai::ImgFrame::Type type, bool undistort, bool useCoeffs = true) {
     dai::Pipeline p;
+    auto camera = p.create<dai::node::Camera>()->build();
     auto manip = p.create<dai::node::ImageManip>()->build();
     manip->setMaxOutputFrameSize(6750208);
     manip->inputConfig.setWaitForMessage(true);
 
-    auto inputImg = cv::imread(LENNA_PATH);
-    cv::resize(inputImg, inputImg, cv::Size(1024, 512));
-    auto inputFrame = std::make_shared<dai::ImgFrame>();
-    inputFrame->setCvFrame(inputImg, type);
-    inputFrame->transformation.setDistortionCoefficients(coeffs);
-
     auto config = std::make_shared<dai::ImageManipConfig>();
-    config->setReusePreviousImage(true);
 
+    auto camOutQ = camera->requestOutput({1024, 512})->createOutputQueue();
     auto inputQueue = manip->inputImage.createInputQueue();
     auto configQueue = manip->inputConfig.createInputQueue();
     auto outputQueue = manip->out.createOutputQueue();
 
     p.start();
-    inputQueue->send(inputFrame);
 
-    auto getFrame = [&](std::shared_ptr<dai::ImageManipConfig> _cfg, uint32_t outWidth, uint32_t outHeight) {
+    auto getFrames = [&](std::shared_ptr<dai::ImageManipConfig> _cfg, uint32_t outWidth, uint32_t outHeight) {
+        auto frame = camOutQ->get<dai::ImgFrame>();
+        if(!useCoeffs) frame->transformation.setDistortionCoefficients({});
+        inputQueue->send(frame);
         configQueue->send(_cfg);
         auto outFrame = outputQueue->get<dai::ImgFrame>();
         REQUIRE(outFrame != nullptr);
         REQUIRE(outFrame->getWidth() == outWidth);
         REQUIRE(outFrame->getHeight() == outHeight);
-        return outFrame;
+        return std::make_pair(frame, outFrame);
+    };
+    auto getFrame = [&](std::shared_ptr<dai::ImageManipConfig> _cfg, uint32_t outWidth, uint32_t outHeight) {
+        return getFrames(_cfg, outWidth, outHeight).second;
     };
 
     // Scale up
@@ -296,7 +297,7 @@ void runManipTests(dai::ImgFrame::Type type, bool undistort, std::vector<float> 
         if(undistort) {
             cfg->setUndistort(true);
             auto outFrame2 = getFrame(cfg, 1400, 700);
-            if(!coeffs.empty()) REQUIRE(!equal(outFrame1->getCvFrame(), outFrame2->getCvFrame()));
+            if(undistort && useCoeffs) REQUIRE(!equal(outFrame1->getCvFrame(), outFrame2->getCvFrame()));
         }
     }
 
@@ -308,7 +309,7 @@ void runManipTests(dai::ImgFrame::Type type, bool undistort, std::vector<float> 
         if(undistort) {
             cfg->setUndistort(true);
             auto outFrame2 = getFrame(cfg, 1500, 1500);
-            if(!coeffs.empty()) REQUIRE(!equal(outFrame1->getCvFrame(), outFrame2->getCvFrame()));
+            if(undistort && useCoeffs) REQUIRE(!equal(outFrame1->getCvFrame(), outFrame2->getCvFrame()));
         }
     }
 
@@ -320,7 +321,7 @@ void runManipTests(dai::ImgFrame::Type type, bool undistort, std::vector<float> 
         if(undistort) {
             cfg->setUndistort(true);
             auto outFrame2 = getFrame(cfg, 1500, 1500);
-            if(!coeffs.empty()) REQUIRE(!equal(outFrame1->getCvFrame(), outFrame2->getCvFrame()));
+            if(undistort && useCoeffs) REQUIRE(!equal(outFrame1->getCvFrame(), outFrame2->getCvFrame()));
         }
     }
 
@@ -333,7 +334,7 @@ void runManipTests(dai::ImgFrame::Type type, bool undistort, std::vector<float> 
         if(undistort) {
             cfg->setUndistort(true);
             auto outFrame2 = getFrame(cfg, 1500, 1500);
-            if(!coeffs.empty()) REQUIRE(!equal(outFrame1->getCvFrame(), outFrame2->getCvFrame()));
+            if(undistort && useCoeffs) REQUIRE(!equal(outFrame1->getCvFrame(), outFrame2->getCvFrame()));
         }
     }
 
@@ -345,7 +346,7 @@ void runManipTests(dai::ImgFrame::Type type, bool undistort, std::vector<float> 
         if(undistort) {
             cfg->setUndistort(true);
             auto outFrame2 = getFrame(cfg, 600, 400);
-            if(!coeffs.empty()) REQUIRE(!equal(outFrame1->getCvFrame(), outFrame2->getCvFrame()));
+            if(undistort && useCoeffs) REQUIRE(!equal(outFrame1->getCvFrame(), outFrame2->getCvFrame()));
         }
     }
 
@@ -357,7 +358,7 @@ void runManipTests(dai::ImgFrame::Type type, bool undistort, std::vector<float> 
         if(undistort) {
             cfg->setUndistort(true);
             auto outFrame2 = getFrame(cfg, 600, 400);
-            if(!coeffs.empty()) REQUIRE(!equal(outFrame1->getCvFrame(), outFrame2->getCvFrame()));
+            if(undistort && useCoeffs) REQUIRE(!equal(outFrame1->getCvFrame(), outFrame2->getCvFrame()));
         }
     }
 
@@ -369,7 +370,7 @@ void runManipTests(dai::ImgFrame::Type type, bool undistort, std::vector<float> 
         if(undistort) {
             cfg->setUndistort(true);
             auto outFrame2 = getFrame(cfg, 600, 400);
-            if(!coeffs.empty()) REQUIRE(!equal(outFrame1->getCvFrame(), outFrame2->getCvFrame()));
+            if(undistort && useCoeffs) REQUIRE(!equal(outFrame1->getCvFrame(), outFrame2->getCvFrame()));
         }
     }
 
@@ -382,7 +383,7 @@ void runManipTests(dai::ImgFrame::Type type, bool undistort, std::vector<float> 
         if(undistort) {
             cfg->setUndistort(true);
             auto outFrame2 = getFrame(cfg, 600, 400);
-            if(!coeffs.empty()) REQUIRE(!equal(outFrame1->getCvFrame(), outFrame2->getCvFrame()));
+            if(undistort && useCoeffs) REQUIRE(!equal(outFrame1->getCvFrame(), outFrame2->getCvFrame()));
         }
     }
 
@@ -394,7 +395,7 @@ void runManipTests(dai::ImgFrame::Type type, bool undistort, std::vector<float> 
         if(undistort) {
             cfg->setUndistort(true);
             auto outFrame2 = getFrame(cfg, 600, 400);
-            if(!coeffs.empty()) REQUIRE(!equal(outFrame1->getCvFrame(), outFrame2->getCvFrame()));
+            if(undistort && useCoeffs) REQUIRE(!equal(outFrame1->getCvFrame(), outFrame2->getCvFrame()));
         }
     }
 
@@ -406,7 +407,7 @@ void runManipTests(dai::ImgFrame::Type type, bool undistort, std::vector<float> 
         if(undistort) {
             cfg->setUndistort(true);
             auto outFrame2 = getFrame(cfg, 600, 400);
-            if(!coeffs.empty()) REQUIRE(!equal(outFrame1->getCvFrame(), outFrame2->getCvFrame()));
+            if(undistort && useCoeffs) REQUIRE(!equal(outFrame1->getCvFrame(), outFrame2->getCvFrame()));
         }
     }
 
@@ -419,18 +420,18 @@ void runManipTests(dai::ImgFrame::Type type, bool undistort, std::vector<float> 
         if(undistort) {
             cfg->setUndistort(true);
             auto outFrame2 = getFrame(cfg, 100, 100);
-            if(!coeffs.empty()) REQUIRE(!equal(outFrame1->getCvFrame(), outFrame2->getCvFrame()));
+            if(undistort && useCoeffs) REQUIRE(!equal(outFrame1->getCvFrame(), outFrame2->getCvFrame()));
         }
     }
 
-    if(undistort && !coeffs.empty()) {
+    if(undistort && useCoeffs) {
         // Undistort only
         {
             auto cfg = std::make_shared<dai::ImageManipConfig>(*config);
             cfg->setUndistort(true);
-            auto outFrame = getFrame(cfg, 1024, 512);
-            REQUIRE(compareHistograms(outFrame->getCvFrame(), inputFrame->getCvFrame())  > 0.8);
-            REQUIRE(!equal(outFrame->getCvFrame(), inputFrame->getCvFrame()));
+            auto frames = getFrames(cfg, 1024, 512);
+            REQUIRE(compareHistograms(frames.first->getCvFrame(), frames.second->getCvFrame()) > 0.8);
+            REQUIRE(!equal(frames.first->getCvFrame(), frames.second->getCvFrame()));
         }
     }
 
@@ -450,62 +451,17 @@ TEST_CASE("ImageManip RGB888i") {
 }
 
 TEST_CASE("ImageManip NV12 undistort no coefficients") {
-    runManipTests(dai::ImgFrame::Type::NV12, true);
+    runManipTests(dai::ImgFrame::Type::NV12, true, false);
 }
 
 TEST_CASE("ImageManip NV12 undistort") {
-    runManipTests(dai::ImgFrame::Type::NV12,
-                  true,
-                  {-7.56764030456543,
-                   18.97133445739746,
-                   0.0006435539107769728,
-                   -5.642612813971937e-05,
-                   6.156050682067871,
-                   -7.587080001831055,
-                   19.094820022583008,
-                   5.732314109802246,
-                   0.0,
-                   0.0,
-                   0.0,
-                   0.0,
-                   -0.0009434317471459508,
-                   0.002672438742592931});
+    runManipTests(dai::ImgFrame::Type::NV12, true);
 }
 
 TEST_CASE("ImageManip GRAY8 undistort") {
-    runManipTests(dai::ImgFrame::Type::GRAY8,
-                  true,
-                  {-7.56764030456543,
-                   18.97133445739746,
-                   0.0006435539107769728,
-                   -5.642612813971937e-05,
-                   6.156050682067871,
-                   -7.587080001831055,
-                   19.094820022583008,
-                   5.732314109802246,
-                   0.0,
-                   0.0,
-                   0.0,
-                   0.0,
-                   -0.0009434317471459508,
-                   0.002672438742592931});
+    runManipTests(dai::ImgFrame::Type::GRAY8, true);
 }
 
 TEST_CASE("ImageManip RGB888i undistort") {
-    runManipTests(dai::ImgFrame::Type::RGB888i,
-                  true,
-                  {-7.56764030456543,
-                   18.97133445739746,
-                   0.0006435539107769728,
-                   -5.642612813971937e-05,
-                   6.156050682067871,
-                   -7.587080001831055,
-                   19.094820022583008,
-                   5.732314109802246,
-                   0.0,
-                   0.0,
-                   0.0,
-                   0.0,
-                   -0.0009434317471459508,
-                   0.002672438742592931});
+    runManipTests(dai::ImgFrame::Type::RGB888i, true);
 }
