@@ -51,32 +51,6 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     using DeviceNodeCRTP::DeviceNodeCRTP;
     ~DynamicCalibration() override = default;
 
-    struct CalibrationStateMachine {
-        enum class CalibrationState { Idle, InitializingPipeline, LoadingImages, ProcessingQuality, Recalibrating, ResetDynamicRecalibration };
-
-        enum class CalibrationMode { None, QualityCheck, Recalibration };
-
-        CalibrationState state = CalibrationState::Idle;
-        CalibrationMode mode = CalibrationMode::None;
-        bool pipelineReady = false;
-
-        void startQualityCheck();
-
-        void startRecalibration();
-
-        void markPipelineReady();
-
-        bool isIdle() const;
-
-        void AdvanceAfterLoading();
-
-        void deleteAllData();
-
-        void finish();
-
-        std::string stateToString() const;
-    };
-
     // clang-format off
     /**
      * Input DynamicCalibrationConfig message with ability to modify parameters in runtime.
