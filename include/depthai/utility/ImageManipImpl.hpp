@@ -248,6 +248,9 @@ struct FrameSpecs {
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
 class UndistortOpenCvImpl {
+   public:
+    enum class BuildStatus { ONE_SHOT, TWO_SHOT, NOT_USED, NOT_BUILT, ERROR };
+
    private:
     cv::Mat undistortMap1;
     cv::Mat undistortMap2;
@@ -257,32 +260,34 @@ class UndistortOpenCvImpl {
     std::shared_ptr<spdlog::async_logger> logger;
 
     std::array<float, 9> cameraMatrix;
+    std::array<float, 9> newCameraMatrix;
     std::vector<float> distCoeffs;
-    uint32_t width;
-    uint32_t height;
+    dai::ImgFrame::Type type;
+    uint32_t srcWidth;
+    uint32_t srcHeight;
+    uint32_t dstWidth;
+    uint32_t dstHeight;
+
+    bool validMatrix(std::array<float, 9> matrix) const;
+    void initMaps(std::array<float, 9> cameraMatrix,
+                  std::array<float, 9> newCameraMatrix,
+                  std::vector<float> distCoeffs,
+                  dai::ImgFrame::Type type,
+                  uint32_t srcWidth,
+                  uint32_t srcHeight,
+                  uint32_t dstWidth,
+                  uint32_t dstHeight);
 
    public:
     UndistortOpenCvImpl(std::shared_ptr<spdlog::async_logger> logger) : logger(std::move(logger)) {}
-    bool build(std::array<float, 9> cameraMatrix, std::vector<float> distCoeffs, uint32_t width, uint32_t height) {
-        if(!distCoeffs.empty()) {
-            if(width != this->width || height != this->height || distCoeffs != this->distCoeffs || cameraMatrix != this->cameraMatrix) {
-                this->cameraMatrix = std::move(cameraMatrix);
-                this->distCoeffs = std::move(distCoeffs);
-                this->width = width;
-                this->height = height;
-                undistortMap1 = cv::Mat();
-                undistortMap2 = cv::Mat();
-                undistortMap1Half = cv::Mat();
-                undistortMap2Half = cv::Mat();
-
-                cv::Mat cvCameraMatrix(3, 3, CV_32F, this->cameraMatrix.data());
-                cv::initUndistortRectifyMap(
-                    cvCameraMatrix, this->distCoeffs, cv::Mat(), cvCameraMatrix, cv::Size(width, height), CV_16SC2, undistortMap1, undistortMap2);
-            }
-            return true;
-        }
-        return false;
-    }
+    BuildStatus build(std::array<float, 9> cameraMatrix,
+                      std::array<float, 9> newCameraMatrix,
+                      std::vector<float> distCoeffs,
+                      dai::ImgFrame::Type type,
+                      uint32_t srcWidth,
+                      uint32_t srcHeight,
+                      uint32_t dstWidth,
+                      uint32_t dstHeight);
     void undistort(cv::Mat& src, cv::Mat& dst);
 };
 #endif
@@ -301,6 +306,7 @@ class Warp {
     ImageManipOpsBase<Container>::Background background = ImageManipOpsBase<Container>::Background::COLOR;
     uint32_t backgroundColor[3] = {0, 0, 0};
     bool enableUndistort = false;
+    bool undistortOneShot = false;
 
     ImgFrame::Type type;
     FrameSpecs srcSpecs;
@@ -323,10 +329,13 @@ class Warp {
                        std::vector<std::array<std::array<float, 2>, 4>> srcCorners) = 0;
     virtual void buildUndistort(bool enable,
                                 const std::array<float, 9>& cameraMatrix,
+                                const std::array<float, 9>& newCameraMatrix,
                                 const std::vector<float>& distCoeffs,
                                 const ImgFrame::Type type,
-                                const uint32_t width,
-                                const uint32_t height) = 0;
+                                const uint32_t srcWidth,
+                                const uint32_t srcHeight,
+                                const uint32_t dstWidth,
+                                const uint32_t dstHeight) = 0;
 
     virtual void apply(const std::shared_ptr<ImageManipData> src, std::shared_ptr<ImageManipData> dst) = 0;
 
@@ -369,10 +378,13 @@ class WarpH : public Warp<ImageManipBuffer, ImageManipData> {
                std::vector<std::array<std::array<float, 2>, 4>> srcCorners) override;
     void buildUndistort(bool enable,
                         const std::array<float, 9>& cameraMatrix,
+                        const std::array<float, 9>& newCameraMatrix,
                         const std::vector<float>& distCoeffs,
                         const ImgFrame::Type type,
-                        const uint32_t width,
-                        const uint32_t height) override;
+                        const uint32_t srcWidth,
+                        const uint32_t srcHeight,
+                        const uint32_t dstWidth,
+                        const uint32_t dstHeight) override;
 
     void apply(const std::shared_ptr<ImageManipData> src, std::shared_ptr<ImageManipData> dst) override;
 };
@@ -497,10 +509,13 @@ class ImageManipOperations {
     ImageManipOperations& build(const ImageManipOpsBase<Container>& base, ImgFrame::Type outputFrameType, FrameSpecs srcFrameSpecs, ImgFrame::Type type);
     ImageManipOperations& buildUndistort(bool enable,
                                          const std::array<float, 9>& cameraMatrix,
+                                         const std::array<float, 9>& newCameraMatrix,
                                          const std::vector<float>& distCoeffs,
                                          const ImgFrame::Type type,
-                                         const uint32_t width,
-                                         const uint32_t height);
+                                         const uint32_t srcWidth,
+                                         const uint32_t srcHeight,
+                                         const uint32_t dstWidth,
+                                         const uint32_t dstHeight);
 
     bool apply(const std::shared_ptr<ImageManipData> src, std::shared_ptr<ImageManipData> dst);
 
@@ -2796,11 +2811,14 @@ template <template <typename T> typename ImageManipBuffer,
 ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>& ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::buildUndistort(
     bool enable,
     const std::array<float, 9>& cameraMatrix,
+    const std::array<float, 9>& newCameraMatrix,
     const std::vector<float>& distCoeffs,
     const ImgFrame::Type type,
-    const uint32_t width,
-    const uint32_t height) {
-    warpEngine.buildUndistort(enable, cameraMatrix, distCoeffs, type, width, height);
+    const uint32_t srcWidth,
+    const uint32_t srcHeight,
+    const uint32_t dstWidth,
+    const uint32_t dstHeight) {
+    warpEngine.buildUndistort(enable, cameraMatrix, newCameraMatrix, distCoeffs, type, srcWidth, srcHeight, dstWidth, dstHeight);
     return *this;
 }
 
@@ -3096,18 +3114,43 @@ void WarpH<ImageManipBuffer, ImageManipData>::build(const FrameSpecs srcFrameSpe
 template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
 void WarpH<ImageManipBuffer, ImageManipData>::buildUndistort(bool enable,
                                                              const std::array<float, 9>& cameraMatrix,
+                                                             const std::array<float, 9>& newCameraMatrix,
                                                              const std::vector<float>& distCoeffs,
                                                              const ImgFrame::Type type,
-                                                             const uint32_t width,
-                                                             const uint32_t height) {
+                                                             const uint32_t srcWidth,
+                                                             const uint32_t srcHeight,
+                                                             const uint32_t dstWidth,
+                                                             const uint32_t dstHeight) {
     if(enable) {
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-        auto frameSize = getAlignedOutputFrameSize(type, width, height);
-        if(!auxFrame || auxFrame->size() < frameSize) {
-            auxFrame = std::make_shared<ImageManipData>(frameSize);
-        }
         if(!undistortImpl) undistortImpl = std::make_unique<UndistortOpenCvImpl>(this->logger);
-        this->enableUndistort = undistortImpl->build(cameraMatrix, distCoeffs, width, height);
+        auto undistortStatus = undistortImpl->build(cameraMatrix, newCameraMatrix, distCoeffs, type, srcWidth, srcHeight, dstWidth, dstHeight);
+        switch(undistortStatus) {
+            case UndistortOpenCvImpl::BuildStatus::ONE_SHOT:
+                this->enableUndistort = true;
+                this->undistortOneShot = true;
+                break;
+            case UndistortOpenCvImpl::BuildStatus::TWO_SHOT:
+                this->enableUndistort = true;
+                this->undistortOneShot = false;
+                break;
+            case UndistortOpenCvImpl::BuildStatus::NOT_USED:
+                this->enableUndistort = false;
+                this->undistortOneShot = false;
+                break;
+            case UndistortOpenCvImpl::BuildStatus::NOT_BUILT:
+                break;
+            case UndistortOpenCvImpl::BuildStatus::ERROR:
+                this->enableUndistort = false;
+                break;
+        }
+
+        if(this->enableUndistort && !this->undistortOneShot) {
+            auto frameSize = getAlignedOutputFrameSize(type, srcWidth, srcHeight);
+            if(!auxFrame || auxFrame->size() < frameSize) {
+                auxFrame = std::make_shared<ImageManipData>(frameSize);
+            }
+        }
 #else
         throw std::runtime_error("Undistort requires OpenCV support");
 #endif
@@ -3182,9 +3225,9 @@ void printSpecs(spdlog::async_logger& logger, FrameSpecs specs);
 
 template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
 void WarpH<ImageManipBuffer, ImageManipData>::apply(const std::shared_ptr<ImageManipData> src, std::shared_ptr<ImageManipData> dst) {
-    auto undistortDst = this->isIdentityWarp() ? dst : auxFrame;
+    auto undistortDst = this->isIdentityWarp() || this->undistortOneShot ? dst : auxFrame;
+    auto undistortSpecs = this->isIdentityWarp() || this->undistortOneShot ? this->dstSpecs : getDstFrameSpecs(this->srcSpecs.width, this->srcSpecs.height, this->type);
     auto warpSrc = this->enableUndistort ? auxFrame : src;
-    auto undistortSpecs = this->isIdentityWarp() ? this->dstSpecs : getDstFrameSpecs(this->srcSpecs.width, this->srcSpecs.height, this->type);
     auto warpSrcSpecs = this->enableUndistort ? undistortSpecs : this->srcSpecs;
     // Apply transformation multiple times depending on the image format
     switch(this->type) {
@@ -3199,7 +3242,7 @@ void WarpH<ImageManipBuffer, ImageManipData>::apply(const std::shared_ptr<ImageM
                 this->undistortImpl->undistort(srcCv, dstCv);
             }
     #endif
-            if(!this->isIdentityWarp()) {
+            if(!this->undistortOneShot && !this->isIdentityWarp()) {
                 transform(warpSrc->offset(warpSrcSpecs.p1Offset),
                           dst->offset(this->dstSpecs.p1Offset),
                           warpSrcSpecs.width,
@@ -3244,7 +3287,7 @@ void WarpH<ImageManipBuffer, ImageManipData>::apply(const std::shared_ptr<ImageM
                 }
             }
     #endif
-            if(!this->isIdentityWarp()) {
+            if(!this->undistortOneShot && !this->isIdentityWarp()) {
                 transform(warpSrc->offset(warpSrcSpecs.p1Offset),
                           dst->offset(this->dstSpecs.p1Offset),
                           warpSrcSpecs.width,
@@ -3320,7 +3363,7 @@ void WarpH<ImageManipBuffer, ImageManipData>::apply(const std::shared_ptr<ImageM
                 }
             }
     #endif
-            if(!this->isIdentityWarp()) {
+            if(!this->undistortOneShot && !this->isIdentityWarp()) {
                 transform(warpSrc->offset(warpSrcSpecs.p1Offset),
                           dst->offset(this->dstSpecs.p1Offset),
                           warpSrcSpecs.width,
@@ -3386,7 +3429,7 @@ void WarpH<ImageManipBuffer, ImageManipData>::apply(const std::shared_ptr<ImageM
                 }
             }
     #endif
-            if(!this->isIdentityWarp()) {
+            if(!this->undistortOneShot && !this->isIdentityWarp()) {
                 transform(warpSrc->offset(warpSrcSpecs.p1Offset),
                           dst->offset(this->dstSpecs.p1Offset),
                           warpSrcSpecs.width,
@@ -3431,7 +3474,7 @@ void WarpH<ImageManipBuffer, ImageManipData>::apply(const std::shared_ptr<ImageM
                 }
             }
     #endif
-            if(!this->isIdentityWarp()) {
+            if(!this->undistortOneShot && !this->isIdentityWarp()) {
                 transform(warpSrc->offset(warpSrcSpecs.p1Offset),
                           dst->offset(this->dstSpecs.p1Offset),
                           warpSrcSpecs.width,
@@ -3463,7 +3506,7 @@ void WarpH<ImageManipBuffer, ImageManipData>::apply(const std::shared_ptr<ImageM
                 }
             }
     #endif
-            if(!this->isIdentityWarp()) {
+            if(!this->undistortOneShot && !this->isIdentityWarp()) {
                 transform(warpSrc->offset(warpSrcSpecs.p1Offset),
                           dst->offset(this->dstSpecs.p1Offset),
                           warpSrcSpecs.width,

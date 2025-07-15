@@ -25,12 +25,16 @@ void ImageManip::run() {
         [&](const ImageManipConfig& config, const ImgFrame& frame) {
             auto srcFrameSpecs = impl::getSrcFrameSpecs(frame.fb);
             manip.build(config.base, config.outputFrameType, srcFrameSpecs, frame.getType());
+            auto newCameraMatrix = impl::matmul(frame.transformation.getIntrinsicMatrix(), manip.getMatrix());
             manip.buildUndistort(config.base.undistort,
                                  flatten(frame.transformation.getIntrinsicMatrix()),
+                                 flatten(newCameraMatrix),
                                  frame.transformation.getDistortionCoefficients(),
                                  frame.getType(),
                                  frame.getWidth(),
-                                 frame.getHeight());
+                                 frame.getHeight(),
+                                 manip.getOutputWidth(),
+                                 manip.getOutputHeight());
             return manip.getOutputSize();
         },
         [&](std::shared_ptr<Memory>& src, std::shared_ptr<impl::_ImageManipMemory> dst) {
