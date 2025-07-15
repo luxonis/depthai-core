@@ -68,6 +68,7 @@ EMSCRIPTEN_BINDINGS(depthai_js) {
         .value("EdgeDetectorConfig", dai::DatatypeEnum::EdgeDetectorConfig)
         .value("AprilTagConfig", dai::DatatypeEnum::AprilTagConfig)
         .value("AprilTags", dai::DatatypeEnum::AprilTags)
+        .value("Landmarks", dai::DatatypeEnum::Landmarks)
         .value("Tracklets", dai::DatatypeEnum::Tracklets)
         .value("IMUData", dai::DatatypeEnum::IMUData)
         .value("StereoDepthConfig", dai::DatatypeEnum::StereoDepthConfig)

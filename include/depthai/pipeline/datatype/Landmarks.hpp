@@ -2,9 +2,12 @@
 
 #include <vector>
 
-#include "DatatypeEnum.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
-#include "depthai/pipeline/datatype/TransformData.hpp"
+
+#include "depthai/common/Point3d.hpp"
+#include "depthai/common/Quaterniond.hpp"
+
+
 // #include "utility/Serialization.hpp"
 
 namespace dai {
@@ -20,11 +23,17 @@ struct Landmark {
     double size;
 
     /**
-     * The pose of the landmark reletive to base_frame (the camera)
+     * The translation of the landmark reletive to base_frame (the camera)
      */
-    dai::TransformData pose;
+    dai::Point3d translation;
+
+    /**
+     * The orientation of the landmark relative to base_frame (the camera)
+     */
+    dai::Quaterniond quaternion;
 };
-DEPTHAI_SERIALIZE_EXT(Landmark, id, size, pose);
+
+DEPTHAI_SERIALIZE_EXT(Landmark, id, size, translation, quaternion);
 
 
 class Landmarks : public Buffer {
@@ -34,8 +43,8 @@ class Landmarks : public Buffer {
 
     public:
         std::vector<Landmark> landmarks;
-        DEPTHAI_SERIALIZE(Landmarks, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, landmarks);
 
+        DEPTHAI_SERIALIZE(Landmarks, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, landmarks);
         void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
             metadata = utility::serialize(*this);
             datatype = DatatypeEnum::Landmarks;

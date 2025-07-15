@@ -171,6 +171,11 @@ class RTABMapSLAM : public dai::NodeCRTP<dai::node::ThreadedHostNode, RTABMapSLA
      * Whether to use input features for SLAM. False by default.
      */
     void setUseFeatures(bool use);
+    /**
+     * WhWhether to use input landmarks for SLAM. False by default.
+     */
+    void setUseLandmarks(bool use);
+
     void setLocalTransform(std::shared_ptr<TransformData> transform) {
         localTransform = transform->getRTABMapTransform();
     }
@@ -207,6 +212,7 @@ class RTABMapSLAM : public dai::NodeCRTP<dai::node::ThreadedHostNode, RTABMapSLA
     rtabmap::SensorData sensorData;
     float alphaScaling = -1.0;
     bool useFeatures = false;
+    bool useLandmarks = false;
     bool initialized = false;
     std::map<std::string, std::string> rtabParams;
     std::string databasePath = "";

@@ -11,6 +11,7 @@
 #include "rtabmap/core/util3d.h"
 #include "rtabmap/core/util3d_mapping.h"
 // #include "rtabmap/core/Markers/Landmark.h"
+#include <iostream>
 
 namespace dai {
 namespace node {
@@ -68,6 +69,15 @@ void RTABMapSLAM::setUseFeatures(bool use) {
     }
 }
 
+void RTABMapSLAM::setUseLandmarks(bool use) {
+    useLandmarks = use;
+    if(useLandmarks) {
+        landmarks.setBlocking(false);
+        landmarks.setMaxSize(1);
+        inputs[landmarksInputName] = features;
+    }
+}
+
 void RTABMapSLAM::syncCB(std::shared_ptr<dai::ADatatype> data) {
     auto group = std::dynamic_pointer_cast<dai::MessageGroup>(data);
     if(group == nullptr) return;
@@ -80,7 +90,8 @@ void RTABMapSLAM::syncCB(std::shared_ptr<dai::ADatatype> data) {
     if(useFeatures) {
         featuresFrame = group->get<dai::TrackedFeatures>(featuresInputName);
     }
-    if(true) {
+    if(useLandmarks) {
+        
         markersFrame = group->get<dai::Landmarks>(landmarksInputName);
     }
     if(imgFrame != nullptr && depthFrame != nullptr) {
@@ -100,15 +111,14 @@ void RTABMapSLAM::syncCB(std::shared_ptr<dai::ADatatype> data) {
             }
             rtabmap::Landmarks markers;
             if(markersFrame != nullptr) {
+                std::cout << "considering markers";
                 for(auto& marker : markersFrame->landmarks) {
-                    auto trans = marker.pose.getTranslation();
-                    auto rot = marker.pose.getRotationEuler();
+                    auto transform = TransformData(marker.translation.x, marker.translation.y, marker.translation.z,
+                        marker.quaternion.qx, marker.quaternion.qy, marker.quaternion.qz, marker.quaternion.qw);
 
-                    rtabmap::Transform pose = rtabmap::Transform(trans.x, trans.y, trans.z, rot.x, rot.y, rot.z);
+                    cv::Mat covariance = cv::Mat::zeros(6, 6, CV_8UC1);
 
-                    cv::Mat covarience = cv::Mat::zeros(6, 6, CV_8UC1);
-
-                    markers.emplace(std::make_pair(marker.id, rtabmap::Landmark(marker.id, marker.size, pose, covarience)));
+                    markers.emplace(std::make_pair(marker.id, rtabmap::Landmark(marker.id, marker.size, transform.getRTABMapTransform(), covariance)));
                 }
                 sensorData.setLandmarks(markers);
             }

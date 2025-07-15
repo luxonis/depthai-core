@@ -7,6 +7,7 @@
 #include <queue>
 
 #include "depthai/schemas/PointCloudData.pb.h"
+#include "pipeline/datatype/DatatypeEnum.hpp"
 
 namespace dai {
 namespace utility {
@@ -149,6 +150,7 @@ bool deserializationSupported(DatatypeEnum datatype) {
         case DatatypeEnum::EdgeDetectorConfig:
         case DatatypeEnum::AprilTagConfig:
         case DatatypeEnum::AprilTags:
+        case DatatypeEnum::Landmarks:
         case DatatypeEnum::Tracklets:
         case DatatypeEnum::StereoDepthConfig:
         case DatatypeEnum::FeatureTrackerConfig:
