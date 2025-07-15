@@ -25,7 +25,7 @@ void ImageManip::run() {
         [&](const ImageManipConfig& config, const ImgFrame& frame) {
             auto srcFrameSpecs = impl::getSrcFrameSpecs(frame.fb);
             manip.build(config.base, config.outputFrameType, srcFrameSpecs, frame.getType());
-            auto newCameraMatrix = impl::matmul(frame.transformation.getIntrinsicMatrix(), manip.getMatrix());
+            auto newCameraMatrix = impl::matmul(manip.getMatrix(), frame.transformation.getIntrinsicMatrix());
             manip.buildUndistort(config.base.undistort,
                                  flatten(frame.transformation.getIntrinsicMatrix()),
                                  flatten(newCameraMatrix),
