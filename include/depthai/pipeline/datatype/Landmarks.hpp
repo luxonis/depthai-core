@@ -2,9 +2,12 @@
 
 #include <vector>
 
-#include "DatatypeEnum.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
-#include "depthai/pipeline/datatype/TransformData.hpp"
+
+#include "depthai/common/Point3d.hpp"
+#include "depthai/common/Quaterniond.hpp"
+
+
 // #include "utility/Serialization.hpp"
 
 namespace dai {
@@ -40,8 +43,8 @@ class Landmarks : public Buffer {
 
     public:
         std::vector<Landmark> landmarks;
-        DEPTHAI_SERIALIZE(Landmarks, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, landmarks);
 
+        DEPTHAI_SERIALIZE(Landmarks, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, landmarks);
         void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
             metadata = utility::serialize(*this);
             datatype = DatatypeEnum::Landmarks;
