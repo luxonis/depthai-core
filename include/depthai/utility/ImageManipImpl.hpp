@@ -3226,7 +3226,8 @@ void printSpecs(spdlog::async_logger& logger, FrameSpecs specs);
 template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
 void WarpH<ImageManipBuffer, ImageManipData>::apply(const std::shared_ptr<ImageManipData> src, std::shared_ptr<ImageManipData> dst) {
     auto undistortDst = this->isIdentityWarp() || this->undistortOneShot ? dst : auxFrame;
-    auto undistortSpecs = this->isIdentityWarp() || this->undistortOneShot ? this->dstSpecs : getDstFrameSpecs(this->srcSpecs.width, this->srcSpecs.height, this->type);
+    auto undistortSpecs =
+        this->isIdentityWarp() || this->undistortOneShot ? this->dstSpecs : getDstFrameSpecs(this->srcSpecs.width, this->srcSpecs.height, this->type);
     auto warpSrc = this->enableUndistort ? auxFrame : src;
     auto warpSrcSpecs = this->enableUndistort ? undistortSpecs : this->srcSpecs;
     // Apply transformation multiple times depending on the image format
