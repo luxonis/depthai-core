@@ -424,6 +424,19 @@ void runManipTests(dai::ImgFrame::Type type, bool undistort, bool useCoeffs = tr
         }
     }
 
+    // Rotate
+    {
+        auto cfg = std::make_shared<dai::ImageManipConfig>(*config);
+        cfg->addRotateDeg(10);
+        cfg->setOutputSize(400, 400);
+        auto outFrame1 = getFrame(cfg, 400, 400);
+        if(undistort) {
+            cfg->setUndistort(true);
+            auto outFrame2 = getFrame(cfg, 400, 400);
+            if(undistort && useCoeffs) REQUIRE(!equal(outFrame1->getCvFrame(), outFrame2->getCvFrame()));
+        }
+    }
+
     if(undistort && useCoeffs) {
         // Undistort only
         {
