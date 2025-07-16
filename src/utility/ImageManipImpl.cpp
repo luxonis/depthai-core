@@ -1,9 +1,12 @@
 #include "depthai/utility/ImageManipImpl.hpp"
 
-#include <opencv2/calib3d.hpp>
 #include <stdexcept>
 
 #include "depthai/pipeline/datatype/ImageManipConfig.hpp"
+
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    #include <opencv2/calib3d.hpp>
+#endif
 
 #if defined(WIN32) || defined(_WIN32)
     #define _RESTRICT

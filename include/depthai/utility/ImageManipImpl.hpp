@@ -3121,8 +3121,8 @@ void WarpH<ImageManipBuffer, ImageManipData>::buildUndistort(bool enable,
                                                              const uint32_t srcHeight,
                                                              const uint32_t dstWidth,
                                                              const uint32_t dstHeight) {
-    if(enable) {
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    if(enable) {
         if(!undistortImpl) undistortImpl = std::make_unique<UndistortOpenCvImpl>(this->logger);
         auto undistortStatus = undistortImpl->build(cameraMatrix, newCameraMatrix, distCoeffs, type, srcWidth, srcHeight, dstWidth, dstHeight);
         switch(undistortStatus) {
@@ -3151,13 +3151,13 @@ void WarpH<ImageManipBuffer, ImageManipData>::buildUndistort(bool enable,
                 auxFrame = std::make_shared<ImageManipData>(frameSize);
             }
         }
-#else
-        throw std::runtime_error("Undistort requires OpenCV support");
-#endif
     } else {
         undistortImpl = nullptr;
         this->enableUndistort = false;
     }
+#else
+    throw std::runtime_error("Undistort requires OpenCV support");
+#endif
 }
 
 template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
