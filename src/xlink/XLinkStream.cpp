@@ -113,6 +113,14 @@ void XLinkStream::write(long fd, span<const uint8_t> data) {
     }
 }
 
+void XLinkStream::writeGate(span<const uint8_t> data) {
+    auto status = XLinkGateWriteData(streamId, data.data(), static_cast<int>(data.size()));
+    if(status != X_LINK_SUCCESS) {
+        throw XLinkWriteError(status, streamName);
+    }
+}
+
+
 void XLinkStream::read(std::vector<std::uint8_t>& data) {
     XLinkTimespec timestampReceived;
     read(data, timestampReceived);
@@ -156,6 +164,15 @@ std::vector<std::uint8_t> XLinkStream::read(XLinkTimespec& timestampReceived) {
     std::vector<std::uint8_t> data;
     read(data, timestampReceived);
     return data;
+}
+
+void XLinkStream::readGate(std::vector<std::uint8_t>& data) {
+    StreamPacketDesc packet;
+    const auto status = XLinkReadMoveData(streamId, &packet);
+    if(status != X_LINK_SUCCESS) {
+        throw XLinkReadError(status, streamName);
+    }
+    data = std::vector<std::uint8_t>(packet.data, packet.data + packet.length);
 }
 
 StreamPacketDesc XLinkStream::readMove() {

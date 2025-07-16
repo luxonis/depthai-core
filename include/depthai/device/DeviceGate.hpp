@@ -14,6 +14,7 @@
 #include "depthai/device/Version.hpp"
 #include "depthai/utility/Pimpl.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
+#include "depthai/xlink/XLinkStream.hpp"
 namespace dai {
 
 /**
@@ -65,6 +66,8 @@ class DeviceGate {
     std::atomic_bool sessionCreated{false};
 
     XLinkPlatform_t platform;
+    std::shared_ptr<XLinkConnection> gateConnection;
+    std::shared_ptr<XLinkStream> gateStream;
     std::string version;
     // pimpl
     class Impl;

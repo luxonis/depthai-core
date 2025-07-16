@@ -23,11 +23,13 @@ int main() {
         auto videoIn = videoQueue->get<dai::ImgFrame>();
         if(videoIn == nullptr) continue;
 
-        cv::imshow("video", videoIn->getCvFrame());
+	videoIn->getCvFrame();
+std::cout << "Got frame" << std::endl;
+        //cv::imshow("video", videoIn->getCvFrame());
 
-        if(cv::waitKey(1) == 'q') {
-            break;
-        }
+        //if(cv::waitKey(1) == 'q') {
+        //    break;
+        //}
     }
 
     return 0;

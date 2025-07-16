@@ -44,7 +44,7 @@ DeviceGate::DeviceGate(const DeviceInfo& deviceInfo) : deviceInfo(deviceInfo) {
     if(deviceInfo.platform != X_LINK_RVC3 && deviceInfo.platform != X_LINK_RVC4) {
         throw std::invalid_argument("Gate only supports RVC3 and RVC4 platforms");
     }
-    this->platform = deviceInfo.platform;
+    this->platform =deviceInfo.platform;
     if(deviceInfo.platform == X_LINK_RVC3) {
         version = DEPTHAI_DEVICE_RVC3_VERSION;
     } else if(deviceInfo.platform == X_LINK_RVC4) {
@@ -56,12 +56,27 @@ DeviceGate::DeviceGate(const DeviceInfo& deviceInfo) : deviceInfo(deviceInfo) {
     pimpl->cli = std::make_unique<httplib::Client>(deviceInfo.name, DEFAULT_PORT);
     pimpl->cli->set_read_timeout(60);  // 60 seconds timeout to allow for compressing the crash dumps without async
     // pimpl->cli->set_connection_timeout(2);
+        
+    gateConnection = std::make_shared<XLinkConnection>(deviceInfo, X_LINK_GATE);
+    gateStream = std::make_shared<XLinkStream>(gateConnection, "XLink Gate Stream", 32 * 1024 * 1024);
+    
 }
 
 bool DeviceGate::isOkay() {
     if(auto res = pimpl->cli->Get("/api/v1/status")) {
         return nlohmann::json::parse(res->body)["status"].get<bool>();
     }
+
+    struct request_t {
+	uint16_t RequestNum;
+    }__attribute__((packed));
+    request_t request;
+    request.RequestNum = 1;
+
+    span<const uint8_t> data;
+    memcpy((char*)data.data(), &request, sizeof(request));
+    gateStream->writeGate(data);
+
     return false;
 }
 
