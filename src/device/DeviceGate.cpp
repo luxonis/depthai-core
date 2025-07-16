@@ -59,6 +59,7 @@ DeviceGate::DeviceGate(const DeviceInfo& deviceInfo) : deviceInfo(deviceInfo) {
         
     gateConnection = std::make_shared<XLinkConnection>(deviceInfo, X_LINK_GATE);
     gateStream = std::make_shared<XLinkStream>(gateConnection, "XLink Gate Stream", 32 * 1024 * 1024);
+    spdlog::debug("Connected to gate stream");
     
 }
 
