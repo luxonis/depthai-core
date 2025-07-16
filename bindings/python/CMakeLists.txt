@@ -105,6 +105,8 @@ set(SOURCE_LIST
     src/pipeline/node/ReplayBindings.cpp
     src/pipeline/node/ImageAlignBindings.cpp
     src/pipeline/node/RGBDBindings.cpp
+    src/pipeline/node/ImageFiltersBindings.cpp
+    src/pipeline/FilterParamsBindings.cpp
 
     src/pipeline/datatype/ADatatypeBindings.cpp
     src/pipeline/datatype/AprilTagConfigBindings.cpp
