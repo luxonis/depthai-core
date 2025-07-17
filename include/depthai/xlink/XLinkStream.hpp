@@ -92,14 +92,12 @@ class XLinkStream {
     void write(long fd);
     void write(long fd, span<const uint8_t> data);
     void write(const void* data, std::size_t size);
-    void writeGate(span<const uint8_t> data);
     std::vector<std::uint8_t> read();
     std::vector<std::uint8_t> read(XLinkTimespec& timestampReceived);
     void read(std::vector<std::uint8_t>& data);
     void read(std::vector<std::uint8_t>& data, long& fd);
     void read(std::vector<std::uint8_t>& data, XLinkTimespec& timestampReceived);
     void read(std::vector<std::uint8_t>& data, long& fd, XLinkTimespec& timestampReceived);
-    void readGate(std::vector<std::uint8_t>& data);
     // split write helper
     void writeSplit(const void* data, std::size_t size, std::size_t split);
     void writeSplit(const std::vector<uint8_t>& data, std::size_t split);
