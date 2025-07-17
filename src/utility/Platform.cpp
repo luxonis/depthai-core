@@ -21,6 +21,7 @@
 #endif
 
 #if defined(_WIN32) || defined(__USE_W32_SOCKETS)
+    #include <io.h>
     #include <windows.h>
 #endif
 
@@ -101,23 +102,19 @@ bool checkPathExists(const std::filesystem::path& path, bool directory) {
 
 bool checkWritePermissions(const std::filesystem::path& path) {
 #if defined(_WIN32) || defined(__USE_W32_SOCKETS)
-    DWORD ftyp = GetFileAttributesA(path.string().c_str());
-    if(ftyp == INVALID_FILE_ATTRIBUTES) {
-        return false;  // Path does not exist
-    } else if(ftyp & FILE_ATTRIBUTE_READONLY) {
-        return false;  // Path is read-only
-    } else {
-        return true;  // Path is writable
-    }
+    // 2 = write permission
+    return (_access(path.string().c_str(), 2) == 0);
 #else
-    struct stat info;
-    if(stat(path.string().c_str(), &info) != 0) {
-        return false;  // Path does not exist
-    } else if(info.st_mode & S_IWUSR) {
-        return true;  // Path is writable
-    } else {
-        return false;  // Path is read-only
-    }
+    return (access(path.string().c_str(), W_OK) == 0);
+#endif
+}
+
+bool checkReadPermissions(const std::filesystem::path& path) {
+#if defined(_WIN32) || defined(__USE_W32_SOCKETS)
+    // 4 = read permission
+    return (_access(path.string().c_str(), 4) == 0);
+#else
+    return (access(path.string().c_str(), R_OK) == 0);
 #endif
 }
 
