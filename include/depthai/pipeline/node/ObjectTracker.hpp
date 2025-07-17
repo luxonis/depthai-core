@@ -16,7 +16,10 @@ namespace node {
 /**
  * @brief ObjectTracker node. Performs object tracking using Kalman filter and hungarian algorithm.
  */
-class ObjectTracker : public DeviceNodeCRTP<DeviceNode, ObjectTracker, ObjectTrackerProperties> {
+class ObjectTracker : public DeviceNodeCRTP<DeviceNode, ObjectTracker, ObjectTrackerProperties>, public HostRunnable {
+   private:
+    bool runOnHostVar = false;
+
    public:
     constexpr static const char* NAME = "ObjectTracker";
     using DeviceNodeCRTP::DeviceNodeCRTP;
@@ -101,6 +104,19 @@ class ObjectTracker : public DeviceNodeCRTP<DeviceNode, ObjectTracker, ObjectTra
      * Whether tracker should take into consideration class label for tracking.
      */
     void setTrackingPerClass(bool trackingPerClass);
+
+    /**
+     * Specify whether to run on host or device
+     * By default, the node will run on device.
+     */
+    void setRunOnHost(bool runOnHost);
+
+    /**
+     * Check if the node is set to run on host
+     */
+    bool runOnHost() const override;
+
+    void run() override;
 };
 
 }  // namespace node
