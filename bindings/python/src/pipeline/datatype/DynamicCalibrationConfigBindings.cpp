@@ -1,33 +1,17 @@
-#include <DynamicCalibration.hpp>
-#include <memory>
-#include <unordered_map>
-
-#include "DatatypeBindings.hpp"
-#include "pipeline/CommonBindings.hpp"
-
-// depthai
-#include "depthai/pipeline/datatype/DynamicCalibrationConfig.hpp"
-#include "depthai/properties/DynamicCalibrationProperties.hpp"
+#include "depthai/pipeline/Node.hpp"
+#include "depthai/pipeline/Pipeline.hpp"
+#include "depthai/pipeline/node/DynamicCalibration.hpp"
+#include "pipeline/node/Common.hpp"
+#include "pipeline/node/NodeBindings.hpp"
 
 void bind_dynamic_calibration_config(pybind11::module& m, void* pCallstack) {
     using namespace dai;
+    using namespace dai::node;
 
-    py::class_<DynamicCalibrationConfig, Py<DynamicCalibrationConfig>, Buffer, std::shared_ptr<DynamicCalibrationConfig>> _DynamicCalibrationResults(
-        m, "DynamicCalibrationConfig", DOC(dai, DynamicCalibrationConfig));
+    // Node and Properties declare upfront
+    py::class_<DynamicCalibrationProperties> DynamicCalibrationProperties(m, "DynamicCalibrationProperties", DOC(dai, DynamicCalibrationProperties));
+    auto dynamicCalibration = ADD_NODE(DynamicCalibration);
 
-    py::class_<DynamicCalibrationProperties> _AlgorithmControl(
-        _DynamicCalibrationResults, "AlgorithmControl", DOC(dai, DynamicCalibrationConfig, AlgorithmControl));
-
-    py::enum_<DynamicCalibrationProperties::CalibrationCommand> _CalibrationCommand(
-        _DynamicCalibrationResults, "CalibrationCommand", DOC(dai, DynamicCalibrationConfig, CalibrationCommand));
-
-    py::enum_<dcl::PerformanceMode>(_AlgorithmControl, "PerformanceMode")
-        .value("SKIP_CHECKS", dcl::PerformanceMode::SKIP_CHECKS)
-        .value("STATIC_SCENERY", dcl::PerformanceMode::STATIC_SCENERY)
-        .value("OPTIMIZE_SPEED", dcl::PerformanceMode::OPTIMIZE_SPEED)
-        .value("OPTIMIZE_PERFORMANCE", dcl::PerformanceMode::OPTIMIZE_PERFORMANCE)
-        .value("DEFAULT", dcl::PerformanceMode::DEFAULT)
-        .export_values();
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -38,24 +22,18 @@ void bind_dynamic_calibration_config(pybind11::module& m, void* pCallstack) {
     cb(m, pCallstack);
     // Actual bindings
     ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////
-
-    // Metadata / raw
-    // _AlgorithmControl.def(py::init<>())
-    //     .def_readwrite("recalibrationMode", &DynamicCalibrationProperties::recalibrationMode, DOC(dai, DynamicCalibrationProperties, recalibrationMode))
-    //     .def_readwrite("performanceMode", &DynamicCalibrationProperties::performanceMode, DOC(dai, DynamicCalibrationProperties, performanceMode))
-    //     .def_readwrite("timeFrequency", &DynamicCalibrationProperties::timeFrequency, DOC(dai, DynamicCalibrationProperties, timeFrequency));
-
-    // _CalibrationCommand.value("START_CALIBRATION_QUALITY_CHECK", DynamicCalibrationProperties::CalibrationCommand::START_CALIBRATION_QUALITY_CHECK)
-    //     .value("START_FORCE_CALIBRATION_QUALITY_CHECK", DynamicCalibrationProperties::CalibrationCommand::START_FORCE_CALIBRATION_QUALITY_CHECK)
-    //     .value("START_RECALIBRATION", DynamicCalibrationProperties::CalibrationCommand::START_RECALIBRATION)
-    //     .value("START_FORCE_RECALIBRATION", DynamicCalibrationProperties::CalibrationCommand::START_FORCE_RECALIBRATION);
-
-    // // Message
-    // _DynamicCalibrationResults.def(py::init<>())
-    //     .def("__repr__", &DynamicCalibrationConfig::str)
-
-    //     // .def_readwrite("algorithmControl", &DynamicCalibrationProperties::algorithmControl, DOC(dai, DynamicCalibrationConfig, algorithmControl))
-    //     .def_readwrite("calibrationCommand", &DynamicCalibrationProperties::calibrationCommand, DOC(dai, DynamicCalibrationProperties, calibrationCommand));
+    // Node
+    dynamicCalibration
+        // .def_property_readonly(
+        //     "left", [](DynamicCalibration& node) { return &node.left; }, py::return_value_policy::reference_internal)
+        // .def_property_readonly(
+        //     "right", [](DynamicCalibration& node) { return &node.right; }, py::return_value_policy::reference_internal)
+        // .def_readonly("inputConfig", &DynamicCalibration::inputConfig, DOC(dai, node, DynamicCalibration, inputConfig))
+        .def_readonly("outputCalibrationResults", &DynamicCalibration::outputCalibrationResults, DOC(dai, node, DynamicCalibration, outputCalibrationResults))
+        .def("setRunOnHost", &DynamicCalibration::setRunOnHost, py::arg("runOnHost"), DOC(dai, node, DynamicCalibration, setRunOnHost))
+        .def("runOnHost", &DynamicCalibration::runOnHost, DOC(dai, node, DynamicCalibration, runOnHost))
+        .def("setPerformanceMode", &DynamicCalibration::setPerformanceMode, py::arg("mode"), DOC(dai, node, DynamicCalibration, setPerformanceMode))
+        .def("setContinuousMode", &DynamicCalibration::setContinuousMode, DOC(dai, node, DynamicCalibration, setContinuousMode))
+        .def("setTimeFrequency", &DynamicCalibration::setTimeFrequency, py::arg("int"), DOC(dai, node, DynamicCalibration, setTimeFrequency));
+    daiNodeModule.attr("DynamicCalibration").attr("Properties") = DynamicCalibrationProperties;
 }

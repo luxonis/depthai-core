@@ -12,8 +12,10 @@ add_executable(unit_tests
 # Link test dependencies
 target_link_libraries(unit_tests
     PRIVATE
+    GTest::gtest
+    GTest::gmock
     GTest::gtest_main
-    ${TARGET_CORE_NAME}  # Or replace with ${} if needed
+    ${TARGET_CORE_NAME}
 )
 
 # Enable C++17

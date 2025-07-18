@@ -24,17 +24,16 @@ void bind_dynamic_calibration(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
     // Node
     dynamicCalibration
-        .def_property_readonly(
-                  "left", [](DynamicCalibration& node) { return &node.left; }, py::return_value_policy::reference_internal)
-        .def_property_readonly(
-            "right", [](DynamicCalibration& node) { return &node.right; }, py::return_value_policy::reference_internal)
-        .def_readonly("inputConfig", &DynamicCalibration::inputConfig, DOC(dai, node, DynamicCalibration, inputConfig))
+        // .def_property_readonly(
+        //           "left", [](DynamicCalibration& node) { return &node.left; }, py::return_value_policy::reference_internal)
+        // .def_property_readonly(
+        //     "right", [](DynamicCalibration& node) { return &node.right; }, py::return_value_policy::reference_internal)
+        // .def_readonly("inputConfig", &DynamicCalibration::inputConfig, DOC(dai, node, DynamicCalibration, inputConfig))
         .def_readonly("outputCalibrationResults", &DynamicCalibration::outputCalibrationResults, DOC(dai, node, DynamicCalibration, outputCalibrationResults))
         .def("setRunOnHost", &DynamicCalibration::setRunOnHost, py::arg("runOnHost"), DOC(dai, node, DynamicCalibration, setRunOnHost))
         .def("runOnHost", &DynamicCalibration::runOnHost, DOC(dai, node, DynamicCalibration, runOnHost))
         .def("setPerformanceMode", &DynamicCalibration::setPerformanceMode, py::arg("mode"), DOC(dai, node, DynamicCalibration, setPerformanceMode))
-        .def("setContinousMode", &DynamicCalibration::setContinousMode, DOC(dai, node, DynamicCalibration, setContinousMode))
-        .def("setTimeFrequency", &DynamicCalibration::setTimeFrequency, py::arg("int"), DOC(dai, node, DynamicCalibration, setTimeFrequency))
-    ;
+        .def("setContinuousMode", &DynamicCalibration::setContinuousMode, DOC(dai, node, DynamicCalibration, setContinuousMode))
+        .def("setTimeFrequency", &DynamicCalibration::setTimeFrequency, py::arg("int"), DOC(dai, node, DynamicCalibration, setTimeFrequency));
     daiNodeModule.attr("DynamicCalibration").attr("Properties") = DynamicCalibrationProperties;
 }

@@ -48,14 +48,25 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
 
    public:
     constexpr static const char* NAME = "DynamicCalibration";
+
     using DeviceNodeCRTP::DeviceNodeCRTP;
+
     ~DynamicCalibration() override = default;
+
+    enum ErrorCode : int {
+        OK = 0,
+        QUALITY_CHECK_FAILED = 1,
+        CALIBRATION_FAILED = 2,
+        PIPELINE_INITIALIZATION_FAILED = 4,
+        EMPTY_IMAGE_QUEUE = 5,
+        MISSING_IMAGE = 6,
+    };
 
     // clang-format off
     /**
      * Input DynamicCalibrationConfig message with ability to modify parameters in runtime.
      */
-    Input inputConfig{
+    Input commandQueue{
         *this,
         {
 	  "inputConfig",
@@ -102,12 +113,12 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     /**
      * Input left image
      */
-    Input& left = inputs[leftInputName];
+    // Input& left = inputs[leftInputName];
 
     /**
      * Input right image
      */
-    Input& right = inputs[rightInputName];
+    // Input& right = inputs[rightInputName];
 
     /**
      * Specify whether to run on host or device
@@ -128,12 +139,22 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     /**
      * Set Dynamic recalibration as Continious mode, no user interaction needed
      */
-    void setContinousMode();
+    void setContinuousMode();
 
     /**
      * Set time frequency, when new recalibration will be performed in Continious mode
      */
     void setTimeFrequency(int time);
+
+    ErrorCode runQualityCheck(const bool force = false);
+
+    ErrorCode runCalibration(const bool force = false);
+
+    ErrorCode runLoadImage();
+
+    ErrorCode computeCoverage();
+
+    ErrorCode initializePipeline(const unsigned int maxNumberOfAttempts = 5);
 
    private:
     void run() override;
@@ -167,7 +188,6 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     /**
      * DCL held properties
      */
-    std::unique_ptr<dcl::DynamicCalibration> dynCalibImpl;
     std::shared_ptr<dcl::CameraSensorHandle> sensorA;
     std::shared_ptr<dcl::CameraSensorHandle> sensorB;
     std::shared_ptr<dcl::Device> dcDevice;
@@ -194,7 +214,27 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
      * - Reseting of data
      */
     dcl::CalibrationQuality calibQuality;
-    CalibrationStateMachine calibrationSM;
+
+   protected:
+    // clang-format off
+    DynamicCalibration(std::unique_ptr<dcl::DynamicCalibration> dc)
+      : DeviceNodeCRTP()
+      , dynCalibImpl(std::move(dc)) {}
+    DynamicCalibration(const std::shared_ptr<Device>& device, std::unique_ptr<dcl::DynamicCalibration> dc)
+      : DeviceNodeCRTP(device)
+      , dynCalibImpl(std::move(dc)) {}
+    DynamicCalibration(std::unique_ptr<Properties> props, bool confMode, std::unique_ptr<dcl::DynamicCalibration> dc)
+      : DeviceNodeCRTP(std::move(props), confMode)
+      , dynCalibImpl(std::move(dc)) {}
+    // DynamicCalibration(
+    //     const std::shared_ptr<Device>& device,
+    //     std::unique_ptr<Properties> props,
+    //     bool confMode,
+    //     std::unique_ptr<dcl::DynamicCalibration> dc)
+    //   : DeviceNodeCRTP(device, props, confMode)
+    //   , dynCalibImpl(std::move(dc)) {}
+    // clang-format on
+    const std::unique_ptr<dcl::DynamicCalibration> dynCalibImpl = std::make_unique<dcl::DynamicCalibration>();
 };
 
 }  // namespace node
