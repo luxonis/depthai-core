@@ -13,8 +13,7 @@ int main() {
 
     // Create nodes
     auto cam = pipeline.create<dai::node::Camera>()->build();
-    auto videoQueue = cam->requestOutput(std::make_pair(4096, 2160))->createOutputQueue();
-    //auto videoQueue = cam->requestOutput(std::make_pair(2048, 1556))->createOutputQueue();
+    auto videoQueue = cam->requestOutput(std::make_pair(640, 400))->createOutputQueue();
 
     // Start pipeline
     pipeline.start();
@@ -22,12 +21,12 @@ int main() {
     while(true) {
         auto videoIn = videoQueue->get<dai::ImgFrame>();
         if(videoIn == nullptr) continue;
-	videoIn->getCvFrame();
-/*        cv::imshow("video", videoIn->getCvFrame());
+
+        cv::imshow("video", videoIn->getCvFrame());
 
         if(cv::waitKey(1) == 'q') {
             break;
-        }*/
+        }
     }
 
     return 0;

@@ -95,8 +95,9 @@ bool DeviceGate::isOkay() {
 		return false;
 	}
 
-	char *respBuffer = new char[request.RequestSize];
+	char *respBuffer = new char[request.RequestSize + 1];
 	XLinkPlatformGateRead(respBuffer, request.RequestSize);
+	respBuffer[request.RequestSize]= '\0';
 	
 	bool result = nlohmann::json::parse(respBuffer)["status"].get<bool>();
 	delete[] respBuffer;
@@ -123,8 +124,9 @@ Version DeviceGate::getVersion() {
 		return Version{0, 0, 0};
 	}
 
-	char *respBuffer = new char[request.RequestSize];
+	char *respBuffer = new char[request.RequestSize + 1];
 	XLinkPlatformGateRead(respBuffer, request.RequestSize);
+	respBuffer[request.RequestSize]= '\0';
 	
 	auto result = nlohmann::json::parse(respBuffer)["version_gate"].get<std::string>();
 	delete[] respBuffer;
@@ -155,8 +157,9 @@ DeviceGate::VersionInfo DeviceGate::getAllVersion() {
 		return {};
 	}
 
-	char *respBuffer = new char[request.RequestSize];
+	char *respBuffer = new char[request.RequestSize + 1];
 	XLinkPlatformGateRead(respBuffer, request.RequestSize);
+	respBuffer[request.RequestSize]= '\0';
 	auto result = nlohmann::json::parse(respBuffer);
 	delete[] respBuffer;
 
@@ -233,8 +236,9 @@ bool DeviceGate::createSession(bool exclusive) {
 	XLinkPlatformGateWrite((void*)createSessionBody.dump().c_str(), createSessionBody.dump().size());
 
 	XLinkPlatformGateRead(&request, sizeof(request));
-	char *respBuffer = new char[request.RequestSize];
+	char *respBuffer = new char[request.RequestSize + 1];
 	XLinkPlatformGateRead(respBuffer, request.RequestSize);
+	respBuffer[request.RequestSize]= '\0';
 	auto resp = nlohmann::json::parse(respBuffer);
 	delete[] respBuffer;
         spdlog::debug("DeviceGate createSession response: {}", resp.dump());
@@ -457,8 +461,9 @@ DeviceGate::SessionState DeviceGate::getState() {
     	    return SessionState::ERROR_STATE;
 	}
 
-	char *respBuffer = new char[request.RequestSize];
+	char *respBuffer = new char[request.RequestSize + 1];
 	XLinkPlatformGateRead(respBuffer, request.RequestSize);
+	respBuffer[request.RequestSize]= '\0';
         auto resp = nlohmann::json::parse(respBuffer);
 	delete[] respBuffer;
         spdlog::trace("DeviceGate getState response: {}", resp.dump());
@@ -512,13 +517,14 @@ std::optional<std::vector<uint8_t>> DeviceGate::getFile(const std::string& fileU
 	    return std::nullopt;
 	}
 
-	char *respBuffer = new char[request.RequestSize];
+	char *respBuffer = new char[request.RequestSize + 1];
 	XLinkPlatformGateRead(respBuffer, request.RequestSize);
+	respBuffer[request.RequestSize]= '\0';
         auto resp = nlohmann::json::parse(respBuffer);
 	delete[] respBuffer;
 
 	filename = resp["filename"].get<std::string>();
-        std::vector<uint8_t> fileData(resp["data"]);
+        std::vector<uint8_t> fileData(resp["data"].get<std::vector<uint8_t>>());
 
         spdlog::debug("File download successful. Filename: {}", filename);
         return fileData;
