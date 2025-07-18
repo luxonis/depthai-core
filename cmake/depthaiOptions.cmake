@@ -14,6 +14,7 @@ endif()
 # ---------- Core Feature Toggles (private) -------------
 option(DEPTHAI_ENABLE_LIBUSB "Enable usage of libusb and interaction with USB devices" ON)
 option(DEPTHAI_ENABLE_APRIL_TAG "Enable AprilTag node (not available for Windows)" ON)
+option(DEPTHAI_FETCH_ARTIFACTS "Enable fetching artifacts from remote repository" ON)
 option(DEPTHAI_ENABLE_PROTOBUF "Enable Protobuf support" ON)
 option(DEPTHAI_ENABLE_CURL "Enable CURL support" ${DEPTHAI_DEFAULT_CURL_SUPPORT})
 option(DEPTHAI_ENABLE_KOMPUTE "Enable Kompute support" OFF)
