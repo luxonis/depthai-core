@@ -236,6 +236,10 @@ bool DeviceGate::createSession(bool exclusive) {
 	XLinkPlatformGateWrite((void*)createSessionBody.dump().c_str(), createSessionBody.dump().size());
 
 	XLinkPlatformGateRead(&request, sizeof(request));
+	if(request.RequestNum == RESPONSE_ERROR) {
+            spdlog::warn("DeviceGate createSession not successful - got no response");
+	    return false;
+	}
 	char *respBuffer = new char[request.RequestSize + 1];
 	XLinkPlatformGateRead(respBuffer, request.RequestSize);
 	respBuffer[request.RequestSize]= '\0';
