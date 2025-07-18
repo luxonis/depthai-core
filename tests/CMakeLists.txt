@@ -111,116 +111,123 @@ function(dai_test_compile_definitions)
     endif()
 endfunction()
 
-# Mobilenet network
-private_data(
-    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/mobilenet-ssd_openvino_2021.2_8shave.blob"
-    SHA1 "3329bb8f3a9c881ef9756d232055f9d6f38aa07b"
-    FILE "mobilenet-ssd_openvino_2021.2_8shave.blob"
-    LOCATION mobilenet_blob
-)
+if(DEPTHAI_FETCH_ARTIFACTS)
+    # Mobilenet network
+    private_data(
+        URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/mobilenet-ssd_openvino_2021.2_8shave.blob"
+        SHA1 "3329bb8f3a9c881ef9756d232055f9d6f38aa07b"
+        FILE "mobilenet-ssd_openvino_2021.2_8shave.blob"
+        LOCATION mobilenet_blob
+    )
 
-# OpenVINO 2020.3 blob
-private_data(
-    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/text-image-super-resolution-0001_2020.3_4shave.blob"
-    SHA1 "f0134c9b843fe414f6d98b17a70f069d1ab0f3d8"
-    FILE "text-image-super-resolution-0001_2020.3_4shave.blob"
-    LOCATION openvino_2020_3_blob
-)
-# OpenVINO 2020.4 blob
-private_data(
-    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/text-image-super-resolution-0001_2020.4_4shave.blob"
-    SHA1 "25dcf0b146da8c85c9c4cba00ad5fdd4ed02a1b6"
-    FILE "text-image-super-resolution-0001_2020.4_4shave.blob"
-    LOCATION openvino_2020_4_blob
-)
+    # OpenVINO 2020.3 blob
+    private_data(
+        URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/text-image-super-resolution-0001_2020.3_4shave.blob"
+        SHA1 "f0134c9b843fe414f6d98b17a70f069d1ab0f3d8"
+        FILE "text-image-super-resolution-0001_2020.3_4shave.blob"
+        LOCATION openvino_2020_3_blob
+    )
 
-# OpenVINO 2021.1 blob
-private_data(
-    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/text-image-super-resolution-0001_2021.1_4shave.blob"
-    SHA1 "39c4f47f2a75627b7561e97dd7cdfcd0b1925a1e"
-    FILE "text-image-super-resolution-0001_2021.1_4shave.blob"
-    LOCATION openvino_2021_1_blob
-)
-# OpenVINO 2021.2 blob
-private_data(
-    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/text-image-super-resolution-0001_2021.2_4shave.blob"
-    SHA1 "a204467f86aa4ad63d31782ada271bea6f57f789"
-    FILE "text-image-super-resolution-0001_2021.2_4shave.blob"
-    LOCATION openvino_2021_2_blob
-)
-# OpenVINO 2021.3 blob
-private_data(
-    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/text-image-super-resolution-0001_2021.3_4shave.blob"
-    SHA1 "af19470feb59317e74d045bc31d93ca129c46674"
-    FILE "text-image-super-resolution-0001_2021.3_4shave.blob"
-    LOCATION openvino_2021_3_blob
-)
-# OpenVINO 2021.4.2 blob
-private_data(
-    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/text-image-super-resolution-0001_2021.4.2_4shave.blob"
-    SHA1 "164b6b2ae48d38bc4f07cc8296b8bcb7644a1578"
-    FILE "text-image-super-resolution-0001_2021.4.2_4shave.blob"
-    LOCATION openvino_2021_4_2_blob
-)
-# OpenVINO 2022.1.0 blob
-private_data(
-    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/text-image-super-resolution-0001_2022.1.0_4shave.blob"
-    SHA1 "98e94b865b9c48a92eaebd1ddc883712dfe7cfcb"
-    FILE "text-image-super-resolution-0001_2022.1.0_4shave.blob"
-    LOCATION openvino_2022_1_blob
-)
-# YoloV4 resource
-private_data(
-    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/yolo-v4-tiny-tf_openvino_2021.4_4shave.blob"
-    SHA1 "7da2f96f7300e3828940557e6a86ac6f243eef7e"
-    FILE "yolo-v4-tiny-tf_openvino_2021.4_4shave.blob"
-    LOCATION tiny_yolo_v4_2021-4_4shave_blob
-)
+    # OpenVINO 2020.4 blob
+    private_data(
+        URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/text-image-super-resolution-0001_2020.4_4shave.blob"
+        SHA1 "25dcf0b146da8c85c9c4cba00ad5fdd4ed02a1b6"
+        FILE "text-image-super-resolution-0001_2020.4_4shave.blob"
+        LOCATION openvino_2020_4_blob
+    )
 
-# Superblob
-private_data(
-    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/person-reidentification-retail-0277_openvino_2022.1_8shave.superblob"
-    SHA1 "6f14e3a5388946d6de849ff4f6432702601b1003"
-    FILE "person-reidentification-retail-0277_openvino_2022.1_8shave.superblob"
-    LOCATION superblob_path
-)
+    # OpenVINO 2021.1 blob
+    private_data(
+        URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/text-image-super-resolution-0001_2021.1_4shave.blob"
+        SHA1 "39c4f47f2a75627b7561e97dd7cdfcd0b1925a1e"
+        FILE "text-image-super-resolution-0001_2021.1_4shave.blob"
+        LOCATION openvino_2021_1_blob
+    )
 
-# NNarchives of different types
-private_data(
-    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/nnarchive/yolo_blob_nnarchive.tar.xz"
-    SHA1 "6b9697e5aaf1560efbdea7f8d7487bae51def619"
-    FILE "yolo_blob_nnarchive.tar.xz"
-    LOCATION yolo_blob_nnarchive_path
-)
+    # OpenVINO 2021.2 blob
+    private_data(
+        URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/text-image-super-resolution-0001_2021.2_4shave.blob"
+        SHA1 "a204467f86aa4ad63d31782ada271bea6f57f789"
+        FILE "text-image-super-resolution-0001_2021.2_4shave.blob"
+        LOCATION openvino_2021_2_blob
+    )
 
-private_data(
-    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/nnarchive/yolo_superblob_nnarchive.tar.xz"
-    SHA1 "2356fd7e5a203446211a891a74f0b23e0912eaf6"
-    FILE "yolo_superblob_nnarchive.tar.xz"
-    LOCATION yolo_superblob_nnarchive_path
-)
+    # OpenVINO 2021.3 blob
+    private_data(
+        URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/text-image-super-resolution-0001_2021.3_4shave.blob"
+        SHA1 "af19470feb59317e74d045bc31d93ca129c46674"
+        FILE "text-image-super-resolution-0001_2021.3_4shave.blob"
+        LOCATION openvino_2021_3_blob
+    )
 
-private_data(
-    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/nnarchive/yolo_onnx_nnarchive.tar.xz"
-    SHA1 "7abb6a8c05c5f66897cd2c5c6b4f0170620dff8b"
-    FILE "yolo_onnx_nnarchive.tar.xz"
-    LOCATION yolo_onnx_nnarchive_path
-)
+    # OpenVINO 2021.4.2 blob
+    private_data(
+        URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/text-image-super-resolution-0001_2021.4.2_4shave.blob"
+        SHA1 "164b6b2ae48d38bc4f07cc8296b8bcb7644a1578"
+        FILE "text-image-super-resolution-0001_2021.4.2_4shave.blob"
+        LOCATION openvino_2021_4_2_blob
+    )
 
-private_data(
-    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/images/lenna.png"
-    SHA1 "3ee0d360dc12003c0d43e3579295b52b64906e85"
-    FILE "lenna.png"
-    LOCATION lenna_png
-)
+    # OpenVINO 2022.1.0 blob
+    private_data(
+        URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/text-image-super-resolution-0001_2022.1.0_4shave.blob"
+        SHA1 "98e94b865b9c48a92eaebd1ddc883712dfe7cfcb"
+        FILE "text-image-super-resolution-0001_2022.1.0_4shave.blob"
+        LOCATION openvino_2022_1_blob
+    )
 
-private_data(
-    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/recording.tar"
-    SHA1 "b1e31a26c83dc1e315132c9226097da4b1a5cbb7"
-    FILE "recording.tar"
-    LOCATION recording_path
-)
+    # YoloV4 resource
+    private_data(
+        URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/yolo-v4-tiny-tf_openvino_2021.4_4shave.blob"
+        SHA1 "7da2f96f7300e3828940557e6a86ac6f243eef7e"
+        FILE "yolo-v4-tiny-tf_openvino_2021.4_4shave.blob"
+        LOCATION tiny_yolo_v4_2021-4_4shave_blob
+    )
 
+    # Superblob
+    private_data(
+        URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/person-reidentification-retail-0277_openvino_2022.1_8shave.superblob"
+        SHA1 "6f14e3a5388946d6de849ff4f6432702601b1003"
+        FILE "person-reidentification-retail-0277_openvino_2022.1_8shave.superblob"
+        LOCATION superblob_path
+    )
+
+    # NNarchives of different types
+    private_data(
+        URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/nnarchive/yolo_blob_nnarchive.tar.xz"
+        SHA1 "6b9697e5aaf1560efbdea7f8d7487bae51def619"
+        FILE "yolo_blob_nnarchive.tar.xz"
+        LOCATION yolo_blob_nnarchive_path
+    )
+
+    private_data(
+        URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/nnarchive/yolo_superblob_nnarchive.tar.xz"
+        SHA1 "2356fd7e5a203446211a891a74f0b23e0912eaf6"
+        FILE "yolo_superblob_nnarchive.tar.xz"
+        LOCATION yolo_superblob_nnarchive_path
+    )
+
+    private_data(
+        URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/nnarchive/yolo_onnx_nnarchive.tar.xz"
+        SHA1 "7abb6a8c05c5f66897cd2c5c6b4f0170620dff8b"
+        FILE "yolo_onnx_nnarchive.tar.xz"
+        LOCATION yolo_onnx_nnarchive_path
+    )
+
+    private_data(
+        URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/images/lenna.png"
+        SHA1 "3ee0d360dc12003c0d43e3579295b52b64906e85"
+        FILE "lenna.png"
+        LOCATION lenna_png
+    )
+
+    private_data(
+        URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/recording.tar"
+        SHA1 "b1e31a26c83dc1e315132c9226097da4b1a5cbb7"
+        FILE "recording.tar"
+        LOCATION recording_path
+    )
+endif()
 ### Helper script to wrap the tests with a timeout ############################
 
 add_executable(test_wrapper src/helpers/test_wrapper.cpp)

@@ -5,12 +5,14 @@ cmake_minimum_required(VERSION 3.10)
 ## function: dai_set_example_test_labels(example_name ...)
 
 # Download lenna :0
-private_data(
-    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/images/lenna.png"
-    FILE "lenna.png"
-    SHA1 "3ee0d360dc12003c0d43e3579295b52b64906e85"
-    LOCATION lenna
-)
+if(DEPTHAI_FETCH_ARTIFACTS)
+    private_data(
+        URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/images/lenna.png"
+        FILE "lenna.png"
+        SHA1 "3ee0d360dc12003c0d43e3579295b52b64906e85"
+        LOCATION lenna
+    )
+endif()
 
 dai_add_example(neural_network neural_network.cpp ON OFF)
 dai_set_example_test_labels(neural_network ondevice rvc2_all rvc4 ci)
