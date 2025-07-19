@@ -43,6 +43,7 @@ void bind_rtabmapslamnode(pybind11::module& m, void* pCallstack) {
         .def_readonly("passthroughRect", &RTABMapSLAM::passthroughRect, DOC(dai, node, RTABMapSLAM, passthroughRect))
         .def_readonly("passthroughDepth", &RTABMapSLAM::passthroughDepth, DOC(dai, node, RTABMapSLAM, passthroughDepth))
         .def_readonly("passthroughFeatures", &RTABMapSLAM::passthroughFeatures, DOC(dai, node, RTABMapSLAM, passthroughFeatures))
+        .def_readonly("passthroughLandmarks", &RTABMapSLAM::passthroughLandmarks, DOC(dai, node, RTABMapSLAM, passthroughLandmarks))
         .def_readonly("passthroughOdom", &RTABMapSLAM::passthroughOdom, DOC(dai, node, RTABMapSLAM, passthroughOdom))
         .def("setParams", &RTABMapSLAM::setParams, py::arg("params"), DOC(dai, node, RTABMapSLAM, setParams))
         .def("setDatabasePath", &RTABMapSLAM::setDatabasePath, py::arg("path"), DOC(dai, node, RTABMapSLAM, setDatabasePath))
