@@ -8,6 +8,7 @@ build*/*
 shared/version.hpp
 
 #pybind11
+bindings/python/docstrings/
 build/
 dist/
 _build/
