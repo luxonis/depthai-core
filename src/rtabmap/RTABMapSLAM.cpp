@@ -80,6 +80,11 @@ void RTABMapSLAM::setUseLandmarks(bool use) {
 
 void RTABMapSLAM::syncCB(std::shared_ptr<dai::ADatatype> data) {
     auto group = std::dynamic_pointer_cast<dai::MessageGroup>(data);
+
+    for (auto& i : group->getMessageNames()) {
+        std::cout << i << std::endl;
+    }
+
     if(group == nullptr) return;
     std::shared_ptr<dai::ImgFrame> imgFrame = nullptr;
     std::shared_ptr<dai::ImgFrame> depthFrame = nullptr;
@@ -91,6 +96,7 @@ void RTABMapSLAM::syncCB(std::shared_ptr<dai::ADatatype> data) {
         featuresFrame = group->get<dai::TrackedFeatures>(featuresInputName);
     }
     if(useLandmarks) {
+        // std::cout << "getting landmarks" << std::endl;
         markersFrame = group->get<dai::Landmarks>(landmarksInputName);
     }
     if(imgFrame != nullptr && depthFrame != nullptr) {
@@ -125,7 +131,13 @@ void RTABMapSLAM::syncCB(std::shared_ptr<dai::ADatatype> data) {
         passthroughRect.send(imgFrame);
         passthroughDepth.send(depthFrame);
         if(useFeatures) {
+            if (featuresFrame == nullptr) {
+                std::cout << "uh oh" << std::endl;
+            }
             passthroughFeatures.send(featuresFrame);
+        }
+        if(useLandmarks) {
+            passthroughLandmarks.send(markersFrame);
         }
     }
 }
