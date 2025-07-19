@@ -47,6 +47,8 @@ class RTABMapSLAM : public dai::NodeCRTP<dai::node::ThreadedHostNode, RTABMapSLA
      * Input depth image on which SLAM is performed.
      */
     Input& depth = inputs[depthInputName];
+
+    Input& landmarks = inputs[landmarksInputName];
     /**
      * Input tracked features on which SLAM is performed (optional).
      */
@@ -58,7 +60,7 @@ class RTABMapSLAM : public dai::NodeCRTP<dai::node::ThreadedHostNode, RTABMapSLA
     /**
      * Input Landmark poses (optional).
      */
-    Input landmarks{*this, {landmarksInputName, DEFAULT_GROUP, DEFAULT_BLOCKING, 15, {{{dai::DatatypeEnum::Landmarks, true}}}}};
+    // Input landmarks{*this, {landmarksInputName, DEFAULT_GROUP, DEFAULT_BLOCKING, 15, {{{dai::DatatypeEnum::Landmarks, true}}}}};
 
     /**
      * Output transform.

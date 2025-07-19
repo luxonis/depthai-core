@@ -32,8 +32,10 @@ void bind_rtabmapslamnode(pybind11::module& m, void* pCallstack) {
                        "rect", [](RTABMapSLAM& node) { return &node.rect; }, py::return_value_policy::reference_internal)
         .def_property_readonly(
             "depth", [](RTABMapSLAM& node) { return &node.depth; }, py::return_value_policy::reference_internal)
+        .def_property_readonly(
+            "landmarks", [](RTABMapSLAM& node) { return &node.landmarks; }, py::return_value_policy::reference_internal)
         .def_readonly("features", &RTABMapSLAM::features, DOC(dai, node, RTABMapSLAM, features))
-        .def_readonly("landmarks", &RTABMapSLAM::landmarks, DOC(dai, node, RTABMapSLAM, landmarks))
+        // .def_readonly("landmarks", &RTABMapSLAM::landmarks, DOC(dai, node, RTABMapSLAM, landmarks))
         .def_readonly("odom", &RTABMapSLAM::odom, DOC(dai, node, RTABMapSLAM, odom))
         .def_readonly("transform", &RTABMapSLAM::transform, DOC(dai, node, RTABMapSLAM, transform))
         .def_readonly("odomCorrection", &RTABMapSLAM::odomCorrection, DOC(dai, node, RTABMapSLAM, odomCorrection))

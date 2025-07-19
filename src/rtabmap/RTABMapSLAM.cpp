@@ -18,7 +18,7 @@ namespace node {
 
 void RTABMapSLAM::buildInternal() {
     sync->out.link(inSync);
-    sync->setRunOnHost(false);
+    sync->setRunOnHost(true);
     alphaScaling = -1.0;
     localTransform = rtabmap::Transform::getIdentity();
     rtabmap::Transform opticalTransform(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
@@ -27,6 +27,8 @@ void RTABMapSLAM::buildInternal() {
     rect.setMaxSize(1);
     depth.setBlocking(false);
     depth.setMaxSize(1);
+    landmarks.setBlocking(false);
+    landmarks.setMaxSize(1);
     inSync.setMaxSize(1);
     inSync.setBlocking(false);
     inSync.addCallback(std::bind(&RTABMapSLAM::syncCB, this, std::placeholders::_1));
@@ -71,11 +73,11 @@ void RTABMapSLAM::setUseFeatures(bool use) {
 
 void RTABMapSLAM::setUseLandmarks(bool use) {
     useLandmarks = use;
-    if(useLandmarks) {
-        landmarks.setBlocking(false);
-        landmarks.setMaxSize(1);
-        inputs[landmarksInputName] = landmarks;
-    }
+    // if(useLandmarks) {
+    //     landmarks.setBlocking(false);
+    //     landmarks.setMaxSize(1);
+    //     inputs[landmarksInputName] = landmarks;
+    // }
 }
 
 void RTABMapSLAM::syncCB(std::shared_ptr<dai::ADatatype> data) {
@@ -116,12 +118,12 @@ void RTABMapSLAM::syncCB(std::shared_ptr<dai::ADatatype> data) {
             }
             rtabmap::Landmarks markers;
             if(markersFrame != nullptr) {
-                std::cout << "considering markers";
+                std::cout << "considering markers" << std::endl;
                 for(auto& marker : markersFrame->landmarks) {
                     auto transform = TransformData(marker.translation.x, marker.translation.y, marker.translation.z,
                         marker.quaternion.qx, marker.quaternion.qy, marker.quaternion.qz, marker.quaternion.qw);
 
-                    cv::Mat covariance = cv::Mat::zeros(6, 6, CV_8UC1);
+                    cv::Mat covariance = cv::Mat::ones(6, 6, CV_64FC1);
 
                     markers.emplace(std::make_pair(marker.id, rtabmap::Landmark(marker.id, marker.size, transform.getRTABMapTransform(), covariance)));
                 }
