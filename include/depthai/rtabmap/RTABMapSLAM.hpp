@@ -94,6 +94,10 @@ class RTABMapSLAM : public dai::NodeCRTP<dai::node::ThreadedHostNode, RTABMapSLA
      */
     Output passthroughFeatures{*this, {"passthroughFeatures", DEFAULT_GROUP, {{{dai::DatatypeEnum::TrackedFeatures, true}}}}};
     /**
+     * Output passthrough landmarks.
+     */
+    Output passthroughLandmarks{*this, {"passthroughLandmarks", DEFAULT_GROUP, {{{dai::DatatypeEnum::Landmarks, true}}}}};
+    /**
      * Output passthrough odometry pose.
      */
     Output passthroughOdom{*this, {"passthroughOdom", DEFAULT_GROUP, {{{dai::DatatypeEnum::TransformData, true}}}}};
