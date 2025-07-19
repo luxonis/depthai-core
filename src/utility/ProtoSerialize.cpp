@@ -150,7 +150,6 @@ bool deserializationSupported(DatatypeEnum datatype) {
         case DatatypeEnum::EdgeDetectorConfig:
         case DatatypeEnum::AprilTagConfig:
         case DatatypeEnum::AprilTags:
-        case DatatypeEnum::Landmarks:
         case DatatypeEnum::Tracklets:
         case DatatypeEnum::StereoDepthConfig:
         case DatatypeEnum::FeatureTrackerConfig:
@@ -160,6 +159,7 @@ bool deserializationSupported(DatatypeEnum datatype) {
         case DatatypeEnum::BenchmarkReport:
         case DatatypeEnum::MessageGroup:
         case DatatypeEnum::TransformData:
+        case DatatypeEnum::Landmarks:
         case DatatypeEnum::PointCloudConfig:
         case DatatypeEnum::ImageAlignConfig:
         case DatatypeEnum::ImgAnnotations:

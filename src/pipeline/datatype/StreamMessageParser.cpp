@@ -197,9 +197,9 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
             return parseDatatype<AprilTagConfig>(metadataStart, serializedObjectSize, data, fd);
             break;
 
-        case DatatypeEnum::Landmarks:
-            return parseDatatype<Landmarks>(metadataStart, serializedObjectSize, data, fd);
-            break;
+        // case DatatypeEnum::Landmarks:
+        //     return parseDatatype<Landmarks>(metadataStart, serializedObjectSize, data, fd);
+        //     break;
 
         case DatatypeEnum::Tracklets:
             return parseDatatype<Tracklets>(metadataStart, serializedObjectSize, data, fd);
@@ -244,6 +244,9 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
             break;
         case DatatypeEnum::TransformData:
             return parseDatatype<TransformData>(metadataStart, serializedObjectSize, data, fd);
+            break;
+        case DatatypeEnum::Landmarks:
+            return parseDatatype<Landmarks>(metadataStart, serializedObjectSize, data, fd);
             break;
         case DatatypeEnum::ImgAnnotations:
             return parseDatatype<ImgAnnotations>(metadataStart, serializedObjectSize, data, fd);

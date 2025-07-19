@@ -6,7 +6,6 @@
 void bind_adatatype(pybind11::module& m, void* pCallstack);
 void bind_apriltagconfig(pybind11::module& m, void* pCallstack);
 void bind_apriltags(pybind11::module& m, void* pCallstack);
-void bind_landmarks(pybind11::module& m, void* pCallstack);
 void bind_buffer(pybind11::module& m, void* pCallstack);
 void bind_cameracontrol(pybind11::module& m, void* pCallstack);
 void bind_edgedetectorconfig(pybind11::module& m, void* pCallstack);
@@ -32,6 +31,7 @@ void bind_benchmarkreport(pybind11::module& m, void* pCallstack);
 void bind_pointcloudconfig(pybind11::module& m, void* pCallstack);
 void bind_pointclouddata(pybind11::module& m, void* pCallstack);
 void bind_transformdata(pybind11::module& m, void* pCallstack);
+void bind_landmarks(pybind11::module& m, void* pCallstack);
 void bind_rgbddata(pybind11::module& m, void* pCallstack);
 void bind_imagealignconfig(pybind11::module& m, void* pCallstack);
 void bind_imageannotations(pybind11::module& m, void* pCallstack);
@@ -45,7 +45,6 @@ void DatatypeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_buffer);
     callstack.push_front(bind_apriltagconfig);
     callstack.push_front(bind_apriltags);
-    callstack.push_front(bind_landmarks);
     callstack.push_front(bind_cameracontrol);
     callstack.push_front(bind_edgedetectorconfig);
     callstack.push_front(bind_featuretrackerconfig);
@@ -70,6 +69,7 @@ void DatatypeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_pointcloudconfig);
     callstack.push_front(bind_pointclouddata);
     callstack.push_front(bind_transformdata);
+    callstack.push_front(bind_landmarks);
     callstack.push_front(bind_imagealignconfig);
     callstack.push_front(bind_imageannotations);
     callstack.push_front(bind_rgbddata);
@@ -111,7 +111,6 @@ void DatatypeBindings::bind(pybind11::module& m, void* pCallstack) {
         .value("EdgeDetectorConfig", DatatypeEnum::EdgeDetectorConfig)
         .value("AprilTagConfig", DatatypeEnum::AprilTagConfig)
         .value("AprilTags", DatatypeEnum::AprilTags)
-        .value("Landmarks", DatatypeEnum::Landmarks)
         .value("Tracklets", DatatypeEnum::Tracklets)
         .value("IMUData", DatatypeEnum::IMUData)
         .value("StereoDepthConfig", DatatypeEnum::StereoDepthConfig)
@@ -122,6 +121,7 @@ void DatatypeBindings::bind(pybind11::module& m, void* pCallstack) {
         .value("BenchmarkReport", DatatypeEnum::BenchmarkReport)
         .value("MessageGroup", DatatypeEnum::MessageGroup)
         .value("TransformData", DatatypeEnum::TransformData)
+        .value("Landmarks", DatatypeEnum::Landmarks)
         .value("PointCloudConfig", DatatypeEnum::PointCloudConfig)
         .value("PointCloudData", DatatypeEnum::PointCloudData)
         .value("ImageAlignConfig", DatatypeEnum::ImageAlignConfig)

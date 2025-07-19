@@ -91,7 +91,6 @@ void RTABMapSLAM::syncCB(std::shared_ptr<dai::ADatatype> data) {
         featuresFrame = group->get<dai::TrackedFeatures>(featuresInputName);
     }
     if(useLandmarks) {
-        
         markersFrame = group->get<dai::Landmarks>(landmarksInputName);
     }
     if(imgFrame != nullptr && depthFrame != nullptr) {
