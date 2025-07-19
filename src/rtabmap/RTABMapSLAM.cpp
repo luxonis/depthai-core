@@ -74,7 +74,7 @@ void RTABMapSLAM::setUseLandmarks(bool use) {
     if(useLandmarks) {
         landmarks.setBlocking(false);
         landmarks.setMaxSize(1);
-        inputs[landmarksInputName] = features;
+        inputs[landmarksInputName] = landmarks;
     }
 }
 
