@@ -81,7 +81,7 @@ void bind_tof(pybind11::module& m, void* pCallstack) {
             [](const ToF& self) -> const dai::node::ToFDepthConfidenceFilter& { return self.tofDepthConfidenceFilterNode; },
             DOC(dai, node, ToF, tofDepthConfidenceFilterNode))
         .def_property_readonly(
-            "imageFiltersNodes", [](const ToF& self) -> const dai::node::ImageFilters& { return self.imageFiltersNode; }, DOC(dai, node, ToF, imageFiltersNode))
+            "imageFiltersNode", [](const ToF& self) -> const dai::node::ImageFilters& { return self.imageFiltersNode; }, DOC(dai, node, ToF, imageFiltersNode))
         .def_static("create", &ToF::create, "device"_a, DOC(dai, node, ToF, create))
         .def("build",
              &ToF::build,

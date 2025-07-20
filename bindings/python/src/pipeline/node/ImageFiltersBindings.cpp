@@ -17,11 +17,11 @@ void bind_imagefilters(py::module& m, void* pCallstack) {
     imageFiltersConfig.def(py::init<>());
     imageFiltersConfig.def_readwrite("filterIndices", &ImageFiltersConfig::filterIndices, DOC(dai, ImageFiltersConfig, filterIndices));
     imageFiltersConfig.def_readwrite("filterParams", &ImageFiltersConfig::filterParams, DOC(dai, ImageFiltersConfig, filterParams));
-    imageFiltersConfig.def("insertFilter", &ImageFiltersConfig::insertFilter, py::arg("filterParams"), DOC(dai, ImageFiltersConfig, insertFilter));
+    imageFiltersConfig.def("insertFilter", &ImageFiltersConfig::insertFilter, py::arg("params"), DOC(dai, ImageFiltersConfig, insertFilter));
     imageFiltersConfig.def("updateFilterAtIndex",
                            &ImageFiltersConfig::updateFilterAtIndex,
-                           py::arg("filterIndex"),
-                           py::arg("filterParams"),
+                           py::arg("index"),
+                           py::arg("params"),
                            DOC(dai, ImageFiltersConfig, updateFilterAtIndex));
 
     py::class_<ToFDepthConfidenceFilterConfig, Py<ToFDepthConfidenceFilterConfig>, Buffer, std::shared_ptr<ToFDepthConfidenceFilterConfig>>

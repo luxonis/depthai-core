@@ -20,17 +20,17 @@ class ImageFiltersConfig : public Buffer {
     virtual ~ImageFiltersConfig() = default;
 
     /**
-     * Insert filter parameters describing how a filter at index filterIndex should be updated
-     * @param filterIndex Index of the filter to be inserted
-     * @param filterParams Parameters of the filter to be inserted
+     * Insert filter parameters describing how a filter at index index should be updated
+     * @param index Index of the filter to be inserted
+     * @param params Parameters of the filter to be inserted
      */
-    ImageFiltersConfig& updateFilterAtIndex(std::int32_t filterIndex, FilterParams filterParams);
+    ImageFiltersConfig& updateFilterAtIndex(std::int32_t index, FilterParams params);
 
     /**
      * Insert filter parameters describing how a new filter should be inserted
-     * @param filterParams Parameters of the filter to be inserted
+     * @param params Parameters of the filter to be inserted
      */
-    ImageFiltersConfig& insertFilter(FilterParams filterParams);
+    ImageFiltersConfig& insertFilter(FilterParams params);
 
     /**
      * Index of the filter to be applied
