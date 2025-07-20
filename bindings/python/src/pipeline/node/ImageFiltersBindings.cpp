@@ -66,7 +66,10 @@ void bind_imagefilters(py::module& m, void* pCallstack) {
              py::arg("input"),
              py::arg("presetMode") = ImageFiltersPresetMode::DEFAULT,
              DOC(dai, node, ImageFilters, build))
-        .def("build", py::overload_cast<ImageFiltersPresetMode>(&ImageFilters::build), py::arg("presetMode"), DOC(dai, node, ImageFilters, build));
+        .def("build",
+             py::overload_cast<ImageFiltersPresetMode>(&ImageFilters::build),
+             py::arg("presetMode") = ImageFiltersPresetMode::DEFAULT,
+             DOC(dai, node, ImageFilters, build));
 
     // Just an alias for the filter stereo depth config parameters
     imageFilters.attr("MedianFilterParams") = m.attr("StereoDepthConfig").attr("MedianFilter");
@@ -91,6 +94,6 @@ void bind_imagefilters(py::module& m, void* pCallstack) {
              DOC(dai, node, ToFDepthConfidenceFilter, build))
         .def("build",
              py::overload_cast<ImageFiltersPresetMode>(&ToFDepthConfidenceFilter::build),
-             py::arg("presetMode"),
+             py::arg("presetMode") = ImageFiltersPresetMode::DEFAULT,
              DOC(dai, node, ToFDepthConfidenceFilter, build));
 }
