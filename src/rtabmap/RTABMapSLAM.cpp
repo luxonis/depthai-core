@@ -124,7 +124,6 @@ void RTABMapSLAM::syncCB(std::shared_ptr<dai::ADatatype> data) {
             }
             rtabmap::Landmarks markers;
             if(markersFrame != nullptr) {
-                std::cout << "considering markers" << std::endl;
                 for(auto& marker : markersFrame->landmarks) {
                     auto transform = TransformData(marker.translation.x, marker.translation.y, marker.translation.z,
                         marker.quaternion.qx, marker.quaternion.qy, marker.quaternion.qz, marker.quaternion.qw);
