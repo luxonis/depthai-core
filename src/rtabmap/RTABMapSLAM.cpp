@@ -12,6 +12,7 @@
 #include "rtabmap/core/util3d_mapping.h"
 // #include "rtabmap/core/Markers/Landmark.h"
 #include <iostream>
+#include <chrono>
 
 namespace dai {
 namespace node {
@@ -83,9 +84,9 @@ void RTABMapSLAM::setUseLandmarks(bool use) {
 void RTABMapSLAM::syncCB(std::shared_ptr<dai::ADatatype> data) {
     auto group = std::dynamic_pointer_cast<dai::MessageGroup>(data);
 
-    for (auto& i : group->getMessageNames()) {
-        std::cout << i << std::endl;
-    }
+    // for (auto& i : group->getMessageNames()) {
+    //     std::cout << i << std::endl;
+    // }
 
     if(group == nullptr) return;
     std::shared_ptr<dai::ImgFrame> imgFrame = nullptr;
@@ -100,6 +101,11 @@ void RTABMapSLAM::syncCB(std::shared_ptr<dai::ADatatype> data) {
     if(useLandmarks) {
         // std::cout << "getting landmarks" << std::endl;
         markersFrame = group->get<dai::Landmarks>(landmarksInputName);
+
+        auto thing = landmarks.get();
+        // if (thing != nullptr) {
+        //     std::cout << thing.landmarks. << std::endl;
+        // }
     }
     if(imgFrame != nullptr && depthFrame != nullptr) {
         if(!initialized) {
@@ -133,9 +139,6 @@ void RTABMapSLAM::syncCB(std::shared_ptr<dai::ADatatype> data) {
         passthroughRect.send(imgFrame);
         passthroughDepth.send(depthFrame);
         if(useFeatures) {
-            if (featuresFrame == nullptr) {
-                std::cout << "uh oh" << std::endl;
-            }
             passthroughFeatures.send(featuresFrame);
         }
         if(useLandmarks) {
