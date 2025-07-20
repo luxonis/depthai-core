@@ -65,9 +65,6 @@ def main(args: argparse.Namespace):
             get_random_median_filter_params,
         ]
 
-        for filterFactory in filterFactories:
-            filterPipeline.initialConfig.insertFilter(filterFactory())
-
         filterPipeline.setRunOnHost(True)
 
         depth.setLeftRightCheck(args.lr_check)
@@ -82,7 +79,13 @@ def main(args: argparse.Namespace):
 
         filterPipeline.build(depth.disparity)
 
-        configInputQueue = filterPipeline.config.createInputQueue()
+        ## Create a new filter pipeline
+        filterPipeline.initialConfig.filterIndices = []
+        filterPipeline.initialConfig.filterParams = [
+            filterFactory() for filterFactory in filterFactories
+        ]
+
+        configInputQueue = filterPipeline.inputConfig.createInputQueue()
         filterOutputQueue = filterPipeline.output.createOutputQueue()
 
         pipeline.start()
@@ -109,14 +112,16 @@ def main(args: argparse.Namespace):
                 cv2.applyColorMap(filterFrame, cv2.COLORMAP_JET),
             )
 
+            ## Update filter pipeline
             if time.time() - t_switch > 1.0:
                 index = random.randint(0, len(filterFactories) - 1)
+                new_params = filterFactories[index]()
                 config = dai.ImageFiltersConfig().updateFilterAtIndex(
-                    index, filterFactories[index]()
+                    index, new_params
                 )
                 configInputQueue.send(config)
                 t_switch = time.time()
-                print("Config changed!")
+                print(f"Filter at index {index} changed to {new_params}")
 
             key = cv2.waitKey(1)
             if key == ord("q"):

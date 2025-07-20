@@ -5,8 +5,9 @@ import depthai as dai
 import numpy as np
 
 
-def colorizeDepth(frameDepth):
-    invalidMask = frameDepth == 0
+def colorizeDepth(frameDepth: np.ndarray) -> np.ndarray:
+    invalidMask = frameDepth == 0  # zero depth is invalid
+
     # Log the depth, minDepth and maxDepth
     try:
         minDepth = np.percentile(frameDepth[frameDepth != 0], 3)
@@ -35,28 +36,33 @@ def colorizeDepth(frameDepth):
     return depthFrameColor
 
 
-# Create pipeline
-pipeline = dai.Pipeline()
-# Define source and output
-tof = pipeline.create(dai.node.ToF).build(
-    dai.CameraBoardSocket.AUTO, dai.ImageFiltersPresetMode.DEFAULT
-)
-depthQueue = tof.depth.createOutputQueue()
-depthRawQueue = tof.rawDepth.createOutputQueue()
+def main():
+    pipeline = dai.Pipeline()
 
-with pipeline:
-    # Connect to device and start pipeline
-    pipeline.start()
-    while pipeline.isRunning():
-        depth = depthQueue.get()
-        assert isinstance(depth, dai.ImgFrame)
-        visualizedDepth = colorizeDepth(depth.getFrame())
-        cv2.imshow("depth", visualizedDepth)
+    # ToF node
+    socket, preset_mode = dai.CameraBoardSocket.AUTO, dai.ImageFiltersPresetMode.DEFAULT
+    tof = pipeline.create(dai.node.ToF).build(socket, preset_mode)
 
-        depthRaw = depthRawQueue.get()
-        assert isinstance(depthRaw, dai.ImgFrame)
-        visualizedDepthRaw = colorizeDepth(depthRaw.getFrame())
-        cv2.imshow("depthRaw", visualizedDepthRaw)
+    # Output queues
+    depthQueue = tof.depth.createOutputQueue()
+    depthRawQueue = tof.rawDepth.createOutputQueue()
 
-        if cv2.waitKey(1) == ord("q"):
-            break
+    with pipeline as p:
+        p.start()
+        while p.isRunning():
+            ## Visualize raw depth (unfiltered depth directly from the ToF sensor)
+            depthRaw: dai.ImgFrame = depthRawQueue.get()
+            depthRawImage = colorizeDepth(depthRaw.getFrame())
+            cv2.imshow("depthRaw", depthRawImage)
+
+            ## Visualize depth (which is filtered depthRaw)
+            depth: dai.ImgFrame = depthQueue.get()
+            depthImage = colorizeDepth(depth.getFrame())
+            cv2.imshow("depth", depthImage)
+
+            if cv2.waitKey(1) == ord("q"):
+                break
+
+
+if __name__ == "__main__":
+    main()

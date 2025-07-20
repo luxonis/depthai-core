@@ -12,7 +12,8 @@ void FilterParamsBindings::bind(pybind11::module& m, void* pCallstack) {
     medianFilter.value("MEDIAN_OFF", dai::filters::params::MedianFilter::MEDIAN_OFF)
         .value("KERNEL_3x3", dai::filters::params::MedianFilter::KERNEL_3x3)
         .value("KERNEL_5x5", dai::filters::params::MedianFilter::KERNEL_5x5)
-        .value("KERNEL_7x7", dai::filters::params::MedianFilter::KERNEL_7x7);
+        .value("KERNEL_7x7", dai::filters::params::MedianFilter::KERNEL_7x7)
+        .def("__str__", [](const dai::filters::params::MedianFilter& self) { return py::str("MedianFilter({})").format(self); });
 
     // -- Spatial Filter --
     py::class_<dai::filters::params::SpatialFilter> spatialFilter(params, "SpatialFilter");
@@ -22,7 +23,11 @@ void FilterParamsBindings::bind(pybind11::module& m, void* pCallstack) {
             "holeFillingRadius", &dai::filters::params::SpatialFilter::holeFillingRadius, DOC(dai, filters, params, SpatialFilter, holeFillingRadius))
         .def_readwrite("alpha", &dai::filters::params::SpatialFilter::alpha, DOC(dai, filters, params, SpatialFilter, alpha))
         .def_readwrite("delta", &dai::filters::params::SpatialFilter::delta, DOC(dai, filters, params, SpatialFilter, delta))
-        .def_readwrite("numIterations", &dai::filters::params::SpatialFilter::numIterations, DOC(dai, filters, params, SpatialFilter, numIterations));
+        .def_readwrite("numIterations", &dai::filters::params::SpatialFilter::numIterations, DOC(dai, filters, params, SpatialFilter, numIterations))
+        .def("__str__", [](const dai::filters::params::SpatialFilter& self) {
+            return py::str("SpatialFilter(enable={}, holeFillingRadius={}, alpha={}, delta={}, numIterations={})")
+                .format(self.enable, self.holeFillingRadius, self.alpha, self.delta, self.numIterations);
+        });
 
     // -- Temporal Filter --
     py::class_<dai::filters::params::TemporalFilter> temporalFilter(params, "TemporalFilter", DOC(dai, filters, params, TemporalFilter));
@@ -30,7 +35,11 @@ void FilterParamsBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("enable", &dai::filters::params::TemporalFilter::enable, DOC(dai, filters, params, TemporalFilter, enable))
         .def_readwrite("persistencyMode", &dai::filters::params::TemporalFilter::persistencyMode, DOC(dai, filters, params, TemporalFilter, persistencyMode))
         .def_readwrite("alpha", &dai::filters::params::TemporalFilter::alpha, DOC(dai, filters, params, TemporalFilter, alpha))
-        .def_readwrite("delta", &dai::filters::params::TemporalFilter::delta, DOC(dai, filters, params, TemporalFilter, delta));
+        .def_readwrite("delta", &dai::filters::params::TemporalFilter::delta, DOC(dai, filters, params, TemporalFilter, delta))
+        .def("__str__", [](const dai::filters::params::TemporalFilter& self) {
+            return py::str("TemporalFilter(enable={}, persistencyMode={}, alpha={}, delta={})")
+                .format(self.enable, self.persistencyMode, self.alpha, self.delta);
+        });
 
     py::enum_<dai::filters::params::TemporalFilter::PersistencyMode> persistencyMode(
         temporalFilter, "PersistencyMode", DOC(dai, filters, params, TemporalFilter, PersistencyMode));
@@ -69,7 +78,11 @@ void FilterParamsBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("enable", &dai::filters::params::SpeckleFilter::enable, DOC(dai, filters, params, SpeckleFilter, enable))
         .def_readwrite("speckleRange", &dai::filters::params::SpeckleFilter::speckleRange, DOC(dai, filters, params, SpeckleFilter, speckleRange))
         .def_readwrite(
-            "differenceThreshold", &dai::filters::params::SpeckleFilter::differenceThreshold, DOC(dai, filters, params, SpeckleFilter, differenceThreshold));
+            "differenceThreshold", &dai::filters::params::SpeckleFilter::differenceThreshold, DOC(dai, filters, params, SpeckleFilter, differenceThreshold))
+        .def("__str__", [](const dai::filters::params::SpeckleFilter& self) {
+            return py::str("SpeckleFilter(enable={}, speckleRange={}, differenceThreshold={})")
+                .format(self.enable, self.speckleRange, self.differenceThreshold);
+        });
 
     // Aliases for backward compatibility
     m.attr("MedianFilter") = medianFilter;

@@ -16,8 +16,14 @@ namespace node {
 
 namespace {
 
-// NOTE: This is a copy-pasted implementation from the FW codebase
-// with only minor changes to account for all possible edge cases
+class Filter {
+   public:
+    virtual void process(std::shared_ptr<dai::ImgFrame>& frame) = 0;
+    virtual void setParams(const FilterParams& params) = 0;
+    virtual std::string getName() const = 0;
+    virtual ~Filter() = default;
+};
+
 namespace impl {
 
 class MedianFilter {
@@ -588,7 +594,7 @@ void TemporalFilter::buildPersistanceMap() {
 
 }  // namespace impl
 
-class MedianFilterWrapper : public ImageFilters::Filter {
+class MedianFilterWrapper : public Filter {
    public:
     MedianFilterWrapper(const MedianFilterParams& params) : params(params), medianFilter() {
         medianFilter.Init();
@@ -618,7 +624,7 @@ class MedianFilterWrapper : public ImageFilters::Filter {
     impl::MedianFilter medianFilter;
 };
 
-class SpatialFilterWrapper : public ImageFilters::Filter {
+class SpatialFilterWrapper : public Filter {
    public:
     SpatialFilterWrapper(const SpatialFilterParams& params) : params(params), spatialFilter() {
         const float alpha = params.alpha;
@@ -651,7 +657,7 @@ class SpatialFilterWrapper : public ImageFilters::Filter {
     impl::SpatialFilter spatialFilter;
 };
 
-class SpeckleFilterWrapper : public ImageFilters::Filter {
+class SpeckleFilterWrapper : public Filter {
    public:
     SpeckleFilterWrapper(const SpeckleFilterParams& params) : params(params), speckleFilter() {
         speckleFilter.Init();
@@ -682,7 +688,7 @@ class SpeckleFilterWrapper : public ImageFilters::Filter {
     impl::SpeckleFilter speckleFilter;
 };
 
-class TemporalFilterWrapper : public ImageFilters::Filter {
+class TemporalFilterWrapper : public Filter {
    private:
     bool isInitialized = false;
     TemporalFilterParams params;
@@ -732,27 +738,27 @@ class TemporalFilterWrapper : public ImageFilters::Filter {
     }
 };
 
-}  // namespace
-
-std::unique_ptr<ImageFilters::Filter> createFilter(const MedianFilterParams& params) {
+std::unique_ptr<Filter> createFilter(const MedianFilterParams& params) {
     return std::make_unique<MedianFilterWrapper>(params);
 }
 
-std::unique_ptr<ImageFilters::Filter> createFilter(const SpatialFilterParams& params) {
+std::unique_ptr<Filter> createFilter(const SpatialFilterParams& params) {
     return std::make_unique<SpatialFilterWrapper>(params);
 }
 
-std::unique_ptr<ImageFilters::Filter> createFilter(const SpeckleFilterParams& params) {
+std::unique_ptr<Filter> createFilter(const SpeckleFilterParams& params) {
     return std::make_unique<SpeckleFilterWrapper>(params);
 }
 
-std::unique_ptr<ImageFilters::Filter> createFilter(const TemporalFilterParams& params) {
+std::unique_ptr<Filter> createFilter(const TemporalFilterParams& params) {
     return std::make_unique<TemporalFilterWrapper>(params);
 }
 
-std::unique_ptr<ImageFilters::Filter> createFilter(const FilterParams& params) {
-    return std::visit([](auto&& arg) -> std::unique_ptr<ImageFilters::Filter> { return createFilter(arg); }, params);
+std::unique_ptr<Filter> createFilter(const FilterParams& params) {
+    return std::visit([](auto&& arg) -> std::unique_ptr<Filter> { return createFilter(arg); }, params);
 }
+
+}  // namespace
 
 std::shared_ptr<ImageFilters> ImageFilters::build(Node::Output& input, ImageFiltersPresetMode presetMode) {
     input.link(this->input);
@@ -814,8 +820,8 @@ void ImageFilters::run() {
 
     while(isRunning()) {
         // Set config
-        while(config.has()) {
-            auto configMsg = config.get<ImageFiltersConfig>();
+        while(inputConfig.has()) {
+            auto configMsg = inputConfig.get<ImageFiltersConfig>();
             bool isUpdate = configMsg->filterIndices.size() > 0;
             if(isUpdate) {
                 logger->debug("ImageFilters: Updating existing filter pipeline. New pipeline is {}", getFilterPipelineString());
@@ -995,8 +1001,8 @@ void ToFDepthConfidenceFilter::run() {
     auto confidenceThreshold = getProperties().initialConfig.confidenceThreshold;
     while(isRunning()) {
         // Update threshold dynamically
-        while(config.has()) {
-            auto configMsg = config.get<ToFDepthConfidenceFilterConfig>();
+        while(inputConfig.has()) {
+            auto configMsg = inputConfig.get<ToFDepthConfidenceFilterConfig>();
             confidenceThreshold = configMsg->confidenceThreshold;
         }
 
@@ -1044,15 +1050,6 @@ void ToFDepthConfidenceFilter::run() {
         filteredDepth.send(filteredDepthFrame);
         confidence.send(confidenceFrame);
     }
-}
-
-float ToFDepthConfidenceFilter::getConfidenceThreshold() const {
-    return initialConfig->confidenceThreshold;
-}
-
-void ToFDepthConfidenceFilter::setConfidenceThreshold(float threshold) {
-    initialConfig->confidenceThreshold = threshold;
-    properties.initialConfig = *initialConfig;
 }
 
 void ToFDepthConfidenceFilter::setRunOnHost(bool runOnHost) {

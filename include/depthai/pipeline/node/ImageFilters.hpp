@@ -61,29 +61,15 @@ class ImageFilters : public DeviceNodeCRTP<DeviceNode, ImageFilters, ImageFilter
     /**
      * Config to be set for a specific filter
      */
-    Node::Input config{*this,
-                       {"config",
-                        Node::DEFAULT_GROUP,
-                        Node::DEFAULT_BLOCKING,
-                        Node::DEFAULT_QUEUE_SIZE,
-                        {{{DatatypeEnum::ImageFiltersConfig, true}}},
-                        Node::DEFAULT_WAIT_FOR_MESSAGE}};
+    Node::Input inputConfig{*this,
+                            {"inputConfig",
+                             Node::DEFAULT_GROUP,
+                             Node::DEFAULT_BLOCKING,
+                             Node::DEFAULT_QUEUE_SIZE,
+                             {{{DatatypeEnum::ImageFiltersConfig, true}}},
+                             Node::DEFAULT_WAIT_FOR_MESSAGE}};
 
     void run() override;
-
-    class Filter {
-       public:
-        virtual void process(std::shared_ptr<dai::ImgFrame>& frame) = 0;
-        virtual void setParams(const FilterParams& params) = 0;
-        virtual std::string getName() const = 0;
-        virtual ~Filter() = default;
-    };
-
-    /**
-     * Add a filter to the node pipeline. The type of filter is determined based on the type of the filter parameter.
-     * @param filter The filter to add
-     */
-    void addFilter(const FilterParams& filter);
 
     /**
      * Specify whether to run on host or device
@@ -170,25 +156,15 @@ class ToFDepthConfidenceFilter : public DeviceNodeCRTP<DeviceNode, ToFDepthConfi
     /**
      * Config message for runtime filter configuration
      */
-    Node::Input config{*this,
-                       {"config",
-                        Node::DEFAULT_GROUP,
-                        Node::DEFAULT_BLOCKING,
-                        Node::DEFAULT_QUEUE_SIZE,
-                        {{{DatatypeEnum::ToFDepthConfidenceFilterConfig, true}}},
-                        Node::DEFAULT_WAIT_FOR_MESSAGE}};
+    Node::Input inputConfig{*this,
+                            {"inputConfig",
+                             Node::DEFAULT_GROUP,
+                             Node::DEFAULT_BLOCKING,
+                             Node::DEFAULT_QUEUE_SIZE,
+                             {{{DatatypeEnum::ToFDepthConfidenceFilterConfig, true}}},
+                             Node::DEFAULT_WAIT_FOR_MESSAGE}};
 
     void run() override;
-
-    /**
-     * Get the confidence threshold
-     */
-    float getConfidenceThreshold() const;
-
-    /**
-     * Set the confidence threshold
-     */
-    void setConfidenceThreshold(float threshold);
 
     /**
      * Specify whether to run on host or device

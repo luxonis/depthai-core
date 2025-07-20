@@ -78,8 +78,8 @@ class ToF : public DeviceNodeGroup {
           intensity{tofBase->intensity},
           phase{tofBase->phase},
           tofBaseInputConfig{tofBase->inputConfig},
-          tofDepthConfidenceFilterInputConfig{tofDepthConfidenceFilter->config},
-          imageFiltersInputConfig{imageFilters->config},
+          tofDepthConfidenceFilterInputConfig{tofDepthConfidenceFilter->inputConfig},
+          imageFiltersInputConfig{imageFilters->inputConfig},
           tofBaseNode{*tofBase},
           tofDepthConfidenceFilterNode{*tofDepthConfidenceFilter},
           imageFiltersNode{*imageFilters} {}

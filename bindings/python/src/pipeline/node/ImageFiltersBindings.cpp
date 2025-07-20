@@ -57,7 +57,7 @@ void bind_imagefilters(py::module& m, void* pCallstack) {
     // StereoDepthFilterPipeline bindings
     imageFilters.def_readonly("input", &ImageFilters::input, DOC(dai, node, ImageFilters, input))
         .def_readonly("output", &ImageFilters::output, DOC(dai, node, ImageFilters, output))
-        .def_readonly("config", &ImageFilters::config, DOC(dai, node, ImageFilters, config))
+        .def_readonly("inputConfig", &ImageFilters::inputConfig, DOC(dai, node, ImageFilters, inputConfig))
         .def_readonly("initialConfig", &ImageFilters::initialConfig, DOC(dai, node, ImageFilters, initialConfig))
         .def("setRunOnHost", &ImageFilters::setRunOnHost, py::arg("runOnHost"), DOC(dai, node, ImageFilters, setRunOnHost))
         .def("runOnHost", &ImageFilters::runOnHost, DOC(dai, node, ImageFilters, runOnHost))
@@ -79,15 +79,10 @@ void bind_imagefilters(py::module& m, void* pCallstack) {
         .def_readonly("amplitude", &ToFDepthConfidenceFilter::amplitude, DOC(dai, node, ToFDepthConfidenceFilter, amplitude))
         .def_readonly("filteredDepth", &ToFDepthConfidenceFilter::filteredDepth, DOC(dai, node, ToFDepthConfidenceFilter, filteredDepth))
         .def_readonly("confidence", &ToFDepthConfidenceFilter::confidence, DOC(dai, node, ToFDepthConfidenceFilter, confidence))
-        .def_readonly("config", &ToFDepthConfidenceFilter::config, DOC(dai, node, ToFDepthConfidenceFilter, config))
+        .def_readonly("inputConfig", &ToFDepthConfidenceFilter::inputConfig, DOC(dai, node, ToFDepthConfidenceFilter, inputConfig))
         .def_readonly("initialConfig", &ToFDepthConfidenceFilter::initialConfig, DOC(dai, node, ToFDepthConfidenceFilter, initialConfig))
         .def("setRunOnHost", &ToFDepthConfidenceFilter::setRunOnHost, py::arg("runOnHost"), DOC(dai, node, ToFDepthConfidenceFilter, setRunOnHost))
         .def("runOnHost", &ToFDepthConfidenceFilter::runOnHost, DOC(dai, node, ToFDepthConfidenceFilter, runOnHost))
-        .def("setConfidenceThreshold",
-             &ToFDepthConfidenceFilter::setConfidenceThreshold,
-             py::arg("threshold"),
-             DOC(dai, node, ToFDepthConfidenceFilter, setConfidenceThreshold))
-        .def("getConfidenceThreshold", &ToFDepthConfidenceFilter::getConfidenceThreshold, DOC(dai, node, ToFDepthConfidenceFilter, getConfidenceThreshold))
         .def("build",
              py::overload_cast<Node::Output&, Node::Output&, ImageFiltersPresetMode>(&ToFDepthConfidenceFilter::build),
              py::arg("depth"),
