@@ -374,6 +374,7 @@ set(TARGET_OPENCV_SOURCES
     src/pipeline/node/host/Replay.cpp
     src/opencv/RecordReplay.cpp
     src/opencv/HolisticRecordReplay.cpp
+    src/opencv/Landmarks.cpp
 )
 
 set(TARGET_PCL_SOURCES src/pcl/PointCloudData.cpp)
