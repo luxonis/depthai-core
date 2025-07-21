@@ -33,7 +33,8 @@ void bind_landmarks(pybind11::module& m, void* pCallstack) {
       .def_readwrite("id", &Landmark::id, DOC(dai, Landmark, id))
       .def_readwrite("size", &Landmark::size, DOC(dai, Landmark, size))
       .def_readwrite("translation", &Landmark::translation, DOC(dai, Landmark, translation))
-      .def_readwrite("quaternion", &Landmark::quaternion, DOC(dai, Landmark, quaternion));
+      .def_readwrite("quaternion", &Landmark::quaternion, DOC(dai, Landmark, quaternion))
+      .def_readwrite("covariance", &Landmark::covariance, DOC(dai, Landmark, covariance));
 
 
    // Message
