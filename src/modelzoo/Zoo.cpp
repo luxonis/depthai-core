@@ -72,12 +72,42 @@ class ZooManager {
             throw std::runtime_error("Cache directory is not set");
         }
 
-        // Lock the cache directory
-        createFolder(".locks");
-        const fs::path modelLockFilePath = platform::joinPaths(platform::joinPaths(this->cacheDirectory, ".locks"), getModelCacheFolderName() + ".lock");
-        logger::info("Locking model cache directory: {}", modelLockFilePath);
-        cacheFolderLock = platform::FileLock::lock(modelLockFilePath, true);
-        logger::info("Model cache directory locked: {}", modelLockFilePath);
+        // Make sure to create the cache directory if it doesn't exist
+        bool cacheDirectoryExists = platform::checkPathExists(this->cacheDirectory);
+        if(!cacheDirectoryExists) {
+            try {
+                logger::debug("Cache directory does not exist, creating it: {}", this->cacheDirectory.string());
+                std::filesystem::create_directories(this->cacheDirectory);
+            } catch(const std::exception& e) {
+                throw std::runtime_error(fmt::format("Failed to create cache directory: {} | {}", this->cacheDirectory.string(), e.what()));
+            }
+        }
+
+        // Check the permissions on the cache directory
+        bool hasReadPermissions = platform::checkReadPermissions(this->cacheDirectory);
+        bool hasWritePermissions = platform::checkWritePermissions(this->cacheDirectory);
+        logger::debug("Cache directory has read permissions: {}, has write permissions: {}", hasReadPermissions, hasWritePermissions);
+
+        // If we don't have read permissions, there is no point in continuing
+        if(!hasReadPermissions) {
+            throw std::runtime_error(fmt::format("Cache directory {} is not readable", this->cacheDirectory.string()));
+        }
+
+        // If we don't have write permissions, creating a lock is futile
+        // In that case, updating the model or metadata is not possible - in case of a cached model, return it
+        // otherwise, throw an error
+
+        if(hasWritePermissions) {
+            // Lock the cache directory
+            logger::info("Cache directory has write permissions, creating a .locks folder");
+            createFolder(".locks");
+            const fs::path modelLockFilePath = platform::joinPaths(platform::joinPaths(this->cacheDirectory, ".locks"), getModelCacheFolderName() + ".lock");
+            logger::info("Locking model cache directory: {}", modelLockFilePath);
+            cacheFolderLock = platform::FileLock::lock(modelLockFilePath, true);
+            logger::info("Model cache directory locked: {}", modelLockFilePath);
+        } else {
+            logger::info("Cache directory does not have write permissions, skipping lock creation");
+        }
     }
 
     /**
@@ -171,7 +201,6 @@ class ZooManager {
      */
     static bool connectionToZooAvailable();
 
-   private:
     // Description of the model
     NNModelDescription modelDescription;
 
@@ -564,7 +593,22 @@ fs::path getModelFromZoo(
     ZooManager zooManager(modelDescription, cacheDirectory, apiKey);
 
     // Check if model is cached
+    bool hasLock = (zooManager.cacheFolderLock != nullptr);
     bool modelIsCached = zooManager.isModelCached();
+
+    // Return the model right away if lock is not held and model is cached
+    if(!hasLock && modelIsCached) {
+        fs::path modelPath = zooManager.loadModelFromCache();
+        logger::info("Model is cached but model lock could not be acquired (likely due to insufficient write permissions). Using cached model located at {}",
+                     modelPath);
+        return modelPath;
+    }
+
+    // If we don't have a lock and model is not cached, throw an error
+    if(!hasLock && !modelIsCached) {
+        throw std::runtime_error("Model is not cached and no lock is held. Please check the cache directory permissions.");
+    }
+
     bool isMetadataPresent = std::filesystem::exists(zooManager.getMetadataFilePath());
     bool useCachedModel = useCached && modelIsCached && isMetadataPresent;
 
@@ -574,13 +618,16 @@ fs::path getModelFromZoo(
     bool internetIsAvailable = performInternetCheck && ZooManager::connectionToZooAvailable();
     nlohmann::json responseJson;
 
-    logger::info("Model is cached: {} | Metadata present: {} | Use cached model: {} | Perform internet check: {} | Internet is available: {} | useCached: {}",
-                 modelIsCached,
-                 isMetadataPresent,
-                 useCachedModel,
-                 performInternetCheck,
-                 internetIsAvailable,
-                 useCached);
+    logger::info(
+        "Model is cached: {} | Metadata present: {} | Use cached model: {} | Perform internet check: {} | Internet is available: {} | useCached: {} | has "
+        "folder lock: {}",
+        modelIsCached,
+        isMetadataPresent,
+        useCachedModel,
+        performInternetCheck,
+        internetIsAvailable,
+        useCached,
+        hasLock);
 
     if(internetIsAvailable) {
         responseJson = zooManager.fetchModelDownloadLinks();
@@ -588,6 +635,7 @@ fs::path getModelFromZoo(
 
     // Use cached model if present and useCached is true
     if(useCachedModel) {
+        // Return cached model in case of no internet connection or no lock
         if(!internetIsAvailable) {
             fs::path modelPath = zooManager.loadModelFromCache();
             logger::info("Using cached model located at {}", modelPath);
