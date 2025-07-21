@@ -43,6 +43,10 @@ struct Landmark {
      * The covariance of the landmark. If you do not know what this means, you can probably just fill with 0.01.
      */
     std::array<std::array<double, 6>, 6> covariance;
+
+    #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    cv::Mat getCovarianceAsCvMat();
+    #endif
 };
 
 DEPTHAI_SERIALIZE_EXT(Landmark, id, size, translation, quaternion, covariance);
@@ -51,11 +55,6 @@ class Landmarks : public Buffer {
    public:
     Landmarks() = default;
     virtual ~Landmarks() = default;
-
-    #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-    cv::Mat getCovarianceAsCVMat(Landmark landmark);
-    #endif
-
 
    public:
     std::vector<Landmark> landmarks;
