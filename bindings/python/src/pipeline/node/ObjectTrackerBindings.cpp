@@ -53,6 +53,7 @@ void bind_objecttracker(pybind11::module& m, void* pCallstack) {
         .def_readonly("passthroughDetectionFrame", &ObjectTracker::passthroughDetectionFrame, DOC(dai, node, ObjectTracker, passthroughDetectionFrame))
         .def_readonly("passthroughDetections", &ObjectTracker::passthroughDetections, DOC(dai, node, ObjectTracker, passthroughDetections))
 
+        .def("setRunOnHost", &ObjectTracker::setRunOnHost, py::arg("runOnHost"), DOC(dai, node, ObjectTracker, setRunOnHost))
         .def("setTrackerThreshold", &ObjectTracker::setTrackerThreshold, py::arg("threshold"), DOC(dai, node, ObjectTracker, setTrackerThreshold))
         .def("setMaxObjectsToTrack", &ObjectTracker::setMaxObjectsToTrack, py::arg("maxObjectsToTrack"), DOC(dai, node, ObjectTracker, setMaxObjectsToTrack))
         .def(
