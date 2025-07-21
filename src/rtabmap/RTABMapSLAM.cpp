@@ -130,7 +130,8 @@ void RTABMapSLAM::syncCB(std::shared_ptr<dai::ADatatype> data) {
                     auto transform = TransformData(marker.translation.x, marker.translation.y, marker.translation.z,
                         marker.quaternion.qx, marker.quaternion.qy, marker.quaternion.qz, marker.quaternion.qw);
 
-                    auto covariance = cv::Mat::eye(6 ,6, CV_64FC1) * 0.05;
+                    // auto covariance = cv::Mat::eye(6 ,6, CV_64FC1) * 0.001;
+                    auto covariance = marker.getCovarianceAsCvMat();
 
                     markers.emplace(std::make_pair(marker.id, rtabmap::Landmark(marker.id, marker.size, transform.getRTABMapTransform(), covariance)));
                 }
