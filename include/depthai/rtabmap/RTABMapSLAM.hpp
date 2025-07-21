@@ -49,10 +49,12 @@ class RTABMapSLAM : public dai::NodeCRTP<dai::node::ThreadedHostNode, RTABMapSLA
     Input& depth = inputs[depthInputName];
 
     Input& landmarks = inputs[landmarksInputName];
+
+    Input& features = inputs[featuresInputName];
     /**
      * Input tracked features on which SLAM is performed (optional).
      */
-    Input features{*this, {featuresInputName, DEFAULT_GROUP, DEFAULT_BLOCKING, 15, {{{DatatypeEnum::TrackedFeatures, true}}}}};
+    // Input features{*this, {featuresInputName, DEFAULT_GROUP, DEFAULT_BLOCKING, 15, {{{DatatypeEnum::TrackedFeatures, true}}}}};
     /**
      * Input odometry pose.
      */
