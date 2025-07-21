@@ -31,6 +31,7 @@
 #include "node/VideoEncoder.hpp"
 #include "node/Warp.hpp"
 #include "node/host/RGBD.hpp"
+#include "node/Vpp.hpp"
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     #include "node/host/Display.hpp"
     #include "node/host/HostCamera.hpp"

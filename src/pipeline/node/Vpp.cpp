@@ -1,144 +1,114 @@
-#pragma once
+#include "depthai/pipeline/node/Vpp.hpp"
 
-#include <depthai/pipeline/DeviceNode.hpp>
-#include <memory>
-
-// shared
 #include "depthai/pipeline/datatype/VppConfig.hpp"
-#include "depthai/properties/VppProperties.hpp"
+#include "utility/Logging.hpp"
 
 namespace dai {
 namespace node {
 
-/**
- * @brief Vpp node. Apply Virtual Projection Pattern algorithm to stereo images based on disparity.
- */
-class Vpp : public DeviceNodeCRTP<DeviceNode, Vpp, VppProperties> {
-   public:
-    constexpr static const char* NAME = "Vpp";
-    using DeviceNodeCRTP::DeviceNodeCRTP;
+Vpp::Vpp(std::unique_ptr<Properties> props)
+    : DeviceNodeCRTP<DeviceNode, Vpp, VppProperties>(std::move(props)),
+      initialConfig(std::make_shared<decltype(properties.initialConfig)>(properties.initialConfig)) {}
 
-   protected:
-    Properties& getProperties();
-    Vpp() = default;
-    Vpp(std::unique_ptr<Properties> props);
+Vpp::Properties& Vpp::getProperties() {
+    properties.initialConfig = *initialConfig;
+    return properties;
+}
 
-   public:
-    /**
-     * Initial config to use for VPP.
-     */
-    std::shared_ptr<VppConfig> initialConfig = std::make_shared<VppConfig>();
+void Vpp::setMethod(VppConfig::Method method) {
+    initialConfig->setMethod(method);
+    properties.initialConfig = *initialConfig
+}
 
-    /**
-     * Input VppConfig message with ability to modify parameters in runtime.
-     */
-    Input inputConfig{
-        *this, {"inputConfig", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::VppConfig, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+void Vpp::setPatchSize(int size) {
+    if (size % 2 == 0) {
+        throw std::runtime_error("VPP patch size must be odd number");
+    }
+    if (size < 1) {
+        throw std::runtime_error("VPP patch size must be positive");
+    }
+    initialConfig->setPatchSize(size);
+    properties.initialConfig = *initialConfig;
+}
 
-    /**
-     * Input for left ImgFrame
-     */
-    Input left{*this, {"left", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ImgFrame, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+void Vpp::setAggregationWindowSize(int sizeX, int sizeY) {
+    if (sizeX < 1 || sizeY < 1) {
+        throw std::runtime_error("VPP aggregation window sizes must be positive");
+    }
+    initialConfig->setAggregationWindowSize(sizeX, sizeY);
+    properties.initialConfig = *initialConfig;
+}
 
-    /**
-     * Input for right ImgFrame
-     */
-    Input right{*this, {"right", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ImgFrame, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+void Vpp::setProjectionDirection(bool left2right) {
+    initialConfig->setProjectionDirection(left2right);
+    properties.initialConfig = *initialConfig;
+}
 
-    /**
-     * Input for disparity ImgFrame (RAW16 or float32)
-     */
-    Input disparity{*this, {"disparity", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ImgFrame, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+void Vpp::setBlending(float blending, float blendingOcclusion) {
+    if (blending < 0.0f || blending > 1.0f) {
+        throw std::runtime_error("VPP blending factor must be between 0.0 and 1.0");
+    }
+    if (blendingOcclusion < 0.0f || blendingOcclusion > 1.0f) {
+        throw std::runtime_error("VPP occlusion blending factor must be between 0.0 and 1.0");
+    }
+    initialConfig->setBlending(blending, blendingOcclusion);
+    properties.initialConfig = *initialConfig;
+}
 
-    /**
-     * Output ImgFrame message that carries the processed left image with virtual projection pattern applied.
-     */
-    Output leftOut{*this, {"leftOut", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
+void Vpp::setDistancePatch(bool enable, float gamma) {
+    if (gamma == 0){
+        throw std::runtime_error("VPP distance gamma must be positive");
+    }
+    if (gamma <= 0.0f) {
+        throw std::runtime_error("VPP distance gamma must be positive");
+    }
+    initialConfig->setDistancePatch(enable, gamma);
+    properties.initialConfig = *initialConfig;
+}
 
-    /**
-     * Output ImgFrame message that carries the processed right image with virtual projection pattern applied.
-     */
-    Output rightOut{*this, {"rightOut", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
+void Vpp::setBilateralPatch(bool enable, float spatialSigma, float intensitySigma, float threshold) {
+    if (spatialSigma <= 0.0f || intensitySigma <= 0.0f) {
+        throw std::runtime_error("VPP bilateral sigma values must be positive");
+    }
+    if (threshold < 0.0f) {
+        throw std::runtime_error("VPP bilateral threshold must be non-negative");
+    }
+    initialConfig->setBilateralPatch(enable, spatialSigma, intensitySigma, threshold);
+    properties.initialConfig = *initialConfig;
+}
 
-    /**
-     * Set the pattern generation method
-     * @param method Method to use (RANDOM or MAX_DISTANCE)
-     */
-    void setMethod(VppConfig::Method method);
+void Vpp::setDisparityRange(float minThreshold, float maxThreshold) {
+    if (minThreshold < 0.0f || maxThreshold < 0.0f) {
+        throw std::runtime_error("VPP disparity thresholds must be non-negative");
+    }
+    if (minThreshold >= maxThreshold) {
+        throw std::runtime_error("VPP minimum disparity threshold must be less than maximum");
+    }
+    initialConfig->setDisparityRange(minThreshold, maxThreshold);
+    properties.initialConfig = *initialConfig;
+}
 
-    /**
-     * Set patch size for projection
-     * @param size Patch size (must be odd number, default: 5)
-     */
-    void setPatchSize(int size);
+void Vpp::setUniformColor(bool uniform) {
+    initialConfig->uniformColor = uniform;
+    properties.initialConfig = *initialConfig;
+}
 
-    /**
-     * Set aggregation window size for color computation
-     * @param sizeX Window size in X direction (default: 64)
-     * @param sizeY Window size in Y direction (default: 3)
-     */
-    void setAggregationWindowSize(int sizeX, int sizeY);
+void Vpp::setDiscardOcclusion(bool discard) {
+    initialConfig->discardOcclusion = discard;
+    properties.initialConfig = *initialConfig;
+}
 
-    /**
-     * Set projection direction
-     * @param left2right True for left to right projection (default: true)
-     */
-    void setProjectionDirection(bool left2right);
+void Vpp::setInterpolate(bool interpolate) {
+    initialConfig->interpolate = interpolate;
+    properties.initialConfig = *initialConfig;
+}
 
-    /**
-     * Set blending factors
-     * @param blending Alpha blending factor (default: 0.4)
-     * @param blendingOcclusion Alpha blending factor for occluded areas (default: 0.0)
-     */
-    void setBlending(float blending, float blendingOcclusion = 0.0f);
-
-    /**
-     * Enable/disable distance-based patch sizing
-     * @param enable Enable distance patch (default: false)
-     * @param gamma Distance gamma parameter (default: 0.3)
-     */
-    void setDistancePatch(bool enable, float gamma = 0.3f);
-
-    /**
-     * Enable/disable bilateral patch filtering
-     * @param enable Enable bilateral patch (default: false)
-     * @param spatialSigma Spatial sigma parameter (default: 2.0)
-     * @param intensitySigma Intensity sigma parameter (default: 1.0)
-     * @param threshold Bilateral threshold (default: 0.001)
-     */
-    void setBilateralPatch(bool enable, float spatialSigma = 2.0f, float intensitySigma = 1.0f, float threshold = 0.001f);
-
-    /**
-     * Set disparity processing range
-     * @param minThreshold Minimum disparity threshold (default: 0.0)
-     * @param maxThreshold Maximum disparity threshold (default: 255.0)
-     */
-    void setDisparityRange(float minThreshold, float maxThreshold);
-
-    /**
-     * Set whether to use uniform color for pattern generation
-     * @param uniform True for uniform color, false for varying colors (default: false)
-     */
-    void setUniformColor(bool uniform);
-
-    /**
-     * Set whether to discard occluded points
-     * @param discard True to discard occluded points (default: false)
-     */
-    void setDiscardOcclusion(bool discard);
-
-    /**
-     * Set whether to use weighted splatting of patterns in target view
-     * @param interpolate True to enable interpolation (default: true)
-     */
-    void setInterpolate(bool interpolate);
-
-    /**
-     * Specify number of frames in pool.
-     * @param numFramesPool How many frames should the pool have
-     */
-    void setNumFramesPool(int numFramesPool);
-};
+void Vpp::setNumFramesPool(int numFramesPool) {
+    if (numFramesPool < 1) {
+        throw std::runtime_error("VPP number of frames in pool must be positive");
+    }
+    properties.numFramesPool = numFramesPool;
+}
 
 }  // namespace node
 }  // namespace dai
