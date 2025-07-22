@@ -55,7 +55,7 @@ class ToFBase : public DeviceNodeCRTP<DeviceNode, ToFBase, ToFProperties> {
      */
     std::shared_ptr<ToFBase> build(dai::CameraBoardSocket boardSocket = dai::CameraBoardSocket::AUTO,
                                    dai::ImageFiltersPresetMode presetMode = dai::ImageFiltersPresetMode::MID_RANGE,
-                                   float fps = 30);
+                                   std::optional<float> fps = std::nullopt);
 
     /**
      * Set profile preset for ToFConfig
@@ -120,7 +120,7 @@ class ToF : public DeviceNodeGroup {
 
     std::shared_ptr<ToF> build(dai::CameraBoardSocket boardSocket = dai::CameraBoardSocket::AUTO,
                                dai::ImageFiltersPresetMode presetMode = dai::ImageFiltersPresetMode::MID_RANGE,
-                               float fps = 30) {
+                               std::optional<float> fps = std::nullopt) {
         tofBase->build(boardSocket, presetMode, fps);
         tofDepthConfidenceFilter->build(presetMode);
         imageFilters->build(presetMode);

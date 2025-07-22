@@ -40,10 +40,7 @@ void bind_tof(pybind11::module& m, void* pCallstack) {
         .def_readonly("intensity", &ToFBase::intensity, DOC(dai, node, ToFBase, intensity), DOC(dai, node, ToFBase, intensity))
         .def_readonly("phase", &ToFBase::phase, DOC(dai, node, ToFBase, phase), DOC(dai, node, ToFBase, phase))
         .def_readonly("initialConfig", &ToFBase::initialConfig, DOC(dai, node, ToFBase, initialConfig), DOC(dai, node, ToFBase, initialConfig))
-
-        .def("build", &ToFBase::build, "boardSocket"_a = CameraBoardSocket::AUTO, "presetMode"_a = ImageFiltersPresetMode::MID_RANGE, "fps"_a = float(30), DOC(dai, node, ToFBase, build))
-        // .def("setNumShaves", &ToF::setNumShaves, DOC(dai, node, ToF, setNumShaves))
-        // .def("setNumFramesPool", &ToF::setNumFramesPool, DOC(dai, node, ToF, setNumFramesPool))
+        .def("build", &ToFBase::build, "boardSocket"_a = CameraBoardSocket::AUTO, "presetMode"_a = ImageFiltersPresetMode::MID_RANGE, "fps"_a = std::nullopt, DOC(dai, node, ToFBase, build))
         ;
 
     // ToF Node (DeviceNodeGroup)
@@ -87,7 +84,7 @@ void bind_tof(pybind11::module& m, void* pCallstack) {
              &ToF::build,
              "boardSocket"_a = CameraBoardSocket::AUTO,
              "presetMode"_a = ImageFiltersPresetMode::MID_RANGE,
-             "fps"_a = float(30),
+             "fps"_a = std::nullopt,
              DOC(dai, node, ToF, build));
 
     // ALIAS
