@@ -78,7 +78,7 @@ int main() {
 
     // ToF node
     dai::CameraBoardSocket socket = dai::CameraBoardSocket::AUTO;
-    dai::node::ImageFiltersPresetMode presetMode = dai::node::ImageFiltersPresetMode::DEFAULT;
+    dai::node::ImageFiltersPresetMode presetMode = dai::node::ImageFiltersPresetMode::MID_RANGE;
     std::shared_ptr<dai::node::ToF> tof = pipeline.create<dai::node::ToF>()->build(socket, presetMode);
 
     // Output queues

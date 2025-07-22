@@ -109,8 +109,8 @@ class ToF : public DeviceNodeGroup {
     }
 
     std::shared_ptr<ToF> build(dai::CameraBoardSocket boardSocket = dai::CameraBoardSocket::AUTO,
-                               ImageFiltersPresetMode presetMode = ImageFiltersPresetMode::DEFAULT,
-                               float fps = 60) {
+                               ImageFiltersPresetMode presetMode = ImageFiltersPresetMode::MID_RANGE,
+                               float fps = 30) {
         tofBase->build(boardSocket, fps);
         tofDepthConfidenceFilter->build(presetMode);
         imageFilters->build(presetMode);

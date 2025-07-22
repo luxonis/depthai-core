@@ -1107,7 +1107,7 @@ def camera_pipeline(gui):
     pipeline = dai.Pipeline()
 
     # ToF node
-    socket, preset_mode = dai.CameraBoardSocket.CAM_A, dai.ImageFiltersPresetMode.DEFAULT
+    socket, preset_mode = dai.CameraBoardSocket.CAM_A, dai.ImageFiltersPresetMode.MID_RANGE
     tof = pipeline.create(dai.node.ToF).build(socket, preset_mode)
 
     # Set initial filter parameters

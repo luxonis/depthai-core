@@ -872,7 +872,39 @@ void ImageFilters::setRunOnHost(bool runOnHost) {
 
 void ImageFilters::setDefaultProfilePreset(ImageFiltersPresetMode mode) {
     switch(mode) {
-        case ImageFiltersPresetMode::DEFAULT: {
+
+        case ImageFiltersPresetMode::LOW_RANGE: {
+            std::vector<FilterParams> params;
+
+            TemporalFilterParams temporalFilterParams;
+            temporalFilterParams.enable = true;
+            temporalFilterParams.persistencyMode = TemporalFilterParams::PersistencyMode::VALID_1_IN_LAST_8;
+            temporalFilterParams.alpha = 0.2f;
+            temporalFilterParams.delta = 60;
+
+            SpeckleFilterParams speckleFilterParams;
+            speckleFilterParams.enable = true;
+            speckleFilterParams.speckleRange = 14;
+            speckleFilterParams.differenceThreshold = 11;
+
+            SpatialFilterParams spatialFilterParams;
+            spatialFilterParams.enable = true;
+            spatialFilterParams.alpha = 0.5f;
+            spatialFilterParams.delta = 20;
+            spatialFilterParams.numIterations = 2;
+            spatialFilterParams.holeFillingRadius = 0;
+
+            MedianFilterParams medianFilterParams = MedianFilterParams::MEDIAN_OFF;
+
+            params.push_back(temporalFilterParams);
+            params.push_back(speckleFilterParams);
+            params.push_back(spatialFilterParams);
+            params.push_back(medianFilterParams);
+
+            initialConfig->filterParams = params;
+        } break;
+
+        case ImageFiltersPresetMode::MID_RANGE: {
             std::vector<FilterParams> params;
 
             TemporalFilterParams temporalFilterParams;
@@ -902,38 +934,7 @@ void ImageFilters::setDefaultProfilePreset(ImageFiltersPresetMode mode) {
 
             initialConfig->filterParams = params;
         } break;
-
-        case ImageFiltersPresetMode::LOW_RANGE: {
-            std::vector<FilterParams> params;
-
-            TemporalFilterParams temporalFilterParams;
-            temporalFilterParams.enable = true;
-            temporalFilterParams.persistencyMode = TemporalFilterParams::PersistencyMode::PERSISTENCY_1_IN_8;
-            temporalFilterParams.alpha = 0.2f;
-            temporalFilterParams.delta = 60;
-
-            SpeckleFilterParams speckleFilterParams;
-            speckleFilterParams.enable = true;
-            speckleFilterParams.speckleRange = 14;
-            speckleFilterParams.differenceThreshold = 11;
-
-            SpatialFilterParams spatialFilterParams;
-            spatialFilterParams.enable = true;
-            spatialFilterParams.alpha = 0.5f;
-            spatialFilterParams.delta = 20;
-            spatialFilterParams.numIterations = 2;
-            spatialFilterParams.holeFillingRadius = 0;
-
-            MedianFilterParams medianFilterParams = MedianFilterParams::MEDIAN_OFF;
-
-            params.push_back(temporalFilterParams);
-            params.push_back(speckleFilterParams);
-            params.push_back(spatialFilterParams);
-            params.push_back(medianFilterParams);
-
-            initialConfig->filterParams = params;
-        } break;
-
+        
         case ImageFiltersPresetMode::HIGH_RANGE: {
                         std::vector<FilterParams> params;
 
@@ -1031,7 +1032,6 @@ void ToFDepthConfidenceFilter::applyDepthConfidenceFilter(std::shared_ptr<ImgFra
 
             // Invalidate pixel if confidence is below threshold
             if(conf < threshold) {
-            //todo check
                 filteredDepth.at<std::uint16_t>(i, j) = 0;
             } else {
                 filteredDepth.at<std::uint16_t>(i, j) = static_cast<std::uint16_t>(d);
@@ -1108,16 +1108,13 @@ bool ToFDepthConfidenceFilter::runOnHost() const {
 
 void ToFDepthConfidenceFilter::setDefaultProfilePreset(ImageFiltersPresetMode mode) {
     switch(mode) {
-        case ImageFiltersPresetMode::DEFAULT: {
-            // TODO: Add a sensible value here
-            initialConfig->confidenceThreshold = 2.0f;
-        } break;
         case ImageFiltersPresetMode::LOW_RANGE: {
-            // TODO: Add a sensible value here
             initialConfig->confidenceThreshold = 1.0f;
         } break;
+        case ImageFiltersPresetMode::MID_RANGE: {
+            initialConfig->confidenceThreshold = 2.0f;
+        } break;
         case ImageFiltersPresetMode::HIGH_RANGE: {
-            // TODO: Add a sensible value here
             initialConfig->confidenceThreshold = 3.0f;
         } break;
     }

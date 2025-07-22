@@ -86,7 +86,7 @@ void bind_tof(pybind11::module& m, void* pCallstack) {
         .def("build",
              &ToF::build,
              "boardSocket"_a = CameraBoardSocket::AUTO,
-             "presetMode"_a = ImageFiltersPresetMode::DEFAULT,
+             "presetMode"_a = ImageFiltersPresetMode::MID_RANGE,
              "fps"_a = float(30),
              DOC(dai, node, ToF, build));
 

@@ -49,7 +49,6 @@ void bind_imagefilters(py::module& m, void* pCallstack) {
 
     // Add enum for preset mode
     py::enum_<ImageFiltersPresetMode>(m, "ImageFiltersPresetMode")
-        .value("DEFAULT", ImageFiltersPresetMode::DEFAULT)
         .value("LOW_RANGE", ImageFiltersPresetMode::LOW_RANGE)
         .value("MID_RANGE", ImageFiltersPresetMode::MID_RANGE)
         .value("HIGH_RANGE", ImageFiltersPresetMode::HIGH_RANGE);
@@ -64,11 +63,11 @@ void bind_imagefilters(py::module& m, void* pCallstack) {
         .def("build",
              py::overload_cast<Node::Output&, ImageFiltersPresetMode>(&ImageFilters::build),
              py::arg("input"),
-             py::arg("presetMode") = ImageFiltersPresetMode::DEFAULT,
+             py::arg("presetMode") = ImageFiltersPresetMode::MID_RANGE,
              DOC(dai, node, ImageFilters, build))
         .def("build",
              py::overload_cast<ImageFiltersPresetMode>(&ImageFilters::build),
-             py::arg("presetMode") = ImageFiltersPresetMode::DEFAULT,
+             py::arg("presetMode") = ImageFiltersPresetMode::MID_RANGE,
              DOC(dai, node, ImageFilters, build));
 
     // Just an alias for the filter stereo depth config parameters
@@ -90,10 +89,10 @@ void bind_imagefilters(py::module& m, void* pCallstack) {
              py::overload_cast<Node::Output&, Node::Output&, ImageFiltersPresetMode>(&ToFDepthConfidenceFilter::build),
              py::arg("depth"),
              py::arg("amplitude"),
-             py::arg("presetMode") = ImageFiltersPresetMode::DEFAULT,
+             py::arg("presetMode") = ImageFiltersPresetMode::MID_RANGE,
              DOC(dai, node, ToFDepthConfidenceFilter, build))
         .def("build",
              py::overload_cast<ImageFiltersPresetMode>(&ToFDepthConfidenceFilter::build),
-             py::arg("presetMode") = ImageFiltersPresetMode::DEFAULT,
+             py::arg("presetMode") = ImageFiltersPresetMode::MID_RANGE,
              DOC(dai, node, ToFDepthConfidenceFilter, build));
 }
