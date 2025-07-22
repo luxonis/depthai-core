@@ -1,3 +1,6 @@
+#include <fmt/format.h>
+#include <fmt/std.h>
+
 #include <stdexcept>
 
 #include "build/version.hpp"

@@ -16,7 +16,7 @@ int main() {
     modelDescription.saveToYamlFile("./mymodel.yaml");
 
     // Return path to downloaded model - yolov6-nano-r2-288x512.tar.xz for this example
-    std::string modelPath = dai::getModelFromZoo(modelDescription, false);  // false means don't use cached model
+    auto modelPath = dai::getModelFromZoo(modelDescription, false);  // false means don't use cached model
     std::cout << "Model path: " << modelPath << std::endl;
 
     // Load the model (most of the time it's a NNArchive)

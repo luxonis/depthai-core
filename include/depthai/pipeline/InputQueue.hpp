@@ -23,7 +23,7 @@ class InputQueue {
      * @param maxSize: Maximum size of the input queue
      * @param blocking: Whether the input queue should block when full
      */
-    InputQueue(unsigned int maxSize = 16, bool blocking = false);
+    explicit InputQueue(unsigned int maxSize = 16, bool blocking = false);
 
     class InputQueueNode : public node::ThreadedHostNode {
        public:

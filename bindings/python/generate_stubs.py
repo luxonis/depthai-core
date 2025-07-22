@@ -168,7 +168,12 @@ try:
             process_init_pyi(os.path.join(root, '__init__.pyi'), is_depthai_root)
 
 except subprocess.CalledProcessError as err:
+    print(f"Error during stub generation: {err}")
     exit(err.returncode)
 
-finally:
-    exit(0)
+except Exception as e:
+    print(f"An error occurred: {e}")
+    exit(-1)
+
+
+exit(0)

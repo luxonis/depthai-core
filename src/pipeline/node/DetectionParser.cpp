@@ -39,7 +39,7 @@ std::shared_ptr<DetectionParser> DetectionParser::build(Node::Output& nnInput, c
     return std::static_pointer_cast<DetectionParser>(shared_from_this());
 }
 
-void DetectionParser::setModelPath(const dai::Path& modelPath) {
+void DetectionParser::setModelPath(const std::filesystem::path& modelPath) {
     switch(model::readModelType(modelPath.string())) {
         case model::ModelType::BLOB:
         case model::ModelType::SUPERBLOB:
@@ -136,11 +136,11 @@ void DetectionParser::setBlob(OpenVINO::Blob blob) {
     properties.networkInputs = blob.networkInputs;
 }
 
-void DetectionParser::setBlobPath(const dai::Path& path) {
+void DetectionParser::setBlobPath(const std::filesystem::path& path) {
     setBlob(OpenVINO::Blob(path));
 }
 
-void DetectionParser::setBlob(const dai::Path& path) {
+void DetectionParser::setBlob(const std::filesystem::path& path) {
     setBlobPath(path);
 }
 

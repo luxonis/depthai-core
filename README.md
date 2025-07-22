@@ -1,23 +1,25 @@
-# DepthAI C++ Library
+# DepthAI Library
 
 [![Forum](https://img.shields.io/badge/Forum-discuss-orange)](https://discuss.luxonis.com/)
 [![Docs](https://img.shields.io/badge/Docs-DepthAI_API-yellow)](https://stg.docs.luxonis.com/software/v3/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
-DepthAI library for interfacing with Luxonis DepthAI hardware.
+DepthAI library for interfacing with Luxonis DepthAI hardware. It's written in C++ and offers Python bindings out of the box.
 
-> ℹ️ This is a `v3.x.y` version of the library which is in release candidate stage.
-
-> ℹ️ For porting code from `v2` version of the library, we recommend using the [porting guide](./V2V3PortinGuide.md)
+>  **Important — You’re viewing the `v3.x.y` _release-candidate_ branch.**
+>
+> * For production projects that still rely on **v2**, check out the
+>   [`v2_stable` branch](https://github.com/luxonis/depthai-core/tree/v2_stable).
+> * Need to migrate? Follow the step-by-step [v2 → v3 Porting Guide](./V2V3PortinGuide.md).
 
 ## Documentation
-Documentation is available over at [Luxonis DepthAI API](https://stg.docs.luxonis.com/software/v3/)
+Documentation is available over at [Luxonis DepthAI API](https://docs.luxonis.com/software-v3/depthai/)
 
 ## Disclaimer
 DepthAI library doesn't yet provide API stability guarantees. While we take care to properly deprecate old functions, some changes might still be breaking.
 
 ## Examples
-Examples for both C++ and Python are available in the `examples` folder. To see hwo to build and run them see [README.md](./examples/README.md) for more information.
+Examples for both C++ and Python are available in the `examples` folder. To see how to build and run them see [README.md](./examples/README.md) for more information.
 To build the examples in C++ configure with the following option added:
 ```
 cmake -S. -Bbuild -D'DEPTHAI_BUILD_EXAMPLES=ON'
@@ -27,8 +29,11 @@ cmake --build build
 ## Dependencies
 - CMake >= 3.20
 - C/C++17 compiler
+- [Linux] libudev >= 1.0.0
 - [optional] OpenCV 4 (required if building examples and for record and replay)
 - [optional] PCL (required for point cloud example)
+
+To install libudev on Debian based systems (Ubuntu, etc.): `sudo apt install libudev-dev`
 
 To install OpenCV:
 MacOS: `brew install opencv`
@@ -66,7 +71,7 @@ Then configure and build
 cmake -S . -B build
 cmake --build build --parallel [num CPU cores]
 ```
-On Windows, we currently only build the dependencies in Release mode, so you may want to add `-DCMAKE_BUILD_TYPE=Release` to the configuration step and you'll need to specify the location of the OpenCV installation. In case you used chocolatey to install OpenCV, you can use the following command:
+On Windows it's often required to specify the location of the OpenCV installation. In case you used chocolatey to install OpenCV, you can use the following command:
 
 ```
 cmake -S . -B build -DOpenCV_DIR=C:/tools/opencv/build -DCMAKE_BUILD_TYPE=Release
@@ -220,7 +225,7 @@ The following environment variables can be set to alter default behavior of the 
 | DEPTHAI_ZOO_MODELS_PATH | (Default) depthai_models - Folder where zoo model description files are stored |
 | DEPTHAI_RECORD | Enables holistic record to the specified directory. |
 | DEPTHAI_REPLAY | Replays holistic replay from the specified file or directory. |
-
+| DEPTHAI_PROFILING | Enables runtime profiling of data transfer between the host and connected devices. Set to 1 to enable. Requires DEPTHAI_LEVEL=debug or lower to print. |
 
 ## Running tests
 
@@ -284,3 +289,17 @@ cmake -S. -Bbuild -D'OpenCV_DIR=/usr/lib/x86_64-linux-gnu/cmake/opencv4'
 ```
 
 Now the build process should correctly discover your OpenCV installation
+
+### Build fails due to out of memory killer
+If your build process is killed by the out of memory killer, you can try to reduce the number of parallel jobs used during the build process.
+
+The error usually looks something like this:
+```
+c++: fatal error: Killed signal terminated program cc1plus
+```
+
+You can do this by passing the `--parallel` flag with a lower number of jobs to the `cmake --build` command, for example:
+```
+cmake --build build --parallel 2
+```
+

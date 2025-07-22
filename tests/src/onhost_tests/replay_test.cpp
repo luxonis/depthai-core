@@ -7,6 +7,7 @@
 #include <exception>
 #include <filesystem>
 
+#include "../../src/utility/Platform.hpp"
 #include "depthai/depthai.hpp"
 #include "depthai/pipeline/node/host/Record.hpp"
 #include "depthai/utility/Compression.hpp"
@@ -16,16 +17,15 @@ constexpr unsigned int NUM_MSGS = 100;
 class TestHelper {
    public:
     TestHelper() {
-        srand(time(nullptr));
-        testFolder = std::filesystem::path("/tmp/depthai_test_" + std::to_string(rand())).string();
+        testFolder = dai::platform::getTempPath();
         std::filesystem::create_directories(testFolder);
-        std::filesystem::create_directories(testFolder + "/extracted");
+        std::filesystem::create_directories(std::filesystem::path(testFolder).append("extracted"));
 
         auto recordingFilenames = dai::utility::filenamesInTar(RECORDING_PATH);
-        std::vector<std::string> recordingExtFiles;
+        std::vector<std::filesystem::path> recordingExtFiles;
         recordingExtFiles.reserve(recordingFilenames.size());
         for(const auto& filename : recordingFilenames) {
-            recordingExtFiles.push_back(testFolder + "/extracted/" + filename);
+            recordingExtFiles.push_back(std::filesystem::path(testFolder).append("extracted").append(filename));
         }
         dai::utility::untarFiles(RECORDING_PATH, recordingFilenames, recordingExtFiles);
     }
@@ -38,7 +38,7 @@ class TestHelper {
         }
     }
 
-    std::string testFolder;
+    std::filesystem::path testFolder;
 };
 
 TEST_CASE("ReplayMetadataOnly node") {
@@ -48,7 +48,7 @@ TEST_CASE("ReplayMetadataOnly node") {
         dai::Pipeline p(false);
 
         auto replayNode = p.create<dai::node::ReplayMetadataOnly>();
-        replayNode->setReplayFile(helper.testFolder + "/extracted/IMU.mcap");
+        replayNode->setReplayFile(std::filesystem::path(helper.testFolder).append("extracted").append("IMU.mcap"));
         replayNode->setLoop(true);
 
         auto q = replayNode->out.createOutputQueue();
@@ -70,8 +70,8 @@ TEST_CASE("ReplayVideo node") {
         dai::Pipeline p(false);
 
         auto replayNode = p.create<dai::node::ReplayVideo>();
-        replayNode->setReplayMetadataFile(helper.testFolder + "/extracted/CameraCAM_A.mcap");
-        replayNode->setReplayVideoFile(helper.testFolder + "/extracted/CameraCAM_A.mp4");
+        replayNode->setReplayMetadataFile(std::filesystem::path(helper.testFolder).append("extracted").append("CameraCAM_A.mcap"));
+        replayNode->setReplayVideoFile(std::filesystem::path(helper.testFolder).append("extracted").append("CameraCAM_A.mp4"));
         replayNode->setLoop(true);
 
         auto q = replayNode->out.createOutputQueue();
@@ -93,7 +93,7 @@ TEST_CASE("ReplayVideo no metadata") {
         dai::Pipeline p(false);
 
         auto replayNode = p.create<dai::node::ReplayVideo>();
-        replayNode->setReplayVideoFile(helper.testFolder + "/extracted/CameraCAM_A.mp4");
+        replayNode->setReplayVideoFile(std::filesystem::path(helper.testFolder).append("extracted").append("CameraCAM_A.mp4"));
         replayNode->setOutFrameType(dai::ImgFrame::Type::NV12);
         replayNode->setLoop(true);
 

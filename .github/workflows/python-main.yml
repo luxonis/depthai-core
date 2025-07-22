@@ -6,12 +6,12 @@ on:
   workflow_dispatch:
   pull_request:
     branches:
-    - v3_develop
+    - develop
   push:
     branches:
-    - v3_develop*
+    - develop*
     tags:
-    - 'v3*'
+    - 'v*'
 
 ###################################
 ###################################
@@ -63,6 +63,7 @@ jobs:
           cmake -S . \
             -B build \
             -DDEPTHAI_VCPKG_INTERNAL_ONLY=OFF \
+            -DVCPKG_OVERLAY_TRIPLETS="$PWD/cmake/triplets/release" \
             -DDEPTHAI_BUILD_PYTHON=ON \
             -DDEPTHAI_PYTHON_FORCE_DOCSTRINGS=ON \
             -DDEPTHAI_BASALT_SUPPORT=ON \
@@ -165,6 +166,7 @@ jobs:
             -DDEPTHAI_VCPKG_INTERNAL_ONLY=OFF \
             -DDEPTHAI_BUILD_PYTHON=ON \
             -D CMAKE_BUILD_TYPE=Release \
+            -D VCPKG_OVERLAY_TRIPLETS="$PWD/cmake/triplets/release" \
             -D DEPTHAI_PYTHON_DOCSTRINGS_INPUT=$PWD/bindings/python/docstrings/depthai_python_docstring.hpp \
             -D DEPTHAI_PYTHON_ENABLE_TESTS=ON
             cmake --build build --parallel 4
