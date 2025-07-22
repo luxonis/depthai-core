@@ -60,6 +60,10 @@ class RTABMapSLAM : public dai::NodeCRTP<dai::node::ThreadedHostNode, RTABMapSLA
      */
     Input odom{*this, {"odom", DEFAULT_GROUP, DEFAULT_BLOCKING, 15, {{{dai::DatatypeEnum::TransformData, true}}}}};
     /**
+     * Input imu
+     */
+    Input imu{*this, {"imu", DEFAULT_GROUP, DEFAULT_BLOCKING, 15, {{DatatypeEnum::IMUData, true}}}};
+    /**
      * Input Landmark poses (optional).
      */
     // Input landmarks{*this, {landmarksInputName, DEFAULT_GROUP, DEFAULT_BLOCKING, 15, {{{dai::DatatypeEnum::Landmarks, true}}}}};

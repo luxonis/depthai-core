@@ -39,6 +39,7 @@ void bind_rtabmapslamnode(pybind11::module& m, void* pCallstack) {
         // .def_readonly("features", &RTABMapSLAM::features, DOC(dai, node, RTABMapSLAM, features))
         // .def_readonly("landmarks", &RTABMapSLAM::landmarks, DOC(dai, node, RTABMapSLAM, landmarks))
         .def_readonly("odom", &RTABMapSLAM::odom, DOC(dai, node, RTABMapSLAM, odom))
+        .def_readonly("imu", &RTABMapSLAM::imu, DOC(dai, node, RTABMapSLAM, imu))
         .def_readonly("transform", &RTABMapSLAM::transform, DOC(dai, node, RTABMapSLAM, transform))
         .def_readonly("odomCorrection", &RTABMapSLAM::odomCorrection, DOC(dai, node, RTABMapSLAM, odomCorrection))
         .def_readonly("obstaclePCL", &RTABMapSLAM::obstaclePCL, DOC(dai, node, RTABMapSLAM, obstaclePCL))

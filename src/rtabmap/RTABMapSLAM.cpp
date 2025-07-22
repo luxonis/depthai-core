@@ -38,6 +38,9 @@ void RTABMapSLAM::buildInternal() {
     odom.setMaxSize(1);
     odom.setBlocking(false);
     odom.addCallback(std::bind(&RTABMapSLAM::odomPoseCB, this, std::placeholders::_1));
+    imu.setMaxSize(1);
+    imu.setBlocking(false);
+    imu.addCallback(std::bind(&RTABMapSLAM::imuCB, this, std::placeholders::_1));
     localMaps = std::make_shared<rtabmap::LocalGridCache>();
 }
 
@@ -161,6 +164,21 @@ void RTABMapSLAM::odomPoseCB(std::shared_ptr<dai::ADatatype> data) {
     odomCorrection.send(outCorrection);
     passthroughOdom.send(odomPose);
 }
+
+void RTABMapSLAM::imuCB(std::shared_ptr<ADatatype> imuData) {
+    auto imuPackets = std::dynamic_pointer_cast<IMUData>(imuData);
+
+    auto angularCovariance = cv::Mat::eye(3, 3, CV_64FC1) * 0.0001745329; // 0.01 degrees/s in radians/s
+    auto linearCovariance = cv::Mat::eye(3, 3, CV_64FC1) * 0.01;
+
+    for(auto& imuPacket : imuPackets->packets) {
+        auto angularVelocity = cv::Vec3d(imuPacket.gyroscope.x, imuPacket.gyroscope.y, imuPacket.gyroscope.z);
+        auto linearAcceleration = cv::Vec3d(imuPacket.acceleroMeter.x, imuPacket.acceleroMeter.y, imuPacket.acceleroMeter.z);
+        auto data = rtabmap::IMU(angularVelocity, angularCovariance, linearAcceleration, linearCovariance);
+
+        sensorData.setIMU(data);
+    }
+};
 
 void RTABMapSLAM::run() {
     auto& logger = pimpl->logger;
