@@ -6,13 +6,14 @@
 #include <opencv2/tracking.hpp>
 #include <stdexcept>
 #include <unordered_map>
+#include <utility>
 
 #include "depthai/common/ImgTransformations.hpp"
 #include "depthai/common/Rect.hpp"
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
+#include "depthai/pipeline/datatype/SpatialImgDetections.hpp"
 #include "depthai/pipeline/datatype/Tracklets.hpp"
 #include "depthai/properties/ObjectTrackerProperties.hpp"
-
 #include "pipeline/ThreadedNodeImpl.hpp"
 
 namespace dai {
@@ -44,14 +45,12 @@ void ObjectTracker::setRunOnHost(bool runOnHost) {
     runOnHostVar = runOnHost;
 }
 
-
 /**
  * Check if the node is set to run on host
  */
 bool ObjectTracker::runOnHost() const {
     return runOnHostVar;
 }
-
 
 cv::Rect toCvRect(Rect r) {
     if(r.isNormalized()) throw std::runtime_error("dai::Rect must not be normalized in conversion to cv::Rect");
@@ -156,8 +155,8 @@ class TrackletExt : public Tracklet {
 };
 
 class MultiKCFTracker {
-    std::unordered_map<uint32_t, std::shared_ptr<cv::Tracker>> trackers;
-    std::unordered_map<uint32_t, TrackletExt> objects;
+    std::vector<std::shared_ptr<cv::Tracker>> trackers;
+    std::vector<TrackletExt> objects;
     uint32_t maxId = 0;
     uint32_t numTracked = 0;
 
@@ -169,16 +168,19 @@ class MultiKCFTracker {
     uint32_t trackletMaxLifespan;
     uint32_t trackletBirthThreshold;
 
-    uint32_t getNextId() {
+    std::pair<uint32_t, uint32_t> getNextId() {
+        uint32_t id = maxId + 1;
         switch(trackerIdAssignmentPolicy) {
             case TrackerIdAssignmentPolicy::UNIQUE_ID:
-                return maxId++;
-            case TrackerIdAssignmentPolicy::SMALLEST_ID: {
-                uint32_t id = maxId + 1;
-                for(const auto& [k, v] : trackers)
-                    if(v != nullptr && k < id) id = k;
+                for(uint32_t k = 0; k < trackers.size(); ++k)
+                    if(trackers[k] != nullptr && k < id) id = k;
                 if(id == maxId + 1) ++maxId;
-                return id;
+                return {maxId++, id};
+            case TrackerIdAssignmentPolicy::SMALLEST_ID: {
+                for(uint32_t k = 0; k < trackers.size(); ++k)
+                    if(trackers[k] != nullptr && k < id) id = k;
+                if(id == maxId + 1) ++maxId;
+                return {id, id};
             }
         }
         throw std::runtime_error("Unknown TrackerIdAssignmentPolicy");
@@ -191,19 +193,24 @@ class MultiKCFTracker {
         this->trackingPerClass = properties.trackingPerClass;
         this->occlusionRatioThreshold = properties.occlusionRatioThreshold;
         this->trackletMaxLifespan = properties.trackletMaxLifespan;
-        this->trackletBirthThreshold = properties.trackletBirthThreshold;
+        // this->trackletBirthThreshold = properties.trackletBirthThreshold; // TODO uncomment
+        this->trackletBirthThreshold = 1;
+        objects.resize(maxObjectsToTrack);
+        trackers.resize(maxObjectsToTrack, nullptr);
     }
 
     // Mapped detections must be mapped to frame and denormalized
     void init(const cv::Mat& frame, const std::vector<dai::ImgDetection>& mappedDetections) {
         auto remaining = nonMaxSuppression(mappedDetections, std::vector<bool>(), this->occlusionRatioThreshold);
         trackers.clear();
+        trackers.resize(maxObjectsToTrack, nullptr);
         for(size_t i = 0; i < mappedDetections.size(); ++i) {
             if(!remaining[i] || (int)numTracked >= maxObjectsToTrack) continue;
             const auto& det = mappedDetections[i];
             auto tracker = cv::TrackerKCF::create();
+
             tracker->init(frame, toCvRect(detToRect(det)));
-            uint32_t id = maxId++;
+            const auto id = maxId++;
             ++numTracked;
             trackers[id] = std::move(tracker);
             objects[id] = TrackletExt{Tracklet{detToRect(det), (int)id, (int)det.label, 1, Tracklet::TrackingStatus::NEW, det, Point3f()}};
@@ -213,9 +220,11 @@ class MultiKCFTracker {
     void track(const cv::Mat& frame) {
         std::vector<Rect> updatedObjects;
         for(size_t i = 0; i < trackers.size(); ++i) {
-            cv::Rect newBox;
-            if(trackers[i]->update(frame, newBox)) {
-                objects[i].update(fromCvRect(newBox));
+            if(trackers[i]) {
+                cv::Rect newBox;
+                if(trackers[i]->update(frame, newBox)) {
+                    objects[i].update(fromCvRect(newBox));
+                }
             }
         }
     }
@@ -228,7 +237,9 @@ class MultiKCFTracker {
 
         // Find closest (most overlapping) detection for each tracker
         std::vector<bool> matched(mappedDetections.size());
-        for(auto& [k, v] : objects) {
+        for(uint32_t k = 0; k < trackers.size(); ++k) {
+            auto& v = objects[k];
+            if(v.status == Tracklet::TrackingStatus::REMOVED) continue;
             float maxIoU = 0;
             float minDistance = 1e9;
             for(auto i = 0u; i < mappedDetections.size(); ++i) {
@@ -251,12 +262,19 @@ class MultiKCFTracker {
         auto remaining = nonMaxSuppression(mappedDetections, matched, occlusionRatioThreshold);
 
         // Reinitialize matched trackers & update status of unmatched
-        for(auto& [k, v] : objects) {
+        for(uint32_t k = 0; k < trackers.size(); ++k) {
+            auto& v = objects[k];
+            v.closestDetection = -1;  // Reset closest detection
             if(v.closestDetection >= 0) {
                 // Matched
-                v.match(detToRect(mappedDetections[v.closestDetection]));
+                auto rect = detToRect(mappedDetections[v.closestDetection]);
+                v.match(rect);
                 if(v.status == Tracklet::TrackingStatus::NEW && v.detectedCount >= this->trackletBirthThreshold)
                     v.updateStatus(Tracklet::TrackingStatus::TRACKED);
+                if(v.status == Tracklet::TrackingStatus::LOST) {
+                    v.updateStatus(Tracklet::TrackingStatus::TRACKED);
+                }
+                trackers[k]->init(frame, toCvRect(rect));
             } else {
                 // Not matched
                 if(v.status == Tracklet::TrackingStatus::NEW) {
@@ -271,7 +289,7 @@ class MultiKCFTracker {
                         trackers[k] = nullptr;
                         objects[k].updateStatus(Tracklet::TrackingStatus::REMOVED);
                     }
-                } else if(v.status == Tracklet::TrackingStatus::LOST) {
+                } else if(v.status == Tracklet::TrackingStatus::TRACKED) {
                     objects[k].updateStatus(Tracklet::TrackingStatus::LOST);
                 }
             }
@@ -279,15 +297,17 @@ class MultiKCFTracker {
 
         // Add unmatched detections as new trackers
         for(size_t i = 0; i < mappedDetections.size(); ++i) {
-            if(remaining[i] && !matched[i] && (int)numTracked < maxObjectsToTrack) {
+            if(remaining[i] && !matched[i] && (int)numTracked < maxObjectsToTrack - 1) {
                 auto tracker = cv::TrackerKCF::create();
-                auto id = getNextId();
-                auto rect = detToRect(mappedDetections[i]);
-                tracker->init(frame, toCvRect(rect));
-                ++numTracked;
-                trackers[id] = std::move(tracker);
-                objects[id] =
-                    TrackletExt{Tracklet{rect, (int)id, (int)mappedDetections[i].label, 1, Tracklet::TrackingStatus::NEW, mappedDetections[i], Point3f()}};
+                const auto [id, index] = getNextId();
+                if(index < trackers.size()) {
+                    auto rect = detToRect(mappedDetections[i]);
+                    tracker->init(frame, toCvRect(rect));
+                    ++numTracked;
+                    trackers[index] = std::move(tracker);
+                    objects[index] =
+                        TrackletExt{Tracklet{rect, (int)id, (int)mappedDetections[i].label, 1, Tracklet::TrackingStatus::NEW, mappedDetections[i], Point3f()}};
+                }
             }
         }
     }
@@ -295,9 +315,9 @@ class MultiKCFTracker {
     std::vector<Tracklet> getTracklets() const {
         std::vector<Tracklet> ret;
         ret.reserve(numTracked);
-        for(const auto& [k, v] : objects) {
-            if(trackers.at(k) != nullptr) {
-                ret.push_back((Tracklet)v);
+        for(uint32_t k = 0; k < trackers.size(); ++k) {
+            if(trackers[k] != nullptr) {
+                ret.push_back((Tracklet)objects[k]);
             }
         }
         return ret;
@@ -316,7 +336,7 @@ void ObjectTracker::run() {
     float trackerThreshold = properties.trackerThreshold;
     std::vector<std::uint32_t> detectionLabelsToTrack = properties.detectionLabelsToTrack;
     TrackerType trackerType = properties.trackerType;  // TODO
-    
+
     auto& logger = pimpl->logger;
 
     MultiKCFTracker tracker(properties);
@@ -328,47 +348,68 @@ void ObjectTracker::run() {
         std::shared_ptr<ImgFrame> inputTrackerImg;
         std::shared_ptr<ImgFrame> inputDetectionImg;
         std::shared_ptr<ImgDetections> inputImgDetections;
+        std::shared_ptr<SpatialImgDetections> inputSpatialImgDetections;
 
         bool gotDetections = false;
 
         inputTrackerImg = inputTrackerFrame.get<ImgFrame>();
         if(inputDetections.has()) {
-            inputImgDetections = inputDetections.get<ImgDetections>();
-            gotDetections = true;
-            if(!inputImgDetections->transformation.has_value()) {
-                logger->debug("Transformation is not set for input detections, inputDetectionFrame is required");
-                inputDetectionImg = inputDetectionFrame.get<ImgFrame>();
-            }
-        }
-        // TODO: sync messages !!!
-        ImgTransformation detectionsTransformation = inputImgDetections->transformation.value_or(inputDetectionImg->transformation);
-        std::vector<ImgDetection> detections;
-        detections.reserve(inputImgDetections->detections.size());
-        for(const auto& detection : inputImgDetections->detections) {
-            if(detection.confidence >= trackerThreshold && (detectionLabelsToTrack.empty() || contains(detectionLabelsToTrack, detection.label))) {
-                // Denormalize and remap to inputTrackerImg
-                RotatedRect detRRect(detToRect(detection));
-                if(detRRect.isNormalized()) detRRect.denormalize(detectionsTransformation.getSize().first, detectionsTransformation.getSize().second);
-
-                auto remapped = detectionsTransformation.remapRectTo(inputTrackerImg->transformation, detRRect);
-
-                const auto [minx, miny, maxx, maxy] = remapped.getOuterRect();
-
-                ImgDetection det(detection);
-                det.xmin = minx;
-                det.ymin = miny;
-                det.xmax = maxx;
-                det.ymax = maxy;
-
-                detections.push_back(det);
+            auto detectionsBuffer = inputDetections.get<Buffer>();
+            inputImgDetections = std::dynamic_pointer_cast<ImgDetections>(detectionsBuffer);
+            inputSpatialImgDetections = std::dynamic_pointer_cast<SpatialImgDetections>(detectionsBuffer);
+            if(inputImgDetections && inputImgDetections->detections.size() > 0) {
+                logger->warn("Input detections received, tracking will be performed on the detections");
+                gotDetections = true;
+                if(!inputImgDetections->transformation.has_value()) {
+                    logger->debug("Transformation is not set for input detections, inputDetectionFrame is required");
+                    inputDetectionImg = inputDetectionFrame.get<ImgFrame>();
+                }
+            } else if(inputSpatialImgDetections && inputSpatialImgDetections->detections.size() > 0) {
+                gotDetections = true;
+                if(!inputSpatialImgDetections->transformation.has_value()) {
+                    logger->debug("Transformation is not set for input detections, inputDetectionFrame is required");
+                    inputDetectionImg = inputDetectionFrame.get<ImgFrame>();
+                }
+            } else {
+                logger->error("Input detections is not of type ImgDetections or SpatialImgDetections, skipping tracking");
             }
         }
         if(gotDetections) {
-            if(first) {
-                first = false;
-                tracker.init(inputTrackerImg->getCvFrame(), detections);
-            } else {
-                tracker.update(inputTrackerImg->getCvFrame(), detections);
+            // TODO: sync messages !!!
+            ImgTransformation detectionsTransformation = (inputImgDetections ? inputImgDetections->transformation : inputSpatialImgDetections->transformation)
+                                                             .value_or(inputDetectionImg->transformation);
+            std::vector<ImgDetection> detections;
+            detections.reserve(inputImgDetections ? inputImgDetections->detections.size() : inputSpatialImgDetections->detections.size());
+            for(size_t i = 0; i < (inputImgDetections ? inputImgDetections->detections.size() : inputSpatialImgDetections->detections.size()); ++i) {
+                const auto& detection = inputImgDetections ? inputImgDetections->detections[i] : (ImgDetection)inputSpatialImgDetections->detections[i];
+                if(detection.confidence >= trackerThreshold && (detectionLabelsToTrack.empty() || contains(detectionLabelsToTrack, detection.label))) {
+                    // Denormalize and remap to inputTrackerImg
+                    uint32_t width = detectionsTransformation.getSize().first;
+                    uint32_t height = detectionsTransformation.getSize().second;
+
+                    RotatedRect detRRect(detToRect(detection));
+                    if(detRRect.isNormalized()) detRRect = detRRect.denormalize(width, height);
+
+                    auto remapped = detectionsTransformation.remapRectTo(inputTrackerImg->transformation, detRRect);
+
+                    const auto [minx, miny, maxx, maxy] = remapped.getOuterRect();
+
+                    ImgDetection det(detection);
+                    det.xmin = std::max(0.f, minx);
+                    det.ymin = std::max(0.f, miny);
+                    det.xmax = std::min((float)width, maxx);
+                    det.ymax = std::min((float)height, maxy);
+
+                    if(det.xmin < det.xmax && det.ymin < det.ymax) detections.push_back(det);
+                }
+            }
+            if(!detections.empty()) {
+                if(first) {
+                    first = false;
+                    tracker.init(inputTrackerImg->getCvFrame(), detections);
+                } else {
+                    tracker.update(inputTrackerImg->getCvFrame(), detections);
+                }
             }
         } else if(!first) {
             tracker.track(inputTrackerImg->getCvFrame());
@@ -382,7 +423,8 @@ void ObjectTracker::run() {
         out.send(trackletsMsg);
         passthroughTrackerFrame.send(inputTrackerImg);
         if(gotDetections) {
-            passthroughDetections.send(inputImgDetections);
+            passthroughDetections.send(inputImgDetections ? std::dynamic_pointer_cast<Buffer>(inputImgDetections)
+                                                          : std::dynamic_pointer_cast<Buffer>(inputSpatialImgDetections));
             if(inputDetectionImg) {
                 passthroughDetectionFrame.send(inputDetectionImg);
             }
