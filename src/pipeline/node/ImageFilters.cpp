@@ -875,26 +875,40 @@ void ImageFilters::setDefaultProfilePreset(ImageFiltersPresetMode mode) {
         case ImageFiltersPresetMode::DEFAULT: {
             std::vector<FilterParams> params;
 
+            TemporalFilterParams temporalFilterParams;
+            temporalFilterParams.enable = true;
+            temporalFilterParams.persistencyMode = TemporalFilterParams::PersistencyMode::VALID_1_IN_LAST_5;
+            temporalFilterParams.alpha = 0.1f;
+            temporalFilterParams.delta = 40;
+
+            SpeckleFilterParams speckleFilterParams;
+            speckleFilterParams.enable = true;
+            speckleFilterParams.speckleRange = 6;
+            speckleFilterParams.differenceThreshold = 130;
+
             SpatialFilterParams spatialFilterParams;
             spatialFilterParams.enable = true;
             spatialFilterParams.alpha = 0.5f;
             spatialFilterParams.delta = 20;
-            spatialFilterParams.numIterations = 2;
-            spatialFilterParams.holeFillingRadius = 5;
+            spatialFilterParams.numIterations = 1;
+            spatialFilterParams.holeFillingRadius = 2;
 
-            MedianFilterParams medianFilterParams = MedianFilterParams::KERNEL_5x5;
+            MedianFilterParams medianFilterParams = MedianFilterParams::MEDIAN_OFF;
 
+            params.push_back(temporalFilterParams);
+            params.push_back(speckleFilterParams);
             params.push_back(spatialFilterParams);
             params.push_back(medianFilterParams);
 
             initialConfig->filterParams = params;
         } break;
+
         case ImageFiltersPresetMode::LOW_RANGE: {
             std::vector<FilterParams> params;
 
             TemporalFilterParams temporalFilterParams;
             temporalFilterParams.enable = true;
-            temporalFilterParams.persistencyMode = TemporalFilterParams::PersistencyMode::PERSISTENCY_INDEFINITELY;
+            temporalFilterParams.persistencyMode = TemporalFilterParams::PersistencyMode::PERSISTENCY_1_IN_8;
             temporalFilterParams.alpha = 0.2f;
             temporalFilterParams.delta = 60;
 
@@ -910,7 +924,7 @@ void ImageFilters::setDefaultProfilePreset(ImageFiltersPresetMode mode) {
             spatialFilterParams.numIterations = 2;
             spatialFilterParams.holeFillingRadius = 0;
 
-            MedianFilterParams medianFilterParams = MedianFilterParams::KERNEL_5x5;
+            MedianFilterParams medianFilterParams = MedianFilterParams::MEDIAN_OFF;
 
             params.push_back(temporalFilterParams);
             params.push_back(speckleFilterParams);
@@ -919,9 +933,36 @@ void ImageFilters::setDefaultProfilePreset(ImageFiltersPresetMode mode) {
 
             initialConfig->filterParams = params;
         } break;
-        case ImageFiltersPresetMode::MID_RANGE: {
-        } break;
+
         case ImageFiltersPresetMode::HIGH_RANGE: {
+                        std::vector<FilterParams> params;
+
+            TemporalFilterParams temporalFilterParams;
+            temporalFilterParams.enable = true;
+            temporalFilterParams.persistencyMode = TemporalFilterParams::PersistencyMode::PERSISTENCY_INDEFINITELY;
+            temporalFilterParams.alpha = 0.2f;
+            temporalFilterParams.delta = 60;
+
+            SpeckleFilterParams speckleFilterParams;
+            speckleFilterParams.enable = true;
+            speckleFilterParams.speckleRange = 4;
+            speckleFilterParams.differenceThreshold = 130;
+
+            SpatialFilterParams spatialFilterParams;
+            spatialFilterParams.enable = true;
+            spatialFilterParams.alpha = 0.5f;
+            spatialFilterParams.delta = 50;
+            spatialFilterParams.numIterations = 2;
+            spatialFilterParams.holeFillingRadius = 0;
+
+            MedianFilterParams medianFilterParams = MedianFilterParams::KERNEL_5x5;
+
+            params.push_back(temporalFilterParams);
+            params.push_back(speckleFilterParams);
+            params.push_back(spatialFilterParams);
+            params.push_back(medianFilterParams);
+
+            initialConfig->filterParams = params;
         } break;
     }
 
@@ -984,12 +1025,14 @@ void ToFDepthConfidenceFilter::applyDepthConfidenceFilter(std::shared_ptr<ImgFra
                 // Higher depth --> slightly lower confidence
                 conf = a / std::sqrt(d / 2.0f);
             }
+            conf = conf*100;
 
             confidence.at<std::uint16_t>(i, j) = static_cast<std::uint16_t>(conf);
 
             // Invalidate pixel if confidence is below threshold
             if(conf < threshold) {
-                filteredDepth.at<std::uint16_t>(i, j) = std::numeric_limits<std::uint16_t>::max();
+            //todo check
+                filteredDepth.at<std::uint16_t>(i, j) = 0;
             } else {
                 filteredDepth.at<std::uint16_t>(i, j) = static_cast<std::uint16_t>(d);
             }
@@ -1067,19 +1110,15 @@ void ToFDepthConfidenceFilter::setDefaultProfilePreset(ImageFiltersPresetMode mo
     switch(mode) {
         case ImageFiltersPresetMode::DEFAULT: {
             // TODO: Add a sensible value here
-            initialConfig->confidenceThreshold = 0.0f;
+            initialConfig->confidenceThreshold = 2.0f;
         } break;
         case ImageFiltersPresetMode::LOW_RANGE: {
             // TODO: Add a sensible value here
-            initialConfig->confidenceThreshold = 0.0f;
-        } break;
-        case ImageFiltersPresetMode::MID_RANGE: {
-            // TODO: Add a sensible value here
-            initialConfig->confidenceThreshold = 0.0f;
+            initialConfig->confidenceThreshold = 1.0f;
         } break;
         case ImageFiltersPresetMode::HIGH_RANGE: {
             // TODO: Add a sensible value here
-            initialConfig->confidenceThreshold = 0.0f;
+            initialConfig->confidenceThreshold = 3.0f;
         } break;
     }
 
