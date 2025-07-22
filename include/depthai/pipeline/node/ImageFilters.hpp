@@ -8,12 +8,6 @@
 namespace dai {
 namespace node {
 
-enum class ImageFiltersPresetMode : std::uint32_t {
-    LOW_RANGE,
-    MID_RANGE,
-    HIGH_RANGE,
-};
-
 class ImageFilters : public DeviceNodeCRTP<DeviceNode, ImageFilters, ImageFiltersProperties>, public HostRunnable {
    protected:
     Properties& getProperties() override {
@@ -81,9 +75,13 @@ class ImageFilters : public DeviceNodeCRTP<DeviceNode, ImageFilters, ImageFilter
      */
     bool runOnHost() const override;
 
-   private:
+    /**
+     * Set default profile preset for ImageFilters.
+     * @param mode Preset mode for ImageFilters.
+     */
     void setDefaultProfilePreset(ImageFiltersPresetMode mode);
 
+   private:
     bool runOnHostVar = true;
 };
 

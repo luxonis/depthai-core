@@ -14,7 +14,7 @@ ToFBase::Properties& ToFBase::getProperties() {
     return properties;
 }
 
-std::shared_ptr<ToFBase> ToFBase::build(CameraBoardSocket boardSocket, float fps) {
+std::shared_ptr<ToFBase> ToFBase::build(CameraBoardSocket boardSocket, ImageFiltersPresetMode presetMode, float fps) {
     if(isBuilt) {
         throw std::runtime_error("ToF node is already built");
     }
@@ -58,6 +58,9 @@ std::shared_ptr<ToFBase> ToFBase::build(CameraBoardSocket boardSocket, float fps
     if(!found) {
         throw std::runtime_error("Camera socket not found on the connected device");
     }
+
+    // Set profile preset for ToFConfig
+    initialConfig->setProfilePreset(presetMode);
 
     properties.boardSocket = boardSocket;
     properties.fps = fps;

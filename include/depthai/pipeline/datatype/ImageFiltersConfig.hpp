@@ -12,6 +12,12 @@ using SpatialFilterParams = dai::filters::params::SpatialFilter;
 using SpeckleFilterParams = dai::filters::params::SpeckleFilter;
 using TemporalFilterParams = dai::filters::params::TemporalFilter;
 
+enum class ImageFiltersPresetMode : std::uint32_t {
+    LOW_RANGE,
+    MID_RANGE,
+    HIGH_RANGE,
+};
+
 // union of all filter params
 typedef std::variant<MedianFilterParams, SpatialFilterParams, SpeckleFilterParams, TemporalFilterParams> FilterParams;
 
@@ -42,6 +48,12 @@ class ImageFiltersConfig : public Buffer {
      */
     std::vector<FilterParams> filterParams = {};
 
+    /**
+     * Set preset mode for ImageFiltersConfig.
+     * @param presetMode Preset mode for ImageFiltersConfig.
+     */
+    void setProfilePreset(ImageFiltersPresetMode presetMode);
+
     DEPTHAI_SERIALIZE(ImageFiltersConfig, filterIndices, filterParams);
 };
 
@@ -53,6 +65,12 @@ class ToFDepthConfidenceFilterConfig : public Buffer {
      * Threshold for the confidence filter
      */
     float confidenceThreshold = 0.1f;
+
+    /**
+     * Set preset mode for ImageFiltersPresetMode.
+     * @param presetMode Preset mode for ImageFiltersPresetMode.
+     */
+    void setProfilePreset(ImageFiltersPresetMode presetMode);
 
     DEPTHAI_SERIALIZE(ToFDepthConfidenceFilterConfig, confidenceThreshold);
 };

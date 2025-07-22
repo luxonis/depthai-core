@@ -22,13 +22,15 @@ void bind_imagefilters(py::module& m, void* pCallstack) {
                            &ImageFiltersConfig::updateFilterAtIndex,
                            py::arg("index"),
                            py::arg("params"),
-                           DOC(dai, ImageFiltersConfig, updateFilterAtIndex));
+                           DOC(dai, ImageFiltersConfig, updateFilterAtIndex))
+        .def("setProfilePreset", &ImageFiltersConfig::setProfilePreset, DOC(dai, ImageFiltersConfig, setProfilePreset));
 
     py::class_<ToFDepthConfidenceFilterConfig, Py<ToFDepthConfidenceFilterConfig>, Buffer, std::shared_ptr<ToFDepthConfidenceFilterConfig>>
         depthConfidenceFilterConfig(m, "ToFDepthConfidenceFilterConfig", DOC(dai, ToFDepthConfidenceFilterConfig));
     depthConfidenceFilterConfig.def(py::init<>());
     depthConfidenceFilterConfig.def_readwrite(
-        "confidenceThreshold", &ToFDepthConfidenceFilterConfig::confidenceThreshold, DOC(dai, ToFDepthConfidenceFilterConfig, confidenceThreshold));
+        "confidenceThreshold", &ToFDepthConfidenceFilterConfig::confidenceThreshold, DOC(dai, ToFDepthConfidenceFilterConfig, confidenceThreshold))
+        .def("setProfilePreset", &ToFDepthConfidenceFilterConfig::setProfilePreset, DOC(dai, ToFDepthConfidenceFilterConfig, setProfilePreset));
 
     // Add node bindings
     auto imageFilters = ADD_NODE(ImageFilters);

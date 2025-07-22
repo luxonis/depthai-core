@@ -3,6 +3,8 @@
 #include "depthai/common/optional.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/utility/Serialization.hpp"
+#include "depthai/pipeline/datatype/ImageFiltersConfig.hpp"
+
 namespace dai {
 
 /**
@@ -79,6 +81,12 @@ class ToFConfig : public Buffer {
         metadata = utility::serialize(*this);
         datatype = DatatypeEnum::ToFConfig;
     };
+
+    /**
+     * Set preset mode for ToFConfig.
+     * @param presetMode Preset mode for ToFConfig.
+     */
+    void setProfilePreset(ImageFiltersPresetMode presetMode);
 
     DEPTHAI_SERIALIZE(ToFConfig,
                       median,
