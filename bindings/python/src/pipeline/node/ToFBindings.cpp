@@ -41,13 +41,11 @@ void bind_tof(pybind11::module& m, void* pCallstack) {
         .def_readonly("phase", &ToFBase::phase, DOC(dai, node, ToFBase, phase), DOC(dai, node, ToFBase, phase))
         .def_readonly("initialConfig", &ToFBase::initialConfig, DOC(dai, node, ToFBase, initialConfig), DOC(dai, node, ToFBase, initialConfig))
         .def("build", &ToFBase::build, "boardSocket"_a = CameraBoardSocket::AUTO, "presetMode"_a = ImageFiltersPresetMode::MID_RANGE, "fps"_a = std::nullopt, DOC(dai, node, ToFBase, build))
+        .def("getBoardSocket", &ToFBase::getBoardSocket, DOC(dai, node, ToFBase, getBoardSocket))
         ;
 
     // ToF Node (DeviceNodeGroup)
-    tof.def_readonly("tofBase", &ToF::tofBase, DOC(dai, node, ToF, tofBase))
-        .def_readonly("tofDepthConfidenceFilter", &ToF::tofDepthConfidenceFilter, DOC(dai, node, ToF, tofDepthConfidenceFilter))
-        .def_readonly("imageFilters", &ToF::imageFilters, DOC(dai, node, ToF, imageFilters))
-        .def_property_readonly(
+    tof.def_property_readonly(
             "rawDepth", [](const ToF& self) -> const dai::DeviceNode::Output& { return self.rawDepth; }, DOC(dai, node, ToF, rawDepth))
         .def_property_readonly(
             "depth", [](const ToF& self) -> const dai::DeviceNode::Output& { return self.depth; }, DOC(dai, node, ToF, depth))

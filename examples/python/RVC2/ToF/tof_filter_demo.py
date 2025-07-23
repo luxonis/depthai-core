@@ -38,14 +38,12 @@ latest_frames = {"raw": None, "final": None}
 last_pointcloud_update_time = 0
 POINTCLOUD_UPDATE_INTERVAL = 0.1  # Update every 100ms (10 FPS)
 
-# ToF camera intrinsics (approximate - adjust for your specific ToF sensor)
+# To be set before starting the gui
 CAMERA_INTRINSICS = {
-    "fx": 640.0,  # Focal length X
-    "fy": 640.0,  # Focal length Y
-    "cx": 320.0,  # Principal point X
-    "cy": 240.0,  # Principal point Y
-    "width": 640,
-    "height": 480,
+    "fx": None,
+    "fy": None,
+    "cx": None,
+    "cy": None,
 }
 
 # Point cloud parameters
@@ -1168,6 +1166,21 @@ def camera_pipeline(gui):
         dai.ImageFiltersPresetMode.MID_RANGE,
     )
     tof = pipeline.create(dai.node.ToF).build(socket, preset_mode)
+
+    tofSocket = tof.tofBaseNode.getBoardSocket()
+    calibration_handler = pipeline.getDefaultDevice().readCalibration()
+    intrinsics = calibration_handler.getCameraIntrinsics(tofSocket)
+
+    CAMERA_INTRINSICS["fx"] = intrinsics[0][0]
+    CAMERA_INTRINSICS["fy"] = intrinsics[1][1]
+    CAMERA_INTRINSICS["cx"] = intrinsics[0][2]
+    CAMERA_INTRINSICS["cy"] = intrinsics[1][2]
+
+    print("Found intrinsics:")
+    print(f"  fx: {intrinsics[0][0]}")
+    print(f"  fy: {intrinsics[1][1]}")
+    print(f"  cx: {intrinsics[0][2]}")
+    print(f"  cy: {intrinsics[1][2]}")
 
     # Output queues
     depthQueue = tof.depth.createOutputQueue()
