@@ -10,9 +10,6 @@ import open3d as o3d
 import tkinter as tk
 from tkinter import ttk
 
-import sys
-
-sys.path.insert(0, '/home/david/fw/depthai-core/build/bindings/python')
 import depthai as dai
 
 # Point cloud globals
@@ -35,10 +32,7 @@ first_update_raw = True
 first_update_final = True
 
 # Store latest frames for point cloud updates
-latest_frames = {
-    'raw': None,
-    'final': None
-}
+latest_frames = {"raw": None, "final": None}
 
 # Live update timing control
 last_pointcloud_update_time = 0
@@ -46,20 +40,16 @@ POINTCLOUD_UPDATE_INTERVAL = 0.1  # Update every 100ms (10 FPS)
 
 # ToF camera intrinsics (approximate - adjust for your specific ToF sensor)
 CAMERA_INTRINSICS = {
-    'fx': 640.0,  # Focal length X
-    'fy': 640.0,  # Focal length Y
-    'cx': 320.0,  # Principal point X
-    'cy': 240.0,  # Principal point Y
-    'width': 640,
-    'height': 480
+    "fx": 640.0,  # Focal length X
+    "fy": 640.0,  # Focal length Y
+    "cx": 320.0,  # Principal point X
+    "cy": 240.0,  # Principal point Y
+    "width": 640,
+    "height": 480,
 }
 
 # Point cloud parameters
-pointcloud_params = {
-    'enabled': True,
-    'decimation': 1,
-    'max_distance': 7500
-}
+pointcloud_params = {"enabled": True, "decimation": 1, "max_distance": 7500}
 
 
 def is_paused():
@@ -82,8 +72,8 @@ def depth_to_pointcloud(depth_frame, intrinsics, max_distance=3000, decimation=1
         return np.array([]), np.array([]), np.array([])
 
     h, w = depth_frame.shape
-    fx, fy = intrinsics['fx'], intrinsics['fy']
-    cx, cy = intrinsics['cx'], intrinsics['cy']
+    fx, fy = intrinsics["fx"], intrinsics["fy"]
+    cx, cy = intrinsics["cx"], intrinsics["cy"]
 
     # Create coordinate grids
     u, v = np.meshgrid(np.arange(0, w, decimation), np.arange(0, h, decimation))
@@ -110,7 +100,7 @@ def depth_to_pointcloud(depth_frame, intrinsics, max_distance=3000, decimation=1
     return x, y, z
 
 
-def create_colored_pointcloud(x, y, z, colormap='jet'):
+def create_colored_pointcloud(x, y, z):
     """Create an Open3D point cloud with colors based on depth"""
     if len(x) == 0:
         return o3d.geometry.PointCloud()
@@ -153,7 +143,11 @@ def create_colored_pointcloud(x, y, z, colormap='jet'):
 def pointcloud_visualization():
     """Open3D point cloud visualization - TWO windows: raw + final"""
     global vis_raw, vis_final, pointcloud_running
-    global latest_pointcloud_raw, latest_pointcloud_final, needs_update_raw, needs_update_final
+    global \
+        latest_pointcloud_raw, \
+        latest_pointcloud_final, \
+        needs_update_raw, \
+        needs_update_final
     global first_update_raw, first_update_final
 
     try:
@@ -162,12 +156,16 @@ def pointcloud_visualization():
         vis_final = o3d.visualization.Visualizer()
 
         # Initialize raw window
-        vis_raw.create_window(window_name="RAW Point Cloud", width=800, height=600, left=100, top=100)
+        vis_raw.create_window(
+            window_name="RAW Point Cloud", width=800, height=600, left=100, top=100
+        )
         vis_raw.get_render_option().background_color = np.array([0.1, 0.1, 0.1])
         vis_raw.get_render_option().point_size = 2.0
 
         # Initialize final window
-        vis_final.create_window(window_name="FINAL Point Cloud", width=800, height=600, left=950, top=100)
+        vis_final.create_window(
+            window_name="FINAL Point Cloud", width=800, height=600, left=950, top=100
+        )
         vis_final.get_render_option().background_color = np.array([0.1, 0.1, 0.1])
         vis_final.get_render_option().point_size = 2.0
 
@@ -177,7 +175,9 @@ def pointcloud_visualization():
         vis_final.add_geometry(empty_pcd)
 
         print("✅ Open3D windows created - LIVE RAW vs FINAL comparison")
-        print("🎮 Use mouse to rotate/zoom, 'p' to pause/unpause, keys 1/2 for manual updates")
+        print(
+            "🎮 Use mouse to rotate/zoom, 'p' to pause/unpause, keys 1/2 for manual updates"
+        )
         print("📌 CAMERA POSITION PRESERVED during live updates!")
 
         # Main visualization loop
@@ -212,14 +212,17 @@ def pointcloud_visualization():
                         elif camera_params_raw is not None:
                             try:
                                 view_control_raw = vis_raw.get_view_control()
-                                view_control_raw.convert_from_pinhole_camera_parameters(camera_params_raw,
-                                                                                        allow_arbitrary=True)
+                                view_control_raw.convert_from_pinhole_camera_parameters(
+                                    camera_params_raw, allow_arbitrary=True
+                                )
                             except:
                                 pass  # If restore fails, just continue
 
                         if not is_paused() or source.startswith("Manual"):
                             status = "⏸️ PAUSED" if is_paused() else "🔴 LIVE"
-                            print(f"📊 {status} RAW point cloud: {len(x)} points ({source})")
+                            print(
+                                f"📊 {status} RAW point cloud: {len(x)} points ({source})"
+                            )
 
                     needs_update_raw = False
 
@@ -252,14 +255,17 @@ def pointcloud_visualization():
                         elif camera_params_final is not None:
                             try:
                                 view_control_final = vis_final.get_view_control()
-                                view_control_final.convert_from_pinhole_camera_parameters(camera_params_final,
-                                                                                          allow_arbitrary=True)
+                                view_control_final.convert_from_pinhole_camera_parameters(
+                                    camera_params_final, allow_arbitrary=True
+                                )
                             except:
                                 pass  # If restore fails, just continue
 
                         if not is_paused() or source.startswith("Manual"):
                             status = "⏸️ PAUSED" if is_paused() else "🔴 LIVE"
-                            print(f"📊 {status} FINAL point cloud: {len(x)} points ({source})")
+                            print(
+                                f"📊 {status} FINAL point cloud: {len(x)} points ({source})"
+                            )
 
                     needs_update_final = False
 
@@ -283,7 +289,7 @@ def pointcloud_visualization():
                 vis_raw.destroy_window()
             if vis_final:
                 vis_final.destroy_window()
-        except:
+        except Exception:
             pass
         print("🔄 Open3D windows closed")
 
@@ -297,19 +303,25 @@ def start_pointcloud_thread():
             # Test if Open3D can be initialized
             print("Testing Open3D compatibility...")
             test_vis = o3d.visualization.Visualizer()
-            test_vis.create_window(window_name="Test", width=100, height=100, visible=False)
+            test_vis.create_window(
+                window_name="Test", width=100, height=100, visible=False
+            )
             test_vis.destroy_window()
             print("✅ Open3D test successful")
 
             # If test passes, start the real visualization
             pointcloud_running = True
-            pointcloud_thread = threading.Thread(target=pointcloud_visualization, daemon=True)
+            pointcloud_thread = threading.Thread(
+                target=pointcloud_visualization, daemon=True
+            )
             pointcloud_thread.start()
             print("🚀 Open3D LIVE point cloud visualization started")
 
         except Exception as e:
             print(f"❌ Open3D initialization failed: {e}")
-            print("Point cloud visualization disabled. You can still use 2D depth windows.")
+            print(
+                "Point cloud visualization disabled. You can still use 2D depth windows."
+            )
             print("Try installing: sudo apt-get install libgl1-mesa-glx libglib2.0-0")
             return False
 
@@ -335,7 +347,7 @@ def update_pointcloud_live(source_key):
     if current_time - last_pointcloud_update_time < POINTCLOUD_UPDATE_INTERVAL:
         return
 
-    if not pointcloud_params['enabled'] or not pointcloud_running or is_paused():
+    if not pointcloud_params["enabled"] or not pointcloud_running or is_paused():
         return
 
     if source_key not in latest_frames or latest_frames[source_key] is None:
@@ -347,16 +359,16 @@ def update_pointcloud_live(source_key):
         x, y, z = depth_to_pointcloud(
             depth_frame,
             CAMERA_INTRINSICS,
-            max_distance=pointcloud_params['max_distance'],
-            decimation=max(1, pointcloud_params['decimation'])
+            max_distance=pointcloud_params["max_distance"],
+            decimation=max(1, pointcloud_params["decimation"]),
         )
 
         with pointcloud_lock:
-            if source_key == 'raw':
-                latest_pointcloud_raw = (x, y, z, 'Live Raw')
+            if source_key == "raw":
+                latest_pointcloud_raw = (x, y, z, "Live Raw")
                 needs_update_raw = True
-            elif source_key == 'final':
-                latest_pointcloud_final = (x, y, z, 'Live Final')
+            elif source_key == "final":
+                latest_pointcloud_final = (x, y, z, "Live Final")
                 needs_update_final = True
 
         last_pointcloud_update_time = current_time
@@ -370,7 +382,7 @@ def update_pointcloud_manual(source_key):
     global latest_pointcloud_raw, latest_pointcloud_final, latest_frames
     global needs_update_raw, needs_update_final
 
-    if not pointcloud_params['enabled'] or not pointcloud_running:
+    if not pointcloud_params["enabled"] or not pointcloud_running:
         print("❌ Point cloud visualization not enabled")
         return
 
@@ -384,20 +396,22 @@ def update_pointcloud_manual(source_key):
         x, y, z = depth_to_pointcloud(
             depth_frame,
             CAMERA_INTRINSICS,
-            max_distance=pointcloud_params['max_distance'],
-            decimation=max(1, pointcloud_params['decimation'])
+            max_distance=pointcloud_params["max_distance"],
+            decimation=max(1, pointcloud_params["decimation"]),
         )
 
         with pointcloud_lock:
-            if source_key == 'raw':
-                latest_pointcloud_raw = (x, y, z, 'Manual Raw')
+            if source_key == "raw":
+                latest_pointcloud_raw = (x, y, z, "Manual Raw")
                 needs_update_raw = True
-            elif source_key == 'final':
-                latest_pointcloud_final = (x, y, z, 'Manual Final')
+            elif source_key == "final":
+                latest_pointcloud_final = (x, y, z, "Manual Final")
                 needs_update_final = True
 
         status = "⏸️ PAUSED" if is_paused() else "🔴 LIVE"
-        print(f"🎯 {status} Manual update: {source_key.upper()} point cloud - {len(x)} points (view reset)")
+        print(
+            f"🎯 {status} Manual update: {source_key.upper()} point cloud - {len(x)} points (view reset)"
+        )
 
     except Exception as e:
         print(f"❌ Error updating point cloud from {source_key}: {e}")
@@ -417,21 +431,21 @@ class FilterGUI:
         self.median_filter_var = tk.StringVar(value="MEDIAN_OFF")
 
         # Temporal filter parameters
-        self.temporal_enable_var = tk.BooleanVar(value=False)
-        self.temporal_persistency_var = tk.StringVar(value="PERSISTENCY_OFF")
-        self.temporal_alpha_var = tk.DoubleVar(value=0.6)
-        self.temporal_delta_var = tk.IntVar(value=3)
+        self.temporal_enable_var = tk.BooleanVar(value=True)
+        self.temporal_persistency_var = tk.StringVar(value="VALID_1_IN_LAST_5")
+        self.temporal_alpha_var = tk.DoubleVar(value=0.1)
+        self.temporal_delta_var = tk.IntVar(value=40)
 
         # Speckle filter parameters
-        self.speckle_enable_var = tk.BooleanVar(value=False)
-        self.speckle_range_var = tk.IntVar(value=50)
-        self.speckle_diff_threshold_var = tk.IntVar(value=2)
+        self.speckle_enable_var = tk.BooleanVar(value=True)
+        self.speckle_range_var = tk.IntVar(value=6)
+        self.speckle_diff_threshold_var = tk.IntVar(value=130)
 
         # Spatial filter parameters
-        self.spatial_enable_var = tk.BooleanVar(value=False)
+        self.spatial_enable_var = tk.BooleanVar(value=True)
         self.spatial_hole_filling_radius_var = tk.IntVar(value=2)
         self.spatial_alpha_var = tk.DoubleVar(value=0.5)
-        self.spatial_delta_var = tk.IntVar(value=3)
+        self.spatial_delta_var = tk.IntVar(value=20)
         self.spatial_num_iterations_var = tk.IntVar(value=1)
 
         # Point cloud parameters
@@ -463,15 +477,16 @@ class FilterGUI:
         scrollable_frame = ttk.Frame(canvas)
 
         scrollable_frame.bind(
-            "<Configure>",
-            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+            "<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
         )
 
         canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
         canvas.configure(yscrollcommand=scrollbar.set)
 
         # ToF Base Configuration
-        tof_base_frame = ttk.LabelFrame(scrollable_frame, text="ToF Base Configuration", padding=10)
+        tof_base_frame = ttk.LabelFrame(
+            scrollable_frame, text="ToF Base Configuration", padding=10
+        )
         tof_base_frame.pack(fill="x", padx=10, pady=5)
 
         ttk.Label(tof_base_frame, text="Phase Unwrap Threshold:").pack(anchor="w")
@@ -489,7 +504,9 @@ class FilterGUI:
         phase_threshold_label.pack(anchor="w")
 
         def update_phase_threshold_label(*args):
-            phase_threshold_label.config(text=f"{self.phase_unwrap_threshold_var.get()}")
+            phase_threshold_label.config(
+                text=f"{self.phase_unwrap_threshold_var.get()}"
+            )
 
         self.phase_unwrap_threshold_var.trace("w", update_phase_threshold_label)
 
@@ -569,7 +586,9 @@ class FilterGUI:
         ).pack(anchor="w")
 
         # ToF Confidence Filter
-        confidence_frame = ttk.LabelFrame(scrollable_frame, text="ToF Confidence Filter", padding=10)
+        confidence_frame = ttk.LabelFrame(
+            scrollable_frame, text="ToF Confidence Filter", padding=10
+        )
         confidence_frame.pack(fill="x", padx=10, pady=5)
 
         ttk.Label(confidence_frame, text="Confidence Threshold:").pack(anchor="w")
@@ -592,7 +611,9 @@ class FilterGUI:
         self.confidence_threshold_var.trace("w", update_confidence_label)
 
         # Point Cloud Controls (at top)
-        pointcloud_frame = ttk.LabelFrame(scrollable_frame, text="Point Cloud Settings", padding=10)
+        pointcloud_frame = ttk.LabelFrame(
+            scrollable_frame, text="Point Cloud Settings", padding=10
+        )
         pointcloud_frame.pack(fill="x", padx=10, pady=5)
 
         pointcloud_enable_cb = ttk.Checkbutton(
@@ -642,17 +663,27 @@ class FilterGUI:
         self.pointcloud_max_distance_var.trace("w", update_max_distance_label)
 
         # Control buttons
-        control_frame = ttk.LabelFrame(scrollable_frame, text="Point Cloud Controls", padding=10)
+        control_frame = ttk.LabelFrame(
+            scrollable_frame, text="Point Cloud Controls", padding=10
+        )
         control_frame.pack(fill="x", padx=10, pady=5)
 
-        ttk.Button(control_frame, text="Pause/Resume", command=self.toggle_pause).pack(side="left", padx=5)
-        ttk.Button(control_frame, text="Update Raw", command=lambda: self.manual_update('raw')).pack(side="left",
-                                                                                                     padx=5)
-        ttk.Button(control_frame, text="Update Final", command=lambda: self.manual_update('final')).pack(side="left",
-                                                                                                         padx=5)
+        ttk.Button(control_frame, text="Pause/Resume", command=self.toggle_pause).pack(
+            side="left", padx=5
+        )
+        ttk.Button(
+            control_frame, text="Update Raw", command=lambda: self.manual_update("raw")
+        ).pack(side="left", padx=5)
+        ttk.Button(
+            control_frame,
+            text="Update Final",
+            command=lambda: self.manual_update("final"),
+        ).pack(side="left", padx=5)
 
         # Median Filter
-        median_frame = ttk.LabelFrame(scrollable_frame, text="Median Filter", padding=10)
+        median_frame = ttk.LabelFrame(
+            scrollable_frame, text="Median Filter", padding=10
+        )
         median_frame.pack(fill="x", padx=10, pady=5)
 
         ttk.Label(median_frame, text="Kernel Size:").pack(anchor="w")
@@ -666,7 +697,9 @@ class FilterGUI:
         median_combo.bind("<<ComboboxSelected>>", self.update_median_filter)
 
         # Temporal Filter
-        temporal_frame = ttk.LabelFrame(scrollable_frame, text="Temporal Filter", padding=10)
+        temporal_frame = ttk.LabelFrame(
+            scrollable_frame, text="Temporal Filter", padding=10
+        )
         temporal_frame.pack(fill="x", padx=10, pady=5)
 
         temporal_enable_cb = ttk.Checkbutton(
@@ -736,7 +769,9 @@ class FilterGUI:
         self.temporal_delta_var.trace("w", update_temporal_delta_label)
 
         # Speckle Filter
-        speckle_frame = ttk.LabelFrame(scrollable_frame, text="Speckle Filter", padding=10)
+        speckle_frame = ttk.LabelFrame(
+            scrollable_frame, text="Speckle Filter", padding=10
+        )
         speckle_frame.pack(fill="x", padx=10, pady=5)
 
         speckle_enable_cb = ttk.Checkbutton(
@@ -786,7 +821,9 @@ class FilterGUI:
         self.speckle_diff_threshold_var.trace("w", update_speckle_diff_label)
 
         # Spatial Filter
-        spatial_frame = ttk.LabelFrame(scrollable_frame, text="Spatial Filter", padding=10)
+        spatial_frame = ttk.LabelFrame(
+            scrollable_frame, text="Spatial Filter", padding=10
+        )
         spatial_frame.pack(fill="x", padx=10, pady=5)
 
         spatial_enable_cb = ttk.Checkbutton(
@@ -812,7 +849,9 @@ class FilterGUI:
         spatial_hole_label.pack(anchor="w")
 
         def update_spatial_hole_label(*args):
-            spatial_hole_label.config(text=f"{self.spatial_hole_filling_radius_var.get()}")
+            spatial_hole_label.config(
+                text=f"{self.spatial_hole_filling_radius_var.get()}"
+            )
 
         self.spatial_hole_filling_radius_var.trace("w", update_spatial_hole_label)
 
@@ -893,12 +932,18 @@ class FilterGUI:
             config.phaseUnwrapErrorThreshold = self.phase_unwrap_threshold_var.get()
             config.phaseUnwrappingLevel = self.phase_unwrap_level_var.get()
             config.enablePhaseUnwrapping = self.enable_phase_unwrapping_var.get()
-            config.enablePhaseShuffleTemporalFilter = self.enable_phase_shuffle_var.get()
-            config.enableTemperatureCorrection = self.enable_temperature_correction_var.get()
+            config.enablePhaseShuffleTemporalFilter = (
+                self.enable_phase_shuffle_var.get()
+            )
+            config.enableTemperatureCorrection = (
+                self.enable_temperature_correction_var.get()
+            )
             config.enableFPPNCorrection = self.enable_fppn_correction_var.get()
             config.enableOpticalCorrection = self.enable_optical_correction_var.get()
             config.enableWiggleCorrection = self.enable_wiggle_correction_var.get()
-            config.enableDistortionCorrection = self.enable_distortion_correction_var.get()
+            config.enableDistortionCorrection = (
+                self.enable_distortion_correction_var.get()
+            )
             config.enableBurstMode = self.enable_burst_mode_var.get()
 
             self.base_config_queue.send(config)
@@ -918,7 +963,9 @@ class FilterGUI:
             corrections_str = ", ".join(corrections) if corrections else "None"
 
             print(f"ToF Base config updated:")
-            print(f"  Phase unwrap: threshold={config.phaseUnwrapErrorThreshold}, level={config.phaseUnwrappingLevel}")
+            print(
+                f"  Phase unwrap: threshold={config.phaseUnwrapErrorThreshold}, level={config.phaseUnwrappingLevel}"
+            )
             print(f"  Phase unwrapping: {config.enablePhaseUnwrapping}")
             print(f"  Phase shuffle filter: {config.enablePhaseShuffleTemporalFilter}")
             print(f"  Corrections enabled: {corrections_str}")
@@ -944,17 +991,19 @@ class FilterGUI:
     def update_pointcloud_settings(self, event=None):
         """Update point cloud settings"""
         global pointcloud_params
-        pointcloud_params['enabled'] = self.pointcloud_enable_var.get()
-        pointcloud_params['decimation'] = self.pointcloud_decimation_var.get()
-        pointcloud_params['max_distance'] = self.pointcloud_max_distance_var.get()
+        pointcloud_params["enabled"] = self.pointcloud_enable_var.get()
+        pointcloud_params["decimation"] = self.pointcloud_decimation_var.get()
+        pointcloud_params["max_distance"] = self.pointcloud_max_distance_var.get()
 
-        if pointcloud_params['enabled'] and not pointcloud_running:
+        if pointcloud_params["enabled"] and not pointcloud_running:
             start_pointcloud_thread()
-        elif not pointcloud_params['enabled'] and pointcloud_running:
+        elif not pointcloud_params["enabled"] and pointcloud_running:
             stop_pointcloud_thread()
 
-        print(f"Point cloud settings updated: enabled={pointcloud_params['enabled']}, "
-              f"decimation={pointcloud_params['decimation']}, max_distance={pointcloud_params['max_distance']}")
+        print(
+            f"Point cloud settings updated: enabled={pointcloud_params['enabled']}, "
+            f"decimation={pointcloud_params['decimation']}, max_distance={pointcloud_params['max_distance']}"
+        )
 
     def toggle_pause(self):
         """Toggle pause/resume for point cloud updates"""
@@ -1011,29 +1060,29 @@ class FilterGUI:
         params.numIterations = self.spatial_num_iterations_var.get()
         return params
 
-    def update_median_filter(self, event=None):
-        params = self.get_median_filter_params()
-        config = dai.ImageFiltersConfig().updateFilterAtIndex(index=3, params=params)
-        self.config_queue.send(config)
-        print(f"Median filter at index 3 updated: {params}")
-
     def update_temporal_filter(self, event=None):
         params = self.get_temporal_filter_params()
-        config = dai.ImageFiltersConfig().updateFilterAtIndex(index=1, params=params)
+        config = dai.ImageFiltersConfig().updateFilterAtIndex(index=0, params=params)
         self.config_queue.send(config)
-        print(f"Temporal filter at index 1 updated: {params}")
+        print(f"Temporal filter at index 0 updated: {params}")
 
     def update_speckle_filter(self, event=None):
         params = self.get_speckle_filter_params()
-        config = dai.ImageFiltersConfig().updateFilterAtIndex(index=0, params=params)
+        config = dai.ImageFiltersConfig().updateFilterAtIndex(index=1, params=params)
         self.config_queue.send(config)
-        print(f"Speckle filter at index 0 updated: {params}")
+        print(f"Speckle filter at index 1 updated: {params}")
 
     def update_spatial_filter(self, event=None):
         params = self.get_spatial_filter_params()
         config = dai.ImageFiltersConfig().updateFilterAtIndex(index=2, params=params)
         self.config_queue.send(config)
         print(f"Spatial filter at index 2 updated: {params}")
+
+    def update_median_filter(self, event=None):
+        params = self.get_median_filter_params()
+        config = dai.ImageFiltersConfig().updateFilterAtIndex(index=3, params=params)
+        self.config_queue.send(config)
+        print(f"Median filter at index 3 updated: {params}")
 
     def run(self):
         self.root.mainloop()
@@ -1090,8 +1139,15 @@ def colorizeDepth(frameDepth: np.ndarray) -> np.ndarray:
         # Add status overlay
         status_text = "PAUSED" if is_paused() else "LIVE"
         status_color = (0, 255, 255) if is_paused() else (0, 255, 0)
-        cv2.putText(depthFrameColor, f"Point Clouds: {status_text}",
-                    (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.6, status_color, 2)
+        cv2.putText(
+            depthFrameColor,
+            f"Point Clouds: {status_text}",
+            (10, 30),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.6,
+            status_color,
+            2,
+        )
 
     except IndexError:
         # Frame is likely empty
@@ -1107,12 +1163,11 @@ def camera_pipeline(gui):
     pipeline = dai.Pipeline()
 
     # ToF node
-    socket, preset_mode = dai.CameraBoardSocket.CAM_A, dai.ImageFiltersPresetMode.MID_RANGE
+    socket, preset_mode = (
+        dai.CameraBoardSocket.CAM_A,
+        dai.ImageFiltersPresetMode.MID_RANGE,
+    )
     tof = pipeline.create(dai.node.ToF).build(socket, preset_mode)
-
-    # Set initial filter parameters
-    tof.imageFiltersNode.initialConfig.filterIndices = []
-    tof.imageFiltersNode.initialConfig.filterParams = get_initial_filter_params()
 
     # Output queues
     depthQueue = tof.depth.createOutputQueue()
@@ -1121,10 +1176,12 @@ def camera_pipeline(gui):
     # Set the config queues in GUI for filter updates
     gui.config_queue = tof.imageFiltersInputConfig.createInputQueue()
     gui.base_config_queue = tof.tofBaseInputConfig.createInputQueue()
-    gui.confidence_config_queue = tof.tofDepthConfidenceFilterInputConfig.createInputQueue()
+    gui.confidence_config_queue = (
+        tof.tofDepthConfidenceFilterInputConfig.createInputQueue()
+    )
 
     # Start point cloud visualization if enabled
-    if pointcloud_params['enabled']:
+    if pointcloud_params["enabled"]:
         start_pointcloud_thread()
 
     print("=" * 80)
@@ -1157,10 +1214,10 @@ def camera_pipeline(gui):
             depthRaw: dai.ImgFrame = depthRawQueue.get()
             if depthRaw is not None:
                 depthRawFrame = depthRaw.getFrame()
-                latest_frames['raw'] = depthRawFrame  # Store for point cloud
+                latest_frames["raw"] = depthRawFrame  # Store for point cloud
 
                 # Live point cloud update for raw data
-                update_pointcloud_live('raw')
+                update_pointcloud_live("raw")
 
                 depthRawImage = colorizeDepth(depthRawFrame)
                 cv2.imshow("ToF Raw Depth", depthRawImage)
@@ -1169,10 +1226,10 @@ def camera_pipeline(gui):
             depth: dai.ImgFrame = depthQueue.get()
             if depth is not None:
                 depthFrame = depth.getFrame()
-                latest_frames['final'] = depthFrame  # Store for point cloud
+                latest_frames["final"] = depthFrame  # Store for point cloud
 
                 # Live point cloud update for final data
-                update_pointcloud_live('final')
+                update_pointcloud_live("final")
 
                 depthImage = colorizeDepth(depthFrame)
                 cv2.imshow("ToF Filtered Depth", depthImage)
@@ -1181,18 +1238,20 @@ def camera_pipeline(gui):
             key = cv2.waitKey(1) & 0xFF
             if key == ord("q"):
                 break
-            elif key == ord('p'):
+            elif key == ord("p"):
                 # Toggle pause/unpause
                 new_state = toggle_pause()
                 status = "⏸️ PAUSED" if new_state else "🔴 LIVE"
-                print(f"{status} Point cloud updates {'paused' if new_state else 'resumed'}")
-            elif key == ord('1'):
+                print(
+                    f"{status} Point cloud updates {'paused' if new_state else 'resumed'}"
+                )
+            elif key == ord("1"):
                 # Manual update RAW point cloud
-                update_pointcloud_manual('raw')
-            elif key == ord('2'):
+                update_pointcloud_manual("raw")
+            elif key == ord("2"):
                 # Manual update FINAL point cloud
-                update_pointcloud_manual('final')
-            elif key == ord('v'):
+                update_pointcloud_manual("final")
+            elif key == ord("v"):
                 # Reset point cloud views
                 if vis_raw:
                     vis_raw.reset_view_point(True)
@@ -1200,20 +1259,14 @@ def camera_pipeline(gui):
                     vis_final.reset_view_point(True)
                 print("🔄 Reset both point cloud views to fit data")
 
-    # Clean up
     stop_pointcloud_thread()
 
 
 def main():
-    # Create GUI with placeholder config queue (will be set by camera pipeline)
     gui = FilterGUI(None)
-
-    # Start camera pipeline in separate thread
     camera_thread = threading.Thread(target=camera_pipeline, args=(gui,))
     camera_thread.daemon = True
     camera_thread.start()
-
-    # Run GUI in main thread
     gui.run()
 
 
