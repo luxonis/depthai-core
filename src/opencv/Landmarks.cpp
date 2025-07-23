@@ -12,8 +12,6 @@ cv::Mat Landmark::getCovarianceAsCvMat() {
         }
     }
 
-    std::cout << "covariance matrix:" << cvMat << std::endl;
-
     return cvMat;
 }
 }

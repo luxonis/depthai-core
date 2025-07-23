@@ -260,11 +260,11 @@ void BasaltVIO::setDefaultVIOConfig() {
     vioConfig.vio_min_triangulation_dist = 0.05;
     vioConfig.vio_max_iterations = 7;
     vioConfig.vio_enforce_realtime = false;
-    vioConfig.vio_use_lm = true;
+    vioConfig.vio_use_lm = false;
     vioConfig.vio_lm_lambda_initial = 1e-4;
     vioConfig.vio_lm_lambda_min = 1e-6;
     vioConfig.vio_lm_lambda_max = 1e2;
-    vioConfig.vio_scale_jacobian = false;
+    vioConfig.vio_scale_jacobian = true;
     vioConfig.vio_init_pose_weight = 1e8;
     vioConfig.vio_init_ba_weight = 1e1;
     vioConfig.vio_init_bg_weight = 1e2;
