@@ -93,7 +93,7 @@ class TemporalFilter {
     };
 
     int allocateBuffers(int frameSize);
-    void buildPersistanceMap();
+    void buildPersistenceMap();
     uint8_t persistenceMode = 255;  // default value: "invalid"
     uint8_t currFrameIdx = 0;
 
@@ -429,7 +429,7 @@ int TemporalFilter::Init(size_t frameSize, float alpha, int delta, int _persiste
 
     if(this->persistenceMode != _persistenceMode) {
         this->persistenceMode = _persistenceMode;
-        buildPersistanceMap();
+        buildPersistenceMap();
         resetBuffers = true;
     }
     if(alpha != params.alpha) {
@@ -519,7 +519,7 @@ int TemporalFilter::allocateBuffers(int frameSize) {
     return 0;
 }
 
-void TemporalFilter::buildPersistanceMap() {
+void TemporalFilter::buildPersistenceMap() {
     auto& persistenceMapLUT = *rawPersistenceMapLUT.mem;
 
     for(size_t i = 0; i < PERSISTENCY_LUT_SIZE; i++) {
@@ -824,11 +824,11 @@ void ImageFilters::run() {
             auto configMsg = inputConfig.get<ImageFiltersConfig>();
             bool isUpdate = configMsg->filterIndices.size() > 0;
             if(isUpdate) {
-                logger->debug("ImageFilters: Updating existing filter pipeline. New pipeline is {}", getFilterPipelineString());
                 updateExistingFilterPipeline(*configMsg);
+                logger->debug("ImageFilters: Updating existing filter pipeline. New pipeline is {}", getFilterPipelineString());
             } else {
-                logger->debug("ImageFilters: Creating a new filter pipeline. New pipeline is {}", getFilterPipelineString());
                 createNewFilterPipeline(*configMsg);
+                logger->debug("ImageFilters: Creating a new filter pipeline. New pipeline is {}", getFilterPipelineString());
             }
         }
 
