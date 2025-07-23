@@ -193,7 +193,7 @@ set(THIRDPARTY_OPENCV_LIBRARIES "" CACHE STRING "Optional libraries to link Open
 set(TARGET_OPENCV_NAME ${PROJECT_NAME}-opencv)
 set(TARGET_OPENCV_ALIAS opencv)
 if(DEPTHAI_OPENCV_SUPPORT)
-    set(REQUIRED_OPENCV_LIBRARIES "opencv_core" "opencv_imgproc" "opencv_videoio" "opencv_highgui" "opencv_calib3d" "opencv_tracking")
+    set(REQUIRED_OPENCV_LIBRARIES "opencv_core" "opencv_imgproc" "opencv_videoio" "opencv_highgui" "opencv_calib3d")
     set(OPENCV_SUPPORT_AVAILABLE ${OpenCV_FOUND})
     foreach(lib ${REQUIRED_OPENCV_LIBRARIES})
         if(NOT (lib IN_LIST OpenCV_LIBS))
@@ -319,6 +319,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/TransformData.cpp
     src/utility/H26xParsers.cpp
     src/utility/ImageManipImpl.cpp
+    src/utility/ObjectTrackerImpl.cpp
     src/utility/Initialization.cpp
     src/utility/Resources.cpp
     src/utility/Platform.cpp
