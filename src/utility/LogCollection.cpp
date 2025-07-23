@@ -63,8 +63,6 @@ std::string protocolToString(XLinkProtocol_t protocol) {
             return "X_LINK_NMB_OF_PROTOCOLS";
         case X_LINK_ANY_PROTOCOL:
             return "X_LINK_ANY_PROTOCOL";
-        case X_LINK_USB_EP:
-            return "X_LINK_USB_EP";
         default:
             return "INVALID_ENUM_VALUE";
     }
