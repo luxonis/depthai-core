@@ -374,6 +374,10 @@ dai_set_test_labels(pointcloud_test ondevice rvc2_all ci)
 dai_add_test(rgbd_test src/ondevice_tests/rgbd_test.cpp)
 dai_set_test_labels(rgbd_test ondevice rvc2_all rvc4 ci)
 
+# Input/Output naming test
+dai_add_test(input_output_naming_test src/ondevice_tests/input_output_naming_test.cpp)
+dai_set_test_labels(input_output_naming_test ondevice rvc2_all rvc4 ci)
+
 # Resolutions test
 dai_add_test(resolutions_test src/ondevice_tests/resolutions_test.cpp)
 dai_set_test_labels(resolutions_test ondevice) # TODO(jakob) Make the test runnable in CI
@@ -475,3 +479,7 @@ dai_set_test_labels(camera_test ondevice rvc2_all rvc4 ci)
 # VideoEncoder test
 dai_add_test(video_encoder_test src/ondevice_tests/video_encoder_test.cpp)
 dai_set_test_labels(video_encoder_test ondevice rvc2_all rvc4 ci)
+
+# XLinkIn test
+dai_add_test(xlink_test src/ondevice_tests/xlink_tests.cpp)
+dai_set_test_labels(xlink_test ondevice rvc2_all ci)
