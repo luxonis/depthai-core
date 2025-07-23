@@ -871,7 +871,7 @@ void ImageFilters::setRunOnHost(bool runOnHost) {
 }
 
 void ImageFilters::setDefaultProfilePreset(ImageFiltersPresetMode mode) {
-    properties.initialConfig.setProfilePreset(mode);
+    initialConfig->setProfilePreset(mode);
 }
 
 std::shared_ptr<ToFDepthConfidenceFilter> ToFDepthConfidenceFilter::build(Node::Output& depth, Node::Output& amplitude, ImageFiltersPresetMode presetMode) {
@@ -1011,7 +1011,7 @@ bool ToFDepthConfidenceFilter::runOnHost() const {
 }
 
 void ToFDepthConfidenceFilter::setDefaultProfilePreset(ImageFiltersPresetMode mode) {
-    properties.initialConfig.setProfilePreset(mode);
+    initialConfig->setProfilePreset(mode);
 }
 
 }  // namespace node
