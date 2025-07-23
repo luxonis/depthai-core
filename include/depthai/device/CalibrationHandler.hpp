@@ -165,6 +165,9 @@ class CalibrationHandler {
      */
     std::tuple<std::vector<std::vector<float>>, int, int> getDefaultIntrinsics(CameraBoardSocket cameraId) const;
 
+
+    dai::Extrinsics getCameraExtrinsics(CameraBoardSocket srcCamera) const;
+
     /**
      * Get the Distortion Coefficients object
      *
@@ -200,6 +203,30 @@ class CalibrationHandler {
      * @return lens position of the camera with given cameraId at which it was calibrated.
      */
     CameraModel getDistortionModel(CameraBoardSocket cameraId) const;
+
+    /**
+     * Get the Transformation matrix from the given camera to the coordinate system origin (one without extrinsics
+     * and linked to CameraBoardSocket.AUTO)
+     * @param cameraId Camera Id of the camera for which the origin matrix is being calculated
+     * @param useSpecTranslation Enabling this bool uses the translation information from the board design data
+     * @return a transformationMatrix which is 4x4 in homogeneous coordinate system
+     */
+    std::vector<std::vector<float>> getExtrinsicsToOrigin(CameraBoardSocket cameraId, bool useSpecTranslation, CameraBoardSocket& originSocket) const;
+    /**
+     * Get the Transformation matrix from the given camera to the coordinate system origin (one without extrinsics
+     * and linked to CameraBoardSocket.AUTO)
+     * @param cameraId Camera Id of the camera for which the origin matrix is being calculated
+     * @return dai::Extrinsics object which contains the rotation and translation from the camera to origin
+     */
+    dai::Extrinsics getExtrinsicsToOrigin(dai::CameraBoardSocket cameraId) const;
+    /**
+     * Get the Extrinsics object from the given camera to the lowest socket camera
+     * @param srcCamera Camera Id of the camera for which the extrinsics to lowest socket is being calculated
+     * @return a Extrinsics object which contains the rotation and translation from srcCamera to lowest socket camera
+     */
+    dai::Extrinsics getExtrinsicsToLowestSocket(dai::CameraBoardSocket srcCamera) const;
+
+    dai::CameraBoardSocket getLowestSocket() const;
 
     /**
      * Get the Camera Extrinsics object between two cameras from the calibration data if there is a linked connection
@@ -594,18 +621,11 @@ class CalibrationHandler {
      */
     // bool isCameraArrayConnected;
     dai::EepromData eepromData;
+    dai::CameraBoardSocket lowestSocket = dai::CameraBoardSocket::CAM_J;
     std::vector<std::vector<float>> computeExtrinsicMatrix(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera, bool useSpecTranslation = false) const;
     bool checkExtrinsicsLink(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera) const;
     bool checkSrcLinks(CameraBoardSocket headSocket) const;
 
-    /**
-     * Get the Transformation matrix from the given camera to the coordinate system origin (one without extrinsics
-     * and linked to CameraBoardSocket.AUTO)
-     * @param cameraId Camera Id of the camera for which the origin matrix is being calculated
-     * @param useSpecTranslation Enabling this bool uses the translation information from the board design data
-     * @return a transformationMatrix which is 4x4 in homogeneous coordinate system
-     */
-    std::vector<std::vector<float>> getExtrinsicsToOrigin(CameraBoardSocket cameraId, bool useSpecTranslation, CameraBoardSocket& originSocket) const;
 };
 
 }  // namespace dai

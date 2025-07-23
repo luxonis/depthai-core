@@ -17,15 +17,23 @@ message CameraSettings {
     float lensPositionRaw = 5;
 }
 
+message Extrinsics {
+    TransformationMatrix rotationMatrix = 1; // 3x3 rotation matrix
+    Point3f translation = 2; // (x, y, z) pose of destCameraSocket w.r.t currentCameraSocket obtained through calibration
+    Point3f specTranslation = 3; // (x, y, z) pose of destCameraSocket w.r.t currentCameraSocket measured through CAD design
+    int32 toCameraSocket = 4; // Destination camera socket
+}
+
 message ImgTransformation {
     TransformationMatrix transformationMatrix = 1;
     TransformationMatrix sourceIntrinsicMatrix = 2;
     CameraModel distortionModel = 3;
     FloatArray distortionCoefficients = 4;
-    uint32 srcWidth = 5;
-    uint32 srcHeight = 6;
-    uint32 width = 7;
-    uint32 height = 8;
+    Extrinsics extrinsics = 5;
+    uint32 srcWidth = 6;
+    uint32 srcHeight = 7;
+    uint32 width = 8;
+    uint32 height = 9;
 }
 
 message TransformationMatrix {
@@ -54,3 +62,10 @@ message Point2f {
     float x = 1;
     float y = 2;
 }
+
+message Point3f {
+    float x = 1;
+    float y = 2;
+    float z = 3;
+}
+
