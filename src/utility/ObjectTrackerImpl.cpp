@@ -361,10 +361,6 @@ OCSTracker::State::State(float det_thresh_,
     inertia = inertia_;
     use_byte = use_byte_;
 }
-std::ostream& precision(std::ostream& os) {
-    os << std::fixed << std::setprecision(2);
-    return os;
-}
 std::vector<Eigen::RowVectorXf> OCSTracker::State::update(const std::vector<ImgDetection>& detections, const std::vector<Point3f>& spatialData) {
     /*
      * dets: (n,7): [[x1,y1,x2,y2,confidence_score, class, idx],...[...]]
