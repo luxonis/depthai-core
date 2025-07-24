@@ -51,6 +51,25 @@ std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build(const st
     return std::static_pointer_cast<SpatialDetectionNetwork>(shared_from_this());
 }
 
+std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build(const std::shared_ptr<Camera>& camera,
+                                                                        const std::shared_ptr<ToF>& tof,
+                                                                        NNModelDescription modelDesc,
+                                                                        std::optional<float> fps) {
+    auto nnArchive = createNNArchive(modelDesc);
+    return build(camera, tof, nnArchive, fps);
+}
+
+std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build(const std::shared_ptr<Camera>& camera,
+                                                                        const std::shared_ptr<ToF>& tof,
+                                                                        const NNArchive& nnArchive,
+                                                                        std::optional<float> fps) {
+    neuralNetwork->build(camera, nnArchive, fps);
+    detectionParser->setNNArchive(nnArchive);
+    alignDepth(tof, camera);
+    return std::static_pointer_cast<SpatialDetectionNetwork>(shared_from_this());
+}
+
+
 NNArchive SpatialDetectionNetwork::createNNArchive(NNModelDescription& modelDesc) {
     // Download model from zoo
     if(modelDesc.platform.empty()) {
@@ -63,6 +82,14 @@ NNArchive SpatialDetectionNetwork::createNNArchive(NNModelDescription& modelDesc
               "Model from zoo is not NNArchive - it needs to be a NNArchive to use build(Camera, NNModelDescription, float) method");
     auto nnArchive = dai::NNArchive(path);
     return nnArchive;
+}
+
+void SpatialDetectionNetwork::alignDepth(const std::shared_ptr<ToF>& tof, const std::shared_ptr<Camera>& camera) {
+    if(!depthAlign) depthAlign = std::make_unique<Subnode<ImageAlign>>(*this, "depthAlign");
+    Subnode<ImageAlign>& align = *depthAlign;
+    neuralNetwork->passthrough.link(align->inputAlignTo);
+    tof->depth.link(align->input);
+    align->outputAligned.link(inputDepth);
 }
 
 void SpatialDetectionNetwork::alignDepth(const std::shared_ptr<StereoDepth>& stereo, const std::shared_ptr<Camera>& camera) {

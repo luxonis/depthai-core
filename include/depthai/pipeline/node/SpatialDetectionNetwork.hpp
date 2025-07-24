@@ -6,6 +6,7 @@
 #include <depthai/pipeline/node/DetectionNetwork.hpp>
 #include <depthai/pipeline/node/ImageAlign.hpp>
 #include <depthai/pipeline/node/StereoDepth.hpp>
+#include <depthai/pipeline/node/ToF.hpp>
 
 #include "depthai/openvino/OpenVINO.hpp"
 
@@ -76,6 +77,16 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
 
     std::shared_ptr<SpatialDetectionNetwork> build(const std::shared_ptr<Camera>& inputRgb,
                                                    const std::shared_ptr<StereoDepth>& stereo,
+                                                   const dai::NNArchive& nnArchive,
+                                                   std::optional<float> fps = std::nullopt);
+
+    std::shared_ptr<SpatialDetectionNetwork> build(const std::shared_ptr<Camera>& inputRgb,
+                                                    const std::shared_ptr<ToF>& stereo,
+                                                    dai::NNModelDescription modelDesc,
+                                                    std::optional<float> fps = std::nullopt);
+
+    std::shared_ptr<SpatialDetectionNetwork> build(const std::shared_ptr<Camera>& inputRgb,
+                                                   const std::shared_ptr<ToF>& stereo,
                                                    const dai::NNArchive& nnArchive,
                                                    std::optional<float> fps = std::nullopt);
 
@@ -293,6 +304,7 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
     void setNNArchiveOther(const NNArchive& nnArchive);
     NNArchive createNNArchive(NNModelDescription& modelDesc);
     void alignDepth(const std::shared_ptr<StereoDepth>& stereo, const std::shared_ptr<Camera>& camera);
+    void alignDepth(const std::shared_ptr<ToF>& tof, const std::shared_ptr<Camera>& camera);
 
    protected:
     using DeviceNodeCRTP::DeviceNodeCRTP;

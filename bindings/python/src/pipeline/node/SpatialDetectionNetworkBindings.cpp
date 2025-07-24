@@ -61,6 +61,33 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack) {
              py::arg("nnArchive"),
              py::arg("fps") = std::nullopt,
              DOC(dai, node, SpatialDetectionNetwork, build, 2))
+        .def("build",
+             py::overload_cast<const std::shared_ptr<Camera>&, const std::shared_ptr<ToF>&, NNModelDescription, std::optional<float>>(
+                 &SpatialDetectionNetwork::build),
+             py::arg("input"),
+             py::arg("tof"),
+             py::arg("model"),
+             py::arg("fps") = std::nullopt,
+             DOC(dai, node, SpatialDetectionNetwork, build, 3))
+        .def("build",
+             ([](SpatialDetectionNetwork& self,
+                 const std::shared_ptr<Camera>& input,
+                 const std::shared_ptr<ToF>& tof,
+                 std::string model,
+                 std::optional<float> fps) { return self.build(input, tof, NNModelDescription{model}, fps); }),
+             py::arg("input"),
+             py::arg("tof"),
+             py::arg("model"),
+             py::arg("fps") = std::nullopt,
+             DOC(dai, node, SpatialDetectionNetwork, build, 3))
+        .def("build",
+             py::overload_cast<const std::shared_ptr<Camera>&, const std::shared_ptr<ToF>&, const NNArchive&, std::optional<float>>(
+                 &SpatialDetectionNetwork::build),
+             py::arg("input"),
+             py::arg("tof"),
+             py::arg("nnArchive"),
+             py::arg("fps") = std::nullopt,
+             DOC(dai, node, SpatialDetectionNetwork, build, 4))
         .def("setBlobPath", &SpatialDetectionNetwork::setBlobPath, py::arg("path"), DOC(dai, node, SpatialDetectionNetwork, setBlobPath))
         .def("setNumPoolFrames", &SpatialDetectionNetwork::setNumPoolFrames, py::arg("numFrames"), DOC(dai, node, SpatialDetectionNetwork, setNumPoolFrames))
         .def("setNumInferenceThreads",
