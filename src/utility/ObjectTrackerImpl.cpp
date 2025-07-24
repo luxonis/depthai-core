@@ -203,6 +203,8 @@ class OCSTracker::State {
     int frame_count;
     uint32_t max_id = 0;
     TrackerIdAssignmentPolicy id_assignment_policy;
+    uint32_t max_trackers;
+    uint32_t num_trackers = 0;
 
     void prep() {
         trackers.erase(std::remove_if(trackers.begin(), trackers.end(), [](const KalmanBoxTracker& t) { return t.remove; }), trackers.end());
@@ -213,6 +215,7 @@ class OCSTracker::State {
         if(idx < trackers.size()) {
             trackers[idx].remove = true;
             tracklets[idx].updateStatus(Tracklet::TrackingStatus::REMOVED);
+            --num_trackers;
         } else {
             throw std::runtime_error("Index out of bounds in remove_tracker");
         }
@@ -248,6 +251,7 @@ class OCSTracker::State {
           int min_hits_ = 3,
           float iou_threshold_ = 0.3,
           TrackerIdAssignmentPolicy id_assignment_policy_ = TrackerIdAssignmentPolicy::UNIQUE_ID,
+          uint32_t max_trackers_ = 100,
           int delta_t_ = 3,
           std::string asso_func_ = "iou",
           float inertia_ = 0.2,
@@ -335,6 +339,7 @@ OCSTracker::State::State(float det_thresh_,
                          int min_hits_,
                          float iou_threshold_,
                          TrackerIdAssignmentPolicy id_assignment_policy_,
+                         uint32_t max_trackers_,
                          int delta_t_,
                          std::string asso_func_,
                          float inertia_,
@@ -344,6 +349,7 @@ OCSTracker::State::State(float det_thresh_,
     min_hits = min_hits_;
     iou_threshold = iou_threshold_;
     id_assignment_policy = id_assignment_policy_;
+    max_trackers = max_trackers_;
     trackers.clear();
     frame_count = 0;
     det_thresh = det_thresh_;
@@ -598,18 +604,21 @@ std::vector<Eigen::RowVectorXf> OCSTracker::State::update(const std::vector<ImgD
     ///////////////////////////////
     /*create and initialise new trackers for unmatched detections*/
     for(int i : unmatched_dets) {
-        Eigen::RowVectorXf tmp_bbox = dets_first.block(i, 0, 1, 5);
-        uint32_t index = dets_first(i, 6);
-        int cls_ = int(dets(i, 5));
-        KalmanBoxTracker trk = KalmanBoxTracker(tmp_bbox, cls_, delta_t);
-        trackers.push_back(trk);
-        tracklets.push_back(TrackletExt{Tracklet{Rect(tmp_bbox[0], tmp_bbox[1], tmp_bbox[2], tmp_bbox[3]),
-                                                 (int)get_next_id(),
-                                                 cls_,
-                                                 1,
-                                                 Tracklet::TrackingStatus::NEW,
-                                                 detections[index],
-                                                 spatialData[index]}});
+        if(num_trackers < max_trackers) {
+            Eigen::RowVectorXf tmp_bbox = dets_first.block(i, 0, 1, 5);
+            uint32_t index = dets_first(i, 6);
+            int cls_ = int(dets(i, 5));
+            KalmanBoxTracker trk = KalmanBoxTracker(tmp_bbox, cls_, delta_t);
+            ++num_trackers;
+            trackers.push_back(trk);
+            tracklets.push_back(TrackletExt{Tracklet{Rect(tmp_bbox[0], tmp_bbox[1], tmp_bbox[2], tmp_bbox[3]),
+                                                     (int)get_next_id(),
+                                                     cls_,
+                                                     1,
+                                                     Tracklet::TrackingStatus::NEW,
+                                                     detections[index],
+                                                     spatialData[index]}});
+        }
     }
     for(int i = trackers.size() - 1; i >= 0; i--) {
         Eigen::Matrix<float, 1, 4> d;
@@ -1552,6 +1561,7 @@ void OCSTracker::init(const ImgFrame& frame, const std::vector<ImgDetection>& de
                                           this->trackletBirthThreshold,
                                           this->occlusionRatioThreshold,
                                           this->trackerIdAssignmentPolicy,
+                                          this->maxObjectsToTrack,
                                           1,
                                           "giou",
                                           0.3941737016672115,
