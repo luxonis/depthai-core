@@ -118,7 +118,9 @@ void ObjectTracker::run() {
             ImgTransformation detectionsTransformation = (inputImgDetections ? inputImgDetections->transformation : inputSpatialImgDetections->transformation)
                                                              .value_or(inputDetectionImg->transformation);
             std::vector<ImgDetection> detections;
+            std::vector<Point3f> spatialData;
             detections.reserve(inputImgDetections ? inputImgDetections->detections.size() : inputSpatialImgDetections->detections.size());
+            spatialData.reserve(inputImgDetections ? inputImgDetections->detections.size() : inputSpatialImgDetections->detections.size());
             for(size_t i = 0; i < (inputImgDetections ? inputImgDetections->detections.size() : inputSpatialImgDetections->detections.size()); ++i) {
                 const auto& detection = inputImgDetections ? inputImgDetections->detections[i] : (ImgDetection)inputSpatialImgDetections->detections[i];
                 if(detection.confidence >= trackerThreshold && (detectionLabelsToTrack.empty() || contains(detectionLabelsToTrack, detection.label))) {
@@ -139,15 +141,22 @@ void ObjectTracker::run() {
                     det.xmax = std::min((float)width, maxx);
                     det.ymax = std::min((float)height, maxy);
 
-                    if(det.xmin < det.xmax && det.ymin < det.ymax) detections.push_back(det);
+                    if(det.xmin < det.xmax && det.ymin < det.ymax) {
+                        detections.push_back(det);
+                        if(inputSpatialImgDetections) {
+                            spatialData.push_back(inputSpatialImgDetections->detections[i].spatialCoordinates);
+                        } else {
+                            spatialData.push_back(Point3f(0, 0, 0));  // No spatial data available
+                        }
+                    }
                 }
             }
             if(!detections.empty()) {
                 if(first) {
                     first = false;
-                    tracker.init(*inputTrackerImg, detections);
+                    tracker.init(*inputTrackerImg, detections, spatialData);
                 } else {
-                    tracker.update(*inputTrackerImg, detections);
+                    tracker.update(*inputTrackerImg, detections, spatialData);
                 }
             }
         } else if(!first) {

@@ -57,13 +57,11 @@ class TrackletExt : public Tracklet {
     uint32_t ageSinceStatusUpdate = 1;
     uint32_t detectedCount = 1;
 
-    void update(const Rect& rect) {
+    void update(const Rect& rect, const Point3f& spatialCoordinates = Point3f(0, 0, 0)) {
         this->roi = rect;
+        this->spatialCoordinates = spatialCoordinates;
         ++this->age;
         ++this->ageSinceStatusUpdate;
-
-        spatialCoordinates.x = rect.x + rect.width / 2;
-        spatialCoordinates.y = rect.y + rect.height / 2;
     }
 
     void match(const Rect& rect) {
@@ -255,7 +253,7 @@ class OCSTracker::State {
           float inertia_ = 0.2,
           bool use_byte_ = false);
 
-    std::vector<Eigen::RowVectorXf> update(const std::vector<ImgDetection>& detections);
+    std::vector<Eigen::RowVectorXf> update(const std::vector<ImgDetection>& detections, const std::vector<Point3f>& spatialData);
     const std::vector<TrackletExt>& get_tracklets() const {
         return tracklets;
     }
@@ -361,7 +359,7 @@ std::ostream& precision(std::ostream& os) {
     os << std::fixed << std::setprecision(2);
     return os;
 }
-std::vector<Eigen::RowVectorXf> OCSTracker::State::update(const std::vector<ImgDetection>& detections) {
+std::vector<Eigen::RowVectorXf> OCSTracker::State::update(const std::vector<ImgDetection>& detections, const std::vector<Point3f>& spatialData) {
     /*
      * dets: (n,7): [[x1,y1,x2,y2,confidence_score, class, idx],...[...]]
      * Params:
@@ -370,6 +368,10 @@ std::vector<Eigen::RowVectorXf> OCSTracker::State::update(const std::vector<ImgD
     Returns the a similar array, where the last column is the object ID.
     NOTE: The number of objects returned may differ from the number of detections provided.
      */
+
+    if(detections.size() != spatialData.size()) {
+        throw std::runtime_error("Number of detections and spatial data points must match");
+    }
 
     prep();
 
@@ -439,7 +441,7 @@ std::vector<Eigen::RowVectorXf> OCSTracker::State::update(const std::vector<ImgD
         tmp_bbox = dets_first.block<1, 5>(m(0), 0);
         uint32_t index = dets_first(m(0), 6);
         trackers[m(1)].update(&(tmp_bbox), dets_first(m(0), 5));
-        tracklets[m(1)].update(Rect(tmp_bbox(0), tmp_bbox(1), tmp_bbox(2) - tmp_bbox(0), tmp_bbox(3) - tmp_bbox(1)));
+        tracklets[m(1)].update(Rect(tmp_bbox(0), tmp_bbox(1), tmp_bbox(2) - tmp_bbox(0), tmp_bbox(3) - tmp_bbox(1)), spatialData[index]);
         tracklets[m(1)].srcImgDetection = detections[index];
         if(tracklets[m(1)].status == Tracklet::TrackingStatus::LOST) {
             tracklets[m(1)].updateStatus(Tracklet::TrackingStatus::TRACKED);
@@ -490,7 +492,7 @@ std::vector<Eigen::RowVectorXf> OCSTracker::State::update(const std::vector<ImgD
                 tmp_box = dets_second.block<1, 5>(det_ind, 0);
                 uint32_t index = dets_second(det_ind, 6);
                 trackers[trk_ind].update(&tmp_box, dets_second(det_ind, 5));
-                tracklets[trk_ind].update(Rect(tmp_box(0), tmp_box(1), tmp_box(2) - tmp_box(0), tmp_box(3) - tmp_box(1)));
+                tracklets[trk_ind].update(Rect(tmp_box(0), tmp_box(1), tmp_box(2) - tmp_box(0), tmp_box(3) - tmp_box(1)), spatialData[index]);
                 tracklets[trk_ind].srcImgDetection = detections[index];
                 if(tracklets[trk_ind].status == Tracklet::TrackingStatus::LOST) {
                     tracklets[trk_ind].updateStatus(Tracklet::TrackingStatus::TRACKED);
@@ -556,7 +558,7 @@ std::vector<Eigen::RowVectorXf> OCSTracker::State::update(const std::vector<ImgD
                 tmp_bbox = dets_first.block<1, 5>(det_ind, 0);
                 uint32_t index = dets_first(det_ind, 6);
                 trackers.at(trk_ind).update(&tmp_bbox, dets_first(det_ind, 5));
-                tracklets[trk_ind].update(Rect(tmp_bbox(0), tmp_bbox(1), tmp_bbox(2) - tmp_bbox(0), tmp_bbox(3) - tmp_bbox(1)));
+                tracklets[trk_ind].update(Rect(tmp_bbox(0), tmp_bbox(1), tmp_bbox(2) - tmp_bbox(0), tmp_bbox(3) - tmp_bbox(1)), spatialData[index]);
                 tracklets[trk_ind].srcImgDetection = detections[index];
                 if(tracklets[trk_ind].status == Tracklet::TrackingStatus::LOST) {
                     tracklets[trk_ind].updateStatus(Tracklet::TrackingStatus::TRACKED);
@@ -607,7 +609,7 @@ std::vector<Eigen::RowVectorXf> OCSTracker::State::update(const std::vector<ImgD
                                                  1,
                                                  Tracklet::TrackingStatus::NEW,
                                                  detections[index],
-                                                 Point3f(0, 0, 0)}});  // TODO spatial
+                                                 spatialData[index]}});
     }
     for(int i = trackers.size() - 1; i >= 0; i--) {
         Eigen::Matrix<float, 1, 4> d;
@@ -1543,7 +1545,7 @@ OCSTracker::OCSTracker(const ObjectTrackerProperties& properties)
       trackletMaxLifespan(properties.trackletMaxLifespan),
       trackletBirthThreshold(properties.trackletBirthThreshold) {}
 OCSTracker::~OCSTracker() {}
-void OCSTracker::init(const ImgFrame& frame, const std::vector<ImgDetection>& detections) {
+void OCSTracker::init(const ImgFrame& frame, const std::vector<ImgDetection>& detections, const std::vector<Point3f>& spatialData) {
     // TODO track by class
     this->state = std::make_unique<State>(0.f,
                                           this->trackletMaxLifespan,
@@ -1554,14 +1556,13 @@ void OCSTracker::init(const ImgFrame& frame, const std::vector<ImgDetection>& de
                                           "giou",
                                           0.3941737016672115,
                                           true);
-    this->update(frame, detections);
+    this->update(frame, detections, spatialData);
 }
-void OCSTracker::update(const ImgFrame& /* frame */, const std::vector<ImgDetection>& detections) {
-    // TODO spatial
-    this->state->update(detections);
+void OCSTracker::update(const ImgFrame& /* frame */, const std::vector<ImgDetection>& detections, const std::vector<Point3f>& spatialData) {
+    this->state->update(detections, spatialData);
 }
 void OCSTracker::track(const ImgFrame& frame) {
-    this->update(frame, std::vector<ImgDetection>());
+    this->update(frame, std::vector<ImgDetection>(), std::vector<Point3f>());
 }
 std::vector<Tracklet> OCSTracker::getTracklets() const {
     auto trackletsExt = this->state->get_tracklets();

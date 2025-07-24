@@ -16,14 +16,14 @@ class Tracker {
      * @param frame The first frame to initialize the tracker.
      * @param detections The initial detections to track.
      */
-    virtual void init(const ImgFrame& frame, const std::vector<ImgDetection>& detections) = 0;
+    virtual void init(const ImgFrame& frame, const std::vector<ImgDetection>& detections, const std::vector<Point3f>& spatialData) = 0;
 
     /**
      * Update the tracker with a new frame and detections. In one loop should only call either update or track, not both.
      * @param frame The new frame to update the tracker.
      * @param detections The new detections to track.
      */
-    virtual void update(const ImgFrame& frame, const std::vector<ImgDetection>& detections) = 0;
+    virtual void update(const ImgFrame& frame, const std::vector<ImgDetection>& detections, const std::vector<Point3f>& spatialData) = 0;
 
     /**
      * Track objects in the current frame. In one loop should only call either update or track, not both.
@@ -52,8 +52,8 @@ class OCSTracker : public Tracker {
    public:
     OCSTracker(const ObjectTrackerProperties& properties);
     ~OCSTracker() override;
-    void init(const ImgFrame& frame, const std::vector<ImgDetection>& detections) override;
-    void update(const ImgFrame& frame, const std::vector<ImgDetection>& detections) override;
+    void init(const ImgFrame& frame, const std::vector<ImgDetection>& detections, const std::vector<Point3f>& spatialData) override;
+    void update(const ImgFrame& frame, const std::vector<ImgDetection>& detections, const std::vector<Point3f>& spatialData) override;
     void track(const ImgFrame& frame) override;
     std::vector<Tracklet> getTracklets() const override;
 };
