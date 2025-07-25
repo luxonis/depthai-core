@@ -21,6 +21,7 @@
 
 namespace dai {
 
+namespace fs = std::filesystem;
 // DeviceBootloader (RAII), connects to device and maintains watchdog ...
 
 /**
@@ -129,7 +130,7 @@ class DeviceBootloader {
      * @returns Depthai application package
      */
     static std::vector<uint8_t> createDepthaiApplicationPackage(
-        const Pipeline& pipeline, const dai::Path& pathToCmd = {}, bool compress = false, std::string applicationName = "", bool checkChecksum = false);
+        const Pipeline& pipeline, const fs::path& pathToCmd = {}, bool compress = false, std::string applicationName = "", bool checkChecksum = false);
 
     /**
      * Creates application package which can be flashed to depthai device.
@@ -151,9 +152,9 @@ class DeviceBootloader {
      * @param compress Optional boolean which specifies if contents should be compressed
      * @param applicationName Optional name the application that is flashed
      */
-    static void saveDepthaiApplicationPackage(const dai::Path& path,
+    static void saveDepthaiApplicationPackage(const fs::path& path,
                                               const Pipeline& pipeline,
-                                              const dai::Path& pathToCmd = {},
+                                              const fs::path& pathToCmd = {},
                                               bool compress = false,
                                               std::string applicationName = "",
                                               bool checkChecksum = false);
@@ -166,7 +167,7 @@ class DeviceBootloader {
      * @param applicationName Optional name the application that is flashed
      */
     static void saveDepthaiApplicationPackage(
-        const dai::Path& path, const Pipeline& pipeline, bool compress, std::string applicationName = "", bool checkChecksum = false);
+        const fs::path& path, const Pipeline& pipeline, bool compress, std::string applicationName = "", bool checkChecksum = false);
 
     /**
      * @returns Embedded bootloader version
@@ -209,7 +210,7 @@ class DeviceBootloader {
      * @param pathToBootloader Custom bootloader firmware to boot
      * @param allowFlashingBootloader Set to true to allow flashing the devices bootloader. Defaults to false
      */
-    DeviceBootloader(const DeviceInfo& devInfo, const dai::Path& pathToBootloader, bool allowFlashingBootloader = false);
+    DeviceBootloader(const DeviceInfo& devInfo, const fs::path& pathToBootloader, bool allowFlashingBootloader = false);
 
     /**
      * Connects to device with specified name/device id
@@ -280,7 +281,7 @@ class DeviceBootloader {
      * @param progressCallback Callback that sends back a value between 0..1 which signifies current flashing progress
      * @param path Optional parameter to custom bootloader to flash
      */
-    std::tuple<bool, std::string> flashBootloader(std::function<void(float)> progressCallback, const dai::Path& path = {});
+    std::tuple<bool, std::string> flashBootloader(std::function<void(float)> progressCallback, const fs::path& path = {});
 
     /**
      * Flash selected bootloader to the current board
@@ -289,14 +290,14 @@ class DeviceBootloader {
      * @param progressCallback Callback that sends back a value between 0..1 which signifies current flashing progress
      * @param path Optional parameter to custom bootloader to flash
      */
-    std::tuple<bool, std::string> flashBootloader(Memory memory, Type type, std::function<void(float)> progressCallback, const dai::Path& path = {});
+    std::tuple<bool, std::string> flashBootloader(Memory memory, Type type, std::function<void(float)> progressCallback, const fs::path& path = {});
 
     /**
      * Flashes user bootloader to the current board. Available for NETWORK bootloader type
      * @param progressCallback Callback that sends back a value between 0..1 which signifies current flashing progress
      * @param path Optional parameter to custom bootloader to flash
      */
-    std::tuple<bool, std::string> flashUserBootloader(std::function<void(float)> progressCallback, const dai::Path& path = {});
+    std::tuple<bool, std::string> flashUserBootloader(std::function<void(float)> progressCallback, const fs::path& path = {});
 
     /**
      * Flash boot header which boots same as equivalent GPIO mode would
@@ -381,7 +382,7 @@ class DeviceBootloader {
      * @param memory Optional - to which memory flash configuration
      * @param type Optional - for which type of bootloader to flash configuration
      */
-    std::tuple<bool, std::string> flashConfigFile(const dai::Path& configPath, Memory memory = Memory::AUTO, Type type = Type::AUTO);
+    std::tuple<bool, std::string> flashConfigFile(const fs::path& configPath, Memory memory = Memory::AUTO, Type type = Type::AUTO);
 
     /**
      * Clears configuration data
@@ -477,7 +478,7 @@ class DeviceBootloader {
     // private static
 
     // private methods
-    void init(bool embeddedMvcmd, const dai::Path& pathToMvcmd, std::optional<bootloader::Type> type, bool allowBlFlash);
+    void init(bool embeddedMvcmd, const fs::path& pathToMvcmd, std::optional<bootloader::Type> type, bool allowBlFlash);
     template <typename T>
     bool sendRequest(const T& request);
     template <typename T>

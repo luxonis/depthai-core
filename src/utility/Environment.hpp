@@ -1,10 +1,12 @@
 #pragma once
 
+#include <fmt/std.h>
 #include <spdlog/details/os.h>
 #include <spdlog/logger.h>
 #include <spdlog/spdlog.h>
 
 #include <cstdlib>
+#include <filesystem>
 #include <mutex>
 #include <sstream>
 #include <string>
@@ -86,6 +88,11 @@ T getEnvAs(const std::string& var, T defaultValue, spdlog::logger& logger, bool 
             // string
             if constexpr(std::is_same_v<T, std::string>) {
                 returnValue = value;
+            }
+
+            // filesystem::path
+            else if constexpr(std::is_same_v<T, std::filesystem::path>) {
+                returnValue = std::filesystem::path(value);
             }
 
             // bool
