@@ -81,6 +81,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     CalibrationHandler getCalibrationData() const;
     void setEepromData(std::optional<EepromData> eepromData);
     std::optional<EepromData> getEepromData() const;
+    uint32_t getEepromId() const;
     bool isHostOnly() const;
     bool isDeviceOnly() const;
 
@@ -400,6 +401,15 @@ class Pipeline {
      */
     void setEepromData(std::optional<EepromData> eepromData) {
         impl()->setEepromData(eepromData);
+    }
+
+    /**
+     * Gets the eeprom id from the pipeline
+     *
+     * @return eeprom id from the pipeline
+     */
+    uint32_t getEepromId() const {
+        return impl()->getEepromId();
     }
 
     /// Set a camera IQ (Image Quality) tuning blob, used for all cameras

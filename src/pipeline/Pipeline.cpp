@@ -445,10 +445,15 @@ CalibrationHandler PipelineImpl::getCalibrationData() const {
 
 void PipelineImpl::setEepromData(std::optional<EepromData> eepromData) {
     globalProperties.calibData = eepromData;
+    globalProperties.eepromId += 1;  // Increment eepromId to indicate that eeprom data has changed
 }
 
 std::optional<EepromData> PipelineImpl::getEepromData() const {
     return globalProperties.calibData;
+}
+
+uint32_t PipelineImpl::getEepromId() const {
+    return globalProperties.eepromId;
 }
 
 bool PipelineImpl::isHostOnly() const {
