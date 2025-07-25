@@ -50,16 +50,16 @@ with pipeline:
             break
         elif key == ord('u'):
             randomDistortionCoeffs = np.random.rand(14)
-            calibration.setDistortionCoefficients(dai.CameraBoardSocket.LEFT, randomDistortionCoeffs)
-            calibration.setDistortionCoefficients(dai.CameraBoardSocket.RIGHT, randomDistortionCoeffs)
+            calibration.setDistortionCoefficients(dai.CameraBoardSocket.CAM_B, randomDistortionCoeffs)
+            calibration.setDistortionCoefficients(dai.CameraBoardSocket.CAM_C, randomDistortionCoeffs)
             try:
                 device.setCalibration(calibration)
             except:
                 print("Failed to update calibration!")
             try:
                 updatedCalib = device.getCalibration()
-                distortionCoeffs = updatedCalib.getDistortionCoefficients(dai.CameraBoardSocket.LEFT)
-                distortionCoeffs = updatedCalib.getDistortionCoefficients(dai.CameraBoardSocket.RIGHT)
+                distortionCoeffs = updatedCalib.getDistortionCoefficients(dai.CameraBoardSocket.CAM_B)
+                distortionCoeffs = updatedCalib.getDistortionCoefficients(dai.CameraBoardSocket.CAM_C)
                 print("Updated distortion coefficients: ", distortionCoeffs)
             except:
                 pass
