@@ -261,11 +261,10 @@ void RGBD::buildInternal() {
 std::shared_ptr<RGBD> RGBD::build() {
     return std::static_pointer_cast<RGBD>(shared_from_this());
 }
-std::shared_ptr<RGBD> RGBD::build(bool autocreate, StereoDepth::PresetMode mode, std::pair<int, int> size) {
+std::shared_ptr<RGBD> RGBD::build(bool autocreate, StereoDepth::PresetMode mode, std::pair<int, int> size, std::optional<float> fps) {
     if(!autocreate) {
         return std::static_pointer_cast<RGBD>(shared_from_this());
     }
-    static constexpr float TOF_FPS = 5.0f;
     // Find out of the device is ToF - if it is, we will use the ToF node
     auto pipeline = getParentPipeline();
     auto device = pipeline.getDefaultDevice();
@@ -288,24 +287,26 @@ std::shared_ptr<RGBD> RGBD::build(bool autocreate, StereoDepth::PresetMode mode,
         std::vector<dai::CameraSensorType> supportedTypes = feature.supportedTypes;
         if(std::find(supportedTypes.begin(), supportedTypes.end(), dai::CameraSensorType::TOF) != supportedTypes.end()) {
             // Create the ToF node along with ImageAlign node and return
-            auto tof = pipeline.create<node::ToF>()->build(feature.socket, ImageFiltersPresetMode::MID_RANGE, TOF_FPS);
+            auto tofFps = fps.value_or(5.0f);
+            auto tof = pipeline.create<node::ToF>()->build(feature.socket, ImageFiltersPresetMode::MID_RANGE, tofFps);
             auto align = pipeline.create<node::ImageAlign>();
-            auto* out = colorCam->requestOutput(size, ImgFrame::Type::RGB888i, ImgResizeMode::CROP, TOF_FPS, true);
+            auto* out = colorCam->requestOutput(size, ImgFrame::Type::RGB888i, ImgResizeMode::CROP, tofFps, true);
             out->link(align->inputAlignTo);
             tof->depth.link(align->input);
             out->link(inColor);
             align->outputAligned.link(inDepth);
-            sync->setSyncThreshold(std::chrono::milliseconds(static_cast<uint32_t>(1000 / TOF_FPS)));
+            sync->setSyncThreshold(std::chrono::milliseconds(static_cast<uint32_t>(1000 / tofFps)));
             return build();
         }
     }
+
     auto platform = pipeline.getDefaultDevice()->getPlatform();
-    auto stereo = pipeline.create<node::StereoDepth>()->build(true, mode, size);
+    auto stereo = pipeline.create<node::StereoDepth>()->build(true, mode, size, fps);
     std::shared_ptr<node::ImageAlign> align = nullptr;
     if(platform == Platform::RVC4) {
         align = pipeline.create<node::ImageAlign>();
     }
-    auto* out = colorCam->requestOutput(size, ImgFrame::Type::RGB888i, ImgResizeMode::CROP, std::nullopt, true);
+    auto* out = colorCam->requestOutput(size, ImgFrame::Type::RGB888i, ImgResizeMode::CROP, fps, true);
     if(platform == Platform::RVC4) {
         out->link(inColor);
         stereo->depth.link(align->input);
