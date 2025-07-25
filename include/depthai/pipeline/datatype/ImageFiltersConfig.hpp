@@ -12,9 +12,17 @@ using SpatialFilterParams = dai::filters::params::SpatialFilter;
 using SpeckleFilterParams = dai::filters::params::SpeckleFilter;
 using TemporalFilterParams = dai::filters::params::TemporalFilter;
 
+/**
+ * @brief Preset modes for ImageFiltersConfig.
+ */
 enum class ImageFiltersPresetMode : std::uint32_t {
+    /// Optimized for low range ToF measurements (0.2m–2m).
     TOF_LOW_RANGE,
+
+    /// Optimized for mid range ToF measurements (e.g., 0.2m–5m).
     TOF_MID_RANGE,
+
+    /// Optimized for high range ToF measurements (e.g., 1m–6m).
     TOF_HIGH_RANGE,
 };
 
