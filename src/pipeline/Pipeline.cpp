@@ -429,6 +429,7 @@ void PipelineImpl::setCalibrationData(CalibrationHandler calibrationDataHandler)
         throw std::runtime_error("Failed to validate the extrinsics connection. Enable debug mode for more information.");
     } */
     globalProperties.calibData = calibrationDataHandler.getEepromData();
+    globalProperties.eepromId += 1;  // Increment eepromId to indicate that eeprom data has changed
 }
 
 bool PipelineImpl::isCalibrationDataAvailable() const {
