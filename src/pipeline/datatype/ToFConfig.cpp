@@ -9,13 +9,13 @@ ToFConfig& ToFConfig::setMedianFilter(MedianFilter median) {
 
 void ToFConfig::setProfilePreset(ImageFiltersPresetMode presetMode) {
     switch(presetMode) {
-        case ImageFiltersPresetMode::LOW_RANGE: {
+        case ImageFiltersPresetMode::TOF_LOW_RANGE: {
             this->phaseUnwrapErrorThreshold = 50;
         } break;
-        case ImageFiltersPresetMode::MID_RANGE: {
+        case ImageFiltersPresetMode::TOF_MID_RANGE: {
             this->phaseUnwrapErrorThreshold = 75;
         } break;
-        case ImageFiltersPresetMode::HIGH_RANGE: {
+        case ImageFiltersPresetMode::TOF_HIGH_RANGE: {
             this->phaseUnwrapErrorThreshold = 130;
         } break;
     }

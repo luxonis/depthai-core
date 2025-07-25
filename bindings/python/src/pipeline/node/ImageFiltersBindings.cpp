@@ -51,9 +51,9 @@ void bind_imagefilters(py::module& m, void* pCallstack) {
 
     // Add enum for preset mode
     py::enum_<ImageFiltersPresetMode>(m, "ImageFiltersPresetMode")
-        .value("LOW_RANGE", ImageFiltersPresetMode::LOW_RANGE)
-        .value("MID_RANGE", ImageFiltersPresetMode::MID_RANGE)
-        .value("HIGH_RANGE", ImageFiltersPresetMode::HIGH_RANGE);
+        .value("TOF_LOW_RANGE", ImageFiltersPresetMode::TOF_LOW_RANGE)
+        .value("TOF_MID_RANGE", ImageFiltersPresetMode::TOF_MID_RANGE)
+        .value("TOF_HIGH_RANGE", ImageFiltersPresetMode::TOF_HIGH_RANGE);
 
     // StereoDepthFilterPipeline bindings
     imageFilters.def_readonly("input", &ImageFilters::input, DOC(dai, node, ImageFilters, input))
@@ -65,11 +65,11 @@ void bind_imagefilters(py::module& m, void* pCallstack) {
         .def("build",
              py::overload_cast<Node::Output&, ImageFiltersPresetMode>(&ImageFilters::build),
              py::arg("input"),
-             py::arg("presetMode") = ImageFiltersPresetMode::MID_RANGE,
+             py::arg("presetMode") = ImageFiltersPresetMode::TOF_MID_RANGE,
              DOC(dai, node, ImageFilters, build))
         .def("build",
              py::overload_cast<ImageFiltersPresetMode>(&ImageFilters::build),
-             py::arg("presetMode") = ImageFiltersPresetMode::MID_RANGE,
+             py::arg("presetMode") = ImageFiltersPresetMode::TOF_MID_RANGE,
              DOC(dai, node, ImageFilters, build));
 
     // Just an alias for the filter stereo depth config parameters
@@ -91,10 +91,10 @@ void bind_imagefilters(py::module& m, void* pCallstack) {
              py::overload_cast<Node::Output&, Node::Output&, ImageFiltersPresetMode>(&ToFDepthConfidenceFilter::build),
              py::arg("depth"),
              py::arg("amplitude"),
-             py::arg("presetMode") = ImageFiltersPresetMode::MID_RANGE,
+             py::arg("presetMode") = ImageFiltersPresetMode::TOF_MID_RANGE,
              DOC(dai, node, ToFDepthConfidenceFilter, build))
         .def("build",
              py::overload_cast<ImageFiltersPresetMode>(&ToFDepthConfidenceFilter::build),
-             py::arg("presetMode") = ImageFiltersPresetMode::MID_RANGE,
+             py::arg("presetMode") = ImageFiltersPresetMode::TOF_MID_RANGE,
              DOC(dai, node, ToFDepthConfidenceFilter, build));
 }

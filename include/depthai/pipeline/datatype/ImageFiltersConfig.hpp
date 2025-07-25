@@ -13,9 +13,9 @@ using SpeckleFilterParams = dai::filters::params::SpeckleFilter;
 using TemporalFilterParams = dai::filters::params::TemporalFilter;
 
 enum class ImageFiltersPresetMode : std::uint32_t {
-    LOW_RANGE,
-    MID_RANGE,
-    HIGH_RANGE,
+    TOF_LOW_RANGE,
+    TOF_MID_RANGE,
+    TOF_HIGH_RANGE,
 };
 
 // union of all filter params

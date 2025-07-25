@@ -19,7 +19,7 @@ ImageFiltersConfig& ImageFiltersConfig::insertFilter(FilterParams params) {
 
 void ImageFiltersConfig::setProfilePreset(ImageFiltersPresetMode presetMode) {
     switch(presetMode) {
-        case ImageFiltersPresetMode::LOW_RANGE: {
+        case ImageFiltersPresetMode::TOF_LOW_RANGE: {
             std::vector<FilterParams> params;
 
             TemporalFilterParams temporalFilterParams;
@@ -51,7 +51,7 @@ void ImageFiltersConfig::setProfilePreset(ImageFiltersPresetMode presetMode) {
             this->filterIndices = {};
         } break;
 
-        case ImageFiltersPresetMode::MID_RANGE: {
+        case ImageFiltersPresetMode::TOF_MID_RANGE: {
             std::vector<FilterParams> params;
 
             TemporalFilterParams temporalFilterParams;
@@ -83,7 +83,7 @@ void ImageFiltersConfig::setProfilePreset(ImageFiltersPresetMode presetMode) {
             this->filterIndices = {};
         } break;
 
-        case ImageFiltersPresetMode::HIGH_RANGE: {
+        case ImageFiltersPresetMode::TOF_HIGH_RANGE: {
             std::vector<FilterParams> params;
 
             TemporalFilterParams temporalFilterParams;
@@ -119,13 +119,13 @@ void ImageFiltersConfig::setProfilePreset(ImageFiltersPresetMode presetMode) {
 
 void ToFDepthConfidenceFilterConfig::setProfilePreset(ImageFiltersPresetMode presetMode) {
     switch(presetMode) {
-        case ImageFiltersPresetMode::LOW_RANGE: {
+        case ImageFiltersPresetMode::TOF_LOW_RANGE: {
             this->confidenceThreshold = 0.1f;
         } break;
-        case ImageFiltersPresetMode::MID_RANGE: {
+        case ImageFiltersPresetMode::TOF_MID_RANGE: {
             this->confidenceThreshold = 0.2f;
         } break;
-        case ImageFiltersPresetMode::HIGH_RANGE: {
+        case ImageFiltersPresetMode::TOF_HIGH_RANGE: {
             this->confidenceThreshold = 0.3f;
         } break;
     }

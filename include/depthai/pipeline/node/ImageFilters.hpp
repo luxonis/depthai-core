@@ -30,14 +30,14 @@ class ImageFilters : public DeviceNodeCRTP<DeviceNode, ImageFilters, ImageFilter
      * @param presetMode Preset mode for image filters
      * @return Shared pointer to the node
      */
-    std::shared_ptr<ImageFilters> build(Node::Output& input, ImageFiltersPresetMode presetMode = ImageFiltersPresetMode::MID_RANGE);
+    std::shared_ptr<ImageFilters> build(Node::Output& input, ImageFiltersPresetMode presetMode = ImageFiltersPresetMode::TOF_MID_RANGE);
 
     /**
      * Build the node.
      * @param presetMode Preset mode for image filters
      * @return Shared pointer to the node
      */
-    std::shared_ptr<ImageFilters> build(ImageFiltersPresetMode presetMode = ImageFiltersPresetMode::MID_RANGE);
+    std::shared_ptr<ImageFilters> build(ImageFiltersPresetMode presetMode = ImageFiltersPresetMode::TOF_MID_RANGE);
 
     /**
      * Input for image frames to be filtered
@@ -113,14 +113,14 @@ class ToFDepthConfidenceFilter : public DeviceNodeCRTP<DeviceNode, ToFDepthConfi
      */
     std::shared_ptr<ToFDepthConfidenceFilter> build(Node::Output& depth,
                                                     Node::Output& amplitude,
-                                                    ImageFiltersPresetMode presetMode = ImageFiltersPresetMode::MID_RANGE);
+                                                    ImageFiltersPresetMode presetMode = ImageFiltersPresetMode::TOF_MID_RANGE);
 
     /**
      * Build the node.
      * @param presetMode Preset mode for ToF depth confidence filter
      * @return Shared pointer to the node
      */
-    std::shared_ptr<ToFDepthConfidenceFilter> build(ImageFiltersPresetMode presetMode = ImageFiltersPresetMode::MID_RANGE);
+    std::shared_ptr<ToFDepthConfidenceFilter> build(ImageFiltersPresetMode presetMode = ImageFiltersPresetMode::TOF_MID_RANGE);
 
     /**
      * Depth frame image, expected ImgFrame type is RAW8 or RAW16.
