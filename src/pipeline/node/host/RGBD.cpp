@@ -1,7 +1,11 @@
 #include "depthai/pipeline/node/host/RGBD.hpp"
 
+#include <chrono>
 #include <future>
 
+#include "common/CameraBoardSocket.hpp"
+#include "common/CameraFeatures.hpp"
+#include "common/CameraSensorType.hpp"
 #include "common/Point3fRGBA.hpp"
 #include "depthai/common/Point3fRGBA.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
@@ -12,6 +16,7 @@
 #include "depthai/pipeline/node/ImageAlign.hpp"
 #include "depthai/pipeline/node/StereoDepth.hpp"
 #include "depthai/pipeline/node/Sync.hpp"
+#include "depthai/pipeline/node/ToF.hpp"
 #ifdef DEPTHAI_ENABLE_KOMPUTE
     #include "depthai/shaders/rgbd2pointcloud.hpp"
     #include "kompute/Kompute.hpp"
@@ -256,19 +261,52 @@ void RGBD::buildInternal() {
 std::shared_ptr<RGBD> RGBD::build() {
     return std::static_pointer_cast<RGBD>(shared_from_this());
 }
-std::shared_ptr<RGBD> RGBD::build(bool autocreate, StereoDepth::PresetMode mode, std::pair<int, int> size) {
+std::shared_ptr<RGBD> RGBD::build(bool autocreate, StereoDepth::PresetMode mode, std::pair<int, int> size, std::optional<float> fps) {
     if(!autocreate) {
         return std::static_pointer_cast<RGBD>(shared_from_this());
     }
+    // Find out of the device is ToF - if it is, we will use the ToF node
     auto pipeline = getParentPipeline();
-    auto colorCam = pipeline.create<node::Camera>()->build();
+    auto device = pipeline.getDefaultDevice();
+    auto connectedCameraFeatures = device->getConnectedCameraFeatures();
+    // Find the first color camera
+    auto rgbCameraSocket = CameraBoardSocket::CAM_A;
+    for(const auto& feature : connectedCameraFeatures) {
+        // Check if the supportedTypes contain ToF
+        std::vector<CameraSensorType> supportedTypes = feature.supportedTypes;
+        if(std::find(supportedTypes.begin(), supportedTypes.end(), CameraSensorType::COLOR) != supportedTypes.end()) {
+            rgbCameraSocket = feature.socket;
+            break;
+        }
+    }
+    auto colorCam = pipeline.create<node::Camera>()->build(rgbCameraSocket);
+
+    // Handle ToF camera
+    for(const auto& feature : connectedCameraFeatures) {
+        // Check if the supportedTypes contain ToF
+        std::vector<dai::CameraSensorType> supportedTypes = feature.supportedTypes;
+        if(std::find(supportedTypes.begin(), supportedTypes.end(), dai::CameraSensorType::TOF) != supportedTypes.end()) {
+            // Create the ToF node along with ImageAlign node and return
+            auto tofFps = fps.value_or(5.0f);
+            auto tof = pipeline.create<node::ToF>()->build(feature.socket, ImageFiltersPresetMode::TOF_MID_RANGE, tofFps);
+            auto align = pipeline.create<node::ImageAlign>();
+            auto* out = colorCam->requestOutput(size, ImgFrame::Type::RGB888i, ImgResizeMode::CROP, tofFps, true);
+            out->link(align->inputAlignTo);
+            tof->depth.link(align->input);
+            out->link(inColor);
+            align->outputAligned.link(inDepth);
+            sync->setSyncThreshold(std::chrono::milliseconds(static_cast<uint32_t>(1000 / tofFps)));
+            return build();
+        }
+    }
+
     auto platform = pipeline.getDefaultDevice()->getPlatform();
-    auto stereo = pipeline.create<node::StereoDepth>()->build(true, mode, size);
+    auto stereo = pipeline.create<node::StereoDepth>()->build(true, mode, size, fps);
     std::shared_ptr<node::ImageAlign> align = nullptr;
     if(platform == Platform::RVC4) {
         align = pipeline.create<node::ImageAlign>();
     }
-    auto* out = colorCam->requestOutput(size, ImgFrame::Type::RGB888i, ImgResizeMode::CROP, std::nullopt, true);
+    auto* out = colorCam->requestOutput(size, ImgFrame::Type::RGB888i, ImgResizeMode::CROP, fps, true);
     if(platform == Platform::RVC4) {
         out->link(inColor);
         stereo->depth.link(align->input);

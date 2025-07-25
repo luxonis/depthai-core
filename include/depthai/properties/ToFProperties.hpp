@@ -11,6 +11,8 @@ namespace dai {
  * Specify properties for ToF
  */
 struct ToFProperties : PropertiesSerializable<Properties, ToFProperties> {
+    constexpr static int AUTO = 0;
+
     /**
      * Initial ToF config
      */
@@ -47,7 +49,7 @@ struct ToFProperties : PropertiesSerializable<Properties, ToFProperties> {
     /**
      * Camera sensor FPS
      */
-    float fps = 30.0;
+    float fps = AUTO;
 
     /**
      * Pool sizes
