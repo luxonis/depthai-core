@@ -1,7 +1,6 @@
 #include "depthai/pipeline/node/host/RGBD.hpp"
 
-#include <bits/chrono.h>
-
+#include <chrono>
 #include <future>
 
 #include "common/CameraBoardSocket.hpp"
