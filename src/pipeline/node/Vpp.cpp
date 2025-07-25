@@ -17,7 +17,7 @@ Vpp::Properties& Vpp::getProperties() {
 
 void Vpp::setMethod(VppConfig::Method method) {
     initialConfig->setMethod(method);
-    properties.initialConfig = *initialConfig
+    properties.initialConfig = *initialConfig;
 }
 
 void Vpp::setPatchSize(int size) {

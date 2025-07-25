@@ -281,6 +281,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/node/internal/XLinkOutHost.cpp
     src/pipeline/node/host/HostNode.cpp
     src/pipeline/node/host/RGBD.cpp
+    src/pipeline/node/Vpp.cpp
     src/pipeline/datatype/DatatypeEnum.cpp
     src/pipeline/node/PointCloud.cpp
     src/pipeline/datatype/Buffer.cpp
@@ -314,6 +315,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/RGBDData.cpp
     src/pipeline/datatype/MessageGroup.cpp
     src/pipeline/datatype/TransformData.cpp
+    src/pipeline/datatype/VppConfig.cpp
     src/utility/H26xParsers.cpp
     src/utility/ImageManipImpl.cpp
     src/utility/Initialization.cpp

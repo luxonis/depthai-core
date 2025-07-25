@@ -31,13 +31,13 @@
 #include "node/VideoEncoder.hpp"
 #include "node/Warp.hpp"
 #include "node/host/RGBD.hpp"
-#include "node/Vpp.hpp"
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     #include "node/host/Display.hpp"
     #include "node/host/HostCamera.hpp"
     #include "node/host/HostNode.hpp"
     #include "node/host/Record.hpp"
     #include "node/host/Replay.hpp"
+    #include "node/Vpp.hpp"
 #endif
 #include "ThreadedHostNode.hpp"
 #include "node/ImageAlign.hpp"
