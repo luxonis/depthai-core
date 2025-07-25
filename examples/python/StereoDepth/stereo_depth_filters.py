@@ -6,8 +6,9 @@ import cv2
 import depthai as dai
 import numpy as np
 
+FPS = 20
 
-def get_random_median_filter_params():
+def getRandomMedianFilterParams():
     return random.choice(
         [
             dai.node.ImageFilters.MedianFilterParams.MEDIAN_OFF,
@@ -17,7 +18,7 @@ def get_random_median_filter_params():
     )
 
 
-def get_random_temporal_filter_params():
+def getRandomTemporalFilterParams():
     params = dai.node.ImageFilters.TemporalFilterParams()
     params.enable = random.choice([True, False])
     params.persistencyMode = random.choice(
@@ -33,13 +34,13 @@ def get_random_temporal_filter_params():
     return params
 
 
-def get_random_speckle_filter_params():
+def getRandomSpeckleFilterParams():
     params = dai.node.ImageFilters.SpeckleFilterParams()
     params.enable = random.choice([True, False])
     return params
 
 
-def get_random_spatial_filter_params():
+def getRandomSpatialFilterParams():
     params = dai.node.ImageFilters.SpatialFilterParams()
     params.enable = random.choice([True, False])
     return params
@@ -50,19 +51,17 @@ def main(args: argparse.Namespace):
     with dai.Pipeline() as pipeline:
         monoLeft = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
         monoRight = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C)
-
-        fps = 20
-        outLeft = monoLeft.requestOutput((640, 400), fps=fps)
-        outRight = monoRight.requestOutput((640, 400), fps=fps)
+        outLeft = monoLeft.requestOutput((640, 400), fps=FPS)
+        outRight = monoRight.requestOutput((640, 400), fps=FPS)
 
         depth = pipeline.create(dai.node.StereoDepth)
 
         filterPipeline = pipeline.create(dai.node.ImageFilters)
         filterFactories = [
-            get_random_speckle_filter_params,
-            get_random_temporal_filter_params,
-            get_random_spatial_filter_params,
-            get_random_median_filter_params,
+            getRandomSpeckleFilterParams,
+            getRandomTemporalFilterParams,
+            getRandomSpatialFilterParams,
+            getRandomMedianFilterParams,
         ]
 
         filterPipeline.setRunOnHost(True)
@@ -91,7 +90,7 @@ def main(args: argparse.Namespace):
         pipeline.start()
         import time
 
-        t_switch = time.time()
+        tSwitch = time.time()
         while pipeline.isRunning():
             inDisparity: dai.ImgFrame = (
                 depthQueue.get()
@@ -113,14 +112,14 @@ def main(args: argparse.Namespace):
             )
 
             ## Update filter pipeline
-            if time.time() - t_switch > 1.0:
+            if time.time() - tSwitch > 1.0:
                 index = random.randint(0, len(filterFactories) - 1)
                 new_params = filterFactories[index]()
                 config = dai.ImageFiltersConfig().updateFilterAtIndex(
                     index, new_params
                 )
                 configInputQueue.send(config)
-                t_switch = time.time()
+                tSwitch = time.time()
                 print(f"Filter at index {index} changed to {new_params}")
 
             key = cv2.waitKey(1)
