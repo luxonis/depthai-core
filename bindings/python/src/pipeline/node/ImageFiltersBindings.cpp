@@ -18,18 +18,20 @@ void bind_imagefilters(py::module& m, void* pCallstack) {
     imageFiltersConfig.def_readwrite("filterIndices", &ImageFiltersConfig::filterIndices, DOC(dai, ImageFiltersConfig, filterIndices));
     imageFiltersConfig.def_readwrite("filterParams", &ImageFiltersConfig::filterParams, DOC(dai, ImageFiltersConfig, filterParams));
     imageFiltersConfig.def("insertFilter", &ImageFiltersConfig::insertFilter, py::arg("params"), DOC(dai, ImageFiltersConfig, insertFilter));
-    imageFiltersConfig.def("updateFilterAtIndex",
-                           &ImageFiltersConfig::updateFilterAtIndex,
-                           py::arg("index"),
-                           py::arg("params"),
-                           DOC(dai, ImageFiltersConfig, updateFilterAtIndex))
+    imageFiltersConfig
+        .def("updateFilterAtIndex",
+             &ImageFiltersConfig::updateFilterAtIndex,
+             py::arg("index"),
+             py::arg("params"),
+             DOC(dai, ImageFiltersConfig, updateFilterAtIndex))
         .def("setProfilePreset", &ImageFiltersConfig::setProfilePreset, DOC(dai, ImageFiltersConfig, setProfilePreset));
 
     py::class_<ToFDepthConfidenceFilterConfig, Py<ToFDepthConfidenceFilterConfig>, Buffer, std::shared_ptr<ToFDepthConfidenceFilterConfig>>
         depthConfidenceFilterConfig(m, "ToFDepthConfidenceFilterConfig", DOC(dai, ToFDepthConfidenceFilterConfig));
     depthConfidenceFilterConfig.def(py::init<>());
-    depthConfidenceFilterConfig.def_readwrite(
-        "confidenceThreshold", &ToFDepthConfidenceFilterConfig::confidenceThreshold, DOC(dai, ToFDepthConfidenceFilterConfig, confidenceThreshold))
+    depthConfidenceFilterConfig
+        .def_readwrite(
+            "confidenceThreshold", &ToFDepthConfidenceFilterConfig::confidenceThreshold, DOC(dai, ToFDepthConfidenceFilterConfig, confidenceThreshold))
         .def("setProfilePreset", &ToFDepthConfidenceFilterConfig::setProfilePreset, DOC(dai, ToFDepthConfidenceFilterConfig, setProfilePreset));
 
     // Add node bindings

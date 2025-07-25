@@ -2,8 +2,8 @@
 #include "depthai/common/MedianFilter.hpp"
 #include "depthai/common/optional.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
-#include "depthai/utility/Serialization.hpp"
 #include "depthai/pipeline/datatype/ImageFiltersConfig.hpp"
+#include "depthai/utility/Serialization.hpp"
 
 namespace dai {
 

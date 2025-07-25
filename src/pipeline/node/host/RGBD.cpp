@@ -1,4 +1,5 @@
 #include "depthai/pipeline/node/host/RGBD.hpp"
+
 #include <bits/chrono.h>
 
 #include <future>
@@ -13,10 +14,10 @@
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "depthai/pipeline/datatype/PointCloudData.hpp"
 #include "depthai/pipeline/node/Camera.hpp"
-#include "depthai/pipeline/node/ToF.hpp"
 #include "depthai/pipeline/node/ImageAlign.hpp"
 #include "depthai/pipeline/node/StereoDepth.hpp"
 #include "depthai/pipeline/node/Sync.hpp"
+#include "depthai/pipeline/node/ToF.hpp"
 #ifdef DEPTHAI_ENABLE_KOMPUTE
     #include "depthai/shaders/rgbd2pointcloud.hpp"
     #include "kompute/Kompute.hpp"
@@ -271,7 +272,7 @@ std::shared_ptr<RGBD> RGBD::build(bool autocreate, StereoDepth::PresetMode mode,
     auto connectedCameraFeatures = device->getConnectedCameraFeatures();
     // Find the first color camera
     auto rgbCameraSocket = CameraBoardSocket::CAM_A;
-    for (const auto& feature : connectedCameraFeatures) {
+    for(const auto& feature : connectedCameraFeatures) {
         // Check if the supportedTypes contain ToF
         std::vector<CameraSensorType> supportedTypes = feature.supportedTypes;
         if(std::find(supportedTypes.begin(), supportedTypes.end(), CameraSensorType::COLOR) != supportedTypes.end()) {
@@ -282,7 +283,7 @@ std::shared_ptr<RGBD> RGBD::build(bool autocreate, StereoDepth::PresetMode mode,
     auto colorCam = pipeline.create<node::Camera>()->build(rgbCameraSocket);
 
     // Handle ToF camera
-    for (const auto& feature : connectedCameraFeatures) {
+    for(const auto& feature : connectedCameraFeatures) {
         // Check if the supportedTypes contain ToF
         std::vector<dai::CameraSensorType> supportedTypes = feature.supportedTypes;
         if(std::find(supportedTypes.begin(), supportedTypes.end(), dai::CameraSensorType::TOF) != supportedTypes.end()) {

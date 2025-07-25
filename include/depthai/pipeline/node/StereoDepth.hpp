@@ -50,7 +50,10 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
      * @param autoCreateCameras If true, will create left and right nodes if they don't exist
      * @param presetMode Preset mode for stereo depth
      */
-    std::shared_ptr<StereoDepth> build(bool autoCreateCameras, PresetMode presetMode = PresetMode::DEFAULT, std::pair<int, int> size = {640, 400}, std::optional<float> fps = std::nullopt);
+    std::shared_ptr<StereoDepth> build(bool autoCreateCameras,
+                                       PresetMode presetMode = PresetMode::DEFAULT,
+                                       std::pair<int, int> size = {640, 400},
+                                       std::optional<float> fps = std::nullopt);
 
    protected:
     Properties& getProperties();
