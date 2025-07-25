@@ -58,7 +58,6 @@ with pipeline:
                 print("Failed to update calibration!")
             try:
                 updatedCalib = device.getCalibration()
-                distortionCoeffs = updatedCalib.getDistortionCoefficients(dai.CameraBoardSocket.CAM_B)
                 distortionCoeffs = updatedCalib.getDistortionCoefficients(dai.CameraBoardSocket.CAM_C)
                 print("Updated distortion coefficients: ", distortionCoeffs)
             except:
