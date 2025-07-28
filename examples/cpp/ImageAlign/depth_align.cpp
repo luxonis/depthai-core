@@ -108,7 +108,7 @@ int main() {
     sync->setSyncThreshold(std::chrono::duration<int64_t, std::nano>(static_cast<int64_t>(1e9 / (2.0 * FPS))));
 
     // Configure outputs
-    auto rgbOut = camRgb->requestOutput(std::make_pair(1280, 960), dai::ImgFrame::Type::NV12, dai::ImgResizeMode::CROP, FPS);
+    auto rgbOut = camRgb->requestOutput(std::make_pair(1280, 960), dai::ImgFrame::Type::NV12, dai::ImgResizeMode::CROP, FPS, true);
     auto leftOut = left->requestOutput(std::make_pair(640, 400), dai::ImgFrame::Type::NV12, dai::ImgResizeMode::CROP, FPS);
     auto rightOut = right->requestOutput(std::make_pair(640, 400), dai::ImgFrame::Type::NV12, dai::ImgResizeMode::CROP, FPS);
 
@@ -151,28 +151,18 @@ int main() {
         if(frameDepth != nullptr) {
             cv::Mat cvFrame = frameRgb->getCvFrame();
 
-            auto intrinsic = frameRgb->transformation.getIntrinsicMatrix();
-            auto distortion = frameRgb->transformation.getDistortionCoefficients();
-
-            auto intrinsicMat = cv::Mat(3, 3, CV_32F, intrinsic.data());
-            auto distortionMat = cv::Mat(1, distortion.size(), CV_32F, distortion.data());
-
-            // Undistort RGB frame
-            cv::Mat cvFrameUndistorted;
-            cv::undistort(cvFrame, cvFrameUndistorted, intrinsicMat, distortionMat);
-
             // Colorize depth
             cv::Mat alignedDepthColorized = colorizeDepth(frameDepth->getFrame());
             cv::imshow("Depth aligned", alignedDepthColorized);
 
             // Convert grayscale to BGR if needed
-            if(cvFrameUndistorted.channels() == 1) {
-                cv::cvtColor(cvFrameUndistorted, cvFrameUndistorted, cv::COLOR_GRAY2BGR);
+            if(cvFrame.channels() == 1) {
+                cv::cvtColor(cvFrame, cvFrame, cv::COLOR_GRAY2BGR);
             }
 
             // Blend frames
             cv::Mat blended;
-            cv::addWeighted(cvFrameUndistorted, rgbWeight, alignedDepthColorized, depthWeight, 0, blended);
+            cv::addWeighted(cvFrame, rgbWeight, alignedDepthColorized, depthWeight, 0, blended);
 
             // Add FPS text
             cv::putText(blended, "FPS: " + std::to_string(fpsCounter.getFps()), cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(255, 255, 255), 2);

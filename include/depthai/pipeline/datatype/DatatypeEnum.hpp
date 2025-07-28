@@ -37,6 +37,8 @@ enum class DatatypeEnum : std::int32_t {
     RGBDData,
     ImageAlignConfig,
     ImgAnnotations,
+    ImageFiltersConfig,
+    ToFDepthConfidenceFilterConfig,
     ObjectTrackerConfig,
     DynamicCalibrationResults,
 };

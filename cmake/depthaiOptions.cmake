@@ -52,6 +52,7 @@ option(DEPTHAI_XTENSOR_EXTERNAL "Use external xtensor library" ${USE_EXTERNAL_IN
 
 # ---------- Platform / Compiler Tweaks ---------
 
+
 # AprilTag node support
 set(DEPTHAI_HAS_APRIL_TAG ${DEPTHAI_ENABLE_APRIL_TAG})
 if(WIN32)
