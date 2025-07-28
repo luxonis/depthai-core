@@ -126,7 +126,6 @@ std::optional<std::reference_wrapper<const NNArchive>> NeuralNetwork::getNNArchi
     return std::nullopt;
 }
 
-
 void NeuralNetwork::setNNArchive(const NNArchive& nnArchive) {
     constexpr int DEFAULT_SUPERBLOB_NUM_SHAVES = 8;
     this->nnArchive = nnArchive;
