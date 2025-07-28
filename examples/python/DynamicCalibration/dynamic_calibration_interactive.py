@@ -34,8 +34,8 @@ left_out.link(dyn_calib.left)
 right_out.link(dyn_calib.right)
 
 # Output queues
-left_xout = left_out.createOutputQueue()
-right_xout = right_out.createOutputQueue()
+left_xout = stereo.syncedLeft.createOutputQueue()
+right_xout = stereo.syncedRight.createOutputQueue()
 disp_xout = stereo.disparity.createOutputQueue()
 depth_xout = stereo.depth.createOutputQueue()
 dyncal_out = dyn_calib.outputCalibrationResults.createOutputQueue()
@@ -68,7 +68,8 @@ print("[s] → Flash new calibration")
 print("[k] → Flash old calibration")
 print("[q] → Quit")
 print("<<< -----------------------------|Start the pipeline!|------------------------->>>")
-cv2.namedWindow("MasterFrame")
+cv2.namedWindow("MasterFrame", cv2.WINDOW_NORMAL)
+cv2.resizeWindow("MasterFrame", 1920, 1200)
 cv2.setMouseCallback("MasterFrame", on_mouse_disparity)
 
 display = False

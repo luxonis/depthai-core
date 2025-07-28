@@ -16,7 +16,7 @@ def draw_recalibration_message(image, values, angles):
     if over_threshold:
         axes = ", ".join([axis_names[i] for i in over_threshold])
         lines.append(f"Significant change in rotation! {axes}")
-        lines.append("To permanently apply new calibration, press 's'!")
+        lines.append("To permanently flash new calibration, press 's'!")
     else:
         lines.append("No significant change detected")
 

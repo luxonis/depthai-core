@@ -32,8 +32,8 @@ left_out.link(dyn_calib.left)
 right_out.link(dyn_calib.right)
 
 # Output queues
-left_xout = left_out.createOutputQueue()
-right_xout = right_out.createOutputQueue()
+left_xout = stereo.syncedLeft.createOutputQueue()
+right_xout = stereo.syncedRight.createOutputQueue()
 disp_xout = stereo.disparity.createOutputQueue()
 dyncal_out = dyn_calib.outputCalibrationResults.createOutputQueue()
 input_config = dyn_calib.inputConfig.createInputQueue()
@@ -103,7 +103,7 @@ with pipeline:
             dyn_result = calibration_result
             calib_result = dyn_result.newCalibration
 
-            if calib_result is not None and getattr(calib_result, 'calibHandler', None) is not None and not continious:
+            if calib_result is not None and getattr(calib_result, 'calibHandler', None) is not None:
                 calibNew = calib_result.calibHandler
                 device.setCalibration(calibNew)
                 print("Applying new calibration.")
