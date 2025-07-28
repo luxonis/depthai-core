@@ -71,14 +71,35 @@ bool contains(const std::vector<T>& vec, const T& el) {
 }
 
 void ObjectTracker::run() {
-    float trackerThreshold = properties.trackerThreshold;
-    std::vector<std::uint32_t> detectionLabelsToTrack = properties.detectionLabelsToTrack;
-    TrackerType trackerType = properties.trackerType;  // TODO
-
     auto& logger = pimpl->logger;
 
-    impl::OCSTracker tracker(properties);
-    bool first = true;
+    float trackerThreshold = properties.trackerThreshold;
+    std::vector<std::uint32_t> detectionLabelsToTrack = properties.detectionLabelsToTrack;
+    bool trackingPerClass = properties.trackingPerClass;
+    TrackerType trackerType = properties.trackerType;  // TODO
+
+    if(trackerType != TrackerType::SHORT_TERM_IMAGELESS) {
+        logger->warn("Selected tracker type is not supported on RVC4, using SHORT_TERM_IMAGELESS instead");
+    }
+
+    std::unordered_map<uint32_t, impl::OCSTracker> trackers;
+    std::unordered_map<uint32_t, std::pair<std::vector<ImgDetection>, std::vector<Point3f>>> detectionsPerTracker;
+    if(!trackingPerClass) {
+        trackers.try_emplace(0, properties);
+        detectionsPerTracker.try_emplace(0, std::make_pair(std::vector<ImgDetection>(), std::vector<Point3f>()));
+    } else if(!detectionLabelsToTrack.empty()) {
+        for(const auto& label : detectionLabelsToTrack) {
+            trackers.try_emplace(label, properties);
+            detectionsPerTracker.try_emplace(label, std::make_pair(std::vector<ImgDetection>(), std::vector<Point3f>()));
+        }
+    }
+    auto getTrackerIdx = [trackingPerClass](const ImgDetection& detection) -> uint32_t {
+        if(trackingPerClass) {
+            return detection.label;
+        } else {
+            return 0;  // All detections are tracked with the same tracker
+        }
+    };
 
     uint32_t seqNum = 0;
 
@@ -115,12 +136,14 @@ void ObjectTracker::run() {
         // Either update or track, not both
         if(gotDetections) {
             // TODO: sync messages !!!
+
+            for(auto& [trackerIdx, detections] : detectionsPerTracker) {
+                detections.first.clear();
+                detections.second.clear();
+            }
+
             ImgTransformation detectionsTransformation = (inputImgDetections ? inputImgDetections->transformation : inputSpatialImgDetections->transformation)
                                                              .value_or(inputDetectionImg->transformation);
-            std::vector<ImgDetection> detections;
-            std::vector<Point3f> spatialData;
-            detections.reserve(inputImgDetections ? inputImgDetections->detections.size() : inputSpatialImgDetections->detections.size());
-            spatialData.reserve(inputImgDetections ? inputImgDetections->detections.size() : inputSpatialImgDetections->detections.size());
             for(size_t i = 0; i < (inputImgDetections ? inputImgDetections->detections.size() : inputSpatialImgDetections->detections.size()); ++i) {
                 const auto& detection = inputImgDetections ? inputImgDetections->detections[i] : (ImgDetection)inputSpatialImgDetections->detections[i];
                 if(detection.confidence >= trackerThreshold && (detectionLabelsToTrack.empty() || contains(detectionLabelsToTrack, detection.label))) {
@@ -142,33 +165,47 @@ void ObjectTracker::run() {
                     det.ymax = std::min((float)height, maxy);
 
                     if(det.xmin < det.xmax && det.ymin < det.ymax) {
-                        detections.push_back(det);
+                        if(trackingPerClass && detectionLabelsToTrack.empty()) {
+                            trackers.try_emplace(detection.label, properties);
+                            detectionsPerTracker.try_emplace(detection.label, std::make_pair(std::vector<ImgDetection>(), std::vector<Point3f>()));
+                        }
+                        uint32_t trackerIdx = getTrackerIdx(det);
+                        detectionsPerTracker[trackerIdx].first.push_back(det);
                         if(inputSpatialImgDetections) {
-                            spatialData.push_back(inputSpatialImgDetections->detections[i].spatialCoordinates);
+                            detectionsPerTracker[trackerIdx].second.push_back(inputSpatialImgDetections->detections[i].spatialCoordinates);
                         } else {
-                            spatialData.push_back(Point3f(0, 0, 0));  // No spatial data available
+                            detectionsPerTracker[trackerIdx].second.push_back(Point3f(0, 0, 0));  // No spatial data available
                         }
                     }
                 }
             }
-            if(!detections.empty()) {
-                if(first) {
-                    first = false;
-                    tracker.init(*inputTrackerImg, detections, spatialData);
-                } else {
-                    tracker.update(*inputTrackerImg, detections, spatialData);
+            for(auto& [trackerIdx, tracker] : trackers) {
+                const auto& detections = detectionsPerTracker[trackerIdx].first;
+                const auto& spatialData = detectionsPerTracker[trackerIdx].second;
+                if(!detections.empty()) {
+                    if(!tracker.isInitialized()) {
+                        tracker.init(*inputTrackerImg, detections, spatialData);
+                    } else {
+                        tracker.update(*inputTrackerImg, detections, spatialData);
+                    }
                 }
             }
-        } else if(!first) {
+        }
+        for(auto& [trackerIdx, tracker] : trackers) {
+            if(!tracker.isInitialized()) continue;
             tracker.track(*inputTrackerImg);
         }
-        if(!first) {
-            auto trackletsMsg = std::make_shared<Tracklets>();
-            trackletsMsg->tracklets = tracker.getTracklets();
-            trackletsMsg->ts = inputTrackerImg->ts;
-            trackletsMsg->tsDevice = inputTrackerImg->tsDevice;
-            trackletsMsg->sequenceNum = seqNum++;
+        auto trackletsMsg = std::make_shared<Tracklets>();
+        trackletsMsg->ts = inputTrackerImg->ts;
+        trackletsMsg->tsDevice = inputTrackerImg->tsDevice;
+        trackletsMsg->sequenceNum = seqNum++;
+        for(auto& [trackerIdx, tracker] : trackers) {
+            if(!tracker.isInitialized()) continue;
+            auto tracklets = tracker.getTracklets();
+            trackletsMsg->tracklets.insert(trackletsMsg->tracklets.end(), tracklets.begin(), tracklets.end());
+        }
 
+        if(!trackletsMsg->tracklets.empty()) {
             out.send(trackletsMsg);
             passthroughTrackerFrame.send(inputTrackerImg);
             if(gotDetections) {

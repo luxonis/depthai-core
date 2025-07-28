@@ -36,6 +36,8 @@ class Tracker {
      * @return A vector of current tracklets.
      */
     virtual std::vector<Tracklet> getTracklets() const = 0;
+
+    virtual bool isInitialized() const = 0;
 };
 
 class OCSTracker : public Tracker {
@@ -44,7 +46,6 @@ class OCSTracker : public Tracker {
     std::unique_ptr<State> state;
     int32_t maxObjectsToTrack;
     TrackerIdAssignmentPolicy trackerIdAssignmentPolicy;
-    bool trackingPerClass;
     float occlusionRatioThreshold;
     uint32_t trackletMaxLifespan;
     uint32_t trackletBirthThreshold;
@@ -56,6 +57,9 @@ class OCSTracker : public Tracker {
     void update(const ImgFrame& frame, const std::vector<ImgDetection>& detections, const std::vector<Point3f>& spatialData) override;
     void track(const ImgFrame& frame) override;
     std::vector<Tracklet> getTracklets() const override;
+    bool isInitialized() const override {
+        return state != nullptr;
+    }
 };
 
 }  // namespace impl

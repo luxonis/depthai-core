@@ -257,7 +257,7 @@ class OCSTracker::State {
           float inertia_ = 0.2,
           bool use_byte_ = false);
 
-    std::vector<Eigen::RowVectorXf> update(const std::vector<ImgDetection>& detections, const std::vector<Point3f>& spatialData);
+    std::vector<Eigen::RowVectorXf> update(const std::vector<ImgDetection>& detections, const std::vector<Point3f>& spatialData, bool trackOnly = false);
     const std::vector<TrackletExt>& get_tracklets() const {
         return tracklets;
     }
@@ -361,7 +361,9 @@ OCSTracker::State::State(float det_thresh_,
     inertia = inertia_;
     use_byte = use_byte_;
 }
-std::vector<Eigen::RowVectorXf> OCSTracker::State::update(const std::vector<ImgDetection>& detections, const std::vector<Point3f>& spatialData) {
+std::vector<Eigen::RowVectorXf> OCSTracker::State::update(const std::vector<ImgDetection>& detections,
+                                                          const std::vector<Point3f>& spatialData,
+                                                          bool trackOnly) {
     /*
      * dets: (n,7): [[x1,y1,x2,y2,confidence_score, class, idx],...[...]]
      * Params:
@@ -589,10 +591,12 @@ std::vector<Eigen::RowVectorXf> OCSTracker::State::update(const std::vector<ImgD
 
     for(auto m : unmatched_trks) {
         trackers.at(m).update(nullptr, 0);
-        if(tracklets[m].status == Tracklet::TrackingStatus::TRACKED) {
-            tracklets[m].updateStatus(Tracklet::TrackingStatus::LOST);
-        } else if(tracklets[m].status == Tracklet::TrackingStatus::NEW) {
-            remove_tracker(m);
+        if(!trackOnly) {
+            if(tracklets[m].status == Tracklet::TrackingStatus::TRACKED) {
+                tracklets[m].updateStatus(Tracklet::TrackingStatus::LOST);
+            } else if(tracklets[m].status == Tracklet::TrackingStatus::NEW) {
+                remove_tracker(m);
+            }
         }
     }
     ///////////////////////////////
@@ -1545,12 +1549,11 @@ float execLapjv(
 OCSTracker::OCSTracker(const ObjectTrackerProperties& properties)
     : maxObjectsToTrack(properties.maxObjectsToTrack),
       trackerIdAssignmentPolicy(properties.trackerIdAssignmentPolicy),
-      trackingPerClass(properties.trackingPerClass),
       occlusionRatioThreshold(properties.occlusionRatioThreshold),
       trackletMaxLifespan(properties.trackletMaxLifespan),
       trackletBirthThreshold(properties.trackletBirthThreshold) {}
 OCSTracker::~OCSTracker() {}
-void OCSTracker::init(const ImgFrame& frame, const std::vector<ImgDetection>& detections, const std::vector<Point3f>& spatialData) {
+void OCSTracker::init(const ImgFrame& /* frame */, const std::vector<ImgDetection>& detections, const std::vector<Point3f>& spatialData) {
     // TODO track by class
     this->state = std::make_unique<State>(0.f,
                                           this->trackletMaxLifespan,
@@ -1562,15 +1565,24 @@ void OCSTracker::init(const ImgFrame& frame, const std::vector<ImgDetection>& de
                                           "giou",
                                           0.3941737016672115,
                                           true);
-    this->update(frame, detections, spatialData);
-}
-void OCSTracker::update(const ImgFrame& /* frame */, const std::vector<ImgDetection>& detections, const std::vector<Point3f>& spatialData) {
     this->state->update(detections, spatialData);
 }
-void OCSTracker::track(const ImgFrame& frame) {
-    this->update(frame, std::vector<ImgDetection>(), std::vector<Point3f>());
+void OCSTracker::update(const ImgFrame& /* frame */, const std::vector<ImgDetection>& detections, const std::vector<Point3f>& spatialData) {
+    if(!this->state) {
+        throw std::runtime_error("OCSTracker is not initialized. Call init() first.");
+    }
+    this->state->update(detections, spatialData);
+}
+void OCSTracker::track(const ImgFrame& /* frame */) {
+    if(!this->state) {
+        throw std::runtime_error("OCSTracker is not initialized. Call init() first.");
+    }
+    this->state->update(std::vector<ImgDetection>(), std::vector<Point3f>(), true);
 }
 std::vector<Tracklet> OCSTracker::getTracklets() const {
+    if(!this->state) {
+        throw std::runtime_error("OCSTracker is not initialized. Call init() first.");
+    }
     auto trackletsExt = this->state->get_tracklets();
     std::vector<Tracklet> tracklets;
     tracklets.reserve(trackletsExt.size());
