@@ -518,6 +518,7 @@ if(NOT BUILD_SHARED_LIBS)
 endif()
 
 if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
+    include(Depthai/DepthaiDynamicCalibrationConfig)    # depthai-dynamic-calibration commit/version configuration
     include(FetchContent)
     set(DEPTHAI_DYNAMIC_CALIBRATION_PATH "" CACHE FILEPATH "Override path to local dynamic_calibration .zip file")
 
@@ -565,7 +566,6 @@ include(Depthai/DepthaiBootloaderConfig)    # Depthai bootloader binary commit/v
 include(Depthai/DepthaiDeviceKbConfig)      # depthai-device-kb fwp commit/version configuration
 include(Depthai/DepthaiDeviceRVC4Config)    # depthai-device-rvc4 fwp commit/version configuration
 include(Depthai/DepthaiVisualizerConfig)    # depthai-visualizer commit/version configuration
-include(Depthai/DepthaiDynamicCalibrationConfig)    # depthai-dynamic-calibration commit/version configuration
 
 # Include downloaders
 include(DepthaiDownloader)                  # Depthai device binary downloader

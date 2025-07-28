@@ -18,10 +18,10 @@ void bind_dynamic_calibration_results(pybind11::module& m, void* pCallstack) {
         _DynamicCalibrationResults, "CalibrationResult", DOC(dai, DynamicCalibrationResults, CalibrationResult));
 
     py::class_<DynamicCalibrationResults::CalibrationQuality::CalibrationData> _CalibrationData(
-        _DynamicCalibrationResults, "CalibrationData", DOC(dai, DynamicCalibrationResults, CalibrationData));
+        _DynamicCalibrationResults, "CalibrationData", DOC(dai, DynamicCalibrationResults, CalibrationQuality, CalibrationData));
 
     py::class_<DynamicCalibrationResults::CalibrationQuality::CoverageData> _CoverageData(
-        _DynamicCalibrationResults, "CoverageData", DOC(dai, DynamicCalibrationResults, CoverageData));
+        _DynamicCalibrationResults, "CoverageData", DOC(dai, DynamicCalibrationResults, CalibrationQuality, CoverageData));
 
     py::class_<DynamicCalibrationResults::CalibrationQuality> _CalibrationQuality(
         _DynamicCalibrationResults, "CalibrationQuality", DOC(dai, DynamicCalibrationResults, CalibrationQuality));
