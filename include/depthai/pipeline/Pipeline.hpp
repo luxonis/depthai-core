@@ -130,6 +130,9 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     // Add a mutex for any state change
     std::mutex stateMtx;
 
+    // Calibration mutex
+    mutable std::mutex calibMtx;
+
     // DeviceBase for hybrid pipelines
     std::shared_ptr<Device> defaultDevice;
 

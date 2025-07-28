@@ -425,11 +425,7 @@ bool PipelineImpl::canConnect(const Node::Output& out, const Node::Input& in) {
 }
 
 void PipelineImpl::setCalibrationData(CalibrationHandler calibrationDataHandler) {
-    /* if(!calibrationDataHandler.validateCameraArray()) {
-        throw std::runtime_error("Failed to validate the extrinsics connection. Enable debug mode for more information.");
-    } */
-    globalProperties.calibData = calibrationDataHandler.getEepromData();
-    globalProperties.eepromId += 1;  // Increment eepromId to indicate that eeprom data has changed
+    setEepromData(calibrationDataHandler.getEepromData());
 }
 
 bool PipelineImpl::isCalibrationDataAvailable() const {
@@ -445,6 +441,7 @@ CalibrationHandler PipelineImpl::getCalibrationData() const {
 }
 
 void PipelineImpl::setEepromData(std::optional<EepromData> eepromData) {
+    std::unique_lock<std::mutex> lock(calibMtx);
     globalProperties.calibData = eepromData;
     globalProperties.eepromId += 1;  // Increment eepromId to indicate that eeprom data has changed
 }
@@ -454,6 +451,7 @@ std::optional<EepromData> PipelineImpl::getEepromData() const {
 }
 
 uint32_t PipelineImpl::getEepromId() const {
+    std::unique_lock<std::mutex> lock(calibMtx);
     return globalProperties.eepromId;
 }
 
