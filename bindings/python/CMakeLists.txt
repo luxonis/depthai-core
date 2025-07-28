@@ -138,6 +138,7 @@ set(SOURCE_LIST
     src/pipeline/datatype/TransformDataBindings.cpp
     src/pipeline/datatype/ImageAlignConfigBindings.cpp
     src/pipeline/datatype/ImgAnnotationsBindings.cpp
+    src/pipeline/datatype/VppConfigBindings.cpp
     src/remote_connection/RemoteConnectionBindings.cpp
 
     src/capabilities/CapabilityBindings.cpp
