@@ -23,7 +23,7 @@ with dai.Pipeline() as pipeline:
     spatialDetectionNetwork = pipeline.create(dai.node.SpatialDetectionNetwork).build(camRgb, stereo, "yolov6-nano")
     objectTracker = pipeline.create(dai.node.ObjectTracker)
 
-    spatialDetectionNetwork.setConfidenceThreshold(0.5)
+    spatialDetectionNetwork.setConfidenceThreshold(0.8)
     spatialDetectionNetwork.input.setBlocking(False)
     spatialDetectionNetwork.setBoundingBoxScaleFactor(0.5)
     spatialDetectionNetwork.setDepthLowerThreshold(100)
@@ -35,6 +35,7 @@ with dai.Pipeline() as pipeline:
     objectTracker.setTrackerType(dai.TrackerType.ZERO_TERM_COLOR_HISTOGRAM)
     # take the smallest ID when new object is tracked, possible options: SMALLEST_ID, UNIQUE_ID
     objectTracker.setTrackerIdAssignmentPolicy(dai.TrackerIdAssignmentPolicy.SMALLEST_ID)
+    objectTracker.setOcclusionRatioThreshold(0.2)
 
     preview = objectTracker.passthroughTrackerFrame.createOutputQueue()
     tracklets = objectTracker.out.createOutputQueue()

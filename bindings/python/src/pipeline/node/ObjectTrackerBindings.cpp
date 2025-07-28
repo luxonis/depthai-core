@@ -63,6 +63,18 @@ void bind_objecttracker(pybind11::module& m, void* pCallstack) {
              &ObjectTracker::setTrackerIdAssignmentPolicy,
              py::arg("type"),
              DOC(dai, node, ObjectTracker, setTrackerIdAssignmentPolicy))
-        .def("setTrackingPerClass", &ObjectTracker::setTrackingPerClass, py::arg("trackingPerClass"), DOC(dai, node, ObjectTracker, setTrackingPerClass));
+        .def("setTrackingPerClass", &ObjectTracker::setTrackingPerClass, py::arg("trackingPerClass"), DOC(dai, node, ObjectTracker, setTrackingPerClass))
+        .def("setOcclusionRatioThreshold",
+             &ObjectTracker::setOcclusionRatioThreshold,
+             py::arg("threshold"),
+             DOC(dai, node, ObjectTracker, setOcclusionRatioThreshold))
+        .def("setTrackletMaxLifespan",
+             &ObjectTracker::setTrackletMaxLifespan,
+             py::arg("trackletMaxLifespan"),
+             DOC(dai, node, ObjectTracker, setTrackletMaxLifespan))
+        .def("setTrackletBirthThreshold",
+             &ObjectTracker::setTrackletBirthThreshold,
+             py::arg("trackletBirthThreshold"),
+             DOC(dai, node, ObjectTracker, setTrackletBirthThreshold));
     daiNodeModule.attr("ObjectTracker").attr("Properties") = objectTrackerProperties;
 }

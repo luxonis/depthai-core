@@ -40,6 +40,15 @@ void ObjectTracker::setTrackerIdAssignmentPolicy(TrackerIdAssignmentPolicy type)
 void ObjectTracker::setTrackingPerClass(bool trackingPerClass) {
     properties.trackingPerClass = trackingPerClass;
 }
+void ObjectTracker::setOcclusionRatioThreshold(float theshold) {
+    properties.occlusionRatioThreshold = theshold;
+}
+void ObjectTracker::setTrackletMaxLifespan(uint32_t trackletMaxLifespan) {
+    properties.trackletMaxLifespan = trackletMaxLifespan;
+}
+void ObjectTracker::setTrackletBirthThreshold(uint32_t trackletBirthThreshold) {
+    properties.trackletBirthThreshold = trackletBirthThreshold;
+}
 void ObjectTracker::setRunOnHost(bool runOnHost) {
     runOnHostVar = runOnHost;
 }
@@ -116,14 +125,14 @@ void ObjectTracker::run() {
             auto detectionsBuffer = inputDetections.get<Buffer>();
             inputImgDetections = std::dynamic_pointer_cast<ImgDetections>(detectionsBuffer);
             inputSpatialImgDetections = std::dynamic_pointer_cast<SpatialImgDetections>(detectionsBuffer);
-            if(inputImgDetections && inputImgDetections->detections.size() > 0) {
+            if(inputImgDetections) {
                 logger->warn("Input detections received, tracking will be performed on the detections");
                 gotDetections = true;
                 if(!inputImgDetections->transformation.has_value()) {
                     logger->debug("Transformation is not set for input detections, inputDetectionFrame is required");
                     inputDetectionImg = inputDetectionFrame.get<ImgFrame>();
                 }
-            } else if(inputSpatialImgDetections && inputSpatialImgDetections->detections.size() > 0) {
+            } else if(inputSpatialImgDetections) {
                 gotDetections = true;
                 if(!inputSpatialImgDetections->transformation.has_value()) {
                     logger->debug("Transformation is not set for input detections, inputDetectionFrame is required");
@@ -182,12 +191,10 @@ void ObjectTracker::run() {
             for(auto& [trackerIdx, tracker] : trackers) {
                 const auto& detections = detectionsPerTracker[trackerIdx].first;
                 const auto& spatialData = detectionsPerTracker[trackerIdx].second;
-                if(!detections.empty()) {
-                    if(!tracker.isInitialized()) {
-                        tracker.init(*inputTrackerImg, detections, spatialData);
-                    } else {
-                        tracker.update(*inputTrackerImg, detections, spatialData);
-                    }
+                if(!detections.empty() && !tracker.isInitialized()) {
+                    tracker.init(*inputTrackerImg, detections, spatialData);
+                } else if(tracker.isInitialized()) {
+                    tracker.update(*inputTrackerImg, detections, spatialData);
                 }
             }
         }
@@ -205,15 +212,13 @@ void ObjectTracker::run() {
             trackletsMsg->tracklets.insert(trackletsMsg->tracklets.end(), tracklets.begin(), tracklets.end());
         }
 
-        if(!trackletsMsg->tracklets.empty()) {
-            out.send(trackletsMsg);
-            passthroughTrackerFrame.send(inputTrackerImg);
-            if(gotDetections) {
-                passthroughDetections.send(inputImgDetections ? std::dynamic_pointer_cast<Buffer>(inputImgDetections)
-                                                              : std::dynamic_pointer_cast<Buffer>(inputSpatialImgDetections));
-                if(inputDetectionImg) {
-                    passthroughDetectionFrame.send(inputDetectionImg);
-                }
+        out.send(trackletsMsg);
+        passthroughTrackerFrame.send(inputTrackerImg);
+        if(gotDetections) {
+            passthroughDetections.send(inputImgDetections ? std::dynamic_pointer_cast<Buffer>(inputImgDetections)
+                                                          : std::dynamic_pointer_cast<Buffer>(inputSpatialImgDetections));
+            if(inputDetectionImg) {
+                passthroughDetectionFrame.send(inputDetectionImg);
             }
         }
     }

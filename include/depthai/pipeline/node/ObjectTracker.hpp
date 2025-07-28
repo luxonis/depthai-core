@@ -106,6 +106,24 @@ class ObjectTracker : public DeviceNodeCRTP<DeviceNode, ObjectTracker, ObjectTra
     void setTrackingPerClass(bool trackingPerClass);
 
     /**
+     * Set the occlusion ratio threshold. Used to filter out overlapping tracklets.
+     * @param theshold Occlusion ratio threshold. Default 0.3.
+     */
+    void setOcclusionRatioThreshold(float theshold);
+
+    /**
+     * Set the tracklet lifespan in number of frames. Number of frames after which a LOST tracklet is removed.
+     * @param trackletMaxLifespan Tracklet lifespan in number of frames. Default 120.
+     */
+    void setTrackletMaxLifespan(uint32_t trackletMaxLifespan);
+
+    /**
+     * Set the tracklet birth threshold. Minimum consecutive tracked frames required to consider a tracklet as a new (TRACKED) instance.
+     * @param trackletBirthThreshold Tracklet birth threshold. Default 3.
+     */
+    void setTrackletBirthThreshold(uint32_t trackletBirthThreshold);
+
+    /**
      * Specify whether to run on host or device
      * By default, the node will run on device.
      */

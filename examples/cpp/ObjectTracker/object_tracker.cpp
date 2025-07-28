@@ -25,7 +25,7 @@ int main() {
     // Create spatial detection network
     dai::NNModelDescription modelDescription{"yolov6-nano"};
     auto spatialDetectionNetwork = pipeline.create<dai::node::SpatialDetectionNetwork>()->build(camRgb, stereo, modelDescription);
-    spatialDetectionNetwork->setConfidenceThreshold(0.5f);
+    spatialDetectionNetwork->setConfidenceThreshold(0.8f);
     spatialDetectionNetwork->input.setBlocking(false);
     spatialDetectionNetwork->setBoundingBoxScaleFactor(0.5f);
     spatialDetectionNetwork->setDepthLowerThreshold(100);
@@ -36,6 +36,7 @@ int main() {
     objectTracker->setDetectionLabelsToTrack({0});  // track only person
     objectTracker->setTrackerType(dai::TrackerType::ZERO_TERM_COLOR_HISTOGRAM);
     objectTracker->setTrackerIdAssignmentPolicy(dai::TrackerIdAssignmentPolicy::SMALLEST_ID);
+    objectTracker->setOcclusionRatioThreshold(0.2);
 
     // Create output queues
     auto preview = objectTracker->passthroughTrackerFrame.createOutputQueue();
