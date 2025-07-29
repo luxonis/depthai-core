@@ -9,7 +9,7 @@ on:
         required: true
         type: string
       luxonis_os_versions_to_test_rgb:
-        required: true
+        required: false
         type: string
         default: "[]"
       
