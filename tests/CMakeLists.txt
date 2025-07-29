@@ -360,15 +360,15 @@ dai_set_test_labels(filesystem_test_20 rvc2_all ci)
 
 # Encoded frame test
 dai_add_test(encoded_frame_test src/ondevice_tests/encoded_frame_test.cpp CXX_STANDARD 17)
-dai_set_test_labels(encoded_frame_test ondevice rvc2_all rvc4 ci)
+dai_set_test_labels(encoded_frame_test ondevice rvc2_all rvc4rgb ci)
 
 # MessageGroup tests
 dai_add_test(message_group_frame_test src/ondevice_tests/message_group_test.cpp CXX_STANDARD 17)
-dai_set_test_labels(message_group_frame_test ondevice rvc2_all rvc4 ci)
+dai_set_test_labels(message_group_frame_test ondevice rvc2_all rvc4 rvc4rgb ci)
 
 # Pointcloud test
 dai_add_test(pointcloud_test src/ondevice_tests/pointcloud_test.cpp)
-dai_set_test_labels(pointcloud_test ondevice rvc2_all ci)
+dai_set_test_labels(pointcloud_test ondevice rvc2_all rvc4rgb ci)
 
 # RGBD test
 dai_add_test(rgbd_test src/ondevice_tests/rgbd_test.cpp)
@@ -376,7 +376,7 @@ dai_set_test_labels(rgbd_test ondevice rvc2_all rvc4 ci)
 
 # Input/Output naming test
 dai_add_test(input_output_naming_test src/ondevice_tests/input_output_naming_test.cpp)
-dai_set_test_labels(input_output_naming_test ondevice rvc2_all rvc4 ci)
+dai_set_test_labels(input_output_naming_test ondevice rvc2_all rvc4 rvc4rgb ci)
 
 # Resolutions test
 dai_add_test(resolutions_test src/ondevice_tests/resolutions_test.cpp)
