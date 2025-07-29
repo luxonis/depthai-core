@@ -12,3 +12,6 @@ dai_set_example_test_labels(stereo ondevice rvc2_all rvc4 ci)
 
 dai_add_example(stereo_depth_remap stereo_depth_remap.cpp ON OFF)
 dai_set_example_test_labels(stereo_depth_remap ondevice rvc2_all rvc4 ci)
+
+dai_add_example(stereo_extrinsics stereo_extrinsics.cpp ON OFF)
+dai_set_example_test_labels(stereo_extrinsics ondevice rvc2_all rvc4 ci)
