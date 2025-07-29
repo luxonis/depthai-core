@@ -13,9 +13,9 @@ on:
       - develop
 
 # Only allow latest run on same branch to be tested
-concurrency:
-  group: ci-tests-${{ github.ref }}-1
-  cancel-in-progress: true
+# concurrency:
+#   group: ci-tests-${{ github.ref }}-1
+#   cancel-in-progress: true
 
 jobs:
 
