@@ -25,7 +25,7 @@ int main() {
     // Create spatial detection network
     dai::NNModelDescription modelDescription{"yolov6-nano"};
     auto spatialDetectionNetwork = pipeline.create<dai::node::SpatialDetectionNetwork>()->build(camRgb, stereo, modelDescription);
-    spatialDetectionNetwork->setConfidenceThreshold(0.8f);
+    spatialDetectionNetwork->setConfidenceThreshold(0.6f);
     spatialDetectionNetwork->input.setBlocking(false);
     spatialDetectionNetwork->setBoundingBoxScaleFactor(0.5f);
     spatialDetectionNetwork->setDepthLowerThreshold(100);

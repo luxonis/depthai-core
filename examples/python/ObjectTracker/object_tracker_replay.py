@@ -33,7 +33,7 @@ with dai.Pipeline() as pipeline:
     objectTracker = pipeline.create(dai.node.ObjectTracker)
     objectTracker.setRunOnHost(True)
 
-    detectionNetwork.setConfidenceThreshold(0.8)
+    detectionNetwork.setConfidenceThreshold(0.6)
     detectionNetwork.input.setBlocking(False)
     labelMap = detectionNetwork.getClasses()
 
