@@ -8,6 +8,7 @@
 #include "depthai/common/ImgTransformations.hpp"
 #include "depthai/common/Rect.hpp"
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
+#include "depthai/pipeline/datatype/ObjectTrackerConfig.hpp"
 #include "depthai/pipeline/datatype/SpatialImgDetections.hpp"
 #include "depthai/pipeline/datatype/Tracklets.hpp"
 #include "depthai/properties/ObjectTrackerProperties.hpp"
@@ -97,6 +98,7 @@ void ObjectTracker::run() {
         std::shared_ptr<ImgFrame> inputDetectionImg;
         std::shared_ptr<ImgDetections> inputImgDetections;
         std::shared_ptr<SpatialImgDetections> inputSpatialImgDetections;
+        std::shared_ptr<ObjectTrackerConfig> inputCfg;
 
         bool gotDetections = false;
 
@@ -121,6 +123,16 @@ void ObjectTracker::run() {
                 logger->error("Input detections is not of type ImgDetections or SpatialImgDetections, skipping tracking");
             }
         }
+        if(inputConfig.getWaitForMessage()) {
+            inputCfg = inputConfig.get<ObjectTrackerConfig>();
+        } else {
+            inputCfg = inputConfig.tryGet<ObjectTrackerConfig>();
+        }
+
+        if(inputCfg) {
+            tracker.configure(*inputCfg);
+        }
+
         // Either update or track, not both
         if(gotDetections) {
             // TODO: sync messages !!!

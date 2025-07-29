@@ -3,6 +3,7 @@
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
 #include "depthai/pipeline/datatype/Tracklets.hpp"
 #include "depthai/properties/ObjectTrackerProperties.hpp"
+#include "pipeline/datatype/ObjectTrackerConfig.hpp"
 
 namespace dai {
 namespace impl {
@@ -37,6 +38,8 @@ class Tracker {
      */
     virtual std::vector<Tracklet> getTracklets() const = 0;
 
+    virtual void configure(const ObjectTrackerConfig& config) = 0;
+
     virtual bool isInitialized() const = 0;
 };
 
@@ -58,6 +61,7 @@ class OCSTracker : public Tracker {
     void update(const ImgFrame& frame, const std::vector<ImgDetection>& detections, const std::vector<Point3f>& spatialData) override;
     void track(const ImgFrame& frame) override;
     std::vector<Tracklet> getTracklets() const override;
+    void configure(const ObjectTrackerConfig& config) override;
     bool isInitialized() const override {
         return state != nullptr;
     }

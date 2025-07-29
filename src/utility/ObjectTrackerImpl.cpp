@@ -218,6 +218,14 @@ class OCSTracker::State {
                 throw std::runtime_error("Index out of bounds in remove_tracker");
             }
         }
+        void remove_tracklets(const std::vector<int32_t>& ids) {
+            for(const auto& id : ids) {
+                auto it = std::find_if(tracklets.begin(), tracklets.end(), [id](const TrackletExt& t) { return t.id == id; });
+                if(it != tracklets.end()) {
+                    remove_tracker(std::distance(tracklets.begin(), it));
+                }
+            }
+        }
         ClassState(State* parent,
                    float det_thresh_,
                    int max_age_ = 30,
@@ -288,6 +296,11 @@ class OCSTracker::State {
           bool use_byte_ = false);
 
     std::vector<Eigen::RowVectorXf> update(const std::vector<ImgDetection>& detections, const std::vector<Point3f>& spatialData, bool trackOnly = false);
+    void remove_tracklets(const std::vector<int32_t>& ids) {
+        for(auto& [_, cs] : class_states) {
+            cs.remove_tracklets(ids);
+        }
+    }
     std::vector<Tracklet> get_tracklets() const {
         std::vector<Tracklet> tracklets;
         for(const auto& [index, cs] : class_states) {
@@ -1661,6 +1674,12 @@ void OCSTracker::track(const ImgFrame& /* frame */) {
         throw std::runtime_error("OCSTracker is not initialized. Call init() first.");
     }
     this->state->update(std::vector<ImgDetection>(), std::vector<Point3f>(), true);
+}
+void OCSTracker::configure(const ObjectTrackerConfig& config) {
+    if(!this->state) {
+        throw std::runtime_error("OCSTracker is not initialized. Call init() first.");
+    }
+    this->state->remove_tracklets(config.trackletIdsToRemove);
 }
 std::vector<Tracklet> OCSTracker::getTracklets() const {
     if(!this->state) {
