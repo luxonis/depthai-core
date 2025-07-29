@@ -57,8 +57,8 @@ struct RotatedRect {
      * Denormalize the rotated rectangle. The denormalized rectangle will have center and size coordinates in range [0, width] and [0, height]
      * @return Denormalized rotated rectangle
      */
-    RotatedRect denormalize(unsigned int width, unsigned int height) const {
-        if(!isNormalized()) return *this;
+    RotatedRect denormalize(unsigned int width, unsigned int height, bool force = false) const {
+        if(!force && !isNormalized()) return *this;
         RotatedRect denormalized = *this;
         denormalized.center = dai::Point2f(center.x * width, center.y * height, false);
         denormalized.size = dai::Size2f(size.width * width, size.height * height, false);

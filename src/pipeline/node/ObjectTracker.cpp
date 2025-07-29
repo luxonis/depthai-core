@@ -126,7 +126,6 @@ void ObjectTracker::run() {
             inputImgDetections = std::dynamic_pointer_cast<ImgDetections>(detectionsBuffer);
             inputSpatialImgDetections = std::dynamic_pointer_cast<SpatialImgDetections>(detectionsBuffer);
             if(inputImgDetections) {
-                logger->warn("Input detections received, tracking will be performed on the detections");
                 gotDetections = true;
                 if(!inputImgDetections->transformation.has_value()) {
                     logger->debug("Transformation is not set for input detections, inputDetectionFrame is required");
@@ -161,7 +160,7 @@ void ObjectTracker::run() {
                     uint32_t height = detectionsTransformation.getSize().second;
 
                     RotatedRect detRRect(detToRect(detection));
-                    if(detRRect.isNormalized()) detRRect = detRRect.denormalize(width, height);
+                    if(detRRect.size.width <= 1.5f && detRRect.size.height <= 1.5f) detRRect = detRRect.denormalize(width, height, true);
 
                     auto remapped = detectionsTransformation.remapRectTo(inputTrackerImg->transformation, detRRect);
 
