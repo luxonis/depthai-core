@@ -168,8 +168,8 @@ void RTABMapSLAM::odomPoseCB(std::shared_ptr<dai::ADatatype> data) {
 void RTABMapSLAM::imuCB(std::shared_ptr<ADatatype> imuData) {
     auto imuPackets = std::dynamic_pointer_cast<IMUData>(imuData);
 
-    auto angularCovariance = cv::Mat::eye(3, 3, CV_64FC1) * 0.0001745329; // 0.01 degrees/s in radians/s
-    auto linearCovariance = cv::Mat::eye(3, 3, CV_64FC1) * 0.01;
+    auto angularCovariance = cv::Mat::eye(3, 3, CV_64FC1) * 0.000034906585; // 0.02 degrees/s in radians/s
+    auto linearCovariance = cv::Mat::eye(3, 3, CV_64FC1) * 0.002;
 
     for(auto& imuPacket : imuPackets->packets) {
         auto angularVelocity = cv::Vec3d(imuPacket.gyroscope.x, imuPacket.gyroscope.y, imuPacket.gyroscope.z);
