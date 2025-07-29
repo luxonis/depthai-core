@@ -10,6 +10,7 @@
 // pybind
 #include <pybind11/chrono.h>
 #include <pybind11/numpy.h>
+using namespace pybind11::literals;
 
 void bind_vppconfig(pybind11::module& m, void* pCallstack) {
     using namespace dai;
@@ -57,6 +58,7 @@ void bind_vppconfig(pybind11::module& m, void* pCallstack) {
         .def_readwrite("disparityMinThreshold", &VppConfig::disparityMinThreshold, DOC(dai, VppConfig, disparityMinThreshold))
         .def_readwrite("disparityMaxThreshold", &VppConfig::disparityMaxThreshold, DOC(dai, VppConfig, disparityMaxThreshold))
         
+        // Uncommented methods for configuration
         .def("setMethod", &VppConfig::setMethod, "method"_a, DOC(dai, VppConfig, setMethod))
         .def("setPatchSize", &VppConfig::setPatchSize, "size"_a, DOC(dai, VppConfig, setPatchSize))
         .def("setAggregationWindowSize", &VppConfig::setAggregationWindowSize, "sizeX"_a, "sizeY"_a, DOC(dai, VppConfig, setAggregationWindowSize))
