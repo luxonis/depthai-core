@@ -437,7 +437,7 @@ dai_set_test_labels(image_align_node_test ondevice rvc2_all rvc4 ci)
 
 # Script node test
 dai_add_test(script_node_test src/ondevice_tests/script_node_test.cpp)
-dai_set_test_labels(script_node_test ondevice rvc2_all rvc4 ci)
+dai_set_test_labels(script_node_test ondevice rvc2_all rvc4 rvc4rgb ci)
 
 # StereoDepth test
 dai_add_test(stereo_depth_node_test src/ondevice_tests/stereo_depth_node_test.cpp)
