@@ -8,12 +8,12 @@
 #include "depthai/depthai.hpp"
 
 // Global flag for graceful shutdown
-std::atomic<bool> quitEvent(false);
+// std::atomic<bool> quitEvent(false);
 
 // Signal handler
-void signalHandler(int signum) {
-    quitEvent = true;
-}
+// void signalHandler(int signum) {
+//     quitEvent = true;
+// }
 
 // Custom host node for spatial visualization
 class SpatialVisualizer : public dai::NodeCRTP<dai::node::HostNode, SpatialVisualizer> {
@@ -136,8 +136,8 @@ class SpatialVisualizer : public dai::NodeCRTP<dai::node::HostNode, SpatialVisua
 
 int main() {
     // Set up signal handlers
-    signal(SIGTERM, signalHandler);
-    signal(SIGINT, signalHandler);
+    // signal(SIGTERM, signalHandler);
+    // signal(SIGINT, signalHandler);
 
     try {
         // Create pipeline

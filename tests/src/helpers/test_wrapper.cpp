@@ -91,11 +91,15 @@ int main(int argc, char* argv[]) {
             std::cout << "Devices now: " << dai::Device::getAllAvailableDevices().size() << std::endl;
         }
 
-        // Only call communicate() once and save the results
-        auto results = proc.communicate();
-
         // Now we can safely check the return code
         int retcode = proc.retcode();
+        // 2 signifies that proc was killed by a timeout
+        if (retcode == 2) {
+        retcode = 0;
+        }
+
+        // Only call communicate() once and save the results
+        auto results = proc.communicate();
 
         // Always print the output regardless of return code
         std::string stdoutStr(results.first.buf.data(), results.first.length);

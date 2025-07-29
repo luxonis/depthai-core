@@ -7,12 +7,12 @@
 #include "depthai/depthai.hpp"
 
 // Global flag for graceful shutdown
-std::atomic<bool> quitEvent(false);
+// std::atomic<bool> quitEvent(false);
 
 // Signal handler
-void signalHandler(int signum) {
-    quitEvent = true;
-}
+// void signalHandler(int signum) {
+//     quitEvent = true;
+// }
 
 // Helper function to convert time delta to milliseconds
 float timeDeltaToMilliS(const std::chrono::steady_clock::duration& delta) {
@@ -21,8 +21,8 @@ float timeDeltaToMilliS(const std::chrono::steady_clock::duration& delta) {
 
 int main() {
     // Set up signal handlers
-    signal(SIGTERM, signalHandler);
-    signal(SIGINT, signalHandler);
+    // signal(SIGTERM, signalHandler);
+    // signal(SIGINT, signalHandler);
 
     // Create pipeline
     dai::Pipeline pipeline;
@@ -49,7 +49,7 @@ int main() {
     // Set up output formatting
     std::cout << std::fixed << std::setprecision(6);
 
-    while(pipeline.isRunning() && !quitEvent) {
+    while(pipeline.isRunning()) {
         auto imuData = imuQueue->get<dai::IMUData>();
         if(imuData == nullptr) continue;
 
