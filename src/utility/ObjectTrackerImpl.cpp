@@ -188,6 +188,48 @@ class OCSTracker::State {
         int delta_t;
         bool remove = false;
     };
+    class ClassState {
+       public:
+        float det_thresh;
+        int max_age;
+        int min_hits;
+        float iou_threshold;
+        int delta_t;
+        std::function<Eigen::MatrixXf(const Eigen::MatrixXf&, const Eigen::MatrixXf&)> asso_func;
+        float inertia;
+        bool use_byte;
+        std::vector<KalmanBoxTracker> trackers;
+        std::vector<TrackletExt> tracklets;
+        int frame_count;
+        State* parent;
+
+        void prep() {
+            trackers.erase(std::remove_if(trackers.begin(), trackers.end(), [](const KalmanBoxTracker& t) { return t.remove; }), trackers.end());
+            tracklets.erase(
+                std::remove_if(tracklets.begin(), tracklets.end(), [](const TrackletExt& t) { return t.status == Tracklet::TrackingStatus::REMOVED; }),
+                tracklets.end());
+        }
+        void remove_tracker(size_t idx) {
+            if(idx < trackers.size()) {
+                trackers[idx].remove = true;
+                tracklets[idx].updateStatus(Tracklet::TrackingStatus::REMOVED);
+                --parent->num_trackers;
+            } else {
+                throw std::runtime_error("Index out of bounds in remove_tracker");
+            }
+        }
+        ClassState(State* parent,
+                   float det_thresh_,
+                   int max_age_ = 30,
+                   int min_hits_ = 3,
+                   float iou_threshold_ = 0.3,
+                   int delta_t_ = 3,
+                   std::string asso_func_ = "iou",
+                   float inertia_ = 0.2,
+                   bool use_byte_ = false);
+
+        std::vector<Eigen::RowVectorXf> update(const std::vector<ImgDetection>& detections, const std::vector<Point3f>& spatialData, bool trackOnly = false);
+    };
 
    private:
     float det_thresh;
@@ -195,31 +237,16 @@ class OCSTracker::State {
     int min_hits;
     float iou_threshold;
     int delta_t;
-    std::function<Eigen::MatrixXf(const Eigen::MatrixXf&, const Eigen::MatrixXf&)> asso_func;
+    std::string asso_func;
     float inertia;
     bool use_byte;
-    std::vector<KalmanBoxTracker> trackers;
-    std::vector<TrackletExt> tracklets;
-    int frame_count;
     uint32_t max_id = 0;
     TrackerIdAssignmentPolicy id_assignment_policy;
+    bool track_by_class = false;
     uint32_t max_trackers;
-    uint32_t num_trackers = 0;
+    std::atomic<uint32_t> num_trackers = 0;
+    std::unordered_map<uint32_t, ClassState> class_states;
 
-    void prep() {
-        trackers.erase(std::remove_if(trackers.begin(), trackers.end(), [](const KalmanBoxTracker& t) { return t.remove; }), trackers.end());
-        tracklets.erase(std::remove_if(tracklets.begin(), tracklets.end(), [](const TrackletExt& t) { return t.status == Tracklet::TrackingStatus::REMOVED; }),
-                        tracklets.end());
-    }
-    void remove_tracker(size_t idx) {
-        if(idx < trackers.size()) {
-            trackers[idx].remove = true;
-            tracklets[idx].updateStatus(Tracklet::TrackingStatus::REMOVED);
-            --num_trackers;
-        } else {
-            throw std::runtime_error("Index out of bounds in remove_tracker");
-        }
-    }
     uint32_t get_next_id() {
         switch(id_assignment_policy) {
             case TrackerIdAssignmentPolicy::UNIQUE_ID:
@@ -227,8 +254,10 @@ class OCSTracker::State {
             case TrackerIdAssignmentPolicy::SMALLEST_ID: {
                 uint32_t id = 0;
                 std::vector<uint32_t> ids;
-                ids.reserve(tracklets.size());
-                for(const auto& t : tracklets) ids.push_back(t.id);
+                for(const auto& [_, cs] : class_states) {
+                    ids.reserve(ids.size() + cs.tracklets.size());
+                    for(const auto& t : cs.tracklets) ids.push_back(t.id);
+                }
                 std::sort(ids.begin(), ids.end());
                 for(const auto& t : ids) {
                     if(t != id) {
@@ -251,6 +280,7 @@ class OCSTracker::State {
           int min_hits_ = 3,
           float iou_threshold_ = 0.3,
           TrackerIdAssignmentPolicy id_assignment_policy_ = TrackerIdAssignmentPolicy::UNIQUE_ID,
+          bool track_by_class_ = false,
           uint32_t max_trackers_ = 100,
           int delta_t_ = 3,
           std::string asso_func_ = "iou",
@@ -258,7 +288,14 @@ class OCSTracker::State {
           bool use_byte_ = false);
 
     std::vector<Eigen::RowVectorXf> update(const std::vector<ImgDetection>& detections, const std::vector<Point3f>& spatialData, bool trackOnly = false);
-    const std::vector<TrackletExt>& get_tracklets() const {
+    std::vector<Tracklet> get_tracklets() const {
+        std::vector<Tracklet> tracklets;
+        for(const auto& [index, cs] : class_states) {
+            tracklets.reserve(tracklets.size() + cs.tracklets.size());
+            for(const auto& t : cs.tracklets) {
+                tracklets.push_back((Tracklet)t);
+            }
+        }
         return tracklets;
     }
 };
@@ -334,22 +371,20 @@ std::ostream& operator<<(std::ostream& os, const std::vector<Matrix>& v) {
     return os;
 }
 
-OCSTracker::State::State(float det_thresh_,
-                         int max_age_,
-                         int min_hits_,
-                         float iou_threshold_,
-                         TrackerIdAssignmentPolicy id_assignment_policy_,
-                         uint32_t max_trackers_,
-                         int delta_t_,
-                         std::string asso_func_,
-                         float inertia_,
-                         bool use_byte_) {
+OCSTracker::State::ClassState::ClassState(State* parent_,
+                                          float det_thresh_,
+                                          int max_age_,
+                                          int min_hits_,
+                                          float iou_threshold_,
+                                          int delta_t_,
+                                          std::string asso_func_,
+                                          float inertia_,
+                                          bool use_byte_) {
     /*Sets key parameters for SORT*/
+    parent = parent_;
     max_age = max_age_;
     min_hits = min_hits_;
     iou_threshold = iou_threshold_;
-    id_assignment_policy = id_assignment_policy_;
-    max_trackers = max_trackers_;
     trackers.clear();
     frame_count = 0;
     det_thresh = det_thresh_;
@@ -361,9 +396,9 @@ OCSTracker::State::State(float det_thresh_,
     inertia = inertia_;
     use_byte = use_byte_;
 }
-std::vector<Eigen::RowVectorXf> OCSTracker::State::update(const std::vector<ImgDetection>& detections,
-                                                          const std::vector<Point3f>& spatialData,
-                                                          bool trackOnly) {
+std::vector<Eigen::RowVectorXf> OCSTracker::State::ClassState::update(const std::vector<ImgDetection>& detections,
+                                                                      const std::vector<Point3f>& spatialData,
+                                                                      bool trackOnly) {
     /*
      * dets: (n,7): [[x1,y1,x2,y2,confidence_score, class, idx],...[...]]
      * Params:
@@ -604,15 +639,15 @@ std::vector<Eigen::RowVectorXf> OCSTracker::State::update(const std::vector<ImgD
     ///////////////////////////////
     /*create and initialise new trackers for unmatched detections*/
     for(int i : unmatched_dets) {
-        if(num_trackers < max_trackers) {
+        if(parent->num_trackers < parent->max_trackers) {
             Eigen::RowVectorXf tmp_bbox = dets_first.block(i, 0, 1, 5);
             uint32_t index = dets_first(i, 6);
             int cls_ = int(dets(i, 5));
             KalmanBoxTracker trk = KalmanBoxTracker(tmp_bbox, cls_, delta_t);
-            ++num_trackers;
+            ++parent->num_trackers;
             trackers.push_back(trk);
-            tracklets.push_back(TrackletExt{Tracklet{Rect(tmp_bbox[0], tmp_bbox[1], tmp_bbox[2], tmp_bbox[3]),
-                                                     (int)get_next_id(),
+            tracklets.push_back(TrackletExt{Tracklet{Rect(tmp_bbox(0), tmp_bbox(1), tmp_bbox(2) - tmp_bbox(0), tmp_bbox(3) - tmp_bbox(1)),
+                                                     (int)parent->get_next_id(),
                                                      cls_,
                                                      1,
                                                      Tracklet::TrackingStatus::NEW,
@@ -644,6 +679,53 @@ std::vector<Eigen::RowVectorXf> OCSTracker::State::update(const std::vector<ImgD
         }
     }
     return ret;
+}
+
+std::vector<Eigen::RowVectorXf> OCSTracker::State::update(const std::vector<ImgDetection>& detections,
+                                                          const std::vector<Point3f>& spatialData,
+                                                          bool trackOnly) {
+    std::vector<Eigen::RowVectorXf> ret;
+    std::unordered_map<uint32_t, std::pair<std::vector<ImgDetection>, std::vector<Point3f>>> dets_map;
+    for(auto& [index, cs] : class_states) {
+        dets_map.try_emplace(index, std::pair<std::vector<ImgDetection>, std::vector<Point3f>>());
+    }
+    for(size_t i = 0; i < detections.size(); i++) {
+        uint32_t index = track_by_class ? detections[i].label : 0;
+        dets_map[index].first.push_back(detections[i]);
+        if(i <= spatialData.size())
+            dets_map[index].second.push_back(spatialData[i]);
+        else
+            dets_map[index].second.push_back(Point3f(0, 0, 0));
+    }
+    for(auto& [index, dets] : dets_map) {
+        class_states.try_emplace(index, this, det_thresh, max_age, min_hits, iou_threshold, delta_t, asso_func, inertia, use_byte);
+        auto out = class_states.at(index).update(dets.first, dets.second, trackOnly);
+        ret.insert(ret.end(), out.begin(), out.end());
+    }
+    return ret;
+}
+OCSTracker::State::State(float det_thresh_,
+                         int max_age_,
+                         int min_hits_,
+                         float iou_threshold_,
+                         TrackerIdAssignmentPolicy id_assignment_policy_,
+                         bool track_by_class_,
+                         uint32_t max_trackers_,
+                         int delta_t_,
+                         std::string asso_func_,
+                         float inertia_,
+                         bool use_byte_) {
+    max_age = max_age_;
+    min_hits = min_hits_;
+    iou_threshold = iou_threshold_;
+    id_assignment_policy = id_assignment_policy_;
+    track_by_class = track_by_class_;
+    max_trackers = max_trackers_;
+    det_thresh = det_thresh_;
+    delta_t = delta_t_;
+    asso_func = asso_func_;
+    inertia = inertia_;
+    use_byte = use_byte_;
 }
 
 std::tuple<Eigen::MatrixXf, Eigen::MatrixXf> speed_direction_batch(const Eigen::MatrixXf& dets, const Eigen::MatrixXf& tracks) {
@@ -1498,15 +1580,15 @@ float execLapjv(
     }
 
     float** cost_ptr;
-    cost_ptr = new float*[sizeof(float*) * n];
-    for(int i = 0; i < n; i++) cost_ptr[i] = new float[sizeof(float) * n];
+    cost_ptr = new float*[n];
+    for(int i = 0; i < n; i++) cost_ptr[i] = new float[n];
     for(int i = 0; i < n; i++) {
         for(int j = 0; j < n; j++) {
             cost_ptr[i][j] = cost_c[i][j];
         }
     }
-    int* x_c = new int[sizeof(int) * n];
-    int* y_c = new int[sizeof(int) * n];
+    int* x_c = new int[n];
+    int* y_c = new int[n];
     int ret = lapjv_internal(n, cost_ptr, x_c, y_c);
     if(ret != 0) {
         throw std::runtime_error("The result of lapjv_internal() is invalid.");
@@ -1549,17 +1631,18 @@ float execLapjv(
 OCSTracker::OCSTracker(const ObjectTrackerProperties& properties)
     : maxObjectsToTrack(properties.maxObjectsToTrack),
       trackerIdAssignmentPolicy(properties.trackerIdAssignmentPolicy),
+      trackingPerClass(properties.trackingPerClass),
       occlusionRatioThreshold(properties.occlusionRatioThreshold),
       trackletMaxLifespan(properties.trackletMaxLifespan),
       trackletBirthThreshold(properties.trackletBirthThreshold) {}
 OCSTracker::~OCSTracker() {}
 void OCSTracker::init(const ImgFrame& /* frame */, const std::vector<ImgDetection>& detections, const std::vector<Point3f>& spatialData) {
-    // TODO track by class
     this->state = std::make_unique<State>(0.f,
                                           this->trackletMaxLifespan,
                                           this->trackletBirthThreshold,
                                           this->occlusionRatioThreshold,
                                           this->trackerIdAssignmentPolicy,
+                                          this->trackingPerClass,
                                           this->maxObjectsToTrack,
                                           1,
                                           "giou",
@@ -1583,13 +1666,7 @@ std::vector<Tracklet> OCSTracker::getTracklets() const {
     if(!this->state) {
         throw std::runtime_error("OCSTracker is not initialized. Call init() first.");
     }
-    auto trackletsExt = this->state->get_tracklets();
-    std::vector<Tracklet> tracklets;
-    tracklets.reserve(trackletsExt.size());
-    for(const auto& trackletExt : trackletsExt) {
-        tracklets.push_back((Tracklet)trackletExt);
-    }
-    return tracklets;
+    return this->state->get_tracklets();
 }
 
 }  // namespace impl

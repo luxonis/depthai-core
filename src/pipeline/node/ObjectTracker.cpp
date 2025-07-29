@@ -84,32 +84,13 @@ void ObjectTracker::run() {
 
     float trackerThreshold = properties.trackerThreshold;
     std::vector<std::uint32_t> detectionLabelsToTrack = properties.detectionLabelsToTrack;
-    bool trackingPerClass = properties.trackingPerClass;
-    TrackerType trackerType = properties.trackerType;  // TODO
+    TrackerType trackerType = properties.trackerType;
 
     if(trackerType != TrackerType::SHORT_TERM_IMAGELESS) {
         logger->warn("Selected tracker type is not supported on RVC4, using SHORT_TERM_IMAGELESS instead");
     }
 
-    std::unordered_map<uint32_t, impl::OCSTracker> trackers;
-    std::unordered_map<uint32_t, std::pair<std::vector<ImgDetection>, std::vector<Point3f>>> detectionsPerTracker;
-    if(!trackingPerClass) {
-        trackers.try_emplace(0, properties);
-        detectionsPerTracker.try_emplace(0, std::make_pair(std::vector<ImgDetection>(), std::vector<Point3f>()));
-    } else if(!detectionLabelsToTrack.empty()) {
-        for(const auto& label : detectionLabelsToTrack) {
-            trackers.try_emplace(label, properties);
-            detectionsPerTracker.try_emplace(label, std::make_pair(std::vector<ImgDetection>(), std::vector<Point3f>()));
-        }
-    }
-    auto getTrackerIdx = [trackingPerClass](const ImgDetection& detection) -> uint32_t {
-        if(trackingPerClass) {
-            return detection.label;
-        } else {
-            return 0;  // All detections are tracked with the same tracker
-        }
-    };
-
+    impl::OCSTracker tracker(properties);
     uint32_t seqNum = 0;
 
     while(isRunning()) {
@@ -144,11 +125,10 @@ void ObjectTracker::run() {
         // Either update or track, not both
         if(gotDetections) {
             // TODO: sync messages !!!
-
-            for(auto& [trackerIdx, detections] : detectionsPerTracker) {
-                detections.first.clear();
-                detections.second.clear();
-            }
+            std::vector<ImgDetection> detections;
+            std::vector<Point3f> spatialData;
+            detections.reserve(inputImgDetections ? inputImgDetections->detections.size() : inputSpatialImgDetections->detections.size());
+            spatialData.reserve(detections.size());
 
             ImgTransformation detectionsTransformation = (inputImgDetections ? inputImgDetections->transformation : inputSpatialImgDetections->transformation)
                                                              .value_or(inputDetectionImg->transformation);
@@ -169,47 +149,32 @@ void ObjectTracker::run() {
                     ImgDetection det(detection);
                     det.xmin = std::max(0.f, minx);
                     det.ymin = std::max(0.f, miny);
-                    det.xmax = std::min((float)width, maxx);
-                    det.ymax = std::min((float)height, maxy);
+                    det.xmax = std::min((float)inputTrackerImg->getWidth(), maxx);
+                    det.ymax = std::min((float)inputTrackerImg->getHeight(), maxy);
 
                     if(det.xmin < det.xmax && det.ymin < det.ymax) {
-                        if(trackingPerClass && detectionLabelsToTrack.empty()) {
-                            trackers.try_emplace(detection.label, properties);
-                            detectionsPerTracker.try_emplace(detection.label, std::make_pair(std::vector<ImgDetection>(), std::vector<Point3f>()));
-                        }
-                        uint32_t trackerIdx = getTrackerIdx(det);
-                        detectionsPerTracker[trackerIdx].first.push_back(det);
+                        detections.push_back(det);
                         if(inputSpatialImgDetections) {
-                            detectionsPerTracker[trackerIdx].second.push_back(inputSpatialImgDetections->detections[i].spatialCoordinates);
+                            spatialData.push_back(inputSpatialImgDetections->detections[i].spatialCoordinates);
                         } else {
-                            detectionsPerTracker[trackerIdx].second.push_back(Point3f(0, 0, 0));  // No spatial data available
+                            spatialData.push_back(Point3f(0, 0, 0));  // No spatial data available
                         }
                     }
                 }
             }
-            for(auto& [trackerIdx, tracker] : trackers) {
-                const auto& detections = detectionsPerTracker[trackerIdx].first;
-                const auto& spatialData = detectionsPerTracker[trackerIdx].second;
-                if(!detections.empty() && !tracker.isInitialized()) {
-                    tracker.init(*inputTrackerImg, detections, spatialData);
-                } else if(tracker.isInitialized()) {
-                    tracker.update(*inputTrackerImg, detections, spatialData);
-                }
+            if(!detections.empty() && !tracker.isInitialized()) {
+                tracker.init(*inputTrackerImg, detections, spatialData);
+            } else if(tracker.isInitialized()) {
+                tracker.update(*inputTrackerImg, detections, spatialData);
             }
-        }
-        for(auto& [trackerIdx, tracker] : trackers) {
-            if(!tracker.isInitialized()) continue;
+        } else if(tracker.isInitialized()) {
             tracker.track(*inputTrackerImg);
         }
         auto trackletsMsg = std::make_shared<Tracklets>();
         trackletsMsg->ts = inputTrackerImg->ts;
         trackletsMsg->tsDevice = inputTrackerImg->tsDevice;
         trackletsMsg->sequenceNum = seqNum++;
-        for(auto& [trackerIdx, tracker] : trackers) {
-            if(!tracker.isInitialized()) continue;
-            auto tracklets = tracker.getTracklets();
-            trackletsMsg->tracklets.insert(trackletsMsg->tracklets.end(), tracklets.begin(), tracklets.end());
-        }
+        trackletsMsg->tracklets = tracker.isInitialized() ? tracker.getTracklets() : std::vector<Tracklet>();
 
         out.send(trackletsMsg);
         passthroughTrackerFrame.send(inputTrackerImg);

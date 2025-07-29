@@ -46,6 +46,7 @@ class OCSTracker : public Tracker {
     std::unique_ptr<State> state;
     int32_t maxObjectsToTrack;
     TrackerIdAssignmentPolicy trackerIdAssignmentPolicy;
+    bool trackingPerClass = false;
     float occlusionRatioThreshold;
     uint32_t trackletMaxLifespan;
     uint32_t trackletBirthThreshold;
