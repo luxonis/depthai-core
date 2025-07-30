@@ -1,34 +1,29 @@
 <package format="3">
-  <name>depthai</name>
-  <version>3.0.0</version>
-  <description>DepthAI core is a C++ library which comes with firmware and an API to interact with OAK Platform</description>
+    <name>depthai</name>
+    <version>3.0.0</version>
+    <description>DepthAI core is a C++ library which comes with firmware and an API to interact with
+        OAK Platform</description>
 
-  <maintainer email="adam.serafin@luxonis.com">Adam Serafin</maintainer>
-  <author email="martin@luxonis.com">Martin Peterlin</author>
+    <maintainer email="adam.serafin@luxonis.com">Adam Serafin</maintainer>
+    <author email="martin@luxonis.com">Martin Peterlin</author>
 
-  <license>MIT</license>
+    <license>MIT</license>
 
-  <url type="website">https://www.luxonis.com/</url>
+    <url type="website">https://www.luxonis.com/</url>
 
-  <build_depend>ros_environment</build_depend>
+    <build_depend>ros_environment</build_depend>
 
-  <depend>libusb-1.0-dev</depend>
-  <depend>libopencv-dev</depend>
-  <depend>libpcl-all-dev</depend>
-  <depend>rtabmap</depend>
-	<depend>grid_map_core</depend>
-	<depend>libeigen3-dev</depend>
+    <depend>libusb-1.0-dev</depend>
+    <depend>libopencv-dev</depend>
+    <depend>libpcl-all-dev</depend>
+    <depend>libeigen3-dev</depend>
 
-  <depend>nlohmann-json-dev</depend>
-  <!-- The following tags are recommended by REP-136 -->
-  <exec_depend condition="$ROS_VERSION == 1">catkin</exec_depend>
-  
-  <buildtool_depend condition="$ROS_VERSION == 1">cmake</buildtool_depend>
-  <buildtool_depend condition="$ROS_VERSION == 2">ament_cmake</buildtool_depend>
+    <depend>nlohmann-json-dev</depend>
 
-  <export>
-    <build_type condition="$ROS_VERSION == 1">cmake</build_type>
-    <build_type condition="$ROS_VERSION == 2">ament_cmake</build_type>
-  </export>
+    <buildtool_depend>ament_cmake</buildtool_depend>
+
+    <export>
+        <build_type>ament_cmake</build_type>
+    </export>
 
 </package>

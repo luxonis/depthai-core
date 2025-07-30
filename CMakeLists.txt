@@ -1234,3 +1234,4 @@ if(DEPTHAI_INSTALL)
     )
 
 endif()
+ament_package()
