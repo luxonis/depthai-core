@@ -1,18 +1,21 @@
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_test_macros.hpp>
+#include <chrono>
 
 #include "depthai/depthai.hpp"
+
+#define VIDEO_DURATION_SECONDS 10
 
 template <typename T, typename Container, typename KeyFunc>
 bool has_duplicates(const Container& items, KeyFunc key_func) {
     std::unordered_set<T> seen;
-    for (const auto& item : items) {
+    for(const auto& item : items) {
         auto key = key_func(item);
-        if (!seen.insert(key).second) {
-            return true; // duplicate found
+        if(!seen.insert(key).second) {
+            return true;  // duplicate found
         }
     }
-    return false; // no duplicates
+    return false;  // no duplicates
 }
 
 TEST_CASE("Object Tracker smallest ID assignment policy") {
@@ -49,13 +52,14 @@ TEST_CASE("Object Tracker smallest ID assignment policy") {
 
     int counter = 0;
 
-    while(pipeline.isRunning()) {
+    auto start = std::chrono::steady_clock::now();
+    while(pipeline.isRunning() && std::chrono::steady_clock::now() - start < std::chrono::seconds(VIDEO_DURATION_SECONDS)) {
         auto track = tracklets->get<dai::Tracklets>();
         REQUIRE(track != nullptr);
         REQUIRE(!has_duplicates<int>(track->tracklets, [](const dai::Tracklet& t) { return t.id; }));
         counter += track->tracklets.size();
     }
-    REQUIRE(counter > 0); // Ensure that at least some tracklets were processed
+    REQUIRE(counter > 0);  // Ensure that at least some tracklets were processed
 }
 
 TEST_CASE("Object Tracker unique ID assignment policy") {
@@ -92,11 +96,12 @@ TEST_CASE("Object Tracker unique ID assignment policy") {
 
     int counter = 0;
 
-    while(pipeline.isRunning()) {
+    auto start = std::chrono::steady_clock::now();
+    while(pipeline.isRunning() && std::chrono::steady_clock::now() - start < std::chrono::seconds(VIDEO_DURATION_SECONDS)) {
         auto track = tracklets->get<dai::Tracklets>();
         REQUIRE(track != nullptr);
         REQUIRE(!has_duplicates<int>(track->tracklets, [](const dai::Tracklet& t) { return t.id; }));
         counter += track->tracklets.size();
     }
-    REQUIRE(counter > 0); // Ensure that at least some tracklets were processed
+    REQUIRE(counter > 0);  // Ensure that at least some tracklets were processed
 }

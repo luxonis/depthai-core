@@ -186,6 +186,10 @@ void ObjectTracker::run() {
         trackletsMsg->tsDevice = inputTrackerImg->tsDevice;
         trackletsMsg->sequenceNum = seqNum++;
         trackletsMsg->tracklets = tracker.isInitialized() ? tracker.getTracklets() : std::vector<Tracklet>();
+        // Normalize the tracklets
+        for(auto& tracklet : trackletsMsg->tracklets) {
+            tracklet.roi = tracklet.roi.normalize(inputTrackerImg->getWidth(), inputTrackerImg->getHeight());
+        }
 
         out.send(trackletsMsg);
         passthroughTrackerFrame.send(inputTrackerImg);
