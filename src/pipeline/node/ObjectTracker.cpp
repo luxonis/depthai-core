@@ -91,7 +91,6 @@ void ObjectTracker::run() {
     }
 
     impl::OCSTracker tracker(properties);
-    uint32_t seqNum = 0;
 
     while(isRunning()) {
         std::shared_ptr<ImgFrame> inputTrackerImg;
@@ -184,7 +183,7 @@ void ObjectTracker::run() {
         auto trackletsMsg = std::make_shared<Tracklets>();
         trackletsMsg->ts = inputTrackerImg->ts;
         trackletsMsg->tsDevice = inputTrackerImg->tsDevice;
-        trackletsMsg->sequenceNum = seqNum++;
+        trackletsMsg->sequenceNum = inputTrackerImg->sequenceNum;
         trackletsMsg->tracklets = tracker.isInitialized() ? tracker.getTracklets() : std::vector<Tracklet>();
 
         out.send(trackletsMsg);
