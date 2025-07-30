@@ -94,7 +94,7 @@ int main(int argc, char* argv[]) {
         // Only call communicate() once and save the results
         auto results = proc.communicate();
 
-        proc.poll()
+        proc.poll();
 
         // Now we can safely check the return code
         int retcode = proc.retcode();
