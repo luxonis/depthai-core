@@ -124,8 +124,10 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
                  // While the thread above is cleaning up, check for interrupts
                  // (The thread above is necessary as PyErr_CheckSignals works when called from the main thread only)
                  // https://docs.python.org/3/c-api/exceptions.html#c.PyErr_CheckSignals
+                 py::gil_scoped_release release;
                  while(threadRunning) {
                      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                     py::gil_scoped_acquire acquire;
                      if(PyErr_CheckSignals() != 0) {
                          throw py::error_already_set();
                      }
