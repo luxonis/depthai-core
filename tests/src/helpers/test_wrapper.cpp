@@ -71,9 +71,11 @@ int main(int argc, char* argv[]) {
             }
 
 #else
-            std::cerr << "Sending SIGINT..." << std::endl;
-            proc.kill(SIGINT);  // Try graceful termination first
-            std::this_thread::sleep_for(std::chrono::seconds(5)); // Wait for it to exit
+            if(proc.poll() == -1) { // Check if it's still running
+                std::cerr << "Sending SIGINT..." << std::endl;
+                proc.kill(SIGINT);  // Try graceful termination first
+                std::this_thread::sleep_for(std::chrono::seconds(5)); // Wait for it to exit
+            }
 
             if(proc.poll() == -1) { // Check if it's still running
                 std::cerr << "Process still running after SIGINT, sending SIGKILL..." << std::endl;
@@ -96,8 +98,6 @@ int main(int argc, char* argv[]) {
 
         // Now we can safely check the return code
         int retcode = proc.retcode();
-
-        std::cout << "exit code :\n" << retcode << std::endl;
 
         // Always print the output regardless of return code
         std::string stdoutStr(results.first.buf.data(), results.first.length);
