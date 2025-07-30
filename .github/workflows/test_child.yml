@@ -34,6 +34,7 @@ jobs:
          BRANCH_NAME="${{ github.ref }}"
          PULL_REQUEST="true"
         fi
+        PULL_REQUEST="false"
         if [ "$PULL_REQUEST" = "true" ]; then
           TAG="${{ inputs.flavor }}_short_${{ github.sha }}"
         else
@@ -103,5 +104,5 @@ jobs:
       - name: Run RVC4 tests
         run: |
           export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-${{ matrix.rvc4os }}-${{ inputs.flavor }}"
-          exec hil --models "oak4_s" --reservation-name $RESERVATION_NAME --wait --sync-workspace --rvc4-os-version ${{ matrix.rvc4os }} --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "./tests/run_tests_entrypoint.sh rvc4rgb"
+          exec hil --models "oak4_s" --reservation-name $RESERVATION_NAME --wait --sync-workspace --rvc4-os-version ${{ matrix.rvc4os }} --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "./tests/run_tests_entrypoint.sh rvc4"
 
