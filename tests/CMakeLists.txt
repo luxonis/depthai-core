@@ -220,6 +220,12 @@ private_data(
     FILE "recording.tar"
     LOCATION recording_path
 )
+private_data(
+    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/construction_vest.mp4"
+    SHA1 "271d8d0b702e683ce02957db7c100843de5ceaec"
+    FILE "construction_vest.mp4"
+    LOCATION construction_vest
+)
 
 ### Helper script to wrap the tests with a timeout ############################
 
@@ -463,6 +469,11 @@ dai_set_test_labels(manual_focus_test rvc2_all rvc4 ci)
 # IMU tests
 dai_add_test(imu_test src/ondevice_tests/pipeline/node/imu_test.cpp)
 dai_set_test_labels(imu_test ondevice rvc4 ci) # Many RVC2 devices do not have an IMU which supports the whole test suite
+
+# ObjectTracker tests
+dai_add_test(object_tracker_test src/ondevice_tests/pipeline/node/object_tracker_test.cpp)
+dai_set_test_labels(object_tracker_test ondevice rvc2 rvc4 ci)
+target_compile_definitions(object_tracker_test PRIVATE VIDEO_PATH="${construction_vest}")
 
 # Record & Replay tests
 dai_add_test(record_replay_test src/ondevice_tests/pipeline/node/record_replay_test.cpp)

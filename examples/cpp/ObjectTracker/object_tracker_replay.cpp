@@ -5,8 +5,6 @@
 #include "depthai/pipeline/datatype/Tracklets.hpp"
 
 int main() {
-    bool fullFrameTracking = false;
-
     // Create pipeline
     dai::Pipeline pipeline;
 
