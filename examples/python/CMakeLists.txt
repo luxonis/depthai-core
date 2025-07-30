@@ -328,3 +328,7 @@ dai_set_example_test_labels(warp_mesh rvc2_all rvc4 ci)
 # Feature tracker
 add_python_example(feature_tracker FeatureTracker/feature_tracker.py)
 dai_set_example_test_labels(feature_tracker rvc2_all rvc4 ci)
+
+# ImageFilters
+add_python_example(image_filters StereoDepth/stereo_depth_filters.py)
+dai_set_example_test_labels(image_filters rvc2_all rvc4 ci)
