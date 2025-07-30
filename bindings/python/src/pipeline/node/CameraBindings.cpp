@@ -38,6 +38,8 @@ void bind_camera(pybind11::module& m, void* pCallstack) {
              DOC(dai, node, Camera, build))
         .def("build", py::overload_cast<ReplayVideo&>(&Camera::build), py::arg("replayNode"), DOC(dai, node, Camera, build))
 #endif
+        .def("sensorType", py::overload_cast<dai::CameraSensorType>(&Camera::sensorType), py::arg("sensorType"), DOC(dai, node, Camera, sensorType))
+        .def("sensorType", py::overload_cast<>(&Camera::getSensorType), DOC(dai, node, Camera, getSensorType))
         // .def("setBoardSocket", &Camera::setBoardSocket, "boardSocket"_a, DOC(dai, node, Camera, setBoardSocket))
         .def("getBoardSocket", &Camera::getBoardSocket, DOC(dai, node, Camera, getBoardSocket))
         .def("setMockIsp", &Camera::setMockIsp, "mockIsp"_a, DOC(dai, node, Camera, setMockIsp))
