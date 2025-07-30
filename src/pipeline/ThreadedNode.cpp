@@ -21,36 +21,35 @@ ThreadedNode::ThreadedNode() {
 }
 
 void ThreadedNode::start() {
-    // A node should not be started if it is already running
-    // We would be creating multiple threads for the same node
     DAI_CHECK_V(!isRunning(), "Node with id {} is already running. Cannot start it again. Node name: {}", id, getName());
 
     onStart();
-    // Start the thread
     running = true;
+
+    // auto self = std::enable_shared_from_this<ThreadedNode>::shared_from_this();  // This must be shared_from_this<ThreadedNode>()
+    // auto self = this->shared_from_this();  // So: ThreadedNode must inherit enable_shared_from_this<ThreadedNode>
+
     thread = std::thread([this]() {
         try {
-            run();
+            this->run();
         } catch(const MessageQueue::QueueException& ex) {
-            // catch the exception and stop the node
             auto expStr = fmt::format("Node stopped with a queue exception: {}", ex.what());
-            if(pimpl->logger) {
+            if(pimpl->logger)
                 pimpl->logger->trace(expStr);
-            } else {
+            else
                 spdlog::trace(expStr);
-            }
             running = false;
         } catch(const std::runtime_error& ex) {
             auto expStr = fmt::format("Node threw exception, stopping the node. Exception message: {}", ex.what());
-            if(pimpl->logger) {
+            if(pimpl->logger)
                 pimpl->logger->error(expStr);
-            } else {
+            else
                 spdlog::error(expStr);
-            }
             running = false;
             stopPipeline();
         }
     });
+
     platform::setThreadName(thread, fmt::format("{}({})", getName(), id));
 }
 
