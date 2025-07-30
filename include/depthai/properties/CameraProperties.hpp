@@ -4,6 +4,7 @@
 #include "depthai/capabilities/ImgFrameCapability.hpp"
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/CameraImageOrientation.hpp"
+#include "depthai/common/CameraSensorType.hpp"
 #include "depthai/pipeline/datatype/CameraControl.hpp"
 #include "depthai/properties/Properties.hpp"
 
@@ -26,6 +27,11 @@ struct CameraProperties : PropertiesSerializable<Properties, CameraProperties> {
      * Which socket will color camera use
      */
     CameraBoardSocket boardSocket = CameraBoardSocket::AUTO;
+
+    /**
+     * Camera sensor type (you can pick one in case the given sensor supports multiple types)
+     */
+    CameraSensorType sensorType = CameraSensorType::AUTO;
 
     /**
      * Which camera name will color camera use
@@ -89,6 +95,7 @@ struct CameraProperties : PropertiesSerializable<Properties, CameraProperties> {
 DEPTHAI_SERIALIZE_EXT(CameraProperties,
                       initialControl,
                       boardSocket,
+                      sensorType,
                       cameraName,
                       imageOrientation,
                       resolutionWidth,
