@@ -51,7 +51,7 @@ struct ObjectTrackerProperties : PropertiesSerializable<Properties, ObjectTracke
     /**
      * Tracking method.
      */
-    TrackerType trackerType = TrackerType::ZERO_TERM_IMAGELESS;
+    TrackerType trackerType = TrackerType::SHORT_TERM_IMAGELESS;
     /**
      * New ID assignment policy.
      */
