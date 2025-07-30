@@ -1,8 +1,6 @@
 #pragma once
 
-#include <CalibrationHandle.hpp>
 #include <DynamicCalibration.hpp>
-#include <SensorHandle.hpp>
 #include <depthai/pipeline/DeviceNode.hpp>
 #include <depthai/pipeline/Subnode.hpp>
 #include <depthai/pipeline/node/Sync.hpp>
@@ -15,7 +13,8 @@ namespace node {
 
 struct DclUtils {
     static void convertDclCalibrationToDai(CalibrationHandler& calibHandler,
-                                           const std::shared_ptr<const dcl::CameraCalibrationHandle> daiCalibration,
+                                           const std::shared_ptr<const dcl::CameraCalibrationHandle> daiCalibrationA,
+                                           const std::shared_ptr<const dcl::CameraCalibrationHandle> daiCalibrationB,
                                            const CameraBoardSocket socketSrc,
                                            const CameraBoardSocket socketDest,
                                            const int width,
@@ -27,7 +26,7 @@ struct DclUtils {
                                                                               const std::vector<float> translationVector);
 
     static std::pair<std::shared_ptr<dcl::CameraCalibrationHandle>, std::shared_ptr<dcl::CameraCalibrationHandle>> convertDaiCalibrationToDcl(
-        const CalibrationHandler currentCalibration,
+        const CalibrationHandler& currentCalibration,
         const CameraBoardSocket boardSocketA,
         const CameraBoardSocket boardSocketB,
         const int width,
@@ -40,16 +39,30 @@ struct DclUtils {
  * @brief Dynamic calibration node. Performs calibration check and dynamically calibrates the device
  */
 class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration, DynamicCalibrationProperties>, public HostRunnable {
-   private:
-    bool runOnHostVar = true;
-
-   protected:
-    Properties& getProperties() override;
-
    public:
     constexpr static const char* NAME = "DynamicCalibration";
 
     using DeviceNodeCRTP::DeviceNodeCRTP;
+
+    // clang-format off
+    // Constructors with dcl::DynamicCalibration ... mainly for testing purposes
+    DynamicCalibration(std::unique_ptr<dcl::DynamicCalibration> dc)
+      : DeviceNodeCRTP()
+      , dynCalibImpl(std::move(dc)) {}
+    DynamicCalibration(const std::shared_ptr<Device>& device, std::unique_ptr<dcl::DynamicCalibration> dc)
+      : DeviceNodeCRTP(device)
+      , dynCalibImpl(std::move(dc)) {}
+    DynamicCalibration(std::unique_ptr<Properties> props, bool confMode, std::unique_ptr<dcl::DynamicCalibration> dc)
+      : DeviceNodeCRTP(std::move(props), confMode)
+      , dynCalibImpl(std::move(dc)) {}
+    DynamicCalibration(
+        const std::shared_ptr<Device>& device,
+        std::unique_ptr<Properties> props,
+        bool confMode,
+        std::unique_ptr<dcl::DynamicCalibration> dc)
+      : DeviceNodeCRTP(device, std::move(props), confMode)
+      , dynCalibImpl(std::move(dc)) {}
+    // clang-format on
 
     ~DynamicCalibration() override = default;
 
@@ -60,37 +73,59 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
         PIPELINE_INITIALIZATION_FAILED = 4,
         EMPTY_IMAGE_QUEUE = 5,
         MISSING_IMAGE = 6,
+        CALIBRATION_DOES_NOT_EXIST = 7,
+        STOP_LOADING_IMAGES_DURING_RECALIBRATION = 8,
     };
 
     // clang-format off
     /**
      * Input DynamicCalibrationConfig message with ability to modify parameters in runtime.
      */
-    Input commandQueue{
+    Input commandInput{
         *this,
         {
 	  "inputConfig",
 	  DEFAULT_GROUP,
 	  NON_BLOCKING_QUEUE,
-	  DEFAULT_QUEUE_SIZE,
-	  {{{DatatypeEnum::DynamicCalibrationConfig, false}}},
+	  1,  // Queue_size -> only one command at the time
+	  {{{DatatypeEnum::DynamicCalibrationCommand, false}}},
 	  DEFAULT_WAIT_FOR_MESSAGE
 	}
     };
 
+    Input configInput{*this, {"inputConfig", DEFAULT_GROUP, DEFAULT_BLOCKING, 1, {{{DatatypeEnum::DynamicCalibrationConfig, true}}}, false}};
+
     /**
      * Output calibration quality result
      */
-    Output outputCalibrationResults{
+    Output calibrationOutput{
         *this,
 	{
-	    "outputCalibrationResults",
+	    "calibrationOutput",
 	    DEFAULT_GROUP,
-	    {{{DatatypeEnum::DynamicCalibrationResults, false}}}
+	    {{{DatatypeEnum::DynamicCalibrationResult, false}}}
 	}
     };
 
-    Input inSync{
+    Output qualityOutput{
+        *this,
+	{
+	    "qualityOutput",
+	    DEFAULT_GROUP,
+	    {{{DatatypeEnum::CalibrationQuality, false}}}
+	}
+    };
+
+    Output coverageOutput{
+        *this,
+	{
+	    "coverageResult",
+	    DEFAULT_GROUP,
+	    {{{DatatypeEnum::CoverageData, false}}}
+	}
+    };
+
+    Input syncInput{
         *this,
 	{
 	    "inSync",
@@ -102,24 +137,25 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     };
     // clang-format on
 
-    Subnode<node::Sync> sync{*this, "sync"};
-    InputMap& inputs = sync->inputs;
-
-    std::string leftInputName = "left";
-    std::string rightInputName = "right";
-
     void buildInternal() override;
 
+    Subnode<node::Sync> sync{*this, "sync"};
+    InputMap& inputs = sync->inputs;
+    std::string leftInputName = "left";
+    std::string rightInputName = "right";
     /**
      * Input left image
      */
-    // Input& left = inputs[leftInputName];
+    Input& left = inputs[leftInputName];
 
     /**
      * Input right image
      */
-    // Input& right = inputs[rightInputName];
+    Input& right = inputs[rightInputName];
 
+    void setInitialConfig(DynamicCalibrationConfig& config) {
+        properties.initialConfig = config;
+    }
     /**
      * Specify whether to run on host or device
      * By default, the node will run on host on RVC2 and on device on RVC4.
@@ -131,67 +167,78 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
      */
     bool runOnHost() const override;
 
-    /**
-     * Set Dynamic recalibration performance mode
-     */
-    void setPerformanceMode(dcl::PerformanceMode mode);
+    int getWidth() const {
+        return width;
+    }
 
-    /**
-     * Set Dynamic recalibration as Continious mode, no user interaction needed
-     */
-    void setContinuousMode();
+    int getHeight() const {
+        return height;
+    }
 
-    /**
-     * Set time frequency, when new recalibration will be performed in Continious mode
-     */
-    void setTimeFrequency(int time);
+    void setWidth(const int newWidth) {
+        width = newWidth;
+    }
+
+    void setHeight(const int newHeight) {
+        height = newHeight;
+    }
+
+    CameraBoardSocket getBorderSockerA() {
+        return daiSocketA;
+    }
+
+    CameraBoardSocket getBorderSockerB() {
+        return daiSocketB;
+    }
 
     ErrorCode runQualityCheck(const bool force = false);
 
-    ErrorCode runCalibration(const bool force = false);
+    ErrorCode runCalibration(const dai::CalibrationHandler& calibHandler, const bool force = false);
 
-    ErrorCode runLoadImage();
+    ErrorCode runLoadImage(const bool blocking = false);
 
     ErrorCode computeCoverage();
 
-    ErrorCode initializePipeline(const unsigned int maxNumberOfAttempts = 5);
+    ErrorCode initializePipeline(const std::shared_ptr<dai::Device> daiDevice);
+
+    // clang-format off
+    ErrorCode doWorkContinuous(
+        std::chrono::steady_clock::time_point& previousCalibrationTime,
+	std::chrono::steady_clock::time_point& previousLoadingTime);
+    // clang-format on
+
+    ErrorCode doWork(std::chrono::steady_clock::time_point& previousLoadingTime);
+
+    ErrorCode evaluateCommand(const std::shared_ptr<DynamicCalibrationCommand> command);
+
+    void run() override;
+
+   protected:
+    Properties& getProperties() override;
 
    private:
-    void run() override;
     /**
      * From dai::CalibrationHandler data convert to DCL dcl::CameraCalibrationHandle, which includes all necesarry data for recalibration
      * @return dcl::CameraCalibrationHanlder
      */
-    void pipelineSetup(const std::shared_ptr<Device> device,
-                       const CameraBoardSocket boardSocketA,
-                       const CameraBoardSocket boardSocketB,
-                       const unsigned int width = 1280,
-                       const unsigned int height = 800);
-
     /**
      * Overwrites the internal calibration of DCL with new Calibration data provided by node.
      */
     // clang-format off
-    void setDclCalibration(
-        std::shared_ptr<Device> device,
-	const CameraBoardSocket socketSrc,
-	const CameraBoardSocket socketDest,
-	const int width, const int height);
+    void setCalibration(CalibrationHandler& handler);
     // clang-format on
 
-    void resetResults();
     /**
      * From  DCL dcl::CameraCalibrationHandle convert to dai::CalibrationHandler, so device can setCalibration
      * @return dai::CalibrationHandlerr
      */
-    dai::DynamicCalibrationResults::CalibrationQualityResult calibQualityfromDCL(const dcl::CalibrationQuality& src);
+    dai::CalibrationQuality calibQualityfromDCL(const dcl::CalibrationQuality& src);
     /**
      * DCL held properties
      */
     std::shared_ptr<dcl::CameraSensorHandle> sensorA;
     std::shared_ptr<dcl::CameraSensorHandle> sensorB;
     std::shared_ptr<dcl::Device> dcDevice;
-    DynamicCalibrationResults dynResult;
     dcl::mxid_t deviceName;
     dcl::socket_t socketA;
     dcl::socket_t socketB;
@@ -199,11 +246,14 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     /**
      * DAI held properties
      */
-    CameraBoardSocket daiSocketA;
-    CameraBoardSocket daiSocketB;
-    int widthDefault;
-    int heightDefault;
-    bool forceTrigger = false;
+    CalibrationHandler calibrationHandler;
+
+    CameraBoardSocket daiSocketA = CameraBoardSocket::CAM_B;
+    CameraBoardSocket daiSocketB = CameraBoardSocket::CAM_C;
+    int width;
+    int height;
+
+    bool recalibrationRunning = false;
 
     /**
      * Calibration state machine, which holds the state of Node and provide stabile enviroment;
@@ -213,27 +263,7 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
      * - Starting of Recalibration
      * - Reseting of data
      */
-    dcl::CalibrationQuality calibQuality;
-
-   protected:
-    // clang-format off
-    DynamicCalibration(std::unique_ptr<dcl::DynamicCalibration> dc)
-      : DeviceNodeCRTP()
-      , dynCalibImpl(std::move(dc)) {}
-    DynamicCalibration(const std::shared_ptr<Device>& device, std::unique_ptr<dcl::DynamicCalibration> dc)
-      : DeviceNodeCRTP(device)
-      , dynCalibImpl(std::move(dc)) {}
-    DynamicCalibration(std::unique_ptr<Properties> props, bool confMode, std::unique_ptr<dcl::DynamicCalibration> dc)
-      : DeviceNodeCRTP(std::move(props), confMode)
-      , dynCalibImpl(std::move(dc)) {}
-    // DynamicCalibration(
-    //     const std::shared_ptr<Device>& device,
-    //     std::unique_ptr<Properties> props,
-    //     bool confMode,
-    //     std::unique_ptr<dcl::DynamicCalibration> dc)
-    //   : DeviceNodeCRTP(device, props, confMode)
-    //   , dynCalibImpl(std::move(dc)) {}
-    // clang-format on
+    bool runOnHostVar = true;
     const std::unique_ptr<dcl::DynamicCalibration> dynCalibImpl = std::make_unique<dcl::DynamicCalibration>();
 };
 
