@@ -97,6 +97,8 @@ int main(int argc, char* argv[]) {
         // Now we can safely check the return code
         int retcode = proc.retcode();
 
+        std::cout << "exit code :\n" << retcode << std::endl;
+
         // Always print the output regardless of return code
         std::string stdoutStr(results.first.buf.data(), results.first.length);
         std::string stderrStr(results.second.buf.data(), results.second.length);
