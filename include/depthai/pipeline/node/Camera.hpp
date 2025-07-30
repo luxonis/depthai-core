@@ -68,7 +68,7 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
      * Get the sensor type
      * @return Sensor type
      */
-    inline CameraSensorType getSensorType() {
+    inline CameraSensorType sensorType() {
         return getProperties().sensorType;
     }
 
