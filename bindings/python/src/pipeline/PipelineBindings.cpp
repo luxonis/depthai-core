@@ -112,10 +112,24 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
              })
         .def("__exit__",
              [](Pipeline& d, py::object type, py::object value, py::object traceback) {
-                 py::gil_scoped_release release;
-                 delImplicitPipeline();
-                 d.stop();
-                 d.wait();
+                 // Spawn a thread to clean up the pipeline
+                 bool threadRunning = true;
+                 std::thread([&d, &threadRunning]() {
+                     d.stop();
+                     d.wait();
+                     delImplicitPipeline();
+                     threadRunning = false;
+                 }).detach();
+
+                 // While the thread above is cleaning up, check for interrupts
+                 // (The thread above is necessary as PyErr_CheckSignals works when called from the main thread only)
+                 // https://docs.python.org/3/c-api/exceptions.html#c.PyErr_CheckSignals
+                 while(threadRunning) {
+                     std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                     if(PyErr_CheckSignals() != 0) {
+                         throw py::error_already_set();
+                     }
+                 }
              })
         //.def(py::init<const Pipeline&>())
         .def("getDefaultDevice", &Pipeline::getDefaultDevice, DOC(dai, Pipeline, getDefaultDevice))
