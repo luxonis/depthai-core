@@ -22,107 +22,104 @@ right_out.link(stereo.right)
 
 # Dynamic calibration node
 dyn_calib = pipeline.create(dai.node.DynamicCalibration)
-continious = True
-if continious:
-    dyn_calib.setContinousMode()
-    dyn_calib.setPerformanceMode(dai.DynamicCalibrationProperties.PerformanceMode.DEFAULT)
-    dyn_calib.setTimeFrequency(2)
-dyn_calib.setPerformanceMode(dai.DynamicCalibrationProperties.PerformanceMode.OPTIMIZE_SPEED)
 left_out.link(dyn_calib.left)
 right_out.link(dyn_calib.right)
 
 # Output queues
-left_xout = left_out.createOutputQueue()
-right_xout = right_out.createOutputQueue()
+left_xout = stereo.syncedLeft.createOutputQueue()
+right_xout = stereo.syncedRight.createOutputQueue()
 disp_xout = stereo.disparity.createOutputQueue()
-dyncal_out = dyn_calib.outputCalibrationResults.createOutputQueue()
-input_config = dyn_calib.inputConfig.createInputQueue()
-device  = pipeline.getDefaultDevice()
-calibNew = device.readCalibration()
-calibOld = device.readCalibration()
-device.setCalibration(calibOld)
+
+calibration_output = dyn_calib.calibrationOutput.createOutputQueue()
+coverage_output = dyn_calib.coverageOutput.createOutputQueue()
+quality_output = dyn_calib.qualityOutput.createOutputQueue()
+
+command_input = dyn_calib.commandInput.createInputQueue()
+initial_config_input = dyn_calib.configInput.createInputQueue()
+ 
+# set config
+config = dai.DynamicCalibrationConfig()
+config.performanceMode = dai.PerformanceMode.OPTIMIZE_PERFORMANCE
+config.loadImagePeriod = 0.5
+initial_config_input.send(config)
+
+device = pipeline.getDefaultDevice()
+
+calibration = device.readCalibration()
+new_calibration = None 
+old_calibration = None 
+
+device.setCalibration(calibration)
 # ---------- Device and runtime loop ----------
 pipeline.start()
-import time
-start = time.time()
-with pipeline:
+
+while pipeline.isRunning():
     max_disp = stereo.initialConfig.getMaxDisparity()
 
-    while True:
-        in_left = left_xout.tryGet()
-        in_right = right_xout.tryGet()
-        in_disp = disp_xout.tryGet()
+    in_left = left_xout.get()
+    in_right = right_xout.get()
+    in_disp = disp_xout.get()
 
-        if in_disp:
-            assert isinstance(in_disp, dai.ImgFrame)
-            disp_frame = in_disp.getFrame()
-            disp_vis = (disp_frame * (255.0 / max_disp)).astype(np.uint8)
-            disp_vis = cv2.applyColorMap(disp_vis, cv2.COLORMAP_JET)
-            cv2.imshow("Disparity", disp_vis)
+    disp_frame = in_disp.getFrame()
+    disp_vis = (disp_frame * (255.0 / max_disp)).astype(np.uint8)
+    disp_vis = cv2.applyColorMap(disp_vis, cv2.COLORMAP_JET)
+    key = cv2.waitKey(1)
+    cv2.imshow("Disparity", disp_vis)
+    coverage = coverage_output.tryGet()
+    if coverage:
+        print(coverage.coveragePerCellA)
+        print(coverage.coveragePerCellB)
+        print(coverage.meanCoverage)
 
-        if in_left:
-            assert isinstance(in_left, dai.ImgFrame)
-            cv2.imshow("Left", in_left.getCvFrame())
+    calibration_result = calibration_output.tryGet()
+    if calibration_result:
+        if calibration_result.calibrationData:
+            print("Found new calibration")
+            new_calibration = calibration_result.calibrationData.newCalibration
+            print(new_calibration)
+        else:
+            print(calibration_result.info)
 
-        if in_right:
-            assert isinstance(in_right, dai.ImgFrame)
-            cv2.imshow("Right", in_right.getCvFrame())
+    if key == ord('q'):
+        break
 
-        key = cv2.waitKey(1)
-        if key == ord('q'):
-            break
-        if key == ord('c'):
-            configMessage = dai.DynamicCalibrationConfig()
-            configMessage.calibrationCommand = dai.DynamicCalibrationProperties.CalibrationCommand.START_CALIBRATION_QUALITY_CHECK
-            input_config.send(configMessage)
-            print("Sending command for calibQualityCheck")
-        elif key == ord('r'):
-            configMessage = dai.DynamicCalibrationConfig()
-            configMessage.calibrationCommand = dai.DynamicCalibrationProperties.CalibrationCommand.START_RECALIBRATION
-            input_config.send(configMessage)
-            print("Sending command for recalibration")
-        elif key == ord('f'):
-            configMessage = dai.DynamicCalibrationConfig()
-            configMessage.calibrationCommand = dai.DynamicCalibrationProperties.CalibrationCommand.START_FORCE_CALIBRATION_QUALITY_CHECK
-            input_config.send(configMessage)
-            print("Sending command for forced calibQualityCheck")
-        elif key == ord('p'):
-            configMessage = dai.DynamicCalibrationConfig()
-            configMessage.calibrationCommand = dai.DynamicCalibrationProperties.CalibrationCommand.START_FORCE_RECALIBRATION
-            input_config.send(configMessage)
-            print("Sending command for forced recalibration")
+    if key == ord('r'):
+        print("Recalibrating ...")
+        command_input.send(dai.StartRecalibrationCommand())
 
-        elif key == ord("n"):
-            device.setCalibration(calibNew) # TODO DCL: implement this
+    if key == ord('l'):
+        print("Loading image ... ")
+        command_input.send(dai.LoadImageCommand())
 
-        elif key == ord("o"):
-            device.setCalibration(calibOld)
+    if key == ord('n'):
+        if new_calibration:
+            print("Applying new calibration ... ")
+            command_input.send(dai.ApplyCalibrationCommand(new_calibration))
+            old_calibration = calibration
+            calibration = new_calibration
+            new_calibration = None
+
+    if key == ord('p'):
+        if old_calibration:
+            print("Applying previous calibration ... ")
+            command_input.send(dai.ApplyCalibrationCommand(old_calibration))
+            new_calibration = calibration
+            calibration = old_calibration
+            old_calibration = None
+
+    if key == ord('c'):
+        print("Checking quality ... ")
+        command_input.send(dai.LoadImageCommand())
+        coverage = coverage_output.tryGet()
+        command_input.send(dai.CalibrationQualityCommand(force=True))
+        quality = quality_output.get()
+        if quality.data:
+            print(
+                "|| r_current - r_new || = "
+                f"{np.sqrt(quality.data.rotationChange[0]**2 + quality.data.rotationChange[1]**2 + quality.data.rotationChange[2]**2)} deg"
+            ) 
+            print(
+                f"mean Sampson error achievable = {quality.data.sampsonErrorNew} px \n"
+                f"mean Sampson error current = {quality.data.sampsonErrorCurrent} px"
+            ) 
         
-        calibration_result = dyncal_out.tryGet()
-        if calibration_result is not None:
-            dyn_result = calibration_result
-            calib_result = dyn_result.newCalibration
-
-            if calib_result is not None and getattr(calib_result, 'calibHandler', None) is not None and not continious:
-                calibNew = calib_result.calibHandler
-                device.setCalibration(calibNew)
-                print("Applying new calibration.")
-
-            if dyn_result.calibOverallQuality is not None:
-                overall_quality = dyn_result.calibOverallQuality
-                report = getattr(overall_quality, 'report', None)
-
-                mean_coverage = report.coverageQuality.meanCoverage if report and report.coverageQuality else None
-                if mean_coverage is not None:
-                    print(f"Got calibCheck. Coverage quality = {mean_coverage}, dataAquired: {report.dataAquired}%")
-
-                if report is not None and getattr(report, 'calibrationQuality', None) is not None:
-                    calib_quality = report.calibrationQuality
-
-                    rotation_change = getattr(calib_quality, 'rotationChange', [])
-                    depth_accuracy = getattr(calib_quality, 'depthErrorDifference', [])
-
-                    print("Rotation change[°]:", ' '.join(f"{float(val):.3f}" for val in rotation_change))
-                    print("Improvements if new calibration is applied (as float):")
-                    print(f"1m->{depth_accuracy[0]:.2f}%, \n2m->{depth_accuracy[1]:.2f}%, \n5m->{depth_accuracy[2]:.2f}%, \n10m->{depth_accuracy[3]:.2f}%")
-

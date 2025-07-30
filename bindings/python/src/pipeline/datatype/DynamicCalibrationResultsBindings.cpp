@@ -5,13 +5,15 @@
 #include "pipeline/CommonBindings.hpp"
 
 // depthai
+#include "depthai/device/CalibrationHandler.hpp"
 #include "depthai/pipeline/datatype/DynamicCalibrationResults.hpp"
 
 void bind_dynamic_calibration_results(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace pybind11::literals;
+    namespace py = pybind11;
 
-    // Bind CoverageData
+    // CoverageData
     py::class_<CoverageData, Buffer, std::shared_ptr<CoverageData>>(m, "CoverageData")
         .def(py::init<>())
         .def_readwrite("coveragePerCellA", &CoverageData::coveragePerCellA)
@@ -19,28 +21,35 @@ void bind_dynamic_calibration_results(pybind11::module& m, void* pCallstack) {
         .def_readwrite("meanCoverage", &CoverageData::meanCoverage)
         .def_readwrite("dataAcquired", &CoverageData::dataAcquired);
 
-    // Bind CalibrationQuality::Data
+    // CalibrationQuality::Data
     py::class_<CalibrationQuality::Data>(m, "CalibrationQualityData")
         .def(py::init<>())
-        .def_readwrite("rotationChange", &CalibrationQuality::Data::rotationChange)
-        .def_readwrite("epipolarErrorChange", &CalibrationQuality::Data::epipolarErrorChange)
-        .def_readwrite("depthErrorDifference", &CalibrationQuality::Data::depthErrorDifference);
+        .def_readwrite("rotationChange", &CalibrationQuality::Data::rotationChange)              // std::array<float,3>
+        .def_readwrite("depthErrorDifference", &CalibrationQuality::Data::depthErrorDifference)  // std::vector<float>
+        .def_readwrite("sampsonErrorCurrent", &CalibrationQuality::Data::sampsonErrorCurrent)
+        .def_readwrite("sampsonErrorNew", &CalibrationQuality::Data::sampsonErrorAchievable);
 
-    // Bind CalibrationQuality
+    // CalibrationQuality
     py::class_<CalibrationQuality, Buffer, std::shared_ptr<CalibrationQuality>>(m, "CalibrationQuality")
         .def(py::init<>())
-        .def_readwrite("data", &CalibrationQuality::data)
+        .def(py::init<CalibrationQuality::Data, std::string>(), "data"_a, "info"_a)
+        .def(py::init<std::string>(), "info"_a)
+        .def_readwrite("data", &CalibrationQuality::data)  // std::optional<CalibrationQuality::Data>
         .def_readwrite("info", &CalibrationQuality::info);
 
-    // Bind DynamicCalibrationResult
+    // DynamicCalibrationResult::Data
+    py::class_<DynamicCalibrationResult::Data>(m, "DynamicCalibrationResultData")
+        .def(py::init<>())
+        .def_readwrite("newCalibration", &DynamicCalibrationResult::Data::newCalibration)                 // dai::CalibrationHandler
+        .def_readwrite("currentCalibration", &DynamicCalibrationResult::Data::currentCalibration)         // dai::CalibrationHandler
+        .def_readwrite("calibrationDifference", &DynamicCalibrationResult::Data::calibrationDifference);  // CalibrationQuality::Data
+
+    // DynamicCalibrationResult
     py::class_<DynamicCalibrationResult, Buffer, std::shared_ptr<DynamicCalibrationResult>>(m, "DynamicCalibrationResult")
         .def(py::init<>())
-        .def(py::init<std::optional<dai::CalibrationHandler>, std::optional<CalibrationQuality::Data>, std::string>(),
-             "calibration"_a,
-             "calibrationQuality"_a,
-             "info"_a)
-        .def_readwrite("calibration", &DynamicCalibrationResult::calibration)
-        .def_readwrite("calibrationQuality", &DynamicCalibrationResult::calibrationQuality)
+        .def(py::init<DynamicCalibrationResult::Data, std::string>(), "data"_a, "info"_a)
+        .def(py::init<std::string>(), "info"_a)
+        .def_readwrite("calibrationData", &DynamicCalibrationResult::calibrationData)  // std::optional<Data>
         .def_readwrite("info", &DynamicCalibrationResult::info);
 
     ///////////////////////////////////////////////////////////////////////

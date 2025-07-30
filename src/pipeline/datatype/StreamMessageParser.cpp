@@ -210,12 +210,20 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
             return parseDatatype<StereoDepthConfig>(metadataStart, serializedObjectSize, data, fd);
             break;
 
+        case DatatypeEnum::DynamicCalibrationCommand:
+            return parseDatatype<DynamicCalibrationCommand>(metadataStart, serializedObjectSize, data, fd);
+            break;
+
+        case DatatypeEnum::CoverageData:
+            return parseDatatype<CoverageData>(metadataStart, serializedObjectSize, data, fd);
+            break;
+
         case DatatypeEnum::DynamicCalibrationConfig:
             return parseDatatype<DynamicCalibrationConfig>(metadataStart, serializedObjectSize, data, fd);
             break;
 
-        case DatatypeEnum::DynamicCalibrationResults:
-            return parseDatatype<DynamicCalibrationResults>(metadataStart, serializedObjectSize, data, fd);
+        case DatatypeEnum::DynamicCalibrationResult:
+            return parseDatatype<DynamicCalibrationResult>(metadataStart, serializedObjectSize, data, fd);
             break;
 
         case DatatypeEnum::EdgeDetectorConfig:
