@@ -63,7 +63,7 @@ struct ObjectTrackerProperties : PropertiesSerializable<Properties, ObjectTracke
     /**
      * Occlusion ratio threshold. Used to filter out overlapping tracklets.
      */
-    float occlusionRatioThreshold = 0.3f;
+    float occlusionRatioThreshold = 0.2f;
     /**
      * Tracklet lifespan in number of frames. Number of frames after which a LOST tracklet is removed.
      */

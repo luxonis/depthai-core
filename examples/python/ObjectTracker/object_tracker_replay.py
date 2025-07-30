@@ -31,7 +31,6 @@ with dai.Pipeline() as pipeline:
 
     detectionNetwork = pipeline.create(dai.node.DetectionNetwork).build(inputSource, "yolov6-nano")
     objectTracker = pipeline.create(dai.node.ObjectTracker)
-    objectTracker.setRunOnHost(True)
 
     detectionNetwork.setConfidenceThreshold(0.6)
     detectionNetwork.input.setBlocking(False)
@@ -39,10 +38,9 @@ with dai.Pipeline() as pipeline:
 
     objectTracker.setDetectionLabelsToTrack([0])  # track only person
     # possible tracking types: ZERO_TERM_COLOR_HISTOGRAM, ZERO_TERM_IMAGELESS, SHORT_TERM_IMAGELESS, SHORT_TERM_KCF
-    objectTracker.setTrackerType(dai.TrackerType.ZERO_TERM_COLOR_HISTOGRAM)
+    objectTracker.setTrackerType(dai.TrackerType.SHORT_TERM_IMAGELESS)
     # take the smallest ID when new object is tracked, possible options: SMALLEST_ID, UNIQUE_ID
     objectTracker.setTrackerIdAssignmentPolicy(dai.TrackerIdAssignmentPolicy.SMALLEST_ID)
-    objectTracker.setOcclusionRatioThreshold(0.2)
 
     preview = objectTracker.passthroughTrackerFrame.createOutputQueue()
     tracklets = objectTracker.out.createOutputQueue()

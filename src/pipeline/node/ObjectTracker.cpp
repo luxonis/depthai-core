@@ -135,7 +135,7 @@ void ObjectTracker::run() {
 
         // Either update or track, not both
         if(gotDetections) {
-            // TODO: sync messages !!!
+            // TODO: sync messages (currently OK since only imageless tracker is supported)
             std::vector<ImgDetection> detections;
             std::vector<Point3f> spatialData;
             detections.reserve(inputImgDetections ? inputImgDetections->detections.size() : inputSpatialImgDetections->detections.size());
