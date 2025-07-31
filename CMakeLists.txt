@@ -1236,4 +1236,6 @@ if(DEPTHAI_INSTALL)
     )
 
 endif()
-ament_package()
+if(ament_cmake_FOUND)
+    ament_package() 
+endif()
