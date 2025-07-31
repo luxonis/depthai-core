@@ -32,7 +32,7 @@ class Vpp : public DeviceNodeCRTP<DeviceNode, Vpp, VppProperties> {
     /**
      * Input VppConfig message with ability to modify parameters in runtime.
      */
-    Input inputConfig{*this, {"inputConfig", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::VppConfig, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+    Input inputConfig{*this, {"inputConfig", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::VppConfig, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Input for left ImgFrame
