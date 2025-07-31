@@ -14,8 +14,8 @@
     <build_depend>ros_environment</build_depend>
 
     <depend>libusb-1.0-dev</depend>
+    <depend>libudev-dev</depend>
     <depend>libopencv-dev</depend>
-    <depend>libpcl-all-dev</depend>
     <depend>libeigen3-dev</depend>
 
     <depend>nlohmann-json-dev</depend>
