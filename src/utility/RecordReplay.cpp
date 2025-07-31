@@ -1,6 +1,6 @@
 #include "depthai/utility/RecordReplay.hpp"
 
-#include "spdlog/spdlog.h"
+#include <spdlog/spdlog.h>
 
 #include <mcap/types.hpp>
 #include <optional>
