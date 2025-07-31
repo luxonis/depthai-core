@@ -107,7 +107,7 @@ class VppConfig : public Buffer {
      * Maximum disparity threshold for processing (Default: 255.0)
      */
     float disparityMaxThreshold = 255.0f;
-
+    
     /**
      * Construct VppConfig message.
      */

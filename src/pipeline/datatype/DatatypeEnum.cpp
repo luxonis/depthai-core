@@ -5,6 +5,7 @@
 #include <type_traits>
 #include <unordered_map>
 #include <vector>
+#include "spdlog/spdlog.h"
 
 namespace dai {
 
@@ -38,7 +39,8 @@ const std::unordered_map<DatatypeEnum, std::vector<DatatypeEnum>> hierarchy = {
       DatatypeEnum::PointCloudConfig,
       DatatypeEnum::PointCloudData,
       DatatypeEnum::TransformData,
-      DatatypeEnum::ImgAnnotations}},
+      DatatypeEnum::ImgAnnotations,
+      DatatypeEnum::VppConfig}},
     {DatatypeEnum::Buffer,
      {DatatypeEnum::ImgFrame,
       DatatypeEnum::EncodedFrame,
@@ -67,7 +69,8 @@ const std::unordered_map<DatatypeEnum, std::vector<DatatypeEnum>> hierarchy = {
       DatatypeEnum::PointCloudConfig,
       DatatypeEnum::PointCloudData,
       DatatypeEnum::TransformData,
-      DatatypeEnum::ImgAnnotations}},
+      DatatypeEnum::ImgAnnotations,
+      DatatypeEnum::VppConfig}},
     {DatatypeEnum::ImgFrame, {}},
     {DatatypeEnum::EncodedFrame, {}},
     {DatatypeEnum::NNData, {}},
@@ -96,6 +99,7 @@ const std::unordered_map<DatatypeEnum, std::vector<DatatypeEnum>> hierarchy = {
     {DatatypeEnum::PointCloudData, {}},
     {DatatypeEnum::TransformData, {}},
     {DatatypeEnum::ImgAnnotations, {}},
+    {DatatypeEnum::VppConfig, {}},
 };
 
 bool isDatatypeSubclassOf(DatatypeEnum parent, DatatypeEnum children) {
@@ -103,10 +107,10 @@ bool isDatatypeSubclassOf(DatatypeEnum parent, DatatypeEnum children) {
     if(hierarchy.find(parent) == hierarchy.end()) {
         throw std::invalid_argument("Parent datatype not found in hierarchy");
     }
-    for(const auto& d : hierarchy.at(parent)) {
+        for(const auto& d : hierarchy.at(parent)) {
         if(d == children) return true;
         if(isDatatypeSubclassOf(d, children)) return true;
-    }
+        }
     return false;
 }
 
