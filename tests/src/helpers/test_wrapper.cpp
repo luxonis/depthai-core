@@ -91,13 +91,11 @@ int main(int argc, char* argv[]) {
             std::cout << "Devices now: " << dai::Device::getAllAvailableDevices().size() << std::endl;
         }
 
-        // Only call communicate() once and save the results
-        auto results = proc.communicate();
-
-        proc.poll();
-
         // Now we can safely check the return code
         int retcode = proc.retcode();
+
+        // Only call communicate() once and save the results
+        auto results = proc.communicate();
 
         // Always print the output regardless of return code
         std::string stdoutStr(results.first.buf.data(), results.first.length);
