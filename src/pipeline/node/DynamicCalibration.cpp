@@ -222,8 +222,8 @@ void DynamicCalibration::pipelineSetup(std::shared_ptr<Device> device, CameraBoa
         createDCLCameraCalibration(calibData.rightCameraMatrix, calibData.rightDistortionCoefficients, calibData.rotationMatrixB, calibData.translationVectorB);
 
     const dcl::resolution_t resolution = {
-        .width = static_cast<unsigned int>(width),
-        .height = static_cast<unsigned int>(height)
+        static_cast<unsigned int>(width),
+        static_cast<unsigned int>(height)
     };
 
     sensorA = std::make_shared<dcl::CameraSensorHandle>(calibA, resolution);

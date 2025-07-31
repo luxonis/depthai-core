@@ -72,14 +72,8 @@ set(DEPTHAI_PRE_RELEASE_VERSION "3")
 # Set DEPTHAI_VERSION universally, not conditionally
 set(DEPTHAI_VERSION ${PROJECT_VERSION}-${DEPTHAI_PRE_RELEASE_TYPE}.${DEPTHAI_PRE_RELEASE_VERSION})
 
-# Default for dynamic calibration support (turn on x64 Liunux, but off for others)
-if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64" AND UNIX)
-    message(STATUS "Dynamic Calibration support enabled by default for x64 Linux")
-    option(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT "Enable Dynamic Calibration support" ON)
-else()
-    message(STATUS "Dynamic Calibration support disabled by default")
-    option(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT "Enable Dynamic Calibration support" OFF)
-endif()
+message(STATUS "Dynamic Calibration support enabled by default for x64 Linux")
+option(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT "Enable Dynamic Calibration support" ON)
 
 get_directory_property(has_parent PARENT_DIRECTORY)
 if(has_parent)
@@ -544,17 +538,36 @@ if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
         $<BUILD_INTERFACE:${DYNAMIC_CALIBRATION_DIR}/include>
     )
 
-    find_library(DYNAMIC_CALIBRATION dynamic_calibration
+    # Search for the release version of the library
+    find_library(DYNAMIC_CALIBRATION_RELEASE dynamic_calibration
         PATHS ${DYNAMIC_CALIBRATION_DIR}/lib
         NO_DEFAULT_PATH
     )
-    target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT)
-    if(DYNAMIC_CALIBRATION)
-        message(STATUS "Dynamic Calibration library found: ${DYNAMIC_CALIBRATION}")
-        target_link_libraries(${TARGET_CORE_NAME} PUBLIC ${DYNAMIC_CALIBRATION})
-    else()
+
+    # Search for the debug version of the library (with 'd' suffix)
+    find_library(DYNAMIC_CALIBRATION_DEBUG dynamic_calibrationd
+        PATHS ${DYNAMIC_CALIBRATION_DIR}/lib
+        NO_DEFAULT_PATH
+    )
+
+    # Fallback error handling if neither are found
+    if(NOT DYNAMIC_CALIBRATION_RELEASE AND NOT DYNAMIC_CALIBRATION_DEBUG)
         message(FATAL_ERROR "Dynamic Calibration library not found, disable support by setting DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT to OFF")
     endif()
+
+    # Set a generator expression to select the right one based on build type
+    set(DYNAMIC_CALIBRATION_LIB
+        $<$<CONFIG:Debug>:${DYNAMIC_CALIBRATION_DEBUG}>
+        $<$<CONFIG:Release>:${DYNAMIC_CALIBRATION_RELEASE}>
+    )
+
+    # Link the correct library
+    target_link_libraries(${TARGET_CORE_NAME} PUBLIC ${DYNAMIC_CALIBRATION_LIB})
+    target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT)
+
+    # Logging for confirmation
+    message(STATUS "Dynamic Calibration Release: ${DYNAMIC_CALIBRATION_RELEASE}")
+    message(STATUS "Dynamic Calibration Debug: ${DYNAMIC_CALIBRATION_DEBUG}")
 endif()
 
 # Set constant
