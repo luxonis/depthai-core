@@ -17,6 +17,10 @@
     <depend>libudev-dev</depend>
     <depend>libopencv-dev</depend>
     <depend>nlohmann-json-dev</depend>
+    <depend>curl</depend>
+    <depend>zip</depend>
+    <depend>unzip</depend>
+    <depend>tar</depend>
 
     <buildtool_depend>ament_cmake</buildtool_depend>
 
