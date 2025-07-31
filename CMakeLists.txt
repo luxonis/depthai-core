@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 3.20)
 
+set(BUILD_SHARED_LIBS ON)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
 include(cmake/depthaiOptions.cmake)
 
 if(WIN32)
@@ -123,6 +126,7 @@ set(PROJECT_EXPORT_GROUP "${PROJECT_NAME}Targets")
 
 ## Check if cloned or sources
 find_package(Git)
+find_package(ament_cmake QUIET)
 if(GIT_FOUND)
     execute_process(
         COMMAND ${GIT_EXECUTABLE} rev-parse --show-toplevel
@@ -1231,4 +1235,7 @@ if(DEPTHAI_INSTALL)
         DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}"
     )
 
+endif()
+if(ament_cmake_FOUND)
+    ament_package() 
 endif()
