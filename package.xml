@@ -16,8 +16,6 @@
     <depend>libusb-1.0-dev</depend>
     <depend>libudev-dev</depend>
     <depend>libopencv-dev</depend>
-    <depend>libeigen3-dev</depend>
-
     <depend>nlohmann-json-dev</depend>
 
     <buildtool_depend>ament_cmake</buildtool_depend>
