@@ -1,10 +1,9 @@
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_test_macros.hpp>
+#include <chrono>
 #include <depthai/depthai.hpp>
 #include <depthai/pipeline/node/internal/XLinkIn.hpp>
-
 #include <thread>
-#include <chrono>
 using namespace std::chrono_literals;
 
 TEST_CASE("XLinkIn lazy allocation test") {
@@ -14,10 +13,10 @@ TEST_CASE("XLinkIn lazy allocation test") {
     auto xLinkInImage = p.create<dai::node::internal::XLinkIn>();
     auto xLinkInConfig = p.create<dai::node::internal::XLinkIn>();
 
-    xLinkInImage->setMaxDataSize(1024 * 1024 * 1024); // 1GB per frame
+    xLinkInImage->setMaxDataSize(1024 * 1024 * 1024);  // 1GB per frame
     xLinkInImage->setNumFrames(64);
 
-    xLinkInConfig->setMaxDataSize(1024 * 1024 * 1024); // 1GB per frame
+    xLinkInConfig->setMaxDataSize(1024 * 1024 * 1024);  // 1GB per frame
     xLinkInConfig->setNumFrames(64);
 
     xLinkInImage->out.link(manip->inputImage);

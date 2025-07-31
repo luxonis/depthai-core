@@ -45,6 +45,13 @@ bool checkPathExists(const std::filesystem::path& path, bool directory = false);
 bool checkWritePermissions(const std::filesystem::path& path);
 
 /**
+ * @brief Check if a path has read permissions
+ * @param path Path to check
+ * @return True if path has read permissions, false otherwise
+ */
+bool checkReadPermissions(const std::filesystem::path& path);
+
+/**
  * @brief Join two paths, OS-agnostic. This is a wrapper around std::filesystem::path::operator/
  * @param path1 First path
  * @param path2 Second path
