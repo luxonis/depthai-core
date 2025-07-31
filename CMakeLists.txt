@@ -764,7 +764,7 @@ endif()
 
 if(DEPTHAI_XTENSOR_SUPPORT)
     target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_XTENSOR_SUPPORT)
-	target_link_libraries(${TARGET_CORE_NAME} PRIVATE xtensor)
+    target_link_libraries(${TARGET_CORE_NAME} PUBLIC xtensor)
 endif()
 
 # Specify available FW
