@@ -1,3 +1,5 @@
+// Implementation adapted from https://github.com/Postroggy/OC_SORT_CPP/tree/master
+
 #include "ObjectTrackerImpl.hpp"
 
 #include <fmt/base.h>
