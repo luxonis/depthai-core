@@ -12,5 +12,5 @@ private_data(
 )
 
 dai_add_example(object_tracker object_tracker.cpp OFF OFF) 
-dai_add_example(object_tracker_replay object_tracker_replay.cpp OFF OFF)
+dai_add_example(object_tracker_replay object_tracker_replay.cpp ON OFF)
 target_compile_definitions(object_tracker_replay PRIVATE VIDEO_PATH="${construction_vest}")
