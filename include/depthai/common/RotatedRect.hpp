@@ -24,10 +24,15 @@ struct RotatedRect {
             throw std::runtime_error("Cannot create RotatedRect with mixed normalization");
         }
     }
-    RotatedRect(const Rect& rect, float angle)
+    RotatedRect(const Rect& rect, float angle = 0.f)
         : center(rect.x + rect.width / 2.0f, rect.y + rect.height / 2.0f, rect.isNormalized()),
           size(rect.width, rect.height, rect.isNormalized()),
           angle(angle) {}
+
+    operator Rect() const {
+        const auto [minx, miny, maxx, maxy] = getOuterRect();
+        return Rect(minx, miny, maxx - minx, maxy - miny);
+    }
 
     bool isNormalized() const {
         if(size.isNormalized() != center.isNormalized()) {
@@ -52,8 +57,8 @@ struct RotatedRect {
      * Denormalize the rotated rectangle. The denormalized rectangle will have center and size coordinates in range [0, width] and [0, height]
      * @return Denormalized rotated rectangle
      */
-    RotatedRect denormalize(unsigned int width, unsigned int height) const {
-        if(!isNormalized()) return *this;
+    RotatedRect denormalize(unsigned int width, unsigned int height, bool force = false) const {
+        if(!force && !isNormalized()) return *this;
         RotatedRect denormalized = *this;
         denormalized.center = dai::Point2f(center.x * width, center.y * height, false);
         denormalized.size = dai::Size2f(size.width * width, size.height * height, false);
