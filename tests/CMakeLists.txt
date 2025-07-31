@@ -231,7 +231,7 @@ private_data(
 
 add_executable(test_wrapper src/helpers/test_wrapper.cpp)
 target_include_directories(test_wrapper PRIVATE ${CMAKE_CURRENT_LIST_DIR}/include/subprocess)
-target_link_libraries(test_wrapper PRIVATE depthai::core Threads::Threads spdlog::spdlog)
+target_link_libraries(test_wrapper PRIVATE depthai::core Threads::Threads)
 
 ### On-host tests #############################################################
 
@@ -239,6 +239,10 @@ target_link_libraries(test_wrapper PRIVATE depthai::core Threads::Threads spdlog
 dai_add_test(openvino_test src/onhost_tests/openvino/openvino_test.cpp)
 target_compile_definitions(openvino_test PRIVATE SUPERBLOB_PATH="${superblob_path}")
 dai_set_test_labels(openvino_test onhost ci)
+
+# CalibrationHandler test
+dai_add_test(calibration_handler_test src/onhost_tests/calibration_handler_test.cpp)
+dai_set_test_labels(calibration_handler_test onhost ci)
 
 # NNArchive test
 dai_add_test(nn_archive_test src/onhost_tests/nn_archive/nn_archive_test.cpp)
@@ -494,7 +498,3 @@ dai_set_test_labels(video_encoder_test ondevice rvc2_all rvc4 ci)
 # XLinkIn test
 dai_add_test(xlink_test src/ondevice_tests/xlink_tests.cpp)
 dai_set_test_labels(xlink_test ondevice rvc2_all ci)
-
-# runtime_calibration_test test
-dai_add_test(runtime_calibration_test src/ondevice_tests/runtime_calibration_test.cpp)
-dai_set_test_labels(runtime_calibration_test ondevice rvc2_all rvc4 ci)
