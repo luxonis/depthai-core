@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 
 set(BUILD_SHARED_LIBS ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+set(FETCHCONTENT_FULLY_DISCONNECTED OFF)
 
 include(cmake/depthaiOptions.cmake)
 
