@@ -117,7 +117,7 @@ if __name__ == "__main__":
             "labels": ["rvc4"],
         },
         {
-            "name": "RVC4 RGB ONLY",
+            "name": "RVC4 - RGB",
             "env": {"DEPTHAI_PLATFORM": "rvc4"},
             "labels": ["rvc4rgb"],
         },
