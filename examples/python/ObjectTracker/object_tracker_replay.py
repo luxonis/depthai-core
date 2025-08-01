@@ -4,51 +4,51 @@ import cv2
 import depthai as dai
 import time
 
+from pathlib import Path
+from argparse import ArgumentParser
 
-fullFrameTracking = False
+scriptDir = Path(__file__).resolve().parent
+examplesRoot = (scriptDir / Path('../')).resolve()  # This resolves the parent directory correctly
+models = examplesRoot / 'models'
+videoPath = models / 'construction_vest.mp4'
+
+parser = ArgumentParser()
+parser.add_argument("-i", "--inputVideo", default=videoPath, help="Input video name")
+parser.add_argument("-c", "--camera", type=bool, help="Use camera as input", default=False)
+args = parser.parse_args()
 
 # Create pipeline
 with dai.Pipeline() as pipeline:
     # Define sources and outputs
-    camRgb = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
-    monoLeft = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
-    monoRight = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C)
+    inputSource = None
+    if args.camera: 
+        camRgb = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
+        inputSource = camRgb
+    else:
+        replay = pipeline.create(dai.node.ReplayVideo)
+        replay.setReplayVideoFile(Path(args.inputVideo))
+        inputSource = replay
 
-    stereo = pipeline.create(dai.node.StereoDepth)
-    leftOutput = monoLeft.requestOutput((640, 400))
-    rightOutput = monoRight.requestOutput((640, 400))
-    leftOutput.link(stereo.left)
-    rightOutput.link(stereo.right)
-
-    spatialDetectionNetwork = pipeline.create(dai.node.SpatialDetectionNetwork).build(camRgb, stereo, "yolov6-nano")
+    detectionNetwork = pipeline.create(dai.node.DetectionNetwork).build(inputSource, "yolov6-nano")
     objectTracker = pipeline.create(dai.node.ObjectTracker)
 
-    spatialDetectionNetwork.setConfidenceThreshold(0.5)
-    spatialDetectionNetwork.input.setBlocking(False)
-    spatialDetectionNetwork.setBoundingBoxScaleFactor(0.5)
-    spatialDetectionNetwork.setDepthLowerThreshold(100)
-    spatialDetectionNetwork.setDepthUpperThreshold(5000)
-    labelMap = spatialDetectionNetwork.getClasses()
+    detectionNetwork.setConfidenceThreshold(0.6)
+    detectionNetwork.input.setBlocking(False)
+    labelMap = detectionNetwork.getClasses()
 
     objectTracker.setDetectionLabelsToTrack([0])  # track only person
     # possible tracking types: ZERO_TERM_COLOR_HISTOGRAM, ZERO_TERM_IMAGELESS, SHORT_TERM_IMAGELESS, SHORT_TERM_KCF
-    objectTracker.setTrackerType(dai.TrackerType.ZERO_TERM_COLOR_HISTOGRAM)
+    objectTracker.setTrackerType(dai.TrackerType.SHORT_TERM_IMAGELESS)
     # take the smallest ID when new object is tracked, possible options: SMALLEST_ID, UNIQUE_ID
     objectTracker.setTrackerIdAssignmentPolicy(dai.TrackerIdAssignmentPolicy.SMALLEST_ID)
 
     preview = objectTracker.passthroughTrackerFrame.createOutputQueue()
     tracklets = objectTracker.out.createOutputQueue()
 
-    if fullFrameTracking:
-        camRgb.requestFullResolutionOutput().link(objectTracker.inputTrackerFrame)
-        # do not block the pipeline if it's too slow on full frame
-        objectTracker.inputTrackerFrame.setBlocking(False)
-        objectTracker.inputTrackerFrame.setMaxSize(1)
-    else:
-        spatialDetectionNetwork.passthrough.link(objectTracker.inputTrackerFrame)
+    detectionNetwork.passthrough.link(objectTracker.inputTrackerFrame)
 
-    spatialDetectionNetwork.passthrough.link(objectTracker.inputDetectionFrame)
-    spatialDetectionNetwork.out.link(objectTracker.inputDetections)
+    detectionNetwork.passthrough.link(objectTracker.inputDetectionFrame)
+    detectionNetwork.out.link(objectTracker.inputDetections)
 
     startTime = time.monotonic()
     counter = 0
@@ -86,10 +86,6 @@ with dai.Pipeline() as pipeline:
             cv2.putText(frame, f"ID: {[t.id]}", (x1 + 10, y1 + 35), cv2.FONT_HERSHEY_TRIPLEX, 0.5, 255)
             cv2.putText(frame, t.status.name, (x1 + 10, y1 + 50), cv2.FONT_HERSHEY_TRIPLEX, 0.5, 255)
             cv2.rectangle(frame, (x1, y1), (x2, y2), color, cv2.FONT_HERSHEY_SIMPLEX)
-
-            cv2.putText(frame, f"X: {int(t.spatialCoordinates.x)} mm", (x1 + 10, y1 + 65), cv2.FONT_HERSHEY_TRIPLEX, 0.5, 255)
-            cv2.putText(frame, f"Y: {int(t.spatialCoordinates.y)} mm", (x1 + 10, y1 + 80), cv2.FONT_HERSHEY_TRIPLEX, 0.5, 255)
-            cv2.putText(frame, f"Z: {int(t.spatialCoordinates.z)} mm", (x1 + 10, y1 + 95), cv2.FONT_HERSHEY_TRIPLEX, 0.5, 255)
 
         cv2.putText(frame, "NN fps: {:.2f}".format(fps), (2, frame.shape[0] - 4), cv2.FONT_HERSHEY_TRIPLEX, 0.4, color)
 

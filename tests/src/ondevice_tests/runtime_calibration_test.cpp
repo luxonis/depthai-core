@@ -15,11 +15,7 @@ TEST_CASE("Test runtime calibration") {
     dai::CalibrationHandler calibHandler, calibHandlerReadBack;
 
     dai::CameraBoardSocket cameraId = dai::CameraBoardSocket::CAM_B;
-    std::vector<std::vector<float>> intrinsics = {
-        {1000.0f, 0.0f, 320.0f},
-        {0.0f, 1000.0f, 240.0f},
-        {0.0f, 0.0f, 1.0f}
-    };
+    std::vector<std::vector<float>> intrinsics = {{1000.0f, 0.0f, 320.0f}, {0.0f, 1000.0f, 240.0f}, {0.0f, 0.0f, 1.0f}};
     std::tuple<int, int> frameSize = {1280, 800};
 
     calibHandler.setCameraIntrinsics(cameraId, intrinsics, frameSize);
@@ -59,5 +55,4 @@ TEST_CASE("Test runtime calibration") {
     } catch(const std::exception& e) {
         FAIL("Failed to read back distortion coefficients: " << e.what());
     }
-
 }
