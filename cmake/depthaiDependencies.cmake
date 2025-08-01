@@ -244,32 +244,51 @@ if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
     message(STATUS "Dynamic calibration extracted to ${dynamic_calibration_SOURCE_DIR}")
     set(DYNAMIC_CALIBRATION_DIR ${dynamic_calibration_SOURCE_DIR})
 
-    # Search for the release version of the library
-    find_library(DYNAMIC_CALIBRATION_RELEASE dynamic_calibration
-        PATHS ${DYNAMIC_CALIBRATION_DIR}/lib
-        NO_DEFAULT_PATH
-    )
     if(WIN32)
-        # Search for the debug version of the library (with 'd' suffix)
-        find_library(DYNAMIC_CALIBRATION_DEBUG dynamic_calibrationd
+        # On Windows, find both .lib (import libraries) and .dll (runtime libraries)
+        # Search for the import libraries (.lib files)
+        find_library(DYNAMIC_CALIBRATION_RELEASE_LIB dynamic_calibration
             PATHS ${DYNAMIC_CALIBRATION_DIR}/lib
             NO_DEFAULT_PATH
         )
-        if(NOT DYNAMIC_CALIBRATION_DEBUG)
-            message(FATAL_ERROR "Dynamic Calibration library debug library not found, disable support by setting DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT to OFF")
+        find_library(DYNAMIC_CALIBRATION_DEBUG_LIB dynamic_calibrationd
+            PATHS ${DYNAMIC_CALIBRATION_DIR}/lib
+            NO_DEFAULT_PATH
+        )
+
+        # Search for the runtime libraries (.dll files)
+        find_file(DYNAMIC_CALIBRATION_RELEASE_DLL dynamic_calibration.dll
+            PATHS ${DYNAMIC_CALIBRATION_DIR}/bin ${DYNAMIC_CALIBRATION_DIR}/lib
+            NO_DEFAULT_PATH
+        )
+        find_file(DYNAMIC_CALIBRATION_DEBUG_DLL dynamic_calibrationd.dll
+            PATHS ${DYNAMIC_CALIBRATION_DIR}/bin ${DYNAMIC_CALIBRATION_DIR}/lib
+            NO_DEFAULT_PATH
+        )
+
+        if(NOT DYNAMIC_CALIBRATION_DEBUG_LIB OR NOT DYNAMIC_CALIBRATION_DEBUG_DLL)
+            message(FATAL_ERROR "Dynamic Calibration debug library (.lib) or runtime (.dll) not found, disable support by setting DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT to OFF")
+        endif()
+        if(NOT DYNAMIC_CALIBRATION_RELEASE_LIB OR NOT DYNAMIC_CALIBRATION_RELEASE_DLL)
+            message(FATAL_ERROR "Dynamic Calibration release library (.lib) or runtime (.dll) not found, disable support by setting DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT to OFF")
+        endif()
+    else()
+        # On non-Windows platforms, search for the release version of the library
+        find_library(DYNAMIC_CALIBRATION_RELEASE dynamic_calibration
+            PATHS ${DYNAMIC_CALIBRATION_DIR}/lib
+            NO_DEFAULT_PATH
+        )
+        if(NOT DYNAMIC_CALIBRATION_RELEASE)
+            message(FATAL_ERROR "Dynamic Calibration library not found, disable support by setting DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT to OFF")
         endif()
     endif()
 
-    # Fallback error handling if neither are found
-    if(NOT DYNAMIC_CALIBRATION_RELEASE)
-        message(FATAL_ERROR "Dynamic Calibration library not found, disable support by setting DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT to OFF")
-    endif()
-
+    # Set up legacy variables for backward compatibility
     if(WIN32)
-        # Set a generator expression to select the right one based on build type
+        # Set a generator expression to select the right one based on build type (import libraries)
         set(DYNAMIC_CALIBRATION_LIB
-            $<$<CONFIG:Debug>:${DYNAMIC_CALIBRATION_DEBUG}>
-            $<$<CONFIG:Release>:${DYNAMIC_CALIBRATION_RELEASE}>
+            $<$<CONFIG:Debug>:${DYNAMIC_CALIBRATION_DEBUG_LIB}>
+            $<$<CONFIG:Release>:${DYNAMIC_CALIBRATION_RELEASE_LIB}>
         )
     else()
         set(DYNAMIC_CALIBRATION_LIB ${DYNAMIC_CALIBRATION_RELEASE})
@@ -279,21 +298,21 @@ if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
     add_library(dynamic_calibration_imported SHARED IMPORTED)
     if(WIN32)
         set_target_properties(dynamic_calibration_imported PROPERTIES
-            IMPORTED_LOCATION_DEBUG "${DYNAMIC_CALIBRATION_DEBUG}"
-            IMPORTED_LOCATION_RELEASE "${DYNAMIC_CALIBRATION_RELEASE}"
+            IMPORTED_LOCATION_DEBUG "${DYNAMIC_CALIBRATION_DEBUG_DLL}"
+            IMPORTED_LOCATION_RELEASE "${DYNAMIC_CALIBRATION_RELEASE_DLL}"
+            IMPORTED_IMPLIB_DEBUG "${DYNAMIC_CALIBRATION_DEBUG_LIB}"
+            IMPORTED_IMPLIB_RELEASE "${DYNAMIC_CALIBRATION_RELEASE_LIB}"
             IMPORTED_CONFIGURATIONS "DEBUG;RELEASE"
             INTERFACE_INCLUDE_DIRECTORIES "${DYNAMIC_CALIBRATION_DIR}/include"
         )
     else()
         # On non-Windows platforms, use the release library for all configurations
-        set(_dynamic_cal_lib "${DYNAMIC_CALIBRATION_RELEASE}")
         set_target_properties(dynamic_calibration_imported PROPERTIES
-            IMPORTED_LOCATION_DEBUG "${_dynamic_cal_lib}"
-            IMPORTED_LOCATION_RELEASE "${_dynamic_cal_lib}"
+            IMPORTED_LOCATION_DEBUG "${DYNAMIC_CALIBRATION_RELEASE}"
+            IMPORTED_LOCATION_RELEASE "${DYNAMIC_CALIBRATION_RELEASE}"
             IMPORTED_CONFIGURATIONS "DEBUG;RELEASE"
             INTERFACE_INCLUDE_DIRECTORIES "${DYNAMIC_CALIBRATION_DIR}/include"
         )
-        message(STATUS "Dynamic calibration library path: ${_dynamic_cal_lib}")
     endif()
 endif()
 
