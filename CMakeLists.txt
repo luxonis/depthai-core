@@ -513,14 +513,9 @@ if(NOT BUILD_SHARED_LIBS)
 endif()
 
 if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
-    # Link the correct library
-    target_link_libraries(${TARGET_CORE_NAME} PUBLIC ${DYNAMIC_CALIBRATION_LIB}) # Should be PRIVATE
+    # Link the dynamic calibration target
+    target_link_libraries(${TARGET_CORE_NAME} PUBLIC dynamic_calibration_imported) # Should be PRIVATE
     target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT) # Should be PRIVATE
-
-    target_include_directories(
-        ${TARGET_CORE_NAME} PUBLIC
-        $<BUILD_INTERFACE:${DYNAMIC_CALIBRATION_DIR}/include>
-    )
 endif()
 
 # Set constant
@@ -825,6 +820,7 @@ macro(add_runtime_dependencies depending_target dependency)
         foreach(cfg ${imported_configs})
             message(STATUS "Adding runtime dependencies for ${depending_target} on ${dependency} (${cfg})")
             get_property(dll TARGET ${dependency} PROPERTY IMPORTED_LOCATION_${cfg})
+            message(STATUS "Retrieved dll for ${cfg}: '${dll}'")
             list(APPEND dlls $<$<CONFIG:${cfg}>:${dll}>)
         endforeach()
         message(STATUS "Required dlls for ${depending_target} on ${dependency} are: ${dlls}")
@@ -843,6 +839,10 @@ macro(add_runtime_dependencies depending_target dependency)
 endmacro()
 # Add libusb dll in build time
 add_runtime_dependencies(${TARGET_CORE_NAME} usb-1.0)
+# Add dynamic calibration dll in build time
+if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
+    add_runtime_dependencies(${TARGET_CORE_NAME} dynamic_calibration_imported)
+endif()
 
 ########################
 # OpenCV Support 2

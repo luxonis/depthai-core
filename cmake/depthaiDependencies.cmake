@@ -274,6 +274,27 @@ if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
     else()
         set(DYNAMIC_CALIBRATION_LIB ${DYNAMIC_CALIBRATION_RELEASE})
     endif()
+
+    # Create imported target for runtime dependencies
+    add_library(dynamic_calibration_imported SHARED IMPORTED)
+    if(WIN32)
+        set_target_properties(dynamic_calibration_imported PROPERTIES
+            IMPORTED_LOCATION_DEBUG "${DYNAMIC_CALIBRATION_DEBUG}"
+            IMPORTED_LOCATION_RELEASE "${DYNAMIC_CALIBRATION_RELEASE}"
+            IMPORTED_CONFIGURATIONS "DEBUG;RELEASE"
+            INTERFACE_INCLUDE_DIRECTORIES "${DYNAMIC_CALIBRATION_DIR}/include"
+        )
+    else()
+        # On non-Windows platforms, use the release library for all configurations
+        set(_dynamic_cal_lib "${DYNAMIC_CALIBRATION_RELEASE}")
+        set_target_properties(dynamic_calibration_imported PROPERTIES
+            IMPORTED_LOCATION_DEBUG "${_dynamic_cal_lib}"
+            IMPORTED_LOCATION_RELEASE "${_dynamic_cal_lib}"
+            IMPORTED_CONFIGURATIONS "DEBUG;RELEASE"
+            INTERFACE_INCLUDE_DIRECTORIES "${DYNAMIC_CALIBRATION_DIR}/include"
+        )
+        message(STATUS "Dynamic calibration library path: ${_dynamic_cal_lib}")
+    endif()
 endif()
 
 # Cleanup
