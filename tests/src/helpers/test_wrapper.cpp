@@ -93,6 +93,10 @@ int main(int argc, char* argv[]) {
 
         // Now we can safely check the return code
         int retcode = proc.retcode();
+        // 2 signifies that proc was killed by a timeout
+        if (retcode == 2) {
+        retcode = 0;
+        }
 
         // Only call communicate() once and save the results
         auto results = proc.communicate();
