@@ -513,62 +513,14 @@ if(NOT BUILD_SHARED_LIBS)
 endif()
 
 if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
-    include(Depthai/DepthaiDynamicCalibrationConfig)    # depthai-dynamic-calibration commit/version configuration
-    include(FetchContent)
-    set(DEPTHAI_DYNAMIC_CALIBRATION_PATH "" CACHE FILEPATH "Override path to local dynamic_calibration .zip file")
+    # Link the correct library
+    target_link_libraries(${TARGET_CORE_NAME} PUBLIC ${DYNAMIC_CALIBRATION_LIB}) # Should be PRIVATE
+    target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT) # Should be PRIVATE
 
-    if(DEPTHAI_DYNAMIC_CALIBRATION_PATH AND EXISTS "${DEPTHAI_DYNAMIC_CALIBRATION_PATH}")
-        message(STATUS "Using local dynamic_calibration zip: ${DEPTHAI_DYNAMIC_CALIBRATION_PATH}")
-        FetchContent_Declare(
-            dynamic_calibration
-            URL "file://${DEPTHAI_DYNAMIC_CALIBRATION_PATH}"
-        )
-    else()
-        message(STATUS "Using remote dynamic_calibration zip")
-        FetchContent_Declare(
-            dynamic_calibration
-            URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-helper-binaries/dynamic_calibration/${DEPTHAI_DYNAMIC_CALIBRATION_VERSION}/dynamic_calibration_${DEPTHAI_DYNAMIC_CALIBRATION_VERSION}.zip"
-            URL_HASH MD5=14df99bc5dd22798526aeefd477f972c
-        )
-    endif()
-    FetchContent_MakeAvailable(dynamic_calibration)
-    message(STATUS "Dynamic calibration extracted to ${dynamic_calibration_SOURCE_DIR}")
-    set(DYNAMIC_CALIBRATION_DIR ${dynamic_calibration_SOURCE_DIR})
     target_include_directories(
         ${TARGET_CORE_NAME} PUBLIC
         $<BUILD_INTERFACE:${DYNAMIC_CALIBRATION_DIR}/include>
     )
-
-    # Search for the release version of the library
-    find_library(DYNAMIC_CALIBRATION_RELEASE dynamic_calibration
-        PATHS ${DYNAMIC_CALIBRATION_DIR}/lib
-        NO_DEFAULT_PATH
-    )
-
-    # Search for the debug version of the library (with 'd' suffix)
-    find_library(DYNAMIC_CALIBRATION_DEBUG dynamic_calibrationd
-        PATHS ${DYNAMIC_CALIBRATION_DIR}/lib
-        NO_DEFAULT_PATH
-    )
-
-    # Fallback error handling if neither are found
-    if(NOT DYNAMIC_CALIBRATION_RELEASE AND NOT DYNAMIC_CALIBRATION_DEBUG)
-        message(FATAL_ERROR "Dynamic Calibration library not found, disable support by setting DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT to OFF")
-    endif()
-
-    # Set a generator expression to select the right one based on build type
-    set(DYNAMIC_CALIBRATION_LIB
-        $<$<CONFIG:Debug>:${DYNAMIC_CALIBRATION_DEBUG}>
-        $<$<CONFIG:Release>:${DYNAMIC_CALIBRATION_RELEASE}>
-    )
-
-    # Link the correct library
-    target_link_libraries(${TARGET_CORE_NAME} PUBLIC ${DYNAMIC_CALIBRATION_LIB})
-    target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT)
-
-    # Logging for confirmation
-    message(STATUS "Dynamic Calibration Release: ${DYNAMIC_CALIBRATION_RELEASE}")
-    message(STATUS "Dynamic Calibration Debug: ${DYNAMIC_CALIBRATION_DEBUG}")
 endif()
 
 # Set constant

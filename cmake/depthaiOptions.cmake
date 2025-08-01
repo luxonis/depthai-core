@@ -7,8 +7,10 @@
 # Detect 32‑bit Linux for default CURL support
 if(CMAKE_SIZEOF_VOID_P EQUAL 4 AND UNIX)
     set(DEPTHAI_DEFAULT_CURL_SUPPORT OFF)
+    set(DEPTHAI_DEFAULT_DYNAMIC_CALIBRATION_SUPPORT OFF)
 else()
     set(DEPTHAI_DEFAULT_CURL_SUPPORT ON)
+    set(DEPTHAI_DEFAULT_DYNAMIC_CALIBRATION_SUPPORT ON)
 endif()
 
 # ---------- Core Feature Toggles (private) -------------
@@ -49,6 +51,8 @@ endif()
 option(DEPTHAI_JSON_EXTERNAL "Use external nlohmann_json library" ${USE_EXTERNAL_INTERFACE_LIBS_DEFAULT})
 option(DEPTHAI_LIBNOP_EXTERNAL "Use external libnop library" ${USE_EXTERNAL_INTERFACE_LIBS_DEFAULT})
 option(DEPTHAI_XTENSOR_EXTERNAL "Use external xtensor library" ${USE_EXTERNAL_INTERFACE_LIBS_DEFAULT})
+
+option(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT "Enable Dynamic Calibration support" ${DEPTHAI_DEFAULT_DYNAMIC_CALIBRATION_SUPPORT})
 
 # ---------- Platform / Compiler Tweaks ---------
 

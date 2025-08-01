@@ -218,6 +218,64 @@ if(DEPTHAI_DEPENDENCY_INCLUDE)
     include(${DEPTHAI_DEPENDENCY_INCLUDE} OPTIONAL)
 endif()
 
+if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
+    set(DEPTHAI_DYNAMIC_CALIBRATION_PATH "" CACHE FILEPATH "Override path to local dynamic_calibration .zip file")
+
+    if(DEPTHAI_DYNAMIC_CALIBRATION_PATH AND EXISTS "${DEPTHAI_DYNAMIC_CALIBRATION_PATH}")
+        message(STATUS "Using local dynamic_calibration zip: ${DEPTHAI_DYNAMIC_CALIBRATION_PATH}")
+        FetchContent_Declare(
+            dynamic_calibration
+            URL "file://${DEPTHAI_DYNAMIC_CALIBRATION_PATH}"
+        )
+    else()
+        include(Depthai/DepthaiDynamicCalibrationConfig)
+        include(PlatformParsing)
+        detect_platform_arch(DEPTHAI_HOST_PLATFORM_ARCH)
+        message(STATUS "Platform architecture: ${DEPTHAI_HOST_PLATFORM_ARCH}")
+        # TODO - Add URL_HASH
+        message(STATUS "Using remote dynamic_calibration zip")
+        FetchContent_Declare(
+            dynamic_calibration
+            URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-helper-binaries/dynamic_calibration/${DEPTHAI_DYNAMIC_CALIBRATION_VERSION}/dynamic_calibration_${DEPTHAI_DYNAMIC_CALIBRATION_VERSION}_${DEPTHAI_HOST_PLATFORM_ARCH}.zip"
+        )
+    endif()
+
+    FetchContent_MakeAvailable(dynamic_calibration)
+    message(STATUS "Dynamic calibration extracted to ${dynamic_calibration_SOURCE_DIR}")
+    set(DYNAMIC_CALIBRATION_DIR ${dynamic_calibration_SOURCE_DIR})
+
+    # Search for the release version of the library
+    find_library(DYNAMIC_CALIBRATION_RELEASE dynamic_calibration
+        PATHS ${DYNAMIC_CALIBRATION_DIR}/lib
+        NO_DEFAULT_PATH
+    )
+    if(WIN32)
+        # Search for the debug version of the library (with 'd' suffix)
+        find_library(DYNAMIC_CALIBRATION_DEBUG dynamic_calibrationd
+            PATHS ${DYNAMIC_CALIBRATION_DIR}/lib
+            NO_DEFAULT_PATH
+        )
+        if(NOT DYNAMIC_CALIBRATION_DEBUG)
+            message(FATAL_ERROR "Dynamic Calibration library debug library not found, disable support by setting DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT to OFF")
+        endif()
+    endif()
+
+    # Fallback error handling if neither are found
+    if(NOT DYNAMIC_CALIBRATION_RELEASE)
+        message(FATAL_ERROR "Dynamic Calibration library not found, disable support by setting DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT to OFF")
+    endif()
+
+    if(WIN32)
+        # Set a generator expression to select the right one based on build type
+        set(DYNAMIC_CALIBRATION_LIB
+            $<$<CONFIG:Debug>:${DYNAMIC_CALIBRATION_DEBUG}>
+            $<$<CONFIG:Release>:${DYNAMIC_CALIBRATION_RELEASE}>
+        )
+    else()
+        set(DYNAMIC_CALIBRATION_LIB ${DYNAMIC_CALIBRATION_RELEASE})
+    endif()
+endif()
+
 # Cleanup
 if(CONFIG_MODE)
     set(CMAKE_PREFIX_PATH ${_DEPTHAI_PREFIX_PATH_ORIGINAL})
