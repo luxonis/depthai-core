@@ -8,6 +8,11 @@ on:
       luxonis_os_versions_to_test:
         required: true
         type: string
+      luxonis_os_versions_to_test_rgb:
+        required: false
+        type: string
+        default: "[]"
+      
     secrets:
       CONTAINER_REGISTRY:
         required: true
@@ -80,3 +85,23 @@ jobs:
         run: |
           export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-${{ matrix.rvc4os }}-${{ inputs.flavor }}"
           exec hil --models "oak4_pro or oak4_d" --reservation-name $RESERVATION_NAME --wait --sync-workspace --rvc4-os-version ${{ matrix.rvc4os }} --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "./tests/run_tests_entrypoint.sh rvc4"
+
+ linux_rvc4_rgb_test:
+      needs: [build_docker_container]
+      strategy:
+        matrix:
+          rvc4os: ${{ fromJson(inputs.luxonis_os_versions_to_test_rgb) }}
+        fail-fast: false
+      runs-on: ['self-hosted', 'testbed-runner']
+
+      steps:
+      - uses: actions/checkout@v3
+
+      - name: Prepare HIL Framework
+        run: source scripts/hil/prepare_hil_framework.sh
+
+      - name: Run RVC4 tests
+        run: |
+          export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-${{ matrix.rvc4os }}-${{ inputs.flavor }}-rgb"
+          exec hil --models "oak4_s" --reservation-name $RESERVATION_NAME --wait --sync-workspace --rvc4-os-version ${{ matrix.rvc4os }} --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "./tests/run_tests_entrypoint.sh rvc4rgb"
+

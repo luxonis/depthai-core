@@ -106,7 +106,7 @@ RUN if [ "$FLAVOR" != "vanilla" ]; then \
         -D DEPTHAI_VCPKG_INTERNAL_ONLY=OFF \
         -D VCPKG_OVERLAY_TRIPLETS="/workspace/cmake/triplets/release" \
         -D DEPTHAI_BUILD_TESTS=ON \
-        $(if [ "$PULL_REQUEST" = "false" ]; then echo "-D DEPTHAI_BUILD_EXAMPLES=ON \
+        $(if [ "false" = "false" ]; then echo "-D DEPTHAI_BUILD_EXAMPLES=ON \
         -D DEPTHAI_TEST_EXAMPLES=ON \
         -D DEPTHAI_BUILD_PYTHON=ON \
         -D DEPTHAI_PYTHON_TEST_EXAMPLES=ON \
