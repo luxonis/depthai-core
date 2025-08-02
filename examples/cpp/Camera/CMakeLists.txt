@@ -10,7 +10,7 @@ dai_set_example_test_labels(camera_all ondevice rvc2_all rvc4 rvc4rgb ci)
 dai_add_example(camera_max_resolution camera_max_resolution.cpp ON OFF)
 dai_set_example_test_labels(camera_max_resolution ondevice rvc2_all rvc4 rvc4rgb ci)
 
-dai_add_example(camera_multiple_outputs camera_multiple_outputs.cpp ON OFF)
+dai_add_example(camera_multiple_outputs camera_multiple_outputs.cpp ON OFF 640 480 0 30 CAM_A 300 300 0 30 CAM_A 300 300 1 30 CAM_A)
 dai_set_example_test_labels(camera_multiple_outputs ondevice rvc2_all rvc4 ci)
 
 dai_add_example(camera_output camera_output.cpp ON OFF)
