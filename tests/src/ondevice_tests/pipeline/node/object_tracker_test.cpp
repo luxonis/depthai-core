@@ -105,3 +105,44 @@ TEST_CASE("Object Tracker unique ID assignment policy") {
     }
     REQUIRE(counter > 0);  // Ensure that at least some tracklets were processed
 }
+
+TEST_CASE("Object Tracker transformation") {
+    // Create pipeline
+    dai::Pipeline pipeline;
+
+    // Define sources and outputs
+    auto cam = pipeline.create<dai::node::Camera>()->build();
+    auto* camOut = cam->requestOutput({1240, 720});
+
+    // Create spatial detection network
+    dai::NNModelDescription modelDescription{"yolov6-nano"};
+    auto detectionNetwork = pipeline.create<dai::node::DetectionNetwork>()->build(cam, modelDescription);
+    detectionNetwork->setConfidenceThreshold(0.6f);
+    detectionNetwork->input.setBlocking(false);
+
+    // Create object tracker
+    auto objectTracker = pipeline.create<dai::node::ObjectTracker>();
+
+    // Link nodes
+    camOut->link(objectTracker->inputTrackerFrame);
+
+    detectionNetwork->passthrough.link(objectTracker->inputDetectionFrame);
+    detectionNetwork->out.link(objectTracker->inputDetections);
+
+    // Create output queues
+    auto tracklets = objectTracker->out.createOutputQueue();
+    auto trackerFrameQ = objectTracker->passthroughTrackerFrame.createOutputQueue();
+
+    // Start pipeline
+    pipeline.start();
+
+    auto start = std::chrono::steady_clock::now();
+    while(pipeline.isRunning() && std::chrono::steady_clock::now() - start < std::chrono::seconds(VIDEO_DURATION_SECONDS)) {
+        auto track = tracklets->get<dai::Tracklets>();
+        auto frame = trackerFrameQ->get<dai::ImgFrame>();
+        REQUIRE(track != nullptr);
+        REQUIRE(track->transformation.getSize() == frame->transformation.getSize());
+        REQUIRE(track->transformation.getSourceSize() == frame->transformation.getSourceSize());
+        REQUIRE(track->transformation.getIntrinsicMatrix() == frame->transformation.getIntrinsicMatrix());
+    }
+}
