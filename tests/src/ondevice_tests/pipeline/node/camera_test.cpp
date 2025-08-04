@@ -162,3 +162,19 @@ TEST_CASE("Test how default FPS is generated for a specific output") {
         REQUIRE(benchmarkReport->fps == Catch::Approx(FPS_TO_SET).margin(FPS_TO_SET * 0.1));
     }
 }
+
+TEST_CASE("Large frame resize test") {
+    dai::Pipeline p;
+    auto camera = p.create<dai::node::Camera>()->build();
+    auto* output = camera->requestOutput({7680, 4320});
+    auto camQ = output->createOutputQueue();
+
+    p.start();
+
+    auto frame = camQ->get<dai::ImgFrame>();
+    REQUIRE(frame != nullptr);
+    REQUIRE(frame->getWidth() == 7680);
+    REQUIRE(frame->getHeight() == 4320);
+
+    p.stop();
+}
