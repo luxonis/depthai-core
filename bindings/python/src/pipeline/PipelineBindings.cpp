@@ -102,8 +102,46 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("compressionLevel", &RecordConfig::compressionLevel, DOC(dai, RecordConfig, compressionLevel));
 
     // bind pipeline
-    pipeline.def(py::init<bool>(), py::arg("createImplicitDevice") = true, DOC(dai, Pipeline, Pipeline))
-        .def(py::init<std::shared_ptr<Device>>(), py::arg("defaultDevice"), DOC(dai, Pipeline, Pipeline))
+    pipeline.def(py::init([](bool createImplicitDevice) {
+        // Create pipeline in detached thread
+        Pipeline* p = nullptr;
+        bool threadRunning = true;
+        std::thread([&p, createImplicitDevice, &threadRunning]() {
+            p = new Pipeline(createImplicitDevice);
+            threadRunning = false;
+        }).detach();
+
+        // Check for interrupts while thread is running
+        py::gil_scoped_release release;
+        while(threadRunning) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            py::gil_scoped_acquire acquire;
+            if(PyErr_CheckSignals() != 0) {
+                throw py::error_already_set();
+            }
+        }
+        return p;
+    }), py::arg("createImplicitDevice") = true, DOC(dai, Pipeline, Pipeline))
+        .def(py::init([](std::shared_ptr<Device> defaultDevice) {
+            // Create pipeline in detached thread
+            Pipeline* p = nullptr;
+            bool threadRunning = true;
+            std::thread([&p, defaultDevice, &threadRunning]() {
+                p = new Pipeline(defaultDevice);
+                threadRunning = false;
+            }).detach();
+
+            // Check for interrupts while thread is running
+            py::gil_scoped_release release;
+            while(threadRunning) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                py::gil_scoped_acquire acquire;
+                if(PyErr_CheckSignals() != 0) {
+                    throw py::error_already_set();
+                }
+            }
+            return p;
+        }), py::arg("defaultDevice"), DOC(dai, Pipeline, Pipeline))
         // Python only methods
         .def("__enter__",
              [](Pipeline& p) -> Pipeline& {
@@ -122,14 +160,14 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
                  }).detach();
 
                  // While the thread above is cleaning up, check for interrupts
-                 // (The thread above is necessary as PyErr_CheckSignals works when called from the main thread only)
+                 // (The detached thread above is necessary as PyErr_CheckSignals works only when called from the main thread)
                  // https://docs.python.org/3/c-api/exceptions.html#c.PyErr_CheckSignals
                  py::gil_scoped_release release;
                  while(threadRunning) {
                      std::this_thread::sleep_for(std::chrono::milliseconds(100));
                      py::gil_scoped_acquire acquire;
                      if(PyErr_CheckSignals() != 0) {
-                         throw py::error_already_set();
+                        throw py::error_already_set();
                      }
                  }
              })
@@ -227,7 +265,26 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
                 return node;
             },
             py::keep_alive<1, 0>())
-        .def("start", &Pipeline::start)
+        .def("start", [](Pipeline& p) {
+            // Start pipeline in a detached thread
+            bool threadRunning = true;
+            std::thread([&p, &threadRunning]() {
+                p.start();
+                threadRunning = false;
+            }).detach();
+
+            // Check for interrupts while thread is running
+            {
+                py::gil_scoped_release release;
+                while(threadRunning) {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                    py::gil_scoped_acquire acquire;
+                    if(PyErr_CheckSignals() != 0) {
+                        throw py::error_already_set();
+                    }
+                }
+            }
+        })
         .def("wait",
              [](Pipeline& p) {
                  py::gil_scoped_release release;
