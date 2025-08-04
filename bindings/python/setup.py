@@ -155,6 +155,7 @@ class CMakeBuild(build_ext):
         cfg = 'Debug' if self.debug else 'Release'
         cmake_args += ['-DCMAKE_BUILD_TYPE=' + cfg]
         cmake_args += ['-DDEPTHAI_VCPKG_INTERNAL_ONLY=OFF']
+        cmake_args += ['-DBUILD_SHARED_LIBS=ON']
         build_args += ['--config', cfg]
         if not self.debug:
             rootDirectory = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
