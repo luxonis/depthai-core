@@ -189,6 +189,7 @@ void ObjectTracker::run() {
         for(auto& tracklet : trackletsMsg->tracklets) {
             tracklet.roi = tracklet.roi.normalize(inputTrackerImg->getWidth(), inputTrackerImg->getHeight());
         }
+        trackletsMsg->transformation = inputTrackerImg->transformation;
 
         out.send(trackletsMsg);
         passthroughTrackerFrame.send(inputTrackerImg);
