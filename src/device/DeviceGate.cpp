@@ -44,9 +44,9 @@ enum USBRequestID_t {
 };
 
 struct USBRequest_t {
-    uint16_t RequestNum;
+    uint32_t RequestNum;
     uint32_t RequestSize;
-}__attribute__((packed));
+};
 
 
 class DeviceGate::Impl {
