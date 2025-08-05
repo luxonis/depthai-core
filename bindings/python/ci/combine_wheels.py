@@ -144,10 +144,10 @@ def main(args: argparse.Namespace):
                 os.rename(lib_path, new_lib_path)
             write_to_zip(output_zip, wheel_extract_dir, wheel_libs_path)
 
-            # print("Files to copy:")
-            # print(wheel_files_to_copy)
-
-        # print(dynlib_renames)
+        output_zip.close()
+        print("Output zip closed")
+        print(f"Output zip size: {os.path.getsize(output_zip_path)}")
+        print(f"Combined wheel saved to {output_zip_path}")
 
 
 if __name__ == "__main__":
