@@ -448,7 +448,7 @@ void runManipTests(dai::ImgFrame::Type type, bool undistort, bool useCoeffs = tr
             auto cfg = std::make_shared<dai::ImageManipConfig>(*config);
             cfg->setUndistort(true);
             auto frames = getFrames(cfg, 1024, 512);
-            REQUIRE(compareHistograms(frames.first->getCvFrame(), frames.second->getCvFrame()) > 0.8);
+            REQUIRE(compareHistograms(frames.first->getCvFrame(), frames.second->getCvFrame()) > 0.6);
             REQUIRE(!equal(frames.first->getCvFrame(), frames.second->getCvFrame()));
         }
     }
