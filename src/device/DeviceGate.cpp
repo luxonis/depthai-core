@@ -1,7 +1,7 @@
 #include "device/DeviceGate.hpp"
 
 #include <XLink/XLinkPublicDefines.h>
-#include <XLink/XLinkPlatform.h>
+#include <XLink/XLink.h>
 
 // std
 #include <fstream>
@@ -88,15 +88,15 @@ bool DeviceGate::isOkay() {
 	USBRequest_t request;
 	request.RequestNum = IS_OKAY;
 	request.RequestSize = 0;
-	XLinkPlatformGateWrite(&request, sizeof(USBRequest_t));
+	XLinkGateWrite(&request, sizeof(USBRequest_t));
 
-	XLinkPlatformGateRead(&request, sizeof(request));
+	XLinkGateRead(&request, sizeof(request));
 	if(request.RequestNum == RESPONSE_ERROR) {
 		return false;
 	}
 
 	char *respBuffer = new char[request.RequestSize + 1];
-	XLinkPlatformGateRead(respBuffer, request.RequestSize);
+	XLinkGateRead(respBuffer, request.RequestSize);
 	respBuffer[request.RequestSize]= '\0';
 	
 	bool result = nlohmann::json::parse(respBuffer)["status"].get<bool>();
@@ -117,15 +117,15 @@ Version DeviceGate::getVersion() {
 	USBRequest_t request;
 	request.RequestNum = GET_VERSION;
 	request.RequestSize = 0;
-	XLinkPlatformGateWrite(&request, sizeof(USBRequest_t));
+	XLinkGateWrite(&request, sizeof(USBRequest_t));
 
-	XLinkPlatformGateRead(&request, sizeof(request));
+	XLinkGateRead(&request, sizeof(request));
 	if(request.RequestNum == RESPONSE_ERROR) {
 		return Version{0, 0, 0};
 	}
 
 	char *respBuffer = new char[request.RequestSize + 1];
-	XLinkPlatformGateRead(respBuffer, request.RequestSize);
+	XLinkGateRead(respBuffer, request.RequestSize);
 	respBuffer[request.RequestSize]= '\0';
 	
 	auto result = nlohmann::json::parse(respBuffer)["version_gate"].get<std::string>();
@@ -150,15 +150,15 @@ DeviceGate::VersionInfo DeviceGate::getAllVersion() {
 	USBRequest_t request;
 	request.RequestNum = GET_VERSION;
 	request.RequestSize = 0;
-	XLinkPlatformGateWrite(&request, sizeof(USBRequest_t));
+	XLinkGateWrite(&request, sizeof(USBRequest_t));
 
-	XLinkPlatformGateRead(&request, sizeof(request));
+	XLinkGateRead(&request, sizeof(request));
 	if(request.RequestNum == RESPONSE_ERROR) {
 		return {};
 	}
 
 	char *respBuffer = new char[request.RequestSize + 1];
-	XLinkPlatformGateRead(respBuffer, request.RequestSize);
+	XLinkGateRead(respBuffer, request.RequestSize);
 	respBuffer[request.RequestSize]= '\0';
 	auto result = nlohmann::json::parse(respBuffer);
 	delete[] respBuffer;
@@ -232,16 +232,16 @@ bool DeviceGate::createSession(bool exclusive) {
 	USBRequest_t request;
 	request.RequestNum = CREATE_SESSION;
 	request.RequestSize = createSessionBody.dump().size();
-	XLinkPlatformGateWrite(&request, sizeof(USBRequest_t));
-	XLinkPlatformGateWrite((void*)createSessionBody.dump().c_str(), createSessionBody.dump().size());
+	XLinkGateWrite(&request, sizeof(USBRequest_t));
+	XLinkGateWrite((void*)createSessionBody.dump().c_str(), createSessionBody.dump().size());
 
-	XLinkPlatformGateRead(&request, sizeof(request));
+	XLinkGateRead(&request, sizeof(request));
 	if(request.RequestNum == RESPONSE_ERROR) {
             spdlog::warn("DeviceGate createSession not successful - got no response");
 	    return false;
 	}
 	char *respBuffer = new char[request.RequestSize + 1];
-	XLinkPlatformGateRead(respBuffer, request.RequestSize);
+	XLinkGateRead(respBuffer, request.RequestSize);
 	respBuffer[request.RequestSize]= '\0';
 	auto resp = nlohmann::json::parse(respBuffer);
 	delete[] respBuffer;
@@ -266,10 +266,10 @@ bool DeviceGate::createSession(bool exclusive) {
                                         {"file", package}};
             request.RequestNum = UPLOAD_FWP;
 	    request.RequestSize = uploadFwpBody.dump().size();
-	    XLinkPlatformGateWrite(&request, sizeof(USBRequest_t));
-	    XLinkPlatformGateWrite((void*)uploadFwpBody.dump().c_str(), uploadFwpBody.dump().size());
+	    XLinkGateWrite(&request, sizeof(USBRequest_t));
+	    XLinkGateWrite((void*)uploadFwpBody.dump().c_str(), uploadFwpBody.dump().size());
 	
-	    XLinkPlatformGateRead(&request, sizeof(request));
+	    XLinkGateRead(&request, sizeof(request));
 	    if(request.RequestNum == RESPONSE_ERROR) {
                 spdlog::warn("DeviceGate upload fwp not successful - got no response");
 		return false;
@@ -294,10 +294,10 @@ bool DeviceGate::startSession() {
 	USBRequest_t request;
 	request.RequestNum = START_SESSION;
 	request.RequestSize = sessionId.size();
-	XLinkPlatformGateWrite(&request, sizeof(USBRequest_t));
-	XLinkPlatformGateWrite((void*)sessionId.c_str(), sessionId.size());
+	XLinkGateWrite(&request, sizeof(USBRequest_t));
+	XLinkGateWrite((void*)sessionId.c_str(), sessionId.size());
 
-	XLinkPlatformGateRead(&request, sizeof(request));
+	XLinkGateRead(&request, sizeof(request));
 	if(request.RequestNum == RESPONSE_ERROR) {
             spdlog::debug("DeviceGate start fwp not successful - got no response");
 	    return false;
@@ -335,10 +335,10 @@ bool DeviceGate::stopSession() {
 	USBRequest_t request;
 	request.RequestNum = STOP_SESSION;
 	request.RequestSize = sessionId.size();
-	XLinkPlatformGateWrite(&request, sizeof(USBRequest_t));
-	XLinkPlatformGateWrite((void*)sessionId.c_str(), sessionId.size());
+	XLinkGateWrite(&request, sizeof(USBRequest_t));
+	XLinkGateWrite((void*)sessionId.c_str(), sessionId.size());
 
-	XLinkPlatformGateRead(&request, sizeof(request));
+	XLinkGateRead(&request, sizeof(request));
 	if(request.RequestNum == RESPONSE_ERROR) {
             spdlog::error("DeviceGate stopSession not successful - got no response");
 	    return false;
@@ -373,10 +373,10 @@ bool DeviceGate::destroySession() {
 	USBRequest_t request;
 	request.RequestNum = DESTROY_SESSION;
 	request.RequestSize = sessionId.size();
-	XLinkPlatformGateWrite(&request, sizeof(USBRequest_t));
-	XLinkPlatformGateWrite((void*)sessionId.c_str(), sessionId.size());
+	XLinkGateWrite(&request, sizeof(USBRequest_t));
+	XLinkGateWrite((void*)sessionId.c_str(), sessionId.size());
 
-	XLinkPlatformGateRead(&request, sizeof(request));
+	XLinkGateRead(&request, sizeof(request));
 	if(request.RequestNum == RESPONSE_ERROR) {
             spdlog::error("DeviceGate destroySession not successful - got no response");
 	    return false;
@@ -405,10 +405,10 @@ bool DeviceGate::deleteSession() {
 	USBRequest_t request;
 	request.RequestNum = DELETE_SESSION;
 	request.RequestSize = sessionId.size();
-	XLinkPlatformGateWrite(&request, sizeof(USBRequest_t));
-	XLinkPlatformGateWrite((void*)sessionId.c_str(), sessionId.size());
+	XLinkGateWrite(&request, sizeof(USBRequest_t));
+	XLinkGateWrite((void*)sessionId.c_str(), sessionId.size());
 
-	XLinkPlatformGateRead(&request, sizeof(request));
+	XLinkGateRead(&request, sizeof(request));
 	if(request.RequestNum == RESPONSE_ERROR) {
             spdlog::error("DeviceGate deleteSession not successful - got no response");
 	    return false;
@@ -456,17 +456,17 @@ DeviceGate::SessionState DeviceGate::getState() {
 	USBRequest_t request;
 	request.RequestNum = GET_STATE;
 	request.RequestSize = sessionId.size();
-	XLinkPlatformGateWrite(&request, sizeof(USBRequest_t));
-	XLinkPlatformGateWrite((void*)sessionId.c_str(), sessionId.size());
+	XLinkGateWrite(&request, sizeof(USBRequest_t));
+	XLinkGateWrite((void*)sessionId.c_str(), sessionId.size());
 
-	XLinkPlatformGateRead(&request, sizeof(request));
+	XLinkGateRead(&request, sizeof(request));
 	if(request.RequestNum == RESPONSE_ERROR) {
             spdlog::warn("DeviceGate getState not successful - got no response");
     	    return SessionState::ERROR_STATE;
 	}
 
 	char *respBuffer = new char[request.RequestSize + 1];
-	XLinkPlatformGateRead(respBuffer, request.RequestSize);
+	XLinkGateRead(respBuffer, request.RequestSize);
 	respBuffer[request.RequestSize]= '\0';
         auto resp = nlohmann::json::parse(respBuffer);
 	delete[] respBuffer;
@@ -512,17 +512,17 @@ std::optional<std::vector<uint8_t>> DeviceGate::getFile(const std::string& fileU
 	USBRequest_t request;
 	request.RequestNum = GET_FILE;
 	request.RequestSize = fileUrl.size();
-	XLinkPlatformGateWrite(&request, sizeof(USBRequest_t));
-	XLinkPlatformGateWrite((void*)fileUrl.c_str(), fileUrl.size());
+	XLinkGateWrite(&request, sizeof(USBRequest_t));
+	XLinkGateWrite((void*)fileUrl.c_str(), fileUrl.size());
 
-	XLinkPlatformGateRead(&request, sizeof(request));
+	XLinkGateRead(&request, sizeof(request));
 	if(request.RequestNum == RESPONSE_ERROR) {
 	    spdlog::warn("File download not successful - got no response");
 	    return std::nullopt;
 	}
 
 	char *respBuffer = new char[request.RequestSize + 1];
-	XLinkPlatformGateRead(respBuffer, request.RequestSize);
+	XLinkGateRead(respBuffer, request.RequestSize);
 	respBuffer[request.RequestSize]= '\0';
         auto resp = nlohmann::json::parse(respBuffer);
 	delete[] respBuffer;
