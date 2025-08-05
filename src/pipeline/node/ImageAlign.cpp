@@ -244,7 +244,6 @@ void ImageAlign::run() {
             t *= 10;  // convert to mm
         }
 
-
         auto cv_M1 = arrayToCvMat(3, 3, CV_32FC1, depthSourceIntrinsics);
         auto cv_M2 = arrayToCvMat(3, 3, CV_32FC1, alignSourceIntrinsics);
 
