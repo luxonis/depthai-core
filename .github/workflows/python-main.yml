@@ -423,7 +423,7 @@ jobs:
         run: |
           cd bindings/python && mv wheelhouse/audited wheelhouse/audited_pre && mkdir -p wheelhouse/audited
           echo "Combining repaired wheels into one master wheel"
-          python3 ci/combine_wheels.py --input_folder=wheelhouse/audited_pre --output_folder=wheelhouse/audited --strip_unneeded
+          python3 ci/combine_wheels.py --input_folder=wheelhouse/audited_pre --output_folder=wheelhouse/audited
       - name: Upload combined wheels to artifactory
         run: cd bindings/python && bash ./ci/upload-artifactory.sh
         env:
@@ -530,7 +530,7 @@ jobs:
         run: |
           cd bindings/python && mv wheelhouse/audited wheelhouse/audited_pre && mkdir -p wheelhouse/audited
           echo "Combining repaired wheels into one master wheel"
-          python3 ci/combine_wheels.py --input_folder=wheelhouse/audited_pre --output_folder=wheelhouse/audited --strip_unneeded
+          python3 ci/combine_wheels.py --input_folder=wheelhouse/audited_pre --output_folder=wheelhouse/audited
       - name: Upload combined wheels to artifactory
         run: cd bindings/python && bash ./ci/upload-artifactory.sh
         env:
