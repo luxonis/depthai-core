@@ -234,8 +234,6 @@ void ImageAlign::run() {
     auto extractCalibrationData = [&](int depthWidth, int depthHeight, int alignWidth, int alignHeight) {
         if(calibrationSet) return;
 
-        // auto depthSourceIntrinsics = calibHandler.getCameraIntrinsics(alignFrom, depthWidth, depthHeight);
-        // auto alignSourceIntrinsics = calibHandler.getCameraIntrinsics(alignTo, alignWidth, alignHeight, dai::Point2f{}, dai::Point2f{}, keepAspectRatio);
         auto depthDistortionCoefficients = std::vector<float>(14, 0.0f);
         auto alignDistortionCoefficients = calibHandler.getDistortionCoefficients(alignTo);
 
