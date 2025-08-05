@@ -272,11 +272,16 @@ void runManipTests(dai::ImgFrame::Type type, bool undistort, bool useCoeffs = tr
     auto configQueue = manip->inputConfig.createInputQueue();
     auto outputQueue = manip->out.createOutputQueue();
 
+    auto inputImg = cv::imread(LENNA_PATH);
+
     p.start();
 
     auto getFrames = [&](std::shared_ptr<dai::ImageManipConfig> _cfg, uint32_t outWidth, uint32_t outHeight) {
         auto frame = camOutQ->get<dai::ImgFrame>();
         if(!useCoeffs) frame->transformation.setDistortionCoefficients({});
+        cv::Mat inputImg2;
+        cv::resize(inputImg, inputImg2, cv::Size(frame->getWidth(), frame->getHeight()));
+        frame->setCvFrame(inputImg2, type);
         inputQueue->send(frame);
         configQueue->send(_cfg);
         auto outFrame = outputQueue->get<dai::ImgFrame>();
