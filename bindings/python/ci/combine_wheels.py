@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import logging
 import zipfile
 import argparse
 import glob
@@ -12,6 +13,7 @@ from collections import defaultdict
 
 from dataclasses import dataclass
 
+logger = logging.getLogger(__name__)
 @dataclass
 class WheelInfo:
     wheel_name: str
@@ -41,6 +43,14 @@ def write_to_zip(zip_file: zipfile.ZipFile, path: str, file: str):
 
 
 def main(args: argparse.Namespace):
+
+    FORMAT = "[%(asctime)s.%(msecs)03d] [%(levelname)s] [%(name)s] %(message)s"
+    DATEFMT = "%Y-%m-%d %H:%M:%S"
+    logging.basicConfig(
+        level=args.log_level.upper(),
+        format=FORMAT,
+        datefmt=DATEFMT
+    )
     ## Get a list of all wheels in the input folder
     wheels = glob.glob(os.path.join(args.input_folder, "*.whl"))
 
@@ -63,7 +73,7 @@ def main(args: argparse.Namespace):
         ))
     
     for wheel_info in wheel_infos:
-        print(wheel_info.python_tag)
+        logger.info(f"Found wheel: {wheel_info}")
 
 
     ## Create a temporary directory for extracting wheels
@@ -72,21 +82,19 @@ def main(args: argparse.Namespace):
         dynlib_renames = defaultdict(lambda: defaultdict(dict))
 
         common_magic_hash = str(time.perf_counter())[-5:]
-        common_magic_hash = "00000"
 
         combined_python_tag = ".".join([wheel_info.python_tag for wheel_info in wheel_infos])
         combined_abi_tag = ".".join([wheel_info.abi_tag for wheel_info in wheel_infos])
         combined_platform_tag = wheel_infos[0].platform_tag
 
-        print(combined_python_tag)
-        print(combined_abi_tag)
-        print(combined_platform_tag)
-        print(wheel_infos[0].wheel_dvb)
+        logger.info(f"Combined python tag: {combined_python_tag}")
+        logger.info(f"Combined abi tag: {combined_abi_tag}")
+        logger.info(f"Combined platform tag: {combined_platform_tag}")
+        logger.info(f"Wheel DVB: {wheel_infos[0].wheel_dvb}")
 
         # Create a zip file for the combined wheel
         combined_wheel_name = f"{wheel_infos[0].wheel_dvb}-{combined_python_tag}-{combined_abi_tag}-{combined_platform_tag}.whl"
-        print(combined_wheel_name)
-        # exit()
+        logger.info(f"Combined wheel name: {combined_wheel_name}")
 
         output_zip_path = os.path.join(args.output_folder, combined_wheel_name)
         output_zip = zipfile.ZipFile(output_zip_path, 'w', zipfile.ZIP_DEFLATED, compresslevel=9)
@@ -96,13 +104,12 @@ def main(args: argparse.Namespace):
             wheel_extract_dir = os.path.join(temp_dir, wheel_info.wheel_name)
             os.makedirs(wheel_extract_dir, exist_ok=True)
 
-            print(f"Extracting {wheel_info.wheel_name} to {wheel_extract_dir}")
+            logger.debug(f"Extracting {wheel_info.wheel_name} to {wheel_extract_dir}")
             with zipfile.ZipFile(wheel_info.wheel_path, 'r') as wheel_zip:
                 wheel_zip.extractall(wheel_extract_dir)
 
             ## Get the path to the wheel's dynamic library
             extracted_files = os.listdir(wheel_extract_dir)
-            # print(extracted_files)
             wheel_dylib_path = [f for f in extracted_files if f.endswith(".so") and "cpython" in f]
             assert len(wheel_dylib_path) == 1, f"Expected 1 .so file, got {len(wheel_dylib_path)}"
             wheel_dylib_path = wheel_dylib_path[0]
@@ -118,7 +125,6 @@ def main(args: argparse.Namespace):
 
             ## Unmangle the wheel's dynamic library names
             bundled_libs = os.listdir(os.path.join(wheel_extract_dir, wheel_libs_path))
-            # print(bundled_libs)
             unmangled_libs = list()
             for lib in bundled_libs:
                 base, ext = lib.split(".", 1)
@@ -129,9 +135,8 @@ def main(args: argparse.Namespace):
             wheel_dylib_full_path = os.path.join(wheel_extract_dir, wheel_dylib_path)
             for file in [wheel_dylib_full_path] + [os.path.join(wheel_extract_dir, wheel_libs_path, f) for f in os.listdir(os.path.join(wheel_extract_dir, wheel_libs_path))]:
                 for old_lib, new_lib in dynlib_renames[wheel_info.wheel_name].items():
-                    print(f"Replacing {old_lib} with {new_lib} in {file}")
+                    logger.debug(f"Patching {file} to replace {old_lib} with {new_lib}")
                     subprocess.run(['patchelf', '--replace-needed', old_lib, new_lib, file], check=True)
-            # print(unmangled_libs)
 
             for file in wheel_files_to_copy:
                 write_to_zip(output_zip, wheel_extract_dir, file)
@@ -142,17 +147,23 @@ def main(args: argparse.Namespace):
                 new_lib_name = dynlib_renames[wheel_info.wheel_name][lib]
                 new_lib_path = os.path.join(wheel_extract_dir, wheel_libs_path, new_lib_name)
                 os.rename(lib_path, new_lib_path)
+                if args.strip_unneeded:
+                    logger.info(f"Stripping {new_lib_path}")
+                    subprocess.run(['strip', '--strip-unneeded', new_lib_path], check=True)
+                
             write_to_zip(output_zip, wheel_extract_dir, wheel_libs_path)
 
         output_zip.close()
-        print("Output zip closed")
-        print(f"Output zip size: {os.path.getsize(output_zip_path)}")
-        print(f"Combined wheel saved to {output_zip_path}")
+        logger.info("Output zip closed")
+        logger.info(f"Output zip size: {os.path.getsize(output_zip_path) / (1024 * 1024):.2f} MB")
+        logger.info(f"Combined wheel saved to {output_zip_path}")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--input_folder", type=str, required=True, help="Path to the folder containing already repaired wheels for individual python versions that are to be combined into a single wheel")
     parser.add_argument("--output_folder", type=str, default=".", help="Path to the folder where the combined wheel will be saved")
+    parser.add_argument("--strip_unneeded", action="store_true", help="Strip the libraries to reduce size")
+    parser.add_argument("--log_level", type=str, default="INFO", help="Log level")
     args = parser.parse_args()
     main(args)
