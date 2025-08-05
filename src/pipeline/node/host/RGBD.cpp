@@ -295,6 +295,7 @@ std::shared_ptr<RGBD> RGBD::build(bool autocreate, StereoDepth::PresetMode mode,
             tof->depth.link(align->input);
             out->link(inColor);
             align->outputAligned.link(inDepth);
+            align->setRunOnHost(true);
             sync->setSyncThreshold(std::chrono::milliseconds(static_cast<uint32_t>(1000 / tofFps)));
             return build();
         }

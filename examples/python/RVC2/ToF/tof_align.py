@@ -38,7 +38,7 @@ camRgb = pipeline.create(dai.node.Camera).build(RGB_SOCKET)
 tof = pipeline.create(dai.node.ToF).build(TOF_SOCKET, fps=FPS)
 sync = pipeline.create(dai.node.Sync)
 align = pipeline.create(dai.node.ImageAlign)
-
+align.setRunOnHost(True)
 
 sync.setSyncThreshold(timedelta(seconds=0.5 / FPS))
 

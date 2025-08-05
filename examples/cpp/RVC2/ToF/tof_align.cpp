@@ -124,6 +124,7 @@ int main() {
     auto tof = pipeline.create<dai::node::ToF>();
     auto sync = pipeline.create<dai::node::Sync>();
     auto align = pipeline.create<dai::node::ImageAlign>();
+    align->setRunOnHost(true);
 
     camRgb->build(RGB_SOCKET);
     tof->build(TOF_SOCKET);
