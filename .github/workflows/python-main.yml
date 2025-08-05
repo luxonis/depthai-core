@@ -57,7 +57,7 @@ jobs:
           sudo apt update
           python -m pip install --upgrade pip
           sudo apt install libusb-1.0-0-dev pkg-config bison autoconf libtool libxi-dev libxtst-dev libxrandr-dev libx11-dev libxft-dev libxext-dev nasm flex libudev-dev automake libltdl-dev
-          python -m pip install -r bindings/python/docs/requirements_mkdoc.txt
+           python -m pip install -r bindings/python/docs/requirements_mkdoc.txt
       - name: Configure project
         run: |
           cmake -S . \
@@ -417,18 +417,9 @@ jobs:
           merge-multiple: true
       - name: Combine wheels
         run: |
-          cd bindings/python/wheelhouse/ && mv audited audited_pre && mkdir -p combined && mkdir -p audited && cd audited_pre
-          final_wheel_name=""
-          for wheel in *.whl; do
-            unzip -o "$wheel" -d "temp_$wheel"
-            cp -r "temp_$wheel"/* ../combined/
-            rm -rf "temp_$wheel"
-            if [[ "$wheel" == *"-cp37-cp37m"* ]]; then
-              final_wheel_name="${wheel//-cp37-cp37m-/-cp37.cp38.cp39.cp310.cp311.cp312.cp313-cp37m.cp38.cp39.cp310.cp311.cp312.cp313-}"
-            fi
-          done
-          echo "Combining wheels into $final_wheel_name"
-          cd ../combined && zip -r "../audited/$final_wheel_name" ./*
+          cd bindings/python && mv wheelhouse/audited wheelhouse/audited_pre && mkdir -p wheelhouse/audited
+          echo "Combining repaired wheels into one master wheel"
+          python3 ci/combine_wheels.py --input_folder=wheelhouse/audited_pre --output_folder=wheelhouse/audited
       - name: Upload combined wheels to artifactory
         run: cd bindings/python && bash ./ci/upload-artifactory.sh
         env:
