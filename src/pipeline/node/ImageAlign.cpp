@@ -129,7 +129,6 @@ int shiftDepthImg(std::shared_ptr<dai::ImgFrame> inVec,
 
     int width = inVec->getWidth();
     int height = inVec->getHeight();
-    int stride = inVec->getStride();  // todo
     int bpp = 2;                      // todo
 
     const uint16_t* plane = reinterpret_cast<const uint16_t*>(inVec->getData().data());
@@ -314,7 +313,7 @@ void ImageAlign::run() {
 
     alignWidth = properties.alignWidth;
     alignHeight = properties.alignHeight;
-    bool keepAspectRatio = properties.outKeepAspectRatio;
+    // bool keepAspectRatio = properties.outKeepAspectRatio;
 
     bool initialized = false;
 
