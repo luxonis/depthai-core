@@ -287,7 +287,8 @@ std::shared_ptr<RGBD> RGBD::build(bool autocreate, StereoDepth::PresetMode mode,
         std::vector<dai::CameraSensorType> supportedTypes = feature.supportedTypes;
         if(std::find(supportedTypes.begin(), supportedTypes.end(), dai::CameraSensorType::TOF) != supportedTypes.end()) {
             // Create the ToF node along with ImageAlign node and return
-            auto tofFps = fps.value_or(5.0f);
+            bool setRunOnHost = true;
+            auto tofFps = fps.value_or(30.0f);
             auto tof = pipeline.create<node::ToF>()->build(feature.socket, ImageFiltersPresetMode::TOF_MID_RANGE, tofFps);
             auto align = pipeline.create<node::ImageAlign>();
             auto* out = colorCam->requestOutput(size, ImgFrame::Type::RGB888i, ImgResizeMode::CROP, tofFps, true);
@@ -295,8 +296,9 @@ std::shared_ptr<RGBD> RGBD::build(bool autocreate, StereoDepth::PresetMode mode,
             tof->depth.link(align->input);
             out->link(inColor);
             align->outputAligned.link(inDepth);
-            align->setRunOnHost(true);
+            align->setRunOnHost(setRunOnHost);
             sync->setSyncThreshold(std::chrono::milliseconds(static_cast<uint32_t>(1000 / tofFps)));
+            sync->setRunOnHost(setRunOnHost);
             return build();
         }
     }
