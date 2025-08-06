@@ -15,6 +15,10 @@ DIRECTORY = sys.argv[2]
 
 print(f'Generating stubs for module: "{MODULE_NAME}" in directory: "{DIRECTORY}"')
 
+if sys.platform == "win32":
+    print("Windows stubs gen disabled for now :)")
+    exit(0)
+
 try:
 
     # Create stubs, add PYTHONPATH to find the build module
