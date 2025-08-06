@@ -70,11 +70,7 @@ void CalibrationHandlerBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("getDistortionModel", &CalibrationHandler::getDistortionModel, py::arg("cameraId"), DOC(dai, CalibrationHandler, getDistortionModel))
 
         .def("getCameraExtrinsics",
-             py::overload_cast<CameraBoardSocket>(&CalibrationHandler::getCameraExtrinsics, py::const_),
-             py::arg("srcCamera"))
-
-        .def("getCameraExtrinsics",
-             py::overload_cast<CameraBoardSocket,CameraBoardSocket,bool>(&CalibrationHandler::getCameraExtrinsics, py::const_),
+             &CalibrationHandler::getCameraExtrinsics,
              py::arg("srcCamera"),
              py::arg("dstCamera"),
              py::arg("useSpecTranslation") = false,
