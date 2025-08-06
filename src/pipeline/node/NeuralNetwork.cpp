@@ -121,6 +121,11 @@ NNArchive NeuralNetwork::createNNArchive(NNModelDescription& modelDesc) {
     return nnArchive;
 }
 
+std::optional<std::reference_wrapper<const NNArchive>> NeuralNetwork::getNNArchive() const {
+    if(nnArchive) return std::cref(*nnArchive);
+    return std::nullopt;
+}
+
 void NeuralNetwork::setNNArchive(const NNArchive& nnArchive) {
     constexpr int DEFAULT_SUPERBLOB_NUM_SHAVES = 8;
     this->nnArchive = nnArchive;

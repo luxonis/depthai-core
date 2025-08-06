@@ -454,3 +454,19 @@ TEST_CASE("ImageManip RGB888i Performance") {
 TEST_CASE("ImageManip RGB888i HW") {
     runManipTests(dai::ImageManipProperties::Backend::HW, dai::ImageManipProperties::PerformanceMode::BALANCED, dai::ImgFrame::Type::RGB888i);
 }
+
+TEST_CASE("Large frame resize test") {
+    dai::Pipeline p;
+    auto camera = p.create<dai::node::Camera>()->build();
+    auto* output = camera->requestOutput({7680, 4320});
+    auto camQ = output->createOutputQueue();
+
+    p.start();
+
+    auto frame = camQ->get<dai::ImgFrame>();
+    REQUIRE(frame != nullptr);
+    REQUIRE(frame->getWidth() == 7680);
+    REQUIRE(frame->getHeight() == 4320);
+
+    p.stop();
+}

@@ -74,28 +74,30 @@ cv::Mat colorizeDepth(const cv::Mat& frameDepth) {
 }
 
 int main() {
-    // Create pipeline
     dai::Pipeline pipeline;
 
-    // Define source and output
-    auto tof = pipeline.create<dai::node::ToF>()->build();
-    auto depthQueue = tof->depth.createOutputQueue();
+    // ToF node
+    dai::CameraBoardSocket socket = dai::CameraBoardSocket::AUTO;
+    dai::ImageFiltersPresetMode presetMode = dai::ImageFiltersPresetMode::TOF_MID_RANGE;
+    std::shared_ptr<dai::node::ToF> tof = pipeline.create<dai::node::ToF>()->build(socket, presetMode);
 
-    // Start pipeline
+    // Output queues
+    std::shared_ptr<dai::MessageQueue> depthQueue = tof->depth.createOutputQueue();
+    std::shared_ptr<dai::MessageQueue> depthRawQueue = tof->rawDepth.createOutputQueue();
+
     pipeline.start();
-
-    // Main loop
     while(pipeline.isRunning()) {
-        auto depth = depthQueue->get<dai::ImgFrame>();
-        cv::Mat depthFrame = depth->getCvFrame();
-        cv::Mat visualizedDepth = colorizeDepth(depthFrame);
+        // Visualize raw depth (unfiltered depth directly from the ToF sensor)
+        std::shared_ptr<dai::ImgFrame> depthRaw = depthRawQueue->get<dai::ImgFrame>();
+        cv::Mat depthRawImage = colorizeDepth(depthRaw->getCvFrame());
+        cv::imshow("depthRaw", depthRawImage);
 
-        cv::imshow("depth", visualizedDepth);
+        // Visualize depth (which is filtered depthRaw)
+        std::shared_ptr<dai::ImgFrame> depth = depthQueue->get<dai::ImgFrame>();
+        cv::Mat depthImage = colorizeDepth(depth->getCvFrame());
+        cv::imshow("depth", depthImage);
 
-        char key = cv::waitKey(1);
-        if(key == 'q') {
-            break;
-        }
+        if(cv::waitKey(1) == 'q') break;
     }
 
     return 0;
