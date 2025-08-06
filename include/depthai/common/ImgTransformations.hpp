@@ -216,7 +216,7 @@ struct ImgTransformation {
     ImgTransformation& addSrcCrops(const std::vector<dai::RotatedRect>& crops);
     ImgTransformation& setSize(size_t width, size_t height);
     ImgTransformation& setSourceSize(size_t width, size_t height);
-    ImgTransformation& setExtrinsics(Extrinsics extrinsics);
+    ImgTransformation& setExtrinsics(const Extrinsics& extrinsics);
     ImgTransformation& setIntrinsicMatrix(std::array<std::array<float, 3>, 3> intrinsicMatrix);
     ImgTransformation& setDistortionModel(CameraModel model);
     ImgTransformation& setDistortionCoefficients(std::vector<float> coefficients);

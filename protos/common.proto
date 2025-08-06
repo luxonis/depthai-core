@@ -29,11 +29,11 @@ message ImgTransformation {
     TransformationMatrix sourceIntrinsicMatrix = 2;
     CameraModel distortionModel = 3;
     FloatArray distortionCoefficients = 4;
-    Extrinsics extrinsics = 5;
-    uint32 srcWidth = 6;
-    uint32 srcHeight = 7;
-    uint32 width = 8;
-    uint32 height = 9;
+    uint32 srcWidth = 5;
+    uint32 srcHeight = 6;
+    uint32 width = 7;
+    uint32 height = 8;
+    Extrinsics extrinsics = 9;
 }
 
 message TransformationMatrix {

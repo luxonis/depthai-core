@@ -83,7 +83,26 @@ void serializeImgTransformation(proto::common::ImgTransformation* imgTransformat
     for(const auto& value : transformation.getDistortionCoefficients()) {
         distortionCoefficients->add_values(value);
     }
+    // Set extrinsics
+    const Extrinsics& extrinsics = transformation.getExtrinsics();
+    proto::common::Extrinsics* extrinsicsProto = imgTransformation->mutable_extrinsics();
+    extrinsicsProto->set_tocamerasocket(static_cast<int32_t>(extrinsics.toCameraSocket));
+    for(const auto& row : extrinsics.rotationMatrix) {
+        proto::common::FloatArray* rotationArray = extrinsicsProto->mutable_rotationmatrix()->add_arrays();
+        for(const auto& value : row) {
+            rotationArray->add_values(value);
+        }
+    }
+    proto::common::Point3f* translation = extrinsicsProto->mutable_translation();
+    translation->set_x(extrinsics.translation.x);
+    translation->set_y(extrinsics.translation.y);
+    translation->set_z(extrinsics.translation.z);
+    proto::common::Point3f* specTranslation = extrinsicsProto->mutable_spectranslation();
+    specTranslation->set_x(extrinsics.specTranslation.x);
+    specTranslation->set_y(extrinsics.specTranslation.y);
+    specTranslation->set_z(extrinsics.specTranslation.z);
 }
+
 ImgTransformation deserializeImgTransformation(const proto::common::ImgTransformation& imgTransformation) {
     std::array<std::array<float, 3>, 3> transformationMatrix;
     std::array<std::array<float, 3>, 3> sourceIntrinsicMatrix;
