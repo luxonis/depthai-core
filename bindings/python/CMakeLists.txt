@@ -290,15 +290,19 @@ endif()
 # Create a shared library that combines all static libraries
 # The libraries are combined here to ensure link-time optimization (and mostly importantly aggresive DCE) can happen
 add_library(depthai_combined SHARED src/dummy.cpp)
-target_link_libraries(depthai_combined PUBLIC ${DEPTHAI_LINK_TARGET})
 
 if(APPLE) 
-    target_link_options(depthai_combined PRIVATE -Wl,-all_load)
+    foreach(lib ${DEPTHAI_LINK_TARGET})
+        target_link_options(depthai_combined PRIVATE -force_load $<TARGET_FILE:${lib}>)
+    endforeach()
+    target_link_libraries(depthai_combined PUBLIC ${DEPTHAI_LINK_TARGET})
 elseif(UNIX)
     target_link_options(depthai_combined PRIVATE -Wl,--whole-archive)
+    target_link_libraries(depthai_combined PUBLIC ${DEPTHAI_LINK_TARGET})
     target_link_libraries(depthai_combined PRIVATE -Wl,--no-whole-archive)
 elseif(WIN32)
     target_link_options(depthai_combined PRIVATE /WHOLEARCHIVE)
+    target_link_libraries(depthai_combined PUBLIC ${DEPTHAI_LINK_TARGET})
 endif()
 
 
