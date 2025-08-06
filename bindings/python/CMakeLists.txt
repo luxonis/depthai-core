@@ -287,12 +287,27 @@ if(DEPTHAI_RTABMAP_SUPPORT AND DEPTHAI_PCL_SUPPORT)
     list(APPEND DEPTHAI_LINK_TARGET depthai::rtabmap)
 endif()
 
+# Create a shared library that combines all static libraries
+# The libraries are combined here to ensure link-time optimization (and mostly importantly aggresive DCE) can happen
+add_library(depthai_combined SHARED src/dummy.cpp)
+target_link_libraries(depthai_combined PUBLIC ${DEPTHAI_LINK_TARGET})
+
+if(APPLE) 
+    target_link_options(depthai_combined PRIVATE -Wl,-all_load)
+elseif(UNIX)
+    target_link_options(depthai_combined PRIVATE -Wl,--whole-archive)
+    target_link_libraries(depthai_combined PRIVATE -Wl,--no-whole-archive)
+elseif(WIN32)
+    target_link_options(depthai_combined PRIVATE /WHOLEARCHIVE)
+endif()
+
+
 # Link with libraries
 target_link_libraries(${TARGET_NAME}
     PUBLIC
         # pybind11
         pybind11::pybind11
-        ${DEPTHAI_LINK_TARGET}
+        depthai_combined
         hedley
         pybind11_json
         xtensor-python
