@@ -26,7 +26,7 @@ class StereoDepthConfig : public Buffer {
         /**
          * Align the disparity/depth to the perspective of a rectified output, or center it
          */
-        enum class DepthAlign : int32_t { RECTIFIED_RIGHT, RECTIFIED_LEFT, CENTER };
+        enum class DepthAlign : int32_t { RECTIFIED_RIGHT, RECTIFIED_LEFT, CENTER, LEFT, RIGHT};
 
         /**
          * Measurement unit for depth data
