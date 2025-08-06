@@ -12,7 +12,6 @@ on:
         required: false
         type: string
         default: "[]"
-      
     secrets:
       CONTAINER_REGISTRY:
         required: true
