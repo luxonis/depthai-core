@@ -204,12 +204,14 @@ else()
         set(bindings_directory ${CMAKE_CURRENT_BINARY_DIR})
     endif()
     message(STATUS "Mypy available, creating and checking stubs. Running with generate_stubs.py ${TARGET_NAME} ${bindings_directory}")
+    if (NOT EXISTS "${CMAKE_CURRENT_LIST_DIR}/generate_stubs.py")
+        message(FATAL_ERROR "Cannot add custom build command, ${CMAKE_CURRENT_LIST_DIR}/generate_stubs.py not found")
+    endif ()
     add_custom_command(TARGET ${TARGET_NAME} POST_BUILD COMMAND
         ${CMAKE_COMMAND} -E env
         # Python path (to find compiled module)
         "PYTHONPATH=$<TARGET_FILE_DIR:${TARGET_NAME}>${SYS_PATH_SEPARATOR}$ENV{PYTHONPATH}"
         ${PYTHON_EXECUTABLE} "${CMAKE_CURRENT_LIST_DIR}/generate_stubs.py" "${TARGET_NAME}" "$<TARGET_FILE_DIR:${TARGET_NAME}>"
-        DEPENDS "${CMAKE_CURRENT_LIST_DIR}/generate_stubs.py"
         WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
     )
 endif()
