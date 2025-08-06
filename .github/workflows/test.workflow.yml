@@ -32,7 +32,7 @@ jobs:
     uses: ./.github/workflows/test_child.yml
     with:
       flavor: "tsan"
-      luxonis_os_versions_to_test: "['1.15.0']"
+      luxonis_os_versions_to_test: "['1.16.0+86d6fb917bb56093d76336a5f242c2c05ff4fcbe']"
     secrets:
       CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
 
@@ -40,7 +40,7 @@ jobs:
     uses: ./.github/workflows/test_child.yml
     with:
       flavor: "asan-ubsan"
-      luxonis_os_versions_to_test: "['1.15.0']"
+      luxonis_os_versions_to_test: "['1.16.0+86d6fb917bb56093d76336a5f242c2c05ff4fcbe']"
     secrets:
       CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
 
