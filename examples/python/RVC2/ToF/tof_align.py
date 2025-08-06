@@ -7,7 +7,7 @@ import time
 from datetime import timedelta
 
 # This example is intended to run unchanged on an OAK-ToF camera
-FPS = 5.0
+FPS = 30.0
 
 RGB_SOCKET = dai.CameraBoardSocket.CAM_C
 TOF_SOCKET = dai.CameraBoardSocket.CAM_A
@@ -41,6 +41,7 @@ align = pipeline.create(dai.node.ImageAlign)
 align.setRunOnHost(True)
 
 sync.setSyncThreshold(timedelta(seconds=0.5 / FPS))
+sync.setRunOnHost(True)
 
 # Linking
 cameraOutput = camRgb.requestOutput(SIZE, enableUndistortion=True, fps=FPS)
