@@ -69,4 +69,3 @@ TEST_CASE("Test ImageAlign node depth to image alignment on host") {
     bool runOnHost = true;
     runImageAlignTest(useDepth, runOnHost);
 }
-

@@ -217,6 +217,18 @@ void ImageAlign::run() {
     uint32_t frameSize = 0;
     uint32_t outFrameSize = 0;
 
+    std::unordered_set<ImgFrame::Type> hwSupportedFrameTypes = {ImgFrame::Type::YUV420p, ImgFrame::Type::NV12, ImgFrame::Type::GRAY8, ImgFrame::Type::RAW8};
+    std::unordered_set<ImgFrame::Type> supportedFrameTypes = hwSupportedFrameTypes;
+    supportedFrameTypes.insert(ImgFrame::Type::RAW16);
+
+    std::unordered_map<ImgFrame::Type, float> frameTypeToBpp = {
+        {ImgFrame::Type::YUV420p, 1.5f},
+        {ImgFrame::Type::NV12, 1.5f},
+        {ImgFrame::Type::GRAY8, 1.0f},
+        {ImgFrame::Type::RAW8, 1.0f},
+        {ImgFrame::Type::RAW16, 2.0f},
+    };
+
     auto allocatePools = [&](int width, int height, int alignWidth, int alignHeight, float inputFrameBpp) -> std::pair<bool, std::string> {
         if(allocated) return {true, ""};
 
@@ -301,6 +313,28 @@ void ImageAlign::run() {
         calibrationSet = true;
     };
 
+    auto remapNv12 = [&](cv::Mat& inputNV12, cv::Mat& outputNV12, cv::Mat& map_x, cv::Mat& map_y) {
+
+        cv::Mat bgrFrame;
+        cv::cvtColor(inputNV12, bgrFrame, cv::COLOR_YUV2BGR_NV12);
+
+        cv::Mat remappedBGR;
+        cv::remap(bgrFrame, remappedBGR, map_x, map_y, cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(0, 0, 0));
+
+        cv::cvtColor(remappedBGR, outputNV12, cv::COLOR_BGR2YUV_YV12);
+    };
+
+    auto remapYuv420 = [&](cv::Mat& inputYUV420, cv::Mat& outputYUV420, cv::Mat& map_x, cv::Mat& map_y) {
+
+        cv::Mat bgrFrame;
+        cv::cvtColor(inputYUV420, bgrFrame, cv::COLOR_YUV2BGR_IYUV);
+
+        cv::Mat remappedBGR;
+        cv::remap(bgrFrame, remappedBGR, map_x, map_y, cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(0, 0, 0));
+
+        cv::cvtColor(remappedBGR, outputYUV420, cv::COLOR_BGR2YUV_I420);
+    };
+
     auto shiftMesh = [](cv::Mat& meshX, int shiftX) { meshX = meshX + cv::Scalar(shiftX); };
 
     auto pipeline = getParentPipeline();
@@ -316,10 +350,6 @@ void ImageAlign::run() {
     // bool keepAspectRatio = properties.outKeepAspectRatio;
 
     bool initialized = false;
-
-    std::unordered_set<ImgFrame::Type> hwSupportedFrameTypes = {ImgFrame::Type::YUV420p, ImgFrame::Type::NV12, ImgFrame::Type::GRAY8, ImgFrame::Type::RAW8};
-    std::unordered_set<ImgFrame::Type> supportedFrameTypes = hwSupportedFrameTypes;
-    supportedFrameTypes.insert(ImgFrame::Type::RAW16);
 
     auto latestConfig = initialConfig;
 
@@ -374,7 +404,6 @@ void ImageAlign::run() {
 
         alignFrom = (dai::CameraBoardSocket)inputImg->getInstanceNum();
         inputFrameType = inputImg->getType();
-        float inputFrameBpp = inputImg->getBytesPerPixel();
 
         depthSourceIntrinsics = inputImg->transformation.getIntrinsicMatrix();
 
@@ -387,6 +416,7 @@ void ImageAlign::run() {
             logger->error("Frame type '{}' is not supported in ImageAlign.", (int)inputFrameType);  // todo toStr
             continue;
         }
+        float inputFrameBpp = frameTypeToBpp[inputFrameType];
 
         auto [success, msg] = allocatePools(width, height, alignWidth, alignHeight, inputFrameBpp);
         if(!success) {
@@ -439,7 +469,21 @@ void ImageAlign::run() {
         depthImgRectified->setType(inputImg->getType());
         depthImgRectified->fb.stride = depthImgRectified->fb.width * depthImgRectified->getBytesPerPixel();
 
-        cv::remap(inputImg->getFrame(), depthImgRectified->getFrame(), map_x_1, map_y_1, cv::INTER_NEAREST, cv::BORDER_CONSTANT, cv::Scalar(0, 0, 0));
+        auto inputFrame = inputImg->getFrame();
+        auto depthImgRectifiedFrame = depthImgRectified->getFrame();
+
+        if(inputFrameBpp == 1.5f) {
+            auto inputFrameCopy = inputFrame.clone();
+            if(depthImgRectified->getType() == ImgFrame::Type::NV12) {
+                remapNv12(inputFrameCopy, depthImgRectifiedFrame, map_x_1, map_y_1);
+            } else if(depthImgRectified->getType() == ImgFrame::Type::YUV420p) {
+                remapYuv420(inputFrameCopy, depthImgRectifiedFrame, map_x_1, map_y_1);
+            } else {
+                logger->error("Unsupported frame type for NV12/YUV420 remapping: {}", (int)depthImgRectified->getType());
+            }
+        } else {
+            cv::remap(inputFrame, depthImgRectifiedFrame, map_x_1, map_y_1, cv::INTER_NEAREST, cv::BORDER_CONSTANT, cv::Scalar(0, 0, 0));
+        }
 
         if(PRINT_DEBUG) {
             t2 = steady_clock::now();
@@ -506,8 +550,19 @@ void ImageAlign::run() {
         alignedImg->setType(inputImg->getType());
         alignedImg->fb.stride = alignedImg->fb.width * alignedImg->getBytesPerPixel();
 
-        cv::remap(warp2Input->getFrame(), alignedImg->getFrame(), map_x_2, map_y_2, cv::INTER_NEAREST, cv::BORDER_CONSTANT, cv::Scalar(0, 0, 0));
-
+        auto warp2InputFrame = warp2Input->getFrame();
+        auto alignedImgFrame = alignedImg->getFrame();
+        if(inputFrameBpp == 1.5f) {
+            if(alignedImg->getType() == ImgFrame::Type::NV12) {
+                remapNv12(warp2InputFrame, alignedImgFrame, map_x_2, map_y_2);
+            } else if(alignedImg->getType() == ImgFrame::Type::YUV420p) {
+                remapYuv420(warp2InputFrame, alignedImgFrame, map_x_2, map_y_2);
+            } else {
+                logger->error("Unsupported frame type for NV12/YUV420 remapping: {}", (int)alignedImg->getType());
+            }
+        } else {
+            cv::remap(warp2InputFrame, alignedImgFrame, map_x_2, map_y_2, cv::INTER_NEAREST, cv::BORDER_CONSTANT, cv::Scalar(0, 0, 0));
+        }
         if(PRINT_DEBUG) {
             t2 = steady_clock::now();
             auto elapsed = duration_cast<microseconds>(t2 - t1).count() / 1000.f;
