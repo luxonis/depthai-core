@@ -102,7 +102,7 @@ void ObjectTracker::run() {
         bool gotDetections = false;
 
         inputTrackerImg = inputTrackerFrame.get<ImgFrame>();
-        if(inputDetections.has()) {
+        if(inputDetections.has() || true) {
             auto detectionsBuffer = inputDetections.get<Buffer>();
             inputImgDetections = std::dynamic_pointer_cast<ImgDetections>(detectionsBuffer);
             inputSpatialImgDetections = std::dynamic_pointer_cast<SpatialImgDetections>(detectionsBuffer);
