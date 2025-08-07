@@ -103,14 +103,14 @@ class ToF : public DeviceNodeGroup {
     void buildInternal() override {
         // Build all subnodes, call their internal build functions
         tofBase->buildInternal();
-        tofDepthConfidenceFilter->buildInternal();
+        // tofDepthConfidenceFilter->buildInternal();
         imageFilters->buildInternal();
 
         // Link subnodes together
-        tofBase->depth.link(tofDepthConfidenceFilter->depth);
-        tofBase->amplitude.link(tofDepthConfidenceFilter->amplitude);
+        tofBase->depth.link(imageFilters->input);
+        // tofBase->amplitude.link(tofDepthConfidenceFilter->amplitude);
 
-        tofDepthConfidenceFilter->filteredDepth.link(imageFilters->input);
+        // tofDepthConfidenceFilter->filteredDepth.link(imageFilters->input);
 
         // Important note:
         // imageFilters->output and depth are implicitly linked via the reference
@@ -122,7 +122,7 @@ class ToF : public DeviceNodeGroup {
                                dai::ImageFiltersPresetMode presetMode = dai::ImageFiltersPresetMode::TOF_MID_RANGE,
                                std::optional<float> fps = std::nullopt) {
         tofBase->build(boardSocket, presetMode, fps);
-        tofDepthConfidenceFilter->build(presetMode);
+        // tofDepthConfidenceFilter->build(presetMode);
         imageFilters->build(presetMode);
         return std::static_pointer_cast<ToF>(shared_from_this());
     }
