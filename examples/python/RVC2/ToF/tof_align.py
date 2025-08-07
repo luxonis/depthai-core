@@ -5,6 +5,7 @@ import cv2
 import depthai as dai
 import time
 from datetime import timedelta
+from collections import deque
 
 # This example is intended to run unchanged on an OAK-ToF camera
 FPS = 30.0
@@ -15,21 +16,18 @@ ALIGN_SOCKET = RGB_SOCKET
 SIZE=(640, 400)
 
 class FPSCounter:
-    def __init__(self):
-        self.frameTimes = []
+    def __init__(self, max_samples=1000):
+        self.timestamps = deque(maxlen=max_samples)
 
     def tick(self):
-        now = time.time()
-        self.frameTimes.append(now)
-        self.frameTimes = self.frameTimes[-100:]
+        self.timestamps.append(time.time())
 
     def getFps(self):
-        if len(self.frameTimes) <= 1:
-            return 0
-        # Calculate the FPS
-        return (len(self.frameTimes) - 1) / (self.frameTimes[-1] - self.frameTimes[0])
-
-
+        if len(self.timestamps) < 2:
+            return 0.0
+        intervals = [t2 - t1 for t1, t2 in zip(self.timestamps, list(self.timestamps)[1:])]
+        avg_interval = sum(intervals) / len(intervals)
+        return 1.0 / avg_interval if avg_interval > 0 else 0.0
 
 pipeline = dai.Pipeline()
 
