@@ -300,17 +300,23 @@ elseif(UNIX)
     target_link_options(depthai_combined PRIVATE -Wl,--whole-archive)
     target_link_libraries(depthai_combined PUBLIC ${DEPTHAI_LINK_TARGET})
     target_link_libraries(depthai_combined PRIVATE -Wl,--no-whole-archive)
-elseif(WIN32)
-    foreach(lib ${DEPTHAI_LINK_TARGET})
-        target_link_options(depthai_combined PRIVATE "/WHOLEARCHIVE:$<TARGET_FILE:${lib}>")
-    endforeach()
-    target_link_libraries(depthai_combined PUBLIC ${DEPTHAI_LINK_TARGET})
 endif()
 
 
-# Link with libraries
+if(WIN32)
 target_link_libraries(${TARGET_NAME}
     PUBLIC
+        # pybind11
+        pybind11::pybind11
+        ${DEPTHAI_LINK_TARGET}
+        hedley
+        pybind11_json
+        xtensor-python
+        spdlog::spdlog
+)
+else()
+target_link_libraries(${TARGET_NAME}
+    PRIVATE
         # pybind11
         pybind11::pybind11
         depthai_combined
@@ -319,6 +325,8 @@ target_link_libraries(${TARGET_NAME}
         xtensor-python
         spdlog::spdlog
 )
+endif()
+
 
 # Add embedded module option, otherwise link to pybind11 as usual
 if(DEPTHAI_PYTHON_EMBEDDED_MODULE)

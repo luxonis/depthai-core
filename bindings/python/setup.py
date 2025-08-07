@@ -119,6 +119,8 @@ class CMakeBuild(build_ext):
         env = os.environ.copy()
 
         cmake_args += ['-DDEPTHAI_BUILD_PYTHON=ON']
+        if sys.platform == "win32":
+            cmake_args += ['-DBUILD_SHARED_LIBS=ON']
         if env.get('DEPTHAI_BUILD_BASALT') == 'ON':
             cmake_args += ['-DDEPTHAI_BASALT_SUPPORT=ON']
         if env.get('DEPTHAI_BUILD_PCL') == 'ON':
