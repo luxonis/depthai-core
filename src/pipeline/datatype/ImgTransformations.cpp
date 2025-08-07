@@ -107,6 +107,7 @@ dai::Point2f interSourceFrameTransform(dai::Point2f sourcePt, const ImgTransform
     auto fromSourceInv = from.getSourceIntrinsicMatrixInv();
     auto toSource = to.getSourceIntrinsicMatrix();
     if(mateq(fromSource, toSource)) return sourcePt;
+    // TODO(Morato) handle the extrinsics (rotation) here!
     auto transformMat = matmul(toSource, fromSourceInv);
     auto transformed = matvecmul(transformMat, {sourcePt.x, sourcePt.y});
     return {transformed[0], transformed[1]};
@@ -403,9 +404,11 @@ dai::Point2f ImgTransformation::remapPointTo(const ImgTransformation& to, dai::P
         point.y *= height;
         point.normalized = false;
     }
+    // TODO(Morato) handle the undistortion here (if the target is distorted)
     auto sourcePointFrom = invTransformPoint(point);
     auto sourcePointTo = interSourceFrameTransform(sourcePointFrom, *this, to);
     auto transformed = to.transformPoint(sourcePointTo);
+    // TODO(Morato) handle the distortion here (if the target is distorted)
     if(normalized) {
         transformed.x /= to.width;
         transformed.y /= to.height;
@@ -420,9 +423,12 @@ dai::Point2f ImgTransformation::remapPointFrom(const ImgTransformation& from, da
         point.y *= from.height;
         point.normalized = false;
     }
+
+    // TODO(Morato) handle the undistortion here (if the source is distorted)
     auto sourcePointFrom = from.invTransformPoint(point);
     auto sourcePointTo = interSourceFrameTransform(sourcePointFrom, from, *this);
     auto transformed = transformPoint(sourcePointTo);
+    // TODO(Morato) handle the distortion here (if the source is distorted)
     if(normalized) {
         transformed.x /= width;
         transformed.y /= height;
@@ -435,9 +441,11 @@ dai::RotatedRect ImgTransformation::remapRectTo(const ImgTransformation& to, dai
     if(normalized) {
         rect = rect.denormalize(width, height);
     }
+    // TODO(Morato) handle the undistortion here (if the target is distorted)
     auto sourceRectFrom = invTransformRect(rect);
     auto sourceRectTo = interSourceFrameTransform(sourceRectFrom, *this, to);
     auto transformed = to.transformRect(sourceRectTo);
+    // TODO(Morato) handle the distortion here (if the target is distorted)
     if(normalized) {
         transformed = transformed.normalize(to.width, to.height);
     }
@@ -448,13 +456,46 @@ dai::RotatedRect ImgTransformation::remapRectFrom(const ImgTransformation& from,
     if(normalized) {
         rect = rect.denormalize(from.width, from.height);
     }
+    // TODO(Morato) handle the undistortion here (if the source is distorted)
     auto sourceRectFrom = from.invTransformRect(rect);
     auto sourceRectTo = interSourceFrameTransform(sourceRectFrom, from, *this);
     auto transformed = transformRect(sourceRectTo);
+    // TODO(Morato) handle the distortion here (if the source is distorted)
     if(normalized) {
         transformed = transformed.normalize(width, height);
     }
     return transformed;
 }
 
+dai::Point2f ImgTransformation::project3DPoint(const dai::Point3f& point3f) const {
+    // Convert 3D point to homogeneous coordinates
+    return Point2f{};
+}
+
+dai::Point2f ImgTransformation::project3DPointFrom(const ImgTransformation& from, const dai::Point3f& point3f) const {
+    // First transform the 3D point to the source frame
+    // Then project it to the current frame
+    return Point2f{};
 };  // namespace dai
+
+dai::Point2f ImgTransformation::project3DPointTo(const ImgTransformation& from, const dai::Point2f& point2f) const {
+    // First transform the 2D point to the source frame
+    // Then project it to the current frame
+    return Point2f{};
+}
+
+dai::Point3f ImgTransformation::remap3DPointTo(const ImgTransformation& to, const dai::Point3f& point3f) const {
+    // Remap a 3D point from this transformation to another
+    return Point3f{};
+}
+
+dai::Point3f ImgTransformation::remap3DPointFrom(const ImgTransformation& from, const dai::Point3f& point3f) const {
+    // Remap a 3D point to this transformation from another
+    return Point3f{};
+}
+
+dai::Extrinsics ImgTransformation::getExtrinsicsTo(const ImgTransformation& to) const {
+    // Get the extrinsics to another ImgTransformation
+    return Extrinsics{};
+}
+}  // namespace dai

@@ -251,6 +251,55 @@ struct ImgTransformation {
     dai::RotatedRect remapRectFrom(const ImgTransformation& from, dai::RotatedRect rect) const;
 
     /**
+        * Project a 3D point to a 2D point in the current frame. This will also take into account the extrinsics and distortion model.
+        * @param point3f 3D point to project
+        * @return Projected 2D point in the current frame
+        * @note This function assumes that the point3f is in the coordinate system of the source frame.
+    */
+    dai::Point2f project3DPoint(const dai::Point3f& point3f) const;
+
+    /**
+     * Project a 3D point from the source frame to the current frame. This will also take into account the extrinsics and distortion model.
+     * @param from Transformation to project from
+     * @param point3f 3D point to project
+     * @return Projected 2D point in the current frame
+     * @note This function assumes that the point3f is in the coordinate system of the source frame.
+     */
+    dai::Point2f project3DPointFrom(const ImgTransformation& from, const dai::Point3f& point3f) const;
+
+    /**
+    * Project a 3D point to a 2D point in the source frame. This will also take into account the extrinsics and distortion model.
+    * @param to Transformation to project to
+    * @param point2f 2D point to project
+    * @return Projected 3D point in the source frame
+    * @note This function assumes that the point2f is in the coordinate system of the current frame.
+    */
+    dai::Point2f project3DPointTo(const ImgTransformation& from, const dai::Point2f& point2f) const;
+
+    /**
+    * Remap a 3D point from this transformation to another.
+    * @param to Transformation to remap to
+    * @param point3f 3D point to remap
+    * @return Remapped 3D point in the target transformation
+    */
+    dai::Point3f remap3DPointTo(const ImgTransformation& to, const dai::Point3f& point3f) const;
+
+    /**
+     * Remap a 3D point to this transformation from another.
+     * @param from Transformation to remap from
+     * @param point3f 3D point to remap
+     * @return Remapped 3D point in the current transformation
+    */
+    dai::Point3f remap3DPointFrom(const ImgTransformation& from, const dai::Point3f& point3f) const;
+
+    /**
+     * Get the extrinsics to another ImgTransformation.
+     * @param to Transformation to get extrinsics to
+     * @return Extrinsics to the target transformation
+    */
+    dai::Extrinsics getExtrinsicsTo(const ImgTransformation& to) const;
+
+    /**
      * Check if the transformations are valid. The transformations are valid if the source frame size and the current frame size are set.
      */
     bool isValid() const;
