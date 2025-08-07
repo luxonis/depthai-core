@@ -282,9 +282,9 @@ std::shared_ptr<RGBD> RGBD::build(bool autocreate, StereoDepth::PresetMode mode,
     auto colorCam = pipeline.create<node::Camera>()->build(rgbCameraSocket);
 
     std::optional<ImgFrame::Type> colorCamOutputType = ImgFrame::Type::RGB888i;
-    #if defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
-        colorCamOutputType = std::nullopt; //native output for each platform
-    #endif
+#if defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
+    colorCamOutputType = std::nullopt;  // native output for each platform
+#endif
 
     // Handle ToF camera
     for(const auto& feature : connectedCameraFeatures) {
@@ -333,16 +333,16 @@ void RGBD::initialize(std::shared_ptr<MessageGroup> frames) {
     // Check if width, width and cameraID match
     auto colorFrame = std::dynamic_pointer_cast<ImgFrame>(frames->group.at(inColor.getName()));
     if(colorFrame->getType() != ImgFrame::Type::RGB888i) {
-        #if defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
-            try{
-                auto rgb888iFrame = colorFrame->getCvFrame();
-                colorFrame->setCvFrame(rgb888iFrame, ImgFrame::Type::RGB888i);
-            } catch(const std::exception& e) {
-                throw std::runtime_error("Color space conversion to RGB888i failed: " + std::string(e.what()));
-            }
-        #else
-            throw std::runtime_error("RGBD node only supports RGB888i frames");
-        #endif
+#if defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
+        try {
+            auto rgb888iFrame = colorFrame->getCvFrame();
+            colorFrame->setCvFrame(rgb888iFrame, ImgFrame::Type::RGB888i);
+        } catch(const std::exception& e) {
+            throw std::runtime_error("Color space conversion to RGB888i failed: " + std::string(e.what()));
+        }
+#else
+        throw std::runtime_error("RGBD node only supports RGB888i frames");
+#endif
     }
     auto depthFrame = std::dynamic_pointer_cast<ImgFrame>(frames->group.at(inDepth.getName()));
     if(colorFrame->getWidth() != depthFrame->getWidth() || colorFrame->getHeight() != depthFrame->getHeight()) {
@@ -373,16 +373,16 @@ void RGBD::run() {
             }
             auto colorFrame = std::dynamic_pointer_cast<ImgFrame>(group->group.at(inColor.getName()));
             if(colorFrame->getType() != ImgFrame::Type::RGB888i) {
-                #if defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
-                    try{
-                        auto rgb888iFrame = colorFrame->getCvFrame();
-                        colorFrame->setCvFrame(rgb888iFrame, ImgFrame::Type::RGB888i);
-                    } catch(const std::exception& e) {
-                        throw std::runtime_error("Color space conversion to RGB888i failed: " + std::string(e.what()));
-                    }
-                #else
-                    throw std::runtime_error("RGBD node only supports RGB888i frames");
-                #endif
+#if defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
+                try {
+                    auto rgb888iFrame = colorFrame->getCvFrame();
+                    colorFrame->setCvFrame(rgb888iFrame, ImgFrame::Type::RGB888i);
+                } catch(const std::exception& e) {
+                    throw std::runtime_error("Color space conversion to RGB888i failed: " + std::string(e.what()));
+                }
+#else
+                throw std::runtime_error("RGBD node only supports RGB888i frames");
+#endif
             }
             auto depthFrame = std::dynamic_pointer_cast<ImgFrame>(group->group.at(inDepth.getName()));
 

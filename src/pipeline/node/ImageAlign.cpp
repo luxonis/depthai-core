@@ -129,7 +129,7 @@ int shiftDepthImg(std::shared_ptr<dai::ImgFrame> inVec,
 
     int width = inVec->getWidth();
     int height = inVec->getHeight();
-    int bpp = 2;                      // todo
+    int bpp = 2;  // todo
 
     const uint16_t* plane = reinterpret_cast<const uint16_t*>(inVec->getData().data());
     uint16_t* alignedPlane = reinterpret_cast<uint16_t*>(outVec->getData().data());
@@ -314,7 +314,6 @@ void ImageAlign::run() {
     };
 
     auto remapNv12 = [&](cv::Mat& inputNV12, cv::Mat& outputNV12, cv::Mat& map_x, cv::Mat& map_y) {
-
         cv::Mat bgrFrame;
         cv::cvtColor(inputNV12, bgrFrame, cv::COLOR_YUV2BGR_NV12);
 
@@ -325,7 +324,6 @@ void ImageAlign::run() {
     };
 
     auto remapYuv420 = [&](cv::Mat& inputYUV420, cv::Mat& outputYUV420, cv::Mat& map_x, cv::Mat& map_y) {
-
         cv::Mat bgrFrame;
         cv::cvtColor(inputYUV420, bgrFrame, cv::COLOR_YUV2BGR_IYUV);
 
