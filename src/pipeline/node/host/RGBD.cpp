@@ -293,12 +293,7 @@ std::shared_ptr<RGBD> RGBD::build(bool autocreate, StereoDepth::PresetMode mode,
         if(std::find(supportedTypes.begin(), supportedTypes.end(), dai::CameraSensorType::TOF) != supportedTypes.end()) {
             // Create the ToF node along with ImageAlign node and return
             bool setRunOnHost = true;
-            auto tofFps = fps.value_or(25.0f);
-            if(colorCamOutputType) {
-                if(*colorCamOutputType == ImgFrame::Type::RGB888i) {
-                    tofFps = fps.value_or(17.0f);
-                }
-            }
+            auto tofFps = fps.value_or(30.0f);
             auto tof = pipeline.create<node::ToF>()->build(feature.socket, ImageFiltersPresetMode::TOF_MID_RANGE, tofFps);
             auto align = pipeline.create<node::ImageAlign>();
             auto* colorCamOutput = colorCam->requestOutput(size, colorCamOutputType, ImgResizeMode::CROP, tofFps, true);
