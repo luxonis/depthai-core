@@ -343,9 +343,15 @@ endif()
 
 if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
     target_compile_definitions(${TARGET_NAME} PRIVATE DEPTHAI_ENABLE_REMOTE_CONNECTION)
+    if (DEPTHAI_PYTHON_EMBEDDED_MODULE_TARGET)
+        target_compile_definitions(${TARGET_EMBED_NAME} PRIVATE DEPTHAI_ENABLE_REMOTE_CONNECTION)
+    endif ()
 endif()
 if(DEPTHAI_ENABLE_EVENTS_MANAGER)
     target_compile_definitions(${TARGET_NAME} PRIVATE DEPTHAI_ENABLE_EVENTS_MANAGER)
+    if (DEPTHAI_PYTHON_EMBEDDED_MODULE_TARGET)
+        target_compile_definitions(${TARGET_EMBED_NAME} PRIVATE DEPTHAI_ENABLE_EVENTS_MANAGER)
+    endif ()
 endif()
 
 # Add the clang-format target
