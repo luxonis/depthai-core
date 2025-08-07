@@ -251,11 +251,11 @@ void RGBD::buildInternal() {
     sync->out.link(inSync);
     sync->setRunOnHost(false);
     inColor.setBlocking(false);
-    inColor.setMaxSize(1);
+    inColor.setMaxSize(4);
     inDepth.setBlocking(false);
-    inDepth.setMaxSize(1);
+    inDepth.setMaxSize(4);
     inSync.setBlocking(false);
-    inSync.setMaxSize(1);
+    inSync.setMaxSize(4);
 }
 
 std::shared_ptr<RGBD> RGBD::build() {
@@ -281,9 +281,9 @@ std::shared_ptr<RGBD> RGBD::build(bool autocreate, StereoDepth::PresetMode mode,
     }
     auto colorCam = pipeline.create<node::Camera>()->build(rgbCameraSocket);
 
-    auto colorCamOutputType = ImgFrame::Type::RGB888i;
+    std::optional<ImgFrame::Type> colorCamOutputType = ImgFrame::Type::RGB888i;
     #if defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
-        colorCamOutputType = ImgFrame::Type::YUV420p;
+        colorCamOutputType = std::nullopt; //native output for each platform
     #endif
 
     // Handle ToF camera
@@ -293,16 +293,21 @@ std::shared_ptr<RGBD> RGBD::build(bool autocreate, StereoDepth::PresetMode mode,
         if(std::find(supportedTypes.begin(), supportedTypes.end(), dai::CameraSensorType::TOF) != supportedTypes.end()) {
             // Create the ToF node along with ImageAlign node and return
             bool setRunOnHost = true;
-            auto tofFps = colorCamOutputType == ImgFrame::Type::RGB888i ? fps.value_or(17.0f) : fps.value_or(25.0f);
+            auto tofFps = fps.value_or(25.0f);
+            if(colorCamOutputType) {
+                if(*colorCamOutputType == ImgFrame::Type::RGB888i) {
+                    tofFps = fps.value_or(17.0f);
+                }
+            }
             auto tof = pipeline.create<node::ToF>()->build(feature.socket, ImageFiltersPresetMode::TOF_MID_RANGE, tofFps);
             auto align = pipeline.create<node::ImageAlign>();
-            auto* out = colorCam->requestOutput(size, colorCamOutputType, ImgResizeMode::CROP, tofFps, true);
-            out->link(align->inputAlignTo);
+            auto* colorCamOutput = colorCam->requestOutput(size, colorCamOutputType, ImgResizeMode::CROP, tofFps, true);
+            colorCamOutput->link(align->inputAlignTo);
             tof->depth.link(align->input);
-            out->link(inColor);
+            colorCamOutput->link(inColor);
             align->outputAligned.link(inDepth);
             align->setRunOnHost(setRunOnHost);
-            sync->setSyncThreshold(std::chrono::milliseconds(static_cast<uint32_t>(1000 / tofFps)));
+            sync->setSyncThreshold(std::chrono::milliseconds(static_cast<uint32_t>(500 / tofFps)));
             sync->setRunOnHost(setRunOnHost);
             return build();
         }
@@ -314,15 +319,15 @@ std::shared_ptr<RGBD> RGBD::build(bool autocreate, StereoDepth::PresetMode mode,
     if(platform == Platform::RVC4) {
         align = pipeline.create<node::ImageAlign>();
     }
-    auto* out = colorCam->requestOutput(size, colorCamOutputType, ImgResizeMode::CROP, fps, true);
+    auto* colorCamOutput = colorCam->requestOutput(size, colorCamOutputType, ImgResizeMode::CROP, fps, true);
     if(platform == Platform::RVC4) {
-        out->link(inColor);
+        colorCamOutput->link(inColor);
         stereo->depth.link(align->input);
-        out->link(align->inputAlignTo);
+        colorCamOutput->link(align->inputAlignTo);
         align->outputAligned.link(inDepth);
     } else {
-        out->link(inColor);
-        out->link(stereo->inputAlignTo);
+        colorCamOutput->link(inColor);
+        colorCamOutput->link(stereo->inputAlignTo);
         stereo->depth.link(inDepth);
     }
     return build();
