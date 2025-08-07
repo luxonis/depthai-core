@@ -34,6 +34,8 @@ struct ImgTransformation {
     dai::RotatedRect dstCrop;
     bool cropsValid = false;
 
+    uint32_t calibrationId = 0;
+
     void calcCrops();
 
    public:
@@ -164,6 +166,22 @@ struct ImgTransformation {
     std::vector<dai::RotatedRect> getSrcCrops() const;
 
     /**
+     * Returns the ID of the calibration used for this transformation.
+     */
+    uint32_t getCalibrationId() const {
+        return calibrationId;
+    }
+
+    /**
+     * Set the ID of the calibration used for this transformation.
+     * @param id Calibration ID
+     */
+    ImgTransformation& setCalibrationId(uint32_t id) {
+        calibrationId = id;
+        return *this;
+    }
+
+    /**
      * Returns true if the point is inside the transformed region of interest (determined by crops used).
      */
     bool getSrcMaskPt(size_t x, size_t y);
@@ -251,11 +269,11 @@ struct ImgTransformation {
     dai::RotatedRect remapRectFrom(const ImgTransformation& from, dai::RotatedRect rect) const;
 
     /**
-        * Project a 3D point to a 2D point in the current frame. This will also take into account the extrinsics and distortion model.
-        * @param point3f 3D point to project
-        * @return Projected 2D point in the current frame
-        * @note This function assumes that the point3f is in the coordinate system of the source frame.
-    */
+     * Project a 3D point to a 2D point in the current frame. This will also take into account the extrinsics and distortion model.
+     * @param point3f 3D point to project
+     * @return Projected 2D point in the current frame
+     * @note This function assumes that the point3f is in the coordinate system of the source frame.
+     */
     dai::Point2f project3DPoint(const dai::Point3f& point3f) const;
 
     /**
@@ -268,20 +286,20 @@ struct ImgTransformation {
     dai::Point2f project3DPointFrom(const ImgTransformation& from, const dai::Point3f& point3f) const;
 
     /**
-    * Project a 3D point to a 2D point in the source frame. This will also take into account the extrinsics and distortion model.
-    * @param to Transformation to project to
-    * @param point2f 2D point to project
-    * @return Projected 3D point in the source frame
-    * @note This function assumes that the point2f is in the coordinate system of the current frame.
-    */
+     * Project a 3D point to a 2D point in the source frame. This will also take into account the extrinsics and distortion model.
+     * @param to Transformation to project to
+     * @param point2f 2D point to project
+     * @return Projected 3D point in the source frame
+     * @note This function assumes that the point2f is in the coordinate system of the current frame.
+     */
     dai::Point2f project3DPointTo(const ImgTransformation& from, const dai::Point2f& point2f) const;
 
     /**
-    * Remap a 3D point from this transformation to another.
-    * @param to Transformation to remap to
-    * @param point3f 3D point to remap
-    * @return Remapped 3D point in the target transformation
-    */
+     * Remap a 3D point from this transformation to another.
+     * @param to Transformation to remap to
+     * @param point3f 3D point to remap
+     * @return Remapped 3D point in the target transformation
+     */
     dai::Point3f remap3DPointTo(const ImgTransformation& to, const dai::Point3f& point3f) const;
 
     /**
@@ -289,14 +307,14 @@ struct ImgTransformation {
      * @param from Transformation to remap from
      * @param point3f 3D point to remap
      * @return Remapped 3D point in the current transformation
-    */
+     */
     dai::Point3f remap3DPointFrom(const ImgTransformation& from, const dai::Point3f& point3f) const;
 
     /**
      * Get the extrinsics to another ImgTransformation.
      * @param to Transformation to get extrinsics to
      * @return Extrinsics to the target transformation
-    */
+     */
     dai::Extrinsics getExtrinsicsTo(const ImgTransformation& to) const;
 
     /**
@@ -316,7 +334,8 @@ struct ImgTransformation {
                       srcHeight,
                       width,
                       height,
-                      srcCrops);
+                      srcCrops,
+                      calibrationId);
 };
 
 }  // namespace dai
