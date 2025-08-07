@@ -39,6 +39,7 @@ option(DEPTHAI_PYTHON_ENABLE_TESTS "Enable tests" OFF)
 option(DEPTHAI_PYTHON_ENABLE_EXAMPLES "Enable examples" OFF)
 option(DEPTHAI_PYTHON_BUILD_DOCSTRINGS "Generate docstrings from header files if module 'pybind11_mkdoc' available" ON)
 option(DEPTHAI_PYTHON_EMBEDDED_MODULE "Create an embeddable module" OFF)
+cmake_dependent_option(DEPTHAI_PYTHON_EMBEDDED_MODULE_TARGET "Create an additional target with pybind embedded module" OFF DEPTHAI_PYTHON_EMBEDDED_MODULE && TARGET_EMBED_NAME OFF)
 
 # Add pybind11 dependency
 #add_subdirectory(pybind11-2.5.0)
@@ -171,6 +172,9 @@ endif()
 
 # Add files for python module
 if(DEPTHAI_PYTHON_EMBEDDED_MODULE)
+    if (DEPTHAI_PYTHON_EMBEDDED_MODULE_TARGET)
+        add_library(${TARGET_EMBED_NAME} SHARED ${SOURCE_LIST})
+    endif ()
     add_library(${TARGET_NAME} ${SOURCE_LIST})
 else()
     pybind11_add_module(${TARGET_NAME} ${SOURCE_LIST})
@@ -273,7 +277,14 @@ endif()
 target_include_directories(${TARGET_NAME} PRIVATE src ${DOCSTRINGS_INCLUDE_PLACEHOLDER_DIR} "${CMAKE_CURRENT_LIST_DIR}/../../src")
 if(DEPTHAI_MERGED_TARGET)
     target_include_directories(${TARGET_NAME} PRIVATE external/pybind11_opencv_numpy)
+    if (DEPTHAI_PYTHON_EMBEDDED_MODULE_TARGET)
+        target_include_directories(${TARGET_EMBED_NAME} PRIVATE external/pybind11_opencv_numpy)
+    endif ()
 endif()
+
+if (DEPTHAI_PYTHON_EMBEDDED_MODULE_TARGET)
+    target_include_directories(${TARGET_EMBED_NAME} PRIVATE src ${DOCSTRINGS_INCLUDE_PLACEHOLDER_DIR} "${CMAKE_CURRENT_LIST_DIR}/../../src")
+endif ()
 
 set(DEPTHAI_LINK_TARGET depthai::core)
 if(NOT DEPTHAI_MERGED_TARGET)
@@ -299,9 +310,35 @@ target_link_libraries(${TARGET_NAME}
         spdlog::spdlog
 )
 
+if (DEPTHAI_PYTHON_EMBEDDED_MODULE_TARGET)
+    target_link_libraries(${TARGET_EMBED_NAME}
+            PUBLIC
+            # pybind11
+            pybind11::embed
+            depthai::core
+            PRIVATE
+            hedley
+            pybind11_json
+            xtensor-python
+            spdlog::spdlog
+    )
+endif ()
+
+string(TIMESTAMP BUILD_DATETIME "%Y-%m-%d %H:%M:%S +0000" UTC)
+
 # Add embedded module option, otherwise link to pybind11 as usual
 if(DEPTHAI_PYTHON_EMBEDDED_MODULE)
     target_compile_definitions(${TARGET_NAME} PRIVATE DEPTHAI_PYTHON_EMBEDDED_MODULE)
+    if (DEPTHAI_PYTHON_EMBEDDED_MODULE_TARGET)
+        target_compile_definitions(${TARGET_EMBED_NAME}
+                PRIVATE
+                DEPTHAI_PYTHON_VERSION="${DEPTHAI_PYTHON_VERSION}"
+                DEPTHAI_PYTHON_COMMIT_HASH="${BUILD_COMMIT}"
+                DEPTHAI_PYTHON_COMMIT_DATETIME="${BUILD_COMMIT_DATETIME}"
+                DEPTHAI_PYTHON_BUILD_DATETIME="${BUILD_DATETIME}"
+                DEPTHAI_PYTHON_EMBEDDED_MODULE
+        )
+    endif ()
 endif()
 
 if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
@@ -356,7 +393,6 @@ execute_process(COMMAND ${PYTHON_EXECUTABLE} "-c" "${version_command}"
 )
 
 
-string(TIMESTAMP BUILD_DATETIME "%Y-%m-%d %H:%M:%S +0000" UTC)
 target_compile_definitions(${TARGET_NAME}
     PRIVATE
         DEPTHAI_PYTHON_VERSION="${DEPTHAI_PYTHON_VERSION}"
