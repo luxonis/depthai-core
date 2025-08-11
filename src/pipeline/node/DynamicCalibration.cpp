@@ -189,14 +189,13 @@ dai::CalibrationQuality DynamicCalibration::calibQualityfromDCL(const dcl::Calib
 
     if(src.calibrationQuality.has_value()) {
         CalibrationQuality::Data data = {
-            .rotationChange =
                 {
                     src.calibrationQuality->rotationChange[0],
                     src.calibrationQuality->rotationChange[1],
                     src.calibrationQuality->rotationChange[2],
                 },
-            .epipolarErrorChange = src.calibrationQuality->epipolarErrorChange,
-            .depthErrorDifference = src.calibrationQuality->depthDistanceDifference,
+            src.calibrationQuality->epipolarErrorChange,
+            src.calibrationQuality->depthDistanceDifference,
         };
         quality.data = std::optional<CalibrationQuality::Data>(data);
     } else {
@@ -332,7 +331,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline(const std::
     // set up the dynamic calibration
     deviceName = daiDevice->getDeviceId();
     dcDevice = dynCalibImpl->addDevice(deviceName);
-    const dcl::resolution_t resolution = {.width = static_cast<unsigned>(width), .height = static_cast<unsigned>(height)};
+    const dcl::resolution_t resolution = {static_cast<unsigned>(width), static_cast<unsigned>(height)};
     sensorA = std::make_shared<dcl::CameraSensorHandle>(calibA, resolution);
     sensorB = std::make_shared<dcl::CameraSensorHandle>(calibB, resolution);
     dynCalibImpl->addSensor(deviceName, sensorA, socketA);
