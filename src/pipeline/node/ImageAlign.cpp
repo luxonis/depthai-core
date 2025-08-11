@@ -152,14 +152,12 @@ int shiftDepthImg(std::shared_ptr<dai::ImgFrame> inVec,
     }
 
     for(int i = 0; i < height; i++) {
-        const uint16_t* __restrict__ currentLine = plane + width * i;
-        uint16_t* __restrict__ alignedLine = alignedPlane + width * i;
+        const uint16_t* currentLine = plane + width * i;
+        uint16_t* alignedLine = alignedPlane + width * i;
 
         memset(alignedLine, 0, lineLength);
 
         if(shiftX > 0) {
-
-    #pragma clang loop interleave(enable) unroll(enable)
             for(int j = width - 1; j >= 0; j--) {
                 uint16_t depth = currentLine[j];
 
@@ -172,8 +170,6 @@ int shiftDepthImg(std::shared_ptr<dai::ImgFrame> inVec,
             }
 
         } else {
-
-    #pragma clang loop interleave(enable) unroll(enable)
             for(int j = 0; j < width; j++) {
                 uint16_t depth = currentLine[j];
 
