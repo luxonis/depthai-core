@@ -67,7 +67,7 @@ endif()
 # Create depthai project
 project(depthai VERSION "3.0.0" LANGUAGES CXX C)
 set(DEPTHAI_PRE_RELEASE_TYPE "rc") # Valid options are "alpha", "beta", "rc", ""
-set(DEPTHAI_PRE_RELEASE_VERSION "3")
+set(DEPTHAI_PRE_RELEASE_VERSION "4")
 
 # Set DEPTHAI_VERSION universally, not conditionally
 set(DEPTHAI_VERSION ${PROJECT_VERSION}-${DEPTHAI_PRE_RELEASE_TYPE}.${DEPTHAI_PRE_RELEASE_VERSION})
@@ -320,6 +320,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/TransformData.cpp
     src/utility/H26xParsers.cpp
     src/utility/ImageManipImpl.cpp
+    src/utility/ObjectTrackerImpl.cpp
     src/utility/Initialization.cpp
     src/utility/Resources.cpp
     src/utility/Platform.cpp
@@ -701,6 +702,7 @@ target_link_libraries(${TARGET_CORE_NAME}
         magic_enum::magic_enum
         liblzma::liblzma
         lz4::lz4
+        Eigen3::Eigen
 )
 
 if(DEPTHAI_ENABLE_MP4V2)

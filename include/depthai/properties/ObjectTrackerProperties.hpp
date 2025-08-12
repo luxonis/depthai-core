@@ -51,7 +51,7 @@ struct ObjectTrackerProperties : PropertiesSerializable<Properties, ObjectTracke
     /**
      * Tracking method.
      */
-    TrackerType trackerType = TrackerType::ZERO_TERM_IMAGELESS;
+    TrackerType trackerType = TrackerType::SHORT_TERM_IMAGELESS;
     /**
      * New ID assignment policy.
      */
@@ -63,7 +63,7 @@ struct ObjectTrackerProperties : PropertiesSerializable<Properties, ObjectTracke
     /**
      * Occlusion ratio threshold. Used to filter out overlapping tracklets.
      */
-    float occlusionRatioThreshold = 0.4f;
+    float occlusionRatioThreshold = 0.2f;
     /**
      * Tracklet lifespan in number of frames. Number of frames after which a LOST tracklet is removed.
      */
