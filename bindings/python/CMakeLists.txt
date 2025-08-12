@@ -289,7 +289,8 @@ endif()
 
 # Create a shared library that combines all static libraries
 # The libraries are combined here to ensure link-time optimization (and mostly importantly aggresive DCE) can happen
-add_library(depthai_combined SHARED src/dummy.cpp)
+file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/empty.cpp "")
+add_library(depthai_combined SHARED ${CMAKE_CURRENT_BINARY_DIR}/empty.cpp)
 
 if(APPLE) 
     foreach(lib ${DEPTHAI_LINK_TARGET})
@@ -304,6 +305,8 @@ endif()
 
 
 if(WIN32)
+
+## In case setup.py is used to build the python bindings, the depthai link targets are shared libraries.
 target_link_libraries(${TARGET_NAME}
     PUBLIC
         # pybind11
@@ -314,7 +317,12 @@ target_link_libraries(${TARGET_NAME}
         xtensor-python
         spdlog::spdlog
 )
+
+## In addition to the above libraries, link in libgcc and libstc++
+#target_link_libraries(${TARGET_NAME} PRIVATE -static -lpthread -static-libgcc -static-libstdc++)
+
 else()
+
 target_link_libraries(${TARGET_NAME}
     PRIVATE
         # pybind11
@@ -325,6 +333,7 @@ target_link_libraries(${TARGET_NAME}
         xtensor-python
         spdlog::spdlog
 )
+
 endif()
 
 

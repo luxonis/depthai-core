@@ -120,13 +120,17 @@ def combine_wheels_windows(args, wheel_infos):
 
     logger.info(f"Combining wheels for Windows!")
 
-    # Make sure that on windows, all the wheels have the same platform tag
+    # Make sure that on linux, all the wheels have the same platform tag
     platform_tags = set(wheel_info.platform_tag for wheel_info in wheel_infos)
     if len(platform_tags) > 1:
         raise ValueError(f"All wheels must have the same platform tag. Found: {platform_tags}")
 
     ## Create a temporary directory for extracting wheels
     with tempfile.TemporaryDirectory() as temp_dir:
+
+        dynlib_renames = defaultdict(lambda: defaultdict(dict))
+
+        common_magic_hash = str(time.perf_counter())[-5:]
 
         combined_python_tag = ".".join([wheel_info.python_tag for wheel_info in wheel_infos])
         combined_abi_tag = ".".join([wheel_info.abi_tag for wheel_info in wheel_infos])
@@ -153,9 +157,30 @@ def combine_wheels_windows(args, wheel_infos):
             with zipfile.ZipFile(wheel_info.wheel_path, 'r') as wheel_zip:
                 wheel_zip.extractall(wheel_extract_dir)
 
-            ## Just copy everything over to the output zip
-            for file in os.listdir(wheel_extract_dir):
+            ## Get the path to the wheel's dynamic library
+            extracted_files = os.listdir(wheel_extract_dir)
+            wheel_dylib_path = [f for f in extracted_files if f.endswith(".pyd")]
+            assert len(wheel_dylib_path) == 1, f"Expected 1 .pyd file, got {len(wheel_dylib_path)}"
+            wheel_dylib_path = wheel_dylib_path[0]
+
+            ## get .libs folder
+            wheel_libs_path = [f for f in extracted_files if f.endswith(".data")]
+            assert len(wheel_libs_path) == 1, f"Expected 1 .data folder, got {len(wheel_libs_path)}"
+            wheel_libs_path = wheel_libs_path[0]
+
+            ## get python dll
+            python_dll_path = [f for f in extracted_files if f.endswith(".dll") and f.startswith("python3")]
+            assert len(python_dll_path) == 1, f"Expected 1 python3.dll file, got {len(python_dll_path)}"
+            python_dll_path = python_dll_path[0]
+
+            ## All folders and files that will be copied to the output folder
+            wheel_files_to_copy = [wheel_dylib_path, python_dll_path]
+            wheel_files_to_copy.extend([f for f in extracted_files if not f.endswith(".pyd") and not f.endswith(".dll") and not f.endswith(".data")])
+
+            for file in wheel_files_to_copy:
                 write_to_zip(output_zip, wheel_extract_dir, file)
+
+            write_to_zip(output_zip, wheel_extract_dir, wheel_libs_path)
 
         output_zip.close()
         logger.info("Output zip closed")
@@ -220,7 +245,7 @@ def write_to_zip(zip_file: zipfile.ZipFile, path: str, file: str):
     if os.path.isdir(file_path):
         for root, _, files in os.walk(file_path):
             for f in files:
-                arcname = file + "/" + f
+                arcname = file + "/" + os.path.relpath(os.path.join(root, f), file_path)
                 arcname = arcname.replace("\\", "/") if sys.platform == "win32" else arcname
                 try:
                     # This will throw a KeyError if the file is not in the zip, in that case we write the file to the zip
