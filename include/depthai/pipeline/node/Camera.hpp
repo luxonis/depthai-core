@@ -59,7 +59,7 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
      * Set the sensor type to use
      * @param sensorType Sensor type to use
      */
-    std::shared_ptr<Camera> sensorType(CameraSensorType sensorType) {
+    std::shared_ptr<Camera> setSensorType(CameraSensorType sensorType) {
         getProperties().sensorType = sensorType;
         return std::dynamic_pointer_cast<Camera>(shared_from_this());
     }
@@ -68,7 +68,7 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
      * Get the sensor type
      * @return Sensor type
      */
-    inline CameraSensorType sensorType() {
+    inline CameraSensorType getSensorType() {
         return getProperties().sensorType;
     }
 
