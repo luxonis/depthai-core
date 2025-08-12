@@ -191,7 +191,7 @@ list(APPEND targets_to_export XLinkPublic)
 # OpenCV 4 - (optional)
 message("DEPTHAI_OPENCV_SUPPORT: ${DEPTHAI_OPENCV_SUPPORT}")
 if(DEPTHAI_OPENCV_SUPPORT)
-    find_package(OpenCV 4 ${_QUIET} CONFIG REQUIRED)
+    find_package(OpenCV 4 ${_QUIET} CONFIG REQUIRED PATHS 3rdparty/opencv/build)
 endif()
 
 if(DEPTHAI_PCL_SUPPORT AND NOT TARGET JsonCpp::JsonCpp)
