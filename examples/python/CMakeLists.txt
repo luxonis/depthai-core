@@ -172,6 +172,9 @@ dai_set_example_test_labels(camera_still_max_res ondevice rvc2_all rvc4 ci)
 add_python_example(camera_max_resolution Camera/camera_max_resolution.py)
 dai_set_example_test_labels(camera_max_resolution ondevice rvc2_all rvc4 ci)
 
+add_python_example(camera_undistortion Camera/camera_undistortion.py)
+dai_set_example_test_labels(camera_undistortion ondevice rvc2_all rvc4 ci)
+
 ## AprilTags
 add_python_example(april_tags_12mp AprilTags/april_tags_12mp.py)
 dai_set_example_test_labels(april_tags_12mp ondevice rvc2_all rvc4 ci nowindows)
@@ -325,3 +328,15 @@ dai_set_example_test_labels(warp_mesh rvc2_all rvc4 ci)
 # Feature tracker
 add_python_example(feature_tracker FeatureTracker/feature_tracker.py)
 dai_set_example_test_labels(feature_tracker rvc2_all rvc4 ci)
+
+# Object tracker
+add_python_example(object_tracker ObjectTracker/object_tracker.py)
+dai_set_example_test_labels(object_tracker ondevice rvc2_all rvc4 ci)
+add_python_example(object_tracker_replay ObjectTracker/object_tracker_replay.py)
+dai_set_example_test_labels(object_tracker_replay ondevice rvc2_all rvc4 ci)
+add_python_example(object_tracker_remap ObjectTracker/object_tracker_remap.py)
+dai_set_example_test_labels(object_tracker_remap ondevice rvc2_all rvc4 ci)
+
+# ImageFilters
+add_python_example(image_filters StereoDepth/stereo_depth_filters.py)
+dai_set_example_test_labels(image_filters rvc2_all rvc4 ci)

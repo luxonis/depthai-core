@@ -67,7 +67,7 @@ endif()
 # Create depthai project
 project(depthai VERSION "3.0.0" LANGUAGES CXX C)
 set(DEPTHAI_PRE_RELEASE_TYPE "rc") # Valid options are "alpha", "beta", "rc", ""
-set(DEPTHAI_PRE_RELEASE_VERSION "3")
+set(DEPTHAI_PRE_RELEASE_VERSION "4")
 
 # Set DEPTHAI_VERSION universally, not conditionally
 set(DEPTHAI_VERSION ${PROJECT_VERSION}-${DEPTHAI_PRE_RELEASE_TYPE}.${DEPTHAI_PRE_RELEASE_VERSION})
@@ -193,7 +193,7 @@ set(THIRDPARTY_OPENCV_LIBRARIES "" CACHE STRING "Optional libraries to link Open
 set(TARGET_OPENCV_NAME ${PROJECT_NAME}-opencv)
 set(TARGET_OPENCV_ALIAS opencv)
 if(DEPTHAI_OPENCV_SUPPORT)
-    set(REQUIRED_OPENCV_LIBRARIES "opencv_core" "opencv_imgproc" "opencv_videoio" "opencv_highgui")
+    set(REQUIRED_OPENCV_LIBRARIES "opencv_core" "opencv_imgproc" "opencv_videoio" "opencv_highgui" "opencv_calib3d")
     set(OPENCV_SUPPORT_AVAILABLE ${OpenCV_FOUND})
     foreach(lib ${REQUIRED_OPENCV_LIBRARIES})
         if(NOT (lib IN_LIST OpenCV_LIBS))
@@ -292,6 +292,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/EncodedFrame.cpp
     src/pipeline/datatype/ImgAnnotations.cpp
     src/pipeline/datatype/ImageManipConfig.cpp
+    src/pipeline/datatype/ImageFiltersConfig.cpp
     src/pipeline/datatype/CameraControl.cpp
     src/pipeline/datatype/NNData.cpp
     src/pipeline/datatype/ImgDetections.cpp
@@ -319,6 +320,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/TransformData.cpp
     src/utility/H26xParsers.cpp
     src/utility/ImageManipImpl.cpp
+    src/utility/ObjectTrackerImpl.cpp
     src/utility/Initialization.cpp
     src/utility/Resources.cpp
     src/utility/Platform.cpp
@@ -371,6 +373,7 @@ set(TARGET_OPENCV_SOURCES
     src/pipeline/node/host/HostCamera.cpp
     src/pipeline/node/host/Record.cpp
     src/pipeline/node/host/Replay.cpp
+    src/pipeline/node/ImageFilters.cpp
     src/opencv/RecordReplay.cpp
     src/opencv/HolisticRecordReplay.cpp
 )
@@ -699,6 +702,7 @@ target_link_libraries(${TARGET_CORE_NAME}
         magic_enum::magic_enum
         liblzma::liblzma
         lz4::lz4
+        Eigen3::Eigen
 )
 
 if(DEPTHAI_ENABLE_MP4V2)

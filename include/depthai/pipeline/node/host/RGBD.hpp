@@ -44,7 +44,10 @@ class RGBD : public NodeCRTP<ThreadedHostNode, RGBD> {
      * @param autocreate If true, will create color and depth nodes if they don't exist.
      * @param size Size of the frames
      */
-    std::shared_ptr<RGBD> build(bool autocreate, StereoDepth::PresetMode mode = StereoDepth::PresetMode::DEFAULT, std::pair<int, int> size = {640, 400});
+    std::shared_ptr<RGBD> build(bool autocreate,
+                                StereoDepth::PresetMode mode = StereoDepth::PresetMode::DEFAULT,
+                                std::pair<int, int> size = {640, 400},
+                                std::optional<float> fps = std::nullopt);
     void setDepthUnit(StereoDepthConfig::AlgorithmControl::DepthUnit depthUnit);
     /**
      * @brief Use single-threaded CPU for processing
