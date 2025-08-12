@@ -150,6 +150,7 @@ bool deserializationSupported(DatatypeEnum datatype) {
         case DatatypeEnum::AprilTagConfig:
         case DatatypeEnum::AprilTags:
         case DatatypeEnum::Tracklets:
+        case DatatypeEnum::DynamicCalibrationConfig:
         case DatatypeEnum::StereoDepthConfig:
         case DatatypeEnum::FeatureTrackerConfig:
         case DatatypeEnum::ThermalConfig:
