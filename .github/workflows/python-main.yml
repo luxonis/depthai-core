@@ -248,13 +248,14 @@ jobs:
       - name: List wheelhouse
         run: cd bindings/python && ls ./wheelhouse
       - name: Auditing wheels
+        shell: bash
         run: |
           cd bindings/python
-          $env:EXTRA_DLL_PATH = (Get-ChildItem -Path ./build -Filter "temp.win*" -Directory -Recurse | Select-Object -First 1).FullName + "/Release/Release"
+          EXTRA_DLL_PATH=$(find ./build -type d -name "temp.win*" -exec ls -d {} \; | head -n 1)/Release/Release
           echo "delvewheel extra dll path: $EXTRA_DLL_PATH"
-          foreach ($wheel in Get-ChildItem -Path "./wheelhouse" -Filter "*.whl") {
-              delvewheel.exe repair $wheel --add-path $EXTRA_DLL_PATH -w wheelhouse/audited
-          }
+          for wheel in ./wheelhouse/*.whl; do
+            delvewheel repair "$wheel" --add-path "$EXTRA_DLL_PATH" -w wheelhouse/audited
+          done
       - name: Archive wheel artifacts
         uses: actions/upload-artifact@v4
         with:
