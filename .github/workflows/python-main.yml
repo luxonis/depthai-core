@@ -243,8 +243,18 @@ jobs:
       - name: Print out vcpkg logs if building port fails
         if: failure()    # Only run this if the build step fails
         run: cd bindings/python && bash ./ci/show_vcpkg_logs.sh
+      - name: Install delvewheel
+        run: python -m pip install delvewheel
+      - name: List wheelhouse
+        run: cd bindings/python && ls -a -l ./wheelhouse
       - name: Auditing wheels
-        run: cd bindings/python && ci/repair-whl-windows.sh `pwd`/wheelhouse/* `pwd`/build # repair wheels (i.e. copy in all necessary dlls)
+        run: |
+          cd bindings/python
+          $env:EXTRA_DLL_PATH = (Get-ChildItem -Path ./build -Filter "temp.win*" -Directory -Recurse | Select-Object -First 1).FullName + "/Release/Release"
+          echo "delvewheel extra dll path: $EXTRA_DLL_PATH"
+          foreach ($wheel in Get-ChildItem -Path "./wheelhouse" -Filter "*.whl") {
+              delvewheel.exe repair $wheel --add-path $EXTRA_DLL_PATH -w wheelhouse/audited
+          }
       - name: Archive wheel artifacts
         uses: actions/upload-artifact@v4
         with:
