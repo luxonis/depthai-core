@@ -28,8 +28,6 @@ right_out.link(dyn_calib.right)
 # Output queues
 left_xout = stereo.syncedLeft.createOutputQueue()
 right_xout = stereo.syncedRight.createOutputQueue()
-left_xout = stereo.syncedLeft.createOutputQueue()
-right_xout = stereo.syncedRight.createOutputQueue()
 disp_xout = stereo.disparity.createOutputQueue()
 
 calibration_output = dyn_calib.calibrationOutput.createOutputQueue()
@@ -56,13 +54,8 @@ device.setCalibration(calibration)
 pipeline.start()
 
 while pipeline.isRunning():
-
-while pipeline.isRunning():
     max_disp = stereo.initialConfig.getMaxDisparity()
 
-    in_left = left_xout.get()
-    in_right = right_xout.get()
-    in_disp = disp_xout.get()
     in_left = left_xout.get()
     in_right = right_xout.get()
     in_disp = disp_xout.get()

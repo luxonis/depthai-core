@@ -41,5 +41,6 @@ void bind_dynamic_calibration(pybind11::module& m, void* pCallstack) {
 
         .def("setRunOnHost", &DynamicCalibration::setRunOnHost, py::arg("runOnHost"), DOC(dai, node, DynamicCalibration, setRunOnHost))
         .def("runOnHost", &DynamicCalibration::runOnHost, DOC(dai, node, DynamicCalibration, runOnHost));
+
     daiNodeModule.attr("DynamicCalibration").attr("Properties") = DynamicCalibrationProperties;
 }

@@ -167,6 +167,7 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
      */
     bool runOnHost() const override;
 
+    
     int getWidth() const {
         return width;
     }

@@ -56,7 +56,6 @@ else()
     )
 endif()
 
-
 set(CMAKE_TOOLCHAIN_FILE "${gen_toolchain}" CACHE STRING "" FORCE)
 if(DEFINED _INTERNAL_DEPTHAI_ORIGINAL_CMAKE_TOOLCHAIN_FILE)
     message(STATUS "Using specified toolchain file: ${_INTERNAL_DEPTHAI_ORIGINAL_CMAKE_TOOLCHAIN_FILE} combined into: ${CMAKE_TOOLCHAIN_FILE}")
@@ -73,14 +72,8 @@ set(DEPTHAI_PRE_RELEASE_VERSION "4")
 # Set DEPTHAI_VERSION universally, not conditionally
 set(DEPTHAI_VERSION ${PROJECT_VERSION}-${DEPTHAI_PRE_RELEASE_TYPE}.${DEPTHAI_PRE_RELEASE_VERSION})
 
-# Default for dynamic calibration support (turn on x64 Liunux, but off for others)
-if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64" AND UNIX)
-    message(STATUS "Dynamic Calibration support enabled by default for x64 Linux")
-    option(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT "Enable Dynamic Calibration support" ON)
-else()
-    message(STATUS "Dynamic Calibration support disabled by default")
-    option(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT "Enable Dynamic Calibration support" OFF)
-endif()
+message(STATUS "Dynamic Calibration support enabled by default for x64 Linux")
+option(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT "Enable Dynamic Calibration support" ON)
 
 get_directory_property(has_parent PARENT_DIRECTORY)
 if(has_parent)
@@ -520,42 +513,9 @@ if(NOT BUILD_SHARED_LIBS)
 endif()
 
 if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
-    include(FetchContent)
-    set(DEPTHAI_DYNAMIC_CALIBRATION_PATH "" CACHE FILEPATH "Override path to local dynamic_calibration .zip file")
-
-    if(DEPTHAI_DYNAMIC_CALIBRATION_PATH AND EXISTS "${DEPTHAI_DYNAMIC_CALIBRATION_PATH}")
-        message(STATUS "Using local dynamic_calibration zip: ${DEPTHAI_DYNAMIC_CALIBRATION_PATH}")
-        FetchContent_Declare(
-            dynamic_calibration
-            URL "file://${DEPTHAI_DYNAMIC_CALIBRATION_PATH}"
-        )
-    else()
-        message(STATUS "Using remote dynamic_calibration zip")
-        FetchContent_Declare(
-            dynamic_calibration
-            URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-helper-binaries/dynamic_calibration/${DEPTHAI_DYNAMIC_CALIBRATION_VERSION}/dynamic_calibration_${DEPTHAI_DYNAMIC_CALIBRATION_VERSION}.zip"
-            # URL_HASH MD5=14df99bc5dd22798526aeefd477f972c
-        )
-    endif()
-    FetchContent_MakeAvailable(dynamic_calibration)
-    message(STATUS "Dynamic calibration extracted to ${dynamic_calibration_SOURCE_DIR}")
-    set(DYNAMIC_CALIBRATION_DIR ${dynamic_calibration_SOURCE_DIR})
-    target_include_directories(
-        ${TARGET_CORE_NAME} PUBLIC
-        $<BUILD_INTERFACE:${DYNAMIC_CALIBRATION_DIR}/include>
-    )
-
-    find_library(DYNAMIC_CALIBRATION dynamic_calibration
-        PATHS ${DYNAMIC_CALIBRATION_DIR}/lib
-        NO_DEFAULT_PATH
-    )
-    target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT)
-    if(DYNAMIC_CALIBRATION)
-        message(STATUS "Dynamic Calibration library found: ${DYNAMIC_CALIBRATION}")
-        target_link_libraries(${TARGET_CORE_NAME} PUBLIC ${DYNAMIC_CALIBRATION})
-    else()
-        message(FATAL_ERROR "Dynamic Calibration library not found, disable support by setting DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT to OFF")
-    endif()
+    # Link the dynamic calibration target
+    target_link_libraries(${TARGET_CORE_NAME} PUBLIC dynamic_calibration_imported) # Should be PRIVATE
+    target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT) # Should be PRIVATE
 endif()
 
 # Set constant
@@ -567,7 +527,6 @@ include(Depthai/DepthaiBootloaderConfig)    # Depthai bootloader binary commit/v
 include(Depthai/DepthaiDeviceKbConfig)      # depthai-device-kb fwp commit/version configuration
 include(Depthai/DepthaiDeviceRVC4Config)    # depthai-device-rvc4 fwp commit/version configuration
 include(Depthai/DepthaiVisualizerConfig)    # depthai-visualizer commit/version configuration
-include(Depthai/DepthaiDynamicCalibrationConfig)    # depthai-dynamic-calibration commit/version configuration
 
 # Include downloaders
 include(DepthaiDownloader)                  # Depthai device binary downloader
@@ -861,6 +820,7 @@ macro(add_runtime_dependencies depending_target dependency)
         foreach(cfg ${imported_configs})
             message(STATUS "Adding runtime dependencies for ${depending_target} on ${dependency} (${cfg})")
             get_property(dll TARGET ${dependency} PROPERTY IMPORTED_LOCATION_${cfg})
+            message(STATUS "Retrieved dll for ${cfg}: '${dll}'")
             list(APPEND dlls $<$<CONFIG:${cfg}>:${dll}>)
         endforeach()
         message(STATUS "Required dlls for ${depending_target} on ${dependency} are: ${dlls}")
@@ -879,6 +839,10 @@ macro(add_runtime_dependencies depending_target dependency)
 endmacro()
 # Add libusb dll in build time
 add_runtime_dependencies(${TARGET_CORE_NAME} usb-1.0)
+# Add dynamic calibration dll in build time
+if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
+    add_runtime_dependencies(${TARGET_CORE_NAME} dynamic_calibration_imported)
+endif()
 
 ########################
 # OpenCV Support 2
@@ -1167,13 +1131,6 @@ enable_testing()
 ########################
 if (DEPTHAI_BUILD_TESTS)
     add_subdirectory(tests)
-endif()
-
-########################
-# Unit Tests
-########################
-if (DEPTHAI_BUILD_TESTS)
-    add_subdirectory(tests/unit)
 endif()
 
 ########################
