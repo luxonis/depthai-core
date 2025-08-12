@@ -73,6 +73,9 @@ class Node : public std::enable_shared_from_this<Node> {
     static constexpr auto BLOCKING_QUEUE = true;
     static constexpr auto NON_BLOCKING_QUEUE = false;
 
+    std::string createUniqueInputName();
+    std::string createUniqueOutputName();
+
    protected:
     std::vector<Output*> outputRefs;
     std::vector<Input*> inputRefs;
@@ -92,6 +95,9 @@ class Node : public std::enable_shared_from_this<Node> {
     void setNodeRefs(std::initializer_list<std::pair<std::string, std::shared_ptr<Node>*>> l);
     void setNodeRefs(std::pair<std::string, std::shared_ptr<Node>*> nodeRef);
     void setNodeRefs(std::string alias, std::shared_ptr<Node>* nodeRef);
+
+   private:
+    std::vector<std::string> uniqueNames;
 
    public:
     struct OutputDescription {
@@ -131,6 +137,9 @@ class Node : public std::enable_shared_from_this<Node> {
             // Place oneself to the parents references
             if(ref) {
                 par.setOutputRefs(this);
+            }
+            if(getName().empty()) {
+                setName(par.createUniqueOutputName());
             }
         }
 
@@ -342,6 +351,9 @@ class Node : public std::enable_shared_from_this<Node> {
             if(ref) {
                 par.setInputRefs(this);
             }
+            if(getName().empty()) {
+                setName(par.createUniqueInputName());
+            }
         }
 
         /**
@@ -507,6 +519,9 @@ class Node : public std::enable_shared_from_this<Node> {
     // TODO(themarpe) - restrict access
     /// Id of node. Assigned after being placed on the pipeline
     Id id{-1};
+    // used for naming inputs/outputs
+    Id inputId{0};
+    Id outputId{0};
 
     /// alias or name
     std::string alias;

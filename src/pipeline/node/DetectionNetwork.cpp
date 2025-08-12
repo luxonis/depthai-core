@@ -38,13 +38,10 @@ void DetectionNetwork::buildInternal() {
     // Default confidence threshold
     detectionParser->properties.parser.confidenceThreshold = 0.5;
     neuralNetwork->out.link(detectionParser->input);
-    neuralNetwork->passthrough.link(detectionParser->imageIn);
 
     // No "internal" buffering to keep interface similar to monolithic nodes
     detectionParser->input.setBlocking(true);
     detectionParser->input.setMaxSize(1);
-    detectionParser->imageIn.setBlocking(false);
-    detectionParser->imageIn.setMaxSize(1);
 }
 
 std::shared_ptr<DetectionNetwork> DetectionNetwork::build(Node::Output& input, const NNArchive& nnArchive) {

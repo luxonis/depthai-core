@@ -22,6 +22,7 @@
 #include "depthai/pipeline/datatype/FeatureTrackerConfig.hpp"
 #include "depthai/pipeline/datatype/IMUData.hpp"
 #include "depthai/pipeline/datatype/ImageAlignConfig.hpp"
+#include "depthai/pipeline/datatype/ImageFiltersConfig.hpp"
 #include "depthai/pipeline/datatype/ImageManipConfig.hpp"
 #include "depthai/pipeline/datatype/ImgAnnotations.hpp"
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
@@ -260,6 +261,12 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
             break;
         case DatatypeEnum::ImgAnnotations:
             return parseDatatype<ImgAnnotations>(metadataStart, serializedObjectSize, data, fd);
+            break;
+        case DatatypeEnum::ImageFiltersConfig:
+            return parseDatatype<ImageFiltersConfig>(metadataStart, serializedObjectSize, data, fd);
+            break;
+        case DatatypeEnum::ToFDepthConfidenceFilterConfig:
+            return parseDatatype<ToFDepthConfidenceFilterConfig>(metadataStart, serializedObjectSize, data, fd);
             break;
         case DatatypeEnum::RGBDData:
             return parseDatatype<RGBDData>(metadataStart, serializedObjectSize, data, fd);

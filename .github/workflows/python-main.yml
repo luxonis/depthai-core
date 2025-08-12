@@ -63,6 +63,7 @@ jobs:
           cmake -S . \
             -B build \
             -DDEPTHAI_VCPKG_INTERNAL_ONLY=OFF \
+            -DVCPKG_OVERLAY_TRIPLETS="$PWD/cmake/triplets/release" \
             -DDEPTHAI_BUILD_PYTHON=ON \
             -DDEPTHAI_PYTHON_FORCE_DOCSTRINGS=ON \
             -DDEPTHAI_BASALT_SUPPORT=ON \
@@ -165,6 +166,7 @@ jobs:
             -DDEPTHAI_VCPKG_INTERNAL_ONLY=OFF \
             -DDEPTHAI_BUILD_PYTHON=ON \
             -D CMAKE_BUILD_TYPE=Release \
+            -D VCPKG_OVERLAY_TRIPLETS="$PWD/cmake/triplets/release" \
             -D DEPTHAI_PYTHON_DOCSTRINGS_INPUT=$PWD/bindings/python/docstrings/depthai_python_docstring.hpp \
             -D DEPTHAI_PYTHON_ENABLE_TESTS=ON
             cmake --build build --parallel 4
@@ -226,6 +228,10 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           architecture: ${{ matrix.python-architecture }}
+      - name: Set UTF-8 encoding
+        run: |
+          echo "PYTHONIOENCODING=utf-8" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          echo "PYTHONUTF8=1" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
       - name: Append build hash if not a tagged commit
         if: startsWith(github.ref, 'refs/tags/v') != true
         run: echo "BUILD_COMMIT_HASH=${{github.sha}}" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append

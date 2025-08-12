@@ -70,6 +70,13 @@ class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNet
     OutputMap passthroughs{*this, "passthroughs", {"", DEFAULT_GROUP, {{{DatatypeEnum::Buffer, true}}}}};
 
     /**
+     * @brief Get the archive owned by this Node.
+     *
+     * @returns constant reference to this Nodes archive
+     */
+    std::optional<std::reference_wrapper<const NNArchive>> getNNArchive() const;
+
+    /**
      * @brief Set NNArchive for this Node. If the archive's type is SUPERBLOB, use default number of shaves.
      *
      * @param nnArchive: NNArchive to set
