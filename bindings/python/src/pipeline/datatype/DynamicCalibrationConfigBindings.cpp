@@ -9,9 +9,28 @@
 namespace py = pybind11;
 
 void bind_dynamic_calibration_config(py::module& m, void* pCallstack) {
+namespace py = pybind11;
+
+void bind_dynamic_calibration_config(py::module& m, void* pCallstack) {
     using namespace dai;
     using namespace pybind11::literals;
 
+    // ----- Enums -----
+
+    // RecalibrationMode (in dai::DynamicCalibrationConfig)
+    py::enum_<DynamicCalibrationConfig::RecalibrationMode>(m, "RecalibrationMode")
+        .value("DEFAULT", DynamicCalibrationConfig::RecalibrationMode::DEFAULT)
+        .value("CONTINUOUS", DynamicCalibrationConfig::RecalibrationMode::CONTINUOUS)
+        .export_values();
+
+    // dcl::PerformanceMode (bind here unless it’s already exposed elsewhere)
+    // If it's already bound in another TU, remove this block to avoid duplicate definitions.
+    py::enum_<dcl::PerformanceMode>(m, "PerformanceMode")
+        .value("DEFAULT", dcl::PerformanceMode::DEFAULT)
+        .value("STATIC_SCENERY", dcl::PerformanceMode::STATIC_SCENERY)
+        .value("OPTIMIZE_SPEED", dcl::PerformanceMode::OPTIMIZE_SPEED)
+        .value("OPTIMIZE_PERFORMANCE", dcl::PerformanceMode::OPTIMIZE_PERFORMANCE)
+        .value("SKIP_CHECKS", dcl::PerformanceMode::SKIP_CHECKS)
     // ----- Enums -----
 
     // RecalibrationMode (in dai::DynamicCalibrationConfig)
@@ -32,8 +51,14 @@ void bind_dynamic_calibration_config(py::module& m, void* pCallstack) {
 
     // ----- Config -----
 
+    // ----- Config -----
+
     py::class_<DynamicCalibrationConfig, Buffer, std::shared_ptr<DynamicCalibrationConfig>>(m, "DynamicCalibrationConfig")
         .def(py::init<>())
+        .def_readwrite("recalibrationMode", &DynamicCalibrationConfig::recalibrationMode)
+        .def_readwrite("performanceMode", &DynamicCalibrationConfig::performanceMode)
+        .def_readwrite("loadImagePeriod", &DynamicCalibrationConfig::loadImagePeriod)
+        .def_readwrite("calibrationPeriod", &DynamicCalibrationConfig::calibrationPeriod);
         .def_readwrite("recalibrationMode", &DynamicCalibrationConfig::recalibrationMode)
         .def_readwrite("performanceMode", &DynamicCalibrationConfig::performanceMode)
         .def_readwrite("loadImagePeriod", &DynamicCalibrationConfig::loadImagePeriod)

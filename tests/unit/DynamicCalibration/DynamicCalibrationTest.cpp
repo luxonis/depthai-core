@@ -5,9 +5,16 @@
 #include <depthai/depthai.hpp>
 
 #include "depthai/pipeline/datatype/DynamicCalibrationConfig.hpp"
+#include <DynamicCalibration.hpp>
+#include <depthai/depthai.hpp>
+
+#include "depthai/pipeline/datatype/DynamicCalibrationConfig.hpp"
 
 class MockDynamicCalibration : public dai::node::DynamicCalibration {
    public:
+    using dai::node::DynamicCalibration::DynamicCalibration;
+    ~MockDynamicCalibration() override = default;
+
     using dai::node::DynamicCalibration::DynamicCalibration;
     ~MockDynamicCalibration() override = default;
 
@@ -15,6 +22,11 @@ class MockDynamicCalibration : public dai::node::DynamicCalibration {
         return getProperties();
     }
 
+    constexpr static const char* NAME = "MockDynamicCalibration";
+
+    void run() override {
+        std::cout << "DynamicCalibration::run(), type = " << typeid(*this).name() << "\n";
+    }
     constexpr static const char* NAME = "MockDynamicCalibration";
 
     void run() override {
@@ -39,6 +51,11 @@ TEST(DynamicCalibration, SetPerformanceMode) {
     dynCalib.setInitialConfig(config);
 
     EXPECT_EQ(dynCalib.getPropertiesPublic().initialConfig.performanceMode, dcl::PerformanceMode::SKIP_CHECKS);
+    dai::DynamicCalibrationConfig config;
+    config.performanceMode = dcl::PerformanceMode::SKIP_CHECKS;
+    dynCalib.setInitialConfig(config);
+
+    EXPECT_EQ(dynCalib.getPropertiesPublic().initialConfig.performanceMode, dcl::PerformanceMode::SKIP_CHECKS);
 }
 
 class MockDclDynamicCalibration : public dcl::DynamicCalibration {
@@ -51,6 +68,23 @@ class MockDclDynamicCalibration : public dcl::DynamicCalibration {
     MOCK_METHOD((dcl::Result<dcl::CalibrationResult>),
                 findNewCalibration,
                 (const std::shared_ptr<const dcl::Device>, const dcl::socket_t, const dcl::socket_t, const dcl::PerformanceMode),
+                (const, override));
+
+    MOCK_METHOD((dcl::Result<void>),
+                loadStereoImagePair,
+                (const dcl::ImageData& imageA,
+                 const dcl::ImageData& imageB,
+                 const dcl::mxid_t& deviceName,
+                 const dcl::socket_t socketA,
+                 const dcl::socket_t socketB,
+                 const dcl::timestamp_t timestamp),
+                (override));
+
+    MOCK_METHOD((dcl::Result<dcl::CoverageData>),
+                computeCoverage,
+                (const std::shared_ptr<const dcl::CameraSensorHandle> sensorHandleA,
+                 const std::shared_ptr<const dcl::CameraSensorHandle> sensorHandleB,
+                 const dcl::PerformanceMode mode),
                 (const, override));
 
     MOCK_METHOD((dcl::Result<void>),
@@ -102,6 +136,9 @@ TEST(DynamicCalibration, RunQualityCheckSuccess) {
     dai::DynamicCalibrationConfig config;
     config.performanceMode = dcl::PerformanceMode::OPTIMIZE_PERFORMANCE;
     dynCalib.setInitialConfig(config);
+    dai::DynamicCalibrationConfig config;
+    config.performanceMode = dcl::PerformanceMode::OPTIMIZE_PERFORMANCE;
+    dynCalib.setInitialConfig(config);
 
     dcl::CalibrationQuality quality;
 
@@ -134,18 +171,31 @@ TEST(DynamicCalibration, RunCalibrationFailure) {
     dai::CalibrationHandler calibHandler;
 
     auto err = dynCalib.runCalibration(calibHandler, force);
+    dai::CalibrationHandler calibHandler;
+
+    auto err = dynCalib.runCalibration(calibHandler, force);
     EXPECT_EQ(err, dai::node::DynamicCalibration::ErrorCode::CALIBRATION_FAILED);
 }
 
 TEST(DynamicCalibration, RunCalibrationSuccess) {
+    dai::Pipeline pipeline(false);
     dai::Pipeline pipeline(false);
     auto mockDcl = std::make_unique<MockDclDynamicCalibration>();
     MockDclDynamicCalibration* mockDclRaw = mockDcl.get();
     auto dynCalib = pipeline.create<dai::node::DynamicCalibration>(std::move(mockDcl));
 
     auto returnedData = dynCalib->calibrationOutput.createOutputQueue();  // tryGet<dai::DatatypeEnum::CoverageData>();
+    auto dynCalib = pipeline.create<dai::node::DynamicCalibration>(std::move(mockDcl));
+
+    auto returnedData = dynCalib->calibrationOutput.createOutputQueue();  // tryGet<dai::DatatypeEnum::CoverageData>();
 
     bool force = false;
+    dai::DynamicCalibrationConfig config;
+    config.performanceMode = dcl::PerformanceMode::OPTIMIZE_PERFORMANCE;
+    dynCalib->setInitialConfig(config);
+
+    dynCalib->setWidth(1280);
+    dynCalib->setHeight(800);
     dai::DynamicCalibrationConfig config;
     config.performanceMode = dcl::PerformanceMode::OPTIMIZE_PERFORMANCE;
     dynCalib->setInitialConfig(config);
@@ -159,7 +209,14 @@ TEST(DynamicCalibration, RunCalibrationSuccess) {
     const dcl::scalar_t translation[3] = {4., 5., 6.};
     const dcl::scalar_t cameraMatrix[9] = {1., 0., 1., 0., 1., 1., 0., 0., 1.};
     const dcl::scalar_t distortion[14] = {4., 2., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.};
+    const dcl::scalar_t zeroRotation[3] = {0., 0., 0.};
+    const dcl::scalar_t zeroTranslation[3] = {0., 0., 0.};
+    const dcl::scalar_t rotation[3] = {1., 2., 3.};
+    const dcl::scalar_t translation[3] = {4., 5., 6.};
+    const dcl::scalar_t cameraMatrix[9] = {1., 0., 1., 0., 1., 1., 0., 0., 1.};
+    const dcl::scalar_t distortion[14] = {4., 2., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.};
 
+    auto calibHandleA = std::make_shared<dcl::CameraCalibrationHandle>(zeroRotation, zeroTranslation, cameraMatrix, distortion);
     auto calibHandleA = std::make_shared<dcl::CameraCalibrationHandle>(zeroRotation, zeroTranslation, cameraMatrix, distortion);
     auto calibHandleB = std::make_shared<dcl::CameraCalibrationHandle>(rotation, translation, cameraMatrix, distortion);
 
@@ -185,8 +242,17 @@ TEST(DynamicCalibration, RunCalibrationSuccess) {
 	dai::CameraBoardSocket::CAM_C,
 	zeroRotationMat,
 	{0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f});
+
+    dai::CalibrationHandler calibHandler;
+    std::vector<std::vector<float>> zeroRotationMat = {{0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}};
+    calibHandler.setCameraExtrinsics(
+        dai::CameraBoardSocket::CAM_B,
+	dai::CameraBoardSocket::CAM_C,
+	zeroRotationMat,
+	{0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f});
     // clang-format on
 
+    auto err = dynCalib->runCalibration(calibHandler, force);
     auto err = dynCalib->runCalibration(calibHandler, force);
     EXPECT_EQ(err, dai::node::DynamicCalibration::ErrorCode::OK);
 

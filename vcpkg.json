@@ -6,6 +6,7 @@
             "name": "cpp-httplib",
             "default-features": false
         },
+	"eigen3",
         "nlohmann-json",
         "yaml-cpp",
         "spdlog",

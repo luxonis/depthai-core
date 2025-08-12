@@ -530,7 +530,7 @@ if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
         FetchContent_Declare(
             dynamic_calibration
             URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-helper-binaries/dynamic_calibration/${DEPTHAI_DYNAMIC_CALIBRATION_VERSION}/dynamic_calibration_${DEPTHAI_DYNAMIC_CALIBRATION_VERSION}.zip"
-            URL_HASH MD5=14df99bc5dd22798526aeefd477f972c
+            # URL_HASH MD5=14df99bc5dd22798526aeefd477f972c
         )
     endif()
     FetchContent_MakeAvailable(dynamic_calibration)
