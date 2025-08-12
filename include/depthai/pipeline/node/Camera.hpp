@@ -55,6 +55,23 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
                                   std::optional<std::pair<uint32_t, uint32_t>> sensorResolution = std::nullopt,
                                   std::optional<float> sensorFps = std::nullopt);
 
+    /**
+     * Set the sensor type to use
+     * @param sensorType Sensor type to use
+     */
+    std::shared_ptr<Camera> setSensorType(CameraSensorType sensorType) {
+        getProperties().sensorType = sensorType;
+        return std::dynamic_pointer_cast<Camera>(shared_from_this());
+    }
+
+    /**
+     * Get the sensor type
+     * @return Sensor type
+     */
+    inline CameraSensorType getSensorType() {
+        return getProperties().sensorType;
+    }
+
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     /**
      * Build with a specific board socket and mock input
