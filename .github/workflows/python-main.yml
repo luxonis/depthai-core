@@ -246,7 +246,7 @@ jobs:
       - name: Install delvewheel
         run: python -m pip install delvewheel
       - name: List wheelhouse
-        run: cd bindings/python && ls -a -l ./wheelhouse
+        run: cd bindings/python && ls ./wheelhouse
       - name: Auditing wheels
         run: |
           cd bindings/python
