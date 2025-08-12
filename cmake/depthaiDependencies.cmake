@@ -230,7 +230,7 @@ if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
     else()
         include(Depthai/DepthaiDynamicCalibrationConfig)
         include(PlatformParsing)
-        set(DEPTHAI_HOST_PLATFORM_ARCH "x86_64")  # detect_platform_arch(DEPTHAI_HOST_PLATFORM_ARCH)
+        detect_platform_arch(DEPTHAI_HOST_PLATFORM_ARCH)
         message(STATUS "Platform architecture: ${DEPTHAI_HOST_PLATFORM_ARCH}")
         # TODO - Add URL_HASH
         message(STATUS "Using remote dynamic_calibration zip")
