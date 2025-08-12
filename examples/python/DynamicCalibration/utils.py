@@ -228,7 +228,7 @@ def draw_progress_bar_with_percentage(image, progress, coverage_check, bar_color
 
         # Draw "Coverage check" text below the progress bar
         if not coverage_check:
-            coverage_text = "Insufficient coverage ..."
+            coverage_text = "Collecting data ..."
         else:
             coverage_text = "Waiting for enough data ..."
         coverage_text_size = cv2.getTextSize(coverage_text, cv2.FONT_HERSHEY_SIMPLEX, font_scale, 2)[0]
