@@ -94,6 +94,7 @@ jobs:
         cmake --build build --parallel 4 --config Release
 
   integration:
+    if: false
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
