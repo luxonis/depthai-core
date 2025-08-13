@@ -571,14 +571,15 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.10"
+          python-version: "3.12"
       - name: Combine wheels
         run: |
+          python -m pip install delvewheel # Install delvewheel for patching wheels
           cd bindings/python
           mv wheelhouse/audited wheelhouse/audited_pre
           mkdir -p wheelhouse/audited
           echo "Combining repaired wheels into one master wheel"
-          python ci/combine_wheels.py --input_folder=wheelhouse/audited_pre --output_folder=wheelhouse/audited
+          python ci/combine_wheels.py --input_folder=wheelhouse/audited_pre --output_folder=wheelhouse/audited --log_level=debug
       - name: Upload combined wheels to artifactory
         run: cd bindings/python && bash ./ci/upload-artifactory.sh
         env:
