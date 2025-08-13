@@ -119,6 +119,7 @@ def combine_wheels_linux(args, wheel_infos):
 def combine_wheels_windows(args, wheel_infos):
 
     logger.info(f"Combining wheels for Windows!")
+    from delvewheel import _dll_utils as dll_utils
 
     # Make sure that on linux, all the wheels have the same platform tag
     platform_tags = set(wheel_info.platform_tag for wheel_info in wheel_infos)
@@ -177,8 +178,36 @@ def combine_wheels_windows(args, wheel_infos):
             wheel_files_to_copy = [wheel_dylib_path, python_dll_path]
             wheel_files_to_copy.extend([f for f in extracted_files if not f.endswith(".pyd") and not f.endswith(".dll") and not f.endswith(".data")])
 
+             ## Unmangle the wheel's dynamic library names
+            bundled_libs = os.listdir(os.path.join(wheel_extract_dir, wheel_libs_path, "platlib"))
+            unmangled_libs = list()
+            for lib in bundled_libs:
+                base, ext = ".".join(lib.split(".")[:-1]), "." + lib.split(".")[-1]
+                base = "".join(base.split("-")[:-1]) # remove hash
+                unmangled_libs.append(base + "-" + common_magic_hash + ext)
+                dynlib_renames[wheel_info.wheel_name][lib] = unmangled_libs[-1]
+
+            # Update the dynamic library to link against the unmangled libraries
+            wheel_dylib_full_path = os.path.join(wheel_extract_dir, wheel_dylib_path)
+            for file in [wheel_dylib_full_path] + [os.path.join(wheel_extract_dir, wheel_libs_path, "platlib", f) for f in os.listdir(os.path.join(wheel_extract_dir, wheel_libs_path, "platlib"))]:
+                try:
+                    logger.info(f"Patching {file}")
+                    needed = dll_utils.get_direct_mangleable_needed(file, {}, {})
+                    name_map = {old_lib: dynlib_renames[wheel_info.wheel_name][old_lib] for old_lib in needed}
+                    dll_utils.replace_needed(file, needed, name_map, strip=False)
+                except Exception as e:
+                    logger.error(f"Error patching {file}: {e}")
+                    continue
+
             for file in wheel_files_to_copy:
                 write_to_zip(output_zip, wheel_extract_dir, file)
+
+            for lib in bundled_libs:
+                lib_path = os.path.join(wheel_extract_dir, wheel_libs_path, "platlib", lib)
+                new_lib_name = dynlib_renames[wheel_info.wheel_name][lib]
+                new_lib_path = os.path.join(wheel_extract_dir, wheel_libs_path, "platlib", new_lib_name)
+                logger.info(f"Renaming {lib_path} to {new_lib_path}")
+                os.rename(lib_path, new_lib_path)
 
             write_to_zip(output_zip, wheel_extract_dir, wheel_libs_path)
 
