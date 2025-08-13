@@ -259,6 +259,12 @@ def combine_wheels_macos(args, all_wheel_infos):
                 with zipfile.ZipFile(wheel_info.wheel_path, 'r') as wheel_zip:
                     wheel_zip.extractall(wheel_extract_dir)
 
+                if args.strip_unneeded:
+                    # Find and strip all shared libraries (.dylib files)
+                    for lib_path in glob.glob(os.path.join(wheel_extract_dir, '**/*.dylib'), recursive=True):
+                        logger.info(f"Stripping {lib_path}")
+                        subprocess.run(['strip', '--strip-unneeded', lib_path], check=True)
+
                 ## Just copy everything over to the output zip
                 for file in os.listdir(wheel_extract_dir):
                     write_to_zip(output_zip, wheel_extract_dir, file)

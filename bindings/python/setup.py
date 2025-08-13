@@ -129,6 +129,8 @@ class CMakeBuild(build_ext):
             cmake_args += ['-DDEPTHAI_RTABMAP_SUPPORT=ON']
         if env.get('DEPTHAI_BUILD_KOMPUTE') == 'ON':
             cmake_args += ['-DDEPTHAI_KOMPUTE_SUPPORT=ON']
+        if os.environ.get("CI") is not None:
+            cmake_args += ['-DCMAKE_POSITION_INDEPENDENT_CODE=ON']
         build_args += ['--target=depthai']
 
         # Specify output directory and python executable
