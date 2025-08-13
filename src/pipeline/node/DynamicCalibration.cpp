@@ -188,18 +188,14 @@ dai::CalibrationQuality DynamicCalibration::calibQualityfromDCL(const dcl::Calib
     dai::CalibrationQuality quality;
 
     if(src.calibrationQuality.has_value()) {
-        CalibrationQuality::Data data = {
-            .rotationChange =
-                {
-                    src.calibrationQuality->rotationChange[0],
-                    src.calibrationQuality->rotationChange[1],
-                    src.calibrationQuality->rotationChange[2],
-                },
-            .depthErrorDifference = src.calibrationQuality->depthDistanceDifference,
-            .sampsonErrorCurrent = src.calibrationQuality->sampsonErrorCurrent,
-            .sampsonErrorAchievable = src.calibrationQuality->sampsonErrorAchievable,
-        };
-        quality.data = std::optional<CalibrationQuality::Data>(data);
+        CalibrationQuality::Data data{};
+        data.rotationChange[0] = src.calibrationQuality->rotationChange[0];
+        data.rotationChange[1] = src.calibrationQuality->rotationChange[1];
+        data.rotationChange[2] = src.calibrationQuality->rotationChange[2];
+        data.depthErrorDifference = src.calibrationQuality->depthDistanceDifference;
+        data.sampsonErrorCurrent = src.calibrationQuality->sampsonErrorCurrent;
+        data.sampsonErrorAchievable = src.calibrationQuality->sampsonErrorAchievable;
+        quality.data = data;  // optional constructed from value
     } else {
         quality.data = std::nullopt;
     }
@@ -250,25 +246,20 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
     dai::node::DclUtils::convertDclCalibrationToDai(
 	newCalibrationHandler, daiCalibrationA, daiCalibrationB, daiSocketA, daiSocketB, width, height);
 
-    CalibrationQuality::Data qualityData = {
-        .rotationChange =
-            {
-                dclResult.value.calibrationDifference->rotationChange[0],
-                dclResult.value.calibrationDifference->rotationChange[1],
-                dclResult.value.calibrationDifference->rotationChange[2],
-            },
-        .depthErrorDifference = dclResult.value.calibrationDifference->depthDistanceDifference,
-        .sampsonErrorCurrent = dclResult.value.calibrationDifference->sampsonErrorCurrent,
-        .sampsonErrorAchievable = dclResult.value.calibrationDifference->sampsonErrorAchievable,
-    };
-
-    auto result = std::make_shared<DynamicCalibrationResult>(
-	DynamicCalibrationResult::Data({
-	    .newCalibration = newCalibrationHandler,
-	    .currentCalibration = currentHandler,
-	    .calibrationDifference = qualityData,
-	}),
-	dclResult.errorMessage());
+    CalibrationQuality::Data qualityData{};
+    qualityData.rotationChange[0] = dclResult.value.calibrationDifference->rotationChange[0];
+    qualityData.rotationChange[1] = dclResult.value.calibrationDifference->rotationChange[1];
+    qualityData.rotationChange[2] = dclResult.value.calibrationDifference->rotationChange[2];
+    qualityData.depthErrorDifference = dclResult.value.calibrationDifference->depthDistanceDifference;
+    qualityData.sampsonErrorCurrent  = dclResult.value.calibrationDifference->sampsonErrorCurrent;
+    qualityData.sampsonErrorAchievable = dclResult.value.calibrationDifference->sampsonErrorAchievable;
+    
+    DynamicCalibrationResult::Data resultData{};
+    resultData.newCalibration       = newCalibrationHandler;
+    resultData.currentCalibration   = currentHandler;
+    resultData.calibrationDifference = qualityData;
+    
+    auto result = std::make_shared<DynamicCalibrationResult>(resultData, dclResult.errorMessage());
     // clang-format on
 
     calibrationOutput.send(result);
@@ -351,7 +342,8 @@ DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline(const std::
     // set up the dynamic calibration
     deviceName = daiDevice->getDeviceId();
     dcDevice = dynCalibImpl->addDevice(deviceName);
-    const dcl::resolution_t resolution = {.width = static_cast<unsigned>(width), .height = static_cast<unsigned>(height)};
+    dcl::resolution_t resolution{static_cast<unsigned>(width), static_cast<unsigned>(height)};
+
     sensorA = std::make_shared<dcl::CameraSensorHandle>(calibA, resolution);
     sensorB = std::make_shared<dcl::CameraSensorHandle>(calibB, resolution);
     dynCalibImpl->addSensor(deviceName, sensorA, socketA);
@@ -461,7 +453,6 @@ void DynamicCalibration::run() {
     }
 
     logger::info("DynamicCalibration node is running");
-    std::runtime_error("DynamicCalibration node is running!");
     auto previousLoadingTimeFloat = std::chrono::steady_clock::now() + std::chrono::duration<float>(properties.initialConfig.calibrationPeriod);
     auto previousLoadingTime = std::chrono::time_point_cast<std::chrono::steady_clock::duration>(previousLoadingTimeFloat);
     initializePipeline(device);
