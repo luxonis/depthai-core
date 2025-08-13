@@ -423,7 +423,7 @@ jobs:
         run: cd bindings/python && bash ./ci/show_vcpkg_logs.sh
 
       - name: Audit wheels
-        run: cd bindings/python && for whl in wheelhouse/*.whl; do auditwheel repair "$whl" --plat $PLAT -w wheelhouse/audited/; done
+        run: cd bindings/python && for whl in wheelhouse/*.whl; do auditwheel repair "$whl" --plat $PLAT -w wheelhouse/audited/ --strip; done
       - name: Archive wheel artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -522,7 +522,7 @@ jobs:
         run: cd bindings/python && bash ./ci/show_vcpkg_logs.sh
 
       - name: Auditing wheels
-        run: cd bindings/python && for whl in wheelhouse/*.whl; do auditwheel repair "$whl" --plat $PLAT -w wheelhouse/audited/; done
+        run: cd bindings/python && for whl in wheelhouse/*.whl; do auditwheel repair "$whl" --plat $PLAT -w wheelhouse/audited/ --strip; done
       - name: Archive wheel artifacts
         uses: actions/upload-artifact@v4
         with:
