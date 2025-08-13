@@ -107,7 +107,7 @@ def combine_wheels_linux(args, wheel_infos):
                 os.rename(lib_path, new_lib_path)
                 if args.strip_unneeded:
                     logger.info(f"Stripping {new_lib_path}")
-                    subprocess.run(['strip', '--strip-unneeded', new_lib_path], check=True)
+                    subprocess.run(['strip', '-x', new_lib_path], check=True)
                 
             write_to_zip(output_zip, wheel_extract_dir, wheel_libs_path)
 
@@ -263,7 +263,7 @@ def combine_wheels_macos(args, all_wheel_infos):
                     # Find and strip all shared libraries (.dylib files)
                     for lib_path in glob.glob(os.path.join(wheel_extract_dir, '**/*.dylib'), recursive=True):
                         logger.info(f"Stripping {lib_path}")
-                        subprocess.run(['strip', '--strip-unneeded', lib_path], check=True)
+                        subprocess.run(['strip', '-x', lib_path], check=True)
 
                 ## Just copy everything over to the output zip
                 for file in os.listdir(wheel_extract_dir):
