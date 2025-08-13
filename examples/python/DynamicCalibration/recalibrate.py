@@ -1,5 +1,13 @@
 import depthai as dai
+import numpy as np
 import time
+import json
+import os
+
+folder = "data/sessionXYZ/"
+number_of_saved_pics = 5
+
+os.makedirs(folder, exist_ok=True)
 
 # ---------- Pipeline definition ----------
 pipeline = dai.Pipeline()
@@ -17,6 +25,13 @@ dyn_calib = pipeline.create(dai.node.DynamicCalibration)
 left_out.link(dyn_calib.left)
 right_out.link(dyn_calib.right)
 
+stereo = pipeline.create(dai.node.StereoDepth)
+left_out.link(stereo.left)
+right_out.link(stereo.right)
+left_xout = stereo.syncedLeft.createOutputQueue()
+right_xout = stereo.syncedRight.createOutputQueue()
+disp_xout = stereo.disparity.createOutputQueue()
+
 # O/I queues
 calibration_output = dyn_calib.calibrationOutput.createOutputQueue()
 coverage_output = dyn_calib.coverageOutput.createOutputQueue()
@@ -26,6 +41,9 @@ command_input = dyn_calib.commandInput.createInputQueue()
 
 device = pipeline.getDefaultDevice()
 device.setCalibration(device.readCalibration())
+
+with open(f"{folder}calibration_before.json", "w") as f:
+    json.dump(device.readCalibration().eepromToJson(), f, indent=4)
 
 pipeline.start()
 time.sleep(1) # wait for autoexposure to settle
@@ -46,10 +64,20 @@ while pipeline.isRunning():
     # if the calibration is succesfully returned apply it to the device
     if calibration_data:
         command_input.send(dai.ApplyCalibrationCommand(calibration_data.newCalibration))
+        for i in range(number_of_saved_pics):
+            in_left = left_xout.get()
+            in_right = right_xout.get()
+            np.save(f"{folder}img_left_{i}.npy", in_left.getCvFrame())
+            np.save(f"{folder}img_right_{i}.npy", in_right.getCvFrame())
+            
+        with open(f"{folder}calibration_after.json", "w") as f:
+            json.dump(calibration_data.newCalibration.eepromToJson(), f, indent=4)
         print("Succesfully recalibrated")
+        time.sleep(0.5)
         break
     else:
         print(calibration_result.info)
+
 
 pipeline.stop()
 pipeline.wait()
