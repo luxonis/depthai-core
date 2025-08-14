@@ -68,7 +68,7 @@ void ThreadedNode::stop() {
     }
     // for(auto& rout : getOutputRefs()) {
     // }
-    // wait();
+    wait();
 }
 
 void ThreadedNode::setLogLevel(dai::LogLevel level) {
