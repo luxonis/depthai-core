@@ -222,48 +222,42 @@ def combine_wheels_macos(args, all_wheel_infos):
 
     ## Filter wheel infos based on their platform tag.
     unique_tags = list(set(wheel_info.platform_tag for wheel_info in all_wheel_infos))
-    wheel_info_groups = [
-        [info for info in all_wheel_infos if info.platform_tag == tag]
-        for tag in unique_tags
-    ]
 
-    logger.info(f"Found {len(wheel_info_groups)} groups of wheels: {unique_tags}")
+    logger.info(f"Found {len(unique_tags)} unique platform tags: {unique_tags}")
 
-    for wheel_infos in wheel_info_groups:
+    ## Create a temporary directory for extracting wheels
+    with tempfile.TemporaryDirectory() as temp_dir:
 
-        ## Create a temporary directory for extracting wheels
-        with tempfile.TemporaryDirectory() as temp_dir:
+        combined_python_tag = ".".join([wheel_info.python_tag for wheel_info in all_wheel_infos])
+        combined_abi_tag = ".".join([wheel_info.abi_tag for wheel_info in all_wheel_infos])
+        combined_platform_tag = ".".join(unique_tags)
 
-            combined_python_tag = ".".join([wheel_info.python_tag for wheel_info in wheel_infos])
-            combined_abi_tag = ".".join([wheel_info.abi_tag for wheel_info in wheel_infos])
-            combined_platform_tag = wheel_infos[0].platform_tag
+        logger.info(f"Combined python tag: {combined_python_tag}")
+        logger.info(f"Combined abi tag: {combined_abi_tag}")
+        logger.info(f"Combined platform tag: {combined_platform_tag}")
+        logger.info(f"Wheel DVB: {all_wheel_infos[0].wheel_dvb}")
 
-            logger.info(f"Combined python tag: {combined_python_tag}")
-            logger.info(f"Combined abi tag: {combined_abi_tag}")
-            logger.info(f"Combined platform tag: {combined_platform_tag}")
-            logger.info(f"Wheel DVB: {wheel_infos[0].wheel_dvb}")
+        # Create a zip file for the combined wheel
+        combined_wheel_name = f"{all_wheel_infos[0].wheel_dvb}-{combined_python_tag}-{combined_abi_tag}-{combined_platform_tag}.whl"
+        logger.info(f"Combined wheel name: {combined_wheel_name}")
 
-            # Create a zip file for the combined wheel
-            combined_wheel_name = f"{wheel_infos[0].wheel_dvb}-{combined_python_tag}-{combined_abi_tag}-{combined_platform_tag}.whl"
-            logger.info(f"Combined wheel name: {combined_wheel_name}")
+        output_zip_path = os.path.join(args.output_folder, combined_wheel_name)
+        output_zip = zipfile.ZipFile(output_zip_path, 'w', zipfile.ZIP_DEFLATED, compresslevel=9)
 
-            output_zip_path = os.path.join(args.output_folder, combined_wheel_name)
-            output_zip = zipfile.ZipFile(output_zip_path, 'w', zipfile.ZIP_DEFLATED, compresslevel=9)
+        # Extract each wheel into a subdirectory named after the wheel
+        for wheel_info in all_wheel_infos:
+            wheel_extract_dir = os.path.join(temp_dir, wheel_info.wheel_name)
+            os.makedirs(wheel_extract_dir, exist_ok=True)
 
-            # Extract each wheel into a subdirectory named after the wheel
-            for wheel_info in wheel_infos:
-                wheel_extract_dir = os.path.join(temp_dir, wheel_info.wheel_name)
-                os.makedirs(wheel_extract_dir, exist_ok=True)
+            logger.debug(f"Extracting {wheel_info.wheel_name} to {wheel_extract_dir}")
+            with zipfile.ZipFile(wheel_info.wheel_path, 'r') as wheel_zip:
+                wheel_zip.extractall(wheel_extract_dir)
 
-                logger.debug(f"Extracting {wheel_info.wheel_name} to {wheel_extract_dir}")
-                with zipfile.ZipFile(wheel_info.wheel_path, 'r') as wheel_zip:
-                    wheel_zip.extractall(wheel_extract_dir)
-
-                ## Just copy everything over to the output zip
-                for file in os.listdir(wheel_extract_dir):
-                    if file.endswith(".dylib"):
-                        continue # .dylib files are already contained within the "platform.dylibs" folder (put there by delocate)
-                    write_to_zip(output_zip, wheel_extract_dir, file)
+            ## Just copy everything over to the output zip
+            for file in os.listdir(wheel_extract_dir):
+                if file.endswith(".dylib"):
+                    continue # .dylib files are already contained within the "platform.dylibs" folder (put there by delocate)
+                write_to_zip(output_zip, wheel_extract_dir, file)
 
             output_zip.close()
             logger.info("Output zip closed")
