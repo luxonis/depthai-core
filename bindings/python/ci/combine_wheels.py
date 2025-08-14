@@ -259,10 +259,10 @@ def combine_wheels_macos(args, all_wheel_infos):
                     continue # .dylib files are already contained within the "platform.dylibs" folder (put there by delocate)
                 write_to_zip(output_zip, wheel_extract_dir, file)
 
-            output_zip.close()
-            logger.info("Output zip closed")
-            logger.info(f"Output zip size: {os.path.getsize(output_zip_path) / (1024 * 1024):.2f} MB")
-            logger.info(f"Combined wheel saved to {output_zip_path}")
+        output_zip.close()
+        logger.info("Output zip closed")
+        logger.info(f"Output zip size: {os.path.getsize(output_zip_path) / (1024 * 1024):.2f} MB")
+        logger.info(f"Combined wheel saved to {output_zip_path}")
 
 
 def write_to_zip(zip_file: zipfile.ZipFile, path: str, file: str):
