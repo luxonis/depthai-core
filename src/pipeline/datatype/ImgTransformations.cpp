@@ -6,6 +6,7 @@
 
 #include "depthai/common/Extrinsics.hpp"
 #include "depthai/utility/ImageManipImpl.hpp"
+#include "depthai/utility/matrixOps.hpp"
 
 namespace dai {
 
@@ -495,7 +496,21 @@ dai::Point3f ImgTransformation::remap3DPointFrom(const ImgTransformation& from, 
 }
 
 dai::Extrinsics ImgTransformation::getExtrinsicsTo(const ImgTransformation& to) const {
-    // Get the extrinsics to another ImgTransformation
-    return Extrinsics{};
+    // Calculate the extrinsics from this transformation to the target transformation
+    // 1. Verify that the transformations have a common point
+    if(to.extrinsics.toCameraSocket != extrinsics.toCameraSocket) {
+        throw std::runtime_error("Cannot get extrinsics to a transformation with a different camera socket.");
+    }
+
+    // 2. Calculate the extrinsincs M_extr_from_ours_to_destination = INV(M_extr_from_dest_to_common) * M_extr_from_ours_to_common
+    auto MOurExtrToCommon = extrinsics.getTransformationMatrix();
+    auto MDestExtToCommon = to.extrinsics.getTransformationMatrix();
+
+    auto MCommonToDest = std::vector<std::vector<float>>{};
+    matrix::matInv(MDestExtToCommon, MCommonToDest);
+
+    dai::Extrinsics returnExtrinsics;
+    returnExtrinsics.setTransformationMatrix(matrix::matMul(MCommonToDest, MOurExtrToCommon));
+    return returnExtrinsics;
 }
 }  // namespace dai
