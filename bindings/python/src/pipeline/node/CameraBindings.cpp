@@ -41,6 +41,7 @@ void bind_camera(pybind11::module& m, void* pCallstack) {
         // .def("setBoardSocket", &Camera::setBoardSocket, "boardSocket"_a, DOC(dai, node, Camera, setBoardSocket))
         .def("getBoardSocket", &Camera::getBoardSocket, DOC(dai, node, Camera, getBoardSocket))
         .def("setMockIsp", &Camera::setMockIsp, "mockIsp"_a, DOC(dai, node, Camera, setMockIsp))
+        .def("setMockIspSize", &Camera::setMockIspSize, "width"_a, "height"_a, DOC(dai, node, Camera, setMockIspSize))
         // .def("setCamera", &Camera::setCamera, "name"_a, DOC(dai, node, Camera, setCamera))
         // .def("getCamera", &Camera::getCamera, DOC(dai, node, Camera, getCamera))
         .def("requestOutput",

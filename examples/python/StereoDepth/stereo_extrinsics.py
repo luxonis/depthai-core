@@ -23,16 +23,14 @@ def printExtrinsics(extr: dai.Extrinsics):
 pipeline = dai.Pipeline()
 monoLeft = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
 monoRight = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C)
-color = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
+# color = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
 stereo = pipeline.create(dai.node.StereoDepth)
 
 # Linking
 monoLeftOut = monoLeft.requestFullResolutionOutput(type=dai.ImgFrame.Type.NV12)
 monoRightOut = monoRight.requestFullResolutionOutput(type=dai.ImgFrame.Type.NV12)
-colorOut = color.requestOutput((640,400), dai.ImgFrame.Type.RGB888i)
 monoLeftOut.link(stereo.left)
 monoRightOut.link(stereo.right)
-colorOut.link(stereo.inputAlignTo)
 
 stereo.setRectification(True)
 stereo.setExtendedDisparity(True)

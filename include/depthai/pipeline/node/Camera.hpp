@@ -115,6 +115,12 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
     Camera& setMockIsp(ReplayVideo& replay);
 #endif
 
+    Camera& setMockIspSize(int width, int height) {
+        properties.mockIspWidth = width;
+        properties.mockIspHeight = height;
+        return *this;
+    }
+
    private:
     class Impl;
     spimpl::impl_ptr<Impl> pimpl;
