@@ -27,7 +27,7 @@ class WheelInfo:
 
 def combine_wheels_linux(args, wheel_infos):
 
-    logger.info(f"Combining wheels for Linux!")
+    logger.info("Combining wheels for Linux!")
 
     # Make sure that on linux, all the wheels have the same platform tag
     platform_tags = set(wheel_info.platform_tag for wheel_info in wheel_infos)
@@ -118,7 +118,7 @@ def combine_wheels_linux(args, wheel_infos):
 
 def combine_wheels_windows(args, wheel_infos):
 
-    logger.info(f"Combining wheels for Windows!")
+    logger.info("Combining wheels for Windows!")
     from delvewheel import _dll_utils as dll_utils
 
     # Make sure that on linux, all the wheels have the same platform tag
@@ -218,7 +218,7 @@ def combine_wheels_windows(args, wheel_infos):
 
 def combine_wheels_macos(args, all_wheel_infos):
 
-    logger.info(f"Combining wheels for macOS!")
+    logger.info("Combining wheels for macOS!")
 
     ## Filter wheel infos based on their platform tag.
     unique_tags = list(set(wheel_info.platform_tag for wheel_info in all_wheel_infos))
@@ -261,6 +261,8 @@ def combine_wheels_macos(args, all_wheel_infos):
 
                 ## Just copy everything over to the output zip
                 for file in os.listdir(wheel_extract_dir):
+                    if file.endswith(".dylib"):
+                        continue # .dylib files are already contained within the "platform.dylibs" folder (put there by delocate)
                     write_to_zip(output_zip, wheel_extract_dir, file)
 
             output_zip.close()

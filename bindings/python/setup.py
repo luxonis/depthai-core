@@ -119,7 +119,7 @@ class CMakeBuild(build_ext):
         env = os.environ.copy()
 
         cmake_args += ['-DDEPTHAI_BUILD_PYTHON=ON']
-        if sys.platform == "win32" and os.environ.get("CI") is not None:
+        if (sys.platform == "win32" or sys.platform == "darwin") and os.environ.get("CI") is not None:
             cmake_args += ['-DBUILD_SHARED_LIBS=ON']
         if env.get('DEPTHAI_BUILD_BASALT') == 'ON':
             cmake_args += ['-DDEPTHAI_BASALT_SUPPORT=ON']
