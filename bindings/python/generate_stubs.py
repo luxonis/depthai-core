@@ -4,27 +4,37 @@ import re
 import tempfile
 import os
 import textwrap
+import shutil
 
 # Usage
-if len(sys.argv) < 3:
-    print(f"Usage: {sys.argv[0]} [module_name] [library_dir]")
+if len(sys.argv) < 4:
+    print(f"Usage: {sys.argv[0]} [module_name] [library_dir] [pip_temp_lib_folder]")
     exit(-1)
 
 MODULE_NAME = sys.argv[1]
 DIRECTORY = sys.argv[2]
+PIP_TEMP_LIB_FOLDER = sys.argv[3]
 
 print(f'Generating stubs for module: "{MODULE_NAME}" in directory: "{DIRECTORY}"')
-
-if sys.platform == "win32":
-    print("Windows stubs gen disabled for now :)")
-    exit(0)
+print(f'PIP_TEMP_LIB_FOLDER: "{PIP_TEMP_LIB_FOLDER}"')
 
 try:
+
+    # Copy files from the lib folder to the temp build folder
+    # so that they are co-located with the bindings module and 
+    # stubgen can find all the necessary libraries the module links against
+    for item in os.listdir(DIRECTORY):
+        src = os.path.join(DIRECTORY, item)
+        dst = os.path.join(PIP_TEMP_LIB_FOLDER, item)
+        if os.path.isfile(src):
+            shutil.copy2(src, dst)
+        elif os.path.isdir(src):
+            shutil.copytree(src, dst)
 
     # Create stubs, add PYTHONPATH to find the build module
     # CWD to to extdir where the built module can be found to extract the types
     env = os.environ
-    env['PYTHONPATH'] = f'{DIRECTORY}{os.pathsep}{env.get("PYTHONPATH", "")}'
+    env['PYTHONPATH'] = f'{PIP_TEMP_LIB_FOLDER}{os.pathsep}{env.get("PYTHONPATH", "")}'
 
     # Test importing depthai after PYTHONPATH is specified
     try:
@@ -44,7 +54,7 @@ try:
     parameters = ['stubgen', '-p', MODULE_NAME, '-o', f'{DIRECTORY}']
     if includeDocstrings:
         parameters.insert(1, '--include-docstrings')
-    subprocess.check_call(parameters, cwd=DIRECTORY, env=env)
+    subprocess.check_call(parameters, cwd=PIP_TEMP_LIB_FOLDER, env=env)
 
     # Add py.typed
     open(f'{DIRECTORY}/depthai/py.typed', 'a').close()
