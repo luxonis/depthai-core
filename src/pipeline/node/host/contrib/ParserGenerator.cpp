@@ -16,18 +16,23 @@ namespace dai::node {
 // Utility for device parser names
 const std::vector<std::string> DEVICE_PARSERS = {"YOLO", "SSD"};
 
-static const std::unordered_map<std::string, std::function<std::shared_ptr<BaseParser>()>> parserMap = {
+static const std::unordered_map<std::string, std::function<std::shared_ptr<BaseParser>(Pipeline&)>> parserMap = {
     // { "YOLOExtendedParser", [](){ return std::make_shared<YOLOExtendedParser>(); } },
-    { "SimCCKeypointParser", [](){ return std::make_shared<SimCCKeypointParser>(); } }
+    { std::string(KeypointParser::NAME), [](Pipeline& p) { return std::static_pointer_cast<BaseParser>(p.create<KeypointParser>()); }},
+    { std::string(SimCCKeypointParser::NAME), [](Pipeline& p) { return std::static_pointer_cast<BaseParser>(p.create<SimCCKeypointParser>()); }}
 };
 
-
-std::string getHostParserName(const std::string& parserName) {
-    assert(false); // TODO MobileNet
+std::shared_ptr<BaseParser> getHostParserByName(const std::string& parserName, Pipeline& pipeline) {
+    std::string parserNameExtended;
     if(parserName == "YOLO") {
-        return "YOLOExtendedParser";
+        parserNameExtended = "YOLOExtendedParser";
+    } else if(parserName == "SSD") {
+        parserNameExtended = "SSDExtendedParser";
+    } else {
+        parserNameExtended = parserName;
     }
-    throw std::runtime_error("Parser " + parserName + " is not supported for host only mode.");
+    DAI_CHECK(parserMap.find(parserNameExtended) != parserMap.end(), "Parser " + parserNameExtended + " not found");
+    return parserMap.find(parserNameExtended)->second(pipeline);
 }
 
 std::vector<HostOrDeviceParser> ParserGenerator::generateAllParsers(Pipeline pipeline, const NNArchive& nnArchive, const bool hostOnly) {
@@ -73,10 +78,7 @@ HostOrDeviceParser ParserGenerator::generateOneV1Parser(
         device_parser->setNNArchive(owningArchive);
         return device_parser;
     }
-    parser_name = getHostParserName(parser_name);
-    DAI_CHECK(parserMap.find(parser_name) != parserMap.end(), "Parser " + parser_name + " not found");
-    auto parser = parserMap.find(parser_name)->second()->build(head, model);
-    return parser;
+    return getHostParserByName(parser_name, pipeline)->build(head, model);
 }
 
 }  // namespace dai::node

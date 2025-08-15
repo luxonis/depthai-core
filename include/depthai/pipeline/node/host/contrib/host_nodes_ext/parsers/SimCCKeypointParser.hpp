@@ -6,9 +6,9 @@
 namespace dai::node {
 
 
-class SimCCKeypointParser final : public KeypointParser {
+class SimCCKeypointParser final : public NodeCRTP<KeypointParser, SimCCKeypointParser> {
    public:
-    const char* getName() const override{ return "SimCCKeypointParser"; };
+    constexpr static const char* NAME = "SimCCKeypointParser";
 
    protected:
     void buildImpl(const nn_archive::v1::Head& head, const nn_archive::v1::Model& model) override;

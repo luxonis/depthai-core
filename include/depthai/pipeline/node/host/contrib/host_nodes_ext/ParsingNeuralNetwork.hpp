@@ -40,7 +40,7 @@ class ParsingNeuralNetwork : public CustomThreadedNode<ParsingNeuralNetwork> {
     void updateParsers(const NNArchive& nnArchive);
 
     void removeOldParserNodes();
-    Subnode<NeuralNetwork> nn{*this, "nn"};
+    std::shared_ptr<NeuralNetwork> nn;
     std::optional<Subnode<Sync>> parserSync = std::nullopt;
 
    protected:

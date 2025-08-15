@@ -6,7 +6,7 @@
 #include <variant>
 
 #include "depthai/depthai.hpp"
-#include "parsers/BaseParser.hpp"
+#include "host_nodes_ext/parsers/BaseParser.hpp"
 
 namespace dai::node {
 

@@ -4,6 +4,8 @@
 #include "depthai/nn_archive/v1/InputType.hpp"
 #include "messages/Keypoints.hpp"
 #include "spdlog/spdlog.h"
+#include "xtensor/containers/xarray.hpp"
+#include "xtensor/views/xindex_view.hpp"
 #include "xtensor/misc/xsort.hpp"
 
 namespace dai::node {
@@ -154,10 +156,11 @@ void SimCCKeypointParser::run() {
                 std::string layerName = keypointsOutputs[i].name;
                 DAI_CHECK_V(result->hasLayer(layerName), "Expecting layer {} in NNData", layerName)
                 xt::xarray<float_t> tensor = result->getTensor<float_t>(layerName);
-                // TODO maybe it respects NNArchive and is {1, nKeypoints, simCCDimLengths[i]}
-                std::vector<size_t> shape = {nKeypoints, simCCDimLengths[i]};
-                DAI_CHECK_V(tensor.shape() == shape, "Expecting tensor {} to have shape [{}, {}]", layerName, shape[0], shape[1])
-                // xt::reshape_view(tensor, {nKeypoints, simCCDimLengths[i]}); // view as KP#, PX * splitRatio(pixelSubdivisions)
+                // TODO maybe it respects NNArchive and is {1, nKeypoints, simCCDimLengths[i]} ----- IT DOES
+                std::vector<size_t> shapeBatched = {1, nKeypoints, simCCDimLengths[i]};
+                std::vector<size_t> shapeUnbatched = {nKeypoints, simCCDimLengths[i]};
+                DAI_CHECK_V(tensor.shape() == shapeUnbatched || tensor.shape() == shapeBatched, "Expecting tensor {} to have shape [1(optional), {}, {}]", layerName, shapeUnbatched[0], shapeUnbatched[1])
+                xt::reshape_view(tensor, {nKeypoints, simCCDimLengths[i]}); // view as KP#, PX * splitRatio(pixelSubdivisions)
                 foundLayers.push_back(tensor);
             }
             // probably not needed but feels wrong not to
@@ -165,15 +168,32 @@ void SimCCKeypointParser::run() {
 
             xt::xarray<float_t> output = xt::zeros<float_t>({static_cast<size_t>(nKeypoints), foundLayers.size() * 2});
             for(int i = 0; i < foundLayers.size(); i++) {
-                const xt::xarray<float_t>& prediction = foundLayers[i];
+                xt::xarray<float_t> prediction = xt::reshape_view(foundLayers[i], {nKeypoints, simCCDimLengths[i]});
                 // TODO IF THIS IS SLOW https://github.com/xtensor-stack/xtensor/issues/2046
                 // locationsUnsplit: shape = [nKeypoints], integer indices
-                xt::xarray<size_t> locationsUnsplit = xt::argmax(prediction, -1);
+                xt::xarray<size_t> locationsUnsplit = xt::flatten(xt::argmax(prediction, -1));
                 // Normalize
                 xt::xarray<float_t> locationsNormalized = locationsUnsplit / static_cast<float_t>(simCCDimLengths[i]);
-                // Create indices shape [nKeypoints, 2], where kp index, px subdivision index
-                xt::xarray<size_t> indices = xt::stack(xt::xtuple(xt::arange<size_t>(nKeypoints), locationsUnsplit), 1);
-                auto confidence = xt::index_view(prediction, indices);
+
+                // TODO XTensor not working as shown in docs, I'm done caring and just using xt::amax
+                // // Create indices shape [nKeypoints, 2], where kp index, px subdivision index
+                // xt::xarray<size_t> indices = xt::stack(xt::xtuple(xt::arange<size_t>(nKeypoints), locationsUnsplit), 1);
+                // std::vector<size_t> expected{nKeypoints, 2};
+                // DAI_CHECK_IN(indices.shape() == expected);
+                // xt::xarray<float> a = {{11, 12, 13}, {24, 25, 26}};
+                // xt::xarray<size_t> idxs = {{0, 0}, {1, 0}, {0, 1}};
+                // auto b = xt::index_view(a, idxs);
+                // for(auto el : b) {
+                //     std::cout << el << ", "; // Why does this print 11, 11, 12, 11, 11, 12, ??????
+                // }
+                // std::cout << std::endl;
+                // xt::ravel_return_type_t<std::vector<xt::svector<unsigned long>>, xt::ravel_tensor_tag> flat_indices =
+                //     xt::ravel_indices(xt::argwhere(a >= 6), a.shape());
+                // // TODO why is this 266 not 133?
+                // auto confidence = xt::index_view(prediction, indices);
+
+                auto confidence = xt::amax(prediction, -1);
+
                 // Clamp
                 auto confidenceClamped = xt::clip(confidence, 0.0f, 1.0f);
 

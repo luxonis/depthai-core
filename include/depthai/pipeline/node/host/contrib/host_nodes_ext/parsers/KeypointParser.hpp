@@ -12,9 +12,9 @@ enum class ValuesPerKeypoint: uint8_t {
     Three = 3
 };
 
-class KeypointParser : public BaseParser {
+class KeypointParser : virtual public CustomParser<KeypointParser> {
 public:
-    const char* getName() const override{ return "KeypointParser"; };
+    constexpr static const char* NAME = "KeypointParser";
 
 protected:
     void buildImpl(const nn_archive::v1::Head& head, const nn_archive::v1::Model& model) override;

@@ -1047,6 +1047,7 @@ if (DEPTHAI_BUILD_EXT_HOST_NODES)
             PRIVATE
             "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include/depthai>"
             "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/src/pipeline/node/host/contrib/host_nodes_ext>"
+            "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/src/pipeline/node/host/contrib>"
             "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/src>"
     )
 
