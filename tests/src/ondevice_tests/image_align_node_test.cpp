@@ -43,6 +43,7 @@ namespace {
             auto aligned = alignedQueue->get<dai::ImgFrame>();
             REQUIRE(aligned != nullptr);
         }
+        p.stop();
     }
 }
 
