@@ -1,5 +1,6 @@
 #include <memory>
 #include <unordered_map>
+#include <pybind11/stl.h>
 
 #include "DatatypeBindings.hpp"
 #include "pipeline/CommonBindings.hpp"

@@ -25,6 +25,7 @@ struct CoverageData : public Buffer {
       : coveragePerCellA(cd.coveragePerCellA)
       , coveragePerCellB(cd.coveragePerCellB)
       , meanCoverage(cd.meanCoverage)
+      , dataAcquired(cd.dataAcquired)
     {}
     // clang-format on
     CoverageData() = default;
@@ -39,7 +40,7 @@ struct CoverageData : public Buffer {
     std::vector<std::vector<float>> coveragePerCellB;
     float meanCoverage;
 
-    float dataAcquired = 0.0f;
+    float dataAcquired;
 
     DEPTHAI_SERIALIZE(CoverageData, coveragePerCellA, coveragePerCellB, meanCoverage, dataAcquired);
 };

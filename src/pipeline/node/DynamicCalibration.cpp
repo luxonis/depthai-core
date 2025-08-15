@@ -194,7 +194,7 @@ dai::CalibrationQuality DynamicCalibration::calibQualityfromDCL(const dcl::Calib
         data.rotationChange[2] = src.calibrationQuality->rotationChange[2];
         data.depthErrorDifference = src.calibrationQuality->depthDistanceDifference;
         data.sampsonErrorCurrent = src.calibrationQuality->sampsonErrorCurrent;
-        data.sampsonErrorAchievable = src.calibrationQuality->sampsonErrorAchievable;
+        data.sampsonErrorAchievable = src.calibrationQuality->sampsonErrorNew;
         quality.data = data;  // optional constructed from value
     } else {
         quality.data = std::nullopt;
@@ -252,7 +252,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
     qualityData.rotationChange[2] = dclResult.value.calibrationDifference->rotationChange[2];
     qualityData.depthErrorDifference = dclResult.value.calibrationDifference->depthDistanceDifference;
     qualityData.sampsonErrorCurrent  = dclResult.value.calibrationDifference->sampsonErrorCurrent;
-    qualityData.sampsonErrorAchievable = dclResult.value.calibrationDifference->sampsonErrorAchievable;
+    qualityData.sampsonErrorAchievable = dclResult.value.calibrationDifference->sampsonErrorNew;
     
     DynamicCalibrationResult::Data resultData{};
     resultData.newCalibration       = newCalibrationHandler;

@@ -70,6 +70,7 @@ while pipeline.isRunning():
         print(coverage.coveragePerCellA)
         print(coverage.coveragePerCellB)
         print(coverage.meanCoverage)
+        print(coverage.dataAcquired)
 
     calibration_result = calibration_output.tryGet()
     if calibration_result:
