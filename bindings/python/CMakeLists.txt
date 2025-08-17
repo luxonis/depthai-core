@@ -22,7 +22,11 @@ if(WIN32)
 endif()
 
 # Pybindings project
-set(TARGET_NAME depthai)
+if(DEPTHAI_PYTHON_EMBEDDED_MODULE)
+    set(TARGET_NAME depthai)
+else()
+    set(TARGET_NAME _cxxdepthai)
+endif()
 project(depthai VERSION "0") # revision of bindings [depthai-core].[rev]
 
 # Add module paths

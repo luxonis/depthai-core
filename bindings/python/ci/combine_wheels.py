@@ -25,7 +25,55 @@ class WheelInfo:
     abi_tag: str
     platform_tag: str
 
+def write_to_zip(zip_file: zipfile.ZipFile, root_path: str, file_or_folder: str, exclude_fn = lambda path: False):
+    """
+    Writes a file or directory to a zip archive, avoiding duplicate entries.
+
+    If the specified file is a directory, recursively adds all files within the directory
+    to the zip archive, preserving the directory structure. If the file is a regular file,
+    adds it directly to the zip archive.
+
+    Note: root_path corresponds to "." in the zip file.
+
+    exclude_fn is a function that determines whether a file should be written to the zip file.
+    """
+    host_path = os.path.join(root_path, file_or_folder)
+    if os.path.isdir(host_path):
+        for f in glob.glob(os.path.join(host_path, '**'), recursive=True):
+            if os.path.isfile(f) and not exclude_fn(f):
+                zip_path = file_or_folder + "/" + os.path.relpath(f, host_path)
+                zip_path = zip_path.replace("\\", "/") if sys.platform == "win32" else zip_path
+                try:
+                    zip_file.getinfo(zip_path)
+                except KeyError:
+                    logger.debug(f"Writing {f} to {zip_path}")
+                    zip_file.write(f, zip_path)
+    elif os.path.isfile(host_path) and not exclude_fn(host_path):
+        zip_path = file_or_folder
+        zip_path = zip_path.replace("\\", "/") if sys.platform == "win32" else zip_path
+        try:
+            zip_file.getinfo(zip_path)
+        except KeyError:
+            logger.debug(f"Writing {host_path} to {zip_path}")
+            zip_file.write(host_path, zip_path)
+    else:
+        raise ValueError(f"File or folder {host_path} does not exist")
+
 def combine_wheels_linux(args, wheel_infos):
+    """
+        The following wheel structure is expected (wheels are expected to be pre-repaired):
+            - depthai/ 
+            - depthai-*.dist.info/
+            - depthai_cli/
+            - depthai.libs/
+
+        Strategy:
+            - We pick everything from the depthai/ folder except any .so files that are not the cpython wheel
+                - these .so files namely are already included in the depthai.libs folder
+            - We copy the entire depthai-*.dist.info/ folder
+            - We copy the entire depthai_cli/ folder
+            - depthai.libs/ is copied in such a way that removes library duplicates (we introduce a custom magic hash)
+    """
 
     logger.info("Combining wheels for Linux!")
 
@@ -37,10 +85,11 @@ def combine_wheels_linux(args, wheel_infos):
     ## Create a temporary directory for extracting wheels
     with tempfile.TemporaryDirectory() as temp_dir:
 
+        # Book-keeping
         dynlib_renames = defaultdict(lambda: defaultdict(dict))
-
         common_magic_hash = str(time.perf_counter())[-5:]
 
+        # Get combined wheel info
         combined_python_tag = ".".join([wheel_info.python_tag for wheel_info in wheel_infos])
         combined_abi_tag = ".".join([wheel_info.abi_tag for wheel_info in wheel_infos])
         combined_platform_tag = wheel_infos[0].platform_tag
@@ -50,66 +99,77 @@ def combine_wheels_linux(args, wheel_infos):
         logger.info(f"Combined platform tag: {combined_platform_tag}")
         logger.info(f"Wheel DVB: {wheel_infos[0].wheel_dvb}")
 
-        # Create a zip file for the combined wheel
+        # Generate final wheel name
         combined_wheel_name = f"{wheel_infos[0].wheel_dvb}-{combined_python_tag}-{combined_abi_tag}-{combined_platform_tag}.whl"
         logger.info(f"Combined wheel name: {combined_wheel_name}")
 
+        # Create final wheel zip file
         output_zip_path = os.path.join(args.output_folder, combined_wheel_name)
         output_zip = zipfile.ZipFile(output_zip_path, 'w', zipfile.ZIP_DEFLATED, compresslevel=9)
 
-        # Extract each wheel into a subdirectory named after the wheel
         for wheel_info in wheel_infos:
-            wheel_extract_dir = os.path.join(temp_dir, wheel_info.wheel_name)
-            os.makedirs(wheel_extract_dir, exist_ok=True)
 
-            logger.debug(f"Extracting {wheel_info.wheel_name} to {wheel_extract_dir}")
+            # Extract wheel
+            wheel_extract_dir = os.path.join(temp_dir, wheel_info.wheel_name)
+            logger.info(f"Extracting {wheel_info.wheel_name} to {wheel_extract_dir}")
+            os.makedirs(wheel_extract_dir, exist_ok=True)
             with zipfile.ZipFile(wheel_info.wheel_path, 'r') as wheel_zip:
                 wheel_zip.extractall(wheel_extract_dir)
 
-            ## Get the path to the wheel's dynamic library
-            extracted_files = os.listdir(wheel_extract_dir)
-            wheel_dylib_path = [f for f in extracted_files if f.endswith(".so") and "cpython" in f]
-            assert len(wheel_dylib_path) == 1, f"Expected 1 .so file, got {len(wheel_dylib_path)}"
-            wheel_dylib_path = wheel_dylib_path[0]
+            # Copy over the `depthai-*.dist.info`
+            dist_info_path = [f for f in os.listdir(wheel_extract_dir) if f.endswith(".dist-info")]
+            assert len(dist_info_path) == 1, f"Expected 1 .dist-info folder, got {len(dist_info_path)}"
+            logger.info(f"Copying `{dist_info_path[0]}` folder, wheel: {wheel_info.wheel_name}")
+            write_to_zip(output_zip, wheel_extract_dir, dist_info_path[0])
 
-            ## get .libs folder
-            wheel_libs_path = [f for f in extracted_files if f.endswith(".libs")]
-            assert len(wheel_libs_path) == 1, f"Expected 1 .libs folder, got {len(wheel_libs_path)}"
-            wheel_libs_path = wheel_libs_path[0]
+            # Copy over the `depthai_cli`
+            logger.info(f"Copying `depthai_cli` folder, wheel: {wheel_info.wheel_name}")
+            write_to_zip(output_zip, wheel_extract_dir, "depthai_cli")
 
-            ## All folders and files that will be copied to the output folder
-            wheel_files_to_copy = [wheel_dylib_path]
-            wheel_files_to_copy.extend([f for f in extracted_files if not f.endswith(".so") and not f.endswith(".libs")])
+            # Find full path to the cpython wheel .so file
+            depthai_files = os.listdir(os.path.join(wheel_extract_dir, "depthai"))
+            cpython_so_files = [f for f in depthai_files if f.endswith(".so") and "cpython" in f]
+            assert len(cpython_so_files) == 1, f"Expected 1 .so file, got {len(cpython_so_files)}"
+            cpython_so_path = os.path.join(wheel_extract_dir, "depthai", cpython_so_files[0])
+            logger.info(f"Found cpython wheel .so file: {cpython_so_path}")
 
-            ## Unmangle the wheel's dynamic library names
-            bundled_libs = os.listdir(os.path.join(wheel_extract_dir, wheel_libs_path))
-            unmangled_libs = list()
-            for lib in bundled_libs:
+            # Rename all the .so files from the `depthai` folder and relink them. Moreover, relink the cpython wheel .so file
+            depthai_libs_path = os.path.join(wheel_extract_dir, "depthai.libs")
+            depthai_libs = os.listdir(depthai_libs_path)
+            for lib in depthai_libs:
                 base, ext = lib.split(".", 1)
-                base = "".join(base.split("-")[:-1])
-                unmangled_libs.append(base + "-" + common_magic_hash + "." + ext)
-                dynlib_renames[wheel_info.wheel_name][lib] = unmangled_libs[-1]
-            # Update the dynamic library to link against the unmangled libraries
-            wheel_dylib_full_path = os.path.join(wheel_extract_dir, wheel_dylib_path)
-            for file in [wheel_dylib_full_path] + [os.path.join(wheel_extract_dir, wheel_libs_path, f) for f in os.listdir(os.path.join(wheel_extract_dir, wheel_libs_path))]:
-                for old_lib, new_lib in dynlib_renames[wheel_info.wheel_name].items():
-                    logger.debug(f"Patching {file} to replace {old_lib} with {new_lib}")
-                    subprocess.run(['patchelf', '--replace-needed', old_lib, new_lib, file], check=True)
+                new_lib = "-".join(base.split("-")[:-1]) + "-" + common_magic_hash + "." + ext # remove old hash and replace with new one
 
-            for file in wheel_files_to_copy:
-                write_to_zip(output_zip, wheel_extract_dir, file)
+                # Rename the library
+                new_lib_path = os.path.join(depthai_libs_path, new_lib)
+                logger.info(f"Renaming {lib} to {new_lib}")
+                os.rename(os.path.join(depthai_libs_path, lib), new_lib_path)
 
-            # Write the .libs folder contents to the zip
-            for lib in bundled_libs:
-                lib_path = os.path.join(wheel_extract_dir, wheel_libs_path, lib)
-                new_lib_name = dynlib_renames[wheel_info.wheel_name][lib]
-                new_lib_path = os.path.join(wheel_extract_dir, wheel_libs_path, new_lib_name)
-                os.rename(lib_path, new_lib_path)
-                if args.strip_unneeded:
-                    logger.info(f"Stripping {new_lib_path}")
-                    subprocess.run(['strip', '--strip-unneeded', new_lib_path], check=True)
-                
-            write_to_zip(output_zip, wheel_extract_dir, wheel_libs_path)
+                # Relink the cpython wheel .so file
+                command = f"patchelf --replace-needed {lib} {new_lib} {cpython_so_path}"
+                logger.debug(f"Running command: {command}")
+                subprocess.run(command, shell=True, check=True)
+
+                # Relink the rest of the libraries
+                for other_lib in os.listdir(depthai_libs_path):
+                    if other_lib == lib:
+                        continue
+                    command = f"patchelf --replace-needed {lib} {new_lib} {os.path.join(depthai_libs_path, other_lib)}"
+                    logger.debug(f"Running command: {command}")
+                    subprocess.run(command, shell=True, check=True)
+
+            # Copy over the `depthai.libs` folder
+            logger.info(f"Copying `depthai.libs` folder, wheel: {wheel_info.wheel_name}")
+            write_to_zip(output_zip, wheel_extract_dir, "depthai.libs")
+
+            # Copy over the `depthai` without the .so files (except the cpython .so file)
+            logger.info(f"Copying `depthai` folder, wheel: {wheel_info.wheel_name}")
+            def exclude_fn(path):
+                base = os.path.basename(path)
+                if ".so" in base and "cpython" not in base:
+                    return True
+                return False
+            write_to_zip(output_zip, wheel_extract_dir, "depthai", exclude_fn)
 
         output_zip.close()
         logger.info("Output zip closed")
@@ -117,6 +177,12 @@ def combine_wheels_linux(args, wheel_infos):
         logger.info(f"Combined wheel saved to {output_zip_path}")
 
 def combine_wheels_windows(args, wheel_infos):
+    """
+    The following wheel structure is expected:
+        - depthai 
+        - depthai-*.dist.info
+        - depthai_cli
+    """
 
     logger.info("Combining wheels for Windows!")
     from delvewheel import _dll_utils as dll_utils
@@ -217,6 +283,12 @@ def combine_wheels_windows(args, wheel_infos):
         logger.info(f"Combined wheel saved to {output_zip_path}")
 
 def combine_wheels_macos(args, all_wheel_infos):
+    """
+    The following wheel structure is expected:
+        - depthai 
+        - depthai-*.dist.info
+        - depthai_cli
+    """
 
     logger.info("Combining wheels for macOS!")
 
@@ -264,26 +336,6 @@ def combine_wheels_macos(args, all_wheel_infos):
         logger.info(f"Output zip size: {os.path.getsize(output_zip_path) / (1024 * 1024):.2f} MB")
         logger.info(f"Combined wheel saved to {output_zip_path}")
 
-
-def write_to_zip(zip_file: zipfile.ZipFile, path: str, file: str):
-    file_path = os.path.join(path, file)
-    if os.path.isdir(file_path):
-        for root, _, files in os.walk(file_path):
-            for f in files:
-                arcname = file + "/" + os.path.relpath(os.path.join(root, f), file_path)
-                arcname = arcname.replace("\\", "/") if sys.platform == "win32" else arcname
-                try:
-                    # This will throw a KeyError if the file is not in the zip, in that case we write the file to the zip
-                    zip_file.getinfo(arcname)
-                except KeyError:
-                    root = root.replace("\\", "/") if sys.platform == "win32" else root
-                    zip_file.write(os.path.join(root, f), arcname)
-    else:
-        try:
-            # This will throw a KeyError if the file is not in the zip, in that case we write the file to the zip
-            zip_file.getinfo(file)
-        except KeyError:
-            zip_file.write(file_path, file)
 
 
 def main(args: argparse.Namespace):

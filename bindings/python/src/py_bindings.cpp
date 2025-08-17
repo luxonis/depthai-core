@@ -50,7 +50,7 @@ extern "C" void depthai_bindings_init() {}  // to force inclusion
 #ifdef DEPTHAI_PYTHON_EMBEDDED_MODULE
 PYBIND11_EMBEDDED_MODULE(depthai, m)
 #else
-PYBIND11_MODULE(depthai, m)
+PYBIND11_MODULE(_cxxdepthai, m)
 #endif
 {
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT

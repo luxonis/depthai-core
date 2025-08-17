@@ -24,28 +24,46 @@ try:
     # so that they are co-located with the bindings module and 
     # stubgen can find all the necessary libraries the depthai links against.
     # Note that this is not an issue on Linux and macOS.
+    stubgen_root = DIRECTORY
     if sys.platform == 'win32':
         for item in os.listdir(DIRECTORY):
-            print(os.listdir(DIRECTORY))
             src = os.path.join(DIRECTORY, item)
             dst = os.path.join(PIP_TEMP_LIB_FOLDER, item)
-            print(f'Copying {src} to {dst}')
-            if os.path.isfile(src):
-                shutil.copy2(src, dst)
-            elif os.path.isdir(src):
-                shutil.copytree(src, dst)
+            shutil.copytree(src, dst, dirs_exist_ok=True) if os.path.isdir(src) else shutil.copy2(src, dst)
         stubgen_root = PIP_TEMP_LIB_FOLDER
-    else:
-        stubgen_root = DIRECTORY
+
+    # Add __init__.py
+    with open(f'{DIRECTORY}/__init__.py', 'w') as file:
+        content = textwrap.dedent('''
+            import inspect
+            from depthai import _cxxdepthai
+            __all__ = []
+            __obj = None
+            for __name in dir(_cxxdepthai):
+                if __name.startswith("_"):
+                    continue
+                __obj = getattr(_cxxdepthai, __name)
+                try:
+                    setattr(__obj, "__module__", __name__) # depthai._cxxdepthai.X -> depthai.X
+                except AttributeError:
+                    pass
+                __all__.append(__name)
+                globals()[__name] = __obj
+            del __name, __obj, inspect, _cxxdepthai
+        ''')
+        file.write(content)
 
     # Create stubs, add PYTHONPATH to find the build module
     # CWD to to extdir where the built module can be found to extract the types
     env = os.environ
     env['PYTHONPATH'] = f'{stubgen_root}{os.pathsep}{env.get("PYTHONPATH", "")}'
 
+    # Prevent __pycache__ generation on the import bellow
+    sys.dont_write_bytecode = True 
+
     # Test importing depthai after PYTHONPATH is specified
     try:
-        import depthai
+        import _cxxdepthai
     except Exception as ex:
         print(f'Could not import depthai: {ex}')
 
@@ -58,16 +76,30 @@ try:
         print("Will include docstrings in stubs")
     else:
         print("Will not include docstrings in stubs")
-    parameters = ['stubgen', '-p', MODULE_NAME, '-o', f'{DIRECTORY}']
-    if includeDocstrings:
-        parameters.insert(1, '--include-docstrings')
-    subprocess.check_call(parameters, cwd=stubgen_root, env=env)
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+
+        # Generate stubs in a temporary directory
+        parameters = ['stubgen', '-p', "_cxxdepthai", '-o', os.path.join(temp_dir)]
+        if includeDocstrings:
+            parameters.insert(1, '--include-docstrings')
+        subprocess.check_call(parameters, cwd=stubgen_root, env=env)
+
+        # Stubgen will put the stubs in the temp_dir/depthai folder
+        # We need to copy the stubs to the main directory
+        src_stub_dir, dst_stub_dir = os.path.join(temp_dir, "_cxxdepthai"), DIRECTORY
+        if os.path.exists(src_stub_dir):
+            os.makedirs(dst_stub_dir, exist_ok=True)
+            for item in os.listdir(src_stub_dir):
+                s = os.path.join(src_stub_dir, item)
+                d = os.path.join(dst_stub_dir, item)
+                shutil.copytree(s, d, dirs_exist_ok=True) if os.path.isdir(s) else shutil.copy2(s,d)
 
     # Add py.typed
-    open(f'{DIRECTORY}/depthai/py.typed', 'a').close()
+    open(f'{DIRECTORY}/py.typed', 'a').close()
 
     # imports and overloads
-    with open(f'{DIRECTORY}/depthai/__init__.pyi' ,'r+') as file:
+    with open(f'{DIRECTORY}/__init__.pyi' ,'r+') as file:
         # Read
         contents = file.read()
 
@@ -113,7 +145,7 @@ try:
         file.write(final_stubs)
 
     # node fixes
-    with open(f'{DIRECTORY}/depthai/node/__init__.pyi' ,'r+') as file:
+    with open(f'{DIRECTORY}/node/__init__.pyi' ,'r+') as file:
         # Read
         contents = file.read()
 
@@ -138,6 +170,19 @@ try:
         file.truncate(0)
         file.write(final_stubs)
 
+    # Replace all occurrences of _cxxdepthai with depthai._cxxdepthai in all .pyi files
+    for root, dirs, files in os.walk(f'{DIRECTORY}'):
+        for file_name in files:
+            if file_name.endswith('.pyi'):
+                file_path = os.path.join(root, file_name)
+                with open(file_path, 'r+') as f:
+                    contents = f.read()
+                    new_contents = contents.replace('_cxxdepthai', 'depthai._cxxdepthai')
+                    if new_contents != contents:
+                        f.seek(0)
+                        f.truncate(0)
+                        f.write(new_contents)
+
     # Flush previous stdout
     sys.stdout.flush()
 
@@ -150,7 +195,7 @@ try:
         config.close()
         print(f'Mypy config file: {config.name}')
         # Mypy check
-        subprocess.check_call([sys.executable, '-m' 'mypy', f'{DIRECTORY}/{MODULE_NAME}', f'--config-file={config.name}'], env=env)
+        subprocess.check_call([sys.executable, '-m' 'mypy', f'{DIRECTORY}', f'--config-file={config.name}'], env=env)
     finally:
         os.unlink(config.name)
     # # TODO(thamarpe) - Pylance / Pyright check
@@ -183,9 +228,9 @@ try:
             file.write(new_contents)
 
     # Process all __init__.pyi files
-    for root, dirs, files in os.walk(f'{DIRECTORY}/{MODULE_NAME}'):
+    for root, dirs, files in os.walk(f'{DIRECTORY}'):
         if '__init__.pyi':
-            is_depthai_root = (root == f'{DIRECTORY}/{MODULE_NAME}')
+            is_depthai_root = (root == f'{DIRECTORY}')
             process_init_pyi(os.path.join(root, '__init__.pyi'), is_depthai_root)
 
 except subprocess.CalledProcessError as err:

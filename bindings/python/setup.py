@@ -129,11 +129,11 @@ class CMakeBuild(build_ext):
             cmake_args += ['-DDEPTHAI_RTABMAP_SUPPORT=ON']
         if env.get('DEPTHAI_BUILD_KOMPUTE') == 'ON':
             cmake_args += ['-DDEPTHAI_KOMPUTE_SUPPORT=ON']
-        build_args += ['--target=depthai']
+        build_args += ['--target=_cxxdepthai']
 
 
         # Specify output directory and python executable
-        cmake_args += ['-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=' + extdir, '-DPYTHON_EXECUTABLE=' + sys.executable]
+        cmake_args += ['-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=' + os.path.join(extdir, MODULE_NAME), '-DPYTHON_EXECUTABLE=' + sys.executable]
         # Specify dir of python executable (pybind11)
         if platform.system() == "Windows":
             # Windows - remove case insensitive variants
