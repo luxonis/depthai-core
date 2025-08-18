@@ -21,7 +21,8 @@ void bind_dynamic_calibration_results(pybind11::module& m, void* pCallstack) {
         .def_readwrite("coveragePerCellA", &CoverageData::coveragePerCellA)
         .def_readwrite("coveragePerCellB", &CoverageData::coveragePerCellB)
         .def_readwrite("meanCoverage", &CoverageData::meanCoverage)
-        .def_readwrite("dataAcquired", &CoverageData::dataAcquired);
+        .def_readwrite("dataAcquired", &CoverageData::dataAcquired)
+        .def_readwrite("coverageAcquired", &CoverageData::coverageAcquired);
 
     // CalibrationQuality::Data
     py::class_<CalibrationQuality::Data>(m, "CalibrationQualityData")
