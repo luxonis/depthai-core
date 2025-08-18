@@ -65,6 +65,8 @@ void bind_tracklets(pybind11::module& m, void* pCallstack) {
         .def("getTimestamp", &Tracklets::Buffer::getTimestamp, DOC(dai, Buffer, getTimestamp))
         .def("getTimestampDevice", &Tracklets::Buffer::getTimestampDevice, DOC(dai, Buffer, getTimestampDevice))
         .def("getSequenceNum", &Tracklets::Buffer::getSequenceNum, DOC(dai, Buffer, getSequenceNum))
+        .def("getTransformation", [](Tracklets& msg) { return msg.transformation; })
+        .def("setTransformation", [](Tracklets& msg, const ImgTransformation& transformation) { msg.transformation = transformation; })
         // .def("setTimestamp", &Tracklets::setTimestamp, DOC(dai, Tracklets, setTimestamp))
         // .def("setTimestampDevice", &Tracklets::setTimestampDevice, DOC(dai, Tracklets, setTimestampDevice))
         // .def("setSequenceNum", &Tracklets::setSequenceNum, DOC(dai, Tracklets, setSequenceNum))

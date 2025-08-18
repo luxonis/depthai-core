@@ -334,6 +334,8 @@ add_python_example(object_tracker ObjectTracker/object_tracker.py)
 dai_set_example_test_labels(object_tracker ondevice rvc2_all rvc4 ci)
 add_python_example(object_tracker_replay ObjectTracker/object_tracker_replay.py)
 dai_set_example_test_labels(object_tracker_replay ondevice rvc2_all rvc4 ci)
+add_python_example(object_tracker_remap ObjectTracker/object_tracker_remap.py)
+dai_set_example_test_labels(object_tracker_remap ondevice rvc2_all rvc4 ci)
 
 # ImageFilters
 add_python_example(image_filters StereoDepth/stereo_depth_filters.py)
