@@ -35,7 +35,6 @@ try:
     # Add __init__.py
     with open(f'{DIRECTORY}/__init__.py', 'w') as file:
         content = textwrap.dedent('''
-            import inspect
             from depthai import _cxxdepthai
             __all__ = []
             __obj = None
@@ -49,7 +48,7 @@ try:
                     pass
                 __all__.append(__name)
                 globals()[__name] = __obj
-            del __name, __obj, inspect, _cxxdepthai
+            del __name, __obj, _cxxdepthai
         ''')
         file.write(content)
 
@@ -229,8 +228,8 @@ try:
 
     # Process all __init__.pyi files
     for root, dirs, files in os.walk(f'{DIRECTORY}'):
-        if '__init__.pyi':
-            is_depthai_root = (root == f'{DIRECTORY}')
+        is_depthai_root = (root == f'{DIRECTORY}')
+        if os.path.exists(os.path.join(root, '__init__.pyi')):
             process_init_pyi(os.path.join(root, '__init__.pyi'), is_depthai_root)
 
 except subprocess.CalledProcessError as err:
