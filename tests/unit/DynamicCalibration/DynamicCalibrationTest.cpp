@@ -43,12 +43,12 @@ TEST(DynamicCalibration, SetPerformanceMode) {
 
 class MockDclDynamicCalibration : public dcl::DynamicCalibration {
    public:
-    MOCK_METHOD((dcl::Result<dcl::CalibrationQuality>),
+    MOCK_METHOD((dcl::Result<dcl::CalibrationDifference>),
                 checkCalibration,
                 (const std::shared_ptr<const dcl::Device>, const dcl::socket_t, const dcl::socket_t, const dcl::PerformanceMode),
                 (const, override));
 
-    MOCK_METHOD((dcl::Result<dcl::CalibrationResult>),
+    MOCK_METHOD((dcl::Result<dcl::StereoCalibrationResult>),
                 findNewCalibration,
                 (const std::shared_ptr<const dcl::Device>, const dcl::socket_t, const dcl::socket_t, const dcl::PerformanceMode),
                 (const, override));
@@ -80,7 +80,7 @@ TEST(DynamicCalibration, RunQualityCheckFailure) {
     bool force = true;
 
     // Mock Result with failure
-    dcl::Result<dcl::CalibrationQuality> failedResult = dcl::Result<dcl::CalibrationQuality>::error(1);
+    dcl::Result<dcl::CalibrationDifference> failedResult = dcl::Result<dcl::CalibrationDifference>::error(1);
 
     // clang-format off
     EXPECT_CALL(*mockDclRaw, checkCalibration(testing::_, testing::_, testing::_, dcl::PerformanceMode::SKIP_CHECKS))
@@ -103,9 +103,9 @@ TEST(DynamicCalibration, RunQualityCheckSuccess) {
     config.performanceMode = dcl::PerformanceMode::OPTIMIZE_PERFORMANCE;
     dynCalib.setInitialConfig(config);
 
-    dcl::CalibrationQuality quality;
+    dcl::CalibrationDifference quality;
 
-    dcl::Result<dcl::CalibrationQuality> successResult = dcl::Result<dcl::CalibrationQuality>::ok(quality);
+    dcl::Result<dcl::CalibrationDifference> successResult = dcl::Result<dcl::CalibrationDifference>::ok(quality);
 
     // clang-format off
     EXPECT_CALL(*mockDclRaw, checkCalibration(testing::_, testing::_, testing::_, dcl::PerformanceMode::OPTIMIZE_PERFORMANCE))
@@ -124,7 +124,7 @@ TEST(DynamicCalibration, RunCalibrationFailure) {
     bool force = true;
 
     // Mock a failed result
-    auto failedResult = dcl::Result<dcl::CalibrationResult>::error(-1);
+    auto failedResult = dcl::Result<dcl::StereoCalibrationResult>::error(-1);
 
     // clang-format off
     EXPECT_CALL(*mockDclRaw, findNewCalibration(testing::_, testing::_, testing::_, testing::_))
@@ -168,12 +168,12 @@ TEST(DynamicCalibration, RunCalibrationSuccess) {
       calibHandleA, calibHandleB
     };
   
-    dcl::CalibrationResult cr = {
+    dcl::StereoCalibrationResult cr = {
 	.newCalibration = resultPair,
 	.currentCalibration = resultPair,
-	.calibrationDifference = std::make_shared<dcl::CalibrationData>()
+	.calibrationDifference = std::make_shared<dcl::CalibrationDifference>()
     };
-    auto successResult = dcl::Result<dcl::CalibrationResult>::ok(cr);
+    auto successResult = dcl::Result<dcl::StereoCalibrationResult>::ok(cr);
 
     EXPECT_CALL(*mockDclRaw, findNewCalibration(testing::_, testing::_, testing::_, dcl::PerformanceMode::OPTIMIZE_PERFORMANCE))
         .WillOnce(testing::Return(successResult));
@@ -454,7 +454,7 @@ TEST(DynamicCalibration, DoWork_CallsInnerMockDclMethods) {
         // Expect checkCalibration to be called when forcing quality check
         EXPECT_CALL(*mockDclRaw, checkCalibration(testing::_, testing::_, testing::_, dcl::PerformanceMode::SKIP_CHECKS))
             .Times(1)
-            .WillOnce(testing::Return(dcl::Result<dcl::CalibrationQuality>::ok({})));
+            .WillOnce(testing::Return(dcl::Result<dcl::CalibrationDifference>::ok({})));
 
         auto forceQcCmd = std::make_shared<dai::CalibrationQualityCommand>(true);
         forceQcCmd->force = true;
@@ -467,7 +467,7 @@ TEST(DynamicCalibration, DoWork_CallsInnerMockDclMethods) {
         // Expect checkCalibration to be called when forcing quality check
         EXPECT_CALL(*mockDclRaw, checkCalibration(testing::_, testing::_, testing::_, dcl::PerformanceMode::OPTIMIZE_PERFORMANCE))
             .Times(1)
-            .WillOnce(testing::Return(dcl::Result<dcl::CalibrationQuality>::ok({})));
+            .WillOnce(testing::Return(dcl::Result<dcl::CalibrationDifference>::ok({})));
 
         auto qcCmd = std::make_shared<dai::CalibrationQualityCommand>(false, dcl::PerformanceMode::OPTIMIZE_PERFORMANCE);
         qcCmd->force = false;
@@ -477,7 +477,7 @@ TEST(DynamicCalibration, DoWork_CallsInnerMockDclMethods) {
         EXPECT_EQ(err1, dai::node::DynamicCalibration::ErrorCode::OK);
     }
     {
-        auto failedResult = dcl::Result<dcl::CalibrationResult>::error(-1);
+        auto failedResult = dcl::Result<dcl::StereoCalibrationResult>::error(-1);
         // Expect checkCalibration to be called when forcing quality check
         EXPECT_CALL(*mockDclRaw, findNewCalibration(testing::_, testing::_, testing::_, dcl::PerformanceMode::OPTIMIZE_PERFORMANCE))
             .Times(1)

@@ -184,21 +184,17 @@ dcl::ImageData DclUtils::cvMatToImageData(const cv::Mat& mat) {
     return img;
 }
 
-dai::CalibrationQuality DynamicCalibration::calibQualityfromDCL(const dcl::CalibrationQuality& src) {
+dai::CalibrationQuality DynamicCalibration::calibQualityfromDCL(const dcl::CalibrationDifference& src) {
     dai::CalibrationQuality quality;
 
-    if(src.calibrationQuality.has_value()) {
-        CalibrationQuality::Data data{};
-        data.rotationChange[0] = src.calibrationQuality->rotationChange[0];
-        data.rotationChange[1] = src.calibrationQuality->rotationChange[1];
-        data.rotationChange[2] = src.calibrationQuality->rotationChange[2];
-        data.depthErrorDifference = src.calibrationQuality->depthDistanceDifference;
-        data.sampsonErrorCurrent = src.calibrationQuality->sampsonErrorCurrent;
-        data.sampsonErrorAchievable = src.calibrationQuality->sampsonErrorAchievable;
-        quality.data = data;  // optional constructed from value
-    } else {
-        quality.data = std::nullopt;
-    }
+    CalibrationQuality::Data data{};
+    data.rotationChange[0] = src.rotationChange[0];
+    data.rotationChange[1] = src.rotationChange[1];
+    data.rotationChange[2] = src.rotationChange[2];
+    data.depthErrorDifference = src.depthDistanceDifference;
+    data.sampsonErrorCurrent = src.sampsonErrorCurrent;
+    data.sampsonErrorAchievable = src.sampsonErrorNew;
+    quality.data = data;  // optional constructed from value
     return quality;
 }
 
@@ -252,7 +248,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
     qualityData.rotationChange[2] = dclResult.value.calibrationDifference->rotationChange[2];
     qualityData.depthErrorDifference = dclResult.value.calibrationDifference->depthDistanceDifference;
     qualityData.sampsonErrorCurrent  = dclResult.value.calibrationDifference->sampsonErrorCurrent;
-    qualityData.sampsonErrorAchievable = dclResult.value.calibrationDifference->sampsonErrorAchievable;
+    qualityData.sampsonErrorAchievable = dclResult.value.calibrationDifference->sampsonErrorNew;
     
     DynamicCalibrationResult::Data resultData{};
     resultData.newCalibration       = newCalibrationHandler;
@@ -354,6 +350,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline(const std::
 
 DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(const std::shared_ptr<DynamicCalibrationCommand> command) {
     if(auto recalibrateCommand = std::dynamic_pointer_cast<RecalibrateCommand>(command)) {
+        recalibrationRunning = false;  // stop the recalibration if it is running
         properties.initialConfig.performanceMode = recalibrateCommand->performanceMode;
         return runCalibration(calibrationHandler, recalibrateCommand->force);
     }
@@ -374,6 +371,10 @@ DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(const std::sha
     if(auto applyCalibrationCommand = std::dynamic_pointer_cast<ApplyCalibrationCommand>(command)) {
         calibrationHandler = applyCalibrationCommand->calibration;
         setCalibration(calibrationHandler);
+        return ErrorCode::OK;
+    }
+    if(std::dynamic_pointer_cast<StopRecalibrationCommand>(command)) {
+        recalibrationRunning = false;
         return ErrorCode::OK;
     }
     return ErrorCode::OK;

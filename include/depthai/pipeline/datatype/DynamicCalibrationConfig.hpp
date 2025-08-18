@@ -76,6 +76,8 @@ struct StartRecalibrationCommand : public DynamicCalibrationCommand {
     DynamicCalibrationConfig::PerformanceMode performanceMode = DynamicCalibrationConfig::PerformanceMode::DEFAULT;
 };
 
+struct StopRecalibrationCommand : public DynamicCalibrationCommand {};
+
 struct LoadImageCommand : public DynamicCalibrationCommand {};
 
 struct ApplyCalibrationCommand : public DynamicCalibrationCommand {

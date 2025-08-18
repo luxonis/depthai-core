@@ -232,7 +232,7 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
      * From  DCL dcl::CameraCalibrationHandle convert to dai::CalibrationHandler, so device can setCalibration
      * @return dai::CalibrationHandlerr
      */
-    dai::CalibrationQuality calibQualityfromDCL(const dcl::CalibrationQuality& src);
+    dai::CalibrationQuality calibQualityfromDCL(const dcl::CalibrationDifference& src);
     /**
      * DCL held properties
      */

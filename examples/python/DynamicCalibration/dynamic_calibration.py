@@ -109,8 +109,6 @@ while pipeline.isRunning():
 
     if key == ord('c'):
         print("Checking quality ... ")
-        command_input.send(dai.LoadImageCommand())
-        coverage = coverage_output.tryGet()
         command_input.send(dai.CalibrationQualityCommand(force=True))
         quality = quality_output.get()
         if quality.data:

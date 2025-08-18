@@ -5,3 +5,4 @@ cmake_minimum_required(VERSION 3.10)
 ## function: dai_set_example_test_labels(example_name ...)
 
 dai_add_example(dynamic_calibration dynamic_calibration.cpp OFF OFF)
+dai_add_example(testBug testBug.cpp OFF OFF)

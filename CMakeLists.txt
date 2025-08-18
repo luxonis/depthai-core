@@ -375,6 +375,7 @@ endif()
 if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
     list(APPEND TARGET_CORE_SOURCES
         src/pipeline/node/DynamicCalibration.cpp
+        src/pipeline/node/TestNode.cpp
     )
 endif()
 
