@@ -26,6 +26,7 @@ struct CoverageData : public Buffer {
       , coveragePerCellB(cd.coveragePerCellB)
       , meanCoverage(cd.meanCoverage)
       , coverageAcquired(cd.coverageAcquired)
+      , dataAcquired(cd.dataAcquired)
     {}
     // clang-format on
     CoverageData() = default;
