@@ -43,7 +43,7 @@ struct CoverageData : public Buffer {
     float coverageAcquired = 0.0f;
     float dataAcquired = 0.0f;
 
-    DEPTHAI_SERIALIZE(CoverageData, coveragePerCellA, coveragePerCellB, meanCoverage, dataAcquired);
+    DEPTHAI_SERIALIZE(CoverageData, coveragePerCellA, coveragePerCellB, meanCoverage, dataAcquired, coverageAcquired);
 };
 
 /**
