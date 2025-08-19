@@ -59,6 +59,8 @@ void bind_dynamic_calibration_config(py::module& m, void* pCallstack) {
         .def(py::init<dcl::PerformanceMode>(), "performanceMode"_a = dcl::PerformanceMode::DEFAULT)
         .def_readwrite("performanceMode", &StartRecalibrationCommand::performanceMode);
 
+    py::class_<StopRecalibrationCommand, DynamicCalibrationCommand, std::shared_ptr<StopRecalibrationCommand>>(m, "StopRecalibrationCommand").def(py::init<>());
+
     py::class_<LoadImageCommand, DynamicCalibrationCommand, std::shared_ptr<LoadImageCommand>>(m, "LoadImageCommand").def(py::init<>());
 
     py::class_<ApplyCalibrationCommand, DynamicCalibrationCommand, std::shared_ptr<ApplyCalibrationCommand>>(m, "ApplyCalibrationCommand")

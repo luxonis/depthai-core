@@ -3,6 +3,8 @@ import numpy as np
 import time
 
 # ---------- Pipeline definition ----------
+
+
 with dai.Pipeline() as pipeline:
     # Create camera nodes
     cam_left = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
@@ -40,17 +42,11 @@ with dai.Pipeline() as pipeline:
     pipeline.start()
     time.sleep(1) # wait for autoexposure to settle
 
-    while pipeline.isRunning():
-        command_input.send(dai.LoadImageCommand())
-        coverage = coverage_output.get()
-        command_input.send(dai.RecalibrateCommand(performanceMode=dai.PerformanceMode.OPTIMIZE_PERFORMANCE))
-        calibration_result = calibration_output.get()
-        print(f"data acquired = {coverage.dataAcquired}")
-        print(f"coverage acquired = {coverage.coverageAcquired}")
-        if coverage.dataAcquired >= 100 and coverage.coverageAcquired >= 100: 
-            assert calibration_result.calibrationData is not None
-            assert coverage.dataAcquired == 100
-            assert coverage.coverageAcquired == 100
-            break
-        else:
-            assert calibration_result.calibrationData is None
+    command_input.send(dai.StartRecalibrationCommand(performanceMode=dai.PerformanceMode.OPTIMIZE_PERFORMANCE))
+    calibration_result = calibration_output.get()
+    command_input.send(dai.StopRecalibrationCommand())
+    calibration_result = calibration_output.tryGet()
+    time.sleep(4)
+    calibration_result_null = calibration_output.tryGet()
+    assert calibration_result_null is None
+

@@ -212,11 +212,13 @@ DynamicCalibration::ErrorCode DynamicCalibration::runQualityCheck(const bool for
 
     if(!dclResult.passed()) {
         auto result = std::make_shared<CalibrationQuality>();
+        result->info = dclResult.errorMessage();
         qualityOutput.send(result);
         return DynamicCalibration::ErrorCode::QUALITY_CHECK_FAILED;
     }
 
     auto result = std::make_shared<CalibrationQuality>(calibQualityfromDCL(dclResult.value));
+    result->info = dclResult.errorMessage();
 
     qualityOutput.send(result);
 
