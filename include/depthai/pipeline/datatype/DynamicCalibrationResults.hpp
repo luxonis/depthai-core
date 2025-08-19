@@ -87,7 +87,7 @@ struct CalibrationQuality : public Buffer {
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
         metadata = utility::serialize(*this);
-        datatype = DatatypeEnum::DynamicCalibrationResult;
+        datatype = DatatypeEnum::CalibrationQuality;
     }
 
     DEPTHAI_SERIALIZE(CalibrationQuality, data, info);
