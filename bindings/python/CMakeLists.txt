@@ -296,6 +296,8 @@ if(UNIX)
     file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/empty.cpp "")
     add_library(depthai_combined SHARED ${CMAKE_CURRENT_BINARY_DIR}/empty.cpp)
 
+    # --whole-archive is a linker flag to ensure all symbols from static libraries are included,
+    # even if they are unused by the `empty.cpp` file
     target_link_options(depthai_combined PRIVATE -Wl,--whole-archive)
     target_link_libraries(depthai_combined PUBLIC ${DEPTHAI_LINK_TARGET})
     target_link_libraries(depthai_combined PRIVATE -Wl,--no-whole-archive)
