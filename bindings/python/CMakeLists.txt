@@ -208,7 +208,6 @@ else()
     if (NOT EXISTS "${CMAKE_CURRENT_LIST_DIR}/generate_stubs.py")
         message(FATAL_ERROR "Cannot add custom build command, ${CMAKE_CURRENT_LIST_DIR}/generate_stubs.py not found")
     endif ()
-    
     add_custom_command(TARGET ${TARGET_NAME} POST_BUILD COMMAND
         ${CMAKE_COMMAND} -E env
         # Python path (to find compiled module)

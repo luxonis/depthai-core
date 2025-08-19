@@ -6,14 +6,12 @@ import os
 import textwrap
 import shutil
 
-# Usage
-if len(sys.argv) < 4:
-    print(f"Usage: {sys.argv[0]} [module_name] [library_dir] [pip_temp_lib_folder]")
-    exit(-1)
+assert len(sys.argv) in (3, 4), "Usage: python generate_stubs.py [module_name] [library_dir] [optional: pip_temp_lib_folder]"
 
 MODULE_NAME = sys.argv[1]
 DIRECTORY = sys.argv[2]
-PIP_TEMP_LIB_FOLDER = sys.argv[3]
+PIP_TEMP_LIB_FOLDER = sys.argv[3] if len(sys.argv) > 3 else DIRECTORY
+PIP_TEMP_LIB_FOLDER = DIRECTORY if len(PIP_TEMP_LIB_FOLDER) == 0 else PIP_TEMP_LIB_FOLDER
 
 print(f'Generating stubs for module: "{MODULE_NAME}" in directory: "{DIRECTORY}"')
 print(f'PIP_TEMP_LIB_FOLDER: "{PIP_TEMP_LIB_FOLDER}"')

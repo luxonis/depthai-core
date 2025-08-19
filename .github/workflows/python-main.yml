@@ -57,7 +57,7 @@ jobs:
           sudo apt update
           python -m pip install --upgrade pip
           sudo apt install libusb-1.0-0-dev pkg-config bison autoconf libtool libxi-dev libxtst-dev libxrandr-dev libx11-dev libxft-dev libxext-dev nasm flex libudev-dev automake libltdl-dev
-           python -m pip install -r bindings/python/docs/requirements_mkdoc.txt
+          python -m pip install -r bindings/python/docs/requirements_mkdoc.txt
       - name: Configure project
         run: |
           cmake -S . \
