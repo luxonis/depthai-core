@@ -2,6 +2,7 @@
 
 #include <fstream>
 
+#include "capabilities/ImgFrameCapability.hpp"
 #include "depthai/pipeline/node/Camera.hpp"
 #include "depthai/pipeline/node/MonoCamera.hpp"
 #include "pipeline/datatype/StereoDepthConfig.hpp"
@@ -11,7 +12,7 @@
 namespace dai {
 namespace node {
 
-std::shared_ptr<StereoDepth> StereoDepth::build(bool autoCreateCameras, PresetMode presetMode, std::pair<int, int> size) {
+std::shared_ptr<StereoDepth> StereoDepth::build(bool autoCreateCameras, PresetMode presetMode, std::pair<int, int> size, std::optional<float> fps) {
     if(!autoCreateCameras) {
         return std::static_pointer_cast<StereoDepth>(shared_from_this());
     }
@@ -30,7 +31,8 @@ std::shared_ptr<StereoDepth> StereoDepth::build(bool autoCreateCameras, PresetMo
     auto left = pipeline.create<dai::node::Camera>()->build(stereoPair.left);
     auto right = pipeline.create<dai::node::Camera>()->build(stereoPair.right);
 
-    return build(*left->requestOutput(size), *right->requestOutput(size), presetMode);
+    return build(
+        *left->requestOutput(size, std::nullopt, ImgResizeMode::CROP, fps), *right->requestOutput(size, std::nullopt, ImgResizeMode::CROP, fps), presetMode);
 }
 
 StereoDepth::StereoDepth(std::unique_ptr<Properties> props)
@@ -62,7 +64,7 @@ void StereoDepth::loadMeshData(const std::vector<std::uint8_t>& dataLeft, const 
     properties.mesh.meshSize = static_cast<uint32_t>(meshAsset.data.size());
 }
 
-void StereoDepth::loadMeshFiles(const dai::Path& pathLeft, const dai::Path& pathRight) {
+void StereoDepth::loadMeshFiles(const std::filesystem::path& pathLeft, const std::filesystem::path& pathRight) {
     std::ifstream streamLeft(pathLeft, std::ios::binary);
     if(!streamLeft.is_open()) {
         throw std::runtime_error(fmt::format("StereoDepth | Cannot open mesh at path: {}", pathLeft));

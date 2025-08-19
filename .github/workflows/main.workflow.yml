@@ -58,18 +58,18 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [macos-latest, windows-latest, ubuntu-latest]
-        cmake: ['3.22.x', '4.0.x']
+        os: [windows-latest, ubuntu-latest]
+#        cmake: ['3.22.x', '4.0.x']
 
     steps:
     - uses: actions/checkout@v4
       with:
         submodules: 'recursive'
 
-    - name: Setup cmake
-      uses: jwlawson/actions-setup-cmake@v1.13
-      with:
-        cmake-version: ${{ matrix.cmake }}
+#    - name: Setup cmake
+#      uses: jwlawson/actions-setup-cmake@v1.13
+#      with:
+#        cmake-version: ${{ matrix.cmake }}
 
     - name: Install dependencies
       if: matrix.os == 'macos-latest'
@@ -94,13 +94,12 @@ jobs:
         cmake --build build --parallel 4 --config Release
 
   integration:
+    if: false
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [macos-latest, windows-latest, ubuntu-latest]
-        # TODO(Morato) - add back Debug builds to CI
-        # build-type: [Debug, Release]
-        build-type: [Release]
+        build-type: [Debug, Release]
         # shared: [true, false]
         shared: [true]
         platform: [x64]

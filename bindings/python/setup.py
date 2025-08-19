@@ -156,7 +156,13 @@ class CMakeBuild(build_ext):
         cmake_args += ['-DCMAKE_BUILD_TYPE=' + cfg]
         cmake_args += ['-DDEPTHAI_VCPKG_INTERNAL_ONLY=OFF']
         build_args += ['--config', cfg]
-
+        if not self.debug:
+            rootDirectory = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+            cmake_args += [
+                '-DVCPKG_OVERLAY_TRIPLETS={}'.format(
+                    os.path.join(rootDirectory, 'cmake', 'triplets', 'release')
+                )
+            ]
         # Memcheck (guard if it fails)
         freeMemory = 4000
         if platform.system() == "Linux":
@@ -176,8 +182,8 @@ class CMakeBuild(build_ext):
         # Windows
         if platform.system() == "Windows":
             cmake_args += ['-DCMAKE_LIBRARY_OUTPUT_DIRECTORY_{}={}'.format(cfg.upper(), extdir)]
-            cmake_args += ['-DVCPKG_CHAINLOAD_TOOLCHAIN_FILE={}'.format(os.path.dirname(os.path.abspath(__file__)) + '/cmake/toolchain/msvc.cmake')]
-            cmake_args += ['-DVCPKG_TARGET_TRIPLET=x64-windows-static-crt']
+            # cmake_args += ['-DVCPKG_CHAINLOAD_TOOLCHAIN_FILE={}'.format(os.path.dirname(os.path.abspath(__file__)) + '/cmake/toolchain/msvc.cmake')]
+            # cmake_args += ['-DVCPKG_TARGET_TRIPLET=x64-windows-static-crt'] # Keep the default triplet to avoid dual CRT issues
 
 
             # Detect whether 32 / 64 bit Python is used and compile accordingly

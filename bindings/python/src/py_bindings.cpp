@@ -32,6 +32,7 @@
 #include "openvino/OpenVINOBindings.hpp"
 #include "pipeline/AssetManagerBindings.hpp"
 #include "pipeline/CommonBindings.hpp"
+#include "pipeline/FilterParamsBindings.hpp"
 #include "pipeline/PipelineBindings.hpp"
 #include "pipeline/node/NodeBindings.hpp"
 #include "remote_connection/RemoteConnectionBindings.hpp"
@@ -87,6 +88,7 @@ PYBIND11_MODULE(depthai, m)
     callstack.push_front(&ZooBindings::bind);
     callstack.push_front(&EventsManagerBindings::bind);
     callstack.push_front(&RemoteConnectionBindings::bind);
+    callstack.push_front(&FilterParamsBindings::bind);
     // end of the callstack
     callstack.push_front([](py::module&, void*) {});
 

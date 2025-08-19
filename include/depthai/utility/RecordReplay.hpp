@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <filesystem>
 
 #include "depthai/properties/VideoEncoderProperties.hpp"
 #include "nlohmann/json.hpp"
@@ -33,7 +34,7 @@ struct RecordConfig {
 
     RecordReplayState state = RecordReplayState::NONE;
 
-    std::string outputDir;
+    std::filesystem::path outputDir;
     VideoEncoding videoEncoding;
     CompressionLevel compressionLevel = CompressionLevel::DEFAULT;
 };

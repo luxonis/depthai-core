@@ -1,6 +1,9 @@
+#include <fmt/format.h>
+#include <fmt/std.h>
+
 #include <stdexcept>
 
-#include "build/version.hpp"
+#include "depthai/build/version.hpp"
 #include "utility/spdlog-fmt.hpp"
 
 // clang-format off

@@ -4,6 +4,7 @@ include(cmake/depthaiOptions.cmake)
 
 if(WIN32)
     add_compile_options(/MP)
+    set(CMAKE_DEBUG_POSTFIX "d" CACHE STRING "Postfix for debug libraries" FORCE)
 endif()
 
 find_program(CCACHE_PROGRAM ccache)
@@ -35,6 +36,8 @@ else()
     message(STATUS "DEPTHAI_BOOTSTRAP_VCPKG is OFF")
 endif()
 
+# Minimal supported macOS SDK version for both arm64 and x86_64
+set(CMAKE_OSX_DEPLOYMENT_TARGET 11.0)
 
 # Set type to canonicalize relative paths for user-provided toolchain
 set(CMAKE_TOOLCHAIN_FILE "" CACHE FILEPATH "CMake toolchain path")
@@ -64,19 +67,13 @@ endif()
 # Create depthai project
 project(depthai VERSION "3.0.0" LANGUAGES CXX C)
 set(DEPTHAI_PRE_RELEASE_TYPE "rc") # Valid options are "alpha", "beta", "rc", ""
-set(DEPTHAI_PRE_RELEASE_VERSION "2")
+set(DEPTHAI_PRE_RELEASE_VERSION "4")
 
 # Set DEPTHAI_VERSION universally, not conditionally
 set(DEPTHAI_VERSION ${PROJECT_VERSION}-${DEPTHAI_PRE_RELEASE_TYPE}.${DEPTHAI_PRE_RELEASE_VERSION})
 
-# Default for dynamic calibration support (turn on x64 Liunux, but off for others)
-if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64" AND UNIX AND NOT APPLE)
-    message(STATUS "Dynamic Calibration support enabled by default for x64 Linux")
-    option(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT "Enable Dynamic Calibration support" ON)
-else()
-    message(STATUS "Dynamic Calibration support disabled by default")
-    option(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT "Enable Dynamic Calibration support" OFF)
-endif()
+message(STATUS "Dynamic Calibration support enabled by default for x64 Linux")
+option(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT "Enable Dynamic Calibration support" ON)
 
 get_directory_property(has_parent PARENT_DIRECTORY)
 if(has_parent)
@@ -298,6 +295,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/EncodedFrame.cpp
     src/pipeline/datatype/ImgAnnotations.cpp
     src/pipeline/datatype/ImageManipConfig.cpp
+    src/pipeline/datatype/ImageFiltersConfig.cpp
     src/pipeline/datatype/CameraControl.cpp
     src/pipeline/datatype/NNData.cpp
     src/pipeline/datatype/ImgDetections.cpp
@@ -325,9 +323,9 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/TransformData.cpp
     src/utility/H26xParsers.cpp
     src/utility/ImageManipImpl.cpp
+    src/utility/ObjectTrackerImpl.cpp
     src/utility/Initialization.cpp
     src/utility/Resources.cpp
-    src/utility/Path.cpp
     src/utility/Platform.cpp
     src/utility/RecordReplay.cpp
     src/utility/McapImpl.cpp
@@ -384,6 +382,7 @@ set(TARGET_OPENCV_SOURCES
     src/pipeline/node/host/HostCamera.cpp
     src/pipeline/node/host/Record.cpp
     src/pipeline/node/host/Replay.cpp
+    src/pipeline/node/ImageFilters.cpp
     src/opencv/RecordReplay.cpp
     src/opencv/HolisticRecordReplay.cpp
 )
@@ -481,8 +480,6 @@ if(${CMAKE_VERSION} VERSION_LESS "3.8.0")
 else()
     target_compile_features(${TARGET_CORE_NAME} INTERFACE cxx_std_17)
 endif()
-# Minimal supported macOS SDK version for both arm64 and x86_64
-set(CMAKE_OSX_DEPLOYMENT_TARGET 11.0)
 
 # Link merged target libraries and add compile definitions
 if(DEPTHAI_HAVE_OPENCV_SUPPORT AND DEPTHAI_MERGED_TARGET)
@@ -516,31 +513,9 @@ if(NOT BUILD_SHARED_LIBS)
 endif()
 
 if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
-    include(FetchContent)
-    FetchContent_Declare(
-        dynamic_calibration
-        URL https://artifacts.luxonis.com/artifactory/list/luxonis-depthai-helper-binaries/dynamic_calibration/0.2alpha/dynamic_calibration_manylinux.zip
-        URL_HASH MD5=bfd57f84ad9cf35e33e482101762f1f3
-    )
-    FetchContent_MakeAvailable(dynamic_calibration)
-    message(STATUS "Dynamic calibration extracted to ${dynamic_calibration_SOURCE_DIR}")
-    set(DYNAMIC_CALIBRATION_DIR ${dynamic_calibration_SOURCE_DIR})
-    target_include_directories(
-        ${TARGET_CORE_NAME} PUBLIC
-        $<BUILD_INTERFACE:${DYNAMIC_CALIBRATION_DIR}/include>
-    )
-
-    find_library(DYNAMIC_CALIBRATION dynamic_calibration
-        PATHS ${DYNAMIC_CALIBRATION_DIR}/lib
-        NO_DEFAULT_PATH
-    )
-    target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT)
-    if(DYNAMIC_CALIBRATION)
-        message(STATUS "Dynamic Calibration library found: ${DYNAMIC_CALIBRATION}")
-        target_link_libraries(${TARGET_CORE_NAME} PUBLIC ${DYNAMIC_CALIBRATION})
-    else()
-        message(FATAL_ERROR "Dynamic Calibration library not found, disable support by setting DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT to OFF")
-    endif()
+    # Link the dynamic calibration target
+    target_link_libraries(${TARGET_CORE_NAME} PUBLIC dynamic_calibration_imported) # Should be PRIVATE
+    target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT) # Should be PRIVATE
 endif()
 
 # Set constant
@@ -742,6 +717,7 @@ target_link_libraries(${TARGET_CORE_NAME}
         magic_enum::magic_enum
         liblzma::liblzma
         lz4::lz4
+        Eigen3::Eigen
 )
 
 if(DEPTHAI_ENABLE_MP4V2)
@@ -840,14 +816,17 @@ macro(add_runtime_dependencies depending_target dependency)
     if(TARGET ${dependency})
         get_property(imported_configs TARGET ${dependency} PROPERTY IMPORTED_CONFIGURATIONS)
         set(dlls "")
+        message(STATUS "Adding runtime dependencies for ${depending_target} on ${dependency}. Imported configurations: ${imported_configs}")
         foreach(cfg ${imported_configs})
+            message(STATUS "Adding runtime dependencies for ${depending_target} on ${dependency} (${cfg})")
             get_property(dll TARGET ${dependency} PROPERTY IMPORTED_LOCATION_${cfg})
-            set(dlls ${depthai_dll_libraries} $<$<CONFIG:${cfg}>:${dll}>)
+            message(STATUS "Retrieved dll for ${cfg}: '${dll}'")
+            list(APPEND dlls $<$<CONFIG:${cfg}>:${dll}>)
         endforeach()
+        message(STATUS "Required dlls for ${depending_target} on ${dependency} are: ${dlls}")
     endif()
-    set(depthai_dll_libraries "")
     # Create a list of required dll files
-    set(required_dll_files ${dlls} ${depthai_dll_libraries})
+    set(required_dll_files ${dlls})
     # Copy the required dlls
     if(WIN32)
         add_custom_command(TARGET ${depending_target} POST_BUILD COMMAND
@@ -860,6 +839,10 @@ macro(add_runtime_dependencies depending_target dependency)
 endmacro()
 # Add libusb dll in build time
 add_runtime_dependencies(${TARGET_CORE_NAME} usb-1.0)
+# Add dynamic calibration dll in build time
+if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
+    add_runtime_dependencies(${TARGET_CORE_NAME} dynamic_calibration_imported)
+endif()
 
 ########################
 # OpenCV Support 2

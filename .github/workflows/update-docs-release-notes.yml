@@ -1,0 +1,41 @@
+name: Update Documentantion Release Notes
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install GitHub CLI
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gh
+
+      - name: Authenticate GitHub CLI
+        run: gh auth login --with-token <<< "${{ secrets.LUXONIS_DOCS_TOKEN }}"
+
+      - name: Encode release body
+        id: encode
+        run: |
+          echo "RELEASE_BODY_BASE64=$(echo "${{ github.event.release.body }}" | base64 | tr -d '\n')" >> $GITHUB_ENV
+
+      - name: Dispatch event to documentation repository
+        run: |
+          gh api repos/luxonis/docs/dispatches \
+            --method POST \
+            --input - <<EOF
+          {
+            "event_type": "depthai-core-release-trigger",
+            "client_payload": {
+              "tag": "${{ github.event.release.tag_name }}",
+              "release_url": "${{ github.event.release.html_url }}",
+              "release_body_base64": "${{ env.RELEASE_BODY_BASE64 }}",
+              "repo": "${{ github.repository }}"
+            }
+          }
+          EOF
+          echo "repository_dispatch event sent to luxonis/docs successfully."
+        env:
+          RELEASE_BODY_BASE64: ${{ env.RELEASE_BODY_BASE64 }}

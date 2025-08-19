@@ -15,11 +15,14 @@
 #include "depthai/pipeline/datatype/BenchmarkReport.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/CameraControl.hpp"
+#include "depthai/pipeline/datatype/DynamicCalibrationConfig.hpp"
+#include "depthai/pipeline/datatype/DynamicCalibrationResults.hpp"
 #include "depthai/pipeline/datatype/EdgeDetectorConfig.hpp"
 #include "depthai/pipeline/datatype/EncodedFrame.hpp"
 #include "depthai/pipeline/datatype/FeatureTrackerConfig.hpp"
 #include "depthai/pipeline/datatype/IMUData.hpp"
 #include "depthai/pipeline/datatype/ImageAlignConfig.hpp"
+#include "depthai/pipeline/datatype/ImageFiltersConfig.hpp"
 #include "depthai/pipeline/datatype/ImageManipConfig.hpp"
 #include "depthai/pipeline/datatype/ImgAnnotations.hpp"
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
@@ -208,6 +211,22 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
             return parseDatatype<StereoDepthConfig>(metadataStart, serializedObjectSize, data, fd);
             break;
 
+        case DatatypeEnum::DynamicCalibrationCommand:
+            return parseDatatype<DynamicCalibrationCommand>(metadataStart, serializedObjectSize, data, fd);
+            break;
+
+        case DatatypeEnum::CoverageData:
+            return parseDatatype<CoverageData>(metadataStart, serializedObjectSize, data, fd);
+            break;
+
+        case DatatypeEnum::DynamicCalibrationConfig:
+            return parseDatatype<DynamicCalibrationConfig>(metadataStart, serializedObjectSize, data, fd);
+            break;
+
+        case DatatypeEnum::DynamicCalibrationResult:
+            return parseDatatype<DynamicCalibrationResult>(metadataStart, serializedObjectSize, data, fd);
+            break;
+
         case DatatypeEnum::EdgeDetectorConfig:
             return parseDatatype<EdgeDetectorConfig>(metadataStart, serializedObjectSize, data, fd);
             break;
@@ -242,6 +261,12 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
             break;
         case DatatypeEnum::ImgAnnotations:
             return parseDatatype<ImgAnnotations>(metadataStart, serializedObjectSize, data, fd);
+            break;
+        case DatatypeEnum::ImageFiltersConfig:
+            return parseDatatype<ImageFiltersConfig>(metadataStart, serializedObjectSize, data, fd);
+            break;
+        case DatatypeEnum::ToFDepthConfidenceFilterConfig:
+            return parseDatatype<ToFDepthConfidenceFilterConfig>(metadataStart, serializedObjectSize, data, fd);
             break;
         case DatatypeEnum::RGBDData:
             return parseDatatype<RGBDData>(metadataStart, serializedObjectSize, data, fd);

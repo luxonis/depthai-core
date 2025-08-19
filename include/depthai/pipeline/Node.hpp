@@ -70,6 +70,11 @@ class Node : public std::enable_shared_from_this<Node> {
     static constexpr auto DEFAULT_BLOCKING = true;
     static constexpr auto DEFAULT_QUEUE_SIZE = 3;
     static constexpr auto DEFAULT_WAIT_FOR_MESSAGE = false;
+    static constexpr auto BLOCKING_QUEUE = true;
+    static constexpr auto NON_BLOCKING_QUEUE = false;
+
+    std::string createUniqueInputName();
+    std::string createUniqueOutputName();
 
    protected:
     std::vector<Output*> outputRefs;
@@ -90,6 +95,9 @@ class Node : public std::enable_shared_from_this<Node> {
     void setNodeRefs(std::initializer_list<std::pair<std::string, std::shared_ptr<Node>*>> l);
     void setNodeRefs(std::pair<std::string, std::shared_ptr<Node>*> nodeRef);
     void setNodeRefs(std::string alias, std::shared_ptr<Node>* nodeRef);
+
+   private:
+    std::vector<std::string> uniqueNames;
 
    public:
     struct OutputDescription {
@@ -129,6 +137,9 @@ class Node : public std::enable_shared_from_this<Node> {
             // Place oneself to the parents references
             if(ref) {
                 par.setOutputRefs(this);
+            }
+            if(getName().empty()) {
+                setName(par.createUniqueOutputName());
             }
         }
 
@@ -340,6 +351,9 @@ class Node : public std::enable_shared_from_this<Node> {
             if(ref) {
                 par.setInputRefs(this);
             }
+            if(getName().empty()) {
+                setName(par.createUniqueInputName());
+            }
         }
 
         /**
@@ -505,6 +519,9 @@ class Node : public std::enable_shared_from_this<Node> {
     // TODO(themarpe) - restrict access
     /// Id of node. Assigned after being placed on the pipeline
     Id id{-1};
+    // used for naming inputs/outputs
+    Id inputId{0};
+    Id outputId{0};
 
     /// alias or name
     std::string alias;
@@ -541,13 +558,13 @@ class Node : public std::enable_shared_from_this<Node> {
     virtual const char* getName() const = 0;
 
     /// Start node execution
-    virtual void start() {};
+    virtual void start(){};
 
     /// Wait for node to finish execution
-    virtual void wait() {};
+    virtual void wait(){};
 
     /// Stop node execution
-    virtual void stop() {};
+    virtual void stop(){};
 
     void stopPipeline();
 
@@ -612,10 +629,10 @@ class Node : public std::enable_shared_from_this<Node> {
     AssetManager& getAssetManager();
 
     /// Loads resource specified by URI and returns its data
-    std::vector<uint8_t> loadResource(dai::Path uri);
+    std::vector<uint8_t> loadResource(std::filesystem::path uri);
 
     /// Moves the resource out
-    std::vector<uint8_t> moveResource(dai::Path uri);
+    std::vector<uint8_t> moveResource(std::filesystem::path uri);
 
     /// Create and place Node to this Node
     template <class N>
@@ -661,7 +678,7 @@ class Node : public std::enable_shared_from_this<Node> {
      * This function is useful for initialization, setting up inputs and outputs =
      * stuff that cannot be perform in the constuctor.
      */
-    virtual void buildInternal() {};
+    virtual void buildInternal(){};
 };
 
 class SourceNode {

@@ -96,7 +96,7 @@ static void bindConstructors(ARG& arg) {
              py::arg("deviceInfo"),
              py::arg("maxUsbSpeed"),
              DOC(dai, DeviceBase, DeviceBase, 3))
-        .def(py::init([](const DeviceInfo& deviceInfo, dai::Path pathToCmd) {
+        .def(py::init([](const DeviceInfo& deviceInfo, std::filesystem::path pathToCmd) {
                  py::gil_scoped_release release;
                  return std::make_unique<D>(deviceInfo, pathToCmd);
              }),
@@ -696,13 +696,13 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
             },
             DOC(dai, DeviceBase, readCalibration))
         .def(
-            "flashCalibration",
+            "tryFlashCalibration",
             [](DeviceBase& d, CalibrationHandler calibrationDataHandler) {
                 py::gil_scoped_release release;
-                return d.flashCalibration(calibrationDataHandler);
+                return d.tryFlashCalibration(calibrationDataHandler);
             },
             py::arg("calibrationDataHandler"),
-            DOC(dai, DeviceBase, flashCalibration))
+            DOC(dai, DeviceBase, tryFlashCalibration))
         .def(
             "setXLinkChunkSize",
             [](DeviceBase& d, int s) {
@@ -752,12 +752,26 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
             },
             DOC(dai, DeviceBase, isEepromAvailable))
         .def(
-            "flashCalibration2",
+            "flashCalibration",
             [](DeviceBase& d, CalibrationHandler ch) {
                 py::gil_scoped_release release;
-                return d.flashCalibration2(ch);
+                return d.flashCalibration(ch);
             },
-            DOC(dai, DeviceBase, flashCalibration2))
+            DOC(dai, DeviceBase, flashCalibration))
+        .def(
+            "setCalibration",
+            [](DeviceBase& d, CalibrationHandler ch) {
+                py::gil_scoped_release release;
+                return d.setCalibration(ch);
+            },
+            DOC(dai, DeviceBase, setCalibration))
+        .def(
+            "getCalibration",
+            [](DeviceBase& d) {
+                py::gil_scoped_release release;
+                return d.getCalibration();
+            },
+            DOC(dai, DeviceBase, getCalibration))
         .def(
             "readCalibration2",
             [](DeviceBase& d) {
@@ -779,6 +793,20 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
                 return d.factoryResetCalibration();
             },
             DOC(dai, DeviceBase, factoryResetCalibration))
+        .def(
+            "setCalibration",
+            [](DeviceBase& d, CalibrationHandler ch) {
+                py::gil_scoped_release release;
+                return d.setCalibration(ch);
+            },
+            DOC(dai, DeviceBase, setCalibration))
+        .def(
+            "getCalibration",
+            [](DeviceBase& d) {
+                py::gil_scoped_release release;
+                return d.getCalibration();
+            },
+            DOC(dai, DeviceBase, getCalibration))
         .def(
             "flashFactoryCalibration",
             [](DeviceBase& d, CalibrationHandler ch) {
