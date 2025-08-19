@@ -22,16 +22,11 @@ try:
     # so that they are co-located with the bindings module and 
     # stubgen can find all the necessary libraries the depthai links against.
     # Note that this is not an issue on Linux and macOS.
-    if sys.platform == 'win32':
+    if sys.platform == 'win32' and PIP_TEMP_LIB_FOLDER != DIRECTORY:
         for item in os.listdir(DIRECTORY):
-            print(os.listdir(DIRECTORY))
             src = os.path.join(DIRECTORY, item)
             dst = os.path.join(PIP_TEMP_LIB_FOLDER, item)
-            print(f'Copying {src} to {dst}')
-            if os.path.isfile(src):
-                shutil.copy2(src, dst)
-            elif os.path.isdir(src):
-                shutil.copytree(src, dst)
+            shutil.copy2(src, dst) if os.path.isfile(src) else shutil.copytree(src, dst)
         stubgen_root = PIP_TEMP_LIB_FOLDER
     else:
         stubgen_root = DIRECTORY
