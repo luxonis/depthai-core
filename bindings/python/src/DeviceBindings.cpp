@@ -759,20 +759,6 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
             },
             DOC(dai, DeviceBase, flashCalibration))
         .def(
-            "setCalibration",
-            [](DeviceBase& d, CalibrationHandler ch) {
-                py::gil_scoped_release release;
-                return d.setCalibration(ch);
-            },
-            DOC(dai, DeviceBase, setCalibration))
-        .def(
-            "getCalibration",
-            [](DeviceBase& d) {
-                py::gil_scoped_release release;
-                return d.getCalibration();
-            },
-            DOC(dai, DeviceBase, getCalibration))
-        .def(
             "readCalibration2",
             [](DeviceBase& d) {
                 py::gil_scoped_release release;
