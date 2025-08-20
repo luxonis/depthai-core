@@ -6,8 +6,8 @@
 
 #include <queue>
 
-#include "depthai/schemas/PointCloudData.pb.h"
 #include "depthai/schemas/DynamicCalibration.pb.h"
+#include "depthai/schemas/PointCloudData.pb.h"
 
 namespace dai {
 namespace utility {
@@ -110,7 +110,7 @@ ImgTransformation deserializeImgTransformation(const proto::common::ImgTransform
 }
 
 DatatypeEnum schemaNameToDatatype(const std::string& schemaName) {
-    namespace dc = ::dai::proto::dynamic_calibration; 
+    namespace dc = ::dai::proto::dynamic_calibration;
     if(schemaName == proto::encoded_frame::EncodedFrame::descriptor()->full_name()) {
         return DatatypeEnum::EncodedFrame;
     } else if(schemaName == proto::imu_data::IMUData::descriptor()->full_name()) {
@@ -184,8 +184,7 @@ bool deserializationSupported(DatatypeEnum datatype) {
 }
 
 namespace {
-inline void toProto2D(const std::vector<std::vector<float>>& m,
-                      proto::dynamic_calibration::Float2D* out) {
+inline void toProto2D(const std::vector<std::vector<float>>& m, proto::dynamic_calibration::Float2D* out) {
     out->clear_rows();
     out->mutable_rows()->Reserve(static_cast<int>(m.size()));
     for(const auto& row : m) {
@@ -195,8 +194,7 @@ inline void toProto2D(const std::vector<std::vector<float>>& m,
     }
 }
 
-inline std::vector<std::vector<float>>
-fromProto2D(const proto::dynamic_calibration::Float2D& m) {
+inline std::vector<std::vector<float>> fromProto2D(const proto::dynamic_calibration::Float2D& m) {
     std::vector<std::vector<float>> out;
     out.reserve(m.rows_size());
     for(const auto& r : m.rows()) {
@@ -207,12 +205,11 @@ fromProto2D(const proto::dynamic_calibration::Float2D& m) {
     }
     return out;
 }
-}
-
+}  // namespace
 
 template <>
 std::unique_ptr<google::protobuf::Message> getProtoMessage(const CoverageData* message, bool /*metadataOnly*/) {
-    namespace dc = ::dai::proto::dynamic_calibration; 
+    namespace dc = ::dai::proto::dynamic_calibration;
     auto p = std::make_unique<dc::CoverageData>();
     toProto2D(message->coveragePerCellA, p->mutable_coveragepercella());
     toProto2D(message->coveragePerCellB, p->mutable_coveragepercellb());
@@ -224,7 +221,7 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const CoverageData* m
 
 template <>
 std::unique_ptr<google::protobuf::Message> getProtoMessage(const CalibrationQuality* message, bool /*metadataOnly*/) {
-    namespace dc = ::dai::proto::dynamic_calibration; 
+    namespace dc = ::dai::proto::dynamic_calibration;
     auto p = std::make_unique<dc::CalibrationQuality>();
     if(message->data.has_value()) {
         auto* d = p->mutable_data();
@@ -241,7 +238,7 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const CalibrationQual
 
 template <>
 std::unique_ptr<google::protobuf::Message> getProtoMessage(const DynamicCalibrationResult* message, bool /*metadataOnly*/) {
-    namespace dc = ::dai::proto::dynamic_calibration; 
+    namespace dc = ::dai::proto::dynamic_calibration;
     auto p = std::make_unique<dc::DynamicCalibrationResult>();
 
     // Only serialize info for now (safe & forward-compatible).
@@ -636,10 +633,9 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const PointCloudData*
 // void setProtoMessage(ImgDetections* obj, std::shared_ptr<google::protobuf::Message> msg, bool) {
 // }
 
-
 template <>
 void setProtoMessage(CoverageData& obj, const google::protobuf::Message* base, bool /*metadataOnly*/) {
-    namespace dc = ::dai::proto::dynamic_calibration; 
+    namespace dc = ::dai::proto::dynamic_calibration;
     auto p = dynamic_cast<const dc::CoverageData*>(base);
     if(!p) throw std::runtime_error("CoverageData: wrong protobuf type");
 
@@ -650,10 +646,9 @@ void setProtoMessage(CoverageData& obj, const google::protobuf::Message* base, b
     obj.dataAcquired = p->dataacquired();
 }
 
-
 template <>
 void setProtoMessage(CalibrationQuality& obj, const google::protobuf::Message* base, bool /*metadataOnly*/) {
-    namespace dc = ::dai::proto::dynamic_calibration; 
+    namespace dc = ::dai::proto::dynamic_calibration;
     auto p = dynamic_cast<const dc::CalibrationQuality*>(base);
     if(!p) throw std::runtime_error("CalibrationQuality: wrong protobuf type");
 
@@ -665,10 +660,9 @@ void setProtoMessage(CalibrationQuality& obj, const google::protobuf::Message* b
             d.rotationChange[1] = p->data().rotationchange(1);
             d.rotationChange[2] = p->data().rotationchange(2);
         } else {
-            d.rotationChange = {0.f,0.f,0.f};
+            d.rotationChange = {0.f, 0.f, 0.f};
         }
-        d.depthErrorDifference.assign(p->data().deptherrordifference().begin(),
-                                      p->data().deptherrordifference().end());
+        d.depthErrorDifference.assign(p->data().deptherrordifference().begin(), p->data().deptherrordifference().end());
         d.sampsonErrorCurrent = p->data().sampsonerrorcurrent();
         d.sampsonErrorAchievable = p->data().sampsonerrorachievable();
         obj.data = d;
@@ -677,10 +671,9 @@ void setProtoMessage(CalibrationQuality& obj, const google::protobuf::Message* b
     }
 }
 
-
 template <>
 void setProtoMessage(DynamicCalibrationResult& obj, const google::protobuf::Message* base, bool /*metadataOnly*/) {
-    namespace dc = ::dai::proto::dynamic_calibration; 
+    namespace dc = ::dai::proto::dynamic_calibration;
     auto p = dynamic_cast<const dc::DynamicCalibrationResult*>(base);
     if(!p) throw std::runtime_error("DynamicCalibrationResult: wrong protobuf type");
 
@@ -695,8 +688,7 @@ void setProtoMessage(DynamicCalibrationResult& obj, const google::protobuf::Mess
             d.calibrationDifference.rotationChange[1] = q.rotationchange(1);
             d.calibrationDifference.rotationChange[2] = q.rotationchange(2);
         }
-        d.calibrationDifference.depthErrorDifference.assign(q.deptherrordifference().begin(),
-                                                            q.deptherrordifference().end());
+        d.calibrationDifference.depthErrorDifference.assign(q.deptherrordifference().begin(), q.deptherrordifference().end());
         d.calibrationDifference.sampsonErrorCurrent = q.sampsonerrorcurrent();
         d.calibrationDifference.sampsonErrorAchievable = q.sampsonerrorachievable();
 

@@ -7,10 +7,10 @@
 
 #include "depthai/common/ImgTransformations.hpp"
 #include "depthai/pipeline/datatype/DatatypeEnum.hpp"
+#include "depthai/pipeline/datatype/DynamicCalibrationResults.hpp"
 #include "depthai/pipeline/datatype/ImgAnnotations.hpp"
 #include "depthai/pipeline/datatype/SpatialImgDetections.hpp"
 #include "depthai/pipeline/datatypes.hpp"
-#include "depthai/pipeline/datatype/DynamicCalibrationResults.hpp"
 #include "depthai/schemas/EncodedFrame.pb.h"
 #include "depthai/schemas/IMUData.pb.h"
 #include "depthai/schemas/ImageAnnotations.pb.h"
