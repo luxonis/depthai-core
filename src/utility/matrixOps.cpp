@@ -190,7 +190,7 @@ std::vector<float> rotationMatrixToVector(const std::vector<std::vector<float>>&
 }
 
 std::vector<std::vector<float>> rvecToRotationMatrix(const double rvec[3]) {
-    double theta = std::sqrt(rvec[0]*rvec[0] + rvec[1]*rvec[1] + rvec[2]*rvec[2]);
+    double theta = std::sqrt(rvec[0] * rvec[0] + rvec[1] * rvec[1] + rvec[2] * rvec[2]);
 
     std::vector<std::vector<float>> R(3, std::vector<float>(3, 0.0f));
 
@@ -209,17 +209,17 @@ std::vector<std::vector<float>> rvecToRotationMatrix(const double rvec[3]) {
     double s = std::sin(theta);
     double one_minus_c = 1.0 - c;
 
-    R[0][0] = c + ux*ux*one_minus_c;
-    R[0][1] = ux*uy*one_minus_c - uz*s;
-    R[0][2] = ux*uz*one_minus_c + uy*s;
+    R[0][0] = c + ux * ux * one_minus_c;
+    R[0][1] = ux * uy * one_minus_c - uz * s;
+    R[0][2] = ux * uz * one_minus_c + uy * s;
 
-    R[1][0] = uy*ux*one_minus_c + uz*s;
-    R[1][1] = c + uy*uy*one_minus_c;
-    R[1][2] = uy*uz*one_minus_c - ux*s;
+    R[1][0] = uy * ux * one_minus_c + uz * s;
+    R[1][1] = c + uy * uy * one_minus_c;
+    R[1][2] = uy * uz * one_minus_c - ux * s;
 
-    R[2][0] = uz*ux*one_minus_c - uy*s;
-    R[2][1] = uz*uy*one_minus_c + ux*s;
-    R[2][2] = c + uz*uz*one_minus_c;
+    R[2][0] = uz * ux * one_minus_c - uy * s;
+    R[2][1] = uz * uy * one_minus_c + ux * s;
+    R[2][2] = c + uz * uz * one_minus_c;
 
     return R;
 }
