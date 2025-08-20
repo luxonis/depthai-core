@@ -63,7 +63,7 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
     py::class_<GlobalProperties> globalProperties(m, "GlobalProperties", DOC(dai, GlobalProperties));
     py::class_<RecordConfig> recordConfig(m, "RecordConfig", DOC(dai, RecordConfig));
     py::class_<RecordConfig::VideoEncoding> recordVideoConfig(recordConfig, "VideoEncoding", DOC(dai, RecordConfig, VideoEncoding));
-    py::class_<Pipeline> pipeline(m, "Pipeline", DOC(dai, Pipeline, 2));
+    py::class_<Pipeline, std::shared_ptr<Pipeline>> pipeline(m, "Pipeline", DOC(dai, Pipeline, 2));
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -102,46 +102,80 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("compressionLevel", &RecordConfig::compressionLevel, DOC(dai, RecordConfig, compressionLevel));
 
     // bind pipeline
-    pipeline.def(py::init([](bool createImplicitDevice) {
-        // Create pipeline in detached thread
-        Pipeline* p = nullptr;
-        bool threadRunning = true;
-        std::thread([&p, createImplicitDevice, &threadRunning]() {
-            p = new Pipeline(createImplicitDevice);
-            threadRunning = false;
-        }).detach();
+    pipeline
+        .def(py::init([](bool createImplicitDevice) {
+                 // Create pipeline in detached thread
+                 // Pipeline* p = nullptr;
+                 std::shared_ptr<Pipeline*> pipeline = std::make_shared<Pipeline*>(nullptr);
+                 std::shared_ptr<bool> threadRunning = std::make_shared<bool>(true);
+                 std::shared_ptr<bool> failed = std::make_shared<bool>(false);
+                 std::shared_ptr<std::exception> exception(new std::runtime_error("Failed to create pipeline"));
 
-        // Check for interrupts while thread is running
-        py::gil_scoped_release release;
-        while(threadRunning) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-            py::gil_scoped_acquire acquire;
-            if(PyErr_CheckSignals() != 0) {
-                throw py::error_already_set();
-            }
-        }
-        return p;
-    }), py::arg("createImplicitDevice") = true, DOC(dai, Pipeline, Pipeline))
+                 std::thread([pipeline, createImplicitDevice, failed, threadRunning, exception]() {
+                     try {
+                         *pipeline = new Pipeline(createImplicitDevice);
+                     } catch(const std::exception& e) {
+                         *failed = true;
+                         *exception = std::runtime_error(e.what());
+                         std::cout << "Failed to create pipeline: " << e.what() << std::endl;
+                     }
+                     *threadRunning = false;
+                 }).detach();
+
+                 // Check for interrupts while thread is running
+                 py::gil_scoped_release release;
+                 while(*threadRunning) {
+                     std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                     py::gil_scoped_acquire acquire;
+                     if(PyErr_CheckSignals() != 0) {
+                         throw py::error_already_set();
+                     }
+                 }
+
+                 if(*failed) {
+                     throw py::value_error(exception->what());
+                 }
+
+                 return *pipeline;
+             }),
+             py::arg("createImplicitDevice") = true,
+             DOC(dai, Pipeline, Pipeline))
         .def(py::init([](std::shared_ptr<Device> defaultDevice) {
-            // Create pipeline in detached thread
-            Pipeline* p = nullptr;
-            bool threadRunning = true;
-            std::thread([&p, defaultDevice, &threadRunning]() {
-                p = new Pipeline(defaultDevice);
-                threadRunning = false;
-            }).detach();
+                 // Create pipeline in detached thread
+                 std::shared_ptr<Pipeline*> pipeline = std::make_shared<Pipeline*>(nullptr);
+                 std::shared_ptr<bool> threadRunning = std::make_shared<bool>(true);
+                 std::shared_ptr<bool> failed = std::make_shared<bool>(false);
+                 std::shared_ptr<std::exception> exception(new std::runtime_error("Failed to create pipeline"));
 
-            // Check for interrupts while thread is running
-            py::gil_scoped_release release;
-            while(threadRunning) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(100));
-                py::gil_scoped_acquire acquire;
-                if(PyErr_CheckSignals() != 0) {
-                    throw py::error_already_set();
-                }
-            }
-            return p;
-        }), py::arg("defaultDevice"), DOC(dai, Pipeline, Pipeline))
+                 std::thread([pipeline, defaultDevice, failed, threadRunning, exception]() {
+                     try {
+                         *pipeline = new Pipeline(defaultDevice);
+                     } catch(const std::exception& e) {
+                         *failed = true;
+                         *exception = std::runtime_error(e.what());
+                         std::cout << "Failed to create pipeline: " << e.what() << std::endl;
+                     }
+                     *threadRunning = false;
+                 }).detach();
+
+                 // Check for interrupts while thread is running
+                 py::gil_scoped_release release;
+                 while(*threadRunning) {
+                     std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                     py::gil_scoped_acquire acquire;
+                     if(PyErr_CheckSignals() != 0) {
+                         throw py::error_already_set();
+                     }
+                 }
+
+                 if(*failed) {
+                     throw py::value_error(exception->what());
+                 }
+
+                 return *pipeline;
+             }),
+             py::arg("defaultDevice"),
+             DOC(dai, Pipeline, Pipeline))
         // Python only methods
         .def("__enter__",
              [](Pipeline& p) -> Pipeline& {
@@ -149,25 +183,30 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
                  return p;
              })
         .def("__exit__",
-             [](Pipeline& d, py::object type, py::object value, py::object traceback) {
+             [](std::shared_ptr<Pipeline> pipeline, py::object type, py::object value, py::object traceback) {
                  // Spawn a thread to clean up the pipeline
-                 bool threadRunning = true;
-                 std::thread([&d, &threadRunning]() {
-                     d.stop();
-                     d.wait();
-                     delImplicitPipeline();
-                     threadRunning = false;
+                 std::shared_ptr<Device> device = pipeline->getDefaultDevice();
+                 std::shared_ptr<bool> isRunning = std::make_shared<bool>(true);
+                 std::shared_ptr<std::thread::id> threadId = std::make_shared<std::thread::id>(std::this_thread::get_id());
+                 delImplicitPipeline();
+
+                 // Spawn a thread to clean up the pipeline
+                 std::thread([device, isRunning, pipeline]() {
+                     pipeline->stop();
+                     pipeline->wait();
+                     *isRunning = false;
                  }).detach();
 
                  // While the thread above is cleaning up, check for interrupts
                  // (The detached thread above is necessary as PyErr_CheckSignals works only when called from the main thread)
                  // https://docs.python.org/3/c-api/exceptions.html#c.PyErr_CheckSignals
                  py::gil_scoped_release release;
-                 while(threadRunning) {
+                 while(*isRunning) {
                      std::this_thread::sleep_for(std::chrono::milliseconds(100));
                      py::gil_scoped_acquire acquire;
                      if(PyErr_CheckSignals() != 0) {
-                        throw py::error_already_set();
+                         std::cout << "Interrupted" << std::endl;
+                         throw py::error_already_set();
                      }
                  }
              })
@@ -265,26 +304,38 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
                 return node;
             },
             py::keep_alive<1, 0>())
-        .def("start", [](Pipeline& p) {
-            // Start pipeline in a detached thread
-            bool threadRunning = true;
-            std::thread([&p, &threadRunning]() {
-                p.start();
-                threadRunning = false;
-            }).detach();
+        .def("start",
+             [](std::shared_ptr<Pipeline> pipeline) {
+                 // Start pipeline in a detached thread
+                 std::shared_ptr<bool> threadRunningPtr = std::make_shared<bool>(true);
+                 std::shared_ptr<bool> failed = std::make_shared<bool>(false);
+                 std::shared_ptr<std::exception> exception(new std::runtime_error("Failed to start pipeline"));
+                 std::thread([pipeline, threadRunningPtr, failed, exception]() {
+                     try {
+                         pipeline->start();
+                     } catch(const std::exception& e) {
+                         *failed = true;
+                         *exception = std::runtime_error(e.what());
+                     }
+                     *threadRunningPtr = false;
+                 }).detach();
 
-            // Check for interrupts while thread is running
-            {
-                py::gil_scoped_release release;
-                while(threadRunning) {
-                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-                    py::gil_scoped_acquire acquire;
-                    if(PyErr_CheckSignals() != 0) {
-                        throw py::error_already_set();
-                    }
-                }
-            }
-        })
+                 // Check for interrupts while thread is running
+                 {
+                     py::gil_scoped_release release;
+                     while(*threadRunningPtr) {
+                         std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                         py::gil_scoped_acquire acquire;
+                         if(PyErr_CheckSignals() != 0) {
+                             throw py::error_already_set();
+                         }
+                     }
+                 }
+
+                 if(*failed) {
+                     throw py::value_error(exception->what());
+                 }
+             })
         .def("wait",
              [](Pipeline& p) {
                  py::gil_scoped_release release;
