@@ -13,6 +13,7 @@
 
 #include "depthai/pipeline/ThreadedHostNode.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
+#include "depthai/pipeline/datatype/DynamicCalibrationResults.hpp"
 
 namespace dai {
 namespace node {

@@ -195,7 +195,7 @@ struct DynamicCalibrationResult : public Buffer {
     // clang-format on
 
     /**
-     * Optional calibration result data.  
+     * Optional calibration result data.
      * May be missing if recalibration failed or produced no valid result.
      */
     std::optional<Data> calibrationData;

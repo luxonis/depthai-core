@@ -206,7 +206,7 @@ void DynamicCalibration::setCalibration(CalibrationHandler& handler) {
     dynCalibImpl->setNewCalibration(deviceName, socketB, calibB->getCalibration());
 }
 
-DynamicCalibration::ErrorCode DynamicCalibration::runQualityCheck(const bool force) {    
+DynamicCalibration::ErrorCode DynamicCalibration::runQualityCheck(const bool force) {
     dcl::PerformanceMode performanceMode = force ? dcl::PerformanceMode::SKIP_CHECKS : properties.initialConfig.performanceMode;
     logger::info("Running calibration quality check (force={} mode={})", force, static_cast<int>(performanceMode));
 
@@ -265,10 +265,8 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
     
     auto result = std::make_shared<DynamicCalibrationResult>(resultData, dclResult.errorMessage());
     // clang-format on
-    logger::info("Calibration successful. Rotation Δ=({}, {}, {})",
-             qualityData.rotationChange[0],
-             qualityData.rotationChange[1],
-             qualityData.rotationChange[2]);
+    logger::info(
+        "Calibration successful. Rotation Δ=({}, {}, {})", qualityData.rotationChange[0], qualityData.rotationChange[1], qualityData.rotationChange[2]);
     calibrationOutput.send(result);
 
     return DynamicCalibration::ErrorCode::OK;
@@ -290,9 +288,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::runLoadImage(const bool blocki
     auto rightFrame = inSyncGroup->get<dai::ImgFrame>(rightInputName);
 
     if(!leftFrame || !rightFrame) {
-        logger::warn("Missing image(s) in MessageGroup (left={}, right={})", 
-             leftFrame ? "ok" : "missing",
-             rightFrame ? "ok" : "missing");
+        logger::warn("Missing image(s) in MessageGroup (left={}, right={})", leftFrame ? "ok" : "missing", rightFrame ? "ok" : "missing");
         return DynamicCalibration::ErrorCode::MISSING_IMAGE;
     }
 
@@ -300,8 +296,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::runLoadImage(const bool blocki
     auto leftCvFrame = leftFrame->getCvFrame();
     auto rightCvFrame = rightFrame->getCvFrame();
 
-    logger::info("Loaded stereo image pair: {}x{} @ timestamp={}", 
-             leftFrame->getWidth(), leftFrame->getHeight(), timestamp);
+    logger::info("Loaded stereo image pair: {}x{} @ timestamp={}", leftFrame->getWidth(), leftFrame->getHeight(), timestamp);
 
     dynCalibImpl->loadStereoImagePair(
         DclUtils::cvMatToImageData(leftCvFrame), DclUtils::cvMatToImageData(rightCvFrame), deviceName, socketA, socketB, timestamp);
@@ -353,14 +348,12 @@ DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline(const std::
         return DynamicCalibration::ErrorCode::PIPELINE_INITIALIZATION_FAILED;
     }
 
-    logger::info("Detected sockets: A={} B={}, resolution={}x{}", 
-             static_cast<int>(daiSocketA), static_cast<int>(daiSocketB), width, height);
+    logger::info("Detected sockets: A={} B={}, resolution={}x{}", static_cast<int>(daiSocketA), static_cast<int>(daiSocketB), width, height);
 
     socketA = static_cast<dcl::socket_t>(daiSocketA);
     socketB = static_cast<dcl::socket_t>(daiSocketB);
 
-    logger::info("Converting dai calibration to dcl for sockets A={} B={}", 
-             static_cast<int>(daiSocketA), static_cast<int>(daiSocketB));
+    logger::info("Converting dai calibration to dcl for sockets A={} B={}", static_cast<int>(daiSocketA), static_cast<int>(daiSocketB));
 
     calibrationHandler = daiDevice->getCalibration();
 
@@ -373,8 +366,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline(const std::
 
     sensorA = std::make_shared<dcl::CameraSensorHandle>(calibA, resolution);
     sensorB = std::make_shared<dcl::CameraSensorHandle>(calibB, resolution);
-    logger::info("Added sensors for sockets A={} and B={} to dynCalibImpl", 
-             static_cast<int>(socketA), static_cast<int>(socketB));
+    logger::info("Added sensors for sockets A={} and B={} to dynCalibImpl", static_cast<int>(socketA), static_cast<int>(socketB));
 
     dynCalibImpl->addSensor(deviceName, sensorA, socketA);
     dynCalibImpl->addSensor(deviceName, sensorB, socketB);
@@ -382,29 +374,25 @@ DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline(const std::
     return DynamicCalibration::ErrorCode::OK;
 }
 
-DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(
-    const std::shared_ptr<DynamicCalibrationCommand> command) 
-{
+DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(const std::shared_ptr<DynamicCalibrationCommand> command) {
     if(auto recalibrateCommand = std::dynamic_pointer_cast<RecalibrateCommand>(command)) {
-        logger::info("Received RecalibrateCommand: force={} performanceMode={}", 
-                     recalibrateCommand->force, 
-                     static_cast<int>(recalibrateCommand->performanceMode));
+        logger::info(
+            "Received RecalibrateCommand: force={} performanceMode={}", recalibrateCommand->force, static_cast<int>(recalibrateCommand->performanceMode));
         recalibrationRunning = false;  // stop the recalibration if it is running
         properties.initialConfig.performanceMode = recalibrateCommand->performanceMode;
         return runCalibration(calibrationHandler, recalibrateCommand->force);
     }
 
     if(auto calibrationQualityCommand = std::dynamic_pointer_cast<CalibrationQualityCommand>(command)) {
-        logger::info("Received CalibrationQualityCommand: force={} performanceMode={}", 
-                     calibrationQualityCommand->force, 
+        logger::info("Received CalibrationQualityCommand: force={} performanceMode={}",
+                     calibrationQualityCommand->force,
                      static_cast<int>(calibrationQualityCommand->performanceMode));
         properties.initialConfig.performanceMode = calibrationQualityCommand->performanceMode;
         return runQualityCheck(calibrationQualityCommand->force);
     }
 
     if(auto startCalibrationCommand = std::dynamic_pointer_cast<StartRecalibrationCommand>(command)) {
-        logger::info("Received StartRecalibrationCommand: performanceMode={}", 
-                     static_cast<int>(startCalibrationCommand->performanceMode));
+        logger::info("Received StartRecalibrationCommand: performanceMode={}", static_cast<int>(startCalibrationCommand->performanceMode));
         properties.initialConfig.performanceMode = startCalibrationCommand->performanceMode;
         recalibrationRunning = true;
         return ErrorCode::OK;
@@ -433,7 +421,6 @@ DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(
     logger::warn("evaluateCommand: Received unknown/unhandled command type");
     return ErrorCode::OK;
 }
-
 
 DynamicCalibration::ErrorCode DynamicCalibration::doWork(std::chrono::steady_clock::time_point& previousLoadingTime) {
     ErrorCode errorCode = ErrorCode::OK;
@@ -512,8 +499,8 @@ void DynamicCalibration::run() {
         return;
     }
 
-    logger::info("DynamicCalibration node started in {} mode", 
-             (properties.initialConfig.recalibrationMode == dai::DynamicCalibrationConfig::RecalibrationMode::CONTINUOUS) ? "CONTINUOUS" : "ON-DEMAND");
+    logger::info("DynamicCalibration node started in {} mode",
+                 (properties.initialConfig.recalibrationMode == dai::DynamicCalibrationConfig::RecalibrationMode::CONTINUOUS) ? "CONTINUOUS" : "ON-DEMAND");
 
     auto previousLoadingTimeFloat = std::chrono::steady_clock::now() + std::chrono::duration<float>(properties.initialConfig.calibrationPeriod);
     auto previousLoadingTime = std::chrono::time_point_cast<std::chrono::steady_clock::duration>(previousLoadingTimeFloat);

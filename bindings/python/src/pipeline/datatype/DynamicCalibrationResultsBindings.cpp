@@ -1,6 +1,7 @@
+#include <pybind11/stl.h>
+
 #include <memory>
 #include <unordered_map>
-#include <pybind11/stl.h>
 
 #include "DatatypeBindings.hpp"
 #include "pipeline/CommonBindings.hpp"
@@ -11,7 +12,7 @@
 
 void bind_dynamic_calibration_results(pybind11::module& m, void* pCallstack) {
     using namespace dai;
-    
+
     using namespace pybind11::literals;
     namespace py = pybind11;
 
