@@ -11,15 +11,13 @@
 
 namespace dai {
 
+/**
+ * CoverageData message
+ *
+ * Contains information about the 2D spatial distribution of calibration data
+ * across the image pair. Generated per frame by the DCL.
+ */
 struct CoverageData : public Buffer {
-    /**
-     *
-     * It contains information about 2D distribution of data over image. It is created per frame:
-     * - coveragePerCell; tells the 2D spatial distribution, set by the DCL itself
-     *    It is a matrix, which presents how data is distributed on the 2D image
-     *    Values in matrix presents overall fullness of the bin; [0, 1], with 0 being worst, 1 best.
-     * - meanCoverage; tells overall Quality of 2D distribution, combined from both images.
-     */
     // clang-format off
     CoverageData(const dcl::CoverageData& cd)
       : coveragePerCellA(cd.coveragePerCellA)
@@ -37,52 +35,105 @@ struct CoverageData : public Buffer {
         datatype = DatatypeEnum::CoverageData;
     }
 
+    /**
+     * 2D coverage matrix for input A (e.g. left image).
+     * Each cell represents how well that spatial bin is populated; range [0, 1].
+     */
     std::vector<std::vector<float>> coveragePerCellA;
+
+    /**
+     * 2D coverage matrix for input B (e.g. right image).
+     * Each cell represents how well that spatial bin is populated; range [0, 1].
+     */
     std::vector<std::vector<float>> coveragePerCellB;
+
+    /**
+     * Overall quality metric summarizing 2D coverage across both inputs.
+     * Typically normalized to [0, 1].
+     */
     float meanCoverage;
+
+    /**
+     * Proportion of the desired spatial coverage achieved so far; range [0, 1].
+     */
     float coverageAcquired = 0.0f;
+
+    /**
+     * Proportion of calibration-relevant data acquired from the frame; range [0, 1].
+     */
     float dataAcquired = 0.0f;
 
     DEPTHAI_SERIALIZE(CoverageData, coveragePerCellA, coveragePerCellB, meanCoverage, dataAcquired, coverageAcquired);
 };
 
 /**
- * CalibrationQuality is result which is returned after
- * dai::DynamicCalibrationConfig::CalibrationCommand::START_CALIBRATION_QUALITY_CHECK It contains information about:
- * - CoverageData: 2D distribution of data over image
- * - CalibrationData: information about theoretical predictions how would the new recalibrated calibration look like.
+ * CalibrationQuality message
+ *
+ * Returned after running a calibration quality check.
+ * Provides feedback on how a potential recalibration would affect the
+ * device, including rotation changes, predicted depth accuracy, and
+ * epipolar error metrics.
  */
 
 struct CalibrationQuality : public Buffer {
     /**
+     * Quality metrics for a proposed calibration.
      *
-     * It contains information about how would new calibration will affect current state of device. It is created after
-     * succesful START_CALIBRATION_QUALITY_CHECK:
-     * - rotationChange: difference in rotation angles in extrinsics matrix with old and new calibration.
-     * In case angle difference is constantly over some
-     * threshold it would mean, device calibration has been afected and should be good to recalibrate the device. UNITS
-     * [deg].
-     * - depthErrorDifference: tehoretical prediction of relative depth difference between the old and new calibration.
-     * It includes the values from [1m, 2m, 5m, 10m].
-     * In case that difference is very high for all presented distances, it would mean, that recalibration is required.
-     * UNITS
-     * [%]
+     * Includes rotation differences, predicted depth error changes,
+     * and Sampson error comparison between current and achievable calibration.
      */
     struct Data {
+        /**
+         * Difference in rotation angles (extrinsics) between current and new calibration.
+         * Units: degrees [deg].
+         */
         std::array<float, 3> rotationChange;
+
+        /**
+         * Predicted relative depth error difference between current and new calibration.
+         * Reported at reference distances [1m, 2m, 5m, 10m].
+         * Units: percent [%].
+         */
         std::vector<float> depthErrorDifference;
+
+        /**
+         * Current calibration Sampson error.
+         */
         float sampsonErrorCurrent;
+
+        /**
+         * Estimated achievable Sampson error with recalibration applied.
+         */
         float sampsonErrorAchievable;
 
         DEPTHAI_SERIALIZE(Data, rotationChange, sampsonErrorCurrent, sampsonErrorAchievable, depthErrorDifference);
     };
 
+    /**
+     * Construct empty CalibrationQuality message.
+     */
     CalibrationQuality() = default;
     virtual ~CalibrationQuality() = default;
+
+    /**
+     * Construct CalibrationQuality with quality metrics and info string.
+     */
     CalibrationQuality(Data data, std::string info) : data(std::make_optional(std::move(data))), info(std::move(info)) {}
+
+    /**
+     * Construct CalibrationQuality with only info string (no quality metrics).
+     */
     CalibrationQuality(std::string info) : data(std::nullopt), info(std::move(info)) {}
 
+    /**
+     * Optional quality metrics data.
+     * May be missing if the quality check did not produce valid results.
+     */
     std::optional<Data> data;
+
+    /**
+     * Informational message describing the outcome of the quality check.
+     */
     std::string info;
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
@@ -94,30 +145,64 @@ struct CalibrationQuality : public Buffer {
 };
 
 /**
- * DynamicCalibrationResults message.
+ * DynamicCalibrationResult message
+ *
+ * Returned after a dynamic calibration process completes.
+ * Provides the newly computed calibration, the previous calibration,
+ * and the difference metrics between them.
  */
-
 struct DynamicCalibrationResult : public Buffer {
+    /**
+     * Detailed calibration result data.
+     *
+     * Includes:
+     * - **newCalibration**: CalibrationHanlder obtained from the recalibration.
+     * - **currentCalibration**: CalibrationHandler before recalibration.
+     * - **calibrationDifference**: Quality metrics comparing old vs new calibration
+     *   (rotation changes, depth error predictions, Sampson errors).
+     */
     struct Data {
+        /// Newly generated calibrationHAndler after recalibration
         dai::CalibrationHandler newCalibration;
+
+        /// CalibrationHandler that was active before recalibration
         dai::CalibrationHandler currentCalibration;
+
+        /// Differences and quality metrics between old and new calibration
         CalibrationQuality::Data calibrationDifference;
 
         DEPTHAI_SERIALIZE(Data, newCalibration, currentCalibration, calibrationDifference);
     };
 
+    /**
+     * Construct empty DynamicCalibrationResult message.
+     */
     DynamicCalibrationResult() = default;
     virtual ~DynamicCalibrationResult() = default;
+
+    /**
+     * Construct with result data and informational string.
+     */
     // clang-format off
     DynamicCalibrationResult(const Data& data, std::string information)
       : calibrationData(std::make_optional(std::move(data)))
       , info(std::move(information)) {}
 
+    /**
+     * Construct with informational string only (no result data).
+     */
     DynamicCalibrationResult(std::string information) : calibrationData(std::nullopt), info(std::move(information)) {}
     // clang-format on
 
+    /**
+     * Optional calibration result data.  
+     * May be missing if recalibration failed or produced no valid result.
+     */
     std::optional<Data> calibrationData;
 
+    /**
+     * Informational message describing the result of recalibration.
+     */
     std::string info;
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
