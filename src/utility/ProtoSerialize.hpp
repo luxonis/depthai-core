@@ -21,6 +21,13 @@
 #include "depthai/schemas/common.pb.h"
 #include "utility/ProtoSerializable.hpp"
 
+#if defined(DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT) && __has_include("depthai/schemas/DynamicCalibration.pb.h")
+    #include "depthai/schemas/DynamicCalibration.pb.h"
+    #define DAI_PROTO_DCL 1
+#else
+    #define DAI_PROTO_DCL 0
+#endif
+
 namespace dai {
 namespace utility {
 
@@ -60,13 +67,6 @@ template <>
 std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgFrame* message, bool metadataOnly);
 template <>
 std::unique_ptr<google::protobuf::Message> getProtoMessage(const PointCloudData* message, bool metadataOnly);
-// Dynamic Calibration types
-template <>
-std::unique_ptr<google::protobuf::Message> getProtoMessage(const CoverageData* message, bool metadataOnly);
-template <>
-std::unique_ptr<google::protobuf::Message> getProtoMessage(const CalibrationQuality* message, bool metadataOnly);
-template <>
-std::unique_ptr<google::protobuf::Message> getProtoMessage(const DynamicCalibrationResult* message, bool metadataOnly);
 // Helpers to deserialize messages from protobuf
 template <typename T>
 void setProtoMessage(T&, const google::protobuf::Message*, bool = false);
@@ -76,21 +76,21 @@ void setProtoMessage(T&, const google::protobuf::Message*, bool = false);
 // void setProtoMessage(SpatialImgDetections& obj, google::protobuf::Message* msg, bool);
 // template <>
 // void setProtoMessage(ImgDetections& obj, google::protobuf::Message* msg, bool);
+#if DAI_PROTO_DCL
 template <>
-void setProtoMessage(IMUData& obj, const google::protobuf::Message* msg, bool);
+std::unique_ptr<google::protobuf::Message> getProtoMessage(const CoverageData* message, bool metadataOnly);
 template <>
-void setProtoMessage(ImgFrame& obj, const google::protobuf::Message* msg, bool metadataOnly);
+std::unique_ptr<google::protobuf::Message> getProtoMessage(const CalibrationQuality* message, bool metadataOnly);
 template <>
-void setProtoMessage(EncodedFrame& obj, const google::protobuf::Message* msg, bool metadataOnly);
-template <>
-void setProtoMessage(PointCloudData& obj, const google::protobuf::Message* msg, bool metadataOnly);
-// Dynamic Calibration types
+std::unique_ptr<google::protobuf::Message> getProtoMessage(const DynamicCalibrationResult* message, bool metadataOnly);
+
 template <>
 void setProtoMessage(CoverageData& obj, const google::protobuf::Message* msg, bool metadataOnly);
 template <>
 void setProtoMessage(CalibrationQuality& obj, const google::protobuf::Message* msg, bool metadataOnly);
 template <>
 void setProtoMessage(DynamicCalibrationResult& obj, const google::protobuf::Message* msg, bool metadataOnly);
+#endif
 
 };  // namespace utility
 };  // namespace dai

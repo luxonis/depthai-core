@@ -1,5 +1,8 @@
 #include "Common.hpp"
 #include "NodeBindings.hpp"
+
+#if defined(DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT)
+
 #include "depthai/pipeline/Node.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/node/DynamicCalibration.hpp"
@@ -44,3 +47,8 @@ void bind_dynamic_calibration(pybind11::module& m, void* pCallstack) {
 
     daiNodeModule.attr("DynamicCalibration").attr("Properties") = DynamicCalibrationProperties;
 }
+
+#else
+  // Feature OFF: provide a stub so the symbol resolves if it’s called unconditionally.
+  void bind_dynamic_calibration(pybind11::module&, void*) {}
+#endif

@@ -22,6 +22,10 @@ set(PROTO_GEN_DIR ${CMAKE_BINARY_DIR}/include/depthai/schemas)
 # Ensure the output directory exists
 file(MAKE_DIRECTORY ${PROTO_GEN_DIR})
 
+# Optionally exclude DynamicCalibration.proto if DCL support is disabled
+if(NOT DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
+    list(REMOVE_ITEM MESSAGES_PROTOS "${PROTO_DIR}/DynamicCalibration.proto")
+endif()
 
 # Code Generation
 foreach(proto_file ${MESSAGES_PROTOS})

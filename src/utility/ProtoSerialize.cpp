@@ -6,7 +6,6 @@
 
 #include <queue>
 
-#include "depthai/schemas/DynamicCalibration.pb.h"
 #include "depthai/schemas/PointCloudData.pb.h"
 
 namespace dai {
@@ -110,7 +109,6 @@ ImgTransformation deserializeImgTransformation(const proto::common::ImgTransform
 }
 
 DatatypeEnum schemaNameToDatatype(const std::string& schemaName) {
-    namespace dc = ::dai::proto::dynamic_calibration;
     if(schemaName == proto::encoded_frame::EncodedFrame::descriptor()->full_name()) {
         return DatatypeEnum::EncodedFrame;
     } else if(schemaName == proto::imu_data::IMUData::descriptor()->full_name()) {
@@ -125,13 +123,20 @@ DatatypeEnum schemaNameToDatatype(const std::string& schemaName) {
         return DatatypeEnum::PointCloudData;
     } else if(schemaName == proto::spatial_img_detections::SpatialImgDetections::descriptor()->full_name()) {
         return DatatypeEnum::SpatialImgDetections;
-    } else if(schemaName == dc::CoverageData::descriptor()->full_name()) {
+    }
+#if DAI_PROTO_DCL
+    namespace dc = ::dai::proto::dynamic_calibration;
+    else if(schemaName == dc::CoverageData::descriptor()->full_name()) {
         return DatatypeEnum::CoverageData;
-    } else if(schemaName == dc::CalibrationQuality::descriptor()->full_name()) {
+    }
+    else if(schemaName == dc::CalibrationQuality::descriptor()->full_name()) {
         return DatatypeEnum::CalibrationQuality;
-    } else if(schemaName == dc::DynamicCalibrationResult::descriptor()->full_name()) {
+    }
+    else if(schemaName == dc::DynamicCalibrationResult::descriptor()->full_name()) {
         return DatatypeEnum::DynamicCalibrationResult;
-    } else {
+    }
+#endif
+    else {
         throw std::runtime_error("Unknown schema name: " + schemaName);
     }
 }
@@ -142,9 +147,11 @@ bool deserializationSupported(DatatypeEnum datatype) {
         case DatatypeEnum::EncodedFrame:
         case DatatypeEnum::IMUData:
         case DatatypeEnum::PointCloudData:
+#if DAI_PROTO_DCL
         case DatatypeEnum::CoverageData:
         case DatatypeEnum::CalibrationQuality:
         case DatatypeEnum::DynamicCalibrationResult:
+#endif
             return true;
         case DatatypeEnum::ADatatype:
         case DatatypeEnum::Buffer:
@@ -183,6 +190,7 @@ bool deserializationSupported(DatatypeEnum datatype) {
     return false;
 }
 
+#if DAI_PROTO_DCL
 namespace {
 inline void toProto2D(const std::vector<std::vector<float>>& m, proto::dynamic_calibration::Float2D* out) {
     out->clear_rows();
@@ -262,6 +270,7 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const DynamicCalibrat
     p->set_info(message->info);
     return p;
 }
+#endif
 
 template <>
 std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgAnnotations* message, bool) {
@@ -632,7 +641,7 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const PointCloudData*
 // template <>
 // void setProtoMessage(ImgDetections* obj, std::shared_ptr<google::protobuf::Message> msg, bool) {
 // }
-
+#if DAI_PROTO_DCL
 template <>
 void setProtoMessage(CoverageData& obj, const google::protobuf::Message* base, bool /*metadataOnly*/) {
     namespace dc = ::dai::proto::dynamic_calibration;
@@ -698,6 +707,7 @@ void setProtoMessage(DynamicCalibrationResult& obj, const google::protobuf::Mess
         obj.calibrationData.reset();
     }
 }
+#endif
 
 template <>
 void setProtoMessage(IMUData& obj, const google::protobuf::Message* msg, bool) {

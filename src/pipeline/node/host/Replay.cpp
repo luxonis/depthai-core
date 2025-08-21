@@ -19,7 +19,12 @@
 #ifdef DEPTHAI_ENABLE_PROTOBUF
     #include <google/protobuf/message.h>
 
-    #include "depthai/schemas/DynamicCalibration.pb.h"
+    #if defined(DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT) && __has_include("depthai/schemas/DynamicCalibration.pb.h")
+        #include "depthai/schemas/DynamicCalibration.pb.h"
+        #define DAI_PROTO_DCL 1
+    #else
+        #define DAI_PROTO_DCL 0
+    #endif
     #include "depthai/schemas/EncodedFrame.pb.h"
     #include "depthai/schemas/IMUData.pb.h"
     #include "depthai/schemas/ImgFrame.pb.h"
@@ -147,6 +152,7 @@ inline std::shared_ptr<google::protobuf::Message> getProtoMessage(utility::ByteP
             }
             break;
         }
+    #if DAI_PROTO_DCL
         case DatatypeEnum::CoverageData: {
             auto msg = bytePlayer.next<dai::proto::dynamic_calibration::CoverageData>();
             if(msg.has_value()) {
@@ -168,6 +174,7 @@ inline std::shared_ptr<google::protobuf::Message> getProtoMessage(utility::ByteP
             }
             break;
         }
+    #endif
         case DatatypeEnum::DynamicCalibrationCommand:
         case DatatypeEnum::ADatatype:
         case DatatypeEnum::Buffer:
