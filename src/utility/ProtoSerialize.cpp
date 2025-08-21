@@ -109,6 +109,9 @@ ImgTransformation deserializeImgTransformation(const proto::common::ImgTransform
 }
 
 DatatypeEnum schemaNameToDatatype(const std::string& schemaName) {
+#if DAI_PROTO_DCL
+    namespace dc = ::dai::proto::dynamic_calibration;
+#endif
     if(schemaName == proto::encoded_frame::EncodedFrame::descriptor()->full_name()) {
         return DatatypeEnum::EncodedFrame;
     } else if(schemaName == proto::imu_data::IMUData::descriptor()->full_name()) {
@@ -125,14 +128,11 @@ DatatypeEnum schemaNameToDatatype(const std::string& schemaName) {
         return DatatypeEnum::SpatialImgDetections;
     }
 #if DAI_PROTO_DCL
-    namespace dc = ::dai::proto::dynamic_calibration;
     else if(schemaName == dc::CoverageData::descriptor()->full_name()) {
         return DatatypeEnum::CoverageData;
-    }
-    else if(schemaName == dc::CalibrationQuality::descriptor()->full_name()) {
+    } else if(schemaName == dc::CalibrationQuality::descriptor()->full_name()) {
         return DatatypeEnum::CalibrationQuality;
-    }
-    else if(schemaName == dc::DynamicCalibrationResult::descriptor()->full_name()) {
+    } else if(schemaName == dc::DynamicCalibrationResult::descriptor()->full_name()) {
         return DatatypeEnum::DynamicCalibrationResult;
     }
 #endif
