@@ -119,6 +119,8 @@ class CMakeBuild(build_ext):
         env = os.environ.copy()
 
         cmake_args += ['-DDEPTHAI_BUILD_PYTHON=ON']
+        cmake_args += ['-DBUILD_SHARED_LIBS=ON']
+        cmake_args += ['-DDEPTHAI_MERGED_TARGET=ON']
         if env.get('DEPTHAI_BUILD_BASALT') == 'ON':
             cmake_args += ['-DDEPTHAI_BASALT_SUPPORT=ON']
         if env.get('DEPTHAI_BUILD_PCL') == 'ON':
@@ -128,6 +130,7 @@ class CMakeBuild(build_ext):
         if env.get('DEPTHAI_BUILD_KOMPUTE') == 'ON':
             cmake_args += ['-DDEPTHAI_KOMPUTE_SUPPORT=ON']
         build_args += ['--target=depthai']
+
 
         # Specify output directory and python executable
         cmake_args += ['-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=' + extdir, '-DPYTHON_EXECUTABLE=' + sys.executable]
@@ -153,6 +156,7 @@ class CMakeBuild(build_ext):
 
         # Set build type (debug vs release for library as well as dependencies)
         cfg = 'Debug' if self.debug else 'Release'
+        cmake_args += ['-DPIP_TEMP_LIB_FOLDER=' + os.path.abspath(os.path.join(self.build_temp, cfg))]
         cmake_args += ['-DCMAKE_BUILD_TYPE=' + cfg]
         cmake_args += ['-DDEPTHAI_VCPKG_INTERNAL_ONLY=OFF']
         build_args += ['--config', cfg]
