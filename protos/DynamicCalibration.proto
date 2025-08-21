@@ -27,7 +27,7 @@ message CalibrationQualityData {
   repeated float rotationChange = 1 [packed = true];
   repeated float depthErrorDifference = 2 [packed = true]; // arbitrary length
   float sampsonErrorCurrent = 3;
-  float sampsonErrorAchievable = 4;
+  float sampsonErrorNew = 4;
 }
 
 message CalibrationQuality {
