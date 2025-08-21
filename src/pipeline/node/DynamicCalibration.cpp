@@ -57,12 +57,13 @@ std::pair<std::shared_ptr<dcl::CameraCalibrationHandle>, std::shared_ptr<dcl::Ca
     return std::make_pair(calibA, calibB);
 }
 
+#define DCL_DISTORTION_SIZE (14)
 std::shared_ptr<dcl::CameraCalibrationHandle> DclUtils::createDclCalibration(const std::vector<std::vector<float>> cameraMatrix,
                                                                              const std::vector<float> distortionCoefficients,
                                                                              const std::vector<std::vector<float>> rotationMatrix,
                                                                              const std::vector<float> translationVector) {
     dcl::scalar_t cameraMatrixArr[9];
-    dcl::scalar_t distortion[14] = {0};
+    dcl::scalar_t distortion[DCL_DISTORTION_SIZE] = {0};
     dcl::scalar_t rvec[3];
     dcl::scalar_t tvec[3];
 
@@ -74,7 +75,7 @@ std::shared_ptr<dcl::CameraCalibrationHandle> DclUtils::createDclCalibration(con
     }
 
     // Convert distortion
-    for(size_t i = 0; i < distortionCoefficients.size() && i < 14; ++i) {
+    for(size_t i = 0; i < DCL_DISTORTION_SIZE; ++i) {
         distortion[i] = static_cast<dcl::scalar_t>(distortionCoefficients[i]);
     }
 
@@ -92,16 +93,16 @@ std::shared_ptr<dcl::CameraCalibrationHandle> DclUtils::createDclCalibration(con
 }
 
 void DclUtils::convertDclCalibrationToDai(CalibrationHandler& calibHandler,
-                                          const std::shared_ptr<const dcl::CameraCalibrationHandle> daiCalibrationA,
-                                          const std::shared_ptr<const dcl::CameraCalibrationHandle> daiCalibrationB,
+                                          const std::shared_ptr<const dcl::CameraCalibrationHandle> dclCalibrationA,
+                                          const std::shared_ptr<const dcl::CameraCalibrationHandle> dclCalibrationB,
                                           const CameraBoardSocket socketSrc,
                                           const CameraBoardSocket socketDest,
                                           const int width,
                                           const int height) {
     dcl::scalar_t tvecA[3];
-    daiCalibrationA->getTvec(tvecA);
+    dclCalibrationA->getTvec(tvecA);
     dcl::scalar_t rvecA[3];
-    daiCalibrationA->getRvec(rvecA);
+    dclCalibrationA->getRvec(rvecA);
 
     constexpr dcl::scalar_t threshold = 1e-10;
 
@@ -116,10 +117,10 @@ void DclUtils::convertDclCalibrationToDai(CalibrationHandler& calibHandler,
     }
 
     dcl::scalar_t distortionA[14];
-    daiCalibrationA->getDistortion(distortionA);
+    dclCalibrationA->getDistortion(distortionA);
 
     dcl::scalar_t cameraMatrixA[9];
-    daiCalibrationA->getCameraMatrix(cameraMatrixA);
+    dclCalibrationA->getCameraMatrix(cameraMatrixA);
     // clang-format off
     std::vector<std::vector<float>> matA = {
         {static_cast<float>(cameraMatrixA[0]), static_cast<float>(cameraMatrixA[1]), static_cast<float>(cameraMatrixA[2])},
@@ -129,10 +130,10 @@ void DclUtils::convertDclCalibrationToDai(CalibrationHandler& calibHandler,
     // clang-format on
 
     dcl::scalar_t distortionB[14];
-    daiCalibrationB->getDistortion(distortionB);
+    dclCalibrationB->getDistortion(distortionB);
 
     dcl::scalar_t cameraMatrixB[9];
-    daiCalibrationB->getCameraMatrix(cameraMatrixB);
+    dclCalibrationB->getCameraMatrix(cameraMatrixB);
     // clang-format off
     std::vector<std::vector<float>> matB = {
         {static_cast<float>(cameraMatrixB[0]), static_cast<float>(cameraMatrixB[1]), static_cast<float>(cameraMatrixB[2])},
@@ -142,13 +143,13 @@ void DclUtils::convertDclCalibrationToDai(CalibrationHandler& calibHandler,
     // clang-format on
 
     dcl::scalar_t tvecB[3];
-    daiCalibrationB->getTvec(tvecB);
+    dclCalibrationB->getTvec(tvecB);
     auto translation = std::vector<float>(tvecB, tvecB + 3);
     for(auto& val : translation) {
         val *= 100.0f;
     }
     dcl::scalar_t rvecB[3];
-    daiCalibrationB->getRvec(rvecB);
+    dclCalibrationB->getRvec(rvecB);
     auto rotationMatrix = matrix::rvecToRotationMatrix(rvecB);
 
     calibHandler.setCameraIntrinsics(socketSrc, matA, width, height);
@@ -242,13 +243,13 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
         return DynamicCalibration::ErrorCode::CALIBRATION_FAILED;
     }
 
-    auto daiCalibrationA = dclResult.value.newCalibration.first;
-    auto daiCalibrationB = dclResult.value.newCalibration.second;
+    auto dclCalibrationA = dclResult.value.newCalibration.first;
+    auto dclCalibrationB = dclResult.value.newCalibration.second;
     // clang-format off
     auto newCalibrationHandler = currentHandler;
 
     dai::node::DclUtils::convertDclCalibrationToDai(
-	newCalibrationHandler, daiCalibrationA, daiCalibrationB, daiSocketA, daiSocketB, width, height);
+	newCalibrationHandler, dclCalibrationA, dclCalibrationB, daiSocketA, daiSocketB, width, height);
 
     CalibrationQuality::Data qualityData{};
     qualityData.rotationChange[0] = dclResult.value.calibrationDifference->rotationChange[0];
@@ -378,7 +379,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(const std::sha
     if(auto recalibrateCommand = std::dynamic_pointer_cast<RecalibrateCommand>(command)) {
         logger::info(
             "Received RecalibrateCommand: force={} performanceMode={}", recalibrateCommand->force, static_cast<int>(recalibrateCommand->performanceMode));
-        recalibrationRunning = false;  // stop the recalibration if it is running
+        recalibrationShouldRun = false;  // stop the recalibration if it is running
         properties.initialConfig.performanceMode = recalibrateCommand->performanceMode;
         return runCalibration(calibrationHandler, recalibrateCommand->force);
     }
@@ -394,7 +395,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(const std::sha
     if(auto startCalibrationCommand = std::dynamic_pointer_cast<StartRecalibrationCommand>(command)) {
         logger::info("Received StartRecalibrationCommand: performanceMode={}", static_cast<int>(startCalibrationCommand->performanceMode));
         properties.initialConfig.performanceMode = startCalibrationCommand->performanceMode;
-        recalibrationRunning = true;
+        recalibrationShouldRun = true;
         return ErrorCode::OK;
     }
 
@@ -414,7 +415,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(const std::sha
 
     if(std::dynamic_pointer_cast<StopRecalibrationCommand>(command)) {
         logger::info("Received StopRecalibrationCommand: stopping recalibration");
-        recalibrationRunning = false;
+        recalibrationShouldRun = false;
         return ErrorCode::OK;
     }
 
@@ -422,44 +423,41 @@ DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(const std::sha
     return ErrorCode::OK;
 }
 
-DynamicCalibration::ErrorCode DynamicCalibration::doWork(std::chrono::steady_clock::time_point& previousLoadingTime) {
-    ErrorCode errorCode = ErrorCode::OK;
+DynamicCalibration::ErrorCode DynamicCalibration::doWork(std::chrono::steady_clock::time_point& previousLoadingAndCalibrationTime) {
+    auto error = ErrorCode::OK;  // Expect everything is ok
     auto calibrationCommand = commandInput.tryGet<DynamicCalibrationCommand>();
     if(calibrationCommand) {
-        errorCode = evaluateCommand(calibrationCommand);
+        error = evaluateCommand(calibrationCommand);
     }
-
-    if(!recalibrationRunning) {
-        return errorCode;
+    if(error != ErrorCode::OK) { //test progress so far
+        return error;
     }
-
-    auto loadError = ErrorCode::OK;
+    if(!recalibrationShouldRun) {
+        return error;
+    }
+    // Rate limit of the image loading
     auto now = std::chrono::steady_clock::now();
-    std::chrono::duration<float> elapsed = now - previousLoadingTime;
-    if(elapsed.count() > properties.initialConfig.loadImagePeriod) {
-        logger::info("doWork() called. RecalibrationRunning={}, elapsed={}s", recalibrationRunning, elapsed.count());
-        loadError = runLoadImage(true);
-        if(loadError == ErrorCode::OK) {
-            computeCoverage();
-            previousLoadingTime = std::chrono::steady_clock::now();
-            auto reacalibrationResult = runCalibration(calibrationHandler);
-            if(reacalibrationResult == DynamicCalibration::ErrorCode::OK) {
-                dynCalibImpl->removeAllData(sensorA, sensorB);
-                recalibrationRunning = false;
-            } else {
-                return reacalibrationResult;
-            }
+    std::chrono::duration<float> elapsed = now - previousLoadingAndCalibrationTime;
+    bool loadingAndCalibrationRequired = elapsed.count() > properties.initialConfig.loadImagePeriod;
+    if(loadingAndCalibrationRequired) {
+        logger::info("doWork() called. RecalibrationRunning={}, elapsed={}s", recalibrationShouldRun, elapsed.count());
+        error = runLoadImage(true);
+    }
+
+    if(error != ErrorCode::OK) { //test progress so far
+        return error;
+    }
+    if(loadingAndCalibrationRequired) {
+        computeCoverage();
+        previousLoadingAndCalibrationTime = std::chrono::steady_clock::now();
+        auto error = runCalibration(calibrationHandler);
+        if(error == DynamicCalibration::ErrorCode::OK) {
+            dynCalibImpl->removeAllData(sensorA, sensorB);
+            recalibrationShouldRun = false;
         }
     }
 
-    if(!slept) {
-        // sleep
-        std::this_thread::sleep_for(sleepingTime);
-    }
-    if(errorCode == ErrorCode::OK) {
-        return loadError;
-    }
-    return errorCode;
+    return error;
 }
 
 // clang-format off
@@ -467,27 +465,28 @@ DynamicCalibration::ErrorCode DynamicCalibration::doWorkContinuous(
     std::chrono::steady_clock::time_point& previousCalibrationTime,
     std::chrono::steady_clock::time_point& previousLoadingTime)
 {
-    auto now = std::chrono::steady_clock::now();
+    // Prioritize running calibration over loading images to prevent a state when
+    // always loading images and never get into calibration.
 
+    // Rate limit of the calibration
+    auto now = std::chrono::steady_clock::now();
     std::chrono::duration<float> elapsedCalibration = now - previousCalibrationTime;
     if(elapsedCalibration.count() > properties.initialConfig.calibrationPeriod) {
+        logger::info("doWorkContinuous() called. ElapsedCalibration={}s", 
+             elapsedCalibration.count());
         auto calibrationError = runCalibration(calibrationHandler);
-	previousCalibrationTime = std::chrono::steady_clock::now();
-	return calibrationError;
+    	previousCalibrationTime = std::chrono::steady_clock::now();
+    	return calibrationError;
     }
-    std::chrono::duration<float> elapsedLoading = now - previousLoadingTime;
-    logger::info("doWorkContinuous() called. ElapsedCalibration={}s, ElapsedLoading={}s", 
-             elapsedCalibration.count(), elapsedLoading.count());
 
+    std::chrono::duration<float> elapsedLoading = now - previousLoadingTime;
     if (elapsedLoading.count() > properties.initialConfig.loadImagePeriod) {
+        logger::info("doWorkContinuous() called. ElapsedLoading={}s", 
+             elapsedLoading.count());
         auto loadImageError = runLoadImage(true);
-	// do we want to return the coverage in the continuous mode? -> computeCoverage();
-	previousLoadingTime = std::chrono::steady_clock::now();
-	return loadImageError;
-    }
-    if(!slept) {
-       // sleep
-       std::this_thread::sleep_for(sleepingTime);
+        // do we want to return the coverage in the continuous mode? -> computeCoverage();
+        previousLoadingTime = std::chrono::steady_clock::now();
+        return loadImageError;
     }
     return ErrorCode::OK;
 }
@@ -510,6 +509,10 @@ void DynamicCalibration::run() {
         while(isRunning()) {
             slept = false;
             doWork(previousLoadingTime);
+            if(!slept) {
+                // sleep to prevent 100% CPU utilization
+                std::this_thread::sleep_for(sleepingTime);
+            }
         }
     } else {
         // Continuous mode
@@ -517,6 +520,10 @@ void DynamicCalibration::run() {
         while(isRunning()) {
             slept = false;
             doWorkContinuous(previousCalibrationTime, previousLoadingTime);
+            if(!slept) {
+                // sleep to prevent 100% CPU utilization
+                std::this_thread::sleep_for(sleepingTime);
+            }
         }
     }
 }

@@ -13,8 +13,8 @@ namespace node {
 
 struct DclUtils {
     static void convertDclCalibrationToDai(CalibrationHandler& calibHandler,
-                                           const std::shared_ptr<const dcl::CameraCalibrationHandle> daiCalibrationA,
-                                           const std::shared_ptr<const dcl::CameraCalibrationHandle> daiCalibrationB,
+                                           const std::shared_ptr<const dcl::CameraCalibrationHandle> dclCalibrationA,
+                                           const std::shared_ptr<const dcl::CameraCalibrationHandle> dclCalibrationB,
                                            const CameraBoardSocket socketSrc,
                                            const CameraBoardSocket socketDest,
                                            const int width,
@@ -207,7 +207,7 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
 	std::chrono::steady_clock::time_point& previousLoadingTime);
     // clang-format on
 
-    ErrorCode doWork(std::chrono::steady_clock::time_point& previousLoadingTime);
+    ErrorCode doWork(std::chrono::steady_clock::time_point& previousLoadingAndCalibrationTime);
 
     ErrorCode evaluateCommand(const std::shared_ptr<DynamicCalibrationCommand> command);
 
@@ -257,7 +257,7 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     // static constexpr std::chrono::milliseconds kSleepingTime{250};
     std::chrono::milliseconds sleepingTime{250};
 
-    bool recalibrationRunning = false;
+    bool recalibrationShouldRun = false;
     bool slept = false;
 
     /**
