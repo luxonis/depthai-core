@@ -1,6 +1,5 @@
 #pragma once
 
-#include <DynamicCalibration.hpp>
 #include <depthai/pipeline/DeviceNode.hpp>
 #include <depthai/pipeline/Subnode.hpp>
 #include <depthai/pipeline/node/Sync.hpp>
@@ -8,8 +7,19 @@
 
 #include "depthai/pipeline/datatype/DynamicCalibrationConfig.hpp"
 #include "depthai/pipeline/datatype/DynamicCalibrationResults.hpp"
+
+// Detect whether the external DCL header is usable
+#if defined(DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT) && __has_include(<DynamicCalibration.hpp>)
+    #include <DynamicCalibration.hpp>
+    #define DAI_DCL_HEADER_AVAILABLE 1
+#else
+    #define DAI_DCL_HEADER_AVAILABLE 0
+#endif
+
 namespace dai {
 namespace node {
+
+#if DAI_DCL_HEADER_AVAILABLE
 
 struct DclUtils {
     static void convertDclCalibrationToDai(CalibrationHandler& calibHandler,
@@ -271,6 +281,21 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     bool runOnHostVar = true;
     const std::unique_ptr<dcl::DynamicCalibration> dynCalibImpl = std::make_unique<dcl::DynamicCalibration>();
 };
+
+#else  // !DAI_DCL_HEADER_AVAILABLE
+
+// --- NO DCL AVAILABLE ---
+// Provide a minimal, non-constructible stub so includes compile,
+// but actual usage will fail clearly at compile time.
+
+class DynamicCalibration : public Node {
+   public:
+    constexpr static const char* NAME = "DynamicCalibration";
+    DynamicCalibration() = delete;
+    ~DynamicCalibration() override = default;
+};
+
+#endif  // DAI_DCL_HEADER_AVAILABLE
 
 }  // namespace node
 }  // namespace dai

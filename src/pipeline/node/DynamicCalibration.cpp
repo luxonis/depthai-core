@@ -207,7 +207,8 @@ void DynamicCalibration::setCalibration(CalibrationHandler& handler) {
 }
 
 DynamicCalibration::ErrorCode DynamicCalibration::runQualityCheck(const bool force) {
-    dcl::PerformanceMode performanceMode = force ? dcl::PerformanceMode::SKIP_CHECKS : properties.initialConfig.performanceMode;
+    dcl::PerformanceMode performanceMode =
+        force ? dcl::PerformanceMode::SKIP_CHECKS : DynamicCalibrationConfig::toDcl(properties.initialConfig.performanceMode);
     logger::info("Running calibration quality check (force={} mode={})", force, static_cast<int>(performanceMode));
 
     auto dclResult = dynCalibImpl->checkCalibration(dcDevice, socketA, socketB, performanceMode);
@@ -231,7 +232,8 @@ DynamicCalibration::ErrorCode DynamicCalibration::runQualityCheck(const bool for
 }
 
 DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::CalibrationHandler& currentHandler, const bool force) {
-    dcl::PerformanceMode performanceMode = force ? dcl::PerformanceMode::SKIP_CHECKS : properties.initialConfig.performanceMode;
+    dcl::PerformanceMode performanceMode =
+        force ? dcl::PerformanceMode::SKIP_CHECKS : DynamicCalibrationConfig::toDcl(properties.initialConfig.performanceMode);
     logger::info("Running calibration (force={} mode={})", force, static_cast<int>(performanceMode));
     auto dclResult = dynCalibImpl->findNewCalibration(dcDevice, socketA, socketB, performanceMode);
     if(!dclResult.passed()) {
@@ -305,7 +307,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::runLoadImage(const bool blocki
 }
 
 DynamicCalibration::ErrorCode DynamicCalibration::computeCoverage() {
-    auto resultCoverage = dynCalibImpl->computeCoverage(sensorA, sensorB, properties.initialConfig.performanceMode);
+    auto resultCoverage = dynCalibImpl->computeCoverage(sensorA, sensorB, DynamicCalibrationConfig::toDcl(properties.initialConfig.performanceMode));
 
     if(!resultCoverage.passed()) {
         throw std::runtime_error("Coverage check failed!");

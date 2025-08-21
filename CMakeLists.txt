@@ -512,10 +512,9 @@ if(NOT BUILD_SHARED_LIBS)
     target_compile_definitions(${TARGET_CORE_NAME} PUBLIC MCAP_STATIC)
 endif()
 
-if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
-    # Link the dynamic calibration target
-    target_link_libraries(${TARGET_CORE_NAME} PUBLIC dynamic_calibration_imported) # Should be PRIVATE
-    target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT) # Should be PRIVATE
+if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT AND TARGET dynamic_calibration_imported)
+    target_link_libraries(${TARGET_CORE_NAME} PRIVATE dynamic_calibration_imported)
+    target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT)
 endif()
 
 # Set constant
@@ -840,7 +839,7 @@ endmacro()
 # Add libusb dll in build time
 add_runtime_dependencies(${TARGET_CORE_NAME} usb-1.0)
 # Add dynamic calibration dll in build time
-if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
+if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT AND TARGET dynamic_calibration_imported)
     add_runtime_dependencies(${TARGET_CORE_NAME} dynamic_calibration_imported)
 endif()
 

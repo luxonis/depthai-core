@@ -1,6 +1,5 @@
 #pragma once
 
-#include <DynamicCalibration.hpp>
 #include <depthai/common/ProcessorType.hpp>
 #include <depthai/common/optional.hpp>
 #include <depthai/pipeline/DeviceNode.hpp>
@@ -8,6 +7,14 @@
 #include <vector>
 
 #include "depthai/pipeline/datatype/Buffer.hpp"
+
+// Detect whether the external DCL header is usable
+#if defined(DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT) && __has_include(<DynamicCalibration.hpp>)
+    #include <DynamicCalibration.hpp>
+    #define DAI_DCL_HEADER_AVAILABLE 1
+#else
+    #define DAI_DCL_HEADER_AVAILABLE 0
+#endif
 
 namespace dai {
 
@@ -71,7 +78,41 @@ struct DynamicCalibrationConfig : public Buffer {
      *   use cases, debugging, or when external systems handle quality
      *   assurance. Use with caution.
      */
-    using PerformanceMode = dcl::PerformanceMode;
+    enum class PerformanceMode : int32_t { DEFAULT = 0, STATIC_SCENERY = 1, OPTIMIZE_SPEED = 2, OPTIMIZE_PERFORMANCE = 3, SKIP_CHECKS = 4 };
+
+#if DAI_DCL_HEADER_AVAILABLE
+    // Optional converters when DCL is available
+    static inline dcl::PerformanceMode toDcl(PerformanceMode m) {
+        switch(m) {
+            case PerformanceMode::DEFAULT:
+                return dcl::PerformanceMode::DEFAULT;
+            case PerformanceMode::STATIC_SCENERY:
+                return dcl::PerformanceMode::STATIC_SCENERY;
+            case PerformanceMode::OPTIMIZE_SPEED:
+                return dcl::PerformanceMode::OPTIMIZE_SPEED;
+            case PerformanceMode::OPTIMIZE_PERFORMANCE:
+                return dcl::PerformanceMode::OPTIMIZE_PERFORMANCE;
+            case PerformanceMode::SKIP_CHECKS:
+                return dcl::PerformanceMode::SKIP_CHECKS;
+        }
+        return dcl::PerformanceMode::DEFAULT;
+    }
+    static inline PerformanceMode fromDcl(dcl::PerformanceMode m) {
+        switch(m) {
+            case dcl::PerformanceMode::DEFAULT:
+                return PerformanceMode::DEFAULT;
+            case dcl::PerformanceMode::STATIC_SCENERY:
+                return PerformanceMode::STATIC_SCENERY;
+            case dcl::PerformanceMode::OPTIMIZE_SPEED:
+                return PerformanceMode::OPTIMIZE_SPEED;
+            case dcl::PerformanceMode::OPTIMIZE_PERFORMANCE:
+                return PerformanceMode::OPTIMIZE_PERFORMANCE;
+            case dcl::PerformanceMode::SKIP_CHECKS:
+                return PerformanceMode::SKIP_CHECKS;
+        }
+        return PerformanceMode::DEFAULT;
+    }
+#endif
 
     PerformanceMode performanceMode = PerformanceMode::DEFAULT;
 

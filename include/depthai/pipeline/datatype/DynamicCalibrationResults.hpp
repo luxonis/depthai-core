@@ -1,6 +1,5 @@
 #pragma once
 
-#include <DynamicCalibration.hpp>
 #include <depthai/common/ProcessorType.hpp>
 #include <depthai/common/optional.hpp>
 #include <unordered_map>
@@ -8,6 +7,14 @@
 
 #include "depthai/device/CalibrationHandler.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
+
+// Detect whether the external DCL header is usable
+#if defined(DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT) && __has_include(<DynamicCalibration.hpp>)
+    #include <DynamicCalibration.hpp>
+    #define DAI_DCL_HEADER_AVAILABLE 1
+#else
+    #define DAI_DCL_HEADER_AVAILABLE 0
+#endif
 
 namespace dai {
 
@@ -18,17 +25,20 @@ namespace dai {
  * across the image pair. Generated per frame by the DCL.
  */
 struct CoverageData : public Buffer {
-    // clang-format off
-    CoverageData(const dcl::CoverageData& cd)
-      : coveragePerCellA(cd.coveragePerCellA)
-      , coveragePerCellB(cd.coveragePerCellB)
-      , meanCoverage(cd.meanCoverage)
-      , coverageAcquired(cd.coverageAcquired)
-      , dataAcquired(cd.dataAcquired)
-    {}
-    // clang-format on
     CoverageData() = default;
     virtual ~CoverageData() = default;
+    // clang-format off
+    #if DAI_DCL_HEADER_AVAILABLE
+      // Only available when DCL headers are present
+      CoverageData(const dcl::CoverageData& cd)
+        : coveragePerCellA(cd.coveragePerCellA)
+        , coveragePerCellB(cd.coveragePerCellB)
+        , meanCoverage(cd.meanCoverage)
+        , coverageAcquired(cd.coverageAcquired)
+        , dataAcquired(cd.dataAcquired)
+      {}
+    #endif
+    // clang-format on
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
         metadata = utility::serialize(*this);
