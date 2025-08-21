@@ -472,7 +472,7 @@ dai_set_test_labels(manual_focus_test rvc2_all rvc4 rvc4rgb ci)
 
 # IMU tests
 dai_add_test(imu_test src/ondevice_tests/pipeline/node/imu_test.cpp)
-dai_set_test_labels(imu_test ondevice rvc4 ci) # Many RVC2 devices do not have an IMU which supports the whole test suite
+dai_set_test_labels(imu_test ondevice rvc4 rvc4rgb ci) # Many RVC2 devices do not have an IMU which supports the whole test suite
 
 # ObjectTracker tests
 dai_add_test(object_tracker_test src/ondevice_tests/pipeline/node/object_tracker_test.cpp)
