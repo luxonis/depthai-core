@@ -230,7 +230,7 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const CalibrationQual
         d->clear_deptherrordifference();
         for(float v : message->data->depthErrorDifference) d->add_deptherrordifference(v);
         d->set_sampsonerrorcurrent(message->data->sampsonErrorCurrent);
-        d->set_sampsonerrorachievable(message->data->sampsonErrorAchievable);
+        d->set_sampsonerrornew(message->data->sampsonErrorNew);
     }
     p->set_info(message->info);
     return p;
@@ -253,7 +253,7 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const DynamicCalibrat
         diff->clear_deptherrordifference();
         for(float v : message->calibrationData->calibrationDifference.depthErrorDifference) diff->add_deptherrordifference(v);
         diff->set_sampsonerrorcurrent(message->calibrationData->calibrationDifference.sampsonErrorCurrent);
-        diff->set_sampsonerrorachievable(message->calibrationData->calibrationDifference.sampsonErrorAchievable);
+        diff->set_sampsonerrornew(message->calibrationData->calibrationDifference.sampsonErrorNew);
 
         // NOTE: newCalibration/currentCalibration are intentionally omitted here
         // until a stable blob format is chosen (JSON/bin/etc).
@@ -664,7 +664,7 @@ void setProtoMessage(CalibrationQuality& obj, const google::protobuf::Message* b
         }
         d.depthErrorDifference.assign(p->data().deptherrordifference().begin(), p->data().deptherrordifference().end());
         d.sampsonErrorCurrent = p->data().sampsonerrorcurrent();
-        d.sampsonErrorAchievable = p->data().sampsonerrorachievable();
+        d.sampsonErrorNew = p->data().sampsonerrornew();
         obj.data = d;
     } else {
         obj.data.reset();
@@ -690,7 +690,7 @@ void setProtoMessage(DynamicCalibrationResult& obj, const google::protobuf::Mess
         }
         d.calibrationDifference.depthErrorDifference.assign(q.deptherrordifference().begin(), q.deptherrordifference().end());
         d.calibrationDifference.sampsonErrorCurrent = q.sampsonerrorcurrent();
-        d.calibrationDifference.sampsonErrorAchievable = q.sampsonerrorachievable();
+        d.calibrationDifference.sampsonErrorNew = q.sampsonerrornew();
 
         // Leave newCalibration/currentCalibration default-constructed until you define blob decode.
         obj.calibrationData = d;

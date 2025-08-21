@@ -80,7 +80,7 @@ struct CalibrationQuality : public Buffer {
      * Quality metrics for a proposed calibration.
      *
      * Includes rotation differences, predicted depth error changes,
-     * and Sampson error comparison between current and achievable calibration.
+     * and Sampson error comparison between current and new (achievable) calibration.
      */
     struct Data {
         /**
@@ -102,11 +102,11 @@ struct CalibrationQuality : public Buffer {
         float sampsonErrorCurrent;
 
         /**
-         * Estimated achievable Sampson error with recalibration applied.
+         * Estimated new (achievable) Sampson error with recalibration applied.
          */
-        float sampsonErrorAchievable;
+        float sampsonErrorNew;
 
-        DEPTHAI_SERIALIZE(Data, rotationChange, sampsonErrorCurrent, sampsonErrorAchievable, depthErrorDifference);
+        DEPTHAI_SERIALIZE(Data, rotationChange, sampsonErrorCurrent, sampsonErrorNew, depthErrorDifference);
     };
 
     /**

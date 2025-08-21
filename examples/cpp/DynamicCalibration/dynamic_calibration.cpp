@@ -150,7 +150,7 @@ int main() {
                 const auto& rot = quality_data_value.rotationChange;
                 std::cout << "|| r_current - r_new || = "
                           << std::sqrt(rot[0]*rot[0] + rot[1]*rot[1] + rot[2]*rot[2]) << " deg" << std::endl
-                          << "mean Sampson error achievable = " << quality_data->sampsonErrorAchievable << " px\n"
+                          << "mean Sampson error achievable = " << quality_data->sampsonErrorNew << " px\n"
                           << "mean Sampson error current = " << quality_data->sampsonErrorCurrent << " px" << std::endl;
             }
         }
