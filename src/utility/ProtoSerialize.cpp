@@ -6,7 +6,9 @@
 
 #include <queue>
 
+#ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
 #include "depthai/schemas/DynamicCalibration.pb.h"
+#endif // DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
 #include "depthai/schemas/PointCloudData.pb.h"
 
 namespace dai {
@@ -110,28 +112,39 @@ ImgTransformation deserializeImgTransformation(const proto::common::ImgTransform
 }
 
 DatatypeEnum schemaNameToDatatype(const std::string& schemaName) {
-    namespace dc = ::dai::proto::dynamic_calibration;
     if(schemaName == proto::encoded_frame::EncodedFrame::descriptor()->full_name()) {
         return DatatypeEnum::EncodedFrame;
-    } else if(schemaName == proto::imu_data::IMUData::descriptor()->full_name()) {
+    }
+    else if(schemaName == proto::imu_data::IMUData::descriptor()->full_name()) {
         return DatatypeEnum::IMUData;
-    } else if(schemaName == proto::image_annotations::ImageAnnotations::descriptor()->full_name()) {
+    }
+    else if(schemaName == proto::image_annotations::ImageAnnotations::descriptor()->full_name()) {
         return DatatypeEnum::ImgAnnotations;
-    } else if(schemaName == proto::img_detections::ImgDetections::descriptor()->full_name()) {
+    }
+    else if(schemaName == proto::img_detections::ImgDetections::descriptor()->full_name()) {
         return DatatypeEnum::ImgDetections;
-    } else if(schemaName == proto::img_frame::ImgFrame::descriptor()->full_name()) {
+    }
+    else if(schemaName == proto::img_frame::ImgFrame::descriptor()->full_name()) {
         return DatatypeEnum::ImgFrame;
-    } else if(schemaName == proto::point_cloud_data::PointCloudData::descriptor()->full_name()) {
+    }
+    else if(schemaName == proto::point_cloud_data::PointCloudData::descriptor()->full_name()) {
         return DatatypeEnum::PointCloudData;
-    } else if(schemaName == proto::spatial_img_detections::SpatialImgDetections::descriptor()->full_name()) {
+    }
+    else if(schemaName == proto::spatial_img_detections::SpatialImgDetections::descriptor()->full_name()) {
         return DatatypeEnum::SpatialImgDetections;
-    } else if(schemaName == dc::CoverageData::descriptor()->full_name()) {
+    }
+#ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
+    else if(schemaName == proto::dynamic_calibration::CoverageData::descriptor()->full_name()) {
         return DatatypeEnum::CoverageData;
-    } else if(schemaName == dc::CalibrationQuality::descriptor()->full_name()) {
+    }
+    else if(schemaName == proto::dynamic_calibration::CalibrationQuality::descriptor()->full_name()) {
         return DatatypeEnum::CalibrationQuality;
-    } else if(schemaName == dc::DynamicCalibrationResult::descriptor()->full_name()) {
+    }
+    else if(schemaName == proto::dynamic_calibration::DynamicCalibrationResult::descriptor()->full_name()) {
         return DatatypeEnum::DynamicCalibrationResult;
-    } else {
+    }
+#endif //DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
+    else {
         throw std::runtime_error("Unknown schema name: " + schemaName);
     }
 }
@@ -142,9 +155,11 @@ bool deserializationSupported(DatatypeEnum datatype) {
         case DatatypeEnum::EncodedFrame:
         case DatatypeEnum::IMUData:
         case DatatypeEnum::PointCloudData:
+#ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
         case DatatypeEnum::CoverageData:
         case DatatypeEnum::CalibrationQuality:
         case DatatypeEnum::DynamicCalibrationResult:
+#endif // DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
             return true;
         case DatatypeEnum::ADatatype:
         case DatatypeEnum::Buffer:
@@ -161,8 +176,6 @@ bool deserializationSupported(DatatypeEnum datatype) {
         case DatatypeEnum::AprilTagConfig:
         case DatatypeEnum::AprilTags:
         case DatatypeEnum::Tracklets:
-        case DatatypeEnum::DynamicCalibrationConfig:
-        case DatatypeEnum::DynamicCalibrationCommand:
         case DatatypeEnum::StereoDepthConfig:
         case DatatypeEnum::FeatureTrackerConfig:
         case DatatypeEnum::ThermalConfig:
@@ -178,11 +191,16 @@ bool deserializationSupported(DatatypeEnum datatype) {
         case DatatypeEnum::ToFDepthConfidenceFilterConfig:
         case DatatypeEnum::RGBDData:
         case DatatypeEnum::ObjectTrackerConfig:
+#ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
+        case DatatypeEnum::DynamicCalibrationConfig:
+        case DatatypeEnum::DynamicCalibrationCommand:
+#endif        
             return false;
     }
     return false;
 }
 
+#ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
 namespace {
 inline void toProto2D(const std::vector<std::vector<float>>& m, proto::dynamic_calibration::Float2D* out) {
     out->clear_rows();
@@ -262,6 +280,7 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const DynamicCalibrat
     p->set_info(message->info);
     return p;
 }
+#endif // DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
 
 template <>
 std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgAnnotations* message, bool) {
@@ -633,6 +652,7 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const PointCloudData*
 // void setProtoMessage(ImgDetections* obj, std::shared_ptr<google::protobuf::Message> msg, bool) {
 // }
 
+#ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
 template <>
 void setProtoMessage(CoverageData& obj, const google::protobuf::Message* base, bool /*metadataOnly*/) {
     namespace dc = ::dai::proto::dynamic_calibration;
@@ -698,6 +718,7 @@ void setProtoMessage(DynamicCalibrationResult& obj, const google::protobuf::Mess
         obj.calibrationData.reset();
     }
 }
+#endif // DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
 
 template <>
 void setProtoMessage(IMUData& obj, const google::protobuf::Message* msg, bool) {

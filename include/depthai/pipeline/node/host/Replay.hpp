@@ -12,7 +12,6 @@
 #include <depthai/utility/RecordReplay.hpp>
 
 #include "depthai/pipeline/ThreadedHostNode.hpp"
-#include "depthai/pipeline/datatype/DynamicCalibrationResults.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 
 namespace dai {

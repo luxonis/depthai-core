@@ -19,7 +19,9 @@
 #ifdef DEPTHAI_ENABLE_PROTOBUF
     #include <google/protobuf/message.h>
 
+#ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
     #include "depthai/schemas/DynamicCalibration.pb.h"
+#endif // DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
     #include "depthai/schemas/EncodedFrame.pb.h"
     #include "depthai/schemas/IMUData.pb.h"
     #include "depthai/schemas/ImgFrame.pb.h"
@@ -64,6 +66,7 @@ inline std::shared_ptr<Buffer> getMessage(const std::shared_ptr<google::protobuf
             utility::setProtoMessage(*pclData, metadata.get(), false);
             return pclData;
         }
+#ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT        
         case DatatypeEnum::CoverageData: {
             auto out = std::make_shared<CoverageData>();
             dai::utility::setProtoMessage(*out, metadata.get(), /*metadataOnly*/ true);
@@ -79,8 +82,9 @@ inline std::shared_ptr<Buffer> getMessage(const std::shared_ptr<google::protobuf
             dai::utility::setProtoMessage(*out, metadata.get(), /*metadataOnly*/ true);
             return out;
         }
+#endif // DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
+
         // If commands shouldn’t appear in replay files, explicitly ignore/err:
-        case DatatypeEnum::DynamicCalibrationCommand:
         case DatatypeEnum::ADatatype:
         case DatatypeEnum::Buffer:
         case DatatypeEnum::NNData:
@@ -97,7 +101,6 @@ inline std::shared_ptr<Buffer> getMessage(const std::shared_ptr<google::protobuf
         case DatatypeEnum::AprilTags:
         case DatatypeEnum::Tracklets:
         case DatatypeEnum::StereoDepthConfig:
-        case DatatypeEnum::DynamicCalibrationConfig:
         case DatatypeEnum::FeatureTrackerConfig:
         case DatatypeEnum::ThermalConfig:
         case DatatypeEnum::ToFConfig:
@@ -112,6 +115,10 @@ inline std::shared_ptr<Buffer> getMessage(const std::shared_ptr<google::protobuf
         case DatatypeEnum::ToFDepthConfidenceFilterConfig:
         case DatatypeEnum::RGBDData:
         case DatatypeEnum::ObjectTrackerConfig:
+#ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT        
+        case DatatypeEnum::DynamicCalibrationCommand:
+        case DatatypeEnum::DynamicCalibrationConfig:
+#endif // DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
             break;
     }
     throw std::runtime_error("Cannot replay message type: " + std::to_string((int)datatype));
@@ -147,6 +154,7 @@ inline std::shared_ptr<google::protobuf::Message> getProtoMessage(utility::ByteP
             }
             break;
         }
+#ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
         case DatatypeEnum::CoverageData: {
             auto msg = bytePlayer.next<dai::proto::dynamic_calibration::CoverageData>();
             if(msg.has_value()) {
@@ -168,7 +176,8 @@ inline std::shared_ptr<google::protobuf::Message> getProtoMessage(utility::ByteP
             }
             break;
         }
-        case DatatypeEnum::DynamicCalibrationCommand:
+#endif // DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
+
         case DatatypeEnum::ADatatype:
         case DatatypeEnum::Buffer:
         case DatatypeEnum::NNData:
@@ -185,7 +194,6 @@ inline std::shared_ptr<google::protobuf::Message> getProtoMessage(utility::ByteP
         case DatatypeEnum::AprilTags:
         case DatatypeEnum::Tracklets:
         case DatatypeEnum::StereoDepthConfig:
-        case DatatypeEnum::DynamicCalibrationConfig:
         case DatatypeEnum::FeatureTrackerConfig:
         case DatatypeEnum::ThermalConfig:
         case DatatypeEnum::ToFConfig:
@@ -200,6 +208,10 @@ inline std::shared_ptr<google::protobuf::Message> getProtoMessage(utility::ByteP
         case DatatypeEnum::ToFDepthConfidenceFilterConfig:
         case DatatypeEnum::RGBDData:
         case DatatypeEnum::ObjectTrackerConfig:
+#ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
+        case DatatypeEnum::DynamicCalibrationCommand:
+        case DatatypeEnum::DynamicCalibrationConfig:
+#endif // DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
             throw std::runtime_error("Cannot replay message type: " + std::to_string((int)datatype));
     }
     return {};

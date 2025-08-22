@@ -7,7 +7,9 @@
 
 #include "depthai/common/ImgTransformations.hpp"
 #include "depthai/pipeline/datatype/DatatypeEnum.hpp"
+#ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
 #include "depthai/pipeline/datatype/DynamicCalibrationResults.hpp"
+#endif // DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
 #include "depthai/pipeline/datatype/ImgAnnotations.hpp"
 #include "depthai/pipeline/datatype/SpatialImgDetections.hpp"
 #include "depthai/pipeline/datatypes.hpp"
@@ -60,6 +62,7 @@ template <>
 std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgFrame* message, bool metadataOnly);
 template <>
 std::unique_ptr<google::protobuf::Message> getProtoMessage(const PointCloudData* message, bool metadataOnly);
+#ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
 // Dynamic Calibration types
 template <>
 std::unique_ptr<google::protobuf::Message> getProtoMessage(const CoverageData* message, bool metadataOnly);
@@ -67,6 +70,7 @@ template <>
 std::unique_ptr<google::protobuf::Message> getProtoMessage(const CalibrationQuality* message, bool metadataOnly);
 template <>
 std::unique_ptr<google::protobuf::Message> getProtoMessage(const DynamicCalibrationResult* message, bool metadataOnly);
+#endif // DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
 // Helpers to deserialize messages from protobuf
 template <typename T>
 void setProtoMessage(T&, const google::protobuf::Message*, bool = false);
@@ -84,6 +88,7 @@ template <>
 void setProtoMessage(EncodedFrame& obj, const google::protobuf::Message* msg, bool metadataOnly);
 template <>
 void setProtoMessage(PointCloudData& obj, const google::protobuf::Message* msg, bool metadataOnly);
+#ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
 // Dynamic Calibration types
 template <>
 void setProtoMessage(CoverageData& obj, const google::protobuf::Message* msg, bool metadataOnly);
@@ -91,6 +96,7 @@ template <>
 void setProtoMessage(CalibrationQuality& obj, const google::protobuf::Message* msg, bool metadataOnly);
 template <>
 void setProtoMessage(DynamicCalibrationResult& obj, const google::protobuf::Message* msg, bool metadataOnly);
+#endif // DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
 
 };  // namespace utility
 };  // namespace dai
