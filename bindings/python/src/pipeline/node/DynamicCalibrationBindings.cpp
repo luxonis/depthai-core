@@ -2,7 +2,7 @@
 #include "NodeBindings.hpp"
 #include "depthai/pipeline/Node.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
-#include "depthai/pipeline/node/DynamicCalibration.hpp"
+#include "depthai/pipeline/node/DynamicCalibrationNode.hpp"
 
 void bind_dynamic_calibration(pybind11::module& m, void* pCallstack) {
     using namespace dai;

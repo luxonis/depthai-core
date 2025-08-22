@@ -9,7 +9,7 @@
 #include "node/DetectionNetwork.hpp"
 #include "node/DetectionParser.hpp"
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
-    #include "node/DynamicCalibration.hpp"
+    #include "node/DynamicCalibrationNode.hpp"
 #endif
 #include "node/EdgeDetector.hpp"
 #include "node/FeatureTracker.hpp"

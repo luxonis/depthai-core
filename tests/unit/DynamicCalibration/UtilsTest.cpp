@@ -2,7 +2,7 @@
 
 #include <DynamicCalibration.hpp>
 
-#include "depthai/pipeline/node/DynamicCalibration.hpp"
+#include "depthai/pipeline/node/DynamicCalibrationNode.hpp"
 
 using namespace dai;
 using namespace node;

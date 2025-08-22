@@ -1,4 +1,4 @@
-#include "depthai/pipeline/node/DynamicCalibration.hpp"
+#include "depthai/pipeline/node/DynamicCalibrationNode.hpp"
 
 #include <opencv2/opencv.hpp>
 
