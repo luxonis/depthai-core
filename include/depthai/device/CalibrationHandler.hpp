@@ -8,8 +8,13 @@
 #include "depthai/common/EepromData.hpp"
 #include "depthai/common/Point2f.hpp"
 #include "depthai/common/Size2f.hpp"
+
 #ifdef DEPTHAI_HAVE_RTABMAP_SUPPORT
+    #pragma push_macro("_res")
+    #undef _res
+    #define _res resfixed_
     #include "rtabmap/core/StereoCameraModel.h"
+    #pragma pop_macro("_res")
 #endif
 namespace dai {
 /**
