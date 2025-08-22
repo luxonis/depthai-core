@@ -70,8 +70,15 @@ RUN locale-gen en_US.UTF-8
 # Set workdir to your project directory
 WORKDIR /workspace
 
+ENV VCPKG_DOWNLOADS=/opt/vcpkg-downloads
+#Bootleg solution for ftp.gnu.org not working - will try caching downloads later
+RUN mkdir -p /opt/vcpkg-downloads && \
+    curl -fL https://mirrors.kernel.org/gnu/gperf/gperf-3.1.tar.gz \
+      -o /opt/vcpkg-downloads/gperf-3.1.tar.gz
+
+
 # Copy project files
-ARG BRANCH=v3_develop
+ARG BRANCH=develop
 ARG REPO_URL=https://github.com/luxonis/depthai-core.git
 ARG GIT_COMMIT=unspecified  # commit SHA busts cache
 

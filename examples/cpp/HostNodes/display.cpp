@@ -6,11 +6,11 @@
 
 #include "depthai/depthai.hpp"
 
-std::atomic<bool> quitEvent(false);
+// std::atomic<bool> quitEvent(false);
 
-void signalHandler(int signum) {
-    quitEvent = true;
-}
+// void signalHandler(int signum) {
+//     quitEvent = true;
+// }
 
 // Custom host node for display
 class HostDisplay : public dai::node::CustomNode<HostDisplay> {
@@ -38,8 +38,8 @@ class HostDisplay : public dai::node::CustomNode<HostDisplay> {
 
 int main() {
     // Set up signal handlers
-    signal(SIGTERM, signalHandler);
-    signal(SIGINT, signalHandler);
+    // signal(SIGTERM, signalHandler);
+    // signal(SIGINT, signalHandler);
 
     // Create device
     std::shared_ptr<dai::Device> device = std::make_shared<dai::Device>();
