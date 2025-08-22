@@ -7,10 +7,8 @@
 # Detect 32‑bit Linux for default CURL support
 if(CMAKE_SIZEOF_VOID_P EQUAL 4 AND UNIX)
     set(DEPTHAI_DEFAULT_CURL_SUPPORT OFF)
-    set(DEPTHAI_DEFAULT_DYNAMIC_CALIBRATION_SUPPORT OFF)
 else()
     set(DEPTHAI_DEFAULT_CURL_SUPPORT ON)
-    set(DEPTHAI_DEFAULT_DYNAMIC_CALIBRATION_SUPPORT ON)
 endif()
 
 # ---------- Core Feature Toggles (private) -------------
@@ -28,6 +26,8 @@ option(DEPTHAI_PCL_SUPPORT "Enable optional PCL support" OFF)
 
 option(DEPTHAI_RTABMAP_SUPPORT "Enable optional RTABMap support" OFF)
 option(DEPTHAI_BASALT_SUPPORT "Enable optional Basalt support" OFF)
+
+option(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT "Enable Dynamic Calibration support" ON)
 
 # Build Behaviour
 option(DEPTHAI_MERGED_TARGET "Enable merged target build" ON)
@@ -55,7 +55,10 @@ option(DEPTHAI_XTENSOR_EXTERNAL "Use external xtensor library" ${USE_EXTERNAL_IN
 option(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT "Enable Dynamic Calibration support" ${DEPTHAI_DEFAULT_DYNAMIC_CALIBRATION_SUPPORT})
 
 # ---------- Platform / Compiler Tweaks ---------
-
+if(CMAKE_SIZEOF_VOID_P EQUAL 4 AND DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
+    # There is not 32b build of Dynamic Calibration Library
+    message(FATAL_ERROR "Dynamic calibration is not supported on 32b machines. Build with DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT=OFF")
+endif()
 
 # AprilTag node support
 set(DEPTHAI_HAS_APRIL_TAG ${DEPTHAI_ENABLE_APRIL_TAG})
