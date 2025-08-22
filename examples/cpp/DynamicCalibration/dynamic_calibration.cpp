@@ -2,19 +2,29 @@
 #include <opencv2/opencv.hpp>
 #include <string>
 #include <iostream>
-#include <fstream>
-#include <filesystem>
 #include <thread>
 #include <vector>
 #include <nlohmann/json.hpp>
 
-namespace fs = std::filesystem;
+template<typename T>
+void print_matrix(std::vector<std::vector<T>>& m) {
+    for(const auto& row : m) {
+        std::cout << "(";
+        for(const auto& v : row) std::cout << v << " ";
+        std::cout << ") ";
+    }
+}
+
+void print_extrinsics(const dai::CalibrationHandler& calib) {
+	auto extrinsics = calib.getCameraExtrinsics(dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_C);
+
+	std::cout << "Extrinsics matrix from CAM_B to CAM_C:" << std::endl;
+	print_matrix(extrinsics);
+    std::cout << std::endl;
+}
+
 
 int main() {
-    std::string folder = "data/sessionXYZ/";
-
-    fs::create_directories(folder);
-
     // Create and initialize Device
     auto device = std::make_shared<dai::Device>();
 
@@ -59,17 +69,10 @@ int main() {
 
     // Read and set calibration
     auto calibration = device->readCalibration();
-    auto old_calibration = calibration;
+    auto old_calibration = std::make_shared<dai::CalibrationHandler>(calibration);
     std::shared_ptr<dai::CalibrationHandler> new_calibration;
     device->setCalibration(calibration);
-
-    // Save calibration before
-    nlohmann::json calib_json = calibration.eepromToJson();
-    std::ofstream before_calib_file(folder + "calibration_before.json");
-    before_calib_file << calib_json.dump(4);
-    before_calib_file.close();
-
-    // Start pipeline
+    // ---------- Device and runtime loop ----------
     pipeline.start();
 
     while (pipeline.isRunning()) {
@@ -90,9 +93,9 @@ int main() {
         auto coverage = coverage_output->tryGet<dai::CoverageData>();
         if(coverage) {
             std::cout << "Coverage A: ";
-//            for(const auto& v : coverage->coveragePerCellA) std::cout << v << " ";
+            print_matrix(coverage->coveragePerCellA);
             std::cout << "\nCoverage B: ";
-//            for(const auto& v : coverage->coveragePerCellB) std::cout << v << " ";
+            print_matrix(coverage->coveragePerCellB);
             std::cout << "\nMean coverage: " << coverage->meanCoverage << "\n";
             std::cout << "Data acquired: " << coverage->dataAcquired << std::endl;
         }
@@ -102,11 +105,7 @@ int main() {
             if(calibration_result->calibrationData.has_value()) {
                 std::cout << "Found new calibration" << std::endl;
                 new_calibration = std::make_shared<dai::CalibrationHandler>(calibration_result->calibrationData->newCalibration);
-
-                nlohmann::json new_calib_json = calibration_result->calibrationData->newCalibration.eepromToJson();
-                std::ofstream new_calib_file(folder + "calibration_after.json");
-                new_calib_file << new_calib_json.dump(4);
-                new_calib_file.close();
+                print_extrinsics(*new_calibration);
             } else {
                 std::cout << calibration_result->info << std::endl;
             }
@@ -127,18 +126,18 @@ int main() {
             if(new_calibration) {
                 std::cout << "Applying new calibration ..." << std::endl;
                 command_input->send(std::make_shared<dai::ApplyCalibrationCommand>(*new_calibration));
-                old_calibration = calibration;
+                old_calibration = std::make_shared<dai::CalibrationHandler>(calibration);
                 calibration = *new_calibration;
                 new_calibration.reset();
             }
         }
         if(key == 'p') {
-            if(!old_calibration.eepromToJson().empty()) {
+            if(!old_calibration->eepromToJson().empty()) {
                 std::cout << "Applying previous calibration ..." << std::endl;
-                command_input->send(std::make_shared<dai::ApplyCalibrationCommand>(old_calibration));
+                command_input->send(std::make_shared<dai::ApplyCalibrationCommand>(*old_calibration));
                 new_calibration = std::make_shared<dai::CalibrationHandler>(calibration);
-                calibration = old_calibration;
-                // To avoid repeated application, reset old_calibration if needed
+                calibration = *old_calibration;
+                old_calibration.reset();
             }
         }
         if(key == 'c') {
@@ -156,5 +155,5 @@ int main() {
             }
         }
     }
-    return 0;
+    pipeline.stop();
 }
