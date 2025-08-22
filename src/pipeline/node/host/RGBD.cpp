@@ -249,7 +249,6 @@ RGBD::~RGBD() = default;
 
 void RGBD::buildInternal() {
     sync->out.link(inSync);
-    sync->setRunOnHost(false);
     inColor.setBlocking(false);
     inColor.setMaxSize(4);
     inDepth.setBlocking(false);
@@ -443,6 +442,12 @@ void RGBD::run() {
             }
         }
     }
+}
+void RGBD::runSyncOnHost(bool runOnHost) {
+    sync->setRunOnHost(runOnHost);
+}
+void RGBD::setSyncThreshold(std::chrono::nanoseconds syncThreshold) {
+    sync->setSyncThreshold(syncThreshold);
 }
 void RGBD::setDepthUnit(StereoDepthConfig::AlgorithmControl::DepthUnit depthUnit) {
     pimpl->setDepthUnit(depthUnit);
