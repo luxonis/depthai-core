@@ -511,8 +511,8 @@ endif()
 
 if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
     # Link the dynamic calibration target
-    target_link_libraries(${TARGET_CORE_NAME} PUBLIC dynamic_calibration_imported)
-    target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT)
+    target_link_libraries(${TARGET_CORE_NAME} PRIVATE dynamic_calibration_imported)
+    target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT)
 endif()
 
 # Set constant
