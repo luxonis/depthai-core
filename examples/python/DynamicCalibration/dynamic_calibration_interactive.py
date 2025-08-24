@@ -79,6 +79,7 @@ print("[n] → Apply new calibration")
 print("[o] → Apply old calibration")
 print("[s] → Flash new calibration")
 print("[k] → Flash old calibration")
+print("[x] → Save current frames.")
 print("[q] → Quit")
 print("<<< -----------------------------|Start the pipeline!|------------------------->>>")
 cv2.namedWindow("MasterFrame", cv2.WINDOW_NORMAL)
@@ -256,3 +257,24 @@ with pipeline:
             print("Loading image ... ")
             command_input.send(dai.LoadImageCommand())
             print("Image loaded successfully.")
+
+        elif key == ord("x"):
+            print("Saving current frames and calibration ... ")
+            import os
+            path = os.path.dirname(os.path.abspath(__file__))
+            folder = os.path.join(path, f"dynamic_calib_dataset_{device.getMxId()}/")
+            import json
+            if not os.path.exists(folder):
+                os.makedirs(folder, exist_ok=True)
+            i = time.time() - start
+            with open(f"{folder}calibration_before.json", "w") as f:
+                json.dump(device.readCalibration().eepromToJson(), f, indent=4)
+            print("Saved current calibration to calibration_before.json")
+            np.save(f"{folder}img_left_{i}.npy", leftFrame)
+            np.save(f"{folder}img_right_{i}.npy", rightFrame)
+            print("Saved current frames to img_left_*.npy and img_right_*.npy")
+
+            with open(f"{folder}calibration_after.json", "w") as f:
+                json.dump(calibNew.eepromToJson(), f, indent=4)
+
+            print("Finished saving dataset.")
