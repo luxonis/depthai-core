@@ -156,6 +156,11 @@ struct StopRecalibrationCommand : public DynamicCalibrationCommand {};
 struct LoadImageCommand : public DynamicCalibrationCommand {};
 
 /**
+ * Command to reset current dataset in DCL.
+ */
+struct ResetLoadedDataCommand : public DynamicCalibrationCommand {};
+
+/**
  * Command to apply a calibration directly to the device.
  */
 struct ApplyCalibrationCommand : public DynamicCalibrationCommand {

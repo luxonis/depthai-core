@@ -256,3 +256,9 @@ with pipeline:
             print("Loading image ... ")
             command_input.send(dai.LoadImageCommand())
             print("Image loaded successfully.")
+
+        elif key == ord("u"):
+            print("Resetting loaded data ... ")
+            command_input.send(dai.ResetLoadedDataCommand())
+            print("Data in Node was deleted, please load new images.")
+            break

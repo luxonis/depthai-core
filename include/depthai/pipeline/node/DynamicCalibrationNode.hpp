@@ -200,6 +200,8 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
 
     ErrorCode computeCoverage();
 
+    ErrorCode resetDeviceData();
+
     ErrorCode initializePipeline(const std::shared_ptr<dai::Device> daiDevice);
 
     // clang-format off

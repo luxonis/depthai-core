@@ -305,6 +305,12 @@ DynamicCalibration::ErrorCode DynamicCalibration::runLoadImage(const bool blocki
     return DynamicCalibration::ErrorCode::OK;
 }
 
+DynamicCalibration::ErrorCode DynamicCalibration::resetDeviceData() {
+    dynCalibImpl->removeAllData(sensorA, sensorB);
+    logger::info("Reset all loaded data for device: {}", deviceName);
+    return DynamicCalibration::ErrorCode::OK;
+}
+
 DynamicCalibration::ErrorCode DynamicCalibration::computeCoverage() {
     auto resultCoverage = dynCalibImpl->computeCoverage(sensorA, sensorB, properties.initialConfig.performanceMode);
 
@@ -419,6 +425,12 @@ DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(const std::sha
         return ErrorCode::OK;
     }
 
+    if(std::dynamic_pointer_cast<ResetLoadedDataCommand>(command)) {
+        logger::info("Received ResetLoadedData: ressetting all loaded data");
+        resetDeviceData();
+        return ErrorCode::OK;
+    }
+
     logger->warn("evaluateCommand: Received unknown/unhandled command type");
     return ErrorCode::OK;
 }
@@ -429,7 +441,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::doWork(std::chrono::steady_clo
     if(calibrationCommand) {
         error = evaluateCommand(calibrationCommand);
     }
-    if(error != ErrorCode::OK) {  // test progress so far
+    if(error != ErrorCode::OK) { //test progress so far
         return error;
     }
     if(!recalibrationShouldRun) {
