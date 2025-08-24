@@ -24,6 +24,8 @@ right_out = cam_right.requestFullResolutionOutput(dai.ImgFrame.Type.NV12)
 
 # Stereo node
 stereo = pipeline.create(dai.node.StereoDepth)
+stereo.setExtendedDisparity(True)
+stereo.setSubpixel(True)
 left_out.link(stereo.left)
 right_out.link(stereo.right)
 
