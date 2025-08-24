@@ -63,6 +63,8 @@ void bind_dynamic_calibration_config(py::module& m, void* pCallstack) {
 
     py::class_<LoadImageCommand, DynamicCalibrationCommand, std::shared_ptr<LoadImageCommand>>(m, "LoadImageCommand").def(py::init<>());
 
+    py::class_<ResetLoadedDataCommand, DynamicCalibrationCommand, std::shared_ptr<ResetLoadedDataCommand>>(m, "ResetLoadedDataCommand").def(py::init<>());
+
     py::class_<ApplyCalibrationCommand, DynamicCalibrationCommand, std::shared_ptr<ApplyCalibrationCommand>>(m, "ApplyCalibrationCommand")
         .def(py::init<>())
         .def(py::init<const dai::CalibrationHandler&>(), py::arg("calibration"))
