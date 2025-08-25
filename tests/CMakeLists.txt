@@ -249,6 +249,11 @@ target_compile_definitions(nn_archive_test PRIVATE
 )
 dai_set_test_labels(nn_archive_test onhost ci)
 
+# Dynamic calibration tests
+dai_add_test(dynamic_calibration_test src/onhost_tests/dynamic_calibration_test.cpp)
+dai_set_test_labels(dynamic_calibration_test onhost ci)
+target_link_libraries(dynamic_calibration_test PRIVATE dynamic_calibration_imported)
+
 # Eeprom naming parsing tests
 dai_add_test(naming_test src/onhost_tests/naming_test.cpp)
 dai_set_test_labels(naming_test onhost ci)
