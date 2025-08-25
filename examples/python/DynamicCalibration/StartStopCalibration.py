@@ -30,8 +30,8 @@ with dai.Pipeline() as pipeline:
     calibration_output = dyn_calib.calibrationOutput.createOutputQueue()
     coverage_output = dyn_calib.coverageOutput.createOutputQueue()
     
-    initial_config_input = dyn_calib.configInput.createInputQueue()
-    command_input = dyn_calib.commandInput.createInputQueue()
+    initial_config_input = dyn_calib.inputConfig.createInputQueue()
+    command_input = dyn_calib.inputControl.createInputQueue()
     
     # start loading the collecting data
     

@@ -34,8 +34,8 @@ calibration_output = dyn_calib.calibrationOutput.createOutputQueue()
 coverage_output = dyn_calib.coverageOutput.createOutputQueue()
 quality_output = dyn_calib.qualityOutput.createOutputQueue()
 
-command_input = dyn_calib.commandInput.createInputQueue()
-initial_config_input = dyn_calib.configInput.createInputQueue()
+command_input = dyn_calib.inputControl.createInputQueue()
+initial_config_input = dyn_calib.inputConfig.createInputQueue()
  
 # set config
 config = dai.DynamicCalibrationConfig()

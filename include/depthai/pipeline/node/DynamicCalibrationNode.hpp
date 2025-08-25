@@ -82,10 +82,10 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     /**
      * Input DynamicCalibrationConfig message with ability to modify parameters in runtime.
      */
-    Input commandInput{
+    Input inputControl{
         *this,
         {
-	  "inputConfig",
+	  "inputControl",
 	  DEFAULT_GROUP,
 	  NON_BLOCKING_QUEUE,
 	  1,  // Queue_size -> only one command at the time
@@ -94,7 +94,7 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
 	}
     };
 
-    Input configInput{*this, {"inputConfig", DEFAULT_GROUP, DEFAULT_BLOCKING, 1, {{{DatatypeEnum::DynamicCalibrationConfig, true}}}, false}};
+    Input inputConfig{*this, {"inputConfig", DEFAULT_GROUP, DEFAULT_BLOCKING, 1, {{{DatatypeEnum::DynamicCalibrationConfig, true}}}, false}};
 
     /**
      * Output calibration quality result

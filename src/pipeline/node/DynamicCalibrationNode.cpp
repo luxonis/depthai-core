@@ -324,7 +324,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::computeCoverage() {
 
 DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline(const std::shared_ptr<dai::Device> daiDevice) {
     logger->info("Initializing DynamicCalibration pipeline for device: {}", daiDevice->getDeviceId());
-    auto initialConfig = configInput.tryGet<dai::DynamicCalibrationConfig>();
+    auto initialConfig = inputConfig.tryGet<dai::DynamicCalibrationConfig>();
     if(initialConfig) {
         properties.initialConfig = *initialConfig;
     }
@@ -425,7 +425,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(const std::sha
 
 DynamicCalibration::ErrorCode DynamicCalibration::doWork(std::chrono::steady_clock::time_point& previousLoadingAndCalibrationTime) {
     auto error = ErrorCode::OK;  // Expect everything is ok
-    auto calibrationCommand = commandInput.tryGet<DynamicCalibrationCommand>();
+    auto calibrationCommand = inputControl.tryGet<DynamicCalibrationCommand>();
     if(calibrationCommand) {
         error = evaluateCommand(calibrationCommand);
     }
