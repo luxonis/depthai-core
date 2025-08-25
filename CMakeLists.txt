@@ -115,7 +115,7 @@ endif()
 
 # Specify exporting all symbols on Windows
 if(WIN32 AND BUILD_SHARED_LIBS)
-    set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON CACHE BOOL "")
+    # set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON CACHE BOOL "")
 endif()
 
 ### Constants
@@ -1201,6 +1201,18 @@ if(APPLE)
   set_target_properties(${TARGET_CORE_NAME} PROPERTIES INSTALL_RPATH "@loader_path;@loader_path/")
 elseif(UNIX)
   set_target_properties(${TARGET_CORE_NAME} PROPERTIES INSTALL_RPATH "$ORIGIN:$ORIGIN/")
+endif()
+
+if(WIN32 AND BUILD_SHARED_LIBS)
+    # For Windows builds, they generate lot of objects for Debug configs.
+    # They can easily overpass 64k, that's fixed limit for linker.
+    # Reduce them.
+    # target_compile_options(${TARGET_CORE_NAME} PRIVATE "/Zi")
+    # set_target_properties(${TARGET_CORE_NAME} PROPERTIES UNITY_BUILD ON)
+    # target_compile_options(${TARGET_CORE_NAME} PRIVATE "/GL")
+    # target_compile_options(${TARGET_CORE_NAME} PRIVATE "/bigobj")
+    # target_link_options(${TARGET_CORE_NAME} PRIVATE "/LTCG")
+    # target_link_options(${TARGET_CORE_NAME} PRIVATE "/INCREMENTAL:NO")
 endif()
 
 # Export to CMake registry if specified
