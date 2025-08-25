@@ -16,9 +16,9 @@
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/CameraControl.hpp"
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
-#include "depthai/pipeline/datatype/DynamicCalibrationConfig.hpp"
-#include "depthai/pipeline/datatype/DynamicCalibrationResults.hpp"
-#endif // DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
+    #include "depthai/pipeline/datatype/DynamicCalibrationConfig.hpp"
+    #include "depthai/pipeline/datatype/DynamicCalibrationResults.hpp"
+#endif  // DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
 #include "depthai/pipeline/datatype/EdgeDetectorConfig.hpp"
 #include "depthai/pipeline/datatype/EncodedFrame.hpp"
 #include "depthai/pipeline/datatype/FeatureTrackerConfig.hpp"
@@ -260,35 +260,35 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
             return parseDatatype<ObjectTrackerConfig>(metadataStart, serializedObjectSize, data, fd);
             break;
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
-        case DatatypeEnum::DynamicCalibrationCommand:
-            return parseDatatype<DynamicCalibrationCommand>(metadataStart, serializedObjectSize, data, fd);
-            break;
+            case DatatypeEnum::DynamicCalibrationCommand:
+                return parseDatatype<DynamicCalibrationCommand>(metadataStart, serializedObjectSize, data, fd);
+                break;
 
-        case DatatypeEnum::DynamicCalibrationConfig:
-            return parseDatatype<DynamicCalibrationConfig>(metadataStart, serializedObjectSize, data, fd);
-            break;
+            case DatatypeEnum::DynamicCalibrationConfig:
+                return parseDatatype<DynamicCalibrationConfig>(metadataStart, serializedObjectSize, data, fd);
+                break;
 
-        case DatatypeEnum::DynamicCalibrationResult:
-            return parseDatatype<DynamicCalibrationResult>(metadataStart, serializedObjectSize, data, fd);
-            break;
+            case DatatypeEnum::DynamicCalibrationResult:
+                return parseDatatype<DynamicCalibrationResult>(metadataStart, serializedObjectSize, data, fd);
+                break;
 
-        case DatatypeEnum::CalibrationQuality:
-            break;
+            case DatatypeEnum::CalibrationQuality:
+                break;
 
-        case DatatypeEnum::CoverageData:
-            return parseDatatype<CoverageData>(metadataStart, serializedObjectSize, data, fd);
-            break;
+            case DatatypeEnum::CoverageData:
+                return parseDatatype<CoverageData>(metadataStart, serializedObjectSize, data, fd);
+                break;
 #else
-        // Explicitly enum these in this switch state:
-        case DatatypeEnum::DynamicCalibrationCommand:
-        case DatatypeEnum::DynamicCalibrationConfig:
-        case DatatypeEnum::DynamicCalibrationResult:
-        case DatatypeEnum::CalibrationQuality:
-        case DatatypeEnum::CoverageData:
-            break;
-#endif // DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
-        default:
-            break;
+            // Explicitly enum these in this switch state:
+            case DatatypeEnum::DynamicCalibrationCommand:
+            case DatatypeEnum::DynamicCalibrationConfig:
+            case DatatypeEnum::DynamicCalibrationResult:
+            case DatatypeEnum::CalibrationQuality:
+            case DatatypeEnum::CoverageData:
+                break;
+#endif  // DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
+            default:
+                break;
         }
     }
 
