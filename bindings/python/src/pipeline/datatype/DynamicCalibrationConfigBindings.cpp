@@ -46,18 +46,21 @@ void bind_dynamic_calibration_config(py::module& m, void* pCallstack) {
     // ----- Concrete commands -----
 
     py::class_<RecalibrateCommand, DynamicCalibrationCommand, std::shared_ptr<RecalibrateCommand>>(m, "RecalibrateCommand")
-        .def(py::init<bool, dcl::PerformanceMode>(), "force"_a = false, "performanceMode"_a = dcl::PerformanceMode::DEFAULT)
+        .def(py::init<bool, dcl::PerformanceMode, bool>(), "force"_a = false, "performanceMode"_a = dcl::PerformanceMode::DEFAULT, "deleteData"_a = true)
         .def_readwrite("performanceMode", &RecalibrateCommand::performanceMode)
-        .def_readwrite("force", &RecalibrateCommand::force);
+        .def_readwrite("force", &RecalibrateCommand::force)
+        .def_readwrite("deleteData", &RecalibrateCommand::deleteData);
 
     py::class_<CalibrationQualityCommand, DynamicCalibrationCommand, std::shared_ptr<CalibrationQualityCommand>>(m, "CalibrationQualityCommand")
-        .def(py::init<bool, dcl::PerformanceMode>(), "force"_a = false, "performanceMode"_a = dcl::PerformanceMode::DEFAULT)
+        .def(py::init<bool, dcl::PerformanceMode, bool>(), "force"_a = false, "performanceMode"_a = dcl::PerformanceMode::DEFAULT, "deleteData"_a = false)
         .def_readwrite("performanceMode", &CalibrationQualityCommand::performanceMode)
-        .def_readwrite("force", &CalibrationQualityCommand::force);
+        .def_readwrite("force", &CalibrationQualityCommand::force)
+        .def_readwrite("deleteData", &CalibrationQualityCommand::deleteData);
 
     py::class_<StartRecalibrationCommand, DynamicCalibrationCommand, std::shared_ptr<StartRecalibrationCommand>>(m, "StartRecalibrationCommand")
-        .def(py::init<dcl::PerformanceMode>(), "performanceMode"_a = dcl::PerformanceMode::DEFAULT)
-        .def_readwrite("performanceMode", &StartRecalibrationCommand::performanceMode);
+        .def(py::init<dcl::PerformanceMode, bool>(), "performanceMode"_a = dcl::PerformanceMode::DEFAULT, "deleteData"_a = true)
+        .def_readwrite("performanceMode", &StartRecalibrationCommand::performanceMode)
+        .def_readwrite("deleteData", &StartRecalibrationCommand::deleteData);
 
     py::class_<StopRecalibrationCommand, DynamicCalibrationCommand, std::shared_ptr<StopRecalibrationCommand>>(m, "StopRecalibrationCommand").def(py::init<>());
 

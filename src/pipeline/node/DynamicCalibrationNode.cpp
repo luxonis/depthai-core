@@ -387,6 +387,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(const std::sha
             "Received RecalibrateCommand: force={} performanceMode={}", recalibrateCommand->force, static_cast<int>(recalibrateCommand->performanceMode));
         recalibrationShouldRun = false;  // stop the recalibration if it is running
         properties.initialConfig.performanceMode = recalibrateCommand->performanceMode;
+        properties.initialConfig.deleteData = recalibrateCommand->deleteData;
         return runCalibration(calibrationHandler, recalibrateCommand->force);
     }
 
@@ -395,12 +396,14 @@ DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(const std::sha
                      calibrationQualityCommand->force,
                      static_cast<int>(calibrationQualityCommand->performanceMode));
         properties.initialConfig.performanceMode = calibrationQualityCommand->performanceMode;
+        properties.initialConfig.deleteData = calibrationQualityCommand->deleteData;
         return runQualityCheck(calibrationQualityCommand->force);
     }
 
     if(auto startCalibrationCommand = std::dynamic_pointer_cast<StartRecalibrationCommand>(command)) {
         logger->info("Received StartRecalibrationCommand: performanceMode={}", static_cast<int>(startCalibrationCommand->performanceMode));
         properties.initialConfig.performanceMode = startCalibrationCommand->performanceMode;
+        properties.initialConfig.deleteData = startCalibrationCommand->deleteData;
         recalibrationShouldRun = true;
         return ErrorCode::OK;
     }
@@ -441,7 +444,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::doWork(std::chrono::steady_clo
     if(calibrationCommand) {
         error = evaluateCommand(calibrationCommand);
     }
-    if(error != ErrorCode::OK) { //test progress so far
+    if(error != ErrorCode::OK) {  // test progress so far
         return error;
     }
     if(!recalibrationShouldRun) {
@@ -464,7 +467,9 @@ DynamicCalibration::ErrorCode DynamicCalibration::doWork(std::chrono::steady_clo
         previousLoadingAndCalibrationTime = std::chrono::steady_clock::now();
         auto error = runCalibration(calibrationHandler);
         if(error == DynamicCalibration::ErrorCode::OK) {
-            dynCalibImpl->removeAllData(sensorA, sensorB);
+            if(properties.initialConfig.deleteData) {
+                dynCalibImpl->removeAllData(sensorA, sensorB);
+            }
             recalibrationShouldRun = false;
         }
     }
