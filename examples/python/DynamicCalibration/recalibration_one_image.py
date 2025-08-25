@@ -42,7 +42,9 @@ command_input.send(dai.RecalibrateCommand(force=True))
 calibration_result = calibration_output.get()
 calibration_data = calibration_result.calibrationData
 if calibration_data:
-    command_input.send(dai.ApplyCalibrationCommand(calibration_data.newCalibration))
+    command_input.send(
+        dai.ApplyCalibrationCommand(calibration_data.newCalibration)
+    )
     print("Succesfully recalibrated")
 else:
     print(calibration_result.info)

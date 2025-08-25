@@ -1,16 +1,8 @@
 import depthai as dai
 import numpy as np
 import time
-import json
-import os
-
-folder = "data/sessionXYZ/"
-number_of_saved_pics = 5
-
-os.makedirs(folder, exist_ok=True)
 
 # ---------- Pipeline definition ----------
-
 
 with dai.Pipeline() as pipeline:
     # Create camera nodes
@@ -40,14 +32,9 @@ with dai.Pipeline() as pipeline:
     initial_config_input = dyn_calib.inputConfig.createInputQueue()
     command_input = dyn_calib.inputControl.createInputQueue()
     
-    # start loading the collecting data
-    
     iteration = 0
     device = pipeline.getDefaultDevice()
     device.setCalibration(device.readCalibration())
-
-    with open(f"{folder}calibration_before.json", "w") as f:
-        json.dump(device.readCalibration().eepromToJson(), f, indent=4)
 
     pipeline.start()
     time.sleep(1) # wait for autoexposure to settle
@@ -63,20 +50,6 @@ with dai.Pipeline() as pipeline:
         calibration_data = calibration_result.calibrationData
         # if the calibration is succesfully returned apply it to the device
         if calibration_data:
-            for i in range(number_of_saved_pics):
-                in_left = left_xout.get()
-                in_right = right_xout.get()
-                np.save(f"{folder}img_left_{i}.npy", in_left.getCvFrame())
-                np.save(f"{folder}img_right_{i}.npy", in_right.getCvFrame())
-                
-            with open(f"{folder}calibration_after.json", "w") as f:
-                json.dump(calibration_data.newCalibration.eepromToJson(), f, indent=4)
             print("Succesfully recalibrated")
             command_input.send(dai.ApplyCalibrationCommand(calibration_data.newCalibration))
             break
-        else:
-            print(calibration_result.info)
-
-
-# pipeline.stop()
-# pipeline.wait()

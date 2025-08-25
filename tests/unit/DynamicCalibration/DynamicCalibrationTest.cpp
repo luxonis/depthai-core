@@ -17,9 +17,6 @@ class MockDynamicCalibration : public dai::node::DynamicCalibration {
 
     constexpr static const char* NAME = "MockDynamicCalibration";
 
-    void run() override {
-        std::cout << "DynamicCalibration::run(), type = " << typeid(*this).name() << "\n";
-    }
 };
 
 // Test case for the add function
@@ -380,7 +377,7 @@ TEST(DynamicCalibration, DoWork) {
 
     auto command = std::make_shared<dai::StartRecalibrationCommand>();
 
-    auto inputCommandQueue = dynCalib->commandInput.createInputQueue();
+    auto inputCommandQueue = dynCalib->inputControl.createInputQueue();
     inputCommandQueue->send(command);
 }
 
@@ -426,7 +423,7 @@ TEST(DynamicCalibration, DoWork_CallsInnerMockDclMethods) {
         //     .WillOnce(testing::Return(coverageResult));
         // // clang-format on
         // auto command = std::make_shared<dai::LoadImageCommand>();
-        // dynCalib->commandInput.send(command);
+        // dynCalib->inputControl.send(command);
         // auto err1 = dynCalib->doWork(previousLoadingTime);
         // EXPECT_EQ(err1, dai::node::DynamicCalibration::ErrorCode::EMPTY_IMAGE_QUEUE);
 
@@ -446,7 +443,7 @@ TEST(DynamicCalibration, DoWork_CallsInnerMockDclMethods) {
         dynCalib->syncInput.send(msgGroup);
 
         auto stopCmd = std::make_shared<dai::LoadImageCommand>();
-        dynCalib->commandInput.send(stopCmd);
+        dynCalib->inputControl.send(stopCmd);
         auto err2 = dynCalib->doWork(previousLoadingTime);
         EXPECT_EQ(err2, dai::node::DynamicCalibration::ErrorCode::OK);
     }
@@ -458,7 +455,7 @@ TEST(DynamicCalibration, DoWork_CallsInnerMockDclMethods) {
 
         auto forceQcCmd = std::make_shared<dai::CalibrationQualityCommand>(true);
         forceQcCmd->force = true;
-        dynCalib->commandInput.send(forceQcCmd);
+        dynCalib->inputControl.send(forceQcCmd);
 
         auto err1 = dynCalib->doWork(previousLoadingTime);
         EXPECT_EQ(err1, dai::node::DynamicCalibration::ErrorCode::OK);
@@ -471,7 +468,7 @@ TEST(DynamicCalibration, DoWork_CallsInnerMockDclMethods) {
 
         auto qcCmd = std::make_shared<dai::CalibrationQualityCommand>(false, dcl::PerformanceMode::OPTIMIZE_PERFORMANCE);
         qcCmd->force = false;
-        dynCalib->commandInput.send(qcCmd);
+        dynCalib->inputControl.send(qcCmd);
 
         auto err1 = dynCalib->doWork(previousLoadingTime);
         EXPECT_EQ(err1, dai::node::DynamicCalibration::ErrorCode::OK);
@@ -513,7 +510,7 @@ TEST(DynamicCalibration, DoWork_CallsInnerMockDclMethods) {
         // clang-format on
 
         auto recalcCmd = std::make_shared<dai::StartRecalibrationCommand>(dcl::PerformanceMode::OPTIMIZE_PERFORMANCE);
-        dynCalib->commandInput.send(recalcCmd);
+        dynCalib->inputControl.send(recalcCmd);
 
         // auto err1 = dynCalib->doWork(previousLoadingTime);
         // EXPECT_EQ(err1, dai::node::DynamicCalibration::ErrorCode::EMPTY_IMAGE_QUEUE);
