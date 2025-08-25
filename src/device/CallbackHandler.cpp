@@ -1,10 +1,11 @@
-#include <cassert>
 #include "depthai/device/CallbackHandler.hpp"
 
+#include <cassert>
+
 // project
+#include "depthai/xlink/XLinkConstants.hpp"
 #include "depthai/xlink/XLinkStream.hpp"
 #include "pipeline/datatype/StreamMessageParser.hpp"
-#include "depthai/xlink/XLinkConstants.hpp"
 namespace dai {
 
 void CallbackHandler::setCallback(std::function<std::shared_ptr<ADatatype>(std::shared_ptr<ADatatype>)> cb) {

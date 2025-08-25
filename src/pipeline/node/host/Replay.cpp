@@ -79,6 +79,8 @@ inline std::shared_ptr<Buffer> getMessage(const std::shared_ptr<google::protobuf
         case DatatypeEnum::AprilTags:
         case DatatypeEnum::Tracklets:
         case DatatypeEnum::StereoDepthConfig:
+        case DatatypeEnum::DynamicCalibrationConfig:
+        case DatatypeEnum::DynamicCalibrationResult:
         case DatatypeEnum::FeatureTrackerConfig:
         case DatatypeEnum::ThermalConfig:
         case DatatypeEnum::ToFConfig:
@@ -144,6 +146,8 @@ inline std::shared_ptr<google::protobuf::Message> getProtoMessage(utility::ByteP
         case DatatypeEnum::AprilTags:
         case DatatypeEnum::Tracklets:
         case DatatypeEnum::StereoDepthConfig:
+        case DatatypeEnum::DynamicCalibrationConfig:
+        case DatatypeEnum::DynamicCalibrationResult:
         case DatatypeEnum::FeatureTrackerConfig:
         case DatatypeEnum::ThermalConfig:
         case DatatypeEnum::ToFConfig:

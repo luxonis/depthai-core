@@ -88,7 +88,7 @@ Node::Output* setupHolistiRecordCamera(
     if(width * height > 9437184U) {
         recordConfig.videoEncoding.enabled = true;
     }
-    return cam->requestOutput({width, height}, dai::ImgFrame::Type::NV12, dai::ImgResizeMode::CROP);
+    return cam->requestOutput(std::make_pair<uint32_t, uint32_t>(width, height), dai::ImgFrame::Type::NV12, dai::ImgResizeMode::CROP);
 }
 
 bool setupHolisticRecord(Pipeline& pipeline,
