@@ -400,6 +400,10 @@ void DeviceBase::close() {
     }
 }
 
+void DeviceBase::closeQuick() {
+    shouldCloseQuickly = true;
+}
+
 unsigned int getCrashdumpTimeout(XLinkProtocol_t protocol) {
     std::chrono::milliseconds protocolTimeout = (protocol == X_LINK_TCP_IP ? device::XLINK_TCP_WATCHDOG_TIMEOUT : device::XLINK_USB_WATCHDOG_TIMEOUT);
     int timeoutMs = utility::getEnvAs<int>("DEPTHAI_CRASHDUMP_TIMEOUT", DEFAULT_CRASHDUMP_TIMEOUT_MS + protocolTimeout.count());
@@ -413,7 +417,7 @@ void DeviceBase::closeImpl() {
     bool shouldGetCrashDump = false;
     // Check if the device is RVC3 - in case it is, crash dump retrieval is done differently
     bool isRvc2 = deviceInfo.platform == X_LINK_MYRIAD_X;
-    if(!dumpOnly && isRvc2) {
+    if(!dumpOnly && isRvc2 && !shouldCloseQuickly) {
         pimpl->logger.debug("Device about to be closed...");
         try {
             if(hasCrashDump()) {
@@ -431,9 +435,8 @@ void DeviceBase::closeImpl() {
             shouldGetCrashDump = true;
         }
     }
-
     bool waitForGate = true;
-    if(!isRvc2) {
+    if(!isRvc2 && !shouldCloseQuickly) {
         // Check if the device is still alive and well, if yes, don't wait for gate, crash dump not relevant
         try {
             waitForGate = !pimpl->rpcClient->call("isRunning").as<bool>();
@@ -442,15 +445,22 @@ void DeviceBase::closeImpl() {
             pimpl->logger.debug("isRunning call error: {}", ex.what());
         }
     }
-
     // Close connection first; causes Xlink internal calls to unblock semaphore waits and
     // return error codes, which then allows queues to unblock
     // always manage ownership because other threads (e.g. watchdog) are running and need to
     // keep the shared_ptr valid (even if closed). Otherwise leads to using null pointers,
     // invalid memory, etc. which hard crashes main app
-    connection->close();
-
-    if(gate && !waitForGate) {
+    try {
+        std::lock_guard<std::mutex> lock(watchdogMtx);
+        if(watchdogRunning) {
+            if(pimpl->rpcClient->call("isRunning").as<bool>()) {
+                connection->close();
+            }
+        }
+    } catch(const std::exception& ex) {
+        pimpl->logger.debug("isRunning call error: {}", ex.what());
+    }
+    if(gate && !waitForGate && !shouldCloseQuickly) {
         gate->destroySession();
     }
     {
@@ -458,14 +468,11 @@ void DeviceBase::closeImpl() {
         watchdogRunning = false;
         watchdogCondVar.notify_all();
     }
-
     if(watchdogThread.joinable()) watchdogThread.join();
-
     // Stop various threads
     timesyncRunning = false;
     loggingRunning = false;
     profilingRunning = false;
-
     // Then stop timesync
     if(timesyncThread.joinable()) timesyncThread.join();
     // And at the end stop logging thread
@@ -474,20 +481,18 @@ void DeviceBase::closeImpl() {
     if(profilingThread.joinable()) profilingThread.join();
     // At the end stop the monitor thread
     if(monitorThread.joinable()) monitorThread.join();
-
     // If the device was operated through gate, wait for the session to end
-    if(gate && waitForGate) {
+    if(gate && waitForGate && !shouldCloseQuickly) {
         auto crashDump = gate->waitForSessionEnd();
         if(crashDump) {
             logCollection::logCrashDump(pipelineSchema, crashDump.value(), deviceInfo);
         }
     }
-
     // Close rpcStream
     pimpl->rpcStream = nullptr;
     pimpl->rpcClient = nullptr;
 
-    if(!dumpOnly) {
+    if(!dumpOnly && !shouldCloseQuickly) {
         auto timeout = getCrashdumpTimeout(deviceInfo.protocol);
         // Get crash dump if needed
         if(shouldGetCrashDump && timeout > 0) {
@@ -498,16 +503,28 @@ void DeviceBase::closeImpl() {
             do {
                 DeviceInfo rebootingDeviceInfo;
                 std::tie(found, rebootingDeviceInfo) = XLinkConnection::getDeviceById(deviceInfo.getDeviceId(), X_LINK_ANY_STATE, false);
+                if(shouldCloseQuickly) {
+                    break;
+                }
                 if(found && (rebootingDeviceInfo.state == X_LINK_UNBOOTED || rebootingDeviceInfo.state == X_LINK_BOOTLOADER)) {
                     pimpl->logger.trace("Found rebooting device in {}ns", duration_cast<nanoseconds>(steady_clock::now() - t1).count());
                     DeviceBase rebootingDevice(config, rebootingDeviceInfo, firmwarePath, true);
+                    if(shouldCloseQuickly) {
+                        break;
+                    }
                     if(rebootingDevice.hasCrashDump()) {
                         auto dump = rebootingDevice.getCrashDump();
+                        if(shouldCloseQuickly) {
+                            break;
+                        }
                         logCollection::logCrashDump(pipelineSchema, dump, deviceInfo);
                     } else {
                         pimpl->logger.warn("Device crashed, but no crash dump could be extracted.");
                     }
                     gotDump = true;
+                    break;
+                }
+                if(shouldCloseQuickly) {
                     break;
                 }
             } while(!found && steady_clock::now() - t1 < std::chrono::milliseconds(timeout));
@@ -517,7 +534,6 @@ void DeviceBase::closeImpl() {
         } else if(shouldGetCrashDump) {
             pimpl->logger.warn("Device crashed. Crash dump retrieval disabled.");
         }
-
         pimpl->logger.debug("Device closed, {}", duration_cast<milliseconds>(steady_clock::now() - t1).count());
     }
 }
@@ -958,6 +974,9 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, Prev
                 // Ping with a period half of that of the watchdog timeout
                 std::unique_lock<std::mutex> lock(watchdogMtx);
                 watchdogCondVar.wait_for(lock, watchdogTimeout, [this]() { return !watchdogRunning; });
+                if(shouldCloseQuickly) {
+                    break;
+                }
                 // Check if wd was pinged in the specified watchdogTimeout time.
                 decltype(lastWatchdogPingTime) prevPingTime;
                 {
@@ -1033,17 +1052,24 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, Prev
             auto reconnected = false;
             for(attempts = 0; attempts < maxReconnectionAttempts; attempts++) {
                 if(reconnectionCallback) reconnectionCallback(ReconnectionStatus::RECONNECTING);
-                if(std::get<0>(getAnyAvailableDevice(reconnectTimeout))) {
-                    init2(prev.cfg, prev.pathToMvcmd, prev.hasPipeline, true);
-                    if(hasCrashDump()) {
-                        auto dump = getCrashDump();
-                        logCollection::logCrashDump(pipelineSchema, dump, deviceInfo);
+
+                auto start_time = std::chrono::steady_clock::now();
+                constexpr std::chrono::milliseconds attemptTimeout = std::chrono::milliseconds(200);
+
+                while(std::chrono::steady_clock::now() - start_time < reconnectTimeout) {
+                    if(std::get<0>(getAnyAvailableDevice(attemptTimeout))) {
+                        init2(prev.cfg, prev.pathToMvcmd, prev.hasPipeline, true);
+                        if(hasCrashDump()) {
+                            auto dump = getCrashDump();
+                            logCollection::logCrashDump(pipelineSchema, dump, deviceInfo);
+                        }
+                        auto shared = pipelinePtr.lock();
+                        if(!shared) throw std::runtime_error("Pipeline was destroyed");
+                        shared->resetConnections();
+                        reconnected = true;
+                        break;
                     }
-                    auto shared = pipelinePtr.lock();
-                    if(!shared) throw std::runtime_error("Pipeline was destroyed");
-                    shared->resetConnections();
-                    reconnected = true;
-                    break;
+                    if(shouldCloseQuickly) return;
                 }
                 pimpl->logger.warn("Reconnection unsuccessful, trying again. Attempts left: {}\n", maxReconnectionAttempts - attempts - 1);
             }
