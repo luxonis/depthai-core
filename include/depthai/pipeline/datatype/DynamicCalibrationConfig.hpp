@@ -45,6 +45,14 @@ struct DynamicCalibrationConfig : public Buffer {
     float calibrationPeriod = 5;
 
     /**
+     * If true, any loaded calibration data and image data will be deleted when starting a new recalibration.
+     * This ensures that the new calibration is based solely on fresh data, which can be important
+     * for accuracy in dynamic environments. However, it also means that any previously accumulated
+     * data will be lost, which could be a drawback if that data was still relevant.
+     */
+    bool deleteData = true;
+
+    /**
      * Performance modes for dynamic calibration.
      *
      * - DEFAULT (0):
@@ -75,7 +83,7 @@ struct DynamicCalibrationConfig : public Buffer {
 
     PerformanceMode performanceMode = PerformanceMode::DEFAULT;
 
-    DEPTHAI_SERIALIZE_EXT(DynamicCalibrationConfig, recalibrationMode, performanceMode, loadImagePeriod, calibrationPeriod);
+    DEPTHAI_SERIALIZE_EXT(DynamicCalibrationConfig, recalibrationMode, performanceMode, loadImagePeriod, calibrationPeriod, deleteData);
 };
 
 /**
@@ -101,9 +109,11 @@ struct DynamicCalibrationCommand : public Buffer {
  * and specify the performance mode to be used.
  */
 struct RecalibrateCommand : public DynamicCalibrationCommand {
-    RecalibrateCommand(bool force = false, DynamicCalibrationConfig::PerformanceMode performanceMode = DynamicCalibrationConfig::PerformanceMode::DEFAULT)
+    RecalibrateCommand(bool force = false,
+                       DynamicCalibrationConfig::PerformanceMode performanceMode = DynamicCalibrationConfig::PerformanceMode::DEFAULT,
+                       bool deleteData = true)
         // init in the same order as declared below
-        : performanceMode(performanceMode), force(force) {}
+        : performanceMode(performanceMode), force(force), deleteData(deleteData) {}
 
     /// Performance mode in which recalibration will run
     DynamicCalibrationConfig::PerformanceMode performanceMode = DynamicCalibrationConfig::PerformanceMode::DEFAULT;
@@ -113,6 +123,10 @@ struct RecalibrateCommand : public DynamicCalibrationCommand {
      * potentially unstable results. Use with caution.
      */
     bool force = false;
+    /**
+     * If true, any loaded calibration data will be deleted after performing the recalibration.
+     */
+    bool deleteData = true;
 };
 
 /**
@@ -121,9 +135,10 @@ struct RecalibrateCommand : public DynamicCalibrationCommand {
  */
 struct CalibrationQualityCommand : public DynamicCalibrationCommand {
     CalibrationQualityCommand(bool force = false,
-                              DynamicCalibrationConfig::PerformanceMode performanceMode = DynamicCalibrationConfig::PerformanceMode::DEFAULT)
+                              DynamicCalibrationConfig::PerformanceMode performanceMode = DynamicCalibrationConfig::PerformanceMode::DEFAULT,
+                              bool deleteData = false)
         // match declaration order
-        : performanceMode(performanceMode), force(force) {}
+        : performanceMode(performanceMode), force(force), deleteData(deleteData) {}
     /**
      * If true, bypasses all internal validation checks and triggers calibration quality check immediately.
      * This can speed up capture process, but comes at the cost of reduced accuracy and
@@ -131,6 +146,10 @@ struct CalibrationQualityCommand : public DynamicCalibrationCommand {
      */
     DynamicCalibrationConfig::PerformanceMode performanceMode = DynamicCalibrationConfig::PerformanceMode::DEFAULT;
     bool force = false;
+    /**
+     *  If true, any loaded calibration data will be deleted after performing the quality check.
+     */
+    bool deleteData = false;
 };
 
 /**
@@ -138,10 +157,15 @@ struct CalibrationQualityCommand : public DynamicCalibrationCommand {
  * The recalibration will be run in the specified performance mode until stopped.
  */
 struct StartRecalibrationCommand : public DynamicCalibrationCommand {
-    explicit StartRecalibrationCommand(DynamicCalibrationConfig::PerformanceMode performanceMode = DynamicCalibrationConfig::PerformanceMode::DEFAULT)
-        : performanceMode(performanceMode) {}
+    explicit StartRecalibrationCommand(DynamicCalibrationConfig::PerformanceMode performanceMode = DynamicCalibrationConfig::PerformanceMode::DEFAULT,
+                                       bool deleteData = true)
+        : performanceMode(performanceMode), deleteData(deleteData) {}
 
     DynamicCalibrationConfig::PerformanceMode performanceMode = DynamicCalibrationConfig::PerformanceMode::DEFAULT;
+    /**
+     * If true, any loaded calibration data will be deleted after performing the recalibration.
+     */
+    bool deleteData = true;
 };
 
 /**
