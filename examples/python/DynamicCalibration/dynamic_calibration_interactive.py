@@ -72,17 +72,17 @@ text = ""
 state = ""
 print(f"<<< -----------------------------|Introduction|------------------------------->>>")
 print("Key commands:")
-print("[c] → Calibration quality check")
-print("[r] → Recalibrate")
-print("[a] → Force calibration check")
-print("[d] → Force recalibrate")
+print("[c] -> Calibration quality check")
+print("[r] -> Recalibrate")
+print("[a] -> Force calibration check")
+print("[d] -> Force recalibrate")
 print("[l] Load image")
-print("[n] → Apply new calibration")
-print("[o] → Apply old calibration")
-print("[s] → Flash new calibration")
-print("[k] → Flash old calibration")
-print("[x] → Save current frames.")
-print("[q] → Quit")
+print("[n] -> Apply new calibration")
+print("[o] -> Apply old calibration")
+print("[s] -> Flash new calibration")
+print("[k] -> Flash old calibration")
+print("[x] -> Save current frames.")
+print("[q] -> Quit")
 print("<<< -----------------------------|Start the pipeline!|------------------------->>>")
 cv2.namedWindow("MasterFrame", cv2.WINDOW_NORMAL)
 cv2.resizeWindow("MasterFrame", 1920, 1200)
@@ -178,7 +178,7 @@ with pipeline:
             local_x = scaled_mouse_x # disp_vis x offset
             local_y = scaled_mouse_y - 400  # disp_vis y offset
             if 0 <= local_x < depth_frame.shape[1] and 0 <= local_y < depth_frame.shape[0]:
-                depth_val = depth_frame[int(local_y * 2), int(local_x * 2)] / 1000.0  # mm → meters
+                depth_val = depth_frame[int(local_y * 2), int(local_x * 2)] / 1000.0  # mm -> meters
                 display_text = f"Depth: {depth_val:.2f}m"
                 text_pos = (scaled_mouse_x + 10, scaled_mouse_y + 10)
 
