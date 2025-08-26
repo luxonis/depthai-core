@@ -142,7 +142,7 @@ jobs:
         cmake-version: '3.29.x'
 
     - name: Configure ${{ matrix.build-type }}, shared ${{ matrix.shared }}, ${{ matrix.platform }}
-      run: cmake -S . -B build -D BUILD_SHARED_LIBS=${{ matrix.shared}} -D CMAKE_BUILD_TYPE=${{ matrix.build-type }} -D CMAKE_INSTALL_PREFIX=$GITHUB_WORKSPACE/depthai_install ${{ env.CMAKE_ARGS }}
+      run: cmake -S . -B build -D DEPTHAI_ENABLE_REMOTE_CONNECTION=OFF -D BUILD_SHARED_LIBS=${{ matrix.shared}} -D CMAKE_BUILD_TYPE=${{ matrix.build-type }} -D CMAKE_INSTALL_PREFIX=$GITHUB_WORKSPACE/depthai_install ${{ env.CMAKE_ARGS }}
 
     - name: Set path to shared library dll (Windows)
       if: matrix.os == 'windows-latest'
