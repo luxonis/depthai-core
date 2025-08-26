@@ -66,8 +66,8 @@ TEST_CASE("DynamicCalibration reaches a result and applies only when ready") {
     // Queues (shared_ptrs)
     auto calibration_output = dynCalib->calibrationOutput.createOutputQueue();
     auto coverage_output = dynCalib->coverageOutput.createOutputQueue();
-    auto config_input = dynCalib->configInput.createInputQueue();
-    auto command_input = dynCalib->commandInput.createInputQueue();
+    auto config_input = dynCalib->inputConfig.createInputQueue();
+    auto command_input = dynCalib->inputControl.createInputQueue();
 
     auto left_xout = stereo->syncedLeft.createOutputQueue();
     auto right_xout = stereo->syncedRight.createOutputQueue();
@@ -152,7 +152,7 @@ TEST_CASE("DynamicCalibration: empty-data requests yield no calibration/quality 
     // Queues
     auto calibration_output = dynCalib->calibrationOutput.createOutputQueue();
     auto quality_output = dynCalib->qualityOutput.createOutputQueue();
-    auto command_input = dynCalib->commandInput.createInputQueue();
+    auto command_input = dynCalib->inputControl.createInputQueue();
 
     auto left_xout = stereo->syncedLeft.createOutputQueue();
     auto right_xout = stereo->syncedRight.createOutputQueue();
@@ -245,7 +245,7 @@ TEST_CASE("DynamicCalibration: StopRecalibration halts further results") {
     // Queues
     auto calibration_output = dynCalib->calibrationOutput.createOutputQueue();
     auto coverage_output = dynCalib->coverageOutput.createOutputQueue();
-    auto command_input = dynCalib->commandInput.createInputQueue();
+    auto command_input = dynCalib->inputControl.createInputQueue();
 
     // (Optional) sanity streams
     auto left_xout = stereo->syncedLeft.createOutputQueue();
