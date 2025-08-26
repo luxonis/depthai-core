@@ -204,12 +204,6 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
 
     ErrorCode initializePipeline(const std::shared_ptr<dai::Device> daiDevice);
 
-    // clang-format off
-    ErrorCode doWorkContinuous(
-        std::chrono::steady_clock::time_point& previousCalibrationTime,
-	std::chrono::steady_clock::time_point& previousLoadingTime);
-    // clang-format on
-
     ErrorCode doWork(std::chrono::steady_clock::time_point& previousLoadingAndCalibrationTime);
 
     ErrorCode evaluateCommand(const std::shared_ptr<DynamicCalibrationCommand> command);

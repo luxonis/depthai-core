@@ -462,38 +462,6 @@ DynamicCalibration::ErrorCode DynamicCalibration::doWork(std::chrono::steady_clo
     return error;
 }
 
-// clang-format off
-DynamicCalibration::ErrorCode DynamicCalibration::doWorkContinuous(
-    std::chrono::steady_clock::time_point& previousCalibrationTime,
-    std::chrono::steady_clock::time_point& previousLoadingTime)
-{
-    // Prioritize running calibration over loading images to prevent a state when
-    // always loading images and never get into calibration.
-
-    // Rate limit of the calibration
-    auto now = std::chrono::steady_clock::now();
-    std::chrono::duration<float> elapsedCalibration = now - previousCalibrationTime;
-    if(elapsedCalibration.count() > properties.initialConfig.calibrationPeriod) {
-        logger->info("doWorkContinuous() called. ElapsedCalibration={}s", 
-             elapsedCalibration.count());
-        auto calibrationError = runCalibration(calibrationHandler);
-    	previousCalibrationTime = std::chrono::steady_clock::now();
-    	return calibrationError;
-    }
-
-    std::chrono::duration<float> elapsedLoading = now - previousLoadingTime;
-    if (elapsedLoading.count() > properties.initialConfig.loadImagePeriod) {
-        logger->info("doWorkContinuous() called. ElapsedLoading={}s", 
-             elapsedLoading.count());
-        auto loadImageError = runLoadImage(true);
-        // do we want to return the coverage in the continuous mode? -> computeCoverage();
-        previousLoadingTime = std::chrono::steady_clock::now();
-        return loadImageError;
-    }
-    return ErrorCode::OK;
-}
-// clang-format on
-
 void DynamicCalibration::run() {
     logger = pimpl->logger;
     if(!device) {
@@ -501,32 +469,17 @@ void DynamicCalibration::run() {
         return;
     }
 
-    logger->info("DynamicCalibration node started in {} mode",
-                 (properties.initialConfig.recalibrationMode == dai::DynamicCalibrationConfig::RecalibrationMode::CONTINUOUS) ? "CONTINUOUS" : "ON-DEMAND");
+    logger->info("DynamicCalibration node started ");
 
     auto previousLoadingTimeFloat = std::chrono::steady_clock::now() + std::chrono::duration<float>(properties.initialConfig.calibrationPeriod);
     auto previousLoadingTime = std::chrono::time_point_cast<std::chrono::steady_clock::duration>(previousLoadingTimeFloat);
     initializePipeline(device);
-    if(!(properties.initialConfig.recalibrationMode == dai::DynamicCalibrationConfig::RecalibrationMode::CONTINUOUS)) {
-        // non-Continuous mode
-        while(isRunning()) {
-            slept = false;
-            doWork(previousLoadingTime);
-            if(!slept) {
-                // sleep to prevent 100% CPU utilization
-                std::this_thread::sleep_for(sleepingTime);
-            }
-        }
-    } else {
-        // Continuous mode
-        auto previousCalibrationTime = std::chrono::steady_clock::now();
-        while(isRunning()) {
-            slept = false;
-            doWorkContinuous(previousCalibrationTime, previousLoadingTime);
-            if(!slept) {
-                // sleep to prevent 100% CPU utilization
-                std::this_thread::sleep_for(sleepingTime);
-            }
+    while(isRunning()) {
+        slept = false;
+        doWork(previousLoadingTime);
+        if(!slept) {
+            // sleep to prevent 100% CPU utilization
+            std::this_thread::sleep_for(sleepingTime);
         }
     }
 }

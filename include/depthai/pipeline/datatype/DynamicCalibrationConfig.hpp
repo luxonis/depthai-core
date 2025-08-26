@@ -18,29 +18,7 @@ namespace dai {
 struct DynamicCalibrationConfig : public Buffer {
     DynamicCalibrationConfig() = default;
     virtual ~DynamicCalibrationConfig() = default;
-    /**
-     * Recalibration operating mode.
-     *
-     * - DEFAULT:
-     *   In this mode, recalibration, calibration quality check, and applying the
-     *   resulting calibration require explicit user interaction with the pipeline.
-     *   The system will not automatically proceed through these steps — the user
-     *   must issue commands (e.g., RecalibrateCommand, CalibrationQualityCommand,
-     *   ApplyCalibrationCommand) at the appropriate times.
-     *
-     * - CONTINUOUS:
-     *   In this mode, the system automatically handles the full recalibration cycle
-     *   without user intervention. Image loading, recalibration, quality checking,
-     *   and applying calibration are performed internally in a loop, ensuring the
-     *   calibration is kept up to date in real time.
-     */
-    enum class RecalibrationMode : int32_t { DEFAULT, CONTINUOUS };
 
-    RecalibrationMode recalibrationMode = RecalibrationMode::DEFAULT;
-
-    /**
-     * Set the time frequency of recalibration being triggered in Continious mode
-     */
     float loadImagePeriod = 0.5;
     float calibrationPeriod = 5;
 
@@ -75,7 +53,7 @@ struct DynamicCalibrationConfig : public Buffer {
 
     PerformanceMode performanceMode = PerformanceMode::DEFAULT;
 
-    DEPTHAI_SERIALIZE_EXT(DynamicCalibrationConfig, recalibrationMode, performanceMode, loadImagePeriod, calibrationPeriod);
+    DEPTHAI_SERIALIZE_EXT(DynamicCalibrationConfig, performanceMode, loadImagePeriod, calibrationPeriod);
 };
 
 /**
