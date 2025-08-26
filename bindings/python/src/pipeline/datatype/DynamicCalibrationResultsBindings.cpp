@@ -1,6 +1,7 @@
+#include <pybind11/stl.h>
+
 #include <memory>
 #include <unordered_map>
-#include <pybind11/stl.h>
 
 #include "DatatypeBindings.hpp"
 #include "pipeline/CommonBindings.hpp"
@@ -11,7 +12,7 @@
 
 void bind_dynamic_calibration_results(pybind11::module& m, void* pCallstack) {
     using namespace dai;
-    
+
     using namespace pybind11::literals;
     namespace py = pybind11;
 
@@ -30,7 +31,7 @@ void bind_dynamic_calibration_results(pybind11::module& m, void* pCallstack) {
         .def_readwrite("rotationChange", &CalibrationQuality::Data::rotationChange)              // std::array<float,3>
         .def_readwrite("depthErrorDifference", &CalibrationQuality::Data::depthErrorDifference)  // std::vector<float>
         .def_readwrite("sampsonErrorCurrent", &CalibrationQuality::Data::sampsonErrorCurrent)
-        .def_readwrite("sampsonErrorNew", &CalibrationQuality::Data::sampsonErrorAchievable);
+        .def_readwrite("sampsonErrorNew", &CalibrationQuality::Data::sampsonErrorNew);
 
     // CalibrationQuality
     py::class_<CalibrationQuality, Buffer, std::shared_ptr<CalibrationQuality>>(m, "CalibrationQuality")

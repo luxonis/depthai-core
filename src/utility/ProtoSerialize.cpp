@@ -6,6 +6,9 @@
 
 #include <queue>
 
+#ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
+    #include "depthai/schemas/DynamicCalibration.pb.h"
+#endif  // DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
 #include "depthai/schemas/PointCloudData.pb.h"
 
 namespace dai {
@@ -123,7 +126,17 @@ DatatypeEnum schemaNameToDatatype(const std::string& schemaName) {
         return DatatypeEnum::PointCloudData;
     } else if(schemaName == proto::spatial_img_detections::SpatialImgDetections::descriptor()->full_name()) {
         return DatatypeEnum::SpatialImgDetections;
-    } else {
+    }
+#ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
+    else if(schemaName == proto::dynamic_calibration::CoverageData::descriptor()->full_name()) {
+        return DatatypeEnum::CoverageData;
+    } else if(schemaName == proto::dynamic_calibration::CalibrationQuality::descriptor()->full_name()) {
+        return DatatypeEnum::CalibrationQuality;
+    } else if(schemaName == proto::dynamic_calibration::DynamicCalibrationResult::descriptor()->full_name()) {
+        return DatatypeEnum::DynamicCalibrationResult;
+    }
+#endif  // DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
+    else {
         throw std::runtime_error("Unknown schema name: " + schemaName);
     }
 }
@@ -134,6 +147,11 @@ bool deserializationSupported(DatatypeEnum datatype) {
         case DatatypeEnum::EncodedFrame:
         case DatatypeEnum::IMUData:
         case DatatypeEnum::PointCloudData:
+#ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
+        case DatatypeEnum::CoverageData:
+        case DatatypeEnum::CalibrationQuality:
+        case DatatypeEnum::DynamicCalibrationResult:
+#endif  // DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
             return true;
         case DatatypeEnum::ADatatype:
         case DatatypeEnum::Buffer:
@@ -150,7 +168,6 @@ bool deserializationSupported(DatatypeEnum datatype) {
         case DatatypeEnum::AprilTagConfig:
         case DatatypeEnum::AprilTags:
         case DatatypeEnum::Tracklets:
-        case DatatypeEnum::DynamicCalibrationConfig:
         case DatatypeEnum::StereoDepthConfig:
         case DatatypeEnum::FeatureTrackerConfig:
         case DatatypeEnum::ThermalConfig:
@@ -166,10 +183,96 @@ bool deserializationSupported(DatatypeEnum datatype) {
         case DatatypeEnum::ToFDepthConfidenceFilterConfig:
         case DatatypeEnum::RGBDData:
         case DatatypeEnum::ObjectTrackerConfig:
+#ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
+        case DatatypeEnum::DynamicCalibrationConfig:
+        case DatatypeEnum::DynamicCalibrationCommand:
+#endif
             return false;
     }
     return false;
 }
+
+#ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
+namespace {
+inline void toProto2D(const std::vector<std::vector<float>>& m, proto::dynamic_calibration::Float2D* out) {
+    out->clear_rows();
+    out->mutable_rows()->Reserve(static_cast<int>(m.size()));
+    for(const auto& row : m) {
+        auto* r = out->add_rows();
+        r->mutable_values()->Reserve(static_cast<int>(row.size()));
+        for(float v : row) r->add_values(v);
+    }
+}
+
+inline std::vector<std::vector<float>> fromProto2D(const proto::dynamic_calibration::Float2D& m) {
+    std::vector<std::vector<float>> out;
+    out.reserve(m.rows_size());
+    for(const auto& r : m.rows()) {
+        std::vector<float> row;
+        row.reserve(r.values_size());
+        for(float v : r.values()) row.push_back(v);
+        out.push_back(std::move(row));
+    }
+    return out;
+}
+}  // namespace
+
+template <>
+std::unique_ptr<google::protobuf::Message> getProtoMessage(const CoverageData* message, bool /*metadataOnly*/) {
+    namespace dc = ::dai::proto::dynamic_calibration;
+    auto p = std::make_unique<dc::CoverageData>();
+    toProto2D(message->coveragePerCellA, p->mutable_coveragepercella());
+    toProto2D(message->coveragePerCellB, p->mutable_coveragepercellb());
+    p->set_meancoverage(message->meanCoverage);
+    p->set_coverageacquired(message->coverageAcquired);
+    p->set_dataacquired(message->dataAcquired);
+    return p;
+}
+
+template <>
+std::unique_ptr<google::protobuf::Message> getProtoMessage(const CalibrationQuality* message, bool /*metadataOnly*/) {
+    namespace dc = ::dai::proto::dynamic_calibration;
+    auto p = std::make_unique<dc::CalibrationQuality>();
+    if(message->data.has_value()) {
+        auto* d = p->mutable_data();
+        d->clear_rotationchange();
+        for(float v : message->data->rotationChange) d->add_rotationchange(v);
+        d->clear_deptherrordifference();
+        for(float v : message->data->depthErrorDifference) d->add_deptherrordifference(v);
+        d->set_sampsonerrorcurrent(message->data->sampsonErrorCurrent);
+        d->set_sampsonerrornew(message->data->sampsonErrorNew);
+    }
+    p->set_info(message->info);
+    return p;
+}
+
+template <>
+std::unique_ptr<google::protobuf::Message> getProtoMessage(const DynamicCalibrationResult* message, bool /*metadataOnly*/) {
+    namespace dc = ::dai::proto::dynamic_calibration;
+    auto p = std::make_unique<dc::DynamicCalibrationResult>();
+
+    // Only serialize info for now (safe & forward-compatible).
+    // If you later decide on a blob format for CalibrationHandler,
+    // fill p->mutable_calibrationdata()->mutable_newcalibration() / currentcalibration()
+    // and p->mutable_calibrationdata()->mutable_calibrationdifference().
+    if(message->calibrationData.has_value()) {
+        auto* cd = p->mutable_calibrationdata();
+        auto* diff = cd->mutable_calibrationdifference();
+        diff->clear_rotationchange();
+        for(float v : message->calibrationData->calibrationDifference.rotationChange) diff->add_rotationchange(v);
+        diff->clear_deptherrordifference();
+        for(float v : message->calibrationData->calibrationDifference.depthErrorDifference) diff->add_deptherrordifference(v);
+        diff->set_sampsonerrorcurrent(message->calibrationData->calibrationDifference.sampsonErrorCurrent);
+        diff->set_sampsonerrornew(message->calibrationData->calibrationDifference.sampsonErrorNew);
+
+        // NOTE: newCalibration/currentCalibration are intentionally omitted here
+        // until a stable blob format is chosen (JSON/bin/etc).
+    }
+
+    p->set_info(message->info);
+    return p;
+}
+#endif  // DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
 
 template <>
 std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgAnnotations* message, bool) {
@@ -540,6 +643,75 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const PointCloudData*
 // template <>
 // void setProtoMessage(ImgDetections* obj, std::shared_ptr<google::protobuf::Message> msg, bool) {
 // }
+
+#ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
+template <>
+void setProtoMessage(CoverageData& obj, const google::protobuf::Message* base, bool /*metadataOnly*/) {
+    namespace dc = ::dai::proto::dynamic_calibration;
+    auto p = dynamic_cast<const dc::CoverageData*>(base);
+    if(!p) throw std::runtime_error("CoverageData: wrong protobuf type");
+
+    obj.coveragePerCellA = fromProto2D(p->coveragepercella());
+    obj.coveragePerCellB = fromProto2D(p->coveragepercellb());
+    obj.meanCoverage = p->meancoverage();
+    obj.coverageAcquired = p->coverageacquired();
+    obj.dataAcquired = p->dataacquired();
+}
+
+template <>
+void setProtoMessage(CalibrationQuality& obj, const google::protobuf::Message* base, bool /*metadataOnly*/) {
+    namespace dc = ::dai::proto::dynamic_calibration;
+    auto p = dynamic_cast<const dc::CalibrationQuality*>(base);
+    if(!p) throw std::runtime_error("CalibrationQuality: wrong protobuf type");
+
+    obj.info = p->info();
+    if(p->has_data()) {
+        CalibrationQuality::Data d{};
+        if(p->data().rotationchange_size() == 3) {
+            d.rotationChange[0] = p->data().rotationchange(0);
+            d.rotationChange[1] = p->data().rotationchange(1);
+            d.rotationChange[2] = p->data().rotationchange(2);
+        } else {
+            d.rotationChange = {0.f, 0.f, 0.f};
+        }
+        d.depthErrorDifference.assign(p->data().deptherrordifference().begin(), p->data().deptherrordifference().end());
+        d.sampsonErrorCurrent = p->data().sampsonerrorcurrent();
+        d.sampsonErrorNew = p->data().sampsonerrornew();
+        obj.data = d;
+    } else {
+        obj.data.reset();
+    }
+}
+
+template <>
+void setProtoMessage(DynamicCalibrationResult& obj, const google::protobuf::Message* base, bool /*metadataOnly*/) {
+    namespace dc = ::dai::proto::dynamic_calibration;
+    auto p = dynamic_cast<const dc::DynamicCalibrationResult*>(base);
+    if(!p) throw std::runtime_error("DynamicCalibrationResult: wrong protobuf type");
+
+    obj.info = p->info();
+
+    if(p->has_calibrationdata()) {
+        DynamicCalibrationResult::Data d{};
+        // Only fill calibrationDifference (safe, no handler blob needed)
+        const auto& q = p->calibrationdata().calibrationdifference();
+        if(q.rotationchange_size() == 3) {
+            d.calibrationDifference.rotationChange[0] = q.rotationchange(0);
+            d.calibrationDifference.rotationChange[1] = q.rotationchange(1);
+            d.calibrationDifference.rotationChange[2] = q.rotationchange(2);
+        }
+        d.calibrationDifference.depthErrorDifference.assign(q.deptherrordifference().begin(), q.deptherrordifference().end());
+        d.calibrationDifference.sampsonErrorCurrent = q.sampsonerrorcurrent();
+        d.calibrationDifference.sampsonErrorNew = q.sampsonerrornew();
+
+        // Leave newCalibration/currentCalibration default-constructed until you define blob decode.
+        obj.calibrationData = d;
+    } else {
+        obj.calibrationData.reset();
+    }
+}
+#endif  // DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
+
 template <>
 void setProtoMessage(IMUData& obj, const google::protobuf::Message* msg, bool) {
     auto imuData = dynamic_cast<const proto::imu_data::IMUData*>(msg);

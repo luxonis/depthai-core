@@ -72,9 +72,6 @@ set(DEPTHAI_PRE_RELEASE_VERSION "4")
 # Set DEPTHAI_VERSION universally, not conditionally
 set(DEPTHAI_VERSION ${PROJECT_VERSION}-${DEPTHAI_PRE_RELEASE_TYPE}.${DEPTHAI_PRE_RELEASE_VERSION})
 
-message(STATUS "Dynamic Calibration support enabled by default for x64 Linux")
-option(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT "Enable Dynamic Calibration support" ON)
-
 get_directory_property(has_parent PARENT_DIRECTORY)
 if(has_parent)
     set(DEPTHAI_VERSION ${DEPTHAI_VERSION} PARENT_SCOPE)  # Set in parent scope if there's a parent
@@ -372,7 +369,7 @@ endif()
 
 if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
     list(APPEND TARGET_CORE_SOURCES
-        src/pipeline/node/DynamicCalibration.cpp
+        src/pipeline/node/DynamicCalibrationNode.cpp
     )
 endif()
 
@@ -514,8 +511,8 @@ endif()
 
 if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
     # Link the dynamic calibration target
-    target_link_libraries(${TARGET_CORE_NAME} PUBLIC dynamic_calibration_imported) # Should be PRIVATE
-    target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT) # Should be PRIVATE
+    target_link_libraries(${TARGET_CORE_NAME} PRIVATE dynamic_calibration_imported)
+    target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT)
 endif()
 
 # Set constant

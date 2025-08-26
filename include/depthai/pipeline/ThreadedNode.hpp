@@ -40,10 +40,7 @@ class ThreadedNode : public Node {
     void stop() override;
 
     // virtual 'run' method
-    // virtual void run() = 0;
-    virtual void run() {
-        std::cout << "ThreadedNode::run(), type = " << typeid(*this).name() << "\n";
-    }
+    virtual void run() = 0;
 
     // check if still running
     bool isRunning() const;

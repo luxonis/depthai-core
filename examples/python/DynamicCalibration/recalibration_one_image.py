@@ -26,8 +26,8 @@ right_out.link(dyn_calib.right)
 calibration_output = dyn_calib.calibrationOutput.createOutputQueue()
 coverage_output = dyn_calib.coverageOutput.createOutputQueue()
 
-initial_config_input = dyn_calib.configInput.createInputQueue()
-command_input = dyn_calib.commandInput.createInputQueue()
+initial_config_input = dyn_calib.inputConfig.createInputQueue()
+command_input = dyn_calib.inputControl.createInputQueue()
 
 device = pipeline.getDefaultDevice()
 device.setCalibration(device.readCalibration())
@@ -42,7 +42,9 @@ command_input.send(dai.RecalibrateCommand(force=True))
 calibration_result = calibration_output.get()
 calibration_data = calibration_result.calibrationData
 if calibration_data:
-    command_input.send(dai.ApplyCalibrationCommand(calibration_data.newCalibration))
+    command_input.send(
+        dai.ApplyCalibrationCommand(calibration_data.newCalibration)
+    )
     print("Succesfully recalibrated")
 else:
     print(calibration_result.info)

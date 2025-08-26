@@ -4,9 +4,10 @@
 #include <depthai/common/ProcessorType.hpp>
 #include <depthai/common/optional.hpp>
 #include <depthai/pipeline/DeviceNode.hpp>
-#include "depthai/pipeline/datatype/Buffer.hpp"
 #include <unordered_map>
 #include <vector>
+
+#include "depthai/pipeline/datatype/Buffer.hpp"
 
 namespace dai {
 
@@ -46,26 +47,26 @@ struct DynamicCalibrationConfig : public Buffer {
     /**
      * Performance modes for dynamic calibration.
      *
-     * - DEFAULT (0):  
+     * - DEFAULT (0):
      *   Balanced mode. Uses standard calibration checks and parameters,
      *   suitable for most general use cases.
      *
-     * - STATIC_SCENERY (1):  
+     * - STATIC_SCENERY (1):
      *   Optimized for scenarios where the environment and camera remain
      *   fixed (e.g., factory setups, static rigs). Enables stricter checks
      *   to ensure calibration stability over time.
      *
-     * - OPTIMIZE_SPEED (2):  
+     * - OPTIMIZE_SPEED (2):
      *   Prioritizes calibration speed over accuracy. Suitable when quick
      *   recalibration is needed, or when calibration must run frequently
      *   with limited compute resources.
      *
-     * - OPTIMIZE_PERFORMANCE (3):  
+     * - OPTIMIZE_PERFORMANCE (3):
      *   Prioritizes calibration accuracy and robustness, even at the cost
      *   of additional compute time. Suitable for high-precision use cases
      *   where depth quality is critical.
      *
-     * - SKIP_CHECKS (4):  
+     * - SKIP_CHECKS (4):
      *   Skips validation and quality checks entirely. Intended for advanced
      *   use cases, debugging, or when external systems handle quality
      *   assurance. Use with caution.
@@ -93,7 +94,6 @@ struct DynamicCalibrationCommand : public Buffer {
 
     // DEPTHAI_SERIALIZE_EXT(DynamicCalibrationCommand)
 };
-
 
 /**
  * Command to trigger a recalibration step.
@@ -164,7 +164,7 @@ struct ApplyCalibrationCommand : public DynamicCalibrationCommand {
      * Construct with a specific calibration to be applied.
      */
     explicit ApplyCalibrationCommand(const CalibrationHandler& calibration) : calibration(calibration) {}
-    
+
     CalibrationHandler calibration;
 };
 

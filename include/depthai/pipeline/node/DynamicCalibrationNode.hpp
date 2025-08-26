@@ -8,13 +8,16 @@
 
 #include "depthai/pipeline/datatype/DynamicCalibrationConfig.hpp"
 #include "depthai/pipeline/datatype/DynamicCalibrationResults.hpp"
+namespace spdlog {
+class async_logger;
+}
 namespace dai {
 namespace node {
 
 struct DclUtils {
     static void convertDclCalibrationToDai(CalibrationHandler& calibHandler,
-                                           const std::shared_ptr<const dcl::CameraCalibrationHandle> daiCalibrationA,
-                                           const std::shared_ptr<const dcl::CameraCalibrationHandle> daiCalibrationB,
+                                           const std::shared_ptr<const dcl::CameraCalibrationHandle> dclCalibrationA,
+                                           const std::shared_ptr<const dcl::CameraCalibrationHandle> dclCalibrationB,
                                            const CameraBoardSocket socketSrc,
                                            const CameraBoardSocket socketDest,
                                            const int width,
@@ -81,10 +84,10 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     /**
      * Input DynamicCalibrationConfig message with ability to modify parameters in runtime.
      */
-    Input commandInput{
+    Input inputControl{
         *this,
         {
-	  "inputConfig",
+	  "inputControl",
 	  DEFAULT_GROUP,
 	  NON_BLOCKING_QUEUE,
 	  1,  // Queue_size -> only one command at the time
@@ -93,7 +96,7 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
 	}
     };
 
-    Input configInput{*this, {"inputConfig", DEFAULT_GROUP, DEFAULT_BLOCKING, 1, {{{DatatypeEnum::DynamicCalibrationConfig, true}}}, false}};
+    Input inputConfig{*this, {"inputConfig", DEFAULT_GROUP, DEFAULT_BLOCKING, 1, {{{DatatypeEnum::DynamicCalibrationConfig, true}}}, false}};
 
     /**
      * Output calibration quality result
@@ -167,7 +170,6 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
      */
     bool runOnHost() const override;
 
-    
     int getWidth() const {
         return width;
     }
@@ -208,7 +210,7 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
 	std::chrono::steady_clock::time_point& previousLoadingTime);
     // clang-format on
 
-    ErrorCode doWork(std::chrono::steady_clock::time_point& previousLoadingTime);
+    ErrorCode doWork(std::chrono::steady_clock::time_point& previousLoadingAndCalibrationTime);
 
     ErrorCode evaluateCommand(const std::shared_ptr<DynamicCalibrationCommand> command);
 
@@ -253,12 +255,13 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     CameraBoardSocket daiSocketB = CameraBoardSocket::CAM_C;
     int width;
     int height;
+    std::shared_ptr<::spdlog::async_logger> logger;
 
     // std::chrono::milliseconds sleepingTime = 250ms;
     // static constexpr std::chrono::milliseconds kSleepingTime{250};
     std::chrono::milliseconds sleepingTime{250};
 
-    bool recalibrationRunning = false;
+    bool recalibrationShouldRun = false;
     bool slept = false;
 
     /**

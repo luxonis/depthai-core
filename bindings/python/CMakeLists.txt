@@ -184,6 +184,14 @@ else()
     pybind11_add_module(${TARGET_NAME} ${SOURCE_LIST})
 endif()
 
+if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
+    # The following is required for the module when including the depthai headers to include
+    # the conditionally enabled code related to dynamic calibration
+    set_source_files_properties(${SOURCE_LIST} PROPERTIES COMPILE_DEFINITIONS DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT)
+    # Add also include dirs of the dynamic calibration library
+    target_link_libraries(${TARGET_NAME} PRIVATE dynamic_calibration_imported)
+endif()
+
 if(WIN32)
     # Copy dlls to target directory - Windows only
     # TARGET_RUNTIME_DLLS generator expression available since CMake 3.21
