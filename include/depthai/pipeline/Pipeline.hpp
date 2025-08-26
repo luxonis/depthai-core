@@ -228,8 +228,17 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     void resetConnections();
     void disconnectXLinkHosts();
 
+    inline void closeQuick() {
+        shouldCloseQuickly = true;
+        if(!isHostOnly()) {
+            defaultDevice->closeQuick();
+        }
+    }
+
    private:
     // Resource
+    std::atomic<bool> shouldCloseQuickly{false};
+
     std::vector<uint8_t> loadResource(fs::path uri);
     std::vector<uint8_t> loadResourceCwd(fs::path uri, fs::path cwd, bool moveAsset = false);
 };
@@ -501,6 +510,10 @@ class Pipeline {
 
     void addTask(std::function<void()> task) {
         impl()->addTask(std::move(task));
+    }
+
+    void closeQuick() {
+        impl()->closeQuick();
     }
 
     /// Record and Replay
