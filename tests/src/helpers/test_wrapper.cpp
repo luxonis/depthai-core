@@ -95,7 +95,7 @@ int main(int argc, char* argv[]) {
         int retcode = proc.retcode();
         // 2 signifies that proc was killed by a timeout
         if (retcode == 2) {
-        retcode = 0;
+            retcode = 0;
         }
 
         // Only call communicate() once and save the results
