@@ -843,7 +843,7 @@ void PipelineImpl::disconnectXLinkHosts() {
 void PipelineImpl::wait() {
     // Waits for all nodes to finish the execution
     for(const auto& node : getAllNodes()) {
-        if(node->runOnHost() && !shouldCloseQuickly) {
+        if(node->runOnHost()) {
             node->wait();
         }
     }

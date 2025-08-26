@@ -121,7 +121,6 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
         // Python only methods
         .def("__enter__",
              [](std::shared_ptr<Pipeline> p) -> std::shared_ptr<Pipeline> {
-                 py::gil_scoped_release release;
                  setImplicitPipeline(p.get());
                  return p;
              })

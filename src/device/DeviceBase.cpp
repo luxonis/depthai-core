@@ -1055,6 +1055,7 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, Prev
 
                 auto start_time = std::chrono::steady_clock::now();
                 constexpr std::chrono::milliseconds attemptTimeout = std::chrono::milliseconds(200);
+                bool extra = false;
 
                 while(std::chrono::steady_clock::now() - start_time < reconnectTimeout) {
                     if(std::get<0>(getAnyAvailableDevice(attemptTimeout))) {
@@ -1069,7 +1070,13 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, Prev
                         reconnected = true;
                         break;
                     }
-                    if(shouldCloseQuickly) return;
+                    if(shouldCloseQuickly) {
+                        extra = true;
+                        break;
+                    }
+                }
+                if(extra) {
+                    break;
                 }
                 pimpl->logger.warn("Reconnection unsuccessful, trying again. Attempts left: {}\n", maxReconnectionAttempts - attempts - 1);
             }
