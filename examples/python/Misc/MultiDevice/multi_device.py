@@ -16,11 +16,11 @@ import time
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
-TARGET_FPS = 8  # Must match sensorFps in createPipeline()
+TARGET_FPS = 25  # Must match sensorFps in createPipeline()
 SYNC_THRESHOLD_SEC = 1.0 / (2 * TARGET_FPS)  # Max drift to accept as "in sync"
-SET_MANUAL_EXPOSURE = True  # Set to True to use manual exposure settings
-DEVICE_INFOS: list[dai.DeviceInfo] = [] # Insert the device IPs here, e.g.:
-# DEVICE_INFOS = [dai.DeviceInfo(ip) for ip in ["[IP_MASTER]", "[IP_SLAVE_1]"]] # The master camera needs to be first here
+SET_MANUAL_EXPOSURE = False  # Set to True to use manual exposure settings
+# DEVICE_INFOS: list[dai.DeviceInfo] = ["IP_MASTER", "IP_SLAVE_1"] # Insert the device IPs here, e.g.:
+DEVICE_INFOS = [dai.DeviceInfo(ip) for ip in ["192.168.0.146", "192.168.0.149"]] # The master camera needs to be first here
 assert len(DEVICE_INFOS) > 1, "At least two devices are required for this example."
 # ---------------------------------------------------------------------------
 # Helpers
@@ -55,14 +55,14 @@ def format_time(td: datetime.timedelta) -> str:
 # ---------------------------------------------------------------------------
 # Pipeline creation (unchanged API – only uses TARGET_FPS constant)
 # ---------------------------------------------------------------------------
-def createPipeline(pipeline: dai.Pipeline):
+def createPipeline(pipeline: dai.Pipeline, socket: dai.CameraBoardSocket = dai.CameraBoardSocket.CAM_A):
     camRgb = (
         pipeline.create(dai.node.Camera)
-        .build(dai.CameraBoardSocket.CAM_A, sensorFps=TARGET_FPS)
+        .build(socket, sensorFps=TARGET_FPS)
     )
     output = (
         camRgb.requestOutput(
-            (1200, 800), dai.ImgFrame.Type.NV12, dai.ImgResizeMode.STRETCH
+            (640, 480), dai.ImgFrame.Type.NV12, dai.ImgResizeMode.STRETCH
         ).createOutputQueue()
     )
     if SET_MANUAL_EXPOSURE:
@@ -89,7 +89,8 @@ with contextlib.ExitStack() as stack:
         print("    Device ID:", device.getDeviceId())
         print("    Num of cameras:", len(device.getConnectedCameras()))
 
-        pipeline, out_q = createPipeline(pipeline)
+        socket = device.getConnectedCameras()[0]
+        pipeline, out_q = createPipeline(pipeline, socket)
         pipeline.start()
 
         pipelines.append(pipeline)
@@ -127,15 +128,31 @@ with contextlib.ExitStack() as stack:
                     fps = fpsCounters[i].getFps()
                     cv2.putText(
                         frame,
-                        f"{device_ids[i]} | {format_time(msg.getTimestamp(dai.CameraExposureOffset.END))} FPS:{fps:.2f}",
+                        f"{device_ids[i]} | Timestamp: {ts_values[i]} | FPS:{fps:.2f}",
                         (20, 40),
                         cv2.FONT_HERSHEY_SIMPLEX,
                         0.6,
-                        (255, 255, 255),
+                        (255, 0, 50),
                         2,
                         cv2.LINE_AA,
                     )
                     imgs.append(frame)
+
+                sync_status = "in sync" if abs(max(ts_values) - min(ts_values)) < 0.001 else "out of sync"
+                delta = max(ts_values) - min(ts_values)
+                color = (0, 255, 0) if sync_status == "in sync" else (0, 0, 255)
+                
+                cv2.putText(
+                    imgs[0],
+                    f"{sync_status} | delta = {delta*1e3:.3f} ms",
+                    (20, 80),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.7,
+                    color,
+                    2,
+                    cv2.LINE_AA,
+                )
+
                 cv2.imshow("synced_view", cv2.hconcat(imgs))
                 latest_frames.clear()  # Wait for next batch
 
