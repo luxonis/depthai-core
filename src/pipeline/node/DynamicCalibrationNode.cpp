@@ -257,12 +257,12 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
     qualityData.depthErrorDifference = dclResult.value.calibrationDifference->depthDistanceDifference;
     qualityData.sampsonErrorCurrent  = dclResult.value.calibrationDifference->sampsonErrorCurrent;
     qualityData.sampsonErrorNew = dclResult.value.calibrationDifference->sampsonErrorNew;
-    
+
     DynamicCalibrationResult::Data resultData{};
     resultData.newCalibration       = newCalibrationHandler;
     resultData.currentCalibration   = currentHandler;
     resultData.calibrationDifference = qualityData;
-    
+
     auto result = std::make_shared<DynamicCalibrationResult>(resultData, dclResult.errorMessage());
     // clang-format on
     logger->info(
