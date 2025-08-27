@@ -378,7 +378,7 @@ TEST_CASE("DoWork: enqueue command (smoke)", "[DynamicCalibration]") {
     auto stub = std::make_unique<StubDclDynamicCalibration>();
     auto dyn = pl.create<dai::node::DynamicCalibration>(std::move(stub));
 
-    auto cmd = std::make_shared<dai::StartRecalibrationCommand>();
+    auto cmd = std::make_shared<dai::StartCalibrationCommand>();
     auto inQ = dyn->inputControl.createInputQueue();
     inQ->send(cmd);
 
@@ -454,7 +454,7 @@ TEST_CASE("DoWork: processes load + coverage + quality-check paths and counts", 
     REQUIRE(stubRaw->loadStereoImagePairCalls == 1);
     REQUIRE(stubRaw->checkCalibrationCalls == 2);  // forced + non-forced QC above
 
-    // StartRecalibration path where findNewCalibration fails
+    // StartCalibration path where findNewCalibration fails
     stubRaw->nextFindNewCalibrationResult = dcl::Result<dcl::StereoCalibrationResult>::error(-1);
 
     // queue another image group so calibration path has data
@@ -463,7 +463,7 @@ TEST_CASE("DoWork: processes load + coverage + quality-check paths and counts", 
     group2->add(dyn->leftInputName, left);
     dyn->syncInput.send(group2);
 
-    auto recalc = std::make_shared<dai::StartRecalibrationCommand>(dcl::PerformanceMode::OPTIMIZE_PERFORMANCE);
+    auto recalc = std::make_shared<dai::StartCalibrationCommand>(dcl::PerformanceMode::OPTIMIZE_PERFORMANCE);
     dyn->inputControl.send(recalc);
 
     // ensure coverage still returns something during the path
