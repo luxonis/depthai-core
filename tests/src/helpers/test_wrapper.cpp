@@ -73,7 +73,7 @@ int main(int argc, char* argv[]) {
 #else
             std::cerr << "Sending SIGINT..." << std::endl;
             proc.kill(SIGINT);  // Try graceful termination first
-            std::this_thread::sleep_for(std::chrono::seconds(10)); // Wait for it to exit
+            std::this_thread::sleep_for(std::chrono::seconds(7)); // Wait for it to exit
 
             if(proc.poll() == -1) { // Check if it's still running
                 std::cerr << "Process still running after SIGINT, sending SIGKILL..." << std::endl;
@@ -100,9 +100,7 @@ int main(int argc, char* argv[]) {
 
         // Only call communicate() once and save the results
         auto results = proc.communicate();
-        int retcode_fake = proc.retcode();
-        std::cout << "=== Fake returncode ===\n" << retcode_fake << std::endl;
-        std::cout << "===  returncode ===\n" << retcode << std::endl;
+
         // Always print the output regardless of return code
         std::string stdoutStr(results.first.buf.data(), results.first.length);
         std::string stderrStr(results.second.buf.data(), results.second.length);
