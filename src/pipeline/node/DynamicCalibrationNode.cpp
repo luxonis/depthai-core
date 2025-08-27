@@ -219,7 +219,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::runQualityCheck(const bool for
     if(!dclResult.passed()) {
         auto result = std::make_shared<CalibrationQuality>();
         result->info = dclResult.errorMessage();
-        logger->warn("Quality check failed: {}", dclResult.errorMessage());
+        logger->info("WARNING: Quality check failed: {}", dclResult.errorMessage());
 
         qualityOutput.send(result);
         return DynamicCalibration::ErrorCode::QUALITY_CHECK_FAILED;
@@ -240,7 +240,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
     auto dclResult = dynCalibImpl->findNewCalibration(dcDevice, socketA, socketB, performanceMode);
     if(!dclResult.passed()) {
         auto result = std::make_shared<DynamicCalibrationResult>(dclResult.errorMessage());
-        logger->warn("Calibration failed: {}", dclResult.errorMessage());
+        logger->info("WARNING: Calibration failed: {}", dclResult.errorMessage());
 
         calibrationOutput.send(result);
         return DynamicCalibration::ErrorCode::CALIBRATION_FAILED;
@@ -292,7 +292,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::runLoadImage(const bool blocki
     auto rightFrame = inSyncGroup->get<dai::ImgFrame>(rightInputName);
 
     if(!leftFrame || !rightFrame) {
-        logger->warn("Missing image(s) in MessageGroup (left={}, right={})", leftFrame ? "ok" : "missing", rightFrame ? "ok" : "missing");
+        logger->info("WARNING: Missing image(s) in MessageGroup (left={}, right={})", leftFrame ? "ok" : "missing", rightFrame ? "ok" : "missing");
         return DynamicCalibration::ErrorCode::MISSING_IMAGE;
     }
 
@@ -425,7 +425,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(const std::sha
         dynCalibImpl->removeAllData(sensorA, sensorB);
     }
 
-    logger->warn("evaluateCommand: Received unknown/unhandled command type");
+    logger->info("WARNING: evaluateCommand: Received unknown/unhandled command type");
     return ErrorCode::OK;
 }
 
