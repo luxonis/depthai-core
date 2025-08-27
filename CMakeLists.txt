@@ -1128,6 +1128,9 @@ enable_testing()
 ########################
 if (DEPTHAI_BUILD_TESTS)
     add_subdirectory(tests)
+    if (DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
+        add_subdirectory(tests/unit)
+    endif()
 endif()
 
 ########################

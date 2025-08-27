@@ -93,7 +93,7 @@ TEST_CASE("DynamicCalibration reaches a result and applies only when ready") {
         REQUIRE(d != nullptr);
     }
 
-    // Kick off recalibration (matching your sample)
+    // Kick off calibration (matching your sample)
     command_input->send(std::make_shared<dai::StartCalibrationCommand>(dai::DynamicCalibrationConfig::PerformanceMode::OPTIMIZE_PERFORMANCE));
 
     bool completed = false;
@@ -264,14 +264,14 @@ TEST_CASE("DynamicCalibration: StopCalibration halts further results") {
     REQUIRE(right_xout->get<dai::ImgFrame>() != nullptr);
     REQUIRE(disp_xout->get<dai::ImgFrame>() != nullptr);
 
-    // Start recalibration (performance-optimized)
+    // Start calibration (performance-optimized)
     command_input->send(std::make_shared<dai::StartCalibrationCommand>(dai::DynamicCalibrationConfig::PerformanceMode::OPTIMIZE_PERFORMANCE));
 
     // Pull the first result (whatever it is—likely just info with no payload yet)
     auto first = calibration_output->get<dai::DynamicCalibrationResult>();
     REQUIRE(first != nullptr);
 
-    // Now stop the recalibration
+    // Now stop the calibration
     command_input->send(std::make_shared<dai::StopCalibrationCommand>());
 
     // Immediately try a non-blocking poll (may or may not have an in-flight message)

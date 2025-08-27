@@ -8,6 +8,10 @@
 
 #include "depthai/pipeline/datatype/DynamicCalibrationConfig.hpp"
 #include "depthai/pipeline/datatype/DynamicCalibrationResults.hpp"
+#include "pipeline/ThreadedNodeImpl.hpp"
+#include "spdlog/async_logger.h"
+#include "utility/Logging.hpp"
+
 namespace spdlog {
 class async_logger;
 }
@@ -249,7 +253,7 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     CameraBoardSocket daiSocketB = CameraBoardSocket::CAM_C;
     int width;
     int height;
-    std::shared_ptr<::spdlog::async_logger> logger;
+    std::shared_ptr<::spdlog::async_logger> logger = pimpl->logger;
 
     // std::chrono::milliseconds sleepingTime = 250ms;
     // static constexpr std::chrono::milliseconds kSleepingTime{250};
