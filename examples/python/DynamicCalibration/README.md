@@ -1,92 +1,195 @@
-# 🔧 DepthAI Dynamic Calibration Interactive script
+# Dynamic Calibration (Python) — DepthAI
 
-An interactive calibration and diagnostics tool for OAK cameras using [DepthAI](https://github.com/luxonis/depthai-core). This script provides a real-time visual interface to:
+This folder contains two minimal, end-to-end examples that use **`dai.node.DynamicCalibration`** to (a) **calibrate** a stereo rig live and (b) **evaluate** calibration quality on demand — both while streaming synchronized stereo frames and disparity for visual feedback.
 
-- Trigger dynamic stereo calibration
-- View calibration quality metrics (rotation error, depth improvements)
-- Visualize depth disparity
-- Overlay health bar indicators and coverage information
-- Flash and apply calibrations directly on the device
+> Press **`q`** in the preview window to quit either example.
 
 ---
 
-## 📸 Features
+## What the node does
 
-- ✅ Real-time disparity visualization (`cv2.COLORMAP_JET`)
-- ✅ Calibration result summaries printed to screen
-- ✅ Health bar overlays for depth accuracy
-- ✅ Live keyboard control (see key commands)
-- ✅ Coverage map overlay per frame
-- ✅ Full DepthAI pipeline using left/right mono cams, stereo, and dynamic calibration
+`dai.node.DynamicCalibration` consumes **raw, unrectified** left/right mono frames and:
+- Streams **coverage feedback** (how well the calibration pattern is seen across the image).
+- Produces either:
+  - a **new calibration** (intrinsics/extrinsics) you can apply on the device, or
+  - a **quality report** comparing *current* vs *achievable* calibration.
+
+### Outputs & metrics
+
+- **CoverageData** (`coverageOutput`)
+  - `meanCoverage` — overall spatial coverage [0–1].
+  - `dataAcquired` — amount of calibration-relevant data gathered [0–1].
+  - `coveragePerCellA/B` - matrix of spatial coverage of imager A or B
+
+- **DynamicCalibrationResult** (`calibrationOutput`)
+  - `newCalibration` — `CalibrationHandler` with updated parameters.
+  - `calibrationDifference` — quality deltas between current and new:
+    - `rotationChange[3]` — extrinsic angle deltas (deg).
+    - `sampsonErrorCurrent`, `sampsonErrorNew` — reprojection proxy (px).
+    - `depthErrorDifference[4]` — theoretical depth error change at 1/2/5/10 m (%).
+  - `info` — human-readable status (e.g., "success").
+
+- **CalibrationQuality** (`qualityOutput`)
+  - `qualityData` (optional) — same fields as `calibrationDifference`.
+  - `info` — human-readable status.
 
 ---
 
-## 💻 Key Commands
+## 1) Live dynamic calibration (apply new calibration)
 
-These can be pressed anytime in the GUI window:
+**Script idea:** `calibrate_dynamic.py` (based on your first snippet)
+
+**Flow:**
+1. Create mono cameras → request **full-res NV12** (unrectified) → link to:
+   - `DynamicCalibration.left/right`
+   - `StereoDepth.left/right` (for live disparity view)
+2. Start the pipeline, give AE a moment to settle.
+3. **Start calibration** with:
+   ```python
+   dynCalibInputControl.send(
+       dai.StartCalibrationCommand(performanceMode=dai.PerformanceMode.OPTIMIZE_PERFORMANCE)
+   )
+   ```
+4. In the loop:
+   - Show `left`, `right`, and `disparity`.
+   - Poll `coverageOutput` for progress (`meanCoverage`, `dataAcquired`).
+   - Poll `calibrationOutput` for a result.
+5. When a result arrives:
+   - **Apply** it:
+     ```python
+     dynCalibInputControl.send(dai.ApplyCalibrationCommand(calibrationData.newCalibration))
+     ```
+   - Print quality deltas: rotation magnitude, Sampson errors, depth-error deltas.
+
+**Example console output:**
+```
+2D Spatial Coverage = 0.72 / 100 [%]
+Data Acquired = 0.65% / 100 [%]
+Dynamic calibration status: success
+Successfully calibrated
+Rotation difference: || r_current - r_new || = 0.43 deg
+Mean Sampson error achievable = 0.21 px
+Mean Sampson error current    = 0.38 px
+Theoretical Depth Error Difference @1m:-4.20%, 2m:-3.10%, 5m:-1.60%, 10m:-0.90%
+```
+
+> Applying the calibration updates downstream nodes (e.g., `StereoDepth`) immediately for subsequent frames.
+
+---
+
+## 2) Calibration **quality check** (no applying)
+
+**Script idea:** `quality_dynamic.py` (based on your second snippet)
+
+**Flow:**
+1. Same camera / StereoDepth / DynamicCalibration setup as above.
+2. In the loop:
+   - Show `left`, `right`, and `disparity`.
+   - Ask for **coverage** on demand:
+     ```python
+     dynCalibInputControl.send(dai.LoadImageCommand())
+     coverage = dynCalibCoverageQueue.get()
+     ```
+   - Ask for **quality** on demand:
+     ```python
+     dynCalibInputControl.send(dai.CalibrationQualityCommand())
+     dynQualityResult = dynCalibQualityQueue.get()
+     ```
+3. If `qualityData` is present, print rotation/Sampson/depth-error metrics.
+4. Optionally reset the internal sample store:
+   ```python
+   dynCalibInputControl.send(dai.ResetDataCommand())
+   ```
+
+**Use this when:**
+- You want to **assess** a potential calibration before committing it.
+- You’re tuning capture/coverage practices and need fast feedback.
+
+---
+
+## Pipeline diagram
 
 ```
-[c] → Calibration quality check  
-[r] → Recalibrate  
-[a] → Force calibration check  
-[d] → Force recalibrate  
-[n] → Apply new calibration  
-[o] → Apply old calibration  
-[l] → Flash new calibration  
-[k] → Flash old calibration  
-[q] → Quit  
-```
+Mono CAM_B ──▶ [Camera] ── NV12 (full-res) ──▶ DynamicCalibration.left
+                  │                             └─────▶ coverageOutput
+                  └───────────▶ StereoDepth.left        calibrationOutput / qualityOutput
 
-These are also shown live on the left camera frame overlay.
+Mono CAM_C ──▶ [Camera] ── NV12 (full-res) ──▶ DynamicCalibration.right
+                  │
+                  └───────────▶ StereoDepth.right ──▶ disparity
+```
 
 ---
 
-## 🚀 Setup & Usage
+## Requirements
 
-### 1. Install Dependencies
+- Python 3.8+
+- `depthai`, `opencv-python`, `numpy`
 
-You need:
-
-- Python 3.7+
-- DepthAI > 3.0
-- OpenCV
-- NumPy
-
-
+Install:
 ```bash
 pip install depthai opencv-python numpy
 ```
 
-### 2. Run the Code
+---
+
+## Run
 
 ```bash
-python dynamic_calibration_interactive.py
+# Live calibration (applies new calibration when ready)
+python calibrate_dynamic.py
+
+# Quality evaluation (reports metrics; does not apply)
+python quality_dynamic.py
 ```
+
+> Tip: Ensure your calibration target is well-lit, sharp, and observed across the **entire** FOV. Aim for high `meanCoverage` and steadily increasing `dataAcquired`.
 
 ---
 
-## 🧠 Internals
+## Commands overview
 
-- The viewer listens to the `DynamicCalibration` node for calibration results.
-- Results are parsed, filtered, and visualized using OpenCV.
-- A health bar shows how calibration changes affect depth error at 1m, 2m, 5m, and 10m.
-- Calibrations can be flashed to EEPROM or applied temporarily.
+- `StartCalibrationCommand(performanceMode=...)`  
+  Begins dynamic calibration collection/solve. Use `OPTIMIZE_PERFORMANCE` for speed or `OPTIMIZE_QUALITY` for more robust estimation.
+
+- `ApplyCalibrationCommand(calibration)`  
+  Applies the provided `CalibrationHandler` to the device (affects downstream nodes in this session).
+
+- `LoadImageCommand()`  
+  Triggers coverage computation for the current frame(s).
+
+- `CalibrationQualityCommand()`  
+  Produces a `CalibrationQuality` message with `qualityData` if estimation is possible.
+
+- `ResetDataCommand()`  
+  Clears accumulated samples/coverage state to start fresh.
 
 ---
 
+## Metrics glossary
 
-## 📷 Example Output
+- **Rotation change (deg)**  
+  Magnitude of the delta between current and new stereo extrinsics (roll/pitch/yaw).
 
-```
-<<< -----------------------------|Final Results -- Calibration check|------------------------------------>>>
-Rotation change[°]: 0.017 0.043 0.010
-Improvements if new calibration is applied:
-1m->0.56%,
-2m->0.27%,
-5m->0.07%,
-10m->0.05%
-To continue with recalibration, press 'r'.
-<<< -----------------------------|Finished|------------------------------------>>>
-```
+- **Sampson error (px)**  
+  Proxy for geometric reprojection error. Lower is better.
+  - `current` — with the active calibration.
+  - `new` — achievable with the proposed calibration.
+
+- **Depth error difference (%) at 1/2/5/10 m**  
+  Theoretical change in relative depth error. **Negative values** indicate improvement.
+
+---
+
+## Troubleshooting
+
+- **No quality data returned**  
+  Ensure the pattern is visible, not motion-blurred, and covers diverse regions of the image. Increase lighting, adjust exposure, or hold the rig steady.
+
+- **Disparity looks worse after apply**  
+  Re-run to collect more diverse views (tilt/translate the target), or try `OPTIMIZE_QUALITY`. Check for lens smudges and ensure focus is appropriate.
+
+- **Typos in prints**  
+  The examples should print “Successfully calibrated” and “Rotation difference” (avoid “Succesfully”/“dofference” if copying code).
 
 ---
