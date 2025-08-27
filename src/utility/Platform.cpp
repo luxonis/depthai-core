@@ -107,18 +107,16 @@ bool checkWritePermissions(const std::filesystem::path& path) {
         std::string uniqueName = std::to_string(std::time(nullptr)) + "_random_name";
         std::filesystem::path probe = path / uniqueName;
 
-        HANDLE h = CreateFileW(
-            probe.c_str(),
-            GENERIC_WRITE,
-            0,
-            nullptr,
-            CREATE_NEW, // will fail if it already exists
-            FILE_ATTRIBUTE_TEMPORARY | FILE_FLAG_DELETE_ON_CLOSE,
-            nullptr
-        );
+        HANDLE h = CreateFileW(probe.c_str(),
+                               GENERIC_WRITE,
+                               0,
+                               nullptr,
+                               CREATE_NEW,  // will fail if it already exists
+                               FILE_ATTRIBUTE_TEMPORARY | FILE_FLAG_DELETE_ON_CLOSE,
+                               nullptr);
 
         // Check if the file was created
-        if (h == INVALID_HANDLE_VALUE) {
+        if(h == INVALID_HANDLE_VALUE) {
             return false;
         }
 
@@ -139,20 +137,17 @@ bool checkWritePermissions(const std::filesystem::path& path) {
 bool checkReadPermissions(const std::filesystem::path& path) {
 #if defined(_WIN32) || defined(__USE_W32_SOCKETS)
     if(std::filesystem::is_directory(path)) {
-
         // Try to open the directory for listing
-        HANDLE h = CreateFileW(
-            path.c_str(),
-            FILE_LIST_DIRECTORY,
-            FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
-            nullptr,
-            OPEN_EXISTING,
-            FILE_FLAG_BACKUP_SEMANTICS,
-            nullptr
-        );
+        HANDLE h = CreateFileW(path.c_str(),
+                               FILE_LIST_DIRECTORY,
+                               FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                               nullptr,
+                               OPEN_EXISTING,
+                               FILE_FLAG_BACKUP_SEMANTICS,
+                               nullptr);
 
         // Check for valid handle, otherwise, we don't have read permissions
-        if (h == INVALID_HANDLE_VALUE) {
+        if(h == INVALID_HANDLE_VALUE) {
             return false;
         }
 
