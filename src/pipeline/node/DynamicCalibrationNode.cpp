@@ -1,11 +1,14 @@
 #include "depthai/pipeline/node/DynamicCalibrationNode.hpp"
 
 #include <opencv2/opencv.hpp>
+#include <pipeline/ThreadedNodeImpl.hpp>
 
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "depthai/utility/matrixOps.hpp"
+#include "spdlog/async_logger.h"
 #include "spdlog/spdlog.h"
+#include "utility/Logging.hpp"
 
 namespace dai {
 namespace node {
@@ -25,6 +28,7 @@ bool DynamicCalibration::runOnHost() const {
 }
 
 void DynamicCalibration::buildInternal() {
+    logger = pimpl->logger;
     sync->out.link(syncInput);
     sync->setRunOnHost(true);
 }
