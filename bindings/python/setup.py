@@ -1,11 +1,9 @@
 import os
-import io
 import re
 import sys
 import platform
 import subprocess
 import find_version
-import multiprocessing
 
 from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext
@@ -62,7 +60,7 @@ if len(__version__.split("+")) > 1 :
 
 
 ## Read description (README.md)
-long_description = io.open("README.md", encoding="utf-8").read()
+long_description = open("README.md", "r", encoding="utf-8").read()
 
 ## Early settings
 MACOS_ARM64_WHEEL_NAME_OVERRIDE = 'macosx-11.0-arm64'
@@ -119,7 +117,11 @@ class CMakeBuild(build_ext):
         env = os.environ.copy()
 
         cmake_args += ['-DDEPTHAI_BUILD_PYTHON=ON']
-        cmake_args += ['-DBUILD_SHARED_LIBS=ON']
+
+        # build shared libs only in CI - for downstream wheel bundling
+        if env.get("CI") is not None:
+            cmake_args += ['-DBUILD_SHARED_LIBS=ON']
+
         cmake_args += ['-DDEPTHAI_MERGED_TARGET=ON']
         if env.get('DEPTHAI_BUILD_BASALT') == 'ON':
             cmake_args += ['-DDEPTHAI_BASALT_SUPPORT=ON']
@@ -210,7 +212,7 @@ class CMakeBuild(build_ext):
                     env['_PYTHON_HOST_PLATFORM'] = re.sub(r'macosx-[0-9]+\.[0-9]+-(.+)', r'macosx-10.9-\1', util.get_platform())
 
             # Specify how many threads to use when building, depending on available memory
-            max_threads = multiprocessing.cpu_count()
+            max_threads = os.cpu_count()
             num_threads = (freeMemory // 2000)
             num_threads = min(num_threads, max_threads)
             if num_threads <= 0:
@@ -240,7 +242,7 @@ setup(
     license="MIT",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/luxonis/depthai-core/bindings/python",
+    url="https://github.com/luxonis/depthai-core/tree/main/bindings/python",
     ext_modules=[
         CMakeExtension(MODULE_NAME, str(Path(__file__).absolute().parent.parent.parent.absolute())),
         Extension(DEPTHAI_CLI_MODULE_NAME, sources=[])
