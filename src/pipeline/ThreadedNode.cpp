@@ -31,25 +31,27 @@ void ThreadedNode::start() {
 
     thread = std::thread([this]() {
         try {
-            this->run();
+            run();
         } catch(const MessageQueue::QueueException& ex) {
+            // catch the exception and stop the node
             auto expStr = fmt::format("Node stopped with a queue exception: {}", ex.what());
-            if(pimpl->logger)
+            if(pimpl->logger) {
                 pimpl->logger->trace(expStr);
-            else
+            } else {
                 spdlog::trace(expStr);
+            }
             running = false;
         } catch(const std::runtime_error& ex) {
             auto expStr = fmt::format("Node threw exception, stopping the node. Exception message: {}", ex.what());
-            if(pimpl->logger)
+            if(pimpl->logger) {
                 pimpl->logger->error(expStr);
-            else
+            } else {
                 spdlog::error(expStr);
+            }
             running = false;
             stopPipeline();
         }
     });
-
     platform::setThreadName(thread, fmt::format("{}({})", getName(), id));
 }
 
