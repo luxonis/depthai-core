@@ -241,9 +241,10 @@ TEST_CASE("runCalibration() success publishes result", "[DynamicCalibration]") {
 }
 
 TEST_CASE("runLoadImage(): empty queue and missing images", "[DynamicCalibration]") {
+    dai::Pipeline pipeline(false);
     SECTION("Empty queue") {
-        TestDynamicCalibrationNode dynCalib;  // stack ok: runLoadImage() does not log
-        auto err = dynCalib.runLoadImage();
+        auto dynCalib = pipeline.create<dai::node::DynamicCalibration>();
+        auto err = dynCalib->runLoadImage();
         REQUIRE(err == dai::node::DynamicCalibration::ErrorCode::EMPTY_IMAGE_QUEUE);
     }
     SECTION("Missing left or right") {
@@ -251,24 +252,24 @@ TEST_CASE("runLoadImage(): empty queue and missing images", "[DynamicCalibration
         auto right = std::make_shared<dai::ImgFrame>();
 
         {
-            TestDynamicCalibrationNode dynCalib;
+            auto dynCalib = pipeline.create<dai::node::DynamicCalibration>();
             auto group = std::make_shared<dai::MessageGroup>();
-            dynCalib.syncInput.send(group);
-            REQUIRE(dynCalib.runLoadImage() == dai::node::DynamicCalibration::ErrorCode::MISSING_IMAGE);
+            dynCalib->syncInput.send(group);
+            REQUIRE(dynCalib->runLoadImage() == dai::node::DynamicCalibration::ErrorCode::MISSING_IMAGE);
         }
         {
-            TestDynamicCalibrationNode dynCalib;
+            auto dynCalib = pipeline.create<dai::node::DynamicCalibration>();
             auto group = std::make_shared<dai::MessageGroup>();
-            group->add(dynCalib.rightInputName, right);
-            dynCalib.syncInput.send(group);
-            REQUIRE(dynCalib.runLoadImage() == dai::node::DynamicCalibration::ErrorCode::MISSING_IMAGE);
+            group->add(dynCalib->rightInputName, right);
+            dynCalib->syncInput.send(group);
+            REQUIRE(dynCalib->runLoadImage() == dai::node::DynamicCalibration::ErrorCode::MISSING_IMAGE);
         }
         {
-            TestDynamicCalibrationNode dynCalib;
+            auto dynCalib = pipeline.create<dai::node::DynamicCalibration>();
             auto group = std::make_shared<dai::MessageGroup>();
-            group->add(dynCalib.leftInputName, left);
-            dynCalib.syncInput.send(group);
-            REQUIRE(dynCalib.runLoadImage() == dai::node::DynamicCalibration::ErrorCode::MISSING_IMAGE);
+            group->add(dynCalib->leftInputName, left);
+            dynCalib->syncInput.send(group);
+            REQUIRE(dynCalib->runLoadImage() == dai::node::DynamicCalibration::ErrorCode::MISSING_IMAGE);
         }
     }
 }
@@ -290,16 +291,17 @@ TEST_CASE("runLoadImage(): OK and forwards frames to DCL", "[DynamicCalibration]
     right->setSourceSize(2, 2);
     right->setCvFrame(rightMat, dai::ImgFrame::Type::GRAY8);
 
+    dai::Pipeline pl(false);
     auto stub = std::make_unique<StubDclDynamicCalibration>();
     auto* stubRaw = stub.get();
-    TestDynamicCalibrationNode dynCalib(std::move(stub));  // stack ok: runLoadImage() has no logger
+    auto dynCalib = pl.create<dai::node::DynamicCalibration>(std::move(stub));
 
     auto group = std::make_shared<dai::MessageGroup>();
-    group->add(dynCalib.rightInputName, right);
-    group->add(dynCalib.leftInputName, left);
-    dynCalib.syncInput.send(group);
+    group->add(dynCalib->rightInputName, right);
+    group->add(dynCalib->leftInputName, left);
+    dynCalib->syncInput.send(group);
 
-    auto err = dynCalib.runLoadImage();
+    auto err = dynCalib->runLoadImage();
     REQUIRE(err == dai::node::DynamicCalibration::ErrorCode::OK);
 
     // Verify what the stub received and call count
@@ -323,16 +325,17 @@ TEST_CASE("runLoadImage(): OK and forwards frames to DCL", "[DynamicCalibration]
 }
 
 TEST_CASE("computeCoverage(): error throws and counts", "[DynamicCalibration]") {
+    dai::Pipeline pl(false);
     auto stub = std::make_unique<StubDclDynamicCalibration>();
     stub->nextComputeCoverageResult = dcl::Result<dcl::CoverageData>::error(1);
     auto* stubRaw = stub.get();
-    TestDynamicCalibrationNode dynCalib(std::move(stub));  // stack ok: computeCoverage may log, but node here doesn't
+    auto dynCalib = pl.create<dai::node::DynamicCalibration>(std::move(stub));
 
     dai::DynamicCalibrationConfig cfg;
     cfg.performanceMode = dcl::PerformanceMode::OPTIMIZE_PERFORMANCE;
-    dynCalib.setInitialConfig(cfg);
+    dynCalib->setInitialConfig(cfg);
 
-    REQUIRE_THROWS_AS(dynCalib.computeCoverage(), std::runtime_error);
+    REQUIRE_THROWS_AS(dynCalib->computeCoverage(), std::runtime_error);
     REQUIRE(stubRaw->lastPerfModeComputeCoverage == dcl::PerformanceMode::OPTIMIZE_PERFORMANCE);
     REQUIRE(stubRaw->computeCoverageCalls == 1);
 }
