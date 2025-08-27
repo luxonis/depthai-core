@@ -847,12 +847,6 @@ void PipelineImpl::wait() {
             node->wait();
         }
     }
-
-    // TODO(Morato) - handle multiple devices correctly, stop pipeline on all of them
-    // Close the devices
-    if(!isHostOnly()) {
-        defaultDevice->close();
-    }
 }
 
 void PipelineImpl::stop() {
@@ -874,6 +868,11 @@ void PipelineImpl::stop() {
 
     // Close the task queue
     tasks.destruct();
+    // TODO(Morato) - handle multiple devices correctly, stop pipeline on all of them
+    // Close the devices
+    if(!isHostOnly()) {
+        defaultDevice->close();
+    }
 
     // Indicate that pipeline is not runnin
     running = false;
