@@ -94,7 +94,7 @@ TEST_CASE("DynamicCalibration reaches a result and applies only when ready") {
     }
 
     // Kick off recalibration (matching your sample)
-    command_input->send(std::make_shared<dai::StartRecalibrationCommand>(dai::DynamicCalibrationConfig::PerformanceMode::OPTIMIZE_PERFORMANCE));
+    command_input->send(std::make_shared<dai::StartCalibrationCommand>(dai::DynamicCalibrationConfig::PerformanceMode::OPTIMIZE_PERFORMANCE));
 
     bool completed = false;
     float lastCoverage = 0.0f;
@@ -170,27 +170,27 @@ TEST_CASE("DynamicCalibration: empty-data requests yield no calibration/quality 
     REQUIRE(right_xout->get<dai::ImgFrame>() != nullptr);
     REQUIRE(disp_xout->get<dai::ImgFrame>() != nullptr);
 
-    // 1) Recalibrate(performanceMode=OPTIMIZE_PERFORMANCE) -> expect no calibrationData
+    // 1) Calibrate(performanceMode=OPTIMIZE_PERFORMANCE) -> expect no calibrationData
     {
-        auto cmd = std::make_shared<dai::RecalibrateCommand>();
+        auto cmd = std::make_shared<dai::CalibrateCommand>();
         cmd->performanceMode = dai::DynamicCalibrationConfig::PerformanceMode::OPTIMIZE_PERFORMANCE;
         command_input->send(cmd);
 
         auto result = calibration_output->get<dai::DynamicCalibrationResult>();
         REQUIRE(result != nullptr);
-        INFO("Recalibrate #1 info: " << result->info);
+        INFO("Calibrate #1 info: " << result->info);
         REQUIRE_FALSE(result->calibrationData.has_value());
     }
 
-    // 2) Recalibrate(force=true) -> still expect no calibrationData with insufficient data
+    // 2) Calibrate(force=true) -> still expect no calibrationData with insufficient data
     {
-        auto cmd = std::make_shared<dai::RecalibrateCommand>();
+        auto cmd = std::make_shared<dai::CalibrateCommand>();
         cmd->force = true;
         command_input->send(cmd);
 
         auto result = calibration_output->get<dai::DynamicCalibrationResult>();
         REQUIRE(result != nullptr);
-        INFO("Recalibrate #2 (force) info: " << result->info);
+        INFO("Calibrate #2 (force) info: " << result->info);
         REQUIRE_FALSE(result->calibrationData.has_value());
     }
 
@@ -224,7 +224,7 @@ TEST_CASE("DynamicCalibration: empty-data requests yield no calibration/quality 
     pipeline.wait();
 }
 
-TEST_CASE("DynamicCalibration: StopRecalibration halts further results") {
+TEST_CASE("DynamicCalibration: StopCalibration halts further results") {
     auto device = std::make_shared<dai::Device>();
     REQUIRE(device != nullptr);
 
@@ -265,14 +265,14 @@ TEST_CASE("DynamicCalibration: StopRecalibration halts further results") {
     REQUIRE(disp_xout->get<dai::ImgFrame>() != nullptr);
 
     // Start recalibration (performance-optimized)
-    command_input->send(std::make_shared<dai::StartRecalibrationCommand>(dai::DynamicCalibrationConfig::PerformanceMode::OPTIMIZE_PERFORMANCE));
+    command_input->send(std::make_shared<dai::StartCalibrationCommand>(dai::DynamicCalibrationConfig::PerformanceMode::OPTIMIZE_PERFORMANCE));
 
     // Pull the first result (whatever it is—likely just info with no payload yet)
     auto first = calibration_output->get<dai::DynamicCalibrationResult>();
     REQUIRE(first != nullptr);
 
     // Now stop the recalibration
-    command_input->send(std::make_shared<dai::StopRecalibrationCommand>());
+    command_input->send(std::make_shared<dai::StopCalibrationCommand>());
 
     // Immediately try a non-blocking poll (may or may not have an in-flight message)
     (void)calibration_output->tryGet<dai::DynamicCalibrationResult>();
