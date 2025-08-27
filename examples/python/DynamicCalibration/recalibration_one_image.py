@@ -1,5 +1,5 @@
 """
-Example how to manually capture frames and perform recalibration.
+Example how to manually capture frames and perform calibration.
 This example skips all checks and is provided for illustration purposes only.
 """
 
@@ -38,14 +38,14 @@ time.sleep(1) # wait for autoexposure to settle
 # start loading the collecting data
 command_input.send(dai.LoadImageCommand())
 coverage = coverage_output.get()
-command_input.send(dai.RecalibrateCommand(force=True))
+command_input.send(dai.CalibrateCommand(force=True))
 calibration_result = calibration_output.get()
 calibration_data = calibration_result.calibrationData
 if calibration_data:
     command_input.send(
         dai.ApplyCalibrationCommand(calibration_data.newCalibration)
     )
-    print("Succesfully recalibrated")
+    print("Succesfully calibrated")
 else:
     print(calibration_result.info)
 

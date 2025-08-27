@@ -5,10 +5,7 @@
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "depthai/utility/matrixOps.hpp"
-#include "pipeline/ThreadedNodeImpl.hpp"
-#include "spdlog/async_logger.h"
 #include "spdlog/spdlog.h"
-#include "utility/Logging.hpp"
 
 namespace dai {
 namespace node {
@@ -378,12 +375,11 @@ DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline(const std::
 }
 
 DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(const std::shared_ptr<DynamicCalibrationCommand> command) {
-    if(auto recalibrateCommand = std::dynamic_pointer_cast<RecalibrateCommand>(command)) {
-        logger->info(
-            "Received RecalibrateCommand: force={} performanceMode={}", recalibrateCommand->force, static_cast<int>(recalibrateCommand->performanceMode));
-        recalibrationShouldRun = false;  // stop the recalibration if it is running
-        properties.initialConfig.performanceMode = recalibrateCommand->performanceMode;
-        return runCalibration(calibrationHandler, recalibrateCommand->force);
+    if(auto calibrateCommand = std::dynamic_pointer_cast<CalibrateCommand>(command)) {
+        logger->info("Received CalibrateCommand: force={} performanceMode={}", calibrateCommand->force, static_cast<int>(calibrateCommand->performanceMode));
+        calibrationShouldRun = false;  // stop the calibration if it is running
+        properties.initialConfig.performanceMode = calibrateCommand->performanceMode;
+        return runCalibration(calibrationHandler, calibrateCommand->force);
     }
 
     if(auto calibrationQualityCommand = std::dynamic_pointer_cast<CalibrationQualityCommand>(command)) {
@@ -394,10 +390,10 @@ DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(const std::sha
         return runQualityCheck(calibrationQualityCommand->force);
     }
 
-    if(auto startCalibrationCommand = std::dynamic_pointer_cast<StartRecalibrationCommand>(command)) {
-        logger->info("Received StartRecalibrationCommand: performanceMode={}", static_cast<int>(startCalibrationCommand->performanceMode));
+    if(auto startCalibrationCommand = std::dynamic_pointer_cast<StartCalibrationCommand>(command)) {
+        logger->info("Received StartCalibrationCommand: performanceMode={}", static_cast<int>(startCalibrationCommand->performanceMode));
         properties.initialConfig.performanceMode = startCalibrationCommand->performanceMode;
-        recalibrationShouldRun = true;
+        calibrationShouldRun = true;
         return ErrorCode::OK;
     }
 
@@ -415,10 +411,14 @@ DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(const std::sha
         return ErrorCode::OK;
     }
 
-    if(std::dynamic_pointer_cast<StopRecalibrationCommand>(command)) {
-        logger->info("Received StopRecalibrationCommand: stopping recalibration");
-        recalibrationShouldRun = false;
+    if(std::dynamic_pointer_cast<StopCalibrationCommand>(command)) {
+        logger->info("Received StopCalibrationCommand: stopping calibration");
+        calibrationShouldRun = false;
         return ErrorCode::OK;
+    }
+    if(std::dynamic_pointer_cast<ResetDataCommand>(command)) {
+        logger->info("Received RemoveDataCommand: removing the data");
+        dynCalibImpl->removeAllData(sensorA, sensorB);
     }
 
     logger->warn("evaluateCommand: Received unknown/unhandled command type");
@@ -434,7 +434,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::doWork(std::chrono::steady_clo
     if(error != ErrorCode::OK) {  // test progress so far
         return error;
     }
-    if(!recalibrationShouldRun) {
+    if(!calibrationShouldRun) {
         return error;
     }
     // Rate limit of the image loading
@@ -442,7 +442,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::doWork(std::chrono::steady_clo
     std::chrono::duration<float> elapsed = now - previousLoadingAndCalibrationTime;
     bool loadingAndCalibrationRequired = elapsed.count() > properties.initialConfig.loadImagePeriod;
     if(loadingAndCalibrationRequired) {
-        logger->info("doWork() called. RecalibrationRunning={}, elapsed={}s", recalibrationShouldRun, elapsed.count());
+        logger->info("doWork() called. CalibrationRunning={}, elapsed={}s", calibrationShouldRun, elapsed.count());
         error = runLoadImage(true);
     }
 
@@ -452,81 +452,32 @@ DynamicCalibration::ErrorCode DynamicCalibration::doWork(std::chrono::steady_clo
     if(loadingAndCalibrationRequired) {
         computeCoverage();
         previousLoadingAndCalibrationTime = std::chrono::steady_clock::now();
-        auto error = runCalibration(calibrationHandler);
+        error = runCalibration(calibrationHandler);
         if(error == DynamicCalibration::ErrorCode::OK) {
-            dynCalibImpl->removeAllData(sensorA, sensorB);
-            recalibrationShouldRun = false;
+            calibrationShouldRun = false;
         }
     }
 
     return error;
 }
 
-// clang-format off
-DynamicCalibration::ErrorCode DynamicCalibration::doWorkContinuous(
-    std::chrono::steady_clock::time_point& previousCalibrationTime,
-    std::chrono::steady_clock::time_point& previousLoadingTime)
-{
-    // Prioritize running calibration over loading images to prevent a state when
-    // always loading images and never get into calibration.
-
-    // Rate limit of the calibration
-    auto now = std::chrono::steady_clock::now();
-    std::chrono::duration<float> elapsedCalibration = now - previousCalibrationTime;
-    if(elapsedCalibration.count() > properties.initialConfig.calibrationPeriod) {
-        logger->info("doWorkContinuous() called. ElapsedCalibration={}s", 
-             elapsedCalibration.count());
-        auto calibrationError = runCalibration(calibrationHandler);
-    	previousCalibrationTime = std::chrono::steady_clock::now();
-    	return calibrationError;
-    }
-
-    std::chrono::duration<float> elapsedLoading = now - previousLoadingTime;
-    if (elapsedLoading.count() > properties.initialConfig.loadImagePeriod) {
-        logger->info("doWorkContinuous() called. ElapsedLoading={}s", 
-             elapsedLoading.count());
-        auto loadImageError = runLoadImage(true);
-        // do we want to return the coverage in the continuous mode? -> computeCoverage();
-        previousLoadingTime = std::chrono::steady_clock::now();
-        return loadImageError;
-    }
-    return ErrorCode::OK;
-}
-// clang-format on
-
 void DynamicCalibration::run() {
-    logger = pimpl->logger;
     if(!device) {
         logger->error("Dynamic calibration node does not have access to any device.");
         return;
     }
 
-    logger->info("DynamicCalibration node started in {} mode",
-                 (properties.initialConfig.recalibrationMode == dai::DynamicCalibrationConfig::RecalibrationMode::CONTINUOUS) ? "CONTINUOUS" : "ON-DEMAND");
+    logger->info("DynamicCalibration node started ");
 
     auto previousLoadingTimeFloat = std::chrono::steady_clock::now() + std::chrono::duration<float>(properties.initialConfig.calibrationPeriod);
     auto previousLoadingTime = std::chrono::time_point_cast<std::chrono::steady_clock::duration>(previousLoadingTimeFloat);
     initializePipeline(device);
-    if(!(properties.initialConfig.recalibrationMode == dai::DynamicCalibrationConfig::RecalibrationMode::CONTINUOUS)) {
-        // non-Continuous mode
-        while(isRunning()) {
-            slept = false;
-            doWork(previousLoadingTime);
-            if(!slept) {
-                // sleep to prevent 100% CPU utilization
-                std::this_thread::sleep_for(sleepingTime);
-            }
-        }
-    } else {
-        // Continuous mode
-        auto previousCalibrationTime = std::chrono::steady_clock::now();
-        while(isRunning()) {
-            slept = false;
-            doWorkContinuous(previousCalibrationTime, previousLoadingTime);
-            if(!slept) {
-                // sleep to prevent 100% CPU utilization
-                std::this_thread::sleep_for(sleepingTime);
-            }
+    while(isRunning()) {
+        slept = false;
+        doWork(previousLoadingTime);
+        if(!slept) {
+            // sleep to prevent 100% CPU utilization
+            std::this_thread::sleep_for(sleepingTime);
         }
     }
 }

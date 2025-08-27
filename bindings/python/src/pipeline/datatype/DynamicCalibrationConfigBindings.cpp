@@ -14,12 +14,6 @@ void bind_dynamic_calibration_config(py::module& m, void* pCallstack) {
 
     // ----- Enums -----
 
-    // RecalibrationMode (in dai::DynamicCalibrationConfig)
-    py::enum_<DynamicCalibrationConfig::RecalibrationMode>(m, "RecalibrationMode")
-        .value("DEFAULT", DynamicCalibrationConfig::RecalibrationMode::DEFAULT)
-        .value("CONTINUOUS", DynamicCalibrationConfig::RecalibrationMode::CONTINUOUS)
-        .export_values();
-
     // dcl::PerformanceMode (bind here unless it’s already exposed elsewhere)
     // If it's already bound in another TU, remove this block to avoid duplicate definitions.
     py::enum_<dcl::PerformanceMode>(m, "PerformanceMode")
@@ -34,7 +28,6 @@ void bind_dynamic_calibration_config(py::module& m, void* pCallstack) {
 
     py::class_<DynamicCalibrationConfig, Buffer, std::shared_ptr<DynamicCalibrationConfig>>(m, "DynamicCalibrationConfig")
         .def(py::init<>())
-        .def_readwrite("recalibrationMode", &DynamicCalibrationConfig::recalibrationMode)
         .def_readwrite("performanceMode", &DynamicCalibrationConfig::performanceMode)
         .def_readwrite("loadImagePeriod", &DynamicCalibrationConfig::loadImagePeriod)
         .def_readwrite("calibrationPeriod", &DynamicCalibrationConfig::calibrationPeriod);
@@ -45,21 +38,21 @@ void bind_dynamic_calibration_config(py::module& m, void* pCallstack) {
 
     // ----- Concrete commands -----
 
-    py::class_<RecalibrateCommand, DynamicCalibrationCommand, std::shared_ptr<RecalibrateCommand>>(m, "RecalibrateCommand")
+    py::class_<CalibrateCommand, DynamicCalibrationCommand, std::shared_ptr<CalibrateCommand>>(m, "CalibrateCommand")
         .def(py::init<bool, dcl::PerformanceMode>(), "force"_a = false, "performanceMode"_a = dcl::PerformanceMode::DEFAULT)
-        .def_readwrite("performanceMode", &RecalibrateCommand::performanceMode)
-        .def_readwrite("force", &RecalibrateCommand::force);
+        .def_readwrite("performanceMode", &CalibrateCommand::performanceMode)
+        .def_readwrite("force", &CalibrateCommand::force);
 
     py::class_<CalibrationQualityCommand, DynamicCalibrationCommand, std::shared_ptr<CalibrationQualityCommand>>(m, "CalibrationQualityCommand")
         .def(py::init<bool, dcl::PerformanceMode>(), "force"_a = false, "performanceMode"_a = dcl::PerformanceMode::DEFAULT)
         .def_readwrite("performanceMode", &CalibrationQualityCommand::performanceMode)
         .def_readwrite("force", &CalibrationQualityCommand::force);
 
-    py::class_<StartRecalibrationCommand, DynamicCalibrationCommand, std::shared_ptr<StartRecalibrationCommand>>(m, "StartRecalibrationCommand")
+    py::class_<StartCalibrationCommand, DynamicCalibrationCommand, std::shared_ptr<StartCalibrationCommand>>(m, "StartCalibrationCommand")
         .def(py::init<dcl::PerformanceMode>(), "performanceMode"_a = dcl::PerformanceMode::DEFAULT)
-        .def_readwrite("performanceMode", &StartRecalibrationCommand::performanceMode);
+        .def_readwrite("performanceMode", &StartCalibrationCommand::performanceMode);
 
-    py::class_<StopRecalibrationCommand, DynamicCalibrationCommand, std::shared_ptr<StopRecalibrationCommand>>(m, "StopRecalibrationCommand").def(py::init<>());
+    py::class_<StopCalibrationCommand, DynamicCalibrationCommand, std::shared_ptr<StopCalibrationCommand>>(m, "StopCalibrationCommand").def(py::init<>());
 
     py::class_<LoadImageCommand, DynamicCalibrationCommand, std::shared_ptr<LoadImageCommand>>(m, "LoadImageCommand").def(py::init<>());
 
@@ -67,6 +60,8 @@ void bind_dynamic_calibration_config(py::module& m, void* pCallstack) {
         .def(py::init<>())
         .def(py::init<const dai::CalibrationHandler&>(), py::arg("calibration"))
         .def_readwrite("calibration", &ApplyCalibrationCommand::calibration);
+
+    py::class_<ResetDataCommand, DynamicCalibrationCommand, std::shared_ptr<ResetDataCommand>>(m, "ResetDataCommand").def(py::init<>());
 
     // ----- Call remaining stack -----
     Callstack* callstack = (Callstack*)pCallstack;

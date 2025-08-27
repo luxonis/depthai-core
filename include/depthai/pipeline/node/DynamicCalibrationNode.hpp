@@ -8,6 +8,10 @@
 
 #include "depthai/pipeline/datatype/DynamicCalibrationConfig.hpp"
 #include "depthai/pipeline/datatype/DynamicCalibrationResults.hpp"
+#include "pipeline/ThreadedNodeImpl.hpp"
+#include "spdlog/async_logger.h"
+#include "utility/Logging.hpp"
+
 namespace spdlog {
 class async_logger;
 }
@@ -77,7 +81,7 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
         EMPTY_IMAGE_QUEUE = 5,
         MISSING_IMAGE = 6,
         CALIBRATION_DOES_NOT_EXIST = 7,
-        STOP_LOADING_IMAGES_DURING_RECALIBRATION = 8,
+        STOP_LOADING_IMAGES_DURING_CALIBRATION = 8,
     };
 
     // clang-format off
@@ -204,12 +208,6 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
 
     ErrorCode initializePipeline(const std::shared_ptr<dai::Device> daiDevice);
 
-    // clang-format off
-    ErrorCode doWorkContinuous(
-        std::chrono::steady_clock::time_point& previousCalibrationTime,
-	std::chrono::steady_clock::time_point& previousLoadingTime);
-    // clang-format on
-
     ErrorCode doWork(std::chrono::steady_clock::time_point& previousLoadingAndCalibrationTime);
 
     ErrorCode evaluateCommand(const std::shared_ptr<DynamicCalibrationCommand> command);
@@ -221,7 +219,7 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
 
    private:
     /**
-     * From dai::CalibrationHandler data convert to DCL dcl::CameraCalibrationHandle, which includes all necesarry data for recalibration
+     * From dai::CalibrationHandler data convert to DCL dcl::CameraCalibrationHandle, which includes all necesarry data for calibration
      * @return dcl::CameraCalibrationHanlder
      */
     /**
@@ -255,13 +253,13 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     CameraBoardSocket daiSocketB = CameraBoardSocket::CAM_C;
     int width;
     int height;
-    std::shared_ptr<::spdlog::async_logger> logger;
+    std::shared_ptr<::spdlog::async_logger> logger = pimpl->logger;
 
     // std::chrono::milliseconds sleepingTime = 250ms;
     // static constexpr std::chrono::milliseconds kSleepingTime{250};
     std::chrono::milliseconds sleepingTime{250};
 
-    bool recalibrationShouldRun = false;
+    bool calibrationShouldRun = false;
     bool slept = false;
 
     /**
@@ -269,7 +267,7 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
      * - Initialization of pipeline,
      * - Loading images in DCL,
      * - Starting Calibration Check,
-     * - Starting of Recalibration
+     * - Starting of Calibration
      * - Reseting of data
      */
     bool runOnHostVar = true;

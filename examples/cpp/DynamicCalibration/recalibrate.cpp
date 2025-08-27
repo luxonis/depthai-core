@@ -1,4 +1,4 @@
-// examples/cpp/DynamicCalibration/recalibrate.cpp
+// examples/cpp/DynamicCalibration/calibrate.cpp
 #include <chrono>
 #include <iostream>
 #include <thread>
@@ -42,9 +42,9 @@ int main() {
     pipeline.start();
     std::this_thread::sleep_for(std::chrono::seconds(1));  // wait for autoexposure to settle
 
-    // Start recalibration (optimize performance)
+    // Start calibration (optimize performance)
     {
-        auto startCmd = std::make_shared<dai::StartRecalibrationCommand>();
+        auto startCmd = std::make_shared<dai::StartCalibrationCommand>();
         startCmd->performanceMode = dai::DynamicCalibrationConfig::PerformanceMode::OPTIMIZE_PERFORMANCE;
         cmdInQ->send(startCmd);
     }
@@ -69,7 +69,7 @@ int main() {
 
         // If calibration succeeded, apply it to the device
         if(calibMsg->calibrationData) {
-            std::cout << "Successfully recalibrated." << std::endl;
+            std::cout << "Successfully calibrated." << std::endl;
 
             auto applyCmd = std::make_shared<dai::ApplyCalibrationCommand>();
             // 4) field is 'calibration' (the new cal blob)

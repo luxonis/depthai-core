@@ -35,7 +35,7 @@ int main() {
     std::this_thread::sleep_for(std::chrono::seconds(1));  // wait for autoexposure to settle
 
     // start loading the collecting data
-    command_input->send(std::make_shared<dai::StartRecalibrationCommand>());
+    command_input->send(std::make_shared<dai::StartCalibrationCommand>());
 
     while(pipeline.isRunning()) {
         // wait for a coverage data
@@ -45,7 +45,7 @@ int main() {
         const auto& calibration_data = calibration_result->calibrationData;
         if(calibration_data.has_value()) {
             command_input->send(std::make_shared<dai::ApplyCalibrationCommand>(calibration_data->newCalibration));
-            std::cout << "Successfully recalibrated" << std::endl;
+            std::cout << "Successfully calibrated" << std::endl;
             break;
         } else {
             std::cout << calibration_result->info << std::endl;

@@ -38,7 +38,7 @@ with dai.Pipeline() as pipeline:
 
     pipeline.start()
     time.sleep(1) # wait for autoexposure to settle
-    command_input.send(dai.StartRecalibrationCommand(performanceMode=dai.PerformanceMode.OPTIMIZE_PERFORMANCE))
+    command_input.send(dai.StartCalibrationCommand(performanceMode=dai.PerformanceMode.OPTIMIZE_PERFORMANCE))
     while pipeline.isRunning():
         iteration += 1
         print(f"Iteration {iteration} ... ")
@@ -50,6 +50,6 @@ with dai.Pipeline() as pipeline:
         calibration_data = calibration_result.calibrationData
         # if the calibration is succesfully returned apply it to the device
         if calibration_data:
-            print("Succesfully recalibrated")
+            print("Succesfully calibrated")
             command_input.send(dai.ApplyCalibrationCommand(calibration_data.newCalibration))
             break

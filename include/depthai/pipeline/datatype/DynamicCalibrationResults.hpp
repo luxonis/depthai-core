@@ -70,7 +70,7 @@ struct CoverageData : public Buffer {
  * CalibrationQuality message
  *
  * Returned after running a calibration quality check.
- * Provides feedback on how a potential recalibration would affect the
+ * Provides feedback on how a potential calibration would affect the
  * device, including rotation changes, predicted depth accuracy, and
  * epipolar error metrics.
  */
@@ -102,7 +102,7 @@ struct CalibrationQuality : public Buffer {
         float sampsonErrorCurrent;
 
         /**
-         * Estimated new (achievable) Sampson error with recalibration applied.
+         * Estimated new (achievable) Sampson error with calibration applied.
          */
         float sampsonErrorNew;
 
@@ -156,16 +156,16 @@ struct DynamicCalibrationResult : public Buffer {
      * Detailed calibration result data.
      *
      * Includes:
-     * - **newCalibration**: CalibrationHanlder obtained from the recalibration.
-     * - **currentCalibration**: CalibrationHandler before recalibration.
+     * - **newCalibration**: CalibrationHanlder obtained from the calibration.
+     * - **currentCalibration**: CalibrationHandler before calibration.
      * - **calibrationDifference**: Quality metrics comparing old vs new calibration
      *   (rotation changes, depth error predictions, Sampson errors).
      */
     struct Data {
-        /// Newly generated calibrationHAndler after recalibration
+        /// Newly generated calibrationHAndler after calibration
         dai::CalibrationHandler newCalibration;
 
-        /// CalibrationHandler that was active before recalibration
+        /// CalibrationHandler that was active before calibration
         dai::CalibrationHandler currentCalibration;
 
         /// Differences and quality metrics between old and new calibration
@@ -196,12 +196,12 @@ struct DynamicCalibrationResult : public Buffer {
 
     /**
      * Optional calibration result data.
-     * May be missing if recalibration failed or produced no valid result.
+     * May be missing if calibration failed or produced no valid result.
      */
     std::optional<Data> calibrationData;
 
     /**
-     * Informational message describing the result of recalibration.
+     * Informational message describing the result of calibration.
      */
     std::string info;
 
