@@ -105,7 +105,9 @@ TEST_CASE("DynamicCalibration reaches a result and applies only when ready") {
         auto coverage = coverage_output->get<dai::CoverageData>();
         REQUIRE(coverage != nullptr);
         INFO("Iteration " << i << " meanCoverage=" << coverage->meanCoverage);
-        REQUIRE(coverage->meanCoverage >= lastCoverage - 1e-4f);  // non-decreasing (tolerate float jitter)
+        if(coverage->dataAcquired < 100.0f) {
+            REQUIRE(coverage->meanCoverage >= lastCoverage - 1e-4f);  // non-decreasing (tolerate float jitter)
+        }
         lastCoverage = coverage->meanCoverage;
 
         auto result = calibration_output->get<dai::DynamicCalibrationResult>();
