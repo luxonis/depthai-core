@@ -140,6 +140,7 @@ set(SOURCE_LIST
     src/pipeline/datatype/ImageAlignConfigBindings.cpp
     src/pipeline/datatype/ImgAnnotationsBindings.cpp
     src/remote_connection/RemoteConnectionBindings.cpp
+    src/pipeline/datatype/SegmentationMaskBindings.cpp
 
     src/capabilities/CapabilityBindings.cpp
     src/capabilities/CapabilityRangeBindings.cpp

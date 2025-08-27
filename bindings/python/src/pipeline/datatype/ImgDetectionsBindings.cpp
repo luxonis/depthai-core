@@ -82,6 +82,7 @@ void bind_imgdetections(pybind11::module& m, void* pCallstack) {
         .def("getSequenceNum", &ImgDetections::Buffer::getSequenceNum, DOC(dai, Buffer, getSequenceNum))
         .def("getTransformation", [](ImgDetections& msg) { return msg.transformation; })
         .def("setTransformation", [](ImgDetections& msg, const std::optional<ImgTransformation>& transformation) { msg.transformation = transformation; })
+        .def("getSegmentationMask", [](ImgDetections& msg) { return msg.segmentationMask; })
         // .def("setTimestamp", &ImgDetections::setTimestamp, DOC(dai, Buffer, setTimestamp))
         // .def("setTimestampDevice", &ImgDetections::setTimestampDevice, DOC(dai, Buffer, setTimestampDevice))
         // .def("setSequenceNum", &ImgDetections::setSequenceNum, DOC(dai, ImgDetections, setSequenceNum))

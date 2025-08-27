@@ -165,6 +165,7 @@ bool deserializationSupported(DatatypeEnum datatype) {
         case DatatypeEnum::ToFDepthConfidenceFilterConfig:
         case DatatypeEnum::RGBDData:
         case DatatypeEnum::ObjectTrackerConfig:
+        case DatatypeEnum::SegmentationMask:
             return false;
     }
     return false;

@@ -38,7 +38,7 @@ enum class DatatypeEnum : std::int32_t {
     ImgAnnotations,
     ImageFiltersConfig,
     ToFDepthConfidenceFilterConfig,
-    ObjectTrackerConfig
+    SegmentationMask
 };
 bool isDatatypeSubclassOf(DatatypeEnum parent, DatatypeEnum children);
 

@@ -5,6 +5,7 @@
 #include "depthai/common/ImgTransformations.hpp"
 #include "depthai/common/optional.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
+#include "depthai/pipeline/datatype/SegmentationMask.hpp"
 #include "depthai/utility/ProtoSerializable.hpp"
 
 namespace dai {
