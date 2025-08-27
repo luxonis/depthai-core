@@ -49,7 +49,6 @@ import time
 from pathlib import Path
 import sys
 import signal
-from stress_test import stress_test
 
 
 ALL_SOCKETS = ['rgb', 'left', 'right', 'cama', 'camb', 'camc', 'camd', 'came']
@@ -168,8 +167,8 @@ parser.add_argument('-ctimeout', '--connection-timeout', default=30000,
 parser.add_argument('-btimeout', '--boot-timeout', default=30000,
                     help="Boot timeout in ms. Default: %(default)s (sets DEPTHAI_BOOT_TIMEOUT environment variable)")
 
-parser.add_argument('-stress', action='store_true',
-                    help="Run stress test. This will override all other options (except -d/--device) and will run a heavy pipeline until the user stops it.")
+# parser.add_argument('-stress', action='store_true',
+#                     help="Run stress test. This will override all other options (except -d/--device) and will run a heavy pipeline until the user stops it.")
 
 parser.add_argument("-stereo", action="store_true", default=False,
                     help="Create a stereo depth node if the device has a stereo pair.")
@@ -185,9 +184,9 @@ args = parser.parse_args()
 os.environ["DEPTHAI_CONNECTION_TIMEOUT"] = str(args.connection_timeout)
 os.environ["DEPTHAI_BOOT_TIMEOUT"] = str(args.boot_timeout)
 
-if args.stress:
-    stress_test(args.device)
-    exit(0)
+# if args.stress:
+#     stress_test(args.device)
+#     exit(0)
 
 if args.help:
     parser.print_help()
@@ -221,29 +220,6 @@ rotate = {
     'camd': args.rotate in ['all', 'rgb'],
     'came': args.rotate in ['all', 'mono'],
 }
-
-mono_res_opts = {
-    400: dai.MonoCameraProperties.SensorResolution.THE_400_P,
-    480: dai.MonoCameraProperties.SensorResolution.THE_480_P,
-    720: dai.MonoCameraProperties.SensorResolution.THE_720_P,
-    800: dai.MonoCameraProperties.SensorResolution.THE_800_P,
-    1200: dai.MonoCameraProperties.SensorResolution.THE_1200_P,
-}
-
-color_res_opts = {
-    '720':  dai.ColorCameraProperties.SensorResolution.THE_720_P,
-    '800':  dai.ColorCameraProperties.SensorResolution.THE_800_P,
-    '1080': dai.ColorCameraProperties.SensorResolution.THE_1080_P,
-    '1012': dai.ColorCameraProperties.SensorResolution.THE_1352X1012,
-    '1200': dai.ColorCameraProperties.SensorResolution.THE_1200_P,
-    '1520': dai.ColorCameraProperties.SensorResolution.THE_2024X1520,
-    '4k':   dai.ColorCameraProperties.SensorResolution.THE_4_K,
-    '5mp': dai.ColorCameraProperties.SensorResolution.THE_5_MP,
-    '12mp': dai.ColorCameraProperties.SensorResolution.THE_12_MP,
-    '13mp': dai.ColorCameraProperties.SensorResolution.THE_13_MP,
-    '48mp': dai.ColorCameraProperties.SensorResolution.THE_48_MP,
-}
-
 
 def clamp(num, v0, v1):
     return max(v0, min(num, v1))
@@ -342,18 +318,20 @@ with dai.Pipeline(dai.Device(*dai_device_args)) as pipeline:
             xout[tof_name] = tof[c].depth
             streams.append(tof_name)
 
-            inTofConfig = tof[c].inputConfig.createInputQueue()
-            tofConfig = tof[c].initialConfig.get()
+            inTofConfig = tof[c].tofBaseInputConfig.createInputQueue()
+            tofConfig = dai.ToFConfig()
 
-            if args.tof_median == 0:
-                tofConfig.depthParams.median = dai.MedianFilter.MEDIAN_OFF
-            elif args.tof_median == 3:
-                tofConfig.depthParams.median = dai.MedianFilter.KERNEL_3x3
+            filter = dai.MedianFilter.MEDIAN_OFF
+            if args.tof_median == 3:
+                filter = dai.MedianFilter.KERNEL_3x3
             elif args.tof_median == 5:
-                tofConfig.depthParams.median = dai.MedianFilter.KERNEL_5x5
+                filter = dai.MedianFilter.KERNEL_5x5
             elif args.tof_median == 7:
-                tofConfig.depthParams.median = dai.MedianFilter.KERNEL_7x7
-            tof[c].initialConfig.set(tofConfig)
+                filter = dai.MedianFilter.KERNEL_7x7
+            print("ToF config: ", tofConfig)
+            print("ToF median filter:", filter)
+            tofConfig.median = filter
+            tof[c].setInitialConfig(tofConfig)
             if args.tof_amplitude:
                 amp_name = 'tof_amplitude_' + c
                 xout[amp_name] = tof[c].amplitude

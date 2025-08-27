@@ -1,6 +1,7 @@
 #include "CommonBindings.hpp"
 
 // Libraries
+#include "depthai/common/MedianFilter.hpp"
 #include "hedley/hedley.h"
 
 // depthai/
@@ -78,6 +79,8 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     py::enum_<FrameEvent> frameEvent(m, "FrameEvent", DOC(dai, FrameEvent));
     py::class_<ProfilingData> profilingData(m, "ProfilingData", DOC(dai, ProfilingData));
     py::enum_<Interpolation> interpolation(m, "Interpolation", DOC(dai, Interpolation));
+
+    py::enum_<MedianFilter> medianFilter(m, "MedianFilter", DOC(dai, MedianFilter));
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -413,6 +416,11 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .value("BYPASS", Interpolation::BYPASS)
         .value("DEFAULT", Interpolation::DEFAULT)
         .value("DEFAULT_DISPARITY_DEPTH", Interpolation::DEFAULT_DISPARITY_DEPTH);
+
+    medianFilter.value("MEDIAN_OFF", MedianFilter::MEDIAN_OFF)
+        .value("KERNEL_3x3", MedianFilter::KERNEL_3x3)
+        .value("KERNEL_5x5", MedianFilter::KERNEL_5x5)
+        .value("KERNEL_7x7", MedianFilter::KERNEL_7x7);
 
     // backward compatibility
     // m.attr("node").attr("Warp").attr("Properties").attr("Interpolation") = interpolation;
