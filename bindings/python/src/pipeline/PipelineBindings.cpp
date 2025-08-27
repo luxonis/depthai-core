@@ -4,6 +4,7 @@
 #include <pybind11/attr.h>
 #include <pybind11/gil.h>
 
+#include "DeviceBindings.hpp"
 #include "node/NodeBindings.hpp"
 
 // depthai
@@ -63,7 +64,7 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
     py::class_<GlobalProperties> globalProperties(m, "GlobalProperties", DOC(dai, GlobalProperties));
     py::class_<RecordConfig> recordConfig(m, "RecordConfig", DOC(dai, RecordConfig));
     py::class_<RecordConfig::VideoEncoding> recordVideoConfig(recordConfig, "VideoEncoding", DOC(dai, RecordConfig, VideoEncoding));
-    py::class_<Pipeline> pipeline(m, "Pipeline", DOC(dai, Pipeline, 2));
+    py::class_<Pipeline, std::shared_ptr<Pipeline>> pipeline(m, "Pipeline", DOC(dai, Pipeline, 2));
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -102,20 +103,70 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("compressionLevel", &RecordConfig::compressionLevel, DOC(dai, RecordConfig, compressionLevel));
 
     // bind pipeline
-    pipeline.def(py::init<bool>(), py::arg("createImplicitDevice") = true, DOC(dai, Pipeline, Pipeline))
+    pipeline
+        .def(py::init([](bool createImplicitDevice) {
+                 if(createImplicitDevice) {
+                     auto deviceInfo = deviceSearchHelper<Device>();
+                     auto device = std::make_shared<Device>(deviceInfo);
+                     auto pipeline = std::make_shared<Pipeline>(device);
+                     return pipeline;
+                 }
+
+                 assert(createImplicitDevice == false);
+                 return std::make_shared<Pipeline>(createImplicitDevice);
+             }),
+             py::arg("createImplicitDevice") = true,
+             DOC(dai, Pipeline, Pipeline))
         .def(py::init<std::shared_ptr<Device>>(), py::arg("defaultDevice"), DOC(dai, Pipeline, Pipeline))
         // Python only methods
         .def("__enter__",
-             [](Pipeline& p) -> Pipeline& {
-                 setImplicitPipeline(&p);
+             [](std::shared_ptr<Pipeline> p) -> std::shared_ptr<Pipeline> {
+                 setImplicitPipeline(p.get());
                  return p;
              })
         .def("__exit__",
-             [](Pipeline& d, py::object type, py::object value, py::object traceback) {
-                 py::gil_scoped_release release;
+             [](std::shared_ptr<Pipeline> pipeline, py::object type, py::object value, py::object traceback) {
                  delImplicitPipeline();
-                 d.stop();
-                 d.wait();
+
+                 // Check how we got here (whether through an exception or the end of the with block was simply reached)
+                 bool isException = !type.is_none();
+                 bool isKeyboardInterrupt = type.is(py::handle(PyExc_KeyboardInterrupt));
+
+                 // Spawn a thread to clean up the pipeline
+                 std::atomic<bool> threadRunning{true};
+                 auto cleanupThread = std::thread([pipeline, &threadRunning, isException]() {
+                     // In case of an exception, we want the device to close as quickly as possible
+                     if(isException) {
+                         pipeline->closeQuick();
+                     }
+                     pipeline->stop();
+                     pipeline->wait();
+                     threadRunning = false;
+                 });
+
+                 // While the thread above is cleaning up, check for interrupts
+                 // https://docs.python.org/3/c-api/exceptions.html#c.PyErr_CheckSignals
+                 py::gil_scoped_release release;
+                 while(threadRunning) {
+                     std::this_thread::sleep_for(std::chrono::milliseconds(200));
+                     py::gil_scoped_acquire acquire;
+                     if(PyErr_CheckSignals() != 0) {
+                         // If we are handling a KeyboardInterrupt and another KeyboardInterrupt is thrown, continue
+                         // Otherwise, rethrow the exception
+                         if(PyErr_ExceptionMatches(PyExc_KeyboardInterrupt) && isKeyboardInterrupt) {
+                             try {
+                                 throw py::error_already_set();
+                             } catch(const py::error_already_set& e) {
+                                 // Expect this to be thrown, but do nothing
+                             }
+                             continue;
+                         } else {
+                             throw py::error_already_set();
+                         }
+                     }
+                 }
+
+                 cleanupThread.join();
              })
         //.def(py::init<const Pipeline&>())
         .def("getDefaultDevice", &Pipeline::getDefaultDevice, DOC(dai, Pipeline, getDefaultDevice))
@@ -211,7 +262,7 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
                 return node;
             },
             py::keep_alive<1, 0>())
-        .def("start", &Pipeline::start)
+        .def("start", &Pipeline::start, py::call_guard<py::gil_scoped_release>(), DOC(dai, Pipeline, start))
         .def("wait",
              [](Pipeline& p) {
                  py::gil_scoped_release release;

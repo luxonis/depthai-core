@@ -755,6 +755,11 @@ class DeviceBase {
     void close();
 
     /**
+     * @brief Close the device as quickly as possible without performing any cleanup tasks or other checks. Users should preferablly use close() instead.
+     */
+    void closeQuick();
+
+    /**
      * Is the device already closed (or disconnected)
      *
      * @warning This function is thread-unsafe and may return outdated incorrect values. It is
@@ -815,6 +820,13 @@ class DeviceBase {
      * @note Remember to call this function in the overload to setup the communication properly
      */
     virtual void closeImpl();
+
+    /**
+     * @brief Whether the device should be closed as quickly as possible. Long-running methods ought to check this flag every so often and return if true, all
+     * long-running operations should be aborted.
+     * @note It is a responsibility of the developer to ensure that this flag is checked frequently.
+     */
+    std::atomic<bool> shouldCloseQuickly{false};
 
    protected:
     // protected functions
