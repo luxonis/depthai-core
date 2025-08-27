@@ -100,7 +100,9 @@ int main(int argc, char* argv[]) {
 
         // Only call communicate() once and save the results
         auto results = proc.communicate();
-
+        int retcode_fake = proc.retcode();
+        std::cout << "=== Fake returncode ===\n" << retcode_fake << std::endl;
+        std::cout << "===  returncode ===\n" << retcode << std::endl;
         // Always print the output regardless of return code
         std::string stdoutStr(results.first.buf.data(), results.first.length);
         std::string stderrStr(results.second.buf.data(), results.second.length);
