@@ -33,7 +33,13 @@ int main(int argc, char* argv[]) {
     }
 
     try {
-        auto devicesBefore = dai::Device::getAllAvailableDevices().size();
+        auto devicesBefore = 0;
+
+        while(devicesBefore < 1 ) {
+            std::this_thread::sleep_for(std::chrono::seconds(5));
+            devicesBefore = dai::Device::getAllAvailableDevices().size();
+            std::cout << "Devices now: " << devicesBefore << std::endl;
+        }
 
         // Run the process with captured output and timeout
         auto start = std::chrono::steady_clock::now();
