@@ -240,6 +240,10 @@ dai_add_test(openvino_test src/onhost_tests/openvino/openvino_test.cpp)
 target_compile_definitions(openvino_test PRIVATE SUPERBLOB_PATH="${superblob_path}")
 dai_set_test_labels(openvino_test onhost ci)
 
+# CalibrationHandler test
+dai_add_test(calibration_handler_test src/onhost_tests/calibration_handler_test.cpp)
+dai_set_test_labels(calibration_handler_test onhost ci)
+
 # NNArchive test
 dai_add_test(nn_archive_test src/onhost_tests/nn_archive/nn_archive_test.cpp)
 target_compile_definitions(nn_archive_test PRIVATE
