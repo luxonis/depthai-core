@@ -596,14 +596,16 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit, XLinkDeviceStat
 
         if(rc != X_LINK_SUCCESS) {
             if(rc == X_LINK_INSUFFICIENT_PERMISSIONS) {
-                throw std::runtime_error(fmt::format("Insufficient permissions to communicate with {} device having name \"{}\". Make sure udev rules are set",
-                                                     XLinkDeviceStateToStr(desc.state),
-                                                     desc.name));
-            } else if(rc == X_LINK_DEVICE_ALREADY_IN_USE) {
-                throw std::runtime_error(fmt::format("Cannot connect to device with name \"{}\", it is used by another process", desc.name));
-            } else {
                 throw std::runtime_error(
-                    fmt::format("Failed to connect to device with name \"{}\", error message: {}", desc.name, convertErrorCodeToString(rc)));
+                    fmt::format("Insufficient permissions to communicate with {} device with name \"{}\". Make sure udev rules are set. Error: {}",
+                                XLinkDeviceStateToStr(desc.state),
+                                desc.name,
+                                convertErrorCodeToString(rc)));
+            } else if(rc == X_LINK_DEVICE_ALREADY_IN_USE) {
+                throw std::runtime_error(fmt::format(
+                    "Cannot connect to device with name \"{}\", it is used by another process. Error: {}", desc.name, convertErrorCodeToString(rc)));
+            } else {
+                throw std::runtime_error(fmt::format("Failed to connect to device with name \"{}\". Error: {}", desc.name, convertErrorCodeToString(rc)));
             }
         }
 
