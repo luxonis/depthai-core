@@ -61,6 +61,8 @@ void bind_dynamic_calibration_config(py::module& m, void* pCallstack) {
         .def(py::init<const dai::CalibrationHandler&>(), py::arg("calibration"))
         .def_readwrite("calibration", &ApplyCalibrationCommand::calibration);
 
+    py::class_<ResetDataCommand, DynamicCalibrationCommand, std::shared_ptr<ResetDataCommand>>(m, "ResetDataCommand").def(py::init<>());
+
     // ----- Call remaining stack -----
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();

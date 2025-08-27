@@ -287,3 +287,61 @@ TEST_CASE("DynamicCalibration: StopCalibration halts further results") {
     pipeline.stop();
     pipeline.wait();
 }
+
+TEST_CASE("DynamicCalibration: reset data") {
+    auto device = std::make_shared<dai::Device>();
+    REQUIRE(device != nullptr);
+
+    // Optional: watch for WARN/ERROR logs
+    std::atomic<bool> sawWarnOrError{false};
+    device->setLogLevel(dai::LogLevel::WARN);
+    device->addLogCallback([&](const dai::LogMessage& m) {
+        if(m.level >= dai::LogLevel::WARN) sawWarnOrError = true;
+    });
+
+    // Build pipeline
+    std::shared_ptr<dai::node::DynamicCalibration> dynCalib;
+    std::shared_ptr<dai::node::StereoDepth> stereo;
+    auto pipeline = makePipeline(device, dynCalib, stereo);
+    REQUIRE(dynCalib);
+    REQUIRE(stereo);
+
+    // Queues
+    auto calibration_output = dynCalib->calibrationOutput.createOutputQueue();
+    auto quality_output = dynCalib->qualityOutput.createOutputQueue();
+    auto coverage_output = dynCalib->coverageOutput.createOutputQueue();
+    auto command_input = dynCalib->inputControl.createInputQueue();
+
+    auto left_xout = stereo->syncedLeft.createOutputQueue();
+    auto right_xout = stereo->syncedRight.createOutputQueue();
+    auto disp_xout = stereo->disparity.createOutputQueue();
+
+    // Apply current calibration
+    device->setCalibration(device->readCalibration());
+
+    // Start; brief AE settle
+    pipeline.start();
+    std::this_thread::sleep_for(1s);
+
+    // (Optional) verify stream is alive
+    REQUIRE(left_xout->get<dai::ImgFrame>() != nullptr);
+    REQUIRE(right_xout->get<dai::ImgFrame>() != nullptr);
+    REQUIRE(disp_xout->get<dai::ImgFrame>() != nullptr);
+
+    auto cmd = std::make_shared<dai::LoadImageCommand>();
+    command_input->send(cmd);
+    coverage_output->get<dai::CoverageData>();
+
+    auto resetCmd = std::make_shared<dai::ResetDataCommand>();
+    command_input->send(resetCmd);
+
+    std::this_thread::sleep_for(0.5s);
+    auto calibrateCmd = std::make_shared<dai::CalibrateCommand>();
+    calibrateCmd->force = true;
+    command_input->send(calibrateCmd);
+    auto result = calibration_output->get<dai::DynamicCalibrationResult>();
+    REQUIRE(result->calibrationData == std::nullopt);
+
+    pipeline.stop();
+    pipeline.wait();
+}

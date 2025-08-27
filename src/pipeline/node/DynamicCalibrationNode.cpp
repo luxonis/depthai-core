@@ -419,6 +419,10 @@ DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(const std::sha
         calibrationShouldRun = false;
         return ErrorCode::OK;
     }
+    if(std::dynamic_pointer_cast<ResetDataCommand>(command)) {
+        logger->info("Received RemoveDataCommand: removing the data");
+        dynCalibImpl->removeAllData(sensorA, sensorB);
+    }
 
     logger->warn("evaluateCommand: Received unknown/unhandled command type");
     return ErrorCode::OK;
@@ -453,7 +457,6 @@ DynamicCalibration::ErrorCode DynamicCalibration::doWork(std::chrono::steady_clo
         previousLoadingAndCalibrationTime = std::chrono::steady_clock::now();
         auto error = runCalibration(calibrationHandler);
         if(error == DynamicCalibration::ErrorCode::OK) {
-            dynCalibImpl->removeAllData(sensorA, sensorB);
             calibrationShouldRun = false;
         }
     }

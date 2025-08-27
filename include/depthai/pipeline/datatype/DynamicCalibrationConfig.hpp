@@ -146,4 +146,5 @@ struct ApplyCalibrationCommand : public DynamicCalibrationCommand {
     CalibrationHandler calibration;
 };
 
+struct ResetDataCommand : public DynamicCalibrationCommand {};
 }  // namespace dai
