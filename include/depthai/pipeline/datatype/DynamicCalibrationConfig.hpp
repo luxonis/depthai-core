@@ -36,7 +36,7 @@ struct DynamicCalibrationConfig : public Buffer {
      *
      * - OPTIMIZE_SPEED (2):
      *   Prioritizes calibration speed over accuracy. Suitable when quick
-     *   recalibration is needed, or when calibration must run frequently
+     *   calibration is needed, or when calibration must run frequently
      *   with limited compute resources.
      *
      * - OPTIMIZE_PERFORMANCE (3):
@@ -74,16 +74,16 @@ struct DynamicCalibrationCommand : public Buffer {
 };
 
 /**
- * Command to trigger a recalibration step.
- * Can optionally force recalibration regardless of current quality
+ * Command to trigger a calibration step.
+ * Can optionally force calibration regardless of current quality
  * and specify the performance mode to be used.
  */
-struct RecalibrateCommand : public DynamicCalibrationCommand {
-    RecalibrateCommand(bool force = false, DynamicCalibrationConfig::PerformanceMode performanceMode = DynamicCalibrationConfig::PerformanceMode::DEFAULT)
+struct CalibrateCommand : public DynamicCalibrationCommand {
+    CalibrateCommand(bool force = false, DynamicCalibrationConfig::PerformanceMode performanceMode = DynamicCalibrationConfig::PerformanceMode::DEFAULT)
         // init in the same order as declared below
         : performanceMode(performanceMode), force(force) {}
 
-    /// Performance mode in which recalibration will run
+    /// Performance mode in which calibration will run
     DynamicCalibrationConfig::PerformanceMode performanceMode = DynamicCalibrationConfig::PerformanceMode::DEFAULT;
     /**
      * If true, bypasses all internal validation checks and triggers calibration immediately.
@@ -112,20 +112,20 @@ struct CalibrationQualityCommand : public DynamicCalibrationCommand {
 };
 
 /**
- * Command to start capturing for recalibration process.
- * The recalibration will be run in the specified performance mode until stopped.
+ * Command to start capturing for calibration process.
+ * The calibration will be run in the specified performance mode until stopped.
  */
-struct StartRecalibrationCommand : public DynamicCalibrationCommand {
-    explicit StartRecalibrationCommand(DynamicCalibrationConfig::PerformanceMode performanceMode = DynamicCalibrationConfig::PerformanceMode::DEFAULT)
+struct StartCalibrationCommand : public DynamicCalibrationCommand {
+    explicit StartCalibrationCommand(DynamicCalibrationConfig::PerformanceMode performanceMode = DynamicCalibrationConfig::PerformanceMode::DEFAULT)
         : performanceMode(performanceMode) {}
 
     DynamicCalibrationConfig::PerformanceMode performanceMode = DynamicCalibrationConfig::PerformanceMode::DEFAULT;
 };
 
 /**
- * Command to stop any ongoing recalibration.
+ * Command to stop any ongoing calibration.
  */
-struct StopRecalibrationCommand : public DynamicCalibrationCommand {};
+struct StopCalibrationCommand : public DynamicCalibrationCommand {};
 
 /**
  * Command to load a new image into the calibration process.

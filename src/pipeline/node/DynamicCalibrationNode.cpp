@@ -378,12 +378,11 @@ DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline(const std::
 }
 
 DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(const std::shared_ptr<DynamicCalibrationCommand> command) {
-    if(auto recalibrateCommand = std::dynamic_pointer_cast<RecalibrateCommand>(command)) {
-        logger->info(
-            "Received RecalibrateCommand: force={} performanceMode={}", recalibrateCommand->force, static_cast<int>(recalibrateCommand->performanceMode));
-        recalibrationShouldRun = false;  // stop the recalibration if it is running
-        properties.initialConfig.performanceMode = recalibrateCommand->performanceMode;
-        return runCalibration(calibrationHandler, recalibrateCommand->force);
+    if(auto calibrateCommand = std::dynamic_pointer_cast<CalibrateCommand>(command)) {
+        logger->info("Received CalibrateCommand: force={} performanceMode={}", calibrateCommand->force, static_cast<int>(calibrateCommand->performanceMode));
+        calibrationShouldRun = false;  // stop the calibration if it is running
+        properties.initialConfig.performanceMode = calibrateCommand->performanceMode;
+        return runCalibration(calibrationHandler, calibrateCommand->force);
     }
 
     if(auto calibrationQualityCommand = std::dynamic_pointer_cast<CalibrationQualityCommand>(command)) {
@@ -394,10 +393,10 @@ DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(const std::sha
         return runQualityCheck(calibrationQualityCommand->force);
     }
 
-    if(auto startCalibrationCommand = std::dynamic_pointer_cast<StartRecalibrationCommand>(command)) {
-        logger->info("Received StartRecalibrationCommand: performanceMode={}", static_cast<int>(startCalibrationCommand->performanceMode));
+    if(auto startCalibrationCommand = std::dynamic_pointer_cast<StartCalibrationCommand>(command)) {
+        logger->info("Received StartCalibrationCommand: performanceMode={}", static_cast<int>(startCalibrationCommand->performanceMode));
         properties.initialConfig.performanceMode = startCalibrationCommand->performanceMode;
-        recalibrationShouldRun = true;
+        calibrationShouldRun = true;
         return ErrorCode::OK;
     }
 
@@ -415,9 +414,9 @@ DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(const std::sha
         return ErrorCode::OK;
     }
 
-    if(std::dynamic_pointer_cast<StopRecalibrationCommand>(command)) {
-        logger->info("Received StopRecalibrationCommand: stopping recalibration");
-        recalibrationShouldRun = false;
+    if(std::dynamic_pointer_cast<StopCalibrationCommand>(command)) {
+        logger->info("Received StopCalibrationCommand: stopping calibration");
+        calibrationShouldRun = false;
         return ErrorCode::OK;
     }
 
@@ -434,7 +433,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::doWork(std::chrono::steady_clo
     if(error != ErrorCode::OK) {  // test progress so far
         return error;
     }
-    if(!recalibrationShouldRun) {
+    if(!calibrationShouldRun) {
         return error;
     }
     // Rate limit of the image loading
@@ -442,7 +441,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::doWork(std::chrono::steady_clo
     std::chrono::duration<float> elapsed = now - previousLoadingAndCalibrationTime;
     bool loadingAndCalibrationRequired = elapsed.count() > properties.initialConfig.loadImagePeriod;
     if(loadingAndCalibrationRequired) {
-        logger->info("doWork() called. RecalibrationRunning={}, elapsed={}s", recalibrationShouldRun, elapsed.count());
+        logger->info("doWork() called. CalibrationRunning={}, elapsed={}s", calibrationShouldRun, elapsed.count());
         error = runLoadImage(true);
     }
 
@@ -455,7 +454,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::doWork(std::chrono::steady_clo
         auto error = runCalibration(calibrationHandler);
         if(error == DynamicCalibration::ErrorCode::OK) {
             dynCalibImpl->removeAllData(sensorA, sensorB);
-            recalibrationShouldRun = false;
+            calibrationShouldRun = false;
         }
     }
 

@@ -38,21 +38,21 @@ void bind_dynamic_calibration_config(py::module& m, void* pCallstack) {
 
     // ----- Concrete commands -----
 
-    py::class_<RecalibrateCommand, DynamicCalibrationCommand, std::shared_ptr<RecalibrateCommand>>(m, "RecalibrateCommand")
+    py::class_<CalibrateCommand, DynamicCalibrationCommand, std::shared_ptr<CalibrateCommand>>(m, "CalibrateCommand")
         .def(py::init<bool, dcl::PerformanceMode>(), "force"_a = false, "performanceMode"_a = dcl::PerformanceMode::DEFAULT)
-        .def_readwrite("performanceMode", &RecalibrateCommand::performanceMode)
-        .def_readwrite("force", &RecalibrateCommand::force);
+        .def_readwrite("performanceMode", &CalibrateCommand::performanceMode)
+        .def_readwrite("force", &CalibrateCommand::force);
 
     py::class_<CalibrationQualityCommand, DynamicCalibrationCommand, std::shared_ptr<CalibrationQualityCommand>>(m, "CalibrationQualityCommand")
         .def(py::init<bool, dcl::PerformanceMode>(), "force"_a = false, "performanceMode"_a = dcl::PerformanceMode::DEFAULT)
         .def_readwrite("performanceMode", &CalibrationQualityCommand::performanceMode)
         .def_readwrite("force", &CalibrationQualityCommand::force);
 
-    py::class_<StartRecalibrationCommand, DynamicCalibrationCommand, std::shared_ptr<StartRecalibrationCommand>>(m, "StartRecalibrationCommand")
+    py::class_<StartCalibrationCommand, DynamicCalibrationCommand, std::shared_ptr<StartCalibrationCommand>>(m, "StartCalibrationCommand")
         .def(py::init<dcl::PerformanceMode>(), "performanceMode"_a = dcl::PerformanceMode::DEFAULT)
-        .def_readwrite("performanceMode", &StartRecalibrationCommand::performanceMode);
+        .def_readwrite("performanceMode", &StartCalibrationCommand::performanceMode);
 
-    py::class_<StopRecalibrationCommand, DynamicCalibrationCommand, std::shared_ptr<StopRecalibrationCommand>>(m, "StopRecalibrationCommand").def(py::init<>());
+    py::class_<StopCalibrationCommand, DynamicCalibrationCommand, std::shared_ptr<StopCalibrationCommand>>(m, "StopCalibrationCommand").def(py::init<>());
 
     py::class_<LoadImageCommand, DynamicCalibrationCommand, std::shared_ptr<LoadImageCommand>>(m, "LoadImageCommand").def(py::init<>());
 
