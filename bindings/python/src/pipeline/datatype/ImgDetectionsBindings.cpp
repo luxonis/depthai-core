@@ -41,7 +41,25 @@ void bind_imgdetections(pybind11::module& m, void* pCallstack) {
         .def_readwrite("xmin", &ImgDetection::xmin)
         .def_readwrite("ymin", &ImgDetection::ymin)
         .def_readwrite("xmax", &ImgDetection::xmax)
-        .def_readwrite("ymax", &ImgDetection::ymax);
+        .def_readwrite("ymax", &ImgDetection::ymax)
+        .def("setBoundingBox", &ImgDetection::setBoundingBox, py::arg("boundingBox"))
+        .def("getBoundingBox", &ImgDetection::getBoundingBox)
+        .def("setKeypoints", py::overload_cast<const KeypointsList>(&ImgDetection::setKeypoints), py::arg("keypoints"))
+        .def("setKeypoints", py::overload_cast<const std::vector<Keypoint>>(&ImgDetection::setKeypoints), py::arg("keypoints"))
+        .def("setKeypoints",
+             py::overload_cast<const std::vector<Keypoint>, const std::vector<Edge>>(&ImgDetection::setKeypoints),
+             py::arg("keypoints"),
+             py::arg("edges"))
+        .def("setKeypoints", py::overload_cast<const std::vector<Point3f>>(&ImgDetection::setKeypoints), py::arg("keypoints"))
+        .def("setKeypoints", py::overload_cast<const std::vector<Point2f>>(&ImgDetection::setKeypoints), py::arg("keypoints"))
+        .def("getKeypoints", &ImgDetection::getKeypoints, DOC(dai, ImgDetection, getKeypoints))
+        .def("setEdges", &ImgDetection::setEdges, py::arg("edges"))
+        .def("getEdges", &ImgDetection::getEdges, DOC(dai, ImgDetection, getEdges))
+        .def("centerX", &dai::ImgDetection::getCenterX)
+        .def("centerY", &dai::ImgDetection::getCenterY)
+        .def("width", &dai::ImgDetection::getWidth)
+        .def("height", &dai::ImgDetection::getHeight)
+        .def("angle", &dai::ImgDetection::getAngle);
 
     // rawImgDetections
     //     .def(py::init<>())

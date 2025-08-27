@@ -9,6 +9,7 @@
 #include "depthai/common/KeypointsList.hpp"
 #include "depthai/common/Point2f.hpp"
 #include "depthai/common/Point3f.hpp"
+#include "depthai/common/optional.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/utility/ProtoSerializable.hpp"
 
