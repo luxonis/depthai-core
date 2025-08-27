@@ -118,18 +118,18 @@ struct CalibrationQuality : public Buffer {
     /**
      * Construct CalibrationQuality with quality metrics and info string.
      */
-    CalibrationQuality(Data data, std::string info) : data(std::make_optional(std::move(data))), info(std::move(info)) {}
+    CalibrationQuality(Data qualityData, std::string info) : qualityData(std::make_optional(std::move(qualityData))), info(std::move(info)) {}
 
     /**
      * Construct CalibrationQuality with only info string (no quality metrics).
      */
-    CalibrationQuality(std::string info) : data(std::nullopt), info(std::move(info)) {}
+    CalibrationQuality(std::string info) : qualityData(std::nullopt), info(std::move(info)) {}
 
     /**
      * Optional quality metrics data.
      * May be missing if the quality check did not produce valid results.
      */
-    std::optional<Data> data;
+    std::optional<Data> qualityData;
 
     /**
      * Informational message describing the outcome of the quality check.
@@ -141,7 +141,7 @@ struct CalibrationQuality : public Buffer {
         datatype = DatatypeEnum::CalibrationQuality;
     }
 
-    DEPTHAI_SERIALIZE(CalibrationQuality, data, info);
+    DEPTHAI_SERIALIZE(CalibrationQuality, qualityData, info);
 };
 
 /**

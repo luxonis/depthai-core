@@ -256,42 +256,41 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
         case DatatypeEnum::RGBDData:
             return parseDatatype<RGBDData>(metadataStart, serializedObjectSize, data, fd);
             break;
-        case DatatypeEnum::ObjectTrackerConfig: {
+        case DatatypeEnum::ObjectTrackerConfig:
             return parseDatatype<ObjectTrackerConfig>(metadataStart, serializedObjectSize, data, fd);
             break;
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
-            case DatatypeEnum::DynamicCalibrationCommand:
-                return parseDatatype<DynamicCalibrationCommand>(metadataStart, serializedObjectSize, data, fd);
-                break;
+        case DatatypeEnum::DynamicCalibrationCommand:
+            return parseDatatype<DynamicCalibrationCommand>(metadataStart, serializedObjectSize, data, fd);
+            break;
 
-            case DatatypeEnum::DynamicCalibrationConfig:
-                return parseDatatype<DynamicCalibrationConfig>(metadataStart, serializedObjectSize, data, fd);
-                break;
+        case DatatypeEnum::DynamicCalibrationConfig:
+            return parseDatatype<DynamicCalibrationConfig>(metadataStart, serializedObjectSize, data, fd);
+            break;
 
-            case DatatypeEnum::DynamicCalibrationResult:
-                return parseDatatype<DynamicCalibrationResult>(metadataStart, serializedObjectSize, data, fd);
-                break;
+        case DatatypeEnum::DynamicCalibrationResult:
+            return parseDatatype<DynamicCalibrationResult>(metadataStart, serializedObjectSize, data, fd);
+            break;
 
-            case DatatypeEnum::CalibrationQuality:
-                break;
+        case DatatypeEnum::CalibrationQuality:
+            return parseDatatype<CalibrationQuality>(metadataStart, serializedObjectSize, data, fd);
+            break;
 
-            case DatatypeEnum::CoverageData:
-                return parseDatatype<CoverageData>(metadataStart, serializedObjectSize, data, fd);
-                break;
+        case DatatypeEnum::CoverageData:
+            return parseDatatype<CoverageData>(metadataStart, serializedObjectSize, data, fd);
+            break;
 #else
-            // Explicitly enum these in this switch state:
-            case DatatypeEnum::DynamicCalibrationCommand:
-            case DatatypeEnum::DynamicCalibrationConfig:
-            case DatatypeEnum::DynamicCalibrationResult:
-            case DatatypeEnum::CalibrationQuality:
-            case DatatypeEnum::CoverageData:
-                break;
+        // Explicitly enum these in this switch state:
+        case DatatypeEnum::DynamicCalibrationCommand:
+        case DatatypeEnum::DynamicCalibrationConfig:
+        case DatatypeEnum::DynamicCalibrationResult:
+        case DatatypeEnum::CalibrationQuality:
+        case DatatypeEnum::CoverageData:
+            break;
 #endif  // DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
-            default:
-                break;
-        }
+        default:
+            break;
     }
-
     throw std::runtime_error("Bad packet, couldn't parse");
 }
 

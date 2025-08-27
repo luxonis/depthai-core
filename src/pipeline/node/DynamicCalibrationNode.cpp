@@ -194,7 +194,7 @@ dai::CalibrationQuality DynamicCalibration::calibQualityfromDCL(const dcl::Calib
     data.depthErrorDifference = src.depthDistanceDifference;
     data.sampsonErrorCurrent = src.sampsonErrorCurrent;
     data.sampsonErrorNew = src.sampsonErrorNew;
-    quality.data = data;  // optional constructed from value
+    quality.qualityData = data;  // optional constructed from value
     return quality;
 }
 

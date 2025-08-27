@@ -233,14 +233,14 @@ template <>
 std::unique_ptr<google::protobuf::Message> getProtoMessage(const CalibrationQuality* message, bool /*metadataOnly*/) {
     namespace dc = ::dai::proto::dynamic_calibration;
     auto p = std::make_unique<dc::CalibrationQuality>();
-    if(message->data.has_value()) {
+    if(message->qualityData.has_value()) {
         auto* d = p->mutable_data();
         d->clear_rotationchange();
-        for(float v : message->data->rotationChange) d->add_rotationchange(v);
+        for(float v : message->qualityData->rotationChange) d->add_rotationchange(v);
         d->clear_deptherrordifference();
-        for(float v : message->data->depthErrorDifference) d->add_deptherrordifference(v);
-        d->set_sampsonerrorcurrent(message->data->sampsonErrorCurrent);
-        d->set_sampsonerrornew(message->data->sampsonErrorNew);
+        for(float v : message->qualityData->depthErrorDifference) d->add_deptherrordifference(v);
+        d->set_sampsonerrorcurrent(message->qualityData->sampsonErrorCurrent);
+        d->set_sampsonerrornew(message->qualityData->sampsonErrorNew);
     }
     p->set_info(message->info);
     return p;
@@ -677,9 +677,9 @@ void setProtoMessage(CalibrationQuality& obj, const google::protobuf::Message* b
         d.depthErrorDifference.assign(p->data().deptherrordifference().begin(), p->data().deptherrordifference().end());
         d.sampsonErrorCurrent = p->data().sampsonerrorcurrent();
         d.sampsonErrorNew = p->data().sampsonerrornew();
-        obj.data = d;
+        obj.qualityData = d;
     } else {
-        obj.data.reset();
+        obj.qualityData.reset();
     }
 }
 
