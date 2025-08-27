@@ -205,7 +205,7 @@ TEST_CASE("DynamicCalibration: empty-data requests yield no calibration/quality 
         auto qres = quality_output->get<dai::CalibrationQuality>();
         REQUIRE(qres != nullptr);
         INFO("Quality #1 (force) info: " << qres->info);
-        REQUIRE_FALSE(qres->data.has_value());
+        REQUIRE_FALSE(qres->qualityData.has_value());
     }
 
     // 4) CalibrationQuality(force=false) -> expect data == null
@@ -217,7 +217,7 @@ TEST_CASE("DynamicCalibration: empty-data requests yield no calibration/quality 
         auto qres = quality_output->get<dai::CalibrationQuality>();
         REQUIRE(qres != nullptr);
         INFO("Quality #2 (no force) info: " << qres->info);
-        REQUIRE_FALSE(qres->data.has_value());
+        REQUIRE_FALSE(qres->qualityData.has_value());
     }
 
     REQUIRE_FALSE(sawWarnOrError);

@@ -253,11 +253,6 @@ target_compile_definitions(nn_archive_test PRIVATE
 )
 dai_set_test_labels(nn_archive_test onhost ci)
 
-# Dynamic calibration tests
-dai_add_test(dynamic_calibration_test src/onhost_tests/dynamic_calibration_test.cpp)
-dai_set_test_labels(dynamic_calibration_test onhost ci)
-target_link_libraries(dynamic_calibration_test PRIVATE dynamic_calibration_imported)
-
 # Eeprom naming parsing tests
 dai_add_test(naming_test src/onhost_tests/naming_test.cpp)
 dai_set_test_labels(naming_test onhost ci)
@@ -336,6 +331,11 @@ target_compile_definitions(openvino_blob_test PRIVATE
     OPENVINO_2022_1_BLOB_PATH="${openvino_2022_1_blob}"
 )
 dai_set_test_labels(openvino_blob_test ondevice rvc2_all ci)
+
+# Dynamic calibration tests
+dai_add_test(dynamic_calibration_test src/ondevice_tests/dynamic_calibration_test.cpp)
+dai_set_test_labels(dynamic_calibration_test ondevice rvc2_all ci)
+target_link_libraries(dynamic_calibration_test PRIVATE dynamic_calibration_imported)
 
 # Neural network test
 dai_add_test(neural_network_test src/ondevice_tests/neural_network_test.cpp)
