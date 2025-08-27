@@ -220,12 +220,18 @@ private_data(
     FILE "recording.tar"
     LOCATION recording_path
 )
+private_data(
+    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/construction_vest.mp4"
+    SHA1 "271d8d0b702e683ce02957db7c100843de5ceaec"
+    FILE "construction_vest.mp4"
+    LOCATION construction_vest
+)
 
 ### Helper script to wrap the tests with a timeout ############################
 
 add_executable(test_wrapper src/helpers/test_wrapper.cpp)
 target_include_directories(test_wrapper PRIVATE ${CMAKE_CURRENT_LIST_DIR}/include/subprocess)
-target_link_libraries(test_wrapper PRIVATE depthai::core Threads::Threads)
+target_link_libraries(test_wrapper PRIVATE depthai::core Threads::Threads spdlog::spdlog)
 
 ### On-host tests #############################################################
 
@@ -233,6 +239,10 @@ target_link_libraries(test_wrapper PRIVATE depthai::core Threads::Threads)
 dai_add_test(openvino_test src/onhost_tests/openvino/openvino_test.cpp)
 target_compile_definitions(openvino_test PRIVATE SUPERBLOB_PATH="${superblob_path}")
 dai_set_test_labels(openvino_test onhost ci)
+
+# CalibrationHandler test
+dai_add_test(calibration_handler_test src/onhost_tests/calibration_handler_test.cpp)
+dai_set_test_labels(calibration_handler_test onhost ci)
 
 # NNArchive test
 dai_add_test(nn_archive_test src/onhost_tests/nn_archive/nn_archive_test.cpp)
@@ -464,6 +474,11 @@ dai_set_test_labels(manual_focus_test rvc2_all rvc4 ci)
 dai_add_test(imu_test src/ondevice_tests/pipeline/node/imu_test.cpp)
 dai_set_test_labels(imu_test ondevice rvc4 ci) # Many RVC2 devices do not have an IMU which supports the whole test suite
 
+# ObjectTracker tests
+dai_add_test(object_tracker_test src/ondevice_tests/pipeline/node/object_tracker_test.cpp)
+dai_set_test_labels(object_tracker_test ondevice rvc2 rvc4 ci)
+target_compile_definitions(object_tracker_test PRIVATE VIDEO_PATH="${construction_vest}")
+
 # Record & Replay tests
 dai_add_test(record_replay_test src/ondevice_tests/pipeline/node/record_replay_test.cpp)
 dai_set_test_labels(record_replay_test ondevice rvc2_all rvc4) # TODO(Morato) add to CI once the test is stable
@@ -483,3 +498,7 @@ dai_set_test_labels(video_encoder_test ondevice rvc2_all rvc4 ci)
 # XLinkIn test
 dai_add_test(xlink_test src/ondevice_tests/xlink_tests.cpp)
 dai_set_test_labels(xlink_test ondevice rvc2_all ci)
+
+# runtime_calibration_test test
+dai_add_test(runtime_calibration_test src/ondevice_tests/runtime_calibration_test.cpp)
+dai_set_test_labels(runtime_calibration_test ondevice rvc2_all rvc4 ci)

@@ -293,18 +293,36 @@ class ImgFrame : public Buffer, public ProtoSerializable {
     Rect remapRectToSource(const Rect& rect) const;
 
     /**
-     * Convience function to initialize meta data from another frame
+     * Convenience function to initialize meta data from another frame
      * Copies over timestamps, transformations done on the image, etc.
      * @param sourceFrame source frame from which the metadata is taken from
      */
     ImgFrame& setMetadata(const ImgFrame& sourceFrame);
 
     /**
-     * Convience function to initialize meta data from another frame
+     * Convenience function to initialize meta data from another frame
      * Copies over timestamps, transformations done on the image, etc.
      * @param sourceFrame shared pointer to source frame from which the metadata is taken from
      */
     ImgFrame& setMetadata(const std::shared_ptr<ImgFrame>& sourceFrame);
+
+    /**
+     * Convenience function to set the data of the ImgFrame
+     * @param data data to set
+     */
+    ImgFrame& copyDataFrom(const ImgFrame& sourceFrame);
+
+    /**
+     * Convenience function to set the data of the ImgFrame
+     * @param data data to set
+     */
+    ImgFrame& copyDataFrom(const std::shared_ptr<ImgFrame>& sourceFrame);
+
+    /**
+     * Create a clone of the ImgFrame with metadata and data copied
+     * @returns cloned ImgFrame
+     */
+    std::shared_ptr<ImgFrame> clone() const;
 
     /**
      * @note Fov API works correctly only on rectilinear frames

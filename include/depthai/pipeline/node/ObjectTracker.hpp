@@ -16,7 +16,10 @@ namespace node {
 /**
  * @brief ObjectTracker node. Performs object tracking using Kalman filter and hungarian algorithm.
  */
-class ObjectTracker : public DeviceNodeCRTP<DeviceNode, ObjectTracker, ObjectTrackerProperties> {
+class ObjectTracker : public DeviceNodeCRTP<DeviceNode, ObjectTracker, ObjectTrackerProperties>, public HostRunnable {
+   private:
+    bool runOnHostVar = false;
+
    public:
     constexpr static const char* NAME = "ObjectTracker";
     using DeviceNodeCRTP::DeviceNodeCRTP;
@@ -101,6 +104,37 @@ class ObjectTracker : public DeviceNodeCRTP<DeviceNode, ObjectTracker, ObjectTra
      * Whether tracker should take into consideration class label for tracking.
      */
     void setTrackingPerClass(bool trackingPerClass);
+
+    /**
+     * Set the occlusion ratio threshold. Used to filter out overlapping tracklets.
+     * @param theshold Occlusion ratio threshold. Default 0.3.
+     */
+    void setOcclusionRatioThreshold(float theshold);
+
+    /**
+     * Set the tracklet lifespan in number of frames. Number of frames after which a LOST tracklet is removed.
+     * @param trackletMaxLifespan Tracklet lifespan in number of frames. Default 120.
+     */
+    void setTrackletMaxLifespan(uint32_t trackletMaxLifespan);
+
+    /**
+     * Set the tracklet birth threshold. Minimum consecutive tracked frames required to consider a tracklet as a new (TRACKED) instance.
+     * @param trackletBirthThreshold Tracklet birth threshold. Default 3.
+     */
+    void setTrackletBirthThreshold(uint32_t trackletBirthThreshold);
+
+    /**
+     * Specify whether to run on host or device
+     * By default, the node will run on device.
+     */
+    void setRunOnHost(bool runOnHost);
+
+    /**
+     * Check if the node is set to run on host
+     */
+    bool runOnHost() const override;
+
+    void run() override;
 };
 
 }  // namespace node

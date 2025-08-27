@@ -228,6 +228,10 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           architecture: ${{ matrix.python-architecture }}
+      - name: Set UTF-8 encoding
+        run: |
+          echo "PYTHONIOENCODING=utf-8" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          echo "PYTHONUTF8=1" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
       - name: Append build hash if not a tagged commit
         if: startsWith(github.ref, 'refs/tags/v') != true
         run: echo "BUILD_COMMIT_HASH=${{github.sha}}" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
@@ -235,22 +239,28 @@ jobs:
         run: |
           python -m pip install --upgrade pip
       - name: Building wheels
-        run: cd bindings/python && python -m pip wheel . -w ./wheelhouse/audited/ --verbose
+        run: cd bindings/python && python -m pip wheel . -w ./wheelhouse/ --verbose
       - name: Print out vcpkg logs if building port fails
         if: failure()    # Only run this if the build step fails
         run: cd bindings/python && bash ./ci/show_vcpkg_logs.sh
+      - name: Install delvewheel
+        run: python -m pip install delvewheel
+      - name: List wheelhouse
+        run: cd bindings/python && ls ./wheelhouse
+      - name: Auditing wheels
+        shell: bash
+        run: |
+          cd bindings/python
+          EXTRA_DLL_PATH=$(find ./build -type d -name "temp.win*" -exec ls -d {} \; | head -n 1)/Release/Release
+          echo "delvewheel extra dll path: $EXTRA_DLL_PATH"
+          for wheel in ./wheelhouse/*.whl; do
+            delvewheel repair "$wheel" --add-path "$EXTRA_DLL_PATH" -w wheelhouse/audited
+          done
       - name: Archive wheel artifacts
         uses: actions/upload-artifact@v4
         with:
           name: audited-wheels-windows-${{ matrix.python-version }}
           path: bindings/python/wheelhouse/audited/*
-      - name: Deploy wheels to artifactory (if not a release)
-        if: startsWith(github.ref, 'refs/tags/v') != true
-        run: cd bindings/python && bash ./ci/upload-artifactory.sh
-        env:
-          ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
-          ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
-          ARTIFACTORY_PASS: ${{ secrets.ARTIFACTORY_PASS }}
 
   # This job builds wheels for macOS arch
   build-macos:
@@ -324,8 +334,28 @@ jobs:
         with:
           name: audited-wheels-macos-${{ matrix.os }}-${{ matrix.python-version }}
           path: bindings/python/wheelhouse/audited/*
-      - name: Deploy wheels to artifactory (if not a release)
-        if: startsWith(github.ref, 'refs/tags/v') != true
+
+  combine-macos-wheels:
+    needs: build-macos
+    strategy:
+      matrix:
+        os: [macos-13, macos-14]
+      fail-fast: false
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Download audited wheels
+        uses: actions/download-artifact@v4
+        with:
+          pattern: audited-wheels-macos-${{ matrix.os }}-*
+          path: bindings/python/wheelhouse/audited/
+          merge-multiple: true
+      - name: Combine wheels
+        run: |
+          cd bindings/python && mv wheelhouse/audited wheelhouse/audited_pre && mkdir -p wheelhouse/audited
+          echo "Combining repaired wheels into one master wheel"
+          python3 ci/combine_wheels.py --input_folder=wheelhouse/audited_pre --output_folder=wheelhouse/audited
+      - name: Upload combined wheels to artifactory
         run: cd bindings/python && bash ./ci/upload-artifactory.sh
         env:
           ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
@@ -399,8 +429,28 @@ jobs:
         with:
           name: audited-wheels-linux-x86_64-${{ matrix.python-set }}
           path: bindings/python/wheelhouse/audited/*
-      - name: Deploy wheels to artifactory (if not a release)
-        if: startsWith(github.ref, 'refs/tags/v') != true
+
+  combine-linux-x86_64-wheels:
+    needs: build-linux-x86_64
+    runs-on: ubuntu-latest
+    container:
+      image: quay.io/pypa/manylinux_2_28_x86_64:2024.12.05-1
+      env:
+        PLAT: manylinux_2_28_x86_64
+    steps:
+      - uses: actions/checkout@v3
+      - name: Download audited wheels
+        uses: actions/download-artifact@v4
+        with:
+          pattern: audited-wheels-linux-x86_64-*
+          path: bindings/python/wheelhouse/audited/
+          merge-multiple: true
+      - name: Combine wheels
+        run: |
+          cd bindings/python && mv wheelhouse/audited wheelhouse/audited_pre && mkdir -p wheelhouse/audited
+          echo "Combining repaired wheels into one master wheel"
+          python3 ci/combine_wheels.py --input_folder=wheelhouse/audited_pre --output_folder=wheelhouse/audited
+      - name: Upload combined wheels to artifactory
         run: cd bindings/python && bash ./ci/upload-artifactory.sh
         env:
           ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
@@ -478,8 +528,59 @@ jobs:
         with:
           name: audited-wheels-linux-arm64-${{ matrix.python-set }}
           path: bindings/python/wheelhouse/audited/*
-      - name: Deploy wheels to artifactory (if not a release)
-        if: startsWith(github.ref, 'refs/tags/v') != true
+
+  combine-linux-arm64-wheels:
+    needs: build-linux-arm64
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 1440  # Set timeout to 24 hours
+    container:
+      image: quay.io/pypa/manylinux_2_28_aarch64:2024.12.05-1
+      env:
+        PLAT: manylinux_2_28_aarch64
+    steps:
+      - uses: actions/checkout@v3
+      - name: Download audited wheels
+        uses: actions/download-artifact@v4
+        with:
+          pattern: audited-wheels-linux-arm64-*
+          path: bindings/python/wheelhouse/audited/
+          merge-multiple: true
+      - name: Combine wheels
+        run: |
+          cd bindings/python && mv wheelhouse/audited wheelhouse/audited_pre && mkdir -p wheelhouse/audited
+          echo "Combining repaired wheels into one master wheel"
+          python3 ci/combine_wheels.py --input_folder=wheelhouse/audited_pre --output_folder=wheelhouse/audited
+      - name: Upload combined wheels to artifactory
+        run: cd bindings/python && bash ./ci/upload-artifactory.sh
+        env:
+          ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
+          ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
+          ARTIFACTORY_PASS: ${{ secrets.ARTIFACTORY_PASS }}
+
+  combine-windows-x86_64-wheels:
+    needs: build-windows-x86_64
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Download audited wheels
+        uses: actions/download-artifact@v4
+        with:
+          pattern: audited-wheels-windows-*
+          path: bindings/python/wheelhouse/audited/
+          merge-multiple: true
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.12"
+      - name: Combine wheels
+        run: |
+          python -m pip install delvewheel # Install delvewheel for patching wheels
+          cd bindings/python
+          mv wheelhouse/audited wheelhouse/audited_pre
+          mkdir -p wheelhouse/audited
+          echo "Combining repaired wheels into one master wheel"
+          python ci/combine_wheels.py --input_folder=wheelhouse/audited_pre --output_folder=wheelhouse/audited --log_level=debug
+      - name: Upload combined wheels to artifactory
         run: cd bindings/python && bash ./ci/upload-artifactory.sh
         env:
           ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
@@ -490,7 +591,7 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     # needs: [pytest, build-linux-armhf, build-windows-x86_64, build-macos-x86_64, build-macos-arm64, build-linux-x86_64, build-linux-arm64]
     # needs: [pytest, build-windows-x86_64, build-macos, build-linux-x86_64, build-linux-arm64]
-    needs: [build-windows-x86_64, build-macos, build-linux-x86_64, build-linux-arm64]
+    needs: [combine-macos-wheels, combine-linux-x86_64-wheels, combine-linux-arm64-wheels, combine-windows-x86_64-wheels]
     runs-on: ubuntu-latest
 
     steps:
