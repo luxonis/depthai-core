@@ -6,7 +6,6 @@
             "name": "cpp-httplib",
             "default-features": false
         },
-	"eigen3",
         "nlohmann-json",
         "yaml-cpp",
         "spdlog",
@@ -18,6 +17,7 @@
         "fmt",
         "neargye-semver",
         "magic-enum",
+        "eigen3",
         {
             "name": "libarchive",
             "default-features": false
