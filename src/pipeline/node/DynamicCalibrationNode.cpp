@@ -5,10 +5,7 @@
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "depthai/utility/matrixOps.hpp"
-#include "pipeline/ThreadedNodeImpl.hpp"
-#include "spdlog/async_logger.h"
 #include "spdlog/spdlog.h"
-#include "utility/Logging.hpp"
 
 namespace dai {
 namespace node {
@@ -455,7 +452,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::doWork(std::chrono::steady_clo
     if(loadingAndCalibrationRequired) {
         computeCoverage();
         previousLoadingAndCalibrationTime = std::chrono::steady_clock::now();
-        auto error = runCalibration(calibrationHandler);
+        error = runCalibration(calibrationHandler);
         if(error == DynamicCalibration::ErrorCode::OK) {
             calibrationShouldRun = false;
         }
@@ -465,7 +462,6 @@ DynamicCalibration::ErrorCode DynamicCalibration::doWork(std::chrono::steady_clo
 }
 
 void DynamicCalibration::run() {
-    logger = pimpl->logger;
     if(!device) {
         logger->error("Dynamic calibration node does not have access to any device.");
         return;
