@@ -42,9 +42,15 @@ jobs:
         echo "Using branch: $BRANCH_NAME"
         scripts/hil/build_and_push.sh "${{ inputs.flavor }}" "$BRANCH_NAME" "$CONTAINER_REGISTRY" "${{ github.sha }}" "$PARALLEL_JOBS" "$PULL_REQUEST" "$TAG"
 
+ prepare_hil_framework:
+    needs: [build_docker_container]
+    runs-on: ['self-hosted', 'testbed-runner']
+    steps:
+      - name: Prepare HIL Framework
+        run: source scripts/hil/prepare_hil_framework.sh
 
  linux_rvc2_test:
-    needs: [build_docker_container]
+    needs: [build_docker_container,prepare_hil_framework]
     runs-on: ['self-hosted', 'testbed-runner']
     steps:
     - uses: actions/checkout@v3
@@ -69,7 +75,7 @@ jobs:
 
   # Testing
  linux_rvc4_test:
-      needs: [build_docker_container]
+      needs: [build_docker_container,prepare_hil_framework]
       strategy:
         matrix:
           rvc4os: ${{ fromJson(inputs.luxonis_os_versions_to_test) }}
@@ -89,10 +95,10 @@ jobs:
       - name: Run RVC4 tests
         run: |
           export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-${{ matrix.rvc4os }}-${{ inputs.flavor }}"
-          exec hil --models "oak4_pro or oak4_d" --reservation-name $RESERVATION_NAME --wait --sync-workspace --rvc4-os-version ${{ matrix.rvc4os }} --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "./tests/run_tests_entrypoint.sh rvc4"
+          exec hil --models "oak4_pro or oak4_d" --reservation-name $RESERVATION_NAME --wait --rvc4-os-version ${{ matrix.rvc4os }} --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "./tests/run_tests_entrypoint.sh rvc4"
 
  linux_rvc4_rgb_test:
-      needs: [build_docker_container]
+      needs: [build_docker_container,prepare_hil_framework]
       strategy:
         matrix:
           rvc4os: ${{ fromJson(inputs.luxonis_os_versions_to_test_rgb) }}
@@ -111,5 +117,5 @@ jobs:
       - name: Run RVC4 tests
         run: |
           export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-${{ matrix.rvc4os }}-${{ inputs.flavor }}-rgb"
-          exec hil --models "oak4_s" --reservation-name $RESERVATION_NAME --wait --sync-workspace --rvc4-os-version ${{ matrix.rvc4os }} --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "./tests/run_tests_entrypoint.sh rvc4rgb"
+          exec hil --models "oak4_s" --reservation-name $RESERVATION_NAME --wait --rvc4-os-version ${{ matrix.rvc4os }} --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "./tests/run_tests_entrypoint.sh rvc4rgb"
 
