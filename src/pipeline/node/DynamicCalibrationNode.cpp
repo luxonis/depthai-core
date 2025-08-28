@@ -211,10 +211,10 @@ void DynamicCalibration::setCalibration(CalibrationHandler& handler) {
 }
 
 DynamicCalibration::ErrorCode DynamicCalibration::runQualityCheck(const bool force) {
-    dcl::PerformanceMode performanceMode = force ? dcl::PerformanceMode::SKIP_CHECKS : properties.initialConfig.performanceMode;
-    logger->info("Running calibration quality check (force={} mode={})", force, static_cast<int>(performanceMode));
+    dcl::PerformanceMode pm = force ? dcl::PerformanceMode::SKIP_CHECKS : performanceMode;
+    logger->info("Running calibration quality check (force={} mode={})", force, static_cast<int>(pm));
 
-    auto dclResult = dynCalibImpl->checkCalibration(dcDevice, socketA, socketB, performanceMode);
+    auto dclResult = dynCalibImpl->checkCalibration(dcDevice, socketA, socketB, pm);
 
     if(!dclResult.passed()) {
         auto result = std::make_shared<CalibrationQuality>();
@@ -235,9 +235,9 @@ DynamicCalibration::ErrorCode DynamicCalibration::runQualityCheck(const bool for
 }
 
 DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::CalibrationHandler& currentHandler, const bool force) {
-    dcl::PerformanceMode performanceMode = force ? dcl::PerformanceMode::SKIP_CHECKS : properties.initialConfig.performanceMode;
-    logger->info("Running calibration (force={} mode={})", force, static_cast<int>(performanceMode));
-    auto dclResult = dynCalibImpl->findNewCalibration(dcDevice, socketA, socketB, performanceMode);
+    dcl::PerformanceMode pm = force ? dcl::PerformanceMode::SKIP_CHECKS : performanceMode;
+    logger->info("Running calibration (force={} mode={})", force, static_cast<int>(pm));
+    auto dclResult = dynCalibImpl->findNewCalibration(dcDevice, socketA, socketB, pm);
     if(!dclResult.passed()) {
         auto result = std::make_shared<DynamicCalibrationResult>(dclResult.errorMessage());
         logger->info("WARNING: Calibration failed: {}", dclResult.errorMessage());
@@ -309,7 +309,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::runLoadImage(const bool blocki
 }
 
 DynamicCalibration::ErrorCode DynamicCalibration::computeCoverage() {
-    auto resultCoverage = dynCalibImpl->computeCoverage(sensorA, sensorB, properties.initialConfig.performanceMode);
+    auto resultCoverage = dynCalibImpl->computeCoverage(sensorA, sensorB, performanceMode);
 
     if(!resultCoverage.passed()) {
         throw std::runtime_error("Coverage check failed!");
@@ -327,10 +327,6 @@ DynamicCalibration::ErrorCode DynamicCalibration::computeCoverage() {
 
 DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline(const std::shared_ptr<dai::Device> daiDevice) {
     logger->info("Initializing DynamicCalibration pipeline for device: {}", daiDevice->getDeviceId());
-    auto initialConfig = inputConfig.tryGet<dai::DynamicCalibrationConfig>();
-    if(initialConfig) {
-        properties.initialConfig = *initialConfig;
-    }
 
     auto inSyncGroup = syncInput.get<dai::MessageGroup>();
     if(!inSyncGroup) {
@@ -380,24 +376,21 @@ DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline(const std::
 
 DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(const std::shared_ptr<DynamicCalibrationCommand> command) {
     if(auto calibrateCommand = std::dynamic_pointer_cast<CalibrateCommand>(command)) {
-        logger->info("Received CalibrateCommand: force={} performanceMode={}", calibrateCommand->force, static_cast<int>(calibrateCommand->performanceMode));
+        logger->info("Received CalibrateCommand: force={}", calibrateCommand->force);
         calibrationShouldRun = false;  // stop the calibration if it is running
-        properties.initialConfig.performanceMode = calibrateCommand->performanceMode;
         return runCalibration(calibrationHandler, calibrateCommand->force);
     }
 
     if(auto calibrationQualityCommand = std::dynamic_pointer_cast<CalibrationQualityCommand>(command)) {
-        logger->info("Received CalibrationQualityCommand: force={} performanceMode={}",
-                     calibrationQualityCommand->force,
-                     static_cast<int>(calibrationQualityCommand->performanceMode));
-        properties.initialConfig.performanceMode = calibrationQualityCommand->performanceMode;
+        logger->info("Received CalibrationQualityCommand: force={}", calibrationQualityCommand->force);
         return runQualityCheck(calibrationQualityCommand->force);
     }
 
     if(auto startCalibrationCommand = std::dynamic_pointer_cast<StartCalibrationCommand>(command)) {
-        logger->info("Received StartCalibrationCommand: performanceMode={}", static_cast<int>(startCalibrationCommand->performanceMode));
-        properties.initialConfig.performanceMode = startCalibrationCommand->performanceMode;
+        logger->info("Received StartCalibrationCommand");
         calibrationShouldRun = true;
+        loadImagePeriod = startCalibrationCommand->loadImagePeriod;
+        calibrationPeriod = startCalibrationCommand->calibrationPeriod;
         return ErrorCode::OK;
     }
 
@@ -423,6 +416,12 @@ DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(const std::sha
     if(std::dynamic_pointer_cast<ResetDataCommand>(command)) {
         logger->info("Received RemoveDataCommand: removing the data");
         dynCalibImpl->removeAllData(sensorA, sensorB);
+        return ErrorCode::OK;
+    }
+    if(auto performanceModeCommand = std::dynamic_pointer_cast<SetPerformanceModeCommand>(command)) {
+        logger->info("Received SetPerformanceModeCommand: changing performance mode to {}", static_cast<int>(performanceModeCommand->performanceMode));
+        performanceMode = performanceModeCommand->performanceMode;
+        return ErrorCode::OK;
     }
 
     logger->info("WARNING: evaluateCommand: Received unknown/unhandled command type");
@@ -444,7 +443,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::doWork(std::chrono::steady_clo
     // Rate limit of the image loading
     auto now = std::chrono::steady_clock::now();
     std::chrono::duration<float> elapsed = now - previousLoadingAndCalibrationTime;
-    bool loadingAndCalibrationRequired = elapsed.count() > properties.initialConfig.loadImagePeriod;
+    bool loadingAndCalibrationRequired = elapsed.count() > loadImagePeriod;
     if(loadingAndCalibrationRequired) {
         logger->info("doWork() called. CalibrationRunning={}, elapsed={}s", calibrationShouldRun, elapsed.count());
         error = runLoadImage(true);
@@ -473,7 +472,7 @@ void DynamicCalibration::run() {
 
     logger->info("DynamicCalibration node started ");
 
-    auto previousLoadingTimeFloat = std::chrono::steady_clock::now() + std::chrono::duration<float>(properties.initialConfig.calibrationPeriod);
+    auto previousLoadingTimeFloat = std::chrono::steady_clock::now() + std::chrono::duration<float>(calibrationPeriod);
     auto previousLoadingTime = std::chrono::time_point_cast<std::chrono::steady_clock::duration>(previousLoadingTimeFloat);
     initializePipeline(device);
     while(isRunning()) {

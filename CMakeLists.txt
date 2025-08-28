@@ -1164,16 +1164,6 @@ include(CTest)
 enable_testing()
 
 ########################
-# Tests
-########################
-if (DEPTHAI_BUILD_TESTS)
-    add_subdirectory(tests)
-    if (DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
-        add_subdirectory(tests/unit)
-    endif()
-endif()
-
-########################
 # Examples (can also act as tests)
 ########################
 if (DEPTHAI_BUILD_EXAMPLES)

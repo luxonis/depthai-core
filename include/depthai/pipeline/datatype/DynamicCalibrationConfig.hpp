@@ -12,51 +12,6 @@
 namespace dai {
 
 /**
- * DynamicCalibrationConfig message.
- */
-
-struct DynamicCalibrationConfig : public Buffer {
-    DynamicCalibrationConfig() = default;
-    virtual ~DynamicCalibrationConfig() = default;
-
-    float loadImagePeriod = 0.5;
-    float calibrationPeriod = 5;
-
-    /**
-     * Performance modes for dynamic calibration.
-     *
-     * - DEFAULT (0):
-     *   Balanced mode. Uses standard calibration checks and parameters,
-     *   suitable for most general use cases.
-     *
-     * - STATIC_SCENERY (1):
-     *   Optimized for scenarios where the environment and camera remain
-     *   fixed (e.g., factory setups, static rigs). Enables stricter checks
-     *   to ensure calibration stability over time.
-     *
-     * - OPTIMIZE_SPEED (2):
-     *   Prioritizes calibration speed over accuracy. Suitable when quick
-     *   calibration is needed, or when calibration must run frequently
-     *   with limited compute resources.
-     *
-     * - OPTIMIZE_PERFORMANCE (3):
-     *   Prioritizes calibration accuracy and robustness, even at the cost
-     *   of additional compute time. Suitable for high-precision use cases
-     *   where depth quality is critical.
-     *
-     * - SKIP_CHECKS (4):
-     *   Skips validation and quality checks entirely. Intended for advanced
-     *   use cases, debugging, or when external systems handle quality
-     *   assurance. Use with caution.
-     */
-    using PerformanceMode = dcl::PerformanceMode;
-
-    PerformanceMode performanceMode = PerformanceMode::DEFAULT;
-
-    DEPTHAI_SERIALIZE_EXT(DynamicCalibrationConfig, performanceMode, loadImagePeriod, calibrationPeriod);
-};
-
-/**
  * Base class for all dynamic calibration control commands.
  */
 struct DynamicCalibrationCommand : public Buffer {
@@ -79,12 +34,10 @@ struct DynamicCalibrationCommand : public Buffer {
  * and specify the performance mode to be used.
  */
 struct CalibrateCommand : public DynamicCalibrationCommand {
-    CalibrateCommand(bool force = false, DynamicCalibrationConfig::PerformanceMode performanceMode = DynamicCalibrationConfig::PerformanceMode::DEFAULT)
+    CalibrateCommand(bool force = false)
         // init in the same order as declared below
-        : performanceMode(performanceMode), force(force) {}
+        : force(force) {}
 
-    /// Performance mode in which calibration will run
-    DynamicCalibrationConfig::PerformanceMode performanceMode = DynamicCalibrationConfig::PerformanceMode::DEFAULT;
     /**
      * If true, bypasses all internal validation checks and triggers calibration immediately.
      * This can speed up capture process, but comes at the cost of reduced accuracy and
@@ -98,16 +51,14 @@ struct CalibrateCommand : public DynamicCalibrationCommand {
  * Can optionally force evaluation and specify the performance mode context.
  */
 struct CalibrationQualityCommand : public DynamicCalibrationCommand {
-    CalibrationQualityCommand(bool force = false,
-                              DynamicCalibrationConfig::PerformanceMode performanceMode = DynamicCalibrationConfig::PerformanceMode::DEFAULT)
+    CalibrationQualityCommand(bool force = false)
         // match declaration order
-        : performanceMode(performanceMode), force(force) {}
+        : force(force) {}
     /**
      * If true, bypasses all internal validation checks and triggers calibration quality check immediately.
      * This can speed up capture process, but comes at the cost of reduced accuracy and
      * potentially unstable results. Use with caution.
      */
-    DynamicCalibrationConfig::PerformanceMode performanceMode = DynamicCalibrationConfig::PerformanceMode::DEFAULT;
     bool force = false;
 };
 
@@ -116,10 +67,11 @@ struct CalibrationQualityCommand : public DynamicCalibrationCommand {
  * The calibration will be run in the specified performance mode until stopped.
  */
 struct StartCalibrationCommand : public DynamicCalibrationCommand {
-    explicit StartCalibrationCommand(DynamicCalibrationConfig::PerformanceMode performanceMode = DynamicCalibrationConfig::PerformanceMode::DEFAULT)
-        : performanceMode(performanceMode) {}
+    explicit StartCalibrationCommand(float loadImagePeriod = 0.5f, float calibrationPeriod = 5.0f)
+        : loadImagePeriod(loadImagePeriod), calibrationPeriod(calibrationPeriod) {}
 
-    DynamicCalibrationConfig::PerformanceMode performanceMode = DynamicCalibrationConfig::PerformanceMode::DEFAULT;
+    float loadImagePeriod = 0.5f;
+    float calibrationPeriod = 5.0f;
 };
 
 /**
@@ -147,4 +99,11 @@ struct ApplyCalibrationCommand : public DynamicCalibrationCommand {
 };
 
 struct ResetDataCommand : public DynamicCalibrationCommand {};
+
+struct SetPerformanceModeCommand : public DynamicCalibrationCommand {
+    explicit SetPerformanceModeCommand(const dcl::PerformanceMode performanceMode) : performanceMode(performanceMode) {}
+
+    const dcl::PerformanceMode performanceMode = dcl::PerformanceMode::DEFAULT;
+};
+
 }  // namespace dai

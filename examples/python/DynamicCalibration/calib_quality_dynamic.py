@@ -31,7 +31,6 @@ with dai.Pipeline() as pipeline:
     dynCalibCoverageQueue = dynCalib.coverageOutput.createOutputQueue()
     dynCalibQualityQueue = dynCalib.qualityOutput.createOutputQueue()
     
-    dynCalibInputConfig = dynCalib.inputConfig.createInputQueue()
     dynCalibInputControl = dynCalib.inputControl.createInputQueue()
     
     device = pipeline.getDefaultDevice()
@@ -75,13 +74,11 @@ with dai.Pipeline() as pipeline:
         dynQualityResult = dynCalibQualityQueue.get()
         if dynQualityResult is not None:
             print(f"Dynamic calibration status: {dynQualityResult.info}")
-            calibrationData = dynQualityResult.qualityData
-        else:
-            calibrationData = None
 
         # if the calibration is succesfully returned apply it to the device
 
-        if calibrationData:
+        if dynQualityResult.qualityData:
+            calibrationData = dynQualityResult.qualityData
             print("Succesfully evaluated Quality")
             quality = calibrationData
             print(

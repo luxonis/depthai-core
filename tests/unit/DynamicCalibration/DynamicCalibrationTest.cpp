@@ -98,6 +98,7 @@ std::vector<std::vector<float>> testRotation{{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.
 std::vector<float> testTranslation{10.0f, 5.0f, 2.5f};
 }  // namespace
 
+using namespace std::chrono;
 // -----------------------------------------------------------------------------
 // Tests that don't need DCL
 // -----------------------------------------------------------------------------
@@ -108,15 +109,6 @@ TEST_CASE("Set & get runOnHost flag", "[DynamicCalibration]") {
 
     dynCalib.setRunOnHost(false);
     REQUIRE_FALSE(dynCalib.runOnHost());
-}
-
-TEST_CASE("Set performance mode in properties", "[DynamicCalibration]") {
-    TestDynamicCalibrationNode dynCalib;  // stack ok; no logger use
-    dai::DynamicCalibrationConfig cfg;
-    cfg.performanceMode = dcl::PerformanceMode::SKIP_CHECKS;
-    dynCalib.setInitialConfig(cfg);
-
-    REQUIRE(dynCalib.props().initialConfig.performanceMode == dcl::PerformanceMode::SKIP_CHECKS);
 }
 
 // -----------------------------------------------------------------------------
@@ -149,9 +141,9 @@ TEST_CASE("runQualityCheck() uses config OPTIMIZE_PERFORMANCE and returns OK", "
 
     auto dynCalib = pipeline.create<dai::node::DynamicCalibration>(std::move(stub));
 
-    dai::DynamicCalibrationConfig cfg;
-    cfg.performanceMode = dcl::PerformanceMode::OPTIMIZE_PERFORMANCE;
-    dynCalib->setInitialConfig(cfg);
+    dynCalib->inputControl.send(std::make_shared<dai::SetPerformanceModeCommand>(dai::node::DynamicCalibration::PerformanceMode::OPTIMIZE_PERFORMANCE));
+    auto previousLoadingTime = steady_clock::now();
+    dynCalib->doWork(previousLoadingTime);
 
     const bool force = false;
     auto err = dynCalib->runQualityCheck(force);
@@ -199,9 +191,9 @@ TEST_CASE("runCalibration() success publishes result", "[DynamicCalibration]") {
         .newCalibration = pairHB, .currentCalibration = pairHB, .calibrationDifference = std::make_shared<dcl::CalibrationDifference>()};
     stubRaw->nextFindNewCalibrationResult = dcl::Result<dcl::StereoCalibrationResult>::ok(cr);
 
-    dai::DynamicCalibrationConfig cfg;
-    cfg.performanceMode = dcl::PerformanceMode::OPTIMIZE_PERFORMANCE;
-    dynCalib->setInitialConfig(cfg);
+    dynCalib->inputControl.send(std::make_shared<dai::SetPerformanceModeCommand>(dai::node::DynamicCalibration::PerformanceMode::OPTIMIZE_PERFORMANCE));
+    auto previousLoadingTime = steady_clock::now();
+    dynCalib->doWork(previousLoadingTime);  // sets the mode
 
     dai::CalibrationHandler ch;
     std::vector<std::vector<float>> zeroRotationMat{{0.f, 0.f, 0.f}, {0.f, 0.f, 0.f}, {0.f, 0.f, 0.f}};
@@ -331,9 +323,9 @@ TEST_CASE("computeCoverage(): error throws and counts", "[DynamicCalibration]") 
     auto* stubRaw = stub.get();
     auto dynCalib = pl.create<dai::node::DynamicCalibration>(std::move(stub));
 
-    dai::DynamicCalibrationConfig cfg;
-    cfg.performanceMode = dcl::PerformanceMode::OPTIMIZE_PERFORMANCE;
-    dynCalib->setInitialConfig(cfg);
+    dynCalib->inputControl.send(std::make_shared<dai::SetPerformanceModeCommand>(dai::node::DynamicCalibration::PerformanceMode::OPTIMIZE_PERFORMANCE));
+    auto previousLoadingTime = steady_clock::now();
+    dynCalib->doWork(previousLoadingTime);  // sets the mode
 
     REQUIRE_THROWS_AS(dynCalib->computeCoverage(), std::runtime_error);
     REQUIRE(stubRaw->lastPerfModeComputeCoverage == dcl::PerformanceMode::OPTIMIZE_PERFORMANCE);
@@ -352,9 +344,8 @@ TEST_CASE("computeCoverage(): success publishes coverage and counts", "[DynamicC
     cov.meanCoverage = 4.2f;
     stubRaw->nextComputeCoverageResult = dcl::Result<dcl::CoverageData>::ok(cov);
 
-    dai::DynamicCalibrationConfig cfg;
-    cfg.performanceMode = dcl::PerformanceMode::OPTIMIZE_PERFORMANCE;
-    dyn->setInitialConfig(cfg);
+    auto cmdInQ = dyn->inputControl.createInputQueue();
+    cmdInQ->send(std::make_shared<dai::SetPerformanceModeCommand>(dai::node::DynamicCalibration::PerformanceMode::DEFAULT));
 
     auto outQ = dyn->coverageOutput.createOutputQueue();
 
@@ -390,8 +381,6 @@ TEST_CASE("DoWork: enqueue command (smoke)", "[DynamicCalibration]") {
 
 // A lighter-weight integration that exercises a few codepaths in doWork
 TEST_CASE("DoWork: processes load + coverage + quality-check paths and counts", "[DynamicCalibration]") {
-    using namespace std::chrono;
-
     dai::Pipeline pl(false);
     auto stub = std::make_unique<StubDclDynamicCalibration>();
     auto* stubRaw = stub.get();
@@ -402,7 +391,6 @@ TEST_CASE("DoWork: processes load + coverage + quality-check paths and counts", 
 
     // force action by making last time old
     auto previousLoadingTime = steady_clock::now() - seconds(10);
-    dyn->properties.initialConfig.calibrationPeriod = 1;
 
     // frames
     uint8_t leftData[] = {1, 2, 3, 4};
@@ -449,7 +437,7 @@ TEST_CASE("DoWork: processes load + coverage + quality-check paths and counts", 
 
     // non-forced QC with OPTIMIZE_PERFORMANCE
     stubRaw->nextCheckCalibrationResult = dcl::Result<dcl::CalibrationDifference>::ok({});
-    auto qc = std::make_shared<dai::CalibrationQualityCommand>(false, dcl::PerformanceMode::OPTIMIZE_PERFORMANCE);
+    auto qc = std::make_shared<dai::CalibrationQualityCommand>();
     qc->force = false;
     dyn->inputControl.send(qc);
     auto errQc2 = dyn->doWork(previousLoadingTime);
@@ -466,7 +454,7 @@ TEST_CASE("DoWork: processes load + coverage + quality-check paths and counts", 
     group2->add(dyn->leftInputName, left);
     dyn->syncInput.send(group2);
 
-    auto recalc = std::make_shared<dai::StartCalibrationCommand>(dcl::PerformanceMode::OPTIMIZE_PERFORMANCE);
+    auto recalc = std::make_shared<dai::StartCalibrationCommand>();
     dyn->inputControl.send(recalc);
 
     // ensure coverage still returns something during the path

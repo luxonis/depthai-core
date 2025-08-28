@@ -31,7 +31,6 @@ with dai.Pipeline() as pipeline:
     dynCalibCalibrbationQueue = dynCalib.calibrationOutput.createOutputQueue()
     dynCalibCoverageQueue = dynCalib.coverageOutput.createOutputQueue()
     
-    dynCalibInputConfig = dynCalib.inputConfig.createInputQueue()
     dynCalibInputControl = dynCalib.inputControl.createInputQueue()
     
     device = pipeline.getDefaultDevice()
@@ -45,7 +44,7 @@ with dai.Pipeline() as pipeline:
     time.sleep(1) # wait for autoexposure to settle
 
     #Command to start the calibration after pipeline has started
-    dynCalibInputControl.send(dai.StartCalibrationCommand(performanceMode=dai.PerformanceMode.OPTIMIZE_PERFORMANCE))
+    dynCalibInputControl.send(dai.StartCalibrationCommand())
 
     while pipeline.isRunning():
 
@@ -97,6 +96,8 @@ with dai.Pipeline() as pipeline:
                 f"Mean Sampson error current = {quality.sampsonErrorCurrent} px"
             )
             print(f"Theoretical Depth Error Difference @1m:{quality.depthErrorDifference[0]:.2f}%, 2m:{quality.depthErrorDifference[1]:.2f}%, 5m:{quality.depthErrorDifference[2]:.2f}%, 10m:{quality.depthErrorDifference[3]:.2f}%")
+            dynCalibInputControl.send(dai.ResetDataCommand())
+            dynCalibInputControl.send(dai.StartCalibrationCommand())
 
         cv2.imshow("disparity", colorizedDisparity)
         key = cv2.waitKey(1)

@@ -264,10 +264,6 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
             return parseDatatype<DynamicCalibrationCommand>(metadataStart, serializedObjectSize, data, fd);
             break;
 
-        case DatatypeEnum::DynamicCalibrationConfig:
-            return parseDatatype<DynamicCalibrationConfig>(metadataStart, serializedObjectSize, data, fd);
-            break;
-
         case DatatypeEnum::DynamicCalibrationResult:
             return parseDatatype<DynamicCalibrationResult>(metadataStart, serializedObjectSize, data, fd);
             break;
@@ -282,7 +278,6 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
 #else
         // Explicitly enum these in this switch state:
         case DatatypeEnum::DynamicCalibrationCommand:
-        case DatatypeEnum::DynamicCalibrationConfig:
         case DatatypeEnum::DynamicCalibrationResult:
         case DatatypeEnum::CalibrationQuality:
         case DatatypeEnum::CoverageData:
