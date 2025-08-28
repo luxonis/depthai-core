@@ -208,7 +208,7 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
 
     // std::chrono::milliseconds sleepingTime = 250ms;
     // static constexpr std::chrono::milliseconds kSleepingTime{250};
-
+    std::chrono::milliseconds sleepingTime{250};
     // Time between loading consecutive images, in seconds.
     // Controls how frequently the system fetches a new frame.
     float loadImagePeriod = 0.5f;
