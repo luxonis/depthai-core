@@ -171,6 +171,12 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
      */
     bool runOnHost() const override;
 
+    void run() override;
+
+   protected:
+    Properties& getProperties() override;
+
+   private:
     int getWidth() const {
         return width;
     }
@@ -208,13 +214,6 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     ErrorCode doWork(std::chrono::steady_clock::time_point& previousLoadingAndCalibrationTime);
 
     ErrorCode evaluateCommand(const std::shared_ptr<DynamicCalibrationCommand> command);
-
-    void run() override;
-
-   protected:
-    Properties& getProperties() override;
-
-   private:
     /**
      * From dai::CalibrationHandler data convert to DCL dcl::CameraCalibrationHandle, which includes all necesarry data for calibration
      * @return dcl::CameraCalibrationHanlder
