@@ -321,16 +321,14 @@ with dai.Pipeline(dai.Device(*dai_device_args)) as pipeline:
             inTofConfig = tof[c].tofBaseInputConfig.createInputQueue()
             tofConfig = dai.ToFConfig()
 
-            filter = dai.MedianFilter.MEDIAN_OFF
+            filter = dai.filters.params.MedianFilter.MEDIAN_OFF
             if args.tof_median == 3:
-                filter = dai.MedianFilter.KERNEL_3x3
+                filter = dai.filters.params.MedianFilter.KERNEL_3x3
             elif args.tof_median == 5:
-                filter = dai.MedianFilter.KERNEL_5x5
+                filter = dai.filters.params.MedianFilter.KERNEL_5x5
             elif args.tof_median == 7:
-                filter = dai.MedianFilter.KERNEL_7x7
-            print("ToF config: ", tofConfig)
-            print("ToF median filter:", filter)
-            tofConfig.median = filter
+                filter = dai.filters.params.MedianFilter.KERNEL_7x7
+            tofConfig.setMedianFilter(filter)
             tof[c].setInitialConfig(tofConfig)
             if args.tof_amplitude:
                 amp_name = 'tof_amplitude_' + c
