@@ -181,7 +181,7 @@ with pipeline:
                 cy = int(round(local_y * 2))
                 cx = int(round(local_x * 2))
 
-                half = 4  # 9x9 window → radius 4
+                half = 3  # 9x9 window → radius 4
                 y0 = max(0, cy - half); y1 = min(depth_frame.shape[0], cy + half + 1)
                 x0 = max(0, cx - half); x1 = min(depth_frame.shape[1], cx + half + 1)
 
