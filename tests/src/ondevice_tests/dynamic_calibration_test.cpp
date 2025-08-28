@@ -259,7 +259,6 @@ TEST_CASE("DynamicCalibration: StopCalibration halts further results") {
 
     // Start and let AE settle
     pipeline.start();
-    std::this_thread::sleep_for(1s);
 
     // (Optional) ensure streams are alive
     REQUIRE(left_xout->get<dai::ImgFrame>() != nullptr);
