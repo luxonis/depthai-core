@@ -80,7 +80,7 @@ int main() {
 
         auto now = std::chrono::steady_clock::now();
         auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - lastSent);
-        if (elapsed.count() >= 3){
+        if(elapsed.count() >= 3) {
             dynCalibInputControl->send(std::make_shared<dai::LoadImageCommand>());
             dynCalibInputControl->send(std::make_shared<dai::CalibrationQualityCommand>());
             lastSent = now;
@@ -116,7 +116,7 @@ int main() {
                       << "2m:" << q.depthErrorDifference[1] << "%, " << "5m:" << q.depthErrorDifference[2] << "%, " << "10m:" << q.depthErrorDifference[3]
                       << "%" << std::endl;
             dynCalibInputControl->send(std::make_shared<dai::ResetDataCommand>());
-            if ((q.sampsonErrorNew -  q.sampsonErrorCurrent )> 0.05f){
+            if((q.sampsonErrorNew - q.sampsonErrorCurrent) > 0.05f) {
                 dynCalibInputControl->send(std::make_shared<dai::StartCalibrationCommand>());
             }
         }
