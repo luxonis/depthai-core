@@ -21,14 +21,13 @@ ThreadedNode::ThreadedNode() {
 }
 
 void ThreadedNode::start() {
+    // A node should not be started if it is already running
+    // We would be creating multiple threads for the same node
     DAI_CHECK_V(!isRunning(), "Node with id {} is already running. Cannot start it again. Node name: {}", id, getName());
 
     onStart();
+    // Start the thread
     running = true;
-
-    // auto self = std::enable_shared_from_this<ThreadedNode>::shared_from_this();  // This must be shared_from_this<ThreadedNode>()
-    // auto self = this->shared_from_this();  // So: ThreadedNode must inherit enable_shared_from_this<ThreadedNode>
-
     thread = std::thread([this]() {
         try {
             run();
@@ -70,6 +69,7 @@ void ThreadedNode::stop() {
     }
     // for(auto& rout : getOutputRefs()) {
     // }
+    // wait();
 }
 
 void ThreadedNode::setLogLevel(dai::LogLevel level) {

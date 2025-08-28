@@ -6,9 +6,6 @@
 
 #include <queue>
 
-#ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
-    #include "depthai/schemas/DynamicCalibration.pb.h"
-#endif  // DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
 #include "depthai/schemas/PointCloudData.pb.h"
 
 namespace dai {
@@ -542,7 +539,6 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const PointCloudData*
 // template <>
 // void setProtoMessage(ImgDetections* obj, std::shared_ptr<google::protobuf::Message> msg, bool) {
 // }
-
 template <>
 void setProtoMessage(IMUData& obj, const google::protobuf::Message* msg, bool) {
     auto imuData = dynamic_cast<const proto::imu_data::IMUData*>(msg);

@@ -63,8 +63,6 @@ inline std::shared_ptr<Buffer> getMessage(const std::shared_ptr<google::protobuf
             utility::setProtoMessage(*pclData, metadata.get(), false);
             return pclData;
         }
-
-        // If commands shouldn’t appear in replay files, explicitly ignore/err:
         case DatatypeEnum::ADatatype:
         case DatatypeEnum::Buffer:
         case DatatypeEnum::NNData:
@@ -130,7 +128,6 @@ inline std::shared_ptr<google::protobuf::Message> getProtoMessage(utility::ByteP
             }
             break;
         }
-
         case DatatypeEnum::ADatatype:
         case DatatypeEnum::Buffer:
         case DatatypeEnum::NNData:
