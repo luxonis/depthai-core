@@ -47,7 +47,7 @@ This folder contains two minimal, end-to-end examples that use **`dai.node.Dynam
 3. **Start calibration** with:
    ```python
    dynCalibInputControl.send(
-       dai.StartCalibrationCommand(performanceMode=dai.PerformanceMode.OPTIMIZE_PERFORMANCE)
+       dai.StartCalibrationCommand()
    )
    ```
 4. In the loop:
@@ -149,8 +149,8 @@ python quality_dynamic.py
 
 ## Commands overview
 
-- `StartCalibrationCommand(performanceMode=...)`  
-  Begins dynamic calibration collection/solve. Use `OPTIMIZE_PERFORMANCE` for speed or `OPTIMIZE_QUALITY` for more robust estimation.
+- `StartCalibrationCommand()`  
+  Begins dynamic calibration collection/solve. Use `OPTIMIZE_SPEED` for speed or `OPTIMIZE_PERFORMANCE` for more robust estimation.
 
 - `ApplyCalibrationCommand(calibration)`  
   Applies the provided `CalibrationHandler` to the device (affects downstream nodes in this session).
@@ -187,7 +187,7 @@ python quality_dynamic.py
   Ensure the pattern is visible, not motion-blurred, and covers diverse regions of the image. Increase lighting, adjust exposure, or hold the rig steady.
 
 - **Disparity looks worse after apply**  
-  Re-run to collect more diverse views (tilt/translate the target), or try `OPTIMIZE_QUALITY`. Check for lens smudges and ensure focus is appropriate.
+  Re-run to collect more diverse views (tilt/translate the target), or try `OPTIMIZE_PERFORMANCE`. Check for lens smudges and ensure focus is appropriate.
 
 - **Typos in prints**  
   The examples should print “Successfully calibrated” and “Rotation difference” (avoid “Succesfully”/“dofference” if copying code).
