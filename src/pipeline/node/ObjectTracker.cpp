@@ -142,6 +142,11 @@ void ObjectTracker::run() {
 
             ImgTransformation detectionsTransformation = (inputImgDetections ? inputImgDetections->transformation : inputSpatialImgDetections->transformation)
                                                              .value_or(inputDetectionImg->transformation);
+
+            if(!detectionsTransformation.isValid()) {
+                throw std::runtime_error("ImgTransformation must be set on either inputDetections or inputDetectionFrame");
+            }
+
             for(size_t i = 0; i < (inputImgDetections ? inputImgDetections->detections.size() : inputSpatialImgDetections->detections.size()); ++i) {
                 const auto& detection = inputImgDetections ? inputImgDetections->detections[i] : (ImgDetection)inputSpatialImgDetections->detections[i];
                 if(detection.confidence >= trackerThreshold && (detectionLabelsToTrack.empty() || contains(detectionLabelsToTrack, detection.label))) {
