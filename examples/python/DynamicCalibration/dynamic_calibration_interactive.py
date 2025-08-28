@@ -178,6 +178,22 @@ with pipeline:
             local_x = scaled_mouse_x # disp_vis x offset
             local_y = scaled_mouse_y - 400  # disp_vis y offset
             if 0 <= local_x < depth_frame.shape[1] and 0 <= local_y < depth_frame.shape[0]:
+                cy = int(round(local_y * 2))
+                cx = int(round(local_x * 2))
+
+                half = 4  # 9x9 window → radius 4
+                y0 = max(0, cy - half); y1 = min(depth_frame.shape[0], cy + half + 1)
+                x0 = max(0, cx - half); x1 = min(depth_frame.shape[1], cx + half + 1)
+
+                roi = depth_frame[y0:y1, x0:x1].astype(np.float32)
+                print(depth_frame)
+
+                # If you want to ignore invalid zeros (common in depth):
+                valid = roi > 0
+                if np.any(valid):
+                    depth_val = float(roi[valid].mean()) / 1000.0  # mm → m
+                else:
+                    depth_val = float("nan")
                 depth_val = depth_frame[int(local_y * 2), int(local_x * 2)] / 1000.0  # mm -> meters
                 display_text = f"Depth: {depth_val:.2f}m"
                 text_pos = (scaled_mouse_x + 10, scaled_mouse_y + 10)
