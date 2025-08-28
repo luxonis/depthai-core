@@ -186,7 +186,6 @@ with pipeline:
                 x0 = max(0, cx - half); x1 = min(depth_frame.shape[1], cx + half + 1)
 
                 roi = depth_frame[y0:y1, x0:x1].astype(np.float32)
-                print(depth_frame)
 
                 # If you want to ignore invalid zeros (common in depth):
                 valid = roi > 0
@@ -207,6 +206,8 @@ with pipeline:
         key = cv2.waitKey(1)
 
         if key == ord('q'):
+            cv2.destroyAllWindows()
+            exit()
             break
 
         if key == ord('c'):
@@ -295,4 +296,9 @@ with pipeline:
             with open(f"{folder}calibration_after.json", "w") as f:
                 json.dump(calibNew.eepromToJson(), f, indent=4)
 
+            calibFactory = device.readFactoryCalibration()
+            calibFactory.eepormToJsonFile(f"{folder}factoryCalibration_after.json")
+
+
             print("Finished saving dataset.")
+    pipeline.stop()

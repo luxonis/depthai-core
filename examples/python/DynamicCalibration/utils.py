@@ -359,7 +359,7 @@ def print_final_calibration_results(calib_quality, state: str):
 
     print("<<< -----------------------------|Finished|------------------------------------>>>\n")
 
-def draw_key_commands(image, font_scale=1.2, color=(255, 255, 255), thickness=2, line_spacing=60):
+def draw_key_commands(image, font_scale=1.2, color=(255, 255, 255), thickness=2, line_spacing=55):
     """Draws key command info centered on the image with a semi-transparent full-frame background."""
     commands = [
         "DynamicCalibration mode, Key commands:",
@@ -373,6 +373,7 @@ def draw_key_commands(image, font_scale=1.2, color=(255, 255, 255), thickness=2,
         "[s] Flash new calibration",
         "[k] Flash old calibration",
         "[f] Flash factory calibration",
+        "[x] -> Save current frames.",
         "[q] Quit",
     ]
 
