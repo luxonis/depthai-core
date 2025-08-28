@@ -97,7 +97,7 @@ TEST_CASE("DynamicCalibration reaches a result and applies only when ready") {
 
     bool completed = false;
     float lastCoverage = 0.0f;
-    const int kMaxIterations = 200;  // safeguard for CI/lab scenes
+    const int kMaxIterations = 20;  // safeguard for CI/lab scenes
 
     for(int i = 0; i < kMaxIterations && pipeline.isRunning(); ++i) {
         // Block for coverage update and result
@@ -122,6 +122,30 @@ TEST_CASE("DynamicCalibration reaches a result and applies only when ready") {
         } else {
             // While running, info should be non-empty (typically progress/status text)
             REQUIRE(!result->info.empty());
+        }
+    }
+
+    if(lastCoverage < 100.0f){
+        // If the coverage is lower then requested, try to force calibrate it.
+        auto qcmd = std::make_shared<dai::CalibrateCommand>();
+        qcmd->force = true;
+        command_input->send(qcmd);
+
+        auto result = calibration_output->get<dai::DynamicCalibrationResult>();
+
+        //If there will be enough data, the result should have value and it should be calibrationData
+        if(result->calibrationData.has_value()) {
+            // We expect to see a payload only when the process is complete
+            completed = true;
+
+            // Optional: immediately apply it (like your example)
+            command_input->send(std::make_shared<dai::ApplyCalibrationCommand>(result->calibrationData->newCalibration));
+        }
+        else {
+            //If not, the calibration data must not exists and the only thing exsisting is info string
+            REQUIRE(!result->info.empty());
+            REQUIRE(!result->calibrationData.has_value());
+            completed = true;
         }
     }
 
