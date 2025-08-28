@@ -15,31 +15,7 @@ class async_logger;
 namespace dai {
 namespace node {
 
-struct DclUtils {
-    static void convertDclCalibrationToDai(CalibrationHandler& calibHandler,
-                                           const std::shared_ptr<const dcl::CameraCalibrationHandle> dclCalibrationA,
-                                           const std::shared_ptr<const dcl::CameraCalibrationHandle> dclCalibrationB,
-                                           const CameraBoardSocket socketSrc,
-                                           const CameraBoardSocket socketDest,
-                                           const int width,
-                                           const int height);
-
-    static std::shared_ptr<dcl::CameraCalibrationHandle> createDclCalibration(const std::vector<std::vector<float>> cameraMatrix,
-                                                                              const std::vector<float> distortionCoefficients,
-                                                                              const std::vector<std::vector<float>> rotationMatrix,
-                                                                              const std::vector<float> translationVector);
-
-    static std::pair<std::shared_ptr<dcl::CameraCalibrationHandle>, std::shared_ptr<dcl::CameraCalibrationHandle>> convertDaiCalibrationToDcl(
-        const CalibrationHandler& currentCalibration,
-        const CameraBoardSocket boardSocketA,
-        const CameraBoardSocket boardSocketB,
-        const int width,
-        const int height);
-
-    static dcl::ImageData cvMatToImageData(const cv::Mat& mat);
-};
-
-/**
+/*u
  * @brief Dynamic calibration node. Performs calibration check and dynamically calibrates the device
  */
 class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration, DynamicCalibrationProperties>, public HostRunnable {
@@ -50,38 +26,7 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
 
     using DeviceNodeCRTP::DeviceNodeCRTP;
 
-    // clang-format off
-    // Constructors with dcl::DynamicCalibration ... mainly for testing purposes
-    DynamicCalibration(std::unique_ptr<dcl::DynamicCalibration> dc)
-      : DeviceNodeCRTP()
-      , dynCalibImpl(std::move(dc)) {}
-    DynamicCalibration(const std::shared_ptr<Device>& device, std::unique_ptr<dcl::DynamicCalibration> dc)
-      : DeviceNodeCRTP(device)
-      , dynCalibImpl(std::move(dc)) {}
-    DynamicCalibration(std::unique_ptr<Properties> props, bool confMode, std::unique_ptr<dcl::DynamicCalibration> dc)
-      : DeviceNodeCRTP(std::move(props), confMode)
-      , dynCalibImpl(std::move(dc)) {}
-    DynamicCalibration(
-        const std::shared_ptr<Device>& device,
-        std::unique_ptr<Properties> props,
-        bool confMode,
-        std::unique_ptr<dcl::DynamicCalibration> dc)
-      : DeviceNodeCRTP(device, std::move(props), confMode)
-      , dynCalibImpl(std::move(dc)) {}
-    // clang-format on
-
     ~DynamicCalibration() override = default;
-
-    enum ErrorCode : int {
-        OK = 0,
-        QUALITY_CHECK_FAILED = 1,
-        CALIBRATION_FAILED = 2,
-        PIPELINE_INITIALIZATION_FAILED = 4,
-        EMPTY_IMAGE_QUEUE = 5,
-        MISSING_IMAGE = 6,
-        CALIBRATION_DOES_NOT_EXIST = 7,
-        STOP_LOADING_IMAGES_DURING_CALIBRATION = 8,
-    };
 
     // clang-format off
     /**
@@ -161,19 +106,32 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
      * Specify whether to run on host or device
      * By default, the node will run on host on RVC2 and on device on RVC4.
      */
+
     void setRunOnHost(bool runOnHost);
 
-    /**
-     * Check if the node is set to run on host
-     */
     bool runOnHost() const override;
-
-    void run() override;
 
    protected:
     Properties& getProperties() override;
 
    private:
+    enum ErrorCode : int {
+        OK = 0,
+        QUALITY_CHECK_FAILED = 1,
+        CALIBRATION_FAILED = 2,
+        PIPELINE_INITIALIZATION_FAILED = 4,
+        EMPTY_IMAGE_QUEUE = 5,
+        MISSING_IMAGE = 6,
+        CALIBRATION_DOES_NOT_EXIST = 7,
+        STOP_LOADING_IMAGES_DURING_CALIBRATION = 8,
+    };
+
+    /**
+     * Check if the node is set to run on host
+     */
+
+    void run() override;
+
     int getWidth() const {
         return width;
     }
