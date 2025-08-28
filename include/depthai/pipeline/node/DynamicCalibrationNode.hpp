@@ -91,7 +91,7 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
 	  "inputControl",
 	  DEFAULT_GROUP,
 	  NON_BLOCKING_QUEUE,
-	  1,  // Queue_size -> only one command at the time
+	  5,  // Queue_size -> only one command at the time
 	  {{{DatatypeEnum::DynamicCalibrationCommand, false}}},
 	  DEFAULT_WAIT_FOR_MESSAGE
 	}
