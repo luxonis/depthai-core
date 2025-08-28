@@ -66,7 +66,6 @@ TEST_CASE("DynamicCalibration reaches a result and applies only when ready") {
     // Queues (shared_ptrs)
     auto calibration_output = dynCalib->calibrationOutput.createOutputQueue();
     auto coverage_output = dynCalib->coverageOutput.createOutputQueue();
-    auto config_input = dynCalib->inputConfig.createInputQueue();
     auto command_input = dynCalib->inputControl.createInputQueue();
 
     auto left_xout = stereo->syncedLeft.createOutputQueue();
@@ -94,7 +93,7 @@ TEST_CASE("DynamicCalibration reaches a result and applies only when ready") {
     }
 
     // Kick off calibration (matching your sample)
-    command_input->send(std::make_shared<dai::StartCalibrationCommand>(dai::DynamicCalibrationConfig::PerformanceMode::OPTIMIZE_PERFORMANCE));
+    command_input->send(std::make_shared<dai::StartCalibrationCommand>());
 
     bool completed = false;
     float lastCoverage = 0.0f;
@@ -175,7 +174,6 @@ TEST_CASE("DynamicCalibration: empty-data requests yield no calibration/quality 
     // 1) Calibrate(performanceMode=OPTIMIZE_PERFORMANCE) -> expect no calibrationData
     {
         auto cmd = std::make_shared<dai::CalibrateCommand>();
-        cmd->performanceMode = dai::DynamicCalibrationConfig::PerformanceMode::OPTIMIZE_PERFORMANCE;
         command_input->send(cmd);
 
         auto result = calibration_output->get<dai::DynamicCalibrationResult>();
@@ -266,7 +264,7 @@ TEST_CASE("DynamicCalibration: StopCalibration halts further results") {
     REQUIRE(disp_xout->get<dai::ImgFrame>() != nullptr);
 
     // Start calibration (performance-optimized)
-    command_input->send(std::make_shared<dai::StartCalibrationCommand>(dai::DynamicCalibrationConfig::PerformanceMode::OPTIMIZE_PERFORMANCE));
+    command_input->send(std::make_shared<dai::StartCalibrationCommand>());
 
     // Pull the first result (whatever it is—likely just info with no payload yet)
     auto first = calibration_output->get<dai::DynamicCalibrationResult>();

@@ -23,9 +23,7 @@ void bind_dynamic_calibration(pybind11::module& m, void* pCallstack) {
     // Actual bindings
     ///////////////////////////////////////////////////////////////////////
     // Node
-    dynamicCalibration
-        .def_readonly("inputConfig", &DynamicCalibration::inputConfig, DOC(dai, node, DynamicCalibration, inputConfig))
-        .def_readonly("qualityOutput", &DynamicCalibration::qualityOutput, DOC(dai, node, DynamicCalibration, qualityOutput))
+    dynamicCalibration.def_readonly("qualityOutput", &DynamicCalibration::qualityOutput, DOC(dai, node, DynamicCalibration, qualityOutput))
         .def_readonly("coverageOutput", &DynamicCalibration::coverageOutput, DOC(dai, node, DynamicCalibration, coverageOutput))
         .def_readonly("calibrationOutput", &DynamicCalibration::calibrationOutput, DOC(dai, node, DynamicCalibration, calibrationOutput))
         .def_readonly("inputControl", &DynamicCalibration::inputControl, DOC(dai, node, DynamicCalibration, inputControl))

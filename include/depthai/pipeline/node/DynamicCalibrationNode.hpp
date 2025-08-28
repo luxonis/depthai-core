@@ -46,6 +46,8 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
    public:
     constexpr static const char* NAME = "DynamicCalibration";
 
+    using PerformanceMode = dcl::PerformanceMode;
+
     using DeviceNodeCRTP::DeviceNodeCRTP;
 
     // clang-format off
@@ -96,8 +98,6 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
 	  DEFAULT_WAIT_FOR_MESSAGE
 	}
     };
-
-    Input inputConfig{*this, {"inputConfig", DEFAULT_GROUP, DEFAULT_BLOCKING, 1, {{{DatatypeEnum::DynamicCalibrationConfig, true}}}, false}};
 
     /**
      * Output calibration quality result
@@ -157,9 +157,6 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
      */
     Input& right = inputs[rightInputName];
 
-    void setInitialConfig(DynamicCalibrationConfig& config) {
-        properties.initialConfig = config;
-    }
     /**
      * Specify whether to run on host or device
      * By default, the node will run on host on RVC2 and on device on RVC4.
@@ -255,6 +252,9 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     // static constexpr std::chrono::milliseconds kSleepingTime{250};
     std::chrono::milliseconds sleepingTime{250};
 
+    float loadImagePeriod = 0.5;
+    float calibrationPeriod = 5;
+    PerformanceMode performanceMode = PerformanceMode::DEFAULT;
     bool calibrationShouldRun = false;
     bool slept = false;
 

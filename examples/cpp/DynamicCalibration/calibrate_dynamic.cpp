@@ -1,8 +1,8 @@
 // examples/cpp/DynamicCalibration/calibrate.cpp
 #include <chrono>
 #include <iostream>
-#include <thread>
 #include <opencv2/opencv.hpp>
+#include <thread>
 
 #include "depthai/depthai.hpp"
 
@@ -35,7 +35,6 @@ int main() {
     auto dynCalibOutQ = dynCalib->calibrationOutput.createOutputQueue();
     auto dynCoverageOutQ = dynCalib->coverageOutput.createOutputQueue();
 
-    auto dynCalibInputConfig = dynCalib->inputConfig.createInputQueue();
     auto dynCalibInputControl = dynCalib->inputControl.createInputQueue();
 
     device->setCalibration(device->readCalibration());
@@ -45,13 +44,12 @@ int main() {
 
     // Start calibration (optimize performance)
     {
+        dynCalibInputControl->send(std::make_shared<dai::SetPerformanceModeCommand>(dai::node::DynamicCalibration::PerformanceMode::DEFAULT));
         auto startCmd = std::make_shared<dai::StartCalibrationCommand>();
-        startCmd->performanceMode = dai::DynamicCalibrationConfig::PerformanceMode::OPTIMIZE_PERFORMANCE;
         dynCalibInputControl->send(startCmd);
     }
-
+    double maxDisparity = 1.0;
     while(pipeline.isRunning()) {
-        
         auto leftSynced = leftSyncedQueue->get<dai::ImgFrame>();
         auto rightSynced = rightSyncedQueue->get<dai::ImgFrame>();
         auto disparity = disparityQueue->get<dai::ImgFrame>();
@@ -103,29 +101,22 @@ int main() {
 
             // --- Rotation difference ---
             // Compute magnitude of the rotation delta vector (in degrees)
-            float rotDiff = std::sqrt(
-                q.rotationChange[0] * q.rotationChange[0] +
-                q.rotationChange[1] * q.rotationChange[1] +
-                q.rotationChange[2] * q.rotationChange[2]
-            );
-            std::cout << "Rotation difference: || r_current - r_new || = " 
-                    << rotDiff << " deg" << std::endl;
+            float rotDiff =
+                std::sqrt(q.rotationChange[0] * q.rotationChange[0] + q.rotationChange[1] * q.rotationChange[1] + q.rotationChange[2] * q.rotationChange[2]);
+            std::cout << "Rotation difference: || r_current - r_new || = " << rotDiff << " deg" << std::endl;
 
             // --- Sampson error ---
             // Represents geometric reprojection error before/after calibration
-            std::cout << "Mean Sampson error achievable = " 
-                      << q.sampsonErrorNew << " px" << std::endl;
-            std::cout << "Mean Sampson error current    = " 
-                      << q.sampsonErrorCurrent << " px" << std::endl;
+            std::cout << "Mean Sampson error achievable = " << q.sampsonErrorNew << " px" << std::endl;
+            std::cout << "Mean Sampson error current    = " << q.sampsonErrorCurrent << " px" << std::endl;
 
             // --- Depth error difference ---
             // Theoretical improvement in depth accuracy at various ranges
             std::cout << "Theoretical Depth Error Difference "
-                      << "@1m:"  << std::fixed << std::setprecision(2) << q.depthErrorDifference[0] << "%, "
-                      << "2m:"   << q.depthErrorDifference[1] << "%, "
-                      << "5m:"   << q.depthErrorDifference[2] << "%, "
-                      << "10m:"  << q.depthErrorDifference[3] << "%" 
-                      << std::endl;
+                      << "@1m:" << std::fixed << std::setprecision(2) << q.depthErrorDifference[0] << "%, "
+                      << "2m:" << q.depthErrorDifference[1] << "%, "
+                      << "5m:" << q.depthErrorDifference[2] << "%, "
+                      << "10m:" << q.depthErrorDifference[3] << "%" << std::endl;
         }
         int key = cv::waitKey(1);
         if(key == 'q') {
