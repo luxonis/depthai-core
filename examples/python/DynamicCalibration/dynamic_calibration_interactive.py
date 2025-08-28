@@ -293,11 +293,9 @@ with pipeline:
             np.save(f"{folder}img_right_{i}.npy", rightFrame)
             print("Saved current frames to img_left_*.npy and img_right_*.npy")
 
-            with open(f"{folder}calibration_after.json", "w") as f:
-                json.dump(calibNew.eepromToJson(), f, indent=4)
-
             calibFactory = device.readFactoryCalibration()
-            calibFactory.eepormToJsonFile(f"{folder}factoryCalibration_after.json")
+            device.readCalibration().eepromToJsonFile(f"{folder}calibration.json")
+            calibFactory.eepromToJsonFile(f"{folder}factoryCalibration.json")
 
 
             print("Finished saving dataset.")
