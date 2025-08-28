@@ -27,7 +27,7 @@ with dai.Pipeline() as pipeline:
     syncedRightQueue = stereo.syncedRight.createOutputQueue()
     disparityQueue = stereo.disparity.createOutputQueue()
     
-    # I/O  queues
+    # I/O queues
     dynCalibCalibrbationQueue = dynCalib.calibrationOutput.createOutputQueue()
     dynCalibCoverageQueue = dynCalib.coverageOutput.createOutputQueue()
     
