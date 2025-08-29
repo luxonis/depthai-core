@@ -4,6 +4,7 @@
 #include <pybind11/attr.h>
 #include <pybind11/gil.h>
 
+#include "DeviceBindings.hpp"
 #include "node/NodeBindings.hpp"
 
 // depthai
@@ -102,7 +103,21 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("compressionLevel", &RecordConfig::compressionLevel, DOC(dai, RecordConfig, compressionLevel));
 
     // bind pipeline
-    pipeline.def(py::init<bool>(), py::arg("createImplicitDevice") = true, DOC(dai, Pipeline, Pipeline))
+    pipeline
+        .def(py::init([](bool createImplicitDevice) {
+                 // If createImplicitDevice is true, use deviceSearchHelper to find a device
+                 // as it periodically checks for python interrupts
+                 if(createImplicitDevice) {
+                     dai::DeviceInfo deviceInfo = deviceSearchHelper<dai::Device>();
+                     auto device = std::make_shared<dai::Device>(deviceInfo);
+                     return new Pipeline(device);
+                 }
+
+                 assert(createImplicitDevice == false);
+                 return new Pipeline(createImplicitDevice);
+             }),
+             py::arg("createImplicitDevice") = true,
+             DOC(dai, Pipeline, Pipeline))
         .def(py::init<std::shared_ptr<Device>>(), py::arg("defaultDevice"), DOC(dai, Pipeline, Pipeline))
         // Python only methods
         .def("__enter__",

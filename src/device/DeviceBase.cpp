@@ -58,7 +58,7 @@ const std::string MAGIC_FACTORY_FLASHING_VALUE = "413424129";
 const std::string MAGIC_FACTORY_PROTECTED_FLASHING_VALUE = "868632271";
 constexpr int DEVICE_SEARCH_FIRST_TIMEOUT_MS = 30;
 
-const unsigned int DEFAULT_CRASHDUMP_TIMEOUT = 9000;
+const unsigned int DEFAULT_CRASHDUMP_TIMEOUT_MS = 9000;
 const unsigned int RPC_READ_TIMEOUT = 10000;
 
 // local static function
@@ -402,10 +402,8 @@ void DeviceBase::close() {
 }
 
 unsigned int getCrashdumpTimeout(XLinkProtocol_t protocol) {
-    int defaultTimeout =
-        DEFAULT_CRASHDUMP_TIMEOUT + (protocol == X_LINK_TCP_IP ? device::XLINK_TCP_WATCHDOG_TIMEOUT.count() : device::XLINK_USB_WATCHDOG_TIMEOUT.count());
-    int timeoutSeconds = utility::getEnvAs<int>("DEPTHAI_CRASHDUMP_TIMEOUT", defaultTimeout);
-    int timeoutMs = timeoutSeconds * 1000;
+    std::chrono::milliseconds protocolTimeout = (protocol == X_LINK_TCP_IP ? device::XLINK_TCP_WATCHDOG_TIMEOUT : device::XLINK_USB_WATCHDOG_TIMEOUT);
+    int timeoutMs = utility::getEnvAs<int>("DEPTHAI_CRASHDUMP_TIMEOUT", DEFAULT_CRASHDUMP_TIMEOUT_MS + protocolTimeout.count());
     return timeoutMs;
 }
 

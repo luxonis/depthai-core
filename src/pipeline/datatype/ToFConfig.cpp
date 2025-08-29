@@ -2,7 +2,7 @@
 
 namespace dai {
 
-ToFConfig& ToFConfig::setMedianFilter(MedianFilter median) {
+ToFConfig& ToFConfig::setMedianFilter(filters::params::MedianFilter median) {
     this->median = median;
     return *this;
 }
