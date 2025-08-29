@@ -118,7 +118,8 @@ int main() {
                       << "2m:" << q.depthErrorDifference[1] << "%, " << "5m:" << q.depthErrorDifference[2] << "%, " << "10m:" << q.depthErrorDifference[3]
                       << "%" << std::endl;
             dynCalibInputControl->send(std::make_shared<DCC>(DCC::Commands::ResetData{}));
-            if((q.sampsonErrorNew - q.sampsonErrorCurrent) > 0.05f) {
+            if(std::abs(q.sampsonErrorNew - q.sampsonErrorCurrent) > 0.05f) {
+                std::cout << "Start recalibration process" << std::endl;
                 dynCalibInputControl->send(std::make_shared<DCC>(DCC::Commands::StartCalibration{}));
             }
         }
