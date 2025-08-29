@@ -30,9 +30,7 @@ void bind_dynamic_calibration_config(py::module& m, void* pCallstack) {
         .def_readwrite("loadImagePeriod", &DCC::StartCalibrationCommand::loadImagePeriod)
         .def_readwrite("calibrationPeriod", &DCC::StartCalibrationCommand::calibrationPeriod);
 
-    py::class_<DCC::StopCalibrationCommand, std::shared_ptr<DCC::StopCalibrationCommand>>(cls, "StopCalibrationCommand")
-        .def(py::init<>())
-        .def_readwrite("nothing", &DCC::StopCalibrationCommand::nothing);
+    py::class_<DCC::StopCalibrationCommand, std::shared_ptr<DCC::StopCalibrationCommand>>(cls, "StopCalibrationCommand").def(py::init<>());
 
     py::class_<DCC::LoadImageCommand, std::shared_ptr<DCC::LoadImageCommand>>(cls, "LoadImageCommand").def(py::init<>());
 
