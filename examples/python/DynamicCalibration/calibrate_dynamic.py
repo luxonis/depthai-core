@@ -45,14 +45,14 @@ with dai.Pipeline() as pipeline:
 
     # Set performance mode 
     dynCalibInputControl.send(
-        dai.DynamicCalibrationControl(dai.DynamicCalibrationControl.SetPerformanceModeCommand(
+        dai.DynamicCalibrationControl(dai.DynamicCalibrationControl.Commands.SetPerformanceMode(
             dai.node.DynamicCalibration.OPTIMIZE_PERFORMANCE)
         )
     )
 
     # Start periodic calibration
     dynCalibInputControl.send(
-        dai.DynamicCalibrationControl(dai.DynamicCalibrationControl.StartCalibrationCommand())
+        dai.DynamicCalibrationControl(dai.DynamicCalibrationControl.Commands.StartCalibration())
     )
 
     while pipeline.isRunning():
@@ -99,7 +99,7 @@ with dai.Pipeline() as pipeline:
             # Apply to device
             dynCalibInputControl.send(
                 dai.DynamicCalibrationControl(
-                    dai.DynamicCalibrationControl.ApplyCalibrationCommand(calibrationData.newCalibration)
+                    dai.DynamicCalibrationControl.Commands.ApplyCalibration(calibrationData.newCalibration)
                 )
             )
 
@@ -118,10 +118,10 @@ with dai.Pipeline() as pipeline:
 
             # Reset accumulators and continue periodic calibration
             dynCalibInputControl.send(
-                dai.DynamicCalibrationControl(dai.DynamicCalibrationControl.ResetDataCommand())
+                dai.DynamicCalibrationControl(dai.DynamicCalibrationControl.Commands.ResetData())
             )
             dynCalibInputControl.send(
-                dai.DynamicCalibrationControl(dai.DynamicCalibrationControl.StartCalibrationCommand())
+                dai.DynamicCalibrationControl(dai.DynamicCalibrationControl.Commands.StartCalibration())
             )
 
         key = cv2.waitKey(1)

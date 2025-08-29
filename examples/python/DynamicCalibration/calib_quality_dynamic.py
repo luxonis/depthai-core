@@ -62,14 +62,14 @@ with dai.Pipeline() as pipeline:
         cv2.imshow("disparity", colorizedDisparity)
 
         # --- Load one frame into calibration & read coverage
-        dynCalibInputControl.send(dai.DynamicCalibrationControl(dai.DynamicCalibrationControl.LoadImageCommand()))
+        dynCalibInputControl.send(dai.DynamicCalibrationControl(dai.DynamicCalibrationControl.Commands.LoadImage()))
         coverage = dynCalibCoverageQueue.get()
         if coverage is not None:
             print(f"2D Spatial Coverage = {coverage.meanCoverage} / 100 [%]")
             print(f"Data Acquired       = {coverage.dataAcquired} / 100 [%]")
 
         # --- Request a quality evaluation & read result
-        dynCalibInputControl.send(dai.DynamicCalibrationControl(dai.DynamicCalibrationControl.CalibrationQualityCommand(False)))
+        dynCalibInputControl.send(dai.DynamicCalibrationControl(dai.DynamicCalibrationControl.Commands.CalibrationQuality(False)))
         dynQualityResult = dynCalibQualityQueue.get()
         if dynQualityResult is not None:
             print(f"Dynamic calibration status: {dynQualityResult.info}")
@@ -91,7 +91,7 @@ with dai.Pipeline() as pipeline:
                     f"10m:{q.depthErrorDifference[3]:.2f}%"
                 )
                 # Reset temporary accumulators before the next cycle
-                dynCalibInputControl.send(dai.DynamicCalibrationControl(dai.DynamicCalibrationControl.ResetDataCommand()))
+                dynCalibInputControl.send(dai.DynamicCalibrationControl(dai.DynamicCalibrationControl.Commands.ResetData()))
 
         key = cv2.waitKey(1)
         if key == ord('q'):

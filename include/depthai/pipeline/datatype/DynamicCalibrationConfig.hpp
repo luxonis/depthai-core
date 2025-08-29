@@ -17,72 +17,72 @@ namespace dai {
 class DynamicCalibrationControl : public Buffer {
    public:
     // ----- Commands (declare these first) -----
+    struct Commands {
+        struct Calibrate {
+            explicit Calibrate(bool force = false) : force(force) {}
+            bool force = false;
+            DEPTHAI_SERIALIZE(Calibrate, force);
+        };
 
-    struct CalibrateCommand {
-        explicit CalibrateCommand(bool force = false) : force(force) {}
-        bool force = false;
-        DEPTHAI_SERIALIZE(CalibrateCommand, force);
+        struct CalibrationQuality {
+            explicit CalibrationQuality(bool force = false) : force(force) {}
+            bool force = false;
+            DEPTHAI_SERIALIZE(CalibrationQuality, force);
+        };
+
+        struct StartCalibration {
+            explicit StartCalibration(float loadImagePeriod = 0.5f, float calibrationPeriod = 5.0f)
+                : loadImagePeriod(loadImagePeriod), calibrationPeriod(calibrationPeriod) {}
+            float loadImagePeriod = 0.5f;
+            float calibrationPeriod = 5.0f;
+            DEPTHAI_SERIALIZE(StartCalibration, loadImagePeriod, calibrationPeriod);
+        };
+
+        struct StopCalibration {};
+
+        struct LoadImage {};
+
+        struct ApplyCalibration {
+            ApplyCalibration() = default;
+            explicit ApplyCalibration(const CalibrationHandler& calibration) : calibration(calibration) {}
+            CalibrationHandler calibration;
+            DEPTHAI_SERIALIZE(ApplyCalibration, calibration);
+        };
+
+        struct ResetData {};
+
+        struct SetPerformanceMode {
+            SetPerformanceMode() : performanceMode(dcl::PerformanceMode::DEFAULT) {}  // optional default
+            explicit SetPerformanceMode(dcl::PerformanceMode performanceMode) : performanceMode(performanceMode) {}
+            dcl::PerformanceMode performanceMode;
+            DEPTHAI_SERIALIZE(SetPerformanceMode, performanceMode);
+        };
     };
-
-    struct CalibrationQualityCommand {
-        explicit CalibrationQualityCommand(bool force = false) : force(force) {}
-        bool force = false;
-        DEPTHAI_SERIALIZE(CalibrationQualityCommand, force);
-    };
-
-    struct StartCalibrationCommand {
-        explicit StartCalibrationCommand(float loadImagePeriod = 0.5f, float calibrationPeriod = 5.0f)
-            : loadImagePeriod(loadImagePeriod), calibrationPeriod(calibrationPeriod) {}
-        float loadImagePeriod = 0.5f;
-        float calibrationPeriod = 5.0f;
-        DEPTHAI_SERIALIZE(StartCalibrationCommand, loadImagePeriod, calibrationPeriod);
-    };
-
-    struct StopCalibrationCommand {};
-
-    struct LoadImageCommand {};
-
-    struct ApplyCalibrationCommand {
-        ApplyCalibrationCommand() = default;
-        explicit ApplyCalibrationCommand(const CalibrationHandler& calibration) : calibration(calibration) {}
-        CalibrationHandler calibration;
-        DEPTHAI_SERIALIZE(ApplyCalibrationCommand, calibration);
-    };
-
-    struct ResetDataCommand {};
-
-    struct SetPerformanceModeCommand {
-        SetPerformanceModeCommand() : performanceMode(dcl::PerformanceMode::DEFAULT) {}  // optional default
-        explicit SetPerformanceModeCommand(dcl::PerformanceMode performanceMode) : performanceMode(performanceMode) {}
-        dcl::PerformanceMode performanceMode;
-        DEPTHAI_SERIALIZE(SetPerformanceModeCommand, performanceMode);
-    };
-
     // ----- Variant (after all command types) -----
-    using Command = std::variant<CalibrateCommand,
-                                 CalibrationQualityCommand,
-                                 StartCalibrationCommand,
-                                 StopCalibrationCommand,
-                                 LoadImageCommand,
-                                 ApplyCalibrationCommand,
-                                 ResetDataCommand,
-                                 SetPerformanceModeCommand>;
+    using Command = std::variant<Commands::Calibrate,
+                                 Commands::CalibrationQuality,
+                                 Commands::StartCalibration,
+                                 Commands::StopCalibration,
+                                 Commands::LoadImage,
+                                 Commands::ApplyCalibration,
+                                 Commands::ResetData,
+                                 Commands::SetPerformanceMode>;
 
     Command command;
 
-    DynamicCalibrationControl() : command(CalibrateCommand{}) {}
+    DynamicCalibrationControl() : command(Commands::Calibrate{}) {}
 
     explicit DynamicCalibrationControl(Command cmd) : command(std::move(cmd)) {}
 
     // Convenience overloads
-    explicit DynamicCalibrationControl(const CalibrateCommand& c) : command(c) {}
-    explicit DynamicCalibrationControl(const CalibrationQualityCommand& c) : command(c) {}
-    explicit DynamicCalibrationControl(const StartCalibrationCommand& c) : command(c) {}
-    explicit DynamicCalibrationControl(const StopCalibrationCommand& c) : command(c) {}
-    explicit DynamicCalibrationControl(const LoadImageCommand& c) : command(c) {}
-    explicit DynamicCalibrationControl(const ApplyCalibrationCommand& c) : command(c) {}
-    explicit DynamicCalibrationControl(const ResetDataCommand& c) : command(c) {}
-    explicit DynamicCalibrationControl(const SetPerformanceModeCommand& c) : command(c) {}
+    explicit DynamicCalibrationControl(const Commands::Calibrate& c) : command(c) {}
+    explicit DynamicCalibrationControl(const Commands::CalibrationQuality& c) : command(c) {}
+    explicit DynamicCalibrationControl(const Commands::StartCalibration& c) : command(c) {}
+    explicit DynamicCalibrationControl(const Commands::StopCalibration& c) : command(c) {}
+    explicit DynamicCalibrationControl(const Commands::LoadImage& c) : command(c) {}
+    explicit DynamicCalibrationControl(const Commands::ApplyCalibration& c) : command(c) {}
+    explicit DynamicCalibrationControl(const Commands::ResetData& c) : command(c) {}
+    explicit DynamicCalibrationControl(const Commands::SetPerformanceMode& c) : command(c) {}
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
         metadata = utility::serialize(*this);

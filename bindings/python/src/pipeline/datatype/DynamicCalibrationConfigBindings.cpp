@@ -15,70 +15,81 @@ void bind_dynamic_calibration_config(py::module& m, void* pCallstack) {
 
     // Owning message FIRST
     auto cls = py::class_<DCC, Buffer, std::shared_ptr<DCC>>(m, "DynamicCalibrationControl");
+    auto cmds = py::class_<DCC::Commands>(cls, "Commands");
+
+    // Aliases for readability
+    using Calibrate = DCC::Commands::Calibrate;
+    using CalibrationQuality = DCC::Commands::CalibrationQuality;
+    using StartCalibration = DCC::Commands::StartCalibration;
+    using StopCalibration = DCC::Commands::StopCalibration;
+    using LoadImage = DCC::Commands::LoadImage;
+    using ApplyCalibration = DCC::Commands::ApplyCalibration;
+    using ResetData = DCC::Commands::ResetData;
+    using SetPerformanceMode = DCC::Commands::SetPerformanceMode;
 
     // ---- Commands nested inside DynamicCalibrationControl ----
-    py::class_<DCC::CalibrateCommand, std::shared_ptr<DCC::CalibrateCommand>>(cls, "CalibrateCommand")
+    py::class_<Calibrate, std::shared_ptr<Calibrate>>(cmds, "Calibrate")
         .def(py::init<bool>(), py::arg("force") = false)
-        .def_readwrite("force", &DCC::CalibrateCommand::force);
+        .def_readwrite("force", &Calibrate::force);
 
-    py::class_<DCC::CalibrationQualityCommand, std::shared_ptr<DCC::CalibrationQualityCommand>>(cls, "CalibrationQualityCommand")
+    py::class_<CalibrationQuality, std::shared_ptr<CalibrationQuality>>(cmds, "CalibrationQuality")
         .def(py::init<bool>(), py::arg("force") = false)
-        .def_readwrite("force", &DCC::CalibrationQualityCommand::force);
+        .def_readwrite("force", &CalibrationQuality::force);
 
-    py::class_<DCC::StartCalibrationCommand, std::shared_ptr<DCC::StartCalibrationCommand>>(cls, "StartCalibrationCommand")
+    py::class_<StartCalibration, std::shared_ptr<StartCalibration>>(cmds, "StartCalibration")
         .def(py::init<float, float>(), py::arg("loadImagePeriod") = 0.5f, py::arg("calibrationPeriod") = 5.0f)
-        .def_readwrite("loadImagePeriod", &DCC::StartCalibrationCommand::loadImagePeriod)
-        .def_readwrite("calibrationPeriod", &DCC::StartCalibrationCommand::calibrationPeriod);
+        .def_readwrite("loadImagePeriod", &StartCalibration::loadImagePeriod)
+        .def_readwrite("calibrationPeriod", &StartCalibration::calibrationPeriod);
 
-    py::class_<DCC::StopCalibrationCommand, std::shared_ptr<DCC::StopCalibrationCommand>>(cls, "StopCalibrationCommand").def(py::init<>());
+    py::class_<StopCalibration, std::shared_ptr<StopCalibration>>(cmds, "StopCalibration").def(py::init<>());
 
-    py::class_<DCC::LoadImageCommand, std::shared_ptr<DCC::LoadImageCommand>>(cls, "LoadImageCommand").def(py::init<>());
+    py::class_<LoadImage, std::shared_ptr<LoadImage>>(cmds, "LoadImage").def(py::init<>());
 
-    py::class_<DCC::ApplyCalibrationCommand, std::shared_ptr<DCC::ApplyCalibrationCommand>>(cls, "ApplyCalibrationCommand")
+    py::class_<ApplyCalibration, std::shared_ptr<ApplyCalibration>>(cmds, "ApplyCalibration")
         .def(py::init<>())
         .def(py::init<const dai::CalibrationHandler&>(), py::arg("calibration"))
-        .def_readwrite("calibration", &DCC::ApplyCalibrationCommand::calibration);
+        .def_readwrite("calibration", &ApplyCalibration::calibration);
 
-    py::class_<DCC::ResetDataCommand, std::shared_ptr<DCC::ResetDataCommand>>(cls, "ResetDataCommand").def(py::init<>());
+    py::class_<ResetData, std::shared_ptr<ResetData>>(cmds, "ResetData").def(py::init<>());
 
-    py::class_<DCC::SetPerformanceModeCommand, std::shared_ptr<DCC::SetPerformanceModeCommand>>(cls, "SetPerformanceModeCommand")
+    py::class_<SetPerformanceMode, std::shared_ptr<SetPerformanceMode>>(cmds, "SetPerformanceMode")
         .def(py::init<dai::node::DynamicCalibration::PerformanceMode>(), py::arg("performanceMode"))
-        .def_readwrite("performanceMode", &DCC::SetPerformanceModeCommand::performanceMode);
+        .def_readwrite("performanceMode", &SetPerformanceMode::performanceMode);
 
     // ---- Constructors on the owner type (for variant dispatch) ----
     cls.def(py::init<>())
-        .def(py::init<const DCC::CalibrateCommand&>())
-        .def(py::init<const DCC::CalibrationQualityCommand&>())
-        .def(py::init<const DCC::StartCalibrationCommand&>())
-        .def(py::init<const DCC::StopCalibrationCommand&>())
-        .def(py::init<const DCC::LoadImageCommand&>())
-        .def(py::init<const DCC::ApplyCalibrationCommand&>())
-        .def(py::init<const DCC::ResetDataCommand&>())
-        .def(py::init<const DCC::SetPerformanceModeCommand&>())
+        .def(py::init<const Calibrate&>())
+        .def(py::init<const CalibrationQuality&>())
+        .def(py::init<const StartCalibration&>())
+        .def(py::init<const StopCalibration&>())
+        .def(py::init<const LoadImage&>())
+        .def(py::init<const ApplyCalibration&>())
+        .def(py::init<const ResetData&>())
+        .def(py::init<const SetPerformanceMode&>())
 
         // Manual property exposing the variant
         .def_property(
             "command",
             [](const DCC& self) -> py::object { return std::visit([](const auto& alt) { return py::cast(alt); }, self.command); },
             [](DCC& self, py::object obj) {
-                if(py::isinstance<DCC::CalibrateCommand>(obj))
-                    self.command = obj.cast<DCC::CalibrateCommand>();
-                else if(py::isinstance<DCC::CalibrationQualityCommand>(obj))
-                    self.command = obj.cast<DCC::CalibrationQualityCommand>();
-                else if(py::isinstance<DCC::StartCalibrationCommand>(obj))
-                    self.command = obj.cast<DCC::StartCalibrationCommand>();
-                else if(py::isinstance<DCC::StopCalibrationCommand>(obj))
-                    self.command = obj.cast<DCC::StopCalibrationCommand>();
-                else if(py::isinstance<DCC::LoadImageCommand>(obj))
-                    self.command = obj.cast<DCC::LoadImageCommand>();
-                else if(py::isinstance<DCC::ApplyCalibrationCommand>(obj))
-                    self.command = obj.cast<DCC::ApplyCalibrationCommand>();
-                else if(py::isinstance<DCC::ResetDataCommand>(obj))
-                    self.command = obj.cast<DCC::ResetDataCommand>();
-                else if(py::isinstance<DCC::SetPerformanceModeCommand>(obj))
-                    self.command = obj.cast<DCC::SetPerformanceModeCommand>();
+                if(py::isinstance<Calibrate>(obj))
+                    self.command = obj.cast<Calibrate>();
+                else if(py::isinstance<CalibrationQuality>(obj))
+                    self.command = obj.cast<CalibrationQuality>();
+                else if(py::isinstance<StartCalibration>(obj))
+                    self.command = obj.cast<StartCalibration>();
+                else if(py::isinstance<StopCalibration>(obj))
+                    self.command = obj.cast<StopCalibration>();
+                else if(py::isinstance<LoadImage>(obj))
+                    self.command = obj.cast<LoadImage>();
+                else if(py::isinstance<ApplyCalibration>(obj))
+                    self.command = obj.cast<ApplyCalibration>();
+                else if(py::isinstance<ResetData>(obj))
+                    self.command = obj.cast<ResetData>();
+                else if(py::isinstance<SetPerformanceMode>(obj))
+                    self.command = obj.cast<SetPerformanceMode>();
                 else
-                    throw py::type_error("Unsupported command type for DynamicCalibrationControl.command");
+                    throw py::type_error("Unsupported command type for DynamicCalibrationControl.Command");
             });
 
     // Call remaining stack

@@ -85,7 +85,7 @@ TEST_CASE("DynamicCalibration reaches a result and applies only when ready") {
     }
 
     // Kick off calibration
-    command_input->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::StartCalibrationCommand{}));
+    command_input->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::StartCalibration{}));
 
     bool completed = false;
     float lastCoverage = 0.0f;
@@ -108,7 +108,7 @@ TEST_CASE("DynamicCalibration reaches a result and applies only when ready") {
             completed = true;
 
             command_input->send(std::make_shared<dai::DynamicCalibrationControl>(
-                dai::DynamicCalibrationControl::ApplyCalibrationCommand{result->calibrationData->newCalibration}));
+                dai::DynamicCalibrationControl::Commands::ApplyCalibration{result->calibrationData->newCalibration}));
             break;
         } else {
             REQUIRE(!result->info.empty());
@@ -117,7 +117,7 @@ TEST_CASE("DynamicCalibration reaches a result and applies only when ready") {
 
     if(lastCoverage < 100.0f) {
         // If the coverage is lower then requested, try to force calibrate it.
-        auto qcmd = std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::CalibrateCommand{true});
+        auto qcmd = std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::Calibrate{true});
         command_input->send(qcmd);
 
         auto result = calibration_output->get<dai::DynamicCalibrationResult>();
@@ -129,7 +129,7 @@ TEST_CASE("DynamicCalibration reaches a result and applies only when ready") {
 
             // Optional: immediately apply it (like your example)
             command_input->send(std::make_shared<dai::DynamicCalibrationControl>(
-                dai::DynamicCalibrationControl::ApplyCalibrationCommand{result->calibrationData->newCalibration}));
+                dai::DynamicCalibrationControl::Commands::ApplyCalibration{result->calibrationData->newCalibration}));
         } else {
             // While running, info should be non-empty (typically progress/status text)
             REQUIRE(!result->info.empty());
@@ -180,7 +180,7 @@ TEST_CASE("DynamicCalibration: empty-data requests yield no calibration/quality 
 
     // 1) Calibrate (default)
     {
-        command_input->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::CalibrateCommand{}));
+        command_input->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::Calibrate{}));
         auto result = calibration_output->get<dai::DynamicCalibrationResult>();
         REQUIRE(result != nullptr);
         INFO("Calibrate #1 info: " << result->info);
@@ -189,7 +189,7 @@ TEST_CASE("DynamicCalibration: empty-data requests yield no calibration/quality 
 
     // 2) Calibrate(force=true)
     {
-        command_input->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::CalibrateCommand{true}));
+        command_input->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::Calibrate{true}));
         auto result = calibration_output->get<dai::DynamicCalibrationResult>();
         REQUIRE(result != nullptr);
         INFO("Calibrate #2 (force) info: " << result->info);
@@ -198,7 +198,7 @@ TEST_CASE("DynamicCalibration: empty-data requests yield no calibration/quality 
 
     // 3) CalibrationQuality(force=true)
     {
-        command_input->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::CalibrationQualityCommand{true}));
+        command_input->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::CalibrationQuality{true}));
         auto qres = quality_output->get<dai::CalibrationQuality>();
         REQUIRE(qres != nullptr);
         INFO("Quality #1 (force) info: " << qres->info);
@@ -207,7 +207,7 @@ TEST_CASE("DynamicCalibration: empty-data requests yield no calibration/quality 
 
     // 4) CalibrationQuality(force=false)
     {
-        command_input->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::CalibrationQualityCommand{false}));
+        command_input->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::CalibrationQuality{false}));
         auto qres = quality_output->get<dai::CalibrationQuality>();
         REQUIRE(qres != nullptr);
         INFO("Quality #2 (no force) info: " << qres->info);
@@ -251,13 +251,13 @@ TEST_CASE("DynamicCalibration: StopCalibration halts further results") {
     REQUIRE(right_xout->get<dai::ImgFrame>() != nullptr);
     REQUIRE(disp_xout->get<dai::ImgFrame>() != nullptr);
 
-    command_input->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::StartCalibrationCommand{}));
+    command_input->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::StartCalibration{}));
 
     auto first = calibration_output->get<dai::DynamicCalibrationResult>();
     REQUIRE(first != nullptr);
 
     // Stop
-    command_input->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::StopCalibrationCommand{}));
+    command_input->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::StopCalibration{}));
 
     (void)calibration_output->tryGet<dai::DynamicCalibrationResult>();  // drain in-flight if any
 
@@ -305,14 +305,14 @@ TEST_CASE("DynamicCalibration: reset data") {
     REQUIRE(disp_xout->get<dai::ImgFrame>() != nullptr);
 
     // Load one image into the calibration process to produce coverage
-    command_input->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::LoadImageCommand{}));
+    command_input->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::LoadImage{}));
     (void)coverage_output->get<dai::CoverageData>();
 
     // Reset
-    command_input->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::ResetDataCommand{}));
+    command_input->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::ResetData{}));
 
     // Force calibrate; expect no calibrationData due to empty accumulators
-    command_input->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::CalibrateCommand{true}));
+    command_input->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::Calibrate{true}));
     auto result = calibration_output->get<dai::DynamicCalibrationResult>();
     REQUIRE(result != nullptr);
     REQUIRE(result->calibrationData == std::nullopt);

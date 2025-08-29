@@ -381,57 +381,57 @@ DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(const std::sha
     const auto& cmd = control->command;
 
     // Calibrate
-    if(std::holds_alternative<DC::CalibrateCommand>(cmd)) {
-        const auto& c = std::get<DC::CalibrateCommand>(cmd);
-        logger->info("Received CalibrateCommand: force={}", c.force);
+    if(std::holds_alternative<DC::Commands::Calibrate>(cmd)) {
+        const auto& c = std::get<DC::Commands::Calibrate>(cmd);
+        logger->info("Received Calibrate Command: force={}", c.force);
         calibrationShouldRun = false;  // stop the calibration if it is running
         return runCalibration(calibrationHandler, c.force);
     }
     // Quality check
-    else if(std::holds_alternative<DC::CalibrationQualityCommand>(cmd)) {
-        const auto& c = std::get<DC::CalibrationQualityCommand>(cmd);
-        logger->info("Received CalibrationQualityCommand: force={}", c.force);
+    else if(std::holds_alternative<DC::Commands::CalibrationQuality>(cmd)) {
+        const auto& c = std::get<DC::Commands::CalibrationQuality>(cmd);
+        logger->info("Received CalibrationQuality Command: force={}", c.force);
         return runQualityCheck(c.force);
     }
     // Start calibration loop
-    else if(std::holds_alternative<DC::StartCalibrationCommand>(cmd)) {
-        const auto& c = std::get<DC::StartCalibrationCommand>(cmd);
-        logger->info("Received StartCalibrationCommand");
+    else if(std::holds_alternative<DC::Commands::StartCalibration>(cmd)) {
+        const auto& c = std::get<DC::Commands::StartCalibration>(cmd);
+        logger->info("Received StartCalibration Command");
         calibrationShouldRun = true;
         loadImagePeriod = c.loadImagePeriod;
         calibrationPeriod = c.calibrationPeriod;
         return ErrorCode::OK;
     }
     // Load a single image
-    else if(std::holds_alternative<DC::LoadImageCommand>(cmd)) {
-        logger->info("Received LoadImageCommand: blocking load with coverage computation");
+    else if(std::holds_alternative<DC::Commands::LoadImage>(cmd)) {
+        logger->info("Received LoadImage Command: blocking load with coverage computation");
         auto error = runLoadImage(true);
         computeCoverage();
         return error;
     }
     // Apply calibration
-    else if(std::holds_alternative<DC::ApplyCalibrationCommand>(cmd)) {
-        const auto& c = std::get<DC::ApplyCalibrationCommand>(cmd);
+    else if(std::holds_alternative<DC::Commands::ApplyCalibration>(cmd)) {
+        const auto& c = std::get<DC::Commands::ApplyCalibration>(cmd);
         logger->info("Received ApplyCalibrationCommand: applying new calibration to device {}", deviceName);
         calibrationHandler = c.calibration;
         setCalibration(calibrationHandler);
         return ErrorCode::OK;
     }
     // Stop calibration loop
-    else if(std::holds_alternative<DC::StopCalibrationCommand>(cmd)) {
+    else if(std::holds_alternative<DC::Commands::StopCalibration>(cmd)) {
         logger->info("Received StopCalibrationCommand: stopping calibration");
         calibrationShouldRun = false;
         return ErrorCode::OK;
     }
     // Reset/remove accumulated data
-    else if(std::holds_alternative<DC::ResetDataCommand>(cmd)) {
+    else if(std::holds_alternative<DC::Commands::ResetData>(cmd)) {
         logger->info("Received RemoveDataCommand: removing the data");
         dynCalibImpl->removeAllData(sensorA, sensorB);
         return ErrorCode::OK;
     }
     // Set performance mode
-    else if(std::holds_alternative<DC::SetPerformanceModeCommand>(cmd)) {
-        const auto& c = std::get<DC::SetPerformanceModeCommand>(cmd);
+    else if(std::holds_alternative<DC::Commands::SetPerformanceMode>(cmd)) {
+        const auto& c = std::get<DC::Commands::SetPerformanceMode>(cmd);
         logger->info("Received SetPerformanceModeCommand: changing performance mode to {}", static_cast<int>(c.performanceMode));
         performanceMode = c.performanceMode;
         return ErrorCode::OK;
