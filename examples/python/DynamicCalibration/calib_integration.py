@@ -14,8 +14,10 @@ with dai.Pipeline() as pipeline:
     monoLeftOut = monoLeft.requestFullResolutionOutput(dai.ImgFrame.Type.NV12)
     monoRightOut = monoRight.requestFullResolutionOutput(dai.ImgFrame.Type.NV12)
     
-    # Dynamic calibration node
+    # Initialize the DynamicCalibration node
     dynCalib = pipeline.create(dai.node.DynamicCalibration)
+
+    # Link the cameras to the DynamicCalibration
     monoLeftOut.link(dynCalib.left)
     monoRightOut.link(dynCalib.right)
     
@@ -27,22 +29,24 @@ with dai.Pipeline() as pipeline:
     syncedRightQueue = stereo.syncedRight.createOutputQueue()
     disparityQueue = stereo.disparity.createOutputQueue()
     
-    # I/O  queues
+    # Initialize the command output queues for coverage, calibration quality and output
     dynCalibCoverageQueue = dynCalib.coverageOutput.createOutputQueue()
     dynCalibQualityQueue = dynCalib.qualityOutput.createOutputQueue()
-    dynCalibCalibrbationQueue = dynCalib.calibrationOutput.createOutputQueue()
+    dynCalibCalibrationQueue = dynCalib.calibrationOutput.createOutputQueue()
     
+    # Initialize the command input queue
     dynCalibInputControl = dynCalib.inputControl.createInputQueue()
     
     device = pipeline.getDefaultDevice()
     device.setCalibration(device.readCalibration())
 
+    # Setup the colormap for visualization
     colorMap = cv2.applyColorMap(np.arange(256, dtype=np.uint8), cv2.COLORMAP_JET)
     colorMap[0] = [0, 0, 0]  # to make zero-disparity pixels black
     maxDisparity = 1
 
     pipeline.start()
-    time.sleep(1) # wait for autoexposure to settle
+    time.sleep(1) # wait for auto exposure to settle
     start = time.time()
 
     while pipeline.isRunning():
@@ -50,10 +54,6 @@ with dai.Pipeline() as pipeline:
         leftSynced = syncedLeftQueue.get()
         rightSynced = syncedRightQueue.get()
         disparity = disparityQueue.get()
-
-        assert isinstance(leftSynced, dai.ImgFrame)
-        assert isinstance(rightSynced, dai.ImgFrame)
-        assert isinstance(disparity, dai.ImgFrame)
 
         cv2.imshow("left", leftSynced.getCvFrame())
         cv2.imshow("right", rightSynced.getCvFrame())
@@ -76,20 +76,19 @@ with dai.Pipeline() as pipeline:
             dynCalibInputControl.send(dai.DynamicCalibrationControl(dai.DynamicCalibrationControl.Commands.CalibrationQuality(True)))
             start = time.time()
 
-        # wait for the calibration result
+        # Wait for the calibration result
         dynQualityResult = dynCalibQualityQueue.tryGet()
         if dynQualityResult is not None:
             print(f"Dynamic calibration status: {dynQualityResult.info}")
 
-        # if the calibration is succesfully returned apply it to the device
-
+        # If the calibration is successfully returned apply it to the device
         if dynQualityResult is not None and dynQualityResult.qualityData:
             calibrationData = dynQualityResult.qualityData
-            print("Succesfully evaluated Quality")
+            print("Successfully evaluated Quality")
             quality = calibrationData
             """
             print(
-                "Rotation dofference: || r_current - r_new || = "
+                "Rotation difference: || r_current - r_new || = "
                 f"{np.sqrt(quality.rotationChange[0]**2 + quality.rotationChange[1]**2 + quality.rotationChange[2]**2)} deg"
             ) 
             print(
@@ -106,24 +105,23 @@ with dai.Pipeline() as pipeline:
                 dynCalibInputControl.send(dai.DynamicCalibrationControl(dai.DynamicCalibrationControl.Commands.StartCalibration()))
 
 
-        # wait for the calibration result 
-        dynCalibrationResult = dynCalibCalibrbationQueue.tryGet()
+        # Wait for the calibration result 
+        dynCalibrationResult = dynCalibCalibrationQueue.tryGet()
         if dynCalibrationResult is not None:
             print(f"Dynamic calibration status: {dynCalibrationResult.info}")
             calibrationData = dynCalibrationResult.calibrationData
         else:
             calibrationData = None
 
-        # if the calibration is succesfully returned apply it to the device
-
+        # If the calibration is successfully returned apply it to the device
         if calibrationData:
-            print("Succesfully calibrated")
+            print("Successfully calibrated")
             print(f"New calibration: {calibrationData.newCalibration}")
 
             dynCalibInputControl.send(dai.DynamicCalibrationControl(dai.DynamicCalibrationControl.Commands.ApplyCalibration(calibrationData.newCalibration)))
             quality = calibrationData.calibrationDifference
             """print(
-                "Rotation dofference: || r_current - r_new || = "
+                "Rotation difference: || r_current - r_new || = "
                 f"{np.sqrt(quality.rotationChange[0]**2 + quality.rotationChange[1]**2 + quality.rotationChange[2]**2)} deg"
             ) 
             print(
