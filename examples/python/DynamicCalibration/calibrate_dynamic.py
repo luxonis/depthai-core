@@ -43,6 +43,13 @@ with dai.Pipeline() as pipeline:
     pipeline.start()
     time.sleep(1)  # let autoexposure settle
 
+    # Set performance mode 
+    dynCalibInputControl.send(
+        dai.DynamicCalibrationControl(dai.DynamicCalibrationControl.SetPerformanceModeCommand(
+            dai.node.DynamicCalibration.OPTIMIZE_PERFORMANCE)
+        )
+    )
+
     # Start periodic calibration
     dynCalibInputControl.send(
         dai.DynamicCalibrationControl(dai.DynamicCalibrationControl.StartCalibrationCommand())

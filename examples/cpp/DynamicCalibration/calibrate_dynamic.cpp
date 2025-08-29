@@ -46,11 +46,11 @@ int main() {
     std::this_thread::sleep_for(std::chrono::seconds(1));  // wait for autoexposure to settle
 
     using DCC = dai::DynamicCalibrationControl;
+    // Optionally set performance mode:
+    dynCalibInputControl->send(std::make_shared<DCC>(DCC::SetPerformanceModeCommand{dai::node::DynamicCalibration::PerformanceMode::OPTIMIZE_PERFORMANCE}));
 
     // Start calibration (optimize performance)
     dynCalibInputControl->send(std::make_shared<DCC>(DCC::StartCalibrationCommand{}));
-    // Optionally set performance mode:
-    // dynCalibInputControl->send(std::make_shared<DCC>(DCC::SetPerformanceModeCommand{dcl::PerformanceMode::OPTIMIZE_PERFORMANCE}));
 
     double maxDisparity = 1.0;
     while(pipeline.isRunning()) {
@@ -104,9 +104,11 @@ int main() {
                 std::cout << "Rotation difference: " << rotDiff << " deg\n";
                 std::cout << "Mean Sampson error achievable = " << q.sampsonErrorNew << " px\n";
                 std::cout << "Mean Sampson error current    = " << q.sampsonErrorCurrent << " px\n";
-                std::cout << "Theoretical Depth Error Difference " << "@1m:" << std::fixed << std::setprecision(2) << q.depthErrorDifference[0] << "%, "
-                          << "2m:" << q.depthErrorDifference[1] << "%, " << "5m:" << q.depthErrorDifference[2] << "%, " << "10m:" << q.depthErrorDifference[3]
-                          << "%\n";
+                std::cout << "Theoretical Depth Error Difference "
+                          << "@1m:" << std::fixed << std::setprecision(2) << q.depthErrorDifference[0] << "%, "
+                          << "2m:" << q.depthErrorDifference[1] << "%, "
+                          << "5m:" << q.depthErrorDifference[2] << "%, "
+                          << "10m:" << q.depthErrorDifference[3] << "%\n";
 
                 // Reset and start a new round if desired
                 dynCalibInputControl->send(std::make_shared<DCC>(DCC::ResetDataCommand{}));
