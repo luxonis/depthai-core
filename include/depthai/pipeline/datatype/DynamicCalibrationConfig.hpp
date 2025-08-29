@@ -3,107 +3,91 @@
 #include <DynamicCalibration.hpp>
 #include <depthai/common/ProcessorType.hpp>
 #include <depthai/common/optional.hpp>
+#include <depthai/common/variant.hpp>
 #include <depthai/pipeline/DeviceNode.hpp>
+#include <nlohmann/json.hpp>
 #include <unordered_map>
+#include <variant>
 #include <vector>
 
 #include "depthai/pipeline/datatype/Buffer.hpp"
 
 namespace dai {
 
-/**
- * Base class for all dynamic calibration control commands.
- */
-struct DynamicCalibrationCommand : public Buffer {
-    DynamicCalibrationCommand() = default;
-    virtual ~DynamicCalibrationCommand() = default;
-    /**
-     * Serialize the command to metadata and set the datatype.
-     */
-    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
-        metadata = utility::serialize(*this);
-        datatype = DatatypeEnum::DynamicCalibrationCommand;
+class DynamicCalibrationControl : public Buffer {
+   public:
+    // ----- Commands (declare these first) -----
+
+    struct CalibrateCommand {
+        explicit CalibrateCommand(bool force = false) : force(force) {}
+        bool force = false;
+        DEPTHAI_SERIALIZE(CalibrateCommand, force);
     };
 
-    // DEPTHAI_SERIALIZE_EXT(DynamicCalibrationCommand)
-};
+    struct CalibrationQualityCommand {
+        explicit CalibrationQualityCommand(bool force = false) : force(force) {}
+        bool force = false;
+        DEPTHAI_SERIALIZE(CalibrationQualityCommand, force);
+    };
 
-/**
- * Command to trigger a calibration step.
- * Can optionally force calibration regardless of current quality
- * and specify the performance mode to be used.
- */
-struct CalibrateCommand : public DynamicCalibrationCommand {
-    CalibrateCommand(bool force = false)
-        // init in the same order as declared below
-        : force(force) {}
+    struct StartCalibrationCommand {
+        explicit StartCalibrationCommand(float loadImagePeriod = 0.5f, float calibrationPeriod = 5.0f)
+            : loadImagePeriod(loadImagePeriod), calibrationPeriod(calibrationPeriod) {}
+        float loadImagePeriod = 0.5f;
+        float calibrationPeriod = 5.0f;
+        DEPTHAI_SERIALIZE(StartCalibrationCommand, loadImagePeriod, calibrationPeriod);
+    };
 
-    /**
-     * If true, bypasses all internal validation checks and triggers calibration immediately.
-     * This can speed up capture process, but comes at the cost of reduced accuracy and
-     * potentially unstable results. Use with caution.
-     */
-    bool force = false;
-};
+    struct StopCalibrationCommand {};
 
-/**
- * Command to check calibration quality.
- * Can optionally force evaluation and specify the performance mode context.
- */
-struct CalibrationQualityCommand : public DynamicCalibrationCommand {
-    CalibrationQualityCommand(bool force = false)
-        // match declaration order
-        : force(force) {}
-    /**
-     * If true, bypasses all internal validation checks and triggers calibration quality check immediately.
-     * This can speed up capture process, but comes at the cost of reduced accuracy and
-     * potentially unstable results. Use with caution.
-     */
-    bool force = false;
-};
+    struct LoadImageCommand {};
 
-/**
- * Command to start capturing for calibration process.
- * The calibration will be run in the specified performance mode until stopped.
- */
-struct StartCalibrationCommand : public DynamicCalibrationCommand {
-    explicit StartCalibrationCommand(float loadImagePeriod = 0.5f, float calibrationPeriod = 5.0f)
-        : loadImagePeriod(loadImagePeriod), calibrationPeriod(calibrationPeriod) {}
+    struct ApplyCalibrationCommand {
+        ApplyCalibrationCommand() = default;
+        explicit ApplyCalibrationCommand(const CalibrationHandler& calibration) : calibration(calibration) {}
+        CalibrationHandler calibration;
+        DEPTHAI_SERIALIZE(ApplyCalibrationCommand, calibration);
+    };
 
-    float loadImagePeriod = 0.5f;
-    float calibrationPeriod = 5.0f;
-};
+    struct ResetDataCommand {};
 
-/**
- * Command to stop any ongoing calibration.
- */
-struct StopCalibrationCommand : public DynamicCalibrationCommand {};
+    struct SetPerformanceModeCommand {
+        SetPerformanceModeCommand() : performanceMode(dcl::PerformanceMode::DEFAULT) {}  // optional default
+        explicit SetPerformanceModeCommand(dcl::PerformanceMode performanceMode) : performanceMode(performanceMode) {}
+        dcl::PerformanceMode performanceMode;
+        DEPTHAI_SERIALIZE(SetPerformanceModeCommand, performanceMode);
+    };
 
-/**
- * Command to load a new image into the calibration process.
- * Typically used to feed external image data instead of capturing from the device.
- */
-struct LoadImageCommand : public DynamicCalibrationCommand {};
+    // ----- Variant (after all command types) -----
+    using Command = std::variant<CalibrateCommand,
+                                 CalibrationQualityCommand,
+                                 StartCalibrationCommand,
+                                 StopCalibrationCommand,
+                                 LoadImageCommand,
+                                 ApplyCalibrationCommand,
+                                 ResetDataCommand,
+                                 SetPerformanceModeCommand>;
 
-/**
- * Command to apply a calibration directly to the device.
- */
-struct ApplyCalibrationCommand : public DynamicCalibrationCommand {
-    ApplyCalibrationCommand() = default;
-    /**
-     * Construct with a specific calibration to be applied.
-     */
-    explicit ApplyCalibrationCommand(const CalibrationHandler& calibration) : calibration(calibration) {}
+    Command command;
 
-    CalibrationHandler calibration;
-};
+    DynamicCalibrationControl() : command(CalibrateCommand{}) {}
 
-struct ResetDataCommand : public DynamicCalibrationCommand {};
+    explicit DynamicCalibrationControl(Command cmd) : command(std::move(cmd)) {}
 
-struct SetPerformanceModeCommand : public DynamicCalibrationCommand {
-    explicit SetPerformanceModeCommand(const dcl::PerformanceMode performanceMode) : performanceMode(performanceMode) {}
+    // Convenience overloads
+    explicit DynamicCalibrationControl(const CalibrateCommand& c) : command(c) {}
+    explicit DynamicCalibrationControl(const CalibrationQualityCommand& c) : command(c) {}
+    explicit DynamicCalibrationControl(const StartCalibrationCommand& c) : command(c) {}
+    explicit DynamicCalibrationControl(const StopCalibrationCommand& c) : command(c) {}
+    explicit DynamicCalibrationControl(const LoadImageCommand& c) : command(c) {}
+    explicit DynamicCalibrationControl(const ApplyCalibrationCommand& c) : command(c) {}
+    explicit DynamicCalibrationControl(const ResetDataCommand& c) : command(c) {}
+    explicit DynamicCalibrationControl(const SetPerformanceModeCommand& c) : command(c) {}
 
-    const dcl::PerformanceMode performanceMode = dcl::PerformanceMode::DEFAULT;
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
+        metadata = utility::serialize(*this);
+        datatype = DatatypeEnum::DynamicCalibrationControl;
+    }
 };
 
 }  // namespace dai

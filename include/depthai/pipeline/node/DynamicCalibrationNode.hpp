@@ -39,7 +39,7 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
 	  DEFAULT_GROUP,
 	  NON_BLOCKING_QUEUE,
 	  5,  // Queue_size -> only one command at the time
-	  {{{DatatypeEnum::DynamicCalibrationCommand, false}}},
+	  {{{DatatypeEnum::DynamicCalibrationControl, false}}},
 	  DEFAULT_WAIT_FOR_MESSAGE
 	}
     };
@@ -168,7 +168,7 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
 
     ErrorCode doWork(std::chrono::steady_clock::time_point& previousLoadingAndCalibrationTime);
 
-    ErrorCode evaluateCommand(const std::shared_ptr<DynamicCalibrationCommand> command);
+    ErrorCode evaluateCommand(const std::shared_ptr<DynamicCalibrationControl>& control);
     /**
      * From dai::CalibrationHandler data convert to DCL dcl::CameraCalibrationHandle, which includes all necesarry data for calibration
      * @return dcl::CameraCalibrationHanlder

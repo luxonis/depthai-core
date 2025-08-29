@@ -72,8 +72,8 @@ with dai.Pipeline() as pipeline:
 
         # Run quality check command every 3 seconds 
         if np.abs(time.time() - start) > 3:
-            dynCalibInputControl.send(dai.LoadImageCommand())
-            dynCalibInputControl.send(dai.CalibrationQualityCommand(force = True))
+            dynCalibInputControl.send(dai.DynamicCalibrationControl(dai.DynamicCalibrationControl.LoadImageCommand()))
+            dynCalibInputControl.send(dai.DynamicCalibrationControl(dai.DynamicCalibrationControl.CalibrationQualityCommand(True)))
             start = time.time()
 
         # wait for the calibration result
@@ -98,12 +98,12 @@ with dai.Pipeline() as pipeline:
             )
             print(f"Theoretical Depth Error Difference @1m:{quality.depthErrorDifference[0]:.2f}%, 2m:{quality.depthErrorDifference[1]:.2f}%, 5m:{quality.depthErrorDifference[2]:.2f}%, 10m:{quality.depthErrorDifference[3]:.2f}%")
             """
-            dynCalibInputControl.send(dai.ResetDataCommand())
+            dynCalibInputControl.send(dai.DynamicCalibrationControl(dai.DynamicCalibrationControl.ResetDataCommand()))
 
             # example of usage of sampson error as main information for when calibration is needed (higher than 0.05px difference)
             if np.abs(quality.sampsonErrorNew - quality.sampsonErrorCurrent) > 0.05:
                 print("Start recalibration process")
-                dynCalibInputControl.send(dai.StartCalibrationCommand())
+                dynCalibInputControl.send(dai.DynamicCalibrationControl(dai.DynamicCalibrationControl.StartCalibrationCommand()))
 
 
         # wait for the calibration result 
@@ -120,7 +120,7 @@ with dai.Pipeline() as pipeline:
             print("Succesfully calibrated")
             print(f"New calibration: {calibrationData.newCalibration}")
 
-            dynCalibInputControl.send(dai.ApplyCalibrationCommand(calibrationData.newCalibration))
+            dynCalibInputControl.send(dai.DynamicCalibrationControl(dai.DynamicCalibrationControl.ApplyCalibrationCommand(calibrationData.newCalibration)))
             quality = calibrationData.calibrationDifference
             """print(
                 "Rotation dofference: || r_current - r_new || = "
@@ -132,7 +132,7 @@ with dai.Pipeline() as pipeline:
             )
             print(f"Theoretical Depth Error Difference @1m:{quality.depthErrorDifference[0]:.2f}%, 2m:{quality.depthErrorDifference[1]:.2f}%, 5m:{quality.depthErrorDifference[2]:.2f}%, 10m:{quality.depthErrorDifference[3]:.2f}%")
             """
-            dynCalibInputControl.send(dai.ResetDataCommand())      
+            dynCalibInputControl.send(dai.DynamicCalibrationControl(dai.DynamicCalibrationControl.ResetDataCommand()))      
 
         cv2.imshow("disparity", colorizedDisparity)
         key = cv2.waitKey(1)
