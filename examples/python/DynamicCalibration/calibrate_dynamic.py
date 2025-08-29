@@ -12,9 +12,11 @@ with dai.Pipeline() as pipeline:
     # Full-res NV12 outputs
     monoLeftOut  = monoLeft.requestFullResolutionOutput(dai.ImgFrame.Type.NV12)
     monoRightOut = monoRight.requestFullResolutionOutput(dai.ImgFrame.Type.NV12)
-
-    # Dynamic calibration
+    
+    # Initialize the DynamicCalibration node
     dynCalib = pipeline.create(dai.node.DynamicCalibration)
+
+    # Link the cameras to the DynamicCalibration
     monoLeftOut.link(dynCalib.left)
     monoRightOut.link(dynCalib.right)
 
@@ -28,20 +30,23 @@ with dai.Pipeline() as pipeline:
     syncedRightQueue = stereo.syncedRight.createOutputQueue()
     disparityQueue   = stereo.disparity.createOutputQueue()
 
-    # Dynamic-calibration outputs
+    # Initialize the command output queues for calibration and coverage
     dynCalibCalibrationQueue = dynCalib.calibrationOutput.createOutputQueue()
     dynCalibCoverageQueue    = dynCalib.coverageOutput.createOutputQueue()
 
-    # IMPORTANT: create input queue with the correct datatype
+    # Initialize the command input queue
     dynCalibInputControl = dynCalib.inputControl.createInputQueue()
 
     device = pipeline.getDefaultDevice()
     device.setCalibration(device.readCalibration())
 
+    # Setup the colormap for visualization
+    colorMap = cv2.applyColorMap(np.arange(256, dtype=np.uint8), cv2.COLORMAP_JET)
+    colorMap[0] = [0, 0, 0]  # to make zero-disparity pixels black
     maxDisparity = 1.0
 
     pipeline.start()
-    time.sleep(1)  # let autoexposure settle
+    time.sleep(1) # wait for auto exposure to settle
 
     # Set performance mode 
     dynCalibInputControl.send(
@@ -58,11 +63,7 @@ with dai.Pipeline() as pipeline:
     while pipeline.isRunning():
         leftSynced  = syncedLeftQueue.get()
         rightSynced = syncedRightQueue.get()
-        disparity   = disparityQueue.get()
-
-        assert isinstance(leftSynced, dai.ImgFrame)
-        assert isinstance(rightSynced, dai.ImgFrame)
-        assert isinstance(disparity, dai.ImgFrame)
+        disparity = disparityQueue.get()
 
         cv2.imshow("left", leftSynced.getCvFrame())
         cv2.imshow("right", rightSynced.getCvFrame())

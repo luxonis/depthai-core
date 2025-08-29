@@ -12,9 +12,11 @@ with dai.Pipeline() as pipeline:
     # Request full resolution NV12 outputs
     monoLeftOut  = monoLeft.requestFullResolutionOutput(dai.ImgFrame.Type.NV12)
     monoRightOut = monoRight.requestFullResolutionOutput(dai.ImgFrame.Type.NV12)
-
-    # Dynamic calibration node
+    
+    # Initialize the DynamicCalibration node
     dynCalib = pipeline.create(dai.node.DynamicCalibration)
+
+    # Link the cameras to the DynamicCalibration
     monoLeftOut.link(dynCalib.left)
     monoRightOut.link(dynCalib.right)
 
@@ -25,28 +27,30 @@ with dai.Pipeline() as pipeline:
     # Queues
     syncedLeftQueue  = stereo.syncedLeft.createOutputQueue()
     syncedRightQueue = stereo.syncedRight.createOutputQueue()
-    disparityQueue   = stereo.disparity.createOutputQueue()
-
+    disparityQueue = stereo.disparity.createOutputQueue()
+    
+    # Initialize the command output queues for coverage and calibration quality
     dynCalibCoverageQueue = dynCalib.coverageOutput.createOutputQueue()
-    dynCalibQualityQueue  = dynCalib.qualityOutput.createOutputQueue()
-    dynCalibInputControl  = dynCalib.inputControl.createInputQueue()
-
+    dynCalibQualityQueue = dynCalib.qualityOutput.createOutputQueue()
+    
+    # Initialize the command input queue
+    dynCalibInputControl = dynCalib.inputControl.createInputQueue()
+    
     device = pipeline.getDefaultDevice()
     device.setCalibration(device.readCalibration())
 
-    maxDisparity = 1.0
+    # Setup the colormap for visualization
+    colorMap = cv2.applyColorMap(np.arange(256, dtype=np.uint8), cv2.COLORMAP_JET)
+    colorMap[0] = [0, 0, 0]  # to make zero-disparity pixels black
+    maxDisparity = 1
 
     pipeline.start()
-    time.sleep(1)  # wait for autoexposure to settle
+    time.sleep(1) # wait for auto exposure to settle
 
     while pipeline.isRunning():
         leftSynced  = syncedLeftQueue.get()
         rightSynced = syncedRightQueue.get()
-        disparity   = disparityQueue.get()
-
-        assert isinstance(leftSynced, dai.ImgFrame)
-        assert isinstance(rightSynced, dai.ImgFrame)
-        assert isinstance(disparity, dai.ImgFrame)
+        disparity = disparityQueue.get()
 
         cv2.imshow("left", leftSynced.getCvFrame())
         cv2.imshow("right", rightSynced.getCvFrame())
@@ -74,9 +78,10 @@ with dai.Pipeline() as pipeline:
         if dynQualityResult is not None:
             print(f"Dynamic calibration status: {dynQualityResult.info}")
 
+            # If the calibration is successfully returned apply it to the device
             if dynQualityResult.qualityData:
                 q = dynQualityResult.qualityData
-                print("Successfully evaluated Quality.")
+                print("Successfully evaluated Quality")
                 rotDiff = float(np.sqrt(q.rotationChange[0]**2 +
                                         q.rotationChange[1]**2 +
                                         q.rotationChange[2]**2))
