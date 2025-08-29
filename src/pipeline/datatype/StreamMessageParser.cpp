@@ -260,8 +260,8 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
             return parseDatatype<ObjectTrackerConfig>(metadataStart, serializedObjectSize, data, fd);
             break;
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
-        case DatatypeEnum::DynamicCalibrationCommand:
-            return parseDatatype<DynamicCalibrationCommand>(metadataStart, serializedObjectSize, data, fd);
+        case DatatypeEnum::DynamicCalibrationControl:
+            // return parseDatatype<DynamicCalibrationControl>(metadataStart, serializedObjectSize, data, fd);
             break;
 
         case DatatypeEnum::DynamicCalibrationResult:
@@ -277,7 +277,7 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
             break;
 #else
         // Explicitly enum these in this switch state:
-        case DatatypeEnum::DynamicCalibrationCommand:
+        case DatatypeEnum::DynamicCalibrationControl:
         case DatatypeEnum::DynamicCalibrationResult:
         case DatatypeEnum::CalibrationQuality:
         case DatatypeEnum::CoverageData:

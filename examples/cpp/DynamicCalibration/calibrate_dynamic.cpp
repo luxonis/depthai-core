@@ -1,5 +1,8 @@
 // examples/cpp/DynamicCalibration/calibrate.cpp
+#include <algorithm>
 #include <chrono>
+#include <cmath>
+#include <iomanip>
 #include <iostream>
 #include <opencv2/opencv.hpp>
 #include <thread>
@@ -42,11 +45,12 @@ int main() {
     pipeline.start();
     std::this_thread::sleep_for(std::chrono::seconds(1));  // wait for autoexposure to settle
 
+    using DCC = dai::DynamicCalibrationControl;
+
     // Start calibration (optimize performance)
-    {
-        auto startCmd = std::make_shared<dai::StartCalibrationCommand>();
-        dynCalibInputControl->send(startCmd);
-    }
+    dynCalibInputControl->send(std::make_shared<DCC>(DCC::StartCalibrationCommand{}));
+    // Optionally set performance mode:
+    // dynCalibInputControl->send(std::make_shared<DCC>(DCC::SetPerformanceModeCommand{dcl::PerformanceMode::OPTIMIZE_PERFORMANCE}));
 
     double maxDisparity = 1.0;
     while(pipeline.isRunning()) {
@@ -59,13 +63,13 @@ int main() {
 
         cv::Mat npDisparity = disparity->getFrame();
 
-        double minVal, curMax;
+        double minVal = 0.0, curMax = 0.0;
         cv::minMaxLoc(npDisparity, &minVal, &curMax);
         maxDisparity = std::max(maxDisparity, curMax);
 
         // Normalize the disparity image to an 8-bit scale.
         cv::Mat normalized;
-        npDisparity.convertTo(normalized, CV_8UC1, 255.0 / maxDisparity);
+        npDisparity.convertTo(normalized, CV_8UC1, 255.0 / (maxDisparity > 0 ? maxDisparity : 1.0));
 
         cv::Mat colorizedDisparity;
         cv::applyColorMap(normalized, colorizedDisparity, cv::COLORMAP_JET);
@@ -74,48 +78,46 @@ int main() {
         colorizedDisparity.setTo(cv::Scalar(0, 0, 0), normalized == 0);
 
         cv::imshow("disparity", colorizedDisparity);
-        // Wait for coverage info
-        auto coverageMsg = dynCoverageOutQ->tryGet<dai::CoverageData>();
-        if(coverageMsg) {
-            std::cout << "2D Spatial Coverage = " << coverageMsg->meanCoverage << "  / 100 [%]" << std::endl;
-            std::cout << "Data Acquired = " << coverageMsg->dataAcquired << "  / 100 [%]" << std::endl;
+
+        // Coverage (non-blocking)
+        if(auto coverageMsg = dynCoverageOutQ->tryGet<dai::CoverageData>()) {
+            std::cout << "2D Spatial Coverage = " << coverageMsg->meanCoverage << "  / 100 [%]\n";
+            std::cout << "Data Acquired       = " << coverageMsg->dataAcquired << "  / 100 [%]\n";
         }
 
-        auto dynCalibrationResult = dynCalibOutQ->tryGet<dai::DynamicCalibrationResult>();
-
-        if(dynCalibrationResult) {
+        // Calibration result (non-blocking)
+        if(auto dynCalibrationResult = dynCalibOutQ->tryGet<dai::DynamicCalibrationResult>()) {
             std::cout << "Dynamic calibration status: " << dynCalibrationResult->info << std::endl;
 
             if(dynCalibrationResult->calibrationData) {
                 std::cout << "Successfully calibrated." << std::endl;
 
-                auto applyCmd = std::make_shared<dai::ApplyCalibrationCommand>();
-                applyCmd->calibration = dynCalibrationResult->calibrationData->newCalibration;
-                dynCalibInputControl->send(applyCmd);
+                // Apply the produced calibration
+                const auto& newCalib = dynCalibrationResult->calibrationData->newCalibration;
+                dynCalibInputControl->send(std::make_shared<DCC>(DCC::ApplyCalibrationCommand{newCalib}));
 
+                // Print quality deltas
                 const auto& q = dynCalibrationResult->calibrationData->calibrationDifference;
 
                 float rotDiff = std::sqrt(q.rotationChange[0] * q.rotationChange[0] + q.rotationChange[1] * q.rotationChange[1]
                                           + q.rotationChange[2] * q.rotationChange[2]);
                 std::cout << "Rotation difference: " << rotDiff << " deg\n";
-
                 std::cout << "Mean Sampson error achievable = " << q.sampsonErrorNew << " px\n";
                 std::cout << "Mean Sampson error current    = " << q.sampsonErrorCurrent << " px\n";
+                std::cout << "Theoretical Depth Error Difference "
+                          << "@1m:" << std::fixed << std::setprecision(2) << q.depthErrorDifference[0] << "%, "
+                          << "2m:" << q.depthErrorDifference[1] << "%, "
+                          << "5m:" << q.depthErrorDifference[2] << "%, "
+                          << "10m:" << q.depthErrorDifference[3] << "%\n";
 
-                std::cout << "Theoretical Depth Error Difference " << "@1m:" << std::fixed << std::setprecision(2) << q.depthErrorDifference[0] << "%, "
-                          << "2m:" << q.depthErrorDifference[1] << "%, " << "5m:" << q.depthErrorDifference[2] << "%, " << "10m:" << q.depthErrorDifference[3]
-                          << "%\n";
-                dynCalibInputControl->send(std::make_shared<dai::ResetDataCommand>());
-                {
-                    auto startCmd = std::make_shared<dai::StartCalibrationCommand>();
-                    dynCalibInputControl->send(startCmd);
-                }
+                // Reset and start a new round if desired
+                dynCalibInputControl->send(std::make_shared<DCC>(DCC::ResetDataCommand{}));
+                dynCalibInputControl->send(std::make_shared<DCC>(DCC::StartCalibrationCommand{}));
             }
         }
+
         int key = cv::waitKey(1);
-        if(key == 'q') {
-            break;
-        }
+        if(key == 'q') break;
     }
 
     return 0;

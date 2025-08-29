@@ -20,6 +20,17 @@ namespace node {
  */
 class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration, DynamicCalibrationProperties>, public HostRunnable {
    public:
+    enum ErrorCode : int {
+        OK = 0,
+        QUALITY_CHECK_FAILED = 1,
+        CALIBRATION_FAILED = 2,
+        PIPELINE_INITIALIZATION_FAILED = 4,
+        EMPTY_IMAGE_QUEUE = 5,
+        MISSING_IMAGE = 6,
+        CALIBRATION_DOES_NOT_EXIST = 7,
+        STOP_LOADING_IMAGES_DURING_CALIBRATION = 8,
+    };
+
     constexpr static const char* NAME = "DynamicCalibration";
 
     using PerformanceMode = dcl::PerformanceMode;
@@ -39,7 +50,7 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
 	  DEFAULT_GROUP,
 	  NON_BLOCKING_QUEUE,
 	  5,  // Queue_size -> only one command at the time
-	  {{{DatatypeEnum::DynamicCalibrationCommand, false}}},
+	  {{{DatatypeEnum::DynamicCalibrationControl, false}}},
 	  DEFAULT_WAIT_FOR_MESSAGE
 	}
     };
@@ -115,17 +126,6 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     Properties& getProperties() override;
 
    private:
-    enum ErrorCode : int {
-        OK = 0,
-        QUALITY_CHECK_FAILED = 1,
-        CALIBRATION_FAILED = 2,
-        PIPELINE_INITIALIZATION_FAILED = 4,
-        EMPTY_IMAGE_QUEUE = 5,
-        MISSING_IMAGE = 6,
-        CALIBRATION_DOES_NOT_EXIST = 7,
-        STOP_LOADING_IMAGES_DURING_CALIBRATION = 8,
-    };
-
     /**
      * Check if the node is set to run on host
      */
@@ -168,7 +168,7 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
 
     ErrorCode doWork(std::chrono::steady_clock::time_point& previousLoadingAndCalibrationTime);
 
-    ErrorCode evaluateCommand(const std::shared_ptr<DynamicCalibrationCommand> command);
+    ErrorCode evaluateCommand(const std::shared_ptr<DynamicCalibrationControl>& control);
     /**
      * From dai::CalibrationHandler data convert to DCL dcl::CameraCalibrationHandle, which includes all necesarry data for calibration
      * @return dcl::CameraCalibrationHanlder
