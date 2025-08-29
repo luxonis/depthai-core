@@ -93,7 +93,7 @@ class CMakeBuild(build_ext):
     def build_extension(self, ext):
         if ext.name == DEPTHAI_CLI_MODULE_NAME:
             # Copy cam_test.py and it's dependencies to depthai_cli/
-            repo_root = here.parent.parent
+            repo_root = os.path.abspath(os.path.join(here, os.pardir, os.pardir))
             cam_test_path      = os.path.join(str(repo_root), "utilities", "cam_test.py")
             cam_test_dest = os.path.join(self.build_lib, DEPTHAI_CLI_MODULE_NAME, "cam_test.py")
             cam_test_gui_path  = os.path.join(str(repo_root), "utilities", "cam_test_gui.py")
