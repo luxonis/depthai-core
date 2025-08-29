@@ -20,17 +20,6 @@ namespace node {
  */
 class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration, DynamicCalibrationProperties>, public HostRunnable {
    public:
-    enum ErrorCode : int {
-        OK = 0,
-        QUALITY_CHECK_FAILED = 1,
-        CALIBRATION_FAILED = 2,
-        PIPELINE_INITIALIZATION_FAILED = 4,
-        EMPTY_IMAGE_QUEUE = 5,
-        MISSING_IMAGE = 6,
-        CALIBRATION_DOES_NOT_EXIST = 7,
-        STOP_LOADING_IMAGES_DURING_CALIBRATION = 8,
-    };
-
     constexpr static const char* NAME = "DynamicCalibration";
 
     using PerformanceMode = dcl::PerformanceMode;
@@ -126,6 +115,17 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     Properties& getProperties() override;
 
    private:
+    enum ErrorCode : int {
+        OK = 0,
+        QUALITY_CHECK_FAILED = 1,
+        CALIBRATION_FAILED = 2,
+        PIPELINE_INITIALIZATION_FAILED = 4,
+        EMPTY_IMAGE_QUEUE = 5,
+        MISSING_IMAGE = 6,
+        CALIBRATION_DOES_NOT_EXIST = 7,
+        STOP_LOADING_IMAGES_DURING_CALIBRATION = 8,
+    };
+
     /**
      * Check if the node is set to run on host
      */
