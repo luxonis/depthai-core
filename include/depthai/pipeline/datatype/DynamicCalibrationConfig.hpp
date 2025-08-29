@@ -38,10 +38,7 @@ class DynamicCalibrationControl : public Buffer {
         DEPTHAI_SERIALIZE(StartCalibrationCommand, loadImagePeriod, calibrationPeriod);
     };
 
-    struct StopCalibrationCommand {
-        bool nothing = false;  // avoid indeterminate value
-        DEPTHAI_SERIALIZE(StopCalibrationCommand, nothing);
-    };
+    struct StopCalibrationCommand {};
 
     struct LoadImageCommand {};
 
