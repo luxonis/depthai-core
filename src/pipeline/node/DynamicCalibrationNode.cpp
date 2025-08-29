@@ -375,63 +375,76 @@ DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline(const std::
     return DynamicCalibration::ErrorCode::OK;
 }
 
-DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(const std::shared_ptr<DynamicCalibrationCommand> command) {
-    if(auto calibrateCommand = std::dynamic_pointer_cast<CalibrateCommand>(command)) {
-        logger->info("Received CalibrateCommand: force={}", calibrateCommand->force);
+DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(const std::shared_ptr<DynamicCalibrationControl>& control) {
+    using DC = DynamicCalibrationControl;
+
+    const auto& cmd = control->command;
+
+    // Calibrate
+    if(std::holds_alternative<DC::CalibrateCommand>(cmd)) {
+        const auto& c = std::get<DC::CalibrateCommand>(cmd);
+        logger->info("Received CalibrateCommand: force={}", c.force);
         calibrationShouldRun = false;  // stop the calibration if it is running
-        return runCalibration(calibrationHandler, calibrateCommand->force);
+        return runCalibration(calibrationHandler, c.force);
     }
-
-    if(auto calibrationQualityCommand = std::dynamic_pointer_cast<CalibrationQualityCommand>(command)) {
-        logger->info("Received CalibrationQualityCommand: force={}", calibrationQualityCommand->force);
-        return runQualityCheck(calibrationQualityCommand->force);
+    // Quality check
+    else if(std::holds_alternative<DC::CalibrationQualityCommand>(cmd)) {
+        const auto& c = std::get<DC::CalibrationQualityCommand>(cmd);
+        logger->info("Received CalibrationQualityCommand: force={}", c.force);
+        return runQualityCheck(c.force);
     }
-
-    if(auto startCalibrationCommand = std::dynamic_pointer_cast<StartCalibrationCommand>(command)) {
+    // Start calibration loop
+    else if(std::holds_alternative<DC::StartCalibrationCommand>(cmd)) {
+        const auto& c = std::get<DC::StartCalibrationCommand>(cmd);
         logger->info("Received StartCalibrationCommand");
         calibrationShouldRun = true;
-        loadImagePeriod = startCalibrationCommand->loadImagePeriod;
-        calibrationPeriod = startCalibrationCommand->calibrationPeriod;
+        loadImagePeriod = c.loadImagePeriod;
+        calibrationPeriod = c.calibrationPeriod;
         return ErrorCode::OK;
     }
-
-    if(auto loadImageCommand = std::dynamic_pointer_cast<LoadImageCommand>(command)) {
+    // Load a single image
+    else if(std::holds_alternative<DC::LoadImageCommand>(cmd)) {
         logger->info("Received LoadImageCommand: blocking load with coverage computation");
         auto error = runLoadImage(true);
         computeCoverage();
         return error;
     }
-
-    if(auto applyCalibrationCommand = std::dynamic_pointer_cast<ApplyCalibrationCommand>(command)) {
+    // Apply calibration
+    else if(std::holds_alternative<DC::ApplyCalibrationCommand>(cmd)) {
+        const auto& c = std::get<DC::ApplyCalibrationCommand>(cmd);
         logger->info("Received ApplyCalibrationCommand: applying new calibration to device {}", deviceName);
-        calibrationHandler = applyCalibrationCommand->calibration;
+        calibrationHandler = c.calibration;
         setCalibration(calibrationHandler);
         return ErrorCode::OK;
     }
-
-    if(std::dynamic_pointer_cast<StopCalibrationCommand>(command)) {
+    // Stop calibration loop
+    else if(std::holds_alternative<DC::StopCalibrationCommand>(cmd)) {
         logger->info("Received StopCalibrationCommand: stopping calibration");
         calibrationShouldRun = false;
         return ErrorCode::OK;
     }
-    if(std::dynamic_pointer_cast<ResetDataCommand>(command)) {
+    // Reset/remove accumulated data
+    else if(std::holds_alternative<DC::ResetDataCommand>(cmd)) {
         logger->info("Received RemoveDataCommand: removing the data");
         dynCalibImpl->removeAllData(sensorA, sensorB);
         return ErrorCode::OK;
     }
-    if(auto performanceModeCommand = std::dynamic_pointer_cast<SetPerformanceModeCommand>(command)) {
-        logger->info("Received SetPerformanceModeCommand: changing performance mode to {}", static_cast<int>(performanceModeCommand->performanceMode));
-        performanceMode = performanceModeCommand->performanceMode;
+    // Set performance mode
+    else if(std::holds_alternative<DC::SetPerformanceModeCommand>(cmd)) {
+        const auto& c = std::get<DC::SetPerformanceModeCommand>(cmd);
+        logger->info("Received SetPerformanceModeCommand: changing performance mode to {}", static_cast<int>(c.performanceMode));
+        performanceMode = c.performanceMode;
         return ErrorCode::OK;
     }
 
+    // Fallback
     logger->info("WARNING: evaluateCommand: Received unknown/unhandled command type");
     return ErrorCode::OK;
 }
 
 DynamicCalibration::ErrorCode DynamicCalibration::doWork(std::chrono::steady_clock::time_point& previousLoadingAndCalibrationTime) {
     auto error = ErrorCode::OK;  // Expect everything is ok
-    auto calibrationCommand = inputControl.tryGet<DynamicCalibrationCommand>();
+    auto calibrationCommand = inputControl.tryGet<DynamicCalibrationControl>();
     if(calibrationCommand) {
         error = evaluateCommand(calibrationCommand);
     }

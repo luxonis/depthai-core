@@ -39,7 +39,7 @@ enum class DatatypeEnum : std::int32_t {
     ImageFiltersConfig,
     ToFDepthConfidenceFilterConfig,
     ObjectTrackerConfig,
-    DynamicCalibrationCommand,
+    DynamicCalibrationControl,
     DynamicCalibrationResult,
     CalibrationQuality,
     CoverageData,
