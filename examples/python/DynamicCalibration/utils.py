@@ -66,6 +66,34 @@ def draw_recalibration_message(image, values, angles):
 
     return image
 
+
+def display_text(image, text):
+            font_scale = 1.0
+            width, height = image.shape[1], image.shape[0]
+            text_size = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, font_scale, 5)[0]
+            text_width, text_height = text_size
+
+            # Define box dimensions
+            box_padding = 10
+            box_width = text_width + box_padding * 2
+            box_height = text_height + box_padding * 2
+            box_x = (width - box_width) // 2
+            box_y = (height - box_height) // 2
+
+            # Draw semi-transparent background box
+            overlay = image.copy()
+            box_start = (box_x, box_y - 50)
+            box_end = (box_x + box_width, box_y + box_height - 50)
+            alpha = (0, 0, 0, 128)[3] / 255.0
+            cv2.rectangle(overlay, box_start, box_end, (0, 0, 0, 128)[:3], -1)
+            cv2.addWeighted(overlay, alpha, image, 1 - alpha, 0, image)
+
+            # Draw text at the center of the box
+            text_x = box_x + (box_width - text_width) // 2
+            text_y = box_y + (box_height + text_height) // 2
+            font_scale=1.0
+            cv2.putText(image, text, (text_x, text_y - 50), cv2.FONT_HERSHEY_SIMPLEX, font_scale, (255, 255, 255), 2)
+
 def draw_health_bar(image, values, rotation, display_text = ""):
         if rotation == []:
             font_scale = 1.0
