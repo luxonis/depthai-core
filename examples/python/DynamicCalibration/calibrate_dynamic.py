@@ -12,7 +12,7 @@ with dai.Pipeline() as pipeline:
     # Full-res NV12 outputs
     monoLeftOut  = monoLeft.requestFullResolutionOutput(dai.ImgFrame.Type.NV12)
     monoRightOut = monoRight.requestFullResolutionOutput(dai.ImgFrame.Type.NV12)
-    
+
     # Initialize the DynamicCalibration node
     dynCalib = pipeline.create(dai.node.DynamicCalibration)
 
@@ -48,7 +48,7 @@ with dai.Pipeline() as pipeline:
     pipeline.start()
     time.sleep(1) # wait for auto exposure to settle
 
-    # Set performance mode 
+    # Set performance mode
     dynCalibInputControl.send(
         dai.DynamicCalibrationControl(dai.DynamicCalibrationControl.Commands.SetPerformanceMode(
             dai.node.DynamicCalibration.OPTIMIZE_PERFORMANCE)

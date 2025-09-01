@@ -12,7 +12,7 @@ with dai.Pipeline() as pipeline:
     # Request full resolution NV12 outputs
     monoLeftOut  = monoLeft.requestFullResolutionOutput(dai.ImgFrame.Type.NV12)
     monoRightOut = monoRight.requestFullResolutionOutput(dai.ImgFrame.Type.NV12)
-    
+
     # Initialize the DynamicCalibration node
     dynCalib = pipeline.create(dai.node.DynamicCalibration)
 
@@ -28,14 +28,14 @@ with dai.Pipeline() as pipeline:
     syncedLeftQueue  = stereo.syncedLeft.createOutputQueue()
     syncedRightQueue = stereo.syncedRight.createOutputQueue()
     disparityQueue = stereo.disparity.createOutputQueue()
-    
+
     # Initialize the command output queues for coverage and calibration quality
     dynCalibCoverageQueue = dynCalib.coverageOutput.createOutputQueue()
     dynCalibQualityQueue = dynCalib.qualityOutput.createOutputQueue()
-    
+
     # Initialize the command input queue
     dynCalibInputControl = dynCalib.inputControl.createInputQueue()
-    
+
     device = pipeline.getDefaultDevice()
     device.setCalibration(device.readCalibration())
 

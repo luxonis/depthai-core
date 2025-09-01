@@ -9,18 +9,18 @@ with dai.Pipeline() as pipeline:
     # Create camera nodes
     monoLeft = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
     monoRight = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C)
-    
+
     # Request full resolution NV12 outputs
     monoLeftOut = monoLeft.requestFullResolutionOutput(dai.ImgFrame.Type.NV12)
     monoRightOut = monoRight.requestFullResolutionOutput(dai.ImgFrame.Type.NV12)
-    
+
     # Initialize the DynamicCalibration node
     dynCalib = pipeline.create(dai.node.DynamicCalibration)
 
     # Link the cameras to the DynamicCalibration
     monoLeftOut.link(dynCalib.left)
     monoRightOut.link(dynCalib.right)
-    
+
     stereo = pipeline.create(dai.node.StereoDepth)
     monoLeftOut.link(stereo.left)
     monoRightOut.link(stereo.right)
@@ -28,15 +28,15 @@ with dai.Pipeline() as pipeline:
     syncedLeftQueue = stereo.syncedLeft.createOutputQueue()
     syncedRightQueue = stereo.syncedRight.createOutputQueue()
     disparityQueue = stereo.disparity.createOutputQueue()
-    
+
     # Initialize the command output queues for coverage, calibration quality and output
     dynCalibCoverageQueue = dynCalib.coverageOutput.createOutputQueue()
     dynCalibQualityQueue = dynCalib.qualityOutput.createOutputQueue()
     dynCalibCalibrationQueue = dynCalib.calibrationOutput.createOutputQueue()
-    
+
     # Initialize the command input queue
     dynCalibInputControl = dynCalib.inputControl.createInputQueue()
-    
+
     device = pipeline.getDefaultDevice()
     device.setCalibration(device.readCalibration())
 
@@ -46,7 +46,7 @@ with dai.Pipeline() as pipeline:
     maxDisparity = 1
 
     pipeline.start()
-    time.sleep(1) # wait for auto exposure to settle
+    time.sleep(1)  # wait for auto exposure to settle
     start = time.time()
 
     while pipeline.isRunning():
@@ -60,7 +60,9 @@ with dai.Pipeline() as pipeline:
 
         npDisparity = disparity.getFrame()
         maxDisparity = max(maxDisparity, np.max(npDisparity))
-        colorizedDisparity = cv2.applyColorMap(((npDisparity / maxDisparity) * 255).astype(np.uint8), colorMap)
+        colorizedDisparity = cv2.applyColorMap(
+            ((npDisparity / maxDisparity) * 255).astype(np.uint8), colorMap
+        )
 
         # Waiting for the coverage output
 
@@ -70,7 +72,7 @@ with dai.Pipeline() as pipeline:
             print(f"2D Spatial Coverage = {coverage.meanCoverage} / 100 [%]")
             print(f"Data Acquired = {coverage.dataAcquired}% / 100 [%]")"""
 
-        # Run quality check command every 3 seconds 
+        # Run quality check command every 3 seconds
         if np.abs(time.time() - start) > 3:
             dynCalibInputControl.send(dai.DynamicCalibrationControl(dai.DynamicCalibrationControl.Commands.LoadImage()))
             dynCalibInputControl.send(dai.DynamicCalibrationControl(dai.DynamicCalibrationControl.Commands.CalibrationQuality(True)))
@@ -90,7 +92,7 @@ with dai.Pipeline() as pipeline:
             print(
                 "Rotation difference: || r_current - r_new || = "
                 f"{np.sqrt(quality.rotationChange[0]**2 + quality.rotationChange[1]**2 + quality.rotationChange[2]**2)} deg"
-            ) 
+            )
             print(
                 f"Mean Sampson error achievable = {quality.sampsonErrorNew} px \n"
                 f"Mean Sampson error current = {quality.sampsonErrorCurrent} px"
@@ -105,7 +107,7 @@ with dai.Pipeline() as pipeline:
                 dynCalibInputControl.send(dai.DynamicCalibrationControl(dai.DynamicCalibrationControl.Commands.StartCalibration()))
 
 
-        # Wait for the calibration result 
+        # Wait for the calibration result
         dynCalibrationResult = dynCalibCalibrationQueue.tryGet()
         if dynCalibrationResult is not None:
             print(f"Dynamic calibration status: {dynCalibrationResult.info}")
@@ -123,17 +125,18 @@ with dai.Pipeline() as pipeline:
             """print(
                 "Rotation difference: || r_current - r_new || = "
                 f"{np.sqrt(quality.rotationChange[0]**2 + quality.rotationChange[1]**2 + quality.rotationChange[2]**2)} deg"
-            ) 
+            )
             print(
                 f"Mean Sampson error achievable = {quality.sampsonErrorNew} px \n"
                 f"Mean Sampson error current = {quality.sampsonErrorCurrent} px"
             )
             print(f"Theoretical Depth Error Difference @1m:{quality.depthErrorDifference[0]:.2f}%, 2m:{quality.depthErrorDifference[1]:.2f}%, 5m:{quality.depthErrorDifference[2]:.2f}%, 10m:{quality.depthErrorDifference[3]:.2f}%")
             """
-            dynCalibInputControl.send(dai.DynamicCalibrationControl(dai.DynamicCalibrationControl.Commands.ResetData()))      
+
+            dynCalibInputControl.send(dai.DynamicCalibrationControl(dai.DynamicCalibrationControl.Commands.ResetData()))
 
         cv2.imshow("disparity", colorizedDisparity)
         key = cv2.waitKey(1)
-        if key == ord('q'):
+        if key == ord("q"):
             pipeline.stop()
             break
