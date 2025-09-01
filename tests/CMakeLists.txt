@@ -335,7 +335,6 @@ dai_set_test_labels(openvino_blob_test ondevice rvc2_all ci)
 # Dynamic calibration tests
 dai_add_test(dynamic_calibration_test src/ondevice_tests/dynamic_calibration_test.cpp)
 dai_set_test_labels(dynamic_calibration_test ondevice rvc2_all ci)
-target_link_libraries(dynamic_calibration_test PRIVATE dynamic_calibration_imported)
 
 # Neural network test
 dai_add_test(neural_network_test src/ondevice_tests/neural_network_test.cpp)
