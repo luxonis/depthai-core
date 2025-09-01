@@ -80,14 +80,20 @@ else()
     option(DEPTHAI_ENABLE_BACKWARD "Enable stacktrace printing on crash using Backward" ON)
 endif()
 
+if(WIN32)
+    set(DEPTHAI_DEFAULT_EVENTS_MANAGER_SUPPORT OFF) # TODO (Morato) turn on by default again once the number of symbols is reduced
+else()
+    set(DEPTHAI_DEFAULT_EVENTS_MANAGER_SUPPORT ON)
+endif()
+
 # ---------- Remote connection options
 if(DEPTHAI_ENABLE_PROTOBUF)
     option(DEPTHAI_ENABLE_REMOTE_CONNECTION "Enable Remote Connection support" ON)
     if(DEPTHAI_ENABLE_CURL AND DEPTHAI_OPENCV_SUPPORT)
-        option(DEPTHAI_ENABLE_EVENTS_MANAGER "Enable Events Manager" ON)
+        option(DEPTHAI_ENABLE_EVENTS_MANAGER "Enable Events Manager" ${DEPTHAI_DEFAULT_EVENTS_MANAGER_SUPPORT})
     else()
         message(STATUS "Events Manager disabled because Protobuf & curl support is disabled.")
-        option(DEPTHAI_ENABLE_EVENTS_MANAGER "Enable Events Manager" OFF)
+        option(DEPTHAI_ENABLE_EVENTS_MANAGER "Enable Events Manager" ${DEPTHAI_DEFAULT_EVENTS_MANAGER_SUPPORT})
     endif()
 else()
     option(DEPTHAI_ENABLE_REMOTE_CONNECTION "Enable Remote Connection support" OFF)
