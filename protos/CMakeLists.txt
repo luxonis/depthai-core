@@ -12,17 +12,6 @@ set(PROTO_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 # Find all .proto files in the same directory as CMakeLists.txt
 file(GLOB MESSAGES_PROTOS "${PROTO_DIR}/*.proto")
 
-# Remove DynamicCalibration protocol if Dynamic Calibration is not supported
-if (NOT DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
-    foreach(proto_file ${MESSAGES_PROTOS})
-        get_filename_component(basename ${proto_file} NAME_WE)
-        if (basename STREQUAL "DynamicCalibration")
-            list(REMOVE_ITEM MESSAGES_PROTOS ${proto_file})
-            break()
-        endif()
-    endforeach()
-endif()
-
 # Initialize lists for sources and headers
 set(MESSAGES_SRCS)
 set(MESSAGES_HDRS)
