@@ -347,6 +347,60 @@ uint32_t Camera::getMaxRequestedHeight() const {
     return height == 0 ? getMaxHeight() : height;
 }
 
+std::shared_ptr<Camera> Camera::setRawNumFramesPool(int num) {
+    properties.numFramesPoolRaw = num;
+    return std::dynamic_pointer_cast<Camera>(shared_from_this());
+}
+
+std::shared_ptr<Camera> Camera::setIspNumFramesPool(int num) {
+    properties.numFramesPoolIsp = num;
+    return std::dynamic_pointer_cast<Camera>(shared_from_this());
+}
+
+std::shared_ptr<Camera> Camera::setPreviewNumFramesPool(int num) {
+    properties.numFramesPoolPreview = num;
+    return std::dynamic_pointer_cast<Camera>(shared_from_this());
+}
+
+std::shared_ptr<Camera> Camera::setVideoNumFramesPool(int num) {
+    properties.numFramesPoolVideo = num;
+    return std::dynamic_pointer_cast<Camera>(shared_from_this());
+}
+
+std::shared_ptr<Camera> Camera::setStillNumFramesPool(int num) {
+    properties.numFramesPoolStill = num;
+    return std::dynamic_pointer_cast<Camera>(shared_from_this());
+}
+
+std::shared_ptr<Camera> Camera::setNumFramesPool(int raw, int isp, int preview, int video, int still) {
+    properties.numFramesPoolRaw = raw;
+    properties.numFramesPoolIsp = isp;
+    properties.numFramesPoolPreview = preview;
+    properties.numFramesPoolVideo = video;
+    properties.numFramesPoolStill = still;
+    return std::dynamic_pointer_cast<Camera>(shared_from_this());
+}
+
+int Camera::getRawNumFramesPool() const {
+    return properties.numFramesPoolRaw;
+}
+
+int Camera::getIspNumFramesPool() const {
+    return properties.numFramesPoolIsp;
+}
+
+int Camera::getPreviewNumFramesPool() const {
+    return properties.numFramesPoolPreview;
+}
+
+int Camera::getVideoNumFramesPool() const {
+    return properties.numFramesPoolVideo;
+}
+
+int Camera::getStillNumFramesPool() const {
+    return properties.numFramesPoolStill;
+}
+
 /*
 Camera::Output& Camera::getRecordOutput() {
     return isp;

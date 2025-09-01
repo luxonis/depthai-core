@@ -124,6 +124,82 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
      */
     CameraBoardSocket getBoardSocket() const;
 
+    /**
+     * Set number of frames in raw pool
+     * @param num Number of frames
+     * @return Shared pointer to the camera node
+     */
+    std::shared_ptr<Camera> setRawNumFramesPool(int num);
+
+    /**
+     * Set number of frames in isp pool
+     * @param num Number of frames
+     * @return Shared pointer to the camera node
+     */
+    std::shared_ptr<Camera> setIspNumFramesPool(int num);
+
+    /**
+     * Set number of frames in preview pool
+     * @param num Number of frames
+     * @return Shared pointer to the camera node
+     */
+    std::shared_ptr<Camera> setPreviewNumFramesPool(int num);
+
+    /**
+     * Set number of frames in video pool
+     * @param num Number of frames
+     * @return Shared pointer to the camera node
+     */
+    std::shared_ptr<Camera> setVideoNumFramesPool(int num);
+
+    /**
+     * Set number of frames in still pool
+     * @param num Number of frames
+     * @return Shared pointer to the camera node
+     */
+    std::shared_ptr<Camera> setStillNumFramesPool(int num);
+
+    /**
+     * Set number of frames in all pools
+     * @param raw Number of frames in raw pool
+     * @param isp Number of frames in isp pool
+     * @param preview Number of frames in preview pool
+     * @param video Number of frames in video pool
+     * @param still Number of frames in still pool
+     * @return Shared pointer to the camera node
+     */
+    std::shared_ptr<Camera> setNumFramesPool(int raw, int isp, int preview, int video, int still);
+
+    /**
+     * Get number of frames in raw pool
+     * @return Number of frames
+     */
+    int getRawNumFramesPool() const;
+
+    /**
+     * Get number of frames in isp pool
+     * @return Number of frames
+     */
+    int getIspNumFramesPool() const;
+
+    /**
+     * Get number of frames in preview pool
+     * @return Number of frames
+     */
+    int getPreviewNumFramesPool() const;
+
+    /**
+     * Get number of frames in video pool
+     * @return Number of frames
+     */
+    int getVideoNumFramesPool() const;
+
+    /**
+     * Get number of frames in still pool
+     * @return Number of frames
+     */
+    int getStillNumFramesPool() const;
+
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     /**
      * Set mock ISP for Camera node. Automatically sets mockIsp size.

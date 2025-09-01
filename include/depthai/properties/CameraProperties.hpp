@@ -11,7 +11,7 @@
 namespace dai {
 
 /**
- *  Specify properties for ColorCamera such as camera ID, ...
+ *  Specify properties for Camera such as camera ID, ...
  */
 struct CameraProperties : PropertiesSerializable<Properties, CameraProperties> {
     static constexpr int AUTO = -1;
@@ -19,12 +19,12 @@ struct CameraProperties : PropertiesSerializable<Properties, CameraProperties> {
     std::vector<ImgFrameCapability> outputRequests;
 
     /**
-     * Initial controls applied to ColorCamera node
+     * Initial controls applied to the camera node
      */
     CameraControl initialControl;
 
     /**
-     * Which socket will color camera use
+     * Which socket will this camera node use
      */
     CameraBoardSocket boardSocket = CameraBoardSocket::AUTO;
 
@@ -34,7 +34,7 @@ struct CameraProperties : PropertiesSerializable<Properties, CameraProperties> {
     CameraSensorType sensorType = CameraSensorType::AUTO;
 
     /**
-     * Which camera name will color camera use
+     * Which camera name will this camera node use (e.g. "IMX378", "OV9282")
      */
     std::string cameraName = "";
 
@@ -44,31 +44,31 @@ struct CameraProperties : PropertiesSerializable<Properties, CameraProperties> {
     CameraImageOrientation imageOrientation = CameraImageOrientation::AUTO;
 
     /**
-     * Select the camera sensor width
+     * Select the camera sensor width (e.g. 1920, 1280, 640, etc.)
      */
     int32_t resolutionWidth = AUTO;
     /**
-     * Select the camera sensor height
+     * Select the camera sensor height (e.g. 1080, 720, 400, etc.)
      */
     int32_t resolutionHeight = AUTO;
 
     /**
-     * Select the mock isp width. Overrides resolutionWidth/height if mockIsp is connected.
+     * Select the mock isp width. Overrides resolutionWidth/height if mockIsp is connected (e.g. 1920, 1280, 640, etc.)
      */
     int32_t mockIspWidth = AUTO;
 
     /**
-     * Select the mock isp height. Overrides resolutionWidth/height if mockIsp is connected.
+     * Select the mock isp height. Overrides resolutionWidth/height if mockIsp is connected (e.g. 1080, 720, 400, etc.)
      */
     int32_t mockIspHeight = AUTO;
 
     /**
-     * Select the mock isp fps. Overrides fps if mockIsp is connected.
+     * Select the mock isp fps. Overrides fps if mockIsp is connected (e.g. 30, 25, 20, etc.)
      */
     float mockIspFps = AUTO;
 
     /**
-     * Camera sensor FPS
+     * Camera sensor FPS (e.g. 30, 25, 20, etc.)
      */
     float fps = AUTO;
 
