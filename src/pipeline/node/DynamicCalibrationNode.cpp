@@ -6,13 +6,43 @@
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "depthai/utility/matrixOps.hpp"
+#include "depthai/utility/spimpl.h"
 #include "pipeline/node/DynamicCalibrationUtils.hpp"
-#include "spdlog/async_logger.h"
-#include "spdlog/spdlog.h"
-#include "utility/Logging.hpp"
 
 namespace dai {
 namespace node {
+
+dcl::PerformanceMode daiPerformanceModeToDclPerformanceMode(dai::DynamicCalibrationControl::PerformanceMode mode) {
+    switch(mode) {
+        case DynamicCalibrationControl::PerformanceMode::DEFAULT:
+            return dcl::PerformanceMode::DEFAULT;
+        case DynamicCalibrationControl::PerformanceMode::STATIC_SCENERY:
+            return dcl::PerformanceMode::STATIC_SCENERY;
+        case DynamicCalibrationControl::PerformanceMode::OPTIMIZE_SPEED:
+            return dcl::PerformanceMode::OPTIMIZE_SPEED;
+        case DynamicCalibrationControl::PerformanceMode::OPTIMIZE_PERFORMANCE:
+            return dcl::PerformanceMode::OPTIMIZE_PERFORMANCE;
+        case DynamicCalibrationControl::PerformanceMode::SKIP_CHECKS:
+            return dcl::PerformanceMode::SKIP_CHECKS;
+        default:
+            throw std::invalid_argument("Unknown PerformanceMode");
+    }
+}
+
+class DynamicCalibration::Impl {
+   public:
+    /**
+     * DCL held properties
+     */
+    std::shared_ptr<dcl::CameraSensorHandle> sensorA;
+    std::shared_ptr<dcl::CameraSensorHandle> sensorB;
+    std::shared_ptr<dcl::Device> dcDevice;
+    dcl::mxid_t deviceName;
+    dcl::socket_t socketA;
+    dcl::socket_t socketB;
+
+    dcl::DynamicCalibration dynCalibImpl;
+};
 
 DynamicCalibration::Properties& DynamicCalibration::getProperties() {
     return properties;
@@ -29,6 +59,7 @@ bool DynamicCalibration::runOnHost() const {
 }
 
 void DynamicCalibration::buildInternal() {
+    pimplDCL = spimpl::make_impl<Impl>();
     logger = pimpl->logger;
     sync->out.link(syncInput);
     sync->setRunOnHost(true);
@@ -189,7 +220,7 @@ dcl::ImageData DclUtils::cvMatToImageData(const cv::Mat& mat) {
     return img;
 }
 
-dai::CalibrationQuality DynamicCalibration::calibQualityfromDCL(const dcl::CalibrationDifference& src) {
+dai::CalibrationQuality calibQualityfromDCL(const dcl::CalibrationDifference& src) {
     dai::CalibrationQuality quality;
 
     CalibrationQuality::Data data{};
@@ -204,18 +235,18 @@ dai::CalibrationQuality DynamicCalibration::calibQualityfromDCL(const dcl::Calib
 }
 
 void DynamicCalibration::setCalibration(CalibrationHandler& handler) {
-    logger->info("Applying calibration to device: {}", deviceName);
+    logger->info("Applying calibration to device: {}", pimplDCL->deviceName);
     device->setCalibration(handler);
     auto [calibA, calibB] = DclUtils::convertDaiCalibrationToDcl(handler, daiSocketA, daiSocketB, width, height);
-    dynCalibImpl->setNewCalibration(deviceName, socketA, calibA->getCalibration());
-    dynCalibImpl->setNewCalibration(deviceName, socketB, calibB->getCalibration());
+    pimplDCL->dynCalibImpl.setNewCalibration(pimplDCL->deviceName, pimplDCL->socketA, calibA->getCalibration());
+    pimplDCL->dynCalibImpl.setNewCalibration(pimplDCL->deviceName, pimplDCL->socketB, calibB->getCalibration());
 }
 
 DynamicCalibration::ErrorCode DynamicCalibration::runQualityCheck(const bool force) {
-    dcl::PerformanceMode pm = force ? dcl::PerformanceMode::SKIP_CHECKS : performanceMode;
+    dcl::PerformanceMode pm = force ? dcl::PerformanceMode::SKIP_CHECKS : daiPerformanceModeToDclPerformanceMode(performanceMode);
     logger->info("Running calibration quality check (force={} mode={})", force, static_cast<int>(pm));
 
-    auto dclResult = dynCalibImpl->checkCalibration(dcDevice, socketA, socketB, pm);
+    auto dclResult = pimplDCL->dynCalibImpl.checkCalibration(pimplDCL->dcDevice, pimplDCL->socketA, pimplDCL->socketB, pm);
 
     if(!dclResult.passed()) {
         auto result = std::make_shared<CalibrationQuality>();
@@ -236,9 +267,9 @@ DynamicCalibration::ErrorCode DynamicCalibration::runQualityCheck(const bool for
 }
 
 DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::CalibrationHandler& currentHandler, const bool force) {
-    dcl::PerformanceMode pm = force ? dcl::PerformanceMode::SKIP_CHECKS : performanceMode;
+    dcl::PerformanceMode pm = force ? dcl::PerformanceMode::SKIP_CHECKS : daiPerformanceModeToDclPerformanceMode(performanceMode);
     logger->info("Running calibration (force={} mode={})", force, static_cast<int>(pm));
-    auto dclResult = dynCalibImpl->findNewCalibration(dcDevice, socketA, socketB, pm);
+    auto dclResult = pimplDCL->dynCalibImpl.findNewCalibration(pimplDCL->dcDevice, pimplDCL->socketA, pimplDCL->socketB, pm);
     if(!dclResult.passed()) {
         auto result = std::make_shared<DynamicCalibrationResult>(dclResult.errorMessage());
         logger->info("WARNING: Calibration failed: {}", dclResult.errorMessage());
@@ -303,23 +334,33 @@ DynamicCalibration::ErrorCode DynamicCalibration::runLoadImage(const bool blocki
 
     logger->info("Loaded stereo image pair: {}x{} @ timestamp={}", leftFrame->getWidth(), leftFrame->getHeight(), timestamp);
 
-    dynCalibImpl->loadStereoImagePair(
-        DclUtils::cvMatToImageData(leftCvFrame), DclUtils::cvMatToImageData(rightCvFrame), deviceName, socketA, socketB, timestamp);
+    pimplDCL->dynCalibImpl.loadStereoImagePair(DclUtils::cvMatToImageData(leftCvFrame),
+                                               DclUtils::cvMatToImageData(rightCvFrame),
+                                               pimplDCL->deviceName,
+                                               pimplDCL->socketA,
+                                               pimplDCL->socketB,
+                                               timestamp);
 
     return DynamicCalibration::ErrorCode::OK;
 }
 
 DynamicCalibration::ErrorCode DynamicCalibration::computeCoverage() {
-    auto resultCoverage = dynCalibImpl->computeCoverage(sensorA, sensorB, performanceMode);
+    auto resultCoverage = pimplDCL->dynCalibImpl.computeCoverage(pimplDCL->sensorA, pimplDCL->sensorB, daiPerformanceModeToDclPerformanceMode(performanceMode));
 
     if(!resultCoverage.passed()) {
         throw std::runtime_error("Coverage check failed!");
     }
 
     auto& coverage = resultCoverage.value;
+    auto coverageResult = std::make_shared<CoverageData>();
 
-    auto coverageResult = std::make_shared<CoverageData>(coverage);
-    logger->info("Computing coverage for sockets A={} and B={}", static_cast<int>(socketA), static_cast<int>(socketB));
+    coverageResult->coveragePerCellA = coverage.coveragePerCellA;
+    coverageResult->coveragePerCellB = coverage.coveragePerCellB;
+    coverageResult->meanCoverage = coverage.meanCoverage;
+    coverageResult->coverageAcquired = coverage.coverageAcquired;
+    coverageResult->dataAcquired = coverage.dataAcquired;
+
+    logger->info("Computing coverage for sockets A={} and B={}", static_cast<int>(pimplDCL->socketA), static_cast<int>(pimplDCL->socketB));
 
     coverageOutput.send(coverageResult);
 
@@ -351,8 +392,8 @@ DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline(const std::
 
     logger->info("Detected sockets: A={} B={}, resolution={}x{}", static_cast<int>(daiSocketA), static_cast<int>(daiSocketB), width, height);
 
-    socketA = static_cast<dcl::socket_t>(daiSocketA);
-    socketB = static_cast<dcl::socket_t>(daiSocketB);
+    pimplDCL->socketA = static_cast<dcl::socket_t>(daiSocketA);
+    pimplDCL->socketB = static_cast<dcl::socket_t>(daiSocketB);
 
     logger->info("Converting dai calibration to dcl for sockets A={} B={}", static_cast<int>(daiSocketA), static_cast<int>(daiSocketB));
 
@@ -361,16 +402,16 @@ DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline(const std::
     auto [calibA, calibB] = DclUtils::convertDaiCalibrationToDcl(calibrationHandler, daiSocketA, daiSocketB, width, height);
 
     // set up the dynamic calibration
-    deviceName = daiDevice->getDeviceId();
-    dcDevice = dynCalibImpl->addDevice(deviceName);
+    pimplDCL->deviceName = daiDevice->getDeviceId();
+    pimplDCL->dcDevice = pimplDCL->dynCalibImpl.addDevice(pimplDCL->deviceName);
     dcl::resolution_t resolution{static_cast<unsigned>(width), static_cast<unsigned>(height)};
 
-    sensorA = std::make_shared<dcl::CameraSensorHandle>(calibA, resolution);
-    sensorB = std::make_shared<dcl::CameraSensorHandle>(calibB, resolution);
-    logger->info("Added sensors for sockets A={} and B={} to dynCalibImpl", static_cast<int>(socketA), static_cast<int>(socketB));
+    pimplDCL->sensorA = std::make_shared<dcl::CameraSensorHandle>(calibA, resolution);
+    pimplDCL->sensorB = std::make_shared<dcl::CameraSensorHandle>(calibB, resolution);
+    logger->info("Added sensors for sockets A={} and B={} to dynCalibImpl", static_cast<int>(pimplDCL->socketA), static_cast<int>(pimplDCL->socketB));
 
-    dynCalibImpl->addSensor(deviceName, sensorA, socketA);
-    dynCalibImpl->addSensor(deviceName, sensorB, socketB);
+    pimplDCL->dynCalibImpl.addSensor(pimplDCL->deviceName, pimplDCL->sensorA, pimplDCL->socketA);
+    pimplDCL->dynCalibImpl.addSensor(pimplDCL->deviceName, pimplDCL->sensorB, pimplDCL->socketB);
 
     return DynamicCalibration::ErrorCode::OK;
 }
@@ -412,7 +453,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(const std::sha
     // Apply calibration
     else if(std::holds_alternative<DC::Commands::ApplyCalibration>(cmd)) {
         const auto& c = std::get<DC::Commands::ApplyCalibration>(cmd);
-        logger->info("Received ApplyCalibrationCommand: applying new calibration to device {}", deviceName);
+        logger->info("Received ApplyCalibrationCommand: applying new calibration to device {}", pimplDCL->deviceName);
         calibrationHandler = c.calibration;
         setCalibration(calibrationHandler);
         return ErrorCode::OK;
@@ -426,7 +467,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(const std::sha
     // Reset/remove accumulated data
     else if(std::holds_alternative<DC::Commands::ResetData>(cmd)) {
         logger->info("Received RemoveDataCommand: removing the data");
-        dynCalibImpl->removeAllData(sensorA, sensorB);
+        pimplDCL->dynCalibImpl.removeAllData(pimplDCL->sensorA, pimplDCL->sensorB);
         return ErrorCode::OK;
     }
     // Set performance mode

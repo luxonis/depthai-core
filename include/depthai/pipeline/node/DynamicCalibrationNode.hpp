@@ -1,6 +1,5 @@
 #pragma once
 
-#include <DynamicCalibration.hpp>
 #include <depthai/pipeline/DeviceNode.hpp>
 #include <depthai/pipeline/Subnode.hpp>
 #include <depthai/pipeline/node/Sync.hpp>
@@ -8,6 +7,7 @@
 
 #include "depthai/pipeline/datatype/DynamicCalibrationConfig.hpp"
 #include "depthai/pipeline/datatype/DynamicCalibrationResults.hpp"
+#include "depthai/utility/spimpl.h"
 
 namespace spdlog {
 class async_logger;
@@ -22,7 +22,7 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
    public:
     constexpr static const char* NAME = "DynamicCalibration";
 
-    using PerformanceMode = dcl::PerformanceMode;
+    using PerformanceMode = DynamicCalibrationControl::PerformanceMode;
 
     using DeviceNodeCRTP::DeviceNodeCRTP;
 
@@ -115,6 +115,8 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     Properties& getProperties() override;
 
    private:
+    class Impl;
+    spimpl::impl_ptr<Impl> pimplDCL;
     enum ErrorCode : int {
         OK = 0,
         QUALITY_CHECK_FAILED = 1,
@@ -181,21 +183,6 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     // clang-format on
 
     /**
-     * From  DCL dcl::CameraCalibrationHandle convert to dai::CalibrationHandler, so device can setCalibration
-     * @return dai::CalibrationHandlerr
-     */
-    dai::CalibrationQuality calibQualityfromDCL(const dcl::CalibrationDifference& src);
-    /**
-     * DCL held properties
-     */
-    std::shared_ptr<dcl::CameraSensorHandle> sensorA;
-    std::shared_ptr<dcl::CameraSensorHandle> sensorB;
-    std::shared_ptr<dcl::Device> dcDevice;
-    dcl::mxid_t deviceName;
-    dcl::socket_t socketA;
-    dcl::socket_t socketB;
-
-    /**
      * DAI held properties
      */
     CalibrationHandler calibrationHandler;
@@ -229,7 +216,6 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
      * - Reseting of data
      */
     bool runOnHostVar = true;
-    const std::unique_ptr<dcl::DynamicCalibration> dynCalibImpl = std::make_unique<dcl::DynamicCalibration>();
 };
 
 }  // namespace node

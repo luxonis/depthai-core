@@ -1,6 +1,5 @@
 #pragma once
 
-#include <DynamicCalibration.hpp>
 #include <depthai/common/ProcessorType.hpp>
 #include <depthai/common/optional.hpp>
 #include <depthai/common/variant.hpp>
@@ -16,6 +15,8 @@ namespace dai {
 
 class DynamicCalibrationControl : public Buffer {
    public:
+    enum class PerformanceMode : int { DEFAULT, STATIC_SCENERY, OPTIMIZE_SPEED, OPTIMIZE_PERFORMANCE, SKIP_CHECKS };
+
     struct Commands {
         struct Calibrate {
             explicit Calibrate(bool force = false) : force(force) {}
@@ -51,9 +52,9 @@ class DynamicCalibrationControl : public Buffer {
         struct ResetData {};
 
         struct SetPerformanceMode {
-            SetPerformanceMode() : performanceMode(dcl::PerformanceMode::DEFAULT) {}  // optional default
-            explicit SetPerformanceMode(dcl::PerformanceMode performanceMode) : performanceMode(performanceMode) {}
-            dcl::PerformanceMode performanceMode;
+            SetPerformanceMode() : performanceMode(PerformanceMode::DEFAULT) {}  // optional default
+            explicit SetPerformanceMode(PerformanceMode performanceMode) : performanceMode(performanceMode) {}
+            PerformanceMode performanceMode;
             DEPTHAI_SERIALIZE(SetPerformanceMode, performanceMode);
         };
     };

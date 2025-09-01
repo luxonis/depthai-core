@@ -65,33 +65,7 @@ void bind_dynamic_calibration_config(py::module& m, void* pCallstack) {
         .def(py::init<const LoadImage&>())
         .def(py::init<const ApplyCalibration&>())
         .def(py::init<const ResetData&>())
-        .def(py::init<const SetPerformanceMode&>())
-
-        // Manual property exposing the variant
-        .def_property(
-            "command",
-            [](const DCC& self) -> py::object { return std::visit([](const auto& alt) { return py::cast(alt); }, self.command); },
-            [](DCC& self, py::object obj) {
-                if(py::isinstance<Calibrate>(obj))
-                    self.command = obj.cast<Calibrate>();
-                else if(py::isinstance<CalibrationQuality>(obj))
-                    self.command = obj.cast<CalibrationQuality>();
-                else if(py::isinstance<StartCalibration>(obj))
-                    self.command = obj.cast<StartCalibration>();
-                else if(py::isinstance<StopCalibration>(obj))
-                    self.command = obj.cast<StopCalibration>();
-                else if(py::isinstance<LoadImage>(obj))
-                    self.command = obj.cast<LoadImage>();
-                else if(py::isinstance<ApplyCalibration>(obj))
-                    self.command = obj.cast<ApplyCalibration>();
-                else if(py::isinstance<ResetData>(obj))
-                    self.command = obj.cast<ResetData>();
-                else if(py::isinstance<SetPerformanceMode>(obj))
-                    self.command = obj.cast<SetPerformanceMode>();
-                else
-                    throw py::type_error("Unsupported command type for DynamicCalibrationControl.Command");
-            });
-
+        .def(py::init<const SetPerformanceMode&>());
     // Call remaining stack
     auto* callstack = static_cast<Callstack*>(pCallstack);
     auto cb = callstack->top();

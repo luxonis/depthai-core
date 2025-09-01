@@ -1,6 +1,5 @@
 #pragma once
 
-#include <DynamicCalibration.hpp>
 #include <depthai/common/ProcessorType.hpp>
 #include <depthai/common/optional.hpp>
 #include <unordered_map>
@@ -18,15 +17,6 @@ namespace dai {
  * across the image pair. Generated per frame by the DCL.
  */
 struct CoverageData : public Buffer {
-    // clang-format off
-    CoverageData(const dcl::CoverageData& cd)
-      : coveragePerCellA(cd.coveragePerCellA)
-      , coveragePerCellB(cd.coveragePerCellB)
-      , meanCoverage(cd.meanCoverage)
-      , coverageAcquired(cd.coverageAcquired)
-      , dataAcquired(cd.dataAcquired)
-    {}
-    // clang-format on
     CoverageData() = default;
     virtual ~CoverageData() = default;
 
