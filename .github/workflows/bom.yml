@@ -47,7 +47,8 @@ jobs:
       id: build_and_push
       run: |
         cp -n scripts/hil/build_and_push.sh depthai-core/scripts/hil/build_and_push.sh
-        cp -n tests/Dockerfile depthai-core/tests/Dockerfile
+        rm depthai-core/tests/Dockerfile
+        cp tests/Dockerfile depthai-core/tests/Dockerfile
         cp -n tests/run_tests_entrypoint.sh depthai-core/tests/run_tests_entrypoint.sh
         cd depthai-core
 
