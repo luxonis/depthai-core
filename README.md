@@ -95,6 +95,8 @@ cmake -S . -B build -D'BUILD_SHARED_LIBS=ON' -D'CMAKE_INSTALL_PREFIX=[path/to/in
 cmake --build build --target install --parallel [num CPU cores]
 ```
 
+> ℹ️ Make sure to check out our [template C++ project](https://github.com/luxonis/depthai-core-example).
+
 ### Verifying installation
 To verify the installation works as expected, you can test if the integration project compiles and runs.
 This is done by running the following command:
