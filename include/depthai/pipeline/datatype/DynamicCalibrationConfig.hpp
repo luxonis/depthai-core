@@ -74,16 +74,6 @@ class DynamicCalibrationControl : public Buffer {
 
     explicit DynamicCalibrationControl(Command cmd) : command(std::move(cmd)) {}
 
-    // Convenience overloads
-    explicit DynamicCalibrationControl(const Commands::Calibrate& c) : command(c) {}
-    explicit DynamicCalibrationControl(const Commands::CalibrationQuality& c) : command(c) {}
-    explicit DynamicCalibrationControl(const Commands::StartCalibration& c) : command(c) {}
-    explicit DynamicCalibrationControl(const Commands::StopCalibration& c) : command(c) {}
-    explicit DynamicCalibrationControl(const Commands::LoadImage& c) : command(c) {}
-    explicit DynamicCalibrationControl(const Commands::ApplyCalibration& c) : command(c) {}
-    explicit DynamicCalibrationControl(const Commands::ResetData& c) : command(c) {}
-    explicit DynamicCalibrationControl(const Commands::SetPerformanceMode& c) : command(c) {}
-
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
         metadata = utility::serialize(*this);
         datatype = DatatypeEnum::DynamicCalibrationControl;
