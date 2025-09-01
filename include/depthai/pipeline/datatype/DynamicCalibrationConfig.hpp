@@ -16,7 +16,6 @@ namespace dai {
 
 class DynamicCalibrationControl : public Buffer {
    public:
-    // ----- Commands (declare these first) -----
     struct Commands {
         struct Calibrate {
             explicit Calibrate(bool force = false) : force(force) {}
@@ -58,7 +57,7 @@ class DynamicCalibrationControl : public Buffer {
             DEPTHAI_SERIALIZE(SetPerformanceMode, performanceMode);
         };
     };
-    // ----- Variant (after all command types) -----
+
     using Command = std::variant<Commands::Calibrate,
                                  Commands::CalibrationQuality,
                                  Commands::StartCalibration,
