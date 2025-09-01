@@ -1,7 +1,6 @@
 #include "depthai/pipeline/node/ObjectTracker.hpp"
 
 #include <memory>
-#include <opencv2/opencv.hpp>
 #include <stdexcept>
 #include <utility>
 
@@ -14,6 +13,10 @@
 #include "depthai/properties/ObjectTrackerProperties.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
 #include "utility/ObjectTrackerImpl.hpp"
+
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    #include <opencv2/opencv.hpp>
+#endif
 
 namespace dai {
 namespace node {
@@ -60,6 +63,7 @@ bool ObjectTracker::runOnHost() const {
     return runOnHostVar;
 }
 
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
 cv::Rect toCvRect(Rect r) {
     if(r.isNormalized()) throw std::runtime_error("dai::Rect must not be normalized in conversion to cv::Rect");
     return {(int)r.x, (int)r.y, (int)r.width, (int)r.height};
@@ -70,6 +74,7 @@ Rect fromCvRect(cv::Rect r) {
 Rect detToRect(const ImgDetection& det) {
     return Rect(Point2f(det.xmin, det.ymin), Point2f(det.xmax, det.ymax));
 }
+#endif
 
 template <typename T>
 bool contains(const std::vector<T>& vec, const T& el) {
@@ -80,6 +85,7 @@ bool contains(const std::vector<T>& vec, const T& el) {
 }
 
 void ObjectTracker::run() {
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     auto& logger = pimpl->logger;
 
     float trackerThreshold = properties.trackerThreshold;
@@ -201,6 +207,9 @@ void ObjectTracker::run() {
             }
         }
     }
+#else
+    throw std::runtime_error("ObjectTracker::run() requires OpenCV support. Please compile with OpenCV.");
+#endif
 }
 
 }  // namespace node
