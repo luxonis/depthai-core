@@ -11,6 +11,7 @@
 #include "depthai/common/RotatedRect.hpp"
 #include "depthai/common/optional.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
+#include "depthai/pipeline/datatype/ImgAnnotations.hpp"
 #include "depthai/utility/ProtoSerializable.hpp"
 
 namespace dai {
@@ -142,6 +143,8 @@ class ImgDetections : public Buffer, public ProtoSerializable {
         metadata = utility::serialize(*this);
         datatype = DatatypeEnum::ImgDetections;
     };
+
+    dai::VisualizeType getVisualizationMessage() const override;
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF
     /**
