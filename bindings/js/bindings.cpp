@@ -99,6 +99,7 @@ EMSCRIPTEN_BINDINGS(depthai_js) {
         .field("labelName", &dai::ImgDetection::labelName)
         .def("setBoundingBox", &dai::ImgDetection::setBoundingBox, py::arg("boundingBox"))
         .def("getBoundingBox", &dai::ImgDetection::getBoundingBox)
+        .def("setOuterBoundingBox", &dai::ImgDetection::setOuterBoundingBox, py::arg("xmin"), py::arg("ymin"), py::arg("xmax"), py::arg("ymax"))
         .def("setKeypoints", py::overload_cast<const dai::KeypointsList>(&dai::ImgDetection::setKeypoints), py::arg("keypoints"))
         .def("setKeypoints", py::overload_cast<const std::vector<dai::Keypoint>&>(&dai::ImgDetection::setKeypoints), py::arg("keypoints"))
         .def("setKeypoints",

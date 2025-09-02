@@ -42,6 +42,12 @@ ImgDetection::ImgDetection(
 
 void ImgDetection::setBoundingBox(const RotatedRect boundingBox) {
     this->boundingBox = boundingBox;
+
+    std::array<float, 4> outerPoints = this->boundingBox->getOuterRect();
+    xmin = outerPoints[0];
+    ymin = outerPoints[1];
+    xmax = outerPoints[2];
+    ymax = outerPoints[3];
 }
 
 RotatedRect ImgDetection::getBoundingBox() const {
@@ -54,6 +60,18 @@ RotatedRect ImgDetection::getBoundingBox() const {
     // construct from legacy values
     RotatedRect rect = RotatedRect{dai::Rect{Point2f{xmin, ymin}, Point2f{xmax, ymax}}};
     return rect;
+}
+
+void ImgDetection::setOuterBoundingBox(const float xmin, const float ymin, const float xmax, const float ymax) {
+    this->xmin = xmin;
+    this->ymin = ymin;
+    this->xmax = xmax;
+    this->ymax = ymax;
+
+    Point2f topLeft{xmin, ymin};
+    Point2f bottomRight{xmax, ymax};
+
+    this->boundingBox = RotatedRect{Rect{topLeft, bottomRight}};
 }
 
 void ImgDetection::setKeypoints(const KeypointsList kp) {
@@ -119,61 +137,6 @@ float ImgDetection::getHeight() const noexcept {
 
 float ImgDetection::getAngle() const noexcept {
     return getBoundingBox().angle;
-}
-
-// ImgDetections functions
-
-dai::VisualizeType ImgDetections::getVisualizationMessage() const {
-    auto imgAnnt = std::make_shared<dai::ImgAnnotations>();
-    imgAnnt->setTimestamp(this->getTimestamp());
-
-    auto annotation = std::make_shared<dai::ImgAnnotation>();
-
-    for(const auto& detection : this->detections) {
-        // Create points annotation for bounding box
-        std::cout << "detection label: " << detection.labelName << std::endl;
-        dai::RotatedRect boundingBox = detection.getBoundingBox();
-        auto pointsAnnotation = std::make_shared<dai::PointsAnnotation>();
-        pointsAnnotation->type = dai::PointsAnnotationType::LINE_LOOP;
-        auto points = boundingBox.getPoints();
-        pointsAnnotation->points.assign(points.begin(), points.end());
-
-        // Set colors and thickness
-        pointsAnnotation->outlineColor = dai::Color(float(21.0f / 255.0f), float(127.0f / 255.0f), float(88.0f / 255.0f), float(1.0f));
-        pointsAnnotation->fillColor = dai::Color(float(21.0f / 255.0f), float(127.0f / 255.0f), float(88.0f / 255.0f), float(0.2f));
-        pointsAnnotation->thickness = 1.0f;
-
-        // Create text annotation
-        auto text = std::make_shared<dai::TextAnnotation>();
-        std::tuple<dai::Point2f, dai::Size2f> outerPoints = boundingBox.getOuterXYWH();
-        text->position = std::get<0>(outerPoints);
-        text->text = detection.labelName + " (" + std::to_string(int(detection.confidence * 100)) + "adddddd)";
-        text->fontSize = 50.5f;
-        text->textColor = dai::Color(0.5f, 0.5f, 1.0f, 1.0f);
-        text->backgroundColor = dai::Color(1.0f, 1.0f, 0.5f, 1.0f);
-
-        annotation->points.push_back(*pointsAnnotation);
-        annotation->texts.push_back(*text);
-
-        // Draw keypoints if available
-        auto keypoints = detection.getKeypoints();
-        if(!keypoints.empty()) {
-            auto keypointsAnnotation = std::make_shared<dai::PointsAnnotation>();
-            keypointsAnnotation->type = dai::PointsAnnotationType::POINTS;
-            keypointsAnnotation->outlineColor = dai::Color(float(21.0f / 255.0f), float(127.0f / 255.0f), float(88.0f / 255.0f), float(1.0f));
-            keypointsAnnotation->thickness = 3.0f;
-            std::vector<Point2f> kpPoints;
-            kpPoints.reserve(keypoints.size());
-            for(Keypoint& kp : keypoints) {
-                kpPoints.push_back(Point2f{kp.coordinates.x, kp.coordinates.y});
-            }
-            keypointsAnnotation->points = kpPoints;
-            annotation->points.push_back(*keypointsAnnotation);
-        }
-    }
-
-    imgAnnt->annotations.push_back(*annotation);
-    return imgAnnt;
 }
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF
