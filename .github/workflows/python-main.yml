@@ -361,7 +361,46 @@ jobs:
           ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
           ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
           ARTIFACTORY_PASS: ${{ secrets.ARTIFACTORY_PASS }}
+      - name: Append build hash if not a tagged commit
+        if: startsWith(github.ref, 'refs/tags/v') != true
+        run: echo "BUILD_COMMIT_HASH=${{github.sha}}" >> $GITHUB_ENV
+      - name: Install from Artifactory and smoke-test (macOS)
+        if: startsWith(github.ref, 'refs/tags/v') != true
+        env:
+          ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
+        run: |
+          set -euo pipefail
 
+          # Resolve the exact dev version (includes commit hash)
+          ver=$(python -c "import os,sys,pathlib; sys.path.insert(0, str(pathlib.Path('bindings/python').resolve())); import find_version as v; print(v.get_package_dev_version(os.environ['BUILD_COMMIT_HASH']))")
+          echo "Installing depthai==$ver using $(python -V)"
+
+          # Install from Artifactory snapshot
+          python -m pip install -U pip
+          python -m pip uninstall -y depthai || true
+          python -m pip install -U --prefer-binary \
+            --extra-index-url "$ARTIFACTORY_URL/luxonis-python-snapshot-local" \
+            "depthai==$ver" \
+            --trusted-host 3.145.46.25
+
+          # Smoke test: fail hard on any exception or version mismatch
+          ver="$ver" "$PYBIN" - <<'PY'
+          import os, sys, traceback, platform
+          try:
+              import depthai as dai
+          except Exception:
+              traceback.print_exc()
+              sys.exit(1)
+
+          expected = os.environ["ver"]  # read the env var you passed in
+          installed = getattr(dai, "__version__", "<unknown>")
+          if installed != expected:
+              print(f"Version mismatch: installed {installed} vs expected {expected}", file=sys.stderr)
+              sys.exit(1)
+
+          print("depthai:", installed)
+          print("python:", platform.python_version(), "ABI:", sys.implementation.cache_tag)
+          PY
   # This job builds wheels for x86_64 arch
   build-linux-x86_64:
     needs: build-docstrings
@@ -456,6 +495,48 @@ jobs:
           ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
           ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
           ARTIFACTORY_PASS: ${{ secrets.ARTIFACTORY_PASS }}
+
+      - name: Append build hash if not a tagged commit
+        if: startsWith(github.ref, 'refs/tags/v') != true
+        run: echo "BUILD_COMMIT_HASH=${{github.sha}}" >> $GITHUB_ENV
+
+      - name: Install from Artifactory and smoke-test (manylinux x86_64)
+        if: startsWith(github.ref, 'refs/tags/v') != true
+        env:
+          ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
+        run: |
+          set -euo pipefail
+
+          PYBIN="/opt/python/cp310-cp310/bin/python"
+
+          # Resolve the exact dev version (includes commit hash)
+          ver=$("$PYBIN" -c "import os,sys,pathlib; sys.path.insert(0, str(pathlib.Path('bindings/python').resolve())); import find_version as v; print(v.get_package_dev_version(os.environ['BUILD_COMMIT_HASH']))")
+          echo "Installing depthai==$ver using $($PYBIN -V)"
+
+          # Install from Artifactory snapshot
+          "$PYBIN" -m ensurepip --upgrade || true
+          "$PYBIN" -m pip install -U pip
+          "$PYBIN" -m pip uninstall -y depthai || true
+          "$PYBIN" -m pip install -U --prefer-binary --extra-index-url "$ARTIFACTORY_URL/luxonis-python-snapshot-local" "depthai==$ver" --trusted-host 3.145.46.25
+
+          # Smoke test: fail hard on any exception or version mismatch
+          ver="$ver" "$PYBIN" - <<'PY'
+          import os, sys, traceback, platform
+          try:
+              import depthai as dai
+          except Exception:
+              traceback.print_exc()
+              sys.exit(1)
+
+          expected = os.environ["ver"]  # read the env var you passed in
+          installed = getattr(dai, "__version__", "<unknown>")
+          if installed != expected:
+              print(f"Version mismatch: installed {installed} vs expected {expected}", file=sys.stderr)
+              sys.exit(1)
+
+          print("depthai:", installed)
+          print("python:", platform.python_version(), "ABI:", sys.implementation.cache_tag)
+          PY
 
   # This job builds wheels for ARM64 arch
   build-linux-arm64:
@@ -556,6 +637,46 @@ jobs:
           ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
           ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
           ARTIFACTORY_PASS: ${{ secrets.ARTIFACTORY_PASS }}
+      - name: Append build hash if not a tagged commit
+        if: startsWith(github.ref, 'refs/tags/v') != true
+        run: echo "BUILD_COMMIT_HASH=${{github.sha}}" >> $GITHUB_ENV
+      - name: Install from Artifactory and smoke-test (manylinux aarch64)
+        if: startsWith(github.ref, 'refs/tags/v') != true
+        env:
+          ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
+        run: |
+          set -euo pipefail
+
+          PYBIN="/opt/python/cp310-cp310/bin/python"
+
+          # Resolve the exact dev version (includes commit hash)
+          ver=$("$PYBIN" -c "import os,sys,pathlib; sys.path.insert(0, str(pathlib.Path('bindings/python').resolve())); import find_version as v; print(v.get_package_dev_version(os.environ['BUILD_COMMIT_HASH']))")
+          echo "Installing depthai==$ver using $($PYBIN -V)"
+
+          # Install from Artifactory snapshot
+          "$PYBIN" -m ensurepip --upgrade || true
+          "$PYBIN" -m pip install -U pip
+          "$PYBIN" -m pip uninstall -y depthai || true
+          "$PYBIN" -m pip install -U --prefer-binary --extra-index-url "$ARTIFACTORY_URL/luxonis-python-snapshot-local" "depthai==$ver" --trusted-host 3.145.46.25
+
+          # Smoke test: fail hard on any exception or version mismatch
+          ver="$ver" "$PYBIN" - <<'PY'
+          import os, sys, traceback, platform
+          try:
+              import depthai as dai
+          except Exception:
+              traceback.print_exc()
+              sys.exit(1)
+
+          expected = os.environ["ver"]  # read the env var you passed in
+          installed = getattr(dai, "__version__", "<unknown>")
+          if installed != expected:
+              print(f"Version mismatch: installed {installed} vs expected {expected}", file=sys.stderr)
+              sys.exit(1)
+
+          print("depthai:", installed)
+          print("python:", platform.python_version(), "ABI:", sys.implementation.cache_tag)
+          PY
 
   combine-windows-x86_64-wheels:
     needs: build-windows-x86_64
@@ -586,6 +707,32 @@ jobs:
           ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
           ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
           ARTIFACTORY_PASS: ${{ secrets.ARTIFACTORY_PASS }}
+      - name: Append build hash if not a tagged commit
+        if: startsWith(github.ref, 'refs/tags/v') != true
+        run: echo "BUILD_COMMIT_HASH=${{github.sha}}" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Install from Artifactory and smoke-test (Windows)
+        if: startsWith(github.ref, 'refs/tags/v') != true
+        shell: pwsh
+        env:
+          ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
+        run: |
+          $env:PYTHONIOENCODING = 'utf-8'
+
+          # Resolve the exact dev version (includes commit hash)
+          $ver = python -c "import os,sys,pathlib; sys.path.insert(0,str(pathlib.Path('bindings/python').resolve())); import find_version as v; print(v.get_package_dev_version(os.environ['BUILD_COMMIT_HASH']))"
+          Write-Host "Installing depthai==$ver using:"; python -VV
+
+          # Install from Artifactory snapshot
+          python -m pip install -U pip
+          python -m pip uninstall -y depthai 2>$null | Out-Null
+          python -m pip install -U --prefer-binary `
+            --extra-index-url "$env:ARTIFACTORY_URL/luxonis-python-snapshot-local" `
+            "depthai==$ver" `
+            --trusted-host 3.145.46.25
+
+          # Smoke test (no heredoc; YAML-safe). Fail on import error or version mismatch.
+          $env:EXPECTED_VERSION = $ver
+          python -c "import os,sys,platform; import depthai as d; e=os.environ['EXPECTED_VERSION']; i=getattr(d,'__version__','<unknown>'); assert i==e, f'Version mismatch: {i} vs {e}'; print('depthai:', i); print('python:', platform.python_version(), 'ABI:', sys.implementation.cache_tag)"
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
