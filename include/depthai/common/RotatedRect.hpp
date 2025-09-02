@@ -46,6 +46,9 @@ struct RotatedRect {
      * @return Normalized rotated rectangle
      */
     RotatedRect normalize(unsigned int width, unsigned int height) const {
+        if(width == 0 || height == 0) {
+            throw std::runtime_error("Width and height must be non-zero to denormalize RotatedRect");
+        }
         if(isNormalized()) return *this;
         RotatedRect normalized = *this;
         normalized.center = dai::Point2f(center.x / width, center.y / height, true);
@@ -58,6 +61,9 @@ struct RotatedRect {
      * @return Denormalized rotated rectangle
      */
     RotatedRect denormalize(unsigned int width, unsigned int height, bool force = false) const {
+        if(width == 0 || height == 0) {
+            throw std::runtime_error("Width and height must be non-zero to denormalize RotatedRect");
+        }
         if(!force && !isNormalized()) return *this;
         RotatedRect denormalized = *this;
         denormalized.center = dai::Point2f(center.x * width, center.y * height, false);

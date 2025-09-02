@@ -40,6 +40,10 @@ enum class DatatypeEnum : std::int32_t {
     ToFDepthConfidenceFilterConfig,
     ObjectTrackerConfig,
     Keypoints
+    DynamicCalibrationControl,
+    DynamicCalibrationResult,
+    CalibrationQuality,
+    CoverageData,
 };
 bool isDatatypeSubclassOf(DatatypeEnum parent, DatatypeEnum children);
 
