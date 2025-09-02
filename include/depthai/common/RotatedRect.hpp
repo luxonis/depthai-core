@@ -110,7 +110,7 @@ struct RotatedRect {
     }
 
     /**
-     * Returns the outer non-rotated rectangle in the (xmin, ymin, width, height) format.
+     * Returns the outer non-rotated rectangle in the COCO (xmin, ymin, width, height) format.
      * @return (top-left point, size)
      */
     std::tuple<dai::Point2f, dai::Size2f> getOuterXYWH() const {
@@ -119,7 +119,7 @@ struct RotatedRect {
     }
 
     /**
-     * Returns the outer non-rotated rectangle in the (xcenter, ycenter, width, height) format.
+     * Returns the outer non-rotated rectangle in the YOLO (xcenter, ycenter, width, height) format.
      * @return (center point, size)
      */
     std::tuple<dai::Point2f, dai::Size2f> getOuterCXCYWH() const {

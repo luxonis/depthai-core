@@ -37,7 +37,7 @@ struct ImgDetection {
     ImgDetection(const RotatedRect& boundingBox, const KeypointsList& keypoints, std::string labelName, float confidence, uint32_t label);
 
     /**
-     * Sets the bounding box of the detection.
+     * Sets the bounding box and the legacy coordinates of the detection.
      */
     void setBoundingBox(RotatedRect boundingBox);
 
@@ -45,6 +45,11 @@ struct ImgDetection {
      * Returns bounding box if it was set, else it constructs a new one from the legacy xmin, ymin, xmax, ymax values.
      */
     RotatedRect getBoundingBox() const;
+
+    /**
+     * Sets the bounding box and the legacy coordinates of the detection from the top-left and bottom-right points.
+     */
+    void setOuterBoundingBox(const float xmin, const float ymin, const float xmax, const float ymax);
 
     /**
      * Sets the keypoints of the detection.
@@ -143,8 +148,6 @@ class ImgDetections : public Buffer, public ProtoSerializable {
         metadata = utility::serialize(*this);
         datatype = DatatypeEnum::ImgDetections;
     };
-
-    dai::VisualizeType getVisualizationMessage() const override;
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF
     /**

@@ -71,6 +71,8 @@ struct KeypointsList {
      * @note This will clear any existing keypoints and edges.
      */
     void setKeypoints(const std::vector<Keypoint> keypoints, const std::vector<Edge> edges) {
+        this->edges.clear();
+        this->keypoints.clear();
         this->keypoints = std::move(keypoints);
         this->edges = std::move(edges);
         validateEdges();

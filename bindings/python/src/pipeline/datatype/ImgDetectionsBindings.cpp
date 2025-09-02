@@ -35,6 +35,24 @@ void bind_imgdetections(pybind11::module& m, void* pCallstack) {
 
     // Metadata / raw
     imgDetection.def(py::init<>())
+        .def(py::init<const RotatedRect&, float, std::uint32_t>(), py::arg("boundingBox"), py::arg("confidence"), py::arg("label"))
+        .def(py::init<const RotatedRect&, std::string, float, std::uint32_t>(),
+             py::arg("boundingBox"),
+             py::arg("labelName"),
+             py::arg("confidence"),
+             py::arg("label"))
+        .def(py::init<const RotatedRect&, const KeypointsList&, float, std::uint32_t>(),
+             py::arg("boundingBox"),
+             py::arg("keypoints"),
+             py::arg("confidence"),
+             py::arg("label"))
+        .def(py::init<const RotatedRect&, const KeypointsList&, std::string, float, std::uint32_t>(),
+             py::arg("boundingBox"),
+             py::arg("keypoints"),
+             py::arg("labelName"),
+             py::arg("confidence"),
+             py::arg("label"))
+        .def("__repr__", &ImgDetection::str)
         .def_readwrite("label", &ImgDetection::label)
         .def_readwrite("labelName", &ImgDetection::labelName)
         .def_readwrite("confidence", &ImgDetection::confidence)
@@ -44,6 +62,7 @@ void bind_imgdetections(pybind11::module& m, void* pCallstack) {
         .def_readwrite("ymax", &ImgDetection::ymax)
         .def("setBoundingBox", &ImgDetection::setBoundingBox, py::arg("boundingBox"))
         .def("getBoundingBox", &ImgDetection::getBoundingBox)
+        .def("setOuterBoundingBox", &ImgDetection::setOuterBoundingBox, py::arg("xmin"), py::arg("ymin"), py::arg("xmax"), py::arg("ymax"))
         .def("setKeypoints", py::overload_cast<const KeypointsList>(&ImgDetection::setKeypoints), py::arg("keypoints"))
         .def("setKeypoints", py::overload_cast<const std::vector<Keypoint>>(&ImgDetection::setKeypoints), py::arg("keypoints"))
         .def("setKeypoints",
