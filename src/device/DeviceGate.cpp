@@ -1,7 +1,7 @@
 #include "device/DeviceGate.hpp"
 
-#include <XLink/XLinkPublicDefines.h>
 #include <XLink/XLink.h>
+#include <XLink/XLinkPublicDefines.h>
 
 // std
 #include <fstream>
@@ -29,18 +29,18 @@ const auto sessionsEndpoint = API_ROOT + "/sessions";
 const int DEFAULT_PORT{11492};
 
 enum USBRequestID_t {
-	RESPONSE_OK,
-	RESPONSE_ERROR,
-	CREATE_SESSION,
-	START_SESSION,
-	UPLOAD_FWP,
-	STOP_SESSION,
-	DESTROY_SESSION,
-	DELETE_SESSION,
-	IS_OKAY,
-	GET_VERSION,
-	GET_STATE,
-	GET_FILE,
+    RESPONSE_OK,
+    RESPONSE_ERROR,
+    CREATE_SESSION,
+    START_SESSION,
+    UPLOAD_FWP,
+    STOP_SESSION,
+    DESTROY_SESSION,
+    DELETE_SESSION,
+    IS_OKAY,
+    GET_VERSION,
+    GET_STATE,
+    GET_FILE,
 };
 
 struct USBRequest_t {
@@ -48,8 +48,7 @@ struct USBRequest_t {
     uint32_t RequestSize;
 };
 
-
-class DeviceGate::Impl {
+class DeviceGate::HTTPImpl::Impl {
    public:
     Impl() = default;
 
@@ -66,7 +65,7 @@ DeviceGate::DeviceGate(const DeviceInfo& deviceInfo) : deviceInfo(deviceInfo) {
     if(deviceInfo.platform != X_LINK_RVC3 && deviceInfo.platform != X_LINK_RVC4) {
         throw std::invalid_argument("Gate only supports RVC3 and RVC4 platforms");
     }
-    this->platform =deviceInfo.platform;
+    this->platform = deviceInfo.platform;
     if(deviceInfo.platform == X_LINK_RVC3) {
         version = DEPTHAI_DEVICE_RVC3_VERSION;
     } else if(deviceInfo.platform == X_LINK_RVC4) {
@@ -74,70 +73,91 @@ DeviceGate::DeviceGate(const DeviceInfo& deviceInfo) : deviceInfo(deviceInfo) {
     } else {
         throw std::runtime_error("Unknown platform");  // Should never happen
     }
+
+    if(deviceInfo.protocol == X_LINK_USB_EP) {
+        impl = std::make_shared<USBImpl>();
+    } else {
+        impl = std::make_shared<HTTPImpl>(deviceInfo);
+    }
+}
+
+DeviceGate::HTTPImpl::HTTPImpl(DeviceInfo deviceInfo) {
     // Discover and connect
     pimpl->cli = std::make_unique<httplib::Client>(deviceInfo.name, DEFAULT_PORT);
     pimpl->cli->set_read_timeout(60);  // 60 seconds timeout to allow for compressing the crash dumps without async
     // pimpl->cli->set_connection_timeout(2);
-    
 }
 
 bool DeviceGate::isOkay() {
-    if(auto res = pimpl->cli->Get("/api/v1/status")) {
-        return nlohmann::json::parse(res->body)["status"].get<bool>();
-    } else {
-	USBRequest_t request;
-	request.RequestNum = IS_OKAY;
-	request.RequestSize = 0;
-	XLinkGateWrite(&request, sizeof(USBRequest_t));
+    return impl->isOkay();
+}
 
-	XLinkGateRead(&request, sizeof(request));
-	if(request.RequestNum == RESPONSE_ERROR) {
-		return false;
-	}
+bool DeviceGate::HTTPImpl::isOkay() {
+    auto res = pimpl->cli->Get("/api/v1/status");
+    return nlohmann::json::parse(res->body)["status"].get<bool>();
+}
 
-	char *respBuffer = new char[request.RequestSize + 1];
-	XLinkGateRead(respBuffer, request.RequestSize);
-	respBuffer[request.RequestSize]= '\0';
-	
-	bool result = nlohmann::json::parse(respBuffer)["status"].get<bool>();
-	delete[] respBuffer;
+bool DeviceGate::USBImpl::isOkay() {
+    USBRequest_t request;
+    request.RequestNum = IS_OKAY;
+    request.RequestSize = 0;
+    XLinkGateWrite(&request, sizeof(USBRequest_t));
 
-	return result;
+    XLinkGateRead(&request, sizeof(request));
+    if(request.RequestNum == RESPONSE_ERROR) {
+        return false;
     }
 
-    return false;
+    std::vector<uint8_t> respBuffer;
+    respBuffer.reserve(request.RequestSize + 1);
+    XLinkGateRead(&respBuffer[0], request.RequestSize);
+    respBuffer[request.RequestSize] = '\0';
+
+    bool result = nlohmann::json::parse(respBuffer)["status"].get<bool>();
+
+    return result;
 }
 
 Version DeviceGate::getVersion() {
+    return impl->getVersion();
+}
+
+Version DeviceGate::HTTPImpl::getVersion() {
     httplib::Result res = pimpl->cli->Get("/api/v1/version");
     if(res && res->status == 200) {
         auto versionStr = nlohmann::json::parse(res->body)["version_gate"].get<std::string>();
         return Version{versionStr};
     } else {
-	USBRequest_t request;
-	request.RequestNum = GET_VERSION;
-	request.RequestSize = 0;
-	XLinkGateWrite(&request, sizeof(USBRequest_t));
-
-	XLinkGateRead(&request, sizeof(request));
-	if(request.RequestNum == RESPONSE_ERROR) {
-		return Version{0, 0, 0};
-	}
-
-	char *respBuffer = new char[request.RequestSize + 1];
-	XLinkGateRead(respBuffer, request.RequestSize);
-	respBuffer[request.RequestSize]= '\0';
-	
-	auto result = nlohmann::json::parse(respBuffer)["version_gate"].get<std::string>();
-	delete[] respBuffer;
-
-	return Version{result};
-
+        return Version{0, 0, 0};
     }
-    return Version{0, 0, 0};
+}
+
+Version DeviceGate::USBImpl::getVersion() {
+    USBRequest_t request;
+    request.RequestNum = GET_VERSION;
+    request.RequestSize = 0;
+    XLinkGateWrite(&request, sizeof(USBRequest_t));
+
+    XLinkGateRead(&request, sizeof(request));
+    if(request.RequestNum == RESPONSE_ERROR) {
+        return Version{0, 0, 0};
+    }
+
+    std::vector<uint8_t> respBuffer;
+    respBuffer.reserve(request.RequestSize + 1);
+    XLinkGateRead(&respBuffer[0], request.RequestSize);
+    respBuffer[request.RequestSize] = '\0';
+
+    auto result = nlohmann::json::parse(respBuffer)["version_gate"].get<std::string>();
+
+    return Version{result};
 }
 
 DeviceGate::VersionInfo DeviceGate::getAllVersion() {
+    return impl->getAllVersion();
+}
+
+DeviceGate::VersionInfo DeviceGate::HTTPImpl::getAllVersion() {
     httplib::Result res = pimpl->cli->Get("/api/v1/version");
     if(res && res->status == 200) {
         auto result = nlohmann::json::parse(res->body);
@@ -146,33 +166,40 @@ DeviceGate::VersionInfo DeviceGate::getAllVersion() {
         info.gate = result.value("version_gate", "");
         info.os = result.value("version_os", "");
         return info;
-    } else {
-	USBRequest_t request;
-	request.RequestNum = GET_VERSION;
-	request.RequestSize = 0;
-	XLinkGateWrite(&request, sizeof(USBRequest_t));
-
-	XLinkGateRead(&request, sizeof(request));
-	if(request.RequestNum == RESPONSE_ERROR) {
-		return {};
-	}
-
-	char *respBuffer = new char[request.RequestSize + 1];
-	XLinkGateRead(respBuffer, request.RequestSize);
-	respBuffer[request.RequestSize]= '\0';
-	auto result = nlohmann::json::parse(respBuffer);
-	delete[] respBuffer;
-
-	VersionInfo info;
-	info.gate = result.value("version_gate", "");
-	info.os = result.value("version_os", "");
-	return info;
-
     }
+
     return {};
 }
 
+DeviceGate::VersionInfo DeviceGate::USBImpl::getAllVersion() {
+    USBRequest_t request;
+    request.RequestNum = GET_VERSION;
+    request.RequestSize = 0;
+    XLinkGateWrite(&request, sizeof(USBRequest_t));
+
+    XLinkGateRead(&request, sizeof(request));
+    if(request.RequestNum == RESPONSE_ERROR) {
+        return {};
+    }
+
+    std::vector<uint8_t> respBuffer;
+    respBuffer.reserve(request.RequestSize + 1);
+    XLinkGateRead(&respBuffer[0], request.RequestSize);
+    respBuffer[request.RequestSize] = '\0';
+    auto result = nlohmann::json::parse(respBuffer);
+
+    VersionInfo info;
+    info.gate = result.value("version_gate", "");
+    info.os = result.value("version_os", "");
+    return info;
+}
+
 bool DeviceGate::createSession(bool exclusive) {
+    return impl->createSession(version, exclusive, platform, sessionId, sessionCreated);
+}
+
+bool DeviceGate::HTTPImpl::createSession(
+    std::string version, bool exclusive, XLinkPlatform_t platform, std::string& sessionId, std::atomic_bool& sessionCreated) {
     nlohmann::json createSessionBody = {{"name", "depthai_session"},
                                         // {"fwp_checksum", fwpChecksum},
                                         {"fwp_version", version},
@@ -181,132 +208,143 @@ bool DeviceGate::createSession(bool exclusive) {
 
     spdlog::debug("DeviceGate createSession: {}", createSessionBody.dump());
 
-    if(auto res = pimpl->cli->Post(sessionsEndpoint.c_str(), createSessionBody.dump(), "application/json")) {
-        // Parse response
-        if(res->status != 200) {
-            spdlog::warn("DeviceGate createSession not successful - status: {}, error: {}", res->status, res->body);
-            return false;
+    auto res = pimpl->cli->Post(sessionsEndpoint.c_str(), createSessionBody.dump(), "application/json");
+    // Parse response
+    if(res->status != 200) {
+        spdlog::warn("DeviceGate createSession not successful - status: {}, error: {}", res->status, res->body);
+        return false;
+    }
+    auto resp = nlohmann::json::parse(res->body);
+    spdlog::debug("DeviceGate createSession response: {}", resp.dump());
+
+    // Retrieve sessionId
+    sessionId = resp["id"];
+    bool fwpExists = resp["fwp_exists"].get<bool>();
+
+    if(!fwpExists) {
+        std::vector<uint8_t> package;
+        std::string path;
+        if(!path.empty()) {
+            std::ifstream fwStream(path, std::ios::binary);
+            if(!fwStream.is_open()) throw std::runtime_error(fmt::format("Cannot flash bootloader, binary at path: {} doesn't exist", path));
+            package = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(fwStream), {});
+        } else {
+            package = platform == X_LINK_RVC3 ? Resources::getInstance().getDeviceRVC3Fwp() : Resources::getInstance().getDeviceRVC4Fwp();
         }
-        auto resp = nlohmann::json::parse(res->body);
-        spdlog::debug("DeviceGate createSession response: {}", resp.dump());
 
-        // Retrieve sessionId
-        sessionId = resp["id"];
-        bool fwpExists = resp["fwp_exists"].get<bool>();
+        // TODO(themarpe) - Inefficient
+        httplib::MultipartFormDataItems items = {
+            {"file", std::string(package.begin(), package.end()), "depthai-device-kb-fwp.tar.xz", "application/octet-stream"},
+        };
 
-        if(!fwpExists) {
-            std::vector<uint8_t> package;
-            std::string path;
-            if(!path.empty()) {
-                std::ifstream fwStream(path, std::ios::binary);
-                if(!fwStream.is_open()) throw std::runtime_error(fmt::format("Cannot flash bootloader, binary at path: {} doesn't exist", path));
-                package = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(fwStream), {});
+        std::string url = fmt::format("{}/{}/fwp", sessionsEndpoint, sessionId);
+        if(auto res = pimpl->cli->Post(url.c_str(), items)) {
+            if(res.value().status == 200) {
+                spdlog::debug("DeviceGate upload fwp successful");
+                sessionCreated = true;
+                return true;
             } else {
-                package = platform == X_LINK_RVC3 ? Resources::getInstance().getDeviceRVC3Fwp() : Resources::getInstance().getDeviceRVC4Fwp();
-            }
-
-            // TODO(themarpe) - Inefficient
-            httplib::MultipartFormDataItems items = {
-                {"file", std::string(package.begin(), package.end()), "depthai-device-kb-fwp.tar.xz", "application/octet-stream"},
-            };
-
-            std::string url = fmt::format("{}/{}/fwp", sessionsEndpoint, sessionId);
-            if(auto res = pimpl->cli->Post(url.c_str(), items)) {
-                if(res.value().status == 200) {
-                    spdlog::debug("DeviceGate upload fwp successful");
-                    sessionCreated = true;
-                    return true;
-                } else {
-                    spdlog::warn("DeviceGate upload fwp not successful - status: {}, error: {}", res->status, res->body);
-                    return false;
-                }
-
-            } else {
-                spdlog::warn("DeviceGate upload fwp not successful - got no response");
+                spdlog::warn("DeviceGate upload fwp not successful - status: {}, error: {}", res->status, res->body);
                 return false;
             }
+
+        } else {
+            spdlog::warn("DeviceGate upload fwp not successful - got no response");
+            return false;
         }
-        sessionCreated = true;
-        return true;
-    } else {
-	USBRequest_t request;
-	request.RequestNum = CREATE_SESSION;
-	request.RequestSize = createSessionBody.dump().size();
-	XLinkGateWrite(&request, sizeof(USBRequest_t));
-	XLinkGateWrite((void*)createSessionBody.dump().c_str(), createSessionBody.dump().size());
-
-	XLinkGateRead(&request, sizeof(request));
-	if(request.RequestNum == RESPONSE_ERROR) {
-            spdlog::warn("DeviceGate createSession not successful - got no response");
-	    return false;
-	}
-	char *respBuffer = new char[request.RequestSize + 1];
-	XLinkGateRead(respBuffer, request.RequestSize);
-	respBuffer[request.RequestSize]= '\0';
-	auto resp = nlohmann::json::parse(respBuffer);
-	delete[] respBuffer;
-        spdlog::debug("DeviceGate createSession response: {}", resp.dump());
-
-        // Retrieve sessionId
-        sessionId = resp["id"];
-        bool fwpExists = resp["fwp_exists"].get<bool>();
-
-        if(!fwpExists) {
-            std::vector<uint8_t> package;
-            std::string path;
-            if(!path.empty()) {
-                std::ifstream fwStream(path, std::ios::binary);
-                if(!fwStream.is_open()) throw std::runtime_error(fmt::format("Cannot flash bootloader, binary at path: {} doesn't exist", path));
-                package = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(fwStream), {});
-            } else {
-                package = platform == X_LINK_RVC3 ? Resources::getInstance().getDeviceRVC3Fwp() : Resources::getInstance().getDeviceRVC4Fwp();
-            }
-
-	    nlohmann::json uploadFwpBody = {{"sessionId", sessionId},
-                                        {"file", package}};
-            request.RequestNum = UPLOAD_FWP;
-	    request.RequestSize = uploadFwpBody.dump().size();
-	    XLinkGateWrite(&request, sizeof(USBRequest_t));
-	    XLinkGateWrite((void*)uploadFwpBody.dump().c_str(), uploadFwpBody.dump().size());
-	
-	    XLinkGateRead(&request, sizeof(request));
-	    if(request.RequestNum == RESPONSE_ERROR) {
-                spdlog::warn("DeviceGate upload fwp not successful - got no response");
-		return false;
-	    }
-        }
-        sessionCreated = true;
-        return true;
     }
-    return false;
+    sessionCreated = true;
+    return true;
+}
+
+bool DeviceGate::USBImpl::createSession(
+    std::string version, bool exclusive, XLinkPlatform_t platform, std::string& sessionId, std::atomic_bool& sessionCreated) {
+    nlohmann::json createSessionBody = {{"name", "depthai_session"},
+                                        // {"fwp_checksum", fwpChecksum},
+                                        {"fwp_version", version},
+                                        {"library_version", build::VERSION},
+                                        {"protected", exclusive}};
+
+    spdlog::debug("DeviceGate createSession: {}", createSessionBody.dump());
+    USBRequest_t request;
+    request.RequestNum = CREATE_SESSION;
+    request.RequestSize = createSessionBody.dump().size();
+    XLinkGateWrite(&request, sizeof(USBRequest_t));
+    XLinkGateWrite((void*)createSessionBody.dump().c_str(), createSessionBody.dump().size());
+
+    XLinkGateRead(&request, sizeof(request));
+    if(request.RequestNum == RESPONSE_ERROR) {
+        spdlog::warn("DeviceGate createSession not successful - got no response");
+        return false;
+    }
+
+    std::vector<uint8_t> respBuffer;
+    respBuffer.reserve(request.RequestSize + 1);
+    XLinkGateRead(&respBuffer[0], request.RequestSize);
+    respBuffer[request.RequestSize] = '\0';
+    auto resp = nlohmann::json::parse(respBuffer);
+    spdlog::debug("DeviceGate createSession response: {}", resp.dump());
+
+    // Retrieve sessionId
+    sessionId = resp["id"];
+    bool fwpExists = resp["fwp_exists"].get<bool>();
+
+    if(!fwpExists) {
+        std::vector<uint8_t> package;
+        std::string path;
+        if(!path.empty()) {
+            std::ifstream fwStream(path, std::ios::binary);
+            if(!fwStream.is_open()) throw std::runtime_error(fmt::format("Cannot flash bootloader, binary at path: {} doesn't exist", path));
+            package = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(fwStream), {});
+        } else {
+            package = platform == X_LINK_RVC3 ? Resources::getInstance().getDeviceRVC3Fwp() : Resources::getInstance().getDeviceRVC4Fwp();
+        }
+
+        nlohmann::json uploadFwpBody = {{"sessionId", sessionId}, {"file", package}};
+        request.RequestNum = UPLOAD_FWP;
+        request.RequestSize = uploadFwpBody.dump().size();
+        XLinkGateWrite(&request, sizeof(USBRequest_t));
+        XLinkGateWrite((void*)uploadFwpBody.dump().c_str(), uploadFwpBody.dump().size());
+
+        XLinkGateRead(&request, sizeof(request));
+        if(request.RequestNum == RESPONSE_ERROR) {
+            spdlog::warn("DeviceGate upload fwp not successful - got no response");
+            return false;
+        }
+    }
+    sessionCreated = true;
+    return true;
 }
 
 bool DeviceGate::startSession() {
+    return impl->startSession(sessionId);
+}
+
+bool DeviceGate::HTTPImpl::startSession(std::string sessionId) {
     std::string url = fmt::format("{}/{}/start", sessionsEndpoint, sessionId);
-    if(auto res = pimpl->cli->Post(url.c_str())) {
-        if(res->status != 200) {
-            spdlog::warn("DeviceGate start fwp not successful - status: {}, error: {}", res->status, res->body);
-            return false;
-        }
-        spdlog::debug("DeviceGate start fwp successful");
-        return true;
-    } else {
-	USBRequest_t request;
-	request.RequestNum = START_SESSION;
-	request.RequestSize = sessionId.size();
-	XLinkGateWrite(&request, sizeof(USBRequest_t));
-	XLinkGateWrite((void*)sessionId.c_str(), sessionId.size());
-
-	XLinkGateRead(&request, sizeof(request));
-	if(request.RequestNum == RESPONSE_ERROR) {
-            spdlog::debug("DeviceGate start fwp not successful - got no response");
-	    return false;
-	}
-        spdlog::debug("DeviceGate start fwp successful");
-	return true;
+    auto res = pimpl->cli->Post(url.c_str());
+    if(res->status != 200) {
+        spdlog::warn("DeviceGate start fwp not successful - status: {}, error: {}", res->status, res->body);
+        return false;
     }
+    spdlog::debug("DeviceGate start fwp successful");
+    return true;
+}
 
-    return false;
+bool DeviceGate::USBImpl::startSession(std::string sessionId) {
+    USBRequest_t request;
+    request.RequestNum = START_SESSION;
+    request.RequestSize = sessionId.size();
+    XLinkGateWrite(&request, sizeof(USBRequest_t));
+    XLinkGateWrite((void*)sessionId.c_str(), sessionId.size());
+
+    XLinkGateRead(&request, sizeof(request));
+    if(request.RequestNum == RESPONSE_ERROR) {
+        spdlog::debug("DeviceGate start fwp not successful - got no response");
+        return false;
+    }
+    spdlog::debug("DeviceGate start fwp successful");
+    return true;
 }
 
 bool DeviceGate::stopSession() {
@@ -320,34 +358,34 @@ bool DeviceGate::stopSession() {
         spdlog::debug("No need to stop a session that wasn't created.");
         return true;
     }
+    return impl->stopSession(sessionId);
+}
 
-    const auto sessionsEndpoint = API_ROOT + "/sessions";
-
+bool DeviceGate::HTTPImpl::stopSession(std::string sessionId) {
     std::string url = fmt::format("{}/{}/stop", sessionsEndpoint, sessionId);
-    if(auto res = pimpl->cli->Post(url.c_str())) {
-        if(res->status != 200) {
-            spdlog::warn("DeviceGate stopSession not successful - status: {}, error: {}", res->status, res->body);
-            return false;
-        }
-        spdlog::debug("DeviceGate stopSession successful");
-        return true;
-    } else {
-	USBRequest_t request;
-	request.RequestNum = STOP_SESSION;
-	request.RequestSize = sessionId.size();
-	XLinkGateWrite(&request, sizeof(USBRequest_t));
-	XLinkGateWrite((void*)sessionId.c_str(), sessionId.size());
-
-	XLinkGateRead(&request, sizeof(request));
-	if(request.RequestNum == RESPONSE_ERROR) {
-            spdlog::error("DeviceGate stopSession not successful - got no response");
-	    return false;
-	}
-        spdlog::debug("DeviceGate stopSession successful");
-	return true;
+    auto res = pimpl->cli->Post(url.c_str());
+    if(res->status != 200) {
+        spdlog::warn("DeviceGate stopSession not successful - status: {}, error: {}", res->status, res->body);
+        return false;
     }
+    spdlog::debug("DeviceGate stopSession successful");
+    return true;
+}
 
-    return false;
+bool DeviceGate::USBImpl::stopSession(std::string sessionId) {
+    USBRequest_t request;
+    request.RequestNum = STOP_SESSION;
+    request.RequestSize = sessionId.size();
+    XLinkGateWrite(&request, sizeof(USBRequest_t));
+    XLinkGateWrite((void*)sessionId.c_str(), sessionId.size());
+
+    XLinkGateRead(&request, sizeof(request));
+    if(request.RequestNum == RESPONSE_ERROR) {
+        spdlog::error("DeviceGate stopSession not successful - got no response");
+        return false;
+    }
+    spdlog::debug("DeviceGate stopSession successful");
+    return true;
 }
 
 bool DeviceGate::destroySession() {
@@ -360,31 +398,34 @@ bool DeviceGate::destroySession() {
         spdlog::debug("No need to destroy a session that wasn't created.");
         return true;
     }
+    return impl->destroySession(sessionId);
+}
 
+bool DeviceGate::HTTPImpl::destroySession(std::string sessionId) {
     std::string url = fmt::format("{}/{}/destroy", sessionsEndpoint, sessionId);
-    if(auto res = pimpl->cli->Post(url.c_str())) {
-        if(res->status != 200) {
-            spdlog::warn("DeviceGate destroySession not successful - status: {}, error: {}", res->status, res->body);
-            return false;
-        }
-        spdlog::debug("DeviceGate destroySession successful");
-        return true;
-    } else {
-	USBRequest_t request;
-	request.RequestNum = DESTROY_SESSION;
-	request.RequestSize = sessionId.size();
-	XLinkGateWrite(&request, sizeof(USBRequest_t));
-	XLinkGateWrite((void*)sessionId.c_str(), sessionId.size());
-
-	XLinkGateRead(&request, sizeof(request));
-	if(request.RequestNum == RESPONSE_ERROR) {
-            spdlog::error("DeviceGate destroySession not successful - got no response");
-	    return false;
-	}
-        spdlog::debug("DeviceGate destroySession successful");
-	return true;
+    auto res = pimpl->cli->Post(url.c_str());
+    if(res->status != 200) {
+        spdlog::warn("DeviceGate destroySession not successful - status: {}, error: {}", res->status, res->body);
+        return false;
     }
-    return false;
+    spdlog::debug("DeviceGate destroySession successful");
+    return true;
+}
+
+bool DeviceGate::USBImpl::destroySession(std::string sessionId) {
+    USBRequest_t request;
+    request.RequestNum = DESTROY_SESSION;
+    request.RequestSize = sessionId.size();
+    XLinkGateWrite(&request, sizeof(USBRequest_t));
+    XLinkGateWrite((void*)sessionId.c_str(), sessionId.size());
+
+    XLinkGateRead(&request, sizeof(request));
+    if(request.RequestNum == RESPONSE_ERROR) {
+        spdlog::error("DeviceGate destroySession not successful - got no response");
+        return false;
+    }
+    spdlog::debug("DeviceGate destroySession successful");
+    return true;
 }
 
 bool DeviceGate::deleteSession() {
@@ -392,31 +433,34 @@ bool DeviceGate::deleteSession() {
         spdlog::debug("No need to delete a session that wasn't created.");
         return true;
     }
+    return impl->deleteSession(sessionId);
+}
 
+bool DeviceGate::HTTPImpl::deleteSession(std::string sessionId) {
     std::string url = fmt::format("{}/{}", sessionsEndpoint, sessionId);
-    if(auto res = pimpl->cli->Delete(url.c_str())) {
-        if(res->status != 200) {
-            spdlog::warn("DeviceGate deleteSession not successful - status: {}, error: {}", res->status, res->body);
-            return false;
-        }
-        spdlog::debug("DeviceGate deleteSession successful");
-        return true;
-    } else {
-	USBRequest_t request;
-	request.RequestNum = DELETE_SESSION;
-	request.RequestSize = sessionId.size();
-	XLinkGateWrite(&request, sizeof(USBRequest_t));
-	XLinkGateWrite((void*)sessionId.c_str(), sessionId.size());
-
-	XLinkGateRead(&request, sizeof(request));
-	if(request.RequestNum == RESPONSE_ERROR) {
-            spdlog::error("DeviceGate deleteSession not successful - got no response");
-	    return false;
-	}
-        spdlog::debug("DeviceGate deleteSession successful");
-	return true;
+    auto res = pimpl->cli->Delete(url.c_str());
+    if(res->status != 200) {
+        spdlog::warn("DeviceGate deleteSession not successful - status: {}, error: {}", res->status, res->body);
+        return false;
     }
-    return false;
+    spdlog::debug("DeviceGate deleteSession successful");
+    return true;
+}
+
+bool DeviceGate::USBImpl::deleteSession(std::string sessionId) {
+    USBRequest_t request;
+    request.RequestNum = DELETE_SESSION;
+    request.RequestSize = sessionId.size();
+    XLinkGateWrite(&request, sizeof(USBRequest_t));
+    XLinkGateWrite((void*)sessionId.c_str(), sessionId.size());
+
+    XLinkGateRead(&request, sizeof(request));
+    if(request.RequestNum == RESPONSE_ERROR) {
+        spdlog::error("DeviceGate deleteSession not successful - got no response");
+        return false;
+    }
+    spdlog::debug("DeviceGate deleteSession successful");
+    return true;
 }
 
 DeviceGate::SessionState DeviceGate::getState() {
@@ -424,115 +468,130 @@ DeviceGate::SessionState DeviceGate::getState() {
         spdlog::debug("Session not yet created - can't get the session state from gate");
         return SessionState::NOT_CREATED;
     }
+    return impl->getState(sessionId);
+}
+
+DeviceGate::SessionState DeviceGate::HTTPImpl::getState(std::string sessionId) {
     auto sessionState = SessionState::CREATED;
     std::string url = fmt::format("{}/{}", sessionsEndpoint, sessionId);
-    if(auto res = pimpl->cli->Get(url.c_str())) {
-        if(res->status != 200) {
-            spdlog::warn("DeviceGate getState not successful - status: {}, error: {}", res->status, res->body);
-            return SessionState::ERROR_STATE;
-        }
-        auto resp = nlohmann::json::parse(res->body);
-        spdlog::trace("DeviceGate getState response: {}", resp.dump());
 
-        std::string sessionStateStr = resp["state"];
-        if(sessionStateStr == "CREATED") {
-            sessionState = SessionState::CREATED;
-        } else if(sessionStateStr == "RUNNING") {
-            sessionState = SessionState::RUNNING;
-        } else if(sessionStateStr == "STOPPED") {
-            sessionState = SessionState::STOPPED;
-        } else if(sessionStateStr == "STOPPING") {
-            sessionState = SessionState::STOPPING;
-        } else if(sessionStateStr == "CRASHED") {
-            sessionState = SessionState::CRASHED;
-        } else if(sessionStateStr == "DESTROYED") {
-            sessionState = SessionState::DESTROYED;
-        } else {
-            spdlog::warn("DeviceGate getState not successful - unknown session state: {}", sessionStateStr);
-            sessionState = SessionState::ERROR_STATE;
-        }
-        return sessionState;
-    } else {
-	USBRequest_t request;
-	request.RequestNum = GET_STATE;
-	request.RequestSize = sessionId.size();
-	XLinkGateWrite(&request, sizeof(USBRequest_t));
-	XLinkGateWrite((void*)sessionId.c_str(), sessionId.size());
+    auto res = pimpl->cli->Get(url.c_str());
 
-	XLinkGateRead(&request, sizeof(request));
-	if(request.RequestNum == RESPONSE_ERROR) {
-            spdlog::warn("DeviceGate getState not successful - got no response");
-    	    return SessionState::ERROR_STATE;
-	}
-
-	char *respBuffer = new char[request.RequestSize + 1];
-	XLinkGateRead(respBuffer, request.RequestSize);
-	respBuffer[request.RequestSize]= '\0';
-        auto resp = nlohmann::json::parse(respBuffer);
-	delete[] respBuffer;
-        spdlog::trace("DeviceGate getState response: {}", resp.dump());
-
-        std::string sessionStateStr = resp["state"];
-        if(sessionStateStr == "CREATED") {
-            sessionState = SessionState::CREATED;
-        } else if(sessionStateStr == "RUNNING") {
-            sessionState = SessionState::RUNNING;
-        } else if(sessionStateStr == "STOPPED") {
-            sessionState = SessionState::STOPPED;
-        } else if(sessionStateStr == "STOPPING") {
-            sessionState = SessionState::STOPPING;
-        } else if(sessionStateStr == "CRASHED") {
-            sessionState = SessionState::CRASHED;
-        } else if(sessionStateStr == "DESTROYED") {
-            sessionState = SessionState::DESTROYED;
-        } else {
-            spdlog::warn("DeviceGate getState not successful - unknown session state: {}", sessionStateStr);
-            sessionState = SessionState::ERROR_STATE;
-        }
-        return sessionState;
+    if(res->status != 200) {
+        spdlog::warn("DeviceGate getState not successful - status: {}, error: {}", res->status, res->body);
+        return SessionState::ERROR_STATE;
     }
-    return SessionState::ERROR_STATE;
+
+    auto resp = nlohmann::json::parse(res->body);
+    spdlog::trace("DeviceGate getState response: {}", resp.dump());
+
+    std::string sessionStateStr = resp["state"];
+
+    if(sessionStateStr == "CREATED") {
+        sessionState = SessionState::CREATED;
+    } else if(sessionStateStr == "RUNNING") {
+        sessionState = SessionState::RUNNING;
+    } else if(sessionStateStr == "STOPPED") {
+        sessionState = SessionState::STOPPED;
+    } else if(sessionStateStr == "STOPPING") {
+        sessionState = SessionState::STOPPING;
+    } else if(sessionStateStr == "CRASHED") {
+        sessionState = SessionState::CRASHED;
+    } else if(sessionStateStr == "DESTROYED") {
+        sessionState = SessionState::DESTROYED;
+    } else {
+        spdlog::warn("DeviceGate getState not successful - unknown session state: {}", sessionStateStr);
+        sessionState = SessionState::ERROR_STATE;
+    }
+
+    return sessionState;
+}
+
+DeviceGate::SessionState DeviceGate::USBImpl::getState(std::string sessionId) {
+    auto sessionState = SessionState::CREATED;
+    USBRequest_t request;
+    request.RequestNum = GET_STATE;
+    request.RequestSize = sessionId.size();
+    XLinkGateWrite(&request, sizeof(USBRequest_t));
+    XLinkGateWrite((void*)sessionId.c_str(), sessionId.size());
+
+    XLinkGateRead(&request, sizeof(request));
+    if(request.RequestNum == RESPONSE_ERROR) {
+        spdlog::warn("DeviceGate getState not successful - got no response");
+        return SessionState::ERROR_STATE;
+    }
+
+    std::vector<uint8_t> respBuffer;
+    respBuffer.reserve(request.RequestSize + 1);
+    XLinkGateRead(&respBuffer[0], request.RequestSize);
+    respBuffer[request.RequestSize] = '\0';
+    auto resp = nlohmann::json::parse(respBuffer);
+    spdlog::trace("DeviceGate getState response: {}", resp.dump());
+
+    std::string sessionStateStr = resp["state"];
+    if(sessionStateStr == "CREATED") {
+        sessionState = SessionState::CREATED;
+    } else if(sessionStateStr == "RUNNING") {
+        sessionState = SessionState::RUNNING;
+    } else if(sessionStateStr == "STOPPED") {
+        sessionState = SessionState::STOPPED;
+    } else if(sessionStateStr == "STOPPING") {
+        sessionState = SessionState::STOPPING;
+    } else if(sessionStateStr == "CRASHED") {
+        sessionState = SessionState::CRASHED;
+    } else if(sessionStateStr == "DESTROYED") {
+        sessionState = SessionState::DESTROYED;
+    } else {
+        spdlog::warn("DeviceGate getState not successful - unknown session state: {}", sessionStateStr);
+        sessionState = SessionState::ERROR_STATE;
+    }
+
+    return sessionState;
 }
 
 std::optional<std::vector<uint8_t>> DeviceGate::getFile(const std::string& fileUrl, std::string& filename) {
-    // Send a GET request to the server
-    if(auto res = pimpl->cli->Get(fileUrl.c_str())) {
-        if(res->status == 200) {
-            filename = res->get_header_value("X-Filename");
-            // Convert the response body to a vector of uint8_t
-            std::vector<uint8_t> fileData(res->body.begin(), res->body.end());
+    return impl->getFile(fileUrl, filename);
+}
 
-            spdlog::debug("File download successful. Filename: {}", filename);
-            return fileData;
-        } else {
-            spdlog::warn("File download not successful - status: {}, error: {}", res->status, res->body);
-            return std::nullopt;
-        }
-    } else {
-	USBRequest_t request;
-	request.RequestNum = GET_FILE;
-	request.RequestSize = fileUrl.size();
-	XLinkGateWrite(&request, sizeof(USBRequest_t));
-	XLinkGateWrite((void*)fileUrl.c_str(), fileUrl.size());
-
-	XLinkGateRead(&request, sizeof(request));
-	if(request.RequestNum == RESPONSE_ERROR) {
-	    spdlog::warn("File download not successful - got no response");
-	    return std::nullopt;
-	}
-
-	char *respBuffer = new char[request.RequestSize + 1];
-	XLinkGateRead(respBuffer, request.RequestSize);
-	respBuffer[request.RequestSize]= '\0';
-        auto resp = nlohmann::json::parse(respBuffer);
-	delete[] respBuffer;
-
-	filename = resp["filename"].get<std::string>();
-        std::vector<uint8_t> fileData(resp["data"].get<std::vector<uint8_t>>());
+std::optional<std::vector<uint8_t>> DeviceGate::HTTPImpl::getFile(const std::string& fileUrl, std::string& filename) {
+    auto res = pimpl->cli->Get(fileUrl.c_str());
+    if(res->status == 200) {
+        filename = res->get_header_value("X-Filename");
+        // Convert the response body to a vector of uint8_t
+        std::vector<uint8_t> fileData(res->body.begin(), res->body.end());
 
         spdlog::debug("File download successful. Filename: {}", filename);
         return fileData;
+    } else {
+        spdlog::warn("File download not successful - status: {}, error: {}", res->status, res->body);
+        return std::nullopt;
     }
+}
+
+std::optional<std::vector<uint8_t>> DeviceGate::USBImpl::getFile(const std::string& fileUrl, std::string& filename) {
+    USBRequest_t request;
+    request.RequestNum = GET_FILE;
+    request.RequestSize = fileUrl.size();
+    XLinkGateWrite(&request, sizeof(USBRequest_t));
+    XLinkGateWrite((void*)fileUrl.c_str(), fileUrl.size());
+
+    XLinkGateRead(&request, sizeof(request));
+    if(request.RequestNum == RESPONSE_ERROR) {
+        spdlog::warn("File download not successful - got no response");
+        return std::nullopt;
+    }
+
+    std::vector<uint8_t> respBuffer;
+    respBuffer.reserve(request.RequestSize + 1);
+    XLinkGateRead(&respBuffer[0], request.RequestSize);
+    respBuffer[request.RequestSize] = '\0';
+    auto resp = nlohmann::json::parse(respBuffer);
+
+    filename = resp["filename"].get<std::string>();
+    std::vector<uint8_t> fileData(resp["data"].get<std::vector<uint8_t>>());
+
+    spdlog::debug("File download successful. Filename: {}", filename);
+    return fileData;
 }
 
 std::optional<DeviceGate::CrashDump> DeviceGate::waitForSessionEnd() {

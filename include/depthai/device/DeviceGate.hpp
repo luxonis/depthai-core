@@ -56,6 +56,68 @@ class DeviceGate {
 
    private:
     // private
+    class GateImpl {
+       public:
+        virtual ~GateImpl();
+        virtual bool isOkay() = 0;
+        virtual bool createSession(std::string version, bool exclusive, XLinkPlatform_t platform, std::string& sessionId, std::atomic_bool& sessionCreated) = 0;
+        virtual bool startSession(std::string sessionId) = 0;
+        virtual bool stopSession(std::string sessionId) = 0;
+        virtual bool deleteSession(std::string sessionId) = 0;
+        virtual bool destroySession(std::string sessionId) = 0;
+        virtual SessionState getState(std::string sessionId) = 0;
+        virtual std::optional<CrashDump> waitForSessionEnd() = 0;
+        virtual std::optional<CrashDump> getCrashDump() = 0;
+        virtual Version getVersion() = 0;
+        virtual VersionInfo getAllVersion() = 0;
+        virtual bool isBootedNonExclusive() = 0;
+        virtual std::optional<std::vector<uint8_t>> getFile(const std::string& fileUrl, std::string& filename) = 0;
+    };
+
+    class USBImpl : public GateImpl {
+       public:
+        ~USBImpl();
+        bool isOkay() override;
+        bool createSession(std::string version, bool exclusive, XLinkPlatform_t platform, std::string& sessionId, std::atomic_bool& sessionCreated) override;
+        bool startSession(std::string sessionId) override;
+        bool stopSession(std::string sessionId) override;
+        bool deleteSession(std::string sessionId) override;
+        bool destroySession(std::string sessionId) override;
+        SessionState getState(std::string sessionId) override;
+        std::optional<CrashDump> waitForSessionEnd() override;
+        std::optional<CrashDump> getCrashDump() override;
+        Version getVersion() override;
+        VersionInfo getAllVersion() override;
+        bool isBootedNonExclusive() override;
+        std::optional<std::vector<uint8_t>> getFile(const std::string& fileUrl, std::string& filename) override;
+    };
+
+    class HTTPImpl : public GateImpl {
+       public:
+        HTTPImpl(DeviceInfo deviceInfo);
+        ~HTTPImpl();
+        bool isOkay() override;
+        bool createSession(std::string version, bool exclusive, XLinkPlatform_t platform, std::string& sessionId, std::atomic_bool& sessionCreated) override;
+        bool startSession(std::string sessionId) override;
+        bool stopSession(std::string sessionId) override;
+        bool deleteSession(std::string sessionId) override;
+        bool destroySession(std::string sessionId) override;
+        SessionState getState(std::string sessionId) override;
+        std::optional<CrashDump> waitForSessionEnd() override;
+        std::optional<CrashDump> getCrashDump() override;
+        Version getVersion() override;
+        VersionInfo getAllVersion() override;
+        bool isBootedNonExclusive() override;
+        std::optional<std::vector<uint8_t>> getFile(const std::string& fileUrl, std::string& filename) override;
+
+       private:
+        // pimpl
+        class Impl;
+        Pimpl<Impl> pimpl;
+    };
+
+    std::shared_ptr<GateImpl> impl;
+
     DeviceInfo deviceInfo;
 
     std::thread stateMonitoringThread;
@@ -69,9 +131,6 @@ class DeviceGate {
     std::shared_ptr<XLinkConnection> gateConnection;
     std::shared_ptr<XLinkStream> gateStream;
     std::string version;
-    // pimpl
-    class Impl;
-    Pimpl<Impl> pimpl;
 
     std::string sessionId;
 };
