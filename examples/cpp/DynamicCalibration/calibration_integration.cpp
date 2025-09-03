@@ -114,10 +114,12 @@ int main() {
 
             // --- Depth error difference ---
             // Theoretical improvement in depth accuracy at various ranges
-            std::cout << "Theoretical Depth Error Difference " << "@1m:" << std::fixed << std::setprecision(2) << q.depthErrorDifference[0] << "%, "
-                      << "2m:" << q.depthErrorDifference[1] << "%, " << "5m:" << q.depthErrorDifference[2] << "%, " << "10m:" << q.depthErrorDifference[3]
-                      << "%" << std::endl;
-            dynCalibInputControl->send(std::make_shared<DCC>(DCC::Commands::ResetData{}));
+            std::cout << "Theoretical Depth Error Difference "
+                      << "@1m:" << std::fixed << std::setprecision(2) << q.depthErrorDifference[0] << "%, "
+                      << "2m:" << q.depthErrorDifference[1] << "%, "
+                      << "5m:" << q.depthErrorDifference[2] << "%, "
+                      << "10m:" << q.depthErrorDifference[3] << "%" << std::endl;
+            dynCalibInputControl->send(DCC::resetData());
             if(std::abs(q.sampsonErrorNew - q.sampsonErrorCurrent) > 0.05f) {
                 std::cout << "Start recalibration process" << std::endl;
                 dynCalibInputControl->send(std::make_shared<DCC>(DCC::Commands::StartCalibration{}));
@@ -142,10 +144,12 @@ int main() {
                 std::cout << "Mean Sampson error achievable = " << q.sampsonErrorNew << " px\n";
                 std::cout << "Mean Sampson error current    = " << q.sampsonErrorCurrent << " px\n";
 
-                std::cout << "Theoretical Depth Error Difference " << "@1m:" << std::fixed << std::setprecision(2) << q.depthErrorDifference[0] << "%, "
-                          << "2m:" << q.depthErrorDifference[1] << "%, " << "5m:" << q.depthErrorDifference[2] << "%, " << "10m:" << q.depthErrorDifference[3]
-                          << "%\n";
-                dynCalibInputControl->send(std::make_shared<DCC>(DCC::Commands::ResetData{}));
+                std::cout << "Theoretical Depth Error Difference "
+                          << "@1m:" << std::fixed << std::setprecision(2) << q.depthErrorDifference[0] << "%, "
+                          << "2m:" << q.depthErrorDifference[1] << "%, "
+                          << "5m:" << q.depthErrorDifference[2] << "%, "
+                          << "10m:" << q.depthErrorDifference[3] << "%\n";
+                dynCalibInputControl->send(DCC::resetData());
             }
         }
         int key = cv::waitKey(1);
