@@ -263,28 +263,28 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
             break;
         case DatatypeEnum::Keypoints:
             return parseDatatype<Keypoints>(metadataStart, serializedObjectSize, data, fd);
-            break;
+    }
 =======
         case DatatypeEnum::Keypoints: {
             return parseDatatype<Keypoints>(metadataStart, serializedObjectSize, data, fd);
         }
 >>>>>>> 339403f56 (Fix syntax errors.)
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
-        case DatatypeEnum::DynamicCalibrationControl:
-            return parseDatatype<DynamicCalibrationControl>(metadataStart, serializedObjectSize, data, fd);
-            break;
+    case DatatypeEnum::DynamicCalibrationControl:
+        return parseDatatype<DynamicCalibrationControl>(metadataStart, serializedObjectSize, data, fd);
+        break;
 
-        case DatatypeEnum::DynamicCalibrationResult:
-            return parseDatatype<DynamicCalibrationResult>(metadataStart, serializedObjectSize, data, fd);
-            break;
+    case DatatypeEnum::DynamicCalibrationResult:
+        return parseDatatype<DynamicCalibrationResult>(metadataStart, serializedObjectSize, data, fd);
+        break;
 
-        case DatatypeEnum::CalibrationQuality:
-            return parseDatatype<CalibrationQuality>(metadataStart, serializedObjectSize, data, fd);
-            break;
+    case DatatypeEnum::CalibrationQuality:
+        return parseDatatype<CalibrationQuality>(metadataStart, serializedObjectSize, data, fd);
+        break;
 
-        case DatatypeEnum::CoverageData:
-            return parseDatatype<CoverageData>(metadataStart, serializedObjectSize, data, fd);
-            break;
+    case DatatypeEnum::CoverageData:
+        return parseDatatype<CoverageData>(metadataStart, serializedObjectSize, data, fd);
+        break;
 #else
         // Explicitly enum these in this switch state:
         case DatatypeEnum::DynamicCalibrationControl:
@@ -293,10 +293,10 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
         case DatatypeEnum::CoverageData:
             break;
 #endif  // DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
-        default:
-            break;
-    }
-    throw std::runtime_error("Bad packet, couldn't parse");
+    default:
+        break;
+}
+throw std::runtime_error("Bad packet, couldn't parse");
 }
 
 std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(StreamPacketDesc packet) {
