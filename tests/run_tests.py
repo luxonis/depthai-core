@@ -106,10 +106,16 @@ if __name__ == "__main__":
             "labels": ["onhost"],
         },
         {
-            "name": "RVC4",
+            "name": "RVC4 - USB",
+            "env": {"DEPTHAI_PLATFORM": "rvc4", "DEPTHAI_GATE_USB_CONNECTION": "1"},
+            "labels": ["rvc4"],
+        },
+        {
+            "name": "RVC4 - POE",
             "env": {"DEPTHAI_PLATFORM": "rvc4"},
             "labels": ["rvc4"],
         },
+
         {
             "name": "RVC2 - USB",
             "env": {"DEPTHAI_PLATFORM": "rvc2", "DEPTHAI_PROTOCOL": "usb"},
