@@ -63,6 +63,10 @@ if(NOT CONFIG_MODE OR (CONFIG_MODE AND NOT DEPTHAI_SHARED_LIBS))
         find_package(CURL ${_QUIET} CONFIG REQUIRED)
         find_package(cpr ${_QUIET} CONFIG REQUIRED)
     endif()
+    if(DEPTHAI_BASALT_SUPPORT)
+        find_package(basalt-headers ${_QUIET} CONFIG REQUIRED)
+        find_package(basalt_sdk ${_QUIET} CONFIG REQUIRED)
+    endif()
 
     # Backward
     if(DEPTHAI_ENABLE_BACKWARD)
@@ -115,16 +119,16 @@ endif()
 find_package(Threads ${_QUIET} REQUIRED)
 
 if(NOT DEPTHAI_JSON_EXTERNAL)
-    FetchContent_Declare(
-        nlohmann_json
-        GIT_REPOSITORY https://github.com/nlohmann/json.git
-        GIT_TAG        v3.12.0
-    )
-    # Json is a public dependancy, so it has to be installed
-    set(JSON_Install ON CACHE BOOL "Install nlohmann_json" FORCE)
-
-    FetchContent_MakeAvailable(nlohmann_json)
-    list(APPEND targets_to_export nlohmann_json)
+    # FetchContent_Declare(
+    #     nlohmann_json
+    #     GIT_REPOSITORY https://github.com/nlohmann/json.git
+    #     GIT_TAG        v3.12.0
+    # )
+    # # Json is a public dependancy, so it has to be installed
+    # set(JSON_Install ON CACHE BOOL "Install nlohmann_json" FORCE)
+    #
+    # FetchContent_MakeAvailable(nlohmann_json)
+    # list(APPEND targets_to_export nlohmann_json)
 else()
     find_package(nlohmann_json CONFIG REQUIRED)
 endif()
@@ -210,10 +214,6 @@ if(DEPTHAI_RTABMAP_SUPPORT)
     find_package(Ceres ${_QUIET} CONFIG REQUIRED)
 endif()
 
-if(DEPTHAI_BASALT_SUPPORT)
-    find_package(basalt-headers ${_QUIET} CONFIG REQUIRED)
-    find_package(basalt_sdk ${_QUIET} CONFIG REQUIRED)
-endif()
 
 # include optional dependency cmake
 if(DEPTHAI_DEPENDENCY_INCLUDE)

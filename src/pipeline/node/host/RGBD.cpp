@@ -345,6 +345,7 @@ void RGBD::initialize(std::shared_ptr<MessageGroup> frames) {
     }
     auto depthFrame = std::dynamic_pointer_cast<ImgFrame>(frames->group.at(inDepth.getName()));
     if(colorFrame->getWidth() != depthFrame->getWidth() || colorFrame->getHeight() != depthFrame->getHeight()) {
+        std::cout<< colorFrame->getWidth() << " " << depthFrame->getWidth() << std::endl;
         throw std::runtime_error("Color and depth frame sizes do not match");
     }
     if(colorFrame->getInstanceNum() != depthFrame->getInstanceNum()) {

@@ -25,7 +25,7 @@ option(DEPTHAI_XTENSOR_SUPPORT "Enable optional xtensor support" ON)
 option(DEPTHAI_PCL_SUPPORT "Enable optional PCL support" OFF)
 
 option(DEPTHAI_RTABMAP_SUPPORT "Enable optional RTABMap support" OFF)
-option(DEPTHAI_BASALT_SUPPORT "Enable optional Basalt support" OFF)
+option(DEPTHAI_BASALT_SUPPORT "Enable optional Basalt support" ON)
 
 # Build Behaviour
 option(DEPTHAI_MERGED_TARGET "Enable merged target build" ON)

@@ -260,7 +260,7 @@ set(TARGET_BASALT_ALIAS basalt)
 if(DEPTHAI_BASALT_SUPPORT)
     if(${basalt_sdk_FOUND})
         set(DEPTHAI_HAVE_BASALT_SUPPORT ON)
-        message(STATUC "Basalt found. Basalt Support enabled")
+        message(STATUS "Basalt found. Basalt Support enabled")
     else()
         message(WARNING "Basalt not found. Basalt Support disabled")
     endif()
@@ -471,7 +471,6 @@ if(DEPTHAI_BUILD_ZOO_HELPER)
         src/utility/Logging.cpp
     )
     set(ZOO_HELPER_LINK_LIBRARIES
-        nlohmann_json::nlohmann_json
         fmt::fmt
         yaml-cpp::yaml-cpp
         CURL::libcurl
@@ -567,7 +566,7 @@ endif()
 
 if(DEPTHAI_HAVE_BASALT_SUPPORT AND DEPTHAI_MERGED_TARGET)
     # Link to Basalt
-    target_link_libraries(${TARGET_CORE_NAME} PUBLIC ${THIRDPARTY_BASALT_LIBRARIES})
+    target_link_libraries(${TARGET_CORE_NAME} PRIVATE ${THIRDPARTY_BASALT_LIBRARIES})
 
     # add compile defs
     target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_TARGET_BASALT)

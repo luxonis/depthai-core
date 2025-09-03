@@ -18,9 +18,6 @@ if(DEPTHAI_RTABMAP_SUPPORT)
     find_dependency(rtabmap CONFIG REQUIRED)
 endif()
 
-if(DEPTHAI_BASALT_SUPPORT)
-    find_dependency(Basalt CONFIG REQUIRED)
-endif()
 
 if(DEPTHAI_PCL_SUPPORT)
     find_dependency(PCL CONFIG REQUIRED)
