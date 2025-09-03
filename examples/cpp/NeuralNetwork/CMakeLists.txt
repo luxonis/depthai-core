@@ -13,11 +13,11 @@ private_data(
 )
 
 dai_add_example(neural_network neural_network.cpp ON OFF)
-dai_set_example_test_labels(neural_network ondevice rvc2_all rvc4 ci)
+dai_set_example_test_labels(neural_network ondevice rvc2_all rvc4 rvc4rgb ci)
 
 dai_add_example(neural_network_multi_input neural_network_multi_input.cpp ON OFF)
 target_compile_definitions(neural_network_multi_input PRIVATE LENNA_PATH="${lenna}")
-dai_set_example_test_labels(neural_network_multi_input ondevice rvc2_all rvc4 ci)
+dai_set_example_test_labels(neural_network_multi_input ondevice rvc2_all rvc4 rvc4rgb ci)
 
 dai_add_example(neural_network_multi_input_combined neural_network_multi_input_combined.cpp ON OFF)
 target_compile_definitions(neural_network_multi_input_combined PRIVATE LENNA_PATH="${lenna}")

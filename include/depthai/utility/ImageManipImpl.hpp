@@ -354,7 +354,7 @@ class WarpH : public Warp<ImageManipBuffer, ImageManipData> {
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     std::unique_ptr<UndistortOpenCvImpl> undistortImpl;
 #else
-    std::unique_ptr<void> dummyUndistortImpl;
+    std::unique_ptr<uint32_t> dummyUndistortImpl;
 #endif
 
     void transform(const std::shared_ptr<ImageManipData> srcData,
@@ -3156,6 +3156,15 @@ void WarpH<ImageManipBuffer, ImageManipData>::buildUndistort(bool enable,
         this->enableUndistort = false;
     }
 #else
+    (void)enable;
+    (void)cameraMatrix;
+    (void)newCameraMatrix;
+    (void)distCoeffs;
+    (void)type;
+    (void)srcWidth;
+    (void)srcHeight;
+    (void)dstWidth;
+    (void)dstHeight;
     throw std::runtime_error("Undistort requires OpenCV support");
 #endif
 }
@@ -3219,6 +3228,21 @@ void WarpH<ImageManipBuffer, ImageManipData>::transform(const std::shared_ptr<Im
         throw std::runtime_error("FastCV backend not available");
 #endif
     }
+
+#if !defined(DEPTHAI_HAVE_OPENCV_SUPPORT) && !defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
+    (void)src;
+    (void)dst;
+    (void)srcWidth;
+    (void)srcHeight;
+    (void)srcStride;
+    (void)dstWidth;
+    (void)dstHeight;
+    (void)dstStride;
+    (void)numChannels;
+    (void)bpp;
+    (void)matrix;
+    (void)background;
+#endif
 }
 
 void printSpecs(spdlog::async_logger& logger, FrameSpecs specs);
@@ -3555,6 +3579,10 @@ void WarpH<ImageManipBuffer, ImageManipData>::apply(const std::shared_ptr<ImageM
             throw std::runtime_error("Unsupported image format. Only YUV420p, RGB888p, BGR888p, RGB888i, BGR888i, RAW8, NV12, GRAY8 are supported");
             break;
     }
+
+#ifndef DEPTHAI_HAVE_OPENCV_SUPPORT
+    (void)warpSrcSpecs;
+#endif
 }
 
 template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
