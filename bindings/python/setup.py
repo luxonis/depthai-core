@@ -118,6 +118,7 @@ class CMakeBuild(build_ext):
         env = os.environ.copy()
 
         cmake_args += ['-DDEPTHAI_BUILD_PYTHON=ON']
+        cmake_args += ['-DDEPTHAI_ENABLE_EVENTS_MANAGER=ON']
 
         # build shared libs only in CI - for downstream wheel bundling
         if env.get("CI") is not None:
@@ -189,8 +190,8 @@ class CMakeBuild(build_ext):
         # Windows
         if platform.system() == "Windows":
             cmake_args += ['-DCMAKE_LIBRARY_OUTPUT_DIRECTORY_{}={}'.format(cfg.upper(), extdir)]
-            cmake_args += ['-DVCPKG_CHAINLOAD_TOOLCHAIN_FILE={}'.format(os.path.dirname(os.path.abspath(__file__)) + '/cmake/toolchain/msvc.cmake')]
-            cmake_args += ['-DVCPKG_TARGET_TRIPLET=x64-windows-static-crt']
+            # cmake_args += ['-DVCPKG_CHAINLOAD_TOOLCHAIN_FILE={}'.format(os.path.dirname(os.path.abspath(__file__)) + '/cmake/toolchain/msvc.cmake')]
+            # cmake_args += ['-DVCPKG_TARGET_TRIPLET=x64-windows-static-crt'] # Keep the default triplet to avoid dual CRT issues
 
 
             # Detect whether 32 / 64 bit Python is used and compile accordingly

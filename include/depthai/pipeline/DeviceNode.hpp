@@ -103,6 +103,9 @@ class DeviceNodeCRTP : public Base {
     friend PipelineImpl;
 };
 
-class HostRunnable {};
-
+class HostRunnable {
+   public:
+    HostRunnable() = default;
+    virtual ~HostRunnable();  // Has to be virtual for std::dynamic_cast to be used reliably
+};
 }  // namespace dai

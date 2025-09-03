@@ -254,7 +254,7 @@ jobs:
           EXTRA_DLL_PATH=$(find ./build -type d -name "temp.win*" -exec ls -d {} \; | head -n 1)/Release/Release
           echo "delvewheel extra dll path: $EXTRA_DLL_PATH"
           for wheel in ./wheelhouse/*.whl; do
-            delvewheel repair "$wheel" --add-path "$EXTRA_DLL_PATH" -w wheelhouse/audited
+            delvewheel repair "$wheel" --add-path "$EXTRA_DLL_PATH" --include vcruntime140.dll --include vcruntime140_1.dll --include ucrtbase.dll -w wheelhouse/audited
           done
       - name: Archive wheel artifacts
         uses: actions/upload-artifact@v4
