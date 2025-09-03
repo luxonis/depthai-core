@@ -51,7 +51,7 @@ with dai.Pipeline() as pipeline:
     # Set performance mode
     dynCalibInputControl.send(
         dai.DynamicCalibrationControl(dai.DynamicCalibrationControl.Commands.SetPerformanceMode(
-            dai.node.DynamicCalibration.OPTIMIZE_PERFORMANCE)
+            dai.DynamicCalibrationControl.OPTIMIZE_PERFORMANCE)
         )
     )
 

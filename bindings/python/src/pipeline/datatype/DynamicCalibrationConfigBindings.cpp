@@ -17,6 +17,14 @@ void bind_dynamic_calibration_config(py::module& m, void* pCallstack) {
     auto cls = py::class_<DCC, Buffer, std::shared_ptr<DCC>>(m, "DynamicCalibrationControl");
     auto cmds = py::class_<DCC::Commands>(cls, "Commands");
 
+    py::enum_<DCC::PerformanceMode>(cls, "PerformanceMode")
+        .value("DEFAULT", DCC::PerformanceMode::DEFAULT)
+        .value("STATIC_SCENERY", DCC::PerformanceMode::STATIC_SCENERY)
+        .value("OPTIMIZE_SPEED", DCC::PerformanceMode::OPTIMIZE_SPEED)
+        .value("OPTIMIZE_PERFORMANCE", DCC::PerformanceMode::OPTIMIZE_PERFORMANCE)
+        .value("SKIP_CHECKS", DCC::PerformanceMode::SKIP_CHECKS)
+        .export_values();
+
     // Aliases for readability
     using Calibrate = DCC::Commands::Calibrate;
     using CalibrationQuality = DCC::Commands::CalibrationQuality;
@@ -53,7 +61,7 @@ void bind_dynamic_calibration_config(py::module& m, void* pCallstack) {
     py::class_<ResetData, std::shared_ptr<ResetData>>(cmds, "ResetData").def(py::init<>());
 
     py::class_<SetPerformanceMode, std::shared_ptr<SetPerformanceMode>>(cmds, "SetPerformanceMode")
-        .def(py::init<dai::node::DynamicCalibration::PerformanceMode>(), py::arg("performanceMode"))
+        .def(py::init<dai::DynamicCalibrationControl::PerformanceMode>(), py::arg("performanceMode"))
         .def_readwrite("performanceMode", &SetPerformanceMode::performanceMode);
 
     // ---- Constructors on the owner type (for variant dispatch) ----
