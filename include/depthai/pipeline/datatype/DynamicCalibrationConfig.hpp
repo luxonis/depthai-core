@@ -70,7 +70,7 @@ class DynamicCalibrationControl : public Buffer {
 
     Command command;
 
-    DynamicCalibrationControl() : command(Commands::Calibrate{}) {}
+    DynamicCalibrationControl() : {}
 
     explicit DynamicCalibrationControl(Command cmd) : command(std::move(cmd)) {}
 
