@@ -10,8 +10,6 @@ namespace dai {
 
 const std::unordered_map<DatatypeEnum, std::vector<DatatypeEnum>> hierarchy = {
     {DatatypeEnum::ADatatype,
-const std::unordered_map<DatatypeEnum, std::vector<DatatypeEnum>> hierarchy = {
-    {DatatypeEnum::ADatatype,
      {
          DatatypeEnum::Buffer,
          DatatypeEnum::ImgFrame,
@@ -88,8 +86,6 @@ const std::unordered_map<DatatypeEnum, std::vector<DatatypeEnum>> hierarchy = {
          DatatypeEnum::DynamicCalibrationControl,
 #endif  // DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
      }},
-};
-
     {DatatypeEnum::ImgFrame, {}},
     {DatatypeEnum::EncodedFrame, {}},
     {DatatypeEnum::NNData, {}},
