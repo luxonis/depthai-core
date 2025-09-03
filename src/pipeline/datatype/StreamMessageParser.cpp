@@ -259,10 +259,16 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
             break;
         case DatatypeEnum::ObjectTrackerConfig:
             return parseDatatype<ObjectTrackerConfig>(metadataStart, serializedObjectSize, data, fd);
+<<<<<<< HEAD
             break;
         case DatatypeEnum::Keypoints:
             return parseDatatype<Keypoints>(metadataStart, serializedObjectSize, data, fd);
             break;
+=======
+        case DatatypeEnum::Keypoints: {
+            return parseDatatype<Keypoints>(metadataStart, serializedObjectSize, data, fd);
+        }
+>>>>>>> 339403f56 (Fix syntax errors.)
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
         case DatatypeEnum::DynamicCalibrationControl:
             return parseDatatype<DynamicCalibrationControl>(metadataStart, serializedObjectSize, data, fd);
