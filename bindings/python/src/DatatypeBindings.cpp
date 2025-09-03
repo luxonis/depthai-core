@@ -34,7 +34,12 @@ void bind_transformdata(pybind11::module& m, void* pCallstack);
 void bind_rgbddata(pybind11::module& m, void* pCallstack);
 void bind_imagealignconfig(pybind11::module& m, void* pCallstack);
 void bind_imageannotations(pybind11::module& m, void* pCallstack);
+void bind_keypoints(pybind11::module& m, void* pCallstack);
 void bind_segmentationmask(pybind11::module& m, void* pCallstack);
+#ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
+void bind_dynamic_calibration_results(pybind11::module& m, void* pCallstack);
+void bind_dynamic_calibration_config(pybind11::module& m, void* pCallstack);
+#endif  // DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
 
 void DatatypeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     // Bind common datatypebindings
@@ -72,7 +77,12 @@ void DatatypeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_imagealignconfig);
     callstack.push_front(bind_imageannotations);
     callstack.push_front(bind_rgbddata);
+    callstack.push_front(bind_keypoints);
     callstack.push_front(bind_segmentationmask);
+#ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
+    callstack.push_front(bind_dynamic_calibration_results);
+    callstack.push_front(bind_dynamic_calibration_config);
+#endif  // DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
 }
 
 void DatatypeBindings::bind(pybind11::module& m, void* pCallstack) {
@@ -125,5 +135,7 @@ void DatatypeBindings::bind(pybind11::module& m, void* pCallstack) {
         .value("PointCloudData", DatatypeEnum::PointCloudData)
         .value("ImageAlignConfig", DatatypeEnum::ImageAlignConfig)
         .value("ImgAnnotations", DatatypeEnum::ImgAnnotations)
-        .value("SegmentationMask", DatatypeEnum::SegmentationMask);
+        .value("SegmentationMask", DatatypeEnum::SegmentationMask)
+        .value("RGBDData", DatatypeEnum::RGBDData)
+        .value("Keypoints", DatatypeEnum::Keypoints);
 }

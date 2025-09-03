@@ -77,19 +77,46 @@ EMSCRIPTEN_BINDINGS(depthai_js) {
         .value("TrackedFeatures", dai::DatatypeEnum::TrackedFeatures)
         .value("BenchmarkReport", dai::DatatypeEnum::BenchmarkReport)
         .value("MessageGroup", dai::DatatypeEnum::MessageGroup)
-        .value("SegmentationMask", dai::DatatypeEnum::SegmentationMask);
+        .value("SegmentationMask", dai::DatatypeEnum::SegmentationMask)
+        .value("ImageFiltersConfig", dai::DatatypeEnum::ImageFiltersConfig)
+        .value("Keypoints", dai::DatatypeEnum::Keypoints);
 
     // structs
     value_object<MessageHeader>("MessageHeader")
         .field("objectType", &MessageHeader::objectType)
         .field("serializedObjectSize", &MessageHeader::serializedObjectSize);
     value_object<dai::ImgDetection>("ImgDetection")
+        .ctor()
+        .ctor(const dai::RoatatedRect&, float, std::uint32_t)
+        .ctor(const dai::RotatedRect&, std::string, float, std::uint32_t)
+        .ctor(const dai::RotatedRect&, const dai::KeypointsList&, float, std::uint32_t)
+        .ctor(const dai::RotatedRect&, const dai::KeypointsList&, std::string, float, std::uint32_t)
         .field("label", &dai::ImgDetection::label)
         .field("confidence", &dai::ImgDetection::confidence)
         .field("xmin", &dai::ImgDetection::xmin)
         .field("xmax", &dai::ImgDetection::xmax)
         .field("ymin", &dai::ImgDetection::ymin)
-        .field("ymax", &dai::ImgDetection::ymax);
+        .field("ymax", &dai::ImgDetection::ymax)
+        .field("labelName", &dai::ImgDetection::labelName)
+        .def("setBoundingBox", &dai::ImgDetection::setBoundingBox, py::arg("boundingBox"))
+        .def("getBoundingBox", &dai::ImgDetection::getBoundingBox)
+        .def("setOuterBoundingBox", &dai::ImgDetection::setOuterBoundingBox, py::arg("xmin"), py::arg("ymin"), py::arg("xmax"), py::arg("ymax"))
+        .def("setKeypoints", py::overload_cast<const dai::KeypointsList>(&dai::ImgDetection::setKeypoints), py::arg("keypoints"))
+        .def("setKeypoints", py::overload_cast<const std::vector<dai::Keypoint>&>(&dai::ImgDetection::setKeypoints), py::arg("keypoints"))
+        .def("setKeypoints",
+             py::overload_cast<const std::vector<dai::Keypoint>, const std::vector<dai::Edge>>(&dai::ImgDetection::setKeypoints),
+             py::arg("keypoints"),
+             py::arg("edges"))
+        .def("setKeypoints", py::overload_cast<const std::vector<dai::Point3f>>(&dai::ImgDetection::setKeypoints), py::arg("keypoints"))
+        .def("setKeypoints", py::overload_cast<const std::vector<dai::Point2f>>(&dai::ImgDetection::setKeypoints), py::arg("keypoints"))
+        .def("getKeypoints", &dai::ImgDetection::getKeypoints)
+        .def("setEdges", &dai::ImgDetection::setEdges, py::arg("edges"))
+        .def("getEdges", &dai::ImgDetection::getEdges)
+        .def("centerX", &dai::ImgDetection::getCenterX)
+        .def("centerY", &dai::ImgDetection::getCenterY)
+        .def("width", &dai::ImgDetection::getWidth)
+        .def("height", &dai::ImgDetection::getHeight)
+        .def("angle", &dai::ImgDetection::getAngle);
 
     // classes
     class_<dai::ImgFrame>("ImgFrame")

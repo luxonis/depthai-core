@@ -1,5 +1,4 @@
 #include <atomic>
-#include <csignal>
 #include <functional>
 #include <iostream>
 #include <map>
@@ -8,18 +7,8 @@
 
 #include "depthai/depthai.hpp"
 
-// Global flag for graceful shutdown
-std::atomic<bool> quitEvent(false);
-
-// Signal handler
-void signalHandler(int signum) {
-    quitEvent = true;
-}
 
 int main() {
-    // Set up signal handlers
-    signal(SIGTERM, signalHandler);
-    signal(SIGINT, signalHandler);
 
     try {
         // Create pipeline
