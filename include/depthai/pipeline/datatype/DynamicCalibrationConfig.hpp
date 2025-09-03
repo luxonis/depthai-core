@@ -59,7 +59,8 @@ class DynamicCalibrationControl : public Buffer {
         };
     };
 
-    using Command = std::variant<Commands::Calibrate,
+    using Command = std::variant<std::monostate,  // if no command is present
+                                 Commands::Calibrate,
                                  Commands::CalibrationQuality,
                                  Commands::StartCalibration,
                                  Commands::StopCalibration,
@@ -68,9 +69,9 @@ class DynamicCalibrationControl : public Buffer {
                                  Commands::ResetData,
                                  Commands::SetPerformanceMode>;
 
-    Command command;
+    Command command{};
 
-    DynamicCalibrationControl() : {}
+    DynamicCalibrationControl() {}
 
     explicit DynamicCalibrationControl(Command cmd) : command(std::move(cmd)) {}
 

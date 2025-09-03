@@ -322,3 +322,35 @@ TEST_CASE("DynamicCalibration: reset data") {
     pipeline.stop();
     pipeline.wait();
 }
+
+TEST_CASE("DynamicCalibration: Empty command") {
+    auto device = std::make_shared<dai::Device>();
+    REQUIRE(device != nullptr);
+
+    std::atomic<bool> sawWarnOrError{false};
+    device->setLogLevel(dai::LogLevel::WARN);
+    device->addLogCallback([&](const dai::LogMessage& m) {
+        if(m.level >= dai::LogLevel::WARN) sawWarnOrError = true;
+    });
+
+    std::shared_ptr<dai::node::DynamicCalibration> dynCalib;
+    std::shared_ptr<dai::node::StereoDepth> stereo;
+    auto pipeline = makePipeline(device, dynCalib, stereo);
+    REQUIRE(dynCalib);
+
+    auto command_input = dynCalib->inputControl.createInputQueue();  // no DatatypeEnum argument
+
+    auto left_xout = stereo->syncedLeft.createOutputQueue();
+    auto right_xout = stereo->syncedRight.createOutputQueue();
+    auto disp_xout = stereo->disparity.createOutputQueue();
+
+    device->setCalibration(device->readCalibration());
+
+    pipeline.start();
+
+    command_input->send(std::make_shared<dai::DynamicCalibrationControl>());
+    std::this_thread::sleep_for(0.5s);
+
+    pipeline.stop();
+    pipeline.wait();
+}

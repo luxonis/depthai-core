@@ -426,6 +426,11 @@ DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(const std::sha
 
     const auto& cmd = control->command;
 
+    // Early exit if command is not set
+    if(std::holds_alternative<std::monostate>(cmd)) {
+        logger->warn("Recived UNSET Command");
+        return ErrorCode::INVALID_COMMAND;
+    }
     // Calibrate
     if(std::holds_alternative<DC::Commands::Calibrate>(cmd)) {
         const auto& c = std::get<DC::Commands::Calibrate>(cmd);
@@ -485,7 +490,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(const std::sha
 
     // Fallback
     logger->info("WARNING: evaluateCommand: Received unknown/unhandled command type");
-    return ErrorCode::OK;
+    return ErrorCode::INVALID_COMMAND;
 }
 
 DynamicCalibration::ErrorCode DynamicCalibration::doWork(std::chrono::steady_clock::time_point& previousLoadingAndCalibrationTime) {

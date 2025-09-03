@@ -126,6 +126,7 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
         MISSING_IMAGE = 6,
         CALIBRATION_DOES_NOT_EXIST = 7,
         STOP_LOADING_IMAGES_DURING_CALIBRATION = 8,
+        INVALID_COMMAND = 9,
     };
 
     /**
