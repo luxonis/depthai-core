@@ -119,9 +119,24 @@ void bind_imgdetections(pybind11::module& m, void* pCallstack) {
         .def("getSequenceNum", &ImgDetections::Buffer::getSequenceNum, DOC(dai, Buffer, getSequenceNum))
         .def("getTransformation", [](ImgDetections& msg) { return msg.transformation; })
         .def("setTransformation", [](ImgDetections& msg, const std::optional<ImgTransformation>& transformation) { msg.transformation = transformation; })
-        .def("getSegmentationMask", [](ImgDetections& msg) { return msg.segmentationMask; })
-        // .def("setTimestamp", &ImgDetections::setTimestamp, DOC(dai, Buffer, setTimestamp))
-        // .def("setTimestampDevice", &ImgDetections::setTimestampDevice, DOC(dai, Buffer, setTimestampDevice))
-        // .def("setSequenceNum", &ImgDetections::setSequenceNum, DOC(dai, ImgDetections, setSequenceNum))
-        ;
+        .def("getSegmentationMaskWidth", &ImgDetections::getSegmentationMaskWidth, DOC(dai, ImgDetections, getSegmentationMaskWidth))
+        .def("getSegmentationMaskHeight", &ImgDetections::getSegmentationMaskHeight, DOC(dai, ImgDetections, getSegmentationMaskHeight))
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+        .def("getSegmentationMask", &ImgDetections::getSegmentationMask, DOC(dai, ImgDetections, getSegmentationMask))
+        .def("setSegmentationMask", &ImgDetections::setSegmentationMask, py::arg("mask"), DOC(dai, ImgDetections, setSegmentationMask))
+        .def("getCvSegmentationMask", &ImgDetections::getCvSegmentationMask, py::arg("allocator") = nullptr, DOC(dai, ImgDetections, getCvSegmentationMask))
+        .def("getCvSegmentationMaskByIndex",
+             &ImgDetections::getCvSegmentationMaskByIndex,
+             py::arg("index"),
+             py::arg("allocator") = nullptr,
+             DOC(dai, ImgDetections, getCvSegmentationMaskByIndex))
+#endif
+#ifdef DEPTHAI_XTENSOR_SUPPORT
+        .def("getTensorSegmentationMask", &ImgDetections::getTensorSegmentationMask, DOC(dai, ImgDetections, getTensorSegmentationMask))
+        .def("setTensorSegmentationMask", &ImgDetections::setTensorSegmentationMask, py::arg("mask"), DOC(dai, ImgDetections, setTensorSegmentationMask))
+        .def("getTensorSegmentationMaskByIndex",
+             &ImgDetections::getTensorSegmentationMaskByIndex,
+             py::arg("index"),
+             DOC(dai, ImgDetections, getTensorSegmentationMaskByIndex));
+#endif
 }

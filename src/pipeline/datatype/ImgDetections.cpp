@@ -139,6 +139,53 @@ float ImgDetection::getAngle() const noexcept {
     return getBoundingBox().angle;
 }
 
+// ImgDetections functions
+
+size_t ImgDetections::getSegmentationMaskWidth() const {
+    return segmentationMaskWidth;
+}
+
+size_t ImgDetections::getSegmentationMaskHeight() const {
+    return segmentationMaskHeight;
+}
+
+// Optional - xtensor support
+#ifdef DEPTHAI_XTENSOR_SUPPORT
+using XArray2D = xt::xtensor<std::uint8_t, 2, xt::layout_type::row_major>;
+
+XArray2D ImgDetections::getTensorSegmentationMask() const {
+    size_t dataSize = data->getSize();
+    if(dataSize != segmentationMaskWidth * segmentationMaskHeight) {
+        throw std::runtime_error("SegmentationMask: data size does not match width*height");
+    }
+
+    std::array<std::size_t, 2> shape{segmentationMaskHeight, segmentationMaskWidth};
+    return xt::adapt(data->getData().data(), data->getSize(), xt::no_ownership(), shape);
+}
+
+ImgDetections& ImgDetections::setTensorSegmentationMask(XArray2D mask) {
+    if(mask.shape()[0] != segmentationMaskHeight || mask.shape()[1] != segmentationMaskWidth) {
+        throw std::runtime_error("SegmentationMask: input mask shape does not match current width and height");
+    }
+    data->setSize(mask.size());
+    std::vector<uint8_t> dataVec(mask.begin(), mask.end());
+    setData(dataVec);
+    return *this;
+}
+
+XArray2D ImgDetections::getTensorSegmentationMaskByIndex(std::uint8_t index) const {
+    const auto& buf = data->getData();
+    if(buf.size() != segmentationMaskWidth * segmentationMaskHeight) {
+        throw std::runtime_error("SegmentationMask: data size does not match width*height");
+    }
+    std::array<std::size_t, 2> shape{segmentationMaskHeight, segmentationMaskWidth};
+    auto in = xt::adapt(buf.data(), buf.size(), xt::no_ownership(), shape);
+
+    return xt::eval(xt::cast<std::uint8_t>(xt::equal(in, static_cast<unsigned char>(index))));
+}
+
+#endif
+
 #ifdef DEPTHAI_ENABLE_PROTOBUF
 ProtoSerializable::SchemaPair ImgDetections::serializeSchema() const {
     return utility::serializeSchema(utility::getProtoMessage(this));

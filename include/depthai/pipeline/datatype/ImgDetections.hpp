@@ -15,6 +15,20 @@
 #include "depthai/pipeline/datatype/SegmentationMask.hpp"
 #include "depthai/utility/ProtoSerializable.hpp"
 
+#ifdef DEPTHAI_XTENSOR_SUPPORT
+    #include <xtensor/containers/xadapt.hpp>
+    #include <xtensor/containers/xbuffer_adaptor.hpp>
+    #include <xtensor/core/xlayout.hpp>
+    #include <xtensor/core/xmath.hpp>
+    #include <xtensor/core/xtensor_forward.hpp>
+
+#endif
+
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    #include <opencv2/core/mat.hpp>
+    #include <opencv2/opencv.hpp>
+#endif
+
 namespace dai {
 
 struct ImgDetection {
@@ -134,6 +148,10 @@ struct ImgDetection {
  * ImgDetections message. Carries normalized detection results
  */
 class ImgDetections : public Buffer, public ProtoSerializable {
+   private:
+    size_t segmentationMaskWidth = 0;
+    size_t segmentationMaskHeight = 0;
+
    public:
     /**
      * Construct ImgDetections message.
@@ -150,6 +168,77 @@ class ImgDetections : public Buffer, public ProtoSerializable {
         datatype = DatatypeEnum::ImgDetections;
     };
 
+    /*
+     * Returns the width of the segmentation mask.
+     */
+    std::size_t getSegmentationMaskWidth() const;
+
+    /*
+     * Returns the height of the segmentation mask.
+     */
+    std::size_t getSegmentationMaskHeight() const;
+
+    // Optional - xtensor support
+#ifdef DEPTHAI_XTENSOR_SUPPORT
+    /**
+     * @note This API only available if xtensor support is enabled
+     */
+    using XArray2D = xt::xtensor<std::uint8_t, 2, xt::layout_type::row_major>;
+
+    /**
+     * Returns a copy of the segmentation mask data as a 2D array.
+     */
+    XArray2D getTensorSegmentationMask() const;
+
+    /**
+     * Sets the segmentation mask from a 2D xtensor array.
+     */
+    ImgDetections& setTensorSegmentationMask(XArray2D mask);
+
+    /*
+     * Returns a binary mask (uint8_t per pixel, 0 or 1) for the specified index.
+     * Output is a 2D array of row spans, like get2DMask().
+     */
+    XArray2D getTensorSegmentationMaskByIndex(uint8_t index) const;
+
+#endif
+
+// Optional - OpenCV support
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    /**
+     * @note This API only available if OpenCV support is enabled
+     */
+
+    /**
+     * Copies cv::Mat data to Segmentation Mask buffer
+     *
+     * @param frame Input cv::Mat frame from which to copy the data
+     */
+    ImgDetections& setSegmentationMask(cv::Mat1b mask);
+
+    /**
+     * Retrieves data as cv::Mat with specified width, height and type
+     *
+     * @param copy If false only a reference to data is made, otherwise a copy
+     */
+    cv::Mat1b getSegmentationMask(bool copy = false);
+
+    /**
+     * Retrieves data as cv::Mat with specified width and height
+     *
+     * @param copy If false only a reference to data is made, otherwise a copy
+     */
+    cv::Mat1b getCvSegmentationMask(cv::MatAllocator* allocator = nullptr);
+
+    /**
+     * Retrieves data of the specified index as cv::Mat.
+     *
+     * @param copy If false only a reference to data is made, otherwise a copy
+     */
+    cv::Mat1b getCvSegmentationMaskByIndex(uint8_t index, cv::MatAllocator* allocator = nullptr);
+
+#endif
+
 #ifdef DEPTHAI_ENABLE_PROTOBUF
     /**
      * Serialize message to proto buffer
@@ -165,8 +254,8 @@ class ImgDetections : public Buffer, public ProtoSerializable {
      */
     ProtoSerializable::SchemaPair serializeSchema() const override;
 #endif
-
-    DEPTHAI_SERIALIZE(ImgDetections, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, detections, transformation);
+    DEPTHAI_SERIALIZE(
+        ImgDetections, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, detections, transformation, segmentationMaskWidth, segmentationMaskHeight);
 };
 
 }  // namespace dai

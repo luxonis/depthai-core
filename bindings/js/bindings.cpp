@@ -79,7 +79,9 @@ EMSCRIPTEN_BINDINGS(depthai_js) {
         .value("MessageGroup", dai::DatatypeEnum::MessageGroup)
         .value("SegmentationMask", dai::DatatypeEnum::SegmentationMask)
         .value("ImageFiltersConfig", dai::DatatypeEnum::ImageFiltersConfig)
-        .value("Keypoints", dai::DatatypeEnum::Keypoints);
+        .value("Keypoints", dai::DatatypeEnum::Keypoints)
+        .value("ObjectTrackerConfig", dai::DatatypeEnum::ObjectTrackerConfig)
+        .value("SegmentationMask", dai::DatatypeEnum::SegmentationMask);
 
     // structs
     value_object<MessageHeader>("MessageHeader")
@@ -125,10 +127,9 @@ EMSCRIPTEN_BINDINGS(depthai_js) {
         .property("height", &dai::ImgFrame::getHeight);
     class_<dai::ImgDetections>("ImgDetections")
         .smart_ptr_constructor("ImgDetections", &std::make_shared<dai::ImgDetections>)
-        .property("segmentationMask", &dai::ImgDetections::segmentationMask);
-
-    // module global functions
-    function("deserializeImgFrame", &daiDeserializeFromJS<dai::ImgFrame>);
+        .property("detections", &dai::ImgDetections::detections)
+        // module global functions
+        function("deserializeImgFrame", &daiDeserializeFromJS<dai::ImgFrame>);
     function("deserializeImgDetections", &daiDeserializeFromJS<dai::ImgDetections>);
     function("getMessageType", &daiGetMessageType);
 }

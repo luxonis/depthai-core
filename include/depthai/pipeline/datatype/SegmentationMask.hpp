@@ -43,7 +43,7 @@ class SegmentationMask : public Buffer {
 
     SegmentationMask();
     SegmentationMask(size_t width, size_t height);
-    SegmentationMask(long fd, size_t width, size_t height);
+    SegmentationMask(std::vector<std::uint8_t>, size_t width, size_t height);
 
     virtual ~SegmentationMask() = default;
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
@@ -62,20 +62,10 @@ class SegmentationMask : public Buffer {
      */
     std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestampDevice() const;
 
-    /**
-     * Set the width of the segmentation mask.
-     */
-    SegmentationMask& setWidth(std::size_t width);
-
     /*
      * Returns the width of the segmentation mask.
      */
     std::size_t getWidth() const;
-
-    /**
-     * Set the height of the segmentation mask.
-     */
-    SegmentationMask& setHeight(std::size_t height);
 
     /*
      * Returns the height of the segmentation mask.
@@ -84,38 +74,32 @@ class SegmentationMask : public Buffer {
 
     // Optional - xtensor support
 #ifdef DEPTHAI_XTENSOR_SUPPORT
-    /*
+    /**
      * @note This API only available if xtensor support is enabled
-     *
+     */
+    using XArray2D = xt::xtensor<std::uint8_t, 2, xt::layout_type::row_major>;
+
+    /**
+     * Constructs SegmentationMask from 2D xtensor array.
+     */
+    SegmentationMask(XArray2D mask);
+
+    /**
      * Returns a copy of the segmentation mask data as a 2D array.
      */
 
-    xt::xarray<std::uint8_t, xt::layout_type::row_major> getTensorMask() const {
-        std::vector<size_t> shape{height, width};
+    XArray2D getTensorMask() const;
 
-        return xt::adapt(data->getData().data(), data->getData().size(), xt::no_ownership(), shape);
-    }
+    /**
+     * Sets the segmentation mask from a 2D xtensor array.
+     */
+    SegmentationMask& setTensorMask(XArray2D mask);
 
     /*
      * Returns a binary mask (uint8_t per pixel, 0 or 1) for the specified index.
      * Output is a 2D array of row spans, like get2DMask().
      */
-
-    xt::xarray<std::uint8_t, xt::layout_type::row_major> getTensorMaskByIndex(uint8_t index) const {
-        const auto& input = data->getData();
-        if(input.size() != width * height) {
-            throw std::runtime_error("SegmentationMask: data size does not match width*height");
-        }
-
-        std::vector<std::uint8_t> out(input.size());
-        for(size_t k = 0; k < input.size(); ++k) {
-            out[k] = (input[k] == index) ? 1 : 0;
-        }
-
-        std::vector<size_t> shape{height, width};
-
-        return xt::adapt(std::move(out), shape);
-    }
+    XArray2D getTensorMaskByIndex(uint8_t index) const;
 
 #endif
 
@@ -123,41 +107,44 @@ class SegmentationMask : public Buffer {
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     /**
      * @note This API only available if OpenCV support is enabled
+     */
+
+    /**
+     * Constructs SegmentationMask from cv::Mat
      *
+     * @param frame Input cv::Mat frame from which to copy the data
+     */
+    SegmentationMask(cv::Mat1b mask);
+
+    /**
      * Copies cv::Mat data to Segmentation Mask buffer
      *
      * @param frame Input cv::Mat frame from which to copy the data
      */
-    SegmentationMask& setMask(cv::Mat mask);
+    SegmentationMask& setMask(cv::Mat1b mask);
 
     /**
-     * @note This API only available if OpenCV support is enabled
-     *
      * Retrieves data as cv::Mat with specified width, height and type
      *
      * @param copy If false only a reference to data is made, otherwise a copy
      */
-    cv::Mat getMask(bool copy = false);
+    cv::Mat1b getMask(bool copy = false);
 
     /**
-     * @note This API only available if OpenCV support is enabled
-     *
      * Retrieves data as cv::Mat with specified width and height
      *
      * @param copy If false only a reference to data is made, otherwise a copy
      */
-    cv::Mat getCvMask(cv::MatAllocator* allocator = nullptr);
+    cv::Mat1b getCvMask(cv::MatAllocator* allocator = nullptr);
 
     /**
-     * @note This API only available if OpenCV support is enabled
-     *
      * Retrieves data of the specified index as cv::Mat.
      *
      * @param copy If false only a reference to data is made, otherwise a copy
      */
-    cv::Mat getCvMaskByIndex(uint8_t index, cv::MatAllocator* allocator = nullptr);
-
+    cv::Mat1b getCvMaskByIndex(uint8_t index, cv::MatAllocator* allocator = nullptr);
 #endif
+
    public:
     DEPTHAI_SERIALIZE(SegmentationMask, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum, width, height);
 };

@@ -1,4 +1,4 @@
-#include "depthai/pipeline/datatype/SegmentationMask.hpp"
+#include "depthai/pipeline/datatype/ImgDetections.hpp"
 
 #include <cmath>
 #include <opencv2/core.hpp>
@@ -10,7 +10,7 @@ namespace dai {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wswitch-enum"
 
-SegmentationMask::SegmentationMask(cv::Mat1b mask) : SegmentationMask() {
+ImgDetections& ImgDetections::setSegmentationMask(cv::Mat1b mask) {
     std::vector<uint8_t> dataVec;
     if(!mask.isContinuous()) {
         for(int i = 0; i < mask.rows; i++) {
@@ -20,29 +20,15 @@ SegmentationMask::SegmentationMask(cv::Mat1b mask) : SegmentationMask() {
         dataVec.insert(dataVec.begin(), mask.datastart, mask.dataend);
     }
     setData(dataVec);
-    this->width = mask.cols;
-    this->height = mask.rows;
-}
-
-SegmentationMask& SegmentationMask::setMask(cv::Mat1b mask) {
-    std::vector<uint8_t> dataVec;
-    if(!mask.isContinuous()) {
-        for(int i = 0; i < mask.rows; i++) {
-            dataVec.insert(dataVec.end(), mask.ptr(i), mask.ptr(i) + mask.cols * mask.elemSize());
-        }
-    } else {
-        dataVec.insert(dataVec.begin(), mask.datastart, mask.dataend);
-    }
-    setData(dataVec);
-    this->width = mask.cols;
-    this->height = mask.rows;
+    this->segmentationMaskWidth = mask.cols;
+    this->segmentationMaskHeight = mask.rows;
     return *this;
 }
 
-cv::Mat1b SegmentationMask::getMask(bool deepCopy) {
+cv::Mat1b ImgDetections::getSegmentationMask(bool deepCopy) {
     // Convert to cv::Mat. If deepCopy enabled, then copy pixel data, otherwise reference only
     cv::Mat mat;
-    cv::Size size = cv::Size(getWidth(), getHeight());
+    cv::Size size = cv::Size(getSegmentationMaskWidth(), getSegmentationMaskHeight());
     int type = CV_8UC1;
 
     // Check if enough data
@@ -55,7 +41,7 @@ cv::Mat1b SegmentationMask::getMask(bool deepCopy) {
                                  + std::to_string(actualSize) + ". Maybe metadataOnly transfer was made?");
     }
 
-    if(getWidth() <= 0 || getHeight() <= 0) {
+    if(getSegmentationMaskWidth() <= 0 || getSegmentationMaskHeight() <= 0) {
         throw std::runtime_error("Segmentation mask metadata not valid (width or height <= 0).");
     }
 
@@ -71,8 +57,8 @@ cv::Mat1b SegmentationMask::getMask(bool deepCopy) {
     return mat1b;
 }
 
-cv::Mat1b SegmentationMask::getCvMask(cv::MatAllocator* allocator) {
-    cv::Mat1b mask = getMask();
+cv::Mat1b ImgDetections::getCvSegmentationMask(cv::MatAllocator* allocator) {
+    cv::Mat1b mask = getSegmentationMask();
     cv::Mat1b output;
     if(allocator != nullptr) {
         output.allocator = allocator;
@@ -81,8 +67,8 @@ cv::Mat1b SegmentationMask::getCvMask(cv::MatAllocator* allocator) {
     return output;
 }
 
-cv::Mat1b SegmentationMask::getCvMaskByIndex(uint8_t index, cv::MatAllocator* allocator) {
-    cv::Mat1b mask = getCvMask(allocator);
+cv::Mat1b ImgDetections::getCvSegmentationMaskByIndex(uint8_t index, cv::MatAllocator* allocator) {
+    cv::Mat1b mask = getCvSegmentationMask(allocator);
     cv::Mat1b classMask;
     cv::compare(mask, index, classMask, cv::CmpTypes::CMP_EQ);
 

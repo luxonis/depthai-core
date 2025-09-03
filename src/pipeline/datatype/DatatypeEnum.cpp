@@ -44,6 +44,8 @@ const std::unordered_map<DatatypeEnum, std::vector<DatatypeEnum>> hierarchy = {
          DatatypeEnum::ImageFiltersConfig,
          DatatypeEnum::ToFDepthConfidenceFilterConfig,
          DatatypeEnum::Keypoints,
+         DatatypeEnum::SegmentationMask,
+         DatatypeEnum::ObjectTrackerConfig,
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
          DatatypeEnum::DynamicCalibrationControl,
 #endif  // DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
@@ -82,6 +84,8 @@ const std::unordered_map<DatatypeEnum, std::vector<DatatypeEnum>> hierarchy = {
          DatatypeEnum::ImageFiltersConfig,
          DatatypeEnum::ToFDepthConfidenceFilterConfig,
          DatatypeEnum::Keypoints,
+         DatatypeEnum::SegmentationMask,
+         DatatypeEnum::ObjectTrackerConfig,
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
          DatatypeEnum::DynamicCalibrationControl,
 #endif  // DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
@@ -118,6 +122,8 @@ const std::unordered_map<DatatypeEnum, std::vector<DatatypeEnum>> hierarchy = {
     {DatatypeEnum::ImageFiltersConfig, {}},
     {DatatypeEnum::ToFDepthConfidenceFilterConfig, {}},
     {DatatypeEnum::Keypoints, {}},
+    {DatatypeEnum::SegmentationMask, {}},
+    {DatatypeEnum::ObjectTrackerConfig, {}},
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
     {DatatypeEnum::DynamicCalibrationControl, {}},
 #endif  // DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
