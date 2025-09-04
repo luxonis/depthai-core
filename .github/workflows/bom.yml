@@ -102,7 +102,7 @@ jobs:
             MODELS="oak4_pro or oak4_d"
           else
             MODELS="oak4_s"
-            $RGB="rgb"
+            RGB="rgb"
           fi
 
           exec hil $HOLD_RESERVATION --models "$MODELS" $RESERVATION_OPTION --wait --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "./tests/run_tests_entrypoint.sh rvc4$RGB"
