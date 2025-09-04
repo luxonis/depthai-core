@@ -14,6 +14,7 @@
 #include <pybind11/chrono.h>
 #include <pybind11/detail/common.h>
 #include <pybind11/numpy.h>
+#include <pybind11/pybind11.h>
 
 // #include "spdlog/spdlog.h"
 
@@ -53,9 +54,9 @@ void bind_keypoints(pybind11::module& m, void* pCallstack) {
         .def("getCoordinates3f", &Keypoints::getCoordinates3f, DOC(dai, Keypoints, getCoordinates3f))
         .def("getCoordinates2f", &Keypoints::getCoordinates2f, DOC(dai, Keypoints, getCoordinates2f))
         .def("getLabels", &Keypoints::getLabels, DOC(dai, Keypoints, getLabels))
-        .def("getTimestamp", &Keypoints::Buffer::getTimestamp, DOC(dai, Keypoints, getTimestamp))
-        .def("getTimestampDevice", &Keypoints::Buffer::getTimestampDevice, DOC(dai, Keypoints, getTimestampDevice))
-        .def("getSequenceNum", &Keypoints::Buffer::getSequenceNum, DOC(dai, Keypoints, getSequenceNum))
+        .def("getTimestamp", &Keypoints::Buffer::getTimestamp, DOC(dai, Buffer, getTimestamp))
+        .def("getTimestampDevice", &Keypoints::Buffer::getTimestampDevice, DOC(dai, Buffer, getTimestampDevice))
+        .def("getSequenceNum", &Keypoints::Buffer::getSequenceNum, DOC(dai, Buffer, getSequenceNum))
         .def("getTransformation", [](Keypoints& msg) { return msg.transformation; })
         .def(
             "setTransformation",

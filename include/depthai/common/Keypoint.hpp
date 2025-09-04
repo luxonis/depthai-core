@@ -31,7 +31,7 @@ struct Keypoint {
         : Keypoint(Point3f{coordinates.x, coordinates.y, 0.f}, conf, label, std::move(name)) {}
 
     Keypoint(float x, float y, float z, float confidence = 0.f, uint32_t label = 0, std::string name = {})
-        : Keypoint(Point3f{x, y, z}, confidence, label, std::move(name)) {};
+        : Keypoint(Point3f{x, y, z}, confidence, label, std::move(name)) {}
 
     DEPTHAI_SERIALIZE(dai::Keypoint, coordinates, confidence, label, labelName);
 };

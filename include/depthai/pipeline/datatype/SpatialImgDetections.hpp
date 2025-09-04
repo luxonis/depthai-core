@@ -25,7 +25,7 @@ struct SpatialImgDetection : public ImgDetection {
     SpatialLocationCalculatorConfigData boundingBoxMapping;
 
     DEPTHAI_SERIALIZE(
-        SpatialImgDetection, label, labelName, confidence, xmin, ymin, xmax, ymax, spatialCoordinates, boundingBoxMapping, boundingBox, keypoints);
+        SpatialImgDetection, xmax, xmin, ymax, ymin, label, labelName, confidence, boundingBox, keypoints, spatialCoordinates, boundingBoxMapping);
 };
 /**
  * SpatialImgDetections message. Carries detection results together with spatial location data
