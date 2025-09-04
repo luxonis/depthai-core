@@ -17,10 +17,6 @@
 namespace dai {
 
 struct ImgDetection {
-   protected:
-    std::optional<RotatedRect> boundingBox;
-    std::optional<KeypointsList> keypoints;
-
    public:
     uint32_t label = 0;
     std::string labelName;
@@ -29,6 +25,8 @@ struct ImgDetection {
     float ymin = 0.f;
     float xmax = 0.f;
     float ymax = 0.f;
+    std::optional<RotatedRect> boundingBox;
+    std::optional<KeypointsList> keypoints;
 
     ImgDetection() = default;
     ImgDetection(const RotatedRect& boundingBox, float confidence, uint32_t label);
