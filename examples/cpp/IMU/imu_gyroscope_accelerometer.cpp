@@ -1,9 +1,18 @@
 #include <atomic>
+#include <csignal>
 #include <iomanip>
 #include <iostream>
 #include <memory>
 
 #include "depthai/depthai.hpp"
+
+// Global flag for graceful shutdown
+std::atomic<bool> quitEvent(false);
+
+// Signal handler
+void signalHandler(int signum) {
+    quitEvent = true;
+}
 
 // Helper function to convert time delta to milliseconds
 float timeDeltaToMilliS(const std::chrono::steady_clock::duration& delta) {
@@ -11,6 +20,10 @@ float timeDeltaToMilliS(const std::chrono::steady_clock::duration& delta) {
 }
 
 int main() {
+    // Set up signal handlers
+    signal(SIGTERM, signalHandler);
+    signal(SIGINT, signalHandler);
+
     // Create pipeline
     dai::Pipeline pipeline;
 
@@ -36,7 +49,7 @@ int main() {
     // Set up output formatting
     std::cout << std::fixed << std::setprecision(6);
 
-    while(pipeline.isRunning()) {
+    while(pipeline.isRunning() && !quitEvent) {
         auto imuData = imuQueue->get<dai::IMUData>();
         if(imuData == nullptr) continue;
 
@@ -46,14 +59,18 @@ int main() {
 
             auto acceleroTs = acceleroValues.getTimestamp();
             auto gyroTs = gyroValues.getTimestamp();
+	    auto acceleroDevTs = acceleroValues.getTimestampDevice();
+            auto gyroDevTs = gyroValues.getTimestampDevice();
 
             // Print accelerometer data
-            std::cout << "Accelerometer timestamp: " << acceleroTs.time_since_epoch().count() << std::endl;
+            std::cout << "Accelerometer HOST  timestamp: " << acceleroTs.time_since_epoch().count() << std::endl;
+            std::cout << "Accelerometer FSYNC timestamp: " << acceleroDevTs.time_since_epoch().count() << std::endl;
             std::cout << "Latency [ms]: " << timeDeltaToMilliS(std::chrono::steady_clock::now() - acceleroValues.getTimestamp()) << std::endl;
             std::cout << "Accelerometer [m/s^2]: x: " << acceleroValues.x << " y: " << acceleroValues.y << " z: " << acceleroValues.z << std::endl;
 
             // Print gyroscope data
-            std::cout << "Gyroscope timestamp: " << gyroTs.time_since_epoch().count() << std::endl;
+            std::cout << "Gyroscope HOST  timestamp: " << gyroTs.time_since_epoch().count() << std::endl;
+            std::cout << "Gyroscope FSYNC timestamp: " << gyroDevTs.time_since_epoch().count() << std::endl;
             std::cout << "Gyroscope [rad/s]: x: " << gyroValues.x << " y: " << gyroValues.y << " z: " << gyroValues.z << std::endl;
         }
     }
