@@ -9,10 +9,10 @@ This folder contains two minimal, end-to-end examples that use **`dai.node.Dynam
 ## What the node does
 
 `dai.node.DynamicCalibration` consumes **raw, unrectified** left/right mono frames and:
-- Streams **coverage feedback** (how well the calibration pattern is seen across the image).
+- Streams **coverage feedback**
 - Produces either:
-  - a **new calibration** (intrinsics/extrinsics) you can apply on the device, or
-  - a **quality report** comparing *current* vs *achievable* calibration.
+  - a **new calibration** (extrinsics) you can apply on the device, or
+  - a **quality report** comparing *current* vs *achieved* calibration.
 
 ### Outputs & metrics
 
@@ -37,7 +37,7 @@ This folder contains two minimal, end-to-end examples that use **`dai.node.Dynam
 
 ## 1) Live dynamic calibration (apply new calibration)
 
-**Script idea:** `calibrate_dynamic.py` (based on your first snippet)
+**Script:** `calibrate_dynamic.py`
 
 **Flow:**
 1. Create mono cameras → request **full-res NV12** (unrectified) → link to:
@@ -47,7 +47,7 @@ This folder contains two minimal, end-to-end examples that use **`dai.node.Dynam
 3. **Start calibration** with:
    ```python
    dynCalibInputControl.send(
-       dai.StartCalibrationCommand()
+       dai.DynamicCalibrationControl(dai.DynamicCalibrationControl.Commands.StartCalibration())
    )
    ```
 4. In the loop:
@@ -57,7 +57,7 @@ This folder contains two minimal, end-to-end examples that use **`dai.node.Dynam
 5. When a result arrives:
    - **Apply** it:
      ```python
-     dynCalibInputControl.send(dai.ApplyCalibrationCommand(calibrationData.newCalibration))
+     dynCalibInputControl.send(dai.DynamicCalibrationControl(dai.DynamicCalibrationControl.Commands.ApplyCalibration(calibrationData.newCalibration)))
      ```
    - Print quality deltas: rotation magnitude, Sampson errors, depth-error deltas.
 
@@ -79,7 +79,7 @@ Theoretical Depth Error Difference @1m:-4.20%, 2m:-3.10%, 5m:-1.60%, 10m:-0.90%
 
 ## 2) Calibration **quality check** (no applying)
 
-**Script idea:** `quality_dynamic.py` (based on your second snippet)
+**Script:** `calib_quality_dynamic.py`
 
 **Flow:**
 1. Same camera / StereoDepth / DynamicCalibration setup as above.
@@ -87,18 +87,18 @@ Theoretical Depth Error Difference @1m:-4.20%, 2m:-3.10%, 5m:-1.60%, 10m:-0.90%
    - Show `left`, `right`, and `disparity`.
    - Ask for **coverage** on demand:
      ```python
-     dynCalibInputControl.send(dai.LoadImageCommand())
+     dynCalibInputControl.send(dai.DynamicCalibrationControl(dai.DynamicCalibrationControl.Commands.LoadImage()))
      coverage = dynCalibCoverageQueue.get()
      ```
    - Ask for **quality** on demand:
      ```python
-     dynCalibInputControl.send(dai.CalibrationQualityCommand())
+     dynCalibInputControl.send(dai.DynamicCalibrationControl(dai.DynamicCalibrationControl.Commands.dai.CalibrationQuality()))
      dynQualityResult = dynCalibQualityQueue.get()
      ```
 3. If `qualityData` is present, print rotation/Sampson/depth-error metrics.
 4. Optionally reset the internal sample store:
    ```python
-   dynCalibInputControl.send(dai.ResetDataCommand())
+   dynCalibInputControl.send(dai.DynamicCalibrationControl(dai.DynamicCalibrationControl.Commands.ResetData()))
    ```
 
 **Use this when:**
@@ -140,7 +140,7 @@ pip install depthai opencv-python numpy
 python calibrate_dynamic.py
 
 # Quality evaluation (reports metrics; does not apply)
-python quality_dynamic.py
+python calib_quality_dynamic.py
 ```
 
 > Tip: Ensure your calibration target is well-lit, sharp, and observed across the **entire** FOV. Aim for high `meanCoverage` and steadily increasing `dataAcquired`.
@@ -149,19 +149,19 @@ python quality_dynamic.py
 
 ## Commands overview
 
-- `StartCalibrationCommand()`  
-  Begins dynamic calibration collection/solve. Use `OPTIMIZE_SPEED` for speed or `OPTIMIZE_PERFORMANCE` for more robust estimation.
+- `StartCalibration()`  
+  Begins dynamic calibration collection/solve.
 
-- `ApplyCalibrationCommand(calibration)`  
+- `ApplyCalibration(calibration)`  
   Applies the provided `CalibrationHandler` to the device (affects downstream nodes in this session).
 
-- `LoadImageCommand()`  
+- `LoadImage()`  
   Triggers coverage computation for the current frame(s).
 
-- `CalibrationQualityCommand()`  
+- `CalibrationQuality()`  
   Produces a `CalibrationQuality` message with `qualityData` if estimation is possible.
 
-- `ResetDataCommand()`  
+- `ResetData()`  
   Clears accumulated samples/coverage state to start fresh.
 
 ---
@@ -187,7 +187,7 @@ python quality_dynamic.py
   Ensure the pattern is visible, not motion-blurred, and covers diverse regions of the image. Increase lighting, adjust exposure, or hold the rig steady.
 
 - **Disparity looks worse after apply**  
-  Re-run to collect more diverse views (tilt/translate the target), or try `OPTIMIZE_PERFORMANCE`. Check for lens smudges and ensure focus is appropriate.
+  Re-run to collect more diverse views (tilt/translate the target).
 
 - **Typos in prints**  
   The examples should print “Successfully calibrated” and “Rotation difference” (avoid “Succesfully”/“dofference” if copying code).
