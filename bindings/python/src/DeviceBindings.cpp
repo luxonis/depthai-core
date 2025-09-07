@@ -22,33 +22,6 @@
 PYBIND11_MAKE_OPAQUE(std::unordered_map<std::int8_t, dai::BoardConfig::GPIO>);
 PYBIND11_MAKE_OPAQUE(std::unordered_map<std::int8_t, dai::BoardConfig::UART>);
 
-// Searches for available devices (as Device constructor)
-// but pooling, to check for python interrupts, and releases GIL in between
-
-template <typename DEVICE, class... Args>
-static auto deviceSearchHelper(Args&&... args) {
-    bool found;
-    dai::DeviceInfo deviceInfo;
-    // releases python GIL
-    py::gil_scoped_release release;
-    std::tie(found, deviceInfo) = DEVICE::getAnyAvailableDevice(DEVICE::getDefaultSearchTime(), []() {
-        py::gil_scoped_acquire acquire;
-        if(PyErr_CheckSignals() != 0) throw py::error_already_set();
-    });
-
-    // if no devices found, then throw
-    if(!found) {
-        auto numConnected = DEVICE::getAllAvailableDevices().size();
-        if(numConnected > 0) {
-            throw std::runtime_error("No available devices (" + std::to_string(numConnected) + " connected, but in use)");
-        } else {
-            throw std::runtime_error("No available devices");
-        }
-    }
-
-    return deviceInfo;
-}
-
 // static std::vector<std::string> deviceGetQueueEventsHelper(dai::Device& d, const std::vector<std::string>& queueNames, std::size_t maxNumEvents,
 // std::chrono::microseconds timeout){
 //     using namespace std::chrono;

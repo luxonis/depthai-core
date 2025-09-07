@@ -77,4 +77,6 @@ dai::LogLevel DeviceNode::getLogLevel() const {
     }
 }
 
+HostRunnable::~HostRunnable() = default;
+
 }  // namespace dai

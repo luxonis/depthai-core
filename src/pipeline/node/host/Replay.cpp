@@ -93,6 +93,10 @@ inline std::shared_ptr<Buffer> getMessage(const std::shared_ptr<google::protobuf
         case DatatypeEnum::ToFDepthConfidenceFilterConfig:
         case DatatypeEnum::RGBDData:
         case DatatypeEnum::ObjectTrackerConfig:
+        case DatatypeEnum::DynamicCalibrationControl:
+        case DatatypeEnum::DynamicCalibrationResult:
+        case DatatypeEnum::CalibrationQuality:
+        case DatatypeEnum::CoverageData:
             break;
     }
     throw std::runtime_error("Cannot replay message type: " + std::to_string((int)datatype));
@@ -158,6 +162,10 @@ inline std::shared_ptr<google::protobuf::Message> getProtoMessage(utility::ByteP
         case DatatypeEnum::ToFDepthConfidenceFilterConfig:
         case DatatypeEnum::RGBDData:
         case DatatypeEnum::ObjectTrackerConfig:
+        case DatatypeEnum::DynamicCalibrationControl:
+        case DatatypeEnum::DynamicCalibrationResult:
+        case DatatypeEnum::CalibrationQuality:
+        case DatatypeEnum::CoverageData:
             throw std::runtime_error("Cannot replay message type: " + std::to_string((int)datatype));
     }
     return {};
