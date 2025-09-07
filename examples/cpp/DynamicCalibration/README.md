@@ -9,10 +9,10 @@ This folder contains two minimal, end-to-end **C++** examples that use **`dai::n
 ## What the node does
 
 `dai::node::DynamicCalibration` consumes **raw, unrectified** left/right mono frames and:
-- Streams **coverage feedback** (how well the calibration pattern is seen across the image).
+- Streams **coverage feedback**.
 - Produces either:
   - a **new calibration** (`CalibrationHandler`) you can apply on the device, or
-  - a **quality report** comparing *current* vs *achievable* calibration.
+  - a **quality report** comparing *current* vs *achieved* calibration.
 
 ### Outputs & metrics (C++ message types)
 
@@ -44,28 +44,28 @@ This folder contains two minimal, end-to-end **C++** examples that use **`dai::n
    - `DynamicCalibration.left/right`
    - `StereoDepth.left/right` (for live disparity view)
 2. Start the pipeline, give AE a moment to settle.
-3. **Start calibration** by sending `DynamicCalibrationControl(StartCalibrationCommand{})`.
+3. **Start calibration** by sending `DynamicCalibrationControl::Command::StartCalibration{})`.
 4. In the loop:
    - Show `left`, `right`, and `disparity`.
    - Poll `coverageOutput` for progress.
    - Poll `calibrationOutput` for a result.
 5. When a result arrives:
-   - **Apply** it by sending `ApplyCalibrationCommand(newCalibration)` on the control queue.
+   - **Apply** it by sending `DynamicCalibrationControl::Command::ApplyCalibration(newCalibration)` on the control queue.
    - Print quality deltas.
 
 ---
 
 ## 2) Calibration **quality check** (no applying)
 
-**File idea:** `quality_dynamic.cpp`
+**File idea:** `calib_quality_dynamic.cpp`
 
 **Flow:**
 1. Same camera / StereoDepth / DynamicCalibration setup as above.
 2. In the loop:
-   - Send **coverage** request (`LoadImageCommand{}`) and read `coverageOutput`.
-   - Send **quality** request (`CalibrationQualityCommand{}`) and read `qualityOutput`.
+   - Send **coverage** request (`DynamicCalibrationControl::Command::LoadImage{}`) and read `coverageOutput`.
+   - Send **quality** request (`DynamicCalibrationControl::Command::CalibrationQuality{}`) and read `qualityOutput`.
 3. If `qualityData` is present, print rotation/Sampson/depth-error metrics.
-4. Optionally reset internal sample store (`ResetDataCommand{}`).
+4. Optionally reset internal sample store (`DynamicCalibrationControl::Command::ResetData{}`).
 
 ---
 
@@ -101,8 +101,8 @@ find_package(depthai CONFIG REQUIRED)    # provides depthai::core
 add_executable(calibrate_dynamic calibrate_dynamic.cpp)
 target_link_libraries(calibrate_dynamic PRIVATE depthai::core)
 
-add_executable(quality_dynamic quality_dynamic.cpp)
-target_link_libraries(quality_dynamic PRIVATE depthai::core)
+add_executable(calib_quality_dynamic calib_quality_dynamic.cpp)
+target_link_libraries(calib_quality_dynamic PRIVATE depthai::core)
 ```
 
 Build:
@@ -122,19 +122,19 @@ Run:
 
 ## Commands overview (C++)
 
-- `DynamicCalibrationControl::StartCalibrationCommand{}`  
+- `DynamicCalibrationControl::Command::StartCalibration{}`  
   Begins dynamic calibration collection/solve. Combine with performance modes if available.
 
-- `DynamicCalibrationControl::ApplyCalibrationCommand{CalibrationHandler}`  
+- `DynamicCalibrationControl::Command::ApplyCalibration{CalibrationHandler}`  
   Applies the provided calibration on-device (affects downstream nodes in-session).
 
-- `DynamicCalibrationControl::LoadImageCommand{}`  
+- `DDynamicCalibrationControl::Command::LoadImage{}`  
   Triggers coverage computation for the latest frames.
 
-- `DynamicCalibrationControl::CalibrationQualityCommand{bool force=false}`  
+- `DynamicCalibrationControl::Command::CalibrationQuality{bool force=false}`  
   Produces a `CalibrationQuality` message with `qualityData` if estimation is possible.
 
-- `DynamicCalibrationControl::ResetDataCommand{}`  
+- `DynamicCalibrationControl::Command::ResetData{}`  
   Clears accumulated samples/coverage state.
 
 ---
