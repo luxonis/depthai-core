@@ -72,11 +72,11 @@ std::pair<std::shared_ptr<dcl::CameraCalibrationHandle>, std::shared_ptr<dcl::Ca
     const CalibrationHandler& currentCalibration,
     const CameraBoardSocket boardSocketA,
     const CameraBoardSocket boardSocketB,
-    const int width,
-    const int height) {
+    const std::pair<int, int> resolutionA,
+    const std::pair<int, int> resolutionB) {
     // clang-format off
     std::shared_ptr<dcl::CameraCalibrationHandle> calibA = DclUtils::createDclCalibration(
-        currentCalibration.getCameraIntrinsics(boardSocketA, width, height),
+	currentCalibration.getCameraIntrinsics(boardSocketA, resolutionA.first, resolutionA.second, Point2f(), Point2f(),false),
         currentCalibration.getDistortionCoefficients(boardSocketA),
 	{
 	    {1.0f, 0.0f, 0.0f},
@@ -86,7 +86,7 @@ std::pair<std::shared_ptr<dcl::CameraCalibrationHandle>, std::shared_ptr<dcl::Ca
 	{0.0f, 0.0f, 0.0f}
     );
     std::shared_ptr<dcl::CameraCalibrationHandle> calibB = DclUtils::createDclCalibration(
-        currentCalibration.getCameraIntrinsics(boardSocketB, width, height),
+        currentCalibration.getCameraIntrinsics(boardSocketB, resolutionB.first, resolutionB.second, Point2f(), Point2f(),false),
         currentCalibration.getDistortionCoefficients(boardSocketB),
 	currentCalibration.getCameraRotationMatrix(boardSocketA, boardSocketB),
 	currentCalibration.getCameraTranslationVector(boardSocketA, boardSocketB, false)
@@ -135,8 +135,8 @@ void DclUtils::convertDclCalibrationToDai(CalibrationHandler& calibHandler,
                                           const std::shared_ptr<const dcl::CameraCalibrationHandle> dclCalibrationB,
                                           const CameraBoardSocket socketSrc,
                                           const CameraBoardSocket socketDest,
-                                          const int width,
-                                          const int height) {
+                                          const std::pair<int, int> resolutionA,
+                                          const std::pair<int, int> resolutionB) {
     dcl::scalar_t tvecA[3];
     dclCalibrationA->getTvec(tvecA);
     dcl::scalar_t rvecA[3];
@@ -190,8 +190,8 @@ void DclUtils::convertDclCalibrationToDai(CalibrationHandler& calibHandler,
     dclCalibrationB->getRvec(rvecB);
     auto rotationMatrix = matrix::rvecToRotationMatrix(rvecB);
 
-    calibHandler.setCameraIntrinsics(socketSrc, matA, width, height);
-    calibHandler.setCameraIntrinsics(socketDest, matB, width, height);
+    calibHandler.setCameraIntrinsics(socketSrc, matA, resolutionA.first, resolutionA.second);
+    calibHandler.setCameraIntrinsics(socketDest, matB, resolutionB.first, resolutionB.second);
     calibHandler.setDistortionCoefficients(socketSrc, std::vector<float>(distortionA, distortionA + 14));
     calibHandler.setDistortionCoefficients(socketDest, std::vector<float>(distortionB, distortionB + 14));
     auto specTranslation = calibHandler.getCameraTranslationVector(socketSrc, socketDest, true);
@@ -240,7 +240,7 @@ dai::CalibrationQuality calibQualityfromDCL(const dcl::CalibrationDifference& sr
 void DynamicCalibration::setCalibration(CalibrationHandler& handler) {
     logger->info("Applying calibration to device: {}", pimplDCL->deviceName);
     device->setCalibration(handler);
-    auto [calibA, calibB] = DclUtils::convertDaiCalibrationToDcl(handler, daiSocketA, daiSocketB, width, height);
+    auto [calibA, calibB] = DclUtils::convertDaiCalibrationToDcl(handler, daiSocketA, daiSocketB, resolutionA, resolutionB);
     pimplDCL->dynCalibImpl.setNewCalibration(pimplDCL->deviceName, pimplDCL->socketA, calibA->getCalibration());
     pimplDCL->dynCalibImpl.setNewCalibration(pimplDCL->deviceName, pimplDCL->socketB, calibB->getCalibration());
 }
@@ -287,7 +287,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
     auto newCalibrationHandler = currentHandler;
 
     dai::node::DclUtils::convertDclCalibrationToDai(
-	newCalibrationHandler, dclCalibrationA, dclCalibrationB, daiSocketA, daiSocketB, width, height);
+	newCalibrationHandler, dclCalibrationA, dclCalibrationB, daiSocketA, daiSocketB, resolutionA, resolutionB);
 
     CalibrationQuality::Data qualityData{};
     qualityData.rotationChange[0] = dclResult.value.calibrationDifference->rotationChange[0];
@@ -335,7 +335,12 @@ DynamicCalibration::ErrorCode DynamicCalibration::runLoadImage(const bool blocki
     auto leftCvFrame = leftFrame->getCvFrame();
     auto rightCvFrame = rightFrame->getCvFrame();
 
-    logger->info("Loaded stereo image pair: {}x{} @ timestamp={}", leftFrame->getWidth(), leftFrame->getHeight(), timestamp);
+    logger->info("Loaded stereo image pair: {}x{} and {}x{} @ timestamp={}",
+                 leftFrame->getWidth(),
+                 leftFrame->getHeight(),
+                 rightFrame->getWidth(),
+                 rightFrame->getHeight(),
+                 timestamp);
 
     pimplDCL->dynCalibImpl.loadStereoImagePair(DclUtils::cvMatToImageData(leftCvFrame),
                                                DclUtils::cvMatToImageData(rightCvFrame),
@@ -383,8 +388,10 @@ DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline(const std::
         return DynamicCalibration::ErrorCode::PIPELINE_INITIALIZATION_FAILED;
     }
 
-    width = leftFrame->getWidth();
-    height = rightFrame->getHeight();
+    resolutionA.first = leftFrame->getWidth();
+    resolutionA.second = leftFrame->getHeight();
+    resolutionB.first = rightFrame->getWidth();
+    resolutionB.second = rightFrame->getHeight();
 
     daiSocketA = static_cast<CameraBoardSocket>(leftFrame->instanceNum);
     daiSocketB = static_cast<CameraBoardSocket>(rightFrame->instanceNum);
@@ -393,7 +400,13 @@ DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline(const std::
         return DynamicCalibration::ErrorCode::PIPELINE_INITIALIZATION_FAILED;
     }
 
-    logger->info("Detected sockets: A={} B={}, resolution={}x{}", static_cast<int>(daiSocketA), static_cast<int>(daiSocketB), width, height);
+    logger->info("Detected sockets: A={} B={}, resolution={}x{} resolution{}x{}",
+                 static_cast<int>(daiSocketA),
+                 static_cast<int>(daiSocketB),
+                 resolutionA.first,
+                 resolutionA.second,
+                 resolutionB.first,
+                 resolutionB.second);
 
     pimplDCL->socketA = static_cast<dcl::socket_t>(daiSocketA);
     pimplDCL->socketB = static_cast<dcl::socket_t>(daiSocketB);
@@ -406,15 +419,16 @@ DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline(const std::
     if(platform == dai::Platform::RVC2 && (!eepromData.stereoEnableDistortionCorrection || eepromData.stereoUseSpecTranslation)) {
         throw std::runtime_error("The calibration on the device is too old to perform DynamicCalibration, full re-calibration required!");
     }
-    auto [calibA, calibB] = DclUtils::convertDaiCalibrationToDcl(calibrationHandler, daiSocketA, daiSocketB, width, height);
+    auto [calibA, calibB] = DclUtils::convertDaiCalibrationToDcl(calibrationHandler, daiSocketA, daiSocketB, resolutionA, resolutionB);
 
     // set up the dynamic calibration
     pimplDCL->deviceName = daiDevice->getDeviceId();
     pimplDCL->dcDevice = pimplDCL->dynCalibImpl.addDevice(pimplDCL->deviceName);
-    dcl::resolution_t resolution{static_cast<unsigned>(width), static_cast<unsigned>(height)};
+    dcl::resolution_t resolutionDclA{static_cast<unsigned>(resolutionA.first), static_cast<unsigned>(resolutionA.second)};
+    dcl::resolution_t resolutionDclB{static_cast<unsigned>(resolutionB.first), static_cast<unsigned>(resolutionB.second)};
 
-    pimplDCL->sensorA = std::make_shared<dcl::CameraSensorHandle>(calibA, resolution);
-    pimplDCL->sensorB = std::make_shared<dcl::CameraSensorHandle>(calibB, resolution);
+    pimplDCL->sensorA = std::make_shared<dcl::CameraSensorHandle>(calibA, resolutionDclA);
+    pimplDCL->sensorB = std::make_shared<dcl::CameraSensorHandle>(calibB, resolutionDclB);
     logger->info("Added sensors for sockets A={} and B={} to dynCalibImpl", static_cast<int>(pimplDCL->socketA), static_cast<int>(pimplDCL->socketB));
 
     pimplDCL->dynCalibImpl.addSensor(pimplDCL->deviceName, pimplDCL->sensorA, pimplDCL->socketA);
