@@ -19,7 +19,7 @@ from datetime import timedelta
 FPS = 25.0
 
 RGB_SOCKET = dai.CameraBoardSocket.CAM_A
-COLOR_RESOLUTION = (640, 640)  # (width, height)
+COLOR_RESOLUTION = (960, 540)  # (width, height)
 
 class FPSCounter:
     def __init__(self):
