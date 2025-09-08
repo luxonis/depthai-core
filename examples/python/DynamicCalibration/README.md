@@ -1,6 +1,6 @@
 # Dynamic Calibration (Python) — DepthAI
 
-This folder contains two minimal, end-to-end examples that use **`dai.node.DynamicCalibration`** to (a) **calibrate** a stereo rig live and (b) **evaluate** calibration quality on demand — both while streaming synchronized stereo frames and disparity for visual feedback.
+This folder contains three minimal, end-to-end examples that use **`dai.node.DynamicCalibration`** to (a) **calibrate** a stereo device real-time and (b) **evaluate** calibration quality on demand (c) combination of both — while streaming synchronized stereo frames and disparity for visual feedback.
 
 > Press **`q`** in the preview window to quit either example.
 
@@ -17,16 +17,16 @@ This folder contains two minimal, end-to-end examples that use **`dai.node.Dynam
 ### Outputs & metrics
 
 - **CoverageData** (`coverageOutput`)
-  - `meanCoverage` — overall spatial coverage [0–1].
-  - `dataAcquired` — amount of calibration-relevant data gathered [0–1].
-  - `coveragePerCellA/B` - matrix of spatial coverage of imager A or B
+  - `meanCoverage: float` — overall spatial coverage [0–1].
+  - `dataAcquired: float` — amount of calibration-relevant data gathered [0–1].
+  - `coveragePerCellA/B: list[list[float]]` - matrix of spatial coverage of imager A or B [0-1].
 
 - **DynamicCalibrationResult** (`calibrationOutput`)
-  - `newCalibration` — `CalibrationHandler` with updated parameters.
+  - `newCalibration: dai.CalibrationHanlder` — `CalibrationHandler` with updated parameters.
   - `calibrationDifference` — quality deltas between current and new:
-    - `rotationChange[3]` — extrinsic angle deltas (deg).
-    - `sampsonErrorCurrent`, `sampsonErrorNew` — reprojection proxy (px).
-    - `depthErrorDifference[4]` — theoretical depth error change at 1/2/5/10 m (%).
+    - `rotationChange[3]: list[float]` — extrinsic angle deltas (deg).
+    - `sampsonErrorCurrent: float`, `sampsonErrorNew: float` — reprojection proxy (px).
+    - `depthErrorDifference[4]: list[float]` — theoretical depth error change at 1/2/5/10 m (%).
   - `info` — human-readable status (e.g., "success").
 
 - **CalibrationQuality** (`qualityOutput`)
@@ -35,7 +35,7 @@ This folder contains two minimal, end-to-end examples that use **`dai.node.Dynam
 
 ---
 
-## 1) Live dynamic calibration (apply new calibration)
+## 1) Real-time dynamic calibration (apply new calibration)
 
 **Script:** `calibrate_dynamic.py`
 
@@ -77,9 +77,9 @@ Theoretical Depth Error Difference @1m:-4.20%, 2m:-3.10%, 5m:-1.60%, 10m:-0.90%
 
 ---
 
-## 2) Calibration **quality check** (no applying)
+## 2) Calibration **quality check**
 
-**Script:** `calib_quality_dynamic.py`
+**Script:** `calibration_quality_dynamic.py`
 
 **Flow:**
 1. Same camera / StereoDepth / DynamicCalibration setup as above.
@@ -104,6 +104,39 @@ Theoretical Depth Error Difference @1m:-4.20%, 2m:-3.10%, 5m:-1.60%, 10m:-0.90%
 **Use this when:**
 - You want to **assess** a potential calibration before committing it.
 - You’re tuning capture/coverage practices and need fast feedback.
+
+---
+
+## 3) Continuous monitoring **+ auto-recalibration** (single script)
+
+**Script:** `calibration_integration.py`
+
+**What it does:**  
+Runs one loop that periodically checks calibration quality and, if drift is detected, starts calibration and applies the new calibration automatically — while showing `left`, `right`, and colorized `disparity` previews.
+
+**Flow:**
+1. Create mono cameras → request **full-res NV12** → link to `DynamicCalibration` and `StereoDepth` for live disparity. Read the device’s current calibration as baseline.
+2. On a fixed interval (for example, every ~3 seconds), send:
+   - `LoadImage()` to compute coverage on the current frames, and
+   - `CalibrationQuality(True)` (or equivalent) to request a quality estimate.
+3. When a quality result arrives:
+   - Log status; if quality data is present, **reset** the internal data store.
+   - If the quality indicates drift (e.g., a Sampson error delta above a small threshold like 0.05 px), **start calibration** (`StartCalibration()`).
+4. When a calibration result arrives:
+   - **Apply** the new `CalibrationHandler` to the device and **reset** data again.
+5. Press **`q`** to exit.
+
+**Notes & defaults:**
+- Disparity preview is auto-scaled to the observed maximum; **zero disparity appears black** for clarity.
+- The 0.05 px Sampson threshold is a simple heuristic — adjust per your tolerance.
+
+**Example console output:**
+```
+Dynamic calibration status: success
+Successfully evaluated Quality
+Start recalibration process
+Successfully calibrated
+```
 
 ---
 
@@ -139,8 +172,11 @@ pip install depthai opencv-python numpy
 # Live calibration (applies new calibration when ready)
 python calibrate_dynamic.py
 
-# Quality evaluation (reports metrics; does not apply)
-python calib_quality_dynamic.py
+# Quality evaluation (reports metrics of when recalibration is required)
+python calibration_quality_dynamic.py
+
+# Integration example (starts new calibration when the quality reports major changes)
+python calibration_integration.py
 ```
 
 > Tip: Ensure your calibration target is well-lit, sharp, and observed across the **entire** FOV. Aim for high `meanCoverage` and steadily increasing `dataAcquired`.
