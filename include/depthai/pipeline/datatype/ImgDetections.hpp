@@ -124,7 +124,7 @@ struct ImgDetection {
      */
     float getAngle() const noexcept;
 
-    DEPTHAI_SERIALIZE(ImgDetection, label, labelName, confidence, xmin, ymin, xmax, ymax, boundingBox, keypoints);
+    DEPTHAI_SERIALIZE(ImgDetection, xmax, xmin, ymax, ymin, label, labelName, confidence, boundingBox, keypoints);
 };
 
 /**
