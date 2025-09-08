@@ -398,7 +398,10 @@ DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline(const std::
     logger->info("Converting dai calibration to dcl for sockets A={} B={}", static_cast<int>(daiSocketA), static_cast<int>(daiSocketB));
 
     calibrationHandler = daiDevice->getCalibration();
-
+    auto eepromData = calibrationHandler.getEepromData();
+    if(!eepromData.stereoEnableDistortionCorrection || eepromData.stereoUseSpecTranslation) {
+        throw std::runtime_error("The calibration on the device is too old to perform DynamicCalibration, full re-calibration required!");
+    }
     auto [calibA, calibB] = DclUtils::convertDaiCalibrationToDcl(calibrationHandler, daiSocketA, daiSocketB, width, height);
 
     // set up the dynamic calibration
