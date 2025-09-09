@@ -37,7 +37,7 @@ This folder contains three minimal, end-to-end **C++** examples that use **`dai:
 
 ## 1) Live dynamic calibration (apply new calibration)
 
-**File idea:** `calibrate_dynamic.cpp`
+**File idea:** `calibration_dynamic.cpp`
 
 **Flow:**
 1. Create mono cameras → request **full-res NV12** (unrectified) → link to:
@@ -150,7 +150,7 @@ cmake --build . -j
 
 Run:
 ```bash
-./calibrate_dynamic      # applies new calibration when ready
+./calibration_dynamic      # applies new calibration when ready
 ./calibration_quality_dynamic  # reports metrics; does not apply
 ./calibration_integration   # monitors quality, auto-recalibrates, and applies in one loop
 ```

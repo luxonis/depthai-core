@@ -37,7 +37,7 @@ This folder contains three minimal, end-to-end examples that use **`dai.node.Dyn
 
 ## 1) Real-time dynamic calibration (apply new calibration)
 
-**Script:** `calibrate_dynamic.py`
+**Script:** `calibration_dynamic.py`
 
 **Flow:**
 1. Create mono cameras → request **full-res NV12** (unrectified) → link to:
@@ -170,7 +170,7 @@ pip install depthai opencv-python numpy
 
 ```bash
 # Live calibration (applies new calibration when ready)
-python calibrate_dynamic.py
+python calibration_dynamic.py
 
 # Quality evaluation (reports metrics of when recalibration is required)
 python calibration_quality_dynamic.py
