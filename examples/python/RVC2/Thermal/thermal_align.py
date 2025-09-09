@@ -16,7 +16,7 @@ import numpy as np
 import time
 from datetime import timedelta
 
-FPS = 25.0
+FPS = 18
 
 RGB_SOCKET = dai.CameraBoardSocket.CAM_A
 COLOR_RESOLUTION = (960, 540)  # (width, height)
@@ -69,7 +69,7 @@ with dai.Pipeline() as pipeline:
 
     camRgbOut = camRgb.requestOutput(COLOR_RESOLUTION, fps=FPS)
 
-    sync.setSyncThreshold(timedelta(seconds=0.5 / FPS))
+    sync.setSyncThreshold(timedelta(seconds=3 / FPS))
 
     cfg = align.initialConfig
     staticDepthPlane = cfg.staticDepthPlane
