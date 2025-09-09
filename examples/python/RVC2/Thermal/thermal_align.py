@@ -36,8 +36,6 @@ class FPSCounter:
         # Calculate the FPS
         return (len(self.frameTimes) - 1) / (self.frameTimes[-1] - self.frameTimes[0])
 
-ISP_SCALE = 3
-
 with dai.Pipeline() as pipeline:
     device = pipeline.getDefaultDevice()
 
