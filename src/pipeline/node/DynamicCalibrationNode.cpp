@@ -8,6 +8,8 @@
 #include "depthai/utility/matrixOps.hpp"
 #include "depthai/utility/spimpl.h"
 #include "pipeline/node/DynamicCalibrationUtils.hpp"
+#include "depthai/pipeline/datatype/DynamicCalibrationControl.hpp"
+#include "depthai/pipeline/datatype/DynamicCalibrationResults.hpp"
 
 namespace dai {
 namespace node {

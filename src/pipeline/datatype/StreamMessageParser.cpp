@@ -16,7 +16,7 @@
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/CameraControl.hpp"
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
-    #include "depthai/pipeline/datatype/DynamicCalibrationConfig.hpp"
+    #include "depthai/pipeline/datatype/DynamicCalibrationControl.hpp"
     #include "depthai/pipeline/datatype/DynamicCalibrationResults.hpp"
 #endif  // DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
 #include "depthai/pipeline/datatype/EdgeDetectorConfig.hpp"
