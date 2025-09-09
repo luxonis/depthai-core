@@ -349,6 +349,6 @@ if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
     add_python_example(calib_quality_dynamic DynamicCalibration/calib_quality_dynamic.py)
     dai_set_example_test_labels(calib_quality_dynamic ondevice rvc2_all rvc4 ci)
 
-    add_python_example(calib_dynamic DynamicCalibration/calib_dynamic.py)
-    dai_set_example_test_labels(calib_dynamic ondevice rvc2_all rvc4 ci)
+    add_python_example(calibrate_dynamic DynamicCalibration/calibrate_dynamic.py)
+    dai_set_example_test_labels(calibrate_dynamic ondevice rvc2_all rvc4 ci)
 endif()

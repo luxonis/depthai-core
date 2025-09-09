@@ -70,11 +70,15 @@ endif()
 
 # Create depthai project
 project(depthai VERSION "3.0.0" LANGUAGES CXX C)
-set(DEPTHAI_PRE_RELEASE_TYPE "rc") # Valid options are "alpha", "beta", "rc", ""
-set(DEPTHAI_PRE_RELEASE_VERSION "4")
+set(DEPTHAI_PRE_RELEASE_TYPE "") # Valid options are "alpha", "beta", "rc", ""
+set(DEPTHAI_PRE_RELEASE_VERSION "0") # Valid options are "0", "1", "2", ...
 
 # Set DEPTHAI_VERSION universally, not conditionally
-set(DEPTHAI_VERSION ${PROJECT_VERSION}-${DEPTHAI_PRE_RELEASE_TYPE}.${DEPTHAI_PRE_RELEASE_VERSION})
+if(DEPTHAI_PRE_RELEASE_TYPE STREQUAL "")
+    set(DEPTHAI_VERSION ${PROJECT_VERSION})
+else()
+    set(DEPTHAI_VERSION ${PROJECT_VERSION}-${DEPTHAI_PRE_RELEASE_TYPE}.${DEPTHAI_PRE_RELEASE_VERSION})
+endif()
 
 get_directory_property(has_parent PARENT_DIRECTORY)
 if(has_parent)
