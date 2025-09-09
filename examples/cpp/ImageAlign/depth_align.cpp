@@ -3,6 +3,7 @@
 #include <deque>
 #include <iostream>
 #include <opencv2/opencv.hpp>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -109,8 +110,8 @@ int main() {
 
     // Configure outputs
     auto rgbOut = camRgb->requestOutput(std::make_pair(1280, 960), dai::ImgFrame::Type::NV12, dai::ImgResizeMode::CROP, FPS, true);
-    auto leftOut = left->requestOutput(std::make_pair(640, 400), dai::ImgResizeMode::CROP, FPS);
-    auto rightOut = right->requestOutput(std::make_pair(640, 400), dai::ImgResizeMode::CROP, FPS);
+    auto leftOut = left->requestOutput(std::make_pair(640, 400), std::nullopt, dai::ImgResizeMode::CROP, FPS);
+    auto rightOut = right->requestOutput(std::make_pair(640, 400), std::nullopt, dai::ImgResizeMode::CROP, FPS);
 
     // Link nodes
     rgbOut->link(sync->inputs["rgb"]);
