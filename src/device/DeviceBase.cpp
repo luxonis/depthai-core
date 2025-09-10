@@ -58,7 +58,8 @@ const std::string MAGIC_FACTORY_FLASHING_VALUE = "413424129";
 const std::string MAGIC_FACTORY_PROTECTED_FLASHING_VALUE = "868632271";
 constexpr int DEVICE_SEARCH_FIRST_TIMEOUT_MS = 30;
 
-const unsigned int DEFAULT_CRASHDUMP_TIMEOUT = 9000;
+const unsigned int DEFAULT_CRASHDUMP_TIMEOUT_MS = 9000;
+const unsigned int RPC_READ_TIMEOUT = 10000;
 
 // local static function
 static void getFlashingPermissions(bool& factoryPermissions, bool& protectedPermissions) {
@@ -309,7 +310,7 @@ DeviceBase::DeviceBase(const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed) : device
     init(maxUsbSpeed, "");
 }
 
-DeviceBase::DeviceBase(const DeviceInfo& devInfo, const dai::Path& pathToCmd) : deviceInfo(devInfo) {
+DeviceBase::DeviceBase(const DeviceInfo& devInfo, const std::filesystem::path& pathToCmd) : deviceInfo(devInfo) {
     Config cfg;
 
     init2(cfg, pathToCmd, false);
@@ -331,11 +332,12 @@ DeviceBase::DeviceBase(Config config, const DeviceInfo& devInfo, UsbSpeed maxUsb
     init(config, maxUsbSpeed, "");
 }
 
-DeviceBase::DeviceBase(Config config, const DeviceInfo& devInfo, const dai::Path& pathToCmd, bool dumpOnly) : deviceInfo(devInfo), dumpOnly(dumpOnly) {
+DeviceBase::DeviceBase(Config config, const DeviceInfo& devInfo, const std::filesystem::path& pathToCmd, bool dumpOnly)
+    : deviceInfo(devInfo), dumpOnly(dumpOnly) {
     init2(config, pathToCmd, false);
 }
 
-DeviceBase::DeviceBase(Config config, const dai::Path& pathToCmd) {
+DeviceBase::DeviceBase(Config config, const std::filesystem::path& pathToCmd) {
     init(config, pathToCmd);
 }
 
@@ -350,7 +352,7 @@ void DeviceBase::init() {
     init2(cfg, "", false);
 }
 
-void DeviceBase::init(const dai::Path& pathToCmd) {
+void DeviceBase::init(const std::filesystem::path& pathToCmd) {
     tryGetDevice();
 
     Config cfg;
@@ -367,7 +369,7 @@ void DeviceBase::init(Config config, UsbSpeed maxUsbSpeed) {
     init(config, maxUsbSpeed, "");
 }
 
-void DeviceBase::init(Config config, const dai::Path& pathToCmd) {
+void DeviceBase::init(Config config, const std::filesystem::path& pathToCmd) {
     tryGetDevice();
     init2(config, pathToCmd, false);
 }
@@ -377,7 +379,7 @@ void DeviceBase::init(Config config, const DeviceInfo& devInfo, UsbSpeed maxUsbS
     init(config, maxUsbSpeed, "");
 }
 
-void DeviceBase::init(Config config, const DeviceInfo& devInfo, const dai::Path& pathToCmd) {
+void DeviceBase::init(Config config, const DeviceInfo& devInfo, const std::filesystem::path& pathToCmd) {
     deviceInfo = devInfo;
     init2(config, pathToCmd, false);
 }
@@ -400,10 +402,8 @@ void DeviceBase::close() {
 }
 
 unsigned int getCrashdumpTimeout(XLinkProtocol_t protocol) {
-    int defaultTimeout =
-        DEFAULT_CRASHDUMP_TIMEOUT + (protocol == X_LINK_TCP_IP ? device::XLINK_TCP_WATCHDOG_TIMEOUT.count() : device::XLINK_USB_WATCHDOG_TIMEOUT.count());
-    int timeoutSeconds = utility::getEnvAs<int>("DEPTHAI_CRASHDUMP_TIMEOUT", defaultTimeout);
-    int timeoutMs = timeoutSeconds * 1000;
+    std::chrono::milliseconds protocolTimeout = (protocol == X_LINK_TCP_IP ? device::XLINK_TCP_WATCHDOG_TIMEOUT : device::XLINK_USB_WATCHDOG_TIMEOUT);
+    int timeoutMs = utility::getEnvAs<int>("DEPTHAI_CRASHDUMP_TIMEOUT", DEFAULT_CRASHDUMP_TIMEOUT_MS + protocolTimeout.count());
     return timeoutMs;
 }
 
@@ -553,26 +553,26 @@ void DeviceBase::tryStartPipeline(const Pipeline& pipeline) {
     }
 }
 
-void DeviceBase::init(UsbSpeed maxUsbSpeed, const dai::Path& pathToMvcmd) {
+void DeviceBase::init(UsbSpeed maxUsbSpeed, const std::filesystem::path& pathToMvcmd) {
     Config cfg;
     // Specify usb speed
     cfg.board.usb.maxSpeed = maxUsbSpeed;
     init2(cfg, pathToMvcmd, false);
 }
-void DeviceBase::init(const Pipeline& pipeline, UsbSpeed maxUsbSpeed, const dai::Path& pathToMvcmd) {
+void DeviceBase::init(const Pipeline& pipeline, UsbSpeed maxUsbSpeed, const std::filesystem::path& pathToMvcmd) {
     Config cfg = pipeline.getDeviceConfig();
     // Modify usb speed
     cfg.board.usb.maxSpeed = maxUsbSpeed;
     init2(cfg, pathToMvcmd, true);
 }
-void DeviceBase::init(Config config, UsbSpeed maxUsbSpeed, const dai::Path& pathToMvcmd) {
+void DeviceBase::init(Config config, UsbSpeed maxUsbSpeed, const std::filesystem::path& pathToMvcmd) {
     Config cfg = config;
     // Modify usb speed
     cfg.board.usb.maxSpeed = maxUsbSpeed;
     init2(cfg, pathToMvcmd, {});
 }
 
-void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipeline, bool reconnect) {
+void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, bool hasPipeline, bool reconnect) {
     // Initalize depthai library if not already
     if(!dumpOnly) initialize();
 
@@ -580,7 +580,7 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipelin
     PrevInfo prev;
     prev.deviceInfo = deviceInfo;
     prev.cfg = cfg;
-    prev.pathToMvcmd = dai::Path(pathToMvcmd);
+    prev.pathToMvcmd = std::filesystem::path(pathToMvcmd);
     prev.hasPipeline = hasPipeline;
 
     // Specify cfg
@@ -765,7 +765,7 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipelin
 
             // Receive response back
             // Send to nanorpc to parse
-            return rpcStream->read();
+            return rpcStream->read(std::chrono::milliseconds(RPC_READ_TIMEOUT));
         } catch(const std::exception& e) {
             // If any exception is thrown, log it and rethrow
             pimpl->logger.debug("RPC error: {}", e.what());
@@ -1380,16 +1380,17 @@ bool DeviceBase::isEepromAvailable() {
     return pimpl->rpcClient->call("isEepromAvailable").as<bool>();
 }
 
-bool DeviceBase::flashCalibration(CalibrationHandler calibrationDataHandler) {
+bool DeviceBase::tryFlashCalibration(CalibrationHandler calibrationDataHandler) {
     try {
-        flashCalibration2(calibrationDataHandler);
-    } catch(const EepromError&) {
+        flashCalibration(calibrationDataHandler);
+    } catch(const EepromError& e) {
+        pimpl->logger.error("Failed to flash calibration: {}", e.what());
         return false;
     }
     return true;
 }
 
-void DeviceBase::flashCalibration2(CalibrationHandler calibrationDataHandler) {
+void DeviceBase::flashCalibration(CalibrationHandler calibrationDataHandler) {
     bool factoryPermissions = false;
     bool protectedPermissions = false;
     getFlashingPermissions(factoryPermissions, protectedPermissions);
@@ -1405,7 +1406,7 @@ void DeviceBase::flashCalibration2(CalibrationHandler calibrationDataHandler) {
                                       .as<std::tuple<bool, std::string>>();
 
     if(!success) {
-        throw std::runtime_error(errorMsg);
+        throw EepromError(errorMsg);
     }
 }
 

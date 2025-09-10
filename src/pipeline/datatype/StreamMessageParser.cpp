@@ -15,11 +15,16 @@
 #include "depthai/pipeline/datatype/BenchmarkReport.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/CameraControl.hpp"
+#ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
+    #include "depthai/pipeline/datatype/DynamicCalibrationConfig.hpp"
+    #include "depthai/pipeline/datatype/DynamicCalibrationResults.hpp"
+#endif  // DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
 #include "depthai/pipeline/datatype/EdgeDetectorConfig.hpp"
 #include "depthai/pipeline/datatype/EncodedFrame.hpp"
 #include "depthai/pipeline/datatype/FeatureTrackerConfig.hpp"
 #include "depthai/pipeline/datatype/IMUData.hpp"
 #include "depthai/pipeline/datatype/ImageAlignConfig.hpp"
+#include "depthai/pipeline/datatype/ImageFiltersConfig.hpp"
 #include "depthai/pipeline/datatype/ImageManipConfig.hpp"
 #include "depthai/pipeline/datatype/ImgAnnotations.hpp"
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
@@ -135,10 +140,9 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
             auto pBuf = std::make_shared<ADatatype>();
             return pBuf;
         }
-        case DatatypeEnum::Buffer: {
+        case DatatypeEnum::Buffer:
             return parseDatatype<Buffer>(metadataStart, serializedObjectSize, data, fd);
             break;
-        }
 
         case DatatypeEnum::ImgFrame:
             return parseDatatype<ImgFrame>(metadataStart, serializedObjectSize, data, fd);
@@ -243,14 +247,45 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
         case DatatypeEnum::ImgAnnotations:
             return parseDatatype<ImgAnnotations>(metadataStart, serializedObjectSize, data, fd);
             break;
+        case DatatypeEnum::ImageFiltersConfig:
+            return parseDatatype<ImageFiltersConfig>(metadataStart, serializedObjectSize, data, fd);
+            break;
+        case DatatypeEnum::ToFDepthConfidenceFilterConfig:
+            return parseDatatype<ToFDepthConfidenceFilterConfig>(metadataStart, serializedObjectSize, data, fd);
+            break;
         case DatatypeEnum::RGBDData:
             return parseDatatype<RGBDData>(metadataStart, serializedObjectSize, data, fd);
             break;
-        case DatatypeEnum::ObjectTrackerConfig: {
+        case DatatypeEnum::ObjectTrackerConfig:
             return parseDatatype<ObjectTrackerConfig>(metadataStart, serializedObjectSize, data, fd);
-        }
-    }
+            break;
+#ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
+        case DatatypeEnum::DynamicCalibrationControl:
+            return parseDatatype<DynamicCalibrationControl>(metadataStart, serializedObjectSize, data, fd);
+            break;
 
+        case DatatypeEnum::DynamicCalibrationResult:
+            return parseDatatype<DynamicCalibrationResult>(metadataStart, serializedObjectSize, data, fd);
+            break;
+
+        case DatatypeEnum::CalibrationQuality:
+            return parseDatatype<CalibrationQuality>(metadataStart, serializedObjectSize, data, fd);
+            break;
+
+        case DatatypeEnum::CoverageData:
+            return parseDatatype<CoverageData>(metadataStart, serializedObjectSize, data, fd);
+            break;
+#else
+        // Explicitly enum these in this switch state:
+        case DatatypeEnum::DynamicCalibrationControl:
+        case DatatypeEnum::DynamicCalibrationResult:
+        case DatatypeEnum::CalibrationQuality:
+        case DatatypeEnum::CoverageData:
+            break;
+#endif  // DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
+        default:
+            break;
+    }
     throw std::runtime_error("Bad packet, couldn't parse");
 }
 

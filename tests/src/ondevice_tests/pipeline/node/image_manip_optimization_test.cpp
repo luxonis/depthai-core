@@ -1,8 +1,10 @@
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_test_macros.hpp>
 
+#include "depthai/common/RotatedRect.hpp"
 #include "depthai/depthai.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
+#include "depthai/properties/ImageManipProperties.hpp"
 
 double calculateImageDifference(const cv::Mat& img1, const cv::Mat& img2, int blockSize = 8) {
     if(img1.empty() || img2.empty()) {
@@ -251,6 +253,220 @@ TEST_CASE("Host and Device impl comparison") {
         cfg->setBackgroundColor(200, 0, 0);
         doConfig(cfg);
     }
+
+    p.stop();
+}
+
+void runManipTests(dai::ImageManipProperties::Backend backend, dai::ImageManipProperties::PerformanceMode perfMode, dai::ImgFrame::Type type) {
+    dai::Pipeline p;
+    auto manip = p.create<dai::node::ImageManip>()->build();
+    manip->setBackend(backend);
+    manip->setPerformanceMode(perfMode);
+    manip->setMaxOutputFrameSize(6750208);
+    manip->inputConfig.setWaitForMessage(true);
+
+    auto inputImg = cv::imread(LENNA_PATH);
+    cv::resize(inputImg, inputImg, cv::Size(1024, 512));
+    auto inputFrame = std::make_shared<dai::ImgFrame>();
+    inputFrame->setCvFrame(inputImg, type);
+
+    auto config = std::make_shared<dai::ImageManipConfig>();
+    config->setReusePreviousImage(true);
+
+    auto inputQueue = manip->inputImage.createInputQueue();
+    auto configQueue = manip->inputConfig.createInputQueue();
+    auto outputQueue = manip->out.createOutputQueue();
+
+    p.start();
+    inputQueue->send(inputFrame);
+
+    // Scale up
+    {
+        auto cfg = std::make_shared<dai::ImageManipConfig>(*config);
+        cfg->setOutputSize(2048, 1024);
+        configQueue->send(cfg);
+        auto outFrame = outputQueue->get<dai::ImgFrame>();
+        REQUIRE(outFrame != nullptr);
+        REQUIRE(outFrame->getWidth() == 2048);
+        REQUIRE(outFrame->getHeight() == 1024);
+    }
+
+    // Scale up crop
+    {
+        auto cfg = std::make_shared<dai::ImageManipConfig>(*config);
+        cfg->setOutputSize(1500, 1500, dai::ImageManipConfig::ResizeMode::CENTER_CROP);
+        configQueue->send(cfg);
+        auto outFrame = outputQueue->get<dai::ImgFrame>();
+        REQUIRE(outFrame != nullptr);
+        REQUIRE(outFrame->getWidth() == 1500);
+        REQUIRE(outFrame->getHeight() == 1500);
+    }
+
+    // Scale up letterbox
+    {
+        auto cfg = std::make_shared<dai::ImageManipConfig>(*config);
+        cfg->setOutputSize(1500, 1500, dai::ImageManipConfig::ResizeMode::LETTERBOX);
+        configQueue->send(cfg);
+        auto outFrame = outputQueue->get<dai::ImgFrame>();
+        REQUIRE(outFrame != nullptr);
+        REQUIRE(outFrame->getWidth() == 1500);
+        REQUIRE(outFrame->getHeight() == 1500);
+    }
+
+    // Scale up letterbox bg
+    {
+        auto cfg = std::make_shared<dai::ImageManipConfig>(*config);
+        cfg->setOutputSize(1500, 1500, dai::ImageManipConfig::ResizeMode::LETTERBOX);
+        cfg->setBackgroundColor(100, 0, 0);
+        configQueue->send(cfg);
+        auto outFrame = outputQueue->get<dai::ImgFrame>();
+        REQUIRE(outFrame != nullptr);
+        REQUIRE(outFrame->getWidth() == 1500);
+        REQUIRE(outFrame->getHeight() == 1500);
+    }
+
+    // Scale down
+    {
+        auto cfg = std::make_shared<dai::ImageManipConfig>(*config);
+        cfg->setOutputSize(600, 400);
+        configQueue->send(cfg);
+        auto outFrame = outputQueue->get<dai::ImgFrame>();
+        REQUIRE(outFrame != nullptr);
+        REQUIRE(outFrame->getWidth() == 600);
+        REQUIRE(outFrame->getHeight() == 400);
+    }
+
+    // Scale down crop
+    {
+        auto cfg = std::make_shared<dai::ImageManipConfig>(*config);
+        cfg->setOutputSize(600, 400, dai::ImageManipConfig::ResizeMode::CENTER_CROP);
+        configQueue->send(cfg);
+        auto outFrame = outputQueue->get<dai::ImgFrame>();
+        REQUIRE(outFrame != nullptr);
+        REQUIRE(outFrame->getWidth() == 600);
+        REQUIRE(outFrame->getHeight() == 400);
+    }
+
+    // Scale down letterbox
+    {
+        auto cfg = std::make_shared<dai::ImageManipConfig>(*config);
+        cfg->setOutputSize(600, 400, dai::ImageManipConfig::ResizeMode::LETTERBOX);
+        configQueue->send(cfg);
+        auto outFrame = outputQueue->get<dai::ImgFrame>();
+        REQUIRE(outFrame != nullptr);
+        REQUIRE(outFrame->getWidth() == 600);
+        REQUIRE(outFrame->getHeight() == 400);
+    }
+
+    // Scale down letterbox bg
+    {
+        auto cfg = std::make_shared<dai::ImageManipConfig>(*config);
+        cfg->setOutputSize(600, 400, dai::ImageManipConfig::ResizeMode::LETTERBOX);
+        cfg->setBackgroundColor(100, 0, 0);
+        configQueue->send(cfg);
+        auto outFrame = outputQueue->get<dai::ImgFrame>();
+        REQUIRE(outFrame != nullptr);
+        REQUIRE(outFrame->getWidth() == 600);
+        REQUIRE(outFrame->getHeight() == 400);
+    }
+
+    // Crop
+    {
+        auto cfg = std::make_shared<dai::ImageManipConfig>(*config);
+        cfg->addCrop(100, 200, 600, 400);
+        configQueue->send(cfg);
+        auto outFrame = outputQueue->get<dai::ImgFrame>();
+        REQUIRE(outFrame != nullptr);
+        REQUIRE(outFrame->getWidth() == 600);
+        REQUIRE(outFrame->getHeight() == 400);
+    }
+
+    // Affine
+    {
+        auto cfg = std::make_shared<dai::ImageManipConfig>(*config);
+        cfg->addCropRotatedRect(dai::RotatedRect(dai::Point2f(350, 250), dai::Size2f(600, 400), 20));
+        configQueue->send(cfg);
+        auto outFrame = outputQueue->get<dai::ImgFrame>();
+        REQUIRE(outFrame != nullptr);
+        REQUIRE(outFrame->getWidth() == 600);
+        REQUIRE(outFrame->getHeight() == 400);
+    }
+
+    // Scale down small
+    {
+        auto cfg = std::make_shared<dai::ImageManipConfig>(*config);
+        cfg->addCrop(100, 100, 199, 199);
+        cfg->setOutputSize(100, 100);
+        configQueue->send(cfg);
+        auto outFrame = outputQueue->get<dai::ImgFrame>();
+        REQUIRE(outFrame != nullptr);
+        REQUIRE(outFrame->getWidth() == 100);
+        REQUIRE(outFrame->getHeight() == 100);
+    }
+
+    p.stop();
+}
+
+TEST_CASE("ImageManip NV12 Low Power") {
+    runManipTests(dai::ImageManipProperties::Backend::CPU, dai::ImageManipProperties::PerformanceMode::LOW_POWER, dai::ImgFrame::Type::NV12);
+}
+
+TEST_CASE("ImageManip NV12 Balanced") {
+    runManipTests(dai::ImageManipProperties::Backend::CPU, dai::ImageManipProperties::PerformanceMode::BALANCED, dai::ImgFrame::Type::NV12);
+}
+
+TEST_CASE("ImageManip NV12 Performance") {
+    runManipTests(dai::ImageManipProperties::Backend::CPU, dai::ImageManipProperties::PerformanceMode::PERFORMANCE, dai::ImgFrame::Type::NV12);
+}
+
+TEST_CASE("ImageManip NV12 HW") {
+    runManipTests(dai::ImageManipProperties::Backend::HW, dai::ImageManipProperties::PerformanceMode::BALANCED, dai::ImgFrame::Type::NV12);
+}
+
+TEST_CASE("ImageManip GRAY8 Low Power") {
+    runManipTests(dai::ImageManipProperties::Backend::CPU, dai::ImageManipProperties::PerformanceMode::LOW_POWER, dai::ImgFrame::Type::GRAY8);
+}
+
+TEST_CASE("ImageManip GRAY8 Balanced") {
+    runManipTests(dai::ImageManipProperties::Backend::CPU, dai::ImageManipProperties::PerformanceMode::BALANCED, dai::ImgFrame::Type::GRAY8);
+}
+
+TEST_CASE("ImageManip GRAY8 Performance") {
+    runManipTests(dai::ImageManipProperties::Backend::CPU, dai::ImageManipProperties::PerformanceMode::PERFORMANCE, dai::ImgFrame::Type::GRAY8);
+}
+
+TEST_CASE("ImageManip GRAY8 HW") {
+    runManipTests(dai::ImageManipProperties::Backend::HW, dai::ImageManipProperties::PerformanceMode::BALANCED, dai::ImgFrame::Type::GRAY8);
+}
+
+TEST_CASE("ImageManip RGB888i Low Power") {
+    runManipTests(dai::ImageManipProperties::Backend::CPU, dai::ImageManipProperties::PerformanceMode::LOW_POWER, dai::ImgFrame::Type::RGB888i);
+}
+
+TEST_CASE("ImageManip RGB888i Balanced") {
+    runManipTests(dai::ImageManipProperties::Backend::CPU, dai::ImageManipProperties::PerformanceMode::BALANCED, dai::ImgFrame::Type::RGB888i);
+}
+
+TEST_CASE("ImageManip RGB888i Performance") {
+    runManipTests(dai::ImageManipProperties::Backend::CPU, dai::ImageManipProperties::PerformanceMode::PERFORMANCE, dai::ImgFrame::Type::RGB888i);
+}
+
+TEST_CASE("ImageManip RGB888i HW") {
+    runManipTests(dai::ImageManipProperties::Backend::HW, dai::ImageManipProperties::PerformanceMode::BALANCED, dai::ImgFrame::Type::RGB888i);
+}
+
+TEST_CASE("Large frame resize test") {
+    dai::Pipeline p;
+    auto camera = p.create<dai::node::Camera>()->build();
+    auto* output = camera->requestOutput({7680, 4320});
+    auto camQ = output->createOutputQueue();
+
+    p.start();
+
+    auto frame = camQ->get<dai::ImgFrame>();
+    REQUIRE(frame != nullptr);
+    REQUIRE(frame->getWidth() == 7680);
+    REQUIRE(frame->getHeight() == 4320);
 
     p.stop();
 }

@@ -393,7 +393,8 @@ XLinkConnection::XLinkConnection(const DeviceInfo& deviceDesc, std::vector<std::
     initDevice(deviceDesc, expectedState);
 }
 
-XLinkConnection::XLinkConnection(const DeviceInfo& deviceDesc, dai::Path mvcmdPath, XLinkDeviceState_t expectedState) : pathToMvcmd(std::move(mvcmdPath)) {
+XLinkConnection::XLinkConnection(const DeviceInfo& deviceDesc, std::filesystem::path mvcmdPath, XLinkDeviceState_t expectedState)
+    : pathToMvcmd(std::move(mvcmdPath)) {
     initialize();
     if(!pathToMvcmd.empty()) {
         std::ifstream testStream(pathToMvcmd);
@@ -470,7 +471,7 @@ bool XLinkConnection::getRebootOnDestruction() const {
     return rebootOnDestruction;
 }
 
-bool XLinkConnection::bootAvailableDevice(const deviceDesc_t& deviceToBoot, const dai::Path& pathToMvcmd) {
+bool XLinkConnection::bootAvailableDevice(const deviceDesc_t& deviceToBoot, const std::filesystem::path& pathToMvcmd) {
     std::ifstream fwStream(pathToMvcmd, std::ios::binary);
     if(!fwStream.is_open()) throw std::runtime_error(fmt::format("Cannot boot firmware, binary at path: {} doesn't exist", pathToMvcmd));
     std::vector<uint8_t> package = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(fwStream), {});
@@ -593,7 +594,20 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit, XLinkDeviceStat
             std::this_thread::sleep_for(POLLING_DELAY_TIME);
         } while(steady_clock::now() - tstart < connectTimeout);
 
-        if(rc != X_LINK_SUCCESS) throw std::runtime_error("Failed to connect to device, error message: " + convertErrorCodeToString(rc));
+        if(rc != X_LINK_SUCCESS) {
+            if(rc == X_LINK_INSUFFICIENT_PERMISSIONS) {
+                throw std::runtime_error(
+                    fmt::format("Insufficient permissions to communicate with {} device with name \"{}\". Make sure udev rules are set. Error: {}",
+                                XLinkDeviceStateToStr(desc.state),
+                                desc.name,
+                                convertErrorCodeToString(rc)));
+            } else if(rc == X_LINK_DEVICE_ALREADY_IN_USE) {
+                throw std::runtime_error(fmt::format(
+                    "Cannot connect to device with name \"{}\", it is used by another process. Error: {}", desc.name, convertErrorCodeToString(rc)));
+            } else {
+                throw std::runtime_error(fmt::format("Failed to connect to device with name \"{}\". Error: {}", desc.name, convertErrorCodeToString(rc)));
+            }
+        }
 
         deviceLinkId = connectionHandler.linkId;
         deviceInfo = lastDeviceInfo;

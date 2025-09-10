@@ -4,6 +4,7 @@
 #include <cstdint>
 
 // C++ std
+#include <filesystem>
 #include <functional>
 #include <nlohmann/json.hpp>
 #include <optional>
@@ -16,7 +17,6 @@
 // internal
 #include "depthai/nn_archive/NNArchiveEntry.hpp"
 #include "depthai/nn_archive/v1/Config.hpp"
-#include "depthai/utility/Path.hpp"
 
 namespace dai {
 
@@ -46,7 +46,7 @@ class NNArchiveVersionedConfig {
      * 3) else: to whole compressed NNArchive.
      * see NNArchive class for parameter explanation
      */
-    explicit NNArchiveVersionedConfig(const dai::Path& path, NNArchiveEntry::Compression compression = NNArchiveEntry::Compression::AUTO);
+    explicit NNArchiveVersionedConfig(const std::filesystem::path& path, NNArchiveEntry::Compression compression = NNArchiveEntry::Compression::AUTO);
 
     /**
      *  Returned data should be just the config.json if compression == RAW_FS or the whole NNArchive otherwise

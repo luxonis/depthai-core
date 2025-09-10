@@ -121,6 +121,11 @@ NNArchive NeuralNetwork::createNNArchive(NNModelDescription& modelDesc) {
     return nnArchive;
 }
 
+std::optional<std::reference_wrapper<const NNArchive>> NeuralNetwork::getNNArchive() const {
+    if(nnArchive) return std::cref(*nnArchive);
+    return std::nullopt;
+}
+
 void NeuralNetwork::setNNArchive(const NNArchive& nnArchive) {
     constexpr int DEFAULT_SUPERBLOB_NUM_SHAVES = 8;
     this->nnArchive = nnArchive;
@@ -184,11 +189,11 @@ void NeuralNetwork::setNNArchiveOther(const NNArchive& nnArchive) {
 }
 
 // Specify local filesystem path to load the blob (which gets loaded at loadAssets)
-void NeuralNetwork::setBlobPath(const Path& path) {
+void NeuralNetwork::setBlobPath(const std::filesystem::path& path) {
     setBlob(OpenVINO::Blob(path));
 }
 
-void NeuralNetwork::setBlob(const Path& path) {
+void NeuralNetwork::setBlob(const std::filesystem::path& path) {
     setBlobPath(path);
 }
 
@@ -207,16 +212,16 @@ void NeuralNetwork::setBlob(OpenVINO::Blob blob) {
     properties.modelSource = Properties::ModelSource::BLOB;
 }
 
-void NeuralNetwork::setModelPath(const Path& modelPath) {
-    switch(model::readModelType(modelPath.string())) {
+void NeuralNetwork::setModelPath(const std::filesystem::path& modelPath) {
+    switch(model::readModelType(modelPath)) {
         case model::ModelType::BLOB:
-            setBlob(OpenVINO::Blob(modelPath.string()));
+            setBlob(OpenVINO::Blob(modelPath));
             break;
         case model::ModelType::SUPERBLOB:
-            setBlob(OpenVINO::SuperBlob(modelPath.string()).getBlobWithNumShaves(8));
+            setBlob(OpenVINO::SuperBlob(modelPath).getBlobWithNumShaves(8));
             break;
         case model::ModelType::NNARCHIVE:
-            setNNArchive(NNArchive(modelPath.string()));
+            setNNArchive(NNArchive(modelPath));
             break;
         case model::ModelType::DLC:
         case model::ModelType::OTHER: {

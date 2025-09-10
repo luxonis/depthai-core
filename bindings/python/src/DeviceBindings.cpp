@@ -22,33 +22,6 @@
 PYBIND11_MAKE_OPAQUE(std::unordered_map<std::int8_t, dai::BoardConfig::GPIO>);
 PYBIND11_MAKE_OPAQUE(std::unordered_map<std::int8_t, dai::BoardConfig::UART>);
 
-// Searches for available devices (as Device constructor)
-// but pooling, to check for python interrupts, and releases GIL in between
-
-template <typename DEVICE, class... Args>
-static auto deviceSearchHelper(Args&&... args) {
-    bool found;
-    dai::DeviceInfo deviceInfo;
-    // releases python GIL
-    py::gil_scoped_release release;
-    std::tie(found, deviceInfo) = DEVICE::getAnyAvailableDevice(DEVICE::getDefaultSearchTime(), []() {
-        py::gil_scoped_acquire acquire;
-        if(PyErr_CheckSignals() != 0) throw py::error_already_set();
-    });
-
-    // if no devices found, then throw
-    if(!found) {
-        auto numConnected = DEVICE::getAllAvailableDevices().size();
-        if(numConnected > 0) {
-            throw std::runtime_error("No available devices (" + std::to_string(numConnected) + " connected, but in use)");
-        } else {
-            throw std::runtime_error("No available devices");
-        }
-    }
-
-    return deviceInfo;
-}
-
 // static std::vector<std::string> deviceGetQueueEventsHelper(dai::Device& d, const std::vector<std::string>& queueNames, std::size_t maxNumEvents,
 // std::chrono::microseconds timeout){
 //     using namespace std::chrono;
@@ -96,7 +69,7 @@ static void bindConstructors(ARG& arg) {
              py::arg("deviceInfo"),
              py::arg("maxUsbSpeed"),
              DOC(dai, DeviceBase, DeviceBase, 3))
-        .def(py::init([](const DeviceInfo& deviceInfo, dai::Path pathToCmd) {
+        .def(py::init([](const DeviceInfo& deviceInfo, std::filesystem::path pathToCmd) {
                  py::gil_scoped_release release;
                  return std::make_unique<D>(deviceInfo, pathToCmd);
              }),
@@ -696,13 +669,13 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
             },
             DOC(dai, DeviceBase, readCalibration))
         .def(
-            "flashCalibration",
+            "tryFlashCalibration",
             [](DeviceBase& d, CalibrationHandler calibrationDataHandler) {
                 py::gil_scoped_release release;
-                return d.flashCalibration(calibrationDataHandler);
+                return d.tryFlashCalibration(calibrationDataHandler);
             },
             py::arg("calibrationDataHandler"),
-            DOC(dai, DeviceBase, flashCalibration))
+            DOC(dai, DeviceBase, tryFlashCalibration))
         .def(
             "setXLinkChunkSize",
             [](DeviceBase& d, int s) {
@@ -752,12 +725,26 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
             },
             DOC(dai, DeviceBase, isEepromAvailable))
         .def(
-            "flashCalibration2",
+            "flashCalibration",
             [](DeviceBase& d, CalibrationHandler ch) {
                 py::gil_scoped_release release;
-                return d.flashCalibration2(ch);
+                return d.flashCalibration(ch);
             },
-            DOC(dai, DeviceBase, flashCalibration2))
+            DOC(dai, DeviceBase, flashCalibration))
+        .def(
+            "setCalibration",
+            [](DeviceBase& d, CalibrationHandler ch) {
+                py::gil_scoped_release release;
+                return d.setCalibration(ch);
+            },
+            DOC(dai, DeviceBase, setCalibration))
+        .def(
+            "getCalibration",
+            [](DeviceBase& d) {
+                py::gil_scoped_release release;
+                return d.getCalibration();
+            },
+            DOC(dai, DeviceBase, getCalibration))
         .def(
             "readCalibration2",
             [](DeviceBase& d) {

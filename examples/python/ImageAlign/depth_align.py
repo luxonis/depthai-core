@@ -41,7 +41,7 @@ if platform == dai.Platform.RVC4:
 stereo.setExtendedDisparity(True)
 sync.setSyncThreshold(timedelta(seconds=1/(2*FPS)))
 
-rgbOut = camRgb.requestOutput(size = (1280, 960), fps = FPS)
+rgbOut = camRgb.requestOutput(size = (1280, 960), fps = FPS, enableUndistortion=True)
 leftOut = left.requestOutput(size = (640, 400), fps = FPS)
 rightOut = right.requestOutput(size = (640, 400), fps = FPS)
 
@@ -133,20 +133,15 @@ with pipeline:
         # Blend when both received
         if frameDepth is not None:
             cvFrame = frameRgb.getCvFrame()
-            cvFrameUndistorted = cv2.undistort(
-                cvFrame,
-                np.array(frameRgb.getTransformation().getIntrinsicMatrix()),
-                np.array(frameRgb.getTransformation().getDistortionCoefficients()),
-            )
             # Colorize the aligned depth
             alignedDepthColorized = colorizeDepth(frameDepth.getFrame())
             # Resize depth to match the rgb frame
             cv2.imshow("Depth aligned", alignedDepthColorized)
 
-            if len(cvFrameUndistorted.shape) == 2:
-                cvFrameUndistorted = cv2.cvtColor(cvFrameUndistorted, cv2.COLOR_GRAY2BGR)
+            if len(cvFrame.shape) == 2:
+                cvFrameUndistorted = cv2.cvtColor(cvFrame, cv2.COLOR_GRAY2BGR)
             blended = cv2.addWeighted(
-                cvFrameUndistorted, rgbWeight, alignedDepthColorized, depthWeight, 0
+                cvFrame, rgbWeight, alignedDepthColorized, depthWeight, 0
             )
             cv2.putText(
                 blended,
