@@ -15,23 +15,6 @@
 namespace dai {
 namespace node {
 
-dcl::PerformanceMode daiPerformanceModeToDclPerformanceMode(dai::DynamicCalibrationControl::PerformanceMode mode) {
-    switch(mode) {
-        case DynamicCalibrationControl::PerformanceMode::DEFAULT:
-            return dcl::PerformanceMode::DEFAULT;
-        case DynamicCalibrationControl::PerformanceMode::STATIC_SCENERY:
-            return dcl::PerformanceMode::STATIC_SCENERY;
-        case DynamicCalibrationControl::PerformanceMode::OPTIMIZE_SPEED:
-            return dcl::PerformanceMode::OPTIMIZE_SPEED;
-        case DynamicCalibrationControl::PerformanceMode::OPTIMIZE_PERFORMANCE:
-            return dcl::PerformanceMode::OPTIMIZE_PERFORMANCE;
-        case DynamicCalibrationControl::PerformanceMode::SKIP_CHECKS:
-            return dcl::PerformanceMode::SKIP_CHECKS;
-        default:
-            throw std::invalid_argument("Unknown PerformanceMode");
-    }
-}
-
 class DynamicCalibration::Impl {
    public:
     /**
@@ -93,6 +76,23 @@ std::pair<std::shared_ptr<dcl::CameraCalibrationHandle>, std::shared_ptr<dcl::Ca
     );
     // clang-format on
     return std::make_pair(calibA, calibB);
+}
+
+dcl::PerformanceMode DclUtils::daiPerformanceModeToDclPerformanceMode(const dai::DynamicCalibrationControl::PerformanceMode mode) {
+    switch(mode) {
+        case DynamicCalibrationControl::PerformanceMode::DEFAULT:
+            return dcl::PerformanceMode::DEFAULT;
+        case DynamicCalibrationControl::PerformanceMode::STATIC_SCENERY:
+            return dcl::PerformanceMode::STATIC_SCENERY;
+        case DynamicCalibrationControl::PerformanceMode::OPTIMIZE_SPEED:
+            return dcl::PerformanceMode::OPTIMIZE_SPEED;
+        case DynamicCalibrationControl::PerformanceMode::OPTIMIZE_PERFORMANCE:
+            return dcl::PerformanceMode::OPTIMIZE_PERFORMANCE;
+        case DynamicCalibrationControl::PerformanceMode::SKIP_CHECKS:
+            return dcl::PerformanceMode::SKIP_CHECKS;
+        default:
+            throw std::invalid_argument("Unknown PerformanceMode");
+    }
 }
 
 #define DCL_DISTORTION_SIZE (14)
@@ -246,7 +246,7 @@ void DynamicCalibration::setCalibration(CalibrationHandler& handler) {
 }
 
 DynamicCalibration::ErrorCode DynamicCalibration::runQualityCheck(const bool force) {
-    dcl::PerformanceMode pm = force ? dcl::PerformanceMode::SKIP_CHECKS : daiPerformanceModeToDclPerformanceMode(performanceMode);
+    dcl::PerformanceMode pm = force ? dcl::PerformanceMode::SKIP_CHECKS : DclUtils::daiPerformanceModeToDclPerformanceMode(performanceMode);
     logger->info("Running calibration quality check (force={} mode={})", force, static_cast<int>(pm));
 
     auto dclResult = pimplDCL->dynCalibImpl.checkCalibration(pimplDCL->dcDevice, pimplDCL->socketA, pimplDCL->socketB, pm);
@@ -270,7 +270,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::runQualityCheck(const bool for
 }
 
 DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::CalibrationHandler& currentHandler, const bool force) {
-    dcl::PerformanceMode pm = force ? dcl::PerformanceMode::SKIP_CHECKS : daiPerformanceModeToDclPerformanceMode(performanceMode);
+    dcl::PerformanceMode pm = force ? dcl::PerformanceMode::SKIP_CHECKS : DclUtils::daiPerformanceModeToDclPerformanceMode(performanceMode);
     logger->info("Running calibration (force={} mode={})", force, static_cast<int>(pm));
     auto dclResult = pimplDCL->dynCalibImpl.findNewCalibration(pimplDCL->dcDevice, pimplDCL->socketA, pimplDCL->socketB, pm);
     if(!dclResult.passed()) {
@@ -353,7 +353,8 @@ DynamicCalibration::ErrorCode DynamicCalibration::runLoadImage(const bool blocki
 }
 
 DynamicCalibration::ErrorCode DynamicCalibration::computeCoverage() {
-    auto resultCoverage = pimplDCL->dynCalibImpl.computeCoverage(pimplDCL->sensorA, pimplDCL->sensorB, daiPerformanceModeToDclPerformanceMode(performanceMode));
+    auto resultCoverage =
+        pimplDCL->dynCalibImpl.computeCoverage(pimplDCL->sensorA, pimplDCL->sensorB, DclUtils::daiPerformanceModeToDclPerformanceMode(performanceMode));
 
     if(!resultCoverage.passed()) {
         throw std::runtime_error("Coverage check failed!");
