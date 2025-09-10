@@ -30,6 +30,8 @@ struct DclUtils {
         const std::pair<int, int> resolutionB);
 
     static dcl::ImageData cvMatToImageData(const cv::Mat& mat);
+
+    static dcl::PerformanceMode daiPerformanceModeToDclPerformanceMode(const dai::DynamicCalibrationControl::PerformanceMode mode);
 };
 
 }  // namespace node
