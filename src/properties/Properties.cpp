@@ -29,6 +29,7 @@
 #include "depthai/properties/SystemLoggerProperties.hpp"
 #include "depthai/properties/ThermalProperties.hpp"
 #include "depthai/properties/ToFProperties.hpp"
+#include "depthai/properties/DeviceNodeGroupProperties.hpp"
 #include "depthai/properties/UVCProperties.hpp"
 #include "depthai/properties/VideoEncoderProperties.hpp"
 #include "depthai/properties/WarpProperties.hpp"
@@ -57,6 +58,7 @@ ImageAlignProperties::~ImageAlignProperties() = default;
 ImageManipProperties::~ImageManipProperties() = default;
 ImageFiltersProperties::~ImageFiltersProperties() = default;
 ToFDepthConfidenceFilterProperties::~ToFDepthConfidenceFilterProperties() = default;
+DeviceNodeGroupProperties::~DeviceNodeGroupProperties() = default;
 MessageDemuxProperties::~MessageDemuxProperties() = default;
 MonoCameraProperties::~MonoCameraProperties() = default;
 NeuralNetworkProperties::~NeuralNetworkProperties() = default;
