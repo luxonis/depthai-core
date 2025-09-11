@@ -10,6 +10,14 @@
 #include "fp16/fp16.h"
 
 namespace dai {
+
+NNData::~NNData() = default;
+
+void NNData::serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const {
+    metadata = utility::serialize(*this);
+    datatype = DatatypeEnum::NNData;
+}
+
 NNData::NNData(size_t size) : NNData() {
     auto mem = std::make_shared<VectorMemory>();
     mem->resize(size);

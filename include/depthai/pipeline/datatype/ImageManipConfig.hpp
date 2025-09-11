@@ -21,7 +21,7 @@
 namespace dai {
 
 struct OpBase {
-    virtual ~OpBase() = default;
+    virtual ~OpBase();
     virtual std::string toStr() const = 0;
 };
 
@@ -409,7 +409,7 @@ class ImageManipConfig : public Buffer {
 
    public:
     ImageManipConfig() = default;
-    virtual ~ImageManipConfig() = default;
+    virtual ~ImageManipConfig();
 
     using ResizeMode = ImageManipOpsBase<Container>::ResizeMode;
 
@@ -562,9 +562,6 @@ class ImageManipConfig : public Buffer {
 
     DEPTHAI_SERIALIZE(ImageManipConfig, base, outputFrameType, reusePreviousImage, skipCurrentImage);
 
-    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
-        metadata = utility::serialize(*this);
-        datatype = DatatypeEnum::ImageManipConfig;
-    };
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 };
 }  // namespace dai

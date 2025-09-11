@@ -75,12 +75,9 @@ class ImgFrame : public Buffer, public ProtoSerializable {
     ImgFrame(long fd);
     ImgFrame(size_t size);
     ImgFrame(long fd, size_t size);
-    virtual ~ImgFrame() = default;
+    virtual ~ImgFrame();
 
-    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
-        metadata = utility::serialize(*this);
-        datatype = DatatypeEnum::ImgFrame;
-    };
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF
     /**

@@ -317,6 +317,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/node/host/HostNode.cpp
     src/pipeline/node/host/RGBD.cpp
     src/pipeline/datatype/DatatypeEnum.cpp
+    src/pipeline/datatype/ADataType.cpp
     src/pipeline/node/PointCloud.cpp
     src/pipeline/datatype/Buffer.cpp
     src/pipeline/datatype/ImgFrame.cpp
@@ -325,6 +326,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/ImgAnnotations.cpp
     src/pipeline/datatype/ImageManipConfig.cpp
     src/pipeline/datatype/ImageFiltersConfig.cpp
+    src/pipeline/datatype/ImageAlignConfig.cpp
     src/pipeline/datatype/CameraControl.cpp
     src/pipeline/datatype/NNData.cpp
     src/pipeline/datatype/ImgDetections.cpp
@@ -349,6 +351,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/PointCloudData.cpp
     src/pipeline/datatype/RGBDData.cpp
     src/pipeline/datatype/MessageGroup.cpp
+    src/pipeline/datatype/ThermalConfig.cpp
     src/pipeline/datatype/TransformData.cpp
     src/utility/H26xParsers.cpp
     src/utility/ImageManipImpl.cpp
@@ -402,6 +405,8 @@ endif()
 if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
     list(APPEND TARGET_CORE_SOURCES
         src/pipeline/node/DynamicCalibrationNode.cpp
+        src/pipeline/datatype/DynamicCalibrationConfig.cpp
+        src/pipeline/datatype/DynamicCalibrationResults.cpp
     )
 endif()
 

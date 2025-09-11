@@ -7,6 +7,13 @@
 #endif
 namespace dai {
 
+PointCloudData::~PointCloudData() = default;
+
+void PointCloudData::serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const {
+    metadata = utility::serialize(*this);
+    datatype = DatatypeEnum::PointCloudData;
+}
+
 std::vector<Point3f> PointCloudData::getPoints() {
     if(isColor()) {
         span<const Point3fRGBA> pointData(reinterpret_cast<Point3fRGBA*>(data->getData().data()), data->getData().size() / sizeof(Point3fRGBA));
