@@ -7,6 +7,7 @@
 #include "depthai/properties/CastProperties.hpp"
 #include "depthai/properties/ColorCameraProperties.hpp"
 #include "depthai/properties/DetectionParserProperties.hpp"
+#include "depthai/properties/DeviceNodeGroupProperties.hpp"
 #include "depthai/properties/EdgeDetectorProperties.hpp"
 #include "depthai/properties/FeatureTrackerProperties.hpp"
 #include "depthai/properties/GlobalProperties.hpp"
@@ -29,12 +30,15 @@
 #include "depthai/properties/SystemLoggerProperties.hpp"
 #include "depthai/properties/ThermalProperties.hpp"
 #include "depthai/properties/ToFProperties.hpp"
-#include "depthai/properties/DeviceNodeGroupProperties.hpp"
 #include "depthai/properties/UVCProperties.hpp"
 #include "depthai/properties/VideoEncoderProperties.hpp"
 #include "depthai/properties/WarpProperties.hpp"
 #include "depthai/properties/internal/XLinkInProperties.hpp"
 #include "depthai/properties/internal/XLinkOutProperties.hpp"
+
+#ifdef DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT
+    #include "depthai/properties/DynamicCalibrationProperties.hpp"
+#endif
 
 namespace dai {
 
@@ -79,5 +83,9 @@ VideoEncoderProperties::~VideoEncoderProperties() = default;
 WarpProperties::~WarpProperties() = default;
 GlobalProperties::~GlobalProperties() = default;
 CastProperties::~CastProperties() = default;
+
+#ifdef DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT
+DynamicCalibrationProperties::~DynamicCalibrationProperties() = default;
+#endif
 
 }  // namespace dai

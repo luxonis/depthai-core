@@ -124,7 +124,7 @@ class SharedMemory : public Memory {
             throw std::runtime_error("Failed to set shared memory size");
         }
 #else
-        (void)size; // size is not used
+        (void)size;  // size is not used
 #endif
 
         mapFd();
