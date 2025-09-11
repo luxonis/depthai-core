@@ -8,6 +8,9 @@ class ThreadedHostNode : public ThreadedNode {
    public:
     constexpr static const char* NAME = "HostNode";
     using ThreadedNode::ThreadedNode;
+
+    ~ThreadedHostNode() override;
+
     bool runOnHost() const final {
         // Host node don't contain the necessary information to be serialized and sent to the device
         return true;

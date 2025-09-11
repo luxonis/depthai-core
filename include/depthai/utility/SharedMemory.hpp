@@ -77,14 +77,7 @@ class SharedMemory : public Memory {
         mapFd();
     }
 
-    ~SharedMemory() {
-        unmapFd();
-#if defined(__unix__) && !defined(__APPLE__)
-        if(fd > 0) {
-            close(fd);
-        }
-#endif
-    }
+    ~SharedMemory() override;
 
     SharedMemory& operator=(long argFd) {
         unmapFd();

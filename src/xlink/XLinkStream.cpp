@@ -76,6 +76,25 @@ StreamPacketDesc::~StreamPacketDesc() noexcept {
     XLinkDeallocateMoveData(data, length);
 }
 
+span<std::uint8_t> StreamPacketMemory::getData() override {
+    return {data, size};
+}
+span<const std::uint8_t> StreamPacketMemory::getData() const override {
+    return {data, size};
+}
+std::size_t StreamPacketMemory::getMaxSize() const override {
+    return length;
+}
+std::size_t StreamPacketMemory::getOffset() const override {
+    return 0;
+}
+void StreamPacketMemory::setSize(size_t size) override {
+    if(size > getMaxSize()) {
+        throw std::invalid_argument("Cannot set size larger than max size");
+    }
+    this->size = size;
+}
+
 ////////////////////
 // BLOCKING VERSIONS
 ////////////////////

@@ -277,6 +277,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/Node.cpp
     src/pipeline/InputQueue.cpp
     src/pipeline/ThreadedNode.cpp
+    src/pipeline/ThreadedHostNode.cpp
     src/pipeline/DeviceNode.cpp
     src/pipeline/DeviceNodeGroup.cpp
     src/pipeline/node/internal/XLinkIn.cpp
@@ -353,9 +354,13 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/MessageGroup.cpp
     src/pipeline/datatype/ThermalConfig.cpp
     src/pipeline/datatype/TransformData.cpp
+    src/properties/Properties.cpp
     src/utility/H26xParsers.cpp
     src/utility/ImageManipImpl.cpp
     src/utility/ObjectTrackerImpl.cpp
+    src/utility/Memory.cpp
+    src/utility/VectorMemory.cpp
+    src/utility/SharedMemory.cpp
     src/utility/Initialization.cpp
     src/utility/Resources.cpp
     src/utility/Platform.cpp

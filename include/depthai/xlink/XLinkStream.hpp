@@ -49,24 +49,11 @@ class StreamPacketMemory : public StreamPacketDesc, public Memory {
         size = length;
         return *this;
     }
-    span<std::uint8_t> getData() override {
-        return {data, size};
-    }
-    span<const std::uint8_t> getData() const override {
-        return {data, size};
-    }
-    std::size_t getMaxSize() const override {
-        return length;
-    }
-    std::size_t getOffset() const override {
-        return 0;
-    }
-    void setSize(size_t size) override {
-        if(size > getMaxSize()) {
-            throw std::invalid_argument("Cannot set size larger than max size");
-        }
-        this->size = size;
-    }
+    span<std::uint8_t> getData() override;
+    span<const std::uint8_t> getData() const override;
+    std::size_t getMaxSize() const override;
+    std::size_t getOffset() const override;
+    void setSize(size_t size) override;
 };
 
 class XLinkStream {
