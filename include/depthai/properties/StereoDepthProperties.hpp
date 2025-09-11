@@ -8,6 +8,9 @@
 
 namespace dai {
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wweak-vtables"
+
 /**
  * Specify properties for StereoDepth
  */
@@ -189,6 +192,7 @@ struct StereoDepthProperties : PropertiesSerializable<Properties, StereoDepthPro
     std::optional<float> alphaScaling;
 };
 
+#pragma clang diagnostic pop
 DEPTHAI_SERIALIZE_EXT(StereoDepthProperties,
                       initialConfig,
                       depthAlignCamera,

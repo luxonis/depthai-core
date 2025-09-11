@@ -6,6 +6,9 @@
 
 namespace dai {
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wweak-vtables"
+
 /**
  * Specify properties for Sync.
  */
@@ -22,5 +25,6 @@ struct SyncProperties : PropertiesSerializable<Properties, SyncProperties> {
 };
 
 DEPTHAI_SERIALIZE_EXT(SyncProperties, syncThresholdNs, syncAttempts);
+#pragma clang diagnostic pop
 
 }  // namespace dai

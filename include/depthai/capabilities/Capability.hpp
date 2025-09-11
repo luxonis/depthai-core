@@ -1,8 +1,10 @@
 #pragma once
 
 #include <cstring>
-
 namespace dai {
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wweak-vtables"
 
 class Capability {
    public:
@@ -10,6 +12,8 @@ class Capability {
     // virtual Capability getIntersection(const Capability& other) = 0;
     virtual ~Capability() = default;
 };
+
+#pragma clang diagnostic pop
 
 // Capability CRTP class
 template <typename Base, typename Derived>

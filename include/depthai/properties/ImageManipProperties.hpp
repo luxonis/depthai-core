@@ -6,6 +6,9 @@
 
 namespace dai {
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wweak-vtables"
+
 /**
  * Specify properties for ImageManip
  */
@@ -41,5 +44,7 @@ struct ImageManipProperties : PropertiesSerializable<Properties, ImageManipPrope
 };
 
 DEPTHAI_SERIALIZE_EXT(ImageManipProperties, initialConfig, outputFrameSize, numFramesPool, backend, performanceMode);
+
+#pragma clang diagnostic pop
 
 }  // namespace dai

@@ -7,6 +7,9 @@
 
 namespace dai {
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wweak-vtables"
+
 /**
  * Specify properties for ToF
  */
@@ -56,6 +59,7 @@ struct ToFProperties : PropertiesSerializable<Properties, ToFProperties> {
      */
     int numFramesPoolRaw = 3;
 };
+#pragma clang diagnostic pop
 
 DEPTHAI_SERIALIZE_EXT(ToFProperties, initialConfig, numFramesPool, numShaves, warpHwIds, boardSocket, cameraName, imageOrientation, fps, numFramesPoolRaw);
 

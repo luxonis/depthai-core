@@ -7,6 +7,9 @@
 
 namespace dai {
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wweak-vtables"
+
 /**
  * Specify PoolProperties options such as pool uri, pool name, ...
  */
@@ -31,6 +34,7 @@ struct PoolProperties : PropertiesSerializable<Properties, PoolProperties> {
      */
     std::optional<ProcessorType> processor = std::nullopt;
 };
+#pragma clang diagnostic pop
 
 DEPTHAI_SERIALIZE_EXT(PoolProperties, numMessages, maxMessageSize, datatype, processor);
 

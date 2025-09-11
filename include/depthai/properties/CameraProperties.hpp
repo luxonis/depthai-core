@@ -10,6 +10,9 @@
 
 namespace dai {
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wweak-vtables"
+
 /**
  *  Specify properties for ColorCamera such as camera ID, ...
  */
@@ -91,6 +94,8 @@ struct CameraProperties : PropertiesSerializable<Properties, CameraProperties> {
     int numFramesPoolPreview = 4;
     int numFramesPoolStill = 4;
 };
+
+#pragma clang diagnostic pop
 
 DEPTHAI_SERIALIZE_EXT(CameraProperties,
                       initialControl,

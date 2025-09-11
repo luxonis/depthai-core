@@ -6,6 +6,9 @@
 
 namespace dai {
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wweak-vtables"
+
 /**
  * Specify properties for AprilTag
  */
@@ -18,6 +21,7 @@ struct AprilTagProperties : PropertiesSerializable<Properties, AprilTagPropertie
     /// How many threads to use for AprilTag detection
     int numThreads = 1;
 };
+#pragma clang diagnostic pop
 
 DEPTHAI_SERIALIZE_EXT(AprilTagProperties, initialConfig, inputConfigSync);
 

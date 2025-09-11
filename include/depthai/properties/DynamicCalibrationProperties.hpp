@@ -4,6 +4,9 @@
 
 namespace dai {
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wweak-vtables"
+
 /**
  * Specify properties for Dynamic calibration.
  */
@@ -11,6 +14,8 @@ namespace dai {
 struct DynamicCalibrationProperties : PropertiesSerializable<Properties, DynamicCalibrationProperties> {
     bool emptyBool;
 };
+
+#pragma clang diagnostic pop
 
 DEPTHAI_SERIALIZE_EXT(DynamicCalibrationProperties, emptyBool);
 

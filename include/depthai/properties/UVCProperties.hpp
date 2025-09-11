@@ -4,6 +4,9 @@
 
 namespace dai {
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wweak-vtables"
+
 /**
  * Properties for UVC node
  */
@@ -19,5 +22,6 @@ struct UVCProperties : PropertiesSerializable<Properties, UVCProperties> {
 };
 
 DEPTHAI_SERIALIZE_EXT(UVCProperties, gpioInit, gpioStreamOn, gpioStreamOff);
+#pragma clang diagnostic pop
 
 }  // namespace dai

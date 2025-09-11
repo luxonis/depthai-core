@@ -6,6 +6,9 @@
 
 namespace dai {
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wweak-vtables"
+
 /**
  * Specify ScriptProperties options such as script uri, script name, ...
  */
@@ -25,6 +28,8 @@ struct ScriptProperties : PropertiesSerializable<Properties, ScriptProperties> {
      */
     ProcessorType processor = ProcessorType::LEON_MSS;
 };
+
+#pragma clang diagnostic pop
 
 DEPTHAI_SERIALIZE_EXT(ScriptProperties, scriptUri, scriptName, processor);
 

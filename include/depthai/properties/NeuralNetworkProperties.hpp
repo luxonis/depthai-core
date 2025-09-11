@@ -5,6 +5,9 @@
 
 namespace dai {
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wweak-vtables"
+
 /**
  * Specify properties for NeuralNetwork such as blob path, ...
  */
@@ -54,6 +57,7 @@ struct NeuralNetworkProperties : PropertiesSerializable<Properties, NeuralNetwor
      */
     std::map<std::string, std::string> backendProperties;
 };
+#pragma clang diagnostic pop
 
 DEPTHAI_SERIALIZE_EXT(
     NeuralNetworkProperties, modelSource, blobSize, blobUri, modelUri, numFrames, numThreads, numNCEPerThread, numShavesPerThread, backend, backendProperties);

@@ -6,6 +6,9 @@
 
 namespace dai {
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wweak-vtables"
+
 class ProtoSerializable {
    public:
     struct SchemaPair {
@@ -56,5 +59,7 @@ class ProtoSerializable {
     }
 #endif
 };
+
+#pragma clang diagnostic pop
 
 }  // namespace dai

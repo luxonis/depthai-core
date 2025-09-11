@@ -5,6 +5,9 @@
 namespace dai {
 namespace internal {
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wweak-vtables"
+
 /**
  * Specify properties for XLinkOut such as stream name, ...
  */
@@ -24,6 +27,8 @@ struct XLinkOutProperties : PropertiesSerializable<Properties, XLinkOutPropertie
      */
     bool metadataOnly = false;
 };
+
+#pragma clang diagnostic pop
 
 DEPTHAI_SERIALIZE_EXT(XLinkOutProperties, maxFpsLimit, streamName, metadataOnly);
 

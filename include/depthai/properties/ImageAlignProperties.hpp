@@ -9,6 +9,9 @@
 
 namespace dai {
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wweak-vtables"
+
 /**
  * Specify properties for ImageAlign
  */
@@ -42,6 +45,8 @@ struct ImageAlignProperties : PropertiesSerializable<Properties, ImageAlignPrope
      */
     std::int32_t numShaves = 2;
 };
+
+#pragma clang diagnostic pop
 
 DEPTHAI_SERIALIZE_EXT(ImageAlignProperties, initialConfig, numFramesPool, alignWidth, alignHeight, warpHwIds, interpolation, outKeepAspectRatio, numShaves);
 

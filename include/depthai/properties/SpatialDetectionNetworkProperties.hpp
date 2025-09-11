@@ -13,6 +13,9 @@
 
 namespace dai {
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wweak-vtables"
+
 /**
  * Specify properties for SpatialDetectionNetwork
  */
@@ -22,6 +25,8 @@ struct SpatialDetectionNetworkProperties : PropertiesSerializable<Properties, Sp
     SpatialLocationCalculatorAlgorithm calculationAlgorithm = SpatialLocationCalculatorAlgorithm::MEDIAN;
     std::int32_t stepSize = SpatialLocationCalculatorConfigData::AUTO;
 };
+
+#pragma clang diagnostic pop
 
 DEPTHAI_SERIALIZE_EXT(SpatialDetectionNetworkProperties, detectedBBScaleFactor, depthThresholds, calculationAlgorithm);
 

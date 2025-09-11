@@ -8,6 +8,9 @@
 
 namespace dai {
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wweak-vtables"
+
 /**
  * Specify properties for PointCloud
  */
@@ -16,6 +19,8 @@ struct PointCloudProperties : PropertiesSerializable<Properties, PointCloudPrope
 
     int numFramesPool = 4;
 };
+
+#pragma clang diagnostic pop
 
 DEPTHAI_SERIALIZE_EXT(PointCloudProperties, initialConfig, numFramesPool);
 

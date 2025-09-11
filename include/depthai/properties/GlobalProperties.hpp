@@ -6,6 +6,8 @@
 
 namespace dai {
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wweak-vtables"
 /**
  * Specify properties which apply for whole pipeline
  */
@@ -69,6 +71,7 @@ struct GlobalProperties : PropertiesSerializable<Properties, GlobalProperties> {
      */
     uint32_t sippDmaBufferSize = SIPP_DMA_BUFFER_DEFAULT_SIZE;
 };
+#pragma clang diagnostic pop
 
 DEPTHAI_SERIALIZE_EXT(GlobalProperties,
                       leonCssFrequencyHz,

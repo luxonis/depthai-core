@@ -8,12 +8,17 @@
 
 namespace dai {
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wweak-vtables"
+
 /**
  * Specify properties for SpatialLocationCalculator
  */
 struct SpatialLocationCalculatorProperties : PropertiesSerializable<Properties, SpatialLocationCalculatorProperties> {
     SpatialLocationCalculatorConfig roiConfig;
 };
+
+#pragma clang diagnostic pop
 
 DEPTHAI_SERIALIZE_EXT(SpatialLocationCalculatorProperties, roiConfig);
 

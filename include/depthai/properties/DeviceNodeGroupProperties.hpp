@@ -4,6 +4,9 @@
 
 namespace dai {
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wweak-vtables"
+
 /**
  * @brief A dummy property struct for the DeviceNodeGroup node to comply with the DeviceNode API
  *
@@ -12,6 +15,8 @@ struct DeviceNodeGroupProperties : PropertiesSerializable<Properties, DeviceNode
     // Dummy property
     int dummy = 0;
 };
+
+#pragma clang diagnostic pop
 
 DEPTHAI_SERIALIZE_EXT(DeviceNodeGroupProperties, dummy);
 

@@ -7,6 +7,9 @@
 
 namespace dai {
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wweak-vtables"
+
 /**
  * Specify properties for Thermal
  */
@@ -31,6 +34,7 @@ struct ThermalProperties : PropertiesSerializable<Properties, ThermalProperties>
      */
     float fps = 25.0;
 };
+#pragma clang diagnostic pop
 
 DEPTHAI_SERIALIZE_EXT(ThermalProperties, initialConfig, numFramesPool, boardSocket, fps);
 

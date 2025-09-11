@@ -37,6 +37,9 @@ enum struct ImgResizeMode {
     LETTERBOX,
 };
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wweak-vtables"
+
 class ImgFrameCapability : public CapabilityCRTP<Capability, ImgFrameCapability> {
    public:
     constexpr static const char* NAME = "dai/img-frame";
@@ -55,5 +58,7 @@ class ImgFrameCapability : public CapabilityCRTP<Capability, ImgFrameCapability>
     class Impl;
     spimpl::impl_ptr<Impl> pimpl;
 };
+
+#pragma clang diagnostic pop
 
 }  // namespace dai

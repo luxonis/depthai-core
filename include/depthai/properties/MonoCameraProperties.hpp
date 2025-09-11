@@ -11,6 +11,9 @@
 
 namespace dai {
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wweak-vtables"
+
 /**
  * Specify properties for MonoCamera such as camera ID, ...
  */
@@ -94,6 +97,8 @@ struct MonoCameraProperties : PropertiesSerializable<Properties, MonoCameraPrope
      */
     std::optional<bool> rawPacked;
 };
+
+#pragma clang diagnostic pop
 
 DEPTHAI_SERIALIZE_EXT(MonoCameraProperties,
                       initialControl,

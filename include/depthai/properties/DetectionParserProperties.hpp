@@ -8,6 +8,9 @@
 
 namespace dai {
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wweak-vtables"
+
 /**
  * Specify properties for DetectionParser
  */
@@ -21,6 +24,8 @@ struct DetectionParserProperties : PropertiesSerializable<Properties, DetectionP
     /// Options for parser
     DetectionParserOptions parser;
 };
+
+#pragma clang diagnostic pop
 
 DEPTHAI_SERIALIZE_EXT(DetectionParserProperties, numFramesPool, networkInputs, parser);
 

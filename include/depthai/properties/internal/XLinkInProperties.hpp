@@ -6,6 +6,9 @@
 namespace dai {
 namespace internal {
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wweak-vtables"
+
 /**
  * Specify properties for XLinkIn such as stream name, ...
  */
@@ -26,6 +29,8 @@ struct XLinkInProperties : PropertiesSerializable<Properties, XLinkInProperties>
      */
     std::uint32_t numFrames = 8;
 };
+
+#pragma clang diagnostic pop
 
 DEPTHAI_SERIALIZE_EXT(XLinkInProperties, streamName, maxDataSize, numFrames);
 

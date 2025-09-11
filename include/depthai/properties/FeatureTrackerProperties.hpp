@@ -8,6 +8,9 @@
 
 namespace dai {
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wweak-vtables"
+
 /**
  * Specify properties for FeatureTracker
  */
@@ -34,6 +37,8 @@ struct FeatureTrackerProperties : PropertiesSerializable<Properties, FeatureTrac
      */
     std::int32_t numMemorySlices = 1;
 };
+
+#pragma clang diagnostic pop
 
 DEPTHAI_SERIALIZE_EXT(FeatureTrackerProperties, initialConfig, numShaves, numMemorySlices);
 

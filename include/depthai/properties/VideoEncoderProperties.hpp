@@ -6,6 +6,9 @@
 
 namespace dai {
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wweak-vtables"
+
 /**
  * Specify properties for VideoEncoder such as profile, bitrate, ...
  */
@@ -73,6 +76,8 @@ struct VideoEncoderProperties : PropertiesSerializable<Properties, VideoEncoderP
      */
     float frameRate = 30.0f;
 };
+
+#pragma clang diagnostic pop
 
 DEPTHAI_SERIALIZE_EXT(VideoEncoderProperties,
                       bitrate,
