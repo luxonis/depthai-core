@@ -6,11 +6,6 @@
 
 namespace dai {
 
-#ifdef __clang__
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wweak-vtables"
-#endif
-
 /**
  * Specify properties for Sync.
  */
@@ -24,11 +19,10 @@ struct SyncProperties : PropertiesSerializable<Properties, SyncProperties> {
      * The number of syncing attempts before fail (num of replaced messages).
      */
     int32_t syncAttempts = -1;
+
+    ~SyncProperties() override;
 };
 
 DEPTHAI_SERIALIZE_EXT(SyncProperties, syncThresholdNs, syncAttempts);
-#ifdef __clang__
-#pragma clang diagnostic pop
-#endif
 
 }  // namespace dai

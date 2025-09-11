@@ -43,8 +43,8 @@
 #if defined(__clang__)
     #if __has_warning("-Wswitch-enum")
         #ifdef __clang__
-#pragma clang diagnostic pop
-#endif
+            #pragma clang diagnostic pop
+        #endif
     #endif
 #elif defined(__GNUC__)
     #pragma GCC diagnostic pop

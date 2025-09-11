@@ -111,8 +111,8 @@ class XLinkStream {
 };
 
 #ifdef __clang__
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wweak-vtables"
+    #pragma clang diagnostic push
+    #pragma clang diagnostic ignored "-Wweak-vtables"
 #endif
 
 struct XLinkError : public std::runtime_error {
@@ -134,7 +134,7 @@ struct XLinkWriteError : public XLinkError {
 };
 
 #ifdef __clang__
-#pragma clang diagnostic pop
+    #pragma clang diagnostic pop
 #endif
 
 }  // namespace dai

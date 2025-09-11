@@ -4,11 +4,6 @@
 
 namespace dai {
 
-#ifdef __clang__
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wweak-vtables"
-#endif
-
 /**
  * Properties for UVC node
  */
@@ -21,11 +16,10 @@ struct UVCProperties : PropertiesSerializable<Properties, UVCProperties> {
 
     /// <gpio_number, value> list for GPIOs to set when streaming is disabled
     std::unordered_map<int, int> gpioStreamOff;
+
+    ~UVCProperties() override;
 };
 
 DEPTHAI_SERIALIZE_EXT(UVCProperties, gpioInit, gpioStreamOn, gpioStreamOff);
-#ifdef __clang__
-#pragma clang diagnostic pop
-#endif
 
 }  // namespace dai

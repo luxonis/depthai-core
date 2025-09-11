@@ -8,11 +8,6 @@
 
 namespace dai {
 
-#ifdef __clang__
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wweak-vtables"
-#endif
-
 /**
  * Specify properties for EdgeDetector
  */
@@ -27,12 +22,10 @@ struct EdgeDetectorProperties : PropertiesSerializable<Properties, EdgeDetectorP
 
     /// Num frames in output pool
     int numFramesPool = 4;
+
+    ~EdgeDetectorProperties() override;
 };
 
 DEPTHAI_SERIALIZE_EXT(EdgeDetectorProperties, initialConfig, outputFrameSize, numFramesPool);
-
-#ifdef __clang__
-#pragma clang diagnostic pop
-#endif
 
 }  // namespace dai

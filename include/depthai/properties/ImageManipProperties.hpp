@@ -6,11 +6,6 @@
 
 namespace dai {
 
-#ifdef __clang__
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wweak-vtables"
-#endif
-
 /**
  * Specify properties for ImageManip
  */
@@ -43,12 +38,10 @@ struct ImageManipProperties : PropertiesSerializable<Properties, ImageManipPrope
     /// Using HW backend can cause some unexpected behavior when using multiple ImageManip nodes in series
     Backend backend = Backend::CPU;
     PerformanceMode performanceMode = PerformanceMode::PERFORMANCE;
+
+    ~ImageManipProperties() override;
 };
 
 DEPTHAI_SERIALIZE_EXT(ImageManipProperties, initialConfig, outputFrameSize, numFramesPool, backend, performanceMode);
-
-#ifdef __clang__
-#pragma clang diagnostic pop
-#endif
 
 }  // namespace dai

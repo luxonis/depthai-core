@@ -7,11 +7,6 @@
 
 namespace dai {
 
-#ifdef __clang__
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wweak-vtables"
-#endif
-
 /**
  * Specify properties for ToF
  */
@@ -60,10 +55,9 @@ struct ToFProperties : PropertiesSerializable<Properties, ToFProperties> {
      * Pool sizes
      */
     int numFramesPoolRaw = 3;
+
+    ~ToFProperties() override;
 };
-#ifdef __clang__
-#pragma clang diagnostic pop
-#endif
 
 DEPTHAI_SERIALIZE_EXT(ToFProperties, initialConfig, numFramesPool, numShaves, warpHwIds, boardSocket, cameraName, imageOrientation, fps, numFramesPoolRaw);
 

@@ -11,11 +11,6 @@
 
 namespace dai {
 
-#ifdef __clang__
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wweak-vtables"
-#endif
-
 /**
  * Specify properties for MonoCamera such as camera ID, ...
  */
@@ -98,11 +93,9 @@ struct MonoCameraProperties : PropertiesSerializable<Properties, MonoCameraPrope
      * with both packed/unpacked, but disabled for other cameras like ToF.
      */
     std::optional<bool> rawPacked;
-};
 
-#ifdef __clang__
-#pragma clang diagnostic pop
-#endif
+    ~MonoCameraProperties() override;
+};
 
 DEPTHAI_SERIALIZE_EXT(MonoCameraProperties,
                       initialControl,

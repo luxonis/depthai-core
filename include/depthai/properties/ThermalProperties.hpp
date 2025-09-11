@@ -7,11 +7,6 @@
 
 namespace dai {
 
-#ifdef __clang__
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wweak-vtables"
-#endif
-
 /**
  * Specify properties for Thermal
  */
@@ -35,10 +30,9 @@ struct ThermalProperties : PropertiesSerializable<Properties, ThermalProperties>
      * Camera sensor FPS
      */
     float fps = 25.0;
+
+    ~ThermalProperties() override;
 };
-#ifdef __clang__
-#pragma clang diagnostic pop
-#endif
 
 DEPTHAI_SERIALIZE_EXT(ThermalProperties, initialConfig, numFramesPool, boardSocket, fps);
 

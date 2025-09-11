@@ -8,11 +8,6 @@
 
 namespace dai {
 
-#ifdef __clang__
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wweak-vtables"
-#endif
-
 /**
  * Specify properties for Cast
  */
@@ -21,11 +16,9 @@ struct CastProperties : PropertiesSerializable<Properties, CastProperties> {
     std::optional<float> scale;
     std::optional<float> offset;
     int numFramesPool = 4;
-};
 
-#ifdef __clang__
-#pragma clang diagnostic pop
-#endif
+    ~CastProperties() override;
+};
 
 DEPTHAI_SERIALIZE_EXT(CastProperties, numFramesPool, outputType, scale, offset);
 

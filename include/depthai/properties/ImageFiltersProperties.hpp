@@ -7,41 +7,26 @@
 #include "depthai/properties/Properties.hpp"
 
 namespace dai {
-
-#ifdef __clang__
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wweak-vtables"
-#endif
-
 struct ImageFiltersProperties : PropertiesSerializable<Properties, ImageFiltersProperties> {
     /**
      * Initial config for the filter pipeline
      */
     ImageFiltersConfig initialConfig;
+
+    ~ImageFiltersProperties() override;
 };
 
 DEPTHAI_SERIALIZE_EXT(ImageFiltersProperties, initialConfig);
-
-#ifdef __clang__
-#pragma clang diagnostic pop
-#endif
-
-#ifdef __clang__
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wweak-vtables"
-#endif
 
 struct ToFDepthConfidenceFilterProperties : PropertiesSerializable<Properties, ToFDepthConfidenceFilterProperties> {
     /**
      * Initial config for the ToF depth confidence filter
      */
     ToFDepthConfidenceFilterConfig initialConfig;
+
+    ~ToFDepthConfidenceFilterProperties() override;
 };
 
 DEPTHAI_SERIALIZE_EXT(ToFDepthConfidenceFilterProperties, initialConfig);
-
-#ifdef __clang__
-#pragma clang diagnostic pop
-#endif
 
 }  // namespace dai

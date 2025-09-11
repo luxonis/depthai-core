@@ -6,11 +6,6 @@
 
 namespace dai {
 
-#ifdef __clang__
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wweak-vtables"
-#endif
-
 class ProtoSerializable {
    public:
     struct SchemaPair {
@@ -18,7 +13,7 @@ class ProtoSerializable {
         std::string schema;
     };
 
-    virtual ~ProtoSerializable() = default;
+    virtual ~ProtoSerializable();
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF
     /**
@@ -61,9 +56,5 @@ class ProtoSerializable {
     }
 #endif
 };
-
-#ifdef __clang__
-#pragma clang diagnostic pop
-#endif
 
 }  // namespace dai

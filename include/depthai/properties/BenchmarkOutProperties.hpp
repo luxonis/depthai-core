@@ -7,11 +7,6 @@
 
 namespace dai {
 
-#ifdef __clang__
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wweak-vtables"
-#endif
-
 /**
  * Specify benchmark properties (number of messages to send/receive)
  */
@@ -25,11 +20,9 @@ struct BenchmarkOutProperties : PropertiesSerializable<Properties, BenchmarkOutP
      * FPS for sending, 0 means as fast as possible
      */
     float fps = 0;
-};
 
-#ifdef __clang__
-#pragma clang diagnostic pop
-#endif
+    ~BenchmarkOutProperties() override;
+};
 
 DEPTHAI_SERIALIZE_EXT(BenchmarkOutProperties, numMessages, fps);
 

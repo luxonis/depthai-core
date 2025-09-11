@@ -13,11 +13,6 @@
 
 namespace dai {
 
-#ifdef __clang__
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wweak-vtables"
-#endif
-
 /**
  *  Specify properties for ColorCamera such as camera ID, ...
  */
@@ -216,11 +211,9 @@ struct ColorCameraProperties : PropertiesSerializable<Properties, ColorCameraPro
      * with both packed/unpacked, but disabled for other cameras like ToF.
      */
     std::optional<bool> rawPacked;
-};
 
-#ifdef __clang__
-#pragma clang diagnostic pop
-#endif
+    ~ColorCameraProperties() override;
+};
 
 DEPTHAI_SERIALIZE_EXT(ColorCameraProperties,
                       initialControl,

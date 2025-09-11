@@ -5,11 +5,6 @@
 
 namespace dai {
 
-#ifdef __clang__
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wweak-vtables"
-#endif
-
 /**
  * Properties for SPIIn node
  */
@@ -33,10 +28,9 @@ struct SPIInProperties : PropertiesSerializable<Properties, SPIInProperties> {
      * Number of frames in pool
      */
     std::uint32_t numFrames = 4;
+
+    ~SPIInProperties() override;
 };
-#ifdef __clang__
-#pragma clang diagnostic pop
-#endif
 
 DEPTHAI_SERIALIZE_EXT(SPIInProperties, streamName, busId, maxDataSize, numFrames);
 

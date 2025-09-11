@@ -8,11 +8,6 @@
 
 namespace dai {
 
-#ifdef __clang__
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wweak-vtables"
-#endif
-
 /**
  * Specify properties for StereoDepth
  */
@@ -192,11 +187,10 @@ struct StereoDepthProperties : PropertiesSerializable<Properties, StereoDepthPro
      * See getOptimalNewCameraMatrix from opencv for more details.
      */
     std::optional<float> alphaScaling;
+
+    ~StereoDepthProperties() override;
 };
 
-#ifdef __clang__
-#pragma clang diagnostic pop
-#endif
 DEPTHAI_SERIALIZE_EXT(StereoDepthProperties,
                       initialConfig,
                       depthAlignCamera,

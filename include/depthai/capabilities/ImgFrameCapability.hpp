@@ -37,11 +37,6 @@ enum struct ImgResizeMode {
     LETTERBOX,
 };
 
-#ifdef __clang__
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wweak-vtables"
-#endif
-
 class ImgFrameCapability : public CapabilityCRTP<Capability, ImgFrameCapability> {
    public:
     constexpr static const char* NAME = "dai/img-frame";
@@ -54,15 +49,13 @@ class ImgFrameCapability : public CapabilityCRTP<Capability, ImgFrameCapability>
     std::optional<bool> enableUndistortion;
     // TODO(jakgra) add optional CapabilityRange fov / max-min horiz. / vertical crop;
 
+    ~ImgFrameCapability() override;
+
     DEPTHAI_SERIALIZE(ImgFrameCapability, size, fps, type, resizeMode, enableUndistortion);
 
    private:
     class Impl;
     spimpl::impl_ptr<Impl> pimpl;
 };
-
-#ifdef __clang__
-#pragma clang diagnostic pop
-#endif
 
 }  // namespace dai
