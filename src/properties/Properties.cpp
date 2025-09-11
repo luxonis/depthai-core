@@ -12,6 +12,7 @@
 #include "depthai/properties/GlobalProperties.hpp"
 #include "depthai/properties/IMUProperties.hpp"
 #include "depthai/properties/ImageAlignProperties.hpp"
+#include "depthai/properties/ImageFiltersProperties.hpp"
 #include "depthai/properties/ImageManipProperties.hpp"
 #include "depthai/properties/MessageDemuxProperties.hpp"
 #include "depthai/properties/MonoCameraProperties.hpp"
@@ -24,6 +25,7 @@
 #include "depthai/properties/SpatialDetectionNetworkProperties.hpp"
 #include "depthai/properties/SpatialLocationCalculatorProperties.hpp"
 #include "depthai/properties/StereoDepthProperties.hpp"
+#include "depthai/properties/SyncProperties.hpp"
 #include "depthai/properties/SystemLoggerProperties.hpp"
 #include "depthai/properties/ThermalProperties.hpp"
 #include "depthai/properties/ToFProperties.hpp"
@@ -53,6 +55,8 @@ FeatureTrackerProperties::~FeatureTrackerProperties() = default;
 IMUProperties::~IMUProperties() = default;
 ImageAlignProperties::~ImageAlignProperties() = default;
 ImageManipProperties::~ImageManipProperties() = default;
+ImageFiltersProperties::~ImageFiltersProperties() = default;
+ToFDepthConfidenceFilterProperties::~ToFDepthConfidenceFilterProperties() = default;
 MessageDemuxProperties::~MessageDemuxProperties() = default;
 MonoCameraProperties::~MonoCameraProperties() = default;
 NeuralNetworkProperties::~NeuralNetworkProperties() = default;
@@ -64,6 +68,7 @@ ScriptProperties::~ScriptProperties() = default;
 SpatialDetectionNetworkProperties::~SpatialDetectionNetworkProperties() = default;
 SpatialLocationCalculatorProperties::~SpatialLocationCalculatorProperties() = default;
 StereoDepthProperties::~StereoDepthProperties() = default;
+SyncProperties::~SyncProperties() = default;
 SystemLoggerProperties::~SystemLoggerProperties() = default;
 ThermalProperties::~ThermalProperties() = default;
 ToFProperties::~ToFProperties() = default;

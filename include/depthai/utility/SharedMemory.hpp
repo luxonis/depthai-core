@@ -123,7 +123,10 @@ class SharedMemory : public Memory {
         if(ftruncate(fd, size) < 0) {
             throw std::runtime_error("Failed to set shared memory size");
         }
+#else
+        (void)size; // size is not used
 #endif
+
         mapFd();
     }
 
