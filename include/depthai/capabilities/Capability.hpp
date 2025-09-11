@@ -3,8 +3,10 @@
 #include <cstring>
 namespace dai {
 
+#ifdef __clang__
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wweak-vtables"
+#endif
 
 class Capability {
    public:
@@ -13,7 +15,9 @@ class Capability {
     virtual ~Capability() = default;
 };
 
+#ifdef __clang__
 #pragma clang diagnostic pop
+#endif
 
 // Capability CRTP class
 template <typename Base, typename Derived>

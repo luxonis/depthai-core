@@ -6,8 +6,10 @@
 
 namespace dai {
 
+#ifdef __clang__
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wweak-vtables"
+#endif
 
 /**
  * SystemLoggerProperties structure
@@ -20,6 +22,8 @@ struct SystemLoggerProperties : PropertiesSerializable<Properties, SystemLoggerP
 };
 
 DEPTHAI_SERIALIZE_EXT(SystemLoggerProperties, rateHz);
+#ifdef __clang__
 #pragma clang diagnostic pop
+#endif
 
 }  // namespace dai

@@ -9,8 +9,10 @@
 
 namespace dai {
 
+#ifdef __clang__
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wweak-vtables"
+#endif
 
 enum class TrackerType : std::int32_t {
     /// Kernelized Correlation Filter tracking
@@ -77,7 +79,9 @@ struct ObjectTrackerProperties : PropertiesSerializable<Properties, ObjectTracke
     uint32_t trackletBirthThreshold = 3;
 };
 
+#ifdef __clang__
 #pragma clang diagnostic pop
+#endif
 DEPTHAI_SERIALIZE_EXT(ObjectTrackerProperties,
                       trackerThreshold,
                       maxObjectsToTrack,

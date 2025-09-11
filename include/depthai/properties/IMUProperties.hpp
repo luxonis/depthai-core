@@ -5,8 +5,10 @@
 
 namespace dai {
 
+#ifdef __clang__
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wweak-vtables"
+#endif
 
 /**
  * Available IMU sensors.
@@ -139,10 +141,14 @@ enum class IMUSensor : std::int32_t {
     // GYRO_INTEGRATED_ROTATION_VECTOR = 0x2A,
 };
 
+#ifdef __clang__
 #pragma clang diagnostic pop
+#endif
 
+#ifdef __clang__
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wweak-vtables"
+#endif
 
 struct IMUSensorConfig {
     /* Sensitivity enabled */
@@ -172,10 +178,14 @@ struct IMUSensorConfig {
 };
 DEPTHAI_SERIALIZE_EXT(IMUSensorConfig, sensitivityEnabled, sensitivityRelative, changeSensitivity, reportRate, sensorId);
 
+#ifdef __clang__
 #pragma clang diagnostic pop
+#endif
 
+#ifdef __clang__
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wweak-vtables"
+#endif
 
 struct IMUProperties : PropertiesSerializable<Properties, IMUProperties> {
     /* Enabled IMU sensors */
@@ -193,6 +203,8 @@ struct IMUProperties : PropertiesSerializable<Properties, IMUProperties> {
 
 DEPTHAI_SERIALIZE_EXT(IMUProperties, imuSensors, batchReportThreshold, maxBatchReports, enableFirmwareUpdate);
 
+#ifdef __clang__
 #pragma clang diagnostic pop
+#endif
 
 }  // namespace dai

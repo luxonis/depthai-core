@@ -110,8 +110,10 @@ class XLinkStream {
     std::string getStreamName() const;
 };
 
+#ifdef __clang__
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wweak-vtables"
+#endif
 
 struct XLinkError : public std::runtime_error {
     const XLinkError_t status = X_LINK_ERROR;
@@ -131,6 +133,8 @@ struct XLinkWriteError : public XLinkError {
     XLinkWriteError(XLinkError_t status, const std::string& stream);
 };
 
+#ifdef __clang__
 #pragma clang diagnostic pop
+#endif
 
 }  // namespace dai

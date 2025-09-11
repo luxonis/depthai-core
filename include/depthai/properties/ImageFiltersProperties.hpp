@@ -8,8 +8,10 @@
 
 namespace dai {
 
+#ifdef __clang__
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wweak-vtables"
+#endif
 
 struct ImageFiltersProperties : PropertiesSerializable<Properties, ImageFiltersProperties> {
     /**
@@ -20,10 +22,14 @@ struct ImageFiltersProperties : PropertiesSerializable<Properties, ImageFiltersP
 
 DEPTHAI_SERIALIZE_EXT(ImageFiltersProperties, initialConfig);
 
+#ifdef __clang__
 #pragma clang diagnostic pop
+#endif
 
+#ifdef __clang__
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wweak-vtables"
+#endif
 
 struct ToFDepthConfidenceFilterProperties : PropertiesSerializable<Properties, ToFDepthConfidenceFilterProperties> {
     /**
@@ -34,6 +40,8 @@ struct ToFDepthConfidenceFilterProperties : PropertiesSerializable<Properties, T
 
 DEPTHAI_SERIALIZE_EXT(ToFDepthConfidenceFilterProperties, initialConfig);
 
+#ifdef __clang__
 #pragma clang diagnostic pop
+#endif
 
 }  // namespace dai

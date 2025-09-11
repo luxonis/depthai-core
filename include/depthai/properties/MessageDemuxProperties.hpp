@@ -4,8 +4,10 @@
 
 namespace dai {
 
+#ifdef __clang__
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wweak-vtables"
+#endif
 
 /**
  * MessageDemux does not have any properties to set
@@ -15,7 +17,9 @@ struct MessageDemuxProperties : PropertiesSerializable<Properties, MessageDemuxP
     char dummy = 0;
 };
 
+#ifdef __clang__
 #pragma clang diagnostic pop
+#endif
 
 DEPTHAI_SERIALIZE_EXT(MessageDemuxProperties, dummy);
 

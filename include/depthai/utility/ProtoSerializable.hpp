@@ -6,8 +6,10 @@
 
 namespace dai {
 
+#ifdef __clang__
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wweak-vtables"
+#endif
 
 class ProtoSerializable {
    public:
@@ -60,6 +62,8 @@ class ProtoSerializable {
 #endif
 };
 
+#ifdef __clang__
 #pragma clang diagnostic pop
+#endif
 
 }  // namespace dai

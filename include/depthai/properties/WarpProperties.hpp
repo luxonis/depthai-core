@@ -7,8 +7,10 @@
 
 namespace dai {
 
+#ifdef __clang__
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wweak-vtables"
+#endif
 
 /**
  * Specify properties for Warp
@@ -38,7 +40,9 @@ struct WarpProperties : PropertiesSerializable<Properties, WarpProperties> {
 
     Interpolation interpolation = Interpolation::AUTO;
 };
+#ifdef __clang__
 #pragma clang diagnostic pop
+#endif
 
 DEPTHAI_SERIALIZE_EXT(WarpProperties, outputWidth, outputHeight, outputFrameSize, numFramesPool, meshWidth, meshHeight, meshUri, warpHwIds, interpolation);
 

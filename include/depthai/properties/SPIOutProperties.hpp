@@ -4,8 +4,10 @@
 
 namespace dai {
 
+#ifdef __clang__
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wweak-vtables"
+#endif
 
 /**
  * Specify properties for SPIOut node
@@ -22,7 +24,9 @@ struct SPIOutProperties : PropertiesSerializable<Properties, SPIOutProperties> {
     int busId = 0;
 };
 
+#ifdef __clang__
 #pragma clang diagnostic pop
+#endif
 
 DEPTHAI_SERIALIZE_EXT(SPIOutProperties, streamName, busId);
 
