@@ -36,7 +36,7 @@
 #include "depthai/properties/internal/XLinkInProperties.hpp"
 #include "depthai/properties/internal/XLinkOutProperties.hpp"
 
-#ifdef DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT
+#ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
     #include "depthai/properties/DynamicCalibrationProperties.hpp"
 #endif
 
@@ -84,7 +84,7 @@ WarpProperties::~WarpProperties() = default;
 GlobalProperties::~GlobalProperties() = default;
 CastProperties::~CastProperties() = default;
 
-#ifdef DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT
+#ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
 DynamicCalibrationProperties::~DynamicCalibrationProperties() = default;
 #endif
 
