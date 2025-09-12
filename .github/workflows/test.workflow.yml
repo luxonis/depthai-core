@@ -19,7 +19,38 @@ concurrency:
 
 jobs:
 
+  # The precheck job determines whether a workflow should be run in full
+  precheck:
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.check.outputs.should_run }}
+    steps:
+    - name: Evaluate trigger condition
+      id: check
+      run: |
+        EVENT_NAME="${{ github.event_name }}"
+
+        RAW_LABELS='${{ toJson(github.event.pull_request.labels) }}'
+        if [[ "$RAW_LABELS" == "null" || -z "$RAW_LABELS" ]]; then
+          LABELS="[]"
+        else
+          LABELS="$RAW_LABELS"
+        fi
+
+        SHOULD_RUN="false"
+        if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+          SHOULD_RUN="true"
+        elif [[ "$EVENT_NAME" == "pull_request" ]]; then
+          if echo "$LABELS" | jq -r '.[].name' | grep -q "testable"; then
+            SHOULD_RUN="true"
+          fi
+        fi
+
+        echo "should_run=$SHOULD_RUN" >> "$GITHUB_OUTPUT"
+
   run_vanilla_tests:
+    needs: [precheck]
+    if: needs.precheck.outputs.should_run == 'true'
     uses: ./.github/workflows/test_child.yml
     with:
       flavor: "vanilla"
@@ -29,6 +60,8 @@ jobs:
       CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
 
   run_tsan_tests:
+    needs: [precheck]
+    if: needs.precheck.outputs.should_run == 'true'
     uses: ./.github/workflows/test_child.yml
     with:
       flavor: "tsan"
@@ -37,6 +70,8 @@ jobs:
       CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
 
   run_asan-ubsan_tests:
+    needs: [precheck]
+    if: needs.precheck.outputs.should_run == 'true'
     uses: ./.github/workflows/test_child.yml
     with:
       flavor: "asan-ubsan"
@@ -45,6 +80,8 @@ jobs:
       CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
 
   windows_rvc2_rvc4_test:
+    needs: [precheck]
+    if: needs.precheck.outputs.should_run == 'true'
     runs-on: ['self-hosted', 'windows', 'hil-test']
     env:
       LOCALAPPDATA: "C:/actions-runner/vcpkg_cache"
