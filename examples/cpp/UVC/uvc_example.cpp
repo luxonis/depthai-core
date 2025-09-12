@@ -114,6 +114,9 @@ int main() {
     }
 
     events_init(&events);
+
+    /* Capture CTRL+C presses */
+    sigint_events = &events;
     signal(SIGTERM, signalHandler);
     signal(SIGINT, signalHandler);
 
