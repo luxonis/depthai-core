@@ -5,8 +5,7 @@
 #include <depthai/pipeline/node/Sync.hpp>
 #include <depthai/properties/DynamicCalibrationProperties.hpp>
 
-#include "depthai/pipeline/datatype/DynamicCalibrationConfig.hpp"
-#include "depthai/pipeline/datatype/DynamicCalibrationResults.hpp"
+#include "depthai/pipeline/datatype/DynamicCalibrationControl.hpp"
 #include "depthai/utility/spimpl.h"
 
 namespace spdlog {
@@ -28,7 +27,7 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
 
     // clang-format off
     /**
-     * Input DynamicCalibrationConfig message with ability to modify parameters in runtime.
+     * Input DynamicCalibrationControl message with ability to modify parameters in runtime.
      */
     Input inputControl{
         *this,

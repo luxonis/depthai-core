@@ -5,6 +5,8 @@
 
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/depthai.hpp"
+#include "depthai/pipeline/datatype/DynamicCalibrationControl.hpp"
+#include "depthai/pipeline/datatype/DynamicCalibrationResults.hpp"
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "depthai/utility/matrixOps.hpp"
 #include "depthai/utility/spimpl.h"

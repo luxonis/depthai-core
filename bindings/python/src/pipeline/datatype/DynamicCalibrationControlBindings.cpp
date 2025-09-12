@@ -4,12 +4,12 @@
 #include <memory>
 
 #include "DatatypeBindings.hpp"
-#include "depthai/pipeline/datatype/DynamicCalibrationConfig.hpp"
+#include "depthai/pipeline/datatype/DynamicCalibrationControl.hpp"
 #include "depthai/pipeline/node/DynamicCalibrationNode.hpp"
 
 namespace py = pybind11;
 
-void bind_dynamic_calibration_config(py::module& m, void* pCallstack) {
+void bind_dynamic_calibration_control(py::module& m, void* pCallstack) {
     using namespace dai;
     using DCC = dai::DynamicCalibrationControl;
 
