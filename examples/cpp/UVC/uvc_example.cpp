@@ -19,6 +19,7 @@ extern "C" {
 #include "uvcgadget/configfs.h"
 #include "uvcgadget/events.h"
 #include "uvcgadget/stream.h"
+#include "uvc-gadget/lib/uvc.h"
 #include "uvcgadget/libcamera-source.h"
 #include "uvcgadget/v4l2-source.h"
 #include "uvcgadget/test-source.h"
@@ -30,6 +31,7 @@ extern "C" {
 // Global flag for graceful shutdown
 std::atomic<bool> quitEvent(false);
 
+std::shared_ptr<dai::InputQueue> inputQueue{nullptr};
 std::shared_ptr<dai::MessageQueue> outputQueue;
 
 /* Necessary for and only used by signal handler. */
@@ -99,6 +101,21 @@ extern "C" void depthai_uvc_get_buffer(struct video_source *s, struct video_buff
 	buf->bytesused = size;
 }
 
+extern "C" void depthai_control_pipeline_cb(uint32_t arg) {
+    // This function can be used to send camera control commands to the device
+    // For example, to start or stop streaming, adjust settings, etc.
+    auto ctrl = std::make_shared<dai::CameraControl>();
+
+    if (arg) {
+        ctrl->setStartStreaming();
+        std::cout << "Resuming Depthai pipeline." << std::endl;
+    } else {
+        ctrl->setStopStreaming();
+        std::cout << "Pausing Depthai pipeline." << std::endl;
+    }
+    inputQueue->send(ctrl); // Commit the command to DAI pipeline
+}
+
 int main() {
     struct events events;
     struct uvc_function_config *fc;
@@ -133,6 +150,13 @@ int main() {
         return 1;
     }
 
+    /* Register the callback to control the pipeline on UVC events:
+        * - UVC_EVENT_STREAMON
+        * - UVC_EVENT_STREAMOFF
+        * - UVC_EVENT_DISCONNECT 
+    */
+    uvc_events_register_cb(stream, depthai_control_pipeline_cb);
+
 	uvc_stream_set_event_handler(stream, &events);
 	uvc_stream_set_video_source(stream, src);
 	uvc_stream_init_uvc(stream, fc);
@@ -149,6 +173,7 @@ int main() {
 
     // Create nodes
     auto camRgb = pipeline.create<dai::node::Camera>()->build(socket);
+    inputQueue  = camRgb->inputControl.createInputQueue();
     auto output = camRgb->requestOutput(std::make_pair(1920, 1080), dai::ImgFrame::Type::NV12);
 
     // Create video encoder node
@@ -161,6 +186,7 @@ int main() {
     pipeline.start();
     std::cout << "Started the pipeline" << std::endl;
     std::cout << "Press Ctrl+C to stop" << std::endl;
+    depthai_control_pipeline_cb(0); // Pause the pipeline until UVC stream is started by the host
 
     auto timeStart = std::chrono::steady_clock::now();
 

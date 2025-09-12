@@ -19,20 +19,6 @@
 #include "video-buffers.h"
 #include "video-source.h"
 
-/*
- * struct uvc_stream - Representation of a UVC stream
- * @src: video source
- * @uvc: UVC V4L2 output device
- * @events: struct events containing event information
- */
-struct uvc_stream
-{
-	struct video_source *src;
-	struct uvc_device *uvc;
-
-	struct events *events;
-};
-
 /* ---------------------------------------------------------------------------
  * Video streaming
  */
