@@ -20,7 +20,7 @@ concurrency:
 
 jobs:
 
-  # The precheck job determines whether a workflow should be run in full
+  # The precheck job determines whether a workflow should run in full
   precheck:
     runs-on: ubuntu-latest
     outputs:
