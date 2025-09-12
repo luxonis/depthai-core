@@ -3,6 +3,15 @@
 #include "utility/ErrorMacros.hpp"
 
 namespace dai {
+
+#if defined(__clang__)
+ImageFiltersConfig::~ImageFiltersConfig() = default;
+#endif
+
+#if defined(__clang__)
+ToFDepthConfidenceFilterConfig::~ToFDepthConfidenceFilterConfig() = default;
+#endif
+
 ImageFiltersConfig& ImageFiltersConfig::updateFilterAtIndex(std::int32_t index, FilterParams params) {
     DAI_CHECK_V(this->filterIndices.size() == this->filterParams.size(),
                 "ImageFiltersConfig can either be used to create a new filter pipeline or update an existing one, not both");

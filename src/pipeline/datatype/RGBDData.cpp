@@ -1,6 +1,11 @@
 #include "depthai/pipeline/datatype/RGBDData.hpp"
 
 namespace dai {
+
+#if defined(__clang__)
+RGBDData::~RGBDData() = default;
+#endif
+
 void RGBDData::setRGBFrame(const std::shared_ptr<ImgFrame>& frame) {
     frames["rgb"] = frame;
 }

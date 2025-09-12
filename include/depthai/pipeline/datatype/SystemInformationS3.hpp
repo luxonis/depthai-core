@@ -20,7 +20,11 @@ class SystemInformationS3 : public Buffer {
      * Construct SystemInformation message.
      */
     SystemInformationS3() = default;
+#if defined(__clang__)
+    ~SystemInformationS3() override;
+#else
     virtual ~SystemInformationS3() = default;
+#endif
 
     MemoryInfo ddrMemoryUsage;
     CpuUsage cpuAvgUsage;

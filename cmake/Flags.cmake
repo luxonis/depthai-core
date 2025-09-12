@@ -26,6 +26,7 @@ function(add_default_flags target)
             add_flag(${target} -Wdouble-promotion)       # (GCC >= 4.6, Clang >= 3.8) warn if float is implicit promoted to double
             add_flag(${target} -Wsign-compare)
             add_flag(${target} -Wtype-limits)            # size_t - size_t >= 0 -> always true
+            add_flag(${target} -Wweak-vtables)           # warn if class has a weak vtables (https://stackoverflow.com/questions/23746941/what-is-the-meaning-of-clangs-wweak-vtables)
 
             # disable those flags
             # add_flag(${target} -Wno-unused-command-line-argument)    # clang: warning: argument unused during compilation: '--coverage' [-Wunused-command-line-argument]

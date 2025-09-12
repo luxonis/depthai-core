@@ -10,6 +10,10 @@
 #endif
 namespace dai {
 
+#if defined(__clang__)
+ImgFrame::~ImgFrame() = default;
+#endif
+
 ImgFrame::ImgFrame() {
     // Set timestamp to now
     setTimestamp(std::chrono::steady_clock::now());

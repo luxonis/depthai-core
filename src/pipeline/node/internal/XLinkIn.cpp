@@ -3,6 +3,11 @@
 namespace dai {
 namespace node {
 namespace internal {
+
+#if defined(__clang__)
+XLinkIn::~XLinkIn() = default;
+#endif
+
 void XLinkIn::setStreamName(const std::string& name) {
     properties.streamName = name;
 }

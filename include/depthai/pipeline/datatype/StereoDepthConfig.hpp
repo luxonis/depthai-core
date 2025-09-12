@@ -18,7 +18,11 @@ class StereoDepthConfig : public Buffer {
      * Construct StereoDepthConfig message.
      */
     StereoDepthConfig() = default;
+#if defined(__clang__)
+    ~StereoDepthConfig() override;
+#else
     virtual ~StereoDepthConfig() = default;
+#endif
 
     using MedianFilter = filters::params::MedianFilter;
 

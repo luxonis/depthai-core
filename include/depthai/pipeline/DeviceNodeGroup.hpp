@@ -19,6 +19,10 @@ class DeviceNodeGroup : public DeviceNode {
 
     void setLogLevel(dai::LogLevel level) override;
     dai::LogLevel getLogLevel() const override;
+
+#if defined(__clang__)
+    ~DeviceNodeGroup() override;
+#endif
 };
 
 }  // namespace dai

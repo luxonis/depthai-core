@@ -13,6 +13,12 @@ struct ImageFiltersProperties : PropertiesSerializable<Properties, ImageFiltersP
      * Initial config for the filter pipeline
      */
     ImageFiltersConfig initialConfig;
+
+#if defined(__clang__)
+    ~ImageFiltersProperties() override;
+#else
+    virtual ~ImageFiltersProperties() = default;
+#endif
 };
 
 DEPTHAI_SERIALIZE_EXT(ImageFiltersProperties, initialConfig);
@@ -22,6 +28,12 @@ struct ToFDepthConfidenceFilterProperties : PropertiesSerializable<Properties, T
      * Initial config for the ToF depth confidence filter
      */
     ToFDepthConfidenceFilterConfig initialConfig;
+
+#if defined(__clang__)
+    ~ToFDepthConfidenceFilterProperties() override;
+#else
+    virtual ~ToFDepthConfidenceFilterProperties() = default;
+#endif
 };
 
 DEPTHAI_SERIALIZE_EXT(ToFDepthConfidenceFilterProperties, initialConfig);

@@ -33,7 +33,11 @@ class EncodedFrame : public Buffer, public ProtoSerializable {
 
     ImgTransformation transformation;
 
+#if defined(__clang__)
+    ~EncodedFrame() override;
+#else
     virtual ~EncodedFrame() = default;
+#endif
 
     // getters
     /**

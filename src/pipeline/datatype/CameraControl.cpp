@@ -250,6 +250,10 @@ int CameraControl::getLensPosition() const {
     return lensPosition;
 }
 
+#if defined(__clang__)
+CameraControl::~CameraControl() = default;
+#endif
+
 float CameraControl::getLensPositionRaw() const {
     return lensPositionRaw;
 }

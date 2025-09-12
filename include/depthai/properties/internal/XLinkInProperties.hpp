@@ -25,6 +25,12 @@ struct XLinkInProperties : PropertiesSerializable<Properties, XLinkInProperties>
      * Number of frames in pool
      */
     std::uint32_t numFrames = 8;
+
+#if defined(__clang__)
+    ~XLinkInProperties() override;
+#else
+    virtual ~XLinkInProperties() = default;
+#endif
 };
 
 DEPTHAI_SERIALIZE_EXT(XLinkInProperties, streamName, maxDataSize, numFrames);

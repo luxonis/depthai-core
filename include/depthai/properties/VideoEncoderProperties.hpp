@@ -72,6 +72,12 @@ struct VideoEncoderProperties : PropertiesSerializable<Properties, VideoEncoderP
      * Frame rate
      */
     float frameRate = 30.0f;
+
+#if defined(__clang__)
+    ~VideoEncoderProperties() override;
+#else
+    virtual ~VideoEncoderProperties() = default;
+#endif
 };
 
 DEPTHAI_SERIALIZE_EXT(VideoEncoderProperties,

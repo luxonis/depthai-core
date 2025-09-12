@@ -8,6 +8,10 @@
 
 namespace dai {
 
+#if defined(__clang__)
+MessageGroup::~MessageGroup() = default;
+#endif
+
 std::shared_ptr<ADatatype> MessageGroup::operator[](const std::string& name) {
     return group.at(name);
 }

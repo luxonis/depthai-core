@@ -31,7 +31,12 @@ class TransformData : public Buffer {
     TransformData(const rtabmap::Transform& transformRTABMap);
     rtabmap::Transform getRTABMapTransform() const;
 #endif
+
+#if defined(__clang__)
+    ~TransformData() override;
+#else
     virtual ~TransformData() = default;
+#endif
 
     /// Transform
     Transform transform;

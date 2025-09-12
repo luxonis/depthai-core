@@ -8,6 +8,10 @@
 
 namespace dai {
 
+#if defined(__clang__)
+TransformData::~TransformData() = default;
+#endif
+
 TransformData::TransformData() {}
 TransformData::TransformData(const Transform& transform) : transform(transform) {}
 TransformData::TransformData(const std::array<std::array<double, 4>, 4>& data) : transform({data}) {}

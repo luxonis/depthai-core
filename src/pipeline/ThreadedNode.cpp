@@ -20,6 +20,10 @@ ThreadedNode::ThreadedNode() {
     pimpl->logger->set_level(level);
 }
 
+#if defined(__clang__)
+ThreadedNode::~ThreadedNode() = default;
+#endif
+
 void ThreadedNode::start() {
     // A node should not be started if it is already running
     // We would be creating multiple threads for the same node

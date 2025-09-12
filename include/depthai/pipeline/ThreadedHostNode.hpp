@@ -12,6 +12,10 @@ class ThreadedHostNode : public ThreadedNode {
         // Host node don't contain the necessary information to be serialized and sent to the device
         return true;
     }
+
+#if defined(__clang__)
+    ~ThreadedHostNode() override;
+#endif
 };
 
 /**

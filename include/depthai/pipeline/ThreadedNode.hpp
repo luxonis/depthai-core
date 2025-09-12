@@ -16,7 +16,12 @@ class ThreadedNode : public Node {
    public:
     using Node::Node;
     ThreadedNode();
+
+#if defined(__clang__)
+    ~ThreadedNode() override;
+#else
     virtual ~ThreadedNode() = default;
+#endif
 
     /**
      * @brief Function called at the beginning of the `start` function.

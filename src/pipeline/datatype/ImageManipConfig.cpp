@@ -6,6 +6,21 @@
 
 namespace dai {
 
+#if defined(__clang__)
+
+OpBase::~OpBase() = default;
+Translate::~Translate() = default;
+Rotate::~Rotate() = default;
+Resize::~Resize() = default;
+Flip::~Flip() = default;
+Affine::~Affine() = default;
+Perspective::~Perspective() = default;
+FourPoints::~FourPoints() = default;
+Crop::~Crop() = default;
+
+ImageManipConfig::~ImageManipConfig() = default;
+#endif
+
 // New API
 ImageManipConfig& ImageManipConfig::clearOps() {
     base.clear();

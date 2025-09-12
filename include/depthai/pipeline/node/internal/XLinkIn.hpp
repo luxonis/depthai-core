@@ -20,7 +20,11 @@ class XLinkIn : public DeviceNodeCRTP<DeviceNode, XLinkIn, XLinkInProperties> {
     using DeviceNodeCRTP::DeviceNodeCRTP;
 
    public:
+#if defined(__clang__)
+    ~XLinkIn() override;
+#else
     virtual ~XLinkIn() = default;
+#endif
 
     /**
      * Outputs message of same type as send from host.

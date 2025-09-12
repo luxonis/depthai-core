@@ -18,7 +18,11 @@ class RGBDData : public Buffer {
      */
     RGBDData() = default;
 
+#if defined(__clang__)
+    ~RGBDData() override;
+#else
     virtual ~RGBDData() = default;
+#endif
 
     std::map<std::string, std::shared_ptr<ADatatype>> frames;
     void setRGBFrame(const std::shared_ptr<ImgFrame>& frame);

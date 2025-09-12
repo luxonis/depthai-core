@@ -2,6 +2,10 @@
 
 namespace dai {
 
+#if defined(__clang__)
+ObjectTrackerConfig::~ObjectTrackerConfig() = default;
+#endif
+
 ObjectTrackerConfig& ObjectTrackerConfig::forceRemoveID(int32_t id) {
     trackletIdsToRemove.push_back(id);
     return *this;

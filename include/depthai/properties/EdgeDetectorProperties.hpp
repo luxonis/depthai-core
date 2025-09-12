@@ -22,6 +22,12 @@ struct EdgeDetectorProperties : PropertiesSerializable<Properties, EdgeDetectorP
 
     /// Num frames in output pool
     int numFramesPool = 4;
+
+#if defined(__clang__)
+    ~EdgeDetectorProperties() override;
+#else
+    virtual ~EdgeDetectorProperties() = default;
+#endif
 };
 
 DEPTHAI_SERIALIZE_EXT(EdgeDetectorProperties, initialConfig, outputFrameSize, numFramesPool);

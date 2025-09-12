@@ -69,7 +69,12 @@ class NNData : public Buffer {
      */
     NNData() = default;
     NNData(size_t size);
+
+#if defined(__clang__)
+    ~NNData() override;
+#else
     virtual ~NNData() = default;
+#endif
 
     // getters
     /**

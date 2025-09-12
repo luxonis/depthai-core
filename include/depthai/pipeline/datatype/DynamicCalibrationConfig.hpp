@@ -74,6 +74,12 @@ class DynamicCalibrationControl : public Buffer {
 
     explicit DynamicCalibrationControl(Command cmd) : command(std::move(cmd)) {}
 
+#if defined(__clang__)
+    ~DynamicCalibrationControl() override;
+#else
+    virtual ~DynamicCalibrationControl() = default;
+#endif
+
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
         metadata = utility::serialize(*this);
         datatype = DatatypeEnum::DynamicCalibrationControl;

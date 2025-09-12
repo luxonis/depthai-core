@@ -4,7 +4,6 @@
 
 #include "depthai/pipeline/datatype/DatatypeEnum.hpp"
 #include "depthai/utility/Memory.hpp"
-#include "depthai/utility/Serialization.hpp"
 #include "depthai/utility/VectorMemory.hpp"
 
 namespace dai {
@@ -21,7 +20,12 @@ class ADatatype {
 #else
     explicit ADatatype() : data{std::make_shared<VectorMemory>(std::vector<uint8_t>())} {};
 #endif
+
+#if defined(__clang__)
+    virtual ~ADatatype();
+#else
     virtual ~ADatatype() = default;
+#endif
 
     virtual void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const {
         (void)metadata;

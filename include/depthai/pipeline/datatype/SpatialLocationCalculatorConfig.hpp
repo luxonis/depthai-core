@@ -74,7 +74,12 @@ class SpatialLocationCalculatorConfig : public Buffer {
      * Construct SpatialLocationCalculatorConfig message.
      */
     SpatialLocationCalculatorConfig() = default;
+
+#if defined(__clang__)
+    ~SpatialLocationCalculatorConfig() override;
+#else
     virtual ~SpatialLocationCalculatorConfig() = default;
+#endif
 
     /**
      * Set a vector of ROIs as configuration data.

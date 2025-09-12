@@ -2,6 +2,10 @@
 
 namespace dai {
 
+#if defined(__clang__)
+FeatureTrackerConfig::~FeatureTrackerConfig() = default;
+#endif
+
 FeatureTrackerConfig& FeatureTrackerConfig::setCornerDetector(FeatureTrackerConfig::CornerDetector::Type cornerDetector) {
     this->cornerDetector.type = cornerDetector;
     return *this;

@@ -20,7 +20,12 @@ class PointCloudConfig : public Buffer {
      * Construct PointCloudConfig message.
      */
     PointCloudConfig() = default;
+
+#if defined(__clang__)
+    ~PointCloudConfig() override;
+#else
     virtual ~PointCloudConfig() = default;
+#endif
 
     /**
      * Retrieve sparse point cloud calculation status.

@@ -16,7 +16,11 @@ class MessageGroup : public Buffer {
    public:
     std::map<std::string, std::shared_ptr<ADatatype>> group;
 
+#if defined(__clang__)
+    ~MessageGroup() override;
+#else
     virtual ~MessageGroup() = default;
+#endif
 
     /// Group
     std::shared_ptr<ADatatype> operator[](const std::string& name);

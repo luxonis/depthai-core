@@ -33,6 +33,12 @@ struct FeatureTrackerProperties : PropertiesSerializable<Properties, FeatureTrac
      * Maximum 2, minimum 1.
      */
     std::int32_t numMemorySlices = 1;
+
+#if defined(__clang__)
+    ~FeatureTrackerProperties() override;
+#else
+    virtual ~FeatureTrackerProperties() = default;
+#endif
 };
 
 DEPTHAI_SERIALIZE_EXT(FeatureTrackerProperties, initialConfig, numShaves, numMemorySlices);

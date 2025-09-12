@@ -123,7 +123,11 @@ class ThermalConfig : public Buffer {
      * Construct ThermalConfig message.
      */
     ThermalConfig() = default;
+#if defined(__clang__)
+    ~ThermalConfig() override;
+#else
     virtual ~ThermalConfig() = default;
+#endif
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
         metadata = utility::serialize(*this);

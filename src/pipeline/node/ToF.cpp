@@ -5,6 +5,10 @@
 namespace dai {
 namespace node {
 
+#if defined(__clang__)
+ToF::~ToF() = default;
+#endif
+
 ToFBase::ToFBase(std::unique_ptr<Properties> props)
     : DeviceNodeCRTP<DeviceNode, ToFBase, ToFProperties>(std::move(props)),
       initialConfig(std::make_shared<decltype(properties.initialConfig)>(properties.initialConfig)) {}

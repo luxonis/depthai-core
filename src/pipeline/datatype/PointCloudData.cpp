@@ -7,6 +7,10 @@
 #endif
 namespace dai {
 
+#if defined(__clang__)
+PointCloudData::~PointCloudData() = default;
+#endif
+
 std::vector<Point3f> PointCloudData::getPoints() {
     if(isColor()) {
         span<const Point3fRGBA> pointData(reinterpret_cast<Point3fRGBA*>(data->getData().data()), data->getData().size() / sizeof(Point3fRGBA));

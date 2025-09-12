@@ -7,6 +7,11 @@
 #endif
 
 namespace dai {
+
+#if defined(__clang__)
+ImgAnnotations::~ImgAnnotations() = default;
+#endif
+
 #ifdef DEPTHAI_ENABLE_PROTOBUF
 
 ProtoSerializable::SchemaPair ImgAnnotations::serializeSchema() const {

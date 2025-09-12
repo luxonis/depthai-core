@@ -30,6 +30,12 @@ struct PoolProperties : PropertiesSerializable<Properties, PoolProperties> {
      * Which processor should hold the pool
      */
     std::optional<ProcessorType> processor = std::nullopt;
+
+#if defined(__clang__)
+    ~PoolProperties() override;
+#else
+    virtual ~PoolProperties() = default;
+#endif
 };
 
 DEPTHAI_SERIALIZE_EXT(PoolProperties, numMessages, maxMessageSize, datatype, processor);

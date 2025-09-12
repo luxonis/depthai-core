@@ -16,7 +16,12 @@ class ObjectTrackerConfig : public Buffer {
      * Construct ObjectTrackerConfig message.
      */
     ObjectTrackerConfig() = default;
+
+#if defined(__clang__)
+    ~ObjectTrackerConfig() override;
+#else
     virtual ~ObjectTrackerConfig() = default;
+#endif
 
     /**
      * Tracklet IDs to remove from tracking.

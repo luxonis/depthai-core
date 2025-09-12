@@ -1,3 +1,9 @@
 #include "depthai/pipeline/datatype/Tracklets.hpp"
 
-namespace dai {}  // namespace dai
+namespace dai {
+
+#if defined(__clang__)
+Tracklets::~Tracklets() = default;
+#endif
+
+}  // namespace dai

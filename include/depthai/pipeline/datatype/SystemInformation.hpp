@@ -21,7 +21,11 @@ class SystemInformation : public Buffer {
      * Construct SystemInformation message.
      */
     SystemInformation() = default;
+#if defined(__clang__)
+    ~SystemInformation() override;
+#else
     virtual ~SystemInformation() = default;
+#endif
 
     MemoryInfo ddrMemoryUsage;
     MemoryInfo cmxMemoryUsage;

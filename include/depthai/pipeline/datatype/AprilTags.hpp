@@ -67,7 +67,12 @@ class AprilTags : public Buffer {
      * Construct AprilTags message.
      */
     AprilTags() = default;
+
+#if defined(__clang__)
+    ~AprilTags() override;
+#else
     virtual ~AprilTags() = default;
+#endif
 
    public:
     std::vector<AprilTag> aprilTags;

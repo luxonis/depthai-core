@@ -16,7 +16,12 @@ class FeatureTrackerConfig : public Buffer {
      * Construct FeatureTrackerConfig message.
      */
     FeatureTrackerConfig() = default;
+
+#if defined(__clang__)
+    ~FeatureTrackerConfig() override;
+#else
     virtual ~FeatureTrackerConfig() = default;
+#endif
 
     static constexpr const std::int32_t AUTO = 0;
 

@@ -14,6 +14,10 @@
 namespace dai {
 namespace node {
 
+#if defined(__clang__)
+DetectionParser::~DetectionParser() = default;
+#endif
+
 void DetectionParser::setNNArchive(const NNArchive& nnArchive) {
     constexpr int DEFAULT_SUPERBLOB_NUM_SHAVES = 8;
     switch(nnArchive.getModelType()) {

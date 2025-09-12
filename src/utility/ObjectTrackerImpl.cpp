@@ -54,6 +54,10 @@ Eigen::VectorXf speed_direction(Eigen::VectorXf bbox1, Eigen::VectorXf bbox2);
 Eigen::VectorXf convert_x_to_bbox(Eigen::VectorXf x);
 Eigen::VectorXf k_previous_obs(const std::map<int, Eigen::VectorXf>& observations, int cur_age, int k);
 
+#if defined(__clang__)
+Tracker::~Tracker() = default;
+#endif
+
 class TrackletExt : public Tracklet {
    public:
     uint32_t ageSinceStatusUpdate = 1;

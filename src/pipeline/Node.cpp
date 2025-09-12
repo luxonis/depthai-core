@@ -24,6 +24,10 @@ Pipeline Node::getParentPipeline() {
     return Pipeline(impl);
 }
 
+#if defined(__clang__)
+Node::Input::~Input() = default;
+#endif
+
 Node::Connection::Connection(Output out, Input in) {
     outputId = out.getParent().id;
     outputName = out.getName();

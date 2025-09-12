@@ -331,6 +331,10 @@ class Node : public std::enable_shared_from_this<Node> {
        public:
         enum class Type { SReceiver, MReceiver };  // TODO(Morato) - refactor, make the MReceiver a separate class (shouldn't inherit from MessageQueue)
 
+#if defined(__clang__)
+        ~Input() override;
+#endif
+
        protected:
         std::vector<Output*> connectedOutputs;
 

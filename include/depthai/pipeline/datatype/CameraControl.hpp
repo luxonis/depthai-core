@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "ImgDetections.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 
 namespace dai {
@@ -32,7 +33,12 @@ namespace dai {
 class CameraControl : public Buffer {
    public:
     CameraControl() = default;
+
+#if defined(__clang__)
+    ~CameraControl() override;
+#else
     virtual ~CameraControl() = default;
+#endif
 
     enum class Command : uint8_t {
         START_STREAM = 1,

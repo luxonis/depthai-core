@@ -8,7 +8,12 @@ class Capability {
    public:
     virtual const char* getName() const = 0;
     // virtual Capability getIntersection(const Capability& other) = 0;
+
+#if defined(__clang__)
+    virtual ~Capability();
+#else
     virtual ~Capability() = default;
+#endif
 };
 
 // Capability CRTP class

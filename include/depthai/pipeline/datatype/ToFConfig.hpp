@@ -69,12 +69,17 @@ class ToFConfig : public Buffer {
      * Construct ToFConfig message.
      */
     ToFConfig() = default;
-    virtual ~ToFConfig() = default;
 
     /**
      * @param median Set kernel size for median filtering, or disable
      */
     ToFConfig& setMedianFilter(filters::params::MedianFilter median);
+
+#if defined(__clang__)
+    ~ToFConfig() override;
+#else
+    virtual ~ToFConfig() = default;
+#endif
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
         metadata = utility::serialize(*this);

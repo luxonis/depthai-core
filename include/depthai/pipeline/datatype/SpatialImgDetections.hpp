@@ -36,7 +36,12 @@ class SpatialImgDetections : public Buffer, public ProtoSerializable {
      * Construct SpatialImgDetections message.
      */
     SpatialImgDetections() = default;
+
+#if defined(__clang__)
+    ~SpatialImgDetections() override;
+#else
     virtual ~SpatialImgDetections() = default;
+#endif
 
     /**
      * Detection results.

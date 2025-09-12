@@ -30,7 +30,12 @@ class ImgDetections : public Buffer, public ProtoSerializable {
      * Construct ImgDetections message.
      */
     ImgDetections() = default;
+
+#if defined(__clang__)
+    ~ImgDetections() override;
+#else
     virtual ~ImgDetections() = default;
+#endif
 
     /// Detections
     std::vector<ImgDetection> detections;

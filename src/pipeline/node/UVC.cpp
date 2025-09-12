@@ -3,6 +3,10 @@
 namespace dai {
 namespace node {
 
+#if defined(__clang__)
+UVC::~UVC() = default;
+#endif
+
 UVC::UVC(std::unique_ptr<Properties> props) : DeviceNodeCRTP<DeviceNode, UVC, UVCProperties>(std::move(props)) {}
 
 void UVC::setGpiosOnInit(std::unordered_map<int, int> list) {

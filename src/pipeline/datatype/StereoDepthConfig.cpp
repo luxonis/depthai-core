@@ -1,6 +1,11 @@
 #include "depthai/pipeline/datatype/StereoDepthConfig.hpp"
 
 namespace dai {
+
+#if defined(__clang__)
+StereoDepthConfig::~StereoDepthConfig() = default;
+#endif
+
 StereoDepthConfig& StereoDepthConfig::setDepthAlign(AlgorithmControl::DepthAlign align) {
     algorithmControl.depthAlign = align;
     return *this;

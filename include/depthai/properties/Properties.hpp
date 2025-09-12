@@ -8,7 +8,12 @@ namespace dai {
 struct Properties {
     virtual void serialize(std::vector<std::uint8_t>& data, SerializationType type) const = 0;
     virtual std::unique_ptr<Properties> clone() const = 0;
+
+#if defined(__clang__)
+    virtual ~Properties();
+#else
     virtual ~Properties() = default;
+#endif
 };
 
 /// Serializable properties

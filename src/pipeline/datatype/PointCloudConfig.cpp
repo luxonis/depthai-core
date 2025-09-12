@@ -2,6 +2,10 @@
 
 namespace dai {
 
+#if defined(__clang__)
+PointCloudConfig::~PointCloudConfig() = default;
+#endif
+
 bool PointCloudConfig::getSparse() const {
     return sparse;
 }

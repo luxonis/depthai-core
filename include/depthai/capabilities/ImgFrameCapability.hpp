@@ -51,6 +51,10 @@ class ImgFrameCapability : public CapabilityCRTP<Capability, ImgFrameCapability>
 
     DEPTHAI_SERIALIZE(ImgFrameCapability, size, fps, type, resizeMode, enableUndistortion);
 
+#if defined(__clang__)
+    ~ImgFrameCapability() override;
+#endif
+
    private:
     class Impl;
     spimpl::impl_ptr<Impl> pimpl;

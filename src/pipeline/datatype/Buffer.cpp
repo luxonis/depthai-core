@@ -20,6 +20,10 @@ Buffer::Buffer(long fd, size_t size) : Buffer() {
     data = mem;
 }
 
+#if defined(__clang__)
+Buffer::~Buffer() = default;
+#endif
+
 span<uint8_t> Buffer::getData() {
     return data->getData();
 }

@@ -1,3 +1,9 @@
 #include "depthai/pipeline/datatype/DynamicCalibrationConfig.hpp"
 
-namespace dai {}  // namespace dai
+namespace dai {
+
+#if defined(__clang__)
+DynamicCalibrationControl::~DynamicCalibrationControl() = default;
+#endif
+
+}  // namespace dai

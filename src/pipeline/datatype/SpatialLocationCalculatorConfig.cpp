@@ -1,6 +1,11 @@
 #include "depthai/pipeline/datatype/SpatialLocationCalculatorConfig.hpp"
 
 namespace dai {
+
+#if defined(__clang__)
+SpatialLocationCalculatorConfig::~SpatialLocationCalculatorConfig() = default;
+#endif
+
 void SpatialLocationCalculatorConfig::setROIs(std::vector<SpatialLocationCalculatorConfigData> ROIs) {
     config = ROIs;
 }

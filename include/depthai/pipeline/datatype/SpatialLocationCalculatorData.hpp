@@ -65,7 +65,12 @@ class SpatialLocationCalculatorData : public Buffer {
      * Construct SpatialLocationCalculatorData message.
      */
     SpatialLocationCalculatorData() = default;
+
+#if defined(__clang__)
+    ~SpatialLocationCalculatorData() override;
+#else
     virtual ~SpatialLocationCalculatorData() = default;
+#endif
 
     /**
      * Retrieve configuration data for SpatialLocationCalculatorData.

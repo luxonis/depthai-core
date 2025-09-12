@@ -1,5 +1,9 @@
 #include "depthai/pipeline/datatype/AprilTags.hpp"
 
 namespace dai {
-;  // TODO - no impl needed
+
+#if defined(__clang__)
+AprilTags::~AprilTags() = default;
+#endif
+
 }  // namespace dai

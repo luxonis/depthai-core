@@ -41,6 +41,12 @@ struct ImageAlignProperties : PropertiesSerializable<Properties, ImageAlignPrope
      * Number of shaves reserved.
      */
     std::int32_t numShaves = 2;
+
+#if defined(__clang__)
+    ~ImageAlignProperties() override;
+#else
+    virtual ~ImageAlignProperties() = default;
+#endif
 };
 
 DEPTHAI_SERIALIZE_EXT(ImageAlignProperties, initialConfig, numFramesPool, alignWidth, alignHeight, warpHwIds, interpolation, outKeepAspectRatio, numShaves);

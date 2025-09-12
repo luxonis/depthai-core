@@ -16,6 +16,12 @@ struct CastProperties : PropertiesSerializable<Properties, CastProperties> {
     std::optional<float> scale;
     std::optional<float> offset;
     int numFramesPool = 4;
+
+#if defined(__clang__)
+    ~CastProperties() override;
+#else
+    virtual ~CastProperties() = default;
+#endif
 };
 
 DEPTHAI_SERIALIZE_EXT(CastProperties, numFramesPool, outputType, scale, offset);

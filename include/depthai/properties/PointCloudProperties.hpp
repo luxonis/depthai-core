@@ -15,6 +15,12 @@ struct PointCloudProperties : PropertiesSerializable<Properties, PointCloudPrope
     PointCloudConfig initialConfig;
 
     int numFramesPool = 4;
+
+#if defined(__clang__)
+    ~PointCloudProperties() override;
+#else
+    virtual ~PointCloudProperties() = default;
+#endif
 };
 
 DEPTHAI_SERIALIZE_EXT(PointCloudProperties, initialConfig, numFramesPool);

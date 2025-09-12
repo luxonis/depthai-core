@@ -55,7 +55,11 @@ class ImgAnnotations : public Buffer, public ProtoSerializable {
     ImgAnnotations() = default;
     explicit ImgAnnotations(std::vector<ImgAnnotation> annotations) : annotations(std::move(annotations)) {}
 
+#if defined(__clang__)
+    ~ImgAnnotations() override;
+#else
     virtual ~ImgAnnotations() = default;
+#endif
 
     /// Transform
     std::vector<ImgAnnotation> annotations;

@@ -65,7 +65,11 @@ class Tracklets : public Buffer {
      * Construct Tracklets message.
      */
     Tracklets() = default;
+#if defined(__clang__)
+    ~Tracklets() override;
+#else
     virtual ~Tracklets() = default;
+#endif
 
     /**
      * Retrieve data for Tracklets.

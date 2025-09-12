@@ -10,6 +10,11 @@
 #include "fp16/fp16.h"
 
 namespace dai {
+
+#if defined(__clang__)
+NNData::~NNData() = default;
+#endif
+
 NNData::NNData(size_t size) : NNData() {
     auto mem = std::make_shared<VectorMemory>();
     mem->resize(size);

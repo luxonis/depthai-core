@@ -211,6 +211,12 @@ struct ColorCameraProperties : PropertiesSerializable<Properties, ColorCameraPro
      * with both packed/unpacked, but disabled for other cameras like ToF.
      */
     std::optional<bool> rawPacked;
+
+#if defined(__clang__)
+    ~ColorCameraProperties() override;
+#else
+    virtual ~ColorCameraProperties() = default;
+#endif
 };
 
 DEPTHAI_SERIALIZE_EXT(ColorCameraProperties,

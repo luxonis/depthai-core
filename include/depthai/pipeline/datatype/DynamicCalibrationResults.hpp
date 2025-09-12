@@ -18,7 +18,12 @@ namespace dai {
  */
 struct CoverageData : public Buffer {
     CoverageData() = default;
+
+#if defined(__clang__)
+    ~CoverageData() override;
+#else
     virtual ~CoverageData() = default;
+#endif
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
         metadata = utility::serialize(*this);
@@ -103,7 +108,12 @@ struct CalibrationQuality : public Buffer {
      * Construct empty CalibrationQuality message.
      */
     CalibrationQuality() = default;
+
+#if defined(__clang__)
+    ~CalibrationQuality() override;
+#else
     virtual ~CalibrationQuality() = default;
+#endif
 
     /**
      * Construct CalibrationQuality with quality metrics and info string.
@@ -168,7 +178,12 @@ struct DynamicCalibrationResult : public Buffer {
      * Construct empty DynamicCalibrationResult message.
      */
     DynamicCalibrationResult() = default;
+
+#if defined(__clang__)
+    ~DynamicCalibrationResult() override;
+#else
     virtual ~DynamicCalibrationResult() = default;
+#endif
 
     /**
      * Construct with result data and informational string.

@@ -31,7 +31,11 @@ typedef std::variant<MedianFilterParams, SpatialFilterParams, SpeckleFilterParam
 
 class ImageFiltersConfig : public Buffer {
    public:
+#if defined(__clang__)
+    ~ImageFiltersConfig() override;
+#else
     virtual ~ImageFiltersConfig() = default;
+#endif
 
     /**
      * Insert filter parameters describing how a filter at index index should be updated
@@ -67,7 +71,11 @@ class ImageFiltersConfig : public Buffer {
 
 class ToFDepthConfidenceFilterConfig : public Buffer {
    public:
+#if defined(__clang__)
+    ~ToFDepthConfidenceFilterConfig() override;
+#else
     virtual ~ToFDepthConfidenceFilterConfig() = default;
+#endif
 
     /**
      * Threshold for the confidence filter

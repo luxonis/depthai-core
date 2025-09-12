@@ -7,6 +7,11 @@
 #include "utility/H26xParsers.hpp"
 
 namespace dai {
+
+#if defined(__clang__)
+EncodedFrame::~EncodedFrame() = default;
+#endif
+
 // getters
 unsigned int EncodedFrame::getInstanceNum() const {
     return instanceNum;

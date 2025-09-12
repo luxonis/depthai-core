@@ -1,5 +1,9 @@
 #include "depthai/pipeline/datatype/SystemInformation.hpp"
 
 namespace dai {
-// No implementation needed
+
+#if defined(__clang__)
+SystemInformation::~SystemInformation() = default;
+#endif
+
 }  // namespace dai

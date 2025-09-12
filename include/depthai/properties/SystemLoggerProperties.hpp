@@ -14,6 +14,12 @@ struct SystemLoggerProperties : PropertiesSerializable<Properties, SystemLoggerP
      * Rate at which the messages are going to be sent in hertz
      */
     float rateHz = 1.0f;
+
+#if defined(__clang__)
+    ~SystemLoggerProperties() override;
+#else
+    virtual ~SystemLoggerProperties() = default;
+#endif
 };
 
 DEPTHAI_SERIALIZE_EXT(SystemLoggerProperties, rateHz);

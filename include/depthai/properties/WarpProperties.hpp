@@ -34,6 +34,12 @@ struct WarpProperties : PropertiesSerializable<Properties, WarpProperties> {
     std::vector<int> warpHwIds;
 
     Interpolation interpolation = Interpolation::AUTO;
+
+#if defined(__clang__)
+    ~WarpProperties() override;
+#else
+    virtual ~WarpProperties() = default;
+#endif
 };
 
 DEPTHAI_SERIALIZE_EXT(WarpProperties, outputWidth, outputHeight, outputFrameSize, numFramesPool, meshWidth, meshHeight, meshUri, warpHwIds, interpolation);

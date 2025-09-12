@@ -37,7 +37,12 @@ class PointCloudData : public Buffer, public ProtoSerializable {
      * Construct PointCloudData message.
      */
     PointCloudData() = default;
+
+#if defined(__clang__)
+    ~PointCloudData() override;
+#else
     virtual ~PointCloudData() = default;
+#endif
 
     std::vector<Point3f> getPoints();
     std::vector<Point3fRGBA> getPointsRGB();

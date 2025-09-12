@@ -5,6 +5,11 @@
 #endif
 
 namespace dai {
+
+#if defined(__clang__)
+SpatialImgDetections::~SpatialImgDetections() = default;
+#endif
+
 #ifdef DEPTHAI_ENABLE_PROTOBUF
 std::vector<std::uint8_t> SpatialImgDetections::serializeProto(bool) const {
     return utility::serializeProto(utility::getProtoMessage(this));

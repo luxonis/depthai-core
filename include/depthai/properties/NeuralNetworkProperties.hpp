@@ -53,6 +53,12 @@ struct NeuralNetworkProperties : PropertiesSerializable<Properties, NeuralNetwor
      * Specify backend properties
      */
     std::map<std::string, std::string> backendProperties;
+
+#if defined(__clang__)
+    ~NeuralNetworkProperties() override;
+#else
+    virtual ~NeuralNetworkProperties() = default;
+#endif
 };
 
 DEPTHAI_SERIALIZE_EXT(

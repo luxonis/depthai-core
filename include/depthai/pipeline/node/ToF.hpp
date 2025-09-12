@@ -94,6 +94,12 @@ class ToF : public DeviceNodeGroup {
           tofDepthConfidenceFilterNode{*tofDepthConfidenceFilter},
           imageFiltersNode{*imageFilters} {}
 
+#if defined(__clang__)
+    ~ToF() override;
+#else
+    virtual ~ToF() = default;
+#endif
+
     [[nodiscard]] static std::shared_ptr<ToF> create(const std::shared_ptr<Device>& device) {
         auto tofPtr = std::make_shared<ToF>(device);
         tofPtr->buildInternal();

@@ -1,5 +1,9 @@
 #include "depthai/pipeline/datatype/TrackedFeatures.hpp"
 
 namespace dai {
-// No implementation needed
+
+#if defined(__clang__)
+TrackedFeatures::~TrackedFeatures() = default;
+#endif
+
 }  // namespace dai

@@ -21,6 +21,12 @@ struct SpatialDetectionNetworkProperties : PropertiesSerializable<Properties, Sp
     SpatialLocationCalculatorConfigThresholds depthThresholds;
     SpatialLocationCalculatorAlgorithm calculationAlgorithm = SpatialLocationCalculatorAlgorithm::MEDIAN;
     std::int32_t stepSize = SpatialLocationCalculatorConfigData::AUTO;
+
+#if defined(__clang__)
+    ~SpatialDetectionNetworkProperties() override;
+#else
+    virtual ~SpatialDetectionNetworkProperties() = default;
+#endif
 };
 
 DEPTHAI_SERIALIZE_EXT(SpatialDetectionNetworkProperties, detectedBBScaleFactor, depthThresholds, calculationAlgorithm);

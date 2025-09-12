@@ -16,7 +16,12 @@ class ImageAlignConfig : public Buffer {
     uint16_t staticDepthPlane = 0;
 
     ImageAlignConfig() = default;
+
+#if defined(__clang__)
+    ~ImageAlignConfig() override;
+#else
     virtual ~ImageAlignConfig() = default;
+#endif
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
         metadata = utility::serialize(*this);

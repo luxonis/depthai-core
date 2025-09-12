@@ -2,6 +2,10 @@
 
 namespace dai {
 
+#if defined(__clang__)
+ToFConfig::~ToFConfig() = default;
+#endif
+
 ToFConfig& ToFConfig::setMedianFilter(filters::params::MedianFilter median) {
     this->median = median;
     return *this;

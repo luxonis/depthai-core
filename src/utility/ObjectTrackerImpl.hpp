@@ -10,7 +10,11 @@ namespace impl {
 
 class Tracker {
    public:
+#if defined(__clang__)
+    virtual ~Tracker();
+#else
     virtual ~Tracker() = default;
+#endif
 
     /**
      * Initialize the tracker with the first frame and detections.

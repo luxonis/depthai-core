@@ -217,7 +217,11 @@ class IMUData : public Buffer, public ProtoSerializable {
    public:
     // Construct IMUData message
     IMUData() = default;
+#if defined(__clang__)
+    ~IMUData() override;
+#else
     virtual ~IMUData() = default;
+#endif
 
     /// Detections
     std::vector<IMUPacket> packets;

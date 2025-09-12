@@ -6,6 +6,10 @@
 
 namespace dai {
 
+#if defined(__clang__)
+ImgDetections::~ImgDetections() = default;
+#endif
+
 #ifdef DEPTHAI_ENABLE_PROTOBUF
 ProtoSerializable::SchemaPair ImgDetections::serializeSchema() const {
     return utility::serializeSchema(utility::getProtoMessage(this));

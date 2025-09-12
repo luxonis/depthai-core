@@ -2,6 +2,10 @@
 
 namespace dai {
 
+#if defined(__clang__)
+DeviceNodeGroup::~DeviceNodeGroup() = default;
+#endif
+
 void DeviceNodeGroup::setLogLevel(dai::LogLevel level) {
     for(auto& node : nodeRefs) {
         // Try converting to ThreadedNode

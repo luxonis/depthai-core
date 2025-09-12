@@ -19,6 +19,12 @@ struct SyncProperties : PropertiesSerializable<Properties, SyncProperties> {
      * The number of syncing attempts before fail (num of replaced messages).
      */
     int32_t syncAttempts = -1;
+
+#if defined(__clang__)
+    ~SyncProperties() override;
+#else
+    virtual ~SyncProperties() = default;
+#endif
 };
 
 DEPTHAI_SERIALIZE_EXT(SyncProperties, syncThresholdNs, syncAttempts);

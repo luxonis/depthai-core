@@ -75,7 +75,12 @@ class ImgFrame : public Buffer, public ProtoSerializable {
     ImgFrame(long fd);
     ImgFrame(size_t size);
     ImgFrame(long fd, size_t size);
+
+#if defined(__clang__)
+    ~ImgFrame() override;
+#else
     virtual ~ImgFrame() = default;
+#endif
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
         metadata = utility::serialize(*this);

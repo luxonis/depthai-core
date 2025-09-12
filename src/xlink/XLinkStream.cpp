@@ -10,6 +10,10 @@
 
 namespace dai {
 
+#if defined(__clang__)
+StreamPacketMemory::~StreamPacketMemory() = default;
+#endif
+
 // static
 constexpr std::chrono::milliseconds XLinkStream::WAIT_FOR_STREAM_RETRY;
 constexpr int XLinkStream::STREAM_OPEN_RETRIES;

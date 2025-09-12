@@ -57,7 +57,12 @@ class TrackedFeatures : public Buffer {
      * Construct TrackedFeatures message.
      */
     TrackedFeatures() = default;
+
+#if defined(__clang__)
+    ~TrackedFeatures() override;
+#else
     virtual ~TrackedFeatures() = default;
+#endif
 
     std::vector<TrackedFeature> trackedFeatures;
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {

@@ -13,7 +13,12 @@ namespace dai {
 class EdgeDetectorConfig : public Buffer {
    public:
     EdgeDetectorConfig() = default;
+
+#if defined(__clang__)
+    ~EdgeDetectorConfig() override;
+#else
     virtual ~EdgeDetectorConfig() = default;
+#endif
 
     struct EdgeDetectorConfigData {
         /**

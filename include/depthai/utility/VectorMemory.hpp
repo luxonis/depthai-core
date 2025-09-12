@@ -36,6 +36,12 @@ class VectorMemory : public std::vector<std::uint8_t>, public Memory {
     void setSize(std::size_t size) override {
         resize(size);
     }
+
+#if defined(__clang__)
+    ~VectorMemory() override;
+#else
+    virtual ~VectorMemory() = default;
+#endif
 };
 
 }  // namespace dai
