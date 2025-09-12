@@ -343,12 +343,12 @@ dai_set_example_test_labels(image_filters rvc2_all rvc4 ci)
 
 # DynamicCalibration
 if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
-    add_python_example(calib_integration DynamicCalibration/calib_integration.py)
-    dai_set_example_test_labels(calib_integration ondevice rvc2_all rvc4 ci)
+    add_python_example(calibration_integration DynamicCalibration/calibration_integration.py)
+    dai_set_example_test_labels(calibration_integration ondevice rvc2_all rvc4 ci)
 
-    add_python_example(calib_quality_dynamic DynamicCalibration/calib_quality_dynamic.py)
-    dai_set_example_test_labels(calib_quality_dynamic ondevice rvc2_all rvc4 ci)
+    add_python_example(calibration_quality_dynamic DynamicCalibration/calibration_quality_dynamic.py)
+    dai_set_example_test_labels(calibration_quality_dynamic ondevice rvc2_all rvc4 ci)
 
-    add_python_example(calibrate_dynamic DynamicCalibration/calibrate_dynamic.py)
-    dai_set_example_test_labels(calibrate_dynamic ondevice rvc2_all rvc4 ci)
+    add_python_example(calibration_dynamic DynamicCalibration/calibration_dynamic.py)
+    dai_set_example_test_labels(calibration_dynamic ondevice rvc2_all rvc4 ci)
 endif()

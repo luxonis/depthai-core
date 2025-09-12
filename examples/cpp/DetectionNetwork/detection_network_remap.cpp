@@ -145,8 +145,8 @@ int main() {
     auto stereo = pipeline.create<dai::node::StereoDepth>();
 
     // Linking
-    auto monoLeftOut = monoLeft->requestOutput(std::make_pair(1280, 720), dai::ImgFrame::Type::NV12);
-    auto monoRightOut = monoRight->requestOutput(std::make_pair(1280, 720), dai::ImgFrame::Type::NV12);
+    auto monoLeftOut = monoLeft->requestOutput(std::make_pair(1280, 720));
+    auto monoRightOut = monoRight->requestOutput(std::make_pair(1280, 720));
     monoLeftOut->link(stereo->left);
     monoRightOut->link(stereo->right);
 

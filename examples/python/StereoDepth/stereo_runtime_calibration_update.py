@@ -12,8 +12,8 @@ monoRight = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C)
 stereo = pipeline.create(dai.node.StereoDepth)
 
 # Linking
-monoLeftOut = monoLeft.requestFullResolutionOutput(type=dai.ImgFrame.Type.NV12)
-monoRightOut = monoRight.requestFullResolutionOutput(type=dai.ImgFrame.Type.NV12)
+monoLeftOut = monoLeft.requestFullResolutionOutput()
+monoRightOut = monoRight.requestFullResolutionOutput()
 monoLeftOut.link(stereo.left)
 monoRightOut.link(stereo.right)
 
