@@ -18,8 +18,8 @@ int main() {
     auto monoLeft = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B);
     auto monoRight = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_C);
 
-    auto* leftOut = monoLeft->requestFullResolutionOutput(dai::ImgFrame::Type::NV12);
-    auto* rightOut = monoRight->requestFullResolutionOutput(dai::ImgFrame::Type::NV12);
+    auto* leftOut = monoLeft->requestFullResolutionOutput();
+    auto* rightOut = monoRight->requestFullResolutionOutput();
 
     // Dynamic-calibration node
     auto dynCalib = pipeline.create<dai::node::DynamicCalibration>();

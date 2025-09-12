@@ -126,7 +126,6 @@ class SpatialVisualizer : public dai::NodeCRTP<dai::node::HostNode, SpatialVisua
 };
 
 int main() {
-
     try {
         // Create pipeline
         dai::Pipeline pipeline;
