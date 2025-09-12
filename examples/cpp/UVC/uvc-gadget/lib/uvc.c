@@ -375,7 +375,11 @@ static void uvc_events_process(void *d)
 
 	switch (v4l2_event.type) {
 	case UVC_EVENT_CONNECT:
+		printf("UVC_EVENT_CONNECT\n");
+		return;
 	case UVC_EVENT_DISCONNECT:
+		printf("UVC_EVENT_DISCONNECT\n");
+		uvc_stream_enable(dev->stream, 0);
 		return;
 
 	case UVC_EVENT_SETUP:
@@ -416,6 +420,10 @@ void uvc_events_init(struct uvc_device *dev, struct events *events)
 	uvc_fill_streaming_control(dev, &dev->commit, 1, 1, 0);
 
 	memset(&sub, 0, sizeof sub);
+	sub.type = UVC_EVENT_CONNECT;
+	ioctl(dev->vdev->fd, VIDIOC_SUBSCRIBE_EVENT, &sub);
+	sub.type = UVC_EVENT_DISCONNECT;
+	ioctl(dev->vdev->fd, VIDIOC_SUBSCRIBE_EVENT, &sub);
 	sub.type = UVC_EVENT_SETUP;
 	ioctl(dev->vdev->fd, VIDIOC_SUBSCRIBE_EVENT, &sub);
 	sub.type = UVC_EVENT_DATA;
