@@ -4,14 +4,16 @@ name: Depthai Python CI/CD
 
 on:
   workflow_dispatch:
-  pull_request:
-    branches:
-    - develop
   push:
     branches:
-    - develop*
+      - main
+      - develop
     tags:
-    - 'v*'
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+      - develop
 
 ###################################
 ###################################
@@ -40,12 +42,10 @@ jobs:
           LABELS="$RAW_LABELS"
         fi
 
-        SHOULD_RUN="false"
-        if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
-          SHOULD_RUN="true"
-        elif [[ "$EVENT_NAME" == "pull_request" ]]; then
-          if echo "$LABELS" | jq -r '.[].name' | grep -q "testable"; then
-            SHOULD_RUN="true"
+        SHOULD_RUN="true"
+        if [[ "$EVENT_NAME" == "pull_request" ]]; then
+          if ! echo "$LABELS" | jq -r '.[].name' | grep -q "testable"; then
+            SHOULD_RUN="false"
           fi
         fi
 
