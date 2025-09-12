@@ -21,8 +21,6 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
    public:
     constexpr static const char* NAME = "DynamicCalibration";
 
-    using PerformanceMode = DynamicCalibrationControl::PerformanceMode;
-
     using DeviceNodeCRTP::DeviceNodeCRTP;
 
     ~DynamicCalibration() override = default;
@@ -125,6 +123,7 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
         MISSING_IMAGE = 6,
         CALIBRATION_DOES_NOT_EXIST = 7,
         STOP_LOADING_IMAGES_DURING_CALIBRATION = 8,
+        INVALID_COMMAND = 9,
     };
 
     /**
@@ -202,7 +201,7 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     // Time between calibration runs, in seconds.
     // Determines how often the calibration procedure is executed.
     float calibrationPeriod = 5.0f;
-    PerformanceMode performanceMode = PerformanceMode::DEFAULT;
+    DynamicCalibrationControl::PerformanceMode performanceMode = DynamicCalibrationControl::PerformanceMode::DEFAULT;
     bool calibrationShouldRun = false;
     bool slept = false;
 
