@@ -7,7 +7,10 @@
 
 #include "depthai/pipeline/datatype/ADatatype.hpp"
 #include "depthai/utility/VectorMemory.hpp"
-#include "fp16/fp16.h"
+
+#ifndef RVC2_FW
+    #include "fp16/fp16.h"
+#endif
 
 namespace dai {
 
@@ -118,6 +121,7 @@ NNData::NNData(size_t size) : NNData() {
 //     return {mem, raw};
 // }
 
+#ifndef RVC2_FW
 uint16_t NNData::fp32_to_fp16(float value) {
     return fp16_ieee_from_fp32_value(value);
 };
@@ -125,6 +129,7 @@ uint16_t NNData::fp32_to_fp16(float value) {
 float NNData::fp16_to_fp32(uint16_t value) {
     return fp16_ieee_to_fp32_value(value);
 };
+#endif
 
 // // setters
 // // uint8_t

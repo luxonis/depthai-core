@@ -13,7 +13,6 @@
 #include "depthai/properties/GlobalProperties.hpp"
 #include "depthai/properties/IMUProperties.hpp"
 #include "depthai/properties/ImageAlignProperties.hpp"
-#include "depthai/properties/ImageFiltersProperties.hpp"
 #include "depthai/properties/ImageManipProperties.hpp"
 #include "depthai/properties/MessageDemuxProperties.hpp"
 #include "depthai/properties/MonoCameraProperties.hpp"
@@ -36,8 +35,13 @@
 #include "depthai/properties/internal/XLinkInProperties.hpp"
 #include "depthai/properties/internal/XLinkOutProperties.hpp"
 
-#ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
-    #include "depthai/properties/DynamicCalibrationProperties.hpp"
+// RVC2_FW does not need these properties
+#ifndef RVC2_FW
+    #include "depthai/properties/ImageFiltersProperties.hpp"
+
+    #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
+        #include "depthai/properties/DynamicCalibrationProperties.hpp"
+    #endif
 #endif
 
 namespace dai {
@@ -60,8 +64,6 @@ FeatureTrackerProperties::~FeatureTrackerProperties() = default;
 IMUProperties::~IMUProperties() = default;
 ImageAlignProperties::~ImageAlignProperties() = default;
 ImageManipProperties::~ImageManipProperties() = default;
-ImageFiltersProperties::~ImageFiltersProperties() = default;
-ToFDepthConfidenceFilterProperties::~ToFDepthConfidenceFilterProperties() = default;
 DeviceNodeGroupProperties::~DeviceNodeGroupProperties() = default;
 MessageDemuxProperties::~MessageDemuxProperties() = default;
 MonoCameraProperties::~MonoCameraProperties() = default;
@@ -84,8 +86,16 @@ WarpProperties::~WarpProperties() = default;
 GlobalProperties::~GlobalProperties() = default;
 CastProperties::~CastProperties() = default;
 
-#ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
+// RVC2_FW does not need these properties
+#ifndef RVC2_FW
+
+ImageFiltersProperties::~ImageFiltersProperties() = default;
+ToFDepthConfidenceFilterProperties::~ToFDepthConfidenceFilterProperties() = default;
+
+    #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
 DynamicCalibrationProperties::~DynamicCalibrationProperties() = default;
+    #endif
+
 #endif
 
 }  // namespace dai
