@@ -4,7 +4,6 @@
     #include "utility/ProtoSerialize.hpp"
 #endif
 
-
 #include "utility/H26xParsers.hpp"
 
 namespace dai {
