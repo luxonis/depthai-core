@@ -72,7 +72,7 @@ class ToFDepthConfidenceFilterConfig : public Buffer {
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
     /**
-     * Threshold for the confidence filterz
+     * Threshold for the confidence filter
      */
     float confidenceThreshold = 0.1f;
 
