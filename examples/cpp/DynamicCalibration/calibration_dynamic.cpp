@@ -47,7 +47,7 @@ int main() {
 
     using DCC = dai::DynamicCalibrationControl;
     // Optionally set performance mode:
-    dynCalibInputControl->send(std::make_shared<DCC>(DCC::Commands::SetPerformanceMode{dai::node::DynamicCalibration::PerformanceMode::OPTIMIZE_PERFORMANCE}));
+    dynCalibInputControl->send(std::make_shared<DCC>(DCC::Commands::SetPerformanceMode{DCC::PerformanceMode::OPTIMIZE_PERFORMANCE}));
 
     // Start calibration (optimize performance)
     dynCalibInputControl->send(std::make_shared<DCC>(DCC::Commands::StartCalibration{}));
