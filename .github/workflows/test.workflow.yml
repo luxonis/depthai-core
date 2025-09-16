@@ -135,7 +135,7 @@ jobs:
           ) -join ' '
         }
         
-        pip install --upgrade pip && \
+        pip install --upgrade pip
         pip install numpy pytest pytest-html
 
         $cmakeConfigureCommand = "cmake -S . -B C:/depthai-core/build -D CMAKE_BUILD_TYPE=Release -DDEPTHAI_VCPKG_INTERNAL_ONLY=OFF -DVCPKG_OVERLAY_TRIPLETS=./cmake/triplets/release -DDEPTHAI_BUILD_TESTS=ON $extraFlags"
