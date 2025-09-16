@@ -93,10 +93,27 @@ jobs:
       VCPKG_DOWNLOADS: C:\vcpkg_downloads
       VCPKG_DEFAULT_BINARY_CACHE: C:\vcpkg_binaries
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-      with:
-        submodules: recursive
+
+    - name: Try reuse existing artifact for this SHA
+      id: reuse
+      shell: pwsh
+      env:
+        GH_TOKEN: ${{ github.token }}
+        REPO: ${{ github.repository }}
+        ARTIFACT_NAME: depthai-core-win-${{ github.sha }}
+      run: |
+        # Find an artifact with the exact name for this commit
+        $id = gh api repos/$env:REPO/actions/artifacts --paginate `
+          --jq ".artifacts[] | select(.name==""$env:ARTIFACT_NAME"") | .id" | Select-Object -First 1
+
+        if ($id) {
+          Write-Host "Found artifact id=$id. Skipping build..."
+          "skip_build=true" >> $env:GITHUB_OUTPUT
+        } else {
+          Write-Host "No prior artifact found for $env:ARTIFACT_NAME"
+          "skip_build=false" >> $env:GITHUB_OUTPUT
+        }
+
     - name: Setup Python 3.13.7
       uses: actions/setup-python@v5
       with:
@@ -105,20 +122,20 @@ jobs:
 
     - name: Ensure cache dirs
       shell: powershell
+      if: steps.reuse.outputs.skip_build != 'true'
       run: |
-        New-Item -ItemType Directory -Force -Path "C:\vcpkg_downloads" | Out-Null
         New-Item -ItemType Directory -Force -Path "C:\vcpkg_binaries" | Out-Null
 
-    - name: Cache vcpkg downloads
-      uses: actions/cache@v4
+    - name: Checkout depthai
+      uses: actions/checkout@v4
+      if: steps.reuse.outputs.skip_build != 'true'
       with:
-         path: C:\vcpkg_downloads
-         key: vcpkg-downloads-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}
-         restore-keys: |
-           vcpkg-downloads-${{ runner.os }}-
+        submodules: recursive
+        path: C:\
 
     - name: Cache vcpkg binary cache
       uses: actions/cache@v4
+      if: steps.reuse.outputs.skip_build != 'true'
       with:
         path: C:\vcpkg_binaries
         key: vcpkg-archives-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}-${{ env.VCPKG_DEFAULT_TRIPLET }}
@@ -126,7 +143,9 @@ jobs:
           vcpkg-archives-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}-${{ env.VCPKG_DEFAULT_TRIPLET }}
 
     - name: Configure and Build
+      if: steps.reuse.outputs.skip_build != 'true'
       run: |
+        cd C:\depthai-core
         $isPR = "${{ github.head_ref }}" -ne ""
         $extraFlags = ""
 
@@ -151,17 +170,12 @@ jobs:
         $cmakeBuildCommand = "cmake --build C:/depthai-core/build --parallel 2 --config Release"
         Write-Host "Running: $cmakeBuildCommand"
         Invoke-Expression $cmakeBuildCommand
-    
-    - name: Zip C:\depthai-core
-      shell: powershell
-      run: |
-        $zipPath = "depthai-core-win-${{ github.sha }}.zip"
-        Compress-Archive -Path "C:\depthai-core" -DestinationPath $zipPath -Force
-        Write-Host "Created artifact: $zipPath"
 
     - name: Upload artifact
+      if: steps.reuse.outputs.skip_build != 'true'
       uses: actions/upload-artifact@v4
       with:
         name: depthai-core-win-${{ github.sha }}
-        path: depthai-core-win-${{ github.sha }}.zip
+        path: C:\depthai-core
+        retention-days: 1
 
