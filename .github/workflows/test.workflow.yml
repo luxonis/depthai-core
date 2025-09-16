@@ -90,6 +90,8 @@ jobs:
       VCPKG_FEATURE_FLAGS: manifests,registries,binarycaching
       # Triplet tweak if you use something else
       VCPKG_DEFAULT_TRIPLET: x64-windows
+      VCPKG_DOWNLOADS: C:\vcpkg_downloads\
+      VCPKG_DEFAULT_BINARY_CACHE: C:\vcpkg_binaries\
     steps:
     - name: Checkout
       uses: actions/checkout@v4
@@ -101,23 +103,27 @@ jobs:
         python-version: '3.13.7'
         cache: 'pip'
 
-    # 1) Cache vcpkg source downloads (prevents re-downloading tarballs)
+    - name: Ensure cache dirs
+      shell: powershell
+      run: |
+        New-Item -ItemType Directory -Force -Path "C:\vcpkg_downloads" | Out-Null
+        New-Item -ItemType Directory -Force -Path "C:\vcpkg_binaries" | Out-Null
+
     - name: Cache vcpkg downloads
       uses: actions/cache@v4
       with:
          path: C:\vcpkg\downloads
-         key: vcpkg-downloads-${{ runner.os }}-${{ hashFiles('vcpkg.json', 'vcpkg-lock.json') }}
+         key: vcpkg-downloads-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}
          restore-keys: |
            vcpkg-downloads-${{ runner.os }}-
 
-      # 2) Cache vcpkg binary archives (restores prebuilt ports)
     - name: Cache vcpkg binary cache
       uses: actions/cache@v4
       with:
-        path: C:\Users\runneradmin\AppData\Local\vcpkg\archives
-        key: vcpkg-archives-${{ runner.os }}-${{ hashFiles('vcpkg.json', 'vcpkg-lock.json') }}-${{ env.VCPKG_DEFAULT_TRIPLET }}
+        path: C:\vcpkg_binaries
+        key: vcpkg-archives-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}-${{ env.VCPKG_DEFAULT_TRIPLET }}
         restore-keys: |
-          vcpkg-archives-${{ runner.os }}-
+          vcpkg-archives-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}-${{ env.VCPKG_DEFAULT_TRIPLET }}
 
     - name: Configure and Build
       run: |
