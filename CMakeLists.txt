@@ -318,6 +318,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/node/host/RGBD.cpp
     src/pipeline/datatype/DatatypeEnum.cpp
     src/pipeline/node/PointCloud.cpp
+    src/pipeline/node/PipelineEventAggregation.cpp
     src/pipeline/datatype/Buffer.cpp
     src/pipeline/datatype/ImgFrame.cpp
     src/pipeline/datatype/ImgTransformations.cpp
@@ -347,6 +348,8 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/PointCloudConfig.cpp
     src/pipeline/datatype/ObjectTrackerConfig.cpp
     src/pipeline/datatype/PointCloudData.cpp
+    src/pipeline/datatype/PipelineEvent.cpp
+    src/pipeline/datatype/PipelineState.cpp
     src/pipeline/datatype/RGBDData.cpp
     src/pipeline/datatype/MessageGroup.cpp
     src/pipeline/datatype/TransformData.cpp
