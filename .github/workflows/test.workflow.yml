@@ -94,31 +94,27 @@ jobs:
       VCPKG_DEFAULT_BINARY_CACHE: C:\vcpkg_binaries
     steps:
 
-    - name: Try reuse existing artifact for this SHA (fast)
+    - name: Try reuse existing artifact for this SHA
       id: reuse
       shell: pwsh
       env:
         GH_TOKEN: ${{ github.token }}
         REPO: ${{ github.repository }}
-        SHA:  ${{ github.sha }}
+        RUN_ID: ${{ github.run_id }}
         ARTIFACT_NAME: depthai-core-win-${{ github.sha }}
       run: |
-        $runId = gh api repos/$env:REPO/actions/runs -f head_sha=$env:SHA --jq '.workflow_runs[0].id'
-        if (-not $runId) {
-          "skip_build=false" >> $env:GITHUB_OUTPUT
-          Write-Host "No workflow runs found for SHA $env:SHA"
-          exit 0
-        }
-        $id = gh api repos/$env:REPO/actions/runs/$runId/artifacts `
+        Write-Host "REPO=$env:REPO  RUN_ID=$env:RUN_ID  NAME=$env:ARTIFACT_NAME"
+        $id = gh api "repos/$env:REPO/actions/runs/$env:RUN_ID/artifacts" `
           --jq ".artifacts[] | select(.name==""$env:ARTIFACT_NAME"") | .id"
-
         if ($id) {
-          Write-Host "Found artifact id=$id for run $runId. Skipping build..."
-          "skip_build=true" >> $env:GITHUB_OUTPUT
+          "skip_build=true"  >> $env:GITHUB_OUTPUT
+          "artifact_id=$id"  >> $env:GITHUB_OUTPUT
+          Write-Host "Found artifact id=$id on this run; skipping build."
         } else {
-          Write-Host "No artifact named $env:ARTIFACT_NAME on run $runId"
           "skip_build=false" >> $env:GITHUB_OUTPUT
+          Write-Host "No artifact named $env:ARTIFACT_NAME on this run."
         }
+
 
     - name: Checkout depthai
       uses: actions/checkout@v4
