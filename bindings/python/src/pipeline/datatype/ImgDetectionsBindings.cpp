@@ -6,10 +6,13 @@
 
 // depthai
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
+#include "depthai/pipeline/datatype/SegmentationMask.hpp"
+#include "ndarray_converter.h"
 
 // pybind
 #include <pybind11/chrono.h>
 #include <pybind11/numpy.h>
+#include <pybind11/pytypes.h>
 
 // #include "spdlog/spdlog.h"
 
@@ -122,21 +125,37 @@ void bind_imgdetections(pybind11::module& m, void* pCallstack) {
         .def("getSegmentationMaskWidth", &ImgDetections::getSegmentationMaskWidth, DOC(dai, ImgDetections, getSegmentationMaskWidth))
         .def("getSegmentationMaskHeight", &ImgDetections::getSegmentationMaskHeight, DOC(dai, ImgDetections, getSegmentationMaskHeight))
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-        .def("getSegmentationMask", &ImgDetections::getSegmentationMask, DOC(dai, ImgDetections, getSegmentationMask))
-        .def("setSegmentationMask", &ImgDetections::setSegmentationMask, py::arg("mask"), DOC(dai, ImgDetections, setSegmentationMask))
-        .def("getCvSegmentationMask", &ImgDetections::getCvSegmentationMask, py::arg("allocator") = nullptr, DOC(dai, ImgDetections, getCvSegmentationMask))
-        .def("getCvSegmentationMaskByIndex",
-             &ImgDetections::getCvSegmentationMaskByIndex,
-             py::arg("index"),
-             py::arg("allocator") = nullptr,
-             DOC(dai, ImgDetections, getCvSegmentationMaskByIndex))
+        .def(
+            "getSegmentationMask", [](ImgDetections& self) { return self.getSegmentationMask(false); }, DOC(dai, ImgDetections, getSegmentationMask))
+        .def("setSegmentationMask", &ImgDetections::setSegmentationMask, DOC(dai, ImgDetections, setSegmentationMask))
+        .def(
+            "getCvSegmentationMask",
+            [](ImgDetections& self) { return self.getCvSegmentationMask(&g_numpyAllocator); },
+            DOC(dai, ImgDetections, getCvSegmentationMask))
+        .def(
+            "getCvSegmentationMaskByIndex",
+            [](ImgDetections& self, uint8_t index) { return self.getCvSegmentationMaskByIndex(index, &g_numpyAllocator); },
+            py::arg("index"),
+            DOC(dai, ImgDetections, getCvSegmentationMaskByIndex))
 #endif
 #ifdef DEPTHAI_XTENSOR_SUPPORT
-        .def("getTensorSegmentationMask", &ImgDetections::getTensorSegmentationMask, DOC(dai, ImgDetections, getTensorSegmentationMask))
-        .def("setTensorSegmentationMask", &ImgDetections::setTensorSegmentationMask, py::arg("mask"), DOC(dai, ImgDetections, setTensorSegmentationMask))
-        .def("getTensorSegmentationMaskByIndex",
-             &ImgDetections::getTensorSegmentationMaskByIndex,
-             py::arg("index"),
-             DOC(dai, ImgDetections, getTensorSegmentationMaskByIndex));
+        .def(
+            "getTensorSegmentationMask",
+            [](ImgDetections& self) -> py::object { return py::cast(self.getTensorSegmentationMask()); },
+            DOC(dai, ImgDetections, getTensorSegmentationMask))
+
+        .def(
+            "setTensorSegmentationMask",
+            [](ImgDetections& self, const py::object mask) {
+                auto tensor = py::array(mask);
+                self.setTensorSegmentationMask(tensor.cast<xt::xtensor<std::uint8_t, 2, xt::layout_type::row_major>>());
+            },
+            py::arg("mask"),
+            DOC(dai, ImgDetections, setTensorSegmentationMask))
+        .def(
+            "getTensorSegmentationMaskByIndex",
+            [](ImgDetections& self, uint8_t index) -> py::object { return py::cast(self.getTensorSegmentationMaskByIndex(index)); },
+            py::arg("index"),
+            DOC(dai, ImgDetections, getTensorSegmentationMaskByIndex));
 #endif
 }

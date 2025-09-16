@@ -1,6 +1,9 @@
 #include <cstddef>
 #include <cstdint>
 #include <vector>
+#include <xtensor/containers/xadapt.hpp>
+#include <xtensor/core/xtensor_forward.hpp>
+#include <xtensor/views/xstrided_view.hpp>
 #define _USE_MATH_DEFINES
 
 #include "depthai/pipeline/datatype/SegmentationMask.hpp"
@@ -27,14 +30,21 @@ SegmentationMask::SegmentationMask(size_t width, size_t height) : SegmentationMa
     this->height = height;
 }
 
-SegmentationMask::SegmentationMask(std::vector<std::uint8_t> mask, size_t width, size_t height) : SegmentationMask() {
+SegmentationMask::SegmentationMask(std::vector<int> mask, size_t width, size_t height) : SegmentationMask() {
     if(width <= 0 || height <= 0) {
         throw std::runtime_error("SegmentationMask: width and height must be greater than 0.");
     }
     if(mask.size() != width * height) {
         throw std::runtime_error("SegmentationMask: data size does not match width*height.");
     }
-    setData(mask);
+    // check all values are in range 0-255
+    for(auto& v : mask) {
+        if(v < 0 || v > 255) {
+            throw std::runtime_error("SegmentationMask: data values must be in range 0- 255.");
+        }
+    }
+    std::vector<std::uint8_t> maskU8(mask.begin(), mask.end());
+    setData(maskU8);
     this->width = width;
     this->height = height;
 }
@@ -57,9 +67,8 @@ size_t SegmentationMask::getHeight() const {
 
 // Optional - xtensor support
 #ifdef DEPTHAI_XTENSOR_SUPPORT
-using XArray2D = xt::xtensor<std::uint8_t, 2, xt::layout_type::row_major>;
 
-SegmentationMask::SegmentationMask(XArray2D mask) : SegmentationMask() {
+SegmentationMask::SegmentationMask(xt::xarray<uint8_t>& mask) : SegmentationMask() {
     data->setSize(mask.size());
     std::vector<uint8_t> dataVec(mask.begin(), mask.end());
     setData(dataVec);
@@ -68,7 +77,7 @@ SegmentationMask::SegmentationMask(XArray2D mask) : SegmentationMask() {
     this->height = static_cast<size_t>(mask.shape()[0]);
 }
 
-XArray2D SegmentationMask::getTensorMask() const {
+xt::xarray<uint8_t> SegmentationMask::getTensorMask() const {
     size_t dataSize = data->getSize();
     if(dataSize != width * height) {
         throw std::runtime_error("SegmentationMask: data size does not match width*height");
@@ -78,7 +87,7 @@ XArray2D SegmentationMask::getTensorMask() const {
     return xt::adapt(data->getData().data(), data->getSize(), xt::no_ownership(), shape);
 }
 
-SegmentationMask& SegmentationMask::setTensorMask(XArray2D mask) {
+SegmentationMask& SegmentationMask::setTensorMask(xt::xarray<uint8_t>& mask) {
     if(mask.shape()[0] != height || mask.shape()[1] != width) {
         throw std::runtime_error("SegmentationMask: input mask shape does not match current width and height");
     }
@@ -88,15 +97,15 @@ SegmentationMask& SegmentationMask::setTensorMask(XArray2D mask) {
     return *this;
 }
 
-XArray2D SegmentationMask::getTensorMaskByIndex(std::uint8_t index) const {
+xt::xarray<uint8_t> SegmentationMask::getTensorMaskByIndex(std::uint8_t index) const {
     const auto& buf = data->getData();
     if(buf.size() != width * height) {
         throw std::runtime_error("SegmentationMask: data size does not match width*height");
     }
-    std::array<std::size_t, 2> shape{height, width};
+    std::vector<size_t> shape{height, width};
     auto in = xt::adapt(buf.data(), buf.size(), xt::no_ownership(), shape);
 
-    return xt::eval(xt::cast<std::uint8_t>(xt::equal(in, static_cast<unsigned char>(index))));
+    return xt::eval(xt::cast<std::uint8_t>(xt::equal(in, index))), xt::xarray<std::uint8_t>();
 }
 
 #endif

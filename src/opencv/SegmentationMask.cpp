@@ -10,7 +10,7 @@ namespace dai {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wswitch-enum"
 
-SegmentationMask::SegmentationMask(cv::Mat1b mask) : SegmentationMask() {
+SegmentationMask::SegmentationMask(cv::Mat mask) : SegmentationMask() {
     std::vector<uint8_t> dataVec;
     if(!mask.isContinuous()) {
         for(int i = 0; i < mask.rows; i++) {
@@ -24,7 +24,7 @@ SegmentationMask::SegmentationMask(cv::Mat1b mask) : SegmentationMask() {
     this->height = mask.rows;
 }
 
-SegmentationMask& SegmentationMask::setMask(cv::Mat1b mask) {
+SegmentationMask& SegmentationMask::setMask(cv::Mat mask) {
     std::vector<uint8_t> dataVec;
     if(!mask.isContinuous()) {
         for(int i = 0; i < mask.rows; i++) {
@@ -39,26 +39,25 @@ SegmentationMask& SegmentationMask::setMask(cv::Mat1b mask) {
     return *this;
 }
 
-cv::Mat1b SegmentationMask::getMask(bool deepCopy) {
+cv::Mat SegmentationMask::getMask(bool deepCopy) {
     // Convert to cv::Mat. If deepCopy enabled, then copy pixel data, otherwise reference only
-    cv::Mat mat;
-    cv::Size size = cv::Size(getWidth(), getHeight());
+    cv::Size size(getWidth(), getHeight());
     int type = CV_8UC1;
+    if(size.width <= 0 || size.height <= 0) {
+        throw std::runtime_error("Segmentation mask metadata not valid (width or height <= 0).");
+    }
 
     // Check if enough data
-    long requiredSize = CV_ELEM_SIZE(type) * size.area();
+    const size_t requiredSize = CV_ELEM_SIZE(type) * static_cast<size_t>(size.area());
 
-    long actualSize = static_cast<long>(data->getSize());
+    const size_t actualSize = static_cast<long>(data->getSize());
 
     if(actualSize < requiredSize) {
         throw std::runtime_error("Segmentation mask doesn't have enough data to encode specified frame, required " + std::to_string(requiredSize) + ", actual "
                                  + std::to_string(actualSize) + ". Maybe metadataOnly transfer was made?");
     }
 
-    if(getWidth() <= 0 || getHeight() <= 0) {
-        throw std::runtime_error("Segmentation mask metadata not valid (width or height <= 0).");
-    }
-
+    cv::Mat mat;
     // Copy or reference to existing data
     if(deepCopy) {
         // Create new image data
@@ -67,13 +66,14 @@ cv::Mat1b SegmentationMask::getMask(bool deepCopy) {
     } else {
         mat = cv::Mat(size, type, data->getData().data());
     }
-    cv::Mat1b mat1b = mat;
-    return mat1b;
+    CV_Assert(mat.type() == CV_8UC1);
+
+    return mat;
 }
 
-cv::Mat1b SegmentationMask::getCvMask(cv::MatAllocator* allocator) {
-    cv::Mat1b mask = getMask();
-    cv::Mat1b output;
+cv::Mat SegmentationMask::getCvMask(cv::MatAllocator* allocator) {
+    cv::Mat mask = getMask();
+    cv::Mat output;
     if(allocator != nullptr) {
         output.allocator = allocator;
     }
@@ -81,9 +81,9 @@ cv::Mat1b SegmentationMask::getCvMask(cv::MatAllocator* allocator) {
     return output;
 }
 
-cv::Mat1b SegmentationMask::getCvMaskByIndex(uint8_t index, cv::MatAllocator* allocator) {
-    cv::Mat1b mask = getCvMask(allocator);
-    cv::Mat1b classMask;
+cv::Mat SegmentationMask::getCvMaskByIndex(uint8_t index, cv::MatAllocator* allocator) {
+    cv::Mat mask = getCvMask(allocator);
+    cv::Mat classMask;
     cv::compare(mask, index, classMask, cv::CmpTypes::CMP_EQ);
 
     return classMask;

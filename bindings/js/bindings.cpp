@@ -81,10 +81,9 @@ EMSCRIPTEN_BINDINGS(depthai_js) {
         .value("ImageFiltersConfig", dai::DatatypeEnum::ImageFiltersConfig)
         .value("Keypoints", dai::DatatypeEnum::Keypoints)
         .value("ObjectTrackerConfig", dai::DatatypeEnum::ObjectTrackerConfig)
-        .value("SegmentationMask", dai::DatatypeEnum::SegmentationMask);
 
-    // structs
-    value_object<MessageHeader>("MessageHeader")
+        // structs
+        value_object<MessageHeader>("MessageHeader")
         .field("objectType", &MessageHeader::objectType)
         .field("serializedObjectSize", &MessageHeader::serializedObjectSize);
     value_object<dai::ImgDetection>("ImgDetection")

@@ -212,28 +212,26 @@ class ImgDetections : public Buffer, public ProtoSerializable {
      *
      * @param frame Input cv::Mat frame from which to copy the data
      */
-    ImgDetections& setSegmentationMask(cv::Mat1b mask);
+    ImgDetections& setSegmentationMask(cv::Mat mask);
 
     /**
      * Retrieves data as cv::Mat with specified width, height and type
      *
      * @param copy If false only a reference to data is made, otherwise a copy
      */
-    cv::Mat1b getSegmentationMask(bool copy = false);
+    cv::Mat getSegmentationMask(bool copy = false);
 
     /**
      * Retrieves data as cv::Mat with specified width and height
      *
-     * @param copy If false only a reference to data is made, otherwise a copy
      */
-    cv::Mat1b getCvSegmentationMask(cv::MatAllocator* allocator = nullptr);
+    cv::Mat getCvSegmentationMask(cv::MatAllocator* allocator = nullptr);
 
     /**
      * Retrieves data of the specified index as cv::Mat.
      *
-     * @param copy If false only a reference to data is made, otherwise a copy
      */
-    cv::Mat1b getCvSegmentationMaskByIndex(uint8_t index, cv::MatAllocator* allocator = nullptr);
+    cv::Mat getCvSegmentationMaskByIndex(uint8_t index, cv::MatAllocator* allocator = nullptr);
 
 #endif
 
