@@ -155,13 +155,13 @@ jobs:
     - name: Zip C:\depthai-core
       shell: powershell
       run: |
-        $zipPath = "depthai-core-win-${{ github.sha.substring(0,7) }}.zip"
+        $zipPath = "depthai-core-win-${{ github.sha }}.zip"
         Compress-Archive -Path "C:\depthai-core" -DestinationPath $zipPath -Force
         Write-Host "Created artifact: $zipPath"
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
-        name: depthai-core-win-${{ github.sha.substring(0,7) }}
-        path: depthai-core-win-${{ github.sha.substring(0,7) }}.zip
+        name: depthai-core-win-${{ github.sha }}
+        path: depthai-core-win-${{ github.sha }}.zip
 
