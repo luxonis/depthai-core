@@ -114,18 +114,20 @@ jobs:
     #       "skip_build=false" >> $env:GITHUB_OUTPUT
     #     }
 
-    - name: Ensure cache dirs
-      shell: powershell
-    #  if: steps.reuse.outputs.skip_build != 'true'
-      run: |
-        New-Item -ItemType Directory -Force -Path "C:\vcpkg_binaries" | Out-Null
-
     - name: Checkout depthai
       uses: actions/checkout@v4
     #  if: steps.reuse.outputs.skip_build != 'true'
       with:
         submodules: recursive
-        path: C:\
+
+    - name: Ensure cache dirs and build dir
+      shell: powershell
+    #  if: steps.reuse.outputs.skip_build != 'true'
+      run: |
+        New-Item -ItemType Directory -Force -Path "C:\vcpkg_binaries" | Out-Null
+        New-Item -ItemType Directory -Force -Path "C:\depthai-core" | Out-Null
+        Write-Host "Copying source from $env:GITHUB_WORKSPACE to C:\depthai-core ..."
+        Copy-Item -Path "$env:GITHUB_WORKSPACE\*" -Destination "C:\depthai-core" -Recurse -Force
 
     - name: Setup Python 3.13.7
       uses: actions/setup-python@v5
