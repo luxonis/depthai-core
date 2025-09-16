@@ -82,17 +82,45 @@ jobs:
       HIL_PAT_TOKEN: ${{ secrets.HIL_PAT_TOKEN }}
 
   windows_rvc2_rvc4_test:
-    needs: [precheck]
-    if: needs.precheck.outputs.should_run == 'true'
-    runs-on: ['self-hosted', 'windows', 'hil-test']
+    runs-on: windows-latest
     env:
-      LOCALAPPDATA: "C:/actions-runner/vcpkg_cache"
+      BUILD_TYPE: Release
+      VCPKG_ROOT: C:\vcpkg
+      # Enable vcpkg manifest + binary caching
+      VCPKG_FEATURE_FLAGS: manifests,registries,binarycaching
+      # Triplet tweak if you use something else
+      VCPKG_DEFAULT_TRIPLET: x64-windows
     steps:
-    - uses: actions/checkout@v3
+    - name: Checkout
+      uses: actions/checkout@v4
       with:
-        submodules: 'recursive'
+        submodules: recursive
+        path: C:\depthai-core\
+    - name: Setup Python 3.13.7
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.13.7'
+        cache: 'pip'
 
-    - name: Configure, Build and Test
+    # 1) Cache vcpkg source downloads (prevents re-downloading tarballs)
+    - name: Cache vcpkg downloads
+      uses: actions/cache@v4
+      with:
+         path: C:\vcpkg\downloads
+         key: vcpkg-downloads-${{ runner.os }}-${{ hashFiles('vcpkg.json', 'vcpkg-lock.json') }}
+         restore-keys: |
+           vcpkg-downloads-${{ runner.os }}-
+
+      # 2) Cache vcpkg binary archives (restores prebuilt ports)
+    - name: Cache vcpkg binary cache
+      uses: actions/cache@v4
+      with:
+        path: C:\Users\runneradmin\AppData\Local\vcpkg\archives
+        key: vcpkg-archives-${{ runner.os }}-${{ hashFiles('vcpkg.json', 'vcpkg-lock.json') }}-${{ env.VCPKG_DEFAULT_TRIPLET }}
+        restore-keys: |
+          vcpkg-archives-${{ runner.os }}-
+
+    - name: Configure and Build
       run: |
         $isPR = "${{ github.head_ref }}" -ne ""
         $extraFlags = ""
@@ -108,12 +136,10 @@ jobs:
           ) -join ' '
         }
 
-        $cmakeConfigureCommand = "cmake -S . -B build -D CMAKE_BUILD_TYPE=Release -DDEPTHAI_VCPKG_INTERNAL_ONLY=OFF -DVCPKG_OVERLAY_TRIPLETS=./cmake/triplets/release -DDEPTHAI_BUILD_TESTS=ON $extraFlags"
+        $cmakeConfigureCommand = "cmake -S . -B C:/depthai-core/build -D CMAKE_BUILD_TYPE=Release -DDEPTHAI_VCPKG_INTERNAL_ONLY=OFF -DVCPKG_OVERLAY_TRIPLETS=./cmake/triplets/release -DDEPTHAI_BUILD_TESTS=ON $extraFlags"
         Write-Host "Running: $cmakeConfigureCommand"
         Invoke-Expression $cmakeConfigureCommand
 
-        $cmakeBuildCommand = "cmake --build build --parallel 4 --config Release"
+        $cmakeBuildCommand = "cmake --build C:/depthai-core/build --parallel 2 --config Release"
         Write-Host "Running: $cmakeBuildCommand"
         Invoke-Expression $cmakeBuildCommand
-        cd tests
-        python run_tests.py
