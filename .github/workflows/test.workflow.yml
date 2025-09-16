@@ -94,48 +94,49 @@ jobs:
       VCPKG_DEFAULT_BINARY_CACHE: C:\vcpkg_binaries
     steps:
 
-    - name: Try reuse existing artifact for this SHA
-      id: reuse
-      shell: pwsh
-      env:
-        GH_TOKEN: ${{ github.token }}
-        REPO: ${{ github.repository }}
-        ARTIFACT_NAME: depthai-core-win-${{ github.sha }}
-      run: |
-        # Find an artifact with the exact name for this commit
-        $id = gh api repos/$env:REPO/actions/artifacts --paginate `
-          --jq ".artifacts[] | select(.name==""$env:ARTIFACT_NAME"") | .id" | Select-Object -First 1
+    # - name: Try reuse existing artifact for this SHA
+    #   id: reuse
+    #   shell: pwsh
+    #   env:
+    #     GH_TOKEN: ${{ github.token }}
+    #     REPO: ${{ github.repository }}
+    #     ARTIFACT_NAME: depthai-core-win-${{ github.sha }}
+    #   run: |
+    #     # Find an artifact with the exact name for this commit
+    #     $id = gh api repos/$env:REPO/actions/artifacts --paginate `
+    #       --jq ".artifacts[] | select(.name==""$env:ARTIFACT_NAME"") | .id" | Select-Object -First 1
 
-        if ($id) {
-          Write-Host "Found artifact id=$id. Skipping build..."
-          "skip_build=true" >> $env:GITHUB_OUTPUT
-        } else {
-          Write-Host "No prior artifact found for $env:ARTIFACT_NAME"
-          "skip_build=false" >> $env:GITHUB_OUTPUT
-        }
+    #     if ($id) {
+    #       Write-Host "Found artifact id=$id. Skipping build..."
+    #       "skip_build=true" >> $env:GITHUB_OUTPUT
+    #     } else {
+    #       Write-Host "No prior artifact found for $env:ARTIFACT_NAME"
+    #       "skip_build=false" >> $env:GITHUB_OUTPUT
+    #     }
+
+    - name: Ensure cache dirs
+      shell: powershell
+    #  if: steps.reuse.outputs.skip_build != 'true'
+      run: |
+        New-Item -ItemType Directory -Force -Path "C:\vcpkg_binaries" | Out-Null
+
+    - name: Checkout depthai
+      uses: actions/checkout@v4
+    #  if: steps.reuse.outputs.skip_build != 'true'
+      with:
+        submodules: recursive
+        path: C:\
 
     - name: Setup Python 3.13.7
       uses: actions/setup-python@v5
       with:
         python-version: '3.13.7'
         cache: 'pip'
-
-    - name: Ensure cache dirs
-      shell: powershell
-      if: steps.reuse.outputs.skip_build != 'true'
-      run: |
-        New-Item -ItemType Directory -Force -Path "C:\vcpkg_binaries" | Out-Null
-
-    - name: Checkout depthai
-      uses: actions/checkout@v4
-      if: steps.reuse.outputs.skip_build != 'true'
-      with:
-        submodules: recursive
-        path: C:\
+        path: C:\depthai-core
 
     - name: Cache vcpkg binary cache
       uses: actions/cache@v4
-      if: steps.reuse.outputs.skip_build != 'true'
+    #  if: steps.reuse.outputs.skip_build != 'true'
       with:
         path: C:\vcpkg_binaries
         key: vcpkg-archives-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}-${{ env.VCPKG_DEFAULT_TRIPLET }}
@@ -143,7 +144,7 @@ jobs:
           vcpkg-archives-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}-${{ env.VCPKG_DEFAULT_TRIPLET }}
 
     - name: Configure and Build
-      if: steps.reuse.outputs.skip_build != 'true'
+    #  if: steps.reuse.outputs.skip_build != 'true'
       run: |
         cd C:\depthai-core
         $isPR = "${{ github.head_ref }}" -ne ""
@@ -172,7 +173,7 @@ jobs:
         Invoke-Expression $cmakeBuildCommand
 
     - name: Upload artifact
-      if: steps.reuse.outputs.skip_build != 'true'
+    #  if: steps.reuse.outputs.skip_build != 'true'
       uses: actions/upload-artifact@v4
       with:
         name: depthai-core-win-${{ github.sha }}
