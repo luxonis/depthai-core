@@ -15,7 +15,6 @@ if "%DEST%"==""       ( echo [!] DEST required & exit /b 2 )
 if "%ARTIFACT_ID%"=="" ( echo [!] ARTIFACT_ID required & exit /b 2 )
 
 echo [*] REPO=%REPO%
-echo [*] RUN_ID=%RUN_ID%
 echo [*] DEST =%DEST%
 echo [*] ARTIFACT_ID=%ARTIFACT_ID%
 
@@ -28,6 +27,7 @@ REM 2) Download & extract the artifact by ID
 set "ZIP=%TEMP%\artifact_%ARTIFACT_ID%.zip"
 echo [*] Downloading artifact id=%ARTIFACT_ID%
 curl -sSL -H "Authorization: Bearer %GH_TOKEN%" -H "Accept: application/vnd.github+json" ^
+  --retry 5 --retry-delay 2 --retry-all-errors ^
   -o "%ZIP%" "https://api.github.com/repos/%REPO%/actions/artifacts/%ARTIFACT_ID%/zip" || exit /b 1
 
 echo [*] Extracting to %DEST%
