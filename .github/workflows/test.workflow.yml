@@ -90,8 +90,8 @@ jobs:
       VCPKG_FEATURE_FLAGS: manifests,registries,binarycaching
       # Triplet tweak if you use something else
       VCPKG_DEFAULT_TRIPLET: x64-windows
-      VCPKG_DOWNLOADS: C:\vcpkg_downloads\
-      VCPKG_DEFAULT_BINARY_CACHE: C:\vcpkg_binaries\
+      VCPKG_DOWNLOADS: C:\vcpkg_downloads
+      VCPKG_DEFAULT_BINARY_CACHE: C:\vcpkg_binaries
     steps:
     - name: Checkout
       uses: actions/checkout@v4
@@ -112,7 +112,7 @@ jobs:
     - name: Cache vcpkg downloads
       uses: actions/cache@v4
       with:
-         path: C:\vcpkg\downloads
+         path: C:\vcpkg_downloads
          key: vcpkg-downloads-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}
          restore-keys: |
            vcpkg-downloads-${{ runner.os }}-
@@ -151,3 +151,17 @@ jobs:
         $cmakeBuildCommand = "cmake --build C:/depthai-core/build --parallel 2 --config Release"
         Write-Host "Running: $cmakeBuildCommand"
         Invoke-Expression $cmakeBuildCommand
+    
+    - name: Zip C:\depthai-core
+      shell: powershell
+      run: |
+        $zipPath = "depthai-core-win-${{ github.sha.substring(0,7) }}.zip"
+        Compress-Archive -Path "C:\depthai-core" -DestinationPath $zipPath -Force
+        Write-Host "Created artifact: $zipPath"
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: depthai-core-win-${{ github.sha.substring(0,7) }}
+        path: depthai-core-win-${{ github.sha.substring(0,7) }}.zip
+
