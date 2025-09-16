@@ -81,48 +81,54 @@ jobs:
       CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
       HIL_PAT_TOKEN: ${{ secrets.HIL_PAT_TOKEN }}
 
-  windows_rvc2_rvc4_test:
+  build_windows_tests:
     runs-on: windows-latest
+    outputs: 
+        artifact_id: ${{ steps.artifact-upload-step.outputs.artifact-id }}
     env:
       BUILD_TYPE: Release
       VCPKG_ROOT: C:\vcpkg
-      # Enable vcpkg manifest + binary caching
       VCPKG_FEATURE_FLAGS: manifests,registries,binarycaching
-      # Triplet tweak if you use something else
       VCPKG_DEFAULT_TRIPLET: x64-windows
       VCPKG_DOWNLOADS: C:\vcpkg_downloads
       VCPKG_DEFAULT_BINARY_CACHE: C:\vcpkg_binaries
     steps:
 
-    # - name: Try reuse existing artifact for this SHA
-    #   id: reuse
-    #   shell: pwsh
-    #   env:
-    #     GH_TOKEN: ${{ github.token }}
-    #     REPO: ${{ github.repository }}
-    #     ARTIFACT_NAME: depthai-core-win-${{ github.sha }}
-    #   run: |
-    #     # Find an artifact with the exact name for this commit
-    #     $id = gh api repos/$env:REPO/actions/artifacts --paginate `
-    #       --jq ".artifacts[] | select(.name==""$env:ARTIFACT_NAME"") | .id" | Select-Object -First 1
+    - name: Try reuse existing artifact for this SHA (fast)
+      id: reuse
+      shell: pwsh
+      env:
+        GH_TOKEN: ${{ github.token }}
+        REPO: ${{ github.repository }}
+        SHA:  ${{ github.sha }}
+        ARTIFACT_NAME: depthai-core-win-${{ github.sha }}
+      run: |
+        $runId = gh api repos/$env:REPO/actions/runs -f head_sha=$env:SHA --jq '.workflow_runs[0].id'
+        if (-not $runId) {
+          "skip_build=false" >> $env:GITHUB_OUTPUT
+          Write-Host "No workflow runs found for SHA $env:SHA"
+          exit 0
+        }
+        $id = gh api repos/$env:REPO/actions/runs/$runId/artifacts `
+          --jq ".artifacts[] | select(.name==""$env:ARTIFACT_NAME"") | .id"
 
-    #     if ($id) {
-    #       Write-Host "Found artifact id=$id. Skipping build..."
-    #       "skip_build=true" >> $env:GITHUB_OUTPUT
-    #     } else {
-    #       Write-Host "No prior artifact found for $env:ARTIFACT_NAME"
-    #       "skip_build=false" >> $env:GITHUB_OUTPUT
-    #     }
+        if ($id) {
+          Write-Host "Found artifact id=$id for run $runId. Skipping build..."
+          "skip_build=true" >> $env:GITHUB_OUTPUT
+        } else {
+          Write-Host "No artifact named $env:ARTIFACT_NAME on run $runId"
+          "skip_build=false" >> $env:GITHUB_OUTPUT
+        }
 
     - name: Checkout depthai
       uses: actions/checkout@v4
-    #  if: steps.reuse.outputs.skip_build != 'true'
+      if: steps.reuse.outputs.skip_build != 'true'
       with:
         submodules: recursive
 
     - name: Ensure cache dirs and build dir
       shell: powershell
-    #  if: steps.reuse.outputs.skip_build != 'true'
+      if: steps.reuse.outputs.skip_build != 'true'
       run: |
         New-Item -ItemType Directory -Force -Path "C:\vcpkg_binaries" | Out-Null
         New-Item -ItemType Directory -Force -Path "C:\depthai-core" | Out-Null
@@ -134,11 +140,10 @@ jobs:
       with:
         python-version: '3.13.7'
         cache: 'pip'
-        path: C:\depthai-core
 
     - name: Cache vcpkg binary cache
       uses: actions/cache@v4
-    #  if: steps.reuse.outputs.skip_build != 'true'
+      if: steps.reuse.outputs.skip_build != 'true'
       with:
         path: C:\vcpkg_binaries
         key: vcpkg-archives-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}-${{ env.VCPKG_DEFAULT_TRIPLET }}
@@ -146,7 +151,7 @@ jobs:
           vcpkg-archives-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}-${{ env.VCPKG_DEFAULT_TRIPLET }}
 
     - name: Configure and Build
-    #  if: steps.reuse.outputs.skip_build != 'true'
+      if: steps.reuse.outputs.skip_build != 'true'
       run: |
         cd C:\depthai-core
         $isPR = "${{ github.head_ref }}" -ne ""
@@ -175,10 +180,28 @@ jobs:
         Invoke-Expression $cmakeBuildCommand
 
     - name: Upload artifact
-    #  if: steps.reuse.outputs.skip_build != 'true'
+      if: steps.reuse.outputs.skip_build != 'true'
+      id: artifact-upload-step
       uses: actions/upload-artifact@v4
       with:
         name: depthai-core-win-${{ github.sha }}
         path: C:\depthai-core
         retention-days: 1
 
+  run_windows_tests:
+    needs: [build_windows_tests]
+    runs-on: ['self-hosted', 'testbed-runner']
+    steps:
+
+      - name: Import HIL Framework
+        run: |
+          echo "/home/$USER/hil_framework/lib_testbed/tools" >> $GITHUB_PATH
+          echo "PYTHONPATH="$PYTHONPATH:/home/$USER/hil_framework"" >> $GITHUB_ENV
+          echo "HIL_FRAMEWORK_PATH="/home/$USER/hil_framework"" >> $GITHUB_ENV
+
+      - name: Run RVC4 tests
+        run: |
+          export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-windows"
+          exec hil --models "oak4_pro or oak4_d" -os windows --skip-sanity-check --reservation-name %RESERVATION_NAME% --wait --commands "rmdir /S /Q depthai-core && git clone -b windows_hil https://github.com/luxonis/depthai-core.git && cd depthai-core && scripts\ci\get_artifacts_and_run_tests.cmd \"${{ github.repository }}\" \"${{ github.token }}\" \"C:\depthai-core\" \"${{ needs.build_windows_tests.outputs.artifact_id }}\""
+
+    
