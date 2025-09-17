@@ -50,6 +50,22 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
+    - name: Sanity check PAT visibility
+      run: |
+        set -euxo pipefail
+        # Fail if secret is empty or unavailable
+        if [ -z "${{ secrets.PAT_TOKEN }}" ]; then
+          echo "PAT_TOKEN is empty/unavailable in this job." >&2
+          exit 42
+        fi
+        # Confirm we can auth (status 200/401 tells the story; body discarded)
+        curl -s -o /dev/null -w "%{http_code}\n" \
+          -u __token__:"${{ secrets.PAT_TOKEN }}" \
+          https://gitlab.luxonis.com/api/v4/projects/213/packages/pypi/simple/ | tee /tmp/status
+        code=$(cat /tmp/status)
+        echo "curl status: $code"
+        test "$code" = "200"
+
     - name: Run RVC2 tests
       run: |
         /usr/bin/python3 -m venv venv
