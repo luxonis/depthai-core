@@ -41,11 +41,11 @@ jobs:
     
     - uses: actions/checkout@v3
 
-    - name: Prepare HIL Framework
-      run: source scripts/hil/prepare_hil_framework.sh 
-
     - name: Test
       run: |
+          python3 -m venv venv
+          . venv/bin/activate
+          pip install hil-framework --upgrade --index-url "https://__token__:${{ secrets.PAT_TOKEN }}@gitlab.luxonis.com/api/v4/projects/213/packages/pypi/simple" > /dev/null 2>&1
           if [[ -n "${{ github.event.inputs.testbed }}" ]]; then
             TESTBED_OPTION="--testbed ${{ github.event.inputs.testbed }}"
           fi

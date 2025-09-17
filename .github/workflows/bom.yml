@@ -81,12 +81,11 @@ jobs:
       steps:
       - uses: actions/checkout@v3
 
-      - name: Prepare HIL Framework
-        run: source scripts/hil/prepare_hil_framework.sh
-
       - name: Configure, Build and Test
         run: |
-
+          python3 -m venv venv
+          . venv/bin/activate
+          pip install hil-framework --upgrade --index-url "https://__token__:${{ secrets.PAT_TOKEN }}@gitlab.luxonis.com/api/v4/projects/213/packages/pypi/simple" > /dev/null 2>&1
           if [[ -n "${{ github.event.inputs.reservation_name }}" ]]; then
             RESERVATION_OPTION="--reservation-name ${{ github.event.inputs.reservation_name }}"
           else
