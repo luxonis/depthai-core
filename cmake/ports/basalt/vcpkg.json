@@ -12,9 +12,7 @@
       "name": "vcpkg-cmake-config",
       "host": true
     },
-        "sophus",
 	"basalt-headers",
-	"magic-enum",
-	"tbb"
+    "sophus"
 ]
 }
