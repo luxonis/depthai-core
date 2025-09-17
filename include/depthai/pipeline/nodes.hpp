@@ -23,6 +23,7 @@
 #include "node/SPIIn.hpp"
 #include "node/SPIOut.hpp"
 #include "node/Script.hpp"
+#include "node/SpatialDetectionCalculator.hpp"
 #include "node/SpatialDetectionNetwork.hpp"
 #include "node/SpatialLocationCalculator.hpp"
 #include "node/StereoDepth.hpp"
