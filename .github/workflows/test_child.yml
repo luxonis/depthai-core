@@ -50,7 +50,7 @@ jobs:
 
     - name: Run RVC2 tests
       run: |
-        python3 -m venv venv
+        python -m venv venv
         . venv/bin/activate
         pip install hil-framework --upgrade --index-url "https://__token__:${{ secrets.PAT_TOKEN }}@gitlab.luxonis.com/api/v4/projects/213/packages/pypi/simple" > /dev/null 2>&1
         export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc2-${{ inputs.flavor }}"
@@ -69,7 +69,7 @@ jobs:
 
       - name: Run RVC4 tests
         run: |
-          python3 -m venv venv
+          python -m venv venv
           . venv/bin/activate
           pip install hil-framework --upgrade --index-url "https://__token__:${{ secrets.PAT_TOKEN }}@gitlab.luxonis.com/api/v4/projects/213/packages/pypi/simple" > /dev/null 2>&1
           export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-${{ matrix.rvc4os }}-${{ inputs.flavor }}"
@@ -87,7 +87,7 @@ jobs:
 
       - name: Run RVC4 tests
         run: |
-          python3 -m venv venv
+          python -m venv venv
           . venv/bin/activate
           pip install hil-framework --upgrade --index-url "https://__token__:${{ secrets.PAT_TOKEN }}@gitlab.luxonis.com/api/v4/projects/213/packages/pypi/simple" > /dev/null 2>&1
           export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-${{ matrix.rvc4os }}-${{ inputs.flavor }}-rgb"
