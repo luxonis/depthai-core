@@ -176,6 +176,19 @@ class ImgDetections : public Buffer, public ProtoSerializable {
      */
     std::size_t getSegmentationMaskHeight() const;
 
+    /*
+     * Sets the segmentation mask from a vector of bytes, along with width and height.
+     * The size of the vector must be equal to width * height.
+     */
+    void setMask(const std::vector<std::uint8_t>& mask, size_t width, size_t height);
+
+    /*
+     * Returns a copy of the segmentation mask data as a vector of bytes.
+     */
+    std::vector<std::uint8_t> getMaskData() const;
+
+    dai::ImgFrame getSegmentationMaskAsImgFrame() const;
+
     // Optional - xtensor support
 #ifdef DEPTHAI_XTENSOR_SUPPORT
     /**
