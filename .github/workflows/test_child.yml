@@ -45,6 +45,8 @@ jobs:
  linux_rvc2_test:
     needs: [build_docker_container]
     runs-on: ['self-hosted', 'testbed-runner']
+    env:
+      PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
     steps:
     - uses: actions/checkout@v3
 
@@ -52,7 +54,7 @@ jobs:
       run: |
         /usr/bin/python3 -m venv venv
         . venv/bin/activate
-        pip install hil-framework --upgrade --index-url "https://__token__:${{ secrets.PAT_TOKEN }}@gitlab.luxonis.com/api/v4/projects/213/packages/pypi/simple"
+        pip install hil-framework --upgrade --index-url "https://__token__:$PAT_TOKEN@gitlab.luxonis.com/api/v4/projects/213/packages/pypi/simple"
         export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc2-${{ inputs.flavor }}"
         exec hil_runner --capabilities depthai-core-hil --platforms 'rvc2 and rvc2' --reservation-name $RESERVATION_NAME --wait --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "./tests/run_tests_entrypoint.sh rvc2"
 
