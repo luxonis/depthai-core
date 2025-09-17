@@ -8,6 +8,7 @@
 #include "depthai/common/Rect.hpp"
 #include "depthai/common/RotatedRect.hpp"
 #include "depthai/pipeline/datatype/ImgAnnotations.hpp"
+#include "pipeline/datatype/SegmentationMask.hpp"
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF
     #include "depthai/schemas/ImgDetections.pb.h"
@@ -149,6 +150,34 @@ size_t ImgDetections::getSegmentationMaskHeight() const {
     return segmentationMaskHeight;
 }
 
+void ImgDetections::setMask(const std::vector<std::uint8_t>& mask, size_t width, size_t height) {
+    if(mask.size() != width * height) {
+        throw std::runtime_error("SegmentationMask: data size does not match width*height");
+    }
+    setData(mask);
+    this->segmentationMaskWidth = width;
+    this->segmentationMaskHeight = height;
+}
+
+std::vector<std::uint8_t> ImgDetections::getMaskData() const {
+    span d = data->getData();
+    std::vector<std::uint8_t> vecMask(d.begin(), d.end());
+    return vecMask;
+}
+
+dai::ImgFrame ImgDetections::getSegmentationMaskAsImgFrame() const {
+    dai::ImgFrame img;
+    img.setWidth(segmentationMaskWidth);
+    img.setHeight(segmentationMaskHeight);
+    img.setType(dai::ImgFrame::Type::GRAY8);
+    img.setSequenceNum(sequenceNum);
+    img.setTimestamp(getTimestamp());
+    img.setTimestampDevice(getTimestampDevice());
+    img.setData(getMaskData());
+
+    return img;
+}
+
 // Optional - xtensor support
 #ifdef DEPTHAI_XTENSOR_SUPPORT
 using XArray2D = xt::xtensor<std::uint8_t, 2, xt::layout_type::row_major>;
@@ -164,12 +193,11 @@ XArray2D ImgDetections::getTensorSegmentationMask() const {
 }
 
 ImgDetections& ImgDetections::setTensorSegmentationMask(XArray2D mask) {
-    if(mask.shape()[0] != segmentationMaskHeight || mask.shape()[1] != segmentationMaskWidth) {
-        throw std::runtime_error("SegmentationMask: input mask shape does not match current width and height");
-    }
     data->setSize(mask.size());
     std::vector<uint8_t> dataVec(mask.begin(), mask.end());
     setData(dataVec);
+    this->segmentationMaskWidth = mask.shape()[1];
+    this->segmentationMaskHeight = mask.shape()[0];
     return *this;
 }
 
