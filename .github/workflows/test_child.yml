@@ -52,7 +52,7 @@ jobs:
       run: |
         /usr/bin/python3 -m venv venv
         . venv/bin/activate
-        pip install hil-framework --upgrade --index-url "https://__token__:${{ secrets.PAT_TOKEN }}@gitlab.luxonis.com/api/v4/projects/213/packages/pypi/simple" > /dev/null 2>&1
+        pip install hil-framework --upgrade --index-url "https://__token__:${{ secrets.PAT_TOKEN }}@gitlab.luxonis.com/api/v4/projects/213/packages/pypi/simple"
         export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc2-${{ inputs.flavor }}"
         exec hil_runner --capabilities depthai-core-hil --platforms 'rvc2 and rvc2' --reservation-name $RESERVATION_NAME --wait --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "./tests/run_tests_entrypoint.sh rvc2"
 
@@ -71,7 +71,7 @@ jobs:
         run: |
           /usr/bin/python3 -m venv venv
           . venv/bin/activate
-          pip install hil-framework --upgrade --index-url "https://__token__:${{ secrets.PAT_TOKEN }}@gitlab.luxonis.com/api/v4/projects/213/packages/pypi/simple" > /dev/null 2>&1
+          pip install hil-framework --upgrade --index-url "https://__token__:${{ secrets.PAT_TOKEN }}@gitlab.luxonis.com/api/v4/projects/213/packages/pypi/simple"
           export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-${{ matrix.rvc4os }}-${{ inputs.flavor }}"
           exec hil_runner --models "oak4_pro or oak4_d" --reservation-name $RESERVATION_NAME --wait --rvc4-os-version ${{ matrix.rvc4os }} --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "./tests/run_tests_entrypoint.sh rvc4"
 
@@ -89,7 +89,7 @@ jobs:
         run: |
           /usr/bin/python3 -m venv venv
           . venv/bin/activate
-          pip install hil-framework --upgrade --index-url "https://__token__:${{ secrets.PAT_TOKEN }}@gitlab.luxonis.com/api/v4/projects/213/packages/pypi/simple" > /dev/null 2>&1
+          pip install hil-framework --upgrade --index-url "https://__token__:${{ secrets.PAT_TOKEN }}@gitlab.luxonis.com/api/v4/projects/213/packages/pypi/simple"
           export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-${{ matrix.rvc4os }}-${{ inputs.flavor }}-rgb"
           exec hil_runner --models "oak4_s" --reservation-name $RESERVATION_NAME --wait --rvc4-os-version ${{ matrix.rvc4os }} --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "./tests/run_tests_entrypoint.sh rvc4rgb"
 
