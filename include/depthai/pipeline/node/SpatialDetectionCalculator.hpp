@@ -5,6 +5,8 @@
 // shared
 #include <depthai/properties/SpatialDetectionCalculatorProperties.hpp>
 
+#include "pipeline/datatype/ImgDetections.hpp"
+
 namespace dai {
 namespace node {
 

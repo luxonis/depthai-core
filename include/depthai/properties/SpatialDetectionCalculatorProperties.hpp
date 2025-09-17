@@ -31,6 +31,6 @@ struct SpatialDetectionCalculatorProperties : PropertiesSerializable<Properties,
     std::int32_t stepSize = AUTO;
 };
 
-DEPTHAI_SERIALIZE_EXT(SpatialDetectionCalculatorProperties, detections, lowerThreshold, upperThreshold, calculationAlgorithm, measurementModel, stepSize);
+DEPTHAI_SERIALIZE_EXT(SpatialDetectionCalculatorProperties, lowerThreshold, upperThreshold, calculationAlgorithm, measurementModel, stepSize);
 
 }  // namespace dai
