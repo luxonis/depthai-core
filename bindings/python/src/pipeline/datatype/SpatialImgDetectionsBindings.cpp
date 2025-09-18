@@ -38,7 +38,13 @@ void bind_spatialimgdetections(pybind11::module& m, void* pCallstack) {
     // Metadata / raw
     spatialImgDetection.def(py::init<>())
         .def_readwrite("spatialCoordinates", &SpatialImgDetection::spatialCoordinates)
-        .def_readwrite("boundingBoxMapping", &SpatialImgDetection::boundingBoxMapping);
+        .def_readwrite("boundingBoxMapping", &SpatialImgDetection::boundingBoxMapping)
+        .def_readwrite("depthAverage", &SpatialImgDetection::depthAverage)
+        .def_readwrite("depthMode", &SpatialImgDetection::depthMode)
+        .def_readwrite("depthMedian", &SpatialImgDetection::depthMedian)
+        .def_readwrite("depthMin", &SpatialImgDetection::depthMin)
+        .def_readwrite("depthMax", &SpatialImgDetection::depthMax)
+        .def_readwrite("depthAveragePixelCount", &SpatialImgDetection::depthAveragePixelCount);
 
     // rawSpatialImgDetections
     //     .def(py::init<>())

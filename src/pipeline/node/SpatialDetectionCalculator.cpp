@@ -8,11 +8,6 @@ namespace node {
 SpatialDetectionCalculator::SpatialDetectionCalculator(std::unique_ptr<Properties> props)
     : DeviceNodeCRTP<DeviceNode, SpatialDetectionCalculator, SpatialDetectionCalculatorProperties>(std::move(props)) {}
 
-SpatialDetectionCalculator& SpatialDetectionCalculator::setRunOnHost(bool runOnHost) {
-    runOnHostVar = runOnHost;
-    return *this;
-}
-
 SpatialDetectionCalculator& SpatialDetectionCalculator::setDepthThresholds(uint32_t lowerThreshold, uint32_t upperThreshold) {
     properties.lowerThreshold = lowerThreshold;
     properties.upperThreshold = upperThreshold;

@@ -29,6 +29,7 @@
 #include "depthai/pipeline/node/SPIIn.hpp"
 #include "depthai/pipeline/node/SPIOut.hpp"
 #include "depthai/pipeline/node/Script.hpp"
+#include "depthai/pipeline/node/SpatialDetectionCalculator.hpp"
 #include "depthai/pipeline/node/SpatialDetectionNetwork.hpp"
 #include "depthai/pipeline/node/SpatialLocationCalculator.hpp"
 #include "depthai/pipeline/node/StereoDepth.hpp"

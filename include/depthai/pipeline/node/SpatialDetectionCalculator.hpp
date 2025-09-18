@@ -46,10 +46,9 @@ class SpatialDetectionCalculator : public DeviceNodeCRTP<DeviceNode, SpatialDete
      */
     Output passthroughDepth{*this, {"passthroughDepth", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
-    SpatialDetectionCalculator& setRunOnHost(bool runOnHost = true);
-
     SpatialDetectionCalculator& setDepthThresholds(uint32_t lowerThreshold = 0, uint32_t upperThreshold = 65535);
-    SpatialDetectionCalculator& setCalculationAlgorithm(SpatialDetectionCalculatorAlgorithm calculationAlgorithm = SpatialDetectionCalculatorAlgorithm::MEDIAN);
+    SpatialDetectionCalculator& setCalculationAlgorithm(
+        SpatialDetectionCalculatorAlgorithm calculationAlgorithm = SpatialDetectionCalculatorAlgorithm::AVERAGE);
     SpatialDetectionCalculator& setMeasurementModel(SpatialDetectionsMeasurementModes measurementModel = SpatialDetectionsMeasurementModes::DETAILED);
     SpatialDetectionCalculator& setStepSize(int32_t stepSize = SpatialDetectionCalculatorProperties::AUTO);
 };

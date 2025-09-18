@@ -124,6 +124,9 @@ void bind_imgdetections(pybind11::module& m, void* pCallstack) {
         .def("setTransformation", [](ImgDetections& msg, const std::optional<ImgTransformation>& transformation) { msg.transformation = transformation; })
         .def("getSegmentationMaskWidth", &ImgDetections::getSegmentationMaskWidth, DOC(dai, ImgDetections, getSegmentationMaskWidth))
         .def("getSegmentationMaskHeight", &ImgDetections::getSegmentationMaskHeight, DOC(dai, ImgDetections, getSegmentationMaskHeight))
+        .def("setMask", &ImgDetections::setMask, py::arg("mask"), py::arg("width"), py::arg("height"), DOC(dai, ImgDetections, setMask))
+        .def("getMaskData", &ImgDetections::getMaskData, DOC(dai, ImgDetections, getMaskData))
+        .def("getSegmentationMaskAsImgFrame", &ImgDetections::getSegmentationMaskAsImgFrame, DOC(dai, ImgDetections, getSegmentationMaskAsImgFrame))
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
         .def(
             "getSegmentationMask", [](ImgDetections& self) { return self.getSegmentationMask(false); }, DOC(dai, ImgDetections, getSegmentationMask))

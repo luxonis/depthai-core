@@ -83,6 +83,7 @@ set(SOURCE_LIST
     src/pipeline/node/SystemLoggerBindings.cpp
     src/pipeline/node/ScriptBindings.cpp
     src/pipeline/node/SpatialLocationCalculatorBindings.cpp
+    src/pipeline/node/SpatialDetectionCalculatorBindings.cpp
     src/pipeline/node/SpatialDetectionNetworkBindings.cpp
     src/pipeline/node/ObjectTrackerBindings.cpp
     src/pipeline/node/IMUBindings.cpp
