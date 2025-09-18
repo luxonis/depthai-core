@@ -9,7 +9,7 @@ else
     rm -rf venv
     python3 -m venv venv
     source venv/bin/activate
-    pip install --extra-index-url https://artifacts.luxonis.com/artifactory/luxonis-python-release-local/ depthai=="$DEPTHAI_VERSION"
+    pip install --no-cache-dir --extra-index-url https://artifacts.luxonis.com/artifactory/luxonis-python-release-local/ depthai=="$DEPTHAI_VERSION"
 fi
 
 export DEPTHAI_PLATFORM=rvc4
