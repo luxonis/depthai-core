@@ -33,9 +33,5 @@ SpatialDetectionCalculator& SpatialDetectionCalculator::setStepSize(int32_t step
     return *this;
 }
 
-bool SpatialDetectionCalculator::runOnHost() const {
-    return runOnHostVar;
-}
-
 }  // namespace node
 }  // namespace dai

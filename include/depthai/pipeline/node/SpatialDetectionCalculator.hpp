@@ -5,7 +5,7 @@
 // shared
 #include <depthai/properties/SpatialDetectionCalculatorProperties.hpp>
 
-#include "pipeline/datatype/ImgDetections.hpp"
+#include "depthai/pipeline/datatype/ImgDetections.hpp"
 
 namespace dai {
 namespace node {
@@ -52,10 +52,6 @@ class SpatialDetectionCalculator : public DeviceNodeCRTP<DeviceNode, SpatialDete
     SpatialDetectionCalculator& setCalculationAlgorithm(SpatialDetectionCalculatorAlgorithm calculationAlgorithm = SpatialDetectionCalculatorAlgorithm::MEDIAN);
     SpatialDetectionCalculator& setMeasurementModel(SpatialDetectionsMeasurementModes measurementModel = SpatialDetectionsMeasurementModes::DETAILED);
     SpatialDetectionCalculator& setStepSize(int32_t stepSize = SpatialDetectionCalculatorProperties::AUTO);
-
-    bool runOnHost() const override;
-
-    void run() override;
 };
 
 }  // namespace node
