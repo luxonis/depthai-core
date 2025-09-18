@@ -109,7 +109,7 @@ bool DeviceGate::USBImpl::isOkay() {
     }
 
     std::vector<uint8_t> respBuffer;
-    respBuffer.reserve(request.RequestSize + 1);
+    respBuffer.resize(request.RequestSize + 1);
     XLinkGateRead(&respBuffer[0], request.RequestSize);
     respBuffer[request.RequestSize] = '\0';
 
@@ -144,7 +144,7 @@ Version DeviceGate::USBImpl::getVersion() {
     }
 
     std::vector<uint8_t> respBuffer;
-    respBuffer.reserve(request.RequestSize + 1);
+    respBuffer.resize(request.RequestSize + 1);
     XLinkGateRead(&respBuffer[0], request.RequestSize);
     respBuffer[request.RequestSize] = '\0';
 
@@ -183,7 +183,7 @@ DeviceGate::VersionInfo DeviceGate::USBImpl::getAllVersion() {
     }
 
     std::vector<uint8_t> respBuffer;
-    respBuffer.reserve(request.RequestSize + 1);
+    respBuffer.resize(request.RequestSize + 1);
     XLinkGateRead(&respBuffer[0], request.RequestSize);
     respBuffer[request.RequestSize] = '\0';
     auto result = nlohmann::json::parse(respBuffer);
@@ -279,7 +279,7 @@ bool DeviceGate::USBImpl::createSession(
     }
 
     std::vector<uint8_t> respBuffer;
-    respBuffer.reserve(request.RequestSize + 1);
+    respBuffer.resize(request.RequestSize + 1);
     XLinkGateRead(&respBuffer[0], request.RequestSize);
     respBuffer[request.RequestSize] = '\0';
     auto resp = nlohmann::json::parse(respBuffer);
@@ -522,7 +522,7 @@ DeviceGate::SessionState DeviceGate::USBImpl::getState(std::string sessionId) {
     }
 
     std::vector<uint8_t> respBuffer;
-    respBuffer.reserve(request.RequestSize + 1);
+    respBuffer.resize(request.RequestSize + 1);
     XLinkGateRead(&respBuffer[0], request.RequestSize);
     respBuffer[request.RequestSize] = '\0';
     auto resp = nlohmann::json::parse(respBuffer);
@@ -582,7 +582,7 @@ std::optional<std::vector<uint8_t>> DeviceGate::USBImpl::getFile(const std::stri
     }
 
     std::vector<uint8_t> respBuffer;
-    respBuffer.reserve(request.RequestSize + 1);
+    respBuffer.resize(request.RequestSize + 1);
     XLinkGateRead(&respBuffer[0], request.RequestSize);
     respBuffer[request.RequestSize] = '\0';
     auto resp = nlohmann::json::parse(respBuffer);
