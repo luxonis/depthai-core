@@ -43,7 +43,7 @@ jobs:
 
     - name: Test
       run: |
-          source scripts/hil/prepare_hil_framework.sh ${{ secrets.HIL_PAT_TOKEN }} > /dev/null 2>&1
+          source scripts/hil/prepare_hil_framework.sh ${{ secrets.HIL_PAT_TOKEN }}
           if [[ -n "${{ github.event.inputs.testbed }}" ]]; then
             TESTBED_OPTION="--testbed ${{ github.event.inputs.testbed }}"
           fi
