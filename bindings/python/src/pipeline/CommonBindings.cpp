@@ -19,6 +19,8 @@
 #include "depthai/common/EepromData.hpp"
 #include "depthai/common/FrameEvent.hpp"
 #include "depthai/common/Interpolation.hpp"
+#include "depthai/common/Keypoint.hpp"
+#include "depthai/common/KeypointsList.hpp"
 #include "depthai/common/MemoryInfo.hpp"
 #include "depthai/common/Point2f.hpp"
 #include "depthai/common/Point3d.hpp"
@@ -78,6 +80,8 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     py::enum_<FrameEvent> frameEvent(m, "FrameEvent", DOC(dai, FrameEvent));
     py::class_<ProfilingData> profilingData(m, "ProfilingData", DOC(dai, ProfilingData));
     py::enum_<Interpolation> interpolation(m, "Interpolation", DOC(dai, Interpolation));
+    py::class_<Keypoint> keypoint(m, "Keypoint", DOC(dai, Keypoint));
+    py::class_<KeypointsList> keypointsList(m, "KeypointsList", DOC(dai, KeypointsList));
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -92,6 +96,35 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
 
+    keypoint.def(py::init<>())
+        .def(py::init<Point3f, float, uint32_t, std::string>(), py::arg("coordinates"), py::arg("confidence") = 0.f, py::arg("label") = 0, py::arg("name") = "")
+        .def(py::init<Point2f, float, uint32_t, std::string>(), py::arg("coordinates"), py::arg("confidence") = 0.f, py::arg("label") = 0, py::arg("name") = "")
+        .def(py::init<float, float, float, float, uint32_t, std::string>(),
+             py::arg("x"),
+             py::arg("y"),
+             py::arg("z"),
+             py::arg("confidence") = 0.f,
+             py::arg("label") = 0,
+             py::arg("name") = "")
+        .def_readwrite("coordinates", &Keypoint::coordinates)
+        .def_readwrite("confidence", &Keypoint::confidence)
+        .def_readwrite("label", &Keypoint::label)
+        .def_readwrite("labelName", &Keypoint::labelName);
+
+    keypointsList.def(py::init<>())
+        .def(py::init<std::vector<Keypoint>, std::vector<Edge>>(), py::arg("keypoints"), py::arg("edges"))
+        .def(py::init<std::vector<Keypoint>>(), py::arg("keypoints"))
+        .def("setKeypoints", py::overload_cast<const std::vector<Keypoint>>(&KeypointsList::setKeypoints), py::arg("keypoints"))
+        .def("setKeypoints", py::overload_cast<std::vector<Point3f>>(&KeypointsList::setKeypoints), py::arg("keypoints"))
+        .def("setKeypoints", py::overload_cast<std::vector<Point2f>>(&KeypointsList::setKeypoints), py::arg("keypoints"))
+        .def("setKeypoints", py::overload_cast<std::vector<Keypoint>, std::vector<Edge>>(&KeypointsList::setKeypoints), py::arg("keypoints"), py::arg("edges"))
+        .def("setEdges", py::overload_cast<const std::vector<Edge>>(&KeypointsList::setEdges), py::arg("edges"))
+        .def("getKeypoints", &KeypointsList::getKeypoints, DOC(dai, KeypointsList, getKeypoints))
+        .def("getEdges", &KeypointsList::getEdges, DOC(dai, KeypointsList, getEdges))
+        .def("getCoordinates3f", &KeypointsList::getCoordinates3f, DOC(dai, KeypointsList, getCoordinates3f))
+        .def("getCoordinates2f", &KeypointsList::getCoordinates2f, DOC(dai, KeypointsList, getCoordinates2f))
+        .def("getLabels", &KeypointsList::getLabels, DOC(dai, KeypointsList, getLabels));
+
     rotatedRect.def(py::init<>())
         .def(py::init<Point2f, Size2f, float>())
         .def(py::init<Rect, float>())
@@ -102,7 +135,9 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("normalize", &RotatedRect::normalize, py::arg("width"), py::arg("height"), DOC(dai, RotatedRect, normalize))
         .def("denormalize", &RotatedRect::denormalize, py::arg("width"), py::arg("height"), py::arg("force") = false, DOC(dai, RotatedRect, denormalize))
         .def("getPoints", &RotatedRect::getPoints, DOC(dai, RotatedRect, getPoints))
-        .def("getOuterRect", &RotatedRect::getOuterRect, DOC(dai, RotatedRect, getOuterRect));
+        .def("getOuterRect", &RotatedRect::getOuterRect, DOC(dai, RotatedRect, getOuterRect))
+        .def("getOuterXYWH", &RotatedRect::getOuterXYWH, DOC(dai, RotatedRect, getOuterXYWH))
+        .def("getOuterCXCYWH", &RotatedRect::getOuterCXCYWH, DOC(dai, RotatedRect, getOuterCXCYWH));
 
     rect.def(py::init<>())
         .def(py::init<float, float, float, float>())
