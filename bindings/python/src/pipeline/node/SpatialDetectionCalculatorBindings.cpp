@@ -9,6 +9,10 @@ void bind_spatialdetectioncalculator(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::node;
 
+    py::enum_<SpatialDetectionCalculatorAlgorithm> spatialDetectionCalculatorAlgorithm(
+        m, "SpatialDetectionCalculatorAlgorithm", DOC(dai, SpatialDetectionCalculatorAlgorithm));
+    py::enum_<SpatialDetectionsMeasurementModes> spatialDetectionsMeasurementModes(
+        m, "SpatialDetectionsMeasurementModes", DOC(dai, SpatialDetectionsMeasurementModes));
     // Node and Properties declare upfront
     py::class_<SpatialDetectionCalculatorProperties> spatialDetectionCalculatorProperties(
         m, "SpatialDetectionCalculatorProperties", DOC(dai, SpatialDetectionCalculatorProperties));
@@ -26,6 +30,19 @@ void bind_spatialdetectioncalculator(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
+
+    // Metadata / raw
+    spatialDetectionCalculatorAlgorithm.value("AVERAGE", SpatialDetectionCalculatorAlgorithm::AVERAGE)
+        .value("MEAN", SpatialDetectionCalculatorAlgorithm::MEAN)
+        .value("MIN", SpatialDetectionCalculatorAlgorithm::MIN)
+        .value("MAX", SpatialDetectionCalculatorAlgorithm::MAX)
+        .value("MODE", SpatialDetectionCalculatorAlgorithm::MODE)
+        .value("MEDIAN", SpatialDetectionCalculatorAlgorithm::MEDIAN);
+
+    spatialDetectionsMeasurementModes.value("DETAILED", SpatialDetectionsMeasurementModes::DETAILED)
+        .value("SEGMENTATION", SpatialDetectionsMeasurementModes::SEGMENTATION)
+        .value("ELIPTICAL", SpatialDetectionsMeasurementModes::ELIPTICAL)
+        .value("RECTANGLE", SpatialDetectionsMeasurementModes::RECTANGLE);
 
     // Properties
 
@@ -59,5 +76,5 @@ void bind_spatialdetectioncalculator(pybind11::module& m, void* pCallstack) {
              py::arg("stepSize") = SpatialDetectionCalculatorProperties::AUTO,
              DOC(dai, node, SpatialDetectionCalculator, setStepSize));
     // ALIAS
-    daiNodeModule.attr("SpatialDetectionCalculator").attr("Properties") = SpatialDetectionCalculatorProperties;
+    daiNodeModule.attr("SpatialDetectionCalculator").attr("Properties") = spatialDetectionCalculatorProperties;
 }
