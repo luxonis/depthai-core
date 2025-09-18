@@ -2,9 +2,7 @@
 
 #include <vector>
 
-#include "depthai/common/Timestamp.hpp"
 #include "depthai/common/optional.hpp"
-#include "depthai/common/variant.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 
 namespace dai {
@@ -25,17 +23,18 @@ class PipelineEvent : public Buffer {
     PipelineEvent() = default;
     virtual ~PipelineEvent() = default;
 
+    int64_t nodeId = -1;
     std::optional<Buffer> metadata;
     uint64_t duration {0}; // Duration in microseconds
     EventType type = EventType::CUSTOM;
-    std::variant<std::string, std::pair<std::string, std::string>> source;
+    std::string source;
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
         metadata = utility::serialize(*this);
         datatype = DatatypeEnum::PipelineEvent;
     };
 
-    DEPTHAI_SERIALIZE(PipelineEvent, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum, metadata, duration, type, source);
+    DEPTHAI_SERIALIZE(PipelineEvent, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum, nodeId, metadata, duration, type, source);
 };
 
 }  // namespace dai

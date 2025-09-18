@@ -4,6 +4,7 @@
 
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/PipelineEvent.hpp"
+#include "depthai/common/optional.hpp"
 
 namespace dai {
 
@@ -29,7 +30,7 @@ class PipelineState : public Buffer {
     PipelineState() = default;
     virtual ~PipelineState() = default;
 
-    std::unordered_map<int64_t, NodeState> nodeStates;
+    std::unordered_map<int64_t, std::optional<NodeState>> nodeStates;
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
         metadata = utility::serialize(*this);
