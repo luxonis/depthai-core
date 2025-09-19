@@ -37,9 +37,9 @@ del /q "%ZIP%"
 REM 3) Run tests (optional; adjust to your layout)
 if exist "%DEST%\tests" (
   echo [*] Running tests from %DEST%\tests
-  pushd "%DEST%\tests"
+  cd "%DEST%\tests"
   python run_tests.py --rvc4
-  popd
 ) else (
   echo [*] No tests directory at %DEST%\tests — skipping test phase.
+  exit /b 1
 )
