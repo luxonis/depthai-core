@@ -12,6 +12,7 @@
 #include "depthai/common/optional.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/ImgAnnotations.hpp"
+#include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/datatype/SegmentationMask.hpp"
 #include "depthai/utility/ProtoSerializable.hpp"
 

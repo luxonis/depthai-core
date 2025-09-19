@@ -8,6 +8,7 @@
 #include "depthai/common/Rect.hpp"
 #include "depthai/common/RotatedRect.hpp"
 #include "depthai/pipeline/datatype/ImgAnnotations.hpp"
+#include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "pipeline/datatype/SegmentationMask.hpp"
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF
