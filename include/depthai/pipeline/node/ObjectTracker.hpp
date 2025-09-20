@@ -10,13 +10,15 @@
 // shared
 #include <depthai/properties/ObjectTrackerProperties.hpp>
 
+#include "depthai/utility/export.hpp"
+
 namespace dai {
 namespace node {
 
 /**
  * @brief ObjectTracker node. Performs object tracking using Kalman filter and hungarian algorithm.
  */
-class ObjectTracker : public DeviceNodeCRTP<DeviceNode, ObjectTracker, ObjectTrackerProperties>, public HostRunnable {
+class DEPTHAI_API ObjectTracker : public DeviceNodeCRTP<DeviceNode, ObjectTracker, ObjectTrackerProperties>, public HostRunnable {
    private:
     bool runOnHostVar = false;
 
@@ -28,48 +30,48 @@ class ObjectTracker : public DeviceNodeCRTP<DeviceNode, ObjectTracker, ObjectTra
      * Input ImgFrame message on which tracking will be performed. RGBp, BGRp, NV12, YUV420p types are supported.
      * Default queue is non-blocking with size 4.
      */
-    Input inputTrackerFrame{*this, {"inputTrackerFrame", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::ImgFrame, false}}}, true}};
+    Input inputTrackerFrame{this, {"inputTrackerFrame", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::ImgFrame, false}}}, true}};
 
     /**
      * Input ImgFrame message on which object detection was performed.
      * Default queue is non-blocking with size 4.
      */
-    Input inputDetectionFrame{*this, {"inputDetectionFrame", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::ImgFrame, false}}}, true}};
+    Input inputDetectionFrame{this, {"inputDetectionFrame", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::ImgFrame, false}}}, true}};
 
     /**
      * Input message with image detection from neural network.
      * Default queue is non-blocking with size 4.
      */
-    Input inputDetections{*this, {"inputDetections", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::ImgDetections, true}}}, true}};
+    Input inputDetections{this, {"inputDetections", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::ImgDetections, true}}}, true}};
 
     /**
      * Input ObjectTrackerConfig message with ability to modify parameters at runtime.
      * Default queue is non-blocking with size 4.
      */
-    Input inputConfig{*this, {"inputConfig", DEFAULT_GROUP, false, 4, {{DatatypeEnum::ObjectTrackerConfig, false}}}, true};
+    Input inputConfig{this, {"inputConfig", DEFAULT_GROUP, false, 4, {{DatatypeEnum::ObjectTrackerConfig, false}}}, true};
 
     /**
      * Outputs Tracklets message that carries object tracking results.
      */
-    Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::Tracklets, false}}}}};
+    Output out{this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::Tracklets, false}}}}};
 
     /**
      * Passthrough ImgFrame message on which tracking was performed.
      * Suitable for when input queue is set to non-blocking behavior.
      */
-    Output passthroughTrackerFrame{*this, {"passthroughTrackerFrame", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
+    Output passthroughTrackerFrame{this, {"passthroughTrackerFrame", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     /**
      * Passthrough ImgFrame message on which object detection was performed.
      * Suitable for when input queue is set to non-blocking behavior.
      */
-    Output passthroughDetectionFrame{*this, {"passthroughDetectionFrame", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
+    Output passthroughDetectionFrame{this, {"passthroughDetectionFrame", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     /**
      * Passthrough image detections message from neural network output.
      * Suitable for when input queue is set to non-blocking behavior.
      */
-    Output passthroughDetections{*this, {"passthroughDetections", DEFAULT_GROUP, {{{DatatypeEnum::ImgDetections, true}}}}};
+    Output passthroughDetections{this, {"passthroughDetections", DEFAULT_GROUP, {{{DatatypeEnum::ImgDetections, true}}}}};
     /**
      * Specify tracker threshold.
      * @param threshold Above this threshold the detected objects will be tracked. Default 0, all image detections are tracked.

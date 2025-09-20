@@ -2,12 +2,13 @@
 
 #include <memory>
 
+#include "depthai/utility/export.hpp"
 #include "depthai/pipeline/DeviceNode.hpp"
 #include "depthai/properties/DeviceNodeGroupProperties.hpp"
 
 namespace dai {
 
-class DeviceNodeGroup : public DeviceNode {
+class DEPTHAI_API DeviceNodeGroup : public DeviceNode {
    public:
     const char* getName() const final {
         return "DeviceNodeGroup";

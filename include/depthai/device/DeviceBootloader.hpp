@@ -19,6 +19,8 @@
 #include "depthai-bootloader-shared/Section.hpp"
 #include "depthai-bootloader-shared/Type.hpp"
 
+#include "depthai/utility/export.hpp"
+
 namespace dai {
 
 namespace fs = std::filesystem;
@@ -27,7 +29,7 @@ namespace fs = std::filesystem;
 /**
  * Represents the DepthAI bootloader with the methods to interact with it.
  */
-class DeviceBootloader {
+class DEPTHAI_API DeviceBootloader {
    public:
     // Alias
     using Type = dai::bootloader::Type;
@@ -37,7 +39,7 @@ class DeviceBootloader {
     using NetworkConfig = dai::bootloader::NetworkConfig;
 
     // Derive and extend bootloader::Config for easier usage
-    struct Config : public bootloader::Config {
+    struct DEPTHAI_API Config : public bootloader::Config {
         /// Setting a static IPv4 won't start DHCP client
         void setStaticIPv4(std::string ip, std::string mask, std::string gateway);
         /// Setting a dynamic IPv4 will set that IP as well as start DHCP client
@@ -193,7 +195,9 @@ class DeviceBootloader {
      * @param allowFlashingBootloader (bool) Set to true to allow flashing the devices bootloader
      */
     template <typename T, std::enable_if_t<std::is_same<T, bool>::value, bool> = true>
-    DeviceBootloader(const DeviceInfo& devInfo, T allowFlashingBootloader);
+    DeviceBootloader(const DeviceInfo& devInfo, T allowFlashingBootloader) : deviceInfo(devInfo) {
+        init(true, {}, std::nullopt, allowFlashingBootloader);
+    }
 
     /**
      * Connects to device in bootloader of specified type. Throws if it wasn't possible.

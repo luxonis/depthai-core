@@ -8,6 +8,7 @@
 #include <thread>
 #include <type_traits>
 
+#include "depthai/utility/export.hpp"
 // project
 #include <optional>
 
@@ -19,7 +20,7 @@ namespace dai {
 /**
  * Represents the DepthAI Gate with the methods to interact with it.
  */
-class DeviceGate {
+class DEPTHAI_API DeviceGate {
    public:
     enum class SessionState { NOT_CREATED, CREATED, RUNNING, STOPPED, STOPPING, CRASHED, DESTROYED, ERROR_STATE };
 

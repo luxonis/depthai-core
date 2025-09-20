@@ -5,6 +5,8 @@
 // shared
 #include <depthai/properties/internal/XLinkOutProperties.hpp>
 
+#include "depthai/utility/export.hpp"
+
 namespace dai {
 namespace node {
 namespace internal {
@@ -14,7 +16,7 @@ using XLinkOutProperties = ::dai::internal::XLinkOutProperties;
 /**
  * @brief XLinkOut node. Sends messages over XLink.
  */
-class XLinkOut : public DeviceNodeCRTP<DeviceNode, XLinkOut, XLinkOutProperties> {
+class DEPTHAI_API XLinkOut : public DeviceNodeCRTP<DeviceNode, XLinkOut, XLinkOutProperties> {
    public:
     constexpr static const char* NAME = "XLinkOut";
     using DeviceNodeCRTP::DeviceNodeCRTP;
@@ -25,8 +27,8 @@ class XLinkOut : public DeviceNodeCRTP<DeviceNode, XLinkOut, XLinkOutProperties>
      *
      * Default queue is blocking with size 8
      */
-    // Input input{*this, "in", Input::Type::SReceiver, true, 8, {{DatatypeEnum::Buffer, true}}};
-    Input input{*this, {"in", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+    // Input input{this, "in", Input::Type::SReceiver, true, 8, {{DatatypeEnum::Buffer, true}}};
+    Input input{this, {"in", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Specifies XLink stream name to use.

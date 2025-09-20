@@ -3,18 +3,20 @@
 #include <string>
 #include <vector>
 
+#include "depthai/utility/export.hpp"
+
 namespace dai {
 namespace utility {
 
-std::vector<uint8_t> deflate(uint8_t* data, size_t size, int compressionLevel = 6);
-std::vector<uint8_t> inflate(uint8_t* data, size_t size);
+DEPTHAI_API std::vector<uint8_t> deflate(uint8_t* data, size_t size, int compressionLevel = 6);
+DEPTHAI_API std::vector<uint8_t> inflate(uint8_t* data, size_t size);
 
 /**
  * Gets a list of filenames contained within a tar archive.
  * @param tarPath Path to the tar file to read
  * @return Vector of paths for the files within the tar archive
  */
-std::vector<std::string> filenamesInTar(const std::filesystem::path& tarPath);
+DEPTHAI_API std::vector<std::string> filenamesInTar(const std::filesystem::path& tarPath);
 
 /**
  * Creates a tar archive containing the specified files.
@@ -22,7 +24,9 @@ std::vector<std::string> filenamesInTar(const std::filesystem::path& tarPath);
  * @param filesOnDisk Vector of paths to file on the host filesystem to include in the archive
  * @param filesInTar Vector of paths for the files within the tar archive
  */
-void tarFiles(const std::filesystem::path& tarPath, const std::vector<std::filesystem::path>& filesOnDisk, const std::vector<std::string>& filesInTar);
+DEPTHAI_API void tarFiles(const std::filesystem::path& tarPath,
+                          const std::vector<std::filesystem::path>& filesOnDisk,
+                          const std::vector<std::string>& filesInTar);
 
 /**
  * Extracts files from a tar archive.
@@ -30,7 +34,9 @@ void tarFiles(const std::filesystem::path& tarPath, const std::vector<std::files
  * @param filesInTar Vector of paths for the files within the tar to extract
  * @param filesOnDisk Vector of paths where the extracted files should be written
  */
-void untarFiles(const std::filesystem::path& tarPath, const std::vector<std::string>& filesInTar, const std::vector<std::filesystem::path>& filesOnDisk);
+DEPTHAI_API void untarFiles(const std::filesystem::path& tarPath,
+                            const std::vector<std::string>& filesInTar,
+                            const std::vector<std::filesystem::path>& filesOnDisk);
 
 }  // namespace utility
 }  // namespace dai

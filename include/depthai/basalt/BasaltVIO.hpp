@@ -13,6 +13,8 @@
 #include "depthai/pipeline/node/Sync.hpp"
 #include "depthai/utility/Pimpl.hpp"
 
+#include "depthai/utility/export.hpp"
+
 namespace dai {
 namespace node {
 
@@ -20,13 +22,13 @@ namespace node {
  * @brief Basalt Visual Inertial Odometry node. Performs VIO on stereo images and IMU data.
 
 */
-class BasaltVIO : public NodeCRTP<ThreadedHostNode, BasaltVIO> {
+class DEPTHAI_API BasaltVIO : public NodeCRTP<ThreadedHostNode, BasaltVIO> {
    public:
     constexpr static const char* NAME = "BasaltVIO";
     BasaltVIO();
     ~BasaltVIO();
 
-    Subnode<node::Sync> sync{*this, "sync"};
+    Subnode<node::Sync> sync{this, "sync"};
     InputMap& inputs = sync->inputs;
 
     std::string leftInputName = "left";
@@ -44,16 +46,16 @@ class BasaltVIO : public NodeCRTP<ThreadedHostNode, BasaltVIO> {
     /**
      * Input IMU data.
      */
-    Input imu{*this, {"inIMU", DEFAULT_GROUP, false, 0, {{DatatypeEnum::IMUData, true}}}};
+    Input imu{this, {"inIMU", DEFAULT_GROUP, false, 0, {{DatatypeEnum::IMUData, true}}}};
 
     /**
      * Output transform data.
      */
-    Output transform{*this, {"transform", DEFAULT_GROUP, {{DatatypeEnum::TransformData, true}}}};
+    Output transform{this, {"transform", DEFAULT_GROUP, {{DatatypeEnum::TransformData, true}}}};
     /**
      * Output passthrough of left image.
      */
-    Output passthrough{*this, {"imgPassthrough", DEFAULT_GROUP, {{DatatypeEnum::ImgFrame, true}}}};
+    Output passthrough{this, {"imgPassthrough", DEFAULT_GROUP, {{DatatypeEnum::ImgFrame, true}}}};
 
     /**
      * VIO configuration file.
@@ -81,7 +83,7 @@ class BasaltVIO : public NodeCRTP<ThreadedHostNode, BasaltVIO> {
     void stereoCB(std::shared_ptr<ADatatype> in);
     void imuCB(std::shared_ptr<ADatatype> imuData);
     void stop() override;
-    Input inSync{*this, {"inSync", DEFAULT_GROUP, false, 0, {{DatatypeEnum::MessageGroup, true}}}};
+    Input inSync{this, {"inSync", DEFAULT_GROUP, false, 0, {{DatatypeEnum::MessageGroup, true}}}};
     std::shared_ptr<basalt::Calibration<double>> calib;
 
     basalt::OpticalFlowBase::Ptr optFlowPtr;

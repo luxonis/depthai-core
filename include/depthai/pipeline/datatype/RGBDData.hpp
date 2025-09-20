@@ -5,13 +5,14 @@
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/utility/Serialization.hpp"
+#include "depthai/utility/export.hpp"
 
 namespace dai {
 
 /**
  * RGBD message. Carries RGB and Depth frames.
  */
-class RGBDData : public Buffer {
+class DEPTHAI_API RGBDData : public Buffer {
    public:
     /**
      * Construct RGBD message.

@@ -4,11 +4,13 @@
 #include <ostream>
 #include <string>
 
+#include "depthai/utility/export.hpp"
+
 namespace dai {
 
 namespace fs = std::filesystem;
 
-struct SlugComponents {
+struct DEPTHAI_API SlugComponents {
     std::string teamName;
     std::string modelSlug;
     std::string modelVariantSlug;
@@ -21,7 +23,7 @@ struct SlugComponents {
     static SlugComponents split(const std::string& slug);
 };
 
-struct NNModelDescription {
+struct DEPTHAI_API NNModelDescription {
     /**
      * @brief Initialize NNModelDescription from yaml file
      *        If modelName is a relative path (e.g. ./yolo.yaml), it is used as is.
@@ -92,7 +94,7 @@ struct NNModelDescription {
  * @param progressFormat: Format to use for progress output (possible values: pretty, json, none), default is "pretty"
  * @return std::filesystem::path: Path to the model in cache
  */
-fs::path getModelFromZoo(const NNModelDescription& modelDescription,
+DEPTHAI_API fs::path getModelFromZoo(const NNModelDescription& modelDescription,
                          bool useCached = true,
                          const fs::path& cacheDirectory = "",
                          const std::string& apiKey = "",
@@ -109,12 +111,12 @@ fs::path getModelFromZoo(const NNModelDescription& modelDescription,
  * @param progressFormat: Format to use for progress output (possible values: pretty, json, none), default is "pretty"
  * @return bool: True if all models were downloaded successfully, false otherwise
  */
-bool downloadModelsFromZoo(const fs::path& path,
+DEPTHAI_API bool downloadModelsFromZoo(const fs::path& path,
                            const fs::path& cacheDirectory = "",
                            const std::string& apiKey = "",
                            const std::string& progressFormat = "none");
 
-std::ostream& operator<<(std::ostream& os, const NNModelDescription& modelDescription);
+DEPTHAI_API std::ostream& operator<<(std::ostream& os, const NNModelDescription& modelDescription);
 
 namespace modelzoo {
 
@@ -123,48 +125,48 @@ namespace modelzoo {
  *
  * @param endpoint
  */
-void setHealthEndpoint(const std::string& endpoint);
+DEPTHAI_API void setHealthEndpoint(const std::string& endpoint);
 
 /**
  * @brief Set the download endpoint (for model querying)
  *
  * @param endpoint
  */
-void setDownloadEndpoint(const std::string& endpoint);
+DEPTHAI_API void setDownloadEndpoint(const std::string& endpoint);
 
 /**
  * @brief Set the default cache path (where models are cached)
  *
  * @param path
  */
-void setDefaultCachePath(const fs::path& path);
+DEPTHAI_API void setDefaultCachePath(const fs::path& path);
 
 /**
  * @brief Set the default models path (where yaml files are stored)
  *
  * @param path
  */
-void setDefaultModelsPath(const fs::path& path);
+DEPTHAI_API void setDefaultModelsPath(const fs::path& path);
 
 /**
  * @brief Get the health endpoint (for internet check)
  */
-std::string getHealthEndpoint();
+DEPTHAI_API std::string getHealthEndpoint();
 
 /**
  * @brief Get the download endpoint (for model querying)
  */
-std::string getDownloadEndpoint();
+DEPTHAI_API std::string getDownloadEndpoint();
 
 /**
  * @brief Get the default cache path (where models are cached)
  */
-fs::path getDefaultCachePath();
+DEPTHAI_API fs::path getDefaultCachePath();
 
 /**
  * @brief Get the default models path (where yaml files are stored)
  */
-fs::path getDefaultModelsPath();
+DEPTHAI_API fs::path getDefaultModelsPath();
 
 }  // namespace modelzoo
 

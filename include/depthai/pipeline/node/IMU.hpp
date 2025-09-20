@@ -5,13 +5,15 @@
 // shared
 #include <depthai/properties/IMUProperties.hpp>
 
+#include "depthai/utility/export.hpp"
+
 namespace dai {
 namespace node {
 
 /**
  * @brief IMU node for BNO08X.
  */
-class IMU : public DeviceNodeCRTP<DeviceNode, IMU, IMUProperties>, public SourceNode {
+class DEPTHAI_API IMU : public DeviceNodeCRTP<DeviceNode, IMU, IMUProperties>, public SourceNode {
    protected:
     bool isSourceNode() const override;
     NodeRecordParams getNodeRecordParams() const override;
@@ -25,12 +27,12 @@ class IMU : public DeviceNodeCRTP<DeviceNode, IMU, IMUProperties>, public Source
     /**
      * Outputs IMUData message that carries IMU packets.
      */
-    Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::IMUData, false}}}}};
+    Output out{this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::IMUData, false}}}}};
 
     /**
      * Mock IMU data for replaying recorded data
      */
-    Input mockIn{*this, {"mockIn", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::IMUData, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+    Input mockIn{this, {"mockIn", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::IMUData, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Enable a new IMU sensor with explicit configuration

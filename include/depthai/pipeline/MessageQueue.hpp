@@ -8,18 +8,21 @@
 #include "depthai/pipeline/datatype/ADatatype.hpp"
 #include "depthai/utility/LockingQueue.hpp"
 
+#include "depthai/utility/export.hpp"
+
+
 // shared
 namespace dai {
 
 /**
  * Thread safe queue to send messages between nodes
  */
-class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
+class DEPTHAI_API MessageQueue : public std::enable_shared_from_this<MessageQueue> {
    public:
     /// Alias for callback id
     using CallbackId = int;
 
-    class QueueException : public std::runtime_error {
+    class DEPTHAI_API QueueException : public std::runtime_error {
        public:
         explicit QueueException(const std::string& message) : std::runtime_error(message) {}
         ~QueueException() noexcept override;

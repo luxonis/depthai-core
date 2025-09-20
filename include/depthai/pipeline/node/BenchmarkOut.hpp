@@ -1,4 +1,5 @@
 #pragma once
+#include "depthai/utility/export.hpp"
 
 #include <depthai/pipeline/DeviceNode.hpp>
 
@@ -8,7 +9,7 @@
 namespace dai {
 namespace node {
 
-class BenchmarkOut : public DeviceNodeCRTP<DeviceNode, BenchmarkOut, BenchmarkOutProperties>, public HostRunnable {
+class DEPTHAI_API BenchmarkOut : public DeviceNodeCRTP<DeviceNode, BenchmarkOut, BenchmarkOutProperties>, public HostRunnable {
    public:
     constexpr static const char* NAME = "BenchmarkOut";
     using DeviceNodeCRTP::DeviceNodeCRTP;
@@ -16,12 +17,12 @@ class BenchmarkOut : public DeviceNodeCRTP<DeviceNode, BenchmarkOut, BenchmarkOu
     /**
      * Send messages out as fast as possible
      */
-    Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::Buffer, true}}}}};
+    Output out{this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::Buffer, true}}}}};
 
     /**
      * Message that will be sent repeatedly
      */
-    Input input{*this, {"input", DEFAULT_GROUP, true, 1, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+    Input input{this, {"input", DEFAULT_GROUP, true, 1, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Sets number of messages to send, by default send messages indefinitely

@@ -5,6 +5,9 @@
 
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/SpatialLocationCalculatorConfig.hpp"
+#include "depthai/utility/export.hpp"
+
+
 
 namespace dai {
 
@@ -59,7 +62,7 @@ DEPTHAI_SERIALIZE_EXT(SpatialLocations, config, depthAverage, depthMode, depthMe
 /**
  * SpatialLocationCalculatorData message. Carries spatial information (X,Y,Z) and their configuration parameters
  */
-class SpatialLocationCalculatorData : public Buffer {
+class DEPTHAI_API SpatialLocationCalculatorData : public Buffer {
    public:
     /**
      * Construct SpatialLocationCalculatorData message.

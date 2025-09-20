@@ -7,13 +7,15 @@
 #include <depthai/common/Point2f.hpp>
 #include <depthai/properties/WarpProperties.hpp>
 
+#include "depthai/utility/export.hpp"
+
 namespace dai {
 namespace node {
 
 /**
  * @brief Warp node. Capability to crop, resize, warp, ... incoming image frames
  */
-class Warp : public DeviceNodeCRTP<DeviceNode, Warp, WarpProperties> {
+class DEPTHAI_API Warp : public DeviceNodeCRTP<DeviceNode, Warp, WarpProperties> {
    public:
     constexpr static const char* NAME = "Warp";
     using DeviceNodeCRTP::DeviceNodeCRTP;
@@ -26,12 +28,12 @@ class Warp : public DeviceNodeCRTP<DeviceNode, Warp, WarpProperties> {
      * Input image to be modified
      * Default queue is blocking with size 8
      */
-    Input inputImage{*this, {"inputImage", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ImgFrame, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+    Input inputImage{this, {"inputImage", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ImgFrame, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Outputs ImgFrame message that carries warped image.
      */
-    Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};
+    Output out{this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};
 
     /**
      * Sets output frame size in pixels

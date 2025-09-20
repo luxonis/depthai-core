@@ -8,11 +8,13 @@
 #include "depthai/pipeline/datatype/ADatatype.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/utility/Serialization.hpp"
+#include "depthai/utility/export.hpp"
+
 namespace dai {
 /**
  * MessageGroup message. Carries multiple messages in one.
  */
-class MessageGroup : public Buffer {
+class DEPTHAI_API MessageGroup : public Buffer {
    public:
     std::map<std::string, std::shared_ptr<ADatatype>> group;
 

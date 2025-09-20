@@ -8,13 +8,15 @@
 // shared
 #include <depthai/properties/SyncProperties.hpp>
 
+#include "depthai/utility/export.hpp"
+
 namespace dai {
 namespace node {
 
 /**
  * @brief Sync node. Performs syncing between image frames
  */
-class Sync : public DeviceNodeCRTP<DeviceNode, Sync, SyncProperties>, public HostRunnable {
+class DEPTHAI_API Sync : public DeviceNodeCRTP<DeviceNode, Sync, SyncProperties>, public HostRunnable {
    private:
     bool runOnHostVar = false;
 
@@ -25,13 +27,13 @@ class Sync : public DeviceNodeCRTP<DeviceNode, Sync, SyncProperties>, public Hos
     /**
      * A map of inputs
      */
-    InputMap inputs{*this, "inputs", {"", DEFAULT_GROUP, false, 10, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+    InputMap inputs{this, "inputs", {"", DEFAULT_GROUP, false, 10, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Output message of type MessageGroup
      */
-    // Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::MessageGroup, false}}};
-    Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::MessageGroup, false}}}}};
+    // Output out{this, "out", Output::Type::MSender, {{DatatypeEnum::MessageGroup, false}}};
+    Output out{this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::MessageGroup, false}}}}};
 
     /**
      * Set the maximal interval between messages in the group

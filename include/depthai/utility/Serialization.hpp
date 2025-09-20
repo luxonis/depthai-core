@@ -13,6 +13,8 @@
 #include <nop/utility/buffer_reader.h>
 #include <nop/utility/stream_writer.h>
 
+#include "depthai/utility/export.hpp"
+
 // project
 #include "NlohmannJsonCompat.hpp"
 
@@ -219,7 +221,7 @@ inline bool deserialize(const std::vector<std::uint8_t>& data, T& obj) {
     return deserialize<DEFAULT_SERIALIZATION_TYPE>(data, obj);
 }
 
-std::string jsonDisplay(const nlohmann::json& json, int level = 0, int indent = 4);
+DEPTHAI_API std::string jsonDisplay(const nlohmann::json& json, int level = 0, int indent = 4);
 
 }  // namespace utility
 

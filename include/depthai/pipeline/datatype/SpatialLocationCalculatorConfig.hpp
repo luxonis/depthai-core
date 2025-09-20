@@ -6,6 +6,8 @@
 #include "depthai/common/Point3f.hpp"
 #include "depthai/common/Rect.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
+#include "depthai/utility/export.hpp"
+
 namespace dai {
 
 /**
@@ -68,7 +70,7 @@ DEPTHAI_SERIALIZE_EXT(SpatialLocationCalculatorConfigData, roi, depthThresholds,
 /**
  * SpatialLocationCalculatorConfig message. Carries ROI (region of interest) and threshold for depth calculation
  */
-class SpatialLocationCalculatorConfig : public Buffer {
+class DEPTHAI_API SpatialLocationCalculatorConfig : public Buffer {
    public:
     /**
      * Construct SpatialLocationCalculatorConfig message.

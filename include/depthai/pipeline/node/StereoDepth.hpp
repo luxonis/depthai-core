@@ -7,13 +7,15 @@
 #include "depthai/pipeline/datatype/StereoDepthConfig.hpp"
 #include "depthai/properties/StereoDepthProperties.hpp"
 
+#include "depthai/utility/export.hpp"
+
 namespace dai {
 namespace node {
 
 /**
  * @brief StereoDepth node. Compute stereo disparity and depth from left-right image pair.
  */
-class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthProperties> {
+class DEPTHAI_API StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthProperties> {
    public:
     constexpr static const char* NAME = "StereoDepth";
     using DeviceNodeCRTP::DeviceNodeCRTP;
@@ -55,7 +57,7 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
                                        std::pair<int, int> size = {640, 400},
                                        std::optional<float> fps = std::nullopt);
 
-   protected:
+   public:
     Properties& getProperties();
     StereoDepth() = default;
     StereoDepth(std::unique_ptr<Properties> props);
@@ -75,30 +77,30 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
      * Input StereoDepthConfig message with ability to modify parameters in runtime.
      */
     Input inputConfig{
-        *this, {"inputConfig", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::StereoDepthConfig, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+        this, {"inputConfig", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::StereoDepthConfig, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Input align to message.
      * Default queue is non-blocking with size 1.
      */
-    Input inputAlignTo{*this, {"inputAlignTo", DEFAULT_GROUP, false, 1, {{DatatypeEnum::ImgFrame, false}}, true}};
+    Input inputAlignTo{this, {"inputAlignTo", DEFAULT_GROUP, false, 1, {{DatatypeEnum::ImgFrame, false}}, true}};
 
     /**
      * Input for left ImgFrame of left-right pair
      */
-    Input left{*this, {"left", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ImgFrame, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+    Input left{this, {"left", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ImgFrame, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Input for right ImgFrame of left-right pair
      */
-    Input right{*this, {"right", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ImgFrame, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+    Input right{this, {"right", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ImgFrame, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Outputs ImgFrame message that carries RAW16 encoded (0..65535) depth data in depth units (millimeter by default).
      *
      * Non-determined / invalid depth values are set to 0
      */
-    Output depth{*this, {"depth", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
+    Output depth{this, {"depth", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     /**
      * Outputs ImgFrame message that carries RAW8 / RAW16 encoded disparity data:
@@ -109,69 +111,69 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
      * - 0..1520 for 4 fractional bits
      * - 0..3040 for 5 fractional bits
      */
-    Output disparity{*this, {"disparity", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
+    Output disparity{this, {"disparity", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     /**
      * Passthrough ImgFrame message from 'left' Input.
      */
-    Output syncedLeft{*this, {"syncedLeft", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
+    Output syncedLeft{this, {"syncedLeft", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     /**
      * Passthrough ImgFrame message from 'right' Input.
      */
-    Output syncedRight{*this, {"syncedRight", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
+    Output syncedRight{this, {"syncedRight", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     /**
      * Outputs ImgFrame message that carries RAW8 encoded (grayscale) rectified frame data.
      */
-    Output rectifiedLeft{*this, {"rectifiedLeft", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
+    Output rectifiedLeft{this, {"rectifiedLeft", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     /**
      * Outputs ImgFrame message that carries RAW8 encoded (grayscale) rectified frame data.
      */
-    Output rectifiedRight{*this, {"rectifiedRight", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
+    Output rectifiedRight{this, {"rectifiedRight", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     /**
      * Outputs StereoDepthConfig message that contains current stereo configuration.
      */
-    Output outConfig{*this, {"outConfig", DEFAULT_GROUP, {{{DatatypeEnum::StereoDepthConfig, false}}}}};
+    Output outConfig{this, {"outConfig", DEFAULT_GROUP, {{{DatatypeEnum::StereoDepthConfig, false}}}}};
 
     /**
      * Outputs ImgFrame message that carries left-right check first iteration (before combining with second iteration) disparity map.
      * Useful for debugging/fine tuning.
      */
-    Output debugDispLrCheckIt1{*this, {"debugDispLrCheckIt1", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
+    Output debugDispLrCheckIt1{this, {"debugDispLrCheckIt1", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     /**
      * Outputs ImgFrame message that carries left-right check second iteration (before combining with first iteration) disparity map.
      * Useful for debugging/fine tuning.
      */
-    Output debugDispLrCheckIt2{*this, {"debugDispLrCheckIt2", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
+    Output debugDispLrCheckIt2{this, {"debugDispLrCheckIt2", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     /**
      * Outputs ImgFrame message that carries extended left-right check first iteration (downscaled frame, before combining with second iteration) disparity map.
      * Useful for debugging/fine tuning.
      */
-    Output debugExtDispLrCheckIt1{*this, {"debugExtDispLrCheckIt1", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
+    Output debugExtDispLrCheckIt1{this, {"debugExtDispLrCheckIt1", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     /**
      * Outputs ImgFrame message that carries extended left-right check second iteration (downscaled frame, before combining with first iteration) disparity map.
      * Useful for debugging/fine tuning.
      */
-    Output debugExtDispLrCheckIt2{*this, {"debugExtDispLrCheckIt2", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
+    Output debugExtDispLrCheckIt2{this, {"debugExtDispLrCheckIt2", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     /**
      * Outputs ImgFrame message that carries cost dump of disparity map.
      * Useful for debugging/fine tuning.
      */
-    Output debugDispCostDump{*this, {"debugDispCostDump", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
+    Output debugDispCostDump{this, {"debugDispCostDump", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     /**
      * Outputs ImgFrame message that carries RAW8 confidence map.
      * Lower values mean lower confidence of the calculated disparity value.
      * RGB alignment, left-right check or any postprocessing (e.g., median filter) is not performed on confidence map.
      */
-    Output confidenceMap{*this, {"confidenceMap", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
+    Output confidenceMap{this, {"confidenceMap", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     /**
      * Specify local filesystem paths to the mesh calibration files for 'left' and 'right' inputs.

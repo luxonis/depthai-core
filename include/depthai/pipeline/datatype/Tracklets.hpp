@@ -8,6 +8,7 @@
 #include "depthai/common/optional.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
+#include "depthai/utility/export.hpp"
 
 namespace dai {
 
@@ -16,7 +17,7 @@ namespace dai {
  *
  * Contains tracklets from object tracker output.
  */
-struct Tracklet {
+struct DEPTHAI_API Tracklet {
     enum class TrackingStatus : std::int32_t {
         NEW,     /**< The object is newly added. */
         TRACKED, /**< The object is being tracked. */
@@ -59,7 +60,7 @@ struct Tracklet {
 /**
  * Tracklets message. Carries object tracking information.
  */
-class Tracklets : public Buffer {
+class DEPTHAI_API Tracklets : public Buffer {
    public:
     /**
      * Construct Tracklets message.

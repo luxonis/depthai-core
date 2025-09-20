@@ -38,6 +38,8 @@
 #include "depthai/device/CrashDump.hpp"
 #include "depthai/log/LogLevel.hpp"
 #include "depthai/log/LogMessage.hpp"
+#include "depthai/utility/export.hpp"
+
 
 namespace dai {
 
@@ -47,7 +49,7 @@ class PipelineImpl;
 /**
  * The core of depthai device for RAII, connects to device and maintains watchdog, timesync, ...
  */
-class DeviceBase {
+class DEPTHAI_API DeviceBase {
     friend class PipelineImpl;  // Needed for reconnections
 
    public:
@@ -71,7 +73,7 @@ class DeviceBase {
     /**
      * Device specific configuration
      */
-    struct Config {
+    struct DEPTHAI_API Config {
         OpenVINO::Version version = OpenVINO::VERSION_UNIVERSAL;
         BoardConfig board;
         bool nonExclusiveMode = false;

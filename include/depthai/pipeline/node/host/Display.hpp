@@ -3,15 +3,18 @@
 #include <depthai/pipeline/ThreadedHostNode.hpp>
 #include <depthai/pipeline/datatype/ImgFrame.hpp>
 
+#include "depthai/utility/export.hpp"
+
 namespace dai {
 namespace node {
-class Display : public dai::NodeCRTP<ThreadedHostNode, Display> {
+class DEPTHAI_API Display : public dai::NodeCRTP<ThreadedHostNode, Display> {
    private:
     std::string name;
 
    public:
     explicit Display(std::string name = "Display");
-    Input input{*this, {}};
+    Display(std::unique_ptr<Properties> props) {}
+    Input input{this, {}};
     void run() override;
 };
 }  // namespace node

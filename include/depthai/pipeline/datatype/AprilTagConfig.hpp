@@ -4,13 +4,14 @@
 #include <vector>
 
 #include "depthai/pipeline/datatype/Buffer.hpp"
+#include "depthai/utility/export.hpp"
 
 namespace dai {
 
 /**
  * AprilTagConfig message.
  */
-class AprilTagConfig : public Buffer {
+class DEPTHAI_API AprilTagConfig : public Buffer {
    public:
     AprilTagConfig() = default;
     virtual ~AprilTagConfig() = default;

@@ -5,13 +5,15 @@
 // shared
 #include <depthai/properties/SystemLoggerProperties.hpp>
 
+#include "depthai/utility/export.hpp"
+
 namespace dai {
 namespace node {
 
 /**
  * @brief SystemLogger node. Send system information periodically.
  */
-class SystemLogger : public DeviceNodeCRTP<DeviceNode, SystemLogger, SystemLoggerProperties> {
+class DEPTHAI_API SystemLogger : public DeviceNodeCRTP<DeviceNode, SystemLogger, SystemLoggerProperties> {
    public:
     constexpr static const char* NAME = "SystemLogger";
     using DeviceNodeCRTP::DeviceNodeCRTP;
@@ -22,7 +24,7 @@ class SystemLogger : public DeviceNodeCRTP<DeviceNode, SystemLogger, SystemLogge
      * For series 2 devices outputs SystemInformation message,
      * for series 3 devices outputs SystemInformationS3 message
      */
-    Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::SystemInformation, false}, {DatatypeEnum::SystemInformationS3, false}}}}};
+    Output out{this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::SystemInformation, false}, {DatatypeEnum::SystemInformationS3, false}}}}};
 
     /**
      * Specify logging rate, at which messages will be sent out

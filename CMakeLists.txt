@@ -69,6 +69,10 @@ project(depthai VERSION "3.0.0" LANGUAGES CXX C)
 set(DEPTHAI_PRE_RELEASE_TYPE "") # Valid options are "alpha", "beta", "rc", ""
 set(DEPTHAI_PRE_RELEASE_VERSION "0") # Valid options are "0", "1", "2", ...
 
+if(BUILD_SHARED_LIBS)
+    add_compile_definitions(USE_DEPTHAI_DLL)
+endif()
+
 # Set DEPTHAI_VERSION universally, not conditionally
 if(DEPTHAI_PRE_RELEASE_TYPE STREQUAL "")
     set(DEPTHAI_VERSION ${PROJECT_VERSION})
@@ -109,11 +113,6 @@ if(FORCE_COLORED_OUTPUT)
     elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
        add_compile_options(-fcolor-diagnostics)
     endif()
-endif()
-
-# Specify exporting all symbols on Windows
-if(WIN32 AND BUILD_SHARED_LIBS)
-    set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON CACHE BOOL "")
 endif()
 
 ### Constants
@@ -452,6 +451,9 @@ endif()
 
 add_library(${TARGET_CORE_NAME} ${TARGET_CORE_SOURCES})
 add_library("${PROJECT_NAME}::${TARGET_CORE_ALIAS}" ALIAS ${TARGET_CORE_NAME})
+if(BUILD_SHARED_LIBS)
+    target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_DLL_EXPORT)
+endif()
 # Specify that we are building core
 target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_TARGET_CORE)
 # Specifies name of generated IMPORTED target (set to alias)
@@ -923,6 +925,9 @@ if(DEPTHAI_HAVE_OPENCV_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
         ${TARGET_OPENCV_SOURCES}
     )
     add_library("${PROJECT_NAME}::${TARGET_OPENCV_ALIAS}" ALIAS ${TARGET_OPENCV_NAME})
+    if(BUILD_SHARED_LIBS)
+        target_compile_definitions(${TARGET_OPENCV_NAME} PRIVATE DEPTHAI_DLL_EXPORT)
+    endif()
     # Specifies name of generated IMPORTED target (set to alias)
     set_target_properties(${TARGET_OPENCV_NAME} PROPERTIES EXPORT_NAME ${TARGET_OPENCV_ALIAS})
 
@@ -955,6 +960,9 @@ if(DEPTHAI_HAVE_PCL_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
         # Add depthai-core-pcl library and depthai::core::pcl alias
         add_library(${TARGET_PCL_NAME} ${TARGET_PCL_SOURCES})
         add_library("${PROJECT_NAME}::${TARGET_PCL_ALIAS}" ALIAS ${TARGET_PCL_NAME})
+        if(BUILD_SHARED_LIBS)
+            target_compile_definitions(${TARGET_PCL_NAME} PRIVATE DEPTHAI_DLL_EXPORT)
+        endif()
         # Specifies name of generated IMPORTED target (set to alias)
         set_target_properties(${TARGET_PCL_NAME} PROPERTIES EXPORT_NAME ${TARGET_PCL_ALIAS})
 
@@ -1000,6 +1008,9 @@ if(DEPTHAI_HAVE_RTABMAP_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
     src/rtabmap/RTABMapVIO.cpp src/rtabmap/RTABMapSLAM.cpp
     )
     add_library("${PROJECT_NAME}::${TARGET_RTABMAP_ALIAS}" ALIAS ${TARGET_RTABMAP_NAME})
+    if(BUILD_SHARED_LIBS)
+        target_compile_definitions(${TARGET_RTABMAP_NAME} PRIVATE DEPTHAI_DLL_EXPORT)
+    endif()
     # Specifies name of generated IMPORTED target (set to alias)
     set_target_properties(${TARGET_RTABMAP_NAME} PROPERTIES EXPORT_NAME ${TARGET_RTABMAP_ALIAS})
 
@@ -1039,6 +1050,9 @@ if(DEPTHAI_HAVE_BASALT_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
     # Add depthai-basalt library and depthai::basalt alias
     add_library(${TARGET_BASALT_NAME} src/basalt/BasaltVIO.cpp )
     add_library("${PROJECT_NAME}::${TARGET_BASALT_ALIAS}" ALIAS ${TARGET_BASALT_NAME})
+    if(BUILD_SHARED_LIBS)
+        target_compile_definitions(${TARGET_BASALT_NAME} PRIVATE DEPTHAI_DLL_EXPORT)
+    endif()
 
     # Specifies name of generated IMPORTED target (set to alias)
     set_target_properties(${TARGET_BASALT_NAME} PROPERTIES EXPORT_NAME ${TARGET_BASALT_ALIAS})
@@ -1078,6 +1092,9 @@ set(TARGET_ALL_NAME ${PROJECT_NAME}-all)
 if(DEPTHAI_HAVE_OPENCV_SUPPORT AND DEPTHAI_HAVE_PCL_SUPPORT AND DEPTHAI_HAVE_BASALT_SUPPORT AND DEPTHAI_HAVE_RTABMAP_SUPPORT)
     add_library(${TARGET_ALL_NAME} INTERFACE)
     add_library("${PROJECT_NAME}::${TARGET_ALL_ALIAS}" ALIAS ${TARGET_ALL_NAME})
+    if(BUILD_SHARED_LIBS)
+        target_compile_definitions(${TARGET_ALL_NAME} PRIVATE DEPTHAI_DLL_EXPORT)
+    endif()
     # Specifies name of generated IMPORTED target (set to alias)
     set_target_properties(${TARGET_ALL_NAME} PROPERTIES EXPORT_NAME ${TARGET_ALL_ALIAS})
     target_link_libraries(${TARGET_ALL_NAME} INTERFACE ${TARGET_CORE_NAME} ${TARGET_OPENCV_NAME} ${TARGET_PCL_NAME} ${TARGET_BASALT_NAME} ${TARGET_RTABMAP_NAME})

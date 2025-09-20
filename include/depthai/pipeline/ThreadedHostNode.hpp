@@ -1,10 +1,13 @@
 #pragma once
 
 #include "depthai/pipeline/ThreadedNode.hpp"
+#include "depthai/utility/export.hpp"
+
+
 
 namespace dai {
 namespace node {
-class ThreadedHostNode : public ThreadedNode {
+class DEPTHAI_API ThreadedHostNode : public ThreadedNode {
    public:
     constexpr static const char* NAME = "HostNode";
     using ThreadedNode::ThreadedNode;

@@ -5,10 +5,12 @@
 #include <string>
 
 #include "depthai/utility/spimpl.h"
+#include "depthai/utility/export.hpp"
+
 namespace dai {
 
 /// Version structure
-struct Version {
+struct DEPTHAI_API Version {
     enum class PreReleaseType : uint16_t {
         ALPHA = 0,
         BETA = 1,

@@ -8,6 +8,7 @@
 #include "depthai/common/EepromData.hpp"
 #include "depthai/common/Point2f.hpp"
 #include "depthai/common/Size2f.hpp"
+#include "depthai/utility/export.hpp"
 
 #ifdef DEPTHAI_HAVE_RTABMAP_SUPPORT
     #pragma push_macro("_res")
@@ -29,7 +30,7 @@ namespace dai {
  *  - boardOptions
  *  - productName
  */
-class CalibrationHandler {
+class DEPTHAI_API CalibrationHandler {
    public:
     CalibrationHandler() = default;
 

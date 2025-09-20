@@ -7,6 +7,7 @@
 
 #include "depthai/pipeline/datatype/DynamicCalibrationControl.hpp"
 #include "depthai/utility/spimpl.h"
+#include "depthai/utility/export.hpp"
 
 namespace spdlog {
 class async_logger;
@@ -17,7 +18,7 @@ namespace node {
 /*u
  * @brief Dynamic calibration node. Performs calibration check and dynamically calibrates the device
  */
-class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration, DynamicCalibrationProperties>, public HostRunnable {
+class DEPTHAI_API DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration, DynamicCalibrationProperties>, public HostRunnable {
    public:
     constexpr static const char* NAME = "DynamicCalibration";
 
@@ -30,7 +31,7 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
      * Input DynamicCalibrationControl message with ability to modify parameters in runtime.
      */
     Input inputControl{
-        *this,
+        this,
         {
 	  "inputControl",
 	  DEFAULT_GROUP,
@@ -45,7 +46,7 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
      * Output calibration quality result
      */
     Output calibrationOutput{
-        *this,
+        this,
 	{
 	    "calibrationOutput",
 	    DEFAULT_GROUP,
@@ -54,7 +55,7 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     };
 
     Output qualityOutput{
-        *this,
+        this,
 	{
 	    "qualityOutput",
 	    DEFAULT_GROUP,
@@ -63,7 +64,7 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     };
 
     Output coverageOutput{
-        *this,
+        this,
 	{
 	    "coverageResult",
 	    DEFAULT_GROUP,
@@ -72,7 +73,7 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     };
 
     Input syncInput{
-        *this,
+        this,
 	{
 	    "inSync",
 	    DEFAULT_GROUP,
@@ -85,7 +86,7 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
 
     void buildInternal() override;
 
-    Subnode<node::Sync> sync{*this, "sync"};
+    Subnode<node::Sync> sync{this, "sync"};
     InputMap& inputs = sync->inputs;
     std::string leftInputName = "left";
     std::string rightInputName = "right";

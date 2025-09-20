@@ -1,12 +1,14 @@
 #pragma once
 
 #include "depthai/pipeline/datatype/Buffer.hpp"
+#include "depthai/utility/export.hpp"
+
 namespace dai {
 
 /**
  * BenchmarkReport message.
  */
-class BenchmarkReport : public Buffer {
+class DEPTHAI_API BenchmarkReport : public Buffer {
    public:
     BenchmarkReport() = default;
 

@@ -8,8 +8,8 @@ class RerunNode : public dai::NodeCRTP<dai::node::ThreadedHostNode, RerunNode> {
     constexpr static const char* NAME = "RerunNode";
 
    public:
-    Input inputPCL{*this, {.name = "inPCL", .types = {{dai::DatatypeEnum::PointCloudData, true}}}};
-    Input inputRGBD{*this, {.name = "inRGBD", .types = {{dai::DatatypeEnum::RGBDData, true}}}};
+    Input inputPCL{this, {.name = "inPCL", .types = {{dai::DatatypeEnum::PointCloudData, true}}}};
+    Input inputRGBD{this, {.name = "inRGBD", .types = {{dai::DatatypeEnum::RGBDData, true}}}};
 
     void run() override {
         const auto rec = rerun::RecordingStream("rerun");

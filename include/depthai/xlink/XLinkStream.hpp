@@ -23,10 +23,11 @@
 #include "depthai/utility/Memory.hpp"
 #include "depthai/utility/span.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
+#include "depthai/utility/export.hpp"
 
 namespace dai {
 
-class StreamPacketDesc : public streamPacketDesc_t {
+class DEPTHAI_API StreamPacketDesc : public streamPacketDesc_t {
    public:
     StreamPacketDesc() noexcept : streamPacketDesc_t{nullptr, 0, -1, {}, {}} {};
     StreamPacketDesc(const StreamPacketDesc&) = delete;
@@ -36,7 +37,7 @@ class StreamPacketDesc : public streamPacketDesc_t {
     ~StreamPacketDesc() noexcept;
 };
 
-class StreamPacketMemory : public StreamPacketDesc, public Memory {
+class DEPTHAI_API StreamPacketMemory : public StreamPacketDesc, public Memory {
     size_t size;
 
    public:
@@ -69,7 +70,7 @@ class StreamPacketMemory : public StreamPacketDesc, public Memory {
     }
 };
 
-class XLinkStream {
+class DEPTHAI_API XLinkStream {
     // static
     constexpr static int STREAM_OPEN_RETRIES = 5;
     constexpr static std::chrono::milliseconds WAIT_FOR_STREAM_RETRY{50};
@@ -123,7 +124,7 @@ class XLinkStream {
     std::string getStreamName() const;
 };
 
-struct XLinkError : public std::runtime_error {
+struct DEPTHAI_API XLinkError : public std::runtime_error {
     const XLinkError_t status = X_LINK_ERROR;
     const std::string streamName;
 
@@ -132,11 +133,12 @@ struct XLinkError : public std::runtime_error {
     XLinkError(XLinkError_t statusID, std::string stream, const std::string& message)
         : runtime_error(message), status(statusID), streamName(std::move(stream)) {}
 };
-struct XLinkReadError : public XLinkError {
+
+struct DEPTHAI_API XLinkReadError : public XLinkError {
     using XLinkError = XLinkError;
     XLinkReadError(XLinkError_t status, const std::string& stream);
 };
-struct XLinkWriteError : public XLinkError {
+struct DEPTHAI_API XLinkWriteError : public XLinkError {
     using XLinkError = XLinkError;
     XLinkWriteError(XLinkError_t status, const std::string& stream);
 };

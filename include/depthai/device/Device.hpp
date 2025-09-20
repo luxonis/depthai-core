@@ -14,6 +14,7 @@
 // project
 #include "depthai/device/DeviceBase.hpp"
 #include "depthai/utility/RecordReplay.hpp"
+#include "depthai/utility/export.hpp"
 
 namespace dai {
 
@@ -29,7 +30,7 @@ enum class Platform { RVC2, RVC3, RVC4 };
  * @param platform Platform enum
  * @return std::string String representation of Platform
  */
-std::string platform2string(Platform platform);
+std::string DEPTHAI_API platform2string(Platform platform);
 
 /**
  * @brief Convert string to Platform enum
@@ -37,13 +38,13 @@ std::string platform2string(Platform platform);
  * @param platform String representation of Platform
  * @return Platform Platform enum
  */
-Platform string2platform(const std::string& platform);
+Platform DEPTHAI_API string2platform(const std::string& platform);
 
 /**
  * Represents the DepthAI device with the methods to interact with it.
  * Implements the host-side queues to connect with XLinkIn and XLinkOut nodes
  */
-class Device : public DeviceBase {
+class DEPTHAI_API Device : public DeviceBase {
    public:
     using DeviceBase::DeviceBase;  // inherit the ctors
     using DeviceBase::ReconnectionStatus;

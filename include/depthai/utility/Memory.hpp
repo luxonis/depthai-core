@@ -69,7 +69,7 @@ holder(std::move(holder)) {}
     //     }
     // };
     // Access<uint8_t> getData() {
-    //     return {*this, data, size};
+    //     return {this, data, size};
     // }
     // Access<const uint8_t> getData() const {
     //     return {data, data + size};

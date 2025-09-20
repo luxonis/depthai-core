@@ -4,13 +4,16 @@
 #include "NodeObjInfo.hpp"
 #include "depthai/properties/GlobalProperties.hpp"
 #include "depthai/utility/Serialization.hpp"
+#include "depthai/utility/export.hpp"
+
+
 
 namespace dai {
 
 /**
  * Specifies whole pipeline, nodes, properties and connections between nodes IOs
  */
-struct PipelineSchema {
+struct DEPTHAI_API PipelineSchema {
     std::vector<NodeConnectionSchema> connections;
     GlobalProperties globalProperties;
     std::unordered_map<int64_t, NodeObjInfo> nodes;

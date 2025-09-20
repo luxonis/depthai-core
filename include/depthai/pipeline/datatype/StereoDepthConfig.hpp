@@ -6,13 +6,16 @@
 
 #include "depthai/pipeline/FilterParams.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
+#include "depthai/utility/export.hpp"
+
+
 
 namespace dai {
 
 /**
  * StereoDepthConfig message.
  */
-class StereoDepthConfig : public Buffer {
+class DEPTHAI_API StereoDepthConfig : public Buffer {
    public:
     /**
      * Construct StereoDepthConfig message.

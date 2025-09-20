@@ -16,6 +16,9 @@ copy of the License at http://www.apache.org/licenses/LICENSE-2.0.
 #include <memory>
 #include <utility>
 
+#include <cassert>  
+#define DRAKE_DEMAND(x) assert(x)
+
 namespace dai {
 
 // TODO(SeanCurtis-TRI): Consider extending this to add the Deleter as well.

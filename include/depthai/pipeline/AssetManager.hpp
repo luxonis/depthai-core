@@ -5,6 +5,8 @@
 #include <memory>
 #include <vector>
 
+#include "depthai/utility/export.hpp"
+
 #include "depthai/pipeline/Assets.hpp"
 
 namespace dai {
@@ -12,7 +14,7 @@ namespace dai {
 /**
  * @brief Asset is identified with string key and can store arbitrary binary data
  */
-struct Asset {
+struct DEPTHAI_API Asset {
     Asset() = default;
     explicit Asset(std::string k) : key(std::move(k)) {}
     const std::string key;
@@ -21,7 +23,7 @@ struct Asset {
     std::string getRelativeUri();
 };
 
-class AssetsMutable : public Assets {
+class DEPTHAI_API AssetsMutable : public Assets {
    public:
     void set(std::string, std::uint32_t offset, std::uint32_t size, std::uint32_t alignment);
 };
@@ -30,7 +32,7 @@ class AssetsMutable : public Assets {
 /**
  * @brief AssetManager can store assets and serialize
  */
-class AssetManager /*: public Assets*/ {
+class DEPTHAI_API AssetManager /*: public Assets*/ {
     std::map<std::string, std::shared_ptr<Asset>> assetMap;
     std::string rootPath;
 

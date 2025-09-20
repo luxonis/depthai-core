@@ -11,6 +11,7 @@
 
 #include "depthai/nn_archive/NNArchive.hpp"
 #include "depthai/openvino/OpenVINO.hpp"
+#include "depthai/utility/export.hpp"
 
 namespace dai {
 namespace node {
@@ -18,7 +19,7 @@ namespace node {
 /**
  * @brief DetectionNetwork, base for different network specializations
  */
-class DetectionNetwork : public DeviceNodeGroup {
+class DEPTHAI_API DetectionNetwork : public DeviceNodeGroup {
    public:
     DetectionNetwork(const std::shared_ptr<Device>& device);
 
@@ -35,8 +36,8 @@ class DetectionNetwork : public DeviceNodeGroup {
     std::shared_ptr<DetectionNetwork> build(const std::shared_ptr<ReplayVideo>& input, NNModelDescription modelDesc, std::optional<float> fps = std::nullopt);
     std::shared_ptr<DetectionNetwork> build(const std::shared_ptr<ReplayVideo>& input, const NNArchive& nnArchive, std::optional<float> fps = std::nullopt);
 #endif
-    Subnode<NeuralNetwork> neuralNetwork{*this, "neuralNetwork"};
-    Subnode<DetectionParser> detectionParser{*this, "detectionParser"};
+    Subnode<NeuralNetwork> neuralNetwork{this, "neuralNetwork"};
+    Subnode<DetectionParser> detectionParser{this, "detectionParser"};
     /**
      * Outputs ImgDetections message that carries parsed detection results.
      * Overrides NeuralNetwork 'out' with ImgDetections output message type.

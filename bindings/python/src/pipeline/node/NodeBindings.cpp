@@ -292,7 +292,7 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
     nodeInputType.value("SReceiver", Node::Input::Type::SReceiver).value("MReceiver", Node::Input::Type::MReceiver);
 
     pyInput
-        .def(py::init([](Node& parent,
+        .def(py::init([](Node* parent,
                          const std::string& name,
                          const std::string& group,
                          bool blocking,
@@ -346,7 +346,7 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
     // Node::Output bindings
     nodeOutputType.value("MSender", Node::Output::Type::MSender).value("SSender", Node::Output::Type::SSender);
     pyOutput
-        .def(py::init([](Node& parent, const std::string& name, const std::string& group, std::vector<Node::DatatypeHierarchy> types) {
+        .def(py::init([](Node* parent, const std::string& name, const std::string& group, std::vector<Node::DatatypeHierarchy> types) {
                  PyErr_WarnEx(PyExc_DeprecationWarning, "Constructing Output explicitly is deprecated, use createOutput method instead.", 1);
                  return std::shared_ptr<Node::Output>(new Node::Output(parent, {name, group, std::move(types)}));
              }),

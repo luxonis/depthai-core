@@ -18,6 +18,8 @@
 #include "depthai/nn_archive/NNArchiveEntry.hpp"
 #include "depthai/nn_archive/v1/Config.hpp"
 
+#include "depthai/utility/export.hpp"
+
 namespace dai {
 
 enum class NNArchiveConfigVersion {
@@ -31,7 +33,7 @@ inline NNArchiveConfigVersion getNNArchiveConfigVersion(const NNArchiveConfig& c
     return static_cast<NNArchiveConfigVersion>(config.index());
 }
 
-class NNArchiveVersionedConfig {
+class DEPTHAI_API NNArchiveVersionedConfig {
    public:
     /**
      * @data Should point to a whole compressed NNArchive read to memory if compression is not set to RAW_FS.

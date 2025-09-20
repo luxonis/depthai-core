@@ -7,11 +7,12 @@
 
 // project
 #include "depthai/utility/Serialization.hpp"
+#include "depthai/utility/export.hpp"
 
 namespace dai {
 
 // This class represent a single asset
-struct AssetView {
+struct DEPTHAI_API AssetView {
     std::uint8_t* data;
     std::uint32_t size;
     std::uint32_t alignment = 1;
@@ -19,11 +20,11 @@ struct AssetView {
 };
 
 // This is a serializable class, which acts as readonly access to assets
-class Assets {
+class DEPTHAI_API Assets {
    protected:
     std::uint8_t* pStorageStart = nullptr;
 
-    struct AssetInternal {
+    struct DEPTHAI_API AssetInternal {
         std::uint32_t offset, size, alignment;
         DEPTHAI_SERIALIZE(AssetInternal, offset, size, alignment);
     };

@@ -15,13 +15,15 @@
 // shared
 #include <depthai/properties/SpatialDetectionNetworkProperties.hpp>
 
+#include "depthai/utility/export.hpp"
+
 namespace dai {
 namespace node {
 
 /**
  * @brief SpatialDetectionNetwork node. Runs a neural inference on input image and calculates spatial location data.
  */
-class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetectionNetwork, SpatialDetectionNetworkProperties> {
+class DEPTHAI_API SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetectionNetwork, SpatialDetectionNetworkProperties> {
    public:
     explicit SpatialDetectionNetwork(const std::shared_ptr<Device>& device)
         : DeviceNodeCRTP<DeviceNode, SpatialDetectionNetwork, SpatialDetectionNetworkProperties>(device),
@@ -31,7 +33,7 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
         if(device) {
             auto platform = device->getPlatform();
             if(platform == Platform::RVC4) {
-                if(!depthAlign) depthAlign = std::make_unique<Subnode<ImageAlign>>(*this, "depthAlign");
+                if(!depthAlign) depthAlign = std::make_unique<Subnode<ImageAlign>>(this, "depthAlign");
             }
         }
     };
@@ -41,7 +43,7 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
         if(device) {
             auto platform = device->getPlatform();
             if(platform == Platform::RVC4) {
-                if(!depthAlign) depthAlign = std::make_unique<Subnode<ImageAlign>>(*this, "depthAlign");
+                if(!depthAlign) depthAlign = std::make_unique<Subnode<ImageAlign>>(this, "depthAlign");
             }
         }
     };
@@ -51,7 +53,7 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
         if(device) {
             auto platform = device->getPlatform();
             if(platform == Platform::RVC4) {
-                if(!depthAlign) depthAlign = std::make_unique<Subnode<ImageAlign>>(*this, "depthAlign");
+                if(!depthAlign) depthAlign = std::make_unique<Subnode<ImageAlign>>(this, "depthAlign");
             }
         }
     };
@@ -63,7 +65,7 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
         if(device) {
             auto platform = device->getPlatform();
             if(platform == Platform::RVC4) {
-                if(!depthAlign) depthAlign = std::make_unique<Subnode<ImageAlign>>(*this, "depthAlign");
+                if(!depthAlign) depthAlign = std::make_unique<Subnode<ImageAlign>>(this, "depthAlign");
             }
         }
     };
@@ -79,8 +81,8 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
                                                    const dai::NNArchive& nnArchive,
                                                    std::optional<float> fps = std::nullopt);
 
-    Subnode<NeuralNetwork> neuralNetwork{*this, "neuralNetwork"};
-    Subnode<DetectionParser> detectionParser{*this, "detectionParser"};
+    Subnode<NeuralNetwork> neuralNetwork{this, "neuralNetwork"};
+    Subnode<DetectionParser> detectionParser{this, "detectionParser"};
     std::unique_ptr<Subnode<ImageAlign>> depthAlign;
 
     /**
@@ -105,42 +107,42 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
      * Input message with depth data used to retrieve spatial information about detected object
      * Default queue is non-blocking with size 4
      */
-    Input inputDepth{*this, {"inputDepth", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::ImgFrame, false}}}, true}};
+    Input inputDepth{this, {"inputDepth", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::ImgFrame, false}}}, true}};
 
     /**
      * Input message with image data used to retrieve image transformation from detected object
      * Default queue is blocking with size 1
      */
-    Input inputImg{*this, {"inputImg", DEFAULT_GROUP, true, 2, {{{DatatypeEnum::ImgFrame, false}}}, true}};
+    Input inputImg{this, {"inputImg", DEFAULT_GROUP, true, 2, {{{DatatypeEnum::ImgFrame, false}}}, true}};
 
     /**
      * Input message with input detections object
      * Default queue is blocking with size 1
      */
-    Input inputDetections{*this, {"inputDetections", DEFAULT_GROUP, true, 5, {{{DatatypeEnum::ImgDetections, false}}}, true}};
+    Input inputDetections{this, {"inputDetections", DEFAULT_GROUP, true, 5, {{{DatatypeEnum::ImgDetections, false}}}, true}};
 
     /**
      * Outputs ImgDetections message that carries parsed detection results.
      */
-    Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::SpatialImgDetections, false}}}}};
+    Output out{this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::SpatialImgDetections, false}}}}};
 
     /**
      * Outputs mapping of detected bounding boxes relative to depth map
      * Suitable for when displaying remapped bounding boxes on depth frame
      */
-    Output boundingBoxMapping{*this, {"boundingBoxMapping", DEFAULT_GROUP, {{{DatatypeEnum::SpatialLocationCalculatorConfig, false}}}}};
+    Output boundingBoxMapping{this, {"boundingBoxMapping", DEFAULT_GROUP, {{{DatatypeEnum::SpatialLocationCalculatorConfig, false}}}}};
 
     /**
      * Passthrough message for depth frame on which the spatial location calculation was performed.
      * Suitable for when input queue is set to non-blocking behavior.
      */
-    Output passthroughDepth{*this, {"passthroughDepth", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
+    Output passthroughDepth{this, {"passthroughDepth", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     /**
      * Output of SpatialLocationCalculator node, which is used internally by SpatialDetectionNetwork.
      * Suitable when extra information is required from SpatialLocationCalculator node, e.g. minimum, maximum distance.
      */
-    Output spatialLocationCalculatorOutput{*this, {"spatialLocationCalculatorOutput", DEFAULT_GROUP, {{{DatatypeEnum::SpatialLocationCalculatorData, false}}}}};
+    Output spatialLocationCalculatorOutput{this, {"spatialLocationCalculatorOutput", DEFAULT_GROUP, {{{DatatypeEnum::SpatialLocationCalculatorData, false}}}}};
 
     /**
      * @brief Set NNArchive for this Node. If the archive's type is SUPERBLOB, use default number of shaves.
@@ -295,7 +297,6 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
     void alignDepth(const std::shared_ptr<StereoDepth>& stereo, const std::shared_ptr<Camera>& camera);
 
    protected:
-    using DeviceNodeCRTP::DeviceNodeCRTP;
 };
 
 }  // namespace node

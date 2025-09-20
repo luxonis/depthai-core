@@ -249,11 +249,6 @@ DeviceBootloader::DeviceBootloader(const DeviceInfo& devInfo) : deviceInfo(devIn
     init(true, {}, std::nullopt, false);
 }
 
-template <>
-DeviceBootloader::DeviceBootloader(const DeviceInfo& devInfo, bool allowFlashingBootloader) : deviceInfo(devInfo) {
-    init(true, {}, std::nullopt, allowFlashingBootloader);
-}
-
 DeviceBootloader::DeviceBootloader(const DeviceInfo& devInfo, Type type, bool allowFlashingBootloader) : deviceInfo(devInfo) {
     init(true, {}, type, allowFlashingBootloader);
 }

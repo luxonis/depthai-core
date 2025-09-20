@@ -3,13 +3,14 @@
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/ImageFiltersConfig.hpp"
 #include "depthai/utility/Serialization.hpp"
+#include "depthai/utility/export.hpp"
 
 namespace dai {
 
 /**
  * ToFConfig message. Carries config for feature tracking algorithm
  */
-class ToFConfig : public Buffer {
+class DEPTHAI_API ToFConfig : public Buffer {
    public:
     /**
      * Set kernel size for depth median filtering, or disable

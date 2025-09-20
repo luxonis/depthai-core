@@ -22,12 +22,15 @@
 #include "depthai/pipeline/PipelineSchema.hpp"
 #include "depthai/properties/GlobalProperties.hpp"
 #include "depthai/utility/RecordReplay.hpp"
+#include "depthai/utility/export.hpp"
+
+
 
 namespace dai {
 
 namespace fs = std::filesystem;
 
-class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
+class DEPTHAI_API PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     friend class Pipeline;
     friend class Node;
     friend class DeviceBase;
@@ -237,7 +240,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
 /**
  * @brief Represents the pipeline, set of nodes and connections between them
  */
-class Pipeline {
+class DEPTHAI_API Pipeline {
     friend class PipelineImpl;
     friend class Device;
 

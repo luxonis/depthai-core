@@ -5,10 +5,12 @@
 // shared
 #include <depthai/properties/BenchmarkInProperties.hpp>
 
+#include "depthai/utility/export.hpp"
+
 namespace dai {
 namespace node {
 
-class BenchmarkIn : public DeviceNodeCRTP<DeviceNode, BenchmarkIn, BenchmarkInProperties>, public HostRunnable {
+class DEPTHAI_API BenchmarkIn : public DeviceNodeCRTP<DeviceNode, BenchmarkIn, BenchmarkInProperties>, public HostRunnable {
    public:
     constexpr static const char* NAME = "BenchmarkIn";
     using DeviceNodeCRTP::DeviceNodeCRTP;
@@ -16,17 +18,17 @@ class BenchmarkIn : public DeviceNodeCRTP<DeviceNode, BenchmarkIn, BenchmarkInPr
     /**
      * Receive messages as fast as possible
      */
-    Input input{*this, {"input", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+    Input input{this, {"input", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Passthrough for input messages (so the node can be placed between other nodes)
      */
-    Output passthrough{*this, {"passthrough", DEFAULT_GROUP, {{{DatatypeEnum::Buffer, true}}}}};
+    Output passthrough{this, {"passthrough", DEFAULT_GROUP, {{{DatatypeEnum::Buffer, true}}}}};
 
     /**
      * Send a benchmark report when the set number of messages are received
      */
-    Output report{*this, {"report", DEFAULT_GROUP, {{{DatatypeEnum::BenchmarkReport, false}}}}};
+    Output report{this, {"report", DEFAULT_GROUP, {{{DatatypeEnum::BenchmarkReport, false}}}}};
 
     /**
      * Specify how many messages to measure for each report

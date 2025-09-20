@@ -15,10 +15,12 @@
 #include "depthai/properties/CameraProperties.hpp"
 #include "depthai/utility/span.hpp"
 
+#include "depthai/utility/export.hpp"
+
 namespace dai {
 namespace node {
 
-class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, public SourceNode {
+class DEPTHAI_API Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, public SourceNode {
    public:
     /**
      * Get video output with specified size.
@@ -103,20 +105,20 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
      * Input for CameraControl message, which can modify camera parameters in runtime
      */
     Input inputControl{
-        *this, {"inputControl", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::CameraControl, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+        this, {"inputControl", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::CameraControl, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Input for mocking 'isp' functionality on RVC2.
      * Default queue is blocking with size 8
      */
-    Input mockIsp{*this, {"mockIsp", DEFAULT_GROUP, true, 8, {{{DatatypeEnum::ImgFrame, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+    Input mockIsp{this, {"mockIsp", DEFAULT_GROUP, true, 8, {{{DatatypeEnum::ImgFrame, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Outputs ImgFrame message that carries RAW10-packed (MIPI CSI-2 format) frame data.
      *
      * Captured directly from the camera sensor, and the source for the 'isp' output.
      */
-    Output raw{*this, {"raw", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
+    Output raw{this, {"raw", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     /**
      * Retrieves which board socket to use
@@ -149,7 +151,7 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
         node->buildInternal();
         return node;
     }
-    OutputMap dynamicOutputs{*this, "dynamicOutputs", {"", "", {{DatatypeEnum::ImgFrame, false}}}};
+    OutputMap dynamicOutputs{this, "dynamicOutputs", {"", "", {{DatatypeEnum::ImgFrame, false}}}};
     Camera();
     explicit Camera(std::shared_ptr<Device>& defaultDevice);
     explicit Camera(std::unique_ptr<Properties> props);

@@ -91,7 +91,7 @@ bool Node::Input::isConnected() const {
 
 std::vector<Node::ConnectionInternal> Node::Output::getConnections() {
     std::vector<Node::ConnectionInternal> myConnections;
-    for(const auto& conn : parent.get().connections) {
+    for(const auto& conn : parent->connections) {
         if(conn.out == this) {
             myConnections.push_back(conn);
         }
@@ -102,7 +102,7 @@ std::vector<Node::ConnectionInternal> Node::Output::getConnections() {
 bool Node::Output::isSamePipeline(const Input& in) {
     // Check whether current output and 'in' are on same pipeline.
     // By checking parent of node
-    auto outputPipeline = parent.get().parent.lock();
+    auto outputPipeline = parent->parent.lock();
     if(outputPipeline != nullptr) {
         auto inputPipeline = in.getParent().parent.lock();
         return (outputPipeline == inputPipeline);
@@ -153,13 +153,13 @@ void Node::Output::link(Input& in) {
     Node::ConnectionInternal connection(*this, in);
 
     // Check if connection was already made - the following is possible as operator[] constructs the underlying set if it doesn't exist.
-    if(parent.get().connections.count(connection) > 0) {
+    if(parent->connections.count(connection) > 0) {
         // this means a connection was already made.
         throw std::logic_error(fmt::format("'{}.{}' already linked to '{}.{}'", getParent().getName(), toString(), in.getParent().getName(), in.toString()));
     }
 
     // Otherwise all is set to add a new connection
-    parent.get().connections.insert(connection);
+    parent->connections.insert(connection);
     // Add the shared_ptr to the input directly for host side
     connectedInputs.push_back(&in);
     in.connectedOutputs.push_back(this);
@@ -167,7 +167,7 @@ void Node::Output::link(Input& in) {
 
 std::shared_ptr<dai::MessageQueue> Node::Output::createOutputQueue(unsigned int maxSize, bool blocking) {
     // Check if pipeline is already started - if so, throw an error
-    auto pipelinePtr = parent.get().getParentPipeline();
+    auto pipelinePtr = parent->getParentPipeline();
     if(pipelinePtr.isBuilt()) {
         throw std::runtime_error("Cannot create queue after pipeline is built");
     }
@@ -180,7 +180,7 @@ std::shared_ptr<dai::MessageQueue> Node::Output::createOutputQueue(unsigned int 
 }
 
 std::shared_ptr<InputQueue> Node::Input::createInputQueue(unsigned int maxSize, bool blocking) {
-    auto pipelinePtr = parent.get().getParentPipeline();
+    auto pipelinePtr = parent->getParentPipeline();
     if(pipelinePtr.isBuilt()) {
         throw std::runtime_error("Cannot create input queue after pipeline is built");
     }
@@ -211,13 +211,13 @@ bool Node::ConnectionInternal::operator==(const Node::ConnectionInternal& rhs) c
 void Node::Output::unlink(Input& in) {
     // Create 'Connection' object between 'out' and 'in'
     Node::ConnectionInternal connection(*this, in);
-    if(parent.get().connections.count(connection) == 0) {
+    if(parent->connections.count(connection) == 0) {
         // this means a connection was not present already made.
         throw std::logic_error(fmt::format("'{}.{}' not linked to '{}.{}'", getParent().getName(), toString(), in.getParent().getName(), in.toString()));
     }
 
     // Unlink
-    parent.get().connections.erase(connection);
+    parent->connections.erase(connection);
 
     // Remove the shared_ptr to the input directly for host side
     connectedInputs.erase(std::remove(connectedInputs.begin(), connectedInputs.end(), &in), connectedInputs.end());
@@ -302,14 +302,14 @@ std::vector<uint8_t> Node::moveResource(std::filesystem::path uri) {
     return parent.lock()->loadResourceCwd(uri, cwd, true);
 }
 
-Node::OutputMap::OutputMap(Node& parent, std::string name, Node::OutputDescription defaultOutput, bool ref)
+Node::OutputMap::OutputMap(Node* parent, std::string name, Node::OutputDescription defaultOutput, bool ref)
     : defaultOutput(defaultOutput), parent(parent), name(std::move(name)) {
     if(ref) {
-        parent.setOutputMapRefs(this);
+        parent->setOutputMapRefs(this);
     }
 }
 
-Node::OutputMap::OutputMap(Node& parent, Node::OutputDescription defaultOutput, bool ref) : OutputMap(parent, "", std::move(defaultOutput), ref){};
+Node::OutputMap::OutputMap(Node* parent, Node::OutputDescription defaultOutput, bool ref) : OutputMap(parent, "", std::move(defaultOutput), ref){};
 
 Node::Output& Node::OutputMap::operator[](const std::string& key) {
     if(count({name, key}) == 0) {
@@ -336,12 +336,12 @@ Node::Output& Node::OutputMap::operator[](std::pair<std::string, std::string> gr
     return at(groupKey);
 }
 
-Node::InputMap::InputMap(Node& parent, std::string name, Node::InputDescription description)
+Node::InputMap::InputMap(Node* parent, std::string name, Node::InputDescription description)
     : parent(parent), defaultInput(std::move(description)), name(std::move(name)) {
-    parent.setInputMapRefs(this);
+    parent->setInputMapRefs(this);
 }
 
-Node::InputMap::InputMap(Node& parent, Node::InputDescription description) : InputMap(parent, "", std::move(description)){};
+Node::InputMap::InputMap(Node* parent, Node::InputDescription description) : InputMap(parent, "", std::move(description)){};
 
 Node::Input& Node::InputMap::operator[](const std::string& key) {
     if(count({name, key}) == 0) {

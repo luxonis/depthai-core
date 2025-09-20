@@ -50,12 +50,14 @@
     #pragma warning(pop)
 #endif
 
+#include "depthai/utility/export.hpp"
+
 namespace dai {
 
 /**
  * NNData message. Carries tensors and their metadata
  */
-class NNData : public Buffer {
+class DEPTHAI_API NNData : public Buffer {
     static constexpr int DATA_ALIGNMENT = 64;
     static uint16_t fp32_to_fp16(float);
     static float fp16_to_fp32(uint16_t);

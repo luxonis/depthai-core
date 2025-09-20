@@ -7,6 +7,7 @@
 #include "depthai/common/Point3fRGBA.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/utility/ProtoSerializable.hpp"
+#include "depthai/utility/export.hpp"
 
 // optional
 #ifdef DEPTHAI_HAVE_PCL_SUPPORT
@@ -19,7 +20,7 @@ namespace dai {
 /**
  * PointCloudData message. Carries point cloud data.
  */
-class PointCloudData : public Buffer, public ProtoSerializable {
+class DEPTHAI_API PointCloudData : public Buffer, public ProtoSerializable {
     unsigned int width;        // width in pixels
     unsigned int height;       // height in pixels
     uint32_t instanceNum = 0;  // Which source created this frame (color, mono, ...)

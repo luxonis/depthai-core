@@ -7,7 +7,7 @@
     #include "rtabmap/core/Transform.h"
 #endif
 namespace dai {
-struct Transform {
+struct DEPTHAI_API Transform {
     std::array<std::array<double, 4>, 4> matrix;
 };
 
@@ -16,7 +16,7 @@ DEPTHAI_SERIALIZE_EXT(Transform, matrix);
 /**
  * TransformData message. Carries transform in x,y,z,qx,qy,qz,qw format.
  */
-class TransformData : public Buffer {
+class DEPTHAI_API TransformData : public Buffer {
    public:
     /**
      * Construct TransformData message.

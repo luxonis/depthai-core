@@ -9,6 +9,7 @@
 #include <depthai/properties/ThermalProperties.hpp>
 
 #include "depthai/pipeline/datatype/ThermalConfig.hpp"
+#include "depthai/utility/export.hpp"
 
 namespace dai {
 namespace node {
@@ -16,7 +17,7 @@ namespace node {
 /**
  * @brief Thermal node.
  */
-class Thermal : public DeviceNodeCRTP<DeviceNode, Thermal, ThermalProperties> {
+class DEPTHAI_API Thermal : public DeviceNodeCRTP<DeviceNode, Thermal, ThermalProperties> {
    public:
     constexpr static const char* NAME = "Thermal";
     using DeviceNodeCRTP::DeviceNodeCRTP;
@@ -37,18 +38,18 @@ class Thermal : public DeviceNodeCRTP<DeviceNode, Thermal, ThermalProperties> {
      * Input ThermalConfig message with ability to modify parameters in runtime.
      * Default queue is non-blocking with size 4.
      */
-    Input inputConfig{*this,
+    Input inputConfig{this,
                       {"inputConfig", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ThermalConfig, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Outputs FP16 (degC) thermal image.
      */
-    Output temperature{*this, {"temperature", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
+    Output temperature{this, {"temperature", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     /**
      * Outputs YUV422i grayscale thermal image.
      */
-    Output color{*this, {"color", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
+    Output color{this, {"color", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     /**
      * Build with a specific board socket and fps.

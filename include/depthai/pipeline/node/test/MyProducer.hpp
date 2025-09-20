@@ -2,6 +2,8 @@
 
 #include <depthai/pipeline/ThreadedHostNode.hpp>
 
+#include "depthai/utility/export.hpp"
+
 namespace dai {
 namespace node {
 namespace test {
@@ -9,14 +11,17 @@ namespace test {
 /**
  * @brief XLinkOut node. Sends messages over XLink.
  */
-class MyProducer : public NodeCRTP<ThreadedHostNode, MyProducer> {
+class DEPTHAI_API MyProducer : public NodeCRTP<ThreadedHostNode, MyProducer> {
    public:
     constexpr static const char* NAME = "MyProducer";
+
+    MyProducer() = default;
+    MyProducer(std::unique_ptr<Properties> props) {}
 
     /**
      * Outputs message of same type as sent from host.
      */
-    Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::Buffer, true}}}}};
+    Output out{this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::Buffer, true}}}}};
 
     void run() override;
 };

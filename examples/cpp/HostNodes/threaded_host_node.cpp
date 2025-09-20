@@ -6,8 +6,8 @@
 
 class TestPassthrough : public dai::node::CustomThreadedNode<TestPassthrough> {
    public:
-    Input input = dai::Node::Input{*this, {}};
-    Output output = dai::Node::Output{*this, {}};
+    Input input = dai::Node::Input{this, {}};
+    Output output = dai::Node::Output{this, {}};
 
     void run() override {
         while(isRunning()) {
@@ -22,7 +22,7 @@ class TestPassthrough : public dai::node::CustomThreadedNode<TestPassthrough> {
 
 class TestSink : public dai::node::CustomThreadedNode<TestSink> {
    public:
-    Input input = dai::Node::Input{*this, {}};
+    Input input = dai::Node::Input{this, {}};
 
     void run() override {
         while(isRunning()) {
@@ -36,7 +36,7 @@ class TestSink : public dai::node::CustomThreadedNode<TestSink> {
 
 class TestSource : public dai::node::CustomThreadedNode<TestSource> {
    public:
-    Output output = dai::Node::Output{*this, {}};
+    Output output = dai::Node::Output{this, {}};
 
     void run() override {
         while(isRunning()) {

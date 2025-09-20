@@ -8,13 +8,14 @@
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/DatatypeEnum.hpp"
 #include "depthai/utility/Serialization.hpp"
+#include "depthai/utility/export.hpp"
 namespace dai {
 
 /**
  * SystemInformation message for series 3 devices.
  * Carries memory usage, cpu usage and chip temperatures.
  */
-class SystemInformationS3 : public Buffer {
+class DEPTHAI_API SystemInformationS3 : public Buffer {
    public:
     /**
      * Construct SystemInformation message.

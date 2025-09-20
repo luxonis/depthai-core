@@ -10,6 +10,8 @@
 #include "depthai/pipeline/datatype/DatatypeEnum.hpp"
 #include "depthai/utility/Serialization.hpp"
 #include "depthai/utility/span.hpp"
+#include "depthai/utility/export.hpp"
+
 
 namespace dai {
 class ImgAnnotations;
@@ -17,7 +19,7 @@ class ImgFrame;
 using VisualizeType = std::variant<std::shared_ptr<ImgAnnotations>, std::shared_ptr<ImgFrame>, std::monostate>;
 
 /// Base message - buffer of binary data
-class Buffer : public ADatatype {
+class DEPTHAI_API Buffer : public ADatatype {
    public:
     Buffer() = default;
     Buffer(size_t size);

@@ -10,11 +10,12 @@
 #include <vector>
 
 #include "depthai/common/TensorInfo.hpp"
+#include "depthai/utility/export.hpp"
 
 namespace dai {
 
 /// Support for basic OpenVINO related actions like version identification of neural network blobs,...
-class OpenVINO {
+class DEPTHAI_API OpenVINO {
    public:
     /// OpenVINO Version supported version information
     enum Version { VERSION_2020_3, VERSION_2020_4, VERSION_2021_1, VERSION_2021_2, VERSION_2021_3, VERSION_2021_4, VERSION_2022_1, VERSION_UNIVERSAL };
@@ -22,7 +23,7 @@ class OpenVINO {
     // Device for which the blob is compiled
     enum class Device { VPU, VPUX };
     /// OpenVINO Blob
-    struct Blob {
+    struct DEPTHAI_API Blob {
         /**
          * @brief Construct a new Blob from data in memory
          *
@@ -57,7 +58,7 @@ class OpenVINO {
     /**
      * @brief A superblob is an efficient way of storing generated blobs for all different number of shaves.
      */
-    class SuperBlob {
+    class DEPTHAI_API SuperBlob {
        public:
         /** Number of patches in a superblob*/
         static constexpr size_t NUMBER_OF_PATCHES = 16;

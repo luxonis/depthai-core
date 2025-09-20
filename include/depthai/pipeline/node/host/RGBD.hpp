@@ -8,6 +8,8 @@
 #include "depthai/pipeline/node/StereoDepth.hpp"
 #include "depthai/pipeline/node/Sync.hpp"
 #include "depthai/utility/Pimpl.hpp"
+#include "depthai/utility/export.hpp"
+
 
 namespace dai {
 namespace node {
@@ -15,13 +17,16 @@ namespace node {
 /**
  * @brief RGBD node. Combines depth and color frames into a single point cloud.
  */
-class RGBD : public NodeCRTP<ThreadedHostNode, RGBD> {
+class DEPTHAI_API RGBD : public NodeCRTP<ThreadedHostNode, RGBD> {
    public:
     constexpr static const char* NAME = "RGBD";
 
+    using NodeCRTP::NodeCRTP;
     RGBD();
+    RGBD(std::unique_ptr<Properties> props);
+
     ~RGBD();
-    Subnode<node::Sync> sync{*this, "sync"};
+    Subnode<node::Sync> sync{this, "sync"};
     InputMap& inputs = sync->inputs;
 
     std::string colorInputName = "inColorSync";
@@ -32,11 +37,11 @@ class RGBD : public NodeCRTP<ThreadedHostNode, RGBD> {
     /**
      * Output point cloud.
      */
-    Output pcl{*this, {"pcl", DEFAULT_GROUP, {{DatatypeEnum::PointCloudData, true}}}};
+    Output pcl{this, {"pcl", DEFAULT_GROUP, {{DatatypeEnum::PointCloudData, true}}}};
     /**
      * Output RGBD frames.
      */
-    Output rgbd{*this, {"rgbd", DEFAULT_GROUP, {{DatatypeEnum::RGBDData, true}}}};
+    Output rgbd{this, {"rgbd", DEFAULT_GROUP, {{DatatypeEnum::RGBDData, true}}}};
 
     std::shared_ptr<RGBD> build();
     /**
@@ -74,7 +79,7 @@ class RGBD : public NodeCRTP<ThreadedHostNode, RGBD> {
     Pimpl<Impl> pimpl;
     void run() override;
     void initialize(std::shared_ptr<MessageGroup> frames);
-    Input inSync{*this, {"inSync", DEFAULT_GROUP, false, 0, {{DatatypeEnum::MessageGroup, true}}}};
+    Input inSync{this, {"inSync", DEFAULT_GROUP, false, 0, {{DatatypeEnum::MessageGroup, true}}}};
     bool initialized = false;
 };
 

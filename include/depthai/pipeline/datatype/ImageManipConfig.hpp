@@ -17,6 +17,7 @@
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/utility/Serialization.hpp"
+#include "depthai/utility/export.hpp"
 
 namespace dai {
 
@@ -25,7 +26,7 @@ struct OpBase {
     virtual std::string toStr() const = 0;
 };
 
-struct Translate : OpBase {
+struct DEPTHAI_API Translate : OpBase {
     float offsetX;
     float offsetY;
     bool normalized;
@@ -43,7 +44,7 @@ struct Translate : OpBase {
     DEPTHAI_SERIALIZE(Translate, offsetX, offsetY, normalized);
 };
 
-struct Rotate : OpBase {
+struct DEPTHAI_API Rotate : OpBase {
     float angle;  // in radians
     bool center;  // if true, rotation is around center of image, otherwise around top-left corner
     float offsetX;
@@ -64,7 +65,7 @@ struct Rotate : OpBase {
     DEPTHAI_SERIALIZE(Rotate, angle, center, offsetX, offsetY, normalized);
 };
 
-struct Resize : OpBase {
+struct DEPTHAI_API Resize : OpBase {
     enum Mode { VALUE, FIT, FILL };
     float width;
     float height;
@@ -96,7 +97,7 @@ struct Resize : OpBase {
     DEPTHAI_SERIALIZE(Resize, width, height, normalized, mode);
 };
 
-struct Flip : OpBase {
+struct DEPTHAI_API Flip : OpBase {
     enum Direction { HORIZONTAL, VERTICAL };
     Direction direction = HORIZONTAL;
     bool center = false;  // if true, flip is around center of image, otherwise around top-left corner
@@ -114,7 +115,7 @@ struct Flip : OpBase {
     DEPTHAI_SERIALIZE(Flip, direction, center);
 };
 
-struct Affine : OpBase {
+struct DEPTHAI_API Affine : OpBase {
     std::array<float, 4> matrix{1, 0, 0, 1};
 
     Affine() = default;
@@ -130,7 +131,7 @@ struct Affine : OpBase {
     DEPTHAI_SERIALIZE(Affine, matrix);
 };
 
-struct Perspective : OpBase {
+struct DEPTHAI_API Perspective : OpBase {
     std::array<float, 9> matrix{1, 0, 0, 0, 1, 0, 0, 0, 1};
 
     Perspective() = default;
@@ -147,7 +148,7 @@ struct Perspective : OpBase {
     DEPTHAI_SERIALIZE(Perspective, matrix);
 };
 
-struct FourPoints : OpBase {
+struct DEPTHAI_API FourPoints : OpBase {
     std::array<dai::Point2f, 4> src{dai::Point2f(0.0, 0.0), dai::Point2f(1.0, 0.0), dai::Point2f(1.0, 1.0), dai::Point2f(0.0, 1.0)};
     std::array<dai::Point2f, 4> dst{dai::Point2f(0.0, 0.0), dai::Point2f(1.0, 0.0), dai::Point2f(1.0, 1.0), dai::Point2f(0.0, 1.0)};
     bool normalized = false;
@@ -167,7 +168,7 @@ struct FourPoints : OpBase {
     DEPTHAI_SERIALIZE(FourPoints, src, dst, normalized);
 };
 
-struct Crop : OpBase {
+struct DEPTHAI_API Crop : OpBase {
     float width;
     float height;
     bool normalized;
@@ -190,7 +191,7 @@ struct Crop : OpBase {
     DEPTHAI_SERIALIZE(Crop, width, height, normalized, center);
 };
 
-struct ManipOp {
+struct DEPTHAI_API ManipOp {
     std::variant<Translate, Rotate, Resize, Flip, Affine, Perspective, FourPoints, Crop> op;
 
     ManipOp() = default;
@@ -206,7 +207,7 @@ struct ManipOp {
     DEPTHAI_SERIALIZE(ManipOp, op);
 };
 
-class ImageManipOpsEnums {
+class DEPTHAI_API ImageManipOpsEnums {
    public:
     enum class Background : uint8_t { COLOR /* , REPLICATE, MIRROR */ };  // TODO(asahtik): replicate impl
     enum class ResizeMode : uint8_t { NONE, STRETCH, LETTERBOX, CENTER_CROP };
@@ -404,7 +405,7 @@ class ImageManipOpsBase : public ImageManipOpsEnums {
  *
  *  - ...
  */
-class ImageManipConfig : public Buffer {
+class DEPTHAI_API ImageManipConfig : public Buffer {
     using Container = std::vector<ManipOp>;
 
    public:

@@ -3,6 +3,8 @@
 #include "depthai/common/Point2f.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/utility/ProtoSerializable.hpp"
+#include "depthai/utility/export.hpp"
+
 
 namespace dai {
 struct CircleAnnotation {
@@ -47,7 +49,7 @@ DEPTHAI_SERIALIZE_EXT(ImgAnnotation, circles, points, texts);
 /**
  * ImgAnnotations message. Carries annotations for an image.
  */
-class ImgAnnotations : public Buffer, public ProtoSerializable {
+class DEPTHAI_API ImgAnnotations : public Buffer, public ProtoSerializable {
    public:
     /**
      * Construct ImgAnnotations message.

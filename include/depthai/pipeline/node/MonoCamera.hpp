@@ -8,13 +8,15 @@
 // shared
 #include <depthai/properties/MonoCameraProperties.hpp>
 
+#include "depthai/utility/export.hpp"
+
 namespace dai {
 namespace node {
 
 /**
  * @brief MonoCamera node. For use with grayscale sensors.
  */
-class [[deprecated("Use Camera node instead")]] MonoCamera : public DeviceNodeCRTP<DeviceNode, MonoCamera, MonoCameraProperties>, public SourceNode {
+class [[deprecated("Use Camera node instead")]] DEPTHAI_API MonoCamera : public DeviceNodeCRTP<DeviceNode, MonoCamera, MonoCameraProperties>, public SourceNode {
    public:
     constexpr static const char* NAME = "MonoCamera";
     using DeviceNodeCRTP::DeviceNodeCRTP;
@@ -39,31 +41,31 @@ class [[deprecated("Use Camera node instead")]] MonoCamera : public DeviceNodeCR
      * Input for CameraControl message, which can modify camera parameters in runtime
      * Default queue is blocking with size 8
      */
-    // Input inputControl{*this, "inputControl", Input::Type::SReceiver, true, 8, {{DatatypeEnum::CameraControl, false}}};
+    // Input inputControl{this, "inputControl", Input::Type::SReceiver, true, 8, {{DatatypeEnum::CameraControl, false}}};
     Input inputControl{
-        *this, {"inputControl", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::CameraControl, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+        this, {"inputControl", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::CameraControl, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Input for mocking 'isp' functionality.
      * Default queue is blocking with size 8
      */
-    Input mockIsp{*this, {"mockIsp", DEFAULT_GROUP, true, 8, {{{DatatypeEnum::ImgFrame, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+    Input mockIsp{this, {"mockIsp", DEFAULT_GROUP, true, 8, {{{DatatypeEnum::ImgFrame, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Outputs ImgFrame message that carries RAW8 encoded (grayscale) frame data.
      *
      * Suitable for use StereoDepth node. Processed by ISP
      */
-    // Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
-    Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
+    // Output out{this, "out", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output out{this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     /**
      * Outputs ImgFrame message that carries RAW10-packed (MIPI CSI-2 format) frame data.
      *
      * Captured directly from the camera sensor
      */
-    // Output raw{*this, "raw", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
-    Output raw{*this, {"raw", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
+    // Output raw{this, "raw", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output raw{this, {"raw", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     /**
      * Outputs metadata-only ImgFrame message as an early indicator of an incoming frame.
@@ -73,8 +75,8 @@ class [[deprecated("Use Camera node instead")]] MonoCamera : public DeviceNodeCR
      * Could be used to synchronize various processes with camera capture.
      * Fields populated: camera id, sequence number, timestamp
      */
-    // Output frameEvent{*this, "frameEvent", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
-    Output frameEvent{*this, {"frameEvent", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
+    // Output frameEvent{this, "frameEvent", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output frameEvent{this, {"frameEvent", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     /**
      * Specify which board socket to use

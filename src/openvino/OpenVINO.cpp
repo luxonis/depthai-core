@@ -173,7 +173,7 @@ int64_t OpenVINO::SuperBlob::getBlobDataSize() {
 
 const uint8_t* OpenVINO::SuperBlob::getPatchDataPointer(int numShaves) {
     const uint64_t offset =
-        SuperBlobHeader::HEADER_SIZE + header.blobSize + std::accumulate(header.patchSizes.begin(), header.patchSizes.begin() + numShaves - 1, 0);
+        SuperBlobHeader::HEADER_SIZE + header.blobSize + std::accumulate(header.patchSizes.begin(), header.patchSizes.begin() + numShaves - 1, int64_t(0));
     return data.data() + offset;
 }
 
@@ -191,7 +191,7 @@ void OpenVINO::SuperBlob::loadAndCheckHeader() {
 
 void OpenVINO::SuperBlob::validateSuperblob() {
     // Check that superblob is of the expected size
-    size_t expectedSize = SuperBlobHeader::HEADER_SIZE + header.blobSize + std::accumulate(header.patchSizes.begin(), header.patchSizes.end(), 0);
+    size_t expectedSize = SuperBlobHeader::HEADER_SIZE + header.blobSize + std::accumulate(header.patchSizes.begin(), header.patchSizes.end(), int64_t(0));
     if(expectedSize != data.size()) {
         throw std::invalid_argument("Invalid superblob data: size mismatch. Expected " + std::to_string(expectedSize) + " bytes, got "
                                     + std::to_string(data.size()) + " bytes.");

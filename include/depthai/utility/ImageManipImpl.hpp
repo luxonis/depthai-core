@@ -12,6 +12,7 @@
 #include <sstream>
 
 #include "depthai/common/RotatedRect.hpp"
+#include "depthai/utility/export.hpp"
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     #include <opencv2/core/base.hpp>
@@ -247,7 +248,7 @@ struct FrameSpecs {
 };
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-class UndistortOpenCvImpl {
+class DEPTHAI_API UndistortOpenCvImpl {
    public:
     enum class BuildStatus { ONE_SHOT, TWO_SHOT, NOT_USED, NOT_BUILT, ERROR };
 
@@ -293,7 +294,7 @@ class UndistortOpenCvImpl {
 #endif
 
 template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
-class Warp {
+class DEPTHAI_API Warp {
    protected:
     using Container = std::vector<ManipOp>;
 
@@ -390,7 +391,7 @@ class WarpH : public Warp<ImageManipBuffer, ImageManipData> {
 };
 
 template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
-class ColorChange {
+class DEPTHAI_API ColorChange {
     std::shared_ptr<spdlog::async_logger> logger;
 
     std::shared_ptr<ImageManipData> ccAuxFrame;
@@ -459,7 +460,7 @@ template <template <typename T> typename ImageManipBuffer,
           typename ImageManipData,
           template <template <typename T> typename Buf, typename Dat>
           typename WarpBackend>
-class ImageManipOperations {
+class DEPTHAI_API ImageManipOperations {
     static_assert(std::is_base_of<Warp<ImageManipBuffer, ImageManipData>, WarpBackend<ImageManipBuffer, ImageManipData>>::value,
                   "WarpBackend must be derived from Warp");
     using Container = std::vector<ManipOp>;
@@ -537,8 +538,8 @@ class ImageManipOperations {
     std::string toString() const;
 };
 
-FrameSpecs getSrcFrameSpecs(dai::ImgFrame::Specs srcSpecs);
-size_t getAlignedOutputFrameSize(ImgFrame::Type type, size_t width, size_t height);
+DEPTHAI_API FrameSpecs getSrcFrameSpecs(dai::ImgFrame::Specs srcSpecs);
+DEPTHAI_API size_t getAlignedOutputFrameSize(ImgFrame::Type type, size_t width, size_t height);
 
 }  // namespace impl
 }  // namespace dai
@@ -556,11 +557,11 @@ constexpr T ALIGN_UP(T value, std::size_t alignment) {
 }
 #endif
 
-FrameSpecs getSrcFrameSpecs(dai::ImgFrame::Specs srcSpecs);
-FrameSpecs getCcDstFrameSpecs(FrameSpecs srcSpecs, dai::ImgFrame::Type from, dai::ImgFrame::Type to);
-FrameSpecs getDstFrameSpecs(size_t width, size_t height, dai::ImgFrame::Type type);
+DEPTHAI_API FrameSpecs getSrcFrameSpecs(dai::ImgFrame::Specs srcSpecs);
+DEPTHAI_API FrameSpecs getCcDstFrameSpecs(FrameSpecs srcSpecs, dai::ImgFrame::Type from, dai::ImgFrame::Type to);
+DEPTHAI_API FrameSpecs getDstFrameSpecs(size_t width, size_t height, dai::ImgFrame::Type type);
 
-void transformOpenCV(const uint8_t* src,
+DEPTHAI_API void transformOpenCV(const uint8_t* src,
                      uint8_t* dst,
                      const size_t srcWidth,
                      const size_t srcHeight,
@@ -577,7 +578,7 @@ void transformOpenCV(const uint8_t* src,
                      const size_t sourceMinY,
                      const size_t sourceMaxX,
                      const size_t sourceMaxY);
-void transformFastCV(const uint8_t* src,
+DEPTHAI_API void transformFastCV(const uint8_t* src,
                      uint8_t* dst,
                      const size_t srcWidth,
                      const size_t srcHeight,
@@ -605,9 +606,9 @@ static inline float clampf(float val, float minv, float maxv) {
     return std::clamp(val, minv, maxv);
 }
 
-bool isTypeSupported(dai::ImgFrame::Type type);
+DEPTHAI_API bool isTypeSupported(dai::ImgFrame::Type type);
 
-bool getFrameTypeInfo(dai::ImgFrame::Type outFrameType, int& outNumPlanes, float& outBpp);
+DEPTHAI_API bool getFrameTypeInfo(dai::ImgFrame::Type outFrameType, int& outNumPlanes, float& outBpp);
 
 //-----------------------------
 //--- Frame type conversion ---

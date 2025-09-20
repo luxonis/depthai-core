@@ -12,6 +12,7 @@
 #include "depthai/pipeline/datatype/TrackedFeatures.hpp"
 #include "depthai/pipeline/datatype/TransformData.hpp"
 #include "depthai/pipeline/node/Sync.hpp"
+#include "depthai/utility/export.hpp"
 #include "rtabmap/core/CameraModel.h"
 #include "rtabmap/core/Odometry.h"
 #include "rtabmap/core/OdometryInfo.h"
@@ -24,7 +25,7 @@ namespace node {
 /**
  * @brief RTABMap Visual Inertial Odometry node. Performs VIO on rectified frame, depth frame and IMU data.
  */
-class RTABMapVIO : public NodeCRTP<ThreadedHostNode, RTABMapVIO> {
+class DEPTHAI_API RTABMapVIO : public NodeCRTP<ThreadedHostNode, RTABMapVIO> {
    public:
     constexpr static const char* NAME = "RTABMapVIO";
 
@@ -32,7 +33,7 @@ class RTABMapVIO : public NodeCRTP<ThreadedHostNode, RTABMapVIO> {
     std::string depthInputName = "depth";
     std::string featuresInputName = "features";
 
-    Subnode<node::Sync> sync{*this, "sync"};
+    Subnode<node::Sync> sync{this, "sync"};
     InputMap& inputs = sync->inputs;
 
     /**
@@ -46,27 +47,27 @@ class RTABMapVIO : public NodeCRTP<ThreadedHostNode, RTABMapVIO> {
     /**
      * Input tracked features on which VIO is performed (optional).
      */
-    Input features{*this, {featuresInputName, DEFAULT_GROUP, DEFAULT_BLOCKING, 15, {{{DatatypeEnum::TrackedFeatures, true}}}}};
+    Input features{this, {featuresInputName, DEFAULT_GROUP, DEFAULT_BLOCKING, 15, {{{DatatypeEnum::TrackedFeatures, true}}}}};
     /**
      * Input IMU data.
      */
-    Input imu{*this, {"imu", DEFAULT_GROUP, DEFAULT_BLOCKING, 15, {{{DatatypeEnum::IMUData, true}}}}};
+    Input imu{this, {"imu", DEFAULT_GROUP, DEFAULT_BLOCKING, 15, {{{DatatypeEnum::IMUData, true}}}}};
     /**
      * Output transform.
      */
-    Output transform{*this, {"transform", DEFAULT_GROUP, {{{DatatypeEnum::TransformData, true}}}}};
+    Output transform{this, {"transform", DEFAULT_GROUP, {{{DatatypeEnum::TransformData, true}}}}};
     /**
      * Passthrough rectified frame.
      */
-    Output passthroughRect{*this, {"passthroughRect", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};
+    Output passthroughRect{this, {"passthroughRect", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};
     /**
      * Passthrough depth frame.
      */
-    Output passthroughDepth{*this, {"passthroughDepth", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};
+    Output passthroughDepth{this, {"passthroughDepth", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};
     /**
      * Passthrough features.
      */
-    Output passthroughFeatures{*this, {"passthroughFeatures", DEFAULT_GROUP, {{{DatatypeEnum::TrackedFeatures, true}}}}};
+    Output passthroughFeatures{this, {"passthroughFeatures", DEFAULT_GROUP, {{{DatatypeEnum::TrackedFeatures, true}}}}};
 
     /**
      * Set RTABMap parameters.
@@ -91,7 +92,7 @@ class RTABMapVIO : public NodeCRTP<ThreadedHostNode, RTABMapVIO> {
    private:
     void run() override;
     void syncCB(std::shared_ptr<dai::ADatatype> data);
-    Input inSync{*this, {"inSync", DEFAULT_GROUP, DEFAULT_BLOCKING, 15, {{{DatatypeEnum::MessageGroup, true}}}}};
+    Input inSync{this, {"inSync", DEFAULT_GROUP, DEFAULT_BLOCKING, 15, {{{DatatypeEnum::MessageGroup, true}}}}};
     void imuCB(std::shared_ptr<ADatatype> msg);
     void initialize(Pipeline& pipeline, int instanceNum, int width, int height);
     rtabmap::StereoCameraModel model;

@@ -4,11 +4,12 @@
 
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/DatatypeEnum.hpp"
+#include "depthai/utility/export.hpp"
 
 namespace dai {
 
 /// ImageAlignConfig configuration structure
-class ImageAlignConfig : public Buffer {
+class DEPTHAI_API ImageAlignConfig : public Buffer {
    public:
     /**
      * Optional static depth plane to align to, in depth units, by default millimeters

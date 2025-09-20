@@ -4,6 +4,7 @@
 
 #include "depthai/common/variant.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
+#include "depthai/utility/export.hpp"
 
 namespace dai {
 
@@ -29,7 +30,7 @@ enum class ImageFiltersPresetMode : std::uint32_t {
 // union of all filter params
 typedef std::variant<MedianFilterParams, SpatialFilterParams, SpeckleFilterParams, TemporalFilterParams> FilterParams;
 
-class ImageFiltersConfig : public Buffer {
+class DEPTHAI_API ImageFiltersConfig : public Buffer {
    public:
     virtual ~ImageFiltersConfig() = default;
 
@@ -65,7 +66,7 @@ class ImageFiltersConfig : public Buffer {
     DEPTHAI_SERIALIZE(ImageFiltersConfig, filterIndices, filterParams);
 };
 
-class ToFDepthConfidenceFilterConfig : public Buffer {
+class DEPTHAI_API ToFDepthConfidenceFilterConfig : public Buffer {
    public:
     virtual ~ToFDepthConfidenceFilterConfig() = default;
 

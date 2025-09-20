@@ -76,7 +76,7 @@ void bind_hostnode(pybind11::module& m, void* pCallstack) {
         .def("onStop", &ThreadedHostNode::onStop)
         .def(
             "createInput",
-            [](ThreadedHostNode& node,
+            [](ThreadedHostNode* node,
                std::string name,
                std::string group,
                bool blocking,
@@ -94,7 +94,7 @@ void bind_hostnode(pybind11::module& m, void* pCallstack) {
             py::keep_alive<1, 0>())
         .def(
             "createOutput",
-            [](ThreadedHostNode& node, std::string name, std::string group, std::vector<Node::DatatypeHierarchy> types) {
+            [](ThreadedHostNode* node, std::string name, std::string group, std::vector<Node::DatatypeHierarchy> types) {
                 return std::make_shared<Node::Output>(node, Node::OutputDescription{name, group, types});
             },
             py::arg("name") = Node::OutputDescription{}.name,

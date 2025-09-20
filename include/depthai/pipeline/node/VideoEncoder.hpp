@@ -5,13 +5,15 @@
 // shared
 #include <depthai/properties/VideoEncoderProperties.hpp>
 
+#include "depthai/utility/export.hpp"
+
 namespace dai {
 namespace node {
 
 /**
  * @brief VideoEncoder node. Encodes frames into MJPEG, H264 or H265.
  */
-class VideoEncoder : public DeviceNodeCRTP<DeviceNode, VideoEncoder, VideoEncoderProperties> {
+class DEPTHAI_API VideoEncoder : public DeviceNodeCRTP<DeviceNode, VideoEncoder, VideoEncoderProperties> {
    public:
     constexpr static const char* NAME = "VideoEncoder";
     using DeviceNodeCRTP::DeviceNodeCRTP;
@@ -20,19 +22,19 @@ class VideoEncoder : public DeviceNodeCRTP<DeviceNode, VideoEncoder, VideoEncode
     /**
      * Input for NV12 ImgFrame to be encoded
      */
-    Input input{*this, {"in", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ImgFrame, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+    Input input{this, {"in", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ImgFrame, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Outputs ImgFrame message that carries BITSTREAM encoded (MJPEG, H264 or H265) frame data.
      * Mutually exclusive with out.
      */
-    Output bitstream{*this, {"bitstream", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
+    Output bitstream{this, {"bitstream", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     /**
      * Outputs EncodedFrame message that carries encoded (MJPEG, H264 or H265) frame data.
      * Mutually exclusive with bitstream.
      */
-    Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::EncodedFrame, false}}}}};
+    Output out{this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::EncodedFrame, false}}}}};
     // Sets default options for a specified size and profile
     /**
      * Sets a default preset based on specified frame rate and profile

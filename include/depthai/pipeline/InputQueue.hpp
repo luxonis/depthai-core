@@ -2,10 +2,13 @@
 
 #include "depthai/pipeline/Node.hpp"
 #include "depthai/pipeline/ThreadedHostNode.hpp"
+#include "depthai/utility/export.hpp"
+
+
 
 namespace dai {
 
-class InputQueue {
+class DEPTHAI_API InputQueue {
     friend class Node::Input;
 
    public:
@@ -36,8 +39,8 @@ class InputQueue {
         void run() override;
         const char* getName() const override;
 
-        Node::Input input{*this, {"input", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
-        Node::Output output{*this, {"output", DEFAULT_GROUP, {{{DatatypeEnum::Buffer, true}}}}};
+        Node::Input input{this, {"input", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+        Node::Output output{this, {"output", DEFAULT_GROUP, {{{DatatypeEnum::Buffer, true}}}}};
     };
 
     // Helper access functions

@@ -5,13 +5,15 @@
 // shared
 #include <depthai/properties/SPIInProperties.hpp>
 
+#include "depthai/utility/export.hpp"
+
 namespace dai {
 namespace node {
 
 /**
  * @brief SPIIn node. Receives messages over SPI.
  */
-class SPIIn : public DeviceNodeCRTP<DeviceNode, SPIIn, SPIInProperties> {
+class DEPTHAI_API SPIIn : public DeviceNodeCRTP<DeviceNode, SPIIn, SPIInProperties> {
    public:
     constexpr static const char* NAME = "SPIIn";
     using DeviceNodeCRTP::DeviceNodeCRTP;
@@ -19,7 +21,7 @@ class SPIIn : public DeviceNodeCRTP<DeviceNode, SPIIn, SPIInProperties> {
     /**
      * Outputs message of same type as send from host.
      */
-    Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::Buffer, true}}}}};
+    Output out{this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::Buffer, true}}}}};
     /**
      * Specifies stream name over which the node will receive data
      *

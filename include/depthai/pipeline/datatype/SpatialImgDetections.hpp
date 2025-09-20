@@ -12,6 +12,7 @@
 #include "depthai/pipeline/datatype/SpatialLocationCalculatorConfig.hpp"
 #include "depthai/utility/ProtoSerializable.hpp"
 #include "depthai/utility/Serialization.hpp"
+#include "depthai/utility/export.hpp"
 
 namespace dai {
 
@@ -20,7 +21,7 @@ namespace dai {
  *
  * Contains image detection results together with spatial location data.
  */
-struct SpatialImgDetection : public ImgDetection {
+struct DEPTHAI_API SpatialImgDetection : public ImgDetection {
     Point3f spatialCoordinates;
     SpatialLocationCalculatorConfigData boundingBoxMapping;
 };
@@ -30,7 +31,7 @@ DEPTHAI_SERIALIZE_EXT(SpatialImgDetection, label, labelName, confidence, xmin, y
 /**
  * SpatialImgDetections message. Carries detection results together with spatial location data
  */
-class SpatialImgDetections : public Buffer, public ProtoSerializable {
+class DEPTHAI_API SpatialImgDetections : public Buffer, public ProtoSerializable {
    public:
     /**
      * Construct SpatialImgDetections message.

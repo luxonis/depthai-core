@@ -6,11 +6,12 @@
 #include "depthai/utility/Memory.hpp"
 #include "depthai/utility/Serialization.hpp"
 #include "depthai/utility/VectorMemory.hpp"
+#include "depthai/utility/export.hpp"
 
 namespace dai {
 
 /// Abstract message
-class ADatatype {
+class DEPTHAI_API ADatatype {
    protected:
     friend class DataInputQueue;
     friend class StreamMessageParser;

@@ -6,10 +6,11 @@
 
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/utility/ProtoSerializable.hpp"
+#include "depthai/utility/export.hpp"
 
 namespace dai {
 
-struct IMUReport {
+struct DEPTHAI_API IMUReport {
     enum class Accuracy : std::uint8_t {
         UNRELIABLE = 0,
         LOW = 1,
@@ -61,7 +62,7 @@ DEPTHAI_SERIALIZE_EXT(IMUReport, sequence, accuracy, timestamp, tsDevice);
  *
  * Units are [m/s^2]
  */
-struct IMUReportAccelerometer : public IMUReport {
+struct DEPTHAI_API IMUReportAccelerometer : public IMUReport {
     float x = 0;
     float y = 0;
     float z = 0;
@@ -73,7 +74,7 @@ DEPTHAI_SERIALIZE_EXT(IMUReportAccelerometer, x, y, z, sequence, accuracy, times
  *
  * Units are [rad/s]
  */
-struct IMUReportGyroscope : public IMUReport {
+struct DEPTHAI_API IMUReportGyroscope : public IMUReport {
     float x = 0;
     float y = 0;
     float z = 0;
@@ -85,7 +86,7 @@ DEPTHAI_SERIALIZE_EXT(IMUReportGyroscope, x, y, z, sequence, accuracy, timestamp
  *
  * Units are [uTesla]
  */
-struct IMUReportMagneticField : public IMUReport {
+struct DEPTHAI_API IMUReportMagneticField : public IMUReport {
     float x = 0;
     float y = 0;
     float z = 0;
@@ -97,7 +98,7 @@ DEPTHAI_SERIALIZE_EXT(IMUReportMagneticField, x, y, z, sequence, accuracy, times
  *
  * Contains quaternion components: i,j,k,real
  */
-struct IMUReportRotationVectorWAcc : public IMUReport {
+struct DEPTHAI_API IMUReportRotationVectorWAcc : public IMUReport {
     float i = 0;                      /**< @brief Quaternion component i */
     float j = 0;                      /**< @brief Quaternion component j */
     float k = 0;                      /**< @brief Quaternion component k */
@@ -113,7 +114,7 @@ DEPTHAI_SERIALIZE_EXT(IMUReportRotationVectorWAcc, i, j, k, real, rotationVector
  *
  * See the SH-2 Reference Manual for more detail.
  */
-struct IMUReportGyroscopeUncalibrated : public IMUReport {
+struct DEPTHAI_API IMUReportGyroscopeUncalibrated : public IMUReport {
     /* Units are rad/s */
     float x = 0;     /**< @brief [rad/s] */
     float y = 0;     /**< @brief [rad/s] */
@@ -131,7 +132,7 @@ DEPTHAI_SERIALIZE_EXT(IMUReportGyroscopeUncalibrated, x, y, z, biasX, biasY, bia
  *
  * See the SH-2 Reference Manual for more detail.
  */
-struct IMUReportMagneticFieldUncalibrated : public IMUReport {
+struct DEPTHAI_API IMUReportMagneticFieldUncalibrated : public IMUReport {
     /* Units are uTesla */
     float x = 0;     /**< @brief [uTesla] */
     float y = 0;     /**< @brief [uTesla] */
@@ -149,7 +150,7 @@ DEPTHAI_SERIALIZE_EXT(IMUReportMagneticFieldUncalibrated, x, y, z, biasX, biasY,
  *
  * See the SH-2 Reference Manual for more detail.
  */
-struct IMUReportRotationVector : public IMUReport {
+struct DEPTHAI_API IMUReportRotationVector : public IMUReport {
     float i = 0;    /**< @brief Quaternion component i */
     float j = 0;    /**< @brief Quaternion component j */
     float k = 0;    /**< @brief Quaternion component k */
@@ -163,7 +164,7 @@ DEPTHAI_SERIALIZE_EXT(IMUReportRotationVector, i, j, k, real, sequence, accuracy
  *
  * See SH-2 Reference Manual for details.
  */
-struct IMUReportGyroIntegratedRV : public IMUReport {
+struct DEPTHAI_API IMUReportGyroIntegratedRV : public IMUReport {
     float i = 0;       /**< @brief Quaternion component i */
     float j = 0;       /**< @brief Quaternion component j */
     float k = 0;       /**< @brief Quaternion component k */
@@ -181,7 +182,7 @@ DEPTHAI_SERIALIZE_EXT(IMUReportGyroIntegratedRV, i, j, k, real, angVelX, angVelY
  *
  * Contains combined output for all possible modes. Only the enabled outputs are populated.
  */
-struct IMUPacket {
+struct DEPTHAI_API IMUPacket {
     IMUReportAccelerometer acceleroMeter;
     IMUReportGyroscope gyroscope;
     IMUReportMagneticField magneticField;
@@ -213,7 +214,7 @@ DEPTHAI_SERIALIZE_EXT(IMUPacket, acceleroMeter, gyroscope, magneticField, rotati
 /**
  * IMUData message. Carries normalized detection results
  */
-class IMUData : public Buffer, public ProtoSerializable {
+class DEPTHAI_API IMUData : public Buffer, public ProtoSerializable {
    public:
     // Construct IMUData message
     IMUData() = default;

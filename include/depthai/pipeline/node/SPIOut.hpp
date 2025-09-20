@@ -5,13 +5,15 @@
 // shared
 #include <depthai/properties/SPIOutProperties.hpp>
 
+#include "depthai/utility/export.hpp"
+
 namespace dai {
 namespace node {
 
 /**
  * @brief SPIOut node. Sends messages over SPI.
  */
-class SPIOut : public DeviceNodeCRTP<DeviceNode, SPIOut, SPIOutProperties> {
+class DEPTHAI_API SPIOut : public DeviceNodeCRTP<DeviceNode, SPIOut, SPIOutProperties> {
    public:
     constexpr static const char* NAME = "SPIOut";
     using DeviceNodeCRTP::DeviceNodeCRTP;
@@ -20,7 +22,7 @@ class SPIOut : public DeviceNodeCRTP<DeviceNode, SPIOut, SPIOutProperties> {
      * Input for any type of messages to be transferred over SPI stream
      * Default queue is blocking with size 8
      */
-    Input input{*this, {"in", DEFAULT_GROUP, true, 8, {{{DatatypeEnum::Buffer, true}}}, true}};
+    Input input{this, {"in", DEFAULT_GROUP, true, 8, {{{DatatypeEnum::Buffer, true}}}, true}};
 
     /**
      * Specifies stream name over which the node will send data

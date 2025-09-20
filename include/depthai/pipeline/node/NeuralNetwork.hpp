@@ -15,13 +15,15 @@
 // shared
 #include <depthai/properties/NeuralNetworkProperties.hpp>
 
+#include "depthai/utility/export.hpp"
+
 namespace dai {
 namespace node {
 
 /**
  * @brief NeuralNetwork node. Runs a neural inference on input data.
  */
-class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNetworkProperties> {
+class DEPTHAI_API NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNetworkProperties> {
    public:
     constexpr static const char* NAME = "NeuralNetwork";
     using DeviceNodeCRTP::DeviceNodeCRTP;
@@ -44,30 +46,30 @@ class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNet
     /**
      * Input message with data to be inferred upon
      */
-    Input input{*this, {"in", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::Buffer, true}}}, true}};
+    Input input{this, {"in", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::Buffer, true}}}, true}};
 
     /**
      * Outputs NNData message that carries inference results
      */
-    Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::NNData, false}}}}};
+    Output out{this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::NNData, false}}}}};
 
     /**
      * Passthrough message on which the inference was performed.
      *
      * Suitable for when input queue is set to non-blocking behavior.
      */
-    Output passthrough{*this, {"passthrough", DEFAULT_GROUP, {{{DatatypeEnum::Buffer, true}}}}};
+    Output passthrough{this, {"passthrough", DEFAULT_GROUP, {{{DatatypeEnum::Buffer, true}}}}};
 
     /**
      * Inputs mapped to network inputs. Useful for inferring from separate data sources
      * Default input is non-blocking with queue size 1 and waits for messages
      */
-    InputMap inputs{*this, "inputs", {DEFAULT_NAME, DEFAULT_GROUP, false, 1, {{{DatatypeEnum::Buffer, true}}}, true}};
+    InputMap inputs{this, "inputs", {DEFAULT_NAME, DEFAULT_GROUP, false, 1, {{{DatatypeEnum::Buffer, true}}}, true}};
 
     /**
      * Passthroughs which correspond to specified input
      */
-    OutputMap passthroughs{*this, "passthroughs", {"", DEFAULT_GROUP, {{{DatatypeEnum::Buffer, true}}}}};
+    OutputMap passthroughs{this, "passthroughs", {"", DEFAULT_GROUP, {{{DatatypeEnum::Buffer, true}}}}};
 
     /**
      * @brief Get the archive owned by this Node.

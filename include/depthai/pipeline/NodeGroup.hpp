@@ -2,10 +2,11 @@
 
 // project
 #include "depthai/pipeline/Node.hpp"
+#include "depthai/utility/export.hpp"
 
 namespace dai {
 
-class NodeGroup : public Node {
+class DEPTHAI_API NodeGroup : public Node {
    public:
     NodeGroup() = default;
     virtual ~NodeGroup() = default;

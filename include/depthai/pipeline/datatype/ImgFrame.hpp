@@ -14,6 +14,7 @@
 #include "depthai/common/ImgTransformations.hpp"
 #include "depthai/common/Rect.hpp"
 #include "depthai/utility/ProtoSerializable.hpp"
+#include "depthai/utility/export.hpp"
 
 // optional
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
@@ -26,7 +27,7 @@ namespace dai {
 /**
  * ImgFrame message. Carries image data and metadata.
  */
-class ImgFrame : public Buffer, public ProtoSerializable {
+class DEPTHAI_API ImgFrame : public Buffer, public ProtoSerializable {
    public:
     using Buffer::getTimestamp;
     using Buffer::getTimestampDevice;

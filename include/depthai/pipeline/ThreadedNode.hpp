@@ -5,10 +5,13 @@
 #include "depthai/utility/AtomicBool.hpp"
 #include "depthai/utility/JoiningThread.hpp"
 #include "depthai/utility/spimpl.h"
+#include "depthai/utility/export.hpp"
+
+
 
 namespace dai {
 
-class ThreadedNode : public Node {
+class DEPTHAI_API ThreadedNode : public Node {
    private:
     JoiningThread thread;
     AtomicBool running{false};

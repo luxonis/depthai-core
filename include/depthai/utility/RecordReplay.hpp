@@ -4,6 +4,7 @@
 #include <filesystem>
 
 #include "depthai/properties/VideoEncoderProperties.hpp"
+#include "depthai/utility/export.hpp"
 #include "nlohmann/json.hpp"
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT

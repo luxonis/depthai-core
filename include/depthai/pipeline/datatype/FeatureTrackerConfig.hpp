@@ -4,13 +4,14 @@
 #include <vector>
 
 #include "depthai/pipeline/datatype/Buffer.hpp"
+#include "depthai/utility/export.hpp"
 
 namespace dai {
 
 /**
  * FeatureTrackerConfig message. Carries config for feature tracking algorithm
  */
-class FeatureTrackerConfig : public Buffer {
+class DEPTHAI_API FeatureTrackerConfig : public Buffer {
    public:
     /**
      * Construct FeatureTrackerConfig message.

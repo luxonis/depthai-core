@@ -9,12 +9,13 @@
 // project
 #include "depthai/pipeline/datatype/ADatatype.hpp"
 #include "depthai/xlink/XLinkStream.hpp"
+#include "depthai/utility/export.hpp"
 
 // StreamPacket structure ->  || imgframepixels... , serialized_object, object_type, serialized_object_size ||
 // object_type -> DataType(int), serialized_object_size -> int
 
 namespace dai {
-class StreamMessageParser {
+class DEPTHAI_API StreamMessageParser {
    public:
     static std::shared_ptr<ADatatype> parseMessage(StreamPacketDesc packet);
     static std::shared_ptr<ADatatype> parseMessage(streamPacketDesc_t* const packet);

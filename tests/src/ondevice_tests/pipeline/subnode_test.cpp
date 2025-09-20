@@ -63,8 +63,8 @@ class CustomDeviceNode : public dai::DeviceNode {
         return nodePtr;
     }
 
-    dai::Subnode<CustomDeviceSubnode> deviceSubnode{*this, "deviceSubnode"};
-    dai::Subnode<CustomHostSubnode> hostSubnode{*this, "hostSubnode"};
+    dai::Subnode<CustomDeviceSubnode> deviceSubnode{this, "deviceSubnode"};
+    dai::Subnode<CustomHostSubnode> hostSubnode{this, "hostSubnode"};
 
     void buildInternal() override {
         buildInternalCalled = true;
@@ -79,7 +79,7 @@ class CustomThreadedHostNode : public dai::node::CustomThreadedNode<CustomThread
 
     void run() override {}
 
-    dai::Subnode<dai::node::Sync> syncSubnode{*this, "syncSubnode"};  // HostRunnable
+    dai::Subnode<dai::node::Sync> syncSubnode{this, "syncSubnode"};  // HostRunnable
 };
 /**********************************************************************************************************************/
 /**********************************************************************************************************************/

@@ -5,6 +5,8 @@
 // shared
 #include <depthai/properties/internal/XLinkInProperties.hpp>
 
+#include "depthai/utility/export.hpp"
+
 namespace dai {
 namespace node {
 namespace internal {
@@ -14,7 +16,7 @@ using XLinkInProperties = ::dai::internal::XLinkInProperties;
 /**
  * @brief XLinkIn node. Receives messages over XLink.
  */
-class XLinkIn : public DeviceNodeCRTP<DeviceNode, XLinkIn, XLinkInProperties> {
+class DEPTHAI_API XLinkIn : public DeviceNodeCRTP<DeviceNode, XLinkIn, XLinkInProperties> {
    public:
     constexpr static const char* NAME = "XLinkIn";
     using DeviceNodeCRTP::DeviceNodeCRTP;
@@ -25,8 +27,8 @@ class XLinkIn : public DeviceNodeCRTP<DeviceNode, XLinkIn, XLinkInProperties> {
     /**
      * Outputs message of same type as send from host.
      */
-    // Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::Buffer, true}}};
-    Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::Buffer, true}}}}};
+    // Output out{this, "out", Output::Type::MSender, {{DatatypeEnum::Buffer, true}}};
+    Output out{this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::Buffer, true}}}}};
 
     /**
      * Specifies XLink stream name to use.

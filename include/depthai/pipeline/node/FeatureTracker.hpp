@@ -9,6 +9,7 @@
 #include <depthai/properties/FeatureTrackerProperties.hpp>
 
 #include "depthai/pipeline/datatype/FeatureTrackerConfig.hpp"
+#include "depthai/utility/export.hpp"
 
 namespace dai {
 namespace node {
@@ -17,7 +18,7 @@ namespace node {
  * @brief FeatureTracker node.
  * Performs feature tracking and reidentification using motion estimation between 2 consecutive frames.
  */
-class FeatureTracker : public DeviceNodeCRTP<DeviceNode, FeatureTracker, FeatureTrackerProperties> {
+class DEPTHAI_API FeatureTracker : public DeviceNodeCRTP<DeviceNode, FeatureTracker, FeatureTrackerProperties> {
    public:
     constexpr static const char* NAME = "FeatureTracker";
     using DeviceNodeCRTP::DeviceNodeCRTP;
@@ -38,24 +39,24 @@ class FeatureTracker : public DeviceNodeCRTP<DeviceNode, FeatureTracker, Feature
      * Input FeatureTrackerConfig message with ability to modify parameters in runtime.
      * Default queue is non-blocking with size 4.
      */
-    Input inputConfig{*this, {"inputConfig", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::FeatureTrackerConfig, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+    Input inputConfig{this, {"inputConfig", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::FeatureTrackerConfig, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Input message with frame data on which feature tracking is performed.
      * Default queue is non-blocking with size 4.
      */
-    Input inputImage{*this, {"inputImage", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::ImgFrame, false}}}, true}};
+    Input inputImage{this, {"inputImage", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::ImgFrame, false}}}, true}};
 
     /**
      * Outputs TrackedFeatures message that carries tracked features results.
      */
-    Output outputFeatures{*this, {"outputFeatures", DEFAULT_GROUP, {{{DatatypeEnum::TrackedFeatures, false}}}}};
+    Output outputFeatures{this, {"outputFeatures", DEFAULT_GROUP, {{{DatatypeEnum::TrackedFeatures, false}}}}};
 
     /**
      * Passthrough message on which the calculation was performed.
      * Suitable for when input queue is set to non-blocking behavior.
      */
-    Output passthroughInputImage{*this, {"passthroughInputImage", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
+    Output passthroughInputImage{this, {"passthroughInputImage", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     /**
      * Specify allocated hardware resources for feature tracking.

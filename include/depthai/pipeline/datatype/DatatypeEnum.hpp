@@ -2,6 +2,8 @@
 
 #include <cstdint>
 
+#include "depthai/utility/export.hpp"
+
 namespace dai {
 
 enum class DatatypeEnum : std::int32_t {
@@ -44,6 +46,6 @@ enum class DatatypeEnum : std::int32_t {
     CalibrationQuality,
     CoverageData,
 };
-bool isDatatypeSubclassOf(DatatypeEnum parent, DatatypeEnum children);
+DEPTHAI_API bool isDatatypeSubclassOf(DatatypeEnum parent, DatatypeEnum children);
 
 }  // namespace dai

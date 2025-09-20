@@ -20,11 +20,11 @@ class RerunNode : public dai::NodeCRTP<dai::node::ThreadedHostNode, RerunNode> {
    public:
     void build() {}
 
-    Input inputTrans{*this, {.name = "inTrans", .types = {{dai::DatatypeEnum::TransformData, true}}}};
-    Input inputImg{*this, {.name = "inImg", .types = {{dai::DatatypeEnum::ImgFrame, true}}}};
-    Input inputObstaclePCL{*this, {.name = "inObstaclePCL", .types = {{dai::DatatypeEnum::PointCloudData, true}}}};
-    Input inputGroundPCL{*this, {.name = "inGroundPCL", .types = {{dai::DatatypeEnum::PointCloudData, true}}}};
-    Input inputMap{*this, {.name = "inMap", .types = {{dai::DatatypeEnum::ImgFrame, true}}}};
+    Input inputTrans{this, {.name = "inTrans", .types = {{dai::DatatypeEnum::TransformData, true}}}};
+    Input inputImg{this, {.name = "inImg", .types = {{dai::DatatypeEnum::ImgFrame, true}}}};
+    Input inputObstaclePCL{this, {.name = "inObstaclePCL", .types = {{dai::DatatypeEnum::PointCloudData, true}}}};
+    Input inputGroundPCL{this, {.name = "inGroundPCL", .types = {{dai::DatatypeEnum::PointCloudData, true}}}};
+    Input inputMap{this, {.name = "inMap", .types = {{dai::DatatypeEnum::ImgFrame, true}}}};
 
     void getFocalLengthFromImage(std::shared_ptr<dai::ImgFrame> imgFrame) {
         auto p = getParentPipeline();

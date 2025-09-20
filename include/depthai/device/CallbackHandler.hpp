@@ -6,11 +6,12 @@
 
 // project
 #include "depthai/pipeline/datatype/ADatatype.hpp"
+#include "depthai/utility/export.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
 
 namespace dai {
 
-class CallbackHandler {
+class DEPTHAI_API CallbackHandler {
     std::thread t;
     std::atomic<bool> running{true};
     std::shared_ptr<XLinkConnection> connection;

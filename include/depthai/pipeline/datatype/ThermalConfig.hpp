@@ -4,13 +4,14 @@
 
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/utility/Serialization.hpp"
+#include "depthai/utility/export.hpp"
 
 namespace dai {
 
 /**
  * ThermalConfig message. Currently unused.
  */
-class ThermalConfig : public Buffer {
+class DEPTHAI_API ThermalConfig : public Buffer {
    public:
     /// Orientation of the image.
     enum ThermalImageOrientation { Normal, Mirror, Flip, MirrorFlip };

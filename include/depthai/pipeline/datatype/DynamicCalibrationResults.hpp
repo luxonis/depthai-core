@@ -8,6 +8,8 @@
 #include "depthai/device/CalibrationHandler.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 
+#include "depthai/utility/export.hpp"
+
 namespace dai {
 
 /**
@@ -16,7 +18,7 @@ namespace dai {
  * Contains information about the 2D spatial distribution of calibration data
  * across the image pair. Generated per frame by the DCL.
  */
-struct CoverageData : public Buffer {
+struct DEPTHAI_API CoverageData : public Buffer {
     CoverageData() = default;
     virtual ~CoverageData() = default;
 

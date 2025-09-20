@@ -12,6 +12,7 @@
 #include <depthai/openvino/OpenVINO.hpp>
 #include <depthai/properties/DetectionParserProperties.hpp>
 #include <optional>
+#include "depthai/utility/export.hpp"
 
 namespace dai {
 namespace node {
@@ -20,7 +21,7 @@ namespace node {
  * @brief DetectionParser node. Parses detection results from different neural networks and is being used internally by MobileNetDetectionNetwork and
  * YoloDetectionNetwork.
  */
-class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, DetectionParserProperties> {
+class DEPTHAI_API DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, DetectionParserProperties> {
    public:
     constexpr static const char* NAME = "DetectionParser";
     using DeviceNodeCRTP::DeviceNodeCRTP;
@@ -35,12 +36,12 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
      * Input NN results with detection data to parse
      * Default queue is blocking with size 5
      */
-    Input input{*this, {"in", DEFAULT_GROUP, true, 5, {{{DatatypeEnum::NNData, true}}}, true}};
+    Input input{this, {"in", DEFAULT_GROUP, true, 5, {{{DatatypeEnum::NNData, true}}}, true}};
 
     /**
      * Outputs image frame with detected edges
      */
-    Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::ImgDetections, false}}}}};
+    Output out{this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::ImgDetections, false}}}}};
 
     /**
      * Specify number of frames in pool.

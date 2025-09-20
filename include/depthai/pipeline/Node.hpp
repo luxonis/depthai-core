@@ -35,7 +35,7 @@ class InputQueue;
 /**
  * @brief Abstract Node
  */
-class Node : public std::enable_shared_from_this<Node> {
+class DEPTHAI_API Node : public std::enable_shared_from_this<Node> {
     friend class Pipeline;
     friend class PipelineImpl;
     friend class Device;
@@ -109,10 +109,13 @@ class Node : public std::enable_shared_from_this<Node> {
     template <typename U>
     friend class Subnode;
 
-    class Output {
+    class DEPTHAI_API Output {
         friend class PipelineImpl;
 
        public:
+        Output() {
+            throw std::runtime_error("Output constructor called");
+        }
         struct QueueConnection {
             Output* output;
             std::shared_ptr<MessageQueue> queue;
@@ -124,7 +127,7 @@ class Node : public std::enable_shared_from_this<Node> {
         virtual ~Output() = default;
 
        private:
-        std::reference_wrapper<Node> parent;
+        Node* parent;
         std::vector<MessageQueue*> connectedInputs;
         std::vector<QueueConnection> queueConnections;
         Type type = Type::MSender;  // Slave sender not supported yet
@@ -133,21 +136,21 @@ class Node : public std::enable_shared_from_this<Node> {
        public:
         // std::vector<Capability> possibleCapabilities;
 
-        Output(Node& par, OutputDescription desc, bool ref = true) : parent(par), desc(std::move(desc)) {
+        Output(Node *par, OutputDescription desc, bool ref = true) : parent(par), desc(std::move(desc)) {
             // Place oneself to the parents references
             if(ref) {
-                par.setOutputRefs(this);
+                par->setOutputRefs(this);
             }
             if(getName().empty()) {
-                setName(par.createUniqueOutputName());
+                setName(par->createUniqueOutputName());
             }
         }
 
         Node& getParent() {
-            return parent;
+            return *parent;
         }
         const Node& getParent() const {
-            return parent;
+            return *parent;
         }
 
         /// Output to string representation
@@ -288,6 +291,13 @@ class Node : public std::enable_shared_from_this<Node> {
          * @returns True if ALL connected inputs got the message, false otherwise
          */
         bool trySend(const std::shared_ptr<ADatatype>& msg);
+
+        /**
+         * Equality operator for Output objects
+         */
+        bool operator==(const Output& rhs) const {
+            return this == &rhs;
+        }
     };
 
     struct PairHash {
@@ -300,14 +310,14 @@ class Node : public std::enable_shared_from_this<Node> {
      * Output map which keeps track of extra outputs assigned to a node
      * Extends std::unordered_map<std::string, dai::Node::Output>
      */
-    class OutputMap : public std::unordered_map<std::pair<std::string, std::string>, Output, PairHash> {
+    class DEPTHAI_API OutputMap : public std::unordered_map<std::pair<std::string, std::string>, Output, PairHash> {
         OutputDescription defaultOutput;
-        std::reference_wrapper<Node> parent;
+        Node* parent;
 
        public:
         std::string name;
-        OutputMap(Node& parent, std::string name, OutputDescription defaultOutput, bool ref = true);
-        OutputMap(Node& parent, OutputDescription defaultOutput, bool ref = true);
+        OutputMap(Node* parent, std::string name, OutputDescription defaultOutput, bool ref = true);
+        OutputMap(Node* parent, OutputDescription defaultOutput, bool ref = true);
         /// Create or modify an output
         Output& operator[](const std::string& key);
         /// Create or modify an output with specified group
@@ -324,18 +334,21 @@ class Node : public std::enable_shared_from_this<Node> {
         bool waitForMessage{DEFAULT_WAIT_FOR_MESSAGE};
     };
 
-    class Input : public MessageQueue {
+    class DEPTHAI_API Input : public MessageQueue {
         friend class Output;
         friend class OutputMap;
 
        public:
+        Input() {
+            throw std::runtime_error("Input constructor called");
+        }
         enum class Type { SReceiver, MReceiver };  // TODO(Morato) - refactor, make the MReceiver a separate class (shouldn't inherit from MessageQueue)
 
        protected:
         std::vector<Output*> connectedOutputs;
 
        private:
-        std::reference_wrapper<Node> parent;
+        Node* parent;
         // Options - more information about the input
         bool waitForMessage{false};
         std::string group;
@@ -343,16 +356,16 @@ class Node : public std::enable_shared_from_this<Node> {
 
        public:
         std::vector<DatatypeHierarchy> possibleDatatypes;
-        explicit Input(Node& par, InputDescription desc, bool ref = true)
+        explicit Input(Node* par, InputDescription desc, bool ref = true)
             : MessageQueue(std::move(desc.name), desc.queueSize, desc.blocking),
               parent(par),
               waitForMessage(desc.waitForMessage),
               possibleDatatypes(std::move(desc.types)) {
             if(ref) {
-                par.setInputRefs(this);
+                par->setInputRefs(this);
             }
             if(getName().empty()) {
-                setName(par.createUniqueInputName());
+                setName(par->createUniqueInputName());
             }
         }
 
@@ -360,13 +373,13 @@ class Node : public std::enable_shared_from_this<Node> {
          * Get the parent node
          */
         const Node& getParent() const {
-            return parent;
+            return *parent;
         }
         /**
          * Get the parent node
          */
         Node& getParent() {
-            return parent;
+            return *parent;
         }
 
         /**
@@ -445,22 +458,29 @@ class Node : public std::enable_shared_from_this<Node> {
          * @return std::shared_ptr<InputQueue>: shared pointer to an input queue
          */
         std::shared_ptr<InputQueue> createInputQueue(unsigned int maxSize = INPUT_QUEUE_DEFAULT_MAX_SIZE, bool blocking = INPUT_QUEUE_DEFAULT_BLOCKING);
+
+        /**
+         * Equality operator for Input objects
+         */
+        bool operator==(const Input& rhs) const {
+            return this == &rhs;
+        }
     };
 
     /**
      * Input map which keeps track of inputs assigned to a node
      * Extends std::unordered_map<std::string, dai::Node::Input>
      */
-    class InputMap : public std::unordered_map<std::pair<std::string, std::string>, Input, PairHash> {
-        std::reference_wrapper<Node> parent;
+    class DEPTHAI_API InputMap : public std::unordered_map<std::pair<std::string, std::string>, Input, PairHash> {
+        Node* parent;
         InputDescription defaultInput;
 
        public:
         std::string name;
         // InputMap(Input defaultInput);
         // InputMap(std::string name, Input defaultInput);
-        InputMap(Node& parent, InputDescription defaultInput);
-        InputMap(Node& parent, std::string name, InputDescription defaultInput);
+        InputMap(Node* parent, InputDescription defaultInput);
+        InputMap(Node* parent, std::string name, InputDescription defaultInput);
         /// Create or modify an input
         Input& operator[](const std::string& key);
         /// Create or modify an input with specified group
@@ -470,7 +490,7 @@ class Node : public std::enable_shared_from_this<Node> {
     };
 
     /// Connection between an Input and Output internal
-    struct ConnectionInternal {
+    struct DEPTHAI_API ConnectionInternal {
         ConnectionInternal(Output& out, Input& in);
         std::weak_ptr<Node> outputNode;
         std::string outputName;
@@ -487,7 +507,7 @@ class Node : public std::enable_shared_from_this<Node> {
     };
 
     /// Connection between an Input and Output
-    struct Connection {
+    struct DEPTHAI_API Connection {
         friend struct std::hash<Connection>;
         Connection(Output out, Input in);
         Connection(ConnectionInternal c);
@@ -616,7 +636,6 @@ class Node : public std::enable_shared_from_this<Node> {
 
    protected:
     Node() = default;
-    Node(bool conf);
     void removeConnectionToNode(std::shared_ptr<Node> node);
 
    public:
@@ -710,7 +729,7 @@ class NodeCRTP : public Base {
         return nodePtr;
     }
     [[nodiscard]] static std::shared_ptr<Derived> create(std::unique_ptr<Properties> props) {
-        return std::shared_ptr<Derived>(new Derived(props));
+        return std::shared_ptr<Derived>(new Derived(std::move(props)));
     }
 
     friend Derived;

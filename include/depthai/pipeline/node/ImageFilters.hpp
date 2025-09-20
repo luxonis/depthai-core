@@ -5,10 +5,12 @@
 #include <memory>
 #include <vector>
 
+#include "depthai/utility/export.hpp"
+
 namespace dai {
 namespace node {
 
-class ImageFilters : public DeviceNodeCRTP<DeviceNode, ImageFilters, ImageFiltersProperties>, public HostRunnable {
+class DEPTHAI_API ImageFilters : public DeviceNodeCRTP<DeviceNode, ImageFilters, ImageFiltersProperties>, public HostRunnable {
    protected:
     Properties& getProperties() override {
         properties.initialConfig = *initialConfig;
@@ -43,18 +45,18 @@ class ImageFilters : public DeviceNodeCRTP<DeviceNode, ImageFilters, ImageFilter
      * Input for image frames to be filtered
      */
     Node::Input input{
-        *this,
+        this,
         {"input", Node::DEFAULT_GROUP, Node::DEFAULT_BLOCKING, Node::DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ImgFrame, true}}}, Node::DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Filtered frame
      */
-    Node::Output output{*this, {"output", Node::DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
+    Node::Output output{this, {"output", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     /**
      * Config to be set for a specific filter
      */
-    Node::Input inputConfig{*this,
+    Node::Input inputConfig{this,
                             {"inputConfig",
                              Node::DEFAULT_GROUP,
                              Node::DEFAULT_BLOCKING,
@@ -88,7 +90,7 @@ class ImageFilters : public DeviceNodeCRTP<DeviceNode, ImageFilters, ImageFilter
 /**
  * Node for depth confidence filter, designed to be used with the `ToF` node.
  */
-class ToFDepthConfidenceFilter : public DeviceNodeCRTP<DeviceNode, ToFDepthConfidenceFilter, ToFDepthConfidenceFilterProperties>, public HostRunnable {
+class DEPTHAI_API ToFDepthConfidenceFilter : public DeviceNodeCRTP<DeviceNode, ToFDepthConfidenceFilter, ToFDepthConfidenceFilterProperties>, public HostRunnable {
    protected:
     Properties& getProperties() override {
         properties.initialConfig = *initialConfig;
@@ -126,13 +128,13 @@ class ToFDepthConfidenceFilter : public DeviceNodeCRTP<DeviceNode, ToFDepthConfi
      * Depth frame image, expected ImgFrame type is RAW8 or RAW16.
      */
     Node::Input depth{
-        *this,
+        this,
         {"depth", Node::DEFAULT_GROUP, Node::DEFAULT_BLOCKING, Node::DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ImgFrame, true}}}, Node::DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Amplitude frame image, expected ImgFrame type is RAW8 or RAW16.
      */
-    Node::Input amplitude{*this,
+    Node::Input amplitude{this,
                           {"amplitude",
                            Node::DEFAULT_GROUP,
                            Node::DEFAULT_BLOCKING,
@@ -143,17 +145,17 @@ class ToFDepthConfidenceFilter : public DeviceNodeCRTP<DeviceNode, ToFDepthConfi
     /**
      * RAW16 encoded filtered depth frame
      */
-    Node::Output filteredDepth{*this, {"filteredDepth", Node::DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
+    Node::Output filteredDepth{this, {"filteredDepth", Node::DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     /**
      * RAW16 encoded confidence frame
      */
-    Node::Output confidence{*this, {"confidence", Node::DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
+    Node::Output confidence{this, {"confidence", Node::DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     /**
      * Config message for runtime filter configuration
      */
-    Node::Input inputConfig{*this,
+    Node::Input inputConfig{this,
                             {"inputConfig",
                              Node::DEFAULT_GROUP,
                              Node::DEFAULT_BLOCKING,

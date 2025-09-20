@@ -6,10 +6,11 @@
 #include "depthai/common/optional.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/utility/ProtoSerializable.hpp"
+#include "depthai/utility/export.hpp"
 
 namespace dai {
 
-struct ImgDetection {
+struct DEPTHAI_API ImgDetection {
     uint32_t label = 0;
     std::string labelName;
     float confidence = 0.f;
@@ -24,7 +25,7 @@ DEPTHAI_SERIALIZE_EXT(ImgDetection, label, labelName, confidence, xmin, ymin, xm
 /**
  * ImgDetections message. Carries normalized detection results
  */
-class ImgDetections : public Buffer, public ProtoSerializable {
+class DEPTHAI_API ImgDetections : public Buffer, public ProtoSerializable {
    public:
     /**
      * Construct ImgDetections message.

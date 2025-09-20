@@ -8,6 +8,7 @@
 // project
 #include <depthai/pipeline/datatype/Buffer.hpp>
 #include <depthai/utility/RecordReplay.hpp>
+#include "depthai/utility/export.hpp"
 
 #include "depthai/pipeline/ThreadedHostNode.hpp"
 
@@ -23,9 +24,13 @@ using XLinkOutProperties = ::dai::internal::XLinkOutProperties;
 /**
  * @brief RecordVideo node, used to record a video source stream to a file
  */
-class RecordVideo : public NodeCRTP<ThreadedHostNode, RecordVideo> {
+class DEPTHAI_API RecordVideo : public NodeCRTP<ThreadedHostNode, RecordVideo> {
    public:
     using CompressionLevel = dai::RecordConfig::CompressionLevel;
+    using NodeCRTP::NodeCRTP;
+
+    RecordVideo() = default;
+    RecordVideo(std::unique_ptr<Properties> props) {}
 
     constexpr static const char* NAME = "RecordVideo";
 
@@ -35,7 +40,7 @@ class RecordVideo : public NodeCRTP<ThreadedHostNode, RecordVideo> {
      * Default queue is blocking with size 15
      */
     Input input{
-        *this,
+        this,
         {"input", DEFAULT_GROUP, DEFAULT_BLOCKING, 15, {{{DatatypeEnum::ImgFrame, false}, {DatatypeEnum::EncodedFrame, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     void run() override;
@@ -58,9 +63,13 @@ class RecordVideo : public NodeCRTP<ThreadedHostNode, RecordVideo> {
 /**
  * @brief RecordMetadataOnly node, used to record a source stream to a file
  */
-class RecordMetadataOnly : public NodeCRTP<ThreadedHostNode, RecordMetadataOnly> {
+class DEPTHAI_API RecordMetadataOnly : public NodeCRTP<ThreadedHostNode, RecordMetadataOnly> {
    public:
     using CompressionLevel = dai::RecordConfig::CompressionLevel;
+    using NodeCRTP::NodeCRTP;
+
+    RecordMetadataOnly() = default;
+    RecordMetadataOnly(std::unique_ptr<Properties> props) {}
 
     constexpr static const char* NAME = "RecordMetadataOnly";
 
@@ -69,7 +78,7 @@ class RecordMetadataOnly : public NodeCRTP<ThreadedHostNode, RecordMetadataOnly>
      *
      * Default queue is blocking with size 8
      */
-    Input input{*this, {"input", DEFAULT_GROUP, DEFAULT_BLOCKING, 15, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+    Input input{this, {"input", DEFAULT_GROUP, DEFAULT_BLOCKING, 15, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     void run() override;
 

@@ -8,6 +8,7 @@
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/DatatypeEnum.hpp"
 #include "depthai/utility/Serialization.hpp"
+#include "depthai/utility/export.hpp"
 
 namespace dai {
 
@@ -15,7 +16,7 @@ namespace dai {
  * TrackedFeature structure
  *
  */
-struct TrackedFeature {
+struct DEPTHAI_API TrackedFeature {
     /**
      *  x, y position of the detected feature
      */
@@ -51,7 +52,7 @@ DEPTHAI_SERIALIZE_EXT(TrackedFeature, position, id, age, harrisScore, trackingEr
 /**
  * TrackedFeatures message. Carries position (X, Y) of tracked features and their ID.
  */
-class TrackedFeatures : public Buffer {
+class DEPTHAI_API TrackedFeatures : public Buffer {
    public:
     /**
      * Construct TrackedFeatures message.
