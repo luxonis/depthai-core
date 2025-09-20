@@ -247,7 +247,7 @@ inline void unsetEnv(const std::string& var) {
 #endif
 }
 
-std::vector<std::string> splitList(const std::string& list, const std::string& delimiter);
+DEPTHAI_API std::vector<std::string> splitList(const std::string& list, const std::string& delimiter);
 
 }  // namespace utility
 }  // namespace dai

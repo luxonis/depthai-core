@@ -2585,26 +2585,26 @@ inline std::array<float, 2> matvecmul(std::array<std::array<float, 2>, 2> M, std
     return {x, y};
 }
 
-std::tuple<float, float, float, float> getOuterRect(const std::vector<std::array<float, 2>> points);
+DEPTHAI_API std::tuple<float, float, float, float> getOuterRect(const std::vector<std::array<float, 2>> points);
 
-std::vector<std::array<float, 2>> getHull(const std::vector<std::array<float, 2>> points);
+DEPTHAI_API std::vector<std::array<float, 2>> getHull(const std::vector<std::array<float, 2>> points);
 
-std::array<std::array<float, 2>, 2> getInverse(const std::array<std::array<float, 2>, 2> mat);
+DEPTHAI_API std::array<std::array<float, 2>, 2> getInverse(const std::array<std::array<float, 2>, 2> mat);
 
-std::array<std::array<float, 3>, 3> getInverse(const std::array<std::array<float, 3>, 3>& matrix);
+DEPTHAI_API std::array<std::array<float, 3>, 3> getInverse(const std::array<std::array<float, 3>, 3>& matrix);
 
-std::array<std::array<float, 2>, 4> getOuterRotatedRect(const std::vector<std::array<float, 2>>& points);
+DEPTHAI_API std::array<std::array<float, 2>, 4> getOuterRotatedRect(const std::vector<std::array<float, 2>>& points);
 
-dai::RotatedRect getRotatedRectFromPoints(const std::vector<std::array<float, 2>>& points);
+DEPTHAI_API dai::RotatedRect getRotatedRectFromPoints(const std::vector<std::array<float, 2>>& points);
 
-std::array<std::array<float, 3>, 3> getResizeMat(Resize o, float width, float height, uint32_t outputWidth, uint32_t outputHeight);
+DEPTHAI_API std::array<std::array<float, 3>, 3> getResizeMat(Resize o, float width, float height, uint32_t outputWidth, uint32_t outputHeight);
 
-void getTransformImpl(const ManipOp& op,
-                      std::array<std::array<float, 3>, 3>& transform,
-                      std::array<std::array<float, 2>, 4>& imageCorners,
-                      std::vector<std::array<std::array<float, 2>, 4>>& srcCorners,
-                      uint32_t& outputWidth,
-                      uint32_t& outputHeight);
+DEPTHAI_API void getTransformImpl(const ManipOp& op,
+                                  std::array<std::array<float, 3>, 3>& transform,
+                                  std::array<std::array<float, 2>, 4>& imageCorners,
+                                  std::vector<std::array<std::array<float, 2>, 4>>& srcCorners,
+                                  uint32_t& outputWidth,
+                                  uint32_t& outputHeight);
 
 template <typename C>
 std::tuple<std::array<std::array<float, 3>, 3>, std::array<std::array<float, 2>, 4>, std::vector<std::array<std::array<float, 2>, 4>>> getTransform(
@@ -2618,13 +2618,13 @@ std::tuple<std::array<std::array<float, 3>, 3>, std::array<std::array<float, 2>,
     return {transform, imageCorners, srcCorners};
 }
 
-void getOutputSizeFromCorners(const std::array<std::array<float, 2>, 4>& corners,
-                              const bool center,
-                              const std::array<std::array<float, 3>, 3> transformInv,
-                              const uint32_t srcWidth,
-                              const uint32_t srcHeight,
-                              uint32_t& outputWidth,
-                              uint32_t& outputHeight);
+DEPTHAI_API void getOutputSizeFromCorners(const std::array<std::array<float, 2>, 4>& corners,
+                                          const bool center,
+                                          const std::array<std::array<float, 3>, 3> transformInv,
+                                          const uint32_t srcWidth,
+                                          const uint32_t srcHeight,
+                                          uint32_t& outputWidth,
+                                          uint32_t& outputHeight);
 
 template <typename C>
 std::tuple<std::array<std::array<float, 3>, 3>, std::array<std::array<float, 2>, 4>, std::vector<std::array<std::array<float, 2>, 4>>> getFullTransform(
@@ -2823,7 +2823,7 @@ ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>& ImageManipO
     return *this;
 }
 
-size_t getFrameSize(const ImgFrame::Type type, const FrameSpecs& specs);
+DEPTHAI_API size_t getFrameSize(const ImgFrame::Type type, const FrameSpecs& specs);
 
 template <template <typename T> typename ImageManipBuffer,
           typename ImageManipData,

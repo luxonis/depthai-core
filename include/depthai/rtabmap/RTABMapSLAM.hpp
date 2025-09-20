@@ -39,6 +39,9 @@ class DEPTHAI_API RTABMapSLAM : public dai::NodeCRTP<dai::node::ThreadedHostNode
     std::string depthInputName = "depth";
     std::string featuresInputName = "features";
 
+    RTABMapSLAM() = default;
+    RTABMapSLAM(std::unique_ptr<Properties>) {}
+
     /**
      * Input rectified image on which SLAM is performed.
      */

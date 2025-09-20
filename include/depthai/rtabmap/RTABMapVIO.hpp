@@ -36,6 +36,9 @@ class DEPTHAI_API RTABMapVIO : public NodeCRTP<ThreadedHostNode, RTABMapVIO> {
     Subnode<node::Sync> sync{this, "sync"};
     InputMap& inputs = sync->inputs;
 
+    RTABMapVIO() = default;
+    RTABMapVIO(std::unique_ptr<Properties>) {}
+
     /**
      * Input rectified image on which VIO is performed.
      */

@@ -12,6 +12,8 @@
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
 
+#include "depthai/utility/export.hpp"
+
 // shared
 #include <depthai/log/LogConstants.hpp>
 
@@ -22,10 +24,10 @@
 
 namespace dai {
 
-LogLevel spdlogLevelToLogLevel(spdlog::level::level_enum level, LogLevel defaultValue = LogLevel::OFF);
-spdlog::level::level_enum logLevelToSpdlogLevel(LogLevel level, spdlog::level::level_enum defaultValue = spdlog::level::off);
+DEPTHAI_API LogLevel spdlogLevelToLogLevel(spdlog::level::level_enum level, LogLevel defaultValue = LogLevel::OFF);
+DEPTHAI_API spdlog::level::level_enum logLevelToSpdlogLevel(LogLevel level, spdlog::level::level_enum defaultValue = spdlog::level::off);
 
-class Logging {
+class DEPTHAI_API Logging {
     // private constructor
     Logging();
     ~Logging() {}

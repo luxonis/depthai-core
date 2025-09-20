@@ -20,18 +20,18 @@ TEST_CASE("input output auto naming test") {
 
     auto node = pipeline.create<TestNode>();
     dai::DeviceNode::InputDescription desc;
-    auto input = std::make_shared<dai::Node::Input>(*node, desc);
+    auto input = std::make_shared<dai::Node::Input>(node.get(), desc);
 
     REQUIRE(input->getName() == "_HostNode_input_0");
 
-    auto input2 = std::make_shared<dai::Node::Input>(*node, desc);
+    auto input2 = std::make_shared<dai::Node::Input>(node.get(), desc);
 
     REQUIRE(input2->getName() == "_HostNode_input_1");
 
     dai::Node::OutputDescription outputDesc;
-    auto output = std::make_shared<dai::Node::Output>(*node, outputDesc);
+    auto output = std::make_shared<dai::Node::Output>(node.get(), outputDesc);
     REQUIRE(output->getName() == "_HostNode_output_0");
 
-    auto output2 = std::make_shared<dai::Node::Output>(*node, outputDesc);
+    auto output2 = std::make_shared<dai::Node::Output>(node.get(), outputDesc);
     REQUIRE(output2->getName() == "_HostNode_output_1");
 }

@@ -8,6 +8,7 @@
 #include <unordered_map>
 
 #include "depthai/utility/JoiningThread.hpp"
+#include "depthai/utility/export.hpp"
 
 // Lock specific headers
 #ifdef _WIN32
@@ -20,14 +21,14 @@
 namespace dai {
 namespace platform {
 
-uint32_t getIPv4AddressAsBinary(std::string address);
-std::string getIPv4AddressAsString(std::uint32_t binary);
+DEPTHAI_API uint32_t getIPv4AddressAsBinary(std::string address);
+DEPTHAI_API std::string getIPv4AddressAsString(std::uint32_t binary);
 
 /**
  * @brief Get the temporary path
  * @return Temporary path
  */
-std::filesystem::path getTempPath();
+DEPTHAI_API std::filesystem::path getTempPath();
 
 /**
  * @brief Check if a path exists
@@ -35,21 +36,21 @@ std::filesystem::path getTempPath();
  * @param directory If true, check if path is a directory
  * @return True if path exists, false otherwise
  */
-bool checkPathExists(const std::filesystem::path& path, bool directory = false);
+DEPTHAI_API bool checkPathExists(const std::filesystem::path& path, bool directory = false);
 
 /**
  * @brief Check if a path has write permissions
  * @param path Path to check
  * @return True if path has write permissions, false otherwise
  */
-bool checkWritePermissions(const std::filesystem::path& path);
+DEPTHAI_API bool checkWritePermissions(const std::filesystem::path& path);
 
 /**
  * @brief Check if a path has read permissions
  * @param path Path to check
  * @return True if path has read permissions, false otherwise
  */
-bool checkReadPermissions(const std::filesystem::path& path);
+DEPTHAI_API bool checkReadPermissions(const std::filesystem::path& path);
 
 /**
  * @brief Join two paths, OS-agnostic. This is a wrapper around std::filesystem::path::operator/
@@ -57,23 +58,23 @@ bool checkReadPermissions(const std::filesystem::path& path);
  * @param path2 Second path
  * @return Joined path
  */
-std::filesystem::path joinPaths(const std::filesystem::path& path1, const std::filesystem::path& path2);
+DEPTHAI_API std::filesystem::path joinPaths(const std::filesystem::path& path1, const std::filesystem::path& path2);
 
 /**
  * @brief Get the directory from a path, OS-agnostic. For instance, if the path is "/home/user/test.txt", the directory is "/home/user".
  * @param path Path to get the directory from
  * @return directory path
  */
-std::filesystem::path getDirFromPath(const std::filesystem::path& path);
+DEPTHAI_API std::filesystem::path getDirFromPath(const std::filesystem::path& path);
 
 // TODO change this to std::thread
-void setThreadName(JoiningThread& thread, const std::string& name);
+DEPTHAI_API void setThreadName(JoiningThread& thread, const std::string& name);
 
 /**
  * @brief Filesystem process-level lock with thread safety. This is both a cross-process and cross-thread synchronization primitive.
  * Uses both file-based locking for process synchronization and mutex-based locking for thread synchronization.
  */
-class FSLock {
+class DEPTHAI_API FSLock {
    public:
     explicit FSLock(const std::filesystem::path& fname);
     virtual ~FSLock();
@@ -129,7 +130,7 @@ class FSLock {
 /**
  * @brief Filesystem cross-process and cross-thread lock for files.
  */
-class FileLock : public FSLock {
+class DEPTHAI_API FileLock : public FSLock {
    public:
     explicit FileLock(const std::filesystem::path& path, bool createIfNotExists = false);
     std::filesystem::path getLockPath(const std::filesystem::path& path) override;
@@ -148,7 +149,7 @@ class FileLock : public FSLock {
  * @brief Filesystem process-level lock for folders. This is both a cross-process synchronization primitive and thread-safe.
  * Uses both file-based locking for process synchronization and mutex-based locking for thread synchronization.
  */
-class FolderLock : public FSLock {
+class DEPTHAI_API FolderLock : public FSLock {
    public:
     explicit FolderLock(const std::filesystem::path& path);
     std::filesystem::path getLockPath(const std::filesystem::path& path) override;

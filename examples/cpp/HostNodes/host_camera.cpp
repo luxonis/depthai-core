@@ -20,7 +20,7 @@ void signalHandler(int signum) {
 class HostCamera : public dai::node::CustomThreadedNode<HostCamera> {
    public:
     HostCamera() {
-        output = std::shared_ptr<dai::Node::Output>(new dai::Node::Output(*this, {"output", DEFAULT_GROUP, {{{dai::DatatypeEnum::ImgFrame, false}}}}));
+        output = std::shared_ptr<dai::Node::Output>(new dai::Node::Output(this, {"output", DEFAULT_GROUP, {{{dai::DatatypeEnum::ImgFrame, false}}}}));
     }
 
     void run() override {

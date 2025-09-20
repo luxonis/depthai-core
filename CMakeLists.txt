@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.20)
 include(cmake/depthaiOptions.cmake)
 
 if(WIN32)
-    add_compile_options(/MP)
+    add_compile_options(/MP /bigobj)
     set(CMAKE_DEBUG_POSTFIX "d" CACHE STRING "Postfix for debug libraries" FORCE)
 endif()
 
@@ -511,6 +511,7 @@ endif()
 
 # Add default flags to core
 add_default_flags(${TARGET_CORE_NAME})
+add_flag(${TARGET_CORE_NAME} -fvisibility=hidden)
 
 if(DEPTHAI_VCPKG_INTERNAL_ONLY)
     exclude_archive_libs_symbols(${TARGET_CORE_NAME})
@@ -933,6 +934,7 @@ if(DEPTHAI_HAVE_OPENCV_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
 
     # Add default flags
     add_default_flags(${TARGET_OPENCV_NAME})
+    add_flag(${TARGET_OPENCV_NAME} -fvisibility=hidden)
 
     # Link to OpenCV (publically)
     target_link_libraries(${TARGET_OPENCV_NAME} PUBLIC ${REQUIRED_OPENCV_LIBRARIES} ${THIRDPARTY_OPENCV_LIBRARIES})
@@ -968,6 +970,7 @@ if(DEPTHAI_HAVE_PCL_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
 
         # Add default flags
         add_default_flags(${TARGET_PCL_NAME})
+        add_flag(${TARGET_PCL_NAME} -fvisibility=hidden)
 
         # Link to PCL (publically)
         target_link_libraries(${TARGET_PCL_NAME} PUBLIC ${PCL_LIBRARIES})
@@ -1017,6 +1020,7 @@ if(DEPTHAI_HAVE_RTABMAP_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
     # Add default flags
     add_default_flags(${TARGET_RTABMAP_NAME})
     add_flag(${TARGET_RTABMAP_NAME} -Wno-switch-enum)
+    add_flag(${TARGET_RTABMAP_NAME} -fvisibility=hidden)
     # Link to RTABMap (publically)
     target_link_libraries(${TARGET_RTABMAP_NAME} PUBLIC rtabmap::core ${TARGET_OPENCV_NAME} ${TARGET_PCL_NAME} ${THIRDPARTY_RTABMAP_LIBRARIES} PRIVATE spdlog::spdlog)
 
@@ -1060,7 +1064,7 @@ if(DEPTHAI_HAVE_BASALT_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
     # Add default flags
     add_default_flags(${TARGET_BASALT_NAME})
     add_flag(${TARGET_BASALT_NAME} -Wno-switch-enum)
-
+    add_flag(${TARGET_BASALT_NAME} -fvisibility=hidden)
     # Link to Basalt (publically)
     target_link_libraries(${TARGET_BASALT_NAME} PUBLIC ${THIRDPARTY_BASALT_LIBRARIES} ${TARGET_OPENCV_NAME} PRIVATE spdlog::spdlog)
     # Add public compile definition indicating that Basalt support is available

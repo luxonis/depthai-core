@@ -104,7 +104,7 @@ class DeviceNodeCRTP : public Base {
     friend PipelineImpl;
 };
 
-class HostRunnable {
+class DEPTHAI_API HostRunnable {
    public:
     HostRunnable() = default;
     virtual ~HostRunnable();  // Has to be virtual for std::dynamic_cast to be used reliably

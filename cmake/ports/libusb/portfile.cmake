@@ -14,9 +14,9 @@ endif()
 vcpkg_cmake_configure(
     SOURCE_PATH "${SOURCE_PATH}"
     OPTIONS
-        WITH_UDEV=OFF
+    	-DWITH_UDEV=OFF
         # Build shared libs by default to not cause licensing issues
-        BUILD_SHARED_LIBS=ON
+	-DBUILD_SHARED_LIBS=ON
         ${CMAKE_CONFIGURE_OPTIONS_DEBUG}
 )
 
