@@ -243,9 +243,6 @@ class RGBD::Impl {
     int threadNum = 2;
 };
 
-// Explicit template instantiation for RGBD::Impl
-template class dai::Pimpl<dai::node::RGBD::Impl>;
-
 RGBD::RGBD() = default;
 
 RGBD::RGBD(std::unique_ptr<Properties> props) {
