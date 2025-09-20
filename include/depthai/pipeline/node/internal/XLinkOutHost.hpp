@@ -23,7 +23,7 @@ class DEPTHAI_API XLinkOutHost : public NodeCRTP<ThreadedHostNode, XLinkOutHost>
     using NodeCRTP::NodeCRTP;
 
     XLinkOutHost() = default;
-    XLinkOutHost(std::unique_ptr<Properties> props) {}
+    XLinkOutHost(std::unique_ptr<Properties>) {}
 
     constexpr static const char* NAME = "XLinkOutHost";
     // Input in{this, "in", Input::Type::SReceiver, true, 4, {{DatatypeEnum::Buffer, true}}};

@@ -10,7 +10,7 @@ namespace node {
 class DEPTHAI_API HostCamera : public dai::NodeCRTP<ThreadedHostNode, HostCamera> {
    public:
     HostCamera() = default;
-    HostCamera(std::unique_ptr<Properties> props) {}
+    HostCamera(std::unique_ptr<Properties>) {}
 
     Output out{this, {DEFAULT_NAME, DEFAULT_GROUP, DEFAULT_TYPES}};
     void run() override;

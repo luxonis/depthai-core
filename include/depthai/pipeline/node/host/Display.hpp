@@ -13,7 +13,7 @@ class DEPTHAI_API Display : public dai::NodeCRTP<ThreadedHostNode, Display> {
 
    public:
     explicit Display(std::string name = "Display");
-    Display(std::unique_ptr<Properties> props) {}
+    Display(std::unique_ptr<Properties>) {}
     Input input{this, {}};
     void run() override;
 };

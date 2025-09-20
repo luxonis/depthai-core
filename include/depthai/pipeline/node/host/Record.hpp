@@ -8,9 +8,9 @@
 // project
 #include <depthai/pipeline/datatype/Buffer.hpp>
 #include <depthai/utility/RecordReplay.hpp>
-#include "depthai/utility/export.hpp"
 
 #include "depthai/pipeline/ThreadedHostNode.hpp"
+#include "depthai/utility/export.hpp"
 
 #ifndef DEPTHAI_HAVE_OPENCV_SUPPORT
     #error Record node needs OpenCV support
@@ -30,7 +30,9 @@ class DEPTHAI_API RecordVideo : public NodeCRTP<ThreadedHostNode, RecordVideo> {
     using NodeCRTP::NodeCRTP;
 
     RecordVideo() = default;
-    RecordVideo(std::unique_ptr<Properties> props) {}
+    RecordVideo(std::unique_ptr<Properties> props) {
+        (void)props;
+    }
 
     constexpr static const char* NAME = "RecordVideo";
 
@@ -69,7 +71,9 @@ class DEPTHAI_API RecordMetadataOnly : public NodeCRTP<ThreadedHostNode, RecordM
     using NodeCRTP::NodeCRTP;
 
     RecordMetadataOnly() = default;
-    RecordMetadataOnly(std::unique_ptr<Properties> props) {}
+    RecordMetadataOnly(std::unique_ptr<Properties> props) {
+        (void)props;
+    }
 
     constexpr static const char* NAME = "RecordMetadataOnly";
 

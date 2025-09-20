@@ -38,7 +38,7 @@ class DEPTHAI_API ReplayVideo : public NodeCRTP<ThreadedHostNode, ReplayVideo> {
     using NodeCRTP::NodeCRTP;
 
     ReplayVideo() = default;
-    ReplayVideo(std::unique_ptr<Properties> props) {}
+    ReplayVideo(std::unique_ptr<Properties>) {}
 
     constexpr static const char* NAME = "ReplayVideo";
 
@@ -81,7 +81,7 @@ class DEPTHAI_API ReplayMetadataOnly : public NodeCRTP<ThreadedHostNode, ReplayM
     using NodeCRTP::NodeCRTP;
 
     ReplayMetadataOnly() = default;
-    ReplayMetadataOnly(std::unique_ptr<Properties> props) {}
+    ReplayMetadataOnly(std::unique_ptr<Properties>) {}
 
     constexpr static const char* NAME = "ReplayMetadataOnly";
 

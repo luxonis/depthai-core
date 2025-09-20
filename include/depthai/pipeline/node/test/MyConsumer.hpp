@@ -17,7 +17,7 @@ class DEPTHAI_API MyConsumer : public NodeCRTP<ThreadedHostNode, MyConsumer> {
     constexpr static const char* NAME = "MyConsumer";
 
     MyConsumer() = default;
-    MyConsumer(std::unique_ptr<Properties> props) {}
+    MyConsumer(std::unique_ptr<Properties>) {}
 
     /**
      * Input for any type of messages to be transferred over XLink stream
