@@ -3,8 +3,6 @@
 #include "depthai/pipeline/ThreadedNode.hpp"
 #include "depthai/utility/export.hpp"
 
-
-
 namespace dai {
 namespace node {
 class DEPTHAI_API ThreadedHostNode : public ThreadedNode {

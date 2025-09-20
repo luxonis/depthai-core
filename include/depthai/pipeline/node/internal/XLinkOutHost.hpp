@@ -2,9 +2,8 @@
 
 #include "depthai/pipeline/Node.hpp"
 #include "depthai/pipeline/ThreadedHostNode.hpp"
-#include "depthai/xlink/XLinkConnection.hpp"
-
 #include "depthai/utility/export.hpp"
+#include "depthai/xlink/XLinkConnection.hpp"
 
 namespace dai {
 namespace node {

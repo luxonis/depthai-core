@@ -24,8 +24,6 @@
 #include "depthai/utility/RecordReplay.hpp"
 #include "depthai/utility/export.hpp"
 
-
-
 namespace dai {
 
 namespace fs = std::filesystem;

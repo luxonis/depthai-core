@@ -2,9 +2,8 @@
 
 #include "depthai/pipeline/Node.hpp"
 #include "depthai/pipeline/ThreadedHostNode.hpp"
-#include "depthai/xlink/XLinkConnection.hpp"
-
 #include "depthai/utility/export.hpp"
+#include "depthai/xlink/XLinkConnection.hpp"
 
 namespace dai {
 namespace node {
@@ -19,7 +18,6 @@ class DEPTHAI_API XLinkInHost : public NodeCRTP<ThreadedHostNode, XLinkInHost> {
     bool isDisconnected = false;
 
    public:
-
     using NodeCRTP::NodeCRTP;
 
     XLinkInHost() = default;

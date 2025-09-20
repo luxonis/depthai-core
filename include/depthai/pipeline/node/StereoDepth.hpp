@@ -6,7 +6,6 @@
 // shared
 #include "depthai/pipeline/datatype/StereoDepthConfig.hpp"
 #include "depthai/properties/StereoDepthProperties.hpp"
-
 #include "depthai/utility/export.hpp"
 
 namespace dai {

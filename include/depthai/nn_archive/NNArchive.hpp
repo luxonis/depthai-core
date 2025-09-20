@@ -10,7 +10,6 @@
 #include "depthai/nn_archive/NNArchiveVersionedConfig.hpp"
 #include "depthai/openvino/OpenVINO.hpp"
 #include "depthai/utility/arg.hpp"
-
 #include "depthai/utility/export.hpp"
 
 namespace dai {

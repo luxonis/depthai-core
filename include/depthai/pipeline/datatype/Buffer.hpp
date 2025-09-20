@@ -9,9 +9,8 @@
 #include "depthai/pipeline/datatype/ADatatype.hpp"
 #include "depthai/pipeline/datatype/DatatypeEnum.hpp"
 #include "depthai/utility/Serialization.hpp"
-#include "depthai/utility/span.hpp"
 #include "depthai/utility/export.hpp"
-
+#include "depthai/utility/span.hpp"
 
 namespace dai {
 class ImgAnnotations;

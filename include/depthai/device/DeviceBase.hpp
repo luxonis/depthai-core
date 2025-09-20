@@ -40,7 +40,6 @@
 #include "depthai/log/LogMessage.hpp"
 #include "depthai/utility/export.hpp"
 
-
 namespace dai {
 
 // Forward declare Pipeline

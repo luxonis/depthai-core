@@ -16,7 +16,8 @@ namespace node {
 /**
  * @brief MonoCamera node. For use with grayscale sensors.
  */
-class [[deprecated("Use Camera node instead")]] DEPTHAI_API MonoCamera : public DeviceNodeCRTP<DeviceNode, MonoCamera, MonoCameraProperties>, public SourceNode {
+class [[deprecated("Use Camera node instead")]] DEPTHAI_API MonoCamera : public DeviceNodeCRTP<DeviceNode, MonoCamera, MonoCameraProperties>,
+                                                                         public SourceNode {
    public:
     constexpr static const char* NAME = "MonoCamera";
     using DeviceNodeCRTP::DeviceNodeCRTP;

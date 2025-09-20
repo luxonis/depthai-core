@@ -10,8 +10,6 @@
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/utility/export.hpp"
 
-
-
 namespace dai {
 namespace node {
 class DEPTHAI_API HostNode : public ThreadedHostNode {

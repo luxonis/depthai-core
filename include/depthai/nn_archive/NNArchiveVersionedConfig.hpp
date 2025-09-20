@@ -17,7 +17,6 @@
 // internal
 #include "depthai/nn_archive/NNArchiveEntry.hpp"
 #include "depthai/nn_archive/v1/Config.hpp"
-
 #include "depthai/utility/export.hpp"
 
 namespace dai {

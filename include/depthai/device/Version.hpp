@@ -4,8 +4,8 @@
 #include <optional>
 #include <string>
 
-#include "depthai/utility/spimpl.h"
 #include "depthai/utility/export.hpp"
+#include "depthai/utility/spimpl.h"
 
 namespace dai {
 

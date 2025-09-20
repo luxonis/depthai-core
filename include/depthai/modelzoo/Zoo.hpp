@@ -95,10 +95,10 @@ struct DEPTHAI_API NNModelDescription {
  * @return std::filesystem::path: Path to the model in cache
  */
 DEPTHAI_API fs::path getModelFromZoo(const NNModelDescription& modelDescription,
-                         bool useCached = true,
-                         const fs::path& cacheDirectory = "",
-                         const std::string& apiKey = "",
-                         const std::string& progressFormat = "none");
+                                     bool useCached = true,
+                                     const fs::path& cacheDirectory = "",
+                                     const std::string& apiKey = "",
+                                     const std::string& progressFormat = "none");
 
 /**
  * @brief Helper function allowing one to download all models specified in yaml files in the given path and store them in the cache directory
@@ -112,9 +112,9 @@ DEPTHAI_API fs::path getModelFromZoo(const NNModelDescription& modelDescription,
  * @return bool: True if all models were downloaded successfully, false otherwise
  */
 DEPTHAI_API bool downloadModelsFromZoo(const fs::path& path,
-                           const fs::path& cacheDirectory = "",
-                           const std::string& apiKey = "",
-                           const std::string& progressFormat = "none");
+                                       const fs::path& cacheDirectory = "",
+                                       const std::string& apiKey = "",
+                                       const std::string& progressFormat = "none");
 
 DEPTHAI_API std::ostream& operator<<(std::ostream& os, const NNModelDescription& modelDescription);
 

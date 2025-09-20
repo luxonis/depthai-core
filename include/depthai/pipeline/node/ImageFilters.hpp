@@ -90,7 +90,8 @@ class DEPTHAI_API ImageFilters : public DeviceNodeCRTP<DeviceNode, ImageFilters,
 /**
  * Node for depth confidence filter, designed to be used with the `ToF` node.
  */
-class DEPTHAI_API ToFDepthConfidenceFilter : public DeviceNodeCRTP<DeviceNode, ToFDepthConfidenceFilter, ToFDepthConfidenceFilterProperties>, public HostRunnable {
+class DEPTHAI_API ToFDepthConfidenceFilter : public DeviceNodeCRTP<DeviceNode, ToFDepthConfidenceFilter, ToFDepthConfidenceFilterProperties>,
+                                             public HostRunnable {
    protected:
     Properties& getProperties() override {
         properties.initialConfig = *initialConfig;

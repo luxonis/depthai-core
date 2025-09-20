@@ -7,9 +7,7 @@
 // project
 #include "depthai/pipeline/datatype/ADatatype.hpp"
 #include "depthai/utility/LockingQueue.hpp"
-
 #include "depthai/utility/export.hpp"
-
 
 // shared
 namespace dai {

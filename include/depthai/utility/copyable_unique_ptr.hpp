@@ -11,12 +11,11 @@ copy of the License at http://www.apache.org/licenses/LICENSE-2.0.
 (Adapted from Drake copyable_unique_ptr class.)
  */
 
+#include <cassert>
 #include <cstddef>
 #include <iostream>
 #include <memory>
 #include <utility>
-
-#include <cassert>  
 #define DRAKE_DEMAND(x) assert(x)
 
 namespace dai {

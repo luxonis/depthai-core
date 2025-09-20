@@ -7,8 +7,6 @@
 #include "depthai/pipeline/datatype/SpatialLocationCalculatorConfig.hpp"
 #include "depthai/utility/export.hpp"
 
-
-
 namespace dai {
 
 /**

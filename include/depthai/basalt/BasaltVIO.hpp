@@ -12,7 +12,6 @@
 #include "depthai/pipeline/datatype/TransformData.hpp"
 #include "depthai/pipeline/node/Sync.hpp"
 #include "depthai/utility/Pimpl.hpp"
-
 #include "depthai/utility/export.hpp"
 
 namespace dai {

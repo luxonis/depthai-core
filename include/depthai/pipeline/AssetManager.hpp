@@ -5,9 +5,8 @@
 #include <memory>
 #include <vector>
 
-#include "depthai/utility/export.hpp"
-
 #include "depthai/pipeline/Assets.hpp"
+#include "depthai/utility/export.hpp"
 
 namespace dai {
 

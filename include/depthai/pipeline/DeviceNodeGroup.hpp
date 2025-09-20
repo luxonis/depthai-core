@@ -2,9 +2,9 @@
 
 #include <memory>
 
-#include "depthai/utility/export.hpp"
 #include "depthai/pipeline/DeviceNode.hpp"
 #include "depthai/properties/DeviceNodeGroupProperties.hpp"
+#include "depthai/utility/export.hpp"
 
 namespace dai {
 

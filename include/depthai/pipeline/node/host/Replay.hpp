@@ -13,7 +13,6 @@
 
 #include "depthai/pipeline/ThreadedHostNode.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
-
 #include "depthai/utility/export.hpp"
 
 namespace dai {

@@ -1,7 +1,7 @@
 #pragma once
-#include "depthai/utility/export.hpp"
-
 #include <depthai/pipeline/DeviceNode.hpp>
+
+#include "depthai/utility/export.hpp"
 
 // shared
 #include <depthai/properties/BenchmarkOutProperties.hpp>

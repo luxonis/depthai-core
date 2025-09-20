@@ -16,7 +16,8 @@ namespace node {
 /**
  * @brief ColorCamera node. For use with color sensors.
  */
-class [[deprecated("Use Camera node instead")]] DEPTHAI_API ColorCamera : public DeviceNodeCRTP<DeviceNode, ColorCamera, ColorCameraProperties>, public SourceNode {
+class [[deprecated("Use Camera node instead")]] DEPTHAI_API ColorCamera : public DeviceNodeCRTP<DeviceNode, ColorCamera, ColorCameraProperties>,
+                                                                          public SourceNode {
    public:
     constexpr static const char* NAME = "ColorCamera";
     using DeviceNodeCRTP::DeviceNodeCRTP;

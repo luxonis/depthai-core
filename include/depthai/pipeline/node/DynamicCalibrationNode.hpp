@@ -6,8 +6,8 @@
 #include <depthai/properties/DynamicCalibrationProperties.hpp>
 
 #include "depthai/pipeline/datatype/DynamicCalibrationControl.hpp"
-#include "depthai/utility/spimpl.h"
 #include "depthai/utility/export.hpp"
+#include "depthai/utility/spimpl.h"
 
 namespace spdlog {
 class async_logger;

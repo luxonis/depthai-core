@@ -5,7 +5,6 @@
 #include "depthai/utility/ProtoSerializable.hpp"
 #include "depthai/utility/export.hpp"
 
-
 namespace dai {
 struct CircleAnnotation {
     Point2f position;

@@ -6,7 +6,6 @@
 #include "depthai/utility/Serialization.hpp"
 #include "depthai/utility/export.hpp"
 
-
 namespace dai {
 
 DEPTHAI_API std::array<std::array<float, 3>, 3> getMatrixInverse(const std::array<std::array<float, 3>, 3>& matrix);

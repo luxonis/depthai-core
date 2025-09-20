@@ -13,7 +13,6 @@
 #include "depthai/pipeline/datatype/EncodedFrame.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
-
 #include "depthai/utility/export.hpp"
 
 namespace dai {

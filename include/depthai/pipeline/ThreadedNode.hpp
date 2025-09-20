@@ -4,10 +4,8 @@
 #include "depthai/pipeline/Node.hpp"
 #include "depthai/utility/AtomicBool.hpp"
 #include "depthai/utility/JoiningThread.hpp"
-#include "depthai/utility/spimpl.h"
 #include "depthai/utility/export.hpp"
-
-
+#include "depthai/utility/spimpl.h"
 
 namespace dai {
 

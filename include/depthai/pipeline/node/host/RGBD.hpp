@@ -10,7 +10,6 @@
 #include "depthai/utility/Pimpl.hpp"
 #include "depthai/utility/export.hpp"
 
-
 namespace dai {
 namespace node {
 

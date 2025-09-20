@@ -18,7 +18,6 @@
 #include "depthai-bootloader-shared/Memory.hpp"
 #include "depthai-bootloader-shared/Section.hpp"
 #include "depthai-bootloader-shared/Type.hpp"
-
 #include "depthai/utility/export.hpp"
 
 namespace dai {

@@ -21,9 +21,9 @@
 
 // project
 #include "depthai/utility/Memory.hpp"
+#include "depthai/utility/export.hpp"
 #include "depthai/utility/span.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
-#include "depthai/utility/export.hpp"
 
 namespace dai {
 

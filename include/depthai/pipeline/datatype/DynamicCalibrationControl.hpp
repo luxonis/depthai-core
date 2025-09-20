@@ -10,8 +10,7 @@
 #include <vector>
 
 #include "depthai/pipeline/datatype/Buffer.hpp"
-
-#include "depthai/utility/export.hpp"       
+#include "depthai/utility/export.hpp"
 
 namespace dai {
 

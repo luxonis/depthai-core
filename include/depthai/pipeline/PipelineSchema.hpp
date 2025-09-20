@@ -6,8 +6,6 @@
 #include "depthai/utility/Serialization.hpp"
 #include "depthai/utility/export.hpp"
 
-
-
 namespace dai {
 
 /**

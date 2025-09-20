@@ -13,9 +13,8 @@
     #include "depthai/pipeline/node/host/Replay.hpp"
 #endif
 #include "depthai/properties/CameraProperties.hpp"
-#include "depthai/utility/span.hpp"
-
 #include "depthai/utility/export.hpp"
+#include "depthai/utility/span.hpp"
 
 namespace dai {
 namespace node {

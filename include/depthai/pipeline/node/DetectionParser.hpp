@@ -12,6 +12,7 @@
 #include <depthai/openvino/OpenVINO.hpp>
 #include <depthai/properties/DetectionParserProperties.hpp>
 #include <optional>
+
 #include "depthai/utility/export.hpp"
 
 namespace dai {
