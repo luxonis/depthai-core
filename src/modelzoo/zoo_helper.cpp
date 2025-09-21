@@ -8,7 +8,7 @@
 int main(int argc, char* argv[]) {
     // version information
     std::ostringstream versionInfo;
-    versionInfo << "DepthAI Model Zoo Helper v1.0.1" << std::endl;
+    versionInfo << "DepthAI Model Zoo Helper v1.0.2" << std::endl;
     versionInfo << "Commit: " << dai::build::COMMIT << std::endl;
     versionInfo << "Commit datetime: " << dai::build::COMMIT_DATETIME << std::endl;
     versionInfo << "DepthAI version: " << dai::build::VERSION << std::endl;
