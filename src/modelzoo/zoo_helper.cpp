@@ -33,8 +33,8 @@ int main(int argc, char* argv[]) {
     const std::string DEFAULT_DOWNLOAD_ENDPOINT = dai::modelzoo::getDownloadEndpoint();
     program.add_argument("--download_endpoint").default_value(DEFAULT_DOWNLOAD_ENDPOINT).help("Endpoint to use for downloading models");
 
-    const std::string FORMAT_DEFAULT = "pretty";
-    program.add_argument("--format").default_value(FORMAT_DEFAULT).help("Format to use for output (possible values: pretty, json)");
+    const std::string DEFAULT_FORMAT = "pretty";
+    program.add_argument("--format").default_value(DEFAULT_FORMAT).help("Format to use for output (possible values: pretty, json)");
 
     program.add_argument("--verbose").default_value(false).implicit_value(true).help("Verbose output");
 
@@ -75,7 +75,7 @@ int main(int argc, char* argv[]) {
 
     // Download models
     bool success = dai::downloadModelsFromZoo(yamlFolder, cacheFolder, apiKey, format);
-    if(!success) {
+    if(!success && format == "pretty") {
         std::cerr << "Failed to download all models from " << yamlFolder << std::endl;
         return EXIT_FAILURE;
     }
