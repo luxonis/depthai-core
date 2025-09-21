@@ -491,7 +491,13 @@ if(DEPTHAI_BUILD_ZOO_HELPER)
             # argparse
             "$<BUILD_INTERFACE:${argparse_INCLUDE_DIRS}>"
     )
+
+    # Set C++17 standard for zoo_helper
+    set_property(TARGET zoo_helper PROPERTY CXX_STANDARD 17)
+    set_property(TARGET zoo_helper PROPERTY CXX_STANDARD_REQUIRED ON)
+    set_property(TARGET zoo_helper PROPERTY CXX_EXTENSIONS OFF)
 endif()
+
 if(DEPTHAI_ENABLE_KOMPUTE)
     target_link_libraries(${TARGET_CORE_NAME} PRIVATE shaders kompute::kompute)
     target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_ENABLE_KOMPUTE)
