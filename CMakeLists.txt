@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.20)
 include(cmake/depthaiOptions.cmake)
 
 if(WIN32)
-    add_compile_options(/MP)
+    add_compile_options(/MP /Ob2)
     set(CMAKE_DEBUG_POSTFIX "d" CACHE STRING "Postfix for debug libraries" FORCE)
 endif()
 
