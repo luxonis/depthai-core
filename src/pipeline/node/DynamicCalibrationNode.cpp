@@ -4,6 +4,9 @@
 #include <pipeline/ThreadedNodeImpl.hpp>
 
 #include "depthai/common/CameraBoardSocket.hpp"
+#include "depthai/depthai.hpp"
+#include "depthai/pipeline/datatype/DynamicCalibrationControl.hpp"
+#include "depthai/pipeline/datatype/DynamicCalibrationResults.hpp"
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "depthai/utility/matrixOps.hpp"
 #include "depthai/utility/spimpl.h"
@@ -398,7 +401,11 @@ DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline(const std::
     logger->info("Converting dai calibration to dcl for sockets A={} B={}", static_cast<int>(daiSocketA), static_cast<int>(daiSocketB));
 
     calibrationHandler = daiDevice->getCalibration();
-
+    auto eepromData = calibrationHandler.getEepromData();
+    auto platform = daiDevice->getPlatform();
+    if(platform == dai::Platform::RVC2 && (!eepromData.stereoEnableDistortionCorrection || eepromData.stereoUseSpecTranslation)) {
+        throw std::runtime_error("The calibration on the device is too old to perform DynamicCalibration, full re-calibration required!");
+    }
     auto [calibA, calibB] = DclUtils::convertDaiCalibrationToDcl(calibrationHandler, daiSocketA, daiSocketB, width, height);
 
     // set up the dynamic calibration
@@ -421,6 +428,11 @@ DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(const std::sha
 
     const auto& cmd = control->command;
 
+    // Early exit if command is not set
+    if(std::holds_alternative<std::monostate>(cmd)) {
+        logger->warn("Recived UNSET Command");
+        return ErrorCode::INVALID_COMMAND;
+    }
     // Calibrate
     if(std::holds_alternative<DC::Commands::Calibrate>(cmd)) {
         const auto& c = std::get<DC::Commands::Calibrate>(cmd);
@@ -480,7 +492,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(const std::sha
 
     // Fallback
     logger->info("WARNING: evaluateCommand: Received unknown/unhandled command type");
-    return ErrorCode::OK;
+    return ErrorCode::INVALID_COMMAND;
 }
 
 DynamicCalibration::ErrorCode DynamicCalibration::doWork(std::chrono::steady_clock::time_point& previousLoadingAndCalibrationTime) {

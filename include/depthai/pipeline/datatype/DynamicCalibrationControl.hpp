@@ -59,7 +59,8 @@ class DynamicCalibrationControl : public Buffer {
         };
     };
 
-    using Command = std::variant<Commands::Calibrate,
+    using Command = std::variant<std::monostate,  // if no command is present
+                                 Commands::Calibrate,
                                  Commands::CalibrationQuality,
                                  Commands::StartCalibration,
                                  Commands::StopCalibration,
@@ -68,12 +69,12 @@ class DynamicCalibrationControl : public Buffer {
                                  Commands::ResetData,
                                  Commands::SetPerformanceMode>;
 
-    Command command;
+    Command command{};
 
-    DynamicCalibrationControl() : command(Commands::Calibrate{}) {}
+    DynamicCalibrationControl() {}
 
     explicit DynamicCalibrationControl(Command cmd) : command(std::move(cmd)) {}
-
+    ~DynamicCalibrationControl() override;
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
         metadata = utility::serialize(*this);
         datatype = DatatypeEnum::DynamicCalibrationControl;

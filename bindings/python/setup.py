@@ -118,6 +118,7 @@ class CMakeBuild(build_ext):
         env = os.environ.copy()
 
         cmake_args += ['-DDEPTHAI_BUILD_PYTHON=ON']
+        cmake_args += ['-DDEPTHAI_ENABLE_EVENTS_MANAGER=ON']
 
         # build shared libs only in CI - for downstream wheel bundling
         if env.get("CI") is not None:
