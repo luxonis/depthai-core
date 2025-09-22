@@ -154,8 +154,9 @@ jobs:
       run: |
         cd C:\depthai-core
         py -3.13 -m venv venv
-        .\venv\Scripts\activate.bat
-        where python
+        .\venv\Scripts\Activate.ps1 
+        python -c "import sys; print(sys.executable)"
+        where.exe python
         $isPR = "${{ github.head_ref }}" -ne ""
         $extraFlags = ""
 
