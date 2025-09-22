@@ -34,6 +34,12 @@ echo [*] Extracting to %DEST%
 tar -xf "%ZIP%" -C "%DEST%"
 del /q "%ZIP%"
 
+cd "%DEST%\
+rmdir /S /Q venv
+py -3.13 -m venv venv
+.\venv\Scripts\activate.bat
+
+
 REM 3) Run tests (optional; adjust to your layout)
 if exist "%DEST%\tests" (
   echo [*] Running tests from %DEST%\tests
