@@ -12,6 +12,7 @@ on:
     branches:
       - main
       - develop
+    types: [opened, synchronize, reopened, labeled]
 
 # Only allow latest run on same branch to be tested
 concurrency:
