@@ -138,6 +138,7 @@ jobs:
       with:
         python-version: '3.13.7'
         cache: 'pip'
+        update-environment: 'false'
 
     - name: Cache vcpkg binary cache
       uses: actions/cache@v4
@@ -152,8 +153,8 @@ jobs:
       if: steps.reuse.outputs.skip_build != 'true'
       run: |
         cd C:\depthai-core
-        py -3.13 -m venv .venv
-        .\.venv\Scripts\activate.bat
+        py -3.13 -m venv venv
+        .\venv\Scripts\activate.bat
         $isPR = "${{ github.head_ref }}" -ne ""
         $extraFlags = ""
 
