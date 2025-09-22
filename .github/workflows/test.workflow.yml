@@ -133,13 +133,6 @@ jobs:
         Write-Host "Copying source from $env:GITHUB_WORKSPACE to C:\depthai-core ..."
         Copy-Item -Path "$env:GITHUB_WORKSPACE\*" -Destination "C:\depthai-core" -Recurse -Force
 
-    - name: Setup Python 3.13.7
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.13.7'
-        cache: 'pip'
-        update-environment: 'false'
-
     - name: Cache vcpkg binary cache
       uses: actions/cache@v4
       if: steps.reuse.outputs.skip_build != 'true'
@@ -153,10 +146,14 @@ jobs:
       if: steps.reuse.outputs.skip_build != 'true'
       run: |
         cd C:\depthai-core
-        py -3.13 -m venv venv
-        .\venv\Scripts\Activate.ps1 
-        python -c "import sys; print(sys.executable)"
-        where.exe python
+        Invoke-WebRequest `
+          -Uri "https://github.com/winpython/winpython/releases/download/17.2.20250920/WinPython64-3.13.7.0dotrc.zip" `
+          -OutFile "winpython.zip"
+        New-Item -ItemType Directory -Force -Path "C:\depthai-core\winpython" | Out-Null
+        Expand-Archive -Path winpython.zip -DestinationPath "C:\depthai-core\winpython"
+        $PY = "C:/depthai-core/winpython/WPy64-31370/python/python.exe"
+        & $PY -m pip install --upgrade pip
+        & $PY -m pip install numpy pytest pytest-html
         $isPR = "${{ github.head_ref }}" -ne ""
         $extraFlags = ""
 
@@ -174,7 +171,7 @@ jobs:
         pip install --upgrade pip
         pip install numpy pytest pytest-html
 
-        $cmakeConfigureCommand = "cmake -S . -B C:/depthai-core/build -D CMAKE_BUILD_TYPE=Release -DDEPTHAI_VCPKG_INTERNAL_ONLY=OFF -DVCPKG_OVERLAY_TRIPLETS=./cmake/triplets/release -DDEPTHAI_BUILD_TESTS=ON $extraFlags"
+        $cmakeConfigureCommand = "cmake -S . -B C:/depthai-core/build -D CMAKE_BUILD_TYPE=Release -DPython3_EXECUTABLE=`"$PY`"  -DDEPTHAI_VCPKG_INTERNAL_ONLY=OFF -DVCPKG_OVERLAY_TRIPLETS=./cmake/triplets/release -DDEPTHAI_BUILD_TESTS=ON $extraFlags"
         Write-Host "Running: $cmakeConfigureCommand"
         Invoke-Expression $cmakeConfigureCommand
 
