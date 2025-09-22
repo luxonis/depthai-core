@@ -25,14 +25,9 @@ class PipelineEventAggregation : public DeviceNodeCRTP<DeviceNode, PipelineEvent
     InputMap inputs{*this, "inputs", {"", DEFAULT_GROUP, false, 10, {{{DatatypeEnum::PipelineEvent, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
-     * A map of outputs
+     * Output message of type
      */
-    OutputMap outputs{*this, "outputs", {DEFAULT_NAME, DEFAULT_GROUP, {{{DatatypeEnum::PipelineEvent, false}}}}};
-
-    /**
-     * Output message of type TODO
-     */
-    Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::Buffer, false}}}}};
+    Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::PipelineState, false}}}}};
 
     /**
      * Specify whether to run on host or device

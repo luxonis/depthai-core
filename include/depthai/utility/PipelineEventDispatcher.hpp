@@ -26,6 +26,7 @@ class PipelineEventDispatcher {
     Node::Output* out = nullptr;
 
    public:
+    PipelineEventDispatcher() = delete;
     PipelineEventDispatcher(int64_t nodeId, Node::Output* output) : nodeId(nodeId), out(output) {}
 
     void addEvent(const std::string& source, PipelineEvent::EventType type);
