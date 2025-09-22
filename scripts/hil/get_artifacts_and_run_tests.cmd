@@ -34,11 +34,8 @@ echo [*] Extracting to %DEST%
 tar -xf "%ZIP%" -C "%DEST%"
 del /q "%ZIP%"
 
-cd "%DEST%\
-rmdir /S /Q venv
-py -3.13 -m venv venv
-.\venv\Scripts\activate.bat
-
+set "PYTHON_DIR=%DEST%\winpython\WPy64-31700\python\"
+set "PATH=%PYTHON_DIR%;%PYTHON_DIR%\Scripts;%PATH%"
 
 REM 3) Run tests (optional; adjust to your layout)
 if exist "%DEST%\tests" (
