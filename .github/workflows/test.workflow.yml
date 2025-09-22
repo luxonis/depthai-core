@@ -152,6 +152,8 @@ jobs:
       if: steps.reuse.outputs.skip_build != 'true'
       run: |
         cd C:\depthai-core
+        py -3.13 -m venv .venv
+        .\.venv\Scripts\activate.bat
         $isPR = "${{ github.head_ref }}" -ne ""
         $extraFlags = ""
 
