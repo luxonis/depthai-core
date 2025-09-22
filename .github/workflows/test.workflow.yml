@@ -151,9 +151,10 @@ jobs:
           -OutFile "winpython.zip"
         New-Item -ItemType Directory -Force -Path "C:\depthai-core\winpython" | Out-Null
         Expand-Archive -Path winpython.zip -DestinationPath "C:\depthai-core\winpython"
-        $PY = "C:/depthai-core/winpython/WPy64-31370/python/python.exe"
-        & $PY -m pip install --upgrade pip
-        & $PY -m pip install numpy pytest pytest-html
+        $PYROOT = "C:\depthai-core\winpython\WPy64-31700\python\"
+        $env:PATH = "$PYROOT;$PYROOT\Scripts;$env:PATH"
+        pip install --upgrade pip
+        pip install numpy pytest pytest-html
         $isPR = "${{ github.head_ref }}" -ne ""
         $extraFlags = ""
 
@@ -171,7 +172,7 @@ jobs:
         pip install --upgrade pip
         pip install numpy pytest pytest-html
 
-        $cmakeConfigureCommand = "cmake -S . -B C:/depthai-core/build -D CMAKE_BUILD_TYPE=Release -DPython3_EXECUTABLE=`"$PY`"  -DDEPTHAI_VCPKG_INTERNAL_ONLY=OFF -DVCPKG_OVERLAY_TRIPLETS=./cmake/triplets/release -DDEPTHAI_BUILD_TESTS=ON $extraFlags"
+        $cmakeConfigureCommand = "cmake -S . -B C:/depthai-core/build -D CMAKE_BUILD_TYPE=Release -DDEPTHAI_VCPKG_INTERNAL_ONLY=OFF -DVCPKG_OVERLAY_TRIPLETS=./cmake/triplets/release -DDEPTHAI_BUILD_TESTS=ON $extraFlags"
         Write-Host "Running: $cmakeConfigureCommand"
         Invoke-Expression $cmakeConfigureCommand
 
