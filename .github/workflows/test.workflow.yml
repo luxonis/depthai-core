@@ -155,6 +155,7 @@ jobs:
         cd C:\depthai-core
         py -3.13 -m venv venv
         .\venv\Scripts\activate.bat
+        where python
         $isPR = "${{ github.head_ref }}" -ne ""
         $extraFlags = ""
 
