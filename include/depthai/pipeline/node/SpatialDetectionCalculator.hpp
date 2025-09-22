@@ -27,7 +27,7 @@ class SpatialDetectionCalculator : public DeviceNodeCRTP<DeviceNode, SpatialDete
      * Input SpatialDetectionCalculatorConfig message with ability to modify parameters in runtime.
      * Default queue is non-blocking with size 4.
      */
-    Input inputDetections{*this, {"inputConfig", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::ImgDetections, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+    Input inputDetections{*this, {"inputDetections", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::ImgDetections, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Input message with depth data used to retrieve spatial information about detected object.
