@@ -279,6 +279,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/ThreadedNode.cpp
     src/pipeline/DeviceNode.cpp
     src/pipeline/DeviceNodeGroup.cpp
+    src/pipeline/node/internal/PipelineEventAggregation.cpp
     src/pipeline/node/internal/XLinkIn.cpp
     src/pipeline/node/internal/XLinkOut.cpp
     src/pipeline/node/ColorCamera.cpp
@@ -318,7 +319,6 @@ set(TARGET_CORE_SOURCES
     src/pipeline/node/host/RGBD.cpp
     src/pipeline/datatype/DatatypeEnum.cpp
     src/pipeline/node/PointCloud.cpp
-    src/pipeline/node/PipelineEventAggregation.cpp
     src/pipeline/datatype/Buffer.cpp
     src/pipeline/datatype/ImgFrame.cpp
     src/pipeline/datatype/ImgTransformations.cpp

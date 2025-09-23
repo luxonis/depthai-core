@@ -4,6 +4,14 @@
 namespace dai {
 namespace utility {
 
+void PipelineEventDispatcher::checkNodeId() {
+    if(nodeId == -1) {
+        throw std::runtime_error("Node ID not set for PipelineEventDispatcher");
+    }
+}
+void PipelineEventDispatcher::setNodeId(int64_t id) {
+    nodeId = id;
+}
 void PipelineEventDispatcher::addEvent(const std::string& source, PipelineEvent::EventType type) {
     if(events.find(source) != events.end()) {
         throw std::runtime_error("Event with name " + source + " already exists");
@@ -11,6 +19,7 @@ void PipelineEventDispatcher::addEvent(const std::string& source, PipelineEvent:
     events[source] = {type, {}, {}, false, std::nullopt};
 }
 void PipelineEventDispatcher::startEvent(const std::string& source, std::optional<Buffer> metadata) {
+    checkNodeId();
     if(events.find(source) == events.end()) {
         throw std::runtime_error("Event with name " + source + " does not exist");
     }
@@ -23,6 +32,7 @@ void PipelineEventDispatcher::startEvent(const std::string& source, std::optiona
     event.metadata = metadata;
 }
 void PipelineEventDispatcher::endEvent(const std::string& source) {
+    checkNodeId();
     auto now = std::chrono::steady_clock::now();
 
     if(events.find(source) == events.end()) {
@@ -37,9 +47,12 @@ void PipelineEventDispatcher::endEvent(const std::string& source) {
 
     PipelineEvent pipelineEvent;
     pipelineEvent.nodeId = nodeId;
+    pipelineEvent.timestamp = std::chrono::duration_cast<std::chrono::microseconds>(event.timestamp.time_since_epoch()).count();
     pipelineEvent.duration = event.duration.count();
     pipelineEvent.type = event.type;
     pipelineEvent.source = source;
+    pipelineEvent.sequenceNum = sequenceNum++;
+    pipelineEvent.setTimestampDevice(std::chrono::steady_clock::now());
 
     if(out) {
         out->send(std::make_shared<dai::PipelineEvent>(pipelineEvent));
@@ -48,6 +61,7 @@ void PipelineEventDispatcher::endEvent(const std::string& source) {
     event.metadata = std::nullopt;
 }
 void PipelineEventDispatcher::pingEvent(const std::string& source) {
+    checkNodeId();
     auto now = std::chrono::steady_clock::now();
 
     if(events.find(source) == events.end()) {

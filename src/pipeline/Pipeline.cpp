@@ -4,6 +4,7 @@
 
 #include "depthai/device/CalibrationHandler.hpp"
 #include "depthai/pipeline/ThreadedHostNode.hpp"
+#include "depthai/pipeline/node/internal/PipelineEventAggregation.hpp"
 #include "depthai/pipeline/node/internal/XLinkIn.hpp"
 #include "depthai/pipeline/node/internal/XLinkInHost.hpp"
 #include "depthai/pipeline/node/internal/XLinkOut.hpp"
@@ -625,6 +626,33 @@ void PipelineImpl::build() {
             throw std::runtime_error("Holistic record/replay is only supported on RVC2 devices for now.");
         }
     }
+
+    // Create pipeline event aggregator node and link
+    // Check if any nodes are on host or device
+    bool hasHostNodes = false;
+    bool hasDeviceNodes = false;
+    for(const auto& node : getAllNodes()) {
+        if(node->runOnHost()) {
+            hasHostNodes = true;
+        } else {
+            hasDeviceNodes = true;
+        }
+    }
+    std::shared_ptr<node::PipelineEventAggregation> hostEventAgg = nullptr;
+    std::shared_ptr<node::PipelineEventAggregation> deviceEventAgg = nullptr;
+    if(hasHostNodes) hostEventAgg = parent.create<node::PipelineEventAggregation>();
+    if(hasDeviceNodes) deviceEventAgg = parent.create<node::PipelineEventAggregation>();
+    for(auto& node : getAllNodes()) {
+        auto threadedNode = std::dynamic_pointer_cast<ThreadedNode>(node);
+        if(threadedNode) {
+            if(node->runOnHost() && hostEventAgg) {
+                threadedNode->pipelineEventOutput.link(hostEventAgg->inputs[fmt::format("{} - {}", node->getName(), node->id)]);
+            } else if(!node->runOnHost() && deviceEventAgg) {
+                threadedNode->pipelineEventOutput.link(deviceEventAgg->inputs[fmt::format("{} - {}", node->getName(), node->id)]);
+            }
+        }
+    }
+    // TODO: link outputs of event aggregation nodes
 
     // Go through the build stages sequentially
     for(const auto& node : getAllNodes()) {

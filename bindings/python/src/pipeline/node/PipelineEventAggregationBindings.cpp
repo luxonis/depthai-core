@@ -1,6 +1,6 @@
 #include "Common.hpp"
-#include "depthai/pipeline/node/PipelineEventAggregation.hpp"
-#include "depthai/properties/PipelineEventAggregationProperties.hpp"
+#include "depthai/pipeline/node/internal/PipelineEventAggregation.hpp"
+#include "depthai/properties/internal/PipelineEventAggregationProperties.hpp"
 
 void bind_pipelineeventaggregation(pybind11::module& m, void* pCallstack) {
     using namespace dai;

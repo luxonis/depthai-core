@@ -20,6 +20,7 @@
 #include "depthai/capabilities/Capability.hpp"
 #include "depthai/pipeline/datatype/DatatypeEnum.hpp"
 #include "depthai/properties/Properties.hpp"
+#include "depthai/utility/PipelineEventDispatcherInterface.hpp"
 
 // libraries
 #include <optional>
@@ -83,6 +84,8 @@ class Node : public std::enable_shared_from_this<Node> {
     std::vector<InputMap*> inputMapRefs;
     std::vector<std::shared_ptr<Node>*> nodeRefs;
 
+    std::shared_ptr<utility::PipelineEventDispatcherInterface> pipelineEventDispatcher;
+
     // helpers for setting refs
     void setOutputRefs(std::initializer_list<Output*> l);
     void setOutputRefs(Output* outRef);
@@ -129,17 +132,21 @@ class Node : public std::enable_shared_from_this<Node> {
         std::vector<QueueConnection> queueConnections;
         Type type = Type::MSender;  // Slave sender not supported yet
         OutputDescription desc;
+        std::shared_ptr<utility::PipelineEventDispatcherInterface> pipelineEventDispatcher;
 
        public:
         // std::vector<Capability> possibleCapabilities;
 
-        Output(Node& par, OutputDescription desc, bool ref = true) : parent(par), desc(std::move(desc)) {
+        Output(Node& par, OutputDescription desc, bool ref = true) : parent(par), desc(std::move(desc)), pipelineEventDispatcher(par.pipelineEventDispatcher) {
             // Place oneself to the parents references
             if(ref) {
                 par.setOutputRefs(this);
             }
             if(getName().empty()) {
                 setName(par.createUniqueOutputName());
+            }
+            if(pipelineEventDispatcher && getName() != "pipelineEventOutput") {
+                pipelineEventDispatcher->addEvent(getName(), PipelineEvent::EventType::OUTPUT);
             }
         }
 
@@ -344,7 +351,7 @@ class Node : public std::enable_shared_from_this<Node> {
        public:
         std::vector<DatatypeHierarchy> possibleDatatypes;
         explicit Input(Node& par, InputDescription desc, bool ref = true)
-            : MessageQueue(std::move(desc.name), desc.queueSize, desc.blocking),
+            : MessageQueue(std::move(desc.name), desc.queueSize, desc.blocking, par.pipelineEventDispatcher),
               parent(par),
               waitForMessage(desc.waitForMessage),
               possibleDatatypes(std::move(desc.types)) {

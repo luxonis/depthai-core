@@ -43,6 +43,7 @@ void bind_pipelineevent(pybind11::module& m, void* pCallstack) {
         .def("__repr__", &PipelineEvent::str)
         .def_readwrite("nodeId", &PipelineEvent::nodeId, DOC(dai, PipelineEvent, nodeId))
         .def_readwrite("metadata", &PipelineEvent::metadata, DOC(dai, PipelineEvent, metadata))
+        .def_readwrite("timestamp", &PipelineEvent::timestamp, DOC(dai, PipelineEvent, timestamp))
         .def_readwrite("duration", &PipelineEvent::duration, DOC(dai, PipelineEvent, duration))
         .def_readwrite("type", &PipelineEvent::type, DOC(dai, PipelineEvent, type))
         .def_readwrite("source", &PipelineEvent::source, DOC(dai, PipelineEvent, source))

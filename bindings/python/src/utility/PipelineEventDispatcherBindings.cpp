@@ -19,7 +19,8 @@ void PipelineEventDispatcherBindings::bind(pybind11::module& m, void* pCallstack
     auto pipelineEventDispatcher = py::class_<PipelineEventDispatcher>(m, "PipelineEventDispatcher");
 
     pipelineEventDispatcher
-        .def(py::init<int64_t, Node::Output*>(), py::arg("nodeId"), py::arg("output"))
+        .def(py::init<Node::Output*>(), py::arg("output"))
+        .def("setNodeId", &PipelineEventDispatcher::setNodeId, py::arg("id"), DOC(dai, utility, PipelineEventDispatcher, setNodeId))
         .def("addEvent", &PipelineEventDispatcher::addEvent, py::arg("source"), py::arg("type"), DOC(dai, utility, PipelineEventDispatcher, addEvent))
         .def("startEvent", &PipelineEventDispatcher::startEvent, py::arg("source"), py::arg("metadata") = std::nullopt, DOC(dai, utility, PipelineEventDispatcher, startEvent))
         .def("endEvent", &PipelineEventDispatcher::endEvent, py::arg("source"), DOC(dai, utility, PipelineEventDispatcher, endEvent))

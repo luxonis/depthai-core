@@ -5,13 +5,21 @@
 #include "depthai/utility/AtomicBool.hpp"
 #include "depthai/utility/JoiningThread.hpp"
 #include "depthai/utility/spimpl.h"
+#include "depthai/utility/PipelineEventDispatcher.hpp"
 
 namespace dai {
 
 class ThreadedNode : public Node {
+    friend class PipelineImpl;
+
    private:
     JoiningThread thread;
     AtomicBool running{false};
+
+  protected:
+    Output pipelineEventOutput{*this, {"pipelineEventOutput", DEFAULT_GROUP, {{{DatatypeEnum::PipelineEvent, false}}}}};
+
+    void initPipelineEventDispatcher(int64_t nodeId);
 
    public:
     using Node::Node;
@@ -43,7 +51,7 @@ class ThreadedNode : public Node {
     virtual void run() = 0;
 
     // check if still running
-    bool isRunning() const;
+    bool isRunning();
 
     /**
      * @brief Sets the logging severity level for this node.

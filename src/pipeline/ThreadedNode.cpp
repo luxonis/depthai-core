@@ -18,6 +18,12 @@ ThreadedNode::ThreadedNode() {
         level = Logging::parseLevel(envLevel);
     }
     pimpl->logger->set_level(level);
+    pipelineEventDispatcher = std::make_shared<utility::PipelineEventDispatcher>(&pipelineEventOutput);
+}
+
+void ThreadedNode::initPipelineEventDispatcher(int64_t nodeId) {
+    pipelineEventDispatcher->setNodeId(nodeId);
+    pipelineEventDispatcher->addEvent("_mainLoop", PipelineEvent::EventType::LOOP);
 }
 
 void ThreadedNode::start() {
@@ -30,6 +36,7 @@ void ThreadedNode::start() {
     running = true;
     thread = std::thread([this]() {
         try {
+            initPipelineEventDispatcher(this->id);
             run();
         } catch(const MessageQueue::QueueException& ex) {
             // catch the exception and stop the node
@@ -80,7 +87,8 @@ dai::LogLevel ThreadedNode::getLogLevel() const {
     return spdlogLevelToLogLevel(pimpl->logger->level(), LogLevel::WARN);
 }
 
-bool ThreadedNode::isRunning() const {
+bool ThreadedNode::isRunning() {
+    this->pipelineEventDispatcher->pingEvent("_mainLoop");
     return running;
 }
 

@@ -11,7 +11,7 @@ class CircularBuffer {
     CircularBuffer(size_t size) : maxSize(size) {
         buffer.reserve(size);
     }
-    void add(int value) {
+    void add(T value) {
         if(buffer.size() < maxSize) {
             buffer.push_back(value);
         } else {

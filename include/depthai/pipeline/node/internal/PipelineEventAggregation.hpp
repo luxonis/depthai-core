@@ -3,7 +3,7 @@
 #include <depthai/pipeline/DeviceNode.hpp>
 
 // shared
-#include <depthai/properties/PipelineEventAggregationProperties.hpp>
+#include <depthai/properties/internal/PipelineEventAggregationProperties.hpp>
 
 namespace dai {
 namespace node {

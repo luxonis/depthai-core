@@ -25,6 +25,7 @@ class PipelineEvent : public Buffer {
 
     int64_t nodeId = -1;
     std::optional<Buffer> metadata;
+    uint64_t timestamp {0};
     uint64_t duration {0}; // Duration in microseconds
     EventType type = EventType::CUSTOM;
     std::string source;
@@ -34,7 +35,7 @@ class PipelineEvent : public Buffer {
         datatype = DatatypeEnum::PipelineEvent;
     };
 
-    DEPTHAI_SERIALIZE(PipelineEvent, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum, nodeId, metadata, duration, type, source);
+    DEPTHAI_SERIALIZE(PipelineEvent, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum, nodeId, metadata, timestamp, duration, type, source);
 };
 
 }  // namespace dai

@@ -1,4 +1,4 @@
-#include "depthai/pipeline/node/PipelineEventAggregation.hpp"
+#include "depthai/pipeline/node/internal/PipelineEventAggregation.hpp"
 
 #include "depthai/pipeline/datatype/PipelineEvent.hpp"
 #include "depthai/pipeline/datatype/PipelineState.hpp"
@@ -11,14 +11,19 @@ class NodeEventAggregation {
     int windowSize;
 
    public:
-    NodeEventAggregation(int windowSize) : windowSize(windowSize) {}
+    NodeEventAggregation(int windowSize) : windowSize(windowSize), eventsBuffer(windowSize) {}
     NodeState state;
+    utility::CircularBuffer<PipelineEvent> eventsBuffer;
     std::unordered_map<PipelineEvent::EventType, std::unique_ptr<utility::CircularBuffer<uint64_t>>> timingsBufferByType;
     std::unordered_map<std::string, std::unique_ptr<utility::CircularBuffer<uint64_t>>> timingsBufferByInstance;
 
+    uint32_t eventCount = 0;
+
     void add(PipelineEvent& event) {
         // TODO optimize avg
-        state.events.push_back(event);
+        ++eventCount;
+        eventsBuffer.add(event);
+        state.events = eventsBuffer.getBuffer();
         if(timingsBufferByType.find(event.type) == timingsBufferByType.end()) {
             timingsBufferByType[event.type] = std::make_unique<utility::CircularBuffer<uint64_t>>(windowSize);
         }
@@ -65,9 +70,6 @@ class NodeEventAggregation {
             state.timingsByInstance[event.source].stdDevMicros = (uint64_t)(std::sqrt(variance));
         }
     }
-    void resetEvents() {
-        state.events.clear();
-    }
 };
 
 void PipelineEventAggregation::setRunOnHost(bool runOnHost) {
@@ -99,14 +101,11 @@ void PipelineEventAggregation::run() {
         auto outState = std::make_shared<PipelineState>();
         bool shouldSend = false;
         for(auto& [nodeId, nodeState] : nodeStates) {
-            auto numEvents = nodeState.state.events.size();
-            if(numEvents >= properties.eventBatchSize) {
+            if(nodeState.eventCount >= properties.eventBatchSize) {
                 outState->nodeStates[nodeId] = nodeState.state;
-                if(!properties.sendEvents) outState->nodeStates[nodeId]->events.clear();
-                nodeState.resetEvents();
+                if(!properties.sendEvents) outState->nodeStates[nodeId].events.clear();
                 shouldSend = true;
-            } else {
-                outState->nodeStates[nodeId] = std::nullopt;
+                nodeState.eventCount = 0;
             }
         }
         if(shouldSend) out.send(outState);

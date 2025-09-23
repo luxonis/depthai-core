@@ -14,10 +14,19 @@
 // Additions
 #include "spdlog/fmt/bin_to_hex.h"
 #include "spdlog/fmt/chrono.h"
+#include "utility/PipelineEventDispatcherInterface.hpp"
 
 namespace dai {
 
-MessageQueue::MessageQueue(std::string name, unsigned int maxSize, bool blocking) : queue(maxSize, blocking), name(std::move(name)) {}
+MessageQueue::MessageQueue(std::string name,
+                           unsigned int maxSize,
+                           bool blocking,
+                           std::shared_ptr<utility::PipelineEventDispatcherInterface> pipelineEventDispatcher)
+    : queue(maxSize, blocking), name(std::move(name)), pipelineEventDispatcher(pipelineEventDispatcher) {
+    if(pipelineEventDispatcher) {
+        pipelineEventDispatcher->addEvent(name, PipelineEvent::EventType::INPUT);
+    }
+}
 
 MessageQueue::MessageQueue(unsigned int maxSize, bool blocking) : queue(maxSize, blocking) {}
 
