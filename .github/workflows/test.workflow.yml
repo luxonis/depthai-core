@@ -152,7 +152,9 @@ jobs:
         New-Item -ItemType Directory -Force -Path "C:\depthai-core\winpython" | Out-Null
         Expand-Archive -Path winpython.zip -DestinationPath "C:\depthai-core\winpython"
         $PYROOT = "C:\depthai-core\winpython\WPy64-31700\python\"
-        $env:PATH = "$PYROOT;$PYROOT\Scripts;$env:PATH"
+        C:\depthai-core\winpython\WPy64-31700\python\python.exe -m venv venv
+        .\venv\Scripts\Activate.ps1
+        python -c "import sys; print('using:', sys.executable)"
         pip install --upgrade pip
         pip install numpy pytest pytest-html
         $buildDir = 'C:/depthai-core/build'

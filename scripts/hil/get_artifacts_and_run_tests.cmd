@@ -34,8 +34,8 @@ echo [*] Extracting to %DEST%
 tar -xf "%ZIP%" -C "%DEST%"
 del /q "%ZIP%"
 
-set "PYTHON_DIR=%DEST%\winpython\WPy64-31700\python\"
-set "PATH=%PYTHON_DIR%;%PYTHON_DIR%\Scripts;%PATH%"
+call venv\Scripts\activate.bat
+python -c "import sys; print(sys.executable)"
 
 REM 3) Run tests (optional; adjust to your layout)
 if exist "%DEST%\tests" (
