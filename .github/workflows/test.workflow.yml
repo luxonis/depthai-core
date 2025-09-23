@@ -155,26 +155,36 @@ jobs:
         $env:PATH = "$PYROOT;$PYROOT\Scripts;$env:PATH"
         pip install --upgrade pip
         pip install numpy pytest pytest-html
+        $buildDir = 'C:/depthai-core/build'
+        $overlay  = 'C:/depthai-core/cmake/triplets/release'  # make it absolute
         $isPR = "${{ github.head_ref }}" -ne ""
         $extraFlags = ""
 
+        # Base args
+        $cmakeArgs = @(
+          '-S','.',
+          '-B', $buildDir,
+          '-DCMAKE_BUILD_TYPE=Release',
+          '-DDEPTHAI_VCPKG_INTERNAL_ONLY=OFF',
+          "-DVCPKG_OVERLAY_TRIPLETS=$overlay",
+          '-DDEPTHAI_BUILD_TESTS=ON'
+        )
+
+        # Conditionally add extras (only on non-PR builds)
         if (-not $isPR) {
-          $extraFlags = @(
+          $cmakeArgs += @(
             '-DDEPTHAI_BUILD_EXAMPLES=ON',
             '-DDEPTHAI_BUILD_PYTHON=ON',
             '-DDEPTHAI_PYTHON_ENABLE_TESTS=ON',
             '-DDEPTHAI_TEST_EXAMPLES=ON',
             '-DDEPTHAI_PYTHON_TEST_EXAMPLES=ON',
             '-DDEPTHAI_PYTHON_ENABLE_EXAMPLES=ON'
-          ) -join ' '
+          )
         }
-        
-        pip install --upgrade pip
-        pip install numpy pytest pytest-html
 
-        $cmakeConfigureCommand = "cmake -S . -B C:/depthai-core/build -DCMAKE_BUILD_TYPE=Release -DDEPTHAI_VCPKG_INTERNAL_ONLY=OFF -DVCPKG_OVERLAY_TRIPLETS=./cmake/triplets/release -DDEPTHAI_BUILD_TESTS=ON $extraFlags"
-        Write-Host "Running: $cmakeConfigureCommand"
-        Invoke-Expression $cmakeConfigureCommand
+        # Show & run
+        Write-Host "cmake args:`n$($cmakeArgs -join ' ')"
+        & cmake @cmakeArgs
 
         $cmakeBuildCommand = "cmake --build C:/depthai-core/build --parallel 2 --config Release"
         Write-Host "Running: $cmakeBuildCommand"
