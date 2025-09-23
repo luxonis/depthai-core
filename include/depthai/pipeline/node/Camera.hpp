@@ -9,11 +9,11 @@
 #include "depthai/capabilities/ImgFrameCapability.hpp"
 #include "depthai/pipeline/DeviceNode.hpp"
 #include "depthai/pipeline/datatype/CameraControl.hpp"
+#include "depthai/properties/CameraProperties.hpp"
+
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     #include "depthai/pipeline/node/host/Replay.hpp"
 #endif
-#include "depthai/properties/CameraProperties.hpp"
-#include "depthai/utility/span.hpp"
 
 namespace dai {
 namespace node {
@@ -125,42 +125,77 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
     CameraBoardSocket getBoardSocket() const;
 
     /**
-     * Set number of frames in raw pool
+     * Set number of frames in raw pool (will be automatically reduced if the maximum pool memory size is exceeded)
      * @param num Number of frames
      * @return Shared pointer to the camera node
      */
     std::shared_ptr<Camera> setRawNumFramesPool(int num);
 
     /**
-     * Set number of frames in isp pool
+     * Set maximum size of raw pool
+     * @param size Maximum size in bytes of raw pool
+     * @return Shared pointer to the camera node
+     */
+    std::shared_ptr<Camera> setMaxSizePoolRaw(int size);
+
+    /**
+     * Set number of frames in isp pool (will be automatically reduced if the maximum pool memory size is exceeded)
      * @param num Number of frames
      * @return Shared pointer to the camera node
      */
     std::shared_ptr<Camera> setIspNumFramesPool(int num);
 
     /**
-     * Set number of frames in preview pool
+     * Set maximum size of isp pool
+     * @param size Maximum size in bytes of isp pool
+     * @return Shared pointer to the camera node
+     */
+    std::shared_ptr<Camera> setMaxSizePoolIsp(int size);
+
+    /**
+     * Set number of frames in preview pool (will be automatically reduced if the maximum pool memory size is exceeded)
      * @param num Number of frames
      * @return Shared pointer to the camera node
      */
     std::shared_ptr<Camera> setPreviewNumFramesPool(int num);
 
     /**
-     * Set number of frames in video pool
+     * Set maximum size of preview pool
+     * @param size Maximum size in bytes of preview pool
+     * @return Shared pointer to the camera node
+     */
+    std::shared_ptr<Camera> setMaxSizePoolPreview(int size);
+
+    /**
+     * Set number of frames in video pool (will be automatically reduced if the maximum pool memory size is exceeded)
      * @param num Number of frames
      * @return Shared pointer to the camera node
      */
     std::shared_ptr<Camera> setVideoNumFramesPool(int num);
 
     /**
-     * Set number of frames in still pool
+     * Set maximum size of video pool
+     * @param size Maximum size in bytes of preview pool
+     * @return Shared pointer to the camera node
+     */
+    std::shared_ptr<Camera> setMaxSizePoolVideo(int size);
+
+    /**
+     * Set number of frames in still pool (will be automatically reduced if the maximum pool memory size is exceeded)
      * @param num Number of frames
      * @return Shared pointer to the camera node
      */
     std::shared_ptr<Camera> setStillNumFramesPool(int num);
 
     /**
-     * Set number of frames in all pools
+     * Set maximum size of still pool
+     * @param size Maximum size in bytes of still pool
+     * @return Shared pointer to the camera node
+     */
+    std::shared_ptr<Camera> setMaxSizePoolStill(int size);
+
+    /**
+     * Set number of frames in all pools (will be automatically reduced if the maximum pool memory size is exceeded)
      * @param raw Number of frames in raw pool
      * @param isp Number of frames in isp pool
      * @param preview Number of frames in preview pool
@@ -168,7 +203,18 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
      * @param still Number of frames in still pool
      * @return Shared pointer to the camera node
      */
-    std::shared_ptr<Camera> setNumFramesPool(int raw, int isp, int preview, int video, int still);
+    std::shared_ptr<Camera> setNumFramesPools(int raw, int isp, int preview, int video, int still);
+
+    /**
+     * Set maximum memory size of all pools
+     * @param raw Maximum size in bytes of raw pool
+     * @param isp Maximum size in bytes of isp pool
+     * @param preview Maximum size in bytes of preview pool
+     * @param video Maximum size in bytes of video pool
+     * @param still Maximum size in bytes of still pool
+     * @return Shared pointer to the camera node
+     */
+    std::shared_ptr<Camera> setMaxSizePools(int raw, int isp, int preview, int video, int still);
 
     /**
      * Get number of frames in raw pool
@@ -177,10 +223,22 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
     int getRawNumFramesPool() const;
 
     /**
+     * Get maximum size of raw pool
+     * @return Maximum size in bytes of raw pool
+     */
+    int getMaxSizePoolRaw() const;
+
+    /**
      * Get number of frames in isp pool
      * @return Number of frames
      */
     int getIspNumFramesPool() const;
+
+    /**
+     * Get maximum size of isp pool
+     * @return Maximum size in bytes of isp pool
+     */
+    int getMaxSizePoolIsp() const;
 
     /**
      * Get number of frames in preview pool
@@ -189,16 +247,34 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
     int getPreviewNumFramesPool() const;
 
     /**
+     * Get maximum size of preview pool
+     * @return Maximum size in bytes of preview pool
+     */
+    int getMaxSizePoolPreview() const;
+
+    /**
      * Get number of frames in video pool
      * @return Number of frames
      */
     int getVideoNumFramesPool() const;
 
     /**
+     * Get maximum size of video pool
+     * @return Maximum size in bytes of video pool
+     */
+    int getMaxSizePoolVideo() const;
+
+    /**
      * Get number of frames in still pool
      * @return Number of frames
      */
     int getStillNumFramesPool() const;
+
+    /**
+     * Get maximum size of still pool
+     * @return Maximum size in bytes of still pool
+     */
+    int getMaxSizePoolStill() const;
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     /**
@@ -245,11 +321,6 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
    private:
     bool isBuilt = false;
     CameraFeatures cameraFeatures;
-
-    /*
-    Output& getRecordOutput() override;
-    Input& getReplayInput() override;
-    */
 };
 
 }  // namespace node

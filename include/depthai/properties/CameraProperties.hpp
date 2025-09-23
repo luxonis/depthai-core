@@ -83,13 +83,28 @@ struct CameraProperties : PropertiesSerializable<Properties, CameraProperties> {
     int isp3aFps = 0;
 
     /**
-     * Pool sizes
+     * Number of frames in different pools and the maximum size in bytes of each pool (number of frames will be automatically reduced if the size is exceeded)
      */
+
+    /** Raw pool */
     int numFramesPoolRaw = 3;
+    int maxSizePoolRaw = 1024 * 1024 * 10;  // 10MB
+
+    /** Isp pool */
     int numFramesPoolIsp = 3;
+    int maxSizePoolIsp = 1024 * 1024 * 10;  // 10MB
+
+    /** Video pool */
     int numFramesPoolVideo = 4;
+    int maxSizePoolVideo = 1024 * 1024 * 10;  // 10MB
+
+    /** Preview pool */
     int numFramesPoolPreview = 4;
+    int maxSizePoolPreview = 1024 * 1024 * 10;  // 10MB
+
+    /** Still pool */
     int numFramesPoolStill = 4;
+    int maxSizePoolStill = 1024 * 1024 * 10;  // 10MB
 };
 
 DEPTHAI_SERIALIZE_EXT(CameraProperties,
@@ -105,10 +120,15 @@ DEPTHAI_SERIALIZE_EXT(CameraProperties,
                       fps,
                       isp3aFps,
                       numFramesPoolRaw,
+                      maxSizePoolRaw,
                       numFramesPoolIsp,
+                      maxSizePoolIsp,
                       numFramesPoolVideo,
+                      maxSizePoolVideo,
                       numFramesPoolPreview,
+                      maxSizePoolPreview,
                       numFramesPoolStill,
+                      maxSizePoolStill,
                       outputRequests);
 
 }  // namespace dai

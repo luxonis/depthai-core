@@ -1,17 +1,15 @@
 #include "depthai/pipeline/node/Camera.hpp"
+
 // std
-#include <fstream>
 #include <memory>
 #include <stdexcept>
 #include <utility>
 
-#include "depthai/depthai.hpp"
-
-// libraries
-#include "depthai/utility/spimpl.h"
-
-// depthai internal
+// depthai
 #include "depthai/common/CameraBoardSocket.hpp"
+#include "depthai/pipeline/Pipeline.hpp"
+
+// depthai internal utilities
 #include "utility/ErrorMacros.hpp"
 #include "utility/RecordReplayImpl.hpp"
 
@@ -352,8 +350,18 @@ std::shared_ptr<Camera> Camera::setRawNumFramesPool(int num) {
     return std::dynamic_pointer_cast<Camera>(shared_from_this());
 }
 
+std::shared_ptr<Camera> Camera::setMaxSizePoolRaw(int size) {
+    properties.maxSizePoolRaw = size;
+    return std::dynamic_pointer_cast<Camera>(shared_from_this());
+}
+
 std::shared_ptr<Camera> Camera::setIspNumFramesPool(int num) {
     properties.numFramesPoolIsp = num;
+    return std::dynamic_pointer_cast<Camera>(shared_from_this());
+}
+
+std::shared_ptr<Camera> Camera::setMaxSizePoolIsp(int size) {
+    properties.maxSizePoolIsp = size;
     return std::dynamic_pointer_cast<Camera>(shared_from_this());
 }
 
@@ -362,8 +370,18 @@ std::shared_ptr<Camera> Camera::setPreviewNumFramesPool(int num) {
     return std::dynamic_pointer_cast<Camera>(shared_from_this());
 }
 
+std::shared_ptr<Camera> Camera::setMaxSizePoolPreview(int size) {
+    properties.maxSizePoolPreview = size;
+    return std::dynamic_pointer_cast<Camera>(shared_from_this());
+}
+
 std::shared_ptr<Camera> Camera::setVideoNumFramesPool(int num) {
     properties.numFramesPoolVideo = num;
+    return std::dynamic_pointer_cast<Camera>(shared_from_this());
+}
+
+std::shared_ptr<Camera> Camera::setMaxSizePoolVideo(int size) {
+    properties.maxSizePoolVideo = size;
     return std::dynamic_pointer_cast<Camera>(shared_from_this());
 }
 
@@ -372,12 +390,26 @@ std::shared_ptr<Camera> Camera::setStillNumFramesPool(int num) {
     return std::dynamic_pointer_cast<Camera>(shared_from_this());
 }
 
-std::shared_ptr<Camera> Camera::setNumFramesPool(int raw, int isp, int preview, int video, int still) {
-    properties.numFramesPoolRaw = raw;
-    properties.numFramesPoolIsp = isp;
-    properties.numFramesPoolPreview = preview;
-    properties.numFramesPoolVideo = video;
-    properties.numFramesPoolStill = still;
+std::shared_ptr<Camera> Camera::setMaxSizePoolStill(int size) {
+    properties.maxSizePoolStill = size;
+    return std::dynamic_pointer_cast<Camera>(shared_from_this());
+}
+
+std::shared_ptr<Camera> Camera::setNumFramesPools(int raw, int isp, int preview, int video, int still) {
+    setMaxSizePoolRaw(raw);
+    setMaxSizePoolIsp(isp);
+    setMaxSizePoolPreview(preview);
+    setMaxSizePoolVideo(video);
+    setMaxSizePoolStill(still);
+    return std::dynamic_pointer_cast<Camera>(shared_from_this());
+}
+
+std::shared_ptr<Camera> Camera::setMaxSizePools(int raw, int isp, int preview, int video, int still) {
+    setMaxSizePoolRaw(raw);
+    setMaxSizePoolIsp(isp);
+    setMaxSizePoolPreview(preview);
+    setMaxSizePoolVideo(video);
+    setMaxSizePoolStill(still);
     return std::dynamic_pointer_cast<Camera>(shared_from_this());
 }
 
@@ -385,30 +417,41 @@ int Camera::getRawNumFramesPool() const {
     return properties.numFramesPoolRaw;
 }
 
+int Camera::getMaxSizePoolRaw() const {
+    return properties.maxSizePoolRaw;
+}
+
 int Camera::getIspNumFramesPool() const {
     return properties.numFramesPoolIsp;
+}
+
+int Camera::getMaxSizePoolIsp() const {
+    return properties.maxSizePoolIsp;
 }
 
 int Camera::getPreviewNumFramesPool() const {
     return properties.numFramesPoolPreview;
 }
 
+int Camera::getMaxSizePoolPreview() const {
+    return properties.maxSizePoolPreview;
+}
+
 int Camera::getVideoNumFramesPool() const {
     return properties.numFramesPoolVideo;
+}
+
+int Camera::getMaxSizePoolVideo() const {
+    return properties.maxSizePoolVideo;
 }
 
 int Camera::getStillNumFramesPool() const {
     return properties.numFramesPoolStill;
 }
 
-/*
-Camera::Output& Camera::getRecordOutput() {
-    return isp;
+int Camera::getMaxSizePoolStill() const {
+    return properties.maxSizePoolStill;
 }
-Camera::Input& Camera::getReplayInput() {
-    return mockIsp;
-}
-*/
 
 }  // namespace node
 }  // namespace dai
