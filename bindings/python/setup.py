@@ -279,6 +279,9 @@ setup(
         "Topic :: Software Development",
     ],
     python_requires='>=3.7',
+    install_requires=[
+        "numpy>=1.26.0",
+    ],
     entry_points={
         "console_scripts": [
             f'depthai={DEPTHAI_CLI_MODULE_NAME}.depthai_cli:cli'
