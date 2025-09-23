@@ -1,5 +1,4 @@
 #pragma once
-#include "depthai/common/MedianFilter.hpp"
 #include "depthai/common/optional.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/ImageFiltersConfig.hpp"
@@ -15,7 +14,7 @@ class ToFConfig : public Buffer {
     /**
      * Set kernel size for depth median filtering, or disable
      */
-    MedianFilter median = MedianFilter::MEDIAN_OFF;
+    filters::params::MedianFilter median = filters::params::MedianFilter::MEDIAN_OFF;
 
     /*
      * Phase unwrapping level.
@@ -75,7 +74,7 @@ class ToFConfig : public Buffer {
     /**
      * @param median Set kernel size for median filtering, or disable
      */
-    ToFConfig& setMedianFilter(MedianFilter median);
+    ToFConfig& setMedianFilter(filters::params::MedianFilter median);
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
         metadata = utility::serialize(*this);

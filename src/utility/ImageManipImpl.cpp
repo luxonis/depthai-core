@@ -545,6 +545,11 @@ std::array<std::array<float, 2>, 4> dai::impl::getOuterRotatedRect(const std::ve
     for(size_t i = 1; i < hull.size(); ++i) {
         std::array<float, 2> vec = {hull[i][0] - hull[i - 1][0], hull[i][1] - hull[i - 1][1]};
         std::array<float, 2> vecOrth = {-vec[1], vec[0]};
+        float len = sqrtf(vec[0] * vec[0] + vec[1] * vec[1]);
+        vec[0] /= len;
+        vec[1] /= len;
+        vecOrth[0] /= len;
+        vecOrth[1] /= len;
         std::array<std::array<float, 2>, 2> mat = {{{vec[0], vecOrth[0]}, {vec[1], vecOrth[1]}}};
         std::array<std::array<float, 2>, 2> matInv = getInverse(mat);
 

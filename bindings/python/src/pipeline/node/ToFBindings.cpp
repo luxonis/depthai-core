@@ -87,7 +87,9 @@ void bind_tof(pybind11::module& m, void* pCallstack) {
              "boardSocket"_a = CameraBoardSocket::AUTO,
              "presetMode"_a = ImageFiltersPresetMode::TOF_MID_RANGE,
              "fps"_a = std::nullopt,
-             DOC(dai, node, ToF, build));
+             DOC(dai, node, ToF, build))
+        .def("getInitialConfig", [&](const ToF& self) { return *self.tofBaseNode.initialConfig; })
+        .def("setInitialConfig", [&](ToF& self, ToFConfig& config) { self.tofBaseNode.initialConfig = std::make_shared<ToFConfig>(config); });
 
     // ALIAS
     daiNodeModule.attr("ToFBase").attr("Properties") = tofProperties;
