@@ -66,11 +66,15 @@ endif()
 
 # Create depthai project
 project(depthai VERSION "3.0.0" LANGUAGES CXX C)
-set(DEPTHAI_PRE_RELEASE_TYPE "rc") # Valid options are "alpha", "beta", "rc", ""
-set(DEPTHAI_PRE_RELEASE_VERSION "4")
+set(DEPTHAI_PRE_RELEASE_TYPE "") # Valid options are "alpha", "beta", "rc", ""
+set(DEPTHAI_PRE_RELEASE_VERSION "0") # Valid options are "0", "1", "2", ...
 
 # Set DEPTHAI_VERSION universally, not conditionally
-set(DEPTHAI_VERSION ${PROJECT_VERSION}-${DEPTHAI_PRE_RELEASE_TYPE}.${DEPTHAI_PRE_RELEASE_VERSION})
+if(DEPTHAI_PRE_RELEASE_TYPE STREQUAL "")
+    set(DEPTHAI_VERSION ${PROJECT_VERSION})
+else()
+    set(DEPTHAI_VERSION ${PROJECT_VERSION}-${DEPTHAI_PRE_RELEASE_TYPE}.${DEPTHAI_PRE_RELEASE_VERSION})
+endif()
 
 get_directory_property(has_parent PARENT_DIRECTORY)
 if(has_parent)
@@ -88,12 +92,6 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     # Set the possible values of build type for cmake-gui
     set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
 endif()
-
-# Set default installation directory
-if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-    set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/install" CACHE PATH "Installation Directory" FORCE)
-endif()
-
 
 # Set to export compile commands for tools like clang-tidy and format
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -401,6 +399,13 @@ if(DEPTHAI_ENABLE_PROTOBUF)
     )
 endif()
 
+if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
+    list(APPEND TARGET_CORE_SOURCES
+        src/pipeline/node/DynamicCalibrationNode.cpp
+        src/pipeline/datatype/DynamicCalibrationControl.cpp
+    )
+endif()
+
 set(TARGET_OPENCV_SOURCES
     src/opencv/ImgFrame.cpp
     src/pipeline/node/host/Display.cpp
@@ -575,6 +580,12 @@ endif()
 
 if(NOT BUILD_SHARED_LIBS)
     target_compile_definitions(${TARGET_CORE_NAME} PUBLIC MCAP_STATIC)
+endif()
+
+if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
+    # Link the dynamic calibration target
+    target_link_libraries(${TARGET_CORE_NAME} PRIVATE dynamic_calibration_imported)
+    target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT)
 endif()
 
 # Set constant
@@ -879,6 +890,7 @@ macro(add_runtime_dependencies depending_target dependency)
         foreach(cfg ${imported_configs})
             message(STATUS "Adding runtime dependencies for ${depending_target} on ${dependency} (${cfg})")
             get_property(dll TARGET ${dependency} PROPERTY IMPORTED_LOCATION_${cfg})
+            message(STATUS "Retrieved dll for ${cfg}: '${dll}'")
             list(APPEND dlls $<$<CONFIG:${cfg}>:${dll}>)
         endforeach()
         message(STATUS "Required dlls for ${depending_target} on ${dependency} are: ${dlls}")
@@ -897,6 +909,10 @@ macro(add_runtime_dependencies depending_target dependency)
 endmacro()
 # Add libusb dll in build time
 add_runtime_dependencies(${TARGET_CORE_NAME} usb-1.0)
+# Add dynamic calibration dll in build time
+if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
+    add_runtime_dependencies(${TARGET_CORE_NAME} dynamic_calibration_imported)
+endif()
 
 ########################
 # OpenCV Support 2

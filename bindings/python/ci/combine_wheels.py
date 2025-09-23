@@ -183,7 +183,7 @@ def combine_wheels_windows(args, wheel_infos):
             unmangled_libs = list()
             for lib in bundled_libs:
                 base, ext = ".".join(lib.split(".")[:-1]), "." + lib.split(".")[-1]
-                base = "".join(base.split("-")[:-1]) # remove hash
+                base = "".join(base.split("-")[:-1]) if len(base.split("-")) > 1 else base # remove hash, or reuse base name if there is no hash
                 unmangled_libs.append(base + "-" + common_magic_hash + ext)
                 dynlib_renames[wheel_info.wheel_name][lib] = unmangled_libs[-1]
 

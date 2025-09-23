@@ -340,3 +340,15 @@ dai_set_example_test_labels(object_tracker_remap ondevice rvc2_all rvc4 ci)
 # ImageFilters
 add_python_example(image_filters StereoDepth/stereo_depth_filters.py)
 dai_set_example_test_labels(image_filters rvc2_all rvc4 ci)
+
+# DynamicCalibration
+if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
+    add_python_example(calibration_integration DynamicCalibration/calibration_integration.py)
+    dai_set_example_test_labels(calibration_integration ondevice rvc2_all rvc4 ci)
+
+    add_python_example(calibration_quality_dynamic DynamicCalibration/calibration_quality_dynamic.py)
+    dai_set_example_test_labels(calibration_quality_dynamic ondevice rvc2_all rvc4 ci)
+
+    add_python_example(calibration_dynamic DynamicCalibration/calibration_dynamic.py)
+    dai_set_example_test_labels(calibration_dynamic ondevice rvc2_all rvc4 ci)
+endif()
