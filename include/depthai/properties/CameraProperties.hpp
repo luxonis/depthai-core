@@ -95,16 +95,13 @@ struct CameraProperties : PropertiesSerializable<Properties, CameraProperties> {
     int maxSizePoolIsp = 1024 * 1024 * 10;  // 10MB
 
     /** Video pool */
-    int numFramesPoolVideo = 4;
-    int maxSizePoolVideo = 1024 * 1024 * 10;  // 10MB
+    int numFramesPoolVideo = 4;  // No max size in bytes for video pool, used in mono and color cameras only, those are deprecated
 
     /** Preview pool */
-    int numFramesPoolPreview = 4;
-    int maxSizePoolPreview = 1024 * 1024 * 10;  // 10MB
+    int numFramesPoolPreview = 4;  // No max size in bytes for preview pool, used in mono and color cameras only, those are deprecated
 
     /** Still pool */
-    int numFramesPoolStill = 4;
-    int maxSizePoolStill = 1024 * 1024 * 10;  // 10MB
+    int numFramesPoolStill = 4;  // No max size in bytes for still pool, used in mono and color cameras only, those are deprecated
 };
 
 DEPTHAI_SERIALIZE_EXT(CameraProperties,
@@ -124,11 +121,8 @@ DEPTHAI_SERIALIZE_EXT(CameraProperties,
                       numFramesPoolIsp,
                       maxSizePoolIsp,
                       numFramesPoolVideo,
-                      maxSizePoolVideo,
                       numFramesPoolPreview,
-                      maxSizePoolPreview,
                       numFramesPoolStill,
-                      maxSizePoolStill,
                       outputRequests);
 
 }  // namespace dai
