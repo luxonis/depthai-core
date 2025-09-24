@@ -22,6 +22,7 @@
 #include "depthai/pipeline/PipelineSchema.hpp"
 #include "depthai/properties/GlobalProperties.hpp"
 #include "depthai/utility/RecordReplay.hpp"
+#include "depthai/pipeline/datatype/PipelineState.hpp"
 
 namespace dai {
 
@@ -85,6 +86,9 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     bool isHostOnly() const;
     bool isDeviceOnly() const;
 
+    // Pipeline state getters
+    std::shared_ptr<PipelineState> getPipelineState();
+
     // Must be incremented and unique for each node
     Node::Id latestId = 0;
     // Pipeline asset manager
@@ -114,6 +118,9 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     std::unordered_map<std::string, std::filesystem::path> recordReplayFilenames;
     bool removeRecordReplayFiles = true;
     std::string defaultDeviceId;
+
+    // Pipeline events
+    std::shared_ptr<MessageQueue> pipelineStateOut;
 
     // Output queues
     std::vector<std::shared_ptr<MessageQueue>> outputQueues;
@@ -506,6 +513,9 @@ class Pipeline {
     /// Record and Replay
     void enableHolisticRecord(const RecordConfig& config);
     void enableHolisticReplay(const std::string& pathToRecording);
+
+    // Pipeline state getters
+    std::shared_ptr<PipelineState> getPipelineState();
 };
 
 }  // namespace dai

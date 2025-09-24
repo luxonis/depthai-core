@@ -1,5 +1,6 @@
 #include "depthai/utility/PipelineEventDispatcher.hpp"
 #include <optional>
+#include <thread>
 
 namespace dai {
 namespace utility {
@@ -13,10 +14,12 @@ void PipelineEventDispatcher::setNodeId(int64_t id) {
     nodeId = id;
 }
 void PipelineEventDispatcher::addEvent(const std::string& source, PipelineEvent::EventType type) {
-    if(events.find(source) != events.end()) {
-        throw std::runtime_error("Event with name " + source + " already exists");
+    if(!source.empty()) {
+        if(events.find(source) != events.end()) {
+            throw std::runtime_error("Event with name '" + source + "' already exists");
+        }
+        events[source] = {type, {}, {}, false, std::nullopt};
     }
-    events[source] = {type, {}, {}, false, std::nullopt};
 }
 void PipelineEventDispatcher::startEvent(const std::string& source, std::optional<Buffer> metadata) {
     checkNodeId();
@@ -53,6 +56,7 @@ void PipelineEventDispatcher::endEvent(const std::string& source) {
     pipelineEvent.source = source;
     pipelineEvent.sequenceNum = sequenceNum++;
     pipelineEvent.setTimestampDevice(std::chrono::steady_clock::now());
+    pipelineEvent.ts = pipelineEvent.tsDevice;
 
     if(out) {
         out->send(std::make_shared<dai::PipelineEvent>(pipelineEvent));

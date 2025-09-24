@@ -85,6 +85,7 @@ bool PipelineEventAggregation::runOnHost() const {
 
 void PipelineEventAggregation::run() {
     std::unordered_map<int64_t, NodeEventAggregation> nodeStates;
+    uint32_t sequenceNum = 0;
     while(isRunning()) {
         std::unordered_map<std::string, std::shared_ptr<PipelineEvent>> events;
         for(auto& [k, v] : inputs) {
@@ -108,6 +109,9 @@ void PipelineEventAggregation::run() {
                 nodeState.eventCount = 0;
             }
         }
+        outState->sequenceNum = sequenceNum++;
+        outState->setTimestamp(std::chrono::steady_clock::now());
+        outState->tsDevice = outState->ts;
         if(shouldSend) out.send(outState);
     }
 }

@@ -12,6 +12,7 @@
 #include "depthai/utility/Initialization.hpp"
 #include "pipeline/datatype/ImgFrame.hpp"
 #include "pipeline/node/DetectionNetwork.hpp"
+#include "pipeline/node/internal/PipelineStateMerge.hpp"
 #include "utility/Compression.hpp"
 #include "utility/Environment.hpp"
 #include "utility/ErrorMacros.hpp"
@@ -478,6 +479,11 @@ bool PipelineImpl::isDeviceOnly() const {
     return deviceOnly;
 }
 
+std::shared_ptr<PipelineState> PipelineImpl::getPipelineState() {
+    auto pipelineState = pipelineStateOut->get<PipelineState>();
+    return pipelineState;
+}
+
 void PipelineImpl::add(std::shared_ptr<Node> node) {
     if(node == nullptr) {
         throw std::invalid_argument(fmt::format("Given node pointer is null"));
@@ -537,7 +543,6 @@ bool PipelineImpl::isBuilt() const {
 void PipelineImpl::build() {
     // TODO(themarpe) - add mutex and set running up ahead
     if(isBuild) return;
-    isBuild = true;
 
     if(defaultDevice) {
         auto recordPath = std::filesystem::path(utility::getEnvAs<std::string>("DEPTHAI_RECORD", ""));
@@ -652,7 +657,16 @@ void PipelineImpl::build() {
             }
         }
     }
-    // TODO: link outputs of event aggregation nodes
+    auto stateMerge = parent.create<node::PipelineStateMerge>()->build(hasDeviceNodes, hasHostNodes);
+    if(deviceEventAgg) {
+        deviceEventAgg->out.link(stateMerge->inputDevice);
+    }
+    if(hostEventAgg) {
+        hostEventAgg->out.link(stateMerge->inputHost);
+    }
+    pipelineStateOut = stateMerge->out.createOutputQueue(1, false);
+
+    isBuild = true;
 
     // Go through the build stages sequentially
     for(const auto& node : getAllNodes()) {
@@ -1065,4 +1079,9 @@ void Pipeline::enableHolisticReplay(const std::string& pathToRecording) {
     impl()->recordConfig.state = RecordConfig::RecordReplayState::REPLAY;
     impl()->enableHolisticRecordReplay = true;
 }
+
+std::shared_ptr<PipelineState> Pipeline::getPipelineState() {
+    return impl()->getPipelineState();
+}
+
 }  // namespace dai

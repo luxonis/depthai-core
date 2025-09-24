@@ -318,9 +318,10 @@ Node::OutputMap::OutputMap(Node& parent, Node::OutputDescription defaultOutput, 
 Node::Output& Node::OutputMap::operator[](const std::string& key) {
     if(count({name, key}) == 0) {
         // Create using default and rename with group and key
-        Output output(parent, defaultOutput, false);
-        output.setGroup(name);
-        output.setName(key);
+        auto desc = defaultOutput;
+        desc.group = name;
+        desc.name = key;
+        Output output(parent, desc, false);
         insert({{name, key}, output});
     }
     // otherwise just return reference to existing
@@ -329,11 +330,11 @@ Node::Output& Node::OutputMap::operator[](const std::string& key) {
 Node::Output& Node::OutputMap::operator[](std::pair<std::string, std::string> groupKey) {
     if(count(groupKey) == 0) {
         // Create using default and rename with group and key
-        Output output(parent, defaultOutput, false);
-
+        auto desc = defaultOutput;
         // Uses \t (tab) as a special character to parse out as subgroup name
-        output.setGroup(fmt::format("{}\t{}", name, groupKey.first));
-        output.setName(groupKey.second);
+        desc.group = fmt::format("{}\t{}", name, groupKey.first);
+        desc.name = groupKey.second;
+        Output output(parent, desc, false);
         insert(std::make_pair(groupKey, output));
     }
     // otherwise just return reference to existing
@@ -350,9 +351,10 @@ Node::InputMap::InputMap(Node& parent, Node::InputDescription description) : Inp
 Node::Input& Node::InputMap::operator[](const std::string& key) {
     if(count({name, key}) == 0) {
         // Create using default and rename with group and key
-        Input input(parent, defaultInput, false);
-        input.setGroup(name);
-        input.setName(key);
+        auto desc = defaultInput;
+        desc.group = name;
+        desc.name = key;
+        Input input(parent, desc, false);
         insert({{name, key}, input});
     }
     // otherwise just return reference to existing
@@ -361,11 +363,11 @@ Node::Input& Node::InputMap::operator[](const std::string& key) {
 Node::Input& Node::InputMap::operator[](std::pair<std::string, std::string> groupKey) {
     if(count(groupKey) == 0) {
         // Create using default and rename with group and key
-        Input input(parent, defaultInput, false);
-
+        auto desc = defaultInput;
         // Uses \t (tab) as a special character to parse out as subgroup name
-        input.setGroup(fmt::format("{}\t{}", name, groupKey.first));
-        input.setName(groupKey.second);
+        desc.group = fmt::format("{}\t{}", name, groupKey.first);
+        desc.name = groupKey.second;
+        Input input(parent, desc, false);
         insert(std::make_pair(groupKey, input));
     }
     // otherwise just return reference to existing

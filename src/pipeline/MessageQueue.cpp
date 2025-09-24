@@ -24,7 +24,7 @@ MessageQueue::MessageQueue(std::string name,
                            std::shared_ptr<utility::PipelineEventDispatcherInterface> pipelineEventDispatcher)
     : queue(maxSize, blocking), name(std::move(name)), pipelineEventDispatcher(pipelineEventDispatcher) {
     if(pipelineEventDispatcher) {
-        pipelineEventDispatcher->addEvent(name, PipelineEvent::EventType::INPUT);
+        pipelineEventDispatcher->addEvent(this->name, PipelineEvent::EventType::INPUT);
     }
 }
 

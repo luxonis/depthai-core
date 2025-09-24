@@ -280,6 +280,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/DeviceNode.cpp
     src/pipeline/DeviceNodeGroup.cpp
     src/pipeline/node/internal/PipelineEventAggregation.cpp
+    src/pipeline/node/internal/PipelineStateMerge.cpp
     src/pipeline/node/internal/XLinkIn.cpp
     src/pipeline/node/internal/XLinkOut.cpp
     src/pipeline/node/ColorCamera.cpp
