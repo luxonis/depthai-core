@@ -2,16 +2,17 @@
 #include <depthai/depthai.hpp>
 #include <deque>
 #include <opencv2/opencv.hpp>
+
 #include "depthai/capabilities/ImgFrameCapability.hpp"
 
 // Simple FPS counter
 class FPSCounter {
     static constexpr size_t MAX_SAMPLES = 100;
     std::array<double, MAX_SAMPLES> frameTimes{};
-    size_t head = 0;     // index of next write
-    size_t count = 0;    // how many valid samples stored
+    size_t head = 0;   // index of next write
+    size_t count = 0;  // how many valid samples stored
 
-public:
+   public:
     void tick() {
         auto now = std::chrono::duration<double>(std::chrono::high_resolution_clock::now().time_since_epoch()).count();
         frameTimes[head] = now;

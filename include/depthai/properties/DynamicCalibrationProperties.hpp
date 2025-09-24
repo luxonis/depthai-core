@@ -1,5 +1,4 @@
 #pragma once
-#include "depthai/pipeline/datatype/DynamicCalibrationConfig.hpp"
 #include "depthai/properties/Properties.hpp"
 
 namespace dai {
