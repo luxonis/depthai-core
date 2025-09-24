@@ -61,7 +61,6 @@ Device::~Device() {
 
 Platform Device::getPlatform() const {
     auto platform = getDeviceInfo().platform;
-    return Platform::RVC4;  // Temporary, until all devices have proper platform info
     switch(platform) {
         case X_LINK_MYRIAD_X:
             return Platform::RVC2;
