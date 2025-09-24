@@ -70,6 +70,7 @@ ImgFrameCapability NeuralNetwork::getFrameCapability(const NNArchive& nnArchive,
     auto platform = getDevice()->getPlatform();
     auto supportedPlatforms = nnArchive.getSupportedPlatforms();
     bool platformSupported = std::find(supportedPlatforms.begin(), supportedPlatforms.end(), platform) != supportedPlatforms.end();
+    platformSupported = true;  // Temporary, until all models have platform info in NNArchive
     DAI_CHECK_V(platformSupported, "Platform not supported by the neural network model");
 
     const auto& configV1 = nnArchiveCfg.getConfig<nn_archive::v1::Config>();
