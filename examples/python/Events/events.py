@@ -10,35 +10,28 @@ import time
 with dai.Pipeline() as pipeline:
     # Define sources and outputs
     camRgb = pipeline.create(dai.node.Camera).build()
-    # Properties
-
     qRgb = camRgb.requestOutput((256,256)).createOutputQueue()
 
+    # Enter your hubs api-key
     eventMan = dai.EventsManager()
-    eventMan.setLogResponse(True)
+    eventMan.setUrl("https://events.cloud-stg.luxonis.com")
+    eventMan.setToken("")
 
-    eventMan.sendEvent("test1", None, [], ["tag1", "tag2"], {"key1": "value1"})
-    time.sleep(2)
-    fileData = dai.EventData(b'Hello, world!', "hello.txt", "text/plain")
-    eventMan.sendEvent("test2", None,  [fileData], ["tag1", "tag2"], {"key1": "value1"})
     pipeline.start()
 
-    frame = None
-    counter = 0
+    data = []
 
-
-    eventSent = False
     while pipeline.isRunning():
         inRgb: dai.ImgFrame = qRgb.get()
+
+        name = f"image_{len(data)}"
         if inRgb is not None:
-            frame = inRgb.getCvFrame()
-            if not eventSent:
-                eventMan.sendSnap("rgb", inRgb, [], ["tag1", "tag2"], {"key1": "value1"})
-                eventSent = True
+            rgbData = dai.FileData(inRgb, name)
+            data.append(rgbData)
 
-        if frame is not None:
-            cv2.imshow("rgb", frame)
-
-        if cv2.waitKey(1) == ord("q"):
-            pipeline.stop()
-            break
+        if len(data) == 5:
+            eventMan.sendSnap("ImgFrame", ["EventsExample", "Python"], {"key_0" : "value_0", "key_1" : "value_1"}, "", data)
+            data.clear()
+            time.sleep(3)
+    
+        time.sleep(0.4)

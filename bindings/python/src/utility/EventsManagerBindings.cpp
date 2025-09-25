@@ -21,7 +21,7 @@ void EventsManagerBindings::bind(pybind11::module& m, void* pCallstack) {
 
 #ifdef DEPTHAI_ENABLE_EVENTS_MANAGER
     using namespace dai::utility;
-    py::class_<EventData, std::shared_ptr<utility::EventData>>(m, "EventData")
+    py::class_<FileData, std::shared_ptr<utility::FileData>>(m, "FileData")
         .def(py::init<const std::string&, const std::string&, const std::string&>(), py::arg("data"), py::arg("fileName"), py::arg("mimeType"))
         .def(py::init<std::string>(), py::arg("fileUrl"))
         .def(py::init<const std::shared_ptr<ImgFrame>&, std::string>(), py::arg("imgFrame"), py::arg("fileName"))
@@ -50,25 +50,22 @@ void EventsManagerBindings::bind(pybind11::module& m, void* pCallstack) {
              &EventsManager::setCacheIfCannotSend,
              py::arg("cacheIfCannotUpload"),
              DOC(dai, utility, EventsManager, setCacheIfCannotSend))
-        .def("checkConnection", &EventsManager::checkConnection, DOC(dai, utility, EventsManager, checkConnection))
         .def("uploadCachedData", &EventsManager::uploadCachedData, DOC(dai, utility, EventsManager, uploadCachedData))
         .def("sendEvent",
              &EventsManager::sendEvent,
              py::arg("name"),
-             py::arg("imgFrame").none(true) = nullptr,
-             py::arg("data") = std::vector<std::shared_ptr<EventData>>(),
              py::arg("tags") = std::vector<std::string>(),
-             py::arg("extraData") = std::unordered_map<std::string, std::string>(),
+             py::arg("extras") = std::unordered_map<std::string, std::string>(),
              py::arg("deviceSerialNo") = "",
+             py::arg("associateFiles") = std::vector<std::string>(),
              DOC(dai, utility, EventsManager, sendEvent))
         .def("sendSnap",
              &EventsManager::sendSnap,
              py::arg("name"),
-             py::arg("imgFrame").none(true) = nullptr,
-             py::arg("data") = std::vector<std::shared_ptr<EventData>>(),
              py::arg("tags") = std::vector<std::string>(),
-             py::arg("extraData") = std::unordered_map<std::string, std::string>(),
+             py::arg("extras") = std::unordered_map<std::string, std::string>(),
              py::arg("deviceSerialNo") = "",
+             py::arg("fileGroup") = std::vector<std::shared_ptr<FileData>>(),
              DOC(dai, utility, EventsManager, sendSnap));
 #endif
 }

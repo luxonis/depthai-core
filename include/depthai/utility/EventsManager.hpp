@@ -18,67 +18,78 @@ namespace dai {
 namespace proto {
 namespace event {
 class Event;
+enum PrepareFileUploadClass : int;
 }  // namespace event
 }  // namespace proto
+
 namespace utility {
-enum class EventDataType { DATA, FILE_URL, IMG_FRAME, ENCODED_FRAME, NN_DATA };
-class EventData {
+
+class FileData {
    public:
-    EventData(const std::string& data, const std::string& fileName, const std::string& mimeType);
-    explicit EventData(std::string fileUrl);
-    explicit EventData(const std::shared_ptr<ImgFrame>& imgFrame, std::string fileName);
-    explicit EventData(const std::shared_ptr<EncodedFrame>& encodedFrame, std::string fileName);
-    explicit EventData(const std::shared_ptr<NNData>& nnData, std::string fileName);
+    FileData(const std::string& data, const std::string& fileName, const std::string& mimeType);
+    explicit FileData(std::string fileUrl);
+    explicit FileData(const std::shared_ptr<ImgFrame>& imgFrame, std::string fileName);
+    explicit FileData(const std::shared_ptr<EncodedFrame>& encodedFrame, std::string fileName);
+    explicit FileData(const std::shared_ptr<NNData>& nnData, std::string fileName);
     bool toFile(const std::string& path);
 
    private:
-    std::string fileName;
+    /**
+     * Calculate SHA256 checksum for the given data
+     */
+    std::string CalculateSHA256Checksum(const std::string& data);
+
+    std::string checksum;
     std::string mimeType;
+    uint64_t size;
+    std::string fileName;
+    proto::event::PrepareFileUploadClass classification;
     std::string data;
-    EventDataType type;
     friend class EventsManager;
 };
+
 class EventsManager {
    public:
-    explicit EventsManager(std::string url = "https://events-ingest.cloud.luxonis.com", bool uploadCachedOnStart = false, float publishInterval = 10.0);
+    explicit EventsManager(std::string url = "https://events.cloud.luxonis.com", bool uploadCachedOnStart = false, float publishInterval = 10.0);
     ~EventsManager();
 
     /**
+     * Fetch configuration limits and quotas for snaps, through the api
+     * @return bool
+     */
+    bool fetchConfigurationLimits();
+    /**
      * Send an event to the events service
      * @param name Name of the event
-     * @param imgFrame Image frame to send
-     * @param data List of EventData objects to send
      * @param tags List of tags to send
-     * @param extraData Extra data to send
+     * @param extras Extra data to send
      * @param deviceSerialNo Device serial number
+     * @param associateFiles List of associate files with ids
      * @return bool
      */
     bool sendEvent(const std::string& name,
-                   const std::shared_ptr<ImgFrame>& imgFrame = nullptr,
-                   std::vector<std::shared_ptr<EventData>> data = {},
                    const std::vector<std::string>& tags = {},
-                   const std::unordered_map<std::string, std::string>& extraData = {},
-                   const std::string& deviceSerialNo = "");
+                   const std::unordered_map<std::string, std::string>& extras = {},
+                   const std::string& deviceSerialNo = "",
+                   const std::vector<std::string>& associateFiles = {});
     /**
-     * Send a snap to the events service. Snaps should be used for sending images and other large files.
+     * Send a snap to the events service. Snaps should be used for sending images and other files.
      * @param name Name of the snap
-     * @param imgFrame Image frame to send
-     * @param data List of EventData objects to send
      * @param tags List of tags to send
-     * @param extraData Extra data to send
+     * @param extras Extra data to send
      * @param deviceSerialNo Device serial number
+     * @param fileGroup List of FileData objects to send
      * @return bool
      */
     bool sendSnap(const std::string& name,
-                  const std::shared_ptr<ImgFrame>& imgFrame = nullptr,
-                  std::vector<std::shared_ptr<EventData>> data = {},
                   const std::vector<std::string>& tags = {},
-                  const std::unordered_map<std::string, std::string>& extraData = {},
-                  const std::string& deviceSerialNo = "");
+                  const std::unordered_map<std::string, std::string>& extras = {},
+                  const std::string& deviceSerialNo = "",
+                  const std::vector<std::shared_ptr<FileData>>& fileGroup = {});
 
     void setDeviceSerialNumber(const std::string& deviceSerialNumber);
     /**
-     * Set the URL of the events service. By default, the URL is set to https://events-ingest.cloud.luxonis.com
+     * Set the URL of the events service. By default, the URL is set to https://events.cloud.luxonis.com
      * @param url URL of the events service
      * @return void
      */
@@ -114,17 +125,17 @@ class EventsManager {
      */
     void setLogResponse(bool logResponse);
     /**
+     * Set whether to log the results of uploads to the server. By default, logUploadResults is set to false
+     * @param logUploadResults bool
+     * @return void
+     */
+    void setLogUploadResults(bool logUploadResults);
+    /**
      * Set whether to verify the SSL certificate. By default, verifySsl is set to false
      * @param verifySsl bool
      * @return void
      */
     void setVerifySsl(bool verifySsl);
-
-    /**
-     * Check if the device is connected to Hub. Performs a simple GET request to the URL/health endpoint
-     * @return bool
-     */
-    bool checkConnection();
 
     /**
      * Upload cached data to the events service
@@ -147,33 +158,53 @@ class EventsManager {
     void setCacheIfCannotSend(bool cacheIfCannotSend);
 
    private:
-    struct EventMessage {
+    struct SnapData {
         std::shared_ptr<proto::event::Event> event;
-        std::vector<std::shared_ptr<EventData>> data;
+        std::vector<std::shared_ptr<FileData>> fileGroup;
         std::string cachePath;
     };
-    static std::string createUUID();
-    void sendEventBuffer();
-    void sendFile(const std::shared_ptr<EventData>& file, const std::string& url);
+
+    /**
+     * Prepare and upload files from snapBuffer in batch
+     */
+    void uploadFileBatch();
+    /**
+     * Upload events from eventBuffer in batch
+     */
+    void uploadEventBatch();
+    /**
+     * Upload a file using the chosen url
+     */
+    void uploadFile(const std::shared_ptr<FileData>& file, const std::string& url);
+    /**
+     * // TO DO: Add description
+     */
     void cacheEvents();
+    /**
+     * // TO DO: Add description
+     */
     bool checkForCachedData();
+
     std::string token;
     std::string deviceSerialNumber;
     std::string url;
     std::string sourceAppId;
     std::string sourceAppIdentifier;
     uint64_t queueSize;
-    std::unique_ptr<std::thread> eventBufferThread;
-    std::vector<std::shared_ptr<EventMessage>> eventBuffer;
-    std::mutex eventBufferMutex;
     float publishInterval;
     bool logResponse;
+    bool logUploadResults;
     bool verifySsl;
     std::string cacheDir;
     bool cacheIfCannotSend;
-    std::atomic<bool> stopEventBuffer;
+    std::unique_ptr<std::thread> uploadThread;
+    std::vector<std::shared_ptr<proto::event::Event>> eventBuffer;
+    std::vector<std::shared_ptr<SnapData>> snapBuffer;
+    std::mutex eventBufferMutex;
+    std::mutex snapBufferMutex;
+    std::mutex stopThreadConditionMutex;
+    std::atomic<bool> stopUploadThread;
     std::condition_variable eventBufferCondition;
-    std::mutex eventBufferConditionMutex;
 };
 }  // namespace utility
 }  // namespace dai

@@ -9,7 +9,11 @@ int main(int argc, char* argv[]) {
     dai::Pipeline pipeline(true);
 
     auto eventsManager = std::make_shared<dai::utility::EventsManager>();
-    eventsManager->setLogResponse(true);
+
+    // Enter your hubs api-key
+    eventsManager->setUrl("https://events.cloud-stg.luxonis.com");
+    eventsManager->setToken("");
+
     // Color camera node
     auto camRgb = pipeline.create<dai::node::Camera>()->build();
     auto* preview = camRgb->requestOutput(std::make_pair(256, 256));
@@ -17,27 +21,27 @@ int main(int argc, char* argv[]) {
     auto previewQ = preview->createOutputQueue();
 
     pipeline.start();
-    bool sent = false;
-    eventsManager->sendEvent("test", nullptr, {}, {"tag1", "tag2"}, {{"key1", "value1"}});
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(7000));
+    std::vector<std::shared_ptr<dai::utility::FileData>> data;
 
-    auto fileData = std::make_shared<dai::utility::EventData>("abc", "test_bin.txt", "text/plain");
-    std::vector<std::shared_ptr<dai::utility::EventData>> data;
-    data.emplace_back(fileData);
-    eventsManager->sendEvent("testdata", nullptr, data, {"tag3", "tag4"}, {{"key8", "value8"}});
     while(pipeline.isRunning()) {
         auto rgb = previewQ->get<dai::ImgFrame>();
 
-        // Do something with the data
-        // ...
+        std::string str = "image_";
+        std::stringstream ss;
+        ss << str << data.size();
 
-        if(!sent) {
-            eventsManager->sendSnap("rgb", rgb, {}, {"tag11", "tag12"}, {{"key", "value"}});
-            sent = true;
+        auto rgbData = std::make_shared<dai::utility::FileData>(rgb, ss.str());
+        data.emplace_back(rgbData);
+
+        if (data.size() == 5)
+        {
+            eventsManager->sendSnap("ImgFrame", {"EventsExample", "C++"}, {{"key_0", "value_0"}, {"key_1", "value_1"}}, "", data);
+            data.clear();
+            std::this_thread::sleep_for(std::chrono::milliseconds(3000));
         }
-        //
-        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(400));
     }
 
     return EXIT_SUCCESS;
