@@ -12,6 +12,7 @@ on:
     branches:
       - main
       - develop
+    types: [opened, synchronize, reopened, labeled]
 
 # Only allow latest run on same branch to be tested
 concurrency:
@@ -57,6 +58,7 @@ jobs:
       luxonis_os_versions_to_test_rgb: "['1.18.3']"
     secrets:
       CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
+      HIL_PAT_TOKEN: ${{ secrets.HIL_PAT_TOKEN }}
 
   run_tsan_tests:
     needs: [precheck]
@@ -67,6 +69,7 @@ jobs:
       luxonis_os_versions_to_test: "['1.18.3']"
     secrets:
       CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
+      HIL_PAT_TOKEN: ${{ secrets.HIL_PAT_TOKEN }}
 
   run_asan-ubsan_tests:
     needs: [precheck]
@@ -77,6 +80,7 @@ jobs:
       luxonis_os_versions_to_test: "['1.18.3']"
     secrets:
       CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
+      HIL_PAT_TOKEN: ${{ secrets.HIL_PAT_TOKEN }}
 
   windows_rvc2_rvc4_test:
     needs: [precheck]

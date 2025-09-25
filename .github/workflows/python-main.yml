@@ -14,6 +14,7 @@ on:
     branches:
       - main
       - develop
+    types: [opened, synchronize, reopened, labeled]
 
 ###################################
 ###################################
@@ -270,7 +271,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
       - name: Building wheels
-        run: cd bindings/python && python -m pip wheel . -w ./wheelhouse/ --verbose
+        run: cd bindings/python && python -m pip wheel . -w ./wheelhouse/ --no-deps --verbose
       - name: Print out vcpkg logs if building port fails
         if: failure()    # Only run this if the build step fails
         run: cd bindings/python && bash ./ci/show_vcpkg_logs.sh
@@ -354,7 +355,7 @@ jobs:
           brew install nasm
           python -m pip install delocate
       - name: Building wheels
-        run: cd bindings/python && python -m pip wheel . -w ./wheelhouse/ --verbose
+        run: cd bindings/python && python -m pip wheel . -w ./wheelhouse/ --no-deps --verbose
       - name: Print out vcpkg logs if building port fails
         if: failure()    # Only run this if the build step fails
         run: cd bindings/python && bash ./ci/show_vcpkg_logs.sh
@@ -453,7 +454,7 @@ jobs:
           mv dist/* wheelhouse/audited/
       - name: Build wheels
         run: |
-          cd bindings/python && for PYBIN in /opt/python/${{ matrix.python-set }}/bin; do "${PYBIN}/pip" wheel . -w ./wheelhouse/ --verbose; done
+          cd bindings/python && for PYBIN in /opt/python/${{ matrix.python-set }}/bin; do "${PYBIN}/pip" wheel . -w ./wheelhouse/ --no-deps --verbose; done
       - name: Print out vcpkg logs if building port fails
         if: failure()    # Only run this if the build step fails
         run: cd bindings/python && bash ./ci/show_vcpkg_logs.sh
@@ -557,7 +558,7 @@ jobs:
         run: echo "BUILD_COMMIT_HASH=${{github.sha}}" >> $GITHUB_ENV
       - name: Building wheels
         run: |
-          cd bindings/python && for PYBIN in /opt/python/${{ matrix.python-set }}/bin; do "${PYBIN}/pip" wheel . -w ./wheelhouse/ --verbose; done
+          cd bindings/python && for PYBIN in /opt/python/${{ matrix.python-set }}/bin; do "${PYBIN}/pip" wheel . -w ./wheelhouse/ --no-deps --verbose; done
       - name: Print out vcpkg logs if building port fails
         if: failure()    # Only run this if the build step fails
         run: cd bindings/python && bash ./ci/show_vcpkg_logs.sh
