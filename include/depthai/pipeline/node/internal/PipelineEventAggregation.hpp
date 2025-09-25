@@ -7,6 +7,7 @@
 
 namespace dai {
 namespace node {
+namespace internal {
 
 /**
  * @brief Sync node. Performs syncing between image frames
@@ -22,7 +23,7 @@ class PipelineEventAggregation : public DeviceNodeCRTP<DeviceNode, PipelineEvent
     /**
      * A map of inputs
      */
-    InputMap inputs{*this, "inputs", {"", DEFAULT_GROUP, false, 10, {{{DatatypeEnum::PipelineEvent, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+    InputMap inputs{*this, "inputs", {DEFAULT_NAME, DEFAULT_GROUP, false, 10, {{{DatatypeEnum::PipelineEvent, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Output message of type
@@ -43,5 +44,6 @@ class PipelineEventAggregation : public DeviceNodeCRTP<DeviceNode, PipelineEvent
     void run() override;
 };
 
+}  // namespace internal
 }  // namespace node
 }  // namespace dai

@@ -643,16 +643,22 @@ void PipelineImpl::build() {
             hasDeviceNodes = true;
         }
     }
-    std::shared_ptr<node::PipelineEventAggregation> hostEventAgg = nullptr;
-    std::shared_ptr<node::PipelineEventAggregation> deviceEventAgg = nullptr;
-    if(hasHostNodes) hostEventAgg = parent.create<node::PipelineEventAggregation>();
-    if(hasDeviceNodes) deviceEventAgg = parent.create<node::PipelineEventAggregation>();
+    std::shared_ptr<node::internal::PipelineEventAggregation> hostEventAgg = nullptr;
+    std::shared_ptr<node::internal::PipelineEventAggregation> deviceEventAgg = nullptr;
+    if(hasHostNodes) {
+        hostEventAgg = parent.create<node::internal::PipelineEventAggregation>();
+        hostEventAgg->setRunOnHost(true);
+    }
+    if(hasDeviceNodes) {
+        deviceEventAgg = parent.create<node::internal::PipelineEventAggregation>();
+        deviceEventAgg->setRunOnHost(false);
+    }
     for(auto& node : getAllNodes()) {
         auto threadedNode = std::dynamic_pointer_cast<ThreadedNode>(node);
         if(threadedNode) {
-            if(node->runOnHost() && hostEventAgg) {
+            if(node->runOnHost() && hostEventAgg && node->id != hostEventAgg->id) {
                 threadedNode->pipelineEventOutput.link(hostEventAgg->inputs[fmt::format("{} - {}", node->getName(), node->id)]);
-            } else if(!node->runOnHost() && deviceEventAgg) {
+            } else if(!node->runOnHost() && deviceEventAgg && node->id != deviceEventAgg->id) {
                 threadedNode->pipelineEventOutput.link(deviceEventAgg->inputs[fmt::format("{} - {}", node->getName(), node->id)]);
             }
         }

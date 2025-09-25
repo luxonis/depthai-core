@@ -4,7 +4,7 @@
 
 void bind_pipelineeventaggregation(pybind11::module& m, void* pCallstack) {
     using namespace dai;
-    using namespace dai::node;
+    using namespace dai::node::internal;
 
     // Node and Properties declare upfront
     py::class_<PipelineEventAggregationProperties> pipelineEventAggregationProperties(

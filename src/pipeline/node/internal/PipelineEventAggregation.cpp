@@ -6,6 +6,7 @@
 
 namespace dai {
 namespace node {
+namespace internal {
 
 class NodeEventAggregation {
     int windowSize;
@@ -115,5 +116,7 @@ void PipelineEventAggregation::run() {
         if(shouldSend) out.send(outState);
     }
 }
+
+}  // namespace internal
 }  // namespace node
 }  // namespace dai
