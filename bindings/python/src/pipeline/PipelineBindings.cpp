@@ -31,6 +31,7 @@
 #include "depthai/pipeline/node/Script.hpp"
 #include "depthai/pipeline/node/SpatialDetectionCalculator.hpp"
 #include "depthai/pipeline/node/SpatialDetectionNetwork.hpp"
+#include "depthai/pipeline/node/SpatialKeypointsCalculator.hpp"
 #include "depthai/pipeline/node/SpatialLocationCalculator.hpp"
 #include "depthai/pipeline/node/StereoDepth.hpp"
 #include "depthai/pipeline/node/SystemLogger.hpp"

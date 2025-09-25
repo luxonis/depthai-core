@@ -143,6 +143,7 @@ void bind_systemlogger(pybind11::module& m, void* pCallstack);
 void bind_script(pybind11::module& m, void* pCallstack);
 void bind_spatiallocationcalculator(pybind11::module& m, void* pCallstack);
 void bind_spatialdetectioncalculator(pybind11::module& m, void* pCallstack);
+void bind_spatialkeypointscalculator(pybind11::module& m, void* pCallstack);
 void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack);
 void bind_objecttracker(pybind11::module& m, void* pCallstack);
 void bind_imu(pybind11::module& m, void* pCallstack);
@@ -193,6 +194,7 @@ void NodeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_script);
     callstack.push_front(bind_spatiallocationcalculator);
     callstack.push_front(bind_spatialdetectioncalculator);
+    callstack.push_front(bind_spatialkeypointscalculator);
     callstack.push_front(bind_spatialdetectionnetwork);
     callstack.push_front(bind_objecttracker);
     callstack.push_front(bind_imu);
