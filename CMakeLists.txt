@@ -3,7 +3,8 @@ cmake_minimum_required(VERSION 3.20)
 include(cmake/depthaiOptions.cmake)
 
 if(WIN32)
-    add_compile_options(/MP /Ob2)
+    add_compile_options(/MP)
+    add_compile_options(/Ob2) # perform more aggresive function inlining to reduce the number of exported symbols, adopted from https://github.com/tensorflow/tensorflow/pull/10962
     set(CMAKE_DEBUG_POSTFIX "d" CACHE STRING "Postfix for debug libraries" FORCE)
 endif()
 
