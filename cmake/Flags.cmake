@@ -41,6 +41,7 @@ function(add_default_flags target)
             add_flag(${target} -Werror=sign-compare)     # warn the user if they compare a signed and unsigned numbers
             add_flag(${target} -Werror=reorder)          # field '$1' will be initialized after field '$2'
             add_flag(${target} -Werror=switch-enum)      # if switch case is missing - error
+            add_flag(${target} -Werror=weak-vtables)     # error if a class has a weak vtable (https://stackoverflow.com/questions/23746941/what-is-the-meaning-of-clangs-wweak-vtables) - weak vtables cause dynamic_casts not working as expected (and many other operations that involve RTTI for that matter)
         endif()
 
     elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")

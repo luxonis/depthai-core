@@ -1,6 +1,13 @@
 #include "depthai/pipeline/datatype/StereoDepthConfig.hpp"
 
 namespace dai {
+
+StereoDepthConfig::~StereoDepthConfig() = default;
+
+void StereoDepthConfig::serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const {
+    metadata = utility::serialize(*this);
+    datatype = DatatypeEnum::StereoDepthConfig;
+}
 StereoDepthConfig& StereoDepthConfig::setDepthAlign(AlgorithmControl::DepthAlign align) {
     algorithmControl.depthAlign = align;
     return *this;

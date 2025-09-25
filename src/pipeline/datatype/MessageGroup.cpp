@@ -8,6 +8,13 @@
 
 namespace dai {
 
+MessageGroup::~MessageGroup() = default;
+
+void MessageGroup::serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const {
+    metadata = utility::serialize(*this);
+    datatype = DatatypeEnum::MessageGroup;
+}
+
 std::shared_ptr<ADatatype> MessageGroup::operator[](const std::string& name) {
     return group.at(name);
 }

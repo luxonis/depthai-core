@@ -9,6 +9,8 @@ namespace dai {
 
 struct DynamicCalibrationProperties : PropertiesSerializable<Properties, DynamicCalibrationProperties> {
     bool emptyBool;
+
+    ~DynamicCalibrationProperties() override;
 };
 
 DEPTHAI_SERIALIZE_EXT(DynamicCalibrationProperties, emptyBool);

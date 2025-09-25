@@ -28,6 +28,8 @@ struct SPIInProperties : PropertiesSerializable<Properties, SPIInProperties> {
      * Number of frames in pool
      */
     std::uint32_t numFrames = 4;
+
+    ~SPIInProperties() override;
 };
 
 DEPTHAI_SERIALIZE_EXT(SPIInProperties, streamName, busId, maxDataSize, numFrames);

@@ -90,6 +90,8 @@ struct CameraProperties : PropertiesSerializable<Properties, CameraProperties> {
     int numFramesPoolVideo = 4;
     int numFramesPoolPreview = 4;
     int numFramesPoolStill = 4;
+
+    ~CameraProperties() override;
 };
 
 DEPTHAI_SERIALIZE_EXT(CameraProperties,

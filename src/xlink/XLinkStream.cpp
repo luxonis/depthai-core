@@ -76,6 +76,29 @@ StreamPacketDesc::~StreamPacketDesc() noexcept {
     XLinkDeallocateMoveData(data, length);
 }
 
+span<std::uint8_t> StreamPacketMemory::getData() {
+    return {data, size};
+}
+
+span<const std::uint8_t> StreamPacketMemory::getData() const {
+    return {data, size};
+}
+
+std::size_t StreamPacketMemory::getMaxSize() const {
+    return length;
+}
+
+std::size_t StreamPacketMemory::getOffset() const {
+    return 0;
+}
+
+void StreamPacketMemory::setSize(size_t size) {
+    if(size > getMaxSize()) {
+        throw std::invalid_argument("Cannot set size larger than max size");
+    }
+    this->size = size;
+}
+
 ////////////////////
 // BLOCKING VERSIONS
 ////////////////////
@@ -279,10 +302,16 @@ std::string XLinkStream::getStreamName() const {
     return streamName;
 }
 
+XLinkError::~XLinkError() = default;
+
 XLinkReadError::XLinkReadError(XLinkError_t status, const std::string& streamName)
     : XLinkError(status, streamName, fmt::format("Couldn't read data from stream: '{}' ({})", streamName, XLinkConnection::convertErrorCodeToString(status))) {}
 
+XLinkReadError::~XLinkReadError() = default;
+
 XLinkWriteError::XLinkWriteError(XLinkError_t status, const std::string& streamName)
     : XLinkError(status, streamName, fmt::format("Couldn't write data to stream: '{}' ({})", streamName, XLinkConnection::convertErrorCodeToString(status))) {}
+
+XLinkWriteError::~XLinkWriteError() = default;
 
 }  // namespace dai
