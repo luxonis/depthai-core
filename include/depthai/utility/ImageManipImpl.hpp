@@ -2804,8 +2804,7 @@ ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>& ImageManipO
 
 template <template <typename T> typename ImageManipBuffer,
           typename ImageManipData,
-          template <template <typename T> typename Buf, typename Dat>
-          typename WarpBackend>
+          template <template <typename T> typename Buf, typename Dat> typename WarpBackend>
 ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>& ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::buildUndistort(
     bool enable,
     const std::array<float, 9>& cameraMatrix,

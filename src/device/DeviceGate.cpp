@@ -27,6 +27,7 @@ namespace dai {
 const std::string API_ROOT{"/api/v1"};
 const auto sessionsEndpoint = API_ROOT + "/sessions";
 const int DEFAULT_PORT{11492};
+const int gateTimeout = 2000;
 
 enum USBRequestID_t {
     RESPONSE_OK,
@@ -75,7 +76,7 @@ DeviceGate::DeviceGate(const DeviceInfo& deviceInfo) : deviceInfo(deviceInfo) {
     }
 
     if(deviceInfo.protocol == X_LINK_USB_EP) {
-        impl = std::make_shared<USBImpl>();
+        impl = std::make_shared<USBImpl>(gateTimeout);
     } else {
         impl = std::make_shared<HTTPImpl>(deviceInfo);
     }
@@ -87,6 +88,8 @@ DeviceGate::HTTPImpl::HTTPImpl(DeviceInfo deviceInfo) {
     pimpl->cli->set_read_timeout(60);  // 60 seconds timeout to allow for compressing the crash dumps without async
     // pimpl->cli->set_connection_timeout(2);
 }
+
+DeviceGate::USBImpl::USBImpl(int timeout) : timeout(timeout) {}
 
 bool DeviceGate::isOkay() {
     return impl->isOkay();
@@ -101,16 +104,23 @@ bool DeviceGate::USBImpl::isOkay() {
     USBRequest_t request;
     request.RequestNum = IS_OKAY;
     request.RequestSize = 0;
-    XLinkGateWrite(&request, sizeof(USBRequest_t));
+    if(XLinkGateWrite(&request, sizeof(USBRequest_t), timeout) == X_LINK_ERROR) {
+        return false;
+    }
 
-    XLinkGateRead(&request, sizeof(request));
+    if(XLinkGateRead(&request, sizeof(request), timeout) == X_LINK_ERROR) {
+        return false;
+    }
+
     if(request.RequestNum == RESPONSE_ERROR) {
         return false;
     }
 
     std::vector<uint8_t> respBuffer;
     respBuffer.resize(request.RequestSize + 1);
-    XLinkGateRead(&respBuffer[0], request.RequestSize);
+    if(XLinkGateRead(&respBuffer[0], request.RequestSize, timeout) == X_LINK_ERROR) {
+        return {};
+    }
     respBuffer[request.RequestSize] = '\0';
 
     bool result = nlohmann::json::parse(respBuffer)["status"].get<bool>();
@@ -136,16 +146,22 @@ Version DeviceGate::USBImpl::getVersion() {
     USBRequest_t request;
     request.RequestNum = GET_VERSION;
     request.RequestSize = 0;
-    XLinkGateWrite(&request, sizeof(USBRequest_t));
+    if(XLinkGateWrite(&request, sizeof(USBRequest_t), timeout) == X_LINK_ERROR) {
+        return {0, 0, 0};
+    }
 
-    XLinkGateRead(&request, sizeof(request));
+    if(XLinkGateRead(&request, sizeof(request), timeout) == X_LINK_ERROR) {
+        return {0, 0, 0};
+    }
     if(request.RequestNum == RESPONSE_ERROR) {
         return Version{0, 0, 0};
     }
 
     std::vector<uint8_t> respBuffer;
     respBuffer.resize(request.RequestSize + 1);
-    XLinkGateRead(&respBuffer[0], request.RequestSize);
+    if(XLinkGateRead(&respBuffer[0], request.RequestSize, timeout) == X_LINK_ERROR) {
+        return {0, 0, 0};
+    }
     respBuffer[request.RequestSize] = '\0';
 
     auto result = nlohmann::json::parse(respBuffer)["version_gate"].get<std::string>();
@@ -175,16 +191,22 @@ DeviceGate::VersionInfo DeviceGate::USBImpl::getAllVersion() {
     USBRequest_t request;
     request.RequestNum = GET_VERSION;
     request.RequestSize = 0;
-    XLinkGateWrite(&request, sizeof(USBRequest_t));
+    if(XLinkGateWrite(&request, sizeof(USBRequest_t), timeout) == X_LINK_ERROR) {
+        return {};
+    }
 
-    XLinkGateRead(&request, sizeof(request));
+    if(XLinkGateRead(&request, sizeof(request), timeout) == X_LINK_ERROR) {
+        return {};
+    }
     if(request.RequestNum == RESPONSE_ERROR) {
         return {};
     }
 
     std::vector<uint8_t> respBuffer;
     respBuffer.resize(request.RequestSize + 1);
-    XLinkGateRead(&respBuffer[0], request.RequestSize);
+    if(XLinkGateRead(&respBuffer[0], request.RequestSize, timeout) == X_LINK_ERROR) {
+        return {};
+    }
     respBuffer[request.RequestSize] = '\0';
     auto result = nlohmann::json::parse(respBuffer);
 
@@ -269,10 +291,16 @@ bool DeviceGate::USBImpl::createSession(
     USBRequest_t request;
     request.RequestNum = CREATE_SESSION;
     request.RequestSize = createSessionBody.dump().size();
-    XLinkGateWrite(&request, sizeof(USBRequest_t));
-    XLinkGateWrite((void*)createSessionBody.dump().c_str(), createSessionBody.dump().size());
+    if(XLinkGateWrite(&request, sizeof(USBRequest_t), timeout) == X_LINK_ERROR) {
+        return false;
+    }
+    if(XLinkGateWrite((void*)createSessionBody.dump().c_str(), createSessionBody.dump().size(), timeout) == X_LINK_ERROR) {
+        return false;
+    }
 
-    XLinkGateRead(&request, sizeof(request));
+    if(XLinkGateRead(&request, sizeof(request), timeout) == X_LINK_ERROR) {
+        return false;
+    }
     if(request.RequestNum == RESPONSE_ERROR) {
         spdlog::warn("DeviceGate createSession not successful - got no response");
         return false;
@@ -280,7 +308,9 @@ bool DeviceGate::USBImpl::createSession(
 
     std::vector<uint8_t> respBuffer;
     respBuffer.resize(request.RequestSize + 1);
-    XLinkGateRead(&respBuffer[0], request.RequestSize);
+    if(XLinkGateRead(&respBuffer[0], request.RequestSize, timeout) == X_LINK_ERROR) {
+        return false;
+    }
     respBuffer[request.RequestSize] = '\0';
     auto resp = nlohmann::json::parse(respBuffer);
     spdlog::debug("DeviceGate createSession response: {}", resp.dump());
@@ -303,10 +333,16 @@ bool DeviceGate::USBImpl::createSession(
         nlohmann::json uploadFwpBody = {{"sessionId", sessionId}, {"file", package}};
         request.RequestNum = UPLOAD_FWP;
         request.RequestSize = uploadFwpBody.dump().size();
-        XLinkGateWrite(&request, sizeof(USBRequest_t));
-        XLinkGateWrite((void*)uploadFwpBody.dump().c_str(), uploadFwpBody.dump().size());
+        if(XLinkGateWrite(&request, sizeof(USBRequest_t), timeout) == X_LINK_ERROR) {
+            return false;
+        }
+        if(XLinkGateWrite((void*)uploadFwpBody.dump().c_str(), uploadFwpBody.dump().size(), timeout) == X_LINK_ERROR) {
+            return false;
+        }
 
-        XLinkGateRead(&request, sizeof(request));
+        if(XLinkGateRead(&request, sizeof(request), timeout) == X_LINK_ERROR) {
+            return false;
+        }
         if(request.RequestNum == RESPONSE_ERROR) {
             spdlog::warn("DeviceGate upload fwp not successful - got no response");
             return false;
@@ -335,10 +371,16 @@ bool DeviceGate::USBImpl::startSession(std::string sessionId) {
     USBRequest_t request;
     request.RequestNum = START_SESSION;
     request.RequestSize = sessionId.size();
-    XLinkGateWrite(&request, sizeof(USBRequest_t));
-    XLinkGateWrite((void*)sessionId.c_str(), sessionId.size());
+    if(XLinkGateWrite(&request, sizeof(USBRequest_t), timeout) == X_LINK_ERROR) {
+        return false;
+    }
+    if(XLinkGateWrite((void*)sessionId.c_str(), sessionId.size(), timeout) == X_LINK_ERROR) {
+        return false;
+    }
 
-    XLinkGateRead(&request, sizeof(request));
+    if(XLinkGateRead(&request, sizeof(request), timeout) == X_LINK_ERROR) {
+        return false;
+    }
     if(request.RequestNum == RESPONSE_ERROR) {
         spdlog::debug("DeviceGate start fwp not successful - got no response");
         return false;
@@ -376,10 +418,16 @@ bool DeviceGate::USBImpl::stopSession(std::string sessionId) {
     USBRequest_t request;
     request.RequestNum = STOP_SESSION;
     request.RequestSize = sessionId.size();
-    XLinkGateWrite(&request, sizeof(USBRequest_t));
-    XLinkGateWrite((void*)sessionId.c_str(), sessionId.size());
+    if(XLinkGateWrite(&request, sizeof(USBRequest_t), timeout) == X_LINK_ERROR) {
+        return false;
+    }
+    if(XLinkGateWrite((void*)sessionId.c_str(), sessionId.size(), timeout) == X_LINK_ERROR) {
+        return false;
+    }
 
-    XLinkGateRead(&request, sizeof(request));
+    if(XLinkGateRead(&request, sizeof(request), timeout) == X_LINK_ERROR) {
+        return false;
+    }
     if(request.RequestNum == RESPONSE_ERROR) {
         spdlog::error("DeviceGate stopSession not successful - got no response");
         return false;
@@ -416,10 +464,16 @@ bool DeviceGate::USBImpl::destroySession(std::string sessionId) {
     USBRequest_t request;
     request.RequestNum = DESTROY_SESSION;
     request.RequestSize = sessionId.size();
-    XLinkGateWrite(&request, sizeof(USBRequest_t));
-    XLinkGateWrite((void*)sessionId.c_str(), sessionId.size());
+    if(XLinkGateWrite(&request, sizeof(USBRequest_t), timeout) == X_LINK_ERROR) {
+        return false;
+    }
+    if(XLinkGateWrite((void*)sessionId.c_str(), sessionId.size(), timeout) == X_LINK_ERROR) {
+        return false;
+    }
 
-    XLinkGateRead(&request, sizeof(request));
+    if(XLinkGateRead(&request, sizeof(request), timeout) == X_LINK_ERROR) {
+        return false;
+    }
     if(request.RequestNum == RESPONSE_ERROR) {
         spdlog::error("DeviceGate destroySession not successful - got no response");
         return false;
@@ -451,10 +505,16 @@ bool DeviceGate::USBImpl::deleteSession(std::string sessionId) {
     USBRequest_t request;
     request.RequestNum = DELETE_SESSION;
     request.RequestSize = sessionId.size();
-    XLinkGateWrite(&request, sizeof(USBRequest_t));
-    XLinkGateWrite((void*)sessionId.c_str(), sessionId.size());
+    if(XLinkGateWrite(&request, sizeof(USBRequest_t), timeout) == X_LINK_ERROR) {
+        return false;
+    }
+    if(XLinkGateWrite((void*)sessionId.c_str(), sessionId.size(), timeout) == X_LINK_ERROR) {
+        return false;
+    }
 
-    XLinkGateRead(&request, sizeof(request));
+    if(XLinkGateRead(&request, sizeof(request), timeout) == X_LINK_ERROR) {
+        return false;
+    }
     if(request.RequestNum == RESPONSE_ERROR) {
         spdlog::error("DeviceGate deleteSession not successful - got no response");
         return false;
@@ -512,10 +572,16 @@ DeviceGate::SessionState DeviceGate::USBImpl::getState(std::string sessionId) {
     USBRequest_t request;
     request.RequestNum = GET_STATE;
     request.RequestSize = sessionId.size();
-    XLinkGateWrite(&request, sizeof(USBRequest_t));
-    XLinkGateWrite((void*)sessionId.c_str(), sessionId.size());
+    if(XLinkGateWrite(&request, sizeof(USBRequest_t), timeout) == X_LINK_ERROR) {
+        return SessionState::ERROR_STATE;
+    }
+    if(XLinkGateWrite((void*)sessionId.c_str(), sessionId.size(), timeout) == X_LINK_ERROR) {
+        return SessionState::ERROR_STATE;
+    }
 
-    XLinkGateRead(&request, sizeof(request));
+    if(XLinkGateRead(&request, sizeof(request), timeout) == X_LINK_ERROR) {
+        return SessionState::ERROR_STATE;
+    }
     if(request.RequestNum == RESPONSE_ERROR) {
         spdlog::warn("DeviceGate getState not successful - got no response");
         return SessionState::ERROR_STATE;
@@ -523,7 +589,9 @@ DeviceGate::SessionState DeviceGate::USBImpl::getState(std::string sessionId) {
 
     std::vector<uint8_t> respBuffer;
     respBuffer.resize(request.RequestSize + 1);
-    XLinkGateRead(&respBuffer[0], request.RequestSize);
+    if(XLinkGateRead(&respBuffer[0], request.RequestSize, timeout) == X_LINK_ERROR) {
+        return SessionState::ERROR_STATE;
+    }
     respBuffer[request.RequestSize] = '\0';
     auto resp = nlohmann::json::parse(respBuffer);
     spdlog::trace("DeviceGate getState response: {}", resp.dump());
@@ -572,10 +640,16 @@ std::optional<std::vector<uint8_t>> DeviceGate::USBImpl::getFile(const std::stri
     USBRequest_t request;
     request.RequestNum = GET_FILE;
     request.RequestSize = fileUrl.size();
-    XLinkGateWrite(&request, sizeof(USBRequest_t));
-    XLinkGateWrite((void*)fileUrl.c_str(), fileUrl.size());
+    if(XLinkGateWrite(&request, sizeof(USBRequest_t), timeout) == X_LINK_ERROR) {
+        return std::nullopt;
+    }
+    if(XLinkGateWrite((void*)fileUrl.c_str(), fileUrl.size(), timeout) == X_LINK_ERROR) {
+        return std::nullopt;
+    }
 
-    XLinkGateRead(&request, sizeof(request));
+    if(XLinkGateRead(&request, sizeof(request), timeout) == X_LINK_ERROR) {
+        return std::nullopt;
+    }
     if(request.RequestNum == RESPONSE_ERROR) {
         spdlog::warn("File download not successful - got no response");
         return std::nullopt;
@@ -583,7 +657,9 @@ std::optional<std::vector<uint8_t>> DeviceGate::USBImpl::getFile(const std::stri
 
     std::vector<uint8_t> respBuffer;
     respBuffer.resize(request.RequestSize + 1);
-    XLinkGateRead(&respBuffer[0], request.RequestSize);
+    if(XLinkGateRead(&respBuffer[0], request.RequestSize, timeout) == X_LINK_ERROR) {
+        return std::nullopt;
+    }
     respBuffer[request.RequestSize] = '\0';
     auto resp = nlohmann::json::parse(respBuffer);
 

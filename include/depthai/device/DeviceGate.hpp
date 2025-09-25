@@ -73,6 +73,7 @@ class DeviceGate {
 
     class USBImpl : public GateImpl {
        public:
+        USBImpl(int timeout);
         ~USBImpl() = default;
         bool isOkay() override;
         bool createSession(std::string version, bool exclusive, XLinkPlatform_t platform, std::string& sessionId, std::atomic_bool& sessionCreated) override;
@@ -84,6 +85,9 @@ class DeviceGate {
         Version getVersion() override;
         VersionInfo getAllVersion() override;
         std::optional<std::vector<uint8_t>> getFile(const std::string& fileUrl, std::string& filename) override;
+
+       private:
+        int timeout;
     };
 
     class HTTPImpl : public GateImpl {

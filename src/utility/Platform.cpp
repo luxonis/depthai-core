@@ -199,7 +199,7 @@ void FSLock::lock() {
         throw std::runtime_error("Failed to open file: " + lockPath.string());
     }
 
-    struct flock fl {};
+    struct flock fl{};
     fl.l_type = F_WRLCK;
     fl.l_whence = SEEK_SET;
     fl.l_start = 0;
@@ -224,7 +224,7 @@ void FSLock::unlock() {
     CloseHandle(handle);
     handle = INVALID_HANDLE_VALUE;
 #else
-    struct flock fl {};
+    struct flock fl{};
     fl.l_type = F_UNLCK;
     fl.l_whence = SEEK_SET;
     fl.l_start = 0;
