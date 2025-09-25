@@ -1,17 +1,11 @@
 #pragma once
 
 // Std
-#include <atomic>
 #include <chrono>
 #include <cstdint>
-#include <list>
 #include <memory>
-#include <mutex>
 #include <stdexcept>
 #include <string>
-#include <thread>
-#include <tuple>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -110,31 +104,25 @@ class XLinkStream {
     std::string getStreamName() const;
 };
 
-#ifdef __clang__
-    #pragma clang diagnostic push
-    #pragma clang diagnostic ignored "-Wweak-vtables"
-#endif
-
 struct XLinkError : public std::runtime_error {
     const XLinkError_t status = X_LINK_ERROR;
     const std::string streamName;
 
     using std::runtime_error::runtime_error;
+    ~XLinkError() override;
 
     XLinkError(XLinkError_t statusID, std::string stream, const std::string& message)
         : runtime_error(message), status(statusID), streamName(std::move(stream)) {}
 };
 struct XLinkReadError : public XLinkError {
     using XLinkError = XLinkError;
+    ~XLinkReadError() override;
     XLinkReadError(XLinkError_t status, const std::string& stream);
 };
 struct XLinkWriteError : public XLinkError {
     using XLinkError = XLinkError;
+    ~XLinkWriteError() override;
     XLinkWriteError(XLinkError_t status, const std::string& stream);
 };
-
-#ifdef __clang__
-    #pragma clang diagnostic pop
-#endif
 
 }  // namespace dai

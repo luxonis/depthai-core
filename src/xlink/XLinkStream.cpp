@@ -302,10 +302,16 @@ std::string XLinkStream::getStreamName() const {
     return streamName;
 }
 
+XLinkError::~XLinkError() = default;
+
 XLinkReadError::XLinkReadError(XLinkError_t status, const std::string& streamName)
     : XLinkError(status, streamName, fmt::format("Couldn't read data from stream: '{}' ({})", streamName, XLinkConnection::convertErrorCodeToString(status))) {}
 
+XLinkReadError::~XLinkReadError() = default;
+
 XLinkWriteError::XLinkWriteError(XLinkError_t status, const std::string& streamName)
     : XLinkError(status, streamName, fmt::format("Couldn't write data to stream: '{}' ({})", streamName, XLinkConnection::convertErrorCodeToString(status))) {}
+
+XLinkWriteError::~XLinkWriteError() = default;
 
 }  // namespace dai
