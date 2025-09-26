@@ -29,13 +29,16 @@ void bind_overlay(pybind11::module& m, void* pCallstack) {
 
     overlayProperties.def_readwrite("alpha", &OverlayProperties::alpha);
     overlayProperties.def_readwrite("interpolationType", &OverlayProperties::interpolationType);
+    overlayProperties.def_readwrite("outputWidth", &OverlayProperties::outputWidth);
+    overlayProperties.def_readwrite("outputHeight", &OverlayProperties::outputHeight);
 
     // Node
     overlay.def_readonly("inputFrame", &Overlay::inputFrame, DOC(dai, node, Overlay, inputFrame))
         .def_readonly("inputDetections", &Overlay::inputDetections, DOC(dai, node, Overlay, inputDetections))
         .def_readonly("out", &Overlay::out, DOC(dai, node, Overlay, out))
         .def("setOverlayAlpha", &Overlay::setOverlayAlpha, py::arg("alpha") = 0.5f, DOC(dai, node, Overlay, setOverlayAlpha))
-        .def("setInterpolationType", &Overlay::setInterpolationType, py::arg("interpolationType") = 1, DOC(dai, node, Overlay, setInterpolationType));
+        .def("setInterpolationType", &Overlay::setInterpolationType, py::arg("interpolationType") = 1, DOC(dai, node, Overlay, setInterpolationType))
+        .def("setOutputSize", &Overlay::setOutputSize, py::arg("width") = 1920, py::arg("height") = 1080, DOC(dai, node, Overlay, setOutputSize));
     // ALIAS
     daiNodeModule.attr("Overlay").attr("Properties") = overlayProperties;
 }

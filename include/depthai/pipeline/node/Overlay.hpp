@@ -43,6 +43,8 @@ class Overlay : public DeviceNodeCRTP<DeviceNode, Overlay, OverlayProperties> {
     Overlay& setOverlayAlpha(float alpha);
 
     Overlay& setInterpolationType(int interpolationType);  // cv::INTER_LINEAR
+
+    Overlay& setOutputSize(int width, int height);
 };
 
 }  // namespace node

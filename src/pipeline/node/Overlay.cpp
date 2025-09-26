@@ -17,5 +17,11 @@ Overlay& Overlay::setInterpolationType(int interpolationType) {
     return *this;
 }
 
+Overlay& Overlay::setOutputSize(int width, int height) {
+    properties.outputWidth = width;
+    properties.outputHeight = height;
+    return *this;
+}
+
 }  // namespace node
 }  // namespace dai
