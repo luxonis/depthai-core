@@ -55,8 +55,8 @@ std::pair<std::shared_ptr<dcl::CameraCalibrationHandle>, std::shared_ptr<dcl::Ca
     const CalibrationHandler& currentCalibration,
     const CameraBoardSocket boardSocketA,
     const CameraBoardSocket boardSocketB,
-    const std::pair<int, int> resolutionA,
-    const std::pair<int, int> resolutionB) {
+    const std::pair<int, int>& resolutionA,
+    const std::pair<int, int>& resolutionB) {
     // clang-format off
     std::shared_ptr<dcl::CameraCalibrationHandle> calibA = DclUtils::createDclCalibration(
 	currentCalibration.getCameraIntrinsics(boardSocketA, resolutionA.first, resolutionA.second, Point2f(), Point2f(),false),
@@ -96,10 +96,10 @@ dcl::PerformanceMode DclUtils::daiPerformanceModeToDclPerformanceMode(const dai:
 }
 
 #define DCL_DISTORTION_SIZE (14)
-std::shared_ptr<dcl::CameraCalibrationHandle> DclUtils::createDclCalibration(const std::vector<std::vector<float>> cameraMatrix,
-                                                                             const std::vector<float> distortionCoefficients,
-                                                                             const std::vector<std::vector<float>> rotationMatrix,
-                                                                             const std::vector<float> translationVector) {
+std::shared_ptr<dcl::CameraCalibrationHandle> DclUtils::createDclCalibration(const std::vector<std::vector<float>>& cameraMatrix,
+                                                                             const std::vector<float>& distortionCoefficients,
+                                                                             const std::vector<std::vector<float>>& rotationMatrix,
+                                                                             const std::vector<float>& translationVector) {
     dcl::scalar_t cameraMatrixArr[9];
     dcl::scalar_t distortion[DCL_DISTORTION_SIZE] = {0};
     dcl::scalar_t rvec[3];
@@ -131,12 +131,12 @@ std::shared_ptr<dcl::CameraCalibrationHandle> DclUtils::createDclCalibration(con
 }
 
 void DclUtils::convertDclCalibrationToDai(CalibrationHandler& calibHandler,
-                                          const std::shared_ptr<const dcl::CameraCalibrationHandle> dclCalibrationA,
-                                          const std::shared_ptr<const dcl::CameraCalibrationHandle> dclCalibrationB,
+                                          const std::shared_ptr<const dcl::CameraCalibrationHandle>& dclCalibrationA,
+                                          const std::shared_ptr<const dcl::CameraCalibrationHandle>& dclCalibrationB,
                                           const CameraBoardSocket socketSrc,
                                           const CameraBoardSocket socketDest,
-                                          const std::pair<int, int> resolutionA,
-                                          const std::pair<int, int> resolutionB) {
+                                          const std::pair<int, int>& resolutionA,
+                                          const std::pair<int, int>& resolutionB) {
     dcl::scalar_t tvecA[3];
     dclCalibrationA->getTvec(tvecA);
     dcl::scalar_t rvecA[3];
@@ -389,10 +389,8 @@ DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline(const std::
         return DynamicCalibration::ErrorCode::PIPELINE_INITIALIZATION_FAILED;
     }
 
-    resolutionA.first = leftFrame->getWidth();
-    resolutionA.second = leftFrame->getHeight();
-    resolutionB.first = rightFrame->getWidth();
-    resolutionB.second = rightFrame->getHeight();
+    resolutionA = std::make_pair(leftFrame->getWidth(), leftFrame->getHeight());
+    resolutionB = std::make_pair(rightFrame->getWidth(), rightFrame->getHeight());
 
     daiSocketA = static_cast<CameraBoardSocket>(leftFrame->instanceNum);
     daiSocketB = static_cast<CameraBoardSocket>(rightFrame->instanceNum);
