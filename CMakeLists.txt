@@ -1301,4 +1301,8 @@ if(DEPTHAI_INSTALL)
         DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}"
     )
 
+    # Install vcpkg libraries that we link against dynamically
+    if(DEPTHAI_ENABLE_LIBUSB)
+        install(IMPORTED_RUNTIME_ARTIFACTS usb-1.0)
+    endif()
 endif()
