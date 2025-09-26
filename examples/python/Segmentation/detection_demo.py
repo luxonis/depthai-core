@@ -6,92 +6,9 @@ from depthai_nodes.node import ParsingNeuralNetwork
 from depthai_nodes.message import ImgDetectionExtended, ImgDetectionsExtended, Keypoint
 import cv2
 
+from util_nodes import *
+
 print(dai.__file__)
-class PortToDaiDetections(dai.node.ThreadedHostNode):
-    def __init__(self):
-        super().__init__()
-        self.input = self.createInput("in")
-        self.output = self.createOutput("out")
-
-        
-    def run(self) -> None:
-        while True:
-            in_data = self.input.get()
-            
-            if in_data is None:
-                continue
-            
-            assert isinstance(in_data, ImgDetectionsExtended)
-            
-            dai_detections = dai.ImgDetections()
-            dets = []
-            remove_ids = []
-            for i, det in enumerate(in_data.detections):
-                if det.label_name != "person":
-                    
-                    remove_ids.append(i)
-                    continue
-                dai_det = dai.ImgDetection()
-                dai_det.label = det.label
-                dai_det.confidence = det.confidence
-                dai_det.setBoundingBox(det.rotated_rect)
-                keypoints = []
-                for kp in det.keypoints:
-                    keypoints.append( dai.Keypoint(kp.x, kp.y, kp.z))
-                dai_det.setKeypoints(keypoints)
-                
-                dets.append(dai_det)
-            
-            dai_detections.detections = dets
-            dai_detections.setTimestamp(in_data.getTimestamp())
-            dai_detections.setSequenceNum(in_data.getSequenceNum())
-            dai_detections.setTransformation(in_data.getTransformation())
-            dai_detections.setTimestampDevice(in_data.getTimestampDevice())
-            
-            mask = in_data.masks
-            mask[mask == -1 ] = 255
-            for rid in remove_ids:
-                mask[mask == rid] = 255
-            
-            unique_ids = np.unique(mask)
-            id_map = {old_id: new_id for new_id, old_id in enumerate(unique_ids) if old_id != 255}
-            for old_id, new_id in id_map.items():
-                mask[mask == old_id] = new_id
-            
-            
-            mask = mask.astype(np.uint8)
-            dai_detections.setSegmentationMask(mask)
-
-            self.output.send(dai_detections)
-            
-
-class CreateSpatialLocationCalculatorConfig(dai.node.ThreadedHostNode):
-    def __init__(self):
-        super().__init__()
-        self.input = self.createInput()
-        self.output = self.createOutput()
-        
-    def run(self) -> None:
-        while True:
-            in_data = self.input.get()
-            if in_data is None:
-                continue
-            assert isinstance(in_data, dai.ImgDetections)
-            
-            configs = dai.SpatialLocationCalculatorConfig()
-            for det in in_data.detections:
-                config = dai.SpatialLocationCalculatorConfigData()
-                rotated_rect: dai.RotatedRect = det.getBoundingBox()
-                roi: dai.Rect = dai.Rect(*rotated_rect.getOuterXYWH())
-                
-                config.depthThresholds.lowerThreshold = 0
-                config.depthThresholds.upperThreshold = 65535
-                config.calculationAlgorithm = dai.SpatialLocationCalculatorAlgorithm.MEDIAN
-                config.roi = roi
-                
-                configs.addROI(config)
-                
-            self.output.send(configs)
                                 
 
 if __name__ == "__main__":
@@ -109,6 +26,7 @@ if __name__ == "__main__":
         input_node = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
         
         cam_out = input_node.requestOutput((1920, 1080), dai.ImgFrame.Type.NV12, fps=fps)
+        # cam_out = input_node.requestOutput((512, 288), dai.ImgFrame.Type.NV12, fps=fps)
         
         image_manip = pipeline.create(dai.node.ImageManip)
         image_manip.setMaxOutputFrameSize(512*288*3)
@@ -152,6 +70,28 @@ if __name__ == "__main__":
         stereo.depth.link(spatialLocationCalculator.inputDepth)
         config_creator.output.link(spatialLocationCalculator.inputConfig)
         
+        sync_node = pipeline.create(dai.node.Sync)
+        stereo.depth.link(sync_node.inputs["depth"])
+        portNode.output.link(sync_node.inputs["img_detections"])
+        
+        sync_decoder = pipeline.create(SyncDecoder)
+        sync_node.out.link(sync_decoder.input)
+        
+        depth_overlay = pipeline.create(OverlayFrame)
+        depth_overlay.inputDetections.setBlocking(True)
+        depth_overlay.inputFrame.setBlocking(True)
+        sync_decoder.out_detections.link(depth_overlay.inputDetections)        
+        sync_decoder.out_frame.link(depth_overlay.inputFrame)
+        
+        # portNode.output.link(depth_overlay.inputDetections)
+        # stereo.depth.link(depth_overlay.inputFrame)
+        
+        image_overlay = pipeline.create(OverlayFrame)
+        image_overlay.inputDetections.setBlocking(True)
+        image_overlay.inputFrame.setBlocking(True)
+        portNode.output.link(image_overlay.inputDetections)
+        cam_out.link(image_overlay.inputFrame)
+        
         
         # crop_encoder = pipeline.create(dai.node.VideoEncoder)
         # crop_encoder.setMaxOutputFrameSize(1920 * 1088 * 3)
@@ -162,9 +102,14 @@ if __name__ == "__main__":
         
         spatialLocationQueue = spatialLocationCalculator.out.createOutputQueue()
         spatialOutputQueue = spatialDetectionCalculator.out.createOutputQueue()
-        portNodeQueue = portNode.output.createOutputQueue()
+
+        # portNodeQueue = portNode.output.createOutputQueue()
+        # portNodeQueue.setBlocking(True)
+        depth_overlay_out = depth_overlay.output.createOutputQueue()
+
+        
         # cam_queue = crop_encoder.out.createOutputQueue()
-        cam_queue = cam_out.createOutputQueue()
+        cam_queue = image_overlay.output.createOutputQueue()
         
         
         print("Pipeline created.")
@@ -175,34 +120,41 @@ if __name__ == "__main__":
             spatialData = spatialOutputQueue.get()
             # depth = stereoQueue.get()
             passthrough = cam_queue.get()
-            port_img_detections = portNodeQueue.get()
+            # port_img_detections = portNodeQueue.get()
             spatialLocationsMsg = spatialLocationQueue.get()
+            depth_overlay_frame = depth_overlay_out.get()
 
             assert isinstance(spatialLocationsMsg, dai.SpatialLocationCalculatorData)
-            assert isinstance(port_img_detections, dai.ImgDetections)
+            # assert isinstance(port_img_detections, dai.ImgDetections)
             assert isinstance(spatialData, dai.SpatialImgDetections)
             assert isinstance(passthrough, dai.ImgFrame)
+            assert isinstance(depth_overlay_frame, dai.ImgFrame)
+            depth_overlay_image = depth_overlay_frame.getCvFrame()
+            
             image = passthrough.getCvFrame()
             
             spatialLocations = spatialLocationsMsg.getSpatialLocations()
             
-            mask = port_img_detections.getCvSegmentationMask().astype(np.int32)
-            mask = cv2.resize(mask, (1920, 1080), interpolation=cv2.INTER_NEAREST)
+            # mask = port_img_detections.getCvSegmentationMask().astype(np.int32)
+            # size = (512, 288)
+            size = (1920, 1080)
             
-            mask[mask == 255] = -1
-            scaled_mask = np.ones_like(mask, dtype=np.uint8) * 255
-            max_val = np.max(mask)
-            min_val = np.min(mask)
+            # mask = cv2.resize(mask, size, interpolation=cv2.INTER_NEAREST)
             
-            if min_val != max_val:
-                scaled_mask = ((mask - min_val) / (max_val - min_val) * 255).astype(np.uint8)
+            # mask[mask == 255] = -1
+            # scaled_mask = np.ones_like(mask, dtype=np.uint8) * 255
+            # max_val = np.max(mask)
+            # min_val = np.min(mask)
             
-            scaled_mask[mask == 255] = 0
-            scaled_mask = cv2.applyColorMap(scaled_mask, cv2.COLORMAP_JET)
-            scaled_mask[mask == -1] = image[mask == -1]
+            # if min_val != max_val:
+            #     scaled_mask = ((mask - min_val) / (max_val - min_val) * 255).astype(np.uint8)
             
-            alpha = 0.7
-            image = cv2.addWeighted( image, alpha, scaled_mask, 1 - alpha, 0)
+            # scaled_mask[mask == 255] = 0
+            # scaled_mask = cv2.applyColorMap(scaled_mask, cv2.COLORMAP_JET)
+            # scaled_mask[mask == -1] = image[mask == -1]
+            
+            # alpha = 0.7
+            # image = cv2.addWeighted( image, alpha, scaled_mask, 1 - alpha, 0)
             
             depth_points = []
             
@@ -230,7 +182,8 @@ if __name__ == "__main__":
             
             
             # image = cv2.resize(image, (512*2, 288*2))
-            cv2.imshow("mask", scaled_mask)    
+            cv2.imshow("depth overlay", depth_overlay_image)
+            # cv2.imshow("mask", scaled_mask)    
             cv2.imshow("depth", image)
             key = cv2.waitKey(1)
         

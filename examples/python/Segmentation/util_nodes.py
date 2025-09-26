@@ -1,3 +1,4 @@
+import time
 import depthai as dai
 import numpy as np
 from depthai_nodes.message import ImgDetectionExtended, ImgDetectionsExtended, Keypoint
@@ -100,16 +101,30 @@ class OverlayFrame(dai.node.ThreadedHostNode):
     
     def run(self) -> None:
         while True:
-            frame = self.inputFrame.get()
             detections = self.inputDetections.get()
+            frame = self.inputFrame.get()
             
             assert isinstance(frame, dai.ImgFrame)
             assert isinstance(detections, dai.ImgDetections)
+            
             image = frame.getCvFrame()
             mask = detections.getSegmentationMask().astype(np.int32)
             
-            mask = cv2.resize(mask, (1920, 1080), interpolation=cv2.INTER_NEAREST)
+            size = (512, 288)
+            size = (1920, 1080)
             
+            mask = cv2.resize(mask, size, interpolation=cv2.INTER_NEAREST)
+            
+            if frame.getWidth() != size[0] or frame.getHeight() != size[1]:
+                image = cv2.resize(image, size, interpolation=cv2.INTER_LINEAR)
+            
+            if len(image.shape) == 2:
+                image = image / np.max(image) * 255
+                image = image.astype(np.uint8)
+                image = cv2.applyColorMap(image, cv2.COLORMAP_JET)
+                
+                
+                
             mask[mask == 255] = -1
             scaled_mask = np.ones_like(mask, dtype=np.uint8) * 255
             max_val = np.max(mask)
@@ -118,11 +133,15 @@ class OverlayFrame(dai.node.ThreadedHostNode):
             if min_val != max_val:
                 scaled_mask = ((mask - min_val) / (max_val - min_val) * 255).astype(np.uint8)
             
-            scaled_mask[mask == 255] = 0
             scaled_mask = cv2.applyColorMap(scaled_mask, cv2.COLORMAP_JET)
+            
+            start = time.time() # THIS IS THE PROBLEM
             scaled_mask[mask == -1] = image[mask == -1]
             
-            alpha = 0.7
+            print(f"OverlayFrame processing time: {time.time() - start:.03f}s")
+            # image[mask != -1] = scaled_mask[mask != -1] * 0.5 + image[mask != -1] * 0.5 
+            
+            alpha = 0.2
             image = cv2.addWeighted( image, alpha, scaled_mask, 1 - alpha, 0)
             
             masked_frame = dai.ImgFrame()
@@ -136,6 +155,24 @@ class OverlayFrame(dai.node.ThreadedHostNode):
             masked_frame.setTransformation(frame.getTransformation())
             
             self.output.send(masked_frame)
+
+class SyncDecoder(dai.node.ThreadedHostNode):
+    def __init__(self):
+        super().__init__()
+        self.input = self.createInput()
+        self.out_frame = self.createOutput()
+        self.out_detections = self.createOutput()
+    
+    def run(self) -> None:
+        while True:
+            in_data = self.input.get()
+            if in_data is None:
+                continue
+            
+            out_frame = in_data["depth"]
+            out_detections = in_data["img_detections"]
+            self.out_frame.send(out_frame)
+            self.out_detections.send(out_detections)
             
 class DepthAnnotations(dai.node.ThreadedHostNode):
     def __init__(self):

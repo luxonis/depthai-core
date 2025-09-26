@@ -301,6 +301,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/node/SystemLogger.cpp
     src/pipeline/node/SpatialLocationCalculator.cpp
     src/pipeline/node/SpatialDetectionCalculator.cpp
+    src/pipeline/node/Overlay.cpp
     src/pipeline/node/SpatialKeypointsCalculator.cpp
     src/pipeline/node/AprilTag.cpp
     src/pipeline/node/ObjectTracker.cpp
