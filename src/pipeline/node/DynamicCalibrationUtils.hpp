@@ -20,7 +20,8 @@ struct DclUtils {
     static std::shared_ptr<dcl::CameraCalibrationHandle> createDclCalibration(const std::vector<std::vector<float>>& cameraMatrix,
                                                                               const std::vector<float>& distortionCoefficients,
                                                                               const std::vector<std::vector<float>>& rotationMatrix,
-                                                                              const std::vector<float>& translationVector);
+                                                                              const std::vector<float>& translationVector,
+                                                                              const CameraModel distortionModel);
 
     static std::pair<std::shared_ptr<dcl::CameraCalibrationHandle>, std::shared_ptr<dcl::CameraCalibrationHandle>> convertDaiCalibrationToDcl(
         const CalibrationHandler& currentCalibration,
