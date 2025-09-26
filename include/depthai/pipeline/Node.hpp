@@ -351,16 +351,13 @@ class Node : public std::enable_shared_from_this<Node> {
        public:
         std::vector<DatatypeHierarchy> possibleDatatypes;
         explicit Input(Node& par, InputDescription desc, bool ref = true)
-            : MessageQueue(desc.name, desc.queueSize, desc.blocking, par.pipelineEventDispatcher),
+            : MessageQueue(desc.name.empty() ? par.createUniqueInputName() : desc.name, desc.queueSize, desc.blocking, par.pipelineEventDispatcher),
               parent(par),
               waitForMessage(desc.waitForMessage),
               group(desc.group),
               possibleDatatypes(std::move(desc.types)) {
             if(ref) {
                 par.setInputRefs(this);
-            }
-            if(getName().empty()) {
-                setName(par.createUniqueInputName());
             }
         }
 

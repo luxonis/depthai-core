@@ -7,7 +7,7 @@ namespace utility {
 
 void PipelineEventDispatcher::checkNodeId() {
     if(nodeId == -1) {
-        throw std::runtime_error("Node ID not set for PipelineEventDispatcher");
+        throw std::runtime_error("Node ID not set on PipelineEventDispatcher");
     }
 }
 void PipelineEventDispatcher::setNodeId(int64_t id) {

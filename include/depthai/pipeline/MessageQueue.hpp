@@ -206,7 +206,10 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
             throw QueueException(CLOSED_QUEUE_MESSAGE);
         }
         std::shared_ptr<ADatatype> val = nullptr;
-        if(!queue.tryPop(val)) return nullptr;
+        if(!queue.tryPop(val)) {
+            if(pipelineEventDispatcher) pipelineEventDispatcher->endEvent(name);
+            return nullptr;
+        }
         if(pipelineEventDispatcher) pipelineEventDispatcher->endEvent(name);
         return std::dynamic_pointer_cast<T>(val);
     }
