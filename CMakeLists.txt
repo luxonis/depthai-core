@@ -237,7 +237,7 @@ set(THIRDPARTY_RTABMAP_LIBRARIES "rtabmap::utilite" CACHE STRING "Optional libra
 set(TARGET_RTABMAP_NAME ${PROJECT_NAME}-rtabmap)
 set(TARGET_RTABMAP_ALIAS rtabmap)
 if(DEPTHAI_RTABMAP_SUPPORT)
-    if(${RTABMap_FOUND})
+    if(RTABMap_FOUND)
         set(DEPTHAI_HAVE_RTABMAP_SUPPORT ON)
         message(STATUS "RTABMAP found. RTABMAP Support enabled")
     else()
@@ -1050,7 +1050,7 @@ if(DEPTHAI_HAVE_BASALT_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
     add_flag(${TARGET_BASALT_NAME} -Wno-switch-enum)
 
     # Link to Basalt (publically)
-    target_link_libraries(${TARGET_BASALT_NAME}  PRIVATE s${THIRDPARTY_BASALT_LIBRARIES} ${TARGET_OPENCV_NAME} pdlog::spdlog)
+    target_link_libraries(${TARGET_BASALT_NAME}  PRIVATE ${THIRDPARTY_BASALT_LIBRARIES} ${TARGET_OPENCV_NAME} spdlog::spdlog)
     # Add public compile definition indicating that Basalt support is available
     set(DEPTHAI_HAVE_BASALT_SUPPORT ON)
 
