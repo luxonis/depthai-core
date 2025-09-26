@@ -130,7 +130,7 @@ jobs:
         path: C:\depthai-core
         retention-days: 1
 
-  run_windows_tests:
+  run_windows_tests_rvc4:
     needs: [build_windows_tests]
     strategy:
         matrix:
@@ -141,8 +141,13 @@ jobs:
 
       - name: Run RVC4 tests
         run: |
+          if [[ -n "${{ github.head_ref }}" ]]; then
+            export BRANCH_NAME="${{ github.ref }}"
+          else
+            export BRANCH_NAME="${{ github.head_ref }}"
+          fi
           source scripts/hil/prepare_hil_framework.sh ${{ secrets.HIL_PAT_TOKEN }}
           export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-windows-${{ matrix.rvc4os }}"
-          exec hil --models "oak4_pro or oak4_d" -os windows --reservation-name %RESERVATION_NAME% --wait --rvc4-os-version ${{ matrix.rvc4os }} --commands "rmdir /S /Q depthai-core && git clone -b ${{ github.ref_name }} https://github.com/luxonis/depthai-core.git && cd depthai-core && scripts\hil\get_artifacts_and_run_tests.cmd \"${{ github.repository }}\" \"${{ github.token }}\" \"C:\depthai-core\" \"${{ needs.build_windows_tests.outputs.artifact_id }}\""
+          exec hil --models "oak4_pro or oak4_d" -os windows --reservation-name $RESERVATION_NAME --wait --rvc4-os-version ${{ matrix.rvc4os }} --commands "rmdir /S /Q depthai-core && git clone -b $BRANCH_NAME https://github.com/luxonis/depthai-core.git && cd depthai-core && scripts\hil\get_artifacts_and_run_tests.cmd \"${{ github.repository }}\" \"${{ github.token }}\" \"C:\depthai-core\" \"${{ needs.build_windows_tests.outputs.artifact_id }}\""
 
     
