@@ -246,7 +246,7 @@ void DynamicCalibration::setCalibration(CalibrationHandler& handler) {
 }
 
 DynamicCalibration::ErrorCode DynamicCalibration::runQualityCheck(const bool force) {
-    dcl::PerformanceMode pm = force ? dcl::PerformanceMode::SKIP_CHECKS : daiPerformanceModeToDclPerformanceMode(performanceMode);
+    dcl::PerformanceMode pm = force ? dcl::PerformanceMode::SKIP_CHECKS : DclUtils::daiPerformanceModeToDclPerformanceMode(performanceMode);
     logger->info("Running calibration quality check (force={} mode={})", force, static_cast<int>(pm));
 
     auto dclResult = pimplDCL->dynCalibImpl.checkCalibration(pimplDCL->dcDevice, pimplDCL->socketA, pimplDCL->socketB, pm);
@@ -270,7 +270,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::runQualityCheck(const bool for
 }
 
 DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::CalibrationHandler& currentHandler, const bool force) {
-    dcl::PerformanceMode pm = force ? dcl::PerformanceMode::SKIP_CHECKS : daiPerformanceModeToDclPerformanceMode(performanceMode);
+    dcl::PerformanceMode pm = force ? dcl::PerformanceMode::SKIP_CHECKS : DclUtils::daiPerformanceModeToDclPerformanceMode(performanceMode);
     logger->info("Running calibration (force={} mode={})", force, static_cast<int>(pm));
     auto dclResult = pimplDCL->dynCalibImpl.findNewCalibration(pimplDCL->dcDevice, pimplDCL->socketA, pimplDCL->socketB, pm);
     if(!dclResult.passed()) {
@@ -348,7 +348,8 @@ DynamicCalibration::ErrorCode DynamicCalibration::runLoadImage(const bool blocki
 }
 
 DynamicCalibration::ErrorCode DynamicCalibration::computeCoverage() {
-    auto resultCoverage = pimplDCL->dynCalibImpl.computeCoverage(pimplDCL->sensorA, pimplDCL->sensorB, daiPerformanceModeToDclPerformanceMode(performanceMode));
+    auto resultCoverage =
+        pimplDCL->dynCalibImpl.computeCoverage(pimplDCL->sensorA, pimplDCL->sensorB, DclUtils::daiPerformanceModeToDclPerformanceMode(performanceMode));
 
     if(!resultCoverage.passed()) {
         throw std::runtime_error("Coverage check failed!");
