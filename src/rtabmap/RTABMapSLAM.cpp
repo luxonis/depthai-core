@@ -58,7 +58,7 @@ class RTABMapSLAM::Impl {
             mapMsg->minX = xMin;
             mapMsg->minY = yMin;
             mapMsg->map = mapImg;
-            
+
             occupancyGridMap.send(mapMsg);
         }
     }
@@ -115,14 +115,14 @@ class RTABMapSLAM::Impl {
     std::unique_ptr<rtabmap::OccupancyGrid> occupancyGrid;
     std::unique_ptr<rtabmap::CloudMap> cloudMap;
     rtabmap::SensorData sensorData;
-    bool publishObstacleCloud=true;
-    bool publishGroundCloud=true;
+    bool publishObstacleCloud = true;
+    bool publishGroundCloud = true;
     bool publishGrid = true;
 };
 
 void RTABMapSLAM::buildInternal() {
     sync->out.link(inSync);
-    sync->setRunOnHost(false);
+    sync->setRunOnHost(true);
     alphaScaling = -1.0;
     pimplRtabmap->localTransform = rtabmap::Transform::getIdentity();
     rtabmap::Transform opticalTransform(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
@@ -167,6 +167,9 @@ void RTABMapSLAM::saveDatabase() {
 std::shared_ptr<TransformData> RTABMapSLAM::getLocalTransform() {
     return pimplRtabmap->getLocalTransform();
 }
+void RTABMapSLAM::setLocalTransform(std::shared_ptr<TransformData> transform) {
+    pimplRtabmap->setLocalTransform(transform);
+}
 void RTABMapSLAM::setUseFeatures(bool use) {
     useFeatures = use;
     if(useFeatures) {
@@ -176,15 +179,15 @@ void RTABMapSLAM::setUseFeatures(bool use) {
     }
 }
 
-void RTABMapSLAM::setPublishGrid(bool publish){
+void RTABMapSLAM::setPublishGrid(bool publish) {
     pimplRtabmap->setPublishGrid(publish);
 }
 
-void RTABMapSLAM::setPublishGroundCloud(bool publish){
+void RTABMapSLAM::setPublishGroundCloud(bool publish) {
     pimplRtabmap->setPublishGroundCloud(publish);
 }
 
-void RTABMapSLAM::setPublishObstacleCloud(bool publish){
+void RTABMapSLAM::setPublishObstacleCloud(bool publish) {
     pimplRtabmap->setPublishObstacleCloud(publish);
 }
 
@@ -233,8 +236,6 @@ void RTABMapSLAM::odomPoseCB(std::shared_ptr<dai::ADatatype> data) {
     auto outTransform = rtabmapToTransformData(pimplRtabmap->odomCorr * pimplRtabmap->currPose);
     auto outCorrection = rtabmapToTransformData(pimplRtabmap->odomCorr);
     // set unit rotation for outCorrection
-    auto trans = outCorrection->getTranslation();
-    outCorrection->transform.matrix = {{{1, 0, 0, trans.x}, {0, 1, 0, trans.y}, {0, 0, 1, trans.z}}};
     transform.send(outTransform);
     odomCorrection.send(outCorrection);
     passthroughOdom.send(odomPose);

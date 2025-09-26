@@ -43,7 +43,6 @@ BasaltVIO::~BasaltVIO() = default;
 
 void BasaltVIO::buildInternal() {
     sync->out.link(inSync);
-    sync->setRunOnHost(false);
     inSync.addCallback(std::bind(&BasaltVIO::stereoCB, this, std::placeholders::_1));
     imu.addCallback(std::bind(&BasaltVIO::imuCB, this, std::placeholders::_1));
 
