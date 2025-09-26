@@ -85,7 +85,7 @@ struct CalibrationQuality : public Buffer {
          * Reported at reference distances [1m, 2m, 5m, 10m].
          * Units: percent [%].
          */
-        std::vector<float> depthErrorDifference;
+        std::vector<double> depthErrorDifference;
 
         /**
          * Current calibration Sampson error.
