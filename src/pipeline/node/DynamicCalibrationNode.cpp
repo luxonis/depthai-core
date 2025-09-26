@@ -72,11 +72,11 @@ std::pair<std::shared_ptr<dcl::CameraCalibrationHandle>, std::shared_ptr<dcl::Ca
     const CalibrationHandler& currentCalibration,
     const CameraBoardSocket boardSocketA,
     const CameraBoardSocket boardSocketB,
-    const int width,
-    const int height) {
+    const std::pair<int, int>& resolutionA,
+    const std::pair<int, int>& resolutionB) {
     // clang-format off
     std::shared_ptr<dcl::CameraCalibrationHandle> calibA = DclUtils::createDclCalibration(
-        currentCalibration.getCameraIntrinsics(boardSocketA, width, height),
+        currentCalibration.getCameraIntrinsics(boardSocketA, resolutionA.first, resolutionA.second),
         currentCalibration.getDistortionCoefficients(boardSocketA),
 	{
 	    {1.0f, 0.0f, 0.0f},
@@ -86,7 +86,7 @@ std::pair<std::shared_ptr<dcl::CameraCalibrationHandle>, std::shared_ptr<dcl::Ca
 	{0.0f, 0.0f, 0.0f}
     );
     std::shared_ptr<dcl::CameraCalibrationHandle> calibB = DclUtils::createDclCalibration(
-        currentCalibration.getCameraIntrinsics(boardSocketB, width, height),
+        currentCalibration.getCameraIntrinsics(boardSocketB, resolutionB.first, resolutionB.second),
         currentCalibration.getDistortionCoefficients(boardSocketB),
 	currentCalibration.getCameraRotationMatrix(boardSocketA, boardSocketB),
 	currentCalibration.getCameraTranslationVector(boardSocketA, boardSocketB, false)
@@ -135,8 +135,8 @@ void DclUtils::convertDclCalibrationToDai(CalibrationHandler& calibHandler,
                                           const std::shared_ptr<const dcl::CameraCalibrationHandle> dclCalibrationB,
                                           const CameraBoardSocket socketSrc,
                                           const CameraBoardSocket socketDest,
-                                          const int width,
-                                          const int height) {
+                                          const std::pair<int, int>& resolutionA,
+                                          const std::pair<int, int>& resolutionB) {
     dcl::scalar_t tvecA[3];
     dclCalibrationA->getTvec(tvecA);
     dcl::scalar_t rvecA[3];
@@ -287,7 +287,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
     auto newCalibrationHandler = currentHandler;
 
     dai::node::DclUtils::convertDclCalibrationToDai(
-	newCalibrationHandler, dclCalibrationA, dclCalibrationB, daiSocketA, daiSocketB, width, height);
+	newCalibrationHandler, dclCalibrationA, dclCalibrationB, daiSocketA, daiSocketB, resolutionA, resolutionB);
 
     CalibrationQuality::Data qualityData{};
     qualityData.rotationChange[0] = dclResult.value.calibrationDifference->rotationChange[0];
@@ -383,8 +383,8 @@ DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline(const std::
         return DynamicCalibration::ErrorCode::PIPELINE_INITIALIZATION_FAILED;
     }
 
-    width = leftFrame->getWidth();
-    height = rightFrame->getHeight();
+    resolutionA = std::make_pair(leftFrame->getWidth(), leftFrame->getHeight());
+    resolutionB = std::make_pair(rightFrame->getWidth(), rightFrame->getHeight());
 
     daiSocketA = static_cast<CameraBoardSocket>(leftFrame->instanceNum);
     daiSocketB = static_cast<CameraBoardSocket>(rightFrame->instanceNum);
@@ -406,7 +406,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline(const std::
     if(platform == dai::Platform::RVC2 && (!eepromData.stereoEnableDistortionCorrection || eepromData.stereoUseSpecTranslation)) {
         throw std::runtime_error("The calibration on the device is too old to perform DynamicCalibration, full re-calibration required!");
     }
-    auto [calibA, calibB] = DclUtils::convertDaiCalibrationToDcl(calibrationHandler, daiSocketA, daiSocketB, width, height);
+    auto [calibA, calibB] = DclUtils::convertDaiCalibrationToDcl(calibrationHandler, daiSocketA, daiSocketB, resolutionA, resolutionB);
 
     // set up the dynamic calibration
     pimplDCL->deviceName = daiDevice->getDeviceId();

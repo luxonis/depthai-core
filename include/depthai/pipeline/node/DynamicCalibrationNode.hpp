@@ -132,22 +132,6 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
 
     void run() override;
 
-    int getWidth() const {
-        return width;
-    }
-
-    int getHeight() const {
-        return height;
-    }
-
-    void setWidth(const int newWidth) {
-        width = newWidth;
-    }
-
-    void setHeight(const int newHeight) {
-        height = newHeight;
-    }
-
     CameraBoardSocket getBorderSockerA() {
         return daiSocketA;
     }
@@ -187,9 +171,9 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
 
     CameraBoardSocket daiSocketA = CameraBoardSocket::CAM_B;
     CameraBoardSocket daiSocketB = CameraBoardSocket::CAM_C;
-    int width;
-    int height;
     std::shared_ptr<::spdlog::async_logger> logger;
+    std::pair<int, int> resolutionA;
+    std::pair<int, int> resolutionB;
 
     // std::chrono::milliseconds sleepingTime = 250ms;
     // static constexpr std::chrono::milliseconds kSleepingTime{250};
