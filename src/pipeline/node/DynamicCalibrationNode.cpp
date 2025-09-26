@@ -96,10 +96,10 @@ std::pair<std::shared_ptr<dcl::CameraCalibrationHandle>, std::shared_ptr<dcl::Ca
 }
 
 #define DCL_DISTORTION_SIZE (14)
-std::shared_ptr<dcl::CameraCalibrationHandle> DclUtils::createDclCalibration(const std::vector<std::vector<float>> cameraMatrix,
-                                                                             const std::vector<float> distortionCoefficients,
-                                                                             const std::vector<std::vector<float>> rotationMatrix,
-                                                                             const std::vector<float> translationVector) {
+std::shared_ptr<dcl::CameraCalibrationHandle> DclUtils::createDclCalibration(const std::vector<std::vector<float>>& cameraMatrix,
+                                                                             const std::vector<float>& distortionCoefficients,
+                                                                             const std::vector<std::vector<float>>& rotationMatrix,
+                                                                             const std::vector<float>& translationVector) {
     dcl::scalar_t cameraMatrixArr[9];
     dcl::scalar_t distortion[DCL_DISTORTION_SIZE] = {0};
     dcl::scalar_t rvec[3];
@@ -131,8 +131,8 @@ std::shared_ptr<dcl::CameraCalibrationHandle> DclUtils::createDclCalibration(con
 }
 
 void DclUtils::convertDclCalibrationToDai(CalibrationHandler& calibHandler,
-                                          const std::shared_ptr<const dcl::CameraCalibrationHandle> dclCalibrationA,
-                                          const std::shared_ptr<const dcl::CameraCalibrationHandle> dclCalibrationB,
+                                          const std::shared_ptr<const dcl::CameraCalibrationHandle>& dclCalibrationA,
+                                          const std::shared_ptr<const dcl::CameraCalibrationHandle>& dclCalibrationB,
                                           const CameraBoardSocket socketSrc,
                                           const CameraBoardSocket socketDest,
                                           const std::pair<int, int>& resolutionA,
