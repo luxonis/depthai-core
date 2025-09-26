@@ -86,6 +86,17 @@ FileData::FileData(const std::shared_ptr<NNData>& nnData, std::string fileName)
     data = ss.str();
 }
 
+FileData::FileData(const std::shared_ptr<ImgDetections>& imgDetections, std::string fileName)
+    : mimeType("application/x-protobuf"), fileName(std::move(fileName)), classification(proto::event::PrepareFileUploadClass::ANNOTATION) {
+    // Serialize ImgDetections
+    std::vector<uint8_t> imgDetectionsSerialized = imgDetections->serializeProto();
+    std::stringstream ss;
+    ss.write((const char*)imgDetectionsSerialized.data(), imgDetectionsSerialized.size());
+    data = ss.str();
+    size = data.size();
+    checksum = CalculateSHA256Checksum(data);
+}
+
 bool FileData::toFile(const std::string& path) {
     // check if filename is not empty
     if(fileName.empty()) {
@@ -138,9 +149,6 @@ EventsManager::EventsManager(std::string url, bool uploadCachedOnStart, float pu
     sourceAppId = utility::getEnvAs<std::string>("OAKAGENT_APP_VERSION", "");
     sourceAppIdentifier = utility::getEnvAs<std::string>("OAKAGENT_APP_IDENTIFIER", "");
     token = utility::getEnvAs<std::string>("DEPTHAI_HUB_API_KEY", "");
-    std::cout << "LOGGER LEVEL" << logger::get_level() << "\n";
-    dai::Logging::getInstance().logger.set_level(spdlog::level::info);
-    std::cout << "LOGGER LEVEL" << logger::get_level() << "\n";
     uploadThread = std::make_unique<std::thread>([this]() {
         while(!stopUploadThread) {
             uploadFileBatch();
@@ -170,12 +178,15 @@ EventsManager::~EventsManager() {
 }
 
 bool EventsManager::fetchConfigurationLimits() {
-    auto apiUsage = std::make_unique<proto::event::ApiUsage>();
+    // TO DO: Determine and add when and how often this fetch should happen !
+    logger::info("Fetching configuration limits");
+    auto header = cpr::Header();
+    header["Authorization"] = "Bearer " + token;
+    header["Content-Type"] = "application/x-protobuf";
     cpr::Url requestUrl = static_cast<cpr::Url>(this->url + "/v2/api-usage");
     cpr::Response response = cpr::Get(
         cpr::Url{requestUrl},
-        //cpr::Body{serializedBatch},
-        //cpr::Header{{"Authorization", "Bearer " + token}},
+        cpr::Header{header},
         cpr::VerifySsl(verifySsl),
         cpr::ProgressCallback(
             [&](cpr::cpr_off_t downloadTotal, cpr::cpr_off_t downloadNow, cpr::cpr_off_t uploadTotal, cpr::cpr_off_t uploadNow, intptr_t userdata) -> bool {
@@ -197,6 +208,9 @@ bool EventsManager::fetchConfigurationLimits() {
         if(logResponse) {
             logger::info("Response: {}", response.text);
         }
+        auto apiUsage = std::make_unique<proto::event::ApiUsage>();
+        apiUsage->ParseFromString(response.text);
+        // TO DO: Use this data to set the limits
     }
     return true;
 }
@@ -472,7 +486,7 @@ bool EventsManager::sendSnap(const std::string& name,
 }
 
 void EventsManager::uploadFile(const std::shared_ptr<FileData>& file, const std::string& url) {
-    logger::info("Uploading file: to {}", url);
+    logger::info("Uploading file to: {}", url);
     auto header = cpr::Header();
     header["File-Size"] = file->size;
     header["Content-Type"] = file->mimeType;

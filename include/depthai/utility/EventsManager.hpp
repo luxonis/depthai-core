@@ -13,6 +13,7 @@
 #include "depthai/pipeline/datatype/EncodedFrame.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
+#include "depthai/pipeline/datatype/ImgDetections.hpp"
 
 namespace dai {
 namespace proto {
@@ -31,6 +32,7 @@ class FileData {
     explicit FileData(const std::shared_ptr<ImgFrame>& imgFrame, std::string fileName);
     explicit FileData(const std::shared_ptr<EncodedFrame>& encodedFrame, std::string fileName);
     explicit FileData(const std::shared_ptr<NNData>& nnData, std::string fileName);
+    explicit FileData(const std::shared_ptr<ImgDetections>& imgDetections, std::string fileName);
     bool toFile(const std::string& path);
 
    private:
