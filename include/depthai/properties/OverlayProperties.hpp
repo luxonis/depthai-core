@@ -7,7 +7,7 @@ namespace dai {
 
 struct OverlayProperties : PropertiesSerializable<Properties, OverlayProperties> {
    public:
-    float alpha = 0.5f;
+    float alpha = 0.3f;
     int interpolationType = 1;  // cv::INTER_LINEAR
 
     int outputWidth = 1920;
