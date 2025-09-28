@@ -41,6 +41,7 @@ void EventsManagerBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("setToken", &EventsManager::setToken, py::arg("token"), DOC(dai, utility, EventsManager, setToken))
         .def("setQueueSize", &EventsManager::setQueueSize, py::arg("queueSize"), DOC(dai, utility, EventsManager, setQueueSize))
         .def("setLogResponse", &EventsManager::setLogResponse, py::arg("logResponse"), DOC(dai, utility, EventsManager, setLogResponse))
+        .def("setLogUploadResults", &EventsManager::setLogUploadResults, py::arg("logUploadResults"), DOC(dai, utility, EventsManager, setLogUploadResults))
         .def("setDeviceSerialNumber",
              &EventsManager::setDeviceSerialNumber,
              py::arg("deviceSerialNumber"),
