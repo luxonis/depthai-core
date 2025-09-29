@@ -174,6 +174,7 @@ EventsManager::EventsManager(std::string url, bool uploadCachedOnStart, float pu
     sourceAppId = utility::getEnvAs<std::string>("OAKAGENT_APP_VERSION", "");
     sourceAppIdentifier = utility::getEnvAs<std::string>("OAKAGENT_APP_IDENTIFIER", "");
     token = utility::getEnvAs<std::string>("DEPTHAI_HUB_API_KEY", "");
+    dai::Logging::getInstance().logger.set_level(spdlog::level::info);
     uploadThread = std::make_unique<std::thread>([this]() {
         while(!stopUploadThread) {
             uploadFileBatch();
