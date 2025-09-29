@@ -35,12 +35,18 @@ if __name__ == "__main__":
         cam_out.link(image_manip.inputImage)
         
         
-        det_nn: ParsingNeuralNetwork = pipeline.create(ParsingNeuralNetwork).build(
-            image_manip.out, "luxonis/yolov8-instance-segmentation-nano:coco-512x288",
-        )
+        # det_nn: ParsingNeuralNetwork = pipeline.create(ParsingNeuralNetwork).build(
+        #     image_manip.out, "luxonis/yolov8-instance-segmentation-nano:coco-512x288",
+        # det_parser = pipeline.create(PortToDaiDetections)
+        # det_nn.out.link(det_parser.input)
+        # )
         
-        portNode = pipeline.create(PortToDaiDetections)
-        det_nn.out.link(portNode.input)
+        
+        
+        det_nn2 = pipeline.create(dai.node.NeuralNetwork).build(image_manip.out, archive )
+        det_parser = pipeline.create(dai.node.YoloSegmentationParser)
+        det_nn2.out.link(det_parser.input)
+        
         
         
         monoLeft = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
@@ -59,10 +65,10 @@ if __name__ == "__main__":
         
         spatialDetectionCalculator = pipeline.create(dai.node.SpatialDetectionCalculator)
         stereo.depth.link(spatialDetectionCalculator.inputDepth)
-        portNode.output.link(spatialDetectionCalculator.inputDetections)
+        det_parser.out.link(spatialDetectionCalculator.inputDetections)
         
         config_creator = pipeline.create(CreateSpatialLocationCalculatorConfig)
-        portNode.output.link(config_creator.input)
+        det_parser.out.link(config_creator.input)
         
         
         spatialLocationCalculator = pipeline.create(dai.node.SpatialLocationCalculator)
@@ -88,7 +94,7 @@ if __name__ == "__main__":
         image_overlay.inputDetections.setBlocking(True)
         image_overlay.inputFrame.setBlocking(True)
         cam_out.link(image_overlay.inputFrame)
-        portNode.output.link(image_overlay.inputDetections)
+        det_parser.out.link(image_overlay.inputDetections)
         
         
         # crop_encoder = pipeline.create(dai.node.VideoEncoder)
@@ -165,15 +171,15 @@ if __name__ == "__main__":
                 depth_coordinate = det.spatialCoordinates
                 
                 depth = det.depthMedian
-                text = f"X: {int(depth_coordinate.x / 10 )}, Y: {int(depth_coordinate.y / 10)}, Z: {int(depth / 10)} cm"
-                cv2.putText(image, text, outer_points[0], cv2.FONT_HERSHEY_PLAIN, 2, (232,36,87), 2)                
+                text = f"NEW X: {int(depth_coordinate.x / 10 )}, Y: {int(depth_coordinate.y / 10)}, Z: {int(depth / 10)} cm"
+                cv2.putText(image, text, outer_points[0], cv2.FONT_HERSHEY_PLAIN, 2, (232,36,87), 3)                
                 
                 # Location calculator
                 if i < len(spatialLocations):
                     spatial_location = spatialLocations[i]
                     loc_coordinate = spatial_location.spatialCoordinates
-                    text = f"LC X: {int(loc_coordinate.x / 10 )}, LC Y: {int(loc_coordinate.y / 10) }, LC Z: {int(loc_coordinate.z / 10)} cm"
-                    cv2.putText(image, text, (outer_points[0][0], outer_points[0][1] + 35), cv2.FONT_HERSHEY_PLAIN, 2, (40, 40, 40), 2)
+                    text = f"OLD X: {int(loc_coordinate.x / 10 )}, LC Y: {int(loc_coordinate.y / 10) }, LC Z: {int(loc_coordinate.z / 10)} cm"
+                    cv2.putText(image, text, (outer_points[0][0], outer_points[0][1] + 35), cv2.FONT_HERSHEY_PLAIN, 2, (70, 70, 70), 3)
             
             
             # image = cv2.resize(image, (512*2, 288*2))

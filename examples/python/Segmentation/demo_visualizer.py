@@ -33,13 +33,16 @@ if __name__ == "__main__":
         cam_out.link(image_manip.inputImage)
         
         
-        det_nn: ParsingNeuralNetwork = pipeline.create(ParsingNeuralNetwork).build(
-            image_manip.out, "luxonis/yolov8-instance-segmentation-nano:coco-512x288",
-        )
+        # det_nn: ParsingNeuralNetwork = pipeline.create(ParsingNeuralNetwork).build(
+        #     image_manip.out, "luxonis/yolov8-instance-segmentation-nano:coco-512x288",
+        # )
         
-        portNode = pipeline.create(PortToDaiDetections)
-        det_nn.out.link(portNode.input)
+        # portNode = pipeline.create(PortToDaiDetections)
+        # det_nn.out.link(portNode.input)
         
+        det_nn2 = pipeline.create(dai.node.NeuralNetwork).build(image_manip.out, archive )
+        portNode = pipeline.create(dai.node.YoloSegmentationParser)
+        det_nn2.out.link(portNode.input)
         
         monoLeft = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
         monoRight = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C)
@@ -57,10 +60,10 @@ if __name__ == "__main__":
         
         spatialDetectionCalculator = pipeline.create(dai.node.SpatialDetectionCalculator)
         stereo.depth.link(spatialDetectionCalculator.inputDepth)
-        portNode.output.link(spatialDetectionCalculator.inputDetections)
+        portNode.out.link(spatialDetectionCalculator.inputDetections)
         
         config_creator = pipeline.create(CreateSpatialLocationCalculatorConfig)
-        portNode.output.link(config_creator.input)
+        portNode.out.link(config_creator.input)
         
         
         spatialLocationCalculator = pipeline.create(dai.node.SpatialLocationCalculator)
@@ -72,7 +75,7 @@ if __name__ == "__main__":
         overlay_node.inputFrame.setBlocking(True)
         overlay_node.inputDetections.setBlocking(True)
         cam_out.link(overlay_node.inputFrame)
-        portNode.output.link(overlay_node.inputDetections)
+        portNode.out.link(overlay_node.inputDetections)
 
         
         annotation_node = pipeline.create(DepthAnnotations)
@@ -81,7 +84,7 @@ if __name__ == "__main__":
         
         visualizer.addTopic("masked_frame", overlay_node.out)
         # visualizer.addTopic("color_frame", cam_out)
-        visualizer.addTopic("detections", portNode.output)
+        visualizer.addTopic("detections", portNode.out)
         visualizer.addTopic("annotations", annotation_node.output)
         
         # visualizer.addTopic("masked_frame", cam_out)
