@@ -143,6 +143,6 @@ jobs:
         run: |
           source scripts/hil/prepare_hil_framework.sh ${{ secrets.HIL_PAT_TOKEN }}
           export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-windows-${{ matrix.rvc4os }}"
-          exec hil --models "oak4_pro or oak4_d" -os windows --reservation-name $RESERVATION_NAME --wait --rvc4-os-version ${{ matrix.rvc4os }} --commands "rmdir /S /Q depthai-core || git clone https://github.com/luxonis/depthai-core.git && cd depthai-core && git fetch origin ${{ github.sha }} && git checkout ${{ github.sha }} && scripts\hil\get_artifacts_and_run_tests.cmd \"${{ github.repository }}\" \"${{ github.token }}\" \"C:\depthai-core\" \"${{ needs.build_windows_tests.outputs.artifact_id }}\""
+          exec hil --models "oak4_pro or oak4_d" -os windows --reservation-name $RESERVATION_NAME --wait --rvc4-os-version ${{ matrix.rvc4os }} --commands "rmdir /S /Q depthai-core & git clone https://github.com/luxonis/depthai-core.git && cd depthai-core && git fetch origin ${{ github.sha }} && git checkout ${{ github.sha }} && scripts\hil\get_artifacts_and_run_tests.cmd \"${{ github.repository }}\" \"${{ github.token }}\" \"C:\depthai-core\" \"${{ needs.build_windows_tests.outputs.artifact_id }}\""
 
     
