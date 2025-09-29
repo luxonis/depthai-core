@@ -41,8 +41,8 @@ with dai.Pipeline() as pipeline:
     stereo = pipeline.create(dai.node.StereoDepth)
 
     # Linking
-    monoLeftOut = monoLeft.requestOutput((1280, 720), type=dai.ImgFrame.Type.NV12)
-    monoRightOut = monoRight.requestOutput((1280, 720), type=dai.ImgFrame.Type.NV12)
+    monoLeftOut = monoLeft.requestOutput((1280, 720))
+    monoRightOut = monoRight.requestOutput((1280, 720))
     monoLeftOut.link(stereo.left)
     monoRightOut.link(stereo.right)
 

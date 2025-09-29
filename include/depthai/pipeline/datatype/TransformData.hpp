@@ -24,15 +24,12 @@ class TransformData : public Buffer {
     TransformData(double x, double y, double z, double qx, double qy, double qz, double qw);
     TransformData(double x, double y, double z, double roll, double pitch, double yaw);
 
-    virtual ~TransformData() = default;
+    virtual ~TransformData();
 
     /// Transform
     Transform transform;
 
-    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
-        metadata = utility::serialize(*this);
-        datatype = DatatypeEnum::TransformData;
-    };
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
     Point3d getTranslation() const;
     Point3d getRotationEuler() const;

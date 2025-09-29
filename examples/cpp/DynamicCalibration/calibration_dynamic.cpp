@@ -18,8 +18,8 @@ int main() {
     auto monoLeft = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B);
     auto monoRight = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_C);
 
-    auto* leftOut = monoLeft->requestFullResolutionOutput(dai::ImgFrame::Type::NV12);
-    auto* rightOut = monoRight->requestFullResolutionOutput(dai::ImgFrame::Type::NV12);
+    auto* leftOut = monoLeft->requestFullResolutionOutput();
+    auto* rightOut = monoRight->requestFullResolutionOutput();
 
     // Dynamic-calibration node
     auto dynCalib = pipeline.create<dai::node::DynamicCalibration>();
@@ -47,7 +47,7 @@ int main() {
 
     using DCC = dai::DynamicCalibrationControl;
     // Optionally set performance mode:
-    dynCalibInputControl->send(std::make_shared<DCC>(DCC::Commands::SetPerformanceMode{dai::node::DynamicCalibration::PerformanceMode::OPTIMIZE_PERFORMANCE}));
+    dynCalibInputControl->send(std::make_shared<DCC>(DCC::Commands::SetPerformanceMode{DCC::PerformanceMode::OPTIMIZE_PERFORMANCE}));
 
     // Start calibration (optimize performance)
     dynCalibInputControl->send(std::make_shared<DCC>(DCC::Commands::StartCalibration{}));

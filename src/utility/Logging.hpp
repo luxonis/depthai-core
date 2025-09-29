@@ -1,11 +1,5 @@
 #pragma once
-
-#include <cstdint>
-#include <mutex>
 #include <string>
-#include <thread>
-#include <unordered_map>
-#include <vector>
 
 // libraries
 #include <spdlog/fmt/std.h>
@@ -14,11 +8,7 @@
 
 // shared
 #include <depthai/log/LogConstants.hpp>
-
-// project
-#include <depthai/device/Device.hpp>
-#include <depthai/device/DeviceBootloader.hpp>
-#include <depthai/openvino/OpenVINO.hpp>
+#include <depthai/log/LogLevel.hpp>
 
 namespace dai {
 

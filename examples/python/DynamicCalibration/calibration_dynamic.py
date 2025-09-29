@@ -10,8 +10,8 @@ with dai.Pipeline() as pipeline:
     monoRight = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C)
 
     # Full-res NV12 outputs
-    monoLeftOut  = monoLeft.requestFullResolutionOutput(dai.ImgFrame.Type.NV12)
-    monoRightOut = monoRight.requestFullResolutionOutput(dai.ImgFrame.Type.NV12)
+    monoLeftOut  = monoLeft.requestFullResolutionOutput()
+    monoRightOut = monoRight.requestFullResolutionOutput()
 
     # Initialize the DynamicCalibration node
     dynCalib = pipeline.create(dai.node.DynamicCalibration)
@@ -51,7 +51,7 @@ with dai.Pipeline() as pipeline:
     # Set performance mode
     dynCalibInputControl.send(
         dai.DynamicCalibrationControl(dai.DynamicCalibrationControl.Commands.SetPerformanceMode(
-            dai.node.DynamicCalibration.OPTIMIZE_PERFORMANCE)
+            dai.DynamicCalibrationControl.OPTIMIZE_PERFORMANCE)
         )
     )
 

@@ -61,13 +61,13 @@ TEST_CASE("DynamicCalibration reaches a result and applies only when ready") {
     REQUIRE(stereo);
 
     // Queues
-    auto calibration_output = dynCalib->calibrationOutput.createOutputQueue();
-    auto coverage_output = dynCalib->coverageOutput.createOutputQueue();
-    auto command_input = dynCalib->inputControl.createInputQueue();  // no DatatypeEnum argument
+    auto calibrationOutput = dynCalib->calibrationOutput.createOutputQueue();
+    auto coverageOutput = dynCalib->coverageOutput.createOutputQueue();
+    auto commandInput = dynCalib->inputControl.createInputQueue();  // no DatatypeEnum argument
 
-    auto left_xout = stereo->syncedLeft.createOutputQueue();
-    auto right_xout = stereo->syncedRight.createOutputQueue();
-    auto disp_xout = stereo->disparity.createOutputQueue();
+    auto leftXout = stereo->syncedLeft.createOutputQueue();
+    auto rightXout = stereo->syncedRight.createOutputQueue();
+    auto dispXout = stereo->disparity.createOutputQueue();
 
     device->setCalibration(device->readCalibration());
 
@@ -76,16 +76,16 @@ TEST_CASE("DynamicCalibration reaches a result and applies only when ready") {
     std::this_thread::sleep_for(1s);
 
     {
-        auto l = left_xout->get<dai::ImgFrame>();
-        auto r = right_xout->get<dai::ImgFrame>();
-        auto d = disp_xout->get<dai::ImgFrame>();
+        auto l = leftXout->get<dai::ImgFrame>();
+        auto r = rightXout->get<dai::ImgFrame>();
+        auto d = dispXout->get<dai::ImgFrame>();
         REQUIRE(l != nullptr);
         REQUIRE(r != nullptr);
         REQUIRE(d != nullptr);
     }
 
     // Kick off calibration
-    command_input->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::StartCalibration{}));
+    commandInput->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::StartCalibration{}));
 
     bool completed = false;
     float lastCoverage = 0.0f;
@@ -93,7 +93,7 @@ TEST_CASE("DynamicCalibration reaches a result and applies only when ready") {
 
     for(int i = 0; i < kMaxIterations && pipeline.isRunning(); ++i) {
         // Block for coverage update and result
-        auto coverage = coverage_output->get<dai::CoverageData>();
+        auto coverage = coverageOutput->get<dai::CoverageData>();
         REQUIRE(coverage != nullptr);
         INFO("Iteration " << i << " meanCoverage=" << coverage->meanCoverage);
         if(coverage->dataAcquired < 100.0f) {
@@ -101,13 +101,13 @@ TEST_CASE("DynamicCalibration reaches a result and applies only when ready") {
         }
         lastCoverage = coverage->meanCoverage;
 
-        auto result = calibration_output->get<dai::DynamicCalibrationResult>();
+        auto result = calibrationOutput->get<dai::DynamicCalibrationResult>();
         REQUIRE(result != nullptr);
 
         if(result->calibrationData.has_value()) {
             completed = true;
 
-            command_input->send(std::make_shared<dai::DynamicCalibrationControl>(
+            commandInput->send(std::make_shared<dai::DynamicCalibrationControl>(
                 dai::DynamicCalibrationControl::Commands::ApplyCalibration{result->calibrationData->newCalibration}));
             break;
         } else {
@@ -118,9 +118,9 @@ TEST_CASE("DynamicCalibration reaches a result and applies only when ready") {
     if(lastCoverage < 100.0f) {
         // If the coverage is lower then requested, try to force calibrate it.
         auto qcmd = std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::Calibrate{true});
-        command_input->send(qcmd);
+        commandInput->send(qcmd);
 
-        auto result = calibration_output->get<dai::DynamicCalibrationResult>();
+        auto result = calibrationOutput->get<dai::DynamicCalibrationResult>();
 
         // If there will be enough data, the result should have value and it should be calibrationData
         if(result->calibrationData.has_value()) {
@@ -128,7 +128,7 @@ TEST_CASE("DynamicCalibration reaches a result and applies only when ready") {
             completed = true;
 
             // Optional: immediately apply it (like your example)
-            command_input->send(std::make_shared<dai::DynamicCalibrationControl>(
+            commandInput->send(std::make_shared<dai::DynamicCalibrationControl>(
                 dai::DynamicCalibrationControl::Commands::ApplyCalibration{result->calibrationData->newCalibration}));
         } else {
             // While running, info should be non-empty (typically progress/status text)
@@ -161,27 +161,27 @@ TEST_CASE("DynamicCalibration: empty-data requests yield no calibration/quality 
     REQUIRE(dynCalib);
     REQUIRE(stereo);
 
-    auto calibration_output = dynCalib->calibrationOutput.createOutputQueue();
-    auto quality_output = dynCalib->qualityOutput.createOutputQueue();
-    auto command_input = dynCalib->inputControl.createInputQueue();  // no DatatypeEnum argument
+    auto calibrationOutput = dynCalib->calibrationOutput.createOutputQueue();
+    auto qualityOutput = dynCalib->qualityOutput.createOutputQueue();
+    auto commandInput = dynCalib->inputControl.createInputQueue();  // no DatatypeEnum argument
 
-    auto left_xout = stereo->syncedLeft.createOutputQueue();
-    auto right_xout = stereo->syncedRight.createOutputQueue();
-    auto disp_xout = stereo->disparity.createOutputQueue();
+    auto leftXout = stereo->syncedLeft.createOutputQueue();
+    auto rightXout = stereo->syncedRight.createOutputQueue();
+    auto dispXout = stereo->disparity.createOutputQueue();
 
     device->setCalibration(device->readCalibration());
 
     pipeline.start();
     std::this_thread::sleep_for(1s);
 
-    REQUIRE(left_xout->get<dai::ImgFrame>() != nullptr);
-    REQUIRE(right_xout->get<dai::ImgFrame>() != nullptr);
-    REQUIRE(disp_xout->get<dai::ImgFrame>() != nullptr);
+    REQUIRE(leftXout->get<dai::ImgFrame>() != nullptr);
+    REQUIRE(rightXout->get<dai::ImgFrame>() != nullptr);
+    REQUIRE(dispXout->get<dai::ImgFrame>() != nullptr);
 
     // 1) Calibrate (default)
     {
-        command_input->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::Calibrate{}));
-        auto result = calibration_output->get<dai::DynamicCalibrationResult>();
+        commandInput->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::Calibrate{}));
+        auto result = calibrationOutput->get<dai::DynamicCalibrationResult>();
         REQUIRE(result != nullptr);
         INFO("Calibrate #1 info: " << result->info);
         REQUIRE_FALSE(result->calibrationData.has_value());
@@ -189,8 +189,8 @@ TEST_CASE("DynamicCalibration: empty-data requests yield no calibration/quality 
 
     // 2) Calibrate(force=true)
     {
-        command_input->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::Calibrate{true}));
-        auto result = calibration_output->get<dai::DynamicCalibrationResult>();
+        commandInput->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::Calibrate{true}));
+        auto result = calibrationOutput->get<dai::DynamicCalibrationResult>();
         REQUIRE(result != nullptr);
         INFO("Calibrate #2 (force) info: " << result->info);
         REQUIRE_FALSE(result->calibrationData.has_value());
@@ -198,8 +198,8 @@ TEST_CASE("DynamicCalibration: empty-data requests yield no calibration/quality 
 
     // 3) CalibrationQuality(force=true)
     {
-        command_input->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::CalibrationQuality{true}));
-        auto qres = quality_output->get<dai::CalibrationQuality>();
+        commandInput->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::CalibrationQuality{true}));
+        auto qres = qualityOutput->get<dai::CalibrationQuality>();
         REQUIRE(qres != nullptr);
         INFO("Quality #1 (force) info: " << qres->info);
         REQUIRE_FALSE(qres->qualityData.has_value());
@@ -207,8 +207,8 @@ TEST_CASE("DynamicCalibration: empty-data requests yield no calibration/quality 
 
     // 4) CalibrationQuality(force=false)
     {
-        command_input->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::CalibrationQuality{false}));
-        auto qres = quality_output->get<dai::CalibrationQuality>();
+        commandInput->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::CalibrationQuality{false}));
+        auto qres = qualityOutput->get<dai::CalibrationQuality>();
         REQUIRE(qres != nullptr);
         INFO("Quality #2 (no force) info: " << qres->info);
         REQUIRE_FALSE(qres->qualityData.has_value());
@@ -236,33 +236,33 @@ TEST_CASE("DynamicCalibration: StopCalibration halts further results") {
     REQUIRE(dynCalib);
     REQUIRE(stereo);
 
-    auto calibration_output = dynCalib->calibrationOutput.createOutputQueue();
-    auto command_input = dynCalib->inputControl.createInputQueue();  // no DatatypeEnum argument
+    auto calibrationOutput = dynCalib->calibrationOutput.createOutputQueue();
+    auto commandInput = dynCalib->inputControl.createInputQueue();  // no DatatypeEnum argument
 
-    auto left_xout = stereo->syncedLeft.createOutputQueue();
-    auto right_xout = stereo->syncedRight.createOutputQueue();
-    auto disp_xout = stereo->disparity.createOutputQueue();
+    auto leftXout = stereo->syncedLeft.createOutputQueue();
+    auto rightXout = stereo->syncedRight.createOutputQueue();
+    auto dispXout = stereo->disparity.createOutputQueue();
 
     device->setCalibration(device->readCalibration());
 
     pipeline.start();
 
-    REQUIRE(left_xout->get<dai::ImgFrame>() != nullptr);
-    REQUIRE(right_xout->get<dai::ImgFrame>() != nullptr);
-    REQUIRE(disp_xout->get<dai::ImgFrame>() != nullptr);
+    REQUIRE(leftXout->get<dai::ImgFrame>() != nullptr);
+    REQUIRE(rightXout->get<dai::ImgFrame>() != nullptr);
+    REQUIRE(dispXout->get<dai::ImgFrame>() != nullptr);
 
-    command_input->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::StartCalibration{}));
+    commandInput->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::StartCalibration{}));
 
-    auto first = calibration_output->get<dai::DynamicCalibrationResult>();
+    auto first = calibrationOutput->get<dai::DynamicCalibrationResult>();
     REQUIRE(first != nullptr);
 
     // Stop
-    command_input->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::StopCalibration{}));
+    commandInput->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::StopCalibration{}));
 
-    (void)calibration_output->tryGet<dai::DynamicCalibrationResult>();  // drain in-flight if any
+    (void)calibrationOutput->tryGet<dai::DynamicCalibrationResult>();  // drain in-flight if any
 
     std::this_thread::sleep_for(4s);
-    auto shouldBeNull = calibration_output->tryGet<dai::DynamicCalibrationResult>();
+    auto shouldBeNull = calibrationOutput->tryGet<dai::DynamicCalibrationResult>();
     REQUIRE(shouldBeNull == nullptr);
 
     REQUIRE_FALSE(sawWarnOrError);
@@ -287,37 +287,69 @@ TEST_CASE("DynamicCalibration: reset data") {
     REQUIRE(dynCalib);
     REQUIRE(stereo);
 
-    auto calibration_output = dynCalib->calibrationOutput.createOutputQueue();
-    auto coverage_output = dynCalib->coverageOutput.createOutputQueue();
-    auto command_input = dynCalib->inputControl.createInputQueue();  // no DatatypeEnum argument
+    auto calibrationOutput = dynCalib->calibrationOutput.createOutputQueue();
+    auto coverageOutput = dynCalib->coverageOutput.createOutputQueue();
+    auto commandInput = dynCalib->inputControl.createInputQueue();  // no DatatypeEnum argument
 
-    auto left_xout = stereo->syncedLeft.createOutputQueue();
-    auto right_xout = stereo->syncedRight.createOutputQueue();
-    auto disp_xout = stereo->disparity.createOutputQueue();
+    auto leftXout = stereo->syncedLeft.createOutputQueue();
+    auto rightXout = stereo->syncedRight.createOutputQueue();
+    auto dispXout = stereo->disparity.createOutputQueue();
 
     device->setCalibration(device->readCalibration());
 
     pipeline.start();
     std::this_thread::sleep_for(1s);
 
-    REQUIRE(left_xout->get<dai::ImgFrame>() != nullptr);
-    REQUIRE(right_xout->get<dai::ImgFrame>() != nullptr);
-    REQUIRE(disp_xout->get<dai::ImgFrame>() != nullptr);
+    REQUIRE(leftXout->get<dai::ImgFrame>() != nullptr);
+    REQUIRE(rightXout->get<dai::ImgFrame>() != nullptr);
+    REQUIRE(dispXout->get<dai::ImgFrame>() != nullptr);
 
     // Load one image into the calibration process to produce coverage
-    command_input->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::LoadImage{}));
-    (void)coverage_output->get<dai::CoverageData>();
+    commandInput->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::LoadImage{}));
+    (void)coverageOutput->get<dai::CoverageData>();
 
     // Reset
-    command_input->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::ResetData{}));
+    commandInput->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::ResetData{}));
 
     // Force calibrate; expect no calibrationData due to empty accumulators
-    command_input->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::Calibrate{true}));
-    auto result = calibration_output->get<dai::DynamicCalibrationResult>();
+    commandInput->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::Calibrate{true}));
+    auto result = calibrationOutput->get<dai::DynamicCalibrationResult>();
     REQUIRE(result != nullptr);
     REQUIRE(result->calibrationData == std::nullopt);
 
     REQUIRE_FALSE(sawWarnOrError);
+
+    pipeline.stop();
+    pipeline.wait();
+}
+
+TEST_CASE("DynamicCalibration: Empty command") {
+    auto device = std::make_shared<dai::Device>();
+    REQUIRE(device != nullptr);
+
+    std::atomic<bool> sawWarnOrError{false};
+    device->setLogLevel(dai::LogLevel::WARN);
+    device->addLogCallback([&](const dai::LogMessage& m) {
+        if(m.level >= dai::LogLevel::WARN) sawWarnOrError = true;
+    });
+
+    std::shared_ptr<dai::node::DynamicCalibration> dynCalib;
+    std::shared_ptr<dai::node::StereoDepth> stereo;
+    auto pipeline = makePipeline(device, dynCalib, stereo);
+    REQUIRE(dynCalib);
+
+    auto commandInput = dynCalib->inputControl.createInputQueue();  // no DatatypeEnum argument
+
+    auto leftXout = stereo->syncedLeft.createOutputQueue();
+    auto rightXout = stereo->syncedRight.createOutputQueue();
+    auto dispXout = stereo->disparity.createOutputQueue();
+
+    device->setCalibration(device->readCalibration());
+
+    pipeline.start();
+
+    commandInput->send(std::make_shared<dai::DynamicCalibrationControl>());
+    std::this_thread::sleep_for(0.5s);
 
     pipeline.stop();
     pipeline.wait();

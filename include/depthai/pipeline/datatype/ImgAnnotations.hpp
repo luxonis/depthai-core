@@ -55,15 +55,12 @@ class ImgAnnotations : public Buffer, public ProtoSerializable {
     ImgAnnotations() = default;
     explicit ImgAnnotations(std::vector<ImgAnnotation> annotations) : annotations(std::move(annotations)) {}
 
-    virtual ~ImgAnnotations() = default;
+    virtual ~ImgAnnotations();
 
     /// Transform
     std::vector<ImgAnnotation> annotations;
 
-    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
-        metadata = utility::serialize(*this);
-        datatype = DatatypeEnum::ImgAnnotations;
-    };
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF
     /**
