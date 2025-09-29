@@ -412,14 +412,14 @@ jobs:
           ver=$(python -c "import os,sys,pathlib; sys.path.insert(0, str(pathlib.Path('bindings/python').resolve())); import find_version as v; print(v.get_package_dev_version(os.environ['BUILD_COMMIT_HASH']))")
           echo "Installing depthai==$ver using $(python -V)"
 
-          # Install from Artifactory snapshot
-          python -m pip install -U pip
-          python -m pip install --force-reinstall -U --prefer-binary \
-            --extra-index-url "$ARTIFACTORY_URL/luxonis-python-snapshot-local" \
-            "depthai==$ver" \
-            --trusted-host 3.145.46.25
+          # Get the name of the one file in bindings/python/wheelhouse/audited
+          wheel_name=$(ls bindings/python/wheelhouse/audited/*.whl)
 
-          EXPECTED_VERSION="$ver" python .github/scripts/smoke_depthai.py
+          # Install wheel
+          python -m pip install -U pip
+          python -m pip install --force-reinstall bindings/python/wheelhouse/audited/$wheel_name
+
+          EXPECTED_VERSION="$ver" python bindings/python/ci/smoke_depthai.py
 
   # This job builds wheels for x86_64 arch
   build-linux-x86_64:
@@ -539,13 +539,15 @@ jobs:
           ver=$("$PYBIN" -c "import os,sys,pathlib; sys.path.insert(0, str(pathlib.Path('bindings/python').resolve())); import find_version as v; print(v.get_package_dev_version(os.environ['BUILD_COMMIT_HASH']))")
           echo "Installing depthai==$ver using $($PYBIN -V)"
 
-          # Install from Artifactory snapshot
+          # Get the name of the one file in bindings/python/wheelhouse/audited
+          wheel_name=$(ls bindings/python/wheelhouse/audited/*.whl)
+
           "$PYBIN" -m ensurepip --upgrade || true
           "$PYBIN" -m pip install -U pip
-          "$PYBIN" -m pip install --force-reinstall -U --prefer-binary --extra-index-url "$ARTIFACTORY_URL/luxonis-python-snapshot-local" "depthai==$ver" --trusted-host 3.145.46.25
+          "$PYBIN" -m pip install --force-reinstall bindings/python/wheelhouse/audited/$wheel_name
 
           # Smoke test: fail hard on any exception or version mismatch
-          EXPECTED_VERSION="$ver" python .github/scripts/smoke_depthai.py
+          EXPECTED_VERSION="$ver" python bindings/python/ci/smoke_depthai.py
 
   # This job builds wheels for ARM64 arch
   build-linux-arm64:
@@ -667,12 +669,15 @@ jobs:
           ver=$("$PYBIN" -c "import os,sys,pathlib; sys.path.insert(0, str(pathlib.Path('bindings/python').resolve())); import find_version as v; print(v.get_package_dev_version(os.environ['BUILD_COMMIT_HASH']))")
           echo "Installing depthai==$ver using $($PYBIN -V)"
 
+          # Get the name of the one file in bindings/python/wheelhouse/audited
+          wheel_name=$(ls bindings/python/wheelhouse/audited/*.whl)
+
           # Install from Artifactory snapshot
           "$PYBIN" -m ensurepip --upgrade || true
           "$PYBIN" -m pip install -U pip
-          "$PYBIN" -m pip install --force-reinstall -U --prefer-binary --extra-index-url "$ARTIFACTORY_URL/luxonis-python-snapshot-local" "depthai==$ver" --trusted-host 3.145.46.25
+          "$PYBIN" -m pip install --force-reinstall bindings/python/wheelhouse/audited/$wheel_name
 
-          EXPECTED_VERSION="$ver" "$PYBIN" .github/scripts/smoke_depthai.py
+          EXPECTED_VERSION="$ver" "$PYBIN" bindings/python/ci/smoke_depthai.py
 
   combine-windows-x86_64-wheels:
     needs: build-windows-x86_64
@@ -723,15 +728,15 @@ jobs:
           $ver = python -c "import os,sys,pathlib; sys.path.insert(0,str(pathlib.Path('bindings/python').resolve())); import find_version as v; print(v.get_package_dev_version(os.environ['BUILD_COMMIT_HASH']))"
           Write-Host "Installing depthai==$ver using:"; python -VV
 
+          # Get the name of the one file in bindings/python/wheelhouse/audited
+          wheel_name=$(ls bindings/python/wheelhouse/audited/*.whl)
+
           # Install from Artifactory snapshot
           python -m pip install -U pip
-          python -m pip install --force-reinstall -U --prefer-binary `
-            --extra-index-url "$env:ARTIFACTORY_URL/luxonis-python-snapshot-local" `
-            "depthai==$ver" `
-            --trusted-host 3.145.46.25
+          python -m pip install --force-reinstall bindings/python/wheelhouse/audited/$wheel_name
 
           # Smoke test (no heredoc; YAML-safe). Fail on import error or version mismatch.
-          $env:EXPECTED_VERSION = $ver "python .github/scripts/smoke_depthai.py
+          $env:EXPECTED_VERSION = $ver "python bindings/python/ci/smoke_depthai.py
   release:
     if: startsWith(github.ref, 'refs/tags/v')
     # needs: [pytest, build-linux-armhf, build-windows-x86_64, build-macos-x86_64, build-macos-arm64, build-linux-x86_64, build-linux-arm64]
