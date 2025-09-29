@@ -23,7 +23,7 @@ void EventsManagerBindings::bind(pybind11::module& m, void* pCallstack) {
     using namespace dai::utility;
     py::class_<FileData, std::shared_ptr<utility::FileData>>(m, "FileData")
         .def(py::init<const std::string&, const std::string&, const std::string&>(), py::arg("data"), py::arg("fileName"), py::arg("mimeType"))
-        .def(py::init<std::string>(), py::arg("fileUrl"))
+        .def(py::init<const std::string&, std::string>(), py::arg("filePath"), py::arg("fileName"))
         .def(py::init<const std::shared_ptr<ImgFrame>&, std::string>(), py::arg("imgFrame"), py::arg("fileName"))
         .def(py::init<const std::shared_ptr<EncodedFrame>&, std::string>(), py::arg("encodedFrame"), py::arg("fileName"))
         .def(py::init<const std::shared_ptr<NNData>&, std::string>(), py::arg("nnData"), py::arg("fileName"))
@@ -41,7 +41,6 @@ void EventsManagerBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("setToken", &EventsManager::setToken, py::arg("token"), DOC(dai, utility, EventsManager, setToken))
         .def("setQueueSize", &EventsManager::setQueueSize, py::arg("queueSize"), DOC(dai, utility, EventsManager, setQueueSize))
         .def("setLogResponse", &EventsManager::setLogResponse, py::arg("logResponse"), DOC(dai, utility, EventsManager, setLogResponse))
-        .def("setLogUploadResults", &EventsManager::setLogUploadResults, py::arg("logUploadResults"), DOC(dai, utility, EventsManager, setLogUploadResults))
         .def("setDeviceSerialNumber",
              &EventsManager::setDeviceSerialNumber,
              py::arg("deviceSerialNumber"),

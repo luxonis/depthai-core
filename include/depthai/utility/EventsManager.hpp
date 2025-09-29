@@ -127,12 +127,6 @@ class EventsManager {
      */
     void setLogResponse(bool logResponse);
     /**
-     * Set whether to log the results of uploads to the server. By default, logUploadResults is set to false
-     * @param logUploadResults bool
-     * @return void
-     */
-    void setLogUploadResults(bool logUploadResults);
-    /**
      * Set whether to verify the SSL certificate. By default, verifySsl is set to false
      * @param verifySsl bool
      * @return void
@@ -195,7 +189,6 @@ class EventsManager {
     uint64_t queueSize;
     float publishInterval;
     bool logResponse;
-    bool logUploadResults;
     bool verifySsl;
     std::string cacheDir;
     bool cacheIfCannotSend;

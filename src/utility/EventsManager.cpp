@@ -167,7 +167,6 @@ EventsManager::EventsManager(std::string url, bool uploadCachedOnStart, float pu
       queueSize(10),
       publishInterval(publishInterval),
       logResponse(false),
-      logUploadResults(false),
       verifySsl(true),
       cacheDir("/internal/private"),
       cacheIfCannotSend(false),
@@ -227,15 +226,15 @@ bool EventsManager::fetchConfigurationLimits() {
                 return true;
             }));
     if(response.status_code != cpr::status::HTTP_OK) {
-        logger::error("Failed to fetch configuration limits: {} {}", response.text, response.status_code);
+        logger::error("Failed to fetch configuration limits, status code: {}", response.status_code);
         return false;
     } else {
         logger::info("Configuration limits fetched successfully");
-        if(logResponse) {
-            logger::info("Response: {}", response.text);
-        }
         auto apiUsage = std::make_unique<proto::event::ApiUsage>();
         apiUsage->ParseFromString(response.text);
+        if(logResponse) {
+            logger::info("ApiUsage response: \n{}", apiUsage->DebugString());
+        }
         // TO DO: Use this data to set the limits
     }
     return true;
@@ -295,50 +294,23 @@ void EventsManager::uploadFileBatch() {
                 }
                 return true;
             }));
-    if (response.status_code != cpr::status::HTTP_CREATED) {
-        logger::error("Failed to prepare a batch of file groups: {}; status code: {}", response.text, response.status_code);
+    if (response.status_code != cpr::status::HTTP_OK && response.status_code != cpr::status::HTTP_CREATED) {
+        logger::error("Failed to prepare a batch of file groups, status code: {}", response.status_code);
     }
     else {
         logger::info("Batch of file groups has been successfully prepared");
+        auto fileGroupBatchUpload = std::make_unique<proto::event::BatchFileUploadResult>();
+        fileGroupBatchUpload->ParseFromString(response.text);
         if (logResponse) {
-            logger::info("Response: {}", response.text);
+            logger::info("BatchFileUploadResult response: \n{}", fileGroupBatchUpload->DebugString());
         }
 
         // Upload accepted files
-        auto fileGroupBatchUpload = std::make_unique<proto::event::BatchFileUploadResult>();
-        fileGroupBatchUpload->ParseFromString(response.text);
         for (int i = 0; i < fileGroupBatchUpload->groups_size(); i++) {
             auto snapData = snapBuffer.at(i);
             auto uploadGroupResult = fileGroupBatchUpload->groups(i);
             // Rejected group
-            if (uploadGroupResult.has_rejected()) {
-                if (!logUploadResults) {
-                    continue;
-                }
-                auto reason = uploadGroupResult.rejected().reason();
-                const auto* desc = proto::event::RejectedFileGroupReason_descriptor();
-                std::string reasonName = "Unknown RejectedFileGroupReason";
-                if (const auto* value = desc->FindValueByNumber(static_cast<int>(reason))) {
-                    reasonName = value->name();
-                }
-                logger::info("File group rejected because of: {}", reasonName);
-
-                for (int j = 0; j < uploadGroupResult.files_size(); j++) {
-                    auto uploadFileResult = uploadGroupResult.files(j);
-                    if(uploadFileResult.result_case() == proto::event::FileUploadResult::kAccepted) {
-                        logger::info("File with id: {} accepted", uploadFileResult.accepted().id());
-                    }
-                    else if (uploadFileResult.result_case() == proto::event::FileUploadResult::kRejected) {
-                        auto reason = uploadFileResult.rejected().reason();
-                        const auto* desc = proto::event::RejectedFileReason_descriptor();
-                        std::string reasonName = "Unknown RejectedFileReason";
-                        if (const auto* value = desc->FindValueByNumber(static_cast<int>(reason))) {
-                            reasonName = value->name();
-                        }
-                        logger::info("File rejected because of: {}; message: {}", reasonName, uploadFileResult.rejected().message());
-                    }
-                }
-            } else {
+            if (!uploadGroupResult.has_rejected()) {
                 for (int j = 0; j < uploadGroupResult.files_size(); j++) {
                     auto uploadFileResult = uploadGroupResult.files(j);
                     if(uploadFileResult.result_case() == proto::event::FileUploadResult::kAccepted) {
@@ -404,31 +376,13 @@ void EventsManager::uploadEventBatch() {
                 return true;
             }));
     if(response.status_code != cpr::status::HTTP_OK) {
-        logger::error("Failed to send event: {} {}", response.text, response.status_code);
+        logger::error("Failed to send event, status code: {}", response.status_code);
     } else {
         logger::info("Event sent successfully");
         if(logResponse) {
-            logger::info("Response: {}", response.text);
-        }
-
-        if (logUploadResults) {
             auto eventBatchUploadResults = std::make_unique<proto::event::BatchUploadEventsResult>();
             eventBatchUploadResults->ParseFromString(response.text);
-            for(int i = 0; i < eventBatchUploadResults->events_size(); i++) {
-                auto eventUploadResult = eventBatchUploadResults->events(i);
-                if(eventUploadResult.result_case() == proto::event::EventResult::kAccepted) {
-                    logger::info("Event with id: {} accepted", eventUploadResult.accepted().id());
-                }
-                else if (eventUploadResult.result_case() == proto::event::EventResult::kRejected) {
-                    auto reason = eventUploadResult.rejected().reason();
-                    const auto* desc = proto::event::RejectedEventReason_descriptor();
-                    std::string reasonName = "Unknown RejectedEventReason";
-                    if (const auto* value = desc->FindValueByNumber(static_cast<int>(reason))) {
-                        reasonName = value->name();
-                    }
-                    logger::info("Event rejected because of: {}; message: {}", reasonName, eventUploadResult.rejected().message());
-                }
-            }
+            logger::info("BatchUploadEvents response: \n{}", eventBatchUploadResults->DebugString());
         }
 
         // TO DO: Caching is ignored for now. Fix this later
@@ -534,11 +488,7 @@ void EventsManager::uploadFile(const std::shared_ptr<FileData>& file, const std:
                 return true;
             }));
     if(response.status_code != cpr::status::HTTP_OK && response.status_code != cpr::status::HTTP_CREATED) {
-        logger::error("Failed to upload file: {} ; error code: {}", response.text, response.status_code);
-    } else {
-        if(logResponse) {
-            logger::info("Response: {}", response.text);
-        }
+        logger::error("Failed to upload file, status code: {}", response.status_code);
     }
 }
 
@@ -641,10 +591,6 @@ void EventsManager::setQueueSize(uint64_t queueSize) {
 
 void EventsManager::setLogResponse(bool logResponse) {
     this->logResponse = logResponse;
-}
-
-void EventsManager::setLogUploadResults(bool logUploadResults) {
-    this->logUploadResults = logUploadResults;
 }
 
 void EventsManager::setDeviceSerialNumber(const std::string& deviceSerialNumber) {
