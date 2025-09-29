@@ -203,7 +203,7 @@ class DepthAnnotations(dai.node.ThreadedHostNode):
                 text.position = text_position
                 depth_coordinate = detection.spatialCoordinates
                 
-                text.text = f"NEW X: {int(depth_coordinate.x / 10)}cm Y: {int(depth_coordinate.y / 10)}cm Z: {int(depth_coordinate.z / 10)}cm"
+                text.text = f"NEW Z: {int(depth_coordinate.z / 10)}cm"
                 text.fontSize = 40
                 text.textColor = dai.Color( float(88 / 255), float(21 / 255), float(127 / 255), float(1.0))
                 text.backgroundColor = backgroundColor
@@ -215,7 +215,7 @@ class DepthAnnotations(dai.node.ThreadedHostNode):
                     location_text.position = dai.Point2f(detection.xmin, detection.ymin + 0.05)
                     spatial_location = spatialLocations[i]
                     loc_coordinate = spatial_location.spatialCoordinates
-                    location_text.text = f"OLD X: {int(loc_coordinate.x / 10)}cm Y: {int(loc_coordinate.y / 10)}cm Z: {int(loc_coordinate.z / 10)}cm"
+                    location_text.text = f"OLD Z: {int(loc_coordinate.z / 10)}cm"
                     location_text.fontSize = 40
                     location_text.textColor = dai.Color( float(25 / 255), float(25 / 255), float(25 / 255), float(1.0))
                     location_text.backgroundColor = backgroundColor

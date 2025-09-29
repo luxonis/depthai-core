@@ -171,14 +171,14 @@ if __name__ == "__main__":
                 depth_coordinate = det.spatialCoordinates
                 
                 depth = det.depthMedian
-                text = f"NEW X: {int(depth_coordinate.x / 10 )}, Y: {int(depth_coordinate.y / 10)}, Z: {int(depth / 10)} cm"
+                text = f"NEW Z: {int(depth / 10)} cm"
                 cv2.putText(image, text, outer_points[0], cv2.FONT_HERSHEY_PLAIN, 2, (232,36,87), 3)                
                 
                 # Location calculator
                 if i < len(spatialLocations):
                     spatial_location = spatialLocations[i]
                     loc_coordinate = spatial_location.spatialCoordinates
-                    text = f"OLD X: {int(loc_coordinate.x / 10 )}, LC Y: {int(loc_coordinate.y / 10) }, LC Z: {int(loc_coordinate.z / 10)} cm"
+                    text = f"OLD  Z: {int(loc_coordinate.z / 10)} cm"
                     cv2.putText(image, text, (outer_points[0][0], outer_points[0][1] + 35), cv2.FONT_HERSHEY_PLAIN, 2, (70, 70, 70), 3)
             
             
