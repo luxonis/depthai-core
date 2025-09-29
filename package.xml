@@ -16,6 +16,7 @@
     <depend>libusb-1.0-dev</depend>
     <depend>libudev-dev</depend>
     <depend>libopencv-dev</depend>
+    <depend>gfortran</depend>
     <depend>nlohmann-json-dev</depend>
     <depend>curl</depend>
     <depend>zip</depend>
