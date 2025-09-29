@@ -21,33 +21,56 @@ using std::move;
 // TO DO:
 // 1. ADD CHECKS FOR STUFF AS VALIDATION RULES IN CLICKUP DOCS 
 // 2. Add the newly updated file limits, event limits, api usage)
-// 3. FileData should be determined, streamlined and wrapped for the final user 
+// 3. FileData should be determined, streamlined and wrapped for the final user. Add API
 
 FileData::FileData(const std::string& data, const std::string& fileName, const std::string& mimeType)
-    : mimeType(mimeType), fileName(fileName), data(data) {
-    size = data.size();
-    classification = proto::event::PrepareFileUploadClass::UNKNOWN_FILE;
-    checksum = CalculateSHA256Checksum(data);
-}
+    : mimeType(mimeType),
+      fileName(fileName),
+      data(data),
+      size(data.size()),
+      checksum(calculateSHA256Checksum(data)),
+      classification(proto::event::PrepareFileUploadClass::UNKNOWN_FILE) {}
 
-FileData::FileData(std::string fileUrl) : data(std::move(fileUrl)) {
-    fileName = std::filesystem::path(data).filename().string();
-    static std::map<std::string, std::string> mimeTypes = {{".html", "text/html"},
-                                                           {".htm", "text/html"},
-                                                           {".css", "text/css"},
-                                                           {".js", "application/javascript"},
-                                                           {".png", "image/png"},
-                                                           {".jpg", "image/jpeg"},
-                                                           {".jpeg", "image/jpeg"},
-                                                           {".gif", "image/gif"},
-                                                           {".svg", "image/svg+xml"},
-                                                           {".json", "application/json"},
-                                                           {".txt", "text/plain"}};
-    auto ext = std::filesystem::path(data).extension().string();
-    auto it = mimeTypes.find(ext);
-    mimeType = "application/octet-stream";
-    if(it != mimeTypes.end()) {
+FileData::FileData(const std::string& filePath, std::string fileName) 
+    : fileName(std::move(fileName)) {
+    static const std::unordered_map<std::string, std::string> mimeTypeExtensionMap = {
+        {".html", "text/html"},
+        {".htm",  "text/html"},
+        {".css",  "text/css"},
+        {".js",   "text/javascript"},
+        {".png",  "image/png"},
+        {".jpg",  "image/jpeg"},
+        {".jpeg", "image/jpeg"},
+        {".gif",  "image/gif"},
+        {".svg",  "image/svg+xml"},
+        {".json", "application/json"},
+        {".txt",  "text/plain"}
+    };
+    // Read the data
+    std::ifstream fileStream(filePath, std::ios::binary | std::ios::ate);
+    if (!fileStream) {
+        return;
+    }
+    std::streamsize fileSize = fileStream.tellg();
+    data.resize(static_cast<size_t>(fileSize));
+    fileStream.seekg(0, std::ios::beg);
+    fileStream.read(data.data(), fileSize);
+    size = data.size();
+    checksum = calculateSHA256Checksum(data);
+    // Determine the mime type
+    auto it = mimeTypeExtensionMap.find(std::filesystem::path(filePath).extension().string());
+    if (it != mimeTypeExtensionMap.end()) {
         mimeType = it->second;
+    } else {
+        mimeType = "application/octet-stream";
+    }
+    static const std::unordered_set<std::string> imageMimeTypes = {
+        "image/jpeg", "image/png", "image/webp", "image/bmp", "image/tiff"
+    };
+    if (imageMimeTypes.find(mimeType) != imageMimeTypes.end()) {
+        classification = proto::event::PrepareFileUploadClass::IMAGE_COLOR;
+    } else {
+        classification = proto::event::PrepareFileUploadClass::UNKNOWN_FILE;
     }
 }
 
@@ -55,18 +78,18 @@ FileData::FileData(const std::shared_ptr<ImgFrame>& imgFrame, std::string fileNa
     : mimeType("image/jpeg"), fileName(std::move(fileName)), classification(proto::event::PrepareFileUploadClass::IMAGE_COLOR) {
     // Convert ImgFrame to bytes
     cv::Mat cvFrame = imgFrame->getCvFrame();
-    std::vector<uchar> buf;
-    cv::imencode(".jpg", cvFrame, buf);
+    std::vector<uchar> buffer;
+    cv::imencode(".jpg", cvFrame, buffer);
 
     std::stringstream ss;
-    ss.write((const char*)buf.data(), buf.size());
+    ss.write((const char*)buffer.data(), buffer.size());
     data = ss.str();
     size = data.size();
-    checksum = CalculateSHA256Checksum(data);
+    checksum = calculateSHA256Checksum(data);
 }
 
 FileData::FileData(const std::shared_ptr<EncodedFrame>& encodedFrame, std::string fileName)
-    : fileName(std::move(fileName)) {//, type(EventDataType::ENCODED_FRAME) {
+    : mimeType("image/jpeg"), fileName(std::move(fileName)), classification(proto::event::PrepareFileUploadClass::IMAGE_COLOR) {
     // Convert EncodedFrame to bytes
     if(encodedFrame->getProfile() != EncodedFrame::Profile::JPEG) {
         logger::error("Only JPEG encoded frames are supported");
@@ -75,15 +98,18 @@ FileData::FileData(const std::shared_ptr<EncodedFrame>& encodedFrame, std::strin
     std::stringstream ss;
     ss.write((const char*)encodedFrame->getData().data(), encodedFrame->getData().size());
     data = ss.str();
-    mimeType = "image/jpeg";
+    size = data.size();
+    checksum = calculateSHA256Checksum(data);
 }
 
 FileData::FileData(const std::shared_ptr<NNData>& nnData, std::string fileName)
-    : mimeType("application/octet-stream"), fileName(std::move(fileName)) {//, type(EventDataType::NN_DATA) {
+    : mimeType("application/octet-stream"), fileName(std::move(fileName)), classification(proto::event::PrepareFileUploadClass::UNKNOWN_FILE) {
     // Convert NNData to bytes
     std::stringstream ss;
     ss.write((const char*)nnData->data->getData().data(), nnData->data->getData().size());
     data = ss.str();
+    size = data.size();
+    checksum = calculateSHA256Checksum(data);
 }
 
 FileData::FileData(const std::shared_ptr<ImgDetections>& imgDetections, std::string fileName)
@@ -94,36 +120,36 @@ FileData::FileData(const std::shared_ptr<ImgDetections>& imgDetections, std::str
     ss.write((const char*)imgDetectionsSerialized.data(), imgDetectionsSerialized.size());
     data = ss.str();
     size = data.size();
-    checksum = CalculateSHA256Checksum(data);
+    checksum = calculateSHA256Checksum(data);
 }
 
-bool FileData::toFile(const std::string& path) {
-    // check if filename is not empty
+bool FileData::toFile(const std::string& inputPath) {
     if(fileName.empty()) {
         logger::error("Filename is empty");
         return false;
     }
-    std::filesystem::path p(path);
-    if(true) {//type == EventDataType::FILE_URL) {
-        // get the filename from the url
-        std::filesystem::copy(data, p / fileName);
-    } else {
-        std::string extension = mimeType == "image/jpeg" ? ".jpg" : ".txt";
-        // check if file exists, if yes, append a number to the filename
-        std::string fileNameTmp = fileName;
-        int i = 0;
-        while(std::filesystem::exists(p / (fileNameTmp + extension))) {
-            logger::warn("File {} already exists, appending number to filename", fileNameTmp);
-            fileNameTmp = fileName + "_" + std::to_string(i);
-            i++;
-        }
-        std::ofstream fileStream(p / (fileNameTmp + extension), std::ios::binary);
-        fileStream.write(data.data(), data.size());
+    std::filesystem::path path(inputPath);
+    std::string extension = mimeType == "image/jpeg" ? ".jpg" : ".txt";
+    // Choose a unique filename
+    std::filesystem::path target = path / (fileName + extension);
+    for (int i = 1; std::filesystem::exists(target); ++i) {
+        logger::warn("File {} exists, trying a new name", target.string());
+        target = path / (fileName + "_" + std::to_string(i) + extension);
+    }
+    std::ofstream fileStream(target, std::ios::binary);
+    if (!fileStream) {
+        logger::error("Failed to open file for writing: {}", target.string());
+        return false;
+    }
+    fileStream.write(data.data(), static_cast<std::streamsize>(data.size()));
+    if (!fileStream) {
+        logger::error("Failed to write all data to: {}", target.string());
+        return false;
     }
     return true;
 }
 
-std::string FileData::CalculateSHA256Checksum(const std::string& data) {
+std::string FileData::calculateSHA256Checksum(const std::string& data) {
     unsigned char digest[SHA256_DIGEST_LENGTH];
     SHA256(reinterpret_cast<const unsigned char*>(data.data()), data.size(), digest);
 

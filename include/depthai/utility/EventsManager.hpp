@@ -28,25 +28,25 @@ namespace utility {
 class FileData {
    public:
     FileData(const std::string& data, const std::string& fileName, const std::string& mimeType);
-    explicit FileData(std::string fileUrl);
+    explicit FileData(const std::string& filePath, std::string fileName);
     explicit FileData(const std::shared_ptr<ImgFrame>& imgFrame, std::string fileName);
     explicit FileData(const std::shared_ptr<EncodedFrame>& encodedFrame, std::string fileName);
     explicit FileData(const std::shared_ptr<NNData>& nnData, std::string fileName);
     explicit FileData(const std::shared_ptr<ImgDetections>& imgDetections, std::string fileName);
-    bool toFile(const std::string& path);
+    bool toFile(const std::string& inputPath);
 
    private:
     /**
      * Calculate SHA256 checksum for the given data
      */
-    std::string CalculateSHA256Checksum(const std::string& data);
+    std::string calculateSHA256Checksum(const std::string& data);
 
-    std::string checksum;
     std::string mimeType;
-    uint64_t size;
     std::string fileName;
-    proto::event::PrepareFileUploadClass classification;
     std::string data;
+    uint64_t size;
+    std::string checksum;
+    proto::event::PrepareFileUploadClass classification;
     friend class EventsManager;
 };
 
