@@ -1719,9 +1719,16 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
     logCollection::logPipeline(schema, deviceInfo);
     this->pipelineSchema = schema;  // Save the schema so it can be saved alongside the crashdump
 
-    // Build and start the pipeline
     bool success = false;
     std::string errorMsg;
+
+    std::tie(success, errorMsg) = pimpl->rpcCall(std::chrono::seconds(60), "waitForDeviceReady").as<std::tuple<bool, std::string>>();
+
+    if (!success) {
+        throw std::runtime_error("Device not ready: " + errorMsg);
+    }
+
+    // Build and start the pipeline
     std::tie(success, errorMsg) = pimpl->rpcCall("buildPipeline").as<std::tuple<bool, std::string>>();
     if(success) {
         pimpl->rpcCall("startPipeline");
