@@ -3,7 +3,7 @@
 #include "depthai/pipeline/Node.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/node/YoloSegmentationParser.hpp"
-#include "depthai/pipeline/node/YoloSegmentationParserProperties.hpp"
+#include "depthai/properties/YoloSegmentationParserProperties.hpp"
 
 void bind_yolosegmnetationparser(pybind11::module& m, void* pCallstack) {
     using namespace dai;
