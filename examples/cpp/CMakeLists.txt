@@ -12,6 +12,9 @@ target_include_directories(utility PUBLIC "utility" "$<BUILD_INTERFACE:${FP16_IN
 add_default_flags(utility LEAN)
 target_link_libraries(utility ${OpenCV_LIBS})
 
+# Include depthaiHelpers.cmake
+include(${CMAKE_CURRENT_LIST_DIR}/../../cmake/depthaiHelpers.cmake)
+
 set(test_env
     # Misc
     "UBSAN_OPTIONS=halt_on_error=1"
@@ -94,6 +97,7 @@ function(dai_add_example example_name example_src enable_test use_pcl)
             COMMAND_EXPAND_LISTS
             VERBATIM
         )
+        add_runtime_dependencies(${example_name} usb-1.0)
     endif()
 endfunction()
 
