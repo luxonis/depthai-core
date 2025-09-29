@@ -30,7 +30,6 @@ void bind_yolosegmentationparser(pybind11::module& m, void* pCallstack) {
 
     // Node
     yoloSegmentationParser.def_readonly("input", &YoloSegmentationParser::input, DOC(dai, node, YoloSegmentationParser, input))
-        .def_readonly("inputDetections", &YoloSegmentationParser::inputDetections, DOC(dai, node, YoloSegmentationParser, inputDetections))
         .def_readonly("out", &YoloSegmentationParser::out, DOC(dai, node, YoloSegmentationParser, out))
         .def("setNNArchive",
              py::overload_cast<const NNArchive&>(&YoloSegmentationParser::setNNArchive),
