@@ -32,7 +32,6 @@ namespace dai {
 class CameraControl : public Buffer {
    public:
     CameraControl() = default;
-    virtual ~CameraControl() = default;
 
     enum class Command : uint8_t {
         START_STREAM = 1,
@@ -794,10 +793,8 @@ class CameraControl : public Buffer {
         return !!(cmdMask & (1ull << (uint8_t)cmd));
     }
 
-    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
-        metadata = utility::serialize(*this);
-        datatype = DatatypeEnum::CameraControl;
-    };
+    ~CameraControl() override;
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
     DEPTHAI_SERIALIZE(CameraControl,
                       cmdMask,

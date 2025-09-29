@@ -13,6 +13,8 @@ class DeviceNodeGroup : public DeviceNode {
         return "DeviceNodeGroup";
     }
 
+    virtual ~DeviceNodeGroup();
+
     using DeviceNode::DeviceNode;
     DeviceNodeGroup(const std::shared_ptr<Device>& device) : DeviceNode(device, std::make_unique<DeviceNodeGroupProperties>(), false) {}
     friend class PipelineImpl;

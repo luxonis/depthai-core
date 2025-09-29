@@ -20,6 +20,8 @@ struct BenchmarkOutProperties : PropertiesSerializable<Properties, BenchmarkOutP
      * FPS for sending, 0 means as fast as possible
      */
     float fps = 0;
+
+    ~BenchmarkOutProperties() override;
 };
 
 DEPTHAI_SERIALIZE_EXT(BenchmarkOutProperties, numMessages, fps);

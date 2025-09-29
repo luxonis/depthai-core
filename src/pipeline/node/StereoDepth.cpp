@@ -1,14 +1,15 @@
 #include "depthai/pipeline/node/StereoDepth.hpp"
 
+#include <fmt/format.h>  // fmt::format
+#include <fmt/std.h>     // std::filesystem::path formatting
+
 #include <fstream>
 
-#include "capabilities/ImgFrameCapability.hpp"
+#include "depthai/capabilities/ImgFrameCapability.hpp"
+#include "depthai/pipeline/Pipeline.hpp"
+#include "depthai/pipeline/datatype/StereoDepthConfig.hpp"
 #include "depthai/pipeline/node/Camera.hpp"
-#include "depthai/pipeline/node/MonoCamera.hpp"
-#include "pipeline/datatype/StereoDepthConfig.hpp"
-#include "utility/CompilerWarnings.hpp"
-#include "utility/Logging.hpp"
-#include "utility/spdlog-fmt.hpp"
+
 namespace dai {
 namespace node {
 
