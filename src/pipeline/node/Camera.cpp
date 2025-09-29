@@ -365,27 +365,9 @@ std::shared_ptr<Camera> Camera::setMaxSizePoolIsp(int size) {
     return std::dynamic_pointer_cast<Camera>(shared_from_this());
 }
 
-std::shared_ptr<Camera> Camera::setPreviewNumFramesPool(int num) {
-    properties.numFramesPoolPreview = num;
-    return std::dynamic_pointer_cast<Camera>(shared_from_this());
-}
-
-std::shared_ptr<Camera> Camera::setVideoNumFramesPool(int num) {
-    properties.numFramesPoolVideo = num;
-    return std::dynamic_pointer_cast<Camera>(shared_from_this());
-}
-
-std::shared_ptr<Camera> Camera::setStillNumFramesPool(int num) {
-    properties.numFramesPoolStill = num;
-    return std::dynamic_pointer_cast<Camera>(shared_from_this());
-}
-
-std::shared_ptr<Camera> Camera::setNumFramesPools(int raw, int isp, int preview, int video, int still) {
+std::shared_ptr<Camera> Camera::setNumFramesPools(int raw, int isp) {
     properties.numFramesPoolRaw = raw;
     properties.numFramesPoolIsp = isp;
-    properties.numFramesPoolPreview = preview;
-    properties.numFramesPoolVideo = video;
-    properties.numFramesPoolStill = still;
     return std::dynamic_pointer_cast<Camera>(shared_from_this());
 }
 
@@ -409,18 +391,6 @@ int Camera::getIspNumFramesPool() const {
 
 int Camera::getMaxSizePoolIsp() const {
     return properties.maxSizePoolIsp;
-}
-
-int Camera::getPreviewNumFramesPool() const {
-    return properties.numFramesPoolPreview;
-}
-
-int Camera::getVideoNumFramesPool() const {
-    return properties.numFramesPoolVideo;
-}
-
-int Camera::getStillNumFramesPool() const {
-    return properties.numFramesPoolStill;
 }
 
 }  // namespace node

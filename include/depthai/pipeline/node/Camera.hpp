@@ -153,36 +153,12 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
     std::shared_ptr<Camera> setMaxSizePoolIsp(int size);
 
     /**
-     * Set number of frames in preview pool (will be automatically reduced if the maximum pool memory size is exceeded)
-     * @param num Number of frames
-     * @return Shared pointer to the camera node
-     */
-    std::shared_ptr<Camera> setPreviewNumFramesPool(int num);
-
-    /**
-     * Set number of frames in video pool (will be automatically reduced if the maximum pool memory size is exceeded)
-     * @param num Number of frames
-     * @return Shared pointer to the camera node
-     */
-    std::shared_ptr<Camera> setVideoNumFramesPool(int num);
-
-    /**
-     * Set number of frames in still pool (will be automatically reduced if the maximum pool memory size is exceeded)
-     * @param num Number of frames
-     * @return Shared pointer to the camera node
-     */
-    std::shared_ptr<Camera> setStillNumFramesPool(int num);
-
-    /**
      * Set number of frames in all pools (will be automatically reduced if the maximum pool memory size is exceeded)
      * @param raw Number of frames in raw pool
      * @param isp Number of frames in isp pool
-     * @param preview Number of frames in preview pool
-     * @param video Number of frames in video pool
-     * @param still Number of frames in still pool
      * @return Shared pointer to the camera node
      */
-    std::shared_ptr<Camera> setNumFramesPools(int raw, int isp, int preview, int video, int still);
+    std::shared_ptr<Camera> setNumFramesPools(int raw, int isp);
 
     /**
      * Set maximum memory size of all pools
@@ -215,24 +191,6 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
      * @return Maximum size in bytes of isp pool
      */
     int getMaxSizePoolIsp() const;
-
-    /**
-     * Get number of frames in preview pool
-     * @return Number of frames
-     */
-    int getPreviewNumFramesPool() const;
-
-    /**
-     * Get number of frames in video pool
-     * @return Number of frames
-     */
-    int getVideoNumFramesPool() const;
-
-    /**
-     * Get number of frames in still pool
-     * @return Number of frames
-     */
-    int getStillNumFramesPool() const;
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     /**
