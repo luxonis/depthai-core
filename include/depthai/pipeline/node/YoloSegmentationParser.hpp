@@ -35,7 +35,7 @@ class YoloSegmentationParser : public DeviceNodeCRTP<DeviceNode, YoloSegmentatio
      * Input NN results with detection data to parse
      * Default queue is blocking with size 5
      */
-    Input input{*this, {"in", DEFAULT_GROUP, true, 5, {{{DatatypeEnum::NNData, true}}}, true}};
+    Input input{*this, {"input", DEFAULT_GROUP, true, 5, {{{DatatypeEnum::NNData, true}}}, true}};
     Input inputDetections{*this, {"inputDetections", DEFAULT_GROUP, true, 5, {{{DatatypeEnum::ImgDetections, true}}}, true}};
 
     /**
