@@ -131,14 +131,6 @@
                     "default-features": false
                 },
                 {
-                    "name": "opencv4",
-                    "default-features": false
-                },
-                {
-                    "name": "opencv",
-                    "default-features": false
-                },
-                {
                     "name": "rtabmap",
                     "default-features": false
                 }

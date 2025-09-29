@@ -9,14 +9,6 @@
     "ceres",
     "g2o",
     {
-      "name": "opencv",
-      "default-features": false,
-      "features": [
-        "calib3d",
-        "highgui"
-      ]
-    },
-    {
       "name": "pcl",
       "default-features": false
     },
@@ -78,42 +70,6 @@
       "description": "Build RTAB-Map with OctoMap support",
       "dependencies": [
         "octomap"
-      ]
-    },
-    "opencv-contrib": {
-      "description": "Use OpenCV with contrib modules (e.g., xfeatures2d, aruco)",
-      "dependencies": [
-        {
-          "name": "opencv",
-          "default-features": false,
-          "features": [
-            "contrib"
-          ]
-        }
-      ]
-    },
-    "opencv-cuda": {
-      "description": "Use OpenCV with CUDA (accelerated SIFT ad SURF GPU options)",
-      "dependencies": [
-        {
-          "name": "opencv",
-          "default-features": false,
-          "features": [
-            "cuda"
-          ]
-        }
-      ]
-    },
-    "opencv-nonfree": {
-      "description": "Use OpenCV with nonfree module (surf feature)",
-      "dependencies": [
-        {
-          "name": "opencv",
-          "default-features": false,
-          "features": [
-            "nonfree"
-          ]
-        }
       ]
     },
     "openni2": {
