@@ -17,7 +17,7 @@ std::shared_ptr<TransformData> rtabmapToTransformData(rtabmap::Transform transfo
                                     {transformRTABMap.r31(), transformRTABMap.r32(), transformRTABMap.r33(), transformRTABMap.o34()}}};
     return transform;
 }
-rtabmap::Transform getRTABMapTransform(Transform transform) {
+rtabmap::Transform getRTABMapTransform(const Transform& transform) {
     return rtabmap::Transform(transform.matrix[0][0],
                               transform.matrix[0][1],
                               transform.matrix[0][2],

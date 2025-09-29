@@ -442,6 +442,7 @@ set(TARGET_BASALT_SOURCES src/basalt/BasaltVIO.cpp)
 set(TARGET_RTABMAP_SOURCES
      src/rtabmap/RTABMapConversions.cpp
      src/rtabmap/RTABMapSLAM.cpp
+     src/rtabmap/RTABMapVIO.cpp
 )
 
 if(DEPTHAI_HAVE_OPENCV_SUPPORT AND DEPTHAI_MERGED_TARGET)
@@ -1009,6 +1010,7 @@ if(DEPTHAI_HAVE_RTABMAP_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
     add_library(${TARGET_RTABMAP_NAME}
      src/rtabmap/RTABMapConversions.cpp
      src/rtabmap/RTABMapSLAM.cpp
+     src/rtabmap/RTABMapVIO.cpp
     )
     add_library("${PROJECT_NAME}::${TARGET_RTABMAP_ALIAS}" ALIAS ${TARGET_RTABMAP_NAME})
     # Specifies name of generated IMPORTED target (set to alias)

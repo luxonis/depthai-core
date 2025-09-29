@@ -13,7 +13,7 @@ class StereoCameraModel;
 namespace dai {
 
 std::shared_ptr<TransformData> rtabmapToTransformData(rtabmap::Transform transformRTABMap);
-rtabmap::Transform getRTABMapTransform(Transform transform);
+rtabmap::Transform getRTABMapTransform(const Transform& transform);
 rtabmap::StereoCameraModel getRTABMapCameraModel(CameraBoardSocket cameraId,
                                                  int width,
                                                  int height,
