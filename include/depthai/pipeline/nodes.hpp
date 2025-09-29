@@ -8,6 +8,7 @@
 #include "node/ColorCamera.hpp"
 #include "node/DetectionNetwork.hpp"
 #include "node/DetectionParser.hpp"
+#include "node/YoloSegmentationParser.hpp"
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
     #include "node/DynamicCalibrationNode.hpp"
 #endif

@@ -7,7 +7,9 @@ import depthai as dai
 with dai.Pipeline() as pipeline:
     # Define source and output
     cam = pipeline.create(dai.node.Camera).build()
-    videoQueue = cam.requestOutput((640,400)).createOutputQueue()
+    videoQueue = cam.requestOutput((1280, 720)).createOutputQueue()
+    q2 = cam.requestOutput((100, 100)).createOutputQueue(blocking=False)
+    
 
     # Connect to device and start pipeline
     pipeline.start()

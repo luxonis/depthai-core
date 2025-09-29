@@ -9,7 +9,7 @@ import cv2
 from util_nodes import *
 
 print(dai.__file__)
-                                
+
 
 if __name__ == "__main__":
     frame_type = dai.ImgFrame.Type.BGR888i
@@ -70,27 +70,25 @@ if __name__ == "__main__":
         stereo.depth.link(spatialLocationCalculator.inputDepth)
         config_creator.output.link(spatialLocationCalculator.inputConfig)
         
-        sync_node = pipeline.create(dai.node.Sync)
-        stereo.depth.link(sync_node.inputs["depth"])
-        portNode.output.link(sync_node.inputs["img_detections"])
+        # sync_node = pipeline.create(dai.node.Sync)
+        # stereo.depth.link(sync_node.inputs["depth"])
+        # portNode.output.link(sync_node.inputs["img_detections"])
         
-        sync_decoder = pipeline.create(SyncDecoder)
-        sync_node.out.link(sync_decoder.input)
+        # demux = pipeline.create(dai.node.MessageDemux)
+        # sync_node.out.link(demux.input)
         
-        depth_overlay = pipeline.create(OverlayFrame)
-        depth_overlay.inputDetections.setBlocking(True)
-        depth_overlay.inputFrame.setBlocking(True)
-        sync_decoder.out_detections.link(depth_overlay.inputDetections)        
-        sync_decoder.out_frame.link(depth_overlay.inputFrame)
+        # depth_overlay= pipeline.create(dai.node.Overlay)
+        # depth_overlay.inputFrame.setBlocking(True)
+        # depth_overlay.inputDetections.setBlocking(True)
+        # demux.outputs["depth"].link(depth_overlay.inputFrame)
+        # demux.outputs["img_detections"].link(depth_overlay.inputDetections)
         
-        # portNode.output.link(depth_overlay.inputDetections)
-        # stereo.depth.link(depth_overlay.inputFrame)
-        
-        image_overlay = pipeline.create(OverlayFrame)
+
+        image_overlay = pipeline.create(dai.node.Overlay)
         image_overlay.inputDetections.setBlocking(True)
         image_overlay.inputFrame.setBlocking(True)
-        portNode.output.link(image_overlay.inputDetections)
         cam_out.link(image_overlay.inputFrame)
+        portNode.output.link(image_overlay.inputDetections)
         
         
         # crop_encoder = pipeline.create(dai.node.VideoEncoder)
@@ -103,13 +101,10 @@ if __name__ == "__main__":
         spatialLocationQueue = spatialLocationCalculator.out.createOutputQueue()
         spatialOutputQueue = spatialDetectionCalculator.out.createOutputQueue()
 
-        # portNodeQueue = portNode.output.createOutputQueue()
-        # portNodeQueue.setBlocking(True)
-        depth_overlay_out = depth_overlay.output.createOutputQueue()
-
+        # depth_overlay_out = depth_overlay.output.createOutputQueue()
         
         # cam_queue = crop_encoder.out.createOutputQueue()
-        cam_queue = image_overlay.output.createOutputQueue()
+        cam_queue = image_overlay.out.createOutputQueue()
         
         
         print("Pipeline created.")
@@ -122,14 +117,14 @@ if __name__ == "__main__":
             passthrough = cam_queue.get()
             # port_img_detections = portNodeQueue.get()
             spatialLocationsMsg = spatialLocationQueue.get()
-            depth_overlay_frame = depth_overlay_out.get()
+            # depth_overlay_frame = depth_overlay_out.get()
 
             assert isinstance(spatialLocationsMsg, dai.SpatialLocationCalculatorData)
             # assert isinstance(port_img_detections, dai.ImgDetections)
             assert isinstance(spatialData, dai.SpatialImgDetections)
             assert isinstance(passthrough, dai.ImgFrame)
-            assert isinstance(depth_overlay_frame, dai.ImgFrame)
-            depth_overlay_image = depth_overlay_frame.getCvFrame()
+            # assert isinstance(depth_overlay_frame, dai.ImgFrame)
+            # depth_overlay_image = depth_overlay_frame.getCvFrame()
             
             image = passthrough.getCvFrame()
             
@@ -182,7 +177,7 @@ if __name__ == "__main__":
             
             
             # image = cv2.resize(image, (512*2, 288*2))
-            cv2.imshow("depth overlay", depth_overlay_image)
+            # cv2.imshow("depth overlay", depth_overlay_image)
             # cv2.imshow("mask", scaled_mask)    
             cv2.imshow("depth", image)
             key = cv2.waitKey(1)

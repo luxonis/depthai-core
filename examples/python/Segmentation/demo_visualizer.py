@@ -68,15 +68,18 @@ if __name__ == "__main__":
         stereo.depth.link(spatialLocationCalculator.inputDepth)
         config_creator.output.link(spatialLocationCalculator.inputConfig)
         
-        overlay_node = pipeline.create(OverlayFrame)
+        overlay_node = pipeline.create(dai.node.Overlay)
+        overlay_node.inputFrame.setBlocking(True)
+        overlay_node.inputDetections.setBlocking(True)
         cam_out.link(overlay_node.inputFrame)
         portNode.output.link(overlay_node.inputDetections)
+
         
         annotation_node = pipeline.create(DepthAnnotations)
         spatialDetectionCalculator.out.link(annotation_node.inputSpatialDetections)
         spatialLocationCalculator.out.link(annotation_node.inputSpatialLocations)
         
-        visualizer.addTopic("masked_frame", overlay_node.output)
+        visualizer.addTopic("masked_frame", overlay_node.out)
         # visualizer.addTopic("color_frame", cam_out)
         visualizer.addTopic("detections", portNode.output)
         visualizer.addTopic("annotations", annotation_node.output)

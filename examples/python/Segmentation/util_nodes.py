@@ -226,3 +226,33 @@ class DepthAnnotations(dai.node.ThreadedHostNode):
 
             imgAnnt.annotations.append(annotation)
             self.output.send(imgAnnt)
+            
+            
+class PortToDaiDetections2(dai.node.ThreadedHostNode):
+    def __init__(self):
+        super().__init__()
+        self.input = self.createInput("in")
+        self.output = self.createOutput("out")
+
+        
+    def run(self) -> None:
+        while True:
+            in_data = self.input.get()
+            
+            
+            dai_detections = dai.ImgDetections()
+            dets = []
+            dai_det = dai.ImgDetection()
+            
+            dai_det.label = 1
+            dai_det.confidence = 0.7
+            dets.append(dai_det)
+        
+            dai_detections.detections = dets
+
+            mask = np.ones((288, 512), dtype=np.uint8) * 255
+            mask[100:200, 100:200] = 0            
+            
+            dai_detections.setSegmentationMask(mask)
+
+            self.output.send(dai_detections)
