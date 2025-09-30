@@ -547,7 +547,7 @@ jobs:
           "$PYBIN" -m pip install --force-reinstall $wheel
 
           # Smoke test: fail hard on any exception or version mismatch
-          EXPECTED_VERSION="$ver" python bindings/python/ci/smoke_depthai.py
+          EXPECTED_VERSION="$ver" "$PYBIN" bindings/python/ci/smoke_depthai.py
 
   # This job builds wheels for ARM64 arch
   build-linux-arm64:
@@ -724,6 +724,8 @@ jobs:
         run: |
           $env:PYTHONIOENCODING = 'utf-8'
 
+          $ErrorActionPreference = "Stop"  # Fail on any error
+
           # Resolve the exact dev version (includes commit hash)
           $ver = python -c "import os,sys,pathlib; sys.path.insert(0,str(pathlib.Path('bindings/python').resolve())); import find_version as v; print(v.get_package_dev_version(os.environ['BUILD_COMMIT_HASH']))"
           Write-Host "Installing depthai==$ver using:"; python -VV
@@ -736,7 +738,8 @@ jobs:
           python -m pip install --force-reinstall bindings/python/wheelhouse/audited/$wheel_name
 
           # Smoke test (no heredoc; YAML-safe). Fail on import error or version mismatch.
-          $env:EXPECTED_VERSION = $ver python bindings/python/ci/smoke_depthai.py
+          $env:EXPECTED_VERSION = $ver
+          python bindings/python/ci/smoke_depthai.py
   release:
     if: startsWith(github.ref, 'refs/tags/v')
     # needs: [pytest, build-linux-armhf, build-windows-x86_64, build-macos-x86_64, build-macos-arm64, build-linux-x86_64, build-linux-arm64]
