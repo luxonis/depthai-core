@@ -8,7 +8,6 @@ endif()
 
 if(DEPTHAI_RTABMAP_SUPPORT)
     list(APPEND VCPKG_MANIFEST_FEATURES "rtabmap")
-    # list(APPEND VCPKG_MANIFEST_FEATURES "pcl-support")
 endif()
 
 if(DEPTHAI_BASALT_SUPPORT)

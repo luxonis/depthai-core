@@ -46,7 +46,7 @@ if(DEPTHAI_VCPKG_INTERNAL_ONLY)
     set(USE_EXTERNAL_INTERFACE_LIBS_DEFAULT OFF)
 endif()
 
-option(DEPTHAI_JSON_EXTERNAL "Use external nlohmann_json library" ${USE_EXTERNAL_INTERFACE_LIBS_DEFAULT})
+option(DEPTHAI_JSON_EXTERNAL "Use external nlohmann_json library" ON)
 option(DEPTHAI_LIBNOP_EXTERNAL "Use external libnop library" ${USE_EXTERNAL_INTERFACE_LIBS_DEFAULT})
 option(DEPTHAI_XTENSOR_EXTERNAL "Use external xtensor library" ${USE_EXTERNAL_INTERFACE_LIBS_DEFAULT})
 

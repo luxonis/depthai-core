@@ -125,16 +125,16 @@ endif()
 find_package(Threads ${_QUIET} REQUIRED)
 
 if(NOT DEPTHAI_JSON_EXTERNAL)
-    # FetchContent_Declare(
-    #     nlohmann_json
-    #     GIT_REPOSITORY https://github.com/nlohmann/json.git
-    #     GIT_TAG        v3.12.0
-    # )
-    # # Json is a public dependancy, so it has to be installed
-    # set(JSON_Install ON CACHE BOOL "Install nlohmann_json" FORCE)
-    #
-    # FetchContent_MakeAvailable(nlohmann_json)
-    # list(APPEND targets_to_export nlohmann_json)
+    FetchContent_Declare(
+        nlohmann_json
+        GIT_REPOSITORY https://github.com/nlohmann/json.git
+        GIT_TAG        v3.12.0
+    )
+    # Json is a public dependancy, so it has to be installed
+    set(JSON_Install ON CACHE BOOL "Install nlohmann_json" FORCE)
+
+    FetchContent_MakeAvailable(nlohmann_json)
+    list(APPEND targets_to_export nlohmann_json)
 else()
     find_package(nlohmann_json CONFIG REQUIRED)
 endif()

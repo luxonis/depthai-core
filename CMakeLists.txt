@@ -440,9 +440,9 @@ set(TARGET_PCL_SOURCES src/pcl/PointCloudData.cpp)
 set(TARGET_BASALT_SOURCES src/basalt/BasaltVIO.cpp)
 
 set(TARGET_RTABMAP_SOURCES
-     src/rtabmap/RTABMapConversions.cpp
-     src/rtabmap/RTABMapSLAM.cpp
-     src/rtabmap/RTABMapVIO.cpp
+    src/rtabmap/RTABMapConversions.cpp
+    src/rtabmap/RTABMapSLAM.cpp
+    src/rtabmap/RTABMapVIO.cpp
 )
 
 if(DEPTHAI_HAVE_OPENCV_SUPPORT AND DEPTHAI_MERGED_TARGET)
@@ -490,6 +490,7 @@ if(DEPTHAI_BUILD_ZOO_HELPER)
         src/utility/Platform.cpp
     )
     set(ZOO_HELPER_LINK_LIBRARIES
+        nlohmann_json::nlohmann_json
         fmt::fmt
         yaml-cpp::yaml-cpp
         CURL::libcurl
