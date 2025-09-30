@@ -118,6 +118,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     std::unordered_map<std::string, std::filesystem::path> recordReplayFilenames;
     bool removeRecordReplayFiles = true;
     std::string defaultDeviceId;
+    bool pipelineOnHost = true;
 
     // Pipeline events
     std::shared_ptr<MessageQueue> pipelineStateOut;
@@ -482,6 +483,10 @@ class Pipeline {
     }
 
     void build() {
+        impl()->build();
+    }
+    void buildDevice() {
+        impl()->pipelineOnHost = false;
         impl()->build();
     }
     void start() {

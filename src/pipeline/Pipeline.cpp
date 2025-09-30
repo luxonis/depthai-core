@@ -544,133 +544,139 @@ void PipelineImpl::build() {
     // TODO(themarpe) - add mutex and set running up ahead
     if(isBuild) return;
 
-    if(defaultDevice) {
-        auto recordPath = std::filesystem::path(utility::getEnvAs<std::string>("DEPTHAI_RECORD", ""));
-        auto replayPath = std::filesystem::path(utility::getEnvAs<std::string>("DEPTHAI_REPLAY", ""));
+    if(pipelineOnHost) {
+        if(defaultDevice) {
+            auto recordPath = std::filesystem::path(utility::getEnvAs<std::string>("DEPTHAI_RECORD", ""));
+            auto replayPath = std::filesystem::path(utility::getEnvAs<std::string>("DEPTHAI_REPLAY", ""));
 
-        if(defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_2
-           || defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_X
-           || defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_RVC4) {
-            try {
+            if(defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_2
+               || defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_X
+               || defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_RVC4) {
+                try {
 #ifdef DEPTHAI_MERGED_TARGET
-                if(enableHolisticRecordReplay) {
-                    switch(recordConfig.state) {
-                        case RecordConfig::RecordReplayState::RECORD:
-                            recordPath = recordConfig.outputDir;
-                            replayPath = "";
-                            break;
-                        case RecordConfig::RecordReplayState::REPLAY:
-                            recordPath = "";
-                            replayPath = recordConfig.outputDir;
-                            break;
-                        case RecordConfig::RecordReplayState::NONE:
-                            enableHolisticRecordReplay = false;
-                            break;
-                    }
-                }
-
-                defaultDeviceId = defaultDevice->getDeviceId();
-
-                if(!recordPath.empty() && !replayPath.empty()) {
-                    Logging::getInstance().logger.warn("Both DEPTHAI_RECORD and DEPTHAI_REPLAY are set. Record and replay disabled.");
-                } else if(!recordPath.empty()) {
-                    if(enableHolisticRecordReplay || utility::checkRecordConfig(recordPath, recordConfig)) {
-                        if(platform::checkWritePermissions(recordPath)) {
-                            if(utility::setupHolisticRecord(parent,
-                                                            defaultDeviceId,
-                                                            recordConfig,
-                                                            recordReplayFilenames,
-                                                            defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_2
-                                                                || defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_X)) {
-                                recordConfig.state = RecordConfig::RecordReplayState::RECORD;
-                                Logging::getInstance().logger.info("Record enabled.");
-                            } else {
-                                Logging::getInstance().logger.warn("Could not set up holistic record. Record and replay disabled.");
-                            }
-                        } else {
-                            Logging::getInstance().logger.warn("DEPTHAI_RECORD path does not have write permissions. Record disabled.");
+                    if(enableHolisticRecordReplay) {
+                        switch(recordConfig.state) {
+                            case RecordConfig::RecordReplayState::RECORD:
+                                recordPath = recordConfig.outputDir;
+                                replayPath = "";
+                                break;
+                            case RecordConfig::RecordReplayState::REPLAY:
+                                recordPath = "";
+                                replayPath = recordConfig.outputDir;
+                                break;
+                            case RecordConfig::RecordReplayState::NONE:
+                                enableHolisticRecordReplay = false;
+                                break;
                         }
-                    } else {
-                        Logging::getInstance().logger.warn("Could not successfully parse DEPTHAI_RECORD. Record disabled.");
                     }
-                } else if(!replayPath.empty()) {
-                    if(platform::checkPathExists(replayPath)) {
-                        if(platform::checkWritePermissions(replayPath)) {
-                            if(utility::setupHolisticReplay(parent,
-                                                            replayPath,
-                                                            defaultDeviceId,
-                                                            recordConfig,
-                                                            recordReplayFilenames,
-                                                            defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_2
-                                                                || defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_X)) {
-                                recordConfig.state = RecordConfig::RecordReplayState::REPLAY;
-                                if(platform::checkPathExists(replayPath, true)) {
-                                    removeRecordReplayFiles = false;
+
+                    defaultDeviceId = defaultDevice->getDeviceId();
+
+                    if(!recordPath.empty() && !replayPath.empty()) {
+                        Logging::getInstance().logger.warn("Both DEPTHAI_RECORD and DEPTHAI_REPLAY are set. Record and replay disabled.");
+                    } else if(!recordPath.empty()) {
+                        if(enableHolisticRecordReplay || utility::checkRecordConfig(recordPath, recordConfig)) {
+                            if(platform::checkWritePermissions(recordPath)) {
+                                if(utility::setupHolisticRecord(parent,
+                                                                defaultDeviceId,
+                                                                recordConfig,
+                                                                recordReplayFilenames,
+                                                                defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_2
+                                                                    || defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_X)) {
+                                    recordConfig.state = RecordConfig::RecordReplayState::RECORD;
+                                    Logging::getInstance().logger.info("Record enabled.");
+                                } else {
+                                    Logging::getInstance().logger.warn("Could not set up holistic record. Record and replay disabled.");
                                 }
-                                Logging::getInstance().logger.info("Replay enabled.");
                             } else {
-                                Logging::getInstance().logger.warn("Could not set up holistic replay. Record and replay disabled.");
+                                Logging::getInstance().logger.warn("DEPTHAI_RECORD path does not have write permissions. Record disabled.");
                             }
                         } else {
-                            Logging::getInstance().logger.warn("DEPTHAI_REPLAY path does not have write permissions. Replay disabled.");
+                            Logging::getInstance().logger.warn("Could not successfully parse DEPTHAI_RECORD. Record disabled.");
                         }
-                    } else {
-                        Logging::getInstance().logger.warn("DEPTHAI_REPLAY path does not exist or is invalid. Replay disabled.");
+                    } else if(!replayPath.empty()) {
+                        if(platform::checkPathExists(replayPath)) {
+                            if(platform::checkWritePermissions(replayPath)) {
+                                if(utility::setupHolisticReplay(parent,
+                                                                replayPath,
+                                                                defaultDeviceId,
+                                                                recordConfig,
+                                                                recordReplayFilenames,
+                                                                defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_2
+                                                                    || defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_X)) {
+                                    recordConfig.state = RecordConfig::RecordReplayState::REPLAY;
+                                    if(platform::checkPathExists(replayPath, true)) {
+                                        removeRecordReplayFiles = false;
+                                    }
+                                    Logging::getInstance().logger.info("Replay enabled.");
+                                } else {
+                                    Logging::getInstance().logger.warn("Could not set up holistic replay. Record and replay disabled.");
+                                }
+                            } else {
+                                Logging::getInstance().logger.warn("DEPTHAI_REPLAY path does not have write permissions. Replay disabled.");
+                            }
+                        } else {
+                            Logging::getInstance().logger.warn("DEPTHAI_REPLAY path does not exist or is invalid. Replay disabled.");
+                        }
                     }
-                }
 #else
-                recordConfig.state = RecordConfig::RecordReplayState::NONE;
-                if(!recordPath.empty() || !replayPath.empty()) {
-                    Logging::getInstance().logger.warn("Merged target is required to use holistic record/replay.");
-                }
+                    recordConfig.state = RecordConfig::RecordReplayState::NONE;
+                    if(!recordPath.empty() || !replayPath.empty()) {
+                        Logging::getInstance().logger.warn("Merged target is required to use holistic record/replay.");
+                    }
 #endif
-            } catch(std::runtime_error& e) {
-                Logging::getInstance().logger.warn("Could not set up record / replay: {}", e.what());
+                } catch(std::runtime_error& e) {
+                    Logging::getInstance().logger.warn("Could not set up record / replay: {}", e.what());
+                }
+            } else if(enableHolisticRecordReplay || !recordPath.empty() || !replayPath.empty()) {
+                throw std::runtime_error("Holistic record/replay is only supported on RVC2 devices for now.");
             }
-        } else if(enableHolisticRecordReplay || !recordPath.empty() || !replayPath.empty()) {
-            throw std::runtime_error("Holistic record/replay is only supported on RVC2 devices for now.");
         }
-    }
 
-    // Create pipeline event aggregator node and link
-    // Check if any nodes are on host or device
-    bool hasHostNodes = false;
-    bool hasDeviceNodes = false;
-    for(const auto& node : getAllNodes()) {
-        if(node->runOnHost()) {
-            hasHostNodes = true;
-        } else {
-            hasDeviceNodes = true;
-        }
-    }
-    std::shared_ptr<node::internal::PipelineEventAggregation> hostEventAgg = nullptr;
-    std::shared_ptr<node::internal::PipelineEventAggregation> deviceEventAgg = nullptr;
-    if(hasHostNodes) {
-        hostEventAgg = parent.create<node::internal::PipelineEventAggregation>();
-        hostEventAgg->setRunOnHost(true);
-    }
-    if(hasDeviceNodes) {
-        deviceEventAgg = parent.create<node::internal::PipelineEventAggregation>();
-        deviceEventAgg->setRunOnHost(false);
-    }
-    for(auto& node : getAllNodes()) {
-        auto threadedNode = std::dynamic_pointer_cast<ThreadedNode>(node);
-        if(threadedNode) {
-            if(node->runOnHost() && hostEventAgg && node->id != hostEventAgg->id) {
-                threadedNode->pipelineEventOutput.link(hostEventAgg->inputs[fmt::format("{} - {}", node->getName(), node->id)]);
-            } else if(!node->runOnHost() && deviceEventAgg && node->id != deviceEventAgg->id) {
-                threadedNode->pipelineEventOutput.link(deviceEventAgg->inputs[fmt::format("{} - {}", node->getName(), node->id)]);
+        // Create pipeline event aggregator node and link
+        // Check if any nodes are on host or device
+        bool hasHostNodes = false;
+        bool hasDeviceNodes = false;
+        for(const auto& node : getAllNodes()) {
+            if(std::string(node->getName()) == std::string("NodeGroup") || std::string(node->getName()) == std::string("DeviceNodeGroup")) continue;
+
+            if(node->runOnHost()) {
+                hasHostNodes = true;
+            } else {
+                hasDeviceNodes = true;
             }
         }
+        std::shared_ptr<node::internal::PipelineEventAggregation> hostEventAgg = nullptr;
+        std::shared_ptr<node::internal::PipelineEventAggregation> deviceEventAgg = nullptr;
+        if(hasHostNodes) {
+            hostEventAgg = parent.create<node::internal::PipelineEventAggregation>();
+            hostEventAgg->setRunOnHost(true);
+        }
+        if(hasDeviceNodes) {
+            deviceEventAgg = parent.create<node::internal::PipelineEventAggregation>();
+            deviceEventAgg->setRunOnHost(false);
+        }
+        for(auto& node : getAllNodes()) {
+            if(std::string(node->getName()) == std::string("NodeGroup") || std::string(node->getName()) == std::string("DeviceNodeGroup")) continue;
+
+            auto threadedNode = std::dynamic_pointer_cast<ThreadedNode>(node);
+            if(threadedNode) {
+                if(node->runOnHost() && hostEventAgg && node->id != hostEventAgg->id) {
+                    threadedNode->pipelineEventOutput.link(hostEventAgg->inputs[fmt::format("{} - {}", node->getName(), node->id)]);
+                } else if(!node->runOnHost() && deviceEventAgg && node->id != deviceEventAgg->id) {
+                    threadedNode->pipelineEventOutput.link(deviceEventAgg->inputs[fmt::format("{} - {}", node->getName(), node->id)]);
+                }
+            }
+        }
+        auto stateMerge = parent.create<node::PipelineStateMerge>()->build(hasDeviceNodes, hasHostNodes);
+        if(deviceEventAgg) {
+            deviceEventAgg->out.link(stateMerge->inputDevice);
+        }
+        if(hostEventAgg) {
+            hostEventAgg->out.link(stateMerge->inputHost);
+        }
+        pipelineStateOut = stateMerge->out.createOutputQueue(1, false);
     }
-    auto stateMerge = parent.create<node::PipelineStateMerge>()->build(hasDeviceNodes, hasHostNodes);
-    if(deviceEventAgg) {
-        deviceEventAgg->out.link(stateMerge->inputDevice);
-    }
-    if(hostEventAgg) {
-        hostEventAgg->out.link(stateMerge->inputHost);
-    }
-    pipelineStateOut = stateMerge->out.createOutputQueue(1, false);
 
     isBuild = true;
 
