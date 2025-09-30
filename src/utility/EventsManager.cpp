@@ -113,7 +113,7 @@ FileData::FileData(const std::shared_ptr<NNData>& nnData, std::string fileName)
 }
 
 FileData::FileData(const std::shared_ptr<ImgDetections>& imgDetections, std::string fileName)
-    : mimeType("application/x-protobuf"), fileName(std::move(fileName)), classification(proto::event::PrepareFileUploadClass::ANNOTATION) {
+    : mimeType("application/x-protobuf; proto=ImgDetections"), fileName(std::move(fileName)), classification(proto::event::PrepareFileUploadClass::ANNOTATION) {
     // Serialize ImgDetections
     std::vector<uint8_t> imgDetectionsSerialized = imgDetections->serializeProto();
     std::stringstream ss;
@@ -171,7 +171,9 @@ EventsManager::EventsManager(std::string url, bool uploadCachedOnStart, float pu
       cacheDir("/internal/private"),
       cacheIfCannotSend(false),
       stopUploadThread(false) {
-    sourceAppId = utility::getEnvAs<std::string>("OAKAGENT_APP_VERSION", "");
+    auto appId = utility::getEnvAs<std::string>("OAKAGENT_APP_ID", "");
+    auto containerId = utility::getEnvAs<std::string>("OAKAGENT_CONTAINER_ID", "");
+    sourceAppId = appId == "" ? containerId : appId;
     sourceAppIdentifier = utility::getEnvAs<std::string>("OAKAGENT_APP_IDENTIFIER", "");
     token = utility::getEnvAs<std::string>("DEPTHAI_HUB_API_KEY", "");
     dai::Logging::getInstance().logger.set_level(spdlog::level::info);
