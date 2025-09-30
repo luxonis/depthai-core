@@ -20,6 +20,6 @@ macro(add_runtime_dependencies depending_target dependency)
             COMMAND_EXPAND_LISTS
             VERBATIM
         )
-        message(DEBUG "Required dlls for core are: ${required_dll_files}")
+        message(DEBUG "Required dlls for ${depending_target} are: ${required_dll_files}")
     endif()
 endmacro()
