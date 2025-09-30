@@ -156,17 +156,33 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
      * Set number of frames in all pools (will be automatically reduced if the maximum pool memory size is exceeded)
      * @param raw Number of frames in raw pool
      * @param isp Number of frames in isp pool
+     * @param imgmanip Number of frames in image manip pools
      * @return Shared pointer to the camera node
      */
-    std::shared_ptr<Camera> setNumFramesPools(int raw, int isp);
+    std::shared_ptr<Camera> setNumFramesPools(int raw, int isp, int imgmanip);
 
     /**
      * Set maximum memory size of all pools
      * @param raw Maximum size in bytes of raw pool
      * @param isp Maximum size in bytes of isp pool
+     * @param imgmanip Maximum size in bytes of image manip pools
      * @return Shared pointer to the camera node
      */
-    std::shared_ptr<Camera> setMaxSizePools(int raw, int isp);
+    std::shared_ptr<Camera> setMaxSizePools(int raw, int isp, int imgmanip);
+
+    /**
+     * Set number of frames in image manip pool for all outputs
+     * @param num Number of frames
+     * @return Shared pointer to the camera node
+     */
+    std::shared_ptr<Camera> setOutputsImageManipNumFramesPool(int num);
+
+    /**
+     * Set maximum size of image manip pool for all outputs
+     * @param size Maximum size in bytes of image manip pool
+     * @return Shared pointer to the camera node
+     */
+    std::shared_ptr<Camera> setOutputsImageManipMaxSizePool(int size);
 
     /**
      * Get number of frames in raw pool
@@ -191,6 +207,18 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
      * @return Maximum size in bytes of isp pool
      */
     int getMaxSizePoolIsp() const;
+
+    /**
+     * Get number of frames in image manip pool for all outputs
+     * @return Number of frames
+     */
+    int getOutputsImageManipNumFramesPool() const;
+
+    /**
+     * Get maximum size of image manip pool for all outputs
+     * @return Maximum size in bytes of image manip pool
+     */
+    int getOutputsImageManipMaxSizePool() const;
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     /**

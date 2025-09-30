@@ -365,15 +365,27 @@ std::shared_ptr<Camera> Camera::setMaxSizePoolIsp(int size) {
     return std::dynamic_pointer_cast<Camera>(shared_from_this());
 }
 
-std::shared_ptr<Camera> Camera::setNumFramesPools(int raw, int isp) {
-    properties.numFramesPoolRaw = raw;
-    properties.numFramesPoolIsp = isp;
+std::shared_ptr<Camera> Camera::setOutputsImageManipNumFramesPool(int num) {
+    properties.numFramesPoolImageManip = num;
     return std::dynamic_pointer_cast<Camera>(shared_from_this());
 }
 
-std::shared_ptr<Camera> Camera::setMaxSizePools(int raw, int isp) {
+std::shared_ptr<Camera> Camera::setOutputsImageManipMaxSizePool(int size) {
+    properties.maxSizePoolImageManip = size;
+    return std::dynamic_pointer_cast<Camera>(shared_from_this());
+}
+
+std::shared_ptr<Camera> Camera::setNumFramesPools(int raw, int isp, int imgmanip) {
+    properties.numFramesPoolRaw = raw;
+    properties.numFramesPoolIsp = isp;
+    properties.numFramesPoolImageManip = imgmanip;
+    return std::dynamic_pointer_cast<Camera>(shared_from_this());
+}
+
+std::shared_ptr<Camera> Camera::setMaxSizePools(int raw, int isp, int imgmanip) {
     properties.maxSizePoolRaw = raw;
     properties.maxSizePoolIsp = isp;
+    properties.maxSizePoolImageManip = imgmanip;
     return std::dynamic_pointer_cast<Camera>(shared_from_this());
 }
 
@@ -391,6 +403,14 @@ int Camera::getIspNumFramesPool() const {
 
 int Camera::getMaxSizePoolIsp() const {
     return properties.maxSizePoolIsp;
+}
+
+int Camera::getOutputsImageManipNumFramesPool() const {
+    return properties.numFramesPoolImageManip;
+}
+
+int Camera::getOutputsImageManipMaxSizePool() const {
+    return properties.maxSizePoolImageManip;
 }
 
 }  // namespace node

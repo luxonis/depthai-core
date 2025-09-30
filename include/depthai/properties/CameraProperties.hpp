@@ -103,6 +103,10 @@ struct CameraProperties : PropertiesSerializable<Properties, CameraProperties> {
     /** Still pool */
     int numFramesPoolStill = 4;  // No max size in bytes for still pool, used in mono and color cameras only, those are deprecated
 
+    /** ImageManip frame pool */
+    int numFramesPoolImageManip = 3;
+    int maxSizePoolImageManip = 10 * 1024 * 1024;  // 10MB
+
     ~CameraProperties() override;
 };
 
@@ -125,6 +129,8 @@ DEPTHAI_SERIALIZE_EXT(CameraProperties,
                       numFramesPoolVideo,
                       numFramesPoolPreview,
                       numFramesPoolStill,
+                      numFramesPoolImageManip,
+                      maxSizePoolImageManip,
                       outputRequests);
 
 }  // namespace dai
