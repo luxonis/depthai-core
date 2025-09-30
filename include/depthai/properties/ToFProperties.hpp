@@ -55,6 +55,8 @@ struct ToFProperties : PropertiesSerializable<Properties, ToFProperties> {
      * Pool sizes
      */
     int numFramesPoolRaw = 3;
+
+    ~ToFProperties() override;
 };
 
 DEPTHAI_SERIALIZE_EXT(ToFProperties, initialConfig, numFramesPool, numShaves, warpHwIds, boardSocket, cameraName, imageOrientation, fps, numFramesPoolRaw);

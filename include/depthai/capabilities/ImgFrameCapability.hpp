@@ -49,6 +49,8 @@ class ImgFrameCapability : public CapabilityCRTP<Capability, ImgFrameCapability>
     std::optional<bool> enableUndistortion;
     // TODO(jakgra) add optional CapabilityRange fov / max-min horiz. / vertical crop;
 
+    ~ImgFrameCapability() override;
+
     DEPTHAI_SERIALIZE(ImgFrameCapability, size, fps, type, resizeMode, enableUndistortion);
 
    private:

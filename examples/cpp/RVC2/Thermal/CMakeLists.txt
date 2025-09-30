@@ -6,3 +6,5 @@ cmake_minimum_required(VERSION 3.10)
 
 dai_add_example(thermal thermal.cpp OFF OFF)
 dai_add_example(thermal_crosshair thermal_crosshair.cpp OFF OFF)
+dai_add_example(thermal_align thermal_align.cpp OFF OFF)
+dai_add_example(thermal_detection_network_remap thermal_detection_network_remap.cpp OFF OFF)

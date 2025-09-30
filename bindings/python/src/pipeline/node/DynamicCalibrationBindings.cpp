@@ -15,21 +15,6 @@ void bind_dynamic_calibration(pybind11::module& m, void* pCallstack) {
     // Create/bind the node class first; this returns a py::class_<DynamicCalibration,...>
     auto dynamicCalibration = ADD_NODE(DynamicCalibration);
 
-    // Here we bind PerformanceMode inside DynamicCalibration
-    {
-        namespace dn = dai::node;
-
-        // After `auto dynamicCalibration = ADD_NODE(DynamicCalibration);`
-
-        py::enum_<dn::DynamicCalibration::PerformanceMode>(dynamicCalibration, "PerformanceMode")
-            .value("DEFAULT", dn::DynamicCalibration::PerformanceMode::DEFAULT)
-            .value("STATIC_SCENERY", dn::DynamicCalibration::PerformanceMode::STATIC_SCENERY)
-            .value("OPTIMIZE_SPEED", dn::DynamicCalibration::PerformanceMode::OPTIMIZE_SPEED)
-            .value("OPTIMIZE_PERFORMANCE", dn::DynamicCalibration::PerformanceMode::OPTIMIZE_PERFORMANCE)
-            .value("SKIP_CHECKS", dn::DynamicCalibration::PerformanceMode::SKIP_CHECKS)
-            .export_values();
-    }
-
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////

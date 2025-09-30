@@ -18,7 +18,7 @@ class StereoDepthConfig : public Buffer {
      * Construct StereoDepthConfig message.
      */
     StereoDepthConfig() = default;
-    virtual ~StereoDepthConfig() = default;
+    virtual ~StereoDepthConfig();
 
     using MedianFilter = filters::params::MedianFilter;
 
@@ -814,10 +814,7 @@ class StereoDepthConfig : public Buffer {
 
     dai::ProcessorType filtersBackend = dai::ProcessorType::CPU;
 
-    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
-        metadata = utility::serialize(*this);
-        datatype = DatatypeEnum::StereoDepthConfig;
-    };
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
     DEPTHAI_SERIALIZE(StereoDepthConfig, algorithmControl, postProcessing, censusTransform, costMatching, costAggregation, confidenceMetrics, filtersBackend);
 };
 

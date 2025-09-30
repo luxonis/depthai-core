@@ -419,8 +419,8 @@ with dai.Pipeline(dai.Device(*dai_device_args)) as pipeline:
                 stereo.setLeftRightCheck(True)
                 stereo.setSubpixel(True)
                 stereo.setLeftRightCheck(True)
-                left_cam.requestFullResolutionOutput(type=dai.ImgFrame.Type.NV12).link(stereo.left)
-                right_cam.requestFullResolutionOutput(type=dai.ImgFrame.Type.NV12).link(stereo.right)
+                left_cam.requestFullResolutionOutput().link(stereo.left)
+                right_cam.requestFullResolutionOutput().link(stereo.right)
                 xout[DEPTH_STREAM_NAME] = stereo.disparity
                 streams.append(DEPTH_STREAM_NAME)
             else:
