@@ -238,15 +238,11 @@ set(THIRDPARTY_RTABMAP_LIBRARIES "rtabmap::utilite" CACHE STRING "Optional libra
 set(TARGET_RTABMAP_NAME ${PROJECT_NAME}-rtabmap)
 set(TARGET_RTABMAP_ALIAS rtabmap)
 if(DEPTHAI_RTABMAP_SUPPORT)
-    if(RTABMap_FOUND)
+    if(${RTABMap_FOUND})
         set(DEPTHAI_HAVE_RTABMAP_SUPPORT ON)
         message(STATUS "RTABMAP found. RTABMAP Support enabled")
     else()
-        if(${RTABMap_FOUND})
-            message(WARNING "RTABMAP found but depthai does not have PCL support. RTABMAP Support disabled")
-        else()
-            message(WARNING "RTABMAP not found. RTABMAP Support disabled")
-        endif()
+        message(WARNING "RTABMAP not found. RTABMAP Support disabled")
     endif()
 endif()
 
@@ -1009,9 +1005,9 @@ if(DEPTHAI_HAVE_RTABMAP_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
     endif()
     # Add depthai-rtabmap library and depthai::rtabmap alias
     add_library(${TARGET_RTABMAP_NAME}
-     src/rtabmap/RTABMapConversions.cpp
-     src/rtabmap/RTABMapSLAM.cpp
-     src/rtabmap/RTABMapVIO.cpp
+    src/rtabmap/RTABMapConversions.cpp
+    src/rtabmap/RTABMapSLAM.cpp
+    src/rtabmap/RTABMapVIO.cpp
     )
     add_library("${PROJECT_NAME}::${TARGET_RTABMAP_ALIAS}" ALIAS ${TARGET_RTABMAP_NAME})
     # Specifies name of generated IMPORTED target (set to alias)
