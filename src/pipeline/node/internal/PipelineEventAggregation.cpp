@@ -13,10 +13,12 @@ class NodeEventAggregation {
    private:
     std::shared_ptr<spdlog::async_logger> logger;
 
-    int windowSize;
+    uint32_t windowSize;
+    uint32_t eventBatchSize;
 
    public:
-    NodeEventAggregation(int windowSize, std::shared_ptr<spdlog::async_logger> logger) : logger(logger), windowSize(windowSize), eventsBuffer(windowSize) {}
+    NodeEventAggregation(uint32_t windowSize, uint32_t eventBatchSize, std::shared_ptr<spdlog::async_logger> logger)
+        : logger(logger), windowSize(windowSize), eventBatchSize(eventBatchSize), eventsBuffer(windowSize) {}
     NodeState state;
     utility::CircularBuffer<NodeState::DurationEvent> eventsBuffer;
     std::unordered_map<PipelineEvent::Type, std::unique_ptr<utility::CircularBuffer<uint64_t>>> timingsBufferByType;
@@ -30,7 +32,7 @@ class NodeEventAggregation {
     std::optional<PipelineEvent> ongoingMainLoopEvent;
     std::unordered_map<std::string, std::optional<PipelineEvent>> ongoingOtherEvents;
 
-    uint32_t eventCount = 0;
+    uint32_t count = 0;
 
    private:
     inline bool updateIntervalBuffers(PipelineEvent& event) {
@@ -199,14 +201,13 @@ class NodeEventAggregation {
    public:
     void add(PipelineEvent& event) {
         using namespace std::chrono;
-        ++eventCount;
-        bool recalculateStats = false;
+        bool addedEvent = false;
         if(event.interval == PipelineEvent::Interval::NONE) {
-            recalculateStats = updatePingBuffers(event);
+            addedEvent = updatePingBuffers(event);
         } else {
-            recalculateStats = updateIntervalBuffers(event);
+            addedEvent = updateIntervalBuffers(event);
         }
-        if(recalculateStats) {
+        if(addedEvent && ++count % eventBatchSize == 0) {
             // By type
             updateTimingStats(state.timingsByType[event.type], *timingsBufferByType[event.type]);
             // By instance
@@ -251,7 +252,7 @@ void PipelineEventAggregation::run() {
         for(auto& [k, event] : events) {
             if(event != nullptr) {
                 if(nodeStates.find(event->nodeId) == nodeStates.end()) {
-                    nodeStates.insert_or_assign(event->nodeId, NodeEventAggregation(properties.aggregationWindowSize, logger));
+                    nodeStates.insert_or_assign(event->nodeId, NodeEventAggregation(properties.aggregationWindowSize, properties.eventBatchSize, logger));
                 }
                 nodeStates.at(event->nodeId).add(*event);
             }
@@ -259,11 +260,10 @@ void PipelineEventAggregation::run() {
         auto outState = std::make_shared<PipelineState>();
         bool shouldSend = false;
         for(auto& [nodeId, nodeState] : nodeStates) {
-            if(nodeState.eventCount >= properties.eventBatchSize) {
+            if(nodeState.count % properties.eventBatchSize == 0) {
                 outState->nodeStates[nodeId] = nodeState.state;
                 if(!properties.sendEvents) outState->nodeStates[nodeId].events.clear();
                 shouldSend = true;
-                nodeState.eventCount = 0;
             }
         }
         outState->sequenceNum = sequenceNum++;
