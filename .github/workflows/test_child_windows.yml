@@ -15,7 +15,7 @@ jobs:
   build_windows_tests:
     runs-on: windows-latest
     outputs: 
-        artifact_id: ${{ steps.artifact-upload-step.outputs.artifact-id }}
+        artifact_id: ${{ steps.reuse.outputs.artifact_id || steps.artifact-upload-step.outputs.artifact-id }}
     env:
       BUILD_TYPE: Release
       VCPKG_ROOT: C:\vcpkg
