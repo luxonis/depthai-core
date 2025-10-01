@@ -10,16 +10,43 @@ namespace dai {
 
 class NodeState {
    public:
-    struct Timing {
-        uint64_t averageMicros;
-        uint64_t stdDevMicros;
-        DEPTHAI_SERIALIZE(Timing, averageMicros, stdDevMicros);
+    struct DurationEvent {
+        PipelineEvent startEvent;
+        uint64_t durationUs;
+        DEPTHAI_SERIALIZE(DurationEvent, startEvent, durationUs);
     };
-    std::vector<PipelineEvent> events;
-    std::unordered_map<PipelineEvent::EventType, Timing> timingsByType;
-    std::unordered_map<std::string, Timing> timingsByInstance;
+    struct TimingStats {
+        uint64_t minMicros = -1;
+        uint64_t maxMicros;
+        uint64_t averageMicrosRecent;
+        uint64_t stdDevMicrosRecent;
+        uint64_t minMicrosRecent = -1;
+        uint64_t maxMicrosRecent;
+        uint64_t medianMicrosRecent;
+        DEPTHAI_SERIALIZE(TimingStats, minMicros, maxMicros, averageMicrosRecent, stdDevMicrosRecent, minMicrosRecent, maxMicrosRecent, medianMicrosRecent);
+    };
+    struct QueueStats {
+        uint32_t maxQueued;
+        uint32_t minQueuedRecent;
+        uint32_t maxQueuedRecent;
+        uint32_t medianQueuedRecent;
+        DEPTHAI_SERIALIZE(QueueStats, maxQueued, minQueuedRecent, maxQueuedRecent, medianQueuedRecent);
+    };
+    struct QueueState {
+        bool waiting;
+        uint32_t numQueued;
+        TimingStats timingStats;
+        QueueStats queueStats;
+        DEPTHAI_SERIALIZE(QueueState, waiting, numQueued, timingStats);
+    };
+    std::vector<DurationEvent> events;
+    std::unordered_map<PipelineEvent::Type, TimingStats> timingsByType;
+    std::unordered_map<std::string, QueueState> inputStates;
+    std::unordered_map<std::string, QueueState> outputStates;
+    TimingStats mainLoopStats;
+    std::unordered_map<std::string, TimingStats> otherStats;
 
-    DEPTHAI_SERIALIZE(NodeState, events, timingsByType, timingsByInstance);
+    DEPTHAI_SERIALIZE(NodeState, events, timingsByType, inputStates, outputStates, mainLoopStats, otherStats);
 };
 
 /**

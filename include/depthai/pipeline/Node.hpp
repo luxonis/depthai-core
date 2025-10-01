@@ -146,7 +146,7 @@ class Node : public std::enable_shared_from_this<Node> {
                 setName(par.createUniqueOutputName());
             }
             if(pipelineEventDispatcher && getName() != "pipelineEventOutput") {
-                pipelineEventDispatcher->addEvent(getName(), PipelineEvent::EventType::OUTPUT);
+                pipelineEventDispatcher->addEvent(getName(), PipelineEvent::Type::OUTPUT);
             }
         }
 

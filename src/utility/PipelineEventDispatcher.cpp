@@ -1,4 +1,5 @@
 #include "depthai/utility/PipelineEventDispatcher.hpp"
+
 #include <optional>
 #include <thread>
 
@@ -13,12 +14,15 @@ void PipelineEventDispatcher::checkNodeId() {
 void PipelineEventDispatcher::setNodeId(int64_t id) {
     nodeId = id;
 }
-void PipelineEventDispatcher::addEvent(const std::string& source, PipelineEvent::EventType type) {
+void PipelineEventDispatcher::addEvent(const std::string& source, PipelineEvent::Type type) {
     if(!source.empty()) {
         if(events.find(source) != events.end()) {
             throw std::runtime_error("Event with name '" + source + "' already exists");
         }
-        events[source] = {type, {}, {}, false, std::nullopt};
+        PipelineEvent event;
+        event.type = type;
+        event.source = source;
+        events[source] = {event, false};
     }
 }
 void PipelineEventDispatcher::startEvent(const std::string& source, std::optional<Buffer> metadata) {
@@ -30,9 +34,18 @@ void PipelineEventDispatcher::startEvent(const std::string& source, std::optiona
     if(event.ongoing) {
         throw std::runtime_error("Event with name " + source + " is already ongoing");
     }
-    event.timestamp = std::chrono::steady_clock::now();
+    event.event.setTimestamp(std::chrono::steady_clock::now());
+    event.event.tsDevice = event.event.ts;
+    event.event.sequenceNum = sequenceNum++;
+    event.event.nodeId = nodeId;
+    // TODO: event.event.metadata.emplace(metadata);
+    event.event.interval = PipelineEvent::Interval::START;
+    // type and source are already set
     event.ongoing = true;
-    event.metadata = metadata;
+
+    if(out) {
+        out->send(std::make_shared<dai::PipelineEvent>(event.event));
+    }
 }
 void PipelineEventDispatcher::endEvent(const std::string& source) {
     checkNodeId();
@@ -45,24 +58,20 @@ void PipelineEventDispatcher::endEvent(const std::string& source) {
     if(!event.ongoing) {
         throw std::runtime_error("Event with name " + source + " has not been started");
     }
-    event.duration = std::chrono::duration_cast<std::chrono::microseconds>(now - event.timestamp);
+
+    event.event.setTimestamp(now);
+    event.event.tsDevice = event.event.ts;
+    event.event.nodeId = nodeId;
+    // TODO: event.event.metadata.emplace(metadata);
+    event.event.interval = PipelineEvent::Interval::END;
+    // type and source are already set
     event.ongoing = false;
 
-    PipelineEvent pipelineEvent;
-    pipelineEvent.nodeId = nodeId;
-    pipelineEvent.timestamp = std::chrono::duration_cast<std::chrono::microseconds>(event.timestamp.time_since_epoch()).count();
-    pipelineEvent.duration = event.duration.count();
-    pipelineEvent.type = event.type;
-    pipelineEvent.source = source;
-    pipelineEvent.sequenceNum = sequenceNum++;
-    pipelineEvent.setTimestampDevice(std::chrono::steady_clock::now());
-    pipelineEvent.ts = pipelineEvent.tsDevice;
-
     if(out) {
-        out->send(std::make_shared<dai::PipelineEvent>(pipelineEvent));
+        out->send(std::make_shared<dai::PipelineEvent>(event.event));
     }
 
-    event.metadata = std::nullopt;
+    // event.event.metadata = 0u; TODO
 }
 void PipelineEventDispatcher::pingEvent(const std::string& source) {
     checkNodeId();
@@ -73,22 +82,18 @@ void PipelineEventDispatcher::pingEvent(const std::string& source) {
     }
     auto& event = events[source];
     if(event.ongoing) {
-        event.duration = std::chrono::duration_cast<std::chrono::microseconds>(now - event.timestamp);
-        event.timestamp = now;
+        throw std::runtime_error("Event with name " + source + " is already ongoing");
+    }
+    event.event.setTimestamp(now);
+    event.event.tsDevice = event.event.ts;
+    event.event.sequenceNum = sequenceNum++;
+    event.event.nodeId = nodeId;
+    // TODO: event.event.metadata.emplace(metadata);
+    event.event.interval = PipelineEvent::Interval::NONE;
+    // type and source are already set
 
-        PipelineEvent pipelineEvent;
-        pipelineEvent.nodeId = nodeId;
-        pipelineEvent.duration = event.duration.count();
-        pipelineEvent.type = event.type;
-        pipelineEvent.source = source;
-        pipelineEvent.metadata = std::nullopt;
-
-        if(out) {
-            out->send(std::make_shared<dai::PipelineEvent>(pipelineEvent));
-        }
-    } else {
-        event.timestamp = now;
-        event.ongoing = true;
+    if(out) {
+        out->send(std::make_shared<dai::PipelineEvent>(event.event));
     }
 }
 

@@ -15,11 +15,8 @@ namespace utility {
 
 class PipelineEventDispatcher : public PipelineEventDispatcherInterface {
     struct EventStatus {
-        PipelineEvent::EventType type;
-        std::chrono::microseconds duration;
-        std::chrono::time_point<std::chrono::steady_clock> timestamp;
+        PipelineEvent event;
         bool ongoing;
-        std::optional<Buffer> metadata;
     };
 
     int64_t nodeId = -1;
@@ -36,7 +33,7 @@ class PipelineEventDispatcher : public PipelineEventDispatcherInterface {
 
     void setNodeId(int64_t id) override;
 
-    void addEvent(const std::string& source, PipelineEvent::EventType type) override;
+    void addEvent(const std::string& source, PipelineEvent::Type type) override;
 
     void startEvent(const std::string& source, std::optional<Buffer> metadata = std::nullopt) override;  // Start event with a start and an end
     void endEvent(const std::string& source) override;                                                   // Stop event with a start and an end

@@ -2,7 +2,6 @@
 
 #include <vector>
 
-#include "depthai/common/optional.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 
 namespace dai {
@@ -12,22 +11,25 @@ namespace dai {
  */
 class PipelineEvent : public Buffer {
    public:
-    enum class EventType : std::int32_t {
+    enum class Type : std::int32_t {
         CUSTOM = 0,
         LOOP = 1,
         INPUT = 2,
         OUTPUT = 3,
-        FUNC_CALL = 4
+    };
+    enum class Interval : std::int32_t {
+        NONE = 0,
+        START = 1,
+        END = 2
     };
 
     PipelineEvent() = default;
     virtual ~PipelineEvent() = default;
 
     int64_t nodeId = -1;
-    std::optional<Buffer> metadata;
-    uint64_t timestamp {0};
-    uint64_t duration {0}; // Duration in microseconds
-    EventType type = EventType::CUSTOM;
+    Buffer metadata;
+    Interval interval = Interval::NONE;
+    Type type = Type::CUSTOM;
     std::string source;
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
@@ -35,7 +37,7 @@ class PipelineEvent : public Buffer {
         datatype = DatatypeEnum::PipelineEvent;
     };
 
-    DEPTHAI_SERIALIZE(PipelineEvent, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum, nodeId, metadata, timestamp, duration, type, source);
+    DEPTHAI_SERIALIZE(PipelineEvent, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum, nodeId, metadata, interval, type, source);
 };
 
 }  // namespace dai

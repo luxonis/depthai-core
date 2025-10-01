@@ -23,7 +23,7 @@ ThreadedNode::ThreadedNode() {
 
 void ThreadedNode::initPipelineEventDispatcher(int64_t nodeId) {
     pipelineEventDispatcher->setNodeId(nodeId);
-    pipelineEventDispatcher->addEvent("_mainLoop", PipelineEvent::EventType::LOOP);
+    pipelineEventDispatcher->addEvent("_mainLoop", PipelineEvent::Type::LOOP);
 }
 
 void ThreadedNode::start() {

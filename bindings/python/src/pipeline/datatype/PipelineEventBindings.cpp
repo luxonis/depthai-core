@@ -17,7 +17,8 @@ void bind_pipelineevent(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
     py::class_<PipelineEvent, Py<PipelineEvent>, Buffer, std::shared_ptr<PipelineEvent>> pipelineEvent(m, "PipelineEvent", DOC(dai, PipelineEvent));
-    py::enum_<PipelineEvent::EventType> pipelineEventType(pipelineEvent, "EventType", DOC(dai, PipelineEvent, EventType));
+    py::enum_<PipelineEvent::Type> pipelineEventType(pipelineEvent, "Type", DOC(dai, PipelineEvent, Type));
+    py::enum_<PipelineEvent::Interval> pipelineEventInterval(pipelineEvent, "Interval", DOC(dai, PipelineEvent, Interval));
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -32,19 +33,20 @@ void bind_pipelineevent(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
 
-    pipelineEventType.value("CUSTOM", PipelineEvent::EventType::CUSTOM)
-        .value("LOOP", PipelineEvent::EventType::LOOP)
-        .value("INPUT", PipelineEvent::EventType::INPUT)
-        .value("OUTPUT", PipelineEvent::EventType::OUTPUT)
-        .value("FUNC_CALL", PipelineEvent::EventType::FUNC_CALL);
+    pipelineEventType.value("CUSTOM", PipelineEvent::Type::CUSTOM)
+        .value("LOOP", PipelineEvent::Type::LOOP)
+        .value("INPUT", PipelineEvent::Type::INPUT)
+        .value("OUTPUT", PipelineEvent::Type::OUTPUT);
+    pipelineEventInterval.value("NONE", PipelineEvent::Interval::NONE)
+        .value("START", PipelineEvent::Interval::START)
+        .value("END", PipelineEvent::Interval::END);
 
     // Message
     pipelineEvent.def(py::init<>())
         .def("__repr__", &PipelineEvent::str)
         .def_readwrite("nodeId", &PipelineEvent::nodeId, DOC(dai, PipelineEvent, nodeId))
         .def_readwrite("metadata", &PipelineEvent::metadata, DOC(dai, PipelineEvent, metadata))
-        .def_readwrite("timestamp", &PipelineEvent::timestamp, DOC(dai, PipelineEvent, timestamp))
-        .def_readwrite("duration", &PipelineEvent::duration, DOC(dai, PipelineEvent, duration))
+        .def_readwrite("interval", &PipelineEvent::interval, DOC(dai, PipelineEvent, interval))
         .def_readwrite("type", &PipelineEvent::type, DOC(dai, PipelineEvent, type))
         .def_readwrite("source", &PipelineEvent::source, DOC(dai, PipelineEvent, source))
         .def("getTimestamp", &PipelineEvent::Buffer::getTimestamp, DOC(dai, Buffer, getTimestamp))
