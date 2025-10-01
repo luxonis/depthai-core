@@ -56,11 +56,6 @@ class EventsManager {
     ~EventsManager();
 
     /**
-     * Fetch configuration limits and quotas for snaps, through the api
-     * @return bool
-     */
-    bool fetchConfigurationLimits();
-    /**
      * Send an event to the events service
      * @param name Name of the event
      * @param tags List of tags to send
@@ -180,6 +175,17 @@ class EventsManager {
      * // TO DO: Add description
      */
     bool checkForCachedData();
+    /**
+     * Validate the input event by checking that its fields adhere to defined limitations
+     * @param inputEvent Input event to be validated
+     * @return bool
+     */
+    bool validateEvent(const proto::event::Event& inputEvent);
+    /**
+     * Fetch configuration limits and quotas for snaps, through the api
+     * @return bool
+     */
+    bool fetchConfigurationLimits();
 
     std::string token;
     std::string deviceSerialNumber;
@@ -200,6 +206,22 @@ class EventsManager {
     std::mutex stopThreadConditionMutex;
     std::atomic<bool> stopUploadThread;
     std::condition_variable eventBufferCondition;
+
+    uint64_t maximumFileSize;
+    uint64_t remainingStorage;
+    uint64_t warningStorage;
+    uint64_t bytesPerHour;
+    uint32_t uploadsPerHour;
+    uint32_t eventsPerHour;
+    uint32_t snapsPerHour;
+
+    static constexpr int eventValidationNameLength = 56;
+    static constexpr int eventValidationMaxTags = 20;
+    static constexpr int eventValidationTagLength = 56;
+    static constexpr int eventValidationMaxExtras = 25;
+    static constexpr int eventValidationExtraKeyLength = 40;
+    static constexpr int eventValidationExtraValueLength = 100;
+    static constexpr int eventValidationMaxAssociateFiles = 20;
 };
 }  // namespace utility
 }  // namespace dai

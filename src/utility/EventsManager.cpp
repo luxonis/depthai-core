@@ -18,10 +18,6 @@ namespace dai {
 namespace utility {
 using std::move;
 
-// TO DO:
-// 1. ADD CHECKS FOR STUFF AS VALIDATION RULES IN CLICKUP DOCS 
-// 2. Add the newly updated file limits, event limits, api usage)
-// 3. FileData should be determined, streamlined and wrapped for the final user. Add API
 
 FileData::FileData(const std::string& data, const std::string& fileName, const std::string& mimeType)
     : mimeType(mimeType),
@@ -49,6 +45,7 @@ FileData::FileData(const std::string& filePath, std::string fileName)
     // Read the data
     std::ifstream fileStream(filePath, std::ios::binary | std::ios::ate);
     if (!fileStream) {
+        logger::error("File: {} doesn't exist", filePath);
         return;
     }
     std::streamsize fileSize = fileStream.tellg();
@@ -170,15 +167,28 @@ EventsManager::EventsManager(std::string url, bool uploadCachedOnStart, float pu
       verifySsl(true),
       cacheDir("/internal/private"),
       cacheIfCannotSend(false),
-      stopUploadThread(false) {
+      stopUploadThread(false),
+      warningStorage(52428800) {
     auto appId = utility::getEnvAs<std::string>("OAKAGENT_APP_ID", "");
     auto containerId = utility::getEnvAs<std::string>("OAKAGENT_CONTAINER_ID", "");
     sourceAppId = appId == "" ? containerId : appId;
     sourceAppIdentifier = utility::getEnvAs<std::string>("OAKAGENT_APP_IDENTIFIER", "");
     token = utility::getEnvAs<std::string>("DEPTHAI_HUB_API_KEY", "");
-    dai::Logging::getInstance().logger.set_level(spdlog::level::info);
+    dai::Logging::getInstance().logger.set_level(spdlog::level::info); // TO DO: Remove
+    // Separate thread handling uploads
     uploadThread = std::make_unique<std::thread>([this]() {
+        auto nextTime = std::chrono::steady_clock::now();
         while(!stopUploadThread) {
+            // Hourly check for fetching configuration and limits
+            auto currentTime = std::chrono::steady_clock::now();
+            if (currentTime >= nextTime) {
+                fetchConfigurationLimits();
+                nextTime += std::chrono::hours(1);
+                if (remainingStorage <= warningStorage) {
+                    logger::warn("Current remaining storage is running low: {} MB", remainingStorage / (1024*1024));
+                }
+            }
+
             uploadFileBatch();
             uploadEventBatch();
             std::unique_lock<std::mutex> lock(stopThreadConditionMutex);
@@ -206,7 +216,6 @@ EventsManager::~EventsManager() {
 }
 
 bool EventsManager::fetchConfigurationLimits() {
-    // TO DO: Determine and add when and how often this fetch should happen !
     logger::info("Fetching configuration limits");
     auto header = cpr::Header();
     header["Authorization"] = "Bearer " + token;
@@ -239,6 +248,8 @@ bool EventsManager::fetchConfigurationLimits() {
             logger::info("ApiUsage response: \n{}", apiUsage->DebugString());
         }
         // TO DO: Use this data to set the limits
+        maximumFileSize = apiUsage->files().max_file_size_bytes();
+        remainingStorage = apiUsage->files().remaining_storage_bytes();
     }
     return true;
 }
@@ -422,6 +433,11 @@ bool EventsManager::sendEvent(const std::string& name,
         auto addedFile = event->add_associate_files();
         addedFile->set_id(file);
     }
+    if (!validateEvent(*event)) {
+        logger::error("Failed to send event, validation failed");
+        return false;
+    }
+
     // Add event to eventBuffer
     if(eventBuffer.size() <= queueSize) {
         std::lock_guard<std::mutex> lock(eventBufferMutex);
@@ -445,7 +461,6 @@ bool EventsManager::sendSnap(const std::string& name,
     snapData->event = std::make_unique<proto::event::Event>();
     snapData->event->set_created_at(std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count());
     snapData->event->set_name(name);
-    snapData->event->add_tags("snap");
     for(const auto& tag : tags) {
         snapData->event->add_tags(tag);
     }
@@ -456,6 +471,17 @@ bool EventsManager::sendSnap(const std::string& name,
     snapData->event->set_source_serial_number(deviceSerialNo.empty() ? deviceSerialNumber : deviceSerialNo);
     snapData->event->set_source_app_id(sourceAppId);
     snapData->event->set_source_app_identifier(sourceAppIdentifier);
+    if (!validateEvent(*snapData->event)) {
+        logger::error("Failed to send snap, validation failed");
+        return false;
+    }
+    snapData->event->add_tags("snap");
+    for (const auto& file : fileGroup) {
+        if (file->size >= maximumFileSize) {
+            logger::error("Failed to send snap, file: {} is bigger then the configured maximum size: {}", file->fileName, maximumFileSize);
+            return false;
+        }
+    }
     // Add the snap to snapBuffer
     // TO DO: Should a snap buffer be limited by size like eventbuffer
     if(snapBuffer.size() <= queueSize) {
@@ -465,6 +491,70 @@ bool EventsManager::sendSnap(const std::string& name,
         logger::warn("Snap buffer is full, dropping snap");
         return false;
     }
+    return true;
+}
+
+bool EventsManager::validateEvent(const proto::event::Event& inputEvent) {
+    // Name
+    const auto& name = inputEvent.name();
+    if (name.empty()) {
+        logger::error("Invalid event name: empty string");
+        return false;
+    }
+    if (name.length() > eventValidationNameLength) {
+        logger::error("Invalid event name: length {} exceeds {}", name.length(), eventValidationNameLength);
+        return false;
+    }
+
+    // Tags
+    if (inputEvent.tags_size() > eventValidationMaxTags) {
+        logger::error("Invalid event tags: number of tags {} exceeds {}", inputEvent.tags_size(), eventValidationMaxTags);
+        return false;
+    }
+    for (int i = 0; i < inputEvent.tags_size(); ++i) {
+        const auto& tag = inputEvent.tags(i);
+        if (tag.empty()) {
+            logger::error("Invalid event tags: tag[{}] empty string", i);
+            return false;
+        }
+        if (tag.length() > 56) {
+            logger::error("Invalid event tags: tag[{}] length {} exceeds {}", i, tag.length(), eventValidationTagLength);
+            return false;
+        }
+    }
+
+    // Event extras
+    if (inputEvent.extras_size() > eventValidationMaxExtras) {
+        logger::error("Invalid event extras: number of extras {} exceeds {}", inputEvent.extras_size(), eventValidationMaxExtras);
+        return false;
+    }
+    int index = 0;
+    for (const auto& extra : inputEvent.extras()) {
+        const auto& key = extra.first;
+        const auto& value = extra.second;
+        if (key.empty()) {
+            logger::error("Invalid event extras: extra[{}] key empty string", index);
+            return false;
+        }
+        if (key.length() > eventValidationExtraKeyLength) {
+            logger::error("Invalid event extras: extra[{}] key length {} exceeds {}", index, key.length(), eventValidationExtraKeyLength);
+            return false;
+        }
+        if (value.length() > eventValidationExtraValueLength) {
+            logger::error("Invalid event extras: extra[{}] value length {} exceeds {}", 
+                           index, value.length(), eventValidationExtraValueLength);
+            return false;
+        }
+        index++;
+    }
+
+    // Associate files
+    if (inputEvent.associate_files_size() > eventValidationMaxAssociateFiles) {
+        logger::error("Invalid associate files: number of associate files {} exceeds {}", 
+                       inputEvent.associate_files_size(), eventValidationMaxAssociateFiles);
+        return false;
+    }
+
     return true;
 }
 
