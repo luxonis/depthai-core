@@ -1,8 +1,7 @@
 #pragma once
 
-#include "depthai/pipeline/Subnode.hpp"
-
 #include "depthai/pipeline/DeviceNode.hpp"
+#include "depthai/pipeline/Subnode.hpp"
 #include "depthai/pipeline/ThreadedHostNode.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/IMUData.hpp"

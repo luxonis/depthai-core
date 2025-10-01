@@ -1,11 +1,10 @@
 #include "depthai/basalt/BasaltVIO.hpp"
 
+#include "../utility/PimplImpl.hpp"
 #include "basalt/calibration/calibration.hpp"
 #include "basalt/serialization/headers_serialization.h"
 #include "basalt/spline/se3_spline.h"
 #include "basalt/utils/vio_config.h"
-#include "basalt/vi_estimator/vio_estimator.h"
-#include "../utility/PimplImpl.hpp"
 #include "basalt/vi_estimator/vio_estimator.h"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/ThreadedHostNode.hpp"

@@ -104,7 +104,8 @@ void RTABMapVIO::syncCB(std::shared_ptr<dai::ADatatype> data) {
             cv::Vec3d acc, gyro;
             std::map<double, cv::Vec3f>::const_iterator iterA, iterB;
 
-            if(!pimplRtabmap->accBuffer.empty() && !pimplRtabmap->gyroBuffer.empty() && pimplRtabmap->accBuffer.rbegin()->first >= stamp && pimplRtabmap->gyroBuffer.rbegin()->first >= stamp) {
+            if(!pimplRtabmap->accBuffer.empty() && !pimplRtabmap->gyroBuffer.empty() && pimplRtabmap->accBuffer.rbegin()->first >= stamp
+               && pimplRtabmap->gyroBuffer.rbegin()->first >= stamp) {
                 // acc
                 iterB = pimplRtabmap->accBuffer.lower_bound(stamp);
                 if(iterB != pimplRtabmap->accBuffer.end()) {

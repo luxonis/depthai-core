@@ -551,7 +551,6 @@ class CalibrationHandler {
      */
     bool validateCameraArray() const;
 
-
    private:
     /** when the user is writing extrinsics do we validate if
      * the connection between all the cameras exists ?

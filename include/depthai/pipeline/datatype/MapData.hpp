@@ -28,7 +28,7 @@ class MapData : public Buffer {
         metadata = utility::serialize(*this);
         datatype = DatatypeEnum::MapData;
     };
-    DEPTHAI_SERIALIZE(MapData,  Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum, map, minX, minY);
+    DEPTHAI_SERIALIZE(MapData, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum, map, minX, minY);
 };
 
 }  // namespace dai
