@@ -846,6 +846,23 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
             py::arg("enable"),
             DOC(dai, DeviceBase, setTimesync, 2))
         .def(
+            "setM8FsyncRole",
+            [](DeviceBase& d, M8FsyncRole role) {
+                py::gil_scoped_release release;
+                return d.setM8FsyncRole(role);
+            },
+            py::arg("role"),
+            DOC(dai, DeviceBase, setM8FsyncRole)
+        )
+        .def(
+            "getM8FsyncRole",
+            [](DeviceBase& d) {
+                py::gil_scoped_release release;
+                return d.getM8FsyncRole();
+            },
+            DOC(dai, DeviceBase, getM8FsyncRole)
+        )
+        .def(
             "getDeviceName",
             [](DeviceBase& d) {
                 std::string name;
