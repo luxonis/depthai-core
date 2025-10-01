@@ -156,33 +156,33 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
      * Set number of frames in all pools (will be automatically reduced if the maximum pool memory size is exceeded)
      * @param raw Number of frames in raw pool
      * @param isp Number of frames in isp pool
-     * @param imgmanip Number of frames in image manip pools
+     * @param outputs Number of frames in outputs pools
      * @return Shared pointer to the camera node
      */
-    std::shared_ptr<Camera> setNumFramesPools(int raw, int isp, int imgmanip);
+    std::shared_ptr<Camera> setNumFramesPools(int raw, int isp, int outputs);
 
     /**
      * Set maximum memory size of all pools
      * @param raw Maximum size in bytes of raw pool
      * @param isp Maximum size in bytes of isp pool
-     * @param imgmanip Maximum size in bytes of image manip pools
+     * @param outputs Maximum size in bytes of outputs pools
      * @return Shared pointer to the camera node
      */
-    std::shared_ptr<Camera> setMaxSizePools(int raw, int isp, int imgmanip);
+    std::shared_ptr<Camera> setMaxSizePools(int raw, int isp, int outputs);
 
     /**
-     * Set number of frames in image manip pool for all outputs
-     * @param num Number of frames
+     * Set number of frames in pools for all outputs
+     * @param num Number of frames in pools for all outputs
      * @return Shared pointer to the camera node
      */
-    std::shared_ptr<Camera> setOutputsImageManipNumFramesPool(int num);
+    std::shared_ptr<Camera> setOutputsNumFramesPool(int num);
 
     /**
-     * Set maximum size of image manip pool for all outputs
-     * @param size Maximum size in bytes of image manip pool
+     * Set maximum size of pools for all outputs
+     * @param size Maximum size in bytes of pools for all outputs
      * @return Shared pointer to the camera node
      */
-    std::shared_ptr<Camera> setOutputsImageManipMaxSizePool(int size);
+    std::shared_ptr<Camera> setOutputsMaxSizePool(int size);
 
     /**
      * Get number of frames in raw pool
@@ -209,16 +209,16 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
     int getMaxSizePoolIsp() const;
 
     /**
-     * Get number of frames in image manip pool for all outputs
+     * Get number of frames in outputs pool for all outputs
      * @return Number of frames
      */
-    int getOutputsImageManipNumFramesPool() const;
+    int getOutputsNumFramesPool() const;
 
     /**
-     * Get maximum size of image manip pool for all outputs
+     * Get maximum size of outputs pool for all outputs
      * @return Maximum size in bytes of image manip pool
      */
-    int getOutputsImageManipMaxSizePool() const;
+    int getOutputsMaxSizePool() const;
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     /**

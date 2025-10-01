@@ -365,27 +365,27 @@ std::shared_ptr<Camera> Camera::setMaxSizePoolIsp(int size) {
     return std::dynamic_pointer_cast<Camera>(shared_from_this());
 }
 
-std::shared_ptr<Camera> Camera::setOutputsImageManipNumFramesPool(int num) {
-    properties.numFramesPoolImageManip = num;
+std::shared_ptr<Camera> Camera::setOutputsNumFramesPool(int num) {
+    properties.numFramesPoolOutputs = num;
     return std::dynamic_pointer_cast<Camera>(shared_from_this());
 }
 
-std::shared_ptr<Camera> Camera::setOutputsImageManipMaxSizePool(int size) {
-    properties.maxSizePoolImageManip = size;
+std::shared_ptr<Camera> Camera::setOutputsMaxSizePool(int size) {
+    properties.maxSizePoolOutputs = size;
     return std::dynamic_pointer_cast<Camera>(shared_from_this());
 }
 
-std::shared_ptr<Camera> Camera::setNumFramesPools(int raw, int isp, int imgmanip) {
+std::shared_ptr<Camera> Camera::setNumFramesPools(int raw, int isp, int outputs) {
     properties.numFramesPoolRaw = raw;
     properties.numFramesPoolIsp = isp;
-    properties.numFramesPoolImageManip = imgmanip;
+    properties.numFramesPoolOutputs = outputs;
     return std::dynamic_pointer_cast<Camera>(shared_from_this());
 }
 
-std::shared_ptr<Camera> Camera::setMaxSizePools(int raw, int isp, int imgmanip) {
+std::shared_ptr<Camera> Camera::setMaxSizePools(int raw, int isp, int outputs) {
     properties.maxSizePoolRaw = raw;
     properties.maxSizePoolIsp = isp;
-    properties.maxSizePoolImageManip = imgmanip;
+    properties.maxSizePoolOutputs = outputs;
     return std::dynamic_pointer_cast<Camera>(shared_from_this());
 }
 
@@ -405,12 +405,12 @@ int Camera::getMaxSizePoolIsp() const {
     return properties.maxSizePoolIsp;
 }
 
-int Camera::getOutputsImageManipNumFramesPool() const {
-    return properties.numFramesPoolImageManip;
+int Camera::getOutputsNumFramesPool() const {
+    return properties.numFramesPoolOutputs;
 }
 
-int Camera::getOutputsImageManipMaxSizePool() const {
-    return properties.maxSizePoolImageManip;
+int Camera::getOutputsMaxSizePool() const {
+    return properties.maxSizePoolOutputs;
 }
 
 }  // namespace node
