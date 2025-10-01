@@ -89,7 +89,11 @@ class NodeEventAggregation {
             return true;
         } else {
             if(ongoingEvent.has_value()) {
-                logger->warn("Ongoing event not finished before new one started. Event source: {}, node {}", ongoingEvent->source, event.nodeId);
+                logger->warn("Ongoing event (seq {}) not finished before new one (seq {}) started. Event source: {}, node {}",
+                             ongoingEvent->sequenceNum,
+                             event.sequenceNum,
+                             ongoingEvent->source,
+                             event.nodeId);
             }
             if(event.interval == PipelineEvent::Interval::START) {
                 // Start event
@@ -150,7 +154,11 @@ class NodeEventAggregation {
 
             return true;
         } else if(ongoingEvent.has_value()) {
-            logger->warn("Ongoing main loop event not finished before new one started. Event source: {}, node {}", ongoingEvent->source, event.nodeId);
+            logger->warn("Ongoing main loop event (seq {}) not finished before new one (seq {}) started. Event source: {}, node {}",
+                         ongoingEvent->sequenceNum,
+                         event.sequenceNum,
+                         ongoingEvent->source,
+                         event.nodeId);
         }
         // Start event
         ongoingEvent = event;

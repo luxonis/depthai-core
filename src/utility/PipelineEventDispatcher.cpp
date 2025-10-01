@@ -36,7 +36,7 @@ void PipelineEventDispatcher::startEvent(const std::string& source, std::optiona
     }
     event.event.setTimestamp(std::chrono::steady_clock::now());
     event.event.tsDevice = event.event.ts;
-    event.event.sequenceNum = sequenceNum++;
+    ++event.event.sequenceNum;
     event.event.nodeId = nodeId;
     // TODO: event.event.metadata.emplace(metadata);
     event.event.interval = PipelineEvent::Interval::START;
@@ -86,7 +86,7 @@ void PipelineEventDispatcher::pingEvent(const std::string& source) {
     }
     event.event.setTimestamp(now);
     event.event.tsDevice = event.event.ts;
-    event.event.sequenceNum = sequenceNum++;
+    ++event.event.sequenceNum;
     event.event.nodeId = nodeId;
     // TODO: event.event.metadata.emplace(metadata);
     event.event.interval = PipelineEvent::Interval::NONE;
