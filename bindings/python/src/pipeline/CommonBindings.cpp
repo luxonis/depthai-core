@@ -7,6 +7,7 @@
 
 // depthai/
 #include "depthai/common/CameraBoardSocket.hpp"
+#include "depthai/common/M8FsyncRoles.hpp"
 #include "depthai/common/CameraFeatures.hpp"
 #include "depthai/common/CameraImageOrientation.hpp"
 #include "depthai/common/CameraSensorType.hpp"
@@ -56,6 +57,7 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     py::class_<Quaterniond> quaterniond(m, "Quaterniond", DOC(dai, Quaterniond));
     py::class_<Size2f> size2f(m, "Size2f", DOC(dai, Size2f));
     py::enum_<CameraBoardSocket> cameraBoardSocket(m, "CameraBoardSocket", DOC(dai, CameraBoardSocket));
+    py::enum_<M8FsyncRole> m8FsyncRole(m, "M8FsyncRole", DOC(dai, M8FsyncRole));
     py::enum_<ConnectionInterface> connectionInterface(m, "connectionInterface", DOC(dai, ConnectionInterface));
     py::enum_<CameraSensorType> cameraSensorType(m, "CameraSensorType", DOC(dai, CameraSensorType));
     py::enum_<CameraImageOrientation> cameraImageOrientation(m, "CameraImageOrientation", DOC(dai, CameraImageOrientation));
@@ -284,6 +286,12 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
             return CameraBoardSocket::CAM_C;
         });
     HEDLEY_DIAGNOSTIC_POP
+
+    // M8FsyncRole enum bindings
+    m8FsyncRole.value("AUTO_DETECT", M8FsyncRole::AUTO_DETECT)
+        .value("MASTER_WITHOUT_OUTPUT", M8FsyncRole::MASTER_WITHOUT_OUTPUT)
+        .value("MASTER_WITH_OUTPUT", M8FsyncRole::MASTER_WITH_OUTPUT)
+        .value("SLAVE", M8FsyncRole::SLAVE);
 
     // CameraSensorType enum bindings
     cameraSensorType.value("COLOR", CameraSensorType::COLOR)
