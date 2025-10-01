@@ -52,8 +52,12 @@ DeviceGate::DeviceGate(const DeviceInfo& deviceInfo) : deviceInfo(deviceInfo) {
     } else {
         throw std::runtime_error("Unknown platform");  // Should never happen
     }
+    auto gateHost = deviceInfo.name;
+    if (deviceInfo.protocol == X_LINK_LOCAL_SHDMEM) {
+        gateHost = "127.0.0.1";
+    }
     // Discover and connect
-    pimpl->cli = std::make_unique<httplib::Client>(deviceInfo.name, DEFAULT_PORT);
+    pimpl->cli = std::make_unique<httplib::Client>(gateHost, DEFAULT_PORT);
     pimpl->cli->set_read_timeout(60);  // 60 seconds timeout to allow for compressing the crash dumps without async
     // pimpl->cli->set_connection_timeout(2);
 }
