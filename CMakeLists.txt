@@ -238,15 +238,11 @@ set(THIRDPARTY_RTABMAP_LIBRARIES "rtabmap::utilite" CACHE STRING "Optional libra
 set(TARGET_RTABMAP_NAME ${PROJECT_NAME}-rtabmap)
 set(TARGET_RTABMAP_ALIAS rtabmap)
 if(DEPTHAI_RTABMAP_SUPPORT)
-    if(${RTABMap_FOUND} AND DEPTHAI_HAVE_PCL_SUPPORT)
+    if(${RTABMap_FOUND})
         set(DEPTHAI_HAVE_RTABMAP_SUPPORT ON)
-        message(STATUC "RTABMAP found. RTABMAP Support enabled")
+        message(STATUS "RTABMAP found. RTABMAP Support enabled")
     else()
-        if(${RTABMap_FOUND})
-            message(WARNING "RTABMAP found but depthai does not have PCL support. RTABMAP Support disabled")
-        else()
-            message(WARNING "RTABMAP not found. RTABMAP Support disabled")
-        endif()
+        message(WARNING "RTABMAP not found. RTABMAP Support disabled")
     endif()
 endif()
 
@@ -259,7 +255,7 @@ set(TARGET_BASALT_ALIAS basalt)
 if(DEPTHAI_BASALT_SUPPORT)
     if(${basalt_sdk_FOUND})
         set(DEPTHAI_HAVE_BASALT_SUPPORT ON)
-        message(STATUC "Basalt found. Basalt Support enabled")
+        message(STATUS "Basalt found. Basalt Support enabled")
     else()
         message(WARNING "Basalt not found. Basalt Support disabled")
     endif()
@@ -360,6 +356,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/MessageGroup.cpp
     src/pipeline/datatype/ThermalConfig.cpp
     src/pipeline/datatype/TransformData.cpp
+    src/pipeline/datatype/MapData.cpp
     src/properties/Properties.cpp
     src/capabilities/Capabilities.cpp
     src/utility/H26xParsers.cpp
@@ -439,9 +436,9 @@ set(TARGET_PCL_SOURCES src/pcl/PointCloudData.cpp)
 set(TARGET_BASALT_SOURCES src/basalt/BasaltVIO.cpp)
 
 set(TARGET_RTABMAP_SOURCES
-    src/rtabmap/CalibrationHandler.cpp
-    src/rtabmap/TransformData.cpp
-    src/rtabmap/RTABMapVIO.cpp src/rtabmap/RTABMapSLAM.cpp
+    src/rtabmap/RTABMapConversions.cpp
+    src/rtabmap/RTABMapSLAM.cpp
+    src/rtabmap/RTABMapVIO.cpp
 )
 
 if(DEPTHAI_HAVE_OPENCV_SUPPORT AND DEPTHAI_MERGED_TARGET)
@@ -570,7 +567,7 @@ endif()
 
 if(DEPTHAI_HAVE_RTABMAP_SUPPORT AND DEPTHAI_MERGED_TARGET) 
     # Link to rtabmap
-    target_link_libraries(${TARGET_CORE_NAME} PUBLIC rtabmap::core ${THIRDPARTY_RTABMAP_LIBRARIES})
+    target_link_libraries(${TARGET_CORE_NAME} PRIVATE rtabmap::core ${THIRDPARTY_RTABMAP_LIBRARIES})
 
     # add compile defs
     target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_TARGET_RTABMAP)
@@ -580,7 +577,7 @@ endif()
 
 if(DEPTHAI_HAVE_BASALT_SUPPORT AND DEPTHAI_MERGED_TARGET)
     # Link to Basalt
-    target_link_libraries(${TARGET_CORE_NAME} PUBLIC ${THIRDPARTY_BASALT_LIBRARIES})
+    target_link_libraries(${TARGET_CORE_NAME} PRIVATE ${THIRDPARTY_BASALT_LIBRARIES})
 
     # add compile defs
     target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_TARGET_BASALT)
@@ -1008,9 +1005,9 @@ if(DEPTHAI_HAVE_RTABMAP_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
     endif()
     # Add depthai-rtabmap library and depthai::rtabmap alias
     add_library(${TARGET_RTABMAP_NAME}
-    src/rtabmap/CalibrationHandler.cpp
-    src/rtabmap/TransformData.cpp
-    src/rtabmap/RTABMapVIO.cpp src/rtabmap/RTABMapSLAM.cpp
+    src/rtabmap/RTABMapConversions.cpp
+    src/rtabmap/RTABMapSLAM.cpp
+    src/rtabmap/RTABMapVIO.cpp
     )
     add_library("${PROJECT_NAME}::${TARGET_RTABMAP_ALIAS}" ALIAS ${TARGET_RTABMAP_NAME})
     # Specifies name of generated IMPORTED target (set to alias)
@@ -1020,7 +1017,7 @@ if(DEPTHAI_HAVE_RTABMAP_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
     add_default_flags(${TARGET_RTABMAP_NAME})
     add_flag(${TARGET_RTABMAP_NAME} -Wno-switch-enum)
     # Link to RTABMap (publically)
-    target_link_libraries(${TARGET_RTABMAP_NAME} PUBLIC rtabmap::core ${TARGET_OPENCV_NAME} ${TARGET_PCL_NAME} ${THIRDPARTY_RTABMAP_LIBRARIES} PRIVATE spdlog::spdlog)
+    target_link_libraries(${TARGET_RTABMAP_NAME} PRIVATE rtabmap::core ${TARGET_OPENCV_NAME} ${TARGET_PCL_NAME} ${THIRDPARTY_RTABMAP_LIBRARIES} spdlog::spdlog)
 
     target_include_directories(${TARGET_RTABMAP_NAME} PRIVATE "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/src>")
     # Add public compile definition indicating that RTABMap support is available
@@ -1061,7 +1058,7 @@ if(DEPTHAI_HAVE_BASALT_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
     add_flag(${TARGET_BASALT_NAME} -Wno-switch-enum)
 
     # Link to Basalt (publically)
-    target_link_libraries(${TARGET_BASALT_NAME} PUBLIC ${THIRDPARTY_BASALT_LIBRARIES} ${TARGET_OPENCV_NAME} PRIVATE spdlog::spdlog)
+    target_link_libraries(${TARGET_BASALT_NAME}  PRIVATE ${THIRDPARTY_BASALT_LIBRARIES} ${TARGET_OPENCV_NAME} spdlog::spdlog)
     # Add public compile definition indicating that Basalt support is available
     set(DEPTHAI_HAVE_BASALT_SUPPORT ON)
 

@@ -1,17 +1,37 @@
 #include "depthai/rtabmap/RTABMapVIO.hpp"
 
+#include "../utility/PimplImpl.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
+#include "depthai/rtabmap/RTABMapConversions.hpp"
+#include "rtabmap/core/CameraModel.h"
+#include "rtabmap/core/Odometry.h"
+#include "rtabmap/core/OdometryInfo.h"
+#include "rtabmap/core/SensorData.h"
+#include "rtabmap/core/Transform.h"
 
 namespace dai {
 namespace node {
+class RTABMapVIO::Impl {
+   public:
+    Impl() = default;
+    rtabmap::StereoCameraModel model;
+    std::unique_ptr<rtabmap::Odometry> odom;
+    rtabmap::Transform localTransform;
+    rtabmap::Transform imuLocalTransform;
+    std::map<std::string, std::string> rtabParams;
+    std::map<double, cv::Vec3f> accBuffer;
+    std::map<double, cv::Vec3f> gyroBuffer;
+};
 
+RTABMapVIO::RTABMapVIO() = default;
+RTABMapVIO::~RTABMapVIO() = default;
 void RTABMapVIO::buildInternal() {
     sync->out.link(inSync);
     sync->setRunOnHost(false);
-    localTransform = rtabmap::Transform::getIdentity();
+    pimplRtabmap->localTransform = rtabmap::Transform::getIdentity();
 
     rtabmap::Transform opticalTransform(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
-    localTransform = localTransform * opticalTransform.inverse();
+    pimplRtabmap->localTransform = pimplRtabmap->localTransform * opticalTransform.inverse();
 
     inSync.setBlocking(false);
     inSync.setMaxSize(0);
@@ -49,8 +69,8 @@ void RTABMapVIO::imuCB(std::shared_ptr<dai::ADatatype> msg) {
         auto& gyroValues = imuPacket.gyroscope;
         double accStamp = std::chrono::duration<double>(acceleroValues.getTimestampDevice().time_since_epoch()).count();
         double gyroStamp = std::chrono::duration<double>(gyroValues.getTimestampDevice().time_since_epoch()).count();
-        accBuffer.emplace_hint(accBuffer.end(), accStamp, cv::Vec3f(acceleroValues.x, acceleroValues.y, acceleroValues.z));
-        gyroBuffer.emplace_hint(gyroBuffer.end(), gyroStamp, cv::Vec3f(gyroValues.x, gyroValues.y, gyroValues.z));
+        pimplRtabmap->accBuffer.emplace_hint(pimplRtabmap->accBuffer.end(), accStamp, cv::Vec3f(acceleroValues.x, acceleroValues.y, acceleroValues.z));
+        pimplRtabmap->gyroBuffer.emplace_hint(pimplRtabmap->gyroBuffer.end(), gyroStamp, cv::Vec3f(gyroValues.x, gyroValues.y, gyroValues.z));
     }
 }
 
@@ -71,10 +91,10 @@ void RTABMapVIO::syncCB(std::shared_ptr<dai::ADatatype> data) {
         } else {
             double stamp = std::chrono::duration<double>(imgFrame->getTimestampDevice(dai::CameraExposureOffset::MIDDLE).time_since_epoch()).count();
 
-            sensorData = rtabmap::SensorData(imgFrame->getCvFrame(), depthFrame->getCvFrame(), model.left(), imgFrame->getSequenceNum(), stamp);
+            sensorData = rtabmap::SensorData(imgFrame->getCvFrame(), depthFrame->getCvFrame(), pimplRtabmap->model.left(), imgFrame->getSequenceNum(), stamp);
 
-            std::vector<cv::KeyPoint> keypoints;
             if(featuresFrame != nullptr) {
+                std::vector<cv::KeyPoint> keypoints;
                 for(auto& feature : featuresFrame->trackedFeatures) {
                     keypoints.emplace_back(cv::KeyPoint(feature.position.x, feature.position.y, 3));
                 }
@@ -84,40 +104,41 @@ void RTABMapVIO::syncCB(std::shared_ptr<dai::ADatatype> data) {
             cv::Vec3d acc, gyro;
             std::map<double, cv::Vec3f>::const_iterator iterA, iterB;
 
-            if(!accBuffer.empty() && !gyroBuffer.empty() && accBuffer.rbegin()->first >= stamp && gyroBuffer.rbegin()->first >= stamp) {
+            if(!pimplRtabmap->accBuffer.empty() && !pimplRtabmap->gyroBuffer.empty() && pimplRtabmap->accBuffer.rbegin()->first >= stamp
+               && pimplRtabmap->gyroBuffer.rbegin()->first >= stamp) {
                 // acc
-                iterB = accBuffer.lower_bound(stamp);
-                if(iterB != accBuffer.end()) {
+                iterB = pimplRtabmap->accBuffer.lower_bound(stamp);
+                if(iterB != pimplRtabmap->accBuffer.end()) {
                     iterA = iterB;
-                    if(iterA != accBuffer.begin()) --iterA;
+                    if(iterA != pimplRtabmap->accBuffer.begin()) --iterA;
                     if(iterA == iterB || stamp == iterB->first) {
                         acc = iterB->second;
                     } else if(stamp > iterA->first && stamp < iterB->first) {
                         float t = (stamp - iterA->first) / (iterB->first - iterA->first);
                         acc = iterA->second + t * (iterB->second - iterA->second);
                     }
-                    accBuffer.erase(accBuffer.begin(), iterB);
+                    pimplRtabmap->accBuffer.erase(pimplRtabmap->accBuffer.begin(), iterB);
                 }
 
                 // gyro
-                iterB = gyroBuffer.lower_bound(stamp);
-                if(iterB != gyroBuffer.end()) {
+                iterB = pimplRtabmap->gyroBuffer.lower_bound(stamp);
+                if(iterB != pimplRtabmap->gyroBuffer.end()) {
                     iterA = iterB;
-                    if(iterA != gyroBuffer.begin()) --iterA;
+                    if(iterA != pimplRtabmap->gyroBuffer.begin()) --iterA;
                     if(iterA == iterB || stamp == iterB->first) {
                         gyro = iterB->second;
                     } else if(stamp > iterA->first && stamp < iterB->first) {
                         float t = (stamp - iterA->first) / (iterB->first - iterA->first);
                         gyro = iterA->second + t * (iterB->second - iterA->second);
                     }
-                    gyroBuffer.erase(gyroBuffer.begin(), iterB);
+                    pimplRtabmap->gyroBuffer.erase(pimplRtabmap->gyroBuffer.begin(), iterB);
                 }
-                sensorData.setIMU(rtabmap::IMU(gyro, cv::Mat::eye(3, 3, CV_64FC1), acc, cv::Mat::eye(3, 3, CV_64FC1), imuLocalTransform));
+                sensorData.setIMU(rtabmap::IMU(gyro, cv::Mat::eye(3, 3, CV_64FC1), acc, cv::Mat::eye(3, 3, CV_64FC1), pimplRtabmap->imuLocalTransform));
             }
             rtabmap::OdometryInfo info;
-            auto pose = odom->process(sensorData, &info);
-            pose = localTransform * pose * localTransform.inverse();
-            auto out = std::make_shared<dai::TransformData>(pose);
+            auto pose = pimplRtabmap->odom->process(sensorData, &info);
+            pose = pimplRtabmap->localTransform * pose * pimplRtabmap->localTransform.inverse();
+            auto out = rtabmapToTransformData(pose);
             transform.send(out);
             passthroughRect.send(imgFrame);
             passthroughDepth.send(depthFrame);
@@ -139,39 +160,42 @@ void RTABMapVIO::run() {
 
 void RTABMapVIO::reset(std::shared_ptr<TransformData> transform) {
     if(transform != nullptr) {
-        odom->reset(transform->getRTABMapTransform());
+        pimplRtabmap->odom->reset(getRTABMapTransform(transform->transform));
     } else {
-        odom->reset();
+        pimplRtabmap->odom->reset();
     }
 }
 
 void RTABMapVIO::setParams(const rtabmap::ParametersMap& params) {
-    rtabParams = params;
+    pimplRtabmap->rtabParams = params;
+}
+void RTABMapVIO::setLocalTransform(std::shared_ptr<TransformData> transform) {
+    pimplRtabmap->localTransform = getRTABMapTransform(transform->transform);
 }
 
 void RTABMapVIO::initialize(dai::Pipeline& pipeline, int instanceNum, int width, int height) {
     auto calibHandler = pipeline.getDefaultDevice()->readCalibration();
 
     auto cameraId = static_cast<dai::CameraBoardSocket>(instanceNum);
-    model = calibHandler.getRTABMapCameraModel(cameraId, width, height, localTransform, alphaScaling);
+    pimplRtabmap->model = getRTABMapCameraModel(cameraId, width, height, pimplRtabmap->localTransform, alphaScaling, calibHandler);
 
     std::vector<std::vector<float>> imuExtr = calibHandler.getImuToCameraExtrinsics(cameraId, true);
 
-    imuLocalTransform = rtabmap::Transform(double(imuExtr[0][0]),
-                                           double(imuExtr[0][1]),
-                                           double(imuExtr[0][2]),
-                                           double(imuExtr[0][3]) * 0.01,
-                                           double(imuExtr[1][0]),
-                                           double(imuExtr[1][1]),
-                                           double(imuExtr[1][2]),
-                                           double(imuExtr[1][3]) * 0.01,
-                                           double(imuExtr[2][0]),
-                                           double(imuExtr[2][1]),
-                                           double(imuExtr[2][2]),
-                                           double(imuExtr[2][3]) * 0.01);
+    pimplRtabmap->imuLocalTransform = rtabmap::Transform(double(imuExtr[0][0]),
+                                                         double(imuExtr[0][1]),
+                                                         double(imuExtr[0][2]),
+                                                         double(imuExtr[0][3]) * 0.01,
+                                                         double(imuExtr[1][0]),
+                                                         double(imuExtr[1][1]),
+                                                         double(imuExtr[1][2]),
+                                                         double(imuExtr[1][3]) * 0.01,
+                                                         double(imuExtr[2][0]),
+                                                         double(imuExtr[2][1]),
+                                                         double(imuExtr[2][2]),
+                                                         double(imuExtr[2][3]) * 0.01);
 
-    imuLocalTransform = localTransform * imuLocalTransform;
-    odom.reset(rtabmap::Odometry::create(rtabParams));
+    pimplRtabmap->imuLocalTransform = pimplRtabmap->localTransform * pimplRtabmap->imuLocalTransform;
+    pimplRtabmap->odom.reset(rtabmap::Odometry::create(pimplRtabmap->rtabParams));
     initialized = true;
 }
 }  // namespace node

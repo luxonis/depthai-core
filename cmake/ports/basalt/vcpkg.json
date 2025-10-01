@@ -12,16 +12,7 @@
       "name": "vcpkg-cmake-config",
       "host": true
     },
-	{
-		"name": "opencv4",
-		"default-features": false,
-    "features": [
-      "calib3d",
-      "highgui"
-    ]
-	},
 	"basalt-headers",
-	"magic-enum",
-	"tbb"
+    "sophus"
 ]
 }
