@@ -1246,6 +1246,14 @@ void DeviceBase::crashDevice() {
     }
 }
 
+std::tuple<bool, std::string>  DeviceBase::setM8FsyncRole(M8FsyncRole role) {
+    return pimpl->rpcClient->call("setM8FsyncRole", role);
+}
+
+M8FsyncRole DeviceBase::getM8FsyncRole() {
+    return pimpl->rpcClient->call("getM8FsyncRole");
+}
+
 dai::Version DeviceBase::getIMUFirmwareVersion() {
     isClosed();
     std::string versionStr = pimpl->rpcCall("getIMUFirmwareVersion").as<std::string>();

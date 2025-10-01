@@ -17,6 +17,7 @@
 // project
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/CameraFeatures.hpp"
+#include "depthai/common/M8FsyncRoles.hpp"
 #include "depthai/common/UsbSpeed.hpp"
 #include "depthai/device/CalibrationHandler.hpp"
 #include "depthai/device/DeviceGate.hpp"
@@ -803,6 +804,19 @@ class DeviceBase {
      * @param callBack Callback to be called when reconnection is attempted
      */
     void setMaxReconnectionAttempts(int maxAttempts, std::function<void(ReconnectionStatus)> callBack = nullptr);
+
+    /**
+     * Sets M8 Fsync role for the device
+     * @param role M8 Fsync role to be set, AUTO_DETECT by default
+     * @returns Tuple of bool and string. Bool specifies if role was set without failures. String is the error message describing the failure reason.
+     */
+    std::tuple<bool, std::string> setM8FsyncRole(M8FsyncRole role = M8FsyncRole::AUTO_DETECT);
+
+    /**
+     * Gets M8 Fsync role for the device
+     * @returns Gets M8 Fsync role
+     */
+    M8FsyncRole getM8FsyncRole();
 
    protected:
     std::shared_ptr<XLinkConnection> connection;
