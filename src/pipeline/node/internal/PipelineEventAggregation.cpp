@@ -247,7 +247,7 @@ void PipelineEventAggregation::run() {
     while(isRunning()) {
         std::unordered_map<std::string, std::shared_ptr<PipelineEvent>> events;
         for(auto& [k, v] : inputs) {
-            events[k.second] = v.get<PipelineEvent>();
+            events[k.second] = v.tryGet<PipelineEvent>();
         }
         for(auto& [k, event] : events) {
             if(event != nullptr) {
