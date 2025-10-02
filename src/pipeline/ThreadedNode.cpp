@@ -26,6 +26,8 @@ void ThreadedNode::initPipelineEventDispatcher(int64_t nodeId) {
     pipelineEventDispatcher->addEvent("_mainLoop", PipelineEvent::Type::LOOP);
 }
 
+ThreadedNode::~ThreadedNode() = default;
+
 void ThreadedNode::start() {
     initPipelineEventDispatcher(this->id);
     // A node should not be started if it is already running

@@ -7,6 +7,14 @@
 #include "utility/H26xParsers.hpp"
 
 namespace dai {
+
+EncodedFrame::~EncodedFrame() = default;
+
+void EncodedFrame::serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const {
+    metadata = utility::serialize(*this);
+    datatype = DatatypeEnum::EncodedFrame;
+}
+
 // getters
 unsigned int EncodedFrame::getInstanceNum() const {
     return instanceNum;

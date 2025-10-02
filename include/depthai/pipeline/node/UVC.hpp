@@ -20,6 +20,8 @@ class UVC : public DeviceNodeCRTP<DeviceNode, UVC, UVCProperties> {
     UVC() = default;
     UVC(std::unique_ptr<Properties> props);
 
+    virtual ~UVC();
+
     /**
      * Input for image frames to be streamed over UVC
      * Default queue is blocking with size 8
