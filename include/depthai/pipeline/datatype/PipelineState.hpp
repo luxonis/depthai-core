@@ -41,12 +41,12 @@ class NodeState {
     };
     std::vector<DurationEvent> events;
     std::unordered_map<PipelineEvent::Type, TimingStats> timingsByType;
+    std::unordered_map<std::string, TimingStats> outputStats;
     std::unordered_map<std::string, QueueState> inputStates;
-    std::unordered_map<std::string, QueueState> outputStates;
     TimingStats mainLoopStats;
     std::unordered_map<std::string, TimingStats> otherStats;
 
-    DEPTHAI_SERIALIZE(NodeState, events, timingsByType, inputStates, outputStates, mainLoopStats, otherStats);
+    DEPTHAI_SERIALIZE(NodeState, events, timingsByType, outputStats, inputStates, mainLoopStats, otherStats);
 };
 
 /**

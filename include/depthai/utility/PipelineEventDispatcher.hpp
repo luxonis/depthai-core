@@ -6,9 +6,9 @@
 #include <string>
 #include <unordered_map>
 
+#include "PipelineEventDispatcherInterface.hpp"
 #include "depthai/pipeline/Node.hpp"
 #include "depthai/pipeline/datatype/PipelineEvent.hpp"
-#include "PipelineEventDispatcherInterface.hpp"
 
 namespace dai {
 namespace utility {
@@ -35,9 +35,13 @@ class PipelineEventDispatcher : public PipelineEventDispatcherInterface {
 
     void addEvent(const std::string& source, PipelineEvent::Type type) override;
 
-    void startEvent(const std::string& source, std::optional<Buffer> metadata = std::nullopt) override;  // Start event with a start and an end
-    void endEvent(const std::string& source) override;                                                   // Stop event with a start and an end
-    void pingEvent(const std::string& source) override;                                                  // Event where stop and start are the same (eg. loop)
+    void startEvent(const std::string& source,
+                    std::optional<uint32_t> queueSize = std::nullopt,
+                    std::optional<Buffer> metadata = std::nullopt) override;  // Start event with a start and an end
+    void endEvent(const std::string& source,
+                  std::optional<uint32_t> queueSize = std::nullopt,
+                  std::optional<Buffer> metadata = std::nullopt) override;  // Stop event with a start and an end
+    void pingEvent(const std::string& source) override;                     // Event where stop and start are the same (eg. loop)
 };
 
 }  // namespace utility

@@ -230,12 +230,12 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
      */
     template <class T>
     std::shared_ptr<T> get() {
-        if(pipelineEventDispatcher) pipelineEventDispatcher->startEvent(name);
+        if(pipelineEventDispatcher) pipelineEventDispatcher->startEvent(name, getSize());
         std::shared_ptr<ADatatype> val = nullptr;
         if(!queue.waitAndPop(val)) {
             throw QueueException(CLOSED_QUEUE_MESSAGE);
         }
-        if(pipelineEventDispatcher) pipelineEventDispatcher->endEvent(name);
+        if(pipelineEventDispatcher) pipelineEventDispatcher->endEvent(name, getSize());
         return std::dynamic_pointer_cast<T>(val);
     }
 

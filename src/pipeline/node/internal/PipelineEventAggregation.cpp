@@ -27,6 +27,8 @@ class NodeEventAggregation {
     std::unique_ptr<utility::CircularBuffer<uint64_t>> mainLoopTimingsBuffer;
     std::unordered_map<std::string, std::unique_ptr<utility::CircularBuffer<uint64_t>>> otherTimingsBuffers;
 
+    std::unordered_map<std::string, std::unique_ptr<utility::CircularBuffer<uint32_t>>> inputQueueSizesBuffers;
+
     std::unordered_map<std::string, std::optional<PipelineEvent>> ongoingInputEvents;
     std::unordered_map<std::string, std::optional<PipelineEvent>> ongoingOutputEvents;
     std::optional<PipelineEvent> ongoingMainLoopEvent;
@@ -201,6 +203,14 @@ class NodeEventAggregation {
    public:
     void add(PipelineEvent& event) {
         using namespace std::chrono;
+        if(event.type == PipelineEvent::Type::INPUT && event.interval == PipelineEvent::Interval::END) {
+            if(event.queueSize.has_value()) {
+                if(inputQueueSizesBuffers.find(event.source) == inputQueueSizesBuffers.end()) {
+                    inputQueueSizesBuffers[event.source] = std::make_unique<utility::CircularBuffer<uint32_t>>(windowSize);
+                }
+                inputQueueSizesBuffers[event.source]->add(*event.queueSize);
+            }
+        }
         bool addedEvent = false;
         if(event.interval == PipelineEvent::Interval::NONE) {
             addedEvent = updatePingBuffers(event);
@@ -222,8 +232,21 @@ class NodeEventAggregation {
                     updateTimingStats(state.inputStates[event.source].timingStats, *inputTimingsBuffers[event.source]);
                     break;
                 case PipelineEvent::Type::OUTPUT:
-                    updateTimingStats(state.outputStates[event.source].timingStats, *outputTimingsBuffers[event.source]);
+                    updateTimingStats(state.outputStats[event.source], *outputTimingsBuffers[event.source]);
                     break;
+            }
+        }
+        if(event.type == PipelineEvent::Type::INPUT && event.interval == PipelineEvent::Interval::END && ++count % eventBatchSize == 0) {
+            auto& qStats = state.inputStates[event.source].queueStats;
+            auto& qBuffer = *inputQueueSizesBuffers[event.source];
+            qStats.maxQueued = std::max(qStats.maxQueued, *event.queueSize);
+            auto qBufferData = qBuffer.getBuffer();
+            std::sort(qBufferData.begin(), qBufferData.end());
+            qStats.minQueuedRecent = qBufferData.front();
+            qStats.maxQueuedRecent = qBufferData.back();
+            qStats.medianQueuedRecent = qBufferData[qBufferData.size() / 2];
+            if(qBufferData.size() % 2 == 0) {
+                qStats.medianQueuedRecent = (qStats.medianQueuedRecent + qBufferData[qBufferData.size() / 2 - 1]) / 2;
             }
         }
     }

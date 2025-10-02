@@ -70,7 +70,7 @@ void bind_pipelinestate(pybind11::module& m, void* pCallstack) {
         .def_readwrite("events", &NodeState::events, DOC(dai, NodeState, events))
         .def_readwrite("timingsByType", &NodeState::timingsByType, DOC(dai, NodeState, timingsByType))
         .def_readwrite("inputStates", &NodeState::inputStates, DOC(dai, NodeState, inputStates))
-        .def_readwrite("outputStates", &NodeState::outputStates, DOC(dai, NodeState, outputStates))
+        .def_readwrite("outputStats", &NodeState::outputStats, DOC(dai, NodeState, outputStats))
         .def_readwrite("mainLoopStats", &NodeState::mainLoopStats, DOC(dai, NodeState, mainLoopStats))
         .def_readwrite("otherStats", &NodeState::otherStats, DOC(dai, NodeState, otherStats));
 

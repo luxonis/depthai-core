@@ -2,6 +2,7 @@
 
 #include <vector>
 
+#include "depthai/common/optional.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 
 namespace dai {
@@ -27,7 +28,8 @@ class PipelineEvent : public Buffer {
     virtual ~PipelineEvent() = default;
 
     int64_t nodeId = -1;
-    Buffer metadata;
+    std::optional<Buffer> metadata;
+    std::optional<uint32_t> queueSize;
     Interval interval = Interval::NONE;
     Type type = Type::CUSTOM;
     std::string source;

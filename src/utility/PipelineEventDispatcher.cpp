@@ -25,7 +25,7 @@ void PipelineEventDispatcher::addEvent(const std::string& source, PipelineEvent:
         events[source] = {event, false};
     }
 }
-void PipelineEventDispatcher::startEvent(const std::string& source, std::optional<Buffer> metadata) {
+void PipelineEventDispatcher::startEvent(const std::string& source, std::optional<uint32_t> queueSize, std::optional<Buffer> metadata) {
     checkNodeId();
     if(events.find(source) == events.end()) {
         throw std::runtime_error("Event with name " + source + " does not exist");
@@ -38,7 +38,8 @@ void PipelineEventDispatcher::startEvent(const std::string& source, std::optiona
     event.event.tsDevice = event.event.ts;
     ++event.event.sequenceNum;
     event.event.nodeId = nodeId;
-    // TODO: event.event.metadata.emplace(metadata);
+    event.event.metadata = std::move(metadata);
+    event.event.queueSize = std::move(queueSize);
     event.event.interval = PipelineEvent::Interval::START;
     // type and source are already set
     event.ongoing = true;
@@ -47,7 +48,7 @@ void PipelineEventDispatcher::startEvent(const std::string& source, std::optiona
         out->send(std::make_shared<dai::PipelineEvent>(event.event));
     }
 }
-void PipelineEventDispatcher::endEvent(const std::string& source) {
+void PipelineEventDispatcher::endEvent(const std::string& source, std::optional<uint32_t> queueSize, std::optional<Buffer> metadata) {
     checkNodeId();
     auto now = std::chrono::steady_clock::now();
 
@@ -62,7 +63,8 @@ void PipelineEventDispatcher::endEvent(const std::string& source) {
     event.event.setTimestamp(now);
     event.event.tsDevice = event.event.ts;
     event.event.nodeId = nodeId;
-    // TODO: event.event.metadata.emplace(metadata);
+    event.event.metadata = std::move(metadata);
+    event.event.queueSize = std::move(queueSize);
     event.event.interval = PipelineEvent::Interval::END;
     // type and source are already set
     event.ongoing = false;
@@ -71,7 +73,8 @@ void PipelineEventDispatcher::endEvent(const std::string& source) {
         out->send(std::make_shared<dai::PipelineEvent>(event.event));
     }
 
-    // event.event.metadata = 0u; TODO
+    event.event.metadata = std::nullopt;
+    event.event.queueSize = std::nullopt;
 }
 void PipelineEventDispatcher::pingEvent(const std::string& source) {
     checkNodeId();
@@ -88,7 +91,6 @@ void PipelineEventDispatcher::pingEvent(const std::string& source) {
     event.event.tsDevice = event.event.ts;
     ++event.event.sequenceNum;
     event.event.nodeId = nodeId;
-    // TODO: event.event.metadata.emplace(metadata);
     event.event.interval = PipelineEvent::Interval::NONE;
     // type and source are already set
 
