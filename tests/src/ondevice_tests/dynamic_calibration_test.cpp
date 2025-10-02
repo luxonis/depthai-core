@@ -94,7 +94,7 @@ std::string makeFilename(const std::string& prefix, int index, TestHelper& helpe
     std::ostringstream oss;
     oss << prefix << index << ".png";
     auto path = std::filesystem::path(helper.testFolder).append("extracted").append(oss.str());
-    return path;
+    return path.string();
 }
 
 std::shared_ptr<dai::MessageGroup> stereoImageToMessageGroup(const std::string& leftPath, const std::string& rightPath) {
