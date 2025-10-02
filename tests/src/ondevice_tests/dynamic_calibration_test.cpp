@@ -322,7 +322,7 @@ TEST_CASE("DynamicCalibration: StopCalibration halts further results") {
 
     pipeline.start();
 
-    command_input->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::StartCalibration{}));
+    commandInput->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::StartCalibration{}));
 
     auto first = calibrationOutput->get<dai::DynamicCalibrationResult>();
     REQUIRE(first != nullptr);
@@ -418,9 +418,9 @@ TEST_CASE("DynamicCalibration: Recalibration on synthetic data.") {
     std::shared_ptr<dai::node::DynamicCalibration> dynCalib;
     auto p = makePipeline(device, dynCalib, false);
 
-    auto coverage_output = dynCalib->coverageOutput.createOutputQueue();
-    auto command_input = dynCalib->inputControl.createInputQueue();
-    auto calibration_output = dynCalib->calibrationOutput.createOutputQueue();
+    auto coverageOutput = dynCalib->coverageOutput.createOutputQueue();
+    auto commandInput = dynCalib->inputControl.createInputQueue();
+    auto calibrationOutput = dynCalib->calibrationOutput.createOutputQueue();
 
     device->setCalibration(getHandler());
     auto group = stereoImageToMessageGroup(makeFilename("data/LeftCam_", 0, helper), makeFilename("data/RightCam_", 0, helper));
@@ -432,14 +432,14 @@ TEST_CASE("DynamicCalibration: Recalibration on synthetic data.") {
     for(int i = 0; i < 7; i++) {
         auto group = stereoImageToMessageGroup(makeFilename("data/LeftCam_", i, helper), makeFilename("data/RightCam_", i, helper));
         dynCalib->syncInput.send(group);
-        command_input->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::LoadImage{}));
-        auto coverage = coverage_output->get<dai::CoverageData>();
+        commandInput->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::LoadImage{}));
+        auto coverage = coverageOutput->get<dai::CoverageData>();
         REQUIRE(coverage->coverageAcquired > 0.0f);
     }
 
     // calibrate
-    command_input->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::Calibrate{true}));
-    auto result = calibration_output->get<dai::DynamicCalibrationResult>();
+    commandInput->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::Calibrate{true}));
+    auto result = calibrationOutput->get<dai::DynamicCalibrationResult>();
 
     REQUIRE(result != nullptr);
     REQUIRE(result->calibrationData != std::nullopt);
