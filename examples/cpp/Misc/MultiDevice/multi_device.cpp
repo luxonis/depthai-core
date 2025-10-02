@@ -7,6 +7,7 @@
 #include <opencv2/core/mat.hpp>
 #include <opencv2/highgui.hpp>
 #include <opencv2/opencv.hpp>
+#include <stdexcept>
 #include <utility>
 #include <vector>
 #include <string>
@@ -14,6 +15,7 @@
 #include "depthai/capabilities/ImgFrameCapability.hpp"
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/CameraExposureOffset.hpp"
+#include "depthai/common/M8FsyncRoles.hpp"
 #include "depthai/depthai.hpp"
 #include "depthai/pipeline/MessageQueue.hpp"
 #include "depthai/pipeline/Node.hpp"
@@ -58,7 +60,8 @@ int main(int argc, char** argv) {
     }
 
     std::vector<std::shared_ptr<dai::MessageQueue>> queues;
-    std::vector<dai::Pipeline> pipelines;
+    std::vector<dai::Pipeline> master_pipelines;
+    std::vector<dai::Pipeline> slave_pipelines;
     std::vector<std::string> device_ids;
 
     for (auto deviceInfo : DEVICE_INFOS) 
@@ -76,10 +79,34 @@ int main(int argc, char** argv) {
         auto cam = pipeline.create<dai::node::Camera>()->build(socket, std::nullopt, TARGET_FPS);
         auto out_q = cam->requestOutput(std::make_pair(640, 480), dai::ImgFrame::Type::NV12, dai::ImgResizeMode::STRETCH)->createOutputQueue();
 
-        pipeline.start();
-        pipelines.push_back(pipeline);
+        auto role = device->getM8FsyncRole();
+
+        if (role == dai::M8FsyncRole::MASTER_WITH_OUTPUT) {
+            master_pipelines.push_back(pipeline);
+        } else if (role == dai::M8FsyncRole::SLAVE) {
+            slave_pipelines.push_back(pipeline);
+        } else {
+            throw std::runtime_error("Don't know how to handle role " + dai::toString(role));
+        }
+
         queues.push_back(out_q);
         device_ids.push_back(deviceInfo.getXLinkDeviceDesc().name);
+    }
+
+    if (master_pipelines.size() > 1) {
+        throw std::runtime_error("Multiple masters detected!");
+    }
+    if (master_pipelines.size() == 0) {
+        throw std::runtime_error("No master detected!");
+    }
+    if (slave_pipelines.size() < 1) {
+        throw std::runtime_error("No slaves detected!");
+    }
+    for (auto p : master_pipelines) {
+        p.start();
+    }
+    for (auto p : slave_pipelines) {
+        p.start();
     }
 
     std::map<int, std::shared_ptr<dai::ImgFrame>> latest_frames;
@@ -89,8 +116,6 @@ int main(int argc, char** argv) {
     for(auto q : queues) {
         receivedFrames.push_back(false);
     }
-
-    int counter = 0;
 
     while (true) {
         for (int i = 0; i < queues.size(); i++) {
@@ -111,59 +136,51 @@ int main(int argc, char** argv) {
                 auto f = pair.second;
                 ts_values.push_back(f->getTimestamp(dai::CameraExposureOffset::END));
             }
-
-            if (counter % 100000 == 0) {
-                auto diff = *std::max_element(ts_values.begin(), ts_values.end()) - *std::min_element(ts_values.begin(), ts_values.end());
-                std::cout << 1e-6 * float(std::chrono::duration_cast<std::chrono::microseconds>(diff).count()) << std::endl;
-            }
-
-            if (true) {
-                // std::vector<cv::Mat> imgs;
-                cv::Mat imgs;
-                for (int i = 0; i < queues.size(); i++) {
-                    auto msg = latest_frames[i];
-                    auto fps = fpsCounters[i].getFps();
-                    auto frame = msg->getCvFrame();
-                    
-                    cv::putText(frame,
-                        device_ids[i] + " | Timestamp: " + std::to_string(ts_values[i].time_since_epoch().count()) + " | FPS: " + std::to_string(fps).substr(0, 5),
-                        {20, 40},
-                        cv::FONT_HERSHEY_SIMPLEX,
-                        0.6,
-                        {255, 0, 50},
-                        2,
-                        cv::LINE_AA);
-
-                    if (i == 0) {
-                        imgs = frame;
-                    } else {
-                        cv::hconcat(frame, imgs, imgs);
-                    }
-                }
-
-                std::string sync_status = "out of sync";
-                if (abs(std::chrono::duration_cast<std::chrono::microseconds>(
-                        *std::max_element(ts_values.begin(), ts_values.end()) -
-                        *std::min_element(ts_values.begin(), ts_values.end())
-                    ).count()) < 1e3) {
-                    sync_status = "in sync";
-                }
-                auto delta = *std::max_element(ts_values.begin(), ts_values.end()) - *std::min_element(ts_values.begin(), ts_values.end());
-                cv::Scalar color = (sync_status == "in sync") ? cv::Scalar(0, 255, 0) : cv::Scalar(0, 0, 255);
-
-                cv::putText(imgs,
-                    sync_status + " | delta = " + std::to_string(1e-3 * float(std::chrono::duration_cast<std::chrono::microseconds>(delta).count())).substr(0, 5) + " ms",
-                    {20, 80},
+            
+            cv::Mat imgs;
+            for (int i = 0; i < queues.size(); i++) {
+                auto msg = latest_frames[i];
+                auto fps = fpsCounters[i].getFps();
+                auto frame = msg->getCvFrame();
+                
+                cv::putText(frame,
+                    device_ids[i] + " | Timestamp: " + std::to_string(ts_values[i].time_since_epoch().count()) + " | FPS: " + std::to_string(fps).substr(0, 5),
+                    {20, 40},
                     cv::FONT_HERSHEY_SIMPLEX,
-                    0.7,
-                    color,
+                    0.6,
+                    {255, 0, 50},
                     2,
                     cv::LINE_AA);
 
-                cv::imshow("synced_view", imgs);
-
-                latest_frames.clear();
+                if (i == 0) {
+                    imgs = frame;
+                } else {
+                    cv::hconcat(frame, imgs, imgs);
+                }
             }
+
+            std::string sync_status = "out of sync";
+            if (abs(std::chrono::duration_cast<std::chrono::microseconds>(
+                    *std::max_element(ts_values.begin(), ts_values.end()) -
+                    *std::min_element(ts_values.begin(), ts_values.end())
+                ).count()) < 1e3) {
+                sync_status = "in sync";
+            }
+            auto delta = *std::max_element(ts_values.begin(), ts_values.end()) - *std::min_element(ts_values.begin(), ts_values.end());
+            cv::Scalar color = (sync_status == "in sync") ? cv::Scalar(0, 255, 0) : cv::Scalar(0, 0, 255);
+
+            cv::putText(imgs,
+                sync_status + " | delta = " + std::to_string(1e-3 * float(std::chrono::duration_cast<std::chrono::microseconds>(delta).count())).substr(0, 5) + " ms",
+                {20, 80},
+                cv::FONT_HERSHEY_SIMPLEX,
+                0.7,
+                color,
+                2,
+                cv::LINE_AA);
+
+            cv::imshow("synced_view", imgs);
+
+            latest_frames.clear();
         }
 
         if (cv::waitKey(1) == 'q') {
