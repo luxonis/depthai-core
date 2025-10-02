@@ -18,12 +18,11 @@ echo [*] REPO=%REPO%
 echo [*] DEST =%DEST%
 echo [*] ARTIFACT_ID=%ARTIFACT_ID%
 
-REM 1) Recreate destination
 echo [*] Recreating %DEST%
 rmdir /S /Q "%DEST%" 2>nul
 mkdir "%DEST%" || exit /b 1
 
-REM 2) Download & extract the artifact by ID
+
 set "ZIP=%TEMP%\artifact_%ARTIFACT_ID%.zip"
 echo [*] Downloading artifact id=%ARTIFACT_ID%
 curl -sSL -H "Authorization: Bearer %GH_TOKEN%" -H "Accept: application/vnd.github+json" ^
@@ -37,7 +36,6 @@ del /q "%ZIP%"
 call venv\Scripts\activate.bat
 python -c "import sys; print(sys.executable)"
 
-REM 3) Run tests (optional; adjust to your layout)
 if exist "%DEST%\tests" (
   echo [*] Running tests from %DEST%\tests
   cd "%DEST%\tests"
