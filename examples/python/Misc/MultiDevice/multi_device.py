@@ -69,7 +69,7 @@ def createPipeline(pipeline: dai.Pipeline, socket: dai.CameraBoardSocket = dai.C
 
 
 parser = argparse.ArgumentParser(add_help=False)
-parser.add_argument("-d", "--devices", default=[], nargs="+", help="Device IPs, first is master, others are slaves")
+parser.add_argument("-d", "--devices", default=[], nargs="+", help="Device IPs")
 parser.add_argument("-f", "--fps", type=float, default=30.0, help="Target FPS")
 args = parser.parse_args()
 DEVICE_INFOS = [dai.DeviceInfo(ip) for ip in args.devices] #The master camera needs to be first here
@@ -81,11 +81,10 @@ SYNC_THRESHOLD_SEC = 1.0 / (2 * TARGET_FPS)  # Max drift to accept as "in sync"
 # Main
 # ---------------------------------------------------------------------------
 with contextlib.ExitStack() as stack:
-    # deviceInfos = dai.Device.getAllAvailableDevices()
-    # print("=== Found devices: ", deviceInfos)
 
     queues = []
-    pipelines = []
+    slave_pipelines = []
+    master_pipelines = []
     device_ids = []
 
     for idx, deviceInfo in enumerate(DEVICE_INFOS):
@@ -96,26 +95,40 @@ with contextlib.ExitStack() as stack:
         print("    Device ID:", device.getDeviceId())
         print("    Num of cameras:", len(device.getConnectedCameras()))
 
-        # for c in device.getConnectedCameras():
-        #     print(f"        {c}")
-
         # socket = device.getConnectedCameras()[0]
         socket = device.getConnectedCameras()[1]
         pipeline, out_q = createPipeline(pipeline, socket)
-        print(type(out_q))
-        pipeline.start()
-
-        pipelines.append(pipeline)
+        role = device.getM8FsyncRole()
+        if (role == dai.M8FsyncRole.MASTER_WITH_OUTPUT):
+            master_pipelines.append(pipeline)
+        elif (role == dai.M8FsyncRole.SLAVE):
+            slave_pipelines.append(pipeline)
+        else:
+            raise RuntimeError(f"Don't know how to handle role {role}")
+        
         queues.append(out_q)
         device_ids.append(deviceInfo.getXLinkDeviceDesc().name)
-        # if (idx == 0):
-        #     time.sleep(12)
+    
+    if (len(master_pipelines) > 1):
+        raise RuntimeError("Multiple masters detected!")
+    
+    if (len(master_pipelines) == 0):
+        raise RuntimeError("No master detected!")
+    
+    if (len(slave_pipelines) < 1):
+        raise RuntimeError("No slaves detected!")
+
+    for p in master_pipelines:
+        p.start()
+
+    for p in slave_pipelines:
+        p.start()
+
 
     # Buffer for latest frames; key = queue index
     latest_frames = {}
     fpsCounters = [FPSCounter() for _ in queues]
     receivedFrames = [False for _ in queues]
-    counter = 0
     while True:
         # -------------------------------------------------------------------
         # Collect the newest frame from each queue (non‑blocking)
@@ -134,47 +147,41 @@ with contextlib.ExitStack() as stack:
         # -------------------------------------------------------------------
         if len(latest_frames) == len(queues):
             ts_values = [f.getTimestamp(dai.CameraExposureOffset.END).total_seconds() for f in latest_frames.values()]
-            if (counter % 100000 == 0):
-                print(max(ts_values) - min(ts_values))
-            counter += 1
-            # if max(ts_values) - min(ts_values) <= SYNC_THRESHOLD_SEC:
-            # TIMESTAMPS ARE NOT ACCURATE, VERIFIED WITH PIXEL RUNNER
-            if True:
-                # Build composite image side‑by‑side
-                imgs = []
-                for i in range(len(queues)):
-                    msg = latest_frames[i]
-                    frame = msg.getCvFrame()
-                    fps = fpsCounters[i].getFps()
-                    cv2.putText(
-                        frame,
-                        f"{device_ids[i]} | Timestamp: {ts_values[i]} | FPS:{fps:.2f}",
-                        (20, 40),
-                        cv2.FONT_HERSHEY_SIMPLEX,
-                        0.6,
-                        (255, 0, 50),
-                        2,
-                        cv2.LINE_AA,
-                    )
-                    imgs.append(frame)
-
-                sync_status = "in sync" if abs(max(ts_values) - min(ts_values)) < 0.001 else "out of sync"
-                delta = max(ts_values) - min(ts_values)
-                color = (0, 255, 0) if sync_status == "in sync" else (0, 0, 255)
-                
+            # Build composite image side‑by‑side
+            imgs = []
+            for i in range(len(queues)):
+                msg = latest_frames[i]
+                frame = msg.getCvFrame()
+                fps = fpsCounters[i].getFps()
                 cv2.putText(
-                    imgs[0],
-                    f"{sync_status} | delta = {delta*1e3:.3f} ms",
-                    (20, 80),
+                    frame,
+                    f"{device_ids[i]} | Timestamp: {ts_values[i]} | FPS:{fps:.2f}",
+                    (20, 40),
                     cv2.FONT_HERSHEY_SIMPLEX,
-                    0.7,
-                    color,
+                    0.6,
+                    (255, 0, 50),
                     2,
                     cv2.LINE_AA,
                 )
+                imgs.append(frame)
 
-                cv2.imshow("synced_view", cv2.hconcat(imgs))
-                latest_frames.clear()  # Wait for next batch
+            sync_status = "in sync" if abs(max(ts_values) - min(ts_values)) < 0.001 else "out of sync"
+            delta = max(ts_values) - min(ts_values)
+            color = (0, 255, 0) if sync_status == "in sync" else (0, 0, 255)
+            
+            cv2.putText(
+                imgs[0],
+                f"{sync_status} | delta = {delta*1e3:.3f} ms",
+                (20, 80),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.7,
+                color,
+                2,
+                cv2.LINE_AA,
+            )
+
+            cv2.imshow("synced_view", cv2.hconcat(imgs))
+            latest_frames.clear()  # Wait for next batch
 
         if cv2.waitKey(1) & 0xFF == ord("q"):
             break
