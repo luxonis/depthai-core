@@ -12,8 +12,8 @@ class CustomPCLProcessingNode : public dai::NodeCRTP<dai::node::ThreadedHostNode
     constexpr static const float thresholdDistance = 3000.0f;
 
    public:
-    Input  inputPCL{*this, {"inPCL",  {{dai::DatatypeEnum::PointCloudData, true}}}};
-    Output outputPCL{*this, {"outPCL", {{dai::DatatypeEnum::PointCloudData, true}}}};
+    Input  inputPCL{*this, {"inPCL", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{dai::DatatypeEnum::PointCloudData, true}}}}};
+    Output outputPCL{*this, {"outPCL", DEFAULT_GROUP, {{{dai::DatatypeEnum::PointCloudData, true}}}}};
 
     void run() override {
         while(isRunning()) {
